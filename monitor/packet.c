@@ -1002,7 +1002,6 @@ static void print_afh_mode(uint8_t mode)
 	case 0x01:
 		str = "Enabled";
 		break;
-		break;
 	default:
 		str = "Reserved";
 		break;
@@ -1047,6 +1046,31 @@ static void print_ssp_debug_mode(uint8_t mode)
 	}
 
 	print_field("Debug mode: %s (0x%2.2x)", str, mode);
+}
+
+static void print_secure_conn_support(uint8_t support)
+{
+	const char *str;
+
+	switch (support) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Support: %s (0x%2.2x)", str, support);
+}
+
+static void print_auth_payload_timeout(uint16_t timeout)
+{
+	print_field("Timeout: %d msec (0x%4.4x)",
+					btohs(timeout) * 10, btohs(timeout));
 }
 
 static void print_pscan_rep_mode(uint8_t pscan_rep_mode)
@@ -3298,6 +3322,17 @@ static void flow_spec_modify_cmd(const void *data, uint8_t size)
 	print_flow_spec("RX", cmd->rx_flow_spec);
 }
 
+static void remote_oob_ext_data_request_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_remote_oob_ext_data_request_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_hash("P-192", cmd->hash192);
+	print_randomizer("P-192", cmd->randomizer192);
+	print_hash("P-256", cmd->hash256);
+	print_randomizer("P-256", cmd->randomizer256);
+}
+
 static void hold_mode_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_hold_mode *cmd = data;
@@ -4249,6 +4284,64 @@ static void read_sync_train_params_rsp(const void *data, uint8_t size)
 	print_field("Service Data: 0x%2.2x", rsp->service_data);
 }
 
+static void read_secure_conn_support_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_secure_conn_support *rsp = data;
+
+	print_status(rsp->status);
+	print_secure_conn_support(rsp->support);
+}
+
+static void write_secure_conn_support_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_secure_conn_support *cmd = data;
+
+	print_secure_conn_support(cmd->support);
+}
+
+static void read_auth_payload_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_auth_payload_timeout *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_auth_payload_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_auth_payload_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_auth_payload_timeout(rsp->timeout);
+}
+
+static void write_auth_payload_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_auth_payload_timeout *cmd = data;
+
+	print_handle(cmd->handle);
+	print_auth_payload_timeout(cmd->timeout);
+}
+
+static void write_auth_payload_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_write_auth_payload_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
+static void read_local_oob_ext_data_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_oob_ext_data *rsp = data;
+
+	print_status(rsp->status);
+	print_hash("P-192", rsp->hash192);
+	print_randomizer("P-192", rsp->randomizer192);
+	print_hash("P-256", rsp->hash256);
+	print_randomizer("P-256", rsp->randomizer256);
+}
+
 static void read_local_version_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_local_version *rsp = data;
@@ -5130,7 +5223,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0442, 249, "Set Connectionless Slave Broadcast Receive" },
 	{ 0x0443, 250, "Start Synchronization Train" },
 	{ 0x0444, 251, "Receive Synchronization Train" },
-	{ 0x0445, 257, "Remote OOB Extended Data Request Reply" },
+	{ 0x0445, 257, "Remote OOB Extended Data Request Reply",
+				remote_oob_ext_data_request_reply_cmd, 70, true,
+				status_bdaddr_rsp, 7, true },
 
 	/* OGF 2 - Link Policy */
 	{ 0x0801,  33, "Holde Mode",
@@ -5417,11 +5512,21 @@ static const struct opcode_data opcode_table[] = {
 				null_cmd, 0, true,
 				read_sync_train_params_rsp, 8, true },
 	{ 0x0c78, 256, "Write Synchronization Train Parameters" },
-	{ 0x0c79, 258, "Read Secure Connections Host Support" },
-	{ 0x0c7a, 259, "Write Secure Connections Host Support" },
-	{ 0x0c7b, 260, "Read Authenticated Payload Timeout" },
-	{ 0x0c7c, 261, "Write Authenticated Payload Timeout" },
-	{ 0x0c7d, 262, "Read Local OOB Extended Data" },
+	{ 0x0c79, 258, "Read Secure Connections Host Support",
+				null_cmd, 0, true,
+				read_secure_conn_support_rsp, 2, true },
+	{ 0x0c7a, 259, "Write Secure Connections Host Support",
+				write_secure_conn_support_cmd, 1, true,
+				status_rsp, 1, true },
+	{ 0x0c7b, 260, "Read Authenticated Payload Timeout",
+				read_auth_payload_timeout_cmd, 2, true,
+				read_auth_payload_timeout_rsp, 5, true },
+	{ 0x0c7c, 261, "Write Authenticated Payload Timeout",
+				write_auth_payload_timeout_cmd, 4, true,
+				write_auth_payload_timeout_rsp, 3, true },
+	{ 0x0c7d, 262, "Read Local OOB Extended Data",
+				null_cmd, 0, true,
+				read_local_oob_ext_data_rsp, 65, true },
 	{ 0x0c7e, 264, "Read Extended Page Timeout" },
 	{ 0x0c7f, 265, "Write Extended Page Timeout" },
 	{ 0x0c80, 266, "Read Extended Inquiry Length" },
@@ -6297,6 +6402,13 @@ static void amp_status_change_evt(const void *data, uint8_t size)
 	print_amp_status(evt->amp_status);
 }
 
+static void auth_payload_timeout_expired_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_auth_payload_timeout_expired *evt = data;
+
+	print_handle(evt->handle);
+}
+
 static void le_conn_complete_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_conn_complete *evt = data;
@@ -6617,7 +6729,8 @@ static const struct event_data event_table[] = {
 	{ 0x54, "Slave Page Response Timeout" },
 	{ 0x55, "Connectionless Slave Broadcast Channel Map Change" },
 	{ 0x56, "Inquiry Response Notification" },
-	{ 0x57, "Authenticated Payload Timeout Expired" },
+	{ 0x57, "Authenticated Payload Timeout Expired",
+				auth_payload_timeout_expired_evt, 2, true },
 	{ 0xfe, "Testing" },
 	{ 0xff, "Vendor", vendor_evt, 0, false },
 	{ }
