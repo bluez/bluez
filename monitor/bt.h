@@ -1029,6 +1029,17 @@ struct bt_hci_rsp_delete_reserved_lt_addr {
 	uint8_t  lt_addr;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_SET_SLAVE_BROADCAST_DATA	0x0c76
+struct bt_hci_cmd_set_slave_broadcast_data {
+	uint8_t  lt_addr;
+	uint8_t  fragment;
+	uint8_t  length;
+} __attribute__ ((packed));
+struct bt_hci_rsp_set_slave_broadcast_data {
+	uint8_t  status;
+	uint8_t  lt_addr;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS	0x0c77
 struct bt_hci_rsp_read_sync_train_params {
 	uint8_t  status;

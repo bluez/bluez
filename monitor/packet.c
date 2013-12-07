@@ -4316,6 +4316,49 @@ static void delete_reserved_lt_addr_rsp(const void *data, uint8_t size)
 	print_lt_addr(rsp->lt_addr);
 }
 
+static void set_slave_broadcast_data_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_slave_broadcast_data *cmd = data;
+	const char *str;
+
+	print_lt_addr(cmd->lt_addr);
+
+	switch (cmd->fragment) {
+	case 0x00:
+		str = "Continuation fragment";
+		break;
+	case 0x01:
+		str = "Starting fragment";
+		break;
+	case 0x02:
+		str = "Ending fragment";
+		break;
+	case 0x03:
+		str = "No fragmentation";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Fragment: %s (0x%2.2x)", str, cmd->fragment);
+	print_field("Length: %d", cmd->length);
+
+	if (size - 3 != cmd->length)
+		print_text(COLOR_ERROR, "invalid data size (%d != %d)",
+						size - 3, cmd->length);
+
+	packet_hexdump(data + 3, size - 3);
+}
+
+static void set_slave_broadcast_data_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_set_slave_broadcast_data *rsp = data;
+
+	print_status(rsp->status);
+	print_lt_addr(rsp->lt_addr);
+}
+
 static void read_sync_train_params_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_sync_train_params *rsp = data;
@@ -5573,7 +5616,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c75, 253, "Delete Reserved LT_ADDR",
 				delete_reserved_lt_addr_cmd, 1, true,
 				delete_reserved_lt_addr_rsp, 2, true },
-	{ 0x0c76, 254, "Set Connectionless Slave Broadcast Data" },
+	{ 0x0c76, 254, "Set Connectionless Slave Broadcast Data",
+				set_slave_broadcast_data_cmd, 3, false,
+				set_slave_broadcast_data_rsp, 2, true },
 	{ 0x0c77, 255, "Read Synchronization Train Parameters",
 				null_cmd, 0, true,
 				read_sync_train_params_rsp, 8, true },
