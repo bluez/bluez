@@ -5127,6 +5127,7 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0442, 249, "Set Connectionless Slave Broadcast Receive" },
 	{ 0x0443, 250, "Start Synchronization Train" },
 	{ 0x0444, 251, "Receive Synchronization Train" },
+	{ 0x0445, 257, "Remote OOB Extended Data Request Reply" },
 
 	/* OGF 2 - Link Policy */
 	{ 0x0801,  33, "Holde Mode",
@@ -5413,6 +5414,15 @@ static const struct opcode_data opcode_table[] = {
 				null_cmd, 0, true,
 				read_sync_train_params_rsp, 8, true },
 	{ 0x0c78, 256, "Write Synchronization Train Parameters" },
+	{ 0x0c79, 258, "Read Secure Connections Host Support" },
+	{ 0x0c7a, 259, "Write Secure Connections Host Support" },
+	{ 0x0c7b, 260, "Read Authenticated Payload Timeout" },
+	{ 0x0c7c, 261, "Write Authenticated Payload Timeout" },
+	{ 0x0c7d, 262, "Read Local OOB Extended Data" },
+	{ 0x0c7e, 264, "Read Extended Page Timeout" },
+	{ 0x0c7f, 265, "Write Extended Page Timeout" },
+	{ 0x0c80, 266, "Read Extended Inquiry Length" },
+	{ 0x0c81, 267, "Write Extended Inquiry Length" },
 
 	/* OGF 4 - Information Parameter */
 	{ 0x1001, 115, "Read Local Version Information",
@@ -5487,6 +5497,7 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x1807, 189, "Enable AMP Receiver Reports" },
 	{ 0x1808, 190, "AMP Test End" },
 	{ 0x1809, 191, "AMP Test" },
+	{ 0x180a, 263, "Write Secure Connections Test Mode" },
 
 	/* OGF 8 - LE Control */
 	{ 0x2001, 200, "LE Set Event Mask",
@@ -5575,6 +5586,8 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x201f, 230, "LE Test End",
 				null_cmd, 0, true,
 				le_test_end_rsp, 3, true },
+	{ 0x2020, 268, "LE Remote Connection Parameter Request Reply" },
+	{ 0x2021, 269, "LE Remote Connection Parameter Request Negative Reply" },
 	{ }
 };
 
