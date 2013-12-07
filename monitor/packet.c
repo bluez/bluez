@@ -1203,6 +1203,9 @@ static void print_encr_mode_change(uint8_t encr_mode, uint16_t handle)
 			break;
 		}
 		break;
+	case 0x02:
+		str = "Enabled with AES-CCM";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -1283,13 +1286,19 @@ static void print_key_type(uint8_t key_type)
 		str = "Debug Combination key";
 		break;
 	case 0x04:
-		str = "Unauthenticated Combination key";
+		str = "Unauthenticated Combination key from P-192";
 		break;
 	case 0x05:
-		str = "Authenticated Combination key";
+		str = "Authenticated Combination key from P-192";
 		break;
 	case 0x06:
 		str = "Changed Combination key";
+		break;
+	case 0x07:
+		str = "Unauthenticated Combination key from P-256";
+		break;
+	case 0x08:
+		str = "Authenticated Combination key from P-256";
 		break;
 	default:
 		str = "Reserved";
@@ -1388,7 +1397,13 @@ static void print_oob_data(uint8_t oob_data)
 		str = "Authentication data not present";
 		break;
 	case 0x01:
-		str = "Authentication data present";
+		str = "P-192 authentication data present";
+		break;
+	case 0x02:
+		str = "P-256 authentication data present";
+		break;
+	case 0x03:
+		str = "P-192 and P-256 authentication data present";
 		break;
 	default:
 		str = "Reserved";
