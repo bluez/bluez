@@ -1019,6 +1019,18 @@ struct bt_hci_rsp_read_sync_train_params {
 	uint8_t  service_data;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_WRITE_SYNC_TRAIN_PARAMS	0x0c78
+struct bt_hci_cmd_write_sync_train_params {
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint32_t timeout;
+	uint8_t  service_data;
+} __attribute__ ((packed));
+struct bt_hci_rsp_write_sync_train_params {
+	uint8_t  status;
+	uint16_t interval;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_SECURE_CONN_SUPPORT	0x0c79
 struct bt_hci_rsp_read_secure_conn_support {
 	uint8_t  status;

@@ -4284,6 +4284,25 @@ static void read_sync_train_params_rsp(const void *data, uint8_t size)
 	print_field("Service Data: 0x%2.2x", rsp->service_data);
 }
 
+static void write_sync_train_params_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_sync_train_params *cmd = data;
+
+	print_slot_625("Min interval", cmd->min_interval);
+	print_slot_625("Max interval", cmd->max_interval);
+	print_field("Timeout: %.3f msec (0x%8.8x)",
+			btohl(cmd->timeout) * 0.625, btohl(cmd->timeout));
+	print_field("Service Data: 0x%2.2x", cmd->service_data);
+}
+
+static void write_sync_train_params_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_write_sync_train_params *rsp = data;
+
+	print_status(rsp->status);
+	print_interval(rsp->interval);
+}
+
 static void read_secure_conn_support_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_secure_conn_support *rsp = data;
@@ -5511,7 +5530,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c77, 255, "Read Synchronization Train Parameters",
 				null_cmd, 0, true,
 				read_sync_train_params_rsp, 8, true },
-	{ 0x0c78, 256, "Write Synchronization Train Parameters" },
+	{ 0x0c78, 256, "Write Synchronization Train Parameters",
+				write_sync_train_params_cmd, 9, true,
+				write_sync_train_params_rsp, 3, true },
 	{ 0x0c79, 258, "Read Secure Connections Host Support",
 				null_cmd, 0, true,
 				read_secure_conn_support_rsp, 2, true },
