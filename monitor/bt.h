@@ -411,6 +411,15 @@ struct bt_hci_cmd_flow_spec_modify {
 	uint8_t  rx_flow_spec[16];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_REMOTE_OOB_EXT_DATA_REQUEST_REPLY	0x0445
+struct bt_hci_cmd_remote_oob_ext_data_request_reply {
+	uint8_t  bdaddr[6];
+	uint8_t  hash192[16];
+	uint8_t  randomizer192[16];
+	uint8_t  hash256[16];
+	uint8_t  randomizer256[16];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_HOLD_MODE			0x0801
 struct bt_hci_cmd_hold_mode {
 	uint16_t handle;
@@ -1008,6 +1017,46 @@ struct bt_hci_rsp_read_sync_train_params {
 	uint16_t interval;
 	uint32_t timeout;
 	uint8_t  service_data;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_SECURE_CONN_SUPPORT	0x0c79
+struct bt_hci_rsp_read_secure_conn_support {
+	uint8_t  status;
+	uint8_t  support;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT	0x0c7a
+struct bt_hci_cmd_write_secure_conn_support {
+	uint8_t support;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_AUTH_PAYLOAD_TIMEOUT	0x0c7b
+struct bt_hci_cmd_read_auth_payload_timeout {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_auth_payload_timeout {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_AUTH_PAYLOAD_TIMEOUT	0x0c7c
+struct bt_hci_cmd_write_auth_payload_timeout {
+	uint16_t handle;
+	uint16_t timeout;
+} __attribute__ ((packed));
+struct bt_hci_rsp_write_auth_payload_timeout {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA	0x0c7d
+struct bt_hci_rsp_read_local_oob_ext_data {
+	uint8_t  status;
+	uint8_t  hash192[16];
+	uint8_t  randomizer192[16];
+	uint8_t  hash256[16];
+	uint8_t  randomizer256[16];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_READ_LOCAL_VERSION		0x1001
@@ -1828,6 +1877,11 @@ struct bt_hci_evt_short_range_mode_change {
 struct bt_hci_evt_amp_status_change {
 	uint8_t  status;
 	uint8_t  amp_status;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_AUTH_PAYLOAD_TIMEOUT_EXPIRED	0x57
+struct bt_hci_evt_auth_payload_timeout_expired {
+	uint16_t handle;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_CONN_COMPLETE		0x01
