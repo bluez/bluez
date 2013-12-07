@@ -2285,6 +2285,8 @@ void device_set_class(struct btd_device *device, uint32_t class)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Class");
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Icon");
 }
 
 uint32_t btd_device_get_class(struct btd_device *device)
