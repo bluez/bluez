@@ -66,6 +66,7 @@
 #define COLOR_HCI_ACLDATA		COLOR_CYAN
 #define COLOR_HCI_SCODATA		COLOR_YELLOW
 
+#define COLOR_UNKNOWN_ERROR		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_EVENT_MASK	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_LE_STATES		COLOR_WHITE_BG
@@ -352,19 +353,24 @@ static void print_error(const char *label, uint8_t error)
 {
 	const char *str = "Unknown";
 	const char *color_on, *color_off;
+	bool unknown = true;
 	int i;
 
 	for (i = 0; error2str_table[i].str; i++) {
 		if (error2str_table[i].error == error) {
 			str = error2str_table[i].str;
+			unknown = false;
 			break;
 		}
 	}
 
 	if (use_color()) {
-		if (error)
-			color_on = COLOR_RED;
-		else
+		if (error) {
+			if (unknown)
+				color_on = COLOR_UNKNOWN_ERROR;
+			else
+				color_on = COLOR_RED;
+		} else
 			color_on = COLOR_GREEN;
 		color_off = COLOR_OFF;
 	} else {
