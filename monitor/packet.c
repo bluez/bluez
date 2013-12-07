@@ -1912,6 +1912,7 @@ static const struct features_data features_page2[] = {
 
 static const struct features_data features_le[] = {
 	{  0, "LE Encryption"				},
+	{  4, "LE Ping"					},
 	{ }
 };
 

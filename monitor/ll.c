@@ -483,6 +483,8 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x0b, "LL_PAUSE_ENC_RSP",         null_pdu,         0, true },
 	{ 0x0c, "LL_VERSION_IND",           version_ind,      5, true },
 	{ 0x0d, "LL_REJECT_IND",            reject_ind,       1, true },
+	{ 0x12, "LL_PING_REQ",              null_pdu,         0, true },
+	{ 0x13, "LL_PING_RSP",              null_pdu,         0, true },
 	{ }
 };
 
