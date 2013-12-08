@@ -411,6 +411,64 @@ struct bt_hci_cmd_flow_spec_modify {
 	uint8_t  rx_flow_spec[16];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_TRUNCATED_PAGE		0x043f
+struct bt_hci_cmd_truncated_page {
+	uint8_t  bdaddr[6];
+	uint8_t  pscan_rep_mode;
+	uint16_t clock_offset;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_TRUNCATED_PAGE_CANCEL	0x0440
+struct bt_hci_cmd_truncated_page_cancel {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SET_SLAVE_BROADCAST		0x0441
+struct bt_hci_cmd_set_slave_broadcast {
+	uint8_t  enable;
+	uint8_t  lt_addr;
+	uint8_t  lpo_allowed;
+	uint16_t pkt_type;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t timeout;
+} __attribute__ ((packed));
+struct bt_hci_rsp_set_slave_broadcast {
+	uint8_t  status;
+	uint8_t  lt_addr;
+	uint16_t interval;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SET_SLAVE_BROADCAST_RECEIVE	0x0442
+struct bt_hci_cmd_set_slave_broadcast_receive {
+	uint8_t  enable;
+	uint8_t  bdaddr[6];
+	uint8_t  lt_addr;
+	uint16_t interval;
+	uint32_t offset;
+	uint32_t instant;
+	uint16_t timeout;
+	uint8_t  accuracy;
+	uint8_t  skip;
+	uint16_t pkt_type;
+	uint8_t  map[10];
+} __attribute__ ((packed));
+struct bt_hci_rsp_set_slave_broadcast_receive {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+	uint8_t  lt_addr;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_START_SYNC_TRAIN		0x0443
+
+#define BT_HCI_CMD_RECEIVE_SYNC_TRAIN		0x0444
+struct bt_hci_cmd_receive_sync_train {
+	uint8_t  bdaddr[6];
+	uint16_t timeout;
+	uint16_t window;
+	uint16_t interval;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_REMOTE_OOB_EXT_DATA_REQUEST_REPLY	0x0445
 struct bt_hci_cmd_remote_oob_ext_data_request_reply {
 	uint8_t  bdaddr[6];
@@ -1918,6 +1976,53 @@ struct bt_hci_evt_short_range_mode_change {
 struct bt_hci_evt_amp_status_change {
 	uint8_t  status;
 	uint8_t  amp_status;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SYNC_TRAIN_COMPLETE		0x4f
+struct bt_hci_evt_sync_train_complete {
+	uint8_t  status;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SYNC_TRAIN_RECEIVED		0x50
+struct bt_hci_evt_sync_train_received {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+	uint32_t offset;
+	uint8_t  map[10];
+	uint8_t  lt_addr;
+	uint32_t instant;
+	uint16_t interval;
+	uint8_t  service_data;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SLAVE_BROADCAST_RECEIVE	0x51
+struct bt_hci_evt_slave_broadcast_receive {
+	uint8_t  bdaddr[6];
+	uint8_t  lt_addr;
+	uint32_t clock;
+	uint32_t offset;
+	uint8_t  status;
+	uint8_t  fragment;
+	uint8_t  length;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SLAVE_BROADCAST_TIMEOUT	0x52
+struct bt_hci_evt_slave_broadcast_timeout {
+	uint8_t  bdaddr[6];
+	uint8_t  lt_addr;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_TRUNCATED_PAGE_COMPLETE	0x53
+struct bt_hci_evt_truncated_page_complete {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SLAVE_PAGE_RESPONSE_TIMEOUT	0x54
+
+#define BT_HCI_EVT_SLAVE_BROADCAST_CHANNEL_MAP_CHANGE	0x55
+struct bt_hci_evt_slave_broadcast_channel_map_change {
+	uint8_t  map[10];
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_AUTH_PAYLOAD_TIMEOUT_EXPIRED	0x57
