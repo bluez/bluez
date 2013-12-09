@@ -71,26 +71,37 @@ struct rfcomm_sock {
 	bdaddr_t dst;
 	uint32_t service_handle;
 
+	uint8_t *buf;
+	int buf_size;
+
 	const struct profile_info *profile;
 };
 
-static struct rfcomm_sock *create_rfsock(int sock, int *hal_fd)
+static int rfsock_set_buffer(struct rfcomm_sock *rfsock)
 {
-	int fds[2] = {-1, -1};
-	struct rfcomm_sock *rfsock;
+	socklen_t len = sizeof(int);
+	int rcv, snd, size, err;
 
-	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, fds) < 0) {
-		error("socketpair(): %s", strerror(errno));
-		*hal_fd = -1;
-		return NULL;
+	err = getsockopt(rfsock->real_sock, SOL_SOCKET, SO_RCVBUF, &rcv, &len);
+	if (err < 0) {
+		error("getsockopt(SO_RCVBUF): %s", strerror(errno));
+		return -errno;
 	}
 
-	rfsock = g_new0(struct rfcomm_sock, 1);
-	rfsock->fd = fds[0];
-	*hal_fd = fds[1];
-	rfsock->real_sock = sock;
+	err = getsockopt(rfsock->real_sock, SOL_SOCKET, SO_SNDBUF, &snd, &len);
+	if (err < 0) {
+		error("getsockopt(SO_SNDBUF): %s", strerror(errno));
+		return -errno;
+	}
 
-	return rfsock;
+	size = MAX(rcv, snd);
+
+	DBG("Set buffer size %d", size);
+
+	rfsock->buf = g_malloc(size);
+	rfsock->buf_size = size;
+
+	return 0;
 }
 
 static void cleanup_rfsock(gpointer data)
@@ -121,7 +132,37 @@ static void cleanup_rfsock(gpointer data)
 	if (rfsock->service_handle)
 		bt_adapter_remove_record(rfsock->service_handle);
 
+	if (rfsock->buf)
+		g_free(rfsock->buf);
+
 	g_free(rfsock);
+}
+
+static struct rfcomm_sock *create_rfsock(int sock, int *hal_fd)
+{
+	int fds[2] = {-1, -1};
+	struct rfcomm_sock *rfsock;
+
+	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, fds) < 0) {
+		error("socketpair(): %s", strerror(errno));
+		*hal_fd = -1;
+		return NULL;
+	}
+
+	rfsock = g_new0(struct rfcomm_sock, 1);
+	rfsock->fd = fds[0];
+	*hal_fd = fds[1];
+	rfsock->real_sock = sock;
+
+	if (sock < 0)
+		return rfsock;
+
+	if (rfsock_set_buffer(rfsock) < 0) {
+		cleanup_rfsock(rfsock);
+		return NULL;
+	}
+
+	return rfsock;
 }
 
 static sdp_record_t *create_opp_record(uint8_t chan, const char *svc_name)
@@ -487,7 +528,6 @@ static gboolean sock_stack_event_cb(GIOChannel *io, GIOCondition cond,
 								gpointer data)
 {
 	struct rfcomm_sock *rfsock = data;
-	unsigned char buf[1024];
 	int len, sent;
 
 	if (cond & G_IO_HUP) {
@@ -501,14 +541,14 @@ static gboolean sock_stack_event_cb(GIOChannel *io, GIOCondition cond,
 		goto fail;
 	}
 
-	len = read(rfsock->fd, buf, sizeof(buf));
+	len = read(rfsock->fd, rfsock->buf, rfsock->buf_size);
 	if (len <= 0) {
 		error("read(): %s", strerror(errno));
 		/* Read again */
 		return TRUE;
 	}
 
-	sent = try_write_all(rfsock->real_sock, buf, len);
+	sent = try_write_all(rfsock->real_sock, rfsock->buf, len);
 	if (sent < 0) {
 		error("write(): %s", strerror(errno));
 		goto fail;
@@ -526,7 +566,6 @@ static gboolean sock_rfcomm_event_cb(GIOChannel *io, GIOCondition cond,
 								gpointer data)
 {
 	struct rfcomm_sock *rfsock = data;
-	unsigned char buf[1024];
 	int len, sent;
 
 	if (cond & G_IO_HUP) {
@@ -540,14 +579,14 @@ static gboolean sock_rfcomm_event_cb(GIOChannel *io, GIOCondition cond,
 		goto fail;
 	}
 
-	len = read(rfsock->real_sock, buf, sizeof(buf));
+	len = read(rfsock->real_sock, rfsock->buf, rfsock->buf_size);
 	if (len <= 0) {
 		error("read(): %s", strerror(errno));
 		/* Read again */
 		return TRUE;
 	}
 
-	sent = try_write_all(rfsock->fd, buf, len);
+	sent = try_write_all(rfsock->fd, rfsock->buf, len);
 	if (sent < 0) {
 		error("write(): %s", strerror(errno));
 		goto fail;
@@ -866,6 +905,7 @@ static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 	}
 
 	rfsock->real_sock = g_io_channel_unix_get_fd(io);
+	rfsock_set_buffer(rfsock);
 	rfsock->channel = chan;
 	connections = g_list_append(connections, rfsock);
 
