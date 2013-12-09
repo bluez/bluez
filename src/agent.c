@@ -426,6 +426,9 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 	 * is only called after a reply has been received */
 	message = dbus_pending_call_steal_reply(call);
 
+	/* Protect from the callback freeing the agent */
+	agent_ref(agent);
+
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, message)) {
 		error("Agent %s replied with an error: %s, %s",
@@ -465,6 +468,7 @@ done:
 	dbus_pending_call_cancel(req->call);
 	agent->request = NULL;
 	agent_request_free(req, TRUE);
+	agent_unref(agent);
 }
 
 static int pincode_request_new(struct agent_request *req, const char *device_path,
