@@ -88,7 +88,6 @@ static void free_bnep_connect(struct bnep_conn *bc)
 	}
 
 	g_free(bc);
-	bc = NULL;
 }
 
 uint16_t bnep_service_id(const char *svc)
