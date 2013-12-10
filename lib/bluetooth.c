@@ -805,6 +805,18 @@ const char *bt_compidtostr(int compid)
 		return "HiSilicon Technologies Co., Ltd.";
 	case 272:
 		return "Nippon Seiki Co., Ltd.";
+	case 273:
+		return "Steelseries ApS";
+	case 274:
+		return "vyzybl Inc.";
+	case 275:
+		return "Openbrain Technologies, Co., Ltd.";
+	case 276:
+		return "Xensr";
+	case 277:
+		return "e.solutions";
+	case 278:
+		return "1OAK Technologies";
 	case 65535:
 		return "internal use";
 	default:
