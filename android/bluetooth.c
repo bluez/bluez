@@ -2373,10 +2373,30 @@ failed:
 								status);
 }
 
+static uint8_t set_device_friendly_name(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t set_device_version_info(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
 static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_set_remote_device_prop *cmd = buf;
 	uint8_t status;
+	bdaddr_t addr;
+	GSList *l;
 
 	if (len != sizeof(*cmd) + cmd->len) {
 		error("Invalid set remote device prop cmd (0x%x), terminating",
@@ -2385,15 +2405,27 @@ static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
 		return;
 	}
 
-	/* TODO */
+	android2bdaddr(cmd->bdaddr, &addr);
+
+	l = g_slist_find_custom(devices, &addr, bdaddr_cmp);
+	if (!l) {
+		status = HAL_STATUS_INVALID;
+		goto failed;
+	}
 
 	switch (cmd->type) {
+	case HAL_PROP_DEVICE_FRIENDLY_NAME:
+		status = set_device_friendly_name(l->data);
+		break;
+	case HAL_PROP_DEVICE_VERSION_INFO:
+		status = set_device_version_info(l->data);
+		break;
 	default:
-		DBG("Unhandled property type 0x%x", cmd->type);
 		status = HAL_STATUS_FAILED;
 		break;
 	}
 
+failed:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_REMOTE_DEVICE_PROP,
 									status);
 }
