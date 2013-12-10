@@ -575,19 +575,16 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 	browse_remote_sdp(&addr->bdaddr);
 }
 
-static void send_remote_device_name_prop(const bdaddr_t *bdaddr)
+static uint8_t get_device_name(struct device *dev)
 {
 	struct hal_ev_remote_device_props *ev;
-	struct device *dev;
 	size_t ev_len;
-
-	dev = get_device(bdaddr);
 
 	ev_len = BASELEN_REMOTE_DEV_PROP + strlen(dev->name);
 	ev = g_malloc0(ev_len);
 
 	ev->status = HAL_STATUS_SUCCESS;
-	bdaddr2android(bdaddr, ev->bdaddr);
+	bdaddr2android(&dev->bdaddr, ev->bdaddr);
 	ev->num_props = 1;
 	ev->props[0].type = HAL_PROP_DEVICE_NAME;
 	ev->props[0].len = strlen(dev->name);
@@ -597,6 +594,8 @@ static void send_remote_device_name_prop(const bdaddr_t *bdaddr)
 								ev_len, ev);
 
 	g_free(ev);
+
+	return HAL_STATUS_SUCCESS;
 }
 
 static void pin_code_request_callback(uint16_t index, uint16_t length,
@@ -615,7 +614,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 
 	/* Workaround for Android Bluetooth.apk issue: send remote
 	 * device property */
-	send_remote_device_name_prop(&ev->addr.bdaddr);
+	get_device_name(get_device(&ev->addr.bdaddr));
 
 	set_device_bond_state(&ev->addr.bdaddr, HAL_STATUS_SUCCESS,
 						HAL_BOND_STATE_BONDING);
