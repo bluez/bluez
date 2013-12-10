@@ -798,16 +798,11 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	uint8_t *num_prop;
 	uint8_t opcode;
 	int size = 0;
-	int err;
 
 	memset(buf, 0, sizeof(buf));
 	memset(&eir, 0, sizeof(eir));
 
-	err = eir_parse(&eir, data, data_len);
-	if (err < 0) {
-		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
-		return;
-	}
+	eir_parse(&eir, data, data_len);
 
 	if (!g_slist_find_custom(found_devices, bdaddr, bdaddr_cmp)) {
 		bdaddr_t *new_bdaddr;

@@ -537,13 +537,11 @@ static void test_basic(void)
 {
 	struct eir_data data;
 	unsigned char buf[HCI_MAX_EIR_LENGTH];
-	int err;
 
 	memset(buf, 0, sizeof(buf));
 	memset(&data, 0, sizeof(data));
 
-	err = eir_parse(&data, buf, HCI_MAX_EIR_LENGTH);
-	g_assert(err == 0);
+	eir_parse(&data, buf, HCI_MAX_EIR_LENGTH);
 	g_assert(data.services == NULL);
 	g_assert(data.name == NULL);
 
@@ -554,12 +552,10 @@ static void test_parsing(gconstpointer data)
 {
 	const struct test_data *test = data;
 	struct eir_data eir;
-	int err;
 
 	memset(&eir, 0, sizeof(eir));
 
-	err = eir_parse(&eir, test->eir_data, test->eir_size);
-	g_assert(err == 0);
+	eir_parse(&eir, test->eir_data, test->eir_size);
 
 	if (g_test_verbose() == TRUE) {
 		GSList *list;

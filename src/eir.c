@@ -129,7 +129,7 @@ static char *name2utf8(const uint8_t *name, uint8_t len)
 	return g_strdup(utf8_name);
 }
 
-int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
+void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 {
 	uint16_t len = 0;
 
@@ -138,7 +138,7 @@ int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 
 	/* No EIR data to parse */
 	if (eir_data == NULL)
-		return 0;
+		return;
 
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
@@ -226,8 +226,6 @@ int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 
 		eir_data += field_len + 1;
 	}
-
-	return 0;
 }
 
 int eir_parse_oob(struct eir_data *eir, uint8_t *eir_data, uint16_t eir_len)
@@ -248,7 +246,7 @@ int eir_parse_oob(struct eir_data *eir, uint8_t *eir_data, uint16_t eir_len)
 
 	/* optional OOB EIR data */
 	if (eir_len > 0)
-		return eir_parse(eir, eir_data, eir_len);
+		eir_parse(eir, eir_data, eir_len);
 
 	return 0;
 }

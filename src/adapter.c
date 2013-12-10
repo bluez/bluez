@@ -4083,16 +4083,11 @@ static void update_found_devices(struct btd_adapter *adapter,
 	struct btd_device *dev;
 	struct eir_data eir_data;
 	char addr[18];
-	int err;
 	GSList *list;
 	bool name_known;
 
 	memset(&eir_data, 0, sizeof(eir_data));
-	err = eir_parse(&eir_data, data, data_len);
-	if (err < 0) {
-		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
-		return;
-	}
+	eir_parse(&eir_data, data, data_len);
 
 	/* Avoid creating LE device if it's not discoverable */
 	if (bdaddr_type != BDADDR_BREDR &&
