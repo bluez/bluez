@@ -1,3 +1,14 @@
+ver 5.12:
+	Fix issue with missing reply to DisconnectProfile.
+	Fix issue with icon property and class of device changes.
+	Fix issue with HID devices when SDP record is not available.
+	Fix issue with handling auto-pairing of printers.
+	Fix issue with agent authorization handling.
+	Add support for PS3 controller setup and pairing.
+	Add support for LE L2CAP CoC test capabilities.
+	Add support for AVDTP qualification test cases.
+	Add support for SMP cryptographic test cases.
+s
 ver 5.11:
 	Fix issue with connection attempt when not powered.
 	Fix issue with assigning player to AVRCP target role.
