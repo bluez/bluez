@@ -1434,6 +1434,9 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 	if (!service)
 		return btd_error_invalid_args(msg);
 
+	if (dev->disconnect)
+		return btd_error_in_progress(msg);
+
 	dev->disconnect = dbus_message_ref(msg);
 
 	err = btd_service_disconnect(service);
