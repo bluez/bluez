@@ -372,7 +372,8 @@ static void send_bond_state_change(const bdaddr_t *addr, uint8_t status,
 }
 
 static void set_device_bond_state(const bdaddr_t *addr, uint8_t status,
-								int state) {
+								int state)
+{
 
 	struct device *dev;
 
