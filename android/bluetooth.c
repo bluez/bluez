@@ -2240,6 +2240,78 @@ static void handle_get_adapter_props_cmd(const void *buf, uint16_t len)
 							HAL_STATUS_SUCCESS);
 }
 
+static uint8_t get_device_uuids(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t get_device_class(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t get_device_type(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t get_device_service_rec(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t get_device_friendly_name(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t get_device_rssi(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t get_device_version_info(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t get_device_timestamp(struct device *dev)
+{
+	DBG("Not implemented");
+
+	/* TODO */
+
+	return HAL_STATUS_FAILED;
+}
+
 static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
 {
 	/* TODO */
@@ -2250,10 +2322,55 @@ static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
 
 static void handle_get_remote_device_prop_cmd(const void *buf, uint16_t len)
 {
-	/* TODO */
+	const struct hal_cmd_get_remote_device_prop *cmd = buf;
+	uint8_t status;
+	bdaddr_t addr;
+	GSList *l;
 
+	android2bdaddr(cmd->bdaddr, &addr);
+
+	l = g_slist_find_custom(devices, &addr, bdaddr_cmp);
+	if (!l) {
+		status = HAL_STATUS_INVALID;
+		goto failed;
+	}
+
+	switch (cmd->type) {
+	case HAL_PROP_DEVICE_NAME:
+		status = get_device_name(l->data);
+		break;
+	case HAL_PROP_DEVICE_UUIDS:
+		status = get_device_uuids(l->data);
+		break;
+	case HAL_PROP_DEVICE_CLASS:
+		status = get_device_class(l->data);
+		break;
+	case HAL_PROP_DEVICE_TYPE:
+		status = get_device_type(l->data);
+		break;
+	case HAL_PROP_DEVICE_SERVICE_REC:
+		status = get_device_service_rec(l->data);
+		break;
+	case HAL_PROP_DEVICE_FRIENDLY_NAME:
+		status = get_device_friendly_name(l->data);
+		break;
+	case HAL_PROP_DEVICE_RSSI:
+		status = get_device_rssi(l->data);
+		break;
+	case HAL_PROP_DEVICE_VERSION_INFO:
+		status = get_device_version_info(l->data);
+		break;
+	case HAL_PROP_DEVICE_TIMESTAMP:
+		status = get_device_timestamp(l->data);
+		break;
+	default:
+		status = HAL_STATUS_FAILED;
+		break;
+	}
+
+failed:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_DEVICE_PROP,
-							HAL_STATUS_FAILED);
+								status);
 }
 
 static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
