@@ -1434,11 +1434,14 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 	if (!service)
 		return btd_error_invalid_args(msg);
 
+	dev->disconnect = dbus_message_ref(msg);
+
 	err = btd_service_disconnect(service);
-	if (err == 0) {
-		dev->disconnect = dbus_message_ref(msg);
+	if (err == 0)
 		return NULL;
-	}
+
+	dbus_message_unref(dev->disconnect);
+	dev->disconnect = NULL;
 
 	if (err == -ENOTSUP)
 		return btd_error_not_supported(msg);
