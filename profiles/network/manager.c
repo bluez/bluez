@@ -200,8 +200,6 @@ static int network_init(void)
 
 static void network_exit(void)
 {
-	server_exit();
-
 	btd_profile_unregister(&panu_profile);
 	btd_profile_unregister(&gn_profile);
 	btd_profile_unregister(&nap_profile);

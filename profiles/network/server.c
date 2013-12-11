@@ -493,10 +493,6 @@ int server_init(gboolean secure)
 	return 0;
 }
 
-void server_exit(void)
-{
-}
-
 static uint32_t register_server_record(struct network_server *ns)
 {
 	sdp_record_t *record;

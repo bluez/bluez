@@ -22,6 +22,5 @@
  */
 
 int server_init(gboolean secure);
-void server_exit(void);
 int server_register(struct btd_adapter *adapter, uint16_t id);
 int server_unregister(struct btd_adapter *adapter, uint16_t id);
