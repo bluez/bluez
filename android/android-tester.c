@@ -32,6 +32,9 @@
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
 
+#include <hardware/hardware.h>
+#include <hardware/bluetooth.h>
+
 struct generic_data {
 };
 
@@ -45,6 +48,7 @@ struct test_data {
 	enum hciemu_type hciemu_type;
 	const struct generic_data *test_data;
 	pid_t bluetoothd_pid;
+	const bt_interface_t *if_bluetooth;
 };
 
 static char exec_dir[PATH_MAX + 1];
@@ -243,12 +247,32 @@ failed:
 	close(fd);
 }
 
+static bt_callbacks_t bt_callbacks = {
+	.size = sizeof(bt_callbacks),
+	.adapter_state_changed_cb = NULL,
+	.adapter_properties_cb = NULL,
+	.remote_device_properties_cb = NULL,
+	.device_found_cb = NULL,
+	.discovery_state_changed_cb = NULL,
+	.pin_request_cb = NULL,
+	.ssp_request_cb = NULL,
+	.bond_state_changed_cb = NULL,
+	.acl_state_changed_cb = NULL,
+	.thread_evt_cb = NULL,
+	.dut_mode_recv_cb = NULL,
+	.le_test_mode_cb = NULL
+};
+
 static void setup(struct test_data *data)
 {
+	const hw_module_t *module;
+	hw_device_t *device;
+	bt_status_t status;
 	int signal_fd[2];
 	char buf[1024];
 	pid_t pid;
 	int len;
+	int err;
 
 	if (pipe(signal_fd)) {
 		tester_setup_failed();
@@ -282,6 +306,33 @@ static void setup(struct test_data *data)
 		tester_setup_failed();
 		return;
 	}
+
+	close(signal_fd[0]);
+
+	err = hw_get_module(BT_HARDWARE_MODULE_ID, &module);
+	if (err) {
+		tester_setup_failed();
+		return;
+	}
+
+	err = module->methods->open(module, BT_HARDWARE_MODULE_ID, &device);
+	if (err) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_bluetooth = ((bluetooth_device_t *)
+					device)->get_bluetooth_interface();
+	if (!data->if_bluetooth) {
+		tester_setup_failed();
+		return;
+	}
+
+	status = data->if_bluetooth->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+	}
 }
 
 static void setup_base(const void *test_data)
@@ -297,6 +348,11 @@ static void teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
+	if (data->if_bluetooth) {
+		data->if_bluetooth->cleanup();
+		data->if_bluetooth = NULL;
+	}
+
 	if (data->bluetoothd_pid)
 		waitpid(data->bluetoothd_pid, NULL, 0);
 
@@ -305,6 +361,7 @@ static void teardown(const void *test_data)
 
 static void controller_setup(const void *test_data)
 {
+	tester_test_passed();
 }
 
 #define test_bredrle(name, data, test_setup, test, test_teardown) \

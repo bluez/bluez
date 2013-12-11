@@ -91,9 +91,15 @@ android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c \
-				android/android-tester.c
+				android/hal-utils.h android/hal-utils.c \
+				android/client/hwmodule.c android/android-tester.c
 
-android_android_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+android_android_tester_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+
+android_android_tester_LDADD = lib/libbluetooth-internal.la \
+				android/libhal-internal.la @GLIB_LIBS@
+
+android_android_tester_LDFLAGS = -pthread
 
 endif
 
