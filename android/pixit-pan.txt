@@ -1,0 +1,28 @@
+PAN PIXIT for the PTS tool.
+
+* - different than PTS defaults
+& - should be set to IUT Bluetooth address
+
+		Required PIXIT settings
+-------------------------------------------------------------------------------
+Parameter Name						Value
+-------------------------------------------------------------------------------
+TSPX_GN_class_of_device					020104
+TSPX_NAP_class_of_device				020300
+TSPX_PANU_class_of_device				020104
+TSPX_time_guard						300000
+TSPX_bd_addr_iut					112233445566 (*&)
+TSPX_security_enabled					False
+TSPX_pin_code						0000
+TSPX_delete_link_key					False
+TSPX_use_implicit_send					True
+TSPX_iut_ip_address					192.168.167.152
+TSPX_iut_port_number					4242
+TSPX_PTS_ip_address					192.168.168.100
+TSPX_PTS_port_number					4242
+TSPX_bd_addr_PTS					000000000000
+TSPX_checksum						E851
+TSPX_secure_simple_pairing_pass_key_confirmation	False
+TSPX_iut_friendly_bt_name				gprs-pc
+TSPX_PTS_role_when_iut_is_PANU				default
+-------------------------------------------------------------------------------
