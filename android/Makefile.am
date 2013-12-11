@@ -85,7 +85,15 @@ android_haltest_LDFLAGS = -pthread
 
 noinst_PROGRAMS += android/android-tester
 
-android_android_tester_SOURCES = android/android-tester.c
+android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
+				emulator/bthost.h emulator/bthost.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c \
+				src/shared/hciemu.h src/shared/hciemu.c \
+				src/shared/tester.h src/shared/tester.c \
+				android/android-tester.c
+
+android_android_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 endif
 
