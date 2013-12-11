@@ -154,6 +154,13 @@ static struct device *create_device(const bdaddr_t *bdaddr)
 	return dev;
 }
 
+static void free_device(struct device *dev)
+{
+	g_free(dev->name);
+	g_free(dev->friendly_name);
+	g_free(dev);
+}
+
 static struct device *get_device(const bdaddr_t *bdaddr)
 {
 	struct device *dev;
@@ -2556,6 +2563,9 @@ void bt_bluetooth_register(void)
 void bt_bluetooth_unregister(void)
 {
 	DBG("");
+
+	g_slist_free_full(devices, (GDestroyNotify) free_device);
+	devices = NULL;
 
 	ipc_unregister(HAL_SERVICE_ID_CORE);
 }
