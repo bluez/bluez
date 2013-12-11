@@ -171,7 +171,7 @@ static void connection_destroy(DBusConnection *conn, void *user_data)
 
 	if (nc->state == CONNECTED) {
 		bnep_if_down(nc->dev);
-		bnep_kill_connection(device_get_address(nc->peer->device));
+		bnep_conndel(device_get_address(nc->peer->device));
 	} else if (nc->io)
 		cancel_connection(nc, -EIO);
 }

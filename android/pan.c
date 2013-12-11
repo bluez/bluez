@@ -288,7 +288,7 @@ static void bt_pan_disconnect(const void *buf, uint16_t len)
 	}
 
 	bnep_if_down(dev->iface);
-	bnep_kill_connection(&dst);
+	bnep_conndel(&dst);
 
 	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
 	pan_device_free(dev);
