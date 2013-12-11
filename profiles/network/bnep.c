@@ -464,3 +464,14 @@ int bnep_del_from_bridge(const char *devname, const char *bridge)
 
 	return 0;
 }
+
+ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl, uint16_t resp)
+{
+	struct bnep_control_rsp rsp;
+
+	rsp.type = type;
+	rsp.ctrl = ctrl;
+	rsp.resp = htons(resp);
+
+	return send(sk, &rsp, sizeof(rsp), 0);
+}

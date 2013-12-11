@@ -39,3 +39,5 @@ typedef void (*bnep_connect_cb) (GIOChannel *chan, char *iface, int err,
 								void *data);
 int bnep_connect(int sk, uint16_t src, uint16_t dst, bnep_connect_cb conn_cb,
 								void *data);
+
+ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl, uint16_t resp);

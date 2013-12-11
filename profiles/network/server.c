@@ -251,17 +251,6 @@ static sdp_record_t *server_record_new(const char *name, uint16_t id)
 	return record;
 }
 
-static ssize_t send_bnep_ctrl_rsp(int sk, uint16_t val)
-{
-	struct bnep_control_rsp rsp;
-
-	rsp.type = BNEP_CONTROL;
-	rsp.ctrl = BNEP_SETUP_CONN_RSP;
-	rsp.resp = htons(val);
-
-	return send(sk, &rsp, sizeof(rsp), 0);
-}
-
 static int server_connadd(struct network_server *ns,
 				struct network_session *session,
 				uint16_t dst_role)
@@ -462,7 +451,7 @@ static gboolean bnep_setup(GIOChannel *chan,
 	rsp = BNEP_SUCCESS;
 
 reply:
-	send_bnep_ctrl_rsp(sk, rsp);
+	bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_SETUP_CONN_RSP, rsp);
 
 	return FALSE;
 }
