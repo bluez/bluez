@@ -374,7 +374,6 @@ static void emulator(int pipe, int hci_index)
 	}
 
 	len = write(pipe, EMULATOR_SIGNAL, sizeof(EMULATOR_SIGNAL));
-
 	if (len != sizeof(EMULATOR_SIGNAL))
 		goto failed;
 
