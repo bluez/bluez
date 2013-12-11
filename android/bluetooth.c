@@ -1729,11 +1729,26 @@ static uint8_t get_adapter_scan_mode(void)
 
 static uint8_t get_adapter_bonded_devices(void)
 {
-	DBG("Not implemented");
+	uint8_t buf[sizeof(bdaddr_t) * g_slist_length(devices)];
+	int i = 0;
+	GSList *l;
 
-	/* TODO: Add implementation */
+	DBG("");
 
-	return HAL_STATUS_FAILED;
+	for (l = devices; l; l = g_slist_next(l)) {
+		struct device *dev = l->data;
+
+		if (dev->bond_state != HAL_BOND_STATE_BONDED)
+			continue;
+
+		bdaddr2android(&dev->bdaddr, buf + (i * sizeof(bdaddr_t)));
+		i++;
+	}
+
+	send_adapter_property(HAL_PROP_ADAPTER_BONDED_DEVICES,
+						i * sizeof(bdaddr_t), buf);
+
+	return HAL_STATUS_SUCCESS;
 }
 
 static uint8_t get_adapter_discoverable_timeout(void)
