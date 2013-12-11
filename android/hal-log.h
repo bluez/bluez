@@ -25,7 +25,7 @@
 #define LOG_WARN " W"
 #define LOG_ERROR " E"
 #define LOG_DEBUG " D"
-#define ALOG(pri, tag, fmt, arg...) printf(tag pri": " fmt"\n", ##arg)
+#define ALOG(pri, tag, fmt, arg...) fprintf(stderr, tag pri": " fmt"\n", ##arg)
 #endif
 
 #define info(fmt, arg...) ALOG(LOG_INFO, LOG_TAG, fmt, ##arg)
