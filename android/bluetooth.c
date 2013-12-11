@@ -97,6 +97,7 @@ struct device {
 	char *name;
 	char *friendly_name;
 	uint32_t class;
+	int32_t rssi;
 };
 
 struct browse_req {
@@ -822,6 +823,8 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	}
 
 	if (rssi) {
+		dev->rssi = rssi;
+
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_RSSI,
 							sizeof(rssi), &rssi);
 		(*num_prop)++;
@@ -2306,11 +2309,13 @@ static uint8_t get_device_friendly_name(struct device *dev)
 
 static uint8_t get_device_rssi(struct device *dev)
 {
-	DBG("Not implemented");
+	if (!dev->rssi)
+		return HAL_STATUS_FAILED;
 
-	/* TODO */
+	send_device_property(&dev->bdaddr, HAL_PROP_DEVICE_RSSI,
+						sizeof(dev->rssi), &dev->rssi);
 
-	return HAL_STATUS_FAILED;
+	return HAL_STATUS_SUCCESS;
 }
 
 static uint8_t get_device_version_info(struct device *dev)
