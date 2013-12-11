@@ -108,4 +108,4 @@ EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
 		android/pics-pan.txt android/pics-did.txt \
 		android/pics-opp.txt android/pics-pbap.txt \
 		android/pixit-did.txt android/pts-did.txt \
-		android/pixit-gap.txt
+		android/pixit-gap.txt android/pixit-hid.txt
