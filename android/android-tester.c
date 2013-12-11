@@ -390,7 +390,9 @@ static void emulator(int pipe, int hci_index)
 
 failed:
 	close(pipe);
-	close(fd);
+
+	if (fd >= 0)
+		close(fd);
 }
 
 static void adapter_state_changed_cb(bt_state_t state)
