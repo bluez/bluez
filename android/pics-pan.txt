@@ -144,8 +144,3 @@ C.1: PAN User devices must support at least One of items (TSPC_PAN_4_2) or
 C.2: Mandatory to support if (TSPC_PAN_4_2) is supported.
 C.3: Mandatory to support if (TSPC_PAN_4_8) is supported.
 -------------------------------------------------------------------------------
-
-
--------------------------------------------------------------------------------
-No special PIXIT settings required. All should be set according to Tester's
-test environment.

@@ -439,8 +439,3 @@ TSPC_ALL	False (*)	Turns on all the test cases
 -------------------------------------------------------------------------------
 C.1: Optional if TSPC_PBAP_26_4 (OBEX SRM) is supported, otherwise Excluded.
 -------------------------------------------------------------------------------
-
-
--------------------------------------------------------------------------------
-No special PIXIT settings required. All should be set according to Tester's
-test environment.

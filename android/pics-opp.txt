@@ -182,8 +182,3 @@ TSPC_ALL	False		Turn on all test cases.
 -------------------------------------------------------------------------------
 C.1: Optional if TSPC_OPP_1_2 is supported, otherwise excluded.
 -------------------------------------------------------------------------------
-
-
--------------------------------------------------------------------------------
-No special PIXIT settings required. All should be set according to Tester's
-test environment.

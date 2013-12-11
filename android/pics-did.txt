@@ -29,14 +29,3 @@ TSPC_DID_1_5	True		Primary Record (M)
 TSPC_DID_1_6	True		Vendor ID Source (M)
 TSPC_ALL	False		Turns on all the test cases
 -------------------------------------------------------------------------------
-
-
-		Required PIXIT settings
--------------------------------------------------------------------------------
-Parameter Name			Value
--------------------------------------------------------------------------------
-TSPX_ClientExecutableURL	False
-TSPX_ServiceDescription		False
-TSPX_DocumentationURL		False
--------------------------------------------------------------------------------
-Other should be set according to Tester's test environment.

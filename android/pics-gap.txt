@@ -707,8 +707,3 @@ TSPC_SM_1_2	False		Slave Role (Responder)
 TSPC_SM_2_4	False		OOB supported (O)
 TSPC_ALL	False		Turns on all
 -------------------------------------------------------------------------------
-
-
--------------------------------------------------------------------------------
-No special PIXIT settings required. All should be set according to Tester's
-test environment.
