@@ -83,6 +83,10 @@ android_haltest_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
 
 android_haltest_LDFLAGS = -pthread
 
+noinst_PROGRAMS += android/android-tester
+
+android_android_tester_SOURCES = android/android-tester.c
+
 endif
 
 EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
