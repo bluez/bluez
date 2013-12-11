@@ -2338,10 +2338,34 @@ static uint8_t get_device_timestamp(struct device *dev)
 
 static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
 {
-	/* TODO */
+	const struct hal_cmd_get_remote_device_props *cmd = buf;
+	uint8_t status;
+	bdaddr_t addr;
+	GSList *l;
 
+	android2bdaddr(cmd->bdaddr, &addr);
+
+	l = g_slist_find_custom(devices, &addr, bdaddr_cmp);
+	if (!l) {
+		status = HAL_STATUS_INVALID;
+		goto failed;
+	}
+
+	get_device_name(l->data);
+	get_device_uuids(l->data);
+	get_device_class(l->data);
+	get_device_type(l->data);
+	get_device_service_rec(l->data);
+	get_device_friendly_name(l->data);
+	get_device_rssi(l->data);
+	get_device_version_info(l->data);
+	get_device_timestamp(l->data);
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_DEVICE_PROPS,
-							HAL_STATUS_FAILED);
+									status);
 }
 
 static void handle_get_remote_device_prop_cmd(const void *buf, uint16_t len)
