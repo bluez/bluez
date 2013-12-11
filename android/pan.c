@@ -259,7 +259,7 @@ static void bt_pan_connect(const void *buf, uint16_t len)
 	devices = g_slist_append(devices, dev);
 	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_CONNECTING);
 
-	status =  HAL_STATUS_SUCCESS;
+	status = HAL_STATUS_SUCCESS;
 
 failed:
 	ipc_send_rsp(HAL_SERVICE_ID_PAN, HAL_OP_PAN_CONNECT, status);
