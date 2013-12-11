@@ -1674,13 +1674,39 @@ static uint8_t get_adapter_class(void)
 	return HAL_STATUS_SUCCESS;
 }
 
+static uint8_t settings2type(void)
+{
+	bool bredr, le;
+
+	bredr = adapter.current_settings & MGMT_SETTING_BREDR;
+	le = adapter.current_settings & MGMT_SETTING_LE;
+
+	if (bredr && le)
+		return HAL_TYPE_DUAL;
+
+	if (bredr && !le)
+		return HAL_TYPE_BREDR;
+
+	if (!bredr && le)
+		return HAL_TYPE_LE;
+
+	return 0;
+}
+
 static uint8_t get_adapter_type(void)
 {
-	DBG("Not implemented");
+	uint8_t type;
 
-	/* TODO: Add implementation */
+	DBG("");
 
-	return HAL_STATUS_FAILED;
+	type = settings2type();
+
+	if (!type)
+		return HAL_STATUS_FAILED;
+
+	send_adapter_property(HAL_PROP_ADAPTER_TYPE, sizeof(type), &type);
+
+	return HAL_STATUS_SUCCESS;
 }
 
 static uint8_t get_adapter_service_rec(void)

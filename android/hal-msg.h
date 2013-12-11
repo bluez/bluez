@@ -116,6 +116,10 @@ struct hal_cmd_get_adapter_prop {
 #define HAL_ADAPTER_SCAN_MODE_CONN		0x01
 #define HAL_ADAPTER_SCAN_MODE_CONN_DISC	0x02
 
+#define HAL_TYPE_BREDR				0x01
+#define HAL_TYPE_LE				0x02
+#define HAL_TYPE_DUAL				0x03
+
 #define HAL_OP_SET_ADAPTER_PROP		0x05
 struct hal_cmd_set_adapter_prop {
 	uint8_t  type;
