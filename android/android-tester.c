@@ -34,6 +34,7 @@
 
 #include <hardware/hardware.h>
 #include <hardware/bluetooth.h>
+#include <hardware/bt_sock.h>
 
 #define adapter_props adapter_prop_bdaddr, adapter_prop_bdname, \
 			adapter_prop_uuids, adapter_prop_cod, \
@@ -76,7 +77,9 @@ struct test_data {
 	enum hciemu_type hciemu_type;
 	const void *test_data;
 	pid_t bluetoothd_pid;
+
 	const bt_interface_t *if_bluetooth;
+	const btsock_interface_t *if_sock;
 
 	bool mgmt_settings_set;
 	bool hal_cb_called;
@@ -684,6 +687,24 @@ static void test_dummy(const void *test_data)
 	tester_test_passed();
 }
 
+/* Test Socket HAL */
+
+static void setup_socket_interface(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const void *sock;
+
+	setup(data);
+
+	sock = data->if_bluetooth->get_profile_interface(BT_PROFILE_SOCKETS_ID);
+	if (!sock)
+		tester_setup_failed();
+
+	data->if_sock = sock;
+
+	tester_setup_complete();
+}
+
 #define test_bredrle(name, data, test_setup, test, test_teardown) \
 	do { \
 		struct test_data *user; \
@@ -713,6 +734,9 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Test Disable - Success", &bluetooth_disable_success_test,
 			setup_enabled_adapter, test_disable, teardown);
+
+	test_bredrle("Test Socket Init", NULL, setup_socket_interface,
+						test_dummy, teardown);
 
 	return tester_run();
 }
