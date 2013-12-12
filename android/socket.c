@@ -735,6 +735,7 @@ static void handle_listen(const void *buf, uint16_t len)
 
 	rfsock->real_sock = g_io_channel_unix_get_fd(io);
 
+	g_io_channel_set_close_on_unref(io, FALSE);
 	g_io_channel_unref(io);
 
 	DBG("real_sock %d fd %d hal_fd %d", rfsock->real_sock, rfsock->fd,
