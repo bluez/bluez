@@ -699,6 +699,16 @@ static const struct socket_data btsock_inv_param_socktype_l2cap = {
 	.expected_status = BT_STATUS_UNSUPPORTED,
 };
 
+/* Test invalid: channel & uuid are both zeroes */
+static const struct socket_data btsock_inv_params_chan_uuid = {
+	.sock_type = BTSOCK_RFCOMM,
+	.channel = 0,
+	.service_uuid = NULL,
+	.service_name = "Test service",
+	.flags = 0,
+	.expected_status = BT_STATUS_PARM_INVALID,
+};
+
 static void setup_socket_interface(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -776,6 +786,10 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Test Socket Listen - Invalid: L2CAP",
 			&btsock_inv_param_socktype_l2cap,
+			setup_socket_interface, test_generic_listen, teardown);
+
+	test_bredrle("Test Socket Listen - Invalid: chan, uuid",
+			&btsock_inv_params_chan_uuid,
 			setup_socket_interface, test_generic_listen, teardown);
 
 	return tester_run();
