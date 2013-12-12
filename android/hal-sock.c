@@ -54,7 +54,7 @@ static bt_status_t sock_listen(btsock_type_t type, const char *service_name,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
-	if ((!uuid && chan <= 0) || !sock) {
+	if ((!uuid && chan <= 0) || !sock || !type) {
 		error("Invalid params: uuid %s, chan %d, sock %p",
 						btuuid2str(uuid), chan, sock);
 		return BT_STATUS_PARM_INVALID;
