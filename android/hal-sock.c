@@ -81,7 +81,7 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 {
 	struct hal_cmd_sock_connect cmd;
 
-	if ((!uuid && chan <= 0) || !bdaddr || !sock) {
+	if ((!uuid && chan <= 0) || !bdaddr || !sock || !type) {
 		error("Invalid params: bd_addr %s, uuid %s, chan %d, sock %p",
 			bdaddr2str(bdaddr), btuuid2str(uuid), chan, sock);
 		return BT_STATUS_PARM_INVALID;
