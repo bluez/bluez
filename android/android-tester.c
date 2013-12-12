@@ -707,6 +707,15 @@ static const struct socket_data btsock_inv_param_socktype = {
 	.expected_status = BT_STATUS_PARM_INVALID,
 };
 
+static const struct socket_data btsock_inv_param_socktype_l2cap = {
+	.sock_type = BTSOCK_L2CAP,
+	.channel = 1,
+	.service_uuid = NULL,
+	.service_name = "Test service",
+	.flags = 0,
+	.expected_status = BT_STATUS_UNSUPPORTED,
+};
+
 static void setup_socket_interface(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -781,6 +790,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Test Socket Listen - Invalid sock type",
 			&btsock_inv_param_socktype, setup_socket_interface,
 			test_generic_listen, teardown);
+
+	test_bredrle("Test Socket Listen - Invalid: L2CAP",
+			&btsock_inv_param_socktype_l2cap,
+			setup_socket_interface, test_generic_listen, teardown);
 
 	return tester_run();
 }
