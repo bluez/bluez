@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <glib.h>
 #include <sys/socket.h>
@@ -738,6 +739,12 @@ static void test_generic_listen(const void *test_data)
 	if (status != test->expected_status) {
 		tester_test_failed();
 		goto clean;
+	}
+
+	/* Check that file descriptor is valid */
+	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) == -1) {
+		tester_test_failed();
+		return;
 	}
 
 	tester_test_passed();
