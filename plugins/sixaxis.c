@@ -301,7 +301,7 @@ static int get_supported_device(struct udev_device *udevice, uint16_t *bus)
 	struct udev_device *hid_parent;
 	uint16_t vid, pid;
 	const char *hid_id;
-	int i;
+	guint i;
 
 	hid_parent = udev_device_get_parent_with_subsystem_devtype(udevice,
 								"hid", NULL);
@@ -313,7 +313,7 @@ static int get_supported_device(struct udev_device *udevice, uint16_t *bus)
 	if (sscanf(hid_id, "%hx:%hx:%hx", bus, &vid, &pid) != 3)
 		return -1;
 
-	for (i = 0; G_N_ELEMENTS(devices); i++) {
+	for (i = 0; i < G_N_ELEMENTS(devices); i++) {
 		if (devices[i].vid == vid && devices[i].pid == pid)
 			return i;
 	}
