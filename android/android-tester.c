@@ -698,6 +698,7 @@ static const struct socket_data btsock_inv_param_socktype = {
 };
 
 static const struct socket_data btsock_inv_param_socktype_l2cap = {
+	.bdaddr = &bdaddr_dummy,
 	.sock_type = BTSOCK_L2CAP,
 	.channel = 1,
 	.service_uuid = NULL,
@@ -849,6 +850,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Test Socket Connect - Invalid: sock_type 0",
 			&btsock_inv_param_socktype, setup_socket_interface,
 			test_generic_connect, teardown);
+
+	test_bredrle("Test Socket Connect - Invalid: sock_type L2CAP",
+			&btsock_inv_param_socktype_l2cap,
+			setup_socket_interface, test_generic_connect, teardown);
 
 	return tester_run();
 }
