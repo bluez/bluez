@@ -66,6 +66,15 @@ struct generic_data {
 	uint8_t expected_hal_callbacks[];
 };
 
+struct socket_data {
+	btsock_type_t sock_type;
+	const char *service_name;
+	const uint8_t *service_uuid;
+	int channel;
+	int flags;
+	bt_status_t expected_status;
+};
+
 #define WAIT_FOR_SIGNAL_TIME 2 /* in seconds */
 #define EMULATOR_SIGNAL "emulator_started"
 
