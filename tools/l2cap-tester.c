@@ -503,6 +503,7 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm)
 	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
+		close(sk);
 		return -ENODEV;
 	}
 
@@ -701,6 +702,7 @@ static void test_server(const void *test_data)
 			tester_warn("listening on socket failed: %s (%u)",
 					strerror(errno), errno);
 			tester_test_failed();
+			close(sk);
 			return;
 		}
 
