@@ -1,0 +1,76 @@
+PTS test results for DID
+
+PTS version: 4.9
+Tested: 14.11.2013
+
+Results:
+PASS	test passed
+FAIL	test failed
+INC	test is inconclusive
+N/A	test is disabled due to PICS setup
+
+-------------------------------------------------------------------------------
+Test Name		Result	Notes
+-------------------------------------------------------------------------------
+TC_HOS_HCE_BV_01_I	PASS
+TC_HOS_HCE_BV_02_I	PASS
+TC_HOS_HCE_BV_03_I	PASS
+TC_HOS_HCE_BV_04_I	PASS
+TC_HOS_HCR_BV_01_I	PASS
+TC_HOS_HCR_BV_02_I	PASS
+TC_HOS_HCR_BV_03_I	N/A
+TC_HOS_HCR_BV_04_I	N/A
+TC_HOS_HDT_BV_01_I	PASS	from shell execute:
+				haltest
+				bluetooth enable
+				hidhost connect <PTS bdaddr>
+				hidhost send_data <PTS bdaddr> ff00
+TC_HOS_HDT_BV_02_I	PASS
+TC_HOS_HDT_BV_03_I	N/A
+TC_HOS_HDT_BV_04_I	N/A
+TC_HOS_HID_BV_01_C	N/A
+TC_HOS_HID_BV_02_C	N/A
+TC_HOS_HID_BV_03_C	N/A
+TC_HOS_HID_BV_04_C	N/A
+TC_HOS_HID_BV_05_C	N/A
+TC_HOS_HID_BV_06_C	N/A
+TC_HOS_HID_BV_08_C	N/A
+TC_HOS_HID_BV_09_C	N/A
+TC_HOS_HID_BV_10_C	N/A
+TC_HOS_DAT_BV_01_C	PASS	from shell execute:
+				haltest
+				bluetooth enable
+				hidhost connect <PTS bdaddr>
+				hidhost send_data <PTS bdaddr> ff00
+TC_HOS_DAT_BV_02_C	N/A
+TC_HOS_DAT_BI_01_C	N/A
+TC_HOS_DAT_BI_02_C	N/A
+TC_DEV_HCE_BV_01_I	N/A
+TC_DEV_HCE_BV_02_I	N/A
+TC_DEV_HCE_BV_03_I	PASS
+TC_DEV_HCE_BV_04_I	PASS
+TC_DEV_HCE_BV_05_I	N/A
+TC_DEV_HCR_BV_01_I	N/A
+TC_DEV_HCR_BV_02_I	N/A
+TC_DEV_HCR_BV_03_I	N/A
+TC_DEV_HCR_BV_04_I	N/A
+TC_DEV_HDT_BV_01_I	N/A
+TC_DEV_HDT_BV_02_I	N/A
+TC_DEV_HDT_BV_03_I	N/A
+TC_DEV_HDT_BV_04_I	N/A
+TC_DEV_HID_BV_01_C	N/A
+TC_DEV_HID_BV_03_C	N/A
+TC_DEV_HID_BV_04_C	N/A
+TC_DEV_HID_BV_05_C	N/A
+TC_DEV_HID_BV_06_C	N/A
+TC_DEV_HID_BV_08_C	N/A
+TC_DEV_HID_BV_09_C	N/A
+TC_DEV_HID_BV_10_C	N/A
+TC_DEV_HID_BI_01_C	N/A
+TC_DEV_HID_BI_02_C	N/A
+TC_DEV_DAT_BV_01_C	N/A
+TC_DEV_SDD_BV_01_C	N/A
+TC_DEV_SDD_BV_02_C	N/A
+TC_DEV_SDD_BV_03_C	N/A
+TC_DEV_SDD_BV_04_I	N/A
+-------------------------------------------------------------------------------
