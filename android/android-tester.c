@@ -787,11 +787,11 @@ int main(int argc, char *argv[])
 	test_bredrle("Test Socket Init", NULL, setup_socket_interface,
 						test_dummy, teardown);
 
-	test_bredrle("Test Socket Listen - Invalid sock type",
+	test_bredrle("Test Socket Listen - Invalid: sock_type 0",
 			&btsock_inv_param_socktype, setup_socket_interface,
 			test_generic_listen, teardown);
 
-	test_bredrle("Test Socket Listen - Invalid: L2CAP",
+	test_bredrle("Test Socket Listen - Invalid: sock_type L2CAP",
 			&btsock_inv_param_socktype_l2cap,
 			setup_socket_interface, test_generic_listen, teardown);
 
