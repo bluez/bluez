@@ -672,7 +672,7 @@ static void test_disable(const void *test_data)
 	data->if_bluetooth->disable();
 }
 
-static void controller_setup(const void *test_data)
+static void test_dummy(const void *test_data)
 {
 	tester_test_passed();
 }
@@ -696,7 +696,7 @@ int main(int argc, char *argv[])
 
 	tester_init(&argc, &argv);
 
-	test_bredrle("Test Init", NULL, setup_base, controller_setup, teardown);
+	test_bredrle("Test Init", NULL, setup_base, test_dummy, teardown);
 
 	test_bredrle("Test Enable - Success", &bluetooth_enable_success_test,
 					setup_base, test_enable, teardown);
