@@ -1387,6 +1387,10 @@ static uint8_t set_adapter_discoverable_timeout(const void *buf, uint16_t len)
 	/* TODO: This should be in some storage */
 	memcpy(&adapter.discoverable_timeout, timeout, sizeof(uint32_t));
 
+	send_adapter_property(HAL_PROP_ADAPTER_DISC_TIMEOUT,
+					sizeof(adapter.discoverable_timeout),
+					&adapter.discoverable_timeout);
+
 	return HAL_STATUS_SUCCESS;
 }
 
