@@ -38,7 +38,8 @@
 
 #define adapter_props adapter_prop_bdaddr, adapter_prop_bdname, \
 			adapter_prop_uuids, adapter_prop_cod, \
-			adapter_prop_scan_mode, adapter_prop_disc_timeout
+			adapter_prop_type, adapter_prop_scan_mode, \
+			adapter_prop_bonded_devices, adapter_prop_disc_timeout
 
 /*
  * those are assigned to HAL methods and callbacks, we use ID later
@@ -54,6 +55,7 @@ enum hal_bluetooth_callbacks_id {
 	adapter_prop_bdname,
 	adapter_prop_uuids,
 	adapter_prop_cod,
+	adapter_prop_type,
 	adapter_prop_scan_mode,
 	adapter_prop_disc_timeout,
 	adapter_prop_service_record,
@@ -456,72 +458,53 @@ static void adapter_properties_cb(bt_status_t status, int num_properties,
 
 		switch (properties[i].type) {
 		case BT_PROPERTY_BDADDR:
-			if (hal_cb != adapter_prop_bdaddr) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_bdaddr)
+				goto fail;
 			break;
 		case BT_PROPERTY_BDNAME:
-			if (hal_cb != adapter_prop_bdname) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_bdname)
+				goto fail;
 			break;
 		case BT_PROPERTY_UUIDS:
-			if (hal_cb != adapter_prop_uuids) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_uuids)
+				goto fail;
 			break;
 		case BT_PROPERTY_CLASS_OF_DEVICE:
-			if (hal_cb != adapter_prop_cod) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_cod)
+				goto fail;
 			break;
 		case BT_PROPERTY_TYPE_OF_DEVICE:
-			if (hal_cb != adapter_prop_bdaddr) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_type)
+				goto fail;
 			break;
 		case BT_PROPERTY_SERVICE_RECORD:
-			if (hal_cb != adapter_prop_service_record) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_service_record)
+				goto fail;
 			break;
 		case BT_PROPERTY_ADAPTER_SCAN_MODE:
-			if (hal_cb != adapter_prop_scan_mode) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_scan_mode)
+				goto fail;
 			break;
 		case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
-			if (hal_cb != adapter_prop_bonded_devices) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_bonded_devices)
+				goto fail;
 			break;
 		case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
-			if (hal_cb != adapter_prop_disc_timeout) {
-				tester_test_failed();
-				return;
-			}
-			remove_expected_hal_cb();
+			if (hal_cb != adapter_prop_disc_timeout)
+				goto fail;
 			break;
 		default:
-			break;
+			goto fail;
 		}
+		remove_expected_hal_cb();
 	}
+
+	return;
+
+fail:
+	tester_print("Unexpected property: %u", properties[i].type);
+	tester_test_failed();
+	return;
 }
 
 static const struct generic_data bluetooth_enable_success_test = {
