@@ -35,6 +35,8 @@
 
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include <btio/btio.h>
 
 #define DEFAULT_ACCEPT_TIMEOUT 2
@@ -274,16 +276,23 @@ static void l2cap_connect(const char *src, const char *dst, uint8_t addr_type,
 {
 	struct io_data *data;
 	GError *err = NULL;
+	uint8_t src_type;
 
 	printf("Connecting to %s L2CAP PSM %u\n", dst, psm);
 
 	data = io_data_new(NULL, -1, disconn, -1);
+
+	if (addr_type != BDADDR_BREDR)
+		src_type = BDADDR_LE_PUBLIC;
+	else
+		src_type = BDADDR_BREDR;
 
 	if (src)
 		data->io = bt_io_connect(connect_cb, data,
 					(GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_SOURCE, src,
+					BT_IO_OPT_SOURCE_TYPE, src_type,
 					BT_IO_OPT_DEST, dst,
 					BT_IO_OPT_DEST_TYPE, addr_type,
 					BT_IO_OPT_PSM, psm,
@@ -295,6 +304,7 @@ static void l2cap_connect(const char *src, const char *dst, uint8_t addr_type,
 		data->io = bt_io_connect(connect_cb, data,
 					(GDestroyNotify) io_data_unref,
 					&err,
+					BT_IO_OPT_SOURCE_TYPE, src_type,
 					BT_IO_OPT_DEST, dst,
 					BT_IO_OPT_DEST_TYPE, addr_type,
 					BT_IO_OPT_PSM, psm,
