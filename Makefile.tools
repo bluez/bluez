@@ -291,4 +291,5 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/service-did.xml test/service-spp.xml test/service-opp.xml \
 		test/service-ftp.xml test/simple-player test/test-nap \
 		test/test-heartrate test/test-alert test/test-hfp \
-		test/test-cyclingspeed
+		test/test-cyclingspeed test/opp-client test/ftp-client \
+		test/pbap-client test/map-client
