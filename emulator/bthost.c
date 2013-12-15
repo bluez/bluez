@@ -186,13 +186,15 @@ static struct l2conn *btconn_find_l2cap_conn_by_scid(struct btconn *conn,
 
 void bthost_destroy(struct bthost *bthost)
 {
-	struct cmd *cmd;
-
 	if (!bthost)
 		return;
 
-	for (cmd = bthost->cmd_q.tail; cmd != NULL; cmd = cmd->next)
+	while (bthost->cmd_q.tail) {
+		struct cmd *cmd = bthost->cmd_q.tail;
+
+		bthost->cmd_q.tail = cmd->next;
 		free(cmd);
+	}
 
 	while (bthost->conns) {
 		struct btconn *conn = bthost->conns;
