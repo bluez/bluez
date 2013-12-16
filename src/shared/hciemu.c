@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <sys/socket.h>
 
 #include <glib.h>
@@ -216,6 +217,7 @@ static bool create_vhci(struct hciemu *hciemu)
 
 	fd = open("/dev/vhci", O_RDWR | O_NONBLOCK | O_CLOEXEC);
 	if (fd < 0) {
+		perror("Opening /dev/vhci failed");
 		btdev_destroy(btdev);
 		return false;
 	}
