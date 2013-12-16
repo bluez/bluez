@@ -82,6 +82,7 @@ struct socket_data {
 	int channel;
 	int flags;
 	bt_status_t expected_status;
+	bool test_channel;
 };
 
 #define WAIT_FOR_SIGNAL_TIME 2 /* in seconds */
@@ -820,6 +821,16 @@ static const struct socket_data btsock_success = {
 	.expected_status = BT_STATUS_SUCCESS,
 };
 
+static const struct socket_data btsock_success_check_chan = {
+	.sock_type = BTSOCK_RFCOMM,
+	.channel = 1,
+	.service_uuid = NULL,
+	.service_name = "Test service",
+	.flags = 0,
+	.expected_status = BT_STATUS_SUCCESS,
+	.test_channel = true,
+};
+
 static void setup_socket_interface(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -855,6 +866,18 @@ static void test_generic_listen(const void *test_data)
 	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) == -1) {
 		tester_test_failed();
 		return;
+	}
+
+	if (status == BT_STATUS_SUCCESS && test->test_channel) {
+		int channel, len;
+
+		len = read(sock_fd, &channel, sizeof(channel));
+		if (len != sizeof(channel) || channel != test->channel) {
+			tester_test_failed();
+			goto clean;
+		}
+
+		tester_print("read correct channel: %d", channel);
 	}
 
 	tester_test_passed();
@@ -1033,6 +1056,10 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Socket Listen - Check returned fd valid",
 			&btsock_success,
+			setup_socket_interface, test_generic_listen, teardown);
+
+	test_bredrle("Socket Listen - Check returned channel",
+			&btsock_success_check_chan,
 			setup_socket_interface, test_generic_listen, teardown);
 
 	test_bredrle("Socket Connect - Invalid: sock_type 0",
