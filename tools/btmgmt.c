@@ -553,10 +553,8 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 	}
 
 	rsp_len = strlen(rsp);
-	if (rsp[rsp_len - 1] == '\n') {
+	if (rsp[rsp_len - 1] == '\n')
 		rsp[rsp_len - 1] = '\0';
-		rsp_len--;
-	}
 
 	if (rsp[0] == 'y' || rsp[0] == 'Y')
 		mgmt_confirm_reply(mgmt, index, &ev->addr.bdaddr);
