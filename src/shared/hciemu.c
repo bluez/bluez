@@ -341,7 +341,7 @@ void hciemu_unref(struct hciemu *hciemu)
 	if (!hciemu)
 		return;
 
-	if (__sync_sub_and_fetch(&hciemu->ref_count, 1) > 0)
+	if (__sync_sub_and_fetch(&hciemu->ref_count, 1))
 		return;
 
 	g_list_foreach(hciemu->post_command_hooks, destroy_command_hook, NULL);
