@@ -832,6 +832,16 @@ static const struct socket_data btsock_success_check_chan = {
 	.test_channel = true,
 };
 
+static const struct socket_data btsock_inv_param_bdaddr = {
+	.bdaddr = NULL,
+	.sock_type = BTSOCK_RFCOMM,
+	.channel = 1,
+	.service_uuid = NULL,
+	.service_name = "Test service",
+	.flags = 0,
+	.expected_status = BT_STATUS_PARM_INVALID,
+};
+
 static void setup_socket_interface(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1073,6 +1083,10 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Socket Connect - Invalid: chan, uuid",
 			&btsock_inv_params_chan_uuid,
+			setup_socket_interface, test_generic_connect, teardown);
+
+	test_bredrle("Socket Connect - Invalid: bdaddr",
+			&btsock_inv_param_bdaddr,
 			setup_socket_interface, test_generic_connect, teardown);
 
 	return tester_run();
