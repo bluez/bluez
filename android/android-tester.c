@@ -804,6 +804,7 @@ static const struct socket_data btsock_inv_param_socktype_l2cap = {
 
 /* Test invalid: channel & uuid are both zeroes */
 static const struct socket_data btsock_inv_params_chan_uuid = {
+	.bdaddr = &bdaddr_dummy,
 	.sock_type = BTSOCK_RFCOMM,
 	.channel = 0,
 	.service_uuid = NULL,
@@ -1068,6 +1069,10 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Socket Connect - Invalid: sock_type L2CAP",
 			&btsock_inv_param_socktype_l2cap,
+			setup_socket_interface, test_generic_connect, teardown);
+
+	test_bredrle("Socket Connect - Invalid: chan, uuid",
+			&btsock_inv_params_chan_uuid,
 			setup_socket_interface, test_generic_connect, teardown);
 
 	return tester_run();
