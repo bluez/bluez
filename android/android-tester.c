@@ -487,6 +487,7 @@ static void adapter_state_changed_cb(bt_state_t state)
 			tester_setup_complete();
 		else
 			tester_setup_failed();
+		break;
 	default:
 		break;
 	}
