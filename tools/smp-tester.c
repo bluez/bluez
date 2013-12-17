@@ -123,7 +123,7 @@ static int alg_setup(void)
 
 	sk = socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
-		fprintf(stderr, "socket(AF_ALG): %s\n", strerror(errno));
+		tester_warn("socket(AF_ALG): %s", strerror(errno));
 		return -1;
 	}
 
@@ -133,7 +133,7 @@ static int alg_setup(void)
 	strcpy((char *) salg.salg_name, "ecb(aes)");
 
 	if (bind(sk, (struct sockaddr *) &salg, sizeof(salg)) < 0) {
-		fprintf(stderr, "bind(AF_ALG): %s\n", strerror(errno));
+		tester_warn("bind(AF_ALG): %s", strerror(errno));
 		close(sk);
 		return -1;
 	}
