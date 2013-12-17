@@ -123,4 +123,4 @@ EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
 		android/pixit-pbap.txt android/pts-gap.txt android/pts-hid.txt \
 		android/pts-opp.txt android/pts-pbap.txt \
 		android/audio-ipc-api.txt android/pics-map.txt \
-		android/pixit-map.txt
+		android/pixit-map.txt android/pts-map.txt
