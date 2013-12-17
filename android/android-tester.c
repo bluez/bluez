@@ -828,8 +828,10 @@ static void setup_socket_interface(const void *test_data)
 	setup(data);
 
 	sock = data->if_bluetooth->get_profile_interface(BT_PROFILE_SOCKETS_ID);
-	if (!sock)
+	if (!sock) {
 		tester_setup_failed();
+		return;
+	}
 
 	data->if_sock = sock;
 
