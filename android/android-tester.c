@@ -753,10 +753,13 @@ static void setup_base(const void *test_data)
 static void setup_enabled_adapter(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	bt_status_t status;
 
 	setup(data);
 
-	data->if_bluetooth->enable();
+	status = data->if_bluetooth->enable();
+	if (status != BT_STATUS_SUCCESS)
+		tester_setup_failed();
 }
 
 static void teardown(const void *test_data)
