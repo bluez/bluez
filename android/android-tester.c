@@ -582,22 +582,23 @@ fail:
 }
 
 static const struct generic_data bluetooth_enable_success_test = {
-	.expected_hal_callbacks = {ADAPTER_PROPS, ADAPTER_STATE_CHANGED_ON,
-							ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_PROPS, ADAPTER_STATE_CHANGED_ON,
+							ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS
 };
 
 static const struct generic_data bluetooth_enable_done_test = {
-	.expected_hal_callbacks = {ADAPTER_PROPS, ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_PROPS, ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_DONE
 };
 
 static const struct generic_data bluetooth_disable_success_test = {
-	.expected_hal_callbacks = {ADAPTER_STATE_CHANGED_OFF, ADAPTER_TEST_END}
+	.expected_hal_callbacks = { ADAPTER_STATE_CHANGED_OFF,
+							ADAPTER_TEST_END }
 };
 
 static const struct generic_data bluetooth_setprop_bdname_success_test = {
-	.expected_hal_callbacks = {ADAPTER_PROP_BDNAME, ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_PROP_BDNAME, ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_property.type = BT_PROPERTY_BDNAME,
 	.expected_property.val = "test_bdname",
@@ -605,8 +606,9 @@ static const struct generic_data bluetooth_setprop_bdname_success_test = {
 };
 
 static const struct generic_data bluetooth_setprop_scanmode_success_test = {
-	.expected_hal_callbacks = {ADAPTER_PROP_SCAN_MODE,
-				ADAPTER_PROP_SCAN_MODE, ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_PROP_SCAN_MODE,
+						ADAPTER_PROP_SCAN_MODE,
+						ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_property.type = BT_PROPERTY_ADAPTER_SCAN_MODE,
 	.expected_property.val = &test_setprop_scanmode_val,
@@ -614,7 +616,7 @@ static const struct generic_data bluetooth_setprop_scanmode_success_test = {
 };
 
 static const struct generic_data bluetooth_setprop_disctimeout_success_test = {
-	.expected_hal_callbacks = {ADAPTER_PROP_DISC_TIMEOUT, ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_PROP_DISC_TIMEOUT, ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_property.type = BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT,
 	.expected_property.val = &test_setprop_disctimeout_val,
@@ -622,7 +624,7 @@ static const struct generic_data bluetooth_setprop_disctimeout_success_test = {
 };
 
 static const struct generic_data bluetooth_getprop_bdaddr_success_test = {
-	.expected_hal_callbacks = {ADAPTER_PROP_BDADDR, ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_PROP_BDADDR, ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_property.type = BT_PROPERTY_BDADDR,
 	.expected_property.val = NULL,
@@ -630,8 +632,8 @@ static const struct generic_data bluetooth_getprop_bdaddr_success_test = {
 };
 
 static const struct generic_data bluetooth_getprop_bdname_success_test = {
-	.expected_hal_callbacks = {ADAPTER_PROP_BDNAME, ADAPTER_PROP_BDNAME,
-							ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_PROP_BDNAME, ADAPTER_PROP_BDNAME,
+							ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_property.type = BT_PROPERTY_BDNAME,
 	.expected_property.val = "test_bdname_setget",
@@ -643,7 +645,7 @@ static unsigned char setprop_uuids[] = { 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00,
 			0x00, 0x00 };
 
 static const struct generic_data bluetooth_setprop_uuid_invalid_test = {
-	.expected_hal_callbacks = {ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_FAIL,
 	.expected_property.type = BT_PROPERTY_UUIDS,
 	.expected_property.val = &setprop_uuids,
@@ -653,7 +655,7 @@ static const struct generic_data bluetooth_setprop_uuid_invalid_test = {
 static uint32_t setprop_class_of_device = 0;
 
 static const struct generic_data bluetooth_setprop_cod_invalid_test = {
-	.expected_hal_callbacks = {ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_FAIL,
 	.expected_property.type = BT_PROPERTY_CLASS_OF_DEVICE,
 	.expected_property.val = &setprop_class_of_device,
@@ -663,7 +665,7 @@ static const struct generic_data bluetooth_setprop_cod_invalid_test = {
 static bt_device_type_t setprop_type_of_device = BT_DEVICE_DEVTYPE_BREDR;
 
 static const struct generic_data bluetooth_setprop_tod_invalid_test = {
-	.expected_hal_callbacks = {ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_FAIL,
 	.expected_property.type = BT_PROPERTY_TYPE_OF_DEVICE,
 	.expected_property.val = &setprop_type_of_device,
@@ -673,7 +675,7 @@ static const struct generic_data bluetooth_setprop_tod_invalid_test = {
 static int32_t setprop_remote_rssi = 0;
 
 static const struct generic_data bluetooth_setprop_remote_rssi_invalid_test = {
-	.expected_hal_callbacks = {ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_FAIL,
 	.expected_property.type = BT_PROPERTY_REMOTE_RSSI,
 	.expected_property.val = &setprop_remote_rssi,
@@ -688,7 +690,7 @@ static bt_service_record_t setprop_remote_service = {
 
 static const struct generic_data
 			bluetooth_setprop_service_record_invalid_test = {
-	.expected_hal_callbacks = {ADAPTER_TEST_END},
+	.expected_hal_callbacks = { ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_FAIL,
 	.expected_property.type = BT_PROPERTY_SERVICE_RECORD,
 	.expected_property.val = &setprop_remote_service,
