@@ -67,8 +67,6 @@ static int device_cmp(gconstpointer s, gconstpointer user_data)
 
 static void pan_device_free(struct pan_device *dev)
 {
-	local_role = HAL_PAN_ROLE_NONE;
-
 	if (dev->watch > 0) {
 		g_source_remove(dev->watch);
 		dev->watch = 0;
@@ -81,6 +79,9 @@ static void pan_device_free(struct pan_device *dev)
 
 	devices = g_slist_remove(devices, dev);
 	g_free(dev);
+
+	if (g_slist_length(devices) == 0)
+		local_role = HAL_PAN_ROLE_NONE;
 }
 
 static void bt_pan_notify_conn_state(struct pan_device *dev, uint8_t state)
