@@ -1209,6 +1209,12 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
 		g_free(cap);
 	}
 
+	if (get_all && sep->delay_reporting) {
+		ptr[0] = AVDTP_DELAY_REPORTING;
+		ptr[1] = 0x00;
+		rsp_size += 2;
+	}
+
 	g_slist_free(caps);
 
 	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT, cmd,
