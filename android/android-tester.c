@@ -631,13 +631,15 @@ static const struct generic_data bluetooth_getprop_bdaddr_success_test = {
 	.expected_property.len = sizeof(bt_bdaddr_t)
 };
 
+static char test_bdname[] = "test_bdname_setget";
+
 static const struct generic_data bluetooth_getprop_bdname_success_test = {
 	.expected_hal_callbacks = { ADAPTER_PROP_BDNAME, ADAPTER_PROP_BDNAME,
 							ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_property.type = BT_PROPERTY_BDNAME,
-	.expected_property.val = "test_bdname_setget",
-	.expected_property.len = 17
+	.expected_property.val = test_bdname,
+	.expected_property.len = sizeof(test_bdname) - 1,
 };
 
 static unsigned char setprop_uuids[] = { 0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00,
