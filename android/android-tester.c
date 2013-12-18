@@ -826,6 +826,11 @@ static void teardown(const void *test_data)
 	tester_teardown_complete();
 }
 
+static void test_dummy(const void *test_data)
+{
+	tester_test_passed();
+}
+
 static void test_enable(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -857,9 +862,138 @@ static void test_disable(const void *test_data)
 	data->if_bluetooth->disable();
 }
 
-static void test_dummy(const void *test_data)
+static void test_setprop_bdname_success(const void *test_data)
 {
-	tester_test_passed();
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_scanmode_succes(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_disctimeout_succes(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+}
+
+static void test_getprop_bdaddr_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t prop = test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->get_adapter_property(prop.type);
+	check_expected_status(adapter_status);
+}
+
+static void test_getprop_bdname_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+
+	adapter_status = data->if_bluetooth->get_adapter_property((*prop).type);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_uuid_invalid(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_cod_invalid(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_tod_invalid(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_rssi_invalid(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_service_record_invalid(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
 }
 
 /* Test Socket HAL */
@@ -1012,140 +1146,6 @@ static void test_generic_connect(const void *test_data)
 clean:
 	if (sock_fd >= 0)
 		close(sock_fd);
-}
-
-static void test_setprop_bdname_success(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-
-	check_expected_status(adapter_status);
-}
-
-static void test_setprop_scanmode_succes(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
-}
-
-static void test_setprop_disctimeout_succes(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
-}
-
-static void test_getprop_bdaddr_success(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t prop = test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->get_adapter_property(prop.type);
-	check_expected_status(adapter_status);
-}
-
-static void test_getprop_bdname_success(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
-
-	adapter_status = data->if_bluetooth->get_adapter_property((*prop).type);
-	check_expected_status(adapter_status);
-}
-
-static void test_setprop_uuid_invalid(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
-}
-
-static void test_setprop_cod_invalid(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
-}
-
-static void test_setprop_tod_invalid(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
-}
-
-static void test_setprop_rssi_invalid(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
-}
-
-static void test_setprop_service_record_invalid(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
-	const bt_property_t *prop = &test->expected_property;
-	bt_status_t adapter_status;
-
-	init_test_conditions(data);
-
-	adapter_status = data->if_bluetooth->set_adapter_property(prop);
-	check_expected_status(adapter_status);
 }
 
 #define test_bredrle(name, data, test_setup, test, test_teardown) \
