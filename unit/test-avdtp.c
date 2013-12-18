@@ -86,6 +86,7 @@ struct context {
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
 	guint source;
+	guint process;
 	int fd;
 	int mtu;
 	gboolean pending_open;
@@ -112,6 +113,9 @@ static void test_free(gconstpointer user_data)
 static gboolean context_quit(gpointer user_data)
 {
 	struct context *context = user_data;
+
+	if (context->process > 0)
+		g_source_remove(context->process);
 
 	g_main_loop_quit(context->main_loop);
 
@@ -149,7 +153,7 @@ static void context_process(struct context *context)
 		return;
 	}
 
-	g_idle_add(send_pdu, context);
+	context->process = g_idle_add(send_pdu, context);
 }
 
 static gboolean transport_open(struct avdtp_stream *stream)
@@ -1270,6 +1274,17 @@ int main(int argc, char *argv[])
 			raw_pdu(0xf0, 0x03, 0x04, 0x04, 0x01, 0x00, 0x07, 0x06,
 				0x00, 0x00, 0x21, 0x02, 0x02, 0x20, 0x08,
 				0x00));
+	define_test("/TP/SIG/SYN/BV-03-C", test_server_1_3_sink,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x04, 0x08),
+			raw_pdu(0x10, 0x0c, 0x04),
+			raw_pdu(0x12, 0x0c, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40, 0x08, 0x00),
+			raw_pdu(0x20, 0x03, 0x04, 0x04, 0x01, 0x00, 0x07, 0x06,
+				0x00, 0x00, 0x21, 0x02, 0x02, 0x20, 0x08,
+				0x00),
+			raw_pdu(0x22, 0x03),
+			raw_pdu(0x00, 0x0d, 0x04, 0x00, 0x00));
 
 	return g_test_run();
 }
