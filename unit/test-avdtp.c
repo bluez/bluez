@@ -520,6 +520,21 @@ static void test_server_1_3(gconstpointer data)
 	avdtp_unregister_sep(sep);
 }
 
+static void test_server_1_3_sink(gconstpointer data)
+{
+	struct context *context = create_context(0x0103, data);
+	struct avdtp_local_sep *sep;
+
+	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
+					0x00, TRUE, &sep_ind, NULL, context);
+
+	g_idle_add(send_pdu, context);
+
+	execute_context(context);
+
+	avdtp_unregister_sep(sep);
+}
+
 static void test_server_0_sep(gconstpointer data)
 {
 	struct context *context = create_context(0x0100, data);
@@ -1233,6 +1248,19 @@ int main(int argc, char *argv[])
 			raw_pdu(0xce, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00));
+
+	/*
+	 * Delay Reporting
+	 *
+	 * Verify that the stream management signaling procedure of delay
+	 * reporting is implemented according to its specification in AVDTP.
+	 */
+	define_test("/TP/SIG/SYN/BV-01-C", test_server_1_3_sink,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x04, 0x08),
+			raw_pdu(0x10, 0x0c, 0x04),
+			raw_pdu(0x12, 0x0c, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40, 0x08, 0x00));
 
 	return g_test_run();
 }
