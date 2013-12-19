@@ -37,6 +37,8 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "monitor/mainloop.h"
 
@@ -168,6 +170,8 @@ int main(int argc, char *argv[])
 	}
 
 	mainloop_add_fd(fd, EPOLLIN, system_socket_callback, NULL, NULL);
+
+	umask(0177);
 
 	return mainloop_run();
 }
