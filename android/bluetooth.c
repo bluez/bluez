@@ -848,7 +848,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		dev->rssi = rssi;
 
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_RSSI,
-							sizeof(rssi), &rssi);
+						sizeof(dev->rssi), &dev->rssi);
 		(*num_prop)++;
 	}
 
