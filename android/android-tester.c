@@ -1141,6 +1141,62 @@ clean:
 		close(sock_fd);
 }
 
+static void test_listen_close(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct socket_data *test = data->test_data;
+	bt_status_t status;
+	int sock_fd = -1;
+
+	status = data->if_sock->listen(test->sock_type,
+					test->service_name, test->service_uuid,
+					test->channel, &sock_fd, test->flags);
+	if (status != test->expected_status) {
+		tester_warn("sock->listen() failed");
+		tester_test_failed();
+		goto clean;
+	}
+
+	/* Check that file descriptor is valid */
+	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) < 0) {
+		tester_warn("sock_fd %d is not valid", sock_fd);
+		tester_test_failed();
+		return;
+	}
+
+	tester_print("Got valid sock_fd: %d", sock_fd);
+
+	/* Now close sock_fd */
+	close(sock_fd);
+	sock_fd = -1;
+
+	/* Try to listen again */
+	status = data->if_sock->listen(test->sock_type,
+					test->service_name, test->service_uuid,
+					test->channel, &sock_fd, test->flags);
+	if (status != test->expected_status) {
+		tester_warn("sock->listen() failed");
+		tester_test_failed();
+		goto clean;
+	}
+
+	/* Check that file descriptor is valid */
+	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) < 0) {
+		tester_warn("sock_fd %d is not valid", sock_fd);
+		tester_test_failed();
+		return;
+	}
+
+	tester_print("Got valid sock_fd: %d", sock_fd);
+
+	tester_test_passed();
+
+clean:
+	if (sock_fd >= 0)
+		close(sock_fd);
+
+}
+
 static void test_generic_connect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1362,6 +1418,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Socket Listen - Check returned channel",
 			&btsock_success_check_chan,
 			setup_socket_interface, test_generic_listen, teardown);
+
+	test_bredrle("Socket Listen - Close and Listen again",
+			&btsock_success_check_chan,
+			setup_socket_interface, test_listen_close, teardown);
 
 	test_bredrle("Socket Connect - Invalid: sock_type 0",
 			&btsock_inv_param_socktype, setup_socket_interface,
