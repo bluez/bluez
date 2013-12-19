@@ -72,7 +72,7 @@ enum hal_bluetooth_callbacks_id {
 };
 
 struct generic_data {
-	uint8_t expected_adapter_status;
+	int expected_adapter_status;
 	uint32_t expect_settings_set;
 	bt_property_t expected_property;
 	uint8_t expected_hal_callbacks[];
@@ -91,6 +91,8 @@ struct socket_data {
 
 #define WAIT_FOR_SIGNAL_TIME 2 /* in seconds */
 #define EMULATOR_SIGNAL "emulator_started"
+
+#define BT_STATUS_NOT_EXPECTED	-1
 
 struct test_data {
 	struct mgmt *mgmt;
@@ -199,7 +201,7 @@ static void expected_status_init(struct test_data *data)
 {
 	const struct generic_data *test_data = data->test_data;
 
-	if (!(test_data->expected_adapter_status))
+	if (test_data->expected_adapter_status == BT_STATUS_NOT_EXPECTED)
 		data->status_checked = true;
 }
 
