@@ -724,6 +724,11 @@ static const struct generic_data bluetooth_discovery_start_success_test = {
 	.expected_adapter_status = BT_STATUS_SUCCESS
 };
 
+static const struct generic_data bluetooth_discovery_stop_done_test = {
+	.expected_hal_callbacks = { ADAPTER_TEST_END },
+	.expected_adapter_status = BT_STATUS_DONE
+};
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
@@ -1263,6 +1268,17 @@ static void test_discovery_start_success(const void *test_data)
 	check_expected_status(status);
 }
 
+static void test_discovery_stop_done(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_status_t status;
+
+	init_test_conditions(data);
+
+	status = data->if_bluetooth->cancel_discovery();
+	check_expected_status(status);
+}
+
 static gboolean socket_chan_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1438,6 +1454,11 @@ int main(int argc, char *argv[])
 				&bluetooth_discovery_start_success_test,
 				setup_enabled_adapter,
 				test_discovery_start_success, teardown);
+
+	test_bredrle("Bluetooth BREDR Discovery Stop - Done",
+				&bluetooth_discovery_stop_done_test,
+				setup_enabled_adapter,
+				test_discovery_stop_done, teardown);
 
 	test_bredrle("Socket Init", NULL, setup_socket_interface,
 						test_dummy, teardown);
