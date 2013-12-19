@@ -1582,14 +1582,12 @@ static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 	if (len != 1)
 		goto err;
 
-	volume = pdu->params[0] & 0x7F;
-	if (volume > 127)
-		goto err;
-
 	if (!player)
 		goto err;
 
-	media_transport_update_device_volume(session->dev, pdu->params[0]);
+	volume = pdu->params[0] & 0x7F;
+
+	media_transport_update_device_volume(session->dev, volume);
 
 	return AVC_CTYPE_ACCEPTED;
 
