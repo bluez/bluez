@@ -622,6 +622,24 @@ static bool sock_send_accept(struct rfcomm_sock *rfsock, bdaddr_t *bdaddr,
 	return true;
 }
 
+static gboolean sock_server_stack_event_cb(GIOChannel *io, GIOCondition cond,
+								gpointer data)
+{
+	struct rfcomm_sock *rfsock = data;
+
+	DBG("sock %d cond %d", g_io_channel_unix_get_fd(io), cond);
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_ERR | G_IO_HUP )) {
+		servers = g_list_remove(servers, rfsock);
+		cleanup_rfsock(rfsock);
+	}
+
+	return FALSE;
+}
+
 static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct rfcomm_sock *rfsock = user_data;
@@ -697,10 +715,12 @@ static void handle_listen(const void *buf, uint16_t len)
 	const struct profile_info *profile;
 	struct rfcomm_sock *rfsock = NULL;
 	BtIOSecLevel sec_level;
-	GIOChannel *io;
+	GIOChannel *io, *io_stack;
+	GIOCondition cond;
 	GError *err = NULL;
 	int hal_fd = -1;
 	int chan;
+	guint id;
 
 	DBG("");
 
@@ -737,6 +757,16 @@ static void handle_listen(const void *buf, uint16_t len)
 
 	g_io_channel_set_close_on_unref(io, FALSE);
 	g_io_channel_unref(io);
+
+	/* Handle events from Android */
+	cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_stack = g_io_channel_unix_new(rfsock->fd);
+	id = g_io_add_watch_full(io_stack, G_PRIORITY_HIGH, cond,
+					sock_server_stack_event_cb, rfsock,
+					NULL);
+	g_io_channel_unref(io_stack);
+
+	rfsock->stack_watch = id;
 
 	DBG("real_sock %d fd %d hal_fd %d", rfsock->real_sock, rfsock->fd,
 								hal_fd);
