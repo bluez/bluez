@@ -262,6 +262,13 @@ static const struct  l2cap_client_data client_connect_read_success_test = {
 	.data_len = sizeof(l2_data),
 };
 
+static const struct  l2cap_client_data client_connect_write_success_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.write_data = l2_data,
+	.data_len = sizeof(l2_data),
+};
+
 static const struct l2cap_client_data client_connect_nval_psm_test = {
 	.client_psm = 0x1001,
 	.expect_err = ECONNREFUSED,
@@ -489,6 +496,23 @@ static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
+static void bthost_received_data(const void *buf, uint16_t len,
+							void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_client_data *l2data = data->test_data;
+
+	if (len != l2data->data_len) {
+		tester_test_failed();
+		return;
+	}
+
+	if (memcmp(buf, l2data->write_data, l2data->data_len))
+		tester_test_failed();
+	else
+		tester_test_passed();
+}
+
 static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -519,6 +543,16 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 
 		bthost_send_cid(bthost, data->handle, data->dcid,
 					l2data->read_data, l2data->data_len);
+
+		return FALSE;
+	} else if (l2data->write_data) {
+		struct bthost *bthost;
+
+		bthost = hciemu_client_get_host(data->hciemu);
+		bthost_add_cid_hook(bthost, data->handle, data->dcid,
+					bthost_received_data, NULL);
+
+		write(sk, l2data->write_data, l2data->data_len);
 
 		return FALSE;
 	}
@@ -807,6 +841,10 @@ int main(int argc, char *argv[])
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Read Success",
 					&client_connect_read_success_test,
+					setup_powered_client, test_connect);
+
+	test_l2cap_bredr("L2CAP BR/EDR Client - Write Success",
+					&client_connect_write_success_test,
 					setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM",
