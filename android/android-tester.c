@@ -596,7 +596,8 @@ static const struct generic_data bluetooth_enable_done_test = {
 
 static const struct generic_data bluetooth_disable_success_test = {
 	.expected_hal_callbacks = { ADAPTER_STATE_CHANGED_OFF,
-							ADAPTER_TEST_END }
+							ADAPTER_TEST_END },
+	.expected_adapter_status = BT_STATUS_SUCCESS
 };
 
 static const struct generic_data bluetooth_setprop_bdname_success_test = {
@@ -858,10 +859,12 @@ static void test_enable_done(const void *test_data)
 static void test_disable(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	bt_status_t adapter_status;
 
 	init_test_conditions(data);
 
-	data->if_bluetooth->disable();
+	adapter_status = data->if_bluetooth->disable();
+	check_expected_status(adapter_status);
 }
 
 static void test_setprop_bdname_success(const void *test_data)
