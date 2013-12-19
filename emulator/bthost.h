@@ -74,8 +74,13 @@ void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable);
 
 void bthost_le_start_encrypt(struct bthost *bthost, uint16_t handle,
 							const uint8_t ltk[16]);
+typedef void (*bthost_l2cap_connect_cb) (uint16_t handle, uint16_t cid,
+							void *user_data);
 
 void bthost_set_server_psm(struct bthost *bthost, uint16_t psm);
+
+void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
+				bthost_l2cap_connect_cb func, void *user_data);
 
 void bthost_start(struct bthost *bthost);
 void bthost_stop(struct bthost *bthost);
