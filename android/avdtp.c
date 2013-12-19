@@ -336,6 +336,12 @@ struct discover_callback {
 	void *user_data;
 };
 
+struct disconnect_callback {
+	unsigned int id;
+	avdtp_disconnect_cb_t cb;
+	void *user_data;
+};
+
 struct avdtp_stream {
 	GIOChannel *io;
 	uint16_t imtu;
@@ -390,6 +396,8 @@ struct avdtp {
 
 	struct discover_callback *discover;
 	struct pending_req *req;
+
+	GSList *disconnect;
 };
 
 static GSList *lseps = NULL;
@@ -970,10 +978,20 @@ static void avdtp_free(void *data)
 	g_slist_free_full(session->req_queue, pending_req_free);
 	g_slist_free_full(session->prio_queue, pending_req_free);
 	g_slist_free_full(session->seps, sep_free);
+	g_slist_free_full(session->disconnect, g_free);
 
 	g_free(session->buf);
 
 	g_free(session);
+}
+
+static void process_disconnect(void *data)
+{
+	struct disconnect_callback *callback = data;
+
+	callback->cb(callback->user_data);
+
+	g_free(callback);
 }
 
 static void connection_lost(struct avdtp *session, int err)
@@ -983,12 +1001,14 @@ static void connection_lost(struct avdtp *session, int err)
 	g_slist_foreach(session->streams, (GFunc) release_stream, session);
 	session->streams = NULL;
 
+	avdtp_ref(session);
+
 	finalize_discovery(session, err);
 
-	if (session->ref > 0)
-		return;
+	g_slist_free_full(session->disconnect, process_disconnect);
+	session->disconnect = NULL;
 
-	avdtp_free(session);
+	avdtp_unref(session);
 }
 
 void avdtp_unref(struct avdtp *session)
@@ -2045,6 +2065,41 @@ struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 						NULL);
 
 	return avdtp_ref(session);
+}
+
+unsigned int avdtp_add_disconnect_cb(struct avdtp *session,
+						avdtp_disconnect_cb_t cb,
+						void *user_data)
+{
+	struct disconnect_callback *callback;
+	static unsigned int id = 0;
+
+	callback = g_new0(struct disconnect_callback, 1);
+	callback->id = ++id;
+	callback->cb = cb;
+	callback->user_data = user_data;
+	session->disconnect = g_slist_append(session->disconnect, callback);
+
+	return id;
+}
+
+gboolean avdtp_remove_disconnect_cb(struct avdtp *session, unsigned int id)
+{
+	GSList *l;
+
+	for (l = session->disconnect; l; l = g_slist_next(l)) {
+		struct disconnect_callback *callback = l->data;
+
+		if (callback->id != id)
+			continue;
+
+		session->disconnect = g_slist_remove(session->disconnect,
+								callback);
+		g_free(callback);
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 static void queue_request(struct avdtp *session, struct pending_req *req,

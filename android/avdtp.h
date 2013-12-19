@@ -200,8 +200,14 @@ struct avdtp_sep_ind {
 
 typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
 					struct avdtp_error *err, void *user_data);
+typedef void (*avdtp_disconnect_cb_t) (void *user_data);
 
 struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
+
+unsigned int avdtp_add_disconnect_cb(struct avdtp *session,
+						avdtp_disconnect_cb_t cb,
+						void *user_data);
+gboolean avdtp_remove_disconnect_cb(struct avdtp *session, unsigned int id);
 
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
