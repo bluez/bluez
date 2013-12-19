@@ -226,3 +226,27 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := audio.a2dp.default
 
 include $(BUILD_SHARED_LIBRARY)
+
+#
+# l2cap-test
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	../tools/l2test.c \
+	../lib/bluetooth.c \
+	../lib/hci.c \
+
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/.. \
+	$(LOCAL_PATH)/../lib \
+	$(LOCAL_PATH)/../src/shared \
+
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
+LOCAL_MODULE_TAGS := eng
+LOCAL_MODULE := l2test
+
+include $(BUILD_EXECUTABLE)
