@@ -252,4 +252,7 @@ AC_ARG_ENABLE(android, AC_HELP_STRING([--enable-android],
 					[enable_android=${enableval}])
 AM_CONDITIONAL(ANDROID, test "${enable_android}" = "yes")
 
+AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
+			[Directory for the Android daemon storage files])
+
 AC_OUTPUT(Makefile src/bluetoothd.8 lib/bluez.pc)

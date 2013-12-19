@@ -8,7 +8,8 @@ pathmap_INCL += glib:external/bluetooth/glib
 
 # Specify common compiler flags
 BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
-	-DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
+	-DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION) \
+	-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
 
 # Disable warnings enabled by Android but not enabled in autotools build
 BLUEZ_COMMON_CFLAGS += -Wno-pointer-arith -Wno-missing-field-initializers
