@@ -209,6 +209,8 @@ unsigned int avdtp_add_disconnect_cb(struct avdtp *session,
 						void *user_data);
 gboolean avdtp_remove_disconnect_cb(struct avdtp *session, unsigned int id);
 
+void avdtp_shutdown(struct avdtp *session);
+
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
 

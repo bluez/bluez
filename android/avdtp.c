@@ -2102,6 +2102,25 @@ gboolean avdtp_remove_disconnect_cb(struct avdtp *session, unsigned int id)
 	return FALSE;
 }
 
+void avdtp_shutdown(struct avdtp *session)
+{
+	GSList *l;
+	int sock;
+
+	if (!session->io)
+		return;
+
+	for (l = session->streams; l; l = g_slist_next(l)) {
+		struct avdtp_stream *stream = l->data;
+
+		avdtp_close(session, stream, TRUE);
+	}
+
+	sock = g_io_channel_unix_get_fd(session->io);
+
+	shutdown(sock, SHUT_RDWR);
+}
+
 static void queue_request(struct avdtp *session, struct pending_req *req,
 			gboolean priority)
 {
