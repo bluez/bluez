@@ -33,19 +33,16 @@ const char *bnep_name(uint16_t id);
 struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role);
 void bnep_free(struct bnep *session);
 
-int bnep_connadd(int sk, uint16_t role, char *dev);
-int bnep_conndel(const bdaddr_t *dst);
-int bnep_if_up(const char *devname);
-int bnep_if_down(const char *devname);
-int bnep_add_to_bridge(const char *devname, const char *bridge);
-int bnep_del_from_bridge(const char *devname, const char *bridge);
-
 typedef void (*bnep_connect_cb) (char *iface, int err, void *data);
 int bnep_connect(struct bnep *b, bnep_connect_cb conn_cb, void *data);
 typedef void (*bnep_disconnect_cb) (void *data);
 void bnep_set_disconnect(struct bnep *session, bnep_disconnect_cb disconn_cb,
 								void *data);
 void bnep_disconnect(struct bnep *session);
+
+int bnep_server_add(int sk, uint16_t dst, char *bridge, char *iface,
+							const bdaddr_t *addr);
+void bnep_server_delete(char *bridge, char *iface, const bdaddr_t *addr);
 
 ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl, uint16_t resp);
 uint16_t bnep_setup_chk(uint16_t dst_role, uint16_t src_role);

@@ -251,35 +251,6 @@ static sdp_record_t *server_record_new(const char *name, uint16_t id)
 	return record;
 }
 
-static int server_connadd(struct network_server *ns,
-				struct network_session *session,
-				uint16_t dst_role)
-{
-	char devname[16];
-	int err, nsk;
-
-	nsk = g_io_channel_unix_get_fd(session->io);
-	err = bnep_connadd(nsk, dst_role, devname);
-	if (err < 0)
-		return err;
-
-	info("Added new connection: %s", devname);
-
-	if (bnep_add_to_bridge(devname, ns->bridge) < 0) {
-		error("Can't add %s to the bridge %s: %s(%d)",
-				devname, ns->bridge, strerror(errno), errno);
-		return -EPERM;
-	}
-
-	bnep_if_up(devname);
-
-	strncpy(session->dev, devname, sizeof(devname));
-
-	ns->sessions = g_slist_append(ns->sessions, session);
-
-	return 0;
-}
-
 static void session_free(void *data)
 {
 	struct network_session *session = data;
@@ -377,7 +348,8 @@ static gboolean bnep_setup(GIOChannel *chan,
 		goto reply;
 	}
 
-	if (server_connadd(ns, na->setup, dst_role) < 0)
+	if (bnep_server_add(sk, dst_role, ns->bridge, na->setup->dev,
+							&na->setup->dst) < 0)
 		goto reply;
 
 	na->setup = NULL;
@@ -524,10 +496,7 @@ static void server_remove_sessions(struct network_server *ns)
 		if (*session->dev == '\0')
 			continue;
 
-		bnep_del_from_bridge(session->dev, ns->bridge);
-		bnep_if_down(session->dev);
-
-		bnep_conndel(&session->dst);
+		bnep_server_delete(ns->bridge, session->dev, &session->dst);
 	}
 
 	g_slist_free_full(ns->sessions, session_free);
