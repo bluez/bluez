@@ -1134,6 +1134,16 @@ static const struct socket_data btsock_inv_param_bdaddr = {
 	.expected_status = BT_STATUS_PARM_INVALID,
 };
 
+static const struct socket_data btsock_inv_listen_listen = {
+	.sock_type = BTSOCK_RFCOMM,
+	.channel = 1,
+	.service_uuid = NULL,
+	.service_name = "Test service",
+	.flags = 0,
+	.expected_status = BT_STATUS_FAIL,
+	.test_channel = true,
+};
+
 static void setup_socket_interface(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1267,6 +1277,43 @@ clean:
 	if (sock_fd >= 0)
 		close(sock_fd);
 
+}
+
+static void test_listen_listen(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct socket_data *test = data->test_data;
+	bt_status_t status;
+	int sock_fd1 = -1, sock_fd2 = -1;
+
+	status = data->if_sock->listen(test->sock_type,
+					test->service_name, test->service_uuid,
+					test->channel, &sock_fd1, test->flags);
+	if (status != BT_STATUS_SUCCESS) {
+		tester_warn("sock->listen() failed");
+		tester_test_failed();
+		goto clean;
+	}
+
+	status = data->if_sock->listen(test->sock_type,
+					test->service_name, test->service_uuid,
+					test->channel, &sock_fd2, test->flags);
+	if (status != test->expected_status) {
+		tester_warn("sock->listen() failed, status %d", status);
+		tester_test_failed();
+		goto clean;
+	}
+
+	tester_print("status after second listen(): %d", status);
+
+	tester_test_passed();
+
+clean:
+	if (sock_fd1 >= 0)
+		close(sock_fd1);
+
+	if (sock_fd2 >= 0)
+		close(sock_fd2);
 }
 
 static void test_generic_connect(const void *test_data)
@@ -1572,6 +1619,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Socket Listen - Close and Listen again",
 			&btsock_success_check_chan,
 			setup_socket_interface, test_listen_close, teardown);
+
+	test_bredrle("Socket Listen - Invalid: double Listen",
+			&btsock_inv_listen_listen,
+			setup_socket_interface, test_listen_listen, teardown);
 
 	test_bredrle("Socket Connect - Invalid: sock_type 0",
 			&btsock_inv_param_socktype, setup_socket_interface,
