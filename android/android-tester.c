@@ -1199,7 +1199,7 @@ static void test_generic_listen(const void *test_data)
 	}
 
 	/* Check that file descriptor is valid */
-	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) == -1) {
+	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) < 0) {
 		tester_test_failed();
 		return;
 	}
@@ -1332,7 +1332,7 @@ static void test_generic_connect(const void *test_data)
 	}
 
 	/* Check that file descriptor is valid */
-	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) == -1) {
+	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) < 0) {
 		tester_test_failed();
 		return;
 	}
@@ -1467,7 +1467,7 @@ static void test_socket_real_connect(const void *test_data)
 	}
 
 	/* Check that file descriptor is valid */
-	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) == -1) {
+	if (status == BT_STATUS_SUCCESS && fcntl(sock_fd, F_GETFD) < 0) {
 		tester_test_failed();
 		return;
 	}
