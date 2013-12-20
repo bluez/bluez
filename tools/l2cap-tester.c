@@ -535,7 +535,6 @@ static gboolean server_received_data(GIOChannel *io, GIOCondition cond,
 	if (read(sk, buf, l2data->data_len) != l2data->data_len) {
 		tester_warn("Unable to read %u bytes", l2data->data_len);
 		tester_test_failed();
-		close(sk);
 		return FALSE;
 	}
 
@@ -543,8 +542,6 @@ static gboolean server_received_data(GIOChannel *io, GIOCondition cond,
 		tester_test_failed();
 	else
 		tester_test_passed();
-
-	close(sk);
 
 	return FALSE;
 }
@@ -785,11 +782,14 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 		GIOChannel *new_io;
 
 		new_io = g_io_channel_unix_new(new_sk);
+		g_io_channel_set_close_on_unref(new_io, TRUE);
 
 		bthost = hciemu_client_get_host(data->hciemu);
 		g_io_add_watch(new_io, G_IO_IN, server_received_data, NULL);
 		bthost_send_cid(bthost, data->handle, data->dcid,
 					l2data->read_data, l2data->data_len);
+
+		g_io_channel_unref(new_io);
 
 		return FALSE;
 	} else if (l2data->write_data) {
