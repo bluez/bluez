@@ -44,6 +44,10 @@ typedef void (*bnep_connect_cb) (GIOChannel *chan, char *iface, int err,
 								void *data);
 int bnep_connect(int sk, uint16_t src, uint16_t dst, bnep_connect_cb conn_cb,
 								void *data);
+typedef void (*bnep_disconnect_cb) (void *data);
+void bnep_set_disconnect(struct bnep *session, bnep_disconnect_cb disconn_cb,
+								void *data);
+void bnep_disconnect(struct bnep *session);
 
 ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl, uint16_t resp);
 uint16_t bnep_setup_chk(uint16_t dst_role, uint16_t src_role);

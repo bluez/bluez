@@ -71,11 +71,15 @@ struct bnep {
 	GIOChannel	*io;
 	uint16_t	src;
 	uint16_t	dst;
+	bdaddr_t	dst_addr;
+	char	iface[16];
 	guint	attempts;
 	guint	setup_to;
 	guint	watch;
 	void	*data;
 	bnep_connect_cb	conn_cb;
+	bnep_disconnect_cb disconn_cb;
+	void	*disconn_data;
 };
 
 static void free_bnep_connect(struct bnep *session)
@@ -445,6 +449,37 @@ int bnep_connect(int sk, uint16_t src, uint16_t dst, bnep_connect_cb conn_cb,
 	g_io_add_watch(session->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 							bnep_setup_cb, session);
 	return 0;
+}
+
+void bnep_disconnect(struct bnep *session)
+{
+	if (!session)
+		return;
+
+	if (session->watch > 0) {
+		g_source_remove(session->watch);
+		session->watch = 0;
+	}
+
+	if (session->io) {
+		g_io_channel_unref(session->io);
+		session->io = NULL;
+	}
+
+	bnep_if_down(session->iface);
+	bnep_conndel(&session->dst_addr);
+}
+
+void bnep_set_disconnect(struct bnep *session, bnep_disconnect_cb disconn_cb,
+								void *data)
+{
+	if (!session || !disconn_cb)
+		return;
+
+	if (!session->disconn_cb && !session->disconn_data) {
+		session->disconn_cb = disconn_cb;
+		session->disconn_data = data;
+	}
 }
 
 int bnep_add_to_bridge(const char *devname, const char *bridge)
