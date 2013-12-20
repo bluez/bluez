@@ -608,12 +608,17 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	} else if (l2data->write_data) {
 		struct bthost *bthost;
+		ssize_t ret;
 
 		bthost = hciemu_client_get_host(data->hciemu);
 		bthost_add_cid_hook(bthost, data->handle, data->dcid,
 					bthost_received_data, NULL);
 
-		write(sk, l2data->write_data, l2data->data_len);
+		ret = write(sk, l2data->write_data, l2data->data_len);
+		if (ret != l2data->data_len) {
+			tester_warn("Unable to write all data");
+			tester_test_failed();
+		}
 
 		return FALSE;
 	}
@@ -780,13 +785,19 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	} else if (l2data->write_data) {
 		struct bthost *bthost;
+		ssize_t ret;
 
 		bthost = hciemu_client_get_host(data->hciemu);
 		bthost_add_cid_hook(bthost, data->handle, data->scid,
 					server_bthost_received_data, NULL);
 
-		write(new_sk, l2data->write_data, l2data->data_len);
+		ret = write(new_sk, l2data->write_data, l2data->data_len);
 		close(new_sk);
+
+		if (ret != l2data->data_len) {
+			tester_warn("Unable to write all data");
+			tester_test_failed();
+		}
 
 		return FALSE;
 	}
