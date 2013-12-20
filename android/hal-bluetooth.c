@@ -891,6 +891,8 @@ static int close_bluetooth(struct hw_device_t *device)
 
 	cleanup();
 
+	free(device);
+
 	return 0;
 }
 
