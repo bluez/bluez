@@ -110,6 +110,12 @@ struct hal_cmd_get_adapter_prop {
 #define HAL_PROP_DEVICE_FRIENDLY_NAME		0x0a
 #define HAL_PROP_DEVICE_RSSI			0x0b
 #define HAL_PROP_DEVICE_VERSION_INFO		0x0c
+struct hal_prop_device_info {
+	uint8_t version;
+	uint16_t sub_version;
+	uint16_t manufacturer;
+} __attribute__((packed));
+
 #define HAL_PROP_DEVICE_TIMESTAMP		0xFF
 
 #define HAL_ADAPTER_SCAN_MODE_NONE		0x00
