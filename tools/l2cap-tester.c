@@ -731,7 +731,8 @@ static void test_connect(const void *test_data)
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 
 		if (!l2data->data_len)
-			bthost_set_server_psm(bthost, l2data->server_psm);
+			bthost_add_l2cap_server(bthost, l2data->server_psm,
+						NULL, NULL);
 		else
 			bthost_add_l2cap_server(bthost, l2data->server_psm,
 						client_l2cap_connect_cb, data);
