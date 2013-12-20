@@ -39,6 +39,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
+#include <btio/btio.h>
 
 #include <glib.h>
 
@@ -76,24 +77,11 @@ struct bnep {
 	guint	attempts;
 	guint	setup_to;
 	guint	watch;
-	void	*data;
 	bnep_connect_cb	conn_cb;
+	void	*conn_data;
 	bnep_disconnect_cb disconn_cb;
 	void	*disconn_data;
 };
-
-static void free_bnep_connect(struct bnep *session)
-{
-	if (!session)
-		return;
-
-	if (session->io) {
-		g_io_channel_unref(session->io);
-		session->io = NULL;
-	}
-
-	g_free(session);
-}
 
 uint16_t bnep_service_id(const char *svc)
 {
@@ -251,6 +239,17 @@ int bnep_if_down(const char *devname)
 	return 0;
 }
 
+static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
+								gpointer data)
+{
+	struct bnep *session = data;
+
+	if (session->disconn_cb)
+		session->disconn_cb(session->disconn_data);
+
+	return FALSE;
+}
+
 static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 								gpointer data)
 {
@@ -258,12 +257,11 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	struct bnep_control_rsp *rsp;
 	struct timeval timeo;
 	char pkt[BNEP_MTU];
-	char iface[16];
 	ssize_t r;
 	int sk;
 
 	if (cond & G_IO_NVAL)
-		goto failed;
+		return FALSE;
 
 	if (session->setup_to > 0) {
 		g_source_remove(session->setup_to);
@@ -315,24 +313,29 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
 
 	sk = g_io_channel_unix_get_fd(session->io);
-	if (bnep_connadd(sk, session->src, iface)) {
+	if (bnep_connadd(sk, session->src, session->iface)) {
 		error("bnep conn could not be added");
 		goto failed;
 	}
 
-	if (bnep_if_up(iface)) {
-		error("could not up %s", iface);
+	if (bnep_if_up(session->iface)) {
+		error("could not up %s", session->iface);
+		bnep_conndel(&session->dst_addr);
 		goto failed;
 	}
 
-	session->conn_cb(chan, iface, 0, session->data);
-	free_bnep_connect(session);
+	session->watch = g_io_add_watch(session->io,
+					G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					(GIOFunc) bnep_watchdog_cb, session);
+	g_io_channel_unref(session->io);
+	session->io = NULL;
+
+	session->conn_cb(session->iface, 0, session->conn_data);
 
 	return FALSE;
 
 failed:
-	session->conn_cb(NULL, NULL, -EIO, session->data);
-	free_bnep_connect(session);
+	session->conn_cb(NULL, -EIO, session->conn_data);
 
 	return FALSE;
 }
@@ -376,8 +379,7 @@ static gboolean bnep_conn_req_to(gpointer user_data)
 			return TRUE;
 	}
 
-	session->conn_cb(NULL, NULL, -ETIMEDOUT, session->data);
-	free_bnep_connect(session);
+	session->conn_cb(NULL, -ETIMEDOUT, session->conn_data);
 
 	return FALSE;
 }
@@ -423,22 +425,25 @@ void bnep_free(struct bnep *session)
 	g_free(session);
 }
 
-int bnep_connect(int sk, uint16_t src, uint16_t dst, bnep_connect_cb conn_cb,
-								void *data)
+int bnep_connect(struct bnep *session, bnep_connect_cb conn_cb, void *data)
 {
-	struct bnep *session;
+	GError *gerr = NULL;
 	int err;
 
-	if (!conn_cb)
+	if (!session || !conn_cb)
 		return -EINVAL;
 
-	session = g_new0(struct bnep, 1);
-	session->io = g_io_channel_unix_new(sk);
 	session->attempts = 0;
-	session->src = src;
-	session->dst = dst;
 	session->conn_cb = conn_cb;
-	session->data = data;
+	session->conn_data = data;
+
+	bt_io_get(session->io, &gerr, BT_IO_OPT_DEST_BDADDR, &session->dst_addr,
+							BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		return -EINVAL;
+	}
 
 	err = bnep_setup_conn_req(session);
 	if (err < 0)
@@ -446,8 +451,6 @@ int bnep_connect(int sk, uint16_t src, uint16_t dst, bnep_connect_cb conn_cb,
 
 	session->setup_to = g_timeout_add_seconds(CON_SETUP_TO,
 						bnep_conn_req_to, session);
-	g_io_add_watch(session->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-							bnep_setup_cb, session);
 	return 0;
 }
 

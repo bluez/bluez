@@ -54,7 +54,7 @@ struct pan_device {
 	uint8_t		conn_state;
 	uint8_t		role;
 	GIOChannel	*io;
-	guint		watch;
+	struct bnep	*session;
 };
 
 static int device_cmp(gconstpointer s, gconstpointer user_data)
@@ -67,16 +67,13 @@ static int device_cmp(gconstpointer s, gconstpointer user_data)
 
 static void pan_device_free(struct pan_device *dev)
 {
-	if (dev->watch > 0) {
-		g_source_remove(dev->watch);
-		dev->watch = 0;
-	}
-
 	if (dev->io) {
+		g_io_channel_shutdown(dev->io, FALSE, NULL);
 		g_io_channel_unref(dev->io);
 		dev->io = NULL;
 	}
 
+	bnep_free(dev->session);
 	devices = g_slist_remove(devices, dev);
 	g_free(dev);
 
@@ -124,21 +121,16 @@ static void bt_pan_notify_ctrl_state(struct pan_device *dev, uint8_t state)
 									&ev);
 }
 
-static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
-								gpointer data)
+static void bnep_disconn_cb(void *data)
 {
 	struct pan_device *dev = data;
 
 	DBG("%s disconnected", dev->iface);
 
-	bnep_if_down(dev->iface);
-	bnep_conndel(&dev->dst);
 	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
-
-	return FALSE;
 }
 
-static void bnep_conn_cb(GIOChannel *chan, char *iface, int err, void *data)
+static void bnep_conn_cb(char *iface, int err, void *data)
 {
 	struct pan_device *dev = data;
 
@@ -146,7 +138,6 @@ static void bnep_conn_cb(GIOChannel *chan, char *iface, int err, void *data)
 
 	if (err < 0) {
 		error("bnep connect req failed: %s", strerror(-err));
-		bnep_conndel(&dev->dst);
 		bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
 		return;
 	}
@@ -157,17 +148,12 @@ static void bnep_conn_cb(GIOChannel *chan, char *iface, int err, void *data)
 
 	bt_pan_notify_ctrl_state(dev, HAL_PAN_CTRL_ENABLED);
 	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_CONNECTED);
-
-	dev->watch = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-							bnep_watchdog_cb, dev);
-	g_io_channel_unref(dev->io);
-	dev->io = NULL;
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct pan_device *dev = data;
-	uint16_t src, dst;
+	uint16_t l_role, r_role;
 	int perr, sk;
 
 	DBG("");
@@ -177,14 +163,27 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 		goto fail;
 	}
 
-	src = (local_role == HAL_PAN_ROLE_NAP) ? BNEP_SVC_NAP : BNEP_SVC_PANU;
-	dst = (dev->role == HAL_PAN_ROLE_NAP) ? BNEP_SVC_NAP : BNEP_SVC_PANU;
+	l_role = (local_role == HAL_PAN_ROLE_NAP) ? BNEP_SVC_NAP :
+								BNEP_SVC_PANU;
+	r_role = (dev->role == HAL_PAN_ROLE_NAP) ? BNEP_SVC_NAP : BNEP_SVC_PANU;
+
 	sk = g_io_channel_unix_get_fd(dev->io);
 
-	perr = bnep_connect(sk, src, dst, bnep_conn_cb, dev);
+	dev->session = bnep_new(sk, l_role, r_role);
+	if (!dev->session)
+		goto fail;
+
+	perr = bnep_connect(dev->session, bnep_conn_cb, dev);
 	if (perr < 0) {
 		error("bnep connect req failed: %s", strerror(-perr));
 		goto fail;
+	}
+
+	bnep_set_disconnect(dev->session, bnep_disconn_cb, dev);
+
+	if (dev->io) {
+		g_io_channel_unref(dev->io);
+		dev->io = NULL;
 	}
 
 	return;
@@ -284,13 +283,10 @@ static void bt_pan_disconnect(const void *buf, uint16_t len)
 	}
 
 	dev = l->data;
-	if (dev->watch) {
-		g_source_remove(dev->watch);
-		dev->watch = 0;
-	}
 
-	bnep_if_down(dev->iface);
-	bnep_conndel(&dst);
+	if (dev->conn_state == HAL_PAN_STATE_CONNECTED)
+		bnep_disconnect(dev->session);
+
 	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
 	status = HAL_STATUS_SUCCESS;
 

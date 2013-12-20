@@ -72,6 +72,7 @@ struct network_conn {
 	guint		dc_id;
 	struct network_peer *peer;
 	DBusMessage	*connect;
+	struct bnep	*session;
 };
 
 static GSList *peers = NULL;
@@ -106,8 +107,7 @@ static struct network_conn *find_connection_by_state(GSList *list,
 	return NULL;
 }
 
-static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
-				gpointer data)
+static void bnep_disconn_cb(gpointer data)
 {
 	struct network_conn *nc = data;
 	DBusConnection *conn = btd_get_dbus_connection();
@@ -126,12 +126,12 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 	info("%s disconnected", nc->dev);
 
-	bnep_if_down(nc->dev);
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, sizeof(nc->dev));
 	strcpy(nc->dev, "bnep%d");
 
-	return FALSE;
+	bnep_free(nc->session);
+	nc->session = NULL;
 }
 
 static void local_connect_cb(struct network_conn *nc, int err)
@@ -155,12 +155,21 @@ static void local_connect_cb(struct network_conn *nc, int err)
 static void cancel_connection(struct network_conn *nc, int err)
 {
 	btd_service_connecting_complete(nc->service, err);
+
 	if (nc->connect)
 		local_connect_cb(nc, err);
 
-	g_io_channel_shutdown(nc->io, TRUE, NULL);
-	g_io_channel_unref(nc->io);
-	nc->io = NULL;
+	if (nc->io) {
+		g_io_channel_shutdown(nc->io, FALSE, NULL);
+		g_io_channel_unref(nc->io);
+		nc->io = NULL;
+	}
+
+	if (nc->state == CONNECTED)
+		bnep_disconnect(nc->session);
+
+	bnep_free(nc->session);
+	nc->session = NULL;
 
 	nc->state = DISCONNECTED;
 }
@@ -169,11 +178,7 @@ static void connection_destroy(DBusConnection *conn, void *user_data)
 {
 	struct network_conn *nc = user_data;
 
-	if (nc->state == CONNECTED) {
-		bnep_if_down(nc->dev);
-		bnep_conndel(device_get_address(nc->peer->device));
-	} else if (nc->io)
-		cancel_connection(nc, -EIO);
+	cancel_connection(nc, -EIO);
 }
 
 static void disconnect_cb(struct btd_device *device, gboolean removal,
@@ -186,7 +191,7 @@ static void disconnect_cb(struct btd_device *device, gboolean removal,
 	connection_destroy(NULL, user_data);
 }
 
-static void bnep_conn_cb(GIOChannel *chan, char *iface, int err, void *data)
+static void bnep_conn_cb(char *iface, int err, void *data)
 {
 	struct network_conn *nc = data;
 	const char *path;
@@ -220,10 +225,6 @@ static void bnep_conn_cb(GIOChannel *chan, char *iface, int err, void *data)
 	nc->state = CONNECTED;
 	nc->dc_id = device_add_disconnect_watch(nc->peer->device, disconnect_cb,
 								nc, NULL);
-	g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-							bnep_watchdog_cb, nc);
-	g_io_channel_unref(nc->io);
-	nc->io = NULL;
 
 	return;
 
@@ -242,10 +243,21 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 	}
 
 	sk = g_io_channel_unix_get_fd(nc->io);
-	perr = bnep_connect(sk, BNEP_SVC_PANU, nc->id, bnep_conn_cb, nc);
+	nc->session = bnep_new(sk, BNEP_SVC_PANU, nc->id);
+	if (!nc->session)
+		goto failed;
+
+	perr = bnep_connect(nc->session, bnep_conn_cb, nc);
 	if (perr < 0) {
 		error("bnep connect(): %s (%d)", strerror(-perr), -perr);
 		goto failed;
+	}
+
+	bnep_set_disconnect(nc->session, bnep_disconn_cb, nc);
+
+	if (nc->io) {
+		g_io_channel_unref(nc->io);
+		nc->io = NULL;
 	}
 
 	return;
