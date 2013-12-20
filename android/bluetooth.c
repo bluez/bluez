@@ -1684,7 +1684,9 @@ static void load_devices_info(bt_bluetooth_ready cb)
 	}
 
 	load_link_keys(keys, cb);
+	g_strfreev(devs);
 	g_slist_free_full(keys, g_free);
+	g_key_file_free(key_file);
 }
 
 static void read_info_complete(uint8_t status, uint16_t length,
