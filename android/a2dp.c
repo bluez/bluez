@@ -150,11 +150,15 @@ static void signaling_connect_cb(GIOChannel *chan, GError *err,
 		return;
 	}
 
-	g_io_channel_set_close_on_unref(chan, FALSE);
 	fd = g_io_channel_unix_get_fd(chan);
 
 	/* FIXME: Add proper version */
 	dev->session = avdtp_new(fd, imtu, omtu, 0x0100);
+	if (!dev->session) {
+		bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
+		return;
+	}
+
 	avdtp_add_disconnect_cb(dev->session, disconnect_cb, dev);
 
 	if (dev->io) {

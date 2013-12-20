@@ -2045,9 +2045,16 @@ struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 {
 	struct avdtp *session;
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+	int new_fd;
+
+	new_fd = dup(fd);
+	if (new_fd < 0) {
+		error("dup(): %s (%d)", strerror(errno), errno);
+		return NULL;
+	}
 
 	session = g_new0(struct avdtp, 1);
-	session->io = g_io_channel_unix_new(fd);
+	session->io = g_io_channel_unix_new(new_fd);
 	session->version = version;
 	session->imtu = imtu;
 	session->omtu = omtu;
