@@ -150,17 +150,14 @@ static void device_props_to_hal(bt_property_t *send_props,
 		{
 			static bt_remote_version_t e;
 			const struct hal_prop_device_info *p;
-			uint16_t tmp;
 
 			send_props[i].val = &e;
 			send_props[i].len = sizeof(e);
 
 			p = (struct hal_prop_device_info *) prop->val;
 
-			memcpy(&tmp, &p->manufacturer, sizeof(tmp));
-			e.manufacturer = tmp;
-			memcpy(&tmp, &p->sub_version, sizeof(tmp));
-			e.sub_ver = tmp;
+			e.manufacturer = p->manufacturer;
+			e.sub_ver = p->sub_version;
 			e.version = p->version;
 		}
 			break;
