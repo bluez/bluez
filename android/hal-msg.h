@@ -107,6 +107,13 @@ struct hal_cmd_get_adapter_prop {
 #define HAL_PROP_DEVICE_CLASS			0x04
 #define HAL_PROP_DEVICE_TYPE			0x05
 #define HAL_PROP_DEVICE_SERVICE_REC		0x06
+struct hal_prop_device_service_rec {
+	uint8_t uuid[16];
+	uint16_t channel;
+	uint8_t name_len;
+	uint8_t name[];
+} __attribute__((packed));
+
 #define HAL_PROP_DEVICE_FRIENDLY_NAME		0x0a
 #define HAL_PROP_DEVICE_RSSI			0x0b
 #define HAL_PROP_DEVICE_VERSION_INFO		0x0c

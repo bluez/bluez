@@ -166,6 +166,21 @@ static void device_props_to_hal(bt_property_t *send_props,
 			break;
 #endif
 		case HAL_PROP_DEVICE_SERVICE_REC:
+		{
+			static bt_service_record_t e;
+			const struct hal_prop_device_service_rec *p;
+
+			send_props[i].val = &e;
+			send_props[i].len = sizeof(e);
+
+			p = (struct hal_prop_device_service_rec *) prop->val;
+
+			memset(&e, 0, sizeof(e));
+			memcpy(&e.channel, &p->channel, sizeof(e.channel));
+			memcpy(e.uuid.uu, p->uuid, sizeof(e.uuid.uu));
+			memcpy(e.name, p->name, p->name_len);
+		}
+			break;
 		default:
 			send_props[i].len = prop->len;
 			send_props[i].val = prop->val;
