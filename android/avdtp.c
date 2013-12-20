@@ -1732,10 +1732,14 @@ static gboolean avdtp_delayreport_cmd(struct avdtp *session,
 
 	stream = sep->stream;
 
-	if (sep->state != AVDTP_STATE_CONFIGURED &&
-					sep->state != AVDTP_STATE_STREAMING) {
+	switch (sep->state) {
+	case AVDTP_STATE_IDLE:
+	case AVDTP_STATE_ABORTING:
+	case AVDTP_STATE_CLOSING:
 		err = AVDTP_BAD_STATE;
 		goto failed;
+	default:
+		break;
 	}
 
 	stream->delay = ntohs(req->delay);
