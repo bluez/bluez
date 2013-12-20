@@ -109,6 +109,7 @@ struct test_data {
 	const void *test_data;
 	pid_t bluetoothd_pid;
 
+	struct hw_device_t *device;
 	const bt_interface_t *if_bluetooth;
 	const btsock_interface_t *if_sock;
 
@@ -838,6 +839,8 @@ static void setup(struct test_data *data)
 		return;
 	}
 
+	data->device = device;
+
 	data->if_bluetooth = ((bluetooth_device_t *)
 					device)->get_bluetooth_interface();
 	if (!data->if_bluetooth) {
@@ -881,6 +884,8 @@ static void teardown(const void *test_data)
 		data->if_bluetooth->cleanup();
 		data->if_bluetooth = NULL;
 	}
+
+	data->device->close(data->device);
 
 	if (data->bluetoothd_pid)
 		waitpid(data->bluetoothd_pid, NULL, 0);
