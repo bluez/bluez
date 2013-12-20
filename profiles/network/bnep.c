@@ -73,6 +73,7 @@ struct bnep {
 	uint16_t	dst;
 	guint	attempts;
 	guint	setup_to;
+	guint	watch;
 	void	*data;
 	bnep_connect_cb	conn_cb;
 };
@@ -375,6 +376,47 @@ static gboolean bnep_conn_req_to(gpointer user_data)
 	free_bnep_connect(session);
 
 	return FALSE;
+}
+
+struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role)
+{
+	struct bnep *session;
+	int dup_fd;
+
+	dup_fd = dup(sk);
+	if (dup_fd < 0)
+		return NULL;
+
+	session = g_new0(struct bnep, 1);
+	session->io = g_io_channel_unix_new(dup_fd);
+	session->src = local_role;
+	session->dst = remote_role;
+
+	g_io_channel_set_close_on_unref(session->io, TRUE);
+	session->watch = g_io_add_watch(session->io,
+				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					(GIOFunc) bnep_setup_cb, session);
+
+	return session;
+}
+
+void bnep_free(struct bnep *session)
+{
+	if (!session)
+		return;
+
+	if (session->io) {
+		g_io_channel_shutdown(session->io, FALSE, NULL);
+		g_io_channel_unref(session->io);
+		session->io = NULL;
+	}
+
+	if (session->watch > 0) {
+		g_source_remove(session->watch);
+		session->watch = 0;
+	}
+
+	g_free(session);
 }
 
 int bnep_connect(int sk, uint16_t src, uint16_t dst, bnep_connect_cb conn_cb,
