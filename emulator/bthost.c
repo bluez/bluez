@@ -1304,11 +1304,6 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 	bthost->new_l2cap_conn_data = data;
 }
 
-void bthost_set_server_psm(struct bthost *bthost, uint16_t psm)
-{
-	bthost_add_l2cap_server(bthost, psm, NULL, NULL);
-}
-
 void bthost_start(struct bthost *bthost)
 {
 	if (!bthost)
