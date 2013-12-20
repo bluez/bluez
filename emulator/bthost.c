@@ -756,6 +756,7 @@ static bool l2cap_conn_req(struct bthost *bthost, struct btconn *conn,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	const struct bt_l2cap_pdu_conn_req *req = data;
+	struct l2cap_conn_cb_data *cb_data;
 	struct bt_l2cap_pdu_conn_rsp rsp;
 	uint16_t psm;
 
@@ -767,7 +768,8 @@ static bool l2cap_conn_req(struct bthost *bthost, struct btconn *conn,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.scid = req->scid;
 
-	if (bthost_find_l2cap_cb_by_psm(bthost, psm))
+	cb_data = bthost_find_l2cap_cb_by_psm(bthost, psm);
+	if (cb_data)
 		rsp.dcid = cpu_to_le16(conn->next_cid++);
 	else
 		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
@@ -777,7 +779,6 @@ static bool l2cap_conn_req(struct bthost *bthost, struct btconn *conn,
 
 	if (!rsp.result) {
 		struct bt_l2cap_pdu_config_req conf_req;
-		struct l2cap_conn_cb_data *cb_data;
 		struct l2conn *l2conn;
 
 		l2conn = bthost_add_l2cap_conn(bthost, conn,
@@ -791,7 +792,6 @@ static bool l2cap_conn_req(struct bthost *bthost, struct btconn *conn,
 		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_CONFIG_REQ, 0,
 						&conf_req, sizeof(conf_req));
 
-		cb_data = bthost_find_l2cap_cb_by_psm(bthost, psm);
 		if (cb_data && l2conn->psm == cb_data->psm && cb_data->func)
 			cb_data->func(conn->handle, l2conn->dcid,
 							cb_data->user_data);
