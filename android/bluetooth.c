@@ -80,6 +80,8 @@ struct device {
 	uint32_t class;
 	int32_t rssi;
 
+	uint32_t timestamp;
+
 	GSList *uuids;
 };
 
@@ -227,6 +229,8 @@ static void store_device_info(struct device *dev)
 	else
 		g_key_file_remove_key(key_file, addr, "Class", NULL);
 
+	g_key_file_set_integer(key_file, addr, "Timestamp", dev->timestamp);
+
 	if (dev->uuids) {
 		GSList *l;
 		int i;
@@ -291,6 +295,7 @@ static struct device *create_device(const bdaddr_t *bdaddr, uint8_t type)
 	bacpy(&dev->bdaddr, bdaddr);
 	dev->bdaddr_type = type;
 	dev->bond_state = HAL_BOND_STATE_NONE;
+	dev->timestamp = time(NULL);
 
 	/* use address for name, will be change if one is present
 	 * eg. in EIR or set by set_property. */
@@ -1004,6 +1009,8 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 		ev->status = HAL_STATUS_SUCCESS;
 		bdaddr2android(bdaddr, ev->bdaddr);
+
+		dev->timestamp = time(NULL);
 	}
 
 	if (eir.class) {
@@ -1606,6 +1613,9 @@ static void create_device_from_info(GKeyFile *key_file, const char *peer)
 	}
 
 	dev->class = g_key_file_get_integer(key_file, peer, "Class", NULL);
+
+	dev->timestamp = g_key_file_get_integer(key_file, peer, "Timestamp",
+									NULL);
 
 	uuids = g_key_file_get_string_list(key_file, peer, "Services", NULL,
 									NULL);
@@ -2647,11 +2657,10 @@ static uint8_t get_device_version_info(struct device *dev)
 
 static uint8_t get_device_timestamp(struct device *dev)
 {
-	DBG("Not implemented");
+	send_device_property(&dev->bdaddr, HAL_PROP_DEVICE_TIMESTAMP,
+				sizeof(dev->timestamp), &dev->timestamp);
 
-	/* TODO */
-
-	return HAL_STATUS_FAILED;
+	return HAL_STATUS_SUCCESS;
 }
 
 static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
