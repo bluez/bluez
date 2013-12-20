@@ -1404,7 +1404,7 @@ static void test_socket_real_connect(const void *test_data)
 
 	bdaddr2android((bdaddr_t *) client_bdaddr, &emu_bdaddr);
 
-	bthost_set_server_psm(bthost, 0x0003);
+	bthost_add_l2cap_server(bthost, 0x0003, NULL, NULL);
 
 	status = data->if_sock->connect(&emu_bdaddr, test->sock_type,
 					test->service_uuid, test->channel,
