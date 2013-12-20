@@ -194,8 +194,11 @@ static void store_device_info(struct device *dev)
 	char **uuids = NULL;
 	char *str;
 
+	/* We only store bonded devices and need to modify the storage
+	 * if the state is either NONE or BONDED.
+	 */
 	if (dev->bond_state != HAL_BOND_STATE_BONDED &&
-			dev->bond_state != HAL_BOND_STATE_NONE)
+					dev->bond_state != HAL_BOND_STATE_NONE)
 		return;
 
 	ba2str(&dev->bdaddr, addr);
