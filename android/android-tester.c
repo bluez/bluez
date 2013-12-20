@@ -1106,12 +1106,14 @@ static const struct socket_data btsock_inv_params_chan_uuid = {
 };
 
 static const struct socket_data btsock_success = {
+	.bdaddr = &bdaddr_dummy,
 	.sock_type = BTSOCK_RFCOMM,
 	.channel = 1,
 	.service_uuid = NULL,
 	.service_name = "Test service",
 	.flags = 0,
 	.expected_status = BT_STATUS_SUCCESS,
+	.test_channel = false
 };
 
 static const struct socket_data btsock_success_check_chan = {
@@ -1623,6 +1625,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Socket Listen - Invalid: double Listen",
 			&btsock_inv_listen_listen,
 			setup_socket_interface, test_listen_listen, teardown);
+
+	test_bredrle("Socket Connect - Check returned fd valid",
+			&btsock_success, setup_socket_interface,
+			test_generic_connect, teardown);
 
 	test_bredrle("Socket Connect - Invalid: sock_type 0",
 			&btsock_inv_param_socktype, setup_socket_interface,
