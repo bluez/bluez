@@ -812,7 +812,7 @@ static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t len)
 #if PLATFORM_SDK_VERSION > 17
 static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t len)
 {
-	uint8_t cmd_buf[sizeof(struct hal_cmd_dut_mode_send) + len];
+	uint8_t cmd_buf[sizeof(struct hal_cmd_le_test_mode) + len];
 	struct hal_cmd_le_test_mode *cmd = (void *) cmd_buf;
 
 	DBG("opcode %u len %u", opcode, len);
