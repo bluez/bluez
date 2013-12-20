@@ -20,11 +20,15 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <cutils/properties.h>
+
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
 #include "hal-ipc.h"
 #include "hal-utils.h"
+
+#define SNOOP_SERVICE_NAME "bluetoothd_snoop"
 
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
@@ -791,6 +795,23 @@ static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t len)
 }
 #endif
 
+#if PLATFORM_SDK_VERSION > 18
+static int config_hci_snoop_log(uint8_t enable)
+{
+	if (enable && property_set("ctl.start", SNOOP_SERVICE_NAME) < 0) {
+		error("Failed to start service %s", SNOOP_SERVICE_NAME);
+		return BT_STATUS_FAIL;
+	}
+
+	if (!enable && property_set("ctl.stop", SNOOP_SERVICE_NAME) < 0) {
+		error("Failed to stop service %s", SNOOP_SERVICE_NAME);
+		return BT_STATUS_FAIL;
+	}
+
+	return BT_STATUS_SUCCESS;
+}
+#endif
+
 static const bt_interface_t bluetooth_if = {
 	.size = sizeof(bt_interface_t),
 	.init = init,
@@ -817,6 +838,9 @@ static const bt_interface_t bluetooth_if = {
 	.dut_mode_send = dut_mode_send,
 #if PLATFORM_SDK_VERSION > 17
 	.le_test_mode = le_test_mode,
+#endif
+#if PLATFORM_SDK_VERSION > 18
+	.config_hci_snoop_log = config_hci_snoop_log,
 #endif
 };
 

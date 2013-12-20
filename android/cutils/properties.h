@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
