@@ -509,7 +509,11 @@ static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
 	int sk;
 
 	sk = g_io_channel_unix_get_fd(io);
-	read(sk, buf, l2data->data_len);
+	if (read(sk, buf, l2data->data_len) != l2data->data_len) {
+		tester_warn("Unable to read %u bytes", l2data->data_len);
+		tester_test_failed();
+		return FALSE;
+	}
 
 	if (memcmp(buf, l2data->read_data, l2data->data_len))
 		tester_test_failed();
@@ -528,7 +532,12 @@ static gboolean server_received_data(GIOChannel *io, GIOCondition cond,
 	int sk;
 
 	sk = g_io_channel_unix_get_fd(io);
-	read(sk, buf, l2data->data_len);
+	if (read(sk, buf, l2data->data_len) != l2data->data_len) {
+		tester_warn("Unable to read %u bytes", l2data->data_len);
+		tester_test_failed();
+		close(sk);
+		return FALSE;
+	}
 
 	if (memcmp(buf, l2data->read_data, l2data->data_len))
 		tester_test_failed();
