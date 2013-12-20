@@ -2567,6 +2567,54 @@ failed:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_DISCOVERY, status);
 }
 
+static void handle_dut_mode_conf_cmd(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_dut_mode_conf *cmd = buf;
+
+	DBG("enable %u", cmd->enable);
+
+	/* TODO */
+
+	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_CONF,
+							HAL_STATUS_FAILED);
+}
+
+static void handle_dut_mode_send_cmd(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_dut_mode_send *cmd = buf;
+
+	if (len != sizeof(*cmd) + cmd->len) {
+		error("Invalid dut mode send cmd, terminating");
+		raise(SIGTERM);
+		return;
+	}
+
+	DBG("opcode %u", cmd->opcode);
+
+	/* TODO */
+
+	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_SEND,
+							HAL_STATUS_FAILED);
+}
+
+static void handle_le_test_mode_cmd(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_le_test_mode *cmd = buf;
+
+	if (len != sizeof(*cmd) + cmd->len) {
+		error("Invalid le test mode cmd, terminating");
+		raise(SIGTERM);
+		return;
+	}
+
+	DBG("opcode %u", cmd->opcode);
+
+	/* TODO */
+
+	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_LE_TEST_MODE,
+							HAL_STATUS_FAILED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_ENABLE */
 	{ handle_enable_cmd, false, 0 },
@@ -2609,6 +2657,14 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_pin_reply_cmd, false, sizeof(struct hal_cmd_pin_reply) },
 	/* HAL_OP_SSP_REPLY */
 	{ handle_ssp_reply_cmd, false, sizeof(struct hal_cmd_ssp_reply) },
+	/* HAL_OP_DUT_MODE_CONF */
+	{ handle_dut_mode_conf_cmd, false,
+					sizeof(struct hal_cmd_dut_mode_conf) },
+	/* HAL_OP_DUT_MODE_SEND */
+	{ handle_dut_mode_send_cmd, true,
+					sizeof(struct hal_cmd_dut_mode_send) },
+	/* HAL_OP_LE_TEST_MODE */
+	{ handle_le_test_mode_cmd, true, sizeof(struct hal_cmd_le_test_mode) },
 };
 
 void bt_bluetooth_register(void)
