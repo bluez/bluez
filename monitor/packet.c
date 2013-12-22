@@ -6670,6 +6670,14 @@ static void slave_broadcast_channel_map_change_evt(const void *data, uint8_t siz
 	print_channel_map(evt->map);
 }
 
+static void inquiry_response_notify_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_inquiry_response_notify *evt = data;
+
+	print_iac(evt->lap);
+	print_rssi(evt->rssi);
+}
+
 static void auth_payload_timeout_expired_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_auth_payload_timeout_expired *evt = data;
@@ -7003,7 +7011,8 @@ static const struct event_data event_table[] = {
 				slave_page_response_timeout_evt, 0, true },
 	{ 0x55, "Connectionless Slave Broadcast Channel Map Change",
 				slave_broadcast_channel_map_change_evt, 10, true },
-	{ 0x56, "Inquiry Response Notification" },
+	{ 0x56, "Inquiry Response Notification",
+				inquiry_response_notify_evt, 4, true },
 	{ 0x57, "Authenticated Payload Timeout Expired",
 				auth_payload_timeout_expired_evt, 2, true },
 	{ 0xfe, "Testing" },

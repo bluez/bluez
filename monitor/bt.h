@@ -2025,6 +2025,12 @@ struct bt_hci_evt_slave_broadcast_channel_map_change {
 	uint8_t  map[10];
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_INQUIRY_RESPONSE_NOTIFY	0x56
+struct bt_hci_evt_inquiry_response_notify {
+	uint8_t  lap[3];
+	int8_t   rssi;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_AUTH_PAYLOAD_TIMEOUT_EXPIRED	0x57
 struct bt_hci_evt_auth_payload_timeout_expired {
 	uint16_t handle;
