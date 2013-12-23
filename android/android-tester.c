@@ -148,18 +148,21 @@ static void test_device_property(bt_property_t *property,
 	if (value == NULL) {
 		tester_warn("NULL property passed");
 		tester_test_failed();
+		return;
 	}
 
 	if (property->type != type) {
 		tester_warn("Wrong remote property type %d, expected %d",
 							type, property->type);
 		tester_test_failed();
+		return;
 	}
 
 	if (property->len != len) {
 		tester_warn("Wrong remote property len %d, expected %d",
 							len, property->len);
 		tester_test_failed();
+		return;
 	}
 
 	if (memcmp(property->val, value, len)) {
