@@ -715,12 +715,14 @@ static const struct generic_data bluetooth_disable_success_test = {
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
+static char test_set_bdname[] = "test_bdname_set";
+
 static const struct generic_data bluetooth_setprop_bdname_success_test = {
 	.expected_hal_callbacks = { ADAPTER_PROP_BDNAME, ADAPTER_TEST_END },
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_property.type = BT_PROPERTY_BDNAME,
-	.expected_property.val = "test_bdname",
-	.expected_property.len = 11,
+	.expected_property.val = test_set_bdname,
+	.expected_property.len = sizeof(test_set_bdname) - 1,
 };
 
 static bt_scan_mode_t test_setprop_scanmode_val =
