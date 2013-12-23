@@ -47,10 +47,6 @@
 			ADAPTER_PROP_TYPE, ADAPTER_PROP_SCAN_MODE, \
 			ADAPTER_PROP_BONDED_DEVICES, ADAPTER_PROP_DISC_TIMEOUT
 
-static bt_scan_mode_t test_setprop_scanmode_val =
-					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE;
-static uint32_t test_setprop_disctimeout_val = 120;
-
 /*
  * those are assigned to HAL methods and callbacks, we use ID later
  * on mapped in switch-case due to different functions prototypes.
@@ -727,6 +723,9 @@ static const struct generic_data bluetooth_setprop_bdname_success_test = {
 	.expected_property.len = 11
 };
 
+static bt_scan_mode_t test_setprop_scanmode_val =
+					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE;
+
 static const struct generic_data bluetooth_setprop_scanmode_success_test = {
 	.expected_hal_callbacks = { ADAPTER_PROP_SCAN_MODE,
 						ADAPTER_PROP_SCAN_MODE,
@@ -736,6 +735,8 @@ static const struct generic_data bluetooth_setprop_scanmode_success_test = {
 	.expected_property.val = &test_setprop_scanmode_val,
 	.expected_property.len = sizeof(bt_scan_mode_t)
 };
+
+static uint32_t test_setprop_disctimeout_val = 120;
 
 static const struct generic_data bluetooth_setprop_disctimeout_success_test = {
 	.expected_hal_callbacks = { ADAPTER_PROP_DISC_TIMEOUT, ADAPTER_TEST_END },
