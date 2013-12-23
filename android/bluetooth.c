@@ -2146,6 +2146,10 @@ static void handle_get_adapter_prop_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
+	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+		error("Failed to get adapter property (type %u status %u)",
+							cmd->type, status);
+
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROP, status);
 }
 
@@ -2292,6 +2296,10 @@ static void handle_set_adapter_prop_cmd(const void *buf, uint16_t len)
 		status = HAL_STATUS_FAILED;
 		break;
 	}
+
+	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+		error("Failed to set adapter property (type %u status %u)",
+							cmd->type, status);
 
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_ADAPTER_PROP, status);
 }
@@ -2745,6 +2753,10 @@ static void handle_get_remote_device_prop_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
+	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+		error("Failed to get device property (type %u status %u)",
+							cmd->type, status);
+
 failed:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_DEVICE_PROP,
 								status);
@@ -2809,6 +2821,10 @@ static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
+	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+		error("Failed to set device property (type %u status %u)",
+							cmd->type, status);
+
 failed:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_REMOTE_DEVICE_PROP,
 									status);
@@ -2817,6 +2833,8 @@ failed:
 static void handle_get_remote_service_rec_cmd(const void *buf, uint16_t len)
 {
 	/* TODO */
+
+	error("get_remote_service_record not supported");
 
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_SERVICE_REC,
 							HAL_STATUS_FAILED);
@@ -2914,7 +2932,7 @@ static void handle_dut_mode_send_cmd(const void *buf, uint16_t len)
 		return;
 	}
 
-	DBG("opcode %u", cmd->opcode);
+	error("dut_mode_send not supported");
 
 	/* TODO */
 
@@ -2932,7 +2950,7 @@ static void handle_le_test_mode_cmd(const void *buf, uint16_t len)
 		return;
 	}
 
-	DBG("opcode %u", cmd->opcode);
+	error("le_test_mode not supported");
 
 	/* TODO */
 
