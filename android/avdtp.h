@@ -161,7 +161,6 @@ struct avdtp_sep_cfm {
 struct avdtp_sep_ind {
 	gboolean (*get_capability) (struct avdtp *session,
 					struct avdtp_local_sep *sep,
-					gboolean get_all,
 					GSList **caps, uint8_t *err,
 					void *user_data);
 	gboolean (*set_configuration) (struct avdtp *session,

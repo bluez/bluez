@@ -1192,8 +1192,8 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
 		goto failed;
 	}
 
-	if (!sep->ind->get_capability(session, sep, get_all, &caps,
-							&err, sep->user_data))
+	if (!sep->ind->get_capability(session, sep, &caps, &err,
+							sep->user_data))
 		goto failed;
 
 	for (l = caps, rsp_size = 0; l != NULL; l = g_slist_next(l)) {

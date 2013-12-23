@@ -269,8 +269,8 @@ static void execute_context(struct context *context)
 
 static gboolean sep_getcap_ind(struct avdtp *session,
 					struct avdtp_local_sep *sep,
-					gboolean get_all, GSList **caps,
-					uint8_t *err, void *user_data)
+					GSList **caps, uint8_t *err,
+					void *user_data)
 {
 	struct avdtp_service_capability *media_transport, *media_codec;
 	struct avdtp_media_codec_capability *codec_caps;
@@ -550,8 +550,8 @@ static void test_server_0_sep(gconstpointer data)
 
 static gboolean sep_getcap_ind_frg(struct avdtp *session,
 					struct avdtp_local_sep *sep,
-					gboolean get_all, GSList **caps,
-					uint8_t *err, void *user_data)
+					GSList **caps, uint8_t *err,
+					void *user_data)
 {
 	struct avdtp_service_capability *media_transport, *media_codec;
 	struct avdtp_service_capability *content_protection;
