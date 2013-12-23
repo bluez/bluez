@@ -171,6 +171,7 @@ int main(int argc, char *argv[])
 
 	mainloop_add_fd(fd, EPOLLIN, system_socket_callback, NULL, NULL);
 
+	/* Make sure bluetoothd creates files with proper permissions */
 	umask(0177);
 
 	return mainloop_run();
