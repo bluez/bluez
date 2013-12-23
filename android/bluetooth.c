@@ -2736,19 +2736,19 @@ static void handle_get_adapter_props_cmd(const void *buf, uint16_t len)
 static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_get_remote_device_props *cmd = buf;
+	struct device *dev;
 	uint8_t status;
 	bdaddr_t addr;
-	GSList *l;
 
 	android2bdaddr(cmd->bdaddr, &addr);
 
-	l = g_slist_find_custom(devices, &addr, bdaddr_cmp);
-	if (!l) {
+	dev = find_device(&addr);
+	if (!dev) {
 		status = HAL_STATUS_INVALID;
 		goto failed;
 	}
 
-	get_remote_device_props(l->data);
+	get_remote_device_props(dev);
 
 	status = HAL_STATUS_SUCCESS;
 
@@ -2760,45 +2760,45 @@ failed:
 static void handle_get_remote_device_prop_cmd(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_get_remote_device_prop *cmd = buf;
+	struct device *dev;
 	uint8_t status;
 	bdaddr_t addr;
-	GSList *l;
 
 	android2bdaddr(cmd->bdaddr, &addr);
 
-	l = g_slist_find_custom(devices, &addr, bdaddr_cmp);
-	if (!l) {
+	dev = find_device(&addr);
+	if (!dev) {
 		status = HAL_STATUS_INVALID;
 		goto failed;
 	}
 
 	switch (cmd->type) {
 	case HAL_PROP_DEVICE_NAME:
-		status = get_device_name(l->data);
+		status = get_device_name(dev);
 		break;
 	case HAL_PROP_DEVICE_UUIDS:
-		status = get_device_uuids(l->data);
+		status = get_device_uuids(dev);
 		break;
 	case HAL_PROP_DEVICE_CLASS:
-		status = get_device_class(l->data);
+		status = get_device_class(dev);
 		break;
 	case HAL_PROP_DEVICE_TYPE:
-		status = get_device_type(l->data);
+		status = get_device_type(dev);
 		break;
 	case HAL_PROP_DEVICE_SERVICE_REC:
-		status = get_device_service_rec(l->data);
+		status = get_device_service_rec(dev);
 		break;
 	case HAL_PROP_DEVICE_FRIENDLY_NAME:
-		status = get_device_friendly_name(l->data);
+		status = get_device_friendly_name(dev);
 		break;
 	case HAL_PROP_DEVICE_RSSI:
-		status = get_device_rssi(l->data);
+		status = get_device_rssi(dev);
 		break;
 	case HAL_PROP_DEVICE_VERSION_INFO:
-		status = get_device_version_info(l->data);
+		status = get_device_version_info(dev);
 		break;
 	case HAL_PROP_DEVICE_TIMESTAMP:
-		status = get_device_timestamp(l->data);
+		status = get_device_timestamp(dev);
 		break;
 	default:
 		status = HAL_STATUS_FAILED;
@@ -2842,9 +2842,9 @@ static uint8_t set_device_version_info(struct device *dev)
 static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_set_remote_device_prop *cmd = buf;
+	struct device *dev;
 	uint8_t status;
 	bdaddr_t addr;
-	GSList *l;
 
 	if (len != sizeof(*cmd) + cmd->len) {
 		error("Invalid set remote device prop cmd (0x%x), terminating",
@@ -2855,18 +2855,18 @@ static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
 
 	android2bdaddr(cmd->bdaddr, &addr);
 
-	l = g_slist_find_custom(devices, &addr, bdaddr_cmp);
-	if (!l) {
+	dev = find_device(&addr);
+	if (!dev) {
 		status = HAL_STATUS_INVALID;
 		goto failed;
 	}
 
 	switch (cmd->type) {
 	case HAL_PROP_DEVICE_FRIENDLY_NAME:
-		status = set_device_friendly_name(l->data, cmd->val, cmd->len);
+		status = set_device_friendly_name(dev, cmd->val, cmd->len);
 		break;
 	case HAL_PROP_DEVICE_VERSION_INFO:
-		status = set_device_version_info(l->data);
+		status = set_device_version_info(dev);
 		break;
 	default:
 		status = HAL_STATUS_FAILED;
