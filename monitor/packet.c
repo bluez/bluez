@@ -2445,7 +2445,7 @@ static void print_manufacturer_data(const void *data, uint8_t data_len)
 
 static void print_device_id(const void *data, uint8_t data_len)
 {
-	uint16_t source;
+	uint16_t source, version;
 	const char *str;
 
 	if (data_len < 8)
@@ -2473,7 +2473,13 @@ static void print_device_id(const void *data, uint8_t data_len)
 		print_field("  Vendor: 0x%4.4x", bt_get_le16(data + 2));
 
 	print_field("  Product: 0x%4.4x", bt_get_le16(data + 4));
-	print_field("  Version: 0x%4.4x", bt_get_le16(data + 6));
+
+	version = bt_get_le16(data + 6);
+
+	print_field("  Version: %u.%u.%u (0x%4.4x)",
+					(version & 0xff00) >> 8,
+					(version & 0x00f0) >> 4,
+					(version & 0x000f), version);
 }
 
 static void print_uuid16_list(const char *label, const void *data,
