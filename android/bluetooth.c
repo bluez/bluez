@@ -2932,7 +2932,7 @@ static void handle_dut_mode_send_cmd(const void *buf, uint16_t len)
 		return;
 	}
 
-	error("dut_mode_send not supported");
+	error("dut_mode_send not supported (cmd opcode %u)", cmd->opcode);
 
 	/* TODO */
 
@@ -2950,7 +2950,7 @@ static void handle_le_test_mode_cmd(const void *buf, uint16_t len)
 		return;
 	}
 
-	error("le_test_mode not supported");
+	error("le_test_mode not supported (cmd opcode %u)", cmd->opcode);
 
 	/* TODO */
 
