@@ -104,6 +104,7 @@ happen only in daemon.
 
 HAL Bluetooth
 =============
+
 methods:
 dut_mode_send                      never called from Android Framework
 le_test_mode                       never called from Android Framework
@@ -127,4 +128,5 @@ BT_PROPERTY_REMOTE_VERSION_INFO    information required by this property (LMP
 
 Socket HAL
 ==========
+
 Support only for BTSOCK_RFCOMM socket type.
