@@ -2196,7 +2196,7 @@ static bool stop_discovery(void)
 					sizeof(cp), &cp, NULL, NULL, NULL) > 0)
 		return true;
 
-	error("Failed to start discovery");
+	error("Failed to stop discovery");
 	return false;
 }
 
