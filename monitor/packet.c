@@ -44,6 +44,7 @@
 #include "display.h"
 #include "bt.h"
 #include "ll.h"
+#include "hwdb.h"
 #include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
@@ -2445,41 +2446,63 @@ static void print_manufacturer_data(const void *data, uint8_t data_len)
 
 static void print_device_id(const void *data, uint8_t data_len)
 {
-	uint16_t source, version;
+	uint16_t source, vendor, product, version;
+	char modalias[26], *vendor_str, *product_str;
 	const char *str;
 
 	if (data_len < 8)
 		return;
 
 	source = bt_get_le16(data);
+	vendor = bt_get_le16(data + 2);
+	product = bt_get_le16(data + 4);
+	version = bt_get_le16(data + 6);
 
 	switch (source) {
 	case 0x0001:
 		str = "Bluetooth SIG assigned";
+		sprintf(modalias, "bluetooth:v%04Xp%04Xd%04X",
+						vendor, product, version);
 		break;
 	case 0x0002:
 		str = "USB Implementer's Forum assigned";
+		sprintf(modalias, "usb:v%04Xp%04Xd%04X",
+						vendor, product, version);
 		break;
 	default:
 		str = "Reserved";
+		modalias[0] = '\0';
 		break;
 	}
 
 	print_field("Device ID: %s (0x%4.4x)", str, source);
 
-	if (source == 0x0001)
-		packet_print_company("  Vendor", bt_get_le16(data + 2));
+	if (!hwdb_get_vendor_model(modalias, &vendor_str, &product_str)) {
+		vendor_str = NULL;
+		product_str = NULL;
+	}
+
+	if (source != 0x0001) {
+		if (vendor_str)
+			print_field("  Vendor: %s (0x%4.4x)",
+						vendor_str, vendor);
+		else
+			print_field("  Vendor: 0x%4.4x", vendor);
+	} else
+		packet_print_company("  Vendor", vendor);
+
+	if (product_str)
+		print_field("  Product: %s (0x%4.4x)", product_str, product);
 	else
-		print_field("  Vendor: 0x%4.4x", bt_get_le16(data + 2));
-
-	print_field("  Product: 0x%4.4x", bt_get_le16(data + 4));
-
-	version = bt_get_le16(data + 6);
+		print_field("  Product: 0x%4.4x", product);
 
 	print_field("  Version: %u.%u.%u (0x%4.4x)",
 					(version & 0xff00) >> 8,
 					(version & 0x00f0) >> 4,
 					(version & 0x000f), version);
+
+	free(vendor_str);
+	free(product_str);
 }
 
 static void print_uuid16_list(const char *label, const void *data,

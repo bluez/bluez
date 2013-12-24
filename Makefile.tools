@@ -22,12 +22,13 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 					monitor/packet.h monitor/packet.c \
 					monitor/vendor.h monitor/vendor.c \
 					monitor/lmp.h monitor/lmp.c \
-					monitor/l2cap.h monitor/l2cap.c \
-					monitor/uuid.h monitor/uuid.c \
-					monitor/sdp.h monitor/sdp.c \
 					monitor/crc.h monitor/crc.c \
-					monitor/ll.h monitor/ll.c
-monitor_btmon_LDADD = lib/libbluetooth-internal.la
+					monitor/ll.h monitor/ll.c \
+					monitor/l2cap.h monitor/l2cap.c \
+					monitor/sdp.h monitor/sdp.c \
+					monitor/uuid.h monitor/uuid.c \
+					monitor/hwdb.h monitor/hwdb.c
+monitor_btmon_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
 endif
 
 if EXPERIMENTAL
