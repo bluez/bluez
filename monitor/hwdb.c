@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <string.h>
 
 #include "hwdb.h"
@@ -76,8 +77,57 @@ done:
 
 	return result;
 }
+
+bool hwdb_get_company(const uint8_t *bdaddr, char **company)
+{
+	struct udev *udev;
+	struct udev_hwdb *hwdb;
+	struct udev_list_entry *head, *entry;
+	char modalias[11];
+	bool result;
+
+	sprintf(modalias, "OUI:%2.2X%2.2X%2.2X",
+				bdaddr[5], bdaddr[4], bdaddr[3]);
+
+	udev = udev_new();
+	if (!udev)
+		return false;
+
+	hwdb = udev_hwdb_new(udev);
+	if (!hwdb) {
+		result = false;
+		goto done;
+	}
+
+	*company = NULL;
+
+	head = udev_hwdb_get_properties_list_entry(hwdb, modalias, 0);
+
+	udev_list_entry_foreach(entry, head) {
+		const char *name = udev_list_entry_get_name(entry);
+
+		if (name && !strcmp(name, "ID_OUI_FROM_DATABASE")) {
+			*company = strdup(udev_list_entry_get_value(entry));
+			break;
+		}
+	}
+
+	hwdb = udev_hwdb_unref(hwdb);
+
+	result = true;
+
+done:
+	udev = udev_unref(udev);
+
+	return result;
+}
 #else
 bool hwdb_get_vendor_model(const char *modalias, char **vendor, char **model)
+{
+	return false;
+}
+
+bool hwdb_get_company(const uint8_t *bdaddr, char **company)
 {
 	return false;
 }

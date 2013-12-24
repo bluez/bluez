@@ -395,27 +395,29 @@ static void print_reason(uint8_t reason)
 	print_error("Reason", reason);
 }
 
-static void print_bdaddr(const uint8_t *bdaddr)
-{
-	print_field("Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
-					" (OUI %2.2X-%2.2X-%2.2X)",
-					bdaddr[5], bdaddr[4], bdaddr[3],
-					bdaddr[2], bdaddr[1], bdaddr[0],
-					bdaddr[5], bdaddr[4], bdaddr[3]);
-}
-
 static void print_addr(const char *label, const uint8_t *addr,
 						uint8_t addr_type)
 {
 	const char *str;
+	char *company;
 
 	switch (addr_type) {
 	case 0x00:
-		print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
-				" (OUI %2.2X-%2.2X-%2.2X)", label,
-					addr[5], addr[4], addr[3],
-					addr[2], addr[1], addr[0],
-					addr[5], addr[4], addr[3]);
+		if (!hwdb_get_company(addr, &company))
+			company = NULL;
+
+		if (company)
+			print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
+					" (%s)", label, addr[5], addr[4],
+							addr[3], addr[2],
+							addr[1], addr[0],
+							company);
+		else
+			print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
+					" (OUI %2.2X-%2.2X-%2.2X)", label,
+						addr[5], addr[4], addr[3],
+						addr[2], addr[1], addr[0],
+						addr[5], addr[4], addr[3]);
 		break;
 	case 0x01:
 		switch ((addr[5] & 0xc0) >> 6) {
@@ -462,6 +464,11 @@ static void print_addr_type(const char *label, uint8_t addr_type)
 	}
 
 	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
+}
+
+static void print_bdaddr(const uint8_t *bdaddr)
+{
+	print_addr("Address", bdaddr, 0x00);
 }
 
 static void print_lt_addr(uint8_t lt_addr)

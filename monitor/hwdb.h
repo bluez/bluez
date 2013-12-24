@@ -22,6 +22,8 @@
  *
  */
 
+#include <stdint.h>
 #include <stdbool.h>
 
 bool hwdb_get_vendor_model(const char *modalias, char **vendor, char **model);
+bool hwdb_get_company(const uint8_t *bdaddr, char **company);
