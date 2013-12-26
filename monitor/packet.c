@@ -6120,6 +6120,13 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 		return;
 	}
 
+	if (opcode_data->rsp_size > 1 && size - 3 == 1) {
+		uint8_t status = *((uint8_t *) (data + 3));
+
+		print_status(status);
+		return;
+	}
+
 	if (opcode_data->rsp_fixed) {
 		if (size - 3 != opcode_data->rsp_size) {
 			print_text(COLOR_ERROR, "invalid packet size");
