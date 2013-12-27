@@ -44,6 +44,8 @@
 #include "utils.h"
 #include "bluetooth.h"
 #include "avdtp.h"
+#include "audio-msg.h"
+#include "audio-ipc.h"
 
 #define L2CAP_PSM_AVDTP 0x19
 #define SVC_HINT_CAPTURING 0x08
@@ -352,12 +354,17 @@ static sdp_record_t *a2dp_record(void)
 	return record;
 }
 
+static const struct ipc_handler audio_handlers[] = {
+};
+
 bool bt_a2dp_register(const bdaddr_t *addr)
 {
 	GError *err = NULL;
 	sdp_record_t *rec;
 
 	DBG("");
+
+	audio_ipc_init();
 
 	bacpy(&adapter_addr, addr);
 
@@ -388,6 +395,8 @@ bool bt_a2dp_register(const bdaddr_t *addr)
 	ipc_register(HAL_SERVICE_ID_A2DP, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
+	audio_ipc_register(audio_handlers, G_N_ELEMENTS(audio_handlers));
+
 	return true;
 
 fail:
@@ -411,8 +420,9 @@ void bt_a2dp_unregister(void)
 	g_slist_foreach(devices, a2dp_device_disconnected, NULL);
 	devices = NULL;
 
-
 	ipc_unregister(HAL_SERVICE_ID_A2DP);
+	audio_ipc_unregister();
+
 	bt_adapter_remove_record(record_id);
 	record_id = 0;
 
@@ -421,4 +431,6 @@ void bt_a2dp_unregister(void)
 		g_io_channel_unref(server);
 		server = NULL;
 	}
+
+	audio_ipc_cleanup();
 }
