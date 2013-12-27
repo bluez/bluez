@@ -80,7 +80,7 @@ include_HEADERS += $(lib_headers)
 lib_LTLIBRARIES += lib/libbluetooth.la
 
 lib_libbluetooth_la_SOURCES = $(lib_headers) $(lib_sources)
-lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 20:3:17
+lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 20:4:17
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 endif
 
