@@ -361,9 +361,18 @@ static void bt_audio_open(const void *buf, uint16_t len)
 	audio_ipc_send_rsp(AUDIO_OP_OPEN, AUDIO_STATUS_FAILED);
 }
 
+static void bt_audio_close(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+
+	audio_ipc_send_rsp(AUDIO_OP_CLOSE, HAL_STATUS_FAILED);
+}
+
 static const struct ipc_handler audio_handlers[] = {
 	/* AUDIO_OP_OPEN */
 	{ bt_audio_open, true, sizeof(struct audio_cmd_open) },
+	/* AUDIO_OP_CLOSE */
+	{ bt_audio_close, false, sizeof(struct audio_cmd_close) },
 };
 
 bool bt_a2dp_register(const bdaddr_t *addr)
