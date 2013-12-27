@@ -1,3 +1,12 @@
+ver 5.13:
+	Fix issue with PS3 controller detection.
+	Add support for data transfers to L2CAP testing tool.
+	Add support for delay reporting to AVDTP testing tool.
+	Add support for Android Bluetooth Core interface.
+	Add support for Android Bluetooth Socket interface.
+	Add support for Android Bluetooth HID Host interface.
+	Add support for Android Bluetooth PAN interface.
+
 ver 5.12:
 	Fix issue with missing reply to DisconnectProfile.
 	Fix issue with icon property and class of device changes.
@@ -8,7 +17,7 @@ ver 5.12:
 	Add support for LE L2CAP CoC test capabilities.
 	Add support for AVDTP qualification test cases.
 	Add support for SMP cryptographic test cases.
-s
+
 ver 5.11:
 	Fix issue with connection attempt when not powered.
 	Fix issue with assigning player to AVRCP target role.
