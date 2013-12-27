@@ -77,3 +77,8 @@ struct audio_cmd_close_stream {
 struct audio_cmd_resume_stream {
 	uint8_t id;
 } __attribute__((packed));
+
+#define AUDIO_OP_SUSPEND_STREAM		0x06
+struct audio_cmd_suspend_stream {
+	uint8_t id;
+} __attribute__((packed));

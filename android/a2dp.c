@@ -389,6 +389,13 @@ static void bt_stream_resume(const void *buf, uint16_t len)
 	audio_ipc_send_rsp(AUDIO_OP_RESUME_STREAM, AUDIO_STATUS_FAILED);
 }
 
+static void bt_stream_suspend(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+
+	audio_ipc_send_rsp(AUDIO_OP_SUSPEND_STREAM, AUDIO_STATUS_FAILED);
+}
+
 static const struct ipc_handler audio_handlers[] = {
 	/* AUDIO_OP_OPEN */
 	{ bt_audio_open, true, sizeof(struct audio_cmd_open) },
@@ -400,6 +407,8 @@ static const struct ipc_handler audio_handlers[] = {
 	{ bt_stream_close, false, sizeof(struct audio_cmd_close_stream) },
 	/* AUDIO_OP_RESUME_STREAM */
 	{ bt_stream_resume, false, sizeof(struct audio_cmd_resume_stream) },
+	/* AUDIO_OP_SUSPEND_STREAM */
+	{ bt_stream_suspend, false, sizeof(struct audio_cmd_suspend_stream) },
 };
 
 bool bt_a2dp_register(const bdaddr_t *addr)
