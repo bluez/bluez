@@ -354,7 +354,16 @@ static sdp_record_t *a2dp_record(void)
 	return record;
 }
 
+static void bt_audio_open(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+
+	audio_ipc_send_rsp(AUDIO_OP_OPEN, AUDIO_STATUS_FAILED);
+}
+
 static const struct ipc_handler audio_handlers[] = {
+	/* AUDIO_OP_OPEN */
+	{ bt_audio_open, true, sizeof(struct audio_cmd_open) },
 };
 
 bool bt_a2dp_register(const bdaddr_t *addr)

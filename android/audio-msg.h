@@ -34,3 +34,21 @@ static const char BLUEZ_AUDIO_SK_PATH[] = "\0bluez_audio_socket";
 struct audio_status {
 	uint8_t code;
 } __attribute__((packed));
+
+#define AUDIO_OP_OPEN			0x01
+struct audio_preset {
+	uint8_t len;
+	uint8_t data[0];
+} __attribute__((packed));
+
+struct audio_cmd_open {
+	uint16_t uuid;
+	uint8_t codec;
+	uint8_t presets;
+	uint8_t len;
+	struct audio_preset preset[0];
+} __attribute__((packed));
+
+struct audio_rsp_open {
+	uint8_t id;
+} __attribute__((packed));
