@@ -15,6 +15,7 @@ noinst_PROGRAMS += android/bluetoothd
 android_bluetoothd_SOURCES = android/main.c \
 				src/log.c \
 				android/hal-msg.h \
+				android/audio-msg.h \
 				android/utils.h \
 				src/sdpd-database.c src/sdpd-server.c \
 				src/sdpd-service.c src/sdpd-request.c \
@@ -25,6 +26,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/bluetooth.h android/bluetooth.c \
 				android/hidhost.h android/hidhost.c \
 				android/ipc.h android/ipc.c \
+				android/audio-ipc.h android/audio-ipc.c \
 				android/avdtp.h android/avdtp.c \
 				android/a2dp.h android/a2dp.c \
 				android/socket.h android/socket.c \

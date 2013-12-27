@@ -145,7 +145,7 @@ static gboolean notif_watch_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static GIOChannel *connect_hal(GIOFunc connect_cb)
+GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb)
 {
 	struct sockaddr_un addr;
 	GIOCondition cond;
@@ -167,11 +167,11 @@ static GIOChannel *connect_hal(GIOFunc connect_cb)
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 
-	memcpy(addr.sun_path, BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH));
+	memcpy(addr.sun_path, path, size);
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("IPC: failed to connect HAL socket: %d (%s)", errno,
-							strerror(errno));
+		error("IPC: failed to connect HAL socket %s: %d (%s)", &path[1],
+							errno, strerror(errno));
 		g_io_channel_unref(io);
 		return NULL;
 	}
@@ -218,7 +218,8 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	notif_io = connect_hal(notif_connect_cb);
+	notif_io = ipc_connect(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
+							notif_connect_cb);
 	if (!notif_io)
 		raise(SIGTERM);
 
@@ -227,7 +228,8 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 
 void ipc_init(void)
 {
-	cmd_io = connect_hal(cmd_connect_cb);
+	cmd_io = ipc_connect(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
+							cmd_connect_cb);
 	if (!cmd_io)
 		raise(SIGTERM);
 }

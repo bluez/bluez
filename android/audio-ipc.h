@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2013  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2014  Intel Corporation. All rights reserved.
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -21,20 +21,5 @@
  *
  */
 
-struct ipc_handler {
-	void (*handler) (const void *buf, uint16_t len);
-	bool var_len;
-	size_t data_len;
-};
-void ipc_init(void);
-void ipc_cleanup(void);
-GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb);
-
-void ipc_send_rsp(uint8_t service_id, uint8_t opcode, uint8_t status);
-void ipc_send_rsp_full(uint8_t service_id, uint8_t opcode, uint16_t len,
-							void *param, int fd);
-void ipc_send_notif(uint8_t service_id, uint8_t opcode,  uint16_t len,
-								void *param);
-void ipc_register(uint8_t service, const struct ipc_handler *handlers,
-								uint8_t size);
-void ipc_unregister(uint8_t service);
+void audio_ipc_init(void);
+void audio_ipc_cleanup(void);

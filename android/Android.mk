@@ -26,6 +26,7 @@ LOCAL_SRC_FILES := \
 	hidhost.c \
 	socket.c \
 	ipc.c ipc.h \
+	audio-ipc.c audio-ipc.h \
 	avdtp.c \
 	a2dp.c \
 	pan.c \
