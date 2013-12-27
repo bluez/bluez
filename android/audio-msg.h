@@ -67,3 +67,8 @@ struct audio_rsp_open_stream {
 	uint8_t len;
 	uint8_t data[0];
 } __attribute__((packed));
+
+#define AUDIO_OP_CLOSE_STREAM		0x04
+struct audio_cmd_close_stream {
+	uint8_t id;
+} __attribute__((packed));
