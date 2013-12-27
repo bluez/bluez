@@ -542,7 +542,7 @@ const char *bt_compidtostr(int compid)
 	case 139:
 		return "Topcorn Positioning Systems, LLC";
 	case 140:
-		return "Qualcomm Labs, Inc.";
+		return "Qualcomm Retail Solutions, Inc. (formerly Qualcomm Labs, Inc.)";
 	case 141:
 		return "Zscan Software";
 	case 142:
@@ -817,6 +817,14 @@ const char *bt_compidtostr(int compid)
 		return "e.solutions";
 	case 278:
 		return "1OAK Technologies";
+	case 279:
+		return "Wimoto Technologies Inc";
+	case 280:
+		return "Radius Networks, Inc.";
+	case 281:
+		return "Wize Technology Co., Ltd.";
+	case 282:
+		return "Qualcomm Labs, Inc.";
 	case 65535:
 		return "internal use";
 	default:
