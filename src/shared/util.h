@@ -21,6 +21,19 @@
  *
  */
 
+#include <stdlib.h>
+#include <alloca.h>
+
+#define PTR_TO_UINT(p) ((unsigned int) ((uintptr_t) (p)))
+#define UINT_TO_PTR(u) ((void *) ((uintptr_t) (u)))
+
+#define PTR_TO_INT(p) ((int) ((intptr_t) (p)))
+#define INT_TO_PTR(u) ((void *) ((intptr_t) (u)))
+
+#define new0(t, n) ((t*) calloc((n), sizeof(t)))
+#define newa(t, n) ((t*) alloca(sizeof(t)*(n)))
+#define malloc0(n) (calloc((n), 1))
+
 typedef void (*util_debug_func_t)(const char *str, void *user_data);
 
 void util_debug(util_debug_func_t function, void *user_data,
