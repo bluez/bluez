@@ -185,6 +185,8 @@ LOCAL_SRC_FILES := \
 	../monitor/crc.c \
 	../monitor/ll.h \
 	../monitor/ll.c \
+	../monitor/hwdb.h \
+	../monitor/hwdb.c \
 	../lib/hci.c \
 	../lib/bluetooth.c \
 
