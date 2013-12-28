@@ -28,7 +28,7 @@ path=en-us/specification/assigned-numbers/company-identifiers
 #   some versions incorrectly convert it into "\xC2\xA0"
 curl https://www.bluetooth.org/$path | iconv -c -f utf8 -t ascii | \
     sed '/<input.*type="checkbox"/d; s/&#160;/ /g' | \
-    html2text -ascii -o identifiers.txt >/dev/null
+    html2text -ascii -width 160 -o identifiers.txt >/dev/null
 
 # Some versions of html2text do not replace &amp; (e.g. Fedora)
 sed -i 's/&amp;/\&/g' identifiers.txt
