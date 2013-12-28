@@ -32,7 +32,7 @@ monitor_btmon_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
 endif
 
 if EXPERIMENTAL
-noinst_PROGRAMS += emulator/btvirt emulator/b1ee \
+noinst_PROGRAMS += emulator/btvirt emulator/b1ee tools/3dsp \
 					tools/mgmt-tester tools/gap-tester \
 					tools/l2cap-tester tools/sco-tester \
 					tools/smp-tester
@@ -43,9 +43,16 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 					emulator/vhci.h emulator/vhci.c \
 					emulator/btdev.h emulator/btdev.c \
 					emulator/bthost.h emulator/bthost.c \
-					emulator/amp.h emulator/amp.c
+					emulator/amp.h emulator/amp.c \
+					emulator/le.h emulator/le.c
 
 emulator_b1ee_SOURCES = emulator/b1ee.c monitor/mainloop.h monitor/mainloop.c
+
+tools_3dsp_SOURCES = tools/3dsp.c monitor/bt.h \
+					monitor/mainloop.h monitor/mainloop.c \
+					src/shared/util.h src/shared/util.c \
+					src/shared/queue.h src/shared/queue.c \
+					src/shared/hci.h src/shared/hci.c
 
 tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \

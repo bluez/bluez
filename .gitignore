@@ -65,6 +65,7 @@ tools/bluetooth-player
 tools/l2cap-tester
 tools/sco-tester
 tools/btinfo
+tools/3dsp
 tools/obexctl
 test/sap_client.pyc
 test/bluezutils.pyc
