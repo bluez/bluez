@@ -138,6 +138,10 @@ static void ext_inquiry_result(const void *data, uint8_t size, void *user_data)
 {
 	const struct bt_hci_evt_ext_inquiry_result *evt = data;
 
+	if (evt->dev_class[0] != 0x3c || evt->dev_class[1] != 0x04
+					|| evt->dev_class[2] != 0x08)
+		return;
+
 	if (evt->data[0]) {
 		struct bt_hci_cmd_truncated_page cmd;
 
