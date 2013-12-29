@@ -1418,14 +1418,24 @@ static void print_pin_code(const uint8_t *pin_code, uint8_t pin_len)
 	print_field("PIN code: %s", str);
 }
 
-static void print_hash(const char *label, const uint8_t *hash)
+static void print_hash_p192(const uint8_t *hash)
 {
-	print_key("Hash C from %s", hash);
+	print_key("Hash C from P-192", hash);
 }
 
-static void print_randomizer(const char *label, const uint8_t *randomizer)
+static void print_hash_p256(const uint8_t *hash)
 {
-	print_key("Randomizer R with %s", randomizer);
+	print_key("Hash C from P-256", hash);
+}
+
+static void print_randomizer_p192(const uint8_t *randomizer)
+{
+	print_key("Randomizer R with P-192", randomizer);
+}
+
+static void print_randomizer_p256(const uint8_t *randomizer)
+{
+	print_key("Randomizer R with P-256", randomizer);
 }
 
 static void print_passkey(uint32_t passkey)
@@ -2699,13 +2709,13 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_SSP_HASH_P192:
 			if (data_len < 16)
 				break;
-			print_hash("P-192", data);
+			print_hash_p192(data);
 			break;
 
 		case BT_EIR_SSP_RANDOMIZER_P192:
 			if (data_len < 16)
 				break;
-			print_randomizer("P-192", data);
+			print_randomizer_p192(data);
 			break;
 
 		case BT_EIR_DEVICE_ID:
@@ -2771,13 +2781,13 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_SSP_HASH_P256:
 			if (data_len < 16)
 				break;
-			print_hash("P-256", data);
+			print_hash_p256(data);
 			break;
 
 		case BT_EIR_SSP_RANDOMIZER_P256:
 			if (data_len < 16)
 				break;
-			print_randomizer("P-256", data);
+			print_randomizer_p256(data);
 			break;
 
 		case BT_EIR_3D_INFO_DATA:
@@ -3296,8 +3306,8 @@ static void remote_oob_data_request_reply_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_remote_oob_data_request_reply *cmd = data;
 
 	print_bdaddr(cmd->bdaddr);
-	print_hash("P-192", cmd->hash);
-	print_randomizer("P-192", cmd->randomizer);
+	print_hash_p192(cmd->hash);
+	print_randomizer_p192(cmd->randomizer);
 }
 
 static void remote_oob_data_request_neg_reply_cmd(const void *data, uint8_t size)
@@ -3475,10 +3485,10 @@ static void remote_oob_ext_data_request_reply_cmd(const void *data, uint8_t size
 	const struct bt_hci_cmd_remote_oob_ext_data_request_reply *cmd = data;
 
 	print_bdaddr(cmd->bdaddr);
-	print_hash("P-192", cmd->hash192);
-	print_randomizer("P-192", cmd->randomizer192);
-	print_hash("P-256", cmd->hash256);
-	print_randomizer("P-256", cmd->randomizer256);
+	print_hash_p192(cmd->hash192);
+	print_randomizer_p192(cmd->randomizer192);
+	print_hash_p256(cmd->hash256);
+	print_randomizer_p256(cmd->randomizer256);
 }
 
 static void hold_mode_cmd(const void *data, uint8_t size)
@@ -4284,8 +4294,8 @@ static void read_local_oob_data_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_local_oob_data *rsp = data;
 
 	print_status(rsp->status);
-	print_hash("P-192", rsp->hash);
-	print_randomizer("P-192", rsp->randomizer);
+	print_hash_p192(rsp->hash);
+	print_randomizer_p192(rsp->randomizer);
 }
 
 static void read_inquiry_resp_tx_power_rsp(const void *data, uint8_t size)
@@ -4556,10 +4566,10 @@ static void read_local_oob_ext_data_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_local_oob_ext_data *rsp = data;
 
 	print_status(rsp->status);
-	print_hash("P-192", rsp->hash192);
-	print_randomizer("P-192", rsp->randomizer192);
-	print_hash("P-256", rsp->hash256);
-	print_randomizer("P-256", rsp->randomizer256);
+	print_hash_p192(rsp->hash192);
+	print_randomizer_p192(rsp->randomizer192);
+	print_hash_p256(rsp->hash256);
+	print_randomizer_p256(rsp->randomizer256);
 }
 
 static void read_local_version_rsp(const void *data, uint8_t size)
