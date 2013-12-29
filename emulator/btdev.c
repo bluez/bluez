@@ -100,6 +100,7 @@ struct btdev {
 	uint8_t  ext_inquiry_fec;
 	uint8_t  ext_inquiry_rsp[240];
 	uint8_t  simple_pairing_mode;
+	uint8_t  secure_conn_support;
 	uint8_t  le_supported;
 	uint8_t  le_simultaneous;
 	uint8_t  le_event_mask[8];
@@ -351,6 +352,11 @@ static void set_bredrle_commands(struct btdev *btdev)
 	 */
 	btdev->commands[22] |= 0x04;	/* Set Event Mask Page 2 */
 	btdev->commands[31] |= 0x80;	/* Read Sync Train Parameters */
+	btdev->commands[32] |= 0x04;	/* Read Secure Connections Support */
+	btdev->commands[32] |= 0x08;	/* Write Secure Connections Support */
+	btdev->commands[32] |= 0x10;	/* Read Auth Payload Timeout */
+	btdev->commands[32] |= 0x20;	/* Write Auth Payload Timeout */
+	btdev->commands[32] |= 0x40;	/* Read Local OOB Extended Data */
 }
 
 static void set_amp_commands(struct btdev *btdev)
@@ -390,6 +396,8 @@ static void set_bredrle_features(struct btdev *btdev)
 	btdev->feat_page_2[0] |= 0x04;	/* Synchronization Train */
 	btdev->feat_page_2[0] |= 0x08;	/* Synchronization Scan */
 	btdev->feat_page_2[0] |= 0x10;	/* Inquiry Response Notification */
+	btdev->feat_page_2[1] |= 0x01;	/* Secure Connections */
+	btdev->feat_page_2[1] |= 0x02;	/* Ping */
 
 	btdev->max_page = 2;
 }
@@ -1096,6 +1104,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_ext_inquiry_response *weir;
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
+	const struct bt_hci_cmd_write_secure_conn_support *wscs;
 	const struct bt_hci_cmd_set_event_mask_page2 *semp2;
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
 	const struct bt_hci_cmd_le_set_adv_data *lsad;
@@ -1128,6 +1137,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_local_oob_data rlod;
 	struct bt_hci_rsp_read_inquiry_resp_tx_power rirtp;
 	struct bt_hci_rsp_read_le_host_supported rlhs;
+	struct bt_hci_rsp_read_secure_conn_support rscs;
+	struct bt_hci_rsp_read_local_oob_ext_data rloed;
 	struct bt_hci_rsp_read_sync_train_params rstp;
 	struct bt_hci_rsp_read_local_version rlv;
 	struct bt_hci_rsp_read_local_commands rlc;
@@ -1595,6 +1606,30 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
+	case BT_HCI_CMD_READ_SECURE_CONN_SUPPORT:
+		if (btdev->type != BTDEV_TYPE_BREDRLE)
+			goto unsupported;
+		rscs.status = BT_HCI_ERR_SUCCESS;
+		rscs.support = btdev->secure_conn_support;
+		cmd_complete(btdev, opcode, &rscs, sizeof(rscs));
+		break;
+
+	case BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT:
+		if (btdev->type != BTDEV_TYPE_BREDRLE)
+			goto unsupported;
+		wscs = data;
+		btdev->secure_conn_support = wscs->support;
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA:
+		if (btdev->type != BTDEV_TYPE_BREDRLE)
+			goto unsupported;
+		rloed.status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &rloed, sizeof(rloed));
+		break;
+
 	case BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS:
 		if (btdev->type != BTDEV_TYPE_BREDRLE)
 			goto unsupported;
@@ -1657,6 +1692,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 				rlef.features[0] |= 0x02;
 			if (btdev->le_simultaneous)
 				rlef.features[0] |= 0x04;
+			if (btdev->secure_conn_support)
+				rlef.features[0] |= 0x08;
 			break;
 		case 0x02:
 			rlef.status = BT_HCI_ERR_SUCCESS;
