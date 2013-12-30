@@ -218,16 +218,8 @@ static bt_status_t get_protocol(bt_bdaddr_t *bd_addr,
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	switch (protocol_mode) {
-	case BTHH_REPORT_MODE:
-		cmd.mode = HAL_HIDHOST_REPORT_PROTOCOL;
-		break;
-	case BTHH_BOOT_MODE:
-		cmd.mode = HAL_HIDHOST_BOOT_PROTOCOL;
-		break;
-	default:
-		return BT_STATUS_PARM_INVALID;
-	}
+	/* type match IPC type */
+	cmd.mode = protocol_mode;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
 				HAL_OP_HIDHOST_GET_PROTOCOL,

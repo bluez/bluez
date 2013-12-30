@@ -880,6 +880,15 @@ static void bt_hid_get_protocol(const void *buf, uint16_t len)
 
 	DBG("");
 
+	switch (cmd->mode) {
+	case HAL_HIDHOST_REPORT_PROTOCOL:
+	case HAL_HIDHOST_BOOT_PROTOCOL:
+		break;
+	default:
+		status = HAL_STATUS_INVALID;
+		goto failed;
+	}
+
 	android2bdaddr(&cmd->bdaddr, &dst);
 
 	l = g_slist_find_custom(devices, &dst, device_cmp);
