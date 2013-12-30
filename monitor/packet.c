@@ -491,6 +491,11 @@ static void print_pkt_type(uint16_t pkt_type)
 	print_field("Packet type: 0x%4.4x", btohs(pkt_type));
 }
 
+static void print_pkt_type_sco(uint16_t pkt_type)
+{
+	print_field("Packet type: 0x%4.4x", btohs(pkt_type));
+}
+
 static void print_iac(const uint8_t *lap)
 {
 	const char *str = "";
@@ -3140,7 +3145,7 @@ static void add_sco_conn_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_add_sco_conn *cmd = data;
 
 	print_handle(cmd->handle);
-	print_pkt_type(cmd->pkt_type);
+	print_pkt_type_sco(cmd->pkt_type);
 }
 
 static void create_conn_cancel_cmd(const void *data, uint8_t size)
@@ -3307,7 +3312,7 @@ static void setup_sync_conn_cmd(const void *data, uint8_t size)
 	print_field("Max latency: %d", btohs(cmd->max_latency));
 	print_voice_setting(cmd->voice_setting);
 	print_retransmission_effort(cmd->retrans_effort);
-	print_pkt_type(cmd->pkt_type);
+	print_pkt_type_sco(cmd->pkt_type);
 }
 
 static void accept_sync_conn_request_cmd(const void *data, uint8_t size)
@@ -3320,7 +3325,7 @@ static void accept_sync_conn_request_cmd(const void *data, uint8_t size)
 	print_field("Max latency: %d", btohs(cmd->max_latency));
 	print_voice_setting(cmd->voice_setting);
 	print_retransmission_effort(cmd->retrans_effort);
-	print_pkt_type(cmd->pkt_type);
+	print_pkt_type_sco(cmd->pkt_type);
 }
 
 static void reject_sync_conn_request_cmd(const void *data, uint8_t size)
