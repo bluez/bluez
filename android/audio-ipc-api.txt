@@ -5,12 +5,12 @@ The audio plugin happen to be in a different socket but all the rules for
 HAL socket apply here as well, the abstract socket name is
 "\0bluez_audio_socket" (tentative):
 
-	.--Android--.                             .---Audio---.
-	|  daemon   |                             |   Plugin  |
+	.---Audio---.                             .--Android--.
+	|  Plugin   |                             |   Daemon  |
 	|           |          Command            |           |
-	|           | <-------------------------- |           |
-	|           |                             |           |
 	|           | --------------------------> |           |
+	|           |                             |           |
+	|           | <-------------------------- |           |
 	|           |          Response           |           |
 	|           |                             |           |
 	|           |                             |           |
