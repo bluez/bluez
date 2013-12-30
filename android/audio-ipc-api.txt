@@ -27,11 +27,11 @@ HAL socket apply here as well, the abstract socket name is
 	call dev->open_output_stream()      --> command 0x03
 	return dev->open_output_stream()    <-- response 0x03
 
-	call stream_in->read()              --> command 0x05
-	return stream_in->read()            <-- response 0x05
+	call stream->write()                --> command 0x05
+	return stream->write()              <-- response 0x05
 
-	call stream_in->common.standby()    --> command 0x06
-	return  stream_in->common.standby() <-- response 0x06
+	call stream->common.standby()       --> command 0x06
+	return stream->common.standby()     <-- response 0x06
 
 	call dev->close_output_stream()     --> command 0x04
 	return dev->close_output_stream()   <-- response 0x04
