@@ -69,6 +69,7 @@
 
 #define COLOR_UNKNOWN_ERROR		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_COMMAND_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_EVENT_MASK	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_LE_STATES		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_SERVICE_CLASS	COLOR_WHITE_BG
@@ -2083,7 +2084,12 @@ static void print_commands(const uint8_t *commands)
 				continue;
 
 			cmd = get_supported_command((i * 8) + n);
-			print_field("  %s (Octet %d - Bit %d)", cmd, i, n);
+			if (cmd)
+				print_field("  %s (Octet %d - Bit %d)",
+								cmd, i, n);
+			else
+				print_text(COLOR_UNKNOWN_COMMAND_BIT,
+						"  Octet %d - Bit %d ", i, n);
 		}
 	}
 }
