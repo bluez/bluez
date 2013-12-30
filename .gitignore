@@ -110,3 +110,4 @@ android/system-emulator
 android/bluetoothd
 android/haltest
 android/android-tester
+android/bluetoothd-snoop

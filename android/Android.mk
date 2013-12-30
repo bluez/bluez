@@ -253,3 +253,26 @@ LOCAL_MODULE_TAGS := debug
 LOCAL_MODULE := l2test
 
 include $(BUILD_EXECUTABLE)
+
+#
+# bluetoothd-snoop
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	bluetoothd-snoop.c \
+	../monitor/mainloop.c \
+	../src/shared/btsnoop.c \
+
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/.. \
+	$(LOCAL_PATH)/../lib \
+
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := bluetoothd-snoop
+
+include $(BUILD_EXECUTABLE)

@@ -4,6 +4,12 @@ noinst_PROGRAMS += android/system-emulator
 android_system_emulator_SOURCES = android/system-emulator.c \
 					monitor/mainloop.h monitor/mainloop.c
 
+noinst_PROGRAMS += android/bluetoothd-snoop
+
+android_bluetoothd_snoop_SOURCES = android/bluetoothd-snoop.c \
+				monitor/mainloop.h monitor/mainloop.c \
+				src/shared/btsnoop.h src/shared/btsnoop.c
+
 noinst_PROGRAMS += android/bluetoothd
 
 android_bluetoothd_SOURCES = android/main.c \
