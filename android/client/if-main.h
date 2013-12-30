@@ -147,8 +147,12 @@ const struct method *get_interface_method(const char *iname,
 /* Helper macro for executing function on interface and printing BT_STATUS */
 #define EXEC(f, ...) \
 	{ \
-		int err = f(__VA_ARGS__); \
-		haltest_info("%s: %s\n", #f, bt_status_t2str(err)); \
+		if (f) { \
+			int err = f(__VA_ARGS__); \
+			haltest_info("%s: %s\n", #f, bt_status_t2str(err)); \
+		} else { \
+			haltest_info("%s is NULL\n", #f); \
+		} \
 	}
 
 /* Helper macro for executing void function on interface */
