@@ -798,6 +798,17 @@ static const struct generic_data
 	.set_property.len = sizeof(setprop_remote_service),
 };
 
+static bt_bdaddr_t setprop_bdaddr = {
+	.address = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+};
+
+static const struct generic_data bluetooth_setprop_bdaddr_invalid_test = {
+	.expected_adapter_status = BT_STATUS_FAIL,
+	.set_property.type = BT_PROPERTY_BDADDR,
+	.set_property.val = &setprop_bdaddr,
+	.set_property.len = sizeof(setprop_bdaddr),
+};
+
 static const struct generic_data bluetooth_discovery_start_success_test = {
 	.expected_hal_cb.discovery_state_changed_cb =
 						discovery_start_success_cb,
@@ -1122,6 +1133,19 @@ static void test_setprop_rssi_invalid(const void *test_data)
 }
 
 static void test_setprop_service_record_invalid(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_bdaddr_invalid(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
@@ -1692,6 +1716,11 @@ int main(int argc, char *argv[])
 				&bluetooth_setprop_service_record_invalid_test,
 				setup_enabled_adapter,
 				test_setprop_service_record_invalid, teardown);
+
+	test_bredrle("Bluetooth Set BDADDR - Invalid",
+					&bluetooth_setprop_bdaddr_invalid_test,
+					setup_enabled_adapter,
+					test_setprop_bdaddr_invalid, teardown);
 
 	test_bredrle("Bluetooth BREDR Discovery Start - Success",
 				&bluetooth_discovery_start_success_test,
