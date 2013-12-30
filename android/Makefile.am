@@ -59,7 +59,8 @@ android_libhal_internal_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-log.h \
 					android/hal-ipc.h android/hal-ipc.c
 
-android_libhal_internal_la_CPPFLAGS = -I$(srcdir)/android
+android_libhal_internal_la_CPPFLAGS = -I$(srcdir)/android \
+					-DPLATFORM_SDK_VERSION=19
 
 noinst_PROGRAMS += android/haltest
 
