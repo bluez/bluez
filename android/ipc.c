@@ -32,7 +32,6 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <sys/socket.h>
-#include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <glib.h>
