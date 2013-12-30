@@ -294,19 +294,8 @@ static bt_status_t set_report(bt_bdaddr_t *bd_addr,
 	cmd->len = strlen(report);
 	memcpy(cmd->data, report, cmd->len);
 
-	switch (report_type) {
-	case BTHH_INPUT_REPORT:
-		cmd->type = HAL_HIDHOST_INPUT_REPORT;
-		break;
-	case BTHH_OUTPUT_REPORT:
-		cmd->type = HAL_HIDHOST_OUTPUT_REPORT;
-		break;
-	case BTHH_FEATURE_REPORT:
-		cmd->type = HAL_HIDHOST_FEATURE_REPORT;
-		break;
-	default:
-		return BT_STATUS_PARM_INVALID;
-	}
+	/* type match IPC type */
+	cmd->type = report_type;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_REPORT,
 				sizeof(*cmd) + cmd->len, buf, 0, NULL, NULL);
