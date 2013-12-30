@@ -109,7 +109,7 @@ android_libaudio_internal_la_SOURCES = android/hal-audio.c \
 					android/hardware/hardware.h \
 					android/system/audio.h
 
-android_libaudio_internal_la_CPPFLAGS = -I$(srcdir)/android
+android_libaudio_internal_la_CFLAGS = -I$(srcdir)/android
 
 endif
 
