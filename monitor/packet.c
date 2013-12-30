@@ -853,7 +853,76 @@ static void print_host_flow_control(uint8_t enable)
 
 static void print_voice_setting(uint16_t setting)
 {
+	uint8_t input_coding = (btohs(setting) & 0x0300) >> 8;
+	uint8_t input_data_format = (btohs(setting) & 0xc0) >> 6;
+	uint8_t air_coding_format = btohs(setting) & 0x0003;
+	const char *str;
+
 	print_field("Setting: 0x%4.4x", btohs(setting));
+
+	switch (input_coding) {
+	case 0x00:
+		str = "Linear";
+		break;
+	case 0x01:
+		str ="u-law";
+		break;
+	case 0x02:
+		str = "A-law";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  Input Coding: %s", str);
+
+	switch (input_data_format) {
+	case 0x00:
+		str = "1's complement";
+		break;
+	case 0x01:
+		str = "2's complement";
+		break;
+	case 0x02:
+		str = "Sign-Magnitude";
+		break;
+	case 0x03:
+		str = "Unsigned";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  Input Data Format: %s", str);
+
+	if (input_coding == 0x00) {
+		print_field("  Input Sample Size: %s",
+				btohs(setting) & 0x20 ? "16-bit" : "8-bit");
+		print_field("  # of bits padding at MSB: %d",
+						(btohs(setting) & 0x1c) >> 2);
+	}
+
+	switch (air_coding_format) {
+	case 0x00:
+		str = "CVSD";
+		break;
+	case 0x01:
+		str ="u-law";
+		break;
+	case 0x02:
+		str = "A-law";
+		break;
+	case 0x03:
+		str = "Transparent Data";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  Air Coding Format: %s", str);
 }
 
 static void print_retransmission_effort(uint8_t effort)
