@@ -977,11 +977,16 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 
 	if (src.l2_bdaddr_type != BDADDR_BREDR) {
 		if (getsockopt(sock, SOL_BLUETOOTH, BT_RCVMTU,
-							&l2o.imtu, &len) < 0) {
+						&l2o.imtu, &len) == 0)
+			goto parse_opts;
+
+		/* Non-LE CoC enabled kernels will return one of these
+		 * in which case we need to fall back to L2CAP_OPTIONS.
+		 */
+		if (errno != EPROTONOSUPPORT && errno != ENOPROTOOPT) {
 			ERROR_FAILED(err, "getsockopt(BT_RCVMTU)", errno);
 			return FALSE;
 		}
-		goto parse_opts;
 	}
 
 	if (getsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
