@@ -1943,13 +1943,34 @@ static void print_name(const uint8_t *name)
 
 static void print_channel_map(const uint8_t *map)
 {
+	unsigned int count = 0, start = 0;
 	char str[21];
-	int i;
+	int i, n;
 
 	for (i = 0; i < 10; i++)
 		sprintf(str + (i * 2), "%2.2x", map[i]);
 
 	print_field("Channel map: 0x%s", str);
+
+	for (i = 0; i < 10; i++) {
+		for (n = 0; n < 8; n++) {
+			if (map[i] & (1 << n)) {
+				if (count == 0)
+					start = (i * 8) + n;
+				count++;
+				continue;
+			}
+
+			if (count > 1) {
+				print_field("  Channel %u-%u",
+						start, start + count - 1 );
+				count = 0;
+			} else if (count > 0) {
+				print_field("  Channel %u", start);
+				count = 0;
+			}
+		}
+	}
 }
 
 static void print_flush_timeout(uint16_t timeout)
