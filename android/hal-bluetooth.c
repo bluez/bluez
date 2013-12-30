@@ -829,6 +829,8 @@ static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t len)
 #if PLATFORM_SDK_VERSION > 18
 static int config_hci_snoop_log(uint8_t enable)
 {
+	DBG("enable %u", enable);
+
 	if (enable && property_set("ctl.start", SNOOP_SERVICE_NAME) < 0) {
 		error("Failed to start service %s", SNOOP_SERVICE_NAME);
 		return BT_STATUS_FAIL;
