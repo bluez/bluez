@@ -72,6 +72,7 @@
 #define COLOR_UNKNOWN_EVENT_MASK	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_LE_STATES		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_SERVICE_CLASS	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_PKT_TYPE_BIT	COLOR_WHITE_BG
 
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
@@ -486,14 +487,82 @@ static void print_phy_handle(uint8_t phy_handle)
 	print_field("Physical handle: %d", phy_handle);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} pkt_type_table[] = {
+	{  1, "2-DH1 may not be used"	},
+	{  2, "3-DH1 may not be used"	},
+	{  3, "DM1 may be used"		},
+	{  4, "DH1 may be used"		},
+	{  8, "2-DH3 may not be used"	},
+	{  9, "3-DH3 may not be used"	},
+	{ 10, "DM3 may be used"		},
+	{ 11, "DH3 may be used"		},
+	{ 12, "3-DH5 may not be used"	},
+	{ 13, "3-DH5 may not be used"	},
+	{ 14, "DM5 may be used"		},
+	{ 15, "DH5 may be used"		},
+	{ }
+};
+
 static void print_pkt_type(uint16_t pkt_type)
 {
+	uint16_t mask;
+	int i;
+
 	print_field("Packet type: 0x%4.4x", btohs(pkt_type));
+
+	mask = btohs(pkt_type);
+
+	for (i = 0; pkt_type_table[i].str; i++) {
+		if (btohs(pkt_type) & (1 << pkt_type_table[i].bit)) {
+			print_field("  %s", pkt_type_table[i].str);
+			mask &= ~(1 << pkt_type_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_PKT_TYPE_BIT,
+				"  Unknown packet types (0x%4.4x)", mask);
 }
+
+static const struct {
+	uint8_t bit;
+	const char *str;
+} pkt_type_sco_table[] = {
+	{  0, "HV1 may be used"		},
+	{  1, "HV2 may be used"		},
+	{  2, "HV3 may be used"		},
+	{  3, "EV3 may be used"		},
+	{  4, "EV4 may be used"		},
+	{  5, "EV5 may be used"		},
+	{  6, "2-EV3 may not be used"	},
+	{  7, "3-EV3 may not be used"	},
+	{  8, "2-EV5 may not be used"	},
+	{  9, "3-EV5 may not be used"	},
+	{ }
+};
 
 static void print_pkt_type_sco(uint16_t pkt_type)
 {
+	uint16_t mask;
+	int i;
+
 	print_field("Packet type: 0x%4.4x", btohs(pkt_type));
+
+	mask = btohs(pkt_type);
+
+	for (i = 0; pkt_type_sco_table[i].str; i++) {
+		if (btohs(pkt_type) & (1 << pkt_type_sco_table[i].bit)) {
+			print_field("  %s", pkt_type_sco_table[i].str);
+			mask &= ~(1 << pkt_type_sco_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_PKT_TYPE_BIT,
+				"  Unknown packet types (0x%4.4x)", mask);
 }
 
 static void print_iac(const uint8_t *lap)
