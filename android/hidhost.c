@@ -991,6 +991,16 @@ static void bt_hid_get_report(const void *buf, uint16_t len)
 
 	DBG("");
 
+	switch (cmd->type) {
+	case HAL_HIDHOST_INPUT_REPORT:
+	case HAL_HIDHOST_OUTPUT_REPORT:
+	case HAL_HIDHOST_FEATURE_REPORT:
+		break;
+	default:
+		status = HAL_STATUS_INVALID;
+		goto failed;
+	}
+
 	android2bdaddr(&cmd->bdaddr, &dst);
 
 	l = g_slist_find_custom(devices, &dst, device_cmp);
