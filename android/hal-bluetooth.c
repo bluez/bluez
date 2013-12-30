@@ -28,7 +28,7 @@
 #include "hal-ipc.h"
 #include "hal-utils.h"
 
-#define SNOOP_SERVICE_NAME "bluetoothd_snoop"
+#define SNOOP_SERVICE_NAME "bluetoothd-snoop"
 
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
