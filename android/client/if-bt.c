@@ -797,6 +797,36 @@ static void dut_mode_configure_p(int argc, const char **argv)
 	EXEC(if_bluetooth->dut_mode_configure, mode);
 }
 
+static void dut_mode_send_p(int argc, const char **argv)
+{
+	haltest_error("not implemented\n");
+}
+
+#if PLATFORM_SDK_VERSION > 17
+static void le_test_mode_p(int argc, const char **argv)
+{
+	haltest_error("not implemented\n");
+}
+#endif
+
+#if PLATFORM_SDK_VERSION > 18
+static void config_hci_snoop_log_p(int argc, const char **argv)
+{
+	uint8_t mode;
+
+	RETURN_IF_NULL(if_bluetooth);
+
+	if (argc <= 2) {
+		haltest_error("No mode specified\n");
+		return;
+	}
+
+	mode = strtol(argv[2], NULL, 0);
+
+	EXEC(if_bluetooth->config_hci_snoop_log, mode);
+}
+#endif
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -820,6 +850,13 @@ static struct method methods[] = {
 	STD_METHODCH(ssp_reply, "<address> <ssp_veriant> 1|0 [<passkey>]"),
 	STD_METHODCH(get_profile_interface, "<profile id>"),
 	STD_METHODH(dut_mode_configure, "<dut mode>"),
+	STD_METHOD(dut_mode_send),
+#if PLATFORM_SDK_VERSION > 17
+	STD_METHOD(le_test_mode),
+#endif
+#if PLATFORM_SDK_VERSION > 18
+	STD_METHODH(config_hci_snoop_log, "<mode>"),
+#endif
 	END_METHOD
 };
 
