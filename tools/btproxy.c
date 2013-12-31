@@ -105,13 +105,13 @@ static void channel_callback(int fd, uint32_t events, void *user_data)
 	}
 
 	len = read(channel_fd, buf, sizeof(buf));
-	if (len < 1) {
+	if (len < 0) {
 		fprintf(stderr, "Failed to read channel packet\n");
 		return;
 	}
 
 	written = write(client_fd, buf, len);
-	if (written < 1) {
+	if (written < 0) {
 		fprintf(stderr, "Failed to write to unix socket\n");
 		return;
 	}
@@ -135,12 +135,15 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 
 	len = read(client_fd, client_buffer + client_length,
 					sizeof(client_buffer) - client_length);
-	if (len < 1) {
+	if (len < 0) {
 		fprintf(stderr, "Failed to read client packet\n");
 		return;
 	}
 
 	client_length += len;
+
+	if (client_length < 1)
+		return;
 
 	switch (client_buffer[0]) {
 	case BT_H4_CMD_PKT:
@@ -176,8 +179,24 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 			pktlen = 1 + sizeof(*hdr) + hdr->dlen;
 		}
 		break;
+	case BT_H4_EVT_PKT:
+		{
+			struct bt_hci_evt_hdr *hdr;
+
+			if (client_length < 1 + sizeof(*hdr))
+				return;
+
+			hdr = (void *) (client_buffer + 1);
+			pktlen = 1 + sizeof(*hdr) + hdr->plen;
+		}
+		break;
+	case 0xff:
+		client_length = 0;
+		return;
 	default:
-		fprintf(stderr, "Received wrong packet type\n");
+		fprintf(stderr, "Received wrong packet type 0x%02x\n",
+							client_buffer[0]);
+		client_length = 0;
 		return;
 	}
 
@@ -289,7 +308,7 @@ static int open_unix(const char *path)
 	return fd;
 }
 
-static int open_tcp(unsigned int port)
+static int open_tcp(const char *address, unsigned int port)
 {
 	struct sockaddr_in addr;
 	int fd, opt = 1;
@@ -304,7 +323,7 @@ static int open_tcp(unsigned int port)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_addr.s_addr = inet_addr(address);
 	addr.sin_port = htons(port);
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -315,6 +334,53 @@ static int open_tcp(unsigned int port)
 
 	if (listen(fd, 1) < 0) {
 		perror("Failed to listen TCP server socket");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+static int connect_tcp(const char *address, unsigned int port)
+{
+	struct sockaddr_in addr;
+	int fd;
+
+	fd = socket(PF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (fd < 0) {
+		perror("Failed to open TCP client socket");
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(address);
+	addr.sin_port = htons(port);
+
+	if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Failed to connect TCP client socket");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+static int open_vhci(uint8_t type)
+{
+	uint8_t create_req[2] = { 0xff, type };
+	ssize_t written;
+	int fd;
+
+	fd = open("/dev/vhci", O_RDWR | O_CLOEXEC);
+	if (fd < 0) {
+		perror("Failed to open /dev/vhci device");
+		return -1;
+	}
+
+	written = write(fd, create_req, sizeof(create_req));
+	if (written < 0) {
+		perror("Failed to set device type");
 		close(fd);
 		return -1;
 	}
@@ -338,15 +404,19 @@ static void usage(void)
 		"Usage:\n");
 	printf("\tbtproxy [options]\n");
 	printf("options:\n"
-		"\t-u, --unix [unixpath]    Use unix server\n"
-		"\t-p, --port [port]        Use TCP server\n"
-		"\t-i, --index <num>        Use specified controller\n"
-		"\t-h, --help               Show help options\n");
+		"\t-c, --connect <address>     Connect to server\n"
+		"\t-l, --listen [address]      Use TCP server\n"
+		"\t-u, --unix [path]           Use Unix server\n"
+		"\t-p, --port <port>           Use specified TCP port\n"
+		"\t-i, --index <num>           Use specified controller\n"
+		"\t-h, --help                  Show help options\n");
 }
 
 static const struct option main_options[] = {
+	{ "connect", required_argument, NULL, 'c' },
+	{ "listen",  optional_argument, NULL, 'l' },
 	{ "unix",    optional_argument, NULL, 'u' },
-	{ "port",    optional_argument, NULL, 'p' },
+	{ "port",    required_argument, NULL, 'p' },
 	{ "index",   required_argument, NULL, 'i' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
@@ -355,31 +425,39 @@ static const struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	const char *unixpath = NULL;
-	unsigned short tcpport = 0;
+	const char *connect_address = NULL;
+	const char *server_address = NULL;
+	const char *unix_path = NULL;
+	unsigned short tcp_port = 0xb1ee;
 	const char *str;
 	sigset_t mask;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "u::p::i:vh",
+		opt = getopt_long(argc, argv, "c:l::u::p:i:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'c':
+			connect_address = optarg;
+			break;
+		case 'l':
+			if (optarg)
+				server_address = optarg;
+			else
+				server_address = "0.0.0.0";
+			break;
 		case 'u':
 			if (optarg)
-				unixpath = optarg;
+				unix_path = optarg;
 			else
-				unixpath = "/tmp/bt-server-bredr";
+				unix_path = "/tmp/bt-server-bredr";
 			break;
 		case 'p':
-			if (optarg)
-				tcpport = atoi(optarg);
-			else
-				tcpport = 0xb1ee;
+			tcp_port = atoi(optarg);
 			break;
 		case 'i':
 			if (strlen(optarg) > 3 && !strncmp(optarg, "hci", 3))
@@ -416,19 +494,47 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
-	if (unixpath)
-		server_fd = open_unix(unixpath);
-	else if (tcpport > 0)
-		server_fd = open_tcp(tcpport);
-	else {
-		fprintf(stderr, "Missing emulator device\n");
-		return EXIT_FAILURE;
+	if (connect_address) {
+		printf("Connecting to %s:%u\n", connect_address, tcp_port);
+
+		client_fd = connect_tcp(connect_address, tcp_port);
+		if (client_fd < 0)
+			return EXIT_FAILURE;
+
+		mainloop_add_fd(client_fd, EPOLLIN, client_callback,
+							NULL, NULL);
+
+		printf("Opening virtual device\n");
+
+		channel_fd = open_vhci(0x00);
+		if (channel_fd < 0) {
+			close(client_fd);
+			return EXIT_FAILURE;
+		}
+
+		mainloop_add_fd(channel_fd, EPOLLIN, channel_callback,
+							NULL, NULL);
+	} else {
+		if (unix_path) {
+			printf("Listening on %s\n", unix_path);
+
+			server_fd = open_unix(unix_path);
+		} else if (server_address) {
+			printf("Listening on %s:%u\n", server_address,
+								tcp_port);
+
+			server_fd = open_tcp(server_address, tcp_port);
+		} else {
+			fprintf(stderr, "Missing emulator device\n");
+			return EXIT_FAILURE;
+		}
+
+		if (server_fd < 0)
+			return EXIT_FAILURE;
+
+		mainloop_add_fd(server_fd, EPOLLIN, server_callback,
+							NULL, NULL);
 	}
-
-	if (server_fd < 0)
-		return EXIT_FAILURE;
-
-	mainloop_add_fd(server_fd, EPOLLIN, server_callback, NULL, NULL);
 
 	return mainloop_run();
 }
