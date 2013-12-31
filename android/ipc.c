@@ -245,7 +245,7 @@ void ipc_cleanup(void)
 	}
 }
 
-static void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
+void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 							void *param, int fd)
 {
 	struct msghdr msg;

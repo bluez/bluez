@@ -26,3 +26,6 @@ void audio_ipc_cleanup(void);
 
 void audio_ipc_register(const struct ipc_handler *handlers, uint8_t size);
 void audio_ipc_unregister(void);
+
+void audio_ipc_send_rsp(uint8_t opcode, uint8_t status);
+void audio_ipc_send_rsp_full(uint8_t opcode, uint16_t len, void *param, int fd);

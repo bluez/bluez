@@ -123,3 +123,26 @@ void audio_ipc_unregister(void)
 	service.handler = NULL;
 	service.size = 0;
 }
+
+void audio_ipc_send_rsp(uint8_t opcode, uint8_t status)
+{
+	struct audio_status s;
+	int sk;
+
+	sk = g_io_channel_unix_get_fd(audio_io);
+
+	if (status == AUDIO_STATUS_SUCCESS) {
+		ipc_send(sk, AUDIO_SERVICE_ID, opcode, 0, NULL, -1);
+		return;
+	}
+
+	s.code = status;
+
+	ipc_send(sk, AUDIO_SERVICE_ID, AUDIO_OP_STATUS, sizeof(s), &s, -1);
+}
+
+void audio_ipc_send_rsp_full(uint8_t opcode, uint16_t len, void *param, int fd)
+{
+	ipc_send(g_io_channel_unix_get_fd(audio_io), AUDIO_SERVICE_ID, opcode,
+							len, param, fd);
+}
