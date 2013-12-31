@@ -1925,6 +1925,7 @@ static void rl_handler(char *input)
 	if (!strlen(input))
 		goto done;
 
+	g_strstrip(input);
 	add_history(input);
 
 	argv = g_strsplit(input, " ", -1);
