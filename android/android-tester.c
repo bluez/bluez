@@ -900,6 +900,17 @@ static const struct generic_data bluetooth_getprop_bondeddev_success_test = {
 	.expected_property.len = 0,
 };
 
+static bt_scan_mode_t setprop_scanmode_none = BT_SCAN_MODE_NONE;
+
+static const struct generic_data bluetooth_setprop_scanmode_none_done_test = {
+	.expected_hal_cb.adapter_properties_cb = getprop_success_cb,
+	.expected_cb_count = 1,
+	.expected_adapter_status = BT_STATUS_DONE,
+	.expected_property.type = BT_PROPERTY_ADAPTER_SCAN_MODE,
+	.expected_property.val = &setprop_scanmode_none,
+	.expected_property.len = sizeof(setprop_scanmode_none),
+};
+
 static const struct generic_data bluetooth_discovery_start_success_test = {
 	.expected_hal_cb.discovery_state_changed_cb =
 						discovery_start_success_cb,
@@ -1350,6 +1361,19 @@ static void test_getprop_bondeddev_success(const void *test_data)
 	init_test_conditions(data);
 
 	adapter_status = data->if_bluetooth->get_adapter_property(prop.type);
+	check_expected_status(adapter_status);
+}
+
+static void test_setprop_scanmode_none_done(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t *prop = &test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->set_adapter_property(prop);
 	check_expected_status(adapter_status);
 }
 
@@ -1956,6 +1980,11 @@ int main(int argc, char *argv[])
 				&bluetooth_getprop_bondeddev_success_test,
 				setup_enabled_adapter,
 				test_getprop_bondeddev_success, teardown);
+
+	test_bredrle("Bluetooth Set SCAN_MODE NONE - Done",
+				&bluetooth_setprop_scanmode_none_done_test,
+				setup_enabled_adapter,
+				test_setprop_scanmode_none_done, teardown);
 
 	test_bredrle("Bluetooth BREDR Discovery Start - Success",
 				&bluetooth_discovery_start_success_test,
