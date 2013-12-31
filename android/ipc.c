@@ -40,56 +40,45 @@
 #include "ipc.h"
 #include "log.h"
 
-struct service_handler {
-	const struct ipc_handler *handler;
-	uint8_t size;
-};
-
 static struct service_handler services[HAL_SERVICE_ID_MAX + 1];
 
 static GIOChannel *cmd_io = NULL;
 static GIOChannel *notif_io = NULL;
 
-static void ipc_handle_msg(const void *buf, ssize_t len)
+int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
+						const void *buf, ssize_t len)
 {
 	const struct hal_hdr *msg = buf;
 	const struct ipc_handler *handler;
 
 	if (len < (ssize_t) sizeof(*msg)) {
-		error("IPC: message too small (%zd bytes), terminating", len);
-		raise(SIGTERM);
-		return;
+		DBG("message too small (%zd bytes)", len);
+		return -EBADMSG;
 	}
 
 	if (len != (ssize_t) (sizeof(*msg) + msg->len)) {
-		error("IPC: message malformed (%zd bytes), terminating", len);
-		raise(SIGTERM);
-		return;
+		DBG("message malformed (%zd bytes)", len);
+		return -EBADMSG;
 	}
 
 	/* if service is valid */
-	if (msg->service_id > HAL_SERVICE_ID_MAX) {
-		error("IPC: unknown service (0x%x), terminating",
-							msg->service_id);
-		raise(SIGTERM);
-		return;
+	if (msg->service_id > max_index) {
+		DBG("unknown service (0x%x)", msg->service_id);
+		return -EOPNOTSUPP;
 	}
 
 	/* if service is registered */
-	if (!services[msg->service_id].handler) {
-		error("IPC: unregistered service (0x%x), terminating",
-							msg->service_id);
-		raise(SIGTERM);
-		return;
+	if (!handlers[msg->service_id].handler) {
+		DBG("service not registered (0x%x)", msg->service_id);
+		return -EOPNOTSUPP;
 	}
 
 	/* if opcode is valid */
 	if (msg->opcode == HAL_OP_STATUS ||
-			msg->opcode > services[msg->service_id].size) {
-		error("IPC: invalid opcode 0x%x for service 0x%x, terminating",
-						msg->opcode, msg->service_id);
-		raise(SIGTERM);
-		return;
+			msg->opcode > handlers[msg->service_id].size) {
+		DBG("invalid opcode 0x%x for service 0x%x", msg->opcode,
+							msg->service_id);
+		return -EOPNOTSUPP;
 	}
 
 	/* opcode is table offset + 1 */
@@ -98,13 +87,14 @@ static void ipc_handle_msg(const void *buf, ssize_t len)
 	/* if payload size is valid */
 	if ((handler->var_len && handler->data_len > msg->len) ||
 			(!handler->var_len && handler->data_len != msg->len)) {
-		error("IPC: size invalid opcode 0x%x service 0x%x, terminating",
+		DBG("invalid size for opcode 0x%x service 0x%x",
 						msg->service_id, msg->opcode);
-		raise(SIGTERM);
-		return;
+		return -EMSGSIZE;
 	}
 
 	handler->handler(msg->payload, msg->len);
+
+	return 0;
 }
 
 static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
@@ -112,7 +102,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 {
 	char buf[BLUEZ_HAL_MTU];
 	ssize_t ret;
-	int fd;
+	int fd, err;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		info("IPC: command socket closed, terminating");
@@ -128,7 +118,13 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		goto fail;
 	}
 
-	ipc_handle_msg(buf, ret);
+	err = ipc_handle_msg(services, HAL_SERVICE_ID_MAX, buf, ret);
+	if (err < 0) {
+		error("IPC: failed to handle message, terminating (%s)",
+							strerror(-err));
+		goto fail;
+	}
+
 	return TRUE;
 
 fail:

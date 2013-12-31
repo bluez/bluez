@@ -24,3 +24,5 @@
 #define BLUEZ_AUDIO_MTU 1024
 
 static const char BLUEZ_AUDIO_SK_PATH[] = "\0bluez_audio_socket";
+
+#define AUDIO_SERVICE_ID		0

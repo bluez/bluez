@@ -41,12 +41,14 @@
 
 static GIOChannel *audio_io = NULL;
 
+static struct service_handler service;
+
 static gboolean audio_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	char buf[BLUEZ_AUDIO_MTU];
 	ssize_t ret;
-	int fd;
+	int fd, err;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		info("Audio IPC: command socket closed");
@@ -58,6 +60,13 @@ static gboolean audio_watch_cb(GIOChannel *io, GIOCondition cond,
 	ret = read(fd, buf, sizeof(buf));
 	if (ret < 0) {
 		error("Audio IPC: command read failed (%s)", strerror(errno));
+		goto fail;
+	}
+
+	err = ipc_handle_msg(&service, AUDIO_SERVICE_ID, buf, ret);
+	if (err < 0) {
+		error("Audio IPC: failed to handle message (%s)",
+							strerror(-err));
 		goto fail;
 	}
 
@@ -101,4 +110,16 @@ void audio_ipc_cleanup(void)
 		g_io_channel_unref(audio_io);
 		audio_io = NULL;
 	}
+}
+
+void audio_ipc_register(const struct ipc_handler *handlers, uint8_t size)
+{
+	service.handler = handlers;
+	service.size = size;
+}
+
+void audio_ipc_unregister(void)
+{
+	service.handler = NULL;
+	service.size = 0;
 }

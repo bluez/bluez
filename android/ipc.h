@@ -26,9 +26,17 @@ struct ipc_handler {
 	bool var_len;
 	size_t data_len;
 };
+
+struct service_handler {
+	const struct ipc_handler *handler;
+	uint8_t size;
+};
+
 void ipc_init(void);
 void ipc_cleanup(void);
 GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb);
+int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
+						const void *buf, ssize_t len);
 
 void ipc_send_rsp(uint8_t service_id, uint8_t opcode, uint8_t status);
 void ipc_send_rsp_full(uint8_t service_id, uint8_t opcode, uint16_t len,
