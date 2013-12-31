@@ -38,6 +38,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <netdb.h>
+#include <arpa/inet.h>
+
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
 
@@ -133,7 +136,7 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 	len = read(client_fd, client_buffer + client_length,
 					sizeof(client_buffer) - client_length);
 	if (len < 1) {
-		fprintf(stderr, "Failed to read unix packet\n");
+		fprintf(stderr, "Failed to read client packet\n");
 		return;
 	}
 
@@ -260,7 +263,7 @@ static int open_unix(const char *path)
 
 	fd = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (fd < 0) {
-		perror("Failed to open server socket");
+		perror("Failed to open Unix server socket");
 		return -1;
 	}
 
@@ -269,19 +272,52 @@ static int open_unix(const char *path)
 	strcpy(addr.sun_path, path);
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		perror("Failed to bind server socket");
+		perror("Failed to bind Unix server socket");
 		close(fd);
 		return -1;
 	}
 
 	if (listen(fd, 1) < 0) {
-		perror("Failed to listen server socket");
+		perror("Failed to listen Unix server socket");
 		close(fd);
 		return -1;
 	}
 
 	if (chmod(path, 0666) < 0)
 		perror("Failed to change mode");
+
+	return fd;
+}
+
+static int open_tcp(unsigned int port)
+{
+	struct sockaddr_in addr;
+	int fd, opt = 1;
+
+	fd = socket(PF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (fd < 0) {
+		perror("Failed to open TCP server socket");
+		return -1;
+	}
+
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_port = htons(port);
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Failed to bind TCP server socket");
+		close(fd);
+		return -1;
+	}
+
+	if (listen(fd, 1) < 0) {
+		perror("Failed to listen TCP server socket");
+		close(fd);
+		return -1;
+	}
 
 	return fd;
 }
@@ -303,12 +339,14 @@ static void usage(void)
 	printf("\tbtproxy [options]\n");
 	printf("options:\n"
 		"\t-u, --unix [unixpath]    Use unix server\n"
+		"\t-p, --port [port]        Use TCP server\n"
 		"\t-i, --index <num>        Use specified controller\n"
 		"\t-h, --help               Show help options\n");
 }
 
 static const struct option main_options[] = {
-	{ "unix",    optional_argument, NULL, 'U' },
+	{ "unix",    optional_argument, NULL, 'u' },
+	{ "port",    optional_argument, NULL, 'p' },
 	{ "index",   required_argument, NULL, 'i' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
@@ -318,13 +356,14 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	const char *unixpath = NULL;
+	unsigned short tcpport = 0;
 	const char *str;
 	sigset_t mask;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "u::i:vh",
+		opt = getopt_long(argc, argv, "u::p::i:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -335,6 +374,12 @@ int main(int argc, char *argv[])
 				unixpath = optarg;
 			else
 				unixpath = "/tmp/bt-server-bredr";
+			break;
+		case 'p':
+			if (optarg)
+				tcpport = atoi(optarg);
+			else
+				tcpport = 0xb1ee;
 			break;
 		case 'i':
 			if (strlen(optarg) > 3 && !strncmp(optarg, "hci", 3))
@@ -371,17 +416,19 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
-	if (unixpath) {
+	if (unixpath)
 		server_fd = open_unix(unixpath);
-		if (server_fd < 0)
-			return EXIT_FAILURE;
-
-		mainloop_add_fd(server_fd, EPOLLIN, server_callback,
-							NULL, NULL);
-	} else {
+	else if (tcpport > 0)
+		server_fd = open_tcp(tcpport);
+	else {
 		fprintf(stderr, "Missing emulator device\n");
 		return EXIT_FAILURE;
 	}
+
+	if (server_fd < 0)
+		return EXIT_FAILURE;
+
+	mainloop_add_fd(server_fd, EPOLLIN, server_callback, NULL, NULL);
 
 	return mainloop_run();
 }
