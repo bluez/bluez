@@ -855,6 +855,17 @@ static const struct generic_data bluetooth_getprop_tod_success_test = {
 	.expected_property.len = sizeof(getprop_tod),
 };
 
+static bt_scan_mode_t getprop_scanmode = BT_SCAN_MODE_NONE;
+
+static const struct generic_data bluetooth_getprop_scanmode_success_test = {
+	.expected_hal_cb.adapter_properties_cb = getprop_success_cb,
+	.expected_cb_count = 1,
+	.expected_adapter_status = BT_STATUS_SUCCESS,
+	.expected_property.type = BT_PROPERTY_ADAPTER_SCAN_MODE,
+	.expected_property.val = &getprop_scanmode,
+	.expected_property.len = sizeof(getprop_scanmode),
+};
+
 static const struct generic_data bluetooth_discovery_start_success_test = {
 	.expected_hal_cb.discovery_state_changed_cb =
 						discovery_start_success_cb,
@@ -1244,6 +1255,19 @@ static void test_getprop_cod_success(const void *test_data)
 }
 
 static void test_getprop_tod_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const bt_property_t prop = test->expected_property;
+	bt_status_t adapter_status;
+
+	init_test_conditions(data);
+
+	adapter_status = data->if_bluetooth->get_adapter_property(prop.type);
+	check_expected_status(adapter_status);
+}
+
+static void test_getprop_scanmode_success(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
@@ -1839,6 +1863,11 @@ int main(int argc, char *argv[])
 					&bluetooth_getprop_tod_success_test,
 					setup_enabled_adapter,
 					test_getprop_tod_success, teardown);
+
+	test_bredrle("Bluetooth Get SCAN_MODE - Success",
+				&bluetooth_getprop_scanmode_success_test,
+				setup_enabled_adapter,
+				test_getprop_scanmode_success, teardown);
 
 	test_bredrle("Bluetooth BREDR Discovery Start - Success",
 				&bluetooth_discovery_start_success_test,
