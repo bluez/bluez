@@ -104,14 +104,19 @@ struct bt_ll_reject_ind {
 #define BT_H4_SCO_PKT	0x03
 #define BT_H4_EVT_PKT	0x04
 
+struct bt_hci_cmd_hdr {
+	uint16_t opcode;
+	uint8_t  plen;
+} __attribute__ ((packed));
+
 struct bt_hci_acl_hdr {
 	uint16_t handle;
 	uint16_t dlen;
 } __attribute__ ((packed));
 
-struct bt_hci_cmd_hdr {
-	uint16_t opcode;
-	uint8_t  plen;
+struct bt_hci_sco_hdr {
+	uint16_t handle;
+	uint8_t  dlen;
 } __attribute__ ((packed));
 
 struct bt_hci_evt_hdr {
