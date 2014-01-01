@@ -27,6 +27,7 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -34,6 +35,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <termios.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -41,6 +43,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+#include "src/shared/util.h"
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
 
@@ -56,17 +59,284 @@ struct sockaddr_hci {
 #define HCI_CHANNEL_USER	1
 
 static uint16_t hci_index = 0;
+static bool use_smd = false;
+static bool client_active = false;
 
-static int channel_fd = -1;
-static int server_fd = -1;
-static int client_fd = -1;
-static uint8_t client_buffer[4096];
-static uint8_t client_length = 0;
+static void hexdump_print(const char *str, void *user_data)
+{
+	printf("%s\n", str);
+}
+
+struct stream {
+	char dir;
+	int src_fd;
+	uint8_t src_type;
+	int dst_fd;
+	uint8_t dst_type;
+	uint8_t buf[4096];
+	uint8_t len;
+};
+
+static void stream_free(void *data)
+{
+	struct stream *stream = data;
+
+	printf("Closing stream %c\n", stream->dir);
+
+	client_active = false;
+
+	close(stream->src_fd);
+
+	free(stream);
+}
+
+static void stream_callback(int fd, uint32_t events, void *user_data)
+{
+	struct stream *stream = user_data;
+	uint8_t *wbuf;
+	ssize_t wlen, len;
+	uint16_t pktlen;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(stream->src_fd);
+		return;
+	}
+
+	len = read(stream->src_fd, stream->buf + stream->len,
+					sizeof(stream->buf) - stream->len);
+	if (len < 0) {
+		if (errno == EAGAIN || errno == EINTR)
+			return;
+		fprintf(stderr, "Failed to read stream packet\n");
+		mainloop_remove_fd(stream->src_fd);
+		return;
+	}
+
+	util_hexdump(stream->dir, stream->buf + stream->len, len,
+						hexdump_print, NULL);
+
+	stream->len += len;
+
+process_packet:
+	if (stream->len < 1)
+		return;
+
+	switch (stream->buf[0]) {
+	case BT_H4_CMD_PKT:
+		{
+			struct bt_hci_cmd_hdr *hdr;
+
+			if (stream->len < 1 + sizeof(*hdr))
+				return;
+
+			hdr = (void *) (stream->buf + 1);
+			pktlen = 1 + sizeof(*hdr) + hdr->plen;
+		}
+		break;
+	case BT_H4_ACL_PKT:
+		{
+			struct bt_hci_acl_hdr *hdr;
+
+			if (stream->len < 1 + sizeof(*hdr))
+				return;
+
+			hdr = (void *) (stream->buf + 1);
+			pktlen = 1 + sizeof(*hdr) + cpu_to_le16(hdr->dlen);
+		}
+		break;
+	case BT_H4_SCO_PKT:
+		{
+			struct bt_hci_sco_hdr *hdr;
+
+			if (stream->len < 1 + sizeof(*hdr))
+				return;
+
+			hdr = (void *) (stream->buf + 1);
+			pktlen = 1 + sizeof(*hdr) + hdr->dlen;
+		}
+		break;
+	case BT_H4_EVT_PKT:
+		{
+			struct bt_hci_evt_hdr *hdr;
+
+			if (stream->len < 1 + sizeof(*hdr))
+				return;
+
+			hdr = (void *) (stream->buf + 1);
+			pktlen = 1 + sizeof(*hdr) + hdr->plen;
+		}
+		break;
+	case 0xff:
+		if (stream->src_type > 0) {
+			mainloop_remove_fd(stream->src_fd);
+			return;
+		}
+		/* Notification packet from /dev/vhci - ignore */
+		stream->len = 0;
+		return;
+	default:
+		fprintf(stderr, "Received unknown packet type 0x%02x\n",
+							stream->buf[0]);
+		mainloop_remove_fd(stream->src_fd);
+		return;
+	}
+
+	if (stream->len < pktlen)
+		return;
+
+	if (stream->dst_type > 0) {
+		if (stream->buf[0] != stream->dst_type)
+			goto next_packet;
+		wbuf = stream->buf + 1;
+		wlen = pktlen - 1;
+	} else {
+		wbuf = stream->buf;
+		wlen = pktlen;
+	}
+
+	util_hexdump('*', wbuf, wlen, hexdump_print, NULL);
+
+	while (wlen > 0) {
+		ssize_t written;
+
+		written = write(stream->dst_fd, wbuf, wlen);
+		if (written < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			fprintf(stderr, "Failed to write stream packet\n");
+			mainloop_remove_fd(stream->src_fd);
+			return;
+		}
+
+		wbuf += written;
+		wlen -= written;
+	}
+
+next_packet:
+	if (stream->len > pktlen) {
+		if (stream->src_type > 0) {
+			memmove(stream->buf + 1, stream->buf + pktlen,
+						stream->len - pktlen);
+			stream->len -= pktlen;
+
+			stream->buf[0] = stream->src_type;
+			stream->len++;
+		} else {
+			memmove(stream->buf, stream->buf + pktlen,
+						stream->len - pktlen);
+			stream->len -= pktlen;
+		}
+
+		goto process_packet;
+	} else {
+		if (stream->src_type > 0) {
+			stream->buf[0] = stream->src_type;
+			stream->len = 1;
+		} else
+			stream->len = 0;
+	}
+}
+
+static struct stream *stream_create(char dir, int src_fd, uint8_t src_type,
+						int dst_fd, uint8_t dst_type)
+{
+	struct stream *stream;
+
+	stream = new0(struct stream, 1);
+	if (!stream)
+		return NULL;
+
+	stream->dir = dir;
+
+	stream->src_fd = src_fd;
+	stream->src_type = src_type;
+
+	stream->dst_fd = dst_fd;
+	stream->dst_type = dst_type;
+
+	if (stream->src_type > 0) {
+		stream->buf[0] = stream->src_type;
+		stream->len = 1;
+	}
+
+	mainloop_add_fd(stream->src_fd, EPOLLIN, stream_callback,
+						stream, stream_free);
+
+	return stream;
+}
+
+static bool setup_streams(int src_fd, uint8_t src_type_rx,
+					uint8_t src_type_tx, int dst_fd)
+{
+	struct stream *stream;
+
+	stream = stream_create('>', src_fd, src_type_rx, dst_fd, 0x00);
+	if (!stream) {
+		fprintf(stderr, "Failed to create source stream\n");
+		close(src_fd);
+		close(dst_fd);
+		return false;
+	}
+
+	stream = stream_create('<', dst_fd, 0x00, src_fd, src_type_tx);
+	if (!stream) {
+		fprintf(stderr, "Failed to create destination stream\n");
+		close(src_fd);
+		close(dst_fd);
+		return false;
+	}
+
+	return true;
+}
+
+static int open_smd(void)
+{
+	struct termios ti;
+	int fd;
+
+	printf("Opening /dev/smd3 device\n");
+
+	fd = open("/dev/smd3", O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (fd < 0) {
+		perror("Failed to open /dev/smd3 device");
+		return -1;
+	}
+
+	/* Sleep 0.5 sec to give smd port time to fully initialize */
+	usleep(500000);
+
+	if (tcflush(fd, TCIOFLUSH) < 0) {
+		perror("Failed to flush /dev/smd3 device");
+		close(fd);
+		return -1;
+	}
+
+	if (tcgetattr(fd, &ti) < 0) {
+		perror("Failed to get /dev/smd3 attributes");
+		close(fd);
+		return -1;
+	}
+
+	/* Switch to raw mode */
+	cfmakeraw(&ti);
+
+	ti.c_cflag |= CRTSCTS | CLOCAL;
+
+	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
+		perror("Failed to set /dev/smd3 attributes");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
 
 static int open_channel(uint16_t index)
 {
 	struct sockaddr_hci addr;
 	int fd;
+
+	printf("Opening user channel for hci%u\n", hci_index);
 
 	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (fd < 0) {
@@ -88,139 +358,15 @@ static int open_channel(uint16_t index)
 	return fd;
 }
 
-static void channel_callback(int fd, uint32_t events, void *user_data)
-{
-	unsigned char buf[4096];
-	ssize_t len, written;
-
-	if (events & (EPOLLERR | EPOLLHUP)) {
-		printf("Device disconnected\n");
-		mainloop_remove_fd(channel_fd);
-		close(channel_fd);
-		channel_fd = -1;
-		mainloop_remove_fd(client_fd);
-		close(client_fd);
-		client_fd = -1;
-		return;
-	}
-
-	len = read(channel_fd, buf, sizeof(buf));
-	if (len < 0) {
-		fprintf(stderr, "Failed to read channel packet\n");
-		return;
-	}
-
-	written = write(client_fd, buf, len);
-	if (written < 0) {
-		fprintf(stderr, "Failed to write to unix socket\n");
-		return;
-	}
-}
-
-static void client_callback(int fd, uint32_t events, void *user_data)
-{
-	ssize_t len, written;
-	uint16_t pktlen;
-
-	if (events & (EPOLLERR | EPOLLHUP)) {
-		printf("Client disconnected\n");
-		mainloop_remove_fd(channel_fd);
-		close(channel_fd);
-		channel_fd = -1;
-		mainloop_remove_fd(client_fd);
-		close(client_fd);
-		client_fd = -1;
-		return;
-	}
-
-	len = read(client_fd, client_buffer + client_length,
-					sizeof(client_buffer) - client_length);
-	if (len < 0) {
-		fprintf(stderr, "Failed to read client packet\n");
-		return;
-	}
-
-	client_length += len;
-
-	if (client_length < 1)
-		return;
-
-	switch (client_buffer[0]) {
-	case BT_H4_CMD_PKT:
-		{
-			struct bt_hci_cmd_hdr *hdr;
-
-			if (client_length < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (client_buffer + 1);
-			pktlen = 1 + sizeof(*hdr) + hdr->plen;
-		}
-		break;
-	case BT_H4_ACL_PKT:
-		{
-			struct bt_hci_acl_hdr *hdr;
-
-			if (client_length < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (client_buffer + 1);
-			pktlen = 1 + sizeof(*hdr) + cpu_to_le16(hdr->dlen);
-		}
-		break;
-	case BT_H4_SCO_PKT:
-		{
-			struct bt_hci_sco_hdr *hdr;
-
-			if (client_length < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (client_buffer + 1);
-			pktlen = 1 + sizeof(*hdr) + hdr->dlen;
-		}
-		break;
-	case BT_H4_EVT_PKT:
-		{
-			struct bt_hci_evt_hdr *hdr;
-
-			if (client_length < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (client_buffer + 1);
-			pktlen = 1 + sizeof(*hdr) + hdr->plen;
-		}
-		break;
-	case 0xff:
-		client_length = 0;
-		return;
-	default:
-		fprintf(stderr, "Received wrong packet type 0x%02x\n",
-							client_buffer[0]);
-		client_length = 0;
-		return;
-	}
-
-	if (client_length < pktlen)
-		return;
-
-	written = write(channel_fd, client_buffer, pktlen);
-	if (written < 0) {
-		fprintf(stderr, "Failed to write channel packet\n");
-		return;
-	}
-
-	if (client_length > pktlen) {
-		memmove(client_buffer, client_buffer + pktlen,
-						client_length - pktlen);
-		client_length -= pktlen;
-	}
-}
-
 static void server_callback(int fd, uint32_t events, void *user_data)
 {
-	struct sockaddr_un addr;
+	union {
+		struct sockaddr_un sun;
+		struct sockaddr_in sin;
+	} addr;
 	socklen_t len;
-	int nfd;
+	int src_fd, dst_fd;
+	uint8_t src_type_rx, src_type_tx;
 
 	if (events & (EPOLLERR | EPOLLHUP)) {
 		mainloop_quit();
@@ -235,42 +381,42 @@ static void server_callback(int fd, uint32_t events, void *user_data)
 		return;
 	}
 
-	nfd = accept(fd, (struct sockaddr *) &addr, &len);
-	if (nfd < 0) {
+	dst_fd = accept(fd, (struct sockaddr *) &addr, &len);
+	if (dst_fd < 0) {
 		perror("Failed to accept client socket");
 		return;
 	}
 
-	if (client_fd >= 0) {
+	if (client_active) {
 		fprintf(stderr, "Active client already present\n");
-		close(nfd);
+		close(dst_fd);
 		return;
 	}
 
-	channel_fd = open_channel(hci_index);
-	if (channel_fd < 0) {
-		close(nfd);
+	if (use_smd) {
+		src_fd = open_smd();
+		src_type_rx = BT_H4_EVT_PKT;
+		src_type_tx = BT_H4_CMD_PKT;
+	} else {
+		src_fd = open_channel(hci_index);
+		src_type_rx = 0x00;
+		src_type_tx = 0x00;
+	}
+
+	if (src_fd < 0) {
+		close(dst_fd);
 		return;
 	}
 
 	printf("New client connected\n");
 
-	if (mainloop_add_fd(channel_fd, EPOLLIN, channel_callback,
-							NULL, NULL) < 0) {
-		close(nfd);
-		close(channel_fd);
-		channel_fd = -1;
+	if (!setup_streams(src_fd, src_type_rx, src_type_tx,  dst_fd)) {
+		close(dst_fd);
+		close(src_fd);
 		return;
 	}
 
-	if (mainloop_add_fd(nfd, EPOLLIN, client_callback, NULL, NULL) < 0) {
-		close(nfd);
-		close(channel_fd);
-		channel_fd = -1;
-		return;
-	}
-
-	client_fd = nfd;
+	client_active = true;
 }
 
 static int open_unix(const char *path)
@@ -409,6 +555,7 @@ static void usage(void)
 		"\t-u, --unix [path]           Use Unix server\n"
 		"\t-p, --port <port>           Use specified TCP port\n"
 		"\t-i, --index <num>           Use specified controller\n"
+		"\t-s, --smd                   Use SMD channel devices\n"
 		"\t-h, --help                  Show help options\n");
 }
 
@@ -418,6 +565,7 @@ static const struct option main_options[] = {
 	{ "unix",    optional_argument, NULL, 'u' },
 	{ "port",    required_argument, NULL, 'p' },
 	{ "index",   required_argument, NULL, 'i' },
+	{ "smd",     no_argument,       NULL, 's' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -435,7 +583,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "c:l::u::p:i:vh",
+		opt = getopt_long(argc, argv, "c:l::u::p:i:svh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -470,6 +618,9 @@ int main(int argc, char *argv[])
 			}
 			hci_index = atoi(str);
 			break;
+		case 's':
+			use_smd = true;
+			break;
 		case 'v':
 			printf("%s\n", VERSION);
 			return EXIT_SUCCESS;
@@ -495,26 +646,27 @@ int main(int argc, char *argv[])
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	if (connect_address) {
+		int src_fd, dst_fd;
+
 		printf("Connecting to %s:%u\n", connect_address, tcp_port);
 
-		client_fd = connect_tcp(connect_address, tcp_port);
-		if (client_fd < 0)
+		src_fd = connect_tcp(connect_address, tcp_port);
+		if (src_fd < 0)
 			return EXIT_FAILURE;
-
-		mainloop_add_fd(client_fd, EPOLLIN, client_callback,
-							NULL, NULL);
 
 		printf("Opening virtual device\n");
 
-		channel_fd = open_vhci(0x00);
-		if (channel_fd < 0) {
-			close(client_fd);
+		dst_fd = open_vhci(0x00);
+		if (dst_fd < 0) {
+			close(dst_fd);
 			return EXIT_FAILURE;
 		}
 
-		mainloop_add_fd(channel_fd, EPOLLIN, channel_callback,
-							NULL, NULL);
+		if (!setup_streams(src_fd, 0x00, 0x00, dst_fd))
+			return EXIT_FAILURE;
 	} else {
+		int server_fd;
+
 		if (unix_path) {
 			printf("Listening on %s\n", unix_path);
 
