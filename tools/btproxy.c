@@ -74,7 +74,7 @@ struct stream {
 	int dst_fd;
 	uint8_t dst_type;
 	uint8_t buf[4096];
-	uint8_t len;
+	uint16_t len;
 };
 
 static void stream_free(void *data)
@@ -194,6 +194,7 @@ process_packet:
 		wlen = pktlen;
 	}
 
+	printf("* wlen = %zd\n", wlen);
 	util_hexdump('*', wbuf, wlen, hexdump_print, NULL);
 
 	while (wlen > 0) {
