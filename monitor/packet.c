@@ -1318,6 +1318,25 @@ static void print_clock(uint32_t clock)
 	print_field("Clock: 0x%8.8x", btohl(clock));
 }
 
+static void print_clock_type(uint8_t type)
+{
+	const char *str;
+
+	switch (type) {
+	case 0x00:
+		str = "Local clock";
+		break;
+	case 0x01:
+		str = "Piconet clock";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, type);
+}
+
 static void print_clock_accuracy(uint16_t accuracy)
 {
 	if (btohs(accuracy) == 0xffff)
@@ -1325,6 +1344,11 @@ static void print_clock_accuracy(uint16_t accuracy)
 	else
 		print_field("Accuracy: %.4f msec (0x%4.4x)",
 				btohs(accuracy) * 0.3125, btohs(accuracy));
+}
+
+static void print_lpo_allowed(uint8_t lpo_allowed)
+{
+	print_field("LPO allowed: 0x%2.2x", lpo_allowed);
 }
 
 static void print_broadcast_fragment(uint8_t fragment)
@@ -3598,7 +3622,7 @@ static void set_slave_broadcast_cmd(const void *data, uint8_t size)
 
 	print_field("Enable: 0x%2.2x", cmd->enable);
 	print_lt_addr(cmd->lt_addr);
-	print_field("LPO allowed: 0x%2.2x", cmd->lpo_allowed);
+	print_lpo_allowed(cmd->lpo_allowed);
 	print_pkt_type(cmd->pkt_type);
 	print_slot_625("Min interval", cmd->min_interval);
 	print_slot_625("Max interval", cmd->max_interval);
@@ -4927,23 +4951,9 @@ static void read_afh_channel_map_rsp(const void *data, uint8_t size)
 static void read_clock_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_clock *cmd = data;
-	const char *str;
 
 	print_handle(cmd->handle);
-
-	switch (cmd->type) {
-	case 0x00:
-		str = "Local clock";
-		break;
-	case 0x01:
-		str = "Piconet clock";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("Type: %s (0x%2.2x)", str, cmd->type);
+	print_clock_type(cmd->type);
 }
 
 static void read_clock_rsp(const void *data, uint8_t size)
@@ -5042,6 +5052,32 @@ static void write_remote_amp_assoc_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_phy_handle(rsp->phy_handle);
+}
+
+static void set_triggered_clock_capture_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_triggered_clock_capture *cmd = data;
+	const char *str;
+
+	print_handle(cmd->handle);
+
+	switch (cmd->enable) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Capture: %s (0x%2.2x)", str, cmd->enable);
+
+	print_clock_type(cmd->type);
+	print_lpo_allowed(cmd->lpo_allowed);
+	print_field("Clock captures to filter: %u", cmd->num_filter);
 }
 
 static void write_ssp_debug_mode_cmd(const void *data, uint8_t size)
@@ -6008,7 +6044,9 @@ static const struct opcode_data opcode_table[] = {
 				write_remote_amp_assoc_cmd, 6, false,
 				write_remote_amp_assoc_rsp, 2, true },
 	{ 0x140c, 243, "Get MWS Transport Layer Configuration" },
-	{ 0x140d, 245, "Set Triggered Clock Capture" },
+	{ 0x140d, 245, "Set Triggered Clock Capture",
+				set_triggered_clock_capture_cmd, 6, true,
+				status_rsp, 1, true },
 
 	/* OGF 6 - Testing */
 	{ 0x1801, 128, "Read Loopback Mode" },

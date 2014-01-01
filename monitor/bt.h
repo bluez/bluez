@@ -1337,6 +1337,15 @@ struct bt_hci_rsp_write_remote_amp_assoc {
 	uint8_t  phy_handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_SET_TRIGGERED_CLOCK_CAPTURE	0x140d
+struct bt_hci_cmd_set_triggered_clock_capture {
+	uint16_t handle;
+	uint8_t  enable;
+	uint8_t  type;
+	uint8_t  lpo_allowed;
+	uint8_t  num_filter;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_ENABLE_DUT_MODE		0x1803
 
 #define BT_HCI_CMD_WRITE_SSP_DEBUG_MODE		0x1804
