@@ -48,6 +48,7 @@ struct sockaddr_hci {
 	unsigned short	hci_dev;
 	unsigned short  hci_channel;
 };
+#define HCI_CHANNEL_RAW		0
 #define HCI_CHANNEL_USER	1
 
 struct bt_hci {
@@ -328,26 +329,57 @@ struct bt_hci *bt_hci_new(int fd)
 	return bt_hci_ref(hci);
 }
 
-struct bt_hci *bt_hci_new_user_channel(uint16_t index)
+static int create_socket(uint16_t index, uint16_t channel)
 {
-	struct bt_hci *hci;
 	struct sockaddr_hci addr;
 	int fd;
 
 	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
 								BTPROTO_HCI);
 	if (fd < 0)
-		return NULL;
+		return -1;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = index;
-	addr.hci_channel = HCI_CHANNEL_USER;
+	addr.hci_channel = channel;
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+struct bt_hci *bt_hci_new_user_channel(uint16_t index)
+{
+	struct bt_hci *hci;
+	int fd;
+
+	fd = create_socket(index, HCI_CHANNEL_USER);
+	if (fd < 0)
+		return NULL;
+
+	hci = bt_hci_new(fd);
+	if (!hci) {
+		close(fd);
 		return NULL;
 	}
+
+	bt_hci_set_close_on_unref(hci, true);
+
+	return hci;
+}
+
+struct bt_hci *bt_hci_new_raw_device(uint16_t index)
+{
+	struct bt_hci *hci;
+	int fd;
+
+	fd = create_socket(index, HCI_CHANNEL_RAW);
+	if (fd < 0)
+		return NULL;
 
 	hci = bt_hci_new(fd);
 	if (!hci) {

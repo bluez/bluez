@@ -30,6 +30,7 @@ struct bt_hci;
 
 struct bt_hci *bt_hci_new(int fd);
 struct bt_hci *bt_hci_new_user_channel(uint16_t index);
+struct bt_hci *bt_hci_new_raw_device(uint16_t index);
 
 struct bt_hci *bt_hci_ref(struct bt_hci *hci);
 void bt_hci_unref(struct bt_hci *hci);
