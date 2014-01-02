@@ -128,20 +128,20 @@ static void local_version_callback(const void *data, uint8_t size,
 	const struct bt_hci_rsp_read_local_version *rsp = data;
 
 	printf("HCI version: %u\n", rsp->hci_ver);
-	printf("HCI revision: %u\n", rsp->hci_rev);
+	printf("HCI revision: %u\n", le16_to_cpu(rsp->hci_rev));
 
 	switch (hci_type) {
 	case HCI_BREDR:
 		printf("LMP version: %u\n", rsp->lmp_ver);
-		printf("LMP subversion: %u\n", rsp->lmp_subver);
+		printf("LMP subversion: %u\n", le16_to_cpu(rsp->lmp_subver));
 		break;
 	case HCI_AMP:
 		printf("PAL version: %u\n", rsp->lmp_ver);
-		printf("PAL subversion: %u\n", rsp->lmp_subver);
+		printf("PAL subversion: %u\n", le16_to_cpu(rsp->lmp_subver));
 		break;
 	}
 
-	printf("Manufacturer: %u\n", rsp->manufacturer);
+	printf("Manufacturer: %u\n", le16_to_cpu(rsp->manufacturer));
 }
 
 static void local_commands_callback(const void *data, uint8_t size,
