@@ -215,7 +215,11 @@ tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c \
 				src/shared/mgmt.h src/shared/mgmt.c
 tools_btmgmt_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-tools_btinfo_SOURCES = tools/btinfo.c
+tools_btinfo_SOURCES = tools/btinfo.c monitor/bt.h \
+				monitor/mainloop.h monitor/mainloop.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/hci.h src/shared/hci.c
 
 tools_btsnoop_SOURCES = tools/btsnoop.c \
 				src/shared/pcap.h src/shared/pcap.c \
