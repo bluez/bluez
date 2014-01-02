@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
 
 #include "btsnoop.h"
 
