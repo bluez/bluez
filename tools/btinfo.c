@@ -74,10 +74,31 @@ static void shutdown_device(void)
 		mainloop_quit();
 }
 
-static void local_features_callback(const void *data, uint8_t size,
+static void local_version_callback(const void *data, uint8_t size,
+							void *user_data)
+{
+	const struct bt_hci_rsp_read_local_version *rsp = data;
+
+	printf("HCI version: %u\n", rsp->hci_ver);
+	printf("HCI revision: %u\n", rsp->hci_rev);
+
+	printf("LMP version: %u\n", rsp->lmp_ver);
+	printf("LMP subversion: %u\n", rsp->lmp_subver);
+
+	printf("Manufacturer: %u\n", rsp->manufacturer);
+}
+
+static void local_commands_callback(const void *data, uint8_t size,
 							void *user_data)
 {
 	shutdown_device();
+}
+
+static void local_features_callback(const void *data, uint8_t size,
+							void *user_data)
+{
+	bt_hci_send(hci_dev, BT_HCI_CMD_READ_LOCAL_COMMANDS, NULL, 0,
+					local_commands_callback, NULL, NULL);
 }
 
 static bool cmd_local(int argc, char *argv[])
@@ -85,6 +106,9 @@ static bool cmd_local(int argc, char *argv[])
 	if (reset_required)
 		bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0,
 						NULL, NULL, NULL);
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_READ_LOCAL_VERSION, NULL, 0,
+					local_version_callback, NULL, NULL);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_READ_LOCAL_FEATURES, NULL, 0,
 					local_features_callback, NULL, NULL);
@@ -135,6 +159,7 @@ static void usage(void)
 
 static const struct option main_options[] = {
 	{ "index",   required_argument, NULL, 'i' },
+	{ "raw",     no_argument,       NULL, 'r' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -143,6 +168,7 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	cmd_func_t func = NULL;
+	bool use_raw = false;
 	uint16_t index = 0;
 	const char *str;
 	sigset_t mask;
@@ -151,7 +177,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "i:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "i:rvh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -166,6 +192,9 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 			index = atoi(str);
+			break;
+		case 'r':
+			use_raw = true;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
@@ -203,15 +232,25 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
-	printf("3D Synchronization Profile testing ver %s\n", VERSION);
+	printf("Bluetooth information utility ver %s\n", VERSION);
 
-	hci_dev = bt_hci_new_user_channel(index);
-	if (!hci_dev) {
-		fprintf(stderr, "Failed to open HCI user channel\n");
-		return EXIT_FAILURE;
+	if (use_raw) {
+		hci_dev = bt_hci_new_raw_device(index);
+		if (!hci_dev) {
+			fprintf(stderr, "Failed to open HCI raw device\n");
+			return EXIT_FAILURE;
+		}
+
+		reset_required = false;
+	} else {
+		hci_dev = bt_hci_new_user_channel(index);
+		if (!hci_dev) {
+			fprintf(stderr, "Failed to open HCI user channel\n");
+			return EXIT_FAILURE;
+		}
+
+		reset_required = true;
 	}
-
-	reset_required = true;
 
 	if (!func(argc - optind - 1, argv + optind + 1)) {
 		bt_hci_unref(hci_dev);
