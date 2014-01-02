@@ -70,6 +70,7 @@ struct cid_hook {
 struct btconn {
 	uint16_t handle;
 	uint8_t addr_type;
+	uint8_t encr_mode;
 	uint16_t next_cid;
 	struct l2conn *l2conns;
 	struct cid_hook *cid_hooks;
@@ -655,6 +656,24 @@ static void evt_num_completed_packets(struct bthost *bthost, const void *data,
 		return;
 }
 
+static void evt_encrypt_change(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_encrypt_change *ev = data;
+	struct btconn *conn;
+	uint16_t handle;
+
+	if (len < sizeof(*ev))
+		return;
+
+	handle = acl_handle(ev->handle);
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	conn->encr_mode = ev->encr_mode;
+}
+
 static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -729,6 +748,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
 		evt_num_completed_packets(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_ENCRYPT_CHANGE:
+		evt_encrypt_change(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_LE_META_EVENT:
