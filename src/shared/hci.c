@@ -51,6 +51,14 @@ struct sockaddr_hci {
 #define HCI_CHANNEL_RAW		0
 #define HCI_CHANNEL_USER	1
 
+#define SOL_HCI		0
+#define HCI_FILTER	2
+struct hci_filter {
+	uint32_t type_mask;
+	uint32_t event_mask[2];
+	uint16_t opcode;
+};
+
 struct bt_hci {
 	int ref_count;
 	int fd;
@@ -375,11 +383,22 @@ struct bt_hci *bt_hci_new_user_channel(uint16_t index)
 struct bt_hci *bt_hci_new_raw_device(uint16_t index)
 {
 	struct bt_hci *hci;
+	struct hci_filter flt;
 	int fd;
 
 	fd = create_socket(index, HCI_CHANNEL_RAW);
 	if (fd < 0)
 		return NULL;
+
+	memset(&flt, 0, sizeof(flt));
+	flt.type_mask = 1 << BT_H4_EVT_PKT;
+	flt.event_mask[0] = 0xffffffff;
+	flt.event_mask[1] = 0xffffffff;
+
+	if (setsockopt(fd, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+		close(fd);
+		return NULL;
+	}
 
 	hci = bt_hci_new(fd);
 	if (!hci) {
