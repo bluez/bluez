@@ -720,7 +720,7 @@ static uint8_t browse_remote_sdp(const bdaddr_t *addr)
 	uuid_t uuid;
 
 	if (g_slist_find_custom(browse_reqs, addr, req_cmp))
-		return HAL_STATUS_DONE;
+		return HAL_STATUS_SUCCESS;
 
 	req = g_new0(struct browse_req, 1);
 	bacpy(&req->bdaddr, addr);
@@ -2298,7 +2298,7 @@ done:
 	/* Android expects property changed callback */
 	scan_mode_changed();
 
-	return HAL_STATUS_DONE;
+	return HAL_STATUS_SUCCESS;
 }
 
 static void handle_set_adapter_prop_cmd(const void *buf, uint16_t len)
@@ -2692,7 +2692,7 @@ static void handle_enable_cmd(const void *buf, uint16_t len)
 	send_bonded_devices_props();
 
 	if (adapter.current_settings & MGMT_SETTING_POWERED) {
-		status = HAL_STATUS_DONE;
+		status = HAL_STATUS_SUCCESS;
 		goto failed;
 	}
 
@@ -2711,7 +2711,7 @@ static void handle_disable_cmd(const void *buf, uint16_t len)
 	uint8_t status;
 
 	if (!(adapter.current_settings & MGMT_SETTING_POWERED)) {
-		status = HAL_STATUS_DONE;
+		status = HAL_STATUS_SUCCESS;
 		goto failed;
 	}
 
@@ -2897,7 +2897,7 @@ static void handle_start_discovery_cmd(const void *buf, uint16_t len)
 	uint8_t status;
 
 	if (adapter.discovering) {
-		status = HAL_STATUS_DONE;
+		status = HAL_STATUS_SUCCESS;
 		goto failed;
 	}
 
@@ -2921,7 +2921,7 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 	uint8_t status;
 
 	if (!adapter.discovering) {
-		status = HAL_STATUS_DONE;
+		status = HAL_STATUS_SUCCESS;
 		goto failed;
 	}
 
