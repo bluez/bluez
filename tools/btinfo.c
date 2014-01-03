@@ -359,6 +359,8 @@ int main(int argc, char *argv[])
 
 			if (ioctl(fd, HCIDEVDOWN, hci_info.dev_id) < 0)
 				perror("Failed to power down controller");
+
+			close(fd);
 		}
 	}
 
