@@ -2178,7 +2178,7 @@ static void handle_get_adapter_prop_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
-	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+	if (status != HAL_STATUS_SUCCESS)
 		error("Failed to get adapter property (type %u status %u)",
 							cmd->type, status);
 
@@ -2329,7 +2329,7 @@ static void handle_set_adapter_prop_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
-	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+	if (status != HAL_STATUS_SUCCESS)
 		error("Failed to set adapter property (type %u status %u)",
 							cmd->type, status);
 
@@ -2805,7 +2805,7 @@ static void handle_get_remote_device_prop_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
-	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+	if (status != HAL_STATUS_SUCCESS)
 		error("Failed to get device property (type %u status %u)",
 							cmd->type, status);
 
@@ -2873,7 +2873,7 @@ static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
-	if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
+	if (status != HAL_STATUS_SUCCESS)
 		error("Failed to set device property (type %u status %u)",
 							cmd->type, status);
 
