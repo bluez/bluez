@@ -2693,16 +2693,16 @@ static void handle_enable_cmd(const void *buf, uint16_t len)
 
 	if (adapter.current_settings & MGMT_SETTING_POWERED) {
 		status = HAL_STATUS_SUCCESS;
-		goto failed;
+		goto reply;
 	}
 
 	if (!set_mode(MGMT_OP_SET_POWERED, 0x01)) {
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	status = HAL_STATUS_SUCCESS;
-failed:
+reply:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, status);
 }
 
@@ -2712,16 +2712,16 @@ static void handle_disable_cmd(const void *buf, uint16_t len)
 
 	if (!(adapter.current_settings & MGMT_SETTING_POWERED)) {
 		status = HAL_STATUS_SUCCESS;
-		goto failed;
+		goto reply;
 	}
 
 	if (!set_mode(MGMT_OP_SET_POWERED, 0x00)) {
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	status = HAL_STATUS_SUCCESS;
-failed:
+reply:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, status);
 }
 
@@ -2898,21 +2898,21 @@ static void handle_start_discovery_cmd(const void *buf, uint16_t len)
 
 	if (adapter.discovering) {
 		status = HAL_STATUS_SUCCESS;
-		goto failed;
+		goto reply;
 	}
 
 	if (!(adapter.current_settings & MGMT_SETTING_POWERED)) {
 		status = HAL_STATUS_NOT_READY;
-		goto failed;
+		goto reply;
 	}
 
 	if (!start_discovery()) {
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	status = HAL_STATUS_SUCCESS;
-failed:
+reply:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_START_DISCOVERY, status);
 }
 
@@ -2922,22 +2922,22 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 
 	if (!adapter.discovering) {
 		status = HAL_STATUS_SUCCESS;
-		goto failed;
+		goto reply;
 	}
 
 	if (!(adapter.current_settings & MGMT_SETTING_POWERED)) {
 		status = HAL_STATUS_NOT_READY;
-		goto failed;
+		goto reply;
 	}
 
 	if (!stop_discovery()) {
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	status = HAL_STATUS_SUCCESS;
 
-failed:
+reply:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_DISCOVERY, status);
 }
 
