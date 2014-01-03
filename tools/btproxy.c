@@ -659,7 +659,7 @@ int main(int argc, char *argv[])
 
 		dst_fd = open_vhci(0x00);
 		if (dst_fd < 0) {
-			close(dst_fd);
+			close(src_fd);
 			return EXIT_FAILURE;
 		}
 
