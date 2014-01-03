@@ -724,7 +724,7 @@ static uint8_t browse_remote_sdp(const bdaddr_t *addr)
 	if (bt_search_service(&adapter.bdaddr,
 			&req->bdaddr, &uuid, browse_cb, req, NULL) < 0) {
 		browse_req_free(req);
-		return false;
+		return HAL_STATUS_FAILED;
 	}
 
 	browse_reqs = g_slist_append(browse_reqs, req);
