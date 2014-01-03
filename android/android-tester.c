@@ -1052,7 +1052,9 @@ static void setup_enabled_adapter(const void *test_data)
 	if (status != BT_STATUS_SUCCESS) {
 		data->if_bluetooth = NULL;
 		tester_setup_failed();
+		return;
 	}
+
 	status = data->if_bluetooth->enable();
 	if (status != BT_STATUS_SUCCESS)
 		tester_setup_failed();
