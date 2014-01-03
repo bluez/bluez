@@ -408,18 +408,20 @@ static void print_addr(const char *label, const uint8_t *addr,
 		if (!hwdb_get_company(addr, &company))
 			company = NULL;
 
-		if (company)
+		if (company) {
 			print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
 					" (%s)", label, addr[5], addr[4],
 							addr[3], addr[2],
 							addr[1], addr[0],
 							company);
-		else
+			free(company);
+		} else {
 			print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
 					" (OUI %2.2X-%2.2X-%2.2X)", label,
 						addr[5], addr[4], addr[3],
 						addr[2], addr[1], addr[0],
 						addr[5], addr[4], addr[3]);
+		}
 		break;
 	case 0x01:
 		switch ((addr[5] & 0xc0) >> 6) {
