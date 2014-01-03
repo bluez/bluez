@@ -269,6 +269,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[0]  |= 0x80;	/* Cancel Create Connection */
 	btdev->commands[1]  |= 0x01;	/* Accept Connection Request */
 	btdev->commands[1]  |= 0x02;	/* Reject Connection Request */
+	btdev->commands[1]  |= 0x80;	/* Authentication Requested */
 	btdev->commands[2]  |= 0x08;	/* Remote Name Request */
 	btdev->commands[2]  |= 0x10;	/* Cancel Remote Name Request */
 	btdev->commands[2]  |= 0x20;	/* Read Remote Supported Features */
@@ -1197,6 +1198,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_REJECT_CONN_REQUEST:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+		break;
+
+	case BT_HCI_CMD_AUTH_REQUESTED:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
