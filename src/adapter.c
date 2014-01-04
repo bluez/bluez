@@ -3515,16 +3515,16 @@ static void convert_ccc_entry(char *key, char *value, void *user_data)
 	char *src_addr = user_data;
 	char dst_addr[18];
 	char type = BDADDR_BREDR;
-	int handle, ret;
+	uint16_t handle;
+	int ret, err;
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
 	struct stat st;
-	int err;
 	char group[6];
 	char *data;
 	gsize length = 0;
 
-	ret = sscanf(key, "%17s#%hhu#%04X", dst_addr, &type, &handle);
+	ret = sscanf(key, "%17s#%hhu#%04hX", dst_addr, &type, &handle);
 	if (ret < 3)
 		return;
 
@@ -3565,16 +3565,16 @@ static void convert_gatt_entry(char *key, char *value, void *user_data)
 	char *src_addr = user_data;
 	char dst_addr[18];
 	char type = BDADDR_BREDR;
-	int handle, ret;
+	uint16_t handle;
+	int ret, err;
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
 	struct stat st;
-	int err;
 	char group[6];
 	char *data;
 	gsize length = 0;
 
-	ret = sscanf(key, "%17s#%hhu#%04X", dst_addr, &type, &handle);
+	ret = sscanf(key, "%17s#%hhu#%04hX", dst_addr, &type, &handle);
 	if (ret < 3)
 		return;
 
