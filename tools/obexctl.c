@@ -431,14 +431,12 @@ static void set_default_session(GDBusProxy *proxy)
 
 	default_session = proxy;
 
-	if (proxy == NULL) {
+	if (!g_dbus_proxy_get_property(proxy, "Destination", &iter)) {
 		desc = g_strdup(PROMPT_ON);
 		goto done;
 	}
 
-	if (g_dbus_proxy_get_property(proxy, "Destination", &iter))
-		dbus_message_iter_get_basic(&iter, &desc);
-
+	dbus_message_iter_get_basic(&iter, &desc);
 	desc = g_strdup_printf(COLOR_BLUE "[%s]" COLOR_OFF "# ", desc);
 
 done:
