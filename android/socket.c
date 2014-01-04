@@ -62,6 +62,8 @@
 
 static bdaddr_t adapter_addr;
 
+static const uint8_t zero_uuid[16] = { 0 };
+
 /* Simple list of RFCOMM server sockets */
 GList *servers = NULL;
 
@@ -787,38 +789,40 @@ static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
 		rfsock_acc->rfcomm_watch);
 }
 
-static void handle_listen(const void *buf, uint16_t len)
+static uint8_t rfcomm_listen(int chan, const uint8_t *name, const uint8_t *uuid,
+						uint8_t flags, int *hal_fd)
 {
-	const struct hal_cmd_sock_listen *cmd = buf;
 	const struct profile_info *profile;
 	struct rfcomm_sock *rfsock = NULL;
 	BtIOSecLevel sec_level;
 	GIOChannel *io, *io_stack;
 	GIOCondition cond;
 	GError *err = NULL;
-	int hal_fd = -1;
-	int chan;
 	guint id;
 
 	DBG("");
 
-	profile = get_profile_by_uuid(cmd->uuid);
-	if (!profile) {
-		if (cmd->channel <= 0)
-			goto failed;
+	if (!memcmp(uuid, zero_uuid, sizeof(zero_uuid)) && chan <= 0) {
+		error("Invalid rfcomm listen params");
+		return HAL_STATUS_INVALID;
+	}
 
-		chan = cmd->channel;
+	profile = get_profile_by_uuid(uuid);
+	if (!profile) {
+		if (chan <= 0)
+			return HAL_STATUS_INVALID;
+
 		sec_level = BT_IO_SEC_MEDIUM;
 	} else {
 		chan = profile->channel;
 		sec_level = profile->sec_level;
 	}
 
-	DBG("rfcomm channel %d svc_name %s", chan, cmd->name);
+	DBG("rfcomm channel %d svc_name %s", chan, name);
 
-	rfsock = create_rfsock(-1, &hal_fd);
+	rfsock = create_rfsock(-1, hal_fd);
 	if (!rfsock)
-		goto failed;
+		return HAL_STATUS_FAILED;
 
 	io = bt_io_listen(accept_cb, NULL, rfsock, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
@@ -847,31 +851,56 @@ static void handle_listen(const void *buf, uint16_t len)
 	rfsock->stack_watch = id;
 
 	DBG("real_sock %d fd %d hal_fd %d", rfsock->real_sock, rfsock->fd,
-								hal_fd);
+								*hal_fd);
 
 	if (write(rfsock->fd, &chan, sizeof(chan)) != sizeof(chan)) {
 		error("Error sending RFCOMM channel");
 		goto failed;
 	}
 
-	rfsock->service_handle = sdp_service_register(profile, cmd->name);
+	rfsock->service_handle = sdp_service_register(profile, name);
 
 	servers = g_list_append(servers, rfsock);
+
+	return HAL_STATUS_SUCCESS;
+
+failed:
+
+	cleanup_rfsock(rfsock);
+	close(*hal_fd);
+	return HAL_STATUS_FAILED;
+}
+
+static void handle_listen(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_sock_listen *cmd = buf;
+	uint8_t status;
+	int hal_fd;
+
+	switch (cmd->type) {
+	case HAL_SOCK_RFCOMM:
+		status = rfcomm_listen(cmd->channel, cmd->name, cmd->uuid,
+							cmd->flags, &hal_fd);
+		break;
+	case HAL_SOCK_SCO:
+	case HAL_SOCK_L2CAP:
+		status = HAL_STATUS_UNSUPPORTED;
+		break;
+	default:
+		status = HAL_STATUS_INVALID;
+		break;
+	}
+
+	if (status != HAL_STATUS_SUCCESS)
+		goto failed;
 
 	ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_LISTEN, 0, NULL,
 									hal_fd);
 	close(hal_fd);
-	return;
+	return ;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_LISTEN,
-							HAL_STATUS_FAILED);
-
-	if (rfsock)
-		cleanup_rfsock(rfsock);
-
-	if (hal_fd >= 0)
-		close(hal_fd);
+	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_LISTEN, status);
 }
 
 static bool sock_send_connect(struct rfcomm_sock *rfsock, bdaddr_t *bdaddr)
@@ -1036,7 +1065,6 @@ fail:
 static void handle_connect(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_sock_connect *cmd = buf;
-	static const uint8_t zero_uuid[16] = { 0 };
 	struct rfcomm_sock *rfsock;
 	uuid_t uuid;
 	int hal_fd = -1;
