@@ -6976,6 +6976,7 @@ static void le_adv_report_evt(const void *data, uint8_t size)
 
 	print_num_reports(evt->num_reports);
 
+report:
 	switch (evt->event_type) {
 	case 0x00:
 		str = "Connectable undirected - ADV_IND";
@@ -7008,8 +7009,12 @@ static void le_adv_report_evt(const void *data, uint8_t size)
 
 	evt_len = sizeof(*evt) + evt->data_len + 1;
 
-	if (size > evt_len)
-		packet_hexdump(data + evt_len, size - evt_len);
+	if (size > evt_len) {
+		data += evt_len - 1;
+		size -= evt_len - 1;
+		evt = data;
+		goto report;
+	}
 }
 
 static void le_conn_update_complete_evt(const void *data, uint8_t size)
