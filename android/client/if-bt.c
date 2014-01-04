@@ -310,7 +310,7 @@ static void dut_mode_recv_cb(uint16_t opcode, uint8_t *buf, uint8_t len)
 #if PLATFORM_SDK_VERSION > 17
 static void le_test_mode_cb(bt_status_t status, uint16_t num_packets)
 {
-	haltest_info("%s %s %d\n", __func__, bt_state_t2str(status),
+	haltest_info("%s %s %d\n", __func__, bt_status_t2str(status),
 								num_packets);
 }
 #endif
