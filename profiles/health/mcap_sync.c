@@ -55,7 +55,7 @@ struct mcap_csp {
 	guint		remote_caps;	/* CSP-Slave: remote master got caps */
 	guint		rem_req_acc;	/* CSP-Slave: accuracy required by master */
 	guint		ind_expected;	/* CSP-Master: indication expected */
-	MCAPCtrl	csp_req;	/* CSP-Master: Request control flag */
+	uint8_t		csp_req;	/* CSP-Master: Request control flag */
 	guint		ind_timer;	/* CSP-Slave: indication timer */
 	guint		set_timer;	/* CSP-Slave: delayed set timer */
 	void		*set_data;	/* CSP-Slave: delayed set data */
