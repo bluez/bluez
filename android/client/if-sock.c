@@ -154,21 +154,19 @@ static void read_accepted(int fd)
 
 	for (cmsgptr = CMSG_FIRSTHDR(&msg);
 		cmsgptr != NULL; cmsgptr = CMSG_NXTHDR(&msg, cmsgptr)) {
-		int *descs;
 		int count;
 
 		if (cmsgptr->cmsg_level != SOL_SOCKET ||
 			cmsgptr->cmsg_type != SCM_RIGHTS)
 			continue;
 
-		descs = (int *) CMSG_DATA(cmsgptr);
+		memcpy(&accepted_fd, CMSG_DATA(cmsgptr), sizeof(accepted_fd));
 		count = ((cmsgptr->cmsg_len - CMSG_LEN(0)) / sizeof(int));
 
 		if (count != 1)
 			haltest_error("Failed to accept descriptors count=%d\n",
 									count);
 
-		accepted_fd = descs[0];
 		break;
 	}
 
