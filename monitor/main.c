@@ -34,6 +34,7 @@
 
 #include "mainloop.h"
 #include "packet.h"
+#include "ellisys.h"
 #include "control.h"
 
 static void signal_callback(int signum, void *user_data)
@@ -59,6 +60,7 @@ static void usage(void)
 		"\t-t, --time             Show time instead of time offset\n"
 		"\t-T, --date             Show time and date information\n"
 		"\t-S, --sco              Dump SCO traffic\n"
+		"\t-E, --ellisys [ip]     Send Ellisys HCI Injection\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -70,6 +72,7 @@ static const struct option main_options[] = {
 	{ "time",    no_argument,       NULL, 't' },
 	{ "date",    no_argument,       NULL, 'T' },
 	{ "sco",     no_argument,	NULL, 'S' },
+	{ "ellisys", required_argument, NULL, 'E' },
 	{ "todo",    no_argument,       NULL, '#' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
@@ -79,7 +82,10 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	unsigned long filter_mask = 0;
-	const char *str, *reader_path = NULL, *writer_path = NULL;
+	const char *reader_path = NULL, *writer_path = NULL;
+	const char *ellisys_server = NULL;
+	unsigned short ellisys_port = 0;
+	const char *str;
 	sigset_t mask;
 
 	mainloop_init();
@@ -89,7 +95,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "r:w:s:i:tTSvh",
+		opt = getopt_long(argc, argv, "r:w:s:i:tTSE:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -127,6 +133,10 @@ int main(int argc, char *argv[])
 		case 'S':
 			filter_mask |= PACKET_FILTER_SHOW_SCO_DATA;
 			break;
+		case 'E':
+			ellisys_server = optarg;
+			ellisys_port = 24352;
+			break;
 		case '#':
 			packet_todo();
 			return EXIT_SUCCESS;
@@ -157,12 +167,18 @@ int main(int argc, char *argv[])
 	packet_set_filter(filter_mask);
 
 	if (reader_path) {
+		if (ellisys_server)
+			ellisys_enable(ellisys_server, ellisys_port);
+
 		control_reader(reader_path);
 		return EXIT_SUCCESS;
 	}
 
 	if (writer_path)
 		control_writer(writer_path);
+
+	if (ellisys_server)
+		ellisys_enable(ellisys_server, ellisys_port);
 
 	if (control_tracing() < 0)
 		return EXIT_FAILURE;

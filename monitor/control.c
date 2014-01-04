@@ -45,6 +45,7 @@
 #include "packet.h"
 #include "btsnoop.h"
 #include "hcidump.h"
+#include "ellisys.h"
 #include "control.h"
 
 static bool hcidump_fallback = false;
@@ -627,6 +628,8 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 		case HCI_CHANNEL_MONITOR:
 			packet_monitor(tv, index, opcode, data->buf, pktlen);
 			btsnoop_write_hci(tv, index, opcode, data->buf, pktlen);
+			ellisys_inject_hci(tv, index, opcode,
+							data->buf, pktlen);
 			break;
 		}
 	}
@@ -848,6 +851,7 @@ void control_reader(const char *path)
 				break;
 
 			packet_monitor(&tv, index, opcode, buf, pktlen);
+			ellisys_inject_hci(&tv, index, opcode, buf, pktlen);
 		}
 		break;
 

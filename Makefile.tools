@@ -18,6 +18,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 					monitor/display.h monitor/display.c \
 					monitor/hcidump.h monitor/hcidump.c \
 					monitor/btsnoop.h monitor/btsnoop.c \
+					monitor/ellisys.h monitor/ellisys.c \
 					monitor/control.h monitor/control.c \
 					monitor/packet.h monitor/packet.c \
 					monitor/vendor.h monitor/vendor.c \
