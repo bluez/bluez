@@ -207,7 +207,7 @@ static void listen_p(int argc, const char **argv)
 	const char *service_name;
 	bt_uuid_t service_uuid;
 	int channel;
-	int sock_fd;
+	int sock_fd = -1;
 	int flags;
 
 	RETURN_IF_NULL(if_sock);
@@ -281,7 +281,7 @@ static void connect_p(int argc, const char **argv)
 	btsock_type_t type;
 	bt_uuid_t uuid;
 	int channel;
-	int sock_fd;
+	int sock_fd = -1;
 	int flags;
 
 	/* Address */
