@@ -2208,7 +2208,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 
 		if (type == 0x03)
 			item = parse_media_element(session, &operands[i], len);
-		else if (type == 0x02)
+		else
 			item = parse_media_folder(session, &operands[i], len);
 
 		if (item) {
