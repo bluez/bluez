@@ -61,30 +61,24 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 {
 	struct hal_cmd_sock_connect cmd;
 
-	if ((!uuid && chan <= 0) || !bdaddr || !sock || !type) {
-		error("Invalid params: bd_addr %s, uuid %s, chan %d, sock %p",
-			bdaddr2str(bdaddr), btuuid2str(uuid), chan, sock);
+	if (!sock)
 		return BT_STATUS_PARM_INVALID;
-	}
 
 	DBG("bdaddr %s uuid %s chan %d sock %p type %d flags 0x%02x",
 		bdaddr2str(bdaddr), btuuid2str(uuid), chan, sock, type, flags);
 
-	if (type != BTSOCK_RFCOMM) {
-		error("Socket type %u not supported", type);
-		return BT_STATUS_UNSUPPORTED;
-	}
-
 	memset(&cmd, 0, sizeof(cmd));
 
-	cmd.flags = flags;
+	/* type match IPC type */
 	cmd.type = type;
+	cmd.flags = flags;
 	cmd.channel = chan;
 
 	if (uuid)
 		memcpy(cmd.uuid, uuid, sizeof(cmd.uuid));
 
-	memcpy(cmd.bdaddr, bdaddr, sizeof(cmd.bdaddr));
+	if (bdaddr)
+		memcpy(cmd.bdaddr, bdaddr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_CONNECT,
 					sizeof(cmd), &cmd, NULL, NULL, sock);
