@@ -47,6 +47,9 @@
 
 static struct bt_hci *hci_dev;
 
+static bool reset_on_init = false;
+static bool reset_on_shutdown = false;
+
 static void shutdown_timeout(int id, void *user_data)
 {
 	mainloop_remove_timeout(id);
@@ -65,12 +68,15 @@ static void shutdown_device(void)
 {
 	unsigned int id;
 
-	id = mainloop_add_timeout(5, shutdown_timeout, NULL, NULL);
-
 	bt_hci_flush(hci_dev);
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0, shutdown_complete,
-							UINT_TO_PTR(id), NULL);
+	if (reset_on_shutdown) {
+		id = mainloop_add_timeout(5, shutdown_timeout, NULL, NULL);
+
+		bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0,
+				shutdown_complete, UINT_TO_PTR(id), NULL);
+	} else
+		mainloop_quit();
 }
 
 static void slave_broadcast_receive(const void *data, uint8_t size,
@@ -189,9 +195,13 @@ static void start_glasses(void)
 	uint8_t evtmask2[] = { 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t inqmode = 0x02;
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0, NULL, NULL, NULL);
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK, evtmask1, 8,
+	if (reset_on_init) {
+		bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0,
 							NULL, NULL, NULL);
+		bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK, evtmask1, 8,
+							NULL, NULL, NULL);
+	}
+
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK_PAGE2, evtmask2, 8,
 							NULL, NULL, NULL);
 	bt_hci_send(hci_dev, BT_HCI_CMD_WRITE_INQUIRY_MODE, &inqmode, 1,
@@ -294,9 +304,13 @@ static void start_display(void)
 	uint8_t sspmode = 0x01;
 	uint8_t ltaddr = LT_ADDR;
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0, NULL, NULL, NULL);
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK, evtmask1, 8,
+	if (reset_on_init) {
+		bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0,
 							NULL, NULL, NULL);
+		bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK, evtmask1, 8,
+							NULL, NULL, NULL);
+	}
+
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK_PAGE2, evtmask2, 8,
 							NULL, NULL, NULL);
 	bt_hci_send(hci_dev, BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE, &sspmode, 1,
@@ -363,6 +377,7 @@ static const struct option main_options[] = {
 	{ "display", no_argument,       NULL, 'D' },
 	{ "glasses", no_argument,       NULL, 'G' },
 	{ "index",   required_argument, NULL, 'i' },
+	{ "raw",     no_argument,       NULL, 'r' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -373,13 +388,14 @@ int main(int argc, char *argv[])
 	bool display_role = false, glasses_role = false;
 	uint16_t index = 0;
 	const char *str;
+	bool use_raw = false;
 	sigset_t mask;
 	int exit_status;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "DGi:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "DGi:rvh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -400,6 +416,9 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 			index = atoi(str);
+			break;
+		case 'r':
+			use_raw = true;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
@@ -432,10 +451,21 @@ int main(int argc, char *argv[])
 
 	printf("3D Synchronization Profile testing ver %s\n", VERSION);
 
-	hci_dev = bt_hci_new_user_channel(index);
-	if (!hci_dev) {
-		fprintf(stderr, "Failed to open HCI user channel\n");
-		return EXIT_FAILURE;
+	if (use_raw) {
+		hci_dev = bt_hci_new_raw_device(index);
+		if (!hci_dev) {
+			fprintf(stderr, "Failed to open HCI raw device\n");
+			return EXIT_FAILURE;
+		}
+	} else {
+		hci_dev = bt_hci_new_user_channel(index);
+		if (!hci_dev) {
+			fprintf(stderr, "Failed to open HCI user channel\n");
+			return EXIT_FAILURE;
+		}
+
+		reset_on_init = true;
+		reset_on_shutdown = true;
 	}
 
 	if (display_role)
