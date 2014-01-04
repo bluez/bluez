@@ -185,8 +185,7 @@ static void signal_callback(int signum, void *user_data)
 
 int main(int argc, char *argv[])
 {
-	static const char SYSTEM_SOCKET_PATH[] = "\0android_system";
-
+	const char SYSTEM_SOCKET_PATH[] = "\0android_system";
 	sigset_t mask;
 	struct sockaddr_un addr;
 	int fd;
