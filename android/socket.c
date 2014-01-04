@@ -804,7 +804,7 @@ static void handle_listen(const void *buf, uint16_t len)
 
 	profile = get_profile_by_uuid(cmd->uuid);
 	if (!profile) {
-		if (!cmd->channel)
+		if (cmd->channel <= 0)
 			goto failed;
 
 		chan = cmd->channel;
