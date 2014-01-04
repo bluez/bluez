@@ -178,7 +178,7 @@ static void init_p(int argc, const char **argv)
 
 /* connect */
 
-static void connect_c(int argc, const const char **argv, enum_func *enum_func,
+static void connect_c(int argc, const char **argv, enum_func *enum_func,
 								void **user)
 {
 	if (argc == 3) {
@@ -243,8 +243,8 @@ static void set_info_p(int argc, const char **argv)
 
 /* get_protocol */
 
-static void get_protocol_c(int argc, const const char **argv,
-					enum_func *enum_func, void **user)
+static void get_protocol_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
 		*user = connected_device_addr;
@@ -296,8 +296,8 @@ static void set_protocol_p(int argc, const char **argv)
 
 /* get_report */
 
-static void get_report_c(int argc, const const char **argv,
-					enum_func *enum_func, void **user)
+static void get_report_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
 		*user = connected_device_addr;
@@ -341,8 +341,8 @@ static void get_report_p(int argc, const char **argv)
 
 /* set_report */
 
-static void set_report_c(int argc, const const char **argv,
-					enum_func *enum_func, void **user)
+static void set_report_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
 		*user = connected_device_addr;
@@ -377,7 +377,7 @@ static void set_report_p(int argc, const char **argv)
 
 /* send_data */
 
-static void send_data_c(int argc, const const char **argv, enum_func *enum_func,
+static void send_data_c(int argc, const char **argv, enum_func *enum_func,
 								void **user)
 {
 	if (argc == 3) {

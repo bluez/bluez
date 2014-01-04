@@ -80,7 +80,7 @@ static void init_p(int argc, const char **argv)
 
 /* enable */
 
-static void enable_c(int argc, const const char **argv, enum_func *enum_func,
+static void enable_c(int argc, const char **argv, enum_func *enum_func,
 								void **user)
 {
 	if (argc == 3) {
@@ -121,7 +121,7 @@ static void get_local_role_p(int argc, const char **argv)
 
 /* connect */
 
-static void connect_c(int argc, const const char **argv, enum_func *enum_func,
+static void connect_c(int argc, const char **argv, enum_func *enum_func,
 								void **user)
 {
 	if (argc == 3) {
@@ -165,8 +165,8 @@ static void connect_p(int argc, const char **argv)
 
 /* disconnect */
 
-static void disconnect_c(int argc, const const char **argv,
-					enum_func *enum_func, void **user)
+static void disconnect_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
 		*user = last_used_addr;
