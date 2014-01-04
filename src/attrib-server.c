@@ -913,7 +913,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 		g_key_file_load_from_file(key_file, filename, 0, NULL);
 
 		sprintf(group, "%hu", handle);
-		sprintf(value, "%hhX", cccval);
+		sprintf(value, "%hX", cccval);
 		g_key_file_set_string(key_file, group, "Value", value);
 
 		data = g_key_file_to_data(key_file, &length, NULL);
