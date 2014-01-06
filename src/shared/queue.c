@@ -180,6 +180,21 @@ void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 		function(entry->data, user_data);
 }
 
+void *queue_find(struct queue *queue, queue_match_func_t function,
+							void *user_data)
+{
+	struct queue_entry *entry;
+
+	if (!queue || !function)
+		return NULL;
+
+	for (entry = queue->head; entry; entry = entry->next)
+		if (function(entry->data, user_data))
+			return entry->data;
+
+	return NULL;
+}
+
 void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 							void *user_data)
 {
