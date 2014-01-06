@@ -143,6 +143,7 @@ static gboolean send_pdu(gpointer user_data)
 	if (pdu->fragmented)
 		return send_pdu(user_data);
 
+	context->process = 0;
 	return FALSE;
 }
 
@@ -178,8 +179,10 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 
 	pdu = &context->data->pdu_list[context->pdu_offset++];
 
-	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		context->source = 0;
 		return FALSE;
+	}
 
 	fd = g_io_channel_unix_get_fd(channel);
 
@@ -258,7 +261,8 @@ static void execute_context(struct context *context)
 {
 	g_main_loop_run(context->main_loop);
 
-	g_source_remove(context->source);
+	if (context->source > 0)
+		g_source_remove(context->source);
 	avdtp_unref(context->session);
 
 	g_main_loop_unref(context->main_loop);

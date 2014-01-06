@@ -41,6 +41,7 @@ struct test_data {
 	guint id;
 	gsize total;
 	GMainLoop *mainloop;
+	gboolean io_completed;
 };
 
 #define TEST_ERROR test_error_quark()

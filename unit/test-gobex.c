@@ -235,7 +235,7 @@ static void send_req(GObexPacket *req, GObexResponseFunc rsp_func,
 	GError *gerr = NULL;
 	GIOChannel *io;
 	GIOCondition cond;
-	guint io_id, timer_id, test_time;
+	guint timer_id, test_time;
 	GObex *obex;
 
 	create_endpoints(&obex, &io, transport_type);
@@ -244,7 +244,7 @@ static void send_req(GObexPacket *req, GObexResponseFunc rsp_func,
 	g_assert_no_error(gerr);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, send_rsp_func, &gerr);
+	g_io_add_watch(io, cond, send_rsp_func, &gerr);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -262,7 +262,6 @@ static void send_req(GObexPacket *req, GObexResponseFunc rsp_func,
 
 	g_source_remove(timer_id);
 	g_io_channel_unref(io);
-	g_source_remove(io_id);
 	g_obex_unref(obex);
 
 	g_assert_no_error(gerr);
@@ -466,6 +465,7 @@ struct rcv_buf_info {
 	GError *err;
 	const guint8 *buf;
 	gsize len;
+	gboolean completed;
 };
 
 static gboolean rcv_data(GIOChannel *io, GIOCondition cond, gpointer user_data)
@@ -505,6 +505,7 @@ static gboolean rcv_data(GIOChannel *io, GIOCondition cond, gpointer user_data)
 
 done:
 	g_main_loop_quit(mainloop);
+	r->completed = TRUE;
 	return FALSE;
 }
 
@@ -546,7 +547,8 @@ static void test_send_connect(int transport_type)
 
 	g_source_remove(timer_id);
 	g_io_channel_unref(io);
-	g_source_remove(io_id);
+	if (!r.completed)
+		g_source_remove(io_id);
 	g_obex_unref(obex);
 
 	g_assert_no_error(r.err);
@@ -661,7 +663,8 @@ static void test_send_on_demand(int transport_type, GObexDataProducer func)
 
 	g_source_remove(timer_id);
 	g_io_channel_unref(io);
-	g_source_remove(io_id);
+	if (!r.completed)
+		g_source_remove(io_id);
 	g_obex_unref(obex);
 
 	g_assert_no_error(r.err);

@@ -1805,7 +1805,8 @@ static void test_conn_rsp(void)
 
 	g_source_remove(timer_id);
 	g_io_channel_unref(io);
-	g_source_remove(io_id);
+	if (!d.io_completed)
+		g_source_remove(io_id);
 	g_obex_unref(obex);
 
 	g_assert_no_error(d.err);
@@ -2060,7 +2061,8 @@ static void test_conn_get_wrg_rsp(void)
 
 	g_source_remove(timer_id);
 	g_io_channel_unref(io);
-	g_source_remove(io_id);
+	if (!d.io_completed)
+		g_source_remove(io_id);
 	g_obex_unref(obex);
 
 	g_assert_no_error(d.err);

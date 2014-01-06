@@ -193,5 +193,6 @@ send:
 
 failed:
 	g_main_loop_quit(d->mainloop);
+	d->io_completed = TRUE;
 	return FALSE;
 }
