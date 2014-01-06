@@ -189,6 +189,12 @@ LOCAL_SRC_FILES := \
 	../monitor/hwdb.c \
 	../monitor/ellisys.h \
 	../monitor/ellisys.c \
+	../monitor/analyze.h \
+	../monitor/analyze.c \
+	../src/shared/util.h \
+	../src/shared/util.c \
+	../src/shared/queue.h \
+	../src/shared/queue.c \
 	../lib/hci.c \
 	../lib/bluetooth.c \
 

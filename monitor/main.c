@@ -34,6 +34,7 @@
 
 #include "mainloop.h"
 #include "packet.h"
+#include "analyze.h"
 #include "ellisys.h"
 #include "control.h"
 
@@ -55,6 +56,7 @@ static void usage(void)
 	printf("options:\n"
 		"\t-r, --read <file>      Read traces in btsnoop format\n"
 		"\t-w, --write <file>     Save traces in btsnoop format\n"
+		"\t-a, --analyze <file>   Analyze traces in btsnoop format\n"
 		"\t-s, --server <socket>  Start monitor server socket\n"
 		"\t-i, --index <num>      Show only specified controller\n"
 		"\t-t, --time             Show time instead of time offset\n"
@@ -67,6 +69,7 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "read",    required_argument, NULL, 'r' },
 	{ "write",   required_argument, NULL, 'w' },
+	{ "analyze", required_argument, NULL, 'a' },
 	{ "server",  required_argument, NULL, 's' },
 	{ "index",   required_argument, NULL, 'i' },
 	{ "time",    no_argument,       NULL, 't' },
@@ -82,7 +85,9 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	unsigned long filter_mask = 0;
-	const char *reader_path = NULL, *writer_path = NULL;
+	const char *reader_path = NULL;
+	const char *writer_path = NULL;
+	const char *analyze_path = NULL;
 	const char *ellisys_server = NULL;
 	unsigned short ellisys_port = 0;
 	const char *str;
@@ -95,7 +100,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "r:w:s:i:tTSE:vh",
+		opt = getopt_long(argc, argv, "r:w:a:s:i:tTSE:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -106,6 +111,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'w':
 			writer_path = optarg;
+			break;
+		case 'a':
+			analyze_path = optarg;
 			break;
 		case 's':
 			control_server(optarg);
@@ -156,6 +164,11 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	if (reader_path && analyze_path) {
+		fprintf(stderr, "Display and analyze can't be combined\n");
+		return EXIT_FAILURE;
+	}
+
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGTERM);
@@ -165,6 +178,11 @@ int main(int argc, char *argv[])
 	printf("Bluetooth monitor ver %s\n", VERSION);
 
 	packet_set_filter(filter_mask);
+
+	if (analyze_path) {
+		analyze_trace(analyze_path);
+		return EXIT_SUCCESS;
+	}
 
 	if (reader_path) {
 		if (ellisys_server)

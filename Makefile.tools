@@ -28,7 +28,10 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 					monitor/l2cap.h monitor/l2cap.c \
 					monitor/sdp.h monitor/sdp.c \
 					monitor/uuid.h monitor/uuid.c \
-					monitor/hwdb.h monitor/hwdb.c
+					monitor/hwdb.h monitor/hwdb.c \
+					monitor/analyze.h monitor/analyze.c \
+					src/shared/util.h src/shared/util.c \
+					src/shared/queue.h src/shared/queue.c
 monitor_btmon_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
 endif
 
