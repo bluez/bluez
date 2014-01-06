@@ -59,8 +59,21 @@ static struct queue *dev_list;
 static void dev_destroy(void *data)
 {
 	struct hci_dev *dev = data;
+	const char *str;
 
-	printf("Found controller with index %u\n", dev->index);
+	switch (dev->type) {
+	case 0x00:
+		str = "BR/EDR";
+		break;
+	case 0x01:
+		str = "AMP";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+
+	printf("Found %s controller with index %u\n", str, dev->index);
 	printf("  BD_ADDR %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
 			dev->bdaddr[5], dev->bdaddr[4], dev->bdaddr[3],
 			dev->bdaddr[2], dev->bdaddr[1], dev->bdaddr[0]);
