@@ -42,6 +42,13 @@
 #define BTSNOOP_OPCODE_SCO_TX_PKT	6
 #define BTSNOOP_OPCODE_SCO_RX_PKT	7
 
+struct btsnoop_opcode_new_index {
+	uint8_t  type;
+	uint8_t  bus;
+	uint8_t  bdaddr[6];
+	char     name[8];
+} __attribute__((packed));
+
 void btsnoop_create(const char *path, uint32_t type);
 void btsnoop_write(struct timeval *tv, uint32_t flags,
 					const void *data, uint16_t size);
