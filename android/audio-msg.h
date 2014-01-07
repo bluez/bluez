@@ -42,10 +42,9 @@ struct audio_preset {
 } __attribute__((packed));
 
 struct audio_cmd_open {
-	uint16_t uuid;
+	uint8_t uuid[16];
 	uint8_t codec;
 	uint8_t presets;
-	uint8_t len;
 	struct audio_preset preset[0];
 } __attribute__((packed));
 
