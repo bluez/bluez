@@ -366,9 +366,11 @@ struct generic_data {
 	uint16_t send_opcode;
 	const void *send_param;
 	uint16_t send_len;
+	const void * (*send_func)(uint16_t *len);
 	uint8_t expect_status;
 	const void *expect_param;
 	uint16_t expect_len;
+	const void * (*expect_func)(uint16_t *len);
 	uint32_t expect_settings_set;
 	uint32_t expect_settings_unset;
 	uint16_t expect_alt_ev;
@@ -2348,6 +2350,8 @@ static void setup_start_discovery(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
+	const void *send_param = test->send_param;
+	uint16_t send_len = test->send_len;
 
 	if (test->setup_expect_hci_command) {
 		tester_print("Registering HCI command callback (setup)");
@@ -2355,9 +2359,12 @@ static void setup_start_discovery(const void *test_data)
 				test->setup_expect_hci_command,
 				setup_command_hci_callback,
 				NULL);
+
+		if (test->send_func)
+			send_param = test->send_func(&send_len);
+
 		mgmt_send(data->mgmt, MGMT_OP_START_DISCOVERY, data->mgmt_index,
-				test->send_len, test->send_param,
-				NULL, NULL, NULL);
+				send_len, send_param, NULL, NULL, NULL);
 	} else {
 		unsigned char disc_param[] = { 0x07 };
 
@@ -2698,6 +2705,8 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
+	const void *expect_param = test->expect_param;
+	uint16_t expect_len = test->expect_len;
 
 	tester_print("Command 0x%04x finished with status 0x%02x",
 						test->send_opcode, status);
@@ -2707,13 +2716,16 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length != test->expect_len) {
+	if (test->expect_func)
+		expect_param = test->expect_func(&expect_len);
+
+	if (length != expect_len) {
 		tester_test_failed();
 		return;
 	}
 
-	if (test->expect_param && test->expect_len > 0 &&
-				memcmp(param, test->expect_param, length)) {
+	if (expect_param && expect_len > 0 &&
+				memcmp(param, expect_param, length)) {
 		tester_test_failed();
 		return;
 	}
@@ -2751,6 +2763,8 @@ static void test_command_generic(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
+	const void *send_param = test->send_param;
+	uint16_t send_len = test->send_len;
 	unsigned int id;
 	uint16_t index;
 
@@ -2787,8 +2801,10 @@ static void test_command_generic(const void *test_data)
 
 	tester_print("Sending command 0x%04x", test->send_opcode);
 
-	mgmt_send(data->mgmt, test->send_opcode, index,
-					test->send_len, test->send_param,
+	if (test->send_func)
+		send_param = test->send_func(&send_len);
+
+	mgmt_send(data->mgmt, test->send_opcode, index, send_len, send_param,
 					command_generic_callback, NULL, NULL);
 	test_add_condition(data);
 }
