@@ -2636,6 +2636,18 @@ static void get_remote_device_props(struct device *dev)
 	get_device_timestamp(dev);
 }
 
+static void send_bonded_devices_props(void)
+{
+	GSList *l;
+
+	for (l = devices; l; l = g_slist_next(l)) {
+		struct device *dev = l->data;
+
+		if (dev->bond_state == HAL_BOND_STATE_BONDED)
+			get_remote_device_props(dev);
+	}
+}
+
 static void handle_enable_cmd(const void *buf, uint16_t len)
 {
 	uint8_t status;
@@ -2643,6 +2655,9 @@ static void handle_enable_cmd(const void *buf, uint16_t len)
 	/* Framework expects all properties to be emitted while
 	 * enabling adapter */
 	get_adapter_properties();
+
+	/* Sent also properties of bonded devices */
+	send_bonded_devices_props();
 
 	if (adapter.current_settings & MGMT_SETTING_POWERED) {
 		status = HAL_STATUS_DONE;
