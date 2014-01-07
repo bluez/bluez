@@ -26,6 +26,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <glib.h>
 
@@ -33,6 +34,7 @@
 #include "lib/mgmt.h"
 
 #include "monitor/bt.h"
+#include "emulator/bthost.h"
 
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
@@ -2237,6 +2239,39 @@ static const struct generic_data set_scan_params_success_test = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
+static void client_connectable_complete(uint16_t opcode, uint8_t status,
+					const void *param, uint8_t len,
+					void *user_data)
+{
+	switch (opcode) {
+	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
+	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+		break;
+	default:
+		return;
+	}
+
+	tester_print("Client set connectable status 0x%02x", status);
+
+	if (status)
+		tester_setup_failed();
+	else
+		tester_setup_complete();
+}
+
+static void setup_bthost(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_cmd_complete_cb(bthost, client_connectable_complete, data);
+	if (data->hciemu_type == HCIEMU_TYPE_LE)
+		bthost_set_adv_enable(bthost, 0x01);
+	else
+		bthost_write_scan_enable(bthost, 0x03);
+}
+
 static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2247,7 +2282,7 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 
 	tester_print("Controller powered on");
 
-	tester_setup_complete();
+	setup_bthost();
 }
 
 static void setup_class(const void *test_data)
@@ -2531,7 +2566,7 @@ static void setup_complete(uint8_t status, uint16_t length,
 	if (data->test_setup)
 		data->test_setup(data);
 	else
-		tester_setup_complete();
+		setup_bthost();
 }
 
 static void test_setup(const void *test_data)
