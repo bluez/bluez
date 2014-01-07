@@ -2550,56 +2550,6 @@ static void handle_get_remote_services_cmd(const void *buf, uint16_t len)
 									status);
 }
 
-static void handle_enable_cmd(const void *buf, uint16_t len)
-{
-	uint8_t status;
-
-	/* Framework expects all properties to be emitted while
-	 * enabling adapter */
-	get_adapter_properties();
-
-	if (adapter.current_settings & MGMT_SETTING_POWERED) {
-		status = HAL_STATUS_DONE;
-		goto failed;
-	}
-
-	if (!set_mode(MGMT_OP_SET_POWERED, 0x01)) {
-		status = HAL_STATUS_FAILED;
-		goto failed;
-	}
-
-	status = HAL_STATUS_SUCCESS;
-failed:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, status);
-}
-
-static void handle_disable_cmd(const void *buf, uint16_t len)
-{
-	uint8_t status;
-
-	if (!(adapter.current_settings & MGMT_SETTING_POWERED)) {
-		status = HAL_STATUS_DONE;
-		goto failed;
-	}
-
-	if (!set_mode(MGMT_OP_SET_POWERED, 0x00)) {
-		status = HAL_STATUS_FAILED;
-		goto failed;
-	}
-
-	status = HAL_STATUS_SUCCESS;
-failed:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, status);
-}
-
-static void handle_get_adapter_props_cmd(const void *buf, uint16_t len)
-{
-	get_adapter_properties();
-
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROPS,
-							HAL_STATUS_SUCCESS);
-}
-
 static uint8_t get_device_uuids(struct device *dev)
 {
 	send_device_uuids_notif(dev);
@@ -2684,6 +2634,56 @@ static void get_remote_device_props(struct device *dev)
 	get_device_rssi(dev);
 	get_device_version_info(dev);
 	get_device_timestamp(dev);
+}
+
+static void handle_enable_cmd(const void *buf, uint16_t len)
+{
+	uint8_t status;
+
+	/* Framework expects all properties to be emitted while
+	 * enabling adapter */
+	get_adapter_properties();
+
+	if (adapter.current_settings & MGMT_SETTING_POWERED) {
+		status = HAL_STATUS_DONE;
+		goto failed;
+	}
+
+	if (!set_mode(MGMT_OP_SET_POWERED, 0x01)) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	status = HAL_STATUS_SUCCESS;
+failed:
+	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, status);
+}
+
+static void handle_disable_cmd(const void *buf, uint16_t len)
+{
+	uint8_t status;
+
+	if (!(adapter.current_settings & MGMT_SETTING_POWERED)) {
+		status = HAL_STATUS_DONE;
+		goto failed;
+	}
+
+	if (!set_mode(MGMT_OP_SET_POWERED, 0x00)) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	status = HAL_STATUS_SUCCESS;
+failed:
+	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, status);
+}
+
+static void handle_get_adapter_props_cmd(const void *buf, uint16_t len)
+{
+	get_adapter_properties();
+
+	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROPS,
+							HAL_STATUS_SUCCESS);
 }
 
 static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
