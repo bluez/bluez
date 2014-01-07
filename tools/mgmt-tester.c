@@ -2132,6 +2132,48 @@ static const struct generic_data pair_device_invalid_param_test_1 = {
 	.expect_len = sizeof(pair_device_invalid_param_rsp_1),
 };
 
+static const void *pair_device_send_param_func(uint16_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static uint8_t param[8];
+
+	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
+	param[6] = 0x00; /* Address type */
+	param[7] = 0x03; /* IO Capability */
+
+	*len = sizeof(param);
+
+	return param;
+}
+
+static const void *pair_device_expect_param_func(uint16_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static uint8_t param[7];
+
+	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
+	param[6] = 0x00; /* Address type */
+
+	*len = sizeof(param);
+
+	return param;
+}
+
+static uint16_t settings_powered_pairable[] = { MGMT_OP_SET_PAIRABLE,
+						MGMT_OP_SET_POWERED, 0 };
+static uint8_t auth_req_param[] = { 0x2a, 0x00 };
+
+static const struct generic_data pair_device_success_test_1 = {
+	.setup_settings = settings_powered_pairable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_hci_command = BT_HCI_CMD_AUTH_REQUESTED,
+	.expect_hci_param = auth_req_param,
+	.expect_hci_len = sizeof(auth_req_param),
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -3255,6 +3297,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Invalid Parameters 1",
 				&pair_device_invalid_param_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - Success 1",
+				&pair_device_success_test_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Unpair Device - Not Powered 1",
