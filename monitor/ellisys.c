@@ -32,6 +32,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 
 #include <netdb.h>
 #include <arpa/inet.h>
