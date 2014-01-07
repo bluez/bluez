@@ -1,5 +1,7 @@
 PBAP PIXIT for the PTS tool.
 
+PTS version: 5.0
+
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
 
