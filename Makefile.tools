@@ -48,8 +48,10 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 					emulator/vhci.h emulator/vhci.c \
 					emulator/btdev.h emulator/btdev.c \
 					emulator/bthost.h emulator/bthost.c \
+					emulator/smp.c \
 					emulator/amp.h emulator/amp.c \
 					emulator/le.h emulator/le.c
+emulator_btvirt_LDADD = lib/libbluetooth-internal.la
 
 emulator_b1ee_SOURCES = emulator/b1ee.c monitor/mainloop.h monitor/mainloop.c
 
@@ -63,6 +65,7 @@ tools_3dsp_SOURCES = tools/3dsp.c monitor/bt.h \
 tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
 				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
@@ -74,6 +77,7 @@ tools_mgmt_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_l2cap_tester_SOURCES = tools/l2cap-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
 				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
@@ -85,6 +89,7 @@ tools_l2cap_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_rfcomm_tester_SOURCES = tools/rfcomm-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
 				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
@@ -96,6 +101,7 @@ tools_rfcomm_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_smp_tester_SOURCES = tools/smp-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
 				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
@@ -107,15 +113,19 @@ tools_smp_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_gap_tester_SOURCES = tools/gap-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
-tools_gap_tester_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
+tools_gap_tester_LDADD =  lib/libbluetooth-internal.la \
+				gdbus/libgdbus-internal.la \
+				@GLIB_LIBS@ @DBUS_LIBS@
 
 tools_sco_tester_SOURCES = tools/sco-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
 				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \

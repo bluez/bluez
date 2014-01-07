@@ -101,3 +101,13 @@ bool bthost_connect_rfcomm(struct bthost *bthost, uint16_t handle,
 
 void bthost_start(struct bthost *bthost);
 void bthost_stop(struct bthost *bthost);
+
+/* LE SMP support */
+
+void *smp_start(struct bthost *bthost);
+void smp_stop(void *smp_data);
+void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
+					const uint8_t *ra, bool conn_init);
+void smp_conn_del(void *conn_data);
+void smp_data(void *conn_data, const void *data, uint16_t len);
+void smp_pair(void *conn_data);

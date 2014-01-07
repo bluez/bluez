@@ -135,6 +135,7 @@ struct btconn {
 	struct l2conn *l2conns;
 	struct cid_hook *cid_hooks;
 	struct btconn *next;
+	void *smp_data;
 };
 
 struct l2conn {
@@ -191,6 +192,8 @@ struct bthost {
 	uint8_t pin_len;
 	uint8_t io_capability;
 	bool reject_user_confirm;
+	void *smp_data;
+	bool conn_init;
 };
 
 struct bthost *bthost_create(void)
@@ -213,6 +216,9 @@ static void l2conn_free(struct l2conn *conn)
 
 static void btconn_free(struct btconn *conn)
 {
+	if (conn->smp_data)
+		smp_conn_del(conn->smp_data);
+
 	while (conn->l2conns) {
 		struct l2conn *l2conn = conn->l2conns;
 
@@ -718,6 +724,7 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 				const uint8_t *bdaddr, uint8_t addr_type)
 {
 	struct btconn *conn;
+	const uint8_t *ia, *ra;
 
 	conn = malloc(sizeof(*conn));
 	if (!conn)
@@ -731,6 +738,17 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 
 	conn->next = bthost->conns;
 	bthost->conns = conn;
+
+	if (bthost->conn_init) {
+		ia = bthost->bdaddr;
+		ra = conn->bdaddr;
+	} else {
+		ia = conn->bdaddr;
+		ra = bthost->bdaddr;
+	}
+
+	conn->smp_data = smp_conn_add(bthost->smp_data, handle, ia, ra,
+							bthost->conn_init);
 
 	if (bthost->new_conn_cb)
 		bthost->new_conn_cb(conn->handle, bthost->new_conn_data);
@@ -1789,6 +1807,9 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 	case 0x0005:
 		l2cap_le_sig(bthost, conn, l2_data, l2_len);
 		break;
+	case 0x0006:
+		smp_data(conn->smp_data, l2_data, l2_len);
+		break;
 	default:
 		l2conn = btconn_find_l2cap_conn_by_scid(conn, cid);
 		if (l2conn && l2conn->psm == 0x0003)
@@ -1842,6 +1863,8 @@ void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr,
 							uint8_t addr_type)
 {
+	bthost->conn_init = true;
+
 	if (addr_type == BDADDR_BREDR) {
 		struct bt_hci_cmd_create_conn cc;
 
@@ -1880,11 +1903,20 @@ void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)
 
 void bthost_request_auth(struct bthost *bthost, uint16_t handle)
 {
-	struct bt_hci_cmd_auth_requested cp;
+	struct btconn *conn;
 
-	cp.handle = cpu_to_le16(handle);
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
 
-	send_command(bthost, BT_HCI_CMD_AUTH_REQUESTED, &cp, sizeof(cp));
+	if (conn->addr_type == BDADDR_BREDR) {
+		struct bt_hci_cmd_auth_requested cp;
+
+		cp.handle = cpu_to_le16(handle);
+		send_command(bthost, BT_HCI_CMD_AUTH_REQUESTED, &cp, sizeof(cp));
+	} else {
+		smp_pair(conn->smp_data);
+	}
 }
 
 void bthost_le_start_encrypt(struct bthost *bthost, uint16_t handle,
@@ -1955,6 +1987,8 @@ void bthost_start(struct bthost *bthost)
 	if (!bthost)
 		return;
 
+	bthost->smp_data = smp_start(bthost);
+
 	bthost->ncmd = 1;
 
 	send_command(bthost, BT_HCI_CMD_RESET, NULL, 0);
@@ -1997,4 +2031,6 @@ bool bthost_connect_rfcomm(struct bthost *bthost, uint16_t handle,
 
 void bthost_stop(struct bthost *bthost)
 {
+	smp_stop(bthost->smp_data);
+	bthost->smp_data = NULL;
 }

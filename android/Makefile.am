@@ -101,6 +101,7 @@ noinst_PROGRAMS += android/android-tester
 
 android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
 				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
