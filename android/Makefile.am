@@ -112,13 +112,16 @@ android_android_tester_LDFLAGS = -pthread
 
 noinst_LTLIBRARIES += android/libaudio-internal.la
 
-android_libaudio_internal_la_SOURCES = android/hal-audio.c \
+android_libaudio_internal_la_SOURCES = androdid/audio-msg.h \
+					android/hal-audio.c \
 					android/hardware/audio.h \
 					android/hardware/audio_effect.h \
 					android/hardware/hardware.h \
 					android/system/audio.h
 
 android_libaudio_internal_la_CFLAGS = -I$(srcdir)/android
+
+android_libaudio_internal_la_LDFLAGS = -pthread
 
 endif
 

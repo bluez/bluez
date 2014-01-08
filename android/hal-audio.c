@@ -16,14 +16,26 @@
  */
 
 #include <errno.h>
+#include <pthread.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include <hardware/audio.h>
 #include <hardware/hardware.h>
 
+#include "audio-msg.h"
 #include "hal-log.h"
+
+static int audio_sk = -1;
+static bool close_thread = false;
+
+static pthread_t ipc_th = 0;
+static pthread_mutex_t close_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct a2dp_audio_dev {
 	struct audio_hw_device dev;
@@ -384,15 +396,116 @@ static int audio_dump(const audio_hw_device_t *device, int fd)
 
 static int audio_close(hw_device_t *device)
 {
+	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *)device;
+
 	DBG("");
-	free(device);
+
+	pthread_mutex_lock(&close_mutex);
+	shutdown(audio_sk, SHUT_RDWR);
+	close_thread = true;
+	pthread_mutex_unlock(&close_mutex);
+
+	pthread_join(ipc_th, NULL);
+
+	free(a2dp_dev);
 	return 0;
+}
+
+static bool create_audio_ipc(void)
+{
+	struct sockaddr_un addr;
+	int err;
+	int sk;
+
+	DBG("");
+
+	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
+	if (sk < 0) {
+		err = errno;
+		error("Failed to create socket: %d (%s)", err, strerror(err));
+		return false;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+
+	memcpy(addr.sun_path, BLUEZ_AUDIO_SK_PATH,
+					sizeof(BLUEZ_AUDIO_SK_PATH));
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = errno;
+		error("Failed to bind socket: %d (%s)", err, strerror(err));
+		goto failed;
+	}
+
+	if (listen(sk, 1) < 0) {
+		err = errno;
+		error("Failed to listen on the socket: %d (%s)", err,
+								strerror(err));
+		goto failed;
+	}
+
+	audio_sk = accept(sk, NULL, NULL);
+	if (audio_sk < 0) {
+		err = errno;
+		error("Failed to accept socket: %d (%s)", err, strerror(err));
+		goto failed;
+	}
+
+	close(sk);
+	return true;
+
+failed:
+	close(sk);
+	return false;
+}
+
+static void *ipc_handler(void *data)
+{
+	bool done = false;
+	struct pollfd pfd;
+
+	DBG("");
+
+	while (!done) {
+		if(!create_audio_ipc()) {
+			error("Failed to create listening socket");
+			sleep(1);
+			continue;
+		}
+
+		DBG("Audio IPC: Connected");
+
+		/* TODO: Register ENDPOINT here */
+
+		memset(&pfd, 0, sizeof(pfd));
+		pfd.fd = audio_sk;
+		pfd.events = POLLHUP | POLLERR | POLLNVAL;
+
+		/* Check if socket is still alive. Empty while loop.*/
+		while (poll(&pfd, 1, -1) < 0 && errno == EINTR);
+
+		if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
+			info("Audio HAL: Socket closed");
+			audio_sk = -1;
+		}
+
+		/*Check if audio_dev is closed */
+		pthread_mutex_lock(&close_mutex);
+		done = close_thread;
+		close_thread = false;
+		pthread_mutex_unlock(&close_mutex);
+	}
+
+	info("Closing bluetooth_watcher thread");
+	return NULL;
 }
 
 static int audio_open(const hw_module_t *module, const char *name,
 							hw_device_t **device)
 {
 	struct a2dp_audio_dev *a2dp_dev;
+	int err;
 
 	DBG("");
 
@@ -429,6 +542,14 @@ static int audio_open(const hw_module_t *module, const char *name,
 	 * This results from the structure of following structs:a2dp_audio_dev,
 	 * audio_hw_device. We will rely on this later in the code.*/
 	*device = &a2dp_dev->dev.common;
+
+	err = pthread_create(&ipc_th, NULL, ipc_handler, NULL);
+	if (err < 0) {
+		ipc_th = 0;
+		error("Failed to start Audio IPC thread: %d (%s)",
+							-err, strerror(-err));
+		return (-err);
+	}
 
 	return 0;
 }
