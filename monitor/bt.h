@@ -112,6 +112,8 @@ struct bt_lmp_not_accepted {
 	uint8_t  error;
 } __attribute__ ((packed));
 
+#define BT_LMP_CLKOFFSET_REQ		5
+
 #define BT_LMP_DETACH			7
 struct bt_lmp_detach {
 	uint8_t  error;
@@ -143,6 +145,12 @@ struct bt_lmp_start_encryption_req {
 } __attribute__ ((packed));
 
 #define BT_LMP_STOP_ENCRYPTION_REQ	18
+
+#define BT_LMP_UNSNIFF_REQ		24
+
+#define BT_LMP_MAX_POWER		33
+
+#define BT_LMP_MIN_POWER		34
 
 #define BT_LMP_AUTO_RATE		35
 
@@ -190,6 +198,8 @@ struct bt_lmp_timing_accuracy_res {
 
 #define BT_LMP_SETUP_COMPLETE		49
 
+#define BT_LMP_USE_SEMI_PERMANENT_KEY	50
+
 #define BT_LMP_HOST_CONNECTION_REQ	51
 
 #define BT_LMP_PAGE_SCAN_MODE_REQ	54
@@ -197,6 +207,10 @@ struct bt_lmp_page_scan_mode_req {
 	uint8_t  scheme;
 	uint8_t  settings;
 } __attribute__ ((packed));
+
+#define BT_LMP_TEST_ACTIVATE		56
+
+#define BT_LMP_ENCRYPTION_KEY_SIZE_MASK_REQ	58
 
 #define BT_LMP_SET_AFH			60
 struct bt_lmp_set_afh {
@@ -278,6 +292,10 @@ struct bt_lmp_channel_classification {
 	uint8_t  classification[10];
 } __attribute__ ((packed));
 
+#define BT_LMP_PAUSE_ENCRYPTION_REQ	LMP_ESC4(23)
+
+#define BT_LMP_RESUME_ENCRYPTION_REQ	LMP_ESC4(24)
+
 #define BT_LMP_IO_CAPABILITY_REQ	LMP_ESC4(25)
 struct bt_lmp_io_capability_req {
 	uint8_t  capability;
@@ -292,6 +310,12 @@ struct bt_lmp_io_capability_res {
 	uint8_t  authentication;
 } __attribute__ ((packed));
 
+#define BT_LMP_NUMERIC_COMPARISON_FAILED	LMP_ESC(27)
+
+#define BT_LMP_PASSKEY_FAILED		LMP_ESC4(28)
+
+#define BT_LMP_OOB_FAILED		LMP_ESC(29)
+
 #define BT_LMP_POWER_CONTROL_REQ	LMP_ESC4(31)
 struct bt_lmp_power_control_req {
 	uint8_t  request;
@@ -301,6 +325,10 @@ struct bt_lmp_power_control_req {
 struct bt_lmp_power_control_res {
 	uint8_t  response;
 } __attribute__ ((packed));
+
+#define BT_LMP_PING_REQ			LMP_ESC4(33)
+
+#define BT_LMP_PING_RES			LMP_ESC4(34)
 
 #define BT_H4_CMD_PKT	0x01
 #define BT_H4_ACL_PKT	0x02
