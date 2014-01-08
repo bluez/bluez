@@ -662,6 +662,15 @@ static void evt_num_completed_packets(struct bthost *bthost, const void *data,
 		return;
 }
 
+static void evt_auth_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_auth_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+}
+
 static void evt_pin_code_request(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -793,6 +802,7 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_EVT_AUTH_COMPLETE:
+		evt_auth_complete(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_PIN_CODE_REQUEST:
