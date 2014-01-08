@@ -517,11 +517,37 @@ failed:
 	audio_ipc_send_rsp(AUDIO_OP_OPEN, AUDIO_STATUS_FAILED);
 }
 
+static struct a2dp_endpoint *find_endpoint(uint8_t id)
+{
+	GSList *l;
+
+	for (l = endpoints; l; l = g_slist_next(l)) {
+		struct a2dp_endpoint *endpoint = l->data;
+
+		if (endpoint->id == id)
+			return endpoint;
+	}
+
+	return NULL;
+}
+
 static void bt_audio_close(const void *buf, uint16_t len)
 {
-	DBG("Not Implemented");
+	const struct audio_cmd_close *cmd = buf;
+	struct a2dp_endpoint *endpoint;
 
-	audio_ipc_send_rsp(AUDIO_OP_CLOSE, HAL_STATUS_FAILED);
+	DBG("");
+
+	endpoint = find_endpoint(cmd->id);
+	if (!endpoint) {
+		error("Unable to find endpoint %u", cmd->id);
+		audio_ipc_send_rsp(AUDIO_OP_CLOSE, AUDIO_STATUS_FAILED);
+		return;
+	}
+
+	unregister_endpoint(endpoint);
+
+	audio_ipc_send_rsp(AUDIO_OP_CLOSE, AUDIO_STATUS_SUCCESS);
 }
 
 static void bt_stream_open(const void *buf, uint16_t len)
