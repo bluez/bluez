@@ -2646,10 +2646,14 @@ static void test_setup(const void *test_data)
 	const struct generic_data *test = data->test_data;
 	const uint16_t *cmd;
 
-	if (test->pin)
+	if (test->pin) {
+		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+
+		bthost_set_pin_code(bthost, test->pin, test->pin_len);
 		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
 				data->mgmt_index, pin_code_request_callback,
 				data, NULL);
+	}
 
 	if (!test || !test->setup_settings) {
 		if (data->test_setup)
