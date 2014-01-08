@@ -279,6 +279,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[1]  |= 0x02;	/* Reject Connection Request */
 	btdev->commands[1]  |= 0x04;	/* Link Key Request Reply */
 	btdev->commands[1]  |= 0x08;	/* Link Key Request Negative Reply */
+	btdev->commands[1]  |= 0x10;	/* PIN Code Request Reply */
 	btdev->commands[1]  |= 0x20;	/* PIN Code Request Negative Reply */
 	btdev->commands[1]  |= 0x80;	/* Authentication Requested */
 	btdev->commands[2]  |= 0x08;	/* Remote Name Request */
