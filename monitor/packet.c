@@ -2271,6 +2271,11 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 						"(0x%16.16" PRIx64 ")", mask);
 }
 
+void packet_print_features_lmp(const uint8_t *features, uint8_t page)
+{
+	print_features(page, features, 0x00);
+}
+
 void packet_print_features_ll(const uint8_t *features)
 {
 	print_features(0, features, 0x01);
