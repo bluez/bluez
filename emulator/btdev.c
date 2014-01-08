@@ -58,6 +58,8 @@ struct btdev {
 	struct btdev *conn;
 
 	uint8_t link_key[16];
+	uint16_t pin[16];
+	uint8_t pin_len;
 
 	btdev_command_func command_handler;
 	void *command_data;
@@ -923,18 +925,48 @@ static void link_key_req_neg_reply_complete(struct btdev *btdev,
 							const uint8_t *bdaddr)
 {
 	struct bt_hci_evt_pin_code_request pin_req;
+
+	memcpy(pin_req.bdaddr, bdaddr, 6);
+	send_event(btdev, BT_HCI_EVT_PIN_CODE_REQUEST, &pin_req,
+							sizeof(pin_req));
+}
+
+static void pin_code_req_reply_complete(struct btdev *btdev,
+					const uint8_t *bdaddr, uint8_t pin_len,
+					const uint8_t *pin_code)
+{
+	struct bt_hci_evt_auth_complete ev;
 	struct btdev *remote = btdev->conn;
 
 	if (!remote)
 		return;
 
-	memcpy(pin_req.bdaddr, bdaddr, 6);
-	send_event(btdev, BT_HCI_EVT_PIN_CODE_REQUEST, &pin_req,
-							sizeof(pin_req));
+	memcpy(btdev->pin, pin_code, pin_len);
+	btdev->pin_len = pin_len;
 
-	memcpy(pin_req.bdaddr, btdev->bdaddr, 6);
-	send_event(remote, BT_HCI_EVT_PIN_CODE_REQUEST, &pin_req,
+	if (!remote->pin_len) {
+		struct bt_hci_evt_pin_code_request pin_req;
+
+		memcpy(pin_req.bdaddr, btdev->bdaddr, 6);
+		send_event(remote, BT_HCI_EVT_PIN_CODE_REQUEST, &pin_req,
 							sizeof(pin_req));
+		return;
+	}
+
+	if (btdev->pin_len == remote->pin_len &&
+			!memcmp(btdev->pin, remote->pin, btdev->pin_len))
+		ev.status = BT_HCI_ERR_SUCCESS;
+	else
+		ev.status = BT_HCI_ERR_AUTH_FAILURE;
+
+	ev.handle = cpu_to_le16(42);
+	send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+
+	ev.handle = cpu_to_le16(42);
+	send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+
+	btdev->pin_len = 0;
+	remote->pin_len = 0;
 }
 
 static void pin_code_req_neg_reply_complete(struct btdev *btdev,
@@ -1251,6 +1283,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_remote_name_request_cancel rnrc_rsp;
 	struct bt_hci_rsp_link_key_request_reply lkrr_rsp;
 	struct bt_hci_rsp_link_key_request_neg_reply lkrnr_rsp;
+	struct bt_hci_rsp_pin_code_request_neg_reply pcrr_rsp;
 	struct bt_hci_rsp_pin_code_request_neg_reply pcrnr_rsp;
 	uint8_t status, page;
 
@@ -1310,6 +1343,14 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lkrnr_rsp.status = BT_HCI_ERR_SUCCESS;
 		memcpy(lkrnr_rsp.bdaddr, data, 6);
 		cmd_complete(btdev, opcode, &lkrnr_rsp, sizeof(lkrnr_rsp));
+		break;
+
+	case BT_HCI_CMD_PIN_CODE_REQUEST_REPLY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		pcrr_rsp.status = BT_HCI_ERR_SUCCESS;
+		memcpy(pcrr_rsp.bdaddr, data, 6);
+		cmd_complete(btdev, opcode, &pcrr_rsp, sizeof(pcrr_rsp));
 		break;
 
 	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
@@ -2116,6 +2157,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_link_key_request_reply *lkrr;
 	const struct bt_hci_cmd_link_key_request_neg_reply *lkrnr;
 	const struct bt_hci_cmd_pin_code_request_neg_reply *pcrnr;
+	const struct bt_hci_cmd_pin_code_request_reply *pcrr;
 	const struct bt_hci_cmd_remote_name_request *rnr;
 	const struct bt_hci_cmd_remote_name_request_cancel *rnrc;
 	const struct bt_hci_cmd_read_remote_features *rrf;
@@ -2175,6 +2217,14 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 			return;
 		lkrnr = data;
 		link_key_req_neg_reply_complete(btdev, lkrnr->bdaddr);
+		break;
+
+	case BT_HCI_CMD_PIN_CODE_REQUEST_REPLY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			return;
+		pcrr = data;
+		pin_code_req_reply_complete(btdev, pcrr->bdaddr, pcrr->pin_len,
+							pcrr->pin_code);
 		break;
 
 	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
