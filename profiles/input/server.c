@@ -204,7 +204,7 @@ static void auth_callback(DBusError *derr, void *user_data)
 		goto reject;
 	}
 
-	if (!input_device_exists(&src, &dst) && dev_is_sixaxis(&src, &dst))
+	if (!input_device_exists(&src, &dst) && !dev_is_sixaxis(&src, &dst))
 		return;
 
 	if (!bt_io_accept(server->confirm, connect_event_cb, server,
