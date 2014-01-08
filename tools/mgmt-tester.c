@@ -2646,7 +2646,7 @@ static void test_setup(const void *test_data)
 	const struct generic_data *test = data->test_data;
 	const uint16_t *cmd;
 
-	if (test->pin) {
+	if (test && test->pin) {
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 
 		bthost_set_pin_code(bthost, test->pin, test->pin_len);
