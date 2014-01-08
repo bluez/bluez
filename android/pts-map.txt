@@ -1,7 +1,7 @@
 PTS test results for MAP
 
 PTS version: 5.0
-Tested: 17.12.2013
+Tested: 07.01.2014
 
 Results:
 PASS	test passed
@@ -70,7 +70,7 @@ TC_MSE_MMB_BV_14_I	PASS
 TC_MSE_MMB_BV_15_I	PASS
 TC_MSE_MMB_BV_16_I	INC	Mailbox MAS instance not available on IUT.
 TC_MSE_MMD_BV_02_I	PASS
-TC_MSE_MMU_BV_02_I	PASS
+TC_MSE_MMU_BV_02_I	INC	Passing randomly. (Reported PTS Issue ID: 11689)
 TC_MSE_MMU_BV_03_I	PASS
 TC_MSE_MMN_BV_02_I	PASS
 TC_MSE_MMN_BV_04_I	N/A
