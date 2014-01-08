@@ -1,20 +1,12 @@
 DID PICS for the PTS tool.
 
+PTS version: 5.0
+
 * - different than PTS defaults
 # - not yet implemented/supported
 
 M - mandatory
 O - optional
-
-		Version
--------------------------------------------------------------------------------
-Parameter Name	Selected	Description
--------------------------------------------------------------------------------
-TSPC_DID_0_1	False		Device ID 1.2 (C.1)
-TSPC_DID_0_2	True		Device ID 1.3 (C.1)
--------------------------------------------------------------------------------
-C.1: It is mandatory to support one of the profile versions.
--------------------------------------------------------------------------------
 
 
 		SDP Requirements
