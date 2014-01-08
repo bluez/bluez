@@ -38,6 +38,38 @@
 #define COLOR_OPCODE		COLOR_MAGENTA
 #define COLOR_OPCODE_UNKNOWN	COLOR_WHITE_BG
 
+static const char *get_opcode_str(uint16_t opcode);
+
+static void print_opcode(uint16_t opcode)
+{
+	const char *str;
+
+	str = get_opcode_str(opcode);
+	if (!str)
+		str = "Unknown";
+
+	if (opcode & 0xff00)
+		print_field("Operation: %s (%u/%u)", str,
+						opcode >> 8, opcode & 0xff);
+	else
+		print_field("Operation: %s (%u)", str, opcode);
+}
+
+static void accepted(const void *data, uint8_t size)
+{
+	const struct bt_lmp_accepted *pdu = data;
+
+	print_opcode(pdu->opcode);
+}
+
+static void not_accepted(const void *data, uint8_t size)
+{
+	const struct bt_lmp_not_accepted *pdu = data;
+
+	print_opcode(pdu->opcode);
+	print_field("Error code: %u", pdu->error);
+}
+
 static void version_req(const void *data, uint8_t size)
 {
 	const struct bt_lmp_version_req *pdu = data;
@@ -70,6 +102,39 @@ static void features_res(const void *data, uint8_t size)
 	packet_print_features_lmp(pdu->features, 0x00);
 }
 
+static void accepted_ext(const void *data, uint8_t size)
+{
+	const struct bt_lmp_accepted_ext *pdu = data;
+	uint16_t opcode;
+
+	switch (pdu->escape) {
+	case 127:
+		opcode = LMP_ESC4(pdu->opcode);
+		break;
+	default:
+		return;
+	}
+
+	print_opcode(opcode);
+}
+
+static void not_accepted_ext(const void *data, uint8_t size)
+{
+	const struct bt_lmp_not_accepted_ext *pdu = data;
+	uint16_t opcode;
+
+	switch (pdu->escape) {
+	case 127:
+		opcode = LMP_ESC4(pdu->opcode);
+		break;
+	default:
+		return;
+	}
+
+	print_opcode(opcode);
+	print_field("Error code: %u", pdu->error);
+}
+
 static void features_req_ext(const void *data, uint8_t size)
 {
 	const struct bt_lmp_features_req_ext *pdu = data;
@@ -99,8 +164,8 @@ struct lmp_data {
 static const struct lmp_data lmp_table[] = {
 	{  1, "LMP_name_req" },
 	{  2, "LMP_name_res" },
-	{  3, "LMP_accepted" },
-	{  4, "LMP_not_accepted" },
+	{  3, "LMP_accepted", accepted, 1, true },
+	{  4, "LMP_not_accepted", not_accepted, 2, true },
 	{  5, "LMP_clkoffset_req" },
 	{  6, "LMP_clkoffset_res" },
 	{  7, "LMP_detach" },
@@ -163,8 +228,8 @@ static const struct lmp_data lmp_table[] = {
 	{ 64, "LMP_simple_pairing_number" },
 	{ 65, "LMP_DHkey_check" },
 	{ 66, "LMP_pause_encryption_aes_req" },
-	{ LMP_ESC4(1),  "LMP_accepted_ext" },
-	{ LMP_ESC4(2),  "LMP_not_accepted_ext" },
+	{ LMP_ESC4(1),  "LMP_accepted_ext", accepted_ext, 2, true },
+	{ LMP_ESC4(2),  "LMP_not_accepted_ext", not_accepted_ext, 3, true },
 	{ LMP_ESC4(3),  "LMP_features_req_ext", features_req_ext, 10, true },
 	{ LMP_ESC4(4),  "LMP_features_res_ext", features_res_ext, 10, true },
 	{ LMP_ESC4(5),  "LMP_clk_adj" },
@@ -192,6 +257,17 @@ static const struct lmp_data lmp_table[] = {
 	{ }
 };
 
+static const char *get_opcode_str(uint16_t opcode)
+{
+	int i;
+
+	for (i = 0; lmp_table[i].str; i++) {
+		if (lmp_table[i].opcode == opcode)
+			return lmp_table[i].str;
+	}
+
+	return NULL;
+}
 
 void lmp_packet(const void *data, uint8_t size)
 {
@@ -238,10 +314,10 @@ void lmp_packet(const void *data, uint8_t size)
 
 	if (opcode & 0xff00)
 		print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
-			" (%d/%d) TID %d", opcode >> 8, opcode & 0xff, tid);
+			" (%u/%u) TID %u", opcode >> 8, opcode & 0xff, tid);
 	else
 		print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
-					" (%d) TID %d", opcode, tid);
+					" (%u) TID %d", opcode, tid);
 
 	if (!lmp_data || !lmp_data->func) {
 		packet_hexdump(data + off, size - off);

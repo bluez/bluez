@@ -101,6 +101,17 @@ struct bt_ll_reject_ind {
 
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
+#define BT_LMP_ACCEPTED			3
+struct bt_lmp_accepted {
+	uint8_t  opcode;
+} __attribute__ ((packed));
+
+#define BT_LMP_NOT_ACCEPTED		4
+struct bt_lmp_not_accepted {
+	uint8_t  opcode;
+	uint8_t  error;
+} __attribute__ ((packed));
+
 #define BT_LMP_VERSION_REQ		37
 struct bt_lmp_version_req {
 	uint8_t  version;
@@ -123,6 +134,19 @@ struct bt_lmp_features_req {
 #define BT_LMP_FEATURES_RES		40
 struct bt_lmp_features_res {
 	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LMP_ACCEPTED_EXT		LMP_ESC4(1)
+struct bt_lmp_accepted_ext {
+	uint8_t  escape;
+	uint8_t  opcode;
+} __attribute__ ((packed));
+
+#define BT_LMP_NOT_ACCEPTED_EXT		LMP_ESC4(2)
+struct bt_lmp_not_accepted_ext {
+	uint8_t  escape;
+	uint8_t  opcode;
+	uint8_t  error;
 } __attribute__ ((packed));
 
 #define BT_LMP_FEATURES_REQ_EXT		LMP_ESC4(3)
