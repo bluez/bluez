@@ -111,6 +111,8 @@ struct bthost {
 	void *new_conn_data;
 	struct l2cap_conn_cb_data *new_l2cap_conn_data;
 	struct l2cap_pending_req *l2reqs;
+	uint8_t pin[16];
+	uint8_t pin_len;
 };
 
 struct bthost *bthost_create(void)
@@ -538,6 +540,10 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
 		break;
+	case BT_HCI_CMD_PIN_CODE_REQUEST_REPLY:
+		break;
+	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
+		break;
 	default:
 		printf("Unhandled cmd_complete opcode 0x%04x\n", opcode);
 		break;
@@ -656,6 +662,33 @@ static void evt_num_completed_packets(struct bthost *bthost, const void *data,
 		return;
 }
 
+static void evt_pin_code_request(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_pin_code_request *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (bthost->pin_len > 0) {
+		struct bt_hci_cmd_pin_code_request_reply cp;
+
+		memset(&cp, 0, sizeof(cp));
+		memcpy(cp.bdaddr, ev->bdaddr, 6);
+		cp.pin_len = bthost->pin_len;
+		memcpy(cp.pin_code, bthost->pin, bthost->pin_len);
+
+		send_command(bthost, BT_HCI_CMD_PIN_CODE_REQUEST_REPLY,
+							&cp, sizeof(cp));
+	} else {
+		struct bt_hci_cmd_pin_code_request_neg_reply cp;
+
+		memcpy(cp.bdaddr, ev->bdaddr, 6);
+		send_command(bthost, BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY,
+							&cp, sizeof(cp));
+	}
+}
+
 static void evt_encrypt_change(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -748,6 +781,13 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
 		evt_num_completed_packets(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_AUTH_COMPLETE:
+		break;
+
+	case BT_HCI_EVT_PIN_CODE_REQUEST:
+		evt_pin_code_request(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_ENCRYPT_CHANGE:
@@ -1325,6 +1365,13 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 	data->next = bthost->new_l2cap_conn_data;
 
 	bthost->new_l2cap_conn_data = data;
+}
+
+void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
+							uint8_t pin_len)
+{
+	memcpy(bthost->pin, pin, pin_len);
+	bthost->pin_len = pin_len;
 }
 
 void bthost_start(struct bthost *bthost)

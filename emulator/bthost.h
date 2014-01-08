@@ -80,5 +80,8 @@ typedef void (*bthost_l2cap_connect_cb) (uint16_t handle, uint16_t cid,
 void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 				bthost_l2cap_connect_cb func, void *user_data);
 
+void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
+							uint8_t pin_len);
+
 void bthost_start(struct bthost *bthost);
 void bthost_stop(struct bthost *bthost);
