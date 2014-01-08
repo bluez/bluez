@@ -39,7 +39,8 @@ HAL socket apply here as well, the abstract socket name is
 	call dev->close()                   --> command 0x02
 	return dev->close()                 <-- response 0x02
 
-Identifier: "audio" (BT_AUDIO_ID)
+Audio Service (ID 0)
+====================
 
 	Opcode 0x00 - Error response
 
