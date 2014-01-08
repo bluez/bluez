@@ -228,7 +228,6 @@ static bool setup_device(int fd, int index, struct btd_adapter *adapter)
 	btd_device_set_pnpid(device, devices[index].source, devices[index].vid,
 				devices[index].pid, devices[index].version);
 	btd_device_set_temporary(device, FALSE);
-	btd_device_set_trusted(device, TRUE);
 
 	return true;
 }
