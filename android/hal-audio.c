@@ -25,6 +25,11 @@
 
 #include "hal-log.h"
 
+struct a2dp_audio_dev {
+	struct audio_hw_device dev;
+	struct audio_stream_out *out;
+};
+
 static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 								size_t bytes)
 {
@@ -230,6 +235,7 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 					struct audio_stream_out **stream_out)
 
 {
+	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *) dev;
 	struct audio_stream_out *out;
 
 	out = calloc(1, sizeof(struct audio_stream_out));
@@ -256,6 +262,7 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	out->get_render_position = out_get_render_position;
 
 	*stream_out = out;
+	a2dp_dev->out = out;
 
 	return 0;
 }
@@ -264,6 +271,10 @@ static void audio_close_output_stream(struct audio_hw_device *dev,
 					struct audio_stream_out *stream)
 {
 	DBG("");
+	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *)dev;
+
+	free(stream);
+	a2dp_dev->out = NULL;
 }
 
 static int audio_set_parameters(struct audio_hw_device *dev,
@@ -381,7 +392,7 @@ static int audio_close(hw_device_t *device)
 static int audio_open(const hw_module_t *module, const char *name,
 							hw_device_t **device)
 {
-	struct audio_hw_device *audio;
+	struct a2dp_audio_dev *a2dp_dev;
 
 	DBG("");
 
@@ -391,30 +402,33 @@ static int audio_open(const hw_module_t *module, const char *name,
 		return -EINVAL;
 	}
 
-	audio = calloc(1, sizeof(struct audio_hw_device));
-	if (!audio)
+	a2dp_dev = calloc(1, sizeof(struct a2dp_audio_dev));
+	if (!a2dp_dev)
 		return -ENOMEM;
 
-	audio->common.version = AUDIO_DEVICE_API_VERSION_CURRENT;
-	audio->common.module = (struct hw_module_t *) module;
-	audio->common.close = audio_close;
+	a2dp_dev->dev.common.version = AUDIO_DEVICE_API_VERSION_CURRENT;
+	a2dp_dev->dev.common.module = (struct hw_module_t *) module;
+	a2dp_dev->dev.common.close = audio_close;
 
-	audio->init_check = audio_init_check;
-	audio->set_voice_volume = audio_set_voice_volume;
-	audio->set_master_volume = audio_set_master_volume;
-	audio->set_mode = audio_set_mode;
-	audio->set_mic_mute = audio_set_mic_mute;
-	audio->get_mic_mute = audio_get_mic_mute;
-	audio->set_parameters = audio_set_parameters;
-	audio->get_parameters = audio_get_parameters;
-	audio->get_input_buffer_size = audio_get_input_buffer_size;
-	audio->open_output_stream = audio_open_output_stream;
-	audio->close_output_stream = audio_close_output_stream;
-	audio->open_input_stream = audio_open_input_stream;
-	audio->close_input_stream = audio_close_input_stream;
-	audio->dump = audio_dump;
+	a2dp_dev->dev.init_check = audio_init_check;
+	a2dp_dev->dev.set_voice_volume = audio_set_voice_volume;
+	a2dp_dev->dev.set_master_volume = audio_set_master_volume;
+	a2dp_dev->dev.set_mode = audio_set_mode;
+	a2dp_dev->dev.set_mic_mute = audio_set_mic_mute;
+	a2dp_dev->dev.get_mic_mute = audio_get_mic_mute;
+	a2dp_dev->dev.set_parameters = audio_set_parameters;
+	a2dp_dev->dev.get_parameters = audio_get_parameters;
+	a2dp_dev->dev.get_input_buffer_size = audio_get_input_buffer_size;
+	a2dp_dev->dev.open_output_stream = audio_open_output_stream;
+	a2dp_dev->dev.close_output_stream = audio_close_output_stream;
+	a2dp_dev->dev.open_input_stream = audio_open_input_stream;
+	a2dp_dev->dev.close_input_stream = audio_close_input_stream;
+	a2dp_dev->dev.dump = audio_dump;
 
-	*device = &audio->common;
+	/* Note that &a2dp_dev->dev.common is the same pointer as a2dp_dev.
+	 * This results from the structure of following structs:a2dp_audio_dev,
+	 * audio_hw_device. We will rely on this later in the code.*/
+	*device = &a2dp_dev->dev.common;
 
 	return 0;
 }
