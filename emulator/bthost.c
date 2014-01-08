@@ -689,6 +689,15 @@ static void evt_pin_code_request(struct bthost *bthost, const void *data,
 	}
 }
 
+static void evt_link_key_notify(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_link_key_notify *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+}
+
 static void evt_encrypt_change(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -788,6 +797,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_PIN_CODE_REQUEST:
 		evt_pin_code_request(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_LINK_KEY_NOTIFY:
+		evt_link_key_notify(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_ENCRYPT_CHANGE:
