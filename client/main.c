@@ -880,6 +880,35 @@ static void cmd_untrust(const char *arg)
 	g_free(str);
 }
 
+static void cmd_block(const char *arg)
+{
+	GDBusProxy *proxy;
+	dbus_bool_t blocked;
+	char *str;
+
+	if (!arg || !strlen(arg)) {
+		rl_printf("Missing device address argument\n");
+		return;
+	}
+
+	proxy = find_proxy_by_address(dev_list, arg);
+	if (!proxy) {
+		rl_printf("Device %s not available\n", arg);
+		return;
+	}
+
+	blocked = TRUE;
+
+	str = g_strdup_printf("%s block", arg);
+
+	if (g_dbus_proxy_set_property_basic(proxy, "Blocked",
+					DBUS_TYPE_BOOLEAN, &blocked,
+					generic_callback, str, g_free) == TRUE)
+		return;
+
+	g_free(str);
+}
+
 static void remove_device_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
@@ -1119,6 +1148,8 @@ static const struct {
 							dev_generator },
 	{ "untrust",      "<dev>",    cmd_untrust, "Untrust device",
 							dev_generator },
+	{ "block",        "<dev>",    cmd_block, "Block device",
+								dev_generator },
 	{ "remove",       "<dev>",    cmd_remove, "Remove device",
 							dev_generator },
 	{ "connect",      "<dev>",    cmd_connect, "Connect device",
