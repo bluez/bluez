@@ -75,7 +75,6 @@ $(shell mkdir -p $(LOCAL_PATH)/../lib/bluetooth)
 
 $(foreach file,$(lib_headers), $(shell ln -sf ../$(file) $(LOCAL_PATH)/../lib/bluetooth/$(file)))
 
-LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := bluetoothd
 
@@ -264,7 +263,6 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
-LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := bluetoothd-snoop
 
