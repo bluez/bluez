@@ -117,6 +117,33 @@ struct bt_lmp_detach {
 	uint8_t  error;
 } __attribute__ ((packed));
 
+#define BT_LMP_AU_RAND			11
+struct bt_lmp_au_rand {
+	uint8_t  number[16];
+} __attribute__ ((packed));
+
+#define BT_LMP_SRES			12
+struct bt_lmp_sres {
+	uint8_t  response[4];
+} __attribute__ ((packed));
+
+#define BT_LMP_ENCRYPTION_MODE_REQ	15
+struct bt_lmp_encryption_mode_req {
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_LMP_ENCRYPTION_KEY_SIZE_REQ	16
+struct bt_lmp_encryption_key_size_req {
+	uint8_t  key_size;
+} __attribute__ ((packed));
+
+#define BT_LMP_START_ENCRYPTION_REQ	17
+struct bt_lmp_start_encryption_req {
+	uint8_t  number[16];
+} __attribute__ ((packed));
+
+#define BT_LMP_STOP_ENCRYPTION_REQ	18
+
 #define BT_LMP_AUTO_RATE		35
 
 #define BT_LMP_VERSION_REQ		37
@@ -178,6 +205,35 @@ struct bt_lmp_set_afh {
 	uint8_t  map[10];
 } __attribute__ ((packed));
 
+#define BT_LMP_ENCAPSULATED_HEADER	61
+struct bt_lmp_encapsulated_header {
+	uint8_t  major;
+	uint8_t  minor;
+	uint8_t  length;
+} __attribute__ ((packed));
+
+#define BT_LMP_ENCAPSULATED_PAYLOAD	62
+struct bt_lmp_encapsulated_payload {
+	uint8_t  data[16];
+} __attribute__ ((packed));
+
+#define BT_LMP_SIMPLE_PAIRING_CONFIRM	63
+struct bt_lmp_simple_pairing_confirm {
+	uint8_t  value[16];
+} __attribute__ ((packed));
+
+#define BT_LMP_SIMPLE_PAIRING_NUMBER	64
+struct bt_lmp_simple_pairing_number {
+	uint8_t  value[16];
+} __attribute__ ((packed));
+
+#define BT_LMP_DHKEY_CHECK		65
+struct bt_lmp_dhkey_check {
+	uint8_t  value[16];
+} __attribute__ ((packed));
+
+#define BT_LMP_PAUSE_ENCRYPTION_AES_REQ	66
+
 #define BT_LMP_ACCEPTED_EXT		LMP_ESC4(1)
 struct bt_lmp_accepted_ext {
 	uint8_t  escape;
@@ -208,6 +264,32 @@ struct bt_lmp_features_res_ext {
 #define BT_LMP_PACKET_TYPE_TABLE_REQ	LMP_ESC4(11)
 struct bt_lmp_packet_type_table_req {
 	uint8_t  table;
+} __attribute__ ((packed));
+
+#define BT_LMP_CHANNEL_CLASSIFICATION_REQ	LMP_ESC4(16)
+struct bt_lmp_channel_classification_req {
+	uint8_t  mode;
+	uint16_t min_interval;
+	uint16_t max_interval;
+} __attribute__ ((packed));
+
+#define BT_LMP_CHANNEL_CLASSIFICATION	LMP_ESC4(17)
+struct bt_lmp_channel_classification {
+	uint8_t  classification[10];
+} __attribute__ ((packed));
+
+#define BT_LMP_IO_CAPABILITY_REQ	LMP_ESC4(25)
+struct bt_lmp_io_capability_req {
+	uint8_t  capability;
+	uint8_t  oob_data;
+	uint8_t  authentication;
+} __attribute__ ((packed));
+
+#define BT_LMP_IO_CAPABILITY_RES	LMP_ESC4(26)
+struct bt_lmp_io_capability_res {
+	uint8_t  capability;
+	uint8_t  oob_data;
+	uint8_t  authentication;
 } __attribute__ ((packed));
 
 #define BT_LMP_POWER_CONTROL_REQ	LMP_ESC4(31)

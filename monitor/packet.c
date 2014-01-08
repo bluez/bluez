@@ -1699,6 +1699,16 @@ static void print_authentication(uint8_t authentication)
 	print_field("Authentication: %s (0x%2.2x)", str, authentication);
 }
 
+void packet_print_io_capability(uint8_t capability)
+{
+	print_io_capability(capability);
+}
+
+void packet_print_io_authentication(uint8_t authentication)
+{
+	print_authentication(authentication);
+}
+
 static void print_location_domain_aware(uint8_t aware)
 {
 	const char *str;

@@ -50,6 +50,8 @@ void packet_print_features_lmp(const uint8_t *features, uint8_t page);
 void packet_print_features_ll(const uint8_t *features);
 void packet_print_channel_map_lmp(const uint8_t *map);
 void packet_print_channel_map_ll(const uint8_t *map);
+void packet_print_io_capability(uint8_t capability);
+void packet_print_io_authentication(uint8_t authentication);
 
 void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);

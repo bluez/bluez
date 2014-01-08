@@ -77,6 +77,61 @@ static void detach(const void *data, uint8_t size)
 	packet_print_error("Error code", pdu->error);
 }
 
+static void au_rand(const void *data, uint8_t size)
+{
+	const struct bt_lmp_au_rand *pdu = data;
+
+	packet_hexdump(pdu->number, 16);
+}
+
+static void sres(const void *data, uint8_t size)
+{
+	const struct bt_lmp_sres *pdu = data;
+
+	packet_hexdump(pdu->response, 4);
+}
+
+static void encryption_mode_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_encryption_mode_req *pdu = data;
+	const char *str;
+
+	switch (pdu->mode) {
+	case 0x00:
+		str = "No encryption";
+		break;
+	case 0x01:
+		str = "Encryption";
+		break;
+	case 0x02:
+		str = "Encryption";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (%u)", str, pdu->mode);
+}
+
+static void encryption_key_size_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_encryption_key_size_req *pdu = data;
+
+	print_field("Key size: %u", pdu->key_size);
+}
+
+static void start_encryption_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_start_encryption_req *pdu = data;
+
+	packet_hexdump(pdu->number, 16);
+}
+
+static void stop_encryption_req(const void *data, uint8_t size)
+{
+}
+
 static void auto_rate(const void *data, uint8_t size)
 {
 }
@@ -207,6 +262,61 @@ static void set_afh(const void *data, uint8_t size)
 	packet_print_channel_map_lmp(pdu->map);
 }
 
+static void encapsulated_header(const void *data, uint8_t size)
+{
+	const struct bt_lmp_encapsulated_header *pdu = data;
+	const char *str;
+
+	print_field("Major type: %u", pdu->major);
+	print_field("Minor type: %u", pdu->minor);
+
+	if (pdu->major == 0x01) {
+		switch (pdu->minor) {
+		case 0x01:
+			str = "P-192 Public Key";
+			break;
+		case 0x02:
+			str = "P-256 Public Key";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  %s", str);
+	}
+
+	print_field("Length: %u", pdu->length);
+}
+
+static void encapsulated_payload(const void *data, uint8_t size)
+{
+	const struct bt_lmp_encapsulated_payload *pdu = data;
+
+	packet_hexdump(pdu->data, 16);
+}
+
+static void simple_pairing_confirm(const void *data, uint8_t size)
+{
+	const struct bt_lmp_simple_pairing_confirm *pdu = data;
+
+	packet_hexdump(pdu->value, 16);
+}
+
+static void simple_pairing_number(const void *data, uint8_t size)
+{
+	const struct bt_lmp_simple_pairing_number *pdu = data;
+
+	packet_hexdump(pdu->value, 16);
+}
+
+static void dhkey_check(const void *data, uint8_t size)
+{
+	const struct bt_lmp_dhkey_check *pdu = data;
+
+	packet_hexdump(pdu->value, 16);
+}
+
 static void accepted_ext(const void *data, uint8_t size)
 {
 	const struct bt_lmp_accepted_ext *pdu = data;
@@ -276,6 +386,88 @@ static void packet_type_table_req(const void *data, uint8_t size)
 	}
 
 	print_field("Table: %s (0x%2.2x)", str, pdu->table);
+}
+
+static void channel_classification_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_channel_classification_req *pdu = data;
+	const char *str;
+
+	switch (pdu->mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Reporting mode: %s (0x%2.2x)", str, pdu->mode);
+	print_field("Min interval: 0x%2.2x", pdu->min_interval);
+	print_field("Max interval: 0x%2.2x", pdu->max_interval);
+}
+
+static void channel_classification(const void *data, uint8_t size)
+{
+	const struct bt_lmp_channel_classification *pdu = data;
+	char str[21];
+	int i;
+
+	for (i = 0; i < 10; i++)
+		sprintf(str + (i * 2), "%2.2x", pdu->classification[i]);
+
+	print_field("Features: 0x%s", str);
+}
+
+static void io_capability_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_io_capability_req *pdu = data;
+	const char *str;
+
+	packet_print_io_capability(pdu->capability);
+
+	switch (pdu->oob_data) {
+	case 0x00:
+		str = "No authentication data received";
+		break;
+	case 0x01:
+		str = "Authentication data received";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("OOB data: %s (0x%2.2x)", str, pdu->oob_data);
+
+	packet_print_io_authentication(pdu->authentication);
+}
+
+static void io_capability_res(const void *data, uint8_t size)
+{
+	const struct bt_lmp_io_capability_res *pdu = data;
+	const char *str;
+
+	packet_print_io_capability(pdu->capability);
+
+	switch (pdu->oob_data) {
+	case 0x00:
+		str = "No authentication data received";
+		break;
+	case 0x01:
+		str = "Authentication data received";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("OOB data: %s (0x%2.2x)", str, pdu->oob_data);
+
+	packet_print_io_authentication(pdu->authentication);
 }
 
 static void power_control_req(const void *data, uint8_t size)
@@ -388,14 +580,14 @@ static const struct lmp_data lmp_table[] = {
 	{  8, "LMP_in_rand" },
 	{  9, "LMP_comb_key" },
 	{ 10, "LMP_unit_key" },
-	{ 11, "LMP_au_rand" },
-	{ 12, "LMP_sres" },
+	{ 11, "LMP_au_rand", au_rand, 16, true },
+	{ 12, "LMP_sres", sres, 4, true },
 	{ 13, "LMP_temp_rand" },
 	{ 14, "LMP_temp_key" },
-	{ 15, "LMP_encryption_mode_req" },
-	{ 16, "LMP_encryption_key_size_req" },
-	{ 17, "LMP_start_encryption_req" },
-	{ 18, "LMP_stop_encryption_req" },
+	{ 15, "LMP_encryption_mode_req", encryption_mode_req, 1, true },
+	{ 16, "LMP_encryption_key_size_req", encryption_key_size_req, 1, true },
+	{ 17, "LMP_start_encryption_req", start_encryption_req, 16, true },
+	{ 18, "LMP_stop_encryption_req", stop_encryption_req, 0, true },
 	{ 19, "LMP_switch_req" },
 	{ 20, "LMP_hold" },
 	{ 21, "LMP_hold_req" },
@@ -438,11 +630,11 @@ static const struct lmp_data lmp_table[] = {
 	{ 58, "LMP_encryption_key_size_mask_req" },
 	{ 59, "LMP_encryption_key_size_mask_res" },
 	{ 60, "LMP_set_AFH", set_afh, 15, true },
-	{ 61, "LMP_encapsulated_header" },
-	{ 62, "LMP_encapsulated_payload" },
-	{ 63, "LMP_simple_pairing_confirm" },
-	{ 64, "LMP_simple_pairing_number" },
-	{ 65, "LMP_DHkey_check" },
+	{ 61, "LMP_encapsulated_header", encapsulated_header, 3, true },
+	{ 62, "LMP_encapsulated_payload", encapsulated_payload, 16, true },
+	{ 63, "LMP_simple_pairing_confirm", simple_pairing_confirm, 16, true },
+	{ 64, "LMP_simple_pairing_number", simple_pairing_number, 16, true },
+	{ 65, "LMP_DHkey_check", dhkey_check, 16, true },
 	{ 66, "LMP_pause_encryption_aes_req" },
 	{ LMP_ESC4(1),  "LMP_accepted_ext", accepted_ext, 2, true },
 	{ LMP_ESC4(2),  "LMP_not_accepted_ext", not_accepted_ext, 3, true },
@@ -454,14 +646,14 @@ static const struct lmp_data lmp_table[] = {
 	{ LMP_ESC4(11), "LMP_packet_type_table_req", packet_type_table_req, 1, true },
 	{ LMP_ESC4(12), "LMP_eSCO_link_req" },
 	{ LMP_ESC4(13), "LMP_remove_eSCO_link_req" },
-	{ LMP_ESC4(16), "LMP_channel_classification_req" },
-	{ LMP_ESC4(17), "LMP_channel_classification" },
+	{ LMP_ESC4(16), "LMP_channel_classification_req", channel_classification_req, 5, true },
+	{ LMP_ESC4(17), "LMP_channel_classification", channel_classification, 10, true },
 	{ LMP_ESC4(21), "LMP_sniff_subrating_req" },
 	{ LMP_ESC4(22), "LMP_sniff_subrating_res" },
 	{ LMP_ESC4(23), "LMP_pause_encryption_req" },
 	{ LMP_ESC4(24), "LMP_resume_encryption_req" },
-	{ LMP_ESC4(25), "LMP_IO_capability_req" },
-	{ LMP_ESC4(26), "LMP_IO_capability_res" },
+	{ LMP_ESC4(25), "LMP_IO_capability_req", io_capability_req, 3, true },
+	{ LMP_ESC4(26), "LMP_IO_capability_res", io_capability_res, 3, true },
 	{ LMP_ESC4(27), "LMP_numeric_comparision_failed" },
 	{ LMP_ESC4(28), "LMP_passkey_failed" },
 	{ LMP_ESC4(29), "LMP_oob_failed" },
