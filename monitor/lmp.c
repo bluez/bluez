@@ -77,6 +77,10 @@ static void detach(const void *data, uint8_t size)
 	packet_print_error("Error code", pdu->error);
 }
 
+static void auto_rate(const void *data, uint8_t size)
+{
+}
+
 static void version_req(const void *data, uint8_t size)
 {
 	const struct bt_lmp_version_req *pdu = data;
@@ -109,12 +113,75 @@ static void features_res(const void *data, uint8_t size)
 	packet_print_features_lmp(pdu->features, 0x00);
 }
 
+static void max_slot(const void *data, uint8_t size)
+{
+	const struct bt_lmp_max_slot *pdu = data;
+
+	print_field("Slots: 0x%4.4x", pdu->slots);
+}
+
+static void max_slot_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_max_slot_req *pdu = data;
+
+	print_field("Slots: 0x%4.4x", pdu->slots);
+}
+
+static void timing_accuracy_req(const void *data, uint8_t size)
+{
+}
+
+static void timing_accuracy_res(const void *data, uint8_t size)
+{
+	const struct bt_lmp_timing_accuracy_res *pdu = data;
+
+	print_field("Drift: %u ppm", pdu->drift);
+	print_field("Jitter: %u usec", pdu->jitter);
+}
+
 static void setup_complete(const void *data, uint8_t size)
 {
 }
 
 static void host_connection_req(const void *data, uint8_t size)
 {
+}
+
+static void page_scan_mode_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_page_scan_mode_req *pdu = data;
+	const char *str;
+
+	switch (pdu->scheme) {
+	case 0x00:
+		str = "Mandatory";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Paging scheme: %s (%u)", str, pdu->scheme);
+
+	if (pdu->scheme == 0x00) {
+		switch (pdu->settings) {
+		case 0x00:
+			str = "R0";
+			break;
+		case 0x01:
+			str = "R1";
+			break;
+		case 0x02:
+			str = "R2";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+	} else
+		str = "Reserved";
+
+	print_field("Paging scheme settings: %s (%u)", str, pdu->settings);
 }
 
 static void set_afh(const void *data, uint8_t size)
@@ -211,6 +278,97 @@ static void packet_type_table_req(const void *data, uint8_t size)
 	print_field("Table: %s (0x%2.2x)", str, pdu->table);
 }
 
+static void power_control_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_power_control_req *pdu = data;
+	const char *str;
+
+	switch (pdu->request) {
+	case 0x00:
+		str = "Decrement power one step";
+		break;
+	case 0x01:
+		str = "Increment power one step";
+		break;
+	case 0x02:
+		str = "Increase to maximum power";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Request: %s (0x%2.2x)", str, pdu->request);
+}
+
+static void power_control_res(const void *data, uint8_t size)
+{
+	const struct bt_lmp_power_control_res *pdu = data;
+	const char *str;
+
+	print_field("Response: 0x%2.2x", pdu->response);
+
+	switch (pdu->response & 0x03) {
+	case 0x00:
+		str = "Not supported";
+		break;
+	case 0x01:
+		str = "Changed one step";
+		break;
+	case 0x02:
+		str = "Max power";
+		break;
+	case 0x03:
+		str = "Min power";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  GFSK: %s", str);
+
+	switch ((pdu->response & 0x0c) >> 2) {
+	case 0x00:
+		str = "Not supported";
+		break;
+	case 0x01:
+		str = "Changed one step";
+		break;
+	case 0x02:
+		str = "Max power";
+		break;
+	case 0x03:
+		str = "Min power";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  DQPSK: %s", str);
+
+	switch ((pdu->response & 0x30) >> 4) {
+	case 0x00:
+		str = "Not supported";
+		break;
+	case 0x01:
+		str = "Changed one step";
+		break;
+	case 0x02:
+		str = "Max power";
+		break;
+	case 0x03:
+		str = "Min power";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  8DPSK: %s", str);
+}
+
 struct lmp_data {
 	uint16_t opcode;
 	const char *str;
@@ -254,7 +412,7 @@ static const struct lmp_data lmp_table[] = {
 	{ 32, "LMP_decr_power_req" },
 	{ 33, "LMP_max_power" },
 	{ 34, "LMP_min_power" },
-	{ 35, "LMP_auto_rate" },
+	{ 35, "LMP_auto_rate", auto_rate, 0, true },
 	{ 36, "LMP_preferred_rate" },
 	{ 37, "LMP_version_req", version_req, 5, true },
 	{ 38, "LMP_version_res", version_res, 5, true },
@@ -264,16 +422,16 @@ static const struct lmp_data lmp_table[] = {
 	{ 42, "LMP_quality_of_service_req" },
 	{ 43, "LMP_SCO_link_req" },
 	{ 44, "LMP_remove_SCO_link_req" },
-	{ 45, "LMP_max_slot" },
-	{ 46, "LMP_max_slot_req" },
-	{ 47, "LMP_timing_accuracy_req" },
-	{ 48, "LMP_timing_accuracy_res" },
+	{ 45, "LMP_max_slot", max_slot, 1, true },
+	{ 46, "LMP_max_slot_req", max_slot_req, 1, true },
+	{ 47, "LMP_timing_accuracy_req", timing_accuracy_req, 0, true },
+	{ 48, "LMP_timing_accuracy_res", timing_accuracy_res, 2, true },
 	{ 49, "LMP_setup_complete", setup_complete, 0, true },
 	{ 50, "LMP_use_semi_permanent_key" },
 	{ 51, "LMP_host_connection_req", host_connection_req, 0, true },
 	{ 52, "LMP_slot_offset" },
 	{ 53, "LMP_page_mode_req" },
-	{ 54, "LMP_Page_scan_mode_req" },
+	{ 54, "LMP_page_scan_mode_req", page_scan_mode_req, 2, true },
 	{ 55, "LMP_supervision_timeout" },
 	{ 56, "LMP_test_activate" },
 	{ 57, "LMP_test_control" },
@@ -308,8 +466,8 @@ static const struct lmp_data lmp_table[] = {
 	{ LMP_ESC4(28), "LMP_passkey_failed" },
 	{ LMP_ESC4(29), "LMP_oob_failed" },
 	{ LMP_ESC4(30), "LMP_keypress_notification" },
-	{ LMP_ESC4(31), "LMP_power_control_req" },
-	{ LMP_ESC4(32), "LMP_power_control_res" },
+	{ LMP_ESC4(31), "LMP_power_control_req", power_control_req, 1, true },
+	{ LMP_ESC4(32), "LMP_power_control_res", power_control_res, 1, true },
 	{ LMP_ESC4(33), "LMP_ping_req" },
 	{ LMP_ESC4(34), "LMP_ping_res" },
 	{ }

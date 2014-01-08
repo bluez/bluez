@@ -117,6 +117,8 @@ struct bt_lmp_detach {
 	uint8_t  error;
 } __attribute__ ((packed));
 
+#define BT_LMP_AUTO_RATE		35
+
 #define BT_LMP_VERSION_REQ		37
 struct bt_lmp_version_req {
 	uint8_t  version;
@@ -141,9 +143,33 @@ struct bt_lmp_features_res {
 	uint8_t  features[8];
 } __attribute__ ((packed));
 
+#define BT_LMP_MAX_SLOT			45
+struct bt_lmp_max_slot {
+	uint8_t  slots;
+} __attribute__ ((packed));
+
+#define BT_LMP_MAX_SLOT_REQ		46
+struct bt_lmp_max_slot_req {
+	uint8_t  slots;
+} __attribute__ ((packed));
+
+#define BT_LMP_TIMING_ACCURACY_REQ	47
+
+#define BT_LMP_TIMING_ACCURACY_RES	48
+struct bt_lmp_timing_accuracy_res {
+	uint8_t  drift;
+	uint8_t  jitter;
+} __attribute__ ((packed));
+
 #define BT_LMP_SETUP_COMPLETE		49
 
 #define BT_LMP_HOST_CONNECTION_REQ	51
+
+#define BT_LMP_PAGE_SCAN_MODE_REQ	54
+struct bt_lmp_page_scan_mode_req {
+	uint8_t  scheme;
+	uint8_t  settings;
+} __attribute__ ((packed));
 
 #define BT_LMP_SET_AFH			60
 struct bt_lmp_set_afh {
@@ -182,6 +208,16 @@ struct bt_lmp_features_res_ext {
 #define BT_LMP_PACKET_TYPE_TABLE_REQ	LMP_ESC4(11)
 struct bt_lmp_packet_type_table_req {
 	uint8_t  table;
+} __attribute__ ((packed));
+
+#define BT_LMP_POWER_CONTROL_REQ	LMP_ESC4(31)
+struct bt_lmp_power_control_req {
+	uint8_t  request;
+} __attribute__ ((packed));
+
+#define BT_LMP_POWER_CONTROL_RES	LMP_ESC4(32)
+struct bt_lmp_power_control_res {
+	uint8_t  response;
 } __attribute__ ((packed));
 
 #define BT_H4_CMD_PKT	0x01
