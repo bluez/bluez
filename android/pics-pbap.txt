@@ -1,5 +1,7 @@
 PBAP PICS for the PTS tool.
 
+PTS version: 5.0
+
 * - different than PTS defaults
 # - not yet implemented/supported
 
@@ -12,8 +14,7 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_PBAP_0_1	False		Role: PBAP 1.0 (C.1)
 TSPC_PBAP_0_2	True (*)	Role: PBAP 1.1 (C.1)
-TSPC_PBAP_0_3	False		Role: Reserve
-TSPC_PBAP_0_4	False (*)	Role: PBAP 1.2 (C.1)
+TSPC_PBAP_0_3	False (*)	Role: PBAP 1.2 (C.1)
 -------------------------------------------------------------------------------
 C.1: Mandatory to support one and only one major profile version.
 -------------------------------------------------------------------------------
