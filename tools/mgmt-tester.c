@@ -379,6 +379,8 @@ struct generic_data {
 	uint16_t expect_hci_command;
 	const void *expect_hci_param;
 	uint8_t expect_hci_len;
+	uint8_t pin_len;
+	const void *pin;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -2162,6 +2164,7 @@ static const void *pair_device_expect_param_func(uint16_t *len)
 static uint16_t settings_powered_pairable[] = { MGMT_OP_SET_PAIRABLE,
 						MGMT_OP_SET_POWERED, 0 };
 static uint8_t auth_req_param[] = { 0x2a, 0x00 };
+static uint8_t pair_device_pin[] = { 0x30, 0x30, 0x30, 0x30 }; /* "0000" */
 
 static const struct generic_data pair_device_success_test_1 = {
 	.setup_settings = settings_powered_pairable,
@@ -2172,6 +2175,8 @@ static const struct generic_data pair_device_success_test_1 = {
 	.expect_hci_command = BT_HCI_CMD_AUTH_REQUESTED,
 	.expect_hci_param = auth_req_param,
 	.expect_hci_len = sizeof(auth_req_param),
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
 };
 
 static const char unpair_device_param[] = {
@@ -2618,11 +2623,33 @@ static void setup_complete(uint8_t status, uint16_t length,
 		setup_bthost();
 }
 
+static void pin_code_request_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_pin_code_request *ev = param;
+	struct test_data *data = user_data;
+	const struct generic_data *test = data->test_data;
+	struct mgmt_cp_pin_code_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
+	cp.pin_len = test->pin_len;
+	memcpy(cp.pin_code, test->pin, test->pin_len);
+
+	mgmt_reply(data->mgmt, MGMT_OP_PIN_CODE_REPLY, data->mgmt_index,
+			sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
 static void test_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
 	const uint16_t *cmd;
+
+	if (test->pin)
+		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
+				data->mgmt_index, pin_code_request_callback,
+				data, NULL);
 
 	if (!test || !test->setup_settings) {
 		if (data->test_setup)
