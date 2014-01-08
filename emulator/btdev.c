@@ -883,6 +883,25 @@ static void disconnect_complete(struct btdev *btdev, uint16_t handle,
 	send_event(remote, BT_HCI_EVT_DISCONNECT_COMPLETE, &dc, sizeof(dc));
 }
 
+static void auth_request_complete(struct btdev *btdev, uint16_t handle)
+{
+	struct btdev *remote = btdev->conn;
+
+	if (!remote) {
+		struct bt_hci_evt_auth_complete ev;
+
+		ev.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		ev.handle = cpu_to_le16(handle);
+
+		send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+
+		return;
+	}
+
+	send_event(btdev, BT_HCI_EVT_LINK_KEY_REQUEST, remote->bdaddr, 6);
+	send_event(remote, BT_HCI_EVT_LINK_KEY_REQUEST, btdev->bdaddr, 6);
+}
+
 static void name_request_complete(struct btdev *btdev,
 					const uint8_t *bdaddr, uint8_t status)
 {
@@ -1995,6 +2014,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_create_conn_cancel *ccc;
 	const struct bt_hci_cmd_accept_conn_request *acr;
 	const struct bt_hci_cmd_reject_conn_request *rcr;
+	const struct bt_hci_cmd_auth_requested *ar;
 	const struct bt_hci_cmd_remote_name_request *rnr;
 	const struct bt_hci_cmd_remote_name_request_cancel *rnrc;
 	const struct bt_hci_cmd_read_remote_features *rrf;
@@ -2040,6 +2060,13 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 			return;
 		rcr = data;
 		conn_complete(btdev, rcr->bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
+		break;
+
+	case BT_HCI_CMD_AUTH_REQUESTED:
+		if (btdev->type == BTDEV_TYPE_LE)
+			return;
+		ar = data;
+		auth_request_complete(btdev, le16_to_cpu(ar->handle));
 		break;
 
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST:
