@@ -270,6 +270,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[1]  |= 0x01;	/* Accept Connection Request */
 	btdev->commands[1]  |= 0x02;	/* Reject Connection Request */
 	btdev->commands[1]  |= 0x08;	/* Link Key Request Negative Reply */
+	btdev->commands[1]  |= 0x20;	/* PIN Code Request Negative Reply */
 	btdev->commands[1]  |= 0x80;	/* Authentication Requested */
 	btdev->commands[2]  |= 0x08;	/* Remote Name Request */
 	btdev->commands[2]  |= 0x10;	/* Cancel Remote Name Request */
@@ -902,6 +903,24 @@ static void link_key_req_neg_reply_complete(struct btdev *btdev,
 							sizeof(pin_req));
 }
 
+static void pin_code_req_neg_reply_complete(struct btdev *btdev,
+							const uint8_t *bdaddr)
+{
+	struct bt_hci_evt_auth_complete ev;
+	struct btdev *remote = btdev->conn;
+
+	if (!remote)
+		return;
+
+	ev.status = BT_HCI_ERR_PIN_OR_KEY_MISSING;
+
+	ev.handle = cpu_to_le16(42);
+	send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+
+	ev.handle = cpu_to_le16(42);
+	send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+}
+
 static void auth_request_complete(struct btdev *btdev, uint16_t handle)
 {
 	struct btdev *remote = btdev->conn;
@@ -1198,6 +1217,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_le_test_end lte;
 	struct bt_hci_rsp_remote_name_request_cancel rnrc_rsp;
 	struct bt_hci_rsp_link_key_request_neg_reply lkrnr_rsp;
+	struct bt_hci_rsp_pin_code_request_neg_reply pcrnr_rsp;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -1248,6 +1268,14 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lkrnr_rsp.status = BT_HCI_ERR_SUCCESS;
 		memcpy(lkrnr_rsp.bdaddr, data, 6);
 		cmd_complete(btdev, opcode, &lkrnr_rsp, sizeof(lkrnr_rsp));
+		break;
+
+	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		pcrnr_rsp.status = BT_HCI_ERR_SUCCESS;
+		memcpy(pcrnr_rsp.bdaddr, data, 6);
+		cmd_complete(btdev, opcode, &pcrnr_rsp, sizeof(pcrnr_rsp));
 		break;
 
 	case BT_HCI_CMD_AUTH_REQUESTED:
@@ -2044,6 +2072,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_reject_conn_request *rcr;
 	const struct bt_hci_cmd_auth_requested *ar;
 	const struct bt_hci_cmd_link_key_request_neg_reply *lkrnr;
+	const struct bt_hci_cmd_pin_code_request_neg_reply *pcrnr;
 	const struct bt_hci_cmd_remote_name_request *rnr;
 	const struct bt_hci_cmd_remote_name_request_cancel *rnrc;
 	const struct bt_hci_cmd_read_remote_features *rrf;
@@ -2096,6 +2125,13 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 			return;
 		lkrnr = data;
 		link_key_req_neg_reply_complete(btdev, lkrnr->bdaddr);
+		break;
+
+	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			return;
+		pcrnr = data;
+		pin_code_req_neg_reply_complete(btdev, pcrnr->bdaddr);
 		break;
 
 	case BT_HCI_CMD_AUTH_REQUESTED:
