@@ -33,6 +33,7 @@ LOCAL_SRC_FILES := \
 	../src/log.c \
 	../src/shared/mgmt.c \
 	../src/shared/util.c \
+	../src/shared/queue.c \
 	../src/sdpd-database.c \
 	../src/sdpd-service.c \
 	../src/sdpd-request.c \

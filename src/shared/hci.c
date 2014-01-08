@@ -535,8 +535,8 @@ bool bt_hci_flush(struct bt_hci *hci)
 
 	suspend_writer(hci);
 
-	queue_remove_all(hci->cmd_queue, cmd_free);
-	queue_remove_all(hci->rsp_queue, cmd_free);
+	queue_remove_all(hci->cmd_queue, NULL, NULL, cmd_free);
+	queue_remove_all(hci->rsp_queue, NULL, NULL, cmd_free);
 
 	return true;
 }

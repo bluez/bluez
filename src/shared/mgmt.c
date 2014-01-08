@@ -36,6 +36,7 @@
 #include "lib/mgmt.h"
 #include "lib/hci.h"
 
+#include "src/shared/queue.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
 
@@ -46,8 +47,8 @@ struct mgmt {
 	GIOChannel *io;
 	guint read_watch;
 	guint write_watch;
-	GQueue *request_queue;
-	GQueue *reply_queue;
+	struct queue *request_queue;
+	struct queue *reply_queue;
 	GList *pending_list;
 	GList *notify_list;
 	GList *notify_destroyed;
@@ -83,7 +84,7 @@ struct mgmt_notify {
 	void *user_data;
 };
 
-static void destroy_request(gpointer data, gpointer user_data)
+static void destroy_request(void *data)
 {
 	struct mgmt_request *request = data;
 
@@ -92,6 +93,27 @@ static void destroy_request(gpointer data, gpointer user_data)
 
 	g_free(request->buf);
 	g_free(request);
+}
+
+static void destroy_request_from_list(gpointer data, gpointer user_data)
+{
+	destroy_request(data);
+}
+
+static bool match_request_id(const void *a, const void *b)
+{
+	const struct mgmt_request *request = a;
+	unsigned int id = PTR_TO_UINT(b);
+
+	return request->id == id;
+}
+
+static bool match_request_index(const void *a, const void *b)
+{
+	const struct mgmt_request *request = a;
+	uint16_t index = PTR_TO_UINT(b);
+
+	return request->index == index;
 }
 
 static int compare_request_id(gconstpointer a, gconstpointer b)
@@ -137,13 +159,13 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
-	request = g_queue_pop_head(mgmt->reply_queue);
+	request = queue_pop_head(mgmt->reply_queue);
 	if (!request) {
 		/* only reply commands can jump the queue */
 		if (mgmt->pending_list)
 			return FALSE;
 
-		request = g_queue_pop_head(mgmt->request_queue);
+		request = queue_pop_head(mgmt->request_queue);
 		if (!request)
 			return FALSE;
 	}
@@ -155,7 +177,7 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 		if (request->callback)
 			request->callback(MGMT_STATUS_FAILED, 0, NULL,
 							request->user_data);
-		destroy_request(request, NULL);
+		destroy_request(request);
 		return TRUE;
 	}
 
@@ -175,7 +197,7 @@ static void wakeup_writer(struct mgmt *mgmt)
 {
 	if (mgmt->pending_list) {
 		/* only queued reply commands trigger wakeup */
-		if (g_queue_get_length(mgmt->reply_queue) == 0)
+		if (queue_isempty(mgmt->reply_queue))
 			return;
 	}
 
@@ -220,7 +242,7 @@ static void request_complete(struct mgmt *mgmt, uint8_t status,
 	if (request->callback)
 		request->callback(status, length, param, request->user_data);
 
-	destroy_request(request, NULL);
+	destroy_request(request);
 
 	if (mgmt->destroyed)
 		return;
@@ -370,8 +392,21 @@ struct mgmt *mgmt_new(int fd)
 	g_io_channel_set_encoding(mgmt->io, NULL, NULL);
 	g_io_channel_set_buffered(mgmt->io, FALSE);
 
-	mgmt->request_queue = g_queue_new();
-	mgmt->reply_queue = g_queue_new();
+	mgmt->request_queue = queue_new();
+	if (!mgmt->request_queue) {
+		g_free(mgmt->buf);
+		g_free(mgmt);
+		return NULL;
+	}
+
+	mgmt->reply_queue = queue_new();
+	if (!mgmt->reply_queue) {
+		queue_destroy(mgmt->request_queue, NULL);
+		g_free(mgmt->buf);
+		g_free(mgmt);
+		return NULL;
+	}
+
 
 	mgmt->read_watch = g_io_add_watch_full(mgmt->io, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -433,8 +468,8 @@ void mgmt_unref(struct mgmt *mgmt)
 	mgmt_unregister_all(mgmt);
 	mgmt_cancel_all(mgmt);
 
-	g_queue_free(mgmt->reply_queue);
-	g_queue_free(mgmt->request_queue);
+	queue_destroy(mgmt->reply_queue, NULL);
+	queue_destroy(mgmt->request_queue, NULL);
 
 	if (mgmt->write_watch > 0)
 		g_source_remove(mgmt->write_watch);
@@ -551,7 +586,11 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 
 	request->id = mgmt->next_request_id++;
 
-	g_queue_push_tail(mgmt->request_queue, request);
+	if (!queue_push_tail(mgmt->request_queue, request)) {
+		g_free(request->buf);
+		g_free(request);
+		return 0;
+	}
 
 	wakeup_writer(mgmt);
 
@@ -578,7 +617,11 @@ unsigned int mgmt_reply(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 
 	request->id = mgmt->next_request_id++;
 
-	g_queue_push_tail(mgmt->reply_queue, request);
+	if (!queue_push_tail(mgmt->reply_queue, request)) {
+		g_free(request->buf);
+		g_free(request);
+		return 0;
+	}
 
 	wakeup_writer(mgmt);
 
@@ -593,21 +636,15 @@ bool mgmt_cancel(struct mgmt *mgmt, unsigned int id)
 	if (!mgmt || !id)
 		return false;
 
-	list = g_queue_find_custom(mgmt->request_queue, GUINT_TO_POINTER(id),
-							compare_request_id);
-	if (list) {
-		request = list->data;
-		g_queue_delete_link(mgmt->request_queue, list);
+	request = queue_remove_if(mgmt->request_queue, match_request_id,
+							UINT_TO_PTR(id));
+	if (request)
 		goto done;
-	}
 
-	list = g_queue_find_custom(mgmt->reply_queue, GUINT_TO_POINTER(id),
-							compare_request_id);
-	if (list) {
-		request = list->data;
-		g_queue_delete_link(mgmt->reply_queue, list);
+	request = queue_remove_if(mgmt->reply_queue, match_request_id,
+							UINT_TO_PTR(id));
+	if (request)
 		goto done;
-	}
 
 	list = g_list_find_custom(mgmt->pending_list, GUINT_TO_POINTER(id),
 							compare_request_id);
@@ -619,7 +656,7 @@ bool mgmt_cancel(struct mgmt *mgmt, unsigned int id)
 	mgmt->pending_list = g_list_delete_link(mgmt->pending_list, list);
 
 done:
-	destroy_request(request, NULL);
+	destroy_request(request);
 
 	wakeup_writer(mgmt);
 
@@ -633,33 +670,11 @@ bool mgmt_cancel_index(struct mgmt *mgmt, uint16_t index)
 	if (!mgmt)
 		return false;
 
-	for (list = g_queue_peek_head_link(mgmt->request_queue); list;
-								list = next) {
-		struct mgmt_request *request = list->data;
+	queue_remove_all(mgmt->request_queue, match_request_index,
+					UINT_TO_PTR(index), destroy_request);
 
-		next = g_list_next(list);
-
-		if (request->index != index)
-			continue;
-
-		g_queue_delete_link(mgmt->request_queue, list);
-
-		destroy_request(request, NULL);
-	}
-
-	for (list = g_queue_peek_head_link(mgmt->reply_queue); list;
-								list = next) {
-		struct mgmt_request *request = list->data;
-
-		next = g_list_next(list);
-
-		if (request->index != index)
-			continue;
-
-		g_queue_delete_link(mgmt->reply_queue, list);
-
-		destroy_request(request, NULL);
-	}
+	queue_remove_all(mgmt->reply_queue, match_request_index,
+					UINT_TO_PTR(index), destroy_request);
 
 	for (list = g_list_first(mgmt->pending_list); list; list = next) {
 		struct mgmt_request *request = list->data;
@@ -672,7 +687,7 @@ bool mgmt_cancel_index(struct mgmt *mgmt, uint16_t index)
 		mgmt->pending_list = g_list_delete_link(mgmt->pending_list,
 									list);
 
-		destroy_request(request, NULL);
+		destroy_request(request);
 	}
 
 	return true;
@@ -683,15 +698,12 @@ bool mgmt_cancel_all(struct mgmt *mgmt)
 	if (!mgmt)
 		return false;
 
-	g_list_foreach(mgmt->pending_list, destroy_request, NULL);
+	g_list_foreach(mgmt->pending_list, destroy_request_from_list, NULL);
 	g_list_free(mgmt->pending_list);
 	mgmt->pending_list = NULL;
 
-	g_queue_foreach(mgmt->reply_queue, destroy_request, NULL);
-	g_queue_clear(mgmt->reply_queue);
-
-	g_queue_foreach(mgmt->request_queue, destroy_request, NULL);
-	g_queue_clear(mgmt->request_queue);
+	queue_remove_all(mgmt->reply_queue, NULL, NULL, destroy_request);
+	queue_remove_all(mgmt->request_queue, NULL, NULL, destroy_request);
 
 	return true;
 }

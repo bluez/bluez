@@ -232,11 +232,15 @@ void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 	return NULL;
 }
 
-bool queue_remove_all(struct queue *queue, queue_destroy_func_t destroy)
+bool queue_remove_all(struct queue *queue, queue_match_func_t function,
+				void *user_data, queue_destroy_func_t destroy)
 {
 	struct queue_entry *entry;
 
 	if (!queue)
+		return false;
+
+	if (function)
 		return false;
 
 	entry = queue->head;

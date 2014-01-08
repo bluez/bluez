@@ -149,6 +149,7 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/device.h src/device.c src/attio.h \
 			src/dbus-common.c src/dbus-common.h \
 			src/eir.h src/eir.c \
+			src/shared/queue.h src/shared/queue.c \
 			src/shared/util.h src/shared/util.c \
 			src/shared/mgmt.h src/shared/mgmt.c
 src_bluetoothd_LDADD = lib/libbluetooth-internal.la gdbus/libgdbus-internal.la \
@@ -237,6 +238,7 @@ unit_test_crc_LDADD = @GLIB_LIBS@
 unit_tests += unit/test-mgmt
 
 unit_test_mgmt_SOURCES = unit/test-mgmt.c \
+				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c
 unit_test_mgmt_LDADD = @GLIB_LIBS@
