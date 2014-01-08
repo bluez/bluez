@@ -397,6 +397,11 @@ static void print_reason(uint8_t reason)
 	print_error("Reason", reason);
 }
 
+void packet_print_error(const char *label, uint8_t error)
+{
+	print_error(label, error);
+}
+
 static void print_addr(const char *label, const uint8_t *addr,
 						uint8_t addr_type)
 {

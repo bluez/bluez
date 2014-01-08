@@ -67,7 +67,14 @@ static void not_accepted(const void *data, uint8_t size)
 	const struct bt_lmp_not_accepted *pdu = data;
 
 	print_opcode(pdu->opcode);
-	print_field("Error code: %u", pdu->error);
+	packet_print_error("Error code", pdu->error);
+}
+
+static void detach(const void *data, uint8_t size)
+{
+	const struct bt_lmp_detach *pdu = data;
+
+	packet_print_error("Error code", pdu->error);
 }
 
 static void version_req(const void *data, uint8_t size)
@@ -100,6 +107,10 @@ static void features_res(const void *data, uint8_t size)
 	const struct bt_lmp_features_res *pdu = data;
 
 	packet_print_features_lmp(pdu->features, 0x00);
+}
+
+static void setup_complete(const void *data, uint8_t size)
+{
 }
 
 static void accepted_ext(const void *data, uint8_t size)
@@ -168,7 +179,7 @@ static const struct lmp_data lmp_table[] = {
 	{  4, "LMP_not_accepted", not_accepted, 2, true },
 	{  5, "LMP_clkoffset_req" },
 	{  6, "LMP_clkoffset_res" },
-	{  7, "LMP_detach" },
+	{  7, "LMP_detach", detach, 1, true },
 	{  8, "LMP_in_rand" },
 	{  9, "LMP_comb_key" },
 	{ 10, "LMP_unit_key" },
@@ -210,7 +221,7 @@ static const struct lmp_data lmp_table[] = {
 	{ 46, "LMP_max_slot_req" },
 	{ 47, "LMP_timing_accuracy_req" },
 	{ 48, "LMP_timing_accuracy_res" },
-	{ 49, "LMP_setup_complete" },
+	{ 49, "LMP_setup_complete", setup_complete, 0, true },
 	{ 50, "LMP_use_semi_permanent_key" },
 	{ 51, "LMP_host_connection_req" },
 	{ 52, "LMP_slot_offset" },

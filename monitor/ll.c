@@ -399,7 +399,7 @@ static void terminate_ind(const void *data, uint8_t size)
 {
 	const struct bt_ll_terminate_ind *pdu = data;
 
-	print_field("Error code: 0x%2.2x", pdu->error);
+	packet_print_error("Error code", pdu->error);
 }
 
 static void enc_req(const void *data, uint8_t size)
@@ -457,7 +457,7 @@ static void reject_ind(const void *data, uint8_t size)
 {
 	const struct bt_ll_reject_ind *pdu = data;
 
-	print_field("Error code: 0x%2.2x", pdu->error);
+	packet_print_error("Error code", pdu->error);
 }
 
 struct llcp_data {

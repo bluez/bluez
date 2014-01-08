@@ -112,6 +112,11 @@ struct bt_lmp_not_accepted {
 	uint8_t  error;
 } __attribute__ ((packed));
 
+#define BT_LMP_DETACH			7
+struct bt_lmp_detach {
+	uint8_t  error;
+} __attribute__ ((packed));
+
 #define BT_LMP_VERSION_REQ		37
 struct bt_lmp_version_req {
 	uint8_t  version;
@@ -135,6 +140,8 @@ struct bt_lmp_features_req {
 struct bt_lmp_features_res {
 	uint8_t  features[8];
 } __attribute__ ((packed));
+
+#define BT_LMP_SETUP_COMPLETE		49
 
 #define BT_LMP_ACCEPTED_EXT		LMP_ESC4(1)
 struct bt_lmp_accepted_ext {
