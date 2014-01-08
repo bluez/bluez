@@ -101,9 +101,6 @@ static void sixaxis_browse_sdp(const bdaddr_t *src, const bdaddr_t *dst,
 	struct btd_device *device;
 	struct sixaxis_data *data;
 
-	if (psm != L2CAP_PSM_HIDP_CTRL)
-		return;
-
 	device = btd_adapter_find_device(adapter_find(src), dst);
 	if (!device)
 		return;
@@ -112,7 +109,9 @@ static void sixaxis_browse_sdp(const bdaddr_t *src, const bdaddr_t *dst,
 	data->chan = g_io_channel_ref(chan);
 	data->psm = psm;
 
-	device_discover_services(device);
+	if (psm == L2CAP_PSM_HIDP_CTRL)
+		device_discover_services(device);
+
 	device_wait_for_svc_complete(device, sixaxis_sdp_cb, data);
 }
 
