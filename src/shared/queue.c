@@ -232,35 +232,65 @@ void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 	return NULL;
 }
 
-bool queue_remove_all(struct queue *queue, queue_match_func_t function,
+unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 				void *user_data, queue_destroy_func_t destroy)
 {
 	struct queue_entry *entry;
+	unsigned int count = 0;
 
 	if (!queue)
-		return false;
-
-	if (function)
-		return false;
+		return 0;
 
 	entry = queue->head;
 
-	while (entry) {
-		struct queue_entry *tmp = entry;
+	if (function) {
+		struct queue_entry *prev = NULL;
 
-		entry = entry->next;
+		while (entry) {
+			if (function(entry->data, user_data)) {
+				struct queue_entry *tmp = entry;
 
-		if (destroy)
-			destroy(tmp->data);
+				if (prev)
+					prev->next = entry->next;
+				else
+					queue->head = entry->next;
 
-		free(tmp);
+				if (!entry->next)
+					queue->tail = prev;
+
+				entry = entry->next;
+
+				if (destroy)
+					destroy(tmp->data);
+
+				free(tmp);
+				count++;
+			} else {
+				prev = entry;
+				entry = entry->next;
+			}
+		}
+
+		queue->entries -= count;
+	} else {
+		while (entry) {
+			struct queue_entry *tmp = entry;
+
+			entry = entry->next;
+
+			if (destroy)
+				destroy(tmp->data);
+
+			free(tmp);
+			count++;
+		}
+
+		queue->head = NULL;
+		queue->tail = NULL;
+		queue->entries = 0;
 	}
 
-	queue->head = NULL;
-	queue->tail = NULL;
-	queue->entries = 0;
-
-	return true;
+	return count;
 }
 
 unsigned int queue_length(struct queue *queue)

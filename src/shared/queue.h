@@ -48,7 +48,7 @@ void *queue_find(struct queue *queue, queue_match_func_t function,
 
 void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 							void *user_data);
-bool queue_remove_all(struct queue *queue, queue_match_func_t function,
+unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 				void *user_data, queue_destroy_func_t destroy);
 
 unsigned int queue_length(struct queue *queue);
