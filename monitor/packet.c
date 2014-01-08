@@ -2005,6 +2005,11 @@ static void print_channel_map(const uint8_t *map)
 	}
 }
 
+void packet_print_channel_map_lmp(const uint8_t *map)
+{
+	print_channel_map(map);
+}
+
 static void print_flush_timeout(uint16_t timeout)
 {
 	if (timeout)

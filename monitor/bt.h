@@ -143,6 +143,15 @@ struct bt_lmp_features_res {
 
 #define BT_LMP_SETUP_COMPLETE		49
 
+#define BT_LMP_HOST_CONNECTION_REQ	51
+
+#define BT_LMP_SET_AFH			60
+struct bt_lmp_set_afh {
+	uint32_t instant;
+	uint8_t  mode;
+	uint8_t  map[10];
+} __attribute__ ((packed));
+
 #define BT_LMP_ACCEPTED_EXT		LMP_ESC4(1)
 struct bt_lmp_accepted_ext {
 	uint8_t  escape;
@@ -168,6 +177,11 @@ struct bt_lmp_features_res_ext {
 	uint8_t  page;
 	uint8_t  max_page;
 	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LMP_PACKET_TYPE_TABLE_REQ	LMP_ESC4(11)
+struct bt_lmp_packet_type_table_req {
+	uint8_t  table;
 } __attribute__ ((packed));
 
 #define BT_H4_CMD_PKT	0x01

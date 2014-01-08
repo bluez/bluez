@@ -113,6 +113,33 @@ static void setup_complete(const void *data, uint8_t size)
 {
 }
 
+static void host_connection_req(const void *data, uint8_t size)
+{
+}
+
+static void set_afh(const void *data, uint8_t size)
+{
+	const struct bt_lmp_set_afh *pdu = data;
+	const char *str;
+
+	print_field("Instant: %u", htobl(pdu->instant));
+
+	switch (pdu->mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, pdu->mode);
+	packet_print_channel_map_lmp(pdu->map);
+}
+
 static void accepted_ext(const void *data, uint8_t size)
 {
 	const struct bt_lmp_accepted_ext *pdu = data;
@@ -162,6 +189,26 @@ static void features_res_ext(const void *data, uint8_t size)
 	print_field("Features page: %u", pdu->page);
 	print_field("Max supported page: %u", pdu->max_page);
 	packet_print_features_lmp(pdu->features, pdu->page);
+}
+
+static void packet_type_table_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_packet_type_table_req *pdu = data;
+	const char *str;
+
+	switch (pdu->table) {
+	case 0x00:
+		str = "1 Mbps only";
+		break;
+	case 0x01:
+		str = "2/3 Mbps";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Table: %s (0x%2.2x)", str, pdu->table);
 }
 
 struct lmp_data {
@@ -223,7 +270,7 @@ static const struct lmp_data lmp_table[] = {
 	{ 48, "LMP_timing_accuracy_res" },
 	{ 49, "LMP_setup_complete", setup_complete, 0, true },
 	{ 50, "LMP_use_semi_permanent_key" },
-	{ 51, "LMP_host_connection_req" },
+	{ 51, "LMP_host_connection_req", host_connection_req, 0, true },
 	{ 52, "LMP_slot_offset" },
 	{ 53, "LMP_page_mode_req" },
 	{ 54, "LMP_Page_scan_mode_req" },
@@ -232,7 +279,7 @@ static const struct lmp_data lmp_table[] = {
 	{ 57, "LMP_test_control" },
 	{ 58, "LMP_encryption_key_size_mask_req" },
 	{ 59, "LMP_encryption_key_size_mask_res" },
-	{ 60, "LMP_set_AFH" },
+	{ 60, "LMP_set_AFH", set_afh, 15, true },
 	{ 61, "LMP_encapsulated_header" },
 	{ 62, "LMP_encapsulated_payload" },
 	{ 63, "LMP_simple_pairing_confirm" },
@@ -246,7 +293,7 @@ static const struct lmp_data lmp_table[] = {
 	{ LMP_ESC4(5),  "LMP_clk_adj" },
 	{ LMP_ESC4(6),  "LMP_clk_adj_ack" },
 	{ LMP_ESC4(7),  "LMP_clk_adj_req" },
-	{ LMP_ESC4(11), "LMP_packet_type_table" },
+	{ LMP_ESC4(11), "LMP_packet_type_table_req", packet_type_table_req, 1, true },
 	{ LMP_ESC4(12), "LMP_eSCO_link_req" },
 	{ LMP_ESC4(13), "LMP_remove_eSCO_link_req" },
 	{ LMP_ESC4(16), "LMP_channel_classification_req" },
