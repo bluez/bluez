@@ -979,9 +979,6 @@ static void pin_code_req_reply_complete(struct btdev *btdev,
 	}
 
 	ev.handle = cpu_to_le16(42);
-	send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
-
-	ev.handle = cpu_to_le16(42);
 	send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
 
 	btdev->pin_len = 0;
@@ -998,12 +995,12 @@ static void pin_code_req_neg_reply_complete(struct btdev *btdev,
 		return;
 
 	ev.status = BT_HCI_ERR_PIN_OR_KEY_MISSING;
-
 	ev.handle = cpu_to_le16(42);
+
 	send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
 
-	ev.handle = cpu_to_le16(42);
-	send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+	if (remote->pin_len)
+		send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
 }
 
 static void auth_request_complete(struct btdev *btdev, uint16_t handle)
