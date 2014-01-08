@@ -316,6 +316,10 @@ struct bt_hci_cmd_link_key_request_reply {
 struct bt_hci_cmd_link_key_request_neg_reply {
 	uint8_t  bdaddr[6];
 } __attribute__ ((packed));
+struct bt_hci_rsp_link_key_request_neg_reply {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
 
 #define BT_HCI_CMD_PIN_CODE_REQUEST_REPLY	0x040d
 struct bt_hci_cmd_pin_code_request_reply {
