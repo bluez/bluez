@@ -34,6 +34,7 @@
 
 #include "mainloop.h"
 #include "packet.h"
+#include "lmp.h"
 #include "analyze.h"
 #include "ellisys.h"
 #include "control.h"
@@ -147,6 +148,7 @@ int main(int argc, char *argv[])
 			break;
 		case '#':
 			packet_todo();
+			lmp_todo();
 			return EXIT_SUCCESS;
 		case 'v':
 			printf("%s\n", VERSION);

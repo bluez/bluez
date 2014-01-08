@@ -340,3 +340,17 @@ void lmp_packet(const void *data, uint8_t size)
 
 	lmp_data->func(data + off, size - off);
 }
+
+void lmp_todo(void)
+{
+	int i;
+
+	printf("LMP operations with missing decodings:\n");
+
+	for (i = 0; lmp_table[i].str; i++) {
+		if (lmp_table[i].func)
+			continue;
+
+		printf("\t%s\n", lmp_table[i].str);
+	}
+}
