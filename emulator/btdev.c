@@ -123,6 +123,8 @@ struct btdev {
 #define MAX_BTDEV_ENTRIES 16
 
 static const uint8_t LINK_KEY_NONE[16] = { 0 };
+static const uint8_t LINK_KEY_DUMMY[16] = {	0, 1, 2, 3, 4, 5, 6, 7,
+						8, 9, 0, 1, 2, 3, 4, 5 };
 
 static struct btdev *btdev_list[MAX_BTDEV_ENTRIES] = { };
 
@@ -931,6 +933,20 @@ static void link_key_req_neg_reply_complete(struct btdev *btdev,
 							sizeof(pin_req));
 }
 
+static void link_key_notify(struct btdev *btdev, const uint8_t *bdaddr,
+							const uint8_t *key)
+{
+	struct bt_hci_evt_link_key_notify ev;
+
+	memcpy(btdev->link_key, key, 16);
+
+	memcpy(ev.bdaddr, bdaddr, 6);
+	memcpy(ev.link_key, key, 16);
+	ev.key_type = 0x00;
+
+	send_event(btdev, BT_HCI_EVT_LINK_KEY_NOTIFY, &ev, sizeof(ev));
+}
+
 static void pin_code_req_reply_complete(struct btdev *btdev,
 					const uint8_t *bdaddr, uint8_t pin_len,
 					const uint8_t *pin_code)
@@ -954,10 +970,13 @@ static void pin_code_req_reply_complete(struct btdev *btdev,
 	}
 
 	if (btdev->pin_len == remote->pin_len &&
-			!memcmp(btdev->pin, remote->pin, btdev->pin_len))
+			!memcmp(btdev->pin, remote->pin, btdev->pin_len)) {
+		link_key_notify(btdev, remote->bdaddr, LINK_KEY_DUMMY);
+		link_key_notify(remote, btdev->bdaddr, LINK_KEY_DUMMY);
 		ev.status = BT_HCI_ERR_SUCCESS;
-	else
+	} else {
 		ev.status = BT_HCI_ERR_AUTH_FAILURE;
+	}
 
 	ev.handle = cpu_to_le16(42);
 	send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
