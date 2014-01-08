@@ -99,6 +99,46 @@ struct bt_ll_reject_ind {
 	uint8_t  error;
 } __attribute__ ((packed));
 
+#define LMP_ESC4(x) ((127 << 8) | (x))
+
+#define BT_LMP_VERSION_REQ		37
+struct bt_lmp_version_req {
+	uint8_t  version;
+	uint16_t company;
+	uint16_t subversion;
+} __attribute__ ((packed));
+
+#define BT_LMP_VERSION_RES		38
+struct bt_lmp_version_res {
+	uint8_t  version;
+	uint16_t company;
+	uint16_t subversion;
+} __attribute__ ((packed));
+
+#define BT_LMP_FEATURES_REQ		39
+struct bt_lmp_features_req {
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LMP_FEATURES_RES		40
+struct bt_lmp_features_res {
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LMP_FEATURES_REQ_EXT		LMP_ESC4(3)
+struct bt_lmp_features_req_ext {
+	uint8_t  page;
+	uint8_t  max_page;
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LMP_FEATURES_RES_EXT		LMP_ESC4(4)
+struct bt_lmp_features_res_ext {
+	uint8_t  page;
+	uint8_t  max_page;
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
 #define BT_H4_CMD_PKT	0x01
 #define BT_H4_ACL_PKT	0x02
 #define BT_H4_SCO_PKT	0x03

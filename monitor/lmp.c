@@ -28,14 +28,65 @@
 
 #include <stdio.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include "display.h"
 #include "packet.h"
+#include "bt.h"
 #include "lmp.h"
 
 #define COLOR_OPCODE		COLOR_MAGENTA
 #define COLOR_OPCODE_UNKNOWN	COLOR_WHITE_BG
 
-#define ESC4(x) ((127 << 8) | (x))
+static void version_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_version_req *pdu = data;
+
+	packet_print_version("Version", pdu->version,
+				"Subversion", btohs(pdu->subversion));
+	packet_print_company("Company", btohs(pdu->company));
+}
+
+static void version_res(const void *data, uint8_t size)
+{
+	const struct bt_lmp_version_res *pdu = data;
+
+	packet_print_version("Version", pdu->version,
+				"Subversion", btohs(pdu->subversion));
+	packet_print_company("Company", btohs(pdu->company));
+}
+
+static void features_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_features_req *pdu = data;
+
+	packet_print_features_lmp(pdu->features, 0x00);
+}
+
+static void features_res(const void *data, uint8_t size)
+{
+	const struct bt_lmp_features_res *pdu = data;
+
+	packet_print_features_lmp(pdu->features, 0x00);
+}
+
+static void features_req_ext(const void *data, uint8_t size)
+{
+	const struct bt_lmp_features_req_ext *pdu = data;
+
+	print_field("Features page: %u", pdu->page);
+	print_field("Max supported page: %u", pdu->max_page);
+	packet_print_features_lmp(pdu->features, pdu->page);
+}
+
+static void features_res_ext(const void *data, uint8_t size)
+{
+	const struct bt_lmp_features_res_ext *pdu = data;
+
+	print_field("Features page: %u", pdu->page);
+	print_field("Max supported page: %u", pdu->max_page);
+	packet_print_features_lmp(pdu->features, pdu->page);
+}
 
 struct lmp_data {
 	uint16_t opcode;
@@ -82,10 +133,10 @@ static const struct lmp_data lmp_table[] = {
 	{ 34, "LMP_min_power" },
 	{ 35, "LMP_auto_rate" },
 	{ 36, "LMP_preferred_rate" },
-	{ 37, "LMP_version_req" },
-	{ 38, "LMP_version_res" },
-	{ 39, "LMP_features_req" },
-	{ 40, "LMP_features_res" },
+	{ 37, "LMP_version_req", version_req, 5, true },
+	{ 38, "LMP_version_res", version_res, 5, true },
+	{ 39, "LMP_features_req", features_req, 8, true },
+	{ 40, "LMP_features_res", features_res, 8, true },
 	{ 41, "LMP_quality_of_service" },
 	{ 42, "LMP_quality_of_service_req" },
 	{ 43, "LMP_SCO_link_req" },
@@ -112,32 +163,32 @@ static const struct lmp_data lmp_table[] = {
 	{ 64, "LMP_simple_pairing_number" },
 	{ 65, "LMP_DHkey_check" },
 	{ 66, "LMP_pause_encryption_aes_req" },
-	{ ESC4(1),  "LMP_accepted_ext" },
-	{ ESC4(2),  "LMP_not_accepted_ext" },
-	{ ESC4(3),  "LMP_features_req_ext" },
-	{ ESC4(4),  "LMP_features_res_ext" },
-	{ ESC4(5),  "LMP_clk_adj" },
-	{ ESC4(6),  "LMP_clk_adj_ack" },
-	{ ESC4(7),  "LMP_clk_adj_req" },
-	{ ESC4(11), "LMP_packet_type_table" },
-	{ ESC4(12), "LMP_eSCO_link_req" },
-	{ ESC4(13), "LMP_remove_eSCO_link_req" },
-	{ ESC4(16), "LMP_channel_classification_req" },
-	{ ESC4(17), "LMP_channel_classification" },
-	{ ESC4(21), "LMP_sniff_subrating_req" },
-	{ ESC4(22), "LMP_sniff_subrating_res" },
-	{ ESC4(23), "LMP_pause_encryption_req" },
-	{ ESC4(24), "LMP_resume_encryption_req" },
-	{ ESC4(25), "LMP_IO_capability_req" },
-	{ ESC4(26), "LMP_IO_capability_res" },
-	{ ESC4(27), "LMP_numeric_comparision_failed" },
-	{ ESC4(28), "LMP_passkey_failed" },
-	{ ESC4(29), "LMP_oob_failed" },
-	{ ESC4(30), "LMP_keypress_notification" },
-	{ ESC4(31), "LMP_power_control_req" },
-	{ ESC4(32), "LMP_power_control_res" },
-	{ ESC4(33), "LMP_ping_req" },
-	{ ESC4(34), "LMP_ping_res" },
+	{ LMP_ESC4(1),  "LMP_accepted_ext" },
+	{ LMP_ESC4(2),  "LMP_not_accepted_ext" },
+	{ LMP_ESC4(3),  "LMP_features_req_ext", features_req_ext, 10, true },
+	{ LMP_ESC4(4),  "LMP_features_res_ext", features_res_ext, 10, true },
+	{ LMP_ESC4(5),  "LMP_clk_adj" },
+	{ LMP_ESC4(6),  "LMP_clk_adj_ack" },
+	{ LMP_ESC4(7),  "LMP_clk_adj_req" },
+	{ LMP_ESC4(11), "LMP_packet_type_table" },
+	{ LMP_ESC4(12), "LMP_eSCO_link_req" },
+	{ LMP_ESC4(13), "LMP_remove_eSCO_link_req" },
+	{ LMP_ESC4(16), "LMP_channel_classification_req" },
+	{ LMP_ESC4(17), "LMP_channel_classification" },
+	{ LMP_ESC4(21), "LMP_sniff_subrating_req" },
+	{ LMP_ESC4(22), "LMP_sniff_subrating_res" },
+	{ LMP_ESC4(23), "LMP_pause_encryption_req" },
+	{ LMP_ESC4(24), "LMP_resume_encryption_req" },
+	{ LMP_ESC4(25), "LMP_IO_capability_req" },
+	{ LMP_ESC4(26), "LMP_IO_capability_res" },
+	{ LMP_ESC4(27), "LMP_numeric_comparision_failed" },
+	{ LMP_ESC4(28), "LMP_passkey_failed" },
+	{ LMP_ESC4(29), "LMP_oob_failed" },
+	{ LMP_ESC4(30), "LMP_keypress_notification" },
+	{ LMP_ESC4(31), "LMP_power_control_req" },
+	{ LMP_ESC4(32), "LMP_power_control_res" },
+	{ LMP_ESC4(33), "LMP_ping_req" },
+	{ LMP_ESC4(34), "LMP_ping_res" },
 	{ }
 };
 
@@ -155,7 +206,7 @@ void lmp_packet(const void *data, uint8_t size)
 
 	switch (opcode) {
 	case 127:
-		opcode = ESC4(((const uint8_t *) data)[1]);
+		opcode = LMP_ESC4(((const uint8_t *) data)[1]);
 		off = 2;
 		break;
 	case 126:
@@ -198,13 +249,13 @@ void lmp_packet(const void *data, uint8_t size)
 	}
 
 	if (lmp_data->fixed) {
-		if (size - 1 != lmp_data->size) {
+		if (size - off != lmp_data->size) {
 			print_text(COLOR_ERROR, "invalid packet size");
 			packet_hexdump(data + off, size - off);
 			return;
 		}
 	} else {
-		if (size - 1 < lmp_data->size) {
+		if (size - off < lmp_data->size) {
 			print_text(COLOR_ERROR, "too short packet");
 			packet_hexdump(data + off, size - off);
 			return;
