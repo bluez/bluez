@@ -3347,10 +3347,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Pair Device - Invalid Parameters 1",
 				&pair_device_invalid_param_test_1,
 				NULL, test_command_generic);
-	test_bredrle("Pair Device - Success 1",
+	test_bredrle("Pair Device - Legacy Success 1",
 				&pair_device_success_test_1,
 				NULL, test_command_generic);
-	test_bredrle("Pair Device - Success 2",
+	test_bredrle("Pair Device - Sec Mode 3 Success 1",
 				&pair_device_success_test_2,
 				NULL, test_command_generic);
 
