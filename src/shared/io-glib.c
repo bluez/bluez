@@ -77,6 +77,12 @@ void io_destroy(struct io *io)
 	if (!io)
 		return;
 
+	if (io->read_watch > 0)
+		g_source_remove(io->read_watch);
+
+	if (io->write_watch > 0)
+		g_source_remove(io->write_watch);
+
 	g_io_channel_unref(io->channel);
 
 	g_free(io);
