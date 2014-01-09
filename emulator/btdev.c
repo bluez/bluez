@@ -768,6 +768,21 @@ static void conn_complete(struct btdev *btdev,
 	send_event(btdev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 }
 
+static void accept_conn_request_complete(struct btdev *btdev,
+							const uint8_t *bdaddr)
+{
+	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
+
+	if (!remote)
+		return;
+
+	if (btdev->auth_enable || remote->auth_enable)
+		send_event(remote, BT_HCI_EVT_LINK_KEY_REQUEST,
+							btdev->bdaddr, 6);
+	else
+		conn_complete(btdev, bdaddr, BT_HCI_ERR_SUCCESS);
+}
+
 static void sync_conn_complete(struct btdev *btdev, uint16_t voice_setting,
 								uint8_t status)
 {
@@ -904,8 +919,11 @@ static void link_key_req_reply_complete(struct btdev *btdev,
 
 	memcpy(btdev->link_key, link_key, 16);
 
-	if (!remote)
-		return;
+	if (!remote) {
+		remote = find_btdev_by_bdaddr(bdaddr);
+		if (!remote)
+			return;
+	}
 
 	if (!memcmp(remote->link_key, LINK_KEY_NONE, 16)) {
 		send_event(remote, BT_HCI_EVT_LINK_KEY_REQUEST,
@@ -955,8 +973,11 @@ static void pin_code_req_reply_complete(struct btdev *btdev,
 	struct bt_hci_evt_auth_complete ev;
 	struct btdev *remote = btdev->conn;
 
-	if (!remote)
-		return;
+	if (!remote) {
+		remote = find_btdev_by_bdaddr(bdaddr);
+		if (!remote)
+			return;
+	}
 
 	memcpy(btdev->pin, pin_code, pin_len);
 	btdev->pin_len = pin_len;
@@ -979,8 +1000,12 @@ static void pin_code_req_reply_complete(struct btdev *btdev,
 		ev.status = BT_HCI_ERR_AUTH_FAILURE;
 	}
 
-	ev.handle = cpu_to_le16(42);
-	send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+	if (remote->conn) {
+		ev.handle = cpu_to_le16(42);
+		send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+	} else {
+		conn_complete(remote, btdev->bdaddr, ev.status);
+	}
 
 	btdev->pin_len = 0;
 	remote->pin_len = 0;
@@ -992,16 +1017,28 @@ static void pin_code_req_neg_reply_complete(struct btdev *btdev,
 	struct bt_hci_evt_auth_complete ev;
 	struct btdev *remote = btdev->conn;
 
-	if (!remote)
-		return;
+	if (!remote) {
+		remote = find_btdev_by_bdaddr(bdaddr);
+		if (!remote)
+			return;
+	}
 
 	ev.status = BT_HCI_ERR_PIN_OR_KEY_MISSING;
 	ev.handle = cpu_to_le16(42);
 
-	send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+	if (btdev->conn)
+		send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+	else
+		conn_complete(btdev, bdaddr, BT_HCI_ERR_PIN_OR_KEY_MISSING);
 
-	if (remote->pin_len)
-		send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+	if (remote->conn) {
+	        if (remote->pin_len)
+			send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev,
+								sizeof(ev));
+	} else {
+		conn_complete(remote, btdev->bdaddr,
+					BT_HCI_ERR_PIN_OR_KEY_MISSING);
+	}
 }
 
 static void auth_request_complete(struct btdev *btdev, uint16_t handle)
@@ -2212,7 +2249,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 		if (btdev->type == BTDEV_TYPE_LE)
 			return;
 		acr = data;
-		conn_complete(btdev, acr->bdaddr, BT_HCI_ERR_SUCCESS);
+		accept_conn_request_complete(btdev, acr->bdaddr);
 		break;
 
 	case BT_HCI_CMD_REJECT_CONN_REQUEST:
