@@ -155,7 +155,7 @@ static void write_watch_destroy(void *user_data)
 	mgmt->writer_active = false;
 }
 
-static void can_write_data(struct io *io, void *user_data)
+static bool can_write_data(struct io *io, void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 	struct mgmt_request *request;
@@ -165,11 +165,11 @@ static void can_write_data(struct io *io, void *user_data)
 	if (!request) {
 		/* only reply commands can jump the queue */
 		if (!queue_isempty(mgmt->pending_list))
-			goto done;
+			return false;
 
 		request = queue_pop_head(mgmt->request_queue);
 		if (!request)
-			goto done;
+			return false;
 	}
 
 	bytes_written = write(mgmt->fd, request->buf, request->len);
@@ -180,7 +180,7 @@ static void can_write_data(struct io *io, void *user_data)
 			request->callback(MGMT_STATUS_FAILED, 0, NULL,
 							request->user_data);
 		destroy_request(request);
-		return;
+		return true;
 	}
 
 	util_debug(mgmt->debug_callback, mgmt->debug_data,
@@ -192,8 +192,7 @@ static void can_write_data(struct io *io, void *user_data)
 
 	queue_push_tail(mgmt->pending_list, request);
 
-done:
-	io_set_write_handler(mgmt->io, NULL, NULL, NULL);
+	return false;
 }
 
 static void wakeup_writer(struct mgmt *mgmt)
@@ -296,7 +295,7 @@ static void read_watch_destroy(void *user_data)
 		free(mgmt);
 }
 
-static void data_ready(struct io *io, void *user_data)
+static bool can_read_data(struct io *io, void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 	struct mgmt_hdr *hdr;
@@ -307,13 +306,13 @@ static void data_ready(struct io *io, void *user_data)
 
 	bytes_read = read(mgmt->fd, mgmt->buf, mgmt->len);
 	if (bytes_read < 0)
-		return;
+		return false;
 
 	util_hexdump('>', mgmt->buf, bytes_read,
 				mgmt->debug_callback, mgmt->debug_data);
 
 	if (bytes_read < MGMT_HDR_SIZE)
-		return;
+		return true;
 
 	hdr = mgmt->buf;
 	event = btohs(hdr->opcode);
@@ -321,7 +320,7 @@ static void data_ready(struct io *io, void *user_data)
 	length = btohs(hdr->len);
 
 	if (bytes_read < length + MGMT_HDR_SIZE)
-		return ;
+		return true;
 
 	switch (event) {
 	case MGMT_EV_CMD_COMPLETE:
@@ -355,7 +354,9 @@ static void data_ready(struct io *io, void *user_data)
 	}
 
 	if (mgmt->destroyed)
-		io_set_read_handler(mgmt->io, NULL, NULL, NULL);
+		return false;
+
+	return true;
 }
 
 struct mgmt *mgmt_new(int fd)
@@ -424,8 +425,8 @@ struct mgmt *mgmt_new(int fd)
 		return NULL;
 	}
 
-	if (!io_set_read_handler(mgmt->io, data_ready, mgmt,
-							read_watch_destroy)) {
+	if (!io_set_read_handler(mgmt->io, can_read_data, mgmt,
+						read_watch_destroy)) {
 		queue_destroy(mgmt->notify_list, NULL);
 		queue_destroy(mgmt->pending_list, NULL);
 		queue_destroy(mgmt->reply_queue, NULL);

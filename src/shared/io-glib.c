@@ -126,14 +126,17 @@ static gboolean read_callback(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct io *io = user_data;
+	bool result;
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
 	if (io->read_callback)
-		io->read_callback(io, io->read_data);
+		result = io->read_callback(io, io->read_data);
+	else
+		result = false;
 
-	return TRUE;
+	return result ? TRUE : FALSE;
 }
 
 bool io_set_read_handler(struct io *io, io_callback_func_t callback,
@@ -175,14 +178,17 @@ static gboolean write_callback(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct io *io = user_data;
+	bool result;
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
 	if (io->write_callback)
-		io->write_callback(io, io->write_data);
+		result = io->write_callback(io, io->write_data);
+	else
+		result = false;
 
-	return TRUE;
+	return result ? TRUE : FALSE;
 }
 
 bool io_set_write_handler(struct io *io, io_callback_func_t callback,
