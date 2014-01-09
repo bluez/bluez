@@ -21,3 +21,25 @@
  *
  */
 
+#include <stdbool.h>
+
+typedef void (*io_destroy_func_t)(void *data);
+
+struct io;
+
+typedef void (*io_callback_func_t) (struct io *io, void *user_data);
+
+struct io *io_new(int fd);
+void io_destroy(struct io *io);
+
+int io_get_fd(struct io *io);
+bool io_set_close_on_destroy(struct io *io, bool do_close);
+
+typedef void (*io_callback_func_t)(struct io *io, void *user_data);
+
+bool io_set_read_handler(struct io *io, io_callback_func_t callback,
+				void *user_data, io_destroy_func_t destroy);
+bool io_set_write_handler(struct io *io, io_callback_func_t callback,
+				void *user_data, io_destroy_func_t destroy);
+bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
+				void *user_data, io_destroy_func_t destroy);
