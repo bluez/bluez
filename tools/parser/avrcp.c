@@ -1180,12 +1180,16 @@ response:
 		switch (status) {
 		case 0x00:
 			printf("(POWER_ON)\n");
+			break;
 		case 0x01:
 			printf("(POWER_OFF)\n");
+			break;
 		case 0x02:
 			printf("(UNPLUGGED)\n");
+			break;
 		default:
 			printf("(UNKOWN)\n");
+			break;
 		}
 		break;
 	case AVRCP_EVENT_PLAYER_APPLICATION_SETTING_CHANGED:
