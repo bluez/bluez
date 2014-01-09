@@ -189,10 +189,10 @@ bool io_set_read_handler(struct io *io, io_callback_func_t callback,
 	if (io->read_watch == 0)
 		return false;
 
-done:
-	io->read_callback = callback;
 	io->read_destroy = destroy;
 	io->read_data = user_data;
+done:
+	io->read_callback = callback;
 
 	return true;
 }
@@ -250,10 +250,10 @@ bool io_set_write_handler(struct io *io, io_callback_func_t callback,
 	if (io->write_watch == 0)
 		return false;
 
-done:
-	io->write_callback = callback;
 	io->write_destroy = destroy;
 	io->write_data = user_data;
+done:
+	io->write_callback = callback;
 
 	return true;
 }
