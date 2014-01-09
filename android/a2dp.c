@@ -752,8 +752,29 @@ static void bt_stream_open(const void *buf, uint16_t len)
 
 static void bt_stream_close(const void *buf, uint16_t len)
 {
-	DBG("Not Implemented");
+	const struct audio_cmd_close_stream *cmd = buf;
+	struct a2dp_setup *setup;
+	int err;
 
+	DBG("");
+
+	setup = find_setup(cmd->id);
+	if (!setup) {
+		error("Unable to find stream for endpoint %u", cmd->id);
+		goto failed;
+	}
+
+	err = avdtp_close(setup->dev->session, setup->stream, FALSE);
+	if (err < 0) {
+		error("avdtp_close: %s", strerror(-err));
+		goto failed;
+	}
+
+	audio_ipc_send_rsp(AUDIO_OP_CLOSE_STREAM, AUDIO_STATUS_SUCCESS);
+
+	return;
+
+failed:
 	audio_ipc_send_rsp(AUDIO_OP_CLOSE_STREAM, AUDIO_STATUS_FAILED);
 }
 
