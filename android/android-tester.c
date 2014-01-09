@@ -822,7 +822,7 @@ static const struct generic_data
 	.set_property.len = sizeof(setprop_bonded_devices),
 };
 
-static uint32_t getprop_cod = 0;
+static uint32_t getprop_cod = 0x00020c;
 
 static const struct generic_data bluetooth_getprop_cod_success_test = {
 	.expected_hal_cb.adapter_properties_cb = getprop_success_cb,
