@@ -808,8 +808,29 @@ failed:
 
 static void bt_stream_suspend(const void *buf, uint16_t len)
 {
-	DBG("Not Implemented");
+	const struct audio_cmd_suspend_stream *cmd = buf;
+	struct a2dp_setup *setup;
+	int err;
 
+	DBG("");
+
+	setup = find_setup(cmd->id);
+	if (!setup) {
+		error("Unable to find stream for endpoint %u", cmd->id);
+		goto failed;
+	}
+
+	err = avdtp_suspend(setup->dev->session, setup->stream);
+	if (err < 0) {
+		error("avdtp_suspend: %s", strerror(-err));
+		goto failed;
+	}
+
+	audio_ipc_send_rsp(AUDIO_OP_SUSPEND_STREAM, AUDIO_STATUS_SUCCESS);
+
+	return;
+
+failed:
 	audio_ipc_send_rsp(AUDIO_OP_SUSPEND_STREAM, AUDIO_STATUS_FAILED);
 }
 
