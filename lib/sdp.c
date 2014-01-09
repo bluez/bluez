@@ -4773,7 +4773,7 @@ int sdp_set_supp_feat(sdp_record_t *rec, const sdp_list_t *sf)
 			free(dtds);
 			goto fail;
 		}
-		lengths = malloc(plen * sizeof(int *));
+		lengths = malloc(plen * sizeof(int));
 		if (!lengths) {
 			free(dtds);
 			free(vals);
