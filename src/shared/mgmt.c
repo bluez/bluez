@@ -291,8 +291,11 @@ static void read_watch_destroy(void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 
-	if (mgmt->destroyed)
+	if (mgmt->destroyed) {
+		queue_destroy(mgmt->notify_list, NULL);
+		queue_destroy(mgmt->pending_list, NULL);
 		free(mgmt);
+	}
 }
 
 static bool can_read_data(struct io *io, void *user_data)
@@ -514,6 +517,8 @@ void mgmt_unref(struct mgmt *mgmt)
 	mgmt->buf = NULL;
 
 	if (!mgmt->in_notify) {
+		queue_destroy(mgmt->notify_list, NULL);
+		queue_destroy(mgmt->pending_list, NULL);
 		free(mgmt);
 		return;
 	}
