@@ -145,8 +145,13 @@ bool io_set_read_handler(struct io *io, io_callback_func_t callback,
 	if (!io)
 		return false;
 
-	if (io->read_watch > 0)
+	if (io->read_watch > 0) {
 		g_source_remove(io->read_watch);
+		io->read_watch = 0;
+	}
+
+	if (!callback)
+		goto done;
 
 	io->read_watch = g_io_add_watch_full(io->channel, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -154,6 +159,7 @@ bool io_set_read_handler(struct io *io, io_callback_func_t callback,
 	if (io->read_watch == 0)
 		return false;
 
+done:
 	io->read_callback = callback;
 	io->read_destroy = destroy;
 	io->read_data = user_data;
@@ -197,8 +203,13 @@ bool io_set_write_handler(struct io *io, io_callback_func_t callback,
 	if (!io)
 		return false;
 
-	if (io->write_watch > 0)
+	if (io->write_watch > 0) {
 		g_source_remove(io->write_watch);
+		io->write_watch = 0;
+	}
+
+	if (!callback)
+		goto done;
 
 	io->write_watch = g_io_add_watch_full(io->channel, G_PRIORITY_DEFAULT,
 				G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -206,6 +217,7 @@ bool io_set_write_handler(struct io *io, io_callback_func_t callback,
 	if (io->write_watch == 0)
 		return false;
 
+done:
 	io->write_callback = callback;
 	io->write_destroy = destroy;
 	io->write_data = user_data;
