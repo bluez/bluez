@@ -287,7 +287,7 @@ static int setopts(int sk, struct l2cap_options *opts)
 {
 	if (bdaddr_type == BDADDR_BREDR || cid)
 		return setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, opts,
-								sizeof(opts));
+								sizeof(*opts));
 
 	return setsockopt(sk, SOL_BLUETOOTH, BT_RCVMTU, &opts->imtu,
 							sizeof(opts->imtu));
