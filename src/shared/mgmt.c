@@ -50,8 +50,7 @@ struct mgmt {
 	struct queue *request_queue;
 	struct queue *reply_queue;
 	struct queue *pending_list;
-	GList *notify_list;
-	GList *notify_destroyed;
+	struct queue *notify_list;
 	unsigned int next_request_id;
 	unsigned int next_notify_id;
 	bool in_notify;
@@ -111,7 +110,7 @@ static bool match_request_index(const void *a, const void *b)
 	return request->index == index;
 }
 
-static void destroy_notify(gpointer data, gpointer user_data)
+static void destroy_notify(void *data)
 {
 	struct mgmt_notify *notify = data;
 
@@ -121,12 +120,34 @@ static void destroy_notify(gpointer data, gpointer user_data)
 	g_free(notify);
 }
 
-static int compare_notify_id(gconstpointer a, gconstpointer b)
+static void remove_notify(void *data)
+{
+	struct mgmt_notify *notify = data;
+
+	notify->destroyed = true;
+}
+
+static bool match_notify_id(const void *a, const void *b)
 {
 	const struct mgmt_notify *notify = a;
-	unsigned int id = GPOINTER_TO_UINT(b);
+	unsigned int id = PTR_TO_UINT(b);
 
-	return notify->id - id;
+	return notify->id == id;
+}
+
+static bool match_notify_index(const void *a, const void *b)
+{
+	const struct mgmt_notify *notify = a;
+	uint16_t index = PTR_TO_UINT(b);
+
+	return notify->index == index;
+}
+
+static bool match_notify_destroyed(const void *a, const void *b)
+{
+	const struct mgmt_notify *notify = a;
+
+	return notify->destroyed;
 }
 
 static void write_watch_destroy(gpointer user_data)
@@ -231,40 +252,46 @@ static void request_complete(struct mgmt *mgmt, uint8_t status,
 	wakeup_writer(mgmt);
 }
 
+struct event_index {
+	uint16_t event;
+	uint16_t index;
+	uint16_t length;
+	const void *param;
+};
+
+static void notify_handler(void *data, void *user_data)
+{
+	struct mgmt_notify *notify = data;
+	struct event_index *match = user_data;
+
+	if (notify->destroyed)
+		return;
+
+	if (notify->event != match->event)
+		return;
+
+	if (notify->index != match->index && notify->index != MGMT_INDEX_NONE)
+		return;
+
+	if (notify->callback)
+		notify->callback(match->index, match->length, match->param,
+							notify->user_data);
+}
+
 static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 					uint16_t length, const void *param)
 {
-	GList *list;
+	struct event_index match = { .event = event, .index = index,
+					.length = length, .param = param };
 
 	mgmt->in_notify = true;
 
-	for (list = g_list_first(mgmt->notify_list); list;
-						list = g_list_next(list)) {
-		struct mgmt_notify *notify = list->data;
-
-		if (notify->destroyed)
-			continue;
-
-		if (notify->event != event)
-			continue;
-
-		if (notify->index != index && notify->index != MGMT_INDEX_NONE)
-			continue;
-
-		if (notify->callback)
-			notify->callback(index, length, param,
-							notify->user_data);
-
-		if (mgmt->destroyed)
-			break;
-	}
+	queue_foreach(mgmt->notify_list, notify_handler, &match);
 
 	mgmt->in_notify = false;
 
-	g_list_foreach(mgmt->notify_destroyed, destroy_notify, NULL);
-	g_list_free(mgmt->notify_destroyed);
-
-	mgmt->notify_destroyed = NULL;
+	queue_remove_all(mgmt->notify_list, match_notify_destroyed, NULL,
+							destroy_notify);
 }
 
 static void read_watch_destroy(gpointer user_data)
@@ -390,6 +417,16 @@ struct mgmt *mgmt_new(int fd)
 
 	mgmt->pending_list = queue_new();
 	if (!mgmt->pending_list) {
+		queue_destroy(mgmt->reply_queue, NULL);
+		queue_destroy(mgmt->request_queue, NULL);
+		g_free(mgmt->buf);
+		g_free(mgmt);
+		return NULL;
+	}
+
+	mgmt->notify_list = queue_new();
+	if (!mgmt->notify_list) {
+		queue_destroy(mgmt->pending_list, NULL);
 		queue_destroy(mgmt->reply_queue, NULL);
 		queue_destroy(mgmt->request_queue, NULL);
 		g_free(mgmt->buf);
@@ -699,7 +736,10 @@ unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 
 	notify->id = mgmt->next_notify_id++;
 
-	mgmt->notify_list = g_list_append(mgmt->notify_list, notify);
+	if (!queue_push_tail(mgmt->notify_list, notify)) {
+		g_free(notify);
+		return 0;
+	}
 
 	return notify->id;
 }
@@ -707,70 +747,38 @@ unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 bool mgmt_unregister(struct mgmt *mgmt, unsigned int id)
 {
 	struct mgmt_notify *notify;
-	GList *list;
 
 	if (!mgmt || !id)
 		return false;
 
-	list = g_list_find_custom(mgmt->notify_list,
-				GUINT_TO_POINTER(id), compare_notify_id);
-	if (!list)
+	notify = queue_remove_if(mgmt->notify_list, match_notify_id,
+							UINT_TO_PTR(id));
+	if (!notify)
 		return false;
 
-	notify = list->data;
-
-	mgmt->notify_list = g_list_remove_link(mgmt->notify_list, list);
-
 	if (!mgmt->in_notify) {
-		g_list_free_1(list);
-		destroy_notify(notify, NULL);
+		destroy_notify(notify);
 		return true;
 	}
 
 	notify->destroyed = true;
-
-	mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed, list);
 
 	return true;
 }
 
 bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index)
 {
-	GList *list, *next;
-
 	if (!mgmt)
 		return false;
 
-	for (list = g_list_first(mgmt->notify_list); list; list = next) {
-		struct mgmt_notify *notify = list->data;
-
-		next = g_list_next(list);
-
-		if (notify->index != index)
-			continue;
-
-		mgmt->notify_list = g_list_remove_link(mgmt->notify_list, list);
-
-		if (!mgmt->in_notify) {
-			g_list_free_1(list);
-			destroy_notify(notify, NULL);
-			continue;
-		}
-
-		notify->destroyed = true;
-
-		mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed,
-									list);
-	}
+	if (mgmt->in_notify)
+		queue_remove_all(mgmt->notify_list, match_notify_index,
+					UINT_TO_PTR(index), remove_notify);
+	else
+		queue_remove_all(mgmt->notify_list, match_notify_index,
+					UINT_TO_PTR(index), destroy_notify);
 
 	return true;
-}
-
-static void mark_notify(gpointer data, gpointer user_data)
-{
-	struct mgmt_notify *notify = data;
-
-	notify->destroyed = true;
 }
 
 bool mgmt_unregister_all(struct mgmt *mgmt)
@@ -778,16 +786,10 @@ bool mgmt_unregister_all(struct mgmt *mgmt)
 	if (!mgmt)
 		return false;
 
-	if (!mgmt->in_notify) {
-		g_list_foreach(mgmt->notify_list, destroy_notify, NULL);
-		g_list_free(mgmt->notify_list);
-	} else {
-		g_list_foreach(mgmt->notify_list, mark_notify, NULL);
-		mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed,
-							mgmt->notify_list);
-	}
-
-	mgmt->notify_list = NULL;
+	if (mgmt->in_notify)
+		queue_remove_all(mgmt->notify_list, NULL, NULL, remove_notify);
+	else
+		queue_remove_all(mgmt->notify_list, NULL, NULL, destroy_notify);
 
 	return true;
 }
