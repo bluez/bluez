@@ -282,8 +282,9 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 static void audio_close_output_stream(struct audio_hw_device *dev,
 					struct audio_stream_out *stream)
 {
+	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *) dev;
+
 	DBG("");
-	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *)dev;
 
 	free(stream);
 	a2dp_dev->out = NULL;
