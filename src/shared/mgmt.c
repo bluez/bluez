@@ -30,8 +30,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include <glib.h>
-
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 #include "lib/hci.h"
@@ -45,9 +43,8 @@ struct mgmt {
 	int ref_count;
 	int fd;
 	bool close_on_unref;
-	GIOChannel *io;
-	guint read_watch;
-	guint write_watch;
+	struct io *io;
+	bool writer_active;
 	struct queue *request_queue;
 	struct queue *reply_queue;
 	struct queue *pending_list;
@@ -151,32 +148,28 @@ static bool match_notify_destroyed(const void *a, const void *b)
 	return notify->destroyed;
 }
 
-static void write_watch_destroy(gpointer user_data)
+static void write_watch_destroy(void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 
-	mgmt->write_watch = 0;
+	mgmt->writer_active = false;
 }
 
-static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
-							gpointer user_data)
+static void can_write_data(struct io *io, void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 	struct mgmt_request *request;
 	ssize_t bytes_written;
 
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
-		return FALSE;
-
 	request = queue_pop_head(mgmt->reply_queue);
 	if (!request) {
 		/* only reply commands can jump the queue */
 		if (!queue_isempty(mgmt->pending_list))
-			return FALSE;
+			goto done;
 
 		request = queue_pop_head(mgmt->request_queue);
 		if (!request)
-			return FALSE;
+			goto done;
 	}
 
 	bytes_written = write(mgmt->fd, request->buf, request->len);
@@ -187,7 +180,7 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 			request->callback(MGMT_STATUS_FAILED, 0, NULL,
 							request->user_data);
 		destroy_request(request);
-		return TRUE;
+		return;
 	}
 
 	util_debug(mgmt->debug_callback, mgmt->debug_data,
@@ -199,7 +192,8 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 
 	queue_push_tail(mgmt->pending_list, request);
 
-	return FALSE;
+done:
+	io_set_write_handler(mgmt->io, NULL, NULL, NULL);
 }
 
 static void wakeup_writer(struct mgmt *mgmt)
@@ -210,12 +204,11 @@ static void wakeup_writer(struct mgmt *mgmt)
 			return;
 	}
 
-	if (mgmt->write_watch > 0)
+	if (mgmt->writer_active)
 		return;
 
-	mgmt->write_watch = g_io_add_watch_full(mgmt->io, G_PRIORITY_HIGH,
-				G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				can_write_data, mgmt, write_watch_destroy);
+	io_set_write_handler(mgmt->io, can_write_data, mgmt,
+						write_watch_destroy);
 }
 
 struct opcode_index {
@@ -295,20 +288,15 @@ static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 							destroy_notify);
 }
 
-static void read_watch_destroy(gpointer user_data)
+static void read_watch_destroy(void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 
-	if (mgmt->destroyed) {
+	if (mgmt->destroyed)
 		free(mgmt);
-		return;
-	}
-
-	mgmt->read_watch = 0;
 }
 
-static gboolean received_data(GIOChannel *channel, GIOCondition cond,
-							gpointer user_data)
+static void data_ready(struct io *io, void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 	struct mgmt_hdr *hdr;
@@ -317,18 +305,15 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	ssize_t bytes_read;
 	uint16_t opcode, event, index, length;
 
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
-		return FALSE;
-
 	bytes_read = read(mgmt->fd, mgmt->buf, mgmt->len);
 	if (bytes_read < 0)
-		return TRUE;
+		return;
 
 	util_hexdump('>', mgmt->buf, bytes_read,
 				mgmt->debug_callback, mgmt->debug_data);
 
 	if (bytes_read < MGMT_HDR_SIZE)
-		return TRUE;
+		return;
 
 	hdr = mgmt->buf;
 	event = btohs(hdr->opcode);
@@ -336,7 +321,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	length = btohs(hdr->len);
 
 	if (bytes_read < length + MGMT_HDR_SIZE)
-		return TRUE;
+		return ;
 
 	switch (event) {
 	case MGMT_EV_CMD_COMPLETE:
@@ -370,9 +355,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	}
 
 	if (mgmt->destroyed)
-		return FALSE;
-
-	return TRUE;
+		io_set_read_handler(mgmt->io, NULL, NULL, NULL);
 }
 
 struct mgmt *mgmt_new(int fd)
@@ -396,13 +379,16 @@ struct mgmt *mgmt_new(int fd)
 		return NULL;
 	}
 
-	mgmt->io = g_io_channel_unix_new(mgmt->fd);
-
-	g_io_channel_set_encoding(mgmt->io, NULL, NULL);
-	g_io_channel_set_buffered(mgmt->io, FALSE);
+	mgmt->io = io_new(fd);
+	if (!mgmt->io) {
+		free(mgmt->buf);
+		free(mgmt);
+		return NULL;
+	}
 
 	mgmt->request_queue = queue_new();
 	if (!mgmt->request_queue) {
+		io_destroy(mgmt->io);
 		free(mgmt->buf);
 		free(mgmt);
 		return NULL;
@@ -411,6 +397,7 @@ struct mgmt *mgmt_new(int fd)
 	mgmt->reply_queue = queue_new();
 	if (!mgmt->reply_queue) {
 		queue_destroy(mgmt->request_queue, NULL);
+		io_destroy(mgmt->io);
 		free(mgmt->buf);
 		free(mgmt);
 		return NULL;
@@ -420,6 +407,7 @@ struct mgmt *mgmt_new(int fd)
 	if (!mgmt->pending_list) {
 		queue_destroy(mgmt->reply_queue, NULL);
 		queue_destroy(mgmt->request_queue, NULL);
+		io_destroy(mgmt->io);
 		free(mgmt->buf);
 		free(mgmt);
 		return NULL;
@@ -430,14 +418,25 @@ struct mgmt *mgmt_new(int fd)
 		queue_destroy(mgmt->pending_list, NULL);
 		queue_destroy(mgmt->reply_queue, NULL);
 		queue_destroy(mgmt->request_queue, NULL);
+		io_destroy(mgmt->io);
 		free(mgmt->buf);
 		free(mgmt);
 		return NULL;
 	}
 
-	mgmt->read_watch = g_io_add_watch_full(mgmt->io, G_PRIORITY_DEFAULT,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				received_data, mgmt, read_watch_destroy);
+	if (!io_set_read_handler(mgmt->io, data_ready, mgmt,
+							read_watch_destroy)) {
+		queue_destroy(mgmt->notify_list, NULL);
+		queue_destroy(mgmt->pending_list, NULL);
+		queue_destroy(mgmt->reply_queue, NULL);
+		queue_destroy(mgmt->request_queue, NULL);
+		io_destroy(mgmt->io);
+		free(mgmt->buf);
+		free(mgmt);
+		return NULL;
+	}
+
+	mgmt->writer_active = false;
 
 	return mgmt_ref(mgmt);
 }
@@ -498,13 +497,10 @@ void mgmt_unref(struct mgmt *mgmt)
 	queue_destroy(mgmt->reply_queue, NULL);
 	queue_destroy(mgmt->request_queue, NULL);
 
-	if (mgmt->write_watch > 0)
-		g_source_remove(mgmt->write_watch);
+	io_set_write_handler(mgmt->io, NULL, NULL, NULL);
+	io_set_read_handler(mgmt->io, NULL, NULL, NULL);
 
-	if (mgmt->read_watch > 0)
-		g_source_remove(mgmt->read_watch);
-
-	g_io_channel_unref(mgmt->io);
+	io_destroy(mgmt->io);
 	mgmt->io = NULL;
 
 	if (mgmt->close_on_unref)
