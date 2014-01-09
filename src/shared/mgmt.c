@@ -90,8 +90,8 @@ static void destroy_request(void *data)
 	if (request->destroy)
 		request->destroy(request->user_data);
 
-	g_free(request->buf);
-	g_free(request);
+	free(request->buf);
+	free(request);
 }
 
 static bool match_request_id(const void *a, const void *b)
@@ -117,7 +117,7 @@ static void destroy_notify(void *data)
 	if (notify->destroy)
 		notify->destroy(notify->user_data);
 
-	g_free(notify);
+	free(notify);
 }
 
 static void remove_notify(void *data)
@@ -299,7 +299,7 @@ static void read_watch_destroy(gpointer user_data)
 	struct mgmt *mgmt = user_data;
 
 	if (mgmt->destroyed) {
-		g_free(mgmt);
+		free(mgmt);
 		return;
 	}
 
@@ -381,7 +381,7 @@ struct mgmt *mgmt_new(int fd)
 	if (fd < 0)
 		return NULL;
 
-	mgmt = g_try_new0(struct mgmt, 1);
+	mgmt = new0(struct mgmt, 1);
 	if (!mgmt)
 		return NULL;
 
@@ -389,9 +389,9 @@ struct mgmt *mgmt_new(int fd)
 	mgmt->close_on_unref = false;
 
 	mgmt->len = 512;
-	mgmt->buf = g_try_malloc(mgmt->len);
+	mgmt->buf = malloc(mgmt->len);
 	if (!mgmt->buf) {
-		g_free(mgmt);
+		free(mgmt);
 		return NULL;
 	}
 
@@ -402,16 +402,16 @@ struct mgmt *mgmt_new(int fd)
 
 	mgmt->request_queue = queue_new();
 	if (!mgmt->request_queue) {
-		g_free(mgmt->buf);
-		g_free(mgmt);
+		free(mgmt->buf);
+		free(mgmt);
 		return NULL;
 	}
 
 	mgmt->reply_queue = queue_new();
 	if (!mgmt->reply_queue) {
 		queue_destroy(mgmt->request_queue, NULL);
-		g_free(mgmt->buf);
-		g_free(mgmt);
+		free(mgmt->buf);
+		free(mgmt);
 		return NULL;
 	}
 
@@ -419,8 +419,8 @@ struct mgmt *mgmt_new(int fd)
 	if (!mgmt->pending_list) {
 		queue_destroy(mgmt->reply_queue, NULL);
 		queue_destroy(mgmt->request_queue, NULL);
-		g_free(mgmt->buf);
-		g_free(mgmt);
+		free(mgmt->buf);
+		free(mgmt);
 		return NULL;
 	}
 
@@ -429,8 +429,8 @@ struct mgmt *mgmt_new(int fd)
 		queue_destroy(mgmt->pending_list, NULL);
 		queue_destroy(mgmt->reply_queue, NULL);
 		queue_destroy(mgmt->request_queue, NULL);
-		g_free(mgmt->buf);
-		g_free(mgmt);
+		free(mgmt->buf);
+		free(mgmt);
 		return NULL;
 	}
 
@@ -512,11 +512,11 @@ void mgmt_unref(struct mgmt *mgmt)
 	if (mgmt->debug_destroy)
 		mgmt->debug_destroy(mgmt->debug_data);
 
-	g_free(mgmt->buf);
+	free(mgmt->buf);
 	mgmt->buf = NULL;
 
 	if (!mgmt->in_notify) {
-		g_free(mgmt);
+		free(mgmt);
 		return;
 	}
 
@@ -563,14 +563,14 @@ static struct mgmt_request *create_request(uint16_t opcode, uint16_t index,
 	if (length > 0 && !param)
 		return NULL;
 
-	request = g_try_new0(struct mgmt_request, 1);
+	request = new0(struct mgmt_request, 1);
 	if (!request)
 		return NULL;
 
 	request->len = length + MGMT_HDR_SIZE;
-	request->buf = g_try_malloc(request->len);
+	request->buf = malloc(request->len);
 	if (!request->buf) {
-		g_free(request);
+		free(request);
 		return NULL;
 	}
 
@@ -613,8 +613,8 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	request->id = mgmt->next_request_id++;
 
 	if (!queue_push_tail(mgmt->request_queue, request)) {
-		g_free(request->buf);
-		g_free(request);
+		free(request->buf);
+		free(request);
 		return 0;
 	}
 
@@ -644,8 +644,8 @@ unsigned int mgmt_reply(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	request->id = mgmt->next_request_id++;
 
 	if (!queue_push_tail(mgmt->reply_queue, request)) {
-		g_free(request->buf);
-		g_free(request);
+		free(request->buf);
+		free(request);
 		return 0;
 	}
 
@@ -720,7 +720,7 @@ unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 	if (!mgmt || !event)
 		return 0;
 
-	notify = g_try_new0(struct mgmt_notify, 1);
+	notify = new0(struct mgmt_notify, 1);
 	if (!notify)
 		return 0;
 
@@ -737,7 +737,7 @@ unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 	notify->id = mgmt->next_notify_id++;
 
 	if (!queue_push_tail(mgmt->notify_list, notify)) {
-		g_free(notify);
+		free(notify);
 		return 0;
 	}
 
