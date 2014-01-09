@@ -176,8 +176,15 @@ void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 	if (!queue || !function)
 		return;
 
-	for (entry = queue->head; entry; entry = entry->next)
-		function(entry->data, user_data);
+	entry = queue->head;
+
+	while (entry) {
+		struct queue_entry *tmp = entry;
+
+		entry = tmp->next;
+
+		function(tmp->data, user_data);
+	}
 }
 
 void *queue_find(struct queue *queue, queue_match_func_t function,
