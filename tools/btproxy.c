@@ -408,11 +408,8 @@ static void server_callback(int fd, uint32_t events, void *user_data)
 
 	printf("New client connected\n");
 
-	if (!setup_streams(src_fd, src_type_rx, src_type_tx,  dst_fd)) {
-		close(dst_fd);
-		close(src_fd);
+	if (!setup_streams(src_fd, src_type_rx, src_type_tx,  dst_fd))
 		return;
-	}
 
 	client_active = true;
 }
