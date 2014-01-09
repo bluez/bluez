@@ -189,7 +189,6 @@ static void expected_cb_count_init(struct test_data *data)
 	data->cb_count = test_data->expected_cb_count;
 
 	check_cb_count();
-
 }
 
 static void mgmt_cb_init(struct test_data *data)
