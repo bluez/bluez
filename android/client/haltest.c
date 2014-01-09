@@ -31,6 +31,7 @@
 #include "history.h"
 
 const struct interface *interfaces[] = {
+	&audio_if,
 	&bluetooth_if,
 	&av_if,
 #if PLATFORM_SDK_VERSION > 17
@@ -393,10 +394,13 @@ static void init(void)
 	};
 	const struct method *m;
 	const char *argv[4];
-	char init_line[] = "bluetooth init";
+	char init_audio[] = "audio init";
+	char init_bt[] = "bluetooth init";
 	uint32_t i;
 
-	process_line(init_line);
+	process_line(init_audio);
+	process_line(init_bt);
+
 	m = get_interface_method("bluetooth", "get_profile_interface");
 
 	for (i = 0; i < NELEM(inames); ++i) {
@@ -405,7 +409,7 @@ static void init(void)
 	}
 
 	/* Init what is available to init */
-	for (i = 1; i < NELEM(interfaces) - 1; ++i) {
+	for (i = 2; i < NELEM(interfaces) - 1; ++i) {
 		m = get_interface_method(interfaces[i]->name, "init");
 		if (m != NULL)
 			m->func(2, argv);

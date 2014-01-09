@@ -28,6 +28,7 @@
 #include <sys/un.h>
 #include <poll.h>
 
+#include <hardware/audio.h>
 #include <hardware/bluetooth.h>
 #include <hardware/bt_av.h>
 #include <hardware/bt_hh.h>
@@ -43,6 +44,8 @@
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
 #endif
+
+extern audio_hw_device_t *if_audio;
 
 /* Interfaces from hal that can be populated during application lifetime */
 extern const bt_interface_t *if_bluetooth;
@@ -66,6 +69,7 @@ struct interface {
 	struct method *methods; /* methods available for this interface */
 };
 
+extern const struct interface audio_if;
 extern const struct interface bluetooth_if;
 extern const struct interface av_if;
 #if PLATFORM_SDK_VERSION > 17

@@ -126,6 +126,7 @@ LOCAL_SRC_FILES := \
 	client/terminal.c \
 	client/history.c \
 	client/tabcompletion.c \
+	client/if-audio.c \
 	client/if-av.c \
 	client/if-bt.c \
 	client/if-hf.c \

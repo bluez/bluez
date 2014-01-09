@@ -89,6 +89,7 @@ android_haltest_SOURCES = android/client/haltest.c \
 				android/client/if-hh.c \
 				android/client/if-pan.c \
 				android/client/if-sock.c \
+				android/client/if-audio.c \
 				android/hardware/hardware.c \
 				android/hal-utils.h android/hal-utils.c
 
