@@ -36,6 +36,7 @@
 #include "lib/mgmt.h"
 #include "lib/hci.h"
 
+#include "src/shared/io.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"

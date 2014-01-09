@@ -61,6 +61,7 @@ tools_3dsp_SOURCES = tools/3dsp.c monitor/bt.h \
 tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
@@ -71,6 +72,7 @@ tools_mgmt_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_l2cap_tester_SOURCES = tools/l2cap-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
@@ -81,6 +83,7 @@ tools_l2cap_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_smp_tester_SOURCES = tools/smp-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
@@ -98,6 +101,7 @@ tools_gap_tester_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 tools_sco_tester_SOURCES = tools/sco-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
@@ -219,6 +223,7 @@ tools_hwdb_LDADD = lib/libbluetooth-internal.la
 tools_hcieventmask_LDADD = lib/libbluetooth-internal.la
 
 tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c \
+				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c

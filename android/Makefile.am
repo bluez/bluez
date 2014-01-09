@@ -21,6 +21,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				src/sdpd-service.c src/sdpd-request.c \
 				src/glib-helper.h src/glib-helper.c \
 				src/eir.h src/eir.c \
+				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
@@ -97,6 +98,7 @@ noinst_PROGRAMS += android/android-tester
 
 android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \

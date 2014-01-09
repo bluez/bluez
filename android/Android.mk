@@ -34,6 +34,7 @@ LOCAL_SRC_FILES := \
 	../src/shared/mgmt.c \
 	../src/shared/util.c \
 	../src/shared/queue.c \
+	../src/shared/io-glib.c \
 	../src/sdpd-database.c \
 	../src/sdpd-service.c \
 	../src/sdpd-request.c \
