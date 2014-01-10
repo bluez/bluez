@@ -1,4 +1,6 @@
 if ANDROID
+android_plugindir = $(abs_top_srcdir)/android/.libs
+
 noinst_PROGRAMS += android/system-emulator
 
 android_system_emulator_SOURCES = android/system-emulator.c \
@@ -61,7 +63,8 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hardware/hardware.h \
 					android/cutils/properties.h \
 					android/hal-log.h \
-					android/hal-ipc.h android/hal-ipc.c
+					android/hal-ipc.h android/hal-ipc.c \
+					android/hal-utils.h android/hal-utils.c
 
 android_bluetooth_default_la_CPPFLAGS = -I$(srcdir)/android \
 					-DPLATFORM_SDK_VERSION=19
@@ -86,15 +89,14 @@ android_haltest_SOURCES = android/client/haltest.c \
 				android/client/if-hh.c \
 				android/client/if-pan.c \
 				android/client/if-sock.c \
-				android/client/hwmodule.c \
+				android/hardware/hardware.c \
 				android/hal-utils.h android/hal-utils.c
 
-android_haltest_LDADD = android/bluetooth.default.la
-
 android_haltest_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
-				-DPLATFORM_SDK_VERSION=19
+				-DPLATFORM_SDK_VERSION=19 \
+				-DPLUGINDIR=\""$(android_plugindir)"\"
 
-android_haltest_LDFLAGS = -pthread
+android_haltest_LDFLAGS = -pthread -ldl
 
 noinst_PROGRAMS += android/android-tester
 
@@ -106,15 +108,15 @@ android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c \
-				android/hal-utils.h android/hal-utils.c \
-				android/client/hwmodule.c android/android-tester.c
+				android/hardware/hardware.c \
+				android/android-tester.c
 
-android_android_tester_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+android_android_tester_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
+				-DPLUGINDIR=\""$(android_plugindir)"\"
 
-android_android_tester_LDADD = lib/libbluetooth-internal.la \
-				android/bluetooth.default.la @GLIB_LIBS@
+android_android_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-android_android_tester_LDFLAGS = -pthread
+android_android_tester_LDFLAGS = -pthread -ldl
 
 plugin_LTLIBRARIES += android/audio.a2dp.default.la
 
