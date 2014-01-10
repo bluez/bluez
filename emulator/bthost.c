@@ -1521,10 +1521,29 @@ static void rfcomm_dm_recv(struct bthost *bthost, struct btconn *conn,
 {
 }
 
+static void rfcomm_mcc_recv(struct bthost *bthost, struct btconn *conn,
+			struct l2conn *l2conn, const void *data, uint16_t len)
+{
+}
+
 static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 				struct l2conn *l2conn, const void *data,
 				uint16_t len)
 {
+	const struct rfcomm_cmd *hdr = data;
+	const void *p;
+	uint8_t ea;
+
+	ea = RFCOMM_TEST_EA(hdr->length) ? true : false;
+
+	if (!RFCOMM_GET_DLCI(hdr->address)) {
+		if (ea)
+			p = data + sizeof(struct rfcomm_hdr);
+		else
+			p = data + sizeof(struct rfcomm_hdr) + sizeof(uint8_t);
+
+		rfcomm_mcc_recv(bthost, conn, l2conn, p, p - data);
+	}
 }
 
 static void process_rfcomm(struct bthost *bthost, struct btconn *conn,
