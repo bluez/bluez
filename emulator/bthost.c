@@ -1586,6 +1586,15 @@ static void rfcomm_ua_recv(struct bthost *bthost, struct btconn *conn,
 							rfcomm_fcs(buf);
 
 		send_acl(bthost, conn->handle, l2conn->dcid, buf, sizeof(buf));
+	} else if (bthost->rfcomm_conn_data &&
+				bthost->rfcomm_conn_data->channel == channel) {
+		if (bthost->rfcomm_conn_data->cb)
+			bthost->rfcomm_conn_data->cb(conn->handle,
+							l2conn->scid, channel,
+					bthost->rfcomm_conn_data->user_data,
+									true);
+		free(bthost->rfcomm_conn_data);
+		bthost->rfcomm_conn_data = NULL;
 	}
 }
 
@@ -1593,6 +1602,19 @@ static void rfcomm_dm_recv(struct bthost *bthost, struct btconn *conn,
 				struct l2conn *l2conn, const void *data,
 				uint16_t len)
 {
+	const struct rfcomm_cmd *hdr = data;
+	uint8_t channel = RFCOMM_GET_CHANNEL(hdr->address);
+
+	if (bthost->rfcomm_conn_data &&
+				bthost->rfcomm_conn_data->channel == channel) {
+		if (bthost->rfcomm_conn_data->cb)
+			bthost->rfcomm_conn_data->cb(conn->handle,
+							l2conn->scid, channel,
+					bthost->rfcomm_conn_data->user_data,
+									false);
+		free(bthost->rfcomm_conn_data);
+		bthost->rfcomm_conn_data = NULL;
+	}
 }
 
 static void rfcomm_msc_recv(struct bthost *bthost, struct btconn *conn,
