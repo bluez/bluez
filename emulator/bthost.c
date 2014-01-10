@@ -560,6 +560,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
 		break;
+	case BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY:
+		break;
 	default:
 		printf("Unhandled cmd_complete opcode 0x%04x\n", opcode);
 		break;
