@@ -537,6 +537,14 @@ uint8_t *btdev_get_features(struct btdev *btdev)
 	return btdev->features;
 }
 
+static bool use_ssp(struct btdev *btdev1, struct btdev *btdev2)
+{
+	if (btdev1->auth_enable || btdev2->auth_enable)
+		return false;
+
+	return (btdev1->simple_pairing_mode && btdev2->simple_pairing_mode);
+}
+
 void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
 							void *user_data)
 {
@@ -945,11 +953,27 @@ static void link_key_req_reply_complete(struct btdev *btdev,
 static void link_key_req_neg_reply_complete(struct btdev *btdev,
 							const uint8_t *bdaddr)
 {
-	struct bt_hci_evt_pin_code_request pin_req;
+	struct btdev *remote = btdev->conn;
 
-	memcpy(pin_req.bdaddr, bdaddr, 6);
-	send_event(btdev, BT_HCI_EVT_PIN_CODE_REQUEST, &pin_req,
+	if (!remote) {
+		remote = find_btdev_by_bdaddr(bdaddr);
+		if (!remote)
+			return;
+	}
+
+	if (use_ssp(btdev, remote)) {
+		struct bt_hci_evt_io_capability_request io_req;
+
+		memcpy(io_req.bdaddr, bdaddr, 6);
+		send_event(btdev, BT_HCI_EVT_IO_CAPABILITY_REQUEST, &io_req,
+							sizeof(io_req));
+	} else {
+		struct bt_hci_evt_pin_code_request pin_req;
+
+		memcpy(pin_req.bdaddr, bdaddr, 6);
+		send_event(btdev, BT_HCI_EVT_PIN_CODE_REQUEST, &pin_req,
 							sizeof(pin_req));
+	}
 }
 
 static void link_key_notify(struct btdev *btdev, const uint8_t *bdaddr,
