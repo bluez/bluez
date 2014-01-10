@@ -379,6 +379,7 @@ struct generic_data {
 	uint16_t expect_hci_command;
 	const void *expect_hci_param;
 	uint8_t expect_hci_len;
+	const void * (*expect_hci_func)(uint8_t *len);
 	uint8_t pin_len;
 	const void *pin;
 };
@@ -2829,19 +2830,24 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 {
 	struct test_data *data = user_data;
 	const struct generic_data *test = data->test_data;
+	const void *expect_hci_param = test->expect_hci_param;
+	uint8_t expect_hci_len = test->expect_hci_len;
 
 	tester_print("HCI Command 0x%04x length %u", opcode, length);
 
 	if (opcode != test->expect_hci_command)
 		return;
 
-	if (length != test->expect_hci_len) {
+	if (test->expect_hci_func)
+		expect_hci_param = test->expect_hci_func(&expect_hci_len);
+
+	if (length != expect_hci_len) {
 		tester_warn("Invalid parameter size for HCI command");
 		tester_test_failed();
 		return;
 	}
 
-	if (memcmp(param, test->expect_hci_param, length) != 0) {
+	if (memcmp(param, expect_hci_param, length) != 0) {
 		tester_warn("Unexpected HCI command parameter value");
 		tester_test_failed();
 		return;
