@@ -31,6 +31,7 @@
 #include "audio-msg.h"
 #include "hal-log.h"
 
+static int listen_sk = -1;
 static int audio_sk = -1;
 static bool close_thread = false;
 
@@ -408,11 +409,56 @@ static int audio_close(hw_device_t *device)
 
 	pthread_join(ipc_th, NULL);
 
+	close(listen_sk);
+	listen_sk = -1;
+
 	free(a2dp_dev);
 	return 0;
 }
 
-static bool create_audio_ipc(void)
+static void *ipc_handler(void *data)
+{
+	bool done = false;
+	struct pollfd pfd;
+
+	DBG("");
+
+	while (!done) {
+		DBG("Waiting for connection ...");
+		audio_sk = accept(listen_sk, NULL, NULL);
+		if (audio_sk < 0) {
+			int err = errno;
+			error("audio: Failed to accept socket: %d (%s)", err,
+								strerror(err));
+			continue;
+		}
+
+		DBG("Audio IPC: Connected");
+
+		memset(&pfd, 0, sizeof(pfd));
+		pfd.fd = audio_sk;
+		pfd.events = POLLHUP | POLLERR | POLLNVAL;
+
+		/* Check if socket is still alive. Empty while loop.*/
+		while (poll(&pfd, 1, -1) < 0 && errno == EINTR);
+
+		if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
+			info("Audio HAL: Socket closed");
+			audio_sk = -1;
+		}
+
+		/*Check if audio_dev is closed */
+		pthread_mutex_lock(&close_mutex);
+		done = close_thread;
+		close_thread = false;
+		pthread_mutex_unlock(&close_mutex);
+	}
+
+	info("Closing Audio IPC thread");
+	return NULL;
+}
+
+static int audio_ipc_init(void)
 {
 	struct sockaddr_un addr;
 	int err;
@@ -425,7 +471,7 @@ static bool create_audio_ipc(void)
 		err = errno;
 		error("audio: Failed to create socket: %d (%s)", err,
 								strerror(err));
-		return false;
+		return err;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -448,60 +494,22 @@ static bool create_audio_ipc(void)
 		goto failed;
 	}
 
-	audio_sk = accept(sk, NULL, NULL);
-	if (audio_sk < 0) {
-		err = errno;
-		error("audio: Failed to accept socket: %d (%s)", err, strerror(err));
+	listen_sk = sk;
+
+	err = pthread_create(&ipc_th, NULL, ipc_handler, NULL);
+	if (err) {
+		err = -err;
+		ipc_th = 0;
+		error("audio: Failed to start Audio IPC thread: %d (%s)",
+							err, strerror(err));
 		goto failed;
 	}
 
-	close(sk);
-	return true;
+	return 0;
 
 failed:
 	close(sk);
-	return false;
-}
-
-static void *ipc_handler(void *data)
-{
-	bool done = false;
-	struct pollfd pfd;
-
-	DBG("");
-
-	while (!done) {
-		if(!create_audio_ipc()) {
-			error("audio: Failed to create listening socket");
-			sleep(1);
-			continue;
-		}
-
-		DBG("Audio IPC: Connected");
-
-		/* TODO: Register ENDPOINT here */
-
-		memset(&pfd, 0, sizeof(pfd));
-		pfd.fd = audio_sk;
-		pfd.events = POLLHUP | POLLERR | POLLNVAL;
-
-		/* Check if socket is still alive. Empty while loop.*/
-		while (poll(&pfd, 1, -1) < 0 && errno == EINTR);
-
-		if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
-			info("Audio HAL: Socket closed");
-			audio_sk = -1;
-		}
-
-		/*Check if audio_dev is closed */
-		pthread_mutex_lock(&close_mutex);
-		done = close_thread;
-		close_thread = false;
-		pthread_mutex_unlock(&close_mutex);
-	}
-
-	info("Closing bluetooth_watcher thread");
-	return NULL;
+	return err;
 }
 
 static int audio_open(const hw_module_t *module, const char *name,
@@ -517,6 +525,10 @@ static int audio_open(const hw_module_t *module, const char *name,
 						AUDIO_HARDWARE_INTERFACE);
 		return -EINVAL;
 	}
+
+	err = audio_ipc_init();
+	if (err)
+		return -err;
 
 	a2dp_dev = calloc(1, sizeof(struct a2dp_audio_dev));
 	if (!a2dp_dev)
@@ -545,14 +557,6 @@ static int audio_open(const hw_module_t *module, const char *name,
 	 * This results from the structure of following structs:a2dp_audio_dev,
 	 * audio_hw_device. We will rely on this later in the code.*/
 	*device = &a2dp_dev->dev.common;
-
-	err = pthread_create(&ipc_th, NULL, ipc_handler, NULL);
-	if (err) {
-		ipc_th = 0;
-		error("audio: Failed to start Audio IPC thread: %d (%s)",
-							err, strerror(err));
-		return (-err);
-	}
 
 	return 0;
 }
