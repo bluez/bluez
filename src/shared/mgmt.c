@@ -75,7 +75,7 @@ struct mgmt_notify {
 	unsigned int id;
 	uint16_t event;
 	uint16_t index;
-	bool destroyed;
+	bool removed;
 	mgmt_notify_func_t callback;
 	mgmt_destroy_func_t destroy;
 	void *user_data;
@@ -118,13 +118,6 @@ static void destroy_notify(void *data)
 	free(notify);
 }
 
-static void remove_notify(void *data)
-{
-	struct mgmt_notify *notify = data;
-
-	notify->destroyed = true;
-}
-
 static bool match_notify_id(const void *a, const void *b)
 {
 	const struct mgmt_notify *notify = a;
@@ -141,11 +134,20 @@ static bool match_notify_index(const void *a, const void *b)
 	return notify->index == index;
 }
 
-static bool match_notify_destroyed(const void *a, const void *b)
+static bool match_notify_removed(const void *a, const void *b)
 {
 	const struct mgmt_notify *notify = a;
 
-	return notify->destroyed;
+	return notify->removed;
+}
+
+static void mark_notify_removed(void *data , void *user_data)
+{
+	struct mgmt_notify *notify = data;
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (notify->index == index || index == MGMT_INDEX_NONE)
+		notify->removed = true;
 }
 
 static void write_watch_destroy(void *user_data)
@@ -257,7 +259,7 @@ static void notify_handler(void *data, void *user_data)
 	struct mgmt_notify *notify = data;
 	struct event_index *match = user_data;
 
-	if (notify->destroyed)
+	if (notify->removed)
 		return;
 
 	if (notify->event != match->event)
@@ -283,7 +285,7 @@ static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 
 	mgmt->in_notify = false;
 
-	queue_remove_all(mgmt->notify_list, match_notify_destroyed, NULL,
+	queue_remove_all(mgmt->notify_list, match_notify_removed, NULL,
 							destroy_notify);
 }
 
@@ -764,7 +766,7 @@ bool mgmt_unregister(struct mgmt *mgmt, unsigned int id)
 		return true;
 	}
 
-	notify->destroyed = true;
+	notify->removed = true;
 
 	return true;
 }
@@ -775,8 +777,8 @@ bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index)
 		return false;
 
 	if (mgmt->in_notify)
-		queue_remove_all(mgmt->notify_list, match_notify_index,
-					UINT_TO_PTR(index), remove_notify);
+		queue_foreach(mgmt->notify_list, mark_notify_removed,
+							UINT_TO_PTR(index));
 	else
 		queue_remove_all(mgmt->notify_list, match_notify_index,
 					UINT_TO_PTR(index), destroy_notify);
@@ -790,7 +792,8 @@ bool mgmt_unregister_all(struct mgmt *mgmt)
 		return false;
 
 	if (mgmt->in_notify)
-		queue_remove_all(mgmt->notify_list, NULL, NULL, remove_notify);
+		queue_foreach(mgmt->notify_list, mark_notify_removed,
+						UINT_TO_PTR(MGMT_INDEX_NONE));
 	else
 		queue_remove_all(mgmt->notify_list, NULL, NULL, destroy_notify);
 
