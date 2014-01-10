@@ -450,7 +450,10 @@ struct mgmt *mgmt_new(int fd)
 struct mgmt *mgmt_new_default(void)
 {
 	struct mgmt *mgmt;
-	struct sockaddr_hci addr;
+	union {
+		struct sockaddr common;
+		struct sockaddr_hci hci;
+	} addr;
 	int fd;
 
 	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
@@ -459,11 +462,11 @@ struct mgmt *mgmt_new_default(void)
 		return NULL;
 
 	memset(&addr, 0, sizeof(addr));
-	addr.hci_family = AF_BLUETOOTH;
-	addr.hci_dev = HCI_DEV_NONE;
-	addr.hci_channel = HCI_CHANNEL_CONTROL;
+	addr.hci.hci_family = AF_BLUETOOTH;
+	addr.hci.hci_dev = HCI_DEV_NONE;
+	addr.hci.hci_channel = HCI_CHANNEL_CONTROL;
 
-	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (bind(fd, &addr.common, sizeof(addr.hci)) < 0) {
 		close(fd);
 		return NULL;
 	}
