@@ -1711,6 +1711,52 @@ static void cmd_clr_uuids(struct mgmt *mgmt, uint16_t index, int argc,
 	cmd_remove_uuid(mgmt, index, 2, rm_argv);
 }
 
+static void local_oob_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_local_oob_data *rp = param;
+	int i;
+
+	if (status != 0) {
+		fprintf(stderr, "Read Local OOB Data failed "
+						"with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		goto done;
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small (%u bytes) read_local_oob rsp\n",
+									len);
+		goto done;
+	}
+
+	printf("Hash C from P-192: ");
+	for (i = 0; i < 16; i++)
+		printf("%02x", rp->hash[i]);
+	printf("\n");
+
+	printf("Randomizer R with P-192: ");
+	for (i = 0; i < 16; i++)
+		printf("%02x", rp->randomizer[i]);
+	printf("\n");
+
+done:
+	g_main_loop_quit(event_loop);
+}
+
+static void cmd_local_oob(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
+					local_oob_rsp, NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send read_local_oob cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static void did_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -1846,11 +1892,12 @@ static struct {
 	{ "block",	cmd_block,	"Block Device"			},
 	{ "unblock",	cmd_unblock,	"Unblock Device"		},
 	{ "add-uuid",	cmd_add_uuid,	"Add UUID"			},
-	{ "rm-uuid",	cmd_remove_uuid, "Remove UUID"			},
-	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs",			},
-	{ "did",	cmd_did,	"Set Device ID",		},
-	{ "static-addr",cmd_static_addr,"Set static address",		},
-	{ NULL, NULL, 0 }
+	{ "rm-uuid",	cmd_remove_uuid,"Remove UUID"			},
+	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs"			},
+	{ "local-oob",  cmd_local_oob,  "Local OOB data"		},
+	{ "did",	cmd_did,	"Set Device ID"			},
+	{ "static-addr",cmd_static_addr,"Set static address"		},
+	{ }
 };
 
 static void usage(void)
