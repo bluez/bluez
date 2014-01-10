@@ -782,6 +782,32 @@ static void evt_io_cap_request(struct bthost *bthost, const void *data,
 							&cp, sizeof(cp));
 }
 
+static void evt_user_confirm_request(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_user_confirm_request *ev = data;
+	struct btconn *conn;
+
+	if (len < sizeof(*ev))
+		return;
+
+	conn = bthost_find_conn_by_bdaddr(bthost, ev->bdaddr);
+	if (!conn)
+		return;
+
+	send_command(bthost, BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+								ev->bdaddr, 6);
+}
+
+static void evt_simple_pairing_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_simple_pairing_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+}
+
 static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -880,6 +906,14 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_IO_CAPABILITY_REQUEST:
 		evt_io_cap_request(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_USER_CONFIRM_REQUEST:
+		evt_user_confirm_request(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_SIMPLE_PAIRING_COMPLETE:
+		evt_simple_pairing_complete(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_LE_META_EVENT:
