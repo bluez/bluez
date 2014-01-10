@@ -28,13 +28,17 @@
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define le16_to_cpu(val) (val)
 #define le32_to_cpu(val) (val)
+#define le64_to_cpu(val) (val)
 #define cpu_to_le16(val) (val)
 #define cpu_to_le32(val) (val)
+#define cpu_to_le64(val) (val)
 #elif __BYTE_ORDER == __BIG_ENDIAN
 #define le16_to_cpu(val) bswap_16(val)
 #define le32_to_cpu(val) bswap_32(val)
+#define le64_to_cpu(val) bswap_64(val)
 #define cpu_to_le16(val) bswap_16(val)
 #define cpu_to_le32(val) bswap_32(val)
+#define cpu_to_le64(val) bswap_64(val)
 #else
 #error "Unknown byte order"
 #endif
