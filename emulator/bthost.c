@@ -69,6 +69,7 @@ struct cid_hook {
 
 struct btconn {
 	uint16_t handle;
+	uint8_t bdaddr[6];
 	uint8_t addr_type;
 	uint8_t encr_mode;
 	uint16_t next_cid;
@@ -592,7 +593,8 @@ static void evt_conn_request(struct bthost *bthost, const void *data,
 								sizeof(cmd));
 }
 
-static void init_conn(struct bthost *bthost, uint16_t handle, uint8_t addr_type)
+static void init_conn(struct bthost *bthost, uint16_t handle,
+				const uint8_t *bdaddr, uint8_t addr_type)
 {
 	struct btconn *conn;
 
@@ -602,6 +604,7 @@ static void init_conn(struct bthost *bthost, uint16_t handle, uint8_t addr_type)
 
 	memset(conn, 0, sizeof(*conn));
 	conn->handle = handle;
+	memcpy(conn->bdaddr, bdaddr, 6);
 	conn->addr_type = addr_type;
 	conn->next_cid = 0x0040;
 
@@ -623,7 +626,7 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 	if (ev->status)
 		return;
 
-	init_conn(bthost, le16_to_cpu(ev->handle), BDADDR_BREDR);
+	init_conn(bthost, le16_to_cpu(ev->handle), ev->bdaddr, BDADDR_BREDR);
 }
 
 static void evt_disconn_complete(struct bthost *bthost, const void *data,
@@ -742,7 +745,7 @@ static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 	else
 		addr_type = BDADDR_LE_RANDOM;
 
-	init_conn(bthost, le16_to_cpu(ev->handle), addr_type);
+	init_conn(bthost, le16_to_cpu(ev->handle), ev->peer_addr, addr_type);
 }
 
 static void evt_le_meta_event(struct bthost *bthost, const void *data,
