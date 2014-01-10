@@ -50,9 +50,9 @@
 #include "bluetooth.h"
 
 #define SVC_HINT_NETWORKING 0x02
-#define BNEP_BRIDGE	"bnep"
-#define FORWARD_DELAY_PATH	"/sys/class/net/%s/bridge/forward_delay"
-#define DELAY_PATH_MAX	41
+
+#define BNEP_BRIDGE "bnep"
+#define FORWARD_DELAY_PATH "/sys/class/net/"BNEP_BRIDGE"/bridge/forward_delay"
 
 static bdaddr_t adapter_addr;
 GSList *devices = NULL;
@@ -470,11 +470,8 @@ failed:
 static int set_forward_delay(void)
 {
 	int fd, ret;
-	char path[DELAY_PATH_MAX];
 
-	snprintf(path, sizeof(path), FORWARD_DELAY_PATH, BNEP_BRIDGE);
-
-	fd = open(path, O_RDWR);
+	fd = open(FORWARD_DELAY_PATH, O_RDWR);
 	if (fd < 0)
 		return -errno;
 
