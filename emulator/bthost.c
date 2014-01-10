@@ -96,6 +96,13 @@ struct l2cap_conn_cb_data {
 	struct l2cap_conn_cb_data *next;
 };
 
+struct rfcomm_conn_cb_data {
+	uint8_t channel;
+	bthost_rfcomm_connect_cb func;
+	void *user_data;
+	struct rfcomm_conn_cb_data *next;
+};
+
 struct bthost {
 	uint8_t bdaddr[6];
 	bthost_send_func send_handler;
@@ -108,6 +115,7 @@ struct bthost {
 	bthost_new_conn_cb new_conn_cb;
 	void *new_conn_data;
 	struct l2cap_conn_cb_data *new_l2cap_conn_data;
+	struct rfcomm_conn_cb_data *new_rfcomm_conn_data;
 	struct l2cap_pending_req *l2reqs;
 	uint8_t pin[16];
 	uint8_t pin_len;
@@ -257,6 +265,13 @@ void bthost_destroy(struct bthost *bthost)
 		struct l2cap_conn_cb_data *cb = bthost->new_l2cap_conn_data;
 
 		bthost->new_l2cap_conn_data = cb->next;
+		free(cb);
+	}
+
+	while (bthost->new_rfcomm_conn_data) {
+		struct rfcomm_conn_cb_data *cb = bthost->new_rfcomm_conn_data;
+
+		bthost->new_rfcomm_conn_data = cb->next;
 		free(cb);
 	}
 
@@ -1618,6 +1633,23 @@ void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability)
 void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject)
 {
 	bthost->reject_user_confirm = reject;
+}
+
+void bthost_add_rfcomm_server(struct bthost *bthost, uint8_t channel,
+				bthost_rfcomm_connect_cb func, void *user_data)
+{
+	struct rfcomm_conn_cb_data *data;
+
+	data = malloc(sizeof(struct rfcomm_conn_cb_data));
+	if (!data)
+		return;
+
+	data->channel = channel;
+	data->user_data = user_data;
+	data->func = func;
+	data->next = bthost->new_rfcomm_conn_data;
+
+	bthost->new_rfcomm_conn_data = data;
 }
 
 void bthost_start(struct bthost *bthost)
