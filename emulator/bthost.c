@@ -545,6 +545,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
 		break;
+	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
+		break;
 	default:
 		printf("Unhandled cmd_complete opcode 0x%04x\n", opcode);
 		break;
