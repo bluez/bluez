@@ -26,9 +26,8 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <inttypes.h>
-
-#include <bluetooth/bluetooth.h>
 
 #include "src/shared/util.h"
 #include "display.h"

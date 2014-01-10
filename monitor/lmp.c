@@ -28,8 +28,6 @@
 
 #include <stdio.h>
 
-#include <bluetooth/bluetooth.h>
-
 #include "src/shared/util.h"
 #include "display.h"
 #include "packet.h"
