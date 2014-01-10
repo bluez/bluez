@@ -102,6 +102,13 @@ struct test_data {
 
 static char exec_dir[PATH_MAX + 1];
 
+static void mgmt_debug(const char *str, void *user_data)
+{
+	const char *prefix = user_data;
+
+	tester_print("%s%s", prefix, str);
+}
+
 static void test_update_state(void)
 {
 	struct test_data *data = tester_get_data();
@@ -419,15 +426,17 @@ static void test_pre_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	if (!tester_use_debug())
-		fclose(stderr);
-
 	data->mgmt = mgmt_new_default();
 	if (!data->mgmt) {
 		tester_warn("Failed to setup management interface");
 		tester_pre_setup_failed();
 		return;
 	}
+
+	if (!tester_use_debug())
+		fclose(stderr);
+	else
+		mgmt_set_debug(data->mgmt, mgmt_debug, "mgmt: ", NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_READ_INDEX_LIST, MGMT_INDEX_NONE, 0,
 				NULL, read_index_list_callback, NULL, NULL);
