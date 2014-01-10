@@ -335,6 +335,8 @@ struct mgmt_cp_set_scan_params {
 	uint16_t window;
 } __packed;
 
+#define MGMT_OP_SET_SECURE_CONN		0x002D
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -517,6 +519,7 @@ static const char *mgmt_op[] = {
 	"Set BR/EDR",
 	"Set Static Address",
 	"Set Scan Parameters",
+	"Set Secure Connections",
 };
 
 static const char *mgmt_ev[] = {
