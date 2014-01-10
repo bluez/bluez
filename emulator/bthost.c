@@ -1650,6 +1650,9 @@ static void rfcomm_pn_recv(struct bthost *bthost, struct btconn *conn,
 							rfcomm_fcs(buf);
 
 		send_acl(bthost, conn->handle, l2conn->dcid, buf, sizeof(buf));
+	} else if (bthost->rfcomm_conn_data) {
+		rfcomm_sabm_send(bthost, conn, l2conn,
+				1, bthost->rfcomm_conn_data->channel * 2);
 	}
 }
 
