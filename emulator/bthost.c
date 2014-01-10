@@ -50,6 +50,7 @@
 #define RFCOMM_CTRL(type, pf)	(((type & 0xef) | (pf << 4)))
 #define RFCOMM_LEN8(len)	(((len) << 1) | 1)
 #define RFCOMM_LEN16(len)	((len) << 1)
+#define RFCOMM_MCC_TYPE(cr, type)	(((type << 2) | (cr << 1) | 0x01))
 
 /* RFCOMM FCS calculation */
 #define CRC(data) (rfcomm_crc_table[rfcomm_crc_table[0xff ^ data[0]] ^ data[1]])
@@ -99,6 +100,11 @@ static unsigned char rfcomm_crc_table[256] = {
 static uint8_t rfcomm_fcs2(uint8_t *data)
 {
 	return 0xff - rfcomm_crc_table[CRC(data) ^ data[2]];
+}
+
+static uint8_t rfcomm_fcs(uint8_t *data)
+{
+	return 0xff - CRC(data);
 }
 
 struct cmd {
@@ -1521,9 +1527,56 @@ static void rfcomm_dm_recv(struct bthost *bthost, struct btconn *conn,
 {
 }
 
+static void rfcomm_pn_recv(struct bthost *bthost, struct btconn *conn,
+					struct l2conn *l2conn, uint8_t cr,
+					const struct rfcomm_pn *pn)
+{
+	if (cr) {
+		uint8_t buf[14];
+		struct rfcomm_hdr *hdr = (struct rfcomm_hdr *)buf;
+		struct rfcomm_mcc *mcc = (struct rfcomm_mcc *)(buf +
+								sizeof(*hdr));
+		struct rfcomm_pn *pn_cmd = (struct rfcomm_pn *)
+					(buf + sizeof(*hdr) + sizeof(*mcc));
+
+		memset(buf, 0, sizeof(buf));
+
+		hdr->address = RFCOMM_ADDR(1, 0);
+		hdr->control = RFCOMM_CTRL(RFCOMM_UIH, 0);
+		hdr->length  = RFCOMM_LEN8(sizeof(*mcc) + sizeof(*pn_cmd));
+
+		mcc->type = RFCOMM_MCC_TYPE(0, RFCOMM_PN);
+		mcc->length = RFCOMM_LEN8(sizeof(*pn_cmd));
+
+		pn_cmd->dlci = pn->dlci;
+		pn_cmd->priority = pn->priority;
+		pn_cmd->ack_timer = pn->ack_timer;
+		pn_cmd->max_retrans = pn->max_retrans;
+		pn_cmd->mtu = pn->mtu;
+		pn_cmd->credits = pn->credits;
+
+		buf[sizeof(*hdr) + sizeof(*mcc) + sizeof(*pn_cmd)] =
+							rfcomm_fcs(buf);
+
+		send_acl(bthost, conn->handle, l2conn->dcid, buf, sizeof(buf));
+	}
+}
+
 static void rfcomm_mcc_recv(struct bthost *bthost, struct btconn *conn,
 			struct l2conn *l2conn, const void *data, uint16_t len)
 {
+	const struct rfcomm_mcc *mcc = data;
+	uint8_t type = RFCOMM_GET_MCC_TYPE(mcc->type);
+
+	switch (type) {
+	case RFCOMM_PN:
+		rfcomm_pn_recv(bthost, conn, l2conn,
+					RFCOMM_TEST_CR(mcc->type) / 2,
+					data + sizeof(*mcc));
+		break;
+	default:
+		break;
+	}
 }
 
 static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
