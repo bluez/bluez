@@ -96,6 +96,7 @@ static const char *settings_str[] = {
 				"hs",
 				"le",
 				"advertising",
+				"secure-conn",
 };
 
 static void print_settings(uint32_t settings)
@@ -953,6 +954,11 @@ static void cmd_linksec(struct mgmt *mgmt, uint16_t index, int argc,
 static void cmd_ssp(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	cmd_setting(mgmt, index, MGMT_OP_SET_SSP, argc, argv);
+}
+
+static void cmd_sc(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
+{
+	cmd_setting(mgmt, index, MGMT_OP_SET_SECURE_CONN, argc, argv);
 }
 
 static void cmd_hs(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
@@ -1876,8 +1882,9 @@ static struct {
 	{ "pairable",	cmd_pairable,	"Toggle pairable state"		},
 	{ "linksec",	cmd_linksec,	"Toggle link level security"	},
 	{ "ssp",	cmd_ssp,	"Toggle SSP mode"		},
-	{ "hs",		cmd_hs,		"Toggle HS Support"		},
-	{ "le",		cmd_le,		"Toggle LE Support"		},
+	{ "sc",		cmd_sc,		"Toogle SC support"		},
+	{ "hs",		cmd_hs,		"Toggle HS support"		},
+	{ "le",		cmd_le,		"Toggle LE support"		},
 	{ "advertising",cmd_advertising,"Toggle LE advertising",	},
 	{ "bredr",      cmd_bredr,      "Toggle BR/EDR support",	},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
@@ -1894,7 +1901,7 @@ static struct {
 	{ "add-uuid",	cmd_add_uuid,	"Add UUID"			},
 	{ "rm-uuid",	cmd_remove_uuid,"Remove UUID"			},
 	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs"			},
-	{ "local-oob",  cmd_local_oob,  "Local OOB data"		},
+	{ "local-oob",	cmd_local_oob,	"Local OOB data"		},
 	{ "did",	cmd_did,	"Set Device ID"			},
 	{ "static-addr",cmd_static_addr,"Set static address"		},
 	{ }
