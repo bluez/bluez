@@ -60,6 +60,7 @@ struct btdev {
 	uint8_t link_key[16];
 	uint16_t pin[16];
 	uint8_t pin_len;
+	uint8_t io_cap;
 
 	btdev_command_func command_handler;
 	void *command_data;
@@ -328,6 +329,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[17] |= 0x80;	/* Read Local OOB Data */
 	btdev->commands[18] |= 0x01;	/* Read Inquiry Response TX Power */
 	btdev->commands[18] |= 0x02;	/* Write Inquiry Response TX Power */
+	btdev->commands[18] |= 0x80;	/* IO Capability Request Reply */
 	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
 }
 
@@ -1181,6 +1183,49 @@ static void remote_version_complete(struct btdev *btdev, uint16_t handle)
 							&rvc, sizeof(rvc));
 }
 
+static void io_cap_req_reply_complete(struct btdev *btdev,
+					const uint8_t *bdaddr,
+					uint8_t capability, uint8_t oob_data,
+					uint8_t authentication)
+{
+	struct btdev *remote = btdev->conn;
+	struct bt_hci_evt_io_capability_response ev;
+	uint8_t status;
+
+	if (!remote) {
+		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		goto done;
+	}
+
+	status = BT_HCI_ERR_SUCCESS;
+
+	btdev->io_cap = capability;
+
+	memcpy(ev.bdaddr, btdev->bdaddr, 6);
+	ev.capability = capability;
+	ev.oob_data = oob_data;
+	ev.authentication = authentication;
+
+	send_event(remote, BT_HCI_EVT_IO_CAPABILITY_RESPONSE, &ev, sizeof(ev));
+
+	if (remote->io_cap) {
+		struct bt_hci_evt_user_confirm_request cfm;
+
+		memcpy(cfm.bdaddr, btdev->bdaddr, 6);
+		cfm.passkey = 0;
+
+		send_event(remote, BT_HCI_EVT_USER_CONFIRM_REQUEST,
+							&cfm, sizeof(cfm));
+	} else {
+		send_event(remote, BT_HCI_EVT_IO_CAPABILITY_REQUEST,
+							btdev->bdaddr, 6);
+	}
+
+done:
+	cmd_complete(btdev, BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY,
+						&status, sizeof(status));
+}
+
 static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote)
 {
 	struct __packed {
@@ -1304,6 +1349,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_afh_assessment_mode *waam;
 	const struct bt_hci_cmd_write_ext_inquiry_response *weir;
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
+	const struct bt_hci_cmd_io_capability_request_reply *icrr;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
 	const struct bt_hci_cmd_write_secure_conn_support *wscs;
 	const struct bt_hci_cmd_set_event_mask_page2 *semp2;
@@ -1813,6 +1859,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		btdev->simple_pairing_mode = wspm->mode;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		icrr = data;
+		io_cap_req_reply_complete(btdev, icrr->bdaddr,
+							icrr->capability,
+							icrr->oob_data,
+							icrr->authentication);
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_OOB_DATA:
