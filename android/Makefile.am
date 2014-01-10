@@ -66,7 +66,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-ipc.h android/hal-ipc.c \
 					android/hal-utils.h android/hal-utils.c
 
-android_bluetooth_default_la_CPPFLAGS = -I$(srcdir)/android \
+android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
 					-DPLATFORM_SDK_VERSION=19
 android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 					-no-undefined
@@ -128,7 +128,7 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hardware/hardware.h \
 					android/system/audio.h
 
-android_audio_a2dp_default_la_CFLAGS = -I$(srcdir)/android
+android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
 
 android_audio_a2dp_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 					-no-undefined -pthread
