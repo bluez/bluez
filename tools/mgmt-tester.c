@@ -382,6 +382,7 @@ struct generic_data {
 	const void * (*expect_hci_func)(uint8_t *len);
 	uint8_t pin_len;
 	const void *pin;
+	bool enable_client_ssp;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -2307,19 +2308,31 @@ static const struct generic_data set_scan_params_success_test = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
-static void client_connectable_complete(uint16_t opcode, uint8_t status,
+static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
 {
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	struct bthost *bthost;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
 	switch (opcode) {
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+		tester_print("Client set connectable status 0x%02x", status);
+		if (!status && test->enable_client_ssp) {
+			bthost_write_ssp_mode(bthost, 0x01);
+			return;
+		}
+		break;
+	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
+		tester_print("Client enable SSP status 0x%02x", status);
 		break;
 	default:
 		return;
 	}
-
-	tester_print("Client set connectable status 0x%02x", status);
 
 	if (status)
 		tester_setup_failed();
@@ -2333,7 +2346,7 @@ static void setup_bthost(void)
 	struct bthost *bthost;
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_cmd_complete_cb(bthost, client_connectable_complete, data);
+	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, data);
 	if (data->hciemu_type == HCIEMU_TYPE_LE)
 		bthost_set_adv_enable(bthost, 0x01);
 	else
