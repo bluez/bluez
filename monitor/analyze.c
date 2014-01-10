@@ -35,11 +35,6 @@
 #include "btsnoop.h"
 #include "analyze.h"
 
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
-
 #define MAX_PACKET_SIZE		(1486 + 4)
 
 struct hci_dev {
