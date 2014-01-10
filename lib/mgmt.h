@@ -270,6 +270,12 @@ struct mgmt_rp_read_local_oob_data {
 	uint8_t hash[16];
 	uint8_t randomizer[16];
 } __packed;
+struct mgmt_rp_read_local_oob_ext_data {
+	uint8_t hash192[16];
+	uint8_t randomizer192[16];
+	uint8_t hash256[16];
+	uint8_t randomizer256[16];
+} __packed;
 
 #define MGMT_OP_ADD_REMOTE_OOB_DATA	0x0021
 struct mgmt_cp_add_remote_oob_data {
