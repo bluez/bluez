@@ -32,13 +32,9 @@
 #include <string.h>
 #include <alloca.h>
 
+#include "src/shared/util.h"
 #include "monitor/bt.h"
 #include "btdev.h"
-
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
 
 #define has_bredr(btdev)	(!((btdev)->features[4] & 0x20))
 #define has_le(btdev)		(!!((btdev)->features[4] & 0x40))

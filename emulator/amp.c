@@ -36,15 +36,11 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 
+#include "src/shared/util.h"
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
 
 #include "amp.h"
-
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
 
 #define PHY_MODE_IDLE		0x00
 #define PHY_MODE_INITIATOR	0x01

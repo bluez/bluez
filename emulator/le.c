@@ -36,15 +36,11 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 
+#include "src/shared/util.h"
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
 
 #include "le.h"
-
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
 
 #define WHITE_LIST_SIZE  16
 

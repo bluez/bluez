@@ -35,6 +35,7 @@
 
 #include "bluetooth/bluetooth.h"
 
+#include "src/shared/util.h"
 #include "monitor/bt.h"
 #include "bthost.h"
 
@@ -42,11 +43,6 @@
 #define acl_handle_pack(h, f)	(uint16_t)((h & 0x0fff)|(f << 12))
 #define acl_handle(h)		(h & 0x0fff)
 #define acl_flags(h)		(h >> 12)
-
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
 
 struct cmd {
 	struct cmd *next;
