@@ -262,6 +262,12 @@ const struct rfcomm_client_data connect_success = {
 	.client_channel = 0x0c
 };
 
+const struct rfcomm_client_data connect_nval = {
+	.server_channel = 0x0c,
+	.client_channel = 0x0e,
+	.expected_connect_err = -ECONNREFUSED
+};
+
 static void test_basic(const void *test_data)
 {
 	int sk;
@@ -399,6 +405,8 @@ int main(int argc, char *argv[])
 					setup_powered_client, test_basic);
 	test_rfcomm("Basic RFCOMM Socket Client - Success", &connect_success,
 					setup_powered_client, test_connect);
+	test_rfcomm("Basic RFCOMM Socket Client - Conn Refused",
+			&connect_nval, setup_powered_client, test_connect);
 
 	return tester_run();
 }
