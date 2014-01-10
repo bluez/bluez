@@ -423,7 +423,8 @@ static bool create_audio_ipc(void)
 	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
 	if (sk < 0) {
 		err = errno;
-		error("Failed to create socket: %d (%s)", err, strerror(err));
+		error("audio: Failed to create socket: %d (%s)", err,
+								strerror(err));
 		return false;
 	}
 
@@ -435,13 +436,14 @@ static bool create_audio_ipc(void)
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = errno;
-		error("Failed to bind socket: %d (%s)", err, strerror(err));
+		error("audio: Failed to bind socket: %d (%s)", err,
+								strerror(err));
 		goto failed;
 	}
 
 	if (listen(sk, 1) < 0) {
 		err = errno;
-		error("Failed to listen on the socket: %d (%s)", err,
+		error("audio: Failed to listen on the socket: %d (%s)", err,
 								strerror(err));
 		goto failed;
 	}
@@ -449,7 +451,7 @@ static bool create_audio_ipc(void)
 	audio_sk = accept(sk, NULL, NULL);
 	if (audio_sk < 0) {
 		err = errno;
-		error("Failed to accept socket: %d (%s)", err, strerror(err));
+		error("audio: Failed to accept socket: %d (%s)", err, strerror(err));
 		goto failed;
 	}
 
@@ -470,7 +472,7 @@ static void *ipc_handler(void *data)
 
 	while (!done) {
 		if(!create_audio_ipc()) {
-			error("Failed to create listening socket");
+			error("audio: Failed to create listening socket");
 			sleep(1);
 			continue;
 		}
@@ -511,7 +513,7 @@ static int audio_open(const hw_module_t *module, const char *name,
 	DBG("");
 
 	if (strcmp(name, AUDIO_HARDWARE_INTERFACE)) {
-		error("interface %s not matching [%s]", name,
+		error("audio: interface %s not matching [%s]", name,
 						AUDIO_HARDWARE_INTERFACE);
 		return -EINVAL;
 	}
@@ -547,7 +549,7 @@ static int audio_open(const hw_module_t *module, const char *name,
 	err = pthread_create(&ipc_th, NULL, ipc_handler, NULL);
 	if (err < 0) {
 		ipc_th = 0;
-		error("Failed to start Audio IPC thread: %d (%s)",
+		error("audio: Failed to start Audio IPC thread: %d (%s)",
 							-err, strerror(-err));
 		return (-err);
 	}
