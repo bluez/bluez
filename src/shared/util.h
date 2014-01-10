@@ -23,11 +23,21 @@
 
 #include <stdlib.h>
 #include <alloca.h>
+#include <byteswap.h>
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 #define le16_to_cpu(val) (val)
 #define le32_to_cpu(val) (val)
 #define cpu_to_le16(val) (val)
 #define cpu_to_le32(val) (val)
+#elif __BYTE_ORDER == __BIG_ENDIAN
+#define le16_to_cpu(val) bswap_16(val)
+#define le32_to_cpu(val) bswap_32(val)
+#define cpu_to_le16(val) bswap_16(val)
+#define cpu_to_le32(val) bswap_32(val)
+#else
+#error "Unknown byte order"
+#endif
 
 #define PTR_TO_UINT(p) ((unsigned int) ((uintptr_t) (p)))
 #define UINT_TO_PTR(u) ((void *) ((uintptr_t) (u)))
