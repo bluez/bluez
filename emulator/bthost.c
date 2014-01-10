@@ -165,6 +165,19 @@ static struct btconn *bthost_find_conn(struct bthost *bthost, uint16_t handle)
 	return NULL;
 }
 
+static struct btconn *bthost_find_conn_by_bdaddr(struct bthost *bthost,
+							const uint8_t *bdaddr)
+{
+	struct btconn *conn;
+
+	for (conn = bthost->conns; conn != NULL; conn = conn->next) {
+		if (!memcmp(conn->bdaddr, bdaddr, 6))
+			return conn;
+	}
+
+	return NULL;
+}
+
 static struct l2conn *bthost_add_l2cap_conn(struct bthost *bthost,
 						struct btconn *conn,
 						uint16_t scid, uint16_t dcid,
@@ -730,6 +743,43 @@ static void evt_encrypt_change(struct bthost *bthost, const void *data,
 	conn->encr_mode = ev->encr_mode;
 }
 
+static void evt_io_cap_response(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_io_capability_response *ev = data;
+	struct btconn *conn;
+
+	if (len < sizeof(*ev))
+		return;
+
+	conn = bthost_find_conn_by_bdaddr(bthost, ev->bdaddr);
+	if (!conn)
+		return;
+}
+
+static void evt_io_cap_request(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_io_capability_request *ev = data;
+	struct bt_hci_cmd_io_capability_request_reply cp;
+	struct btconn *conn;
+
+	if (len < sizeof(*ev))
+		return;
+
+	conn = bthost_find_conn_by_bdaddr(bthost, ev->bdaddr);
+	if (!conn)
+		return;
+
+	memcpy(cp.bdaddr, ev->bdaddr, 6);
+	cp.capability = 0x03;
+	cp.oob_data = 0x00;
+	cp.authentication = 0x00;
+
+	send_command(bthost, BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY,
+							&cp, sizeof(cp));
+}
+
 static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -820,6 +870,14 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_ENCRYPT_CHANGE:
 		evt_encrypt_change(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_IO_CAPABILITY_RESPONSE:
+		evt_io_cap_response(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_IO_CAPABILITY_REQUEST:
+		evt_io_cap_request(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_LE_META_EVENT:
