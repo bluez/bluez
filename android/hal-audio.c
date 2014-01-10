@@ -43,6 +43,14 @@ struct a2dp_audio_dev {
 	struct audio_stream_out *out;
 };
 
+static void audio_ipc_cleanup(void)
+{
+	if (audio_sk >= 0) {
+		shutdown(audio_sk, SHUT_RDWR);
+		audio_sk = -1;
+	}
+}
+
 static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 								size_t bytes)
 {
@@ -403,7 +411,7 @@ static int audio_close(hw_device_t *device)
 	DBG("");
 
 	pthread_mutex_lock(&close_mutex);
-	shutdown(audio_sk, SHUT_RDWR);
+	audio_ipc_cleanup();
 	close_thread = true;
 	pthread_mutex_unlock(&close_mutex);
 
