@@ -194,6 +194,7 @@ Read Controller Information Command
 		9	High Speed
 		10	Low Energy
 		11	Advertising
+		12	Secure Connections
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -1017,12 +1018,18 @@ Read Local Out Of Band Data Command
 	Command Code:		0x0020
 	Controller Index:	<controller id>
 	Command Parameters:
-	Return Parameters:	Hash (16 Octets)
-				Randomizer (16 Octets)
+	Return Parameters:	Hash_192 (16 Octets)
+				Randomizer_192 (16 Octets)
+				Hash_256 (16 Octets, Optional)
+				Randomizer_256 (16 Octets, Optional)
 
 	This command is used to read the local Out of Band data.
 
 	This command can only be used when the controller is powered.
+
+	If Secure Connections support is enabled, then this command
+	will P-192 versions of hash and randomizer as well as P-256
+	versions of both.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -1041,8 +1048,10 @@ Add Remote Out Of Band Data Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Hash (16 Octets)
-				Randomizer (16 Octets)
+				Hash_192 (16 Octets)
+				Randomizer_192 (16 Octets)
+				Hash_256 (16 Octets, Optional)
+				Randomizer_256 (16 Octets, Optional)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
@@ -1050,6 +1059,19 @@ Add Remote Out Of Band Data Command
 	device.
 
 	Provided Out Of Band data is persistent over power down/up toggles.
+
+	This command also accept optional P-256 versions of hash and
+	randomizer. If they are not provided, then they are set to
+	zero value.
+
+	The P-256 versions of both can also be provided when the
+	support for Secure Connections is not enabled. However in
+	that case they will never be used.
+
+	To only provide the P-256 versions of hash and randomizer,
+	it is valid to leave both P-192 fields as zero values. If
+	Secure Connections is disabled, then of course this is the
+	same as not provided any data at all.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -1343,6 +1365,38 @@ Set Scan Parameters Command
 	Command Status event on failure.
 
 	Possible errors:	Rejected
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
+Set Secure Connections Command
+==============================
+
+	Command Code:		0x002D
+	Controller Index:	<controller id>
+	Command Parameters:	Secure_Connections (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is used to enable/disable Secure Connections
+	support for a controller. The allowed values for the
+	Secure_Connections command parameter are 0x00 and 0x01. All
+	other values will return Invalid Parameters.
+
+	This command is only available for BR/EDR capable controllers
+	supporting the core specification version 4.1 or greater
+	(e.g. not for single-mode LE controllers or pre-4.1 ones).
+
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	In case the controller does not support Secure Connections
+	the command will fail regardless with Not Supported error.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Busy
 				Not Supported
 				Invalid Parameters
 				Invalid Index
