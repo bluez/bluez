@@ -1527,6 +1527,29 @@ static void rfcomm_dm_recv(struct bthost *bthost, struct btconn *conn,
 {
 }
 
+static void rfcomm_msc_recv(struct bthost *bthost, struct btconn *conn,
+					struct l2conn *l2conn, uint8_t cr,
+					const struct rfcomm_msc *msc)
+{
+	uint8_t buf[8];
+	struct rfcomm_hdr *hdr = (struct rfcomm_hdr *)buf;
+	struct rfcomm_mcc *mcc = (struct rfcomm_mcc *)(buf + sizeof(*hdr));
+	struct rfcomm_msc *msc_cmd = (struct rfcomm_msc *)(buf + sizeof(*hdr)
+							+ sizeof(*mcc));
+
+	hdr->address = RFCOMM_ADDR(0, 0);
+	hdr->control = RFCOMM_CTRL(RFCOMM_UIH, 0);
+	hdr->length  = RFCOMM_LEN8(sizeof(*mcc) + sizeof(*msc));
+	mcc->type = RFCOMM_MCC_TYPE(cr, RFCOMM_MSC);
+	mcc->length = RFCOMM_LEN8(sizeof(*msc));
+
+	msc_cmd->dlci = msc->dlci;
+	msc_cmd->v24_sig = msc->v24_sig;
+	buf[sizeof(*hdr) + sizeof(*mcc) + sizeof(*msc_cmd)] = rfcomm_fcs(buf);
+
+	send_acl(bthost, conn->handle, l2conn->dcid, buf, sizeof(buf));
+}
+
 static void rfcomm_pn_recv(struct bthost *bthost, struct btconn *conn,
 					struct l2conn *l2conn, uint8_t cr,
 					const struct rfcomm_pn *pn)
@@ -1569,6 +1592,11 @@ static void rfcomm_mcc_recv(struct bthost *bthost, struct btconn *conn,
 	uint8_t type = RFCOMM_GET_MCC_TYPE(mcc->type);
 
 	switch (type) {
+	case RFCOMM_MSC:
+		rfcomm_msc_recv(bthost, conn, l2conn,
+						RFCOMM_TEST_CR(mcc->type) / 2,
+							data + sizeof(*mcc));
+		break;
 	case RFCOMM_PN:
 		rfcomm_pn_recv(bthost, conn, l2conn,
 					RFCOMM_TEST_CR(mcc->type) / 2,
