@@ -29,12 +29,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "pcap.h"
+#include "src/shared/util.h"
 
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
+#include "pcap.h"
 
 struct pcap_hdr {
 	uint32_t magic_number;	/* magic number */

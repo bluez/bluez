@@ -37,11 +37,6 @@
 
 #include "hci.h"
 
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
-
 #define BTPROTO_HCI	1
 struct sockaddr_hci {
 	sa_family_t	hci_family;
