@@ -1721,6 +1721,7 @@ static void local_oob_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_rp_read_local_oob_data *rp = param;
+	const struct mgmt_rp_read_local_oob_ext_data *rp_ext = param;
 	int i;
 
 	if (status != 0) {
@@ -1744,6 +1745,19 @@ static void local_oob_rsp(uint8_t status, uint16_t len, const void *param,
 	printf("Randomizer R with P-192: ");
 	for (i = 0; i < 16; i++)
 		printf("%02x", rp->randomizer[i]);
+	printf("\n");
+
+	if (len < sizeof(*rp_ext))
+		goto done;
+
+	printf("Hash C from P-256: ");
+	for (i = 0; i < 16; i++)
+		printf("%02x", rp_ext->hash256[i]);
+	printf("\n");
+
+	printf("Randomizer R with P-256: ");
+	for (i = 0; i < 16; i++)
+		printf("%02x", rp_ext->randomizer256[i]);
 	printf("\n");
 
 done:
