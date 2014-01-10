@@ -576,18 +576,40 @@ static void bt_pan_enable(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_pan_enable *cmd = buf;
 	uint8_t status;
+	int err;
 
-	switch (cmd->local_role) {
-	case HAL_PAN_ROLE_PANU:
-	case HAL_PAN_ROLE_NAP:
-		DBG("Not Implemented");
-		status  = HAL_STATUS_FAILED;
-		break;
-	default:
-		status = HAL_STATUS_UNSUPPORTED;
-		break;
+	DBG("");
+
+	if (local_role == cmd->local_role) {
+		status = HAL_STATUS_SUCCESS;
+		goto reply;
 	}
 
+	/* destroy existing server */
+	destroy_nap_device();
+
+	switch (cmd->local_role) {
+	case HAL_PAN_ROLE_NAP:
+		break;
+	case HAL_PAN_ROLE_NONE:
+		status = HAL_STATUS_SUCCESS;
+		goto reply;
+	default:
+		status = HAL_STATUS_UNSUPPORTED;
+		goto reply;
+	}
+
+	local_role = cmd->local_role;
+	err = register_nap_server();
+	if (err < 0) {
+		status = HAL_STATUS_FAILED;
+		destroy_nap_device();
+		goto reply;
+	}
+
+	status = HAL_STATUS_SUCCESS;
+
+reply:
 	ipc_send_rsp(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE, status);
 }
 
