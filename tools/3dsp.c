@@ -36,11 +36,6 @@
 #include "src/shared/util.h"
 #include "src/shared/hci.h"
 
-#define le16_to_cpu(val) (val)
-#define le32_to_cpu(val) (val)
-#define cpu_to_le16(val) (val)
-#define cpu_to_le32(val) (val)
-
 #define LT_ADDR 0x01
 #define PKT_TYPE 0x0008		/* 0x0008 = EDR + DM1, 0xff1e = BR only */
 #define SERVICE_DATA LT_ADDR
