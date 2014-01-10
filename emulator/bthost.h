@@ -96,5 +96,9 @@ typedef void (*bthost_rfcomm_connect_cb) (uint16_t handle, uint16_t cid,
 void bthost_add_rfcomm_server(struct bthost *bthost, uint8_t channel,
 			bthost_rfcomm_connect_cb func, void *user_data);
 
+bool bthost_connect_rfcomm(struct bthost *bthost, uint16_t handle,
+				uint8_t channel, bthost_rfcomm_connect_cb func,
+				void *user_data);
+
 void bthost_start(struct bthost *bthost);
 void bthost_stop(struct bthost *bthost);
