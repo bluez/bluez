@@ -752,9 +752,19 @@ bool bt_pan_register(const bdaddr_t *addr)
 	return true;
 }
 
+static void pan_device_disconnected(gpointer data, gpointer user_data)
+{
+	struct pan_device *dev = data;
+
+	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
+}
+
 void bt_pan_unregister(void)
 {
 	DBG("");
+
+	g_slist_foreach(devices, pan_device_disconnected, NULL);
+	devices = NULL;
 
 	bnep_cleanup();
 
