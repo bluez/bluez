@@ -1513,6 +1513,10 @@ static void rfcomm_disc_recv(struct bthost *bthost, struct btconn *conn,
 				struct l2conn *l2conn, const void *data,
 				uint16_t len)
 {
+	const struct rfcomm_cmd *hdr = data;
+	uint8_t dlci = RFCOMM_GET_DLCI(hdr->address);
+
+	rfcomm_ua_send(bthost, conn, l2conn, 0, dlci);
 }
 
 static void rfcomm_ua_recv(struct bthost *bthost, struct btconn *conn,
