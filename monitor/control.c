@@ -40,6 +40,7 @@
 #include "lib/hci.h"
 #include "lib/mgmt.h"
 
+#include "src/shared/util.h"
 #include "mainloop.h"
 #include "display.h"
 #include "packet.h"
@@ -224,7 +225,7 @@ static void mgmt_device_connected(uint16_t len, const void *buf)
 		return;
 	}
 
-	flags = btohl(ev->flags);
+	flags = le32_to_cpu(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
 	printf("@ Device Connected: %s (%d) flags 0x%4.4x\n",
@@ -382,7 +383,7 @@ static void mgmt_device_found(uint16_t len, const void *buf)
 		return;
 	}
 
-	flags = btohl(ev->flags);
+	flags = le32_to_cpu(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
 	printf("@ Device Found: %s (%d) rssi %d flags 0x%4.4x\n",
@@ -484,7 +485,7 @@ static void mgmt_passkey_notify(uint16_t len, const void *buf)
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	passkey = btohl(ev->passkey);
+	passkey = le32_to_cpu(ev->passkey);
 
 	printf("@ Passkey Notify: %s (%d) passkey %06u entered %u\n",
 				str, ev->addr.type, passkey, ev->entered);
@@ -617,9 +618,9 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 			}
 		}
 
-		opcode = btohs(hdr.opcode);
-		index  = btohs(hdr.index);
-		pktlen = btohs(hdr.len);
+		opcode = le16_to_cpu(hdr.opcode);
+		index  = le16_to_cpu(hdr.index);
+		pktlen = le16_to_cpu(hdr.len);
 
 		switch (data->channel) {
 		case HCI_CHANNEL_CONTROL:
@@ -713,11 +714,11 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 
 	if (data->offset > MGMT_HDR_SIZE) {
 		struct mgmt_hdr *hdr = (struct mgmt_hdr *) data->buf;
-		uint16_t pktlen = btohs(hdr->len);
+		uint16_t pktlen = le16_to_cpu(hdr->len);
 
 		if (data->offset > pktlen + MGMT_HDR_SIZE) {
-			uint16_t opcode = btohs(hdr->opcode);
-			uint16_t index = btohs(hdr->index);
+			uint16_t opcode = le16_to_cpu(hdr->opcode);
+			uint16_t index = le16_to_cpu(hdr->index);
 
 			packet_monitor(NULL, index, opcode,
 					data->buf + MGMT_HDR_SIZE, pktlen);

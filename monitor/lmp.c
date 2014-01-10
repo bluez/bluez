@@ -30,6 +30,7 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include "src/shared/util.h"
 #include "display.h"
 #include "packet.h"
 #include "bt.h"
@@ -157,8 +158,8 @@ static void version_req(const void *data, uint8_t size)
 	const struct bt_lmp_version_req *pdu = data;
 
 	packet_print_version("Version", pdu->version,
-				"Subversion", btohs(pdu->subversion));
-	packet_print_company("Company", btohs(pdu->company));
+				"Subversion", le16_to_cpu(pdu->subversion));
+	packet_print_company("Company", le16_to_cpu(pdu->company));
 }
 
 static void version_res(const void *data, uint8_t size)
@@ -166,8 +167,8 @@ static void version_res(const void *data, uint8_t size)
 	const struct bt_lmp_version_res *pdu = data;
 
 	packet_print_version("Version", pdu->version,
-				"Subversion", btohs(pdu->subversion));
-	packet_print_company("Company", btohs(pdu->company));
+				"Subversion", le16_to_cpu(pdu->subversion));
+	packet_print_company("Company", le16_to_cpu(pdu->company));
 }
 
 static void features_req(const void *data, uint8_t size)
@@ -272,7 +273,7 @@ static void set_afh(const void *data, uint8_t size)
 	const struct bt_lmp_set_afh *pdu = data;
 	const char *str;
 
-	print_field("Instant: %u", htobl(pdu->instant));
+	print_field("Instant: %u", le32_to_cpu(pdu->instant));
 
 	switch (pdu->mode) {
 	case 0x00:

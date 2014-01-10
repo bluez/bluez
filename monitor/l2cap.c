@@ -28,10 +28,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <inttypes.h>
 
 #include <bluetooth/bluetooth.h>
 
+#include "src/shared/util.h"
 #include "bt.h"
 #include "packet.h"
 #include "display.h"
@@ -271,19 +273,19 @@ static void clear_fragment_buffer(uint16_t index)
 
 static void print_psm(uint16_t psm)
 {
-	print_field("PSM: %d (0x%4.4x)", btohs(psm), btohs(psm));
+	print_field("PSM: %d (0x%4.4x)", le16_to_cpu(psm), le16_to_cpu(psm));
 }
 
 static void print_cid(const char *type, uint16_t cid)
 {
-	print_field("%s CID: %d", type, btohs(cid));
+	print_field("%s CID: %d", type, le16_to_cpu(cid));
 }
 
 static void print_reject_reason(uint16_t reason)
 {
 	const char *str;
 
-	switch (btohs(reason)) {
+	switch (le16_to_cpu(reason)) {
 	case 0x0000:
 		str = "Command not understood";
 		break;
@@ -298,14 +300,14 @@ static void print_reject_reason(uint16_t reason)
 		break;
 	}
 
-	print_field("Reason: %s (0x%4.4x)", str, btohs(reason));
+	print_field("Reason: %s (0x%4.4x)", str, le16_to_cpu(reason));
 }
 
 static void print_conn_result(uint16_t result)
 {
 	const char *str;
 
-	switch (btohs(result)) {
+	switch (le16_to_cpu(result)) {
 	case 0x0000:
 		str = "Connection successful";
 		break;
@@ -332,14 +334,14 @@ static void print_conn_result(uint16_t result)
 		break;
 	}
 
-	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
 static void print_conn_status(uint16_t status)
 {
         const char *str;
 
-	switch (btohs(status)) {
+	switch (le16_to_cpu(status)) {
 	case 0x0000:
 		str = "No further information available";
 		break;
@@ -354,26 +356,26 @@ static void print_conn_status(uint16_t status)
 		break;
 	}
 
-	print_field("Status: %s (0x%4.4x)", str, btohs(status));
+	print_field("Status: %s (0x%4.4x)", str, le16_to_cpu(status));
 }
 
 static void print_config_flags(uint16_t flags)
 {
 	const char *str;
 
-	if (btohs(flags) & 0x0001)
+	if (le16_to_cpu(flags) & 0x0001)
 		str = " (continuation)";
 	else
 		str = "";
 
-	print_field("Flags: 0x%4.4x%s", btohs(flags), str);
+	print_field("Flags: 0x%4.4x%s", le16_to_cpu(flags), str);
 }
 
 static void print_config_result(uint16_t result)
 {
 	const char *str;
 
-	switch (btohs(result)) {
+	switch (le16_to_cpu(result)) {
 	case 0x0000:
 		str = "Success";
 		break;
@@ -397,7 +399,7 @@ static void print_config_result(uint16_t result)
 		break;
 	}
 
-	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
 static struct {
@@ -587,7 +589,7 @@ static void print_info_type(uint16_t type)
 {
 	const char *str;
 
-	switch (btohs(type)) {
+	switch (le16_to_cpu(type)) {
 	case 0x0001:
 		str = "Connectionless MTU";
 		break;
@@ -602,14 +604,14 @@ static void print_info_type(uint16_t type)
 		break;
 	}
 
-	print_field("Type: %s (0x%4.4x)", str, btohs(type));
+	print_field("Type: %s (0x%4.4x)", str, le16_to_cpu(type));
 }
 
 static void print_info_result(uint16_t result)
 {
 	const char *str;
 
-	switch (btohs(result)) {
+	switch (le16_to_cpu(result)) {
 	case 0x0000:
 		str = "Success";
 		break;
@@ -621,7 +623,7 @@ static void print_info_result(uint16_t result)
 		break;
 	}
 
-	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
 static struct {
@@ -697,7 +699,7 @@ static void print_move_result(uint16_t result)
 {
 	const char *str;
 
-	switch (btohs(result)) {
+	switch (le16_to_cpu(result)) {
 	case 0x0000:
 		str = "Move success";
 		break;
@@ -724,14 +726,14 @@ static void print_move_result(uint16_t result)
 		break;
 	}
 
-	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
 static void print_move_cfm_result(uint16_t result)
 {
 	const char *str;
 
-	switch (btohs(result)) {
+	switch (le16_to_cpu(result)) {
 	case 0x0000:
 		str = "Move success - both sides succeed";
 		break;
@@ -743,14 +745,14 @@ static void print_move_cfm_result(uint16_t result)
 		break;
 	}
 
-	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
 static void print_conn_param_result(uint16_t result)
 {
 	const char *str;
 
-	switch (btohs(result)) {
+	switch (le16_to_cpu(result)) {
 	case 0x0000:
 		str = "Connection Parameters accepted";
 		break;
@@ -762,7 +764,7 @@ static void print_conn_param_result(uint16_t result)
 		break;
 	}
 
-	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
 static void sig_cmd_reject(const struct l2cap_frame *frame)
@@ -777,7 +779,7 @@ static void sig_cmd_reject(const struct l2cap_frame *frame)
 	data += sizeof(*pdu);
 	size -= sizeof(*pdu);
 
-	switch (btohs(pdu->reason)) {
+	switch (le16_to_cpu(pdu->reason)) {
 	case 0x0000:
 		if (size != 0) {
 			print_text(COLOR_ERROR, "invalid data size");
@@ -801,8 +803,8 @@ static void sig_cmd_reject(const struct l2cap_frame *frame)
 		}
 		dcid = bt_get_le16(data);
 		scid = bt_get_le16(data + 2);
-		print_cid("Destination", htobs(dcid));
-		print_cid("Source", htobs(scid));
+		print_cid("Destination", cpu_to_le16(dcid));
+		print_cid("Source", cpu_to_le16(scid));
 		break;
 	default:
 		packet_hexdump(data, size);
@@ -817,7 +819,7 @@ static void sig_conn_req(const struct l2cap_frame *frame)
 	print_psm(pdu->psm);
 	print_cid("Source", pdu->scid);
 
-	assign_scid(frame, btohs(pdu->scid), btohs(pdu->psm), 0);
+	assign_scid(frame, le16_to_cpu(pdu->scid), le16_to_cpu(pdu->psm), 0);
 }
 
 static void sig_conn_rsp(const struct l2cap_frame *frame)
@@ -829,7 +831,7 @@ static void sig_conn_rsp(const struct l2cap_frame *frame)
 	print_conn_result(pdu->result);
 	print_conn_status(pdu->status);
 
-	assign_dcid(frame, btohs(pdu->dcid), btohs(pdu->scid));
+	assign_dcid(frame, le16_to_cpu(pdu->dcid), le16_to_cpu(pdu->scid));
 }
 
 static void sig_config_req(const struct l2cap_frame *frame)
@@ -838,7 +840,7 @@ static void sig_config_req(const struct l2cap_frame *frame)
 
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
-	print_config_options(frame, 4, btohs(pdu->dcid), false);
+	print_config_options(frame, 4, le16_to_cpu(pdu->dcid), false);
 }
 
 static void sig_config_rsp(const struct l2cap_frame *frame)
@@ -848,7 +850,7 @@ static void sig_config_rsp(const struct l2cap_frame *frame)
 	print_cid("Source", pdu->scid);
 	print_config_flags(pdu->flags);
 	print_config_result(pdu->result);
-	print_config_options(frame, 6, btohs(pdu->scid), true);
+	print_config_options(frame, 6, le16_to_cpu(pdu->scid), true);
 }
 
 static void sig_disconn_req(const struct l2cap_frame *frame)
@@ -866,7 +868,7 @@ static void sig_disconn_rsp(const struct l2cap_frame *frame)
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
 
-	release_scid(frame, btohs(pdu->scid));
+	release_scid(frame, le16_to_cpu(pdu->scid));
 }
 
 static void sig_echo_req(const struct l2cap_frame *frame)
@@ -898,7 +900,7 @@ static void sig_info_rsp(const struct l2cap_frame *frame)
 	data += sizeof(*pdu);
 	size -= sizeof(*pdu);
 
-	if (btohs(pdu->result) != 0x0000) {
+	if (le16_to_cpu(pdu->result) != 0x0000) {
 		if (size > 0) {
 			print_text(COLOR_ERROR, "invalid data size");
 			packet_hexdump(data, size);
@@ -906,7 +908,7 @@ static void sig_info_rsp(const struct l2cap_frame *frame)
 		return;
 	}
 
-	switch (btohs(pdu->type)) {
+	switch (le16_to_cpu(pdu->type)) {
 	case 0x0001:
 		if (size != 2) {
 			print_text(COLOR_ERROR, "invalid data size");
@@ -945,7 +947,8 @@ static void sig_create_chan_req(const struct l2cap_frame *frame)
 	print_cid("Source", pdu->scid);
 	print_field("Controller ID: %d", pdu->ctrlid);
 
-	assign_scid(frame, btohs(pdu->scid), btohs(pdu->psm), pdu->ctrlid);
+	assign_scid(frame, le16_to_cpu(pdu->scid), le16_to_cpu(pdu->psm),
+								pdu->ctrlid);
 }
 
 static void sig_create_chan_rsp(const struct l2cap_frame *frame)
@@ -957,7 +960,7 @@ static void sig_create_chan_rsp(const struct l2cap_frame *frame)
 	print_conn_result(pdu->result);
 	print_conn_status(pdu->status);
 
-	assign_dcid(frame, btohs(pdu->dcid), btohs(pdu->scid));
+	assign_dcid(frame, le16_to_cpu(pdu->dcid), le16_to_cpu(pdu->scid));
 }
 
 static void sig_move_chan_req(const struct l2cap_frame *frame)
@@ -995,10 +998,10 @@ static void sig_conn_param_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_pdu_conn_param_req *pdu = frame->data;
 
-	print_field("Min interval: %d", btohs(pdu->min_interval));
-	print_field("Max interval: %d", btohs(pdu->max_interval));
-	print_field("Slave latency: %d", btohs(pdu->latency));
-	print_field("Timeout multiplier: %d", btohs(pdu->timeout));
+	print_field("Min interval: %d", le16_to_cpu(pdu->min_interval));
+	print_field("Max interval: %d", le16_to_cpu(pdu->max_interval));
+	print_field("Slave latency: %d", le16_to_cpu(pdu->latency));
+	print_field("Timeout multiplier: %d", le16_to_cpu(pdu->timeout));
 }
 
 static void sig_conn_param_rsp(const struct l2cap_frame *frame)
@@ -1014,11 +1017,11 @@ static void sig_le_conn_req(const struct l2cap_frame *frame)
 
 	print_psm(pdu->psm);
 	print_cid("Source", pdu->scid);
-	print_field("MTU: %u", btohs(pdu->mtu));
-	print_field("MPS: %u", btohs(pdu->mps));
-	print_field("Credits: %u", btohs(pdu->credits));
+	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
+	print_field("MPS: %u", le16_to_cpu(pdu->mps));
+	print_field("Credits: %u", le16_to_cpu(pdu->credits));
 
-	assign_scid(frame, btohs(pdu->scid), btohs(pdu->psm), 0);
+	assign_scid(frame, le16_to_cpu(pdu->scid), le16_to_cpu(pdu->psm), 0);
 }
 
 static void sig_le_conn_rsp(const struct l2cap_frame *frame)
@@ -1026,12 +1029,12 @@ static void sig_le_conn_rsp(const struct l2cap_frame *frame)
 	const struct bt_l2cap_pdu_le_conn_rsp *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
-	print_field("MTU: %u", btohs(pdu->mtu));
-	print_field("MPS: %u", btohs(pdu->mps));
-	print_field("Credits: %u", btohs(pdu->credits));
+	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
+	print_field("MPS: %u", le16_to_cpu(pdu->mps));
+	print_field("Credits: %u", le16_to_cpu(pdu->credits));
 	print_conn_result(pdu->result);
 
-	/*assign_dcid(frame, btohs(pdu->dcid), btohs(pdu->scid));*/
+	/*assign_dcid(frame, le16_to_cpu(pdu->dcid), le16_to_cpu(pdu->scid));*/
 }
 
 static void sig_le_flowctl_creds(const struct l2cap_frame *frame)
@@ -1039,7 +1042,7 @@ static void sig_le_flowctl_creds(const struct l2cap_frame *frame)
 	const struct bt_l2cap_pdu_le_flowctl_creds *pdu = frame->data;
 
 	print_cid("Source", pdu->cid);
-	print_field("Credits: %u", btohs(pdu->credits));
+	print_field("Credits: %u", le16_to_cpu(pdu->credits));
 }
 
 struct sig_opcode_data {
@@ -1126,7 +1129,7 @@ static void bredr_sig_packet(uint16_t index, bool in, uint16_t handle,
 			return;
 		}
 
-		len = btohs(hdr->len);
+		len = le16_to_cpu(hdr->len);
 
 		data += 4;
 		size -= 4;
@@ -1214,7 +1217,7 @@ static void le_sig_packet(uint16_t index, bool in, uint16_t handle,
 		return;
 	}
 
-	len = btohs(hdr->len);
+	len = le16_to_cpu(hdr->len);
 
 	data += 4;
 	size -= 4;
@@ -1286,7 +1289,7 @@ static void connless_packet(uint16_t index, bool in, uint16_t handle,
 		return;
 	}
 
-	psm = btohs(hdr->psm);
+	psm = le16_to_cpu(hdr->psm);
 
 	data += 2;
 	size -= 2;
@@ -1364,23 +1367,25 @@ static void amp_cmd_reject(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_amp_cmd_reject *pdu = frame->data;
 
-	print_field("Reason: 0x%4.4x", btohs(pdu->reason));
+	print_field("Reason: 0x%4.4x", le16_to_cpu(pdu->reason));
 }
 
 static void amp_discover_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_amp_discover_req *pdu = frame->data;
 
-	print_field("MTU/MPS size: %d", btohs(pdu->size));
-	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
+	print_field("MTU/MPS size: %d", le16_to_cpu(pdu->size));
+	print_field("Extended feature mask: 0x%4.4x",
+					le16_to_cpu(pdu->features));
 }
 
 static void amp_discover_rsp(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_amp_discover_rsp *pdu = frame->data;
 
-	print_field("MTU/MPS size: %d", btohs(pdu->size));
-	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
+	print_field("MTU/MPS size: %d", le16_to_cpu(pdu->size));
+	print_field("Extended feature mask: 0x%4.4x",
+					le16_to_cpu(pdu->features));
 
 	print_controller_list(frame->data + 4, frame->size - 4);
 }
@@ -1422,12 +1427,13 @@ static void amp_get_info_rsp(const struct l2cap_frame *frame)
 
 	print_field("Status: %s (0x%2.2x)", str, pdu->status);
 
-	print_field("Total bandwidth: %d kbps", btohl(pdu->total_bw));
-	print_field("Max guaranteed bandwidth: %d kbps", btohl(pdu->max_bw));
-	print_field("Min latency: %d", btohl(pdu->min_latency));
+	print_field("Total bandwidth: %d kbps", le32_to_cpu(pdu->total_bw));
+	print_field("Max guaranteed bandwidth: %d kbps",
+						le32_to_cpu(pdu->max_bw));
+	print_field("Min latency: %d", le32_to_cpu(pdu->min_latency));
 
-	print_field("PAL capabilities: 0x%4.4x", btohs(pdu->pal_cap));
-	print_field("Max ASSOC length: %d", btohs(pdu->max_assoc_len));
+	print_field("PAL capabilities: 0x%4.4x", le16_to_cpu(pdu->pal_cap));
+	print_field("Max ASSOC length: %d", le16_to_cpu(pdu->max_assoc_len));
 }
 
 static void amp_get_assoc_req(const struct l2cap_frame *frame)
@@ -1840,7 +1846,7 @@ static void att_error_response(const struct l2cap_frame *frame)
 
 	print_field("%s (0x%2.2x)", att_opcode_to_str(pdu->request),
 							pdu->request);
-	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
 	print_field("Error: %s (0x%2.2x)", str, pdu->error);
 }
 
@@ -1848,14 +1854,14 @@ static void att_exchange_mtu_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_exchange_mtu_req *pdu = frame->data;
 
-	print_field("Client RX MTU: %d", btohs(pdu->mtu));
+	print_field("Client RX MTU: %d", le16_to_cpu(pdu->mtu));
 }
 
 static void att_exchange_mtu_rsp(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_exchange_mtu_rsp *pdu = frame->data;
 
-	print_field("Server RX MTU: %d", btohs(pdu->mtu));
+	print_field("Server RX MTU: %d", le16_to_cpu(pdu->mtu));
 }
 
 static void att_find_info_req(const struct l2cap_frame *frame)
@@ -1959,7 +1965,7 @@ static void att_read_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_read_req *pdu = frame->data;
 
-	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
 }
 
 static void att_read_rsp(const struct l2cap_frame *frame)
@@ -2052,7 +2058,7 @@ static void att_handle_value_notify(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_notify *pdu = frame->data;
 
-	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
@@ -2060,7 +2066,7 @@ static void att_handle_value_ind(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_ind *pdu = frame->data;
 
-	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
@@ -2432,8 +2438,8 @@ static void smp_master_ident(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_smp_master_ident *pdu = frame->data;
 
-	print_field("EDIV: 0x%4.4x", btohs(pdu->ediv));
-	print_field("Rand: 0x%16.16" PRIx64, btohll(pdu->rand));
+	print_field("EDIV: 0x%4.4x", le16_to_cpu(pdu->ediv));
+	print_field("Rand: 0x%16.16" PRIx64, le64_to_cpu(pdu->rand));
 }
 
 static void smp_ident_info(const struct l2cap_frame *frame)
@@ -2640,8 +2646,8 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 			return;
 		}
 
-		len = btohs(hdr->len);
-		cid = btohs(hdr->cid);
+		len = le16_to_cpu(hdr->len);
+		cid = le16_to_cpu(hdr->cid);
 
 		data += sizeof(*hdr);
 		size -= sizeof(*hdr);
@@ -2715,8 +2721,8 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 			return;
 		}
 
-		len = btohs(hdr->len);
-		cid = btohs(hdr->cid);
+		len = le16_to_cpu(hdr->len);
+		cid = le16_to_cpu(hdr->cid);
 
 		data += sizeof(*hdr);
 		size -= sizeof(*hdr);

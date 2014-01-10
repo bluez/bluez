@@ -30,6 +30,7 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include "src/shared/util.h"
 #include "display.h"
 #include "packet.h"
 #include "crc.h"
@@ -328,7 +329,7 @@ void ll_packet(uint16_t frequency, const void *data, uint8_t size)
 		return;
 	}
 
-	access_addr = btohl(hdr->access_addr);
+	access_addr = le32_to_cpu(hdr->access_addr);
 
 	pdu_data = data + sizeof(*hdr);
 	pdu_len = size - sizeof(*hdr) - 3;
@@ -380,11 +381,11 @@ static void conn_update_req(const void *data, uint8_t size)
 	const struct bt_ll_conn_update_req *pdu = data;
 
 	print_field("Transmit window size: %u", pdu->win_size);
-	print_field("Transmit window offset: %u", btohs(pdu->win_offset));
-	print_field("Connection interval: %u", btohs(pdu->interval));
-	print_field("Connection slave latency: %u", btohs(pdu->latency));
-	print_field("Connection supervision timeout: %u", btohs(pdu->timeout));;
-	print_field("Connection instant: %u", btohs(pdu->instant));
+	print_field("Transmit window offset: %u", le16_to_cpu(pdu->win_offset));
+	print_field("Connection interval: %u", le16_to_cpu(pdu->interval));
+	print_field("Connection slave latency: %u", le16_to_cpu(pdu->latency));
+	print_field("Connection supervision timeout: %u", le16_to_cpu(pdu->timeout));
+	print_field("Connection instant: %u", le16_to_cpu(pdu->instant));
 }
 
 static void channel_map_req(const void *data, uint8_t size)
@@ -392,7 +393,7 @@ static void channel_map_req(const void *data, uint8_t size)
 	const struct bt_ll_channel_map_req *pdu = data;
 
 	packet_print_channel_map_ll(pdu->map);
-	print_field("Connection instant: %u", btohs(pdu->instant));
+	print_field("Connection instant: %u", le16_to_cpu(pdu->instant));
 }
 
 static void terminate_ind(const void *data, uint8_t size)
@@ -406,18 +407,18 @@ static void enc_req(const void *data, uint8_t size)
 {
 	const struct bt_ll_enc_req *pdu = data;
 
-	print_field("Rand: 0x%16.16" PRIx64, btohll(pdu->rand));
-	print_field("EDIV: 0x%4.4x", btohs(pdu->ediv));
-	print_field("SKD (master): 0x%16.16" PRIx64, btohll(pdu->skd));
-	print_field("IV (master): 0x%8.8x", btohl(pdu->iv));
+	print_field("Rand: 0x%16.16" PRIx64, le64_to_cpu(pdu->rand));
+	print_field("EDIV: 0x%4.4x", le16_to_cpu(pdu->ediv));
+	print_field("SKD (master): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
+	print_field("IV (master): 0x%8.8x", le32_to_cpu(pdu->iv));
 }
 
 static void enc_rsp(const void *data, uint8_t size)
 {
 	const struct bt_ll_enc_rsp *pdu = data;
 
-	print_field("SKD (slave): 0x%16.16" PRIx64, btohll(pdu->skd));
-	print_field("IV (slave): 0x%8.8x", btohl(pdu->iv));
+	print_field("SKD (slave): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
+	print_field("IV (slave): 0x%8.8x", le32_to_cpu(pdu->iv));
 }
 
 static const char *opcode_to_string(uint8_t opcode);
@@ -449,8 +450,8 @@ static void version_ind(const void *data, uint8_t size)
 	const struct bt_ll_version_ind *pdu = data;
 
 	packet_print_version("Version", pdu->version,
-				"Subversion", btohs(pdu->subversion));
-	packet_print_company("Company", btohs(pdu->company));
+				"Subversion", le16_to_cpu(pdu->subversion));
+	packet_print_company("Company", le16_to_cpu(pdu->company));
 }
 
 static void reject_ind(const void *data, uint8_t size)
