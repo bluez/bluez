@@ -547,10 +547,10 @@ static int audio_open(const hw_module_t *module, const char *name,
 	*device = &a2dp_dev->dev.common;
 
 	err = pthread_create(&ipc_th, NULL, ipc_handler, NULL);
-	if (err < 0) {
+	if (err) {
 		ipc_th = 0;
 		error("audio: Failed to start Audio IPC thread: %d (%s)",
-							-err, strerror(-err));
+							err, strerror(err));
 		return (-err);
 	}
 

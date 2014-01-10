@@ -284,10 +284,10 @@ bool hal_ipc_init(void)
 	close(sk);
 
 	err = pthread_create(&notif_th, NULL, notification_handler, NULL);
-	if (err < 0) {
+	if (err) {
 		notif_th = 0;
-		error("Failed to start notification thread: %d (%s)", -err,
-							strerror(-err));
+		error("Failed to start notification thread: %d (%s)", err,
+							strerror(err));
 		close(cmd_sk);
 		cmd_sk = -1;
 		close(notif_sk);
