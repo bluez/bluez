@@ -291,29 +291,23 @@ uint16_t dec_find_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	if (len < min_len)
 		return 0;
 
+	/* Attribute Opcode (1 octet) */
 	if (pdu[0] != ATT_OP_FIND_BY_TYPE_REQ)
 		return 0;
 
-	/* First requested handle number */
-	if (start)
-		*start = att_get_u16(&pdu[1]);
-
-	/* Last requested handle number */
-	if (end)
-		*end = att_get_u16(&pdu[3]);
-
-	/* Always UUID16 */
-	if (uuid)
-		*uuid = att_get_uuid16(&pdu[5]);
+	/* First requested handle number (2 octets) */
+	*start = att_get_u16(&pdu[1]);
+	/* Last requested handle number (2 octets) */
+	*end = att_get_u16(&pdu[3]);
+	/* 16-bit UUID to find (2 octets) */
+	*uuid = att_get_uuid16(&pdu[5]);
 
 	valuelen = len - min_len;
+	*vlen = valuelen;
 
 	/* Attribute value to find */
-	if (valuelen > 0 && value)
+	if (valuelen > 0)
 		memcpy(value, pdu + min_len, valuelen);
-
-	if (vlen)
-		*vlen = valuelen;
 
 	return len;
 }
