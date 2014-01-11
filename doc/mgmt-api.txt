@@ -1028,8 +1028,8 @@ Read Local Out Of Band Data Command
 	This command can only be used when the controller is powered.
 
 	If Secure Connections support is enabled, then this command
-	will P-192 versions of hash and randomizer as well as P-256
-	versions of both.
+	will return P-192 versions of hash and randomizer as well as
+	P-256 versions of both.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -1071,7 +1071,7 @@ Add Remote Out Of Band Data Command
 	To only provide the P-256 versions of hash and randomizer,
 	it is valid to leave both P-192 fields as zero values. If
 	Secure Connections is disabled, then of course this is the
-	same as not provided any data at all.
+	same as not providing any data at all.
 
 	This command generates a Command Complete event on success
 	or failure.
