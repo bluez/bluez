@@ -235,11 +235,13 @@ static void request_complete(struct mgmt *mgmt, uint8_t status,
 
 	request = queue_remove_if(mgmt->pending_list,
 					match_request_opcode_index, &match);
+	if (request) {
+		if (request->callback)
+			request->callback(status, length, param,
+							request->user_data);
 
-	if (request->callback)
-		request->callback(status, length, param, request->user_data);
-
-	destroy_request(request);
+		destroy_request(request);
+	}
 
 	if (mgmt->destroyed)
 		return;
