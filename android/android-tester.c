@@ -807,9 +807,9 @@ static const struct generic_data bluetooth_enable_success_test = {
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
-static const struct generic_data bluetooth_enable_done_test = {
+static const struct generic_data bluetooth_enable_success2_test = {
 	.expected_hal_cb.adapter_properties_cb = check_count_properties_cb,
-	.expected_adapter_status = BT_STATUS_DONE,
+	.expected_adapter_status = BT_STATUS_SUCCESS,
 	.expected_properties_num = 8,
 	.expected_properties = enable_done_props,
 };
@@ -1147,11 +1147,11 @@ static struct priority_property setprop_scanmode_none_props[] = {
 	},
 };
 
-static const struct generic_data bluetooth_setprop_scanmode_none_done_test = {
+static const struct generic_data bluetooth_setprop_scanmode_none_success2_test = {
 	.expected_hal_cb.adapter_properties_cb = check_count_properties_cb,
 	.expected_properties_num = 1,
 	.expected_properties = setprop_scanmode_none_props,
-	.expected_adapter_status = BT_STATUS_DONE,
+	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
 static const struct generic_data bluetooth_discovery_start_success_test = {
@@ -1161,14 +1161,14 @@ static const struct generic_data bluetooth_discovery_start_success_test = {
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
-static const struct generic_data bluetooth_discovery_start_done_test = {
+static const struct generic_data bluetooth_discovery_start_success2_test = {
 	.expected_hal_cb.discovery_state_changed_cb = discovery_start_done_cb,
 	.expected_cb_count = 1,
-	.expected_adapter_status = BT_STATUS_DONE,
+	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
-static const struct generic_data bluetooth_discovery_stop_done_test = {
-	.expected_adapter_status = BT_STATUS_DONE,
+static const struct generic_data bluetooth_discovery_stop_success2_test = {
+	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
 static const struct generic_data bluetooth_discovery_stop_success_test = {
@@ -2169,8 +2169,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Bluetooth Enable - Success", &bluetooth_enable_success_test,
 					setup_base, test_enable, teardown);
 
-	test_bredrle("Bluetooth Enable - Done", &bluetooth_enable_done_test,
-			setup_enabled_adapter, test_enable_done, teardown);
+	test_bredrle("Bluetooth Enable - Success 2",
+			&bluetooth_enable_success2_test, setup_enabled_adapter,
+			test_enable_done, teardown);
 
 	test_bredrle("Bluetooth Disable - Success", &bluetooth_disable_success_test,
 			setup_enabled_adapter, test_disable, teardown);
@@ -2270,8 +2271,8 @@ int main(int argc, char *argv[])
 				setup_enabled_adapter,
 				test_getprop_bondeddev_success, teardown);
 
-	test_bredrle("Bluetooth Set SCAN_MODE NONE - Done",
-				&bluetooth_setprop_scanmode_none_done_test,
+	test_bredrle("Bluetooth Set SCAN_MODE NONE - Success 2",
+				&bluetooth_setprop_scanmode_none_success2_test,
 				setup_enabled_adapter,
 				test_setprop_scanmode_none_done, teardown);
 
@@ -2280,8 +2281,8 @@ int main(int argc, char *argv[])
 				setup_enabled_adapter,
 				test_discovery_start_success, teardown);
 
-	test_bredrle("Bluetooth BREDR Discovery Start - Done",
-				&bluetooth_discovery_start_done_test,
+	test_bredrle("Bluetooth BREDR Discovery Start - Success 2",
+				&bluetooth_discovery_start_success2_test,
 				setup_enabled_adapter,
 				test_discovery_start_done, teardown);
 
@@ -2290,8 +2291,8 @@ int main(int argc, char *argv[])
 				setup_enabled_adapter,
 				test_discovery_stop_success, teardown);
 
-	test_bredrle("Bluetooth BREDR Discovery Stop - Done",
-				&bluetooth_discovery_stop_done_test,
+	test_bredrle("Bluetooth BREDR Discovery Stop - Success 2",
+				&bluetooth_discovery_stop_success2_test,
 				setup_enabled_adapter,
 				test_discovery_stop_done, teardown);
 
