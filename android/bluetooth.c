@@ -1794,6 +1794,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (missing_settings & MGMT_SETTING_SSP)
 		set_mode(MGMT_OP_SET_SSP, 0x01);
 
+	if (missing_settings & MGMT_SETTING_SECURE_CONN)
+		set_mode(MGMT_OP_SET_SECURE_CONN, 0x01);
+
 	if (missing_settings & MGMT_SETTING_PAIRABLE)
 		set_mode(MGMT_OP_SET_PAIRABLE, 0x01);
 
