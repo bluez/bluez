@@ -51,6 +51,7 @@ struct mgmt {
 	struct queue *notify_list;
 	unsigned int next_request_id;
 	unsigned int next_notify_id;
+	bool need_notify_cleanup;
 	bool in_notify;
 	bool destroyed;
 	void *buf;
@@ -287,8 +288,11 @@ static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 
 	mgmt->in_notify = false;
 
-	queue_remove_all(mgmt->notify_list, match_notify_removed, NULL,
-							destroy_notify);
+	if (mgmt->need_notify_cleanup) {
+		queue_remove_all(mgmt->notify_list, match_notify_removed,
+							NULL, destroy_notify);
+		mgmt->need_notify_cleanup = false;
+	}
 }
 
 static void read_watch_destroy(void *user_data)
@@ -772,6 +776,7 @@ bool mgmt_unregister(struct mgmt *mgmt, unsigned int id)
 	}
 
 	notify->removed = true;
+	mgmt->need_notify_cleanup = true;
 
 	return true;
 }
@@ -781,10 +786,11 @@ bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index)
 	if (!mgmt)
 		return false;
 
-	if (mgmt->in_notify)
+	if (mgmt->in_notify) {
 		queue_foreach(mgmt->notify_list, mark_notify_removed,
 							UINT_TO_PTR(index));
-	else
+		mgmt->need_notify_cleanup = true;
+	} else
 		queue_remove_all(mgmt->notify_list, match_notify_index,
 					UINT_TO_PTR(index), destroy_notify);
 
@@ -796,10 +802,11 @@ bool mgmt_unregister_all(struct mgmt *mgmt)
 	if (!mgmt)
 		return false;
 
-	if (mgmt->in_notify)
+	if (mgmt->in_notify) {
 		queue_foreach(mgmt->notify_list, mark_notify_removed,
 						UINT_TO_PTR(MGMT_INDEX_NONE));
-	else
+		mgmt->need_notify_cleanup = true;
+	} else
 		queue_remove_all(mgmt->notify_list, NULL, NULL, destroy_notify);
 
 	return true;
