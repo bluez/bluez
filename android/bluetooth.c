@@ -527,7 +527,7 @@ static void store_link_key(const bdaddr_t *dst, const uint8_t *key,
 
 	g_key_file_set_string(key_file, addr, "LinkKey", key_str);
 	g_key_file_set_integer(key_file, addr, "LinkKeyType", type);
-	g_key_file_set_integer(key_file, addr, "LinkKeyPINLength", pin_length);
+	g_key_file_set_integer(key_file, addr, "LinkKeyPinLength", pin_length);
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	g_file_set_contents(ANDROID_STORAGEDIR"/devices", data, length, NULL);
@@ -1665,7 +1665,7 @@ static struct mgmt_link_key_info *get_key_info(GKeyFile *key_file, const char *p
 	info->type = g_key_file_get_integer(key_file, peer, "LinkKeyType",
 									NULL);
 	info->pin_len = g_key_file_get_integer(key_file, peer,
-						"LinkKeyPINLength", NULL);
+						"LinkKeyPinLength", NULL);
 
 failed:
 	g_free(str);
