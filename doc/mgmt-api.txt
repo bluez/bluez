@@ -1380,8 +1380,12 @@ Set Secure Connections Command
 
 	This command is used to enable/disable Secure Connections
 	support for a controller. The allowed values for the
-	Secure_Connections command parameter are 0x00 and 0x01. All
-	other values will return Invalid Parameters.
+	Secure_Connections command parameter are 0x00, 0x01 and 0x02.
+	All other values will return Invalid Parameters.
+
+	The value 0x00 disables Secure Connections, the value 0x01
+	enables Secure Connections and the value 0x02 enables Secure
+	Connections Only mode.
 
 	This command is only available for BR/EDR capable controllers
 	supporting the core specification version 4.1 or greater
