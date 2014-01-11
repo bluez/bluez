@@ -271,8 +271,8 @@ done:
 	att_data_list_free(list);
 }
 
-static void gatt_characteristic_cb(GSList *characteristics, guint8 status,
-							gpointer user_data)
+static void gatt_characteristic_cb(uint8_t status, GSList *characteristics,
+								void *user_data)
 {
 	struct gas *gas = user_data;
 	struct gatt_char *chr;

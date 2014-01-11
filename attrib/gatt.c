@@ -90,9 +90,9 @@ static void isd_unref(struct included_discovery *isd)
 		return;
 
 	if (isd->err)
-		isd->cb(NULL, isd->err, isd->user_data);
+		isd->cb(isd->err, NULL, isd->user_data);
 	else
-		isd->cb(isd->includes, isd->err, isd->user_data);
+		isd->cb(isd->err, isd->includes, isd->user_data);
 
 	g_slist_free_full(isd->includes, g_free);
 	g_attrib_unref(isd->attrib);
@@ -183,7 +183,7 @@ static void primary_by_uuid_cb(guint8 status, const guint8 *ipdu,
 	return;
 
 done:
-	dp->cb(dp->primaries, err, dp->user_data);
+	dp->cb(err, dp->primaries, dp->user_data);
 	discover_primary_free(dp);
 }
 
@@ -252,7 +252,7 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	}
 
 done:
-	dp->cb(dp->primaries, err, dp->user_data);
+	dp->cb(err, dp->primaries, dp->user_data);
 	discover_primary_free(dp);
 }
 
@@ -517,7 +517,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 done:
 	err = (dc->characteristics ? 0 : err);
 
-	dc->cb(dc->characteristics, err, dc->user_data);
+	dc->cb(err, dc->characteristics, dc->user_data);
 	discover_char_free(dc);
 }
 

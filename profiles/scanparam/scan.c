@@ -132,8 +132,8 @@ done:
 	att_data_list_free(list);
 }
 
-static void refresh_discovered_cb(GSList *chars, guint8 status,
-						gpointer user_data)
+static void refresh_discovered_cb(uint8_t status, GSList *chars,
+								void *user_data)
 {
 	struct scan *scan = user_data;
 	struct gatt_char *chr;
@@ -165,8 +165,7 @@ static void refresh_discovered_cb(GSList *chars, guint8 status,
 					discover_descriptor_cb, user_data);
 }
 
-static void iwin_discovered_cb(GSList *chars, guint8 status,
-						gpointer user_data)
+static void iwin_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 {
 	struct scan *scan = user_data;
 	struct gatt_char *chr;

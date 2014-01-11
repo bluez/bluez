@@ -283,8 +283,8 @@ static void discover_descriptor(GAttrib *attrib, uint16_t start, uint16_t end,
 								ddcb_data);
 }
 
-static void external_service_char_cb(GSList *chars, guint8 status,
-							gpointer user_data)
+static void external_service_char_cb(uint8_t status, GSList *chars,
+								void *user_data)
 {
 	struct hog_device *hogdev = user_data;
 	struct gatt_primary *prim = hogdev->hog_primary;
@@ -463,7 +463,7 @@ static void proto_mode_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 								hogdev->id);
 }
 
-static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
+static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 {
 	struct hog_device *hogdev = user_data;
 	struct gatt_primary *prim = hogdev->hog_primary;

@@ -180,7 +180,7 @@ static void disconnect_io()
 	set_state(STATE_DISCONNECTED);
 }
 
-static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
+static void primary_all_cb(uint8_t status, GSList *services, void *user_data)
 {
 	GSList *l;
 
@@ -202,8 +202,7 @@ static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
 	}
 }
 
-static void primary_by_uuid_cb(GSList *ranges, guint8 status,
-							gpointer user_data)
+static void primary_by_uuid_cb(uint8_t status, GSList *ranges, void *user_data)
 {
 	GSList *l;
 
@@ -225,7 +224,7 @@ static void primary_by_uuid_cb(GSList *ranges, guint8 status,
 	}
 }
 
-static void included_cb(GSList *includes, guint8 status, gpointer user_data)
+static void included_cb(uint8_t status, GSList *includes, void *user_data)
 {
 	GSList *l;
 
@@ -249,7 +248,7 @@ static void included_cb(GSList *includes, guint8 status, gpointer user_data)
 	}
 }
 
-static void char_cb(GSList *characteristics, guint8 status, gpointer user_data)
+static void char_cb(uint8_t status, GSList *characteristics, void *user_data)
 {
 	GSList *l;
 
