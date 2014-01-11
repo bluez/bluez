@@ -723,15 +723,13 @@ uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(opcode) +
 						sizeof(handle) + sizeof(status);
-	uint16_t u16;
 
 	if (len < min_len)
 		return 0;
 
-	u16 = htobs(handle);
 	pdu[0] = ATT_OP_ERROR;
 	pdu[1] = opcode;
-	memcpy(&pdu[2], &u16, sizeof(u16));
+	att_put_u16(handle, &pdu[2]);
 	pdu[4] = status;
 
 	return min_len;
