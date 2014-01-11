@@ -334,10 +334,19 @@ GSList *dec_find_by_type_resp(const uint8_t *pdu, size_t len)
 	GSList *matches;
 	off_t offset;
 
+	/* PDU should contain at least:
+	 * - Attribute Opcode (1 octet)
+	 * - Handles Information List (at least one entry):
+	 *   - Found Attribute Handle (2 octets)
+	 *   - Group End Handle (2 octets) */
 	if (pdu == NULL || len < 5)
 		return NULL;
 
 	if (pdu[0] != ATT_OP_FIND_BY_TYPE_RESP)
+		return NULL;
+
+	/* Reject incomplete Handles Information List */
+	if ((len - 1) % 4)
 		return NULL;
 
 	for (offset = 1, matches = NULL;
