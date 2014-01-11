@@ -944,10 +944,12 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 	io = g_attrib_get_channel(channel->attrib);
 
 	bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &imtu, BT_IO_OPT_INVALID);
-
-	if (gerr)
-		return enc_error_resp(ATT_OP_MTU_REQ, 0,
-					ATT_ECODE_UNLIKELY, pdu, len);
+	if (gerr) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		return enc_error_resp(ATT_OP_MTU_REQ, 0, ATT_ECODE_UNLIKELY,
+								pdu, len);
+	}
 
 	channel->mtu = MIN(mtu, imtu);
 	g_attrib_set_mtu(channel->attrib, channel->mtu);
