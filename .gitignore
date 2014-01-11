@@ -59,6 +59,7 @@ tools/amptest
 tools/sdptool
 tools/avtest
 tools/bdaddr
+tools/seq2bseq
 tools/btiotest
 tools/mpris-player
 tools/bluetooth-player
