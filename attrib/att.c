@@ -454,7 +454,24 @@ struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, size_t len)
 	if (pdu[0] != ATT_OP_READ_BY_TYPE_RESP)
 		return NULL;
 
+	/* PDU must contain at least:
+	 * - Attribute Opcode (1 octet)
+	 * - Length (1 octet)
+	 * - Attribute Data List (at least one entry):
+	 *   - Attribute Handle (2 octets)
+	 *   - Attribute Value (at least 1 octet) */
+	if (len < 5)
+		return NULL;
+
 	elen = pdu[1];
+	/* Minimum Attribute Data List size */
+	if (elen < 3)
+		return NULL;
+
+	/* Reject incomplete Attribute Data List */
+	if ((len - 2) % elen)
+		return NULL;
+
 	num = (len - 2) / elen;
 	list = att_data_list_alloc(num, elen);
 	if (list == NULL)
