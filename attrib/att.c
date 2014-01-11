@@ -281,14 +281,10 @@ uint16_t dec_find_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 						uint16_t *end, bt_uuid_t *uuid,
 						uint8_t *value, size_t *vlen)
 {
-	size_t valuelen;
-	uint16_t min_len = sizeof(pdu[0]) + sizeof(*start) +
-						sizeof(*end) + sizeof(uint16_t);
-
 	if (pdu == NULL)
 		return 0;
 
-	if (len < min_len)
+	if (len < 7)
 		return 0;
 
 	/* Attribute Opcode (1 octet) */
@@ -302,12 +298,10 @@ uint16_t dec_find_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	/* 16-bit UUID to find (2 octets) */
 	*uuid = att_get_uuid16(&pdu[5]);
 
-	valuelen = len - min_len;
-	*vlen = valuelen;
-
 	/* Attribute value to find */
-	if (valuelen > 0)
-		memcpy(value, pdu + min_len, valuelen);
+	*vlen = len - 7;
+	if (*vlen > 0)
+		memcpy(value, pdu + 7, *vlen);
 
 	return len;
 }
