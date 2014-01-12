@@ -270,19 +270,19 @@ done:
 	g_strfreev(uuids);
 }
 
-static int bdaddr_cmp(gconstpointer a, gconstpointer b)
+static int device_match(gconstpointer a, gconstpointer b)
 {
-	const bdaddr_t *bda = a;
-	const bdaddr_t *bdb = b;
+	const struct device *dev = a;
+	const bdaddr_t *bdaddr = b;
 
-	return bacmp(bdb, bda);
+	return bacmp(&dev->bdaddr, bdaddr);
 }
 
 static struct device *find_device(const bdaddr_t *bdaddr)
 {
 	GSList *l;
 
-	l = g_slist_find_custom(devices, bdaddr, bdaddr_cmp);
+	l = g_slist_find_custom(devices, bdaddr, device_match);
 	if (l)
 		return l->data;
 
