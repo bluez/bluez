@@ -30,10 +30,11 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include "monitor/bt.h"
+#include "src/shared/io.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "monitor/mainloop.h"
-#include "monitor/bt.h"
 
 #include "hci.h"
 
@@ -56,8 +57,7 @@ struct hci_filter {
 
 struct bt_hci {
 	int ref_count;
-	int fd;
-	bool close_on_unref;
+	struct io *io;
 	bool writer_active;
 	uint8_t num_cmds;
 	unsigned int next_cmd_id;
@@ -112,7 +112,7 @@ static void send_command(struct bt_hci *hci, uint16_t opcode,
 	uint8_t type = BT_H4_CMD_PKT;
 	struct bt_hci_cmd_hdr hdr;
 	struct iovec iov[3];
-	int iovcnt;
+	int fd, iovcnt;
 
 	if (hci->num_cmds < 1)
 		return;
@@ -132,10 +132,30 @@ static void send_command(struct bt_hci *hci, uint16_t opcode,
 	} else
 		iovcnt = 2;
 
-	if (writev(hci->fd, iov, iovcnt) < 0)
+	fd = io_get_fd(hci->io);
+	if (fd < 0)
+		return;
+
+	if (writev(fd, iov, iovcnt) < 0)
 		return;
 
 	hci->num_cmds--;
+}
+
+static bool io_write_callback(struct io *io, void *user_data)
+{
+	struct bt_hci *hci = user_data;
+	struct cmd *cmd;
+
+	cmd = queue_pop_head(hci->cmd_queue);
+	if (cmd) {
+		send_command(hci, cmd->opcode, cmd->data, cmd->size);
+		queue_push_tail(hci->rsp_queue, cmd);
+	}
+
+	hci->writer_active = false;
+
+	return false;
 }
 
 static void wakeup_writer(struct bt_hci *hci)
@@ -149,21 +169,10 @@ static void wakeup_writer(struct bt_hci *hci)
 	if (queue_isempty(hci->cmd_queue))
 		return;
 
-	if (mainloop_modify_fd(hci->fd, EPOLLIN | EPOLLOUT) < 0)
+	if (!io_set_write_handler(hci->io, io_write_callback, hci, NULL))
 		return;
 
 	hci->writer_active = true;
-}
-
-static void suspend_writer(struct bt_hci *hci)
-{
-	if (!hci->writer_active)
-		return;
-
-	if (mainloop_modify_fd(hci->fd, EPOLLIN) < 0)
-		return;
-
-	hci->writer_active = false;
 }
 
 static bool match_cmd_opcode(const void *a, const void *b)
@@ -246,40 +255,31 @@ static void process_event(struct bt_hci *hci, const void *data, size_t size)
 	}
 }
 
-static void io_callback(int fd, uint32_t events, void *user_data)
+static bool io_read_callback(struct io *io, void *user_data)
 {
 	struct bt_hci *hci = user_data;
+	uint8_t buf[512];
+	ssize_t len;
+	int fd;
 
-	if (events & (EPOLLERR | EPOLLHUP))
-		return;
+	fd = io_get_fd(hci->io);
+	if (fd < 0)
+		return false;
 
-	if (events & EPOLLIN) {
-		uint8_t buf[512];
-		ssize_t len;
+	len = read(fd, buf, sizeof(buf));
+	if (len < 0)
+		return false;
 
-		len = read(hci->fd, buf, sizeof(buf));
-		if (len < 0)
-			return;
+	if (len < 1)
+		return true;
 
-		if (len < 1)
-			return;
-
-		switch (buf[0]) {
-		case BT_H4_EVT_PKT:
-			process_event(hci, buf + 1, len - 1);
-			break;
-		}
-	} else if (events & EPOLLOUT) {
-		struct cmd *cmd;
-
-		cmd = queue_pop_head(hci->cmd_queue);
-		if (cmd) {
-			send_command(hci, cmd->opcode, cmd->data, cmd->size);
-			queue_push_tail(hci->rsp_queue, cmd);
-		}
-
-		suspend_writer(hci);
+	switch (buf[0]) {
+	case BT_H4_EVT_PKT:
+		process_event(hci, buf + 1, len - 1);
+		break;
 	}
+
+	return true;
 }
 
 struct bt_hci *bt_hci_new(int fd)
@@ -293,8 +293,12 @@ struct bt_hci *bt_hci_new(int fd)
 	if (!hci)
 		return NULL;
 
-	hci->fd = fd;
-	hci->close_on_unref = false;
+	hci->io = io_new(fd);
+	if (!hci->io) {
+		free(hci);
+		return NULL;
+	}
+
 	hci->writer_active = false;
 	hci->num_cmds = 1;
 	hci->next_cmd_id = 1;
@@ -302,6 +306,7 @@ struct bt_hci *bt_hci_new(int fd)
 
 	hci->cmd_queue = queue_new();
 	if (!hci->cmd_queue) {
+		io_destroy(hci->io);
 		free(hci);
 		return NULL;
 	}
@@ -309,6 +314,7 @@ struct bt_hci *bt_hci_new(int fd)
 	hci->rsp_queue = queue_new();
 	if (!hci->rsp_queue) {
 		queue_destroy(hci->cmd_queue, NULL);
+		io_destroy(hci->io);
 		free(hci);
 		return NULL;
 	}
@@ -317,14 +323,16 @@ struct bt_hci *bt_hci_new(int fd)
 	if (!hci->evt_list) {
 		queue_destroy(hci->rsp_queue, NULL);
 		queue_destroy(hci->cmd_queue, NULL);
+		io_destroy(hci->io);
 		free(hci);
 		return NULL;
 	}
 
-	if (mainloop_add_fd(hci->fd, EPOLLIN, io_callback, hci, NULL) < 0) {
+	if (!io_set_read_handler(hci->io, io_read_callback, hci, NULL)) {
 		queue_destroy(hci->evt_list, NULL);
 		queue_destroy(hci->rsp_queue, NULL);
 		queue_destroy(hci->cmd_queue, NULL);
+		io_destroy(hci->io);
 		free(hci);
 		return NULL;
 	}
@@ -428,10 +436,7 @@ void bt_hci_unref(struct bt_hci *hci)
 	queue_destroy(hci->cmd_queue, cmd_free);
 	queue_destroy(hci->rsp_queue, cmd_free);
 
-	mainloop_remove_fd(hci->fd);
-
-	if (hci->close_on_unref)
-		close(hci->fd);
+	io_destroy(hci->io);
 
 	free(hci);
 }
@@ -441,9 +446,7 @@ bool bt_hci_set_close_on_unref(struct bt_hci *hci, bool do_close)
 	if (!hci)
 		return false;
 
-	hci->close_on_unref = do_close;
-
-	return true;
+	return io_set_close_on_destroy(hci->io, do_close);
 }
 
 unsigned int bt_hci_send(struct bt_hci *hci, uint16_t opcode,
@@ -528,7 +531,10 @@ bool bt_hci_flush(struct bt_hci *hci)
 	if (!hci)
 		return false;
 
-	suspend_writer(hci);
+	if (hci->writer_active) {
+		io_set_write_handler(hci->io, NULL, NULL, NULL);
+		hci->writer_active = false;
+	}
 
 	queue_remove_all(hci->cmd_queue, NULL, NULL, cmd_free);
 	queue_remove_all(hci->rsp_queue, NULL, NULL, cmd_free);
