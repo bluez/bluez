@@ -40,6 +40,8 @@
 #include <bluetooth/hci.h>
 
 #include "monitor/bt.h"
+#include "src/shared/util.h"
+#include "src/shared/queue.h"
 #include "emulator/btdev.h"
 #include "emulator/bthost.h"
 
@@ -54,7 +56,7 @@ struct hciemu {
 	guint host_source;
 	guint master_source;
 	guint client_source;
-	GList *post_command_hooks;
+	struct queue *post_command_hooks;
 	char bdaddr_str[18];
 };
 
@@ -63,11 +65,27 @@ struct hciemu_command_hook {
 	void *user_data;
 };
 
-static void destroy_command_hook(gpointer data, gpointer user_data)
+static void destroy_command_hook(void *data)
 {
 	struct hciemu_command_hook *hook = data;
 
-	g_free(hook);
+	free(hook);
+}
+
+struct run_data {
+	uint16_t opcode;
+	const void *data;
+	uint8_t len;
+};
+
+static void run_command_hook(void *data, void *user_data)
+{
+	struct hciemu_command_hook *hook = data;
+	struct run_data *run_data = user_data;
+
+	if (hook->function)
+		hook->function(run_data->opcode, run_data->data,
+					run_data->len, hook->user_data);
 }
 
 static void master_command_callback(uint16_t opcode,
@@ -75,17 +93,12 @@ static void master_command_callback(uint16_t opcode,
 				btdev_callback callback, void *user_data)
 {
 	struct hciemu *hciemu = user_data;
-	GList *list;
+	struct run_data run_data = { .opcode = opcode,
+						.data = data, .len = len };
 
 	btdev_command_default(callback);
 
-	for (list = g_list_first(hciemu->post_command_hooks); list;
-						list = g_list_next(list)) {
-		struct hciemu_command_hook *hook = list->data;
-
-		if (hook->function)
-			hook->function(opcode, data, len, hook->user_data);
-	}
+	queue_foreach(hciemu->post_command_hooks, run_command_hook, &run_data);
 }
 
 static void client_command_callback(uint16_t opcode,
@@ -293,7 +306,7 @@ struct hciemu *hciemu_new(enum hciemu_type type)
 {
 	struct hciemu *hciemu;
 
-	hciemu = g_try_new0(struct hciemu, 1);
+	hciemu = new0(struct hciemu, 1);
 	if (!hciemu)
 		return NULL;
 
@@ -311,15 +324,23 @@ struct hciemu *hciemu_new(enum hciemu_type type)
 		return NULL;
 	}
 
+	hciemu->post_command_hooks = queue_new();
+	if (!hciemu->post_command_hooks) {
+		free(hciemu);
+		return NULL;
+	}
+
 	if (!create_vhci(hciemu)) {
-		g_free(hciemu);
+		queue_destroy(hciemu->post_command_hooks, NULL);
+		free(hciemu);
 		return NULL;
 	}
 
 	if (!create_stack(hciemu)) {
 		g_source_remove(hciemu->master_source);
 		btdev_destroy(hciemu->master_dev);
-		g_free(hciemu);
+		queue_destroy(hciemu->post_command_hooks, NULL);
+		free(hciemu);
 		return NULL;
 	}
 
@@ -346,8 +367,7 @@ void hciemu_unref(struct hciemu *hciemu)
 	if (__sync_sub_and_fetch(&hciemu->ref_count, 1))
 		return;
 
-	g_list_foreach(hciemu->post_command_hooks, destroy_command_hook, NULL);
-	g_list_free(hciemu->post_command_hooks);
+	queue_destroy(hciemu->post_command_hooks, destroy_command_hook);
 
 	bthost_stop(hciemu->host_stack);
 
@@ -359,7 +379,7 @@ void hciemu_unref(struct hciemu *hciemu)
 	btdev_destroy(hciemu->client_dev);
 	btdev_destroy(hciemu->master_dev);
 
-	g_free(hciemu);
+	free(hciemu);
 }
 
 const char *hciemu_get_address(struct hciemu *hciemu)
@@ -407,15 +427,17 @@ bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 	if (!hciemu)
 		return false;
 
-	hook = g_try_new0(struct hciemu_command_hook, 1);
+	hook = new0(struct hciemu_command_hook, 1);
 	if (!hook)
 		return false;
 
 	hook->function = function;
 	hook->user_data = user_data;
 
-	hciemu->post_command_hooks = g_list_append(hciemu->post_command_hooks,
-									hook);
+	if (!queue_push_tail(hciemu->post_command_hooks, hook)) {
+		free(hook);
+		return false;
+	}
 
 	return true;
 }

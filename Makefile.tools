@@ -94,6 +94,8 @@ tools_smp_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_gap_tester_SOURCES = tools/gap-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
 tools_gap_tester_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
