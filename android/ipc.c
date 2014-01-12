@@ -88,7 +88,7 @@ int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 	if ((handler->var_len && handler->data_len > msg->len) ||
 			(!handler->var_len && handler->data_len != msg->len)) {
 		DBG("invalid size for opcode 0x%x service 0x%x",
-						msg->service_id, msg->opcode);
+						msg->opcode, msg->service_id);
 		return -EMSGSIZE;
 	}
 
