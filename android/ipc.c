@@ -82,7 +82,7 @@ int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 	}
 
 	/* opcode is table offset + 1 */
-	handler = &services[msg->service_id].handler[msg->opcode - 1];
+	handler = &handlers[msg->service_id].handler[msg->opcode - 1];
 
 	/* if payload size is valid */
 	if ((handler->var_len && handler->data_len > msg->len) ||
