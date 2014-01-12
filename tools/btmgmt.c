@@ -958,7 +958,30 @@ static void cmd_ssp(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 
 static void cmd_sc(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	cmd_setting(mgmt, index, MGMT_OP_SET_SECURE_CONN, argc, argv);
+	uint8_t val;
+
+	if (argc < 2) {
+		printf("Specify \"on\" or \"off\" or \"only\"\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
+		val = 1;
+	else if (strcasecmp(argv[1], "off") == 0)
+		val = 0;
+	else if (strcasecmp(argv[1], "only") == 0)
+		val = 2;
+	else
+		val = atoi(argv[1]);
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (send_cmd(mgmt, MGMT_OP_SET_SECURE_CONN, index,
+					sizeof(val), &val, setting_rsp) == 0) {
+		fprintf(stderr, "Unable to send set_secure_conn cmd\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void cmd_hs(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
