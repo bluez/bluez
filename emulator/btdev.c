@@ -385,6 +385,7 @@ static void set_bredrle_features(struct btdev *btdev)
 	btdev->features[0] |= 0x20;	/* Role switch */
 	btdev->features[0] |= 0x80;	/* Sniff mode */
 	btdev->features[1] |= 0x08;	/* SCO link */
+	btdev->features[2] |= 0x08;	/* Transparent SCO */
 	btdev->features[3] |= 0x40;	/* RSSI with inquiry results */
 	btdev->features[3] |= 0x80;	/* Extended SCO link */
 	btdev->features[4] |= 0x08;	/* AFH capable slave */
