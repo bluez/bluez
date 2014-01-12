@@ -1,0 +1,50 @@
+BlueZ test coverage
+*******************
+
+
+Automated unit testing
+======================
+
+Application		Count	Description
+-------------------------------------------
+test-crc		   9	Link Layer CRC-24 checksum
+test-eir		  14	EIR and AD parsing
+test-lib		  12	SDP library functions
+test-sdp		 133	SDP qualification test cases
+test-uuid		  30	UUID conversion handling
+test-mgmt		   2	Management interface handling
+test-textfile		   4	Old textfile storage format
+test-avdtp		  60	AVDTP qualification test cases
+test-gobex		  31	Generic OBEX functionality
+test-gobex-packet	   9	OBEX packet handling
+test-gobex-header	  28	OBEX header handling
+test-gobex-apparam	  18	OBEX apparam handling
+test-gobex-transfer	  36	OBEX transfer handling
+test-gdbus-client	  12	D-Bus client handling
+			-----
+			 398
+
+
+Automated end-to-end testing
+============================
+
+Application		Count	Description
+-------------------------------------------
+mgmt-tester		 162	Kernel management interface testing
+l2cap-tester		  15	Kernel L2CAP implementation testing
+smp-tester		   4	Kernel SMP implementation testing
+sco-tester		   8	Kernel SCO implementation testing
+gap-tester		   1	Daemon D-Bus API testing
+			-----
+			 190
+
+
+Android end-to-end testing
+==========================
+
+Application		Count	Description
+-------------------------------------------
+android-tester		  44	Android HAL interface testing
+			-----
+			  44
+
