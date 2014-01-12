@@ -2276,27 +2276,27 @@ int main(int argc, char *argv[])
 				setup_enabled_adapter,
 				test_setprop_scanmode_none_done, teardown);
 
-	test_bredrle("Bluetooth BREDR Discovery Start - Success",
+	test_bredrle("Bluetooth BR/EDR Discovery Start - Success",
 				&bluetooth_discovery_start_success_test,
 				setup_enabled_adapter,
 				test_discovery_start_success, teardown);
 
-	test_bredrle("Bluetooth BREDR Discovery Start - Success 2",
+	test_bredrle("Bluetooth BR/EDR Discovery Start - Success 2",
 				&bluetooth_discovery_start_success2_test,
 				setup_enabled_adapter,
 				test_discovery_start_done, teardown);
 
-	test_bredrle("Bluetooth BREDR Discovery Stop - Success",
+	test_bredrle("Bluetooth BR/EDR Discovery Stop - Success",
 				&bluetooth_discovery_stop_success_test,
 				setup_enabled_adapter,
 				test_discovery_stop_success, teardown);
 
-	test_bredrle("Bluetooth BREDR Discovery Stop - Success 2",
+	test_bredrle("Bluetooth BR/EDR Discovery Stop - Success 2",
 				&bluetooth_discovery_stop_success2_test,
 				setup_enabled_adapter,
 				test_discovery_stop_done, teardown);
 
-	test_bredrle("Bluetooth BREDR Discovery Device Found",
+	test_bredrle("Bluetooth BR/EDR Discovery Device Found",
 				&bluetooth_discovery_device_found_test,
 				setup_enabled_adapter,
 				test_discovery_device_found, teardown);
