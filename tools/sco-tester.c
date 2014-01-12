@@ -592,13 +592,13 @@ int main(int argc, char *argv[])
 	test_sco("eSCO CVSD - Success", &connect_success, setup_powered,
 							test_connect);
 
-	test_sco("eSCO MSBC - Success", &connect_success, setup_powered,
+	test_sco("eSCO mSBC - Success", &connect_success, setup_powered,
 							test_connect_transp);
 
 	test_sco_11("SCO CVSD 1.1 - Success", &connect_success, setup_powered,
 							test_connect);
 
-	test_sco_11("SCO MSBC 1.1 - Failure", &connect_failure, setup_powered,
+	test_sco_11("SCO mSBC 1.1 - Failure", &connect_failure, setup_powered,
 							test_connect_transp);
 
 	return tester_run();
