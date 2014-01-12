@@ -1243,6 +1243,114 @@ static const struct generic_data set_ssp_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static uint16_t settings_powered_ssp[] = { MGMT_OP_SET_SSP,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const char set_sc_on_param[] = { 0x01 };
+static const char set_sc_only_on_param[] = { 0x02 };
+static const char set_sc_invalid_param[] = { 0x03 };
+static const char set_sc_garbage_param[] = { 0x01, 0x00 };
+static const char set_sc_settings_param_1[] = { 0xc0, 0x08, 0x00, 0x00 };
+static const char set_sc_settings_param_2[] = { 0xc1, 0x08, 0x00, 0x00 };
+static const char set_sc_on_write_sc_support_param[] = { 0x01 };
+
+static const struct generic_data set_sc_on_success_test_1 = {
+	.setup_settings = settings_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_on_param,
+	.send_len = sizeof(set_sc_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_sc_settings_param_1,
+	.expect_len = sizeof(set_sc_settings_param_1),
+	.expect_settings_set = MGMT_SETTING_SECURE_CONN,
+};
+
+static const struct generic_data set_sc_on_success_test_2 = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_on_param,
+	.send_len = sizeof(set_sc_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_sc_settings_param_2,
+	.expect_len = sizeof(set_sc_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_SECURE_CONN,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT,
+	.expect_hci_param = set_sc_on_write_sc_support_param,
+	.expect_hci_len = sizeof(set_sc_on_write_sc_support_param),
+};
+
+static const struct generic_data set_sc_on_invalid_param_test_1 = {
+	.setup_settings = settings_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_sc_on_invalid_param_test_2 = {
+	.setup_settings = settings_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_invalid_param,
+	.send_len = sizeof(set_sc_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_sc_on_invalid_param_test_3 = {
+	.setup_settings = settings_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_garbage_param,
+	.send_len = sizeof(set_sc_garbage_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_sc_on_invalid_index_test = {
+	.setup_settings = settings_ssp,
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_on_param,
+	.send_len = sizeof(set_sc_on_param),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const struct generic_data set_sc_on_not_supported_test_1 = {
+	.setup_settings = settings_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_on_param,
+	.send_len = sizeof(set_sc_on_param),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
+static const struct generic_data set_sc_on_not_supported_test_2 = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_on_param,
+	.send_len = sizeof(set_sc_on_param),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
+static const struct generic_data set_sc_only_on_success_test_1 = {
+	.setup_settings = settings_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_only_on_param,
+	.send_len = sizeof(set_sc_only_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_sc_settings_param_1,
+	.expect_len = sizeof(set_sc_settings_param_1),
+	.expect_settings_set = MGMT_SETTING_SECURE_CONN,
+};
+
+static const struct generic_data set_sc_only_on_success_test_2 = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_SET_SECURE_CONN,
+	.send_param = set_sc_only_on_param,
+	.send_len = sizeof(set_sc_only_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_sc_settings_param_2,
+	.expect_len = sizeof(set_sc_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_SECURE_CONN,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT,
+	.expect_hci_param = set_sc_on_write_sc_support_param,
+	.expect_hci_len = sizeof(set_sc_on_write_sc_support_param),
+};
+
 static const char set_hs_on_param[] = { 0x01 };
 static const char set_hs_invalid_param[] = { 0x02 };
 static const char set_hs_garbage_param[] = { 0x01, 0x00 };
@@ -1477,9 +1585,6 @@ static const struct generic_data set_bredr_off_failure_test_3 = {
 	.send_len = sizeof(set_bredr_invalid_param),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
-
-static uint16_t settings_powered_ssp[] = { MGMT_OP_SET_SSP,
-						MGMT_OP_SET_POWERED, 0 };
 
 static const char set_local_name_param[260] = { 'T', 'e', 's', 't', ' ',
 						'n', 'a', 'm', 'e' };
@@ -3201,6 +3306,38 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Invalid index",
 				&set_ssp_on_invalid_index_test,
+				NULL, test_command_generic);
+
+	test_bredrle("Set Secure Connections on - Success 1",
+				&set_sc_on_success_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Set Secure Connections on - Success 2",
+				&set_sc_on_success_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Set Secure Connections on - Invalid params 1",
+				&set_sc_on_invalid_param_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Set Secure Connections on - Invalid params 2",
+				&set_sc_on_invalid_param_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Set Secure Connections on - Invalid params 3",
+				&set_sc_on_invalid_param_test_3,
+				NULL, test_command_generic);
+	test_bredrle("Set Secure Connections on - Invalid index",
+				&set_sc_on_invalid_index_test,
+				NULL, test_command_generic);
+	test_bredr("Set Secure Connections on - Not supported 1",
+				&set_sc_on_not_supported_test_1,
+				NULL, test_command_generic);
+	test_bredr("Set Secure Connections on - Not supported 2",
+				&set_sc_on_not_supported_test_2,
+				NULL, test_command_generic);
+
+	test_bredrle("Set Secure Connections Only on - Success 1",
+				&set_sc_only_on_success_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Set Secure Connections Only on - Success 2",
+				&set_sc_only_on_success_test_2,
 				NULL, test_command_generic);
 
 	test_bredrle("Set High Speed on - Success",
