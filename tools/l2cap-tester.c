@@ -258,6 +258,12 @@ static const struct l2cap_client_data client_connect_success_test = {
 	.server_psm = 0x1001,
 };
 
+static const struct l2cap_client_data client_connect_ssp_success_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.enable_ssp = true,
+};
+
 static uint8_t l2_data[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
 
 static const struct  l2cap_client_data client_connect_read_success_test = {
@@ -1016,6 +1022,10 @@ int main(int argc, char *argv[])
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Success",
 					&client_connect_success_test,
+					setup_powered_client, test_connect);
+
+	test_l2cap_bredr("L2CAP BR/EDR Client SSP - Success",
+					&client_connect_ssp_success_test,
 					setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Read Success",
