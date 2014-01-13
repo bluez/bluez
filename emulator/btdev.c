@@ -281,6 +281,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[1]  |= 0x10;	/* PIN Code Request Reply */
 	btdev->commands[1]  |= 0x20;	/* PIN Code Request Negative Reply */
 	btdev->commands[1]  |= 0x80;	/* Authentication Requested */
+	btdev->commands[2]  |= 0x01;	/* Set Connection Encryption */
 	btdev->commands[2]  |= 0x08;	/* Remote Name Request */
 	btdev->commands[2]  |= 0x10;	/* Cancel Remote Name Request */
 	btdev->commands[2]  |= 0x20;	/* Read Remote Supported Features */
@@ -1553,6 +1554,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		break;
 
+	case BT_HCI_CMD_SET_CONN_ENCRYPT:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+		break;
+
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
@@ -2362,6 +2369,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_accept_conn_request *acr;
 	const struct bt_hci_cmd_reject_conn_request *rcr;
 	const struct bt_hci_cmd_auth_requested *ar;
+	const struct bt_hci_cmd_set_conn_encrypt *sce;
 	const struct bt_hci_cmd_link_key_request_reply *lkrr;
 	const struct bt_hci_cmd_link_key_request_neg_reply *lkrnr;
 	const struct bt_hci_cmd_pin_code_request_neg_reply *pcrnr;
@@ -2447,6 +2455,15 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 			return;
 		ar = data;
 		auth_request_complete(btdev, le16_to_cpu(ar->handle));
+		break;
+
+	case BT_HCI_CMD_SET_CONN_ENCRYPT:
+		if (btdev->type == BTDEV_TYPE_LE)
+			return;
+		sce = data;
+		encrypt_change(btdev, sce->encr_mode, BT_HCI_ERR_SUCCESS);
+		if (btdev->conn)
+			encrypt_change(btdev->conn, sce->encr_mode, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST:
