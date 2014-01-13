@@ -1281,7 +1281,6 @@ static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
 	if (status == BT_HCI_ERR_SUCCESS) {
 		link_key_notify(init, iev.bdaddr, LINK_KEY_DUMMY);
 		link_key_notify(accp, aev.bdaddr, LINK_KEY_DUMMY);
-		encrypt_change(accp, 0x01, status);
 	}
 
 	auth.status = status;
