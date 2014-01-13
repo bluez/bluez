@@ -387,6 +387,8 @@ struct generic_data {
 	bool client_enable_ssp;
 	uint8_t io_cap;
 	uint8_t client_io_cap;
+	bool reject_ssp;
+	bool client_reject_ssp;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -2381,6 +2383,34 @@ static const struct generic_data pair_device_ssp_test_2 = {
 	.client_io_cap = 0x01, /* DisplayYesNo */
 };
 
+static const struct generic_data pair_device_ssp_reject_1 = {
+	.setup_settings = settings_powered_pairable_ssp,
+	.client_enable_ssp = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_func = pair_device_expect_param_func,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_NEG_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+	.reject_ssp = true,
+};
+
+static const struct generic_data pair_device_ssp_reject_2 = {
+	.setup_settings = settings_powered_pairable_ssp,
+	.client_enable_ssp = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_func = pair_device_expect_param_func,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+	.client_reject_ssp = true,
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -2868,13 +2898,20 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 {
 	const struct mgmt_ev_user_confirm_request *ev = param;
 	struct test_data *data = user_data;
+	const struct generic_data *test = data->test_data;
 	struct mgmt_cp_user_confirm_reply cp;
+	uint16_t opcode;
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 
-	mgmt_reply(data->mgmt, MGMT_OP_USER_CONFIRM_REPLY, data->mgmt_index,
-					sizeof(cp), &cp, NULL, NULL, NULL);
+	if (test->reject_ssp)
+		opcode = MGMT_OP_USER_CONFIRM_NEG_REPLY;
+	else
+		opcode = MGMT_OP_USER_CONFIRM_REPLY;
+
+	mgmt_reply(data->mgmt, opcode, data->mgmt_index, sizeof(cp), &cp,
+							NULL, NULL, NULL);
 }
 
 static void test_setup(const void *test_data)
@@ -2900,6 +2937,8 @@ static void test_setup(const void *test_data)
 	if (test->client_io_cap)
 		bthost_set_io_capability(bthost, test->client_io_cap);
 
+	if (test->client_reject_ssp)
+		bthost_set_reject_user_confirm(bthost, true);
 
 proceed:
 	if (!test || !test->setup_settings) {
@@ -3630,6 +3669,12 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Confirm Success 1",
 				&pair_device_ssp_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - SSP Confirm Reject 1",
+				&pair_device_ssp_reject_1,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - SSP Confirm Reject 2",
+				&pair_device_ssp_reject_2,
 				NULL, test_command_generic);
 
 	test_bredrle("Unpair Device - Not Powered 1",
