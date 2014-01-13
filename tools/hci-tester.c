@@ -40,6 +40,7 @@ struct user_data {
 	struct bt_hci *hci_ut;		/* Upper Tester / IUT */
 	struct bt_hci *hci_lt;		/* Lower Tester / Reference */
 
+	uint8_t bdaddr_ut[6];
 	uint8_t bdaddr_lt[6];
 	uint16_t handle_ut;
 };
@@ -69,7 +70,7 @@ static void test_pre_setup_lt_complete(const void *data, uint8_t size,
 	uint8_t status = *((uint8_t *) data);
 
 	if (status) {
-		tester_warn("Reset lower tester efailed (0x%02x)", status);
+		tester_warn("Reset lower tester failed (0x%02x)", status);
 		tester_pre_setup_failed();
 		return;
 	}
@@ -77,6 +78,36 @@ static void test_pre_setup_lt_complete(const void *data, uint8_t size,
 	if (!bt_hci_send(user->hci_lt, BT_HCI_CMD_READ_BD_ADDR, NULL, 0,
 				test_pre_setup_lt_address, NULL, NULL)) {
 		tester_warn("Failed to read lower tester address");
+		tester_pre_setup_failed();
+		return;
+	}
+}
+
+static void test_pre_setup_ut_address(const void *data, uint8_t size,
+							void *user_data)
+{
+	struct user_data *user = tester_get_data();
+	const struct bt_hci_rsp_read_bd_addr *rsp = data;
+
+	if (rsp->status) {
+		tester_warn("Read upper tester address failed (0x%02x)",
+								rsp->status);
+		tester_pre_setup_failed();
+		return;
+	}
+
+	memcpy(user->bdaddr_ut, rsp->bdaddr, 6);
+
+	user->hci_lt = bt_hci_new_user_channel(user->index_lt);
+	if (!user->hci_lt) {
+		tester_warn("Failed to setup lower tester user channel");
+		tester_pre_setup_failed();
+		return;
+	}
+
+	if (!bt_hci_send(user->hci_lt, BT_HCI_CMD_RESET, NULL, 0,
+				test_pre_setup_lt_complete, NULL, NULL)) {
+		tester_warn("Failed to reset lower tester");
 		tester_pre_setup_failed();
 		return;
 	}
@@ -99,16 +130,9 @@ static void test_pre_setup_ut_complete(const void *data, uint8_t size,
 		return;
 	}
 
-	user->hci_lt = bt_hci_new_user_channel(user->index_lt);
-	if (!user->hci_lt) {
-		tester_warn("Failed to setup lower tester user channel");
-		tester_pre_setup_failed();
-		return;
-	}
-
-	if (!bt_hci_send(user->hci_lt, BT_HCI_CMD_RESET, NULL, 0,
-				test_pre_setup_lt_complete, NULL, NULL)) {
-		tester_warn("Failed to reset lower tester");
+	if (!bt_hci_send(user->hci_ut, BT_HCI_CMD_READ_BD_ADDR, NULL, 0,
+				test_pre_setup_ut_address, NULL, NULL)) {
+		tester_warn("Failed to read upper tester address");
 		tester_pre_setup_failed();
 		return;
 	}
@@ -502,6 +526,99 @@ static void teardown_connection(const void *test_data)
 	}
 }
 
+static void test_adv_report(const void *data, uint8_t size, void *user_data)
+{
+	struct user_data *user = tester_get_data();
+	uint8_t subevent = *((uint8_t *) data);
+	const struct bt_hci_evt_le_adv_report *lar = data + 1;
+
+	switch (subevent) {
+	case BT_HCI_EVT_LE_ADV_REPORT:
+		if (!memcmp(lar->addr, user->bdaddr_ut, 6))
+			tester_setup_complete();
+		break;
+	}
+}
+
+static void setup_advertising_initiated(const void *test_data)
+{
+	struct user_data *user = tester_get_data();
+	struct bt_hci_cmd_set_event_mask sem;
+	struct bt_hci_cmd_le_set_event_mask lsem;
+	struct bt_hci_cmd_le_set_scan_enable lsse;
+	struct bt_hci_cmd_le_set_adv_parameters lsap;
+	struct bt_hci_cmd_le_set_adv_enable lsae;
+
+	bt_hci_register(user->hci_lt, BT_HCI_EVT_LE_META_EVENT,
+					test_adv_report, NULL, NULL);
+
+	memset(sem.mask, 0, 8);
+	sem.mask[1] |= 0x20;	/* Command Complete */
+	sem.mask[1] |= 0x40;	/* Command Status */
+	sem.mask[7] |= 0x20;	/* LE Meta */
+
+	bt_hci_send(user->hci_lt, BT_HCI_CMD_SET_EVENT_MASK,
+					&sem, sizeof(sem), NULL, NULL, NULL);
+
+	memset(lsem.mask, 0, 8);
+	lsem.mask[0] |= 0x02;	/* LE Advertising Report */
+
+	bt_hci_send(user->hci_lt, BT_HCI_CMD_LE_SET_EVENT_MASK,
+					&lsem, sizeof(lsem), NULL, NULL, NULL);
+
+	lsse.enable = 0x01;
+	lsse.filter_dup = 0x00;
+
+	bt_hci_send(user->hci_lt, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+					&lsse, sizeof(lsse), NULL, NULL, NULL);
+
+	lsap.min_interval = cpu_to_le16(0x0800);
+	lsap.max_interval = cpu_to_le16(0x0800);
+	lsap.type = 0x03;
+	lsap.own_addr_type = 0x00;
+	lsap.direct_addr_type = 0x00;
+	memset(lsap.direct_addr, 0, 6);
+	lsap.channel_map = 0x07;
+	lsap.filter_policy = 0x00;
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
+					&lsap, sizeof(lsap), NULL, NULL, NULL);
+
+	lsae.enable = 0x01;
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_SET_ADV_ENABLE,
+					&lsae, sizeof(lsae), NULL, NULL, NULL);
+}
+
+static void test_reset_in_advertising_state_timeout(void *user_data)
+{
+	struct user_data *user = tester_get_data();
+	struct bt_hci_cmd_le_set_adv_enable lsae;
+	struct bt_hci_cmd_le_set_scan_enable lsse;
+
+	lsae.enable = 0x00;
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_SET_ADV_ENABLE,
+					&lsae, sizeof(lsae), NULL, NULL, NULL);
+
+	lsse.enable = 0x00;
+	lsse.filter_dup = 0x00;
+
+	bt_hci_send(user->hci_lt, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+					&lsse, sizeof(lsse), NULL, NULL, NULL);
+
+	tester_test_passed();
+}
+
+static void test_reset_in_advertising_state(const void *test_data)
+{
+	struct user_data *user = tester_get_data();
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_RESET, NULL, 0, NULL, NULL, NULL);
+
+	tester_wait(5, test_reset_in_advertising_state_timeout, NULL);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -532,6 +649,10 @@ int main(int argc, char *argv[])
 				setup_lt_connectable,
 				test_create_connection,
 				teardown_connection);
+
+	test_hci("TP/DSU/BV-02-C Reset in Advertising State", NULL,
+				setup_advertising_initiated,
+				test_reset_in_advertising_state, NULL);
 
 	return tester_run();
 }
