@@ -1478,6 +1478,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_link_key_request_neg_reply lkrnr_rsp;
 	struct bt_hci_rsp_pin_code_request_neg_reply pcrr_rsp;
 	struct bt_hci_rsp_pin_code_request_neg_reply pcrnr_rsp;
+	struct bt_hci_rsp_user_confirm_request_reply ucrr_rsp;
+	struct bt_hci_rsp_user_confirm_request_neg_reply ucrnr_rsp;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -1949,12 +1951,18 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
+		ucrr_rsp.status = BT_HCI_ERR_SUCCESS;
+		memcpy(ucrr_rsp.bdaddr, data, 6);
+		cmd_complete(btdev, opcode, &ucrr_rsp, sizeof(ucrr_rsp));
 		ssp_complete(btdev, data, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_USER_CONFIRM_REQUEST_NEG_REPLY:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
+		ucrnr_rsp.status = BT_HCI_ERR_SUCCESS;
+		memcpy(ucrnr_rsp.bdaddr, data, 6);
+		cmd_complete(btdev, opcode, &ucrnr_rsp, sizeof(ucrnr_rsp));
 		ssp_complete(btdev, data, BT_HCI_ERR_AUTH_FAILURE);
 		break;
 
