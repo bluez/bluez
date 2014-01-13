@@ -2433,6 +2433,17 @@ static const struct generic_data pair_device_ssp_reject_2 = {
 	.client_reject_ssp = true,
 };
 
+static const struct generic_data pair_device_ssp_nonpairable_1 = {
+	.setup_settings = settings_powered_ssp,
+	.client_enable_ssp = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_func = pair_device_expect_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -3703,6 +3714,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Confirm Reject 2",
 				&pair_device_ssp_reject_2,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - SSP Non-pairable 1",
+				&pair_device_ssp_nonpairable_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Unpair Device - Not Powered 1",
