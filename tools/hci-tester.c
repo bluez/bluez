@@ -97,7 +97,7 @@ static void test_data_free(void *test_data)
 		user->index = 0; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, 2, user, test_data_free); \
+				test_post_teardown, 30, user, test_data_free); \
 	} while (0)
 
 static void setup_features_complete(const void *data, uint8_t size,
@@ -224,6 +224,46 @@ static void test_read_local_supported_codecs(const void *test_data)
 	test_command(BT_HCI_CMD_READ_LOCAL_CODECS);
 }
 
+static void test_inquiry_complete(const void *data, uint8_t size,
+							void *user_data)
+{
+	tester_test_passed();
+}
+
+static void test_inquiry_status(const void *data, uint8_t size,
+							void *user_data)
+{
+	uint8_t status = *((uint8_t *) data);
+
+	if (status) {
+		tester_warn("HCI inquiry command failed (0x%02x)", status);
+		tester_test_failed();
+		return;
+	}
+}
+
+static void test_inquiry_liac(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct bt_hci_cmd_inquiry cmd;
+
+	bt_hci_register(data->hci, BT_HCI_EVT_INQUIRY_COMPLETE,
+					test_inquiry_complete, NULL, NULL);
+
+	cmd.lap[0] = 0x00;
+	cmd.lap[1] = 0x8b;
+	cmd.lap[2] = 0x9e;
+	cmd.length = 0x08;
+	cmd.num_resp = 0x00;
+
+	if (!bt_hci_send(data->hci, BT_HCI_CMD_INQUIRY, &cmd, sizeof(cmd),
+					test_inquiry_status, NULL, NULL)) {
+		tester_warn("Failed to send HCI inquiry command");
+		tester_test_failed();
+		return;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -247,6 +287,8 @@ int main(int argc, char *argv[])
 				test_read_bd_addr);
 	test_hci("Read Local Supported Codecs", NULL, NULL,
 				test_read_local_supported_codecs);
+
+	test_hci("Inquiry (LIAC)", NULL, NULL, test_inquiry_liac);
 
 	return tester_run();
 }
