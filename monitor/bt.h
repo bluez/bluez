@@ -567,9 +567,17 @@ struct bt_hci_cmd_io_capability_request_reply {
 struct bt_hci_cmd_user_confirm_request_reply {
 	uint8_t  bdaddr[6];
 } __attribute__ ((packed));
+struct bt_hci_rsp_user_confirm_request_reply {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
 
 #define BT_HCI_CMD_USER_CONFIRM_REQUEST_NEG_REPLY	0x042d
 struct bt_hci_cmd_user_confirm_request_neg_reply {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+struct bt_hci_rsp_user_confirm_request_neg_reply {
+	uint8_t  status;
 	uint8_t  bdaddr[6];
 } __attribute__ ((packed));
 
