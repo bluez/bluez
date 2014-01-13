@@ -111,6 +111,7 @@ struct bthost {
 	uint8_t pin[16];
 	uint8_t pin_len;
 	uint8_t io_capability;
+	bool reject_user_confirm;
 };
 
 struct bthost *bthost_create(void)
@@ -797,6 +798,12 @@ static void evt_user_confirm_request(struct bthost *bthost, const void *data,
 	conn = bthost_find_conn_by_bdaddr(bthost, ev->bdaddr);
 	if (!conn)
 		return;
+
+	if (bthost->reject_user_confirm) {
+		send_command(bthost, BT_HCI_CMD_USER_CONFIRM_REQUEST_NEG_REPLY,
+								ev->bdaddr, 6);
+		return;
+	}
 
 	send_command(bthost, BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
 								ev->bdaddr, 6);
@@ -1507,6 +1514,11 @@ void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
 void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability)
 {
 	bthost->io_capability = io_capability;
+}
+
+void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject)
+{
+	bthost->reject_user_confirm = reject;
 }
 
 void bthost_start(struct bthost *bthost)
