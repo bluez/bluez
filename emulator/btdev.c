@@ -58,7 +58,8 @@ struct btdev {
 	uint16_t pin[16];
 	uint8_t pin_len;
 	uint8_t io_cap;
-	bool ssp_auth_rsp;
+	bool ssp_auth_complete;
+	uint8_t ssp_status;
 
 	btdev_command_func command_handler;
 	void *command_data;
@@ -1254,10 +1255,15 @@ static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
 	if (!remote)
 		return;
 
-	btdev->ssp_auth_rsp = true;
+	btdev->ssp_status = status;
+	btdev->ssp_auth_complete = true;
 
-	if (!remote->ssp_auth_rsp)
+	if (!remote->ssp_auth_complete)
 		return;
+
+	if (status == BT_HCI_ERR_SUCCESS &&
+				remote->ssp_status != BT_HCI_ERR_SUCCESS)
+		status = remote->ssp_status;
 
 	iev.status = status;
 	aev.status = status;
