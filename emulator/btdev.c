@@ -2480,9 +2480,12 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 		if (btdev->type == BTDEV_TYPE_LE)
 			return;
 		sce = data;
-		encrypt_change(btdev, sce->encr_mode, BT_HCI_ERR_SUCCESS);
-		if (btdev->conn)
-			encrypt_change(btdev->conn, sce->encr_mode, BT_HCI_ERR_SUCCESS);
+		if (btdev->conn) {
+			encrypt_change(btdev, sce->encr_mode,
+							BT_HCI_ERR_SUCCESS);
+			encrypt_change(btdev->conn, sce->encr_mode,
+							BT_HCI_ERR_SUCCESS);
+		}
 		break;
 
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST:
