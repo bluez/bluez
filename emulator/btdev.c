@@ -1139,6 +1139,19 @@ static void remote_features_complete(struct btdev *btdev, uint16_t handle)
 							&rfc, sizeof(rfc));
 }
 
+static void btdev_get_host_features(struct btdev *btdev, uint8_t features[8])
+{
+	memset(features, 0, 8);
+	if (btdev->simple_pairing_mode)
+		features[0] |= 0x01;
+	if (btdev->le_supported)
+		features[0] |= 0x02;
+	if (btdev->le_simultaneous)
+		features[0] |= 0x04;
+	if (btdev->secure_conn_support)
+		features[0] |= 0x08;
+}
+
 static void remote_ext_features_complete(struct btdev *btdev, uint16_t handle,
 								uint8_t page)
 {
@@ -1156,7 +1169,7 @@ static void remote_ext_features_complete(struct btdev *btdev, uint16_t handle,
 			break;
 		case 0x01:
 			refc.status = BT_HCI_ERR_SUCCESS;
-			memset(refc.features, 0, 8);
+			btdev_get_host_features(btdev, refc.features);
 			break;
 		default:
 			refc.status = BT_HCI_ERR_INVALID_PARAMETERS;
@@ -2079,15 +2092,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			break;
 		case 0x01:
 			rlef.status = BT_HCI_ERR_SUCCESS;
-			memset(rlef.features, 0, 8);
-			if (btdev->simple_pairing_mode)
-				rlef.features[0] |= 0x01;
-			if (btdev->le_supported)
-				rlef.features[0] |= 0x02;
-			if (btdev->le_simultaneous)
-				rlef.features[0] |= 0x04;
-			if (btdev->secure_conn_support)
-				rlef.features[0] |= 0x08;
+			btdev_get_host_features(btdev, rlef.features);
 			break;
 		case 0x02:
 			rlef.status = BT_HCI_ERR_SUCCESS;
