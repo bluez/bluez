@@ -31,16 +31,17 @@
 #include <string.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <errno.h>
 #include <sys/stat.h>
 
-static void convert_line(int fd, const char *line)
+static int convert_line(int fd, const char *line)
 {
 	const char *ptr = line;
 	char str[3];
 	unsigned char val;
 
 	if (line[0] == '*' || line[0] == '\r' || line[0] == '\r')
-		return;
+		return 0;
 
 	while (1) {
 		str[0] = *ptr++;
@@ -49,7 +50,8 @@ static void convert_line(int fd, const char *line)
 
 		val = strtol(str, NULL, 16);
 
-		write(fd, &val, 1);
+		if (write(fd, &val, 1) < 0)
+			return -errno;
 
 		if (*ptr == '\r' || *ptr == '\n')
 			break;
@@ -57,6 +59,8 @@ static void convert_line(int fd, const char *line)
 		while (*ptr == ' ')
 			ptr++;
 	}
+
+	return 0;
 }
 
 static void convert_file(const char *input_path, const char *output_path)
