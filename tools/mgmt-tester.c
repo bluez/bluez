@@ -382,8 +382,11 @@ struct generic_data {
 	const void * (*expect_hci_func)(uint8_t *len);
 	uint8_t pin_len;
 	const void *pin;
-	bool enable_client_ssp;
-	uint8_t io_capability;
+	uint8_t client_pin_len;
+	const void *client_pin;
+	bool client_enable_ssp;
+	uint8_t io_cap;
+	uint8_t client_io_cap;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -2250,7 +2253,7 @@ static const void *pair_device_send_param_func(uint16_t *len)
 
 	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
 	param[6] = 0x00; /* Address type */
-	param[7] = test->io_capability;
+	param[7] = test->io_cap;
 
 	*len = sizeof(param);
 
@@ -2286,6 +2289,8 @@ static const struct generic_data pair_device_success_test_1 = {
 	.expect_hci_len = sizeof(auth_req_param),
 	.pin = pair_device_pin,
 	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
 };
 
 static uint16_t settings_powered_pairable_linksec[] = { MGMT_OP_SET_PAIRABLE,
@@ -2304,6 +2309,8 @@ static const struct generic_data pair_device_success_test_2 = {
 	.expect_hci_len = sizeof(auth_req_param),
 	.pin = pair_device_pin,
 	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
 };
 
 static uint16_t settings_powered_pairable_ssp[] = {	MGMT_OP_SET_PAIRABLE,
@@ -2325,26 +2332,28 @@ static const void *client_bdaddr_param_func(uint8_t *len)
 
 static const struct generic_data pair_device_success_test_3 = {
 	.setup_settings = settings_powered_pairable_ssp,
-	.enable_client_ssp = true,
+	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_func = pair_device_expect_param_func,
 	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
 	.expect_hci_func = client_bdaddr_param_func,
-	.io_capability = 0x03, /* NoInputNoOutput */
+	.io_cap = 0x03, /* NoInputNoOutput */
+	.client_io_cap = 0x03, /* NoInputNoOutput */
 };
 
 static const struct generic_data pair_device_success_test_4 = {
 	.setup_settings = settings_powered_pairable_ssp,
-	.enable_client_ssp = true,
+	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_func = pair_device_expect_param_func,
 	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
 	.expect_hci_func = client_bdaddr_param_func,
-	.io_capability = 0x01, /* DisplayYesNo */
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
 };
 
 static const char unpair_device_param[] = {
@@ -2470,7 +2479,7 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
 		tester_print("Client set connectable status 0x%02x", status);
-		if (!status && test->enable_client_ssp) {
+		if (!status && test->client_enable_ssp) {
 			bthost_write_ssp_mode(bthost, 0x01);
 			return;
 		}
@@ -2842,20 +2851,27 @@ static void test_setup(const void *test_data)
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	const uint16_t *cmd;
 
-	if (test && test->pin) {
-		bthost_set_pin_code(bthost, test->pin, test->pin_len);
+	if (!test)
+		goto proceed;
+
+	if (test->client_pin)
+		bthost_set_pin_code(bthost, test->client_pin,
+							test->client_pin_len);
+
+	if (test->pin)
 		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
 				data->mgmt_index, pin_code_request_callback,
 				data, NULL);
-	}
 
-	if (test && test->io_capability) {
-		bthost_set_io_capability(bthost, test->io_capability);
+	if (test->client_io_cap)
+		bthost_set_io_capability(bthost, test->client_io_cap);
+
+	if (test->io_cap)
 		mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
 				data->mgmt_index, user_confirm_request_callback,
 				data, NULL);
-	}
 
+proceed:
 	if (!test || !test->setup_settings) {
 		if (data->test_setup)
 			data->test_setup(data);
