@@ -2313,11 +2313,6 @@ static const struct generic_data pair_device_success_test_2 = {
 	.client_pin_len = sizeof(pair_device_pin),
 };
 
-static uint16_t settings_powered_pairable_ssp[] = {	MGMT_OP_SET_PAIRABLE,
-							MGMT_OP_SET_SSP,
-							MGMT_OP_SET_POWERED,
-							0 };
-
 static const void *client_bdaddr_param_func(uint8_t *len)
 {
 	struct test_data *data = tester_get_data();
@@ -2330,7 +2325,24 @@ static const void *client_bdaddr_param_func(uint8_t *len)
 	return bdaddr;
 }
 
-static const struct generic_data pair_device_success_test_3 = {
+static const struct generic_data pair_device_reject_test_1 = {
+	.setup_settings = settings_powered_pairable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_func = pair_device_expect_param_func,
+	.expect_hci_command = BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+};
+
+static uint16_t settings_powered_pairable_ssp[] = {	MGMT_OP_SET_PAIRABLE,
+							MGMT_OP_SET_SSP,
+							MGMT_OP_SET_POWERED,
+							0 };
+
+static const struct generic_data pair_device_ssp_test_1 = {
 	.setup_settings = settings_powered_pairable_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -2343,7 +2355,7 @@ static const struct generic_data pair_device_success_test_3 = {
 	.client_io_cap = 0x03, /* NoInputNoOutput */
 };
 
-static const struct generic_data pair_device_success_test_4 = {
+static const struct generic_data pair_device_ssp_test_2 = {
 	.setup_settings = settings_powered_pairable_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -2822,6 +2834,14 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
+
+	if (!test->pin) {
+		mgmt_reply(data->mgmt, MGMT_OP_PIN_CODE_NEG_REPLY,
+				data->mgmt_index, sizeof(cp.addr), &cp.addr,
+				NULL, NULL, NULL);
+		return;
+	}
+
 	cp.pin_len = test->pin_len;
 	memcpy(cp.pin_code, test->pin, test->pin_len);
 
@@ -2854,22 +2874,19 @@ static void test_setup(const void *test_data)
 	if (!test)
 		goto proceed;
 
+	mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST, data->mgmt_index,
+					pin_code_request_callback, data, NULL);
+	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
+			data->mgmt_index, user_confirm_request_callback,
+			data, NULL);
+
 	if (test->client_pin)
 		bthost_set_pin_code(bthost, test->client_pin,
 							test->client_pin_len);
 
-	if (test->pin)
-		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
-				data->mgmt_index, pin_code_request_callback,
-				data, NULL);
-
 	if (test->client_io_cap)
 		bthost_set_io_capability(bthost, test->client_io_cap);
 
-	if (test->io_cap)
-		mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
-				data->mgmt_index, user_confirm_request_callback,
-				data, NULL);
 
 proceed:
 	if (!test || !test->setup_settings) {
@@ -3589,11 +3606,14 @@ int main(int argc, char *argv[])
 	test_bredrle("Pair Device - Sec Mode 3 Success 1",
 				&pair_device_success_test_2,
 				NULL, test_command_generic);
+	test_bredrle("Pair Device - Legacy Reject 1",
+				&pair_device_reject_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Just-Works Success 1",
-				&pair_device_success_test_3,
+				&pair_device_ssp_test_1,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Confirm Success 1",
-				&pair_device_success_test_4,
+				&pair_device_ssp_test_2,
 				NULL, test_command_generic);
 
 	test_bredrle("Unpair Device - Not Powered 1",
