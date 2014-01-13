@@ -62,6 +62,7 @@ struct l2cap_client_data {
 	uint16_t data_len;
 	const void *read_data;
 	const void *write_data;
+	bool enable_ssp;
 };
 
 struct l2cap_server_data {
@@ -75,6 +76,7 @@ struct l2cap_server_data {
 	uint16_t data_len;
 	const void *read_data;
 	const void *write_data;
+	bool enable_ssp;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -385,19 +387,50 @@ static const struct l2cap_server_data le_server_success_test = {
 	.expect_rsp_code = BT_L2CAP_PDU_LE_CONN_RSP,
 };
 
-static void client_connectable_complete(uint16_t opcode, uint8_t status,
+static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
 {
+	struct test_data *data = tester_get_data();
+	const struct l2cap_client_data *test = data->test_data;
+	struct bthost *bthost;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
 	switch (opcode) {
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+		tester_print("Client set connectable status 0x%02x", status);
+		if (!status && test && test->enable_ssp) {
+			bthost_write_ssp_mode(bthost, 0x01);
+			return;
+		}
+		break;
+	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
+		tester_print("Client enable SSP status 0x%02x", status);
 		break;
 	default:
 		return;
 	}
 
-	tester_print("Client set connectable status 0x%02x", status);
+
+	if (status)
+		tester_setup_failed();
+	else
+		tester_setup_complete();
+}
+
+static void server_cmd_complete(uint16_t opcode, uint8_t status,
+					const void *param, uint8_t len,
+					void *user_data)
+{
+	switch (opcode) {
+	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
+		tester_print("Server enable SSP status 0x%02x", status);
+		break;
+	default:
+		return;
+	}
 
 	if (status)
 		tester_setup_failed();
@@ -419,7 +452,7 @@ static void setup_powered_client_callback(uint8_t status, uint16_t length,
 	tester_print("Controller powered on");
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_cmd_complete_cb(bthost, client_connectable_complete, data);
+	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, user_data);
 	if (data->hciemu_type == HCIEMU_TYPE_LE)
 		bthost_set_adv_enable(bthost, 0x01);
 	else
@@ -429,6 +462,10 @@ static void setup_powered_client_callback(uint8_t status, uint16_t length,
 static void setup_powered_server_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
+	struct test_data *data = tester_get_data();
+	const struct l2cap_server_data *test = data->test_data;
+	struct bthost *bthost;
+
 	if (status != MGMT_STATUS_SUCCESS) {
 		tester_setup_failed();
 		return;
@@ -436,21 +473,30 @@ static void setup_powered_server_callback(uint8_t status, uint16_t length,
 
 	tester_print("Controller powered on");
 
-	tester_setup_complete();
+	if (!test->enable_ssp) {
+		tester_setup_complete();
+		return;
+	}
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_cmd_complete_cb(bthost, server_cmd_complete, user_data);
+	bthost_write_ssp_mode(bthost, 0x01);
 }
 
 static void setup_powered_client(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct l2cap_client_data *test = data->test_data;
 	unsigned char param[] = { 0x01 };
 
 	tester_print("Powering on controller");
 
-	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
-		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
-	else
+	if (data->hciemu_type == HCIEMU_TYPE_LE)
 		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	if (test && test->enable_ssp)
+		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
@@ -461,6 +507,7 @@ static void setup_powered_client(const void *test_data)
 static void setup_powered_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct l2cap_server_data *test = data->test_data;
 	unsigned char param[] = { 0x01 };
 
 	tester_print("Powering on controller");
@@ -469,8 +516,10 @@ static void setup_powered_server(const void *test_data)
 		mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
 				sizeof(param), param,
 				NULL, NULL, NULL);
-		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
+		if (test->enable_ssp)
+			mgmt_send(data->mgmt, MGMT_OP_SET_SSP,
+					data->mgmt_index, sizeof(param), param,
+					NULL, NULL, NULL);
 	} else {
 		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
