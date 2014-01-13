@@ -682,9 +682,15 @@ static void evt_auth_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
 	const struct bt_hci_evt_auth_complete *ev = data;
+	struct bt_hci_cmd_set_conn_encrypt cp;
 
 	if (len < sizeof(*ev))
 		return;
+
+	cp.handle = ev->handle;
+	cp.encr_mode = 0x01;
+
+	send_command(bthost, BT_HCI_CMD_SET_CONN_ENCRYPT, &cp, sizeof(cp));
 }
 
 static void evt_pin_code_request(struct bthost *bthost, const void *data,
