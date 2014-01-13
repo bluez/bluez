@@ -383,6 +383,7 @@ struct generic_data {
 	uint8_t pin_len;
 	const void *pin;
 	bool enable_client_ssp;
+	uint8_t io_capability;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -2244,11 +2245,12 @@ static const struct generic_data pair_device_invalid_param_test_1 = {
 static const void *pair_device_send_param_func(uint16_t *len)
 {
 	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
 	static uint8_t param[8];
 
 	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
 	param[6] = 0x00; /* Address type */
-	param[7] = 0x03; /* IO Capability */
+	param[7] = test->io_capability;
 
 	*len = sizeof(param);
 
@@ -2330,6 +2332,19 @@ static const struct generic_data pair_device_success_test_3 = {
 	.expect_func = pair_device_expect_param_func,
 	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
 	.expect_hci_func = client_bdaddr_param_func,
+	.io_capability = 0x03, /* NoInputNoOutput */
+};
+
+static const struct generic_data pair_device_success_test_4 = {
+	.setup_settings = settings_powered_pairable_ssp,
+	.enable_client_ssp = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_capability = 0x01, /* DisplayYesNo */
 };
 
 static const char unpair_device_param[] = {
@@ -2805,18 +2820,39 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 			sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
+static void user_confirm_request_callback(uint16_t index, uint16_t length,
+							const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_user_confirm_request *ev = param;
+	struct test_data *data = user_data;
+	struct mgmt_cp_user_confirm_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
+
+	mgmt_reply(data->mgmt, MGMT_OP_USER_CONFIRM_REPLY, data->mgmt_index,
+					sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
 static void test_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	const uint16_t *cmd;
 
 	if (test && test->pin) {
-		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
-
 		bthost_set_pin_code(bthost, test->pin, test->pin_len);
 		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
 				data->mgmt_index, pin_code_request_callback,
+				data, NULL);
+	}
+
+	if (test && test->io_capability) {
+		bthost_set_io_capability(bthost, test->io_capability);
+		mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
+				data->mgmt_index, user_confirm_request_callback,
 				data, NULL);
 	}
 
@@ -3539,6 +3575,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Just-Works Success 1",
 				&pair_device_success_test_3,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - SSP Confirm Success 1",
+				&pair_device_success_test_4,
 				NULL, test_command_generic);
 
 	test_bredrle("Unpair Device - Not Powered 1",
