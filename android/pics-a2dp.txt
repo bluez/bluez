@@ -1,0 +1,86 @@
+A2DP PICS for the PTS tool.
+
+PTS version: 5.0
+
+* - different than PTS defaults
+# - not yet implemented/supported
+
+M - mandatory if such role selected
+O - optional
+
+		Roles
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_A2DP_1_1	True		Role: Source (C.1)
+TSPC_A2DP_1_2	False (*)	Role: Sink (C.1)
+-------------------------------------------------------------------------------
+C.1: It is mandatory to support at least one of the defined roles.
+-------------------------------------------------------------------------------
+
+
+		A2DP SRC Features
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_A2DP_2_1	True		SRC: Initiate connection establishment (M)
+TSPC_A2DP_2_2	True		SRC: Accept connection establishment (M)
+TSPC_A2DP_2_3	True		SRC: Initiate start streaming (M)
+TSPC_A2DP_2_4	True		SRC: Accept start streaming (M)
+TSPC_A2DP_2_5	True		SRC: Send audio stream (M)
+TSPC_A2DP_2_6	True		SRC: Initiate connection release (M)
+TSPC_A2DP_2_7	True		SRC: Accept connection release (M)
+TSPC_A2DP_2_8	True (*)	SRC: Initiate suspend (O)
+TSPC_A2DP_2_9	True (*)	SRC: Accept suspend (O)
+TSPC_A2DP_2_10	True		SRC: SBC encoder (M)
+TSPC_A2DP_2_10a	False		SRC: Encode Audio Stream (O)
+TSPC_A2DP_2_11	False		SRC: SBC Configurations in 16 KHz sampling (O)
+TSPC_A2DP_2_12	False		SRC: SBC Configurations in 32 KHz sampling (O)
+TSPC_A2DP_2_13	True		SRC: SBC Configurations in 44.1 KHz sampling
+					(C.1)
+TSPC_A2DP_2_14	False		SRC: SBC Configurations in 48 KHz sampling
+					(C.1)
+-------------------------------------------------------------------------------
+C.1: At least one of the values shall be supported.
+-------------------------------------------------------------------------------
+
+
+		Supported Codecs in SRC
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_A2DP_3_1	True		SRC: SBC encoder Codec (M)
+TSPC_A2DP_3_2	False		SRC: Additional encoder Codec (O)
+-------------------------------------------------------------------------------
+
+
+		A2DP Sink Features
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_A2DP_4_1	False		SNK: Initiate connection establishment (O)
+TSPC_A2DP_4_2	False (*)	SNK: Accept connection establishment (M)
+TSPC_A2DP_4_3	False		SNK: Initiate start streaming (O)
+TSPC_A2DP_4_4	False (*)	SNK: Accept start streaming (M)
+TSPC_A2DP_4_5	False (*)	SNK: Receive audio stream (M)
+TSPC_A2DP_4_6	False		SNK: Initiate connection release (O)
+TSPC_A2DP_4_7	False (*)	SNK: Accept connection release (M)
+TSPC_A2DP_4_8	False		SNK: Initiate suspend (O)
+TSPC_A2DP_4_9	False		SNK: Accept suspend (O)
+TSPC_A2DP_4_10	False (*)	SNK: SBC decoder (M)
+TSPC_A2DP_4_10a	False (*)	SNK: Decode Audio Stream (O)
+TSPC_A2DP_4_11	False		SNK: SBC Configurations in 16 KHz sampling (O)
+TSPC_A2DP_4_12	False		SNK: SBC Configurations in 32 KHz sampling (O)
+TSPC_A2DP_4_13	False (*)	SNK: SBC Configurations in 44.1 KHz sampling (M)
+TSPC_A2DP_4_14	False (*)	SNK: SBC Configurations in 48 KHz sampling (M)
+-------------------------------------------------------------------------------
+
+
+		Supported codecs in SNK
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_A2DP_5_1	False		SNK: SBC decoder Codec (M)
+TSPC_A2DP_5_2	False		SNK: Additional decoder Coded (O)
+TSPC_ALL	False		Enable all test cases when set to False.
+-------------------------------------------------------------------------------

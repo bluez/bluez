@@ -148,4 +148,5 @@ EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
 		android/pixit-map.txt android/pts-map.txt \
 		android/pics-l2cap.txt android/pixit-l2cap.txt \
 		android/pics-avrcp.txt android/pixit-avrcp.txt \
+		android/pics-a2dp.txt android/pixit-a2dp.txt \
 		android/pts-l2cap.txt
