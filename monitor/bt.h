@@ -562,6 +562,10 @@ struct bt_hci_cmd_io_capability_request_reply {
 	uint8_t  oob_data;
 	uint8_t  authentication;
 } __attribute__ ((packed));
+struct bt_hci_rsp_io_capability_request_reply {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
 
 #define BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY		0x042c
 struct bt_hci_cmd_user_confirm_request_reply {
@@ -608,6 +612,10 @@ struct bt_hci_cmd_remote_oob_data_request_neg_reply {
 struct bt_hci_cmd_io_capability_request_neg_reply {
 	uint8_t  bdaddr[6];
 	uint8_t  reason;
+} __attribute__ ((packed));
+struct bt_hci_rsp_io_capability_request_neg_reply {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_CREATE_PHY_LINK		0x0435
