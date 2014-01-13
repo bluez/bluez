@@ -39,7 +39,7 @@ if EXPERIMENTAL
 noinst_PROGRAMS += emulator/btvirt emulator/b1ee tools/3dsp \
 					tools/mgmt-tester tools/gap-tester \
 					tools/l2cap-tester tools/sco-tester \
-					tools/smp-tester
+					tools/smp-tester tools/hci-tester
 
 emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 					monitor/mainloop.h monitor/mainloop.c \
@@ -111,6 +111,14 @@ tools_sco_tester_SOURCES = tools/sco-tester.c monitor/bt.h \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
 tools_sco_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
+tools_hci_tester_SOURCES = tools/hci-tester.c monitor/bt.h \
+				src/shared/io.h src/shared/io-glib.c \
+				src/shared/hci.h src/shared/hci.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/tester.h src/shared/tester.c
+tools_hci_tester_LDADD = @GLIB_LIBS@
 endif
 
 if TOOLS

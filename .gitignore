@@ -65,6 +65,7 @@ tools/mpris-player
 tools/bluetooth-player
 tools/l2cap-tester
 tools/sco-tester
+tools/hci-tester
 tools/btproxy
 tools/btinfo
 tools/3dsp

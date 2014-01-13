@@ -35,8 +35,9 @@ l2cap-tester		  15	Kernel L2CAP implementation testing
 smp-tester		   4	Kernel SMP implementation testing
 sco-tester		   8	Kernel SCO implementation testing
 gap-tester		   1	Daemon D-Bus API testing
+hci-tester		   1	Controller hardware testing
 			-----
-			 190
+			 191
 
 
 Android end-to-end testing
