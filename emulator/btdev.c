@@ -1218,6 +1218,7 @@ static void io_cap_req_reply_complete(struct btdev *btdev,
 {
 	struct btdev *remote = btdev->conn;
 	struct bt_hci_evt_io_capability_response ev;
+	struct bt_hci_rsp_io_capability_request_reply rsp;
 	uint8_t status;
 
 	if (!remote) {
@@ -1254,12 +1255,25 @@ static void io_cap_req_reply_complete(struct btdev *btdev,
 	}
 
 done:
+	rsp.status = status;
+	memcpy(rsp.bdaddr, bdaddr, 6);
 	cmd_complete(btdev, BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY,
-						&status, sizeof(status));
+							&rsp, sizeof(rsp));
+}
+
+static void io_cap_req_neg_reply_complete(struct btdev *btdev,
+							const uint8_t *bdaddr)
+{
+	struct bt_hci_rsp_io_capability_request_neg_reply rsp;
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	memcpy(rsp.bdaddr, bdaddr, 6);
+	cmd_complete(btdev, BT_HCI_CMD_IO_CAPABILITY_REQUEST_NEG_REPLY,
+							&rsp, sizeof(rsp));
 }
 
 static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
-								uint8_t status)
+						uint8_t status, bool wait)
 {
 	struct bt_hci_evt_simple_pairing_complete iev, aev;
 	struct bt_hci_evt_auth_complete auth;
@@ -1272,7 +1286,7 @@ static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
 	btdev->ssp_status = status;
 	btdev->ssp_auth_complete = true;
 
-	if (!remote->ssp_auth_complete)
+	if (!remote->ssp_auth_complete && wait)
 		return;
 
 	if (status == BT_HCI_ERR_SUCCESS &&
@@ -1433,6 +1447,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_ext_inquiry_response *weir;
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
 	const struct bt_hci_cmd_io_capability_request_reply *icrr;
+	const struct bt_hci_cmd_io_capability_request_reply *icrnr;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
 	const struct bt_hci_cmd_write_secure_conn_support *wscs;
 	const struct bt_hci_cmd_set_event_mask_page2 *semp2;
@@ -1962,13 +1977,22 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 							icrr->authentication);
 		break;
 
+	case BT_HCI_CMD_IO_CAPABILITY_REQUEST_NEG_REPLY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		icrnr = data;
+		io_cap_req_neg_reply_complete(btdev, icrnr->bdaddr);
+		ssp_complete(btdev, icrnr->bdaddr, BT_HCI_ERR_AUTH_FAILURE,
+									false);
+		break;
+
 	case BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
 		ucrr_rsp.status = BT_HCI_ERR_SUCCESS;
 		memcpy(ucrr_rsp.bdaddr, data, 6);
 		cmd_complete(btdev, opcode, &ucrr_rsp, sizeof(ucrr_rsp));
-		ssp_complete(btdev, data, BT_HCI_ERR_SUCCESS);
+		ssp_complete(btdev, data, BT_HCI_ERR_SUCCESS, true);
 		break;
 
 	case BT_HCI_CMD_USER_CONFIRM_REQUEST_NEG_REPLY:
@@ -1977,7 +2001,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		ucrnr_rsp.status = BT_HCI_ERR_SUCCESS;
 		memcpy(ucrnr_rsp.bdaddr, data, 6);
 		cmd_complete(btdev, opcode, &ucrnr_rsp, sizeof(ucrnr_rsp));
-		ssp_complete(btdev, data, BT_HCI_ERR_AUTH_FAILURE);
+		ssp_complete(btdev, data, BT_HCI_ERR_AUTH_FAILURE, true);
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_OOB_DATA:
