@@ -84,6 +84,7 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 
 void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
 							uint8_t pin_len);
+void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability);
 
 void bthost_start(struct bthost *bthost);
 void bthost_stop(struct bthost *bthost);

@@ -110,6 +110,7 @@ struct bthost {
 	struct l2cap_pending_req *l2reqs;
 	uint8_t pin[16];
 	uint8_t pin_len;
+	uint8_t io_capability;
 };
 
 struct bthost *bthost_create(void)
@@ -776,7 +777,7 @@ static void evt_io_cap_request(struct bthost *bthost, const void *data,
 		return;
 
 	memcpy(cp.bdaddr, ev->bdaddr, 6);
-	cp.capability = 0x03;
+	cp.capability = bthost->io_capability;
 	cp.oob_data = 0x00;
 	cp.authentication = 0x00;
 
@@ -1501,6 +1502,11 @@ void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
 {
 	memcpy(bthost->pin, pin, pin_len);
 	bthost->pin_len = pin_len;
+}
+
+void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability)
+{
+	bthost->io_capability = io_capability;
 }
 
 void bthost_start(struct bthost *bthost)
