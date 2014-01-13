@@ -130,6 +130,7 @@ static void convert_file(const char *input_path, const char *output_path)
 
 	while (1) {
 		char *str;
+		int err;
 
 		str = fgets(line_buffer, line_size - 1, fp);
 		if (!str)
@@ -137,7 +138,12 @@ static void convert_file(const char *input_path, const char *output_path)
 
 		cur += strlen(str);
 
-		convert_line(fd, str);
+		err = convert_line(fd, str);
+		if (err < 0) {
+			fprintf(stderr, "Failed to convert file (%s)\n",
+								strerror(-err));
+			break;
+		}
 	}
 
 	fclose(fp);
