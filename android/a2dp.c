@@ -415,7 +415,7 @@ static gboolean sep_getcap_ind(struct avdtp *session,
 	service = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT, NULL, 0);
 	*caps = g_slist_append(*caps, service);
 
-	codec = g_malloc0(sizeof(*codec) + sizeof(cap->len));
+	codec = g_malloc0(sizeof(*codec) + cap->len);
 	codec->media_type = AVDTP_MEDIA_TYPE_AUDIO;
 	codec->media_codec_type = endpoint->codec;
 	memcpy(codec->data, cap->data, cap->len);
