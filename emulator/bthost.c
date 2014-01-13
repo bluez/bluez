@@ -974,7 +974,7 @@ static bool l2cap_conn_req(struct bthost *bthost, struct btconn *conn,
 							le16_to_cpu(psm));
 
 		memset(&conf_req, 0, sizeof(conf_req));
-		conf_req.dcid = rsp.dcid;
+		conf_req.dcid = rsp.scid;
 
 		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_CONFIG_REQ, 0,
 						&conf_req, sizeof(conf_req));
