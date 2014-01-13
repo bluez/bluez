@@ -100,16 +100,153 @@ static void test_data_free(void *test_data)
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
-static void dummy_test(const void *test_data)
+static void setup_features_complete(const void *data, uint8_t size,
+							void *user_data)
+{
+	const struct bt_hci_rsp_read_local_features *rsp = data;
+
+	if (rsp->status) {
+		tester_warn("Failed to get HCI features (0x%02x)", rsp->status);
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
+static void setup_features(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	if (!bt_hci_send(data->hci, BT_HCI_CMD_READ_LOCAL_FEATURES, NULL, 0,
+					setup_features_complete, NULL, NULL)) {
+		tester_warn("Failed to send HCI features command");
+		tester_setup_failed();
+		return;
+	}
+}
+
+static void test_reset(const void *test_data)
 {
 	tester_test_passed();
+}
+
+static void test_command_complete(const void *data, uint8_t size,
+							void *user_data)
+{
+	uint8_t status = *((uint8_t *) data);
+
+	if (status) {
+		tester_warn("HCI command failed (0x%02x)", status);
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
+}
+
+static void test_command(uint16_t opcode)
+{
+	struct test_data *data = tester_get_data();
+
+	if (!bt_hci_send(data->hci, opcode, NULL, 0,
+					test_command_complete, NULL, NULL)) {
+		tester_warn("Failed to send HCI command 0x%04x", opcode);
+		tester_test_failed();
+		return;
+	}
+}
+
+static void test_read_local_version_information(const void *test_data)
+{
+	test_command(BT_HCI_CMD_READ_LOCAL_VERSION);
+}
+
+static void test_read_local_supported_commands(const void *test_data)
+{
+	test_command(BT_HCI_CMD_READ_LOCAL_COMMANDS);
+}
+
+static void test_read_local_supported_features(const void *test_data)
+{
+	test_command(BT_HCI_CMD_READ_LOCAL_FEATURES);
+}
+
+static void test_local_extended_features_complete(const void *data,
+						uint8_t size, void *user_data)
+{
+	const struct bt_hci_rsp_read_local_ext_features *rsp = data;
+
+	if (rsp->status) {
+		tester_warn("Failed to get HCI extended features (0x%02x)",
+								rsp->status);
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
+}
+
+static void test_read_local_extended_features(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct bt_hci_cmd_read_local_ext_features cmd;
+
+	cmd.page = 0x00;
+
+	if (!bt_hci_send(data->hci, BT_HCI_CMD_READ_LOCAL_EXT_FEATURES,
+					&cmd, sizeof(cmd),
+					test_local_extended_features_complete,
+								NULL, NULL)) {
+		tester_warn("Failed to send HCI extended features command");
+		tester_test_failed();
+		return;
+	}
+}
+
+static void test_read_buffer_size(const void *test_data)
+{
+	test_command(BT_HCI_CMD_READ_BUFFER_SIZE);
+}
+
+static void test_read_country_code(const void *test_data)
+{
+	test_command(BT_HCI_CMD_READ_COUNTRY_CODE);
+}
+
+static void test_read_bd_addr(const void *test_data)
+{
+	test_command(BT_HCI_CMD_READ_BD_ADDR);
+}
+
+static void test_read_local_supported_codecs(const void *test_data)
+{
+	test_command(BT_HCI_CMD_READ_LOCAL_CODECS);
 }
 
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
-	test_hci("User channel setup", NULL, NULL, dummy_test);
+	test_hci("Reset", NULL, NULL, test_reset);
+
+	test_hci("Read Local Version Information", NULL, NULL,
+				test_read_local_version_information);
+	test_hci("Read Local Supported Commands", NULL, NULL,
+				test_read_local_supported_commands);
+	test_hci("Read Local Supported Features", NULL, NULL,
+				test_read_local_supported_features);
+	test_hci("Read Local Extended Features", NULL,
+				setup_features,
+				test_read_local_extended_features);
+	test_hci("Read Buffer Size", NULL, NULL,
+				test_read_buffer_size);
+	test_hci("Read Country Code", NULL, NULL,
+				test_read_country_code);
+	test_hci("Read BD_ADDR", NULL, NULL,
+				test_read_bd_addr);
+	test_hci("Read Local Supported Codecs", NULL, NULL,
+				test_read_local_supported_codecs);
 
 	return tester_run();
 }
