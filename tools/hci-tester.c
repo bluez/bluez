@@ -227,6 +227,15 @@ static void test_read_local_supported_codecs(const void *test_data)
 static void test_inquiry_complete(const void *data, uint8_t size,
 							void *user_data)
 {
+	const struct bt_hci_evt_inquiry_complete *evt = data;
+
+	if (evt->status) {
+		tester_warn("HCI inquiry complete failed (0x%02x)",
+							evt->status);
+		tester_test_failed();
+		return;
+	}
+
 	tester_test_passed();
 }
 
