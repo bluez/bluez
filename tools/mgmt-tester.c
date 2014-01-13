@@ -2352,6 +2352,28 @@ static const struct generic_data pair_device_reject_test_2 = {
 	.pin_len = sizeof(pair_device_pin),
 };
 
+static const struct generic_data pair_device_reject_test_3 = {
+	.setup_settings = settings_powered_pairable_linksec,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_func = pair_device_expect_param_func,
+	.expect_hci_command = BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+};
+
+static const struct generic_data pair_device_reject_test_4 = {
+	.setup_settings = settings_powered_pairable_linksec,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_func = pair_device_expect_param_func,
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
+};
+
 static uint16_t settings_powered_pairable_ssp[] = {	MGMT_OP_SET_PAIRABLE,
 							MGMT_OP_SET_SSP,
 							MGMT_OP_SET_POWERED,
@@ -3663,6 +3685,12 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Legacy Reject 2",
 				&pair_device_reject_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - Sec Mode 3 Reject 1",
+				&pair_device_reject_test_3,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - Sec Mode 3 Reject 2",
+				&pair_device_reject_test_4,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Just-Works Success 1",
 				&pair_device_ssp_test_1,
