@@ -290,7 +290,6 @@ static void read_bd_data_complete(const void *data, uint8_t size,
 		cmd.bdaddr[0] = (hci_index & 0xff);
 		cmd.lmp_version = 0x07;
 		memcpy(cmd.features, rsp->features, 8);
-		cmd.features[0] &= ~(0x01 | 0x02);
 		cmd.le_features = rsp->le_features;
 		cmd.le_features |= 0x1e;
 		memcpy(cmd.reserved1, rsp->reserved1, sizeof(cmd.reserved1));
