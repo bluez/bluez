@@ -657,6 +657,33 @@ static void setup_remove(struct a2dp_setup *setup)
 	setup_free(setup);
 }
 
+static struct a2dp_setup *find_setup(uint8_t id)
+{
+	GSList *l;
+
+	for (l = setups; l; l = g_slist_next(l)) {
+		struct a2dp_setup *setup = l->data;
+
+		if (setup->endpoint->id == id)
+			return setup;
+	}
+
+	return NULL;
+}
+
+static void setup_remove_by_id(uint8_t id)
+{
+	struct a2dp_setup *setup;
+
+	setup = find_setup(id);
+	if (!setup) {
+		error("Unable to find stream setup for endpoint %u", id);
+		return;
+	}
+
+	setup_remove(setup);
+}
+
 static gboolean sep_setconf_ind(struct avdtp *session,
 						struct avdtp_local_sep *sep,
 						struct avdtp_stream *stream,
@@ -709,20 +736,6 @@ static gboolean sep_setconf_ind(struct avdtp *session,
 	cb(session, stream, NULL);
 
 	return TRUE;
-}
-
-static struct a2dp_setup *find_setup(uint8_t id)
-{
-	GSList *l;
-
-	for (l = setups; l; l = g_slist_next(l)) {
-		struct a2dp_setup *setup = l->data;
-
-		if (setup->endpoint->id == id)
-			return setup;
-	}
-
-	return NULL;
 }
 
 static gboolean sep_open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -854,8 +867,23 @@ failed:
 	setup_remove(setup);
 }
 
+static void sep_open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream, struct avdtp_error *err,
+			void *user_data)
+{
+	struct a2dp_endpoint *endpoint = user_data;
+
+	DBG("");
+
+	if (!err)
+		return;
+
+	setup_remove_by_id(endpoint->id);
+}
+
 static struct avdtp_sep_cfm sep_cfm = {
 	.set_configuration	= sep_setconf_cfm,
+	.open			= sep_open_cfm,
 };
 
 static uint8_t register_endpoint(const uint8_t *uuid, uint8_t codec,
