@@ -1088,8 +1088,8 @@ static void bt_stream_open(const void *buf, uint16_t len)
 		return;
 	}
 
-	len = sizeof(*rsp) + setup->preset->len;
-	rsp = g_malloc0(sizeof(*rsp) + setup->preset->len);
+	len = sizeof(struct audio_preset) + setup->preset->len;
+	rsp = g_malloc0(len);
 	rsp->preset->len = setup->preset->len;
 	memcpy(rsp->preset->data, setup->preset->data, setup->preset->len);
 
