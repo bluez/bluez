@@ -8,7 +8,6 @@ pathmap_INCL += glib:external/bluetooth/glib
 
 # Specify common compiler flags
 BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
-	-DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION) \
 	-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
 
 # Disable warnings enabled by Android but not enabled in autotools build
@@ -133,14 +132,8 @@ LOCAL_SRC_FILES := \
 	client/if-hh.c \
 	client/if-pan.c \
 	client/if-sock.c \
+	client/if-gatt.c \
 	hal-utils.c \
-
-ANDROID_4_3_OR_ABOVE := $(shell echo 0 | awk -v v=$(PLATFORM_SDK_VERSION) 'END {print (v > 17) ? 1 : 0}')
-
-ifeq ($(ANDROID_4_3_OR_ABOVE), 1)
-LOCAL_SRC_FILES += \
-	client/if-gatt.c
-endif
 
 LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \

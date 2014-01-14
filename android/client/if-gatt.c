@@ -26,16 +26,9 @@ const btgatt_interface_t *if_gatt = NULL;
  * btgatt_char_id_t -> btgatt_gatt_id_t
  * bt_uuid_t        -> btgatt_gatt_id_t
  */
-#if PLATFORM_SDK_VERSION > 18
 #define str2btgatt_descr_id_t str2btgatt_gatt_id_t
 #define btgatt_descr_id_t2str btgatt_gatt_id_t2str
 #define btgatt_descr_id_t btgatt_gatt_id_t
-#else
-#define btgatt_descr_id_t2str gatt_uuid_t2str
-#define str2btgatt_descr_id_t(a, b) gatt_str2bt_uuid_t(a, -1, b)
-#define btgatt_gatt_id_t btgatt_char_id_t
-#define btgatt_descr_id_t bt_uuid_t
-#endif
 
 #define MAX_CHAR_ID_STR_LEN (MAX_UUID_STR_LEN + 3 + 11)
 #define MAX_SRVC_ID_STR_LEN (MAX_UUID_STR_LEN + 3 + 11 + 1 + 11)

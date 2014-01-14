@@ -34,11 +34,9 @@ const struct interface *interfaces[] = {
 	&audio_if,
 	&bluetooth_if,
 	&av_if,
-#if PLATFORM_SDK_VERSION > 17
 	&gatt_if,
 	&gatt_client_if,
 	&gatt_server_if,
-#endif
 	&hf_if,
 	&hh_if,
 	&pan_if,
@@ -387,9 +385,7 @@ static void init(void)
 		BT_PROFILE_HEALTH_ID,
 		BT_PROFILE_HIDHOST_ID,
 		BT_PROFILE_PAN_ID,
-#if PLATFORM_SDK_VERSION > 17
 		BT_PROFILE_GATT_ID,
-#endif
 		BT_PROFILE_SOCKETS_ID
 	};
 	const struct method *m;

@@ -145,7 +145,6 @@ static void device_props_to_hal(bt_property_t *send_props,
 			enum_prop_to_hal(send_props[i], prop,
 							bt_device_type_t);
 			break;
-#if PLATFORM_SDK_VERSION > 17
 		case HAL_PROP_DEVICE_VERSION_INFO:
 		{
 			static bt_remote_version_t e;
@@ -161,7 +160,6 @@ static void device_props_to_hal(bt_property_t *send_props,
 			e.version = p->version;
 		}
 			break;
-#endif
 		case HAL_PROP_DEVICE_SERVICE_REC:
 		{
 			static bt_service_record_t e;
@@ -342,7 +340,6 @@ static void handle_dut_mode_receive(void *buf, uint16_t len)
 		bt_hal_cbacks->dut_mode_recv_cb(ev->opcode, ev->data, ev->len);
 }
 
-#if PLATFORM_SDK_VERSION > 17
 static void handle_le_test_mode(void *buf, uint16_t len)
 {
 	struct hal_ev_le_test_mode *ev = buf;
@@ -352,7 +349,6 @@ static void handle_le_test_mode(void *buf, uint16_t len)
 	if (bt_hal_cbacks->le_test_mode_cb)
 		bt_hal_cbacks->le_test_mode_cb(ev->status, ev->num_packets);
 }
-#endif
 
 /* handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
@@ -410,13 +406,11 @@ static const struct hal_ipc_handler ev_handlers[] = {
 		.var_len = true,
 		.data_len = sizeof(struct hal_ev_dut_mode_receive),
 	},
-#if PLATFORM_SDK_VERSION > 17
 	{	/* HAL_EV_LE_TEST_MODE */
 		.handler = handle_le_test_mode,
 		.var_len = false,
 		.data_len = sizeof(struct hal_ev_le_test_mode),
 	}
-#endif
 };
 
 static int init(bt_callbacks_t *callbacks)
@@ -806,7 +800,6 @@ static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t len)
 					sizeof(cmd_buf), cmd, 0, NULL, NULL);
 }
 
-#if PLATFORM_SDK_VERSION > 17
 static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t len)
 {
 	uint8_t cmd_buf[sizeof(struct hal_cmd_le_test_mode) + len];
@@ -824,9 +817,7 @@ static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t len)
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_LE_TEST_MODE,
 					sizeof(cmd_buf), cmd, 0, NULL, NULL);
 }
-#endif
 
-#if PLATFORM_SDK_VERSION > 18
 static int config_hci_snoop_log(uint8_t enable)
 {
 	DBG("enable %u", enable);
@@ -843,7 +834,6 @@ static int config_hci_snoop_log(uint8_t enable)
 
 	return BT_STATUS_SUCCESS;
 }
-#endif
 
 static const bt_interface_t bluetooth_if = {
 	.size = sizeof(bt_interface_t),
@@ -869,12 +859,8 @@ static const bt_interface_t bluetooth_if = {
 	.get_profile_interface = get_profile_interface,
 	.dut_mode_configure = dut_mode_configure,
 	.dut_mode_send = dut_mode_send,
-#if PLATFORM_SDK_VERSION > 17
 	.le_test_mode = le_test_mode,
-#endif
-#if PLATFORM_SDK_VERSION > 18
 	.config_hci_snoop_log = config_hci_snoop_log,
-#endif
 };
 
 static const bt_interface_t *get_bluetooth_interface(void)

@@ -307,13 +307,11 @@ static void dut_mode_recv_cb(uint16_t opcode, uint8_t *buf, uint8_t len)
 	haltest_info("%s\n", __func__);
 }
 
-#if PLATFORM_SDK_VERSION > 17
 static void le_test_mode_cb(bt_status_t status, uint16_t num_packets)
 {
 	haltest_info("%s %s %d\n", __func__, bt_status_t2str(status),
 								num_packets);
 }
-#endif
 
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
@@ -328,9 +326,7 @@ static bt_callbacks_t bt_callbacks = {
 	.acl_state_changed_cb = acl_state_changed_cb,
 	.thread_evt_cb = thread_evt_cb,
 	.dut_mode_recv_cb = dut_mode_recv_cb,
-#if PLATFORM_SDK_VERSION > 17
 	.le_test_mode_cb = le_test_mode_cb
-#endif
 };
 
 static void init_p(int argc, const char **argv)
@@ -726,10 +722,8 @@ static void get_profile_interface_c(int argc, const char **argv,
 		BT_PROFILE_SOCKETS_ID,
 		BT_PROFILE_HIDHOST_ID,
 		BT_PROFILE_PAN_ID,
-#if PLATFORM_SDK_VERSION > 17
 		BT_PROFILE_GATT_ID,
 		BT_PROFILE_AV_RC_ID,
-#endif
 		NULL
 	};
 
@@ -765,12 +759,10 @@ static void get_profile_interface_p(int argc, const char **argv)
 		pif = (const void **) &if_hh;
 	else if (strcmp(BT_PROFILE_PAN_ID, id) == 0)
 		pif = (const void **) &if_pan;
-#if PLATFORM_SDK_VERSION > 17
 	else if (strcmp(BT_PROFILE_AV_RC_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_rc is there */
 	else if (strcmp(BT_PROFILE_GATT_ID, id) == 0)
 		pif = (const void **) &if_gatt;
-#endif
 	else
 		haltest_error("%s is not correct for get_profile_interface\n",
 									id);
@@ -802,14 +794,11 @@ static void dut_mode_send_p(int argc, const char **argv)
 	haltest_error("not implemented\n");
 }
 
-#if PLATFORM_SDK_VERSION > 17
 static void le_test_mode_p(int argc, const char **argv)
 {
 	haltest_error("not implemented\n");
 }
-#endif
 
-#if PLATFORM_SDK_VERSION > 18
 static void config_hci_snoop_log_p(int argc, const char **argv)
 {
 	uint8_t mode;
@@ -825,7 +814,6 @@ static void config_hci_snoop_log_p(int argc, const char **argv)
 
 	EXEC(if_bluetooth->config_hci_snoop_log, mode);
 }
-#endif
 
 static struct method methods[] = {
 	STD_METHOD(init),
@@ -851,12 +839,8 @@ static struct method methods[] = {
 	STD_METHODCH(get_profile_interface, "<profile id>"),
 	STD_METHODH(dut_mode_configure, "<dut mode>"),
 	STD_METHOD(dut_mode_send),
-#if PLATFORM_SDK_VERSION > 17
 	STD_METHOD(le_test_mode),
-#endif
-#if PLATFORM_SDK_VERSION > 18
 	STD_METHODH(config_hci_snoop_log, "<mode>"),
-#endif
 	END_METHOD
 };
 
