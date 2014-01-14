@@ -84,6 +84,13 @@ struct cmd_write_bd_address {
 	uint8_t  bdaddr[6];
 } __attribute__ ((packed));
 
+#define CMD_ACT_DEACT_TRACES	0xfc43
+struct cmd_act_deact_traces {
+	uint8_t  tx_trace;
+	uint8_t  tx_arq;
+	uint8_t  rx_trace;
+} __attribute__ ((packed));
+
 static struct bt_hci *hci_dev;
 static uint16_t hci_index = 0;
 
@@ -93,6 +100,7 @@ static const char *set_bdaddr_value = NULL;
 static bool reset_on_exit = false;
 static bool use_manufacturer_mode = false;
 static bool get_bddata = false;
+static bool set_traces = false;
 
 static void reset_complete(const void *data, uint8_t size, void *user_data)
 {
@@ -204,6 +212,32 @@ static void read_bd_addr_complete(const void *data, uint8_t size,
 					write_bd_address_complete, NULL, NULL);
 }
 
+static void act_deact_traces_complete(const void *data, uint8_t size,
+							void *user_data)
+{
+	uint8_t status = *((uint8_t *) data);
+
+	if (status) {
+		fprintf(stderr, "Failed to activate traces (0x%02x)\n", status);
+		shutdown_device();
+		return;
+	}
+
+	shutdown_device();
+}
+
+static void act_deact_traces(void)
+{
+	struct cmd_act_deact_traces cmd;
+
+	cmd.tx_trace = 0x03;
+	cmd.tx_arq = 0x03;
+	cmd.rx_trace = 0x03;
+
+	bt_hci_send(hci_dev, CMD_ACT_DEACT_TRACES, &cmd, sizeof(cmd),
+					act_deact_traces_complete, NULL, NULL);
+}
+
 static void write_bd_data_complete(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -212,6 +246,11 @@ static void write_bd_data_complete(const void *data, uint8_t size,
 	if (status) {
 		fprintf(stderr, "Failed to write data (0x%02x)\n", status);
 		shutdown_device();
+		return;
+	}
+
+	if (set_traces) {
+		act_deact_traces();
 		return;
 	}
 
@@ -281,6 +320,11 @@ static void enter_manufacturer_mode_complete(const void *data, uint8_t size,
 	if (get_bddata || set_bdaddr) {
 		bt_hci_send(hci_dev, CMD_READ_BD_DATA, NULL, 0,
 					read_bd_data_complete, NULL, NULL);
+		return;
+	}
+
+	if (set_traces) {
+		act_deact_traces();
 		return;
 	}
 
@@ -406,6 +450,7 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "bdaddr",  optional_argument, NULL, 'A' },
 	{ "bddata",  no_argument,       NULL, 'D' },
+	{ "traces",  no_argument,       NULL, 'T' },
 	{ "reset",   no_argument,       NULL, 'R' },
 	{ "index",   required_argument, NULL, 'i' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -422,7 +467,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "A::DRi:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "A::DTRi:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -435,6 +480,10 @@ int main(int argc, char *argv[])
 		case 'D':
 			use_manufacturer_mode = true;
 			get_bddata = true;
+			break;
+		case 'T':
+			use_manufacturer_mode = true;
+			set_traces = true;
 			break;
 		case 'R':
 			reset_on_exit = true;
