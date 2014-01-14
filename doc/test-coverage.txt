@@ -31,13 +31,13 @@ Automated end-to-end testing
 Application		Count	Description
 -------------------------------------------
 mgmt-tester		 170	Kernel management interface testing
-l2cap-tester		  15	Kernel L2CAP implementation testing
+l2cap-tester		  19	Kernel L2CAP implementation testing
 smp-tester		   4	Kernel SMP implementation testing
 sco-tester		   8	Kernel SCO implementation testing
 gap-tester		   1	Daemon D-Bus API testing
 hci-tester		  10	Controller hardware testing
 			-----
-			 208
+			 212
 
 
 Android end-to-end testing
