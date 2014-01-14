@@ -1518,6 +1518,25 @@ static const struct generic_data bt_dev_getprop_scanmode_fail_test = {
 	.expected_adapter_status = BT_STATUS_FAIL,
 };
 
+static struct priority_property remote_getprop_bondeddev_props[] = {
+	{
+	.prop.type = BT_PROPERTY_ADAPTER_BONDED_DEVICES,
+	.prop.val = NULL,
+	.prop.len = 0,
+	},
+};
+
+static const struct generic_data bt_dev_getprop_bondeddev_fail_test = {
+	.expected_hal_cb.discovery_state_changed_cb =
+					remote_discovery_state_changed_cb,
+	.expected_hal_cb.device_found_cb = remote_get_property_device_found_cb,
+	.expected_hal_cb.remote_device_properties_cb =
+					remote_test_device_properties_cb,
+	.expected_cb_count = 3,
+	.expected_properties = remote_getprop_bondeddev_props,
+	.expected_adapter_status = BT_STATUS_FAIL,
+};
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
@@ -2113,6 +2132,15 @@ static void test_dev_getprop_servrec_fail(const void *test_data)
 }
 
 static void test_dev_getprop_scanmode_fail(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	init_test_conditions(data);
+
+	data->if_bluetooth->start_discovery();
+}
+
+static void test_dev_getprop_bondeddev_fail(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -2772,6 +2800,11 @@ int main(int argc, char *argv[])
 				&bt_dev_getprop_scanmode_fail_test,
 				setup_enabled_adapter,
 				test_dev_getprop_scanmode_fail, teardown);
+
+	test_bredrle("Bluetooth Device Get BONDED_DEVICES - Fail",
+				&bt_dev_getprop_bondeddev_fail_test,
+				setup_enabled_adapter,
+				test_dev_getprop_bondeddev_fail, teardown);
 
 	test_bredrle("Socket Init", NULL, setup_socket_interface,
 						test_dummy, teardown);
