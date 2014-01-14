@@ -58,6 +58,7 @@ struct hci_filter {
 struct bt_hci {
 	int ref_count;
 	struct io *io;
+	bool is_stream;
 	bool writer_active;
 	uint8_t num_cmds;
 	unsigned int next_cmd_id;
@@ -266,6 +267,9 @@ static bool io_read_callback(struct io *io, void *user_data)
 	if (fd < 0)
 		return false;
 
+	if (hci->is_stream)
+		return false;
+
 	len = read(fd, buf, sizeof(buf));
 	if (len < 0)
 		return false;
@@ -299,6 +303,7 @@ struct bt_hci *bt_hci_new(int fd)
 		return NULL;
 	}
 
+	hci->is_stream = true;
 	hci->writer_active = false;
 	hci->num_cmds = 1;
 	hci->next_cmd_id = 1;
@@ -378,6 +383,8 @@ struct bt_hci *bt_hci_new_user_channel(uint16_t index)
 		return NULL;
 	}
 
+	hci->is_stream = false;
+
 	bt_hci_set_close_on_unref(hci, true);
 
 	return hci;
@@ -408,6 +415,8 @@ struct bt_hci *bt_hci_new_raw_device(uint16_t index)
 		close(fd);
 		return NULL;
 	}
+
+	hci->is_stream = false;
 
 	bt_hci_set_close_on_unref(hci, true);
 
