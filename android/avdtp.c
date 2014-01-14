@@ -923,6 +923,8 @@ static void finalize_discovery(struct avdtp *session, int err)
 	if (!discover)
 		return;
 
+	session->discover = NULL;
+
 	avdtp_error_init(&avdtp_err, AVDTP_ERRNO, err);
 
 	if (discover->id > 0)
@@ -931,7 +933,6 @@ static void finalize_discovery(struct avdtp *session, int err)
 	discover->cb(session, session->seps, err ? &avdtp_err : NULL,
 							discover->user_data);
 	g_free(discover);
-	session->discover = NULL;
 }
 
 static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
