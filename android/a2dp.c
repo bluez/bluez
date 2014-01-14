@@ -881,9 +881,24 @@ static void sep_open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	setup_remove_by_id(endpoint->id);
 }
 
+static void sep_start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream, struct avdtp_error *err,
+			void *user_data)
+{
+	struct a2dp_endpoint *endpoint = user_data;
+
+	DBG("");
+
+	if (!err)
+		return;
+
+	setup_remove_by_id(endpoint->id);
+}
+
 static struct avdtp_sep_cfm sep_cfm = {
 	.set_configuration	= sep_setconf_cfm,
 	.open			= sep_open_cfm,
+	.start			= sep_start_cfm,
 };
 
 static uint8_t register_endpoint(const uint8_t *uuid, uint8_t codec,
