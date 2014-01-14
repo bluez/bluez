@@ -326,6 +326,23 @@ static const struct l2cap_server_data l2cap_server_write_success_test = {
 	.data_len = sizeof(l2_data),
 };
 
+static const uint8_t l2cap_sec_block_rsp[] = {	0x00, 0x00,	/* dcid */
+						0x41, 0x00,	/* scid */
+						0x03, 0x00,	/* Sec Block */
+						0x00, 0x00	/* status */
+					};
+
+static const struct l2cap_server_data l2cap_server_sec_block_test = {
+	.server_psm = 0x1001,
+	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_req = l2cap_connect_req,
+	.send_req_len = sizeof(l2cap_connect_req),
+	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
+	.expect_rsp = l2cap_sec_block_rsp,
+	.expect_rsp_len = sizeof(l2cap_sec_block_rsp),
+	.enable_ssp = true,
+};
+
 static const uint8_t l2cap_nval_psm_rsp[] = {	0x00, 0x00,	/* dcid */
 						0x41, 0x00,	/* scid */
 						0x02, 0x00,	/* nval PSM */
@@ -1069,6 +1086,10 @@ int main(int argc, char *argv[])
 
 	test_l2cap_bredr("L2CAP BR/EDR Server - Write Success",
 					&l2cap_server_write_success_test,
+					setup_powered_server, test_server);
+
+	test_l2cap_bredr("L2CAP BR/EDR Server - Security Block",
+					&l2cap_server_sec_block_test,
 					setup_powered_server, test_server);
 
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid PSM",
