@@ -6371,14 +6371,12 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 			" (0x%2.2x|0x%4.4x) ncmd %d", ogf, ocf, evt->ncmd);
 
 	if (!opcode_data || !opcode_data->rsp_func) {
-		if (size - 3 == 1) {
+		if (size > 3) {
 			uint8_t status = *((uint8_t *) (data + 3));
 
 			print_status(status);
-			return;
+			packet_hexdump(data + 4, size - 4);
 		}
-
-		packet_hexdump(data + 3, size - 3);
 		return;
 	}
 
