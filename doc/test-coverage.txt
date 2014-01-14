@@ -45,7 +45,7 @@ Android end-to-end testing
 
 Application		Count	Description
 -------------------------------------------
-android-tester		  44	Android HAL interface testing
+android-tester		  58	Android HAL interface testing
 			-----
-			  44
+			  58
 
