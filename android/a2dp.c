@@ -647,7 +647,9 @@ static void setup_free(void *data)
 {
 	struct a2dp_setup *setup = data;
 
-	preset_free(setup->preset);
+	if (!g_slist_find(setup->endpoint->presets, setup->preset))
+		preset_free(setup->preset);
+
 	g_free(setup);
 }
 
