@@ -124,7 +124,7 @@ endif
 if TOOLS
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
 			tools/rfcomm tools/rctest tools/l2test tools/l2ping \
-			tools/sdptool tools/ciptool tools/bccmd
+			tools/sdptool tools/ciptool tools/bccmd tools/bluemoon
 
 tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_st.c \
@@ -186,6 +186,13 @@ tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
 			tools/csr_h4.c tools/csr_3wire.c \
 			tools/csr_bcsp.c tools/ubcsp.h tools/ubcsp.c
 tools_bccmd_LDADD = lib/libbluetooth-internal.la
+
+tools_bluemoon_SOURCES = tools/bluemoon.c monitor/bt.h \
+				monitor/mainloop.h monitor/mainloop.c \
+				src/shared/io.h src/shared/io-mainloop.c \
+				src/shared/hci.h src/shared/hci.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c
 
 dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
