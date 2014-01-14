@@ -90,6 +90,8 @@ struct device {
 	uint32_t timestamp;
 
 	GSList *uuids;
+
+	bool found; /* if device is found in current discovery session */
 };
 
 struct browse_req {
@@ -903,6 +905,13 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 	send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_NOTIF, ev->passkey);
 }
 
+static void clear_device_found(gpointer data, gpointer user_data)
+{
+	struct device *dev = data;
+
+	dev->found = false;
+}
+
 static void mgmt_discovering_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -924,10 +933,12 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 
 	DBG("new discovering state %u", ev->discovering);
 
-	if (adapter.discovering)
+	if (adapter.discovering) {
 		cp.state = HAL_DISCOVERY_STATE_STARTED;
-	else
+	} else {
+		g_slist_foreach(devices, clear_device_found, NULL);
 		cp.state = HAL_DISCOVERY_STATE_STOPPED;
+	}
 
 	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH,
 			HAL_EV_DISCOVERY_STATE_CHANGED, sizeof(cp), &cp);
@@ -983,12 +994,20 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	eir_parse(&eir, data, data_len);
 
 	dev = find_device(bdaddr);
-	if (!dev) {
+
+	/*
+	 * Device found event needs to be send also for known device if this is
+	 * new discovery session. Otherwise framework will ignore it.
+	 */
+	if (!dev || !dev->found) {
 		struct hal_ev_device_found *ev = (void *) buf;
 		bdaddr_t android_bdaddr;
 		uint8_t android_type;
 
-		dev = create_device(bdaddr, bdaddr_type);
+		if (!dev)
+			dev = create_device(bdaddr, bdaddr_type);
+
+		dev->found = true;
 
 		size += sizeof(*ev);
 
