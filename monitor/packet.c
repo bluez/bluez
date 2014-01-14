@@ -7383,8 +7383,13 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
 		opcode_str = opcode_data->str;
 	} else {
-		opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
-		opcode_str = "Unknown";
+		if (ogf == 0x3f) {
+			opcode_color = COLOR_HCI_COMMAND;
+			opcode_str = "Vendor";
+		} else {
+			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+			opcode_str = "Unknown";
+		}
 	}
 
 	sprintf(extra_str, "(0x%2.2x|0x%4.4x) plen %d", ogf, ocf, hdr->plen);
