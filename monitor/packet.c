@@ -6363,8 +6363,13 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
 		opcode_str = opcode_data->str;
 	} else {
-		opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
-		opcode_str = "Unknown";
+		if (ogf == 0x3f) {
+			opcode_color = COLOR_HCI_COMMAND;
+			opcode_str = "Vendor";
+		} else {
+			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+			opcode_str = "Unknown";
+		}
 	}
 
 	print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
@@ -6425,8 +6430,13 @@ static void cmd_status_evt(const void *data, uint8_t size)
 		opcode_color = COLOR_HCI_COMMAND;
 		opcode_str = opcode_data->str;
 	} else {
-		opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
-		opcode_str = "Unknown";
+		if (ogf == 0x3f) {
+			opcode_color = COLOR_HCI_COMMAND;
+			opcode_str = "Vendor";
+		} else {
+			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+			opcode_str = "Unknown";
+		}
 	}
 
 	print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
