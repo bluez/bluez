@@ -280,9 +280,20 @@ static const struct  l2cap_client_data client_connect_write_success_test = {
 	.data_len = sizeof(l2_data),
 };
 
-static const struct l2cap_client_data client_connect_nval_psm_test = {
+static const struct l2cap_client_data client_connect_nval_psm_test_1 = {
 	.client_psm = 0x1001,
 	.expect_err = ECONNREFUSED,
+};
+
+static const struct l2cap_client_data client_connect_nval_psm_test_2 = {
+	.client_psm = 0x0001,
+	.expect_err = ECONNREFUSED,
+};
+
+static const struct l2cap_client_data client_connect_nval_psm_test_3 = {
+	.client_psm = 0x0001,
+	.expect_err = ECONNREFUSED,
+	.enable_ssp = true,
 };
 
 static const uint8_t l2cap_connect_req[] = { 0x01, 0x10, 0x41, 0x00 };
@@ -1036,8 +1047,16 @@ int main(int argc, char *argv[])
 					&client_connect_write_success_test,
 					setup_powered_client, test_connect);
 
-	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM",
-					&client_connect_nval_psm_test,
+	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM 1",
+					&client_connect_nval_psm_test_1,
+					setup_powered_client, test_connect);
+
+	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM 2",
+					&client_connect_nval_psm_test_2,
+					setup_powered_client, test_connect);
+
+	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM 3",
+					&client_connect_nval_psm_test_3,
 					setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Server - Success",
