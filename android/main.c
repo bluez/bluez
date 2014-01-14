@@ -36,7 +36,9 @@
 #include <unistd.h>
 
 #include <sys/signalfd.h>
+#if defined(ANDROID)
 #include <sys/capability.h>
+#endif
 
 #include <glib.h>
 
