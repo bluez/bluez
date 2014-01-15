@@ -2458,6 +2458,8 @@ static const struct generic_data pairing_acceptor_legacy_1 = {
 	.pin_len = sizeof(pair_device_pin),
 	.client_pin = pair_device_pin,
 	.client_pin_len = sizeof(pair_device_pin),
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
 };
 
 static const char unpair_device_param[] = {
