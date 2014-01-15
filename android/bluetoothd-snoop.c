@@ -37,7 +37,7 @@
 #include "monitor/mainloop.h"
 #include "src/shared/btsnoop.h"
 
-#define DEAULT_SNOOP_FILE "/sdcard/btsnoop_hci.log"
+#define DEFAULT_SNOOP_FILE "/sdcard/btsnoop_hci.log"
 
 #define MAX_PACKET_SIZE (1486 + 4)
 
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 	if (argc > 1)
 		path = argv[1];
 	else
-		path = DEAULT_SNOOP_FILE;
+		path = DEFAULT_SNOOP_FILE;
 
 	mainloop_init();
 
