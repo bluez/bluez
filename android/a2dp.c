@@ -309,6 +309,8 @@ static int select_configuration(struct a2dp_device *dev,
 						sizeof(*codec) + preset->len);
 	caps = g_slist_append(caps, service);
 
+	g_free(codec);
+
 	err = avdtp_set_configuration(dev->session, rsep, endpoint->sep, caps,
 								&stream);
 	g_slist_free_full(caps, g_free);
