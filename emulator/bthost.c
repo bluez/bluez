@@ -1495,6 +1495,15 @@ void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)
 	send_command(bthost, BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE, &mode, 1);
 }
 
+void bthost_request_auth(struct bthost *bthost, uint16_t handle)
+{
+	struct bt_hci_cmd_auth_requested cp;
+
+	cp.handle = cpu_to_le16(handle);
+
+	send_command(bthost, BT_HCI_CMD_AUTH_REQUESTED, &cp, sizeof(cp));
+}
+
 void bthost_le_start_encrypt(struct bthost *bthost, uint16_t handle,
 							const uint8_t ltk[16])
 {
