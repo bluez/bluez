@@ -430,6 +430,21 @@ static int ipc_resume_stream_cmd(uint8_t endpoint_id)
 	return result;
 }
 
+static int ipc_suspend_stream_cmd(uint8_t endpoint_id)
+{
+	struct audio_cmd_suspend_stream cmd;
+	int result;
+
+	DBG("");
+
+	cmd.id = endpoint_id;
+
+	result = audio_ipc_cmd(AUDIO_SERVICE_ID, AUDIO_OP_SUSPEND_STREAM,
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
+
+	return result;
+}
+
 static int register_endpoints(void)
 {
 	struct audio_endpoint *ep = &audio_endpoints[0];
@@ -528,8 +543,17 @@ static int out_set_format(struct audio_stream *stream, audio_format_t format)
 
 static int out_standby(struct audio_stream *stream)
 {
+	struct a2dp_stream_out *out = (struct a2dp_stream_out *) stream;
+
 	DBG("");
-	return -ENOSYS;
+
+	if (out->audio_state == AUDIO_A2DP_STATE_STARTED) {
+		if (ipc_suspend_stream_cmd(out->ep->id) != AUDIO_STATUS_SUCCESS)
+			return -1;
+		out->audio_state = AUDIO_A2DP_STATE_STANDBY;
+	}
+
+	return 0;
 }
 
 static int out_dump(const struct audio_stream *stream, int fd)
@@ -540,8 +564,51 @@ static int out_dump(const struct audio_stream *stream, int fd)
 
 static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
 {
-	DBG("");
-	return -ENOSYS;
+	struct a2dp_stream_out *out = (struct a2dp_stream_out *) stream;
+	char *kvpair;
+	char *str;
+	char *saveptr;
+	bool enter_suspend = false;
+	bool exit_suspend = false;
+
+	DBG("%s", kvpairs);
+
+	str = strdup(kvpairs);
+	kvpair = strtok_r(str, ";", &saveptr);
+
+	for (; kvpair && *kvpair; kvpair = strtok_r(NULL, ";", &saveptr)) {
+		char *keyval;
+
+		keyval = strchr(kvpair, '=');
+		if (!keyval)
+			continue;
+
+		*keyval = '\0';
+		keyval++;
+
+		if (!strcmp(kvpair, "closing")) {
+			if (!strcmp(keyval, "true"))
+				out->audio_state = AUDIO_A2DP_STATE_NONE;
+		} else if (!strcmp(kvpair, "A2dpSuspended")) {
+			if (!strcmp(keyval, "true"))
+				enter_suspend = true;
+			else
+				exit_suspend = true;
+		}
+	}
+
+	free(str);
+
+	if (enter_suspend && out->audio_state == AUDIO_A2DP_STATE_STARTED) {
+		if (ipc_suspend_stream_cmd(out->ep->id) != AUDIO_STATUS_SUCCESS)
+			return -1;
+		out->audio_state = AUDIO_A2DP_STATE_SUSPENDED;
+	}
+
+	if (exit_suspend && out->audio_state == AUDIO_A2DP_STATE_SUSPENDED)
+		out->audio_state = AUDIO_A2DP_STATE_STANDBY;
+
+	return 0;
 }
 
 static char *out_get_parameters(const struct audio_stream *stream,
