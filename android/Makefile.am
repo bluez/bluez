@@ -121,6 +121,7 @@ android_android_tester_LDFLAGS = -pthread -ldl
 plugin_LTLIBRARIES += android/audio.a2dp.default.la
 
 android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
+					android/hal-msg.h \
 					android/hal-audio.c \
 					android/hardware/audio.h \
 					android/hardware/audio_effect.h \
