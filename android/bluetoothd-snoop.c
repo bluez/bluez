@@ -206,6 +206,9 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
+	if (!strcmp(DEFAULT_SNOOP_FILE, path))
+		rename(DEFAULT_SNOOP_FILE, DEFAULT_SNOOP_FILE ".old");
+
 	if (open_monitor(path) < 0) {
 		printf("Failed to start bluetoothd_snoop\n");
 		return EXIT_FAILURE;
