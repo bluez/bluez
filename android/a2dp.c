@@ -1181,6 +1181,8 @@ static void bt_stream_open(const void *buf, uint16_t len)
 	memcpy(rsp->preset->data, setup->preset->data, setup->preset->len);
 
 	audio_ipc_send_rsp_full(AUDIO_OP_OPEN_STREAM, len, rsp, -1);
+
+	g_free(rsp);
 }
 
 static void bt_stream_close(const void *buf, uint16_t len)
