@@ -691,6 +691,9 @@ static void evt_auth_complete(struct bthost *bthost, const void *data,
 	if (len < sizeof(*ev))
 		return;
 
+	if (ev->status)
+		return;
+
 	cp.handle = ev->handle;
 	cp.encr_mode = 0x01;
 
