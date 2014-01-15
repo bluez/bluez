@@ -380,6 +380,7 @@ struct generic_data {
 	const void *expect_hci_param;
 	uint8_t expect_hci_len;
 	const void * (*expect_hci_func)(uint8_t *len);
+	bool expect_pin;
 	uint8_t pin_len;
 	const void *pin;
 	uint8_t client_pin_len;
@@ -2335,6 +2336,7 @@ static const struct generic_data pair_device_reject_test_1 = {
 	.expect_func = pair_device_expect_param_func,
 	.expect_hci_command = BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY,
 	.expect_hci_func = client_bdaddr_param_func,
+	.expect_pin = true,
 	.client_pin = pair_device_pin,
 	.client_pin_len = sizeof(pair_device_pin),
 };
@@ -2360,6 +2362,7 @@ static const struct generic_data pair_device_reject_test_3 = {
 	.expect_func = pair_device_expect_param_func,
 	.expect_hci_command = BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY,
 	.expect_hci_func = client_bdaddr_param_func,
+	.expect_pin = true,
 	.client_pin = pair_device_pin,
 	.client_pin_len = sizeof(pair_device_pin),
 };
@@ -2908,6 +2911,8 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	const struct generic_data *test = data->test_data;
 	struct mgmt_cp_pin_code_reply cp;
 
+	test_condition_complete(data);
+
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 
@@ -2957,8 +2962,13 @@ static void test_setup(const void *test_data)
 	if (!test)
 		goto proceed;
 
-	mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST, data->mgmt_index,
-					pin_code_request_callback, data, NULL);
+	if (test->pin || test->expect_pin) {
+		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
+				data->mgmt_index, pin_code_request_callback,
+				data, NULL);
+		test_add_condition(data);
+	}
+
 	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
 			data->mgmt_index, user_confirm_request_callback,
 			data, NULL);
