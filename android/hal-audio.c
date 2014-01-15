@@ -415,6 +415,21 @@ static int ipc_close_stream_cmd(uint8_t endpoint_id)
 	return result;
 }
 
+static int ipc_resume_stream_cmd(uint8_t endpoint_id)
+{
+	struct audio_cmd_resume_stream cmd;
+	int result;
+
+	DBG("");
+
+	cmd.id = endpoint_id;
+
+	result = audio_ipc_cmd(AUDIO_SERVICE_ID, AUDIO_OP_RESUME_STREAM,
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
+
+	return result;
+}
+
 static int register_endpoints(void)
 {
 	struct audio_endpoint *ep = &audio_endpoints[0];
@@ -453,8 +468,26 @@ static void unregister_endpoints(void)
 static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 								size_t bytes)
 {
-	DBG("");
-	return -ENOSYS;
+	struct a2dp_stream_out *out = (struct a2dp_stream_out *) stream;
+
+	/* We can auto-start only from standby */
+	if (out->audio_state == AUDIO_A2DP_STATE_STANDBY) {
+		DBG("stream in standby, auto-start");
+
+		if (ipc_resume_stream_cmd(out->ep->id) != AUDIO_STATUS_SUCCESS)
+			return -1;
+
+		out->audio_state = AUDIO_A2DP_STATE_STARTED;
+	}
+
+	if (out->audio_state != AUDIO_A2DP_STATE_STARTED) {
+		DBG("stream not started");
+		return -1;
+	}
+
+	/* TODO: encode data using codec */
+
+	return bytes;
 }
 
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
