@@ -3003,14 +3003,16 @@ proceed:
 			param = discov_param;
 		}
 
-		mgmt_send(data->mgmt, *cmd, data->mgmt_index,
-				param_size, param, func, data, NULL);
-
 		if (*cmd == MGMT_OP_SET_LE && test->setup_nobredr) {
 			unsigned char off[] = { 0x00 };
+			mgmt_send(data->mgmt, *cmd, data->mgmt_index,
+					param_size, param, NULL, NULL, NULL);
 			mgmt_send(data->mgmt, MGMT_OP_SET_BREDR,
 					data->mgmt_index, sizeof(off), off,
-					NULL, data, NULL);
+					func, data, NULL);
+		} else {
+			mgmt_send(data->mgmt, *cmd, data->mgmt_index,
+					param_size, param, func, data, NULL);
 		}
 	}
 }
