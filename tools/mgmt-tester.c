@@ -3105,7 +3105,8 @@ static void command_generic_event_alt(uint16_t index, uint16_t length,
 
 	tester_print("New %s event received", mgmt_evstr(test->expect_alt_ev));
 
-	if (memcmp(param, test->expect_alt_ev_param,
+	if (test->expect_alt_ev_param &&
+			memcmp(param, test->expect_alt_ev_param,
 						test->expect_alt_ev_len) != 0)
 		return;
 
