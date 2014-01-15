@@ -339,6 +339,21 @@ static int ipc_open_cmd(const struct audio_codec *codec)
 	return rsp.id;
 }
 
+static int ipc_close_cmd(uint8_t endpoint_id)
+{
+	struct audio_cmd_close cmd;
+	int result;
+
+	DBG("");
+
+	cmd.id = endpoint_id;
+
+	result = audio_ipc_cmd(AUDIO_SERVICE_ID, AUDIO_OP_CLOSE,
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
+
+	return result;
+}
+
 static int register_endpoints(void)
 {
 	struct audio_endpoint *ep = &audio_endpoints[0];
@@ -358,6 +373,20 @@ static int register_endpoints(void)
 	}
 
 	return AUDIO_STATUS_SUCCESS;
+}
+
+static void unregister_endpoints(void)
+{
+	size_t i;
+
+	for (i = 0; i < MAX_AUDIO_ENDPOINTS; i++) {
+		struct audio_endpoint *ep = &audio_endpoints[i];
+
+		if (ep->id) {
+			ipc_close_cmd(ep->id);
+			memset(ep, 0, sizeof(*ep));
+		}
+	}
 }
 
 static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
@@ -755,6 +784,8 @@ static void *ipc_handler(void *data)
 		if (register_endpoints() != AUDIO_STATUS_SUCCESS) {
 			error("audio: Failed to register endpoints");
 
+			unregister_endpoints();
+
 			shutdown(audio_sk, SHUT_RDWR);
 			continue;
 		}
@@ -777,6 +808,8 @@ static void *ipc_handler(void *data)
 		close_thread = false;
 		pthread_mutex_unlock(&close_mutex);
 	}
+
+	unregister_endpoints();
 
 	info("Closing Audio IPC thread");
 	return NULL;
