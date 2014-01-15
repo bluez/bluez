@@ -183,10 +183,6 @@ LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/../lib \
 	$(LOCAL_PATH)/../src/shared \
 
-LOCAL_C_INCLUDES += \
-	$(call include-path-for, glib) \
-	$(call include-path-for, glib)/glib \
-
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
