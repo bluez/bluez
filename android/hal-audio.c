@@ -400,6 +400,21 @@ static int ipc_open_stream_cmd(uint8_t endpoint_id,
 	return result;
 }
 
+static int ipc_close_stream_cmd(uint8_t endpoint_id)
+{
+	struct audio_cmd_close_stream cmd;
+	int result;
+
+	DBG("");
+
+	cmd.id = endpoint_id;
+
+	result = audio_ipc_cmd(AUDIO_SERVICE_ID, AUDIO_OP_CLOSE_STREAM,
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
+
+	return result;
+}
+
 static int register_endpoints(void)
 {
 	struct audio_endpoint *ep = &audio_endpoints[0];
@@ -697,8 +712,13 @@ static void audio_close_output_stream(struct audio_hw_device *dev,
 					struct audio_stream_out *stream)
 {
 	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *) dev;
+	struct audio_endpoint *ep = a2dp_dev->out->ep;
 
 	DBG("");
+
+	ipc_close_stream_cmd(ep->id);
+
+	/* TODO: cleanup codec */
 
 	free(stream);
 	a2dp_dev->out = NULL;
