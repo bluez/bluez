@@ -3247,9 +3247,22 @@ static void pairing_new_conn(uint16_t handle, void *user_data)
 static void test_pairing_acceptor(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
 	const uint8_t *master_bdaddr;
 	struct bthost *bthost;
 	uint8_t addr_type;
+
+	if (test->expect_alt_ev) {
+		unsigned int id;
+
+		tester_print("Registering %s notification",
+					mgmt_evstr(test->expect_alt_ev));
+		id = mgmt_register(data->mgmt_alt, test->expect_alt_ev,
+					data->mgmt_index,
+					command_generic_event_alt, NULL, NULL);
+		data->mgmt_alt_ev_id = id;
+		test_add_condition(data);
+	}
 
 	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
