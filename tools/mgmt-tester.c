@@ -2447,6 +2447,19 @@ static const struct generic_data pair_device_ssp_nonpairable_1 = {
 	.client_io_cap = 0x01, /* DisplayYesNo */
 };
 
+static uint16_t settings_powered_connectable_pairable[] = {
+						MGMT_OP_SET_PAIRABLE,
+						MGMT_OP_SET_CONNECTABLE,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data pairing_acceptor_legacy_1 = {
+	.setup_settings = settings_powered_connectable_pairable,
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -3218,6 +3231,43 @@ static void test_command_generic(const void *test_data)
 	test_add_condition(data);
 }
 
+static void pairing_new_conn(uint16_t handle, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+
+	tester_print("New connection with handle 0x%04x", handle);
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	bthost_request_auth(bthost, handle);
+}
+
+static void test_pairing_acceptor(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *master_bdaddr;
+	struct bthost *bthost;
+	uint8_t addr_type;
+
+	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	if (!master_bdaddr) {
+		tester_warn("No master bdaddr");
+		tester_test_failed();
+		return;
+	}
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_connect_cb(bthost, pairing_new_conn, data);
+
+	if (data->hciemu_type == HCIEMU_TYPE_BREDRLE)
+		addr_type = BDADDR_BREDR;
+	else
+		addr_type = BDADDR_LE_PUBLIC;
+
+	bthost_hci_connect(bthost, master_bdaddr, addr_type);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -3730,6 +3780,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Pair Device - SSP Non-pairable 1",
 				&pair_device_ssp_nonpairable_1,
 				NULL, test_command_generic);
+
+	test_bredrle("Pairing Acceptor - Legacy 1",
+				&pairing_acceptor_legacy_1, NULL,
+				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
 				&unpair_device_not_powered_test_1,
