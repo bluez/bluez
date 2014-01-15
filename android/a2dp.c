@@ -403,8 +403,6 @@ static void signaling_connect_cb(GIOChannel *chan, GError *err,
 		}
 	}
 
-	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_CONNECTED);
-
 	return;
 
 failed:
@@ -546,6 +544,8 @@ static void transport_connect_cb(GIOChannel *chan, GError *err,
 		g_io_channel_unref(dev->io);
 		dev->io = NULL;
 	}
+
+	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_CONNECTED);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
