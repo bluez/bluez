@@ -196,6 +196,29 @@ LOCAL_MODULE := btmon
 include $(BUILD_EXECUTABLE)
 
 #
+# btproxy
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	../tools/proxy.c \
+	../monitor/mainloop.c \
+	../src/shared/util.c \
+
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/.. \
+	$(LOCAL_PATH)/../src/shared \
+
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
+LOCAL_MODULE_TAGS := debug
+LOCAL_MODULE := btproxy
+
+include $(BUILD_EXECUTABLE)
+
+#
 # A2DP audio
 #
 
