@@ -202,7 +202,7 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
-	../tools/proxy.c \
+	../tools/btproxy.c \
 	../monitor/mainloop.c \
 	../src/shared/util.c \
 
