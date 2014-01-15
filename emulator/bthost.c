@@ -556,6 +556,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
 		break;
+	case BT_HCI_CMD_LINK_KEY_REQUEST_NEG_REPLY:
+		break;
 	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
 		break;
 	case BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY:
@@ -720,6 +722,22 @@ static void evt_pin_code_request(struct bthost *bthost, const void *data,
 		send_command(bthost, BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY,
 							&cp, sizeof(cp));
 	}
+}
+
+static void evt_link_key_request(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_link_key_request *ev = data;
+	struct bt_hci_cmd_link_key_request_neg_reply cp;
+
+	if (len < sizeof(*ev))
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.bdaddr, ev->bdaddr, 6);
+
+	send_command(bthost, BT_HCI_CMD_LINK_KEY_REQUEST_NEG_REPLY,
+							&cp, sizeof(cp));
 }
 
 static void evt_link_key_notify(struct bthost *bthost, const void *data,
@@ -900,6 +918,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_PIN_CODE_REQUEST:
 		evt_pin_code_request(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_LINK_KEY_REQUEST:
+		evt_link_key_request(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_LINK_KEY_NOTIFY:
