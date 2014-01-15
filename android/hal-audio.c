@@ -937,7 +937,7 @@ static char *audio_get_parameters(const struct audio_hw_device *dev,
 static int audio_init_check(const struct audio_hw_device *dev)
 {
 	DBG("");
-	return -ENOSYS;
+	return 0;
 }
 
 static int audio_set_voice_volume(struct audio_hw_device *dev, float volume)
@@ -1174,6 +1174,7 @@ static int audio_open(const hw_module_t *module, const char *name,
 	if (!a2dp_dev)
 		return -ENOMEM;
 
+	a2dp_dev->dev.common.tag = HARDWARE_DEVICE_TAG;
 	a2dp_dev->dev.common.version = AUDIO_DEVICE_API_VERSION_CURRENT;
 	a2dp_dev->dev.common.module = (struct hw_module_t *) module;
 	a2dp_dev->dev.common.close = audio_close;
