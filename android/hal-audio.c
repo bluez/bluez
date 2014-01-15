@@ -602,7 +602,7 @@ static int out_set_sample_rate(struct audio_stream *stream, uint32_t rate)
 static size_t out_get_buffer_size(const struct audio_stream *stream)
 {
 	DBG("");
-	return -ENOSYS;
+	return 20 * 512;
 }
 
 static uint32_t out_get_channels(const struct audio_stream *stream)
@@ -709,7 +709,7 @@ static char *out_get_parameters(const struct audio_stream *stream,
 static uint32_t out_get_latency(const struct audio_stream_out *stream)
 {
 	DBG("");
-	return -ENOSYS;
+	return 0;
 }
 
 static int out_set_volume(struct audio_stream_out *stream, float left,
