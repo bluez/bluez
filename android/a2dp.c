@@ -229,6 +229,24 @@ static int sbc_check_config(void *caps, uint8_t caps_len, void *conf,
 		return -EINVAL;
 	}
 
+	if (config->max_bitpool < cap->min_bitpool) {
+		error("SBC: Invalid maximun bitpool (%u < %u)",
+					config->max_bitpool, cap->min_bitpool);
+		return -EINVAL;
+	}
+
+	if (config->min_bitpool > cap->max_bitpool) {
+		error("SBC: Invalid minimun bitpool (%u > %u)",
+					config->min_bitpool, cap->min_bitpool);
+		return -EINVAL;
+	}
+
+	if (config->max_bitpool > cap->max_bitpool)
+		return -ERANGE;
+
+	if (config->min_bitpool < cap->min_bitpool)
+		return -ERANGE;
+
 	return 0;
 }
 
@@ -246,22 +264,61 @@ static int check_capabilities(struct a2dp_preset *preset,
 	}
 }
 
+static struct a2dp_preset *sbc_select_range(void *caps, uint8_t caps_len,
+						void *conf, uint8_t conf_len)
+{
+	struct a2dp_preset *p;
+	a2dp_sbc_t *cap, *config;
+
+	cap = caps;
+	config = conf;
+
+	config->min_bitpool = MAX(config->min_bitpool, cap->min_bitpool);
+	config->max_bitpool = MIN(config->max_bitpool, cap->max_bitpool);
+
+	p = g_new0(struct a2dp_preset, 1);
+	p->len = conf_len;
+	p->data = g_memdup(conf, p->len);
+
+	return p;
+}
+
+static struct a2dp_preset *select_preset_range(struct a2dp_preset *preset,
+				struct avdtp_media_codec_capability *codec,
+				uint8_t codec_len)
+{
+	/* Codec specific */
+	switch (codec->media_codec_type) {
+	case A2DP_CODEC_SBC:
+		return sbc_select_range(codec->data, codec_len, preset->data,
+								preset->len);
+	default:
+		return NULL;
+	}
+}
+
 static struct a2dp_preset *select_preset(struct a2dp_endpoint *endpoint,
 						struct avdtp_remote_sep *rsep)
 {
 	struct avdtp_service_capability *service;
 	struct avdtp_media_codec_capability *codec;
 	GSList *l;
+	uint8_t codec_len;
 
 	service = avdtp_get_codec(rsep);
 	codec = (struct avdtp_media_codec_capability *) service->data;
+	codec_len = service->length - sizeof(*codec);
 
 	for (l = endpoint->presets; l; l = g_slist_next(l)) {
 		struct a2dp_preset *preset = l->data;
+		int err;
 
-		if (check_capabilities(preset, codec,
-					service->length - sizeof(*codec)) == 0)
+		err = check_capabilities(preset, codec, codec_len);
+		if (err == 0)
 			return preset;
+
+		if (err == -ERANGE)
+			return select_preset_range(preset, codec, codec_len);
 	}
 
 	return NULL;
