@@ -455,9 +455,8 @@ static gboolean rfcomm_listen_cb(GIOChannel *io, GIOCondition cond,
 	return false;
 }
 
-static void connection_cb(uint16_t handle, uint16_t cid,
-					uint8_t channel, void *user_data,
-					bool status)
+static void connection_cb(uint16_t handle, uint16_t cid, void *user_data,
+								bool status)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_server_data *server_data = data->test_data;
