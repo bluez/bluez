@@ -107,6 +107,7 @@ android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c \
+				monitor/rfcomm.h \
 				android/hardware/hardware.c \
 				android/android-tester.c
 
