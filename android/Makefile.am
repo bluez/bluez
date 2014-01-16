@@ -149,6 +149,14 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hardware/hardware.h \
 					android/system/audio.h
 
+noinst_PROGRAMS += android/test-ipc
+
+android_test_ipc_SOURCES = android/test-ipc.c \
+				src/shared/util.h src/shared/util.c \
+				src/log.h src/log.c \
+				android/ipc.c android/ipc.h
+android_test_ipc_LDADD = @GLIB_LIBS@
+
 plugin_LTLIBRARIES += android/audio.a2dp.default.la
 
 android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
