@@ -90,8 +90,7 @@ void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability);
 void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject);
 
 typedef void (*bthost_rfcomm_connect_cb) (uint16_t handle, uint16_t cid,
-					uint8_t channel, void *user_data,
-					bool status);
+						void *user_data, bool status);
 
 void bthost_add_rfcomm_server(struct bthost *bthost, uint8_t channel,
 			bthost_rfcomm_connect_cb func, void *user_data);

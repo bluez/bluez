@@ -1530,9 +1530,8 @@ static void rfcomm_sabm_recv(struct bthost *bthost, struct btconn *conn,
 	if (!dlci || cb) {
 		rfcomm_ua_send(bthost, conn, l2conn, 1, dlci);
 		if (cb && cb->func)
-			cb->func(conn->handle, l2conn->scid,
-					RFCOMM_GET_CHANNEL(hdr->address),
-					cb->user_data, true);
+			cb->func(conn->handle, l2conn->scid, cb->user_data,
+									true);
 	} else {
 		rfcomm_dm_send(bthost, conn, l2conn, 1, dlci);
 	}
@@ -1590,7 +1589,7 @@ static void rfcomm_ua_recv(struct bthost *bthost, struct btconn *conn,
 				bthost->rfcomm_conn_data->channel == channel) {
 		if (bthost->rfcomm_conn_data->cb)
 			bthost->rfcomm_conn_data->cb(conn->handle,
-							l2conn->scid, channel,
+							l2conn->scid,
 					bthost->rfcomm_conn_data->user_data,
 									true);
 		free(bthost->rfcomm_conn_data);
@@ -1609,7 +1608,7 @@ static void rfcomm_dm_recv(struct bthost *bthost, struct btconn *conn,
 				bthost->rfcomm_conn_data->channel == channel) {
 		if (bthost->rfcomm_conn_data->cb)
 			bthost->rfcomm_conn_data->cb(conn->handle,
-							l2conn->scid, channel,
+							l2conn->scid,
 					bthost->rfcomm_conn_data->user_data,
 									false);
 		free(bthost->rfcomm_conn_data);
