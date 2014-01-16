@@ -255,9 +255,6 @@ static void setup_powered_client(const void *test_data)
 
 	tester_print("Powering on controller");
 
-	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
-
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_client_callback,
 			NULL, NULL);
@@ -286,8 +283,6 @@ static void setup_powered_server(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
 				sizeof(param), param,
 				NULL, NULL, NULL);
-	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_server_callback,
