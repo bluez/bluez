@@ -3197,6 +3197,8 @@ static void setup_hidhost_interface(const void *test_data)
 
 #define HID_GET_REPORT_PROTOCOL		0x60
 #define HID_GET_BOOT_PROTOCOL		0x61
+#define HID_SET_REPORT_PROTOCOL		0x70
+#define HID_SET_BOOT_PROTOCOL		0x71
 
 static void hid_prepare_reply_protocol_mode(const void *data, uint16_t len)
 {
@@ -3237,6 +3239,8 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 	switch (header) {
 	case HID_GET_REPORT_PROTOCOL:
 	case HID_GET_BOOT_PROTOCOL:
+	case HID_SET_REPORT_PROTOCOL:
+	case HID_SET_BOOT_PROTOCOL:
 		hid_prepare_reply_protocol_mode(data, len);
 		break;
 	}
@@ -3443,6 +3447,20 @@ static void test_hidhost_get_protocol(const void *test_data)
 	data->cb_count = 0;
 	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
 	bt_status = data->if_hid->get_protocol(&bdaddr, BTHH_REPORT_MODE);
+	if (bt_status != BT_STATUS_SUCCESS)
+		tester_test_failed();
+}
+
+static void test_hidhost_set_protocol(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
+	bt_bdaddr_t bdaddr;
+	bt_status_t bt_status;
+
+	data->cb_count = 0;
+	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
+	bt_status = data->if_hid->set_protocol(&bdaddr, BTHH_REPORT_MODE);
 	if (bt_status != BT_STATUS_SUCCESS)
 		tester_test_failed();
 }
@@ -3807,6 +3825,10 @@ int main(int argc, char *argv[])
 	test_bredrle("HIDHost GetProtocol Success",
 			&hidhost_test_get_protocol, setup_hidhost_connect,
 				test_hidhost_get_protocol, teardown);
+
+	test_bredrle("HIDHost SetProtocol Success",
+			&hidhost_test_get_protocol, setup_hidhost_connect,
+				test_hidhost_set_protocol, teardown);
 
 	return tester_run();
 }
