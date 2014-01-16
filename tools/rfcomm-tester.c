@@ -483,7 +483,6 @@ static void test_server(const void *test_data)
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_server_data *server_data = data->test_data;
 	const uint8_t *master_bdaddr;
-	uint8_t addr_type;
 	struct bthost *bthost;
 	GIOChannel *io;
 	int sk;
@@ -522,12 +521,7 @@ static void test_server(const void *test_data)
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, client_new_conn, data);
 
-	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
-		addr_type = BDADDR_BREDR;
-	else
-		addr_type = BDADDR_LE_PUBLIC;
-
-	bthost_hci_connect(bthost, master_bdaddr, addr_type);
+	bthost_hci_connect(bthost, master_bdaddr, BDADDR_BREDR);
 }
 
 #define test_rfcomm(name, data, setup, func) \
