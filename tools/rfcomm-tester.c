@@ -349,14 +349,14 @@ static int create_rfcomm_sock(bdaddr_t *address, uint8_t channel)
 	return sk;
 }
 
-static int connect_rfcomm_sock(int sk, bdaddr_t *address, uint8_t channel)
+static int connect_rfcomm_sock(int sk, const bdaddr_t *bdaddr, uint8_t channel)
 {
 	struct sockaddr_rc addr;
 	int err;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, address);
+	bacpy(&addr.rc_bdaddr, bdaddr);
 	addr.rc_channel = htobs(channel);
 
 	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
@@ -402,6 +402,7 @@ static void test_connect(const void *test_data)
 	struct test_data *data = tester_get_data();
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	const struct rfcomm_client_data *client_data = data->test_data;
+	const uint8_t *client_addr, *master_addr;
 	GIOChannel *io;
 	int sk;
 
@@ -409,12 +410,16 @@ static void test_connect(const void *test_data)
 	bthost_add_rfcomm_server(bthost, client_data->server_channel,
 								NULL, NULL);
 
-	sk = create_rfcomm_sock((bdaddr_t *)hciemu_get_master_bdaddr
-							(data->hciemu), 0);
+	master_addr = hciemu_get_master_bdaddr(data->hciemu);
+	client_addr = hciemu_get_client_bdaddr(data->hciemu);
 
-	if (connect_rfcomm_sock(sk, (bdaddr_t *)hciemu_get_client_bdaddr
-			(data->hciemu), client_data->client_channel) < 0) {
+	sk = create_rfcomm_sock((bdaddr_t *) master_addr, 0);
+
+	if (connect_rfcomm_sock(sk, (const bdaddr_t *) client_addr,
+					client_data->client_channel) < 0) {
+		close(sk);
 		tester_test_failed();
+		return;
 	}
 
 	io = g_io_channel_unix_new(sk);
@@ -477,14 +482,15 @@ static void test_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_server_data *server_data = data->test_data;
-	const uint8_t *master_bdaddr;
+	const uint8_t *master_addr;
 	struct bthost *bthost;
 	GIOChannel *io;
 	int sk;
 
-	sk = create_rfcomm_sock((bdaddr_t *)
-				hciemu_get_master_bdaddr(data->hciemu),
-				server_data->server_channel);
+	master_addr = hciemu_get_master_bdaddr(data->hciemu);
+
+	sk = create_rfcomm_sock((bdaddr_t *) master_addr,
+						server_data->server_channel);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
@@ -506,17 +512,10 @@ static void test_server(const void *test_data)
 
 	tester_print("Listening for connections");
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
-	if (!master_bdaddr) {
-		tester_warn("No master bdaddr");
-		tester_test_failed();
-		return;
-	}
-
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, client_new_conn, data);
 
-	bthost_hci_connect(bthost, master_bdaddr, BDADDR_BREDR);
+	bthost_hci_connect(bthost, master_addr, BDADDR_BREDR);
 }
 
 #define test_rfcomm(name, data, setup, func) \
