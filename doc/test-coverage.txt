@@ -32,12 +32,13 @@ Application		Count	Description
 -------------------------------------------
 mgmt-tester		 172	Kernel management interface testing
 l2cap-tester		  19	Kernel L2CAP implementation testing
+rfcomm-tester		   5	Kernel RFCOMM implementation testing
 smp-tester		   4	Kernel SMP implementation testing
 sco-tester		   8	Kernel SCO implementation testing
 gap-tester		   1	Daemon D-Bus API testing
 hci-tester		  12	Controller hardware testing
 			-----
-			 216
+			 221
 
 
 Android end-to-end testing
