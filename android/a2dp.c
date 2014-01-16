@@ -50,6 +50,7 @@
 
 #define L2CAP_PSM_AVDTP 0x19
 #define SVC_HINT_CAPTURING 0x08
+#define IDLE_TIMEOUT 1
 
 static GIOChannel *server = NULL;
 static GSList *devices = NULL;
@@ -76,6 +77,7 @@ struct a2dp_device {
 	uint8_t		state;
 	GIOChannel	*io;
 	struct avdtp	*session;
+	guint		idle_id;
 };
 
 struct a2dp_setup {
@@ -118,6 +120,9 @@ static void unregister_endpoint(void *data)
 
 static void a2dp_device_free(struct a2dp_device *dev)
 {
+	if (dev->idle_id > 0)
+		g_source_remove(dev->idle_id);
+
 	if (dev->session)
 		avdtp_unref(dev->session);
 
@@ -335,6 +340,11 @@ static void setup_add(struct a2dp_device *dev, struct a2dp_endpoint *endpoint,
 	setup->preset = preset;
 	setup->stream = stream;
 	setups = g_slist_append(setups, setup);
+
+	if (dev->idle_id > 0) {
+		g_source_remove(dev->idle_id);
+		dev->idle_id = 0;
+	}
 }
 
 static int select_configuration(struct a2dp_device *dev,
@@ -411,6 +421,23 @@ failed:
 	avdtp_shutdown(session);
 }
 
+static gboolean idle_timeout(gpointer user_data)
+{
+	struct a2dp_device *dev = user_data;
+	int err;
+
+	dev->idle_id = 0;
+
+	err = avdtp_discover(dev->session, discover_cb, dev);
+	if (err == 0)
+		return FALSE;
+
+	error("avdtp_discover: %s", strerror(-err));
+	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
+
+	return FALSE;
+}
+
 static void signaling_connect_cb(GIOChannel *chan, GError *err,
 							gpointer user_data)
 {
@@ -458,7 +485,9 @@ static void signaling_connect_cb(GIOChannel *chan, GError *err,
 			error("avdtp_discover: %s", strerror(-perr));
 			goto failed;
 		}
-	}
+	} else /* Init idle timeout to discover */
+		dev->idle_id = g_timeout_add_seconds(IDLE_TIMEOUT, idle_timeout,
+									dev);
 
 	return;
 
