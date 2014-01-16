@@ -1328,7 +1328,6 @@ static void free_hid_devices(gpointer data, gpointer user_data)
 {
 	struct hid_device *dev = data;
 
-	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 	hid_device_free(dev);
 }
 
