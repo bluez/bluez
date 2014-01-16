@@ -1159,8 +1159,7 @@ static bool l2cap_conn_rsp(struct bthost *bthost, struct btconn *conn,
 
 		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_CONFIG_REQ, 0,
 							&req, sizeof(req));
-	} else if (l2conn->psm == 0x0003 && le16_to_cpu(rsp->result) == 0 &&
-					le16_to_cpu(rsp->status) == 0 &&
+	} else if (l2conn->psm == 0x0003 && !rsp->result && !rsp->status &&
 						bthost->rfcomm_conn_data) {
 		rfcomm_sabm_send(bthost, conn, l2conn, 1, 0);
 	}
@@ -1523,10 +1522,9 @@ static void rfcomm_sabm_recv(struct bthost *bthost, struct btconn *conn,
 	const struct rfcomm_cmd *hdr = data;
 	uint8_t dlci = RFCOMM_GET_DLCI(hdr->address);
 	struct rfcomm_conn_cb_data *cb;
+	uint8_t chan = RFCOMM_GET_CHANNEL(hdr->address);
 
-	cb = bthost_find_rfcomm_cb_by_channel(bthost,
-					RFCOMM_GET_CHANNEL(hdr->address));
-
+	cb = bthost_find_rfcomm_cb_by_channel(bthost, chan);
 	if (!dlci || cb) {
 		rfcomm_ua_send(bthost, conn, l2conn, 1, dlci);
 		if (cb && cb->func)
@@ -1553,9 +1551,10 @@ static void rfcomm_ua_recv(struct bthost *bthost, struct btconn *conn,
 {
 	const struct rfcomm_cmd *hdr = data;
 	uint8_t channel = RFCOMM_GET_CHANNEL(hdr->address);
+	struct rfcomm_connection_data *conn_data = bthost->rfcomm_conn_data;
+	uint8_t type = RFCOMM_GET_TYPE(hdr->control);
 
-	if (!channel && RFCOMM_TEST_CR(RFCOMM_GET_TYPE(hdr->control)) &&
-						 bthost->rfcomm_conn_data) {
+	if (!channel && RFCOMM_TEST_CR(type) && conn_data) {
 		uint8_t buf[14];
 		struct rfcomm_hdr *hdr = (struct rfcomm_hdr *)buf;
 		struct rfcomm_mcc *mcc = (struct rfcomm_mcc *)
@@ -1568,13 +1567,12 @@ static void rfcomm_ua_recv(struct bthost *bthost, struct btconn *conn,
 
 		hdr->address = RFCOMM_ADDR(1, 0);
 		hdr->control = RFCOMM_CTRL(RFCOMM_UIH, 0);
-		hdr->length  = RFCOMM_LEN8(sizeof(*mcc) +
-							sizeof(*pn_cmd));
+		hdr->length  = RFCOMM_LEN8(sizeof(*mcc) + sizeof(*pn_cmd));
 
 		mcc->type = RFCOMM_MCC_TYPE(1, RFCOMM_PN);
 		mcc->length = RFCOMM_LEN8(sizeof(*pn_cmd));
 
-		pn_cmd->dlci = bthost->rfcomm_conn_data->channel * 2;
+		pn_cmd->dlci = conn_data->channel * 2;
 		pn_cmd->priority = 7;
 		pn_cmd->ack_timer = 0;
 		pn_cmd->max_retrans = 0;
@@ -1585,13 +1583,10 @@ static void rfcomm_ua_recv(struct bthost *bthost, struct btconn *conn,
 							rfcomm_fcs(buf);
 
 		send_acl(bthost, conn->handle, l2conn->dcid, buf, sizeof(buf));
-	} else if (bthost->rfcomm_conn_data &&
-				bthost->rfcomm_conn_data->channel == channel) {
-		if (bthost->rfcomm_conn_data->cb)
-			bthost->rfcomm_conn_data->cb(conn->handle,
-							l2conn->scid,
-					bthost->rfcomm_conn_data->user_data,
-									true);
+	} else if (conn_data && conn_data->channel == channel) {
+		if (conn_data->cb)
+			conn_data->cb(conn->handle, l2conn->scid,
+						conn_data->user_data, true);
 		free(bthost->rfcomm_conn_data);
 		bthost->rfcomm_conn_data = NULL;
 	}
@@ -1603,14 +1598,12 @@ static void rfcomm_dm_recv(struct bthost *bthost, struct btconn *conn,
 {
 	const struct rfcomm_cmd *hdr = data;
 	uint8_t channel = RFCOMM_GET_CHANNEL(hdr->address);
+	struct rfcomm_connection_data *conn_data = bthost->rfcomm_conn_data;
 
-	if (bthost->rfcomm_conn_data &&
-				bthost->rfcomm_conn_data->channel == channel) {
-		if (bthost->rfcomm_conn_data->cb)
-			bthost->rfcomm_conn_data->cb(conn->handle,
-							l2conn->scid,
-					bthost->rfcomm_conn_data->user_data,
-									false);
+	if (conn_data && conn_data->channel == channel) {
+		if (conn_data->cb)
+			conn_data->cb(conn->handle, l2conn->scid,
+						conn_data->user_data, false);
 		free(bthost->rfcomm_conn_data);
 		bthost->rfcomm_conn_data = NULL;
 	}
@@ -1672,8 +1665,8 @@ static void rfcomm_pn_recv(struct bthost *bthost, struct btconn *conn,
 
 		send_acl(bthost, conn->handle, l2conn->dcid, buf, sizeof(buf));
 	} else if (bthost->rfcomm_conn_data) {
-		rfcomm_sabm_send(bthost, conn, l2conn,
-				1, bthost->rfcomm_conn_data->channel * 2);
+		rfcomm_sabm_send(bthost, conn, l2conn, 1,
+					bthost->rfcomm_conn_data->channel * 2);
 	}
 }
 
@@ -1687,7 +1680,7 @@ static void rfcomm_mcc_recv(struct bthost *bthost, struct btconn *conn,
 	case RFCOMM_MSC:
 		rfcomm_msc_recv(bthost, conn, l2conn,
 						RFCOMM_TEST_CR(mcc->type) / 2,
-							data + sizeof(*mcc));
+						data + sizeof(*mcc));
 		break;
 	case RFCOMM_PN:
 		rfcomm_pn_recv(bthost, conn, l2conn,
