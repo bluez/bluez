@@ -899,11 +899,6 @@ static void bt_hid_get_protocol(const void *buf, uint16_t len)
 
 	dev = l->data;
 
-	if (dev->boot_dev) {
-		status = HAL_STATUS_UNSUPPORTED;
-		goto failed;
-	}
-
 	hdr = HID_MSG_GET_PROTOCOL | cmd->mode;
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
@@ -953,11 +948,6 @@ static void bt_hid_set_protocol(const void *buf, uint16_t len)
 	}
 
 	dev = l->data;
-
-	if (dev->boot_dev) {
-		status = HAL_STATUS_UNSUPPORTED;
-		goto failed;
-	}
 
 	hdr = HID_MSG_SET_PROTOCOL | cmd->mode;
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
