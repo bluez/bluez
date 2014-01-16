@@ -56,277 +56,296 @@ struct sockaddr_hci {
 #define HCI_CHANNEL_USER	1
 
 static uint16_t hci_index = 0;
-static bool use_smd = false;
 static bool client_active = false;
+static bool debug_enabled = false;
 
 static void hexdump_print(const char *str, void *user_data)
 {
-	printf("%s\n", str);
+	printf("%s%s\n", (char *) user_data, str);
 }
 
-struct stream {
-	char dir;
-	int src_fd;
-	uint8_t src_type;
-	int dst_fd;
-	uint8_t dst_type;
-	uint8_t buf[4096];
-	uint16_t len;
+struct proxy {
+	/* Receive commands, ACL and SCO data */
+	int host_fd;
+	uint8_t host_buf[4096];
+	uint16_t host_len;
+	bool host_shutdown;
+
+	/* Receive events, ACL and SCO data */
+	int dev_fd;
+	uint8_t dev_buf[4096];
+	uint16_t dev_len;
+	bool dev_shutdown;
 };
 
-static void stream_free(void *data)
+static bool write_packet(int fd, const void *data, size_t size,
+							void *user_data)
 {
-	struct stream *stream = data;
-
-	printf("Closing stream %c\n", stream->dir);
-
-	client_active = false;
-
-	close(stream->src_fd);
-
-	free(stream);
-}
-
-static void stream_callback(int fd, uint32_t events, void *user_data)
-{
-	struct stream *stream = user_data;
-	uint8_t *wbuf;
-	ssize_t wlen, len;
-	uint16_t pktlen;
-
-	if (events & (EPOLLERR | EPOLLHUP)) {
-		mainloop_remove_fd(stream->src_fd);
-		return;
-	}
-
-	len = read(stream->src_fd, stream->buf + stream->len,
-					sizeof(stream->buf) - stream->len);
-	if (len < 0) {
-		if (errno == EAGAIN || errno == EINTR)
-			return;
-		fprintf(stderr, "Failed to read stream packet\n");
-		mainloop_remove_fd(stream->src_fd);
-		return;
-	}
-
-	util_hexdump(stream->dir, stream->buf + stream->len, len,
-						hexdump_print, NULL);
-
-	stream->len += len;
-
-process_packet:
-	if (stream->len < 1)
-		return;
-
-	switch (stream->buf[0]) {
-	case BT_H4_CMD_PKT:
-		{
-			struct bt_hci_cmd_hdr *hdr;
-
-			if (stream->len < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (stream->buf + 1);
-			pktlen = 1 + sizeof(*hdr) + hdr->plen;
-		}
-		break;
-	case BT_H4_ACL_PKT:
-		{
-			struct bt_hci_acl_hdr *hdr;
-
-			if (stream->len < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (stream->buf + 1);
-			pktlen = 1 + sizeof(*hdr) + cpu_to_le16(hdr->dlen);
-		}
-		break;
-	case BT_H4_SCO_PKT:
-		{
-			struct bt_hci_sco_hdr *hdr;
-
-			if (stream->len < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (stream->buf + 1);
-			pktlen = 1 + sizeof(*hdr) + hdr->dlen;
-		}
-		break;
-	case BT_H4_EVT_PKT:
-		{
-			struct bt_hci_evt_hdr *hdr;
-
-			if (stream->len < 1 + sizeof(*hdr))
-				return;
-
-			hdr = (void *) (stream->buf + 1);
-			pktlen = 1 + sizeof(*hdr) + hdr->plen;
-		}
-		break;
-	case 0xff:
-		if (stream->src_type > 0) {
-			mainloop_remove_fd(stream->src_fd);
-			return;
-		}
-		/* Notification packet from /dev/vhci - ignore */
-		stream->len = 0;
-		return;
-	default:
-		fprintf(stderr, "Received unknown packet type 0x%02x\n",
-							stream->buf[0]);
-		mainloop_remove_fd(stream->src_fd);
-		return;
-	}
-
-	if (stream->len < pktlen)
-		return;
-
-	if (stream->dst_type > 0) {
-		if (stream->buf[0] != stream->dst_type)
-			goto next_packet;
-		wbuf = stream->buf + 1;
-		wlen = pktlen - 1;
-	} else {
-		wbuf = stream->buf;
-		wlen = pktlen;
-	}
-
-	printf("* wlen = %zd\n", wlen);
-	util_hexdump('*', wbuf, wlen, hexdump_print, NULL);
-
-	while (wlen > 0) {
+	while (size > 0) {
 		ssize_t written;
 
-		written = write(stream->dst_fd, wbuf, wlen);
+		written = write(fd, data, size);
 		if (written < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
-			fprintf(stderr, "Failed to write stream packet\n");
-			mainloop_remove_fd(stream->src_fd);
-			return;
+			return false;
 		}
 
-		wbuf += written;
-		wlen -= written;
-	}
+		if (debug_enabled)
+			util_hexdump('<', data, written, hexdump_print,
+								user_data);
 
-next_packet:
-	if (stream->len > pktlen) {
-		if (stream->src_type > 0) {
-			memmove(stream->buf + 1, stream->buf + pktlen,
-						stream->len - pktlen);
-			stream->len -= pktlen;
-
-			stream->buf[0] = stream->src_type;
-			stream->len++;
-		} else {
-			memmove(stream->buf, stream->buf + pktlen,
-						stream->len - pktlen);
-			stream->len -= pktlen;
-		}
-
-		goto process_packet;
-	} else {
-		if (stream->src_type > 0) {
-			stream->buf[0] = stream->src_type;
-			stream->len = 1;
-		} else
-			stream->len = 0;
-	}
-}
-
-static struct stream *stream_create(char dir, int src_fd, uint8_t src_type,
-						int dst_fd, uint8_t dst_type)
-{
-	struct stream *stream;
-
-	stream = new0(struct stream, 1);
-	if (!stream)
-		return NULL;
-
-	stream->dir = dir;
-
-	stream->src_fd = src_fd;
-	stream->src_type = src_type;
-
-	stream->dst_fd = dst_fd;
-	stream->dst_type = dst_type;
-
-	if (stream->src_type > 0) {
-		stream->buf[0] = stream->src_type;
-		stream->len = 1;
-	}
-
-	mainloop_add_fd(stream->src_fd, EPOLLIN, stream_callback,
-						stream, stream_free);
-
-	return stream;
-}
-
-static bool setup_streams(int src_fd, uint8_t src_type_rx,
-					uint8_t src_type_tx, int dst_fd)
-{
-	struct stream *stream;
-
-	stream = stream_create('>', src_fd, src_type_rx, dst_fd, 0x00);
-	if (!stream) {
-		fprintf(stderr, "Failed to create source stream\n");
-		close(src_fd);
-		close(dst_fd);
-		return false;
-	}
-
-	stream = stream_create('<', dst_fd, 0x00, src_fd, src_type_tx);
-	if (!stream) {
-		fprintf(stderr, "Failed to create destination stream\n");
-		close(src_fd);
-		close(dst_fd);
-		return false;
+		data += written;
+		size -= written;
 	}
 
 	return true;
 }
 
-static int open_smd(void)
+static void host_read_destroy(void *user_data)
 {
-	struct termios ti;
-	int fd;
+	struct proxy *proxy = user_data;
 
-	printf("Opening /dev/smd3 device\n");
+	printf("Closing host descriptor\n");
 
-	fd = open("/dev/smd3", O_RDWR | O_NOCTTY | O_CLOEXEC);
-	if (fd < 0) {
-		perror("Failed to open /dev/smd3 device");
-		return -1;
+	if (proxy->host_shutdown)
+		shutdown(proxy->host_fd, SHUT_RDWR);
+
+	close(proxy->host_fd);
+	proxy->host_fd = -1;
+
+	if (proxy->dev_fd < 0) {
+		client_active = false;
+		free(proxy);
+	} else
+		mainloop_remove_fd(proxy->dev_fd);
+}
+
+static void host_read_callback(int fd, uint32_t events, void *user_data)
+{
+	struct proxy *proxy = user_data;
+	struct bt_hci_cmd_hdr *cmd_hdr;
+	struct bt_hci_acl_hdr *acl_hdr;
+	struct bt_hci_sco_hdr *sco_hdr;
+	ssize_t len;
+	uint16_t pktlen;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		fprintf(stderr, "Error from host descriptor\n");
+		mainloop_remove_fd(proxy->host_fd);
+		return;
 	}
 
-	/* Sleep 0.5 sec to give smd port time to fully initialize */
-	usleep(500000);
-
-	if (tcflush(fd, TCIOFLUSH) < 0) {
-		perror("Failed to flush /dev/smd3 device");
-		close(fd);
-		return -1;
+	if (events & EPOLLRDHUP) {
+		fprintf(stderr, "Remote hangup of host descriptor\n");
+		mainloop_remove_fd(proxy->host_fd);
+		return;
 	}
 
-	if (tcgetattr(fd, &ti) < 0) {
-		perror("Failed to get /dev/smd3 attributes");
-		close(fd);
-		return -1;
+	len = read(proxy->host_fd, proxy->host_buf + proxy->host_len,
+				sizeof(proxy->host_buf) - proxy->host_len);
+	if (len < 0) {
+		if (errno == EAGAIN || errno == EINTR)
+			return;
+
+		fprintf(stderr, "Read from host descriptor failed\n");
+		mainloop_remove_fd(proxy->host_fd);
+		return;
 	}
 
-	/* Switch to raw mode */
-	cfmakeraw(&ti);
+	if (debug_enabled)
+		util_hexdump('>', proxy->host_buf + proxy->host_len, len,
+						hexdump_print, "H: ");
 
-	ti.c_cflag |= CRTSCTS | CLOCAL;
+	proxy->host_len += len;
 
-	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
-		perror("Failed to set /dev/smd3 attributes");
-		close(fd);
-		return -1;
+process_packet:
+	if (proxy->host_len < 1)
+		return;
+
+	switch (proxy->host_buf[0]) {
+	case BT_H4_CMD_PKT:
+		if (proxy->host_len < 1 + sizeof(*cmd_hdr))
+			return;
+
+		cmd_hdr = (void *) (proxy->host_buf + 1);
+		pktlen = 1 + sizeof(*cmd_hdr) + cmd_hdr->plen;
+		break;
+	case BT_H4_ACL_PKT:
+		if (proxy->host_len < 1 + sizeof(*acl_hdr))
+			return;
+
+		acl_hdr = (void *) (proxy->host_buf + 1);
+		pktlen = 1 + sizeof(*acl_hdr) + cpu_to_le16(acl_hdr->dlen);
+		break;
+	case BT_H4_SCO_PKT:
+		if (proxy->host_len < 1 + sizeof(*sco_hdr))
+			return;
+
+		sco_hdr = (void *) (proxy->host_buf + 1);
+		pktlen = 1 + sizeof(*sco_hdr) + sco_hdr->dlen;
+		break;
+	case 0xff:
+		/* Notification packet from /dev/vhci - ignore */
+		proxy->host_len = 0;
+		return;
+	default:
+		fprintf(stderr, "Received unknown host packet type 0x%02x\n",
+							proxy->host_buf[0]);
+		mainloop_remove_fd(proxy->host_fd);
+		return;
 	}
 
-	return fd;
+	if (proxy->host_len < pktlen)
+		return;
+
+	if (!write_packet(proxy->dev_fd, proxy->host_buf, pktlen, "D: ")) {
+		fprintf(stderr, "Write to device descriptor failed\n");
+		mainloop_remove_fd(proxy->dev_fd);
+		return;
+	}
+
+	if (proxy->host_len > pktlen) {
+		memmove(proxy->host_buf, proxy->host_buf + pktlen,
+						proxy->host_len - pktlen);
+		proxy->host_len -= pktlen;
+		goto process_packet;
+	}
+
+	proxy->host_len = 0;
+}
+
+static void dev_read_destroy(void *user_data)
+{
+	struct proxy *proxy = user_data;
+
+	printf("Closing device descriptor\n");
+
+	if (proxy->dev_shutdown)
+		shutdown(proxy->dev_fd, SHUT_RDWR);
+
+	close(proxy->dev_fd);
+	proxy->dev_fd = -1;
+
+	if (proxy->host_fd < 0) {
+		client_active = false;
+		free(proxy);
+	} else
+		mainloop_remove_fd(proxy->host_fd);
+}
+
+static void dev_read_callback(int fd, uint32_t events, void *user_data)
+{
+	struct proxy *proxy = user_data;
+	struct bt_hci_evt_hdr *evt_hdr;
+	struct bt_hci_acl_hdr *acl_hdr;
+	struct bt_hci_sco_hdr *sco_hdr;
+	ssize_t len;
+	uint16_t pktlen;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		fprintf(stderr, "Error from device descriptor\n");
+		mainloop_remove_fd(proxy->dev_fd);
+		return;
+	}
+
+	if (events & EPOLLRDHUP) {
+		fprintf(stderr, "Remote hangup of device descriptor\n");
+		mainloop_remove_fd(proxy->host_fd);
+		return;
+	}
+
+	len = read(proxy->dev_fd, proxy->dev_buf + proxy->dev_len,
+				sizeof(proxy->dev_buf) - proxy->dev_len);
+	if (len < 0) {
+		if (errno == EAGAIN || errno == EINTR)
+			return;
+
+		fprintf(stderr, "Read from device descriptor failed\n");
+		mainloop_remove_fd(proxy->dev_fd);
+		return;
+	}
+
+	if (debug_enabled)
+		util_hexdump('>', proxy->dev_buf + proxy->dev_len, len,
+						hexdump_print, "D: ");
+
+	proxy->dev_len += len;
+
+process_packet:
+	if (proxy->dev_len < 1)
+		return;
+
+	switch (proxy->dev_buf[0]) {
+	case BT_H4_EVT_PKT:
+		if (proxy->dev_len < 1 + sizeof(*evt_hdr))
+			return;
+
+		evt_hdr = (void *) (proxy->dev_buf + 1);
+		pktlen = 1 + sizeof(*evt_hdr) + evt_hdr->plen;
+		break;
+	case BT_H4_ACL_PKT:
+		if (proxy->dev_len < 1 + sizeof(*acl_hdr))
+			return;
+
+		acl_hdr = (void *) (proxy->dev_buf + 1);
+		pktlen = 1 + sizeof(*acl_hdr) + cpu_to_le16(acl_hdr->dlen);
+		break;
+	case BT_H4_SCO_PKT:
+		if (proxy->dev_len < 1 + sizeof(*sco_hdr))
+			return;
+
+		sco_hdr = (void *) (proxy->dev_buf + 1);
+		pktlen = 1 + sizeof(*sco_hdr) + sco_hdr->dlen;
+		break;
+	default:
+		fprintf(stderr, "Received unknown device packet type 0x%02x\n",
+							proxy->dev_buf[0]);
+		mainloop_remove_fd(proxy->dev_fd);
+		return;
+	}
+
+	if (proxy->dev_len < pktlen)
+		return;
+
+	if (!write_packet(proxy->host_fd, proxy->dev_buf, pktlen, "H: ")) {
+		fprintf(stderr, "Write to host descriptor failed\n");
+		mainloop_remove_fd(proxy->host_fd);
+		return;
+	}
+
+	if (proxy->dev_len > pktlen) {
+		memmove(proxy->dev_buf, proxy->dev_buf + pktlen,
+						proxy->dev_len - pktlen);
+		proxy->dev_len -= pktlen;
+		goto process_packet;
+	}
+
+	proxy->dev_len = 0;
+}
+
+static bool setup_proxy(int host_fd, bool host_shutdown,
+						int dev_fd, bool dev_shutdown)
+{
+	struct proxy *proxy;
+
+	proxy = new0(struct proxy, 1);
+	if (!proxy)
+		return NULL;
+
+	proxy->host_fd = host_fd;
+	proxy->host_shutdown = host_shutdown;
+
+	proxy->dev_fd = dev_fd;
+	proxy->dev_shutdown = dev_shutdown;
+
+	mainloop_add_fd(proxy->host_fd, EPOLLIN | EPOLLRDHUP,
+				host_read_callback, proxy, host_read_destroy);
+
+	mainloop_add_fd(proxy->dev_fd, EPOLLIN | EPOLLRDHUP,
+				dev_read_callback, proxy, dev_read_destroy);
+
+	return true;
 }
 
 static int open_channel(uint16_t index)
@@ -359,12 +378,12 @@ static int open_channel(uint16_t index)
 static void server_callback(int fd, uint32_t events, void *user_data)
 {
 	union {
+		struct sockaddr common;
 		struct sockaddr_un sun;
 		struct sockaddr_in sin;
 	} addr;
 	socklen_t len;
-	int src_fd, dst_fd;
-	uint8_t src_type_rx, src_type_tx;
+	int host_fd, dev_fd;
 
 	if (events & (EPOLLERR | EPOLLHUP)) {
 		mainloop_quit();
@@ -374,41 +393,32 @@ static void server_callback(int fd, uint32_t events, void *user_data)
 	memset(&addr, 0, sizeof(addr));
 	len = sizeof(addr);
 
-	if (getsockname(fd, (struct sockaddr *) &addr, &len) < 0) {
+	if (getsockname(fd, &addr.common, &len) < 0) {
 		perror("Failed to get socket name");
 		return;
 	}
 
-	dst_fd = accept(fd, (struct sockaddr *) &addr, &len);
-	if (dst_fd < 0) {
+	host_fd = accept(fd, &addr.common, &len);
+	if (host_fd < 0) {
 		perror("Failed to accept client socket");
 		return;
 	}
 
 	if (client_active) {
 		fprintf(stderr, "Active client already present\n");
-		close(dst_fd);
+		close(host_fd);
 		return;
 	}
 
-	if (use_smd) {
-		src_fd = open_smd();
-		src_type_rx = BT_H4_EVT_PKT;
-		src_type_tx = BT_H4_CMD_PKT;
-	} else {
-		src_fd = open_channel(hci_index);
-		src_type_rx = 0x00;
-		src_type_tx = 0x00;
-	}
-
-	if (src_fd < 0) {
-		close(dst_fd);
+	dev_fd = open_channel(hci_index);
+	if (dev_fd < 0) {
+		close(host_fd);
 		return;
 	}
 
 	printf("New client connected\n");
 
-	if (!setup_streams(src_fd, src_type_rx, src_type_tx,  dst_fd))
+	if (!setup_proxy(host_fd, true, dev_fd, false))
 		return;
 
 	client_active = true;
@@ -544,13 +554,13 @@ static void usage(void)
 	printf("btproxy - Bluetooth controller proxy\n"
 		"Usage:\n");
 	printf("\tbtproxy [options]\n");
-	printf("options:\n"
+	printf("Options:\n"
 		"\t-c, --connect <address>     Connect to server\n"
 		"\t-l, --listen [address]      Use TCP server\n"
 		"\t-u, --unix [path]           Use Unix server\n"
 		"\t-p, --port <port>           Use specified TCP port\n"
 		"\t-i, --index <num>           Use specified controller\n"
-		"\t-s, --smd                   Use SMD channel devices\n"
+		"\t-d, --debug                 Enable debugging output\n"
 		"\t-h, --help                  Show help options\n");
 }
 
@@ -560,7 +570,7 @@ static const struct option main_options[] = {
 	{ "unix",    optional_argument, NULL, 'u' },
 	{ "port",    required_argument, NULL, 'p' },
 	{ "index",   required_argument, NULL, 'i' },
-	{ "smd",     no_argument,       NULL, 's' },
+	{ "debug",   no_argument,       NULL, 'd' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -571,14 +581,14 @@ int main(int argc, char *argv[])
 	const char *connect_address = NULL;
 	const char *server_address = NULL;
 	const char *unix_path = NULL;
-	unsigned short tcp_port = 0xb1ee;
+	unsigned short tcp_port = 0xb1ee;	/* 45550 */
 	const char *str;
 	sigset_t mask;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "c:l::u::p:i:svh",
+		opt = getopt_long(argc, argv, "c:l::u::p:i:dvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -613,8 +623,8 @@ int main(int argc, char *argv[])
 			}
 			hci_index = atoi(str);
 			break;
-		case 's':
-			use_smd = true;
+		case 'd':
+			debug_enabled = true;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
@@ -632,6 +642,16 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	if (unix_path && server_address) {
+		fprintf(stderr, "Invalid to specify TCP and Unix servers\n");
+		return EXIT_FAILURE;
+	}
+
+	if (connect_address && (unix_path || server_address)) {
+		fprintf(stderr, "Invalid to specify client and server mode\n");
+		return EXIT_FAILURE;
+	}
+
 	mainloop_init();
 
 	sigemptyset(&mask);
@@ -641,23 +661,23 @@ int main(int argc, char *argv[])
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	if (connect_address) {
-		int src_fd, dst_fd;
+		int host_fd, dev_fd;
 
 		printf("Connecting to %s:%u\n", connect_address, tcp_port);
 
-		src_fd = connect_tcp(connect_address, tcp_port);
-		if (src_fd < 0)
+		dev_fd = connect_tcp(connect_address, tcp_port);
+		if (dev_fd < 0)
 			return EXIT_FAILURE;
 
 		printf("Opening virtual device\n");
 
-		dst_fd = open_vhci(0x00);
-		if (dst_fd < 0) {
-			close(src_fd);
+		host_fd = open_vhci(0x00);
+		if (host_fd < 0) {
+			close(dev_fd);
 			return EXIT_FAILURE;
 		}
 
-		if (!setup_streams(src_fd, 0x00, 0x00, dst_fd))
+		if (!setup_proxy(host_fd, false, dev_fd, true))
 			return EXIT_FAILURE;
 	} else {
 		int server_fd;
