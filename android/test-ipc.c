@@ -306,6 +306,16 @@ static gboolean register_service(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean unregister_service(gpointer user_data)
+{
+	struct context *context = user_data;
+	const struct test_data *test_data = context->data;
+
+	ipc_unregister(test_data->service);
+
+	return FALSE;
+}
+
 static void test_cmd(gconstpointer data)
 {
 	struct context *context = create_context(data);
@@ -332,6 +342,21 @@ static void test_cmd_reg(gconstpointer data)
 	execute_context(context);
 
 	ipc_unregister(test_data->service);
+
+	ipc_cleanup();
+}
+
+static void test_cmd_reg_1(gconstpointer data)
+{
+	struct context *context = create_context(data);
+
+	ipc_init();
+
+	g_idle_add(register_service, context);
+	g_idle_add(unregister_service, context);
+	g_idle_add(send_cmd, context);
+
+	execute_context(context);
 
 	ipc_cleanup();
 }
@@ -367,6 +392,15 @@ static const struct test_data test_cmd_2 = {
 	.handlers_size = 1
 };
 
+static const struct test_data test_cmd_3 = {
+	.cmd = &test_cmd_1_hdr,
+	.cmd_size = sizeof(test_cmd_1_hdr),
+	.service = 0,
+	.handlers = cmd_handlers,
+	.handlers_size = 1,
+	.expected_signal = SIGTERM
+};
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -378,6 +412,8 @@ int main(int argc, char *argv[])
 	g_test_add_data_func("/android_ipc/send_cmd_1", &test_cmd_1, test_cmd);
 	g_test_add_data_func("/android_ipc/send_cmd_2", &test_cmd_2,
 							test_cmd_reg);
+	g_test_add_data_func("/android_ipc/send_cmd_3", &test_cmd_3,
+							test_cmd_reg_1);
 
 	return g_test_run();
 }
