@@ -1007,6 +1007,8 @@ static gboolean sep_suspend_ind(struct avdtp *session,
 		return FALSE;
 	}
 
+	bt_audio_notify_state(setup, HAL_AUDIO_SUSPEND);
+
 	return TRUE;
 }
 
