@@ -85,6 +85,7 @@ struct a2dp_setup {
 	struct a2dp_endpoint *endpoint;
 	struct a2dp_preset *preset;
 	struct avdtp_stream *stream;
+	uint8_t state;
 };
 
 static int device_cmp(gconstpointer s, gconstpointer user_data)
@@ -188,6 +189,26 @@ static void bt_a2dp_notify_state(struct a2dp_device *dev, uint8_t state)
 		return;
 
 	a2dp_device_free(dev);
+}
+
+static void bt_audio_notify_state(struct a2dp_setup *setup, uint8_t state)
+{
+	struct hal_ev_a2dp_audio_state ev;
+	char address[18];
+
+	if (setup->state == state)
+		return;
+
+	setup->state = state;
+
+	ba2str(&setup->dev->dst, address);
+	DBG("device %s state %u", address, state);
+
+	bdaddr2android(&setup->dev->dst, ev.bdaddr);
+	ev.state = state;
+
+	ipc_send_notif(HAL_SERVICE_ID_A2DP, HAL_EV_A2DP_AUDIO_STATE, sizeof(ev),
+									&ev);
 }
 
 static void disconnect_cb(void *user_data)
@@ -962,6 +983,8 @@ static gboolean sep_start_ind(struct avdtp *session,
 		return FALSE;
 	}
 
+	bt_audio_notify_state(setup, HAL_AUDIO_STARTED);
+
 	return TRUE;
 }
 
@@ -1059,13 +1082,23 @@ static void sep_start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			void *user_data)
 {
 	struct a2dp_endpoint *endpoint = user_data;
+	struct a2dp_setup *setup;
 
 	DBG("");
 
-	if (!err)
+	if (err) {
+		setup_remove_by_id(endpoint->id);
 		return;
+	}
 
-	setup_remove_by_id(endpoint->id);
+	setup = find_setup(endpoint->id);
+	if (!setup) {
+		error("Unable to find stream setup for %u endpoint",
+								endpoint->id);
+		return;
+	}
+
+	bt_audio_notify_state(setup, HAL_AUDIO_STARTED);
 }
 
 static void sep_suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
