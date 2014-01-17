@@ -28,8 +28,6 @@
 #include "hal-ipc.h"
 #include "hal-utils.h"
 
-#define SNOOP_SERVICE_NAME "bluetoothd-snoop"
-
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
 #define enum_prop_to_hal(prop, hal_prop, type) do { \
@@ -820,15 +818,14 @@ static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t len)
 
 static int config_hci_snoop_log(uint8_t enable)
 {
+	const char *property;
+
 	DBG("enable %u", enable);
 
-	if (enable && property_set("ctl.start", SNOOP_SERVICE_NAME) < 0) {
-		error("Failed to start service %s", SNOOP_SERVICE_NAME);
-		return BT_STATUS_FAIL;
-	}
+	property = enable ? "bluetooth.start" : "bluetooth.stop";
 
-	if (!enable && property_set("ctl.stop", SNOOP_SERVICE_NAME) < 0) {
-		error("Failed to stop service %s", SNOOP_SERVICE_NAME);
+	if (property_set(property, "snoop") < 0) {
+		error("Failed to set %s=snoop", property);
 		return BT_STATUS_FAIL;
 	}
 
