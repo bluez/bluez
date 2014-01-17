@@ -29,6 +29,9 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
+#if defined(ANDROID)
+#include <sys/capability.h>
+#endif
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -188,10 +191,35 @@ static void close_monitor(void)
 	monitor_fd = -1;
 }
 
+static void set_capabilities(void)
+{
+#if defined(ANDROID)
+	struct __user_cap_header_struct header;
+	struct __user_cap_data_struct cap;
+
+	header.version = _LINUX_CAPABILITY_VERSION;
+	header.pid = 0;
+
+	/* CAP_NET_RAW: for snooping
+	 * CAP_DAC_READ_SEARCH: override path search permissions
+	 */
+	cap.effective = cap.permitted =
+		CAP_TO_MASK(CAP_NET_RAW) |
+		CAP_TO_MASK(CAP_DAC_READ_SEARCH) ;
+	cap.inheritable = 0;
+
+	/* TODO: Move to cap_set_proc once bionic support it */
+	if (capset(&header, &cap) < 0)
+		exit(EXIT_FAILURE);
+#endif
+}
+
 int main(int argc, char *argv[])
 {
 	const char *path;
 	sigset_t mask;
+
+	set_capabilities();
 
 	if (argc > 1)
 		path = argv[1];
