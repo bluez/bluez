@@ -109,7 +109,7 @@ LOCAL_MODULE := bluetooth.default
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_REQUIRED_MODULES := bluetoothd bluetoothd-snoop
+LOCAL_REQUIRED_MODULES := bluetoothd bluetoothd-snoop init.bluetooth.rc
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -282,3 +282,17 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := bluetoothd-snoop
 
 include $(BUILD_EXECUTABLE)
+
+#
+# init.bluetooth.rc
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := init.bluetooth.rc
+LOCAL_MODULE_CLASS := ETC
+LOCAL_SRC_FILES := $(LOCAL_MODULE)
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
+
+include $(BUILD_PREBUILT)
