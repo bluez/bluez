@@ -1106,13 +1106,23 @@ static void sep_suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			void *user_data)
 {
 	struct a2dp_endpoint *endpoint = user_data;
+	struct a2dp_setup *setup;
 
 	DBG("");
 
-	if (!err)
+	if (err) {
+		setup_remove_by_id(endpoint->id);
 		return;
+	}
 
-	setup_remove_by_id(endpoint->id);
+	setup = find_setup(endpoint->id);
+	if (!setup) {
+		error("Unable to find stream setup for %u endpoint",
+								endpoint->id);
+		return;
+	}
+
+	bt_audio_notify_state(setup, HAL_AUDIO_STOPPED);
 }
 
 static void sep_close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
