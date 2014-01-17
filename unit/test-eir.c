@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
@@ -38,7 +40,7 @@ struct test_data {
 	size_t eir_size;
 	int flags;
 	const char *name;
-	gboolean name_complete;
+	bool name_complete;
 	int8_t tx_power;
 	const char **uuid;
 };
@@ -93,7 +95,7 @@ static const struct test_data macbookair_test = {
 	.eir_size = sizeof(macbookair_data),
 	.flags = -1,
 	.name = "Marcel’s MacBook Air",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = macbookair_uuid,
 };
@@ -148,7 +150,7 @@ static const struct test_data iphone5_test = {
 	.eir_size = sizeof(iphone5_data),
 	.flags = -1,
 	.name = "Marcel’s iPhone 5",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = iphone5_uuid,
 };
@@ -201,7 +203,7 @@ static const struct test_data ipadmini_test = {
 	.eir_size = sizeof(ipadmini_data),
 	.flags = -1,
 	.name = "Marcel's iPad mini",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = ipadmini_uuid,
 };
@@ -253,7 +255,7 @@ static const struct test_data gigaset_sl400h_test = {
 	.eir_size = sizeof(gigaset_sl400h_data),
 	.flags = -1,
 	.name = "Marcel's SL400H",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = gigaset_sl400h_uuid,
 };
@@ -305,7 +307,7 @@ static const struct test_data gigaset_sl910_test = {
 	.eir_size = sizeof(gigaset_sl910_data),
 	.flags = -1,
 	.name = "Marcel's SL910",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = gigaset_sl910_uuid,
 };
@@ -359,7 +361,7 @@ static const struct test_data nokia_bh907_test = {
 	.eir_size = sizeof(nokia_bh907_data),
 	.flags = -1,
 	.name = "Nokia Reaction BH-907",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 4,
 	.uuid = nokia_bh907_uuid,
 };
@@ -407,7 +409,7 @@ static const struct test_data fuelband_test = {
 	.eir_size = sizeof(fuelband_data),
 	.flags = -1,
 	.name = "Nike+ FuelBand",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 0,
 	.uuid = fuelband_uuid,
 };
@@ -429,7 +431,7 @@ static const struct test_data bluesc_test = {
 	.eir_size = sizeof(bluesc_data),
 	.flags = 0x06,
 	.name = "Wahoo BlueSC v1.4",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = bluesc_uuid,
 };
@@ -451,7 +453,7 @@ static const struct test_data wahoo_scale_test = {
 	.eir_size = sizeof(wahoo_scale_data),
 	.flags = 0x06,
 	.name = "Wahoo Scale v1.3",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = wahoo_scale_uuid,
 };
@@ -471,7 +473,7 @@ static const struct test_data mio_alpha_test = {
 	.eir_size = sizeof(mio_alpha_data),
 	.flags = 0x06,
 	.name = "ALPHA",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = mio_alpha_uuid,
 };
@@ -493,7 +495,7 @@ static const struct test_data cookoo_test = {
 	.eir_size = sizeof(cookoo_data),
 	.flags = 0x05,
 	.name = "COOKOO watch",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 	.uuid = cookoo_uuid,
 };
@@ -510,7 +512,7 @@ static const struct test_data citizen_adv_test = {
 	.eir_size = sizeof(citizen_adv_data),
 	.flags = 0x05,
 	.name = "Eco-Drive Proximity",
-	.name_complete = TRUE,
+	.name_complete = true,
 	.tx_power = 127,
 };
 
