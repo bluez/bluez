@@ -139,17 +139,17 @@ static void system_socket_callback(int fd, uint32_t events, void *user_data)
 
 	printf("Received %s\n", buf);
 
-	if (!strcmp(buf, "ctl.start=bluetoothd")) {
+	if (!strcmp(buf, "bluetooth.start=daemon")) {
 		if (daemon_pid > 0)
 			return;
 
 		ctl_start();
-	} else if (!strcmp(buf, "ctl.start=bluetoothd-snoop")) {
+	} else if (!strcmp(buf, "bluetooth.start=snoop")) {
 		if (snoop_pid > 0)
 			return;
 
 		snoop_start();
-	} else if (!strcmp(buf, "ctl.stop=bluetoothd-snoop")) {
+	} else if (!strcmp(buf, "bluetooth.stop=snoop")) {
 		if (snoop_pid > 0)
 			snoop_stop();
 	}
