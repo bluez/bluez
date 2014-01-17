@@ -564,6 +564,10 @@ struct hal_ev_a2dp_conn_state {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_AUDIO_SUSPEND			0x00
+#define HAL_AUDIO_STOPPED			0x01
+#define HAL_AUDIO_STARTED			0x02
+
 #define HAL_EV_A2DP_AUDIO_STATE			0x82
 struct hal_ev_a2dp_audio_state {
 	uint8_t state;
