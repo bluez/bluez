@@ -49,6 +49,10 @@ struct eir_data {
 	uint8_t *hash;
 	uint8_t *randomizer;
 	bdaddr_t addr;
+	uint16_t did_vendor;
+	uint16_t did_product;
+	uint16_t did_version;
+	uint16_t did_source;
 };
 
 void eir_data_free(struct eir_data *eir);

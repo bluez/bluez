@@ -223,6 +223,16 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 				break;
 			eir->randomizer = g_memdup(data, 16);
 			break;
+
+		case EIR_DEVICE_ID:
+			if (data_len < 8)
+				break;
+
+			eir->did_source = data[0] | (data[1] << 8);
+			eir->did_vendor = data[2] | (data[3] << 8);
+			eir->did_product = data[4] | (data[5] << 8);
+			eir->did_version = data[6] | (data[7] << 8);
+			break;
 		}
 
 		eir_data += field_len + 1;
