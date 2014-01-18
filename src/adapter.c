@@ -4147,6 +4147,13 @@ static void update_found_devices(struct btd_adapter *adapter,
 	if (eir_data.class != 0)
 		device_set_class(dev, eir_data.class);
 
+	if (eir_data.did_source || eir_data.did_vendor ||
+			eir_data.did_product || eir_data.did_version)
+		btd_device_set_pnpid(dev, eir_data.did_source,
+							eir_data.did_vendor,
+							eir_data.did_product,
+							eir_data.did_version);
+
 	device_add_eir_uuids(dev, eir_data.services);
 
 	eir_data_free(&eir_data);
