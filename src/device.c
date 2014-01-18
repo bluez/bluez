@@ -2504,7 +2504,6 @@ static bool device_match_profile(struct btd_device *device,
 struct probe_data {
 	struct btd_device *dev;
 	GSList *uuids;
-	char addr[18];
 };
 
 static void dev_probe(struct btd_profile *p, void *user_data)
@@ -2579,15 +2578,16 @@ void device_probe_profiles(struct btd_device *device, GSList *uuids)
 {
 	struct probe_data d = { device, uuids };
 	GSList *l;
+	char addr[18];
 
-	ba2str(&device->bdaddr, d.addr);
+	ba2str(&device->bdaddr, addr);
 
 	if (device->blocked) {
-		DBG("Skipping profiles for blocked device %s", d.addr);
+		DBG("Skipping profiles for blocked device %s", addr);
 		goto add_uuids;
 	}
 
-	DBG("Probing profiles for device %s", d.addr);
+	DBG("Probing profiles for device %s", addr);
 
 	btd_profile_foreach(dev_probe, &d);
 
