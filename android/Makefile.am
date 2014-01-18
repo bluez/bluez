@@ -135,20 +135,36 @@ android_audio_a2dp_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 
 endif
 
-EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
-		android/init.bluetooth.rc \
-		android/pics-gap.txt android/pics-hid.txt \
-		android/pics-pan.txt android/pics-did.txt \
-		android/pics-opp.txt android/pics-pbap.txt \
-		android/pixit-did.txt android/pts-did.txt \
-		android/pixit-gap.txt android/pixit-hid.txt \
-		android/pixit-opp.txt android/pixit-pan.txt \
-		android/pixit-pbap.txt android/pts-gap.txt android/pts-hid.txt \
-		android/pts-opp.txt android/pts-pbap.txt \
-		android/audio-ipc-api.txt android/pics-map.txt \
-		android/pixit-map.txt android/pts-map.txt \
-		android/pics-l2cap.txt android/pixit-l2cap.txt \
-		android/pics-avrcp.txt android/pixit-avrcp.txt \
-		android/pics-a2dp.txt android/pixit-a2dp.txt \
-		android/pics-avctp.txt android/pixit-avctp.txt \
-		android/pts-l2cap.txt
+EXTRA_DIST += android/Android.mk android/README \
+				android/init.bluetooth.rc \
+				android/hal-ipc-api.txt \
+				android/audio-ipc-api.txt \
+				android/pics-l2cap.txt \
+				android/pics-gap.txt \
+				android/pics-did.txt \
+				android/pics-hid.txt \
+				android/pics-pan.txt \
+				android/pics-opp.txt \
+				android/pics-map.txt \
+				android/pics-pbap.txt \
+				android/pics-a2dp.txt \
+				android/pics-avctp.txt \
+				android/pics-avrcp.txt \
+				android/pixit-l2cap.txt \
+				android/pixit-gap.txt \
+				android/pixit-did.txt \
+				android/pixit-hid.txt \
+				android/pixit-pan.txt \
+				android/pixit-opp.txt \
+				android/pixit-map.txt \
+				android/pixit-pbap.txt \
+				android/pixit-a2dp.txt \
+				android/pixit-avctp.txt \
+				android/pixit-avrcp.txt \
+				android/pts-l2cap.txt \
+				android/pts-gap.txt \
+				android/pts-did.txt \
+				android/pts-hid.txt \
+				android/pts-opp.txt \
+				android/pts-map.txt \
+				android/pts-pbap.txt
