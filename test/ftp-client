@@ -2,14 +2,16 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
-import gobject
-
+from optparse import OptionParser
+import os.path
 import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import os.path
-from optparse import OptionParser
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 BUS_NAME='org.bluez.obex'
 PATH = '/org/bluez/obex'
@@ -142,7 +144,7 @@ if  __name__ == '__main__':
 		sys.exit(0)
 
 	bus = dbus.SessionBus()
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 
 	client = dbus.Interface(bus.get_object(BUS_NAME, PATH,),
 							CLIENT_INTERFACE)

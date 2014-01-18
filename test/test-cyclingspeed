@@ -6,13 +6,15 @@ from __future__ import absolute_import, print_function, unicode_literals
 Cycling Speed and Cadence test script
 '''
 
-import gobject
-
+from optparse import OptionParser, make_option
 import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-from optparse import OptionParser, make_option
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 BUS_NAME = 'org.bluez'
 CYCLINGSPEED_MANAGER_INTERFACE = 'org.bluez.CyclingSpeedManager1'
@@ -190,5 +192,5 @@ if __name__ == "__main__":
 			print("Unknown command")
 			sys.exit(1)
 
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 	mainloop.run()

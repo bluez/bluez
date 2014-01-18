@@ -1,12 +1,16 @@
 #!/usr/bin/python
 
 from __future__ import print_function
+
 import os
 import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import gobject
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 import bluezutils
 
 class Player(dbus.service.Object):
@@ -56,7 +60,7 @@ class Player(dbus.service.Object):
 					signature="sv")
 
 			handler = InputHandler(self)
-			gobject.io_add_watch(sys.stdin, gobject.IO_IN,
+			GObject.io_add_watch(sys.stdin, GObject.IO_IN,
 							handler.handle)
 
 	@dbus.service.method("org.freedesktop.DBus.Properties",
@@ -136,7 +140,7 @@ if __name__ == '__main__':
 
 	path = "/test/player"
 	player = Player(bus, path)
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 
 	if len(sys.argv) > 2:
 		player.set_object(sys.argv[2])

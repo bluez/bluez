@@ -3,11 +3,14 @@
 from __future__ import absolute_import, print_function, unicode_literals
 # -*- coding: utf-8 -*-
 
+import sys
 import dbus
 import dbus.service
-import gobject
 from dbus.mainloop.glib import DBusGMainLoop
-import sys
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 BUS_NAME = 'org.bluez'
 PATH = '/org/bluez'
@@ -16,7 +19,7 @@ HEALTH_MANAGER_INTERFACE = 'org.bluez.HealthManager1'
 HEALTH_DEVICE_INTERFACE = 'org.bluez.HealthDevice1'
 
 DBusGMainLoop(set_as_default=True)
-loop = gobject.MainLoop()
+loop = GObject.MainLoop()
 
 bus = dbus.SystemBus()
 
@@ -48,7 +51,7 @@ def enter_mainloop():
 	try:
 		print("Entering main lopp, push Ctrl+C for finish")
 
-		mainloop = gobject.MainLoop()
+		mainloop = GObject.MainLoop()
 		mainloop.run()
 	except KeyboardInterrupt:
 		pass

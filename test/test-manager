@@ -2,10 +2,12 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
-from gi.repository import GObject
-
 import dbus
 import dbus.mainloop.glib
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 import bluezutils
 
 def interfaces_added(path, interfaces):

@@ -1,12 +1,17 @@
 #!/usr/bin/python
+
 from __future__ import absolute_import, print_function, unicode_literals
+
+import optparse
+import os
+import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import gobject
-import optparse
-import sys
-import os
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 BUS_NAME = 'org.bluez'
 ALERT_INTERFACE = 'org.bluez.Alert1'
@@ -149,7 +154,7 @@ parser.disable_interspersed_args()
 
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus()
-mainloop = gobject.MainLoop()
+mainloop = GObject.MainLoop()
 alert = dbus.Interface(bus.get_object(BUS_NAME, BLUEZ_OBJECT_PATH),
 								ALERT_INTERFACE)
 alert_agent = AlertAgent(bus, TEST_OBJECT_PATH, alert, mainloop)

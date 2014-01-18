@@ -2,12 +2,14 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
-import gobject
-
 import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 BUS_NAME = 'org.bluez.obex'
 PATH = '/org/bluez/obex'
@@ -63,7 +65,7 @@ if __name__ == '__main__':
 	path = "/test/agent"
 	agent = Agent(bus, path)
 
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 
 	manager.RegisterAgent(path)
 	print("Agent registered")

@@ -6,7 +6,10 @@ import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import gobject
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 import bluezutils
 
 A2DP_SOURCE_UUID = "0000110A-0000-1000-8000-00805F9B34FB"
@@ -94,7 +97,7 @@ if __name__ == '__main__':
 
 	path = "/test/endpoint"
 	endpoint = Endpoint(bus, path)
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 
 	properties = dbus.Dictionary({ "UUID" : A2DP_SOURCE_UUID,
 					"Codec" : SBC_CODEC,

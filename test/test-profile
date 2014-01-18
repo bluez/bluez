@@ -2,15 +2,17 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
-from gi.repository import GObject
-
+from optparse import OptionParser, make_option
 import os
 import sys
 import uuid
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-from optparse import OptionParser, make_option
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 class Profile(dbus.service.Object):
 	fd = -1

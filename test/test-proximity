@@ -6,12 +6,14 @@ from __future__ import absolute_import, print_function, unicode_literals
 Proximity Monitor test script
 '''
 
-import gobject
-
+from optparse import OptionParser, make_option
 import sys
 import dbus
 import dbus.mainloop.glib
-from optparse import OptionParser, make_option
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 import bluezutils
 
 BUS_NAME = 'org.bluez'
@@ -64,5 +66,5 @@ if __name__ == "__main__":
 	print("Proximity SetProperty('%s', '%s')" % (args[0], args[1]))
 	device_prop.Set(PROXIMITY_MONITOR_INTERFACE, args[0], args[1])
 
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 	mainloop.run()

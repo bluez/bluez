@@ -2,16 +2,18 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
-from gi.repository import GObject
-
+from optparse import OptionParser, make_option
 import os
+from socket import SOCK_SEQPACKET, socket
 import sys
 import dbus
-import glib
 import dbus.service
 import dbus.mainloop.glib
-from optparse import OptionParser, make_option
-from socket import SOCK_SEQPACKET, socket
+import glib
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 mainloop = None
 audio_supported = True

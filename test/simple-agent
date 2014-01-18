@@ -2,13 +2,15 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
-from gi.repository import GObject
-
+from optparse import OptionParser
 import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-from optparse import OptionParser
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 import bluezutils
 
 BUS_NAME = 'org.bluez'

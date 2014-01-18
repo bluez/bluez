@@ -2,10 +2,10 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
+from optparse import OptionParser, make_option
 import sys
 import time
 import dbus
-from optparse import OptionParser, make_option
 import bluezutils
 
 bus = dbus.SystemBus()
