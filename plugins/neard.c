@@ -768,41 +768,38 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 	if (err < 0)
 		return error_reply(msg, -err);
 
-	if (bacmp(&remote.address, BDADDR_ANY) == 0)
-		goto read_local;
+	if (bacmp(&remote.address, BDADDR_ANY) == 0) {
+		if (btd_adapter_get_powered(adapter))
+			goto read_local;
 
-	device = btd_adapter_get_device(adapter, &remote.address,
-								BDADDR_BREDR);
-
-	err = check_device(device);
-	if (err < 0) {
-		free_oob_params(&remote);
-
-		if (err == -EALREADY)
-			return create_request_oob_reply(adapter, NULL, NULL,
-									msg);
-
-		return error_reply(msg, -err);
+		goto done;
 	}
 
-	if (!btd_adapter_get_pairable(adapter)) {
-		free_oob_params(&remote);
+	device = btd_adapter_get_device(adapter, &remote.address, BDADDR_BREDR);
 
-		return error_reply(msg, ENONET);
+	err = check_device(device);
+	if (err < 0)
+		goto done;
+
+	if (!btd_adapter_get_pairable(adapter)) {
+		err = -ENONET;
+		goto done;
 	}
 
 	store_params(adapter, device, &remote);
 
-	if (!remote.hash || !btd_adapter_get_powered(adapter)) {
-		free_oob_params(&remote);
-		return create_request_oob_reply(adapter, NULL, NULL, msg);
-	}
+	if (remote.hash && btd_adapter_get_powered(adapter))
+		goto read_local;
+done:
+	free_oob_params(&remote);
+
+	if (err < 0 && err != -EALREADY)
+		return error_reply(msg, -err);
+
+	return create_request_oob_reply(adapter, NULL, NULL, msg);
 
 read_local:
 	free_oob_params(&remote);
-
-	if (!btd_adapter_get_powered(adapter))
-		return create_request_oob_reply(adapter, NULL, NULL, msg);
 
 	err = btd_adapter_read_local_oob_data(adapter);
 	if (err < 0)
