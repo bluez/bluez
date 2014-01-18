@@ -643,7 +643,8 @@ static void store_params(struct btd_adapter *adapter, struct btd_device *device,
 		btd_device_device_set_name(device, params->name);
 	}
 
-	/* TODO handle UUIDs? */
+	if (params->services)
+		device_add_eir_uuids(device, params->services);
 
 	if (params->hash) {
 		btd_adapter_add_remote_oob_data(adapter, &params->address,
