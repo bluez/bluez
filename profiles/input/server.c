@@ -118,18 +118,24 @@ static void sixaxis_browse_sdp(const bdaddr_t *src, const bdaddr_t *dst,
 static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct btd_device *device;
+	uint16_t vid, pid;
 
 	device = btd_adapter_find_device(adapter_find(src), dst);
 	if (!device)
 		return false;
 
-	if (btd_device_get_vendor(device) != 0x054c)
-		return false;
+	vid = btd_device_get_vendor(device);
+	pid = btd_device_get_product(device);
 
-	if (btd_device_get_product(device) != 0x0268)
-		return false;
+	/* DualShock 3 */
+	if (vid == 0x054c && pid == 0x0268)
+		return true;
 
-	return true;
+	/* DualShock 4 */
+	if (vid == 0x054c && pid == 0x05c4)
+		return true;
+
+	return false;
 }
 
 static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
