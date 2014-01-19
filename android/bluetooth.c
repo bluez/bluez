@@ -1064,7 +1064,8 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		(*num_prop)++;
 	}
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, opcode, size, buf);
+	if (*num_prop)
+		ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, opcode, size, buf);
 
 	if (confirm) {
 		char addr[18];
