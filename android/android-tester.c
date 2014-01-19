@@ -500,7 +500,7 @@ static void emulator(int pipe, int hci_index)
 	memset(buf, 0, sizeof(buf));
 
 	len = read(fd, buf, sizeof(buf));
-	if (len <= 0 || (strcmp(buf, "ctl.start=bluetoothd")))
+	if (len <= 0 || (strcmp(buf, "bluetooth.start=daemon")))
 		goto failed;
 
 	close(pipe);
