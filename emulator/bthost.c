@@ -981,6 +981,37 @@ static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 	init_conn(bthost, le16_to_cpu(ev->handle), ev->peer_addr, addr_type);
 }
 
+static void evt_le_ltk_request(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_le_long_term_key_request *ev = data;
+	struct bt_hci_cmd_le_ltk_req_reply cp;
+	struct bt_hci_cmd_le_ltk_req_neg_reply *neg_cp = (void *) &cp;
+	uint16_t handle, div;
+	struct btconn *conn;
+	int err;
+
+	if (len < sizeof(*ev))
+		return;
+
+	handle = acl_handle(ev->handle);
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	div = le16_to_cpu(ev->diversifier);
+
+	cp.handle = ev->handle;
+
+	err = smp_get_ltk(conn->smp_data, ev->number, div, cp.ltk);
+	if (err < 0)
+		send_command(bthost, BT_HCI_CMD_LE_LTK_REQ_NEG_REPLY,
+						neg_cp, sizeof(*neg_cp));
+	else
+		send_command(bthost, BT_HCI_CMD_LE_LTK_REQ_REPLY, &cp,
+								sizeof(cp));
+}
+
 static void evt_le_meta_event(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -993,6 +1024,9 @@ static void evt_le_meta_event(struct bthost *bthost, const void *data,
 	switch (*event) {
 	case BT_HCI_EVT_LE_CONN_COMPLETE:
 		evt_le_conn_complete(bthost, evt_data, len - 1);
+		break;
+	case BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST:
+		evt_le_ltk_request(bthost, evt_data, len - 1);
 		break;
 	default:
 		printf("Unsupported LE Meta event 0x%2.2x\n", *event);

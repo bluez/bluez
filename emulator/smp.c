@@ -407,6 +407,20 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 	}
 }
 
+int smp_get_ltk(void *smp_data, const uint8_t *rand, uint16_t div,
+								uint8_t *ltk)
+{
+	struct smp_conn *conn = smp_data;
+	static const uint8_t no_ltk[16] = { 0 };
+
+	if (!memcmp(conn->ltk, no_ltk, 16))
+		return -ENOENT;
+
+	memcpy(ltk, conn->ltk, 16);
+
+	return 0;
+}
+
 void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
 					const uint8_t *ra, bool conn_init)
 {
