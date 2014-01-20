@@ -542,7 +542,7 @@ static void destroy_nap_device(void)
 
 static int register_nap_server(void)
 {
-	GError *gerr;
+	GError *gerr = NULL;
 	int err;
 
 	DBG("");
