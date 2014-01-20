@@ -549,14 +549,12 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 							NULL, NULL, NULL);
 }
 
-static void setup_powered_client(const void *test_data)
+static void setup_powered_common(void)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *test = data->test_data;
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	unsigned char param[] = { 0x01 };
-
-	tester_print("Powering on controller");
 
 	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
 			data->mgmt_index, user_confirm_request_callback,
@@ -564,10 +562,6 @@ static void setup_powered_client(const void *test_data)
 
 	if (test && test->reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
-			sizeof(param), param,
-			NULL, NULL, NULL);
 
 	if (data->hciemu_type == HCIEMU_TYPE_LE)
 		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
@@ -577,6 +571,19 @@ static void setup_powered_client(const void *test_data)
 		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
+	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+}
+
+static void setup_powered_client(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	setup_powered_common();
+
+	tester_print("Powering on controller");
+
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_client_callback,
 			NULL, NULL);
@@ -585,35 +592,18 @@ static void setup_powered_client(const void *test_data)
 static void setup_powered_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_data *test = data->test_data;
-	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	unsigned char param[] = { 0x01 };
+
+	setup_powered_common();
 
 	tester_print("Powering on controller");
 
-	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
-			data->mgmt_index, user_confirm_request_callback,
-			NULL, NULL);
-
-	if (test->reject_ssp)
-		bthost_set_reject_user_confirm(bthost, true);
-
-	if (data->hciemu_type == HCIEMU_TYPE_BREDR) {
+	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
 		mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
 				sizeof(param), param,
 				NULL, NULL, NULL);
-		if (test->enable_ssp)
-			mgmt_send(data->mgmt, MGMT_OP_SET_SSP,
-					data->mgmt_index, sizeof(param), param,
-					NULL, NULL, NULL);
-	} else {
-		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
+	else
 		mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
-	}
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
