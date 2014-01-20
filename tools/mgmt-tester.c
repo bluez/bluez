@@ -2489,6 +2489,31 @@ static const struct generic_data pairing_acceptor_legacy_2 = {
 	.expect_alt_ev_len = 8,
 };
 
+static uint16_t settings_powered_connectable_pairable_linksec[] = {
+						MGMT_OP_SET_PAIRABLE,
+						MGMT_OP_SET_CONNECTABLE,
+						MGMT_OP_SET_LINK_SECURITY,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data pairing_acceptor_linksec_1 = {
+	.setup_settings = settings_powered_connectable_pairable_linksec,
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+};
+
+static const struct generic_data pairing_acceptor_linksec_2 = {
+	.setup_settings = settings_powered_connectable_pairable_linksec,
+	.expect_pin = true,
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+	.expect_alt_ev = MGMT_EV_CONNECT_FAILED,
+	.expect_alt_ev_len = 8,
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -3829,6 +3854,12 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - Legacy 2",
 				&pairing_acceptor_legacy_2, NULL,
+				test_pairing_acceptor);
+	test_bredrle("Pairing Acceptor - Link Sec 1",
+				&pairing_acceptor_linksec_1, NULL,
+				test_pairing_acceptor);
+	test_bredrle("Pairing Acceptor - Link Sec 2",
+				&pairing_acceptor_linksec_2, NULL,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
