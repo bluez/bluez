@@ -119,8 +119,10 @@ static void unregister_endpoint(void *data)
 	g_free(endpoint);
 }
 
-static void a2dp_device_free(struct a2dp_device *dev)
+static void a2dp_device_free(void *data)
 {
+	struct a2dp_device *dev = data;
+
 	if (dev->idle_id > 0)
 		g_source_remove(dev->idle_id);
 
@@ -1471,13 +1473,6 @@ fail:
 	return false;
 }
 
-static void a2dp_device_disconnected(gpointer data, gpointer user_data)
-{
-	struct a2dp_device *dev = data;
-
-	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
-}
-
 void bt_a2dp_unregister(void)
 {
 	DBG("");
@@ -1488,7 +1483,7 @@ void bt_a2dp_unregister(void)
 	g_slist_free_full(endpoints, unregister_endpoint);
 	endpoints = NULL;
 
-	g_slist_foreach(devices, a2dp_device_disconnected, NULL);
+	g_slist_free_full(devices, a2dp_device_free);
 	devices = NULL;
 
 	ipc_unregister(HAL_SERVICE_ID_A2DP);
