@@ -74,6 +74,12 @@ struct l2cap_data {
 	bool enable_ssp;
 	int sec_level;
 	bool reject_ssp;
+
+	bool expect_pin;
+	uint8_t pin_len;
+	const void *pin;
+	uint8_t client_pin_len;
+	const void *client_pin;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -549,6 +555,31 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 							NULL, NULL, NULL);
 }
 
+static void pin_code_request_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_pin_code_request *ev = param;
+	struct test_data *data = user_data;
+	const struct l2cap_data *test = data->test_data;
+	struct mgmt_cp_pin_code_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
+
+	if (!test->pin) {
+		mgmt_reply(data->mgmt, MGMT_OP_PIN_CODE_NEG_REPLY,
+				data->mgmt_index, sizeof(cp.addr), &cp.addr,
+				NULL, NULL, NULL);
+		return;
+	}
+
+	cp.pin_len = test->pin_len;
+	memcpy(cp.pin_code, test->pin, test->pin_len);
+
+	mgmt_reply(data->mgmt, MGMT_OP_PIN_CODE_REPLY, data->mgmt_index,
+			sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
 static void setup_powered_common(void)
 {
 	struct test_data *data = tester_get_data();
@@ -560,6 +591,14 @@ static void setup_powered_common(void)
 			data->mgmt_index, user_confirm_request_callback,
 			NULL, NULL);
 
+	if (test && (test->pin || test->expect_pin))
+		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
+				data->mgmt_index, pin_code_request_callback,
+				data, NULL);
+
+	if (test && test->client_pin)
+		bthost_set_pin_code(bthost, test->client_pin,
+							test->client_pin_len);
 	if (test && test->reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
 
