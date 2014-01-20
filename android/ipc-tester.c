@@ -407,13 +407,48 @@ static gboolean check_for_daemon(gpointer user_data)
 	return false;
 }
 
+static bool setup_module(int service_id)
+{
+	struct hal_hdr response;
+	struct hal_hdr expected_response;
+
+	struct regmod_msg btmodule_msg = {
+		.header = {
+			.service_id = HAL_SERVICE_ID_CORE,
+			.opcode = HAL_OP_REGISTER_MODULE,
+			.len = sizeof(struct hal_cmd_register_module),
+			},
+		.cmd = {
+			.service_id = service_id,
+			},
+	};
+
+	if (write(cmd_sk, &btmodule_msg, sizeof(btmodule_msg)) < 0)
+		goto fail;
+
+	if (read(cmd_sk, &response, sizeof(response)) < 0)
+		goto fail;
+
+	expected_response = btmodule_msg.header;
+	expected_response.len = 0;
+
+	if (memcmp(&response, &expected_response, sizeof(response)) == 0)
+		return true;
+
+fail:
+	tester_warn("Module registration failed.");
+	return false;
+}
+
 static void setup(const void *data)
 {
+	const struct generic_data *generic_data = data;
 	struct test_data *test_data = tester_get_data();
 	int signal_fd[2];
 	char buf[1024];
 	pid_t pid;
 	int len;
+	unsigned int i;
 
 	if (pipe(signal_fd))
 		goto failed;
@@ -451,9 +486,17 @@ static void setup(const void *data)
 		tester_warn("Cannot initialize IPC mechanism!");
 		goto failed;
 	}
-	/* TODO: register modules */
+	tester_print("Will init %d services.", generic_data->num_services);
+
+	for (i = 0; i < generic_data->num_services; i++)
+		if (!setup_module(generic_data->init_services[i])) {
+			cleanup_ipc();
+			goto failed;
+		}
 
 	test_data->setup_done = true;
+
+	tester_setup_complete();
 	return;
 
 failed:
