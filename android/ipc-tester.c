@@ -558,6 +558,21 @@ static void ipc_send_tc(const void *data)
 				3, user, g_free);			\
 	} while (0)
 
+#define test_opcode_valid(_name, _service, _opcode, _len, _servicelist...) \
+	do {								\
+		static struct hal_hdr hdr = {				\
+			.service_id = _service,				\
+			.opcode = _opcode,				\
+			.len = _len,					\
+		};							\
+									\
+		test_generic("Opcode out of range: "_name,		\
+				ipc_send_tc, setup, teardown,		\
+				&hdr,					\
+				sizeof(hdr),				\
+				_servicelist);				\
+	} while (0)
+
 struct regmod_msg register_bt_msg = {
 	.header = {
 		.service_id = HAL_SERVICE_ID_CORE,
@@ -654,5 +669,22 @@ int main(int argc, char *argv[])
 				&enable_bt_service_hdr,
 				sizeof(enable_bt_service_hdr));
 
+	/* check service handler's max opcode value */
+	test_opcode_valid("CORE", HAL_SERVICE_ID_CORE, 0x03, 0);
+
+	test_opcode_valid("BLUETOOTH", HAL_SERVICE_ID_BLUETOOTH, 0x15, 0,
+			HAL_SERVICE_ID_BLUETOOTH);
+
+	test_opcode_valid("SOCK", HAL_SERVICE_ID_SOCK, 0x03, 0,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
+
+	test_opcode_valid("HIDHOST", HAL_SERVICE_ID_HIDHOST, 0x10, 0,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
+
+	test_opcode_valid("PAN", HAL_SERVICE_ID_PAN, 0x05, 0,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+
+	test_opcode_valid("A2DP", HAL_SERVICE_ID_A2DP, 0x03, 0,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_A2DP);
 	return tester_run();
 }
