@@ -2971,7 +2971,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 		bt_search_service(btd_adapter_get_address(adapter),
 						&device->bdaddr, &uuid,
-						browse_cb, user_data, NULL);
+						browse_cb, user_data, NULL, 0);
 		return;
 	}
 
@@ -3513,7 +3513,8 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 
 	err = bt_search_service(btd_adapter_get_address(adapter),
-				&device->bdaddr, &uuid, browse_cb, req, NULL);
+				&device->bdaddr, &uuid, browse_cb, req, NULL,
+				0);
 	if (err < 0) {
 		browse_request_free(req);
 		return err;

@@ -264,7 +264,7 @@ failed:
 static int create_search_context(struct search_context **ctxt,
 					const bdaddr_t *src,
 					const bdaddr_t *dst,
-					uuid_t *uuid)
+					uuid_t *uuid, uint16_t flags)
 {
 	sdp_session_t *s;
 	GIOChannel *chan;
@@ -276,7 +276,7 @@ static int create_search_context(struct search_context **ctxt,
 
 	s = get_cached_sdp_session(src, dst);
 	if (!s)
-		s = sdp_connect(src, dst, SDP_NON_BLOCKING);
+		s = sdp_connect(src, dst, SDP_NON_BLOCKING | flags);
 
 	if (!s)
 		return -errno;
@@ -311,7 +311,7 @@ static int create_search_context(struct search_context **ctxt,
 
 int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 			uuid_t *uuid, bt_callback_t cb, void *user_data,
-			bt_destroy_t destroy)
+			bt_destroy_t destroy, uint16_t flags)
 {
 	struct search_context *ctxt = NULL;
 	int err;
@@ -319,7 +319,7 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 	if (!cb)
 		return -EINVAL;
 
-	err = create_search_context(&ctxt, src, dst, uuid);
+	err = create_search_context(&ctxt, src, dst, uuid, flags);
 	if (err < 0)
 		return err;
 

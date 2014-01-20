@@ -1091,7 +1091,7 @@ static uint8_t connect_rfcomm(const bdaddr_t *addr, int chan,
 		rfsock->profile = get_profile_by_uuid(uuid);
 
 		if (bt_search_service(&adapter_addr, &rfsock->dst, &uu,
-					sdp_search_cb, rfsock, NULL) < 0) {
+					sdp_search_cb, rfsock, NULL, 0) < 0) {
 			error("Failed to search SDP records");
 			goto failed;
 		}

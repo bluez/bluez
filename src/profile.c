@@ -1605,7 +1605,7 @@ static int resolve_service(struct ext_io *conn, const bdaddr_t *src,
 	bt_string2uuid(&uuid, ext->remote_uuid);
 	sdp_uuid128_to_uuid(&uuid);
 
-	err = bt_search_service(src, dst, &uuid, record_cb, conn, NULL);
+	err = bt_search_service(src, dst, &uuid, record_cb, conn, NULL, 0);
 	if (err == 0)
 		conn->resolving = true;
 
