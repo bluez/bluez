@@ -37,7 +37,7 @@
 #define PB_CALLS_INCOMING_FOLDER "/telecom/ich"
 #define PB_CALLS_MISSED_FOLDER "/telecom/mch"
 #define PB_CALLS_OUTGOING_FOLDER "/telecom/och"
-#define PB_LUID_FOLDER "/telecom/luid"
+#define PB_LUID_FOLDER "/telecom/pb/luid"
 
 #define PB_CONTACTS "/telecom/pb.vcf"
 #define PB_CALLS_COMBINED "/telecom/cch.vcf"
