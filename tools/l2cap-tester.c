@@ -55,29 +55,22 @@ struct test_data {
 	uint16_t dcid;
 };
 
-struct l2cap_client_data {
+struct l2cap_data {
 	uint16_t client_psm;
 	uint16_t server_psm;
 	int expect_err;
-	uint16_t data_len;
-	const void *read_data;
-	const void *write_data;
-	bool enable_ssp;
-	int sec_level;
-	bool reject_ssp;
-};
 
-struct l2cap_server_data {
-	uint16_t server_psm;
 	uint8_t send_req_code;
 	const void *send_req;
 	uint16_t send_req_len;
 	uint8_t expect_rsp_code;
 	const void *expect_rsp;
 	uint16_t expect_rsp_len;
+
 	uint16_t data_len;
 	const void *read_data;
 	const void *write_data;
+
 	bool enable_ssp;
 	int sec_level;
 	bool reject_ssp;
@@ -257,25 +250,25 @@ static void test_data_free(void *test_data)
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
-static const struct l2cap_client_data client_connect_success_test = {
+static const struct l2cap_data client_connect_success_test = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
 };
 
-static const struct l2cap_client_data client_connect_ssp_success_test_1 = {
+static const struct l2cap_data client_connect_ssp_success_test_1 = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
 	.enable_ssp = true,
 };
 
-static const struct l2cap_client_data client_connect_ssp_success_test_2 = {
+static const struct l2cap_data client_connect_ssp_success_test_2 = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
 	.enable_ssp = true,
 	.sec_level  = BT_SECURITY_HIGH,
 };
 
-static const struct l2cap_client_data client_connect_ssp_success_test_3 = {
+static const struct l2cap_data client_connect_ssp_success_test_3 = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
 	.sec_level  = BT_SECURITY_MEDIUM,
@@ -283,31 +276,31 @@ static const struct l2cap_client_data client_connect_ssp_success_test_3 = {
 
 static uint8_t l2_data[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
 
-static const struct  l2cap_client_data client_connect_read_success_test = {
+static const struct l2cap_data client_connect_read_success_test = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
 	.read_data = l2_data,
 	.data_len = sizeof(l2_data),
 };
 
-static const struct  l2cap_client_data client_connect_write_success_test = {
+static const struct l2cap_data client_connect_write_success_test = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
 	.write_data = l2_data,
 	.data_len = sizeof(l2_data),
 };
 
-static const struct l2cap_client_data client_connect_nval_psm_test_1 = {
+static const struct l2cap_data client_connect_nval_psm_test_1 = {
 	.client_psm = 0x1001,
 	.expect_err = ECONNREFUSED,
 };
 
-static const struct l2cap_client_data client_connect_nval_psm_test_2 = {
+static const struct l2cap_data client_connect_nval_psm_test_2 = {
 	.client_psm = 0x0001,
 	.expect_err = ECONNREFUSED,
 };
 
-static const struct l2cap_client_data client_connect_nval_psm_test_3 = {
+static const struct l2cap_data client_connect_nval_psm_test_3 = {
 	.client_psm = 0x0001,
 	.expect_err = ECONNREFUSED,
 	.enable_ssp = true,
@@ -315,7 +308,7 @@ static const struct l2cap_client_data client_connect_nval_psm_test_3 = {
 
 static const uint8_t l2cap_connect_req[] = { 0x01, 0x10, 0x41, 0x00 };
 
-static const struct l2cap_server_data l2cap_server_success_test = {
+static const struct l2cap_data l2cap_server_success_test = {
 	.server_psm = 0x1001,
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_connect_req,
@@ -323,7 +316,7 @@ static const struct l2cap_server_data l2cap_server_success_test = {
 	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
 };
 
-static const struct l2cap_server_data l2cap_server_read_success_test = {
+static const struct l2cap_data l2cap_server_read_success_test = {
 	.server_psm = 0x1001,
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_connect_req,
@@ -333,7 +326,7 @@ static const struct l2cap_server_data l2cap_server_read_success_test = {
 	.data_len = sizeof(l2_data),
 };
 
-static const struct l2cap_server_data l2cap_server_write_success_test = {
+static const struct l2cap_data l2cap_server_write_success_test = {
 	.server_psm = 0x1001,
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_connect_req,
@@ -349,7 +342,7 @@ static const uint8_t l2cap_sec_block_rsp[] = {	0x00, 0x00,	/* dcid */
 						0x00, 0x00	/* status */
 					};
 
-static const struct l2cap_server_data l2cap_server_sec_block_test = {
+static const struct l2cap_data l2cap_server_sec_block_test = {
 	.server_psm = 0x1001,
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_connect_req,
@@ -366,7 +359,7 @@ static const uint8_t l2cap_nval_psm_rsp[] = {	0x00, 0x00,	/* dcid */
 						0x00, 0x00	/* status */
 					};
 
-static const struct l2cap_server_data l2cap_server_nval_psm_test = {
+static const struct l2cap_data l2cap_server_nval_psm_test = {
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_connect_req,
 	.send_req_len = sizeof(l2cap_connect_req),
@@ -378,7 +371,7 @@ static const struct l2cap_server_data l2cap_server_nval_psm_test = {
 static const uint8_t l2cap_nval_conn_req[] = { 0x00 };
 static const uint8_t l2cap_nval_pdu_rsp[] = { 0x00, 0x00 };
 
-static const struct l2cap_server_data l2cap_server_nval_pdu_test1 = {
+static const struct l2cap_data l2cap_server_nval_pdu_test1 = {
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_nval_conn_req,
 	.send_req_len = sizeof(l2cap_nval_conn_req),
@@ -391,7 +384,7 @@ static const uint8_t l2cap_nval_dc_req[] = { 0x12, 0x34, 0x56, 0x78 };
 static const uint8_t l2cap_nval_cid_rsp[] = { 0x02, 0x00,
 						0x12, 0x34, 0x56, 0x78 };
 
-static const struct l2cap_server_data l2cap_server_nval_cid_test1 = {
+static const struct l2cap_data l2cap_server_nval_cid_test1 = {
 	.send_req_code = BT_L2CAP_PDU_DISCONN_REQ,
 	.send_req = l2cap_nval_dc_req,
 	.send_req_len = sizeof(l2cap_nval_dc_req),
@@ -404,7 +397,7 @@ static const uint8_t l2cap_nval_cfg_req[] = { 0x12, 0x34, 0x00, 0x00 };
 static const uint8_t l2cap_nval_cfg_rsp[] = { 0x02, 0x00,
 						0x12, 0x34, 0x00, 0x00 };
 
-static const struct l2cap_server_data l2cap_server_nval_cid_test2 = {
+static const struct l2cap_data l2cap_server_nval_cid_test2 = {
 	.send_req_code = BT_L2CAP_PDU_CONFIG_REQ,
 	.send_req = l2cap_nval_cfg_req,
 	.send_req_len = sizeof(l2cap_nval_cfg_req),
@@ -413,12 +406,12 @@ static const struct l2cap_server_data l2cap_server_nval_cid_test2 = {
 	.expect_rsp_len = sizeof(l2cap_nval_cfg_rsp),
 };
 
-static const struct l2cap_client_data le_client_connect_success_test = {
+static const struct l2cap_data le_client_connect_success_test = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
 };
 
-static const struct l2cap_client_data le_client_connect_nval_psm_test = {
+static const struct l2cap_data le_client_connect_nval_psm_test = {
 	.client_psm = 0x0080,
 	.expect_err = ECONNREFUSED,
 };
@@ -430,7 +423,7 @@ static const uint8_t le_connect_req[] = {	0x80, 0x00, /* PSM */
 						0x05, 0x00, /* Credits */
 };
 
-static const struct l2cap_server_data le_server_success_test = {
+static const struct l2cap_data le_server_success_test = {
 	.server_psm = 0x0080,
 	.send_req_code = BT_L2CAP_PDU_LE_CONN_REQ,
 	.send_req = le_connect_req,
@@ -443,7 +436,7 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					void *user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_client_data *test = data->test_data;
+	const struct l2cap_data *test = data->test_data;
 	struct bthost *bthost;
 
 	bthost = hciemu_client_get_host(data->hciemu);
@@ -514,7 +507,7 @@ static void setup_powered_server_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_server_data *test = data->test_data;
+	const struct l2cap_data *test = data->test_data;
 	struct bthost *bthost;
 
 	if (status != MGMT_STATUS_SUCCESS) {
@@ -559,7 +552,7 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 static void setup_powered_client(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_client_data *test = data->test_data;
+	const struct l2cap_data *test = data->test_data;
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	unsigned char param[] = { 0x01 };
 
@@ -569,7 +562,7 @@ static void setup_powered_client(const void *test_data)
 			data->mgmt_index, user_confirm_request_callback,
 			(void *) &test->reject_ssp, NULL);
 
-	if (test->reject_ssp)
+	if (test && test->reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
@@ -592,7 +585,7 @@ static void setup_powered_client(const void *test_data)
 static void setup_powered_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_server_data *test = data->test_data;
+	const struct l2cap_data *test = data->test_data;
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	unsigned char param[] = { 0x01 };
 
@@ -649,7 +642,7 @@ static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_client_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 	char buf[1024];
 	int sk;
 
@@ -672,7 +665,7 @@ static gboolean server_received_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_server_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 	char buf[1024];
 	int sk;
 
@@ -695,7 +688,7 @@ static void bthost_received_data(const void *buf, uint16_t len,
 							void *user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_client_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 
 	if (len != l2data->data_len) {
 		tester_test_failed();
@@ -712,7 +705,7 @@ static void server_bthost_received_data(const void *buf, uint16_t len,
 							void *user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_server_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 
 	if (len != l2data->data_len) {
 		tester_test_failed();
@@ -729,7 +722,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_client_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 	int err, sk_err, sk;
 	socklen_t len = sizeof(sk_err);
 
@@ -885,7 +878,7 @@ static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
 static void test_connect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_client_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 	GIOChannel *io;
 	int sk;
 
@@ -926,7 +919,7 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_server_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 	int sk, new_sk;
 
 	data->io_id = 0;
@@ -987,7 +980,7 @@ static void client_l2cap_rsp(uint8_t code, const void *data, uint16_t len,
 							void *user_data)
 {
 	struct test_data *test_data = user_data;
-	const struct l2cap_server_data *l2data = test_data->test_data;
+	const struct l2cap_data *l2data = test_data->test_data;
 
 	tester_print("Client received response code 0x%02x", code);
 
@@ -1036,7 +1029,7 @@ failed:
 static void client_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
-	const struct l2cap_server_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 	struct bthost *bthost;
 
 	tester_print("New client connection with handle 0x%04x", handle);
@@ -1063,7 +1056,7 @@ static void client_new_conn(uint16_t handle, void *user_data)
 static void test_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	const struct l2cap_server_data *l2data = data->test_data;
+	const struct l2cap_data *l2data = data->test_data;
 	const uint8_t *master_bdaddr;
 	uint8_t addr_type;
 	struct bthost *bthost;
