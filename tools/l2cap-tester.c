@@ -533,14 +533,14 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 {
 	const struct mgmt_ev_user_confirm_request *ev = param;
 	struct test_data *data = tester_get_data();
+	const struct l2cap_data *test = data->test_data;
 	struct mgmt_cp_user_confirm_reply cp;
-	const bool *reject = user_data;
 	uint16_t opcode;
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 
-	if (*reject)
+	if (test->reject_ssp)
 		opcode = MGMT_OP_USER_CONFIRM_NEG_REPLY;
 	else
 		opcode = MGMT_OP_USER_CONFIRM_REPLY;
@@ -560,7 +560,7 @@ static void setup_powered_client(const void *test_data)
 
 	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
 			data->mgmt_index, user_confirm_request_callback,
-			(void *) &test->reject_ssp, NULL);
+			NULL, NULL);
 
 	if (test && test->reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
@@ -593,7 +593,7 @@ static void setup_powered_server(const void *test_data)
 
 	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
 			data->mgmt_index, user_confirm_request_callback,
-			(void *) &test->reject_ssp, NULL);
+			NULL, NULL);
 
 	if (test->reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
