@@ -64,6 +64,7 @@ struct l2cap_client_data {
 	const void *write_data;
 	bool enable_ssp;
 	int sec_level;
+	bool reject_ssp;
 };
 
 struct l2cap_server_data {
@@ -79,6 +80,7 @@ struct l2cap_server_data {
 	const void *write_data;
 	bool enable_ssp;
 	int sec_level;
+	bool reject_ssp;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -519,13 +521,43 @@ static void setup_powered_server_callback(uint8_t status, uint16_t length,
 	bthost_write_ssp_mode(bthost, 0x01);
 }
 
+static void user_confirm_request_callback(uint16_t index, uint16_t length,
+							const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_user_confirm_request *ev = param;
+	struct test_data *data = tester_get_data();
+	struct mgmt_cp_user_confirm_reply cp;
+	const bool *reject = user_data;
+	uint16_t opcode;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
+
+	if (*reject)
+		opcode = MGMT_OP_USER_CONFIRM_NEG_REPLY;
+	else
+		opcode = MGMT_OP_USER_CONFIRM_REPLY;
+
+	mgmt_reply(data->mgmt, opcode, data->mgmt_index, sizeof(cp), &cp,
+							NULL, NULL, NULL);
+}
+
 static void setup_powered_client(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_client_data *test = data->test_data;
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	unsigned char param[] = { 0x01 };
 
 	tester_print("Powering on controller");
+
+	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
+			data->mgmt_index, user_confirm_request_callback,
+			(void *) &test->reject_ssp, NULL);
+
+	if (test->reject_ssp)
+		bthost_set_reject_user_confirm(bthost, true);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
 			sizeof(param), param,
@@ -548,9 +580,17 @@ static void setup_powered_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_server_data *test = data->test_data;
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	unsigned char param[] = { 0x01 };
 
 	tester_print("Powering on controller");
+
+	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
+			data->mgmt_index, user_confirm_request_callback,
+			(void *) &test->reject_ssp, NULL);
+
+	if (test->reject_ssp)
+		bthost_set_reject_user_confirm(bthost, true);
 
 	if (data->hciemu_type == HCIEMU_TYPE_BREDR) {
 		mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
