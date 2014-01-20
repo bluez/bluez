@@ -256,6 +256,8 @@ static void test_data_free(void *test_data)
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
+static uint8_t pair_device_pin[] = { 0x30, 0x30, 0x30, 0x30 }; /* "0000" */
+
 static const struct l2cap_data client_connect_success_test = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
@@ -274,10 +276,14 @@ static const struct l2cap_data client_connect_ssp_success_test_2 = {
 	.sec_level  = BT_SECURITY_HIGH,
 };
 
-static const struct l2cap_data client_connect_ssp_success_test_3 = {
+static const struct l2cap_data client_connect_pin_success_test = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
 	.sec_level  = BT_SECURITY_MEDIUM,
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
 };
 
 static uint8_t l2_data[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
@@ -1153,8 +1159,8 @@ int main(int argc, char *argv[])
 	test_l2cap_bredr("L2CAP BR/EDR Client SSP - Success 2",
 					&client_connect_ssp_success_test_2,
 					setup_powered_client, test_connect);
-	test_l2cap_bredr("L2CAP BR/EDR Client SSP - Success 3",
-					&client_connect_ssp_success_test_3,
+	test_l2cap_bredr("L2CAP BR/EDR Client PIN Code - Success",
+					&client_connect_pin_success_test,
 					setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Read Success",
