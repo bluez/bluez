@@ -86,17 +86,6 @@ static sdp_session_t *get_cached_sdp_session(const bdaddr_t *src, const bdaddr_t
 	return NULL;
 }
 
-static sdp_session_t *get_sdp_session(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	sdp_session_t *session;
-
-	session = get_cached_sdp_session(src, dst);
-	if (session)
-		return session;
-
-	return sdp_connect(src, dst, SDP_NON_BLOCKING);
-}
-
 static void cache_sdp_session(bdaddr_t *src, bdaddr_t *dst,
 						sdp_session_t *session)
 {
@@ -285,7 +274,10 @@ static int create_search_context(struct search_context **ctxt,
 	if (!ctxt)
 		return -EINVAL;
 
-	s = get_sdp_session(src, dst);
+	s = get_cached_sdp_session(src, dst);
+	if (!s)
+		s = sdp_connect(src, dst, SDP_NON_BLOCKING);
+
 	if (!s)
 		return -errno;
 
