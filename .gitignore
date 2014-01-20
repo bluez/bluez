@@ -114,4 +114,5 @@ android/system-emulator
 android/bluetoothd
 android/haltest
 android/android-tester
+android/ipc-tester
 android/bluetoothd-snoop

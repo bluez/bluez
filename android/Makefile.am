@@ -121,6 +121,24 @@ android_android_tester_LDFLAGS = -pthread -ldl
 
 plugin_LTLIBRARIES += android/audio.a2dp.default.la
 
+noinst_PROGRAMS += android/ipc-tester
+
+android_ipc_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
+				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
+				src/shared/io.h src/shared/io-glib.c \
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c \
+				src/shared/hciemu.h src/shared/hciemu.c \
+				src/shared/tester.h src/shared/tester.c \
+				android/hal-utils.h android/hal-utils.c \
+				android/ipc-tester.c
+
+android_ipc_tester_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+
+android_ipc_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
 android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hal-msg.h \
 					android/hal-audio.c \
