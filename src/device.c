@@ -3514,6 +3514,14 @@ static uint16_t get_sdp_flags(struct btd_device *device)
 	if (vid == 0x054c && pid == 0x05c4)
 		return SDP_LARGE_MTU;
 
+	if (btd_adapter_ssp_enabled(device->adapter))
+		return 0;
+
+	/* if no EIR try matching Sony DualShock 4 with name and class */
+	if (!strncmp(device->name, "Wireless Controller", MAX_NAME_LENGTH) &&
+			device->class == 0x2508)
+		return SDP_LARGE_MTU;
+
 	return 0;
 }
 
