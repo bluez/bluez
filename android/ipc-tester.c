@@ -569,15 +569,57 @@ struct regmod_msg register_bt_msg = {
 		},
 };
 
+struct regmod_msg register_bt_malformed_size_msg = {
+	.header = {
+		.service_id = HAL_SERVICE_ID_CORE,
+		.opcode = HAL_OP_REGISTER_MODULE,
+		/* wrong payload size declared */
+		.len = sizeof(struct hal_cmd_register_module) - 1,
+		},
+	.cmd = {
+		.service_id = HAL_SERVICE_ID_CORE,
+		},
+};
+
+struct hal_hdr enable_unknown_service_hdr = {
+	.service_id = HAL_SERVICE_ID_MAX + 1,
+	.opcode = HAL_OP_REGISTER_MODULE,
+	.len = 0,
+};
+
+struct hal_hdr enable_bt_service_hdr = {
+	.service_id = HAL_SERVICE_ID_BLUETOOTH,
+	.opcode = HAL_OP_ENABLE,
+	.len = 0,
+};
+
 int main(int argc, char *argv[])
 {
 	snprintf(exec_dir, sizeof(exec_dir), "%s", dirname(argv[0]));
 
 	tester_init(&argc, &argv);
 
+	/* check general IPC errors */
 	test_generic("Too small data",
 				ipc_send_tc, setup, teardown,
 				&register_bt_msg, 1);
+
+	test_generic("Malformed data (wrong payload declared)",
+				ipc_send_tc, setup, teardown,
+				&register_bt_malformed_size_msg,
+				sizeof(register_bt_malformed_size_msg),
+				HAL_SERVICE_ID_BLUETOOTH);
+
+	test_generic("Invalid service",
+				ipc_send_tc, setup, teardown,
+				&enable_unknown_service_hdr,
+				sizeof(enable_unknown_service_hdr),
+				HAL_SERVICE_ID_BLUETOOTH);
+
+	test_generic("Enable unregistered service",
+				ipc_send_tc, setup, teardown,
+				&enable_bt_service_hdr,
+				sizeof(enable_bt_service_hdr));
 
 	return tester_run();
 }
