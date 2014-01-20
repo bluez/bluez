@@ -418,9 +418,15 @@ static const struct l2cap_data l2cap_server_nval_cid_test2 = {
 	.expect_rsp_len = sizeof(l2cap_nval_cfg_rsp),
 };
 
-static const struct l2cap_data le_client_connect_success_test = {
+static const struct l2cap_data le_client_connect_success_test_1 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
+};
+
+static const struct l2cap_data le_client_connect_success_test_2 = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.sec_level  = BT_SECURITY_MEDIUM,
 };
 
 static const struct l2cap_data le_client_connect_nval_psm_test = {
@@ -1213,7 +1219,10 @@ int main(int argc, char *argv[])
 				setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP LE Client - Success",
-				&le_client_connect_success_test,
+				&le_client_connect_success_test_1,
+				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client SMP - Success",
+				&le_client_connect_success_test_2,
 				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client - Invalid PSM",
 					&le_client_connect_nval_psm_test,
