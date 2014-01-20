@@ -63,6 +63,7 @@ struct l2cap_client_data {
 	const void *read_data;
 	const void *write_data;
 	bool enable_ssp;
+	int sec_level;
 };
 
 struct l2cap_server_data {
@@ -77,6 +78,7 @@ struct l2cap_server_data {
 	const void *read_data;
 	const void *write_data;
 	bool enable_ssp;
+	int sec_level;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -727,7 +729,8 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static int create_l2cap_sock(struct test_data *data, uint16_t psm)
+static int create_l2cap_sock(struct test_data *data, uint16_t psm,
+								int sec_level)
 {
 	const uint8_t *master_bdaddr;
 	struct sockaddr_l2 addr;
@@ -764,6 +767,22 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm)
 									errno);
 		close(sk);
 		return err;
+	}
+
+	if (sec_level) {
+		struct bt_security sec;
+
+		memset(&sec, 0, sizeof(sec));
+		sec.level = sec_level;
+
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec,
+							sizeof(sec)) < 0) {
+			err = -errno;
+			tester_warn("Can't bind socket: %s (%d)",
+						strerror(errno), errno);
+			close(sk);
+			return err;
+		}
 	}
 
 	return sk;
@@ -828,7 +847,7 @@ static void test_connect(const void *test_data)
 						client_l2cap_connect_cb, data);
 	}
 
-	sk = create_l2cap_sock(data, 0);
+	sk = create_l2cap_sock(data, 0, l2data->sec_level);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
@@ -999,7 +1018,8 @@ static void test_server(const void *test_data)
 	int sk;
 
 	if (l2data->server_psm) {
-		sk = create_l2cap_sock(data, l2data->server_psm);
+		sk = create_l2cap_sock(data, l2data->server_psm,
+							l2data->sec_level);
 		if (sk < 0) {
 			tester_test_failed();
 			return;
