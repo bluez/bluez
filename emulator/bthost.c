@@ -995,6 +995,7 @@ static void evt_le_meta_event(struct bthost *bthost, const void *data,
 		evt_le_conn_complete(bthost, evt_data, len - 1);
 		break;
 	default:
+		printf("Unsupported LE Meta event 0x%2.2x\n", *event);
 		break;
 	}
 }
