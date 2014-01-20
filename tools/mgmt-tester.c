@@ -2514,6 +2514,34 @@ static const struct generic_data pairing_acceptor_linksec_2 = {
 	.expect_alt_ev_len = 8,
 };
 
+static uint16_t settings_powered_connectable_pairable_ssp[] = {
+						MGMT_OP_SET_PAIRABLE,
+						MGMT_OP_SET_CONNECTABLE,
+						MGMT_OP_SET_SSP,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data pairing_acceptor_ssp_1 = {
+	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.client_enable_ssp = true,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x03, /* NoInputNoOutput */
+	.client_io_cap = 0x03, /* NoInputNoOutput */
+};
+
+static const struct generic_data pairing_acceptor_ssp_2 = {
+	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.client_enable_ssp = true,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -2666,6 +2694,21 @@ static void setup_bthost(void)
 		bthost_set_adv_enable(bthost, 0x01);
 	else
 		bthost_write_scan_enable(bthost, 0x03);
+}
+
+static void setup_ssp_acceptor(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+
+	if (!test->io_cap)
+		return;
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_IO_CAPABILITY, data->mgmt_index,
+					sizeof(test->io_cap), &test->io_cap,
+					NULL, NULL, NULL);
+
+	setup_bthost();
 }
 
 static void setup_powered_callback(uint8_t status, uint16_t length,
@@ -3860,6 +3903,12 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - Link Sec 2",
 				&pairing_acceptor_linksec_2, NULL,
+				test_pairing_acceptor);
+	test_bredrle("Pairing Acceptor - SSP 1",
+				&pairing_acceptor_ssp_1, setup_ssp_acceptor,
+				test_pairing_acceptor);
+	test_bredrle("Pairing Acceptor - SSP 2",
+				&pairing_acceptor_ssp_2, setup_ssp_acceptor,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
