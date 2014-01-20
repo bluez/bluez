@@ -581,6 +581,27 @@ struct regmod_msg register_bt_malformed_size_msg = {
 		},
 };
 
+struct malformed_data3_struct {
+	struct regmod_msg valid_msg;
+	int redundant_data;
+}  __attribute__((packed));
+
+static struct malformed_data3_struct malformed_data3_msg = {
+	/* valid register service message */
+	.valid_msg = {
+		.header = {
+			.service_id = HAL_SERVICE_ID_CORE,
+			.opcode = HAL_OP_REGISTER_MODULE,
+			.len = sizeof(struct hal_cmd_register_module),
+			},
+		.cmd = {
+			.service_id = HAL_SERVICE_ID_CORE,
+			},
+	},
+	/* plus redundant data */
+	. redundant_data = 666,
+};
+
 struct hal_hdr enable_unknown_service_hdr = {
 	.service_id = HAL_SERVICE_ID_MAX + 1,
 	.opcode = HAL_OP_REGISTER_MODULE,
@@ -608,6 +629,18 @@ int main(int argc, char *argv[])
 				ipc_send_tc, setup, teardown,
 				&register_bt_malformed_size_msg,
 				sizeof(register_bt_malformed_size_msg),
+				HAL_SERVICE_ID_BLUETOOTH);
+
+	test_generic("Malformed data2 (undersized msg)",
+				ipc_send_tc, setup, teardown,
+				&register_bt_msg,
+				sizeof(register_bt_msg) - 1,
+				HAL_SERVICE_ID_BLUETOOTH);
+
+	test_generic("Malformed data3 (oversized msg)",
+				ipc_send_tc, setup, teardown,
+				&malformed_data3_msg,
+				sizeof(malformed_data3_msg),
 				HAL_SERVICE_ID_BLUETOOTH);
 
 	test_generic("Invalid service",
