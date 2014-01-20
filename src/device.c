@@ -118,6 +118,7 @@ struct browse_req {
 	int search_uuid;
 	int reconnect_attempt;
 	guint listener_id;
+	uint16_t sdp_flags;
 };
 
 struct included_search {
@@ -2971,7 +2972,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 		bt_search_service(btd_adapter_get_address(adapter),
 						&device->bdaddr, &uuid,
-						browse_cb, user_data, NULL, 0);
+						browse_cb, user_data, NULL,
+						req->sdp_flags);
 		return;
 	}
 
@@ -3498,6 +3500,23 @@ done:
 	return 0;
 }
 
+static uint16_t get_sdp_flags(struct btd_device *device)
+{
+	uint16_t vid, pid;
+
+	vid = btd_device_get_vendor(device);
+	pid = btd_device_get_product(device);
+
+	/* Sony DualShock 4 is not respecting negotiated L2CAP MTU. This might
+	 * results in SDP response being dropped by kernel. Workaround this by
+	 * forcing SDP code to use bigger MTU while connecting.
+	 */
+	if (vid == 0x054c && pid == 0x05c4)
+		return SDP_LARGE_MTU;
+
+	return 0;
+}
+
 static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 {
 	struct btd_adapter *adapter = device->adapter;
@@ -3512,9 +3531,11 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	req->device = device;
 	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 
+	req->sdp_flags = get_sdp_flags(device);
+
 	err = bt_search_service(btd_adapter_get_address(adapter),
 				&device->bdaddr, &uuid, browse_cb, req, NULL,
-				0);
+				req->sdp_flags);
 	if (err < 0) {
 		browse_request_free(req);
 		return err;
