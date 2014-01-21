@@ -44,7 +44,7 @@
 
 void eir_data_free(struct eir_data *eir)
 {
-	g_slist_free_full(eir->services, g_free);
+	g_slist_free_full(eir->services, free);
 	eir->services = NULL;
 	g_free(eir->name);
 	eir->name = NULL;
@@ -69,9 +69,7 @@ static void eir_parse_uuid16(struct eir_data *eir, const void *data,
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)
 			continue;
-		eir->services = g_slist_append(eir->services,
-							g_strdup(uuid_str));
-		free(uuid_str);
+		eir->services = g_slist_append(eir->services, uuid_str);
 	}
 }
 
@@ -90,9 +88,7 @@ static void eir_parse_uuid32(struct eir_data *eir, const void *data,
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)
 			continue;
-		eir->services = g_slist_append(eir->services,
-							g_strdup(uuid_str));
-		free(uuid_str);
+		eir->services = g_slist_append(eir->services, uuid_str);
 	}
 }
 
@@ -112,9 +108,7 @@ static void eir_parse_uuid128(struct eir_data *eir, const uint8_t *data,
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)
 			continue;
-		eir->services = g_slist_append(eir->services,
-							g_strdup(uuid_str));
-		free(uuid_str);
+		eir->services = g_slist_append(eir->services, uuid_str);
 		uuid_ptr += 16;
 	}
 }
