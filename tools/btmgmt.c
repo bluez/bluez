@@ -47,7 +47,6 @@
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
 #include "lib/mgmt.h"
-#include "eir.h"
 
 static bool monitor = false;
 static bool discovery = false;
@@ -312,14 +311,41 @@ static void confirm_name_rsp(uint8_t status, uint16_t len,
 		printf("confirm_name succeeded for %s\n", addr);
 }
 
+static char *eir_get_name(const uint8_t *eir, uint16_t eir_len)
+{
+	uint8_t parsed = 0;
+
+	if (eir_len < 2)
+		return NULL;
+
+	while (parsed < eir_len - 1) {
+		uint8_t field_len = eir[0];
+
+		if (field_len == 0)
+			break;
+
+		parsed += field_len + 1;
+
+		if (parsed > eir_len)
+			break;
+
+		/* Check for short of complete name */
+		if (eir[1] == 0x09 || eir[1] == 0x08)
+			return strndup((char *) &eir[2], field_len - 1);
+
+		eir += field_len + 1;
+	}
+
+	return NULL;
+}
+
 static void device_found(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_device_found *ev = param;
 	struct mgmt *mgmt = user_data;
-	uint32_t flags;
 	uint16_t eir_len;
-	struct eir_data eir;
+	uint32_t flags;
 
 	if (len < sizeof(*ev)) {
 		fprintf(stderr,
@@ -336,23 +362,22 @@ static void device_found(uint16_t index, uint16_t len, const void *param,
 		return;
 	}
 
-	memset(&eir, 0, sizeof(eir));
-	eir_parse(&eir, ev->eir, eir_len);
-
 	if (monitor || discovery) {
-		char addr[18];
+		char addr[18], *name;
+
 		ba2str(&ev->addr.bdaddr, addr);
 		printf("hci%u dev_found: %s type %s rssi %d "
 			"flags 0x%04x ", index, addr,
 			typestr(ev->addr.type), ev->rssi, flags);
 
-		if (eir.name)
-			printf("name %s\n", eir.name);
+		name = eir_get_name(ev->eir, eir_len);
+		if (name)
+			printf("name %s\n", name);
 		else
 			printf("eir_len %u\n", eir_len);
-	}
 
-	eir_data_free(&eir);
+		free(name);
+	}
 
 	if (discovery && (flags & MGMT_DEV_FOUND_CONFIRM_NAME)) {
 		struct mgmt_cp_confirm_name cp;
