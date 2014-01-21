@@ -3206,6 +3206,10 @@ static void setup_hidhost_interface(const void *test_data)
 
 #define HID_SEND_DATA			0xa2
 
+#define HID_GET_INPUT_REPORT		0x49
+#define HID_GET_OUTPUT_REPORT		0x4a
+#define HID_GET_FEATURE_REPORT		0x4b
+
 static void hid_prepare_reply_protocol_mode(const void *data, uint16_t len)
 {
 	struct test_data *t_data = tester_get_data();
@@ -3216,6 +3220,22 @@ static void hid_prepare_reply_protocol_mode(const void *data, uint16_t len)
 	pdu_len = 2;
 	pdu[0] = 0xa0;
 	pdu[1] = 0x00;
+
+	bthost_send_cid(bthost, t_data->ctrl_handle, t_data->ctrl_cid,
+						(void *)pdu, pdu_len);
+}
+
+static void hid_prepare_reply_report(const void *data, uint16_t len)
+{
+	struct test_data *t_data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(t_data->hciemu);
+	uint8_t pdu[3] = { 0, 0, 0 };
+	uint16_t pdu_len = 0;
+
+	pdu_len = 3;
+	pdu[0] = 0xa2;
+	pdu[1] = 0x01;
+	pdu[2] = 0x00;
 
 	bthost_send_cid(bthost, t_data->ctrl_handle, t_data->ctrl_cid,
 						(void *)pdu, pdu_len);
@@ -3254,6 +3274,11 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 	case HID_SET_REPORT_PROTOCOL:
 	case HID_SET_BOOT_PROTOCOL:
 		hid_prepare_reply_protocol_mode(data, len);
+		break;
+	case HID_GET_INPUT_REPORT:
+	case HID_GET_OUTPUT_REPORT:
+	case HID_GET_FEATURE_REPORT:
+		hid_prepare_reply_report(data, len);
 		break;
 	/* HID device doesnot reply for this commads, so reaching pdu's
 	 * to hid device means assuming test passed */
@@ -3510,6 +3535,41 @@ static void test_hidhost_send_data(const void *test_data)
 	data->cb_count = 0;
 	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
 	bt_status = data->if_hid->send_data(&bdaddr, buf);
+	if (bt_status != BT_STATUS_SUCCESS)
+		tester_test_failed();
+}
+
+static void hid_get_report_cb(bt_bdaddr_t *bd_addr, bthh_status_t status,
+						uint8_t *report, int size)
+{
+	struct test_data *data = tester_get_data();
+	const struct hidhost_generic_data *test = data->test_data;
+
+	if (data->cb_count == test->expected_cb_count &&
+					status == test->expected_status &&
+					size == test->expected_report_size)
+		tester_test_passed();
+	else
+		tester_test_failed();
+}
+
+static const struct hidhost_generic_data hidhost_test_get_report = {
+	.expected_hal_cb.get_report_cb = hid_get_report_cb,
+	.expected_cb_count = 1,
+	.expected_status = BTHH_OK,
+	.expected_report_size = 2,
+};
+
+static void test_hidhost_get_report(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
+	bt_bdaddr_t bdaddr;
+	bt_status_t bt_status;
+
+	data->cb_count = 0;
+	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
+	bt_status = data->if_hid->get_report(&bdaddr, BTHH_INPUT_REPORT, 1, 20);
 	if (bt_status != BT_STATUS_SUCCESS)
 		tester_test_failed();
 }
@@ -3878,6 +3938,10 @@ int main(int argc, char *argv[])
 	test_bredrle("HIDHost SetProtocol Success",
 			&hidhost_test_get_protocol, setup_hidhost_connect,
 				test_hidhost_set_protocol, teardown);
+
+	test_bredrle("HIDHost GetReport Success",
+			&hidhost_test_get_report, setup_hidhost_connect,
+				test_hidhost_get_report, teardown);
 
 	test_bredrle("HIDHost SetReport Success",
 				NULL, setup_hidhost_connect,
