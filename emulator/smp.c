@@ -248,7 +248,7 @@ static int smp_c1(struct smp_conn *conn, uint8_t rnd[16], uint8_t res[16])
 	baswap((bdaddr_t *) (p2 + 10), (bdaddr_t *) conn->ra);
 
 	/* res = r XOR p1 */
-	u128_xor((u128 *) res, (u128 *) rnd, (u128 *) p1);
+	u128_xor(res, rnd, p1);
 
 	/* res = e(k, res) */
 	err = smp_e(conn->smp->alg_sk, conn->tk, res, res);
@@ -256,7 +256,7 @@ static int smp_c1(struct smp_conn *conn, uint8_t rnd[16], uint8_t res[16])
 		return err;
 
 	/* res = res XOR p2 */
-	u128_xor((u128 *) res, (u128 *) res, (u128 *) p2);
+	u128_xor(res, res, p2);
 
 	/* res = e(k, res) */
 	return smp_e(conn->smp->alg_sk, conn->tk, res, res);
