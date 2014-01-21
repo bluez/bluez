@@ -592,6 +592,50 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 			sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
+static void bthost_send_rsp(const void *buf, uint16_t len, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	struct bthost *bthost;
+
+	if (l2data->expect_cmd_len && len != l2data->expect_cmd_len) {
+		tester_test_failed();
+		return;
+	}
+
+	if (l2data->expect_cmd && memcmp(buf, l2data->expect_cmd,
+						l2data->expect_cmd_len)) {
+		tester_test_failed();
+		return;
+	}
+
+	if (!l2data->send_cmd)
+		return;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_send_cid(bthost, data->handle, data->dcid,
+				l2data->send_cmd, l2data->send_cmd_len);
+}
+
+static void send_rsp_new_conn(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bthost *bthost;
+
+	tester_print("New connection with handle 0x%04x", handle);
+
+	data->handle = handle;
+
+	if (data->hciemu_type == HCIEMU_TYPE_LE)
+		data->dcid = 0x0005;
+	else
+		data->dcid = 0x0001;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_add_cid_hook(bthost, data->handle, data->dcid,
+						bthost_send_rsp, NULL);
+}
+
 static void setup_powered_common(void)
 {
 	struct test_data *data = tester_get_data();
@@ -629,11 +673,17 @@ static void setup_powered_common(void)
 static void setup_powered_client(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct l2cap_data *test = data->test_data;
 	unsigned char param[] = { 0x01 };
 
 	setup_powered_common();
 
 	tester_print("Powering on controller");
+
+	if (test->expect_cmd || test->send_cmd) {
+		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+		bthost_set_connect_cb(bthost, send_rsp_new_conn, data);
+	}
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_client_callback,
@@ -1067,7 +1117,7 @@ failed:
 	tester_test_failed();
 }
 
-static void client_new_conn(uint16_t handle, void *user_data)
+static void send_req_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct l2cap_data *l2data = data->test_data;
@@ -1138,7 +1188,7 @@ static void test_server(const void *test_data)
 	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_connect_cb(bthost, client_new_conn, data);
+	bthost_set_connect_cb(bthost, send_req_new_conn, data);
 
 	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
 		addr_type = BDADDR_BREDR;
