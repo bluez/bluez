@@ -70,8 +70,6 @@
 #define BASELEN_PROP_CHANGED (sizeof(struct hal_ev_adapter_props_changed) \
 					+ (sizeof(struct hal_property)))
 
-static uint16_t option_index = MGMT_INDEX_NONE;
-
 #define BASELEN_REMOTE_DEV_PROP (sizeof(struct hal_ev_remote_device_props) \
 					+ sizeof(struct hal_property))
 
@@ -132,6 +130,7 @@ static const uint16_t uuid_list[] = {
 	0
 };
 
+static uint16_t option_index = MGMT_INDEX_NONE;
 static struct mgmt *mgmt_if = NULL;
 static GSList *devices = NULL;
 
