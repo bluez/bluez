@@ -51,6 +51,7 @@
 #define L2CAP_PSM_AVDTP 0x19
 #define SVC_HINT_CAPTURING 0x08
 #define IDLE_TIMEOUT 1
+#define AUDIO_RETRY_TIMEOUT 2
 
 static GIOChannel *server = NULL;
 static GSList *devices = NULL;
@@ -58,6 +59,8 @@ static GSList *endpoints = NULL;
 static GSList *setups = NULL;
 static bdaddr_t adapter_addr;
 static uint32_t record_id = 0;
+static guint audio_retry_id = 0;
+static bool audio_retrying = false;
 
 struct a2dp_preset {
 	void *data;
@@ -1232,6 +1235,8 @@ static void bt_audio_open(const void *buf, uint16_t len)
 
 	DBG("");
 
+	audio_retrying = false;
+
 	if (cmd->presets == 0) {
 		error("No audio presets found");
 		goto failed;
@@ -1424,14 +1429,71 @@ static const struct ipc_handler audio_handlers[] = {
 	{ bt_stream_suspend, false, sizeof(struct audio_cmd_suspend_stream) },
 };
 
+static void bt_audio_unregister(void)
+{
+	DBG("");
+
+	if (audio_retry_id > 0)
+		g_source_remove(audio_retry_id);
+
+	g_slist_free_full(setups, setup_free);
+	setups = NULL;
+
+	g_slist_free_full(endpoints, unregister_endpoint);
+	endpoints = NULL;
+
+	audio_ipc_cleanup();
+}
+
+static void bt_audio_register(GDestroyNotify destroy)
+{
+	DBG("");
+
+	audio_ipc_init(destroy);
+
+	audio_ipc_register(audio_handlers, G_N_ELEMENTS(audio_handlers));
+}
+
+static gboolean audio_retry_register(void *data)
+{
+	GDestroyNotify destroy = data;
+
+	audio_retry_id = 0;
+	audio_retrying = true;
+
+	bt_audio_register(destroy);
+
+	return FALSE;
+}
+
+static void audio_disconnected(void *data)
+{
+	bool restart;
+
+	DBG("");
+
+	if (audio_retrying)
+		goto retry;
+
+	restart = endpoints != NULL ? true : false;
+
+	bt_audio_unregister();
+
+	if (!restart)
+		return;
+
+retry:
+	audio_retry_id = g_timeout_add_seconds(AUDIO_RETRY_TIMEOUT,
+						audio_retry_register,
+						audio_disconnected);
+}
+
 bool bt_a2dp_register(const bdaddr_t *addr)
 {
 	GError *err = NULL;
 	sdp_record_t *rec;
 
 	DBG("");
-
-	audio_ipc_init();
 
 	bacpy(&adapter_addr, addr);
 
@@ -1462,7 +1524,7 @@ bool bt_a2dp_register(const bdaddr_t *addr)
 	ipc_register(HAL_SERVICE_ID_A2DP, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
-	audio_ipc_register(audio_handlers, G_N_ELEMENTS(audio_handlers));
+	bt_audio_register(audio_disconnected);
 
 	return true;
 

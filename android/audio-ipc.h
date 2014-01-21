@@ -21,7 +21,7 @@
  *
  */
 
-void audio_ipc_init(void);
+void audio_ipc_init(GDestroyNotify destroy);
 void audio_ipc_cleanup(void);
 
 void audio_ipc_register(const struct ipc_handler *handlers, uint8_t size);

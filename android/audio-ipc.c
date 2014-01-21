@@ -46,6 +46,7 @@ static struct service_handler service;
 static gboolean audio_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
+	GDestroyNotify destroy = user_data;
 	char buf[BLUEZ_AUDIO_MTU];
 	ssize_t ret;
 	int fd, err;
@@ -74,33 +75,39 @@ static gboolean audio_watch_cb(GIOChannel *io, GIOCondition cond,
 
 fail:
 	audio_ipc_cleanup();
+	if (destroy)
+		destroy(NULL);
 	return FALSE;
 }
 
 static gboolean audio_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
+	GDestroyNotify destroy = user_data;
+
 	DBG("");
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		error("Audio IPC: socket connect failed");
 		audio_ipc_cleanup();
+		if (destroy)
+			destroy(NULL);
 		return FALSE;
 	}
 
 	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
-	g_io_add_watch(audio_io, cond, audio_watch_cb, NULL);
+	g_io_add_watch(audio_io, cond, audio_watch_cb, user_data);
 
 	info("Audio IPC: successfully connected");
 
 	return FALSE;
 }
 
-void audio_ipc_init(void)
+void audio_ipc_init(GDestroyNotify destroy)
 {
 	audio_io = ipc_connect(BLUEZ_AUDIO_SK_PATH, sizeof(BLUEZ_AUDIO_SK_PATH),
-							audio_connect_cb);
+						audio_connect_cb, destroy);
 }
 
 void audio_ipc_cleanup(void)

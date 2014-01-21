@@ -34,7 +34,8 @@ struct service_handler {
 
 void ipc_init(void);
 void ipc_cleanup(void);
-GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb);
+GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb,
+							void *user_data);
 int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 						const void *buf, ssize_t len);
 

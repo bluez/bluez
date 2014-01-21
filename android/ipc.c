@@ -141,7 +141,8 @@ static gboolean notif_watch_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb)
+GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb,
+							void *user_data)
 {
 	struct sockaddr_un addr;
 	GIOCondition cond;
@@ -174,7 +175,7 @@ GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb)
 
 	cond = G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
-	g_io_add_watch(io, cond, connect_cb, NULL);
+	g_io_add_watch(io, cond, connect_cb, user_data);
 
 	return io;
 }
@@ -215,7 +216,7 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	notif_io = ipc_connect(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-							notif_connect_cb);
+						notif_connect_cb, NULL);
 	if (!notif_io)
 		raise(SIGTERM);
 
@@ -225,7 +226,7 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 void ipc_init(void)
 {
 	cmd_io = ipc_connect(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-							cmd_connect_cb);
+						cmd_connect_cb, NULL);
 	if (!cmd_io)
 		raise(SIGTERM);
 }
