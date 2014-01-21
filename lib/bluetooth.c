@@ -825,6 +825,18 @@ const char *bt_compidtostr(int compid)
 		return "Wize Technology Co., Ltd.";
 	case 282:
 		return "Qualcomm Labs, Inc.";
+	case 283:
+		return "Aruba Networks";
+	case 284:
+		return "Baidu";
+	case 285:
+		return "Arendi AG";
+	case 286:
+		return "Skoda Auto a.s.";
+	case 287:
+		return "Volkswagon AG";
+	case 288:
+		return "Porsche AG";
 	case 65535:
 		return "internal use";
 	default:
