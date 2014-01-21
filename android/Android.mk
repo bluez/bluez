@@ -38,7 +38,7 @@ LOCAL_SRC_FILES := \
 	../src/sdpd-service.c \
 	../src/sdpd-request.c \
 	../src/sdpd-server.c \
-	../src/glib-helper.c \
+	../src/uuid-helper.c \
 	../src/eir.c \
 	../lib/sdp.c \
 	../lib/bluetooth.c \
