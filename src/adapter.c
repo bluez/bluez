@@ -2958,7 +2958,7 @@ static void adapter_free(gpointer user_data)
 	g_free(adapter->system_name);
 	g_free(adapter->stored_alias);
 	g_free(adapter->current_alias);
-	g_free(adapter->modalias);
+	free(adapter->modalias);
 	g_free(adapter);
 }
 

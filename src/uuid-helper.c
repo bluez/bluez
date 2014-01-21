@@ -26,6 +26,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
@@ -39,16 +40,26 @@
 char *bt_modalias(uint16_t source, uint16_t vendor,
 					uint16_t product, uint16_t version)
 {
+	char *str;
+	int err;
+
 	switch (source) {
 	case 0x0001:
-		return g_strdup_printf("%s:v%04Xp%04Xd%04X",
+		err = asprintf(&str, "%s:v%04Xp%04Xd%04X",
 					"bluetooth", vendor, product, version);
+		break;
 	case 0x0002:
-		return g_strdup_printf("%s:v%04Xp%04Xd%04X",
+		err = asprintf(&str, "%s:v%04Xp%04Xd%04X",
 					"usb", vendor, product, version);
+		break;
+	default:
+		return NULL;
 	}
 
-	return NULL;
+	if (err < 0)
+		return NULL;
+
+	return str;
 }
 
 char *bt_uuid2string(uuid_t *uuid)

@@ -533,7 +533,7 @@ static void device_free(gpointer user_data)
 
 	g_free(device->path);
 	g_free(device->alias);
-	g_free(device->modalias);
+	free(device->modalias);
 	g_free(device);
 }
 
@@ -4528,7 +4528,7 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 	device->product = product;
 	device->version = version;
 
-	g_free(device->modalias);
+	free(device->modalias);
 	device->modalias = bt_modalias(source, vendor, product, version);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
