@@ -426,7 +426,7 @@ static const struct l2cap_data le_client_connect_success_test_1 = {
 static const struct l2cap_data le_client_connect_success_test_2 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
-		.sec_level  = BT_SECURITY_MEDIUM,
+	.sec_level  = BT_SECURITY_MEDIUM,
 };
 
 static const uint8_t cmd_reject_rsp[] = { 0x01, 0x01, 0x02, 0x00, 0x00, 0x00 };
