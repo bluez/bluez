@@ -429,6 +429,15 @@ static const struct l2cap_data le_client_connect_success_test_2 = {
 		.sec_level  = BT_SECURITY_MEDIUM,
 };
 
+static const uint8_t cmd_reject_rsp[] = { 0x01, 0x01, 0x02, 0x00, 0x00, 0x00 };
+
+static const struct l2cap_data le_client_connect_reject_test_1 = {
+	.client_psm = 0x0080,
+	.send_cmd = cmd_reject_rsp,
+	.send_cmd_len = sizeof(cmd_reject_rsp),
+	.expect_err = ECONNREFUSED,
+};
+
 static const struct l2cap_data le_client_connect_nval_psm_test = {
 	.client_psm = 0x0080,
 	.expect_err = ECONNREFUSED,
@@ -1274,6 +1283,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Client SMP - Success",
 				&le_client_connect_success_test_2,
 				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client - Command Reject",
+					&le_client_connect_reject_test_1,
+					setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client - Invalid PSM",
 					&le_client_connect_nval_psm_test,
 					setup_powered_client, test_connect);
