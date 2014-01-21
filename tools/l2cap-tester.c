@@ -60,9 +60,9 @@ struct l2cap_data {
 	uint16_t server_psm;
 	int expect_err;
 
-	uint8_t send_req_code;
-	const void *send_req;
-	uint16_t send_req_len;
+	uint8_t send_cmd_code;
+	const void *send_cmd;
+	uint16_t send_cmd_len;
 	uint8_t expect_rsp_code;
 	const void *expect_rsp;
 	uint16_t expect_rsp_len;
@@ -322,17 +322,17 @@ static const uint8_t l2cap_connect_req[] = { 0x01, 0x10, 0x41, 0x00 };
 
 static const struct l2cap_data l2cap_server_success_test = {
 	.server_psm = 0x1001,
-	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
-	.send_req = l2cap_connect_req,
-	.send_req_len = sizeof(l2cap_connect_req),
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
 };
 
 static const struct l2cap_data l2cap_server_read_success_test = {
 	.server_psm = 0x1001,
-	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
-	.send_req = l2cap_connect_req,
-	.send_req_len = sizeof(l2cap_connect_req),
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
 	.read_data = l2_data,
 	.data_len = sizeof(l2_data),
@@ -340,9 +340,9 @@ static const struct l2cap_data l2cap_server_read_success_test = {
 
 static const struct l2cap_data l2cap_server_write_success_test = {
 	.server_psm = 0x1001,
-	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
-	.send_req = l2cap_connect_req,
-	.send_req_len = sizeof(l2cap_connect_req),
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
 	.write_data = l2_data,
 	.data_len = sizeof(l2_data),
@@ -356,9 +356,9 @@ static const uint8_t l2cap_sec_block_rsp[] = {	0x00, 0x00,	/* dcid */
 
 static const struct l2cap_data l2cap_server_sec_block_test = {
 	.server_psm = 0x1001,
-	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
-	.send_req = l2cap_connect_req,
-	.send_req_len = sizeof(l2cap_connect_req),
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
 	.expect_rsp = l2cap_sec_block_rsp,
 	.expect_rsp_len = sizeof(l2cap_sec_block_rsp),
@@ -372,9 +372,9 @@ static const uint8_t l2cap_nval_psm_rsp[] = {	0x00, 0x00,	/* dcid */
 					};
 
 static const struct l2cap_data l2cap_server_nval_psm_test = {
-	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
-	.send_req = l2cap_connect_req,
-	.send_req_len = sizeof(l2cap_connect_req),
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
 	.expect_rsp = l2cap_nval_psm_rsp,
 	.expect_rsp_len = sizeof(l2cap_nval_psm_rsp),
@@ -384,9 +384,9 @@ static const uint8_t l2cap_nval_conn_req[] = { 0x00 };
 static const uint8_t l2cap_nval_pdu_rsp[] = { 0x00, 0x00 };
 
 static const struct l2cap_data l2cap_server_nval_pdu_test1 = {
-	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
-	.send_req = l2cap_nval_conn_req,
-	.send_req_len = sizeof(l2cap_nval_conn_req),
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_nval_conn_req,
+	.send_cmd_len = sizeof(l2cap_nval_conn_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CMD_REJECT,
 	.expect_rsp = l2cap_nval_pdu_rsp,
 	.expect_rsp_len = sizeof(l2cap_nval_pdu_rsp),
@@ -397,9 +397,9 @@ static const uint8_t l2cap_nval_cid_rsp[] = { 0x02, 0x00,
 						0x12, 0x34, 0x56, 0x78 };
 
 static const struct l2cap_data l2cap_server_nval_cid_test1 = {
-	.send_req_code = BT_L2CAP_PDU_DISCONN_REQ,
-	.send_req = l2cap_nval_dc_req,
-	.send_req_len = sizeof(l2cap_nval_dc_req),
+	.send_cmd_code = BT_L2CAP_PDU_DISCONN_REQ,
+	.send_cmd = l2cap_nval_dc_req,
+	.send_cmd_len = sizeof(l2cap_nval_dc_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CMD_REJECT,
 	.expect_rsp = l2cap_nval_cid_rsp,
 	.expect_rsp_len = sizeof(l2cap_nval_cid_rsp),
@@ -410,9 +410,9 @@ static const uint8_t l2cap_nval_cfg_rsp[] = { 0x02, 0x00,
 						0x12, 0x34, 0x00, 0x00 };
 
 static const struct l2cap_data l2cap_server_nval_cid_test2 = {
-	.send_req_code = BT_L2CAP_PDU_CONFIG_REQ,
-	.send_req = l2cap_nval_cfg_req,
-	.send_req_len = sizeof(l2cap_nval_cfg_req),
+	.send_cmd_code = BT_L2CAP_PDU_CONFIG_REQ,
+	.send_cmd = l2cap_nval_cfg_req,
+	.send_cmd_len = sizeof(l2cap_nval_cfg_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CMD_REJECT,
 	.expect_rsp = l2cap_nval_cfg_rsp,
 	.expect_rsp_len = sizeof(l2cap_nval_cfg_rsp),
@@ -426,7 +426,7 @@ static const struct l2cap_data le_client_connect_success_test_1 = {
 static const struct l2cap_data le_client_connect_success_test_2 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
-	.sec_level  = BT_SECURITY_MEDIUM,
+		.sec_level  = BT_SECURITY_MEDIUM,
 };
 
 static const struct l2cap_data le_client_connect_nval_psm_test = {
@@ -443,9 +443,9 @@ static const uint8_t le_connect_req[] = {	0x80, 0x00, /* PSM */
 
 static const struct l2cap_data le_server_success_test = {
 	.server_psm = 0x0080,
-	.send_req_code = BT_L2CAP_PDU_LE_CONN_REQ,
-	.send_req = le_connect_req,
-	.send_req_len = sizeof(le_connect_req),
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
 	.expect_rsp_code = BT_L2CAP_PDU_LE_CONN_RSP,
 };
 
@@ -1077,7 +1077,7 @@ static void client_new_conn(uint16_t handle, void *user_data)
 
 	data->handle = handle;
 
-	if (l2data->send_req) {
+	if (l2data->send_cmd) {
 		bthost_l2cap_rsp_cb cb;
 
 		if (l2data->expect_rsp_code)
@@ -1088,8 +1088,8 @@ static void client_new_conn(uint16_t handle, void *user_data)
 		tester_print("Sending L2CAP Request from client");
 
 		bthost = hciemu_client_get_host(data->hciemu);
-		bthost_l2cap_req(bthost, handle, l2data->send_req_code,
-					l2data->send_req, l2data->send_req_len,
+		bthost_l2cap_req(bthost, handle, l2data->send_cmd_code,
+					l2data->send_cmd, l2data->send_cmd_len,
 					cb, data);
 	}
 }
