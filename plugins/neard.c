@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <errno.h>
 #include <gdbus/gdbus.h>
 
@@ -77,7 +78,7 @@ struct oob_params {
 
 static void free_oob_params(struct oob_params *params)
 {
-	g_slist_free_full(params->services, g_free);
+	g_slist_free_full(params->services, free);
 	g_free(params->name);
 	g_free(params->hash);
 	g_free(params->randomizer);
