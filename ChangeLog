@@ -1,3 +1,13 @@
+ver 5.14:
+	Fix issue with marking PS3 controllers as trusted.
+	Fix issue with authorization of PS3 controllers.
+	Add support for DualShock 4 controller detection.
+	Add support for legacy pairing emulation.
+	Add support for secure simple pairing emulation.
+	Add support for automated pairing testing.
+	Add support for RFCOMM protocol testing.
+	Add support for HCI controller testing.
+
 ver 5.13:
 	Fix issue with PS3 controller detection.
 	Add support for data transfers to L2CAP testing tool.
