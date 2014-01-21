@@ -166,12 +166,7 @@ GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb,
 
 	memcpy(addr.sun_path, path, size);
 
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("IPC: failed to connect HAL socket %s: %d (%s)", &path[1],
-							errno, strerror(errno));
-		g_io_channel_unref(io);
-		return NULL;
-	}
+	connect(sk, (struct sockaddr *) &addr, sizeof(addr));
 
 	cond = G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
