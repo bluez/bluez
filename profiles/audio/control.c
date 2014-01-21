@@ -56,7 +56,7 @@
 #include "avctp.h"
 #include "control.h"
 #include "sdpd.h"
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "dbus-common.h"
 
 static GSList *devices = NULL;

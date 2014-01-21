@@ -59,7 +59,7 @@
 #include "profile.h"
 #include "dbus-common.h"
 #include "error.h"
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "agent.h"
 #include "storage.h"
 #include "attrib/gattrib.h"

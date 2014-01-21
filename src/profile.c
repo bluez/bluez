@@ -43,7 +43,7 @@
 #include "sdpd.h"
 #include "log.h"
 #include "error.h"
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "dbus-common.h"
 #include "sdp-client.h"
 #include "sdp-xml.h"

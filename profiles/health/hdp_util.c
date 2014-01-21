@@ -37,7 +37,7 @@
 #include <sdpd.h>
 #include <bluetooth/sdp_lib.h>
 #include <sdp-client.h>
-#include <glib-helper.h>
+#include <uuid-helper.h>
 
 #include "lib/uuid.h"
 #include "btio/btio.h"

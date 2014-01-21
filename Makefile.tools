@@ -262,7 +262,7 @@ tools_hwdb_LDADD = lib/libbluetooth-internal.la
 
 tools_hcieventmask_LDADD = lib/libbluetooth-internal.la
 
-tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c \
+tools_btmgmt_SOURCES = tools/btmgmt.c src/uuid-helper.c \
 				monitor/mainloop.h monitor/mainloop.c \
 				src/shared/io.h src/shared/io-mainloop.c \
 				src/shared/queue.h src/shared/queue.c \

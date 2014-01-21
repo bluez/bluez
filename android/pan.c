@@ -39,7 +39,7 @@
 #include "lib/bnep.h"
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
-#include "src/glib-helper.h"
+#include "src/uuid-helper.h"
 #include "profiles/network/bnep.h"
 
 #include "log.h"

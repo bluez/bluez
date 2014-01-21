@@ -137,7 +137,7 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/sdp-xml.h src/sdp-xml.c \
 			src/sdp-client.h src/sdp-client.c \
 			src/textfile.h src/textfile.c \
-			src/glib-helper.h src/glib-helper.c \
+			src/uuid-helper.h src/uuid-helper.c \
 			src/uinput.h \
 			src/plugin.h src/plugin.c \
 			src/storage.h src/storage.c \
@@ -225,7 +225,7 @@ AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 
 unit_tests = unit/test-eir unit/test-uuid unit/test-textfile unit/test-crc
 
-unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/glib-helper.c
+unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/uuid-helper.c
 unit_test_eir_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 unit_test_uuid_SOURCES = unit/test-uuid.c

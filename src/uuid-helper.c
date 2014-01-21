@@ -34,7 +34,7 @@
 
 #include <glib.h>
 
-#include "glib-helper.h"
+#include "uuid-helper.h"
 
 char *bt_modalias(uint16_t source, uint16_t vendor,
 					uint16_t product, uint16_t version)

@@ -21,7 +21,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/utils.h \
 				src/sdpd-database.c src/sdpd-server.c \
 				src/sdpd-service.c src/sdpd-request.c \
-				src/glib-helper.h src/glib-helper.c \
+				src/uuid-helper.h src/uuid-helper.c \
 				src/eir.h src/eir.c \
 				src/shared/io.h src/shared/io-glib.c \
 				src/shared/queue.h src/shared/queue.c \

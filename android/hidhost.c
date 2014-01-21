@@ -40,7 +40,7 @@
 #include "lib/uuid.h"
 #include "src/shared/mgmt.h"
 #include "src/sdp-client.h"
-#include "src/glib-helper.h"
+#include "src/uuid-helper.h"
 #include "profiles/input/uhid_copy.h"
 
 #include "log.h"

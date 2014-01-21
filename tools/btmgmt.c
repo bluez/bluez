@@ -40,7 +40,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "glib-helper.h"
+#include "uuid-helper.h"
 
 #include "monitor/mainloop.h"
 #include "src/shared/util.h"

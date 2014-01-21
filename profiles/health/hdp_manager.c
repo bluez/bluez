@@ -35,7 +35,7 @@
 #include <device.h>
 #include <profile.h>
 #include <service.h>
-#include <glib-helper.h>
+#include <uuid-helper.h>
 #include <log.h>
 
 #include "hdp_types.h"

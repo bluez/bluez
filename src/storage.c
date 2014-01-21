@@ -44,7 +44,7 @@
 
 #include "lib/uuid.h"
 #include "textfile.h"
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "storage.h"
 
 /* When all services should trust a remote device */

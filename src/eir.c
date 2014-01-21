@@ -37,7 +37,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/sdp.h>
 
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "eir.h"
 
 #define EIR_OOB_MIN (2 + 6)

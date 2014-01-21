@@ -40,7 +40,7 @@
 #include "src/dbus-common.h"
 #include "src/profile.h"
 
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "log.h"
 #include "error.h"
 #include "avdtp.h"

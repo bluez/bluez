@@ -38,7 +38,7 @@
 #include "lib/sdp.h"
 #include "lib/mgmt.h"
 #include "src/shared/mgmt.h"
-#include "src/glib-helper.h"
+#include "src/uuid-helper.h"
 #include "src/eir.h"
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"

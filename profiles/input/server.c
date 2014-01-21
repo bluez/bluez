@@ -37,7 +37,7 @@
 
 #include "log.h"
 
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "btio/btio.h"
 #include "lib/uuid.h"
 #include "../src/adapter.h"

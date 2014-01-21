@@ -58,7 +58,7 @@
 #include "service.h"
 #include "dbus-common.h"
 #include "error.h"
-#include "glib-helper.h"
+#include "uuid-helper.h"
 #include "sdp-client.h"
 #include "attrib/gatt.h"
 #include "agent.h"
