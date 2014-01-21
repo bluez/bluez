@@ -2099,7 +2099,7 @@ static gboolean property_get_uuids(const GDBusPropertyTable *property,
 
 		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
 								&uuid);
-		g_free(uuid);
+		free(uuid);
 	}
 
 	dbus_message_iter_close_container(iter, &entry);
@@ -3283,7 +3283,7 @@ static gboolean record_has_uuid(const sdp_record_t *rec,
 
 		ret = strcasecmp(uuid, profile_uuid);
 
-		g_free(uuid);
+		free(uuid);
 
 		if (ret == 0)
 			return TRUE;
@@ -3424,8 +3424,8 @@ static void convert_sdp_entry(char *key, char *value, void *user_data)
 
 failed:
 	sdp_record_free(rec);
-	g_free(prim_uuid);
-	g_free(att_uuid);
+	free(prim_uuid);
+	free(att_uuid);
 }
 
 static void convert_primaries_entry(char *key, char *value, void *user_data)
@@ -3506,7 +3506,7 @@ static void convert_primaries_entry(char *key, char *value, void *user_data)
 
 end:
 	g_free(data);
-	g_free(prim_uuid);
+	free(prim_uuid);
 	g_key_file_free(key_file);
 }
 

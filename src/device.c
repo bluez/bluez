@@ -1389,7 +1389,7 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
 
 	uuid = bt_name2string(pattern);
 	reply = connect_profiles(dev, msg, uuid);
-	g_free(uuid);
+	free(uuid);
 
 	return reply;
 }
@@ -1430,7 +1430,7 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 
 	service = find_connectable_service(dev, uuid);
-	g_free(uuid);
+	free(uuid);
 
 	if (!service)
 		return btd_error_invalid_args(msg);
@@ -2130,7 +2130,7 @@ static void load_att_info(struct btd_device *device, const char *local,
 
 		service_uuid = bt_uuid2string(&uuid);
 		memcpy(prim->uuid, service_uuid, MAX_LEN_UUID_STR);
-		g_free(service_uuid);
+		free(service_uuid);
 		g_free(str);
 
 		device->primaries = g_slist_append(device->primaries, prim);
@@ -2138,7 +2138,7 @@ static void load_att_info(struct btd_device *device, const char *local,
 
 	g_strfreev(groups);
 	g_key_file_free(key_file);
-	g_free(prim_uuid);
+	free(prim_uuid);
 }
 
 static struct btd_device *device_new(struct btd_adapter *adapter,
@@ -2474,7 +2474,7 @@ static gboolean record_has_uuid(const sdp_record_t *rec,
 
 		ret = strcasecmp(uuid, profile_uuid);
 
-		g_free(uuid);
+		free(uuid);
 
 		if (ret == 0)
 			return TRUE;
@@ -2676,8 +2676,8 @@ static void store_primaries_from_sdp_record(GKeyFile *key_file,
 	g_key_file_set_integer(key_file, handle, "EndGroupHandle", end);
 
 done:
-	g_free(prim_uuid);
-	g_free(att_uuid);
+	free(prim_uuid);
+	free(att_uuid);
 }
 
 static int rec_cmp(const void *a, const void *b)
@@ -2800,7 +2800,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 			store_primaries_from_sdp_record(att_key_file, rec);
 
 next:
-		g_free(profile_uuid);
+		free(profile_uuid);
 		sdp_list_free(svcclass, free);
 	}
 
@@ -2889,7 +2889,7 @@ static GSList *device_services_from_record(struct btd_device *device,
 		prim_list = g_slist_append(prim_list, prim);
 	}
 
-	g_free(att_uuid);
+	free(att_uuid);
 
 	return prim_list;
 }
@@ -3051,7 +3051,7 @@ static void store_services(struct btd_device *device)
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
-	g_free(prim_uuid);
+	free(prim_uuid);
 	g_free(data);
 	g_key_file_free(key_file);
 }

@@ -72,6 +72,7 @@ char *bt_uuid2string(uuid_t *uuid)
 	unsigned short data3;
 	unsigned int data4;
 	unsigned short data5;
+	int err;
 
 	if (!uuid)
 		return NULL;
@@ -98,14 +99,12 @@ char *bt_uuid2string(uuid_t *uuid)
 	memcpy(&data4, &uuid128.value.uuid128.data[10], 4);
 	memcpy(&data5, &uuid128.value.uuid128.data[14], 2);
 
-	str = g_try_malloc0(MAX_LEN_UUID_STR);
-	if (!str)
-		return NULL;
-
-	sprintf(str, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
+	err = asprintf(&str, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
 			g_ntohl(data0), g_ntohs(data1),
 			g_ntohs(data2), g_ntohs(data3),
 			g_ntohl(data4), g_ntohs(data5));
+	if (err < 0)
+		return NULL;
 
 	return str;
 }
@@ -187,7 +186,7 @@ char *bt_name2string(const char *pattern)
 
 	/* UUID 128 string format */
 	if (is_uuid128(pattern))
-		return g_strdup(pattern);
+		return strdup(pattern);
 
 	/* Friendly service name format */
 	uuid16 = name2class(pattern);

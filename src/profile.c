@@ -2146,7 +2146,7 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 		if (type != DBUS_TYPE_STRING)
 			return -EINVAL;
 		dbus_message_iter_get_basic(value, &str);
-		g_free(ext->service);
+		free(ext->service);
 		ext->service = bt_name2string(str);
 	}
 
@@ -2156,27 +2156,27 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 static void set_service(struct ext_profile *ext)
 {
 	if (strcasecmp(ext->uuid, HSP_HS_UUID) == 0) {
-		ext->service = g_strdup(ext->uuid);
+		ext->service = strdup(ext->uuid);
 	} else if (strcasecmp(ext->uuid, HSP_AG_UUID) == 0) {
 		ext->service = ext->uuid;
-		ext->uuid = g_strdup(HSP_HS_UUID);
+		ext->uuid = strdup(HSP_HS_UUID);
 	} else if (strcasecmp(ext->uuid, HFP_HS_UUID) == 0) {
-		ext->service = g_strdup(ext->uuid);
+		ext->service = strdup(ext->uuid);
 	} else if (strcasecmp(ext->uuid, HFP_AG_UUID) == 0) {
 		ext->service = ext->uuid;
-		ext->uuid = g_strdup(HFP_HS_UUID);
+		ext->uuid = strdup(HFP_HS_UUID);
 	} else if (strcasecmp(ext->uuid, OBEX_SYNC_UUID) == 0 ||
 			strcasecmp(ext->uuid, OBEX_OPP_UUID) == 0 ||
 			strcasecmp(ext->uuid, OBEX_FTP_UUID) == 0) {
-		ext->service = g_strdup(ext->uuid);
+		ext->service = strdup(ext->uuid);
 	} else if (strcasecmp(ext->uuid, OBEX_PSE_UUID) == 0 ||
 			strcasecmp(ext->uuid, OBEX_PCE_UUID) ==  0) {
 		ext->service = ext->uuid;
-		ext->uuid = g_strdup(OBEX_PBAP_UUID);
+		ext->uuid = strdup(OBEX_PBAP_UUID);
 	} else if (strcasecmp(ext->uuid, OBEX_MAS_UUID) == 0 ||
 			strcasecmp(ext->uuid, OBEX_MNS_UUID) == 0) {
 		ext->service = ext->uuid;
-		ext->uuid = g_strdup(OBEX_MAP_UUID);
+		ext->uuid = strdup(OBEX_MAP_UUID);
 	}
 }
 
@@ -2275,8 +2275,8 @@ static void remove_ext(struct ext_profile *ext)
 	g_free(ext->remote_uuid);
 	g_free(ext->name);
 	g_free(ext->owner);
-	g_free(ext->uuid);
-	g_free(ext->service);
+	free(ext->uuid);
+	free(ext->service);
 	g_free(ext->role);
 	g_free(ext->path);
 	g_free(ext->record);
@@ -2397,7 +2397,7 @@ bool btd_profile_add_custom_prop(const char *uuid, const char *type,
 
 	prop = g_new0(struct btd_profile_custom_property, 1);
 
-	prop->uuid = g_strdup(uuid);
+	prop->uuid = strdup(uuid);
 	prop->type = g_strdup(type);
 	prop->name = g_strdup(name);
 	prop->exists = exists;
