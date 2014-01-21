@@ -27,13 +27,13 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-
-#include <glib.h>
 
 #include "uuid-helper.h"
 
@@ -100,9 +100,9 @@ char *bt_uuid2string(uuid_t *uuid)
 	memcpy(&data5, &uuid128.value.uuid128.data[14], 2);
 
 	err = asprintf(&str, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
-			g_ntohl(data0), g_ntohs(data1),
-			g_ntohs(data2), g_ntohs(data3),
-			g_ntohl(data4), g_ntohs(data5));
+			ntohl(data0), ntohs(data1),
+			ntohs(data2), ntohs(data3),
+			ntohl(data4), ntohs(data5));
 	if (err < 0)
 		return NULL;
 
@@ -151,7 +151,7 @@ static uint16_t name2class(const char *pattern)
 	return 0;
 }
 
-static inline gboolean is_uuid128(const char *string)
+static inline bool is_uuid128(const char *string)
 {
 	return (strlen(string) == 36 &&
 			string[8] == '-' &&
@@ -218,12 +218,12 @@ int bt_string2uuid(uuid_t *uuid, const char *string)
 				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
 		uint8_t val[16];
 
-		data0 = g_htonl(data0);
-		data1 = g_htons(data1);
-		data2 = g_htons(data2);
-		data3 = g_htons(data3);
-		data4 = g_htonl(data4);
-		data5 = g_htons(data5);
+		data0 = htonl(data0);
+		data1 = htons(data1);
+		data2 = htons(data2);
+		data3 = htons(data3);
+		data4 = htonl(data4);
+		data5 = htons(data5);
 
 		memcpy(&val[0], &data0, 4);
 		memcpy(&val[4], &data1, 2);
