@@ -119,8 +119,6 @@ android_android_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 android_android_tester_LDFLAGS = -pthread -ldl
 
-plugin_LTLIBRARIES += android/audio.a2dp.default.la
-
 noinst_PROGRAMS += android/ipc-tester
 
 android_ipc_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
@@ -146,6 +144,8 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hardware/audio_effect.h \
 					android/hardware/hardware.h \
 					android/system/audio.h
+
+plugin_LTLIBRARIES += android/audio.a2dp.default.la
 
 android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
 
