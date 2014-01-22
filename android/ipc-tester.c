@@ -1133,5 +1133,23 @@ int main(int argc, char *argv[])
 			sizeof(struct hal_cmd_pan_disconnect), -1,
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
 
+	/* check for valid data size for A2DP */
+	test_datasize_valid("A2DP Connect+", HAL_SERVICE_ID_A2DP,
+			HAL_OP_A2DP_CONNECT,
+			sizeof(struct hal_cmd_a2dp_connect), 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_A2DP);
+	test_datasize_valid("A2DP Connect-", HAL_SERVICE_ID_A2DP,
+			HAL_OP_A2DP_CONNECT,
+			sizeof(struct hal_cmd_a2dp_connect), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_A2DP);
+	test_datasize_valid("A2DP Disconnect+", HAL_SERVICE_ID_A2DP,
+			HAL_OP_A2DP_DISCONNECT,
+			sizeof(struct hal_cmd_a2dp_disconnect), 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_A2DP);
+	test_datasize_valid("A2DP Disconnect-", HAL_SERVICE_ID_A2DP,
+			HAL_OP_A2DP_DISCONNECT,
+			sizeof(struct hal_cmd_a2dp_disconnect), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_A2DP);
+
 	return tester_run();
 }
