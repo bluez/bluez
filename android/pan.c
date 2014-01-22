@@ -427,7 +427,7 @@ static void nap_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 static void nap_confirm_cb(GIOChannel *chan, gpointer data)
 {
-	struct pan_device *dev = NULL;
+	struct pan_device *dev;
 	bdaddr_t dst;
 	char address[18];
 	GError *err = NULL;
