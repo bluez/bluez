@@ -391,7 +391,6 @@ struct hal_cmd_pan_disconnect {
 
 /* Notifications and confirmations */
 
-
 #define HAL_POWER_OFF			0x00
 #define HAL_POWER_ON			0x01
 
