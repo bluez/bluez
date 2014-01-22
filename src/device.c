@@ -62,6 +62,7 @@
 #include "sdp-client.h"
 #include "attrib/gatt.h"
 #include "agent.h"
+#include "textfile.h"
 #include "storage.h"
 #include "attrib-server.h"
 

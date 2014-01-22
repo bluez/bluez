@@ -50,6 +50,7 @@
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "attrib/att-database.h"
+#include "textfile.h"
 #include "storage.h"
 
 #include "attrib-server.h"
