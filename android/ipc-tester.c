@@ -864,5 +864,23 @@ int main(int argc, char *argv[])
 			sizeof(struct hal_cmd_le_test_mode), -1,
 			HAL_SERVICE_ID_BLUETOOTH);
 
+	/* check for valid data size for SOCK */
+	test_datasize_valid("SOCK Listen+", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCK_LISTEN,
+			sizeof(struct hal_cmd_sock_listen), 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
+	test_datasize_valid("SOCK Listen-", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCK_LISTEN,
+			sizeof(struct hal_cmd_sock_listen), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
+	test_datasize_valid("SOCK Connect+", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCK_CONNECT,
+			sizeof(struct hal_cmd_sock_connect), 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
+	test_datasize_valid("SOCK Connect-", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCK_CONNECT,
+			sizeof(struct hal_cmd_sock_connect), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
+
 	return tester_run();
 }
