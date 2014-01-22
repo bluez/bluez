@@ -330,11 +330,8 @@ static bool setup_proxy(int host_fd, bool host_shutdown,
 	struct proxy *proxy;
 
 	proxy = new0(struct proxy, 1);
-	if (!proxy) {
-		close(host_fd);
-		close(dev_fd);
+	if (!proxy)
 		return NULL;
-	}
 
 	proxy->host_fd = host_fd;
 	proxy->host_shutdown = host_shutdown;
@@ -421,8 +418,11 @@ static void server_callback(int fd, uint32_t events, void *user_data)
 
 	printf("New client connected\n");
 
-	if (!setup_proxy(host_fd, true, dev_fd, false))
+	if (!setup_proxy(host_fd, true, dev_fd, false)) {
+		close(dev_fd);
+		close(host_fd);
 		return;
+	}
 
 	client_active = true;
 }
