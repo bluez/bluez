@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <limits.h>
 #include <sys/ioctl.h>
 
 #include "csr.h"

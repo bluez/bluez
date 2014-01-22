@@ -35,6 +35,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <limits.h>
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/hiddev.h>
