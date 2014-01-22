@@ -71,7 +71,7 @@ struct test_data {
 #define define_test(name, function, args...) \
 	do {								\
 		const struct test_pdu pdus[] = {			\
-			args, { }, { }					\
+			args, { }					\
 		};							\
 		static struct test_data data;				\
 		data.test_name = g_strdup(name);			\
