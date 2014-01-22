@@ -3,8 +3,9 @@ LOCAL_PATH := external/bluetooth
 # Retrieve BlueZ version from configure.ac file
 BLUEZ_VERSION := $(shell grep ^AC_INIT $(LOCAL_PATH)/bluez/configure.ac | cpp -P -D'AC_INIT(_,v)=v')
 
-# Specify pathmap for glib
-pathmap_INCL += glib:external/bluetooth/glib
+# Specify pathmap for glib and sbc
+pathmap_INCL += glib:external/bluetooth/glib \
+	sbc:external/bluetooth/sbc
 
 # Specify common compiler flags
 BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
@@ -225,9 +226,11 @@ LOCAL_SRC_FILES := bluez/android/hal-audio.c
 LOCAL_C_INCLUDES = \
 	$(call include-path-for, system-core) \
 	$(call include-path-for, libhardware) \
+	$(call include-path-for, sbc) \
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
+	libsbc \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS) \
 
@@ -348,3 +351,33 @@ LOCAL_MODULE_TAGS := debug
 LOCAL_MODULE := l2ping
 
 include $(BUILD_EXECUTABLE)
+
+#
+# libsbc
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES:= \
+	sbc/sbc/sbc.c \
+	sbc/sbc/sbc_primitives.c \
+	sbc/sbc/sbc_primitives_mmx.c \
+	sbc/sbc/sbc_primitives_neon.c \
+	sbc/sbc/sbc_primitives_armv6.c \
+	sbc/sbc/sbc_primitives_iwmmxt.c \
+
+LOCAL_C_INCLUDES:= \
+	$(LOCAL_PATH)/sbc/ \
+	$(LOCAL_PATH)/sbc/sbc/ \
+
+LOCAL_CFLAGS:= \
+	-Os \
+	-Wno-sign-compare \
+	-Wno-missing-field-initializers \
+	-Wno-unused-parameter \
+	-Wno-type-limits \
+	-Wno-empty-body \
+
+LOCAL_MODULE := libsbc
+
+include $(BUILD_SHARED_LIBRARY)
