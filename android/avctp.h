@@ -82,19 +82,6 @@
 
 struct avctp;
 
-typedef enum {
-	AVCTP_STATE_DISCONNECTED = 0,
-	AVCTP_STATE_CONNECTING,
-	AVCTP_STATE_CONNECTED,
-	AVCTP_STATE_BROWSING_CONNECTING,
-	AVCTP_STATE_BROWSING_CONNECTED
-} avctp_state_t;
-
-typedef void (*avctp_state_cb) (struct btd_device *dev,
-				avctp_state_t old_state,
-				avctp_state_t new_state,
-				void *user_data);
-
 typedef bool (*avctp_passthrough_cb) (struct avctp *session,
 					uint8_t op, bool pressed,
 					void *user_data);
@@ -113,34 +100,33 @@ typedef size_t (*avctp_browsing_pdu_cb) (struct avctp *session,
 					uint8_t *operands, size_t operand_count,
 					void *user_data);
 
-unsigned int avctp_add_state_cb(struct btd_device *dev, avctp_state_cb cb,
-							void *user_data);
-gboolean avctp_remove_state_cb(unsigned int id);
+typedef void (*avctp_destroy_cb_t) (void *user_data);
 
-int avctp_register(struct btd_adapter *adapter, gboolean master);
-void avctp_unregister(struct btd_adapter *adapter);
+struct avctp *avctp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
+int avctp_init_uinput(struct avctp *session, const char *name,
+							const char *address);
+int avctp_connect_browsing(struct avctp *session, int fd, size_t imtu,
+								size_t omtu);
 
-struct avctp *avctp_connect(struct btd_device *device);
-struct avctp *avctp_get(struct btd_device *device);
-bool avctp_is_initiator(struct avctp *session);
-int avctp_connect_browsing(struct avctp *session);
-void avctp_disconnect(struct avctp *session);
+void avctp_shutdown(struct avctp *session);
 
 unsigned int avctp_register_passthrough_handler(struct avctp *session,
 						avctp_passthrough_cb cb,
 						void *user_data);
-bool avctp_unregister_passthrough_handler(unsigned int id);
+bool avctp_unregister_passthrough_handler(struct avctp *session,
+							unsigned int id);
 
 unsigned int avctp_register_pdu_handler(struct avctp *session, uint8_t opcode,
 						avctp_control_pdu_cb cb,
 						void *user_data);
-gboolean avctp_unregister_pdu_handler(unsigned int id);
+bool avctp_unregister_pdu_handler(struct avctp *session, unsigned int id);
 
 unsigned int avctp_register_browsing_pdu_handler(struct avctp *session,
 						avctp_browsing_pdu_cb cb,
 						void *user_data,
-						GDestroyNotify destroy);
-gboolean avctp_unregister_browsing_pdu_handler(unsigned int id);
+						avctp_destroy_cb_t destroy);
+bool avctp_unregister_browsing_pdu_handler(struct avctp *session,
+							unsigned int id);
 
 int avctp_send_passthrough(struct avctp *session, uint8_t op);
 int avctp_send_vendordep(struct avctp *session, uint8_t transaction,

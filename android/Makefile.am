@@ -33,6 +33,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/audio-ipc.h android/audio-ipc.c \
 				android/avdtp.h android/avdtp.c \
 				android/a2dp.h android/a2dp.c \
+				android/avctp.h android/avctp.c \
 				android/socket.h android/socket.c \
 				android/pan.h android/pan.c \
 				btio/btio.h btio/btio.c \
