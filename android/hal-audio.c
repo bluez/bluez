@@ -125,6 +125,9 @@ struct sbc_data {
 	uint8_t *out_buf;
 
 	unsigned frame_duration;
+
+	struct timespec start;
+	unsigned frames_sent;
 };
 
 static int sbc_get_presets(struct audio_preset *preset, size_t *len);
@@ -133,6 +136,7 @@ static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
 static int sbc_cleanup(void *codec_data);
 static int sbc_get_config(void *codec_data,
 					struct audio_input_config *config);
+static void sbc_resume(void *codec_data);
 
 struct audio_codec {
 	uint8_t type;
@@ -144,6 +148,7 @@ struct audio_codec {
 	int (*cleanup) (void *codec_data);
 	int (*get_config) (void *codec_data,
 					struct audio_input_config *config);
+	void (*resume) (void *codec_data);
 	ssize_t (*write_data) (void *codec_data, const void *buffer,
 				size_t bytes);
 };
@@ -157,6 +162,7 @@ static const struct audio_codec audio_codecs[] = {
 		.init = sbc_codec_init,
 		.cleanup = sbc_cleanup,
 		.get_config = sbc_get_config,
+		.resume = sbc_resume,
 	}
 };
 
@@ -350,6 +356,17 @@ static int sbc_get_config(void *codec_data,
 	config->format = AUDIO_FORMAT_PCM_16_BIT;
 
 	return AUDIO_STATUS_SUCCESS;
+}
+
+static void sbc_resume(void *codec_data)
+{
+	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
+
+	DBG("");
+
+	clock_gettime(CLOCK_MONOTONIC, &sbc_data->start);
+
+	sbc_data->frames_sent = 0;
 }
 
 static void audio_ipc_cleanup(void)
@@ -673,6 +690,8 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 
 		if (ipc_resume_stream_cmd(out->ep->id) != AUDIO_STATUS_SUCCESS)
 			return -1;
+
+		out->ep->codec->resume(out->ep->codec_data);
 
 		out->audio_state = AUDIO_A2DP_STATE_STARTED;
 	}
