@@ -63,6 +63,7 @@ struct audio_cmd_open_stream {
 } __attribute__((packed));
 
 struct audio_rsp_open_stream {
+	uint16_t mtu;
 	struct audio_preset preset[0];
 } __attribute__((packed));
 

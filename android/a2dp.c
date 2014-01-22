@@ -1304,6 +1304,7 @@ static void bt_stream_open(const void *buf, uint16_t len)
 	struct audio_rsp_open_stream *rsp;
 	struct a2dp_setup *setup;
 	int fd;
+	uint16_t omtu;
 
 	DBG("");
 
@@ -1314,14 +1315,17 @@ static void bt_stream_open(const void *buf, uint16_t len)
 		return;
 	}
 
-	if (!avdtp_stream_get_transport(setup->stream, &fd, NULL, NULL, NULL)) {
+	if (!avdtp_stream_get_transport(setup->stream, &fd, NULL, &omtu,
+								NULL)) {
 		error("avdtp_stream_get_transport: failed");
 		audio_ipc_send_rsp(AUDIO_OP_OPEN_STREAM, AUDIO_STATUS_FAILED);
 		return;
 	}
 
-	len = sizeof(struct audio_preset) + setup->preset->len;
+	len = sizeof(struct audio_rsp_open_stream) +
+			sizeof(struct audio_preset) + setup->preset->len;
 	rsp = g_malloc0(len);
+	rsp->mtu = omtu;
 	rsp->preset->len = setup->preset->len;
 	memcpy(rsp->preset->data, setup->preset->data, setup->preset->len);
 
