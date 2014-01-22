@@ -72,7 +72,7 @@ struct test_data {
 #define define_test(name, _mtu, args...) \
 	do {								\
 		const struct sdp_pdu pdus[] = {				\
-			args, { }, { }					\
+			args, { }					\
 		};							\
 		static struct test_data data;				\
 		data.mtu = _mtu;					\
