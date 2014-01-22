@@ -330,8 +330,11 @@ static bool setup_proxy(int host_fd, bool host_shutdown,
 	struct proxy *proxy;
 
 	proxy = new0(struct proxy, 1);
-	if (!proxy)
+	if (!proxy) {
+		close(host_fd);
+		close(dev_fd);
 		return NULL;
+	}
 
 	proxy->host_fd = host_fd;
 	proxy->host_shutdown = host_shutdown;
