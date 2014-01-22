@@ -28,6 +28,8 @@
 #include <hardware/audio.h>
 #include <hardware/hardware.h>
 
+#include <sbc/sbc.h>
+
 #include "audio-msg.h"
 #include "hal-log.h"
 #include "hal-msg.h"
@@ -53,6 +55,8 @@ struct audio_input_config {
 
 struct sbc_data {
 	a2dp_sbc_t sbc;
+
+	sbc_t enc;
 };
 
 static int sbc_get_presets(struct audio_preset *preset, size_t *len);
@@ -184,6 +188,19 @@ static int sbc_get_presets(struct audio_preset *preset, size_t *len)
 	return i;
 }
 
+static void sbc_init_encoder(struct sbc_data *sbc_data)
+{
+	a2dp_sbc_t *in = &sbc_data->sbc;
+	sbc_t *out = &sbc_data->enc;
+
+	DBG("");
+
+	sbc_init_a2dp(out, 0L, in, sizeof(*in));
+
+	out->endian = SBC_LE;
+	out->bitpool = in->max_bitpool;
+}
+
 static int sbc_codec_init(struct audio_preset *preset, void **codec_data)
 {
 	struct sbc_data *sbc_data;
@@ -199,6 +216,8 @@ static int sbc_codec_init(struct audio_preset *preset, void **codec_data)
 
 	memcpy(&sbc_data->sbc, preset->data, preset->len);
 
+	sbc_init_encoder(sbc_data);
+
 	*codec_data = sbc_data;
 
 	return AUDIO_STATUS_SUCCESS;
@@ -206,8 +225,11 @@ static int sbc_codec_init(struct audio_preset *preset, void **codec_data)
 
 static int sbc_cleanup(void *codec_data)
 {
+	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
+
 	DBG("");
 
+	sbc_finish(&sbc_data->enc);
 	free(codec_data);
 
 	return AUDIO_STATUS_SUCCESS;
