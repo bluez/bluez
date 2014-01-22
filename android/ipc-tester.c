@@ -1103,5 +1103,35 @@ int main(int argc, char *argv[])
 				sizeof(send_data_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
 
+	/* check for valid data size for PAN */
+	test_datasize_valid("PAN Enable+", HAL_SERVICE_ID_PAN,
+			HAL_OP_PAN_ENABLE,
+			sizeof(struct hal_cmd_pan_enable), 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+	test_datasize_valid("PAN Enable-", HAL_SERVICE_ID_PAN,
+			HAL_OP_PAN_ENABLE,
+			sizeof(struct hal_cmd_pan_enable), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+	test_datasize_valid("PAN Get Role+", HAL_SERVICE_ID_PAN,
+			HAL_OP_PAN_GET_ROLE,
+			0, 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+	test_datasize_valid("PAN Connect+", HAL_SERVICE_ID_PAN,
+			HAL_OP_PAN_CONNECT,
+			sizeof(struct hal_cmd_pan_connect), 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+	test_datasize_valid("PAN Connect-", HAL_SERVICE_ID_PAN,
+			HAL_OP_PAN_CONNECT,
+			sizeof(struct hal_cmd_pan_connect), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+	test_datasize_valid("PAN Disconnect+", HAL_SERVICE_ID_PAN,
+			HAL_OP_PAN_DISCONNECT,
+			sizeof(struct hal_cmd_pan_disconnect), 1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+	test_datasize_valid("PAN Disconnect-", HAL_SERVICE_ID_PAN,
+			HAL_OP_PAN_DISCONNECT,
+			sizeof(struct hal_cmd_pan_disconnect), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
+
 	return tester_run();
 }
