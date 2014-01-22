@@ -578,7 +578,7 @@ static int ipc_close_cmd(uint8_t endpoint_id)
 	return result;
 }
 
-static int ipc_open_stream_cmd(uint8_t endpoint_id, uint16_t *mtu,
+static int ipc_open_stream_cmd(uint8_t endpoint_id, uint16_t *mtu, int *fd,
 					struct audio_preset **caps)
 {
 	char buf[BLUEZ_AUDIO_MTU];
@@ -596,7 +596,7 @@ static int ipc_open_stream_cmd(uint8_t endpoint_id, uint16_t *mtu,
 	cmd.id = endpoint_id;
 
 	result = audio_ipc_cmd(AUDIO_SERVICE_ID, AUDIO_OP_OPEN_STREAM,
-				sizeof(cmd), &cmd, &rsp_len, rsp, NULL);
+				sizeof(cmd), &cmd, &rsp_len, rsp, fd);
 
 	if (result == AUDIO_STATUS_SUCCESS) {
 		size_t buf_len = sizeof(struct audio_preset) +
@@ -993,6 +993,7 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	struct audio_preset *preset;
 	const struct audio_codec *codec;
 	uint16_t mtu;
+	int fd;
 
 	out = calloc(1, sizeof(struct a2dp_stream_out));
 	if (!out)
@@ -1020,12 +1021,14 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	/* TODO: for now we always use endpoint 0 */
 	out->ep = &audio_endpoints[0];
 
-	if (ipc_open_stream_cmd(out->ep->id, &mtu, &preset) !=
+	if (ipc_open_stream_cmd(out->ep->id, &mtu, &fd, &preset) !=
 			AUDIO_STATUS_SUCCESS)
 		goto fail;
 
-	if (!preset)
+	if (!preset || fd < 0)
 		goto fail;
+
+	out->ep->fd = fd;
 
 	codec = out->ep->codec;
 
@@ -1059,6 +1062,11 @@ static void audio_close_output_stream(struct audio_hw_device *dev,
 	DBG("");
 
 	ipc_close_stream_cmd(ep->id);
+
+	if (ep->fd >= 0) {
+		close(ep->fd);
+		ep->fd = -1;
+	}
 
 	ep->codec->cleanup(ep->codec_data);
 	ep->codec_data = NULL;
