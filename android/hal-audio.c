@@ -47,6 +47,66 @@ static pthread_t ipc_th = 0;
 static pthread_mutex_t close_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t sk_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
+struct rtp_header {
+	unsigned cc:4;
+	unsigned x:1;
+	unsigned p:1;
+	unsigned v:2;
+
+	unsigned pt:7;
+	unsigned m:1;
+
+	uint16_t sequence_number;
+	uint32_t timestamp;
+	uint32_t ssrc;
+	uint32_t csrc[0];
+} __attribute__ ((packed));
+
+struct rtp_payload {
+	unsigned frame_count:4;
+	unsigned rfa0:1;
+	unsigned is_last_fragment:1;
+	unsigned is_first_fragment:1;
+	unsigned is_fragmented:1;
+} __attribute__ ((packed));
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+struct rtp_header {
+	unsigned v:2;
+	unsigned p:1;
+	unsigned x:1;
+	unsigned cc:4;
+
+	unsigned m:1;
+	unsigned pt:7;
+
+	uint16_t sequence_number;
+	uint32_t timestamp;
+	uint32_t ssrc;
+	uint32_t csrc[0];
+} __attribute__ ((packed));
+
+struct rtp_payload {
+	unsigned is_fragmented:1;
+	unsigned is_first_fragment:1;
+	unsigned is_last_fragment:1;
+	unsigned rfa0:1;
+	unsigned frame_count:4;
+} __attribute__ ((packed));
+
+#else
+#error "Unknown byte order"
+#endif
+
+struct media_packet {
+	struct rtp_header hdr;
+	struct rtp_payload payload;
+	uint8_t data[0];
+};
+
 struct audio_input_config {
 	uint32_t rate;
 	uint32_t channels;
@@ -57,10 +117,19 @@ struct sbc_data {
 	a2dp_sbc_t sbc;
 
 	sbc_t enc;
+
+	size_t in_frame_len;
+	size_t in_buf_size;
+
+	size_t out_buf_size;
+	uint8_t *out_buf;
+
+	unsigned frame_duration;
 };
 
 static int sbc_get_presets(struct audio_preset *preset, size_t *len);
-static int sbc_codec_init(struct audio_preset *preset, void **codec_data);
+static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
+				void **codec_data);
 static int sbc_cleanup(void *codec_data);
 static int sbc_get_config(void *codec_data,
 					struct audio_input_config *config);
@@ -70,7 +139,8 @@ struct audio_codec {
 
 	int (*get_presets) (struct audio_preset *preset, size_t *len);
 
-	int (*init) (struct audio_preset *preset, void **codec_data);
+	int (*init) (struct audio_preset *preset, uint16_t mtu,
+				void **codec_data);
 	int (*cleanup) (void *codec_data);
 	int (*get_config) (void *codec_data,
 					struct audio_input_config *config);
@@ -201,9 +271,14 @@ static void sbc_init_encoder(struct sbc_data *sbc_data)
 	out->bitpool = in->max_bitpool;
 }
 
-static int sbc_codec_init(struct audio_preset *preset, void **codec_data)
+static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
+				void **codec_data)
 {
 	struct sbc_data *sbc_data;
+	size_t hdr_len = sizeof(struct media_packet);
+	size_t in_frame_len;
+	size_t out_frame_len;
+	size_t num_frames;
 
 	DBG("");
 
@@ -218,6 +293,18 @@ static int sbc_codec_init(struct audio_preset *preset, void **codec_data)
 
 	sbc_init_encoder(sbc_data);
 
+	in_frame_len = sbc_get_codesize(&sbc_data->enc);
+	out_frame_len = sbc_get_frame_length(&sbc_data->enc);
+	num_frames = (mtu - hdr_len) / out_frame_len;
+
+	sbc_data->in_frame_len = in_frame_len;
+	sbc_data->in_buf_size = num_frames * in_frame_len;
+
+	sbc_data->out_buf_size = hdr_len + num_frames * out_frame_len;
+	sbc_data->out_buf = calloc(1, sbc_data->out_buf_size);
+
+	sbc_data->frame_duration = sbc_get_frame_duration(&sbc_data->enc);
+
 	*codec_data = sbc_data;
 
 	return AUDIO_STATUS_SUCCESS;
@@ -230,6 +317,7 @@ static int sbc_cleanup(void *codec_data)
 	DBG("");
 
 	sbc_finish(&sbc_data->enc);
+	free(sbc_data->out_buf);
 	free(codec_data);
 
 	return AUDIO_STATUS_SUCCESS;
@@ -461,7 +549,7 @@ static int ipc_close_cmd(uint8_t endpoint_id)
 	return result;
 }
 
-static int ipc_open_stream_cmd(uint8_t endpoint_id,
+static int ipc_open_stream_cmd(uint8_t endpoint_id, uint16_t *mtu,
 					struct audio_preset **caps)
 {
 	char buf[BLUEZ_AUDIO_MTU];
@@ -484,6 +572,7 @@ static int ipc_open_stream_cmd(uint8_t endpoint_id,
 	if (result == AUDIO_STATUS_SUCCESS) {
 		size_t buf_len = sizeof(struct audio_preset) +
 					rsp->preset[0].len;
+		*mtu = rsp->mtu;
 		*caps = malloc(buf_len);
 		memcpy(*caps, &rsp->preset, buf_len);
 	} else {
@@ -869,6 +958,7 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	struct a2dp_stream_out *out;
 	struct audio_preset *preset;
 	const struct audio_codec *codec;
+	uint16_t mtu;
 
 	out = calloc(1, sizeof(struct a2dp_stream_out));
 	if (!out)
@@ -896,7 +986,8 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	/* TODO: for now we always use endpoint 0 */
 	out->ep = &audio_endpoints[0];
 
-	if (ipc_open_stream_cmd(out->ep->id, &preset) != AUDIO_STATUS_SUCCESS)
+	if (ipc_open_stream_cmd(out->ep->id, &mtu, &preset) !=
+			AUDIO_STATUS_SUCCESS)
 		goto fail;
 
 	if (!preset)
@@ -904,7 +995,7 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 
 	codec = out->ep->codec;
 
-	codec->init(preset, &out->ep->codec_data);
+	codec->init(preset, mtu, &out->ep->codec_data);
 	codec->get_config(out->ep->codec_data, &out->cfg);
 
 	DBG("rate=%d channels=%d format=%d", out->cfg.rate,
