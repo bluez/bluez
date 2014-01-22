@@ -687,6 +687,41 @@ static struct bt_set_adapter_prop_data bt_set_adapter_prop_data_unders = {
 	.buf = set_name,
 };
 
+struct bt_set_remote_prop_data {
+	struct hal_hdr hdr;
+	struct hal_cmd_set_remote_device_prop prop;
+
+	/* data placeholder for hal_cmd_set_remote_device_prop.val[0] */
+	uint8_t buf[BLUEZ_HAL_MTU - sizeof(struct hal_hdr) -
+				sizeof(struct hal_cmd_set_remote_device_prop)];
+} __attribute__((packed));
+
+static struct bt_set_remote_prop_data bt_set_remote_prop_data_overs = {
+	.hdr.service_id = HAL_SERVICE_ID_BLUETOOTH,
+	.hdr.opcode = HAL_OP_SET_REMOTE_DEVICE_PROP,
+	.hdr.len = sizeof(struct hal_cmd_set_remote_device_prop) +
+						sizeof(set_name),
+
+	.prop.bdaddr = {},
+	.prop.type = HAL_PROP_DEVICE_NAME,
+	/* declare wrong descriptor length */
+	.prop.len = sizeof(set_name) + 1,
+	.buf = set_name,
+};
+
+static struct bt_set_remote_prop_data bt_set_remote_prop_data_unders = {
+	.hdr.service_id = HAL_SERVICE_ID_BLUETOOTH,
+	.hdr.opcode = HAL_OP_SET_REMOTE_DEVICE_PROP,
+	.hdr.len = sizeof(struct hal_cmd_set_remote_device_prop) +
+						sizeof(set_name),
+
+	.prop.bdaddr = {},
+	.prop.type = HAL_PROP_DEVICE_NAME,
+	/* declare wrong descriptor length */
+	.prop.len = sizeof(set_name) - 1,
+	.buf = set_name,
+};
+
 struct hidhost_set_info_data {
 	struct hal_hdr hdr;
 	struct hal_cmd_hidhost_set_info info;
@@ -930,6 +965,20 @@ int main(int argc, char *argv[])
 	test_datasize_valid("BT Set Remote Prop-", HAL_SERVICE_ID_BLUETOOTH,
 			HAL_OP_SET_REMOTE_DEVICE_PROP,
 			sizeof(struct hal_cmd_set_remote_device_prop), -1,
+			HAL_SERVICE_ID_BLUETOOTH);
+	test_generic("Data size BT Set Remote Prop Vardata+",
+			ipc_send_tc, setup, teardown,
+			&bt_set_remote_prop_data_overs,
+			(sizeof(struct hal_hdr) +
+				sizeof(struct hal_cmd_set_remote_device_prop) +
+				sizeof(set_name)),
+			HAL_SERVICE_ID_BLUETOOTH);
+	test_generic("Data size BT Set Remote Prop Vardata-",
+			ipc_send_tc, setup, teardown,
+			&bt_set_remote_prop_data_unders,
+			(sizeof(struct hal_hdr) +
+				sizeof(struct hal_cmd_set_remote_device_prop) +
+				sizeof(set_name)),
 			HAL_SERVICE_ID_BLUETOOTH);
 	test_datasize_valid("BT Get Remote SV Rec+", HAL_SERVICE_ID_BLUETOOTH,
 			HAL_OP_GET_REMOTE_SERVICE_REC,
