@@ -439,7 +439,7 @@ static void nap_confirm_cb(GIOChannel *chan, gpointer data)
 	if (err) {
 		error("%s", err->message);
 		g_error_free(err);
-		goto failed;
+		return;
 	}
 
 	DBG("incoming connect request from %s", address);
