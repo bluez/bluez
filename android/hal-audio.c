@@ -152,8 +152,7 @@ static int sbc_get_presets(struct audio_preset *preset, size_t *len);
 static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
 				void **codec_data);
 static int sbc_cleanup(void *codec_data);
-static int sbc_get_config(void *codec_data,
-					struct audio_input_config *config);
+static int sbc_get_config(void *codec_data, struct audio_input_config *config);
 static size_t sbc_get_buffer_size(void *codec_data);
 static size_t sbc_get_mediapacket_duration(void *codec_data);
 static void sbc_resume(void *codec_data);
@@ -357,8 +356,7 @@ static int sbc_cleanup(void *codec_data)
 	return AUDIO_STATUS_SUCCESS;
 }
 
-static int sbc_get_config(void *codec_data,
-					struct audio_input_config *config)
+static int sbc_get_config(void *codec_data, struct audio_input_config *config)
 {
 	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
 
