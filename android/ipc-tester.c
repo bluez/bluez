@@ -685,6 +685,41 @@ static struct hidhost_set_info_data hidhost_set_info_data_unders = {
 	.buf = set_info_data,
 };
 
+struct hidhost_set_report_data {
+	struct hal_hdr hdr;
+	struct hal_cmd_hidhost_set_report report;
+
+	/* data placeholder for hal_cmd_hidhost_set_report.data[0] field */
+	uint8_t buf[BLUEZ_HAL_MTU - sizeof(struct hal_hdr) -
+				sizeof(struct hal_cmd_hidhost_set_report)];
+} __attribute__((packed));
+
+#define set_rep_data "1234567890"
+
+static struct hidhost_set_report_data hidhost_set_report_data_overs = {
+	.hdr.service_id = HAL_SERVICE_ID_HIDHOST,
+	.hdr.opcode = HAL_OP_HIDHOST_SET_REPORT,
+	.hdr.len = sizeof(struct hal_cmd_hidhost_set_report) +
+							sizeof(set_rep_data),
+
+	/* declare wrong descriptor length */
+	.report.len = sizeof(set_rep_data) + 1,
+	/* init report.data[0] */
+	.buf = set_rep_data,
+};
+
+static struct hidhost_set_report_data hidhost_set_report_data_unders = {
+	.hdr.service_id = HAL_SERVICE_ID_HIDHOST,
+	.hdr.opcode = HAL_OP_HIDHOST_SET_REPORT,
+	.hdr.len = sizeof(struct hal_cmd_hidhost_set_report) +
+							sizeof(set_rep_data),
+
+	/* declare wrong descriptor length */
+	.report.len = sizeof(set_rep_data) - 1,
+	/* init report.data[0] */
+	.buf = set_rep_data,
+};
+
 int main(int argc, char *argv[])
 {
 	snprintf(exec_dir, sizeof(exec_dir), "%s", dirname(argv[0]));
@@ -995,6 +1030,20 @@ int main(int argc, char *argv[])
 	test_datasize_valid("HIDHOST Set Report-", HAL_SERVICE_ID_HIDHOST,
 			HAL_OP_HIDHOST_SET_REPORT,
 			sizeof(struct hal_cmd_hidhost_set_report), -1,
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
+	test_generic("Data size HIDHOST Set Report Vardata+",
+			ipc_send_tc, setup, teardown,
+			&hidhost_set_report_data_overs,
+			(sizeof(struct hal_hdr) +
+				sizeof(struct hal_cmd_hidhost_set_report) +
+				sizeof(set_rep_data)),
+			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
+	test_generic("Data size HIDHOST Set Report Vardata-",
+			ipc_send_tc, setup, teardown,
+			&hidhost_set_report_data_unders,
+			(sizeof(struct hal_hdr) +
+				sizeof(struct hal_cmd_hidhost_set_report) +
+				sizeof(set_rep_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
 	test_datasize_valid("HIDHOST Send Data+", HAL_SERVICE_ID_HIDHOST,
 			HAL_OP_HIDHOST_SEND_DATA,
