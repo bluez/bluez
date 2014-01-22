@@ -56,7 +56,7 @@ struct sbc_data {
 };
 
 static int sbc_get_presets(struct audio_preset *preset, size_t *len);
-static int sbc_init(struct audio_preset *preset, void **codec_data);
+static int sbc_codec_init(struct audio_preset *preset, void **codec_data);
 static int sbc_cleanup(void *codec_data);
 static int sbc_get_config(void *codec_data,
 					struct audio_input_config *config);
@@ -80,7 +80,7 @@ static const struct audio_codec audio_codecs[] = {
 
 		.get_presets = sbc_get_presets,
 
-		.init = sbc_init,
+		.init = sbc_codec_init,
 		.cleanup = sbc_cleanup,
 		.get_config = sbc_get_config,
 	}
@@ -184,7 +184,7 @@ static int sbc_get_presets(struct audio_preset *preset, size_t *len)
 	return i;
 }
 
-static int sbc_init(struct audio_preset *preset, void **codec_data)
+static int sbc_codec_init(struct audio_preset *preset, void **codec_data)
 {
 	struct sbc_data *sbc_data;
 
