@@ -136,6 +136,7 @@ static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
 static int sbc_cleanup(void *codec_data);
 static int sbc_get_config(void *codec_data,
 					struct audio_input_config *config);
+static size_t sbc_get_buffer_size(void *codec_data);
 static void sbc_resume(void *codec_data);
 
 struct audio_codec {
@@ -148,6 +149,7 @@ struct audio_codec {
 	int (*cleanup) (void *codec_data);
 	int (*get_config) (void *codec_data,
 					struct audio_input_config *config);
+	size_t (*get_buffer_size) (void *codec_data);
 	void (*resume) (void *codec_data);
 	ssize_t (*write_data) (void *codec_data, const void *buffer,
 				size_t bytes);
@@ -162,6 +164,7 @@ static const struct audio_codec audio_codecs[] = {
 		.init = sbc_codec_init,
 		.cleanup = sbc_cleanup,
 		.get_config = sbc_get_config,
+		.get_buffer_size = sbc_get_buffer_size,
 		.resume = sbc_resume,
 	}
 };
@@ -356,6 +359,15 @@ static int sbc_get_config(void *codec_data,
 	config->format = AUDIO_FORMAT_PCM_16_BIT;
 
 	return AUDIO_STATUS_SUCCESS;
+}
+
+static size_t sbc_get_buffer_size(void *codec_data)
+{
+	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
+
+	DBG("");
+
+	return sbc_data->in_buf_size;
 }
 
 static void sbc_resume(void *codec_data)
@@ -731,8 +743,11 @@ static int out_set_sample_rate(struct audio_stream *stream, uint32_t rate)
 
 static size_t out_get_buffer_size(const struct audio_stream *stream)
 {
+	struct a2dp_stream_out *out = (struct a2dp_stream_out *) stream;
+
 	DBG("");
-	return 20 * 512;
+
+	return out->ep->codec->get_buffer_size(out->ep->codec_data);
 }
 
 static uint32_t out_get_channels(const struct audio_stream *stream)
