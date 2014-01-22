@@ -463,7 +463,6 @@ static void nap_confirm_cb(GIOChannel *chan, gpointer data)
 	return;
 
 failed:
-	g_free(dev);
 	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
 }
 
