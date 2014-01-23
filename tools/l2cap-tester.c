@@ -463,6 +463,10 @@ static const struct l2cap_data le_att_client_connect_success_test_1 = {
 	.cid = 0x0004,
 };
 
+static const struct l2cap_data le_att_server_success_test_1 = {
+	.cid = 0x0004,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -1172,7 +1176,7 @@ static void test_server(const void *test_data)
 	GIOChannel *io;
 	int sk;
 
-	if (l2data->server_psm) {
+	if (l2data->server_psm || l2data->cid) {
 		sk = create_l2cap_sock(data, l2data->server_psm,
 					l2data->cid, l2data->sec_level);
 		if (sk < 0) {
@@ -1305,6 +1309,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE ATT Client - Success",
 				&le_att_client_connect_success_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE ATT Server - Success",
+				&le_att_server_success_test_1,
+				setup_powered_server, test_server);
 
 	return tester_run();
 }
