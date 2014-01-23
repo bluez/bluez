@@ -103,6 +103,9 @@ typedef size_t (*avctp_browsing_pdu_cb) (struct avctp *session,
 typedef void (*avctp_destroy_cb_t) (void *user_data);
 
 struct avctp *avctp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
+void avctp_set_destroy_cb(struct avctp *session, avctp_destroy_cb_t cb,
+							void *user_data);
+
 int avctp_init_uinput(struct avctp *session, const char *name,
 							const char *address);
 int avctp_connect_browsing(struct avctp *session, int fd, size_t imtu,

@@ -175,6 +175,9 @@ struct avctp {
 	uint8_t key_quirks[256];
 	struct key_pressed key;
 	uint16_t version;
+
+	avctp_destroy_cb_t destroy;
+	void *data;
 };
 
 struct avctp_passthrough_handler {
@@ -1446,6 +1449,13 @@ int avctp_connect_browsing(struct avctp *session, int fd, size_t imtu,
 	return 0;
 }
 
+void avctp_set_destroy_cb(struct avctp *session, avctp_destroy_cb_t cb,
+							void *user_data)
+{
+	session->destroy = cb;
+	session->data = user_data;
+}
+
 void avctp_shutdown(struct avctp *session)
 {
 	if (!session)
@@ -1456,6 +1466,9 @@ void avctp_shutdown(struct avctp *session)
 
 	if (session->control)
 		avctp_channel_destroy(session->control);
+
+	if (session->destroy)
+		session->destroy(session->data);
 
 	if (session->key.timer > 0)
 		g_source_remove(session->key.timer);
