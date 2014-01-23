@@ -1378,7 +1378,8 @@ static void *ipc_handler(void *data)
 		}
 	}
 
-	unregister_endpoints();
+	/* audio_sk is closed at this point, just cleanup endpoints states */
+	memset(audio_endpoints, 0, sizeof(audio_endpoints));
 
 	info("Closing Audio IPC thread");
 	return NULL;
