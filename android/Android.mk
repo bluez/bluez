@@ -98,6 +98,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-hidhost.c \
 	bluez/android/hal-pan.c \
 	bluez/android/hal-a2dp.c \
+	bluez/android/hal-avrcp.c \
 	bluez/android/hal-utils.c \
 
 LOCAL_C_INCLUDES += \

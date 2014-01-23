@@ -20,11 +20,13 @@
 #include <hardware/bt_hh.h>
 #include <hardware/bt_pan.h>
 #include <hardware/bt_av.h>
+#include <hardware/bt_rc.h>
 
 btsock_interface_t *bt_get_sock_interface(void);
 bthh_interface_t *bt_get_hidhost_interface(void);
 btpan_interface_t *bt_get_pan_interface(void);
 btav_interface_t *bt_get_a2dp_interface(void);
+btrc_interface_t *bt_get_avrcp_interface(void);
 
 void bt_thread_associate(void);
 void bt_thread_disassociate(void);
