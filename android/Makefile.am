@@ -152,7 +152,7 @@ android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
 android_audio_a2dp_default_la_LIBADD = @SBC_LIBS@
 
 android_audio_a2dp_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
-					-no-undefined -pthread
+					-no-undefined -pthread -lrt
 
 endif
 
