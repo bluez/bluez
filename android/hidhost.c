@@ -895,6 +895,14 @@ failed:
 
 static void bt_hid_info(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_hidhost_set_info *cmd = buf;
+
+	if (len != sizeof(*cmd) + cmd->descr_len) {
+		error("Invalid hid set info size (%u bytes), terminating", len);
+		raise(SIGTERM);
+		return;
+	}
+
 	/* Data from hal_cmd_hidhost_set_info is usefull only when we create
 	 * UHID device. Once device is created all the transactions will be
 	 * done through the fd. There is no way to use this information
