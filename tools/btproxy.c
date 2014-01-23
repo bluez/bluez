@@ -680,8 +680,11 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		if (!setup_proxy(host_fd, false, dev_fd, true))
+		if (!setup_proxy(host_fd, false, dev_fd, true)) {
+			close(dev_fd);
+			close(host_fd);
 			return EXIT_FAILURE;
+		}
 	} else {
 		int server_fd;
 
