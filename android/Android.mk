@@ -132,6 +132,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/client/tabcompletion.c \
 	bluez/android/client/if-audio.c \
 	bluez/android/client/if-av.c \
+	bluez/android/client/if-rc.c \
 	bluez/android/client/if-bt.c \
 	bluez/android/client/if-hf.c \
 	bluez/android/client/if-hh.c \

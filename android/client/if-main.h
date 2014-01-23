@@ -48,6 +48,7 @@ extern audio_hw_device_t *if_audio;
 /* Interfaces from hal that can be populated during application lifetime */
 extern const bt_interface_t *if_bluetooth;
 extern const btav_interface_t *if_av;
+extern const btrc_interface_t *if_rc;
 extern const bthf_interface_t *if_hf;
 extern const bthh_interface_t *if_hh;
 extern const btpan_interface_t *if_pan;
@@ -68,6 +69,7 @@ struct interface {
 extern const struct interface audio_if;
 extern const struct interface bluetooth_if;
 extern const struct interface av_if;
+extern const struct interface rc_if;
 extern const struct interface gatt_if;
 extern const struct interface gatt_client_if;
 extern const struct interface gatt_server_if;
