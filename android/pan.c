@@ -471,8 +471,14 @@ static int set_forward_delay(void)
 	int fd, ret;
 
 	fd = open(FORWARD_DELAY_PATH, O_RDWR);
-	if (fd < 0)
-		return -errno;
+	if (fd < 0) {
+		int err = -errno;
+
+		error("pan: open forward delay file failed: %d (%s)",
+							-err, strerror(-err));
+
+		return err;
+	}
 
 	ret = write(fd, "0", sizeof("0"));
 	close(fd);
@@ -728,7 +734,7 @@ bool bt_pan_register(const bdaddr_t *addr)
 	}
 
 	err = bnep_init();
-	if (err) {
+	if (err < 0) {
 		error("bnep init failed");
 		bt_adapter_remove_record(rec->handle);
 		return false;
@@ -736,6 +742,7 @@ bool bt_pan_register(const bdaddr_t *addr)
 
 	err = register_nap_server();
 	if (err < 0) {
+		error("Failed to register NAP");
 		bt_adapter_remove_record(rec->handle);
 		bnep_cleanup();
 		return false;
