@@ -861,10 +861,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	handler = find_handler(control->handlers, avc->opcode);
 	if (!handler) {
 		DBG("handler not found for 0x%02x", avc->opcode);
-		/* FIXME:
-		 * packet_size += avrcp_handle_vendor_reject(&code, operands);
-		 */
-		avc->code = code;
+		avc->code = AVC_CTYPE_REJECTED;
 		goto done;
 	}
 
