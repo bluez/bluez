@@ -1679,7 +1679,8 @@ static void clear_uuids(void)
 					sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
-static void create_device_from_info(GKeyFile *key_file, const char *peer)
+static struct device *create_device_from_info(GKeyFile *key_file,
+							const char *peer)
 {
 	struct device *dev;
 	uint8_t type;
@@ -1694,7 +1695,11 @@ static void create_device_from_info(GKeyFile *key_file, const char *peer)
 	str2ba(peer, &bdaddr);
 	dev = create_device(&bdaddr, type);
 
-	dev->bond_state = HAL_BOND_STATE_BONDED;
+	str = g_key_file_get_string(key_file, peer, "LinkKey", NULL);
+	if (str) {
+		g_free(str);
+		dev->bond_state = HAL_BOND_STATE_BONDED;
+	}
 
 	str = g_key_file_get_string(key_file, peer, "Name", NULL);
 	if (str) {
@@ -1730,6 +1735,8 @@ static void create_device_from_info(GKeyFile *key_file, const char *peer)
 
 		g_strfreev(uuids);
 	}
+
+	return dev;
 }
 
 static struct mgmt_link_key_info *get_key_info(GKeyFile *key_file, const char *peer)
@@ -1762,6 +1769,40 @@ failed:
 	return info;
 }
 
+static int device_timestamp_cmp(gconstpointer  a, gconstpointer  b)
+{
+	const struct device *deva = a;
+	const struct device *devb = b;
+
+	return deva->timestamp < devb->timestamp;
+}
+
+static void load_devices_cache(void)
+{
+	GKeyFile *key_file;
+	gchar **devs;
+	gsize len = 0;
+	unsigned int i;
+
+	key_file = g_key_file_new();
+
+	g_key_file_load_from_file(key_file, CACHE_FILE, 0, NULL);
+
+	devs = g_key_file_get_groups(key_file, &len);
+
+	for (i = 0; i < len; i++) {
+		struct device *dev;
+
+		dev = create_device_from_info(key_file, devs[i]);
+		devices = g_slist_prepend(devices, dev);
+	}
+
+	devices = g_slist_sort(devices, device_timestamp_cmp);
+
+	g_strfreev(devs);
+	g_key_file_free(key_file);
+}
+
 static void load_devices_info(bt_bluetooth_ready cb)
 {
 	GKeyFile *key_file;
@@ -1778,14 +1819,21 @@ static void load_devices_info(bt_bluetooth_ready cb)
 
 	for (i = 0; i < len; i++) {
 		struct mgmt_link_key_info *key_info;
-
-		create_device_from_info(key_file, devs[i]);
+		struct device *dev;
 
 		key_info = get_key_info(key_file, devs[i]);
-		if (key_info)
-			keys = g_slist_prepend(keys, key_info);
+		if (!key_info) {
+			error("Failed to load linkkey for %s, skipping",
+								devs[i]);
+			continue;
+		}
 
 		/* TODO ltk */
+
+		dev = create_device_from_info(key_file, devs[i]);
+
+		keys = g_slist_prepend(keys, key_info);
+		bonded_devices = g_slist_prepend(bonded_devices, dev);
 	}
 
 	load_link_keys(keys, cb);
@@ -1873,6 +1921,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	clear_uuids();
 
 	load_devices_info(cb);
+	load_devices_cache();
 
 	set_io_capability();
 	set_device_id();
