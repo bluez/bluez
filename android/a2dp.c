@@ -1293,6 +1293,7 @@ static void bt_audio_close(const void *buf, uint16_t len)
 		return;
 	}
 
+	endpoints = g_slist_remove(endpoints, endpoint);
 	unregister_endpoint(endpoint);
 
 	audio_ipc_send_rsp(AUDIO_OP_CLOSE, AUDIO_STATUS_SUCCESS);
