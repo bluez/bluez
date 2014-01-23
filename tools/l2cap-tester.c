@@ -58,6 +58,7 @@ struct test_data {
 struct l2cap_data {
 	uint16_t client_psm;
 	uint16_t server_psm;
+	uint16_t cid;
 	int expect_err;
 
 	uint8_t send_cmd_code;
@@ -456,6 +457,10 @@ static const struct l2cap_data le_server_success_test = {
 	.send_cmd = le_connect_req,
 	.send_cmd_len = sizeof(le_connect_req),
 	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+};
+
+static const struct l2cap_data le_att_client_connect_success_test_1 = {
+	.cid = 0x0004,
 };
 
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
@@ -876,7 +881,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 }
 
 static int create_l2cap_sock(struct test_data *data, uint16_t psm,
-								int sec_level)
+						uint16_t cid, int sec_level)
 {
 	const uint8_t *master_bdaddr;
 	struct sockaddr_l2 addr;
@@ -901,6 +906,7 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	addr.l2_psm = htobs(psm);
+	addr.l2_cid = htobs(cid);
 	bacpy(&addr.l2_bdaddr, (void *) master_bdaddr);
 	if (data->hciemu_type == HCIEMU_TYPE_LE)
 		addr.l2_bdaddr_type = BDADDR_LE_PUBLIC;
@@ -934,7 +940,8 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 	return sk;
 }
 
-static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm)
+static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm,
+								uint16_t cid)
 {
 	const uint8_t *client_bdaddr;
 	struct sockaddr_l2 addr;
@@ -950,6 +957,7 @@ static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm)
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, (void *) client_bdaddr);
 	addr.l2_psm = htobs(psm);
+	addr.l2_cid = htobs(cid);
 	if (data->hciemu_type == HCIEMU_TYPE_LE)
 		addr.l2_bdaddr_type = BDADDR_LE_PUBLIC;
 	else
@@ -993,13 +1001,14 @@ static void test_connect(const void *test_data)
 						client_l2cap_connect_cb, data);
 	}
 
-	sk = create_l2cap_sock(data, 0, l2data->sec_level);
+	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
 	}
 
-	if (connect_l2cap_sock(data, sk, l2data->client_psm) < 0) {
+	if (connect_l2cap_sock(data, sk, l2data->client_psm,
+							l2data->cid) < 0) {
 		close(sk);
 		tester_test_failed();
 		return;
@@ -1165,7 +1174,7 @@ static void test_server(const void *test_data)
 
 	if (l2data->server_psm) {
 		sk = create_l2cap_sock(data, l2data->server_psm,
-							l2data->sec_level);
+					l2data->cid, l2data->sec_level);
 		if (sk < 0) {
 			tester_test_failed();
 			return;
@@ -1291,6 +1300,11 @@ int main(int argc, char *argv[])
 					setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Server - Success", &le_server_success_test,
 					setup_powered_server, test_server);
+
+
+	test_l2cap_le("L2CAP LE ATT Client - Success",
+				&le_att_client_connect_success_test_1,
+				setup_powered_client, test_connect);
 
 	return tester_run();
 }
