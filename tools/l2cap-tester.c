@@ -689,7 +689,7 @@ static void setup_powered_client(const void *test_data)
 
 	tester_print("Powering on controller");
 
-	if (test->expect_cmd || test->send_cmd) {
+	if (test && (test->expect_cmd || test->send_cmd)) {
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 		bthost_set_connect_cb(bthost, send_rsp_new_conn, data);
 	}
