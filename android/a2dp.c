@@ -1377,10 +1377,12 @@ static void bt_stream_resume(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	err = avdtp_start(setup->dev->session, setup->stream);
-	if (err < 0) {
-		error("avdtp_start: %s", strerror(-err));
-		goto failed;
+	if (setup->state != HAL_AUDIO_STARTED) {
+		err = avdtp_start(setup->dev->session, setup->stream);
+		if (err < 0) {
+			error("avdtp_start: %s", strerror(-err));
+			goto failed;
+		}
 	}
 
 	audio_ipc_send_rsp(AUDIO_OP_RESUME_STREAM, AUDIO_STATUS_SUCCESS);
