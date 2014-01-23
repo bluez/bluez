@@ -30,6 +30,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/avdtp.c \
 	bluez/android/a2dp.c \
 	bluez/android/avctp.c \
+	bluez/android/avrcp.c \
 	bluez/android/pan.c \
 	bluez/src/log.c \
 	bluez/src/shared/mgmt.c \

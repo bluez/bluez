@@ -55,6 +55,7 @@
 #include "ipc.h"
 #include "a2dp.h"
 #include "pan.h"
+#include "avrcp.h"
 
 #define STARTUP_GRACE_SECONDS 5
 #define SHUTDOWN_GRACE_SECONDS 10
@@ -107,6 +108,13 @@ static void service_register(const void *buf, uint16_t len)
 		}
 
 		break;
+	case HAL_SERVICE_ID_AVRCP:
+		if (!bt_avrcp_register(&adapter_bdaddr)) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+
+		break;
 	default:
 		DBG("service %u not supported", m->service_id);
 		status = HAL_STATUS_FAILED;
@@ -148,6 +156,9 @@ static void service_unregister(const void *buf, uint16_t len)
 		break;
 	case HAL_SERVICE_ID_PAN:
 		bt_pan_unregister();
+		break;
+	case HAL_SERVICE_ID_AVRCP:
+		bt_avrcp_unregister();
 		break;
 	default:
 		/* This would indicate bug in HAL, as unregister should not be
