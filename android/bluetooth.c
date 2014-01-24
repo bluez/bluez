@@ -1254,14 +1254,25 @@ static void mgmt_connect_failed_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_ev_connect_failed *ev = param;
+	struct device *dev;
+
+	if (length < sizeof(*ev)) {
+		error("Too short connect failed event (%u bytes)", length);
+		return;
+	}
 
 	DBG("");
+
+	dev = find_device(&ev->addr.bdaddr);
 
 	/* In case security mode 3 pairing we will get connect failed event
 	* in case e.g wrong PIN code entered. Let's check if device is
 	* bonding, if so update bond state */
-	set_device_bond_state(&ev->addr.bdaddr, status_mgmt2hal(ev->status),
-							HAL_BOND_STATE_NONE);
+
+	if (dev && dev->bond_state == HAL_BOND_STATE_BONDING)
+		set_device_bond_state(&ev->addr.bdaddr,
+						status_mgmt2hal(ev->status),
+						HAL_BOND_STATE_NONE);
 }
 
 static void mgmt_auth_failed_event(uint16_t index, uint16_t length,
