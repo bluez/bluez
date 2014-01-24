@@ -66,7 +66,8 @@ Audio Service (ID 0)
 	Opcode 0x03 - Open Stream command
 
 		Command parameters: Endpoint ID (1 octet)
-		Response parameters: Codec configuration length (1 octet)
+		Response parameters: Outgoing MTU (2 octets)
+				     Codec configuration length (1 octet)
 				     Codec configuration (1 octet)
 				     File descriptor (inline)
 
