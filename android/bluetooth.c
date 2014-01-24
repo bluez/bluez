@@ -1280,6 +1280,11 @@ static void mgmt_auth_failed_event(uint16_t index, uint16_t length,
 {
 	const struct mgmt_ev_auth_failed *ev = param;
 
+	if (length < sizeof(*ev)) {
+		error("Too small auth failed mgmt event (%u bytes)", length);
+		return;
+	}
+
 	DBG("");
 
 	set_device_bond_state(&ev->addr.bdaddr, status_mgmt2hal(ev->status),
