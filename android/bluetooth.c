@@ -2536,7 +2536,7 @@ static void unpair_device_complete(uint8_t status, uint16_t length,
 
 	DBG("status %u", status);
 
-	if (status != MGMT_STATUS_SUCCESS)
+	if (status != MGMT_STATUS_SUCCESS && status != MGMT_STATUS_NOT_PAIRED)
 		return;
 
 	set_device_bond_state(&rp->addr.bdaddr, HAL_STATUS_SUCCESS,
