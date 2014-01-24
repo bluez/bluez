@@ -266,8 +266,6 @@ static int sbc_get_presets(struct audio_preset *preset, size_t *len)
 	uint8_t *ptr = (uint8_t *) preset;
 	size_t preset_size = sizeof(*preset) + sizeof(a2dp_sbc_t);
 
-	DBG("");
-
 	count = sizeof(sbc_presets) / sizeof(sbc_presets[0]);
 
 	for (i = 0; i < count; i++) {
@@ -293,8 +291,6 @@ static void sbc_init_encoder(struct sbc_data *sbc_data)
 	a2dp_sbc_t *in = &sbc_data->sbc;
 	sbc_t *out = &sbc_data->enc;
 
-	DBG("");
-
 	sbc_init_a2dp(out, 0L, in, sizeof(*in));
 
 	out->endian = SBC_LE;
@@ -309,8 +305,6 @@ static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
 	size_t in_frame_len;
 	size_t out_frame_len;
 	size_t num_frames;
-
-	DBG("");
 
 	if (preset->len != sizeof(a2dp_sbc_t)) {
 		error("SBC: preset size mismatch");
@@ -344,8 +338,6 @@ static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
 static int sbc_cleanup(void *codec_data)
 {
 	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
-
-	DBG("");
 
 	sbc_finish(&sbc_data->enc);
 	free(sbc_data->out_buf);
@@ -386,16 +378,12 @@ static size_t sbc_get_buffer_size(void *codec_data)
 {
 	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
 
-	DBG("");
-
 	return sbc_data->in_buf_size;
 }
 
 static size_t sbc_get_mediapacket_duration(void *codec_data)
 {
 	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
-
-	DBG("");
 
 	return sbc_data->frame_duration * sbc_data->frames_per_packet;
 }
