@@ -1294,7 +1294,19 @@ static void mgmt_auth_failed_event(uint16_t index, uint16_t length,
 static void mgmt_device_unpaired_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
+	const struct mgmt_ev_device_unpaired *ev = param;
+
+	if (length < sizeof(*ev)) {
+		error("Too small device unpaired event (%u bytes)", length);
+		return;
+	}
+
 	DBG("");
+
+	/* TODO should device be disconnected ? */
+
+	set_device_bond_state(&ev->addr.bdaddr, HAL_STATUS_SUCCESS,
+							HAL_BOND_STATE_NONE);
 }
 
 static void register_mgmt_handlers(void)
