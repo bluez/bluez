@@ -88,8 +88,6 @@ struct sync_set_data {
 	gboolean role;
 };
 
-#define hton64(x)     ntoh64(x)
-
 static gboolean csp_caps_initialized = FALSE;
 struct csp_caps _caps;
 
