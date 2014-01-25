@@ -461,6 +461,7 @@ static const struct l2cap_data le_server_success_test = {
 
 static const struct l2cap_data le_att_client_connect_success_test_1 = {
 	.cid = 0x0004,
+	.sec_level = BT_SECURITY_LOW,
 };
 
 static const struct l2cap_data le_att_server_success_test_1 = {
