@@ -9,7 +9,7 @@ Application		Count	Description
 -------------------------------------------
 test-crc		   9	Link Layer CRC-24 checksum
 test-eir		  14	EIR and AD parsing
-test-lib		  12	SDP library functions
+test-lib		  14	SDP library functions
 test-sdp		 133	SDP qualification test cases
 test-uuid		  30	UUID conversion handling
 test-mgmt		   2	Management interface handling
@@ -22,7 +22,7 @@ test-gobex-apparam	  18	OBEX apparam handling
 test-gobex-transfer	  36	OBEX transfer handling
 test-gdbus-client	  12	D-Bus client handling
 			-----
-			 398
+			 400
 
 
 Automated end-to-end testing
