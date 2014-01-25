@@ -89,8 +89,8 @@ static int create_btsnoop(const char *path)
 	}
 
 	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
-	hdr.version = htonl(btsnoop_version);
-	hdr.type = htonl(2001);
+	hdr.version = htobe32(btsnoop_version);
+	hdr.type = htobe32(2001);
 
 	written = write(fd, &hdr, BTSNOOP_HDR_SIZE);
 	if (written < 0) {
@@ -127,14 +127,14 @@ static int open_btsnoop(const char *path, uint32_t *type)
 		return -1;
 	}
 
-	if (ntohl(hdr.version) != btsnoop_version) {
+	if (be32toh(hdr.version) != btsnoop_version) {
 		fprintf(stderr, "invalid btsnoop version\n");
 		close(fd);
 		return -1;
 	}
 
 	if (type)
-		*type = ntohl(hdr.type);
+		*type = be32toh(hdr.type);
 
 	return fd;
 }
@@ -205,17 +205,17 @@ next_packet:
 			continue;
 		}
 
-		ts = ntoh64(input_pkt[i].ts);
+		ts = be64toh(input_pkt[i].ts);
 
-		if (ts < ntoh64(input_pkt[select_input].ts))
+		if (ts < be64toh(input_pkt[select_input].ts))
 			select_input = i;
 	}
 
 	if (select_input < 0)
 		goto close_output;
 
-	toread = ntohl(input_pkt[select_input].size);
-	flags = ntohl(input_pkt[select_input].flags);
+	toread = be32toh(input_pkt[select_input].size);
+	flags = be32toh(input_pkt[select_input].flags);
 
 	len = read(input_fd[select_input], buf, toread);
 	if (len < 0 || len != (ssize_t) toread) {
@@ -224,8 +224,8 @@ next_packet:
 		goto next_packet;
 	}
 
-	written = input_pkt[select_input].size = htonl(toread - 1);
-	written = input_pkt[select_input].len = htonl(toread - 1);
+	written = input_pkt[select_input].size = htobe32(toread - 1);
+	written = input_pkt[select_input].len = htobe32(toread - 1);
 
 	switch (buf[0]) {
 	case 0x01:
@@ -251,7 +251,7 @@ next_packet:
 	}
 
 	index = select_input;
-	input_pkt[select_input].flags = htonl((index << 16) | opcode);
+	input_pkt[select_input].flags = htobe32((index << 16) | opcode);
 
 	written = write(output_fd, &input_pkt[select_input], BTSNOOP_PKT_SIZE);
 	if (written != BTSNOOP_PKT_SIZE) {
@@ -307,8 +307,8 @@ next_packet:
 	if (len < 0 || len != BTSNOOP_PKT_SIZE)
 		goto close_input;
 
-	toread = ntohl(pkt.size);
-	flags = ntohl(pkt.flags);
+	toread = be32toh(pkt.size);
+	flags = be32toh(pkt.flags);
 
 	opcode = flags & 0x00ff;
 
@@ -380,8 +380,8 @@ next_packet:
 	if (len < 0 || len != BTSNOOP_PKT_SIZE)
 		goto close_input;
 
-	toread = ntohl(pkt.size);
-	flags = ntohl(pkt.flags);
+	toread = be32toh(pkt.size);
+	flags = be32toh(pkt.flags);
 
 	opcode = flags & 0x00ff;
 
@@ -457,7 +457,7 @@ next_packet:
 	if (len < 0 || len != BTSNOOP_PKT_SIZE)
 		goto close_input;
 
-	toread = ntohl(pkt.size);
+	toread = be32toh(pkt.size);
 
 	len = read(fd, buf, toread);
 	if (len < 0 || len != (ssize_t) toread) {
