@@ -935,7 +935,7 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 		if (setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec,
 							sizeof(sec)) < 0) {
 			err = -errno;
-			tester_warn("Can't bind socket: %s (%d)",
+			tester_warn("Can't set security level: %s (%d)",
 						strerror(errno), errno);
 			close(sk);
 			return err;
