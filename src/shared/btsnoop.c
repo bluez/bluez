@@ -34,19 +34,6 @@
 
 #include "btsnoop.h"
 
-static inline uint64_t ntoh64(uint64_t n)
-{
-	uint64_t h;
-	uint64_t tmp = ntohl(n & 0x00000000ffffffff);
-
-	h = ntohl(n >> 32);
-	h |= tmp << 32;
-
-	return h;
-}
-
-#define hton64(x) ntoh64(x)
-
 struct btsnoop_hdr {
 	uint8_t		id[8];		/* Identification Pattern */
 	uint32_t	version;	/* Version Number = 1 */
@@ -98,10 +85,10 @@ struct btsnoop *btsnoop_open(const char *path)
 	if (memcmp(hdr.id, btsnoop_id, sizeof(btsnoop_id)))
 		goto failed;
 
-	if (ntohl(hdr.version) != btsnoop_version)
+	if (be32toh(hdr.version) != btsnoop_version)
 		goto failed;
 
-	btsnoop->type = ntohl(hdr.type);
+	btsnoop->type = be32toh(hdr.type);
 
 	return btsnoop_ref(btsnoop);
 
@@ -132,8 +119,8 @@ struct btsnoop *btsnoop_create(const char *path, uint32_t type)
 	btsnoop->type = type;
 
 	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
-	hdr.version = htonl(btsnoop_version);
-	hdr.type = htonl(btsnoop->type);
+	hdr.version = htobe32(btsnoop_version);
+	hdr.type = htobe32(btsnoop->type);
 
 	written = write(btsnoop->fd, &hdr, BTSNOOP_HDR_SIZE);
 	if (written < 0) {
@@ -189,11 +176,11 @@ bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 
 	ts = (tv->tv_sec - 946684800ll) * 1000000ll + tv->tv_usec;
 
-	pkt.size  = htonl(size);
-	pkt.len   = htonl(size);
-	pkt.flags = htonl(flags);
-	pkt.drops = htonl(0);
-	pkt.ts    = hton64(ts + 0x00E03AB44A676000ll);
+	pkt.size  = htobe32(size);
+	pkt.len   = htobe32(size);
+	pkt.flags = htobe32(flags);
+	pkt.drops = htobe32(0);
+	pkt.ts    = htobe64(ts + 0x00E03AB44A676000ll);
 
 	written = write(btsnoop->fd, &pkt, BTSNOOP_PKT_SIZE);
 	if (written < 0)
