@@ -21,6 +21,7 @@
  *
  */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <alloca.h>
 #include <byteswap.h>
