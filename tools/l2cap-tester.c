@@ -828,6 +828,48 @@ static void server_bthost_received_data(const void *buf, uint16_t len,
 		tester_test_passed();
 }
 
+static bool check_mtu(struct test_data *data, int sk)
+{
+	const struct l2cap_data *l2data = data->test_data;
+	struct l2cap_options l2o;
+	socklen_t len;
+
+	memset(&l2o, 0, sizeof(l2o));
+
+	if (data->hciemu_type == HCIEMU_TYPE_LE &&
+				(l2data->client_psm || l2data->server_psm)) {
+		/* LE CoC enabled kernels should support BT_RCVMTU and
+		 * BT_SNDMTU.
+		 */
+		len = sizeof(l2o.imtu);
+		if (getsockopt(sk, SOL_BLUETOOTH, BT_RCVMTU,
+							&l2o.imtu, &len) < 0) {
+			tester_warn("getsockopt(BT_RCVMTU): %s (%d)",
+					strerror(errno), errno);
+			return false;
+		}
+
+		len = sizeof(l2o.omtu);
+		if (getsockopt(sk, SOL_BLUETOOTH, BT_SNDMTU,
+							&l2o.omtu, &len) < 0) {
+			tester_warn("getsockopt(BT_SNDMTU): %s (%d)",
+					strerror(errno), errno);
+			return false;
+		}
+	} else {
+		/* For non-LE CoC enabled kernels we need to fall back to
+		 * L2CAP_OPTIONS, so test support for it as well */
+		len = sizeof(l2o);
+		if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
+			 tester_warn("getsockopt(L2CAP_OPTIONS): %s (%d)",
+						strerror(errno), errno);
+			 return false;
+		 }
+	}
+
+	return true;
+}
+
 static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -845,10 +887,17 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 	else
 		err = -sk_err;
 
-	if (err < 0)
+	if (err < 0) {
 		tester_warn("Connect failed: %s (%d)", strerror(-err), -err);
-	else
-		tester_print("Successfully connected");
+		goto failed;
+	}
+
+	tester_print("Successfully connected");
+
+	if (!check_mtu(data, sk)) {
+		tester_test_failed();
+		return FALSE;
+	}
 
 	if (l2data->read_data) {
 		struct bthost *bthost;
@@ -877,6 +926,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
+failed:
 	if (-err != l2data->expect_err)
 		tester_test_failed();
 	else
@@ -1043,6 +1093,11 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 	new_sk = accept(sk, NULL, NULL);
 	if (new_sk < 0) {
 		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
+		tester_test_failed();
+		return FALSE;
+	}
+
+	if (!check_mtu(data, new_sk)) {
 		tester_test_failed();
 		return FALSE;
 	}

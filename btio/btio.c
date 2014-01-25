@@ -972,10 +972,10 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
 
-	len = sizeof(l2o);
-	memset(&l2o, 0, len);
+	memset(&l2o, 0, sizeof(l2o));
 
 	if (src.l2_bdaddr_type != BDADDR_BREDR) {
+		len = sizeof(l2o.imtu);
 		if (getsockopt(sock, SOL_BLUETOOTH, BT_RCVMTU,
 						&l2o.imtu, &len) == 0)
 			goto parse_opts;
@@ -989,6 +989,7 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 		}
 	}
 
+	len = sizeof(l2o);
 	if (getsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
 		ERROR_FAILED(err, "getsockopt(L2CAP_OPTIONS)", errno);
 		return FALSE;
