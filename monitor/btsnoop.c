@@ -82,8 +82,8 @@ void btsnoop_create(const char *path, uint32_t type)
 	btsnoop_type = type;
 
 	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
-	hdr.version = htonl(btsnoop_version);
-	hdr.type = htonl(btsnoop_type);
+	hdr.version = htobe32(btsnoop_version);
+	hdr.type = htobe32(btsnoop_type);
 
 	written = write(btsnoop_fd, &hdr, BTSNOOP_HDR_SIZE);
 	if (written < 0) {
@@ -102,11 +102,11 @@ void btsnoop_write(struct timeval *tv, uint32_t flags,
 
 	ts = (tv->tv_sec - 946684800ll) * 1000000ll + tv->tv_usec;
 
-	pkt.size  = htonl(size);
-	pkt.len   = htonl(size);
-	pkt.flags = htonl(flags);
-	pkt.drops = htonl(0);
-	pkt.ts    = hton64(ts + 0x00E03AB44A676000ll);
+	pkt.size  = htobe32(size);
+	pkt.len   = htobe32(size);
+	pkt.flags = htobe32(flags);
+	pkt.drops = htobe32(0);
+	pkt.ts    = htobe64(ts + 0x00E03AB44A676000ll);
 
 	written = write(btsnoop_fd, &pkt, BTSNOOP_PKT_SIZE);
 	if (written < 0)
@@ -230,14 +230,14 @@ int btsnoop_open(const char *path, uint32_t *type)
 		return -1;
 	}
 
-	if (ntohl(hdr.version) != btsnoop_version) {
+	if (be32toh(hdr.version) != btsnoop_version) {
 		fprintf(stderr, "Invalid btsnoop version\n");
 		close(btsnoop_fd);
 		btsnoop_fd = -1;
 		return -1;
 	}
 
-	btsnoop_type = ntohl(hdr.type);
+	btsnoop_type = be32toh(hdr.type);
 
 	if (type)
 		*type = btsnoop_type;
@@ -303,10 +303,10 @@ int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 		return -1;
 	}
 
-	toread = ntohl(pkt.size);
-	flags = ntohl(pkt.flags);
+	toread = be32toh(pkt.size);
+	flags = be32toh(pkt.flags);
 
-	ts = ntoh64(pkt.ts) - 0x00E03AB44A676000ll;
+	ts = be64toh(pkt.ts) - 0x00E03AB44A676000ll;
 	tv->tv_sec = (ts / 1000000ll) + 946684800ll;
 	tv->tv_usec = ts % 1000000ll;
 
@@ -377,10 +377,10 @@ int btsnoop_read_phy(struct timeval *tv, uint16_t *frequency,
 		return -1;
 	}
 
-	toread = ntohl(pkt.size);
-	flags = ntohl(pkt.flags);
+	toread = be32toh(pkt.size);
+	flags = be32toh(pkt.flags);
 
-	ts = ntoh64(pkt.ts) - 0x00E03AB44A676000ll;
+	ts = be64toh(pkt.ts) - 0x00E03AB44A676000ll;
 	tv->tv_sec = (ts / 1000000ll) + 946684800ll;
 	tv->tv_usec = ts % 1000000ll;
 
