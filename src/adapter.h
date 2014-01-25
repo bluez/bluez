@@ -36,6 +36,7 @@
 #define INVALID_PASSKEY		0xffffffff
 
 struct btd_adapter;
+struct btd_device;
 
 struct btd_adapter *btd_adapter_get_default(void);
 bool btd_adapter_is_default(struct btd_adapter *adapter);
@@ -90,6 +91,8 @@ bool btd_adapter_get_connectable(struct btd_adapter *adapter);
 
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter);
 const char *btd_adapter_get_name(struct btd_adapter *adapter);
+void btd_adapter_remove_device(struct btd_adapter *adapter,
+				struct btd_device *dev);
 struct btd_device *btd_adapter_get_device(struct btd_adapter *adapter,
 					const bdaddr_t *addr,
 					uint8_t addr_type);

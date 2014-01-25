@@ -1036,8 +1036,8 @@ static void service_auth_cancel(struct service_auth *auth)
 	g_free(auth);
 }
 
-static void adapter_remove_device(struct btd_adapter *adapter,
-						struct btd_device *dev)
+void btd_adapter_remove_device(struct btd_adapter *adapter,
+				struct btd_device *dev)
 {
 	GList *l;
 
@@ -1531,7 +1531,7 @@ static gboolean remove_temp_devices(gpointer user_data)
 		next = g_slist_next(l);
 
 		if (device_is_temporary(dev))
-			adapter_remove_device(adapter, dev);
+			btd_adapter_remove_device(adapter, dev);
 	}
 
 	return FALSE;
@@ -2159,7 +2159,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	btd_device_set_temporary(device, TRUE);
 
 	if (!btd_device_is_connected(device)) {
-		adapter_remove_device(adapter, device);
+		btd_adapter_remove_device(adapter, device);
 		return dbus_message_new_method_return(msg);
 	}
 
@@ -4268,7 +4268,7 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 		const char *path = device_get_path(device);
 
 		DBG("Removing temporary device %s", path);
-		adapter_remove_device(adapter, device);
+		btd_adapter_remove_device(adapter, device);
 	}
 }
 
@@ -5834,7 +5834,7 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 	 * when it is temporary. */
 	if (device && !device_is_bonding(device, NULL)
 						&& device_is_temporary(device))
-		adapter_remove_device(adapter, device);
+		btd_adapter_remove_device(adapter, device);
 }
 
 static void unpaired_callback(uint16_t index, uint16_t length,
@@ -5865,7 +5865,7 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 	if (btd_device_is_connected(device))
 		device_request_disconnect(device, NULL);
 	else
-		adapter_remove_device(adapter, device);
+		btd_adapter_remove_device(adapter, device);
 }
 
 static void read_info_complete(uint8_t status, uint16_t length,
