@@ -33,6 +33,10 @@
 #include "util.h"
 #include "ringbuf.h"
 
+#ifndef MIN
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+
 struct ringbuf {
 	void *buffer;
 	size_t size;
