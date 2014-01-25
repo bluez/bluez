@@ -55,6 +55,22 @@
 #error "Unknown byte order"
 #endif
 
+#define get_unaligned(ptr)			\
+({						\
+	struct __attribute__((packed)) {	\
+		typeof(*(ptr)) __v;		\
+	} *__p = (typeof(__p)) (ptr);		\
+	__p->__v;				\
+})
+
+#define put_unaligned(val, ptr)			\
+do {						\
+	struct __attribute__((packed)) {	\
+		typeof(*(ptr)) __v;		\
+	} *__p = (typeof(__p)) (ptr);		\
+	__p->__v = (val);			\
+} while (0)
+
 #define PTR_TO_UINT(p) ((unsigned int) ((uintptr_t) (p)))
 #define UINT_TO_PTR(u) ((void *) ((uintptr_t) (u)))
 
