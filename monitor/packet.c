@@ -3118,11 +3118,17 @@ void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
 	control_message(opcode, data, size);
 }
 
+static int addr2str(const uint8_t *addr, char *str)
+{
+	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+			addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
+}
+
 #define MAX_INDEX 16
 
 struct index_data {
-	uint8_t  type;
-	bdaddr_t bdaddr;
+	uint8_t type;
+	uint8_t bdaddr[6];
 };
 
 static struct index_data index_list[MAX_INDEX];
@@ -3132,7 +3138,6 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 {
 	const struct btsnoop_opcode_new_index *ni;
 	char str[18], extra_str[24];
-	bdaddr_t bdaddr;
 
 	if (index_filter && index_number != index)
 		return;
@@ -3145,21 +3150,20 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 	switch (opcode) {
 	case BTSNOOP_OPCODE_NEW_INDEX:
 		ni = data;
-		memcpy(&bdaddr, ni->bdaddr, 6);
 
 		if (index < MAX_INDEX) {
 			index_list[index].type = ni->type;
-			memcpy(&index_list[index].bdaddr, &bdaddr, 6);
+			memcpy(index_list[index].bdaddr, ni->bdaddr, 6);
 		}
 
-		ba2str(&bdaddr, str);
+		addr2str(ni->bdaddr, str);
 		packet_new_index(tv, index, str, ni->type, ni->bus, ni->name);
 		break;
 	case BTSNOOP_OPCODE_DEL_INDEX:
 		if (index < MAX_INDEX)
-			ba2str(&index_list[index].bdaddr, str);
+			addr2str(index_list[index].bdaddr, str);
 		else
-			ba2str(BDADDR_ANY, str);
+			sprintf(str, "00:00:00:00:00:00");
 
 		packet_del_index(tv, index, str);
 		break;
