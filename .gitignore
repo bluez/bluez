@@ -93,6 +93,7 @@ tools/btsnoop
 monitor/btmon
 emulator/btvirt
 emulator/b1ee
+emulator/hfp
 client/bluetoothctl
 
 src/bluetoothd.8
