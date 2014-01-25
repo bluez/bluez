@@ -74,6 +74,7 @@ tools/obexctl
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-ringbuf
+unit/test-queue
 unit/test-eir
 unit/test-uuid
 unit/test-crc

@@ -237,12 +237,17 @@ unit_test_textfile_LDADD = @GLIB_LIBS@
 unit_test_crc_SOURCES = unit/test-crc.c monitor/crc.h monitor/crc.c
 unit_test_crc_LDADD = @GLIB_LIBS@
 
-unit_tests += unit/test-ringbuf
+unit_tests += unit/test-ringbuf unit/test-queue
 
 unit_test_ringbuf_SOURCES = unit/test-ringbuf.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/ringbuf.h src/shared/ringbuf.c
 unit_test_ringbuf_LDADD = @GLIB_LIBS@
+
+unit_test_queue_SOURCES = unit/test-queue.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c
+unit_test_queue_LDADD = @GLIB_LIBS@
 
 unit_tests += unit/test-mgmt
 
