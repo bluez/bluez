@@ -34,6 +34,8 @@ LOCAL_SRC_FILES := \
 	bluez/src/shared/mgmt.c \
 	bluez/src/shared/util.c \
 	bluez/src/shared/queue.c \
+	bluez/src/shared/ringbuf.c \
+	bluez/src/shared/hfp.c \
 	bluez/src/shared/io-glib.c \
 	bluez/src/sdpd-database.c \
 	bluez/src/sdpd-service.c \
