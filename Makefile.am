@@ -237,6 +237,13 @@ unit_test_textfile_LDADD = @GLIB_LIBS@
 unit_test_crc_SOURCES = unit/test-crc.c monitor/crc.h monitor/crc.c
 unit_test_crc_LDADD = @GLIB_LIBS@
 
+unit_tests += unit/test-ringbuf
+
+unit_test_ringbuf_SOURCES = unit/test-ringbuf.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/ringbuf.h src/shared/ringbuf.c
+unit_test_ringbuf_LDADD = @GLIB_LIBS@
+
 unit_tests += unit/test-mgmt
 
 unit_test_mgmt_SOURCES = unit/test-mgmt.c \

@@ -73,6 +73,7 @@ tools/3dsp
 tools/obexctl
 test/sap_client.pyc
 test/bluezutils.pyc
+unit/test-ringbuf
 unit/test-eir
 unit/test-uuid
 unit/test-crc
