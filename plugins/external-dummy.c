@@ -22,8 +22,8 @@
 #include <config.h>
 #endif
 
-#include "plugin.h"
-#include "log.h"
+#include "src/plugin.h"
+#include "src/log.h"
 
 static int dummy_init(void)
 {

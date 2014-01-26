@@ -28,18 +28,18 @@
 
 #include <glib.h>
 #include <errno.h>
-#include <adapter.h>
 
 #include "lib/uuid.h"
-#include "plugin.h"
-#include "hcid.h"
-#include "log.h"
+#include "src/plugin.h"
+#include "src/adapter.h"
+#include "src/hcid.h"
+#include "src/log.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt-service.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "attrib/att-database.h"
-#include "attrib-server.h"
+#include "src/attrib-server.h"
 
 /* FIXME: Not defined by SIG? UUID128? */
 #define OPCODES_SUPPORTED_UUID          0xA001

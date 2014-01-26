@@ -33,11 +33,11 @@
 #include <bluetooth/bluetooth.h>
 #include <glib.h>
 
-#include "plugin.h"
-#include "adapter.h"
-#include "device.h"
-#include "log.h"
-#include "storage.h"
+#include "src/plugin.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/log.h"
+#include "src/storage.h"
 
 /*
  * Plugin to handle automatic pairing of devices with reduced user

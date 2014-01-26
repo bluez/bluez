@@ -30,10 +30,10 @@
 #include <stdlib.h>
 #include <gdbus/gdbus.h>
 
-#include "dbus-common.h"
-#include "plugin.h"
-#include "adapter.h"
-#include "log.h"
+#include "src/dbus-common.h"
+#include "src/plugin.h"
+#include "src/adapter.h"
+#include "src/log.h"
 
 /* http://www.bluetooth.org/Technical/AssignedNumbers/baseband.htm */
 

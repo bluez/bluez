@@ -33,14 +33,14 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/sdp.h>
 
-#include "plugin.h"
-#include "log.h"
-#include "dbus-common.h"
-#include "adapter.h"
-#include "device.h"
-#include "eir.h"
-#include "agent.h"
-#include "hcid.h"
+#include "src/plugin.h"
+#include "src/log.h"
+#include "src/dbus-common.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/eir.h"
+#include "src/agent.h"
+#include "src/hcid.h"
 
 #define NEARD_NAME "org.neard"
 #define NEARD_PATH "/"
