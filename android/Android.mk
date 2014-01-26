@@ -369,8 +369,7 @@ LOCAL_SRC_FILES:= \
 	sbc/sbc/sbc_primitives_iwmmxt.c \
 
 LOCAL_C_INCLUDES:= \
-	$(LOCAL_PATH)/sbc/ \
-	$(LOCAL_PATH)/sbc/sbc/ \
+	$(LOCAL_PATH)/sbc \
 
 LOCAL_CFLAGS:= \
 	-DSBC_HIGH_PRECISION \
