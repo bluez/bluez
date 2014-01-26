@@ -48,9 +48,16 @@ struct ringbuf {
 
 #define RINGBUF_RESET 0
 
+/* Find last (most siginificant) set bit */
+static inline unsigned int fls(unsigned int x)
+{
+	return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
+}
+
+/* Round up to nearest power of two */
 static inline unsigned int align_power2(unsigned int u)
 {
-	return 1 << ((sizeof(u) * 8) - __builtin_clz(u - 1));
+	return 1 << fls(u - 1);
 }
 
 struct ringbuf *ringbuf_new(size_t size)

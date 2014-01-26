@@ -44,9 +44,14 @@ static unsigned int nlpo2(unsigned int x)
 	return x + 1;
 }
 
+static unsigned int fls(unsigned int x)
+{
+	return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
+}
+
 static unsigned int align_power2(unsigned int u)
 {
-	return 1 << ((sizeof(u) * 8) - __builtin_clz(u - 1));
+	return 1 << fls(u - 1);
 }
 
 static void test_power2(void)
