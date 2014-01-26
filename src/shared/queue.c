@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include "util.h"
-#include "queue.h"
+#include "src/shared/util.h"
+#include "src/shared/queue.h"
 
 struct queue_entry {
 	void *data;

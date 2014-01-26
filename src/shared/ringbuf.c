@@ -30,8 +30,8 @@
 #include <sys/uio.h>
 #include <sys/param.h>
 
-#include "util.h"
-#include "ringbuf.h"
+#include "src/shared/util.h"
+#include "src/shared/ringbuf.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))

@@ -40,12 +40,11 @@
 #include <bluetooth/hci.h>
 
 #include "monitor/bt.h"
-#include "src/shared/util.h"
-#include "src/shared/queue.h"
 #include "emulator/btdev.h"
 #include "emulator/bthost.h"
-
-#include "hciemu.h"
+#include "src/shared/util.h"
+#include "src/shared/queue.h"
+#include "src/shared/hciemu.h"
 
 struct hciemu {
 	int ref_count;

@@ -30,8 +30,7 @@
 #include <stdlib.h>
 
 #include "src/shared/util.h"
-
-#include "pcap.h"
+#include "src/shared/pcap.h"
 
 struct pcap_hdr {
 	uint32_t magic_number;	/* magic number */

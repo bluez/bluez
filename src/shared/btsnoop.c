@@ -32,7 +32,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 
-#include "btsnoop.h"
+#include "src/shared/btsnoop.h"
 
 struct btsnoop_hdr {
 	uint8_t		id[8];		/* Identification Pattern */

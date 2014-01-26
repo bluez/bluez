@@ -30,10 +30,10 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "util.h"
-#include "ringbuf.h"
-#include "io.h"
-#include "hfp.h"
+#include "src/shared/util.h"
+#include "src/shared/ringbuf.h"
+#include "src/shared/io.h"
+#include "src/shared/hfp.h"
 
 struct hfp_gw {
 	int ref_count;

@@ -31,12 +31,11 @@
 #include <sys/socket.h>
 
 #include "monitor/bt.h"
+#include "monitor/mainloop.h"
 #include "src/shared/io.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
-#include "monitor/mainloop.h"
-
-#include "hci.h"
+#include "src/shared/hci.h"
 
 #define BTPROTO_HCI	1
 struct sockaddr_hci {
