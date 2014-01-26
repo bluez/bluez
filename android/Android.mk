@@ -184,7 +184,6 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
 	$(LOCAL_PATH)/bluez/lib \
-	$(LOCAL_PATH)/bluez/src/shared \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
@@ -207,7 +206,6 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/src/shared \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
@@ -256,7 +254,6 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
 	$(LOCAL_PATH)/bluez/lib \
-	$(LOCAL_PATH)/bluez/src/shared \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
