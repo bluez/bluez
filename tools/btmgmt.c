@@ -40,12 +40,12 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "uuid-helper.h"
+#include "src/uuid-helper.h"
+#include "lib/mgmt.h"
 
 #include "monitor/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
-#include "lib/mgmt.h"
 
 static bool monitor = false;
 static bool discovery = false;
