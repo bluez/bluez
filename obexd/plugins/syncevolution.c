@@ -36,8 +36,9 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include <btio/btio.h>
 #include <gdbus/gdbus.h>
+
+#include "btio/btio.h"
 #include "plugin.h"
 #include "obex.h"
 #include "service.h"

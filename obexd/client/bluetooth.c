@@ -30,12 +30,13 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
-#include <btio/btio.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+
+#include "btio/btio.h"
 
 #include "log.h"
 #include "transport.h"

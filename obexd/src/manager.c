@@ -33,9 +33,9 @@
 #include <sys/socket.h>
 #include <inttypes.h>
 
-#include <btio/btio.h>
 #include <gobex/gobex.h>
 
+#include "btio/btio.h"
 #include "obexd.h"
 #include "obex.h"
 #include "obex-priv.h"
