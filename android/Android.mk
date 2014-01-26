@@ -56,7 +56,6 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/src \
 	$(LOCAL_PATH)/bluez/lib \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
