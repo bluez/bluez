@@ -3459,7 +3459,7 @@ static void setup_hidhost_connect(const void *test_data)
 	bthost_write_scan_enable(bthost, 0x03);
 }
 
-static void hid_discon_cb(bt_bdaddr_t *bd_addr,	bthh_connection_state_t state)
+static void hid_discon_cb(bt_bdaddr_t *bd_addr, bthh_connection_state_t state)
 {
 	if (state == BTHH_CONN_STATE_DISCONNECTED)
 		tester_test_passed();

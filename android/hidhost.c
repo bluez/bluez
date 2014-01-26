@@ -375,7 +375,7 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 
 	if (!((buf[0] == (HID_MSG_DATA | HID_DATA_TYPE_INPUT)) ||
 			(buf[0] == (HID_MSG_DATA | HID_DATA_TYPE_OUTPUT)) ||
-			(buf[0]	== (HID_MSG_DATA | HID_DATA_TYPE_FEATURE)))) {
+			(buf[0] == (HID_MSG_DATA | HID_DATA_TYPE_FEATURE)))) {
 		ev = g_malloc0(ev_len);
 		ev->status = buf[0];
 		bdaddr2android(&dev->dst, ev->bdaddr);
