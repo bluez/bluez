@@ -34,7 +34,7 @@
 #include <bluetooth/sdp.h>
 
 #include "lib/uuid.h"
-#include <btio/btio.h>
+#include "btio/btio.h"
 #include "att.h"
 #include "gattrib.h"
 #include "gatt.h"
