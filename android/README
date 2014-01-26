@@ -7,7 +7,7 @@ of the stack of choice on Android. Android BlueZ is intended as a drop-in
 replacement to Android provided Bluetooth stack.
 
 More details about BlueZ for Android architecture and components can be found
-in android/hal-apc-api.txt file.
+in android/hal-ipc-api.txt file.
 
 Supported Android version: 4.4
 
