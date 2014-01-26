@@ -38,10 +38,11 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "lib/uuid.h"
 #include <gdbus/gdbus.h>
+
+#include "lib/uuid.h"
+#include "btio/btio.h"
 #include "log.h"
-#include <btio/btio.h>
 #include "sdpd.h"
 #include "hcid.h"
 #include "adapter.h"

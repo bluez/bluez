@@ -42,10 +42,10 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
-#include <btio/btio.h>
 
 #include "log.h"
 
+#include "btio/btio.h"
 #include "lib/uuid.h"
 #include "lib/mgmt.h"
 #include "attrib/att.h"

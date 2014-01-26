@@ -33,8 +33,8 @@
 #include <bluetooth/bluetooth.h>
 
 #include <glib.h>
-#include <btio/btio.h>
 
+#include "btio/btio.h"
 #include "src/plugin.h"
 #include "src/log.h"
 #include "src/hcid.h"
