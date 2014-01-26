@@ -37,7 +37,7 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include <btio/btio.h>
+#include "btio/btio.h"
 
 #define DEFAULT_ACCEPT_TIMEOUT 2
 static int opt_update_sec = 0;
