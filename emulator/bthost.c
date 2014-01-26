@@ -2070,6 +2070,8 @@ bool bthost_connect_rfcomm(struct bthost *bthost, uint16_t handle,
 
 void bthost_stop(struct bthost *bthost)
 {
-	smp_stop(bthost->smp_data);
-	bthost->smp_data = NULL;
+	if (bthost->smp_data) {
+		smp_stop(bthost->smp_data);
+		bthost->smp_data = NULL;
+	}
 }
