@@ -38,7 +38,7 @@
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
 #include "profiles/audio/a2dp-codecs.h"
-#include "log.h"
+#include "src/log.h"
 #include "a2dp.h"
 #include "hal-msg.h"
 #include "ipc.h"

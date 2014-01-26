@@ -36,9 +36,9 @@
 #include "lib/sdp_lib.h"
 #include "src/sdp-client.h"
 #include "src/sdpd.h"
+#include "src/log.h"
 
 #include "bluetooth.h"
-#include "log.h"
 #include "hal-msg.h"
 #include "hal-ipc.h"
 #include "ipc.h"

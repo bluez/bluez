@@ -42,8 +42,8 @@
 #include "src/sdp-client.h"
 #include "src/uuid-helper.h"
 #include "profiles/input/uhid_copy.h"
+#include "src/log.h"
 
-#include "log.h"
 #include "hal-msg.h"
 #include "ipc.h"
 #include "hidhost.h"

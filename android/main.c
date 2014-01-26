@@ -43,7 +43,7 @@
 
 #include <glib.h>
 
-#include "log.h"
+#include "src/log.h"
 #include "src/sdpd.h"
 
 #include "lib/bluetooth.h"

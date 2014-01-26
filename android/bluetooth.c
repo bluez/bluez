@@ -44,7 +44,7 @@
 #include "lib/sdp_lib.h"
 #include "src/sdp-client.h"
 #include "src/sdpd.h"
-#include "log.h"
+#include "src/log.h"
 #include "hal-msg.h"
 #include "ipc.h"
 #include "utils.h"

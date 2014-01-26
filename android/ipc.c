@@ -38,7 +38,7 @@
 
 #include "hal-msg.h"
 #include "ipc.h"
-#include "log.h"
+#include "src/log.h"
 
 static struct service_handler services[HAL_SERVICE_ID_MAX + 1];
 

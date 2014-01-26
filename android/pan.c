@@ -41,8 +41,8 @@
 #include "lib/sdp_lib.h"
 #include "src/uuid-helper.h"
 #include "profiles/network/bnep.h"
+#include "src/log.h"
 
-#include "log.h"
 #include "pan.h"
 #include "hal-msg.h"
 #include "ipc.h"
