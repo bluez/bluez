@@ -74,7 +74,7 @@
 #define DEVICES_CACHE_MAX 300
 
 #define BASELEN_PROP_CHANGED (sizeof(struct hal_ev_adapter_props_changed) \
-					+ (sizeof(struct hal_property)))
+					+ sizeof(struct hal_property))
 
 #define BASELEN_REMOTE_DEV_PROP (sizeof(struct hal_ev_remote_device_props) \
 					+ sizeof(struct hal_property))

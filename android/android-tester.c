@@ -518,7 +518,7 @@ static void emulator(int pipe, int hci_index)
 	memset(buf, 0, sizeof(buf));
 
 	len = read(fd, buf, sizeof(buf));
-	if (len <= 0 || (strcmp(buf, "bluetooth.start=daemon")))
+	if (len <= 0 || strcmp(buf, "bluetooth.start=daemon"))
 		goto failed;
 
 	close(pipe);
@@ -1985,7 +1985,7 @@ static bool setup(struct test_data *data)
 	data->bluetoothd_pid = pid;
 
 	len = read(signal_fd[0], buf, sizeof(buf));
-	if (len <= 0 || (strcmp(buf, EMULATOR_SIGNAL))) {
+	if (len <= 0 || strcmp(buf, EMULATOR_SIGNAL)) {
 		close(signal_fd[0]);
 		return false;
 	}
