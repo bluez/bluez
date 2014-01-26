@@ -45,7 +45,7 @@
 
 #include <netinet/in.h>
 
-#include "sdp-xml.h"
+#include "src/sdp-xml.h"
 
 #ifndef APPLE_AGENT_SVCLASS_ID
 #define APPLE_AGENT_SVCLASS_ID 0x2112

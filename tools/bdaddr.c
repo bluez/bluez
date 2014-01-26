@@ -36,7 +36,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include "oui.h"
+#include "src/oui.h"
 
 static int transient = 0;
 

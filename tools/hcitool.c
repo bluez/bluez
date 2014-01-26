@@ -46,8 +46,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include "textfile.h"
-#include "oui.h"
+#include "src/textfile.h"
+#include "src/oui.h"
 
 /* Unofficial value, might still change */
 #define LE_LINK		0x03

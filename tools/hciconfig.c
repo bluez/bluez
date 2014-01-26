@@ -42,8 +42,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include "textfile.h"
-#include "csr.h"
+#include "src/textfile.h"
+#include "tools/csr.h"
 
 static struct hci_dev_info di;
 static int all;
