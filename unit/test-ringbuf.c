@@ -41,7 +41,7 @@ static unsigned int nlpo2(unsigned int x)
 	x |= (x >> 4);
 	x |= (x >> 8);
 	x |= (x >> 16);
-        return x + 1;
+	return x + 1;
 }
 
 static unsigned int align_power2(unsigned int u)
