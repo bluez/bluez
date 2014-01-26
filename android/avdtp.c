@@ -39,7 +39,7 @@
 
 #include <glib.h>
 
-#include "log.h"
+#include "src/log.h"
 #include "avdtp.h"
 
 #define AVDTP_PSM 25
