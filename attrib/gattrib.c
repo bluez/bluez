@@ -37,9 +37,9 @@
 #include <btio/btio.h>
 
 #include "lib/uuid.h"
-#include "log.h"
-#include "att.h"
-#include "gattrib.h"
+#include "src/log.h"
+#include "attrib/att.h"
+#include "attrib/gattrib.h"
 
 #define GATT_TIMEOUT 30
 
