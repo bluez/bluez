@@ -34,8 +34,8 @@
 #include <unistd.h>
 #include <glib.h>
 
+#include "src/log.h"
 #include "ipc.h"
-#include "log.h"
 #include "audio-msg.h"
 #include "audio-ipc.h"
 
