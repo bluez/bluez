@@ -38,8 +38,8 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
-#include <btio/btio.h>
 
+#include "btio/btio.h"
 #include "lib/uuid.h"
 #include "src/dbus-common.h"
 #include "src/adapter.h"

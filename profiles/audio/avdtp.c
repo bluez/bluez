@@ -39,10 +39,10 @@
 #include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
-#include <btio/btio.h>
 
 #include "src/log.h"
 
+#include "btio/btio.h"
 #include "lib/uuid.h"
 #include "src/adapter.h"
 #include "src/device.h"

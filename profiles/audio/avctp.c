@@ -44,8 +44,8 @@
 #include <bluetooth/l2cap.h>
 
 #include <glib.h>
-#include <btio/btio.h>
 
+#include "btio/btio.h"
 #include "lib/uuid.h"
 #include "src/adapter.h"
 #include "src/device.h"

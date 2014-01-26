@@ -40,7 +40,7 @@
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/sdpd.h"
-#include <btio/btio.h>
+#include "btio/btio.h"
 
 #include "mcap_lib.h"
 #include "hdp_types.h"

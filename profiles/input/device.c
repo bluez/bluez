@@ -41,6 +41,7 @@
 
 #include "src/log.h"
 
+#include "btio/btio.h"
 #include "lib/uuid.h"
 #include "src/adapter.h"
 #include "src/device.h"
@@ -52,8 +53,6 @@
 #include "src/sdp-client.h"
 
 #include "device.h"
-
-#include <btio/btio.h>
 
 #define INPUT_INTERFACE "org.bluez.Input1"
 

@@ -34,7 +34,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 
-#include <btio/btio.h>
+#include "btio/btio.h"
 #include "src/log.h"
 #include "src/error.h"
 
