@@ -43,14 +43,14 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/log.h"
+#include "src/sdpd.h"
 
-#include "log.h"
 #include "avdtp.h"
 #include "sink.h"
 #include "source.h"
 #include "a2dp.h"
 #include "a2dp-codecs.h"
-#include "sdpd.h"
 #include "media.h"
 
 /* The duration that streams without users are allowed to stay in

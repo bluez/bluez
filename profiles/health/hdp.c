@@ -27,18 +27,19 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <sdpd.h>
 #include <unistd.h>
 
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <gdbus/gdbus.h>
-#include <dbus-common.h>
-#include <log.h>
-#include <error.h>
-#include <adapter.h>
-#include <device.h>
+#include "src/dbus-common.h"
+#include "src/log.h"
+#include "src/error.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/sdpd.h"
 #include <btio/btio.h>
 
 #include "mcap_lib.h"

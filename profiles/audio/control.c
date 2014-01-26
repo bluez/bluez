@@ -51,13 +51,14 @@
 #include "src/profile.h"
 #include "src/service.h"
 
-#include "log.h"
-#include "error.h"
+#include "src/log.h"
+#include "src/error.h"
+#include "src/sdpd.h"
+#include "src/uuid-helper.h"
+#include "src/dbus-common.h"
+
 #include "avctp.h"
 #include "control.h"
-#include "sdpd.h"
-#include "uuid-helper.h"
-#include "dbus-common.h"
 
 static GSList *devices = NULL;
 

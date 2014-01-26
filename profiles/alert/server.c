@@ -33,21 +33,21 @@
 #include <stdlib.h>
 
 #include "lib/uuid.h"
-#include "plugin.h"
-#include "dbus-common.h"
+#include "src/plugin.h"
+#include "src/dbus-common.h"
 #include "attrib/att.h"
-#include "adapter.h"
-#include "device.h"
+#include "src/adapter.h"
+#include "src/device.h"
 #include "attrib/att-database.h"
-#include "log.h"
+#include "src/log.h"
 #include "attrib/gatt-service.h"
 #include "attrib/gattrib.h"
-#include "attrib-server.h"
+#include "src/attrib-server.h"
 #include "attrib/gatt.h"
-#include "profile.h"
-#include "error.h"
-#include "textfile.h"
-#include "attio.h"
+#include "src/profile.h"
+#include "src/error.h"
+#include "src/textfile.h"
+#include "src/attio.h"
 
 #define PHONE_ALERT_STATUS_SVC_UUID	0x180E
 #define ALERT_NOTIF_SVC_UUID		0x1811

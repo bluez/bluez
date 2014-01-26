@@ -40,7 +40,7 @@
 
 #include <glib.h>
 
-#include "log.h"
+#include "src/log.h"
 
 #include "lib/uuid.h"
 #include "src/adapter.h"
@@ -48,11 +48,12 @@
 #include "src/profile.h"
 #include "src/service.h"
 
-#include "plugin.h"
+#include "src/plugin.h"
+
 #include "suspend.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
-#include "attio.h"
+#include "src/attio.h"
 #include "attrib/gatt.h"
 
 #define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"

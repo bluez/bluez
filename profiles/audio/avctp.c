@@ -50,9 +50,10 @@
 #include "src/adapter.h"
 #include "src/device.h"
 
-#include "log.h"
-#include "error.h"
-#include "uinput.h"
+#include "src/log.h"
+#include "src/error.h"
+#include "src/uinput.h"
+
 #include "avctp.h"
 #include "avrcp.h"
 

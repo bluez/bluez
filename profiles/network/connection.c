@@ -39,14 +39,14 @@
 #include <gdbus/gdbus.h>
 #include <btio/btio.h>
 
-#include "log.h"
-#include "dbus-common.h"
-#include "adapter.h"
-#include "device.h"
-#include "profile.h"
-#include "service.h"
+#include "src/log.h"
+#include "src/dbus-common.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
+#include "src/error.h"
 
-#include "error.h"
 #include "bnep.h"
 #include "connection.h"
 

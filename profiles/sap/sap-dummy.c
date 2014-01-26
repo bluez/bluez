@@ -30,9 +30,9 @@
 #include <gdbus/gdbus.h>
 #include <stdint.h>
 
-#include "dbus-common.h"
-#include "error.h"
-#include "log.h"
+#include "src/dbus-common.h"
+#include "src/error.h"
+#include "src/log.h"
 #include "sap.h"
 
 #define SAP_DUMMY_IFACE "org.bluez.SimAccessTest1"

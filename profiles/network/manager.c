@@ -35,14 +35,15 @@
 #include <glib.h>
 #include <gdbus/gdbus.h>
 
-#include "log.h"
-#include "plugin.h"
+#include "src/log.h"
+#include "src/plugin.h"
 
 #include "lib/uuid.h"
-#include "adapter.h"
-#include "device.h"
-#include "profile.h"
-#include "service.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
+
 #include "bnep.h"
 #include "connection.h"
 #include "server.h"

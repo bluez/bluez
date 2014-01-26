@@ -41,7 +41,7 @@
 #include <glib.h>
 #include <btio/btio.h>
 
-#include "log.h"
+#include "src/log.h"
 
 #include "lib/uuid.h"
 #include "src/adapter.h"

@@ -43,9 +43,10 @@
 
 #include <glib.h>
 
-#include "log.h"
-#include "bnep.h"
+#include "src/log.h"
 #include "lib/uuid.h"
+
+#include "bnep.h"
 
 #define CON_SETUP_RETRIES      3
 #define CON_SETUP_TO           9

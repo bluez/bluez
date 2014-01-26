@@ -36,7 +36,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "log.h"
+#include "src/log.h"
 #include "sap.h"
 
 #define STE_SIMD_SOCK  "/dev/socket/catd_a"

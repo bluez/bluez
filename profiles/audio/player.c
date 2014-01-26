@@ -38,10 +38,11 @@
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
-#include "log.h"
+#include "src/log.h"
+#include "src/dbus-common.h"
+#include "src/error.h"
+
 #include "player.h"
-#include "dbus-common.h"
-#include "error.h"
 
 #define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
 #define MEDIA_FOLDER_INTERFACE "org.bluez.MediaFolder1"

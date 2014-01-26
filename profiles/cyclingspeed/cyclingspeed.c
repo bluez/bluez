@@ -30,18 +30,18 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
-#include "plugin.h"
-#include "adapter.h"
-#include "device.h"
-#include "profile.h"
-#include "service.h"
-#include "dbus-common.h"
-#include "error.h"
+#include "src/plugin.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
+#include "src/dbus-common.h"
+#include "src/error.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
-#include "attio.h"
-#include "log.h"
+#include "src/attio.h"
+#include "src/log.h"
 
 /* min length for ATT indication or notification: opcode (1b) + handle (2b) */
 #define ATT_HDR_LEN 3

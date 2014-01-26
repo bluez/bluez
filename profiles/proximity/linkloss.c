@@ -27,23 +27,25 @@
 #include <stdbool.h>
 
 #include <glib.h>
-#include <adapter.h>
 
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
-#include "log.h"
+#include "src/log.h"
+#include "src/adapter.h"
+#include "src/device.h"
 #include "attrib/att-database.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "attrib/gatt-service.h"
-#include "attrib-server.h"
-#include "device.h"
-#include "profile.h"
-#include "attio.h"
-#include "dbus-common.h"
+#include "src/attrib-server.h"
+#include "src/service.h"
+#include "src/profile.h"
+#include "src/attio.h"
+#include "src/dbus-common.h"
+
 #include "reporter.h"
 #include "linkloss.h"
 

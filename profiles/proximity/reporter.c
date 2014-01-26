@@ -30,25 +30,26 @@
 #include <errno.h>
 
 #include <glib.h>
-#include <adapter.h>
 
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
-#include "log.h"
+#include "src/log.h"
 
 #include "lib/uuid.h"
-#include "dbus-common.h"
-#include "error.h"
-#include "device.h"
-#include "profile.h"
-#include "service.h"
-#include "hcid.h"
+#include "src/dbus-common.h"
+#include "src/error.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
+#include "src/hcid.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "attrib/att-database.h"
-#include "attrib-server.h"
+#include "src/attrib-server.h"
+
 #include "reporter.h"
 #include "linkloss.h"
 #include "immalert.h"

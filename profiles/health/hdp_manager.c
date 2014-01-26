@@ -29,17 +29,16 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "lib/uuid.h"
 #include <btio/btio.h>
-#include <adapter.h>
-#include <device.h>
-#include <profile.h>
-#include <service.h>
-#include <uuid-helper.h>
-#include <log.h>
+#include "lib/uuid.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
+#include "src/uuid-helper.h"
+#include "src/log.h"
 
 #include "hdp_types.h"
-
 #include "hdp_manager.h"
 #include "hdp.h"
 

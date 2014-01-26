@@ -38,18 +38,18 @@
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
-#include "log.h"
+#include "src/log.h"
 
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/service.h"
+#include "src/error.h"
+#include "src/dbus-common.h"
 
 #include "avdtp.h"
 #include "media.h"
 #include "a2dp.h"
-#include "error.h"
 #include "source.h"
-#include "dbus-common.h"
 
 struct source {
 	struct btd_service *service;

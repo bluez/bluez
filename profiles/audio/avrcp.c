@@ -53,12 +53,13 @@
 #include "src/profile.h"
 #include "src/service.h"
 
-#include "log.h"
-#include "error.h"
+#include "src/log.h"
+#include "src/error.h"
+#include "src/sdpd.h"
+#include "src/dbus-common.h"
+
 #include "avctp.h"
 #include "avrcp.h"
-#include "sdpd.h"
-#include "dbus-common.h"
 #include "control.h"
 #include "player.h"
 #include "transport.h"

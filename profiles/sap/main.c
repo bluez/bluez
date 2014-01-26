@@ -24,7 +24,7 @@
 
 #include <errno.h>
 #include <gdbus/gdbus.h>
-#include "plugin.h"
+#include "src/plugin.h"
 #include "manager.h"
 
 static int sap_init(void)

@@ -31,19 +31,19 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#include <adapter.h>
-#include <device.h>
-#include <profile.h>
-#include <plugin.h>
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/plugin.h"
 
 #include "lib/uuid.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "attrib/att-database.h"
-#include "attrib-server.h"
+#include "src/attrib-server.h"
 #include "attrib/gatt-service.h"
-#include "log.h"
+#include "src/log.h"
 
 #define CURRENT_TIME_SVC_UUID		0x1805
 #define REF_TIME_UPDATE_SVC_UUID	0x1806

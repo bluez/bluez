@@ -30,16 +30,16 @@
 #include <glib.h>
 
 #include "lib/uuid.h"
-#include "plugin.h"
-#include "adapter.h"
-#include "device.h"
-#include "profile.h"
-#include "service.h"
+#include "src/plugin.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
 #include "attrib/gattrib.h"
-#include "attio.h"
+#include "src/attio.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
-#include "log.h"
+#include "src/log.h"
 
 #define PNP_ID_SIZE	7
 

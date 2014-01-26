@@ -39,17 +39,18 @@
 #include <bluetooth/bluetooth.h>
 
 #include "lib/uuid.h"
-#include "dbus-common.h"
-#include "adapter.h"
-#include "device.h"
-#include "error.h"
-#include "log.h"
+#include "src/dbus-common.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/error.h"
+#include "src/log.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
-#include "attio.h"
+#include "src/attio.h"
+#include "src/textfile.h"
+
 #include "monitor.h"
-#include "textfile.h"
 
 #define PROXIMITY_INTERFACE "org.bluez.ProximityMonitor1"
 

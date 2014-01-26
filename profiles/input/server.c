@@ -35,14 +35,14 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 
-#include "log.h"
+#include "src/log.h"
 
-#include "uuid-helper.h"
+#include "src/uuid-helper.h"
 #include "btio/btio.h"
 #include "lib/uuid.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/profile.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
 
 #include "device.h"
 #include "server.h"

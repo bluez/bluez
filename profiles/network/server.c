@@ -41,12 +41,11 @@
 #include <btio/btio.h>
 
 #include "lib/uuid.h"
-#include "../src/dbus-common.h"
-#include "../src/adapter.h"
-
-#include "log.h"
-#include "error.h"
-#include "sdpd.h"
+#include "src/dbus-common.h"
+#include "src/adapter.h"
+#include "src/log.h"
+#include "src/error.h"
+#include "src/sdpd.h"
 
 #include "bnep.h"
 #include "server.h"

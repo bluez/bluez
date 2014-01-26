@@ -39,21 +39,21 @@
 
 #include <gdbus/gdbus.h>
 
-#include "log.h"
+#include "src/log.h"
 
 #include "lib/uuid.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/profile.h"
-#include "../src/service.h"
-#include "../src/storage.h"
-#include "../src/dbus-common.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
+#include "src/storage.h"
+#include "src/dbus-common.h"
+#include "src/error.h"
+#include "src/sdp-client.h"
 
 #include "device.h"
-#include "error.h"
-#include <btio/btio.h>
 
-#include "sdp-client.h"
+#include <btio/btio.h>
 
 #define INPUT_INTERFACE "org.bluez.Input1"
 

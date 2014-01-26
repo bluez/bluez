@@ -36,8 +36,9 @@
 #include "src/device.h"
 #include "src/dbus-common.h"
 
-#include "log.h"
-#include "error.h"
+#include "src/log.h"
+#include "src/error.h"
+
 #include "avdtp.h"
 #include "media.h"
 #include "transport.h"

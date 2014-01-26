@@ -35,11 +35,11 @@
 
 #include "lib/uuid.h"
 #include "btio/btio.h"
-#include "adapter.h"
-#include "sdpd.h"
-#include "log.h"
-#include "error.h"
-#include "dbus-common.h"
+#include "src/adapter.h"
+#include "src/sdpd.h"
+#include "src/log.h"
+#include "src/error.h"
+#include "src/dbus-common.h"
 #include "sap.h"
 #include "server.h"
 

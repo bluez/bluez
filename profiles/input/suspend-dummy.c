@@ -37,7 +37,7 @@
 
 #include <glib.h>
 
-#include "log.h"
+#include "src/log.h"
 #include "suspend.h"
 
 #define HOG_SUSPEND_FIFO	"/tmp/hogsuspend"
