@@ -1951,8 +1951,7 @@ static bt_callbacks_t bt_callbacks = {
 	.le_test_mode_cb = NULL
 };
 
-
-static void setup(struct test_data *data)
+static bool setup(struct test_data *data)
 {
 	const hw_module_t *module;
 	hw_device_t *device;
@@ -1962,18 +1961,15 @@ static void setup(struct test_data *data)
 	int len;
 	int err;
 
-	if (pipe(signal_fd)) {
-		tester_setup_failed();
-		return;
-	}
+	if (pipe(signal_fd))
+		return false;
 
 	pid = fork();
 
 	if (pid < 0) {
 		close(signal_fd[0]);
 		close(signal_fd[1]);
-		tester_setup_failed();
-		return;
+		return false;
 	}
 
 	if (pid == 0) {
@@ -1991,32 +1987,27 @@ static void setup(struct test_data *data)
 	len = read(signal_fd[0], buf, sizeof(buf));
 	if (len <= 0 || (strcmp(buf, EMULATOR_SIGNAL))) {
 		close(signal_fd[0]);
-		tester_setup_failed();
-		return;
+		return false;
 	}
 
 	close(signal_fd[0]);
 
 	err = hw_get_module(BT_HARDWARE_MODULE_ID, &module);
-	if (err) {
-		tester_setup_failed();
-		return;
-	}
+	if (err)
+		return false;
 
 	err = module->methods->open(module, BT_HARDWARE_MODULE_ID, &device);
-	if (err) {
-		tester_setup_failed();
-		return;
-	}
+	if (err)
+		return false;
 
 	data->device = device;
 
 	data->if_bluetooth = ((bluetooth_device_t *)
 					device)->get_bluetooth_interface();
-	if (!data->if_bluetooth) {
-		tester_setup_failed();
-		return;
-	}
+	if (!data->if_bluetooth)
+		return false;
+
+	return true;
 }
 
 static void setup_base(const void *test_data)
@@ -2024,7 +2015,10 @@ static void setup_base(const void *test_data)
 	struct test_data *data = tester_get_data();
 	bt_status_t status;
 
-	setup(data);
+	if (!setup(data)) {
+		tester_setup_failed();
+		return;
+	}
 
 	status = data->if_bluetooth->init(&bt_callbacks);
 	if (status != BT_STATUS_SUCCESS) {
@@ -2040,7 +2034,10 @@ static void setup_enabled_adapter(const void *test_data)
 	struct test_data *data = tester_get_data();
 	bt_status_t status;
 
-	setup(data);
+	if (!setup(data)) {
+		tester_setup_failed();
+		return;
+	}
 
 	status = data->if_bluetooth->init(&bt_callbacks);
 	if (status != BT_STATUS_SUCCESS) {
@@ -2786,7 +2783,10 @@ static void setup_socket_interface(const void *test_data)
 	bt_status_t status;
 	const void *sock;
 
-	setup(data);
+	if (!setup(data)) {
+		tester_setup_failed();
+		return;
+	}
 
 	status = data->if_bluetooth->init(&bt_socket_callbacks);
 	if (status != BT_STATUS_SUCCESS) {
@@ -2812,7 +2812,10 @@ static void setup_socket_interface_enabled(const void *test_data)
 	bt_status_t status;
 	const void *sock;
 
-	setup(data);
+	if (!setup(data)) {
+		tester_setup_failed();
+		return;
+	}
 
 	status = data->if_bluetooth->init(&bt_socket_callbacks);
 	if (status != BT_STATUS_SUCCESS) {
@@ -3158,41 +3161,42 @@ static bthh_callbacks_t bthh_callbacks = {
 	.virtual_unplug_cb = hidhost_virual_unplug_cb
 };
 
-static void setup_hidhost(const void *test_data)
+static bool setup_hidhost(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	bt_status_t status;
 	const void *hid;
 
-	setup(data);
+	if (!setup(data))
+		return false;
 
 	status = data->if_bluetooth->init(&bt_callbacks);
 	if (status != BT_STATUS_SUCCESS) {
 		data->if_bluetooth = NULL;
-		tester_setup_failed();
-		return;
+		return false;
 	}
 
 	hid = data->if_bluetooth->get_profile_interface(BT_PROFILE_HIDHOST_ID);
-	if (!hid) {
-		tester_setup_failed();
-		return;
-	}
+	if (!hid)
+		return false;
 
 	data->if_hid = hid;
 
 	status = data->if_hid->init(&bthh_callbacks);
 	if (status != BT_STATUS_SUCCESS) {
 		data->if_hid = NULL;
-		tester_setup_failed();
-		return;
+		return false;
 	}
+
+	return true;
 }
 
 static void setup_hidhost_interface(const void *test_data)
 {
-	setup_hidhost(test_data);
-	tester_setup_complete();
+	if (setup_hidhost(test_data))
+		tester_setup_complete();
+	else
+		tester_setup_failed();
 }
 
 #define HID_GET_REPORT_PROTOCOL		0x60
@@ -3437,7 +3441,10 @@ static void setup_hidhost_connect(const void *test_data)
 	struct test_data *data = tester_get_data();
 	struct bthost *bthost;
 
-	setup_hidhost(test_data);
+	if (!setup_hidhost(test_data)) {
+		tester_setup_failed();
+		return;
+	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
 
