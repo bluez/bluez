@@ -1,7 +1,7 @@
 LOCAL_PATH := external/bluetooth
 
 # Retrieve BlueZ version from configure.ac file
-BLUEZ_VERSION := $(shell grep '^AC_INIT' $(LOCAL_PATH)/bluez/configure.ac | sed -e 's/.*[, ]\(.*\))/\1/')
+BLUEZ_VERSION := `grep "^AC_INIT" $(LOCAL_PATH)bluez/configure.ac | sed -e "s/.*,.\(.*\))/\1/"`
 
 # Specify pathmap for glib and sbc
 pathmap_INCL += glib:external/bluetooth/glib \
