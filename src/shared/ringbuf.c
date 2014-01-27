@@ -235,8 +235,13 @@ int ringbuf_vprintf(struct ringbuf *ringbuf, const char *format, va_list ap)
 		return -1;
 
 	len = vasprintf(&str, format, ap);
-	if (len < 0 || (size_t) len > avail)
+	if (len < 0)
 		return -1;
+
+	if ((size_t) len > avail) {
+		free(str);
+		return -1;
+	}
 
 	/* Determine possible length of string before wrapping */
 	offset = ringbuf->in & (ringbuf->size - 1);
