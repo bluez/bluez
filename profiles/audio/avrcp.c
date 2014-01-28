@@ -921,6 +921,7 @@ static uint8_t avrcp_handle_get_capabilities(struct avrcp *session,
 
 		return AVC_CTYPE_STABLE;
 	case CAP_EVENTS_SUPPORTED:
+		pdu->params[1] = 0;
 		for (i = 1; i <= AVRCP_EVENT_LAST; i++) {
 			if (session->supported_events & (1 << i)) {
 				pdu->params[1]++;
