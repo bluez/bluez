@@ -1,7 +1,7 @@
 PTS test results for DID
 
 PTS version: 5.0
-Tested: 11.12.2013
+Tested: 28.01.2014
 
 Results:
 PASS	test passed
