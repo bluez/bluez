@@ -2832,9 +2832,18 @@ gboolean avdtp_stream_set_transport(struct avdtp_stream *stream, int fd,
 						size_t imtu, size_t omtu)
 {
 	GIOChannel *io;
+	int priority;
 
 	if (stream != stream->session->pending_open)
 		return FALSE;
+
+	priority = 5;
+	if (setsockopt(fd, SOL_SOCKET, SO_PRIORITY, &priority,
+						sizeof(priority)) < 0) {
+		error("setsockopt(SO_PRIORITY): %s (%d)", strerror(errno),
+									errno);
+		return FALSE;
+	}
 
 	io = g_io_channel_unix_new(fd);
 
