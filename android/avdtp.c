@@ -2056,11 +2056,19 @@ struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 {
 	struct avdtp *session;
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-	int new_fd;
+	int new_fd, priority;
 
 	new_fd = dup(fd);
 	if (new_fd < 0) {
 		error("dup(): %s (%d)", strerror(errno), errno);
+		return NULL;
+	}
+
+	priority = 6;
+	if (setsockopt(new_fd, SOL_SOCKET, SO_PRIORITY, &priority,
+						sizeof(priority)) < 0) {
+		error("setsockopt(SO_PRIORITY): %s (%d)", strerror(errno),
+									errno);
 		return NULL;
 	}
 
