@@ -71,8 +71,6 @@ struct gatt_server {
 };
 
 struct gatt_channel {
-	bdaddr_t src;
-	bdaddr_t dst;
 	GAttrib *attrib;
 	guint mtu;
 	gboolean le;
@@ -1113,6 +1111,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 	struct gatt_server *server;
 	struct btd_device *device;
 	struct gatt_channel *channel;
+	bdaddr_t src, dst;
 	GIOChannel *io;
 	GError *gerr = NULL;
 	uint8_t bdaddr_type;
@@ -1121,11 +1120,9 @@ guint attrib_channel_attach(GAttrib *attrib)
 
 	io = g_attrib_get_channel(attrib);
 
-	channel = g_new0(struct gatt_channel, 1);
-
 	bt_io_get(io, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
-			BT_IO_OPT_DEST_BDADDR, &channel->dst,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST_TYPE, &bdaddr_type,
 			BT_IO_OPT_CID, &cid,
 			BT_IO_OPT_IMTU, &mtu,
@@ -1133,23 +1130,17 @@ guint attrib_channel_attach(GAttrib *attrib)
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
 		g_error_free(gerr);
-		g_free(channel);
 		return 0;
 	}
 
-	server = find_gatt_server(&channel->src);
-	if (server == NULL) {
-		char src[18];
-
-		ba2str(&channel->src, src);
-		error("No GATT server found in %s", src);
-		g_free(channel);
+	server = find_gatt_server(&src);
+	if (server == NULL)
 		return 0;
-	}
 
+	channel = g_new0(struct gatt_channel, 1);
 	channel->server = server;
 
-	device = btd_adapter_find_device(server->adapter, &channel->dst);
+	device = btd_adapter_find_device(server->adapter, &dst);
 	if (device == NULL) {
 		error("Device object not found for attrib server");
 		g_free(channel);
