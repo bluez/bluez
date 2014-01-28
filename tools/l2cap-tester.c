@@ -1276,12 +1276,48 @@ static void test_server(const void *test_data)
 	bthost_hci_connect(bthost, master_bdaddr, addr_type);
 }
 
+static void test_getpeername_not_connected(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct sockaddr_l2 addr;
+	socklen_t len;
+	int sk;
+
+	sk = create_l2cap_sock(data, 0, 0, 0);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	len = sizeof(addr);
+	if (getpeername(sk, (struct sockaddr *) &addr, &len) == 0) {
+		tester_warn("getpeername succeeded on non-connected socket");
+		tester_test_failed();
+		goto done;
+	}
+
+	if (errno != ENOTCONN) {
+		tester_warn("Unexpexted getpeername error: %s (%d)",
+						strerror(errno), errno);
+		tester_test_failed();
+		goto done;
+	}
+
+	tester_test_passed();
+
+done:
+	close(sk);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
 	test_l2cap_bredr("Basic L2CAP Socket - Success", NULL,
 					setup_powered_client, test_basic);
+	test_l2cap_bredr("Non-connected getpeername - Failure", NULL,
+					setup_powered_client,
+					test_getpeername_not_connected);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Success",
 					&client_connect_success_test,
