@@ -363,6 +363,20 @@ end:
 	return result;
 }
 
+static void destroy_notify_callback(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
+{
+	struct notify_callback *cb = user_data;
+
+	DBG("status=%#x", status);
+
+	btd_device_remove_attio_callback(cb->device, cb->id);
+	btd_device_unref(cb->device);
+	g_free(cb->notify_data->value);
+	g_free(cb->notify_data);
+	g_free(cb);
+}
+
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 {
 	struct notify_callback *cb = user_data;
@@ -398,7 +412,9 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 					al_adapter->hnd_value[type],
 					al_adapter->hnd_ccc[type]);
 
-	g_attrib_send(attrib, 0, pdu, len, NULL, NULL, NULL);
+	g_attrib_send(attrib, 0, pdu, len, destroy_notify_callback, cb, NULL);
+
+	return;
 
 end:
 	btd_device_remove_attio_callback(cb->device, cb->id);
