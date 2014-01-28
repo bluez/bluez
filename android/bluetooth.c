@@ -1045,6 +1045,12 @@ static uint8_t bdaddr_type2android(uint8_t type)
 	return HAL_TYPE_LE;
 }
 
+static bool rssi_above_threshold(int old, int new)
+{
+	/* only 8 dBm or more */
+	return abs(old - new) >= 8;
+}
+
 static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, bool confirm,
 					const uint8_t *data, uint8_t data_len)
@@ -1113,7 +1119,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		(*num_prop)++;
 	}
 
-	if (rssi) {
+	if (rssi && rssi_above_threshold(dev->rssi, rssi)) {
 		dev->rssi = rssi;
 
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_RSSI,
