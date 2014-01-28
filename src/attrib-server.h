@@ -37,5 +37,6 @@ int attrib_gap_set(struct btd_adapter *adapter, uint16_t uuid,
 uint32_t attrib_create_sdp(struct btd_adapter *adapter, uint16_t handle,
 							const char *name);
 void attrib_free_sdp(struct btd_adapter *adapter, uint32_t sdp_handle);
+GAttrib *attrib_from_device(struct btd_device *device);
 guint attrib_channel_attach(GAttrib *attrib);
 gboolean attrib_channel_detach(GAttrib *attrib, guint id);

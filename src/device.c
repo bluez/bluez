@@ -4674,6 +4674,11 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 
 	device_set_auto_connect(device, TRUE);
 
+	/* Check if there is no GAttrib associated to the device created by a
+	 * incoming connection */
+	if (!device->attrib)
+		device->attrib = attrib_from_device(device);
+
 	if (device->attrib && cfunc) {
 		device->attios_offline = g_slist_append(device->attios_offline,
 									attio);

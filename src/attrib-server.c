@@ -1106,6 +1106,28 @@ done:
 	g_attrib_send(channel->attrib, 0, opdu, length, NULL, NULL, NULL);
 }
 
+GAttrib *attrib_from_device(struct btd_device *device)
+{
+	struct btd_adapter *adapter = device_get_adapter(device);
+	struct gatt_server *server;
+	GSList *l;
+
+	l = g_slist_find_custom(servers, adapter, adapter_cmp);
+	if (!l)
+		return NULL;
+
+	server = l->data;
+
+	for (l = server->clients; l; l = l->next) {
+		struct gatt_channel *channel = l->data;
+
+		if (channel->device == device)
+			return g_attrib_ref(channel->attrib);
+	}
+
+	return NULL;
+}
+
 guint attrib_channel_attach(GAttrib *attrib)
 {
 	struct gatt_server *server;
