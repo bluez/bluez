@@ -2052,11 +2052,26 @@ failed:
 	return FALSE;
 }
 
+static int set_priority(int fd, int priority)
+{
+	int err;
+
+	err = setsockopt(fd, SOL_SOCKET, SO_PRIORITY, &priority,
+							sizeof(priority));
+	if (err == 0 || errno == ENOTSOCK)
+		return 0;
+
+	err = -errno;
+	error("setsockopt(SO_PRIORITY): %s (%d)", strerror(-err), -err);
+
+	return err;
+}
+
 struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 {
 	struct avdtp *session;
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-	int new_fd, priority;
+	int new_fd;
 
 	new_fd = dup(fd);
 	if (new_fd < 0) {
@@ -2064,13 +2079,8 @@ struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 		return NULL;
 	}
 
-	priority = 6;
-	if (setsockopt(new_fd, SOL_SOCKET, SO_PRIORITY, &priority,
-						sizeof(priority)) < 0) {
-		error("setsockopt(SO_PRIORITY): %s (%d)", strerror(errno),
-									errno);
+	if (set_priority(new_fd, 6) < 0)
 		return NULL;
-	}
 
 	session = g_new0(struct avdtp, 1);
 	session->io = g_io_channel_unix_new(new_fd);
@@ -2832,18 +2842,12 @@ gboolean avdtp_stream_set_transport(struct avdtp_stream *stream, int fd,
 						size_t imtu, size_t omtu)
 {
 	GIOChannel *io;
-	int priority;
 
 	if (stream != stream->session->pending_open)
 		return FALSE;
 
-	priority = 5;
-	if (setsockopt(fd, SOL_SOCKET, SO_PRIORITY, &priority,
-						sizeof(priority)) < 0) {
-		error("setsockopt(SO_PRIORITY): %s (%d)", strerror(errno),
-									errno);
+	if (set_priority(fd, 5) < 0)
 		return FALSE;
-	}
 
 	io = g_io_channel_unix_new(fd);
 
