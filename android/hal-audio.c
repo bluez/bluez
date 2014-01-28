@@ -399,7 +399,7 @@ static void sbc_resume(void *codec_data)
 	sbc_data->frames_sent = 0;
 }
 
-static void write_media_packet(int fd, struct sbc_data *sbc_data,
+static int write_media_packet(int fd, struct sbc_data *sbc_data,
 				struct media_packet *mp, size_t data_len)
 {
 	struct timespec cur;
@@ -407,10 +407,13 @@ static void write_media_packet(int fd, struct sbc_data *sbc_data,
 	unsigned expected_frames;
 	int ret;
 
-	ret = write(fd, mp, sizeof(*mp) + data_len);
-	if (ret < 0) {
-		int err = errno;
-		error("SBC: failed to write data: %d (%s)", err, strerror(err));
+	while (true) {
+		ret = write(fd, mp, sizeof(*mp) + data_len);
+		if (ret >= 0)
+			break;
+
+		if (errno != EINTR)
+			return -errno;
 	}
 
 	sbc_data->frames_sent += mp->payload.frame_count;
@@ -432,6 +435,8 @@ static void write_media_packet(int fd, struct sbc_data *sbc_data,
 	if (sbc_data->frames_sent >= expected_frames)
 		usleep(sbc_data->frame_duration *
 				mp->payload.frame_count);
+
+	return ret;
 }
 
 static ssize_t sbc_write_data(void *codec_data, const void *buffer,
@@ -474,7 +479,9 @@ static ssize_t sbc_write_data(void *codec_data, const void *buffer,
 		 */
 		if (mp->payload.frame_count == sbc_data->frames_per_packet ||
 				bytes == consumed) {
-			write_media_packet(fd, sbc_data, mp, encoded);
+			ret = write_media_packet(fd, sbc_data, mp, encoded);
+			if (ret < 0)
+				return ret;
 
 			encoded = 0;
 			free_space = sbc_data->out_buf_size - sizeof(*mp);
