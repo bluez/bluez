@@ -987,6 +987,12 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 
 	DBG("op 0x%02x", ipdu[0]);
 
+	if (len > vlen) {
+		error("Too much data on ATT socket");
+		status = ATT_ECODE_INVALID_PDU;
+		goto done;
+	}
+
 	switch (ipdu[0]) {
 	case ATT_OP_READ_BY_GROUP_REQ:
 		length = dec_read_by_grp_req(ipdu, len, &start, &end, &uuid);
