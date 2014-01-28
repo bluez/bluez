@@ -1,7 +1,7 @@
 PTS test results for GAP
 
-PTS version: 4.9
-Tested: 14.11.2013
+PTS version: 5.0
+Tested: 28.01.2014
 
 Results:
 PASS	test passed
@@ -12,14 +12,14 @@ N/A	test is disabled due to PICS setup
 -------------------------------------------------------------------------------
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
-TC_MOD_NDIS_BV_01_C	PASS
+TC_MOD_NDIS_BV_01_C	PASS	IUT must be in non-discoverable mode
 TC_MOD_LDIS_BV_01_C	N/A
 TC_MOD_LDIS_BV_02_C	N/A
 TC_MOD_LDIS_BV_03_C	N/A
-TC_MOD_GDIS_BV_01_C	PASS
-TC_MOD_GDIS_BV_02_C	PASS
-TC_MOD_NCON_BV_01_C	PASS
-TC_MOD_CON_BV_01_C	PASS
+TC_MOD_GDIS_BV_01_C	PASS	IUT must be discoverable
+TC_MOD_GDIS_BV_02_C	PASS	IUT must be discoverable
+TC_MOD_NCON_BV_01_C	PASS	btmgmt connectable off
+TC_MOD_CON_BV_01_C	PASS	btmgmt connectable on
 TC_BROB_BCST_BV_01_C	N/A
 TC_BROB_BCST_BV_02_C	N/A
 TC_BROB_BCST_BV_03_C	N/A
@@ -48,7 +48,7 @@ TC_DISC_GENP_BV_02_C	INC	LE not supported yet
 TC_DISC_GENP_BV_03_C	INC	LE not supported yet
 TC_DISC_GENP_BV_04_C	INC	LE not supported yet
 TC_DISC_GENP_BV_05_C	INC	LE not supported yet
-TC_IDLE_GIN_BV_01_C	PASS
+TC_IDLE_GIN_BV_01_C	PASS	Start inquiry from IUT
 TC_IDLE_LIN_BV_01_C	N/A
 TC_IDLE_NAMP_BV_01_C	INC	LE not supported yet
 TC_IDLE_NAMP_BV_02_C	INC	LE not supported yet
@@ -144,7 +144,7 @@ TC_DM_NBON_BV_01_C	N/A
 TC_DM_BON_BV_01_C	INC	LE not supported yet
 TC_DM_GIN_BV_01_C	INC	LE not supported yet
 TC_DM_LIN_BV_01_C	N/A
-TC_DM_NAD_BV_01_C	PASS
+TC_DM_NAD_BV_01_C	PASS	Start inquiry from IUT
 TC_DM_NAD_BV_02_C	INC	LE not supported yet
 TC_DM_LEP_BV_01_C	N/A
 TC_DM_LEP_BV_02_C	N/A
