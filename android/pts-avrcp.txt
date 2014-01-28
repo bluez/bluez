@@ -1,7 +1,7 @@
 PTS test results for AVRCP
 
 PTS version: 5.0
-Tested: --not yet tested--
+Tested: 28.01.2014
 
 Results:
 PASS	test passed
@@ -91,17 +91,17 @@ Test Name		Result	Notes
 -------------------------------------------------------------------------------
 TC_TG_BGN_BV_01_I	N/A
 TC_TG_BGN_BV_02_I	N/A
-TC_TG_CEC_BV_01_I	INC
-TC_TG_CEC_BV_02_I	INC
+TC_TG_CEC_BV_01_I	PASS
+TC_TG_CEC_BV_02_I	INC	Initiate a control channel connection
 TC_TG_CFG_BI_01_C	INC
 TC_TG_CFG_BV_02_C	INC
 TC_TG_CON_BV_02_C	N/A
 TC_TG_CON_BV_04_C	N/A
 TC_TG_CON_BV_05_C	N/A
-TC_TG_CRC_BV_01_I	INC
-TC_TG_CRC_BV_02_I	INC
-TC_TG_ICC_BV_01_I	INC
-TC_TG_ICC_BV_02_I	INC
+TC_TG_CRC_BV_01_I	PASS
+TC_TG_CRC_BV_02_I	PASS	Disconnect from PTS
+TC_TG_ICC_BV_01_I	PASS
+TC_TG_ICC_BV_02_I	PASS
 TC_TG_INV_BI_01_C	INC
 TC_TG_INV_BI_02_C	N/A
 TC_TG_MCN_CB_BI_01_C	N/A
