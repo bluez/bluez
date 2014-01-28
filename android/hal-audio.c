@@ -25,6 +25,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 #include <hardware/audio.h>
 #include <hardware/hardware.h>
@@ -1108,6 +1109,24 @@ static int in_remove_audio_effect(const struct audio_stream *stream,
 	return -ENOSYS;
 }
 
+static int set_blocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0) {
+		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
+		return -errno;
+	}
+
+	if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+		error("fcntl(F_SETFL): %s (%d)", strerror(errno), errno);
+		return -errno;
+	}
+
+	return 0;
+}
+
 static int audio_open_output_stream(struct audio_hw_device *dev,
 					audio_io_handle_t handle,
 					audio_devices_t devices,
@@ -1156,8 +1175,10 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	if (!preset || fd < 0)
 		goto fail;
 
-	out->ep->fd = fd;
+	if (set_blocking(fd) < 0)
+		goto fail;
 
+	out->ep->fd = fd;
 	codec = out->ep->codec;
 
 	codec->init(preset, mtu, &out->ep->codec_data);
