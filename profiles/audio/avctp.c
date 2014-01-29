@@ -933,7 +933,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	ret -= AVCTP_HEADER_LENGTH;
 	if (ret < AVC_HEADER_LENGTH) {
-		error("Too small AVCTP packet");
+		error("Too small AVC packet");
 		goto failed;
 	}
 
