@@ -942,7 +942,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 	ret -= sizeof(struct avc_header);
 
-	operands = buf + sizeof(struct avctp_header) + sizeof(struct avc_header);
+	operands = (uint8_t *) avc + sizeof(struct avc_header);
 	operand_count = ret;
 
 	if (avctp->cr == AVCTP_RESPONSE) {
