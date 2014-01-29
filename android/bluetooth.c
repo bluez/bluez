@@ -1279,6 +1279,7 @@ static void mgmt_auth_failed_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_ev_auth_failed *ev = param;
+	struct device *dev;
 
 	if (length < sizeof(*ev)) {
 		error("Too small auth failed mgmt event (%u bytes)", length);
@@ -1287,8 +1288,12 @@ static void mgmt_auth_failed_event(uint16_t index, uint16_t length,
 
 	DBG("");
 
-	set_device_bond_state(&ev->addr.bdaddr, status_mgmt2hal(ev->status),
-							HAL_BOND_STATE_NONE);
+	dev = find_device(&ev->addr.bdaddr);
+
+	if (dev && dev->bond_state == HAL_BOND_STATE_BONDING)
+		set_device_bond_state(&ev->addr.bdaddr,
+						status_mgmt2hal(ev->status),
+						HAL_BOND_STATE_NONE);
 }
 
 static void mgmt_device_unpaired_event(uint16_t index, uint16_t length,
