@@ -244,6 +244,15 @@ static void test_client(gconstpointer data)
 	execute_context(context);
 }
 
+static void test_server(gconstpointer data)
+{
+	struct context *context = create_context(0x0100, data);
+
+	g_idle_add(send_pdu, context);
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -253,6 +262,10 @@ int main(int argc, char *argv[])
 
 	define_test("/TP/NFR/BV-01-C", test_client,
 				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00));
+
+	define_test("/TP/NFR/BV-02-C", test_server,
+				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00),
+				raw_pdu(0x02, 0x11, 0x0e, 0x0a, 0x00, 0x00));
 
 	return g_test_run();
 }
