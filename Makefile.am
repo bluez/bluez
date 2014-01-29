@@ -273,6 +273,14 @@ unit_test_avdtp_SOURCES = unit/test-avdtp.c \
 				android/avdtp.c android/avdtp.h
 unit_test_avdtp_LDADD = @GLIB_LIBS@
 
+unit_tests += unit/test-avctp
+
+unit_test_avctp_SOURCES = unit/test-avctp.c \
+				src/shared/util.h src/shared/util.c \
+				src/log.h src/log.c \
+				android/avctp.c android/avctp.h
+unit_test_avctp_LDADD = @GLIB_LIBS@
+
 unit_tests += unit/test-gdbus-client
 
 unit_test_gdbus_client_SOURCES = unit/test-gdbus-client.c
