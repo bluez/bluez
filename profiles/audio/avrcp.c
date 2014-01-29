@@ -3497,6 +3497,8 @@ static void session_destroy(struct avrcp *session)
 
 	server->sessions = g_slist_remove(server->sessions, session);
 
+	session_abort_pending_pdu(session);
+
 	if (session->browsing_timer > 0)
 		g_source_remove(session->browsing_timer);
 
