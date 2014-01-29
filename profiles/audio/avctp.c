@@ -904,8 +904,7 @@ failed:
 	return FALSE;
 }
 
-static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
-				gpointer data)
+static gboolean session_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct avctp *session = data;
 	struct avctp_channel *control = session->control;
