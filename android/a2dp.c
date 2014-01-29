@@ -122,6 +122,37 @@ static void unregister_endpoint(void *data)
 	g_free(endpoint);
 }
 
+static void setup_free(void *data)
+{
+	struct a2dp_setup *setup = data;
+
+	if (!g_slist_find(setup->endpoint->presets, setup->preset))
+		preset_free(setup->preset);
+
+	g_free(setup);
+}
+
+static void setup_remove(struct a2dp_setup *setup)
+{
+	setups = g_slist_remove(setups, setup);
+	setup_free(setup);
+}
+
+static void setup_remove_all_by_dev(struct a2dp_device *dev)
+{
+	GSList *l = setups;
+
+	while (l) {
+		struct a2dp_setup *setup = l->data;
+		GSList *next = g_slist_next(l);
+
+		if (setup->dev == dev)
+			setup_remove(setup);
+
+		l = next;
+	}
+}
+
 static void a2dp_device_free(void *data)
 {
 	struct a2dp_device *dev = data;
@@ -136,6 +167,8 @@ static void a2dp_device_free(void *data)
 		g_io_channel_shutdown(dev->io, FALSE, NULL);
 		g_io_channel_unref(dev->io);
 	}
+
+	setup_remove_all_by_dev(dev);
 
 	devices = g_slist_remove(devices, dev);
 	g_free(dev);
@@ -826,22 +859,6 @@ static struct a2dp_device *find_device_by_session(struct avdtp *session)
 	}
 
 	return NULL;
-}
-
-static void setup_free(void *data)
-{
-	struct a2dp_setup *setup = data;
-
-	if (!g_slist_find(setup->endpoint->presets, setup->preset))
-		preset_free(setup->preset);
-
-	g_free(setup);
-}
-
-static void setup_remove(struct a2dp_setup *setup)
-{
-	setups = g_slist_remove(setups, setup);
-	setup_free(setup);
 }
 
 static struct a2dp_setup *find_setup(uint8_t id)
