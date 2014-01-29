@@ -84,6 +84,7 @@ struct avc_header {
 	uint8_t subunit_type:5;
 	uint8_t opcode;
 } __attribute__ ((packed));
+#define AVC_HEADER_LENGTH 3
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
@@ -103,6 +104,7 @@ struct avc_header {
 	uint8_t subunit_id:3;
 	uint8_t opcode;
 } __attribute__ ((packed));
+#define AVC_HEADER_LENGTH 3
 
 #else
 #error "Unknown byte order"
