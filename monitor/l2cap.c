@@ -2343,6 +2343,25 @@ static void print_smp_auth_req(uint8_t auth_req)
 			str, (auth_req & 0x04) ? "MITM" : "No MITM", auth_req);
 }
 
+static void print_smp_key_dist(const char *label, uint8_t dist)
+{
+	char str[19];
+
+	if (!(dist & 0x07)) {
+		strcpy(str, "<none> ");
+	} else {
+		str[0] = '\0';
+		if (dist & 0x01)
+			strcat(str, "EncKey ");
+		if (dist & 0x02)
+			strcat(str, "IdKey ");
+		if (dist & 0x04)
+			strcat(str, "Sign ");
+	}
+
+	print_field("%s: %s(0x%2.2x)", label, str, dist);
+}
+
 static void smp_pairing_request(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_smp_pairing_request *pdu = frame->data;
@@ -2352,8 +2371,8 @@ static void smp_pairing_request(const struct l2cap_frame *frame)
 	print_smp_auth_req(pdu->auth_req);
 
 	print_field("Max encryption key size: %d", pdu->max_key_size);
-	print_field("Initiator key distribution: 0x%2.2x", pdu->init_key_dist);
-	print_field("Responder key distribution: 0x%2.2x", pdu->resp_key_dist);
+	print_smp_key_dist("Initiator key distribution", pdu->init_key_dist);
+	print_smp_key_dist("Responder key distribution", pdu->resp_key_dist);
 }
 
 static void smp_pairing_response(const struct l2cap_frame *frame)
@@ -2365,8 +2384,8 @@ static void smp_pairing_response(const struct l2cap_frame *frame)
 	print_smp_auth_req(pdu->auth_req);
 
 	print_field("Max encryption key size: %d", pdu->max_key_size);
-	print_field("Initiator key distribution: 0x%2.2x", pdu->init_key_dist);
-	print_field("Responder key distribution: 0x%2.2x", pdu->resp_key_dist);
+	print_smp_key_dist("Initiator key distribution", pdu->init_key_dist);
+	print_smp_key_dist("Responder key distribution", pdu->resp_key_dist);
 }
 
 static void smp_pairing_confirm(const struct l2cap_frame *frame)
