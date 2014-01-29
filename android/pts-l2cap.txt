@@ -1,7 +1,7 @@
 PTS test results for L2CAP
 
 PTS version: 5.0
-Tested: 10.01.2014
+Tested: 29.01.2014
 
 Results:
 PASS   test passed
@@ -87,16 +87,18 @@ TC_ERM_BV_06_C         PASS
 TC_ERM_BV_07_C         PASS    l2test -X ertm -P 33 &
 TC_ERM_BV_08_C         PASS
 TC_ERM_BV_09_C         PASS    l2test -X ertm -P 33 &
-TC_ERM_BV_10_C         INC
-TC_ERM_BV_11_C         INC
-TC_ERM_BV_12_C         INC
+TC_ERM_BV_10_C         PASS    l2test -x -X ertm -P 33 -D 35000 -Q 1 -R -N 1 &
+				btmgmt disconnect
+TC_ERM_BV_11_C         PASS    l2test -x -X ertm -P 33 -D 35000 -Q 1 -R -N 1 &
+				btmgmt disconnect
+TC_ERM_BV_12_C         PASS    l2test -x -X ertm -P 33 -R -N 1
 TC_ERM_BV_13_C         PASS
 TC_ERM_BV_14_C         PASS
 TC_ERM_BV_15_C         PASS
 TC_ERM_BV_16_C         PASS
 TC_ERM_BV_17_C         PASS
-TC_ERM_BV_18_C         INC
-TC_ERM_BV_19_C         INC
+TC_ERM_BV_18_C         PASS    l2test -x -X ertm -P 33 -R -N 1
+TC_ERM_BV_19_C         PASS    l2test -x -X ertm -P 33 -R -N 1
 TC_ERM_BV_20_C         PASS
 TC_ERM_BV_21_C         PASS
 TC_ERM_BV_22_C         PASS
@@ -106,9 +108,9 @@ TC_ERM_BI_02_C         PASS
 TC_ERM_BI_03_C         PASS
 TC_ERM_BI_04_C         PASS
 TC_ERM_BI_05_C         PASS
-TC_STM_BV_01_C         INC
-TC_STM_BV_02_C         INC
-TC_STM_BV_03_C         INC
+TC_STM_BV_01_C         PASS    l2test -x -X ertm -P 33 -R -N 1 -Y 3 &
+TC_STM_BV_02_C         PASS    l2test -x -X ertm -P 33 -R -N 1 -Y 3 &
+TC_STM_BV_03_C         PASS    l2test -x -X ertm -P 33 -R -N 1 -Y 3 &
 TC_STM_BV_11_C         N/A
 TC_STM_BV_12_C         N/A
 TC_STM_BV_13_C         N/A
