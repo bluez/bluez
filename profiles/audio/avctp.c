@@ -924,24 +924,24 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	if (ret <= 0)
 		goto failed;
 
-	if ((unsigned int) ret < sizeof(struct avctp_header)) {
+	if (ret < AVCTP_HEADER_LENGTH) {
 		error("Too small AVCTP packet");
 		goto failed;
 	}
 
 	avctp = (struct avctp_header *) buf;
 
-	ret -= sizeof(struct avctp_header);
-	if ((unsigned int) ret < sizeof(struct avc_header)) {
+	ret -= AVCTP_HEADER_LENGTH;
+	if (ret < AVC_HEADER_LENGTH) {
 		error("Too small AVCTP packet");
 		goto failed;
 	}
 
-	avc = (struct avc_header *) (buf + sizeof(struct avctp_header));
+	avc = (struct avc_header *) (buf + AVCTP_HEADER_LENGTH);
 
-	ret -= sizeof(struct avc_header);
+	ret -= AVC_HEADER_LENGTH;
 
-	operands = (uint8_t *) avc + sizeof(struct avc_header);
+	operands = (uint8_t *) avc + AVC_HEADER_LENGTH;
 	operand_count = ret;
 
 	if (avctp->cr == AVCTP_RESPONSE) {
