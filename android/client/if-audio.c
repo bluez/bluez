@@ -420,6 +420,17 @@ static void set_parameters_p(int argc, const char **argv)
 	stream_out->common.set_parameters(&stream_out->common, argv[2]);
 }
 
+static void set_sample_rate_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio);
+	RETURN_IF_NULL(stream_out);
+
+	if (argc < 3)
+		return;
+
+	stream_out->common.set_sample_rate(&stream_out->common, atoi(argv[2]));
+}
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -436,6 +447,7 @@ static struct method methods[] = {
 	STD_METHOD(get_sample_rate),
 	STD_METHODH(get_parameters, "<A2dpSuspended;closing>"),
 	STD_METHODH(set_parameters, "<A2dpSuspended=value;closing=value>"),
+	STD_METHODH(set_sample_rate, "<sample rate>"),
 	END_METHOD
 };
 
