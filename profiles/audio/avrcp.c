@@ -2150,7 +2150,7 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 		return NULL;
 
 	uid = bt_get_be64(&operands[0]);
-	type = operands[9];
+	type = operands[8];
 
 	namelen = MIN(bt_get_be16(&operands[12]), sizeof(name) - 1);
 	if (namelen > 0) {
