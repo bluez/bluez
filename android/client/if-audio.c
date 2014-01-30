@@ -379,6 +379,15 @@ static void get_format_p(int argc, const char **argv)
 	haltest_info("Format: %s\n", audio_format_t2str(format));
 }
 
+static void get_sample_rate_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio);
+	RETURN_IF_NULL(stream_out);
+
+	haltest_info("Current sample rate: %d\n",
+		stream_out->common.get_sample_rate(&stream_out->common));
+}
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -392,6 +401,7 @@ static struct method methods[] = {
 	STD_METHOD(get_buffer_size),
 	STD_METHOD(get_channels),
 	STD_METHOD(get_format),
+	STD_METHOD(get_sample_rate),
 	END_METHOD
 };
 
