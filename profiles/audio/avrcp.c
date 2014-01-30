@@ -3723,7 +3723,7 @@ int avrcp_set_volume(struct btd_device *dev, uint8_t volume)
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
-	uint8_t buf[AVRCP_HEADER_LENGTH + 2];
+	uint8_t buf[AVRCP_HEADER_LENGTH + 1];
 	struct avrcp_header *pdu = (void *) buf;
 
 	server = find_server(servers, device_get_adapter(dev));
