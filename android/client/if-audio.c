@@ -295,6 +295,15 @@ static void get_latency_p(int argc, const char **argv)
 					stream_out->get_latency(stream_out));
 }
 
+static void get_buffer_size_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio);
+	RETURN_IF_NULL(stream_out);
+
+	haltest_info("Current output buffer size: %d\n",
+		stream_out->common.get_buffer_size(&stream_out->common));
+}
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -305,6 +314,7 @@ static struct method methods[] = {
 	STD_METHOD(suspend),
 	STD_METHOD(resume),
 	STD_METHOD(get_latency),
+	STD_METHOD(get_buffer_size),
 	END_METHOD
 };
 
