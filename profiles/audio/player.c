@@ -808,7 +808,8 @@ static int parse_filters(struct media_player *player, DBusMessageIter *iter,
 	int ctype;
 
 	*start = 0;
-	*end = folder->number_of_items ? folder->number_of_items : UINT32_MAX;
+	*end = folder->number_of_items ? folder->number_of_items - 1 :
+								UINT32_MAX;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype != DBUS_TYPE_ARRAY)
