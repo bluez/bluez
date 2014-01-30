@@ -248,13 +248,13 @@ bool bt_avrcp_register(const bdaddr_t *addr)
 	rec = avrcp_record();
 	if (!rec) {
 		error("Failed to allocate AVRCP record");
-		return false;
+		goto fail;
 	}
 
 	if (bt_adapter_add_record(rec, 0) < 0) {
 		error("Failed to register AVRCP record");
 		sdp_record_free(rec);
-		return false;
+		goto fail;
 	}
 	record_id = rec->handle;
 
@@ -262,6 +262,12 @@ bool bt_avrcp_register(const bdaddr_t *addr)
 						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
+fail:
+	g_io_channel_shutdown(server, TRUE, NULL);
+	g_io_channel_unref(server);
+	server = NULL;
+
+	return false;
 }
 
 void bt_avrcp_unregister(void)
