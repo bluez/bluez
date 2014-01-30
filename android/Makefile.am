@@ -103,7 +103,7 @@ android_haltest_SOURCES = android/client/haltest.c \
 android_haltest_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
 				-DPLUGINDIR=\""$(android_plugindir)"\"
 
-android_haltest_LDFLAGS = -pthread -ldl
+android_haltest_LDFLAGS = -pthread -ldl -lm
 
 noinst_PROGRAMS += android/android-tester
 
