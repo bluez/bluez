@@ -940,11 +940,19 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
+static struct avrcp_player *target_get_player(struct avrcp *session)
+{
+	if (!session->target)
+		return NULL;
+
+	return session->target->player;
+}
+
 static uint8_t avrcp_handle_list_player_attributes(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
 	unsigned int i;
 
@@ -976,7 +984,7 @@ static uint8_t avrcp_handle_list_player_values(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
 	unsigned int i;
 
@@ -1045,7 +1053,7 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
 	uint64_t identifier = bt_get_le64(&pdu->params[0]);
 	uint16_t pos;
@@ -1117,7 +1125,7 @@ static uint8_t avrcp_handle_get_current_player_value(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
 	uint8_t *settings;
 	unsigned int i;
@@ -1176,7 +1184,7 @@ static uint8_t avrcp_handle_set_player_value(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
 	unsigned int i;
 	uint8_t *param;
@@ -1295,7 +1303,7 @@ static uint8_t avrcp_handle_get_play_status(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
 	uint32_t position;
 	uint32_t duration;
@@ -1339,7 +1347,7 @@ static GList *player_list_settings(struct avrcp_player *player)
 
 static bool avrcp_handle_play(struct avrcp *session)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 
 	if (player == NULL)
 		return false;
@@ -1349,7 +1357,7 @@ static bool avrcp_handle_play(struct avrcp *session)
 
 static bool avrcp_handle_stop(struct avrcp *session)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 
 	if (player == NULL)
 		return false;
@@ -1359,7 +1367,7 @@ static bool avrcp_handle_stop(struct avrcp *session)
 
 static bool avrcp_handle_pause(struct avrcp *session)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 
 	if (player == NULL)
 		return false;
@@ -1369,7 +1377,7 @@ static bool avrcp_handle_pause(struct avrcp *session)
 
 static bool avrcp_handle_next(struct avrcp *session)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 
 	if (player == NULL)
 		return false;
@@ -1379,7 +1387,7 @@ static bool avrcp_handle_next(struct avrcp *session)
 
 static bool avrcp_handle_previous(struct avrcp *session)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 
 	if (player == NULL)
 		return false;
@@ -1422,7 +1430,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	struct btd_device *dev = session->dev;
 	uint16_t len = ntohs(pdu->params_len);
 	uint64_t uid;
@@ -1448,7 +1456,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
 		len = 9;
-		uid = player_get_uid(session->target->player);
+		uid = player_get_uid(player);
 		memcpy(&pdu->params[1], &uid, sizeof(uint64_t));
 
 		break;
@@ -1510,7 +1518,7 @@ static uint8_t avrcp_handle_request_continuing(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
 	struct pending_pdu *pending;
 
@@ -3009,10 +3017,10 @@ static void avrcp_get_media_player_list(struct avrcp *session)
 static void avrcp_volume_changed(struct avrcp *session,
 						struct avrcp_header *pdu)
 {
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	uint8_t volume;
 
-	if (player == NULL)
+	if (!player)
 		return;
 
 	volume = pdu->params[1] & 0x7F;
@@ -3686,7 +3694,7 @@ static gboolean avrcp_handle_set_volume(struct avctp *conn,
 					void *user_data)
 {
 	struct avrcp *session = user_data;
-	struct avrcp_player *player = session->target->player;
+	struct avrcp_player *player = target_get_player(session);
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t volume;
 
