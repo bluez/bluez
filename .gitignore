@@ -110,6 +110,7 @@ unit/test-gobex-header
 unit/test-gobex-packet
 unit/test-gobex-transfer
 unit/test-avdtp
+unit/test-avctp
 unit/test-*.log
 unit/test-*.trs
 
