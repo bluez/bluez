@@ -431,6 +431,13 @@ static void set_sample_rate_p(int argc, const char **argv)
 	stream_out->common.set_sample_rate(&stream_out->common, atoi(argv[2]));
 }
 
+static void init_check_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio);
+
+	haltest_info("Init check result: %d\n", if_audio->init_check(if_audio));
+}
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -448,6 +455,7 @@ static struct method methods[] = {
 	STD_METHODH(get_parameters, "<A2dpSuspended;closing>"),
 	STD_METHODH(set_parameters, "<A2dpSuspended=value;closing=value>"),
 	STD_METHODH(set_sample_rate, "<sample rate>"),
+	STD_METHOD(init_check),
 	END_METHOD
 };
 
