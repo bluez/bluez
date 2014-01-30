@@ -2141,16 +2141,19 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 {
 	struct avrcp_player *player = session->controller->player;
 	struct media_player *mp = player->user_data;
+	struct media_item *item;
 	uint16_t namelen;
 	char name[255];
 	uint64_t uid;
 	uint8_t type;
+	uint8_t playable;
 
 	if (len < 12)
 		return NULL;
 
 	uid = bt_get_be64(&operands[0]);
 	type = operands[8];
+	playable = operands[9];
 
 	namelen = MIN(bt_get_be16(&operands[12]), sizeof(name) - 1);
 	if (namelen > 0) {
@@ -2158,7 +2161,13 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 		name[namelen] = '\0';
 	}
 
-	return media_player_create_folder(mp, name, type, uid);
+	item = media_player_create_folder(mp, name, type, uid);
+	if (!item)
+		return NULL;
+
+	media_item_set_playable(item, playable & 0x01);
+
+	return item;
 }
 
 static void avrcp_list_items(struct avrcp *session, uint32_t start,
