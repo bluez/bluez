@@ -104,6 +104,10 @@ static void *playback_thread(void *data)
 		if (current_state == STATE_STOPPING) {
 			pthread_mutex_unlock(&state_mutex);
 			break;
+		} else if (current_state == STATE_SUSPENDED) {
+				pthread_mutex_unlock(&state_mutex);
+				usleep(500);
+				continue;
 		}
 		pthread_mutex_unlock(&state_mutex);
 
@@ -253,6 +257,35 @@ static void cleanup_p(int argc, const char **argv)
 	if_audio = NULL;
 }
 
+static void suspend_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio);
+	RETURN_IF_NULL(stream_out);
+
+	pthread_mutex_lock(&state_mutex);
+	if (current_state != STATE_PLAYING) {
+		pthread_mutex_unlock(&state_mutex);
+		return;
+	}
+	current_state = STATE_SUSPENDED;
+	pthread_mutex_unlock(&state_mutex);
+
+	pthread_mutex_lock(&outstream_mutex);
+	stream_out->common.standby(&stream_out->common);
+	pthread_mutex_unlock(&outstream_mutex);
+}
+
+static void resume_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio);
+	RETURN_IF_NULL(stream_out);
+
+	pthread_mutex_lock(&state_mutex);
+	if (current_state == STATE_SUSPENDED)
+		current_state = STATE_PLAYING;
+	pthread_mutex_unlock(&state_mutex);
+}
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -260,6 +293,8 @@ static struct method methods[] = {
 	STD_METHOD(close_output_stream),
 	STD_METHODH(play, "<path to pcm file>"),
 	STD_METHOD(stop),
+	STD_METHOD(suspend),
+	STD_METHOD(resume),
 	END_METHOD
 };
 
