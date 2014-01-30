@@ -388,6 +388,25 @@ static void get_sample_rate_p(int argc, const char **argv)
 		stream_out->common.get_sample_rate(&stream_out->common));
 }
 
+static void get_parameters_p(int argc, const char **argv)
+{
+	const char *keystr;
+
+	RETURN_IF_NULL(if_audio);
+	RETURN_IF_NULL(stream_out);
+
+	if (argc < 3) {
+		haltest_info("No keys given.\n");
+		keystr = "";
+	} else {
+		keystr = argv[2];
+	}
+
+	haltest_info("Current parameters: %s\n",
+			stream_out->common.get_parameters(&stream_out->common,
+								keystr));
+}
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -402,6 +421,7 @@ static struct method methods[] = {
 	STD_METHOD(get_channels),
 	STD_METHOD(get_format),
 	STD_METHOD(get_sample_rate),
+	STD_METHODH(get_parameters, "<A2dpSuspended;closing>"),
 	END_METHOD
 };
 
