@@ -407,6 +407,19 @@ static void get_parameters_p(int argc, const char **argv)
 								keystr));
 }
 
+static void set_parameters_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio);
+	RETURN_IF_NULL(stream_out);
+
+	if (argc < 3) {
+		haltest_error("No key=value; pairs given.\n");
+		return;
+	}
+
+	stream_out->common.set_parameters(&stream_out->common, argv[2]);
+}
+
 static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHOD(cleanup),
@@ -422,6 +435,7 @@ static struct method methods[] = {
 	STD_METHOD(get_format),
 	STD_METHOD(get_sample_rate),
 	STD_METHODH(get_parameters, "<A2dpSuspended;closing>"),
+	STD_METHODH(set_parameters, "<A2dpSuspended=value;closing=value>"),
 	END_METHOD
 };
 
