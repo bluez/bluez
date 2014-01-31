@@ -1730,7 +1730,7 @@ static size_t handle_browsing_pdu(struct avctp *conn,
 	struct avrcp_browsing_header *pdu = (void *) operands;
 
 	DBG("AVRCP Browsing PDU 0x%02X, len 0x%04X", pdu->pdu_id,
-							pdu->param_len);
+							ntohs(pdu->param_len));
 
 	for (handler = browsing_handlers; handler->pdu_id; handler++) {
 		if (handler->pdu_id == pdu->pdu_id)
