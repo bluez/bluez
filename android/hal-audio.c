@@ -637,6 +637,9 @@ static int audio_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len,
 				break;
 			}
 		}
+
+		if (*fd < 0)
+			goto failed;
 	}
 
 	if (rsp_len)
@@ -713,7 +716,6 @@ static int ipc_open_stream_cmd(uint8_t endpoint_id, uint16_t *mtu, int *fd,
 
 	result = audio_ipc_cmd(AUDIO_SERVICE_ID, AUDIO_OP_OPEN_STREAM,
 				sizeof(cmd), &cmd, &rsp_len, rsp, fd);
-
 	if (result == AUDIO_STATUS_SUCCESS) {
 		size_t buf_len = sizeof(struct audio_preset) +
 					rsp->preset[0].len;
