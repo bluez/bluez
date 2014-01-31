@@ -1,4 +1,4 @@
-PTS test results for DID
+PTS test results for HID
 
 PTS version: 4.9
 Tested: 14.11.2013
