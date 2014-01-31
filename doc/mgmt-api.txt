@@ -212,6 +212,7 @@ Read Controller Information Command
 		10	Low Energy
 		11	Advertising
 		12	Secure Connections
+		13	Debug Keys
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -1430,6 +1431,28 @@ Set Secure Connections Command
 
 	In case the controller does not support Secure Connections
 	the command will fail regardless with Not Supported error.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
+Set Debug Keys Command
+======================
+
+	Command Code:		0x002E
+	Controller Index:	<controller id>
+	Command Parameters:	Debug_Keys (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is  used to tell the kernel whether to accept the
+	usage of debug keys or not. The allowed values for this parameter
+	are 0x00 and 0x01. All other values will return an Invalid Parameters
+	response.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
