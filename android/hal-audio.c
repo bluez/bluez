@@ -313,6 +313,8 @@ static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
 	}
 
 	sbc_data = calloc(sizeof(struct sbc_data), 1);
+	if (!sbc_data)
+		return AUDIO_STATUS_FAILED;
 
 	memcpy(&sbc_data->sbc, preset->data, preset->len);
 
