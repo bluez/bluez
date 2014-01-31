@@ -1658,7 +1658,7 @@ static size_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 	}
 
 	DBG("AVRCP PDU 0x%02X, company 0x%06X len 0x%04X",
-			pdu->pdu_id, company_id, pdu->params_len);
+			pdu->pdu_id, company_id, ntohs(pdu->params_len));
 
 	pdu->packet_type = 0;
 	pdu->rsvd = 0;
@@ -1755,7 +1755,7 @@ size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands)
 	pdu->params[0] = AVRCP_STATUS_INTERNAL_ERROR;
 
 	DBG("rejecting AVRCP PDU 0x%02X, company 0x%06X len 0x%04X",
-				pdu->pdu_id, company_id, pdu->params_len);
+			pdu->pdu_id, company_id, ntohs(pdu->params_len));
 
 	return AVRCP_HEADER_LENGTH + 1;
 }
