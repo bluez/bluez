@@ -1179,8 +1179,10 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	if (!preset || fd < 0)
 		goto fail;
 
-	if (set_blocking(fd) < 0)
+	if (set_blocking(fd) < 0) {
+		free(preset);
 		goto fail;
+	}
 
 	out->ep->fd = fd;
 	codec = out->ep->codec;
