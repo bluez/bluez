@@ -2444,7 +2444,7 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 		memcpy(key->val, info->val, sizeof(info->val));
 		memcpy(key->rand, info->rand, sizeof(info->rand));
 		memcpy(&key->ediv, &info->ediv, sizeof(key->ediv));
-		key->authenticated = info->authenticated;
+		key->type = info->authenticated;
 		key->master = info->master;
 		key->enc_size = info->enc_size;
 	}
@@ -5371,8 +5371,8 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 	ba2str(&addr->bdaddr, dst);
 
-	DBG("hci%u new LTK for %s authenticated %u enc_size %u",
-		adapter->dev_id, dst, ev->key.authenticated, ev->key.enc_size);
+	DBG("hci%u new LTK for %s type %u enc_size %u",
+		adapter->dev_id, dst, ev->key.type, ev->key.enc_size);
 
 	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
@@ -5386,7 +5386,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 		store_longtermkey(bdaddr, &key->addr.bdaddr,
 					key->addr.type, key->val, key->master,
-					key->authenticated, key->enc_size,
+					key->type, key->enc_size,
 					key->ediv, key->rand);
 
 		device_set_bonded(device, TRUE);
