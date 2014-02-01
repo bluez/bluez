@@ -706,7 +706,7 @@ Load Long Term Keys Command
 				Key1 {
 					Address (6 Octets)
 					Address_Type (1 Octet)
-					Authenticated (1 Octet)
+					Key_Type (1 Octet)
 					Master (1 Octet)
 					Encryption_Size (1 Octet)
 					Encryption_Diversifier (2 Octets)
@@ -721,6 +721,11 @@ Load Long Term Keys Command
 	(SMP) Long Term Keys. The command does not need to be called
 	again upon the receiption of new Long Term Key events since the
 	kernel updates its list automatically.
+
+	Currently defined Key_Type values are:
+
+		0x00	Unauthenticated key
+		0x01	Authenticated key
 
 	This command can be used when the controller is not powered.
 
@@ -1578,7 +1583,7 @@ Event Parameters	Store_Hint (1 Octet)
 			Key {
 				Address (6 Octets)
 				Address_Type (1 Octet)
-				Authenticated (1 Octet)
+				Key_Type (1 Octet)
 				Master (1 Octet)
 				Encryption Size (1 Octet)
 				Enc. Diversifier (2 Octets)
@@ -1587,10 +1592,16 @@ Event Parameters	Store_Hint (1 Octet)
 			}
 
 	This event indicates that a new long term key has bee generated
-	for a remote device. The Store_Hint parameter indicates whether
-	the host is expected to store the key persistently or not (e.g.
-	this would not be set if the authentication requirement was "No
-	Bonding").
+	for a remote device.
+
+	The Store_Hint parameter indicates whether the host is expected
+	to store the key persistently or not (e.g. this would not be set
+	if the authentication requirement was "No Bonding").
+
+	Currently defined Key_Type values are:
+
+		0x00	Unauthenticated key
+		0x01	Authenticated key
 
 
 Device Connected Event
