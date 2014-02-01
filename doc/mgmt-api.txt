@@ -676,6 +676,18 @@ Load Link Keys Command
 	this parameter are 0x00 and 0x01. All other values will return
 	an Invalid Parameters response.
 
+	Currently defined Key_Type values are:
+
+		0x00	Combination key
+		0x01	Local Unit key
+		0x02	Remote Unit key
+		0x03	Debug Combination key
+		0x04	Unauthenticated Combination key from P-192
+		0x05	Authenticated Combination key from P-192
+		0x06	Changed Combination key
+		0x07	Unauthenticated Combination key from P-256
+		0x08	Authenticated Combination key from P-256
+
 	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success or
@@ -1538,10 +1550,23 @@ Event Parametersa	Store_Hint (1 Octet)
 			}
 
 	This event indicates that a new link key has bee generated for a
-	remote device. The Store_Hint parameter indicates whether the
-	host is expected to store the key persistently or not (e.g. this
-	would not be set if the authentication requirement was "No
-	Bonding").
+	remote device.
+
+	The Store_Hint parameter indicates whether the host is expected
+	to store the key persistently or not (e.g. this would not be set
+	if the authentication requirement was "No Bonding").
+
+	Currently defined Key_Type values are:
+
+		0x00	Combination key
+		0x01	Local Unit key
+		0x02	Remote Unit key
+		0x03	Debug Combination key
+		0x04	Unauthenticated Combination key from P-192
+		0x05	Authenticated Combination key from P-192
+		0x06	Changed Combination key
+		0x07	Unauthenticated Combination key from P-256
+		0x08	Authenticated Combination key from P-256
 
 
 New Long Term Key Event
