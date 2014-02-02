@@ -32,6 +32,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/avctp.c \
 	bluez/android/avrcp.c \
 	bluez/android/pan.c \
+	bluez/android/handsfree.c \
 	bluez/src/log.c \
 	bluez/src/shared/mgmt.c \
 	bluez/src/shared/util.c \
@@ -99,6 +100,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-pan.c \
 	bluez/android/hal-a2dp.c \
 	bluez/android/hal-avrcp.c \
+	bluez/android/hal-handsfree.c \
 	bluez/android/hal-utils.c \
 
 LOCAL_C_INCLUDES += \

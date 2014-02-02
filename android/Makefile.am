@@ -37,6 +37,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/avrcp.h android/avrcp.c \
 				android/socket.h android/socket.c \
 				android/pan.h android/pan.c \
+				android/handsfree.h android/handsfree.c \
 				btio/btio.h btio/btio.c \
 				src/sdp-client.h src/sdp-client.c \
 				profiles/network/bnep.h profiles/network/bnep.c
@@ -51,6 +52,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-pan.c \
 					android/hal-a2dp.c \
 					android/hal-avrcp.c \
+					android/hal-handsfree.c \
 					android/hardware/bluetooth.h \
 					android/hardware/bt_av.h \
 					android/hardware/bt_gatt.h \
