@@ -95,6 +95,7 @@ struct mgmt_rp_read_index_list {
 #define MGMT_SETTING_LE			0x00000200
 #define MGMT_SETTING_ADVERTISING	0x00000400
 #define MGMT_SETTING_SECURE_CONN	0x00000800
+#define MGMT_SETTING_DEBUG_KEYS		0x00001000
 
 #define MGMT_OP_READ_INFO		0x0004
 struct mgmt_rp_read_info {
@@ -344,6 +345,8 @@ struct mgmt_cp_set_scan_params {
 
 #define MGMT_OP_SET_SECURE_CONN		0x002D
 
+#define MGMT_OP_SET_DEBUG_KEYS		0x002E
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -527,6 +530,7 @@ static const char *mgmt_op[] = {
 	"Set Static Address",
 	"Set Scan Parameters",
 	"Set Secure Connections",
+	"Set Debug Keys",
 };
 
 static const char *mgmt_ev[] = {
