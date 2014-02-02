@@ -95,6 +95,7 @@ static const char *settings_str[] = {
 				"le",
 				"advertising",
 				"secure-conn",
+				"debug-keys",
 };
 
 static void print_settings(uint32_t settings)
