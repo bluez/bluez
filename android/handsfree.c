@@ -37,6 +37,7 @@
 #include "lib/uuid.h"
 #include "src/sdp-client.h"
 #include "src/uuid-helper.h"
+#include "src/shared/hfp.h"
 #include "btio/btio.h"
 #include "handsfree.h"
 #include "bluetooth.h"
@@ -53,6 +54,7 @@ static struct {
 	uint8_t state;
 	GIOChannel *io;
 	guint watch;
+	struct hfp_gw *gw;
 } device;
 
 static bdaddr_t adapter_addr;
@@ -89,6 +91,11 @@ static void device_init(const bdaddr_t *bdaddr)
 
 static void device_cleanup(void)
 {
+	if (device.gw) {
+		hfp_gw_unref(device.gw);
+		device.gw = NULL;
+	}
+
 	if (device.watch) {
 		g_source_remove(device.watch);
 		device.watch = 0;
@@ -116,6 +123,13 @@ static gboolean watch_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
+static void at_command_handler(const char *command, void *user_data)
+{
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+
+	g_io_channel_shutdown(device.io, TRUE, NULL);
+}
+
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	DBG("");
@@ -126,6 +140,13 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	g_io_channel_set_close_on_unref(chan, TRUE);
+
+	device.gw = hfp_gw_new(g_io_channel_unix_get_fd(chan));
+	if (!device.gw)
+		goto failed;
+
+	hfp_gw_set_close_on_unref(device.gw, true);
+	hfp_gw_set_command_handler(device.gw, at_command_handler, NULL, NULL);
 
 	device.watch = g_io_add_watch(chan,
 					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
