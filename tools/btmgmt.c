@@ -1931,6 +1931,12 @@ static void cmd_static_addr(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static void cmd_debug_keys(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	cmd_setting(mgmt, index, MGMT_OP_SET_DEBUG_KEYS, argc, argv);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
@@ -1969,6 +1975,7 @@ static struct {
 	{ "local-oob",	cmd_local_oob,	"Local OOB data"		},
 	{ "did",	cmd_did,	"Set Device ID"			},
 	{ "static-addr",cmd_static_addr,"Set static address"		},
+	{ "debug-keys",	cmd_debug_keys,	"Toogle debug keys"		},
 	{ }
 };
 
