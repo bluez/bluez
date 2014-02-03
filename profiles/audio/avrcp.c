@@ -1673,7 +1673,7 @@ static size_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 			break;
 	}
 
-	if (!handler || handler->code != *code) {
+	if (handler->pdu_id != pdu->pdu_id || handler->code != *code) {
 		pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
 		goto err_metadata;
 	}
@@ -1734,12 +1734,12 @@ static size_t handle_browsing_pdu(struct avctp *conn,
 
 	for (handler = browsing_handlers; handler->pdu_id; handler++) {
 		if (handler->pdu_id == pdu->pdu_id)
-			break;
+			goto done;
 	}
 
-	if (handler == NULL || handler->func == NULL)
-		return avrcp_browsing_general_reject(operands);
+	return avrcp_browsing_general_reject(operands);
 
+done:
 	session->transaction = transaction;
 	handler->func(session, pdu, transaction);
 	return AVRCP_BROWSING_HEADER_LENGTH + ntohs(pdu->param_len);
