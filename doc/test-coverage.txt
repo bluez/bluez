@@ -14,7 +14,7 @@ test-sdp		 133	SDP qualification test cases
 test-uuid		  30	UUID conversion handling
 test-mgmt		   2	Management interface handling
 test-textfile		   4	Old textfile storage format
-test-ringbuf		   3    Ring buffer functionality
+test-ringbuf		   3	Ring buffer functionality
 test-queue		   1	Queue handling functionality
 test-avdtp		  60	AVDTP qualification test cases
 test-gobex		  31	Generic OBEX functionality
