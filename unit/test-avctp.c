@@ -220,10 +220,8 @@ static struct context *create_context(uint16_t version, gconstpointer data)
 	return context;
 }
 
-static void execute_context(struct context *context)
+static void destroy_context(struct context *context)
 {
-	g_main_loop_run(context->main_loop);
-
 	if (context->source > 0)
 		g_source_remove(context->source);
 
@@ -233,6 +231,13 @@ static void execute_context(struct context *context)
 
 	test_free(context->data);
 	g_free(context);
+}
+
+static void execute_context(struct context *context)
+{
+	g_main_loop_run(context->main_loop);
+
+	destroy_context(context);
 }
 
 static void test_client(gconstpointer data)
@@ -253,12 +258,31 @@ static void test_server(gconstpointer data)
 	execute_context(context);
 }
 
+static void test_dummy(gconstpointer data)
+{
+	struct context *context = create_context(0x0100, data);
+
+	destroy_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
 
 	if (g_test_verbose())
 		__btd_log_init("*", 0);
+
+	/* Connection Channel Management tests */
+
+	/*
+	 * Tests are checking that IUT is able to request establishing
+	 * channels, since we already have connection through socketpair
+	 * the tests are dummy.
+	 */
+	define_test("/TP/CCM/BV-01-C", test_dummy, raw_pdu(0x00));
+	define_test("/TP/CCM/BV-02-C", test_dummy, raw_pdu(0x00));
+	define_test("/TP/CCM/BV-03-C", test_dummy, raw_pdu(0x00));
+	define_test("/TP/CCM/BV-04-C", test_dummy, raw_pdu(0x00));
 
 	define_test("/TP/NFR/BV-01-C", test_client,
 				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00));
