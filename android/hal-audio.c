@@ -39,6 +39,8 @@
 
 #define FIXED_A2DP_PLAYBACK_LATENCY_MS 25
 
+#define MAX_FRAMES_IN_PAYLOAD 15
+
 static const uint8_t a2dp_src_uuid[] = {
 		0x00, 0x00, 0x11, 0x0a, 0x00, 0x00, 0x10, 0x00,
 		0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb };
@@ -483,7 +485,9 @@ static ssize_t sbc_write_data(void *codec_data, const void *buffer,
 		 * input data
 		 */
 		if (mp->payload.frame_count == sbc_data->frames_per_packet ||
-				bytes == consumed) {
+				bytes == consumed ||
+				mp->payload.frame_count ==
+							MAX_FRAMES_IN_PAYLOAD) {
 			ret = write_media_packet(fd, sbc_data, mp, encoded);
 			if (ret < 0)
 				return ret;
