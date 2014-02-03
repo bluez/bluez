@@ -53,3 +53,11 @@ ipc-tester		  94	Android IPC resistance testing
 			-----
 			 172
 
+
+Android automated unit testing
+==============================
+Application		Count	Description
+-------------------------------------------
+test-ipc		   4	Android IPC library functions
+			-----
+			   4
