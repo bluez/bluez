@@ -332,6 +332,9 @@ static int sbc_codec_init(struct audio_preset *preset, uint16_t mtu,
 	sbc_data->frame_duration = sbc_get_frame_duration(&sbc_data->enc);
 	sbc_data->frames_per_packet = num_frames;
 
+	DBG("mtu=%u in_frame_len=%zu out_frame_len=%zu frames_per_packet=%zu",
+			mtu, in_frame_len, out_frame_len, num_frames);
+
 	*codec_data = sbc_data;
 
 	return AUDIO_STATUS_SUCCESS;
