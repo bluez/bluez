@@ -458,7 +458,6 @@ static ssize_t sbc_write_data(void *codec_data, const void *buffer,
 
 	mp->hdr.v = 2;
 	mp->hdr.pt = 1;
-	mp->hdr.sequence_number = htons(sbc_data->seq++);
 	mp->hdr.ssrc = htonl(1);
 	mp->payload.frame_count = 0;
 
@@ -488,6 +487,8 @@ static ssize_t sbc_write_data(void *codec_data, const void *buffer,
 				bytes == consumed ||
 				mp->payload.frame_count ==
 							MAX_FRAMES_IN_PAYLOAD) {
+			mp->hdr.sequence_number = htons(sbc_data->seq++);
+
 			ret = write_media_packet(fd, sbc_data, mp, encoded);
 			if (ret < 0)
 				return ret;
