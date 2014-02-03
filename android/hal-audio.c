@@ -227,8 +227,7 @@ struct a2dp_audio_dev {
 static const a2dp_sbc_t sbc_presets[] = {
 	{
 		.frequency = SBC_SAMPLING_FREQ_44100 | SBC_SAMPLING_FREQ_48000,
-		.channel_mode = SBC_CHANNEL_MODE_MONO |
-				SBC_CHANNEL_MODE_DUAL_CHANNEL |
+		.channel_mode = SBC_CHANNEL_MODE_DUAL_CHANNEL |
 				SBC_CHANNEL_MODE_STEREO |
 				SBC_CHANNEL_MODE_JOINT_STEREO,
 		.subbands = SBC_SUBBANDS_4 | SBC_SUBBANDS_8,
