@@ -188,7 +188,7 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 
 	DBG("vcards %d", vcards);
 
-	phonebooksize = htons(vcards);
+	phonebooksize = vcards;
 
 	pbap->obj->apparam = g_obex_apparam_set_uint16(NULL, PHONEBOOKSIZE_TAG,
 								phonebooksize);
@@ -365,7 +365,7 @@ static int generate_response(void *user_data)
 
 	if (max == 0) {
 		/* Ignore all other parameter and return PhoneBookSize */
-		uint16_t size = htons(g_slist_length(pbap->cache.entries));
+		uint16_t size = g_slist_length(pbap->cache.entries);
 
 		pbap->obj->apparam = g_obex_apparam_set_uint16(
 							pbap->obj->apparam,
