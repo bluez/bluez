@@ -466,7 +466,7 @@ static ssize_t sbc_write_data(void *codec_data, const void *buffer,
 					&written);
 
 		if (ret < 0) {
-			error("SBC: failed to encode block");
+			error("SBC: failed to encode block (%d)", ret);
 			break;
 		}
 
