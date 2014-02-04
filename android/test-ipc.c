@@ -499,6 +499,15 @@ static const struct test_data test_cmd_vardata_valid_2 = {
 	.handlers_size = 1,
 };
 
+static const struct test_data test_cmd_vardata_invalid_1 = {
+	.cmd = &test_cmd_vardata,
+	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1) - 1,
+	.service = 0,
+	.handlers = cmd_vardata_handlers,
+	.handlers_size = 1,
+	.expected_signal = SIGTERM
+};
+
 static const struct hal_hdr test_cmd_service_offrange_hdr = {
 	.service_id = HAL_SERVICE_ID_MAX + 1,
 	.opcode = 1,
@@ -540,6 +549,9 @@ int main(int argc, char *argv[])
 					test_cmd_reg);
 	g_test_add_data_func("/android_ipc/test_cmd_vardata_valid_2",
 					&test_cmd_vardata_valid_2,
+					test_cmd_reg);
+	g_test_add_data_func("/android_ipc/test_cmd_vardata_invalid_1",
+					&test_cmd_vardata_invalid_1,
 					test_cmd_reg);
 	g_test_add_data_func("/android_ipc/test_cmd_service_offrange",
 					&test_cmd_service_offrange,
