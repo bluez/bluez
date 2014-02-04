@@ -461,6 +461,15 @@ static const struct test_data test_cmd_opcode_invalid_1 = {
 	.expected_signal = SIGTERM
 };
 
+static const struct test_data test_cmd_hdr_invalid = {
+	.cmd = &test_cmd_1_hdr,
+	.cmd_size = sizeof(test_cmd_1_hdr) - 1,
+	.service = 0,
+	.handlers = cmd_handlers,
+	.handlers_size = 1,
+	.expected_signal = SIGTERM
+};
+
 #define VARDATA_EX1 "some data example"
 
 struct vardata {
@@ -555,6 +564,9 @@ int main(int argc, char *argv[])
 					test_cmd_reg);
 	g_test_add_data_func("/android_ipc/test_cmd_service_offrange",
 					&test_cmd_service_offrange,
+					test_cmd_reg);
+	g_test_add_data_func("/android_ipc/test_cmd_hdr_invalid",
+					&test_cmd_hdr_invalid,
 					test_cmd_reg);
 
 	return g_test_run();
