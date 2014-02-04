@@ -461,6 +461,32 @@ static const struct test_data test_cmd_opcode_invalid_1 = {
 	.expected_signal = SIGTERM
 };
 
+#define VARDATA_EX1 "some data example"
+
+struct vardata {
+	struct hal_hdr hdr;
+	uint8_t data[BLUEZ_HAL_MTU - sizeof(struct hal_hdr)];
+} __attribute__((packed));
+
+static const struct vardata test_cmd_vardata = {
+	.hdr.service_id = 0,
+	.hdr.opcode = 1,
+	.hdr.len = sizeof(VARDATA_EX1),
+	.data = VARDATA_EX1,
+};
+
+static const struct ipc_handler cmd_vardata_handlers[] = {
+	{ test_cmd_handler_1, true, sizeof(VARDATA_EX1) }
+};
+
+static const struct test_data test_cmd_vardata_valid = {
+	.cmd = &test_cmd_vardata,
+	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1),
+	.service = 0,
+	.handlers = cmd_vardata_handlers,
+	.handlers_size = 1,
+};
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -481,6 +507,9 @@ int main(int argc, char *argv[])
 					&test_cmd_opcode_valid_2, test_cmd_reg);
 	g_test_add_data_func("/android_ipc/test_cmd_opcode_invalid_1",
 					&test_cmd_opcode_invalid_1,
+					test_cmd_reg);
+	g_test_add_data_func("/android_ipc/test_cmd_vardata_valid",
+					&test_cmd_vardata_valid,
 					test_cmd_reg);
 
 	return g_test_run();
