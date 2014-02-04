@@ -44,7 +44,7 @@
 
 struct test_data {
 	uint32_t expected_signal;
-	const struct hal_hdr *cmd;
+	const void *cmd;
 	uint16_t cmd_size;
 	uint8_t service;
 	const struct ipc_handler *handlers;
@@ -79,8 +79,15 @@ static gboolean cmd_watch(GIOChannel *io, GIOCondition cond,
 {
 	struct context *context = user_data;
 	const struct test_data *test_data = context->data;
+	const struct hal_hdr *sent_msg = test_data->cmd;
 	uint8_t buf[128];
 	int sk;
+
+	struct hal_hdr success_resp = {
+		.service_id = sent_msg->service_id,
+		.opcode = sent_msg->opcode,
+		.len = 0,
+	};
 
 	g_assert(test_data->expected_signal == 0);
 
@@ -91,8 +98,8 @@ static gboolean cmd_watch(GIOChannel *io, GIOCondition cond,
 
 	sk = g_io_channel_unix_get_fd(io);
 
-	g_assert(read(sk, buf, sizeof(buf)) == test_data->cmd_size);
-	g_assert(!memcmp(test_data->cmd, buf, test_data->cmd_size));
+	g_assert(read(sk, buf, sizeof(buf)) == sizeof(struct hal_hdr));
+	g_assert(!memcmp(&success_resp, buf, sizeof(struct hal_hdr)));
 
 	context_quit(context);
 
