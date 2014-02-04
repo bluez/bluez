@@ -487,6 +487,18 @@ static const struct test_data test_cmd_vardata_valid = {
 	.handlers_size = 1,
 };
 
+static const struct ipc_handler cmd_vardata_handlers_valid2[] = {
+	{ test_cmd_handler_1, true, sizeof(VARDATA_EX1) - 1 }
+};
+
+static const struct test_data test_cmd_vardata_valid_2 = {
+	.cmd = &test_cmd_vardata,
+	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1),
+	.service = 0,
+	.handlers = cmd_vardata_handlers_valid2,
+	.handlers_size = 1,
+};
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -510,6 +522,9 @@ int main(int argc, char *argv[])
 					test_cmd_reg);
 	g_test_add_data_func("/android_ipc/test_cmd_vardata_valid",
 					&test_cmd_vardata_valid,
+					test_cmd_reg);
+	g_test_add_data_func("/android_ipc/test_cmd_vardata_valid_2",
+					&test_cmd_vardata_valid_2,
 					test_cmd_reg);
 
 	return g_test_run();
