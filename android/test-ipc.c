@@ -368,11 +368,27 @@ static void test_cmd_handler_1(const void *buf, uint16_t len)
 	ipc_send_rsp(0, 1, 0);
 }
 
+static void test_cmd_handler_2(const void *buf, uint16_t len)
+{
+	ipc_send_rsp(0, 2, 0);
+}
+
+static void test_cmd_handler_invalid(const void *buf, uint16_t len)
+{
+	raise(SIGTERM);
+}
+
 static const struct test_data test_init_1 = {};
 
 static const struct hal_hdr test_cmd_1_hdr = {
 	.service_id = 0,
 	.opcode = 1,
+	.len = 0
+};
+
+static const struct hal_hdr test_cmd_2_hdr = {
+	.service_id = 0,
+	.opcode = 2,
 	.len = 0
 };
 
@@ -403,6 +419,32 @@ static const struct test_data test_cmd_service_invalid_2 = {
 	.expected_signal = SIGTERM
 };
 
+static const struct ipc_handler cmd_handlers_invalid_2[] = {
+	{ test_cmd_handler_1, false, 0 },
+	{ test_cmd_handler_invalid, false, 0 }
+};
+
+static const struct ipc_handler cmd_handlers_invalid_1[] = {
+	{ test_cmd_handler_invalid, false, 0 },
+	{ test_cmd_handler_2, false, 0 },
+};
+
+static const struct test_data test_cmd_opcode_valid_1 = {
+	.cmd = &test_cmd_1_hdr,
+	.cmd_size = sizeof(test_cmd_1_hdr),
+	.service = 0,
+	.handlers = cmd_handlers_invalid_2,
+	.handlers_size = 2,
+};
+
+static const struct test_data test_cmd_opcode_valid_2 = {
+	.cmd = &test_cmd_2_hdr,
+	.cmd_size = sizeof(test_cmd_2_hdr),
+	.service = 0,
+	.handlers = cmd_handlers_invalid_1,
+	.handlers_size = 2,
+};
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -417,6 +459,10 @@ int main(int argc, char *argv[])
 					&test_cmd_service_valid_1, test_cmd_reg);
 	g_test_add_data_func("/android_ipc/test_cmd_service_invalid_2",
 					&test_cmd_service_invalid_2, test_cmd_reg_1);
+	g_test_add_data_func("/android_ipc/test_cmd_opcode_valid_1",
+					&test_cmd_opcode_valid_1, test_cmd_reg);
+	g_test_add_data_func("/android_ipc/test_cmd_opcode_valid_2",
+					&test_cmd_opcode_valid_2, test_cmd_reg);
 
 	return g_test_run();
 }
