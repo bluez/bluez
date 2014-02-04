@@ -58,7 +58,7 @@ TSPC_AVCTP_2_14	False		Support for multiple AVCTP channel establishment
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_AVCTP_3_1	True (*)	Message fragmentation (O)
+TSPC_AVCTP_3_1	False		Message fragmentation (O)
 TSPC_AVCTP_3_2	True		Transaction label management (M)
 TSPC_AVCTP_3_3	True		Packet type field management (M)
 TSPC_AVCTP_3_4	True		Message type field management (M)

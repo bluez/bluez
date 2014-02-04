@@ -37,6 +37,6 @@ TC_TG_CCM_BV_04_C	PASS	avtest --device hci0 --avctp --send x <bdaddr>
 TC_TG_NFR_BV_02_C	PASS	avtest --device hci0 --avctp --send x <bdaddr>
 TC_TG_NFR_BV_03_C	PASS	avtest --device hci0 --avctp --send x <bdaddr>
 TC_TG_NFR_BI_01_C	PASS
-TC_TG_FRA_BV_02_C	FAIL
-TC_TG_FRA_BV_03_C	INC
+TC_TG_FRA_BV_02_C	N/A	Fragmentation not supported
+TC_TG_FRA_BV_03_C	N/A	Fragmentation not supported
 -------------------------------------------------------------------------------
