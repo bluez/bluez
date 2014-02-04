@@ -1118,7 +1118,7 @@ static void update_device(struct device *dev, int8_t rssi,
 	ev->status = HAL_STATUS_SUCCESS;
 	bdaddr2android(&dev->bdaddr, ev->bdaddr);
 
-	if (eir->class) {
+	if (eir->class && dev->class != eir->class) {
 		dev->class = eir->class;
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_CLASS,
 					sizeof(dev->class), &dev->class);
@@ -1132,7 +1132,7 @@ static void update_device(struct device *dev, int8_t rssi,
 		ev->num_props++;
 	}
 
-	if (eir->name) {
+	if (eir->name && strcmp(dev->name, eir->name)) {
 		g_free(dev->name);
 		dev->name = g_strdup(eir->name);
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
