@@ -1051,6 +1051,100 @@ static bool rssi_above_threshold(int old, int new)
 	return abs(old - new) >= 8;
 }
 
+static void update_new_device(struct device *dev, int8_t rssi,
+						const struct eir_data *eir)
+{
+	uint8_t buf[BLUEZ_HAL_MTU];
+	struct hal_ev_device_found *ev = (void*) buf;
+	bdaddr_t android_bdaddr;
+	uint8_t android_type;
+	int size;
+
+	memset(buf, 0, sizeof(buf));
+
+	if (adapter.discovering)
+		dev->found = true;
+
+	size = sizeof(*ev);
+
+	bdaddr2android(&dev->bdaddr, &android_bdaddr);
+	size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_ADDR,
+						sizeof(android_bdaddr),
+						&android_bdaddr);
+	ev->num_props++;
+
+	android_type = bdaddr_type2android(dev->bdaddr_type);
+	size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_TYPE,
+				sizeof(android_type), &android_type);
+	ev->num_props++;
+
+	if (eir->class) {
+		dev->class = eir->class;
+		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_CLASS,
+					sizeof(dev->class), &dev->class);
+		ev->num_props++;
+	}
+
+	if (rssi && rssi_above_threshold(dev->rssi, rssi)) {
+		dev->rssi = rssi;
+		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_RSSI,
+						sizeof(dev->rssi), &dev->rssi);
+		ev->num_props++;
+	}
+
+	if (eir->name) {
+		g_free(dev->name);
+		dev->name = g_strdup(eir->name);
+		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
+						strlen(dev->name), dev->name);
+		ev->num_props++;
+	}
+
+	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_DEVICE_FOUND, size,
+									buf);
+}
+
+static void update_device(struct device *dev, int8_t rssi,
+						const struct eir_data *eir)
+{
+	uint8_t buf[BLUEZ_HAL_MTU];
+	struct hal_ev_remote_device_props *ev = (void *) buf;
+	int size;
+
+	memset(buf, 0, sizeof(buf));
+
+	size = sizeof(*ev);
+
+	ev->status = HAL_STATUS_SUCCESS;
+	bdaddr2android(&dev->bdaddr, ev->bdaddr);
+
+	if (eir->class) {
+		dev->class = eir->class;
+		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_CLASS,
+					sizeof(dev->class), &dev->class);
+		ev->num_props++;
+	}
+
+	if (rssi && rssi_above_threshold(dev->rssi, rssi)) {
+		dev->rssi = rssi;
+		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_RSSI,
+						sizeof(dev->rssi), &dev->rssi);
+		ev->num_props++;
+	}
+
+	if (eir->name) {
+		g_free(dev->name);
+		dev->name = g_strdup(eir->name);
+		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
+						strlen(dev->name), dev->name);
+		ev->num_props++;
+	}
+
+	if (ev->num_props)
+		ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH,
+					HAL_EV_REMOTE_DEVICE_PROPS, size, buf);
+}
+
 static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, bool confirm,
 					const uint8_t *data, uint8_t data_len)
@@ -1058,9 +1152,6 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	uint8_t buf[BLUEZ_HAL_MTU];
 	struct eir_data eir;
 	struct device *dev;
-	uint8_t *num_prop;
-	uint8_t opcode;
-	int size = 0;
 
 	memset(buf, 0, sizeof(buf));
 	memset(&eir, 0, sizeof(eir));
@@ -1069,78 +1160,22 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	dev = find_device(bdaddr);
 
-	/*
-	 * Device found event needs to be send also for known device if this is
+	/* Device found event needs to be send also for known device if this is
 	 * new discovery session. Otherwise framework will ignore it.
 	 */
 	if (!dev || !dev->found) {
-		struct hal_ev_device_found *ev = (void *) buf;
-		bdaddr_t android_bdaddr;
-		uint8_t android_type;
-
 		if (!dev)
 			dev = create_device(bdaddr, bdaddr_type);
 
-		dev->found = true;
-
-		size += sizeof(*ev);
-
-		num_prop = &ev->num_props;
-		opcode = HAL_EV_DEVICE_FOUND;
-
-		bdaddr2android(bdaddr, &android_bdaddr);
-
-		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_ADDR,
-							sizeof(android_bdaddr),
-							&android_bdaddr);
-		(*num_prop)++;
-
-		android_type = bdaddr_type2android(dev->bdaddr_type);
-		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_TYPE,
-					sizeof(android_type), &android_type);
-		(*num_prop)++;
+		update_new_device(dev, rssi, &eir);
 	} else {
-		struct hal_ev_remote_device_props *ev = (void *) buf;
-
-		size += sizeof(*ev);
-
-		num_prop = &ev->num_props;
-		opcode = HAL_EV_REMOTE_DEVICE_PROPS;
-
-		ev->status = HAL_STATUS_SUCCESS;
-		bdaddr2android(bdaddr, ev->bdaddr);
+		update_device(dev, rssi, &eir);
 	}
 
-	if (eir.class) {
-		dev->class = eir.class;
-
-		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_CLASS,
-						sizeof(eir.class), &eir.class);
-		(*num_prop)++;
-	}
-
-	if (rssi && rssi_above_threshold(dev->rssi, rssi)) {
-		dev->rssi = rssi;
-
-		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_RSSI,
-						sizeof(dev->rssi), &dev->rssi);
-		(*num_prop)++;
-	}
-
-	if (eir.name) {
-		g_free(dev->name);
-		dev->name = g_strdup(eir.name);
-
-		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
-						strlen(eir.name), eir.name);
-		(*num_prop)++;
-	}
+	eir_data_free(&eir);
 
 	if (dev->bond_state != HAL_BOND_STATE_BONDED)
 		cache_device(dev);
-
-	if (*num_prop)
-		ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, opcode, size, buf);
 
 	if (confirm) {
 		char addr[18];
@@ -1149,8 +1184,6 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		info("Device %s needs name confirmation.", addr);
 		confirm_device_name(bdaddr, bdaddr_type);
 	}
-
-	eir_data_free(&eir);
 }
 
 static void mgmt_device_found_event(uint16_t index, uint16_t length,
