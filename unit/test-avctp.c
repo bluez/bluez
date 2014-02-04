@@ -249,9 +249,34 @@ static void test_client(gconstpointer data)
 	execute_context(context);
 }
 
+static size_t handler(struct avctp *session,
+					uint8_t transaction, uint8_t *code,
+					uint8_t *subunit, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	DBG("transaction %d code %d subunit %d operand_count %zu",
+		transaction, *code, *subunit, operand_count);
+
+	g_assert_cmpint(transaction, ==, 0);
+	g_assert_cmpint(*code, ==, 0);
+	g_assert_cmpint(*subunit, ==, 0);
+	g_assert_cmpint(operand_count, ==, 0);
+
+	return operand_count;
+}
+
 static void test_server(gconstpointer data)
 {
 	struct context *context = create_context(0x0100, data);
+
+	if (g_str_equal(context->data->test_name, "/TP/NFR/BV-03-C")) {
+		int ret;
+
+		ret = avctp_register_pdu_handler(context->session, 0x00,
+								handler, NULL);
+		DBG("ret %d", ret);
+		g_assert_cmpint(ret, !=, 0);
+	}
 
 	g_idle_add(send_pdu, context);
 
@@ -284,12 +309,18 @@ int main(int argc, char *argv[])
 	define_test("/TP/CCM/BV-03-C", test_dummy, raw_pdu(0x00));
 	define_test("/TP/CCM/BV-04-C", test_dummy, raw_pdu(0x00));
 
+	/* Non-Fragmented Messages tests */
+
 	define_test("/TP/NFR/BV-01-C", test_client,
 				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00));
 
 	define_test("/TP/NFR/BV-02-C", test_server,
 				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00),
 				raw_pdu(0x02, 0x11, 0x0e, 0x0a, 0x00, 0x00));
+
+	define_test("/TP/NFR/BV-03-C", test_server,
+				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00),
+				raw_pdu(0x02, 0x11, 0x0e, 0x00, 0x00, 0x00));
 
 	define_test("/TP/NFR/BI-01-C", test_server,
 				raw_pdu(0x00, 0xff, 0xff, 0x00, 0x00, 0x00),
