@@ -445,6 +445,15 @@ static const struct test_data test_cmd_opcode_valid_2 = {
 	.handlers_size = 2,
 };
 
+static const struct test_data test_cmd_opcode_invalid_1 = {
+	.cmd = &test_cmd_2_hdr,
+	.cmd_size = sizeof(test_cmd_2_hdr),
+	.service = 0,
+	.handlers = cmd_handlers,
+	.handlers_size = 1,
+	.expected_signal = SIGTERM
+};
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -463,6 +472,9 @@ int main(int argc, char *argv[])
 					&test_cmd_opcode_valid_1, test_cmd_reg);
 	g_test_add_data_func("/android_ipc/test_cmd_opcode_valid_2",
 					&test_cmd_opcode_valid_2, test_cmd_reg);
+	g_test_add_data_func("/android_ipc/test_cmd_opcode_invalid_1",
+					&test_cmd_opcode_invalid_1,
+					test_cmd_reg);
 
 	return g_test_run();
 }
