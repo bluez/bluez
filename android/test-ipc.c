@@ -572,38 +572,38 @@ int main(int argc, char *argv[])
 		__btd_log_init("*", 0);
 
 	g_test_add_data_func("/android_ipc/init", &test_init_1, test_init);
-	g_test_add_data_func("/android_ipc/test_cmd_service_invalid_1",
+	g_test_add_data_func("/android_ipc/service_invalid_1",
 					&test_cmd_service_invalid_1, test_cmd);
-	g_test_add_data_func("/android_ipc/test_cmd_service_valid_1",
+	g_test_add_data_func("/android_ipc/service_valid_1",
 					&test_cmd_service_valid_1, test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_service_invalid_2",
+	g_test_add_data_func("/android_ipc/service_invalid_2",
 					&test_cmd_service_invalid_2, test_cmd_reg_1);
-	g_test_add_data_func("/android_ipc/test_cmd_opcode_valid_1",
+	g_test_add_data_func("/android_ipc/opcode_valid_1",
 					&test_cmd_opcode_valid_1, test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_opcode_valid_2",
+	g_test_add_data_func("/android_ipc/opcode_valid_2",
 					&test_cmd_opcode_valid_2, test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_opcode_invalid_1",
+	g_test_add_data_func("/android_ipc/opcode_invalid_1",
 					&test_cmd_opcode_invalid_1,
 					test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_vardata_valid",
+	g_test_add_data_func("/android_ipc/vardata_valid",
 					&test_cmd_vardata_valid,
 					test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_vardata_valid_2",
+	g_test_add_data_func("/android_ipc/vardata_valid_2",
 					&test_cmd_vardata_valid_2,
 					test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_vardata_invalid_1",
+	g_test_add_data_func("/android_ipc/vardata_invalid_1",
 					&test_cmd_vardata_invalid_1,
 					test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_service_offrange",
+	g_test_add_data_func("/android_ipc/service_offrange",
 					&test_cmd_service_offrange,
 					test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_hdr_invalid",
+	g_test_add_data_func("/android_ipc/hdr_invalid",
 					&test_cmd_hdr_invalid,
 					test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_msg_invalid_1",
+	g_test_add_data_func("/android_ipc/msg_invalid_1",
 					&test_cmd_msg_invalid_1,
 					test_cmd_reg);
-	g_test_add_data_func("/android_ipc/test_cmd_msg_invalid_2",
+	g_test_add_data_func("/android_ipc/msg_invalid_2",
 					&test_cmd_msg_invalid_2,
 					test_cmd_reg);
 
