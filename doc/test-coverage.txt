@@ -58,6 +58,6 @@ Android automated unit testing
 ==============================
 Application		Count	Description
 -------------------------------------------
-test-ipc		   4	Android IPC library functions
+test-ipc		  14	Android IPC library functions
 			-----
-			   4
+			  14
