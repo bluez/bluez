@@ -82,6 +82,8 @@ static gboolean cmd_watch(GIOChannel *io, GIOCondition cond,
 	uint8_t buf[128];
 	int sk;
 
+	g_assert(test_data->expected_signal == 0);
+
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		g_assert(FALSE);
 		return FALSE;
