@@ -363,7 +363,7 @@ static void test_cmd_reg_1(gconstpointer data)
 	ipc_cleanup();
 }
 
-static void test_cmd_handler(const void *buf, uint16_t len)
+static void test_cmd_handler_1(const void *buf, uint16_t len)
 {
 	ipc_send_rsp(0, 1, 0);
 }
@@ -383,7 +383,7 @@ static const struct test_data test_cmd_service_invalid_1 = {
 };
 
 static const struct ipc_handler cmd_handlers[] = {
-	{ test_cmd_handler, false, 0 }
+	{ test_cmd_handler_1, false, 0 }
 };
 
 static const struct test_data test_cmd_service_valid_1 = {
