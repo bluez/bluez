@@ -240,15 +240,6 @@ static void execute_context(struct context *context)
 	destroy_context(context);
 }
 
-static void test_client(gconstpointer data)
-{
-	struct context *context = create_context(0x0100, data);
-
-	avctp_send_vendordep_req(context->session, 0, 0, NULL, 0, NULL, NULL);
-
-	execute_context(context);
-}
-
 static size_t handler(struct avctp *session,
 					uint8_t transaction, uint8_t *code,
 					uint8_t *subunit, uint8_t *operands,
@@ -263,6 +254,33 @@ static size_t handler(struct avctp *session,
 	g_assert_cmpint(operand_count, ==, 0);
 
 	return operand_count;
+}
+
+static gboolean handler_response(struct avctp *session,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct context *context = user_data;
+
+	DBG("code 0x%02x subunit %d operand_count %zu", code, subunit,
+								operand_count);
+
+	g_assert_cmpint(code, ==, 0x0a);
+	g_assert_cmpint(subunit, ==, 0);
+	g_assert_cmpint(operand_count, ==, 0);
+
+	return context_quit(context);
+}
+
+static void test_client(gconstpointer data)
+{
+	struct context *context = create_context(0x0100, data);
+
+	avctp_send_vendordep_req(context->session, 0, 0, NULL, 0,
+						handler_response, context);
+
+	execute_context(context);
 }
 
 static void test_server(gconstpointer data)
@@ -321,6 +339,10 @@ int main(int argc, char *argv[])
 	define_test("/TP/NFR/BV-03-C", test_server,
 				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00),
 				raw_pdu(0x02, 0x11, 0x0e, 0x00, 0x00, 0x00));
+
+	define_test("/TP/NFR/BV-04-C", test_client,
+				raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x00, 0x00),
+				raw_pdu(0x02, 0x11, 0x0e, 0x0a, 0x00, 0x00));
 
 	define_test("/TP/NFR/BI-01-C", test_server,
 				raw_pdu(0x00, 0xff, 0xff, 0x00, 0x00, 0x00),
