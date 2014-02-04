@@ -36,8 +36,11 @@
 #include "hal-log.h"
 #include "hal-msg.h"
 #include "../profiles/audio/a2dp-codecs.h"
+#include "../src/shared/util.h"
 
 #define FIXED_A2DP_PLAYBACK_LATENCY_MS 25
+
+#define FIXED_BUFFER_SIZE (20 * 512)
 
 #define MAX_FRAMES_IN_PAYLOAD 15
 
@@ -220,6 +223,8 @@ struct a2dp_stream_out {
 	struct audio_endpoint *ep;
 	enum a2dp_state_t audio_state;
 	struct audio_input_config cfg;
+
+	uint8_t *downmix_buf;
 };
 
 struct a2dp_audio_dev {
@@ -230,7 +235,8 @@ struct a2dp_audio_dev {
 static const a2dp_sbc_t sbc_presets[] = {
 	{
 		.frequency = SBC_SAMPLING_FREQ_44100 | SBC_SAMPLING_FREQ_48000,
-		.channel_mode = SBC_CHANNEL_MODE_DUAL_CHANNEL |
+		.channel_mode = SBC_CHANNEL_MODE_MONO |
+				SBC_CHANNEL_MODE_DUAL_CHANNEL |
 				SBC_CHANNEL_MODE_STEREO |
 				SBC_CHANNEL_MODE_JOINT_STEREO,
 		.subbands = SBC_SUBBANDS_4 | SBC_SUBBANDS_8,
@@ -907,6 +913,21 @@ static void unregister_endpoints(void)
 	}
 }
 
+static void downmix_to_mono(struct a2dp_stream_out *out, const uint8_t *buffer,
+								size_t bytes)
+{
+	const int16_t *input = (const void *) buffer;
+	int16_t *output = (void *) out->downmix_buf;
+	size_t i;
+
+	for (i = 0; i < bytes / 2; i++) {
+		int16_t l = le16_to_cpu(get_unaligned(&input[i * 2]));
+		int16_t r = le16_to_cpu(get_unaligned(&input[i * 2 + 1]));
+
+		put_unaligned(cpu_to_le16((l + r) / 2), &output[i]);
+	}
+}
+
 static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 								size_t bytes)
 {
@@ -936,6 +957,27 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 	if (out->ep->fd < 0) {
 		error("audio: no transport socket");
 		return -1;
+	}
+
+	/* currently Android audioflinger is not able to provide mono stream on
+	 * A2DP output so down mixing needs to be done in hal-audio plugin.
+	 *
+	 * for reference see
+	 * AudioFlinger::PlaybackThread::readOutputParameters()
+	 * frameworks/av/services/audioflinger/Threads.cpp:1631
+	 */
+	if (out->cfg.channels == AUDIO_CHANNEL_OUT_MONO) {
+		if (!out->downmix_buf) {
+			error("audio: downmix buffer not initialized");
+			return -1;
+		}
+
+		downmix_to_mono(out, buffer, bytes);
+
+		return out->ep->codec->write_data(out->ep->codec_data,
+							out->downmix_buf,
+							bytes / 2,
+							out->ep->fd) * 2;
 	}
 
 	return out->ep->codec->write_data(out->ep->codec_data, buffer,
@@ -975,16 +1017,18 @@ static size_t out_get_buffer_size(const struct audio_stream *stream)
 	 * use magic value here and out_write code takes care of splitting
 	 * input buffer into multiple media packets.
 	 */
-	return 20 * 512;
+	return FIXED_BUFFER_SIZE;
 }
 
 static uint32_t out_get_channels(const struct audio_stream *stream)
 {
-	struct a2dp_stream_out *out = (struct a2dp_stream_out *) stream;
-
 	DBG("");
 
-	return out->cfg.channels;
+	/* AudioFlinger can only provide stereo stream, so we return it here and
+	 * later we'll downmix this to mono in case codec requires it
+	 */
+
+	return AUDIO_CHANNEL_OUT_STEREO;
 }
 
 static audio_format_t out_get_format(const struct audio_stream *stream)
@@ -1297,6 +1341,12 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 
 	free(preset);
 
+	if (out->cfg.channels == AUDIO_CHANNEL_OUT_MONO) {
+		out->downmix_buf = malloc(FIXED_BUFFER_SIZE / 2);
+		if (!out->downmix_buf)
+			goto fail;
+	}
+
 	*stream_out = &out->stream;
 	a2dp_dev->out = out;
 
@@ -1315,6 +1365,7 @@ static void audio_close_output_stream(struct audio_hw_device *dev,
 					struct audio_stream_out *stream)
 {
 	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *) dev;
+	struct a2dp_stream_out *out = (struct a2dp_stream_out *) stream;
 	struct audio_endpoint *ep = a2dp_dev->out->ep;
 
 	DBG("");
@@ -1327,6 +1378,8 @@ static void audio_close_output_stream(struct audio_hw_device *dev,
 
 	ep->codec->cleanup(ep->codec_data);
 	ep->codec_data = NULL;
+
+	free(out->downmix_buf);
 
 	free(stream);
 	a2dp_dev->out = NULL;
