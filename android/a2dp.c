@@ -45,6 +45,7 @@
 #include "utils.h"
 #include "bluetooth.h"
 #include "avdtp.h"
+#include "avrcp.h"
 #include "audio-msg.h"
 #include "audio-ipc.h"
 
@@ -544,6 +545,7 @@ static void signaling_connect_cb(GIOChannel *chan, GError *err,
 			error("avdtp_discover: %s", strerror(-perr));
 			goto failed;
 		}
+		bt_avrcp_connect(&dev->dst);
 	} else /* Init idle timeout to discover */
 		dev->idle_id = g_timeout_add_seconds(IDLE_TIMEOUT, idle_timeout,
 									dev);
