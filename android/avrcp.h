@@ -25,3 +25,4 @@ bool bt_avrcp_register(const bdaddr_t *addr);
 void bt_avrcp_unregister(void);
 
 void bt_avrcp_connect(const bdaddr_t *dst);
+void bt_avrcp_disconnect(const bdaddr_t *dst);

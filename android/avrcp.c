@@ -135,6 +135,11 @@ static void avrcp_device_free(void *data)
 	if (dev->session)
 		avctp_shutdown(dev->session);
 
+	if (dev->io) {
+		g_io_channel_shutdown(dev->io, FALSE, NULL);
+		g_io_channel_unref(dev->io);
+	}
+
 	devices = g_slist_remove(devices, dev);
 	g_free(dev);
 }
@@ -337,4 +342,25 @@ void bt_avrcp_connect(const bdaddr_t *dst)
 
 	ba2str(&dev->dst, addr);
 	DBG("connecting to %s", addr);
+}
+
+void bt_avrcp_disconnect(const bdaddr_t *dst)
+{
+	struct avrcp_device *dev;
+	GSList *l;
+
+	DBG("");
+
+	l = g_slist_find_custom(devices, dst, device_cmp);
+	if (!l)
+		return;
+
+	dev = l->data;
+
+	if (dev->session) {
+		avctp_shutdown(dev->session);
+		return;
+	}
+
+	avrcp_device_free(dev);
 }
