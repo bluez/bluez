@@ -277,8 +277,8 @@ static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(0x0100, data);
 
-	avctp_send_vendordep_req(context->session, 0, 0, NULL, 0,
-						handler_response, context);
+	avctp_send_vendordep_req(context->session, AVC_CTYPE_CONTROL, 0, NULL,
+						0, handler_response, context);
 
 	execute_context(context);
 }
@@ -290,8 +290,8 @@ static void test_server(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/NFR/BV-03-C")) {
 		int ret;
 
-		ret = avctp_register_pdu_handler(context->session, 0x00,
-								handler, NULL);
+		ret = avctp_register_pdu_handler(context->session,
+					AVC_OP_VENDORDEP, handler, NULL);
 		DBG("ret %d", ret);
 		g_assert_cmpint(ret, !=, 0);
 	}
