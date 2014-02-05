@@ -42,7 +42,6 @@
 
 struct test_pdu {
 	bool valid;
-	bool fragmented;
 	const uint8_t *data;
 	size_t size;
 };
@@ -67,14 +66,6 @@ struct context {
 #define raw_pdu(args...)					\
 	{							\
 		.valid = true,					\
-		.data = data(args),				\
-		.size = sizeof(data(args)),			\
-	}
-
-#define frg_pdu(args...)					\
-	{							\
-		.valid = true,					\
-		.fragmented = true,				\
 		.data = data(args),				\
 		.size = sizeof(data(args)),			\
 	}
@@ -133,9 +124,6 @@ static gboolean send_pdu(gpointer user_data)
 
 	g_assert_cmpint(len, ==, pdu->size);
 
-	if (pdu->fragmented)
-		return send_pdu(user_data);
-
 	context->process = 0;
 	return FALSE;
 }
@@ -180,8 +168,7 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 
 	g_assert(memcmp(buf, pdu->data, pdu->size) == 0);
 
-	if (!pdu->fragmented)
-		context_process(context);
+	context_process(context);
 
 	return TRUE;
 }
