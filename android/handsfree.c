@@ -288,7 +288,7 @@ static void handle_connect(const void *buf, uint16_t len)
 
 	android2bdaddr(&cmd->bdaddr, &bdaddr);
 
-	ba2str(&device.bdaddr, addr);
+	ba2str(&bdaddr, addr);
 	DBG("connecting to %s", addr);
 
 	device_init(&bdaddr);
