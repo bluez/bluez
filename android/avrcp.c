@@ -54,6 +54,7 @@ static GIOChannel *server = NULL;
 struct avrcp_device {
 	bdaddr_t	dst;
 	struct avctp	*session;
+	GIOChannel	*io;
 };
 
 static const struct ipc_handler cmd_handlers[] = {
@@ -197,17 +198,20 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	ba2str(&dst, address);
-	DBG("Incoming connection from %s", address);
 
 	l = g_slist_find_custom(devices, &dst, device_cmp);
 	if (l) {
-		error("Unexpected connection");
-		return;
+		dev = l->data;
+		if (dev->session) {
+			error("Unexpected connection");
+			return;
+		}
+	} else {
+		DBG("Incoming connection from %s", address);
+		dev = avrcp_device_new(&dst);
 	}
 
 	fd = g_io_channel_unix_get_fd(chan);
-
-	dev = avrcp_device_new(&dst);
 	dev->session = avctp_new(fd, imtu, omtu, 0x0100);
 
 	if (!dev->session) {
@@ -221,6 +225,11 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	avctp_init_uinput(dev->session, "bluetooth", address);
 
 	g_io_channel_set_close_on_unref(chan, FALSE);
+
+	if (dev->io) {
+		g_io_channel_unref(dev->io);
+		dev->io = NULL;
+	}
 
 	DBG("%s connected", address);
 }
@@ -287,4 +296,45 @@ void bt_avrcp_unregister(void)
 		g_io_channel_unref(server);
 		server = NULL;
 	}
+}
+
+static bool avrcp_device_connect(struct avrcp_device *dev, BtIOConnect cb)
+{
+	GError *err = NULL;
+
+	dev->io = bt_io_connect(cb, dev, NULL, &err,
+					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
+					BT_IO_OPT_DEST_BDADDR, &dev->dst,
+					BT_IO_OPT_PSM, L2CAP_PSM_AVCTP,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+					BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		return false;
+	}
+
+	return true;
+}
+
+void bt_avrcp_connect(const bdaddr_t *dst)
+{
+	struct avrcp_device *dev;
+	char addr[18];
+	GSList *l;
+
+	DBG("");
+
+	l = g_slist_find_custom(devices, dst, device_cmp);
+	if (l)
+		return;
+
+	dev = avrcp_device_new(dst);
+	if (!avrcp_device_connect(dev, connect_cb)) {
+		avrcp_device_free(dev);
+		return;
+	}
+
+	ba2str(&dev->dst, addr);
+	DBG("connecting to %s", addr);
 }
