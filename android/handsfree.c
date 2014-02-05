@@ -229,6 +229,7 @@ static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 
 	if (sdp_get_access_protos(recs->data, &protos) < 0) {
 		error("handsfree: unable to get access protocols from record");
+		sdp_list_free(classes, free);
 		goto fail;
 	}
 
