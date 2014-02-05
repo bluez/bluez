@@ -507,26 +507,26 @@ static sdp_record_t *handsfree_ag_record(void)
 	}
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
-	root = sdp_list_append(0, &root_uuid);
+	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(record, root);
 
 	sdp_uuid16_create(&svclass_uuid, HANDSFREE_AGW_SVCLASS_ID);
-	svclass_id = sdp_list_append(0, &svclass_uuid);
+	svclass_id = sdp_list_append(NULL, &svclass_uuid);
 	sdp_uuid16_create(&ga_svclass_uuid, GENERIC_AUDIO_SVCLASS_ID);
 	svclass_id = sdp_list_append(svclass_id, &ga_svclass_uuid);
 	sdp_set_service_classes(record, svclass_id);
 
 	sdp_uuid16_create(&profile.uuid, HANDSFREE_PROFILE_ID);
 	profile.version = 0x0106;
-	pfseq = sdp_list_append(0, &profile);
+	pfseq = sdp_list_append(NULL, &profile);
 	sdp_set_profile_descs(record, pfseq);
 
 	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
 	proto[0] = sdp_list_append(0, &l2cap_uuid);
-	apseq = sdp_list_append(0, proto[0]);
+	apseq = sdp_list_append(NULL, proto[0]);
 
 	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
-	proto[1] = sdp_list_append(0, &rfcomm_uuid);
+	proto[1] = sdp_list_append(NULL, &rfcomm_uuid);
 	channel = sdp_data_alloc(SDP_UINT8, &ch);
 	proto[1] = sdp_list_append(proto[1], channel);
 	apseq = sdp_list_append(apseq, proto[1]);
@@ -535,21 +535,21 @@ static sdp_record_t *handsfree_ag_record(void)
 	features = sdp_data_alloc(SDP_UINT16, &sdpfeat);
 	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
-	aproto = sdp_list_append(0, apseq);
+	aproto = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
 
-	sdp_set_info_attr(record, "Hands-Free Audio Gateway", 0, 0);
+	sdp_set_info_attr(record, "Hands-Free Audio Gateway", NULL, NULL);
 
 	sdp_attr_add(record, SDP_ATTR_EXTERNAL_NETWORK, network);
 
 	sdp_data_free(channel);
-	sdp_list_free(proto[0], 0);
-	sdp_list_free(proto[1], 0);
-	sdp_list_free(apseq, 0);
-	sdp_list_free(pfseq, 0);
-	sdp_list_free(aproto, 0);
-	sdp_list_free(root, 0);
-	sdp_list_free(svclass_id, 0);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(pfseq, NULL);
+	sdp_list_free(aproto, NULL);
+	sdp_list_free(root, NULL);
+	sdp_list_free(svclass_id, NULL);
 
 	return record;
 }
