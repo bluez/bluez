@@ -227,6 +227,8 @@ static void bt_a2dp_notify_state(struct a2dp_device *dev, uint8_t state)
 	if (state != HAL_A2DP_STATE_DISCONNECTED)
 		return;
 
+	bt_avrcp_disconnect(&dev->dst);
+
 	a2dp_device_free(dev);
 }
 
