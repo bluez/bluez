@@ -146,10 +146,13 @@ static int nap_remove_bridge(void)
 		return -EOPNOTSUPP;
 
 	err = ioctl(sk, SIOCBRDELBR, BNEP_BRIDGE);
+	if (err < 0)
+		err = -errno;
+
 	close(sk);
 
 	if (err < 0)
-		return -EOPNOTSUPP;
+		return err;
 
 	nap_dev.bridge = false;
 
