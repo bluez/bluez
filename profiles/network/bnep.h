@@ -30,7 +30,8 @@ uint16_t bnep_service_id(const char *svc);
 const char *bnep_uuid(uint16_t id);
 const char *bnep_name(uint16_t id);
 
-struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role);
+struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role,
+								char *iface);
 void bnep_free(struct bnep *session);
 
 typedef void (*bnep_connect_cb) (char *iface, int err, void *data);

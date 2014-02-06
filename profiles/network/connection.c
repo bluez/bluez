@@ -51,6 +51,7 @@
 #include "connection.h"
 
 #define NETWORK_PEER_INTERFACE "org.bluez.Network1"
+#define BNEP_INTERFACE "bnep%d"
 
 typedef enum {
 	CONNECTED,
@@ -128,7 +129,8 @@ static void bnep_disconn_cb(gpointer data)
 
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, sizeof(nc->dev));
-	strcpy(nc->dev, "bnep%d");
+	strncpy(nc->dev, BNEP_INTERFACE, 16);
+	nc->dev[15] = '\0';
 
 	bnep_free(nc->session);
 	nc->session = NULL;
@@ -243,7 +245,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 	}
 
 	sk = g_io_channel_unix_get_fd(nc->io);
-	nc->session = bnep_new(sk, BNEP_SVC_PANU, nc->id);
+	nc->session = bnep_new(sk, BNEP_SVC_PANU, nc->id, BNEP_INTERFACE);
 	if (!nc->session)
 		goto failed;
 

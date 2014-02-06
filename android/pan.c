@@ -52,6 +52,7 @@
 #define SVC_HINT_NETWORKING 0x02
 
 #define BNEP_BRIDGE "bnep"
+#define BNEP_PANU_INTERFACE "bt-pan"
 #define FORWARD_DELAY_PATH "/sys/class/net/"BNEP_BRIDGE"/bridge/forward_delay"
 
 static bdaddr_t adapter_addr;
@@ -202,7 +203,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	sk = g_io_channel_unix_get_fd(dev->io);
 
-	dev->session = bnep_new(sk, l_role, r_role);
+	dev->session = bnep_new(sk, l_role, r_role, BNEP_PANU_INTERFACE);
 	if (!dev->session)
 		goto fail;
 

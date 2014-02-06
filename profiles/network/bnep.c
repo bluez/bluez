@@ -386,7 +386,8 @@ static gboolean bnep_conn_req_to(gpointer user_data)
 	return FALSE;
 }
 
-struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role)
+struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role,
+								char *iface)
 {
 	struct bnep *session;
 	int dup_fd;
@@ -399,6 +400,8 @@ struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role)
 	session->io = g_io_channel_unix_new(dup_fd);
 	session->src = local_role;
 	session->dst = remote_role;
+	strncpy(session->iface, iface, 16);
+	session->iface[15] = '\0';
 
 	g_io_channel_set_close_on_unref(session->io, TRUE);
 	session->watch = g_io_add_watch(session->io,
