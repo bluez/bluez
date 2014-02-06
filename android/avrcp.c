@@ -140,8 +140,13 @@ static void avrcp_device_free(void *data)
 		g_io_channel_unref(dev->io);
 	}
 
-	devices = g_slist_remove(devices, dev);
 	g_free(dev);
+}
+
+static void avrcp_device_remove(struct avrcp_device *dev)
+{
+	devices = g_slist_remove(devices, dev);
+	avrcp_device_free(dev);
 }
 
 static struct avrcp_device *avrcp_device_new(const bdaddr_t *dst)
@@ -171,7 +176,7 @@ static void disconnect_cb(void *data)
 
 	dev->session = NULL;
 
-	avrcp_device_free(dev);
+	avrcp_device_remove(dev);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
@@ -362,5 +367,5 @@ void bt_avrcp_disconnect(const bdaddr_t *dst)
 		return;
 	}
 
-	avrcp_device_free(dev);
+	avrcp_device_remove(dev);
 }
