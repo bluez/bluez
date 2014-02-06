@@ -77,6 +77,72 @@ static struct {
 	.io = NULL,
 };
 
+static int set_forward_delay(void)
+{
+	int fd, ret;
+
+	fd = open(FORWARD_DELAY_PATH, O_RDWR);
+	if (fd < 0) {
+		int err = -errno;
+
+		error("pan: open forward delay file failed: %d (%s)",
+							-err, strerror(-err));
+
+		return err;
+	}
+
+	ret = write(fd, "0", sizeof("0"));
+	close(fd);
+
+	return ret;
+}
+
+static int nap_create_bridge(void)
+{
+	int sk, err;
+
+	DBG("%s", BNEP_BRIDGE);
+
+	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (sk < 0)
+		return -EOPNOTSUPP;
+
+	if (ioctl(sk, SIOCBRADDBR, BNEP_BRIDGE) < 0) {
+		err = -errno;
+		if (err != -EEXIST) {
+			close(sk);
+			return -EOPNOTSUPP;
+		}
+	}
+
+	err = set_forward_delay();
+	if (err < 0)
+		ioctl(sk, SIOCBRDELBR, BNEP_BRIDGE);
+
+	close(sk);
+
+	return err;
+}
+
+static int nap_remove_bridge(void)
+{
+	int sk, err;
+
+	DBG("%s", BNEP_BRIDGE);
+
+	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (sk < 0)
+		return -EOPNOTSUPP;
+
+	err = ioctl(sk, SIOCBRDELBR, BNEP_BRIDGE);
+	close(sk);
+
+	if (err < 0)
+		return -EOPNOTSUPP;
+
+	return 0;
+}
+
 static int device_cmp(gconstpointer s, gconstpointer user_data)
 {
 	const struct pan_device *dev = s;
@@ -473,72 +539,6 @@ static void nap_confirm_cb(GIOChannel *chan, gpointer data)
 
 failed:
 	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
-}
-
-static int set_forward_delay(void)
-{
-	int fd, ret;
-
-	fd = open(FORWARD_DELAY_PATH, O_RDWR);
-	if (fd < 0) {
-		int err = -errno;
-
-		error("pan: open forward delay file failed: %d (%s)",
-							-err, strerror(-err));
-
-		return err;
-	}
-
-	ret = write(fd, "0", sizeof("0"));
-	close(fd);
-
-	return ret;
-}
-
-static int nap_create_bridge(void)
-{
-	int sk, err;
-
-	DBG("%s", BNEP_BRIDGE);
-
-	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -EOPNOTSUPP;
-
-	if (ioctl(sk, SIOCBRADDBR, BNEP_BRIDGE) < 0) {
-		err = -errno;
-		if (err != -EEXIST) {
-			close(sk);
-			return -EOPNOTSUPP;
-		}
-	}
-
-	err = set_forward_delay();
-	if (err < 0)
-		ioctl(sk, SIOCBRDELBR, BNEP_BRIDGE);
-
-	close(sk);
-
-	return err;
-}
-
-static int nap_remove_bridge(void)
-{
-	int sk, err;
-
-	DBG("%s", BNEP_BRIDGE);
-
-	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -EOPNOTSUPP;
-
-	err = ioctl(sk, SIOCBRDELBR, BNEP_BRIDGE);
-	close(sk);
-
-	if (err < 0)
-		return -EOPNOTSUPP;
-
-	return 0;
 }
 
 static void destroy_nap_device(void)
