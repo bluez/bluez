@@ -125,8 +125,10 @@ static void uhid_destroy(int fd)
 	close(fd);
 }
 
-static void hid_device_free(struct hid_device *dev)
+static void hid_device_free(void *data)
 {
+	struct hid_device *dev = data;
+
 	if (dev->ctrl_watch > 0)
 		g_source_remove(dev->ctrl_watch);
 
@@ -148,9 +150,13 @@ static void hid_device_free(struct hid_device *dev)
 		uhid_destroy(dev->uhid_fd);
 
 	g_free(dev->rd_data);
-
-	devices = g_slist_remove(devices, dev);
 	g_free(dev);
+}
+
+static void hid_device_remove(struct hid_device *dev)
+{
+	devices = g_slist_remove(devices, dev);
+	hid_device_free(dev);
 }
 
 static void handle_uhid_output(struct hid_device *dev,
@@ -326,7 +332,7 @@ error:
 	if (dev->ctrl_io && !(cond & G_IO_NVAL))
 		g_io_channel_shutdown(dev->ctrl_io, TRUE, NULL);
 
-	hid_device_free(dev);
+	hid_device_remove(dev);
 
 	return FALSE;
 }
@@ -487,7 +493,7 @@ error:
 	if (dev->intr_io && !(cond & G_IO_NVAL))
 		g_io_channel_shutdown(dev->intr_io, TRUE, NULL);
 
-	hid_device_free(dev);
+	hid_device_remove(dev);
 
 	return FALSE;
 }
@@ -586,7 +592,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 
 failed:
 	bt_hid_notify_state(dev, state);
-	hid_device_free(dev);
+	hid_device_remove(dev);
 }
 
 static void control_connect_cb(GIOChannel *chan, GError *conn_err,
@@ -623,7 +629,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	hid_device_free(dev);
+	hid_device_remove(dev);
 }
 
 static void hid_sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
@@ -707,7 +713,7 @@ static void hid_sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 
 fail:
 	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
-	hid_device_free(dev);
+	hid_device_remove(dev);
 }
 
 static void hid_sdp_did_search_cb(sdp_list_t *recs, int err, gpointer data)
@@ -756,7 +762,7 @@ static void hid_sdp_did_search_cb(sdp_list_t *recs, int err, gpointer data)
 
 fail:
 	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
-	hid_device_free(dev);
+	hid_device_remove(dev);
 }
 
 static void bt_hid_connect(const void *buf, uint16_t len)
@@ -790,7 +796,7 @@ static void bt_hid_connect(const void *buf, uint16_t len)
 	if (bt_search_service(&adapter_addr, &dev->dst, &uuid,
 					hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
 		error("Failed to search DeviceID SDP details");
-		hid_device_free(dev);
+		hid_device_remove(dev);
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -1291,7 +1297,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		if (bt_search_service(&src, &dev->dst, &uuid,
 					hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
 			error("failed to search did sdp details");
-			hid_device_free(dev);
+			hid_device_remove(dev);
 			return;
 		}
 
@@ -1359,18 +1365,11 @@ bool bt_hid_register(const bdaddr_t *addr)
 	return true;
 }
 
-static void free_hid_devices(gpointer data, gpointer user_data)
-{
-	struct hid_device *dev = data;
-
-	hid_device_free(dev);
-}
-
 void bt_hid_unregister(void)
 {
 	DBG("");
 
-	g_slist_foreach(devices, free_hid_devices, NULL);
+	g_slist_free_full(devices, hid_device_free);
 	devices = NULL;
 
 	if (ctrl_io) {
