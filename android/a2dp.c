@@ -171,8 +171,13 @@ static void a2dp_device_free(void *data)
 
 	setup_remove_all_by_dev(dev);
 
-	devices = g_slist_remove(devices, dev);
 	g_free(dev);
+}
+
+static void a2dp_device_remove(struct a2dp_device *dev)
+{
+	devices = g_slist_remove(devices, dev);
+	a2dp_device_free(dev);
 }
 
 static struct a2dp_device *a2dp_device_new(const bdaddr_t *dst)
@@ -229,7 +234,7 @@ static void bt_a2dp_notify_state(struct a2dp_device *dev, uint8_t state)
 
 	bt_avrcp_disconnect(&dev->dst);
 
-	a2dp_device_free(dev);
+	a2dp_device_remove(dev);
 }
 
 static void bt_audio_notify_state(struct a2dp_setup *setup, uint8_t state)
@@ -579,7 +584,7 @@ static void bt_a2dp_connect(const void *buf, uint16_t len)
 
 	dev = a2dp_device_new(&dst);
 	if (!a2dp_device_connect(dev, signaling_connect_cb)) {
-		a2dp_device_free(dev);
+		a2dp_device_remove(dev);
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
