@@ -51,6 +51,7 @@
 #include "server.h"
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.NetworkServer1"
+#define BNEP_INTERFACE "bnep%d"
 #define SETUP_TIMEOUT		1
 
 /* Pending Authorization */
@@ -346,6 +347,9 @@ static gboolean bnep_setup(GIOChannel *chan,
 		error("Bridge interface not configured");
 		goto reply;
 	}
+
+	strncpy(na->setup->dev, BNEP_INTERFACE, 16);
+	na->setup->dev[15] = '\0';
 
 	if (bnep_server_add(sk, dst_role, ns->bridge, na->setup->dev,
 							&na->setup->dst) < 0)

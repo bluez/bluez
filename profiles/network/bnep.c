@@ -174,9 +174,10 @@ static int bnep_connadd(int sk, uint16_t role, char *dev)
 {
 	struct bnep_connadd_req req;
 
-	memset(dev, 0, 16);
 	memset(&req, 0, sizeof(req));
-	strcpy(req.device, "bnep%d");
+	strncpy(req.device, dev, 16);
+	req.device[15] = '\0';
+
 	req.sock = sk;
 	req.role = role;
 	if (ioctl(ctl, BNEPCONNADD, &req) < 0) {
