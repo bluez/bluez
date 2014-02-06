@@ -33,6 +33,9 @@
 #include <sys/wait.h>
 #include <net/if.h>
 #include <linux/sockios.h>
+#include <netinet/in.h>
+#include <netinet/ip6.h>
+#include <linux/if_bridge.h>
 
 #include "btio/btio.h"
 #include "lib/bluetooth.h"
@@ -54,7 +57,6 @@
 #define BNEP_BRIDGE "bt-pan"
 #define BNEP_PANU_INTERFACE "bt-pan"
 #define BNEP_NAP_INTERFACE "bt-pan%d"
-#define FORWARD_DELAY_PATH "/sys/class/net/"BNEP_BRIDGE"/bridge/forward_delay"
 
 static bdaddr_t adapter_addr;
 GSList *devices = NULL;
@@ -80,25 +82,22 @@ static struct {
 	.bridge = false,
 };
 
-
-static int set_forward_delay(void)
+static int set_forward_delay(int sk)
 {
-	int fd, ret;
+	unsigned long args[4] = { BRCTL_SET_BRIDGE_FORWARD_DELAY, 0 ,0, 0 };
+	struct ifreq ifr;
 
-	fd = open(FORWARD_DELAY_PATH, O_RDWR);
-	if (fd < 0) {
-		int err = -errno;
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, BNEP_BRIDGE, IFNAMSIZ);
+	ifr.ifr_data = (char *) args;
 
-		error("pan: open forward delay file failed: %d (%s)",
-							-err, strerror(-err));
-
-		return err;
+	if (ioctl(sk, SIOCDEVPRIVATE, &ifr) < 0) {
+		error("pan: setting forward delay failed: %d (%s)",
+							errno, strerror(errno));
+		return -1;
 	}
 
-	ret = write(fd, "0", sizeof("0"));
-	close(fd);
-
-	return ret;
+	return 0;
 }
 
 static int nap_create_bridge(void)
@@ -122,7 +121,7 @@ static int nap_create_bridge(void)
 		}
 	}
 
-	err = set_forward_delay();
+	err = set_forward_delay(sk);
 	if (err < 0)
 		ioctl(sk, SIOCBRDELBR, BNEP_BRIDGE);
 
