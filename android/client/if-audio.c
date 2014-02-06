@@ -258,19 +258,26 @@ static void play_p(int argc, const char **argv)
 
 	if (buffer_size == 0) {
 		haltest_error("Invalid buffer size. Was stream_out opened?\n");
-		return;
+		goto fail;
 	}
 
 	pthread_mutex_lock(&state_mutex);
 	if (current_state != STATE_STOPPED) {
 		haltest_error("Already playing or stream suspended!\n");
 		pthread_mutex_unlock(&state_mutex);
-		return;
+		goto fail;
 	}
 	pthread_mutex_unlock(&state_mutex);
 
-	if (pthread_create(&play_thread, NULL, playback_thread, in) != 0)
+	if (pthread_create(&play_thread, NULL, playback_thread, in) != 0) {
 		haltest_error("Cannot create playback thread!\n");
+		goto fail;
+	}
+
+	return;
+fail:
+	if (in)
+		fclose(in);
 }
 
 static void stop_p(int argc, const char **argv)
