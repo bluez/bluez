@@ -180,7 +180,7 @@ static void *playback_thread(void *data)
 	int (*filbuff_cb) (short*, void*);
 	short buffer[buffer_size / sizeof(short)];
 	size_t len = 0;
-	size_t w_len = 0;
+	ssize_t w_len = 0;
 	FILE *in = data;
 	void *cb_data = NULL;
 	float freq = 440.0;
@@ -223,7 +223,7 @@ static void *playback_thread(void *data)
 
 		w_len = stream_out->write(stream_out, buffer, buffer_size);
 		pthread_mutex_unlock(&outstream_mutex);
-	} while (len && w_len);
+	} while (len && w_len > 0);
 
 	if (in) {
 		fclose(in);
