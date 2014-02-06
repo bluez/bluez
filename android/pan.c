@@ -51,8 +51,9 @@
 
 #define SVC_HINT_NETWORKING 0x02
 
-#define BNEP_BRIDGE "bnep"
+#define BNEP_BRIDGE "bt-pan"
 #define BNEP_PANU_INTERFACE "bt-pan"
+#define BNEP_NAP_INTERFACE "bt-pan%d"
 #define FORWARD_DELAY_PATH "/sys/class/net/"BNEP_BRIDGE"/bridge/forward_delay"
 
 static bdaddr_t adapter_addr;
@@ -229,8 +230,13 @@ static void bt_pan_notify_ctrl_state(struct pan_device *dev, uint8_t state)
 	ev.state = state;
 	ev.local_role = local_role;
 	ev.status = HAL_STATUS_SUCCESS;
+
 	memset(ev.name, 0, sizeof(ev.name));
-	memcpy(ev.name, dev->iface, sizeof(dev->iface));
+
+	if (local_role == HAL_PAN_ROLE_NAP)
+		memcpy(ev.name, BNEP_BRIDGE, sizeof(BNEP_BRIDGE));
+	else
+		memcpy(ev.name, dev->iface, sizeof(dev->iface));
 
 	ipc_send_notif(HAL_SERVICE_ID_PAN, HAL_EV_PAN_CTRL_STATE, sizeof(ev),
 									&ev);
@@ -541,6 +547,9 @@ static void nap_confirm_cb(GIOChannel *chan, gpointer data)
 	bacpy(&dev->dst, &dst);
 	local_role = HAL_PAN_ROLE_NAP;
 	dev->role = HAL_PAN_ROLE_PANU;
+
+	strncpy(dev->iface, BNEP_NAP_INTERFACE, 16);
+	dev->iface[15] = '\0';
 
 	dev->io = g_io_channel_ref(chan);
 	g_io_channel_set_close_on_unref(dev->io, TRUE);
