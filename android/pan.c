@@ -132,6 +132,31 @@ static int nap_create_bridge(void)
 	return err;
 }
 
+static int bridge_if_down(void)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	sk = socket(AF_INET, SOCK_DGRAM, 0);
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, BNEP_BRIDGE, IF_NAMESIZE - 1);
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	/* Bring down the interface */
+	err = ioctl(sk, SIOCSIFFLAGS, (caddr_t) &ifr);
+
+	close(sk);
+
+	if (err < 0) {
+		error("pan: Could not bring down %s", BNEP_BRIDGE);
+		return err;
+	}
+
+	return 0;
+}
+
 static int nap_remove_bridge(void)
 {
 	int sk, err;
@@ -140,6 +165,8 @@ static int nap_remove_bridge(void)
 
 	if (!nap_dev.bridge)
 		return 0;
+
+	bridge_if_down();
 
 	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
