@@ -84,8 +84,10 @@ static int device_cmp(gconstpointer s, gconstpointer user_data)
 	return bacmp(&dev->dst, dst);
 }
 
-static void pan_device_free(struct pan_device *dev)
+static void pan_device_free(void *data)
 {
+	struct pan_device *dev = data;
+
 	if (dev->watch > 0) {
 		bnep_server_delete(BNEP_BRIDGE, dev->iface, &dev->dst);
 		g_source_remove(dev->watch);
@@ -99,11 +101,17 @@ static void pan_device_free(struct pan_device *dev)
 	if (dev->session)
 		bnep_free(dev->session);
 
-	devices = g_slist_remove(devices, dev);
 	g_free(dev);
+}
+
+static void pan_device_remove(struct pan_device *dev)
+{
+	devices = g_slist_remove(devices, dev);
 
 	if (g_slist_length(devices) == 0)
 		local_role = HAL_PAN_ROLE_NONE;
+
+	pan_device_free(dev);
 }
 
 static void bt_pan_notify_conn_state(struct pan_device *dev, uint8_t state)
@@ -127,7 +135,7 @@ static void bt_pan_notify_conn_state(struct pan_device *dev, uint8_t state)
 	ipc_send_notif(HAL_SERVICE_ID_PAN, HAL_EV_PAN_CONN_STATE, sizeof(ev),
 									&ev);
 	if (dev->conn_state == HAL_PAN_STATE_DISCONNECTED)
-		pan_device_free(dev);
+		pan_device_remove(dev);
 }
 
 static void bt_pan_notify_ctrl_state(struct pan_device *dev, uint8_t state)
@@ -402,7 +410,7 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 
 failed:
 	bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_SETUP_CONN_RSP, rsp);
-	pan_device_free(dev);
+	pan_device_remove(dev);
 
 	return FALSE;
 }
@@ -755,19 +763,13 @@ bool bt_pan_register(const bdaddr_t *addr)
 	return true;
 }
 
-static void pan_device_disconnected(gpointer data, gpointer user_data)
-{
-	struct pan_device *dev = data;
-
-	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
-}
-
 void bt_pan_unregister(void)
 {
 	DBG("");
 
-	g_slist_foreach(devices, pan_device_disconnected, NULL);
+	g_slist_free_full(devices, pan_device_free);
 	devices = NULL;
+	local_role = HAL_PAN_ROLE_NONE;
 
 	bnep_cleanup();
 
