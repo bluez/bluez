@@ -72,10 +72,13 @@ struct pan_device {
 static struct {
 	uint32_t	record_id;
 	GIOChannel	*io;
+	bool		bridge;
 } nap_dev = {
 	.record_id = 0,
 	.io = NULL,
+	.bridge = false,
 };
+
 
 static int set_forward_delay(void)
 {
@@ -103,6 +106,9 @@ static int nap_create_bridge(void)
 
 	DBG("%s", BNEP_BRIDGE);
 
+	if (nap_dev.bridge)
+		return 0;
+
 	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -EOPNOTSUPP;
@@ -121,6 +127,8 @@ static int nap_create_bridge(void)
 
 	close(sk);
 
+	nap_dev.bridge = err == 0;
+
 	return err;
 }
 
@@ -129,6 +137,9 @@ static int nap_remove_bridge(void)
 	int sk, err;
 
 	DBG("%s", BNEP_BRIDGE);
+
+	if (!nap_dev.bridge)
+		return 0;
 
 	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
@@ -139,6 +150,8 @@ static int nap_remove_bridge(void)
 
 	if (err < 0)
 		return -EOPNOTSUPP;
+
+	nap_dev.bridge = false;
 
 	return 0;
 }
@@ -175,8 +188,10 @@ static void pan_device_remove(struct pan_device *dev)
 {
 	devices = g_slist_remove(devices, dev);
 
-	if (g_slist_length(devices) == 0)
+	if (g_slist_length(devices) == 0) {
 		local_role = HAL_PAN_ROLE_NONE;
+		nap_remove_bridge();
+	}
 
 	pan_device_free(dev);
 }
@@ -455,8 +470,12 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
+	if (nap_create_bridge() < 0)
+		goto failed;
+
 	if (bnep_server_add(sk, dst_role, BNEP_BRIDGE, dev->iface,
 							&dev->dst) < 0) {
+		nap_remove_bridge();
 		error("server_connadd failed");
 		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto failed;
@@ -557,13 +576,8 @@ static void destroy_nap_device(void)
 static int register_nap_server(void)
 {
 	GError *gerr = NULL;
-	int err;
 
 	DBG("");
-
-	err = nap_create_bridge();
-	if (err < 0)
-		return err;
 
 	nap_dev.io = bt_io_listen(NULL, nap_confirm_cb, NULL, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
