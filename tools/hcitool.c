@@ -961,6 +961,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 					htobs(di.pkt_type & ACL_PTYPE_MASK),
 					0, 0x01, &handle, 25000) < 0) {
 			perror("Can't create connection");
+			free(cr);
 			close(dd);
 			exit(1);
 		}
@@ -968,6 +969,8 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		cc = 1;
 	} else
 		handle = htobs(cr->conn_info->handle);
+
+	free(cr);
 
 	printf("\tBD Address:  %s\n", argv[0]);
 
