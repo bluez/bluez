@@ -130,3 +130,7 @@ android/bluetoothd-snoop
 android/test-ipc
 android/test-*.log
 android/test-*.trs
+
+cscope.in.out
+cscope.out
+cscope.po.out
