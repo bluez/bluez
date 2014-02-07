@@ -205,8 +205,8 @@ static bool find_controllers(void)
 	dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
 	if (!dl) {
 		perror("Failed allocate HCI device request memory");
-		result = false;
-		goto done;
+		close(fd);
+		return false;
 	}
 
 	dl->dev_num = HCI_MAX_DEV;
@@ -243,6 +243,7 @@ static bool find_controllers(void)
 	}
 
 done:
+	free(dl);
 	close(fd);
 	return result;
 }
