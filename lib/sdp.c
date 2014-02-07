@@ -181,8 +181,9 @@ static struct tupla ServiceClass[] = {
 	{ HDP_SVCLASS_ID,			"HDP"				},
 	{ HDP_SOURCE_SVCLASS_ID,		"HDP Source"			},
 	{ HDP_SINK_SVCLASS_ID,			"HDP Sink"			},
-	{ APPLE_AGENT_SVCLASS_ID,		"Apple Agent"			},
+	{ GENERIC_ACCESS_SVCLASS_ID,		"Generic Access"		},
 	{ GENERIC_ATTRIB_SVCLASS_ID,		"Generic Attribute"		},
+	{ APPLE_AGENT_SVCLASS_ID,		"Apple Agent"			},
 	{ 0 }
 };
 
