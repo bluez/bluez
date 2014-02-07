@@ -40,19 +40,6 @@
 
 #include "src/shared/btsnoop.h"
 
-static inline uint64_t ntoh64(uint64_t n)
-{
-	uint64_t h;
-	uint64_t tmp = ntohl(n & 0x00000000ffffffff);
-
-	h = ntohl(n >> 32);
-	h |= tmp << 32;
-
-	return h;
-}
-
-#define hton64(x)     ntoh64(x)
-
 struct btsnoop_hdr {
 	uint8_t		id[8];		/* Identification Pattern */
 	uint32_t	version;	/* Version Number = 1 */
