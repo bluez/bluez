@@ -2340,6 +2340,11 @@ static int send_request(struct avdtp *session, gboolean priority,
 {
 	struct pending_req *req;
 
+	if (size > 0 && !buffer) {
+		DBG("Invalid buffer %p", buffer);
+		return -EINVAL;
+	}
+
 	if (stream && stream->abort_int && signal_id != AVDTP_ABORT) {
 		DBG("Unable to send requests while aborting");
 		return -EINVAL;
@@ -2347,10 +2352,13 @@ static int send_request(struct avdtp *session, gboolean priority,
 
 	req = g_new0(struct pending_req, 1);
 	req->signal_id = signal_id;
-	req->data = g_malloc(size);
-	memcpy(req->data, buffer, size);
 	req->data_size = size;
 	req->stream = stream;
+
+	if (size > 0) {
+		req->data = g_malloc(size);
+		memcpy(req->data, buffer, size);
+	}
 
 	return send_req(session, priority, req);
 }
