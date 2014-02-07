@@ -466,8 +466,11 @@ static void save_mode(int sk)
 	while ((len = read(sk, b, data_size)) > 0) {
 		ret = write(save_fd, b, len);
 		if (ret < 0)
-			return;
+			goto done;
 	}
+
+done:
+	free(b);
 }
 
 static void recv_mode(int sk)
