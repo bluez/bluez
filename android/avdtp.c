@@ -2939,10 +2939,15 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 	if (category < AVDTP_MEDIA_TRANSPORT || category > AVDTP_DELAY_REPORTING)
 		return NULL;
 
+	if (length > 0 && !data)
+		return NULL;
+
 	cap = g_malloc(sizeof(struct avdtp_service_capability) + length);
 	cap->category = category;
 	cap->length = length;
-	memcpy(cap->data, data, length);
+
+	if (length > 0)
+		memcpy(cap->data, data, length);
 
 	return cap;
 }
