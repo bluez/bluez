@@ -309,7 +309,7 @@ static void read_dump(int fd)
 		if (err < 0)
 			goto failed;
 		if (!err)
-			return;
+			goto done;
 
 		if (parser.flags & DUMP_PKTLOG) {
 			switch (ph.type) {
@@ -407,7 +407,7 @@ static void read_dump(int fd)
 		if (err < 0)
 			goto failed;
 		if (!err)
-			return;
+			goto done;
 
 		frm.ptr = frm.data;
 		frm.len = frm.data_len;
@@ -432,8 +432,13 @@ static void read_dump(int fd)
 		parse(&frm);
 	}
 
+done:
+	free(frm.data);
+	return;
+
 failed:
 	perror("Read failed");
+	free(frm.data);
 	exit(1);
 }
 
