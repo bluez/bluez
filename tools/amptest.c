@@ -496,6 +496,7 @@ static bool find_amp_controller(void)
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
 	int fd, i;
+	bool result;
 
 	fd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (fd < 0) {
@@ -515,8 +516,8 @@ static bool find_amp_controller(void)
 
 	if (ioctl(fd, HCIGETDEVLIST, (void *) dl) < 0) {
 		perror("Failed to get HCI device list");
-		close(fd);
-		return false;
+		result = false;
+		goto done;
 	}
 
 	for (i = 0; i< dl->dev_num; i++) {
@@ -541,9 +542,12 @@ static bool find_amp_controller(void)
 		}
 	}
 
-	close(fd);
+	result = true;
 
-	return true;
+done:
+	free(dl);
+	close(fd);
+	return result;
 }
 
 int main(int argc ,char *argv[])
