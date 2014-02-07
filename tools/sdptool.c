@@ -1048,7 +1048,7 @@ static void print_service_desc(void *value, void *user)
 			if (proto == RFCOMM_UUID)
 				printf("    Channel: %d\n", p->val.uint8);
 			else
-				printf("    uint8: 0x%x\n", p->val.uint8);
+				printf("    uint8: 0x%02x\n", p->val.uint8);
 			break;
 		case SDP_UINT16:
 			if (proto == L2CAP_UUID) {
@@ -1060,9 +1060,9 @@ static void print_service_desc(void *value, void *user)
 				if (i == 1)
 					printf("    Version: 0x%04x\n", p->val.uint16);
 				else
-					printf("    uint16: 0x%x\n", p->val.uint16);
+					printf("    uint16: 0x%04x\n", p->val.uint16);
 			else
-				printf("    uint16: 0x%x\n", p->val.uint16);
+				printf("    uint16: 0x%04x\n", p->val.uint16);
 			break;
 		case SDP_SEQ16:
 			printf("    SEQ16:");
