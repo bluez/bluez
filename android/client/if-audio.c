@@ -225,10 +225,8 @@ static void *playback_thread(void *data)
 		pthread_mutex_unlock(&outstream_mutex);
 	} while (len && w_len > 0);
 
-	if (in) {
+	if (in)
 		fclose(in);
-		in = NULL;
-	}
 
 	pthread_cleanup_pop(1);
 	return NULL;
