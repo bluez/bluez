@@ -636,6 +636,46 @@ static void cmd_suspend(int argc, char *argv[])
 						g_dbus_proxy_get_path(proxy));
 }
 
+static void resume_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to resume: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Resume successful\n");
+}
+
+static void cmd_resume(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing transfer address argument\n");
+		return;
+	}
+
+	proxy = find_transfer(argv[1]);
+	if (!proxy) {
+		rl_printf("Transfer %s not available\n", argv[1]);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "Resume", NULL, resume_reply,
+						NULL, NULL) == FALSE) {
+		rl_printf("Failed to resume transfer\n");
+		return;
+	}
+
+	rl_printf("Attempting to resume transfer %s\n",
+						g_dbus_proxy_get_path(proxy));
+}
+
 static GDBusProxy *find_opp(const char *path)
 {
 	GSList *l;
@@ -1897,6 +1937,7 @@ static const struct {
 	{ "info",         "<object>", cmd_info, "Object information" },
 	{ "cancel",       "<transfer>", cmd_cancel, "Cancel transfer" },
 	{ "suspend",      "<transfer>", cmd_suspend, "Suspend transfer" },
+	{ "resume",       "<transfer>", cmd_resume, "Resume transfer" },
 	{ "send",         "<file>",   cmd_send, "Send file" },
 	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
 	{ "ls",           NULL,       cmd_ls, "List current folder" },
