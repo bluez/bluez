@@ -148,15 +148,43 @@ automatically on HAL library initialization. To deinitialize HAL library and
 stop daemon type 'bluetooth cleanup'. Type 'help' for more information. Tab
 completion is also supported.
 
+=====================
+Implementation status
+=====================
+
+Summary of HALs implementation status.
+
+complete    - implementation is feature complete and Android Framework is able
+              to use it normally
+partial     - implementation is in progress and not all required features are
+              present, Android Framework is able to use some of features
+initial     - only initial implementations is present, Android Framework is
+              able to initialize but most likely not able to use it
+not started - no implementation, Android Framework is not able to initialize it
+
+Profile ID    HAL header         Status
+---------------------------------------
+core          bluetooth.h        complete
+a2dp          bt_av.h            complete
+gatt          bt_gatt.h          not started
+              bt_gatt_client.h   not started
+              bt_gatt_server.h   not started
+handsfree     bt_hf.h            initial
+hidhost       bt_hh.h            complete
+health        bt_hl.h            not started
+pan           bt_pan.h           complete
+avrcp         bt_rc.h            partial
+socket        bt_sock.h          complete
+
 ===========================
 Implementation shortcomings
 ===========================
 
-It is possible that some of HAL functionality is missing implementation due to
-reasons like feature feasibility or necessity for latest Android Framework.
-This sections provides list of such deficiencies. Note that HAL library is
-always expected to fully implement HAL API so missing implementation might
-happen only in daemon.
+It is possible that some of HAL functionality (although being marked as
+complete) is missing implementation due to reasons like feature feasibility or
+necessity for latest Android Framework. This sections provides list of such
+deficiencies. Note that HAL library is always expected to fully implement HAL
+API so missing implementation might happen only in daemon.
 
 HAL Bluetooth
 =============
