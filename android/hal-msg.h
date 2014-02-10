@@ -421,7 +421,7 @@ struct hal_cmd_handsfree_disconnect_audio {
 #define HAL_OP_HANDSFREE_VOLUME_CONTROL		0x07
 struct hal_cmd_handsfree_volume_control {
 	uint8_t type;
-	uint32_t volume;
+	uint8_t volume;
 } __attribute__((packed));
 
 #define HAL_HANDSFREE_NETWORK_STATE_NOT_AVAILABLE	0x00
@@ -434,8 +434,8 @@ struct hal_cmd_handsfree_volume_control {
 struct hal_cmd_handsfree_device_status_notif {
 	uint8_t state;
 	uint8_t type;
-	uint32_t signal;
-	uint32_t battery;
+	uint8_t signal;
+	uint8_t battery;
 } __attribute__((packed));
 
 #define HAL_OP_HANDSFREE_COPS_RESPONSE		0x09
@@ -454,13 +454,13 @@ struct hal_cmd_handsfree_cops_response {
 
 #define HAL_OP_HANDSFREE_CIND_RESPONSE		0x0A
 struct hal_cmd_handsfree_cind_response {
-	uint32_t svc;
-	uint32_t num_active;
-	uint32_t num_held;
+	uint8_t svc;
+	uint8_t num_active;
+	uint8_t num_held;
 	uint8_t state;
-	uint32_t signal;
-	uint32_t roam;
-	uint32_t batt_chg;
+	uint8_t signal;
+	uint8_t roam;
+	uint8_t batt_chg;
 } __attribute__((packed));
 
 #define HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE	0x0B
@@ -475,7 +475,7 @@ struct hal_cmd_handsfree_formatted_at_response {
 #define HAL_OP_HANDSFREE_AT_RESPONSE		0x0C
 struct hal_cmd_handsfree_at_response {
 	uint8_t response;
-	uint32_t error;
+	uint8_t error;
 } __attribute__((packed));
 
 #define HAL_HANDSFREE_CALL_DIRECTION_OUTGOING	0x00
@@ -493,7 +493,7 @@ struct hal_cmd_handsfree_at_response {
 
 #define HAL_OP_HANDSFREE_CLCC_RESPONSE		0x0D
 struct hal_cmd_handsfree_clcc_response {
-	uint32_t index;
+	uint8_t index;
 	uint8_t dir;
 	uint8_t state;
 	uint8_t mode;
@@ -505,8 +505,8 @@ struct hal_cmd_handsfree_clcc_response {
 
 #define HAL_OP_HANDSFREE_PHONE_STATE_CHANGE	0x0E
 struct hal_cmd_handsfree_phone_state_change {
-	uint32_t num_active;
-	uint32_t num_held;
+	uint8_t num_active;
+	uint8_t num_held;
 	uint8_t state;
 	uint8_t type;
 	uint32_t number_len;
@@ -732,7 +732,7 @@ struct hal_ev_handsfree_vr_state {
 #define HAL_EV_HANDSFREE_VOLUME		0x86
 struct hal_ev_handsfree_volume {
 	uint8_t type;
-	uint32_t volume;
+	uint8_t volume;
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_DIAL		0x87
