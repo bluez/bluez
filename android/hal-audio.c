@@ -831,6 +831,10 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 {
 	struct a2dp_stream_out *out = (struct a2dp_stream_out *) stream;
 
+	/* just return in case we're closing */
+	if (out->audio_state == AUDIO_A2DP_STATE_NONE)
+		return -1;
+
 	/* We can auto-start only from standby */
 	if (out->audio_state == AUDIO_A2DP_STATE_STANDBY) {
 		DBG("stream in standby, auto-start");
