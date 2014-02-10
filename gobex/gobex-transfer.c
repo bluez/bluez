@@ -390,7 +390,7 @@ static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
 
 	rspcode = put_get_bytes(transfer, req);
 
-	/* Don't send continue while in SRM */
+	/* Don't send continue while SRM is active */
 	if (g_obex_srm_active(transfer->obex) &&
 				rspcode == G_OBEX_RSP_CONTINUE)
 		goto done;

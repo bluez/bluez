@@ -105,6 +105,7 @@ struct pending_pkt {
 	GObexResponseFunc rsp_func;
 	gpointer rsp_data;
 	gboolean cancelled;
+	gboolean suspended;
 };
 
 struct req_handler {
@@ -407,7 +408,9 @@ static void setup_srm(GObex *obex, GObexPacket *pkt, gboolean outgoing)
 		g_obex_header_get_uint8(hdr, &srmp);
 		g_obex_debug(G_OBEX_DEBUG_COMMAND, "srmp 0x%02x", srmp);
 		set_srmp(obex, srmp, outgoing);
-	} else
+	} else if (obex->pending_req && obex->pending_req->suspended)
+		g_obex_packet_add_uint8(pkt, G_OBEX_HDR_SRMP, G_OBEX_SRMP_WAIT);
+	else
 		set_srmp(obex, -1, outgoing);
 
 	if (final)
@@ -845,24 +848,73 @@ gboolean g_obex_remove_request_function(GObex *obex, guint id)
 	return TRUE;
 }
 
+static void g_obex_srm_suspend(GObex *obex)
+{
+	struct pending_pkt *p = obex->pending_req;
+	GObexPacket *req;
+
+	g_source_remove(p->timeout_id);
+	p->suspended = TRUE;
+
+	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE,
+					G_OBEX_HDR_SRMP, G_OBEX_SRMP_WAIT,
+					G_OBEX_HDR_INVALID);
+
+	g_obex_send(obex, req, NULL);
+}
+
 void g_obex_suspend(GObex *obex)
 {
+	struct pending_pkt *req = obex->pending_req;
+
 	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
+
+	if (!g_obex_srm_active(obex) || !req)
+		goto done;
+
+	/* Send SRMP wait in case of GET */
+	if (g_obex_packet_get_operation(req->pkt, NULL) == G_OBEX_OP_GET) {
+		g_obex_srm_suspend(obex);
+		return;
+	}
+
+done:
+	obex->suspended = TRUE;
 
 	if (obex->write_source > 0) {
 		g_source_remove(obex->write_source);
 		obex->write_source = 0;
 	}
+}
 
-	obex->suspended = TRUE;
+static void g_obex_srm_resume(GObex *obex)
+{
+	struct pending_pkt *p = obex->pending_req;
+	GObexPacket *req;
+
+	p->timeout_id = g_timeout_add_seconds(p->timeout, req_timeout, obex);
+	p->suspended = FALSE;
+
+	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
+
+	g_obex_send(obex, req, NULL);
 }
 
 void g_obex_resume(GObex *obex)
 {
+	struct pending_pkt *req = obex->pending_req;
+
 	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
 
 	obex->suspended = FALSE;
 
+	if (g_obex_srm_active(obex) || !req)
+		goto done;
+
+	if (g_obex_packet_get_operation(req->pkt, NULL) == G_OBEX_OP_GET)
+		g_obex_srm_resume(obex);
+
+done:
 	if (g_queue_get_length(obex->tx_queue) > 0 || obex->tx_data > 0)
 		enable_tx(obex);
 }
