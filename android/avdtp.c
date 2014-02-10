@@ -1296,11 +1296,13 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 					&stream->codec,
 					&stream->delay_reporting);
 
-	/* Verify that the Media Transport capability's length = 0. Reject otherwise */
+	/* Verify that the Media Transport capability's length = 0.
+	 * Reject otherwise */
 	for (l = stream->caps; l != NULL; l = g_slist_next(l)) {
 		struct avdtp_service_capability *cap = l->data;
 
-		if (cap->category == AVDTP_MEDIA_TRANSPORT && cap->length != 0) {
+		if (cap->category == AVDTP_MEDIA_TRANSPORT &&
+							cap->length != 0) {
 			err = AVDTP_BAD_MEDIA_TRANSPORT_FORMAT;
 			goto failed_stream;
 		}
@@ -1370,7 +1372,7 @@ static gboolean avdtp_getconf_cmd(struct avdtp *session, uint8_t transaction,
 		goto failed;
 	}
 
-	for (l = sep->stream->caps, rsp_size = 0; l != NULL; l = g_slist_next(l)) {
+	for (l = sep->stream->caps, rsp_size = 0; l; l = g_slist_next(l)) {
 		struct avdtp_service_capability *cap = l->data;
 
 		if (rsp_size + cap->length + 2 > (int) sizeof(buf))
@@ -1831,7 +1833,8 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 	switch (header->packet_type) {
 	case AVDTP_PKT_TYPE_SINGLE:
 		if (size < sizeof(*single)) {
-			error("Received too small single packet (%zu bytes)", size);
+			error("Received too small single packet (%zu bytes)",
+									size);
 			return PARSE_ERROR;
 		}
 		if (session->in.active) {
@@ -1852,7 +1855,8 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 		break;
 	case AVDTP_PKT_TYPE_START:
 		if (size < sizeof(*start)) {
-			error("Received too small start packet (%zu bytes)", size);
+			error("Received too small start packet (%zu bytes)",
+									size);
 			return PARSE_ERROR;
 		}
 		if (session->in.active) {
@@ -1896,7 +1900,8 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 		break;
 	case AVDTP_PKT_TYPE_END:
 		if (size < sizeof(struct avdtp_continue_header)) {
-			error("Received too small end packet (%zu bytes)", size);
+			error("Received too small end packet (%zu bytes)",
+									size);
 			return PARSE_ERROR;
 		}
 		if (!session->in.active) {
@@ -2254,7 +2259,7 @@ static int cancel_request(struct avdtp *session, int err)
 		error("SetConfiguration: %s (%d)", strerror(err), err);
 		if (lsep && lsep->cfm && lsep->cfm->set_configuration)
 			lsep->cfm->set_configuration(session, lsep, stream,
-							&averr, lsep->user_data);
+						&averr, lsep->user_data);
 		goto failed;
 	case AVDTP_DISCOVER:
 		error("Discover: %s (%d)", strerror(err), err);
@@ -2458,9 +2463,9 @@ static gboolean avdtp_get_capabilities_resp(struct avdtp *session,
 }
 
 static gboolean avdtp_set_configuration_resp(struct avdtp *session,
-						struct avdtp_stream *stream,
-						struct avdtp_single_header *resp,
-						int size)
+					struct avdtp_stream *stream,
+					struct avdtp_single_header *resp,
+					int size)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
 
@@ -2475,12 +2480,14 @@ static gboolean avdtp_set_configuration_resp(struct avdtp *session,
 
 static gboolean avdtp_reconfigure_resp(struct avdtp *session,
 					struct avdtp_stream *stream,
-					struct avdtp_single_header *resp, int size)
+					struct avdtp_single_header *resp,
+					int size)
 {
 	return TRUE;
 }
 
-static gboolean avdtp_open_resp(struct avdtp *session, struct avdtp_stream *stream,
+static gboolean avdtp_open_resp(struct avdtp *session,
+				struct avdtp_stream *stream,
 				struct seid_rej *resp, int size)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
@@ -2560,7 +2567,8 @@ static gboolean avdtp_delay_report_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	if (sep->cfm && sep->cfm->delay_report)
-		sep->cfm->delay_report(session, sep, stream, NULL, sep->user_data);
+		sep->cfm->delay_report(session, sep, stream, NULL,
+							sep->user_data);
 
 	return TRUE;
 }
@@ -2936,7 +2944,8 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 {
 	struct avdtp_service_capability *cap;
 
-	if (category < AVDTP_MEDIA_TRANSPORT || category > AVDTP_DELAY_REPORTING)
+	if (category < AVDTP_MEDIA_TRANSPORT ||
+					category > AVDTP_DELAY_REPORTING)
 		return NULL;
 
 	if (length > 0 && !data)
