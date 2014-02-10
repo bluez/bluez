@@ -5,11 +5,11 @@ BLUEZ_VERSION := `grep "^AC_INIT" $(LOCAL_PATH)/bluez/configure.ac | sed -e "s/.
 
 # Specify pathmap for glib and sbc
 pathmap_INCL += glib:external/bluetooth/glib \
-	sbc:external/bluetooth/sbc
+		sbc:external/bluetooth/sbc \
 
 # Specify common compiler flags
 BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
-	-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
+			-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
 
 # Enable warnings enabled in autotools build
 BLUEZ_COMMON_CFLAGS += -Wall -Wextra \
@@ -371,12 +371,12 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
-        bluez/tools/avtest.c \
-        bluez/lib/bluetooth.c \
-        bluez/lib/hci.c \
+	bluez/tools/avtest.c \
+	bluez/lib/bluetooth.c \
+	bluez/lib/hci.c \
 
 LOCAL_C_INCLUDES := \
-        $(LOCAL_PATH)/bluez/lib \
+	$(LOCAL_PATH)/bluez/lib \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
