@@ -1481,11 +1481,11 @@ static void bt_audio_unregister(void)
 	if (audio_retry_id > 0)
 		g_source_remove(audio_retry_id);
 
-	g_slist_free_full(setups, setup_free);
-	setups = NULL;
-
 	g_slist_free_full(endpoints, unregister_endpoint);
 	endpoints = NULL;
+
+	g_slist_free_full(setups, setup_free);
+	setups = NULL;
 
 	audio_ipc_cleanup();
 }
