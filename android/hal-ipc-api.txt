@@ -970,6 +970,7 @@ Notifications:
 	Opcode 0x86 - Volume Command notification
 
 		Notification parameters: Volume type (1 octet)
+		                         Volume (1 octet)
 
 		Valid volume types: 0x00 = Speaker
 		                    0x01 = Microphone
