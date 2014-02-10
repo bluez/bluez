@@ -1253,6 +1253,8 @@ static struct generic_data *object_path_ref(DBusConnection *connection,
 
 	if (!dbus_connection_register_object_path(connection, path,
 						&generic_table, data)) {
+		dbus_connection_unref(data->conn);
+		g_free(data->path);
 		g_free(data->introspect);
 		g_free(data);
 		return NULL;
