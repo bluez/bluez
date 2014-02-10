@@ -440,7 +440,7 @@ struct hal_cmd_handsfree_device_status_notif {
 
 #define HAL_OP_HANDSFREE_COPS_RESPONSE		0x09
 struct hal_cmd_handsfree_cops_response {
-	uint32_t len;
+	uint16_t len;
 	uint8_t buf[0];
 } __attribute__((packed));
 
@@ -465,7 +465,7 @@ struct hal_cmd_handsfree_cind_response {
 
 #define HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE	0x0B
 struct hal_cmd_handsfree_formatted_at_response {
-	uint32_t len;
+	uint16_t len;
 	uint8_t buf[0];
 } __attribute__((packed));
 
@@ -499,7 +499,7 @@ struct hal_cmd_handsfree_clcc_response {
 	uint8_t mode;
 	uint8_t mpty;
 	uint8_t type;
-	uint32_t number_len;
+	uint16_t number_len;
 	uint8_t number[0];
 } __attribute__((packed));
 
@@ -509,7 +509,7 @@ struct hal_cmd_handsfree_phone_state_change {
 	uint8_t num_held;
 	uint8_t state;
 	uint8_t type;
-	uint32_t number_len;
+	uint16_t number_len;
 	uint8_t number[0];
 } __attribute__((packed));
 
@@ -737,7 +737,7 @@ struct hal_ev_handsfree_volume {
 
 #define HAL_EV_HANDSFREE_DIAL		0x87
 struct hal_ev_handsfree_dial {
-	uint32_t number_len;
+	uint16_t number_len;
 	uint8_t number[0];
 } __attribute__((packed));
 
@@ -775,7 +775,7 @@ struct hal_ev_handsfree_chld {
 
 #define HAL_EV_HANDSFREE_UNKNOWN_AT	0x8F
 struct hal_ev_handsfree_unknown_at {
-	uint32_t len;
+	uint16_t len;
 	uint8_t buf[0];
 } __attribute__((packed));
 
