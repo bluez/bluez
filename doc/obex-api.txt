@@ -90,12 +90,34 @@ Methods		void Cancel()
 					 org.bluez.obex.Error.InProgress
 					 org.bluez.obex.Error.Failed
 
+		void Suspend()
+
+			Suspend transference.
+
+			Possible errors: org.bluez.obex.Error.NotAuthorized
+					 org.bluez.obex.Error.NotInProgress
+
+			Note that it is not possible to suspend transfers
+			which are queued which is why NotInProgress is listed
+			as possible error.
+
+		void Resume()
+
+			Resume transference.
+
+			Possible errors: org.bluez.obex.Error.NotAuthorized
+					 org.bluez.obex.Error.NotInProgress
+
+			Note that it is not possible to resume transfers
+			which are queued which is why NotInProgress is listed
+			as possible error.
+
 Properties	string Status [readonly]
 
 			Inform the current status of the transfer.
 
-			Possible values: "queued", "active", "complete" or
-					"error"
+			Possible values: "queued", "active", "suspended",
+					"complete" or "error"
 
 		object Session [readonly]
 
