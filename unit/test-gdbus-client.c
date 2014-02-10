@@ -101,6 +101,7 @@ static void destroy_context(struct context *context)
 
 	dbus_connection_flush(context->dbus_conn);
 	dbus_connection_close(context->dbus_conn);
+	dbus_connection_unref(context->dbus_conn);
 
 	g_main_loop_unref(context->main_loop);
 
@@ -955,6 +956,10 @@ static void client_force_disconnect(void)
 					context);
 
 	g_main_loop_run(context->main_loop);
+
+	g_dbus_unregister_interface(conn, SERVICE_PATH, SERVICE_NAME1);
+	g_dbus_detach_object_manager(conn);
+	dbus_connection_unref(conn);
 
 	destroy_context(context);
 }
