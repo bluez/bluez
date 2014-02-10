@@ -398,6 +398,8 @@ struct avdtp {
 	struct pending_req *req;
 
 	GSList *disconnect;
+
+	bool shutdown;
 };
 
 static GSList *lseps = NULL;
@@ -912,6 +914,11 @@ static void avdtp_sep_set_state(struct avdtp *session,
 				g_slist_find(session->streams, stream)) {
 		session->streams = g_slist_remove(session->streams, stream);
 		stream_free(stream);
+	}
+
+	if (session->io && session->shutdown && session->streams == NULL) {
+		int sock = g_io_channel_unix_get_fd(session->io);
+		shutdown(sock, SHUT_RDWR);
 	}
 }
 
@@ -2141,7 +2148,7 @@ gboolean avdtp_remove_disconnect_cb(struct avdtp *session, unsigned int id)
 void avdtp_shutdown(struct avdtp *session)
 {
 	GSList *l;
-	int sock;
+	bool aborting = false;
 
 	if (!session->io)
 		return;
@@ -2149,12 +2156,18 @@ void avdtp_shutdown(struct avdtp *session)
 	for (l = session->streams; l; l = g_slist_next(l)) {
 		struct avdtp_stream *stream = l->data;
 
-		avdtp_close(session, stream, TRUE);
+		if (stream->abort_int || avdtp_abort(session, stream) == 0)
+			aborting = true;
 	}
 
-	sock = g_io_channel_unix_get_fd(session->io);
+	if (aborting) {
+		/* defer shutdown until all streams are aborted properly */
+		session->shutdown = true;
+	} else {
+		int sock = g_io_channel_unix_get_fd(session->io);
 
-	shutdown(sock, SHUT_RDWR);
+		shutdown(sock, SHUT_RDWR);
+	}
 }
 
 static void queue_request(struct avdtp *session, struct pending_req *req,
