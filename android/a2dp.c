@@ -1513,6 +1513,7 @@ static gboolean audio_retry_register(void *data)
 
 static void audio_disconnected(void *data)
 {
+	GSList *l;
 	bool restart;
 
 	DBG("");
@@ -1523,6 +1524,12 @@ static void audio_disconnected(void *data)
 	restart = endpoints != NULL ? true : false;
 
 	bt_audio_unregister();
+
+	for (l = devices; l; l = g_slist_next(l)) {
+		struct a2dp_device *dev = l->data;
+
+		avdtp_shutdown(dev->session);
+	}
 
 	if (!restart)
 		return;
