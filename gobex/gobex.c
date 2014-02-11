@@ -355,9 +355,20 @@ done:
 	obex->srm = NULL;
 }
 
+static gboolean g_obex_srm_enabled(GObex *obex)
+{
+	if (!obex->use_srm)
+		return FALSE;
+
+	if (obex->srm == NULL)
+		return FALSE;
+
+	return obex->srm->enabled;
+}
+
 static void check_srm_final(GObex *obex, guint8 op)
 {
-	if (obex->srm == NULL || !obex->srm->enabled)
+	if (!g_obex_srm_enabled(obex))
 		return;
 
 	switch (obex->srm->op) {
@@ -423,7 +434,7 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 
 		setup_srm(obex, p->pkt, TRUE);
 
-		if (g_obex_srm_active(obex))
+		if (g_obex_srm_enabled(obex))
 			goto encode;
 
 		/* Can't send a request while there's a pending one */
@@ -646,7 +657,7 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, int timeout,
 	if (obex->rx_last_op == G_OBEX_RSP_CONTINUE)
 		goto create_pending;
 
-	if (g_obex_srm_active(obex) && obex->pending_req != NULL)
+	if (g_obex_srm_enabled(obex) && obex->pending_req != NULL)
 		goto create_pending;
 
 	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_CONNECTION);
@@ -860,10 +871,7 @@ gboolean g_obex_srm_active(GObex *obex)
 {
 	gboolean ret = FALSE;
 
-	if (!obex->use_srm)
-		return FALSE;
-
-	if (obex->srm == NULL || !obex->srm->enabled)
+	if (!g_obex_srm_enabled(obex))
 		goto done;
 
 	if (obex->srm->srmp <= G_OBEX_SRMP_NEXT_WAIT)
@@ -912,7 +920,7 @@ static gboolean parse_response(GObex *obex, GObexPacket *rsp)
 
 	setup_srm(obex, rsp, FALSE);
 
-	if (!g_obex_srm_active(obex))
+	if (!g_obex_srm_enabled(obex))
 		return final;
 
 	/*
