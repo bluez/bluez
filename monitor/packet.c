@@ -42,6 +42,7 @@
 #include <bluetooth/hci_lib.h>
 
 #include "src/shared/util.h"
+#include "src/shared/btsnoop.h"
 #include "display.h"
 #include "bt.h"
 #include "ll.h"
@@ -49,7 +50,6 @@
 #include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
-#include "btsnoop.h"
 #include "vendor.h"
 #include "packet.h"
 

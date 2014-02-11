@@ -165,7 +165,7 @@ void btsnoop_write_hci(struct timeval *tv, uint16_t index, uint16_t opcode,
 			return;
 		break;
 
-	case BTSNOOP_TYPE_EXTENDED_HCI:
+	case BTSNOOP_TYPE_MONITOR:
 		flags = (index << 16) | opcode;
 		break;
 
@@ -188,7 +188,7 @@ void btsnoop_write_phy(struct timeval *tv, uint16_t frequency,
 		return;
 
 	switch (btsnoop_type) {
-	case BTSNOOP_TYPE_EXTENDED_PHY:
+	case BTSNOOP_TYPE_SIMULATOR:
 		flags = (1 << 16) | frequency;
 		break;
 
@@ -330,7 +330,7 @@ int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 		*opcode = get_opcode_from_flags(pkt_type, flags);
 		break;
 
-	case BTSNOOP_TYPE_EXTENDED_HCI:
+	case BTSNOOP_TYPE_MONITOR:
 		*index = flags >> 16;
 		*opcode = flags & 0xffff;
 		break;
@@ -385,7 +385,7 @@ int btsnoop_read_phy(struct timeval *tv, uint16_t *frequency,
 	tv->tv_usec = ts % 1000000ll;
 
 	switch (btsnoop_type) {
-	case BTSNOOP_TYPE_EXTENDED_PHY:
+	case BTSNOOP_TYPE_SIMULATOR:
 		if ((flags >> 16) != 1)
 			break;
 		*frequency = flags & 0xffff;

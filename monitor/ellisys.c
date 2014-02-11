@@ -37,7 +37,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "btsnoop.h"
+#include "src/shared/btsnoop.h"
 #include "ellisys.h"
 
 static int ellisys_fd = -1;

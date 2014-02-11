@@ -41,10 +41,10 @@
 #include "lib/mgmt.h"
 
 #include "src/shared/util.h"
+#include "monitor/btsnoop.h"
 #include "mainloop.h"
 #include "display.h"
 #include "packet.h"
-#include "btsnoop.h"
 #include "hcidump.h"
 #include "ellisys.h"
 #include "control.h"
@@ -813,7 +813,7 @@ void control_server(const char *path)
 
 void control_writer(const char *path)
 {
-	btsnoop_create(path, BTSNOOP_TYPE_EXTENDED_HCI);
+	btsnoop_create(path, BTSNOOP_TYPE_MONITOR);
 }
 
 void control_reader(const char *path)
@@ -829,11 +829,11 @@ void control_reader(const char *path)
 	switch (type) {
 	case BTSNOOP_TYPE_HCI:
 	case BTSNOOP_TYPE_UART:
-	case BTSNOOP_TYPE_EXTENDED_PHY:
+	case BTSNOOP_TYPE_SIMULATOR:
 		packet_del_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 
-	case BTSNOOP_TYPE_EXTENDED_HCI:
+	case BTSNOOP_TYPE_MONITOR:
 		packet_add_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 	}
@@ -843,7 +843,7 @@ void control_reader(const char *path)
 	switch (type) {
 	case BTSNOOP_TYPE_HCI:
 	case BTSNOOP_TYPE_UART:
-	case BTSNOOP_TYPE_EXTENDED_HCI:
+	case BTSNOOP_TYPE_MONITOR:
 		while (1) {
 			uint16_t index, opcode;
 
@@ -856,7 +856,7 @@ void control_reader(const char *path)
 		}
 		break;
 
-	case BTSNOOP_TYPE_EXTENDED_PHY:
+	case BTSNOOP_TYPE_SIMULATOR:
 		while (1) {
 			uint16_t frequency;
 

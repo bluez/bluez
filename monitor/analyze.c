@@ -31,8 +31,8 @@
 
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
+#include "monitor/btsnoop.h"
 #include "monitor/bt.h"
-#include "btsnoop.h"
 #include "analyze.h"
 
 #define MAX_PACKET_SIZE		(1486 + 4)
@@ -264,7 +264,7 @@ void analyze_trace(const char *path)
 	switch (type) {
 	case BTSNOOP_TYPE_HCI:
 	case BTSNOOP_TYPE_UART:
-	case BTSNOOP_TYPE_EXTENDED_HCI:
+	case BTSNOOP_TYPE_MONITOR:
 		break;
 	default:
 		fprintf(stderr, "Unsupported packet format\n");
