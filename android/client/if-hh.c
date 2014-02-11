@@ -229,6 +229,9 @@ static void virtual_unplug_p(int argc, const char **argv)
 
 /* set_info */
 
+/* Same completion as connect_c */
+#define set_info_c connect_c
+
 static void set_info_p(int argc, const char **argv)
 {
 	bt_bdaddr_t addr;
@@ -236,8 +239,11 @@ static void set_info_p(int argc, const char **argv)
 
 	RETURN_IF_NULL(if_hh);
 	VERIFY_ADDR_ARG(2, &addr);
-	/* TODO: set_info does not seem to be called anywhere */
 
+	memset(&hid_info, 0, sizeof(hid_info));
+
+	/* This command is intentionally not supported. See comment from
+	 * bt_hid_info() in android/hidhost.c */
 	EXEC(if_hh->set_info, &addr, hid_info);
 }
 
@@ -416,7 +422,7 @@ static struct method methods[] = {
 	STD_METHODCH(connect, "<addr>"),
 	STD_METHODCH(disconnect, "<addr>"),
 	STD_METHODCH(virtual_unplug, "<addr>"),
-	STD_METHOD(set_info),
+	STD_METHODCH(set_info, "<addr>"),
 	STD_METHODCH(get_protocol, "<addr> <mode>"),
 	STD_METHODCH(set_protocol, "<addr> <mode>"),
 	STD_METHODCH(get_report, "<addr> <type> <report_id> <size>"),
