@@ -1604,7 +1604,12 @@ static void rfcomm_disc_recv(struct bthost *bthost, struct btconn *conn,
 				uint16_t len)
 {
 	const struct rfcomm_cmd *hdr = data;
-	uint8_t dlci = RFCOMM_GET_DLCI(hdr->address);
+	uint8_t dlci;
+
+	if (len < sizeof(*hdr))
+		return;
+
+	dlci = RFCOMM_GET_DLCI(hdr->address);
 
 	rfcomm_ua_send(bthost, conn, l2conn, 0, dlci);
 }
