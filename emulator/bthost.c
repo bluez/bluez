@@ -1578,9 +1578,15 @@ static void rfcomm_sabm_recv(struct bthost *bthost, struct btconn *conn,
 				uint16_t len)
 {
 	const struct rfcomm_cmd *hdr = data;
-	uint8_t dlci = RFCOMM_GET_DLCI(hdr->address);
+	uint8_t dlci;
 	struct rfcomm_conn_cb_data *cb;
-	uint8_t chan = RFCOMM_GET_CHANNEL(hdr->address);
+	uint8_t chan;
+
+	if (len < sizeof(*hdr))
+		return;
+
+	chan = RFCOMM_GET_CHANNEL(hdr->address);
+	dlci = RFCOMM_GET_DLCI(hdr->address);
 
 	cb = bthost_find_rfcomm_cb_by_channel(bthost, chan);
 	if (!dlci || cb) {
