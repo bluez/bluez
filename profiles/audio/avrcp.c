@@ -1905,9 +1905,9 @@ static gboolean avrcp_player_value_rsp(struct avctp *conn,
 static void avrcp_get_current_player_value(struct avrcp *session,
 						uint8_t *attrs, uint8_t count)
 {
-	uint8_t buf[AVRCP_HEADER_LENGTH + 5];
+	uint8_t buf[AVRCP_HEADER_LENGTH + AVRCP_ATTRIBUTE_LAST + 1];
 	struct avrcp_header *pdu = (void *) buf;
-	int i;
+	uint16_t length = AVRCP_HEADER_LENGTH + count + 1;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -1917,11 +1917,10 @@ static void avrcp_get_current_player_value(struct avrcp *session,
 	pdu->params_len = htons(count + 1);
 	pdu->params[0] = count;
 
-	for (i = 0; count > 0; count--, i++)
-		pdu->params[i + 1] = attrs[i];
+	memcpy(pdu->params + 1, attrs, count);
 
 	avctp_send_vendordep_req(session->conn, AVC_CTYPE_STATUS,
-					AVC_SUBUNIT_PANEL, buf, sizeof(buf),
+					AVC_SUBUNIT_PANEL, buf, length,
 					avrcp_player_value_rsp, session);
 }
 
@@ -1930,22 +1929,32 @@ static gboolean avrcp_list_player_attributes_rsp(struct avctp *conn,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
+	uint8_t attrs[AVRCP_ATTRIBUTE_LAST];
 	struct avrcp *session = user_data;
 	struct avrcp_header *pdu = (void *) operands;
-	uint8_t count;
+	uint8_t len, count = 0;
+	int i;
 
 	if (code == AVC_CTYPE_REJECTED)
 		return FALSE;
 
-	count = pdu->params[0];
+	len = pdu->params[0];
 
 	if (ntohs(pdu->params_len) < count) {
 		error("Invalid parameters");
 		return FALSE;
 	}
 
-	avrcp_get_current_player_value(session, &pdu->params[1],
-							pdu->params[0]);
+	for (i = 0; len > 0; len--, i++) {
+		/* Don't query invalid attributes */
+		if (pdu->params[i + 1] == AVRCP_ATTRIBUTE_ILEGAL ||
+				pdu->params[i + 1] > AVRCP_ATTRIBUTE_LAST)
+			continue;
+
+		attrs[count++] = pdu->params[i + 1];
+	}
+
+	avrcp_get_current_player_value(session, attrs, count);
 
 	return FALSE;
 }
