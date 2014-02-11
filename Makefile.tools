@@ -14,24 +14,24 @@ if MONITOR
 bin_PROGRAMS += monitor/btmon
 
 monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
-					monitor/mainloop.h monitor/mainloop.c \
-					monitor/display.h monitor/display.c \
-					monitor/hcidump.h monitor/hcidump.c \
-					monitor/btsnoop.h monitor/btsnoop.c \
-					monitor/ellisys.h monitor/ellisys.c \
-					monitor/control.h monitor/control.c \
-					monitor/packet.h monitor/packet.c \
-					monitor/vendor.h monitor/vendor.c \
-					monitor/lmp.h monitor/lmp.c \
-					monitor/crc.h monitor/crc.c \
-					monitor/ll.h monitor/ll.c \
-					monitor/l2cap.h monitor/l2cap.c \
-					monitor/sdp.h monitor/sdp.c \
-					monitor/uuid.h monitor/uuid.c \
-					monitor/hwdb.h monitor/hwdb.c \
-					monitor/analyze.h monitor/analyze.c \
-					src/shared/util.h src/shared/util.c \
-					src/shared/queue.h src/shared/queue.c
+				monitor/mainloop.h monitor/mainloop.c \
+				monitor/display.h monitor/display.c \
+				monitor/hcidump.h monitor/hcidump.c \
+				monitor/ellisys.h monitor/ellisys.c \
+				monitor/control.h monitor/control.c \
+				monitor/packet.h monitor/packet.c \
+				monitor/vendor.h monitor/vendor.c \
+				monitor/lmp.h monitor/lmp.c \
+				monitor/crc.h monitor/crc.c \
+				monitor/ll.h monitor/ll.c \
+				monitor/l2cap.h monitor/l2cap.c \
+				monitor/sdp.h monitor/sdp.c \
+				monitor/uuid.h monitor/uuid.c \
+				monitor/hwdb.h monitor/hwdb.c \
+				monitor/analyze.h monitor/analyze.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/btsnoop.h src/shared/btsnoop.c
 monitor_btmon_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
 endif
 

@@ -41,7 +41,7 @@
 #include "lib/mgmt.h"
 
 #include "src/shared/util.h"
-#include "monitor/btsnoop.h"
+#include "src/shared/btsnoop.h"
 #include "mainloop.h"
 #include "display.h"
 #include "packet.h"
@@ -49,6 +49,7 @@
 #include "ellisys.h"
 #include "control.h"
 
+static struct btsnoop *btsnoop_file = NULL;
 static bool hcidump_fallback = false;
 
 #define MAX_PACKET_SIZE		(1486 + 4)
@@ -628,7 +629,8 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 			break;
 		case HCI_CHANNEL_MONITOR:
 			packet_monitor(tv, index, opcode, data->buf, pktlen);
-			btsnoop_write_hci(tv, index, opcode, data->buf, pktlen);
+			btsnoop_write_hci(btsnoop_file, tv, index, opcode,
+							data->buf, pktlen);
 			ellisys_inject_hci(tv, index, opcode,
 							data->buf, pktlen);
 			break;
@@ -813,7 +815,7 @@ void control_server(const char *path)
 
 void control_writer(const char *path)
 {
-	btsnoop_create(path, BTSNOOP_TYPE_MONITOR);
+	btsnoop_file = btsnoop_create(path, BTSNOOP_TYPE_MONITOR);
 }
 
 void control_reader(const char *path)
@@ -823,8 +825,11 @@ void control_reader(const char *path)
 	uint32_t type;
 	struct timeval tv;
 
-	if (btsnoop_open(path, &type) < 0)
+	btsnoop_file = btsnoop_open(path);
+	if (!btsnoop_file)
 		return;
+
+	type = btsnoop_get_type(btsnoop_file);
 
 	switch (type) {
 	case BTSNOOP_TYPE_HCI:
@@ -847,8 +852,8 @@ void control_reader(const char *path)
 		while (1) {
 			uint16_t index, opcode;
 
-			if (btsnoop_read_hci(&tv, &index, &opcode,
-							buf, &pktlen) < 0)
+			if (!btsnoop_read_hci(btsnoop_file, &tv, &index,
+							&opcode, buf, &pktlen))
 				break;
 
 			packet_monitor(&tv, index, opcode, buf, pktlen);
@@ -860,8 +865,8 @@ void control_reader(const char *path)
 		while (1) {
 			uint16_t frequency;
 
-			if (btsnoop_read_phy(&tv, &frequency,
-							buf, &pktlen) < 0)
+			if (!btsnoop_read_phy(btsnoop_file, &tv, &frequency,
+								buf, &pktlen))
 				break;
 
 			packet_simulator(&tv, frequency, buf, pktlen);
@@ -871,7 +876,7 @@ void control_reader(const char *path)
 
 	close_pager();
 
-	btsnoop_close();
+	btsnoop_unref(btsnoop_file);
 }
 
 int control_tracing(void)
