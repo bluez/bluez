@@ -37,7 +37,6 @@
 #include "lib/bluetooth.h"
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
-#include "lib/uuid.h"
 #include "src/shared/mgmt.h"
 #include "src/sdp-client.h"
 #include "src/uuid-helper.h"
@@ -751,7 +750,7 @@ static void hid_sdp_did_search_cb(sdp_list_t *recs, int err, gpointer data)
 			dev->version = data->val.uint16;
 	}
 
-	bt_string2uuid(&uuid, HID_UUID);
+	sdp_uuid16_create(&uuid, HID_SVCLASS_ID);
 	if (bt_search_service(&adapter_addr, &dev->dst, &uuid,
 				hid_sdp_search_cb, dev, NULL, 0) < 0) {
 		error("failed to search sdp details");
@@ -792,7 +791,7 @@ static void bt_hid_connect(const void *buf, uint16_t len)
 	ba2str(&dev->dst, addr);
 	DBG("connecting to %s", addr);
 
-	bt_string2uuid(&uuid, PNP_UUID);
+	sdp_uuid16_create(&uuid, PNP_INFO_SVCLASS_ID);
 	if (bt_search_service(&adapter_addr, &dev->dst, &uuid,
 					hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
 		error("Failed to search DeviceID SDP details");
@@ -1293,7 +1292,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		dev->ctrl_io = g_io_channel_ref(chan);
 		dev->uhid_fd = -1;
 
-		bt_string2uuid(&uuid, PNP_UUID);
+		sdp_uuid16_create(&uuid, PNP_INFO_SVCLASS_ID);
 		if (bt_search_service(&src, &dev->dst, &uuid,
 					hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
 			error("failed to search did sdp details");

@@ -34,7 +34,6 @@
 #include "lib/bluetooth.h"
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
-#include "lib/uuid.h"
 #include "src/sdp-client.h"
 #include "src/uuid-helper.h"
 #include "src/shared/hfp.h"
@@ -294,7 +293,7 @@ static void handle_connect(const void *buf, uint16_t len)
 
 	device_init(&bdaddr);
 
-	bt_string2uuid(&uuid, HFP_HS_UUID);
+	sdp_uuid16_create(&uuid, HANDSFREE_SVCLASS_ID);
 	if (bt_search_service(&adapter_addr, &device.bdaddr, &uuid,
 					sdp_search_cb, NULL, NULL, 0) < 0) {
 		error("handsfree: SDP search failed");
