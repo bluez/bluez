@@ -38,7 +38,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 
-#include "monitor/btsnoop.h"
+#include "src/shared/btsnoop.h"
 
 static inline uint64_t ntoh64(uint64_t n)
 {
