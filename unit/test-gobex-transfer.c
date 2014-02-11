@@ -511,6 +511,7 @@ static void test_stream_put_req_abort(void)
 	g_obex_unref(obex);
 
 	g_assert_error(d.err, G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED);
+	g_error_free(d.err);
 }
 
 static void test_stream_put_rsp_abort(void)
@@ -556,6 +557,7 @@ static void test_stream_put_rsp_abort(void)
 	g_obex_unref(obex);
 
 	g_assert_error(d.err, G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED);
+	g_error_free(d.err);
 }
 
 static void handle_put_seq_wait(GObex *obex, GObexPacket *req,

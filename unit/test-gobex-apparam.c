@@ -250,6 +250,8 @@ static void test_apparam_get_multi(void)
 	g_assert(string != NULL);
 	g_assert_cmpstr(string, ==, "ABC");
 
+	g_free(string);
+
 	g_obex_apparam_free(apparam);
 }
 
