@@ -1669,8 +1669,13 @@ static void rfcomm_dm_recv(struct bthost *bthost, struct btconn *conn,
 				uint16_t len)
 {
 	const struct rfcomm_cmd *hdr = data;
-	uint8_t channel = RFCOMM_GET_CHANNEL(hdr->address);
+	uint8_t channel;
 	struct rfcomm_connection_data *conn_data = bthost->rfcomm_conn_data;
+
+	if (len < sizeof(*hdr))
+		return;
+
+	channel = RFCOMM_GET_CHANNEL(hdr->address);
 
 	if (conn_data && conn_data->channel == channel) {
 		if (conn_data->cb)
