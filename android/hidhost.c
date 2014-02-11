@@ -793,7 +793,7 @@ static void bt_hid_connect(const void *buf, uint16_t len)
 
 	sdp_uuid16_create(&uuid, PNP_INFO_SVCLASS_ID);
 	if (bt_search_service(&adapter_addr, &dev->dst, &uuid,
-					hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
+				hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
 		error("Failed to search DeviceID SDP details");
 		hid_device_remove(dev);
 		status = HAL_STATUS_FAILED;
@@ -1294,7 +1294,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 		sdp_uuid16_create(&uuid, PNP_INFO_SVCLASS_ID);
 		if (bt_search_service(&src, &dev->dst, &uuid,
-					hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
+				hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
 			error("failed to search did sdp details");
 			hid_device_remove(dev);
 			return;
