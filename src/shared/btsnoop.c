@@ -60,6 +60,8 @@ struct btsnoop {
 	int ref_count;
 	int fd;
 	uint32_t type;
+	uint16_t index;
+	bool aborted;
 };
 
 struct btsnoop *btsnoop_open(const char *path)
@@ -89,6 +91,7 @@ struct btsnoop *btsnoop_open(const char *path)
 		goto failed;
 
 	btsnoop->type = be32toh(hdr.type);
+	btsnoop->index = 0xffff;
 
 	return btsnoop_ref(btsnoop);
 
@@ -117,6 +120,7 @@ struct btsnoop *btsnoop_create(const char *path, uint32_t type)
 	}
 
 	btsnoop->type = type;
+	btsnoop->index = 0xffff;
 
 	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
 	hdr.version = htobe32(btsnoop_version);
@@ -195,6 +199,61 @@ bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 	return true;
 }
 
+static uint32_t get_flags_from_opcode(uint16_t opcode)
+{
+	switch (opcode) {
+	case BTSNOOP_OPCODE_NEW_INDEX:
+	case BTSNOOP_OPCODE_DEL_INDEX:
+		break;
+	case BTSNOOP_OPCODE_COMMAND_PKT:
+		return 0x02;
+	case BTSNOOP_OPCODE_EVENT_PKT:
+		return 0x03;
+	case BTSNOOP_OPCODE_ACL_TX_PKT:
+		return 0x00;
+	case BTSNOOP_OPCODE_ACL_RX_PKT:
+		return 0x01;
+	case BTSNOOP_OPCODE_SCO_TX_PKT:
+	case BTSNOOP_OPCODE_SCO_RX_PKT:
+		break;
+	}
+
+	return 0xff;
+}
+
+bool btsnoop_write_hci(struct btsnoop *btsnoop, struct timeval *tv,
+					uint16_t index, uint16_t opcode,
+					const void *data, uint16_t size)
+{
+	uint32_t flags;
+
+	if (!btsnoop)
+		return false;
+
+	switch (btsnoop->type) {
+	case BTSNOOP_TYPE_HCI:
+		if (btsnoop->index == 0xffff)
+			btsnoop->index = index;
+
+		if (index != btsnoop->index)
+			return false;
+
+		flags = get_flags_from_opcode(opcode);
+		if (flags == 0xff)
+			return false;
+		break;
+
+	case BTSNOOP_TYPE_MONITOR:
+		flags = (index << 16) | opcode;
+		break;
+
+	default:
+		return false;
+	}
+
+	return btsnoop_write(btsnoop, tv, flags, data, size);
+}
+
 bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
 			uint16_t frequency, const void *data, uint16_t size)
 {
@@ -213,4 +272,113 @@ bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
 	}
 
 	return btsnoop_write(btsnoop, tv, flags, data, size);
+}
+
+static uint16_t get_opcode_from_flags(uint8_t type, uint32_t flags)
+{
+	switch (type) {
+	case 0x01:
+		return BTSNOOP_OPCODE_COMMAND_PKT;
+	case 0x02:
+		if (flags & 0x01)
+			return BTSNOOP_OPCODE_ACL_RX_PKT;
+		else
+			return BTSNOOP_OPCODE_ACL_TX_PKT;
+	case 0x03:
+		if (flags & 0x01)
+			return BTSNOOP_OPCODE_SCO_RX_PKT;
+		else
+			return BTSNOOP_OPCODE_SCO_TX_PKT;
+	case 0x04:
+		return BTSNOOP_OPCODE_EVENT_PKT;
+	case 0xff:
+		if (flags & 0x02) {
+			if (flags & 0x01)
+				return BTSNOOP_OPCODE_EVENT_PKT;
+			else
+				return BTSNOOP_OPCODE_COMMAND_PKT;
+		} else {
+			if (flags & 0x01)
+				return BTSNOOP_OPCODE_ACL_RX_PKT;
+			else
+				return BTSNOOP_OPCODE_ACL_TX_PKT;
+		}
+		break;
+	}
+
+	return 0xff;
+}
+
+bool btsnoop_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
+					uint16_t *index, uint16_t *opcode,
+					void *data, uint16_t *size)
+{
+	struct btsnoop_pkt pkt;
+	uint32_t toread, flags;
+	uint64_t ts;
+	uint8_t pkt_type;
+	ssize_t len;
+
+	if (!btsnoop || btsnoop->aborted)
+		return false;
+
+	len = read(btsnoop->fd, &pkt, BTSNOOP_PKT_SIZE);
+	if (len == 0)
+		return false;
+
+	if (len < 0 || len != BTSNOOP_PKT_SIZE) {
+		btsnoop->aborted = true;
+		return false;
+	}
+
+	toread = be32toh(pkt.size);
+	flags = be32toh(pkt.flags);
+
+	ts = be64toh(pkt.ts) - 0x00E03AB44A676000ll;
+	tv->tv_sec = (ts / 1000000ll) + 946684800ll;
+	tv->tv_usec = ts % 1000000ll;
+
+	switch (btsnoop->type) {
+	case BTSNOOP_TYPE_HCI:
+		*index = 0;
+		*opcode = get_opcode_from_flags(0xff, flags);
+		break;
+
+	case BTSNOOP_TYPE_UART:
+		len = read(btsnoop->fd, &pkt_type, 1);
+		if (len < 0) {
+			btsnoop->aborted = true;
+			return false;
+		}
+		toread--;
+
+		*index = 0;
+		*opcode = get_opcode_from_flags(pkt_type, flags);
+		break;
+
+	case BTSNOOP_TYPE_MONITOR:
+		*index = flags >> 16;
+		*opcode = flags & 0xffff;
+		break;
+
+	default:
+		btsnoop->aborted = true;
+		return false;
+	}
+
+	len = read(btsnoop->fd, data, toread);
+	if (len < 0) {
+		btsnoop->aborted = true;
+		return false;
+	}
+
+	*size = toread;
+
+	return true;
+}
+
+bool btsnoop_read_phy(struct btsnoop *btsnoop, struct timeval *tv,
+			uint16_t *frequency, void *data, uint16_t *size)
+{
+	return false;
 }

@@ -61,5 +61,14 @@ uint32_t btsnoop_get_type(struct btsnoop *btsnoop);
 
 bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 			uint32_t flags, const void *data, uint16_t size);
+bool btsnoop_write_hci(struct btsnoop *btsnoop, struct timeval *tv,
+					uint16_t index, uint16_t opcode,
+					const void *data, uint16_t size);
 bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
 			uint16_t frequency, const void *data, uint16_t size);
+
+bool btsnoop_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
+					uint16_t *index, uint16_t *opcode,
+					void *data, uint16_t *size);
+bool btsnoop_read_phy(struct btsnoop *btsnoop, struct timeval *tv,
+			uint16_t *frequency, void *data, uint16_t *size);
