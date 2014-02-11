@@ -49,6 +49,7 @@
 
 #define SPP_DEFAULT_CHANNEL	3
 #define OPP_DEFAULT_CHANNEL	9
+#define HFAG_DEFAULT_CHANNEL	13
 #define PBAP_DEFAULT_CHANNEL	15
 #define MAS_DEFAULT_CHANNEL	16
 
@@ -374,6 +375,15 @@ static const struct profile_info {
 	sdp_record_t *	(*create_record)(uint8_t chan, const char *svc_name);
 } profiles[] = {
 	{
+		.uuid = {
+			0x00, 0x00, 0x11, 0x1F, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
+		},
+		.channel = HFAG_DEFAULT_CHANNEL,
+		.svc_hint = 0,
+		.sec_level = BT_IO_SEC_MEDIUM,
+		.create_record = NULL
+	}, {
 		.uuid = {
 			0x00, 0x00, 0x11, 0x2F, 0x00, 0x00, 0x10, 0x00,
 			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
@@ -742,6 +752,9 @@ static uint8_t rfcomm_listen(int chan, const uint8_t *name, const uint8_t *uuid,
 	if (!profile) {
 		sec_level = BT_IO_SEC_MEDIUM;
 	} else {
+		if (!profile->create_record)
+			return HAL_STATUS_INVALID;
+
 		chan = profile->channel;
 		sec_level = profile->sec_level;
 	}
