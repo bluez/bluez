@@ -1619,13 +1619,19 @@ static void rfcomm_ua_recv(struct bthost *bthost, struct btconn *conn,
 				uint16_t len)
 {
 	const struct rfcomm_cmd *ua_hdr = data;
-	uint8_t channel = RFCOMM_GET_CHANNEL(ua_hdr->address);
+	uint8_t channel;
 	struct rfcomm_connection_data *conn_data = bthost->rfcomm_conn_data;
-	uint8_t type = RFCOMM_GET_TYPE(ua_hdr->control);
+	uint8_t type;
 	uint8_t buf[14];
 	struct rfcomm_hdr *hdr;
 	struct rfcomm_mcc *mcc;
 	struct rfcomm_pn *pn_cmd;
+
+	if (len < sizeof(*ua_hdr))
+		return;
+
+	channel = RFCOMM_GET_CHANNEL(ua_hdr->address);
+	type = RFCOMM_GET_TYPE(ua_hdr->control);
 
 	if (channel && conn_data && conn_data->channel == channel) {
 		if (conn_data->cb)
