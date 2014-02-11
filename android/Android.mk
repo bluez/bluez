@@ -91,7 +91,15 @@ $(shell mkdir -p $(LOCAL_PATH)/bluez/lib/bluetooth)
 $(foreach file,$(lib_headers), $(shell ln -sf ../$(file) $(LOCAL_PATH)/bluez/lib/bluetooth/$(file)))
 
 LOCAL_MODULE_TAGS := optional
+
+# for userdebug/eng this module is bluetoothd-main since bluetoothd is used as
+# wrapper to launch bluetooth with Valgrind
+ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+LOCAL_MODULE := bluetoothd-main
+LOCAL_STRIP_MODULE := false
+else
 LOCAL_MODULE := bluetoothd
+endif
 
 include $(BUILD_EXECUTABLE)
 
@@ -415,3 +423,37 @@ LOCAL_CFLAGS:= \
 LOCAL_MODULE := libsbc
 
 include $(BUILD_SHARED_LIBRARY)
+
+ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+
+#
+# bluetoothd (debug)
+# this is just a wrapper used in userdebug/eng to launch bluetoothd-main
+# with/without Valgrind
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	bluez/android/bluetoothd-wrapper.c
+
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_SHARED_LIBRARIES := \
+	libcutils \
+
+LOCAL_MODULE_PATH := $(TARGET_OUT_EXECUTABLES)
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := bluetoothd
+
+LOCAL_REQUIRED_MODULES := \
+	bluetoothd-main \
+	valgrind \
+	memcheck-$(TARGET_ARCH)-linux \
+	vgpreload_core-$(TARGET_ARCH)-linux \
+	vgpreload_memcheck-$(TARGET_ARCH)-linux \
+	default.supp
+
+include $(BUILD_EXECUTABLE)
+
+endif
