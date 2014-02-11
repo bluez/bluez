@@ -153,7 +153,7 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hardware/hardware.h \
 					android/system/audio.h
 
-noinst_PROGRAMS += android/test-ipc
+unit_tests += android/test-ipc
 
 android_test_ipc_SOURCES = android/test-ipc.c \
 				src/shared/util.h src/shared/util.c \

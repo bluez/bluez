@@ -178,6 +178,7 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			profiles/input/input.conf profiles/proximity/proximity.conf
 
 test_scripts =
+unit_tests =
 
 include Makefile.tools
 include Makefile.obexd
@@ -222,7 +223,7 @@ AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 AM_CPPFLAGS = -I$(builddir)/lib -I$(srcdir)/gdbus
 
 
-unit_tests = unit/test-eir unit/test-uuid unit/test-textfile unit/test-crc
+unit_tests += unit/test-eir unit/test-uuid unit/test-textfile unit/test-crc
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/uuid-helper.c
 unit_test_eir_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
