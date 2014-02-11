@@ -235,6 +235,9 @@ struct hal_cmd_le_test_mode {
 #define HAL_SOCK_SCO		0x02
 #define HAL_SOCK_L2CAP		0x03
 
+#define HAL_SOCK_FLAG_ENCRYPT	0x01
+#define HAL_SOCK_FLAG_AUTH	0x02
+
 #define HAL_OP_SOCK_LISTEN		0x01
 struct hal_cmd_sock_listen {
 	uint8_t type;
