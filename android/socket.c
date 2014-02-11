@@ -677,6 +677,21 @@ static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
 	new_rfsock->bt_watch = id;
 }
 
+static int find_free_channel(void)
+{
+	int ch;
+
+	/* channel 0 is reserver so we don't use it */
+	for (ch = 1; ch <= RFCOMM_CHANNEL_MAX; ch++) {
+		struct rfcomm_channel *srv = &servers[ch];
+
+		if (!srv->reserved && srv->rfsock == NULL)
+			return ch;
+	}
+
+	return 0;
+}
+
 static uint8_t rfcomm_listen(int chan, const uint8_t *name, const uint8_t *uuid,
 						uint8_t flags, int *hal_sock)
 {
@@ -704,13 +719,18 @@ static uint8_t rfcomm_listen(int chan, const uint8_t *name, const uint8_t *uuid,
 
 	profile = get_profile_by_uuid(uuid);
 	if (!profile) {
-		if (chan <= 0)
-			return HAL_STATUS_INVALID;
-
 		sec_level = BT_IO_SEC_MEDIUM;
 	} else {
 		chan = profile->channel;
 		sec_level = profile->sec_level;
+	}
+
+	if (chan <= 0)
+		chan = find_free_channel();
+
+	if (!chan) {
+		error("No free channels");
+		return HAL_STATUS_BUSY;
 	}
 
 	if (servers[chan].rfsock != NULL) {
