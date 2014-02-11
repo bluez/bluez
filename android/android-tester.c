@@ -2757,7 +2757,7 @@ static const struct socket_data btsock_inv_listen_listen = {
 	.service_uuid = NULL,
 	.service_name = "Test service",
 	.flags = 0,
-	.expected_status = BT_STATUS_FAIL,
+	.expected_status = BT_STATUS_BUSY,
 	.test_channel = true,
 };
 
