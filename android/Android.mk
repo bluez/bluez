@@ -185,7 +185,6 @@ LOCAL_SRC_FILES := \
 	bluez/monitor/mainloop.c \
 	bluez/monitor/display.c \
 	bluez/monitor/hcidump.c \
-	bluez/monitor/btsnoop.c \
 	bluez/monitor/control.c \
 	bluez/monitor/packet.c \
 	bluez/monitor/l2cap.c \
@@ -200,6 +199,7 @@ LOCAL_SRC_FILES := \
 	bluez/monitor/analyze.c \
 	bluez/src/shared/util.c \
 	bluez/src/shared/queue.c \
+	bluez/src/shared/btsnoop.c \
 	bluez/lib/hci.c \
 	bluez/lib/bluetooth.c \
 
