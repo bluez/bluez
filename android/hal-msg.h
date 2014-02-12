@@ -863,3 +863,21 @@ struct hal_cmd_avrcp_get_element_attrs_text {
 struct hal_cmd_avrcp_set_player_attrs_value {
 	uint8_t status;
 } __attribute__((packed));
+
+#define HAL_AVRCP_EVENT_STATUS_CHANGED		0x01
+#define HAL_AVRCP_EVENT_TRACK_CHANGED		0x02
+#define HAL_AVRCP_EVENT_TRACK_REACHED_END	0x03
+#define HAL_AVRCP_EVENT_TRACK_REACHED_START	0x04
+#define HAL_AVRCP_EVENT_POSITION_CHANGED	0x05
+#define HAL_AVRCP_EVENT_SETTING_CHANGED		0x08
+
+#define HAL_AVRCP_EVENT_TYPE_INTERIM		0x00
+#define HAL_AVRCP_EVENT_TYPE_CHANGED		0x01
+
+#define HAL_OP_AVRCP_REGISTER_NOTIFICATION	0x09
+struct hal_cmd_avrcp_register_notification {
+	uint8_t event;
+	uint8_t type;
+	uint8_t len;
+	uint8_t data[0];
+} __attribute__((packed));

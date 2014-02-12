@@ -1281,7 +1281,24 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Valid status values: Same as in Get Play Status Response
 
-	Opcode 0x09 - Register Notification command/response
+	Opcode 0x09 - Register Notification Response command/response
+
+		Command parameters: Event (1 octet)
+		                    Type (1 octet)
+		                    Data length (1 octet)
+		                    Data (variable)
+
+		In case of an error, the error response will be returned.
+
+		Valid event values: 0x01 = Status Changed
+		                    0x02 = Track Changed
+		                    0x03 = Track Reached End
+		                    0x04 = Track Reached Start
+		                    0x05 = Position Changed
+		                    0x08 = Setting Changed
+
+		Valid type values : 0x00 = Interim
+		                    0x01 = Changed
 
 	Opcode 0x81 - Get Play Status notification
 	Opcode 0x82 - List Player Application Attributes notification
