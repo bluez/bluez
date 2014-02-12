@@ -1273,6 +1273,14 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 		                0x06 = Genre
 		                0x06 = Duration
 
+	Opcode 0x08 - Set Player Attributes Value Response command/response
+
+		Command parameters: Status (1 octet)
+
+		In case of an error, the error response will be returned.
+
+		Valid status values: Same as in Get Play Status Response
+
 	Opcode 0x09 - Register Notification command/response
 
 	Opcode 0x81 - Get Play Status notification

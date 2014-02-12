@@ -858,3 +858,8 @@ struct hal_cmd_avrcp_get_element_attrs_text {
 	uint8_t number;
 	struct hal_avrcp_player_setting_text values[0];
 } __attribute__((packed));
+
+#define HAL_OP_AVRCP_SET_PLAYER_ATTRS_VALUE	0x08
+struct hal_cmd_avrcp_set_player_attrs_value {
+	uint8_t status;
+} __attribute__((packed));
