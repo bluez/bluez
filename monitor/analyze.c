@@ -259,7 +259,7 @@ void analyze_trace(const char *path)
 	unsigned long num_packets = 0;
 	uint32_t type;
 
-	btsnoop_file = btsnoop_open(path);
+	btsnoop_file = btsnoop_open(path, BTSNOOP_FLAG_PKLG_SUPPORT);
 	if (!btsnoop_file)
 		return;
 

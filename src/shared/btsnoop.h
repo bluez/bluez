@@ -33,6 +33,8 @@
 #define BTSNOOP_TYPE_MONITOR		2001
 #define BTSNOOP_TYPE_SIMULATOR		2002
 
+#define BTSNOOP_FLAG_PKLG_SUPPORT	(1 << 0)
+
 #define BTSNOOP_OPCODE_NEW_INDEX	0
 #define BTSNOOP_OPCODE_DEL_INDEX	1
 #define BTSNOOP_OPCODE_COMMAND_PKT	2
@@ -51,7 +53,7 @@ struct btsnoop_opcode_new_index {
 
 struct btsnoop;
 
-struct btsnoop *btsnoop_open(const char *path);
+struct btsnoop *btsnoop_open(const char *path, unsigned long flags);
 struct btsnoop *btsnoop_create(const char *path, uint32_t type);
 
 struct btsnoop *btsnoop_ref(struct btsnoop *btsnoop);

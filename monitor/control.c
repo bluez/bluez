@@ -825,7 +825,7 @@ void control_reader(const char *path)
 	uint32_t type;
 	struct timeval tv;
 
-	btsnoop_file = btsnoop_open(path);
+	btsnoop_file = btsnoop_open(path, BTSNOOP_FLAG_PKLG_SUPPORT);
 	if (!btsnoop_file)
 		return;
 
