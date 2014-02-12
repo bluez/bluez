@@ -856,6 +856,9 @@ void control_reader(const char *path)
 							&opcode, buf, &pktlen))
 				break;
 
+			if (opcode == 0xffff)
+				continue;
+
 			packet_monitor(&tv, index, opcode, buf, pktlen);
 			ellisys_inject_hci(&tv, index, opcode, buf, pktlen);
 		}
