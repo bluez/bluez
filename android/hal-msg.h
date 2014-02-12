@@ -783,3 +783,19 @@ struct hal_ev_handsfree_unknown_at {
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_HSP_KEY_PRESS	0x90
+
+/* AVRCP HAL API */
+
+#define HAL_AVRCP_PLAY_STATUS_STOPPED	0x00
+#define HAL_AVRCP_PLAY_STATUS_PLAYING	0x01
+#define HAL_AVRCP_PLAY_STATUS_PAUSED	0x02
+#define HAL_AVRCP_PLAY_STATUS_FWD_SEEK	0x03
+#define HAL_AVRCP_PLAY_STATUS_REV_SEEK	0x04
+#define HAL_AVRCP_PLAY_STATUS_ERROR	0xff
+
+#define HAL_OP_AVRCP_GET_PLAY_STATUS	0x01
+struct hal_cmd_avrcp_get_play_status {
+	uint8_t status;
+	uint32_t duration;
+	uint32_t position;
+} __attribute__((packed));

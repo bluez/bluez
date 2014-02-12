@@ -1174,7 +1174,35 @@ Bluetooth Remote Control HAL (ID 8)
 Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 	Opcode 0x00 - Error response
-	Opcode 0x01 - Get Play Status command/response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Get Play Status Response command/response
+
+		Command parameters: Status (1 octet)
+		                    Duration (4 octets)
+		                    Position (4 octets)
+
+		In case of an error, the error response will be returned.
+
+		Valid status values: 0x00 = Stopped
+		                     0x01 = Playing
+		                     0x02 = Paused
+		                     0x03 = Fwd seek
+		                     0x04 = Rev seek
+		                     0xff = Error
+
 	Opcode 0x02 - List Player Application Attributes command/response
 	Opcode 0x03 - List Player Application Values command/response
 	Opcode 0x04 - Get Player Application Values command/response
