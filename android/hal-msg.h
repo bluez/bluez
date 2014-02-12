@@ -799,3 +799,14 @@ struct hal_cmd_avrcp_get_play_status {
 	uint32_t duration;
 	uint32_t position;
 } __attribute__((packed));
+
+#define HAL_AVRCP_PLAYER_ATTR_EQUALIZER	0x01
+#define HAL_AVRCP_PLAYER_ATTR_REPEAT	0x02
+#define HAL_AVRCP_PLAYER_ATTR_SHUFFLE	0x03
+#define HAL_AVRCP_PLAYER_ATTR_SCAN	0x04
+
+#define HAL_OP_AVRCP_LIST_PLAYER_ATTRS	0x02
+struct hal_cmd_avrcp_list_player_attrs {
+	uint8_t number;
+	uint8_t attrs[0];
+} __attribute__((packed));

@@ -1203,7 +1203,19 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 		                     0x04 = Rev seek
 		                     0xff = Error
 
-	Opcode 0x02 - List Player Application Attributes command/response
+	Opcode 0x02 - List Player Attributes Response command/response
+
+		Command parameters: Number of attributes (1 octet)
+		                    Attribute # (1 octet)
+		                    ...
+
+		In case of an error, the error response will be returned.
+
+		Valid attributes: 0x01 = Equalizer
+		                  0x02 = Repead
+		                  0x03 = Shuffle
+		                  0x04 = Scan
+
 	Opcode 0x03 - List Player Application Values command/response
 	Opcode 0x04 - Get Player Application Values command/response
 	Opcode 0x05 - Get Player Application Attributes Text command/response
