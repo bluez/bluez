@@ -816,3 +816,14 @@ struct hal_cmd_avrcp_list_player_values {
 	uint8_t number;
 	uint8_t values[0];
 } __attribute__((packed));
+
+struct hal_avrcp_player_attr_value {
+	uint8_t attr;
+	uint8_t value;
+} __attribute__((packed));
+
+#define HAL_OP_AVRCP_GET_PLAYER_ATTRS	0x04
+struct hal_cmd_avrcp_get_player_attrs {
+	uint8_t number;
+	struct hal_avrcp_player_attr_value attrs[0];
+} __attribute__((packed));
