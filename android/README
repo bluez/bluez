@@ -124,6 +124,12 @@ After changing property value Bluetooth need to be restarted to apply changes
 (this can be done using UI, just disable and enable it again). Property is
 persistent, i.e. there's no need to enable Valgrind again after reboot.
 
+It's recommended to have unstripped libglib.so installed which will enable
+complete backtraces in Valgrind output. Otherwise, in many cases backtrace
+will break at e.g. g_free() function without prior callers. It's possible to
+have proper library installed automatically by appropriate entry in Android.mk,
+see https://code.google.com/p/aosp-bluez.glib/ for an example.
+
 =============================
 Building and running on Linux
 =============================
