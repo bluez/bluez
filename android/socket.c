@@ -190,7 +190,7 @@ static sdp_record_t *create_rfcomm_record(uint8_t chan, uuid_t *uuid,
 {
 	sdp_list_t *svclass_id;
 	sdp_list_t *seq, *proto_seq, *pbg_seq;
-	sdp_list_t *proto[2];
+	sdp_list_t *proto[3];
 	uuid_t l2cap_uuid, rfcomm_uuid, obex_uuid, pbg_uuid;
 	sdp_data_t *channel;
 	sdp_record_t *record;
