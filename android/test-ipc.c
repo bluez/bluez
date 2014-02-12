@@ -264,8 +264,8 @@ static void execute_context(struct context *context)
 {
 	g_main_loop_run(context->main_loop);
 
-	g_io_channel_shutdown(context->notif_io, true, NULL);
-	g_io_channel_shutdown(context->cmd_io, true, NULL);
+	g_io_channel_shutdown(context->notif_io, TRUE, NULL);
+	g_io_channel_shutdown(context->cmd_io, TRUE, NULL);
 	g_io_channel_unref(context->cmd_io);
 	g_io_channel_unref(context->notif_io);
 
