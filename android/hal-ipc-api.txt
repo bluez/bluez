@@ -1216,7 +1216,14 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 		                  0x03 = Shuffle
 		                  0x04 = Scan
 
-	Opcode 0x03 - List Player Application Values command/response
+	Opcode 0x03 - List Player Values Response command/response
+
+		Command parameters: Number of values (1 octet)
+		                    Value # (1 octet)
+		                    ...
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x04 - Get Player Application Values command/response
 	Opcode 0x05 - Get Player Application Attributes Text command/response
 	Opcode 0x06 - Get Player Application Values Text command/response
