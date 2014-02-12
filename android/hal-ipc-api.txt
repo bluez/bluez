@@ -1256,8 +1256,23 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		In case of an error, the error response will be returned.
 
-	Opcode 0x07 - Get Element Attributes Text command/response
-	Opcode 0x08 - Set Player Attributes Value command/response
+	Opcode 0x07 - Get Element Attributes Text Response command/response
+
+		Command parameters: Number of elements (1 octet)
+		                    Element # (1 octet)
+		                    Element # text (255 octets)
+		                    ...
+
+		In case of an error, the error response will be returned.
+
+		Valid elements: 0x01 = Title
+		                0x02 = Artist
+		                0x03 = Album
+		                0x04 = Track Number
+		                0x05 = Number of Tracks
+		                0x06 = Genre
+		                0x06 = Duration
+
 	Opcode 0x09 - Register Notification command/response
 
 	Opcode 0x81 - Get Play Status notification

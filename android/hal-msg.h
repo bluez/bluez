@@ -844,3 +844,17 @@ struct hal_cmd_avrcp_get_player_values_text {
 	uint8_t number;
 	struct hal_avrcp_player_setting_text values[0];
 } __attribute__((packed));
+
+#define HAL_AVRCP_MEDIA_ATTR_TITLE		0x01
+#define HAL_AVRCP_MEDIA_ATTR_ARTIST		0x02
+#define HAL_AVRCP_MEDIA_ATTR_ALBUM		0x03
+#define HAL_AVRCP_MEDIA_ATTR_TRACK_NUM		0x04
+#define HAL_AVRCP_MEDIA_ATTR_NUM_TRACKS		0x05
+#define HAL_AVRCP_MEDIA_ATTR_GENRE		0x06
+#define HAL_AVRCP_MEDIA_ATTR_DURATION		0x07
+
+#define HAL_OP_AVRCP_GET_ELEMENT_ATTRS_TEXT	0x07
+struct hal_cmd_avrcp_get_element_attrs_text {
+	uint8_t number;
+	struct hal_avrcp_player_setting_text values[0];
+} __attribute__((packed));
