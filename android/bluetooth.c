@@ -1557,6 +1557,8 @@ int bt_adapter_add_record(sdp_record_t *rec, uint8_t svc_hint)
 
 		sdp_uuid2strn(uuid, uuid_str, sizeof(uuid_str));
 		DBG("UUID %s already added", uuid_str);
+
+		bt_free(uuid);
 		return -EALREADY;
 	}
 
