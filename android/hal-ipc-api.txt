@@ -1247,7 +1247,15 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Valid attributes: Same as in List Player Attributes
 
-	Opcode 0x06 - Get Player Application Values Text command/response
+	Opcode 0x06 - Get Player Values Text Response command/response
+
+		Command parameters: Number of values (1 octet)
+		                    Value # (1 octet)
+		                    Value # text (255 octets)
+		                    ...
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x07 - Get Element Attributes Text command/response
 	Opcode 0x08 - Set Player Attributes Value command/response
 	Opcode 0x09 - Register Notification command/response
