@@ -2903,6 +2903,9 @@ static void handle_disable_cmd(const void *buf, uint16_t len)
 		goto reply;
 	}
 
+	/* Cancel all pending requests. Need it in case of ongoing paring */
+	mgmt_cancel_index(mgmt_if, adapter.index);
+
 	if (!set_mode(MGMT_OP_SET_POWERED, 0x00)) {
 		status = HAL_STATUS_FAILED;
 		goto reply;
