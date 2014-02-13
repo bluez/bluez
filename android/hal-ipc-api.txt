@@ -1380,6 +1380,11 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Valid type values: Same as in Register Notification
 
+	Opcode 0x8c - Passthrough Command notification
+
+		Notification parameters: ID (1 octet)
+		                         State (1 octet)
+
 Bluetooth GATT HAL (ID 9)
 =========================
 

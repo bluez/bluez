@@ -938,3 +938,9 @@ struct hal_ev_avrcp_volume_changed {
 	uint8_t volume;
 	uint8_t type;
 } __attribute__((packed));
+
+#define HAL_EV_AVRCP_PASSTHROUGH_CMD		0x8c
+struct hal_ev_avrcp_passthrough_cmd {
+	uint8_t id;
+	uint8_t state;
+} __attribute__((packed));
