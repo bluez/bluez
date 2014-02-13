@@ -926,3 +926,9 @@ struct hal_ev_avrcp_get_element_attrs {
 	uint8_t number;
 	uint8_t attrs[0];
 } __attribute__((packed));
+
+#define HAL_EV_AVRCP_REGISTER_NOTIFICATION	0x8a
+struct hal_ev_avrcp_register_notification {
+	uint8_t event;
+	uint32_t param;
+} __attribute__((packed));

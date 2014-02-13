@@ -1366,6 +1366,13 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Valid attribute values: Same as in Get Element Attribute
 
+	Opcode 0x8a - Register Notification notification
+
+		Notification parameters: Event (1 octet)
+		                         Parameter (4 octets)
+
+		Valid event values: Same as in Register Notification
+
 Bluetooth GATT HAL (ID 9)
 =========================
 
