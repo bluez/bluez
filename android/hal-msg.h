@@ -895,3 +895,9 @@ struct hal_ev_avrcp_remote_features {
 struct hal_ev_avrcp_list_player_values {
 	uint8_t attr;
 } __attribute__((packed));
+
+#define HAL_EV_AVRCP_GET_PLAYER_VALUES		0x85
+struct hal_ev_avrcp_get_player_values {
+	uint8_t number;
+	uint8_t attrs[0];
+} __attribute__((packed));

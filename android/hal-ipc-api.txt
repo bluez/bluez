@@ -1324,6 +1324,13 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Valid attribute values: Same as in List Player Attributes
 
+	Opcode 0x85 - Get Player Values notification
+
+		Notification parameters: Number of attributes (1 octet)
+		                         Attribute # (1 octet)
+		                         ...
+
+		Valid attribute values: Same as in List Player Attributes
 
 Bluetooth GATT HAL (ID 9)
 =========================
