@@ -2382,13 +2382,34 @@ static void print_le_states(const uint8_t *states_array)
 
 static void print_le_channel_map(const uint8_t *map)
 {
+	unsigned int count = 0, start = 0;
 	char str[11];
-	int i;
+	int i, n;
 
 	for (i = 0; i < 5; i++)
 		sprintf(str + (i * 2), "%2.2x", map[i]);
 
 	print_field("Channel map: 0x%s", str);
+
+	for (i = 0; i < 5; i++) {
+		for (n = 0; n < 8; n++) {
+			if (map[i] & (1 << n)) {
+				if (count == 0)
+					start = (i * 8) + n;
+				count++;
+				continue;
+			}
+
+			if (count > 1) {
+				print_field("  Channel %u-%u",
+						start, start + count - 1 );
+				count = 0;
+			} else if (count > 0) {
+				print_field("  Channel %u", start);
+				count = 0;
+			}
+		}
+	}
 }
 
 void packet_print_channel_map_ll(const uint8_t *map)
