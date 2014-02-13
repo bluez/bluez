@@ -881,3 +881,9 @@ struct hal_cmd_avrcp_register_notification {
 	uint8_t len;
 	uint8_t data[0];
 } __attribute__((packed));
+
+#define HAL_EV_AVRCP_REMOTE_FEATURES		0x81
+struct hal_ev_avrcp_remote_features {
+	uint8_t bdaddr[6];
+	uint8_t features;
+} __attribute__((packed));

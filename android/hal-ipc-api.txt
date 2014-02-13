@@ -1300,8 +1300,18 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 		Valid type values : 0x00 = Interim
 		                    0x01 = Changed
 
-	Opcode 0x81 - Get Play Status notification
-	Opcode 0x82 - List Player Application Attributes notification
+	Opcode 0x81 - Remote Features notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Features (1 octet)
+
+		Valid features values : 0x00 = None
+		                        0x01 = Metadata
+		                        0x02 = Absolute Volume
+		                        0x03 = Browse
+
+	Opcode 0x82 - Get Play Status notification
+	Opcode 0x83 - List Player Application Attributes notification
 	...
 
 
