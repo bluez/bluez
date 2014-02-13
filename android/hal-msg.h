@@ -932,3 +932,9 @@ struct hal_ev_avrcp_register_notification {
 	uint8_t event;
 	uint32_t param;
 } __attribute__((packed));
+
+#define HAL_EV_AVRCP_VOLUME_CHANGED		0x8b
+struct hal_ev_avrcp_volume_changed {
+	uint8_t volume;
+	uint8_t type;
+} __attribute__((packed));

@@ -1373,6 +1373,13 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Valid event values: Same as in Register Notification
 
+	Opcode 0x8b - Volume Changed notification
+
+		Notification parameters: Volume (1 octet)
+		                         Type (1 octet)
+
+		Valid type values: Same as in Register Notification
+
 Bluetooth GATT HAL (ID 9)
 =========================
 
