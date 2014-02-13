@@ -37,6 +37,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/a2dp.h android/a2dp.c \
 				android/avctp.h android/avctp.c \
 				android/avrcp.h android/avrcp.c \
+				android/avrcp-lib.h android/avrcp-lib.c \
 				android/socket.h android/socket.c \
 				android/pan.h android/pan.c \
 				android/handsfree.h android/handsfree.c \

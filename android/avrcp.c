@@ -35,9 +35,9 @@
 #include "src/log.h"
 #include "bluetooth.h"
 #include "avrcp.h"
+#include "avrcp-lib.h"
 #include "hal-msg.h"
 #include "ipc.h"
-#include "avctp.h"
 
 #define L2CAP_PSM_AVCTP 0x17
 
@@ -53,7 +53,7 @@ static GIOChannel *server = NULL;
 
 struct avrcp_device {
 	bdaddr_t	dst;
-	struct avctp	*session;
+	struct avrcp	*session;
 	GIOChannel	*io;
 };
 
@@ -242,7 +242,7 @@ static void avrcp_device_free(void *data)
 	struct avrcp_device *dev = data;
 
 	if (dev->session)
-		avctp_shutdown(dev->session);
+		avrcp_shutdown(dev->session);
 
 	if (dev->io) {
 		g_io_channel_shutdown(dev->io, FALSE, NULL);
@@ -277,6 +277,17 @@ static int device_cmp(gconstpointer s, gconstpointer user_data)
 	return bacmp(&dev->dst, dst);
 }
 
+static struct avrcp_device *avrcp_device_find(const bdaddr_t *dst)
+{
+	GSList *l;
+
+	l = g_slist_find_custom(devices, dst, device_cmp);
+	if (!l)
+		return NULL;
+
+	return l->data;
+}
+
 static void disconnect_cb(void *data)
 {
 	struct avrcp_device *dev = data;
@@ -295,7 +306,6 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	char address[18];
 	uint16_t imtu, omtu;
 	GError *gerr = NULL;
-	GSList *l;
 	int fd;
 
 	if (err) {
@@ -318,9 +328,8 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	ba2str(&dst, address);
 
-	l = g_slist_find_custom(devices, &dst, device_cmp);
-	if (l) {
-		dev = l->data;
+	dev = avrcp_device_find(&dst);
+	if (dev) {
 		if (dev->session) {
 			error("Unexpected connection");
 			return;
@@ -331,17 +340,17 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	fd = g_io_channel_unix_get_fd(chan);
-	dev->session = avctp_new(fd, imtu, omtu, 0x0100);
 
+	dev->session = avrcp_new(fd, imtu, omtu, 0x0100);
 	if (!dev->session) {
 		avrcp_device_free(dev);
 		return;
 	}
 
-	avctp_set_destroy_cb(dev->session, disconnect_cb, dev);
+	avrcp_set_destroy_cb(dev->session, disconnect_cb, dev);
 
 	/* FIXME: get the real name of the device */
-	avctp_init_uinput(dev->session, "bluetooth", address);
+	avrcp_init_uinput(dev->session, "bluetooth", address);
 
 	g_io_channel_set_close_on_unref(chan, FALSE);
 
@@ -440,12 +449,10 @@ void bt_avrcp_connect(const bdaddr_t *dst)
 {
 	struct avrcp_device *dev;
 	char addr[18];
-	GSList *l;
 
 	DBG("");
 
-	l = g_slist_find_custom(devices, dst, device_cmp);
-	if (l)
+	if (avrcp_device_find(dst))
 		return;
 
 	dev = avrcp_device_new(dst);
@@ -461,18 +468,15 @@ void bt_avrcp_connect(const bdaddr_t *dst)
 void bt_avrcp_disconnect(const bdaddr_t *dst)
 {
 	struct avrcp_device *dev;
-	GSList *l;
 
 	DBG("");
 
-	l = g_slist_find_custom(devices, dst, device_cmp);
-	if (!l)
+	dev = avrcp_device_find(dst);
+	if (!dev)
 		return;
 
-	dev = l->data;
-
 	if (dev->session) {
-		avctp_shutdown(dev->session);
+		avrcp_shutdown(dev->session);
 		return;
 	}
 

@@ -40,6 +40,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/a2dp.c \
 	bluez/android/avctp.c \
 	bluez/android/avrcp.c \
+	bluez/android/avrcp-lib.c \
 	bluez/android/pan.c \
 	bluez/android/handsfree.c \
 	bluez/src/log.c \
