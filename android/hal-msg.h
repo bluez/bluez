@@ -901,3 +901,9 @@ struct hal_ev_avrcp_get_player_values {
 	uint8_t number;
 	uint8_t attrs[0];
 } __attribute__((packed));
+
+#define HAL_EV_AVRCP_GET_PLAYER_ATTRS_TEXT	0x86
+struct hal_ev_avrcp_get_player_attrs_text {
+	uint8_t number;
+	uint8_t attrs[0];
+} __attribute__((packed));
