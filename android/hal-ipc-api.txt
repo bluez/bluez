@@ -1311,6 +1311,9 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 		                        0x03 = Browse
 
 	Opcode 0x82 - Get Play Status notification
+
+		Notification parameters: <none>
+
 	Opcode 0x83 - List Player Application Attributes notification
 	...
 
