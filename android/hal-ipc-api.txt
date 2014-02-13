@@ -1314,8 +1314,9 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Notification parameters: <none>
 
-	Opcode 0x83 - List Player Application Attributes notification
-	...
+	Opcode 0x83 - List Player Attributes notification
+
+		Notification parameters: <none>
 
 
 Bluetooth GATT HAL (ID 9)
