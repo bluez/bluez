@@ -2271,10 +2271,10 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 	ltk->ediv = g_key_file_get_integer(key_file, group, "EDiv", NULL);
 
 	master = g_key_file_get_boolean(key_file, group, "Master", &gerr);
-	if (gerr != NULL) {
-		ltk->master = master;
+	if (gerr)
 		g_error_free(gerr);
-	}
+	else
+		ltk->master = master;
 
 failed:
 	g_free(key);
