@@ -1211,6 +1211,11 @@ Confirm Name Command
 	expected for each Device Found event with the Confirm Name
 	flag set.
 
+	The Name_Known parameter should be set to 0x01 if user space
+	knows the name for the device and 0x00 if it doesn't. If set to
+	0x00 the kernel will perform a name resolving procedure for the
+	device in question.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
