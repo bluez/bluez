@@ -70,7 +70,7 @@ struct smp_ltk_info {
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
 	uint8_t authenticated;
-	uint8_t master;
+	bool master;
 	uint8_t enc_size;
 	uint16_t ediv;
 	uint8_t rand[8];
