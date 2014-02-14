@@ -216,10 +216,13 @@ Long term key) related to a remote device.
   Authenticated		Boolean		True if remote device has been
 					authenticated
 
-  Master		Boolean		True for master key
-
   EncSize		Integer		Encrypted size
 
   EDiv			Integer		Encrypted diversifier
 
   Rand			Integer		Randomizer
+
+
+[SlaveLongTermKey] group contains:
+
+  Same as the [LongTermKey] group, except for slave keys.
