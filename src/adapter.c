@@ -2237,21 +2237,60 @@ failed:
 	return info;
 }
 
-static struct smp_ltk_info *get_ltk_info(GKeyFile *key_file, const char *peer)
+static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
+					uint8_t peer_type, const char *group)
 {
 	struct smp_ltk_info *ltk = NULL;
+	GError *gerr = NULL;
+	bool master;
 	char *key;
 	char *rand = NULL;
-	char *type = NULL;
-	uint8_t bdaddr_type;
 
-	key = g_key_file_get_string(key_file, "LongTermKey", "Key", NULL);
+	key = g_key_file_get_string(key_file, group, "Key", NULL);
 	if (!key || strlen(key) != 34)
 		goto failed;
 
-	rand = g_key_file_get_string(key_file, "LongTermKey", "Rand", NULL);
+	rand = g_key_file_get_string(key_file, group, "Rand", NULL);
 	if (!rand || strlen(rand) != 18)
 		goto failed;
+
+	ltk = g_new0(struct smp_ltk_info, 1);
+
+	/* Default to assuming a master key */
+	ltk->master = true;
+
+	str2ba(peer, &ltk->bdaddr);
+	ltk->bdaddr_type = peer_type;
+	str2buf(&key[2], ltk->val, sizeof(ltk->val));
+	str2buf(&rand[2], ltk->rand, sizeof(ltk->rand));
+
+	ltk->authenticated = g_key_file_get_integer(key_file, group,
+							"Authenticated", NULL);
+	ltk->enc_size = g_key_file_get_integer(key_file, group, "EncSize",
+									NULL);
+	ltk->ediv = g_key_file_get_integer(key_file, group, "EDiv", NULL);
+
+	master = g_key_file_get_boolean(key_file, group, "Master", &gerr);
+	if (gerr != NULL) {
+		ltk->master = master;
+		g_error_free(gerr);
+	}
+
+failed:
+	g_free(key);
+	g_free(rand);
+
+	return ltk;
+}
+
+static GSList *get_ltk_info(GKeyFile *key_file, const char *peer)
+{
+	struct smp_ltk_info *ltk;
+	uint8_t bdaddr_type;
+	char *type = NULL;
+	GSList *l = NULL;
+
+	DBG("%s", peer);
 
 	type = g_key_file_get_string(key_file, "General", "AddressType", NULL);
 	if (!type)
@@ -2264,28 +2303,18 @@ static struct smp_ltk_info *get_ltk_info(GKeyFile *key_file, const char *peer)
 	else
 		goto failed;
 
-	ltk = g_new0(struct smp_ltk_info, 1);
+	ltk = get_ltk(key_file, peer, bdaddr_type, "LongTermKey");
+	if (ltk)
+		l = g_slist_append(l, ltk);
 
-	str2ba(peer, &ltk->bdaddr);
-	ltk->bdaddr_type = bdaddr_type;
-	str2buf(&key[2], ltk->val, sizeof(ltk->val));
-	str2buf(&rand[2], ltk->rand, sizeof(ltk->rand));
-
-	ltk->authenticated = g_key_file_get_integer(key_file, "LongTermKey",
-							"Authenticated", NULL);
-	ltk->master = g_key_file_get_integer(key_file, "LongTermKey", "Master",
-						NULL);
-	ltk->enc_size = g_key_file_get_integer(key_file, "LongTermKey",
-						"EncSize", NULL);
-	ltk->ediv = g_key_file_get_integer(key_file, "LongTermKey", "EDiv",
-						NULL);
+	ltk = get_ltk(key_file, peer, bdaddr_type, "SlaveLongTermKey");
+	ltk->master = false;
+	if (ltk)
+		l = g_slist_append(l, ltk);
 
 failed:
-	g_free(key);
-	g_free(rand);
 	g_free(type);
-
-	return ltk;
+	return l;
 }
 
 static void load_link_keys_complete(uint8_t status, uint16_t length,
@@ -2495,8 +2524,7 @@ static void load_devices(struct btd_adapter *adapter)
 		char filename[PATH_MAX + 1];
 		GKeyFile *key_file;
 		struct link_key_info *key_info;
-		struct smp_ltk_info *ltk_info;
-		GSList *list;
+		GSList *list, *ltk_info;
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
 			continue;
@@ -2512,8 +2540,7 @@ static void load_devices(struct btd_adapter *adapter)
 			keys = g_slist_append(keys, key_info);
 
 		ltk_info = get_ltk_info(key_file, entry->d_name);
-		if (ltk_info)
-			ltks = g_slist_append(ltks, ltk_info);
+		ltks = g_slist_concat(ltks, ltk_info);
 
 		list = g_slist_find_custom(adapter->devices, entry->d_name,
 							device_address_cmp);
@@ -5306,6 +5333,7 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t enc_size, uint16_t ediv,
 				const uint8_t rand[8])
 {
+	const char *group = master ? "LongTermKey" : "SlaveLongTermKey";
 	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX + 1];
@@ -5326,25 +5354,27 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
+	/* Old files may contain this so remove it in case it exists */
+	g_key_file_remove_key(key_file, "LongTermKey", "Master", NULL);
+
 	key_str[0] = '0';
 	key_str[1] = 'x';
 	for (i = 0; i < 16; i++)
 		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
 
-	g_key_file_set_string(key_file, "LongTermKey", "Key", key_str);
+	g_key_file_set_string(key_file, group, "Key", key_str);
 
-	g_key_file_set_integer(key_file, "LongTermKey", "Authenticated",
-				authenticated);
-	g_key_file_set_integer(key_file, "LongTermKey", "Master", master);
-	g_key_file_set_integer(key_file, "LongTermKey", "EncSize", enc_size);
-	g_key_file_set_integer(key_file, "LongTermKey", "EDiv", ediv);
+	g_key_file_set_integer(key_file, group, "Authenticated",
+							authenticated);
+	g_key_file_set_integer(key_file, group, "EncSize", enc_size);
+	g_key_file_set_integer(key_file, group, "EDiv", ediv);
 
 	rand_str[0] = '0';
 	rand_str[1] = 'x';
 	for (i = 0; i < 8; i++)
 		sprintf(rand_str + 2 + (i * 2), "%2.2X", rand[i]);
 
-	g_key_file_set_string(key_file, "LongTermKey", "Rand", rand_str);
+	g_key_file_set_string(key_file, group, "Rand", rand_str);
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
