@@ -2308,9 +2308,10 @@ static GSList *get_ltk_info(GKeyFile *key_file, const char *peer)
 		l = g_slist_append(l, ltk);
 
 	ltk = get_ltk(key_file, peer, bdaddr_type, "SlaveLongTermKey");
-	ltk->master = false;
-	if (ltk)
+	if (ltk) {
+		ltk->master = false;
 		l = g_slist_append(l, ltk);
+	}
 
 failed:
 	g_free(type);
