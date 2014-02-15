@@ -207,7 +207,8 @@ static void mgmt_new_long_term_key(uint16_t len, const void *buf)
 
 	ba2str(&ev->key.addr.bdaddr, str);
 
-	printf("@ New Long Term Key: %s (%d)\n", str, ev->key.addr.type);
+	printf("@ New Long Term Key: %s (%d) %s\n", str, ev->key.addr.type,
+					ev->key.master ? "Master" : "Slave");
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
