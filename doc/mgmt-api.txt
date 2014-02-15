@@ -1454,7 +1454,7 @@ Set Debug Keys Command
 	Command Parameters:	Debug_Keys (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
-	This command is  used to tell the kernel whether to accept the
+	This command is used to tell the kernel whether to accept the
 	usage of debug keys or not. The allowed values for this parameter
 	are 0x00 and 0x01. All other values will return an Invalid Parameters
 	response.
@@ -1619,7 +1619,7 @@ Event Parameters	Store_Hint (1 Octet)
 				Value (16 Octets)
 			}
 
-	This event indicates that a new long term key has bee generated
+	This event indicates that a new long term key has been generated
 	for a remote device.
 
 	The Store_Hint parameter indicates whether the host is expected
