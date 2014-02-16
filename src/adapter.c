@@ -2261,6 +2261,24 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 
 	str2ba(peer, &ltk->bdaddr);
 	ltk->bdaddr_type = peer_type;
+
+	/*
+	 * Long term keys should respond to an identity address which can
+	 * either be a public address or a random static address. Keys
+	 * stored for resolvable random and unresolvable random addresses
+	 * are ignored.
+	 *
+	 * This is an extra sanity check for older kernel versions or older
+	 * daemons that might have been instructed to store long term keys
+	 * for these temporary addresses.
+	 */
+	if (ltk->bdaddr_type == BDADDR_LE_RANDOM &&
+					(ltk->bdaddr.b[5] & 0xc0) != 0xc0) {
+		g_free(ltk);
+		ltk = NULL;
+		goto failed;
+	}
+
 	str2buf(&key[2], ltk->val, sizeof(ltk->val));
 	str2buf(&rand[2], ltk->rand, sizeof(ltk->rand));
 
