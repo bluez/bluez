@@ -677,6 +677,13 @@ Load Link Keys Command
 	this parameter are 0x00 and 0x01. All other values will return
 	an Invalid Parameters response.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	Reserved (not in use)
+		2	Reserved (not in use)
+
+	Public and random LE addresses are not valid and will be rejected.
+
 	Currently defined Key_Type values are:
 
 		0x00	Combination key
@@ -1588,6 +1595,13 @@ Event Parametersa	Store_Hint (1 Octet)
 	The Store_Hint parameter indicates whether the host is expected
 	to store the key persistently or not (e.g. this would not be set
 	if the authentication requirement was "No Bonding").
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	Reserved (not in use)
+		2	Reserved (not in use)
+
+	Public and random LE addresses are not valid and will be rejected.
 
 	Currently defined Key_Type values are:
 
