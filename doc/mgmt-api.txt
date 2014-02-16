@@ -669,7 +669,7 @@ Load Link Keys Command
 
 	This command is used to feed the kernel with currently known
 	link keys. The command does not need to be called again upon the
-	receiption of new link key events since the kernel updates its
+	receiption of New Link Key events since the kernel updates its
 	list automatically.
 
 	The Debug_Keys parameter is used to tell the kernel whether to
@@ -720,7 +720,7 @@ Load Long Term Keys Command
 
 	This command is used to feed the kernel with currently known
 	(SMP) Long Term Keys. The command does not need to be called
-	again upon the receiption of new Long Term Key events since the
+	again upon the receiption of New Long Term Key events since the
 	kernel updates its list automatically.
 
 	Currently defined Key_Type values are:
