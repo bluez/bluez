@@ -5393,6 +5393,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 	const struct mgmt_addr_info *addr = &ev->key.addr;
 	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
+	bool persistent;
 	char dst[18];
 
 	if (length < sizeof(*ev)) {
@@ -5411,7 +5412,24 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	if (ev->store_hint) {
+	/*
+	 * Some older kernel versions set store_hint for long term keys
+	 * from resolvable and unresolvable random addresses, but there
+	 * is no point in storing these. Next time around the device
+	 * address will be invalid.
+	 *
+	 * So only for identity addresses (public and static random) use
+	 * the store_hint as an indication if the long term key should
+	 * be persistently stored.
+	 *
+	 */
+	if (addr->type == BDADDR_LE_RANDOM &&
+				(addr->bdaddr.b[5] & 0xc0) != 0xc0)
+		persistent = false;
+	else
+		persistent = !!ev->store_hint;
+
+	if (persistent) {
 		const struct mgmt_ltk_info *key = &ev->key;
 		const bdaddr_t *bdaddr = btd_adapter_get_address(adapter);
 
