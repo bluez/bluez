@@ -1615,6 +1615,9 @@ Event Parametersa	Store_Hint (1 Octet)
 		0x07	Unauthenticated Combination key from P-256
 		0x08	Authenticated Combination key from P-256
 
+	Receiving this event indicates that a pairing procecure has
+	been completed.
+
 
 New Long Term Key Event
 =======================
@@ -1644,6 +1647,9 @@ Event Parameters	Store_Hint (1 Octet)
 
 		0x00	Unauthenticated key
 		0x01	Authenticated key
+
+	Receiving this event indicates that a pairing procecure has
+	been completed.
 
 
 Device Connected Event
