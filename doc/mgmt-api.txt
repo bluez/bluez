@@ -757,6 +757,11 @@ Disconnect Command
 	This command is used to force the disconnection of a currently
 	connected device.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
@@ -815,6 +820,11 @@ PIN Code Reply Command
 
 	This command is used to respond to a PIN Code request event.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
@@ -838,6 +848,11 @@ PIN Code Negative Reply Command
 
 	This command is used to return a negative response to a PIN Code
 	Request event.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 	This command can only be used when the controller is powered.
 
@@ -918,6 +933,11 @@ Cancel Pair Device
 	The Address and Address_Type parameters should match what was
 	given to a preceding Pair Device command.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
@@ -940,6 +960,11 @@ Unpair Device Command
 				Address_Type (1 Octet)
 
 	Removes all keys associated with the remote device.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 	The Disconnect parameter tells the kernel whether to forcefully
 	disconnect any existing connections to the device. It should in
@@ -970,6 +995,11 @@ User Confirmation Reply Command
 	This command is used to respond to a User Confirmation Request
 	event.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
@@ -993,6 +1023,11 @@ User Confirmation Negative Reply Command
 
 	This command is used to return a negative response to a User
 	Confirmation Request event.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 	This command can only be used when the controller is powered.
 
@@ -1019,6 +1054,11 @@ User Passkey Reply Command
 	This command is used to respond to a User Confirmation Passkey
 	Request event.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
@@ -1042,6 +1082,11 @@ User Passkey Negative Reply Command
 
 	This command is used to return a negative response to a User
 	Passkey Request event.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 	This command can only be used when the controller is powered.
 
@@ -1100,6 +1145,11 @@ Add Remote Out Of Band Data Command
 	This command is used to provide Out of Band data for a remote
 	device.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	Provided Out Of Band data is persistent over power down/up toggles.
 
 	This command also accept optional P-256 versions of hash and
@@ -1136,6 +1186,11 @@ Remove Remote Out Of Band Data Command
 
 	This command is used to remove data added using the Add Remote
 	Out Of Band Data command.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -1218,6 +1273,11 @@ Confirm Name Command
 	expected for each Device Found event with the Confirm Name
 	flag set.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	The Name_Known parameter should be set to 0x01 if user space
 	knows the name for the device and 0x00 if it doesn't. If set to
 	0x00 the kernel will perform a name resolving procedure for the
@@ -1247,6 +1307,11 @@ Block Device Command
 	which should be blocked from being connect to the local
 	controller.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success
@@ -1269,6 +1334,11 @@ Unblock Device Command
 
 	This command is used to remove a device from the list of blocked
 	devices (where it was added to using the Block Device command).
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 	This command can be used when the controller is not powered.
 
@@ -1663,6 +1733,9 @@ Event Parameters	Address (6 Octets)
 			EIR_Data_Length (2 Octets)
 			EIR_Data (0-65535 Octets)
 
+	This event indicates that a successful baseband connection has
+	been created to the remote device.
+
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
@@ -1671,9 +1744,6 @@ Event Parameters	Address (6 Octets)
 	The following bits are defined for the Flags parameter:
 		0	Reserved (not in use)
 		1	Legacy Pairing
-
-	This event indicates that a successful baseband connection has
-	been created to the remote device.
 
 
 Device Disconnected Event
@@ -1740,6 +1810,11 @@ Event Parameters	Address (6 Octets)
 	The reply should either be returned using the PIN Code Reply or
 	the PIN Code Negative Reply command.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	Secure: 0x01  secure PIN code required
 		0x00  secure PIN code not required
 
@@ -1755,10 +1830,17 @@ Event Parameters	Address (6 Octets)
 			Value (4 Octets)
 
 	This event is used to request a user confirmation request from
-	user space. If the Confirm_Hint parameter value is 0x01 this
-	means that a simple "Yes/No" confirmation should be presented to
-	the user instead of a full numerical confirmation (in which case
-	the parameter value will be 0x00).
+	user space.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	If the Confirm_Hint parameter value is 0x01 this means that
+	a simple "Yes/No" confirmation should be presented to the user
+	instead of a full numerical confirmation (in which case the
+	parameter value will be 0x00).
 
 	User space should respond to this command either using the User
 	Confirmation Reply or the User Confirmation Negative Reply
@@ -1777,6 +1859,11 @@ Event Parameters	Address (6 Octets)
 	response to this event should either be the User Passkey Reply
 	command or the User Passkey Negative Reply command.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 
 Authentication Failed Event
 ===========================
@@ -1789,6 +1876,11 @@ Event Parameters	Address (6 Octets)
 
 	This event indicates that there was an authentication failure
 	with a remote device.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 
 Device Found Event
@@ -1854,8 +1946,15 @@ Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 
 	This event indicates that a device has been blocked using the
-	Block Device command. The event will only be sent to Management
-	sockets other than the one through which the command was sent.
+	Block Device command.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	The event will only be sent to Management sockets other than the
+	one through which the command was sent.
 
 
 Device Unblocked Event
@@ -1867,9 +1966,15 @@ Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 
 	This event indicates that a device has been unblocked using the
-	Unblock Device command. The event will only be sent to
-	Management sockets other than the one through which the command
-	was sent.
+	Unblock Device command.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	The event will only be sent to Management sockets other than the
+	one through which the command was sent.
 
 
 Device Unpaired Event
@@ -1882,9 +1987,15 @@ Event Parameters	Address (6 Octets)
 
 	This event indicates that a device has been unpaired (i.e. all
 	its keys have been removed from the kernel) using the Unpair
-	Device command. The event will only be sent to Management
-	sockets other than the one through which the Unpair Device
-	command was sent.
+	Device command.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	The event will only be sent to Management sockets other than the
+	one through which the Unpair Device command was sent.
 
 
 Passkey Notify Event
@@ -1900,6 +2011,11 @@ Event Parameters	Address (6 Octets)
 	This event is used to request passkey notification to the user.
 	Unlike the other authentication events it does not need
 	responding to using any Management command.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
 
 	The Passkey parameter indicates the passkey to be shown to the
 	user whereas the Entered parameter indicates how many characters
