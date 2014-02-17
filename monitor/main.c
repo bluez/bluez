@@ -35,6 +35,7 @@
 #include "mainloop.h"
 #include "packet.h"
 #include "lmp.h"
+#include "keys.h"
 #include "analyze.h"
 #include "ellisys.h"
 #include "control.h"
@@ -92,6 +93,7 @@ int main(int argc, char *argv[])
 	const char *ellisys_server = NULL;
 	unsigned short ellisys_port = 0;
 	const char *str;
+	int exit_status;
 	sigset_t mask;
 
 	mainloop_init();
@@ -179,6 +181,8 @@ int main(int argc, char *argv[])
 
 	printf("Bluetooth monitor ver %s\n", VERSION);
 
+	keys_setup();
+
 	packet_set_filter(filter_mask);
 
 	if (analyze_path) {
@@ -203,5 +207,9 @@ int main(int argc, char *argv[])
 	if (control_tracing() < 0)
 		return EXIT_FAILURE;
 
-	return mainloop_run();
+	exit_status = mainloop_run();
+
+	keys_cleanup();
+
+	return exit_status;
 }

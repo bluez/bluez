@@ -47,6 +47,7 @@
 #include "bt.h"
 #include "ll.h"
 #include "hwdb.h"
+#include "keys.h"
 #include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
@@ -403,8 +404,27 @@ void packet_print_error(const char *label, uint8_t error)
 	print_error(label, error);
 }
 
-static void print_addr(const char *label, const uint8_t *addr,
-						uint8_t addr_type)
+static void print_addr_type(const char *label, uint8_t addr_type)
+{
+	const char *str;
+
+	switch (addr_type) {
+	case 0x00:
+		str = "Public";
+		break;
+	case 0x01:
+		str = "Random";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
+}
+
+static void print_addr_resolve(const char *label, const uint8_t *addr,
+					uint8_t addr_type, bool resolve)
 {
 	const char *str;
 	char *company;
@@ -448,6 +468,16 @@ static void print_addr(const char *label, const uint8_t *addr,
 		print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X (%s)",
 					label, addr[5], addr[4], addr[3],
 					addr[2], addr[1], addr[0], str);
+
+		if (resolve && (addr[5] & 0xc0) == 0x40) {
+			uint8_t ident[6], ident_type;
+
+			if (keys_resolve_identity(addr, ident, &ident_type)) {
+				print_addr_type("  Identity type", ident_type);
+				print_addr_resolve("  Identity", ident,
+							ident_type, false);
+			}
+		}
 		break;
 	default:
 		print_field("%s: %2.2X-%2.2X-%2.2X-%2.2X-%2.2X-%2.2X",
@@ -457,23 +487,10 @@ static void print_addr(const char *label, const uint8_t *addr,
 	}
 }
 
-static void print_addr_type(const char *label, uint8_t addr_type)
+static void print_addr(const char *label, const uint8_t *addr,
+						uint8_t addr_type)
 {
-	const char *str;
-
-	switch (addr_type) {
-	case 0x00:
-		str = "Public";
-		break;
-	case 0x01:
-		str = "Random";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
+	print_addr_resolve(label, addr, addr_type, true);
 }
 
 static void print_bdaddr(const uint8_t *bdaddr)

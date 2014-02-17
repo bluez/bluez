@@ -195,10 +195,12 @@ LOCAL_SRC_FILES := \
 	bluez/monitor/crc.c \
 	bluez/monitor/ll.c \
 	bluez/monitor/hwdb.c \
+	bluez/monitor/keys.c \
 	bluez/monitor/ellisys.c \
 	bluez/monitor/analyze.c \
 	bluez/src/shared/util.c \
 	bluez/src/shared/queue.c \
+	bluez/src/shared/crypto.c \
 	bluez/src/shared/btsnoop.c \
 	bluez/lib/hci.c \
 	bluez/lib/bluetooth.c \

@@ -39,6 +39,7 @@
 #include "display.h"
 #include "l2cap.h"
 #include "uuid.h"
+#include "keys.h"
 #include "sdp.h"
 
 #define MAX_CHAN 64
@@ -2466,6 +2467,8 @@ static void smp_ident_info(const struct l2cap_frame *frame)
 	const struct bt_l2cap_smp_ident_info *pdu = frame->data;
 
 	print_hex_field("Identity resolving key", pdu->irk, 16);
+
+	keys_update_identity_key(pdu->irk);
 }
 
 static void smp_ident_addr_info(const struct l2cap_frame *frame)
@@ -2474,6 +2477,8 @@ static void smp_ident_addr_info(const struct l2cap_frame *frame)
 
 	print_addr_type(pdu->addr_type);
 	print_addr(pdu->addr, pdu->addr_type);
+
+	keys_update_identity_addr(pdu->addr, pdu->addr_type);
 }
 
 static void smp_signing_info(const struct l2cap_frame *frame)
