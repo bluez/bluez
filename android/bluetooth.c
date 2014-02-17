@@ -1012,13 +1012,17 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 			HAL_EV_DISCOVERY_STATE_CHANGED, sizeof(cp), &cp);
 }
 
-static void confirm_device_name(const bdaddr_t *addr, uint8_t addr_type)
+static void confirm_device_name(const bdaddr_t *addr, uint8_t addr_type,
+							bool resolve_name)
 {
 	struct mgmt_cp_confirm_name cp;
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, addr);
 	cp.addr.type = addr_type;
+
+	if (!resolve_name)
+		cp.name_known = 1;
 
 	if (mgmt_reply(mgmt_if, MGMT_OP_CONFIRM_NAME, adapter.index,
 				sizeof(cp), &cp, NULL, NULL, NULL) == 0)
@@ -1179,10 +1183,12 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	if (confirm) {
 		char addr[18];
+		bool resolve_name = true;
 
 		ba2str(bdaddr, addr);
-		info("Device %s needs name confirmation.", addr);
-		confirm_device_name(bdaddr, bdaddr_type);
+		info("Device %s needs name confirmation (resolve_name=%d)",
+							addr, resolve_name);
+		confirm_device_name(bdaddr, bdaddr_type, resolve_name);
 	}
 }
 
