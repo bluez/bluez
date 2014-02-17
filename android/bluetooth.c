@@ -1186,6 +1186,14 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		bool resolve_name = true;
 
 		ba2str(bdaddr, addr);
+
+		/* Don't need to confirm name if we have it already in cache
+		 * Just check if device name is different than bdaddr */
+		if (g_strcmp0(dev->name, addr)) {
+			get_device_name(dev);
+			resolve_name = false;
+		}
+
 		info("Device %s needs name confirmation (resolve_name=%d)",
 							addr, resolve_name);
 		confirm_device_name(bdaddr, bdaddr_type, resolve_name);
