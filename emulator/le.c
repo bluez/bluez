@@ -37,6 +37,7 @@
 #include <bluetooth/hci.h>
 
 #include "src/shared/util.h"
+#include "src/shared/crypto.h"
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
 
@@ -47,6 +48,7 @@
 struct bt_le {
 	volatile int ref_count;
 	int vhci_fd;
+	struct bt_crypto *crypto;
 
 	uint8_t  event_mask[16];
 	uint16_t manufacturer;
@@ -126,8 +128,8 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->commands[27] |= 0x08;	/* LE Set Host Channel Classification */
 	//hci->commands[27] |= 0x10;	/* LE Read Channel Map */
 	//hci->commands[27] |= 0x20;	/* LE Read Remote Used Features */
-	//hci->commands[27] |= 0x40;	/* LE Encrypt */
-	//hci->commands[27] |= 0x80;	/* LE Rand */
+	hci->commands[27] |= 0x40;	/* LE Encrypt */
+	hci->commands[27] |= 0x80;	/* LE Rand */
 	//hci->commands[28] |= 0x01;	/* LE Start Encryption */
 	//hci->commands[28] |= 0x02;	/* LE Long Term Key Request Reply */
 	//hci->commands[28] |= 0x04;	/* LE Long Term Key Neg Request Reply */
@@ -577,6 +579,37 @@ static void cmd_le_read_white_list_size(struct bt_le *hci,
 							&rsp, sizeof(rsp));
 }
 
+static void cmd_le_encrypt(struct bt_le *hci, const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_encrypt *cmd = data;
+	struct bt_hci_rsp_le_encrypt rsp;
+
+	if (!bt_crypto_e(hci->crypto, cmd->key, cmd->plaintext, rsp.data)) {
+		cmd_status(hci, BT_HCI_ERR_COMMAND_DISALLOWED,
+					BT_HCI_CMD_LE_ENCRYPT);
+		return;
+	}
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+
+	cmd_complete(hci, BT_HCI_CMD_LE_ENCRYPT, &rsp, sizeof(rsp));
+}
+
+static void cmd_le_rand(struct bt_le *hci, const void *data, uint8_t size)
+{
+	struct bt_hci_rsp_le_rand rsp;
+
+	if (!bt_crypto_random_bytes(hci->crypto, rsp.number, 8)) {
+		cmd_status(hci, BT_HCI_ERR_COMMAND_DISALLOWED,
+					BT_HCI_CMD_LE_RAND);
+		return;
+	}
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+
+	cmd_complete(hci, BT_HCI_CMD_LE_RAND, &rsp, sizeof(rsp));
+}
+
 static void cmd_le_read_supported_states(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
@@ -624,6 +657,10 @@ static const struct {
 
 	{ BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE,
 				cmd_le_read_white_list_size, 0, true },
+
+	{ BT_HCI_CMD_LE_ENCRYPT, cmd_le_encrypt, 32, true },
+	{ BT_HCI_CMD_LE_RAND, cmd_le_rand, 0, true },
+
 	{ BT_HCI_CMD_LE_READ_SUPPORTED_STATES,
 				cmd_le_read_supported_states, 0, true },
 
@@ -714,6 +751,8 @@ struct bt_le *bt_le_new(void)
 
 	mainloop_add_fd(hci->vhci_fd, EPOLLIN, vhci_read_callback, hci, NULL);
 
+	hci->crypto = bt_crypto_new();
+
 	return bt_le_ref(hci);
 }
 
@@ -734,6 +773,8 @@ void bt_le_unref(struct bt_le *hci)
 
 	if (__sync_sub_and_fetch(&hci->ref_count, 1))
 		return;
+
+	bt_crypto_unref(hci->crypto);
 
 	mainloop_remove_fd(hci->vhci_fd);
 

@@ -45,14 +45,16 @@ noinst_PROGRAMS += emulator/btvirt emulator/b1ee emulator/hfp tools/3dsp \
 					tools/rfcomm-tester
 
 emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
-					monitor/mainloop.h monitor/mainloop.c \
-					emulator/server.h emulator/server.c \
-					emulator/vhci.h emulator/vhci.c \
-					emulator/btdev.h emulator/btdev.c \
-					emulator/bthost.h emulator/bthost.c \
-					emulator/smp.c \
-					emulator/amp.h emulator/amp.c \
-					emulator/le.h emulator/le.c
+				monitor/mainloop.h monitor/mainloop.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/crypto.h src/shared/crypto.c \
+				emulator/server.h emulator/server.c \
+				emulator/vhci.h emulator/vhci.c \
+				emulator/btdev.h emulator/btdev.c \
+				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
+				emulator/amp.h emulator/amp.c \
+				emulator/le.h emulator/le.c
 emulator_btvirt_LDADD = lib/libbluetooth-internal.la
 
 emulator_b1ee_SOURCES = emulator/b1ee.c monitor/mainloop.h monitor/mainloop.c
