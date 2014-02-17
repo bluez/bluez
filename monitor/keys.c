@@ -58,7 +58,7 @@ void keys_cleanup(void)
 {
 	bt_crypto_unref(crypto);
 
-	queue_destroy(irk_list, NULL);
+	queue_destroy(irk_list, free);
 }
 
 void keys_update_identity_key(const uint8_t key[16])
