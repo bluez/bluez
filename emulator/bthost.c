@@ -1760,17 +1760,30 @@ static void rfcomm_mcc_recv(struct bthost *bthost, struct btconn *conn,
 			struct l2conn *l2conn, const void *data, uint16_t len)
 {
 	const struct rfcomm_mcc *mcc = data;
+	const struct rfcomm_msc *msc;
+	const struct rfcomm_pn *pn;
+
+	if (len < sizeof(*mcc))
+		return;
 
 	switch (RFCOMM_GET_MCC_TYPE(mcc->type)) {
 	case RFCOMM_MSC:
+		if (len - sizeof(*mcc) < sizeof(*msc))
+			break;
+
+		msc = data + sizeof(*mcc);
+
 		rfcomm_msc_recv(bthost, conn, l2conn,
-						RFCOMM_TEST_CR(mcc->type) / 2,
-						data + sizeof(*mcc));
+				RFCOMM_TEST_CR(mcc->type) / 2, msc);
 		break;
 	case RFCOMM_PN:
+		if (len - sizeof(*mcc) < sizeof(*pn))
+			break;
+
+		pn = data + sizeof(*mcc);
+
 		rfcomm_pn_recv(bthost, conn, l2conn,
-					RFCOMM_TEST_CR(mcc->type) / 2,
-					data + sizeof(*mcc));
+				RFCOMM_TEST_CR(mcc->type) / 2, pn);
 		break;
 	default:
 		break;
@@ -1781,18 +1794,27 @@ static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 				struct l2conn *l2conn, const void *data,
 				uint16_t len)
 {
-	const struct rfcomm_cmd *hdr = data;
+	const struct rfcomm_hdr *hdr = data;
+	uint16_t hdr_len;
 	const void *p;
+
+	if (len < sizeof(*hdr))
+		return;
 
 	if (RFCOMM_GET_DLCI(hdr->address))
 		return;
 
 	if (RFCOMM_TEST_EA(hdr->length))
-		p = data + sizeof(struct rfcomm_hdr);
+		hdr_len = sizeof(*hdr);
 	else
-		p = data + sizeof(struct rfcomm_hdr) + sizeof(uint8_t);
+		hdr_len = sizeof(*hdr) + sizeof(uint8_t);
 
-	rfcomm_mcc_recv(bthost, conn, l2conn, p, p - data);
+	if (len < hdr_len)
+		return;
+
+	p = data + hdr_len;
+
+	rfcomm_mcc_recv(bthost, conn, l2conn, p, len - hdr_len);
 }
 
 static void process_rfcomm(struct bthost *bthost, struct btconn *conn,
