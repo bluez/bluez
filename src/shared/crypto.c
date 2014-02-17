@@ -173,7 +173,8 @@ static int alg_new(int fd, const void *keyval, socklen_t keylen)
 	if (setsockopt(fd, SOL_ALG, ALG_SET_KEY, keyval, keylen) < 0)
 		return -1;
 
-	return accept4(fd, NULL, 0, SOCK_CLOEXEC);
+	/* FIXME: This should use accept4() with SOCK_CLOEXEC */
+	return accept(fd, NULL, 0);
 }
 
 static bool alg_encrypt(int fd, const void *inbuf, size_t inlen,
