@@ -405,6 +405,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 static void trigger_pairable_timeout(struct btd_adapter *adapter);
 static void adapter_start(struct btd_adapter *adapter);
 static void adapter_stop(struct btd_adapter *adapter);
+static void trigger_passive_scanning(struct btd_adapter *adapter);
 
 static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 {
@@ -432,6 +433,12 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 					btd_exit();
 			}
 		}
+	}
+
+	if (changed_mask & MGMT_SETTING_LE) {
+		if ((adapter->current_settings & MGMT_SETTING_POWERED) &&
+				(adapter->current_settings & MGMT_SETTING_LE))
+			trigger_passive_scanning(adapter);
 	}
 
 	if (changed_mask & MGMT_SETTING_CONNECTABLE)
