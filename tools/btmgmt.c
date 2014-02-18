@@ -1500,13 +1500,43 @@ done:
 	mainloop_quit();
 }
 
+static void unpair_usage(void)
+{
+	printf("Usage: btmgmt unpair [-t type] <remote address>\n");
+}
+
+static struct option unpair_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
 static void cmd_unpair(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
 	struct mgmt_cp_unpair_device cp;
+	uint8_t type = BDADDR_BREDR;
+	int opt;
 
-	if (argc < 2) {
-		printf("Usage: btmgmt %s <remote address>\n", argv[0]);
+	while ((opt = getopt_long(argc, argv, "+t:h", unpair_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+		default:
+			unpair_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		unpair_usage();
 		exit(EXIT_FAILURE);
 	}
 
@@ -1514,7 +1544,8 @@ static void cmd_unpair(struct mgmt *mgmt, uint16_t index, int argc,
 		index = 0;
 
 	memset(&cp, 0, sizeof(cp));
-	str2ba(argv[1], &cp.addr.bdaddr);
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
 	cp.disconnect = 1;
 
 	if (mgmt_send(mgmt, MGMT_OP_UNPAIR_DEVICE, index, sizeof(cp), &cp,
