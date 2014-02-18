@@ -50,6 +50,7 @@ struct ipc {
 	GIOChannel *cmd_io;
 	guint cmd_watch;
 
+	bool notifications;
 	GIOChannel *notif_io;
 	guint notif_watch;
 
@@ -249,7 +250,7 @@ static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	ipc->cmd_watch = g_io_add_watch(ipc->cmd_io, cond, cmd_watch_cb, ipc);
 
-	info("IPC: successfully connected");
+	info("IPC: successfully connected (with notifications)");
 
 	return FALSE;
 }
@@ -263,23 +264,31 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		error("IPC: command socket connect failed");
-		goto failed;
+		ipc_disconnect(ipc, false);
+
+		return FALSE;
 	}
 
-	ipc->notif_io = ipc_connect(ipc->path, ipc->size, notif_connect_cb,
-									ipc);
-	if (!ipc->notif_io)
-		goto failed;
+	if (ipc->notifications) {
+		ipc->notif_io = ipc_connect(ipc->path, ipc->size,
+							notif_connect_cb, ipc);
+		if (!ipc->notif_io)
+			ipc_disconnect(ipc, false);
 
-	return FALSE;
+		return FALSE;
+	}
 
-failed:
-	ipc_disconnect(ipc, false);
+	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+
+	ipc->cmd_watch = g_io_add_watch(ipc->cmd_io, cond, cmd_watch_cb, ipc);
+
+	info("IPC: successfully connected (without notifications)");
 
 	return FALSE;
 }
 
 struct ipc *ipc_init(const char *path, size_t size, int max_service_id,
+					bool notifications,
 					ipc_disconnect_cb cb, void *cb_data)
 {
 	struct ipc *ipc;
@@ -291,6 +300,8 @@ struct ipc *ipc_init(const char *path, size_t size, int max_service_id,
 
 	ipc->path = path;
 	ipc->size = size;
+
+	ipc->notifications = notifications;
 
 	ipc->cmd_io = ipc_connect(path, size, cmd_connect_cb, ipc);
 	if (!ipc->cmd_io) {

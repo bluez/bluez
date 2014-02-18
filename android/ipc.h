@@ -37,6 +37,7 @@ struct ipc;
 typedef void (*ipc_disconnect_cb) (void *data);
 
 struct ipc *ipc_init(const char *path, size_t size, int max_service_id,
+					bool notifications,
 					ipc_disconnect_cb cb, void *cb_data);
 void ipc_cleanup(struct ipc *ipc);
 
