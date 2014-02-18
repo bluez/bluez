@@ -108,6 +108,10 @@ void bthost_add_rfcomm_channel_hook(struct bthost *bthost, uint16_t handle,
 					bthost_rfcomm_channel_hook_func_t func,
 					void *user_data);
 
+void bthost_send_rfcomm_data(struct bthost *bthost, uint16_t handle,
+					uint8_t channel, const void *data,
+					uint16_t len);
+
 void bthost_start(struct bthost *bthost);
 void bthost_stop(struct bthost *bthost);
 
