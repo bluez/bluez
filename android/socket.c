@@ -60,14 +60,6 @@
 #define MAP_MSG_TYPE_SMS_CDMA	0x04
 #define DEFAULT_MAS_MSG_TYPE	(MAP_MSG_TYPE_SMS_GSM | MAP_MSG_TYPE_SMS_CDMA)
 
-
-static bdaddr_t adapter_addr;
-
-static const uint8_t zero_uuid[16] = { 0 };
-
-/* Simple list of RFCOMM connected sockets */
-GList *connections = NULL;
-
 struct rfcomm_sock {
 	int channel;	/* RFCOMM channel */
 	BtIOSecLevel sec_level;
@@ -91,6 +83,13 @@ struct rfcomm_channel {
 	bool reserved;
 	struct rfcomm_sock *rfsock;
 };
+
+static bdaddr_t adapter_addr;
+
+static const uint8_t zero_uuid[16] = { 0 };
+
+/* Simple list of RFCOMM connected sockets */
+static GList *connections = NULL;
 
 static struct rfcomm_channel servers[RFCOMM_CHANNEL_MAX + 1];
 
