@@ -347,6 +347,17 @@ struct mgmt_cp_set_scan_params {
 
 #define MGMT_OP_SET_DEBUG_KEYS		0x002E
 
+struct mgmt_irk_info {
+	struct mgmt_addr_info addr;
+	uint8_t val[16];
+} __packed;
+
+#define MGMT_OP_LOAD_IRKS		0x0030
+struct mgmt_cp_load_irks {
+	uint16_t irk_count;
+	struct mgmt_irk_info irks[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
