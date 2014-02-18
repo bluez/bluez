@@ -49,7 +49,7 @@ android_bluetoothd_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 plugin_LTLIBRARIES += android/bluetooth.default.la
 
 android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
-					android/hal-sock.c \
+					android/hal-socket.c \
 					android/hal-hidhost.c \
 					android/hal-pan.c \
 					android/hal-a2dp.c \

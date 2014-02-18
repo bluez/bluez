@@ -112,7 +112,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
 	bluez/android/hal-ipc.c \
 	bluez/android/hal-bluetooth.c \
-	bluez/android/hal-sock.c \
+	bluez/android/hal-socket.c \
 	bluez/android/hal-hidhost.c \
 	bluez/android/hal-pan.c \
 	bluez/android/hal-a2dp.c \
