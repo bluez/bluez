@@ -1312,7 +1312,7 @@ static void pair_rsp(uint8_t status, uint16_t len, const void *param,
 		goto done;
 	}
 
-	printf("Paired with %s\n", addr);
+	printf("Paired with %s (%s)\n", addr, typestr(rp->addr.type));
 
 done:
 	mainloop_quit();
@@ -1335,6 +1335,7 @@ static void cmd_pair(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	struct mgmt_cp_pair_device cp;
 	uint8_t cap = 0x01;
 	uint8_t type = BDADDR_BREDR;
+	char addr[18];
 	int opt;
 
 	while ((opt = getopt_long(argc, argv, "+c:t:h", pair_options,
@@ -1369,6 +1370,9 @@ static void cmd_pair(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	str2ba(argv[0], &cp.addr.bdaddr);
 	cp.addr.type = type;
 	cp.io_cap = cap;
+
+	ba2str(&cp.addr.bdaddr, addr);
+	printf("Pairing with %s (%s)\n", addr, typestr(cp.addr.type));
 
 	if (mgmt_send(mgmt, MGMT_OP_PAIR_DEVICE, index, sizeof(cp), &cp,
 						pair_rsp, NULL, NULL) == 0) {
