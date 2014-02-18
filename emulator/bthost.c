@@ -126,6 +126,13 @@ struct cid_hook {
 	struct cid_hook *next;
 };
 
+struct rfcomm_channel_hook {
+	uint8_t channel;
+	bthost_rfcomm_channel_hook_func_t func;
+	void *user_data;
+	struct rfcomm_channel_hook *next;
+};
+
 struct btconn {
 	uint16_t handle;
 	uint8_t bdaddr[6];
@@ -134,6 +141,7 @@ struct btconn {
 	uint16_t next_cid;
 	struct l2conn *l2conns;
 	struct cid_hook *cid_hooks;
+	struct rfcomm_channel_hook *rfcomm_channel_hooks;
 	struct btconn *next;
 	void *smp_data;
 };
@@ -230,6 +238,13 @@ static void btconn_free(struct btconn *conn)
 		struct cid_hook *hook = conn->cid_hooks;
 
 		conn->cid_hooks = hook->next;
+		free(hook);
+	}
+
+	while (conn->rfcomm_channel_hooks) {
+		struct rfcomm_channel_hook *hook = conn->rfcomm_channel_hooks;
+
+		conn->rfcomm_channel_hooks = hook->next;
 		free(hook);
 	}
 
@@ -1547,6 +1562,18 @@ static struct cid_hook *find_cid_hook(struct btconn *conn, uint16_t cid)
 	return NULL;
 }
 
+static struct rfcomm_channel_hook *find_rfcomm_channel_hook(struct btconn *conn,
+							uint16_t channel)
+{
+	struct rfcomm_channel_hook *hook;
+
+	for (hook = conn->rfcomm_channel_hooks; hook != NULL; hook = hook->next)
+		if (hook->channel == channel)
+			return hook;
+
+	return NULL;
+}
+
 static void rfcomm_ua_send(struct bthost *bthost, struct btconn *conn,
 			struct l2conn *l2conn, uint8_t cr, uint8_t dlci)
 {
@@ -1801,9 +1828,6 @@ static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 	if (len < sizeof(*hdr))
 		return;
 
-	if (RFCOMM_GET_DLCI(hdr->address))
-		return;
-
 	if (RFCOMM_TEST_EA(hdr->length))
 		hdr_len = sizeof(*hdr);
 	else
@@ -1814,7 +1838,19 @@ static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 
 	p = data + hdr_len;
 
-	rfcomm_mcc_recv(bthost, conn, l2conn, p, len - hdr_len);
+	if (RFCOMM_GET_DLCI(hdr->address)) {
+		struct rfcomm_channel_hook *hook;
+
+		hook = find_rfcomm_channel_hook(conn,
+					RFCOMM_GET_CHANNEL(hdr->address));
+		if (!hook)
+			return;
+
+		hook->func(p, len - hdr_len - sizeof(uint8_t),
+							hook->user_data);
+	} else {
+		rfcomm_mcc_recv(bthost, conn, l2conn, p, len - hdr_len);
+	}
 }
 
 static void process_rfcomm(struct bthost *bthost, struct btconn *conn,
@@ -2110,6 +2146,32 @@ bool bthost_connect_rfcomm(struct bthost *bthost, uint16_t handle,
 
 	return bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
 					&req, sizeof(req), NULL, NULL);
+}
+
+void bthost_add_rfcomm_channel_hook(struct bthost *bthost, uint16_t handle,
+					uint8_t channel,
+					bthost_rfcomm_channel_hook_func_t func,
+					void *user_data)
+{
+	struct rfcomm_channel_hook *hook;
+	struct btconn *conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	hook = malloc(sizeof(*hook));
+	if (!hook)
+		return;
+
+	memset(hook, 0, sizeof(*hook));
+
+	hook->channel = channel;
+	hook->func = func;
+	hook->user_data = user_data;
+
+	hook->next = conn->rfcomm_channel_hooks;
+	conn->rfcomm_channel_hooks = hook;
 }
 
 void bthost_stop(struct bthost *bthost)
