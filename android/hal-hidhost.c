@@ -69,6 +69,15 @@ static void handle_proto_mode(void *buf, uint16_t len)
 							ev->status, ev->mode);
 }
 
+static void handle_idle_time(void *buf, uint16_t len)
+{
+	struct hal_ev_hidhost_idle_time *ev = buf;
+
+	if (cbacks->idle_time_cb)
+		cbacks->idle_time_cb((bt_bdaddr_t *) ev->bdaddr, ev->status,
+								ev->idle_rate);
+}
+
 static void handle_get_report(void *buf, uint16_t len)
 {
 	struct hal_ev_hidhost_get_report *ev = buf;
@@ -109,6 +118,11 @@ static const struct hal_ipc_handler ev_handlers[] = {
 		.handler = handle_proto_mode,
 		.var_len = false,
 		.data_len = sizeof(struct hal_ev_hidhost_proto_mode),
+	},
+	{	/* HAL_EV_HIDHOST_IDLE_TIME */
+		.handler = handle_idle_time,
+		.var_len = false,
+		.data_len = sizeof(struct hal_ev_hidhost_idle_time),
 	},
 	{	/* HAL_EV_HIDHOST_GET_REPORT */
 		.handler = handle_get_report,
