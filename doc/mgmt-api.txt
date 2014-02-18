@@ -808,6 +808,10 @@ Get Connections Command
 		1	LE Public
 		2	LE Random
 
+	For devices using resolvable random addresses with a known
+	identity resolving key, the Address and Address_Type will
+	contain the identity information.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success or
@@ -920,6 +924,17 @@ Pair Device Command
 		1	LE Public
 		2	LE Random
 
+	The Address and Address_Type of the return parameters will
+	return the identity address if know. In case of resolvable
+	random address given as command parameters and the remote
+	provides an identity resolving key, the return parameters
+	will provide the resolved address.
+
+	To allow tracking of which resolvable random address changed
+	into which identity address, the New Identity Resolving Key
+	event will be send before receiving Command Complete event
+	for this command.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
@@ -982,6 +997,14 @@ Unpair Device Command
 	disconnect any existing connections to the device. It should in
 	practice always be 1 except for some special GAP qualification
 	test-cases where a key removal without disconnecting is needed.
+
+	When unpairing a device its link key, long term key and if
+	provided identity resolving key will be purged.
+
+	For devices using resolvable random addresses where the identity
+	resolving key was available, after this command they will now no
+	longer be resolved. The device will essentially become private
+	again.
 
 	This command can only be used when the controller is powered.
 
@@ -1844,6 +1867,14 @@ Event Parameters	Address (6 Octets)
 		1	LE Public
 		2	LE Random
 
+	For devices using resolvable random addresses with a known
+	identity resolving key, the Address and Address_Type will
+	contain the identity information.
+
+	It is possible that devices get connected via its resolvable
+	random address and after New Identity Resolving Key event
+	start using its identity.
+
 	The following bits are defined for the Flags parameter:
 		0	Reserved (not in use)
 		1	Legacy Pairing
@@ -1865,6 +1896,10 @@ Event Parameters	Address (6 Octets)
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
+
+	For devices using resolvable random addresses with a known
+	identity resolving key, the Address and Address_Type will
+	contain the identity information.
 
 	Possible values for the Reason parameter:
 		0	Unspecified
@@ -1898,6 +1933,10 @@ Event Parameters	Address (6 Octets)
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
+
+	For devices using resolvable random addresses with a known
+	identity resolving key, the Address and Address_Type will
+	contain the identity information.
 
 
 PIN Code Request Event
@@ -2096,6 +2135,11 @@ Event Parameters	Address (6 Octets)
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
+
+	For devices using resolvable random addresses with a known
+	identity resolving key, the event paramters will contain
+	the identity. After receiving this event, the device will
+	become essentially private again.
 
 	The event will only be sent to Management sockets other than the
 	one through which the Unpair Device command was sent.
