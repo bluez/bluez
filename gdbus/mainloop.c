@@ -30,8 +30,6 @@
 
 #include "gdbus.h"
 
-#define DISPATCH_TIMEOUT  0
-
 #define info(fmt...)
 #define error(fmt...)
 #define debug(fmt...)
@@ -82,8 +80,7 @@ static inline void queue_dispatch(DBusConnection *conn,
 						DBusDispatchStatus status)
 {
 	if (status == DBUS_DISPATCH_DATA_REMAINS)
-		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch,
-						dbus_connection_ref(conn));
+		g_idle_add(message_dispatch, dbus_connection_ref(conn));
 }
 
 static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
