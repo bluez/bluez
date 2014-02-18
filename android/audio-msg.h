@@ -26,6 +26,7 @@
 static const char BLUEZ_AUDIO_SK_PATH[] = "\0bluez_audio_socket";
 
 #define AUDIO_SERVICE_ID		0
+#define AUDIO_SERVICE_ID_MAX		AUDIO_SERVICE_ID
 
 #define AUDIO_STATUS_SUCCESS		0x00
 #define AUDIO_STATUS_FAILED		0x01

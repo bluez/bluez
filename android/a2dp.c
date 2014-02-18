@@ -47,7 +47,6 @@
 #include "avdtp.h"
 #include "avrcp.h"
 #include "audio-msg.h"
-#include "audio-ipc.h"
 
 #define L2CAP_PSM_AVDTP 0x19
 #define SVC_HINT_CAPTURING 0x08
@@ -64,6 +63,7 @@ static guint audio_retry_id = 0;
 static bool audio_retrying = false;
 
 static struct ipc *hal_ipc = NULL;
+static struct ipc *audio_ipc = NULL;
 
 struct a2dp_preset {
 	void *data;
@@ -1298,12 +1298,14 @@ static void bt_audio_open(const void *buf, uint16_t len)
 
 	g_slist_free(presets);
 
-	audio_ipc_send_rsp_full(AUDIO_OP_OPEN, sizeof(rsp), &rsp, -1);
+	ipc_send_rsp_full(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_OPEN,
+							sizeof(rsp), &rsp, -1);
 
 	return;
 
 failed:
-	audio_ipc_send_rsp(AUDIO_OP_OPEN, AUDIO_STATUS_FAILED);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_OPEN,
+							AUDIO_STATUS_FAILED);
 }
 
 static struct a2dp_endpoint *find_endpoint(uint8_t id)
@@ -1330,14 +1332,16 @@ static void bt_audio_close(const void *buf, uint16_t len)
 	endpoint = find_endpoint(cmd->id);
 	if (!endpoint) {
 		error("Unable to find endpoint %u", cmd->id);
-		audio_ipc_send_rsp(AUDIO_OP_CLOSE, AUDIO_STATUS_FAILED);
+		ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_CLOSE,
+							AUDIO_STATUS_FAILED);
 		return;
 	}
 
 	endpoints = g_slist_remove(endpoints, endpoint);
 	unregister_endpoint(endpoint);
 
-	audio_ipc_send_rsp(AUDIO_OP_CLOSE, AUDIO_STATUS_SUCCESS);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_CLOSE,
+							AUDIO_STATUS_SUCCESS);
 }
 
 static void bt_stream_open(const void *buf, uint16_t len)
@@ -1353,14 +1357,16 @@ static void bt_stream_open(const void *buf, uint16_t len)
 	setup = find_setup(cmd->id);
 	if (!setup) {
 		error("Unable to find stream for endpoint %u", cmd->id);
-		audio_ipc_send_rsp(AUDIO_OP_OPEN_STREAM, AUDIO_STATUS_FAILED);
+		ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_OPEN_STREAM,
+							AUDIO_STATUS_FAILED);
 		return;
 	}
 
 	if (!avdtp_stream_get_transport(setup->stream, &fd, NULL, &omtu,
 								NULL)) {
 		error("avdtp_stream_get_transport: failed");
-		audio_ipc_send_rsp(AUDIO_OP_OPEN_STREAM, AUDIO_STATUS_FAILED);
+		ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_OPEN_STREAM,
+							AUDIO_STATUS_FAILED);
 		return;
 	}
 
@@ -1371,7 +1377,8 @@ static void bt_stream_open(const void *buf, uint16_t len)
 	rsp->preset->len = setup->preset->len;
 	memcpy(rsp->preset->data, setup->preset->data, setup->preset->len);
 
-	audio_ipc_send_rsp_full(AUDIO_OP_OPEN_STREAM, len, rsp, fd);
+	ipc_send_rsp_full(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_OPEN_STREAM,
+								len, rsp, fd);
 
 	g_free(rsp);
 }
@@ -1396,12 +1403,14 @@ static void bt_stream_close(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	audio_ipc_send_rsp(AUDIO_OP_CLOSE_STREAM, AUDIO_STATUS_SUCCESS);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_CLOSE_STREAM,
+							AUDIO_STATUS_SUCCESS);
 
 	return;
 
 failed:
-	audio_ipc_send_rsp(AUDIO_OP_CLOSE_STREAM, AUDIO_STATUS_FAILED);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_CLOSE_STREAM,
+							AUDIO_STATUS_FAILED);
 }
 
 static void bt_stream_resume(const void *buf, uint16_t len)
@@ -1426,12 +1435,14 @@ static void bt_stream_resume(const void *buf, uint16_t len)
 		}
 	}
 
-	audio_ipc_send_rsp(AUDIO_OP_RESUME_STREAM, AUDIO_STATUS_SUCCESS);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_RESUME_STREAM,
+							AUDIO_STATUS_SUCCESS);
 
 	return;
 
 failed:
-	audio_ipc_send_rsp(AUDIO_OP_RESUME_STREAM, AUDIO_STATUS_FAILED);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_RESUME_STREAM,
+							AUDIO_STATUS_FAILED);
 }
 
 static void bt_stream_suspend(const void *buf, uint16_t len)
@@ -1454,12 +1465,14 @@ static void bt_stream_suspend(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	audio_ipc_send_rsp(AUDIO_OP_SUSPEND_STREAM, AUDIO_STATUS_SUCCESS);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_SUSPEND_STREAM,
+							AUDIO_STATUS_SUCCESS);
 
 	return;
 
 failed:
-	audio_ipc_send_rsp(AUDIO_OP_SUSPEND_STREAM, AUDIO_STATUS_FAILED);
+	ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_SUSPEND_STREAM,
+							AUDIO_STATUS_FAILED);
 }
 
 static const struct ipc_handler audio_handlers[] = {
@@ -1490,26 +1503,33 @@ static void bt_audio_unregister(void)
 	g_slist_free_full(setups, setup_free);
 	setups = NULL;
 
-	audio_ipc_cleanup();
+	ipc_cleanup(audio_ipc);
+	audio_ipc = NULL;
 }
 
-static void bt_audio_register(GDestroyNotify destroy)
+static bool bt_audio_register(ipc_disconnect_cb disconnect)
 {
 	DBG("");
 
-	audio_ipc_init(destroy);
+	audio_ipc = ipc_init(BLUEZ_AUDIO_SK_PATH, sizeof(BLUEZ_AUDIO_SK_PATH),
+				AUDIO_SERVICE_ID_MAX, false, disconnect, NULL);
+	if (!audio_ipc)
+		return false;
 
-	audio_ipc_register(audio_handlers, G_N_ELEMENTS(audio_handlers));
+	ipc_register(audio_ipc, AUDIO_SERVICE_ID, audio_handlers,
+						G_N_ELEMENTS(audio_handlers));
+
+	return true;
 }
 
 static gboolean audio_retry_register(void *data)
 {
-	GDestroyNotify destroy = data;
+	ipc_disconnect_cb cb = data;
 
 	audio_retry_id = 0;
 	audio_retrying = true;
 
-	bt_audio_register(destroy);
+	bt_audio_register(cb);
 
 	return FALSE;
 }
@@ -1581,9 +1601,8 @@ bool bt_a2dp_register(struct ipc *ipc, const bdaddr_t *addr)
 	ipc_register(hal_ipc, HAL_SERVICE_ID_A2DP, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
-	bt_audio_register(audio_disconnected);
-
-	return true;
+	if (bt_audio_register(audio_disconnected))
+		return true;
 
 fail:
 	g_io_channel_shutdown(server, TRUE, NULL);
@@ -1608,8 +1627,6 @@ void bt_a2dp_unregister(void)
 	ipc_unregister(hal_ipc, HAL_SERVICE_ID_A2DP);
 	hal_ipc = NULL;
 
-	audio_ipc_unregister();
-
 	bt_adapter_remove_record(record_id);
 	record_id = 0;
 
@@ -1619,5 +1636,9 @@ void bt_a2dp_unregister(void)
 		server = NULL;
 	}
 
-	audio_ipc_cleanup();
+	if (audio_ipc) {
+		ipc_unregister(audio_ipc, AUDIO_SERVICE_ID);
+		ipc_cleanup(audio_ipc);
+		audio_ipc = NULL;
+	}
 }

@@ -89,7 +89,7 @@ static void ipc_disconnect(struct ipc *ipc, bool in_cleanup)
 		ipc->disconnect_cb(ipc->disconnect_cb_data);
 }
 
-int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
+static int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 						const void *buf, ssize_t len)
 {
 	const struct hal_hdr *msg = buf;
@@ -193,8 +193,8 @@ static gboolean notif_watch_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb,
-							void *user_data)
+static GIOChannel *ipc_connect(const char *path, size_t size,
+					GIOFunc connect_cb, void *user_data)
 {
 	struct sockaddr_un addr;
 	GIOCondition cond;
@@ -324,7 +324,7 @@ void ipc_cleanup(struct ipc *ipc)
 	g_free(ipc);
 }
 
-void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
+static void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 							void *param, int fd)
 {
 	struct msghdr msg;

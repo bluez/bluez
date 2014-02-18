@@ -41,19 +41,12 @@ struct ipc *ipc_init(const char *path, size_t size, int max_service_id,
 					ipc_disconnect_cb cb, void *cb_data);
 void ipc_cleanup(struct ipc *ipc);
 
-GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb,
-							void *user_data);
-int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
-						const void *buf, ssize_t len);
-
 void ipc_send_rsp(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
 								uint8_t status);
 void ipc_send_rsp_full(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
 					uint16_t len, void *param, int fd);
 void ipc_send_notif(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
 						uint16_t len, void *param);
-void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
-							void *param, int fd);
 void ipc_register(struct ipc *ipc, uint8_t service,
 			const struct ipc_handler *handlers, uint8_t size);
 void ipc_unregister(struct ipc *ipc, uint8_t service);

@@ -35,7 +35,6 @@ LOCAL_SRC_FILES := \
 	bluez/android/hidhost.c \
 	bluez/android/socket.c \
 	bluez/android/ipc.c \
-	bluez/android/audio-ipc.c \
 	bluez/android/avdtp.c \
 	bluez/android/a2dp.c \
 	bluez/android/avctp.c \
