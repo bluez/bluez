@@ -1575,6 +1575,35 @@ static void cmd_ltks(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 }
+
+static void irks_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		fprintf(stderr, "Load IRKs failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+	else
+		printf("Identity Resolving Keys successfully loaded\n");
+
+	mainloop_quit();
+}
+
+static void cmd_irks(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_load_irks cp;
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+
+	if (mgmt_send(mgmt, MGMT_OP_LOAD_IRKS, index, sizeof(cp), &cp,
+						irks_rsp, NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send load_irks cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static void block_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 							const void *param)
 {
@@ -1995,6 +2024,7 @@ static struct {
 	{ "unpair",	cmd_unpair,	"Unpair device"			},
 	{ "keys",	cmd_keys,	"Load Link Keys"		},
 	{ "ltks",	cmd_ltks,	"Load Long Term Keys"		},
+	{ "irks",	cmd_irks,	"Load Identity Resolving Keys"	},
 	{ "block",	cmd_block,	"Block Device"			},
 	{ "unblock",	cmd_unblock,	"Unblock Device"		},
 	{ "add-uuid",	cmd_add_uuid,	"Add UUID"			},
