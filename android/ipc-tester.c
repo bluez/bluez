@@ -1074,21 +1074,21 @@ int main(int argc, char *argv[])
 			HAL_SERVICE_ID_BLUETOOTH);
 
 	/* check for valid data size for SOCK */
-	test_datasize_valid("SOCK Listen+", HAL_SERVICE_ID_SOCK,
-			HAL_OP_SOCK_LISTEN,
-			sizeof(struct hal_cmd_sock_listen), 1,
+	test_datasize_valid("SOCKET Listen+", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCKET_LISTEN,
+			sizeof(struct hal_cmd_socket_listen), 1,
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
-	test_datasize_valid("SOCK Listen-", HAL_SERVICE_ID_SOCK,
-			HAL_OP_SOCK_LISTEN,
-			sizeof(struct hal_cmd_sock_listen), -1,
+	test_datasize_valid("SOCKET Listen-", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCKET_LISTEN,
+			sizeof(struct hal_cmd_socket_listen), -1,
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
-	test_datasize_valid("SOCK Connect+", HAL_SERVICE_ID_SOCK,
-			HAL_OP_SOCK_CONNECT,
-			sizeof(struct hal_cmd_sock_connect), 1,
+	test_datasize_valid("SOCKET Connect+", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCKET_CONNECT,
+			sizeof(struct hal_cmd_socket_connect), 1,
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
-	test_datasize_valid("SOCK Connect-", HAL_SERVICE_ID_SOCK,
-			HAL_OP_SOCK_CONNECT,
-			sizeof(struct hal_cmd_sock_connect), -1,
+	test_datasize_valid("SOCKET Connect-", HAL_SERVICE_ID_SOCK,
+			HAL_OP_SOCKET_CONNECT,
+			sizeof(struct hal_cmd_socket_connect), -1,
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_SOCK);
 
 	/* check for valid data size for HID Host */

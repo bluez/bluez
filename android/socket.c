@@ -841,7 +841,7 @@ failed:
 
 static void handle_listen(const void *buf, uint16_t len)
 {
-	const struct hal_cmd_sock_listen *cmd = buf;
+	const struct hal_cmd_socket_listen *cmd = buf;
 	uint8_t status;
 	int hal_sock;
 
@@ -862,13 +862,13 @@ static void handle_listen(const void *buf, uint16_t len)
 	if (status != HAL_STATUS_SUCCESS)
 		goto failed;
 
-	ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_LISTEN, 0, NULL,
+	ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_LISTEN, 0, NULL,
 								hal_sock);
 	close(hal_sock);
 	return ;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_LISTEN, status);
+	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_LISTEN, status);
 }
 
 static bool sock_send_connect(struct rfcomm_sock *rfsock, bdaddr_t *bdaddr)
@@ -1080,7 +1080,7 @@ failed:
 
 static void handle_connect(const void *buf, uint16_t len)
 {
-	const struct hal_cmd_sock_connect *cmd = buf;
+	const struct hal_cmd_socket_connect *cmd = buf;
 	bdaddr_t bdaddr;
 	uint8_t status;
 	int hal_sock;
@@ -1106,21 +1106,21 @@ static void handle_connect(const void *buf, uint16_t len)
 	if (status != HAL_STATUS_SUCCESS)
 		goto failed;
 
-	ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_CONNECT, 0, NULL,
+	ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_CONNECT, 0, NULL,
 								hal_sock);
 	close(hal_sock);
 	return;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_CONNECT, status);
+	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_CONNECT, status);
 
 }
 
 static const struct ipc_handler cmd_handlers[] = {
-	/* HAL_OP_SOCK_LISTEN */
-	{ handle_listen, false, sizeof(struct hal_cmd_sock_listen) },
-	/* HAL_OP_SOCK_CONNECT */
-	{ handle_connect, false, sizeof(struct hal_cmd_sock_connect) },
+	/* HAL_OP_SOCKET_LISTEN */
+	{ handle_listen, false, sizeof(struct hal_cmd_socket_listen) },
+	/* HAL_OP_SOCKET_CONNECT */
+	{ handle_connect, false, sizeof(struct hal_cmd_socket_connect) },
 };
 
 void bt_socket_register(const bdaddr_t *addr)

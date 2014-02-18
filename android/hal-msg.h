@@ -238,8 +238,8 @@ struct hal_cmd_le_test_mode {
 #define HAL_SOCK_FLAG_ENCRYPT	0x01
 #define HAL_SOCK_FLAG_AUTH	0x02
 
-#define HAL_OP_SOCK_LISTEN		0x01
-struct hal_cmd_sock_listen {
+#define HAL_OP_SOCKET_LISTEN		0x01
+struct hal_cmd_socket_listen {
 	uint8_t type;
 	uint8_t name[256];
 	uint8_t uuid[16];
@@ -247,8 +247,8 @@ struct hal_cmd_sock_listen {
 	uint8_t flags;
 } __attribute__((packed));
 
-#define HAL_OP_SOCK_CONNECT		0x02
-struct hal_cmd_sock_connect {
+#define HAL_OP_SOCKET_CONNECT		0x02
+struct hal_cmd_socket_connect {
 	uint8_t bdaddr[6];
 	uint8_t type;
 	uint8_t uuid[16];
