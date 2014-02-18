@@ -34,7 +34,10 @@ struct service_handler {
 
 struct ipc;
 
-struct ipc *ipc_init(const char *path, size_t size, int max_service_id);
+typedef void (*ipc_disconnect_cb) (void *data);
+
+struct ipc *ipc_init(const char *path, size_t size, int max_service_id,
+					ipc_disconnect_cb cb, void *cb_data);
 void ipc_cleanup(struct ipc *ipc);
 
 GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb,

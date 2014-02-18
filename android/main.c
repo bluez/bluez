@@ -228,6 +228,11 @@ static void stop_bluetooth(void)
 	g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS, quit_eventloop, NULL);
 }
 
+static void ipc_disconnected(void *data)
+{
+	stop_bluetooth();
+}
+
 static void adapter_ready(int err, const bdaddr_t *addr)
 {
 	if (err < 0) {
@@ -245,7 +250,7 @@ static void adapter_ready(int err, const bdaddr_t *addr)
 	info("Adapter initialized");
 
 	hal_ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-							HAL_SERVICE_ID_MAX);
+				HAL_SERVICE_ID_MAX, ipc_disconnected, NULL);
 	if (!hal_ipc) {
 		error("Failed to initialize IPC");
 		exit(EXIT_FAILURE);

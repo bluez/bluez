@@ -286,7 +286,7 @@ static void test_init(gconstpointer data)
 	struct context *context = create_context(data);
 
 	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-							HAL_SERVICE_ID_MAX);
+						HAL_SERVICE_ID_MAX, NULL, NULL);
 
 	g_assert(ipc);
 
@@ -337,7 +337,7 @@ static void test_cmd(gconstpointer data)
 	struct context *context = create_context(data);
 
 	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-							HAL_SERVICE_ID_MAX);
+						HAL_SERVICE_ID_MAX, NULL, NULL);
 
 	g_assert(ipc);
 
@@ -355,7 +355,7 @@ static void test_cmd_reg(gconstpointer data)
 	const struct test_data *test_data = context->data;
 
 	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-							HAL_SERVICE_ID_MAX);
+						HAL_SERVICE_ID_MAX, NULL, NULL);
 
 	g_assert(ipc);
 
@@ -375,7 +375,7 @@ static void test_cmd_reg_1(gconstpointer data)
 	struct context *context = create_context(data);
 
 	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-							HAL_SERVICE_ID_MAX);
+						HAL_SERVICE_ID_MAX, NULL, NULL);
 
 	g_assert(ipc);
 
