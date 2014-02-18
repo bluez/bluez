@@ -751,7 +751,7 @@ static const void *get_profile_interface(const char *profile_id)
 		return NULL;
 
 	if (!strcmp(profile_id, BT_PROFILE_SOCKETS_ID))
-		return bt_get_sock_interface();
+		return bt_get_socket_interface();
 
 	if (!strcmp(profile_id, BT_PROFILE_HIDHOST_ID))
 		return bt_get_hidhost_interface();

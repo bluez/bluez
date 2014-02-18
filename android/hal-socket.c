@@ -26,7 +26,7 @@
 #include "hal-utils.h"
 #include "hal.h"
 
-static bt_status_t sock_listen(btsock_type_t type, const char *service_name,
+static bt_status_t socket_listen(btsock_type_t type, const char *service_name,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
@@ -55,7 +55,7 @@ static bt_status_t sock_listen(btsock_type_t type, const char *service_name,
 				sizeof(cmd), &cmd, NULL, NULL, sock);
 }
 
-static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
+static bt_status_t socket_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
@@ -84,13 +84,13 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 					sizeof(cmd), &cmd, NULL, NULL, sock);
 }
 
-static btsock_interface_t sock_if = {
-	sizeof(sock_if),
-	sock_listen,
-	sock_connect
+static btsock_interface_t socket_if = {
+	sizeof(socket_if),
+	socket_listen,
+	socket_connect
 };
 
-btsock_interface_t *bt_get_sock_interface(void)
+btsock_interface_t *bt_get_socket_interface(void)
 {
-	return &sock_if;
+	return &socket_if;
 }
