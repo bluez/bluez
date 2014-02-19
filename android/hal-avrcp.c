@@ -56,6 +56,24 @@ static bt_status_t init(btrc_callbacks_t *callbacks)
 	return ret;
 }
 
+static bt_status_t get_play_status_rsp(btrc_play_status_t status,
+					uint32_t song_len, uint32_t song_pos)
+{
+	struct hal_cmd_avrcp_get_play_status cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	cmd.status = status;
+	cmd.duration = song_len;
+	cmd.position = song_pos;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_GET_PLAY_STATUS,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
+}
+
 static void cleanup()
 {
 	struct hal_cmd_unregister_module cmd;
@@ -78,6 +96,7 @@ static void cleanup()
 static btrc_interface_t iface = {
 	.size = sizeof(iface),
 	.init = init,
+	.get_play_status_rsp = get_play_status_rsp,
 	.cleanup = cleanup
 };
 
