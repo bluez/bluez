@@ -4,6 +4,7 @@ PTS version: 5.0
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
+# - should be set to tester's phone number
 
 		Required PIXIT settings
 -------------------------------------------------------------------------------
@@ -40,6 +41,6 @@ TSPX_MASInstanceID_MMS					0
 TSPX_MASInstanceID_Email				0
 TSPX_message_notification_l2cap_psm			1003
 TSPX_message_notification_rfcomm_channel		9
-TSPX_upload_msg_phonenumber				123456789
+TSPX_upload_msg_phonenumber				123456789 (#)
 TSPX_upload_msg_emailaddress				PTS_Test@bluetooth.com
 -------------------------------------------------------------------------------
