@@ -21,27 +21,5 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <glib.h>
-
-#include "log.h"
-
-#include "gatt-dbus.h"
-#include "gatt.h"
-
-void gatt_init(void)
-{
-	DBG("Starting GATT server");
-
-	gatt_dbus_manager_register();
-}
-
-void gatt_cleanup(void)
-{
-	DBG("Stopping GATT server");
-
-	gatt_dbus_manager_unregister();
-}
+gboolean gatt_dbus_manager_register(void);
+void gatt_dbus_manager_unregister(void);
