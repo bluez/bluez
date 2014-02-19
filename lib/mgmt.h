@@ -494,6 +494,13 @@ struct mgmt_ev_passkey_notify {
 	uint8_t entered;
 } __packed;
 
+#define MGMT_EV_NEW_IRK			0x0018
+struct mgmt_ev_new_irk {
+	uint8_t  store_hint;
+	bdaddr_t rpa;
+	struct mgmt_irk_info irk;
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
