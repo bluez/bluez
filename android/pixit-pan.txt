@@ -3,7 +3,7 @@ PAN PIXIT for the PTS tool.
 PTS version: 5.0
 
 * - different than PTS defaults
-& - should be set to IUT Bluetooth address
+& - should be set to IUT or PTS Bluetooth address respectively
 
 		Required PIXIT settings
 -------------------------------------------------------------------------------
@@ -22,7 +22,7 @@ TSPX_iut_ip_address					192.168.167.152
 TSPX_iut_port_number					4242
 TSPX_PTS_ip_address					192.168.168.100
 TSPX_PTS_port_number					4242
-TSPX_bd_addr_PTS					000000000000
+TSPX_bd_addr_PTS					112233445566 (*&)
 TSPX_checksum						E851
 TSPX_secure_simple_pairing_pass_key_confirmation	False
 TSPX_iut_friendly_bt_name				gprs-pc
