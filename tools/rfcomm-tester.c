@@ -525,7 +525,7 @@ static void rfcomm_connect_cb(uint16_t handle, uint16_t cid,
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 
 	if (client_data->send_data)
-		bthost_add_rfcomm_channel_hook(bthost, handle,
+		bthost_add_rfcomm_chan_hook(bthost, handle,
 						client_data->client_channel,
 						client_hook_func, NULL);
 	else if (client_data->read_data)
@@ -670,7 +670,7 @@ static void client_new_conn(uint16_t handle, void *user_data)
 	struct bthost *bthost;
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_add_rfcomm_channel_hook(bthost, handle,
+	bthost_add_rfcomm_chan_hook(bthost, handle,
 						server_data->client_channel,
 						server_hook_func, NULL);
 	bthost_connect_rfcomm(bthost, handle, server_data->client_channel,

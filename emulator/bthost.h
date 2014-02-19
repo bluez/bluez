@@ -99,13 +99,12 @@ bool bthost_connect_rfcomm(struct bthost *bthost, uint16_t handle,
 				uint8_t channel, bthost_rfcomm_connect_cb func,
 				void *user_data);
 
-typedef void (*bthost_rfcomm_channel_hook_func_t) (const void *data,
-							uint16_t len,
+typedef void (*bthost_rfcomm_chan_hook_func_t) (const void *data, uint16_t len,
 							void *user_data);
 
-void bthost_add_rfcomm_channel_hook(struct bthost *bthost, uint16_t handle,
+void bthost_add_rfcomm_chan_hook(struct bthost *bthost, uint16_t handle,
 					uint8_t channel,
-					bthost_rfcomm_channel_hook_func_t func,
+					bthost_rfcomm_chan_hook_func_t func,
 					void *user_data);
 
 void bthost_send_rfcomm_data(struct bthost *bthost, uint16_t handle,

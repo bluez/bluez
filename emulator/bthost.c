@@ -126,11 +126,11 @@ struct cid_hook {
 	struct cid_hook *next;
 };
 
-struct rfcomm_channel_hook {
+struct rfcomm_chan_hook {
 	uint8_t channel;
-	bthost_rfcomm_channel_hook_func_t func;
+	bthost_rfcomm_chan_hook_func_t func;
 	void *user_data;
-	struct rfcomm_channel_hook *next;
+	struct rfcomm_chan_hook *next;
 };
 
 struct btconn {
@@ -142,7 +142,7 @@ struct btconn {
 	struct l2conn *l2conns;
 	struct rcconn *rcconns;
 	struct cid_hook *cid_hooks;
-	struct rfcomm_channel_hook *rfcomm_channel_hooks;
+	struct rfcomm_chan_hook *rfcomm_chan_hooks;
 	struct btconn *next;
 	void *smp_data;
 };
@@ -255,10 +255,10 @@ static void btconn_free(struct btconn *conn)
 		free(rcconn);
 	}
 
-	while (conn->rfcomm_channel_hooks) {
-		struct rfcomm_channel_hook *hook = conn->rfcomm_channel_hooks;
+	while (conn->rfcomm_chan_hooks) {
+		struct rfcomm_chan_hook *hook = conn->rfcomm_chan_hooks;
 
-		conn->rfcomm_channel_hooks = hook->next;
+		conn->rfcomm_chan_hooks = hook->next;
 		free(hook);
 	}
 
@@ -1611,12 +1611,12 @@ static struct cid_hook *find_cid_hook(struct btconn *conn, uint16_t cid)
 	return NULL;
 }
 
-static struct rfcomm_channel_hook *find_rfcomm_channel_hook(struct btconn *conn,
+static struct rfcomm_chan_hook *find_rfcomm_chan_hook(struct btconn *conn,
 							uint16_t channel)
 {
-	struct rfcomm_channel_hook *hook;
+	struct rfcomm_chan_hook *hook;
 
-	for (hook = conn->rfcomm_channel_hooks; hook != NULL; hook = hook->next)
+	for (hook = conn->rfcomm_chan_hooks; hook != NULL; hook = hook->next)
 		if (hook->channel == channel)
 			return hook;
 
@@ -1892,9 +1892,9 @@ static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 	p = data + hdr_len;
 
 	if (RFCOMM_GET_DLCI(hdr->address)) {
-		struct rfcomm_channel_hook *hook;
+		struct rfcomm_chan_hook *hook;
 
-		hook = find_rfcomm_channel_hook(conn,
+		hook = find_rfcomm_chan_hook(conn,
 					RFCOMM_GET_CHANNEL(hdr->address));
 		if (!hook)
 			return;
@@ -2201,12 +2201,12 @@ bool bthost_connect_rfcomm(struct bthost *bthost, uint16_t handle,
 					&req, sizeof(req), NULL, NULL);
 }
 
-void bthost_add_rfcomm_channel_hook(struct bthost *bthost, uint16_t handle,
+void bthost_add_rfcomm_chan_hook(struct bthost *bthost, uint16_t handle,
 					uint8_t channel,
-					bthost_rfcomm_channel_hook_func_t func,
+					bthost_rfcomm_chan_hook_func_t func,
 					void *user_data)
 {
-	struct rfcomm_channel_hook *hook;
+	struct rfcomm_chan_hook *hook;
 	struct btconn *conn;
 
 	conn = bthost_find_conn(bthost, handle);
@@ -2223,8 +2223,8 @@ void bthost_add_rfcomm_channel_hook(struct bthost *bthost, uint16_t handle,
 	hook->func = func;
 	hook->user_data = user_data;
 
-	hook->next = conn->rfcomm_channel_hooks;
-	conn->rfcomm_channel_hooks = hook;
+	hook->next = conn->rfcomm_chan_hooks;
+	conn->rfcomm_chan_hooks = hook;
 }
 
 void bthost_send_rfcomm_data(struct bthost *bthost, uint16_t handle,
