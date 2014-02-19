@@ -453,6 +453,21 @@ static bt_status_t register_notification_rsp(btrc_event_id_t event_id,
 	}
 }
 
+static bt_status_t set_volume(uint8_t volume)
+{
+	struct hal_cmd_avrcp_set_volume cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	cmd.value = volume;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_SET_VOLUME,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
+}
+
 static void cleanup()
 {
 	struct hal_cmd_unregister_module cmd;
@@ -484,6 +499,7 @@ static btrc_interface_t iface = {
 	.get_element_attr_rsp = get_element_attr_rsp,
 	.set_player_app_value_rsp = set_player_app_value_rsp,
 	.register_notification_rsp = register_notification_rsp,
+	.set_volume = set_volume,
 	.cleanup = cleanup
 };
 
