@@ -598,7 +598,6 @@ static gboolean rfcomm_listen_cb(GIOChannel *io, GIOCondition cond,
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_server_data *server_data = data->test_data;
 	int sk, new_sk;
-	ssize_t ret;
 
 	data->io_id = 0;
 
@@ -611,6 +610,8 @@ static gboolean rfcomm_listen_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	if (server_data->send_data) {
+		ssize_t ret;
+
 		ret = write(new_sk, server_data->send_data,
 							server_data->data_len);
 		if (ret != server_data->data_len)
