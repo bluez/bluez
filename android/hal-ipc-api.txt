@@ -1257,7 +1257,8 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Command parameters: Number of values (1 octet)
 		                    Value # (1 octet)
-		                    Value # text (255 octets)
+		                    Value # text length (1 octet)
+		                    Value # text (variable)
 		                    ...
 
 		In case of an error, the error response will be returned.
@@ -1266,7 +1267,8 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		Command parameters: Number of elements (1 octet)
 		                    Element # (1 octet)
-		                    Element # text (255 octets)
+		                    Element # text length (1 octet)
+		                    Element # text (variable)
 		                    ...
 
 		In case of an error, the error response will be returned.
