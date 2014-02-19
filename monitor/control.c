@@ -498,6 +498,27 @@ static void mgmt_passkey_notify(uint16_t len, const void *buf)
 	packet_hexdump(buf, len);
 }
 
+static void mgmt_new_irk(uint16_t len, const void *buf)
+{
+	const struct mgmt_ev_new_irk *ev = buf;
+	char addr[18], rpa[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed New IRK control\n");
+		return;
+	}
+
+	ba2str(&ev->rpa, rpa);
+	ba2str(&ev->irk.addr.bdaddr, addr);
+
+	printf("@ New IRK: %s (%d) %s\n", addr, ev->irk.addr.type, rpa);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	packet_hexdump(buf, len);
+}
+
 void control_message(uint16_t opcode, const void *data, uint16_t size)
 {
 	switch (opcode) {
@@ -563,6 +584,9 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		break;
 	case MGMT_EV_PASSKEY_NOTIFY:
 		mgmt_passkey_notify(size, data);
+		break;
+	case MGMT_EV_NEW_IRK:
+		mgmt_new_irk(size, data);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, size);
