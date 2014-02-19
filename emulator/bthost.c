@@ -1612,7 +1612,7 @@ static struct cid_hook *find_cid_hook(struct btconn *conn, uint16_t cid)
 }
 
 static struct rfcomm_chan_hook *find_rfcomm_chan_hook(struct btconn *conn,
-							uint16_t channel)
+							uint8_t channel)
 {
 	struct rfcomm_chan_hook *hook;
 
