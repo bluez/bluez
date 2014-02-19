@@ -21,6 +21,16 @@
  *
  */
 
+struct btd_attribute;
+
 void gatt_init(void);
 
 void gatt_cleanup(void);
+
+/* btd_gatt_add_service - Add a service declaration to local attribute database.
+ * @uuid:	Service UUID.
+ *
+ * Returns a reference to service declaration attribute. In case of error,
+ * NULL is returned.
+ */
+struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid);

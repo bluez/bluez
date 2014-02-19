@@ -28,9 +28,68 @@
 #include <glib.h>
 
 #include "log.h"
+#include "lib/uuid.h"
+#include "attrib/att.h"
 
 #include "gatt-dbus.h"
 #include "gatt.h"
+
+/* Common GATT UUIDs */
+static const bt_uuid_t primary_uuid  = { .type = BT_UUID16,
+					.value.u16 = GATT_PRIM_SVC_UUID };
+
+struct btd_attribute {
+	uint16_t handle;
+	bt_uuid_t type;
+	uint16_t value_len;
+	uint8_t value[0];
+};
+
+static GList *local_attribute_db;
+static uint16_t next_handle = 0x0001;
+
+static int local_database_add(uint16_t handle, struct btd_attribute *attr)
+{
+	attr->handle = handle;
+
+	local_attribute_db = g_list_append(local_attribute_db, attr);
+
+	return 0;
+}
+
+struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
+{
+	uint16_t len = bt_uuid_len(uuid);
+	struct btd_attribute *attr = g_malloc0(sizeof(struct btd_attribute) +
+									len);
+
+	/*
+	 * Service DECLARATION
+	 *
+	 *   TYPE         ATTRIBUTE VALUE
+	 * +-------+---------------------------------+
+	 * |0x2800 | 0xYYYY...                       |
+	 * | (1)   | (2)                             |
+	 * +------+----------------------------------+
+	 * (1) - 2 octets: Primary/Secondary Service UUID
+	 * (2) - 2 or 16 octets: Service UUID
+	 */
+
+	attr->type = primary_uuid;
+
+	att_put_uuid(*uuid, attr->value);
+	attr->value_len = len;
+
+	if (local_database_add(next_handle, attr) < 0) {
+		g_free(attr);
+		return NULL;
+	}
+
+	/* TODO: missing overflow checking */
+	next_handle = next_handle + 1;
+
+	return attr;
+}
 
 void gatt_init(void)
 {
