@@ -395,7 +395,7 @@ void bthost_destroy(struct bthost *bthost)
 	while (bthost->cmd_q.tail) {
 		struct cmd *cmd = bthost->cmd_q.tail;
 
-		bthost->cmd_q.tail = cmd->next;
+		bthost->cmd_q.tail = cmd->prev;
 		free(cmd);
 	}
 
@@ -461,6 +461,8 @@ static void queue_command(struct bthost *bthost, const void *data,
 
 	if (cmd_q->tail)
 		cmd_q->tail->next = cmd;
+	else
+		cmd_q->head = cmd;
 
 	cmd->prev = cmd_q->tail;
 	cmd_q->tail = cmd;
@@ -662,7 +664,7 @@ static void send_command(struct bthost *bthost, uint16_t opcode,
 static void next_cmd(struct bthost *bthost)
 {
 	struct cmd_queue *cmd_q = &bthost->cmd_q;
-	struct cmd *cmd = cmd_q->tail;
+	struct cmd *cmd = cmd_q->head;
 	struct cmd *next;
 
 	if (!cmd)
@@ -678,8 +680,10 @@ static void next_cmd(struct bthost *bthost)
 
 	if (next)
 		next->prev = NULL;
+	else
+		cmd_q->tail = NULL;
 
-	cmd_q->tail = next;
+	cmd_q->head = next;
 
 	free(cmd);
 }
