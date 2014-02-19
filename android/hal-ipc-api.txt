@@ -1306,6 +1306,12 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 		Valid type values : 0x00 = Interim
 		                    0x01 = Changed
 
+	Opcode 0x0a - Set Volume command/response
+
+		Command parameters: Value (1 octet)
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x81 - Remote Features notification
 
 		Notification parameters: Remote address (6 octets)
