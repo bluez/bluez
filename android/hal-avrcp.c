@@ -129,6 +129,40 @@ static bt_status_t list_player_app_value_rsp(int num_val, uint8_t *p_vals)
 					len, cmd, 0, NULL, NULL);
 }
 
+static bt_status_t get_player_app_value_rsp(btrc_player_settings_t *p_vals)
+{
+	char buf[BLUEZ_HAL_MTU];
+	struct hal_cmd_avrcp_get_player_attrs *cmd = (void *) buf;
+	size_t len, attrs_len;
+	int i;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	if (!p_vals)
+		return BT_STATUS_PARM_INVALID;
+
+	attrs_len = p_vals->num_attr *
+				sizeof(struct hal_avrcp_player_attr_value);
+	len = sizeof(*cmd) + attrs_len;
+
+	if (len > BLUEZ_HAL_MTU)
+		return BT_STATUS_PARM_INVALID;
+
+	cmd->number = p_vals->num_attr;
+
+	for (i = 0; i < p_vals->num_attr; i++) {
+		cmd->attrs[i].attr = p_vals->attr_ids[i];
+		cmd->attrs[i].value = p_vals->attr_values[i];
+	}
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
+					HAL_OP_AVRCP_GET_PLAYER_ATTRS,
+					len, cmd, 0, NULL, NULL);
+}
+
 static void cleanup()
 {
 	struct hal_cmd_unregister_module cmd;
@@ -154,6 +188,7 @@ static btrc_interface_t iface = {
 	.get_play_status_rsp = get_play_status_rsp,
 	.list_player_app_attr_rsp = list_player_app_attr_rsp,
 	.list_player_app_value_rsp = list_player_app_value_rsp,
+	.get_player_app_value_rsp = get_player_app_value_rsp,
 	.cleanup = cleanup
 };
 
