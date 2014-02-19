@@ -293,7 +293,7 @@ static sdp_record_t *create_pbap_record(uint8_t chan, const char *svc_name)
 		return NULL;
 
 	sdp_uuid16_create(&profile[0].uuid, PBAP_PROFILE_ID);
-	profile[0].version = 0x0100;
+	profile[0].version = 0x0101;
 	seq = sdp_list_append(NULL, profile);
 	sdp_set_profile_descs(record, seq);
 
