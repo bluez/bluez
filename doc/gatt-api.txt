@@ -1,0 +1,142 @@
+BlueZ D-Bus GATT API description
+********************************
+
+GATT local and remote services share the same high-level D-Bus API. Local
+refers to GATT based service exported by a BlueZ plugin or an external
+application. Remote refers to GATT services exported by the peer.
+
+BlueZ acts as a proxy, translating ATT operations to D-Bus method calls and
+Properties (or the opposite). Support for D-Bus Object Manager is mandatory for
+external services to allow seamless GATT declarations (Service, Characteristic
+and Descriptors) discovery.
+
+Releasing a registered GATT service is not defined yet. Any API extension
+should avoid breaking the defined API, and if possible keep an unified GATT
+remote and local services representation.
+
+Service hierarchy
+=================
+
+GATT remote and local service representation. Object path for local services
+is freely definable.
+
+External applications implementing local services must register the services
+using GattManager1 registration method and must implement the methods and
+properties defined in GattService1 interface.
+
+Service		org.bluez
+Interface	org.bluez.GattService1 [Experimental]
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX
+
+Properties	string UUID [read-only]
+
+			128-bit service UUID.
+
+		array{object} Includes [read-only]: Not implemented
+
+			Array of object paths representing the included
+			services of this service.
+
+
+Characteristic hierarchy
+========================
+
+For local GATT defined services, the object paths need to follow the service
+path hierarchy and are freely definable.
+
+Service		org.bluez
+Interface	org.bluez.GattCharacteristic1 [Experimental]
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY
+
+Properties	string UUID [read-only]
+
+			128-bit characteristic UUID.
+
+		object Service [read-only]
+
+			Object path of the GATT service the characteristc
+			belongs to.
+
+		array{byte} Value [read-write]
+
+			Value read from the remote Bluetooth device or from
+			the external application implementing GATT services.
+
+		array{string} Flags [read-only, optional]
+
+			Defines how the characteristic value can be used. See
+			Core spec page 1898, "Table 3.5: Characteristic
+			Properties bit field" and page 1900, "Table 3.8:
+			Characteristic Extended Properties bit field". Allowed
+			values: "broadcast", "read", "write-without-response",
+			"write", "notify", "indicate",
+			"authenticated-signed-writes", "reliable-write", and
+			"writable-auxiliaries".
+
+
+Characteristic Descriptors hierarchy
+====================================
+
+Local or remote GATT characteristic descriptors hierarchy.
+
+Service		org.bluez
+Interface	org.bluez.GattDescriptor1 [Experimental]
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY/descriptorZZZ
+
+Properties	string UUID [read-only]
+
+			128-bit descriptor UUID.
+
+		object Characteristic [read-only]
+
+			Object path of the GATT characteristc the descriptor
+			belongs to.
+
+		array{byte} Value [read-write]
+
+			Raw characteristic descriptor value read from the
+			remote Bluetooth device or from the external
+			application implementing GATT services.
+
+		string Permissions [read-only]: To be defined
+
+			Defines read/write authentication and authorization
+			requirements.
+
+Service Manager hierarchy
+=============================
+
+Service Manager allows external applications to register GATT based
+services. Services must follow the API for Service and Characteristic
+described above.
+
+Local GATT services, characteristics and characteristic descriptors are
+discovered automatically using the D-Bus Object Manager interface.
+
+Service		org.bluez
+Interface	org.bluez.GattManager1 [Experimental]
+Object path	/org/bluez
+
+Methods		RegisterService(object service, dict options)
+
+			Registers remote application service exported under
+			interface GattService1. Characteristic objects must
+			be hierarchical to their service and must use the
+			interface GattCharacteristic1. D-Bus Object Manager
+			is used to fetch the exported objects.
+
+			"service" object path together with the D-Bus system
+			bus connection ID define the identification of the
+			application registering a GATT based service.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+
+		UnregisterService(object service)
+
+			This unregisters the service that has been
+			previously registered. The object path parameter
+			must match the same value that has been used
+			on registration.
+
+			Possible errors: org.bluez.Error.DoesNotExist
