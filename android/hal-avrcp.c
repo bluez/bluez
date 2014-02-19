@@ -297,6 +297,22 @@ static bt_status_t get_element_attr_rsp(uint8_t num_attr,
 					len, cmd, 0, NULL, NULL);
 }
 
+static bt_status_t set_player_app_value_rsp(btrc_status_t rsp_status)
+{
+	struct hal_cmd_avrcp_set_player_attrs_value cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	cmd.status = rsp_status;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
+					HAL_OP_AVRCP_SET_PLAYER_ATTRS_VALUE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
+}
+
 static void cleanup()
 {
 	struct hal_cmd_unregister_module cmd;
@@ -326,6 +342,7 @@ static btrc_interface_t iface = {
 	.get_player_app_attr_text_rsp = get_player_app_attr_text_rsp,
 	.get_player_app_value_text_rsp = get_player_app_value_text_rsp,
 	.get_element_attr_rsp = get_element_attr_rsp,
+	.set_player_app_value_rsp = set_player_app_value_rsp,
 	.cleanup = cleanup
 };
 
