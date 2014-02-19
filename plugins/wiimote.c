@@ -90,7 +90,6 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 	product = btd_device_get_product(device);
 
 	device_get_name(device, name, sizeof(name));
-	name[sizeof(name) - 1] = 0;
 
 	for (i = 0; i < G_N_ELEMENTS(wii_ids); ++i) {
 		if (vendor == wii_ids[i][0] && product == wii_ids[i][1])

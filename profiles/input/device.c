@@ -822,7 +822,7 @@ static struct input_device *input_device_new(struct btd_service *service)
 	idev->handle = rec->handle;
 	idev->disable_sdp = is_device_sdp_disable(rec);
 
-	device_get_name(device, name, HCI_MAX_NAME_LENGTH);
+	device_get_name(device, name, sizeof(name));
 	if (strlen(name) > 0)
 		idev->name = g_strdup(name);
 

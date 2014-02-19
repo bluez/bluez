@@ -2272,7 +2272,10 @@ void btd_device_device_set_name(struct btd_device *device, const char *name)
 
 void device_get_name(struct btd_device *device, char *name, size_t len)
 {
-	strncpy(name, device->name, len);
+	if (name != NULL && len > 0) {
+		strncpy(name, device->name, len - 1);
+		name[len - 1] = '\0';
+	}
 }
 
 bool device_name_known(struct btd_device *device)
