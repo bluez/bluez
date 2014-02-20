@@ -2331,6 +2331,8 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 	bacpy(&device->bdaddr, bdaddr);
 	device->bdaddr_type = bdaddr_type;
 
+	store_device_info(device);
+
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Address");
 }
