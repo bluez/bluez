@@ -2300,6 +2300,20 @@ void device_set_class(struct btd_device *device, uint32_t class)
 						DEVICE_INTERFACE, "Icon");
 }
 
+void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
+							uint8_t bdaddr_type)
+{
+	if (!bacmp(bdaddr, &device->bdaddr) &&
+					bdaddr_type == device->bdaddr_type)
+		return;
+
+	bacpy(&device->bdaddr, bdaddr);
+	device->bdaddr_type = bdaddr_type;
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Address");
+}
+
 uint32_t btd_device_get_class(struct btd_device *device)
 {
 	return device->class;
