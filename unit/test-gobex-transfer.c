@@ -1027,6 +1027,78 @@ static void test_stream_put_req(void)
 	g_assert_no_error(d.err);
 }
 
+static gssize provide_seq_delay(void *buf, gsize len, gpointer user_data)
+{
+	struct test_data *d = user_data;
+	int fd;
+	gssize ret;
+
+	if (d->provide_delay > 0) {
+		g_obex_suspend(d->obex);
+		g_timeout_add_seconds(d->provide_delay, resume_obex, d);
+		d->provide_delay = 0;
+	}
+
+	if (d->count == RANDOM_PACKETS - 1)
+		return 0;
+
+	fd = open("/dev/urandom", O_RDONLY | O_NOCTTY, 0);
+	if (fd < 0) {
+		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"open(/dev/urandom): %s", strerror(errno));
+		g_main_loop_quit(d->mainloop);
+		return -1;
+	}
+
+	ret = read(fd, buf, len);
+	close(fd);
+	return ret;
+}
+
+static void test_packet_put_req_suspend_resume(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+			{ NULL, 0 },
+			{ NULL, 0 },
+			{ NULL, 0 },
+			{ put_req_last, sizeof(put_req_last) } }, {
+			{ put_rsp_first_srm, sizeof(put_rsp_first_srm) },
+			{ NULL, 0 },
+			{ NULL, 0 },
+			{ put_rsp_last, sizeof(put_rsp_last) } } };
+
+	create_endpoints(&obex, &io, SOCK_SEQPACKET);
+	d.obex = obex;
+	d.provide_delay = 1;
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	g_obex_put_req(obex, provide_seq_delay, transfer_complete, &d, &d.err,
+				G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
+				G_OBEX_HDR_NAME, "random.bin",
+				G_OBEX_HDR_INVALID);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, RANDOM_PACKETS);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
 static void test_packet_put_req_wait(void)
 {
 	GIOChannel *io;
@@ -2241,6 +2313,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_packet_put_req", test_packet_put_req);
 	g_test_add_func("/gobex/test_packet_put_req_wait",
 						test_packet_put_req_wait);
+	g_test_add_func("/gobex/test_packet_put_req_suspend_resume",
+					test_packet_put_req_suspend_resume);
 
 	g_test_add_func("/gobex/test_packet_put_rsp", test_packet_put_rsp);
 	g_test_add_func("/gobex/test_packet_put_rsp_wait",
