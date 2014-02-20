@@ -540,11 +540,6 @@ static void device_free(gpointer user_data)
 	g_free(device);
 }
 
-static gboolean device_is_bredr(struct btd_device *device)
-{
-	return (device->bdaddr_type == BDADDR_BREDR);
-}
-
 gboolean device_is_le(struct btd_device *device)
 {
 	return (device->bdaddr_type != BDADDR_BREDR);
@@ -1203,7 +1198,7 @@ done:
 				btd_error_failed(dev->connect, strerror(-err)));
 	else {
 		/* Start passive SDP discovery to update known services */
-		if (device_is_bredr(dev) && !dev->svc_refreshed)
+		if (dev->bredr && !dev->svc_refreshed)
 			device_browse_sdp(dev, NULL);
 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
 	}
@@ -1341,7 +1336,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 resolve_services:
 	DBG("Resolving services for %s", dev->path);
 
-	if (device_is_bredr(dev))
+	if (dev->bredr)
 		err = device_browse_sdp(dev, msg);
 	else
 		err = device_browse_primary(dev, msg);
@@ -3601,7 +3596,7 @@ int device_discover_services(struct btd_device *device)
 {
 	int err;
 
-	if (device_is_bredr(device))
+	if (device->bredr)
 		err = device_browse_sdp(device, NULL);
 	else
 		err = device_browse_primary(device, NULL);
@@ -3765,7 +3760,7 @@ static gboolean start_discovery(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 
-	if (device_is_bredr(device))
+	if (device->bredr)
 		device_browse_sdp(device, NULL);
 	else
 		device_browse_primary(device, NULL);
@@ -3854,7 +3849,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 			device->discov_timer = 0;
 		}
 
-		if (device_is_bredr(device))
+		if (device->bredr)
 			device_browse_sdp(device, bonding->msg);
 		else
 			device_browse_primary(device, bonding->msg);
