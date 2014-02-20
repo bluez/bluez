@@ -158,6 +158,8 @@ struct btd_device {
 	bdaddr_t	bdaddr;
 	uint8_t		bdaddr_type;
 	char		*path;
+	bool		bredr;
+	bool		le;
 	bool		pending_paired;		/* "Paired" waiting for SDP */
 	bool		svc_resolved;
 	bool		svc_refreshed;
@@ -2216,6 +2218,12 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 		return NULL;
 
 	device->bdaddr_type = bdaddr_type;
+
+	if (bdaddr_type == BDADDR_BREDR)
+		device->bredr = true;
+	else
+		device->le = true;
+
 	sba = btd_adapter_get_address(adapter);
 	ba2str(sba, src);
 
@@ -2306,6 +2314,11 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 	if (!bacmp(bdaddr, &device->bdaddr) &&
 					bdaddr_type == device->bdaddr_type)
 		return;
+
+	/* Since this function is only used for LE SMP Identity
+	 * Resolving purposes we can now assume LE is supported.
+	 */
+	device->le = true;
 
 	bacpy(&device->bdaddr, bdaddr);
 	device->bdaddr_type = bdaddr_type;
