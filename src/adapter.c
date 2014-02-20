@@ -2326,25 +2326,13 @@ failed:
 	return ltk;
 }
 
-static GSList *get_ltk_info(GKeyFile *key_file, const char *peer)
+static GSList *get_ltk_info(GKeyFile *key_file, const char *peer,
+							uint8_t bdaddr_type)
 {
 	struct smp_ltk_info *ltk;
-	uint8_t bdaddr_type;
-	char *type = NULL;
 	GSList *l = NULL;
 
 	DBG("%s", peer);
-
-	type = g_key_file_get_string(key_file, "General", "AddressType", NULL);
-	if (!type)
-		goto failed;
-
-	if (g_str_equal(type, "public"))
-		bdaddr_type = BDADDR_LE_PUBLIC;
-	else if (g_str_equal(type, "static"))
-		bdaddr_type = BDADDR_LE_RANDOM;
-	else
-		goto failed;
 
 	ltk = get_ltk(key_file, peer, bdaddr_type, "LongTermKey");
 	if (ltk)
@@ -2356,8 +2344,6 @@ static GSList *get_ltk_info(GKeyFile *key_file, const char *peer)
 		l = g_slist_append(l, ltk);
 	}
 
-failed:
-	g_free(type);
 	return l;
 }
 
@@ -2543,6 +2529,27 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 						load_ltks_timeout, adapter);
 }
 
+static uint8_t get_le_addr_type(GKeyFile *keyfile)
+{
+	uint8_t addr_type;
+	char *type;
+
+	type = g_key_file_get_string(keyfile, "General", "AddressType", NULL);
+	if (!type)
+		return BDADDR_LE_PUBLIC;
+
+	if (g_str_equal(type, "public"))
+		addr_type = BDADDR_LE_PUBLIC;
+	else if (g_str_equal(type, "static"))
+		addr_type = BDADDR_LE_RANDOM;
+	else
+		addr_type = BDADDR_LE_PUBLIC;
+
+	g_free(type);
+
+	return addr_type;
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
@@ -2569,6 +2576,7 @@ static void load_devices(struct btd_adapter *adapter)
 		GKeyFile *key_file;
 		struct link_key_info *key_info;
 		GSList *list, *ltk_info;
+		uint8_t bdaddr_type;
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
 			continue;
@@ -2583,7 +2591,9 @@ static void load_devices(struct btd_adapter *adapter)
 		if (key_info)
 			keys = g_slist_append(keys, key_info);
 
-		ltk_info = get_ltk_info(key_file, entry->d_name);
+		bdaddr_type = get_le_addr_type(key_file);
+
+		ltk_info = get_ltk_info(key_file, entry->d_name, bdaddr_type);
 		ltks = g_slist_concat(ltks, ltk_info);
 
 		list = g_slist_find_custom(adapter->devices, entry->d_name,
