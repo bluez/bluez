@@ -5501,6 +5501,89 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 		bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
 }
 
+static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
+				uint8_t bdaddr_type, const unsigned char *key)
+{
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char *store_data;
+	char str[35];
+	size_t length = 0;
+	int i;
+
+	ba2str(&adapter->bdaddr, adapter_addr);
+	ba2str(peer, device_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+								device_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	str[0] = '0';
+	str[1] = 'x';
+	for (i = 0; i < 16; i++)
+		sprintf(str + 2 + (i * 2), "%2.2X", key[i]);
+
+	g_key_file_set_string(key_file, "IdentityResolvingKey", "Key", str);
+
+	create_file(filename, S_IRUSR | S_IWUSR);
+
+	store_data = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, store_data, length, NULL);
+	g_free(store_data);
+
+	g_key_file_free(key_file);
+}
+
+static void new_irk_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_new_irk *ev = param;
+	const struct mgmt_addr_info *addr = &ev->irk.addr;
+	const struct mgmt_irk_info *irk = &ev->irk;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	bool persistent;
+	char dst[18], rpa[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small New IRK event");
+		return;
+	}
+
+	ba2str(&addr->bdaddr, dst);
+	ba2str(&ev->rpa, rpa);
+
+	DBG("hci%u new IRK for %s RPA %s", adapter->dev_id, dst, rpa);
+
+	if (bacmp(&ev->rpa, BDADDR_ANY))
+		device = btd_adapter_get_device(adapter, &ev->rpa,
+							BDADDR_LE_RANDOM);
+	else
+		device = btd_adapter_get_device(adapter, &addr->bdaddr,
+								addr->type);
+
+	if (!device) {
+		error("Unable to get device object for %s", dst);
+		return;
+	}
+
+	device_update_addr(device, &addr->bdaddr, addr->type);
+
+	persistent = !!ev->store_hint;
+	if (!persistent)
+		return;
+
+	store_irk(adapter, &addr->bdaddr, addr->type, irk->val);
+
+	if (device_is_temporary(device))
+		btd_device_set_temporary(device, FALSE);
+}
+
 int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 {
 	struct mgmt_cp_set_io_capability cp;
@@ -6082,6 +6165,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_LONG_TERM_KEY,
 						adapter->dev_id,
 						new_long_term_key_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_NEW_IRK,
+						adapter->dev_id,
+						new_irk_callback,
 						adapter, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_BLOCKED,
