@@ -98,6 +98,10 @@ struct avrcp {
 	const struct avrcp_control_handler *control_handlers;
 	void *control_data;
 	unsigned int control_id;
+
+	const struct avrcp_passthrough_handler *passthrough_handlers;
+	void *passthrough_data;
+	unsigned int passthrough_id;
 };
 
 void avrcp_shutdown(struct avrcp *session)
@@ -106,6 +110,9 @@ void avrcp_shutdown(struct avrcp *session)
 		if (session->control_id > 0)
 			avctp_unregister_pdu_handler(session->conn,
 							session->control_id);
+		if (session->passthrough_id > 0)
+			avctp_unregister_passthrough_handler(session->conn,
+						session->passthrough_id);
 		avctp_shutdown(session->conn);
 	}
 
@@ -168,6 +175,31 @@ reject:
 	return AVRCP_HEADER_LENGTH + 1;
 }
 
+static bool handle_passthrough_pdu(struct avctp *conn, uint8_t op,
+						bool pressed, void *user_data)
+{
+	struct avrcp *session = user_data;
+	const struct avrcp_passthrough_handler *handler;
+
+	if (!session->passthrough_handlers)
+		return false;
+
+	for (handler = session->passthrough_handlers; handler->func;
+								handler++) {
+		if (handler->op == op)
+			break;
+	}
+
+	if (handler->func == NULL)
+		return false;
+
+	/* Do not trigger handler on release */
+	if (!pressed)
+		return true;
+
+	return handler->func(session);
+}
+
 struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 {
 	struct avrcp *session;
@@ -180,6 +212,10 @@ struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 		return NULL;
 	}
 
+	session->passthrough_id = avctp_register_passthrough_handler(
+							session->conn,
+							handle_passthrough_pdu,
+							session);
 	session->control_id = avctp_register_pdu_handler(session->conn,
 							AVC_OP_VENDORDEP,
 							handle_vendordep_pdu,
@@ -200,6 +236,14 @@ void avrcp_set_control_handlers(struct avrcp *session,
 {
 	session->control_handlers = handlers;
 	session->control_data = user_data;
+}
+
+void avrcp_set_passthrough_handlers(struct avrcp *session,
+			const struct avrcp_passthrough_handler *handlers,
+			void *user_data)
+{
+	session->passthrough_handlers = handlers;
+	session->passthrough_data = user_data;
 }
 
 int avrcp_init_uinput(struct avrcp *session, const char *name,

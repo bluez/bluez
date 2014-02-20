@@ -55,6 +55,11 @@ struct avrcp_control_handler {
 			uint16_t *params_len, uint8_t *params, void *user_data);
 };
 
+struct avrcp_passthrough_handler {
+	uint8_t op;
+	bool (*func) (struct avrcp *session);
+};
+
 typedef void (*avrcp_destroy_cb_t) (void *user_data);
 
 struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
@@ -64,5 +69,8 @@ void avrcp_set_destroy_cb(struct avrcp *session, avrcp_destroy_cb_t cb,
 void avrcp_set_control_handlers(struct avrcp *session,
 				const struct avrcp_control_handler *handlers,
 				void *user_data);
+void avrcp_set_passthrough_handlers(struct avrcp *session,
+			const struct avrcp_passthrough_handler *handlers,
+			void *user_data);
 int avrcp_init_uinput(struct avrcp *session, const char *name,
 							const char *address);
