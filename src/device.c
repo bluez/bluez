@@ -253,6 +253,55 @@ static GSList *find_service_with_state(GSList *list,
 	return NULL;
 }
 
+static void update_technologies(GKeyFile *file, struct btd_device *dev)
+{
+	bool bredr = dev->bredr;
+	bool le = dev->le;
+	const char *list[2];
+	char **old_list;
+	size_t i, len;
+
+	/* It's theoretically possible that we've known the same
+	 * physical device by its Resolvable Private Address over LE and
+	 * its public address over BR/EDR, thereby creating two
+	 * btd_device objects which still share the same storage.
+	 * Therefore, once merging information into storage we need to
+	 * make sure that we don't clear the other supported technology.
+	 */
+	old_list = g_key_file_get_string_list(file, "General",
+						"SupportedTechnologies",
+						&len, NULL);
+	for (i = 0; i < len; i++) {
+		if (!strcmp(old_list[i], "BR/EDR"))
+			bredr = true;
+		else if (!strcmp(old_list[i], "LE"))
+			le = true;
+	}
+
+	g_strfreev(old_list);
+
+	len = 0;
+
+	if (bredr)
+		list[len++] = "BR/EDR";
+
+	if (le) {
+		const char *type;
+
+		if (dev->bdaddr_type == BDADDR_LE_PUBLIC)
+			type = "public";
+		else
+			type = "static";
+
+		g_key_file_set_string(file, "General", "AddressType", type);
+
+		list[len++] = "LE";
+	}
+
+	g_key_file_set_string_list(file, "General", "SupportedTechnologies",
+								list, len);
+}
+
 static gboolean store_device_info_cb(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -298,34 +347,7 @@ static gboolean store_device_info_cb(gpointer user_data)
 		g_key_file_remove_key(key_file, "General", "Appearance", NULL);
 	}
 
-	switch (device->bdaddr_type) {
-	case BDADDR_BREDR:
-		g_key_file_set_string(key_file, "General",
-					"SupportedTechnologies", "BR/EDR");
-		g_key_file_remove_key(key_file, "General",
-					"AddressType", NULL);
-		break;
-
-	case BDADDR_LE_PUBLIC:
-		g_key_file_set_string(key_file, "General",
-					"SupportedTechnologies", "LE");
-		g_key_file_set_string(key_file, "General",
-					"AddressType", "public");
-		break;
-
-	case BDADDR_LE_RANDOM:
-		g_key_file_set_string(key_file, "General",
-					"SupportedTechnologies", "LE");
-		g_key_file_set_string(key_file, "General",
-					"AddressType", "static");
-		break;
-
-	default:
-		g_key_file_remove_key(key_file, "General",
-					"SupportedTechnologies", NULL);
-		g_key_file_remove_key(key_file, "General",
-					"AddressType", NULL);
-	}
+	update_technologies(key_file, device);
 
 	g_key_file_set_boolean(key_file, "General", "Trusted",
 							device->trusted);
