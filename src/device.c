@@ -1667,11 +1667,17 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	 * channel first and only then start pairing (there's code for
 	 * this in the ATT connect callback)
 	 */
-	if (device->le && !btd_device_is_connected(device))
-		err = device_connect_le(device);
-	else
+	if (device->le) {
+		if (!btd_device_is_connected(device))
+			err = device_connect_le(device);
+		else
+			err = adapter_create_bonding(adapter, &device->bdaddr,
+							device->bdaddr_type,
+							io_cap);
+	} else {
 		err = adapter_create_bonding(adapter, &device->bdaddr,
-						device->bdaddr_type, io_cap);
+							BDADDR_BREDR, io_cap);
+	}
 
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
