@@ -104,6 +104,24 @@ static uint8_t mgmt_revision = 0;
 
 static GSList *adapter_drivers = NULL;
 
+struct link_key_info {
+	bdaddr_t bdaddr;
+	unsigned char key[16];
+	uint8_t type;
+	uint8_t pin_len;
+};
+
+struct smp_ltk_info {
+	bdaddr_t bdaddr;
+	uint8_t bdaddr_type;
+	uint8_t authenticated;
+	bool master;
+	uint8_t enc_size;
+	uint16_t ediv;
+	uint8_t rand[8];
+	uint8_t val[16];
+};
+
 struct watch_client {
 	struct btd_adapter *adapter;
 	char *owner;
