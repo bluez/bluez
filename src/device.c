@@ -538,7 +538,7 @@ static void device_free(gpointer user_data)
 	g_free(device);
 }
 
-gboolean device_is_bredr(struct btd_device *device)
+static gboolean device_is_bredr(struct btd_device *device)
 {
 	return (device->bdaddr_type == BDADDR_BREDR);
 }
