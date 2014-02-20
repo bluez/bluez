@@ -122,6 +122,12 @@ struct smp_ltk_info {
 	uint8_t val[16];
 };
 
+struct irk_info {
+	bdaddr_t bdaddr;
+	uint8_t bdaddr_type;
+	uint8_t val[16];
+};
+
 struct watch_client {
 	struct btd_adapter *adapter;
 	char *owner;
@@ -2347,6 +2353,27 @@ static GSList *get_ltk_info(GKeyFile *key_file, const char *peer,
 	return l;
 }
 
+static struct irk_info *get_irk_info(GKeyFile *key_file, const char *peer,
+							uint8_t bdaddr_type)
+{
+	struct irk_info *irk;
+	char *str;
+
+	str = g_key_file_get_string(key_file, "IdentityResolvingKey", "Key", NULL);
+	if (!str || strlen(str) != 34)
+		return NULL;
+
+	irk = g_new0(struct irk_info, 1);
+
+	str2ba(peer, &irk->bdaddr);
+	irk->bdaddr_type = bdaddr_type;
+	str2buf(&str[2], irk->val, sizeof(irk->val));
+
+	g_free(str);
+
+	return irk;
+}
+
 static void load_link_keys_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2529,6 +2556,69 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 						load_ltks_timeout, adapter);
 }
 
+static void load_irks_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status == MGMT_STATUS_UNKNOWN_COMMAND) {
+		info("Load IRKs failed: Kernel doesn't support LE Privacy");
+		return;
+	}
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to load IRKs for hci%u: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("IRKs loaded for hci%u", adapter->dev_id);
+}
+
+static void load_irks(struct btd_adapter *adapter, GSList *irks)
+{
+	struct mgmt_cp_load_irks *cp;
+	struct mgmt_irk_info *irk;
+	size_t irk_count, cp_size;
+	unsigned int id;
+	GSList *l;
+
+	irk_count = g_slist_length(irks);
+
+	DBG("hci%u irks %zu", adapter->dev_id, irk_count);
+
+	cp_size = sizeof(*cp) + (irk_count * sizeof(*irk));
+
+	cp = g_try_malloc0(cp_size);
+	if (cp == NULL) {
+		error("No memory for IRKs for hci%u", adapter->dev_id);
+		return;
+	}
+
+	/*
+	 * Even if the list of stored keys is empty, it is important to
+	 * load an empty list into the kernel. That way we tell the
+	 * kernel that we are able to handle New IRK events.
+	 */
+	cp->irk_count = htobs(irk_count);
+
+	for (l = irks, irk = cp->irks; l != NULL; l = g_slist_next(l), irk++) {
+		struct irk_info *info = l->data;
+
+		bacpy(&irk->addr.bdaddr, &info->bdaddr);
+		irk->addr.type = info->bdaddr_type;
+		memcpy(irk->val, info->val, sizeof(irk->val));
+	}
+
+	id = mgmt_send(adapter->mgmt, MGMT_OP_LOAD_IRKS, adapter->dev_id,
+			cp_size, cp, load_irks_complete, adapter, NULL);
+
+	g_free(cp);
+
+	if (id == 0)
+		error("Failed to IRKs for hci%u", adapter->dev_id);
+}
+
 static uint8_t get_le_addr_type(GKeyFile *keyfile)
 {
 	uint8_t addr_type;
@@ -2556,6 +2646,7 @@ static void load_devices(struct btd_adapter *adapter)
 	char srcaddr[18];
 	GSList *keys = NULL;
 	GSList *ltks = NULL;
+	GSList *irks = NULL;
 	DIR *dir;
 	struct dirent *entry;
 
@@ -2576,6 +2667,7 @@ static void load_devices(struct btd_adapter *adapter)
 		GKeyFile *key_file;
 		struct link_key_info *key_info;
 		GSList *list, *ltk_info;
+		struct irk_info *irk_info;
 		uint8_t bdaddr_type;
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
@@ -2595,6 +2687,10 @@ static void load_devices(struct btd_adapter *adapter)
 
 		ltk_info = get_ltk_info(key_file, entry->d_name, bdaddr_type);
 		ltks = g_slist_concat(ltks, ltk_info);
+
+		irk_info = get_irk_info(key_file, entry->d_name, bdaddr_type);
+		if (irk_info)
+			irks = g_slist_append(irks, irk_info);
 
 		list = g_slist_find_custom(adapter->devices, entry->d_name,
 							device_address_cmp);
@@ -2634,6 +2730,8 @@ free:
 
 	load_ltks(adapter, ltks);
 	g_slist_free_full(ltks, g_free);
+	load_irks(adapter, irks);
+	g_slist_free_full(irks, g_free);
 }
 
 int btd_adapter_block_address(struct btd_adapter *adapter,
