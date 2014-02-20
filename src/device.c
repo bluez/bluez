@@ -540,11 +540,6 @@ static void device_free(gpointer user_data)
 	g_free(device);
 }
 
-gboolean device_is_le(struct btd_device *device)
-{
-	return (device->bdaddr_type != BDADDR_BREDR);
-}
-
 gboolean device_is_paired(struct btd_device *device)
 {
 	return device->paired;
@@ -1351,7 +1346,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *dev = user_data;
 
-	if (device_is_le(dev)) {
+	if (dev->le) {
 		int err;
 
 		if (btd_device_is_connected(dev))
@@ -1650,7 +1645,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	 * channel first and only then start pairing (there's code for
 	 * this in the ATT connect callback)
 	 */
-	if (device_is_le(device) && !btd_device_is_connected(device))
+	if (device->le && !btd_device_is_connected(device))
 		err = device_connect_le(device);
 	else
 		err = adapter_create_bonding(adapter, &device->bdaddr,
