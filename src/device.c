@@ -1918,8 +1918,6 @@ static void load_info(struct btd_device *device, const char *local,
 	char **uuids;
 	int source, vendor, product, version;
 	char **techno, **t;
-	gboolean bredr = FALSE;
-	gboolean le = FALSE;
 
 	/* Load device name from storage info file, if that fails fall back to
 	 * the cache.
@@ -1965,18 +1963,16 @@ static void load_info(struct btd_device *device, const char *local,
 
 	for (t = techno; *t; t++) {
 		if (g_str_equal(*t, "BR/EDR"))
-			bredr = TRUE;
+			device->bredr = true;
 		else if (g_str_equal(*t, "LE"))
-			le = TRUE;
+			device->le = true;
 		else
 			error("Unknown device technology");
 	}
 
-	if (bredr && le) {
-		/* TODO: Add correct type for dual mode device */
-	} else if (bredr) {
+	if (!device->le) {
 		device->bdaddr_type = BDADDR_BREDR;
-	} else if (le) {
+	} else {
 		str = g_key_file_get_string(key_file, "General",
 						"AddressType", NULL);
 
