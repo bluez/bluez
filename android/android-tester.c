@@ -695,14 +695,27 @@ static void remote_setprop_disc_state_changed_cb(bt_discovery_state_t state)
 	}
 }
 
-static void discovery_state_changed_cb(bt_discovery_state_t state)
+static gboolean discovery_state_changed(gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
+	struct bt_cb_data *cb_data = user_data;
 
-	if (test && test->expected_hal_cb.discovery_state_changed_cb) {
-		test->expected_hal_cb.discovery_state_changed_cb(state);
-	}
+	if (test && test->expected_hal_cb.discovery_state_changed_cb)
+		test->expected_hal_cb.discovery_state_changed_cb(
+								cb_data->state);
+
+	g_free(cb_data);
+
+	return FALSE;
+}
+
+static void discovery_state_changed_cb(bt_discovery_state_t state)
+{
+	struct bt_cb_data *cb_data = g_new0(struct bt_cb_data, 1);
+
+	cb_data->state = state;
+	g_idle_add(discovery_state_changed, cb_data);
 }
 
 static bt_property_t *copy_properties(int num_properties,
