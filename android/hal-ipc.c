@@ -159,8 +159,12 @@ static void *notification_handler(void *data)
 
 		/* socket was shutdown */
 		if (ret == 0) {
-			if (cmd_sk == -1)
+			pthread_mutex_lock(&cmd_sk_mutex);
+			if (cmd_sk == -1) {
+				pthread_mutex_unlock(&cmd_sk_mutex);
 				break;
+			}
+			pthread_mutex_unlock(&cmd_sk_mutex);
 
 			error("Notification socket closed, aborting");
 			exit(EXIT_FAILURE);
@@ -299,8 +303,10 @@ bool hal_ipc_init(void)
 
 void hal_ipc_cleanup(void)
 {
+	pthread_mutex_lock(&cmd_sk_mutex);
 	close(cmd_sk);
 	cmd_sk = -1;
+	pthread_mutex_unlock(&cmd_sk_mutex);
 
 	shutdown(notif_sk, SHUT_RD);
 
