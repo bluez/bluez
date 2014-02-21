@@ -127,6 +127,18 @@ struct bt_cb_data {
 	bt_property_t *props;
 };
 
+struct hh_cb_data {
+	bt_bdaddr_t bdaddr;
+
+	bthh_status_t status;
+	bthh_hid_info_t hid_info;
+	bthh_protocol_mode_t mode;
+	bthh_connection_state_t state;
+
+	uint8_t *report;
+	int size;
+};
+
 static char exec_dir[PATH_MAX + 1];
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -3214,19 +3226,34 @@ clean:
 		close(sock_fd);
 }
 
-static void hidhost_connection_state_cb(bt_bdaddr_t *bd_addr,
-						bthh_connection_state_t state)
+static gboolean hidhost_connection_state(gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct hidhost_generic_data *test = data->test_data;
+	struct hh_cb_data *cb_data = user_data;
 
 	data->cb_count++;
 
-	if (state == BTHH_CONN_STATE_CONNECTED)
+	if (cb_data->state == BTHH_CONN_STATE_CONNECTED)
 		tester_setup_complete();
 
 	if (test && test->expected_hal_cb.connection_state_cb)
-		test->expected_hal_cb.connection_state_cb(bd_addr, state);
+		test->expected_hal_cb.connection_state_cb(&cb_data->bdaddr,
+								cb_data->state);
+
+	g_free(cb_data);
+	return FALSE;
+}
+
+static void hidhost_connection_state_cb(bt_bdaddr_t *bd_addr,
+						bthh_connection_state_t state)
+{
+	struct hh_cb_data *cb_data = g_new0(struct hh_cb_data, 1);
+
+	cb_data->state = state;
+	cb_data->bdaddr = *bd_addr;
+
+	g_idle_add(hidhost_connection_state, cb_data);
 }
 
 static void hidhost_virual_unplug_cb(bt_bdaddr_t *bd_addr, bthh_status_t status)
