@@ -284,6 +284,15 @@ unit_test_avctp_SOURCES = unit/test-avctp.c \
 				android/avctp.c android/avctp.h
 unit_test_avctp_LDADD = @GLIB_LIBS@
 
+unit_tests += unit/test-avrcp
+
+unit_test_avrcp_SOURCES = unit/test-avrcp.c \
+				src/shared/util.h src/shared/util.c \
+				src/log.h src/log.c \
+				android/avctp.c android/avctp.h \
+				android/avrcp-lib.c android/avrcp-lib.h
+unit_test_avrcp_LDADD = @GLIB_LIBS@ lib/libbluetooth-internal.la
+
 unit_tests += unit/test-gdbus-client
 
 unit_test_gdbus_client_SOURCES = unit/test-gdbus-client.c
