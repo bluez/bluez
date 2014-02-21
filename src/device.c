@@ -274,37 +274,13 @@ static GSList *find_service_with_state(GSList *list,
 
 static void update_technologies(GKeyFile *file, struct btd_device *dev)
 {
-	bool bredr = dev->bredr;
-	bool le = dev->le;
 	const char *list[2];
-	char **old_list;
-	size_t i, len;
+	size_t len = 0;
 
-	/* It's theoretically possible that we've known the same
-	 * physical device by its Resolvable Private Address over LE and
-	 * its public address over BR/EDR, thereby creating two
-	 * btd_device objects which still share the same storage.
-	 * Therefore, once merging information into storage we need to
-	 * make sure that we don't clear the other supported technology.
-	 */
-	old_list = g_key_file_get_string_list(file, "General",
-						"SupportedTechnologies",
-						&len, NULL);
-	for (i = 0; i < len; i++) {
-		if (!strcmp(old_list[i], "BR/EDR"))
-			bredr = true;
-		else if (!strcmp(old_list[i], "LE"))
-			le = true;
-	}
-
-	g_strfreev(old_list);
-
-	len = 0;
-
-	if (bredr)
+	if (dev->bredr)
 		list[len++] = "BR/EDR";
 
-	if (le) {
+	if (dev->le) {
 		const char *type;
 
 		if (dev->bdaddr_type == BDADDR_LE_PUBLIC)
@@ -2475,6 +2451,41 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
 		device->bredr_seen = time(NULL);
 	else
 		device->le_seen = time(NULL);
+}
+
+/* It is possible that we have two device objects for the same device in
+ * case it has first been discovered over BR/EDR and has a private
+ * address when discovered over LE for the first time. In such a case we
+ * need to inherit critical values from the duplicate so that we don't
+ * ovewrite them when writing to storage. The next time bluetoothd
+ * starts the device will show up as a single instance.
+ */
+void device_merge_duplicate(struct btd_device *dev, struct btd_device *dup)
+{
+	GSList *l;
+
+	DBG("");
+
+	dev->bredr = dup->bredr;
+
+	dev->trusted = dup->trusted;
+	dev->blocked = dup->blocked;
+
+	for (l = dup->uuids; l; l = g_slist_next(l))
+		dev->uuids = g_slist_append(dev->uuids, g_strdup(l->data));
+
+	if (dev->name[0] == '\0')
+		strcpy(dev->name, dup->name);
+
+	if (!dev->alias)
+		dev->alias = g_strdup(dup->alias);
+
+	dev->class = dup->class;
+
+	dev->vendor_src = dup->vendor_src;
+	dev->vendor = dup->vendor;
+	dev->product = dup->product;
+	dev->version = dup->version;
 }
 
 uint32_t btd_device_get_class(struct btd_device *device)

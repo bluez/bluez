@@ -5662,7 +5662,7 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 	const struct mgmt_addr_info *addr = &ev->irk.addr;
 	const struct mgmt_irk_info *irk = &ev->irk;
 	struct btd_adapter *adapter = user_data;
-	struct btd_device *device;
+	struct btd_device *device, *duplicate;
 	bool persistent;
 	char dst[18], rpa[18];
 
@@ -5676,12 +5676,17 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u new IRK for %s RPA %s", adapter->dev_id, dst, rpa);
 
-	if (bacmp(&ev->rpa, BDADDR_ANY))
+	if (bacmp(&ev->rpa, BDADDR_ANY)) {
 		device = btd_adapter_get_device(adapter, &ev->rpa,
 							BDADDR_LE_RANDOM);
-	else
+		duplicate = btd_adapter_find_device(adapter, &addr->bdaddr);
+		if (duplicate == device)
+			duplicate = NULL;
+	} else {
 		device = btd_adapter_get_device(adapter, &addr->bdaddr,
 								addr->type);
+		duplicate = NULL;
+	}
 
 	if (!device) {
 		error("Unable to get device object for %s", dst);
@@ -5689,6 +5694,9 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 	}
 
 	device_update_addr(device, &addr->bdaddr, addr->type);
+
+	if (duplicate)
+		device_merge_duplicate(device, duplicate);
 
 	persistent = !!ev->store_hint;
 	if (!persistent)
