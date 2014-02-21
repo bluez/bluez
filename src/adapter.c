@@ -4298,6 +4298,8 @@ static void update_found_devices(struct btd_adapter *adapter,
 		return;
 	}
 
+	device_update_last_seen(dev, bdaddr_type);
+
 	if (bdaddr_type != BDADDR_BREDR && !(eir_data.flags & EIR_BREDR_UNSUP))
 		device_set_bredr_support(dev, true);
 

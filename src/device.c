@@ -198,6 +198,9 @@ struct btd_device {
 
 	sdp_list_t	*tmp_records;
 
+	time_t		bredr_seen;
+	time_t		le_seen;
+
 	gboolean	trusted;
 	gboolean	paired;
 	gboolean	blocked;
@@ -2346,6 +2349,14 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 void device_set_bredr_support(struct btd_device *device, bool bredr)
 {
 	device->bredr = bredr;
+}
+
+void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
+{
+	if (bdaddr_type == BDADDR_BREDR)
+		device->bredr_seen = time(NULL);
+	else
+		device->le_seen = time(NULL);
 }
 
 uint32_t btd_device_get_class(struct btd_device *device)
