@@ -143,6 +143,22 @@ struct hh_cb_data {
 
 static char exec_dir[PATH_MAX + 1];
 
+static gint scheduled_cbacks_num = 0;
+
+static gboolean check_callbacks_called(gpointer user_data)
+{
+	/* Wait for all callbacks scheduled in current test context to execute
+	 * in main loop. This will avoid late callback calls after test case has
+	 * already failed or timed out.
+	 */
+
+	if (g_atomic_int_get(&scheduled_cbacks_num) == 0) {
+		tester_teardown_complete();
+		return FALSE;
+	}
+
+	return TRUE;
+}
 static void check_daemon_term(void)
 {
 	int status;
@@ -159,7 +175,7 @@ static void check_daemon_term(void)
 	data->bluetoothd_pid = 0;
 
 	if (WIFEXITED(status) && (WEXITSTATUS(status) == EXIT_SUCCESS)) {
-		tester_teardown_complete();
+		g_idle_add(check_callbacks_called, NULL);
 		return;
 	}
 
@@ -720,6 +736,8 @@ static gboolean adapter_state_changed(gpointer user_data)
 
 cleanup:
 	g_free(cb_data);
+
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -729,6 +747,7 @@ static void adapter_state_changed_cb(bt_state_t state)
 
 	cb_data->state = state;
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(adapter_state_changed, cb_data);
 }
 
@@ -825,6 +844,7 @@ static gboolean discovery_state_changed(gpointer user_data)
 
 	g_free(cb_data);
 
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -833,6 +853,7 @@ static void discovery_state_changed_cb(bt_discovery_state_t state)
 	struct bt_cb_data *cb_data = g_new0(struct bt_cb_data, 1);
 
 	cb_data->state = state;
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(discovery_state_changed, cb_data);
 }
 
@@ -1011,6 +1032,7 @@ static gboolean device_found(gpointer user_data)
 	free_properties(cb_data->num, cb_data->props);
 	g_free(cb_data);
 
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -1021,6 +1043,7 @@ static void device_found_cb(int num_properties, bt_property_t *properties)
 	cb_data->num = num_properties;
 	cb_data->props = copy_properties(num_properties, properties);
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(device_found, cb_data);
 }
 
@@ -1046,6 +1069,7 @@ static gboolean adapter_properties(gpointer user_data)
 	free_properties(cb_data->num, cb_data->props);
 	g_free(cb_data);
 
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -1058,6 +1082,7 @@ static void adapter_properties_cb(bt_status_t status, int num_properties,
 	cb_data->num = num_properties;
 	cb_data->props = copy_properties(num_properties, properties);
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(adapter_properties, cb_data);
 }
 
@@ -1109,6 +1134,7 @@ static gboolean remote_device_properties(gpointer user_data)
 	free_properties(cb_data->num, cb_data->props);
 	g_free(cb_data);
 
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -1123,6 +1149,7 @@ static void remote_device_properties_cb(bt_status_t status,
 	cb_data->num = num_properties;
 	cb_data->props = copy_properties(num_properties, properties);
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(remote_device_properties, cb_data);
 }
 
@@ -2901,6 +2928,7 @@ static gboolean adapter_socket_state_changed(gpointer user_data)
 
 	g_free(cb_data);
 
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -2910,6 +2938,7 @@ static void adapter_socket_state_changed_cb(bt_state_t state)
 
 	cb_data->state = state;
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(adapter_socket_state_changed, cb_data);
 }
 
@@ -3332,6 +3361,8 @@ static gboolean hidhost_connection_state(gpointer user_data)
 								cb_data->state);
 
 	g_free(cb_data);
+
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -3343,6 +3374,7 @@ static void hidhost_connection_state_cb(bt_bdaddr_t *bd_addr,
 	cb_data->state = state;
 	cb_data->bdaddr = *bd_addr;
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(hidhost_connection_state, cb_data);
 }
 
@@ -3359,6 +3391,8 @@ static gboolean hidhost_virual_unplug(gpointer user_data)
 							cb_data->status);
 
 	g_free(cb_data);
+
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -3369,6 +3403,7 @@ static void hidhost_virual_unplug_cb(bt_bdaddr_t *bd_addr, bthh_status_t status)
 	cb_data->bdaddr = *bd_addr;
 	cb_data->status = status;
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(hidhost_virual_unplug, cb_data);
 }
 
@@ -3385,6 +3420,8 @@ static gboolean hidhost_hid_info(gpointer user_data)
 							cb_data->hid_info);
 
 	g_free(cb_data);
+
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -3395,6 +3432,7 @@ static void hidhost_hid_info_cb(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid)
 	cb_data->bdaddr = *bd_addr;
 	cb_data->hid_info = hid;
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(hidhost_hid_info, cb_data);
 }
 
@@ -3411,6 +3449,8 @@ static gboolean hidhost_protocol_mode(gpointer user_data)
 						cb_data->status, cb_data->mode);
 
 	g_free(cb_data);
+
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -3424,6 +3464,7 @@ static void hidhost_protocol_mode_cb(bt_bdaddr_t *bd_addr,
 	cb_data->status = status;
 	cb_data->mode = mode;
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(hidhost_protocol_mode, cb_data);
 }
 
@@ -3441,6 +3482,8 @@ static gboolean hidhost_get_report(gpointer user_data)
 
 	g_free(cb_data->report);
 	g_free(cb_data);
+
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 	return FALSE;
 }
 
@@ -3454,6 +3497,7 @@ static void hidhost_get_report_cb(bt_bdaddr_t *bd_addr, bthh_status_t status,
 	cb_data->report = g_memdup(report, size);
 	cb_data->size = size;
 
+	g_atomic_int_inc(&scheduled_cbacks_num);
 	g_idle_add(hidhost_get_report, cb_data);
 }
 
