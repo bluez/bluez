@@ -2716,7 +2716,10 @@ static void load_devices(struct btd_adapter *adapter)
 device_exist:
 		if (key_info || ltk_info) {
 			device_set_paired(device, TRUE);
-			device_set_bonded(device, TRUE);
+			if (key_info)
+				device_set_bonded(device, BDADDR_BREDR);
+			if (ltk_info)
+				device_set_bonded(device, bdaddr_type);
 		}
 
 free:
@@ -2852,14 +2855,15 @@ void adapter_remove_profile(struct btd_adapter *adapter, gpointer p)
 }
 
 static void adapter_add_connection(struct btd_adapter *adapter,
-						struct btd_device *device)
+						struct btd_device *device,
+						uint8_t bdaddr_type)
 {
+	device_add_connection(device, bdaddr_type);
+
 	if (g_slist_find(adapter->connections, device)) {
 		error("Device is already marked as connected");
 		return;
 	}
-
-	device_add_connection(device);
 
 	adapter->connections = g_slist_append(adapter->connections, device);
 }
@@ -2903,7 +2907,7 @@ static void get_connections_complete(uint8_t status, uint16_t length,
 		device = btd_adapter_get_device(adapter, &addr->bdaddr,
 								addr->type);
 		if (device)
-			adapter_add_connection(adapter, device);
+			adapter_add_connection(adapter, device, addr->type);
 	}
 }
 
@@ -4432,7 +4436,8 @@ struct agent *adapter_get_agent(struct btd_adapter *adapter)
 }
 
 static void adapter_remove_connection(struct btd_adapter *adapter,
-						struct btd_device *device)
+						struct btd_device *device,
+						uint8_t bdaddr_type)
 {
 	DBG("");
 
@@ -4441,12 +4446,16 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 		return;
 	}
 
-	device_remove_connection(device);
-
-	adapter->connections = g_slist_remove(adapter->connections, device);
+	device_remove_connection(device, bdaddr_type);
 
 	if (device_is_authenticating(device))
 		device_cancel_authentication(device, TRUE);
+
+	/* If another bearer is still connected */
+	if (btd_device_is_connected(device))
+		return;
+
+	adapter->connections = g_slist_remove(adapter->connections, device);
 
 	if (device_is_temporary(device) && !device_is_retrying(device)) {
 		const char *path = device_get_path(device);
@@ -4479,7 +4488,11 @@ static void adapter_stop(struct btd_adapter *adapter)
 
 	while (adapter->connections) {
 		struct btd_device *device = adapter->connections->data;
-		adapter_remove_connection(adapter, device);
+		uint8_t addr_type = btd_device_get_bdaddr_type(device);
+
+		adapter_remove_connection(adapter, device, BDADDR_BREDR);
+		if (addr_type != BDADDR_BREDR)
+			adapter_remove_connection(adapter, device, addr_type);
 	}
 
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
@@ -5151,7 +5164,7 @@ static void bonding_complete(struct btd_adapter *adapter,
 		device = btd_adapter_find_device(adapter, bdaddr);
 
 	if (device != NULL)
-		device_bonding_complete(device, status);
+		device_bonding_complete(device, addr_type, status);
 
 	resume_discovery(adapter);
 
@@ -5336,7 +5349,7 @@ static void dev_disconnected(struct btd_adapter *adapter,
 
 	device = btd_adapter_find_device(adapter, &addr->bdaddr);
 	if (device)
-		adapter_remove_connection(adapter, device);
+		adapter_remove_connection(adapter, device, addr->type);
 
 	bonding_attempt_complete(adapter, &addr->bdaddr, addr->type,
 						MGMT_STATUS_DISCONNECTED);
@@ -5475,7 +5488,7 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 		store_link_key(adapter, device, key->val, key->type,
 								key->pin_len);
 
-		device_set_bonded(device, TRUE);
+		device_set_bonded(device, BDADDR_BREDR);
 
 		if (device_is_temporary(device))
 			btd_device_set_temporary(device, FALSE);
@@ -5594,7 +5607,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 					key->type, key->enc_size,
 					key->ediv, key->rand);
 
-		device_set_bonded(device, TRUE);
+		device_set_bonded(device, addr->type);
 
 		if (device_is_temporary(device))
 			btd_device_set_temporary(device, FALSE);
@@ -6027,7 +6040,7 @@ static void connected_callback(uint16_t index, uint16_t length,
 	if (eir_data.class != 0)
 		device_set_class(device, eir_data.class);
 
-	adapter_add_connection(adapter, device);
+	adapter_add_connection(adapter, device, ev->addr.type);
 
 	if (eir_data.name != NULL) {
 		device_store_cached_name(device, eir_data.name);

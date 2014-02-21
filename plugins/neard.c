@@ -327,7 +327,7 @@ static int check_device(struct btd_device *device)
 		return -ENOENT;
 
 	/* If already paired */
-	if (device_is_paired(device)) {
+	if (device_is_paired(device, BDADDR_BREDR)) {
 		DBG("already paired");
 		return -EALREADY;
 	}

@@ -1115,6 +1115,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 	struct gatt_channel *channel;
 	GIOChannel *io;
 	GError *gerr = NULL;
+	uint8_t bdaddr_type;
 	uint16_t cid;
 	guint mtu = 0;
 
@@ -1125,6 +1126,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 	bt_io_get(io, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
+			BT_IO_OPT_DEST_TYPE, &bdaddr_type,
 			BT_IO_OPT_CID, &cid,
 			BT_IO_OPT_IMTU, &mtu,
 			BT_IO_OPT_INVALID);
@@ -1154,7 +1156,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 		return 0;
 	}
 
-	if (device_is_bonded(device) == FALSE) {
+	if (!device_is_bonded(device, bdaddr_type)) {
 		char *filename;
 
 		filename = btd_device_get_storage_path(device, "ccc");

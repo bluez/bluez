@@ -177,6 +177,7 @@ done:
 
 static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
+	uint8_t bdaddr_type;
 	struct gas *gas = user_data;
 	uint16_t start, end, olen;
 	size_t plen;
@@ -197,7 +198,8 @@ static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	olen = enc_confirmation(opdu, plen);
 	g_attrib_send(gas->attrib, 0, opdu, olen, NULL, NULL, NULL);
 
-	if (device_is_bonded(gas->device) == FALSE) {
+	bdaddr_type = btd_device_get_bdaddr_type(gas->device);
+	if (!device_is_bonded(gas->device, bdaddr_type)) {
 		DBG("Ignoring Service Changed: device is not bonded");
 		return;
 	}
