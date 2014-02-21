@@ -2024,6 +2024,7 @@ static void setup_base(const void *test_data)
 	if (status != BT_STATUS_SUCCESS) {
 		data->if_bluetooth = NULL;
 		tester_setup_failed();
+		return;
 	}
 
 	tester_setup_complete();
