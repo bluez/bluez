@@ -2782,9 +2782,11 @@ static void test_dev_setprop_disctimeout_fail(const void *test_data)
 }
 /* Test Socket HAL */
 
-static void adapter_socket_state_changed_cb(bt_state_t state)
+static gboolean adapter_socket_state_changed(gpointer user_data)
 {
-	switch (state) {
+	struct bt_cb_data *cb_data = user_data;
+
+	switch (cb_data->state) {
 	case BT_STATE_ON:
 		setup_powered_emulated_remote();
 		break;
@@ -2794,6 +2796,19 @@ static void adapter_socket_state_changed_cb(bt_state_t state)
 	default:
 		break;
 	}
+
+	g_free(cb_data);
+
+	return FALSE;
+}
+
+static void adapter_socket_state_changed_cb(bt_state_t state)
+{
+	struct bt_cb_data *cb_data = g_new0(struct bt_cb_data, 1);
+
+	cb_data->state = state;
+
+	g_idle_add(adapter_socket_state_changed, cb_data);
 }
 
 const bt_bdaddr_t bdaddr_dummy = {
