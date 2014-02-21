@@ -3293,17 +3293,33 @@ static void hidhost_hid_info_cb(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid)
 	g_idle_add(hidhost_hid_info, cb_data);
 }
 
-static void hidhost_protocol_mode_cb(bt_bdaddr_t *bd_addr,
-						bthh_status_t status,
-						bthh_protocol_mode_t mode)
+static gboolean hidhost_protocol_mode(gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct hidhost_generic_data *test = data->test_data;
+	struct hh_cb_data *cb_data = user_data;
 
 	data->cb_count++;
 
 	if (test && test->expected_hal_cb.protocol_mode_cb)
-		test->expected_hal_cb.protocol_mode_cb(bd_addr, status, mode);
+		test->expected_hal_cb.protocol_mode_cb(&cb_data->bdaddr,
+						cb_data->status, cb_data->mode);
+
+	g_free(cb_data);
+	return FALSE;
+}
+
+static void hidhost_protocol_mode_cb(bt_bdaddr_t *bd_addr,
+						bthh_status_t status,
+						bthh_protocol_mode_t mode)
+{
+	struct hh_cb_data *cb_data = g_new0(struct hh_cb_data, 1);
+
+	cb_data->bdaddr = *bd_addr;
+	cb_data->status = status;
+	cb_data->mode = mode;
+
+	g_idle_add(hidhost_protocol_mode, cb_data);
 }
 
 static void hidhost_get_report_cb(bt_bdaddr_t *bd_addr, bthh_status_t status,
