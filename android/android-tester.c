@@ -2405,15 +2405,13 @@ static bool pre_inq_compl_hook(const void *dummy, uint16_t len, void *user_data)
 static void test_discovery_stop_success(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	bt_status_t status;
 
 	init_test_conditions(data);
 
 	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_EVT, BT_HCI_CMD_INQUIRY,
 					pre_inq_compl_hook, data);
 
-	status = data->if_bluetooth->start_discovery();
-	check_expected_status(status);
+	data->if_bluetooth->start_discovery();
 }
 
 static void test_discovery_start_done(const void *test_data)
