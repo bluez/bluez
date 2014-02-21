@@ -1098,7 +1098,7 @@ static void update_new_device(struct device *dev, int8_t rssi,
 		ev->num_props++;
 	}
 
-	if (eir->name) {
+	if (eir->name && strlen(eir->name)) {
 		g_free(dev->name);
 		dev->name = g_strdup(eir->name);
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
@@ -1138,7 +1138,7 @@ static void update_device(struct device *dev, int8_t rssi,
 		ev->num_props++;
 	}
 
-	if (eir->name && strcmp(dev->name, eir->name)) {
+	if (eir->name && strlen(eir->name) && strcmp(dev->name, eir->name)) {
 		g_free(dev->name);
 		dev->name = g_strdup(eir->name);
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
