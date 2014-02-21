@@ -963,18 +963,36 @@ static void remote_setprop_device_properties_cb(bt_status_t status,
 	}
 }
 
+static gboolean remote_device_properties(gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	struct bt_cb_data *cb_data = user_data;
+
+	if (data->test_init_done &&
+			test->expected_hal_cb.remote_device_properties_cb)
+		test->expected_hal_cb.remote_device_properties_cb(
+					cb_data->status, &cb_data->bdaddr,
+					cb_data->num, cb_data->props);
+
+	free_properties(cb_data->num, cb_data->props);
+	g_free(cb_data);
+
+	return FALSE;
+}
+
 static void remote_device_properties_cb(bt_status_t status,
 				bt_bdaddr_t *bd_addr, int num_properties,
 				bt_property_t *properties)
 {
-	struct test_data *data = tester_get_data();
-	const struct generic_data *test = data->test_data;
+	struct bt_cb_data *cb_data = g_new0(struct bt_cb_data, 1);
 
-	if (data->test_init_done &&
-			test->expected_hal_cb.remote_device_properties_cb) {
-		test->expected_hal_cb.remote_device_properties_cb(status,
-					bd_addr, num_properties, properties);
-	}
+	cb_data->status = status;
+	cb_data->bdaddr = *bd_addr;
+	cb_data->num = num_properties;
+	cb_data->props = copy_properties(num_properties, properties);
+
+	g_idle_add(remote_device_properties, cb_data);
 }
 
 static bt_bdaddr_t enable_done_bdaddr_val = { {0x00} };
