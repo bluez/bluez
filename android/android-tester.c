@@ -117,6 +117,16 @@ struct test_data {
 	uint16_t intr_cid;
 };
 
+struct bt_cb_data {
+	bt_state_t state;
+	bt_status_t status;
+
+	bt_bdaddr_t bdaddr;
+
+	int num;
+	bt_property_t *props;
+};
+
 static char exec_dir[PATH_MAX + 1];
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -695,6 +705,31 @@ static void discovery_state_changed_cb(bt_discovery_state_t state)
 	}
 }
 
+static bt_property_t *copy_properties(int num_properties,
+						bt_property_t *properties)
+{
+	int i;
+	bt_property_t *props = g_new0(bt_property_t, num_properties);
+
+	for (i = 0; i < num_properties; i++) {
+		props[i].type = properties[i].type;
+		props[i].len = properties[i].len;
+		props[i].val = g_memdup(properties[i].val, properties[i].len);
+	}
+
+	return props;
+}
+
+static void free_properties(int num_properties, bt_property_t *properties)
+{
+	int i;
+
+	for (i = 0; i < num_properties; i++)
+		g_free(properties[i].val);
+
+	g_free(properties);
+}
+
 static void discovery_device_found_cb(int num_properties,
 						bt_property_t *properties)
 {
@@ -832,15 +867,30 @@ static void remote_setprop_fail_device_found_cb(int num_properties,
 	check_expected_status(status);
 }
 
-static void device_found_cb(int num_properties, bt_property_t *properties)
+static gboolean device_found(gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
+	struct bt_cb_data *cb_data = user_data;
 
-	if (data->test_init_done && test->expected_hal_cb.device_found_cb) {
-		test->expected_hal_cb.device_found_cb(num_properties,
-								properties);
-	}
+	if (data->test_init_done && test->expected_hal_cb.device_found_cb)
+		test->expected_hal_cb.device_found_cb(cb_data->num,
+								cb_data->props);
+
+	free_properties(cb_data->num, cb_data->props);
+	g_free(cb_data);
+
+	return FALSE;
+}
+
+static void device_found_cb(int num_properties, bt_property_t *properties)
+{
+	struct bt_cb_data *cb_data = g_new0(struct bt_cb_data, 1);
+
+	cb_data->num = num_properties;
+	cb_data->props = copy_properties(num_properties, properties);
+
+	g_idle_add(device_found, cb_data);
 }
 
 static void check_count_properties_cb(bt_status_t status, int num_properties,
