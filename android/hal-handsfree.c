@@ -143,7 +143,7 @@ static void handle_unknown_at(void *buf, uint16_t len)
 	struct hal_ev_handsfree_unknown_at *ev = buf;
 
 	if (len != sizeof(*ev) + ev->len) {
-		error("invalid dial event, aborting");
+		error("invalid unknown command event, aborting");
 		exit(EXIT_FAILURE);
 	}
 
