@@ -1151,7 +1151,7 @@ void bt_socket_unregister(void)
 
 	for (ch = 0; ch <= RFCOMM_CHANNEL_MAX; ch++)
 		if (servers[ch].rfsock)
-			cleanup_rfsock(&servers[ch]);
+			cleanup_rfsock(servers[ch].rfsock);
 
 	memset(servers, 0, sizeof(servers));
 
