@@ -222,7 +222,7 @@ static sdp_record_t *avrcp_record(void)
 	features = sdp_data_alloc(SDP_UINT16, &feat);
 	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
-	sdp_set_info_attr(record, "AVRCP TG", 0, 0);
+	sdp_set_info_attr(record, "AVRCP TG", NULL, NULL);
 
 	sdp_data_free(psm);
 	sdp_data_free(version);
