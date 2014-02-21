@@ -2424,7 +2424,7 @@ static void device_remove_stored(struct btd_device *device)
 	gsize length = 0;
 
 	if (device_is_bonded(device)) {
-		device_set_bonded(device, FALSE);
+		device->bonded = FALSE;
 		device->paired = FALSE;
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
 								dst_type);
