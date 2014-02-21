@@ -1011,8 +1011,8 @@ parse_opts:
 			bacpy(va_arg(args, bdaddr_t *), &dst.l2_bdaddr);
 			break;
 		case BT_IO_OPT_DEST_TYPE:
-			ERROR_FAILED(err, "Not implemented", EINVAL);
-			return FALSE;
+			*(va_arg(args, uint8_t *)) = dst.l2_bdaddr_type;
+			break;
 		case BT_IO_OPT_DEFER_TIMEOUT:
 			len = sizeof(int);
 			if (getsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP,
