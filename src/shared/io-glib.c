@@ -195,6 +195,7 @@ bool io_set_read_handler(struct io *io, io_callback_func_t callback,
 
 	io->read_destroy = destroy;
 	io->read_data = user_data;
+
 done:
 	io->read_callback = callback;
 
@@ -256,6 +257,7 @@ bool io_set_write_handler(struct io *io, io_callback_func_t callback,
 
 	io->write_destroy = destroy;
 	io->write_data = user_data;
+
 done:
 	io->write_callback = callback;
 
