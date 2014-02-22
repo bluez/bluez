@@ -1399,6 +1399,7 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 		Notification parameters: ID (1 octet)
 		                         State (1 octet)
 
+
 Bluetooth GATT HAL (ID 9)
 =========================
 
