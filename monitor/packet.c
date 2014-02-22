@@ -861,6 +861,77 @@ static void print_dev_class(const uint8_t *dev_class)
 				"  Unknown service class (0x%2.2x)", mask);
 }
 
+static const struct {
+	uint16_t val;
+	bool generic;
+	const char *str;
+} appearance_table[] = {
+	{    0, true,  "Unknown"		},
+	{   64, true,  "Phone"			},
+	{  128, true,  "Computer"		},
+	{  192, true,  "Watch"			},
+	{  193, false, "Sports Watch"		},
+	{  256, true,  "Clock"			},
+	{  320, true,  "Display"		},
+	{  384, true,  "Remote Control"		},
+	{  448, true,  "Eye-glasses"		},
+	{  512, true,  "Tag"			},
+	{  576, true,  "Keyring"		},
+	{  640, true,  "Media Player"		},
+	{  704, true,  "Barcode Scanner"	},
+	{  768, true,  "Thermometer"		},
+	{  769, false, "Thermometer: Ear"	},
+	{  832, true,  "Heart Rate Sensor"	},
+	{  833, false, "Heart Rate Belt"	},
+	{  896, true,  "Blood Pressure"		},
+	{  897, false, "Blood Pressure: Arm"	},
+	{  898, false, "Blood Pressure: Wrist"	},
+	{  960, true,  "Human Interface Device"	},
+	{  961, false, "Keyboard"		},
+	{  962, false, "Mouse"			},
+	{  963, false, "Joystick"		},
+	{  964, false, "Gamepad"		},
+	{  965, false, "Digitizer Tablet"	},
+	{  966, false, "Card Reader"		},
+	{  967, false, "Digital Pen"		},
+	{  968, false, "Barcode Scanner"	},
+	{ 1024, true,  "Glucose Meter"		},
+	{ 1088, true,  "Running Walking Sensor"	},
+	{ 1152, true,  "Cycling"		},
+	{ 1216, true,  "Undefined"		},
+
+	{ 3136, true,  "Pulse Oximeter"		},
+	{ 3200, true,  "Undefined"		},
+
+	{ 5184, true,  "Outdoor Sports Activity"},
+	{ 5248, true,  "Undefined"		},
+	{ }
+};
+
+static void print_appearance(uint16_t appearance)
+{
+	const char *str = NULL;
+	int i, type = 0;
+
+	for (i = 0; appearance_table[i].str; i++) {
+		if (appearance_table[i].generic) {
+			if (appearance < appearance_table[i].val)
+				break;
+			type = i;
+		}
+
+		if (appearance_table[i].val == appearance) {
+			str = appearance_table[i].str;
+			break;
+		}
+	}
+
+	if (!str)
+		str = appearance_table[type].str;
+
+	print_field("Appearance: %s (0x%4.4x)", str, appearance);
+}
+
 static void print_num_broadcast_retrans(uint8_t num_retrans)
 {
 	print_field("Number of broadcast retransmissions: %u", num_retrans);
@@ -3039,7 +3110,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_GAP_APPEARANCE:
 			if (data_len < 2)
 				break;
-			print_field("Appearance: 0x%4.4x", bt_get_le16(data));
+			print_appearance(bt_get_le16(data));
 			break;
 
 		case BT_EIR_SSP_HASH_P256:
