@@ -550,6 +550,8 @@ static const char *mgmt_op[] = {
 	"Set Scan Parameters",
 	"Set Secure Connections",
 	"Set Debug Keys",
+	"Set Privacy",
+	"Load Identity Resolving Keys",
 };
 
 static const char *mgmt_ev[] = {
@@ -577,6 +579,7 @@ static const char *mgmt_ev[] = {
 	"Device Unblocked",
 	"Device Unpaired",
 	"Passkey Notify",
+	"New Identity Resolving Key",
 };
 
 static const char *mgmt_status[] = {
