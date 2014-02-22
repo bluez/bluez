@@ -50,15 +50,16 @@ static pid_t snoop_pid = -1;
 static void ctl_start(void)
 {
 	char prg_name[PATH_MAX + 1];
-	char *prg_argv[3];
+	char *prg_argv[4];
 	char *prg_envp[3];
 	pid_t pid;
 
 	snprintf(prg_name, sizeof(prg_name), "%s/%s", exec_dir, "bluetoothd");
 
 	prg_argv[0] = "/usr/bin/valgrind";
-	prg_argv[1] = prg_name;
-	prg_argv[2] = NULL;
+	prg_argv[1] = "--leak-check=full";
+	prg_argv[2] = prg_name;
+	prg_argv[3] = NULL;
 
 	prg_envp[0] = "G_SLICE=always-malloc";
 	prg_envp[1] = "G_DEBUG=gc-friendly";
