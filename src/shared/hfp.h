@@ -64,6 +64,7 @@ typedef void (*hfp_destroy_func_t)(void *user_data);
 typedef void (*hfp_debug_func_t)(const char *str, void *user_data);
 
 typedef void (*hfp_command_func_t)(const char *command, void *user_data);
+typedef void (*hfp_disconnect_func_t)(void *user_data);
 
 struct hfp_gw;
 
@@ -86,3 +87,8 @@ bool hfp_gw_send_info(struct hfp_gw *hfp, const char *format, ...)
 bool hfp_gw_set_command_handler(struct hfp_gw *hfp,
 				hfp_command_func_t callback,
 				void *user_data, hfp_destroy_func_t destroy);
+
+bool hfp_gw_set_disconnect_handler(struct hfp_gw *hfp,
+					hfp_disconnect_func_t callback,
+					void *user_data,
+					hfp_destroy_func_t destroy);

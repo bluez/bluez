@@ -51,6 +51,13 @@ struct hfp_gw {
 	hfp_debug_func_t debug_callback;
 	hfp_destroy_func_t debug_destroy;
 	void *debug_data;
+
+	hfp_disconnect_func_t disconnect_callback;
+	hfp_destroy_func_t disconnect_destroy;
+	void *disconnect_data;
+
+	bool in_disconnect;
+	bool destroyed;
 };
 
 static void write_watch_destroy(void *user_data)
@@ -227,6 +234,7 @@ void hfp_gw_unref(struct hfp_gw *hfp)
 
 	io_set_write_handler(hfp->io, NULL, NULL, NULL);
 	io_set_read_handler(hfp->io, NULL, NULL, NULL);
+	io_set_disconnect_handler(hfp->io, NULL, NULL, NULL);
 
 	io_destroy(hfp->io);
 	hfp->io = NULL;
@@ -242,7 +250,12 @@ void hfp_gw_unref(struct hfp_gw *hfp)
 	ringbuf_free(hfp->write_buf);
 	hfp->write_buf = NULL;
 
-	free(hfp);
+	if (!hfp->in_disconnect) {
+		free(hfp);
+		return;
+	}
+
+	hfp->destroyed = true;
 }
 
 static void read_tracing(const void *buf, size_t count, void *user_data)
@@ -388,6 +401,57 @@ bool hfp_gw_set_command_handler(struct hfp_gw *hfp,
 	hfp->command_callback = callback;
 	hfp->command_destroy = destroy;
 	hfp->command_data = user_data;
+
+	return true;
+}
+
+static void disconnect_watch_destroy(void *user_data)
+{
+	struct hfp_gw *hfp = user_data;
+
+	if (hfp->disconnect_destroy)
+		hfp->disconnect_destroy(hfp->disconnect_data);
+
+	if (hfp->destroyed)
+		free(hfp);
+}
+
+static bool io_disconnected(struct io *io, void *user_data)
+{
+	struct hfp_gw *hfp = user_data;
+
+	hfp->in_disconnect = true;
+
+	if (hfp->disconnect_callback)
+		hfp->disconnect_callback(hfp->disconnect_data);
+
+	hfp->in_disconnect = false;
+
+	return false;
+}
+
+bool hfp_gw_set_disconnect_handler(struct hfp_gw *hfp,
+					hfp_disconnect_func_t callback,
+					void *user_data,
+					hfp_destroy_func_t destroy)
+{
+	if (!hfp)
+		return false;
+
+	if (hfp->disconnect_destroy)
+		hfp->disconnect_destroy(hfp->disconnect_data);
+
+	if (!io_set_disconnect_handler(hfp->io, io_disconnected, hfp,
+						disconnect_watch_destroy)) {
+		hfp->disconnect_callback = NULL;
+		hfp->disconnect_destroy = NULL;
+		hfp->disconnect_data = NULL;
+		return false;
+	}
+
+	hfp->disconnect_callback = callback;
+	hfp->disconnect_destroy = destroy;
+	hfp->disconnect_data = user_data;
 
 	return true;
 }
