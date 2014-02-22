@@ -677,6 +677,8 @@ const char *bt_compidtostr(int compid)
 		return "Elgato Systems GmbH";
 	case 207:
 		return "ARCHOS SA";
+	case 208:
+		return "Dexcom, Inc.";
 	case 209:
 		return "Polar Electro Europe B.V.";
 	case 210:
@@ -837,6 +839,26 @@ const char *bt_compidtostr(int compid)
 		return "Volkswagon AG";
 	case 288:
 		return "Porsche AG";
+	case 289:
+		return "Sino Wealth Electronic Ltd.";
+	case 290:
+		return "AirTurn, Inc.";
+	case 291:
+		return "Kinsa, Inc.";
+	case 292:
+		return "HID Global";
+	case 293:
+		return "SEAT es";
+	case 294:
+		return "Promethean Ltd.";
+	case 295:
+		return "Salutica Allied Solutions";
+	case 296:
+		return "GPSI Group Pty Ltd";
+	case 297:
+		return "Nimble Devices Oy";
+	case 298:
+		return "Changzhou Yongse Infotech Co., Ltd";
 	case 65535:
 		return "internal use";
 	default:
