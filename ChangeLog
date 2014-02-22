@@ -1,3 +1,11 @@
+ver 5.15:
+	Fix issue with LE enabling and background scanning.
+	Fix issue with HID over GATT input device name.
+	Fix issue with storage of slave long term keys.
+	Add support for handling identity resolving keys.
+	Add support for Android Bluetooth A2DP interface.
+	Add support for Android Bluetooth audio interface.
+
 ver 5.14:
 	Fix issue with marking PS3 controllers as trusted.
 	Fix issue with authorization of PS3 controllers.
