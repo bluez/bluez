@@ -30,6 +30,8 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <getopt.h>
 #include <stdbool.h>
@@ -1032,6 +1034,48 @@ static void cmd_advertising(struct mgmt *mgmt, uint16_t index, int argc,
 static void cmd_bredr(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	cmd_setting(mgmt, index, MGMT_OP_SET_BREDR, argc, argv);
+}
+
+static void cmd_privacy(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
+{
+	struct mgmt_cp_set_privacy cp;
+	int fd;
+
+	if (argc < 2) {
+		printf("Specify \"on\" or \"off\"\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
+		cp.privacy = 0x01;
+	else if (strcasecmp(argv[1], "off") == 0)
+		cp.privacy = 0x00;
+	else
+		cp.privacy = atoi(argv[1]);
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "open(/dev/urandom): %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	if (read(fd, cp.irk, sizeof(cp.irk)) != sizeof(cp.irk)) {
+		fprintf(stderr, "Reading from urandom failed\n");
+		close(fd);
+		exit(EXIT_FAILURE);
+	}
+
+	close(fd);
+
+	if (send_cmd(mgmt, MGMT_OP_SET_PRIVACY, index, sizeof(cp), &cp,
+							setting_rsp) == 0) {
+		fprintf(stderr, "Unable to send Set Privacy command\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void class_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
@@ -2050,6 +2094,7 @@ static struct {
 	{ "le",		cmd_le,		"Toggle LE support"		},
 	{ "advertising",cmd_advertising,"Toggle LE advertising",	},
 	{ "bredr",      cmd_bredr,      "Toggle BR/EDR support",	},
+	{ "privacy",	cmd_privacy,	"Toggle privacy support"	},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
 	{ "con",	cmd_con,	"List connections"		},
