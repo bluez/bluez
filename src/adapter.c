@@ -2584,15 +2584,11 @@ static void load_irks(struct btd_adapter *adapter, GSList *irks)
 	GSList *l;
 
 	/*
-	 * If the controller does not support Low Energy operation,
-	 * there is no point in trying to load the identity resolving
-	 * keys into the kernel.
-	 *
-	 * While there is no harm in loading keys into the kernel,
-	 * this is an optimization since no long term keys will
-	 * be loaded.
+	 * If the controller does not support LE Privacy operation,
+	 * there is no support for loading identity resolving keys
+	 * into the kernel.
 	 */
-	if (!(adapter->supported_settings & MGMT_SETTING_LE))
+	if (!(adapter->supported_settings & MGMT_SETTING_PRIVACY))
 		return;
 
 	irk_count = g_slist_length(irks);
