@@ -96,6 +96,7 @@ struct mgmt_rp_read_index_list {
 #define MGMT_SETTING_ADVERTISING	0x00000400
 #define MGMT_SETTING_SECURE_CONN	0x00000800
 #define MGMT_SETTING_DEBUG_KEYS		0x00001000
+#define MGMT_SETTING_PRIVACY		0x00002000
 
 #define MGMT_OP_READ_INFO		0x0004
 struct mgmt_rp_read_info {
