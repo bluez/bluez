@@ -455,3 +455,11 @@ bool hfp_gw_set_disconnect_handler(struct hfp_gw *hfp,
 
 	return true;
 }
+
+bool hfp_gw_disconnect(struct hfp_gw *hfp)
+{
+	if (!hfp)
+		return false;
+
+	return io_shutdown(hfp->io);
+}

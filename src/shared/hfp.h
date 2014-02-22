@@ -92,3 +92,5 @@ bool hfp_gw_set_disconnect_handler(struct hfp_gw *hfp,
 					hfp_disconnect_func_t callback,
 					void *user_data,
 					hfp_destroy_func_t destroy);
+
+bool hfp_gw_disconnect(struct hfp_gw *hfp);
