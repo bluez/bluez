@@ -353,6 +353,12 @@ struct mgmt_irk_info {
 	uint8_t val[16];
 } __packed;
 
+#define MGMT_OP_SET_PRIVACY		0x002F
+struct mgmt_cp_set_privacy {
+	uint8_t privacy;
+	uint8_t irk[16];
+} __packed;
+
 #define MGMT_OP_LOAD_IRKS		0x0030
 struct mgmt_cp_load_irks {
 	uint16_t irk_count;
