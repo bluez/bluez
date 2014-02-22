@@ -562,8 +562,10 @@ static void store_link_key(const bdaddr_t *dst, const uint8_t *key,
 
 	key_file = g_key_file_new();
 
-	if (!g_key_file_load_from_file(key_file, DEVICES_FILE, 0, NULL))
+	if (!g_key_file_load_from_file(key_file, DEVICES_FILE, 0, NULL)) {
+		g_key_file_free(key_file);
 		return;
+	}
 
 	ba2str(dst, addr);
 
