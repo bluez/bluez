@@ -33,6 +33,8 @@ void io_destroy(struct io *io);
 int io_get_fd(struct io *io);
 bool io_set_close_on_destroy(struct io *io, bool do_close);
 
+bool io_shutdown(struct io *io);
+
 typedef bool (*io_callback_func_t)(struct io *io, void *user_data);
 
 bool io_set_read_handler(struct io *io, io_callback_func_t callback,

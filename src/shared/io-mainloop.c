@@ -26,6 +26,7 @@
 #endif
 
 #include <unistd.h>
+#include <sys/socket.h>
 
 #include "monitor/mainloop.h"
 #include "src/shared/util.h"
@@ -293,4 +294,12 @@ bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
 	io->events = events;
 
 	return true;
+}
+
+bool io_shutdown(struct io *io)
+{
+	if (!io || io->fd < 0)
+		return false;
+
+	return shutdown(io->fd, SHUT_RDWR) == 0;
 }

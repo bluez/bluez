@@ -323,3 +323,12 @@ done:
 
 	return true;
 }
+
+bool io_shutdown(struct io *io)
+{
+	if (!io || !io->channel)
+		return false;
+
+	return g_io_channel_shutdown(io->channel, TRUE, NULL)
+							== G_IO_STATUS_NORMAL;
+}
