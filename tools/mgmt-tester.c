@@ -2652,6 +2652,18 @@ static const struct generic_data load_irks_success2_test = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
+static const char load_irks_nval_addr_type[] = { 0x01, 0x00,
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x00,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+
+static const struct generic_data load_irks_nval_param_test = {
+	.send_opcode = MGMT_OP_LOAD_IRKS,
+	.send_param = load_irks_nval_addr_type,
+	.send_len = sizeof(load_irks_nval_addr_type),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const struct generic_data load_irks_not_supported_test = {
 	.send_opcode = MGMT_OP_LOAD_IRKS,
 	.send_param = load_irks_empty_list,
@@ -3954,6 +3966,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Load IRKs - Success 2",
 				&load_irks_success2_test,
+				NULL, test_command_generic);
+	test_bredrle("Load IRKs - Invalid Parameters",
+				&load_irks_nval_param_test,
 				NULL, test_command_generic);
 	test_bredr("Load IRKs - Not Supported",
 				&load_irks_not_supported_test,
