@@ -39,8 +39,12 @@
 #include <glib.h>
 #include "src/shared/util.h"
 #include "src/log.h"
-#include "android/hal-msg.h"
+#include "android/ipc-common.h"
 #include "android/ipc.h"
+
+static const char HAL_SK_PATH[] = "\0test_hal_socket";
+
+#define SERVICE_ID_MAX 10
 
 struct test_data {
 	bool disconnect;
@@ -79,11 +83,11 @@ static gboolean cmd_watch(GIOChannel *io, GIOCondition cond,
 {
 	struct context *context = user_data;
 	const struct test_data *test_data = context->data;
-	const struct hal_hdr *sent_msg = test_data->cmd;
+	const struct ipc_hdr *sent_msg = test_data->cmd;
 	uint8_t buf[128];
 	int sk;
 
-	struct hal_hdr success_resp = {
+	struct ipc_hdr success_resp = {
 		.service_id = sent_msg->service_id,
 		.opcode = sent_msg->opcode,
 		.len = 0,
@@ -98,8 +102,8 @@ static gboolean cmd_watch(GIOChannel *io, GIOCondition cond,
 
 	sk = g_io_channel_unix_get_fd(io);
 
-	g_assert(read(sk, buf, sizeof(buf)) == sizeof(struct hal_hdr));
-	g_assert(!memcmp(&success_resp, buf, sizeof(struct hal_hdr)));
+	g_assert(read(sk, buf, sizeof(buf)) == sizeof(struct ipc_hdr));
+	g_assert(!memcmp(&success_resp, buf, sizeof(struct ipc_hdr)));
 
 	context_quit(context);
 
@@ -180,7 +184,7 @@ static struct context *create_context(gconstpointer data)
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 
-	memcpy(addr.sun_path, BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH));
+	memcpy(addr.sun_path, HAL_SK_PATH, sizeof(HAL_SK_PATH));
 
 	ret = bind(sk, (struct sockaddr *) &addr, sizeof(addr));
 	g_assert(ret == 0);
@@ -236,8 +240,8 @@ static void test_init(gconstpointer data)
 {
 	struct context *context = create_context(data);
 
-	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-					HAL_SERVICE_ID_MAX, true, NULL, NULL);
+	ipc = ipc_init(HAL_SK_PATH, sizeof(HAL_SK_PATH), SERVICE_ID_MAX,
+						true, NULL, NULL);
 
 	g_assert(ipc);
 
@@ -287,8 +291,8 @@ static void test_cmd(gconstpointer data)
 {
 	struct context *context = create_context(data);
 
-	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-			HAL_SERVICE_ID_MAX, true, disconnected, context);
+	ipc = ipc_init(HAL_SK_PATH, sizeof(HAL_SK_PATH), SERVICE_ID_MAX,
+					true, disconnected, context);
 
 	g_assert(ipc);
 
@@ -305,8 +309,8 @@ static void test_cmd_reg(gconstpointer data)
 	struct context *context = create_context(data);
 	const struct test_data *test_data = context->data;
 
-	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-			HAL_SERVICE_ID_MAX, true, disconnected, context);
+	ipc = ipc_init(HAL_SK_PATH, sizeof(HAL_SK_PATH), SERVICE_ID_MAX,
+					true, disconnected, context);
 
 	g_assert(ipc);
 
@@ -325,8 +329,8 @@ static void test_cmd_reg_1(gconstpointer data)
 {
 	struct context *context = create_context(data);
 
-	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-			HAL_SERVICE_ID_MAX, true, disconnected, context);
+	ipc = ipc_init(HAL_SK_PATH, sizeof(HAL_SK_PATH), SERVICE_ID_MAX,
+					true, disconnected, context);
 
 	g_assert(ipc);
 
@@ -357,13 +361,13 @@ static void test_cmd_handler_invalid(const void *buf, uint16_t len)
 
 static const struct test_data test_init_1 = {};
 
-static const struct hal_hdr test_cmd_1_hdr = {
+static const struct ipc_hdr test_cmd_1_hdr = {
 	.service_id = 0,
 	.opcode = 1,
 	.len = 0
 };
 
-static const struct hal_hdr test_cmd_2_hdr = {
+static const struct ipc_hdr test_cmd_2_hdr = {
 	.service_id = 0,
 	.opcode = 2,
 	.len = 0
@@ -443,8 +447,8 @@ static const struct test_data test_cmd_hdr_invalid = {
 #define VARDATA_EX1 "some data example"
 
 struct vardata {
-	struct hal_hdr hdr;
-	uint8_t data[BLUEZ_HAL_MTU - sizeof(struct hal_hdr)];
+	struct ipc_hdr hdr;
+	uint8_t data[IPC_MTU - sizeof(struct ipc_hdr)];
 } __attribute__((packed));
 
 static const struct vardata test_cmd_vardata = {
@@ -460,7 +464,7 @@ static const struct ipc_handler cmd_vardata_handlers[] = {
 
 static const struct test_data test_cmd_vardata_valid = {
 	.cmd = &test_cmd_vardata,
-	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1),
+	.cmd_size = sizeof(struct ipc_hdr) + sizeof(VARDATA_EX1),
 	.service = 0,
 	.handlers = cmd_vardata_handlers,
 	.handlers_size = 1,
@@ -472,7 +476,7 @@ static const struct ipc_handler cmd_vardata_handlers_valid2[] = {
 
 static const struct test_data test_cmd_vardata_valid_2 = {
 	.cmd = &test_cmd_vardata,
-	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1),
+	.cmd_size = sizeof(struct ipc_hdr) + sizeof(VARDATA_EX1),
 	.service = 0,
 	.handlers = cmd_vardata_handlers_valid2,
 	.handlers_size = 1,
@@ -480,22 +484,22 @@ static const struct test_data test_cmd_vardata_valid_2 = {
 
 static const struct test_data test_cmd_vardata_invalid_1 = {
 	.cmd = &test_cmd_vardata,
-	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1) - 1,
+	.cmd_size = sizeof(struct ipc_hdr) + sizeof(VARDATA_EX1) - 1,
 	.service = 0,
 	.handlers = cmd_vardata_handlers,
 	.handlers_size = 1,
 	.disconnect = true,
 };
 
-static const struct hal_hdr test_cmd_service_offrange_hdr = {
-	.service_id = HAL_SERVICE_ID_MAX + 1,
+static const struct ipc_hdr test_cmd_service_offrange_hdr = {
+	.service_id = SERVICE_ID_MAX + 1,
 	.opcode = 1,
 	.len = 0
 };
 
 static const struct test_data test_cmd_service_offrange = {
 	.cmd = &test_cmd_service_offrange_hdr,
-	.cmd_size = sizeof(struct hal_hdr),
+	.cmd_size = sizeof(struct ipc_hdr),
 	.service = 0,
 	.handlers = cmd_handlers,
 	.handlers_size = 1,
@@ -511,7 +515,7 @@ static const struct vardata test_cmd_invalid_data_1 = {
 
 static const struct test_data test_cmd_msg_invalid_1 = {
 	.cmd = &test_cmd_invalid_data_1,
-	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1) - 1,
+	.cmd_size = sizeof(struct ipc_hdr) + sizeof(VARDATA_EX1) - 1,
 	.service = 0,
 	.handlers = cmd_handlers,
 	.handlers_size = 1,
@@ -527,7 +531,7 @@ static const struct vardata test_cmd_invalid_data_2 = {
 
 static const struct test_data test_cmd_msg_invalid_2 = {
 	.cmd = &test_cmd_invalid_data_2,
-	.cmd_size = sizeof(struct hal_hdr) + sizeof(VARDATA_EX1),
+	.cmd_size = sizeof(struct ipc_hdr) + sizeof(VARDATA_EX1),
 	.service = 0,
 	.handlers = cmd_handlers,
 	.handlers_size = 1,

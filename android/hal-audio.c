@@ -33,6 +33,7 @@
 #include <sbc/sbc.h>
 
 #include "audio-msg.h"
+#include "ipc-common.h"
 #include "hal-log.h"
 #include "hal-msg.h"
 #include "../profiles/audio/a2dp-codecs.h"
@@ -614,9 +615,9 @@ static int audio_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len,
 	ssize_t ret;
 	struct msghdr msg;
 	struct iovec iv[2];
-	struct hal_hdr cmd;
+	struct ipc_hdr cmd;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
-	struct hal_status s;
+	struct ipc_status s;
 	size_t s_len = sizeof(s);
 
 	pthread_mutex_lock(&sk_mutex);
@@ -708,7 +709,7 @@ static int audio_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len,
 	}
 
 	if (cmd.opcode == AUDIO_OP_STATUS) {
-		struct hal_status *s = rsp;
+		struct ipc_status *s = rsp;
 
 		if (sizeof(*s) != cmd.len) {
 			error("audio: Invalid status length");

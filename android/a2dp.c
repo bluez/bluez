@@ -40,6 +40,7 @@
 #include "profiles/audio/a2dp-codecs.h"
 #include "src/log.h"
 #include "hal-msg.h"
+#include "ipc-common.h"
 #include "ipc.h"
 #include "a2dp.h"
 #include "utils.h"

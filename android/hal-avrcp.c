@@ -23,6 +23,7 @@
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
+#include "ipc-common.h"
 #include "hal-ipc.h"
 
 static const btrc_callbacks_t *cbs = NULL;
@@ -252,7 +253,7 @@ static bt_status_t get_play_status_rsp(btrc_play_status_t status,
 static bt_status_t list_player_app_attr_rsp(int num_attr,
 						btrc_player_attr_t *p_attrs)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_list_player_attrs *cmd = (void *) buf;
 	size_t len;
 
@@ -265,7 +266,7 @@ static bt_status_t list_player_app_attr_rsp(int num_attr,
 		return BT_STATUS_PARM_INVALID;
 
 	len = sizeof(*cmd) + num_attr;
-	if (len > BLUEZ_HAL_MTU)
+	if (len > IPC_MTU)
 		return BT_STATUS_PARM_INVALID;
 
 	cmd->number = num_attr;
@@ -278,7 +279,7 @@ static bt_status_t list_player_app_attr_rsp(int num_attr,
 
 static bt_status_t list_player_app_value_rsp(int num_val, uint8_t *p_vals)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_list_player_values *cmd = (void *) buf;
 	size_t len;
 
@@ -292,7 +293,7 @@ static bt_status_t list_player_app_value_rsp(int num_val, uint8_t *p_vals)
 
 	len = sizeof(*cmd) + num_val;
 
-	if (len > BLUEZ_HAL_MTU)
+	if (len > IPC_MTU)
 		return BT_STATUS_PARM_INVALID;
 
 	cmd->number = num_val;
@@ -305,7 +306,7 @@ static bt_status_t list_player_app_value_rsp(int num_val, uint8_t *p_vals)
 
 static bt_status_t get_player_app_value_rsp(btrc_player_settings_t *p_vals)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_get_player_attrs *cmd = (void *) buf;
 	size_t len, attrs_len;
 	int i;
@@ -322,7 +323,7 @@ static bt_status_t get_player_app_value_rsp(btrc_player_settings_t *p_vals)
 				sizeof(struct hal_avrcp_player_attr_value);
 	len = sizeof(*cmd) + attrs_len;
 
-	if (len > BLUEZ_HAL_MTU)
+	if (len > IPC_MTU)
 		return BT_STATUS_PARM_INVALID;
 
 	cmd->number = p_vals->num_attr;
@@ -342,7 +343,7 @@ static int write_text(uint8_t *ptr, uint8_t id, uint8_t *text, size_t *len)
 	struct hal_avrcp_player_setting_text *value = (void *) ptr;
 	size_t attr_len = sizeof(*value);
 
-	if (attr_len + *len > BLUEZ_HAL_MTU)
+	if (attr_len + *len > IPC_MTU)
 		return 0;
 
 	value->id = id;
@@ -351,8 +352,8 @@ static int write_text(uint8_t *ptr, uint8_t id, uint8_t *text, size_t *len)
 	*len += attr_len;
 	ptr += attr_len;
 
-	if (value->len + *len > BLUEZ_HAL_MTU)
-		value->len = BLUEZ_HAL_MTU - *len;
+	if (value->len + *len > IPC_MTU)
+		value->len = IPC_MTU - *len;
 
 	memcpy(value->text, text, value->len);
 
@@ -367,7 +368,7 @@ static uint8_t write_player_setting_text(uint8_t *ptr, uint8_t num_attr,
 {
 	int i;
 
-	for (i = 0; i < num_attr && *len < BLUEZ_HAL_MTU; i++) {
+	for (i = 0; i < num_attr && *len < IPC_MTU; i++) {
 		int ret;
 
 		ret = write_text(ptr, p_attrs[i].id, p_attrs[i].text, len);
@@ -383,7 +384,7 @@ static uint8_t write_player_setting_text(uint8_t *ptr, uint8_t num_attr,
 static bt_status_t get_player_app_attr_text_rsp(int num_attr,
 					btrc_player_setting_text_t *p_attrs)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_get_player_attrs_text *cmd = (void *) buf;
 	uint8_t *ptr;
 	size_t len;
@@ -408,7 +409,7 @@ static bt_status_t get_player_app_attr_text_rsp(int num_attr,
 static bt_status_t get_player_app_value_text_rsp(int num_val,
 					btrc_player_setting_text_t *p_vals)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_get_player_values_text *cmd = (void *) buf;
 	uint8_t *ptr;
 	size_t len;
@@ -436,7 +437,7 @@ static uint8_t write_element_attr_text(uint8_t *ptr, uint8_t num_attr,
 {
 	int i;
 
-	for (i = 0; i < num_attr && *len < BLUEZ_HAL_MTU; i++) {
+	for (i = 0; i < num_attr && *len < IPC_MTU; i++) {
 		int ret;
 
 		ret = write_text(ptr, p_attrs[i].attr_id, p_attrs[i].text, len);
@@ -452,7 +453,7 @@ static uint8_t write_element_attr_text(uint8_t *ptr, uint8_t num_attr,
 static bt_status_t get_element_attr_rsp(uint8_t num_attr,
 					btrc_element_attr_val_t *p_attrs)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_get_element_attrs_text *cmd = (void *) buf;
 	size_t len;
 	uint8_t *ptr;
@@ -490,7 +491,7 @@ static bt_status_t set_player_app_value_rsp(btrc_status_t rsp_status)
 static bt_status_t play_status_changed_rsp(btrc_notification_type_t type,
 						btrc_play_status_t *play_status)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_register_notification *cmd = (void *) buf;
 	size_t len;
 
@@ -509,7 +510,7 @@ static bt_status_t play_status_changed_rsp(btrc_notification_type_t type,
 static bt_status_t track_change_rsp(btrc_notification_type_t type,
 							btrc_uid_t *track)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_register_notification *cmd = (void *) buf;
 	size_t len;
 
@@ -554,7 +555,7 @@ static bt_status_t track_reached_start_rsp(btrc_notification_type_t type)
 static bt_status_t play_pos_changed_rsp(btrc_notification_type_t type,
 							uint32_t *song_pos)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_register_notification *cmd = (void *) buf;
 	size_t len;
 
@@ -573,7 +574,7 @@ static bt_status_t play_pos_changed_rsp(btrc_notification_type_t type,
 static bt_status_t settings_changed_rsp(btrc_notification_type_t type,
 					btrc_player_settings_t *player_setting)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_avrcp_register_notification *cmd = (void *) buf;
 	struct hal_avrcp_player_attr_value *attrs;
 	size_t len, param_len;
@@ -582,7 +583,7 @@ static bt_status_t settings_changed_rsp(btrc_notification_type_t type,
 	param_len = player_setting->num_attr * sizeof(*attrs);
 	len = sizeof(*cmd) + param_len;
 
-	if (len > BLUEZ_HAL_MTU)
+	if (len > IPC_MTU)
 		return BT_STATUS_PARM_INVALID;
 
 	cmd->event = BTRC_EVT_APP_SETTINGS_CHANGED;

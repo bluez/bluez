@@ -46,6 +46,7 @@
 #include "src/sdpd.h"
 #include "src/log.h"
 #include "hal-msg.h"
+#include "ipc-common.h"
 #include "ipc.h"
 #include "utils.h"
 #include "bluetooth.h"
@@ -1062,7 +1063,7 @@ static bool rssi_above_threshold(int old, int new)
 static void update_new_device(struct device *dev, int8_t rssi,
 						const struct eir_data *eir)
 {
-	uint8_t buf[BLUEZ_HAL_MTU];
+	uint8_t buf[IPC_MTU];
 	struct hal_ev_device_found *ev = (void*) buf;
 	bdaddr_t android_bdaddr;
 	uint8_t android_type;
@@ -1115,7 +1116,7 @@ static void update_new_device(struct device *dev, int8_t rssi,
 static void update_device(struct device *dev, int8_t rssi,
 						const struct eir_data *eir)
 {
-	uint8_t buf[BLUEZ_HAL_MTU];
+	uint8_t buf[IPC_MTU];
 	struct hal_ev_remote_device_props *ev = (void *) buf;
 	int size;
 
@@ -1157,7 +1158,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, bool confirm,
 					const uint8_t *data, uint8_t data_len)
 {
-	uint8_t buf[BLUEZ_HAL_MTU];
+	uint8_t buf[IPC_MTU];
 	struct eir_data eir;
 	struct device *dev;
 

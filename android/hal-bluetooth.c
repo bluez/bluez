@@ -25,6 +25,7 @@
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
+#include "ipc-common.h"
 #include "hal-ipc.h"
 #include "hal-utils.h"
 
@@ -525,7 +526,7 @@ static int get_adapter_property(bt_property_type_t type)
 
 static int set_adapter_property(const bt_property_t *property)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_set_adapter_prop *cmd = (void *) buf;
 	size_t len;
 
@@ -582,7 +583,7 @@ static int get_remote_device_property(bt_bdaddr_t *remote_addr,
 static int set_remote_device_property(bt_bdaddr_t *remote_addr,
 						const bt_property_t *property)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_set_remote_device_prop *cmd = (void *) buf;
 	size_t len;
 
@@ -792,7 +793,7 @@ static int dut_mode_configure(uint8_t enable)
 
 static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t buf_len)
 {
-	char cmd_buf[BLUEZ_HAL_MTU];
+	char cmd_buf[IPC_MTU];
 	struct hal_cmd_dut_mode_send *cmd = (void *) cmd_buf;
 	size_t len;
 
@@ -813,7 +814,7 @@ static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t buf_len)
 
 static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t buf_len)
 {
-	char cmd_buf[BLUEZ_HAL_MTU];
+	char cmd_buf[IPC_MTU];
 	struct hal_cmd_le_test_mode *cmd = (void *) cmd_buf;
 	size_t len;
 

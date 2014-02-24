@@ -31,6 +31,7 @@
 #include "hal.h"
 #include "hal-msg.h"
 #include "hal-log.h"
+#include "ipc-common.h"
 #include "hal-ipc.h"
 
 #define CONNECT_TIMEOUT (5 * 1000)
@@ -64,7 +65,7 @@ void hal_ipc_unregister(uint8_t service)
 
 static void handle_msg(void *buf, ssize_t len)
 {
-	struct hal_hdr *msg = buf;
+	struct ipc_hdr *msg = buf;
 	const struct hal_ipc_handler *handler;
 	uint8_t opcode;
 
@@ -130,7 +131,7 @@ static void *notification_handler(void *data)
 	struct iovec iv;
 	struct cmsghdr *cmsg;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	ssize_t ret;
 	int fd;
 
@@ -320,9 +321,9 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	ssize_t ret;
 	struct msghdr msg;
 	struct iovec iv[2];
-	struct hal_hdr cmd;
+	struct ipc_hdr cmd;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
-	struct hal_status s;
+	struct ipc_status s;
 	size_t s_len = sizeof(s);
 
 	if (cmd_sk < 0) {
@@ -418,7 +419,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	}
 
 	if (cmd.opcode == HAL_OP_STATUS) {
-		struct hal_status *s = rsp;
+		struct ipc_status *s = rsp;
 
 		if (sizeof(*s) != cmd.len) {
 			error("Invalid status length, aborting");

@@ -23,6 +23,7 @@
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
+#include "ipc-common.h"
 #include "hal-ipc.h"
 
 static const bthh_callbacks_t *cbacks;
@@ -293,7 +294,7 @@ static bt_status_t set_report(bt_bdaddr_t *bd_addr,
 						bthh_report_type_t report_type,
 						char *report)
 {
-	uint8_t buf[BLUEZ_HAL_MTU];
+	uint8_t buf[IPC_MTU];
 	struct hal_cmd_hidhost_set_report *cmd = (void *) buf;
 
 	DBG("");
@@ -317,7 +318,7 @@ static bt_status_t set_report(bt_bdaddr_t *bd_addr,
 
 static bt_status_t send_data(bt_bdaddr_t *bd_addr, char *data)
 {
-	uint8_t buf[BLUEZ_HAL_MTU];
+	uint8_t buf[IPC_MTU];
 	struct hal_cmd_hidhost_send_data *cmd = (void *) buf;
 
 	DBG("");

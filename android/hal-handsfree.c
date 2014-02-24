@@ -23,6 +23,7 @@
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
+#include "ipc-common.h"
 #include "hal-ipc.h"
 
 static const bthf_callbacks_t *cbs = NULL;
@@ -360,7 +361,7 @@ static bt_status_t device_status_notification(bthf_network_state_t state,
 
 static bt_status_t cops_response(const char *cops)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_handsfree_cops_response *cmd = (void *) buf;
 	size_t len;
 
@@ -408,7 +409,7 @@ static bt_status_t cind_response(int svc, int num_active, int num_held,
 
 static bt_status_t formatted_at_response(const char *rsp)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_handsfree_formatted_at_response *cmd = (void *) buf;
 	size_t len;
 
@@ -454,7 +455,7 @@ static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
 					const char *number,
 					bthf_call_addrtype_t type)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_handsfree_clcc_response *cmd = (void *) buf;
 	size_t len;
 
@@ -489,7 +490,7 @@ static bt_status_t phone_state_change(int num_active, int num_held,
 					const char *number,
 					bthf_call_addrtype_t type)
 {
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	struct hal_cmd_handsfree_phone_state_change *cmd = (void *) buf;
 	size_t len;
 

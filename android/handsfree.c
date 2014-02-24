@@ -39,6 +39,7 @@
 #include "src/shared/hfp.h"
 #include "btio/btio.h"
 #include "hal-msg.h"
+#include "ipc-common.h"
 #include "ipc.h"
 #include "handsfree.h"
 #include "bluetooth.h"

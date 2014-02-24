@@ -45,6 +45,8 @@
 #include "src/shared/hciemu.h"
 
 #include "hal-msg.h"
+#include "ipc-common.h"
+
 #include <cutils/properties.h>
 
 #define WAIT_FOR_SIGNAL_TIME 2 /* in seconds */
@@ -72,7 +74,7 @@ struct generic_data {
 };
 
 struct regmod_msg {
-	struct hal_hdr header;
+	struct ipc_hdr header;
 	struct hal_cmd_register_module cmd;
 } __attribute__((packed));
 
@@ -413,8 +415,8 @@ static gboolean check_for_daemon(gpointer user_data)
 
 static bool setup_module(int service_id)
 {
-	struct hal_hdr response;
-	struct hal_hdr expected_response;
+	struct ipc_hdr response;
+	struct ipc_hdr expected_response;
 
 	struct regmod_msg btmodule_msg = {
 		.header = {
@@ -564,7 +566,7 @@ static void ipc_send_tc(const void *data)
 
 #define test_opcode_valid(_name, _service, _opcode, _len, _servicelist...) \
 	do {								\
-		static struct hal_hdr hdr = {				\
+		static struct ipc_hdr hdr = {				\
 			.service_id = _service,				\
 			.opcode = _opcode,				\
 			.len = _len,					\
@@ -578,8 +580,8 @@ static void ipc_send_tc(const void *data)
 	} while (0)
 
 struct vardata {
-	struct hal_hdr hdr;
-	uint8_t buf[BLUEZ_HAL_MTU];
+	struct ipc_hdr hdr;
+	uint8_t buf[IPC_MTU];
 } __attribute__((packed));
 
 #define test_datasize_valid(_name, _service, _opcode, _hlen, _addatasize, \
@@ -642,24 +644,24 @@ static struct malformed_data3_struct malformed_data3_msg = {
 	. redundant_data = 666,
 };
 
-struct hal_hdr enable_unknown_service_hdr = {
+struct ipc_hdr enable_unknown_service_hdr = {
 	.service_id = HAL_SERVICE_ID_MAX + 1,
 	.opcode = HAL_OP_REGISTER_MODULE,
 	.len = 0,
 };
 
-struct hal_hdr enable_bt_service_hdr = {
+struct ipc_hdr enable_bt_service_hdr = {
 	.service_id = HAL_SERVICE_ID_BLUETOOTH,
 	.opcode = HAL_OP_ENABLE,
 	.len = 0,
 };
 
 struct bt_set_adapter_prop_data {
-	struct hal_hdr hdr;
+	struct ipc_hdr hdr;
 	struct hal_cmd_set_adapter_prop prop;
 
 	/* data placeholder for hal_cmd_set_adapter_prop.val[0] */
-	uint8_t buf[BLUEZ_HAL_MTU - sizeof(struct hal_hdr) -
+	uint8_t buf[IPC_MTU - sizeof(struct ipc_hdr) -
 				sizeof(struct hal_cmd_set_adapter_prop)];
 } __attribute__((packed));
 
@@ -692,11 +694,11 @@ static struct bt_set_adapter_prop_data bt_set_adapter_prop_data_unders = {
 };
 
 struct bt_set_remote_prop_data {
-	struct hal_hdr hdr;
+	struct ipc_hdr hdr;
 	struct hal_cmd_set_remote_device_prop prop;
 
 	/* data placeholder for hal_cmd_set_remote_device_prop.val[0] */
-	uint8_t buf[BLUEZ_HAL_MTU - sizeof(struct hal_hdr) -
+	uint8_t buf[IPC_MTU - sizeof(struct ipc_hdr) -
 				sizeof(struct hal_cmd_set_remote_device_prop)];
 } __attribute__((packed));
 
@@ -727,11 +729,11 @@ static struct bt_set_remote_prop_data bt_set_remote_prop_data_unders = {
 };
 
 struct hidhost_set_info_data {
-	struct hal_hdr hdr;
+	struct ipc_hdr hdr;
 	struct hal_cmd_hidhost_set_info info;
 
 	/* data placeholder for hal_cmd_hidhost_set_info.descr[0] field */
-	uint8_t buf[BLUEZ_HAL_MTU - sizeof(struct hal_hdr) -
+	uint8_t buf[IPC_MTU - sizeof(struct ipc_hdr) -
 				sizeof(struct hal_cmd_hidhost_set_info)];
 } __attribute__((packed));
 
@@ -762,11 +764,11 @@ static struct hidhost_set_info_data hidhost_set_info_data_unders = {
 };
 
 struct hidhost_set_report_data {
-	struct hal_hdr hdr;
+	struct ipc_hdr hdr;
 	struct hal_cmd_hidhost_set_report report;
 
 	/* data placeholder for hal_cmd_hidhost_set_report.data[0] field */
-	uint8_t buf[BLUEZ_HAL_MTU - sizeof(struct hal_hdr) -
+	uint8_t buf[IPC_MTU - sizeof(struct ipc_hdr) -
 				sizeof(struct hal_cmd_hidhost_set_report)];
 } __attribute__((packed));
 
@@ -797,11 +799,11 @@ static struct hidhost_set_report_data hidhost_set_report_data_unders = {
 };
 
 struct hidhost_send_data_data {
-	struct hal_hdr hdr;
+	struct ipc_hdr hdr;
 	struct hal_cmd_hidhost_send_data hiddata;
 
 	/* data placeholder for hal_cmd_hidhost_send_data.data[0] field */
-	uint8_t buf[BLUEZ_HAL_MTU - sizeof(struct hal_hdr) -
+	uint8_t buf[IPC_MTU - sizeof(struct ipc_hdr) -
 				sizeof(struct hal_cmd_hidhost_send_data)];
 } __attribute__((packed));
 
@@ -935,14 +937,14 @@ int main(int argc, char *argv[])
 	test_generic("Data size BT Set Adapter Prop Vardata+",
 			ipc_send_tc, setup, teardown,
 			&bt_set_adapter_prop_data_overs,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_set_adapter_prop) +
 				sizeof(set_name)),
 			HAL_SERVICE_ID_BLUETOOTH);
 	test_generic("Data size BT Set Adapter Prop Vardata+",
 			ipc_send_tc, setup, teardown,
 			&bt_set_adapter_prop_data_unders,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_set_adapter_prop) +
 				sizeof(set_name)),
 			HAL_SERVICE_ID_BLUETOOTH);
@@ -973,14 +975,14 @@ int main(int argc, char *argv[])
 	test_generic("Data size BT Set Remote Prop Vardata+",
 			ipc_send_tc, setup, teardown,
 			&bt_set_remote_prop_data_overs,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_set_remote_device_prop) +
 				sizeof(set_name)),
 			HAL_SERVICE_ID_BLUETOOTH);
 	test_generic("Data size BT Set Remote Prop Vardata-",
 			ipc_send_tc, setup, teardown,
 			&bt_set_remote_prop_data_unders,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_set_remote_device_prop) +
 				sizeof(set_name)),
 			HAL_SERVICE_ID_BLUETOOTH);
@@ -1127,14 +1129,14 @@ int main(int argc, char *argv[])
 	test_generic("Data size HIDHOST Set Info Vardata+",
 			ipc_send_tc, setup, teardown,
 			&hidhost_set_info_data_overs,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_hidhost_set_info) +
 				sizeof(set_info_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
 	test_generic("Data size HIDHOST Set Info Vardata-",
 			ipc_send_tc, setup, teardown,
 			&hidhost_set_info_data_unders,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_hidhost_set_info) +
 				sizeof(set_info_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
@@ -1173,14 +1175,14 @@ int main(int argc, char *argv[])
 	test_generic("Data size HIDHOST Set Report Vardata+",
 			ipc_send_tc, setup, teardown,
 			&hidhost_set_report_data_overs,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_hidhost_set_report) +
 				sizeof(set_rep_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
 	test_generic("Data size HIDHOST Set Report Vardata-",
 			ipc_send_tc, setup, teardown,
 			&hidhost_set_report_data_unders,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_hidhost_set_report) +
 				sizeof(set_rep_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
@@ -1195,14 +1197,14 @@ int main(int argc, char *argv[])
 	test_generic("Data size HIDHOST Send Vardata+",
 			ipc_send_tc, setup, teardown,
 			&hidhost_send_data_overs,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_hidhost_send_data) +
 				sizeof(send_data_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);
 	test_generic("Data size HIDHOST Send Vardata-",
 			ipc_send_tc, setup, teardown,
 			&hidhost_send_data_unders,
-			(sizeof(struct hal_hdr) +
+			(sizeof(struct ipc_hdr) +
 				sizeof(struct hal_cmd_hidhost_send_data) +
 				sizeof(send_data_data)),
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_HIDHOST);

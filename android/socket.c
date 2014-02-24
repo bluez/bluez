@@ -39,7 +39,7 @@
 #include "src/log.h"
 
 #include "hal-msg.h"
-#include "hal-ipc.h"
+#include "ipc-common.h"
 #include "ipc.h"
 #include "utils.h"
 #include "bluetooth.h"

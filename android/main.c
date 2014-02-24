@@ -48,6 +48,7 @@
 
 #include "lib/bluetooth.h"
 
+#include "ipc-common.h"
 #include "ipc.h"
 #include "bluetooth.h"
 #include "socket.h"

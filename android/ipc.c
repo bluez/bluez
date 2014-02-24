@@ -36,7 +36,7 @@
 #include <unistd.h>
 #include <glib.h>
 
-#include "hal-msg.h"
+#include "ipc-common.h"
 #include "ipc.h"
 #include "src/log.h"
 
@@ -92,7 +92,7 @@ static void ipc_disconnect(struct ipc *ipc, bool in_cleanup)
 static int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 						const void *buf, ssize_t len)
 {
-	const struct hal_hdr *msg = buf;
+	const struct ipc_hdr *msg = buf;
 	const struct ipc_handler *handler;
 
 	if (len < (ssize_t) sizeof(*msg)) {
@@ -118,7 +118,7 @@ static int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 	}
 
 	/* if opcode is valid */
-	if (msg->opcode == HAL_OP_STATUS ||
+	if (msg->opcode == IPC_OP_STATUS ||
 			msg->opcode > handlers[msg->service_id].size) {
 		DBG("invalid opcode 0x%x for service 0x%x", msg->opcode,
 							msg->service_id);
@@ -146,7 +146,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 {
 	struct ipc *ipc = user_data;
 
-	char buf[BLUEZ_HAL_MTU];
+	char buf[IPC_MTU];
 	ssize_t ret;
 	int fd, err;
 
@@ -329,7 +329,7 @@ static void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 {
 	struct msghdr msg;
 	struct iovec iv[2];
-	struct hal_hdr m;
+	struct ipc_hdr m;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
 	struct cmsghdr *cmsg;
 
@@ -374,19 +374,19 @@ static void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 void ipc_send_rsp(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
 								uint8_t status)
 {
-	struct hal_status s;
+	struct ipc_status s;
 	int sk;
 
 	sk = g_io_channel_unix_get_fd(ipc->cmd_io);
 
-	if (status == HAL_STATUS_SUCCESS) {
+	if (status == IPC_STATUS_SUCCESS) {
 		ipc_send(sk, service_id, opcode, 0, NULL, -1);
 		return;
 	}
 
 	s.code = status;
 
-	ipc_send(sk, service_id, HAL_OP_STATUS, sizeof(s), &s, -1);
+	ipc_send(sk, service_id, IPC_OP_STATUS, sizeof(s), &s, -1);
 }
 
 void ipc_send_rsp_full(struct ipc *ipc, uint8_t service_id, uint8_t opcode,

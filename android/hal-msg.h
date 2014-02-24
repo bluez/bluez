@@ -21,16 +21,7 @@
  *
  */
 
-#define BLUEZ_HAL_MTU 1024
-
 static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
-
-struct hal_hdr {
-	uint8_t  service_id;
-	uint8_t  opcode;
-	uint16_t len;
-	uint8_t  payload[0];
-} __attribute__((packed));
 
 #define HAL_MINIMUM_EVENT		0x81
 
@@ -49,7 +40,7 @@ struct hal_hdr {
 
 /* Core Service */
 
-#define HAL_STATUS_SUCCESS		0x00
+#define HAL_STATUS_SUCCESS		IPC_STATUS_SUCCESS
 #define HAL_STATUS_FAILED		0x01
 #define HAL_STATUS_NOT_READY		0x02
 #define HAL_STATUS_NOMEM		0x03
@@ -61,10 +52,7 @@ struct hal_hdr {
 #define HAL_STATUS_AUTH_FAILURE		0x09
 #define HAL_STATUS_REMOTE_DEVICE_DOWN	0x0a
 
-#define HAL_OP_STATUS			0x00
-struct hal_status {
-	uint8_t code;
-} __attribute__((packed));
+#define HAL_OP_STATUS			IPC_OP_STATUS
 
 #define HAL_OP_REGISTER_MODULE		0x01
 struct hal_cmd_register_module {
