@@ -249,9 +249,22 @@ static void execute_context(struct context *context)
 	destroy_context(context);
 }
 
+static bool handle_play(struct avrcp *session)
+{
+	return true;
+}
+
+static const struct avrcp_passthrough_handler passthrough_handlers[] = {
+		{ AVC_PLAY, handle_play },
+		{ },
+};
+
 static void test_server(gconstpointer data)
 {
 	struct context *context = create_context(0x0100, data);
+
+	avrcp_set_passthrough_handlers(context->session, passthrough_handlers,
+								context);
 
 	g_idle_add(send_pdu, context);
 
@@ -290,6 +303,12 @@ int main(int argc, char *argv[])
 				0x07, 0xff, 0xff, 0xff, 0xff),
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0xf8, 0x31,
 				0x07, 0x48, 0xff, 0xff, 0xff));
+
+	define_test("/TP/PTT/BV-01-I", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48, 0x7c,
+				0x44, 0x00),
+			raw_pdu(0x02, 0x11, 0x0e, 0x09, 0x48, 0x7c,
+				0x44, 0x00));
 
 	return g_test_run();
 }
