@@ -2707,6 +2707,14 @@ static const struct generic_data set_privacy_success_test = {
 	.expect_settings_set = MGMT_SETTING_PRIVACY,
 };
 
+static const struct generic_data set_privacy_powered_test = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_SET_PRIVACY,
+	.send_param = set_privacy_valid_param,
+	.send_len = sizeof(set_privacy_valid_param),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -4018,6 +4026,9 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set Privacy - Success",
 				&set_privacy_success_test,
+				NULL, test_command_generic);
+	test_bredrle("Set Privacy - Rejected",
+				&set_privacy_powered_test,
 				NULL, test_command_generic);
 
 	return tester_run();
