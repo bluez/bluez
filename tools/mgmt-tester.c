@@ -2652,6 +2652,13 @@ static const struct generic_data load_irks_success2_test = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
+static const struct generic_data load_irks_not_supported_test = {
+	.send_opcode = MGMT_OP_LOAD_IRKS,
+	.send_param = load_irks_empty_list,
+	.send_len = sizeof(load_irks_empty_list),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -3947,6 +3954,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Load IRKs - Success 2",
 				&load_irks_success2_test,
+				NULL, test_command_generic);
+	test_bredr("Load IRKs - Not Supported",
+				&load_irks_not_supported_test,
 				NULL, test_command_generic);
 
 	return tester_run();
