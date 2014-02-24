@@ -256,7 +256,8 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/hcieventmask tools/hcisecfilter \
 			tools/btmgmt tools/btinfo tools/btattach \
 			tools/btsnoop tools/btproxy tools/btiotest \
-			tools/mpris-player tools/cltest tools/seq2bseq
+			tools/mpris-player tools/cltest tools/seq2bseq \
+			tools/ibeacon
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
 tools_bdaddr_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
@@ -306,6 +307,13 @@ tools_cltest_SOURCES = tools/cltest.c monitor/mainloop.h monitor/mainloop.c
 tools_cltest_LDADD = lib/libbluetooth-internal.la
 
 tools_seq2bseq_SOURCES = tools/seq2bseq.c
+
+tools_ibeacon_SOURCES = tools/ibeacon.c monitor/bt.h \
+				monitor/mainloop.h monitor/mainloop.c \
+				src/shared/io.h src/shared/io-mainloop.c \
+				src/shared/hci.h src/shared/hci.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c
 
 EXTRA_DIST += tools/bdaddr.1
 endif
