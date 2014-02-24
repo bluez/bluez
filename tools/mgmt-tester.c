@@ -304,7 +304,7 @@ static void test_condition_complete(struct test_data *data)
 		user->test_data = data; \
 		user->expected_version = 0x06; \
 		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x00001fff; \
+		user->expected_supported_settings = 0x00003fff; \
 		user->initial_settings = 0x00000080; \
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
@@ -342,7 +342,7 @@ static void test_condition_complete(struct test_data *data)
 		user->test_data = data; \
 		user->expected_version = 0x06; \
 		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x00001611; \
+		user->expected_supported_settings = 0x00003611; \
 		user->initial_settings = 0x00000200; \
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
