@@ -62,10 +62,10 @@ TC_PSE_SSM_BI_03_C	N/A
 TC_PSE_SSM_BV_08_I	PASS	Tester must compare passkey on IUT and PTS
 TC_PSE_SSM_BV_11_C	N/A
 
-TC_PSE_PBD_BV_02_C	PASS	Tester must compare phone book size with the value
-				given by PTS
-TC_PSE_PBD_BV_03_C	PASS	Tester must compare phone book size with the value
-				given by PTS
+TC_PSE_PBD_BV_02_C	PASS	Tester must compare phone book size with the
+				value given by PTS
+TC_PSE_PBD_BV_03_C	PASS	Tester must compare phone book size with the
+				value given by PTS
 TC_PSE_PBD_BV_05_C	N/A
 TC_PSE_PBD_BI_01_C	FAIL	Android PBAP server bug
 TC_PSE_PBD_BV_06_C	N/A
@@ -96,8 +96,8 @@ TC_PSE_PBD_BV_36_C	PASS
 TC_PSE_PBD_BV_37_C	N/A
 TC_PSE_PBB_BV_06_C	PASS
 TC_PSE_PBB_BV_07_C	PASS
-TC_PSE_PBB_BV_08_C	PASS	Tester must compare phone book size with the value
-				given by PTS
+TC_PSE_PBB_BV_08_C	PASS	Tester must compare phone book size with the
+				value given by PTS
 TC_PSE_PBB_BV_09_C	PASS
 TC_PSE_PBB_BV_10_C	PASS	Tester must verify vcard content received by PTS
 TC_PSE_PBB_BV_11_C	PASS	Tester must verify number of new missed calls
@@ -130,6 +130,6 @@ TC_PSE_PBB_BV_31_C	PASS
 TC_PSE_PBB_BV_32_C	N/A
 TC_PSE_PBF_BV_01_I	PASS
 TC_PSE_PBF_BV_02_I	PASS	Tester must verify vcard content received by PTS
-TC_PSE_PDF_BV_01_I	PASS	Tester must compare phone book size with the value
-				given by PTS
+TC_PSE_PDF_BV_01_I	PASS	Tester must compare phone book size with the
+				value given by PTS
 -------------------------------------------------------------------------------
