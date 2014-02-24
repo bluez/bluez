@@ -31,7 +31,7 @@ void bt_bluetooth_cleanup(void);
 
 void bt_bluetooth_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
-void bt_bluetooth_register(void);
+void bt_bluetooth_register(struct ipc *ipc);
 void bt_bluetooth_unregister(void);
 
 int bt_adapter_add_record(sdp_record_t *rec, uint8_t svc_hint);

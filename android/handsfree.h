@@ -21,5 +21,5 @@
  *
  */
 
-bool bt_handsfree_register(const bdaddr_t *addr);
+bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr);
 void bt_handsfree_unregister(void);

@@ -33,12 +33,12 @@
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
 #include "src/log.h"
-#include "bluetooth.h"
 #include "avctp.h"
-#include "avrcp.h"
 #include "avrcp-lib.h"
 #include "hal-msg.h"
 #include "ipc.h"
+#include "bluetooth.h"
+#include "avrcp.h"
 
 #define L2CAP_PSM_AVCTP 0x17
 
@@ -51,6 +51,7 @@ static bdaddr_t adapter_addr;
 static uint32_t record_id = 0;
 static GSList *devices = NULL;
 static GIOChannel *server = NULL;
+static struct ipc *hal_ipc = NULL;
 
 struct avrcp_device {
 	bdaddr_t	dst;
@@ -62,79 +63,79 @@ static void handle_get_play_status(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_GET_PLAY_STATUS,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_GET_PLAY_STATUS, HAL_STATUS_FAILED);
 }
 
 static void handle_list_player_attrs(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_LIST_PLAYER_ATTRS,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_LIST_PLAYER_ATTRS, HAL_STATUS_FAILED);
 }
 
 static void handle_list_player_values(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_LIST_PLAYER_VALUES,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_LIST_PLAYER_VALUES, HAL_STATUS_FAILED);
 }
 
 static void handle_get_player_attrs(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_GET_PLAYER_ATTRS,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_GET_PLAYER_ATTRS, HAL_STATUS_FAILED);
 }
 
 static void handle_get_player_attrs_text(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_GET_PLAYER_ATTRS_TEXT,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_GET_PLAYER_ATTRS_TEXT, HAL_STATUS_FAILED);
 }
 
 static void handle_get_player_values_text(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_GET_PLAYER_VALUES_TEXT,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_GET_PLAYER_VALUES_TEXT, HAL_STATUS_FAILED);
 }
 
 static void handle_get_element_attrs_text(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_GET_ELEMENT_ATTRS_TEXT,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_GET_ELEMENT_ATTRS_TEXT, HAL_STATUS_FAILED);
 }
 
 static void handle_set_player_attrs_value(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_SET_PLAYER_ATTRS_VALUE,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_SET_PLAYER_ATTRS_VALUE, HAL_STATUS_FAILED);
 }
 
 static void handle_register_notification(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_REGISTER_NOTIFICATION,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_OP_AVRCP_REGISTER_NOTIFICATION, HAL_STATUS_FAILED);
 }
 
 static void handle_set_volume(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_SET_VOLUME,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_SET_VOLUME,
 							HAL_STATUS_FAILED);
 }
 
@@ -363,7 +364,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	DBG("%s connected", address);
 }
 
-bool bt_avrcp_register(const bdaddr_t *addr)
+bool bt_avrcp_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	GError *err = NULL;
 	sdp_record_t *rec;
@@ -396,7 +397,9 @@ bool bt_avrcp_register(const bdaddr_t *addr)
 	}
 	record_id = rec->handle;
 
-	ipc_register(HAL_SERVICE_ID_AVRCP, cmd_handlers,
+	hal_ipc = ipc;
+
+	ipc_register(hal_ipc, HAL_SERVICE_ID_AVRCP, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
@@ -415,7 +418,8 @@ void bt_avrcp_unregister(void)
 	g_slist_free_full(devices, avrcp_device_free);
 	devices = NULL;
 
-	ipc_unregister(HAL_SERVICE_ID_AVRCP);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_AVRCP);
+	hal_ipc = NULL;
 
 	bt_adapter_remove_record(record_id);
 	record_id = 0;

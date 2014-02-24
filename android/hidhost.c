@@ -81,6 +81,8 @@ static GIOChannel *ctrl_io = NULL;
 static GIOChannel *intr_io = NULL;
 static GSList *devices = NULL;
 
+static struct ipc *hal_ipc = NULL;
+
 struct hid_device {
 	bdaddr_t	dst;
 	uint8_t		state;
@@ -303,8 +305,8 @@ static void bt_hid_notify_state(struct hid_device *dev, uint8_t state)
 	bdaddr2android(&dev->dst, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_CONN_STATE,
-							sizeof(ev), &ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HIDHOST,
+				HAL_EV_HIDHOST_CONN_STATE, sizeof(ev), &ev);
 }
 
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond,
@@ -362,8 +364,8 @@ static void bt_hid_notify_proto_mode(struct hid_device *dev, uint8_t *buf,
 		ev.mode = HAL_HIDHOST_UNSUPPORTED_PROTOCOL;
 	}
 
-	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_PROTO_MODE,
-							sizeof(ev), &ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HIDHOST,
+				HAL_EV_HIDHOST_PROTO_MODE, sizeof(ev), &ev);
 }
 
 static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
@@ -405,8 +407,8 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 	}
 
 send:
-	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_GET_REPORT,
-								ev_len, ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HIDHOST,
+				HAL_EV_HIDHOST_GET_REPORT, ev_len, ev);
 	g_free(ev);
 }
 
@@ -430,9 +432,8 @@ static void bt_hid_notify_virtual_unplug(struct hid_device *dev,
 		ev.status = HAL_HIDHOST_STATUS_OK;
 	}
 
-	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_VIRTUAL_UNPLUG,
-							sizeof(ev), &ev);
-
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HIDHOST,
+				HAL_EV_HIDHOST_VIRTUAL_UNPLUG, sizeof(ev), &ev);
 }
 
 static gboolean ctrl_io_watch_cb(GIOChannel *chan, gpointer data)
@@ -515,8 +516,8 @@ static void bt_hid_set_info(struct hid_device *dev)
 	memset(ev.descr, 0, sizeof(ev.descr));
 	memcpy(ev.descr, dev->rd_data, ev.descr_len);
 
-	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_INFO, sizeof(ev),
-									&ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_INFO,
+							sizeof(ev), &ev);
 }
 
 static int uhid_create(struct hid_device *dev)
@@ -806,7 +807,8 @@ static void bt_hid_connect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_CONNECT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_CONNECT,
+									status);
 }
 
 static void bt_hid_disconnect(const void *buf, uint16_t len)
@@ -841,7 +843,8 @@ static void bt_hid_disconnect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_DISCONNECT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_DISCONNECT,
+									status);
 }
 
 static void bt_hid_virtual_unplug(const void *buf, uint16_t len)
@@ -894,8 +897,8 @@ static void bt_hid_virtual_unplug(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_VIRTUAL_UNPLUG,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST,
+					HAL_OP_HIDHOST_VIRTUAL_UNPLUG, status);
 }
 
 static void bt_hid_info(const void *buf, uint16_t len)
@@ -914,7 +917,7 @@ static void bt_hid_info(const void *buf, uint16_t len)
 	 * once device is created with HID internals. */
 	DBG("Not supported");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_INFO,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_INFO,
 							HAL_STATUS_UNSUPPORTED);
 }
 
@@ -964,8 +967,8 @@ static void bt_hid_get_protocol(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_GET_PROTOCOL,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST,
+					HAL_OP_HIDHOST_GET_PROTOCOL, status);
 }
 
 static void bt_hid_set_protocol(const void *buf, uint16_t len)
@@ -1014,8 +1017,8 @@ static void bt_hid_set_protocol(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_PROTOCOL,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST,
+					HAL_OP_HIDHOST_SET_PROTOCOL, status);
 }
 
 static void bt_hid_get_report(const void *buf, uint16_t len)
@@ -1081,7 +1084,8 @@ static void bt_hid_get_report(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_GET_REPORT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_GET_REPORT,
+									status);
 }
 
 static void bt_hid_set_report(const void *buf, uint16_t len)
@@ -1158,7 +1162,8 @@ static void bt_hid_set_report(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_REPORT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_REPORT,
+									status);
 }
 
 static void bt_hid_send_data(const void *buf, uint16_t len)
@@ -1224,7 +1229,8 @@ static void bt_hid_send_data(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SEND_DATA, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SEND_DATA,
+									status);
 }
 
 static const struct ipc_handler cmd_handlers[] = {
@@ -1323,7 +1329,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 }
 
-bool bt_hid_register(const bdaddr_t *addr)
+bool bt_hid_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	GError *err = NULL;
 
@@ -1358,7 +1364,9 @@ bool bt_hid_register(const bdaddr_t *addr)
 		return false;
 	}
 
-	ipc_register(HAL_SERVICE_ID_HIDHOST, cmd_handlers,
+	hal_ipc = ipc;
+
+	ipc_register(hal_ipc, HAL_SERVICE_ID_HIDHOST, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
@@ -1383,5 +1391,6 @@ void bt_hid_unregister(void)
 		intr_io = NULL;
 	}
 
-	ipc_unregister(HAL_SERVICE_ID_HIDHOST);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_HIDHOST);
+	hal_ipc = NULL;
 }

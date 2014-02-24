@@ -43,6 +43,8 @@
 #include "android/hal-msg.h"
 #include "android/ipc.h"
 
+static struct ipc *ipc = NULL;
+
 struct test_data {
 	uint32_t expected_signal;
 	const void *cmd;
@@ -283,11 +285,15 @@ static void test_init(gconstpointer data)
 {
 	struct context *context = create_context(data);
 
-	ipc_init();
+	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
+							HAL_SERVICE_ID_MAX);
+
+	g_assert(ipc);
 
 	execute_context(context);
 
-	ipc_cleanup();
+	ipc_cleanup(ipc);
+	ipc = NULL;
 }
 
 static gboolean send_cmd(gpointer user_data)
@@ -310,7 +316,7 @@ static gboolean register_service(gpointer user_data)
 	struct context *context = user_data;
 	const struct test_data *test_data = context->data;
 
-	ipc_register(test_data->service, test_data->handlers,
+	ipc_register(ipc, test_data->service, test_data->handlers,
 						test_data->handlers_size);
 
 	return FALSE;
@@ -321,7 +327,7 @@ static gboolean unregister_service(gpointer user_data)
 	struct context *context = user_data;
 	const struct test_data *test_data = context->data;
 
-	ipc_unregister(test_data->service);
+	ipc_unregister(ipc, test_data->service);
 
 	return FALSE;
 }
@@ -330,13 +336,17 @@ static void test_cmd(gconstpointer data)
 {
 	struct context *context = create_context(data);
 
-	ipc_init();
+	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
+							HAL_SERVICE_ID_MAX);
+
+	g_assert(ipc);
 
 	g_idle_add(send_cmd, context);
 
 	execute_context(context);
 
-	ipc_cleanup();
+	ipc_cleanup(ipc);
+	ipc = NULL;
 }
 
 static void test_cmd_reg(gconstpointer data)
@@ -344,23 +354,30 @@ static void test_cmd_reg(gconstpointer data)
 	struct context *context = create_context(data);
 	const struct test_data *test_data = context->data;
 
-	ipc_init();
+	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
+							HAL_SERVICE_ID_MAX);
+
+	g_assert(ipc);
 
 	g_idle_add(register_service, context);
 	g_idle_add(send_cmd, context);
 
 	execute_context(context);
 
-	ipc_unregister(test_data->service);
+	ipc_unregister(ipc, test_data->service);
 
-	ipc_cleanup();
+	ipc_cleanup(ipc);
+	ipc = NULL;
 }
 
 static void test_cmd_reg_1(gconstpointer data)
 {
 	struct context *context = create_context(data);
 
-	ipc_init();
+	ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
+							HAL_SERVICE_ID_MAX);
+
+	g_assert(ipc);
 
 	g_idle_add(register_service, context);
 	g_idle_add(unregister_service, context);
@@ -368,17 +385,18 @@ static void test_cmd_reg_1(gconstpointer data)
 
 	execute_context(context);
 
-	ipc_cleanup();
+	ipc_cleanup(ipc);
+	ipc = NULL;
 }
 
 static void test_cmd_handler_1(const void *buf, uint16_t len)
 {
-	ipc_send_rsp(0, 1, 0);
+	ipc_send_rsp(ipc, 0, 1, 0);
 }
 
 static void test_cmd_handler_2(const void *buf, uint16_t len)
 {
-	ipc_send_rsp(0, 2, 0);
+	ipc_send_rsp(ipc, 0, 2, 0);
 }
 
 static void test_cmd_handler_invalid(const void *buf, uint16_t len)

@@ -49,11 +49,11 @@
 #include "profiles/network/bnep.h"
 #include "src/log.h"
 
-#include "pan.h"
 #include "hal-msg.h"
 #include "ipc.h"
 #include "utils.h"
 #include "bluetooth.h"
+#include "pan.h"
 
 #define SVC_HINT_NETWORKING 0x02
 
@@ -64,6 +64,7 @@
 static bdaddr_t adapter_addr;
 GSList *devices = NULL;
 uint8_t local_role = HAL_PAN_ROLE_NONE;
+static struct ipc *hal_ipc = NULL;
 
 struct pan_device {
 	char		iface[16];
@@ -247,8 +248,8 @@ static void bt_pan_notify_conn_state(struct pan_device *dev, uint8_t state)
 	ev.remote_role = dev->role;
 	ev.status = HAL_STATUS_SUCCESS;
 
-	ipc_send_notif(HAL_SERVICE_ID_PAN, HAL_EV_PAN_CONN_STATE, sizeof(ev),
-									&ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_PAN, HAL_EV_PAN_CONN_STATE,
+							sizeof(ev), &ev);
 	if (dev->conn_state == HAL_PAN_STATE_DISCONNECTED)
 		pan_device_remove(dev);
 }
@@ -270,8 +271,8 @@ static void bt_pan_notify_ctrl_state(struct pan_device *dev, uint8_t state)
 	else
 		memcpy(ev.name, dev->iface, sizeof(dev->iface));
 
-	ipc_send_notif(HAL_SERVICE_ID_PAN, HAL_EV_PAN_CTRL_STATE, sizeof(ev),
-									&ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_PAN, HAL_EV_PAN_CTRL_STATE,
+							sizeof(ev), &ev);
 }
 
 static void bnep_disconn_cb(void *data)
@@ -414,7 +415,7 @@ static void bt_pan_connect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_PAN, HAL_OP_PAN_CONNECT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_PAN, HAL_OP_PAN_CONNECT, status);
 }
 
 static void bt_pan_disconnect(const void *buf, uint16_t len)
@@ -444,7 +445,8 @@ static void bt_pan_disconnect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_PAN, HAL_OP_PAN_DISCONNECT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_PAN, HAL_OP_PAN_DISCONNECT,
+									status);
 }
 
 static gboolean nap_watchdog_cb(GIOChannel *chan, GIOCondition cond,
@@ -676,7 +678,7 @@ static void bt_pan_enable(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 reply:
-	ipc_send_rsp(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE, status);
 }
 
 static void bt_pan_get_role(const void *buf, uint16_t len)
@@ -686,8 +688,8 @@ static void bt_pan_get_role(const void *buf, uint16_t len)
 	DBG("");
 
 	rsp.local_role = local_role;
-	ipc_send_rsp_full(HAL_SERVICE_ID_PAN, HAL_OP_PAN_GET_ROLE, sizeof(rsp),
-								&rsp, -1);
+	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_PAN, HAL_OP_PAN_GET_ROLE,
+							sizeof(rsp), &rsp, -1);
 }
 
 static const struct ipc_handler cmd_handlers[] = {
@@ -776,7 +778,7 @@ static sdp_record_t *pan_record(void)
 	return record;
 }
 
-bool bt_pan_register(const bdaddr_t *addr)
+bool bt_pan_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	sdp_record_t *rec;
 	int err;
@@ -813,7 +815,9 @@ bool bt_pan_register(const bdaddr_t *addr)
 	}
 
 	nap_dev.record_id = rec->handle;
-	ipc_register(HAL_SERVICE_ID_PAN, cmd_handlers,
+
+	hal_ipc = ipc;
+	ipc_register(hal_ipc, HAL_SERVICE_ID_PAN, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
@@ -829,7 +833,9 @@ void bt_pan_unregister(void)
 
 	bnep_cleanup();
 
-	ipc_unregister(HAL_SERVICE_ID_PAN);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_PAN);
+	hal_ipc = NULL;
+
 	bt_adapter_remove_record(nap_dev.record_id);
 	nap_dev.record_id = 0;
 	destroy_nap_device();

@@ -21,5 +21,5 @@
  *
  */
 
-bool bt_hid_register(const bdaddr_t *addr);
+bool bt_hid_register(struct ipc *ipc, const bdaddr_t *addr);
 void bt_hid_unregister(void);

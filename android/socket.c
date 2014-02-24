@@ -38,11 +38,11 @@
 #include "src/sdpd.h"
 #include "src/log.h"
 
-#include "bluetooth.h"
 #include "hal-msg.h"
 #include "hal-ipc.h"
 #include "ipc.h"
 #include "utils.h"
+#include "bluetooth.h"
 #include "socket.h"
 
 #define RFCOMM_CHANNEL_MAX 30
@@ -60,6 +60,7 @@
 #define MAP_MSG_TYPE_SMS_CDMA	0x04
 #define DEFAULT_MAS_MSG_TYPE	(MAP_MSG_TYPE_SMS_GSM | MAP_MSG_TYPE_SMS_CDMA)
 
+static struct ipc *hal_ipc = NULL;
 struct rfcomm_sock {
 	int channel;	/* RFCOMM channel */
 	BtIOSecLevel sec_level;
@@ -862,13 +863,14 @@ static void handle_listen(const void *buf, uint16_t len)
 	if (status != HAL_STATUS_SUCCESS)
 		goto failed;
 
-	ipc_send_rsp_full(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN, 0, NULL,
-								hal_sock);
+	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN,
+							0, NULL, hal_sock);
 	close(hal_sock);
 	return ;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN,
+									status);
 }
 
 static bool sock_send_connect(struct rfcomm_sock *rfsock, bdaddr_t *bdaddr)
@@ -1106,13 +1108,14 @@ static void handle_connect(const void *buf, uint16_t len)
 	if (status != HAL_STATUS_SUCCESS)
 		goto failed;
 
-	ipc_send_rsp_full(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_CONNECT, 0,
-							 NULL, hal_sock);
+	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_CONNECT,
+							0, NULL, hal_sock);
 	close(hal_sock);
 	return;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_CONNECT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_CONNECT,
+									status);
 
 }
 
@@ -1123,7 +1126,7 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_connect, false, sizeof(struct hal_cmd_socket_connect) },
 };
 
-void bt_socket_register(const bdaddr_t *addr)
+void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	size_t i;
 
@@ -1137,7 +1140,9 @@ void bt_socket_register(const bdaddr_t *addr)
 			servers[profiles[i].channel].reserved = true;
 
 	bacpy(&adapter_addr, addr);
-	ipc_register(HAL_SERVICE_ID_SOCKET, cmd_handlers,
+
+	hal_ipc = ipc;
+	ipc_register(hal_ipc, HAL_SERVICE_ID_SOCKET, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 }
 
@@ -1155,5 +1160,6 @@ void bt_socket_unregister(void)
 
 	memset(servers, 0, sizeof(servers));
 
-	ipc_unregister(HAL_SERVICE_ID_SOCKET);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_SOCKET);
+	hal_ipc = NULL;
 }

@@ -21,7 +21,7 @@
  *
  */
 
-bool bt_avrcp_register(const bdaddr_t *addr);
+bool bt_avrcp_register(struct ipc *ipc, const bdaddr_t *addr);
 void bt_avrcp_unregister(void);
 
 void bt_avrcp_connect(const bdaddr_t *dst);

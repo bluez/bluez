@@ -39,9 +39,9 @@
 #include "lib/sdp_lib.h"
 #include "profiles/audio/a2dp-codecs.h"
 #include "src/log.h"
-#include "a2dp.h"
 #include "hal-msg.h"
 #include "ipc.h"
+#include "a2dp.h"
 #include "utils.h"
 #include "bluetooth.h"
 #include "avdtp.h"
@@ -62,6 +62,8 @@ static bdaddr_t adapter_addr;
 static uint32_t record_id = 0;
 static guint audio_retry_id = 0;
 static bool audio_retrying = false;
+
+static struct ipc *hal_ipc = NULL;
 
 struct a2dp_preset {
 	void *data;
@@ -226,8 +228,8 @@ static void bt_a2dp_notify_state(struct a2dp_device *dev, uint8_t state)
 	bdaddr2android(&dev->dst, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send_notif(HAL_SERVICE_ID_A2DP, HAL_EV_A2DP_CONN_STATE, sizeof(ev),
-									&ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_A2DP, HAL_EV_A2DP_CONN_STATE,
+							sizeof(ev), &ev);
 
 	if (state != HAL_A2DP_STATE_DISCONNECTED)
 		return;
@@ -253,8 +255,8 @@ static void bt_audio_notify_state(struct a2dp_setup *setup, uint8_t state)
 	bdaddr2android(&setup->dev->dst, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send_notif(HAL_SERVICE_ID_A2DP, HAL_EV_A2DP_AUDIO_STATE, sizeof(ev),
-									&ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_A2DP, HAL_EV_A2DP_AUDIO_STATE,
+							sizeof(ev), &ev);
 }
 
 static void disconnect_cb(void *user_data)
@@ -597,7 +599,7 @@ static void bt_a2dp_connect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_A2DP, HAL_OP_A2DP_CONNECT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_A2DP, HAL_OP_A2DP_CONNECT, status);
 }
 
 static void bt_a2dp_disconnect(const void *buf, uint16_t len)
@@ -631,7 +633,8 @@ static void bt_a2dp_disconnect(const void *buf, uint16_t len)
 	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTING);
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_A2DP, HAL_OP_A2DP_DISCONNECT, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_A2DP, HAL_OP_A2DP_DISCONNECT,
+									status);
 }
 
 static const struct ipc_handler cmd_handlers[] = {
@@ -1540,7 +1543,7 @@ retry:
 						audio_disconnected);
 }
 
-bool bt_a2dp_register(const bdaddr_t *addr)
+bool bt_a2dp_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	GError *err = NULL;
 	sdp_record_t *rec;
@@ -1573,7 +1576,9 @@ bool bt_a2dp_register(const bdaddr_t *addr)
 	}
 	record_id = rec->handle;
 
-	ipc_register(HAL_SERVICE_ID_A2DP, cmd_handlers,
+	hal_ipc = ipc;
+
+	ipc_register(hal_ipc, HAL_SERVICE_ID_A2DP, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
 	bt_audio_register(audio_disconnected);
@@ -1600,7 +1605,9 @@ void bt_a2dp_unregister(void)
 	g_slist_free_full(devices, a2dp_device_free);
 	devices = NULL;
 
-	ipc_unregister(HAL_SERVICE_ID_A2DP);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_A2DP);
+	hal_ipc = NULL;
+
 	audio_ipc_unregister();
 
 	bt_adapter_remove_record(record_id);

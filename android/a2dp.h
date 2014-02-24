@@ -21,5 +21,5 @@
  *
  */
 
-bool bt_a2dp_register(const bdaddr_t *addr);
+bool bt_a2dp_register(struct ipc *ipc, const bdaddr_t *addr);
 void bt_a2dp_unregister(void);

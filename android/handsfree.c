@@ -38,11 +38,11 @@
 #include "src/uuid-helper.h"
 #include "src/shared/hfp.h"
 #include "btio/btio.h"
+#include "hal-msg.h"
+#include "ipc.h"
 #include "handsfree.h"
 #include "bluetooth.h"
 #include "src/log.h"
-#include "hal-msg.h"
-#include "ipc.h"
 #include "utils.h"
 
 #define HFP_AG_CHANNEL 13
@@ -56,6 +56,7 @@ static struct {
 
 static bdaddr_t adapter_addr;
 static uint32_t record_id = 0;
+static struct ipc *hal_ipc = NULL;
 
 static GIOChannel *server = NULL;
 
@@ -75,8 +76,8 @@ static void device_set_state(uint8_t state)
 	bdaddr2android(&device.bdaddr, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send_notif(HAL_SERVICE_ID_HANDSFREE, HAL_EV_HANDSFREE_CONN_STATE,
-							sizeof(ev), &ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+				HAL_EV_HANDSFREE_CONN_STATE, sizeof(ev), &ev);
 }
 
 static void device_init(const bdaddr_t *bdaddr)
@@ -281,8 +282,8 @@ static void handle_connect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_CONNECT,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_OP_HANDSFREE_CONNECT, status);
 }
 
 static void handle_disconnect(const void *buf, uint16_t len)
@@ -317,23 +318,23 @@ static void handle_disconnect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_DISCONNECT,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_OP_HANDSFREE_DISCONNECT, status);
 }
 
 static void handle_connect_audio(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_CONNECT_AUDIO,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+			HAL_OP_HANDSFREE_CONNECT_AUDIO, HAL_STATUS_FAILED);
 }
 
 static void handle_disconnect_audio(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 			HAL_OP_HANDSFREE_DISCONNECT_AUDIO, HAL_STATUS_FAILED);
 }
 
@@ -341,31 +342,31 @@ static void handle_start_vr(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_START_VR,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+				HAL_OP_HANDSFREE_START_VR, HAL_STATUS_FAILED);
 }
 
 static void handle_stop_vr(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_STOP_VR,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+				HAL_OP_HANDSFREE_STOP_VR, HAL_STATUS_FAILED);
 }
 
 static void handle_volume_control(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_VOLUME_CONTROL,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+			HAL_OP_HANDSFREE_VOLUME_CONTROL, HAL_STATUS_FAILED);
 }
 
 static void handle_device_status_notif(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_DEVICE_STATUS_NOTIF,
 					HAL_STATUS_FAILED);
 }
@@ -374,23 +375,23 @@ static void handle_cops(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_COPS_RESPONSE,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+			HAL_OP_HANDSFREE_COPS_RESPONSE, HAL_STATUS_FAILED);
 }
 
 static void handle_cind(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_CIND_RESPONSE,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+			HAL_OP_HANDSFREE_CIND_RESPONSE, HAL_STATUS_FAILED);
 }
 
 static void handle_formatted_at_resp(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE,
 					HAL_STATUS_FAILED);
 }
@@ -399,23 +400,23 @@ static void handle_at_resp(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_AT_RESPONSE,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+			HAL_OP_HANDSFREE_AT_RESPONSE, HAL_STATUS_FAILED);
 }
 
 static void handle_clcc_resp(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_CLCC_RESPONSE,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+			HAL_OP_HANDSFREE_CLCC_RESPONSE, HAL_STATUS_FAILED);
 }
 
 static void handle_phone_state_change(const void *buf, uint16_t len)
 {
 	DBG("");
 
-	ipc_send_rsp(HAL_SERVICE_ID_HANDSFREE,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_PHONE_STATE_CHANGE,
 					HAL_STATUS_FAILED);
 }
@@ -530,7 +531,7 @@ static sdp_record_t *handsfree_ag_record(void)
 	return record;
 }
 
-bool bt_handsfree_register(const bdaddr_t *addr)
+bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	sdp_record_t *rec;
 	GError *err = NULL;
@@ -563,7 +564,8 @@ bool bt_handsfree_register(const bdaddr_t *addr)
 	}
 	record_id = rec->handle;
 
-	ipc_register(HAL_SERVICE_ID_HANDSFREE, cmd_handlers,
+	hal_ipc = ipc;
+	ipc_register(hal_ipc, HAL_SERVICE_ID_HANDSFREE, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
@@ -580,7 +582,8 @@ void bt_handsfree_unregister(void)
 {
 	DBG("");
 
-	ipc_unregister(HAL_SERVICE_ID_HANDSFREE);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_HANDSFREE);
+	hal_ipc = NULL;
 
 	if (server) {
 		g_io_channel_shutdown(server, TRUE, NULL);

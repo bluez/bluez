@@ -145,6 +145,8 @@ static GSList *cached_devices = NULL;
 /* This list contains addresses which are asked for records */
 static GSList *browse_reqs;
 
+static struct ipc *hal_ipc = NULL;
+
 static void store_adapter_config(void)
 {
 	GKeyFile *key_file;
@@ -390,8 +392,8 @@ static  void send_adapter_property(uint8_t type, uint16_t len, const void *val)
 	ev->props[0].len = len;
 	memcpy(ev->props[0].val, val, len);
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_ADAPTER_PROPS_CHANGED,
-							sizeof(buf), buf);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), buf);
 }
 
 static void adapter_name_changed(const uint8_t *name)
@@ -440,8 +442,8 @@ static void powered_changed(void)
 
 	DBG("%u", ev.state);
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_ADAPTER_STATE_CHANGED,
-							sizeof(ev), &ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_ADAPTER_STATE_CHANGED, sizeof(ev), &ev);
 }
 
 static uint8_t settings2scan_mode(void)
@@ -594,8 +596,8 @@ static void send_bond_state_change(const bdaddr_t *addr, uint8_t status,
 	ev.state = state;
 	bdaddr2android(addr, ev.bdaddr);
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_BOND_STATE_CHANGED,
-							sizeof(ev), &ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_BOND_STATE_CHANGED, sizeof(ev), &ev);
 }
 
 static void set_device_bond_state(const bdaddr_t *addr, uint8_t status,
@@ -647,8 +649,8 @@ static  void send_device_property(const bdaddr_t *bdaddr, uint8_t type,
 	ev->props[0].len = len;
 	memcpy(ev->props[0].val, val, len);
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_REMOTE_DEVICE_PROPS,
-							sizeof(buf), buf);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_REMOTE_DEVICE_PROPS, sizeof(buf), buf);
 }
 
 static void send_device_uuids_notif(struct device *dev)
@@ -883,7 +885,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	bdaddr2android(&ev->addr.bdaddr, hal_ev.bdaddr);
 	hal_ev.class_of_dev = dev->class;
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_PIN_REQUEST,
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_EV_PIN_REQUEST,
 						sizeof(hal_ev), &hal_ev);
 }
 
@@ -901,7 +903,7 @@ static void send_ssp_request(const bdaddr_t *addr, uint8_t variant,
 	ev.pairing_variant = variant;
 	ev.passkey = passkey;
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_SSP_REQUEST,
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_EV_SSP_REQUEST,
 							sizeof(ev), &ev);
 }
 
@@ -1010,7 +1012,7 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 		cp.state = HAL_DISCOVERY_STATE_STOPPED;
 	}
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH,
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
 			HAL_EV_DISCOVERY_STATE_CHANGED, sizeof(cp), &cp);
 }
 
@@ -1106,8 +1108,8 @@ static void update_new_device(struct device *dev, int8_t rssi,
 		ev->num_props++;
 	}
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_DEVICE_FOUND, size,
-									buf);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_EV_DEVICE_FOUND,
+								size, buf);
 }
 
 static void update_device(struct device *dev, int8_t rssi,
@@ -1147,7 +1149,7 @@ static void update_device(struct device *dev, int8_t rssi,
 	}
 
 	if (ev->num_props)
-		ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH,
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
 					HAL_EV_REMOTE_DEVICE_PROPS, size, buf);
 }
 
@@ -1259,8 +1261,8 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 	hal_ev.state = HAL_ACL_STATE_CONNECTED;
 	bdaddr2android(&ev->addr.bdaddr, hal_ev.bdaddr);
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_ACL_STATE_CHANGED,
-						sizeof(hal_ev), &hal_ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+			HAL_EV_ACL_STATE_CHANGED, sizeof(hal_ev), &hal_ev);
 }
 
 static void mgmt_device_disconnected_event(uint16_t index, uint16_t length,
@@ -1279,8 +1281,8 @@ static void mgmt_device_disconnected_event(uint16_t index, uint16_t length,
 	hal_ev.state = HAL_ACL_STATE_DISCONNECTED;
 	bdaddr2android(&ev->addr.bdaddr, hal_ev.bdaddr);
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_ACL_STATE_CHANGED,
-						sizeof(hal_ev), &hal_ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+			HAL_EV_ACL_STATE_CHANGED, sizeof(hal_ev), &hal_ev);
 }
 
 static uint8_t status_mgmt2hal(uint8_t mgmt)
@@ -1502,8 +1504,8 @@ static uint8_t get_adapter_uuids(void)
 		p += sizeof(uint128_t);
 	}
 
-	ipc_send_notif(HAL_SERVICE_ID_BLUETOOTH, HAL_EV_ADAPTER_PROPS_CHANGED,
-							sizeof(buf), ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), ev);
 
 	return HAL_STATUS_SUCCESS;
 }
@@ -2387,7 +2389,8 @@ static void handle_get_adapter_prop_cmd(const void *buf, uint16_t len)
 		error("Failed to get adapter property (type %u status %u)",
 							cmd->type, status);
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROP, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROP,
+									status);
 }
 
 static void get_adapter_properties(void)
@@ -2538,7 +2541,8 @@ static void handle_set_adapter_prop_cmd(const void *buf, uint16_t len)
 		error("Failed to set adapter property (type %u status %u)",
 							cmd->type, status);
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_ADAPTER_PROP, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_ADAPTER_PROP,
+									status);
 }
 
 static void pair_device_complete(uint8_t status, uint16_t length,
@@ -2579,7 +2583,8 @@ static void handle_create_bond_cmd(const void *buf, uint16_t len)
 						HAL_BOND_STATE_BONDING);
 
 fail:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CREATE_BOND, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CREATE_BOND,
+									status);
 }
 
 static void handle_cancel_bond_cmd(const void *buf, uint16_t len)
@@ -2597,7 +2602,8 @@ static void handle_cancel_bond_cmd(const void *buf, uint16_t len)
 	else
 		status = HAL_STATUS_FAILED;
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_BOND, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_BOND,
+									status);
 }
 
 static void unpair_device_complete(uint8_t status, uint16_t length,
@@ -2631,7 +2637,8 @@ static void handle_remove_bond_cmd(const void *buf, uint16_t len)
 	else
 		status = HAL_STATUS_FAILED;
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_REMOVE_BOND, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_REMOVE_BOND,
+									status);
 }
 
 static void handle_pin_reply_cmd(const void *buf, uint16_t len)
@@ -2682,7 +2689,8 @@ static void handle_pin_reply_cmd(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_PIN_REPLY, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_PIN_REPLY,
+									status);
 }
 
 static uint8_t user_confirm_reply(const bdaddr_t *bdaddr, bool accept)
@@ -2770,7 +2778,8 @@ static void handle_ssp_reply_cmd(const void *buf, uint16_t len)
 		break;
 	}
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SSP_REPLY, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SSP_REPLY,
+									status);
 }
 
 static void handle_get_remote_services_cmd(const void *buf, uint16_t len)
@@ -2783,8 +2792,8 @@ static void handle_get_remote_services_cmd(const void *buf, uint16_t len)
 
 	status = browse_remote_sdp(&addr);
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_SERVICES,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+					HAL_OP_GET_REMOTE_SERVICES, status);
 }
 
 static uint8_t get_device_uuids(struct device *dev)
@@ -2907,7 +2916,7 @@ static void handle_enable_cmd(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 reply:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, status);
 }
 
 static void handle_disable_cmd(const void *buf, uint16_t len)
@@ -2929,15 +2938,15 @@ static void handle_disable_cmd(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 reply:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, status);
 }
 
 static void handle_get_adapter_props_cmd(const void *buf, uint16_t len)
 {
 	get_adapter_properties();
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROPS,
-							HAL_STATUS_SUCCESS);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_OP_GET_ADAPTER_PROPS, HAL_STATUS_SUCCESS);
 }
 
 static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
@@ -2960,8 +2969,8 @@ static void handle_get_remote_device_props_cmd(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_DEVICE_PROPS,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+					HAL_OP_GET_REMOTE_DEVICE_PROPS, status);
 }
 
 static void handle_get_remote_device_prop_cmd(const void *buf, uint16_t len)
@@ -3017,8 +3026,8 @@ static void handle_get_remote_device_prop_cmd(const void *buf, uint16_t len)
 							cmd->type, status);
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_DEVICE_PROP,
-								status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+					HAL_OP_GET_REMOTE_DEVICE_PROP, status);
 }
 
 static uint8_t set_device_friendly_name(struct device *dev, const uint8_t *val,
@@ -3088,8 +3097,8 @@ static void handle_set_remote_device_prop_cmd(const void *buf, uint16_t len)
 							cmd->type, status);
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_REMOTE_DEVICE_PROP,
-									status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+					HAL_OP_SET_REMOTE_DEVICE_PROP, status);
 }
 
 static void handle_get_remote_service_rec_cmd(const void *buf, uint16_t len)
@@ -3098,8 +3107,8 @@ static void handle_get_remote_service_rec_cmd(const void *buf, uint16_t len)
 
 	error("get_remote_service_record not supported");
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_SERVICE_REC,
-							HAL_STATUS_FAILED);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+			HAL_OP_GET_REMOTE_SERVICE_REC, HAL_STATUS_FAILED);
 }
 
 static void handle_start_discovery_cmd(const void *buf, uint16_t len)
@@ -3123,7 +3132,8 @@ static void handle_start_discovery_cmd(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 reply:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_START_DISCOVERY, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_START_DISCOVERY,
+									status);
 }
 
 static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
@@ -3148,7 +3158,8 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 reply:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_DISCOVERY, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_DISCOVERY,
+									status);
 }
 
 static void handle_dut_mode_conf_cmd(const void *buf, uint16_t len)
@@ -3181,7 +3192,8 @@ static void handle_dut_mode_conf_cmd(const void *buf, uint16_t len)
 	close(fd);
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_CONF, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_CONF,
+									status);
 }
 
 static void handle_dut_mode_send_cmd(const void *buf, uint16_t len)
@@ -3198,7 +3210,7 @@ static void handle_dut_mode_send_cmd(const void *buf, uint16_t len)
 
 	/* TODO */
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_SEND,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_SEND,
 							HAL_STATUS_FAILED);
 }
 
@@ -3216,7 +3228,7 @@ static void handle_le_test_mode_cmd(const void *buf, uint16_t len)
 
 	/* TODO */
 
-	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_LE_TEST_MODE,
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_LE_TEST_MODE,
 							HAL_STATUS_FAILED);
 }
 
@@ -3272,11 +3284,13 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_le_test_mode_cmd, true, sizeof(struct hal_cmd_le_test_mode) },
 };
 
-void bt_bluetooth_register(void)
+void bt_bluetooth_register(struct ipc *ipc)
 {
 	DBG("");
 
-	ipc_register(HAL_SERVICE_ID_BLUETOOTH, cmd_handlers,
+	hal_ipc = ipc;
+
+	ipc_register(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 }
 
@@ -3290,5 +3304,6 @@ void bt_bluetooth_unregister(void)
 	g_slist_free_full(cached_devices, (GDestroyNotify) free_device);
 	cached_devices = NULL;
 
-	ipc_unregister(HAL_SERVICE_ID_CORE);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_CORE);
+	hal_ipc = NULL;
 }

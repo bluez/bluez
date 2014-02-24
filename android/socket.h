@@ -30,5 +30,5 @@ struct hal_sock_connect_signal {
 
 void bt_sock_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
-void bt_socket_register(const bdaddr_t *addr);
+void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr);
 void bt_socket_unregister(void);

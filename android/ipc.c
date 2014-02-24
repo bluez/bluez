@@ -40,13 +40,19 @@
 #include "ipc.h"
 #include "src/log.h"
 
-static struct service_handler services[HAL_SERVICE_ID_MAX + 1];
+struct ipc {
+	struct service_handler *services;
+	int service_max;
 
-static GIOChannel *cmd_io = NULL;
-static GIOChannel *notif_io = NULL;
+	const char *path;
+	size_t size;
 
-static guint cmd_watch = 0;
-static guint notif_watch = 0;
+	GIOChannel *cmd_io;
+	guint cmd_watch;
+
+	GIOChannel *notif_io;
+	guint notif_watch;
+};
 
 int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 						const void *buf, ssize_t len)
@@ -103,6 +109,8 @@ int ipc_handle_msg(struct service_handler *handlers, size_t max_index,
 static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
+	struct ipc *ipc = user_data;
+
 	char buf[BLUEZ_HAL_MTU];
 	ssize_t ret;
 	int fd, err;
@@ -121,7 +129,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		goto fail;
 	}
 
-	err = ipc_handle_msg(services, HAL_SERVICE_ID_MAX, buf, ret);
+	err = ipc_handle_msg(ipc->services, ipc->service_max, buf, ret);
 	if (err < 0) {
 		error("IPC: failed to handle message, terminating (%s)",
 							strerror(-err));
@@ -181,6 +189,8 @@ GIOChannel *ipc_connect(const char *path, size_t size, GIOFunc connect_cb,
 static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
+	struct ipc *ipc = user_data;
+
 	DBG("");
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
@@ -191,11 +201,11 @@ static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	cond = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
-	notif_watch = g_io_add_watch(io, cond, notif_watch_cb, NULL);
+	ipc->notif_watch = g_io_add_watch(io, cond, notif_watch_cb, ipc);
 
 	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
-	cmd_watch = g_io_add_watch(cmd_io, cond, cmd_watch_cb, NULL);
+	ipc->cmd_watch = g_io_add_watch(ipc->cmd_io, cond, cmd_watch_cb, ipc);
 
 	info("IPC: successfully connected");
 
@@ -205,6 +215,8 @@ static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
+	struct ipc *ipc = user_data;
+
 	DBG("");
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
@@ -213,45 +225,62 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	notif_io = ipc_connect(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-						notif_connect_cb, NULL);
-	if (!notif_io)
+	ipc->notif_io = ipc_connect(ipc->path, ipc->size, notif_connect_cb,
+									ipc);
+	if (!ipc->notif_io)
 		raise(SIGTERM);
 
 	return FALSE;
 }
 
-void ipc_init(void)
+struct ipc *ipc_init(const char *path, size_t size, int max_service_id)
 {
-	cmd_io = ipc_connect(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
-						cmd_connect_cb, NULL);
-	if (!cmd_io)
-		raise(SIGTERM);
+	struct ipc *ipc;
+
+	ipc = g_new0(struct ipc, 1);
+
+	ipc->services = g_new0(struct service_handler, max_service_id + 1);
+	ipc->service_max = max_service_id;
+
+	ipc->path = path;
+	ipc->size = size;
+
+	ipc->cmd_io = ipc_connect(path, size, cmd_connect_cb, ipc);
+	if (!ipc->cmd_io) {
+		g_free(ipc->services);
+		g_free(ipc);
+		return NULL;
+	}
+
+	return ipc;
 }
 
-void ipc_cleanup(void)
+void ipc_cleanup(struct ipc *ipc)
 {
-	if (cmd_watch) {
-		g_source_remove(cmd_watch);
-		cmd_watch = 0;
+	if (ipc->cmd_watch) {
+		g_source_remove(ipc->cmd_watch);
+		ipc->cmd_watch = 0;
 	}
 
-	if (cmd_io) {
-		g_io_channel_shutdown(cmd_io, TRUE, NULL);
-		g_io_channel_unref(cmd_io);
-		cmd_io = NULL;
+	if (ipc->cmd_io) {
+		g_io_channel_shutdown(ipc->cmd_io, TRUE, NULL);
+		g_io_channel_unref(ipc->cmd_io);
+		ipc->cmd_io = NULL;
 	}
 
-	if (notif_watch) {
-		g_source_remove(notif_watch);
-		notif_watch = 0;
+	if (ipc->notif_watch) {
+		g_source_remove(ipc->notif_watch);
+		ipc->notif_watch = 0;
 	}
 
-	if (notif_io) {
-		g_io_channel_shutdown(notif_io, TRUE, NULL);
-		g_io_channel_unref(notif_io);
-		notif_io = NULL;
+	if (ipc->notif_io) {
+		g_io_channel_shutdown(ipc->notif_io, TRUE, NULL);
+		g_io_channel_unref(ipc->notif_io);
+		ipc->notif_io = NULL;
 	}
+
+	g_free(ipc->services);
+	g_free(ipc);
 }
 
 void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
@@ -299,12 +328,13 @@ void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 	}
 }
 
-void ipc_send_rsp(uint8_t service_id, uint8_t opcode, uint8_t status)
+void ipc_send_rsp(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
+								uint8_t status)
 {
 	struct hal_status s;
 	int sk;
 
-	sk = g_io_channel_unix_get_fd(cmd_io);
+	sk = g_io_channel_unix_get_fd(ipc->cmd_io);
 
 	if (status == HAL_STATUS_SUCCESS) {
 		ipc_send(sk, service_id, opcode, 0, NULL, -1);
@@ -316,32 +346,38 @@ void ipc_send_rsp(uint8_t service_id, uint8_t opcode, uint8_t status)
 	ipc_send(sk, service_id, HAL_OP_STATUS, sizeof(s), &s, -1);
 }
 
-void ipc_send_rsp_full(uint8_t service_id, uint8_t opcode, uint16_t len,
-							void *param, int fd)
+void ipc_send_rsp_full(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
+					uint16_t len, void *param, int fd)
 {
-	ipc_send(g_io_channel_unix_get_fd(cmd_io), service_id, opcode, len,
+	ipc_send(g_io_channel_unix_get_fd(ipc->cmd_io), service_id, opcode, len,
 								param, fd);
 }
 
-void ipc_send_notif(uint8_t service_id, uint8_t opcode,  uint16_t len,
-								void *param)
+void ipc_send_notif(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
+						uint16_t len, void *param)
 {
-	if (!notif_io)
+	if (!ipc || !ipc->notif_io)
 		return;
 
-	ipc_send(g_io_channel_unix_get_fd(notif_io), service_id, opcode, len,
-								param, -1);
+	ipc_send(g_io_channel_unix_get_fd(ipc->notif_io), service_id, opcode,
+								len, param, -1);
 }
 
-void ipc_register(uint8_t service, const struct ipc_handler *handlers,
-								uint8_t size)
+void ipc_register(struct ipc *ipc, uint8_t service,
+			const struct ipc_handler *handlers, uint8_t size)
 {
-	services[service].handler = handlers;
-	services[service].size = size;
+	if (service > ipc->service_max)
+		return;
+
+	ipc->services[service].handler = handlers;
+	ipc->services[service].size = size;
 }
 
-void ipc_unregister(uint8_t service)
+void ipc_unregister(struct ipc *ipc, uint8_t service)
 {
-	services[service].handler = NULL;
-	services[service].size = 0;
+	if (service > ipc->service_max)
+		return;
+
+	ipc->services[service].handler = NULL;
+	ipc->services[service].size = 0;
 }

@@ -48,11 +48,11 @@
 
 #include "lib/bluetooth.h"
 
+#include "ipc.h"
 #include "bluetooth.h"
 #include "socket.h"
 #include "hidhost.h"
 #include "hal-msg.h"
-#include "ipc.h"
 #include "a2dp.h"
 #include "pan.h"
 #include "avrcp.h"
@@ -66,6 +66,8 @@ static guint bluetooth_start_timeout = 0;
 static bdaddr_t adapter_bdaddr;
 
 static GMainLoop *event_loop;
+
+static struct ipc *hal_ipc = NULL;
 
 static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 
@@ -81,43 +83,43 @@ static void service_register(const void *buf, uint16_t len)
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
-		bt_bluetooth_register();
+		bt_bluetooth_register(hal_ipc);
 
 		break;
 	case HAL_SERVICE_ID_SOCKET:
-		bt_socket_register(&adapter_bdaddr);
+		bt_socket_register(hal_ipc, &adapter_bdaddr);
 
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
-		if (!bt_hid_register(&adapter_bdaddr)) {
+		if (!bt_hid_register(hal_ipc, &adapter_bdaddr)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_A2DP:
-		if (!bt_a2dp_register(&adapter_bdaddr)) {
+		if (!bt_a2dp_register(hal_ipc, &adapter_bdaddr)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_PAN:
-		if (!bt_pan_register(&adapter_bdaddr)) {
+		if (!bt_pan_register(hal_ipc, &adapter_bdaddr)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_AVRCP:
-		if (!bt_avrcp_register(&adapter_bdaddr)) {
+		if (!bt_avrcp_register(hal_ipc, &adapter_bdaddr)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_HANDSFREE:
-		if (!bt_handsfree_register(&adapter_bdaddr)) {
+		if (!bt_handsfree_register(hal_ipc, &adapter_bdaddr)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
@@ -136,7 +138,8 @@ static void service_register(const void *buf, uint16_t len)
 	info("Service ID=%u registered", m->service_id);
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+								status);
 }
 
 static void service_unregister(const void *buf, uint16_t len)
@@ -186,7 +189,8 @@ static void service_unregister(const void *buf, uint16_t len)
 	info("Service ID=%u unregistered", m->service_id);
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
+								status);
 }
 
 static const struct ipc_handler cmd_handlers[] = {
@@ -240,7 +244,15 @@ static void adapter_ready(int err, const bdaddr_t *addr)
 
 	info("Adapter initialized");
 
-	ipc_init();
+	hal_ipc = ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH),
+							HAL_SERVICE_ID_MAX);
+	if (!hal_ipc) {
+		error("Failed to initialize IPC");
+		exit(EXIT_FAILURE);
+	}
+
+	ipc_register(hal_ipc, HAL_SERVICE_ID_CORE, cmd_handlers,
+						G_N_ELEMENTS(cmd_handlers));
 }
 
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
@@ -464,9 +476,6 @@ int main(int argc, char *argv[])
 	/* Use params: mtu = 0, flags = 0 */
 	start_sdp_server(0, 0);
 
-	ipc_register(HAL_SERVICE_ID_CORE, cmd_handlers,
-						G_N_ELEMENTS(cmd_handlers));
-
 	DBG("Entering main loop");
 
 	event_loop = g_main_loop_new(NULL, FALSE);
@@ -480,12 +489,12 @@ int main(int argc, char *argv[])
 
 	cleanup_services();
 
-	ipc_cleanup();
 	stop_sdp_server();
 	bt_bluetooth_cleanup();
 	g_main_loop_unref(event_loop);
 
-	ipc_unregister(HAL_SERVICE_ID_CORE);
+	ipc_unregister(hal_ipc, HAL_SERVICE_ID_CORE);
+	ipc_cleanup(hal_ipc);
 
 	info("Exit");
 
