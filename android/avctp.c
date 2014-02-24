@@ -1414,6 +1414,7 @@ struct avctp *avctp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 		return NULL;
 	}
 
+	session->uinput = -1;
 	session->control = control;
 	session->passthrough_id = avctp_register_pdu_handler(session,
 						AVC_OP_PASSTHROUGH,
