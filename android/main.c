@@ -84,7 +84,7 @@ static void service_register(const void *buf, uint16_t len)
 		bt_bluetooth_register();
 
 		break;
-	case HAL_SERVICE_ID_SOCK:
+	case HAL_SERVICE_ID_SOCKET:
 		bt_socket_register(&adapter_bdaddr);
 
 		break;
@@ -153,7 +153,7 @@ static void service_unregister(const void *buf, uint16_t len)
 	case HAL_SERVICE_ID_BLUETOOTH:
 		bt_bluetooth_unregister();
 		break;
-	case HAL_SERVICE_ID_SOCK:
+	case HAL_SERVICE_ID_SOCKET:
 		bt_socket_unregister();
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
@@ -337,7 +337,7 @@ static void cleanup_services(void)
 		case HAL_SERVICE_ID_BLUETOOTH:
 			bt_bluetooth_unregister();
 			break;
-		case HAL_SERVICE_ID_SOCK:
+		case HAL_SERVICE_ID_SOCKET:
 			bt_socket_unregister();
 			break;
 		case HAL_SERVICE_ID_HIDHOST:

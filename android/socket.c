@@ -862,13 +862,13 @@ static void handle_listen(const void *buf, uint16_t len)
 	if (status != HAL_STATUS_SUCCESS)
 		goto failed;
 
-	ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_LISTEN, 0, NULL,
+	ipc_send_rsp_full(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN, 0, NULL,
 								hal_sock);
 	close(hal_sock);
 	return ;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_LISTEN, status);
+	ipc_send_rsp(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN, status);
 }
 
 static bool sock_send_connect(struct rfcomm_sock *rfsock, bdaddr_t *bdaddr)
@@ -1106,13 +1106,13 @@ static void handle_connect(const void *buf, uint16_t len)
 	if (status != HAL_STATUS_SUCCESS)
 		goto failed;
 
-	ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_CONNECT, 0, NULL,
-								hal_sock);
+	ipc_send_rsp_full(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_CONNECT, 0,
+							 NULL, hal_sock);
 	close(hal_sock);
 	return;
 
 failed:
-	ipc_send_rsp(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_CONNECT, status);
+	ipc_send_rsp(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_CONNECT, status);
 
 }
 
@@ -1137,7 +1137,7 @@ void bt_socket_register(const bdaddr_t *addr)
 			servers[profiles[i].channel].reserved = true;
 
 	bacpy(&adapter_addr, addr);
-	ipc_register(HAL_SERVICE_ID_SOCK, cmd_handlers,
+	ipc_register(HAL_SERVICE_ID_SOCKET, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
 }
 
@@ -1155,5 +1155,5 @@ void bt_socket_unregister(void)
 
 	memset(servers, 0, sizeof(servers));
 
-	ipc_unregister(HAL_SERVICE_ID_SOCK);
+	ipc_unregister(HAL_SERVICE_ID_SOCKET);
 }

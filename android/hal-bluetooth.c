@@ -440,7 +440,7 @@ static int init(bt_callbacks_t *callbacks)
 		goto fail;
 	}
 
-	cmd.service_id = HAL_SERVICE_ID_SOCK;
+	cmd.service_id = HAL_SERVICE_ID_SOCKET;
 
 	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);

@@ -51,7 +51,7 @@ static bt_status_t socket_listen(btsock_type_t type, const char *service_name,
 	if (service_name)
 		memcpy(cmd.name, service_name, strlen(service_name));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_LISTEN,
+	return hal_ipc_cmd(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN,
 				sizeof(cmd), &cmd, NULL, NULL, sock);
 }
 
@@ -80,7 +80,7 @@ static bt_status_t socket_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 	if (bdaddr)
 		memcpy(cmd.bdaddr, bdaddr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_SOCK, HAL_OP_SOCKET_CONNECT,
+	return hal_ipc_cmd(HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_CONNECT,
 					sizeof(cmd), &cmd, NULL, NULL, sock);
 }
 
