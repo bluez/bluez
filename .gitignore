@@ -112,6 +112,7 @@ unit/test-gobex-packet
 unit/test-gobex-transfer
 unit/test-avdtp
 unit/test-avctp
+unit/test-avrcp
 unit/test-*.log
 unit/test-*.trs
 
