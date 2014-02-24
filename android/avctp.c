@@ -284,9 +284,6 @@ static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 
 static void send_key(int fd, uint16_t key, int pressed)
 {
-	if (fd < 0)
-		return;
-
 	send_event(fd, EV_KEY, key, pressed);
 	send_event(fd, EV_SYN, SYN_REPORT, 0);
 }
@@ -333,6 +330,12 @@ static size_t handle_panel_passthrough(struct avctp *session,
 		if (handler->cb(session, operands[0] & 0x7F,
 						pressed, handler->user_data))
 			goto done;
+	}
+
+	if (session->uinput < 0) {
+		DBG("AV/C: uinput not initialized");
+		*code = AVC_CTYPE_NOT_IMPLEMENTED;
+		return 0;
 	}
 
 	for (i = 0; key_map[i].name != NULL; i++) {
