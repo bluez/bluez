@@ -246,15 +246,7 @@ static void execute_context(struct context *context)
 {
 	g_main_loop_run(context->main_loop);
 
-	if (context->source > 0)
-		g_source_remove(context->source);
-
-	avrcp_shutdown(context->session);
-
-	g_main_loop_unref(context->main_loop);
-
-	test_free(context->data);
-	g_free(context);
+	destroy_context(context);
 }
 
 static void test_server(gconstpointer data)
