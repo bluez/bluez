@@ -2183,6 +2183,10 @@ static void test_getprop_bdname_success(const void *test_data)
 	init_test_conditions(data);
 
 	adapter_status = data->if_bluetooth->set_adapter_property(prop);
+	if (adapter_status != BT_STATUS_SUCCESS) {
+		tester_test_failed();
+		return;
+	}
 
 	adapter_status = data->if_bluetooth->get_adapter_property((*prop).type);
 	check_expected_status(adapter_status);
