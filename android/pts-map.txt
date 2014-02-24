@@ -68,7 +68,8 @@ TC_MSE_MMB_BV_18_I	N/A
 TC_MSE_MMB_BV_13_I	PASS	If prompted tester must accept obex request
 TC_MSE_MMB_BV_14_I	PASS	If prompted tester must accept obex request
 TC_MSE_MMB_BV_15_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMB_BV_16_I	INC	Android MAP server bug
+TC_MSE_MMB_BV_16_I	PASS	Android MAP server bug, fix provided at
+				android-review.googlesource.com/#/c/82757
 TC_MSE_MMD_BV_02_I	PASS	If prompted tester must accept obex request
 TC_MSE_MMU_BV_02_I	PASS	If prompted tester must accept obex request,
 				at least one SMS must be present in inbox
