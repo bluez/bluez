@@ -2715,6 +2715,16 @@ static const struct generic_data set_privacy_powered_test = {
 	.expect_status = MGMT_STATUS_REJECTED,
 };
 
+static const char set_privacy_nval_param[] = { 0xff,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+static const struct generic_data set_privacy_nval_param_test = {
+	.send_opcode = MGMT_OP_SET_PRIVACY,
+	.send_param = set_privacy_nval_param,
+	.send_len = sizeof(set_privacy_nval_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -4029,6 +4039,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Privacy - Rejected",
 				&set_privacy_powered_test,
+				NULL, test_command_generic);
+	test_bredrle("Set Privacy - Invalid Parameters",
+				&set_privacy_nval_param_test,
 				NULL, test_command_generic);
 
 	return tester_run();
