@@ -893,7 +893,7 @@ struct hal_cmd_avrcp_register_notification {
 #define HAL_OP_AVRCP_SET_VOLUME			0x0a
 struct hal_cmd_avrcp_set_volume {
 	uint8_t value;
-};
+} __attribute__((packed));
 
 #define HAL_EV_AVRCP_REMOTE_FEATURES		0x81
 struct hal_ev_avrcp_remote_features {
