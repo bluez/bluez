@@ -251,11 +251,21 @@ static void execute_context(struct context *context)
 
 static bool handle_play(struct avrcp *session)
 {
+	DBG("");
+
+	return true;
+}
+
+static bool handle_volume_up(struct avrcp *session)
+{
+	DBG("");
+
 	return true;
 }
 
 static const struct avrcp_passthrough_handler passthrough_handlers[] = {
 		{ AVC_PLAY, handle_play },
+		{ AVC_VOLUME_UP, handle_volume_up },
 		{ },
 };
 
@@ -309,6 +319,12 @@ int main(int argc, char *argv[])
 				0x44, 0x00),
 			raw_pdu(0x02, 0x11, 0x0e, 0x09, 0x48, 0x7c,
 				0x44, 0x00));
+
+	define_test("/TP/PTT/BV-02-I", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48, 0x7c,
+				AVC_VOLUME_UP, 0x00),
+			raw_pdu(0x02, 0x11, 0x0e, 0x09, 0x48, 0x7c,
+				AVC_VOLUME_UP, 0x00));
 
 	return g_test_run();
 }
