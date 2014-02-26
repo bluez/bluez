@@ -567,6 +567,23 @@ struct hal_cmd_gatt_client_search_service {
 	uint8_t filter_uuid[0];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE	0x09
+struct hal_gatt_gatt_id {
+	uint8_t uuid[16];
+	uint8_t inst_id;
+} __attribute__((packed));
+
+struct hal_gatt_srvc_id {
+	struct hal_gatt_gatt_id gatt_id;
+	uint8_t is_primary;
+} __attribute__((packed));
+
+struct hal_cmd_gatt_client_get_included_service {
+	int32_t conn_id;
+	uint8_t number;
+	struct hal_gatt_srvc_id srvc_id[0];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

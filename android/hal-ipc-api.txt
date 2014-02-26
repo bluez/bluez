@@ -1488,6 +1488,20 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x09 - Get Included Service command/response
+
+		Command parameters: Connection ID (4 octets)
+		                    Number of Service ID Elements (1 octet)
+		                    Service ID Elements (variable)
+		Valid Number of Service ID Elements: 0x01
+		                                     0x02
+		Valid Service ID Element: GATT ID (17 octets)
+		                          Is Primary (1 octet)
+		Valid GATT ID: UUID (16 octets)
+		               Instance ID (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x0a - Get Characteristic command/response
 	Opcode 0x0b - Get Descriptor command/response
 	Opcode 0x0c - Read Characteristic command/response
