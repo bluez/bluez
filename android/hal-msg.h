@@ -686,6 +686,22 @@ struct hal_cmd_gatt_client_set_adv_data {
 	uint8_t  manufacturer_data[0];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_TEST_COMMAND		0x16
+struct hal_gatt_test_params {
+	uint8_t  bda1[6];
+	uint8_t  uuid1[16];
+	uint16_t u1;
+	uint16_t u2;
+	uint16_t u3;
+	uint16_t u4;
+	uint16_t u5;
+} __attribute__((packed));
+
+struct hal_cmd_gatt_client_test_command {
+	int32_t command;
+	struct hal_gatt_test_params params;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
