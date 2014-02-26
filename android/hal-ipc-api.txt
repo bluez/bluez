@@ -1421,6 +1421,12 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                     0x0a = Remote device down
 
 	Opcode 0x01 - Register Client command/response
+
+		Command parameters: Service UUID (16 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x02 - Unregister Client command/response
 	Opcode 0x03 - Scan command/response
 	Opcode 0x04 - Connect Device command/response

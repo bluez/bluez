@@ -516,6 +516,13 @@ struct hal_cmd_handsfree_phone_state_change {
 	uint8_t number[0];
 } __attribute__((packed));
 
+/* GATT HAL API */
+
+#define HAL_OP_GATT_CLIENT_REGISTER		0x01
+struct hal_cmd_gatt_client_register {
+	uint8_t uuid[16];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
