@@ -1461,6 +1461,13 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x06 - Listen command/response
+
+		Command parameters: Client Interface (4 octets)
+		                    Start (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x07 - Refresh command/response
 	Opcode 0x08 - Search Service command/response
 	Opcode 0x09 - Get Included Service command/response
