@@ -528,6 +528,12 @@ struct hal_cmd_gatt_client_unregister {
 	int32_t client_if;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SCAN			0x03
+struct hal_cmd_gatt_client_scan {
+	int32_t client_if;
+	uint8_t start;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
