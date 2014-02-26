@@ -560,6 +560,13 @@ struct hal_cmd_gatt_client_refresh {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SEARCH_SERVICE	0x08
+struct hal_cmd_gatt_client_search_service {
+	int32_t conn_id;
+	uint8_t number;
+	uint8_t filter_uuid[0];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

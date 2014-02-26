@@ -1477,6 +1477,16 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x08 - Search Service command/response
+
+		Command parameters: Connection ID (4 octets)
+		                    Number of UUID Filters (1 octet)
+		                    UUID Filter (variable)
+		Valid Number of UUID Filters: 0x00
+		                              0x01
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x09 - Get Included Service command/response
 	Opcode 0x0a - Get Characteristic command/response
 	Opcode 0x0b - Get Descriptor command/response
