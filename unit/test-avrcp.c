@@ -93,6 +93,26 @@ struct context {
 		g_test_add_data_func(name, &data, function);		\
 	} while (0)
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
+static inline void hton24(uint8_t dst[3], uint32_t src)
+{
+	dst[0] = (src >> 16) & 0xff;
+	dst[1] = (src >> 8) & 0xff;
+	dst[2] = src & 0xff;
+}
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+static inline void hton24(uint8_t dst[3], uint32_t src)
+{
+	memcpy(&dst, src, sizeof(dst));
+}
+
+#else
+#error "Unknown byte order"
+#endif
+
 static void test_debug(const char *str, void *user_data)
 {
 	const char *prefix = user_data;
@@ -285,12 +305,43 @@ static const struct avrcp_passthrough_handler passthrough_handlers[] = {
 		{ },
 };
 
+static uint8_t avrcp_handle_get_capabilities(struct avrcp *session,
+				uint8_t transaction, uint16_t *params_len,
+				uint8_t *params, void *user_data)
+{
+	uint32_t id = 0x001958;
+
+	if (*params_len != 1)
+		goto fail;
+
+	switch (params[0]) {
+	case CAP_COMPANY_ID:
+		*params_len = 5;
+		params[1] = 1;
+		hton24(&params[2], id);
+		return AVC_CTYPE_STABLE;
+	}
+
+fail:
+	*params_len = htons(1);
+	params[0] = AVRCP_STATUS_INVALID_PARAM;
+
+	return AVC_CTYPE_REJECTED;
+}
+
+static const struct avrcp_control_handler control_handlers[] = {
+		{ AVRCP_GET_CAPABILITIES, AVC_CTYPE_STATUS,
+					avrcp_handle_get_capabilities },
+		{ },
+};
+
 static void test_server(gconstpointer data)
 {
 	struct context *context = create_context(0x0100, data);
 
 	avrcp_set_passthrough_handlers(context->session, passthrough_handlers,
 								context);
+	avrcp_set_control_handlers(context->session, control_handlers, NULL);
 
 	g_idle_add(send_pdu, context);
 
@@ -380,6 +431,14 @@ int main(int argc, char *argv[])
 			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
 				0x00, 0x19, 0x58, 0x10, 0x00, 0x00,
 				0x01, 0x03));
+
+	define_test("/TP/CFG/BV-02-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58, 0x10, 0x00, 0x00,
+				0x01, 0x02),
+			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
+				0x00, 0x19, 0x58, 0x10, 0x00, 0x00,
+				0x05, 0x02, 0x01, 0x00, 0x19, 0x58));
 
 	return g_test_run();
 }
