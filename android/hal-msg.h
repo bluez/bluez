@@ -584,6 +584,14 @@ struct hal_cmd_gatt_client_get_included_service {
 	struct hal_gatt_srvc_id srvc_id[0];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_GET_CHARACTERISTIC	0x0a
+struct hal_cmd_gatt_client_get_characteristic {
+	int32_t conn_id;
+	struct hal_gatt_srvc_id srvc_id;
+	uint8_t number;
+	struct hal_gatt_gatt_id gatt_id[0];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
