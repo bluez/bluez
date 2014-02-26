@@ -608,6 +608,17 @@ struct hal_cmd_gatt_client_read_characteristic {
 	int32_t auth_req;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_WRITE_CHARACTERISTIC	0x0d
+struct hal_cmd_gatt_client_write_characteristic {
+	int32_t conn_id;
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id gatt_id;
+	int32_t write_type;
+	int32_t len;
+	int32_t auth_req;
+	uint8_t value[0];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
