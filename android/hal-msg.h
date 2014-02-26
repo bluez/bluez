@@ -534,6 +534,13 @@ struct hal_cmd_gatt_client_scan {
 	uint8_t start;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_CONNECT		0x04
+struct hal_cmd_gatt_client_connect {
+	int32_t client_if;
+	uint8_t bdaddr[6];
+	uint8_t is_direct;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
