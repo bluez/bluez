@@ -1587,6 +1587,13 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x10 - Execute Write command/response
+
+		Command parameters: Connection ID (4 octets)
+		                    Execute (4 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x11 - Register For Notification command/response
 	Opcode 0x12 - Deregister For Notification command/response
 	Opcode 0x13 - Read Remote RSSI command/response
