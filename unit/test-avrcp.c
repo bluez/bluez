@@ -297,6 +297,16 @@ static void test_server(gconstpointer data)
 	execute_context(context);
 }
 
+static void test_client(gconstpointer data)
+{
+	struct context *context = create_context(0x0100, data);
+
+	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
+		avrcp_get_capabilities(context->session, NULL, NULL);
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -363,6 +373,13 @@ int main(int argc, char *argv[])
 				AVC_PLAY | 0x80, 0x00),
 			raw_pdu(0x02, 0x11, 0x0e, 0x09, 0x48, 0x7c,
 				AVC_PLAY | 0x80, 0x00));
+
+	/* Metadata transfer tests */
+
+	define_test("/TP/CFG/BV-01-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58, 0x10, 0x00, 0x00,
+				0x01, 0x03));
 
 	return g_test_run();
 }
