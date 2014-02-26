@@ -1634,6 +1634,20 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x15 - Set Advertising data command/response
+
+		Command parameters: Server Interface (4 octets)
+		                    Set Scan Resp. (1 octet)
+		                    Include Name (1 octet)
+		                    Include TX Power (1 octet)
+		                    Min. Interval (4 octets)
+		                    Max. Interval (4 octets)
+		                    Appearance (4 octets)
+		                    Manufacturer Len. (2 octets)
+		                    Manufacturer Data (variable)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x16 - Test Command command/response
 
 	Opcode 0x17 - Register Server command/response

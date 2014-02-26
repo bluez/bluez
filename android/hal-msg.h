@@ -673,6 +673,19 @@ struct hal_cmd_gatt_client_get_device_type {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SET_ADV_DATA		0x015
+struct hal_cmd_gatt_client_set_adv_data {
+	int32_t  server_if;
+	uint8_t  set_scan_rsp;
+	uint8_t  include_name;
+	uint8_t  include_txpower;
+	int32_t  min_interval;
+	int32_t  max_interval;
+	int32_t  appearance;
+	uint16_t manufacturer_len;
+	uint8_t  manufacturer_data[0];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
