@@ -27,6 +27,7 @@
 
 #include <stdbool.h>
 #include <glib.h>
+#include <errno.h>
 
 #include "lib/bluetooth.h"
 
@@ -50,6 +51,16 @@
 #define AVRCP_STATUS_NO_AVAILABLE_PLAYERS	0x15
 #define AVRCP_STATUS_ADDRESSED_PLAYER_CHANGED	0x16
 
+/* Packet types */
+#define AVRCP_PACKET_TYPE_SINGLE		0x00
+#define AVRCP_PACKET_TYPE_START			0x01
+#define AVRCP_PACKET_TYPE_CONTINUING		0x02
+#define AVRCP_PACKET_TYPE_END			0x03
+
+/* Capabilities for AVRCP_GET_CAPABILITIES pdu */
+#define CAP_COMPANY_ID				0x02
+#define CAP_EVENTS_SUPPORTED			0x03
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct avrcp_header {
@@ -65,6 +76,13 @@ struct avrcp_header {
 static inline uint32_t ntoh24(const uint8_t src[3])
 {
 	return src[0] << 16 | src[1] << 8 | src[2];
+}
+
+static inline void hton24(uint8_t dst[3], uint32_t src)
+{
+	dst[0] = (src >> 16) & 0xff;
+	dst[1] = (src >> 8) & 0xff;
+	dst[2] = src & 0xff;
 }
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
@@ -88,12 +106,20 @@ static inline uint32_t ntoh24(const uint8_t src[3])
 	return dst;
 }
 
+static inline void hton24(uint8_t dst[3], uint32_t src)
+{
+	memcpy(&dst, src, sizeof(dst));
+}
+
 #else
 #error "Unknown byte order"
 #endif
 
 struct avrcp {
 	struct avctp *conn;
+
+	size_t tx_mtu;
+	uint8_t *tx_buf;
 
 	const struct avrcp_control_handler *control_handlers;
 	void *control_data;
@@ -212,6 +238,9 @@ struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 		return NULL;
 	}
 
+	session->tx_mtu = omtu;
+	session->tx_buf = g_malloc(omtu);
+
 	session->passthrough_id = avctp_register_passthrough_handler(
 							session->conn,
 							handle_passthrough_pdu,
@@ -250,4 +279,42 @@ int avrcp_init_uinput(struct avrcp *session, const char *name,
 							const char *address)
 {
 	return avctp_init_uinput(session->conn, name, address);
+}
+
+static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
+					uint8_t pdu_id, uint8_t *params,
+					size_t params_len, avctp_rsp_cb func,
+					void *user_data)
+{
+	struct avrcp_header *pdu = (void *) session->tx_buf;
+	size_t len = sizeof(*pdu);
+
+	memset(pdu, 0, len);
+
+	hton24(pdu->company_id, IEEEID_BTSIG);
+	pdu->pdu_id = pdu_id;
+	pdu->packet_type = AVRCP_PACKET_TYPE_SINGLE;
+
+	if (params_len > 0) {
+		len += params_len;
+
+		if (len > session->tx_mtu)
+			return -ENOBUFS;
+
+		memcpy(pdu->params, params, params_len);
+		pdu->params_len = htons(params_len);
+	}
+
+	return avctp_send_vendordep_req(session->conn, code, subunit,
+					session->tx_buf, len, func, user_data);
+}
+
+int avrcp_get_capabilities(struct avrcp *session, avctp_rsp_cb func,
+							void *user_data)
+{
+	uint8_t param = CAP_EVENTS_SUPPORTED;
+
+	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
+				AVRCP_GET_CAPABILITIES, &param, sizeof(param),
+				func, user_data);
 }

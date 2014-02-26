@@ -74,3 +74,6 @@ void avrcp_set_passthrough_handlers(struct avrcp *session,
 			void *user_data);
 int avrcp_init_uinput(struct avrcp *session, const char *name,
 							const char *address);
+
+int avrcp_get_capabilities(struct avrcp *session, avctp_rsp_cb func,
+							void *user_data);

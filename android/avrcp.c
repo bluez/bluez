@@ -34,6 +34,7 @@
 #include "lib/sdp_lib.h"
 #include "src/log.h"
 #include "bluetooth.h"
+#include "avctp.h"
 #include "avrcp.h"
 #include "avrcp-lib.h"
 #include "hal-msg.h"
