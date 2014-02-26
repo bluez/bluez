@@ -554,6 +554,12 @@ struct hal_cmd_gatt_client_listen {
 	uint8_t start;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_REFRESH		0x07
+struct hal_cmd_gatt_client_refresh {
+	int32_t client_if;
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
