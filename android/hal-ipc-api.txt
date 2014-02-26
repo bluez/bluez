@@ -1558,6 +1558,18 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x0e - Read Descriptor command/response
+
+		Command parameters: Connection ID (4 octets)
+		                    Service ID (18 octets)
+		                    GATT ID (17 octets)
+		                    Descr. GATT ID (17 octets)
+		                    Authorization Req. (4 octets)
+		Valid Service ID: as described in Get Included Service
+		Valid GATT ID: as described in Get Included Service
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x0f - Write Descriptor command/response
 	Opcode 0x10 - Execute Write command/response
 	Opcode 0x11 - Register For Notification command/response
