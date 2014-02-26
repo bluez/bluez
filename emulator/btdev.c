@@ -81,6 +81,7 @@ struct btdev {
 	uint16_t acl_max_pkt;
 	uint8_t  country_code;
 	uint8_t  bdaddr[6];
+	uint8_t  random_addr[6];
 	uint8_t  le_features[8];
 	uint8_t  le_states[8];
 
@@ -1493,6 +1494,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_secure_conn_support *wscs;
 	const struct bt_hci_cmd_set_event_mask_page2 *semp2;
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
+	const struct bt_hci_cmd_le_set_random_address *lsra;
 	const struct bt_hci_cmd_le_set_adv_data *lsad;
 	const struct bt_hci_cmd_setup_sync_conn *ssc;
 	const struct bt_hci_cmd_write_ssp_debug_mode *wsdm;
@@ -2267,6 +2269,15 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lrlf.status = BT_HCI_ERR_SUCCESS;
 		memcpy(lrlf.features, btdev->le_features, 8);
 		cmd_complete(btdev, opcode, &lrlf, sizeof(lrlf));
+		break;
+
+	case BT_HCI_CMD_LE_SET_RANDOM_ADDRESS:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		lsra = data;
+		memcpy(btdev->random_addr, lsra->addr, 6);
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_LE_SET_ADV_PARAMETERS:
