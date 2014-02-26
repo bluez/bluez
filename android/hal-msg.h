@@ -600,6 +600,14 @@ struct hal_cmd_gatt_client_get_descriptor {
 	struct hal_gatt_gatt_id gatt_id[0];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_READ_CHARACTERISTIC	0x0c
+struct hal_cmd_gatt_client_read_characteristic {
+	int32_t conn_id;
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id gatt_id;
+	int32_t auth_req;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
