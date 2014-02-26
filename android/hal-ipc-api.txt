@@ -1605,6 +1605,15 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x12 - Deregister For Notification command/response
+
+		Command parameters: Client Interface (4 octets)
+		                    Remote address (6 octets)
+		                    Service ID (18 octets)
+		                    GATT ID (17 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x13 - Read Remote RSSI command/response
 	Opcode 0x14 - Get Device Type command/response
 	Opcode 0x15 - Set Advertising data command/response

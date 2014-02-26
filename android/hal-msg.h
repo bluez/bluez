@@ -654,6 +654,14 @@ struct hal_cmd_gatt_client_register_for_notification {
 	struct hal_gatt_gatt_id char_id;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION	0x12
+struct hal_cmd_gatt_client_deregister_for_notification {
+	int32_t client_if;
+	uint8_t bdaddr[6];
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id char_id;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
