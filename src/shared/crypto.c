@@ -324,3 +324,106 @@ bool bt_crypto_ah(struct bt_crypto *crypto, const uint8_t k[16],
 
 	return true;
 }
+
+typedef struct {
+	uint64_t a, b;
+} u128;
+
+static inline void u128_xor(const uint8_t p[16], const uint8_t q[16],
+								uint8_t r[16])
+{
+	u128 pp, qq, rr;
+
+	memcpy(&pp, p, 16);
+	memcpy(&qq, q, 16);
+
+	rr.a = pp.a ^ qq.a;
+	rr.b = pp.b ^ qq.b;
+
+	memcpy(r, &rr, 16);
+}
+
+/*
+ * Confirm value generation function c1
+ *
+ * During the pairing process confirm values are exchanged. This confirm
+ * value generation function c1 is used to generate the confirm values.
+ *
+ * The following are inputs to the confirm value generation function c1:
+ *
+ *   k is 128 bits
+ *   r is 128 bits
+ *   pres is 56 bits
+ *   preq is 56 bits
+ *   iat is 1 bit
+ *   ia is 48 bits
+ *   rat is 1 bit
+ *   ra is 48 bits
+ *   padding is 32 bits of 0
+ *
+ * iat is concatenated with 7-bits of 0 to create iat' which is 8 bits
+ * in length. iat is the least significant bit of iat'
+ *
+ * rat is concatenated with 7-bits of 0 to create rat' which is 8 bits
+ * in length. rat is the least significant bit of rat'
+ *
+ * pres, preq, rat' and iat' are concatenated to generate p1 which is
+ * XORed with r and used as 128-bit input parameter plaintextData to
+ * security function e:
+ *
+ *   p1 = pres || preq || rat' || iat'
+ *
+ * The octet of iat' becomes the least significant octet of p1 and the
+ * most significant octet of pres becomes the most significant octet of
+ * p1.
+ *
+ * ra is concatenated with ia and padding to generate p2 which is XORed
+ * with the result of the security function e using p1 as the input
+ * paremter plaintextData and is then used as the 128-bit input
+ * parameter plaintextData to security function e:
+ *
+ *   p2 = padding || ia || ra
+ *
+ * The least significant octet of ra becomes the least significant octet
+ * of p2 and the most significant octet of padding becomes the most
+ * significant octet of p2.
+ *
+ * The output of the confirm value generation function c1 is:
+ *
+ *   c1(k, r, preq, pres, iat, rat, ia, ra) = e(k, e(k, r XOR p1) XOR p2)
+ *
+ * The 128-bit output of the security function e is used as the result
+ * of confirm value generation function c1.
+ */
+bool bt_crypto_c1(struct bt_crypto *crypto, const uint8_t k[16],
+			const uint8_t r[16], const uint8_t pres[7],
+			const uint8_t preq[7], uint8_t iat,
+			const uint8_t ia[6], uint8_t rat,
+			const uint8_t ra[6], uint8_t res[16])
+{
+	uint8_t p1[16], p2[16];
+
+	/* p1 = pres || preq || _rat || _iat */
+	p1[0] = iat;
+	p1[1] = rat;
+	memcpy(p1 + 2, preq, 7);
+	memcpy(p1 + 9, pres, 7);
+
+	/* p2 = padding || ia || ra */
+	memcpy(p2, ra, 6);
+	memcpy(p2 + 6, ia, 6);
+	memset(p2 + 12, 0, 4);
+
+	/* res = r XOR p1 */
+	u128_xor(r, p1, res);
+
+	/* res = e(k, res) */
+	if (!bt_crypto_e(crypto, k, res, res))
+		return false;
+
+	/* res = res XOR p2 */
+	u128_xor(res, p2, res);
+
+	/* res = e(k, res) */
+	return bt_crypto_e(crypto, k, res, res);
+}

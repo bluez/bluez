@@ -38,3 +38,8 @@ bool bt_crypto_e(struct bt_crypto *crypto, const uint8_t key[16],
 			const uint8_t plaintext[16], uint8_t encrypted[16]);
 bool bt_crypto_ah(struct bt_crypto *crypto, const uint8_t k[16],
 					const uint8_t r[3], uint8_t hash[3]);
+bool bt_crypto_c1(struct bt_crypto *crypto, const uint8_t k[16],
+			const uint8_t r[16], const uint8_t pres[7],
+			const uint8_t preq[7], uint8_t iat,
+			const uint8_t ia[6], uint8_t rat,
+			const uint8_t ra[6], uint8_t res[16]);
