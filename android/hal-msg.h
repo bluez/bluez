@@ -662,6 +662,12 @@ struct hal_cmd_gatt_client_deregister_for_notification {
 	struct hal_gatt_gatt_id char_id;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_READ_REMOTE_RSSI	0x13
+struct hal_cmd_gatt_client_read_remote_rssi {
+	int32_t client_if;
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
