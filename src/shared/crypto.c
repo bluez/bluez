@@ -427,3 +427,44 @@ bool bt_crypto_c1(struct bt_crypto *crypto, const uint8_t k[16],
 	/* res = e(k, res) */
 	return bt_crypto_e(crypto, k, res, res);
 }
+
+/*
+ * Key generation function s1
+ *
+ * The key generation function s1 is used to generate the STK during the
+ * pairing process.
+ *
+ * The following are inputs to the key generation function s1:
+ *
+ *   k is 128 bits
+ *   r1 is 128 bits
+ *   r2 is 128 bits
+ *
+ * The most significant 64-bits of r1 are discarded to generate r1' and
+ * the most significant 64-bits of r2 are discarded to generate r2'.
+ *
+ * r1' is concatenated with r2' to generate r' which is used as the
+ * 128-bit input parameter plaintextData to security function e:
+ *
+ *   r' = r1' || r2'
+ *
+ * The least significant octet of r2' becomes the least significant
+ * octet of r' and the most significant octet of r1' becomes the most
+ * significant octet of r'.
+ *
+ * The output of the key generation function s1 is:
+ *
+ *   s1(k, r1, r2) = e(k, r')
+ *
+ * The 128-bit output of the security function e is used as the result
+ * of key generation function s1.
+ */
+bool bt_crypto_s1(struct bt_crypto *crypto, const uint8_t k[16],
+			const uint8_t r1[16], const uint8_t r2[16],
+			uint8_t res[16])
+{
+	memcpy(res, r1 + 8, 8);
+	memcpy(res + 8, r2 + 8, 8);
+
+	return bt_crypto_e(crypto, k, res, res);
+}
