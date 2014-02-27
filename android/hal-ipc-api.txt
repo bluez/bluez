@@ -1623,6 +1623,16 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x14 - Get Device Type command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: Device Type
+
+		Valid Device Type: 0x01 = BREDR
+		                   0x02 = BLE
+		                   0x03 = DUAL
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x15 - Set Advertising data command/response
 	Opcode 0x16 - Test Command command/response
 

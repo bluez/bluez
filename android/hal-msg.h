@@ -668,6 +668,11 @@ struct hal_cmd_gatt_client_read_remote_rssi {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_GET_DEVICE_TYPE	0x14
+struct hal_cmd_gatt_client_get_device_type {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
