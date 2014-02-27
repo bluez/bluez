@@ -733,6 +733,13 @@ struct hal_cmd_gatt_server_add_service {
 	int32_t num_handles;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_ADD_INC_SERVICE	0x1c
+struct hal_cmd_gatt_server_add_inc_service {
+	int32_t server_if;
+	int32_t service_handle;
+	int32_t included_handle;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
