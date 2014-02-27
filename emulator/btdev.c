@@ -2375,14 +2375,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
 		lr.status = BT_HCI_ERR_SUCCESS;
-		lr.number[0] = rand();
-		lr.number[1] = rand();
-		lr.number[2] = rand();
-		lr.number[3] = rand();
-		lr.number[4] = rand();
-		lr.number[5] = rand();
-		lr.number[6] = rand();
-		lr.number[7] = rand();
+		lr.number = rand();
 		cmd_complete(btdev, opcode, &lr, sizeof(lr));
 		break;
 

@@ -1059,7 +1059,8 @@ static void evt_le_ltk_request(struct bthost *bthost, const void *data,
 	const struct bt_hci_evt_le_long_term_key_request *ev = data;
 	struct bt_hci_cmd_le_ltk_req_reply cp;
 	struct bt_hci_cmd_le_ltk_req_neg_reply *neg_cp = (void *) &cp;
-	uint16_t handle, div;
+	uint16_t handle, ediv;
+	uint64_t rand;
 	struct btconn *conn;
 	int err;
 
@@ -1071,11 +1072,12 @@ static void evt_le_ltk_request(struct bthost *bthost, const void *data,
 	if (!conn)
 		return;
 
-	div = le16_to_cpu(ev->diversifier);
+	rand = le64_to_cpu(ev->rand);
+	ediv = le16_to_cpu(ev->ediv);
 
 	cp.handle = ev->handle;
 
-	err = smp_get_ltk(conn->smp_data, ev->number, div, cp.ltk);
+	err = smp_get_ltk(conn->smp_data, rand, ediv, cp.ltk);
 	if (err < 0)
 		send_command(bthost, BT_HCI_CMD_LE_LTK_REQ_NEG_REPLY,
 						neg_cp, sizeof(*neg_cp));

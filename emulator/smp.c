@@ -201,8 +201,7 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 	}
 }
 
-int smp_get_ltk(void *smp_data, const uint8_t *rand, uint16_t div,
-								uint8_t *ltk)
+int smp_get_ltk(void *smp_data, uint64_t rand, uint16_t ediv, uint8_t *ltk)
 {
 	struct smp_conn *conn = smp_data;
 	static const uint8_t no_ltk[16] = { 0 };

@@ -1769,14 +1769,14 @@ struct bt_hci_rsp_le_encrypt {
 #define BT_HCI_CMD_LE_RAND			0x2018
 struct bt_hci_rsp_le_rand {
 	uint8_t  status;
-	uint8_t  number[8];
+	uint64_t number;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_START_ENCRYPT		0x2019
 struct bt_hci_cmd_le_start_encrypt {
 	uint16_t handle;
-	uint8_t  number[8];
-	uint16_t diversifier;
+	uint64_t rand;
+	uint16_t ediv;
 	uint8_t  ltk[16];
 } __attribute__ ((packed));
 
@@ -2353,8 +2353,8 @@ struct bt_hci_evt_le_remote_features_complete {
 #define BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST	0x05
 struct bt_hci_evt_le_long_term_key_request {
 	uint16_t handle;
-	uint8_t  number[8];
-	uint16_t diversifier;
+	uint64_t rand;
+	uint16_t ediv;
 } __attribute__ ((packed));
 
 #define BT_HCI_ERR_SUCCESS			0x00

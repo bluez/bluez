@@ -598,14 +598,16 @@ static void cmd_le_encrypt(struct bt_le *hci, const void *data, uint8_t size)
 static void cmd_le_rand(struct bt_le *hci, const void *data, uint8_t size)
 {
 	struct bt_hci_rsp_le_rand rsp;
+	uint8_t value[8];
 
-	if (!bt_crypto_random_bytes(hci->crypto, rsp.number, 8)) {
+	if (!bt_crypto_random_bytes(hci->crypto, value, 8)) {
 		cmd_status(hci, BT_HCI_ERR_COMMAND_DISALLOWED,
 					BT_HCI_CMD_LE_RAND);
 		return;
 	}
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
+	memcpy(&rsp.number, value, 8);
 
 	cmd_complete(hci, BT_HCI_CMD_LE_RAND, &rsp, sizeof(rsp));
 }

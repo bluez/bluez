@@ -2505,9 +2505,14 @@ void packet_print_channel_map_ll(const uint8_t *map)
 	print_le_channel_map(map);
 }
 
-static void print_random_number(const uint8_t *number)
+static void print_random_number(uint64_t rand)
 {
-	print_hex_field("Random number", number, 8);
+	print_field("Random number: 0x%16.16" PRIx64, le64_to_cpu(rand));
+}
+
+static void print_encryption_diversifier(uint16_t ediv)
+{
+	print_field("Encryption diversifier: 0x%4.4x", le16_to_cpu(ediv));
 }
 
 static const struct {
@@ -5605,9 +5610,8 @@ static void le_start_encrypt_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_start_encrypt *cmd = data;
 
 	print_handle(cmd->handle);
-	print_random_number(cmd->number);
-	print_field("Encryption diversifier: 0x%4.4x",
-					le16_to_cpu(cmd->diversifier));
+	print_random_number(cmd->rand);
+	print_encryption_diversifier(cmd->ediv);
 	print_key("Long term key", cmd->ltk);
 }
 
@@ -7211,9 +7215,8 @@ static void le_long_term_key_request_evt(const void *data, uint8_t size)
 	const struct bt_hci_evt_le_long_term_key_request *evt = data;
 
 	print_handle(evt->handle);
-	print_random_number(evt->number);
-	print_field("Encryption diversifier: 0x%4.4x",
-					le16_to_cpu(evt->diversifier));
+	print_random_number(evt->rand);
+	print_encryption_diversifier(evt->ediv);
 }
 
 struct subevent_data {
