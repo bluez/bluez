@@ -3603,6 +3603,7 @@ static void hid_intr_cid_hook_cb(const void *data, uint16_t len,
 	switch (header) {
 	case HID_SEND_DATA:
 		tester_test_passed();
+		break;
 	}
 }
 
@@ -3641,6 +3642,7 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 	case HID_SET_FEATURE_REPORT:
 	case HID_SEND_DATA:
 		tester_test_passed();
+		break;
 	}
 }
 
