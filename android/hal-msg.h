@@ -776,6 +776,16 @@ struct hal_cmd_gatt_server_delete_service {
 	int32_t service_handle;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_SEND_INDICATION	0x22
+struct hal_cmd_gatt_server_send_indication {
+	int32_t server_if;
+	int32_t attribute_handle;
+	int32_t conn_id;
+	int32_t len;
+	int32_t confirm;
+	uint8_t value[0];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

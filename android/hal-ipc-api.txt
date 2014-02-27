@@ -1766,6 +1766,17 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x22 - Send Indication command/response
+
+		Command parameters: Server (4 octets)
+		                    Attribute handle (4 octets)
+		                    Connection ID (4 octets)
+		                    Length (4 octets)
+		                    Confirmation (4 octets)
+		                    Value (variable)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x23 - Send Response command/response
 
 	Opcode 0x81 - Register Client notification
