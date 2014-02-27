@@ -764,6 +764,12 @@ struct hal_cmd_gatt_server_start_service {
 	int32_t transport;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_STOP_SERVICE		0x20
+struct hal_cmd_gatt_server_stop_service {
+	int32_t server_if;
+	int32_t service_handle;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
