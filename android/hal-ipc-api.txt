@@ -1664,6 +1664,12 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x17 - Register Server command/response
+
+		Command parameters: UUID (16 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x18 - Unregister Server command/response
 	Opcode 0x19 - Connect Peripheral command/response
 	Opcode 0x1a - Disconnect Peripheral command/response
