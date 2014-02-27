@@ -1779,6 +1779,23 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 
 	Opcode 0x23 - Send Response command/response
 
+		Command parameters: Connection ID (4 octets)
+		                    Transaction ID (4 octets)
+		                    Status (4 octets)
+		                    GATT Response (4 octets)
+
+		Valid GATT Response: GATT Value (607 octets)
+		                     Handle (2 octets)
+
+		Valid GATT Value: Value (600 octets)
+		                  Handle (2 octets)
+		                  Offset (2 octets)
+		                  Length (2 octets)
+		                  Authentication Request (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x81 - Register Client notification
 	Opcode 0x82 - Scan Result notification
 	Opcode 0x83 - Connect Device notification

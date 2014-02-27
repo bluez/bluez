@@ -786,6 +786,15 @@ struct hal_cmd_gatt_server_send_indication {
 	uint8_t value[0];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_SEND_RESPONSE	0x23
+struct hal_cmd_gatt_server_send_response {
+	int32_t conn_id;
+	int32_t trans_id;
+	int32_t status;
+	uint8_t len;
+	uint8_t data[0];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
