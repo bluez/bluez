@@ -707,6 +707,11 @@ struct hal_cmd_gatt_server_register {
 	uint8_t uuid[16];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_UNREGISTER		0x18
+struct hal_cmd_gatt_server_unregister {
+	int32_t server_if;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
