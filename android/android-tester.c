@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/un.h>
+#include <sys/signalfd.h>
 #include <libgen.h>
 
 #include "lib/bluetooth.h"
@@ -92,6 +93,7 @@ struct test_data {
 	enum hciemu_type hciemu_type;
 	const void *test_data;
 	pid_t bluetoothd_pid;
+	guint signalfd;
 
 	struct hw_device_t *device;
 	const bt_interface_t *if_bluetooth;
@@ -140,6 +142,86 @@ struct hh_cb_data {
 };
 
 static char exec_dir[PATH_MAX + 1];
+
+static void check_daemon_term(void)
+{
+	int status;
+	pid_t pid;
+	struct test_data *data = tester_get_data();
+
+	if (!data)
+		return;
+
+	pid = waitpid(data->bluetoothd_pid, &status, WNOHANG);
+	if (pid != data->bluetoothd_pid)
+		return;
+
+	data->bluetoothd_pid = 0;
+
+	if (WIFEXITED(status) && (WEXITSTATUS(status) == EXIT_SUCCESS)) {
+		tester_teardown_complete();
+		return;
+	}
+
+	tester_warn("Unexpected Daemon shutdown with status %d", status);
+}
+
+static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
+{
+	struct signalfd_siginfo si;
+	ssize_t result;
+	int fd;
+
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
+		return FALSE;
+
+	fd = g_io_channel_unix_get_fd(channel);
+
+	result = read(fd, &si, sizeof(si));
+	if (result != sizeof(si))
+		return FALSE;
+
+	switch (si.ssi_signo) {
+	case SIGCHLD:
+		check_daemon_term();
+		break;
+	}
+
+	return TRUE;
+}
+
+static guint setup_signalfd(void)
+{
+	GIOChannel *channel;
+	guint source;
+	sigset_t mask;
+	int fd;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGCHLD);
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
+		return 0;
+
+	fd = signalfd(-1, &mask, 0);
+	if (fd < 0)
+		return 0;
+
+	channel = g_io_channel_unix_new(fd);
+
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	g_io_channel_set_buffered(channel, FALSE);
+
+	source = g_io_add_watch(channel,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				signal_handler, NULL);
+
+	g_io_channel_unref(channel);
+
+	return source;
+}
 
 static void mgmt_debug(const char *str, void *user_data)
 {
@@ -463,6 +545,13 @@ static void test_pre_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
+	data->signalfd = setup_signalfd();
+	if (!data->signalfd) {
+		tester_warn("Failed to setup signalfd");
+		tester_pre_setup_failed();
+		return;
+	}
+
 	data->mgmt = mgmt_new_default();
 	if (!data->mgmt) {
 		tester_warn("Failed to setup management interface");
@@ -485,6 +574,9 @@ static void test_post_teardown(const void *test_data)
 
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
+
+	g_source_remove(data->signalfd);
+	data->signalfd = 0;
 }
 
 static void bluetoothd_start(int hci_index)
@@ -2191,10 +2283,8 @@ static void teardown(const void *test_data)
 
 	data->device->close(data->device);
 
-	if (data->bluetoothd_pid)
-		waitpid(data->bluetoothd_pid, NULL, 0);
-
-	tester_teardown_complete();
+	if (!data->bluetoothd_pid)
+		tester_teardown_complete();
 }
 
 static void test_dummy(const void *test_data)
