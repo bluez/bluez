@@ -757,6 +757,13 @@ struct hal_cmd_gatt_server_add_descriptor {
 	int32_t permissions;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_START_SERVICE	0x1f
+struct hal_cmd_gatt_server_start_service {
+	int32_t server_if;
+	int32_t service_handle;
+	int32_t transport;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
