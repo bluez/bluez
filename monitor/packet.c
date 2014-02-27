@@ -2510,9 +2510,9 @@ static void print_random_number(uint64_t rand)
 	print_field("Random number: 0x%16.16" PRIx64, le64_to_cpu(rand));
 }
 
-static void print_encryption_diversifier(uint16_t ediv)
+static void print_encrypted_diversifier(uint16_t ediv)
 {
-	print_field("Encryption diversifier: 0x%4.4x", le16_to_cpu(ediv));
+	print_field("Encrypted diversifier: 0x%4.4x", le16_to_cpu(ediv));
 }
 
 static const struct {
@@ -5611,7 +5611,7 @@ static void le_start_encrypt_cmd(const void *data, uint8_t size)
 
 	print_handle(cmd->handle);
 	print_random_number(cmd->rand);
-	print_encryption_diversifier(cmd->ediv);
+	print_encrypted_diversifier(cmd->ediv);
 	print_key("Long term key", cmd->ltk);
 }
 
@@ -7216,7 +7216,7 @@ static void le_long_term_key_request_evt(const void *data, uint8_t size)
 
 	print_handle(evt->handle);
 	print_random_number(evt->rand);
-	print_encryption_diversifier(evt->ediv);
+	print_encrypted_diversifier(evt->ediv);
 }
 
 struct subevent_data {
