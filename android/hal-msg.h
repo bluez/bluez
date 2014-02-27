@@ -712,6 +712,13 @@ struct hal_cmd_gatt_server_unregister {
 	int32_t server_if;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_CONNECT		0x19
+struct hal_cmd_gatt_server_connect {
+	int32_t server_if;
+	uint8_t bdaddr[6];
+	uint8_t is_direct;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

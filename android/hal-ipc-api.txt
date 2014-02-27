@@ -1678,6 +1678,14 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x19 - Connect Peripheral command/response
+
+		Command parameters: Server (4 octets)
+		                    Remote address (6 octes)
+		                    Is Direct (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x1a - Disconnect Peripheral command/response
 	Opcode 0x1b - Add Service command/response
 	Opcode 0x1c - Add Included Service command/response
