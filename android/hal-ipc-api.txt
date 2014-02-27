@@ -1731,6 +1731,15 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x1e - Add Descriptor command/response
+
+		Command parameters: Server (4 octets)
+		                    Service handle (4 octets)
+		                    UUID (16 octets)
+		                    Permissions (4 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x1f - Start Service command/response
 	Opcode 0x20 - Stop Service command/response
 	Opcode 0x21 - Delete Service command/response

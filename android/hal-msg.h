@@ -749,6 +749,14 @@ struct hal_cmd_gatt_server_add_characteristic {
 	int32_t permissions;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_ADD_DESCRIPTOR	0x1e
+struct hal_cmd_gatt_server_add_descriptor {
+	int32_t server_if;
+	int32_t service_handle;
+	uint8_t uuid[16];
+	int32_t permissions;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
