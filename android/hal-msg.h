@@ -719,6 +719,13 @@ struct hal_cmd_gatt_server_connect {
 	uint8_t is_direct;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_DISCONNECT		0x1a
+struct hal_cmd_gatt_server_disconnect {
+	int32_t server_if;
+	uint8_t bdaddr[6];
+	int32_t conn_id;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
