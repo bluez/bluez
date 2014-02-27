@@ -726,6 +726,13 @@ struct hal_cmd_gatt_server_disconnect {
 	int32_t conn_id;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_SERVER_ADD_SERVICE		0x1b
+struct hal_cmd_gatt_server_add_service {
+	int32_t server_if;
+	struct hal_gatt_srvc_id srvc_id;
+	int32_t num_handles;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

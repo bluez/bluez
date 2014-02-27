@@ -1696,6 +1696,20 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x1b - Add Service command/response
+
+		Command parameters: Server (4 octets)
+		                    GATT Service ID (18 octets)
+		                    Number of Handles (4 octet)
+
+		Valid GATT Service ID: GATT ID (17 octets)
+		                       Is Primary (1 octet)
+
+		Valid GATT ID: UUID (16 octets)
+		               Instance ID (1 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
 	Opcode 0x1c - Add Included Service command/response
 	Opcode 0x1d - Add Characteristic command/response
 	Opcode 0x1e - Add Descriptor command/response
