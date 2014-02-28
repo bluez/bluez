@@ -1393,3 +1393,11 @@ struct hal_ev_gatt_server_register {
 	int32_t server_if;
 	uint8_t uuid[16];
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_CONNECTION		0x94
+struct hal_ev_gatt_server_connection {
+	int32_t conn_id;
+	int32_t server_if;
+	int32_t connected;
+	uint8_t bdaddr[6];
+} __attribute__((packed));
