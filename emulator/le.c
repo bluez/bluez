@@ -121,7 +121,7 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->commands[26] |= 0x10;	/* LE Create Connection */
 	//hci->commands[26] |= 0x20;	/* LE Create Connection Cancel */
 	hci->commands[26] |= 0x40;	/* LE Read White List Size */
-	//hci->commands[26] |= 0x80;	/* LE Clear White List */
+	hci->commands[26] |= 0x80;	/* LE Clear White List */
 	//hci->commands[27] |= 0x01;	/* LE Add Device To White List */
 	//hci->commands[27] |= 0x02;	/* LE Remove Device From White List */
 	//hci->commands[27] |= 0x04;	/* LE Connection Update */
@@ -579,6 +579,16 @@ static void cmd_le_read_white_list_size(struct bt_le *hci,
 							&rsp, sizeof(rsp));
 }
 
+static void cmd_le_clear_white_list(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	uint8_t status;
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_CLEAR_WHITE_LIST,
+						&status, sizeof(status));
+}
+
 static void cmd_le_encrypt(struct bt_le *hci, const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_encrypt *cmd = data;
@@ -659,6 +669,8 @@ static const struct {
 
 	{ BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE,
 				cmd_le_read_white_list_size, 0, true },
+	{ BT_HCI_CMD_LE_CLEAR_WHITE_LIST,
+				cmd_le_clear_white_list, 0, true },
 
 	{ BT_HCI_CMD_LE_ENCRYPT, cmd_le_encrypt, 32, true },
 	{ BT_HCI_CMD_LE_RAND, cmd_le_rand, 0, true },
