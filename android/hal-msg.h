@@ -1302,3 +1302,18 @@ struct hal_ev_gatt_client_reg_for_notif {
 	struct hal_gatt_srvc_id srvc_id;
 	struct hal_gatt_gatt_id char_id;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_NOTIFY		0x8b
+struct hal_gatt_notify_params {
+	uint8_t bda[6];
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id char_id;
+	uint8_t  is_notify;
+	uint16_t len;
+	uint8_t  value[0];
+} __attribute__((packed));
+
+struct hal_ev_gatt_client_notify {
+	int32_t conn_id;
+	struct hal_gatt_notify_params data;
+} __attribute__((packed));
