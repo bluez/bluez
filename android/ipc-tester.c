@@ -900,10 +900,10 @@ int main(int argc, char *argv[])
 			sizeof(struct hal_cmd_register_module), -1);
 	test_datasize_valid("CORE Unregister+", HAL_SERVICE_ID_CORE,
 			HAL_OP_UNREGISTER_MODULE,
-			sizeof(struct hal_cmd_register_module), 1);
+			sizeof(struct hal_cmd_unregister_module), 1);
 	test_datasize_valid("CORE Unregister-", HAL_SERVICE_ID_CORE,
 			HAL_OP_UNREGISTER_MODULE,
-			sizeof(struct hal_cmd_register_module), -1);
+			sizeof(struct hal_cmd_unregister_module), -1);
 
 	/* check for valid data size for BLUETOOTH */
 	test_datasize_valid("BT Enable+", HAL_SERVICE_ID_BLUETOOTH,
