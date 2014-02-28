@@ -1435,3 +1435,10 @@ struct hal_ev_gatt_server_descriptor_added {
 	int32_t srvc_handle;
 	int32_t descr_handle;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_SERVICE_STARTED	0x99
+struct hal_ev_gatt_server_service_started {
+	int32_t status;
+	int32_t server_if;
+	int32_t srvc_handle;
+} __attribute__((packed));
