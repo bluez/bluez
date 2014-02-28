@@ -1950,6 +1950,11 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Server Interface (4 octets)
 
 	Opcode 0x93 - Register Server notification
+
+		Notification parameters: Status (4 octets)
+		                         Server (4 octets)
+		                         UUID (16 octets)
+
 	Opcode 0x94 - Connection notification
 	Opcode 0x95 - Service Added notification
 	Opcode 0x96 - Included Service Added notification

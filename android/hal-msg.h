@@ -1386,3 +1386,10 @@ struct hal_ev_gatt_client_listen {
 	int32_t status;
 	int32_t server_if;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_REGISTER		0x93
+struct hal_ev_gatt_server_register {
+	int32_t status;
+	int32_t server_if;
+	uint8_t uuid[16];
+} __attribute__((packed));
