@@ -2011,6 +2011,11 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Service Handle (4 octets)
 
 	Opcode 0x9b - Service Deleted notification
+
+		Notification parameters: Status (4 octets)
+		                         Server (4 octets)
+		                         Service Handle (4 octets)
+
 	Opcode 0x9c - Request Read notification
 	Opcode 0x9d - Request Write notification
 	Opcode 0x9e - Request Execute Write notification
