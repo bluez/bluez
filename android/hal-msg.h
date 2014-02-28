@@ -1479,3 +1479,11 @@ struct hal_ev_gatt_server_request_write {
 	uint8_t is_prep;
 	uint8_t value[0];
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_REQUEST_EXEC_WRITE	0x9e
+struct hal_ev_gatt_server_request_exec_write {
+	int32_t conn_id;
+	int32_t trans_id;
+	uint8_t bdaddr[6];
+	int32_t exec_write;
+} __attribute__((packed));
