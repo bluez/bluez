@@ -1317,3 +1317,24 @@ struct hal_ev_gatt_client_notify {
 	int32_t conn_id;
 	struct hal_gatt_notify_params data;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_READ_CHARACTERISTIC	0x8c
+struct hal_gatt_unformated_value {
+	uint16_t len;
+	uint8_t  value[0];
+} __attribute__((packed));
+
+struct hal_gatt_read_params {
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id char_id;
+	struct hal_gatt_gatt_id descr_id;
+	uint8_t  status;
+	uint16_t value_type;
+	struct hal_gatt_unformated_value value;
+} __attribute__((packed));
+
+struct hal_ev_gatt_client_read_characteristic {
+	int32_t conn_id;
+	int32_t status;
+	struct hal_gatt_read_params data;
+} __attribute__((packed));
