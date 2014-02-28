@@ -1797,6 +1797,11 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		In case of an error, the error response will be returned.
 
 	Opcode 0x81 - Register Client notification
+
+		Notification parameters: Status (4 octets)
+		                         Client Interface (4 octets)
+		                         UUID (16 octets)
+
 	Opcode 0x82 - Scan Result notification
 	Opcode 0x83 - Connect Device notification
 	Opcode 0x84 - Disconnect Device notification

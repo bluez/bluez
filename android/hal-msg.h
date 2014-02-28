@@ -1224,3 +1224,10 @@ struct hal_ev_avrcp_passthrough_cmd {
 	uint8_t id;
 	uint8_t state;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_REGISTER_CLIENT	0x81
+struct hal_ev_gatt_client_register_client {
+	int32_t status;
+	int32_t client_if;
+	uint8_t app_uuid[16];
+} __attribute__((packed));
