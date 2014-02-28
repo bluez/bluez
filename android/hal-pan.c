@@ -169,7 +169,7 @@ static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
 	return ret;
 }
 
-static void pan_cleanup()
+static void pan_cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
 
