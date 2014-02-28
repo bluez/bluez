@@ -1487,3 +1487,9 @@ struct hal_ev_gatt_server_request_exec_write {
 	uint8_t bdaddr[6];
 	int32_t exec_write;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_RSP_CONFIRMATION	0x9f
+struct hal_ev_gatt_server_rsp_confirmation {
+	int32_t status;
+	int32_t handle;
+} __attribute__((packed));

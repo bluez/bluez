@@ -2045,3 +2045,6 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Execute Write (4 octets)
 
 	Opcode 0x9f - Response Confirmation notification
+
+		Notification parameters: Status (4 octets)
+		                         Handle (4 octets)
