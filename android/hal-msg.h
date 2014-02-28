@@ -1338,3 +1338,17 @@ struct hal_ev_gatt_client_read_characteristic {
 	int32_t status;
 	struct hal_gatt_read_params data;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_WRITE_CHARACTERISTIC	0x8d
+struct hal_gatt_write_params {
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id char_id;
+	struct hal_gatt_gatt_id descr_id;
+	uint8_t status;
+} __attribute__((packed));
+
+struct hal_ev_gatt_client_write_characteristic {
+	int32_t conn_id;
+	int32_t status;
+	struct hal_gatt_write_params data;
+} __attribute__((packed));
