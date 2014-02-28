@@ -1409,3 +1409,11 @@ struct hal_ev_gatt_server_service_added {
 	struct hal_gatt_srvc_id srvc_id;
 	int32_t srvc_handle;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_INC_SRVC_ADDED	0x96
+struct hal_ev_gatt_server_inc_srvc_added {
+	int32_t status;
+	int32_t server_if;
+	int32_t srvc_handle;
+	int32_t incl_srvc_handle;
+} __attribute__((packed));

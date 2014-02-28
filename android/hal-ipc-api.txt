@@ -1976,6 +1976,12 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		          Instance ID (1 octet)
 
 	Opcode 0x96 - Included Service Added notification
+
+		Notification patemeters: Status (4 octets)
+		                         Server (4 octets)
+		                         Service Handle (4 octets)
+		                         Included Service Handle (4 octets)
+
 	Opcode 0x97 - Characteristic Added notification
 	Opcode 0x98 - Descriptor Added notification
 	Opcode 0x99 - Service Started notification
