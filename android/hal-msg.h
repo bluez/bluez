@@ -1380,3 +1380,9 @@ struct hal_ev_gatt_client_read_remote_rssi {
 	int32_t rssi;
 	int32_t status;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_LISTEN		0x92
+struct hal_ev_gatt_client_listen {
+	int32_t status;
+	int32_t server_if;
+} __attribute__((packed));
