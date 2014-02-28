@@ -47,9 +47,10 @@
 
 #define RFCOMM_CHANNEL_MAX 30
 
-#define OPP_DEFAULT_CHANNEL	12
+#define OPP_DEFAULT_CHANNEL	9
 #define HFAG_DEFAULT_CHANNEL	13
-#define PBAP_DEFAULT_CHANNEL	19
+#define PBAP_DEFAULT_CHANNEL	15
+#define MAP_MAS_DEFAULT_CHANNEL	16
 
 #define SVC_HINT_OBEX 0x10
 
@@ -403,7 +404,7 @@ static const struct profile_info {
 			0x00, 0x00, 0x11, 0x32, 0x00, 0x00, 0x10, 0x00,
 			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
 		},
-		.channel = 0,
+		.channel = MAP_MAS_DEFAULT_CHANNEL,
 		.svc_hint = SVC_HINT_OBEX,
 		.sec_level = BT_IO_SEC_MEDIUM,
 		.create_record = create_mas_record
