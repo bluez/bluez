@@ -227,7 +227,7 @@ static void execute_context(struct context *context)
 	destroy_context(context);
 }
 
-static size_t handler(struct avctp *session,
+static ssize_t handler(struct avctp *session,
 					uint8_t transaction, uint8_t *code,
 					uint8_t *subunit, uint8_t *operands,
 					size_t operand_count, void *user_data)

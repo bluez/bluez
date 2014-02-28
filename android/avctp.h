@@ -113,7 +113,7 @@ struct avctp;
 typedef bool (*avctp_passthrough_cb) (struct avctp *session,
 					uint8_t op, bool pressed,
 					void *user_data);
-typedef size_t (*avctp_control_pdu_cb) (struct avctp *session,
+typedef ssize_t (*avctp_control_pdu_cb) (struct avctp *session,
 					uint8_t transaction, uint8_t *code,
 					uint8_t *subunit, uint8_t *operands,
 					size_t operand_count, void *user_data);

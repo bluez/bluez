@@ -125,7 +125,7 @@ void avrcp_shutdown(struct avrcp *session)
 	g_free(session);
 }
 
-static size_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
+static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 					uint8_t *code, uint8_t *subunit,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
