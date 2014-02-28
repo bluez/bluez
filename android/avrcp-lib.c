@@ -170,14 +170,22 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 		goto reject;
 	}
 
-	ret = handler->func(session, transaction, code, params_len,
-					pdu->params, session->control_data);
+	ret = handler->func(session, transaction, params_len, pdu->params,
+							session->control_data);
 	if (ret < 0) {
-		if (ret == -EAGAIN)
+		switch (ret) {
+		case -EAGAIN:
 			return ret;
-		goto reject;
+		case -EINVAL:
+			pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
+			goto reject;
+		default:
+			pdu->params[0] = AVRCP_STATUS_INTERNAL_ERROR;
+			goto reject;
+		}
 	}
 
+	*code = handler->rsp;
 	pdu->params_len = htons(ret);
 
 	return AVRCP_HEADER_LENGTH + ret;
