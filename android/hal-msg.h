@@ -1247,3 +1247,11 @@ struct hal_ev_gatt_client_connect {
 	int32_t client_if;
 	uint8_t bda[6];
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_DISCONNECT	0x84
+struct hal_ev_gatt_client_disconnect {
+	int32_t conn_id;
+	int32_t status;
+	int32_t client_if;
+	uint8_t bda[6];
+} __attribute__((packed));
