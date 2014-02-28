@@ -292,54 +292,54 @@ static const struct avrcp_passthrough_handler passthrough_handlers[] = {
 		{ },
 };
 
-static uint8_t avrcp_handle_get_capabilities(struct avrcp *session,
-				uint8_t transaction, uint16_t *params_len,
-				uint8_t *params, void *user_data)
+static ssize_t avrcp_handle_get_capabilities(struct avrcp *session,
+					uint8_t transaction, uint8_t *code,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
 {
 	uint32_t id = 0x001958;
 
-	DBG("params[0] %d params_len %d", params[0], *params_len);
-
-	if (*params_len != 1)
+	if (params_len != 1)
 		goto fail;
 
 	switch (params[0]) {
 	case CAP_COMPANY_ID:
-		*params_len = 5;
 		params[1] = 1;
 		hton24(&params[2], id);
-		return AVC_CTYPE_STABLE;
+		*code = AVC_CTYPE_STABLE;
+		return 5;
 	}
 
 fail:
-	*params_len = 1;
 	params[0] = AVRCP_STATUS_INVALID_PARAM;
-
-	return AVC_CTYPE_REJECTED;
+	*code = AVC_CTYPE_REJECTED;
+	return 1;
 }
 
-static uint8_t avrcp_handle_list_attributes(struct avrcp *session,
-				uint8_t transaction, uint16_t *params_len,
-				uint8_t *params, void *user_data)
+static ssize_t avrcp_handle_list_attributes(struct avrcp *session,
+					uint8_t transaction, uint8_t *code,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
 {
 	DBG("");
 
-	*params_len = 1;
 	params[0] = 0;
+	*code = AVC_CTYPE_STABLE;
 
-	return AVC_CTYPE_STABLE;
+	return 1;
 }
 
-static uint8_t avrcp_handle_get_player_attr_text(struct avrcp *session,
-				uint8_t transaction, uint16_t *params_len,
-				uint8_t *params, void *user_data)
+static ssize_t avrcp_handle_get_player_attr_text(struct avrcp *session,
+					uint8_t transaction, uint8_t *code,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
 {
 	DBG("");
 
-	*params_len = 1;
 	params[0] = 0;
+	*code = AVC_CTYPE_STABLE;
 
-	return AVC_CTYPE_STABLE;
+	return 1;
 }
 
 static const struct avrcp_control_handler control_handlers[] = {

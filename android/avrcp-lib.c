@@ -135,6 +135,7 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 	struct avrcp_header *pdu = (void *) operands;
 	uint32_t company_id = ntoh24(pdu->company_id);
 	uint16_t params_len = ntohs(pdu->params_len);
+	ssize_t ret;
 
 	if (company_id != IEEEID_BTSIG) {
 		*code = AVC_CTYPE_NOT_IMPLEMENTED;
@@ -169,12 +170,17 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 		goto reject;
 	}
 
-	*code = handler->func(session, transaction, &params_len,
+	ret = handler->func(session, transaction, code, params_len,
 					pdu->params, session->control_data);
+	if (ret < 0) {
+		if (ret == -EAGAIN)
+			return ret;
+		goto reject;
+	}
 
-	pdu->params_len = htons(params_len);
+	pdu->params_len = htons(ret);
 
-	return AVRCP_HEADER_LENGTH + params_len;
+	return AVRCP_HEADER_LENGTH + ret;
 
 reject:
 	pdu->params_len = htons(1);
