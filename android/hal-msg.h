@@ -1285,3 +1285,11 @@ struct hal_ev_gatt_client_get_descriptor {
 	struct hal_gatt_gatt_id char_id;
 	struct hal_gatt_gatt_id descr_id;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_GET_INC_SERVICE	0X89
+struct hal_ev_gatt_client_get_inc_service {
+	int32_t conn_id;
+	int32_t status;
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_srvc_id incl_srvc_id;
+} __attribute__((packed));

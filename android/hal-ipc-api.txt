@@ -1860,6 +1860,13 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                      Instance ID (1 octet)
 
 	Opcode 0x89 - Get Included Service notification
+
+		Notification parameters: Connection ID (4 octets)
+		                         Status (4 octets)
+		                         GATT Service ID (18 octets)
+		                         GATT Incl. Service ID (18 octets)
+		Valid GATT Service & Incl. Service ID: As described in Search Result
+
 	Opcode 0x8a - Register For Notification notification
 	Opcode 0x8b - Notify notification
 	Opcode 0x8c - Read Characteristic notification
