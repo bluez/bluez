@@ -1359,3 +1359,10 @@ struct hal_ev_gatt_client_read_descriptor {
 	int32_t status;
 	struct hal_gatt_read_params data;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_WRITE_DESCRIPTOR	0x8f
+struct hal_ev_gatt_client_write_descriptor {
+	int32_t conn_id;
+	int32_t status;
+	struct hal_gatt_write_params data;
+} __attribute__((packed));
