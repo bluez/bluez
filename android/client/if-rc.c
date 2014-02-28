@@ -134,6 +134,29 @@ static void get_element_attr_rsp_p(int argc, const char **argv)
 	EXEC(if_rc->get_element_attr_rsp, num_attr, &attrs);
 }
 
+/* set_volume */
+
+static void set_volume_c(int argc, const char **argv,
+					enum_func *enum_func, void **user)
+{
+}
+
+static void set_volume_p(int argc, const char **argv)
+{
+	uint8_t volume;
+
+	RETURN_IF_NULL(if_rc);
+
+	if (argc <= 2) {
+		haltest_error("No volume specified");
+		return;
+	}
+
+	volume = (uint8_t) atoi(argv[2]);
+
+	EXEC(if_rc->set_volume, volume);
+}
+
 /* cleanup */
 
 static void cleanup_p(int argc, const char **argv)
@@ -149,6 +172,7 @@ static struct method methods[] = {
 	STD_METHODCH(get_play_status_rsp,
 					"<play_status> <song_len> <song_pos>"),
 	STD_METHODCH(get_element_attr_rsp, "<num_attr> <attrs_id> <value>"),
+	STD_METHODCH(set_volume, "<volume>"),
 	STD_METHOD(cleanup),
 	END_METHOD
 };
