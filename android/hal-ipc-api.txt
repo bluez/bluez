@@ -1983,6 +1983,13 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Included Service Handle (4 octets)
 
 	Opcode 0x97 - Characteristic Added notification
+
+		Notification parameters: Status (4 octets)
+		                         Server (4 octets)
+		                         UUID (16 octets)
+		                         Service Handle (4 octets)
+		                         Characteristic Handle (4 octets)
+
 	Opcode 0x98 - Descriptor Added notification
 	Opcode 0x99 - Service Started notification
 	Opcode 0x9a - Service Stopped notification

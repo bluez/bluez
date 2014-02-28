@@ -1417,3 +1417,12 @@ struct hal_ev_gatt_server_inc_srvc_added {
 	int32_t srvc_handle;
 	int32_t incl_srvc_handle;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_CHAR_ADDED		0x97
+struct hal_ev_gatt_server_characteristic_added {
+	int32_t status;
+	int32_t server_if;
+	uint8_t uuid[16];
+	int32_t srvc_handle;
+	int32_t char_handle;
+} __attribute__((packed));
