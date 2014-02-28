@@ -1963,6 +1963,18 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Address (6 octets)
 
 	Opcode 0x95 - Service Added notification
+
+		Notification parameters: Status (4 octets)
+		                         Server (4 octets)
+		                         Service ID (18 octets)
+		                         Service Handle (4 octets)
+
+		Valid Service ID: ID (17 octets)
+		                  Is Primary (1 octet)
+
+		Valid ID: UUID (16 octets)
+		          Instance ID (1 octet)
+
 	Opcode 0x96 - Included Service Added notification
 	Opcode 0x97 - Characteristic Added notification
 	Opcode 0x98 - Descriptor Added notification

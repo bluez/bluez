@@ -1401,3 +1401,11 @@ struct hal_ev_gatt_server_connection {
 	int32_t connected;
 	uint8_t bdaddr[6];
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_SERVICE_ADDED	0x95
+struct hal_ev_gatt_server_service_added {
+	int32_t status;
+	int32_t server_if;
+	struct hal_gatt_srvc_id srvc_id;
+	int32_t srvc_handle;
+} __attribute__((packed));
