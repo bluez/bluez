@@ -375,6 +375,10 @@ static void test_client(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-01-C"))
 		avrcp_list_player_attributes(context->session, NULL, NULL);
 
+	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-03-C"))
+		avrcp_get_player_attribute_text(context->session, NULL, 0,
+								NULL, NULL);
+
 	execute_context(context);
 }
 
@@ -483,6 +487,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58, 0x11, 0x00, 0x00,
 				0x01, 0x00));
+
+	define_test("/TP/PAS/BV-03-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58,
+				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT,
+				0x00, 0x00, 0x00));
 
 	return g_test_run();
 }
