@@ -2026,5 +2026,16 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Is Long (1 octet)
 
 	Opcode 0x9d - Request Write notification
+
+		Notification parameters: Connection ID (4 octets)
+		                         Trans ID (4 octets)
+		                         Address (6 octets)
+		                         Attribute Handle (4 octets)
+		                         Offset (4 octets)
+		                         Length (4 octets)
+		                         Need Response (4 octets)
+		                         Is Prepare (1 octet)
+		                         Value (variable)
+
 	Opcode 0x9e - Request Execute Write notification
 	Opcode 0x9f - Response Confirmation notification

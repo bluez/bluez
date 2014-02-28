@@ -1466,3 +1466,16 @@ struct hal_ev_gatt_server_request_read {
 	int32_t offset;
 	uint8_t is_long;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_REQUEST_WRITE	0x9d
+struct hal_ev_gatt_server_request_write {
+	int32_t conn_id;
+	int32_t trans_id;
+	uint8_t bdaddr[6];
+	int32_t attr_handle;
+	int32_t offset;
+	int32_t length;
+	uint8_t need_rsp;
+	uint8_t is_prep;
+	uint8_t value[0];
+} __attribute__((packed));
