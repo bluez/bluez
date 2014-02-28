@@ -323,7 +323,7 @@ static uint8_t avrcp_handle_get_capabilities(struct avrcp *session,
 	}
 
 fail:
-	*params_len = htons(1);
+	*params_len = 1;
 	params[0] = AVRCP_STATUS_INVALID_PARAM;
 
 	return AVC_CTYPE_REJECTED;
