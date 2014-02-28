@@ -61,10 +61,16 @@ static void get_element_attr_cb(uint8_t num_attr, btrc_media_attr_t *attrs)
 		haltest_info("attr id=%s\n", btrc_media_attr_t2str(attrs[i]));
 }
 
+static void volume_change_cb(uint8_t volume, uint8_t ctype)
+{
+	haltest_info("%s, volume=%d ctype=%d\n", __func__, volume, ctype);
+}
+
 static btrc_callbacks_t rc_cbacks = {
 	.size = sizeof(rc_cbacks),
 	.get_play_status_cb = get_play_status_cb,
 	.get_element_attr_cb = get_element_attr_cb,
+	.volume_change_cb = volume_change_cb,
 };
 
 /* init */
