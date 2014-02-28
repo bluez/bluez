@@ -1372,3 +1372,11 @@ struct hal_ev_gatt_client_exec_write {
 	int32_t conn_id;
 	int32_t status;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_READ_REMOTE_RSSI	0x91
+struct hal_ev_gatt_client_read_remote_rssi {
+	int32_t client_if;
+	uint8_t address[6];
+	int32_t rssi;
+	int32_t status;
+} __attribute__((packed));
