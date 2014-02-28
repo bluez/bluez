@@ -1442,3 +1442,10 @@ struct hal_ev_gatt_server_service_started {
 	int32_t server_if;
 	int32_t srvc_handle;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_SERVICE_STOPPED	0x9a
+struct hal_ev_gatt_server_service_stopped {
+	int32_t status;
+	int32_t server_if;
+	int32_t srvc_handle;
+} __attribute__((packed));
