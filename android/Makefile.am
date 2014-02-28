@@ -191,6 +191,7 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pics-avctp.txt \
 				android/pics-avrcp.txt \
 				android/pics-hsp.txt \
+				android/pics-hfp.txt \
 				android/pixit-l2cap.txt \
 				android/pixit-gap.txt \
 				android/pixit-did.txt \
@@ -203,6 +204,7 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pixit-avctp.txt \
 				android/pixit-avrcp.txt \
 				android/pixit-hsp.txt \
+				android/pixit-hfp.txt \
 				android/pts-l2cap.txt \
 				android/pts-gap.txt \
 				android/pts-did.txt \
