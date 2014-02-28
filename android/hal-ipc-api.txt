@@ -1868,6 +1868,15 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		Valid GATT Service & Incl. Service ID: As described in Search Result
 
 	Opcode 0x8a - Register For Notification notification
+
+		Notification parameters: Connection ID (4 octets)
+		                         Registered (4 octets)
+		                         Status (4 octets)
+		                         GATT Service ID (18 octets)
+		                         GATT Char. ID (17 octets)
+		Valid GATT Service ID: As described in Get Characteristic
+		Valid GATT Char. ID: As described in Get Characteristic
+
 	Opcode 0x8b - Notify notification
 	Opcode 0x8c - Read Characteristic notification
 	Opcode 0x8d - Write Characteristic notification

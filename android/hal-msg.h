@@ -1293,3 +1293,12 @@ struct hal_ev_gatt_client_get_inc_service {
 	struct hal_gatt_srvc_id srvc_id;
 	struct hal_gatt_srvc_id incl_srvc_id;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_REGISTER_FOR_NOTIF	0x8a
+struct hal_ev_gatt_client_reg_for_notif {
+	int32_t conn_id;
+	int32_t registered;
+	int32_t status;
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id char_id;
+} __attribute__((packed));
