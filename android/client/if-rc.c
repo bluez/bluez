@@ -36,6 +36,16 @@ SINTMAP(btrc_play_status_t, -1, "(unknown)")
 	DELEMENT(BTRC_PLAYSTATE_ERROR),
 ENDMAP
 
+SINTMAP(btrc_media_attr_t, -1, "(unknown)")
+	DELEMENT(BTRC_MEDIA_ATTR_TITLE),
+	DELEMENT(BTRC_MEDIA_ATTR_ARTIST),
+	DELEMENT(BTRC_MEDIA_ATTR_ALBUM),
+	DELEMENT(BTRC_MEDIA_ATTR_TRACK_NUM),
+	DELEMENT(BTRC_MEDIA_ATTR_NUM_TRACKS),
+	DELEMENT(BTRC_MEDIA_ATTR_GENRE),
+	DELEMENT(BTRC_MEDIA_ATTR_PLAYING_TIME),
+ENDMAP
+
 static btrc_callbacks_t rc_cbacks = {
 	.size = sizeof(rc_cbacks),
 };
@@ -89,6 +99,41 @@ static void get_play_status_rsp_p(int argc, const char **argv)
 	EXEC(if_rc->get_play_status_rsp, play_status, song_len, song_pos);
 }
 
+/* get_element_attr_rsp */
+
+static void get_element_attr_rsp_c(int argc, const char **argv,
+					enum_func *enum_func, void **user)
+{
+	if (argc == 4) {
+		*user = TYPE_ENUM(btrc_media_attr_t);
+		*enum_func = enum_defines;
+	}
+}
+
+static void get_element_attr_rsp_p(int argc, const char **argv)
+{
+	uint8_t num_attr;
+	btrc_element_attr_val_t attrs;
+
+	RETURN_IF_NULL(if_rc);
+
+	if (argc <= 2) {
+		haltest_error("No number of attributes specified");
+		return;
+	}
+
+	if (argc <= 4) {
+		haltest_error("No attr id and value specified");
+		return;
+	}
+
+	num_attr = (uint8_t) atoi(argv[2]);
+	attrs.attr_id = str2btrc_media_attr_t(argv[3]);
+	strcpy((char *)attrs.text, argv[4]);
+
+	EXEC(if_rc->get_element_attr_rsp, num_attr, &attrs);
+}
+
 /* cleanup */
 
 static void cleanup_p(int argc, const char **argv)
@@ -103,6 +148,7 @@ static struct method methods[] = {
 	STD_METHOD(init),
 	STD_METHODCH(get_play_status_rsp,
 					"<play_status> <song_len> <song_pos>"),
+	STD_METHODCH(get_element_attr_rsp, "<num_attr> <attrs_id> <value>"),
 	STD_METHOD(cleanup),
 	END_METHOD
 };
