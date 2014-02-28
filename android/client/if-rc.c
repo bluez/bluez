@@ -46,8 +46,14 @@ SINTMAP(btrc_media_attr_t, -1, "(unknown)")
 	DELEMENT(BTRC_MEDIA_ATTR_PLAYING_TIME),
 ENDMAP
 
+static void get_play_status_cb(void)
+{
+	haltest_info("%s\n", __func__);
+}
+
 static btrc_callbacks_t rc_cbacks = {
 	.size = sizeof(rc_cbacks),
+	.get_play_status_cb = get_play_status_cb,
 };
 
 /* init */
