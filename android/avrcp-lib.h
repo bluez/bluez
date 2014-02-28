@@ -102,7 +102,9 @@ void avrcp_set_passthrough_handlers(struct avrcp *session,
 			void *user_data);
 int avrcp_init_uinput(struct avrcp *session, const char *name,
 							const char *address);
-
+int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
+					uint8_t subunit, uint8_t pdu_id,
+					uint8_t *params, size_t params_len);
 int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
 					avctp_rsp_cb func, void *user_data);
 int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,

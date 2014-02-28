@@ -275,6 +275,33 @@ int avrcp_init_uinput(struct avrcp *session, const char *name,
 	return avctp_init_uinput(session->conn, name, address);
 }
 
+int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
+					uint8_t subunit, uint8_t pdu_id,
+					uint8_t *params, size_t params_len)
+{
+	struct avrcp_header *pdu = (void *) session->tx_buf;
+	size_t len = sizeof(*pdu);
+
+	memset(pdu, 0, len);
+
+	hton24(pdu->company_id, IEEEID_BTSIG);
+	pdu->pdu_id = pdu_id;
+	pdu->packet_type = AVRCP_PACKET_TYPE_SINGLE;
+
+	if (params_len > 0) {
+		len += params_len;
+
+		if (len > session->tx_mtu)
+			return -ENOBUFS;
+
+		memcpy(pdu->params, params, params_len);
+		pdu->params_len = htons(params_len);
+	}
+
+	return avctp_send_vendordep(session->conn, transaction, code, subunit,
+							session->tx_buf, len);
+}
+
 static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
 					uint8_t pdu_id, uint8_t *params,
 					size_t params_len, avctp_rsp_cb func,
