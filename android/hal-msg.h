@@ -1267,3 +1267,12 @@ struct hal_ev_gatt_client_search_result {
 	int32_t conn_id;
 	struct hal_gatt_srvc_id srvc_id;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_GET_CHARACTERISTIC	0x87
+struct hal_ev_gatt_client_get_characteristic {
+	int32_t conn_id;
+	int32_t status;
+	struct hal_gatt_srvc_id srvc_id;
+	struct hal_gatt_gatt_id char_id;
+	int32_t char_prop;
+} __attribute__((packed));
