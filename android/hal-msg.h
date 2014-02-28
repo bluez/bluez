@@ -1261,3 +1261,9 @@ struct hal_ev_gatt_client_search_complete {
 	int32_t conn_id;
 	int32_t status;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_SEARCH_RESULT	0x86
+struct hal_ev_gatt_client_search_result {
+	int32_t conn_id;
+	struct hal_gatt_srvc_id srvc_id;
+} __attribute__((packed));
