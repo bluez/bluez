@@ -295,11 +295,9 @@ static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
 					session->tx_buf, len, func, user_data);
 }
 
-int avrcp_get_capabilities(struct avrcp *session, avctp_rsp_cb func,
-							void *user_data)
+int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
+					avctp_rsp_cb func, void *user_data)
 {
-	uint8_t param = CAP_EVENTS_SUPPORTED;
-
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
 				AVRCP_GET_CAPABILITIES, &param, sizeof(param),
 				func, user_data);

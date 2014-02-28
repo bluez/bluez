@@ -353,7 +353,8 @@ static void test_client(gconstpointer data)
 	struct context *context = create_context(0x0100, data);
 
 	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
-		avrcp_get_capabilities(context->session, NULL, NULL);
+		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED,
+								NULL, NULL);
 
 	execute_context(context);
 }
