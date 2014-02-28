@@ -358,6 +358,9 @@ static void test_client(gconstpointer data)
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED,
 								NULL, NULL);
 
+	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-01-C"))
+		avrcp_list_player_attributes(context->session, NULL, NULL);
+
 	execute_context(context);
 }
 
@@ -451,6 +454,13 @@ int main(int argc, char *argv[])
 				0x48, 0x00, 0x00, 0x19, 0x58, 0x10,
 				0x00, 0x00, 0x01,
 				AVRCP_STATUS_INVALID_PARAM));
+
+	/* Player Application Settings tests */
+
+	define_test("/TP/PAS/BV-01-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58, 0x11, 0x00, 0x00,
+				0x00));
 
 	return g_test_run();
 }
