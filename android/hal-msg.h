@@ -1231,3 +1231,11 @@ struct hal_ev_gatt_client_register_client {
 	int32_t client_if;
 	uint8_t app_uuid[16];
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_SCAN_RESULT	0x82
+struct hal_ev_gatt_client_scan_result {
+	uint8_t  bda[6];
+	int32_t  rssi;
+	uint16_t len;
+	uint8_t  adv_data[0];
+} __attribute__((packed));

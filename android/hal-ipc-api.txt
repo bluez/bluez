@@ -1803,6 +1803,12 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         UUID (16 octets)
 
 	Opcode 0x82 - Scan Result notification
+
+		Notification parameters: Address (6 octets)
+		                         RSSI (4 octets)
+		                         Length (2 octets)
+		                         Data (variable)
+
 	Opcode 0x83 - Connect Device notification
 	Opcode 0x84 - Disconnect Device notification
 	Opcode 0x85 - Search Complete notification
