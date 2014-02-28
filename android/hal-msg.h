@@ -1239,3 +1239,11 @@ struct hal_ev_gatt_client_scan_result {
 	uint16_t len;
 	uint8_t  adv_data[0];
 } __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_CONNECT	0x83
+struct hal_ev_gatt_client_connect {
+	int32_t conn_id;
+	int32_t status;
+	int32_t client_if;
+	uint8_t bda[6];
+} __attribute__((packed));
