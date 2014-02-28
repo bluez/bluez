@@ -108,3 +108,5 @@ int avrcp_init_uinput(struct avrcp *session, const char *name,
 
 int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
 					avctp_rsp_cb func, void *user_data);
+int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,
+							void *user_data);

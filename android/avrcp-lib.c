@@ -302,3 +302,11 @@ int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
 				AVRCP_GET_CAPABILITIES, &param, sizeof(param),
 				func, user_data);
 }
+
+int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,
+								void *user_data)
+{
+	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
+				AVRCP_LIST_PLAYER_ATTRIBUTES, NULL, 0,
+				func, user_data);
+}
