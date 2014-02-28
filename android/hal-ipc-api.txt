@@ -1824,6 +1824,10 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Address (6 octets)
 
 	Opcode 0x85 - Search Complete notification
+
+		Notification parameters: Connection ID (4 octets)
+		                         Status (4 octets)
+
 	Opcode 0x86 - Search Result notification
 	Opcode 0x87 - Get Characteristic notification
 	Opcode 0x88 - Get Descriptor notification
