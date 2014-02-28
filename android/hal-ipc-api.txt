@@ -1933,6 +1933,10 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		Valid GATT Write Parameters: As described in Write Characteristic
 
 	Opcode 0x90 - Execute Write notification
+
+		Notification parameters: Connection ID (4 octets)
+		                         Status (4 octets)
+
 	Opcode 0x91 - Read Remote RSSI notification
 	Opcode 0x92 - Listen notification
 
