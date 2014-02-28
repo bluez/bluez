@@ -1456,3 +1456,13 @@ struct hal_ev_gatt_server_service_deleted {
 	int32_t server_if;
 	int32_t srvc_handle;
 } __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_REQUEST_READ		0x9c
+struct hal_ev_gatt_server_request_read {
+	int32_t conn_id;
+	int32_t trans_id;
+	uint8_t bdaddr[6];
+	int32_t attr_handle;
+	int32_t offset;
+	uint8_t is_long;
+} __attribute__((packed));

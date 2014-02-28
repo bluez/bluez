@@ -2017,6 +2017,14 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                         Service Handle (4 octets)
 
 	Opcode 0x9c - Request Read notification
+
+		Notification parameters: Connection ID (4 octets)
+		                         Trans ID (4 octets)
+		                         Address (6 octets)
+		                         Attribute Handle (4 octets)
+		                         Offset (4 octets)
+		                         Is Long (1 octet)
+
 	Opcode 0x9d - Request Write notification
 	Opcode 0x9e - Request Execute Write notification
 	Opcode 0x9f - Response Confirmation notification
