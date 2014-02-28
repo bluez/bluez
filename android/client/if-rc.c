@@ -51,9 +51,20 @@ static void get_play_status_cb(void)
 	haltest_info("%s\n", __func__);
 }
 
+static void get_element_attr_cb(uint8_t num_attr, btrc_media_attr_t *attrs)
+{
+	uint8_t i;
+
+	haltest_info("%s, num_of_attributes=%d\n", __func__, num_attr);
+
+	for (i = 0; i < num_attr; i++)
+		haltest_info("attr id=%s\n", btrc_media_attr_t2str(attrs[i]));
+}
+
 static btrc_callbacks_t rc_cbacks = {
 	.size = sizeof(rc_cbacks),
 	.get_play_status_cb = get_play_status_cb,
+	.get_element_attr_cb = get_element_attr_cb,
 };
 
 /* init */
