@@ -308,6 +308,34 @@ bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 	return true;
 }
 
+bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
+								uint8_t len)
+{
+	const char *data = result->data;
+	int i = 0;
+	char c;
+
+	skip_whitespace(result);
+
+	c = data[result->offset];
+	if (c == '"' || c == ')' || c == '(')
+		return false;
+
+	while (data[result->offset] != '\0' && data[result->offset] != ','
+					&& data[result->offset] != ')') {
+		if (i < len)
+			buf[i++] = data[result->offset];
+		result->offset++;
+	}
+
+	if (i < len)
+		buf[i++] = '\0';
+
+	next_field(result);
+
+	return true;
+}
+
 static void process_input(struct hfp_gw *hfp)
 {
 	char *str, *ptr;

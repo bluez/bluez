@@ -118,3 +118,5 @@ bool hfp_gw_result_open_container(struct hfp_gw_result *result);
 bool hfp_gw_result_close_container(struct hfp_gw_result *result);
 bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 								uint8_t len);
+bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
+								uint8_t len);
