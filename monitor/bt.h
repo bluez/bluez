@@ -2357,6 +2357,15 @@ struct bt_hci_evt_le_long_term_key_request {
 	uint16_t ediv;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_REMOTE_CONN_PARAM_REQUEST	0x06
+struct bt_hci_evt_le_remote_conn_param_request {
+	uint16_t handle;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+} __attribute__ ((packed));
+
 #define BT_HCI_ERR_SUCCESS			0x00
 #define BT_HCI_ERR_UNKNOWN_COMMAND		0x01
 #define BT_HCI_ERR_UNKNOWN_CONN_ID		0x02
