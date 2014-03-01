@@ -2353,6 +2353,13 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &lrwls, sizeof(lrwls));
 		break;
 
+	case BT_HCI_CMD_LE_CLEAR_WHITE_LIST:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
 	case BT_HCI_CMD_LE_READ_SUPPORTED_STATES:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
