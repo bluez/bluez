@@ -57,18 +57,6 @@ struct avrcp_header {
 } __attribute__ ((packed));
 #define AVRCP_HEADER_LENGTH 7
 
-static inline uint32_t ntoh24(const uint8_t src[3])
-{
-	return src[0] << 16 | src[1] << 8 | src[2];
-}
-
-static inline void hton24(uint8_t dst[3], uint32_t src)
-{
-	dst[0] = (src >> 16) & 0xff;
-	dst[1] = (src >> 8) & 0xff;
-	dst[2] = src & 0xff;
-}
-
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
 struct avrcp_header {
@@ -81,23 +69,21 @@ struct avrcp_header {
 } __attribute__ ((packed));
 #define AVRCP_HEADER_LENGTH 7
 
+#else
+#error "Unknown byte order"
+#endif
+
 static inline uint32_t ntoh24(const uint8_t src[3])
 {
-	uint32_t dst;
-
-	memcpy(&dst, src, sizeof(src));
-
-	return dst;
+	return src[0] << 16 | src[1] << 8 | src[2];
 }
 
 static inline void hton24(uint8_t dst[3], uint32_t src)
 {
-	memcpy(&dst, src, sizeof(dst));
+	dst[0] = (src & 0xff0000) >> 16;
+	dst[1] = (src & 0x00ff00) >> 8;
+	dst[2] = (src & 0x0000ff);
 }
-
-#else
-#error "Unknown byte order"
-#endif
 
 struct avrcp {
 	struct avctp *conn;

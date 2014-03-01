@@ -74,9 +74,6 @@
 #define CAP_COMPANY_ID				0x02
 #define CAP_EVENTS_SUPPORTED			0x03
 
-/* Company IDs for vendor dependent commands */
-#define IEEEID_BTSIG		0x001958
-
 struct avrcp;
 
 struct avrcp_control_handler {
