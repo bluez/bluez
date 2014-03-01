@@ -93,25 +93,12 @@ struct context {
 		g_test_add_data_func(name, &data, function);		\
 	} while (0)
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-
 static inline void hton24(uint8_t dst[3], uint32_t src)
 {
-	dst[0] = (src >> 16) & 0xff;
-	dst[1] = (src >> 8) & 0xff;
-	dst[2] = src & 0xff;
+	dst[0] = (src & 0xff0000) >> 16;
+	dst[1] = (src & 0x00ff00) >> 8;
+	dst[2] = (src & 0x0000ff);
 }
-
-#elif __BYTE_ORDER == __BIG_ENDIAN
-
-static inline void hton24(uint8_t dst[3], uint32_t src)
-{
-	memcpy(&dst, src, sizeof(dst));
-}
-
-#else
-#error "Unknown byte order"
-#endif
 
 static void test_debug(const char *str, void *user_data)
 {
