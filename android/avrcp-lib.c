@@ -112,6 +112,7 @@ void avrcp_shutdown(struct avrcp *session)
 		avctp_shutdown(session->conn);
 	}
 
+	g_free(session->tx_buf);
 	g_free(session);
 }
 
