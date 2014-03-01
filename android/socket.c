@@ -102,14 +102,16 @@ static int rfsock_set_buffer(struct rfcomm_sock *rfsock)
 
 	err = getsockopt(rfsock->bt_sock, SOL_SOCKET, SO_RCVBUF, &rcv, &len);
 	if (err < 0) {
-		error("getsockopt(SO_RCVBUF): %s", strerror(errno));
-		return -errno;
+		int err = -errno;
+		error("getsockopt(SO_RCVBUF): %s", strerror(-err));
+		return err;
 	}
 
 	err = getsockopt(rfsock->bt_sock, SOL_SOCKET, SO_SNDBUF, &snd, &len);
 	if (err < 0) {
-		error("getsockopt(SO_SNDBUF): %s", strerror(errno));
-		return -errno;
+		int err = -errno;
+		error("getsockopt(SO_SNDBUF): %s", strerror(-err));
+		return err;
 	}
 
 	size = MAX(rcv, snd);
