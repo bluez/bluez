@@ -301,6 +301,27 @@ static void disconnect_cb(void *data)
 	avrcp_device_remove(dev);
 }
 
+static bool handle_fast_forward(struct avrcp *session, bool pressed,
+							void *user_data)
+{
+	struct hal_ev_avrcp_passthrough_cmd ev;
+
+	DBG("pressed %s", pressed ? "true" : "false");
+
+	ev.id = AVC_FAST_FORWARD;
+	ev.state = pressed;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,
+			HAL_EV_AVRCP_PASSTHROUGH_CMD, sizeof(ev), &ev);
+
+	return true;
+}
+
+static const struct avrcp_passthrough_handler passthrough_handlers[] = {
+		{ AVC_FAST_FORWARD, handle_fast_forward },
+		{ },
+};
+
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct avrcp_device *dev;
@@ -350,6 +371,8 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	avrcp_set_destroy_cb(dev->session, disconnect_cb, dev);
+	avrcp_set_passthrough_handlers(dev->session, passthrough_handlers,
+									dev);
 
 	/* FIXME: get the real name of the device */
 	avrcp_init_uinput(dev->session, "bluetooth", address);
