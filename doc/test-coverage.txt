@@ -40,9 +40,9 @@ rfcomm-tester		   9	Kernel RFCOMM implementation testing
 smp-tester		   5	Kernel SMP implementation testing
 sco-tester		   8	Kernel SCO implementation testing
 gap-tester		   1	Daemon D-Bus API testing
-hci-tester		  12	Controller hardware testing
+hci-tester		  14	Controller hardware testing
 			-----
-			 245
+			 247
 
 
 Android end-to-end testing

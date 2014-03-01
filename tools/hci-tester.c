@@ -329,6 +329,16 @@ static void test_read_local_supported_codecs(const void *test_data)
 	test_command(BT_HCI_CMD_READ_LOCAL_CODECS);
 }
 
+static void test_le_read_white_list_size(const void *test_data)
+{
+	test_command(BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE);
+}
+
+static void test_le_clear_white_list(const void *test_data)
+{
+	test_command(BT_HCI_CMD_LE_CLEAR_WHITE_LIST);
+}
+
 static void test_inquiry_complete(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -642,6 +652,11 @@ int main(int argc, char *argv[])
 				test_read_bd_addr);
 	test_hci_local("Read Local Supported Codecs", NULL, NULL,
 				test_read_local_supported_codecs);
+
+	test_hci_local("LE Read White List Size", NULL, NULL,
+				test_le_read_white_list_size);
+	test_hci_local("LE Clear White List", NULL, NULL,
+				test_le_clear_white_list);
 
 	test_hci_local("Inquiry (LIAC)", NULL, NULL, test_inquiry_liac);
 
