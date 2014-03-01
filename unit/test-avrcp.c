@@ -257,28 +257,30 @@ static void execute_context(struct context *context)
 	destroy_context(context);
 }
 
-static bool handle_play(struct avrcp *session, void *user_data)
+static bool handle_play(struct avrcp *session, bool pressed, void *user_data)
 {
 	DBG("");
 
 	return true;
 }
 
-static bool handle_volume_up(struct avrcp *session, void *user_data)
+static bool handle_volume_up(struct avrcp *session, bool pressed,
+							void *user_data)
 {
 	DBG("");
 
 	return true;
 }
 
-static bool handle_channel_up(struct avrcp *session, void *user_data)
+static bool handle_channel_up(struct avrcp *session, bool pressed,
+							void *user_data)
 {
 	DBG("");
 
 	return true;
 }
 
-static bool handle_select(struct avrcp *session, void *user_data)
+static bool handle_select(struct avrcp *session, bool pressed, void *user_data)
 {
 	DBG("");
 

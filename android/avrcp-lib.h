@@ -86,7 +86,7 @@ struct avrcp_control_handler {
 
 struct avrcp_passthrough_handler {
 	uint8_t op;
-	bool (*func) (struct avrcp *session, void *user_data);
+	bool (*func) (struct avrcp *session, bool pressed, void *user_data);
 };
 
 typedef void (*avrcp_destroy_cb_t) (void *user_data);
