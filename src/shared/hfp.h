@@ -112,3 +112,5 @@ bool hfp_gw_register(struct hfp_gw *hfp, hfp_result_func_t callback,
 						void *user_data,
 						hfp_destroy_func_t destroy);
 bool hfp_gw_unregister(struct hfp_gw *hfp, const char *prefix);
+
+bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val);

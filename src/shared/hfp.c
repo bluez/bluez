@@ -218,6 +218,37 @@ done:
 	return true;
 }
 
+static void next_field(struct hfp_gw_result *result)
+{
+	if (result->data[result->offset] == ',')
+		result->offset++;
+}
+
+bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val)
+{
+	int tmp = 0;
+	int i;
+
+	skip_whitespace(result);
+
+	i = result->offset;
+
+	while (result->data[i] >= '0' && result->data[i] <= '9')
+		tmp = tmp * 10 + result->data[i++] - '0';
+
+	if (i == result->offset)
+		return false;
+
+	if (val)
+		*val = tmp;
+	result->offset = i;
+
+	skip_whitespace(result);
+	next_field(result);
+
+	return true;
+}
+
 static void process_input(struct hfp_gw *hfp)
 {
 	char *str, *ptr;
