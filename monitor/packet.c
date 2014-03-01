@@ -7533,6 +7533,13 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 		return;
 	}
 
+	if (size != hdr->plen) {
+		print_text(COLOR_ERROR, "invalid packet size (%u != %u)", size,
+								hdr->plen);
+		packet_hexdump(data, size);
+		return;
+	}
+
 	if (opcode_data->cmd_fixed) {
 		if (hdr->plen != opcode_data->cmd_size) {
 			print_text(COLOR_ERROR, "invalid packet size");
@@ -7594,6 +7601,13 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
                                                         event_str, extra_str);
 
 	if (!event_data || !event_data->func) {
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (size != hdr->plen) {
+		print_text(COLOR_ERROR, "invalid packet size (%u != %u)", size,
+								hdr->plen);
 		packet_hexdump(data, size);
 		return;
 	}
