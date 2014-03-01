@@ -275,6 +275,39 @@ bool hfp_gw_result_close_container(struct hfp_gw_result *result)
 	return true;
 }
 
+bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
+								uint8_t len)
+{
+	int i = 0;
+	const char *data = result->data;
+
+	skip_whitespace(result);
+
+	if (data[result->offset] != '"')
+		return false;
+
+	result->offset++;
+
+	while (data[result->offset] != '\0' && data[result->offset] != '"') {
+		if (i < len)
+			buf[i++] = data[result->offset];
+		result->offset++;
+	}
+
+	if (i < len)
+		buf[i++] = '\0';
+
+	if (data[result->offset] == '"')
+		result->offset++;
+	else
+		return false;
+
+	skip_whitespace(result);
+	next_field(result);
+
+	return true;
+}
+
 static void process_input(struct hfp_gw *hfp)
 {
 	char *str, *ptr;
