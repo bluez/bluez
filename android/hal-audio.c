@@ -1600,9 +1600,9 @@ static int audio_ipc_init(void)
 
 	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
 	if (sk < 0) {
-		err = errno;
-		error("audio: Failed to create socket: %d (%s)", err,
-								strerror(err));
+		err = -errno;
+		error("audio: Failed to create socket: %d (%s)", -err,
+								strerror(-err));
 		return err;
 	}
 
@@ -1613,16 +1613,16 @@ static int audio_ipc_init(void)
 					sizeof(BLUEZ_AUDIO_SK_PATH));
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
-		error("audio: Failed to bind socket: %d (%s)", err,
-								strerror(err));
+		err = -errno;
+		error("audio: Failed to bind socket: %d (%s)", -err,
+								strerror(-err));
 		goto failed;
 	}
 
 	if (listen(sk, 1) < 0) {
-		err = errno;
-		error("audio: Failed to listen on the socket: %d (%s)", err,
-								strerror(err));
+		err = -errno;
+		error("audio: Failed to listen on the socket: %d (%s)", -err,
+								strerror(-err));
 		goto failed;
 	}
 
@@ -1633,7 +1633,7 @@ static int audio_ipc_init(void)
 		err = -err;
 		ipc_th = 0;
 		error("audio: Failed to start Audio IPC thread: %d (%s)",
-							err, strerror(err));
+							-err, strerror(-err));
 		goto failed;
 	}
 
@@ -1659,8 +1659,8 @@ static int audio_open(const hw_module_t *module, const char *name,
 	}
 
 	err = audio_ipc_init();
-	if (err)
-		return -err;
+	if (err < 0)
+		return err;
 
 	a2dp_dev = calloc(1, sizeof(struct a2dp_audio_dev));
 	if (!a2dp_dev)
