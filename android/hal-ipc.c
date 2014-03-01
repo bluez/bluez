@@ -20,7 +20,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdbool.h>
-#include <errno.h>
 #include <poll.h>
 #include <unistd.h>
 #include <stdint.h>
