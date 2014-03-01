@@ -490,11 +490,11 @@ static uint32_t get_company_id(const uint8_t cid[3])
  *
  * Set three-byte Company_ID into outgoing AVRCP message
  */
-static void set_company_id(uint8_t cid[3], const uint32_t cid_in)
+static void set_company_id(uint8_t cid[3], uint32_t cid_in)
 {
-	cid[0] = cid_in >> 16;
-	cid[1] = cid_in >> 8;
-	cid[2] = cid_in;
+	cid[0] = (cid_in & 0xff0000) >> 16;
+	cid[1] = (cid_in & 0x00ff00) >> 8;
+	cid[2] = (cid_in & 0x0000ff);
 }
 
 static const char *attr_to_str(uint8_t attr)
