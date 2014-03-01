@@ -132,11 +132,13 @@ static void reset_defaults(struct bt_le *hci)
 	hci->commands[27] |= 0x80;	/* LE Rand */
 	//hci->commands[28] |= 0x01;	/* LE Start Encryption */
 	//hci->commands[28] |= 0x02;	/* LE Long Term Key Request Reply */
-	//hci->commands[28] |= 0x04;	/* LE Long Term Key Neg Request Reply */
+	//hci->commands[28] |= 0x04;	/* LE Long Term Key Request Negative Reply */
 	hci->commands[28] |= 0x08;	/* LE Read Supported States */
 	//hci->commands[28] |= 0x10;	/* LE Receiver Test */
 	//hci->commands[28] |= 0x20;	/* LE Transmitter Test */
 	//hci->commands[28] |= 0x40;	/* LE Test End */
+	//hci->commands[33] |= 0x10;	/* LE Remote Connection Parameter Request Reply */
+	//hci->commands[33] |= 0x20;	/* LE Remote Connection Parameter Request Negative Reply */
 
 	memset(hci->features, 0, sizeof(hci->features));
 	hci->features[4] |= 0x20;	/* BR/EDR Not Supported */
@@ -145,13 +147,22 @@ static void reset_defaults(struct bt_le *hci)
 	memset(hci->bdaddr, 0, sizeof(hci->bdaddr));
 
 	memset(hci->le_event_mask, 0, sizeof(hci->le_event_mask));
-	hci->le_event_mask[0] = 0x1f;
+	hci->le_event_mask[0] |= 0x01;	/* LE Connection Complete */
+	hci->le_event_mask[0] |= 0x02;	/* LE Advertising Report */
+	hci->le_event_mask[0] |= 0x04;	/* LE Connection Update Complete */
+	hci->le_event_mask[0] |= 0x08;	/* LE Read Remote Used Features Complete */
+	hci->le_event_mask[0] |= 0x10;	/* LE Long Term Key Request */
+	//hci->le_event_mask[0] |= 0x20;	/* LE Remote Connection Parameter Request */
 
 	hci->le_mtu = 64;
 	hci->le_max_pkt = 1;
 
 	memset(hci->le_features, 0, sizeof(hci->le_features));
 	hci->le_features[0] |= 0x01;	/* LE Encryption */
+	//hci->le_features[0] |= 0x02;	/* Connection Parameter Request Procedure */
+	//hci->le_features[0] |= 0x04;	/* Extended Reject Indication */
+	//hci->le_features[0] |= 0x08;	/* Slave-initiated Features Exchange */
+	//hci->le_features[0] |= 0x10;	/* LE Ping */
 
 	memset(hci->le_random_addr, 0, sizeof(hci->le_random_addr));
 
