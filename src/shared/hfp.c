@@ -249,6 +249,32 @@ bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val)
 	return true;
 }
 
+bool hfp_gw_result_open_container(struct hfp_gw_result *result)
+{
+	skip_whitespace(result);
+
+	/* The list shall be preceded by a left parenthesis "(") */
+	if (result->data[result->offset] != '(')
+		return false;
+
+	result->offset++;
+
+	return true;
+}
+
+bool hfp_gw_result_close_container(struct hfp_gw_result *result)
+{
+	skip_whitespace(result);
+
+	/* The list shall be followed by a right parenthesis (")" V250 5.7.3.1*/
+	if (result->data[result->offset] != ')')
+		return false;
+
+	result->offset++;
+
+	return true;
+}
+
 static void process_input(struct hfp_gw *hfp)
 {
 	char *str, *ptr;
