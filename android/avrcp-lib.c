@@ -219,7 +219,7 @@ static bool handle_passthrough_pdu(struct avctp *conn, uint8_t op,
 	if (!pressed)
 		return true;
 
-	return handler->func(session);
+	return handler->func(session, session->passthrough_data);
 }
 
 static void disconnect_cb(void *data)
