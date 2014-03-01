@@ -60,6 +60,18 @@ enum hfp_error {
 	HFP_ERROR_NETWORK_NOT_ALLOWED		= 32,
 };
 
+enum hfp_gw_cmd_type {
+	HFP_GW_CMD_TYPE_READ,
+	HFP_GW_CMD_TYPE_SET,
+	HFP_GW_CMD_TYPE_TEST,
+	HFP_GW_CMD_TYPE_COMMAND
+};
+
+struct hfp_gw_result;
+
+typedef void (*hfp_result_func_t)(struct hfp_gw_result *result,
+				enum hfp_gw_cmd_type type, void *user_data);
+
 typedef void (*hfp_destroy_func_t)(void *user_data);
 typedef void (*hfp_debug_func_t)(const char *str, void *user_data);
 
@@ -94,3 +106,9 @@ bool hfp_gw_set_disconnect_handler(struct hfp_gw *hfp,
 					hfp_destroy_func_t destroy);
 
 bool hfp_gw_disconnect(struct hfp_gw *hfp);
+
+bool hfp_gw_register(struct hfp_gw *hfp, hfp_result_func_t callback,
+						const char *prefix,
+						void *user_data,
+						hfp_destroy_func_t destroy);
+bool hfp_gw_unregister(struct hfp_gw *hfp, const char *prefix);

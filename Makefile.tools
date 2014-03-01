@@ -63,6 +63,7 @@ emulator_hfp_SOURCES = emulator/hfp.c \
 				monitor/mainloop.h monitor/mainloop.c \
 				src/shared/io.h src/shared/io-mainloop.c \
 				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c \
 				src/shared/ringbuf.h src/shared/ringbuf.c \
 				src/shared/hfp.h src/shared/hfp.c
 

@@ -32,6 +32,7 @@
 
 #include "src/shared/util.h"
 #include "src/shared/ringbuf.h"
+#include "src/shared/queue.h"
 #include "src/shared/io.h"
 #include "src/shared/hfp.h"
 
@@ -42,6 +43,7 @@ struct hfp_gw {
 	struct io *io;
 	struct ringbuf *read_buf;
 	struct ringbuf *write_buf;
+	struct queue *cmd_handlers;
 	bool writer_active;
 	bool permissive_syntax;
 	bool result_pending;
@@ -59,6 +61,37 @@ struct hfp_gw {
 	bool in_disconnect;
 	bool destroyed;
 };
+
+struct cmd_handler {
+	char *prefix;
+	void *user_data;
+	hfp_destroy_func_t destroy;
+	hfp_result_func_t callback;
+};
+
+static void destroy_cmd_handler(void *data)
+{
+	struct cmd_handler *handler = data;
+
+	if (handler->destroy)
+		handler->destroy(handler->user_data);
+
+	free(handler);
+}
+
+static bool match_handler_prefix(const void *a, const void *b)
+{
+	const struct cmd_handler *handler = a;
+	const char *prefix = b;
+
+	if (strlen(handler->prefix) != strlen(prefix))
+		return false;
+
+	if (memcmp(handler->prefix, prefix, strlen(prefix)))
+		return false;
+
+	return true;
+}
 
 static void write_watch_destroy(void *user_data)
 {
@@ -196,8 +229,19 @@ struct hfp_gw *hfp_gw_new(int fd)
 		return NULL;
 	}
 
+	hfp->cmd_handlers = queue_new();
+	if (!hfp->cmd_handlers) {
+		io_destroy(hfp->io);
+		ringbuf_free(hfp->write_buf);
+		ringbuf_free(hfp->read_buf);
+		free(hfp);
+		return NULL;
+	}
+
 	if (!io_set_read_handler(hfp->io, can_read_data,
 					hfp, read_watch_destroy)) {
+		queue_destroy(hfp->cmd_handlers,
+						destroy_cmd_handler);
 		io_destroy(hfp->io);
 		ringbuf_free(hfp->write_buf);
 		ringbuf_free(hfp->read_buf);
@@ -249,6 +293,9 @@ void hfp_gw_unref(struct hfp_gw *hfp)
 
 	ringbuf_free(hfp->write_buf);
 	hfp->write_buf = NULL;
+
+	queue_destroy(hfp->cmd_handlers, destroy_cmd_handler);
+	hfp->cmd_handlers = NULL;
 
 	if (!hfp->in_disconnect) {
 		free(hfp);
@@ -401,6 +448,58 @@ bool hfp_gw_set_command_handler(struct hfp_gw *hfp,
 	hfp->command_callback = callback;
 	hfp->command_destroy = destroy;
 	hfp->command_data = user_data;
+
+	return true;
+}
+
+bool hfp_gw_register(struct hfp_gw *hfp, hfp_result_func_t callback,
+						const char *prefix,
+						void *user_data,
+						hfp_destroy_func_t destroy)
+{
+	struct cmd_handler *handler;
+
+	handler = new0(struct cmd_handler, 1);
+	if (!handler)
+		return false;
+
+	handler->callback = callback;
+	handler->user_data = user_data;
+
+	handler->prefix = strdup(prefix);
+	if (!handler->prefix) {
+		free(handler);
+		return false;
+	}
+
+	if (queue_find(hfp->cmd_handlers, match_handler_prefix,
+							handler->prefix)) {
+		destroy_cmd_handler(handler);
+		return false;
+	}
+
+	handler->destroy = destroy;
+
+	return queue_push_tail(hfp->cmd_handlers, handler);
+}
+
+bool hfp_gw_unregister(struct hfp_gw *hfp, const char *prefix)
+{
+	struct cmd_handler *handler;
+	char *lookup_prefix;
+
+	lookup_prefix = strdup(prefix);
+	if (!lookup_prefix)
+		return false;
+
+	handler = queue_remove_if(hfp->cmd_handlers, match_handler_prefix,
+								lookup_prefix);
+	free(lookup_prefix);
+
+	if (!handler)
+		return false;
+
+	destroy_cmd_handler(handler);
 
 	return true;
 }
