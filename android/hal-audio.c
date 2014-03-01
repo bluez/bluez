@@ -1266,13 +1266,15 @@ static int set_blocking(int fd)
 
 	flags = fcntl(fd, F_GETFL, 0);
 	if (flags < 0) {
-		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
-		return -errno;
+		int err = -errno;
+		error("fcntl(F_GETFL): %s (%d)", strerror(-err), -err);
+		return err;
 	}
 
 	if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
-		error("fcntl(F_SETFL): %s (%d)", strerror(errno), errno);
-		return -errno;
+		int err = -errno;
+		error("fcntl(F_SETFL): %s (%d)", strerror(-err), -err);
+		return err;
 	}
 
 	return 0;
