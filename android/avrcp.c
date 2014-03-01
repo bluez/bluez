@@ -26,6 +26,7 @@
 #endif
 
 #include <stdbool.h>
+#include <errno.h>
 #include <glib.h>
 
 #include "btio/btio.h"
@@ -339,6 +340,43 @@ static const struct avrcp_passthrough_handler passthrough_handlers[] = {
 		{ },
 };
 
+static ssize_t handle_get_capabilities_cmd(struct avrcp *session,
+						uint8_t transaction,
+						uint16_t params_len,
+						uint8_t *params,
+						void *user_data)
+{
+	DBG("");
+
+	if (params_len != 1)
+		return -EINVAL;
+
+	switch (params[0]) {
+	case CAP_COMPANY_ID:
+		params[params_len++] = 1;
+		hton24(&params[params_len], IEEEID_BTSIG);
+		return params_len + 3;
+	case CAP_EVENTS_SUPPORTED:
+		/* Android do not provide this info via HAL so the list most
+		 * be hardcoded according to what RegisterNotification can
+		 * actually handle */
+		params[params_len++] = 3;
+		params[params_len++] = AVRCP_EVENT_STATUS_CHANGED;
+		params[params_len++] = AVRCP_EVENT_TRACK_CHANGED;
+		params[params_len++] = AVRCP_EVENT_PLAYBACK_POS_CHANGED;
+		return params_len;
+	}
+
+	return -EINVAL;
+}
+
+static const struct avrcp_control_handler control_handlers[] = {
+		{ AVRCP_GET_CAPABILITIES,
+					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
+					handle_get_capabilities_cmd },
+		{ },
+};
+
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct avrcp_device *dev;
@@ -390,6 +428,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	avrcp_set_destroy_cb(dev->session, disconnect_cb, dev);
 	avrcp_set_passthrough_handlers(dev->session, passthrough_handlers,
 									dev);
+	avrcp_set_control_handlers(dev->session, control_handlers, dev);
 
 	/* FIXME: get the real name of the device */
 	avrcp_init_uinput(dev->session, "bluetooth", address);
