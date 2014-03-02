@@ -250,10 +250,51 @@ static void handle_set_player_attrs_value(const void *buf, uint16_t len)
 
 static void handle_register_notification(const void *buf, uint16_t len)
 {
+	struct hal_cmd_avrcp_register_notification *cmd = (void *) buf;
+	uint8_t status;
+	struct avrcp_request *req;
+	uint8_t pdu[IPC_MTU];
+	size_t pdu_len;
+	int ret;
+
 	DBG("");
 
+	req = pop_request(AVRCP_REGISTER_NOTIFICATION);
+	if (!req) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	pdu[0] = cmd->event;
+	pdu_len = 1;
+
+	switch (cmd->event) {
+	case AVRCP_EVENT_STATUS_CHANGED:
+	case AVRCP_EVENT_TRACK_CHANGED:
+	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
+		memcpy(&pdu[1], cmd->data, cmd->len);
+		pdu_len += cmd->len;
+		break;
+	default:
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	ret = avrcp_register_notification_rsp(req->dev->session,
+						req->transaction, cmd->type,
+						pdu, pdu_len);
+	if (ret < 0) {
+		status = HAL_STATUS_FAILED;
+		g_free(req);
+		goto done;
+	}
+
+	status = HAL_STATUS_SUCCESS;
+	g_free(req);
+
+done:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP,
-			HAL_OP_AVRCP_REGISTER_NOTIFICATION, HAL_STATUS_FAILED);
+			HAL_OP_AVRCP_REGISTER_NOTIFICATION, status);
 }
 
 static void handle_set_volume(const void *buf, uint16_t len)
@@ -568,6 +609,42 @@ static ssize_t handle_get_element_attrs_cmd(struct avrcp *session,
 
 }
 
+static ssize_t handle_register_notification_cmd(struct avrcp *session,
+						uint8_t transaction,
+						uint16_t params_len,
+						uint8_t *params,
+						void *user_data)
+{
+	struct avrcp_device *dev = user_data;
+	struct hal_ev_avrcp_register_notification ev;
+
+	DBG("");
+
+	if (params_len != 5)
+		return -EINVAL;
+
+	/* TODO: Add any missing events supported by Android */
+	switch (params[0]) {
+	case AVRCP_EVENT_STATUS_CHANGED:
+	case AVRCP_EVENT_TRACK_CHANGED:
+	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ev.event = params[0];
+	ev.param = bt_get_be32(&params[1]);
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,
+					HAL_EV_AVRCP_REGISTER_NOTIFICATION,
+					sizeof(ev), &ev);
+
+	push_request(dev, AVRCP_REGISTER_NOTIFICATION, transaction);
+
+	return -EAGAIN;
+}
+
 static const struct avrcp_control_handler control_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
@@ -578,6 +655,9 @@ static const struct avrcp_control_handler control_handlers[] = {
 		{ AVRCP_GET_ELEMENT_ATTRIBUTES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
 					handle_get_element_attrs_cmd },
+		{ AVRCP_REGISTER_NOTIFICATION,
+					AVC_CTYPE_NOTIFY, AVC_CTYPE_INTERIM,
+					handle_register_notification_cmd },
 		{ },
 };
 
