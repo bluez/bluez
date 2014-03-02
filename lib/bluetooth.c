@@ -859,6 +859,12 @@ const char *bt_compidtostr(int compid)
 		return "Nimble Devices Oy";
 	case 298:
 		return "Changzhou Yongse Infotech Co., Ltd";
+	case 299:
+		return "SportIQ";
+	case 300:
+		return "TEMEC Instruments B.V.";
+	case 301:
+		return "Sony Corporation";
 	case 65535:
 		return "internal use";
 	default:
