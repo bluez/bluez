@@ -48,7 +48,8 @@
 #define RFCOMM_CHANNEL_MAX 30
 
 #define OPP_DEFAULT_CHANNEL	9
-#define HFAG_DEFAULT_CHANNEL	13
+#define HSP_AG_DEFAULT_CHANNEL	12
+#define HFP_AG_DEFAULT_CHANNEL	13
 #define PBAP_DEFAULT_CHANNEL	15
 #define MAP_MAS_DEFAULT_CHANNEL	16
 
@@ -376,10 +377,19 @@ static const struct profile_info {
 } profiles[] = {
 	{
 		.uuid = {
+			0x00, 0x00, 0x11, 0x08, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
+		},
+		.channel = HSP_AG_DEFAULT_CHANNEL,
+		.svc_hint = 0,
+		.sec_level = BT_IO_SEC_MEDIUM,
+		.create_record = NULL
+	}, {
+		.uuid = {
 			0x00, 0x00, 0x11, 0x1F, 0x00, 0x00, 0x10, 0x00,
 			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
 		},
-		.channel = HFAG_DEFAULT_CHANNEL,
+		.channel = HFP_AG_DEFAULT_CHANNEL,
 		.svc_hint = 0,
 		.sec_level = BT_IO_SEC_MEDIUM,
 		.create_record = NULL
