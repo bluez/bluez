@@ -91,6 +91,18 @@ struct avrcp_passthrough_handler {
 
 typedef void (*avrcp_destroy_cb_t) (void *user_data);
 
+static inline uint32_t ntoh24(const uint8_t src[3])
+{
+	return src[0] << 16 | src[1] << 8 | src[2];
+}
+
+static inline void hton24(uint8_t dst[3], uint32_t src)
+{
+	dst[0] = (src & 0xff0000) >> 16;
+	dst[1] = (src & 0x00ff00) >> 8;
+	dst[2] = (src & 0x0000ff);
+}
+
 struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
 void avrcp_shutdown(struct avrcp *session);
 void avrcp_set_destroy_cb(struct avrcp *session, avrcp_destroy_cb_t cb,
