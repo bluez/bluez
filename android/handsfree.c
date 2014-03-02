@@ -820,14 +820,14 @@ static void cleanup_hfp_ag(void)
 
 bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 {
-	DBG("");
+	DBG("mode 0x%x", mode);
 
 	bacpy(&adapter_addr, addr);
 
 	if (!enable_hsp_ag())
 		return false;
 
-	if (!enable_hfp_ag()) {
+	if (mode != HAL_MODE_HANDSFREE_HSP_ONLY && !enable_hfp_ag()) {
 		cleanup_hsp_ag();
 		return false;
 	}

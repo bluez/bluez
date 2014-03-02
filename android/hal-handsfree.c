@@ -20,6 +20,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <cutils/properties.h>
+
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
@@ -196,6 +198,17 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	{handle_hsp_key_press, false, 0},
 };
 
+static uint8_t get_mode(void)
+{
+	char value[PROPERTY_VALUE_MAX];
+
+	if (property_get("bluetooth.handsfree_mode", value, "") > 0 &&
+					(!strcasecmp(value, "hsp_only")))
+		return HAL_MODE_HANDSFREE_HSP_ONLY;
+
+	return HAL_MODE_DEFAULT;
+}
+
 static bt_status_t init(bthf_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
@@ -212,7 +225,7 @@ static bt_status_t init(bthf_callbacks_t *callbacks)
 				sizeof(ev_handlers)/sizeof(ev_handlers[0]));
 
 	cmd.service_id = HAL_SERVICE_ID_HANDSFREE;
-	cmd.mode = HAL_MODE_DEFAULT;
+	cmd.mode = get_mode();
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, 0, NULL, NULL);

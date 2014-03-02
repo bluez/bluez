@@ -385,6 +385,8 @@ struct hal_cmd_pan_disconnect {
 
 /* Handsfree HAL API */
 
+#define HAL_MODE_HANDSFREE_HSP_ONLY		0x01
+
 #define HAL_OP_HANDSFREE_CONNECT		0x01
 struct hal_cmd_handsfree_connect {
 	uint8_t bdaddr[6];

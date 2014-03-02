@@ -27,6 +27,14 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#define PROPERTY_VALUE_MAX 32
+
+static inline int property_get(const char *key, char *value,
+						const char *default_value)
+{
+	return 0;
+}
+
 /* property_set: returns 0 on success, < 0 on failure
 */
 static inline int property_set(const char *key, const char *value)
