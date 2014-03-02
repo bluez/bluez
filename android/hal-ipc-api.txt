@@ -124,11 +124,15 @@ Core Service (ID 0)
 	Opcode 0x01 - Register module command/response
 
 		Command parameters: Service id (1 octet)
+		                    Mode (1 octet)
 		Response parameters: <none>
 
 		In case a command is sent for an undeclared service ID, it will
 		be rejected. Also there will be no notifications for undeclared
 		service ID.
+
+		Valid Mode values: 0x00 = Default Mode
+		                   0xXX = as defined by service
 
 		In case of an error, the error response will be returned.
 
@@ -748,6 +752,8 @@ Bluetooth Handsfree HAL (ID 5)
 ==============================
 
 Android HAL name: "handsfree" (BT_PROFILE_HANDSFREE_ID)
+
+	Service modes:               0x01 = Headset Profile only mode
 
 	Opcode 0x00 - Error response
 
