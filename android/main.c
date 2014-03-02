@@ -85,43 +85,43 @@ static void service_register(const void *buf, uint16_t len)
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
-		bt_bluetooth_register(hal_ipc);
+		bt_bluetooth_register(hal_ipc, m->mode);
 
 		break;
 	case HAL_SERVICE_ID_SOCKET:
-		bt_socket_register(hal_ipc, &adapter_bdaddr);
+		bt_socket_register(hal_ipc, &adapter_bdaddr, m->mode);
 
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
-		if (!bt_hid_register(hal_ipc, &adapter_bdaddr)) {
+		if (!bt_hid_register(hal_ipc, &adapter_bdaddr, m->mode)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_A2DP:
-		if (!bt_a2dp_register(hal_ipc, &adapter_bdaddr)) {
+		if (!bt_a2dp_register(hal_ipc, &adapter_bdaddr, m->mode)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_PAN:
-		if (!bt_pan_register(hal_ipc, &adapter_bdaddr)) {
+		if (!bt_pan_register(hal_ipc, &adapter_bdaddr, m->mode)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_AVRCP:
-		if (!bt_avrcp_register(hal_ipc, &adapter_bdaddr)) {
+		if (!bt_avrcp_register(hal_ipc, &adapter_bdaddr, m->mode)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
 
 		break;
 	case HAL_SERVICE_ID_HANDSFREE:
-		if (!bt_handsfree_register(hal_ipc, &adapter_bdaddr)) {
+		if (!bt_handsfree_register(hal_ipc, &adapter_bdaddr, m->mode)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}

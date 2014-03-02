@@ -364,7 +364,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	DBG("%s connected", address);
 }
 
-bool bt_avrcp_register(struct ipc *ipc, const bdaddr_t *addr)
+bool bt_avrcp_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 {
 	GError *err = NULL;
 	sdp_record_t *rec;

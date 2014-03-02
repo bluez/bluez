@@ -3285,7 +3285,7 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_le_test_mode_cmd, true, sizeof(struct hal_cmd_le_test_mode) },
 };
 
-void bt_bluetooth_register(struct ipc *ipc)
+void bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 {
 	DBG("");
 

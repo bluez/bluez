@@ -779,7 +779,7 @@ static sdp_record_t *pan_record(void)
 	return record;
 }
 
-bool bt_pan_register(struct ipc *ipc, const bdaddr_t *addr)
+bool bt_pan_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 {
 	sdp_record_t *rec;
 	int err;

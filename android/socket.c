@@ -1129,7 +1129,7 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_connect, false, sizeof(struct hal_cmd_socket_connect) },
 };
 
-void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr)
+void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 {
 	size_t i;
 

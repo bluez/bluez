@@ -28,5 +28,5 @@ struct hal_sock_connect_signal {
 	int     status;
 } __attribute__((packed));
 
-void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr);
+void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode);
 void bt_socket_unregister(void);
