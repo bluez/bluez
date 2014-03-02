@@ -365,6 +365,9 @@ static void cleanup_services(void)
 		case HAL_SERVICE_ID_A2DP:
 			bt_a2dp_unregister();
 			break;
+		case HAL_SERVICE_ID_AVRCP:
+			bt_avrcp_unregister();
+			break;
 		case HAL_SERVICE_ID_PAN:
 			bt_pan_unregister();
 			break;
