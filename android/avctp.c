@@ -1490,6 +1490,8 @@ void avctp_shutdown(struct avctp *session)
 	if (session->destroy)
 		session->destroy(session->data);
 
+	g_free(session->handler);
+
 	if (session->key.timer > 0)
 		g_source_remove(session->key.timer);
 
