@@ -365,3 +365,11 @@ int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				AVC_SUBUNIT_PANEL, AVRCP_GET_PLAY_STATUS,
 				pdu, sizeof(pdu));
 }
+
+int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t *params, size_t params_len)
+{
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_GET_ELEMENT_ATTRIBUTES,
+				params, params_len);
+}
