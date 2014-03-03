@@ -119,6 +119,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-a2dp.c \
 	bluez/android/hal-avrcp.c \
 	bluez/android/hal-handsfree.c \
+	bluez/android/hal-gatt.c \
 	bluez/android/hal-utils.c \
 
 LOCAL_C_INCLUDES += \

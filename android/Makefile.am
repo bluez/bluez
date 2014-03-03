@@ -56,6 +56,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-a2dp.c \
 					android/hal-avrcp.c \
 					android/hal-handsfree.c \
+					android/hal-gatt.c \
 					android/hardware/bluetooth.h \
 					android/hardware/bt_av.h \
 					android/hardware/bt_gatt.h \

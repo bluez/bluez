@@ -773,6 +773,9 @@ static const void *get_profile_interface(const char *profile_id)
 	if (!strcmp(profile_id, BT_PROFILE_HANDSFREE_ID))
 		return bt_get_handsfree_interface();
 
+	if (!strcmp(profile_id, BT_PROFILE_GATT_ID))
+		return bt_get_gatt_interface();
+
 	return NULL;
 }
 
