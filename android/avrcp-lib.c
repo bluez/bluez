@@ -373,3 +373,12 @@ int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 				AVC_SUBUNIT_PANEL, AVRCP_GET_ELEMENT_ATTRIBUTES,
 				params, params_len);
 }
+
+int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t code, uint8_t *params,
+					size_t params_len)
+{
+	return avrcp_send(session, transaction, code,
+				AVC_SUBUNIT_PANEL, AVRCP_REGISTER_NOTIFICATION,
+				params, params_len);
+}
