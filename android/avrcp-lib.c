@@ -350,3 +350,18 @@ int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,
 				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT, attributes,
 				attr_len, func, user_data);
 }
+
+int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
+				uint32_t position, uint32_t duration,
+				uint8_t status)
+{
+	uint8_t pdu[9];
+
+	bt_put_be32(position, &pdu[0]);
+	bt_put_be32(duration, &pdu[4]);
+	pdu[8] = status;
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_GET_PLAY_STATUS,
+				pdu, sizeof(pdu));
+}
