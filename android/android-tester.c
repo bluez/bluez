@@ -2441,6 +2441,10 @@ static const struct generic_data bt_bond_create_no_disc_success_test = {
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
+static const struct generic_data bt_bond_create_bad_addr_success_test = {
+	.expected_adapter_status = MGMT_STATUS_CONNECT_FAILED,
+};
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
@@ -3270,6 +3274,22 @@ static void test_bond_create_no_disc_success(const void *test_data)
 
 	status = data->if_bluetooth->create_bond(&remote_addr);
 	check_expected_status(status);
+}
+
+static void test_bond_create_bad_addr_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_bdaddr_t bad_addr = {
+		.address = { 0x12, 0x34, 0x56, 0x78, 0x90, 0x12 }
+	};
+
+	init_test_conditions(data);
+
+	mgmt_register(data->mgmt, MGMT_EV_CONNECT_FAILED, data->mgmt_index,
+					bond_device_auth_fail_callback, data,
+					NULL);
+
+	data->if_bluetooth->create_bond(&bad_addr);
 }
 
 /* Test Socket HAL */
@@ -4634,6 +4654,11 @@ int main(int argc, char *argv[])
 				&bt_bond_create_no_disc_success_test,
 				setup_enabled_adapter,
 				test_bond_create_no_disc_success, teardown);
+
+	test_bredrle("Bluetooth Create Bond - Bad Address",
+				&bt_bond_create_bad_addr_success_test,
+				setup_enabled_adapter,
+				test_bond_create_bad_addr_success, teardown);
 
 	test_bredrle("Socket Init", NULL, setup_socket_interface,
 						test_dummy, teardown);
