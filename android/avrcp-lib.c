@@ -98,6 +98,9 @@ struct avrcp {
 	const struct avrcp_passthrough_handler *passthrough_handlers;
 	void *passthrough_data;
 	unsigned int passthrough_id;
+
+	avrcp_destroy_cb_t destroy;
+	void *destroy_data;
 };
 
 void avrcp_shutdown(struct avrcp *session)
@@ -109,8 +112,14 @@ void avrcp_shutdown(struct avrcp *session)
 		if (session->passthrough_id > 0)
 			avctp_unregister_passthrough_handler(session->conn,
 						session->passthrough_id);
+
+		/* clear destroy callback that would call shutdown again */
+		avctp_set_destroy_cb(session->conn, NULL, NULL);
 		avctp_shutdown(session->conn);
 	}
+
+	if (session->destroy)
+		session->destroy(session->destroy_data);
 
 	g_free(session->tx_buf);
 	g_free(session);
@@ -199,6 +208,15 @@ static bool handle_passthrough_pdu(struct avctp *conn, uint8_t op,
 	return handler->func(session);
 }
 
+static void disconnect_cb(void *data)
+{
+	struct avrcp *session = data;
+
+	session->conn = NULL;
+
+	avrcp_shutdown(session);
+}
+
 struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 {
 	struct avrcp *session;
@@ -223,13 +241,16 @@ struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 							handle_vendordep_pdu,
 							session);
 
+	avctp_set_destroy_cb(session->conn, disconnect_cb, session);
+
 	return session;
 }
 
 void avrcp_set_destroy_cb(struct avrcp *session, avrcp_destroy_cb_t cb,
 							void *user_data)
 {
-	avctp_set_destroy_cb(session->conn, cb, user_data);
+	session->destroy = cb;
+	session->destroy_data = user_data;
 }
 
 void avrcp_set_control_handlers(struct avrcp *session,
