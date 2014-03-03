@@ -36,8 +36,6 @@
 #include "avctp.h"
 #include "avrcp-lib.h"
 
-/* Company IDs for vendor dependent commands */
-#define IEEEID_BTSIG		0x001958
 
 /* Packet types */
 #define AVRCP_PACKET_TYPE_SINGLE		0x00

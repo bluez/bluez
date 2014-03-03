@@ -294,15 +294,13 @@ static ssize_t avrcp_handle_get_capabilities(struct avrcp *session,
 						uint8_t *params,
 						void *user_data)
 {
-	uint32_t id = 0x001958;
-
 	if (params_len != 1)
 		return -EINVAL;
 
 	switch (params[0]) {
 	case CAP_COMPANY_ID:
 		params[1] = 1;
-		hton24(&params[2], id);
+		hton24(&params[2], IEEEID_BTSIG);
 		return 5;
 	}
 
