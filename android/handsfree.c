@@ -86,6 +86,7 @@ static struct {
 	uint32_t features;
 	bool indicators_enabled;
 	struct indicator inds[IND_COUNT];
+	bool hsp;
 	struct hfp_gw *gw;
 } device;
 
@@ -295,10 +296,16 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	hfp_gw_set_disconnect_handler(device.gw, disconnect_watch, NULL, NULL);
 
 
-	hfp_gw_register(device.gw, at_cmd_brsf, "+BRSF", NULL, NULL);
-	hfp_gw_register(device.gw, at_cmd_cind, "+CIND", NULL, NULL);
-	hfp_gw_register(device.gw, at_cmd_cmer, "+CMER", NULL, NULL);
-	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
+	if (device.hsp) {
+		/* TODO CKPD, VGS, VGM */
+		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
+		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_SLC_CONNECTED);
+	} else {
+		hfp_gw_register(device.gw, at_cmd_brsf, "+BRSF", NULL, NULL);
+		hfp_gw_register(device.gw, at_cmd_cind, "+CIND", NULL, NULL);
+		hfp_gw_register(device.gw, at_cmd_cmer, "+CMER", NULL, NULL);
+		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
+	}
 
 	return;
 
@@ -337,6 +344,8 @@ static void confirm_cb(GIOChannel *chan, gpointer data)
 		device_cleanup();
 		goto drop;
 	}
+
+	device.hsp = GPOINTER_TO_INT(data);
 
 	return;
 
@@ -408,6 +417,8 @@ static void sdp_hsp_search_cb(sdp_list_t *recs, int err, gpointer data)
 		g_error_free(gerr);
 		goto fail;
 	}
+
+	device.hsp = true;
 
 	g_io_channel_unref(io);
 	return;
@@ -836,7 +847,8 @@ static bool enable_hsp_ag(void)
 
 	DBG("");
 
-	hsp_server =  bt_io_listen(NULL, confirm_cb, NULL, NULL, &err,
+	hsp_server =  bt_io_listen(NULL, confirm_cb, GINT_TO_POINTER(true), NULL,
+					&err,
 					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
 					BT_IO_OPT_CHANNEL, HSP_AG_CHANNEL,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -967,7 +979,8 @@ static bool enable_hfp_ag(void)
 	if (hfp_server)
 		return false;
 
-	hfp_server =  bt_io_listen(NULL, confirm_cb, NULL, NULL, &err,
+	hfp_server =  bt_io_listen(NULL, confirm_cb, GINT_TO_POINTER(false),
+					NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
 					BT_IO_OPT_CHANNEL, HFP_AG_CHANNEL,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
