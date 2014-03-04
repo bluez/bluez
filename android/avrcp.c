@@ -259,6 +259,7 @@ static void handle_register_notification(const void *buf, uint16_t len)
 	struct avrcp_request *req;
 	uint8_t pdu[IPC_MTU];
 	size_t pdu_len;
+	uint8_t code;
 	int ret;
 
 	DBG("");
@@ -284,8 +285,20 @@ static void handle_register_notification(const void *buf, uint16_t len)
 		goto done;
 	}
 
+	switch (cmd->type) {
+	case HAL_AVRCP_EVENT_TYPE_INTERIM:
+		code = AVC_CTYPE_INTERIM;
+		break;
+	case HAL_AVRCP_EVENT_TYPE_CHANGED:
+		code = AVC_CTYPE_CHANGED;
+		break;
+	default:
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
 	ret = avrcp_register_notification_rsp(req->dev->session,
-						req->transaction, cmd->type,
+						req->transaction, code,
 						pdu, pdu_len);
 	if (ret < 0) {
 		status = HAL_STATUS_FAILED;
