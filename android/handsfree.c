@@ -703,13 +703,39 @@ static void handle_volume_control(const void *buf, uint16_t len)
 			HAL_OP_HANDSFREE_VOLUME_CONTROL, HAL_STATUS_FAILED);
 }
 
+static void update_indicator(int ind, uint8_t val)
+{
+	DBG("ind=%u new=%u old=%u", ind, val, device.inds[ind].val);
+
+	if (device.inds[ind].val == val)
+		return;
+
+	device.inds[ind].val = val;
+
+	if (!device.indicators_enabled)
+		return;
+
+	if (!device.inds[ind].active)
+		return;
+
+	/* indicator numbers in CIEV start from 1 */
+	hfp_gw_send_info(device.gw, "+CIEV: %u,%u", ind + 1, val);
+}
+
 static void handle_device_status_notif(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_handsfree_device_status_notif *cmd = buf;
+
 	DBG("");
+
+	update_indicator(IND_SERVICE, cmd->state);
+	update_indicator(IND_ROAM, cmd->type);
+	update_indicator(IND_SIGNAL, cmd->signal);
+	update_indicator(IND_BATTCHG, cmd->battery);
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_DEVICE_STATUS_NOTIF,
-					HAL_STATUS_FAILED);
+					HAL_STATUS_SUCCESS);
 }
 
 static void handle_cops(const void *buf, uint16_t len)
