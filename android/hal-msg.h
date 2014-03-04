@@ -1167,6 +1167,11 @@ struct hal_cmd_avrcp_set_volume {
 	uint8_t value;
 } __attribute__((packed));
 
+#define HAL_AVRCP_FEATURE_NONE			0x00
+#define HAL_AVRCP_FEATURE_METADATA		0x01
+#define HAL_AVRCP_FEATURE_ABSOLUTE_VOLUME	0x02
+#define HAL_AVRCP_FEATURE_BROWSE		0x04
+
 #define HAL_EV_AVRCP_REMOTE_FEATURES		0x81
 struct hal_ev_avrcp_remote_features {
 	uint8_t bdaddr[6];
