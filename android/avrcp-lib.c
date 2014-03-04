@@ -382,3 +382,23 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 				AVC_SUBUNIT_PANEL, AVRCP_REGISTER_NOTIFICATION,
 				params, params_len);
 }
+
+int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
+					uint8_t attr_count, avctp_rsp_cb func,
+					void *user_data)
+
+{
+	uint8_t buf[AVRCP_ATTRIBUTE_LAST + 1];
+
+	if (attr_count > AVRCP_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	if (attrs && attr_count) {
+		buf[0] = attr_count;
+		memcpy(buf + 1, attrs, attr_count);
+	}
+
+	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
+				AVRCP_GET_CURRENT_PLAYER_VALUE, buf,
+				attr_count + 1, func, user_data);
+}

@@ -75,6 +75,14 @@
 #define CAP_COMPANY_ID				0x02
 #define CAP_EVENTS_SUPPORTED			0x03
 
+/* Player Attributes */
+#define AVRCP_ATTRIBUTE_ILEGAL			0x00
+#define AVRCP_ATTRIBUTE_EQUALIZER		0x01
+#define AVRCP_ATTRIBUTE_REPEAT_MODE		0x02
+#define AVRCP_ATTRIBUTE_SHUFFLE			0x03
+#define AVRCP_ATTRIBUTE_SCAN			0x04
+#define AVRCP_ATTRIBUTE_LAST			AVRCP_ATTRIBUTE_SCAN
+
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
 
@@ -128,6 +136,9 @@ int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,
 							void *user_data);
 int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,
 					uint8_t attr_len, avctp_rsp_cb func,
+					void *user_data);
+int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
+					uint8_t attr_count, avctp_rsp_cb func,
 					void *user_data);
 
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
