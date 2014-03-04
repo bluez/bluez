@@ -125,7 +125,7 @@ static void device_init(const bdaddr_t *bdaddr)
 
 	memcpy(device.inds, inds_defaults, sizeof(device.inds));
 
-	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTING);
+	device_set_state(HAL_EV_HANDSFREE_CONN_STATE_CONNECTING);
 }
 
 static void device_cleanup(void)
@@ -135,7 +135,7 @@ static void device_cleanup(void)
 		device.gw = NULL;
 	}
 
-	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_DISCONNECTED);
+	device_set_state(HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTED);
 
 	memset(&device, 0, sizeof(device));
 }
@@ -144,7 +144,7 @@ static void at_command_handler(const char *command, void *user_data)
 {
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 
-	if (device.state != HAL_EV_HANDSFREE_CONNECTION_STATE_SLC_CONNECTED)
+	if (device.state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
 		hfp_gw_disconnect(device.gw);
 }
 
@@ -243,7 +243,7 @@ static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* TODO Check for 3-way calling support */
 		register_post_slc_at();
-		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_SLC_CONNECTED);
+		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED);
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
@@ -364,13 +364,13 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	if (device.hsp) {
 		register_post_slc_at();
-		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
-		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_SLC_CONNECTED);
+		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_CONNECTED);
+		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED);
 		return;
 	}
 
 	register_slc_at();
-	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
+	device_set_state(HAL_EV_HANDSFREE_CONN_STATE_CONNECTED);
 
 	return;
 
@@ -397,7 +397,7 @@ static void confirm_cb(GIOChannel *chan, gpointer data)
 
 	DBG("incoming connect from %s", address);
 
-	if (device.state != HAL_EV_HANDSFREE_CONNECTION_STATE_DISCONNECTED) {
+	if (device.state != HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTED) {
 		info("handsfree: refusing connection from %s", address);
 		goto drop;
 	}
@@ -599,7 +599,7 @@ static void handle_connect(const void *buf, uint16_t len)
 
 	DBG("");
 
-	if (device.state != HAL_EV_HANDSFREE_CONNECTION_STATE_DISCONNECTED) {
+	if (device.state != HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTED) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -637,22 +637,22 @@ static void handle_disconnect(const void *buf, uint16_t len)
 
 	android2bdaddr(cmd->bdaddr, &bdaddr);
 
-	if (device.state == HAL_EV_HANDSFREE_CONNECTION_STATE_DISCONNECTED ||
+	if (device.state == HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTED ||
 			bacmp(&device.bdaddr, &bdaddr)) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 
 	}
 
-	if (device.state == HAL_EV_HANDSFREE_CONNECTION_STATE_DISCONNECTING) {
+	if (device.state == HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTING) {
 		status = HAL_STATUS_SUCCESS;
 		goto failed;
 	}
 
-	if (device.state == HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTING) {
+	if (device.state == HAL_EV_HANDSFREE_CONN_STATE_CONNECTING) {
 		device_cleanup();
 	} else {
-		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_DISCONNECTING);
+		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTING);
 		hfp_gw_disconnect(device.gw);
 	}
 
