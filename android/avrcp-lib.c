@@ -402,3 +402,25 @@ int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
 				AVRCP_GET_CURRENT_PLAYER_VALUE, buf,
 				attr_count + 1, func, user_data);
 }
+
+int avrcp_set_player_value(struct avrcp *session, uint8_t *attributes,
+					uint8_t attr_count, uint8_t *values,
+					avctp_rsp_cb func, void *user_data)
+{
+	uint8_t buf[2 * AVRCP_ATTRIBUTE_LAST + 1];
+	int i;
+
+	if (attr_count > AVRCP_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	buf[0] = attr_count;
+
+	for (i = 0; i < attr_count; i++) {
+		buf[i * 2 + 1] = attributes[i];
+		buf[i * 2 + 2] = values[i];
+	}
+
+	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
+				AVRCP_SET_PLAYER_VALUE, buf, 2 * attr_count + 1,
+				func, user_data);
+}

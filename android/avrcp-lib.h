@@ -137,6 +137,9 @@ int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,
 int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,
 					uint8_t attr_len, avctp_rsp_cb func,
 					void *user_data);
+int avrcp_set_player_value(struct avrcp *session, uint8_t *attributes,
+					uint8_t attr_count, uint8_t *values,
+					avctp_rsp_cb func, void *user_data);
 int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
 					uint8_t attr_count, avctp_rsp_cb func,
 					void *user_data);
