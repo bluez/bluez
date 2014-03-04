@@ -326,7 +326,16 @@ static ssize_t avrcp_handle_get_player_attr_text(struct avrcp *session,
 						uint8_t *params,
 						void *user_data)
 {
-	DBG("");
+	int i;
+
+	DBG("params[0] %d params_len %d", params[0], params_len);
+
+	for (i = 1; i <= params[0]; i++) {
+		DBG("params[%d] = 0x%02x", i, params[i]);
+		if (params[i] > AVRCP_ATTRIBUTE_LAST ||
+			params[i] == AVRCP_ATTRIBUTE_ILEGAL)
+			return -EINVAL;
+	}
 
 	params[0] = 0;
 
@@ -632,6 +641,19 @@ int main(int argc, char *argv[])
 				0x00, 0x00, 0x05, 0x02,
 				AVRCP_ATTRIBUTE_EQUALIZER, 0xaa,
 				AVRCP_ATTRIBUTE_REPEAT_MODE, 0xff));
+
+	/* Get player app setting attribute text invalid behavior - TG */
+	define_test("/TP/PAS/BI-01-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58,
+				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT,
+				0x00, 0x00, 0x02, 0x01,
+				/* Invalid attribute id */
+				0x7f),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_REJECTED,
+				0x48, 0x00, 0x00, 0x19, 0x58,
+				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT,
+				0x00, 0x00, 0x01, AVRCP_STATUS_INVALID_PARAM));
 
 	return g_test_run();
 }
