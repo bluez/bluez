@@ -155,6 +155,64 @@ static void disconnect_watch(void *user_data)
 	device_cleanup();
 }
 
+static void at_cmd_bia(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	unsigned int val, i, def;
+	bool tmp[IND_COUNT];
+
+	DBG("");
+
+	goto failed;
+
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		for (i = 0; i < IND_COUNT; i++)
+			tmp[i] = device.inds[i].active;
+
+		i = 0;
+
+		do {
+			def = (i < IND_COUNT) ? device.inds[i].active : 0;
+
+			if (!hfp_gw_result_get_number_default(result, &val, def))
+				goto failed;
+
+			if (val > 1)
+				goto failed;
+
+			if (i < IND_COUNT) {
+				tmp[i] = val || device.inds[i].always_active;
+				i++;
+			}
+		} while (hfp_gw_result_has_next(result));
+
+		for (i = 0; i < IND_COUNT; i++)
+			device.inds[i].active = tmp[i];
+
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
+
+failed:
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void register_post_slc_at(void)
+{
+	if (device.hsp) {
+		/* TODO CKPD, VGS, VGM */
+		return;
+	}
+
+	hfp_gw_register(device.gw, at_cmd_bia, "+BIA", NULL, NULL);
+}
+
 static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
@@ -184,6 +242,7 @@ static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		device.indicators_enabled = val;
 
 		/* TODO Check for 3-way calling support */
+		register_post_slc_at();
 		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_SLC_CONNECTED);
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
@@ -276,6 +335,13 @@ static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
 
+static void register_slc_at(void)
+{
+	hfp_gw_register(device.gw, at_cmd_brsf, "+BRSF", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_cind, "+CIND", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_cmer, "+CMER", NULL, NULL);
+}
+
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	DBG("");
@@ -297,15 +363,14 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 
 	if (device.hsp) {
-		/* TODO CKPD, VGS, VGM */
+		register_post_slc_at();
 		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
 		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_SLC_CONNECTED);
-	} else {
-		hfp_gw_register(device.gw, at_cmd_brsf, "+BRSF", NULL, NULL);
-		hfp_gw_register(device.gw, at_cmd_cind, "+CIND", NULL, NULL);
-		hfp_gw_register(device.gw, at_cmd_cmer, "+CMER", NULL, NULL);
-		device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
+		return;
 	}
+
+	register_slc_at();
+	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
 
 	return;
 
