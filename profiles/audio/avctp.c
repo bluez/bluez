@@ -342,7 +342,7 @@ static size_t handle_panel_passthrough(struct avctp *session,
 
 	if (*code != AVC_CTYPE_CONTROL || *subunit != AVC_SUBUNIT_PANEL) {
 		*code = AVC_CTYPE_REJECTED;
-		return 0;
+		return operand_count;
 	}
 
 	if (operand_count == 0)
@@ -408,7 +408,7 @@ static size_t handle_panel_passthrough(struct avctp *session,
 		DBG("AV/C: unknown button 0x%02X %s",
 						operands[0] & 0x7F, status);
 		*code = AVC_CTYPE_NOT_IMPLEMENTED;
-		return 0;
+		return operand_count;
 	}
 
 done:
