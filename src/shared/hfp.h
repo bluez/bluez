@@ -120,3 +120,4 @@ bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 								uint8_t len);
 bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 								uint8_t len);
+bool hfp_gw_result_has_next(struct hfp_gw_result *result);

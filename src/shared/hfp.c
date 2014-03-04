@@ -336,6 +336,11 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 	return true;
 }
 
+bool hfp_gw_result_has_next(struct hfp_gw_result *result)
+{
+	return result->data[result->offset] != '\0';
+}
+
 static void process_input(struct hfp_gw *hfp)
 {
 	char *str, *ptr;
