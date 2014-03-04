@@ -33,7 +33,9 @@
 #include "lib/bluetooth.h"
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
+#include "src/sdp-client.h"
 #include "src/log.h"
+
 #include "avctp.h"
 #include "avrcp-lib.h"
 #include "hal-msg.h"
@@ -63,6 +65,8 @@ struct avrcp_request {
 
 struct avrcp_device {
 	bdaddr_t	dst;
+	uint16_t	version;
+	uint16_t	features;
 	struct avrcp	*session;
 	GIOChannel	*io;
 	GQueue		*queue;
@@ -661,12 +665,35 @@ static const struct avrcp_control_handler control_handlers[] = {
 		{ },
 };
 
+static int avrcp_device_add_session(struct avrcp_device *dev, int fd,
+						uint16_t imtu, uint16_t omtu)
+{
+	char address[18];
+
+	dev->session = avrcp_new(fd, imtu, omtu, dev->version);
+	if (!dev->session)
+		return -EINVAL;
+
+	avrcp_set_destroy_cb(dev->session, disconnect_cb, dev);
+	avrcp_set_passthrough_handlers(dev->session, passthrough_handlers,
+									dev);
+	avrcp_set_control_handlers(dev->session, control_handlers, dev);
+
+	dev->queue = g_queue_new();
+
+	ba2str(&dev->dst, address);
+
+	/* FIXME: get the real name of the device */
+	avrcp_init_uinput(dev->session, "bluetooth", address);
+
+	return 0;
+}
+
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
-	struct avrcp_device *dev;
-	bdaddr_t src, dst;
-	char address[18];
+	struct avrcp_device *dev = user_data;
 	uint16_t imtu, omtu;
+	char address[18];
 	GError *gerr = NULL;
 	int fd;
 
@@ -676,8 +703,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	bt_io_get(chan, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, &src,
-			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, address,
 			BT_IO_OPT_IMTU, &imtu,
 			BT_IO_OPT_OMTU, &omtu,
 			BT_IO_OPT_INVALID);
@@ -688,36 +714,11 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		return;
 	}
 
-	ba2str(&dst, address);
-
-	dev = avrcp_device_find(&dst);
-	if (dev) {
-		if (dev->session) {
-			error("Unexpected connection");
-			return;
-		}
-	} else {
-		DBG("Incoming connection from %s", address);
-		dev = avrcp_device_new(&dst);
-	}
-
 	fd = g_io_channel_unix_get_fd(chan);
-
-	dev->session = avrcp_new(fd, imtu, omtu, 0x0100);
-	if (!dev->session) {
+	if (avrcp_device_add_session(dev, fd, imtu, omtu) < 0) {
 		avrcp_device_free(dev);
 		return;
 	}
-
-	avrcp_set_destroy_cb(dev->session, disconnect_cb, dev);
-	avrcp_set_passthrough_handlers(dev->session, passthrough_handlers,
-									dev);
-	avrcp_set_control_handlers(dev->session, control_handlers, dev);
-
-	dev->queue = g_queue_new();
-
-	/* FIXME: get the real name of the device */
-	avrcp_init_uinput(dev->session, "bluetooth", address);
 
 	g_io_channel_set_close_on_unref(chan, FALSE);
 
@@ -729,6 +730,125 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	DBG("%s connected", address);
 }
 
+static bool avrcp_device_connect(struct avrcp_device *dev, BtIOConnect cb)
+{
+	GError *err = NULL;
+
+	dev->io = bt_io_connect(cb, dev, NULL, &err,
+					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
+					BT_IO_OPT_DEST_BDADDR, &dev->dst,
+					BT_IO_OPT_PSM, L2CAP_PSM_AVCTP,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+					BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		return false;
+	}
+
+	return true;
+}
+
+static void search_cb(sdp_list_t *recs, int err, gpointer data)
+{
+	struct avrcp_device *dev = data;
+	sdp_list_t *list;
+
+	DBG("");
+
+	if (err < 0) {
+		error("Unable to get AV_REMOTE_SVCLASS_ID SDP record: %s",
+							strerror(-err));
+		goto fail;
+	}
+
+	if (!recs || !recs->data) {
+		error("No AVRCP records found");
+		goto fail;
+	}
+
+	for (list = recs; list; list = list->next) {
+		sdp_record_t *rec = list->data;
+		sdp_data_t *data;
+
+		data = sdp_data_get(rec, SDP_ATTR_VERSION);
+		if (data)
+			dev->version = data->val.uint16;
+
+		data = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES);
+		if (data)
+			dev->features = data->val.uint16;
+	}
+
+	if (dev->io) {
+		GError *gerr = NULL;
+		if (!bt_io_accept(dev->io, connect_cb, dev, NULL, &gerr)) {
+			error("bt_io_accept: %s", gerr->message);
+			g_error_free(gerr);
+			goto fail;
+		}
+		return;
+	}
+
+	if (!avrcp_device_connect(dev, connect_cb)) {
+		error("Unable to connect to AVRCP");
+		goto fail;
+	}
+
+	return;
+
+fail:
+	avrcp_device_remove(dev);
+}
+
+static int avrcp_device_search(struct avrcp_device *dev)
+{
+	uuid_t uuid;
+
+	sdp_uuid16_create(&uuid, AV_REMOTE_SVCLASS_ID);
+
+	return bt_search_service(&adapter_addr, &dev->dst, &uuid, search_cb,
+								dev, NULL, 0);
+}
+
+static void confirm_cb(GIOChannel *chan, gpointer data)
+{
+	struct avrcp_device *dev;
+	char address[18];
+	bdaddr_t src, dst;
+	GError *err = NULL;
+
+	bt_io_get(chan, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
+	}
+
+	DBG("incoming connect from %s", address);
+
+	dev = avrcp_device_find(&dst);
+	if (dev && dev->session) {
+		error("AVRCP: Refusing unexpected connect");
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
+	}
+
+	dev = avrcp_device_new(&dst);
+	if (avrcp_device_search(dev) < 0) {
+		error("AVRCP: Failed to search SDP details");
+		avrcp_device_free(dev);
+		g_io_channel_shutdown(chan, TRUE, NULL);
+	}
+
+	dev->io = g_io_channel_ref(chan);
+}
+
 bool bt_avrcp_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 {
 	GError *err = NULL;
@@ -738,7 +858,7 @@ bool bt_avrcp_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 
 	bacpy(&adapter_addr, addr);
 
-	server = bt_io_listen(connect_cb, NULL, NULL, NULL, &err,
+	server = bt_io_listen(NULL, confirm_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
 				BT_IO_OPT_PSM, L2CAP_PSM_AVCTP,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -796,25 +916,6 @@ void bt_avrcp_unregister(void)
 	}
 }
 
-static bool avrcp_device_connect(struct avrcp_device *dev, BtIOConnect cb)
-{
-	GError *err = NULL;
-
-	dev->io = bt_io_connect(cb, dev, NULL, &err,
-					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
-					BT_IO_OPT_DEST_BDADDR, &dev->dst,
-					BT_IO_OPT_PSM, L2CAP_PSM_AVCTP,
-					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-					BT_IO_OPT_INVALID);
-	if (err) {
-		error("%s", err->message);
-		g_error_free(err);
-		return false;
-	}
-
-	return true;
-}
-
 void bt_avrcp_connect(const bdaddr_t *dst)
 {
 	struct avrcp_device *dev;
@@ -826,9 +927,9 @@ void bt_avrcp_connect(const bdaddr_t *dst)
 		return;
 
 	dev = avrcp_device_new(dst);
-	if (!avrcp_device_connect(dev, connect_cb)) {
+	if (avrcp_device_search(dev) < 0) {
+		error("AVRCP: Failed to search SDP details");
 		avrcp_device_free(dev);
-		return;
 	}
 
 	ba2str(&dev->dst, addr);
