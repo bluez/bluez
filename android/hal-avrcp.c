@@ -351,7 +351,6 @@ static int write_text(uint8_t *ptr, uint8_t id, uint8_t *text, size_t *len)
 	value->len = strnlen((const char *) text, BTRC_MAX_ATTR_STR_LEN);
 
 	*len += attr_len;
-	ptr += attr_len;
 
 	if (value->len + *len > IPC_MTU)
 		value->len = IPC_MTU - *len;
