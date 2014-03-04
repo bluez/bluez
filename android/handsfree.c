@@ -51,10 +51,40 @@
 
 #define HFP_AG_FEATURES 0
 
+/* offsets in indicators table, should be incremented when sending CIEV */
+#define IND_SERVICE	0
+#define IND_CALL	1
+#define IND_CALLSETUP	2
+#define IND_CALLHELD	3
+#define IND_SIGNAL	4
+#define IND_ROAM	5
+#define IND_BATTCHG	6
+#define IND_COUNT	(IND_BATTCHG + 1)
+
+struct indicator {
+	const char *name;
+	int min;
+	int max;
+	int val;
+	bool always_active;
+	bool active;
+};
+
+static const struct indicator inds_defaults[] = {
+		{ "service",   0, 1, 0, false, true },
+		{ "call",      0, 1, 0, true, true },
+		{ "callsetup", 0, 3, 0, true, true },
+		{ "callheld",  0, 2, 0, true, true },
+		{ "signal",    0, 5, 0, false, true },
+		{ "roam",      0, 1, 0, false, true },
+		{ "battchg",   0, 5, 0, false, true },
+};
+
 static struct {
 	bdaddr_t bdaddr;
 	uint8_t state;
 	uint32_t features;
+	struct indicator inds[IND_COUNT];
 	struct hfp_gw *gw;
 } device;
 
@@ -91,6 +121,8 @@ static void device_init(const bdaddr_t *bdaddr)
 {
 	bacpy(&device.bdaddr, bdaddr);
 
+	memcpy(device.inds, inds_defaults, sizeof(device.inds));
+
 	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTING);
 }
 
@@ -118,6 +150,56 @@ static void disconnect_watch(void *user_data)
 	DBG("");
 
 	device_cleanup();
+}
+
+static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	char *buf, *ptr;
+	int len;
+	unsigned int i;
+
+	switch (type) {
+	case HFP_GW_CMD_TYPE_TEST:
+
+		len = strlen("+CIND:") + 1;
+
+		for (i = 0; i < IND_COUNT; i++) {
+			len += strlen("(\"\",(X,X)),");
+			len += strlen(device.inds[i].name);
+		}
+
+		buf = g_malloc(len);
+
+		ptr = buf + sprintf(buf, "+CIND:");
+
+		for (i = 0; i < IND_COUNT; i++) {
+			ptr += sprintf(ptr, "(\"%s\",(%d%c%d)),",
+					device.inds[i].name,
+					device.inds[i].min,
+					device.inds[i].max == 1 ? ',' : '-',
+					device.inds[i].max);
+		}
+
+		ptr--;
+		*ptr = '\0';
+
+		hfp_gw_send_info(device.gw, "%s", buf);
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		g_free(buf);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+						HAL_EV_HANDSFREE_CIND, 0, NULL);
+		return;
+	case HFP_GW_CMD_TYPE_SET:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
 
 static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -169,6 +251,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 
 	hfp_gw_register(device.gw, at_cmd_brsf, "+BRSF", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_cind, "+CIND", NULL, NULL);
 	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
 
 	return;
@@ -515,12 +598,50 @@ static void handle_cops(const void *buf, uint16_t len)
 			HAL_OP_HANDSFREE_COPS_RESPONSE, HAL_STATUS_FAILED);
 }
 
+static unsigned int get_callsetup(uint8_t state)
+{
+	switch (state) {
+	case HAL_HANDSFREE_CALL_STATE_INCOMING:
+		return 1;
+	case HAL_HANDSFREE_CALL_STATE_DIALING:
+		return 2;
+	case HAL_HANDSFREE_CALL_STATE_ALERTING:
+		return 3;
+	default:
+		return 0;
+	}
+}
+
 static void handle_cind(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_handsfree_cind_response *cmd = buf;
+
 	DBG("");
 
+	/* HAL doesn't provide indicators values so need to convert here */
+	device.inds[IND_SERVICE].val = cmd->svc;
+	device.inds[IND_CALL].val = !!(cmd->num_active + cmd->num_held);
+	device.inds[IND_CALLSETUP].val = get_callsetup(cmd->state);
+	device.inds[IND_CALLHELD].val = cmd->num_held ?
+						(cmd->num_active ? 1 : 2) : 0;
+	device.inds[IND_SIGNAL].val = cmd->signal;
+	device.inds[IND_ROAM].val = cmd->roam;
+	device.inds[IND_BATTCHG].val = cmd->batt_chg;
+
+	/* Order must match indicators_defaults table */
+	hfp_gw_send_info(device.gw, "+CIND: %u,%u,%u,%u,%u,%u,%u",
+						device.inds[IND_SERVICE].val,
+						device.inds[IND_CALL].val,
+						device.inds[IND_CALLSETUP].val,
+						device.inds[IND_CALLHELD].val,
+						device.inds[IND_SIGNAL].val,
+						device.inds[IND_ROAM].val,
+						device.inds[IND_BATTCHG].val);
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-			HAL_OP_HANDSFREE_CIND_RESPONSE, HAL_STATUS_FAILED);
+			HAL_OP_HANDSFREE_CIND_RESPONSE, HAL_STATUS_SUCCESS);
 }
 
 static void handle_formatted_at_resp(const void *buf, uint16_t len)
