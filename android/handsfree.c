@@ -54,6 +54,7 @@
 static struct {
 	bdaddr_t bdaddr;
 	uint8_t state;
+	uint32_t features;
 	struct hfp_gw *gw;
 } device;
 
@@ -119,6 +120,34 @@ static void disconnect_watch(void *user_data)
 	device_cleanup();
 }
 
+static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	unsigned int feat;
+
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &feat))
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		/* TODO verify features */
+		device.features = feat;
+
+		hfp_gw_send_info(device.gw, "+BRSF=%u", HFP_AG_FEATURES);
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	DBG("");
@@ -138,6 +167,8 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	hfp_gw_set_command_handler(device.gw, at_command_handler, NULL, NULL);
 	hfp_gw_set_disconnect_handler(device.gw, disconnect_watch, NULL, NULL);
 
+
+	hfp_gw_register(device.gw, at_cmd_brsf, "+BRSF", NULL, NULL);
 	device_set_state(HAL_EV_HANDSFREE_CONNECTION_STATE_CONNECTED);
 
 	return;
