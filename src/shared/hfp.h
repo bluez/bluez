@@ -114,6 +114,9 @@ bool hfp_gw_register(struct hfp_gw *hfp, hfp_result_func_t callback,
 bool hfp_gw_unregister(struct hfp_gw *hfp, const char *prefix);
 
 bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val);
+bool hfp_gw_result_get_number_default(struct hfp_gw_result *result,
+						unsigned int *val,
+						unsigned int default_val);
 bool hfp_gw_result_open_container(struct hfp_gw_result *result);
 bool hfp_gw_result_close_container(struct hfp_gw_result *result);
 bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,

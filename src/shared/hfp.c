@@ -224,6 +224,23 @@ static void next_field(struct hfp_gw_result *result)
 		result->offset++;
 }
 
+bool hfp_gw_result_get_number_default(struct hfp_gw_result *result,
+						unsigned int *val,
+						unsigned int default_val)
+{
+	skip_whitespace(result);
+
+	if (result->data[result->offset] == ',') {
+		if (val)
+			*val = default_val;
+
+		result->offset++;
+		return true;
+	}
+
+	return hfp_gw_result_get_number(result, val);
+}
+
 bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val)
 {
 	int tmp = 0;
