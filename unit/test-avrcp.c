@@ -412,6 +412,14 @@ static void test_client(gconstpointer data)
 		avrcp_get_player_attribute_text(context->session, NULL, 0,
 								NULL, NULL);
 
+	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-09-C")) {
+		uint8_t attributes[2] = { AVRCP_ATTRIBUTE_EQUALIZER,
+						AVRCP_ATTRIBUTE_REPEAT_MODE };
+
+		avrcp_get_current_player_value(context->session, attributes,
+						sizeof(attributes), NULL, NULL);
+	}
+
 	execute_context(context);
 }
 
@@ -556,6 +564,14 @@ int main(int argc, char *argv[])
 				0x00, 0x19, 0x58,
 				AVRCP_GET_PLAYER_VALUE_TEXT,
 				0x00, 0x00, 0x01, 0x00));
+
+	define_test("/TP/PAS/BV-09-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58,
+				AVRCP_GET_CURRENT_PLAYER_VALUE,
+				0x00, 0x00, 0x03, 0x02,
+				AVRCP_ATTRIBUTE_EQUALIZER,
+				AVRCP_ATTRIBUTE_REPEAT_MODE));
 
 	return g_test_run();
 }
