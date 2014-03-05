@@ -143,6 +143,8 @@ int avrcp_set_player_value(struct avrcp *session, uint8_t *attributes,
 int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
 					uint8_t attr_count, avctp_rsp_cb func,
 					void *user_data);
+int avrcp_get_play_status(struct avrcp *session, avctp_rsp_cb func,
+							void *user_data);
 
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				uint32_t position, uint32_t duration,
