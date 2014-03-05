@@ -351,38 +351,6 @@ int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,
 				attr_len, func, user_data);
 }
 
-int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
-				uint32_t position, uint32_t duration,
-				uint8_t status)
-{
-	uint8_t pdu[9];
-
-	bt_put_be32(position, &pdu[0]);
-	bt_put_be32(duration, &pdu[4]);
-	pdu[8] = status;
-
-	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
-				AVC_SUBUNIT_PANEL, AVRCP_GET_PLAY_STATUS,
-				pdu, sizeof(pdu));
-}
-
-int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
-					uint8_t *params, size_t params_len)
-{
-	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
-				AVC_SUBUNIT_PANEL, AVRCP_GET_ELEMENT_ATTRIBUTES,
-				params, params_len);
-}
-
-int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
-					uint8_t code, uint8_t *params,
-					size_t params_len)
-{
-	return avrcp_send(session, transaction, code,
-				AVC_SUBUNIT_PANEL, AVRCP_REGISTER_NOTIFICATION,
-				params, params_len);
-}
-
 int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
 					uint8_t attr_count, avctp_rsp_cb func,
 					void *user_data)
@@ -423,4 +391,36 @@ int avrcp_set_player_value(struct avrcp *session, uint8_t *attributes,
 	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
 				AVRCP_SET_PLAYER_VALUE, buf, 2 * attr_count + 1,
 				func, user_data);
+}
+
+int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
+				uint32_t position, uint32_t duration,
+				uint8_t status)
+{
+	uint8_t pdu[9];
+
+	bt_put_be32(position, &pdu[0]);
+	bt_put_be32(duration, &pdu[4]);
+	pdu[8] = status;
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_GET_PLAY_STATUS,
+				pdu, sizeof(pdu));
+}
+
+int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t *params, size_t params_len)
+{
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_GET_ELEMENT_ATTRIBUTES,
+				params, params_len);
+}
+
+int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t code, uint8_t *params,
+					size_t params_len)
+{
+	return avrcp_send(session, transaction, code,
+				AVC_SUBUNIT_PANEL, AVRCP_REGISTER_NOTIFICATION,
+				params, params_len);
 }
