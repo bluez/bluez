@@ -82,6 +82,8 @@ static void destroy_cmd_handler(void *data)
 	if (handler->destroy)
 		handler->destroy(handler->user_data);
 
+	free(handler->prefix);
+
 	free(handler);
 }
 
