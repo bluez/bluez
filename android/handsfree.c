@@ -271,7 +271,13 @@ failed:
 static void register_post_slc_at(void)
 {
 	if (device.hsp) {
-		/* TODO CKPD, VGS, VGM */
+		/* TODO CKPD */
+		hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGS",
+				GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_SPEAKER),
+				NULL);
+		hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGM",
+				GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_MIC),
+				NULL);
 		return;
 	}
 
