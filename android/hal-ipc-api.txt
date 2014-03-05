@@ -758,6 +758,8 @@ Android HAL name: "handsfree" (BT_PROFILE_HANDSFREE_ID)
 
 	Service modes:               0x01 = Headset Profile only mode
 
+Commands and responses:
+
 	Opcode 0x00 - Error response
 
 		Response parameters: Status (1 octet)
@@ -1102,6 +1104,8 @@ Bluetooth Health HAL (ID 7)
 
 Android HAL name: "health" (BT_PROFILE_HEALTH_ID)
 
+Commands and responses:
+
 	Opcode 0x00 - Error response
 
 		Response parameters: Status (1 octet)
@@ -1188,6 +1192,8 @@ Bluetooth Remote Control HAL (ID 8)
 ===================================
 
 Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
+
+Commands and responses:
 
 	Opcode 0x00 - Error response
 
@@ -1324,6 +1330,8 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 
 		In case of an error, the error response will be returned.
 
+Notifications:
+
 	Opcode 0x81 - Remote Features notification
 
 		Notification parameters: Remote address (6 octets)
@@ -1414,6 +1422,8 @@ Bluetooth GATT HAL (ID 9)
 =========================
 
 Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
+
+Commands and responses:
 
 	Opcode 0x00 - Error response
 
@@ -1854,6 +1864,8 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                  Authentication Request (1 octet)
 
 		In case of an error, the error response will be returned.
+
+Notifications:
 
 	Opcode 0x81 - Register Client notification
 
