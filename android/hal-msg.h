@@ -781,7 +781,7 @@ struct hal_cmd_gatt_server_send_response {
 	int32_t conn_id;
 	int32_t trans_id;
 	int32_t status;
-	uint8_t len;
+	uint16_t len;
 	uint8_t data[0];
 } __attribute__((packed));
 
