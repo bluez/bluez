@@ -1500,7 +1500,8 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                    Service ID Elements (variable)
 		Valid Number of Service ID Elements: 0x01
 		                                     0x02
-		Valid Service ID Element: GATT ID (17 octets)
+		Valid Service ID Element: UUID (16 octets)
+		                          Instance ID (1 octet)
 		                          Is Primary (1 octet)
 		Valid GATT ID: UUID (16 octets)
 		               Instance ID (1 octet)
@@ -1706,7 +1707,8 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                    GATT Service ID (18 octets)
 		                    Number of Handles (4 octet)
 
-		Valid GATT Service ID: GATT ID (17 octets)
+		Valid GATT Service ID: UUID (16 octets)
+		                       Instance ID (1 octets)
 		                       Is Primary (1 octet)
 
 		Valid GATT ID: UUID (16 octets)
@@ -1837,10 +1839,9 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 
 		Notification parameters: Connection ID (4 octets)
 		                         GATT Service ID (18 octets)
-		Valid GATT Service ID: GATT ID (17 octets)
+		Valid GATT Service ID: UUID (16 octets)
+		                       Instance ID (1 octets)
 		                       Is Primary (1 octet)
-		Valid GATT ID: UUID (16 octets)
-		               Instance ID (1 octet)
 
 	Opcode 0x87 - Get Characteristic notification
 
@@ -1969,14 +1970,12 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 
 		Notification parameters: Status (4 octets)
 		                         Server (4 octets)
-		                         Service ID (18 octets)
+		                         GATT Service ID (18 octets)
 		                         Service Handle (4 octets)
 
-		Valid Service ID: ID (17 octets)
+		Valid Service ID: UUID (16 octets)
+		                  Instance ID (1 octet)
 		                  Is Primary (1 octet)
-
-		Valid ID: UUID (16 octets)
-		          Instance ID (1 octet)
 
 	Opcode 0x96 - Included Service Added notification
 

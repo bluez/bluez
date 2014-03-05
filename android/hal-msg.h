@@ -561,13 +561,9 @@ struct hal_cmd_gatt_client_search_service {
 } __attribute__((packed));
 
 #define HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE	0x09
-struct hal_gatt_gatt_id {
+struct hal_gatt_srvc_id {
 	uint8_t uuid[16];
 	uint8_t inst_id;
-} __attribute__((packed));
-
-struct hal_gatt_srvc_id {
-	struct hal_gatt_gatt_id gatt_id;
 	uint8_t is_primary;
 } __attribute__((packed));
 
@@ -578,6 +574,11 @@ struct hal_cmd_gatt_client_get_included_service {
 } __attribute__((packed));
 
 #define HAL_OP_GATT_CLIENT_GET_CHARACTERISTIC	0x0a
+struct hal_gatt_gatt_id {
+	uint8_t uuid[16];
+	uint8_t inst_id;
+} __attribute__((packed));
+
 struct hal_cmd_gatt_client_get_characteristic {
 	int32_t conn_id;
 	struct hal_gatt_srvc_id srvc_id;
