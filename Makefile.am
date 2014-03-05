@@ -293,6 +293,18 @@ unit_test_avrcp_SOURCES = unit/test-avrcp.c \
 				android/avrcp-lib.c android/avrcp-lib.h
 unit_test_avrcp_LDADD = @GLIB_LIBS@ lib/libbluetooth-internal.la
 
+unit_tests += unit/test-hfp
+
+unit_test_hfp_SOURCES = unit/test-hfp.c \
+				src/shared/io.h src/shared/io-glib.c \
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c \
+				src/shared/ringbuf.h src/shared/ringbuf.c \
+				src/shared/hfp.h src/shared/hfp.c
+
+unit_test_hfp_LDADD = @GLIB_LIBS@
+
 unit_tests += unit/test-gdbus-client
 
 unit_test_gdbus_client_SOURCES = unit/test-gdbus-client.c
