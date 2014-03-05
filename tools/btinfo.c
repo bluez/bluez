@@ -109,7 +109,7 @@ static void shutdown_device(void)
 	bt_hci_flush(hci_dev);
 
 	if (reset_on_shutdown) {
-		id = mainloop_add_timeout(5, shutdown_timeout, NULL, NULL);
+		id = mainloop_add_timeout(5000, shutdown_timeout, NULL, NULL);
 
 		bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0,
 				shutdown_complete, UINT_TO_PTR(id), NULL);

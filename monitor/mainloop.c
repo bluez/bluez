@@ -287,20 +287,21 @@ static void timeout_callback(int fd, uint32_t events, void *user_data)
 		data->callback(data->fd, data->user_data);
 }
 
-static inline int timeout_set(int fd, unsigned int seconds)
+static inline int timeout_set(int fd, unsigned int msec)
 {
 	struct itimerspec itimer;
+	unsigned int sec = msec / 1000;
 
 	memset(&itimer, 0, sizeof(itimer));
 	itimer.it_interval.tv_sec = 0;
 	itimer.it_interval.tv_nsec = 0;
-	itimer.it_value.tv_sec = seconds;
-	itimer.it_value.tv_nsec = 0;
+	itimer.it_value.tv_sec = sec;
+	itimer.it_value.tv_nsec = (msec - (sec * 1000)) * 1000;
 
 	return timerfd_settime(fd, 0, &itimer, NULL);
 }
 
-int mainloop_add_timeout(unsigned int seconds, mainloop_timeout_func callback,
+int mainloop_add_timeout(unsigned int msec, mainloop_timeout_func callback,
 				void *user_data, mainloop_destroy_func destroy)
 {
 	struct timeout_data *data;
@@ -323,8 +324,8 @@ int mainloop_add_timeout(unsigned int seconds, mainloop_timeout_func callback,
 		return -EIO;
 	}
 
-	if (seconds > 0) {
-		if (timeout_set(data->fd, seconds) < 0) {
+	if (msec > 0) {
+		if (timeout_set(data->fd, msec) < 0) {
 			close(data->fd);
 			free(data);
 			return -EIO;
@@ -341,10 +342,10 @@ int mainloop_add_timeout(unsigned int seconds, mainloop_timeout_func callback,
 	return data->fd;
 }
 
-int mainloop_modify_timeout(int id, unsigned int seconds)
+int mainloop_modify_timeout(int id, unsigned int msec)
 {
-	if (seconds > 0) {
-		if (timeout_set(id, seconds) < 0)
+	if (msec > 0) {
+		if (timeout_set(id, msec) < 0)
 			return -EIO;
 	}
 

@@ -65,7 +65,7 @@ static void shutdown_device(void)
 
 	bt_hci_flush(hci_dev);
 
-	id = mainloop_add_timeout(5, shutdown_timeout, NULL, NULL);
+	id = mainloop_add_timeout(5000, shutdown_timeout, NULL, NULL);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_LE_SET_ADV_ENABLE,
 					&enable, 1, NULL, NULL, NULL);

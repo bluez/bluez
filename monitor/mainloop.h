@@ -40,9 +40,9 @@ int mainloop_add_fd(int fd, uint32_t events, mainloop_event_func callback,
 int mainloop_modify_fd(int fd, uint32_t events);
 int mainloop_remove_fd(int fd);
 
-int mainloop_add_timeout(unsigned int seconds, mainloop_timeout_func callback,
+int mainloop_add_timeout(unsigned int msec, mainloop_timeout_func callback,
 				void *user_data, mainloop_destroy_func destroy);
-int mainloop_modify_timeout(int fd, unsigned int seconds);
+int mainloop_modify_timeout(int fd, unsigned int msec);
 int mainloop_remove_timeout(int id);
 
 int mainloop_set_signal(sigset_t *mask, mainloop_signal_func callback,
