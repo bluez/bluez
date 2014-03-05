@@ -222,9 +222,6 @@ int mainloop_modify_fd(int fd, uint32_t events)
 	if (!data)
 		return -ENXIO;
 
-	if (data->events == events)
-		return 0;
-
 	memset(&ev, 0, sizeof(ev));
 	ev.events = events;
 	ev.data.ptr = data;
