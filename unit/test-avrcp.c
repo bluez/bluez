@@ -288,6 +288,20 @@ static const struct avrcp_passthrough_handler passthrough_handlers[] = {
 		{ },
 };
 
+static bool check_attributes(const uint8_t *params)
+{
+	int i;
+
+	for (i = 1; i <= params[0]; i++) {
+		DBG("params[%d] = 0x%02x", i, params[i]);
+		if (params[i] > AVRCP_ATTRIBUTE_LAST ||
+		    params[i] == AVRCP_ATTRIBUTE_ILEGAL)
+			return false;
+	}
+
+	return true;
+}
+
 static ssize_t avrcp_handle_get_capabilities(struct avrcp *session,
 						uint8_t transaction,
 						uint16_t params_len,
@@ -326,16 +340,10 @@ static ssize_t avrcp_handle_get_player_attr_text(struct avrcp *session,
 						uint8_t *params,
 						void *user_data)
 {
-	int i;
-
 	DBG("params[0] %d params_len %d", params[0], params_len);
 
-	for (i = 1; i <= params[0]; i++) {
-		DBG("params[%d] = 0x%02x", i, params[i]);
-		if (params[i] > AVRCP_ATTRIBUTE_LAST ||
-			params[i] == AVRCP_ATTRIBUTE_ILEGAL)
-			return -EINVAL;
-	}
+	if (!check_attributes(params))
+		return -EINVAL;
 
 	params[0] = 0;
 
