@@ -414,6 +414,9 @@ static ssize_t avrcp_handle_get_current_player_value(struct avrcp *session,
 
 	DBG("params[0] %d params_len %d", params[0], params_len);
 
+	if (!check_attributes(params))
+		return -EINVAL;
+
 	attributes = g_memdup(&params[1], params[0]);
 
 	for (i = 0; i < params[0]; i++) {
@@ -710,6 +713,19 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_REJECTED,
 				0x48, 0x00, 0x00, 0x19, 0x58,
 				AVRCP_GET_PLAYER_VALUE_TEXT,
+				0x00, 0x00, 0x01, AVRCP_STATUS_INVALID_PARAM));
+
+	/* Get current player application setting value invalid behavior - TG */
+	define_test("/TP/PAS/BI-04-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58,
+				AVRCP_GET_CURRENT_PLAYER_VALUE,
+				0x00, 0x00, 0x02, 0x01,
+				/* Invalid attribute */
+				0x7f),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_REJECTED,
+				0x48, 0x00, 0x00, 0x19, 0x58,
+				AVRCP_GET_CURRENT_PLAYER_VALUE,
 				0x00, 0x00, 0x01, AVRCP_STATUS_INVALID_PARAM));
 
 	return g_test_run();
