@@ -44,6 +44,7 @@ struct test_pdu {
 	bool valid;
 	const uint8_t *data;
 	size_t size;
+	enum hfp_gw_cmd_type type;
 };
 
 struct test_data {
@@ -63,6 +64,14 @@ struct test_data {
 #define data_end()						\
 	{							\
 		.valid = false,					\
+	}
+
+#define type_pdu(cmd_type, args...)				\
+	{							\
+		.valid = true,					\
+		.data = data(args),				\
+		.size = sizeof(data(args)),			\
+		.type = cmd_type,				\
 	}
 
 #define define_test(name, function, args...)				\
@@ -114,6 +123,19 @@ static void cmd_handler(const char *command, void *user_data)
 
 	g_assert(cmd_len == pdu->size);
 	g_assert(!memcmp(command, pdu->data, cmd_len));
+
+	hfp_gw_send_result(context->hfp, HFP_RESULT_ERROR);
+}
+
+static void prefix_handler(struct hfp_gw_result *result,
+				enum hfp_gw_cmd_type type, void *user_data)
+{
+	struct context *context = user_data;
+	const struct test_pdu *pdu;
+
+	pdu = &context->data->pdu_list[context->pdu_offset++];
+
+	g_assert(type == pdu->type);
 
 	hfp_gw_send_result(context->hfp, HFP_RESULT_ERROR);
 }
@@ -206,6 +228,33 @@ static void test_command_handler(gconstpointer data)
 	execute_context(context);
 }
 
+static void test_register(gconstpointer data)
+{
+	struct context *context = create_context(data);
+	const struct test_pdu *pdu;
+	ssize_t len;
+	bool ret;
+
+	context->hfp = hfp_gw_new(context->fd_client);
+	g_assert(context->hfp);
+
+	pdu = &context->data->pdu_list[context->pdu_offset++];
+
+	ret = hfp_gw_set_close_on_unref(context->hfp, true);
+	g_assert(ret);
+
+	ret = hfp_gw_register(context->hfp, prefix_handler, (char *)pdu->data,
+								context, NULL);
+	g_assert(ret);
+
+	pdu = &context->data->pdu_list[context->pdu_offset++];
+
+	len = write(context->fd_server, pdu->data, pdu->size);
+	g_assert_cmpint(len, ==, pdu->size);
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -218,6 +267,11 @@ int main(int argc, char *argv[])
 	define_test("/hfp/test_cmd_handler_2", test_command_handler,
 			raw_pdu('A', 'T', 'D', '1', '2', '3', '4', '\r'),
 			raw_pdu('A', 'T', 'D', '1', '2', '3', '4'),
+			data_end());
+	define_test("/hfp/test_register_1", test_register,
+			raw_pdu('+', 'B', 'R', 'S', 'F', '\0'),
+			raw_pdu('A', 'T', '+', 'B', 'R', 'S', 'F', '\r'),
+			type_pdu(HFP_GW_CMD_TYPE_COMMAND, 0),
 			data_end());
 
 	return g_test_run();
