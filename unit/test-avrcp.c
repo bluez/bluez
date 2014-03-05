@@ -376,10 +376,27 @@ static ssize_t avrcp_handle_get_player_value_text(struct avrcp *session,
 						uint8_t *params,
 						void *user_data)
 {
-	DBG("");
+	int i;
 
-	if (params_len != 1)
+	DBG("attr_id %d num_vals %d len %d", params[0], params[1], params_len);
+
+	if (params_len != 2 + params[1])
 		return -EINVAL;
+
+	if (params[0] > AVRCP_ATTRIBUTE_LAST ||
+					params[0] == AVRCP_ATTRIBUTE_ILEGAL)
+		return -EINVAL;
+
+	for (i = 2; i < 2 + params[1]; i++) {
+		DBG("Value 0x%02x", params[i]);
+
+		/* Check for invalid value */
+		switch (params[0]) {
+		case AVRCP_ATTRIBUTE_EQUALIZER:
+			if (params[i] < 0x01 || params[i] > 0x02)
+				return -EINVAL;
+		}
+	}
 
 	params[0] = 0;
 
@@ -618,7 +635,8 @@ int main(int argc, char *argv[])
 			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
 				0x00, 0x19, 0x58,
 				AVRCP_GET_PLAYER_VALUE_TEXT,
-				0x00, 0x00, 0x01, 0x00),
+				0x00, 0x00, 0x03, AVRCP_ATTRIBUTE_EQUALIZER,
+				0x01, 0x01),
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58,
 				AVRCP_GET_PLAYER_VALUE_TEXT,
