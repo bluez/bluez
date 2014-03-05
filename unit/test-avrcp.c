@@ -698,5 +698,19 @@ int main(int argc, char *argv[])
 				AVRCP_LIST_PLAYER_VALUES,
 				0x00, 0x00, 0x01, AVRCP_STATUS_INVALID_PARAM));
 
+	/* Get player application setting value text invalid behavior - TG */
+	define_test("/TP/PAS/BI-03-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58,
+				AVRCP_GET_PLAYER_VALUE_TEXT,
+				0x00, 0x00, 0x03, AVRCP_ATTRIBUTE_EQUALIZER,
+				0x01,
+				/* Invalid setting value */
+				0x7f),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_REJECTED,
+				0x48, 0x00, 0x00, 0x19, 0x58,
+				AVRCP_GET_PLAYER_VALUE_TEXT,
+				0x00, 0x00, 0x01, AVRCP_STATUS_INVALID_PARAM));
+
 	return g_test_run();
 }
