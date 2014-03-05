@@ -289,6 +289,11 @@ int main(int argc, char *argv[])
 									'\r'),
 			type_pdu(HFP_GW_CMD_TYPE_TEST, 0),
 			data_end());
+	define_test("/hfp/test_register_5", test_register,
+			raw_pdu('D', '\0'),
+			raw_pdu('A', 'T', 'D', '1', '2', '3', '4', '5', '\r'),
+			type_pdu(HFP_GW_CMD_TYPE_SET, 0),
+			data_end());
 
 	return g_test_run();
 }
