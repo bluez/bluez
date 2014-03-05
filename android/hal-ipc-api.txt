@@ -1904,11 +1904,10 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 		                            GATT Descr. ID (17 octets)
 		                            Value Type (4 octets)
 		                            Status (1 octet)
-		                            Unformatted Value (variable)
+		                            Length (2 octets)
+		                            Value (variable)
 		Valid GATT Service ID: As described in Get Characteristic
 		Valid GATT Char. & Decr. ID: As described in Get Descriptor
-		Valid Unformatted Value: Length (2 octets)
-		                         Value (variable)
 
 	Opcode 0x8d - Write Characteristic notification
 
