@@ -155,6 +155,40 @@ static void disconnect_watch(void *user_data)
 	device_cleanup();
 }
 
+static void at_cmd_vgs_vgm(struct hfp_gw_result *result,
+				enum hfp_gw_cmd_type type, void *user_data)
+{
+	struct hal_ev_handsfree_volume ev;
+	unsigned int val;
+
+	DBG("");
+
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val > 15)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		ev.type = GPOINTER_TO_UINT(type);
+		ev.volume = val;
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+				HAL_EV_HANDSFREE_VOLUME, sizeof(ev), &ev);
+
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
 static void at_cmd_cops(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
@@ -243,6 +277,12 @@ static void register_post_slc_at(void)
 
 	hfp_gw_register(device.gw, at_cmd_bia, "+BIA", NULL, NULL);
 	hfp_gw_register(device.gw, at_cmd_cops, "+COPS", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGS",
+			GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_SPEAKER),
+			NULL);
+	hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGM",
+			GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_MIC),
+			NULL);
 }
 
 static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -729,10 +769,31 @@ static void handle_stop_vr(const void *buf, uint16_t len)
 
 static void handle_volume_control(const void *buf, uint16_t len)
 {
-	DBG("");
+	const struct hal_cmd_handsfree_volume_control *cmd = buf;
+	uint8_t status, volume;
+
+	DBG("type=%u volume=%u", cmd->type, cmd->volume);
+
+	volume = cmd->volume > 15 ? 15 : cmd->volume;
+
+	switch (cmd->type) {
+	case HAL_HANDSFREE_VOLUME_TYPE_MIC:
+		hfp_gw_send_info(device.gw, "+VGM: %u", volume );
+
+		status = HAL_STATUS_SUCCESS;
+		break;
+	case HAL_HANDSFREE_VOLUME_TYPE_SPEAKER:
+		hfp_gw_send_info(device.gw, "+VGS: %u", volume);
+
+		status = HAL_STATUS_SUCCESS;
+		break;
+	default:
+		status = HAL_STATUS_FAILED;
+		break;
+	}
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-			HAL_OP_HANDSFREE_VOLUME_CONTROL, HAL_STATUS_FAILED);
+				HAL_OP_HANDSFREE_VOLUME_CONTROL, status);
 }
 
 static void update_indicator(int ind, uint8_t val)
