@@ -1657,14 +1657,13 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 	Opcode 0x16 - Test Command command/response
 
 		Command parameters: Command (4 octets)
-		                    Test Parameters (32 octets)
-		Valid Test Parameter: Address (6 octets)
-		                      UUID (16 octets)
-		                      U1 (2 octets)
-		                      U2 (2 octets)
-		                      U3 (2 octets)
-		                      U4 (2 octets)
-		                      U5 (2 octets)
+		                    Address (6 octets)
+		                    UUID (16 octets)
+		                    U1 (2 octets)
+		                    U2 (2 octets)
+		                    U3 (2 octets)
+		                    U4 (2 octets)
+		                    U5 (2 octets)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.
