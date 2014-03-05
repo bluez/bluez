@@ -356,9 +356,13 @@ static ssize_t avrcp_handle_list_player_values(struct avrcp *session,
 						uint8_t *params,
 						void *user_data)
 {
-	DBG("params[0] %d params_len %d", params[0], params_len);
+	DBG("params[0] 0x%02x params_len %d", params[0], params_len);
 
 	if (params_len != 1)
+		return -EINVAL;
+
+	if (params[0] > AVRCP_ATTRIBUTE_LAST ||
+					params[0] == AVRCP_ATTRIBUTE_ILEGAL)
 		return -EINVAL;
 
 	params[0] = 0;
@@ -604,7 +608,7 @@ int main(int argc, char *argv[])
 			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
 				0x00, 0x19, 0x58,
 				AVRCP_LIST_PLAYER_VALUES,
-				0x00, 0x00, 0x01, 0x00),
+				0x00, 0x00, 0x01, AVRCP_ATTRIBUTE_EQUALIZER),
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58,
 				AVRCP_LIST_PLAYER_VALUES,
