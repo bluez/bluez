@@ -215,6 +215,10 @@ int main(int argc, char *argv[])
 			raw_pdu('A', 'T', '+', 'B', 'R', 'S', 'F', '\r'),
 			raw_pdu('A', 'T', '+', 'B', 'R', 'S', 'F'),
 			data_end());
+	define_test("/hfp/test_cmd_handler_2", test_command_handler,
+			raw_pdu('A', 'T', 'D', '1', '2', '3', '4', '\r'),
+			raw_pdu('A', 'T', 'D', '1', '2', '3', '4'),
+			data_end());
 
 	return g_test_run();
 }
