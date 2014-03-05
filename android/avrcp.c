@@ -43,6 +43,7 @@
 #include "ipc.h"
 #include "bluetooth.h"
 #include "avrcp.h"
+#include "utils.h"
 
 #define L2CAP_PSM_AVCTP 0x17
 
@@ -699,6 +700,7 @@ static const struct avrcp_control_handler control_handlers[] = {
 static int avrcp_device_add_session(struct avrcp_device *dev, int fd,
 						uint16_t imtu, uint16_t omtu)
 {
+	struct hal_ev_avrcp_remote_features ev;
 	char address[18];
 
 	dev->session = avrcp_new(fd, imtu, omtu, dev->version);
@@ -716,6 +718,21 @@ static int avrcp_device_add_session(struct avrcp_device *dev, int fd,
 
 	/* FIXME: get the real name of the device */
 	avrcp_init_uinput(dev->session, "bluetooth", address);
+
+	bdaddr2android(&dev->dst, ev.bdaddr);
+	ev.features = HAL_AVRCP_FEATURE_NONE;
+
+	DBG("version 0x%02x", dev->version);
+
+	if (dev->version < 0x0103)
+		goto done;
+
+	ev.features |= HAL_AVRCP_FEATURE_METADATA;
+
+done:
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,
+					HAL_EV_AVRCP_REMOTE_FEATURES,
+					sizeof(ev), &ev);
 
 	return 0;
 }
