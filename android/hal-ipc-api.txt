@@ -1885,8 +1885,7 @@ Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
 	Opcode 0x8b - Notify notification
 
 		Notification parameters: Connection ID (4 octets)
-		                         Notify Parameters (variable)
-		Valid Notify Parameters: Address (6 octets)
+		                         Address (6 octets)
 		                         GATT Service ID (18 octets)
 		                         GATT Char. ID (17 octets)
 		                         Is Notify (1 octet)
