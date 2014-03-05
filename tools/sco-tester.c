@@ -415,7 +415,7 @@ end:
 	close(sk);
 }
 
-static int create_sco_sock(struct test_data *data, uint16_t psm)
+static int create_sco_sock(struct test_data *data)
 {
 	const uint8_t *master_bdaddr;
 	struct sockaddr_sco addr;
@@ -514,7 +514,7 @@ static void test_connect(const void *test_data)
 	GIOChannel *io;
 	int sk;
 
-	sk = create_sco_sock(data, 0);
+	sk = create_sco_sock(data);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
@@ -543,7 +543,7 @@ static void test_connect_transp(const void *test_data)
 	int sk, err;
 	struct bt_voice voice;
 
-	sk = create_sco_sock(data, 0);
+	sk = create_sco_sock(data);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
