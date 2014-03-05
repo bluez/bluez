@@ -278,6 +278,11 @@ int main(int argc, char *argv[])
 			raw_pdu('A', 'T', '+', 'B', 'R', 'S', 'F', '=', '\r'),
 			type_pdu(HFP_GW_CMD_TYPE_SET, 0),
 			data_end());
+	define_test("/hfp/test_register_3", test_register,
+			raw_pdu('+', 'B', 'R', 'S', 'F', '\0'),
+			raw_pdu('A', 'T', '+', 'B', 'R', 'S', 'F', '?', '\r'),
+			type_pdu(HFP_GW_CMD_TYPE_READ, 0),
+			data_end());
 
 	return g_test_run();
 }
