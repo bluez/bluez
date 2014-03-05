@@ -155,6 +155,37 @@ static void disconnect_watch(void *user_data)
 	device_cleanup();
 }
 
+static void at_cmd_cops(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	unsigned int val;
+
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val != 3)
+			break;
+
+		if (!hfp_gw_result_get_number(result, &val) || val != 1)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+						HAL_EV_HANDSFREE_COPS, 0, NULL);
+		return;
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
 static void at_cmd_bia(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
@@ -211,6 +242,7 @@ static void register_post_slc_at(void)
 	}
 
 	hfp_gw_register(device.gw, at_cmd_bia, "+BIA", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_cops, "+COPS", NULL, NULL);
 }
 
 static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -740,7 +772,23 @@ static void handle_device_status_notif(const void *buf, uint16_t len)
 
 static void handle_cops(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_handsfree_cops_response *cmd = buf;
+	char operator[17];
+
+	if (len != sizeof(*cmd) + cmd->len) {
+		error("Invalid cops response command, terminating");
+		raise(SIGTERM);
+		return;
+	}
+
 	DBG("");
+
+	memset(operator, 0, sizeof(operator));
+	memcpy(operator, cmd->buf, MIN(cmd->len, 16));
+
+	hfp_gw_send_info(device.gw, "+COPS: 0,0,\"%s\" ", operator);
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 			HAL_OP_HANDSFREE_COPS_RESPONSE, HAL_STATUS_FAILED);
