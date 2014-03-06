@@ -228,8 +228,6 @@ static void at_cmd_bia(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	DBG("");
 
-	goto failed;
-
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
 		for (i = 0; i < IND_COUNT; i++)
