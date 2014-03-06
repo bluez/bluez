@@ -522,9 +522,37 @@ static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	struct hal_ev_handsfree_nrec ev;
+	unsigned int val;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		/* Android HAL defines start and stop parameter for NREC
+		 * callback, but spec allows HF to only disable AG's NREC
+		 * feature for SLC duration. Follow spec here.
+		 */
+		if (!hfp_gw_result_get_number(result, &val) || val != 0)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		ev.nrec = HAL_HANDSFREE_NREC_STOP;
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_EV_HANDSFREE_NREC, sizeof(ev), &ev);
+
+		/* Framework is not replying with result for AT+NREC */
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }

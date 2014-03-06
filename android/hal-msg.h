@@ -1029,7 +1029,7 @@ struct hal_ev_handsfree_dtmf {
 } __attribute__((packed));
 
 #define HAL_HANDSFREE_NREC_STOP		0x00
-#define HAL_HANDSFREE_NREC_STart	0x01
+#define HAL_HANDSFREE_NREC_START	0x01
 
 #define HAL_EV_HANDSFREE_NREC		0x89
 struct hal_ev_handsfree_nrec {
