@@ -2376,14 +2376,18 @@ static struct irk_info *get_irk_info(GKeyFile *key_file, const char *peer,
 	char *str;
 
 	str = g_key_file_get_string(key_file, "IdentityResolvingKey", "Key", NULL);
-	if (!str || strlen(str) != 34)
+	if (!str || strlen(str) < 32)
 		return NULL;
 
 	irk = g_new0(struct irk_info, 1);
 
 	str2ba(peer, &irk->bdaddr);
 	irk->bdaddr_type = bdaddr_type;
-	str2buf(&str[2], irk->val, sizeof(irk->val));
+
+	if (!strncmp(str, "0x", 2))
+		str2buf(&str[2], irk->val, sizeof(irk->val));
+	else
+		str2buf(&str[0], irk->val, sizeof(irk->val));
 
 	g_free(str);
 
@@ -5643,7 +5647,7 @@ static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
 	char *store_data;
-	char str[35];
+	char str[33];
 	size_t length = 0;
 	int i;
 
@@ -5657,10 +5661,8 @@ static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
-	str[0] = '0';
-	str[1] = 'x';
 	for (i = 0; i < 16; i++)
-		sprintf(str + 2 + (i * 2), "%2.2X", key[i]);
+		sprintf(str + (i * 2), "%2.2X", key[i]);
 
 	g_key_file_set_string(key_file, "IdentityResolvingKey", "Key", str);
 
