@@ -199,19 +199,35 @@ static void device_cleanup(void)
 	memset(&device, 0, sizeof(device));
 }
 
-static void at_command_handler(const char *command, void *user_data)
-{
-	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
-
-	if (device.state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
-		hfp_gw_disconnect(device.gw);
-}
-
 static void disconnect_watch(void *user_data)
 {
 	DBG("");
 
 	device_cleanup();
+}
+
+static void at_cmd_unknown(const char *command, void *user_data)
+{
+	uint8_t buf[IPC_MTU];
+	struct hal_ev_handsfree_unknown_at *ev = (void *) buf;
+
+	if (device.state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED) {
+		hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+		hfp_gw_disconnect(device.gw);
+		return;
+	}
+
+	/* copy while string including terminating NULL */
+	ev->len = strlen(command) + 1;
+	memcpy(ev->buf, command, ev->len);
+
+	if (ev->len > IPC_MTU - sizeof(*ev)) {
+		hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+		return;
+	}
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+			HAL_EV_HANDSFREE_UNKNOWN_AT, sizeof(*ev) + ev->len, ev);
 }
 
 static void at_cmd_vgm(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -738,7 +754,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	g_io_channel_set_close_on_unref(chan, FALSE);
 
 	hfp_gw_set_close_on_unref(device.gw, true);
-	hfp_gw_set_command_handler(device.gw, at_command_handler, NULL, NULL);
+	hfp_gw_set_command_handler(device.gw, at_cmd_unknown, NULL, NULL);
 	hfp_gw_set_disconnect_handler(device.gw, disconnect_watch, NULL, NULL);
 
 	if (device.hsp) {
@@ -1320,19 +1336,41 @@ static void handle_cind(const void *buf, uint16_t len)
 
 static void handle_formatted_at_resp(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_handsfree_formatted_at_response *cmd = buf;
+
 	DBG("");
+
+	if (len != sizeof(*cmd) + cmd->len ||
+			(cmd->len != 0 && cmd->buf[cmd->len - 1] != '\0')) {
+		error("Invalid formatted AT response command, terminating");
+		raise(SIGTERM);
+		return;
+	}
+
+	DBG("");
+
+	hfp_gw_send_info(device.gw, "%s", cmd->len ? (char *) cmd->buf : "");
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE,
-					HAL_STATUS_FAILED);
+					HAL_STATUS_SUCCESS);
 }
 
 static void handle_at_resp(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_handsfree_at_response *cmd = buf;
+
 	DBG("");
 
+	/* TODO handle +CME ERROR when AT+CMEE support is added */
+
+	if (cmd->response == HAL_HANDSFREE_AT_RESPONSE_OK)
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+	else
+		hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-			HAL_OP_HANDSFREE_AT_RESPONSE, HAL_STATUS_FAILED);
+			HAL_OP_HANDSFREE_AT_RESPONSE, HAL_STATUS_SUCCESS);
 }
 
 static void handle_clcc_resp(const void *buf, uint16_t len)
