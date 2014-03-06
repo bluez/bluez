@@ -488,9 +488,33 @@ static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	struct hal_ev_handsfree_vr_state ev;
+	unsigned int val;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		if (val)
+			ev.state = HAL_HANDSFREE_VR_STARTED;
+		else
+			ev.state = HAL_HANDSFREE_VR_STOPPED;
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_EV_HANDSFREE_VR, sizeof(ev), &ev);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
@@ -1188,18 +1212,36 @@ done:
 
 static void handle_start_vr(const void *buf, uint16_t len)
 {
+	uint8_t status;
+
 	DBG("");
 
+	if (device.features & HFP_HF_FEAT_VR) {
+		hfp_gw_send_info(device.gw, "+BVRA: 1");
+		status = HAL_STATUS_SUCCESS;
+	} else {
+		status = HAL_STATUS_FAILED;
+	}
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-				HAL_OP_HANDSFREE_START_VR, HAL_STATUS_FAILED);
+					HAL_OP_HANDSFREE_START_VR, status);
 }
 
 static void handle_stop_vr(const void *buf, uint16_t len)
 {
+	uint8_t status;
+
 	DBG("");
 
+	if (device.features & HFP_HF_FEAT_VR) {
+		hfp_gw_send_info(device.gw, "+BVRA: 0");
+		status = HAL_STATUS_SUCCESS;
+	} else {
+		status = HAL_STATUS_FAILED;
+	}
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-				HAL_OP_HANDSFREE_STOP_VR, HAL_STATUS_FAILED);
+				HAL_OP_HANDSFREE_STOP_VR, status);
 }
 
 static void handle_volume_control(const void *buf, uint16_t len)

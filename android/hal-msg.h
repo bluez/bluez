@@ -999,6 +999,9 @@ struct hal_ev_handsfree_audio_state {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_HANDSFREE_VR_STOPPED	0x00
+#define HAL_HANDSFREE_VR_STARTED	0x01
+
 #define HAL_EV_HANDSFREE_VR		0x83
 struct hal_ev_handsfree_vr_state {
 	uint8_t state;
