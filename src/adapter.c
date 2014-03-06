@@ -2256,7 +2256,11 @@ static struct link_key_info *get_key_info(GKeyFile *key_file, const char *peer)
 	info = g_new0(struct link_key_info, 1);
 
 	str2ba(peer, &info->bdaddr);
-	str2buf(&str[2], info->key, sizeof(info->key));
+
+	if (!strncmp(str, "0x", 2))
+		str2buf(&str[2], info->key, sizeof(info->key));
+	else
+		str2buf(&str[0], info->key, sizeof(info->key));
 
 	info->type = g_key_file_get_integer(key_file, "LinkKey", "Type", NULL);
 	info->pin_len = g_key_file_get_integer(key_file, "LinkKey", "PINLength",
@@ -2310,7 +2314,11 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 		goto failed;
 	}
 
-	str2buf(&key[2], ltk->val, sizeof(ltk->val));
+	if (!strncmp(key, "0x", 2))
+		str2buf(&key[2], ltk->val, sizeof(ltk->val));
+	else
+		str2buf(&key[0], ltk->val, sizeof(ltk->val));
+
 	str2buf(&rand[2], ltk->rand, sizeof(ltk->rand));
 
 	ltk->authenticated = g_key_file_get_integer(key_file, group,
@@ -5426,7 +5434,7 @@ static void store_link_key(struct btd_adapter *adapter,
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
 	gsize length = 0;
-	char key_str[35];
+	char key_str[33];
 	char *str;
 	int i;
 
@@ -5440,10 +5448,8 @@ static void store_link_key(struct btd_adapter *adapter,
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
-	key_str[0] = '0';
-	key_str[1] = 'x';
 	for (i = 0; i < 16; i++)
-		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
+		sprintf(key_str + (i * 2), "%2.2X", key[i]);
 
 	g_key_file_set_string(key_file, "LinkKey", "Key", key_str);
 
@@ -5516,7 +5522,7 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 	char device_addr[18];
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
-	char key_str[35];
+	char key_str[33];
 	char rand_str[19];
 	gsize length = 0;
 	char *str;
@@ -5535,10 +5541,8 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 	/* Old files may contain this so remove it in case it exists */
 	g_key_file_remove_key(key_file, "LongTermKey", "Master", NULL);
 
-	key_str[0] = '0';
-	key_str[1] = 'x';
 	for (i = 0; i < 16; i++)
-		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
+		sprintf(key_str + (i * 2), "%2.2X", key[i]);
 
 	g_key_file_set_string(key_file, group, "Key", key_str);
 
