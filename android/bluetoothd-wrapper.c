@@ -26,6 +26,8 @@
 
 #define PROPERTY_DEBUG_NAME "persist.sys.bluetooth.debug"
 
+#define PROPERTY_MGMT_DEBUG_NAME "persist.sys.bluetooth.mgmtdbg"
+
 #define VALGRIND_BIN "/system/bin/valgrind"
 
 #define BLUETOOTHD_BIN "/system/bin/bluetoothd-main"
@@ -47,14 +49,15 @@ static void run_valgrind(void)
 	execve(prg_argv[0], prg_argv, prg_envp);
 }
 
-static void run_bluetoothd(int debug)
+static void run_bluetoothd(int debug, int mgmt_dbg)
 {
-	char *prg_argv[3];
+	char *prg_argv[4];
 	char *prg_envp[1];
 
 	prg_argv[0] = BLUETOOTHD_BIN;
 	prg_argv[1] = debug ? "-d" : NULL;
-	prg_argv[2] = NULL;
+	prg_argv[2] = mgmt_dbg ? "--mgmt-debug" : NULL;
+	prg_argv[3] = NULL;
 
 	prg_envp[0] = NULL;
 
@@ -65,6 +68,7 @@ int main(int argc, char *argv[])
 {
 	char value[PROPERTY_VALUE_MAX];
 	int debug = 0;
+	int mgmt_dbg = 0;
 
 	if (property_get(PROPERTY_VALGRIND_NAME, value, "") > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0))
@@ -74,10 +78,16 @@ int main(int argc, char *argv[])
 			(!strcasecmp(value, "true") || atoi(value) > 0))
 			debug = 1;
 
+	if (property_get(PROPERTY_MGMT_DEBUG_NAME, value, "") > 0 &&
+			(!strcasecmp(value, "true") || atoi(value) > 0)) {
+			debug = 1;
+			mgmt_dbg = 1;
+	}
+
 	/* In case we failed to execute Valgrind, try to run bluetoothd
 	 * without it
 	 */
-	run_bluetoothd(debug);
+	run_bluetoothd(debug, mgmt_dbg);
 
 	return 0;
 }

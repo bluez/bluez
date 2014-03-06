@@ -22,7 +22,7 @@
  */
 
 typedef void (*bt_bluetooth_ready)(int err, const bdaddr_t *addr);
-bool bt_bluetooth_start(int index, bt_bluetooth_ready cb);
+bool bt_bluetooth_start(int index, bool mgmt_dbg, bt_bluetooth_ready cb);
 
 typedef void (*bt_bluetooth_stopped)(void);
 bool bt_bluetooth_stop(bt_bluetooth_stopped cb);

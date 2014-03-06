@@ -140,6 +140,10 @@ adb shell setprop persist.sys.bluetooth.debug 1
 
 After changing property value Bluetooth needs to be restarted to apply changes.
 
+There is also a possibility to enable mgmt debug logs which also enables debugs
+as above. To enable it procced in the same way as described above but use
+system properties called: persist.sys.bluetooth.mgmtdbg
+
 Note: Debugs are only available on NON USER build variants
 =============================
 Building and running on Linux

@@ -345,6 +345,7 @@ static guint setup_signalfd(void)
 static gboolean option_version = FALSE;
 static gint option_index = -1;
 static gboolean option_dbg = FALSE;
+static gboolean option_mgmt_dbg = FALSE;
 
 static GOptionEntry options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
@@ -353,6 +354,9 @@ static GOptionEntry options[] = {
 				"Use specified controller", "INDEX"},
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_dbg,
 				"Enable debug logs", NULL},
+	{ "mgmt-debug", 0, 0, G_OPTION_ARG_NONE, &option_mgmt_dbg,
+				"Enable mgmt debug logs", NULL},
+
 	{ NULL }
 };
 
@@ -476,7 +480,7 @@ int main(int argc, char *argv[])
 	if (!signal)
 		return EXIT_FAILURE;
 
-	if (option_dbg)
+	if (option_dbg || option_mgmt_dbg)
 		__btd_log_init("*", 0);
 	else
 		__btd_log_init(NULL, 0);
@@ -496,7 +500,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!bt_bluetooth_start(option_index, adapter_ready)) {
+	if (!bt_bluetooth_start(option_index, option_mgmt_dbg, adapter_ready)) {
 		__btd_log_cleanup();
 		g_source_remove(bluetooth_start_timeout);
 		g_source_remove(signal);

@@ -148,6 +148,12 @@ static GSList *browse_reqs;
 
 static struct ipc *hal_ipc = NULL;
 
+static void mgmt_debug(const char *str, void *user_data)
+{
+	const char *prefix = user_data;
+	info("%s%s", prefix, str);
+}
+
 static void store_adapter_config(void)
 {
 	GKeyFile *key_file;
@@ -2152,7 +2158,7 @@ failed:
 	cb(-EIO, NULL);
 }
 
-bool bt_bluetooth_start(int index, bt_bluetooth_ready cb)
+bool bt_bluetooth_start(int index, bool mgmt_dbg, bt_bluetooth_ready cb)
 {
 	DBG("index %d", index);
 
@@ -2161,6 +2167,9 @@ bool bt_bluetooth_start(int index, bt_bluetooth_ready cb)
 		error("Failed to access management interface");
 		return false;
 	}
+
+	if (mgmt_dbg)
+		mgmt_set_debug(mgmt_if, mgmt_debug, "mgmt_if: ", NULL);
 
 	if (mgmt_send(mgmt_if, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
 				read_version_complete, cb, NULL) == 0) {
