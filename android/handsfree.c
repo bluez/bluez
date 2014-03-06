@@ -858,7 +858,7 @@ static void handle_cops(const void *buf, uint16_t len)
 	hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-			HAL_OP_HANDSFREE_COPS_RESPONSE, HAL_STATUS_FAILED);
+			HAL_OP_HANDSFREE_COPS_RESPONSE, HAL_STATUS_SUCCESS);
 }
 
 static unsigned int get_callsetup(uint8_t state)
