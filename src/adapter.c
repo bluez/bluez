@@ -2252,7 +2252,7 @@ static struct link_key_info *get_key_info(GKeyFile *key_file, const char *peer)
 	char *str;
 
 	str = g_key_file_get_string(key_file, "LinkKey", "Key", NULL);
-	if (!str || strlen(str) != 34)
+	if (!str || strlen(str) < 32)
 		goto failed;
 
 	info = g_new0(struct link_key_info, 1);
