@@ -359,19 +359,216 @@ failed:
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
 
+static void at_cmd_a(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_ccwa(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_chup(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_clcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_cmee(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_clip(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_cnum(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_binp(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_bsir(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_btrh(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_bcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_bcs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_ckpd(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
 static void register_post_slc_at(void)
 {
 	if (device.hsp) {
-		/* TODO CKPD */
+		hfp_gw_register(device.gw, at_cmd_ckpd, "+CKPD", NULL, NULL);
 		hfp_gw_register(device.gw, at_cmd_vgs, "+VGS", NULL, NULL);
 		hfp_gw_register(device.gw, at_cmd_vgm, "+VGM", NULL, NULL);
 		return;
 	}
 
-	hfp_gw_register(device.gw, at_cmd_bia, "+BIA", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_a, "A", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_d, "D", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_ccwa, "+CCWA", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_chup, "+CHUP", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_clcc, "+CLCC", NULL, NULL);
 	hfp_gw_register(device.gw, at_cmd_cops, "+COPS", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_cmee, "+CMEE", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_clip, "+CLIP", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_vts, "+VTS", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_cnum, "+CNUM", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_bia, "+BIA", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_binp, "+BINP", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_bldn, "+BLDN", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_bvra, "+BVRA", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_nrec, "+NREC", NULL, NULL);
 	hfp_gw_register(device.gw, at_cmd_vgs, "+VGS", NULL, NULL);
 	hfp_gw_register(device.gw, at_cmd_vgm, "+VGM", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_bsir, "+BSIR", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_btrh, "+BTRH", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_bcc, "+BCC", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_bcs, "+BCS", NULL, NULL);
 }
 
 static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -496,11 +693,33 @@ static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
 
+static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_bac(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+							void *user_data)
+{
+	DBG("");
+
+	/* TODO */
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
 static void register_slc_at(void)
 {
 	hfp_gw_register(device.gw, at_cmd_brsf, "+BRSF", NULL, NULL);
 	hfp_gw_register(device.gw, at_cmd_cind, "+CIND", NULL, NULL);
 	hfp_gw_register(device.gw, at_cmd_cmer, "+CMER", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_chld, "+CHLD", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_bac, "+BAC", NULL, NULL);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
