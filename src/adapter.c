@@ -5558,7 +5558,7 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 	g_key_file_set_integer(key_file, group, "EncSize", enc_size);
 
 	g_key_file_set_integer(key_file, group, "EDiv", ediv);
-	g_key_file_set_int64(key_file, group, "Rand", rand);
+	g_key_file_set_uint64(key_file, group, "Rand", rand);
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
