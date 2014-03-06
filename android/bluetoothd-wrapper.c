@@ -22,7 +22,7 @@
 
 #include <cutils/properties.h>
 
-#define PROPERTY_NAME "persist.sys.bluetooth.valgrind"
+#define PROPERTY_VALGRIND_NAME "persist.sys.bluetooth.valgrind"
 
 #define VALGRIND_BIN "/system/bin/valgrind"
 
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 {
 	char value[PROPERTY_VALUE_MAX];
 
-	if (property_get(PROPERTY_NAME, value, "") > 0 &&
+	if (property_get(PROPERTY_VALGRIND_NAME, value, "") > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0))
 		run_valgrind();
 
