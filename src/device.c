@@ -3953,7 +3953,7 @@ void device_set_paired(struct btd_device *dev, uint8_t bdaddr_type)
 	if (state->paired)
 		return;
 
-	if (state->paired && !state->svc_resolved)
+	if (!state->svc_resolved)
 		dev->pending_paired = true;
 	else if (dev->bredr_state.paired != dev->le_state.paired)
 		g_dbus_emit_property_changed(dbus_conn, dev->path,
