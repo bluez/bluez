@@ -4001,7 +4001,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	if (state->paired)
 		return;
 
-	device_set_paired(device, TRUE);
+	device_set_paired(device, bdaddr_type);
 
 	/* If services are already resolved just reply to the pairing
 	 * request
