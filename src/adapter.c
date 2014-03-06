@@ -27,6 +27,7 @@
 #endif
 
 #include <stdio.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -51,6 +52,7 @@
 #include "lib/uuid.h"
 #include "lib/mgmt.h"
 #include "src/shared/mgmt.h"
+#include "src/shared/util.h"
 
 #include "hcid.h"
 #include "sdpd.h"
@@ -118,7 +120,7 @@ struct smp_ltk_info {
 	bool master;
 	uint8_t enc_size;
 	uint16_t ediv;
-	uint8_t rand[8];
+	uint64_t rand;
 	uint8_t val[16];
 };
 
@@ -2286,7 +2288,7 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 		goto failed;
 
 	rand = g_key_file_get_string(key_file, group, "Rand", NULL);
-	if (!rand || strlen(rand) != 18)
+	if (!rand)
 		goto failed;
 
 	ltk = g_new0(struct smp_ltk_info, 1);
@@ -2319,7 +2321,13 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 	else
 		str2buf(&key[0], ltk->val, sizeof(ltk->val));
 
-	str2buf(&rand[2], ltk->rand, sizeof(ltk->rand));
+	if (!strncmp(rand, "0x", 2)) {
+		uint64_t rand_le;
+		str2buf(&rand[2], (uint8_t *) &rand_le, sizeof(rand_le));
+		ltk->rand = le64_to_cpu(rand_le);
+	} else {
+		sscanf(rand, "%" PRIu64, &ltk->rand);
+	}
 
 	ltk->authenticated = g_key_file_get_integer(key_file, group,
 							"Authenticated", NULL);
@@ -2536,8 +2544,8 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 		bacpy(&key->addr.bdaddr, &info->bdaddr);
 		key->addr.type = info->bdaddr_type;
 		memcpy(key->val, info->val, sizeof(info->val));
-		memcpy(key->rand, info->rand, sizeof(info->rand));
-		memcpy(&key->ediv, &info->ediv, sizeof(key->ediv));
+		key->rand = cpu_to_le64(info->rand);
+		key->ediv = cpu_to_le16(info->ediv);
 		key->type = info->authenticated;
 		key->master = info->master;
 		key->enc_size = info->enc_size;
@@ -5515,7 +5523,7 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t bdaddr_type, const unsigned char *key,
 				uint8_t master, uint8_t authenticated,
 				uint8_t enc_size, uint16_t ediv,
-				const uint8_t rand[8])
+				uint64_t rand)
 {
 	const char *group = master ? "LongTermKey" : "SlaveLongTermKey";
 	char adapter_addr[18];
@@ -5523,7 +5531,6 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
 	char key_str[33];
-	char rand_str[19];
 	gsize length = 0;
 	char *str;
 	int i;
@@ -5549,14 +5556,9 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 	g_key_file_set_integer(key_file, group, "Authenticated",
 							authenticated);
 	g_key_file_set_integer(key_file, group, "EncSize", enc_size);
+
 	g_key_file_set_integer(key_file, group, "EDiv", ediv);
-
-	rand_str[0] = '0';
-	rand_str[1] = 'x';
-	for (i = 0; i < 8; i++)
-		sprintf(rand_str + 2 + (i * 2), "%2.2X", rand[i]);
-
-	g_key_file_set_string(key_file, group, "Rand", rand_str);
+	g_key_file_set_int64(key_file, group, "Rand", rand);
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
@@ -5613,11 +5615,15 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 	if (persistent) {
 		const struct mgmt_ltk_info *key = &ev->key;
 		const bdaddr_t *bdaddr = btd_adapter_get_address(adapter);
+		uint16_t ediv;
+		uint64_t rand;
+
+		ediv = le16_to_cpu(key->ediv);
+		rand = le64_to_cpu(key->rand);
 
 		store_longtermkey(bdaddr, &key->addr.bdaddr,
 					key->addr.type, key->val, key->master,
-					key->type, key->enc_size,
-					key->ediv, key->rand);
+					key->type, key->enc_size, ediv, rand);
 
 		device_set_bonded(device, addr->type);
 
