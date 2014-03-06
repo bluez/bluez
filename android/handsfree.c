@@ -72,6 +72,8 @@
 			HFP_AG_FEAT_VR | HFP_AG_FEAT_REJ_CALL |\
 			HFP_AG_FEAT_ECS | HFP_AG_FEAT_EXT_ERR )
 
+#define HFP_AG_CHLD_STR "0,1,2,3"
+
 /* offsets in indicators table, should be incremented when sending CIEV */
 #define IND_SERVICE	0
 #define IND_CALL	1
@@ -680,11 +682,13 @@ static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		device.indicators_enabled = val;
 
-		/* TODO Check for 3-way calling support */
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		if (device.features & HFP_HF_FEAT_3WAY)
+			return;
+
 		register_post_slc_at();
 		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED);
-
-		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
@@ -777,9 +781,39 @@ static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	struct hal_ev_handsfree_chld ev;
+	unsigned int val;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val > 3)
+			break;
+
+		/* No ECC support */
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		/* value match HAL type */
+		ev.chld = val;
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_EV_HANDSFREE_CHLD, sizeof(ev), &ev);
+
+		return;
+	case HFP_GW_CMD_TYPE_TEST:
+		hfp_gw_send_info(device.gw, "+CHLD=%s", HFP_AG_CHLD_STR);
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		register_post_slc_at();
+		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
