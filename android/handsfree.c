@@ -108,6 +108,7 @@ static struct {
 	uint8_t state;
 	uint8_t audio_state;
 	uint32_t features;
+	bool cmee_enabled;
 	bool indicators_enabled;
 	struct indicator inds[IND_COUNT];
 	bool hsp;
@@ -443,9 +444,28 @@ static void at_cmd_clcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_cmee(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	unsigned int val;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		device.cmee_enabled = val;
+
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
@@ -1479,10 +1499,10 @@ static void handle_at_resp(const void *buf, uint16_t len)
 
 	DBG("");
 
-	/* TODO handle +CME ERROR when AT+CMEE support is added */
-
 	if (cmd->response == HAL_HANDSFREE_AT_RESPONSE_OK)
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+	else if (device.cmee_enabled)
+		hfp_gw_send_error(device.gw, cmd->error);
 	else
 		hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 
