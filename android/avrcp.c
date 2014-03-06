@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <stdbool.h>
 #include <errno.h>
 #include <glib.h>
@@ -817,15 +818,22 @@ static void search_cb(sdp_list_t *recs, int err, gpointer data)
 
 	for (list = recs; list; list = list->next) {
 		sdp_record_t *rec = list->data;
-		sdp_data_t *data;
+		sdp_list_t *l;
+		sdp_profile_desc_t *desc;
+		int features;
 
-		data = sdp_data_get(rec, SDP_ATTR_VERSION);
-		if (data)
-			dev->version = data->val.uint16;
+		if (sdp_get_profile_descs(rec, &l) < 0)
+			continue;
 
-		data = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES);
-		if (data)
-			dev->features = data->val.uint16;
+		desc = l->data;
+		dev->version = desc->version;
+
+		if (sdp_get_int_attr(rec, SDP_ATTR_SUPPORTED_FEATURES,
+							&features) == 0)
+			dev->features = features;
+
+		sdp_list_free(l, free);
+		break;
 	}
 
 	if (dev->io) {
