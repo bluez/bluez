@@ -116,6 +116,19 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 							proxy_path_cmp);
 }
 
+static void proxy_removed(GDBusProxy *proxy, void *user_data)
+{
+	struct external_app *eapp = user_data;
+	const char *interface, *path;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+	path = g_dbus_proxy_get_path(proxy);
+
+	DBG("path %s iface %s", path, interface);
+
+	eapp->proxies = g_slist_remove(eapp->proxies, proxy);
+}
+
 static struct external_app *new_external_app(DBusConnection *conn,
 					const char *sender, const char *path)
 {
@@ -140,8 +153,8 @@ static struct external_app *new_external_app(DBusConnection *conn,
 	eapp->client = client;
 	eapp->path = g_strdup(path);
 
-	g_dbus_client_set_proxy_handlers(client, proxy_added, NULL, NULL,
-								eapp);
+	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
+								NULL, eapp);
 
 	return eapp;
 }
