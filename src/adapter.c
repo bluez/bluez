@@ -2284,7 +2284,7 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 	char *rand = NULL;
 
 	key = g_key_file_get_string(key_file, group, "Key", NULL);
-	if (!key || strlen(key) != 34)
+	if (!key || strlen(key) < 32)
 		goto failed;
 
 	rand = g_key_file_get_string(key_file, group, "Rand", NULL);
