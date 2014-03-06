@@ -393,3 +393,8 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/test-heartrate test/test-alert test/test-hfp \
 		test/test-cyclingspeed test/opp-client test/ftp-client \
 		test/pbap-client test/map-client
+
+noinst_PROGRAMS += test/gatt-service
+
+test_gatt_service_SOURCES = test/gatt-service.c
+test_gatt_service_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ gdbus/libgdbus-internal.la
