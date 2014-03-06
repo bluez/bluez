@@ -348,6 +348,7 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
+	struct btd_adapter *adapter = device_get_adapter(hogdev->device);
 	uint8_t value[HOG_REPORT_MAP_MAX_SIZE];
 	struct uhid_event ev;
 	uint16_t vendor_src, vendor, product, version;
@@ -397,6 +398,8 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 						sizeof(ev.u.create.name));
 	else
 		strcpy((char *) ev.u.create.name, "bluez-hog-device");
+	ba2str(btd_adapter_get_address(adapter), (char *) ev.u.create.phys);
+	ba2str(device_get_address(hogdev->device), (char *) ev.u.create.uniq);
 	ev.u.create.vendor = vendor;
 	ev.u.create.product = product;
 	ev.u.create.version = version;
