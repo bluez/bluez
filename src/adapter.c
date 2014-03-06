@@ -2742,12 +2742,14 @@ static void load_devices(struct btd_adapter *adapter)
 			device_probe_profiles(device, list);
 
 device_exist:
-		if (key_info || ltk_info) {
-			device_set_paired(device, TRUE);
-			if (key_info)
-				device_set_bonded(device, BDADDR_BREDR);
-			if (ltk_info)
-				device_set_bonded(device, bdaddr_type);
+		if (key_info) {
+			device_set_paired(device, BDADDR_BREDR);
+			device_set_bonded(device, BDADDR_BREDR);
+		}
+
+		if (ltk_info) {
+			device_set_paired(device, bdaddr_type);
+			device_set_bonded(device, bdaddr_type);
 		}
 
 free:
