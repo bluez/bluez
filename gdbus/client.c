@@ -56,6 +56,8 @@ struct GDBusClient {
 	void *signal_data;
 	GDBusProxyFunction proxy_added;
 	GDBusProxyFunction proxy_removed;
+	GDBusClientFunction ready;
+	void *ready_data;
 	GDBusPropertyFunction property_changed;
 	void *user_data;
 	GList *proxy_list;
@@ -982,6 +984,9 @@ static void parse_managed_objects(GDBusClient *client, DBusMessage *msg)
 
 		dbus_message_iter_next(&dict);
 	}
+
+	if (client->ready)
+		client->ready(client, client->ready_data);
 }
 
 static void get_managed_objects_reply(DBusPendingCall *call, void *user_data)
@@ -1239,6 +1244,18 @@ gboolean g_dbus_client_set_signal_watch(GDBusClient *client,
 
 	client->signal_func = function;
 	client->signal_data = user_data;
+
+	return TRUE;
+}
+
+gboolean g_dbus_client_set_ready_watch(GDBusClient *client,
+				GDBusClientFunction ready, void *user_data)
+{
+	if (client == NULL)
+		return FALSE;
+
+	client->ready = ready;
+	client->ready_data = user_data;
 
 	return TRUE;
 }

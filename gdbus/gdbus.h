@@ -337,6 +337,7 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 				GDBusReturnFunction function, void *user_data,
 				GDBusDestroyFunction destroy);
 
+typedef void (* GDBusClientFunction) (GDBusClient *client, void *user_data);
 typedef void (* GDBusProxyFunction) (GDBusProxy *proxy, void *user_data);
 typedef void (* GDBusPropertyFunction) (GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data);
@@ -359,7 +360,8 @@ gboolean g_dbus_client_set_disconnect_watch(GDBusClient *client,
 				GDBusWatchFunction function, void *user_data);
 gboolean g_dbus_client_set_signal_watch(GDBusClient *client,
 				GDBusMessageFunction function, void *user_data);
-
+gboolean g_dbus_client_set_ready_watch(GDBusClient *client,
+				GDBusClientFunction ready, void *user_data);
 gboolean g_dbus_client_set_proxy_handlers(GDBusClient *client,
 					GDBusProxyFunction proxy_added,
 					GDBusProxyFunction proxy_removed,
