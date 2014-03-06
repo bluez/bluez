@@ -1158,11 +1158,9 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, bool confirm,
 					const uint8_t *data, uint8_t data_len)
 {
-	uint8_t buf[IPC_MTU];
 	struct eir_data eir;
 	struct device *dev;
 
-	memset(buf, 0, sizeof(buf));
 	memset(&eir, 0, sizeof(eir));
 
 	eir_parse(&eir, data, data_len);
