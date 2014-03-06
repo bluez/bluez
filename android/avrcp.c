@@ -442,8 +442,10 @@ static void avrcp_device_free(void *data)
 {
 	struct avrcp_device *dev = data;
 
-	g_queue_foreach(dev->queue, (GFunc) g_free, NULL);
-	g_queue_free(dev->queue);
+	if (dev->queue) {
+		g_queue_foreach(dev->queue, (GFunc) g_free, NULL);
+		g_queue_free(dev->queue);
+	}
 
 	if (dev->session)
 		avrcp_shutdown(dev->session);
