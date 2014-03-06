@@ -124,3 +124,5 @@ android/android-tester
 android/ipc-tester
 android/bluetoothd-snoop
 android/test-ipc
+android/test-*.log
+android/test-*.trs
