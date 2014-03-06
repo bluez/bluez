@@ -344,12 +344,15 @@ static guint setup_signalfd(void)
 
 static gboolean option_version = FALSE;
 static gint option_index = -1;
+static gboolean option_dbg = FALSE;
 
 static GOptionEntry options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit", NULL },
 	{ "index", 'i', 0, G_OPTION_ARG_INT, &option_index,
 				"Use specified controller", "INDEX"},
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_dbg,
+				"Enable debug logs", NULL},
 	{ NULL }
 };
 
@@ -473,7 +476,10 @@ int main(int argc, char *argv[])
 	if (!signal)
 		return EXIT_FAILURE;
 
-	__btd_log_init("*", 0);
+	if (option_dbg)
+		__btd_log_init("*", 0);
+	else
+		__btd_log_init(NULL, 0);
 
 	if (!set_capabilities()) {
 		__btd_log_cleanup();

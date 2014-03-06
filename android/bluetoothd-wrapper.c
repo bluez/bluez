@@ -24,6 +24,8 @@
 
 #define PROPERTY_VALGRIND_NAME "persist.sys.bluetooth.valgrind"
 
+#define PROPERTY_DEBUG_NAME "persist.sys.bluetooth.debug"
+
 #define VALGRIND_BIN "/system/bin/valgrind"
 
 #define BLUETOOTHD_BIN "/system/bin/bluetoothd-main"
@@ -45,13 +47,14 @@ static void run_valgrind(void)
 	execve(prg_argv[0], prg_argv, prg_envp);
 }
 
-static void run_bluetoothd(void)
+static void run_bluetoothd(int debug)
 {
-	char *prg_argv[2];
+	char *prg_argv[3];
 	char *prg_envp[1];
 
 	prg_argv[0] = BLUETOOTHD_BIN;
-	prg_argv[1] = NULL;
+	prg_argv[1] = debug ? "-d" : NULL;
+	prg_argv[2] = NULL;
 
 	prg_envp[0] = NULL;
 
@@ -61,16 +64,20 @@ static void run_bluetoothd(void)
 int main(int argc, char *argv[])
 {
 	char value[PROPERTY_VALUE_MAX];
+	int debug = 0;
 
 	if (property_get(PROPERTY_VALGRIND_NAME, value, "") > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0))
 		run_valgrind();
 
+	if (property_get(PROPERTY_DEBUG_NAME, value, "") > 0 &&
+			(!strcasecmp(value, "true") || atoi(value) > 0))
+			debug = 1;
+
 	/* In case we failed to execute Valgrind, try to run bluetoothd
 	 * without it
 	 */
-
-	run_bluetoothd();
+	run_bluetoothd(debug);
 
 	return 0;
 }

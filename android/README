@@ -130,6 +130,17 @@ will break at e.g. g_free() function without prior callers. It's possible to
 have proper library installed automatically by appropriate entry in Android.mk,
 see https://code.google.com/p/aosp-bluez.glib/ for an example.
 
+Enabling BlueZ debugs
+==============================
+
+BlueZ debug logs can be enabled in runtime by setting "persist.sys.bluetooth.debug"
+property to either literal "true" or any numeric value >0. For example:
+adb root
+adb shell setprop persist.sys.bluetooth.debug 1
+
+After changing property value Bluetooth needs to be restarted to apply changes.
+
+Note: Debugs are only available on NON USER build variants
 =============================
 Building and running on Linux
 =============================
