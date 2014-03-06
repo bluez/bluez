@@ -78,7 +78,6 @@ struct input_device {
 	struct hidp_connadd_req *req;
 	guint			dc_id;
 	bool			disable_sdp;
-	char			*name;
 	enum reconnect_mode_t	reconnect_mode;
 	guint			reconnect_timer;
 	uint32_t		reconnect_attempt;
@@ -100,7 +99,6 @@ static void input_device_free(struct input_device *idev)
 
 	btd_service_unref(idev->service);
 	btd_device_unref(idev->device);
-	g_free(idev->name);
 	g_free(idev->path);
 
 	if (idev->ctrl_watch > 0)
@@ -420,8 +418,8 @@ static int hidp_add_connection(struct input_device *idev)
 	req->product = btd_device_get_product(idev->device);
 	req->version = btd_device_get_version(idev->device);
 
-	if (idev->name)
-		strncpy(req->name, idev->name, sizeof(req->name) - 1);
+	if (device_name_known(idev->device))
+		device_get_name(idev->device, req->name, sizeof(req->name));
 
 	/* Encryption is mandatory for keyboards */
 	if (req->subclass & 0x40) {
@@ -808,7 +806,6 @@ static struct input_device *input_device_new(struct btd_service *service)
 	const sdp_record_t *rec = btd_device_get_record(device, p->remote_uuid);
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
-	char name[HCI_MAX_NAME_LENGTH + 1];
 
 	if (!rec)
 		return NULL;
@@ -821,10 +818,6 @@ static struct input_device *input_device_new(struct btd_service *service)
 	idev->path = g_strdup(path);
 	idev->handle = rec->handle;
 	idev->disable_sdp = is_device_sdp_disable(rec);
-
-	device_get_name(device, name, sizeof(name));
-	if (strlen(name) > 0)
-		idev->name = g_strdup(name);
 
 	/* Initialize device properties */
 	extract_hid_props(idev, rec);
