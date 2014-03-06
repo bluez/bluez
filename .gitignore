@@ -72,11 +72,11 @@ tools/btproxy
 tools/btinfo
 tools/3dsp
 tools/obexctl
+tools/gatt-service
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-ringbuf
 unit/test-queue
-test/gatt-service
 unit/test-eir
 unit/test-uuid
 unit/test-crc

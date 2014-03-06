@@ -358,6 +358,11 @@ tools_obexctl_LDADD = gdbus/libgdbus-internal.la \
 endif
 
 if EXPERIMENTAL
+noinst_PROGRAMS += tools/gatt-service
+
+tools_gatt_service_SOURCES = tools/gatt-service.c
+tools_gatt_service_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ gdbus/libgdbus-internal.la
+
 noinst_PROGRAMS += profiles/iap/iapd
 
 profiles_iap_iapd_SOURCES = profiles/iap/main.c
@@ -393,8 +398,3 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/test-heartrate test/test-alert test/test-hfp \
 		test/test-cyclingspeed test/opp-client test/ftp-client \
 		test/pbap-client test/map-client
-
-noinst_PROGRAMS += test/gatt-service
-
-test_gatt_service_SOURCES = test/gatt-service.c
-test_gatt_service_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ gdbus/libgdbus-internal.la
