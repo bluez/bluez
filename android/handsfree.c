@@ -259,6 +259,7 @@ static void at_cmd_vgm(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 				HAL_EV_HANDSFREE_VOLUME, sizeof(ev), &ev);
 
+		/* Framework is not replying with result for AT+VGM */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 		return;
@@ -293,6 +294,7 @@ static void at_cmd_vgs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 				HAL_EV_HANDSFREE_VOLUME, sizeof(ev), &ev);
 
+		/* Framework is not replying with result for AT+VGS */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 		return;
