@@ -655,11 +655,23 @@ static ssize_t handle_get_element_attrs_cmd(struct avrcp *session,
 		return -EINVAL;
 
 	params += 9;
+
+	/* Set everything in case of empty list */
+	if (ev->number == 0) {
+		for (i = 0; i < HAL_AVRCP_MEDIA_ATTR_DURATION; i++) {
+			/* Skip 0x00 as the attributes start with 0x01 */
+			ev->attrs[i] = i + 1;
+		}
+		ev->number = i;
+		goto done;
+	}
+
 	for (i = 0; i < ev->number; i++) {
 		ev->attrs[i] = bt_get_be32(params);
 		params += 4;
 	}
 
+done:
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,
 					HAL_EV_AVRCP_GET_ELEMENT_ATTRS,
 					sizeof(*ev) + ev->number, ev);
