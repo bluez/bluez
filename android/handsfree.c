@@ -483,9 +483,38 @@ static void at_cmd_clip(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	struct hal_ev_handsfree_dtmf ev;
+	char str[2];
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_unquoted_string(result, str, 2))
+			break;
+
+		if (!((str[0] >= '0' && str[0] <='9') ||
+				(str[0] >= 'A' && str[0] <= 'D') ||
+				str[0] == '*' || str[0] == '#'))
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		ev.tone = str[0];
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_EV_HANDSFREE_DTMF, sizeof(ev), &ev);
+
+		/* Framework is not replying with result for AT+VTS */
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
