@@ -91,8 +91,13 @@ static void handle_dial(void *buf, uint16_t len)
 		exit(EXIT_FAILURE);
 	}
 
-	if (cbs->dial_call_cmd_cb)
+	if (!cbs->dial_call_cmd_cb)
+		return;
+
+	if (ev->number_len)
 		cbs->dial_call_cmd_cb((char *) ev->number);
+	else
+		cbs->dial_call_cmd_cb(NULL);
 }
 
 static void handle_dtmf(void *buf, uint16_t len)
