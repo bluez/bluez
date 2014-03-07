@@ -311,7 +311,7 @@ static void at_cmd_cops(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		if (!hfp_gw_result_get_number(result, &val) || val != 3)
 			break;
 
-		if (!hfp_gw_result_get_number(result, &val) || val != 1)
+		if (!hfp_gw_result_get_number(result, &val) || val != 0)
 			break;
 
 		if (hfp_gw_result_has_next(result))
