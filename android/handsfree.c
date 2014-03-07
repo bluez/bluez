@@ -407,9 +407,41 @@ static void at_cmd_a(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	char buf[IPC_MTU];
+	struct hal_ev_handsfree_dial *ev = (void*) buf;
+	int cnt;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_unquoted_string(result,
+						(char *) ev->number, 255))
+			break;
+
+		ev->number_len = strlen((char *) ev->number);
+
+		if (ev->number[ev->number_len - 1] != ';')
+			break;
+
+		if (ev->number[0] == '>')
+			cnt = strspn((char *) ev->number + 1, "0123456789") + 1;
+		else
+			cnt = strspn((char *) ev->number, "0123456789ABC*#+");
+
+		if (cnt != ev->number_len - 1)
+			break;
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_EV_HANDSFREE_DIAL,
+					sizeof(*ev) + ev->number_len, ev);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
