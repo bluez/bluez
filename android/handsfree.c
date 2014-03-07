@@ -603,11 +603,26 @@ static void at_cmd_binp(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	struct hal_ev_handsfree_dial ev;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_COMMAND:
+		if (hfp_gw_result_has_next(result))
+			break;
 
-	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+		ev.number_len = 0;
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_EV_HANDSFREE_DIAL, sizeof(ev), &ev);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_SET:
+		break;
+	}
 }
 
 static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
