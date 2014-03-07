@@ -463,7 +463,6 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	hfp_gw_set_command_handler(device.gw, at_command_handler, NULL, NULL);
 	hfp_gw_set_disconnect_handler(device.gw, disconnect_watch, NULL, NULL);
 
-
 	if (device.hsp) {
 		register_post_slc_at();
 		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_CONNECTED);
