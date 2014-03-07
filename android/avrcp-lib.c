@@ -334,6 +334,21 @@ int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
 				func, user_data);
 }
 
+int avrcp_register_notification(struct avrcp *session, uint8_t event,
+					uint32_t interval, avctp_rsp_cb func,
+					void *user_data)
+{
+	uint8_t params[5];
+
+	params[0] = event;
+	bt_put_be32(interval, &params[1]);
+
+	return avrcp_send_req(session, AVC_CTYPE_NOTIFY, AVC_SUBUNIT_PANEL,
+					AVRCP_REGISTER_NOTIFICATION,
+					params, sizeof(params),
+					func, user_data);
+}
+
 int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,
 								void *user_data)
 {

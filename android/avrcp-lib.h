@@ -132,6 +132,9 @@ int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
 					uint8_t *params, size_t params_len);
 int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
 					avctp_rsp_cb func, void *user_data);
+int avrcp_register_notification(struct avrcp *session, uint8_t event,
+					uint32_t interval, avctp_rsp_cb func,
+					void *user_data);
 int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,
 							void *user_data);
 int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,
