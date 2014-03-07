@@ -1218,7 +1218,7 @@ static bool enable_hfp_ag(void)
 	if (!hfp_server) {
 		error("Failed to listen on Handsfree rfcomm: %s", err->message);
 		g_error_free(err);
-		goto failed;
+		return false;
 	}
 
 	rec = hfp_ag_record();
