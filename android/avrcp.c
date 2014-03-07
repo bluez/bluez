@@ -332,10 +332,35 @@ done:
 
 static void handle_set_volume(const void *buf, uint16_t len)
 {
+	struct hal_cmd_avrcp_set_volume *cmd = (void *) buf;
+	struct avrcp_device *dev;
+	uint8_t status;
+	int ret;
+
 	DBG("");
 
+	if (!devices) {
+		error("AVRCP: No device found to set volume");
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	/* Peek the first device since the HAL cannot really address a specific
+	 * device it might mean there could only be one connected.
+	 */
+	dev = devices->data;
+
+	ret = avrcp_set_volume(dev->session, cmd->value & 0x7f, NULL, NULL);
+	if (ret < 0) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	status = HAL_STATUS_SUCCESS;
+
+done:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_SET_VOLUME,
-							HAL_STATUS_FAILED);
+								status);
 }
 
 static const struct ipc_handler cmd_handlers[] = {
