@@ -743,7 +743,7 @@ static uint8_t set_connectable_off_adv_param[] = {
 		0x00, 0x08,				/* min_interval */
 		0x00, 0x08,				/* max_interval */
 		0x03,					/* type */
-		0x00,					/* own_addr_type */
+		0x01,					/* own_addr_type */
 		0x00,					/* direct_addr_type */
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* direct_addr */
 		0x07,					/* channel_map */
