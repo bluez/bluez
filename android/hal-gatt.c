@@ -838,15 +838,17 @@ static bt_status_t read_remote_rssi(int client_if, const bt_bdaddr_t *bd_addr)
 static int get_device_type(const bt_bdaddr_t *bd_addr)
 {
 	struct hal_cmd_gatt_client_get_device_type cmd;
-	uint8_t dev_type = 0;
+	uint8_t dev_type;
 	size_t resp_len = sizeof(dev_type);
+	bt_status_t status;
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
 
-	hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_GET_DEVICE_TYPE,
-			sizeof(cmd), &cmd, &resp_len, &dev_type, NULL);
+	status = hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+				HAL_OP_GATT_CLIENT_GET_DEVICE_TYPE,
+				sizeof(cmd), &cmd, &resp_len, &dev_type, NULL);
 
-	if (resp_len != sizeof(dev_type))
+	if (status != BT_STATUS_SUCCESS || resp_len != sizeof(dev_type))
 		return 0;
 
 	return dev_type;
