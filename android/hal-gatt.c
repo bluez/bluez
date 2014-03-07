@@ -109,8 +109,8 @@ static void handle_search_complete(void *buf, uint16_t len)
 static void handle_search_result(void *buf, uint16_t len)
 {
 	struct hal_ev_gatt_client_search_result *ev = buf;
-
 	btgatt_srvc_id_t srvc_id;
+
 	srvc_id_from_hal(&srvc_id, &ev->srvc_id);
 
 	if (cbs->client->search_result_cb)
@@ -429,7 +429,6 @@ static void handle_request_exec_write(void *buf, uint16_t len)
 		cbs->server->request_exec_write_cb(ev->conn_id, ev->trans_id,
 						(bt_bdaddr_t *) ev->bdaddr,
 						ev->exec_write);
-
 }
 
 static void handle_response_confirmation(void *buf, uint16_t len)
