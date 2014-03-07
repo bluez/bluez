@@ -744,8 +744,6 @@ static bt_status_t read_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_READ_DESCRIPTOR,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
-
-	return BT_STATUS_UNSUPPORTED;
 }
 
 static bt_status_t write_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
