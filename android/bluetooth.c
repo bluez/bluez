@@ -2414,6 +2414,9 @@ static bool start_discovery(void)
 	else
 		cp.type = 0;
 
+	if (adapter.current_settings & MGMT_SETTING_LE)
+		cp.type |= (1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM);
+
 	DBG("type=0x%x", cp.type);
 
 	if (mgmt_send(mgmt_if, MGMT_OP_START_DISCOVERY, adapter.index,
@@ -2432,6 +2435,9 @@ static bool stop_discovery(void)
 		cp.type = 1 << BDADDR_BREDR;
 	else
 		cp.type = 0;
+
+	if (adapter.current_settings & MGMT_SETTING_LE)
+		cp.type |= (1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM);
 
 	DBG("type=0x%x", cp.type);
 
