@@ -837,12 +837,53 @@ static void connect_sco_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	device_set_audio_state(HAL_EV_HANDSFREE_AUDIO_STATE_CONNECTED);
 }
 
+static bool connect_sco(void)
+{
+	GIOChannel *io;
+	GError *gerr = NULL;
+
+	if (device.sco)
+		return false;
+
+	io = bt_io_connect(connect_sco_cb, NULL, NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
+				BT_IO_OPT_DEST_BDADDR, &device.bdaddr,
+				BT_IO_OPT_INVALID);
+
+	if (!io) {
+		error("SCO: unable to connect: %s", gerr->message);
+		g_error_free(gerr);
+		return false;
+	}
+
+	g_io_channel_unref(io);
+
+	device_set_audio_state(HAL_EV_HANDSFREE_AUDIO_STATE_CONNECTING);
+
+	return true;
+}
+
 static void handle_connect_audio(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_handsfree_connect_audio *cmd = buf;
+	bdaddr_t bdaddr;
+	uint8_t status;
+
 	DBG("");
 
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+
+	if (device.audio_state != HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED ||
+			bacmp(&device.bdaddr, &bdaddr)) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	status = connect_sco() ? HAL_STATUS_SUCCESS : HAL_STATUS_FAILED;
+
+done:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-			HAL_OP_HANDSFREE_CONNECT_AUDIO, HAL_STATUS_FAILED);
+				HAL_OP_HANDSFREE_CONNECT_AUDIO, status);
 }
 
 static void handle_disconnect_audio(const void *buf, uint16_t len)
