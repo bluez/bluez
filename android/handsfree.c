@@ -110,6 +110,7 @@ static struct {
 	uint8_t state;
 	uint8_t audio_state;
 	uint32_t features;
+	bool clip_enabled;
 	bool cmee_enabled;
 	bool indicators_enabled;
 	struct indicator inds[IND_COUNT];
@@ -540,9 +541,28 @@ static void at_cmd_cmee(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_clip(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	unsigned int val;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		device.clip_enabled = val;
+
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
@@ -1719,7 +1739,12 @@ done:
 
 static gboolean ring_cb(gpointer user_data)
 {
+	char *clip = user_data;
+
 	hfp_gw_send_info(device.gw, "+RING");
+
+	if (device.clip_enabled && clip)
+		hfp_gw_send_info(device.gw, "%s", clip);
 
 	return TRUE;
 }
@@ -1747,11 +1772,29 @@ static void phone_state_alerting(int num_active, int num_held)
 static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 					const uint8_t *number, uint16_t len)
 {
+	char *clip = NULL;
+
 	update_indicator(IND_CALLSETUP, 1);
+
+	if (len) {
+		if (type == HAL_HANDSFREE_CALL_ADDRTYPE_INTERNATIONAL &&
+							number[0] != '+')
+			clip = g_strdup_printf("+CLIP: \"+%.*s\",%u",
+							len, number, type );
+		else
+			clip = g_strdup_printf("+CLIP: \"%.*s\",%u",
+							len, number, type );
+	}
+
+	/* send first +RING */
+	ring_cb(clip);
 
 	device.ring = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT,
 							RING_TIMEOUT, ring_cb,
-							NULL, NULL);
+							clip, g_free);
+
+	if (!device.ring)
+		g_free(clip);
 }
 
 static void phone_state_waiting(int num_active, int num_held, uint8_t type,
