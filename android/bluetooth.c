@@ -2408,14 +2408,13 @@ static void get_adapter_properties(void)
 static bool start_discovery(void)
 {
 	struct mgmt_cp_start_discovery cp;
-	uint8_t type = 1 << BDADDR_BREDR;
 
-	if (adapter.current_settings & type)
-		cp.type = type;
+	if (adapter.current_settings & MGMT_SETTING_BREDR)
+		cp.type = 1 << BDADDR_BREDR;
 	else
 		cp.type = 0;
 
-	DBG("type=0x%x", type);
+	DBG("type=0x%x", cp.type);
 
 	if (mgmt_send(mgmt_if, MGMT_OP_START_DISCOVERY, adapter.index,
 					sizeof(cp), &cp, NULL, NULL, NULL) > 0)
@@ -2428,14 +2427,13 @@ static bool start_discovery(void)
 static bool stop_discovery(void)
 {
 	struct mgmt_cp_stop_discovery cp;
-	uint8_t type = 1 << BDADDR_BREDR;
 
-	if (adapter.current_settings & type)
-		cp.type = type;
+	if (adapter.current_settings & MGMT_SETTING_BREDR)
+		cp.type = 1 << BDADDR_BREDR;
 	else
 		cp.type = 0;
 
-	DBG("type=0x%x", type);
+	DBG("type=0x%x", cp.type);
 
 	if (mgmt_send(mgmt_if, MGMT_OP_STOP_DISCOVERY, adapter.index,
 					sizeof(cp), &cp, NULL, NULL, NULL) > 0)
