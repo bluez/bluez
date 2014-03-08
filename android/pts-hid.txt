@@ -1,7 +1,7 @@
 PTS test results for HID
 
 PTS version: 4.9
-Tested: 14.11.2013
+Tested: 14-Nov-2013
 
 Results:
 PASS	test passed
