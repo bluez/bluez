@@ -155,8 +155,8 @@ static void disconnect_watch(void *user_data)
 	device_cleanup();
 }
 
-static void at_cmd_vgs_vgm(struct hfp_gw_result *result,
-				enum hfp_gw_cmd_type type, void *user_data)
+static void at_cmd_vgm(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+								void *user_data)
 {
 	struct hal_ev_handsfree_volume ev;
 	unsigned int val;
@@ -171,7 +171,41 @@ static void at_cmd_vgs_vgm(struct hfp_gw_result *result,
 		if (hfp_gw_result_has_next(result))
 			break;
 
-		ev.type = GPOINTER_TO_UINT(type);
+		ev.type = HAL_HANDSFREE_VOLUME_TYPE_MIC;
+		ev.volume = val;
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+				HAL_EV_HANDSFREE_VOLUME, sizeof(ev), &ev);
+
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
+}
+
+static void at_cmd_vgs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+								void *user_data)
+{
+	struct hal_ev_handsfree_volume ev;
+	unsigned int val;
+
+	DBG("");
+
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val > 15)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		ev.type = HAL_HANDSFREE_VOLUME_TYPE_SPEAKER;
 		ev.volume = val;
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
@@ -270,23 +304,15 @@ static void register_post_slc_at(void)
 {
 	if (device.hsp) {
 		/* TODO CKPD */
-		hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGS",
-				GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_SPEAKER),
-				NULL);
-		hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGM",
-				GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_MIC),
-				NULL);
+		hfp_gw_register(device.gw, at_cmd_vgs, "+VGS", NULL, NULL);
+		hfp_gw_register(device.gw, at_cmd_vgm, "+VGM", NULL, NULL);
 		return;
 	}
 
 	hfp_gw_register(device.gw, at_cmd_bia, "+BIA", NULL, NULL);
 	hfp_gw_register(device.gw, at_cmd_cops, "+COPS", NULL, NULL);
-	hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGS",
-			GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_SPEAKER),
-			NULL);
-	hfp_gw_register(device.gw, at_cmd_vgs_vgm, "+VGM",
-			GUINT_TO_POINTER(HAL_HANDSFREE_VOLUME_TYPE_MIC),
-			NULL);
+	hfp_gw_register(device.gw, at_cmd_vgs, "+VGS", NULL, NULL);
+	hfp_gw_register(device.gw, at_cmd_vgm, "+VGM", NULL, NULL);
 }
 
 static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
