@@ -898,7 +898,7 @@ Commands and responses:
 		                    Call mode (1 octet)
 		                    Call multiparty type (1 octet)
 		                    Call number type (1 octet)
-		                    Call number (variable)
+		                    Call number (string)
 		Response parameters: <none>
 
 		Valid call directions: 0x00 = Outgoing
@@ -930,7 +930,7 @@ Commands and responses:
 		                    Number of held calls (1 octet)
 		                    Call setup state (1 octet)
 		                    Call number type (1 octet)
-		                    Call number (variable)
+		                    Call number (string)
 		Response parameters: <none>
 
 		Valid call setup states: 0x00 = Active
