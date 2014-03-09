@@ -2207,3 +2207,44 @@ Event Parameters	Store_Hint (1 Octet)
 
 	The provided Address and Address_Type are the identity of
 	a device. So either its public address or static random address.
+
+
+New Signature Resolving Key Event
+=================================
+
+Event Code		0x0019
+Controller Index	<controller id>
+Event Parameters	Store_Hint (1 Octet)
+			Key {
+				Address (6 Octets)
+				Address_Type (1 Octet)
+				Master (1 Octet)
+				Value (16 Octets)
+			}
+
+	This event indicates that a new signature resolving key has been
+	generated for either the master or slave device.
+
+	The Store_Hint parameter indicates whether the host is expected
+	to store the key persistently or not.
+
+	When the Master parameter is set to 0x01, then the signature
+	resolving key from the remote peer device is provided. It is
+	the key that is used for signature verification.
+
+	When the Master parameter is set to 0x00, then it is the local
+	signature resolving key that is used to sign data. The remote
+	peer device will be using it for signature verification.
+
+	The local signature resolving key will be generated with each
+	pairing request. Only after receiving this event with Master
+	parameter set to 0x00 it is possible to use ATT Signed Write
+	procedures.
+
+	Possible values for the Address_Type parameter:
+		0	Reserved (not in use)
+		1	LE Public
+		2	LE Random
+
+	The provided Address and Address_Type are the identity of
+	a device. So either its public address or static random address.
