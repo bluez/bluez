@@ -519,6 +519,27 @@ static void mgmt_new_irk(uint16_t len, const void *buf)
 	packet_hexdump(buf, len);
 }
 
+static void mgmt_new_csrk(uint16_t len, const void *buf)
+{
+	const struct mgmt_ev_new_csrk *ev = buf;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed New CSRK control\n");
+		return;
+	}
+
+	ba2str(&ev->key.addr.bdaddr, addr);
+
+	printf("@ New CSRK: %s (%d) %s\n", addr, ev->key.addr.type,
+					ev->key.master ? "Master" : "Slave");
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	packet_hexdump(buf, len);
+}
+
 void control_message(uint16_t opcode, const void *data, uint16_t size)
 {
 	switch (opcode) {
@@ -587,6 +608,9 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		break;
 	case MGMT_EV_NEW_IRK:
 		mgmt_new_irk(size, data);
+		break;
+	case MGMT_EV_NEW_CSRK:
+		mgmt_new_csrk(size, data);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, size);
