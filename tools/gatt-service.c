@@ -49,6 +49,8 @@ static gboolean service_get_uuid(const GDBusPropertyTable *property,
 {
 	const char *uuid = user_data;
 
+	printf("Get UUID: %s\n", uuid);
+
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
 
 	return TRUE;
@@ -57,12 +59,20 @@ static gboolean service_get_uuid(const GDBusPropertyTable *property,
 static gboolean service_get_includes(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
+	const char *uuid = user_data;
+
+	printf("Get Includes: %s\n", uuid);
+
 	return TRUE;
 }
 
 static gboolean service_exist_includes(const GDBusPropertyTable *property,
 							void *user_data)
 {
+	const char *uuid = user_data;
+
+	printf("Exist Includes: %s\n", uuid);
+
 	return FALSE;
 }
 
