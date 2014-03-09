@@ -2470,6 +2470,14 @@ static bool start_discovery(void)
 	return false;
 }
 
+static void cancel_pending_confirm_name(gpointer data, gpointer user_data)
+{
+	struct device *dev = data;
+
+	mgmt_cancel(mgmt_if, dev->confirm_id);
+	dev->confirm_id = 0;
+}
+
 static bool stop_discovery(void)
 {
 	struct mgmt_cp_stop_discovery cp;
@@ -2483,6 +2491,9 @@ static bool stop_discovery(void)
 		cp.type |= (1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM);
 
 	DBG("type=0x%x", cp.type);
+
+	/* Lets drop all confirm name request as we don't need it anymore */
+	g_slist_foreach(cached_devices, cancel_pending_confirm_name, NULL);
 
 	if (mgmt_send(mgmt_if, MGMT_OP_STOP_DISCOVERY, adapter.index,
 					sizeof(cp), &cp, NULL, NULL, NULL) > 0)
