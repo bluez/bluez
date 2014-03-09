@@ -1013,9 +1013,9 @@ static void handle_device_status_notif(const void *buf, uint16_t len)
 static void handle_cops(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_handsfree_cops_response *cmd = buf;
-	char operator[17];
 
-	if (len != sizeof(*cmd) + cmd->len) {
+	if (len != sizeof(*cmd) + cmd->len ||
+			(cmd->len != 0 && cmd->buf[cmd->len - 1] != '\0')) {
 		error("Invalid cops response command, terminating");
 		raise(SIGTERM);
 		return;
@@ -1023,10 +1023,8 @@ static void handle_cops(const void *buf, uint16_t len)
 
 	DBG("");
 
-	memset(operator, 0, sizeof(operator));
-	memcpy(operator, cmd->buf, MIN(cmd->len, 16));
-
-	hfp_gw_send_info(device.gw, "+COPS: 0,0,\"%s\" ", operator);
+	hfp_gw_send_info(device.gw, "+COPS: 0,0,\"%.16s\"",
+					cmd->len ? (char *) cmd->buf : "");
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 

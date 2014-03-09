@@ -83,8 +83,10 @@ static void handle_volume(void *buf, uint16_t len)
 static void handle_dial(void *buf, uint16_t len)
 {
 	struct hal_ev_handsfree_dial *ev = buf;
+	uint16_t num_len = ev->number_len;
 
-	if (len != sizeof(*ev) + ev->number_len) {
+	if (len != sizeof(*ev) + num_len ||
+			(num_len != 0 && ev->number[num_len - 1] != '\0')) {
 		error("invalid dial event, aborting");
 		exit(EXIT_FAILURE);
 	}
@@ -145,7 +147,8 @@ static void handle_unknown_at(void *buf, uint16_t len)
 {
 	struct hal_ev_handsfree_unknown_at *ev = buf;
 
-	if (len != sizeof(*ev) + ev->len) {
+	if (len != sizeof(*ev) + ev->len ||
+			(ev->len != 0 && ev->buf[ev->len - 1] != '\0')) {
 		error("invalid unknown command event, aborting");
 		exit(EXIT_FAILURE);
 	}
@@ -387,7 +390,7 @@ static bt_status_t cops_response(const char *cops)
 	if (!cops)
 		return BT_STATUS_PARM_INVALID;
 
-	cmd->len = strlen(cops);
+	cmd->len = strlen(cops) + 1;
 	memcpy(cmd->buf, cops, cmd->len);
 
 	len = sizeof(*cmd) + cmd->len;
@@ -435,7 +438,7 @@ static bt_status_t formatted_at_response(const char *rsp)
 	if (!rsp)
 		return BT_STATUS_PARM_INVALID;
 
-	cmd->len = strlen(rsp);
+	cmd->len = strlen(rsp) + 1;
 	memcpy(cmd->buf, rsp, cmd->len);
 
 	len = sizeof(*cmd) + cmd->len;
@@ -486,7 +489,7 @@ static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
 	cmd->type = type;
 
 	if (number) {
-		cmd->number_len = strlen(number);
+		cmd->number_len = strlen(number) + 1;
 		memcpy(cmd->number, number, cmd->number_len);
 	} else {
 		cmd->number_len = 0;
@@ -519,7 +522,7 @@ static bt_status_t phone_state_change(int num_active, int num_held,
 	cmd->type = type;
 
 	if (number) {
-		cmd->number_len = strlen(number);
+		cmd->number_len = strlen(number) + 1;
 		memcpy(cmd->number, number, cmd->number_len);
 	} else {
 		cmd->number_len = 0;
