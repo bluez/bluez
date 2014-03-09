@@ -1061,7 +1061,7 @@ static unsigned int confirm_device_name(const bdaddr_t *addr, uint8_t addr_type,
 	if (!resolve_name)
 		cp.name_known = 1;
 
-	res = mgmt_reply(mgmt_if, MGMT_OP_CONFIRM_NAME, adapter.index,
+	res = mgmt_send(mgmt_if, MGMT_OP_CONFIRM_NAME, adapter.index,
 				sizeof(cp), &cp, confirm_device_name_cb,
 				NULL, NULL);
 	if (!res)
