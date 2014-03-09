@@ -330,6 +330,36 @@ done:
 			HAL_OP_AVRCP_REGISTER_NOTIFICATION, status);
 }
 
+static gboolean set_volume_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct hal_ev_avrcp_volume_changed ev;
+	uint8_t *params;
+
+	if (code != AVC_CTYPE_ACCEPTED) {
+		ev.volume = 0;
+		ev.type = code;
+		goto done;
+	}
+
+	if (operands == NULL || operand_count < 7)
+		return FALSE;
+
+	params = &operands[7];
+
+	ev.volume = params[0] & 0x7F;
+	ev.type = code;
+
+done:
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,
+					HAL_EV_AVRCP_VOLUME_CHANGED,
+					sizeof(ev), &ev);
+
+	return FALSE;
+}
+
 static void handle_set_volume(const void *buf, uint16_t len)
 {
 	struct hal_cmd_avrcp_set_volume *cmd = (void *) buf;
@@ -350,7 +380,8 @@ static void handle_set_volume(const void *buf, uint16_t len)
 	 */
 	dev = devices->data;
 
-	ret = avrcp_set_volume(dev->session, cmd->value & 0x7f, NULL, NULL);
+	ret = avrcp_set_volume(dev->session, cmd->value & 0x7f, set_volume_rsp,
+									dev);
 	if (ret < 0) {
 		status = HAL_STATUS_FAILED;
 		goto done;
