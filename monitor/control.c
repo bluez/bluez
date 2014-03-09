@@ -509,9 +509,9 @@ static void mgmt_new_irk(uint16_t len, const void *buf)
 	}
 
 	ba2str(&ev->rpa, rpa);
-	ba2str(&ev->irk.addr.bdaddr, addr);
+	ba2str(&ev->key.addr.bdaddr, addr);
 
-	printf("@ New IRK: %s (%d) %s\n", addr, ev->irk.addr.type, rpa);
+	printf("@ New IRK: %s (%d) %s\n", addr, ev->key.addr.type, rpa);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);

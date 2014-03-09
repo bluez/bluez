@@ -5681,8 +5681,8 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_ev_new_irk *ev = param;
-	const struct mgmt_addr_info *addr = &ev->irk.addr;
-	const struct mgmt_irk_info *irk = &ev->irk;
+	const struct mgmt_addr_info *addr = &ev->key.addr;
+	const struct mgmt_irk_info *irk = &ev->key;
 	struct btd_adapter *adapter = user_data;
 	struct btd_device *device, *duplicate;
 	bool persistent;

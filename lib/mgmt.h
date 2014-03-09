@@ -505,7 +505,7 @@ struct mgmt_ev_passkey_notify {
 struct mgmt_ev_new_irk {
 	uint8_t  store_hint;
 	bdaddr_t rpa;
-	struct mgmt_irk_info irk;
+	struct mgmt_irk_info key;
 } __packed;
 
 static const char *mgmt_op[] = {
