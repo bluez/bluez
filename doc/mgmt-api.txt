@@ -1662,11 +1662,11 @@ Load Identity Resolving Keys Command
 Command Complete Event
 ======================
 
-Event Code		0x0001
-Controller Index:	<controller id> or <non-controller>
-Event Parameters	Command_Opcode (2 Octets)
-			Status (1 Octet)
-			Return_Parameters
+	Event Code:		0x0001
+	Controller Index:	<controller id> or <non-controller>
+	Event Parameters:	Command_Opcode (2 Octets)
+				Status (1 Octet)
+				Return_Parameters
 
 	This event is an indication that a command has completed. The
 	fixed set of parameters includes the opcode to identify the
@@ -1679,10 +1679,10 @@ Event Parameters	Command_Opcode (2 Octets)
 Command Status Event
 ====================
 
-Event Code		0x0002
-Controller Index:	<controller id> or <non-controller>
-Event Parameters	Command_Opcode (2 Octets)
-			Status (1 Octet)
+	Event Code:		0x0002
+	Controller Index:	<controller id> or <non-controller>
+	Event Parameters:	Command_Opcode (2 Octets)
+				Status (1 Octet)
 
 	The command status event is used to indicate an early status for
 	a pending command. In the case that the status indicates failure
@@ -1693,9 +1693,9 @@ Event Parameters	Command_Opcode (2 Octets)
 Controller Error Event
 ======================
 
-Event Code		0x0003
-Controller Index:	<controller id>
-Event Parameters	Error_Code (1 Octet)
+	Event Code:		0x0003
+	Controller Index:	<controller id>
+	Event Parameters:	Error_Code (1 Octet)
 
 	This event maps straight to the HCI Hardware Error event and is
 	used to indicate something wrong with the controller hardware.
@@ -1704,9 +1704,9 @@ Event Parameters	Error_Code (1 Octet)
 Index Added Event
 =================
 
-Event Code		0x0004
-Controller Index:	<controller id>
-Event Parameters
+	Event Code:		0x0004
+	Controller Index:	<controller id>
+	Event Parameters:
 
 	This event indicates that a new controller has been added to the
 	system. It is usually followed by a Read Controller Information
@@ -1716,9 +1716,9 @@ Event Parameters
 Index Removed Event
 ===================
 
-Event Code		0x0005
-Controller Index:	<controller id>
-Event Parameters
+	Event Code:		0x0005
+	Controller Index:	<controller id>
+	Event Parameters:
 
 	This event indicates that a controller has been removed from the
 	system.
@@ -1727,9 +1727,9 @@ Event Parameters
 New Settings Event
 ==================
 
-Event Code		0x0006
-Controller Index:	<controller id>
-Event Parameters:	Current_Settings (4 Octets)
+	Event Code:		0x0006
+	Controller Index:	<controller id>
+	Event Parameters:	Current_Settings (4 Octets)
 
 	This event indicates that one or more of the settings for a
 	controller has changed.
@@ -1738,9 +1738,9 @@ Event Parameters:	Current_Settings (4 Octets)
 Class Of Device Changed Event
 =============================
 
-Event Code		0x0007
-Controller Index:	<controller id>
-Event Parameters:	Class_Of_Device (3 Octets)
+	Event Code:		0x0007
+	Controller Index:	<controller id>
+	Event Parameters:	Class_Of_Device (3 Octets)
 
 	This event indicates that the Class of Device value for the
 	controller has changed. When the controller is powered off the
@@ -1750,10 +1750,10 @@ Event Parameters:	Class_Of_Device (3 Octets)
 Local Name Changed Event
 ========================
 
-Event Code		0x0008
-Controller Index	<controller id>
-Event Parameters	Name (249 Octets)
-			Short_Name (11 Octets)
+	Event Code:		0x0008
+	Controller Index:	<controller id>
+	Event Parameters:	Name (249 Octets)
+				Short_Name (11 Octets)
 
 	This event indicates that the local name of the controller has
 	changed.
@@ -1762,16 +1762,16 @@ Event Parameters	Name (249 Octets)
 New Link Key Event
 ==================
 
-Event Code		0x0009
-Controller Index:	<controller id>
-Event Parametersa	Store_Hint (1 Octet)
-			Key {
-				Address (6 Octets)
-				Address_Type (1 Octet)
-				Key_Type (1 Octet)
-				Value (16 Octets)
-				PIN_Length (1 Octet)
-			}
+	Event Code:		0x0009
+	Controller Index:	<controller id>
+	Event Parameters:	Store_Hint (1 Octet)
+				Key {
+					Address (6 Octets)
+					Address_Type (1 Octet)
+					Key_Type (1 Octet)
+					Value (16 Octets)
+					PIN_Length (1 Octet)
+				}
 
 	This event indicates that a new link key has bee generated for a
 	remote device.
@@ -1806,19 +1806,19 @@ Event Parametersa	Store_Hint (1 Octet)
 New Long Term Key Event
 =======================
 
-Event Code		0x000A
-Controller Index	<controller id>
-Event Parameters	Store_Hint (1 Octet)
-			Key {
-				Address (6 Octets)
-				Address_Type (1 Octet)
-				Key_Type (1 Octet)
-				Master (1 Octet)
-				Encryption Size (1 Octet)
-				Enc. Diversifier (2 Octets)
-				Random Number (8 Octets)
-				Value (16 Octets)
-			}
+	Event Code:		0x000A
+	Controller Index:	<controller id>
+	Event Parameters:	Store_Hint (1 Octet)
+				Key {
+					Address (6 Octets)
+					Address_Type (1 Octet)
+					Key_Type (1 Octet)
+					Master (1 Octet)
+					Encryption Size (1 Octet)
+					Enc. Diversifier (2 Octets)
+					Random Number (8 Octets)
+					Value (16 Octets)
+				}
 
 	This event indicates that a new long term key has been generated
 	for a remote device.
@@ -1851,13 +1851,13 @@ Event Parameters	Store_Hint (1 Octet)
 Device Connected Event
 ======================
 
-Event Code		0x000B
-Controller Index:	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			Flags (4 Octets)
-			EIR_Data_Length (2 Octets)
-			EIR_Data (0-65535 Octets)
+	Event Code:		0x000B
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Flags (4 Octets)
+				EIR_Data_Length (2 Octets)
+				EIR_Data (0-65535 Octets)
 
 	This event indicates that a successful baseband connection has
 	been created to the remote device.
@@ -1883,11 +1883,11 @@ Event Parameters	Address (6 Octets)
 Device Disconnected Event
 =========================
 
-Event Code		0x000C
-Controller Index:	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			Reason (1 Octet)
+	Event Code:		0x000C
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Reason (1 Octet)
 
 	This event indicates that the baseband connection was lost to a
 	remote device.
@@ -1920,11 +1920,11 @@ Event Parameters	Address (6 Octets)
 Connect Failed Event
 ====================
 
-Event Code		0x000D
-Controller Index:	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			Status (1 Octet)
+	Event Code:		0x000D
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Status (1 Octet)
 
 	This event indicates that a connection attempt failed to a
 	remote device.
@@ -1942,11 +1942,11 @@ Event Parameters	Address (6 Octets)
 PIN Code Request Event
 ======================
 
-Event Code		0x000E
-Controller Index:	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			Secure (1 Octet)
+	Event Code:		0x000E
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Secure (1 Octet)
 
 	This event is used to request a PIN Code reply from user space.
 	The reply should either be returned using the PIN Code Reply or
@@ -1964,12 +1964,12 @@ Event Parameters	Address (6 Octets)
 User Confirmation Request Event
 ===============================
 
-Event Code		0x000F
-Controller Index:	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			Confirm_Hint (1 Octet)
-			Value (4 Octets)
+	Event Code:		0x000F
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Confirm_Hint (1 Octet)
+				Value (4 Octets)
 
 	This event is used to request a user confirmation request from
 	user space.
@@ -1992,10 +1992,10 @@ Event Parameters	Address (6 Octets)
 User Passkey Request Event
 ==========================
 
-Event Code		0x0010
-Controller Index:	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
+	Event Code:		0x0010
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 	This event is used to request a passkey from user space. The
 	response to this event should either be the User Passkey Reply
@@ -2010,11 +2010,11 @@ Event Parameters	Address (6 Octets)
 Authentication Failed Event
 ===========================
 
-Event Code		0x0011
-Controller Index:	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			Status (1 Octet)
+	Event Code:		0x0011
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Status (1 Octet)
 
 	This event indicates that there was an authentication failure
 	with a remote device.
@@ -2028,14 +2028,14 @@ Event Parameters	Address (6 Octets)
 Device Found Event
 ==================
 
-Event Code		0x0012
-Controller Index	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			RSSI (1 Octet)
-			Flags (4 Octets)
-			EIR_Data_Length (2 Octets)
-			EIR_Data (0-65535 Octets)
+	Event Code:		0x0012
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				RSSI (1 Octet)
+				Flags (4 Octets)
+				EIR_Data_Length (2 Octets)
+				EIR_Data (0-65535 Octets)
 
 	This event indicates that a device was found during device
 	discovery.
@@ -2066,10 +2066,10 @@ Event Parameters	Address (6 Octets)
 Discovering Event
 =================
 
-Event Code		0x0013
-Controller Index	<controller id>
-Event Parameters	Address_Type (1 Octet)
-			Discovering (1 Octet)
+	Event Code:		0x0013
+	Controller Index:	<controller id>
+	Event Parameters:	Address_Type (1 Octet)
+				Discovering (1 Octet)
 
 	This event indicates that the controller has started discovering
 	devices. This discovering state can come and go multiple times
@@ -2082,10 +2082,10 @@ Event Parameters	Address_Type (1 Octet)
 Device Blocked Event
 ====================
 
-Event Code		0x0014
-Controller Index	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
+	Event Code:		0x0014
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 	This event indicates that a device has been blocked using the
 	Block Device command.
@@ -2102,10 +2102,10 @@ Event Parameters	Address (6 Octets)
 Device Unblocked Event
 ======================
 
-Event Code		0x0015
-Controller Index	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
+	Event Code:		0x0015
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 	This event indicates that a device has been unblocked using the
 	Unblock Device command.
@@ -2122,10 +2122,10 @@ Event Parameters	Address (6 Octets)
 Device Unpaired Event
 =====================
 
-Event Code		0x0016
-Controller Index	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
+	Event Code:		0x0016
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 	This event indicates that a device has been unpaired (i.e. all
 	its keys have been removed from the kernel) using the Unpair
@@ -2148,12 +2148,12 @@ Event Parameters	Address (6 Octets)
 Passkey Notify Event
 ====================
 
-Event Code		0x0017
-Controller Index	<controller id>
-Event Parameters	Address (6 Octets)
-			Address_Type (1 Octet)
-			Passkey (4 Octets)
-			Entered (1 Octet)
+	Event Code:		0x0017
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Passkey (4 Octets)
+				Entered (1 Octet)
 
 	This event is used to request passkey notification to the user.
 	Unlike the other authentication events it does not need
@@ -2172,15 +2172,15 @@ Event Parameters	Address (6 Octets)
 New Identity Resolving Key Event
 ================================
 
-Event Code		0x0018
-Controller Index	<controller id>
-Event Parameters	Store_Hint (1 Octet)
-			Random_Address (6 Octets)
-			Key {
-				Address (6 Octets)
-				Address_Type (1 Octet)
-				Value (16 Octets)
-			}
+	Event Code:		0x0018
+	Controller Index:	<controller id>
+	Event Parameters:	Store_Hint (1 Octet)
+				Random_Address (6 Octets)
+				Key {
+					Address (6 Octets)
+					Address_Type (1 Octet)
+					Value (16 Octets)
+				}
 
 	This event indicates that a new identity resolving key has been
 	generated for a remote device.
@@ -2212,15 +2212,15 @@ Event Parameters	Store_Hint (1 Octet)
 New Signature Resolving Key Event
 =================================
 
-Event Code		0x0019
-Controller Index	<controller id>
-Event Parameters	Store_Hint (1 Octet)
-			Key {
-				Address (6 Octets)
-				Address_Type (1 Octet)
-				Master (1 Octet)
-				Value (16 Octets)
-			}
+	Event Code:		0x0019
+	Controller Index:	<controller id>
+	Event Parameters:	Store_Hint (1 Octet)
+				Key {
+					Address (6 Octets)
+					Address_Type (1 Octet)
+					Master (1 Octet)
+					Value (16 Octets)
+				}
 
 	This event indicates that a new signature resolving key has been
 	generated for either the master or slave device.
