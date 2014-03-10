@@ -482,9 +482,12 @@ static ssize_t avrcp_handle_get_element_attrs(struct avrcp *session,
 						uint8_t *params,
 						void *user_data)
 {
-	DBG("");
+	DBG("params_len %d params[8] %d", params_len, params[8]);
 
 	if (params_len < 9)
+		return -EINVAL;
+
+	if (params_len != 9 + params[8] * 4)
 		return -EINVAL;
 
 	avrcp_get_element_attrs_rsp(session, transaction, NULL, 0);
@@ -850,5 +853,17 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_GET_ELEMENT_ATTRIBUTES,
 				0x00, 0x00, 0x00));
+
+	/* Get element attributes - TG */
+	define_test("/TP/MDI/BV-05-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_GET_ELEMENT_ATTRIBUTES,
+				0x00, 0x00, 0x0d, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x01),
+			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_GET_ELEMENT_ATTRIBUTES,
+				0x00, 0x00, 0x00));
+
 	return g_test_run();
 }
