@@ -11,15 +11,16 @@ in android/hal-ipc-api.txt file.
 
 Supported Android version: 4.4
 
-===============================
+
 Building and running on Android
 ===============================
 
 Steps needed to build and run Android Open Source Project 4.4.2 with
 integrated BlueZ.
 
+
 Build requirements
-==================
+------------------
 
 - GLib - Android 4.2 or later don't provide GLib and one must provide it in
 'external/bluetooth/glib' folder of Android tree. Sample Android GLib port
@@ -36,8 +37,9 @@ features (currently only epoll_create1 call for Android 4.4.2). Sample
 Bionic for Android 4.4.2 with all required features backported is available at
 https://code.google.com/p/aosp-bluez.platform-bionic/
 
+
 Runtime requirements
-====================
+--------------------
 
 BlueZ HAL library requires 'bluetoothd' and 'bluetoothd-snoop' services to be
 available on Android system. Some permissions settings are also required.
@@ -50,8 +52,9 @@ For convenience examples are provided at:
 https://code.google.com/p/aosp-bluez.device-lge-mako/    (Nexus 4)
 https://code.google.com/p/aosp-bluez.device-asus-flo/    (Nexus 7 2013)
 
+
 Downloading and building
-========================
+------------------------
 
 Building for Android requires full Android AOSP source tree. Sample Android
 4.4.2 tree with all required components present is available at
@@ -81,8 +84,9 @@ After full build is done it is possible to rebuild only BlueZ:
 'mm' (or 'mm -B' to force rebuilding of all files)
 'adb sync' to update target device.
 
+
 Linux Kernel requirements
-=========================
+-------------------------
 
 BlueZ for Android uses Linux Bluetooth subsystem and it must be enabled in
 kernel. Minimal required version of management interface is 1.3. This
@@ -108,8 +112,9 @@ be found at https://backports.wiki.kernel.org. Sample kernels using backports
 for running BlueZ on Android are available at
 https://code.google.com/p/aosp-bluez.
 
+
 Running with Valgrind
-=====================
+---------------------
 
 BlueZ for Android is preconfigured to be easily run under Valgrind memcheck.
 Appropriate configuration and required modules are automatically included when
@@ -130,8 +135,9 @@ will break at e.g. g_free() function without prior callers. It's possible to
 have proper library installed automatically by appropriate entry in Android.mk,
 see https://code.google.com/p/aosp-bluez.glib/ for an example.
 
+
 Enabling BlueZ debugs
-==============================
+---------------------
 
 BlueZ debug logs can be enabled in runtime by setting "persist.sys.bluetooth.debug"
 property to either literal "true" or any numeric value >0. For example:
@@ -145,18 +151,19 @@ as above. To enable it procced in the same way as described above but use
 system properties called: persist.sys.bluetooth.mgmtdbg
 
 Note: Debugs are only available on NON USER build variants
-=============================
+
+
 Building and running on Linux
-=============================
+-----------------------------
 
 It is possible to build and test BlueZ for Android daemon on Linux (eg. PC).
 Simply follow instructions available at README file in BlueZ top directory.
 Android daemon binary is located at android/bluetoothd. See next section on
 how to test Android daemon on Linux.
 
-============
+
 Testing tool
-============
+------------
 
 BT HAL test tools located in android/haltest is provided for HAL level testing
 of both Android daemon and HAL library. Start it with '-n' parameter and type
@@ -169,7 +176,7 @@ automatically on HAL library initialization. To deinitialize HAL library and
 stop daemon type 'bluetooth cleanup'. Type 'help' for more information. Tab
 completion is also supported.
 
-=====================
+
 Implementation status
 =====================
 
@@ -197,7 +204,7 @@ pan           bt_pan.h           complete
 avrcp         bt_rc.h            partial
 socket        bt_sock.h          complete
 
-===========================
+
 Implementation shortcomings
 ===========================
 
@@ -207,8 +214,9 @@ necessity for latest Android Framework. This sections provides list of such
 deficiencies. Note that HAL library is always expected to fully implement HAL
 API so missing implementation might happen only in daemon.
 
+
 HAL Bluetooth
-=============
+-------------
 
 methods:
 dut_mode_send                      never called from Android Framework
@@ -232,6 +240,6 @@ BT_PROPERTY_REMOTE_VERSION_INFO    information required by this property (LMP
                                    settable is probably a typo in HAL header
 
 Socket HAL
-==========
+----------
 
 Support only for BTSOCK_RFCOMM socket type.
