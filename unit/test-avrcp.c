@@ -578,6 +578,11 @@ static void test_client(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/MDI/BV-03-C"))
 		avrcp_get_element_attributes(context->session, NULL, NULL);
 
+	if (g_str_equal(context->data->test_name, "/TP/NFY/BV-01-C"))
+		avrcp_register_notification(context->session,
+						AVRCP_EVENT_STATUS_CHANGED, 0,
+						NULL, NULL);
+
 	execute_context(context);
 }
 
@@ -864,6 +869,15 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_GET_ELEMENT_ATTRIBUTES,
 				0x00, 0x00, 0x00));
+
+	/* Notification Commands */
+
+	/* Register notification - CT */
+	define_test("/TP/NFY/BV-01-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, AVRCP_EVENT_STATUS_CHANGED,
+				0x00, 0x00, 0x00, 0x00));
 
 	return g_test_run();
 }
