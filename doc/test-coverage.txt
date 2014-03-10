@@ -19,7 +19,7 @@ test-queue		   1	Queue handling functionality
 test-hfp		   9	HFP Audio Gateway functionality
 test-avdtp		  60	AVDTP qualification test cases
 test-avctp		   9	AVCTP qualification test cases
-test-avrcp		  24	AVRCP qualification test cases
+test-avrcp		  37	AVRCP qualification test cases
 test-gobex		  31	Generic OBEX functionality
 test-gobex-packet	   9	OBEX packet handling
 test-gobex-header	  28	OBEX header handling
@@ -27,7 +27,7 @@ test-gobex-apparam	  18	OBEX apparam handling
 test-gobex-transfer	  36	OBEX transfer handling
 test-gdbus-client	  12	D-Bus client handling
 			-----
-			 429
+			 442
 
 
 Automated end-to-end testing
