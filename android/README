@@ -190,7 +190,7 @@ a2dp          bt_av.h            complete
 gatt          bt_gatt.h          not started
               bt_gatt_client.h   not started
               bt_gatt_server.h   not started
-handsfree     bt_hf.h            initial
+handsfree     bt_hf.h            partial
 hidhost       bt_hh.h            complete
 health        bt_hl.h            not started
 pan           bt_pan.h           complete
