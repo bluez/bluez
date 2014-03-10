@@ -32,15 +32,17 @@
 
 #define BLUETOOTHD_BIN "/system/bin/bluetoothd-main"
 
-static void run_valgrind(void)
+static void run_valgrind(int debug, int mgmt_dbg)
 {
-	char *prg_argv[4];
+	char *prg_argv[6];
 	char *prg_envp[3];
 
 	prg_argv[0] = VALGRIND_BIN;
 	prg_argv[1] = "--leak-check=full";
 	prg_argv[2] = BLUETOOTHD_BIN;
-	prg_argv[3] = NULL;
+	prg_argv[3] = debug ? "-d" : NULL;
+	prg_argv[4] = mgmt_dbg ? "--mgmt-debug" : NULL;
+	prg_argv[5] = NULL;
 
 	prg_envp[0] = "G_SLICE=always-malloc";
 	prg_envp[1] = "G_DEBUG=gc-friendly";
@@ -70,10 +72,6 @@ int main(int argc, char *argv[])
 	int debug = 0;
 	int mgmt_dbg = 0;
 
-	if (property_get(PROPERTY_VALGRIND_NAME, value, "") > 0 &&
-			(!strcasecmp(value, "true") || atoi(value) > 0))
-		run_valgrind();
-
 	if (property_get(PROPERTY_DEBUG_NAME, value, "") > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0))
 			debug = 1;
@@ -83,6 +81,10 @@ int main(int argc, char *argv[])
 			debug = 1;
 			mgmt_dbg = 1;
 	}
+
+	if (property_get(PROPERTY_VALGRIND_NAME, value, "") > 0 &&
+			(!strcasecmp(value, "true") || atoi(value) > 0))
+		run_valgrind(debug, mgmt_dbg);
 
 	/* In case we failed to execute Valgrind, try to run bluetoothd
 	 * without it
