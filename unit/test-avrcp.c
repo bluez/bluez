@@ -495,6 +495,43 @@ static ssize_t avrcp_handle_get_element_attrs(struct avrcp *session,
 	return -EAGAIN;
 }
 
+static ssize_t avrcp_handle_register_notification(struct avrcp *session,
+							uint8_t transaction,
+							uint16_t params_len,
+							uint8_t *params,
+							void *user_data)
+{
+	uint8_t event;
+	uint8_t pdu[9];
+	size_t pdu_len;
+
+	DBG("");
+
+	if (params_len != AVRCP_REGISTER_NOTIFICATION_PARAM_LENGTH)
+		return -EINVAL;
+
+	event = params[0];
+	pdu[0] = event;
+	pdu_len = 1;
+
+	switch (event) {
+	case AVRCP_EVENT_TRACK_CHANGED:
+		memset(&pdu[1], 0xff, 8);
+		pdu_len += 8;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+						pdu, pdu_len);
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+						pdu, pdu_len);
+
+	return -EAGAIN;
+}
+
 static const struct avrcp_control_handler control_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
@@ -523,6 +560,9 @@ static const struct avrcp_control_handler control_handlers[] = {
 		{ AVRCP_GET_ELEMENT_ATTRIBUTES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
 					avrcp_handle_get_element_attrs },
+		{ AVRCP_REGISTER_NOTIFICATION,
+					AVC_CTYPE_NOTIFY, AVC_CTYPE_INTERIM,
+					avrcp_handle_register_notification },
 		{ },
 };
 
@@ -878,6 +918,23 @@ int main(int argc, char *argv[])
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x05, AVRCP_EVENT_STATUS_CHANGED,
 				0x00, 0x00, 0x00, 0x00));
+
+	/* Register notification - TG */
+	define_test("/TP/NFY/BV-02-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, AVRCP_EVENT_TRACK_CHANGED,
+				0x00, 0x00, 0x00, 0x00),
+			frg_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x09, AVRCP_EVENT_TRACK_CHANGED,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x09, AVRCP_EVENT_TRACK_CHANGED,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff));
 
 	return g_test_run();
 }
