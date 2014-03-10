@@ -150,6 +150,8 @@ int avrcp_get_play_status(struct avrcp *session, avctp_rsp_cb func,
 							void *user_data);
 int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
 							void *user_data);
+int avrcp_get_element_attributes(struct avrcp *session, avctp_rsp_cb func,
+							void *user_data);
 
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				uint32_t position, uint32_t duration,

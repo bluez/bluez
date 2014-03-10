@@ -425,6 +425,19 @@ int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
 						func, user_data);
 }
 
+int avrcp_get_element_attributes(struct avrcp *session, avctp_rsp_cb func,
+								void *user_data)
+{
+	uint8_t buf[9];
+
+	/* This returns all attributes */
+	memset(buf, 0, sizeof(buf));
+
+	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
+				AVRCP_GET_ELEMENT_ATTRIBUTES, buf, sizeof(buf),
+				func, user_data);
+}
+
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				uint32_t position, uint32_t duration,
 				uint8_t status)
