@@ -952,7 +952,7 @@ static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		/* TODO verify features */
 		device.features = feat;
 
-		hfp_gw_send_info(device.gw, "+BRSF=%u", HFP_AG_FEATURES);
+		hfp_gw_send_info(device.gw, "+BRSF: %u", HFP_AG_FEATURES);
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 		return;
 	case HFP_GW_CMD_TYPE_READ:
@@ -989,7 +989,7 @@ static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
-		hfp_gw_send_info(device.gw, "+CHLD=%s", HFP_AG_CHLD_STR);
+		hfp_gw_send_info(device.gw, "+CHLD: %s", HFP_AG_CHLD_STR);
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 		register_post_slc_at();
