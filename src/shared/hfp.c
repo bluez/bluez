@@ -72,7 +72,7 @@ struct cmd_handler {
 
 struct hfp_gw_result {
 	const char *data;
-	int offset;
+	unsigned int offset;
 };
 
 static void destroy_cmd_handler(void *data)
@@ -245,8 +245,8 @@ bool hfp_gw_result_get_number_default(struct hfp_gw_result *result,
 
 bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val)
 {
+	unsigned int i;
 	int tmp = 0;
-	int i;
 
 	skip_whitespace(result);
 
