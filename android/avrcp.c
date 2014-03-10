@@ -788,17 +788,7 @@ static gboolean register_notification_rsp(struct avctp *conn,
 	if (params == NULL || params[0] != AVRCP_EVENT_VOLUME_CHANGED)
 		return FALSE;
 
-	switch (code) {
-	case AVC_CTYPE_INTERIM:
-		ev.type = HAL_AVRCP_EVENT_TYPE_INTERIM;
-		break;
-	case AVC_CTYPE_CHANGED:
-		ev.type = HAL_AVRCP_EVENT_TYPE_CHANGED;
-		break;
-	default:
-		return FALSE;
-	}
-
+	ev.type = code;
 	ev.volume = params[1] & 0x7F;
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,
