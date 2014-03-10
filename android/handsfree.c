@@ -201,6 +201,11 @@ static void device_cleanup(void)
 		device.sco = NULL;
 	}
 
+	if (device.ring) {
+		g_source_remove(device.ring);
+		device.ring = 0;
+	}
+
 	device_set_audio_state(HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED);
 
 	memset(&device, 0, sizeof(device));
