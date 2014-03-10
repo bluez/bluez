@@ -5541,6 +5541,11 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 	char *str;
 	int i;
 
+	if (master != 0x00 && master != 0x01) {
+		error("Unsupported LTK type %u", master);
+		return;
+	}
+
 	ba2str(local, adapter_addr);
 	ba2str(peer, device_addr);
 
