@@ -77,12 +77,16 @@ TC_CT_PTT_BV_04_I	N/A
 TC_CT_PTT_BV_05_I	N/A
 TC_CT_RCR_BV_01_C	N/A
 TC_CT_RCR_BV_03_C	N/A
-TC_CT_VLH_BI_03_C	INC
-TC_CT_VLH_BI_04_C	INC
-TC_CT_VLH_BV_01_C	INC
-TC_CT_VLH_BV_01_I	INC
-TC_CT_VLH_BV_02_I	INC
-TC_CT_VLH_BV_03_C	INC
+TC_CT_VLH_BI_03_C	PASS	Send SetAbsolute Volume command by pressing
+				volume up or down buttons then adb logcat and
+				check VOLUME_CHANGED value
+TC_CT_VLH_BI_04_C	PASS	adb logcat: check VOLUME_CHANGED value
+TC_CT_VLH_BV_01_C	PASS	Send SetAbsolute Volume command by pressing
+				volume up or down buttons
+TC_CT_VLH_BV_01_I	PASS	adb logcat: check VOLUME_CHANGED value
+TC_CT_VLH_BV_02_I	PASS	Send SetAbsolute Volume command by pressing
+				volume up or down buttons
+TC_CT_VLH_BV_03_C	PASS
 -------------------------------------------------------------------------------
 
 
@@ -147,7 +151,7 @@ TC_TG_MCN_SRC_BV_04_C	N/A
 TC_TG_MCN_SRC_BV_04_I	N/A
 TC_TG_MCN_SRC_BV_06_C	N/A
 TC_TG_MDI_BV_02_C	PASS
-TC_TG_MDI_BV_04_C	FAIL
+TC_TG_MDI_BV_04_C	PASS
 TC_TG_MDI_BV_05_C	PASS
 TC_TG_MPS_BI_01_C	N/A
 TC_TG_MPS_BI_02_C	N/A
@@ -184,8 +188,8 @@ TC_TG_PTT_BV_02_I	PASS
 TC_TG_PTT_BV_03_I	N/A
 TC_TG_PTT_BV_04_I	N/A
 TC_TG_PTT_BV_05_I	N/A
-TC_TG_RCR_BV_02_C	INC
-TC_TG_RCR_BV_04_C	INC
+TC_TG_RCR_BV_02_C	PASS
+TC_TG_RCR_BV_04_C	PASS
 TC_TG_VLH_BI_01_C	N/A
 TC_TG_VLH_BI_02_C	N/A
 TC_TG_VLH_BV_01_I	N/A
