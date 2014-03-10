@@ -5641,6 +5641,89 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 		bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
 }
 
+static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
+				uint8_t bdaddr_type, const unsigned char *key,
+				uint8_t master)
+{
+	const char *group;
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char key_str[33];
+	gsize length = 0;
+	char *str;
+	int i;
+
+	if (master == 0x00)
+		group = "LocalSignatureKey";
+	else if (master == 0x01)
+		group = "RemoteSignatureKey";
+	else {
+		warn("Unsupported CSRK type %u", master);
+		return;
+	}
+
+	ba2str(local, adapter_addr);
+	ba2str(peer, device_addr);
+
+	snprintf(filename, sizeof(filename), STORAGEDIR "/%s/%s/info",
+						adapter_addr, device_addr);
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	for (i = 0; i < 16; i++)
+		sprintf(key_str + (i * 2), "%2.2X", key[i]);
+
+	g_key_file_set_string(key_file, group, "Key", key_str);
+
+	create_file(filename, S_IRUSR | S_IWUSR);
+
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+
+	g_key_file_free(key_file);
+}
+
+static void new_csrk_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_new_csrk *ev = param;
+	const struct mgmt_addr_info *addr = &ev->key.addr;
+	const struct mgmt_csrk_info *key = &ev->key;
+	struct btd_adapter *adapter = user_data;
+	const bdaddr_t *bdaddr = btd_adapter_get_address(adapter);
+	struct btd_device *device;
+	char dst[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small CSRK event");
+		return;
+	}
+
+	ba2str(&addr->bdaddr, dst);
+
+	DBG("hci%u new CSRK for %s master %u", adapter->dev_id, dst,
+								ev->key.master);
+
+	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
+	if (!device) {
+		error("Unable to get device object for %s", dst);
+		return;
+	}
+
+	if (!ev->store_hint)
+		return;
+
+	store_csrk(bdaddr, &key->addr.bdaddr, key->addr.type, key->val,
+								key->master);
+
+	if (device_is_temporary(device))
+		btd_device_set_temporary(device, FALSE);
+}
+
 static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
 				uint8_t bdaddr_type, const unsigned char *key)
 {
@@ -6311,6 +6394,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_LONG_TERM_KEY,
 						adapter->dev_id,
 						new_long_term_key_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_NEW_CSRK,
+						adapter->dev_id,
+						new_csrk_callback,
 						adapter, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_IRK,
