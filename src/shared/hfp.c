@@ -308,13 +308,17 @@ bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 	result->offset++;
 
 	while (data[result->offset] != '\0' && data[result->offset] != '"') {
-		if (i < len)
-			buf[i++] = data[result->offset];
+		if (i == len)
+			return false;
+
+		buf[i++] = data[result->offset];
 		result->offset++;
 	}
 
-	if (i < len)
-		buf[i++] = '\0';
+	if (i == len)
+		return false;
+
+	buf[i] = '\0';
 
 	if (data[result->offset] == '"')
 		result->offset++;
@@ -342,13 +346,17 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 
 	while (data[result->offset] != '\0' && data[result->offset] != ','
 					&& data[result->offset] != ')') {
-		if (i < len)
-			buf[i++] = data[result->offset];
+		if (i == len)
+			return false;
+
+		buf[i++] = data[result->offset];
 		result->offset++;
 	}
 
-	if (i < len)
-		buf[i++] = '\0';
+	if (i == len)
+		return false;
+
+	buf[i] = '\0';
 
 	next_field(result);
 
