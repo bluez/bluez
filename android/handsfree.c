@@ -72,7 +72,7 @@
 			HFP_AG_FEAT_VR | HFP_AG_FEAT_REJ_CALL |\
 			HFP_AG_FEAT_ECS | HFP_AG_FEAT_EXT_ERR )
 
-#define HFP_AG_CHLD_STR "0,1,2,3"
+#define HFP_AG_CHLD "0,1,2,3"
 
 /* offsets in indicators table, should be incremented when sending CIEV */
 #define IND_SERVICE	0
@@ -989,7 +989,7 @@ static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
-		hfp_gw_send_info(device.gw, "+CHLD: %s", HFP_AG_CHLD_STR);
+		hfp_gw_send_info(device.gw, "+CHLD: (%s)", HFP_AG_CHLD);
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 		register_post_slc_at();
