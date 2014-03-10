@@ -299,20 +299,22 @@ bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 {
 	int i = 0;
 	const char *data = result->data;
+	unsigned int offset;
 
 	skip_whitespace(result);
 
 	if (data[result->offset] != '"')
 		return false;
 
-	result->offset++;
+	offset = result->offset;
+	offset++;
 
-	while (data[result->offset] != '\0' && data[result->offset] != '"') {
+	while (data[offset] != '\0' && data[offset] != '"') {
 		if (i == len)
 			return false;
 
-		buf[i++] = data[result->offset];
-		result->offset++;
+		buf[i++] = data[offset];
+		offset++;
 	}
 
 	if (i == len)
@@ -320,10 +322,12 @@ bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 
 	buf[i] = '\0';
 
-	if (data[result->offset] == '"')
-		result->offset++;
+	if (data[offset] == '"')
+		offset++;
 	else
 		return false;
+
+	result->offset = offset;
 
 	skip_whitespace(result);
 	next_field(result);
@@ -335,6 +339,7 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 								uint8_t len)
 {
 	const char *data = result->data;
+	unsigned int offset;
 	int i = 0;
 	char c;
 
@@ -344,19 +349,23 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 	if (c == '"' || c == ')' || c == '(')
 		return false;
 
-	while (data[result->offset] != '\0' && data[result->offset] != ','
-					&& data[result->offset] != ')') {
+	offset = result->offset;
+
+	while (data[offset] != '\0' && data[offset] != ',' &&
+							data[offset] != ')') {
 		if (i == len)
 			return false;
 
-		buf[i++] = data[result->offset];
-		result->offset++;
+		buf[i++] = data[offset];
+		offset++;
 	}
 
 	if (i == len)
 		return false;
 
 	buf[i] = '\0';
+
+	result->offset = offset;
 
 	next_field(result);
 
