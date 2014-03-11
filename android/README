@@ -243,3 +243,14 @@ Socket HAL
 ----------
 
 Support only for BTSOCK_RFCOMM socket type.
+
+Known Android issues
+====================
+
+It is possible that BlueZ is triggering bugs on Android Framework that could
+affect qualification or user experience. This section provides list of
+recommended Android fixes that are not part of latest AOSP release supported by
+BlueZ.
+
+https://android-review.googlesource.com/82757
+https://android-review.googlesource.com/87670
