@@ -1431,6 +1431,13 @@ static void le_set_adv_enable_complete(struct btdev *btdev)
 			continue;
 
 		le_send_adv_report(btdev_list[i], btdev, report_type);
+
+		if (btdev_list[i]->le_scan_type != 0x01)
+			continue;
+
+		/* ADV_IND & ADV_SCAN_IND generate a scan response */
+		if (btdev->le_adv_type == 0x00 || btdev->le_adv_type == 0x02)
+			le_send_adv_report(btdev_list[i], btdev, 0x04);
 	}
 }
 
@@ -1449,6 +1456,14 @@ static void le_set_scan_enable_complete(struct btdev *btdev)
 
 		report_type = get_adv_report_type(btdev_list[i]->le_adv_type);
 		le_send_adv_report(btdev, btdev_list[i], report_type);
+
+		if (btdev->le_scan_type != 0x01)
+			continue;
+
+		/* ADV_IND & ADV_SCAN_IND generate a scan response */
+		if (btdev_list[i]->le_adv_type == 0x00 ||
+					btdev_list[i]->le_adv_type == 0x02)
+			le_send_adv_report(btdev, btdev_list[i], 0x04);
 	}
 }
 
