@@ -295,7 +295,7 @@ static bool check_attributes(const uint8_t *params)
 	for (i = 1; i <= params[0]; i++) {
 		DBG("params[%d] = 0x%02x", i, params[i]);
 		if (params[i] > AVRCP_ATTRIBUTE_LAST ||
-		    params[i] == AVRCP_ATTRIBUTE_ILEGAL)
+					params[i] == AVRCP_ATTRIBUTE_ILEGAL)
 			return false;
 	}
 
