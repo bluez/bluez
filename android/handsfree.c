@@ -1708,6 +1708,7 @@ static void handle_clcc_resp(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_handsfree_clcc_response *cmd = buf;
 	uint8_t status;
+	char *number;
 
 	if (len != sizeof(*cmd) + cmd->number_len || (cmd->number_len != 0 &&
 				cmd->number[cmd->number_len - 1] != '\0')) {
@@ -1725,30 +1726,28 @@ static void handle_clcc_resp(const void *buf, uint16_t len)
 		goto done;
 	}
 
+	number = cmd->number_len ? (char *) cmd->number : "";
+
 	switch (cmd->state) {
-	/* according to comment in HAL only those can have number and type */
 	case HAL_HANDSFREE_CALL_STATE_INCOMING:
 	case HAL_HANDSFREE_CALL_STATE_WAITING:
-		if (cmd->number_len) {
-			hfp_gw_send_info(device.gw,
-						"+CLCC: %u,%u,%u,%u,%u,%s,%u",
-						cmd->index, cmd->dir,
-						cmd->state, cmd->mode,
-						cmd->mpty, cmd->number,
-						cmd->type);
-
-			status = HAL_STATUS_SUCCESS;
-			break;
-		}
-
-		/* fall through */
 	case HAL_HANDSFREE_CALL_STATE_ACTIVE:
 	case HAL_HANDSFREE_CALL_STATE_HELD:
 	case HAL_HANDSFREE_CALL_STATE_DIALING:
 	case HAL_HANDSFREE_CALL_STATE_ALERTING:
-		hfp_gw_send_info(device.gw, "+CLCC: %u,%u,%u,%u,%u",
+		if (cmd->type == HAL_HANDSFREE_CALL_ADDRTYPE_INTERNATIONAL &&
+							number[0] != '+')
+			hfp_gw_send_info(device.gw,
+					"+CLCC: %u,%u,%u,%u,%u,\"+%s\",%u",
 					cmd->index, cmd->dir, cmd->state,
-					cmd->mode, cmd->mpty);
+					cmd->mode, cmd->mpty, number,
+					cmd->type);
+		else
+			hfp_gw_send_info(device.gw,
+					"+CLCC: %u,%u,%u,%u,%u,\"%s\",%u",
+					cmd->index, cmd->dir, cmd->state,
+					cmd->mode, cmd->mpty, number,
+					cmd->type);
 
 		status = HAL_STATUS_SUCCESS;
 		break;
