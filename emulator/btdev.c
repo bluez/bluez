@@ -1370,7 +1370,8 @@ static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
 	send_event(init, BT_HCI_EVT_AUTH_COMPLETE, &auth, sizeof(auth));
 }
 
-static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote)
+static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote,
+								uint8_t type)
 {
 	struct __packed {
 		uint8_t subevent;
@@ -1384,19 +1385,43 @@ static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote)
 
 	memset(&meta_event.lar, 0, sizeof(meta_event.lar));
 	meta_event.lar.num_reports = 1;
+	meta_event.lar.event_type = type;
 	memcpy(meta_event.lar.addr, remote->bdaddr, 6);
-	meta_event.lar.data_len = remote->le_adv_data_len;
-	memcpy(meta_event.lar.data, remote->le_adv_data,
+
+	/* Scan or advertising response */
+	if (type == 0x04) {
+		meta_event.lar.data_len = remote->le_scan_data_len;
+		memcpy(meta_event.lar.data, remote->le_scan_data,
 						meta_event.lar.data_len);
+	} else {
+		meta_event.lar.data_len = remote->le_adv_data_len;
+		memcpy(meta_event.lar.data, remote->le_adv_data,
+						meta_event.lar.data_len);
+	}
 	/* Not available */
 	meta_event.raw[10 + meta_event.lar.data_len] = 127;
 	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, &meta_event,
 					1 + 10 + meta_event.lar.data_len + 1);
 }
 
+static uint8_t get_adv_report_type(uint8_t adv_type)
+{
+	/*
+	 * Connectable low duty cycle directed advertising creates a
+	 * connectable directed advertising report type.
+	 */
+	if (adv_type == 0x04)
+		return 0x01;
+
+	return adv_type;
+}
+
 static void le_set_adv_enable_complete(struct btdev *btdev)
 {
+	uint8_t report_type;
 	int i;
+
+	report_type = get_adv_report_type(btdev->le_adv_type);
 
 	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
 		if (!btdev_list[i] || btdev_list[i] == btdev)
@@ -1405,7 +1430,7 @@ static void le_set_adv_enable_complete(struct btdev *btdev)
 		if (!btdev_list[i]->le_scan_enable)
 			continue;
 
-		le_send_adv_report(btdev_list[i], btdev);
+		le_send_adv_report(btdev_list[i], btdev, report_type);
 	}
 }
 
@@ -1414,13 +1439,16 @@ static void le_set_scan_enable_complete(struct btdev *btdev)
 	int i;
 
 	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
+		uint8_t report_type;
+
 		if (!btdev_list[i] || btdev_list[i] == btdev)
 			continue;
 
 		if (!btdev_list[i]->le_adv_enable)
 			continue;
 
-		le_send_adv_report(btdev, btdev_list[i]);
+		report_type = get_adv_report_type(btdev_list[i]->le_adv_type);
+		le_send_adv_report(btdev, btdev_list[i], report_type);
 	}
 }
 
