@@ -113,6 +113,8 @@ struct btdev {
 	uint8_t  le_event_mask[8];
 	uint8_t  le_adv_data[31];
 	uint8_t  le_adv_data_len;
+	uint8_t  le_scan_data[31];
+	uint8_t  le_scan_data_len;
 	uint8_t  le_scan_enable;
 	uint8_t  le_scan_type;
 	uint8_t  le_filter_dup;
@@ -1497,6 +1499,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
 	const struct bt_hci_cmd_le_set_random_address *lsra;
 	const struct bt_hci_cmd_le_set_adv_data *lsad;
+	const struct bt_hci_cmd_le_set_scan_rsp_data *lssrd;
 	const struct bt_hci_cmd_setup_sync_conn *ssc;
 	const struct bt_hci_cmd_write_ssp_debug_mode *wsdm;
 	const struct bt_hci_cmd_le_set_adv_enable *lsae;
@@ -2389,6 +2392,9 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_LE_SET_SCAN_RSP_DATA:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
+		lssrd = data;
+		btdev->le_scan_data_len = lssrd->len;
+		memcpy(btdev->le_scan_data, lssrd->data, 31);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
