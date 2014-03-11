@@ -244,6 +244,7 @@ Socket HAL
 
 Support only for BTSOCK_RFCOMM socket type.
 
+
 Known Android issues
 ====================
 
