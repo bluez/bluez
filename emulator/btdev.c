@@ -1386,7 +1386,11 @@ static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote,
 	memset(&meta_event.lar, 0, sizeof(meta_event.lar));
 	meta_event.lar.num_reports = 1;
 	meta_event.lar.event_type = type;
-	memcpy(meta_event.lar.addr, remote->bdaddr, 6);
+	meta_event.lar.addr_type = remote->le_adv_own_addr;
+	if (remote->le_adv_own_addr == 0x00)
+		memcpy(meta_event.lar.addr, remote->bdaddr, 6);
+	else
+		memcpy(meta_event.lar.addr, remote->random_addr, 6);
 
 	/* Scan or advertising response */
 	if (type == 0x04) {
