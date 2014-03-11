@@ -1422,7 +1422,7 @@ static bt_uuid_t enable_done_uuids_val = {
 	.uu = { 0x00, 0x00, 0x12, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00,
 					0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb},
 };
-static bt_device_type_t enable_done_tod_val = BT_DEVICE_DEVTYPE_BREDR;
+static bt_device_type_t enable_done_tod_val = BT_DEVICE_DEVTYPE_DUAL;
 static bt_scan_mode_t enable_done_scanmode_val = BT_SCAN_MODE_NONE;
 static uint32_t enable_done_disctimeout_val = 120;
 
@@ -1615,7 +1615,7 @@ static const struct generic_data bluetooth_setprop_cod_invalid_test = {
 	.expected_adapter_status = BT_STATUS_FAIL,
 };
 
-static bt_device_type_t setprop_type_of_device = BT_DEVICE_DEVTYPE_BREDR;
+static bt_device_type_t setprop_type_of_device = BT_DEVICE_DEVTYPE_DUAL;
 
 static struct priority_property setprop_tod_props[] = {
 	{
@@ -1730,7 +1730,7 @@ static const struct generic_data bluetooth_getprop_cod_success_test = {
 	.expected_adapter_status = BT_STATUS_SUCCESS,
 };
 
-static bt_device_type_t getprop_tod = BT_DEVICE_DEVTYPE_BREDR;
+static bt_device_type_t getprop_tod = BT_DEVICE_DEVTYPE_DUAL;
 
 static struct priority_property getprop_tod_props[] = {
 	{
