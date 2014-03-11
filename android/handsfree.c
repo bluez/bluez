@@ -1749,7 +1749,7 @@ static gboolean ring_cb(gpointer user_data)
 {
 	char *clip = user_data;
 
-	hfp_gw_send_info(device.gw, "+RING");
+	hfp_gw_send_info(device.gw, "RING");
 
 	if (device.clip_enabled && clip)
 		hfp_gw_send_info(device.gw, "%s", clip);
