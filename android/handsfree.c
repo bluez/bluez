@@ -113,6 +113,7 @@ static struct {
 	uint32_t features;
 	bool clip_enabled;
 	bool cmee_enabled;
+	bool ccwa_enabled;
 	bool indicators_enabled;
 	struct indicator inds[IND_COUNT];
 	guint ring;
@@ -463,9 +464,28 @@ static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 static void at_cmd_ccwa(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
+	unsigned int val;
+
 	DBG("");
 
-	/* TODO */
+	switch (type) {
+	case HFP_GW_CMD_TYPE_SET:
+		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+			break;
+
+		if (hfp_gw_result_has_next(result))
+			break;
+
+		device.ccwa_enabled = val;
+
+		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		return;
+	case HFP_GW_CMD_TYPE_READ:
+	case HFP_GW_CMD_TYPE_TEST:
+	case HFP_GW_CMD_TYPE_COMMAND:
+		break;
+	}
 
 	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
