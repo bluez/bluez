@@ -865,6 +865,14 @@ const char *bt_compidtostr(int compid)
 		return "TEMEC Instruments B.V.";
 	case 301:
 		return "Sony Corporation";
+	case 302:
+		return "ASSA ABLOY";
+	case 303:
+		return "Clarion Co., Ltd.";
+	case 304:
+		return "Warehouse Innovations";
+	case 305:
+		return "Cypress Semiconductor Corporation";
 	case 65535:
 		return "internal use";
 	default:
