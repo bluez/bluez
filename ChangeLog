@@ -1,3 +1,11 @@
+ver 5.16:
+	Fix issue with HID over GATT physical location.
+	Fix issue with HID over GATT unique identifier.
+	Fix issue with missing paired property notification.
+	Fix issue with endianess of long term key storage.
+	Add support for storing signature resolving keys.
+	Add support for Android Bluetooth AVRCP interface.
+
 ver 5.15:
 	Fix issue with LE enabling and background scanning.
 	Fix issue with HID over GATT input device name.
