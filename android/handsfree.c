@@ -444,6 +444,8 @@ static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		if (cnt != ev->number_len - 1)
 			break;
 
+		ev->number_len++;
+
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_DIAL,
 					sizeof(*ev) + ev->number_len, ev);
