@@ -578,7 +578,7 @@ static void test_server(gconstpointer data)
 
 	avrcp_set_passthrough_handlers(context->session, passthrough_handlers,
 								context);
-	avrcp_set_control_handlers(context->session, control_handlers, NULL);
+	avrcp_set_control_handlers(context->session, control_handlers, context);
 
 	g_idle_add(send_pdu, context);
 
