@@ -604,7 +604,7 @@ static void bluetoothd_start(int hci_index)
 {
 	char prg_name[PATH_MAX + 1];
 	char index[8];
-	char *prg_argv[4];
+	char *prg_argv[5];
 
 	snprintf(prg_name, sizeof(prg_name), "%s/%s", exec_dir, "bluetoothd");
 	snprintf(index, sizeof(index), "%d", hci_index);
@@ -612,7 +612,8 @@ static void bluetoothd_start(int hci_index)
 	prg_argv[0] = prg_name;
 	prg_argv[1] = "-i";
 	prg_argv[2] = index;
-	prg_argv[3] = NULL;
+	prg_argv[3] = "-d";
+	prg_argv[4] = NULL;
 
 	if (!tester_use_debug())
 		fclose(stderr);
