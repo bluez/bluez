@@ -1709,7 +1709,8 @@ static void handle_clcc_resp(const void *buf, uint16_t len)
 	const struct hal_cmd_handsfree_clcc_response *cmd = buf;
 	uint8_t status;
 
-	if (len != sizeof(*cmd) + cmd->number_len) {
+	if (len != sizeof(*cmd) + cmd->number_len || (cmd->number_len != 0 &&
+				cmd->number[cmd->number_len - 1] != '\0')) {
 		error("Invalid CLCC response command, terminating");
 		raise(SIGTERM);
 		return;
@@ -1729,17 +1730,12 @@ static void handle_clcc_resp(const void *buf, uint16_t len)
 	case HAL_HANDSFREE_CALL_STATE_INCOMING:
 	case HAL_HANDSFREE_CALL_STATE_WAITING:
 		if (cmd->number_len) {
-			char *number = g_malloc0(cmd->number_len + 1);
-
-			memcpy(number, cmd->number, cmd->number_len);
-
 			hfp_gw_send_info(device.gw,
 						"+CLCC: %u,%u,%u,%u,%u,%s,%u",
 						cmd->index, cmd->dir,
 						cmd->state, cmd->mode,
-						cmd->mpty, number, cmd->type);
-
-			g_free(number);
+						cmd->mpty, cmd->number,
+						cmd->type);
 
 			status = HAL_STATUS_SUCCESS;
 			break;
@@ -1800,21 +1796,17 @@ static void phone_state_alerting(int num_active, int num_held)
 }
 
 static void phone_state_incoming(int num_active, int num_held, uint8_t type,
-					const uint8_t *number, uint16_t len)
+							const char *number)
 {
 	char *clip = NULL;
 
 	update_indicator(IND_CALLSETUP, 1);
 
-	if (len) {
-		if (type == HAL_HANDSFREE_CALL_ADDRTYPE_INTERNATIONAL &&
+	if (type == HAL_HANDSFREE_CALL_ADDRTYPE_INTERNATIONAL &&
 							number[0] != '+')
-			clip = g_strdup_printf("+CLIP: \"+%.*s\",%u",
-							len, number, type );
-		else
-			clip = g_strdup_printf("+CLIP: \"%.*s\",%u",
-							len, number, type );
-	}
+		clip = g_strdup_printf("+CLIP: \"+%s\",%u", number, type );
+	else
+		clip = g_strdup_printf("+CLIP: \"%s\",%u", number, type );
 
 	/* send first +RING */
 	ring_cb(clip);
@@ -1828,7 +1820,7 @@ static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 }
 
 static void phone_state_waiting(int num_active, int num_held, uint8_t type,
-					const uint8_t *number, uint16_t len)
+							const char *number)
 {
 
 }
@@ -1849,9 +1841,11 @@ static void phone_state_idle(int num_active, int num_held)
 static void handle_phone_state_change(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_handsfree_phone_state_change *cmd = buf;
+	const char *number;
 	uint8_t status;
 
-	if (len != sizeof(*cmd) + cmd->number_len) {
+	if (len != sizeof(*cmd) + cmd->number_len || (cmd->number_len != 0 &&
+				cmd->number[cmd->number_len - 1] != '\0')) {
 		error("Invalid phone state change command, terminating");
 		raise(SIGTERM);
 		return;
@@ -1859,6 +1853,8 @@ static void handle_phone_state_change(const void *buf, uint16_t len)
 
 	DBG("active=%u hold=%u state=%u", cmd->num_active, cmd->num_held,
 								cmd->state);
+
+	number = cmd->number_len ? (char *) cmd->number : "";
 
 	switch (cmd->state) {
 	case HAL_HANDSFREE_CALL_STATE_ACTIVE:
@@ -1875,11 +1871,11 @@ static void handle_phone_state_change(const void *buf, uint16_t len)
 		break;
 	case HAL_HANDSFREE_CALL_STATE_INCOMING:
 		phone_state_incoming(cmd->num_active, cmd->num_held, cmd->type,
-						cmd->number, cmd->number_len);
+									number);
 		break;
 	case HAL_HANDSFREE_CALL_STATE_WAITING:
 		phone_state_waiting(cmd->num_active, cmd->num_held, cmd->type,
-						cmd->number, cmd->number_len);
+									number);
 		break;
 	case HAL_HANDSFREE_CALL_STATE_IDLE:
 		phone_state_idle(cmd->num_active, cmd->num_held);
