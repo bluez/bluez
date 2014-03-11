@@ -517,7 +517,9 @@ static ssize_t avrcp_handle_register_notification(struct avrcp *session,
 
 	switch (event) {
 	case AVRCP_EVENT_TRACK_CHANGED:
-		if (g_str_equal(context->data->test_name, "/TP/NFY/BV-05-C"))
+		if (g_str_equal(context->data->test_name, "/TP/NFY/BV-05-C") ||
+			g_str_equal(context->data->test_name,
+							"/TP/NFY/BV-08-C"))
 			memset(&pdu[1], 0, 8);
 		else
 			memset(&pdu[1], 0xff, 8);
@@ -979,6 +981,18 @@ int main(int argc, char *argv[])
 
 	/* Register notification - Track Changed - Track Playing - TG */
 	define_test("/TP/NFY/BV-05-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, AVRCP_EVENT_TRACK_CHANGED,
+				0x00, 0x00, 0x00, 0x00),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x09, AVRCP_EVENT_TRACK_CHANGED,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00));
+
+	/* Register notification - Track Changed - Selected Track - TG */
+	define_test("/TP/NFY/BV-08-C", test_server,
 			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x05, AVRCP_EVENT_TRACK_CHANGED,
