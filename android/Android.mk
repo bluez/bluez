@@ -416,7 +416,6 @@ LOCAL_C_INCLUDES:= \
 	$(LOCAL_PATH)/sbc \
 
 LOCAL_CFLAGS:= \
-	-DSBC_HIGH_PRECISION \
 	-Os \
 	-Wno-sign-compare \
 	-Wno-missing-field-initializers \
