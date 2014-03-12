@@ -100,6 +100,12 @@ struct avrcp_control_handler {
 			uint16_t params_len, uint8_t *params, void *user_data);
 };
 
+struct avrcp_control_ind {
+};
+
+struct avrcp_control_cfm {
+};
+
 struct avrcp_passthrough_handler {
 	uint8_t op;
 	bool (*func) (struct avrcp *session, bool pressed, void *user_data);
@@ -123,6 +129,11 @@ struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
 void avrcp_shutdown(struct avrcp *session);
 void avrcp_set_destroy_cb(struct avrcp *session, avrcp_destroy_cb_t cb,
 							void *user_data);
+
+void avrcp_register_player(struct avrcp *session,
+				const struct avrcp_control_ind *ind,
+				const struct avrcp_control_cfm *cfm,
+				void *user_data);
 void avrcp_set_control_handlers(struct avrcp *session,
 				const struct avrcp_control_handler *handlers,
 				void *user_data);

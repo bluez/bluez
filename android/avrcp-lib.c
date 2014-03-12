@@ -73,6 +73,7 @@ struct avrcp_header {
 
 struct avrcp {
 	struct avctp *conn;
+	struct avrcp_player *player;
 
 	size_t tx_mtu;
 	uint8_t *tx_buf;
@@ -87,6 +88,13 @@ struct avrcp {
 
 	avrcp_destroy_cb_t destroy;
 	void *destroy_data;
+};
+
+struct avrcp_player {
+	const struct avrcp_control_ind *ind;
+	const struct avrcp_control_cfm *cfm;
+
+	void *user_data;
 };
 
 void avrcp_shutdown(struct avrcp *session)
@@ -107,6 +115,7 @@ void avrcp_shutdown(struct avrcp *session)
 	if (session->destroy)
 		session->destroy(session->destroy_data);
 
+	g_free(session->player);
 	g_free(session->tx_buf);
 	g_free(session);
 }
@@ -162,6 +171,9 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 		switch (ret) {
 		case -EAGAIN:
 			return ret;
+		case -ENOSYS:
+			pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
+			goto reject;
 		case -EINVAL:
 			pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 			goto reject;
@@ -247,6 +259,21 @@ void avrcp_set_destroy_cb(struct avrcp *session, avrcp_destroy_cb_t cb,
 {
 	session->destroy = cb;
 	session->destroy_data = user_data;
+}
+
+void avrcp_register_player(struct avrcp *session,
+				const struct avrcp_control_ind *ind,
+				const struct avrcp_control_cfm *cfm,
+				void *user_data)
+{
+	struct avrcp_player *player;
+
+	player = g_new0(struct avrcp_player, 1);
+	player->ind = ind;
+	player->cfm = cfm;
+	player->user_data = user_data;
+
+	session->player = player;
 }
 
 void avrcp_set_control_handlers(struct avrcp *session,
