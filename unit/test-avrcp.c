@@ -636,6 +636,9 @@ static void test_client(gconstpointer data)
 						AVRCP_EVENT_STATUS_CHANGED, 0,
 						NULL, NULL);
 
+	if (g_str_equal(context->data->test_name, "/TP/BGN/BV-01-I"))
+		avrcp_send_passthrough(context->session, IEEEID_BTSIG,
+						AVC_VENDOR_NEXT_GROUP);
 	execute_context(context);
 }
 
@@ -1029,6 +1032,13 @@ int main(int argc, char *argv[])
 				0x48, 0x00, 0x00, 0x19, 0x58,
 				0xff, 0x00, 0x00, 0x01,
 				AVRCP_STATUS_INVALID_COMMAND));
+
+	/* Next Group command transfer - CT */
+	define_test("/TP/BGN/BV-01-I", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48,
+				AVC_OP_PASSTHROUGH,
+				AVC_VENDOR_UNIQUE, 0x05, 0x00, 0x19,
+				0x58, 0x00, AVC_VENDOR_NEXT_GROUP));
 
 	return g_test_run();
 }
