@@ -605,6 +605,10 @@ static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(0x0100, data);
 
+	if (g_str_equal(context->data->test_name, "/TP/MPS/BV-01-C"))
+		avrcp_set_addressed_player(context->session, 0xabcd, NULL,
+									NULL);
+
 	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED,
 								NULL, NULL);
@@ -662,6 +666,14 @@ int main(int argc, char *argv[])
 
 	if (g_test_verbose())
 		__btd_log_init("*", 0);
+
+	/* Media Player Selection Commands and Notifications */
+
+	/* SetAddressedPlayer - CT */
+	define_test("/TP/MPS/BV-01-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48, 0x00,
+				0x00, 0x19, 0x58, 0x60, 0x00, 0x00,
+				0x02, 0xab, 0xcd));
 
 	/* Connection Establishment for Control tests */
 
