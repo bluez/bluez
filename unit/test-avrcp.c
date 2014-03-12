@@ -280,11 +280,20 @@ static bool handle_select(struct avrcp *session, bool pressed, void *user_data)
 	return true;
 }
 
+static bool handle_vendor_uniq(struct avrcp *session, bool pressed,
+								void *user_data)
+{
+	DBG("");
+
+	return true;
+}
+
 static const struct avrcp_passthrough_handler passthrough_handlers[] = {
 		{ AVC_PLAY, handle_play },
 		{ AVC_VOLUME_UP, handle_volume_up },
 		{ AVC_CHANNEL_UP, handle_channel_up },
 		{ AVC_SELECT, handle_select },
+		{ AVC_VENDOR_UNIQUE, handle_vendor_uniq },
 		{ },
 };
 
@@ -1042,6 +1051,17 @@ int main(int argc, char *argv[])
 	define_test("/TP/BGN/BV-01-I", test_client,
 			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48,
 				AVC_OP_PASSTHROUGH,
+				AVC_VENDOR_UNIQUE, 0x05, 0x00, 0x19,
+				0x58, 0x00, AVC_VENDOR_NEXT_GROUP));
+
+	/* Next Group command transfer - TG */
+	define_test("/TP/BGN/BV-01-I", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48,
+				AVC_OP_PASSTHROUGH,
+				AVC_VENDOR_UNIQUE, 0x05, 0x00, 0x19,
+				0x58, 0x00, AVC_VENDOR_NEXT_GROUP),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_ACCEPTED,
+				0x48, AVC_OP_PASSTHROUGH,
 				AVC_VENDOR_UNIQUE, 0x05, 0x00, 0x19,
 				0x58, 0x00, AVC_VENDOR_NEXT_GROUP));
 
