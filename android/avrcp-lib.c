@@ -469,3 +469,17 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 				AVC_SUBUNIT_PANEL, AVRCP_REGISTER_NOTIFICATION,
 				params, params_len);
 }
+
+int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op)
+{
+	uint8_t params[5];
+
+	if (!vendor)
+		return avctp_send_passthrough(session->conn, op, NULL, 0);
+
+	hton24(params, vendor);
+	bt_put_be16(op, &params[3]);
+
+	return avctp_send_passthrough(session->conn, AVC_VENDOR_UNIQUE, params,
+								sizeof(params));
+}
