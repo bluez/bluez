@@ -438,6 +438,18 @@ int avrcp_get_element_attributes(struct avrcp *session, avctp_rsp_cb func,
 				func, user_data);
 }
 
+int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
+					avctp_rsp_cb func, void *user_data)
+{
+	uint8_t params[2];
+
+	bt_put_be16(player_id, params);
+
+	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
+				AVRCP_SET_ADDRESSED_PLAYER, params,
+				sizeof(params), func, user_data);
+}
+
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				uint32_t position, uint32_t duration,
 				uint8_t status)
