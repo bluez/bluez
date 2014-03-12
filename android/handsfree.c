@@ -1807,7 +1807,7 @@ static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 	else
 		clip = g_strdup_printf("+CLIP: \"%s\",%u", number, type );
 
-	/* send first +RING */
+	/* send first RING */
 	ring_cb(clip);
 
 	device.ring = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT,
