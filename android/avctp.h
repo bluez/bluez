@@ -108,6 +108,11 @@
 #define AVC_BLUE			0x7c
 #define AVC_YELLOW			0x7c
 
+#define AVC_VENDOR_UNIQUE		0x7e
+
+#define AVC_VENDOR_NEXT_GROUP		0x00
+#define AVC_VENDOR_PREV_GROUP		0x01
+
 struct avctp;
 
 typedef bool (*avctp_passthrough_cb) (struct avctp *session,
@@ -159,7 +164,8 @@ unsigned int avctp_register_browsing_pdu_handler(struct avctp *session,
 bool avctp_unregister_browsing_pdu_handler(struct avctp *session,
 							unsigned int id);
 
-int avctp_send_passthrough(struct avctp *session, uint8_t op);
+int avctp_send_passthrough(struct avctp *session, uint8_t op, uint8_t *params,
+							size_t params_len);
 int avctp_send_vendordep(struct avctp *session, uint8_t transaction,
 				uint8_t code, uint8_t subunit,
 				uint8_t *operands, size_t operand_count);

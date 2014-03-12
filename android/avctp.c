@@ -159,6 +159,8 @@ struct avctp_channel {
 
 struct key_pressed {
 	uint8_t op;
+	uint8_t *params;
+	size_t params_len;
 	guint timer;
 };
 
@@ -1168,25 +1170,38 @@ static const char *op2str(uint8_t op)
 	return "UNKNOWN";
 }
 
-static int avctp_passthrough_press(struct avctp *session, uint8_t op)
+static int avctp_passthrough_press(struct avctp *session, uint8_t op,
+					uint8_t *params, size_t params_len)
 {
-	uint8_t operands[2];
+	uint8_t operands[7];
+	size_t len;
 
-	DBG("%s", op2str(op));
+	DBG("op 0x%02x %s params_len %zd", op, op2str(op), params_len);
 
 	/* Button pressed */
 	operands[0] = op & 0x7f;
-	operands[1] = 0;
+
+	if (op == AVC_VENDOR_UNIQUE && params &&
+				params_len == 5) {
+		memcpy(&operands[2], params, params_len);
+		len = params_len + 2;
+		operands[1] = params_len;
+	} else {
+		len = 2;
+		operands[1] = 0;
+	}
 
 	return avctp_send_req(session, AVC_CTYPE_CONTROL,
 				AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
-				operands, sizeof(operands),
+				operands, len,
 				avctp_passthrough_rsp, NULL);
 }
 
-static int avctp_passthrough_release(struct avctp *session, uint8_t op)
+static int avctp_passthrough_release(struct avctp *session, uint8_t op,
+					uint8_t *params, size_t params_len)
 {
-	uint8_t operands[2];
+	uint8_t operands[7];
+	size_t len;
 
 	DBG("%s", op2str(op));
 
@@ -1194,9 +1209,16 @@ static int avctp_passthrough_release(struct avctp *session, uint8_t op)
 	operands[0] = op | 0x80;
 	operands[1] = 0;
 
+	if (op == AVC_VENDOR_UNIQUE && params &&
+				params_len > sizeof(operands) - 2) {
+		memcpy(&operands[2], params, params_len);
+		len = params_len;
+	} else
+		len = 2;
+
 	return avctp_send_req(session, AVC_CTYPE_CONTROL,
 				AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
-				operands, sizeof(operands),
+				operands, len,
 				NULL, NULL);
 }
 
@@ -1204,15 +1226,18 @@ static gboolean repeat_timeout(gpointer user_data)
 {
 	struct avctp *session = user_data;
 
-	avctp_passthrough_release(session, session->key.op);
-	avctp_passthrough_press(session, session->key.op);
+	avctp_passthrough_release(session, session->key.op, session->key.params,
+						session->key.params_len);
+	avctp_passthrough_press(session, session->key.op, session->key.params,
+						session->key.params_len);
 
 	return TRUE;
 }
 
 static void release_pressed(struct avctp *session)
 {
-	avctp_passthrough_release(session, session->key.op);
+	avctp_passthrough_release(session, session->key.op, session->key.params,
+						session->key.params_len);
 
 	if (session->key.timer > 0)
 		g_source_remove(session->key.timer);
@@ -1220,7 +1245,8 @@ static void release_pressed(struct avctp *session)
 	session->key.timer = 0;
 }
 
-static bool set_pressed(struct avctp *session, uint8_t op)
+static bool set_pressed(struct avctp *session, uint8_t op, uint8_t *params,
+							size_t params_len)
 {
 	if (session->key.timer > 0) {
 		if (session->key.op == op)
@@ -1232,6 +1258,8 @@ static bool set_pressed(struct avctp *session, uint8_t op)
 		return FALSE;
 
 	session->key.op = op;
+	session->key.params = params;
+	session->key.params_len = params_len;
 	session->key.timer = g_timeout_add_seconds(AVC_PRESS_TIMEOUT,
 							repeat_timeout,
 							session);
@@ -1243,24 +1271,38 @@ static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
 					uint8_t subunit, uint8_t *operands,
 					size_t operand_count, void *user_data)
 {
+	uint8_t *params;
+	size_t params_len;
+
+	DBG("code 0x%02x operand_count %zd", code, operand_count);
+
 	if (code != AVC_CTYPE_ACCEPTED)
 		return FALSE;
 
-	if (set_pressed(session, operands[0]))
+	if (operands[0] == AVC_VENDOR_UNIQUE) {
+		params = &operands[2];
+		params_len = operand_count - 2;
+	} else {
+		params = NULL;
+		params_len = 0;
+	}
+
+	if (set_pressed(session, operands[0], params, params_len))
 		return FALSE;
 
-	avctp_passthrough_release(session, operands[0]);
+	avctp_passthrough_release(session, operands[0], params, params_len);
 
 	return FALSE;
 }
 
-int avctp_send_passthrough(struct avctp *session, uint8_t op)
+int avctp_send_passthrough(struct avctp *session, uint8_t op, uint8_t *params,
+							size_t params_len)
 {
 	/* Auto release if key pressed */
 	if (session->key.timer > 0)
 		release_pressed(session);
 
-	return avctp_passthrough_press(session, op);
+	return avctp_passthrough_press(session, op, params, params_len);
 }
 
 int avctp_send_vendordep(struct avctp *session, uint8_t transaction,
