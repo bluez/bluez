@@ -5642,8 +5642,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 			btd_device_set_temporary(device, FALSE);
 	}
 
-	if (ev->key.master)
-		bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
+	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
 }
 
 static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
