@@ -26,9 +26,50 @@
 #include "ipc-common.h"
 #include "hal-ipc.h"
 
+static const bthl_callbacks_t *cbacks = NULL;
+
+static bool interface_ready(void)
+{
+	return cbacks != NULL;
+}
+
+/* handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+static const struct hal_ipc_handler ev_handlers[] = {
+};
+
+static bt_status_t init(bthl_callbacks_t *callbacks)
+{
+	struct hal_cmd_register_module cmd;
+	int ret;
+
+	DBG("");
+
+	if (interface_ready())
+		return BT_STATUS_DONE;
+
+	/* store reference to user callbacks */
+	cbacks = callbacks;
+
+	hal_ipc_register(HAL_SERVICE_ID_HEALTH, ev_handlers,
+				sizeof(ev_handlers)/sizeof(ev_handlers[0]));
+
+	cmd.service_id = HAL_SERVICE_ID_HEALTH;
+
+	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
+
+	if (ret != BT_STATUS_SUCCESS) {
+		cbacks = NULL;
+		hal_ipc_unregister(HAL_SERVICE_ID_HEALTH);
+	}
+
+	return ret;
+}
+
 static bthl_interface_t health_if = {
 	.size = sizeof(health_if),
-	.init = NULL,
+	.init = init,
 	.register_application = NULL,
 	.unregister_application = NULL,
 	.connect_channel = NULL,
