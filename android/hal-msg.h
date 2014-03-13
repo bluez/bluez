@@ -419,6 +419,11 @@ struct hal_rsp_health_connect_channel {
 	uint16_t  channel_id;
 } __attribute__((packed));
 
+#define HAL_OP_HEALTH_DESTROY_CHANNEL	0x04
+struct hal_cmd_health_destroy_channel {
+	uint16_t channel_id;
+} __attribute__((packed));
+
 /* Handsfree HAL API */
 
 #define HAL_MODE_HANDSFREE_HSP_ONLY		0x01
