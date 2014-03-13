@@ -261,6 +261,37 @@ void avrcp_set_destroy_cb(struct avrcp *session, avrcp_destroy_cb_t cb,
 	session->destroy_data = user_data;
 }
 
+static ssize_t get_capabilities(struct avrcp *session, uint8_t transaction,
+				uint16_t params_len, uint8_t *params,
+				void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	if (!params || params_len != 1)
+		return -EINVAL;
+
+	switch (params[0]) {
+	case CAP_COMPANY_ID:
+		params[1] = 1;
+		hton24(&params[2], IEEEID_BTSIG);
+		return 5;
+	case CAP_EVENTS_SUPPORTED:
+		if (!player->ind || !player->ind->get_capabilities)
+			return -ENOSYS;
+		return player->ind->get_capabilities(session, transaction,
+							player->user_data);
+	}
+
+	return -EINVAL;
+}
+
+static const struct avrcp_control_handler player_handlers[] = {
+		{ AVRCP_GET_CAPABILITIES,
+					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
+					get_capabilities },
+		{ },
+};
+
 void avrcp_register_player(struct avrcp *session,
 				const struct avrcp_control_ind *ind,
 				const struct avrcp_control_cfm *cfm,
@@ -273,6 +304,7 @@ void avrcp_register_player(struct avrcp *session,
 	player->cfm = cfm;
 	player->user_data = user_data;
 
+	avrcp_set_control_handlers(session, player_handlers, player);
 	session->player = player;
 }
 
