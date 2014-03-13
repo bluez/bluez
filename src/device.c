@@ -3443,13 +3443,36 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 	find_included_services(req, services);
 }
 
+bool device_attach_attrib(struct btd_device *dev, GIOChannel *io)
+{
+	GAttrib *attrib;
+
+	attrib = g_attrib_new(io);
+	if (!attrib) {
+		error("Unable to create new GAttrib instance");
+		return false;
+	}
+
+	dev->attachid = attrib_channel_attach(attrib);
+	if (dev->attachid == 0) {
+		g_attrib_unref(attrib);
+		error("Attribute server attach failure!");
+		return false;
+	}
+
+	dev->attrib = attrib;
+	dev->cleanup_id = g_io_add_watch(io, G_IO_HUP,
+					attrib_disconnected_cb, dev);
+
+	return true;
+}
+
 static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct att_callbacks *attcb = user_data;
 	struct btd_device *device = attcb->user_data;
 	DBusMessage *reply;
 	uint8_t io_cap;
-	GAttrib *attrib;
 	int err = 0;
 
 	g_io_channel_unref(device->att_io);
@@ -3465,19 +3488,8 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		goto done;
 	}
 
-	attrib = g_attrib_new(io);
-	if (!attrib) {
-		error("Unable to create new GAttrib instance");
+	if (!device_attach_attrib(device, io))
 		goto done;
-	}
-
-	device->attachid = attrib_channel_attach(attrib);
-	if (device->attachid == 0)
-		error("Attribute server attach failure!");
-
-	device->attrib = attrib;
-	device->cleanup_id = g_io_add_watch(io, G_IO_HUP,
-					attrib_disconnected_cb, device);
 
 	if (attcb->success)
 		attcb->success(user_data);
