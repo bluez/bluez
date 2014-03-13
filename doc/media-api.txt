@@ -128,31 +128,52 @@ Methods		void Play()
 
 			Resume playback.
 
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
+
 		void Pause()
 
 			Pause playback.
+
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
 
 		void Stop()
 
 			Stop playback.
 
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
+
 		void Next()
 
 			Next item.
 
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
+
 		void Previous()
 
 			Previous item.
+
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
 
 		void FastForward()
 
 			Fast forward playback, this action is only stopped
 			when another method in this interface is called.
 
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
+
 		void Rewind()
 
 			Rewind playback, this action is only stopped
 			when another method in this interface is called.
+
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
 
 Properties	string Equalizer [readwrite]
 
@@ -300,9 +321,16 @@ Methods		object Search(string value, dict filter)
 			To list the items found use the folder object returned
 			and pass to ChangeFolder.
 
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
+
 		array{objects, properties} ListItems(dict filter)
 
 			Return a list of items found
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
 
 		void ChangeFolder(object folder)
 
@@ -312,6 +340,10 @@ Methods		object Search(string value, dict filter)
 			might be destroyed and have to be listed again, the
 			exception is NowPlaying folder which should be always
 			present while the player is active.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
 
 Properties	uint32 NumberOfItems [readonly]
 
@@ -368,9 +400,15 @@ Methods		void Play()
 
 			Play item
 
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
+
 		void AddtoNowPlaying()
 
 			Add item to now playing list
+
+			Possible Errors: org.bluez.Error.NotSupported
+					 org.bluez.Error.Failed
 
 Properties	object Player [readonly]
 
