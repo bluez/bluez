@@ -1571,6 +1571,9 @@ static void device_svc_resolved(struct btd_device *dev, uint8_t bdaddr_type,
 		g_free(cb);
 	}
 
+	if (!dev->temporary)
+		store_device_info(dev);
+
 	if (!req || !req->msg)
 		return;
 
@@ -3140,10 +3143,6 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 send_reply:
 	device_svc_resolved(device, BDADDR_BREDR, err);
-
-	if (!device->temporary)
-		store_device_info(device);
-
 	browse_request_free(req);
 }
 
