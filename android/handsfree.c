@@ -861,16 +861,19 @@ static void connect_sco_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	if (err) {
 		uint8_t status;
 
-		error("SCO: connect failed (%s)", err->message);
+		error("handsfree: audio connect failed (%s)", err->message);
+
 		status = HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED;
 		device_set_audio_state(status);
 
 		if (!(device.features & HFP_HF_FEAT_CODEC))
 			return;
 
-		if (device.negotiated_codec != CODEC_ID_CVSD)
-			/* If other failed, try connect CVSD */
+		/* If other failed, try connecting with CVSD */
+		if (device.negotiated_codec != CODEC_ID_CVSD) {
+			info ("handsfree: trying fallback with CVSD");
 			select_codec(CODEC_ID_CVSD);
+		}
 
 		return;
 	}
@@ -906,7 +909,7 @@ static bool connect_sco(void)
 				BT_IO_OPT_INVALID);
 
 	if (!io) {
-		error("SCO: unable to connect: %s", gerr->message);
+		error("handsfree: unable to connect audio: %s", gerr->message);
 		g_error_free(gerr);
 		return false;
 	}
@@ -2212,7 +2215,7 @@ static void confirm_sco_cb(GIOChannel *chan, gpointer user_data)
 			BT_IO_OPT_DEST_BDADDR, &bdaddr,
 			BT_IO_OPT_INVALID);
 	if (err) {
-		error("SCO: confirm failed (%s)", err->message);
+		error("handsfree: audio confirm failed (%s)", err->message);
 		g_error_free(err);
 		goto drop;
 	}
@@ -2221,12 +2224,12 @@ static void confirm_sco_cb(GIOChannel *chan, gpointer user_data)
 
 	if (device.state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED ||
 			bacmp(&device.bdaddr, &bdaddr)) {
-		error("SCO: connection from %s rejected", address);
+		error("handsfree: audio connection from %s rejected", address);
 		goto drop;
 	}
 
 	if (!bt_io_accept(chan, connect_sco_cb, NULL, NULL, NULL)) {
-		error("SCO: failed to accept connection");
+		error("handsfree: failed to accept audio connection");
 		goto drop;
 	}
 
@@ -2441,7 +2444,7 @@ static bool enable_sco_server(void)
 				BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
 				BT_IO_OPT_INVALID);
 	if (!sco_server) {
-		error("Failed to listen on SCO: %s", err->message);
+		error("handsfree: Failed to listen on SCO: %s", err->message);
 		g_error_free(err);
 		cleanup_hsp_ag();
 		cleanup_hfp_ag();
