@@ -893,8 +893,8 @@ static bool connect_sco(void)
 	if (device.sco)
 		return false;
 
-	if ((device.features & HFP_HF_FEAT_CODEC) && device.negotiated_codec
-							!= CODEC_ID_CVSD)
+	if ((device.features & HFP_HF_FEAT_CODEC) &&
+				device.negotiated_codec != CODEC_ID_CVSD)
 		voice_settings = BT_VOICE_TRANSPARENT;
 	else
 		voice_settings = BT_VOICE_CVSD_16BIT;
@@ -1114,9 +1114,9 @@ static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		/* If device supports Codec Negotiation, AT+BAC should be
 		 * received first
 		 */
-		if ((device.features & HFP_HF_FEAT_CODEC))
-			if (!device.codecs[CVSD_OFFSET].remote_supported)
-				break;
+		if ((device.features & HFP_HF_FEAT_CODEC) &&
+				!device.codecs[CVSD_OFFSET].remote_supported)
+			break;
 
 		len = strlen("+CIND:") + 1;
 
@@ -1256,8 +1256,8 @@ static void at_cmd_bac(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		/* At least CVSD mandatory codec must exist
 		 * HFP V1.6 4.34.1
 		 */
-		if (!hfp_gw_result_get_number(result, &val)
-				|| val != CODEC_ID_CVSD)
+		if (!hfp_gw_result_get_number(result, &val) ||
+							val != CODEC_ID_CVSD)
 			goto failed;
 
 		device.codecs[CVSD_OFFSET].remote_supported = true;
