@@ -408,6 +408,17 @@ struct hal_rsp_health_reg_app {
 	uint16_t app_id;
 } __attribute__((packed));
 
+#define HAL_OP_HEALTH_CONNECT_CHANNEL	0x03
+struct hal_cmd_health_connect_channel {
+	uint16_t app_id;
+	uint8_t  bdaddr[6];
+	uint8_t  mdep_index;
+} __attribute__((packed));
+
+struct hal_rsp_health_connect_channel {
+	uint16_t  channel_id;
+} __attribute__((packed));
+
 /* Handsfree HAL API */
 
 #define HAL_MODE_HANDSFREE_HSP_ONLY		0x01
