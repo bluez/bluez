@@ -383,6 +383,31 @@ struct hal_cmd_pan_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+struct hal_string {
+	uint8_t len;
+	uint8_t data[0];
+};
+
+#define HAL_OP_HEALTH_REG_APP		0x01
+struct hal_cmd_health_reg_app {
+	struct hal_string app_name;
+	struct hal_string provider_name;
+	struct hal_string service_name;
+	struct hal_string service_descr;
+	uint8_t num_of_mdep;
+
+	struct {
+		uint8_t role;
+		uint8_t data_type;
+		uint8_t channel_type;
+		struct  hal_string descr;
+	} mdep_cfg[0];
+} __attribute__((packed));
+
+struct hal_rsp_health_reg_app {
+	uint16_t app_id;
+} __attribute__((packed));
+
 /* Handsfree HAL API */
 
 #define HAL_MODE_HANDSFREE_HSP_ONLY		0x01
