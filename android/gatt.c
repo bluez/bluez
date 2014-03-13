@@ -48,7 +48,7 @@ static struct ipc *hal_ipc = NULL;
 static bdaddr_t adapter_addr;
 static struct queue *gatt_clients = NULL;
 
-static bool find_client_by_uuid(const void *data, const void *user_data)
+static bool match_client_by_uuid(const void *data, const void *user_data)
 {
 	const uint8_t *exp_uuid = user_data;
 	const struct gatt_client *client = data;
@@ -56,7 +56,7 @@ static bool find_client_by_uuid(const void *data, const void *user_data)
 	return !memcmp(exp_uuid, client->uuid, sizeof(client->uuid));
 }
 
-static bool find_client_by_id(const void *data, const void *user_data)
+static bool match_client_by_id(const void *data, const void *user_data)
 {
 	int32_t exp_id = PTR_TO_INT(user_data);
 	const struct gatt_client *client = data;
@@ -80,7 +80,7 @@ static void handle_client_register(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (queue_find(gatt_clients, find_client_by_uuid, &cmd->uuid)) {
+	if (queue_find(gatt_clients, match_client_by_uuid, &cmd->uuid)) {
 		error("gatt: client uuid is already on list");
 		status = HAL_STATUS_FAILED;
 		goto failed;
@@ -116,7 +116,7 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 
 	DBG("");
 
-	cl = queue_remove_if(gatt_clients, find_client_by_id,
+	cl = queue_remove_if(gatt_clients, match_client_by_id,
 						INT_TO_PTR(cmd->client_if));
 	if (!cl) {
 		error("gatt: client_if=%d not found", cmd->client_if);
