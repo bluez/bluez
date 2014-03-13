@@ -130,17 +130,22 @@ static struct {
 	uint8_t state;
 	uint8_t audio_state;
 	uint32_t features;
+
 	bool clip_enabled;
 	bool cmee_enabled;
 	bool ccwa_enabled;
 	bool indicators_enabled;
 	struct indicator inds[IND_COUNT];
+
 	uint8_t negotiated_codec;
 	uint8_t proposed_codec;
 	struct hfp_codec codecs[CODECS_COUNT];
+
 	guint ring;
 	bool hsp;
+
 	struct hfp_gw *gw;
+
 	GIOChannel *sco;
 	guint sco_watch;
 } device;
