@@ -52,6 +52,7 @@ plugin_LTLIBRARIES += android/bluetooth.default.la
 android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-socket.c \
 					android/hal-hidhost.c \
+					android/hal-health.c \
 					android/hal-pan.c \
 					android/hal-a2dp.c \
 					android/hal-avrcp.c \

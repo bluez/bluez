@@ -777,6 +777,9 @@ static const void *get_profile_interface(const char *profile_id)
 	if (!strcmp(profile_id, BT_PROFILE_GATT_ID))
 		return bt_get_gatt_interface();
 
+	if (!strcmp(profile_id, BT_PROFILE_HEALTH_ID))
+		return bt_get_health_interface();
+
 	return NULL;
 }
 

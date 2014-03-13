@@ -121,6 +121,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-handsfree.c \
 	bluez/android/hal-gatt.c \
 	bluez/android/hal-utils.c \
+	bluez/android/hal-health.c \
 
 LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \

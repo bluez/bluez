@@ -25,6 +25,7 @@
 #include <hardware/bt_gatt.h>
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
+#include <hardware/bt_hl.h>
 
 btsock_interface_t *bt_get_socket_interface(void);
 bthh_interface_t *bt_get_hidhost_interface(void);
@@ -33,6 +34,7 @@ btav_interface_t *bt_get_a2dp_interface(void);
 btrc_interface_t *bt_get_avrcp_interface(void);
 bthf_interface_t *bt_get_handsfree_interface(void);
 btgatt_interface_t *bt_get_gatt_interface(void);
+bthl_interface_t *bt_get_health_interface(void);
 
 void bt_thread_associate(void);
 void bt_thread_disassociate(void);
