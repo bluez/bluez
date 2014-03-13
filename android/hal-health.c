@@ -67,6 +67,25 @@ static bt_status_t init(bthl_callbacks_t *callbacks)
 	return ret;
 }
 
+static void cleanup(void)
+{
+	struct hal_cmd_unregister_module cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return;
+
+	cbacks = NULL;
+
+	cmd.service_id = HAL_SERVICE_ID_HEALTH;
+
+	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
+
+	hal_ipc_unregister(HAL_SERVICE_ID_HEALTH);
+}
+
 static bthl_interface_t health_if = {
 	.size = sizeof(health_if),
 	.init = init,
@@ -74,7 +93,7 @@ static bthl_interface_t health_if = {
 	.unregister_application = NULL,
 	.connect_channel = NULL,
 	.destroy_channel = NULL,
-	.cleanup = NULL
+	.cleanup = cleanup
 };
 
 bthl_interface_t *bt_get_health_interface(void)
