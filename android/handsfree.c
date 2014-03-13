@@ -1396,7 +1396,7 @@ static void sdp_hsp_search_cb(sdp_list_t *recs, int err, gpointer data)
 		goto fail;
 	}
 
-	if (sdp_get_service_classes(recs->data, &classes) < 0) {
+	if (sdp_get_service_classes(recs->data, &classes) < 0 || !classes) {
 		error("handsfree: unable to get service classes from record");
 		goto fail;
 	}
@@ -1486,7 +1486,7 @@ static void sdp_hfp_search_cb(sdp_list_t *recs, int err, gpointer data)
 		return;
 	}
 
-	if (sdp_get_service_classes(recs->data, &classes) < 0) {
+	if (sdp_get_service_classes(recs->data, &classes) < 0 || !classes) {
 		error("handsfree: unable to get service classes from record");
 		goto fail;
 	}
