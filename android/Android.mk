@@ -43,6 +43,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/pan.c \
 	bluez/android/handsfree.c \
 	bluez/android/gatt.c \
+	bluez/android/health.c \
 	bluez/src/log.c \
 	bluez/src/shared/mgmt.c \
 	bluez/src/shared/util.c \

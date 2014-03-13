@@ -41,6 +41,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/pan.h android/pan.c \
 				android/handsfree.h android/handsfree.c \
 				android/gatt.h android/gatt.c \
+				android/health.h android/health.c \
 				btio/btio.h btio/btio.c \
 				src/sdp-client.h src/sdp-client.c \
 				profiles/network/bnep.h profiles/network/bnep.c

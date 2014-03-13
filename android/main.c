@@ -59,6 +59,7 @@
 #include "avrcp.h"
 #include "handsfree.h"
 #include "gatt.h"
+#include "health.h"
 
 #define STARTUP_GRACE_SECONDS 5
 #define SHUTDOWN_GRACE_SECONDS 10
@@ -134,6 +135,13 @@ static void service_register(const void *buf, uint16_t len)
 		}
 
 		break;
+	case HAL_SERVICE_ID_HEALTH:
+		if (!bt_health_register(hal_ipc, &adapter_bdaddr, m->mode)) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+
+		break;
 	default:
 		DBG("service %u not supported", m->service_id);
 		status = HAL_STATUS_FAILED;
@@ -185,6 +193,9 @@ static void service_unregister(const void *buf, uint16_t len)
 		break;
 	case HAL_SERVICE_ID_GATT:
 		bt_gatt_unregister();
+		break;
+	case HAL_SERVICE_ID_HEALTH:
+		bt_health_unregister();
 		break;
 	default:
 		/* This would indicate bug in HAL, as unregister should not be
@@ -394,6 +405,9 @@ static void cleanup_services(void)
 			break;
 		case HAL_SERVICE_ID_GATT:
 			bt_gatt_unregister();
+			break;
+		case HAL_SERVICE_ID_HEALTH:
+			bt_health_unregister();
 			break;
 		}
 
