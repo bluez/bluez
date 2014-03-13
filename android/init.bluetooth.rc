@@ -2,6 +2,7 @@
 on boot
     chown bluetooth bluetooth /data/misc/bluetooth
     chown bluetooth bluetooth /dev/uhid
+    chown system    bluetooth /dev/uinput
 
 # services
 on property:bluetooth.start=daemon
