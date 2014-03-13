@@ -1247,7 +1247,10 @@ gboolean attrib_channel_detach(GAttrib *attrib, guint id)
 
 static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 {
-	GAttrib *attrib;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	uint8_t dst_type;
+	bdaddr_t src, dst;
 
 	DBG("");
 
@@ -1256,12 +1259,26 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 		return;
 	}
 
-	attrib = g_attrib_new(io);
-	if (!attrib)
+	bt_io_get(io, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST_TYPE, &dst_type,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		return;
+	}
+
+	adapter = adapter_find(&src);
+	if (!adapter)
 		return;
 
-	attrib_channel_attach(attrib);
-	g_attrib_unref(attrib);
+	device = btd_adapter_get_device(adapter, &dst, dst_type);
+	if (!device)
+		return;
+
+	device_attach_attrib(device, io);
 }
 
 static gboolean register_core_services(struct gatt_server *server)
