@@ -877,11 +877,39 @@ static void le_conn_complete(struct btdev *btdev,
 	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
 }
 
+static const uint8_t *scan_addr(const struct btdev *btdev)
+{
+	if (btdev->le_scan_own_addr_type == 0x01)
+		return btdev->random_addr;
+
+	return btdev->bdaddr;
+}
+
+static const uint8_t *adv_addr(const struct btdev *btdev)
+{
+	if (btdev->le_adv_own_addr == 0x01)
+		return btdev->random_addr;
+
+	return btdev->bdaddr;
+}
+
+static bool adv_match(struct btdev *scan, struct btdev *adv)
+{
+	/* Match everything if this is not directed advertising */
+	if (adv->le_adv_type != 0x01 && adv->le_adv_type != 0x04)
+		return true;
+
+	if (scan->le_scan_own_addr_type != adv->le_adv_direct_addr_type)
+		return false;
+
+	return !memcmp(scan_addr(scan), adv->le_adv_direct_addr, 6);
+}
+
 static void le_conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 {
 	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
 
-	if (remote && remote->le_adv_enable)
+	if (remote && remote->le_adv_enable && adv_match(btdev, remote))
 		le_conn_complete(btdev, bdaddr, 0);
 	else
 		le_conn_complete(btdev, bdaddr,
@@ -1373,22 +1401,6 @@ static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
 	send_event(init, BT_HCI_EVT_AUTH_COMPLETE, &auth, sizeof(auth));
 }
 
-static const uint8_t *scan_addr(const struct btdev *btdev)
-{
-	if (btdev->le_scan_own_addr_type == 0x01)
-		return btdev->random_addr;
-
-	return btdev->bdaddr;
-}
-
-static const uint8_t *adv_addr(const struct btdev *btdev)
-{
-	if (btdev->le_adv_own_addr == 0x01)
-		return btdev->random_addr;
-
-	return btdev->bdaddr;
-}
-
 static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote,
 								uint8_t type)
 {
@@ -1434,18 +1446,6 @@ static uint8_t get_adv_report_type(uint8_t adv_type)
 		return 0x01;
 
 	return adv_type;
-}
-
-static bool adv_match(struct btdev *scan, struct btdev *adv)
-{
-	/* Match everything if this is not directed advertising */
-	if (adv->le_adv_type != 0x01 && adv->le_adv_type != 0x04)
-		return true;
-
-	if (scan->le_scan_own_addr_type != adv->le_adv_direct_addr_type)
-		return false;
-
-	return !memcmp(scan_addr(scan), adv->le_adv_direct_addr, 6);
 }
 
 static void le_set_adv_enable_complete(struct btdev *btdev)
@@ -2730,6 +2730,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			return;
 		lecc = data;
+		btdev->le_scan_own_addr_type = lecc->own_addr_type;
 		le_conn_request(btdev, lecc->peer_addr);
 		break;
 	}
