@@ -103,6 +103,8 @@ struct avrcp_control_handler {
 struct avrcp_control_ind {
 	int (*get_capabilities) (struct avrcp *session, uint8_t transaction,
 							void *user_data);
+	int (*list_attributes) (struct avrcp *session, uint8_t transaction,
+							void *user_data);
 };
 
 struct avrcp_control_cfm {

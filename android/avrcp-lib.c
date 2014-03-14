@@ -285,10 +285,28 @@ static ssize_t get_capabilities(struct avrcp *session, uint8_t transaction,
 	return -EINVAL;
 }
 
+static ssize_t list_attributes(struct avrcp *session, uint8_t transaction,
+				uint16_t params_len, uint8_t *params,
+				void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	DBG("");
+
+	if (!player->ind || !player->ind->list_attributes)
+		return -ENOSYS;
+
+	return player->ind->list_attributes(session, transaction,
+							player->user_data);
+}
+
 static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
 					get_capabilities },
+		{ AVRCP_LIST_PLAYER_ATTRIBUTES,
+					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
+					list_attributes },
 		{ },
 };
 
