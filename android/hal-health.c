@@ -83,6 +83,21 @@ static bt_status_t connect_channel(int app_id, bt_bdaddr_t *bd_addr,
 	return status;
 }
 
+static bt_status_t destroy_channel(int channel_id)
+{
+	struct hal_cmd_health_destroy_channel cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	cmd.channel_id = channel_id;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_DESTROY_CHANNEL,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
+}
+
 static bt_status_t init(bthl_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
@@ -137,7 +152,7 @@ static bthl_interface_t health_if = {
 	.register_application = NULL,
 	.unregister_application = unregister_application,
 	.connect_channel = connect_channel,
-	.destroy_channel = NULL,
+	.destroy_channel = destroy_channel,
 	.cleanup = cleanup
 };
 
