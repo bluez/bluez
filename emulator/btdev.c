@@ -119,6 +119,7 @@ struct btdev {
 	uint8_t  le_scan_data_len;
 	uint8_t  le_scan_enable;
 	uint8_t  le_scan_type;
+	uint8_t  le_scan_own_addr_type;
 	uint8_t  le_filter_dup;
 	uint8_t  le_adv_enable;
 	uint8_t  le_ltk[16];
@@ -2383,6 +2384,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		else {
 			status = BT_HCI_ERR_SUCCESS;
 			btdev->le_scan_type = lssp->type;
+			btdev->le_scan_own_addr_type = lssp->own_addr_type;
 		}
 
 		cmd_complete(btdev, opcode, &status, sizeof(status));
