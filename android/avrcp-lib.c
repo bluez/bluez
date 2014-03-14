@@ -839,6 +839,14 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 				params, params_len);
 }
 
+int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
+							uint8_t status)
+{
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_SET_ADDRESSED_PLAYER,
+				&status, sizeof(status));
+}
+
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op)
 {
 	uint8_t params[5];
