@@ -31,6 +31,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				src/shared/hfp.h src/shared/hfp.c \
 				android/bluetooth.h android/bluetooth.c \
 				android/hidhost.h android/hidhost.c \
+				android/ipc-common.h \
 				android/ipc.h android/ipc.c \
 				android/avdtp.h android/avdtp.c \
 				android/a2dp.h android/a2dp.c \
@@ -73,6 +74,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hardware/bt_sock.h \
 					android/hardware/hardware.h \
 					android/cutils/properties.h \
+					android/ipc-common.h \
 					android/hal-log.h \
 					android/hal-ipc.h android/hal-ipc.c \
 					android/hal-utils.h android/hal-utils.c
@@ -145,7 +147,7 @@ android_ipc_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c \
 				android/hal-utils.h android/hal-utils.c \
-				android/ipc-tester.c
+				android/ipc-common.h android/ipc-tester.c
 
 android_ipc_tester_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
 
@@ -164,6 +166,7 @@ unit_tests += android/test-ipc
 android_test_ipc_SOURCES = android/test-ipc.c \
 				src/shared/util.h src/shared/util.c \
 				src/log.h src/log.c \
+				android/ipc-common.h \
 				android/ipc.c android/ipc.h
 android_test_ipc_LDADD = @GLIB_LIBS@
 
