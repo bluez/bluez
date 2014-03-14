@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <endian.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
