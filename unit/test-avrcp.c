@@ -319,7 +319,10 @@ static int get_attribute_text(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
-	return 1;
+	avrcp_get_player_attribute_text_rsp(session, transaction, 0, NULL,
+									NULL);
+
+	return -EAGAIN;
 }
 
 static int list_values(struct avrcp *session, uint8_t transaction,
