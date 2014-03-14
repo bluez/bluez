@@ -37,6 +37,7 @@
 #include "lib/sdp_lib.h"
 
 #include "src/shared/util.h"
+#include "src/log.h"
 #include "src/sdpd.h"
 
 struct sdp_pdu {
@@ -126,12 +127,6 @@ static void sdp_debug(const char *str, void *user_data)
 	const char *prefix = user_data;
 
 	g_print("%s%s\n", prefix, str);
-}
-
-void btd_debug(const char *format, ...);
-
-void btd_debug(const char *format, ...)
-{
 }
 
 static void context_quit(struct context *context)
@@ -796,6 +791,9 @@ static void test_sdp_de_attr(gconstpointer data)
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
+
+	if (g_test_verbose())
+		__btd_log_init("*", 0);
 
 	/*
 	 * Service Search Request

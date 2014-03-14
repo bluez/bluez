@@ -265,6 +265,7 @@ unit_tests += unit/test-sdp
 unit_test_sdp_SOURCES = unit/test-sdp.c \
 				src/shared/util.h src/shared/util.c \
 				src/sdpd.h src/sdpd-database.c \
+				src/log.h src/log.c \
 				src/sdpd-service.c src/sdpd-request.c
 unit_test_sdp_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
