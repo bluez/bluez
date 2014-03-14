@@ -569,7 +569,7 @@ static void do_send(int sk)
 
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
-		bt_put_le32(seq, buf);
+		put_le32(seq, buf);
 		put_le16(data_size, buf + 4);
 
 		seq++;
