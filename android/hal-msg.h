@@ -426,7 +426,9 @@ struct hal_cmd_health_destroy_channel {
 
 /* Handsfree HAL API */
 
-#define HAL_MODE_HANDSFREE_HSP_ONLY		0x01
+#define HAL_MODE_HANDSFREE_HSP_ONLY		HAL_MODE_DEFAULT
+#define HAL_MODE_HANDSFREE_HFP			0x01
+#define HAL_MODE_HANDSFREE_HFP_WBS		0x02
 
 #define HAL_OP_HANDSFREE_CONNECT		0x01
 struct hal_cmd_handsfree_connect {
