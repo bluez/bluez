@@ -124,9 +124,10 @@ struct method {
 	const char *help;
 };
 
-int haltest_error(const char *format, ...);
-int haltest_info(const char *format, ...);
-int haltest_warn(const char *format, ...);
+int haltest_error(const char *format, ...)
+					__attribute__((format(printf, 1, 2)));
+int haltest_info(const char *format, ...)__attribute__((format(printf, 1, 2)));
+int haltest_warn(const char *format, ...)__attribute__((format(printf, 1, 2)));
 
 /*
  * Enumerator for discovered devices, to be used as tab completion enum_func

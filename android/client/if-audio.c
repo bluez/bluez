@@ -323,7 +323,7 @@ static void open_output_stream_p(int argc, const char **argv)
 	if (buffer_size == 0)
 		haltest_error("Invalid buffer size received!\n");
 	else
-		haltest_info("Using buffer size: %d\n", buffer_size);
+		haltest_info("Using buffer size: %zu\n", buffer_size);
 }
 
 static void close_output_stream_p(int argc, const char **argv)
@@ -408,7 +408,7 @@ static void get_buffer_size_p(int argc, const char **argv)
 	RETURN_IF_NULL(if_audio);
 	RETURN_IF_NULL(stream_out);
 
-	haltest_info("Current output buffer size: %d\n",
+	haltest_info("Current output buffer size: %zu\n",
 		stream_out->common.get_buffer_size(&stream_out->common));
 }
 

@@ -113,7 +113,7 @@ struct command_completion_args {
 	enum_func func; /* enumerating function */
 	void *user; /* argument to enumerating function */
 	short_help help; /* help function */
-	void *user_help; /* additional data (used by short_help) */
+	const char *user_help; /* additional data (used by short_help) */
 };
 
 /*
@@ -289,10 +289,9 @@ static void method_help(struct command_completion_args *args)
 
 	if (eb != NULL)
 		haltest_info("%s %-*s%.*s%s%.*s%s%s\n", args->arg->ntcopy,
-				arg1_size, arg1,
-				sb - (const char *) args->user_help,
-				args->user_help,
-				bold, eb - sb, sb, normal, eb);
+				arg1_size, arg1, (int) (sb - args->user_help),
+				args->user_help, bold, (int) (eb - sb),
+				sb, normal, eb);
 	else
 		haltest_info("%s %-*s%s\n", args->arg->ntcopy,
 			arg1_size, arg1, args->user_help);
@@ -336,7 +335,7 @@ static void param_completion(int argc, const split_arg_t *arg,
 	if (args.func != NULL) {
 		args.typed = argv[argc - 1];
 		args.help = method_help;
-		args.user_help = method ? (void *) method->help : NULL;
+		args.user_help = method ? method->help : NULL;
 
 		tab_completion(&args);
 	}
