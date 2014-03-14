@@ -961,19 +961,21 @@ static void search_service_c(int argc, const char **argv, enum_func *enum_func,
 static void search_service_p(int argc, const char **argv)
 {
 	int conn_id;
-	bt_uuid_t filter_uuid;
 
 	RETURN_IF_NULL(if_gatt);
 
 	VERIFY_CONN_ID(2, conn_id);
 
 	/* uuid */
-	if (argc <= 3)
-		memset(&filter_uuid, 0, sizeof(bt_uuid_t));
-	else
-		gatt_str2bt_uuid_t(argv[3], -1, &filter_uuid);
+	if (argc <= 3) {
+		EXEC(if_gatt->client->search_service, conn_id, NULL);
 
-	EXEC(if_gatt->client->search_service, conn_id, &filter_uuid);
+	} else {
+		bt_uuid_t filter_uuid;
+
+		gatt_str2bt_uuid_t(argv[3], -1, &filter_uuid);
+		EXEC(if_gatt->client->search_service, conn_id, &filter_uuid);
+	}
 }
 
 /* get_included_service */
