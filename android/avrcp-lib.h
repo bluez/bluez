@@ -139,6 +139,8 @@ struct avrcp_control_ind {
 	int (*set_value) (struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *attrs,
 					void *user_data);
+	int (*get_play_status) (struct avrcp *session, uint8_t transaction,
+					void *user_data);
 };
 
 struct avrcp_control_cfm {

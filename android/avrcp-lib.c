@@ -459,6 +459,21 @@ static ssize_t set_value(struct avrcp *session, uint8_t transaction,
 					&params[1], player->user_data);
 }
 
+static ssize_t get_play_status(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	DBG("");
+
+	if (!player->ind || !player->ind->get_play_status)
+		return -ENOSYS;
+
+	return player->ind->get_play_status(session, transaction,
+							player->user_data);
+}
+
 static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
@@ -481,6 +496,9 @@ static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_SET_PLAYER_VALUE,
 					AVC_CTYPE_CONTROL, AVC_CTYPE_STABLE,
 					set_value },
+		{ AVRCP_GET_PLAY_STATUS,
+					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
+					get_play_status },
 		{ },
 };
 
