@@ -1650,8 +1650,9 @@ static bool disconnect_sco(void)
 
 static bool connect_audio(void)
 {
-	if (device.features & HFP_HF_FEAT_CODEC) {
-		select_codec(device.negotiated_codec);
+	/* we haven't negotiated codec, start selection */
+	if ((device.features & HFP_HF_FEAT_CODEC) && !device.negotiated_codec) {
+		select_codec(0);
 		return true;
 	}
 
