@@ -90,3 +90,8 @@ void util_debug(util_debug_func_t function, void *user_data,
 
 void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 				util_debug_func_t function, void *user_data);
+
+static inline void put_le16(uint16_t val, void *dst)
+{
+	put_unaligned(cpu_to_le16(val), (uint16_t *) dst);
+}
