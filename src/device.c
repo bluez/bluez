@@ -1405,10 +1405,10 @@ static uint8_t select_conn_bearer(struct btd_device *dev)
 			le_last = NVAL_TIME;
 	}
 
-	if (!dev->le || le_last == NVAL_TIME)
+	if (dev->bredr && (!dev->le || le_last == NVAL_TIME))
 		return BDADDR_BREDR;
 
-	if (!dev->bredr || bredr_last == NVAL_TIME)
+	if (dev->le && (!dev->bredr || bredr_last == NVAL_TIME))
 		return dev->bdaddr_type;
 
 	if (bredr_last < le_last)
