@@ -40,6 +40,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sco.h>
 
+#include "src/shared/util.h"
+
 /* Test modes */
 enum {
 	SEND,
@@ -346,7 +348,7 @@ static void send_mode(char *svr)
 	seq = 0;
 	while (1) {
 		bt_put_le32(seq, buf);
-		bt_put_le16(data_size, buf + 4);
+		put_le16(data_size, buf + 4);
 
 		seq++;
 

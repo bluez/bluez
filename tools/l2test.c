@@ -47,6 +47,8 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 
+#include "src/shared/util.h"
+
 #define NIBBLE_TO_ASCII(c)  ((c) < 0x0a ? (c) + 0x30 : (c) + 0x57)
 
 #define BREDR_DEFAULT_PSM	0x1011
@@ -977,7 +979,7 @@ static void do_send(int sk)
 	seq = 0;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
 		bt_put_le32(seq, buf);
-		bt_put_le16(data_size, buf + 4);
+		put_le16(data_size, buf + 4);
 
 		seq++;
 

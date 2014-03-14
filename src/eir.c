@@ -37,6 +37,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/sdp.h>
 
+#include "src/shared/util.h"
 #include "uuid-helper.h"
 #include "eir.h"
 
@@ -473,7 +474,7 @@ int eir_create_oob(const bdaddr_t *addr, const char *name, uint32_t cod,
 	eir_total_len += eir_optional_len;
 
 	/* store total length */
-	bt_put_le16(eir_total_len, data);
+	put_le16(eir_total_len, data);
 
 	return eir_total_len;
 }

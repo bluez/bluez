@@ -38,6 +38,7 @@
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
 #include "src/shared/mgmt.h"
+#include "src/shared/util.h"
 #include "src/sdp-client.h"
 #include "src/uuid-helper.h"
 #include "profiles/input/uhid_copy.h"
@@ -1066,7 +1067,7 @@ static void bt_hid_get_report(const void *buf, uint16_t len)
 
 	if (cmd->buf_size > 0) {
 		req[0] = req[0] | HID_GET_REPORT_SIZE_FIELD;
-		bt_put_le16(cmd->buf_size, &req[2]);
+		put_le16(cmd->buf_size, &req[2]);
 	}
 
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
