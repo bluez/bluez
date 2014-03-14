@@ -854,7 +854,7 @@ static void scan_p(int argc, const char **argv)
 	VERIFY_CLIENT_IF(2, client_if);
 
 	/* start */
-	if (argc >= 3)
+	if (argc >= 4)
 		start = atoi(argv[3]);
 
 	EXEC(if_gatt->client->scan, client_if, start);
