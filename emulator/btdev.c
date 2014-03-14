@@ -1373,6 +1373,14 @@ static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
 	send_event(init, BT_HCI_EVT_AUTH_COMPLETE, &auth, sizeof(auth));
 }
 
+static const uint8_t *adv_addr(const struct btdev *btdev)
+{
+	if (btdev->le_adv_own_addr == 0x01)
+		return btdev->random_addr;
+
+	return btdev->bdaddr;
+}
+
 static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote,
 								uint8_t type)
 {
@@ -1390,10 +1398,7 @@ static void le_send_adv_report(struct btdev *btdev, const struct btdev *remote,
 	meta_event.lar.num_reports = 1;
 	meta_event.lar.event_type = type;
 	meta_event.lar.addr_type = remote->le_adv_own_addr;
-	if (remote->le_adv_own_addr == 0x00)
-		memcpy(meta_event.lar.addr, remote->bdaddr, 6);
-	else
-		memcpy(meta_event.lar.addr, remote->random_addr, 6);
+	memcpy(meta_event.lar.addr, adv_addr(remote), 6);
 
 	/* Scan or advertising response */
 	if (type == 0x04) {
