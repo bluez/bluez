@@ -300,6 +300,40 @@ static ssize_t list_attributes(struct avrcp *session, uint8_t transaction,
 							player->user_data);
 }
 
+static bool check_attributes(uint8_t number, const uint8_t *attrs)
+{
+	int i;
+
+	for (i = 0; i < number; i++) {
+		if (attrs[i] > AVRCP_ATTRIBUTE_LAST ||
+					attrs[i] == AVRCP_ATTRIBUTE_ILEGAL)
+			return false;
+	}
+
+	return true;
+}
+
+static ssize_t get_attribute_text(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	DBG("");
+
+	if (!params || params_len != 1 + params[0])
+		return -EINVAL;
+
+	if (!check_attributes(params[0], &params[1]))
+		return -EINVAL;
+
+	if (!player->ind || !player->ind->get_attribute_text)
+		return -ENOSYS;
+
+	return player->ind->get_attribute_text(session, transaction, params[0],
+						&params[1], player->user_data);
+}
+
 static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
@@ -307,6 +341,9 @@ static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_LIST_PLAYER_ATTRIBUTES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
 					list_attributes },
+		{ AVRCP_GET_PLAYER_ATTRIBUTE_TEXT,
+					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
+					get_attribute_text },
 		{ },
 };
 
