@@ -756,7 +756,9 @@ Bluetooth Handsfree HAL (ID 5)
 
 Android HAL name: "handsfree" (BT_PROFILE_HANDSFREE_ID)
 
-	Service modes:               0x01 = Headset Profile only mode
+	Service modes: 0x00 = Headset Profile only mode (default)
+	               0x01 = Handsfree Profile (narrowband speech)
+	               0x02 = Handsfree Profile (narrowband and wideband speech)
 
 Commands and responses:
 
