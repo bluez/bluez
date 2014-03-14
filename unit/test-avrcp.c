@@ -308,7 +308,9 @@ static int list_attributes(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
-	return 1;
+	avrcp_list_player_attributes_rsp(session, transaction, 0, NULL);
+
+	return -EAGAIN;
 }
 
 static int get_attribute_text(struct avrcp *session, uint8_t transaction,
