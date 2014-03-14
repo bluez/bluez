@@ -532,6 +532,27 @@ static ssize_t register_notification(struct avrcp *session, uint8_t transaction,
 							player->user_data);
 }
 
+static ssize_t set_addressed(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	uint16_t id;
+
+	DBG("");
+
+	if (!params || params_len != 2)
+		return -EINVAL;
+
+	if (!player->ind || !player->ind->set_addressed)
+		return -ENOSYS;
+
+	id = bt_get_be16(params);
+
+	return player->ind->set_addressed(session, transaction, id,
+							player->user_data);
+}
+
 static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
@@ -563,6 +584,9 @@ static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_REGISTER_NOTIFICATION,
 					AVC_CTYPE_NOTIFY, AVC_CTYPE_INTERIM,
 					register_notification },
+		{ AVRCP_SET_ADDRESSED_PLAYER,
+					AVC_CTYPE_CONTROL, AVC_CTYPE_STABLE,
+					set_addressed },
 		{ },
 };
 

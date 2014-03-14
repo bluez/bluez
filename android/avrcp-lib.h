@@ -159,6 +159,8 @@ struct avrcp_control_ind {
 	int (*register_notification) (struct avrcp *session,
 					uint8_t transaction, uint8_t event,
 					uint32_t interval, void *user_data);
+	int (*set_addressed) (struct avrcp *session, uint8_t transaction,
+					uint16_t id, void *user_data);
 };
 
 struct avrcp_control_cfm {
