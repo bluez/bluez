@@ -429,7 +429,7 @@ static void gattc_disconnect_cb(int conn_id, int status, int client_if,
  */
 static void gattc_search_complete_cb(int conn_id, int status)
 {
-	haltest_info("%s: conn_id=%d status=%s\n", __func__, conn_id, status);
+	haltest_info("%s: conn_id=%d status=%d\n", __func__, conn_id, status);
 }
 
 /* Reports GATT services on a remote device */
