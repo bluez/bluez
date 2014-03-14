@@ -115,6 +115,8 @@ struct btdev {
 	uint8_t  le_adv_data_len;
 	uint8_t  le_adv_type;
 	uint8_t  le_adv_own_addr;
+	uint8_t  le_adv_direct_addr_type;
+	uint8_t  le_adv_direct_addr[6];
 	uint8_t  le_scan_data[31];
 	uint8_t  le_scan_data_len;
 	uint8_t  le_scan_enable;
@@ -2339,14 +2341,20 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_LE_SET_ADV_PARAMETERS:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
-		if (btdev->le_adv_enable)
+
+		if (btdev->le_adv_enable) {
 			status = BT_HCI_ERR_COMMAND_DISALLOWED;
-		else {
-			status = BT_HCI_ERR_SUCCESS;
-			lsap = data;
-			btdev->le_adv_type = lsap->type;
-			btdev->le_adv_own_addr = lsap->own_addr_type;
+			cmd_complete(btdev, opcode, &status, sizeof(status));
+			break;
 		}
+
+		lsap = data;
+		btdev->le_adv_type = lsap->type;
+		btdev->le_adv_own_addr = lsap->own_addr_type;
+		btdev->le_adv_direct_addr_type = lsap->direct_addr_type;
+		memcpy(btdev->le_adv_direct_addr, lsap->direct_addr, 6);
+
+		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
