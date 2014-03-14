@@ -1561,6 +1561,32 @@ static void le_encrypt_complete(struct btdev *btdev)
 	send_event(remote, BT_HCI_EVT_ENCRYPT_CHANGE, &ev, sizeof(ev));
 }
 
+static void ltk_neg_reply_complete(struct btdev *btdev)
+{
+	struct bt_hci_rsp_le_ltk_req_neg_reply rp;
+	struct bt_hci_evt_encrypt_change ev;
+	struct btdev *remote = btdev->conn;
+
+	memset(&rp, 0, sizeof(rp));
+	rp.handle = cpu_to_le16(42);
+
+	if (!remote) {
+		rp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		cmd_complete(btdev, BT_HCI_CMD_LE_LTK_REQ_NEG_REPLY, &rp,
+							sizeof(rp));
+		return;
+	}
+
+	rp.status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(btdev, BT_HCI_CMD_LE_LTK_REQ_NEG_REPLY, &rp, sizeof(rp));
+
+	memset(&ev, 0, sizeof(ev));
+	ev.status = BT_HCI_ERR_PIN_OR_KEY_MISSING;
+	ev.handle = cpu_to_le16(42);
+
+	send_event(remote, BT_HCI_EVT_ENCRYPT_CHANGE, &ev, sizeof(ev));
+}
+
 static void default_cmd(struct btdev *btdev, uint16_t opcode,
 						const void *data, uint8_t len)
 {
@@ -2524,6 +2550,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		llrr = data;
 		memcpy(btdev->le_ltk, llrr->ltk, 16);
 		le_encrypt_complete(btdev);
+		break;
+
+	case BT_HCI_CMD_LE_LTK_REQ_NEG_REPLY:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		ltk_neg_reply_complete(btdev);
 		break;
 
 	case BT_HCI_CMD_SETUP_SYNC_CONN:
