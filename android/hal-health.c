@@ -53,6 +53,36 @@ static bt_status_t unregister_application(int app_id)
 					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
+static bt_status_t connect_channel(int app_id, bt_bdaddr_t *bd_addr,
+					int mdep_cfg_index, int *channel_id)
+{
+	struct hal_cmd_health_connect_channel cmd;
+	struct hal_rsp_health_connect_channel rsp;
+	size_t len = sizeof(rsp);
+	bt_status_t status;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	if (!bd_addr || !channel_id)
+		return BT_STATUS_PARM_INVALID;
+
+	cmd.app_id = app_id;
+	cmd.mdep_index = mdep_cfg_index;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	status = hal_ipc_cmd(HAL_SERVICE_ID_HEALTH,
+					HAL_OP_HEALTH_CONNECT_CHANNEL,
+					sizeof(cmd), &cmd, &len, &rsp, NULL);
+
+	if (status == HAL_STATUS_SUCCESS)
+		*channel_id = rsp.channel_id;
+
+	return status;
+}
+
 static bt_status_t init(bthl_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
@@ -106,7 +136,7 @@ static bthl_interface_t health_if = {
 	.init = init,
 	.register_application = NULL,
 	.unregister_application = unregister_application,
-	.connect_channel = NULL,
+	.connect_channel = connect_channel,
 	.destroy_channel = NULL,
 	.cleanup = cleanup
 };
