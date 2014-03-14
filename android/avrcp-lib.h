@@ -104,6 +104,17 @@
 #define AVRCP_SCAN_ALL			0x02
 #define AVRCP_SCAN_GROUP		0x03
 
+/* media attributes */
+#define AVRCP_MEDIA_ATTRIBUTE_ILLEGAL	0x00
+#define AVRCP_MEDIA_ATTRIBUTE_TITLE	0x01
+#define AVRCP_MEDIA_ATTRIBUTE_ARTIST	0x02
+#define AVRCP_MEDIA_ATTRIBUTE_ALBUM	0x03
+#define AVRCP_MEDIA_ATTRIBUTE_TRACK	0x04
+#define AVRCP_MEDIA_ATTRIBUTE_N_TRACKS	0x05
+#define AVRCP_MEDIA_ATTRIBUTE_GENRE	0x06
+#define AVRCP_MEDIA_ATTRIBUTE_DURATION	0x07
+#define AVRCP_MEDIA_ATTRIBUTE_LAST	AVRCP_MEDIA_ATTRIBUTE_DURATION
+
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
 
@@ -140,6 +151,10 @@ struct avrcp_control_ind {
 					uint8_t number, uint8_t *attrs,
 					void *user_data);
 	int (*get_play_status) (struct avrcp *session, uint8_t transaction,
+					void *user_data);
+	int (*get_element_attributes) (struct avrcp *session,
+					uint8_t transaction, uint64_t uid,
+					uint8_t number, uint32_t *attrs,
 					void *user_data);
 };
 
