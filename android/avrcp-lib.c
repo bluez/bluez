@@ -334,6 +334,28 @@ static ssize_t get_attribute_text(struct avrcp *session, uint8_t transaction,
 						&params[1], player->user_data);
 }
 
+static ssize_t list_values(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	DBG("");
+
+	if (!params || params_len != 1)
+		return -EINVAL;
+
+	if (params[0] > AVRCP_ATTRIBUTE_LAST ||
+					params[0] == AVRCP_ATTRIBUTE_ILEGAL)
+		return -EINVAL;
+
+	if (!player->ind || !player->ind->list_values)
+		return -ENOSYS;
+
+	return player->ind->list_values(session, transaction, params[0],
+							player->user_data);
+}
+
 static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
@@ -344,6 +366,9 @@ static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_GET_PLAYER_ATTRIBUTE_TEXT,
 					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
 					get_attribute_text },
+		{ AVRCP_LIST_PLAYER_VALUES,
+					AVC_CTYPE_STATUS, AVC_CTYPE_STABLE,
+					list_values },
 		{ },
 };
 

@@ -84,6 +84,26 @@
 #define AVRCP_ATTRIBUTE_SCAN			0x04
 #define AVRCP_ATTRIBUTE_LAST			AVRCP_ATTRIBUTE_SCAN
 
+/* equalizer values */
+#define AVRCP_EQUALIZER_OFF		0x01
+#define AVRCP_EQUALIZER_ON		0x02
+
+/* repeat mode values */
+#define AVRCP_REPEAT_MODE_OFF		0x01
+#define AVRCP_REPEAT_MODE_SINGLE	0x02
+#define AVRCP_REPEAT_MODE_ALL		0x03
+#define AVRCP_REPEAT_MODE_GROUP		0x04
+
+/* shuffle values */
+#define AVRCP_SHUFFLE_OFF		0x01
+#define AVRCP_SHUFFLE_ALL		0x02
+#define AVRCP_SHUFFLE_GROUP		0x03
+
+/* scan values */
+#define AVRCP_SCAN_OFF			0x01
+#define AVRCP_SCAN_ALL			0x02
+#define AVRCP_SCAN_GROUP		0x03
+
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
 
@@ -108,6 +128,8 @@ struct avrcp_control_ind {
 	int (*get_attribute_text) (struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *attrs,
 					void *user_data);
+	int (*list_values) (struct avrcp *session, uint8_t transaction,
+					uint8_t attr, void *user_data);
 };
 
 struct avrcp_control_cfm {
