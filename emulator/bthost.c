@@ -728,6 +728,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
 		break;
+	case BT_HCI_CMD_LE_SET_ADV_PARAMETERS:
+		break;
 	case BT_HCI_CMD_PIN_CODE_REQUEST_REPLY:
 		break;
 	case BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY:
@@ -2071,6 +2073,12 @@ void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
 
 void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable)
 {
+	struct bt_hci_cmd_le_set_adv_parameters cp;
+
+	memset(&cp, 0, sizeof(cp));
+	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
+							&cp, sizeof(cp));
+
 	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_ENABLE, &enable, 1);
 }
 
