@@ -38,6 +38,21 @@ static bool interface_ready(void)
 static const struct hal_ipc_handler ev_handlers[] = {
 };
 
+static bt_status_t unregister_application(int app_id)
+{
+	struct hal_cmd_health_unreg_app cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	cmd.app_id = app_id;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_UNREG_APP,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
+}
+
 static bt_status_t init(bthl_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
@@ -90,7 +105,7 @@ static bthl_interface_t health_if = {
 	.size = sizeof(health_if),
 	.init = init,
 	.register_application = NULL,
-	.unregister_application = NULL,
+	.unregister_application = unregister_application,
 	.connect_channel = NULL,
 	.destroy_channel = NULL,
 	.cleanup = cleanup
