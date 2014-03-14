@@ -43,6 +43,8 @@
 #define AVRCP_PACKET_TYPE_CONTINUING		0x02
 #define AVRCP_PACKET_TYPE_END			0x03
 
+#define AVRCP_CHARSET_UTF8			106
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct avrcp_header {
@@ -823,6 +825,43 @@ int avrcp_list_player_attributes_rsp(struct avrcp *session, uint8_t transaction,
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 				AVC_SUBUNIT_PANEL, AVRCP_LIST_PLAYER_ATTRIBUTES,
 				pdu, number + 1);
+}
+
+int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
+					uint8_t transaction, uint8_t number,
+					uint8_t *attrs, const char **text)
+{
+	uint8_t pdu[AVRCP_ATTRIBUTE_LAST * (4 + 255)];
+	uint8_t *ptr;
+	uint16_t length;
+	int i;
+
+	if (number > AVRCP_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	pdu[0] = number;
+	length = 1;
+	for (i = 0, ptr = &pdu[1]; i < number; i++) {
+		uint8_t len = 0;
+
+		if (attrs[i] > AVRCP_ATTRIBUTE_LAST ||
+					attrs[i] == AVRCP_ATTRIBUTE_ILEGAL)
+			return -EINVAL;
+
+		if (text[i])
+			len = strlen(text[i]);
+
+		ptr[0] = attrs[i];
+		bt_put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
+		ptr[3] = len;
+		memcpy(ptr, text[i], len);
+		ptr += 4 + len;
+		length += 4 + len;
+	}
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+			AVC_SUBUNIT_PANEL, AVRCP_GET_PLAYER_ATTRIBUTE_TEXT,
+			pdu, length);
 }
 
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
