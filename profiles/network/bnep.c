@@ -204,7 +204,7 @@ static int bnep_if_up(const char *devname)
 	ifr.ifr_flags |= IFF_UP;
 	ifr.ifr_flags |= IFF_MULTICAST;
 
-	err = ioctl(sk, SIOCSIFFLAGS, (caddr_t) &ifr);
+	err = ioctl(sk, SIOCSIFFLAGS, (void *) &ifr);
 
 	close(sk);
 
@@ -229,7 +229,7 @@ static int bnep_if_down(const char *devname)
 	ifr.ifr_flags &= ~IFF_UP;
 
 	/* Bring down the interface */
-	err = ioctl(sk, SIOCSIFFLAGS, (caddr_t) &ifr);
+	err = ioctl(sk, SIOCSIFFLAGS, (void *) &ifr);
 
 	close(sk);
 
