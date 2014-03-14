@@ -506,16 +506,16 @@ static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
 						0x00,	/* OOB Flag */
 						0x01,	/* Bonding - no MITM */
 						0x10,	/* Max key size */
-						0x01,	/* Init. key dist. */
-						0x01,	/* Rsp. key dist. */
+						0x05,	/* Init. key dist. */
+						0x05,	/* Rsp. key dist. */
 };
 static const uint8_t smp_basic_req_1_rsp[] = {	0x02,	/* Pairing Response */
 						0x03,	/* NoInputNoOutput */
 						0x00,	/* OOB Flag */
 						0x01,	/* Bonding - no MITM */
 						0x10,	/* Max key size */
-						0x01,	/* Init. key dist. */
-						0x01,	/* Rsp. key dist. */
+						0x05,	/* Init. key dist. */
+						0x05,	/* Rsp. key dist. */
 };
 
 static const uint8_t smp_confirm_req_1[17] = { 0x03 };
