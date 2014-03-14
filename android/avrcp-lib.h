@@ -130,6 +130,12 @@ struct avrcp_control_ind {
 					void *user_data);
 	int (*list_values) (struct avrcp *session, uint8_t transaction,
 					uint8_t attr, void *user_data);
+	int (*get_value_text) (struct avrcp *session, uint8_t transaction,
+					uint8_t attr, uint8_t number,
+					uint8_t *values, void *user_data);
+	int (*get_value) (struct avrcp *session, uint8_t transaction,
+					uint8_t number, uint8_t *attrs,
+					void *user_data);
 };
 
 struct avrcp_control_cfm {
