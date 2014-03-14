@@ -905,11 +905,19 @@ static bool adv_match(struct btdev *scan, struct btdev *adv)
 	return !memcmp(scan_addr(scan), adv->le_adv_direct_addr, 6);
 }
 
+static bool adv_connectable(struct btdev *btdev)
+{
+	if (!btdev->le_adv_enable)
+		return false;
+
+	return btdev->le_adv_type != 0x03;
+}
+
 static void le_conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 {
 	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
 
-	if (remote && remote->le_adv_enable && adv_match(btdev, remote))
+	if (remote && adv_connectable(remote) && adv_match(btdev, remote))
 		le_conn_complete(btdev, bdaddr, 0);
 	else
 		le_conn_complete(btdev, bdaddr,
