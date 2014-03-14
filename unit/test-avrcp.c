@@ -435,7 +435,10 @@ static int set_addressed(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
-	return 1;
+	avrcp_set_addressed_player_rsp(session, transaction,
+							AVRCP_STATUS_SUCCESS);
+
+	return -EAGAIN;
 }
 
 static const struct avrcp_control_ind control_ind = {
@@ -547,7 +550,7 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_STABLE,
 				0x48, 0x00, 0x00, 0x19, 0x58,
 				AVRCP_SET_ADDRESSED_PLAYER,
-				0x00, 0x00, 0x01, 0x00));
+				0x00, 0x00, 0x01, 0x04));
 
 	/* Connection Establishment for Control tests */
 
