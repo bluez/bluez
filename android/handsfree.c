@@ -1653,6 +1653,9 @@ static bool disconnect_sco(void)
 
 static bool connect_audio(void)
 {
+	if (device.audio_state != HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED)
+		return false;
+
 	/* we haven't negotiated codec, start selection */
 	if ((device.features & HFP_HF_FEAT_CODEC) && !device.negotiated_codec) {
 		select_codec(0);
@@ -1989,6 +1992,8 @@ static void phone_state_dialing(int num_active, int num_held)
 
 	if (num_active == 0 && num_held > 0)
 		update_indicator(IND_CALLHELD, 2);
+
+	connect_audio();
 }
 
 static void phone_state_alerting(int num_active, int num_held)
@@ -2057,8 +2062,10 @@ static void phone_state_idle(int num_active, int num_held)
 
 	switch (device.setup_state) {
 	case HAL_HANDSFREE_CALL_STATE_INCOMING:
-		if (num_active > device.num_active)
+		if (num_active > device.num_active) {
 			update_indicator(IND_CALL, 1);
+			connect_audio();
+		}
 
 		if (num_held > device.num_held)
 			update_indicator(IND_CALLHELD, 1);
@@ -2088,6 +2095,9 @@ static void phone_state_idle(int num_active, int num_held)
 		update_indicator(IND_CALL, !!(num_active + num_held));
 		update_indicator(IND_CALLSETUP, 0);
 
+		break;
+	case HAL_HANDSFREE_CALL_STATE_ACTIVE:
+		connect_audio();
 		break;
 	default:
 		DBG("unhandled state %u", device.setup_state);
