@@ -224,8 +224,8 @@ le_test_mode                       never called from Android Framework
 get_remote_service_record          never called from Android Framework
 
 callbacks:
-dut_mode_recv_cb
-le_test_mode_cb
+dut_mode_recv_cb                   empty JNI implementation
+le_test_mode_cb                    empty JNI implementation
 
 properties:
 BT_PROPERTY_SERVICE_RECORD         not supported for adapter and device, for
@@ -243,6 +243,25 @@ Socket HAL
 ----------
 
 Support only for BTSOCK_RFCOMM socket type.
+
+HAL AVRCP
+---------
+
+methods:
+list_player_app_attr_rsp           never called from Android Framework
+list_player_app_value_rsp          never called from Android Framework
+get_player_app_value_rsp           never called from Android Framework
+get_player_app_attr_text_rsp       never called from Android Framework
+get_player_app_value_text_rsp      never called from Android Framework
+set_player_app_value_rsp           never called from Android Framework
+
+callbacks:
+list_player_app_attr_cb            NULL JNI implementation
+list_player_app_values_cb          NULL JNI implementation
+get_player_app_value_cb            NULL JNI implementation
+get_player_app_attrs_text_cb       NULL JNI implementation
+get_player_app_values_text_cb      NULL JNI implementation
+set_player_app_value_cb            NULL JNI implementation
 
 
 Known Android issues
