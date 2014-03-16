@@ -895,6 +895,39 @@ int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				pdu, sizeof(pdu));
 }
 
+int avrcp_get_player_values_text_rsp(struct avrcp *session,
+					uint8_t transaction, uint8_t number,
+					uint8_t *values, const char **text)
+{
+	uint8_t pdu[AVRCP_ATTRIBUTE_LAST * (4 + 255)];
+	uint8_t *ptr;
+	uint16_t length;
+	int i;
+
+	if (number > AVRCP_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	pdu[0] = number;
+	length = 1;
+	for (i = 0, ptr = &pdu[1]; i < number; i++) {
+		uint8_t len = 0;
+
+		if (text[i])
+			len = strlen(text[i]);
+
+		ptr[0] = values[i];
+		bt_put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
+		ptr[3] = len;
+		memcpy(&ptr[4], text[i], len);
+		ptr += 4 + len;
+		length += 4 + len;
+	}
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+			AVC_SUBUNIT_PANEL, AVRCP_GET_PLAYER_VALUE_TEXT,
+			pdu, length);
+}
+
 int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t *params, size_t params_len)
 {
