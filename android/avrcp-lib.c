@@ -99,6 +99,18 @@ struct avrcp_player {
 	void *user_data;
 };
 
+static inline uint32_t ntoh24(const uint8_t src[3])
+{
+	return src[0] << 16 | src[1] << 8 | src[2];
+}
+
+static inline void hton24(uint8_t dst[3], uint32_t src)
+{
+	dst[0] = (src & 0xff0000) >> 16;
+	dst[1] = (src & 0x00ff00) >> 8;
+	dst[2] = (src & 0x0000ff);
+}
+
 void avrcp_shutdown(struct avrcp *session)
 {
 	if (session->conn) {
@@ -592,6 +604,14 @@ static const struct avrcp_control_handler player_handlers[] = {
 		{ },
 };
 
+static void avrcp_set_control_handlers(struct avrcp *session,
+				const struct avrcp_control_handler *handlers,
+				void *user_data)
+{
+	session->control_handlers = handlers;
+	session->control_data = user_data;
+}
+
 void avrcp_register_player(struct avrcp *session,
 				const struct avrcp_control_ind *ind,
 				const struct avrcp_control_cfm *cfm,
@@ -606,14 +626,6 @@ void avrcp_register_player(struct avrcp *session,
 
 	avrcp_set_control_handlers(session, player_handlers, player);
 	session->player = player;
-}
-
-void avrcp_set_control_handlers(struct avrcp *session,
-				const struct avrcp_control_handler *handlers,
-				void *user_data)
-{
-	session->control_handlers = handlers;
-	session->control_data = user_data;
 }
 
 void avrcp_set_passthrough_handlers(struct avrcp *session,
