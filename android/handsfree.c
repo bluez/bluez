@@ -208,6 +208,8 @@ static void device_init(const bdaddr_t *bdaddr)
 {
 	bacpy(&device.bdaddr, bdaddr);
 
+	device.setup_state = HAL_HANDSFREE_CALL_STATE_IDLE;
+
 	memcpy(device.inds, inds_defaults, sizeof(device.inds));
 
 	memcpy(device.codecs, codecs_defaults, sizeof(device.codecs));
