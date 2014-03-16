@@ -809,6 +809,22 @@ int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
 				sizeof(params), func, user_data);
 }
 
+int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
+						uint8_t number, uint8_t *events)
+{
+	uint8_t pdu[AVRCP_EVENT_LAST];
+
+	if (number > AVRCP_EVENT_LAST)
+		return -EINVAL;
+
+	pdu[0] = number;
+	memcpy(&pdu[1], events, number);
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_GET_CAPABILITIES,
+				pdu, number + 1);
+}
+
 int avrcp_list_player_attributes_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *attrs)
 {

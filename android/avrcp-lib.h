@@ -230,6 +230,8 @@ int avrcp_get_element_attributes(struct avrcp *session, avctp_rsp_cb func,
 int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
 					avctp_rsp_cb func, void *user_data);
 
+int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t number, uint8_t *events);
 int avrcp_list_player_attributes_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *attrs);
 int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
