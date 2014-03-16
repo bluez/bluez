@@ -330,7 +330,9 @@ static int list_values(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
-	return 1;
+	avrcp_list_player_values_rsp(session, transaction, 0, NULL);
+
+	return -EINVAL;
 }
 
 static int get_value_text(struct avrcp *session, uint8_t transaction,
