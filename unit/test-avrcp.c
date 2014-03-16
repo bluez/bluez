@@ -349,21 +349,14 @@ static int get_value_text(struct avrcp *session, uint8_t transaction,
 static int get_value(struct avrcp *session, uint8_t transaction,
 			uint8_t number, uint8_t *attrs, void *user_data)
 {
-	uint8_t *attributes;
-	int i;
+	uint8_t values[2] = { 0x00, 0x00 };
 
 	DBG("");
 
-	attributes = g_memdup(attrs, number);
+	avrcp_get_current_player_value_rsp(session, transaction, number, attrs,
+									values);
 
-	for (i = 0; i < number; i++) {
-		attrs[i * 2 + 1] = attributes[i];
-		attrs[i * 2 + 2] = 0; /* value */
-	}
-
-	g_free(attributes);
-
-	return number * 2 + 1;
+	return -EAGAIN;
 }
 
 static int set_value(struct avrcp *session, uint8_t transaction,
