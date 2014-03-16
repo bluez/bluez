@@ -243,6 +243,9 @@ int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 int avrcp_get_player_values_text_rsp(struct avrcp *session,
 					uint8_t transaction, uint8_t number,
 					uint8_t *values, const char **text);
+int avrcp_get_current_player_value_rsp(struct avrcp *session,
+					uint8_t transaction, uint8_t number,
+					uint8_t *attrs, uint8_t *values);
 int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t *params, size_t params_len);
 int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,

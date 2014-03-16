@@ -928,6 +928,32 @@ int avrcp_get_player_values_text_rsp(struct avrcp *session,
 			pdu, length);
 }
 
+int avrcp_get_current_player_value_rsp(struct avrcp *session,
+					uint8_t transaction, uint8_t number,
+					uint8_t *attrs, uint8_t *values)
+{
+	uint8_t pdu[AVRCP_ATTRIBUTE_LAST * 2  + 1];
+	uint8_t *ptr;
+	uint16_t length;
+	int i;
+
+	if (number > AVRCP_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	pdu[0] = number;
+	length = 1;
+	for (i = 0, ptr = &pdu[1]; i < number; i++) {
+		ptr[0] = attrs[i];
+		ptr[1] = values[i];
+		ptr += 2;
+		length += 2;
+	}
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+			AVC_SUBUNIT_PANEL, AVRCP_GET_CURRENT_PLAYER_VALUE,
+			pdu, length);
+}
+
 int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t *params, size_t params_len)
 {
