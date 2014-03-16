@@ -239,10 +239,11 @@ BT_PROPERTY_REMOTE_VERSION_INFO    information required by this property (LMP
                                    interface, also marking this property as
                                    settable is probably a typo in HAL header
 
-Socket HAL
+HAL Socket
 ----------
 
 Support only for BTSOCK_RFCOMM socket type.
+
 
 HAL AVRCP
 ---------
