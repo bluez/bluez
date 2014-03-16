@@ -54,11 +54,12 @@ TC_AG_OCM_BV_01_I	PASS
 TC_AG_OCM_BV_02_I	PASS
 TC_AG_OCL_BV_01_I	PASS
 TC_AG_OCL_BV_02_I	PASS
-TC_AG_TWC_BV_01_I	INC	Not yet implemented
-TC_AG_TWC_BV_02_I	INC	Not yet implemented
-TC_AG_TWC_BV_03_I	INC	Not yet implemented
-TC_AG_TWC_BV_04_I	INC	Not yet implemented
-TC_AG_TWC_BV_05_I	INC	Not yet implemented
+TC_AG_TWC_BV_01_I	PASS/INC	Fails randomly due to possible race in
+					PhoneApp. To be investigated.
+TC_AG_TWC_BV_02_I	PASS
+TC_AG_TWC_BV_03_I	PASS
+TC_AG_TWC_BV_04_I	PASS
+TC_AG_TWC_BV_05_I	PASS
 TC_AG_TWC_BV_06_I	N/A
 TC_AG_CIT_BV_01_I	PASS
 TC_AG_ENO_BV_01_I	PASS
