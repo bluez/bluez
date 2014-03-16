@@ -235,6 +235,8 @@ int avrcp_list_player_attributes_rsp(struct avrcp *session, uint8_t transaction,
 int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
 					uint8_t transaction, uint8_t number,
 					uint8_t *attrs, const char **text);
+int avrcp_list_player_values_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t number, uint8_t *values);
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				uint32_t position, uint32_t duration,
 				uint8_t status);

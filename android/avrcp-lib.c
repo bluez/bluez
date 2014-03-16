@@ -864,6 +864,22 @@ int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
 			pdu, length);
 }
 
+int avrcp_list_player_values_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t number, uint8_t *values)
+{
+	uint8_t pdu[AVRCP_ATTRIBUTE_LAST + 1];
+
+	if (number > AVRCP_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	pdu[0] = number;
+	memcpy(&pdu[1], values, number);
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+			AVC_SUBUNIT_PANEL, AVRCP_LIST_PLAYER_VALUES,
+			pdu, number + 1);
+}
+
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				uint32_t position, uint32_t duration,
 				uint8_t status)
