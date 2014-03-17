@@ -80,9 +80,12 @@
 #define BASELEN_REMOTE_DEV_PROP (sizeof(struct hal_ev_remote_device_props) \
 					+ sizeof(struct hal_property))
 
+#define SCAN_TYPE_NONE 0
 #define SCAN_TYPE_BREDR (1 << BDADDR_BREDR)
 #define SCAN_TYPE_LE ((1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM))
 #define SCAN_TYPE_DUAL (SCAN_TYPE_BREDR | SCAN_TYPE_LE)
+
+#define BDADDR_LE (BDADDR_LE_RANDOM | BDADDR_LE_PUBLIC)
 
 struct device {
 	bdaddr_t bdaddr;
@@ -122,7 +125,8 @@ static struct {
 
 	uint32_t current_settings;
 
-	bool discovering;
+	uint8_t cur_discovery_type;
+	uint8_t exp_discovery_type;
 	uint32_t discoverable_timeout;
 
 	GSList *uuids;
@@ -131,7 +135,8 @@ static struct {
 	.dev_class = 0,
 	.name = NULL,
 	.current_settings = 0,
-	.discovering = false,
+	.cur_discovery_type = SCAN_TYPE_NONE,
+	.exp_discovery_type = SCAN_TYPE_NONE,
 	.discoverable_timeout = DEFAULT_DISCOVERABLE_TIMEOUT,
 	.uuids = NULL,
 };
@@ -148,6 +153,9 @@ static struct mgmt *mgmt_if = NULL;
 
 static GSList *bonded_devices = NULL;
 static GSList *cached_devices = NULL;
+
+static bt_le_device_found gatt_device_found_cb = NULL;
+static bt_le_discovery_stopped gatt_discovery_stopped_cb = NULL;
 
 /* This list contains addresses which are asked for records */
 static GSList *browse_reqs;
@@ -508,7 +516,6 @@ static void settings_changed(uint32_t settings)
 
 	if (changed_mask & MGMT_SETTING_POWERED)
 		powered_changed();
-
 
 	scan_mode_mask = MGMT_SETTING_CONNECTABLE |
 					MGMT_SETTING_DISCOVERABLE;
@@ -1036,6 +1043,7 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 {
 	const struct mgmt_ev_discovering *ev = param;
 	struct hal_ev_discovery_state_changed cp;
+	bool is_discovering = adapter.cur_discovery_type;
 
 	if (length < sizeof(*ev)) {
 		error("Too small discovering event");
@@ -1045,14 +1053,15 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 	DBG("hci%u type %u discovering %u", index, ev->type,
 							ev->discovering);
 
-	if (adapter.discovering == !!ev->discovering)
+	if (is_discovering == !!ev->discovering)
 		return;
 
-	adapter.discovering = !!ev->discovering;
+	adapter.cur_discovery_type = ev->discovering ?
+						ev->type : SCAN_TYPE_NONE;
 
 	DBG("new discovering state %u", ev->discovering);
 
-	if (adapter.discovering) {
+	if (adapter.cur_discovery_type != SCAN_TYPE_NONE) {
 		cp.state = HAL_DISCOVERY_STATE_STARTED;
 	} else {
 		g_slist_foreach(bonded_devices, clear_device_found, NULL);
@@ -1062,6 +1071,28 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
 			HAL_EV_DISCOVERY_STATE_CHANGED, sizeof(cp), &cp);
+
+	if (gatt_discovery_stopped_cb &&
+			(adapter.cur_discovery_type == SCAN_TYPE_NONE)) {
+		/* One shot notification about discovery stopped send to gatt*/
+		gatt_discovery_stopped_cb();
+		gatt_discovery_stopped_cb = NULL;
+	}
+
+	/* If discovery is ON or there is no expected next discovery session
+	 * then just return
+	 */
+	if ((adapter.cur_discovery_type != SCAN_TYPE_NONE) ||
+		(adapter.exp_discovery_type == SCAN_TYPE_NONE))
+		return;
+
+	start_discovery(adapter.exp_discovery_type);
+
+	/* Maintain expected discovery type if there is gatt client
+	 * registered
+	 */
+	adapter.exp_discovery_type = gatt_device_found_cb ?
+						SCAN_TYPE_LE : SCAN_TYPE_NONE;
 }
 
 static void confirm_device_name_cb(uint8_t status, uint16_t length,
@@ -1143,7 +1174,7 @@ static void update_new_device(struct device *dev, int8_t rssi,
 
 	memset(buf, 0, sizeof(buf));
 
-	if (adapter.discovering)
+	if (adapter.cur_discovery_type)
 		dev->found = true;
 
 	size = sizeof(*ev);
@@ -1250,6 +1281,11 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	} else {
 		update_device(dev, rssi, &eir);
 	}
+
+	/* Notify Gatt if its registered for LE events */
+	if (gatt_device_found_cb && (dev->bdaddr_type & BDADDR_LE))
+		gatt_device_found_cb(&dev->bdaddr, dev->bdaddr_type,
+						dev->rssi, sizeof(eir), &eir);
 
 	eir_data_free(&eir);
 
@@ -2511,6 +2547,38 @@ static bool stop_discovery(uint8_t type)
 	return false;
 }
 
+bool bt_le_discovery_stop(bt_le_discovery_stopped cb)
+{
+	if (!adapter.cur_discovery_type) {
+		if (cb)
+			cb();
+		return true;
+	}
+
+	gatt_discovery_stopped_cb = cb;
+	/* Remove device found callback */
+	gatt_device_found_cb = NULL;
+	adapter.exp_discovery_type &= ~SCAN_TYPE_LE;
+
+	return stop_discovery(adapter.cur_discovery_type);
+}
+
+bool bt_le_discovery_start(bt_le_device_found cb)
+{
+	if (!(adapter.current_settings & MGMT_SETTING_POWERED))
+		return false;
+
+	gatt_device_found_cb = cb;
+
+	adapter.exp_discovery_type |= SCAN_TYPE_LE;
+
+	/* If core is discovering, don't bother */
+	if (adapter.cur_discovery_type)
+		return true;
+
+	return start_discovery(adapter.exp_discovery_type);
+}
+
 static uint8_t set_adapter_scan_mode(const void *buf, uint16_t len)
 {
 	const uint8_t *mode = buf;
@@ -3180,7 +3248,8 @@ static void handle_start_discovery_cmd(const void *buf, uint16_t len)
 {
 	uint8_t status;
 
-	if (adapter.discovering) {
+	/* Check if there is discovery with BREDR type */
+	if (adapter.cur_discovery_type & SCAN_TYPE_BREDR) {
 		status = HAL_STATUS_SUCCESS;
 		goto reply;
 	}
@@ -3190,12 +3259,27 @@ static void handle_start_discovery_cmd(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	if (!start_discovery(SCAN_TYPE_DUAL)) {
+	adapter.exp_discovery_type |= SCAN_TYPE_DUAL;
+
+	/* If there is no discovery ongoing, try to start discovery */
+	if (!adapter.cur_discovery_type) {
+		if (!start_discovery(adapter.exp_discovery_type))
+			status = HAL_STATUS_FAILED;
+		else
+			status = HAL_STATUS_SUCCESS;
+
+		goto reply;
+	}
+
+	/* Stop discovery here. Once it is stop we will restart it
+	 * with exp_discovery_settings */
+	if (!stop_discovery(adapter.cur_discovery_type)) {
 		status = HAL_STATUS_FAILED;
 		goto reply;
 	}
 
 	status = HAL_STATUS_SUCCESS;
+
 reply:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_START_DISCOVERY,
 									status);
@@ -3205,7 +3289,7 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 {
 	uint8_t status;
 
-	if (!adapter.discovering) {
+	if (!adapter.cur_discovery_type) {
 		status = HAL_STATUS_SUCCESS;
 		goto reply;
 	}
@@ -3215,7 +3299,10 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	if (!stop_discovery(SCAN_TYPE_DUAL)) {
+	/* Take into account that gatt might want to keep discover */
+	adapter.exp_discovery_type = gatt_device_found_cb ? SCAN_TYPE_LE : 0;
+
+	if (!stop_discovery(adapter.cur_discovery_type)) {
 		status = HAL_STATUS_FAILED;
 		goto reply;
 	}
