@@ -401,7 +401,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	}
 
 	if (cmd.service_id != service_id) {
-		error("Invalid service id (%u vs %u), aborting",
+		error("Invalid service id (0x%x vs 0x%x), aborting",
 						cmd.service_id, service_id);
 		exit(EXIT_FAILURE);
 	}
@@ -412,7 +412,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	}
 
 	if (cmd.opcode != opcode && cmd.opcode != HAL_OP_STATUS) {
-		error("Invalid opcode received (%u vs %u), aborting",
+		error("Invalid opcode received (0x%x vs 0x%x), aborting",
 						cmd.opcode, opcode);
 		exit(EXIT_FAILURE);
 	}
