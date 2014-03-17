@@ -40,43 +40,10 @@
 #include "monitor/bt.h"
 #include "emulator/bthost.h"
 
+#include "src/shared/crypto.h"
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
-
-#ifndef SOL_ALG
-#define SOL_ALG 279
-#endif
-
-#ifndef AF_ALG
-#define AF_ALG  38
-#define PF_ALG  AF_ALG
-
-#include <linux/types.h>
-
-struct sockaddr_alg {
-	__u16   salg_family;
-	__u8    salg_type[14];
-	__u32   salg_feat;
-	__u32   salg_mask;
-	__u8    salg_name[64];
-};
-
-struct af_alg_iv {
-	__u32   ivlen;
-	__u8    iv[0];
-};
-
-#define ALG_SET_KEY                     1
-#define ALG_SET_IV                      2
-#define ALG_SET_OP                      3
-
-#define ALG_OP_DECRYPT                  0
-#define ALG_OP_ENCRYPT                  1
-
-#else
-#include <linux/if_alg.h>
-#endif
 
 #define SMP_CID 0x0006
 
@@ -94,7 +61,7 @@ struct test_data {
 	bool out;
 	uint16_t handle;
 	size_t counter;
-	int alg_sk;
+	struct bt_crypto *crypto;
 	uint8_t smp_tk[16];
 	uint8_t smp_prnd[16];
 	uint8_t smp_rrnd[16];
@@ -115,180 +82,6 @@ struct smp_data {
 	const struct smp_req_rsp *req;
 	size_t req_count;
 };
-
-static int alg_setup(void)
-{
-	struct sockaddr_alg salg;
-	int sk;
-
-	sk = socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-	if (sk < 0) {
-		tester_warn("socket(AF_ALG): %s", strerror(errno));
-		return -1;
-	}
-
-	memset(&salg, 0, sizeof(salg));
-	salg.salg_family = AF_ALG;
-	strcpy((char *) salg.salg_type, "skcipher");
-	strcpy((char *) salg.salg_name, "ecb(aes)");
-
-	if (bind(sk, (struct sockaddr *) &salg, sizeof(salg)) < 0) {
-		tester_warn("bind(AF_ALG): %s", strerror(errno));
-		close(sk);
-		return -1;
-	}
-
-	return sk;
-}
-
-static int alg_new(int alg_sk, const uint8_t *key)
-{
-	int sk;
-
-	if (setsockopt(alg_sk, SOL_ALG, ALG_SET_KEY, key, 16) < 0) {
-		tester_warn("setsockopt(ALG_SET_KEY): %s", strerror(errno));
-		return -1;
-	}
-
-	sk = accept4(alg_sk, NULL, 0, SOCK_CLOEXEC);
-	if (sk < 0) {
-		tester_warn("accept4(AF_ALG): %s", strerror(errno));
-		return -1;
-	}
-
-	return sk;
-}
-
-static int alg_encrypt(int sk, uint8_t in[16], uint8_t out[16])
-{
-	__u32 alg_op = ALG_OP_ENCRYPT;
-	char cbuf[CMSG_SPACE(sizeof(alg_op))];
-	struct cmsghdr *cmsg;
-	struct msghdr msg;
-	struct iovec iov;
-	int ret;
-
-	memset(cbuf, 0, sizeof(cbuf));
-	memset(&msg, 0, sizeof(msg));
-
-	msg.msg_control = cbuf;
-	msg.msg_controllen = sizeof(cbuf);
-
-	cmsg = CMSG_FIRSTHDR(&msg);
-	cmsg->cmsg_level = SOL_ALG;
-	cmsg->cmsg_type = ALG_SET_OP;
-	cmsg->cmsg_len = CMSG_LEN(sizeof(alg_op));
-	memcpy(CMSG_DATA(cmsg), &alg_op, sizeof(alg_op));
-
-	iov.iov_base = in;
-	iov.iov_len = 16;
-
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-
-	ret = sendmsg(sk, &msg, 0);
-	if (ret < 0) {
-		tester_warn("sendmsg(AF_ALG): %s", strerror(errno));
-		return ret;
-	}
-
-	ret = read(sk, out, 16);
-	if (ret < 0)
-		tester_warn("read(AF_ALG): %s", strerror(errno));
-
-	return 0;
-}
-
-static int smp_e(uint8_t key[16], uint8_t in[16], uint8_t out[16])
-{
-	struct test_data *data = tester_get_data();
-	int sk, err;
-
-	sk = alg_new(data->alg_sk, key);
-	if (sk < 0)
-		return sk;
-
-	err = alg_encrypt(sk, in, out);
-
-	close(sk);
-
-	return err;
-}
-
-static inline void swap128(const uint8_t src[16], uint8_t dst[16])
-{
-	int i;
-	for (i = 0; i < 16; i++)
-		dst[15 - i] = src[i];
-}
-
-static inline void swap56(const uint8_t src[7], uint8_t dst[7])
-{
-	int i;
-	for (i = 0; i < 7; i++)
-		dst[6 - i] = src[i];
-}
-
-typedef struct {
-	uint64_t a, b;
-} u128;
-
-static inline void u128_xor(void *r, const void *p, const void *q)
-{
-	const u128 pp = bt_get_unaligned((const u128 *) p);
-	const u128 qq = bt_get_unaligned((const u128 *) q);
-	u128 rr;
-
-	rr.a = pp.a ^ qq.a;
-	rr.b = pp.b ^ qq.b;
-
-	bt_put_unaligned(rr, (u128 *) r);
-}
-
-static int smp_c1(uint8_t r[16], uint8_t res[16])
-{
-	struct test_data *data = tester_get_data();
-	uint8_t p1[16], p2[16];
-	int err;
-
-	memset(p1, 0, 16);
-
-	/* p1 = pres || preq || _rat || _iat */
-	swap56(data->smp_prsp, p1);
-	swap56(data->smp_preq, p1 + 7);
-	p1[14] = data->ra_type;
-	p1[15] = data->ia_type;
-
-	memset(p2, 0, 16);
-
-	/* p2 = padding || ia || ra */
-	baswap((bdaddr_t *) (p2 + 4), (bdaddr_t *) data->ia);
-	baswap((bdaddr_t *) (p2 + 10), (bdaddr_t *) data->ra);
-
-	/* res = r XOR p1 */
-	u128_xor(res, r, p1);
-
-	/* res = e(k, res) */
-	err = smp_e(data->smp_tk, res, res);
-	if (err)
-		return err;
-
-	/* res = res XOR p2 */
-	u128_xor(res, res, p2);
-
-	/* res = e(k, res) */
-	return smp_e(data->smp_tk, res, res);
-}
-
-static int smp_s1(uint8_t r1[16], uint8_t r2[16], uint8_t res[16])
-{
-	struct test_data *data = tester_get_data();
-
-	memcpy(res, r1 + 8, 8);
-	memcpy(res + 8, r2 + 8, 8);
-
-	return smp_e(data->smp_tk, res, res);
-}
 
 static void mgmt_debug(const char *str, void *user_data)
 {
@@ -402,9 +195,9 @@ static void test_pre_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	data->alg_sk = alg_setup();
-	if (data->alg_sk < 0) {
-		tester_warn("Failed to setup AF_ALG socket");
+	data->crypto = bt_crypto_new();
+	if (!data->crypto) {
+		tester_warn("Failed to setup crypto");
 		tester_pre_setup_failed();
 		return;
 	}
@@ -412,6 +205,7 @@ static void test_pre_setup(const void *test_data)
 	data->mgmt = mgmt_new_default();
 	if (!data->mgmt) {
 		tester_warn("Failed to setup management interface");
+		bt_crypto_unref(data->crypto);
 		tester_pre_setup_failed();
 		return;
 	}
@@ -432,9 +226,9 @@ static void test_post_teardown(const void *test_data)
 		data->io_id = 0;
 	}
 
-	if (data->alg_sk >= 0) {
-		close(data->alg_sk);
-		data->alg_sk = -1;
+	if (data->crypto) {
+		bt_crypto_unref(data->crypto);
+		data->crypto = NULL;
 	}
 
 	hciemu_unref(data->hciemu);
@@ -455,7 +249,6 @@ static void test_data_free(void *test_data)
 		if (!user) \
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_LE; \
-		user->alg_sk = -1; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
@@ -616,7 +409,6 @@ static const void *get_pdu(const uint8_t *data)
 	struct test_data *test_data = tester_get_data();
 	uint8_t opcode = data[0];
 	static uint8_t buf[17];
-	uint8_t res[16];
 
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
@@ -627,12 +419,15 @@ static const void *get_pdu(const uint8_t *data)
 		break;
 	case 0x03: /* Pairing Confirm */
 		buf[0] = data[0];
-		smp_c1(test_data->smp_prnd, res);
-		swap128(res, &buf[1]);
+		bt_crypto_c1(test_data->crypto, test_data->smp_tk,
+				test_data->smp_prnd, test_data->smp_prsp,
+				test_data->smp_preq, test_data->ia_type,
+				test_data->ia, test_data->ra_type,
+				test_data->ra, &buf[1]);
 		return buf;
 	case 0x04: /* Pairing Random */
 		buf[0] = data[0];
-		swap128(test_data->smp_prnd, &buf[1]);
+		memcpy(&buf[1], test_data->smp_prnd, 16);
 		return buf;
 	default:
 		break;
@@ -644,14 +439,12 @@ static const void *get_pdu(const uint8_t *data)
 static bool verify_random(const uint8_t rnd[16])
 {
 	struct test_data *data = tester_get_data();
-	uint8_t confirm[16], res[16], key[16];
-	int err;
+	uint8_t confirm[16];
 
-	err = smp_c1(data->smp_rrnd, res);
-	if (err < 0)
+	if (!bt_crypto_c1(data->crypto, data->smp_tk, data->smp_rrnd,
+				data->smp_prsp, data->smp_preq, data->ia_type,
+				data->ia, data->ra_type, data->ra, confirm))
 		return false;
-
-	swap128(res, confirm);
 
 	if (memcmp(data->smp_pcnf, confirm, sizeof(data->smp_pcnf) != 0)) {
 		tester_warn("Confirmation values don't match");
@@ -660,12 +453,12 @@ static bool verify_random(const uint8_t rnd[16])
 
 	if (data->out) {
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
-		smp_s1(data->smp_rrnd, data->smp_prnd, key);
-		swap128(key, data->smp_ltk);
+		bt_crypto_s1(data->crypto, data->smp_tk, data->smp_rrnd,
+						data->smp_prnd, data->smp_ltk);
 		bthost_le_start_encrypt(bthost, data->handle, data->smp_ltk);
 	} else {
-		smp_s1(data->smp_prnd, data->smp_rrnd, key);
-		swap128(key, data->smp_ltk);
+		bt_crypto_s1(data->crypto, data->smp_tk, data->smp_prnd,
+						data->smp_rrnd, data->smp_ltk);
 	}
 
 	return true;
@@ -715,7 +508,7 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 		memcpy(test_data->smp_pcnf, data + 1, 16);
 		goto next;
 	case 0x04: /* Pairing Random */
-		swap128(data + 1, test_data->smp_rrnd);
+		memcpy(test_data->smp_rrnd, data + 1, 16);
 		if (!verify_random(data + 1))
 			goto failed;
 		goto next;
