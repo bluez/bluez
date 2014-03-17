@@ -60,9 +60,13 @@ LOCAL_SRC_FILES := \
 	bluez/lib/sdp.c \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
+	bluez/lib/uuid.c \
 	bluez/btio/btio.c \
 	bluez/src/sdp-client.c \
 	bluez/profiles/network/bnep.c \
+	bluez/attrib/gattrib.c \
+	bluez/attrib/gatt.c \
+	bluez/attrib/att.c
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, glib) \
