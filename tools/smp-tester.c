@@ -62,13 +62,13 @@ struct test_data {
 	uint16_t handle;
 	size_t counter;
 	struct bt_crypto *crypto;
-	uint8_t smp_tk[16];
-	uint8_t smp_prnd[16];
-	uint8_t smp_rrnd[16];
-	uint8_t smp_pcnf[16];
-	uint8_t smp_preq[7];
-	uint8_t smp_prsp[7];
-	uint8_t smp_ltk[16];
+	uint8_t tk[16];
+	uint8_t prnd[16];
+	uint8_t rrnd[16];
+	uint8_t pcnf[16];
+	uint8_t preq[7];
+	uint8_t prsp[7];
+	uint8_t ltk[16];
 };
 
 struct smp_req_rsp {
@@ -412,22 +412,21 @@ static const void *get_pdu(const uint8_t *data)
 
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
-		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
+		memcpy(test_data->preq, data, sizeof(test_data->preq));
 		break;
 	case 0x02: /* Pairing Response */
-		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
+		memcpy(test_data->prsp, data, sizeof(test_data->prsp));
 		break;
 	case 0x03: /* Pairing Confirm */
 		buf[0] = data[0];
-		bt_crypto_c1(test_data->crypto, test_data->smp_tk,
-				test_data->smp_prnd, test_data->smp_prsp,
-				test_data->smp_preq, test_data->ia_type,
-				test_data->ia, test_data->ra_type,
-				test_data->ra, &buf[1]);
+		bt_crypto_c1(test_data->crypto, test_data->tk, test_data->prnd,
+				test_data->prsp, test_data->preq,
+				test_data->ia_type, test_data->ia,
+				test_data->ra_type, test_data->ra, &buf[1]);
 		return buf;
 	case 0x04: /* Pairing Random */
 		buf[0] = data[0];
-		memcpy(&buf[1], test_data->smp_prnd, 16);
+		memcpy(&buf[1], test_data->prnd, 16);
 		return buf;
 	default:
 		break;
@@ -441,24 +440,24 @@ static bool verify_random(const uint8_t rnd[16])
 	struct test_data *data = tester_get_data();
 	uint8_t confirm[16];
 
-	if (!bt_crypto_c1(data->crypto, data->smp_tk, data->smp_rrnd,
-				data->smp_prsp, data->smp_preq, data->ia_type,
-				data->ia, data->ra_type, data->ra, confirm))
+	if (!bt_crypto_c1(data->crypto, data->tk, data->rrnd, data->prsp,
+					data->preq, data->ia_type, data->ia,
+					data->ra_type, data->ra, confirm))
 		return false;
 
-	if (memcmp(data->smp_pcnf, confirm, sizeof(data->smp_pcnf) != 0)) {
+	if (memcmp(data->pcnf, confirm, sizeof(data->pcnf) != 0)) {
 		tester_warn("Confirmation values don't match");
 		return false;
 	}
 
 	if (data->out) {
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
-		bt_crypto_s1(data->crypto, data->smp_tk, data->smp_rrnd,
-						data->smp_prnd, data->smp_ltk);
-		bthost_le_start_encrypt(bthost, data->handle, data->smp_ltk);
+		bt_crypto_s1(data->crypto, data->tk, data->rrnd, data->prnd,
+								data->ltk);
+		bthost_le_start_encrypt(bthost, data->handle, data->ltk);
 	} else {
-		bt_crypto_s1(data->crypto, data->smp_tk, data->smp_prnd,
-						data->smp_rrnd, data->smp_ltk);
+		bt_crypto_s1(data->crypto, data->tk, data->prnd, data->rrnd,
+								data->ltk);
 	}
 
 	return true;
@@ -499,16 +498,16 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
-		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
+		memcpy(test_data->preq, data, sizeof(test_data->preq));
 		break;
 	case 0x02: /* Pairing Response */
-		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
+		memcpy(test_data->prsp, data, sizeof(test_data->prsp));
 		break;
 	case 0x03: /* Pairing Confirm */
-		memcpy(test_data->smp_pcnf, data + 1, 16);
+		memcpy(test_data->pcnf, data + 1, 16);
 		goto next;
 	case 0x04: /* Pairing Random */
-		memcpy(test_data->smp_rrnd, data + 1, 16);
+		memcpy(test_data->rrnd, data + 1, 16);
 		if (!verify_random(data + 1))
 			goto failed;
 		goto next;
