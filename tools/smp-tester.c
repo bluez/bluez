@@ -404,35 +404,34 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	tester_test_passed();
 }
 
-static const void *get_pdu(const uint8_t *data)
+static const void *get_pdu(const uint8_t *pdu)
 {
-	struct test_data *test_data = tester_get_data();
-	uint8_t opcode = data[0];
+	struct test_data *data = tester_get_data();
+	uint8_t opcode = pdu[0];
 	static uint8_t buf[17];
 
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
-		memcpy(test_data->preq, data, sizeof(test_data->preq));
+		memcpy(data->preq, pdu, sizeof(data->preq));
 		break;
 	case 0x02: /* Pairing Response */
-		memcpy(test_data->prsp, data, sizeof(test_data->prsp));
+		memcpy(data->prsp, pdu, sizeof(data->prsp));
 		break;
 	case 0x03: /* Pairing Confirm */
-		buf[0] = data[0];
-		bt_crypto_c1(test_data->crypto, test_data->tk, test_data->prnd,
-				test_data->prsp, test_data->preq,
-				test_data->ia_type, test_data->ia,
-				test_data->ra_type, test_data->ra, &buf[1]);
+		buf[0] = pdu[0];
+		bt_crypto_c1(data->crypto, data->tk, data->prnd, data->prsp,
+					data->preq, data->ia_type, data->ia,
+					data->ra_type, data->ra, &buf[1]);
 		return buf;
 	case 0x04: /* Pairing Random */
-		buf[0] = data[0];
-		memcpy(&buf[1], test_data->prnd, 16);
+		buf[0] = pdu[0];
+		memcpy(&buf[1], data->prnd, 16);
 		return buf;
 	default:
 		break;
 	}
 
-	return data;
+	return pdu;
 }
 
 static bool verify_random(const uint8_t rnd[16])
