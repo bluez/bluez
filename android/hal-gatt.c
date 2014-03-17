@@ -683,7 +683,7 @@ static bt_status_t get_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_GET_DESCRIPTOR,
-					len, &cmd, 0 , NULL, NULL);
+					len, cmd, 0 , NULL, NULL);
 }
 
 static bt_status_t read_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -1065,7 +1065,7 @@ static bt_status_t send_indication(int server_if, int attribute_handle,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_SEND_INDICATION,
-					cmd_len, &cmd, 0, NULL, NULL);
+					cmd_len, cmd, 0, NULL, NULL);
 }
 
 static bt_status_t send_response(int conn_id, int trans_id, int status,
@@ -1084,7 +1084,7 @@ static bt_status_t send_response(int conn_id, int trans_id, int status,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_SEND_RESPONSE,
-					cmd_len, &cmd, 0, NULL, NULL);
+					cmd_len, cmd, 0, NULL, NULL);
 }
 
 static bt_status_t init(const btgatt_callbacks_t *callbacks)
