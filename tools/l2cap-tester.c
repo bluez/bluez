@@ -718,13 +718,13 @@ static void setup_powered_server(const void *test_data)
 
 	tester_print("Powering on controller");
 
-	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
-		mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
-				sizeof(param), param,
-				NULL, NULL, NULL);
-	else
-		mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING, data->mgmt_index,
+	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
+
+	if (data->hciemu_type != HCIEMU_TYPE_BREDR)
+		mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING,
+				data->mgmt_index, sizeof(param), param, NULL,
+				NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_server_callback,
