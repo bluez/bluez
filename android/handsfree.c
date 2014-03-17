@@ -2089,6 +2089,14 @@ static void phone_state_idle(int num_active, int num_held)
 			/* TODO better way for forcing indicator */
 			device.inds[IND_CALLHELD].val = 0;
 			update_indicator(IND_CALLHELD, 1);
+		} else if (num_active > 0 && device.num_active == 0) {
+			/* If number of active calls change but there was no
+			 * call setup change this means that there were active
+			 * calls present when headset was connected.
+			 *
+			 * TODO should we care about held calls here as well?
+			 */
+			connect_audio();
 		} else {
 			update_indicator(IND_CALLHELD,
 					num_held ? (num_active ? 1 : 2) : 0);
@@ -2096,10 +2104,6 @@ static void phone_state_idle(int num_active, int num_held)
 
 		update_indicator(IND_CALL, !!(num_active + num_held));
 		update_indicator(IND_CALLSETUP, 0);
-
-		break;
-	case HAL_HANDSFREE_CALL_STATE_ACTIVE:
-		connect_audio();
 		break;
 	default:
 		DBG("unhandled state %u", device.setup_state);
