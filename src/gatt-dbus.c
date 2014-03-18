@@ -56,6 +56,12 @@ struct external_app {
 	unsigned int watch;
 };
 
+/*
+ * Attribute to Proxy hash table. Used to map incoming
+ * ATT operations to its external characteristic proxy.
+ */
+static GHashTable *proxy_hash;
+
 static GSList *external_apps;
 
 static int external_app_path_cmp(gconstpointer a, gconstpointer b)
@@ -172,6 +178,7 @@ static int register_external_characteristics(GSList *proxies)
 		DBusMessageIter iter;
 		const char *str, *path;
 		bt_uuid_t uuid;
+		struct btd_attribute *attr;
 		GDBusProxy *proxy = list->data;
 
 		if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
@@ -191,11 +198,14 @@ static int register_external_characteristics(GSList *proxies)
 		 * Reference table 3.5: Characteristic Properties bit field.
 		 */
 
-		if (btd_gatt_add_char(&uuid, 0x00) == NULL)
+		attr = btd_gatt_add_char(&uuid, 0x00);
+		if (attr == NULL)
 			return -EINVAL;
 
 		path = g_dbus_proxy_get_path(proxy);
 		DBG("Added GATT CHR: %s (%s)", path, str);
+
+		g_hash_table_insert(proxy_hash, attr, g_dbus_proxy_ref(proxy));
 	}
 
 	return 0;
@@ -318,13 +328,22 @@ static const GDBusMethodTable methods[] = {
 
 gboolean gatt_dbus_manager_register(void)
 {
-	return g_dbus_register_interface(btd_get_dbus_connection(),
-					"/org/bluez", GATT_MGR_IFACE,
-					methods, NULL, NULL, NULL, NULL);
+	if (g_dbus_register_interface(btd_get_dbus_connection(),
+				"/org/bluez", GATT_MGR_IFACE,
+				methods, NULL, NULL, NULL, NULL) == FALSE)
+		return FALSE;
+
+	proxy_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+				NULL, (GDestroyNotify) g_dbus_proxy_unref);
+
+	return TRUE;
 }
 
 void gatt_dbus_manager_unregister(void)
 {
+	g_hash_table_destroy(proxy_hash);
+	proxy_hash = NULL;
+
 	g_dbus_unregister_interface(btd_get_dbus_connection(), "/org/bluez",
 							GATT_MGR_IFACE);
 }
