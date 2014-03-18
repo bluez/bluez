@@ -91,6 +91,16 @@ void util_debug(util_debug_func_t function, void *user_data,
 void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 				util_debug_func_t function, void *user_data);
 
+static inline void bswap_128(const void *src, void *dst)
+{
+	const uint8_t *s = src;
+	uint8_t *d = dst;
+	int i;
+
+	for (i = 0; i < 16; i++)
+		d[15 - i] = s[i];
+}
+
 static inline void put_le16(uint16_t val, void *dst)
 {
 	put_unaligned(cpu_to_le16(val), (uint16_t *) dst);
