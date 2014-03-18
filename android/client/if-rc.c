@@ -88,6 +88,11 @@ static void volume_change_cb(uint8_t volume, uint8_t ctype)
 	haltest_info("%s, volume=%d ctype=%d\n", __func__, volume, ctype);
 }
 
+static void passthrough_cmd_cb(int id, int key_state)
+{
+	haltest_info("%s, id=%d key_state=%d\n", __func__, id, key_state);
+}
+
 static btrc_callbacks_t rc_cbacks = {
 	.size = sizeof(rc_cbacks),
 	.remote_features_cb = remote_features_cb,
@@ -95,6 +100,7 @@ static btrc_callbacks_t rc_cbacks = {
 	.get_element_attr_cb = get_element_attr_cb,
 	.register_notification_cb = register_notification_cb,
 	.volume_change_cb = volume_change_cb,
+	.passthrough_cmd_cb = passthrough_cmd_cb,
 };
 
 /* init */
