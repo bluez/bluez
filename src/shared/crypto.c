@@ -463,8 +463,8 @@ bool bt_crypto_s1(struct bt_crypto *crypto, const uint8_t k[16],
 			const uint8_t r1[16], const uint8_t r2[16],
 			uint8_t res[16])
 {
-	memcpy(res, r1 + 8, 8);
-	memcpy(res + 8, r2 + 8, 8);
+	memcpy(res, r2, 8);
+	memcpy(res + 8, r1, 8);
 
 	return bt_crypto_e(crypto, k, res, res);
 }
