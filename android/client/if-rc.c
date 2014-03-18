@@ -68,6 +68,17 @@ static void get_play_status_cb(void)
 	haltest_info("%s\n", __func__);
 }
 
+static void set_player_app_value_cb(btrc_player_settings_t *p_vals)
+{
+	int i;
+
+	haltest_info("%s, num_attr=%u\n", __func__, p_vals->num_attr);
+
+	for (i = 0; i < p_vals->num_attr; i++)
+		haltest_info("attr id=%u, values=%u\n", p_vals->attr_ids[i],
+							p_vals->attr_values[i]);
+}
+
 static void get_element_attr_cb(uint8_t num_attr, btrc_media_attr_t *attrs)
 {
 	uint8_t i;
@@ -97,6 +108,7 @@ static btrc_callbacks_t rc_cbacks = {
 	.size = sizeof(rc_cbacks),
 	.remote_features_cb = remote_features_cb,
 	.get_play_status_cb = get_play_status_cb,
+	.set_player_app_value_cb = set_player_app_value_cb,
 	.get_element_attr_cb = get_element_attr_cb,
 	.register_notification_cb = register_notification_cb,
 	.volume_change_cb = volume_change_cb,
