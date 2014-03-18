@@ -824,7 +824,7 @@ int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 						uint8_t number, uint8_t *events)
 {
-	uint8_t pdu[AVRCP_EVENT_LAST];
+	uint8_t pdu[AVRCP_EVENT_LAST + 1];
 
 	if (number > AVRCP_EVENT_LAST)
 		return -EINVAL;
