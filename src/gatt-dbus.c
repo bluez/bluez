@@ -198,7 +198,7 @@ static int register_external_characteristics(GSList *proxies)
 		 * Reference table 3.5: Characteristic Properties bit field.
 		 */
 
-		attr = btd_gatt_add_char(&uuid, 0x00);
+		attr = btd_gatt_add_char(&uuid, 0x00, NULL);
 		if (attr == NULL)
 			return -EINVAL;
 

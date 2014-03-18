@@ -45,6 +45,7 @@ static const bt_uuid_t chr_uuid = { .type = BT_UUID16,
 struct btd_attribute {
 	uint16_t handle;
 	bt_uuid_t type;
+	btd_attr_read_t read_cb;
 	uint16_t value_len;
 	uint8_t value[0];
 };
@@ -131,7 +132,8 @@ struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 }
 
 struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
-							uint8_t properties)
+						uint8_t properties,
+						btd_attr_read_t read_cb)
 {
 	struct btd_attribute *char_decl, *char_value = NULL;
 
@@ -189,8 +191,9 @@ struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
 	 */
 
 	char_value->type = *uuid;
+	char_value->read_cb = read_cb;
 
-	/* TODO: Read & Write callbacks */
+	/* TODO: Write callbacks */
 
 	if (local_database_add(next_handle, char_value) < 0)
 		/* TODO: remove declaration */
