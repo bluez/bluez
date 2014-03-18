@@ -30,6 +30,7 @@
 #include "log.h"
 #include "lib/uuid.h"
 #include "attrib/att.h"
+#include "src/shared/util.h"
 
 #include "gatt-dbus.h"
 #include "gatt.h"
@@ -48,6 +49,39 @@ struct btd_attribute {
 static GList *local_attribute_db;
 static uint16_t next_handle = 0x0001;
 
+static inline void put_uuid_le(const bt_uuid_t *src, void *dst)
+{
+	if (src->type == BT_UUID16)
+		put_le16(src->value.u16, dst);
+	else if (src->type == BT_UUID32)
+		put_le32(src->value.u32, dst);
+	else
+		/* Convert from 128-bit BE to LE */
+		bswap_128(&src->value.u128, dst);
+}
+
+/*
+ * Helper function to create new attributes containing constant/static values.
+ * eg: declaration of services/characteristics, and characteristics with
+ * fixed values.
+ */
+static struct btd_attribute *new_const_attribute(const bt_uuid_t *type,
+							const uint8_t *value,
+							uint16_t len)
+{
+	struct btd_attribute *attr;
+
+	attr = malloc0(sizeof(struct btd_attribute) + len);
+	if (attr == NULL)
+		return NULL;
+
+	attr->type = *type;
+	memcpy(&attr->value, value, len);
+	attr->value_len = len;
+
+	return attr;
+}
+
 static int local_database_add(uint16_t handle, struct btd_attribute *attr)
 {
 	attr->handle = handle;
@@ -59,9 +93,9 @@ static int local_database_add(uint16_t handle, struct btd_attribute *attr)
 
 struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 {
+	struct btd_attribute *attr;
 	uint16_t len = bt_uuid_len(uuid);
-	struct btd_attribute *attr = g_malloc0(sizeof(struct btd_attribute) +
-									len);
+	uint8_t value[len];
 
 	/*
 	 * Service DECLARATION
@@ -75,13 +109,15 @@ struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 	 * (2) - 2 or 16 octets: Service UUID
 	 */
 
-	attr->type = primary_uuid;
+	/* Set attribute value */
+	put_uuid_le(uuid, value);
 
-	att_put_uuid(*uuid, attr->value);
-	attr->value_len = len;
+	attr = new_const_attribute(&primary_uuid, value, len);
+	if (attr == NULL)
+		return NULL;
 
 	if (local_database_add(next_handle, attr) < 0) {
-		g_free(attr);
+		free(attr);
 		return NULL;
 	}
 
