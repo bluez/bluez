@@ -68,6 +68,11 @@ static void get_play_status_cb(void)
 	haltest_info("%s\n", __func__);
 }
 
+static void list_player_app_values_cb(btrc_player_attr_t attr_id)
+{
+	haltest_info("%s, attr_id=%d\n", __func__, attr_id);
+}
+
 static void get_player_app_value_cb(uint8_t num_attr,
 						btrc_player_attr_t *p_attrs)
 {
@@ -138,6 +143,7 @@ static btrc_callbacks_t rc_cbacks = {
 	.size = sizeof(rc_cbacks),
 	.remote_features_cb = remote_features_cb,
 	.get_play_status_cb = get_play_status_cb,
+	.list_player_app_values_cb = list_player_app_values_cb,
 	.get_player_app_value_cb = get_player_app_value_cb,
 	.get_player_app_attrs_text_cb = get_player_app_attrs_text_cb,
 	.get_player_app_values_text_cb = get_player_app_values_text_cb,
