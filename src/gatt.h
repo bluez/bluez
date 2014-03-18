@@ -34,3 +34,15 @@ void gatt_cleanup(void);
  * NULL is returned.
  */
 struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid);
+
+/*
+ * btd_gatt_add_char - Add a characteristic (declaration and value attributes)
+ * to local attribute database.
+ * @uuid:	Characteristic UUID (16-bits or 128-bits).
+ * @properties:	Characteristic properties. See Core SPEC 4.1 page 2183.
+ *
+ * Returns a reference to characteristic value attribute. In case of error,
+ * NULL is returned.
+ */
+struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
+							uint8_t properties);

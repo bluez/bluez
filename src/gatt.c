@@ -39,6 +39,9 @@
 static const bt_uuid_t primary_uuid  = { .type = BT_UUID16,
 					.value.u16 = GATT_PRIM_SVC_UUID };
 
+static const bt_uuid_t chr_uuid = { .type = BT_UUID16,
+					.value.u16 = GATT_CHARAC_UUID };
+
 struct btd_attribute {
 	uint16_t handle;
 	bt_uuid_t type;
@@ -125,6 +128,91 @@ struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 	next_handle = next_handle + 1;
 
 	return attr;
+}
+
+struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
+							uint8_t properties)
+{
+	struct btd_attribute *char_decl, *char_value = NULL;
+
+	/* Attribute value length */
+	uint16_t len = 1 + 2 + bt_uuid_len(uuid);
+	uint8_t value[len];
+
+	/*
+	 * Characteristic DECLARATION
+	 *
+	 *   TYPE         ATTRIBUTE VALUE
+	 * +-------+---------------------------------+
+	 * |0x2803 | 0xXX 0xYYYY 0xZZZZ...           |
+	 * | (1)   |  (2)   (3)   (4)                |
+	 * +------+----------------------------------+
+	 * (1) - 2 octets: Characteristic declaration UUID
+	 * (2) - 1 octet : Properties
+	 * (3) - 2 octets: Handle of the characteristic Value
+	 * (4) - 2 or 16 octets: Characteristic UUID
+	 */
+
+	value[0] = properties;
+
+	/*
+	 * Since we don't know yet the characteristic value attribute
+	 * handle, we skip and set it later.
+	 */
+
+	put_uuid_le(uuid, &value[3]);
+
+	char_decl = new_const_attribute(&chr_uuid, value, len);
+	if (char_decl == NULL)
+		goto fail;
+
+	char_value = new0(struct btd_attribute, 1);
+	if (char_value == NULL)
+		goto fail;
+
+	if (local_database_add(next_handle, char_decl) < 0)
+		goto fail;
+
+	next_handle = next_handle + 1;
+
+	/*
+	 * Characteristic VALUE
+	 *
+	 *   TYPE         ATTRIBUTE VALUE
+	 * +----------+---------------------------------+
+	 * |0xZZZZ... | 0x...                           |
+	 * |  (1)     |  (2)                            |
+	 * +----------+---------------------------------+
+	 * (1) - 2 or 16 octets: Characteristic UUID
+	 * (2) - N octets: Value is read dynamically from the service
+	 * implementation (external entity).
+	 */
+
+	char_value->type = *uuid;
+
+	/* TODO: Read & Write callbacks */
+
+	if (local_database_add(next_handle, char_value) < 0)
+		/* TODO: remove declaration */
+		goto fail;
+
+	next_handle = next_handle + 1;
+
+	/*
+	 * Update characteristic value handle in characteristic declaration
+	 * attribute. For local attributes, we can assume that the handle
+	 * representing the characteristic value will get the next available
+	 * handle. However, for remote attribute this assumption is not valid.
+	 */
+	put_le16(char_value->handle, &char_decl->value[1]);
+
+	return char_value;
+
+fail:
+	free(char_decl);
+	free(char_value);
+
+	return NULL;
 }
 
 void gatt_init(void)
