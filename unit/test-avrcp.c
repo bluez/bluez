@@ -339,9 +339,12 @@ static int get_value_text(struct avrcp *session, uint8_t transaction,
 				uint8_t attr, uint8_t number, uint8_t *values,
 				void *user_data)
 {
+	const char *text[] = { "on" };
+
 	DBG("");
 
-	avrcp_get_player_values_text_rsp(session, transaction, 0, NULL, NULL);
+	avrcp_get_player_values_text_rsp(session, transaction, number,
+								values, text);
 
 	return -EINVAL;
 }
@@ -688,7 +691,8 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58,
 				AVRCP_GET_PLAYER_VALUE_TEXT,
-				0x00, 0x00, 0x01, 0x00));
+				0x00, 0x00, 0x07, 0x01, 0x01, 0x00,
+				0x6a, 0x02, 0x6f, 0x6e));
 
 	define_test("/TP/PAS/BV-09-C", test_client,
 			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
