@@ -435,7 +435,7 @@ static sdp_record_t *avrcp_record(void)
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = L2CAP_PSM_AVCTP;
-	uint16_t avrcp_ver = 0x0105, avctp_ver = 0x0103;
+	uint16_t avrcp_ver = 0x0105, avctp_ver = 0x0104;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 					AVRCP_FEATURE_CATEGORY_2 |
 					AVRCP_FEATURE_CATEGORY_3 |
