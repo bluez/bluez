@@ -2100,7 +2100,6 @@ static void phone_state_idle(int num_active, int num_held)
 				device.num_held == num_active) {
 			/* TODO better way for forcing indicator */
 			device.inds[IND_CALLHELD].val = 0;
-			update_indicator(IND_CALLHELD, 1);
 		} else if ((num_active > 0 || num_held > 0) &&
 						device.num_active == 0 &&
 						device.num_held == 0) {
@@ -2111,11 +2110,10 @@ static void phone_state_idle(int num_active, int num_held)
 			connect_audio();
 		} else if (num_active == 0 && num_held == 0) {
 			disconnect_sco();
-		} else {
-			update_indicator(IND_CALLHELD,
-					num_held ? (num_active ? 1 : 2) : 0);
 		}
 
+		update_indicator(IND_CALLHELD,
+					num_held ? (num_active ? 1 : 2) : 0);
 		update_indicator(IND_CALL, !!(num_active + num_held));
 		update_indicator(IND_CALLSETUP, 0);
 		break;
