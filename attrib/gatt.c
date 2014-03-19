@@ -342,16 +342,19 @@ static void resolve_included_uuid_cb(uint8_t status, const uint8_t *pdu,
 	uuid = att_get_uuid128(buf);
 	bt_uuid_to_string(&uuid, incl->uuid, sizeof(incl->uuid));
 	isd->includes = g_slist_append(isd->includes, incl);
+	query->included = NULL;
 
 done:
-	if (err)
-		g_free(incl);
-
 	if (isd->err == 0)
 		isd->err = err;
+}
 
-	isd_unref(isd);
+static void inc_query_free(void *data)
+{
+	struct included_uuid_query *query = data;
 
+	isd_unref(query->isd);
+	g_free(query->included);
 	g_free(query);
 }
 
@@ -368,7 +371,8 @@ static guint resolve_included_uuid(struct included_discovery *isd,
 	query->included = incl;
 
 	return g_attrib_send(isd->attrib, 0, buf, oplen,
-				resolve_included_uuid_cb, query, NULL);
+				resolve_included_uuid_cb, query,
+				inc_query_free);
 }
 
 static struct gatt_included *included_from_buf(const uint8_t *buf, gsize len)
