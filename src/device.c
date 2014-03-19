@@ -3359,10 +3359,16 @@ static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
 	struct gatt_primary *prim;
 	GSList *l;
 
-	if (device->attrib == NULL) {
+	DBG("status %u", status);
+
+	if (device->attrib == NULL || status) {
 		struct browse_req *req = device->browse;
 
-		error("Disconnected while doing included discovery");
+		if (status)
+			error("Find included services failed: %s (%d)",
+					att_ecode2str(status), status);
+		else
+			error("Disconnected while doing included discovery");
 
 		if (!req)
 			goto complete;
@@ -3377,12 +3383,6 @@ static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
 		browse_request_free(req);
 
 		goto complete;
-	}
-
-	if (status != 0) {
-		error("Find included services failed: %s (%d)",
-					att_ecode2str(status), status);
-		goto next;
 	}
 
 	if (includes == NULL)
