@@ -135,6 +135,27 @@ void avrcp_shutdown(struct avrcp *session)
 	g_free(session);
 }
 
+static struct avrcp_header *parse_pdu(uint8_t *operands, size_t operand_count)
+{
+	struct avrcp_header *pdu;
+
+	if (!operands || operand_count < sizeof(*pdu)) {
+		error("AVRCP: packet too small (%zu bytes)", operand_count);
+		return NULL;
+	}
+
+	pdu = (void *) operands;
+	pdu->params_len = ntohs(pdu->params_len);
+
+	if (operand_count != pdu->params_len + sizeof(*pdu)) {
+		error("AVRCP: invalid parameter length (%u bytes)",
+							pdu->params_len);
+		return NULL;
+	}
+
+	return pdu;
+}
+
 static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 					uint8_t *code, uint8_t *subunit,
 					uint8_t *operands, size_t operand_count,
@@ -142,25 +163,26 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 {
 	struct avrcp *session = user_data;
 	const struct avrcp_control_handler *handler;
-	struct avrcp_header *pdu = (void *) operands;
-	uint32_t company_id = ntoh24(pdu->company_id);
-	uint16_t params_len = ntohs(pdu->params_len);
+	struct avrcp_header *pdu;
+	uint32_t company_id;
 	ssize_t ret;
 
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
+		goto reject;
+	}
+
+	company_id = ntoh24(pdu->company_id);
 	if (company_id != IEEEID_BTSIG) {
 		*code = AVC_CTYPE_NOT_IMPLEMENTED;
 		return 0;
 	}
 
-	DBG("AVRCP PDU 0x%02X, len 0x%04X", pdu->pdu_id, params_len);
+	DBG("AVRCP PDU 0x%02X, len 0x%04X", pdu->pdu_id, pdu->params_len);
 
 	pdu->packet_type = 0;
 	pdu->rsvd = 0;
-
-	if (operand_count < AVRCP_HEADER_LENGTH) {
-		pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
-		goto reject;
-	}
 
 	if (!session->control_handlers)
 		goto reject;
@@ -180,7 +202,7 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 		goto reject;
 	}
 
-	ret = handler->func(session, transaction, params_len, pdu->params,
+	ret = handler->func(session, transaction, pdu->params_len, pdu->params,
 							session->control_data);
 	if (ret < 0) {
 		switch (ret) {
@@ -670,6 +692,31 @@ int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
 							session->tx_buf, len);
 }
 
+static int parse_status(struct avrcp_header *pdu)
+{
+	if (pdu->params_len < 1)
+		return -EPROTO;
+
+	switch (pdu->params[0]) {
+	case AVRCP_STATUS_INVALID_COMMAND:
+		return -ENOSYS;
+	case AVRCP_STATUS_INVALID_PARAM:
+		return -EINVAL;
+	case AVRCP_STATUS_SUCCESS:
+		return 0;
+	case AVRCP_STATUS_OUT_OF_BOUNDS:
+		return -EOVERFLOW;
+	case AVRCP_STATUS_INTERNAL_ERROR:
+	case AVRCP_STATUS_INVALID_PLAYER_ID:
+	case AVRCP_STATUS_PLAYER_NOT_BROWSABLE:
+	case AVRCP_STATUS_NO_AVAILABLE_PLAYERS:
+	case AVRCP_STATUS_ADDRESSED_PLAYER_CHANGED:
+		return -EPERM;
+	default:
+		return -EPROTO;
+	}
+}
+
 static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
 					uint8_t pdu_id, uint8_t *params,
 					size_t params_len, avctp_rsp_cb func,
@@ -698,12 +745,67 @@ static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
 					session->tx_buf, len, func, user_data);
 }
 
-int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
-					avctp_rsp_cb func, void *user_data)
+static gboolean get_capabilities_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu;
+	uint8_t number = 0;
+	uint8_t *params = NULL;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->get_capabilities)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	if (pdu->params_len < 2) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	switch (pdu->params[0]) {
+	case CAP_COMPANY_ID:
+	case CAP_EVENTS_SUPPORTED:
+		break;
+	default:
+		err = -EPROTO;
+		goto done;
+	}
+
+	number = pdu->params[1];
+
+	if (number > 0)
+		params = &pdu->params[2];
+
+	err = 0;
+
+done:
+	player->cfm->get_capabilities(session, err, number, params,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_get_capabilities(struct avrcp *session, uint8_t param)
 {
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
 				AVRCP_GET_CAPABILITIES, &param, sizeof(param),
-				func, user_data);
+				get_capabilities_rsp, session);
 }
 
 int avrcp_register_notification(struct avrcp *session, uint8_t event,

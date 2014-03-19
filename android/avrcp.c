@@ -759,37 +759,34 @@ static gboolean register_notification_rsp(struct avctp *conn,
 	return FALSE;
 }
 
-static gboolean get_capabilities_rsp(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
-					uint8_t *operands, size_t operand_count,
+static void handle_get_capabilities_rsp(struct avrcp *session, int err,
+					uint8_t number, uint8_t *events,
 					void *user_data)
 {
 	struct avrcp_device *dev = user_data;
-	uint8_t *params;
-	uint8_t count;
+	int i;
 
-	if (operands == NULL || operand_count < 7)
-		return FALSE;
-
-	params = &operands[7];
-
-	if (params == NULL || params[0] != CAP_EVENTS_SUPPORTED)
-		return FALSE;
-
-	for (count = params[1]; count > 0; count--) {
-		uint8_t event = params[1 + count];
-
-		if (event != AVRCP_EVENT_VOLUME_CHANGED)
-			continue;
-
-		avrcp_register_notification(dev->session, event, 0,
-						register_notification_rsp,
-						dev);
-		return FALSE;
+	if (err < 0) {
+		error("AVRCP: %s", strerror(-err));
+		return;
 	}
 
-	return FALSE;
+	for (i = 0; i < number; i++) {
+		if (events[i] != AVRCP_EVENT_VOLUME_CHANGED)
+			continue;
+
+		avrcp_register_notification(dev->session, events[i], 0,
+						register_notification_rsp,
+						dev);
+		break;
+	}
+
+	return;
 }
+
+static const struct avrcp_control_cfm control_cfm = {
+	.get_capabilities = handle_get_capabilities_rsp,
+};
 
 static int avrcp_device_add_session(struct avrcp_device *dev, int fd,
 						uint16_t imtu, uint16_t omtu)
@@ -804,7 +801,7 @@ static int avrcp_device_add_session(struct avrcp_device *dev, int fd,
 	avrcp_set_destroy_cb(dev->session, disconnect_cb, dev);
 	avrcp_set_passthrough_handlers(dev->session, passthrough_handlers,
 									dev);
-	avrcp_register_player(dev->session, &control_ind, NULL, dev);
+	avrcp_register_player(dev->session, &control_ind, &control_cfm, dev);
 
 	dev->queue = g_queue_new();
 
@@ -828,8 +825,7 @@ static int avrcp_device_add_session(struct avrcp_device *dev, int fd,
 
 	ev.features |= HAL_AVRCP_FEATURE_ABSOLUTE_VOLUME;
 
-	avrcp_get_capabilities(dev->session, CAP_EVENTS_SUPPORTED,
-						get_capabilities_rsp, dev);
+	avrcp_get_capabilities(dev->session, CAP_EVENTS_SUPPORTED);
 
 done:
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,

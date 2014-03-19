@@ -164,6 +164,9 @@ struct avrcp_control_ind {
 };
 
 struct avrcp_control_cfm {
+	void (*get_capabilities) (struct avrcp *session, int err,
+					uint8_t number, uint8_t *params,
+					void *user_data);
 };
 
 struct avrcp_passthrough_handler {
@@ -190,8 +193,7 @@ int avrcp_init_uinput(struct avrcp *session, const char *name,
 int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
 					uint8_t subunit, uint8_t pdu_id,
 					uint8_t *params, size_t params_len);
-int avrcp_get_capabilities(struct avrcp *session, uint8_t param,
-					avctp_rsp_cb func, void *user_data);
+int avrcp_get_capabilities(struct avrcp *session, uint8_t param);
 int avrcp_register_notification(struct avrcp *session, uint8_t event,
 					uint32_t interval, avctp_rsp_cb func,
 					void *user_data);
