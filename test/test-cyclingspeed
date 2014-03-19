@@ -144,7 +144,7 @@ if __name__ == "__main__":
 	device_path = device.object_path
 
 	cscmanager = dbus.Interface(bus.get_object(BUS_NAME, adapter_path),
-						CYCLINGSPEED_WATCHER_INTERFACE)
+						CYCLINGSPEED_MANAGER_INTERFACE)
 
 	watcher_path = "/test/watcher"
 	watcher = Watcher(bus, watcher_path)
