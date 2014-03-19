@@ -402,7 +402,16 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 		return FALSE;
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		struct command *c;
+
+		while ((c = g_queue_pop_head(attrib->requests))) {
+			if (c->func)
+				c->func(ATT_ECODE_IO, NULL, 0, c->user_data);
+			command_destroy(c);
+		}
+
 		attrib->read_watch = 0;
+
 		return FALSE;
 	}
 
