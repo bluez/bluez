@@ -329,7 +329,6 @@ static void simple_agent_reply(DBusPendingCall *call, void *user_data)
 
 		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
 			error("Timed out waiting for reply from agent");
-			agent_cancel(agent);
 			dbus_message_unref(message);
 			dbus_error_free(&err);
 			agent_unref(agent);

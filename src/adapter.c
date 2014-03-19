@@ -1063,10 +1063,8 @@ static void service_auth_cancel(struct service_auth *auth)
 
 	dbus_error_free(&derr);
 
-	if (auth->agent != NULL) {
-		agent_cancel(auth->agent);
+	if (auth->agent != NULL)
 		agent_unref(auth->agent);
-	}
 
 	g_free(auth);
 }
@@ -4742,10 +4740,8 @@ int btd_cancel_authorization(guint id)
 
 	g_queue_remove(auth->adapter->auths, auth);
 
-	if (auth->agent) {
-		agent_cancel(auth->agent);
+	if (auth->agent)
 		agent_unref(auth->agent);
-	}
 
 	g_free(auth);
 
