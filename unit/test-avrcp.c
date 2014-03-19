@@ -317,9 +317,14 @@ static int get_attribute_text(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *attrs,
 					void *user_data)
 {
-	const char *text[] = { "equalizer" };
+	const char *text[number];
 
 	DBG("");
+
+	if (number) {
+		memset(text, 0, number);
+		text[0] = "equalizer";
+	}
 
 	avrcp_get_player_attribute_text_rsp(session, transaction, number, attrs,
 									text);
