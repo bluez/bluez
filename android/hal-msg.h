@@ -408,6 +408,11 @@ struct hal_rsp_health_reg_app {
 	uint16_t app_id;
 } __attribute__((packed));
 
+#define HAL_OP_HEALTH_UNREG_APP		0x02
+struct hal_cmd_health_unreg_app {
+	uint16_t app_id;
+} __attribute__((packed));
+
 #define HAL_OP_HEALTH_CONNECT_CHANNEL	0x03
 struct hal_cmd_health_connect_channel {
 	uint16_t app_id;
@@ -1113,11 +1118,6 @@ struct hal_ev_handsfree_nrec {
 #define HAL_EV_HANDSFREE_CHLD		0x8A
 struct hal_ev_handsfree_chld {
 	uint8_t chld;
-} __attribute__((packed));
-
-#define HAL_OP_HEALTH_UNREG_APP		0x02
-struct hal_cmd_health_unreg_app {
-	uint16_t app_id;
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_CNUM		0x8B
