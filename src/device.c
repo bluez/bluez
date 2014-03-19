@@ -3409,8 +3409,11 @@ static void find_included_services(struct browse_req *req, GSList *services)
 	struct included_search *search;
 	struct gatt_primary *prim;
 
-	if (services == NULL)
+	if (services == NULL) {
+		DBG("No services found");
+		register_all_services(req, NULL);
 		return;
+	}
 
 	search = g_new0(struct included_search, 1);
 	search->req = req;
