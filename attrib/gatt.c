@@ -38,6 +38,7 @@
 #include "gatt.h"
 
 struct discover_primary {
+	int ref;
 	GAttrib *attrib;
 	bt_uuid_t uuid;
 	GSList *primaries;
@@ -71,11 +72,26 @@ struct discover_char {
 	void *user_data;
 };
 
-static void discover_primary_free(struct discover_primary *dp)
+static void discover_primary_unref(void *data)
 {
+	struct discover_primary *dp = data;
+
+	dp->ref--;
+
+	if (dp->ref > 0)
+		return;
+
 	g_slist_free(dp->primaries);
 	g_attrib_unref(dp->attrib);
 	g_free(dp);
+}
+
+static struct discover_primary *discover_primary_ref(
+						struct discover_primary *dp)
+{
+	dp->ref++;
+
+	return dp;
 }
 
 static struct included_discovery *isd_ref(struct included_discovery *isd)
@@ -194,12 +210,12 @@ static void primary_by_uuid_cb(guint8 status, const guint8 *ipdu,
 	if (oplen == 0)
 		goto done;
 
-	g_attrib_send(dp->attrib, 0, buf, oplen, primary_by_uuid_cb, dp, NULL);
+	g_attrib_send(dp->attrib, 0, buf, oplen, primary_by_uuid_cb,
+			discover_primary_ref(dp), discover_primary_unref);
 	return;
 
 done:
 	dp->cb(err, dp->primaries, dp->user_data);
-	discover_primary_free(dp);
 }
 
 static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
@@ -261,14 +277,14 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 								buf, buflen);
 
 		g_attrib_send(dp->attrib, 0, buf, oplen, primary_all_cb,
-								dp, NULL);
+						discover_primary_ref(dp),
+						discover_primary_unref);
 
 		return;
 	}
 
 done:
 	dp->cb(err, dp->primaries, dp->user_data);
-	discover_primary_free(dp);
 }
 
 guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
@@ -298,7 +314,9 @@ guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 	} else
 		cb = primary_all_cb;
 
-	return g_attrib_send(attrib, 0, buf, plen, cb, dp, NULL);
+	return g_attrib_send(attrib, 0, buf, plen, cb,
+					discover_primary_ref(dp),
+					discover_primary_unref);
 }
 
 static void resolve_included_uuid_cb(uint8_t status, const uint8_t *pdu,
