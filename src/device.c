@@ -3976,9 +3976,17 @@ void device_set_paired(struct btd_device *dev, uint8_t bdaddr_type)
 
 static void device_auth_req_free(struct btd_device *device)
 {
-	if (device->authr)
-		g_free(device->authr->pincode);
-	g_free(device->authr);
+	struct authentication_req *authr = device->authr;
+
+	if (!authr)
+		return;
+
+	if (authr->agent)
+		agent_unref(authr->agent);
+
+	g_free(authr->pincode);
+	g_free(authr);
+
 	device->authr = NULL;
 }
 
