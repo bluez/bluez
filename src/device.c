@@ -3425,6 +3425,8 @@ static void find_included_services(struct browse_req *req, GSList *services)
 	struct included_search *search;
 	struct gatt_primary *prim;
 
+	DBG("service count %u", g_slist_length(services));
+
 	if (services == NULL) {
 		DBG("No services found");
 		register_all_services(req, NULL);
@@ -3444,6 +3446,8 @@ static void find_included_services(struct browse_req *req, GSList *services)
 static void primary_cb(uint8_t status, GSList *services, void *user_data)
 {
 	struct browse_req *req = user_data;
+
+	DBG("status %u", status);
 
 	if (status) {
 		struct btd_device *device = req->device;
