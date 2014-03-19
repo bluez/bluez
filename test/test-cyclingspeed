@@ -15,6 +15,7 @@ try:
   from gi.repository import GObject
 except ImportError:
   import gobject as GObject
+import bluezutils
 
 BUS_NAME = 'org.bluez'
 CYCLINGSPEED_MANAGER_INTERFACE = 'org.bluez.CyclingSpeedManager1'
