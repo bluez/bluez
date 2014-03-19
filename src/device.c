@@ -3360,20 +3360,33 @@ static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
 	GSList *l;
 
 	if (device->attrib == NULL) {
+		struct browse_req *req = device->browse;
+
 		error("Disconnected while doing included discovery");
-		g_slist_free(search->services);
-		g_free(search);
-		return;
+
+		if (!req)
+			goto complete;
+
+		if (req->msg) {
+			DBusMessage *reply;
+			reply = btd_error_failed(req->msg, "Disconnected");
+			g_dbus_send_message(dbus_conn, reply);
+		}
+
+		device->browse = NULL;
+		browse_request_free(req);
+
+		goto complete;
 	}
 
 	if (status != 0) {
 		error("Find included services failed: %s (%d)",
 					att_ecode2str(status), status);
-		goto done;
+		goto next;
 	}
 
 	if (includes == NULL)
-		goto done;
+		goto next;
 
 	for (l = includes; l; l = l->next) {
 		struct gatt_included *incl = l->data;
@@ -3389,18 +3402,21 @@ static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
 		search->services = g_slist_append(search->services, prim);
 	}
 
-done:
+next:
 	search->current = search->current->next;
 	if (search->current == NULL) {
 		register_all_services(search->req, search->services);
-		g_slist_free(search->services);
-		g_free(search);
-		return;
+		goto complete;
 	}
 
 	prim = search->current->data;
 	gatt_find_included(device->attrib, prim->range.start, prim->range.end,
 					find_included_cb, search);
+	return;
+
+complete:
+	g_slist_free(search->services);
+	g_free(search);
 }
 
 static void find_included_services(struct browse_req *req, GSList *services)
