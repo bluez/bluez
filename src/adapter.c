@@ -1063,8 +1063,10 @@ static void service_auth_cancel(struct service_auth *auth)
 
 	dbus_error_free(&derr);
 
-	if (auth->agent != NULL)
+	if (auth->agent != NULL) {
 		agent_cancel(auth->agent);
+		agent_unref(auth->agent);
+	}
 
 	g_free(auth);
 }
