@@ -62,6 +62,7 @@ struct included_uuid_query {
 };
 
 struct discover_char {
+	int ref;
 	GAttrib *attrib;
 	bt_uuid_t *uuid;
 	uint16_t end;
@@ -99,12 +100,26 @@ static void isd_unref(struct included_discovery *isd)
 	g_free(isd);
 }
 
-static void discover_char_free(struct discover_char *dc)
+static void discover_char_unref(void *data)
 {
+	struct discover_char *dc = data;
+
+	dc->ref--;
+
+	if (dc->ref > 0)
+		return;
+
 	g_slist_free_full(dc->characteristics, g_free);
 	g_attrib_unref(dc->attrib);
 	g_free(dc->uuid);
 	g_free(dc);
+}
+
+static struct discover_char *discover_char_ref(struct discover_char *dc)
+{
+	dc->ref++;
+
+	return dc;
 }
 
 static guint16 encode_discover_primary(uint16_t start, uint16_t end,
@@ -509,16 +524,14 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 			return;
 
 		g_attrib_send(dc->attrib, 0, buf, oplen, char_discovered_cb,
-								dc, NULL);
+				discover_char_ref(dc), discover_char_unref);
 
 		return;
 	}
 
 done:
 	err = (dc->characteristics ? 0 : err);
-
 	dc->cb(err, dc->characteristics, dc->user_data);
-	discover_char_free(dc);
 }
 
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
@@ -548,7 +561,7 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 	dc->uuid = g_memdup(uuid, sizeof(bt_uuid_t));
 
 	return g_attrib_send(attrib, 0, buf, plen, char_discovered_cb,
-								dc, NULL);
+				discover_char_ref(dc), discover_char_unref);
 }
 
 guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
