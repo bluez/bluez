@@ -2868,9 +2868,6 @@ static void setup_start_discovery(const void *test_data)
 				setup_command_hci_callback,
 				NULL);
 
-		if (test->send_func)
-			send_param = test->send_func(&send_len);
-
 		mgmt_send(data->mgmt, MGMT_OP_START_DISCOVERY, data->mgmt_index,
 				send_len, send_param, NULL, NULL, NULL);
 	} else {
