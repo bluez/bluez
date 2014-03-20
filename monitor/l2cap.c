@@ -457,11 +457,11 @@ static void print_config_options(const struct l2cap_frame *frame,
 		switch (type) {
 		case 0x01:
 			print_field("  MTU: %d",
-					bt_get_le16(data + consumed + 2));
+					get_le16(data + consumed + 2));
 			break;
 		case 0x02:
 			print_field("  Flush timeout: %d",
-					bt_get_le16(data + consumed + 2));
+					get_le16(data + consumed + 2));
 			break;
 		case 0x03:
 			switch (data[consumed + 3]) {
@@ -521,11 +521,11 @@ static void print_config_options(const struct l2cap_frame *frame,
 			print_field("  TX window size: %d", data[consumed + 3]);
 			print_field("  Max transmit: %d", data[consumed + 4]);
 			print_field("  Retransmission timeout: %d",
-					bt_get_le16(data + consumed + 5));
+					get_le16(data + consumed + 5));
 			print_field("  Monitor timeout: %d",
-					bt_get_le16(data + consumed + 7));
+					get_le16(data + consumed + 7));
 			print_field("  Maximum PDU size: %d",
-					bt_get_le16(data + consumed + 9));
+					get_le16(data + consumed + 9));
 			break;
 		case 0x05:
 			switch (data[consumed + 2]) {
@@ -562,7 +562,7 @@ static void print_config_options(const struct l2cap_frame *frame,
 			print_field("  Service type: %s (0x%2.2x)",
 						str, data[consumed + 3]);
 			print_field("  Maximum SDU size: 0x%4.4x",
-					bt_get_le16(data + consumed + 4));
+					get_le16(data + consumed + 4));
 			print_field("  SDU inter-arrival time: 0x%8.8x",
 					bt_get_le32(data + consumed + 6));
 			print_field("  Access latency: 0x%8.8x",
@@ -572,7 +572,7 @@ static void print_config_options(const struct l2cap_frame *frame,
 			break;
 		case 0x07:
 			print_field("  Max window size: %d",
-					bt_get_le16(data + consumed + 2));
+					get_le16(data + consumed + 2));
 			break;
 		default:
 			packet_hexdump(data + consumed + 2, len);
@@ -794,7 +794,7 @@ static void sig_cmd_reject(const struct l2cap_frame *frame)
 			packet_hexdump(data, size);
 			break;
 		}
-		print_field("MTU: %d", bt_get_le16(data));
+		print_field("MTU: %d", get_le16(data));
 		break;
 	case 0x0002:
 		if (size != 4) {
@@ -802,8 +802,8 @@ static void sig_cmd_reject(const struct l2cap_frame *frame)
 			packet_hexdump(data, size);
 			break;
 		}
-		dcid = bt_get_le16(data);
-		scid = bt_get_le16(data + 2);
+		dcid = get_le16(data);
+		scid = get_le16(data + 2);
 		print_cid("Destination", cpu_to_le16(dcid));
 		print_cid("Source", cpu_to_le16(scid));
 		break;
@@ -916,7 +916,7 @@ static void sig_info_rsp(const struct l2cap_frame *frame)
 			packet_hexdump(data, size);
 			break;
 		}
-		print_field("MTU: %d", bt_get_le16(data));
+		print_field("MTU: %d", get_le16(data));
 		break;
 	case 0x0002:
 		if (size != 4) {
@@ -1604,8 +1604,8 @@ static void amp_packet(uint16_t index, bool in, uint16_t handle,
 		return;
 	}
 
-	control = bt_get_le16(data);
-	fcs = bt_get_le16(data + size - 2);
+	control = get_le16(data);
+	fcs = get_le16(data + size - 2);
 
 	print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
 				" %d dlen %d control 0x%4.4x fcs 0x%4.4x",
@@ -1622,7 +1622,7 @@ static void amp_packet(uint16_t index, bool in, uint16_t handle,
 
 	opcode = *((const uint8_t *) (data + 2));
 	ident = *((const uint8_t *) (data + 3));
-	len = bt_get_le16(data + 4);
+	len = get_le16(data + 4);
 
 	if (len != size - 8) {
 		print_text(COLOR_ERROR, "invalid manager packet size");
@@ -1697,8 +1697,8 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 
 	switch (size) {
 	case 2:
-		str = uuid16_to_str(bt_get_le16(data));
-		print_field("%s: %s (0x%4.4x)", label, str, bt_get_le16(data));
+		str = uuid16_to_str(get_le16(data));
+		print_field("%s: %s (0x%4.4x)", label, str, get_le16(data));
 		break;
 	case 4:
 		str = uuid32_to_str(bt_get_le32(data));
@@ -1708,9 +1708,9 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 		str = uuid128_to_str(data);
 		print_field("%s: %s (%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x)",
 				label, str,
-				bt_get_le32(data + 12), bt_get_le16(data + 10),
-				bt_get_le16(data + 8), bt_get_le16(data + 6),
-				bt_get_le32(data + 2), bt_get_le16(data + 0));
+				bt_get_le32(data + 12), get_le16(data + 10),
+				get_le16(data + 8), get_le16(data + 6),
+				bt_get_le32(data + 2), get_le16(data + 0));
 		break;
 	default:
 		packet_hexdump(data, size);
@@ -1721,7 +1721,7 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 static void print_handle_range(const char *label, const void *data)
 {
 	print_field("%s: 0x%4.4x-0x%4.4x", label,
-				bt_get_le16(data), bt_get_le16(data + 2));
+				get_le16(data), get_le16(data + 2));
 }
 
 static void print_data_list(const char *label, uint8_t length,
@@ -1737,7 +1737,7 @@ static void print_data_list(const char *label, uint8_t length,
 	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	while (size >= length) {
-		print_field("Handle: 0x%4.4x", bt_get_le16(data));
+		print_field("Handle: 0x%4.4x", get_le16(data));
 		print_hex_field("Value", data + 2, length - 2);
 
 		data += length;
@@ -1772,7 +1772,7 @@ static void print_attribute_info(uint16_t type, const void *data, uint16_t len)
 			break;
 		}
 		print_field("  Properties: 0x%2.2x", *((uint8_t *) data));
-		print_field("  Handle: 0x%2.2x", bt_get_le16(data + 1));
+		print_field("  Handle: 0x%2.2x", get_le16(data + 1));
 		print_uuid("  UUID", data + 3, len - 3);
 		break;
 	default:
@@ -1885,7 +1885,7 @@ static const char *att_format_str(uint8_t format)
 static uint16_t print_info_data_16(const uint16_t *data, uint16_t len)
 {
 	while (len >= 4) {
-		print_field("Handle: 0x%4.4x", bt_get_le16(data));
+		print_field("Handle: 0x%4.4x", get_le16(data));
 		print_uuid("UUID", data + 2, 2);
 		data += 4;
 		len -= 4;
@@ -1897,7 +1897,7 @@ static uint16_t print_info_data_16(const uint16_t *data, uint16_t len)
 static uint16_t print_info_data_128(const uint16_t *data, uint16_t len)
 {
 	while (len >= 18) {
-		print_field("Handle: 0x%4.4x", bt_get_le16(data));
+		print_field("Handle: 0x%4.4x", get_le16(data));
 		print_uuid("UUID", data + 2, 16);
 		data += 18;
 		len -= 18;
@@ -1929,7 +1929,7 @@ static void att_find_by_type_val_req(const struct l2cap_frame *frame)
 
 	print_handle_range("Handle range", frame->data);
 
-	type = bt_get_le16(frame->data + 4);
+	type = get_le16(frame->data + 4);
 	print_attribute_info(type, frame->data + 6, frame->size - 6);
 }
 
@@ -1976,8 +1976,8 @@ static void att_read_rsp(const struct l2cap_frame *frame)
 
 static void att_read_blob_req(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
-	print_field("Offset: 0x%4.4x", bt_get_le16(frame->data + 2));
+	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_field("Offset: 0x%4.4x", get_le16(frame->data + 2));
 }
 
 static void att_read_blob_rsp(const struct l2cap_frame *frame)
@@ -1993,7 +1993,7 @@ static void att_read_multiple_req(const struct l2cap_frame *frame)
 
 	for (i = 0; i < count; i++)
 		print_field("Handle: 0x%4.4x",
-					bt_get_le16(frame->data + (i * 2)));
+					get_le16(frame->data + (i * 2)));
 }
 
 static void att_read_group_type_req(const struct l2cap_frame *frame)
@@ -2013,7 +2013,7 @@ static void att_read_group_type_rsp(const struct l2cap_frame *frame)
 
 static void att_write_req(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
+	print_field("Handle: 0x%4.4x", get_le16(frame->data));
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
@@ -2023,15 +2023,15 @@ static void att_write_rsp(const struct l2cap_frame *frame)
 
 static void att_prepare_write_req(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
-	print_field("Offset: 0x%4.4x", bt_get_le16(frame->data + 2));
+	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_field("Offset: 0x%4.4x", get_le16(frame->data + 2));
 	print_hex_field("  Data", frame->data + 4, frame->size - 4);
 }
 
 static void att_prepare_write_rsp(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
-	print_field("Offset: 0x%4.4x", bt_get_le16(frame->data + 2));
+	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_field("Offset: 0x%4.4x", get_le16(frame->data + 2));
 	print_hex_field("  Data", frame->data + 4, frame->size - 4);
 }
 
@@ -2077,7 +2077,7 @@ static void att_handle_value_conf(const struct l2cap_frame *frame)
 
 static void att_write_command(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
+	print_field("Handle: 0x%4.4x", get_le16(frame->data));
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 

@@ -44,6 +44,7 @@
 #include <bluetooth/hci_lib.h>
 
 #include "src/textfile.h"
+#include "src/shared/util.h"
 #include "tools/csr.h"
 
 static struct hci_dev_info di;
@@ -1316,7 +1317,7 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 				printf("\t%s service classes:",
 					type == 0x02 ? "Shortened" : "Complete");
 				for (i = 0; i < (len - 1) / 2; i++) {
-					uint16_t val = bt_get_le16((ptr + (i * 2)));
+					uint16_t val = get_le16((ptr + (i * 2)));
 					printf(" 0x%4.4x", val);
 				}
 				printf("\n");

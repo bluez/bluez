@@ -1916,7 +1916,7 @@ static void print_flow_spec(const char *label, const uint8_t *data)
 
 	print_field("%s flow spec: 0x%2.2x", label, data[0]);
 	print_field("  Service type: %s (0x%2.2x)", str, data[1]);
-	print_field("  Maximum SDU size: 0x%4.4x", bt_get_le16(data + 2));
+	print_field("  Maximum SDU size: 0x%4.4x", get_le16(data + 2));
 	print_field("  SDU inter-arrival time: 0x%8.8x", bt_get_le32(data + 4));
 	print_field("  Access latency: 0x%8.8x", bt_get_le32(data + 8));
 	print_field("  Flush timeout: 0x%8.8x", bt_get_le32(data + 12));
@@ -2767,12 +2767,12 @@ static void print_manufacturer_apple(const void *data, uint8_t data_len)
 
 		uuid = data + 2;
 		print_field("  iBeacon: %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
-				bt_get_le32(&uuid[12]), bt_get_le16(&uuid[10]),
-				bt_get_le16(&uuid[8]), bt_get_le16(&uuid[6]),
-				bt_get_le32(&uuid[2]), bt_get_le16(&uuid[0]));
+				bt_get_le32(&uuid[12]), get_le16(&uuid[10]),
+				get_le16(&uuid[8]), get_le16(&uuid[6]),
+				bt_get_le32(&uuid[2]), get_le16(&uuid[0]));
 
-		major = bt_get_le16(data + 18);
-		minor = bt_get_le16(data + 20);
+		major = get_le16(data + 18);
+		minor = get_le16(data + 20);
 		print_field("  Version: %u.%u", major, minor);
 
 		tx_power = *(int8_t *) (data + 22);
@@ -2786,7 +2786,7 @@ static void print_manufacturer_apple(const void *data, uint8_t data_len)
 
 static void print_manufacturer_data(const void *data, uint8_t data_len)
 {
-	uint16_t company = bt_get_le16(data);
+	uint16_t company = get_le16(data);
 
 	packet_print_company("Company", company);
 
@@ -2810,10 +2810,10 @@ static void print_device_id(const void *data, uint8_t data_len)
 	if (data_len < 8)
 		return;
 
-	source = bt_get_le16(data);
-	vendor = bt_get_le16(data + 2);
-	product = bt_get_le16(data + 4);
-	version = bt_get_le16(data + 6);
+	source = get_le16(data);
+	vendor = get_le16(data + 2);
+	product = get_le16(data + 4);
+	version = get_le16(data + 6);
 
 	switch (source) {
 	case 0x0001:
@@ -2871,7 +2871,7 @@ static void print_uuid16_list(const char *label, const void *data,
 	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	for (i = 0; i < count; i++) {
-		uint16_t uuid = bt_get_le16(data + (i * 2));
+		uint16_t uuid = get_le16(data + (i * 2));
 		print_field("  %s (0x%4.4x)", uuid16_to_str(uuid), uuid);
 	}
 }
@@ -2902,9 +2902,9 @@ static void print_uuid128_list(const char *label, const void *data,
 		const uint8_t *uuid = data + (i * 16);
 
 		print_field("  %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
-				bt_get_le32(&uuid[12]), bt_get_le16(&uuid[10]),
-				bt_get_le16(&uuid[8]), bt_get_le16(&uuid[6]),
-				bt_get_le32(&uuid[2]), bt_get_le16(&uuid[0]));
+				bt_get_le32(&uuid[12]), get_le16(&uuid[10]),
+				get_le16(&uuid[8]), get_le16(&uuid[6]),
+				bt_get_le32(&uuid[2]), get_le16(&uuid[0]));
 	}
 }
 
@@ -3074,8 +3074,8 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			if (data_len < 4)
 				break;
 			print_field("Slave Conn. Interval: 0x%4.4x - 0x%4.4x",
-							bt_get_le16(&data[0]),
-							bt_get_le16(&data[2]));
+							get_le16(&data[0]),
+							get_le16(&data[2]));
 			break;
 
 		case BT_EIR_SERVICE_UUID16:
@@ -3096,7 +3096,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			if (data_len < 2)
 				break;
 			sprintf(label, "Service Data (UUID 0x%4.4x)",
-							bt_get_le16(&data[0]));
+							get_le16(&data[0]));
 			print_hex_field(label, &data[2], data_len - 2);
 			break;
 
@@ -3115,7 +3115,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_GAP_APPEARANCE:
 			if (data_len < 2)
 				break;
-			print_appearance(bt_get_le16(data));
+			print_appearance(get_le16(data));
 			break;
 
 		case BT_EIR_SSP_HASH_P256:

@@ -65,7 +65,7 @@ static void eir_parse_uuid16(struct eir_data *eir, const void *data,
 
 	service.type = SDP_UUID16;
 	for (i = 0; i < len / 2; i++, uuid16++) {
-		service.value.uuid16 = bt_get_le16(uuid16);
+		service.value.uuid16 = get_le16(uuid16);
 
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)
@@ -216,7 +216,7 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 		case EIR_GAP_APPEARANCE:
 			if (data_len < 2)
 				break;
-			eir->appearance = bt_get_le16(data);
+			eir->appearance = get_le16(data);
 			break;
 
 		case EIR_SSP_HASH:
@@ -252,7 +252,7 @@ int eir_parse_oob(struct eir_data *eir, uint8_t *eir_data, uint16_t eir_len)
 	if (eir_len < EIR_OOB_MIN)
 		return -1;
 
-	if (eir_len != bt_get_le16(eir_data))
+	if (eir_len != get_le16(eir_data))
 		return -1;
 
 	eir_data += sizeof(uint16_t);

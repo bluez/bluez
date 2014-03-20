@@ -37,6 +37,7 @@
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
 #include "lib/amp.h"
+#include "src/shared/util.h"
 
 static uint16_t manufacturer = DEFAULT_COMPID;
 
@@ -792,7 +793,7 @@ static inline void ext_inquiry_data_dump(int level, struct frame *frm,
 				type == 0x02 ? "Shortened" : "Complete");
 
 		for (i = 0; i < len / 2; i++)
-			printf(" 0x%4.4x", bt_get_le16(data + i * 2));
+			printf(" 0x%4.4x", get_le16(data + i * 2));
 
 		printf("\n");
 		break;

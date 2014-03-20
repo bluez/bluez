@@ -919,7 +919,7 @@ static void recv_mode(int sk)
 			seq++;
 
 			/* Check length */
-			l = bt_get_le16(buf + 4);
+			l = get_le16(buf + 4);
 			if (len != l) {
 				syslog(LOG_INFO, "size missmatch: %d -> %d", len, l);
 				continue;

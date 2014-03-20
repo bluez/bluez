@@ -191,7 +191,7 @@ static void connected(uint16_t index, uint16_t len, const void *param,
 		return;
 	}
 
-	eir_len = bt_get_le16(&ev->eir_len);
+	eir_len = get_le16(&ev->eir_len);
 	if (len != sizeof(*ev) + eir_len) {
 		fprintf(stderr, "Invalid connected event length "
 			"(%u bytes, eir_len %u bytes)\n", len, eir_len);
@@ -358,7 +358,7 @@ static void device_found(uint16_t index, uint16_t len, const void *param,
 
 	flags = btohl(ev->flags);
 
-	eir_len = bt_get_le16(&ev->eir_len);
+	eir_len = get_le16(&ev->eir_len);
 	if (len != sizeof(*ev) + eir_len) {
 		fprintf(stderr, "dev_found: expected %zu bytes, got %u bytes\n",
 						sizeof(*ev) + eir_len, len);
@@ -615,7 +615,7 @@ static void version_rsp(uint8_t status, uint16_t len, const void *param,
 	}
 
 	printf("MGMT Version %u, revision %u\n", rp->version,
-						bt_get_le16(&rp->revision));
+						get_le16(&rp->revision));
 
 done:
 	mainloop_quit();
@@ -651,8 +651,8 @@ static void commands_rsp(uint8_t status, uint16_t len, const void *param,
 		goto done;
 	}
 
-	num_commands = bt_get_le16(&rp->num_commands);
-	num_events = bt_get_le16(&rp->num_events);
+	num_commands = get_le16(&rp->num_commands);
+	num_events = get_le16(&rp->num_events);
 
 	expected_len = sizeof(*rp) + num_commands * sizeof(uint16_t) +
 						num_events * sizeof(uint16_t);
@@ -667,13 +667,13 @@ static void commands_rsp(uint8_t status, uint16_t len, const void *param,
 
 	printf("%u commands:\n", num_commands);
 	for (i = 0; i < num_commands; i++) {
-		uint16_t op = bt_get_le16(opcode++);
+		uint16_t op = get_le16(opcode++);
 		printf("\t%s (0x%04x)\n", mgmt_opstr(op), op);
 	}
 
 	printf("%u events:\n", num_events);
 	for (i = 0; i < num_events; i++) {
-		uint16_t ev = bt_get_le16(opcode++);
+		uint16_t ev = get_le16(opcode++);
 		printf("\t%s (0x%04x)\n", mgmt_evstr(ev), ev);
 	}
 
@@ -715,7 +715,7 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 	ba2str(&rp->bdaddr, addr);
 	printf("hci%u:\taddr %s version %u manufacturer %u"
 			" class 0x%02x%02x%02x\n", index,
-			addr, rp->version, bt_get_le16(&rp->manufacturer),
+			addr, rp->version, get_le16(&rp->manufacturer),
 			rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 
 	printf("\tsupported settings: ");
@@ -755,7 +755,7 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 		goto done;
 	}
 
-	count = bt_get_le16(&rp->num_controllers);
+	count = get_le16(&rp->num_controllers);
 
 	if (len < sizeof(*rp) + count * sizeof(uint16_t)) {
 		fprintf(stderr,
@@ -778,7 +778,7 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 		uint16_t index;
 		void *data;
 
-		index = bt_get_le16(&rp->index[i]);
+		index = get_le16(&rp->index[i]);
 
 		if (monitor)
 			printf("hci%u ", index);
@@ -1188,7 +1188,7 @@ static void con_rsp(uint8_t status, uint16_t len, const void *param,
 		goto done;
 	}
 
-	count = bt_get_le16(&rp->conn_count);
+	count = get_le16(&rp->conn_count);
 	if (len != sizeof(*rp) + count * sizeof(struct mgmt_addr_info)) {
 		fprintf(stderr, "Invalid get_connections length "
 					" (count=%u, len=%u)\n", count, len);
