@@ -1734,9 +1734,6 @@ static const struct generic_data stop_discovery_success_test_1 = {
 
 static const struct generic_data stop_discovery_bredr_success_test_1 = {
 	.setup_settings = settings_powered,
-	.setup_expect_hci_command = BT_HCI_CMD_INQUIRY,
-	.setup_expect_hci_param = stop_discovery_inq_param,
-	.setup_expect_hci_len = sizeof(stop_discovery_inq_param),
 	.send_opcode = MGMT_OP_STOP_DISCOVERY,
 	.send_param = stop_discovery_bredr_param,
 	.send_len = sizeof(stop_discovery_bredr_param),
