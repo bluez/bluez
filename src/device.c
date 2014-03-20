@@ -3352,6 +3352,36 @@ static int service_by_range_cmp(gconstpointer a, gconstpointer b)
 	return memcmp(&prim->range, range, sizeof(*range));
 }
 
+static void send_le_browse_response(struct browse_req *req)
+{
+	struct btd_device *dev = req->device;
+	struct bearer_state *state = &dev->le_state;
+	DBusMessage *reply, *msg = req->msg;
+
+	if (!msg)
+		return;
+
+	if (!dbus_message_is_method_call(msg, DEVICE_INTERFACE, "Pair")) {
+		reply = btd_error_failed(msg, "Service discovery failed");
+		g_dbus_send_message(dbus_conn, reply);
+		return;
+	}
+
+	if (!state->paired) {
+		reply = btd_error_failed(msg, "Not paired");
+		g_dbus_send_message(dbus_conn, reply);
+		return;
+	}
+
+	if (!dev->bredr_state.paired && dev->pending_paired) {
+		g_dbus_emit_property_changed(dbus_conn, dev->path,
+						DEVICE_INTERFACE, "Paired");
+		dev->pending_paired = false;
+	}
+
+	g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
+}
+
 static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
 {
 	struct included_search *search = user_data;
@@ -3373,12 +3403,7 @@ static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
 		if (!req)
 			goto complete;
 
-		if (req->msg) {
-			DBusMessage *reply;
-			reply = btd_error_failed(req->msg, "Disconnected");
-			g_dbus_send_message(dbus_conn, reply);
-		}
-
+		send_le_browse_response(req);
 		device->browse = NULL;
 		browse_request_free(req);
 
@@ -3466,13 +3491,7 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 	if (status) {
 		struct btd_device *device = req->device;
 
-		if (req->msg) {
-			DBusMessage *reply;
-			reply = btd_error_failed(req->msg,
-							att_ecode2str(status));
-			g_dbus_send_message(dbus_conn, reply);
-		}
-
+		send_le_browse_response(req);
 		device->browse = NULL;
 		browse_request_free(req);
 		return;
@@ -3669,13 +3688,7 @@ static void att_browse_error_cb(const GError *gerr, gpointer user_data)
 	struct btd_device *device = attcb->user_data;
 	struct browse_req *req = device->browse;
 
-	if (req->msg) {
-		DBusMessage *reply;
-
-		reply = btd_error_failed(req->msg, gerr->message);
-		g_dbus_send_message(dbus_conn, reply);
-	}
-
+	send_le_browse_response(req);
 	device->browse = NULL;
 	browse_request_free(req);
 }
