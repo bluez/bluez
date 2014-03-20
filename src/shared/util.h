@@ -116,6 +116,11 @@ static inline uint32_t get_le32(const void *ptr)
 	return le32_to_cpu(get_unaligned((const uint32_t *) ptr));
 }
 
+static inline uint32_t get_be32(const void *ptr)
+{
+	return be32_to_cpu(get_unaligned((const uint32_t *) ptr));
+}
+
 static inline uint64_t get_le64(const void *ptr)
 {
 	return le64_to_cpu(get_unaligned((const uint64_t *) ptr));
