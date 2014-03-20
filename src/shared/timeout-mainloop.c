@@ -37,7 +37,7 @@ static void timeout_callback(int id, void *user_data)
 	struct timeout_data *data = user_data;
 
 	if (data->func(data->user_data) &&
-		!mainloop_modify_timeout(data->id, data->timeout))
+			!mainloop_modify_timeout(data->id, data->timeout))
 		return;
 
 	mainloop_remove_timeout(data->id);
@@ -68,7 +68,7 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 
 	data->id = mainloop_add_timeout(timeout, timeout_callback, data,
 							timeout_destroy);
-	if (!data->id) {
+	if (data->id < 0) {
 		free(data);
 		return 0;
 	}
