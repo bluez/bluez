@@ -65,6 +65,7 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 	data->func = func;
 	data->user_data = user_data;
 	data->timeout = timeout;
+	data->destroy = destroy;
 
 	data->id = mainloop_add_timeout(timeout, timeout_callback, data,
 							timeout_destroy);
