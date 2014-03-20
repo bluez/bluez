@@ -81,7 +81,7 @@ static void discover_primary_unref(void *data)
 	if (dp->ref > 0)
 		return;
 
-	g_slist_free(dp->primaries);
+	g_slist_free_full(dp->primaries, g_free);
 	g_attrib_unref(dp->attrib);
 	g_free(dp);
 }

@@ -3327,7 +3327,7 @@ static void register_all_services(struct browse_req *req, GSList *services)
 	g_slist_free_full(device->primaries, g_free);
 	device->primaries = NULL;
 
-	device_register_primaries(device, g_slist_copy(services), -1);
+	device_register_primaries(device, services, -1);
 
 	device_probe_profiles(device, req->profiles_added);
 
@@ -3406,6 +3406,7 @@ next:
 	search->current = search->current->next;
 	if (search->current == NULL) {
 		register_all_services(search->req, search->services);
+		search->services = NULL;
 		goto complete;
 	}
 
@@ -3415,7 +3416,7 @@ next:
 	return;
 
 complete:
-	g_slist_free(search->services);
+	g_slist_free_full(search->services, g_free);
 	g_free(search);
 }
 
@@ -3424,6 +3425,7 @@ static void find_included_services(struct browse_req *req, GSList *services)
 	struct btd_device *device = req->device;
 	struct included_search *search;
 	struct gatt_primary *prim;
+	GSList *l;
 
 	DBG("service count %u", g_slist_length(services));
 
@@ -3435,7 +3437,19 @@ static void find_included_services(struct browse_req *req, GSList *services)
 
 	search = g_new0(struct included_search, 1);
 	search->req = req;
-	search->services = g_slist_copy(services);
+
+	/* We have to completely duplicate the data in order to have a
+	 * clearly defined responsibility of freeing regardless of
+	 * failure or success. Otherwise memory leaks are inevitable.
+	 */
+	for (l = services; l; l = g_slist_next(l)) {
+		struct gatt_primary *dup;
+
+		dup = g_memdup(l->data, sizeof(struct gatt_primary));
+
+		search->services = g_slist_append(search->services, dup);
+	}
+
 	search->current = search->services;
 
 	prim = search->current->data;
