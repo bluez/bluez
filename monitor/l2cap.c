@@ -932,7 +932,7 @@ static void sig_info_rsp(const struct l2cap_frame *frame)
 			packet_hexdump(data, size);
 			break;
 		}
-		print_channels(bt_get_le64(data));
+		print_channels(get_le64(data));
 		break;
 	default:
 		packet_hexdump(data, size);

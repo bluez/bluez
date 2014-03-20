@@ -57,6 +57,7 @@
 #include "src/error.h"
 #include "src/sdpd.h"
 #include "src/dbus-common.h"
+#include "src/shared/util.h"
 
 #include "avctp.h"
 #include "avrcp.h"
@@ -1055,7 +1056,7 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp *session,
 {
 	struct avrcp_player *player = target_get_player(session);
 	uint16_t len = ntohs(pdu->params_len);
-	uint64_t identifier = bt_get_le64(&pdu->params[0]);
+	uint64_t identifier = get_le64(&pdu->params[0]);
 	uint16_t pos;
 	uint8_t nattr;
 	GList *attr_ids;

@@ -854,7 +854,7 @@ static void info_opt(int level, int type, void *ptr, int len)
 				}
 		break;
 	case 0x0003:
-		fc_mask = bt_get_le64(ptr);
+		fc_mask = get_le64(ptr);
 		printf("Fixed channel list 0x%8.8" PRIx64 "\n", fc_mask);
 		if (parser.flags & DUMP_VERBOSE)
 			for (i=0; l2cap_fix_chan[i].name; i++)
