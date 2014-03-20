@@ -33,6 +33,7 @@
 
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
+#include "src/shared/timeout.h"
 #include "src/shared/util.h"
 #include "src/shared/hci.h"
 
@@ -45,18 +46,19 @@ static struct bt_hci *hci_dev;
 static bool reset_on_init = false;
 static bool reset_on_shutdown = false;
 
-static void shutdown_timeout(int id, void *user_data)
+static bool shutdown_timeout(void *user_data)
 {
-	mainloop_remove_timeout(id);
-
 	mainloop_quit();
+
+	return false;
 }
 
 static void shutdown_complete(const void *data, uint8_t size, void *user_data)
 {
 	unsigned int id = PTR_TO_UINT(user_data);
 
-	shutdown_timeout(id, NULL);
+	timeout_remove(id);
+	mainloop_quit();
 }
 
 static void shutdown_device(void)
@@ -66,7 +68,7 @@ static void shutdown_device(void)
 	bt_hci_flush(hci_dev);
 
 	if (reset_on_shutdown) {
-		id = mainloop_add_timeout(5000, shutdown_timeout, NULL, NULL);
+		id = timeout_add(5000, shutdown_timeout, NULL, NULL);
 
 		bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0,
 				shutdown_complete, UINT_TO_PTR(id), NULL);
