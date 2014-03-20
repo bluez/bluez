@@ -400,7 +400,8 @@ static void setup_srm(GObex *obex, GObexPacket *pkt, gboolean outgoing)
 		g_obex_header_get_uint8(hdr, &srm);
 		g_obex_debug(G_OBEX_DEBUG_COMMAND, "srm 0x%02x", srm);
 		set_srm(obex, op, srm);
-	}
+	} else if (!g_obex_srm_enabled(obex))
+		set_srm(obex, op, G_OBEX_SRM_DISABLE);
 
 	hdr = g_obex_packet_get_header(pkt, G_OBEX_HDR_SRMP);
 	if (hdr != NULL) {
