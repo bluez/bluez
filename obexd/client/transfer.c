@@ -80,6 +80,7 @@ struct obc_transfer {
 	char *name;		/* Transfer object name */
 	char *type;		/* Transfer object type */
 	int fd;
+	guint req;
 	guint xfer;
 	gint64 size;
 	gint64 transferred;
@@ -157,6 +158,14 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InProgress",
 				"Cancellation already in progress");
+
+	if (transfer->req > 0) {
+		if (!g_obex_cancel_req(transfer->obex, transfer->req, TRUE))
+			return g_dbus_create_error(message,
+						ERROR_INTERFACE ".Failed",
+						"Failed");
+		transfer->req = 0;
+	}
 
 	if (transfer->xfer == 0) {
 		struct transfer_callback *callback = transfer->callback;
@@ -382,6 +391,9 @@ static const GDBusPropertyTable obc_transfer_properties[] = {
 static void obc_transfer_free(struct obc_transfer *transfer)
 {
 	DBG("%p", transfer);
+
+	if (transfer->req > 0)
+		g_obex_cancel_req(transfer->obex, transfer->req, TRUE);
 
 	if (transfer->xfer)
 		g_obex_cancel_transfer(transfer->xfer, NULL, NULL);
@@ -694,6 +706,8 @@ static void get_xfer_progress_first(GObex *obex, GError *err, GObexPacket *rsp,
 				transfer->status == TRANSFER_STATUS_SUSPENDED)
 		return;
 
+	transfer->req = 0;
+
 	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
 
 	transfer->xfer = g_obex_get_req_pkt(obex, req, get_xfer_progress,
@@ -783,11 +797,11 @@ static gboolean transfer_start_get(struct obc_transfer *transfer, GError **err)
 		g_obex_packet_add_header(req, hdr);
 	}
 
-	transfer->xfer = g_obex_send_req(transfer->obex, req,
+	transfer->req = g_obex_send_req(transfer->obex, req,
 						FIRST_PACKET_TIMEOUT,
 						get_xfer_progress_first,
 						transfer, err);
-	if (transfer->xfer == 0)
+	if (transfer->req == 0)
 		return FALSE;
 
 	if (transfer->path == NULL)
