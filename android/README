@@ -153,6 +153,26 @@ system properties called: persist.sys.bluetooth.mgmtdbg
 Note: Debugs are only available on NON USER build variants
 
 
+Customization
+-------------
+
+It is possible to customize BlueZ for Android through Android system properties.
+This may include enabling extra profiles or features inside HALs implementation
+These properties are read on Bluetooth stack startup only and require stack
+restart if changed. All customization properties names start with
+"persist.sys.bluetooth." followed by specific HAL name e.g.
+"persist.sys.bluetooth.handsfree". This section list available customization
+options.
+
+Property	Value		Description
+-------------------------------------------
+handsfree	hfp		Enable Handsfree Profile (HFP) with narrowband
+				speech only
+		hfp_wbs		Enable Handsfree Profile (HFP) with narrowband
+				and wideband speech support
+		<none>		Don't enable Handsfree Profile (HFP)
+
+
 Building and running on Linux
 -----------------------------
 
