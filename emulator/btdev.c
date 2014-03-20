@@ -874,9 +874,10 @@ failed:
 
 static void inquiry_cancel(struct btdev *btdev)
 {
-	uint8_t status = BT_HCI_ERR_COMMAND_DISALLOWED;
+	uint8_t status;
 
 	if (!btdev->inquiry_id) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 		cmd_complete(btdev, BT_HCI_CMD_INQUIRY_CANCEL, &status,
 							sizeof(status));
 		return;
