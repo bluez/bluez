@@ -22,6 +22,6 @@
 typedef bool (*timeout_func_t)(void *user_data);
 typedef void (*timeout_destroy_func_t)(void *user_data);
 
-int timeout_add(unsigned int msec, timeout_func_t func, void *user_data,
-					timeout_destroy_func_t destroy);
+unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
+			void *user_data, timeout_destroy_func_t destroy);
 void timeout_remove(unsigned int id);

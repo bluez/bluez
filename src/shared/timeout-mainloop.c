@@ -19,9 +19,10 @@
 
 #include <stdlib.h>
 
-#include "timeout.h"
-
 #include "monitor/mainloop.h"
+
+#include "util.h"
+#include "timeout.h"
 
 struct timeout_data {
 	int id;
@@ -52,27 +53,33 @@ static void timeout_destroy(void *user_data)
 	free(data);
 }
 
-int timeout_add(unsigned int t, timeout_func_t func, void *user_data,
-						timeout_destroy_func_t destroy)
+unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
+			void *user_data, timeout_destroy_func_t destroy)
 {
-	struct timeout_data *data = malloc(sizeof(*data));
+	struct timeout_data *data;
+
+	data = new0(struct timeout_data, 1);
+	if (!data)
+		return 0;
 
 	data->func = func;
 	data->user_data = user_data;
-	data->timeout = t;
+	data->timeout = timeout;
 
-	data->id = mainloop_add_timeout(t, timeout_callback, data,
+	data->id = mainloop_add_timeout(timeout, timeout_callback, data,
 							timeout_destroy);
 	if (!data->id) {
 		free(data);
 		return 0;
 	}
 
-	return data->id;
+	return (unsigned int) data->id;
 }
 
 void timeout_remove(unsigned int id)
 {
-	if (id)
-		mainloop_remove_timeout(id);
+	if (!id)
+		return;
+
+	mainloop_remove_timeout((int) id);
 }

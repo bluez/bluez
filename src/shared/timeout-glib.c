@@ -47,18 +47,22 @@ static void timeout_destroy(gpointer user_data)
 	g_free(data);
 }
 
-int timeout_add(unsigned int ms, timeout_func_t func, void *user_data,
-						timeout_destroy_func_t destroy)
+unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
+			void *user_data, timeout_destroy_func_t destroy)
 {
+	struct timeout_data *data;
 	guint id;
-	struct timeout_data *data = g_malloc0(sizeof(*data));
+
+	data = g_try_new0(struct timeout_data, 1);
+	if (!data)
+		return 0;
 
 	data->func = func;
 	data->destroy = destroy;
 	data->user_data = user_data;
 
-	id = g_timeout_add_full(G_PRIORITY_DEFAULT, ms, timeout_callback, data,
-							timeout_destroy);
+	id = g_timeout_add_full(G_PRIORITY_DEFAULT, timeout, timeout_callback,
+						data, timeout_destroy);
 	if (!id)
 		g_free(data);
 
@@ -68,6 +72,7 @@ int timeout_add(unsigned int ms, timeout_func_t func, void *user_data,
 void timeout_remove(unsigned int id)
 {
 	GSource *source = g_main_context_find_source_by_id(NULL, id);
+
 	if (source)
 		g_source_destroy(source);
 }
