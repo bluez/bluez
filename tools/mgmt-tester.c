@@ -2842,12 +2842,6 @@ static void setup_start_discovery(const void *test_data)
 	const struct generic_data *test = data->test_data;
 	const void *send_param = test->setup_send_param;
 	uint16_t send_len = test->setup_send_len;
-	unsigned char disc_param[] = { 0x07 };
-
-	if (!send_param) {
-		send_param = disc_param;
-		send_len = 1;
-	}
 
 	mgmt_send(data->mgmt, test->setup_send_opcode, data->mgmt_index,
 				send_len, send_param, setup_discovery_callback,
