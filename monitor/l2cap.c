@@ -482,15 +482,15 @@ static void print_config_options(const struct l2cap_frame *frame,
 			print_field("  Service type: %s (0x%2.2x)",
 						str, data[consumed + 3]);
 			print_field("  Token rate: 0x%8.8x",
-					bt_get_le32(data + consumed + 4));
+					get_le32(data + consumed + 4));
 			print_field("  Token bucket size: 0x%8.8x",
-					bt_get_le32(data + consumed + 8));
+					get_le32(data + consumed + 8));
 			print_field("  Peak bandwidth: 0x%8.8x",
-					bt_get_le32(data + consumed + 12));
+					get_le32(data + consumed + 12));
 			print_field("  Latency: 0x%8.8x",
-					bt_get_le32(data + consumed + 16));
+					get_le32(data + consumed + 16));
 			print_field("  Delay variation: 0x%8.8x",
-					bt_get_le32(data + consumed + 20));
+					get_le32(data + consumed + 20));
                         break;
 		case 0x04:
 			if (response)
@@ -564,11 +564,11 @@ static void print_config_options(const struct l2cap_frame *frame,
 			print_field("  Maximum SDU size: 0x%4.4x",
 					get_le16(data + consumed + 4));
 			print_field("  SDU inter-arrival time: 0x%8.8x",
-					bt_get_le32(data + consumed + 6));
+					get_le32(data + consumed + 6));
 			print_field("  Access latency: 0x%8.8x",
-					bt_get_le32(data + consumed + 10));
+					get_le32(data + consumed + 10));
 			print_field("  Flush timeout: 0x%8.8x",
-					bt_get_le32(data + consumed + 14));
+					get_le32(data + consumed + 14));
 			break;
 		case 0x07:
 			print_field("  Max window size: %d",
@@ -924,7 +924,7 @@ static void sig_info_rsp(const struct l2cap_frame *frame)
 			packet_hexdump(data, size);
 			break;
 		}
-		print_features(bt_get_le32(data));
+		print_features(get_le32(data));
 		break;
 	case 0x0003:
 		if (size != 8) {
@@ -1701,16 +1701,16 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 		print_field("%s: %s (0x%4.4x)", label, str, get_le16(data));
 		break;
 	case 4:
-		str = uuid32_to_str(bt_get_le32(data));
-		print_field("%s: %s (0x%8.8x)", label, str, bt_get_le32(data));
+		str = uuid32_to_str(get_le32(data));
+		print_field("%s: %s (0x%8.8x)", label, str, get_le32(data));
 		break;
 	case 16:
 		str = uuid128_to_str(data);
 		print_field("%s: %s (%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x)",
 				label, str,
-				bt_get_le32(data + 12), get_le16(data + 10),
+				get_le32(data + 12), get_le16(data + 10),
 				get_le16(data + 8), get_le16(data + 6),
-				bt_get_le32(data + 2), get_le16(data + 0));
+				get_le32(data + 2), get_le16(data + 0));
 		break;
 	default:
 		packet_hexdump(data, size);

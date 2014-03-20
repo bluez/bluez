@@ -84,7 +84,7 @@ static void eir_parse_uuid32(struct eir_data *eir, const void *data,
 
 	service.type = SDP_UUID32;
 	for (i = 0; i < len / 4; i++, uuid32++) {
-		service.value.uuid32 = bt_get_le32(uuid32);
+		service.value.uuid32 = get_le32(uuid32);
 
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)

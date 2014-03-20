@@ -1917,9 +1917,9 @@ static void print_flow_spec(const char *label, const uint8_t *data)
 	print_field("%s flow spec: 0x%2.2x", label, data[0]);
 	print_field("  Service type: %s (0x%2.2x)", str, data[1]);
 	print_field("  Maximum SDU size: 0x%4.4x", get_le16(data + 2));
-	print_field("  SDU inter-arrival time: 0x%8.8x", bt_get_le32(data + 4));
-	print_field("  Access latency: 0x%8.8x", bt_get_le32(data + 8));
-	print_field("  Flush timeout: 0x%8.8x", bt_get_le32(data + 12));
+	print_field("  SDU inter-arrival time: 0x%8.8x", get_le32(data + 4));
+	print_field("  Access latency: 0x%8.8x", get_le32(data + 8));
+	print_field("  Flush timeout: 0x%8.8x", get_le32(data + 12));
 }
 
 static void print_short_range_mode(uint8_t mode)
@@ -2767,9 +2767,9 @@ static void print_manufacturer_apple(const void *data, uint8_t data_len)
 
 		uuid = data + 2;
 		print_field("  iBeacon: %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
-				bt_get_le32(&uuid[12]), get_le16(&uuid[10]),
+				get_le32(&uuid[12]), get_le16(&uuid[10]),
 				get_le16(&uuid[8]), get_le16(&uuid[6]),
-				bt_get_le32(&uuid[2]), get_le16(&uuid[0]));
+				get_le32(&uuid[2]), get_le16(&uuid[0]));
 
 		major = get_le16(data + 18);
 		minor = get_le16(data + 20);
@@ -2885,7 +2885,7 @@ static void print_uuid32_list(const char *label, const void *data,
 	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	for (i = 0; i < count; i++) {
-		uint32_t uuid = bt_get_le32(data + (i * 4));
+		uint32_t uuid = get_le32(data + (i * 4));
 		print_field("  %s (0x%8.8x)", uuid32_to_str(uuid), uuid);
 	}
 }
@@ -2902,9 +2902,9 @@ static void print_uuid128_list(const char *label, const void *data,
 		const uint8_t *uuid = data + (i * 16);
 
 		print_field("  %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
-				bt_get_le32(&uuid[12]), get_le16(&uuid[10]),
+				get_le32(&uuid[12]), get_le16(&uuid[10]),
 				get_le16(&uuid[8]), get_le16(&uuid[6]),
-				bt_get_le32(&uuid[2]), get_le16(&uuid[0]));
+				get_le32(&uuid[2]), get_le16(&uuid[0]));
 	}
 }
 

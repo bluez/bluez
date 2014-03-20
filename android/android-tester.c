@@ -30,6 +30,7 @@
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 
+#include "src/shared/util.h"
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
@@ -281,7 +282,7 @@ static void command_generic_new_settings(uint16_t index, uint16_t length,
 		return;
 	}
 
-	settings = bt_get_le32(param);
+	settings = get_le32(param);
 
 	if ((settings & test_data->expect_settings_set) !=
 					test_data->expect_settings_set)

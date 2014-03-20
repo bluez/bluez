@@ -911,7 +911,7 @@ static void recv_mode(int sk)
 			}
 
 			/* Check sequence */
-			sq = bt_get_le32(buf);
+			sq = get_le32(buf);
 			if (seq != sq) {
 				syslog(LOG_INFO, "seq missmatch: %d -> %d", seq, sq);
 				seq = sq;

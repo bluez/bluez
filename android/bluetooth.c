@@ -37,6 +37,7 @@
 #include "lib/bluetooth.h"
 #include "lib/sdp.h"
 #include "lib/mgmt.h"
+#include "src/shared/util.h"
 #include "src/shared/mgmt.h"
 #include "src/uuid-helper.h"
 #include "src/eir.h"
@@ -539,7 +540,7 @@ static void new_settings_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	settings = bt_get_le32(param);
+	settings = get_le32(param);
 
 	DBG("settings: 0x%8.8x -> 0x%8.8x", adapter.current_settings,
 								settings);

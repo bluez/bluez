@@ -121,7 +121,7 @@ static void mgmt_new_settings(uint16_t len, const void *buf)
 		return;
 	}
 
-	settings = bt_get_le32(buf);
+	settings = get_le32(buf);
 
 	printf("@ New Settings: 0x%4.4x\n", settings);
 

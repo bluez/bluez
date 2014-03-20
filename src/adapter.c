@@ -498,7 +498,7 @@ static void new_settings_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	settings = bt_get_le32(param);
+	settings = get_le32(param);
 
 	if (settings == adapter->current_settings)
 		return;
@@ -5047,7 +5047,7 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	passkey = bt_get_le32(&ev->passkey);
+	passkey = get_le32(&ev->passkey);
 
 	DBG("passkey %06u entered %u", passkey, ev->entered);
 

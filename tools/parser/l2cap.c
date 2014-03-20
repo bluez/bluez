@@ -253,7 +253,7 @@ static uint32_t get_val(uint8_t *ptr, uint8_t len)
 	case 2:
 		return get_le16(ptr);
 	case 4:
-		return bt_get_le32(ptr);
+		return get_le32(ptr);
 	}
 	return 0;
 }

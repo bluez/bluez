@@ -123,7 +123,7 @@ static void new_settings(uint16_t index, uint16_t len,
 
 	if (monitor) {
 		printf("hci%u new_settings: ", index);
-		print_settings(bt_get_le32(ev));
+		print_settings(get_le32(ev));
 		printf("\n");
 	}
 }
@@ -561,7 +561,7 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 	}
 
 	ba2str(&ev->addr.bdaddr, addr);
-	val = bt_get_le32(&ev->value);
+	val = get_le32(&ev->value);
 
 	if (monitor)
 		printf("hci%u %s User Confirm %06u hint %u\n", index, addr,
@@ -719,10 +719,10 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 			rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 
 	printf("\tsupported settings: ");
-	print_settings(bt_get_le32(&rp->supported_settings));
+	print_settings(get_le32(&rp->supported_settings));
 
 	printf("\n\tcurrent settings: ");
-	print_settings(bt_get_le32(&rp->current_settings));
+	print_settings(get_le32(&rp->current_settings));
 
 	printf("\n\tname %s\n", rp->name);
 	printf("\tshort name %s\n", rp->short_name);
@@ -886,7 +886,7 @@ static void setting_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 	}
 
 	printf("hci%u %s complete, settings: ", id, mgmt_opstr(op));
-	print_settings(bt_get_le32(rp));
+	print_settings(get_le32(rp));
 	printf("\n");
 
 done:

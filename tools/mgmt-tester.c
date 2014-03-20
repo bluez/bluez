@@ -36,6 +36,7 @@
 #include "monitor/bt.h"
 #include "emulator/bthost.h"
 
+#include "src/shared/util.h"
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
@@ -3199,7 +3200,7 @@ static void command_generic_new_settings_alt(uint16_t index, uint16_t length,
 		return;
 	}
 
-	settings = bt_get_le32(param);
+	settings = get_le32(param);
 
 	tester_print("New settings 0x%08x received", settings);
 
