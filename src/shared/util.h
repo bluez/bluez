@@ -110,3 +110,8 @@ static inline void put_le32(uint32_t val, void *dst)
 {
 	put_unaligned(cpu_to_le32(val), (uint32_t *) dst);
 }
+
+static inline void put_le64(uint64_t val, const void *ptr)
+{
+	put_unaligned(cpu_to_le64(val), (uint64_t *) ptr);
+}
