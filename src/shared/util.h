@@ -155,3 +155,8 @@ static inline void put_le64(uint64_t val, const void *ptr)
 {
 	put_unaligned(cpu_to_le64(val), (uint64_t *) ptr);
 }
+
+static inline void put_be64(uint64_t val, const void *ptr)
+{
+	put_unaligned(cpu_to_be64(val), (uint64_t *) ptr);
+}
