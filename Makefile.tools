@@ -296,6 +296,8 @@ tools_btmgmt_LDADD = lib/libbluetooth-internal.la
 tools_btinfo_SOURCES = tools/btinfo.c monitor/bt.h \
 				monitor/mainloop.h monitor/mainloop.c \
 				src/shared/io.h src/shared/io-mainloop.c \
+				src/shared/timeout.h \
+				src/shared/timeout-mainloop.c \
 				src/shared/hci.h src/shared/hci.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/queue.h src/shared/queue.c
