@@ -5389,7 +5389,9 @@ static void disconnect_complete(uint8_t status, uint16_t length,
 	const struct mgmt_rp_disconnect *rp = param;
 	struct btd_adapter *adapter = user_data;
 
-	if (status != MGMT_STATUS_SUCCESS) {
+	if (status == MGMT_STATUS_NOT_CONNECTED) {
+		warn("Disconnecting failed: already disconnected");
+	} else if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to disconnect device: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
