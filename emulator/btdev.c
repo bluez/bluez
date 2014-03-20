@@ -33,6 +33,7 @@
 #include <alloca.h>
 
 #include "src/shared/util.h"
+#include "src/shared/timeout.h"
 #include "monitor/bt.h"
 #include "btdev.h"
 
@@ -67,6 +68,8 @@ struct btdev {
 
 	btdev_send_func send_handler;
 	void *send_data;
+
+	unsigned int inquiry_id;
 
 	struct hook *hook_list[MAX_HOOK_ENTRIES];
 
@@ -130,6 +133,14 @@ struct btdev {
 	uint32_t sync_train_timeout;
 	uint8_t  sync_train_service_data;
 };
+
+struct inquiry_data {
+	struct btdev *btdev;
+	int sent_count;
+	int iter;
+};
+
+#define DEFAULT_INQUIRY_INTERVAL 100 /* 100 miliseconds */
 
 #define MAX_BTDEV_ENTRIES 16
 
@@ -536,6 +547,9 @@ void btdev_destroy(struct btdev *btdev)
 	if (!btdev)
 		return;
 
+	if (btdev->inquiry_id > 0)
+		timeout_remove(btdev->inquiry_id);
+
 	del_btdev(btdev);
 
 	free(btdev);
@@ -692,12 +706,18 @@ static void num_completed_packets(struct btdev *btdev)
 	}
 }
 
-static void inquiry_complete(struct btdev *btdev, uint8_t status)
+static bool inquiry_callback(void *user_data)
 {
-	struct bt_hci_evt_inquiry_complete ic;
+	struct inquiry_data *data = user_data;
+	struct btdev *btdev = data->btdev;
+	int sent = data->sent_count;
 	int i;
 
-	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
+	for (i = data->iter; i < MAX_BTDEV_ENTRIES; i++) {
+		/*Lets sent 10 inquiry results at once */
+		if (sent + 10 == data->sent_count)
+			break;
+
 		if (!btdev_list[i] || btdev_list[i] == btdev)
 			continue;
 
@@ -719,6 +739,7 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 
 			send_event(btdev, BT_HCI_EVT_EXT_INQUIRY_RESULT,
 							&ir, sizeof(ir));
+			data->sent_count++;
 			continue;
 		}
 
@@ -735,6 +756,7 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 
 			send_event(btdev, BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI,
 							&ir, sizeof(ir));
+			data->sent_count++;
 		} else {
 			struct bt_hci_evt_inquiry_result ir;
 
@@ -748,11 +770,61 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 
 			send_event(btdev, BT_HCI_EVT_INQUIRY_RESULT,
 							&ir, sizeof(ir));
+			data->sent_count++;
 		}
-        }
+	}
 
+	data->iter = i;
+
+	if (i == MAX_BTDEV_ENTRIES) {
+		struct bt_hci_evt_inquiry_complete ic;
+
+		ic.status = BT_HCI_ERR_SUCCESS;
+		send_event(btdev, BT_HCI_EVT_INQUIRY_COMPLETE, &ic, sizeof(ic));
+
+		return false;
+	}
+
+	return true;
+}
+
+static void inquiry_destroy(void *user_data)
+{
+	struct inquiry_data *data = user_data;
+
+	if (data->btdev)
+		data->btdev->inquiry_id = 0;
+
+	free(data);
+}
+
+static void inquiry_cmd(struct btdev *btdev, const void *cmd)
+{
+	struct inquiry_data *data;
+	struct bt_hci_evt_inquiry_complete ic;
+	int status = BT_HCI_ERR_HARDWARE_FAILURE;
+
+	if (btdev->inquiry_id > 0) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto failed;
+	}
+
+	data = malloc(sizeof(*data));
+	if (!data)
+		goto failed;
+
+	memset(data, 0, sizeof(*data));
+	data->btdev = btdev;
+
+	btdev->inquiry_id = timeout_add(DEFAULT_INQUIRY_INTERVAL,
+							inquiry_callback, data,
+							inquiry_destroy);
+	/* Return if success */
+	if (btdev->inquiry_id > 0)
+		return;
+
+failed:
 	ic.status = status;
-
 	send_event(btdev, BT_HCI_EVT_INQUIRY_COMPLETE, &ic, sizeof(ic));
 }
 
@@ -2647,7 +2719,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_INQUIRY:
 		if (btdev->type == BTDEV_TYPE_LE)
 			return;
-		inquiry_complete(btdev, BT_HCI_ERR_SUCCESS);
+		inquiry_cmd(btdev, data);
 		break;
 
 	case BT_HCI_CMD_CREATE_CONN:
