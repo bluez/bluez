@@ -46,10 +46,10 @@ static unsigned char uuid_base_binary[] = {
 			0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb };
 
 static struct uuid_test_data uuid_base = {
-	.str = "00000000-0000-1000-8000-00805F9B34FB",
+	.str = "00000000-0000-1000-8000-00805f9b34fb",
 	.binary = uuid_base_binary,
 	.type = BT_UUID128,
-	.str128 = "00000000-0000-1000-8000-00805F9B34FB",
+	.str128 = "00000000-0000-1000-8000-00805f9b34fb",
 	.binary128 = uuid_base_binary,
 };
 
