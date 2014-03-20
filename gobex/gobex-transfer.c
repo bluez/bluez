@@ -195,9 +195,11 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 	struct transfer *transfer = user_data;
 	GObexPacket *req;
 	gboolean rspcode, final;
+	guint id;
 
 	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", transfer->id);
 
+	id = transfer->req_id;
 	transfer->req_id = 0;
 
 	if (err != NULL) {
@@ -230,8 +232,11 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 	} else if (!g_obex_srm_active(transfer->obex)) {
 		req = g_obex_packet_new(transfer->opcode, TRUE,
 							G_OBEX_HDR_INVALID);
-	} else
+	} else {
+		/* Keep id since request still outstanting */
+		transfer->req_id = id;
 		return;
+	}
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 							transfer, &err);
