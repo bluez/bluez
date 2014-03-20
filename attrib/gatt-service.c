@@ -27,7 +27,6 @@
 #endif
 
 #include <glib.h>
-#include <bluetooth/sdp.h>
 
 #include "src/adapter.h"
 #include "lib/uuid.h"
