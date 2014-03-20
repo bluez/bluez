@@ -106,6 +106,11 @@ static inline uint16_t get_le16(const void *ptr)
 	return le16_to_cpu(get_unaligned((const uint16_t *) ptr));
 }
 
+static inline uint32_t get_le32(const void *ptr)
+{
+	return le32_to_cpu(get_unaligned((const uint32_t *) ptr));
+}
+
 static inline void put_le16(uint16_t val, void *dst)
 {
 	put_unaligned(cpu_to_le16(val), (uint16_t *) dst);
