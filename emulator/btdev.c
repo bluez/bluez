@@ -791,10 +791,14 @@ static bool inquiry_callback(void *user_data)
 static void inquiry_destroy(void *user_data)
 {
 	struct inquiry_data *data = user_data;
+	struct btdev *btdev = data->btdev;
 
-	if (data->btdev)
-		data->btdev->inquiry_id = 0;
+	if (!btdev)
+		goto finish;
 
+	btdev->inquiry_id = 0;
+
+finish:
 	free(data);
 }
 
@@ -826,6 +830,24 @@ static void inquiry_cmd(struct btdev *btdev, const void *cmd)
 failed:
 	ic.status = status;
 	send_event(btdev, BT_HCI_EVT_INQUIRY_COMPLETE, &ic, sizeof(ic));
+}
+
+static void inquiry_cancel(struct btdev *btdev)
+{
+	uint8_t status = BT_HCI_ERR_COMMAND_DISALLOWED;
+
+	if (!btdev->inquiry_id) {
+		cmd_complete(btdev, BT_HCI_CMD_INQUIRY_CANCEL, &status,
+							sizeof(status));
+		return;
+	}
+
+	timeout_remove(btdev->inquiry_id);
+	btdev->inquiry_id = 0;
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(btdev, BT_HCI_CMD_INQUIRY_CANCEL, &status,
+							sizeof(status));
 }
 
 static void conn_complete(struct btdev *btdev,
@@ -1760,8 +1782,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_INQUIRY_CANCEL:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
-		status = BT_HCI_ERR_SUCCESS;
-		cmd_complete(btdev, opcode, &status, sizeof(status));
+		inquiry_cancel(btdev);
 		break;
 
 	case BT_HCI_CMD_CREATE_CONN:
