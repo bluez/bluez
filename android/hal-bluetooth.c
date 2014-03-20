@@ -112,7 +112,7 @@ static void adapter_prop_from_hal(const bt_property_t *property, uint8_t *type,
 	/* type match IPC type */
 	*type = property->type;
 
-	switch(property->type) {
+	switch (property->type) {
 	case HAL_PROP_ADAPTER_SCAN_MODE:
 		enum_prop_from_hal(property, len, val, bt_scan_mode_t);
 		break;

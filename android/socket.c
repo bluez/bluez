@@ -645,7 +645,7 @@ static gboolean jv_sock_server_event_cb(GIOChannel *io, GIOCondition cond,
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	if (cond & (G_IO_ERR | G_IO_HUP )) {
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		servers[rfsock->channel].rfsock = NULL;
 		cleanup_rfsock(rfsock);
 	}
@@ -879,7 +879,7 @@ static void handle_listen(const void *buf, uint16_t len)
 	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN,
 							0, NULL, hal_sock);
 	close(hal_sock);
-	return ;
+	return;
 
 failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_SOCKET, HAL_OP_SOCKET_LISTEN,

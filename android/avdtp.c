@@ -3370,7 +3370,7 @@ const char *avdtp_strerror(struct avdtp_error *err)
 	if (err->category == AVDTP_ERRNO)
 		return strerror(err->err.posix_errno);
 
-	switch(err->err.error_code) {
+	switch (err->err.error_code) {
 	case AVDTP_BAD_HEADER_FORMAT:
 		return "Bad Header Format";
 	case AVDTP_BAD_LENGTH:

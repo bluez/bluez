@@ -205,7 +205,7 @@ static void set_capabilities(void)
 	 */
 	cap.effective = cap.permitted =
 		CAP_TO_MASK(CAP_NET_RAW) |
-		CAP_TO_MASK(CAP_DAC_READ_SEARCH) ;
+		CAP_TO_MASK(CAP_DAC_READ_SEARCH);
 	cap.inheritable = 0;
 
 	/* TODO: Move to cap_set_proc once bionic support it */

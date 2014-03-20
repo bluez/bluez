@@ -435,7 +435,7 @@ static bool set_capabilities(void)
 
 	/* don't clear capabilities when dropping root */
 	if (prctl(PR_SET_KEEPCAPS, 1) < 0) {
-		error("%s: prctl(): %s", __func__,strerror(errno));
+		error("%s: prctl(): %s", __func__, strerror(errno));
 		return false;
 	}
 

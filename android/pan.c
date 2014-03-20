@@ -89,7 +89,7 @@ static struct {
 
 static int set_forward_delay(int sk)
 {
-	unsigned long args[4] = { BRCTL_SET_BRIDGE_FORWARD_DELAY, 0 ,0, 0 };
+	unsigned long args[4] = { BRCTL_SET_BRIDGE_FORWARD_DELAY, 0 , 0, 0 };
 	struct ifreq ifr;
 
 	memset(&ifr, 0, sizeof(ifr));

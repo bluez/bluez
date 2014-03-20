@@ -1167,7 +1167,7 @@ static void update_new_device(struct device *dev, int8_t rssi,
 						const struct eir_data *eir)
 {
 	uint8_t buf[IPC_MTU];
-	struct hal_ev_device_found *ev = (void*) buf;
+	struct hal_ev_device_found *ev = (void *) buf;
 	bdaddr_t android_bdaddr;
 	uint8_t android_type;
 	int size;
@@ -1920,7 +1920,8 @@ static struct device *create_device_from_info(GKeyFile *key_file,
 	return dev;
 }
 
-static struct mgmt_link_key_info *get_key_info(GKeyFile *key_file, const char *peer)
+static struct mgmt_link_key_info *get_key_info(GKeyFile *key_file,
+							const char *peer)
 {
 	struct mgmt_link_key_info *info = NULL;
 	char *str;

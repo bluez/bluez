@@ -69,9 +69,9 @@
 #define HFP_HF_FEAT_ECC		0x00000040
 #define HFP_HF_FEAT_CODEC	0x00000080
 
-#define HFP_AG_FEATURES ( HFP_AG_FEAT_3WAY | HFP_AG_FEAT_ECNR |\
-			HFP_AG_FEAT_VR | HFP_AG_FEAT_REJ_CALL |\
-			HFP_AG_FEAT_ECS | HFP_AG_FEAT_EXT_ERR )
+#define HFP_AG_FEATURES (HFP_AG_FEAT_3WAY | HFP_AG_FEAT_ECNR |\
+				HFP_AG_FEAT_VR | HFP_AG_FEAT_REJ_CALL |\
+				HFP_AG_FEAT_ECS | HFP_AG_FEAT_EXT_ERR)
 
 #define HFP_AG_CHLD "0,1,2,3"
 
@@ -311,7 +311,6 @@ static void at_cmd_vgm(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* Framework is not replying with result for AT+VGM */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -346,7 +345,6 @@ static void at_cmd_vgs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* Framework is not replying with result for AT+VGS */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -374,7 +372,6 @@ static void at_cmd_cops(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 			break;
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
@@ -422,7 +419,6 @@ static void at_cmd_bia(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 			device.inds[i].active = tmp[i];
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
 	case HFP_GW_CMD_TYPE_READ:
@@ -449,7 +445,6 @@ static void at_cmd_a(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* Framework is not replying with result for ATA */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_SET:
 	case HFP_GW_CMD_TYPE_READ:
@@ -464,7 +459,7 @@ static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 							void *user_data)
 {
 	char buf[IPC_MTU];
-	struct hal_ev_handsfree_dial *ev = (void*) buf;
+	struct hal_ev_handsfree_dial *ev = (void *) buf;
 	int cnt;
 
 	DBG("");
@@ -493,7 +488,6 @@ static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_DIAL,
 					sizeof(*ev) + ev->number_len, ev);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -522,7 +516,6 @@ static void at_cmd_ccwa(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		device.ccwa_enabled = val;
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -548,7 +541,6 @@ static void at_cmd_chup(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* Framework is not replying with result for AT+CHUP */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -571,7 +563,6 @@ static void at_cmd_clcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_CLCC, 0, NULL);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -600,7 +591,6 @@ static void at_cmd_cmee(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		device.cmee_enabled = val;
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -629,7 +619,6 @@ static void at_cmd_clip(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		device.clip_enabled = val;
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -653,7 +642,7 @@ static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		if (!hfp_gw_result_get_unquoted_string(result, str, 2))
 			break;
 
-		if (!((str[0] >= '0' && str[0] <='9') ||
+		if (!((str[0] >= '0' && str[0] <= '9') ||
 				(str[0] >= 'A' && str[0] <= 'D') ||
 				str[0] == '*' || str[0] == '#'))
 			break;
@@ -668,7 +657,6 @@ static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* Framework is not replying with result for AT+VTS */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -691,7 +679,6 @@ static void at_cmd_cnum(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 						HAL_EV_HANDSFREE_CNUM, 0, NULL);
-
 		return;
 	case HFP_GW_CMD_TYPE_SET:
 	case HFP_GW_CMD_TYPE_READ:
@@ -728,7 +715,6 @@ static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_DIAL, sizeof(ev), &ev);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -760,7 +746,6 @@ static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_VR, sizeof(ev), &ev);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -798,7 +783,6 @@ static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* Framework is not replying with result for AT+NREC */
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -885,7 +869,7 @@ static void connect_sco_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 		/* If other failed, try connecting with CVSD */
 		if (device.negotiated_codec != CODEC_ID_CVSD) {
-			info ("handsfree: trying fallback with CVSD");
+			info("handsfree: trying fallback with CVSD");
 			select_codec(CODEC_ID_CVSD);
 		}
 
@@ -999,7 +983,6 @@ static void at_cmd_bcs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		/* Connect sco with negotiated parameters */
 		connect_sco();
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -1029,7 +1012,6 @@ static void at_cmd_ckpd(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 				HAL_EV_HANDSFREE_HSP_KEY_PRESS, 0, NULL);
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -1107,7 +1089,6 @@ static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		register_post_slc_at();
 		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED);
-
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
 	case HFP_GW_CMD_TYPE_READ:
@@ -1161,7 +1142,6 @@ static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
 
 		g_free(buf);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
@@ -1225,7 +1205,6 @@ static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_CHLD, sizeof(ev), &ev);
-
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
 		hfp_gw_send_info(device.gw, "+CHLD: (%s)", HFP_AG_CHLD);
@@ -1233,7 +1212,6 @@ static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		register_post_slc_at();
 		device_set_state(HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED);
-
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_COMMAND:
@@ -1300,7 +1278,6 @@ static void at_cmd_bac(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		}
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
-
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
 	case HFP_GW_CMD_TYPE_READ:
@@ -1349,7 +1326,6 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	register_slc_at();
 	device_set_state(HAL_EV_HANDSFREE_CONN_STATE_CONNECTED);
-
 	return;
 
 failed:
@@ -1389,7 +1365,6 @@ static void confirm_cb(GIOChannel *chan, gpointer data)
 	}
 
 	device.hsp = GPOINTER_TO_INT(data);
-
 	return;
 
 drop:
@@ -1658,7 +1633,6 @@ static bool disconnect_sco(void)
 	device.sco = NULL;
 
 	device_set_audio_state(HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED);
-
 	return true;
 }
 
@@ -1767,7 +1741,7 @@ static void handle_volume_control(const void *buf, uint16_t len)
 
 	switch (cmd->type) {
 	case HAL_HANDSFREE_VOLUME_TYPE_MIC:
-		hfp_gw_send_info(device.gw, "+VGM: %u", volume );
+		hfp_gw_send_info(device.gw, "+VGM: %u", volume);
 
 		status = HAL_STATUS_SUCCESS;
 		break;
@@ -2024,9 +1998,9 @@ static void phone_state_waiting(int num_active, int num_held, uint8_t type,
 	num = number_len ? (char *) number : "";
 
 	if (type == HAL_HANDSFREE_CALL_ADDRTYPE_INTERNATIONAL && num[0] != '+')
-		hfp_gw_send_info(device.gw, "+CCWA: \"+%s\",%u", num, type );
+		hfp_gw_send_info(device.gw, "+CCWA: \"+%s\",%u", num, type);
 	else
-		hfp_gw_send_info(device.gw, "+CCWA: \"%s\",%u", num, type );
+		hfp_gw_send_info(device.gw, "+CCWA: \"%s\",%u", num, type);
 
 	update_indicator(IND_CALLSETUP, 1);
 }
@@ -2050,9 +2024,9 @@ static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 	num = number_len ? (char *) number : "";
 
 	if (type == HAL_HANDSFREE_CALL_ADDRTYPE_INTERNATIONAL && num[0] != '+')
-		clip = g_strdup_printf("+CLIP: \"+%s\",%u", num, type );
+		clip = g_strdup_printf("+CLIP: \"+%s\",%u", num, type);
 	else
-		clip = g_strdup_printf("+CLIP: \"%s\",%u", num, type );
+		clip = g_strdup_printf("+CLIP: \"%s\",%u", num, type);
 
 	/* send first RING */
 	ring_cb(clip);
@@ -2309,7 +2283,6 @@ static void confirm_sco_cb(GIOChannel *chan, gpointer user_data)
 	}
 
 	device_set_audio_state(HAL_EV_HANDSFREE_AUDIO_STATE_CONNECTING);
-
 	return;
 
 drop:
@@ -2323,8 +2296,8 @@ static bool enable_hsp_ag(void)
 
 	DBG("");
 
-	hsp_server =  bt_io_listen(NULL, confirm_cb, GINT_TO_POINTER(true), NULL,
-					&err,
+	hsp_server =  bt_io_listen(NULL, confirm_cb, GINT_TO_POINTER(true),
+					NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
 					BT_IO_OPT_CHANNEL, HSP_AG_CHANNEL,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -2348,7 +2321,6 @@ static bool enable_hsp_ag(void)
 	}
 
 	hsp_record_id = rec->handle;
-
 	return true;
 
 failed:
@@ -2486,7 +2458,6 @@ static bool enable_hfp_ag(void)
 	}
 
 	hfp_record_id = rec->handle;
-
 	return true;
 
 failed:
@@ -2566,14 +2537,12 @@ bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 	cleanup_hsp_ag();
 	disable_sco_server();
 	hfp_ag_features = 0;
-
 	return false;
 
 done:
 	hal_ipc = ipc;
 	ipc_register(hal_ipc, HAL_SERVICE_ID_HANDSFREE, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
-
 	return true;
 }
 
