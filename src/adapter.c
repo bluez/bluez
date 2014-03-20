@@ -138,6 +138,7 @@ struct watch_client {
 
 struct service_auth {
 	guint id;
+	unsigned int svc_id;
 	service_auth_cb cb;
 	void *user_data;
 	const char *uuid;
@@ -1055,6 +1056,10 @@ static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
 static void service_auth_cancel(struct service_auth *auth)
 {
 	DBusError derr;
+
+	if (auth->svc_id > 0)
+		device_remove_svc_complete_callback(auth->device,
+								auth->svc_id);
 
 	dbus_error_init(&derr);
 	dbus_set_error_const(&derr, ERROR_INTERFACE ".Canceled", NULL);
@@ -4607,6 +4612,10 @@ static gboolean process_auth_queue(gpointer user_data)
 		struct btd_device *device = auth->device;
 		const char *dev_path;
 
+		/* Wait services to be resolved before asking authorization */
+		if (auth->svc_id > 0)
+			return TRUE;
+
 		if (device_is_trusted(device) == TRUE) {
 			auth->cb(NULL, auth->user_data);
 			goto next;
@@ -4643,6 +4652,22 @@ next:
 	return FALSE;
 }
 
+static void svc_complete(struct btd_device *dev, int err, void *user_data)
+{
+	struct service_auth *auth = user_data;
+	struct btd_adapter *adapter = auth->adapter;
+
+	auth->svc_id = 0;
+
+	if (adapter->auths->length != 1)
+		return;
+
+	if (adapter->auth_idle_id != 0)
+		return;
+
+	adapter->auth_idle_id = g_idle_add(process_auth_queue, adapter);
+}
+
 static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 					const char *uuid, service_auth_cb cb,
 					void *user_data)
@@ -4669,16 +4694,9 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 	auth->device = device;
 	auth->adapter = adapter;
 	auth->id = ++id;
+	auth->svc_id = device_wait_for_svc_complete(device, svc_complete, auth);
 
 	g_queue_push_tail(adapter->auths, auth);
-
-	if (adapter->auths->length != 1)
-		return auth->id;
-
-	if (adapter->auth_idle_id != 0)
-		return auth->id;
-
-	adapter->auth_idle_id = g_idle_add(process_auth_queue, adapter);
 
 	return auth->id;
 }
@@ -4737,6 +4755,10 @@ int btd_cancel_authorization(guint id)
 	auth = find_authorization(id);
 	if (auth == NULL)
 		return -EPERM;
+
+	if (auth->svc_id > 0)
+		device_remove_svc_complete_callback(auth->device,
+								auth->svc_id);
 
 	g_queue_remove(auth->adapter->auths, auth);
 
