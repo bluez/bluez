@@ -1278,6 +1278,9 @@ static void at_cmd_bac(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		}
 
 		hfp_gw_send_result(device.gw, HFP_RESULT_OK);
+
+		if (device.proposed_codec)
+			select_codec(0);
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
 	case HFP_GW_CMD_TYPE_READ:
