@@ -1445,6 +1445,18 @@ guint g_obex_connect(GObex *obex, GObexResponseFunc func, gpointer user_data,
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
 
+guint g_obex_disconnect(GObex *obex, GObexResponseFunc func, gpointer user_data,
+								GError **err)
+{
+	GObexPacket *req;
+
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "");
+
+	req = g_obex_packet_new(G_OBEX_OP_DISCONNECT, TRUE, G_OBEX_HDR_INVALID);
+
+	return g_obex_send_req(obex, req, -1, func, user_data, err);
+}
+
 guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 					gpointer user_data, GError **err)
 {

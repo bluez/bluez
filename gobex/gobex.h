@@ -75,6 +75,9 @@ void g_obex_unref(GObex *obex);
 guint g_obex_connect(GObex *obex, GObexResponseFunc func, gpointer user_data,
 				GError **err, guint8 first_hdr_id, ...);
 
+guint g_obex_disconnect(GObex *obex, GObexResponseFunc func, gpointer user_data,
+								GError **err);
+
 guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 					gpointer user_data, GError **err);
 
