@@ -24,6 +24,12 @@ General
   Priority: high
   Complexity: C4
 
+- Update PBAP client/server implementation to 1.2 and create necessary APIs for
+  new features it introduces.
+
+  Priority: Medium
+  Complexity: C4
+
 - Rename glib-helper file to a more convenient name. The idea is try to keep
   only sdp helpers functions. bt_* prefix shall be also changed.
 
