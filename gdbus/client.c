@@ -727,6 +727,93 @@ gboolean g_dbus_proxy_set_property_basic(GDBusProxy *proxy,
 	return TRUE;
 }
 
+gboolean g_dbus_proxy_set_property_array(GDBusProxy *proxy,
+				const char *name, int type, const void *value,
+				size_t size, GDBusResultFunction function,
+				void *user_data, GDBusDestroyFunction destroy)
+{
+	struct set_property_data *data;
+	GDBusClient *client;
+	DBusMessage *msg;
+	DBusMessageIter iter, variant, array;
+	DBusPendingCall *call;
+	char array_sig[3];
+	char type_sig[2];
+
+	if (!proxy || !name || !value)
+		return FALSE;
+
+	if (!dbus_type_is_basic(type))
+		return FALSE;
+
+	client = proxy->client;
+	if (!client)
+		return FALSE;
+
+	data = g_try_new0(struct set_property_data, 1);
+	if (!data)
+		return FALSE;
+
+	data->function = function;
+	data->user_data = user_data;
+	data->destroy = destroy;
+
+	msg = dbus_message_new_method_call(client->service_name,
+						proxy->obj_path,
+						DBUS_INTERFACE_PROPERTIES,
+						"Set");
+	if (!msg) {
+		g_free(data);
+		return FALSE;
+	}
+
+	array_sig[0] = DBUS_TYPE_ARRAY;
+	array_sig[1] = (char) type;
+	array_sig[2] = '\0';
+
+	type_sig[0] = (char) type;
+	type_sig[1] = '\0';
+
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING,
+							&proxy->interface);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
+							array_sig, &variant);
+
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+							type_sig, &array);
+
+	if (dbus_type_is_fixed(type))
+		dbus_message_iter_append_fixed_array(&array, type, &value,
+									size);
+	else if (type == DBUS_TYPE_STRING || type == DBUS_TYPE_OBJECT_PATH) {
+		const char **str = (const char **) value;
+		size_t i;
+
+		for (i = 0; i < size; i++)
+			dbus_message_iter_append_basic(&array, type, &str[i]);
+	}
+
+	dbus_message_iter_close_container(&variant, &array);
+	dbus_message_iter_close_container(&iter, &variant);
+
+	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
+							&call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		g_free(data);
+		return FALSE;
+	}
+
+	dbus_pending_call_set_notify(call, set_property_reply, data, g_free);
+	dbus_pending_call_unref(call);
+
+	dbus_message_unref(msg);
+
+	return TRUE;
+}
+
 struct method_call_data {
 	GDBusReturnFunction function;
 	void *user_data;

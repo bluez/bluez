@@ -329,6 +329,11 @@ gboolean g_dbus_proxy_set_property_basic(GDBusProxy *proxy,
 				GDBusResultFunction function, void *user_data,
 				GDBusDestroyFunction destroy);
 
+gboolean g_dbus_proxy_set_property_array(GDBusProxy *proxy,
+				const char *name, int type, const void *value,
+				size_t size, GDBusResultFunction function,
+				void *user_data, GDBusDestroyFunction destroy);
+
 typedef void (* GDBusSetupFunction) (DBusMessageIter *iter, void *user_data);
 typedef void (* GDBusReturnFunction) (DBusMessage *message, void *user_data);
 
