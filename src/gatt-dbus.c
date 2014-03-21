@@ -368,9 +368,9 @@ static const GDBusMethodTable methods[] = {
 
 gboolean gatt_dbus_manager_register(void)
 {
-	if (g_dbus_register_interface(btd_get_dbus_connection(),
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 				"/org/bluez", GATT_MGR_IFACE,
-				methods, NULL, NULL, NULL, NULL) == FALSE)
+				methods, NULL, NULL, NULL, NULL))
 		return FALSE;
 
 	proxy_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
