@@ -240,14 +240,31 @@ static void session_free(struct obc_session *session)
 	if (session->p)
 		pending_request_free(session->p);
 
-	sessions = g_slist_remove(sessions, session);
-
 	g_free(session->path);
 	g_free(session->owner);
 	g_free(session->source);
 	g_free(session->destination);
 	g_free(session->folder);
 	g_free(session);
+}
+
+static void disconnect_complete(GObex *obex, GError *err, GObexPacket *rsp,
+							void *user_data)
+{
+	struct obc_session *session = user_data;
+
+	DBG("");
+
+	if (err)
+		error("%s", err->message);
+
+	/* Disconnect transport */
+	if (session->id > 0 && session->transport != NULL) {
+		session->transport->disconnect(session->id);
+		session->id = 0;
+	}
+
+	session_free(session);
 }
 
 void obc_session_unref(struct obc_session *session)
@@ -261,6 +278,19 @@ void obc_session_unref(struct obc_session *session)
 	if (refs > 0)
 		return;
 
+	sessions = g_slist_remove(sessions, session);
+
+	if (!session->obex)
+		goto disconnect;
+
+	/* Wait OBEX Disconnect to complete if command succeed otherwise
+	 * proceed with transport disconnection since there is nothing else to
+	 * be done */
+	if (g_obex_disconnect(session->obex, disconnect_complete, session,
+									NULL))
+		return;
+
+disconnect:
 	/* Disconnect transport */
 	if (session->id > 0 && session->transport != NULL) {
 		session->transport->disconnect(session->id);
