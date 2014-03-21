@@ -139,7 +139,7 @@ static void register_external_service(gpointer a, gpointer b)
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 					GATT_MGR_IFACE, "RegisterService");
-	if (msg == NULL) {
+	if (!msg) {
 		printf("Couldn't allocate D-Bus message\n");
 		return;
 	}
