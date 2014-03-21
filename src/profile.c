@@ -482,6 +482,9 @@
 		<attribute id=\"0x0200\">				\
 			<uint16 value=\"%u\" name=\"psm\"/>		\
 		</attribute>						\
+		<attribute id=\"0x0317\">				\
+			<uint32 value=\"0x0000007f\"/>			\
+		</attribute>						\
 	</record>"
 
 #define SYNC_RECORD							\
