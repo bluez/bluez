@@ -341,6 +341,12 @@ gboolean gatt_dbus_manager_register(void)
 
 void gatt_dbus_manager_unregister(void)
 {
+	/* We might not have initialized if experimental features are
+	 * not enabled.
+	 */
+	if (!proxy_hash)
+		return;
+
 	g_hash_table_destroy(proxy_hash);
 	proxy_hash = NULL;
 
