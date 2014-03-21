@@ -4811,6 +4811,10 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 			uint16_t vendor, uint16_t product, uint16_t version)
 {
+	if (device->vendor_src == source && device->version == version &&
+			device->vendor == vendor && device->product == product)
+		return;
+
 	device->vendor_src = source;
 	device->vendor = vendor;
 	device->product = product;
