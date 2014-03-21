@@ -32,7 +32,7 @@ void gatt_cleanup(void);
  * ready to be read from the service implementation. Result callback is
  * the asynchronous function that should be used to inform the caller
  * the read value.
- * @err:	error in errno format.
+ * @err:	error in -errno format.
  * @value:	pointer to value
  * @len:	length of value
  * @user_data:	user_data passed in btd_attr_read_t callback
