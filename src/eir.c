@@ -141,7 +141,7 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 {
 	uint16_t len = 0;
 
-	eir->flags = -1;
+	eir->flags = 0;
 	eir->tx_power = 127;
 
 	/* No EIR data to parse */

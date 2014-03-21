@@ -38,7 +38,7 @@
 struct test_data {
 	const void *eir_data;
 	size_t eir_size;
-	int flags;
+	unsigned int flags;
 	const char *name;
 	bool name_complete;
 	int8_t tx_power;
@@ -93,7 +93,6 @@ static const char *macbookair_uuid[] = {
 static const struct test_data macbookair_test = {
 	.eir_data = macbookair_data,
 	.eir_size = sizeof(macbookair_data),
-	.flags = -1,
 	.name = "Marcel’s MacBook Air",
 	.name_complete = true,
 	.tx_power = 127,
@@ -148,7 +147,6 @@ static const char *iphone5_uuid[] = {
 static const struct test_data iphone5_test = {
 	.eir_data = iphone5_data,
 	.eir_size = sizeof(iphone5_data),
-	.flags = -1,
 	.name = "Marcel’s iPhone 5",
 	.name_complete = true,
 	.tx_power = 127,
@@ -201,7 +199,6 @@ static const char *ipadmini_uuid[] = {
 static const struct test_data ipadmini_test = {
 	.eir_data = ipadmini_data,
 	.eir_size = sizeof(ipadmini_data),
-	.flags = -1,
 	.name = "Marcel's iPad mini",
 	.name_complete = true,
 	.tx_power = 127,
@@ -253,7 +250,6 @@ static const char *gigaset_sl400h_uuid[] = {
 static const struct test_data gigaset_sl400h_test = {
 	.eir_data = gigaset_sl400h_data,
 	.eir_size = sizeof(gigaset_sl400h_data),
-	.flags = -1,
 	.name = "Marcel's SL400H",
 	.name_complete = true,
 	.tx_power = 127,
@@ -305,7 +301,6 @@ static const char *gigaset_sl910_uuid[] = {
 static const struct test_data gigaset_sl910_test = {
 	.eir_data = gigaset_sl910_data,
 	.eir_size = sizeof(gigaset_sl910_data),
-	.flags = -1,
 	.name = "Marcel's SL910",
 	.name_complete = true,
 	.tx_power = 127,
@@ -359,7 +354,6 @@ static const char *nokia_bh907_uuid[] = {
 static const struct test_data nokia_bh907_test = {
 	.eir_data = nokia_bh907_data,
 	.eir_size = sizeof(nokia_bh907_data),
-	.flags = -1,
 	.name = "Nokia Reaction BH-907",
 	.name_complete = true,
 	.tx_power = 4,
@@ -407,7 +401,6 @@ static const char *fuelband_uuid[] = {
 static const struct test_data fuelband_test = {
 	.eir_data = fuelband_data,
 	.eir_size = sizeof(fuelband_data),
-	.flags = -1,
 	.name = "Nike+ FuelBand",
 	.name_complete = true,
 	.tx_power = 0,
@@ -530,7 +523,6 @@ static const char *citizen_scan_uuid[] = {
 static const struct test_data citizen_scan_test = {
 	.eir_data = citizen_scan_data,
 	.eir_size = sizeof(citizen_scan_data),
-	.flags = -1,
 	.tx_power = 0,
 	.uuid = citizen_scan_uuid,
 };

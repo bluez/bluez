@@ -40,7 +40,7 @@
 
 struct eir_data {
 	GSList *services;
-	int flags;
+	unsigned int flags;
 	char *name;
 	uint32_t class;
 	uint16_t appearance;
