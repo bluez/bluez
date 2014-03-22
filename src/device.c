@@ -2662,6 +2662,27 @@ int device_bdaddr_cmp(gconstpointer a, gconstpointer b)
 	return bacmp(&device->bdaddr, bdaddr);
 }
 
+int device_addr_type_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct btd_device *dev = a;
+	const struct device_addr_type *addr = b;
+
+	if (addr->bdaddr_type == BDADDR_BREDR) {
+		if (!dev->bredr)
+			return -1;
+
+		return bacmp(&dev->bdaddr, &addr->bdaddr);
+	}
+
+	if (!dev->le)
+	       return -1;
+
+	if (addr->bdaddr_type != dev->bdaddr_type)
+		return -1;
+
+	return bacmp(&dev->bdaddr, &addr->bdaddr);
+}
+
 static gboolean record_has_uuid(const sdp_record_t *rec,
 				const char *profile_uuid)
 {
