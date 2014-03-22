@@ -1399,7 +1399,8 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	DBG("AVCTP: incoming connect from %s", address);
 
-	device = btd_adapter_find_device(adapter_find(&src), &dst);
+	device = btd_adapter_find_device(adapter_find(&src), &dst,
+								BDADDR_BREDR);
 	if (!device)
 		return;
 

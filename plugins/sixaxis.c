@@ -197,7 +197,8 @@ static bool setup_device(int fd, int index, struct btd_adapter *adapter)
 	/* This can happen if controller was plugged while already connected
 	 * eg. to charge up battery.
 	 * Don't set LEDs in that case, hence return false */
-	device = btd_adapter_find_device(adapter, &device_bdaddr);
+	device = btd_adapter_find_device(adapter, &device_bdaddr,
+							BDADDR_BREDR);
 	if (device && btd_device_is_connected(device))
 		return false;
 

@@ -1162,7 +1162,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 	channel = g_new0(struct gatt_channel, 1);
 	channel->server = server;
 
-	device = btd_adapter_find_device(server->adapter, &dst);
+	device = btd_adapter_find_device(server->adapter, &dst, bdaddr_type);
 	if (device == NULL) {
 		error("Device object not found for attrib server");
 		g_free(channel);

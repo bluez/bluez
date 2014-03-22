@@ -875,7 +875,7 @@ static struct input_device *find_device(const bdaddr_t *src,
 	struct btd_device *device;
 	struct btd_service *service;
 
-	device = btd_adapter_find_device(adapter_find(src), dst);
+	device = btd_adapter_find_device(adapter_find(src), dst, BDADDR_BREDR);
 	if (device == NULL)
 		return NULL;
 

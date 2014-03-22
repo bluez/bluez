@@ -81,7 +81,8 @@ struct btd_device *btd_adapter_get_device(struct btd_adapter *adapter,
 sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter);
 
 struct btd_device *btd_adapter_find_device(struct btd_adapter *adapter,
-							const bdaddr_t *dst);
+							const bdaddr_t *dst,
+							uint8_t dst_type);
 
 const char *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *btd_adapter_get_address(struct btd_adapter *adapter);
