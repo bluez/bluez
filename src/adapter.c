@@ -4303,23 +4303,26 @@ static void update_found_devices(struct btd_adapter *adapter,
 {
 	struct btd_device *dev;
 	struct eir_data eir_data;
+	bool name_known, discoverable;
+	struct device_addr_type addr_type;
 	char addr[18];
 	GSList *list;
-	bool name_known;
 
 	memset(&eir_data, 0, sizeof(eir_data));
 	eir_parse(&eir_data, data, data_len);
 
-	/* Avoid creating LE device if it's not discoverable */
-	if (bdaddr_type != BDADDR_BREDR &&
-			!(eir_data.flags & (EIR_LIM_DISC | EIR_GEN_DISC))) {
-		eir_data_free(&eir_data);
-		return;
-	}
+	if (bdaddr_type == BDADDR_BREDR)
+		discoverable = true;
+	 else
+		discoverable = eir_data.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
 
 	ba2str(bdaddr, addr);
 
-	list = g_slist_find_custom(adapter->devices, bdaddr, device_bdaddr_cmp);
+	bacpy(&addr_type.bdaddr, bdaddr);
+	addr_type.bdaddr_type = bdaddr_type;
+
+	list = g_slist_find_custom(adapter->devices, &addr_type,
+							device_addr_type_cmp);
 	if (!list) {
 		/*
 		 * If no client has requested discovery, then do not
@@ -4330,7 +4333,13 @@ static void update_found_devices(struct btd_adapter *adapter,
 			return;
 		}
 
-		dev = adapter_create_device(adapter, bdaddr, bdaddr_type);
+		if (discoverable)
+			dev = adapter_create_device(adapter, bdaddr,
+								bdaddr_type);
+		else
+			dev = btd_adapter_find_device(adapter, bdaddr,
+								bdaddr_type);
+
 	} else
 		dev = list->data;
 
