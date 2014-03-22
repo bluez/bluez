@@ -2743,45 +2743,86 @@ static void print_fec(uint8_t fec)
 static void print_manufacturer_apple(const void *data, uint8_t data_len)
 {
 	uint8_t type = *((uint8_t *) data);
-	uint8_t len;
-	const uint8_t *uuid;
-	uint16_t minor, major;
-	int8_t tx_power;
-	char identifier[100];
 
 	if (data_len < 1)
 		return;
 
-	switch (type) {
-	case 0x01:
+	if (type == 0x01) {
+		char identifier[100];
+
 		snprintf(identifier, sizeof(identifier) - 1, "%s",
 						(const char *) (data + 1));
+
 		print_field("  Identifier: %s", identifier);
-		break;
-	case 0x02:
-		len = *((uint8_t *) (data + 1));
-		if (len != 0x15 || len != data_len - 2) {
-			print_hex_field("  Data", data, data_len);
+		return;
+	}
+
+	while (data_len > 0) {
+		uint8_t len;
+		const char *str;
+
+		type = *((uint8_t *) data);
+		data++;
+		data_len--;
+
+		if (type == 0x00)
+			continue;
+
+		if (data_len < 1)
+			break;
+
+		switch (type) {
+		case 0x02:
+			str = "iBeacon";
+			break;
+		case 0x05:
+			str = "AirDrop";
+			break;
+		case 0x09:
+			str = "Apple TV";
+			break;
+		default:
+			str = "Unknown";
 			break;
 		}
 
-		uuid = data + 2;
-		print_field("  iBeacon: %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
+		print_field("  Type: %s (%u)", str, type);
+
+		len = *((uint8_t *) data);
+		data++;
+		data_len--;
+
+		if (len < 1)
+			continue;
+
+		if (len > data_len)
+			break;
+
+		if (type == 0x02 && len == 0x15) {
+			const uint8_t *uuid;
+			uint16_t minor, major;
+			int8_t tx_power;
+
+			uuid = data;
+			print_field("  UUID: %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
 				get_le32(&uuid[12]), get_le16(&uuid[10]),
 				get_le16(&uuid[8]), get_le16(&uuid[6]),
 				get_le32(&uuid[2]), get_le16(&uuid[0]));
 
-		major = get_le16(data + 18);
-		minor = get_le16(data + 20);
-		print_field("  Version: %u.%u", major, minor);
+			major = get_le16(data + 16);
+			minor = get_le16(data + 18);
+			print_field("  Version: %u.%u", major, minor);
 
-		tx_power = *(int8_t *) (data + 22);
-		print_field("  TX power: %d dB", tx_power);
-		break;
-	default:
-		print_hex_field("  Data", data, data_len);
-		break;
+			tx_power = *(int8_t *) (data + 20);
+			print_field("  TX power: %d dB", tx_power);
+		} else
+			print_hex_field("  Data", data, len);
+
+		data += len;
+		data_len -= len;
 	}
+
+	packet_hexdump(data, data_len);
 }
 
 static void print_manufacturer_data(const void *data, uint8_t data_len)
