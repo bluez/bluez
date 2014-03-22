@@ -342,7 +342,7 @@ static bool is_device_wating_for_connect(const bdaddr_t *addr,
 	return true;
 }
 
-static void le_device_found_handler(bdaddr_t *addr, uint8_t addr_type,
+static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 						int rssi, uint16_t eir_len,
 							const void *eir)
 {

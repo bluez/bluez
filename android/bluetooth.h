@@ -35,8 +35,9 @@ void bt_bluetooth_unregister(void);
 int bt_adapter_add_record(sdp_record_t *rec, uint8_t svc_hint);
 void bt_adapter_remove_record(uint32_t handle);
 
-typedef void (*bt_le_device_found)(bdaddr_t *addr, uint8_t addr_type, int rssi,
-					uint16_t eir_len, const void *eir);
+typedef void (*bt_le_device_found)(const bdaddr_t *addr, uint8_t addr_type,
+					int rssi, uint16_t eir_len,
+					const void *eir);
 bool bt_le_discovery_start(bt_le_device_found cb);
 
 typedef void (*bt_le_discovery_stopped)(void);
