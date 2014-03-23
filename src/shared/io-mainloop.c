@@ -92,12 +92,27 @@ static void io_callback(int fd, uint32_t events, void *user_data)
 {
 	struct io *io = user_data;
 
-	if (events & (EPOLLERR | EPOLLHUP)) {
+	if ((events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))) {
 		io->read_callback = NULL;
 		io->write_callback = NULL;
 
-		mainloop_remove_fd(io->fd);
-		return;
+		if (!io->disconnect_callback) {
+			mainloop_remove_fd(io->fd);
+			return;
+		}
+
+		if (!io->disconnect_callback(io, io->disconnect_data)) {
+			if (io->disconnect_destroy)
+				io->disconnect_destroy(io->disconnect_data);
+
+			io->disconnect_callback = NULL;
+			io->disconnect_destroy = NULL;
+			io->disconnect_data = NULL;
+
+			io->events &= ~EPOLLRDHUP;
+
+			mainloop_modify_fd(io->fd, io->events);
+		}
 	}
 
 	if ((events & EPOLLIN) && io->read_callback) {
@@ -125,21 +140,6 @@ static void io_callback(int fd, uint32_t events, void *user_data)
 			io->write_data = NULL;
 
 			io->events &= ~EPOLLOUT;
-
-			mainloop_modify_fd(io->fd, io->events);
-		}
-	}
-
-	if ((events & EPOLLRDHUP) && io->disconnect_callback) {
-		if (!io->disconnect_callback(io, io->disconnect_data)) {
-			if (io->disconnect_destroy)
-				io->disconnect_destroy(io->disconnect_data);
-
-			io->disconnect_callback = NULL;
-			io->disconnect_destroy = NULL;
-			io->disconnect_data = NULL;
-
-			io->events &= ~EPOLLRDHUP;
 
 			mainloop_modify_fd(io->fd, io->events);
 		}
@@ -175,10 +175,9 @@ void io_destroy(struct io *io)
 	if (!io)
 		return;
 
-	mainloop_remove_fd(io->fd);
-
 	io->read_callback = NULL;
 	io->write_callback = NULL;
+	io->disconnect_callback = NULL;
 
 	mainloop_remove_fd(io->fd);
 
