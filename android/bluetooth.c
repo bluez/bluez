@@ -1271,6 +1271,19 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	dev = find_device(bdaddr);
 
+	if (bdaddr_type != BDADDR_BREDR) {
+		/* Notify Gatt if its registered for LE events */
+		if (gatt_device_found_cb)
+			gatt_device_found_cb(bdaddr, bdaddr_type, rssi,
+							sizeof(eir), &eir);
+
+		if (!dev && adapter.cur_discovery_type != SCAN_TYPE_NONE &&
+				!(eir.flags & (EIR_LIM_DISC | EIR_GEN_DISC))) {
+			eir_data_free(&eir);
+			return;
+		}
+	}
+
 	/* Device found event needs to be send also for known device if this is
 	 * new discovery session. Otherwise framework will ignore it.
 	 */
@@ -1282,11 +1295,6 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	} else {
 		update_device(dev, rssi, &eir);
 	}
-
-	/* Notify Gatt if its registered for LE events */
-	if (gatt_device_found_cb && (dev->bdaddr_type & BDADDR_LE))
-		gatt_device_found_cb(&dev->bdaddr, dev->bdaddr_type,
-						dev->rssi, sizeof(eir), &eir);
 
 	eir_data_free(&eir);
 
