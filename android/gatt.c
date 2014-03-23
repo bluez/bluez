@@ -481,6 +481,12 @@ reply:
 	/* If connection did not succeed, destroy device */
 	if (status)
 		destroy_device(dev);
+
+	/* Check if we should restart scan */
+	if (scanning)
+		bt_le_discovery_start(le_device_found_handler);
+
+	/*FIXME: What to do if discovery won't start here. */
 }
 
 static int connect_le(struct gatt_device *dev)
