@@ -202,6 +202,35 @@ void *queue_find(struct queue *queue, queue_match_func_t function,
 	return NULL;
 }
 
+bool queue_remove(struct queue *queue, void *data)
+{
+	struct queue_entry *entry, *prev;
+
+	if (!queue || !data)
+		return false;
+
+	for (entry = queue->head, prev = NULL; entry;
+					prev = entry, entry = entry->next) {
+		if (entry->data != data)
+			continue;
+
+		if (prev)
+			prev->next = entry->next;
+		else
+			queue->head = entry->next;
+
+		if (!entry->next)
+			queue->tail = prev;
+
+		free(entry);
+		queue->entries--;
+
+		return true;
+	}
+
+	return false;
+}
+
 void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 							void *user_data)
 {
