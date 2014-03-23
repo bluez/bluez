@@ -93,6 +93,9 @@ struct device {
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
 
+	bool le;
+	bool bredr;
+
 	int bond_state;
 
 	char *name;
@@ -240,7 +243,11 @@ static void store_device_info(struct device *dev, const char *path)
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, path, 0, NULL);
 
-	g_key_file_set_integer(key_file, addr, "Type", dev->bdaddr_type);
+	g_key_file_set_boolean(key_file, addr, "BREDR", dev->bredr);
+
+	if (dev->le)
+		g_key_file_set_integer(key_file, addr, "AddressType",
+							dev->bdaddr_type);
 
 	g_key_file_set_string(key_file, addr, "Name", dev->name);
 
@@ -370,7 +377,7 @@ cache:
 	store_device_info(new_dev, CACHE_FILE);
 }
 
-static struct device *create_device(const bdaddr_t *bdaddr, uint8_t type)
+static struct device *create_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	struct device *dev;
 	char addr[18];
@@ -381,7 +388,14 @@ static struct device *create_device(const bdaddr_t *bdaddr, uint8_t type)
 	dev = g_new0(struct device, 1);
 
 	bacpy(&dev->bdaddr, bdaddr);
-	dev->bdaddr_type = type;
+
+	if (bdaddr_type == BDADDR_BREDR) {
+		dev->bredr = true;
+	} else {
+		dev->le = true;
+		dev->bdaddr_type = bdaddr_type;
+	}
+
 	dev->bond_state = HAL_BOND_STATE_NONE;
 	dev->timestamp = time(NULL);
 
@@ -1151,12 +1165,15 @@ static int fill_hal_prop(void *buf, uint8_t type, uint16_t len,
 	return sizeof(*prop) + len;
 }
 
-static uint8_t bdaddr_type2android(uint8_t type)
+static uint8_t get_device_android_type(struct device *dev)
 {
-	if (type == BDADDR_BREDR)
-		return HAL_TYPE_BREDR;
+	if (dev->bredr && dev->le)
+		return HAL_TYPE_DUAL;
 
-	return HAL_TYPE_LE;
+	if (dev->le)
+		return HAL_TYPE_LE;
+
+	return HAL_TYPE_BREDR;
 }
 
 static bool rssi_above_threshold(int old, int new)
@@ -1187,7 +1204,7 @@ static void update_new_device(struct device *dev, int8_t rssi,
 						&android_bdaddr);
 	ev->num_props++;
 
-	android_type = bdaddr_type2android(dev->bdaddr_type);
+	android_type = get_device_android_type(dev);
 	size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_TYPE,
 				sizeof(android_type), &android_type);
 	ev->num_props++;
@@ -1219,10 +1236,11 @@ static void update_new_device(struct device *dev, int8_t rssi,
 }
 
 static void update_device(struct device *dev, int8_t rssi,
-						const struct eir_data *eir)
+				const struct eir_data *eir, uint8_t bdaddr_type)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_remote_device_props *ev = (void *) buf;
+	uint8_t android_type;
 	int size;
 
 	memset(buf, 0, sizeof(buf));
@@ -1231,6 +1249,27 @@ static void update_device(struct device *dev, int8_t rssi,
 
 	ev->status = HAL_STATUS_SUCCESS;
 	bdaddr2android(&dev->bdaddr, ev->bdaddr);
+
+	if (dev->bdaddr_type != bdaddr_type) {
+		bool type_changed = false;
+
+		dev->bdaddr_type = bdaddr_type;
+		if (bdaddr_type == BDADDR_BREDR) {
+			type_changed = !dev->bredr;
+			dev->bredr = true;
+		} else {
+			type_changed = !dev->le;
+			dev->le = true;
+		}
+
+		if (type_changed) {
+			android_type = get_device_android_type(dev);
+			size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_TYPE,
+							sizeof(android_type),
+							&android_type);
+			ev->num_props++;
+		}
+	}
 
 	if (eir->class && dev->class != eir->class) {
 		dev->class = eir->class;
@@ -1294,7 +1333,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 		update_new_device(dev, rssi, &eir);
 	} else {
-		update_device(dev, rssi, &eir);
+		update_device(dev, rssi, &eir, bdaddr_type);
 	}
 
 	eir_data_free(&eir);
@@ -1996,10 +2035,15 @@ static struct device *create_device_from_info(GKeyFile *key_file,
 
 	DBG("%s", peer);
 
-	type = g_key_file_get_integer(key_file, peer, "Type", NULL);
+	/* BREDR if not present */
+	type = g_key_file_get_integer(key_file, peer, "AddressType", NULL);
 
 	str2ba(peer, &bdaddr);
 	dev = create_device(&bdaddr, type);
+
+	if (type != BDADDR_BREDR)
+		dev->bredr = g_key_file_get_boolean(key_file, peer, "BREDR",
+									NULL);
 
 	str = g_key_file_get_string(key_file, peer, "LinkKey", NULL);
 	if (str) {
@@ -2896,12 +2940,26 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 static void handle_create_bond_cmd(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_create_bond *cmd = buf;
+	struct device *dev;
 	uint8_t status;
 	struct mgmt_cp_pair_device cp;
 
 	cp.io_cap = DEFAULT_IO_CAPABILITY;
-	cp.addr.type = BDADDR_BREDR;
 	android2bdaddr(cmd->bdaddr, &cp.addr.bdaddr);
+
+	dev = find_device(&cp.addr.bdaddr);
+
+	if (dev) {
+		if (dev->bond_state != HAL_BOND_STATE_NONE) {
+			status = HAL_STATUS_FAILED;
+			goto fail;
+		}
+
+		cp.addr.type = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
+	} else {
+		/* Fallback to BREDR if device is unknown eg. OOB */
+		cp.addr.type = BDADDR_BREDR;
+	}
 
 	if (mgmt_send(mgmt_if, MGMT_OP_PAIR_DEVICE, adapter.index, sizeof(cp),
 				&cp, pair_device_complete, NULL, NULL) == 0) {
@@ -2923,17 +2981,30 @@ static void handle_cancel_bond_cmd(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_cancel_bond *cmd = buf;
 	struct mgmt_addr_info cp;
+	struct device *dev;
 	uint8_t status;
 
-	cp.type = BDADDR_BREDR;
 	android2bdaddr(cmd->bdaddr, &cp.bdaddr);
 
-	if (mgmt_reply(mgmt_if, MGMT_OP_CANCEL_PAIR_DEVICE, adapter.index,
-					sizeof(cp), &cp, NULL, NULL, NULL) > 0)
-		status = HAL_STATUS_SUCCESS;
-	else
+	dev = find_device(&cp.bdaddr);
+	if (!dev) {
 		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
 
+	cp.type = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
+
+
+	if (mgmt_reply(mgmt_if, MGMT_OP_CANCEL_PAIR_DEVICE,
+					adapter.index, sizeof(cp), &cp,
+					NULL, NULL, NULL) == 0) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_BOND,
 									status);
 }
@@ -2956,19 +3027,30 @@ static void handle_remove_bond_cmd(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_remove_bond *cmd = buf;
 	struct mgmt_cp_unpair_device cp;
+	struct device *dev;
 	uint8_t status;
 
 	cp.disconnect = 1;
-	cp.addr.type = BDADDR_BREDR;
 	android2bdaddr(cmd->bdaddr, &cp.addr.bdaddr);
+
+	dev = find_device(&cp.addr.bdaddr);
+	if (!dev) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	cp.addr.type = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
 
 	if (mgmt_send(mgmt_if, MGMT_OP_UNPAIR_DEVICE, adapter.index,
 				sizeof(cp), &cp, unpair_device_complete,
-				NULL, NULL) > 0)
-		status = HAL_STATUS_SUCCESS;
-	else
+				NULL, NULL) ==  0) {
 		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
 
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_REMOVE_BOND,
 									status);
 }
@@ -3145,7 +3227,7 @@ static uint8_t get_device_class(struct device *dev)
 
 static uint8_t get_device_type(struct device *dev)
 {
-	uint8_t type = bdaddr_type2android(dev->bdaddr_type);
+	uint8_t type = get_device_android_type(dev);
 
 	send_device_property(&dev->bdaddr, HAL_PROP_DEVICE_TYPE,
 							sizeof(type), &type);
