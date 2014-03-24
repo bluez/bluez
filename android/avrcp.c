@@ -35,6 +35,7 @@
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
 #include "src/sdp-client.h"
+#include "src/shared/util.h"
 #include "src/log.h"
 
 #include "avctp.h"

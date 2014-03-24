@@ -510,7 +510,7 @@ static ssize_t get_element_attributes(struct avrcp *session,
 	number = params[8];
 
 	for (i = 0; i < number; i++) {
-		attrs[i] = bt_get_be32(&params[9 + i * 4]);
+		attrs[i] = get_be32(&params[9 + i * 4]);
 
 		if (attrs[i] == AVRCP_MEDIA_ATTRIBUTE_ILLEGAL ||
 				attrs[i] > AVRCP_MEDIA_ATTRIBUTE_LAST)
@@ -540,7 +540,7 @@ static ssize_t register_notification(struct avrcp *session, uint8_t transaction,
 	if (!player->ind || !player->ind->register_notification)
 		return -ENOSYS;
 
-	interval = bt_get_be32(&params[1]);
+	interval = get_be32(&params[1]);
 
 	return player->ind->register_notification(session, transaction,
 							params[0], interval,

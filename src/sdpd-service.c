@@ -331,7 +331,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p,
 			SDPDBG("Unexpected end of packet");
 			return NULL;
 		}
-		handle = bt_get_be32(p + sizeof(uint8_t) + sizeof(uint16_t) +
+		handle = get_be32(p + sizeof(uint8_t) + sizeof(uint16_t) +
 							sizeof(uint8_t));
 		SDPDBG("SvcRecHandle : 0x%x", handle);
 		rec = sdp_record_find(handle);
@@ -478,7 +478,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 	int status = 0, scanned = 0;
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
 	int bufsize = req->len - sizeof(sdp_pdu_hdr_t);
-	uint32_t handle = bt_get_be32(p);
+	uint32_t handle = get_be32(p);
 
 	SDPDBG("Svc Rec Handle: 0x%x", handle);
 
@@ -517,7 +517,7 @@ done:
 int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 {
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
-	uint32_t handle = bt_get_be32(p);
+	uint32_t handle = get_be32(p);
 	sdp_record_t *rec;
 	int status = 0;
 

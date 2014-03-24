@@ -650,13 +650,13 @@ uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req, uint16_t *dst,
 		/* Intentional no-break */
 
 	case 4: /* UUID32 */
-		val = bt_get_be32(dest);
+		val = get_be32(dest);
 		if (val > 0xffff)
 			return BNEP_CONN_INVALID_DST;
 
 		*dst = val;
 
-		val = bt_get_be32(source);
+		val = get_be32(source);
 		if (val > 0xffff)
 			return BNEP_CONN_INVALID_SRC;
 

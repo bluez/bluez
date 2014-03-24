@@ -203,7 +203,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 				struct attrid *aid;
 				aid = malloc(sizeof(struct attrid));
 				aid->dtd = dataType;
-				aid->uint32 = bt_get_be32(p);
+				aid->uint32 = get_be32(p);
 
 				pElem = (char *) aid;
 			} else {
@@ -648,7 +648,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		goto done;
 	}
 
-	handle = bt_get_be32(pdata);
+	handle = get_be32(pdata);
 
 	pdata += sizeof(uint32_t);
 	data_left -= sizeof(uint32_t);

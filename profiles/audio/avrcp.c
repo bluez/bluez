@@ -1082,7 +1082,7 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp *session,
 		for (i = 0, len = 0, attr_ids = NULL; i < nattr; i++) {
 			uint32_t id;
 
-			id = bt_get_be32(&pdu->params[9] + (i * sizeof(id)));
+			id = get_be32(&pdu->params[9] + (i * sizeof(id)));
 
 			/* Don't add invalid attributes */
 			if (id == AVRCP_MEDIA_ATTRIBUTE_ILLEGAL ||
@@ -1990,7 +1990,7 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 		uint32_t id;
 		uint16_t charset, len;
 
-		id = bt_get_be32(&operands[i]);
+		id = get_be32(&operands[i]);
 		i += sizeof(uint32_t);
 
 		charset = get_be16(&operands[i]);
@@ -2319,7 +2319,7 @@ static gboolean avrcp_change_path_rsp(struct avctp *conn,
 		goto done;
 	}
 
-	ret = bt_get_be32(&pdu->params[1]);
+	ret = get_be32(&pdu->params[1]);
 
 done:
 	if (ret < 0) {
@@ -2357,7 +2357,7 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 	player->uid_counter = get_be16(&pdu->params[1]);
 	player->browsed = true;
 
-	items = bt_get_be32(&pdu->params[3]);
+	items = get_be32(&pdu->params[3]);
 
 	depth = pdu->params[9];
 
@@ -2681,7 +2681,7 @@ static gboolean avrcp_search_rsp(struct avctp *conn, uint8_t *operands,
 	}
 
 	player->uid_counter = get_be16(&pdu->params[1]);
-	ret = bt_get_be32(&pdu->params[3]);
+	ret = get_be32(&pdu->params[3]);
 
 done:
 	media_player_search_complete(mp, ret);
@@ -2908,7 +2908,7 @@ avrcp_parse_media_player_item(struct avrcp *session, uint8_t *operands,
 
 	media_player_set_type(mp, type_to_string(operands[2]));
 
-	subtype = bt_get_be32(&operands[3]);
+	subtype = get_be32(&operands[3]);
 
 	media_player_set_subtype(mp, subtype_to_string(subtype));
 

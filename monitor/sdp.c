@@ -94,7 +94,7 @@ static void print_uint(uint8_t indent, const uint8_t *data, uint32_t size)
 		print_field("%*c0x%4.4x", indent, ' ', get_be16(data));
 		break;
 	case 4:
-		print_field("%*c0x%8.8x", indent, ' ', bt_get_be32(data));
+		print_field("%*c0x%8.8x", indent, ' ', get_be32(data));
 		break;
 	case 8:
 		print_field("%*c0x%16.16" PRIx64, indent, ' ',
@@ -120,22 +120,22 @@ static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
 		break;
 	case 4:
 		print_field("%*c%s (0x%8.8x)", indent, ' ',
-			uuid32_to_str(bt_get_be32(data)), bt_get_be32(data));
+			uuid32_to_str(get_be32(data)), get_be32(data));
 		break;
 	case 16:
 		/* BASE_UUID = 00000000-0000-1000-8000-00805F9B34FB */
 		print_field("%*c%8.8x-%4.4x-%4.4x-%4.4x-%4.4x%8.4x",
 				indent, ' ',
-				bt_get_be32(data), get_be16(data + 4),
+				get_be32(data), get_be16(data + 4),
 				get_be16(data + 6), get_be16(data + 8),
-				get_be16(data + 10), bt_get_be32(data + 12));
+				get_be16(data + 10), get_be32(data + 12));
 		if (get_be16(data + 4) == 0x0000 &&
 				get_be16(data + 6) == 0x1000 &&
 				get_be16(data + 8) == 0x8000 &&
 				get_be16(data + 10) == 0x0080 &&
-				bt_get_be32(data + 12) == 0x5F9B34FB)
+				get_be32(data + 12) == 0x5F9B34FB)
 			print_field("%*c%s", indent, ' ',
-				uuid32_to_str(bt_get_be32(data)));
+				uuid32_to_str(get_be32(data)));
 		break;
 	default:
 		packet_hexdump(data, size);
@@ -237,7 +237,7 @@ static uint32_t get_size(const uint8_t *data, uint32_t size)
 			case 16:
 				return get_be16(data + 1);
 			case 32:
-				return bt_get_be32(data + 1);
+				return get_be32(data + 1);
 			default:
 				return 0;
 			}
@@ -323,7 +323,7 @@ static uint32_t get_bytes(const uint8_t *data, uint32_t size)
 	case 6:
 		return 3 + get_be16(data + 1);
 	case 7:
-		return 5 + bt_get_be32(data + 1);
+		return 5 + get_be32(data + 1);
 	}
 
 	return 0;
@@ -582,7 +582,7 @@ static void service_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 
 	for (i = 0; i < count; i++)
 		print_field("Record handle: 0x%4.4x",
-				bt_get_be32(frame->data + 4 + (i * 4)));
+				get_be32(frame->data + 4 + (i * 4)));
 
 	print_continuation(frame->data + 4 + (count * 4),
 					frame->size - 4 - (count * 4));
@@ -598,7 +598,7 @@ static void attr_req(const struct l2cap_frame *frame, struct tid_data *tid)
 		return;
 	}
 
-	print_field("Record handle: 0x%4.4x", bt_get_be32(frame->data));
+	print_field("Record handle: 0x%4.4x", get_be32(frame->data));
 	print_field("Max attribute bytes: %d", get_be16(frame->data + 4));
 
 	attr_bytes = get_bytes(frame->data + 6, frame->size - 6);
