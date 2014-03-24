@@ -114,7 +114,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	size_t plen;
 	GString *s;
 
-	handle = att_get_u16(&pdu[1]);
+	handle = get_le16(&pdu[1]);
 
 	switch (pdu[0]) {
 	case ATT_OP_HANDLE_NOTIFY:
@@ -293,7 +293,7 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		bt_uuid_t uuid;
 
 		value = list->data[i];
-		handle = att_get_u16(value);
+		handle = get_le16(value);
 
 		if (format == 0x01)
 			bt_uuid16_create(&uuid, get_le16(&value[2]));
@@ -362,7 +362,7 @@ static void char_read_by_uuid_cb(guint8 status, const guint8 *pdu,
 		int j;
 
 		g_string_printf(s, "handle: 0x%04x \t value: ",
-							att_get_u16(value));
+							get_le16(value));
 		value += 2;
 		for (j = 0; j < list->len - 2; j++, value++)
 			g_string_append_printf(s, "%02x ", *value);

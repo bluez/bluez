@@ -383,7 +383,7 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 			return;
 		}
 
-		ts.tm_year = att_get_u16(pdu) - 1900;
+		ts.tm_year = get_le16(pdu) - 1900;
 		ts.tm_mon = *(pdu + 2) - 1;
 		ts.tm_mday = *(pdu + 3);
 		ts.tm_hour = *(pdu + 4);
@@ -467,7 +467,7 @@ static void interval_ind_handler(const uint8_t *pdu, uint16_t len,
 		return;
 	}
 
-	interval = att_get_u16(pdu + 3);
+	interval = get_le16(pdu + 3);
 	change_property(t, "Interval", &interval);
 
 	opdu = g_attrib_get_buffer(t->attrib, &plen);
@@ -502,8 +502,8 @@ static void valid_range_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	min = att_get_u16(&value[0]);
-	max = att_get_u16(&value[2]);
+	min = get_le16(&value[0]);
+	max = get_le16(&value[2]);
 
 	if (min == 0 || min > max) {
 		DBG("Invalid range");
@@ -600,8 +600,8 @@ static void discover_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 		uint16_t handle, uuid;
 
 		value = list->data[i];
-		handle = att_get_u16(value);
-		uuid = att_get_u16(value + 2);
+		handle = get_le16(value);
+		uuid = get_le16(value + 2);
 
 		process_thermometer_desc(ch, uuid, handle);
 	}
@@ -690,7 +690,7 @@ static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	interval = att_get_u16(&value[0]);
+	interval = get_le16(&value[0]);
 	change_property(t, "Interval", &interval);
 }
 

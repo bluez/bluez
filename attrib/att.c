@@ -165,8 +165,8 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	if (len != (min_len + 2) && len != (min_len + 16))
 		return 0;
 
-	*start = att_get_u16(&pdu[1]);
-	*end = att_get_u16(&pdu[3]);
+	*start = get_le16(&pdu[1]);
+	*end = get_le16(&pdu[3]);
 	if (len == min_len + 2)
 		bt_uuid16_create(uuid, get_le16(&pdu[5]));
 	else
@@ -293,9 +293,9 @@ uint16_t dec_find_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 		return 0;
 
 	/* First requested handle number (2 octets) */
-	*start = att_get_u16(&pdu[1]);
+	*start = get_le16(&pdu[1]);
 	/* Last requested handle number (2 octets) */
-	*end = att_get_u16(&pdu[3]);
+	*end = get_le16(&pdu[3]);
 	/* 16-bit UUID to find (2 octets) */
 	bt_uuid16_create(uuid, get_le16(&pdu[5]));
 
@@ -354,8 +354,8 @@ GSList *dec_find_by_type_resp(const uint8_t *pdu, size_t len)
 				len >= (offset + sizeof(uint16_t) * 2);
 				offset += sizeof(uint16_t) * 2) {
 		range = g_new0(struct att_range, 1);
-		range->start = att_get_u16(&pdu[offset]);
-		range->end = att_get_u16(&pdu[offset + 2]);
+		range->start = get_le16(&pdu[offset]);
+		range->end = get_le16(&pdu[offset + 2]);
 
 		matches = g_slist_append(matches, range);
 	}
@@ -407,8 +407,8 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	if (pdu[0] != ATT_OP_READ_BY_TYPE_REQ)
 		return 0;
 
-	*start = att_get_u16(&pdu[1]);
-	*end = att_get_u16(&pdu[3]);
+	*start = get_le16(&pdu[1]);
+	*end = get_le16(&pdu[3]);
 
 	if (len == min_len + 2)
 		bt_uuid16_create(uuid, get_le16(&pdu[5]));
@@ -527,7 +527,7 @@ uint16_t dec_write_cmd(const uint8_t *pdu, size_t len, uint16_t *handle,
 	if (pdu[0] != ATT_OP_WRITE_CMD)
 		return 0;
 
-	*handle = att_get_u16(&pdu[1]);
+	*handle = get_le16(&pdu[1]);
 	memcpy(value, pdu + min_len, len - min_len);
 	*vlen = len - min_len;
 
@@ -573,7 +573,7 @@ uint16_t dec_write_req(const uint8_t *pdu, size_t len, uint16_t *handle,
 	if (pdu[0] != ATT_OP_WRITE_REQ)
 		return 0;
 
-	*handle = att_get_u16(&pdu[1]);
+	*handle = get_le16(&pdu[1]);
 	*vlen = len - min_len;
 	if (*vlen > 0)
 		memcpy(value, pdu + min_len, *vlen);
@@ -647,7 +647,7 @@ uint16_t dec_read_req(const uint8_t *pdu, size_t len, uint16_t *handle)
 	if (pdu[0] != ATT_OP_READ_REQ)
 		return 0;
 
-	*handle = att_get_u16(&pdu[1]);
+	*handle = get_le16(&pdu[1]);
 
 	return min_len;
 }
@@ -673,8 +673,8 @@ uint16_t dec_read_blob_req(const uint8_t *pdu, size_t len, uint16_t *handle,
 	if (pdu[0] != ATT_OP_READ_BLOB_REQ)
 		return 0;
 
-	*handle = att_get_u16(&pdu[1]);
-	*offset = att_get_u16(&pdu[3]);
+	*handle = get_le16(&pdu[1]);
+	*offset = get_le16(&pdu[3]);
 
 	return min_len;
 }
@@ -782,8 +782,8 @@ uint16_t dec_find_info_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	if (pdu[0] != ATT_OP_FIND_INFO_REQ)
 		return 0;
 
-	*start = att_get_u16(&pdu[1]);
-	*end = att_get_u16(&pdu[3]);
+	*start = get_le16(&pdu[1]);
+	*end = get_le16(&pdu[3]);
 
 	return min_len;
 }
@@ -910,7 +910,7 @@ uint16_t dec_indication(const uint8_t *pdu, size_t len, uint16_t *handle,
 	dlen = MIN(len - min_len, vlen);
 
 	if (handle)
-		*handle = att_get_u16(&pdu[1]);
+		*handle = get_le16(&pdu[1]);
 
 	memcpy(value, &pdu[3], dlen);
 
@@ -957,7 +957,7 @@ uint16_t dec_mtu_req(const uint8_t *pdu, size_t len, uint16_t *mtu)
 	if (pdu[0] != ATT_OP_MTU_REQ)
 		return 0;
 
-	*mtu = att_get_u16(&pdu[1]);
+	*mtu = get_le16(&pdu[1]);
 
 	return min_len;
 }
@@ -991,7 +991,7 @@ uint16_t dec_mtu_resp(const uint8_t *pdu, size_t len, uint16_t *mtu)
 	if (pdu[0] != ATT_OP_MTU_RESP)
 		return 0;
 
-	*mtu = att_get_u16(&pdu[1]);
+	*mtu = get_le16(&pdu[1]);
 
 	return min_len;
 }
@@ -1039,8 +1039,8 @@ uint16_t dec_prep_write_req(const uint8_t *pdu, size_t len, uint16_t *handle,
 	if (pdu[0] != ATT_OP_PREP_WRITE_REQ)
 		return 0;
 
-	*handle = att_get_u16(&pdu[1]);
-	*offset = att_get_u16(&pdu[3]);
+	*handle = get_le16(&pdu[1]);
+	*offset = get_le16(&pdu[3]);
 
 	*vlen = len - min_len;
 	if (*vlen > 0)
@@ -1092,8 +1092,8 @@ uint16_t dec_prep_write_resp(const uint8_t *pdu, size_t len, uint16_t *handle,
 	if (pdu[0] != ATT_OP_PREP_WRITE_REQ)
 		return 0;
 
-	*handle = att_get_u16(&pdu[1]);
-	*offset = att_get_u16(&pdu[3]);
+	*handle = get_le16(&pdu[1]);
+	*offset = get_le16(&pdu[3]);
 	*vlen = len - min_len;
 	if (*vlen > 0)
 		memcpy(value, pdu + min_len, *vlen);

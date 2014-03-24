@@ -35,6 +35,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/shared/util.h"
 #include "attrib/gattrib.h"
 #include "src/attio.h"
 #include "attrib/att.h"
@@ -96,8 +97,8 @@ static void read_pnpid_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	btd_device_set_pnpid(ch->d->dev, value[0], att_get_u16(&value[1]),
-				att_get_u16(&value[3]), att_get_u16(&value[5]));
+	btd_device_set_pnpid(ch->d->dev, value[0], get_le16(&value[1]),
+				get_le16(&value[3]), get_le16(&value[5]));
 }
 
 static void process_deviceinfo_char(struct characteristic *ch)

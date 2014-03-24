@@ -36,6 +36,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/shared/util.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
@@ -119,8 +120,8 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 		goto done;
 
 	ptr = list->data[0];
-	handle = att_get_u16(ptr);
-	uuid16 = att_get_u16(&ptr[2]);
+	handle = get_le16(ptr);
+	uuid16 = get_le16(&ptr[2]);
 
 	if (uuid16 != GATT_CLIENT_CHARAC_CFG_UUID)
 		goto done;

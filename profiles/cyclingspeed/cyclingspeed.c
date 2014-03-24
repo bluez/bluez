@@ -381,7 +381,7 @@ static void read_feature_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	csc->feature = att_get_u16(value);
+	csc->feature = get_le16(value);
 
 	if ((csc->feature & MULTI_SENSOR_LOC_SUPPORT)
 						&& (csc->locations == NULL))
@@ -447,8 +447,8 @@ static void discover_desc_cb(guint8 status, const guint8 *pdu,
 		char *msg;
 
 		value = list->data[i];
-		handle = att_get_u16(value);
-		uuid = att_get_u16(value + 2);
+		handle = get_le16(value);
+		uuid = get_le16(value + 2);
 
 		if (uuid != GATT_CLIENT_CHARAC_CFG_UUID)
 			continue;
@@ -575,7 +575,7 @@ static void process_measurement(struct csc *csc, const uint8_t *pdu,
 
 		m.has_wheel_rev = true;
 		m.wheel_rev = get_le32(pdu);
-		m.last_wheel_time = att_get_u16(pdu + 4);
+		m.last_wheel_time = get_le16(pdu + 4);
 		pdu += 6;
 		len -= 6;
 	}
@@ -587,8 +587,8 @@ static void process_measurement(struct csc *csc, const uint8_t *pdu,
 		}
 
 		m.has_crank_rev = true;
-		m.crank_rev = att_get_u16(pdu);
-		m.last_crank_time = att_get_u16(pdu + 2);
+		m.crank_rev = get_le16(pdu);
+		m.last_crank_time = get_le16(pdu + 2);
 		pdu += 4;
 		len -= 4;
 	}

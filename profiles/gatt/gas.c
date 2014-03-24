@@ -40,6 +40,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/shared/util.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "src/attio.h"
@@ -165,7 +166,7 @@ static void gap_appearance_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	atval = list->data[0] + 2; /* skip handle value */
-	app = att_get_u16(atval);
+	app = get_le16(atval);
 
 	DBG("GAP Appearance: 0x%04x", app);
 
@@ -188,8 +189,8 @@ static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 		return;
 	}
 
-	start = att_get_u16(&pdu[3]);
-	end = att_get_u16(&pdu[5]);
+	start = get_le16(&pdu[3]);
+	end = get_le16(&pdu[5]);
 
 	DBG("Service Changed start: 0x%04X end: 0x%04X", start, end);
 
@@ -263,8 +264,8 @@ static void gatt_descriptors_cb(guint8 status, const guint8 *pdu, guint16 len,
 		uint8_t *value;
 
 		value = list->data[i];
-		ccc = att_get_u16(value);
-		uuid16 = att_get_u16(&value[2]);
+		ccc = get_le16(value);
+		uuid16 = get_le16(&value[2]);
 		DBG("CCC: 0x%04x UUID: 0x%04x", ccc, uuid16);
 		write_ccc(gas->attrib, ccc, user_data);
 	}

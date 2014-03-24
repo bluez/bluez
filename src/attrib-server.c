@@ -47,6 +47,7 @@
 #include "hcid.h"
 #include "adapter.h"
 #include "device.h"
+#include "src/shared/util.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
@@ -307,7 +308,7 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 		return 0;
 
 	if (a->len == 2)
-		sdp_uuid16_create(&svc, att_get_u16(a->data));
+		sdp_uuid16_create(&svc, get_le16(a->data));
 	else if (a->len == 16)
 		sdp_uuid128_create(&svc, a->data);
 	else
@@ -894,7 +895,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 							status, pdu, len);
 		}
 	} else {
-		uint16_t cccval = att_get_u16(value);
+		uint16_t cccval = get_le16(value);
 		char *filename;
 		GKeyFile *key_file;
 		char group[6], value[5];

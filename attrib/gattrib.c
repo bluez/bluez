@@ -37,6 +37,7 @@
 
 #include "btio/btio.h"
 #include "lib/uuid.h"
+#include "src/shared/util.h"
 #include "src/log.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
@@ -381,7 +382,7 @@ static bool match_event(struct event *evt, const uint8_t *pdu, gsize len)
 	if (len < 3)
 		return false;
 
-	handle = att_get_u16(&pdu[1]);
+	handle = get_le16(&pdu[1]);
 
 	if (evt->expected == pdu[0] && evt->handle == handle)
 		return true;

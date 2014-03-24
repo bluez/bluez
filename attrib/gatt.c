@@ -242,8 +242,8 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		struct gatt_primary *primary;
 		bt_uuid_t uuid;
 
-		start = att_get_u16(&data[0]);
-		end = att_get_u16(&data[2]);
+		start = get_le16(&data[0]);
+		end = get_le16(&data[2]);
 
 		if (list->len == 6) {
 			bt_uuid_t uuid16;
@@ -381,9 +381,9 @@ static struct gatt_included *included_from_buf(const uint8_t *buf, gsize len)
 {
 	struct gatt_included *incl = g_new0(struct gatt_included, 1);
 
-	incl->handle = att_get_u16(&buf[0]);
-	incl->range.start = att_get_u16(&buf[2]);
-	incl->range.end = att_get_u16(&buf[4]);
+	incl->handle = get_le16(&buf[0]);
+	incl->range.start = get_le16(&buf[2]);
+	incl->range.end = get_le16(&buf[4]);
 
 	if (len == 8) {
 		bt_uuid_t uuid128;
@@ -505,7 +505,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		struct gatt_char *chars;
 		bt_uuid_t uuid;
 
-		last = att_get_u16(value);
+		last = get_le16(value);
 
 		if (list->len == 7) {
 			bt_uuid_t uuid16;
@@ -526,7 +526,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 
 		chars->handle = last;
 		chars->properties = value[2];
-		chars->value_handle = att_get_u16(&value[3]);
+		chars->value_handle = get_le16(&value[3]);
 		bt_uuid_to_string(&uuid, chars->uuid, sizeof(chars->uuid));
 		dc->characteristics = g_slist_append(dc->characteristics,
 									chars);

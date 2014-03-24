@@ -35,6 +35,7 @@
 #include "src/dbus-common.h"
 #include "src/device.h"
 #include "src/profile.h"
+#include "src/shared/util.h"
 #include "src/service.h"
 #include "src/error.h"
 #include "attrib/gattrib.h"
@@ -324,7 +325,7 @@ static void process_measurement(struct heartrate *hr, const uint8_t *pdu,
 			return;
 		}
 
-		m.value = att_get_u16(pdu);
+		m.value = get_le16(pdu);
 		pdu += 2;
 		len -= 2;
 	} else {
@@ -345,7 +346,7 @@ static void process_measurement(struct heartrate *hr, const uint8_t *pdu,
 		}
 
 		m.has_energy = TRUE;
-		m.energy = att_get_u16(pdu);
+		m.energy = get_le16(pdu);
 		pdu += 2;
 		len -= 2;
 	}
@@ -362,7 +363,7 @@ static void process_measurement(struct heartrate *hr, const uint8_t *pdu,
 		m.interval = g_new(uint16_t, m.num_interval);
 
 		for (i = 0; i < m.num_interval; pdu += 2, i++)
-			m.interval[i] = att_get_u16(pdu);
+			m.interval[i] = get_le16(pdu);
 	}
 
 	if (flags & SENSOR_CONTACT_SUPPORT) {
@@ -418,8 +419,8 @@ static void discover_ccc_cb(guint8 status, const guint8 *pdu,
 		uint8_t attr_val[2];
 
 		value = list->data[i];
-		handle = att_get_u16(value);
-		uuid = att_get_u16(value + 2);
+		handle = get_le16(value);
+		uuid = get_le16(value + 2);
 
 		if (uuid != GATT_CLIENT_CHARAC_CFG_UUID)
 			continue;

@@ -47,6 +47,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/shared/util.h"
 
 #include "src/plugin.h"
 
@@ -234,8 +235,8 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 		uint8_t *value;
 
 		value = list->data[i];
-		handle = att_get_u16(value);
-		uuid16 = att_get_u16(&value[2]);
+		handle = get_le16(value);
+		uuid16 = get_le16(&value[2]);
 
 		switch (uuid16) {
 		case GATT_CLIENT_CHARAC_CFG_UUID:
@@ -336,7 +337,7 @@ static void external_report_reference_cb(guint8 status, const guint8 *pdu,
 		return;
 	}
 
-	uuid16 = att_get_u16(&pdu[1]);
+	uuid16 = get_le16(&pdu[1]);
 	DBG("External report reference read, external report characteristic "
 						"UUID: 0x%04x", uuid16);
 	bt_uuid16_create(&uuid, uuid16);
@@ -431,7 +432,7 @@ static void info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		return;
 	}
 
-	hogdev->bcdhid = att_get_u16(&value[0]);
+	hogdev->bcdhid = get_le16(&value[0]);
 	hogdev->bcountrycode = value[2];
 	hogdev->flags = value[3];
 
