@@ -1018,6 +1018,14 @@ int avrcp_list_player_values(struct avrcp *session, uint8_t attr)
 				list_values_rsp, session);
 }
 
+int avrcp_get_player_value_text(struct avrcp *session, uint8_t attr,
+					uint8_t number, uint8_t *values)
+{
+	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
+				AVRCP_GET_PLAYER_VALUE_TEXT, &attr,
+				sizeof(attr), NULL, NULL);
+}
+
 int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
 					uint8_t attr_count, avctp_rsp_cb func,
 					void *user_data)
