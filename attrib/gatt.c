@@ -408,10 +408,8 @@ static struct gatt_included *included_from_buf(const uint8_t *buf, gsize len)
 
 	if (len == 8) {
 		bt_uuid_t uuid128;
-		bt_uuid_t uuid16;
 
-		bt_uuid16_create(&uuid16, get_le16(&buf[6]));
-		bt_uuid_to_uuid128(&uuid16, &uuid128);
+		get_uuid128(BT_UUID16, &buf[6], &uuid128);
 		bt_uuid_to_string(&uuid128, incl->uuid, sizeof(incl->uuid));
 	}
 
