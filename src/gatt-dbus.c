@@ -187,7 +187,7 @@ static void proxy_read_cb(struct btd_attribute *attr,
 static void proxy_write_reply(const DBusError *derr, void *user_data)
 {
 	struct proxy_write_data *wdata = user_data;
-	int err = 0;
+	int err;
 
 	/*
 	 * Security requirements shall be handled by the core. If external
@@ -195,8 +195,10 @@ static void proxy_write_reply(const DBusError *derr, void *user_data)
 	 * invalid argument or application specific errors.
 	 */
 
-	if (!dbus_error_is_set(derr))
+	if (!dbus_error_is_set(derr)) {
+		err = 0;
 		goto done;
+	}
 
 	DBG("Write reply: %s", derr->message);
 
