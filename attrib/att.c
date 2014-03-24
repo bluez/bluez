@@ -168,7 +168,7 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	*start = att_get_u16(&pdu[1]);
 	*end = att_get_u16(&pdu[3]);
 	if (len == min_len + 2)
-		*uuid = att_get_uuid16(&pdu[5]);
+		bt_uuid16_create(uuid, get_le16(&pdu[5]));
 	else
 		*uuid = att_get_uuid128(&pdu[5]);
 
@@ -297,7 +297,7 @@ uint16_t dec_find_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	/* Last requested handle number (2 octets) */
 	*end = att_get_u16(&pdu[3]);
 	/* 16-bit UUID to find (2 octets) */
-	*uuid = att_get_uuid16(&pdu[5]);
+	bt_uuid16_create(uuid, get_le16(&pdu[5]));
 
 	/* Attribute value to find */
 	*vlen = len - 7;
@@ -411,7 +411,7 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	*end = att_get_u16(&pdu[3]);
 
 	if (len == min_len + 2)
-		*uuid = att_get_uuid16(&pdu[5]);
+		bt_uuid16_create(uuid, get_le16(&pdu[5]));
 	else
 		*uuid = att_get_uuid128(&pdu[5]);
 

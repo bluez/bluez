@@ -246,7 +246,9 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		end = att_get_u16(&data[2]);
 
 		if (list->len == 6) {
-			bt_uuid_t uuid16 = att_get_uuid16(&data[4]);
+			bt_uuid_t uuid16;
+
+			bt_uuid16_create(&uuid16, get_le16(&data[4]));
 			bt_uuid_to_uuid128(&uuid16, &uuid);
 		} else if (list->len == 20) {
 			uuid = att_get_uuid128(&data[4]);
@@ -385,8 +387,9 @@ static struct gatt_included *included_from_buf(const uint8_t *buf, gsize len)
 
 	if (len == 8) {
 		bt_uuid_t uuid128;
-		bt_uuid_t uuid16 = att_get_uuid16(&buf[6]);
+		bt_uuid_t uuid16;
 
+		bt_uuid16_create(&uuid16, get_le16(&buf[6]));
 		bt_uuid_to_uuid128(&uuid16, &uuid128);
 		bt_uuid_to_string(&uuid128, incl->uuid, sizeof(incl->uuid));
 	}
@@ -505,7 +508,9 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		last = att_get_u16(value);
 
 		if (list->len == 7) {
-			bt_uuid_t uuid16 = att_get_uuid16(&value[5]);
+			bt_uuid_t uuid16;
+
+			bt_uuid16_create(&uuid16, get_le16(&value[5]));
 			bt_uuid_to_uuid128(&uuid16, &uuid);
 		} else
 			uuid = att_get_uuid128(&value[5]);

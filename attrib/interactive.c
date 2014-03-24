@@ -38,6 +38,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include "src/shared/util.h"
 #include "lib/uuid.h"
 #include "btio/btio.h"
 #include "att.h"
@@ -295,7 +296,7 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		handle = att_get_u16(value);
 
 		if (format == 0x01)
-			uuid = att_get_uuid16(&value[2]);
+			bt_uuid16_create(&uuid, get_le16(&value[2]));
 		else
 			uuid = att_get_uuid128(&value[2]);
 
