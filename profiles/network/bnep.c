@@ -43,6 +43,7 @@
 #include <glib.h>
 
 #include "src/log.h"
+#include "src/shared/util.h"
 #include "lib/uuid.h"
 #include "btio/btio.h"
 
@@ -634,8 +635,8 @@ uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req, uint16_t *dst,
 
 	switch (req->uuid_size) {
 	case 2: /* UUID16 */
-		*dst = bt_get_be16(dest);
-		*src = bt_get_be16(source);
+		*dst = get_be16(dest);
+		*src = get_be16(source);
 		break;
 	case 16: /* UUID128 */
 		/* Check that the bytes in the UUID, except the service ID

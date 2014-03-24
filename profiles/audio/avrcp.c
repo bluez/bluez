@@ -1993,10 +1993,10 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 		id = bt_get_be32(&operands[i]);
 		i += sizeof(uint32_t);
 
-		charset = bt_get_be16(&operands[i]);
+		charset = get_be16(&operands[i]);
 		i += sizeof(uint16_t);
 
-		len = bt_get_be16(&operands[i]);
+		len = get_be16(&operands[i]);
 		i += sizeof(uint16_t);
 
 		if (charset == 106) {
@@ -2128,7 +2128,7 @@ static struct media_item *parse_media_element(struct avrcp *session,
 
 	uid = bt_get_be64(&operands[0]);
 
-	namelen = MIN(bt_get_be16(&operands[11]), sizeof(name) - 1);
+	namelen = MIN(get_be16(&operands[11]), sizeof(name) - 1);
 	if (namelen > 0) {
 		memcpy(name, &operands[13], namelen);
 		name[namelen] = '\0';
@@ -2165,7 +2165,7 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	type = operands[8];
 	playable = operands[9];
 
-	namelen = MIN(bt_get_be16(&operands[12]), sizeof(name) - 1);
+	namelen = MIN(get_be16(&operands[12]), sizeof(name) - 1);
 	if (namelen > 0) {
 		memcpy(name, &operands[14], namelen);
 		name[namelen] = '\0';
@@ -2212,7 +2212,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 		goto done;
 	}
 
-	count = bt_get_be16(&operands[6]);
+	count = get_be16(&operands[6]);
 	if (count == 0)
 		goto done;
 
@@ -2222,7 +2222,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 		uint16_t len;
 
 		type = operands[i++];
-		len = bt_get_be16(&operands[i]);
+		len = get_be16(&operands[i]);
 		i += 2;
 
 		if (type != 0x03 && type != 0x02) {
@@ -2354,7 +2354,7 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 							operand_count < 13)
 		return FALSE;
 
-	player->uid_counter = bt_get_be16(&pdu->params[1]);
+	player->uid_counter = get_be16(&pdu->params[1]);
 	player->browsed = true;
 
 	items = bt_get_be32(&pdu->params[3]);
@@ -2680,7 +2680,7 @@ static gboolean avrcp_search_rsp(struct avctp *conn, uint8_t *operands,
 		goto done;
 	}
 
-	player->uid_counter = bt_get_be16(&pdu->params[1]);
+	player->uid_counter = get_be16(&pdu->params[1]);
 	ret = bt_get_be32(&pdu->params[3]);
 
 done:
@@ -2894,7 +2894,7 @@ avrcp_parse_media_player_item(struct avrcp *session, uint8_t *operands,
 	if (len < 28)
 		return NULL;
 
-	id = bt_get_be16(&operands[0]);
+	id = get_be16(&operands[0]);
 
 	player = find_ct_player(session, id);
 	if (player == NULL) {
@@ -2922,7 +2922,7 @@ avrcp_parse_media_player_item(struct avrcp *session, uint8_t *operands,
 
 	avrcp_player_parse_features(player, &operands[8]);
 
-	namelen = bt_get_be16(&operands[26]);
+	namelen = get_be16(&operands[26]);
 	if (namelen > 0 && namelen + 28 == len) {
 		namelen = MIN(namelen, sizeof(name) - 1);
 		memcpy(name, &operands[28], namelen);
@@ -2982,7 +2982,7 @@ static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
 		return FALSE;
 
 	removed = g_slist_copy(session->controller->players);
-	count = bt_get_be16(&operands[6]);
+	count = get_be16(&operands[6]);
 
 	for (i = 8; count && i < operand_count; count--) {
 		struct avrcp_player *player;
@@ -2990,7 +2990,7 @@ static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
 		uint16_t len;
 
 		type = operands[i++];
-		len = bt_get_be16(&operands[i]);
+		len = get_be16(&operands[i]);
 		i += 2;
 
 		if (type != 0x01) {
@@ -3112,7 +3112,7 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 						struct avrcp_header *pdu)
 {
 	struct avrcp_player *player = session->controller->player;
-	uint16_t id = bt_get_be16(&pdu->params[1]);
+	uint16_t id = get_be16(&pdu->params[1]);
 
 	if (player != NULL && player->id == id)
 		return;
@@ -3124,7 +3124,7 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 			return;
 	}
 
-	player->uid_counter = bt_get_be16(&pdu->params[3]);
+	player->uid_counter = get_be16(&pdu->params[3]);
 	session->controller->player = player;
 
 	if (player->features != NULL)
@@ -3137,7 +3137,7 @@ static void avrcp_uids_changed(struct avrcp *session, struct avrcp_header *pdu)
 {
 	struct avrcp_player *player = session->controller->player;
 
-	player->uid_counter = bt_get_be16(&pdu->params[1]);
+	player->uid_counter = get_be16(&pdu->params[1]);
 }
 
 static gboolean avrcp_handle_event(struct avctp *conn,

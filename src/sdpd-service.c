@@ -39,6 +39,7 @@
 
 #include <glib.h>
 
+#include "src/shared/util.h"
 #include "sdpd.h"
 #include "log.h"
 
@@ -320,7 +321,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p,
 		return NULL;
 	}
 
-	lookAheadAttrId = bt_get_be16(p + sizeof(uint8_t));
+	lookAheadAttrId = get_be16(p + sizeof(uint8_t));
 
 	SDPDBG("Look ahead attr id : %d", lookAheadAttrId);
 
@@ -365,7 +366,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p,
 							seqlen, localExtractedLength);
 		dtd = *(uint8_t *) p;
 
-		attrId = bt_get_be16(p + attrSize);
+		attrId = get_be16(p + attrSize);
 		attrSize += sizeof(uint16_t);
 
 		SDPDBG("DTD of attrId : %d Attr id : 0x%x", dtd, attrId);

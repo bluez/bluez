@@ -31,6 +31,7 @@
 
 #include "lib/bluetooth.h"
 
+#include "src/shared/util.h"
 #include "src/log.h"
 
 #include "avctp.h"
@@ -561,7 +562,7 @@ static ssize_t set_addressed(struct avrcp *session, uint8_t transaction,
 	if (!player->ind || !player->ind->set_addressed)
 		return -ENOSYS;
 
-	id = bt_get_be16(params);
+	id = get_be16(params);
 
 	return player->ind->set_addressed(session, transaction, id,
 							player->user_data);

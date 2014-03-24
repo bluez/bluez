@@ -37,6 +37,8 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include "src/shared/util.h"
+
 #include "sdpd.h"
 #include "log.h"
 
@@ -174,7 +176,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 				struct attrid *aid;
 				aid = malloc(sizeof(struct attrid));
 				aid->dtd = dataType;
-				aid->uint16 = bt_get_be16(p);
+				aid->uint16 = get_be16(p);
 				pElem = (char *) aid;
 			} else {
 				uint16_t tmp;
@@ -392,7 +394,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		goto done;
 	}
 
-	expected = bt_get_be16(pdata);
+	expected = get_be16(pdata);
 
 	SDPDBG("Expected count: %d", expected);
 	SDPDBG("Bytes scanned : %d", scanned);
@@ -479,7 +481,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 			if (pCache) {
 				pCacheBuffer = pCache->data;
 				/* get the rsp_count from the cached buffer */
-				rsp_count = bt_get_be16(pCacheBuffer);
+				rsp_count = get_be16(pCacheBuffer);
 
 				/* get index of the last sdp_record_t sent */
 				lastIndex = cstate->cStateValue.lastIndexSent;
@@ -656,7 +658,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		goto done;
 	}
 
-	max_rsp_size = bt_get_be16(pdata);
+	max_rsp_size = get_be16(pdata);
 
 	pdata += sizeof(uint16_t);
 	data_left -= sizeof(uint16_t);
@@ -813,7 +815,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		goto done;
 	}
 
-	max = bt_get_be16(pdata);
+	max = get_be16(pdata);
 
 	pdata += sizeof(uint16_t);
 	data_left -= sizeof(uint16_t);

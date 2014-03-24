@@ -40,6 +40,7 @@
 #include "src/log.h"
 #include "src/error.h"
 #include "src/dbus-common.h"
+#include "src/shared/util.h"
 #include "sap.h"
 #include "server.h"
 
@@ -312,7 +313,7 @@ static void connect_req(struct sap_server *server,
 
 	stop_guard_timer(server);
 
-	maxmsgsize = bt_get_be16(&param->val);
+	maxmsgsize = get_be16(&param->val);
 
 	DBG("Connect MaxMsgSize: 0x%04x", maxmsgsize);
 

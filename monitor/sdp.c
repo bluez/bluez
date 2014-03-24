@@ -33,6 +33,8 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include "src/shared/util.h"
+
 #include "bt.h"
 #include "packet.h"
 #include "display.h"
@@ -89,7 +91,7 @@ static void print_uint(uint8_t indent, const uint8_t *data, uint32_t size)
 		print_field("%*c0x%2.2x", indent, ' ', data[0]);
 		break;
 	case 2:
-		print_field("%*c0x%4.4x", indent, ' ', bt_get_be16(data));
+		print_field("%*c0x%4.4x", indent, ' ', get_be16(data));
 		break;
 	case 4:
 		print_field("%*c0x%8.8x", indent, ' ', bt_get_be32(data));
@@ -114,7 +116,7 @@ static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
 	switch (size) {
 	case 2:
 		print_field("%*c%s (0x%4.4x)", indent, ' ',
-			uuid16_to_str(bt_get_be16(data)), bt_get_be16(data));
+			uuid16_to_str(get_be16(data)), get_be16(data));
 		break;
 	case 4:
 		print_field("%*c%s (0x%8.8x)", indent, ' ',
@@ -124,13 +126,13 @@ static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
 		/* BASE_UUID = 00000000-0000-1000-8000-00805F9B34FB */
 		print_field("%*c%8.8x-%4.4x-%4.4x-%4.4x-%4.4x%8.4x",
 				indent, ' ',
-				bt_get_be32(data), bt_get_be16(data + 4),
-				bt_get_be16(data + 6), bt_get_be16(data + 8),
-				bt_get_be16(data + 10), bt_get_be32(data + 12));
-		if (bt_get_be16(data + 4) == 0x0000 &&
-				bt_get_be16(data + 6) == 0x1000 &&
-				bt_get_be16(data + 8) == 0x8000 &&
-				bt_get_be16(data + 10) == 0x0080 &&
+				bt_get_be32(data), get_be16(data + 4),
+				get_be16(data + 6), get_be16(data + 8),
+				get_be16(data + 10), bt_get_be32(data + 12));
+		if (get_be16(data + 4) == 0x0000 &&
+				get_be16(data + 6) == 0x1000 &&
+				get_be16(data + 8) == 0x8000 &&
+				get_be16(data + 10) == 0x0080 &&
 				bt_get_be32(data + 12) == 0x5F9B34FB)
 			print_field("%*c%s", indent, ' ',
 				uuid32_to_str(bt_get_be32(data)));
@@ -233,7 +235,7 @@ static uint32_t get_size(const uint8_t *data, uint32_t size)
 			case 8:
 				return data[1];
 			case 16:
-				return bt_get_be16(data + 1);
+				return get_be16(data + 1);
 			case 32:
 				return bt_get_be32(data + 1);
 			default:
@@ -319,7 +321,7 @@ static uint32_t get_bytes(const uint8_t *data, uint32_t size)
 	case 5:
 		return 2 + data[1];
 	case 6:
-		return 3 + bt_get_be16(data + 1);
+		return 3 + get_be16(data + 1);
 	case 7:
 		return 5 + bt_get_be32(data + 1);
 	}
@@ -354,7 +356,7 @@ static void print_attr(uint32_t position, uint8_t indent, uint8_t type,
 	int i;
 
 	if ((position % 2) == 0) {
-		uint16_t id = bt_get_be16(data);
+		uint16_t id = get_be16(data);
 		const char *str = "Unknown";
 
 		for (i = 0; attribute_table[i].str; i++) {
@@ -509,7 +511,7 @@ static uint16_t common_rsp(const struct l2cap_frame *frame,
 		return 0;
 	}
 
-	bytes = bt_get_be16(frame->data);
+	bytes = get_be16(frame->data);
 	print_field("Attribute bytes: %d", bytes);
 
 	if (bytes > frame->size - 2) {
@@ -533,7 +535,7 @@ static void error_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 		return;
 	}
 
-	error = bt_get_be16(frame->data);
+	error = get_be16(frame->data);
 
 	print_field("Error code: 0x%2.2x", error);
 }
@@ -554,7 +556,7 @@ static void service_req(const struct l2cap_frame *frame, struct tid_data *tid)
 	decode_data_elements(0, 2, frame->data, search_bytes, NULL);
 
 	print_field("Max record count: %d",
-				bt_get_be16(frame->data + search_bytes));
+				get_be16(frame->data + search_bytes));
 
 	print_continuation(frame->data + search_bytes + 2,
 					frame->size - search_bytes - 2);
@@ -573,9 +575,9 @@ static void service_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 		return;
 	}
 
-	count = bt_get_be16(frame->data + 2);
+	count = get_be16(frame->data + 2);
 
-	print_field("Total record count: %d", bt_get_be16(frame->data));
+	print_field("Total record count: %d", get_be16(frame->data));
 	print_field("Current record count: %d", count);
 
 	for (i = 0; i < count; i++)
@@ -597,7 +599,7 @@ static void attr_req(const struct l2cap_frame *frame, struct tid_data *tid)
 	}
 
 	print_field("Record handle: 0x%4.4x", bt_get_be32(frame->data));
-	print_field("Max attribute bytes: %d", bt_get_be16(frame->data + 4));
+	print_field("Max attribute bytes: %d", get_be16(frame->data + 4));
 
 	attr_bytes = get_bytes(frame->data + 6, frame->size - 6);
 	print_field("Attribute list: [len %d]", attr_bytes);
@@ -643,7 +645,7 @@ static void search_attr_req(const struct l2cap_frame *frame,
 	decode_data_elements(0, 2, frame->data, search_bytes, NULL);
 
 	print_field("Max record count: %d",
-				bt_get_be16(frame->data + search_bytes));
+				get_be16(frame->data + search_bytes));
 
 	attr_bytes = get_bytes(frame->data + search_bytes + 2,
 				frame->size - search_bytes - 2);
@@ -703,8 +705,8 @@ void sdp_packet(const struct l2cap_frame *frame, uint16_t channel)
 	}
 
 	pdu = *((uint8_t *) frame->data);
-	tid = bt_get_be16(frame->data + 1);
-	plen = bt_get_be16(frame->data + 3);
+	tid = get_be16(frame->data + 1);
+	plen = get_be16(frame->data + 3);
 
 	if (frame->size != plen + 5) {
 		print_text(COLOR_ERROR, "invalid frame size");
