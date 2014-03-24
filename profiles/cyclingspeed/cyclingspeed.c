@@ -36,6 +36,7 @@
 #include "src/profile.h"
 #include "src/service.h"
 #include "src/dbus-common.h"
+#include "src/shared/util.h"
 #include "src/error.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
@@ -573,7 +574,7 @@ static void process_measurement(struct csc *csc, const uint8_t *pdu,
 		}
 
 		m.has_wheel_rev = true;
-		m.wheel_rev = att_get_u32(pdu);
+		m.wheel_rev = get_le32(pdu);
 		m.last_wheel_time = att_get_u16(pdu + 4);
 		pdu += 6;
 		len -= 6;

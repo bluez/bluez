@@ -36,6 +36,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/shared/util.h"
 #include "src/error.h"
 #include "src/log.h"
 #include "attrib/gattrib.h"
@@ -361,7 +362,7 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 		return;
 	}
 
-	raw = att_get_u32(pdu);
+	raw = get_le32(pdu);
 	m.mant = raw & 0x00FFFFFF;
 	m.exp = ((int32_t) raw) >> 24;
 
