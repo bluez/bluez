@@ -457,7 +457,7 @@ success:
 	update_db_timestamp();
 
 	/* Build a rsp buffer */
-	bt_put_be32(rec->handle, rsp->data);
+	put_be32(rec->handle, rsp->data);
 	rsp->data_size = sizeof(uint32_t);
 
 	return 0;

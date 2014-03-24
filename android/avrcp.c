@@ -180,7 +180,7 @@ static size_t write_element_text(uint8_t id, uint8_t text_len, uint8_t *text,
 	uint16_t charset = 106;
 	size_t len = 0;
 
-	bt_put_be32(id, pdu);
+	put_be32(id, pdu);
 	pdu += 4;
 	len += 4;
 

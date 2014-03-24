@@ -2283,8 +2283,8 @@ static void avrcp_list_items(struct avrcp *session, uint32_t start,
 
 	pdu->params[0] = player->scope;
 
-	bt_put_be32(start, &pdu->params[1]);
-	bt_put_be32(end, &pdu->params[5]);
+	put_be32(start, &pdu->params[1]);
+	put_be32(end, &pdu->params[5]);
 
 	pdu->params[9] = 1;
 

@@ -713,7 +713,7 @@ int avrcp_register_notification(struct avrcp *session, uint8_t event,
 	uint8_t params[5];
 
 	params[0] = event;
-	bt_put_be32(interval, &params[1]);
+	put_be32(interval, &params[1]);
 
 	return avrcp_send_req(session, AVC_CTYPE_NOTIFY, AVC_SUBUNIT_PANEL,
 					AVRCP_REGISTER_NOTIFICATION,
@@ -915,8 +915,8 @@ int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 {
 	uint8_t pdu[9];
 
-	bt_put_be32(position, &pdu[0]);
-	bt_put_be32(duration, &pdu[4]);
+	put_be32(position, &pdu[0]);
+	put_be32(duration, &pdu[4]);
 	pdu[8] = status;
 
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
