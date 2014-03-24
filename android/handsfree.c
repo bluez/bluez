@@ -2093,6 +2093,13 @@ static void phone_state_idle(int num_active, int num_held)
 					num_held ? (num_active ? 1 : 2) : 0);
 		update_indicator(IND_CALL, !!(num_active + num_held));
 		update_indicator(IND_CALLSETUP, 0);
+
+		/* If call was terminated due to carrier lost send NO CARRIER */
+		if (num_active == 0 && num_held == 0 &&
+				device.inds[IND_SERVICE].val == 0 &&
+				(device.num_active > 0 || device.num_held > 0))
+			hfp_gw_send_info(device.gw, "NO CARRIER");
+
 		break;
 	default:
 		DBG("unhandled state %u", device.setup_state);
