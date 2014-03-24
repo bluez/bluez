@@ -28,17 +28,23 @@ void gatt_init(void);
 void gatt_cleanup(void);
 
 /*
- * Callbacks of this type are called once the value from the attribute is
- * ready to be read from the service implementation. Result callback is
- * the asynchronous function that should be used to inform the caller
- * the read value.
+ * Read operation result callback. Called from the service implementation
+ * informing the core (ATT layer) the result of read operation.
  * @err:	error in -errno format.
- * @value:	pointer to value
- * @len:	length of value
- * @user_data:	user_data passed in btd_attr_read_t callback
+ * @value:	value of the attribute read.
+ * @len:	length of value.
+ * @user_data:	user_data passed in btd_attr_read_t callback.
  */
 typedef void (*btd_attr_read_result_t) (int err, uint8_t *value, size_t len,
 							void *user_data);
+/*
+ * Service implementation callback passed to core (ATT layer). It manages read
+ * operations received from remote devices.
+ * @attr:	reference of the attribute to be read.
+ * @result:	callback called from the service implementation informing the
+ *		value of attribute read.
+ * @user_data:	user_data passed in btd_attr_read_result_t callback.
+ */
 typedef void (*btd_attr_read_t) (struct btd_attribute *attr,
 						btd_attr_read_result_t result,
 						void *user_data);
