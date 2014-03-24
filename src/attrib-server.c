@@ -102,6 +102,15 @@ static bt_uuid_t ccc_uuid = {
 			.value.u16 = GATT_CLIENT_CHARAC_CFG_UUID
 };
 
+static inline void put_uuid_le(const bt_uuid_t *src, void *dst)
+{
+	if (src->type == BT_UUID16)
+		put_le16(src->value.u16, dst);
+	else
+		/* Convert from 128-bit BE to LE */
+		bswap_128(&src->value.u128, dst);
+}
+
 static void attrib_free(void *data)
 {
 	struct attribute *a = data;
@@ -676,7 +685,7 @@ static uint16_t find_info(struct gatt_channel *channel, uint16_t start,
 		att_put_u16(a->handle, value);
 
 		/* Attribute Value */
-		att_put_uuid(a->uuid, &value[2]);
+		put_uuid_le(&a->uuid, &value[2]);
 	}
 
 	length = enc_find_info_resp(format, adl, pdu, len);

@@ -38,6 +38,15 @@
 #include "lib/uuid.h"
 #include "att.h"
 
+static inline void put_uuid_le(const bt_uuid_t *src, void *dst)
+{
+	if (src->type == BT_UUID16)
+		put_le16(src->value.u16, dst);
+	else
+		/* Convert from 128-bit BE to LE */
+		bswap_128(&src->value.u128, dst);
+}
+
 const char *att_ecode2str(uint8_t status)
 {
 	switch (status)  {
@@ -156,7 +165,7 @@ uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 	/* Ending Handle (2 octets) */
 	att_put_u16(end, &pdu[3]);
 	/* Attribute Group Type (2 or 16 octet UUID) */
-	att_put_uuid(*uuid, &pdu[5]);
+	put_uuid_le(uuid, &pdu[5]);
 
 	return 5 + uuid_len;
 }
@@ -401,7 +410,7 @@ uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 	/* Ending Handle (2 octets) */
 	att_put_u16(end, &pdu[3]);
 	/* Attribute Type (2 or 16 octet UUID) */
-	att_put_uuid(*uuid, &pdu[5]);
+	put_uuid_le(uuid, &pdu[5]);
 
 	return 5 + uuid_len;
 }

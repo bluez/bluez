@@ -29,6 +29,7 @@
 #include <glib.h>
 
 #include "src/adapter.h"
+#include "src/shared/util.h"
 #include "lib/uuid.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
@@ -54,6 +55,15 @@ struct attrib_cb {
 	void *fn;
 	void *user_data;
 };
+
+static inline void put_uuid_le(const bt_uuid_t *src, void *dst)
+{
+	if (src->type == BT_UUID16)
+		put_le16(src->value.u16, dst);
+	else
+		/* Convert from 128-bit BE to LE */
+		bswap_128(&src->value.u128, dst);
+}
 
 static GSList *parse_opts(gatt_option opt1, va_list args)
 {
@@ -129,14 +139,8 @@ static struct attribute *add_service_declaration(struct btd_adapter *adapter,
 	uint8_t atval[16];
 	int len;
 
-	if (uuid->type == BT_UUID16) {
-		att_put_u16(uuid->value.u16, &atval[0]);
-		len = 2;
-	} else if (uuid->type == BT_UUID128) {
-		att_put_u128(uuid->value.u128, &atval[0]);
-		len = 16;
-	} else
-		return NULL;
+	put_uuid_le(uuid, &atval[0]);
+	len = bt_uuid_len(uuid);
 
 	bt_uuid16_create(&bt_uuid, svc);
 
@@ -228,7 +232,7 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 	bt_uuid16_create(&bt_uuid, GATT_CHARAC_UUID);
 	atval[0] = info->props;
 	att_put_u16(h + 1, &atval[1]);
-	att_put_uuid(info->uuid, &atval[3]);
+	put_uuid_le(&info->uuid, &atval[3]);
 	if (attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
 				atval, 3 + info->uuid.type / 8) == NULL)
 		return FALSE;
