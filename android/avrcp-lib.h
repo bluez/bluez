@@ -173,6 +173,9 @@ struct avrcp_control_cfm {
 	void (*get_attribute_text) (struct avrcp *session, int err,
 					uint8_t number, uint8_t *attrs,
 					char **text, void *user_data);
+	void (*list_values) (struct avrcp *session, int err,
+					uint8_t number, uint8_t *values,
+					void *user_data);
 };
 
 struct avrcp_passthrough_handler {
