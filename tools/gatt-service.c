@@ -205,9 +205,9 @@ static char *register_service(const char *uuid)
 	char *path;
 
 	path = g_strdup_printf("/service%d", id++);
-	if (g_dbus_register_interface(connection, path, GATT_SERVICE_IFACE,
+	if (!g_dbus_register_interface(connection, path, GATT_SERVICE_IFACE,
 				NULL, NULL, service_properties,
-				g_strdup(uuid), g_free) == FALSE) {
+				g_strdup(uuid), g_free)) {
 		printf("Couldn't register service interface\n");
 		g_free(path);
 		return NULL;
@@ -285,7 +285,7 @@ static void register_external_service(gpointer a, gpointer b)
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	if (g_dbus_send_message_with_reply(conn, msg, &call, -1) == FALSE) {
+	if (!g_dbus_send_message_with_reply(conn, msg, &call, -1)) {
 		dbus_message_unref(msg);
 		return;
 	}
