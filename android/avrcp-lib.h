@@ -170,6 +170,9 @@ struct avrcp_control_cfm {
 	void (*list_attributes) (struct avrcp *session, int err,
 					uint8_t number, uint8_t *attrs,
 					void *user_data);
+	void (*get_attribute_text) (struct avrcp *session, int err,
+					uint8_t number, uint8_t *attrs,
+					char **text, void *user_data);
 };
 
 struct avrcp_passthrough_handler {
@@ -201,9 +204,8 @@ int avrcp_register_notification(struct avrcp *session, uint8_t event,
 					uint32_t interval, avctp_rsp_cb func,
 					void *user_data);
 int avrcp_list_player_attributes(struct avrcp *session);
-int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,
-					uint8_t attr_len, avctp_rsp_cb func,
-					void *user_data);
+int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t number,
+							uint8_t *attrs);
 int avrcp_set_player_value(struct avrcp *session, uint8_t *attributes,
 					uint8_t attr_count, uint8_t *values,
 					avctp_rsp_cb func, void *user_data);

@@ -497,8 +497,7 @@ static void test_client(gconstpointer data)
 		avrcp_list_player_attributes(context->session);
 
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-03-C"))
-		avrcp_get_player_attribute_text(context->session, NULL, 0,
-								NULL, NULL);
+		avrcp_get_player_attribute_text(context->session, 0, NULL);
 
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-09-C")) {
 		uint8_t attributes[2] = { AVRCP_ATTRIBUTE_EQUALIZER,

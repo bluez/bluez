@@ -871,13 +871,103 @@ int avrcp_list_player_attributes(struct avrcp *session)
 				list_attributes_rsp, session);
 }
 
-int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,
-					uint8_t attr_len, avctp_rsp_cb func,
+static int parse_text_rsp(struct avrcp_header *pdu, uint8_t *number,
+					uint8_t *attrs, char **text)
+{
+	uint8_t *ptr;
+	uint16_t params_len;
+	int i;
+
+	if (pdu->params_len < 1)
+		return -EPROTO;
+
+	*number = pdu->params[0];
+	if (*number > AVRCP_ATTRIBUTE_LAST) {
+		*number = 0;
+		return -EPROTO;
+	}
+
+	params_len = pdu->params_len - 1;
+	for (i = 0, ptr = &pdu->params[1]; i < *number && params_len > 0; i++) {
+		uint8_t len;
+
+		if (params_len < 4)
+			goto fail;
+
+		attrs[i] = ptr[0];
+		len = ptr[3];
+
+		params_len -= 4;
+		ptr += 4;
+
+		if (len > params_len)
+			goto fail;
+
+		if (len > 0) {
+			text[i] = g_strndup((const char *) &ptr[4], len);
+			params_len -= len;
+			ptr += len;
+		}
+	}
+
+	if (i != *number)
+		goto fail;
+
+	return 0;
+
+fail:
+	for (i -= 1; i >= 0; i--)
+		g_free(text[i]);
+
+	*number = 0;
+
+	return -EPROTO;
+}
+
+static gboolean get_attribute_text_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu;
+	uint8_t number = 0;
+	uint8_t attrs[AVRCP_ATTRIBUTE_LAST];
+	char *text[AVRCP_ATTRIBUTE_LAST];
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->get_attribute_text)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	err = parse_text_rsp(pdu, &number, attrs, text);
+
+done:
+	player->cfm->get_attribute_text(session, err, number, attrs, text,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t number,
+								uint8_t *attrs)
+{
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
-				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT, attributes,
-				attr_len, func, user_data);
+				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT, attrs, number,
+				get_attribute_text_rsp, session);
 }
 
 int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
