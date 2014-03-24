@@ -34,6 +34,7 @@
 
 #include <glib.h>
 
+#include "src/shared/util.h"
 #include "lib/uuid.h"
 #include "att.h"
 
@@ -267,7 +268,7 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 	pdu[0] = ATT_OP_FIND_BY_TYPE_REQ;
 	att_put_u16(start, &pdu[1]);
 	att_put_u16(end, &pdu[3]);
-	att_put_uuid16(*uuid, &pdu[5]);
+	put_le16(uuid->value.u16, &pdu[5]);
 
 	if (vlen > 0) {
 		memcpy(&pdu[7], value, vlen);
