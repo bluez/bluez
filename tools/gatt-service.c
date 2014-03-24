@@ -35,6 +35,8 @@
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
+#include "src/error.h"
+
 #define GATT_MGR_IFACE			"org.bluez.GattManager1"
 #define GATT_SERVICE_IFACE		"org.bluez.GattService1"
 #define GATT_CHR_IFACE			"org.bluez.GattCharacteristic1"
@@ -81,9 +83,38 @@ static gboolean chr_get_value(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static void chr_set_value(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
+{
+	struct characteristic *chr = user_data;
+	DBusMessageIter array;
+	uint8_t *value;
+	int len;
+
+	printf("Set('Value', ...)\n");
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
+		printf("Invalid value for Set('Value'...)\n");
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+		return;
+	}
+
+	dbus_message_iter_recurse(iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &value, &len);
+
+	g_free(chr->value);
+	chr->value = g_memdup(value, len);
+	chr->vlen = len;
+
+	g_dbus_pending_property_success(id);
+}
+
 static const GDBusPropertyTable chr_properties[] = {
 	{ "UUID",	"s",	chr_get_uuid },
-	{ "Value", "ay", chr_get_value, NULL, NULL },
+	{ "Value", "ay", chr_get_value, chr_set_value, NULL },
 	{ }
 };
 
