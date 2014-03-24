@@ -37,12 +37,29 @@
 
 #define GATT_MGR_IFACE			"org.bluez.GattManager1"
 #define GATT_SERVICE_IFACE		"org.bluez.GattService1"
+#define GATT_CHR_IFACE			"org.bluez.GattCharacteristic1"
 
 /* Immediate Alert Service UUID */
 #define IAS_UUID			"00001802-0000-1000-8000-00805f9b34fb"
+#define ALERT_LEVEL_CHR_UUID		"00002a06-0000-1000-8000-00805f9b34fb"
 
 static GMainLoop *main_loop;
 static GSList *services;
+
+static gboolean chr_get_uuid(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	const char *uuid = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable chr_properties[] = {
+	{ "UUID",	"s",	chr_get_uuid },
+	{ }
+};
 
 static gboolean service_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
@@ -83,6 +100,27 @@ static const GDBusPropertyTable service_properties[] = {
 	{ }
 };
 
+static gboolean register_characteristic(DBusConnection *conn, const char *uuid,
+						const char *service_path)
+{
+	static int id = 1;
+	char *path;
+	gboolean ret = TRUE;
+
+	path = g_strdup_printf("%s/characteristic%d", service_path, id++);
+
+	if (!g_dbus_register_interface(conn, path, GATT_CHR_IFACE,
+					NULL, NULL, chr_properties,
+					g_strdup(uuid), g_free)) {
+		printf("Couldn't register characteristic interface\n");
+		ret = FALSE;
+	}
+
+	g_free(path);
+
+	return ret;
+}
+
 static char *register_service(DBusConnection *conn, const char *uuid)
 {
 	static int id = 1;
@@ -105,9 +143,20 @@ static void create_services(DBusConnection *conn)
 	char *service_path;
 
 	service_path = register_service(conn, IAS_UUID);
+	if (!service_path)
+		return;
+
+	/* Add Alert Level Characteristic to Immediate Alert Service */
+	if (!register_characteristic(conn, ALERT_LEVEL_CHR_UUID,
+							service_path)) {
+		printf("Couldn't register Alert Level characteristic (IAS)\n");
+		g_dbus_unregister_interface(conn, service_path,
+							GATT_SERVICE_IFACE);
+		g_free(service_path);
+		return;
+	}
 
 	services = g_slist_prepend(services, service_path);
-
 	printf("Registered service: %s\n", service_path);
 }
 
