@@ -47,9 +47,11 @@
 
 static GMainLoop *main_loop;
 static GSList *services;
+static DBusConnection *connection;
 
 struct characteristic {
 	char *uuid;
+	char *path;
 	uint8_t *value;
 	int vlen;
 };
@@ -110,6 +112,8 @@ static void chr_set_value(const GDBusPropertyTable *property,
 	chr->vlen = len;
 
 	g_dbus_pending_property_success(id);
+	g_dbus_emit_property_changed(connection, chr->path,
+						GATT_CHR_IFACE, "Value");
 }
 
 static const GDBusPropertyTable chr_properties[] = {
@@ -163,6 +167,7 @@ static void chr_iface_destroy(gpointer user_data)
 
 	g_free(chr->uuid);
 	g_free(chr->value);
+	g_free(chr->path);
 	g_free(chr);
 }
 
@@ -182,6 +187,7 @@ static gboolean register_characteristic(DBusConnection *conn, const char *uuid,
 	chr->uuid = g_strdup(uuid);
 	chr->value = g_memdup(value, vlen);
 	chr->vlen = vlen;
+	chr->path = path;
 
 	if (!g_dbus_register_interface(conn, path, GATT_CHR_IFACE,
 					NULL, NULL, chr_properties,
@@ -190,18 +196,16 @@ static gboolean register_characteristic(DBusConnection *conn, const char *uuid,
 		ret = FALSE;
 	}
 
-	g_free(path);
-
 	return ret;
 }
 
-static char *register_service(DBusConnection *conn, const char *uuid)
+static char *register_service(const char *uuid)
 {
 	static int id = 1;
 	char *path;
 
 	path = g_strdup_printf("/service%d", id++);
-	if (g_dbus_register_interface(conn, path, GATT_SERVICE_IFACE,
+	if (g_dbus_register_interface(connection, path, GATT_SERVICE_IFACE,
 				NULL, NULL, service_properties,
 				g_strdup(uuid), g_free) == FALSE) {
 		printf("Couldn't register service interface\n");
@@ -212,12 +216,12 @@ static char *register_service(DBusConnection *conn, const char *uuid)
 	return path;
 }
 
-static void create_services(DBusConnection *conn)
+static void create_services()
 {
 	char *service_path;
 	uint8_t level = 0;
 
-	service_path = register_service(conn, IAS_UUID);
+	service_path = register_service(IAS_UUID);
 	if (!service_path)
 		return;
 
@@ -225,10 +229,10 @@ static void create_services(DBusConnection *conn)
 	 * According to the IAS SPEC, reading <<Alert level>> is not allowed.
 	 * "Value" is readable for testing purpose only.
 	 */
-	if (!register_characteristic(conn, ALERT_LEVEL_CHR_UUID, &level,
+	if (!register_characteristic(connection, ALERT_LEVEL_CHR_UUID, &level,
 						sizeof(level), service_path)) {
 		printf("Couldn't register Alert Level characteristic (IAS)\n");
-		g_dbus_unregister_interface(conn, service_path,
+		g_dbus_unregister_interface(connection, service_path,
 							GATT_SERVICE_IFACE);
 		g_free(service_path);
 		return;
@@ -369,25 +373,24 @@ static guint setup_signalfd(void)
 int main(int argc, char *argv[])
 {
 	GDBusClient *client;
-	DBusConnection *dbus_conn;
 	guint signal;
 
 	signal = setup_signalfd();
 	if (signal == 0)
 		return -errno;
 
-	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+	connection = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	g_dbus_attach_object_manager(dbus_conn);
+	g_dbus_attach_object_manager(connection);
 
 	printf("gatt-service unique name: %s\n",
-				dbus_bus_get_unique_name(dbus_conn));
+				dbus_bus_get_unique_name(connection));
 
-	create_services(dbus_conn);
+	create_services();
 
-	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
+	client = g_dbus_client_new(connection, "org.bluez", "/org/bluez");
 
 	g_dbus_client_set_connect_watch(client, connect_handler, NULL);
 
@@ -398,7 +401,7 @@ int main(int argc, char *argv[])
 	g_source_remove(signal);
 
 	g_slist_free_full(services, g_free);
-	dbus_connection_unref(dbus_conn);
+	dbus_connection_unref(connection);
 
 	return 0;
 }
