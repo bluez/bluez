@@ -77,7 +77,7 @@ static struct btd_attribute *new_const_attribute(const bt_uuid_t *type,
 	struct btd_attribute *attr;
 
 	attr = malloc0(sizeof(struct btd_attribute) + len);
-	if (attr == NULL)
+	if (!attr)
 		return NULL;
 
 	attr->type = *type;
@@ -118,7 +118,7 @@ struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 	put_uuid_le(uuid, value);
 
 	attr = new_const_attribute(&primary_uuid, value, len);
-	if (attr == NULL)
+	if (!attr)
 		return NULL;
 
 	if (local_database_add(next_handle, attr) < 0) {
@@ -167,11 +167,11 @@ struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
 	put_uuid_le(uuid, &value[3]);
 
 	char_decl = new_const_attribute(&chr_uuid, value, len);
-	if (char_decl == NULL)
+	if (!char_decl)
 		goto fail;
 
 	char_value = new0(struct btd_attribute, 1);
-	if (char_value == NULL)
+	if (!char_value)
 		goto fail;
 
 	if (local_database_add(next_handle, char_decl) < 0)

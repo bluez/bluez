@@ -286,7 +286,7 @@ static int register_external_service(const struct external_app *eapp,
 	if (bt_string_to_uuid(&uuid, str) < 0)
 		return -EINVAL;
 
-	if (btd_gatt_add_service(&uuid) == NULL)
+	if (!btd_gatt_add_service(&uuid))
 		return -EINVAL;
 
 	return 0;
@@ -323,7 +323,7 @@ static int register_external_characteristics(GSList *proxies)
 
 		attr = btd_gatt_add_char(&uuid, 0x00, proxy_read_cb,
 							proxy_write_cb);
-		if (attr == NULL)
+		if (!attr)
 			return -EINVAL;
 
 		path = g_dbus_proxy_get_path(proxy);
@@ -342,7 +342,7 @@ static void client_ready(GDBusClient *client, void *user_data)
 	DBusConnection *conn = btd_get_dbus_connection();
 	DBusMessage *reply;
 
-	if (eapp->proxies == NULL)
+	if (!eapp->proxies)
 		goto fail;
 
 	proxy = eapp->proxies->data;
@@ -378,7 +378,7 @@ static struct external_app *new_external_app(DBusConnection *conn,
 	const char *sender = dbus_message_get_sender(msg);
 
 	client = g_dbus_client_new(conn, sender, "/");
-	if (client == NULL)
+	if (!client)
 		return NULL;
 
 	eapp = g_new0(struct external_app, 1);
@@ -423,7 +423,7 @@ static DBusMessage *register_service(DBusConnection *conn,
 		return btd_error_already_exists(msg);
 
 	eapp = new_external_app(conn, msg, path);
-	if (eapp == NULL)
+	if (!eapp)
 		return btd_error_failed(msg, "Not enough resources");
 
 	external_apps = g_slist_prepend(external_apps, eapp);
