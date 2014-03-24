@@ -154,10 +154,7 @@ int bt_uuid_to_string(const bt_uuid_t *uuid, char *str, size_t n)
 		unsigned int   data4;
 		unsigned short data5;
 
-		uint128_t nvalue;
-		const uint8_t *data = (uint8_t *) &nvalue;
-
-		hton128(&uuid->value.u128, &nvalue);
+		const uint8_t *data = (uint8_t *) &uuid->value.u128;
 
 		memcpy(&data0, &data[0], 4);
 		memcpy(&data1, &data[4], 2);
