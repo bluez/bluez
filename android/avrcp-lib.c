@@ -823,12 +823,52 @@ int avrcp_register_notification(struct avrcp *session, uint8_t event,
 					func, user_data);
 }
 
-int avrcp_list_player_attributes(struct avrcp *session, avctp_rsp_cb func,
-								void *user_data)
+static gboolean list_attributes_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu = (void *) operands;
+	uint8_t number = 0;
+	uint8_t *attrs = NULL;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->list_attributes)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	number = pdu->params[0];
+	if (number > 0)
+		attrs = &pdu->params[1];
+
+	err = 0;
+
+done:
+	player->cfm->list_attributes(session, err, number, attrs,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_list_player_attributes(struct avrcp *session)
 {
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
 				AVRCP_LIST_PLAYER_ATTRIBUTES, NULL, 0,
-				func, user_data);
+				list_attributes_rsp, session);
 }
 
 int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t *attributes,

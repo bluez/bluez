@@ -494,7 +494,7 @@ static void test_client(gconstpointer data)
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED);
 
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-01-C"))
-		avrcp_list_player_attributes(context->session, NULL, NULL);
+		avrcp_list_player_attributes(context->session);
 
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-03-C"))
 		avrcp_get_player_attribute_text(context->session, NULL, 0,
