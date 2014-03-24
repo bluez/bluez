@@ -46,18 +46,44 @@
 static GMainLoop *main_loop;
 static GSList *services;
 
+struct characteristic {
+	char *uuid;
+	uint8_t *value;
+	int vlen;
+};
+
 static gboolean chr_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
-	const char *uuid = user_data;
+	struct characteristic *chr = user_data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &chr->uuid);
+
+	return TRUE;
+}
+
+static gboolean chr_get_value(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct characteristic *chr = user_data;
+	DBusMessageIter array;
+
+	printf("Get(\"Value\")\n");
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&chr->value, chr->vlen);
+
+	dbus_message_iter_close_container(iter, &array);
 
 	return TRUE;
 }
 
 static const GDBusPropertyTable chr_properties[] = {
 	{ "UUID",	"s",	chr_get_uuid },
+	{ "Value", "ay", chr_get_value, NULL, NULL },
 	{ }
 };
 
@@ -100,18 +126,35 @@ static const GDBusPropertyTable service_properties[] = {
 	{ }
 };
 
+static void chr_iface_destroy(gpointer user_data)
+{
+	struct characteristic *chr = user_data;
+
+	g_free(chr->uuid);
+	g_free(chr->value);
+	g_free(chr);
+}
+
 static gboolean register_characteristic(DBusConnection *conn, const char *uuid,
+						const uint8_t *value, int vlen,
 						const char *service_path)
 {
+	struct characteristic *chr;
 	static int id = 1;
 	char *path;
 	gboolean ret = TRUE;
 
 	path = g_strdup_printf("%s/characteristic%d", service_path, id++);
 
+	chr = g_new0(struct characteristic, 1);
+
+	chr->uuid = g_strdup(uuid);
+	chr->value = g_memdup(value, vlen);
+	chr->vlen = vlen;
+
 	if (!g_dbus_register_interface(conn, path, GATT_CHR_IFACE,
 					NULL, NULL, chr_properties,
-					g_strdup(uuid), g_free)) {
+					chr, chr_iface_destroy)) {
 		printf("Couldn't register characteristic interface\n");
 		ret = FALSE;
 	}
@@ -141,14 +184,18 @@ static char *register_service(DBusConnection *conn, const char *uuid)
 static void create_services(DBusConnection *conn)
 {
 	char *service_path;
+	uint8_t level = 0;
 
 	service_path = register_service(conn, IAS_UUID);
 	if (!service_path)
 		return;
 
-	/* Add Alert Level Characteristic to Immediate Alert Service */
-	if (!register_characteristic(conn, ALERT_LEVEL_CHR_UUID,
-							service_path)) {
+	/* Add Alert Level Characteristic to Immediate Alert Service
+	 * According to the IAS SPEC, reading <<Alert level>> is not allowed.
+	 * "Value" is readable for testing purpose only.
+	 */
+	if (!register_characteristic(conn, ALERT_LEVEL_CHR_UUID, &level,
+						sizeof(level), service_path)) {
 		printf("Couldn't register Alert Level characteristic (IAS)\n");
 		g_dbus_unregister_interface(conn, service_path,
 							GATT_SERVICE_IFACE);
