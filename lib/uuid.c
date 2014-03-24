@@ -231,8 +231,8 @@ static int bt_string_to_uuid128(bt_uuid_t *uuid, const char *string)
 {
 	uint32_t data0, data4;
 	uint16_t data1, data2, data3, data5;
-	uint128_t n128, u128;
-	uint8_t *val = (uint8_t *) &n128;
+	uint128_t u128;
+	uint8_t *val = (uint8_t *) &u128;
 
 	if (sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
 				&data0, &data1, &data2,
@@ -252,8 +252,6 @@ static int bt_string_to_uuid128(bt_uuid_t *uuid, const char *string)
 	memcpy(&val[8], &data3, 2);
 	memcpy(&val[10], &data4, 4);
 	memcpy(&val[14], &data5, 2);
-
-	ntoh128(&n128, &u128);
 
 	bt_uuid128_create(uuid, u128);
 
