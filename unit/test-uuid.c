@@ -97,7 +97,6 @@ static void test_uuid(gconstpointer data)
 {
 	const struct uuid_test_data *test_data = data;
 	bt_uuid_t uuid;
-	uint128_t n128, u128;
 
 	g_assert(bt_string_to_uuid(&uuid, test_data->str) == 0);
 	g_assert(uuid.type == test_data->type);
@@ -110,9 +109,11 @@ static void test_uuid(gconstpointer data)
 		g_assert(uuid.value.u32 == test_data->val32);
 		break;
 	case BT_UUID128:
-		memcpy(&n128, test_data->binary, 16);
-		ntoh128(&n128, &u128);
-		g_assert(memcmp(&uuid.value.u128, &u128, 16) == 0);
+		/*
+		 * No matter the system type: 128-bit UUID should use
+		 * big-endian (human readable format).
+		 */
+		g_assert(memcmp(&uuid.value.u128, test_data->binary, 16) == 0);
 		break;
 	default:
 		return;
