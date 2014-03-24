@@ -1167,7 +1167,7 @@ static DBusMessage *set_cumulative_wheel_rev(DBusConnection *conn,
 	csc->pending_req = req;
 
 	att_val[0] = SET_CUMULATIVE_VALUE;
-	att_put_u32(value, att_val + 1);
+	put_le32(value, att_val + 1);
 
 	gatt_write_char(csc->attrib, csc->controlpoint_val_handle, att_val,
 		sizeof(att_val), controlpoint_write_cb, req);
