@@ -121,6 +121,19 @@ struct att_data_list *att_data_list_alloc(uint16_t num, uint16_t len)
 	return list;
 }
 
+static void get_uuid(uint8_t type, const void *val, bt_uuid_t *uuid)
+{
+	if (type == BT_UUID16)
+		bt_uuid16_create(uuid, get_le16(val));
+	else {
+		uint128_t u128;
+
+		/* Convert from 128-bit LE to BE */
+		bswap_128(val, &u128);
+		bt_uuid128_create(uuid, u128);
+	}
+}
+
 uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 						uint8_t *pdu, size_t len)
 {
@@ -152,6 +165,7 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, size_t len, uint16_t *start,
 						uint16_t *end, bt_uuid_t *uuid)
 {
 	const size_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
+	uint8_t type;
 
 	if (pdu == NULL)
 		return 0;
@@ -162,15 +176,17 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	if (pdu[0] != ATT_OP_READ_BY_GROUP_REQ)
 		return 0;
 
-	if (len != (min_len + 2) && len != (min_len + 16))
+	if (len == (min_len + 2))
+		type = BT_UUID16;
+	else if (len == (min_len + 16))
+		type = BT_UUID128;
+	else
 		return 0;
 
 	*start = get_le16(&pdu[1]);
 	*end = get_le16(&pdu[3]);
-	if (len == min_len + 2)
-		bt_uuid16_create(uuid, get_le16(&pdu[5]));
-	else
-		*uuid = att_get_uuid128(&pdu[5]);
+
+	get_uuid(type, &pdu[5], uuid);
 
 	return len;
 }
@@ -394,6 +410,7 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 						uint16_t *end, bt_uuid_t *uuid)
 {
 	const size_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
+	uint8_t type;
 
 	if (pdu == NULL)
 		return 0;
@@ -401,7 +418,11 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	if (start == NULL || end == NULL || uuid == NULL)
 		return 0;
 
-	if (len != (min_len + 2) && len != (min_len + 16))
+	if (len == (min_len + 2))
+		type = BT_UUID16;
+	else if (len == (min_len + 16))
+		type = BT_UUID128;
+	else
 		return 0;
 
 	if (pdu[0] != ATT_OP_READ_BY_TYPE_REQ)
@@ -410,10 +431,7 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 	*start = get_le16(&pdu[1]);
 	*end = get_le16(&pdu[3]);
 
-	if (len == min_len + 2)
-		bt_uuid16_create(uuid, get_le16(&pdu[5]));
-	else
-		*uuid = att_get_uuid128(&pdu[5]);
+	get_uuid(type, &pdu[5], uuid);
 
 	return len;
 }

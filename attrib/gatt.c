@@ -148,6 +148,22 @@ static void put_uuid_le(const bt_uuid_t *uuid, void *dst)
 		bswap_128(&uuid->value.u128, dst);
 }
 
+static void get_uuid128(uint8_t type, const void *val, bt_uuid_t *uuid)
+{
+	if (type == BT_UUID16) {
+		bt_uuid_t uuid16;
+
+		bt_uuid16_create(&uuid16, get_le16(val));
+		bt_uuid_to_uuid128(&uuid16, uuid);
+	} else {
+		uint128_t u128;
+
+		/* Convert from 128-bit LE to BE */
+		bswap_128(val, &u128);
+		bt_uuid128_create(uuid, u128);
+	}
+}
+
 static guint16 encode_discover_primary(uint16_t start, uint16_t end,
 				bt_uuid_t *uuid, uint8_t *pdu, size_t len)
 {
@@ -225,6 +241,7 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	struct att_data_list *list;
 	unsigned int i, err;
 	uint16_t start, end;
+	uint8_t type;
 
 	if (status) {
 		err = status == ATT_ECODE_ATTR_NOT_FOUND ? 0 : status;
@@ -240,22 +257,25 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	for (i = 0, end = 0; i < list->num; i++) {
 		const uint8_t *data = list->data[i];
 		struct gatt_primary *primary;
-		bt_uuid_t uuid;
+		bt_uuid_t uuid128;
 
 		start = get_le16(&data[0]);
 		end = get_le16(&data[2]);
 
-		if (list->len == 6) {
-			bt_uuid_t uuid16;
-
-			bt_uuid16_create(&uuid16, get_le16(&data[4]));
-			bt_uuid_to_uuid128(&uuid16, &uuid);
-		} else if (list->len == 20) {
-			uuid = att_get_uuid128(&data[4]);
-		} else {
+		/*
+		 * FIXME: Check before "for". Elements in the Attribute
+		 * Data List have the same length (list->len).
+		 */
+		if (list->len == 6)
+			type = BT_UUID16;
+		else if (list->len == 20)
+			type = BT_UUID128;
+		else {
 			/* Skipping invalid data */
 			continue;
 		}
+
+		get_uuid128(type, &data[4], &uuid128);
 
 		primary = g_try_new0(struct gatt_primary, 1);
 		if (!primary) {
@@ -265,7 +285,7 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		}
 		primary->range.start = start;
 		primary->range.end = end;
-		bt_uuid_to_string(&uuid, primary->uuid, sizeof(primary->uuid));
+		bt_uuid_to_string(&uuid128, primary->uuid, sizeof(primary->uuid));
 		dp->primaries = g_slist_append(dp->primaries, primary);
 	}
 
@@ -328,7 +348,7 @@ static void resolve_included_uuid_cb(uint8_t status, const uint8_t *pdu,
 	struct included_discovery *isd = query->isd;
 	struct gatt_included *incl = query->included;
 	unsigned int err = status;
-	bt_uuid_t uuid;
+	bt_uuid_t uuid128;
 	size_t buflen;
 	uint8_t *buf;
 
@@ -341,8 +361,9 @@ static void resolve_included_uuid_cb(uint8_t status, const uint8_t *pdu,
 		goto done;
 	}
 
-	uuid = att_get_uuid128(buf);
-	bt_uuid_to_string(&uuid, incl->uuid, sizeof(incl->uuid));
+	get_uuid128(BT_UUID128, buf, &uuid128);
+
+	bt_uuid_to_string(&uuid128, incl->uuid, sizeof(incl->uuid));
 	isd->includes = g_slist_append(isd->includes, incl);
 	query->included = NULL;
 
@@ -503,19 +524,23 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	for (i = 0; i < list->num; i++) {
 		uint8_t *value = list->data[i];
 		struct gatt_char *chars;
-		bt_uuid_t uuid;
+		bt_uuid_t uuid128;
+		uint8_t type;
 
 		last = get_le16(value);
 
-		if (list->len == 7) {
-			bt_uuid_t uuid16;
+		/*
+		 * FIXME: Check before "for". Elements in the Attribute
+		 * Data List have the same length (list->len).
+		 */
+		if (list->len == 7)
+			type = BT_UUID16;
+		else
+			type = BT_UUID128;
 
-			bt_uuid16_create(&uuid16, get_le16(&value[5]));
-			bt_uuid_to_uuid128(&uuid16, &uuid);
-		} else
-			uuid = att_get_uuid128(&value[5]);
+		get_uuid128(type, &value[5], &uuid128);
 
-		if (dc->uuid && bt_uuid_cmp(dc->uuid, &uuid))
+		if (dc->uuid && bt_uuid_cmp(dc->uuid, &uuid128))
 			continue;
 
 		chars = g_try_new0(struct gatt_char, 1);
@@ -527,7 +552,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		chars->handle = last;
 		chars->properties = value[2];
 		chars->value_handle = get_le16(&value[3]);
-		bt_uuid_to_string(&uuid, chars->uuid, sizeof(chars->uuid));
+		bt_uuid_to_string(&uuid128, chars->uuid, sizeof(chars->uuid));
 		dc->characteristics = g_slist_append(dc->characteristics,
 									chars);
 	}

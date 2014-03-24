@@ -428,8 +428,13 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 		if (format == 0x01)
 			bt_uuid16_create(&uuid, get_le16(&value[2]));
-		else
-			uuid = att_get_uuid128(&value[2]);
+		else {
+			uint128_t u128;
+
+			/* Converts from LE to BE byte order */
+			bswap_128(&value[2], &u128);
+			bt_uuid128_create(&uuid, u128);
+		}
 
 		bt_uuid_to_string(&uuid, uuidstr, MAX_LEN_UUID_STR);
 		g_print("handle = 0x%04x, uuid = %s\n", handle, uuidstr);
