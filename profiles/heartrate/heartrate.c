@@ -428,10 +428,10 @@ static void discover_ccc_cb(guint8 status, const guint8 *pdu,
 		hr->measurement_ccc_handle = handle;
 
 		if (g_slist_length(hr->hradapter->watchers) == 0) {
-			att_put_u16(0x0000, attr_val);
+			put_le16(0x0000, attr_val);
 			msg = g_strdup("Disable measurement");
 		} else {
-			att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, attr_val);
+			put_le16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, attr_val);
 			msg = g_strdup("Enable measurement");
 		}
 
@@ -511,7 +511,7 @@ static void enable_measurement(gpointer data, gpointer user_data)
 	if (hr->attrib == NULL || !handle)
 		return;
 
-	att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+	put_le16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
 	msg = g_strdup("Enable measurement");
 
 	gatt_write_char(hr->attrib, handle, value, sizeof(value),
@@ -528,7 +528,7 @@ static void disable_measurement(gpointer data, gpointer user_data)
 	if (hr->attrib == NULL || !handle)
 		return;
 
-	att_put_u16(0x0000, value);
+	put_le16(0x0000, value);
 	msg = g_strdup("Disable measurement");
 
 	gatt_write_char(hr->attrib, handle, value, sizeof(value),

@@ -231,7 +231,7 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 	/* characteristic declaration */
 	bt_uuid16_create(&bt_uuid, GATT_CHARAC_UUID);
 	atval[0] = info->props;
-	att_put_u16(h + 1, &atval[1]);
+	put_le16(h + 1, &atval[1]);
 	put_uuid_le(&info->uuid, &atval[3]);
 	if (attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
 				atval, 3 + info->uuid.type / 8) == NULL)

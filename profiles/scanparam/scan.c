@@ -67,8 +67,8 @@ static void write_scan_params(GAttrib *attrib, uint16_t handle)
 {
 	uint8_t value[4];
 
-	att_put_u16(SCAN_INTERVAL, &value[0]);
-	att_put_u16(SCAN_WINDOW, &value[2]);
+	put_le16(SCAN_INTERVAL, &value[0]);
+	put_le16(SCAN_WINDOW, &value[2]);
 
 	gatt_write_cmd(attrib, handle, value, sizeof(value), NULL, NULL);
 }
@@ -126,7 +126,7 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 	if (uuid16 != GATT_CLIENT_CHARAC_CFG_UUID)
 		goto done;
 
-	att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+	put_le16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
 	gatt_write_char(scan->attrib, handle, value, sizeof(value),
 						ccc_written_cb, user_data);
 done:

@@ -569,7 +569,7 @@ static void process_thermometer_desc(struct characteristic *ch, uint16_t uuid,
 		return;
 	}
 
-	att_put_u16(val, atval);
+	put_le16(val, atval);
 	gatt_write_char(ch->t->attrib, handle, atval, sizeof(atval),
 							write_ccc_cb, msg);
 }
@@ -790,7 +790,7 @@ static void enable_final_measurement(gpointer data, gpointer user_data)
 	if (t->attrib == NULL || !handle)
 		return;
 
-	att_put_u16(GATT_CLIENT_CHARAC_CFG_IND_BIT, value);
+	put_le16(GATT_CLIENT_CHARAC_CFG_IND_BIT, value);
 	msg = g_strdup("Enable Temperature Measurement indications");
 
 	gatt_write_char(t->attrib, handle, value, sizeof(value),
@@ -807,7 +807,7 @@ static void enable_intermediate_measurement(gpointer data, gpointer user_data)
 	if (t->attrib == NULL || !handle)
 		return;
 
-	att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+	put_le16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
 	msg = g_strdup("Enable Intermediate Temperature notifications");
 
 	gatt_write_char(t->attrib, handle, value, sizeof(value),
@@ -824,7 +824,7 @@ static void disable_final_measurement(gpointer data, gpointer user_data)
 	if (t->attrib == NULL || !handle)
 		return;
 
-	att_put_u16(0x0000, value);
+	put_le16(0x0000, value);
 	msg = g_strdup("Disable Temperature Measurement indications");
 
 	gatt_write_char(t->attrib, handle, value, sizeof(value),
@@ -841,7 +841,7 @@ static void disable_intermediate_measurement(gpointer data, gpointer user_data)
 	if (t->attrib == NULL || !handle)
 		return;
 
-	att_put_u16(0x0000, value);
+	put_le16(0x0000, value);
 	msg = g_strdup("Disable Intermediate Temperature notifications");
 
 	gatt_write_char(t->attrib, handle, value, sizeof(value),
@@ -1071,7 +1071,7 @@ static void property_set_interval(const GDBusPropertyTable *property,
 		return;
 	}
 
-	att_put_u16(val, &atval[0]);
+	put_le16(val, &atval[0]);
 
 	interval_data = g_new0(struct tmp_interval_data, 1);
 	interval_data->thermometer = t;

@@ -41,6 +41,7 @@
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "attrib/att-database.h"
+#include "src/shared/util.h"
 #include "src/attrib-server.h"
 #include "attrib/gatt-service.h"
 #include "src/log.h"
@@ -90,7 +91,7 @@ static int encode_current_time(uint8_t value[10])
 		return -EINVAL;
 	}
 
-	att_put_u16(1900 + tm.tm_year, &value[0]); /* Year */
+	put_le16(1900 + tm.tm_year, &value[0]); /* Year */
 	value[2] = tm.tm_mon + 1; /* Month */
 	value[3] = tm.tm_mday; /* Day */
 	value[4] = tm.tm_hour; /* Hours */

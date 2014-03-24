@@ -513,8 +513,8 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 
 		value = (void *) adl->data[i];
 
-		att_put_u16(cur->handle, value);
-		att_put_u16(cur->end, &value[2]);
+		put_le16(cur->handle, value);
+		put_le16(cur->end, &value[2]);
 		/* Attribute Value */
 		memcpy(&value[4], cur->data, cur->len);
 	}
@@ -602,7 +602,7 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 
 		value = (void *) adl->data[i];
 
-		att_put_u16(a->handle, value);
+		put_le16(a->handle, value);
 
 		/* Attribute Value */
 		memcpy(&value[2], a->data, a->len);
@@ -682,7 +682,7 @@ static uint16_t find_info(struct gatt_channel *channel, uint16_t start,
 
 		value = (void *) adl->data[i];
 
-		att_put_u16(a->handle, value);
+		put_le16(a->handle, value);
 
 		/* Attribute Value */
 		put_uuid_le(&a->uuid, &value[2]);
@@ -811,7 +811,7 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 		read_device_ccc(channel->device, handle, &cccval) == 0) {
 		uint8_t config[2];
 
-		att_put_u16(cccval, config);
+		put_le16(cccval, config);
 		return enc_read_resp(config, sizeof(config), pdu, len);
 	}
 
@@ -852,7 +852,7 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 		read_device_ccc(channel->device, handle, &cccval) == 0) {
 		uint8_t config[2];
 
-		att_put_u16(cccval, config);
+		put_le16(cccval, config);
 		return enc_read_blob_resp(config, sizeof(config), offset,
 								pdu, len);
 	}
@@ -1299,7 +1299,7 @@ static gboolean register_core_services(struct gatt_server *server)
 
 	/* GAP service: primary service definition */
 	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(GENERIC_ACCESS_PROFILE_ID, &atval[0]);
+	put_le16(GENERIC_ACCESS_PROFILE_ID, &atval[0]);
 	attrib_db_add_new(server, 0x0001, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 2);
 
@@ -1307,8 +1307,8 @@ static gboolean register_core_services(struct gatt_server *server)
 	server->name_handle = 0x0006;
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	att_put_u16(server->name_handle, &atval[1]);
-	att_put_u16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
+	put_le16(server->name_handle, &atval[1]);
+	put_le16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
 	attrib_db_add_new(server, 0x0004, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 5);
 
@@ -1321,14 +1321,14 @@ static gboolean register_core_services(struct gatt_server *server)
 	server->appearance_handle = 0x0008;
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	att_put_u16(server->appearance_handle, &atval[1]);
-	att_put_u16(GATT_CHARAC_APPEARANCE, &atval[3]);
+	put_le16(server->appearance_handle, &atval[1]);
+	put_le16(GATT_CHARAC_APPEARANCE, &atval[3]);
 	attrib_db_add_new(server, 0x0007, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 5);
 
 	/* GAP service: device appearance attribute */
 	bt_uuid16_create(&uuid, GATT_CHARAC_APPEARANCE);
-	att_put_u16(appearance, &atval[0]);
+	put_le16(appearance, &atval[0]);
 	attrib_db_add_new(server, server->appearance_handle, &uuid, ATT_NONE,
 						ATT_NOT_PERMITTED, atval, 2);
 	server->gap_sdp_handle = attrib_create_sdp_new(server, 0x0001,
@@ -1340,7 +1340,7 @@ static gboolean register_core_services(struct gatt_server *server)
 
 	/* GATT service: primary service definition */
 	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(GENERIC_ATTRIB_PROFILE_ID, &atval[0]);
+	put_le16(GENERIC_ATTRIB_PROFILE_ID, &atval[0]);
 	attrib_db_add_new(server, 0x0010, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 2);
 

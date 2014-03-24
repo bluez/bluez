@@ -233,7 +233,7 @@ static void write_ccc(GAttrib *attrib, uint16_t handle, gpointer user_data)
 {
 	uint8_t value[2];
 
-	att_put_u16(GATT_CLIENT_CHARAC_CFG_IND_BIT, value);
+	put_le16(GATT_CLIENT_CHARAC_CFG_IND_BIT, value);
 	gatt_write_char(attrib, handle, value, sizeof(value), ccc_written_cb,
 								user_data);
 }
