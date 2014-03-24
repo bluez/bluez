@@ -815,7 +815,7 @@ int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
 {
 	uint8_t params[2];
 
-	bt_put_be16(player_id, params);
+	put_be16(player_id, params);
 
 	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
 				AVRCP_SET_ADDRESSED_PLAYER, params,
@@ -881,7 +881,7 @@ int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
 			len = strlen(text[i]);
 
 		ptr[0] = attrs[i];
-		bt_put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
+		put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
 		ptr[3] = len;
 		memcpy(&ptr[4], text[i], len);
 		ptr += 4 + len;
@@ -945,7 +945,7 @@ int avrcp_get_player_values_text_rsp(struct avrcp *session,
 			len = strlen(text[i]);
 
 		ptr[0] = values[i];
-		bt_put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
+		put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
 		ptr[3] = len;
 		memcpy(&ptr[4], text[i], len);
 		ptr += 4 + len;
@@ -1016,7 +1016,7 @@ int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op)
 		return avctp_send_passthrough(session->conn, op, NULL, 0);
 
 	hton24(params, vendor);
-	bt_put_be16(op, &params[3]);
+	put_be16(op, &params[3]);
 
 	return avctp_send_passthrough(session->conn, AVC_VENDOR_UNIQUE, params,
 								sizeof(params));

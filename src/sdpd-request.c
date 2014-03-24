@@ -184,7 +184,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 				memcpy(&tmp, p, sizeof(tmp));
 
 				pElem = malloc(sizeof(uint16_t));
-				bt_put_be16(tmp, pElem);
+				put_be16(tmp, pElem);
 			}
 			p += sizeof(uint16_t);
 			seqlen += sizeof(uint16_t);
@@ -419,13 +419,13 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	/* total service record count = 0 */
 	pTotalRecordCount = pdata;
-	bt_put_be16(0, pdata);
+	put_be16(0, pdata);
 	pdata += sizeof(uint16_t);
 	buf->data_size += sizeof(uint16_t);
 
 	/* current service record count = 0 */
 	pCurrentRecordCount = pdata;
-	bt_put_be16(0, pdata);
+	put_be16(0, pdata);
 	pdata += sizeof(uint16_t);
 	buf->data_size += sizeof(uint16_t);
 
@@ -451,8 +451,8 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		SDPDBG("Match count: %d", rsp_count);
 
 		buf->data_size += handleSize;
-		bt_put_be16(rsp_count, pTotalRecordCount);
-		bt_put_be16(rsp_count, pCurrentRecordCount);
+		put_be16(rsp_count, pTotalRecordCount);
+		put_be16(rsp_count, pCurrentRecordCount);
 
 		if (rsp_count > actual) {
 			/* cache the rsp and generate a continuation state */
@@ -517,8 +517,8 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		}
 
 		buf->data_size += handleSize;
-		bt_put_be16(rsp_count, pTotalRecordCount);
-		bt_put_be16(i - lastIndex, pCurrentRecordCount);
+		put_be16(rsp_count, pTotalRecordCount);
+		put_be16(i - lastIndex, pCurrentRecordCount);
 
 		if (i == rsp_count) {
 			/* set "null" continuationState */
@@ -774,7 +774,7 @@ done:
 		return status;
 
 	/* set attribute list byte count */
-	bt_put_be16(buf->data_size - cstate_size, buf->data);
+	put_be16(buf->data_size - cstate_size, buf->data);
 	buf->data_size += sizeof(uint16_t);
 	return 0;
 }
@@ -945,7 +945,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	if (!status) {
 		/* set attribute list byte count */
-		bt_put_be16(buf->data_size - cstate_size, buf->data);
+		put_be16(buf->data_size - cstate_size, buf->data);
 		buf->data_size += sizeof(uint16_t);
 	}
 
@@ -1029,7 +1029,7 @@ static void process_request(sdp_req_t *req)
 send_rsp:
 	if (status) {
 		rsphdr->pdu_id = SDP_ERROR_RSP;
-		bt_put_be16(status, rsp.data);
+		put_be16(status, rsp.data);
 		rsp.data_size = sizeof(uint16_t);
 	}
 

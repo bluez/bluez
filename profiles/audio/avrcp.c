@@ -2450,7 +2450,7 @@ static void avrcp_get_item_attributes(struct avrcp *session, uint64_t uid)
 	pdu->pdu_id = AVRCP_GET_ITEM_ATTRIBUTES;
 	pdu->params[0] = 0x03;
 	bt_put_be64(uid, &pdu->params[1]);
-	bt_put_be16(player->uid_counter, &pdu->params[9]);
+	put_be16(player->uid_counter, &pdu->params[9]);
 	pdu->param_len = htons(12);
 
 	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
@@ -2634,7 +2634,7 @@ static void avrcp_change_path(struct avrcp *session, uint8_t direction,
 	struct avrcp_browsing_header *pdu = (void *) buf;
 
 	memset(buf, 0, sizeof(buf));
-	bt_put_be16(player->uid_counter, &pdu->params[0]);
+	put_be16(player->uid_counter, &pdu->params[0]);
 	pdu->params[2] = direction;
 	bt_put_be64(uid, &pdu->params[3]);
 	pdu->pdu_id = AVRCP_CHANGE_PATH;
@@ -2700,8 +2700,8 @@ static void avrcp_search(struct avrcp *session, const char *string)
 	stringlen = strnlen(string, sizeof(buf) - len);
 	len += stringlen;
 
-	bt_put_be16(AVRCP_CHARSET_UTF8, &pdu->params[0]);
-	bt_put_be16(stringlen, &pdu->params[2]);
+	put_be16(AVRCP_CHARSET_UTF8, &pdu->params[0]);
+	put_be16(stringlen, &pdu->params[2]);
 	memcpy(&pdu->params[4], string, stringlen);
 	pdu->pdu_id = AVRCP_SEARCH;
 	pdu->param_len = htons(len - AVRCP_BROWSING_HEADER_LENGTH);
@@ -2739,7 +2739,7 @@ static void avrcp_play_item(struct avrcp *session, uint64_t uid)
 
 	pdu->params[0] = player->scope;
 	bt_put_be64(uid, &pdu->params[1]);
-	bt_put_be16(player->uid_counter, &pdu->params[9]);
+	put_be16(player->uid_counter, &pdu->params[9]);
 
 	length = AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
 
@@ -2785,7 +2785,7 @@ static void avrcp_add_to_nowplaying(struct avrcp *session, uint64_t uid)
 
 	pdu->params[0] = player->scope;
 	bt_put_be64(uid, &pdu->params[1]);
-	bt_put_be16(player->uid_counter, &pdu->params[9]);
+	put_be16(player->uid_counter, &pdu->params[9]);
 
 	length = AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
 

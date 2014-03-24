@@ -463,7 +463,7 @@ success:
 	return 0;
 
 invalid:
-	bt_put_be16(SDP_INVALID_SYNTAX, rsp->data);
+	put_be16(SDP_INVALID_SYNTAX, rsp->data);
 	rsp->data_size = sizeof(uint16_t);
 
 	return -1;
@@ -506,7 +506,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 
 done:
 	p = rsp->data;
-	bt_put_be16(status, p);
+	put_be16(status, p);
 	rsp->data_size = sizeof(uint16_t);
 	return status;
 }
@@ -536,7 +536,7 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 	}
 
 	p = rsp->data;
-	bt_put_be16(status, p);
+	put_be16(status, p);
 	rsp->data_size = sizeof(uint16_t);
 
 	return status;

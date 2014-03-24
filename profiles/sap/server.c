@@ -668,7 +668,7 @@ int sap_connect_rsp(void *sap_device, uint8_t status)
 		param = (struct sap_parameter *) &buf[size];
 		param->id = SAP_PARAM_ID_MAX_MSG_SIZE;
 		param->len = htons(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
-		bt_put_be16(SAP_BUF_SIZE, &param->val);
+		put_be16(SAP_BUF_SIZE, &param->val);
 		size += PARAMETER_SIZE(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
 
 		/* fall */

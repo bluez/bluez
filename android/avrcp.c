@@ -184,11 +184,11 @@ static size_t write_element_text(uint8_t id, uint8_t text_len, uint8_t *text,
 	pdu += 4;
 	len += 4;
 
-	bt_put_be16(charset, pdu);
+	put_be16(charset, pdu);
 	pdu += 2;
 	len += 2;
 
-	bt_put_be16(text_len, pdu);
+	put_be16(text_len, pdu);
 	pdu += 2;
 	len += 2;
 
