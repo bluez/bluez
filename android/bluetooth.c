@@ -1209,15 +1209,19 @@ static void update_new_device(struct device *dev, int8_t rssi,
 				sizeof(android_type), &android_type);
 	ev->num_props++;
 
-	if (eir->class) {
+	if (eir->class)
 		dev->class = eir->class;
+
+	if (dev->class) {
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_CLASS,
 					sizeof(dev->class), &dev->class);
 		ev->num_props++;
 	}
 
-	if (rssi && rssi_above_threshold(dev->rssi, rssi)) {
+	if (rssi && rssi_above_threshold(dev->rssi, rssi))
 		dev->rssi = rssi;
+
+	if (dev->rssi) {
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_RSSI,
 						sizeof(dev->rssi), &dev->rssi);
 		ev->num_props++;
@@ -1226,6 +1230,9 @@ static void update_new_device(struct device *dev, int8_t rssi,
 	if (eir->name && strlen(eir->name)) {
 		g_free(dev->name);
 		dev->name = g_strdup(eir->name);
+	}
+
+	if (dev->name) {
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
 						strlen(dev->name), dev->name);
 		ev->num_props++;
