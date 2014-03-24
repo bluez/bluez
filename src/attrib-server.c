@@ -318,9 +318,13 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 
 	if (a->len == 2)
 		sdp_uuid16_create(&svc, get_le16(a->data));
-	else if (a->len == 16)
-		sdp_uuid128_create(&svc, a->data);
-	else
+	else if (a->len == 16) {
+		uint8_t be128[16];
+
+		/* Converting from LE to BE */
+		bswap_128(a->data, be128);
+		sdp_uuid128_create(&svc, be128);
+	} else
 		return 0;
 
 	record = server_record_new(&svc, handle, end);
