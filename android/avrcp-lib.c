@@ -506,7 +506,7 @@ static ssize_t get_element_attributes(struct avrcp *session,
 	if (!params || params_len != 9 + params[8] * 4)
 		return -EINVAL;
 
-	uid = bt_get_be64(params);
+	uid = get_be64(params);
 	number = params[8];
 
 	for (i = 0; i < number; i++) {

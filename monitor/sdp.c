@@ -97,8 +97,7 @@ static void print_uint(uint8_t indent, const uint8_t *data, uint32_t size)
 		print_field("%*c0x%8.8x", indent, ' ', get_be32(data));
 		break;
 	case 8:
-		print_field("%*c0x%16.16" PRIx64, indent, ' ',
-							bt_get_be64(data));
+		print_field("%*c0x%16.16" PRIx64, indent, ' ', get_be64(data));
 		break;
 	default:
 		packet_hexdump(data, size);

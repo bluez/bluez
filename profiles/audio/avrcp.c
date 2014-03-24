@@ -2126,7 +2126,7 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	if (len < 13)
 		return NULL;
 
-	uid = bt_get_be64(&operands[0]);
+	uid = get_be64(&operands[0]);
 
 	namelen = MIN(get_be16(&operands[11]), sizeof(name) - 1);
 	if (namelen > 0) {
@@ -2161,7 +2161,7 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	if (len < 12)
 		return NULL;
 
-	uid = bt_get_be64(&operands[0]);
+	uid = get_be64(&operands[0]);
 	type = operands[8];
 	playable = operands[9];
 
@@ -3072,7 +3072,7 @@ static void avrcp_track_changed(struct avrcp *session,
 {
 	if (session->browsing_id) {
 		struct avrcp_player *player = session->controller->player;
-		player->uid = bt_get_be64(&pdu->params[1]);
+		player->uid = get_be64(&pdu->params[1]);
 		avrcp_get_item_attributes(session, player->uid);
 	} else
 		avrcp_get_element_attributes(session);
