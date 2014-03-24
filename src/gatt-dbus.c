@@ -186,7 +186,9 @@ static void proxy_write_reply(const DBusError *derr, void *user_data)
 }
 
 static void proxy_write_cb(struct btd_attribute *attr,
-					const uint8_t *value, size_t len)
+					const uint8_t *value, size_t len,
+					btd_attr_write_result_t result,
+					void *user_data)
 {
 	GDBusProxy *proxy;
 

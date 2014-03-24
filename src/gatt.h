@@ -42,15 +42,29 @@ typedef void (*btd_attr_read_result_t) (int err, uint8_t *value, size_t len,
 typedef void (*btd_attr_read_t) (struct btd_attribute *attr,
 						btd_attr_read_result_t result,
 						void *user_data);
+
+/*
+ * Write operation result callback. Called from the service implementation
+ * informing the core (ATT layer) the result of the write operation. It is used
+ * to manage Write Request operations.
+ * @err:	error in -errno format.
+ * @user_data:	user_data passed in btd_attr_write_t callback.
+ */
+typedef void (*btd_attr_write_result_t) (int err, void *user_data);
 /*
  * Service implementation callback passed to core (ATT layer). It manages write
  * operations received from remote devices.
  * @attr:	reference of the attribute to be changed.
  * @value:	new attribute value.
  * @len:	length of value.
+ * @result:	callback called from the service implementation informing the
+ *		result of the write operation.
+ * @user_data:	user_data passed in btd_attr_write_result_t callback.
  */
 typedef void (*btd_attr_write_t) (struct btd_attribute *attr,
-					const uint8_t *value, size_t len);
+					const uint8_t *value, size_t len,
+					btd_attr_write_result_t result,
+					void *user_data);
 
 /* btd_gatt_add_service - Add a service declaration to local attribute database.
  * @uuid:	Service UUID.
