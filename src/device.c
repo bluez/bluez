@@ -4730,6 +4730,9 @@ void device_set_appearance(struct btd_device *device, uint16_t value)
 {
 	const char *icon = gap_appearance_to_icon(value);
 
+	if (device->appearance == value)
+		return;
+
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "Appearance");
 
