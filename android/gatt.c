@@ -53,6 +53,23 @@ struct gatt_client {
 	uint8_t uuid[16];
 };
 
+struct element_id {
+	bt_uuid_t uuid;
+	uint8_t instance;
+};
+
+struct characteristic {
+	struct element_id id;
+	struct gatt_char ch;
+};
+
+struct service {
+	struct element_id id;
+	struct gatt_primary primary;
+
+	struct queue *chars;
+};
+
 struct gatt_device {
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
@@ -78,6 +95,14 @@ static struct queue *conn_list	= NULL;		/* Connected devices */
 static struct queue *conn_wait_queue = NULL;	/* Devs waiting to connect */
 
 static void bt_le_discovery_stop_cb(void);
+
+static void free_gatt_service(void *data)
+{
+	struct service *srvc = data;
+
+	queue_destroy(srvc->chars, free);
+	free(srvc);
+}
 
 static bool match_client_by_uuid(const void *data, const void *user_data)
 {
@@ -123,12 +148,35 @@ static bool match_dev_by_conn_id(const void *data, const void *user_data)
 	return dev->conn_id == conn_id;
 }
 
+static bool match_srvc_by_gatt_id(const void *data, const void *user_data)
+{
+	const struct element_id *exp_id = user_data;
+	const struct service *service = data;
+	bt_uuid_t uuid;
+
+	bt_string_to_uuid(&uuid, service->primary.uuid);
+	if (service->id.instance == exp_id->instance)
+		return !bt_uuid_cmp(&uuid, &exp_id->uuid);
+
+	return false;
+}
+
+static bool match_char_by_higher_inst_id(const void *data,
+							const void *user_data)
+{
+	const struct characteristic *ch = data;
+	uint8_t inst_id = PTR_TO_INT(user_data);
+
+	/* For now we match inst_id as it is unique, we'll match uuids later */
+	return inst_id < ch->id.instance;
+}
+
 static void destroy_device(void *data)
 {
 	struct gatt_device *dev = data;
 
 	queue_destroy(dev->clients, NULL);
-	queue_destroy(dev->services, free);
+	queue_destroy(dev->services, free_gatt_service);
 	free(dev);
 }
 
@@ -224,19 +272,26 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 	for (l = services; l; l = l->next) {
 		struct hal_ev_gatt_client_search_result ev_res;
 		struct gatt_primary *prim = l->data;
-		struct gatt_primary *p;
+		struct service *p;
 		bt_uuid_t uuid;
 
-		p = new0(struct gatt_primary, 1);
+		p = new0(struct service, 1);
 		if (!p) {
 			error("gatt: Cannot allocate memory for gatt_primary");
+			continue;
+		}
+
+		p->chars = queue_new();
+		if (!p->chars) {
+			error("gatt: Cannot allocate memory for char cache");
+			free(p);
 			continue;
 		}
 
 		memset(&ev_res, 0, sizeof(ev_res));
 
 		/* Put primary service to our local list */
-		memcpy(p, prim, sizeof(*p));
+		memcpy(&p->primary, prim, sizeof(p->primary));
 		if (!queue_push_tail(dev->services, p)) {
 			error("gatt: Cannot push primary service to the list");
 			free(p);
@@ -862,13 +917,183 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 					HAL_STATUS_FAILED);
 }
 
+static void send_client_char_notify(const struct characteristic *ch,
+					int32_t conn_id,
+					const struct service *service,
+					uint8_t status)
+{
+	struct hal_ev_gatt_client_get_characteristic ev;
+	bt_uuid_t uuid;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.status = status;
+
+	if (ch) {
+		ev.char_prop = ch->ch.properties;
+		ev.char_id.inst_id = ch->id.instance;
+		bt_string_to_uuid(&uuid, ch->ch.uuid);
+		memcpy(&ev.char_id.uuid, &uuid.value.u128.data,
+						sizeof(ev.char_id.uuid));
+	}
+
+	ev.conn_id = conn_id;
+	/* TODO need to be handled for included services too */
+	ev.srvc_id.is_primary = 1;
+	ev.srvc_id.inst_id = service->id.instance;
+	bt_string_to_uuid(&uuid, service->primary.uuid);
+	memcpy(&ev.srvc_id.uuid, &uuid.value.u128.data,
+					sizeof(ev.srvc_id.uuid));
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
+					HAL_EV_GATT_CLIENT_GET_CHARACTERISTIC,
+					sizeof(ev), &ev);
+}
+
+static void cache_all_srvc_chars(GSList *characteristics, struct queue *q)
+{
+	uint16_t inst_id = 0;
+	bt_uuid_t uuid;
+
+	/* Refresh characteristics cache if already exist */
+	if (!queue_isempty(q))
+		queue_remove_all(q, NULL, NULL, free);
+
+	for (; characteristics; characteristics = characteristics->next) {
+		struct characteristic *ch;
+
+		ch = new0(struct characteristic, 1);
+		if (!ch) {
+			error("gatt: Could not allocate characteristic");
+			continue;
+		}
+
+		memcpy(&ch->ch, characteristics->data, sizeof(ch->ch));
+
+		bt_string_to_uuid(&uuid, ch->ch.uuid);
+		bt_uuid_to_uuid128(&ch->id.uuid, &uuid);
+
+		/* For now we increment inst_id and use it as characteristic
+		 * handle
+		 */
+		ch->id.instance = ++inst_id;
+
+		if (!queue_push_tail(q, ch)) {
+			error("gatt: Error while caching characteristic");
+			free(ch);
+		}
+	}
+}
+
+struct discover_char_data {
+	int32_t conn_id;
+	struct service *service;
+};
+
+static void discover_char_cb(uint8_t status, GSList *characteristics,
+								void *user_data)
+{
+	struct discover_char_data *data = user_data;
+
+	cache_all_srvc_chars(characteristics, data->service->chars);
+
+	if (!queue_isempty(data->service->chars))
+		send_client_char_notify(queue_peek_head(data->service->chars),
+						data->conn_id, data->service,
+						HAL_STATUS_SUCCESS);
+	else
+		send_client_char_notify(NULL, data->conn_id, data->service,
+							HAL_STATUS_FAILED);
+
+	free(data);
+}
+
+static void hal_srvc_id_to_gatt_id(const struct hal_gatt_srvc_id *from,
+							struct element_id *to)
+{
+	uint128_t uuid128;
+
+	to->instance = from->inst_id;
+
+	memcpy(&uuid128.data, &from->uuid, sizeof(uuid128));
+	bt_uuid128_create(&to->uuid, uuid128);
+}
+
 static void handle_client_get_characteristic(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_client_get_characteristic *cmd = buf;
+	struct discover_char_data *cb_data;
+	struct characteristic *ch;
+	struct element_id match_id;
+	struct gatt_device *dev;
+	struct service *srvc;
+	uint8_t status;
+
 	DBG("");
 
+	if (len != sizeof(*cmd) + (cmd->number * sizeof(cmd->gatt_id[0]))) {
+		error("Invalid get characteristic size (%u bytes), terminating",
+									len);
+		raise(SIGTERM);
+		return;
+	}
+
+	dev = queue_find(conn_list, match_dev_by_conn_id,
+						INT_TO_PTR(cmd->conn_id));
+	if (!dev) {
+		error("gatt: conn_id=%d not found", cmd->conn_id);
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	hal_srvc_id_to_gatt_id(&cmd->srvc_id, &match_id);
+	srvc = queue_find(dev->services, match_srvc_by_gatt_id, &match_id);
+	if (!srvc) {
+		error("gatt: Service with inst_id: %d not found",
+							match_id.instance);
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	cb_data = new0(struct discover_char_data, 1);
+	if (!cb_data) {
+		error("gatt: Cannot allocate call data");
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	cb_data->service = srvc;
+	cb_data->conn_id = dev->conn_id;
+
+	/* Discover all characteristics for services if not cached yet */
+	if (queue_isempty(srvc->chars)) {
+		gatt_discover_char(dev->attrib, srvc->primary.range.start,
+					srvc->primary.range.end, NULL,
+					discover_char_cb, cb_data);
+
+		status = HAL_STATUS_SUCCESS;
+		goto done;
+	}
+
+	free(cb_data);
+
+	if (cmd->number)
+		ch = queue_find(srvc->chars, match_char_by_higher_inst_id,
+					INT_TO_PTR(cmd->gatt_id[0].inst_id));
+	else
+		ch = queue_peek_head(srvc->chars);
+
+	if (ch)
+		send_client_char_notify(ch, dev->conn_id, srvc,
+							HAL_STATUS_SUCCESS);
+	else
+		send_client_char_notify(NULL, dev->conn_id, srvc,
+							HAL_STATUS_FAILED);
+
+	status = HAL_STATUS_SUCCESS;
+
+done:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-					HAL_OP_GATT_CLIENT_GET_CHARACTERISTIC,
-					HAL_STATUS_FAILED);
+				HAL_OP_GATT_CLIENT_GET_CHARACTERISTIC, status);
 }
 
 static void handle_client_get_descriptor(const void *buf, uint16_t len)
