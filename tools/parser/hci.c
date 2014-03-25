@@ -37,7 +37,6 @@
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
 #include "lib/amp.h"
-#include "src/shared/util.h"
 
 static uint16_t manufacturer = DEFAULT_COMPID;
 

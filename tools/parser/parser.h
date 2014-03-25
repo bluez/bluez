@@ -30,6 +30,7 @@
 #include <netinet/in.h>
 
 #include "lib/bluetooth.h"
+#include "src/shared/util.h"
 
 struct frame {
 	void		*data;
@@ -173,7 +174,7 @@ static inline uint16_t get_u16(struct frame *frm)
 	uint16_t *u16_ptr = frm->ptr;
 	frm->ptr += 2;
 	frm->len -= 2;
-	return ntohs(bt_get_unaligned(u16_ptr));
+	return get_be16(u16_ptr);
 }
 
 static inline uint32_t get_u32(struct frame *frm)
@@ -181,13 +182,13 @@ static inline uint32_t get_u32(struct frame *frm)
 	uint32_t *u32_ptr = frm->ptr;
 	frm->ptr += 4;
 	frm->len -= 4;
-	return ntohl(bt_get_unaligned(u32_ptr));
+	return get_be32(u32_ptr);
 }
 
 static inline uint64_t get_u64(struct frame *frm)
 {
 	uint64_t *u64_ptr = frm->ptr;
-	uint64_t u64 = bt_get_unaligned(u64_ptr), tmp;
+	uint64_t u64 = get_unaligned(u64_ptr), tmp;
 	frm->ptr += 8;
 	frm->len -= 8;
 	tmp = ntohl(u64 & 0xffffffff);

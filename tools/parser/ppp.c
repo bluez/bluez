@@ -103,7 +103,7 @@ static void hdlc_dump(int level, struct frame *frm)
 	uint8_t ctrl = get_u8(frm);
 	uint16_t fcs, proto;
 
-	fcs = bt_get_unaligned((uint16_t *) (frm->ptr + frm->len - 2));
+	fcs = get_unaligned((uint16_t *) (frm->ptr + frm->len - 2));
 	frm->len -= 2;
 
 	p_indent(level, frm);

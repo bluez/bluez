@@ -39,7 +39,6 @@
 #include "lib/hci.h"
 #include "lib/a2mp.h"
 #include "lib/amp.h"
-#include "src/shared/util.h"
 
 typedef struct {
 	uint16_t handle;
