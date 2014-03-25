@@ -2546,10 +2546,32 @@ failed:
 
 static void handle_client_read_remote_rssi(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_client_read_remote_rssi *cmd = buf;
+	struct hal_ev_gatt_client_read_remote_rssi ev;
+	uint8_t status;
+
 	DBG("");
 
+	if (!queue_find(gatt_clients, match_client_by_id,
+						INT_TO_PTR(cmd->client_if))) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	/* TODO fake RSSI until kernel support is added */
+	ev.client_if = cmd->client_if;
+	memcpy(ev.address, cmd->bdaddr, sizeof(ev.address));
+	ev.status = HAL_STATUS_SUCCESS;
+	ev.rssi = -50 - (rand() % 40);
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
+			HAL_EV_GATT_CLIENT_READ_REMOTE_RSSI, sizeof(ev), &ev);
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_CLIENT_READ_REMOTE_RSSI, HAL_STATUS_FAILED);
+			HAL_OP_GATT_CLIENT_READ_REMOTE_RSSI, status);
 }
 
 static void handle_client_get_device_type(const void *buf, uint16_t len)
