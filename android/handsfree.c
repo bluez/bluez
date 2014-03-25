@@ -2014,8 +2014,19 @@ static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 {
 	char *clip, *num;
 
-	if (device.setup_state == HAL_HANDSFREE_CALL_STATE_INCOMING)
+	if (device.setup_state == HAL_HANDSFREE_CALL_STATE_INCOMING) {
+		if (device.num_active != num_active ||
+						device.num_held != num_held) {
+			/* calls changed while waiting call ie. due to
+			 * termination of active call
+			 */
+			update_indicator(IND_CALLHELD,
+					num_held ? (num_active ? 1 : 2) : 0);
+			update_indicator(IND_CALL, !!(num_active + num_held));
+		}
+
 		return;
+	}
 
 	if (device.call_hanging_up)
 		return;
