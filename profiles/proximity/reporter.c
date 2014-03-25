@@ -130,7 +130,7 @@ static void register_tx_power(struct btd_adapter *adapter)
 
 	/* Power level value */
 	bt_uuid16_create(&uuid, POWER_LEVEL_CHR_UUID);
-	att_put_u8(0x00, &atval[0]);
+	atval[0] = 0x00;
 	attrib_db_add(adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 1);
 
 	/* Client characteristic configuration */
