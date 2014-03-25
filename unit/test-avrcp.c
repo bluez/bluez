@@ -517,7 +517,7 @@ static void test_client(gconstpointer data)
 	}
 
 	if (g_str_equal(context->data->test_name, "/TP/MDI/BV-01-C"))
-		avrcp_get_play_status(context->session, NULL, NULL);
+		avrcp_get_play_status(context->session);
 
 	if (g_str_equal(context->data->test_name, "/TP/MDI/BV-03-C"))
 		avrcp_get_element_attributes(context->session, NULL, NULL);

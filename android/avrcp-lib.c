@@ -1210,12 +1210,57 @@ int avrcp_set_player_value(struct avrcp *session, uint8_t number,
 				set_value_rsp, session);
 }
 
-int avrcp_get_play_status(struct avrcp *session, avctp_rsp_cb func,
-								void *user_data)
+static gboolean get_play_status_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu;
+	uint8_t status = 0;
+	uint32_t position = 0;
+	uint32_t duration = 0;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->get_play_status)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	if (pdu->params_len < 5) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	duration = bt_get_be32(&pdu->params[0]);
+	position = bt_get_be32(&pdu->params[4]);
+	status = pdu->params[8];
+	err = 0;
+
+done:
+	player->cfm->get_play_status(session, err, status, position, duration,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_get_play_status(struct avrcp *session)
 {
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
-				AVRCP_GET_PLAY_STATUS, NULL, 0, func,
-				user_data);
+				AVRCP_GET_PLAY_STATUS, NULL, 0,
+				get_play_status_rsp, session);
 }
 
 int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
