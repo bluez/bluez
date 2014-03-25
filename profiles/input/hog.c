@@ -598,10 +598,10 @@ static void forward_report(struct hog_device *hogdev,
 	if (hogdev->attrib == NULL)
 		return;
 
-	if (report->decl->properties & ATT_CHAR_PROPER_WRITE)
+	if (report->decl->properties & GATT_CHR_PROP_WRITE)
 		gatt_write_char(hogdev->attrib, report->decl->value_handle,
 				data, size, output_written_cb, hogdev);
-	else if (report->decl->properties & ATT_CHAR_PROPER_WRITE_WITHOUT_RESP)
+	else if (report->decl->properties & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
 		gatt_write_cmd(hogdev->attrib, report->decl->value_handle,
 						data, size, NULL, NULL);
 }

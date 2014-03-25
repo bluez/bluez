@@ -91,8 +91,8 @@ static GSList *parse_opts(gatt_option opt1, va_list args)
 		case GATT_OPT_CHR_PROPS:
 			info->props = va_arg(args, int);
 
-			if (info->props & (ATT_CHAR_PROPER_NOTIFY |
-						ATT_CHAR_PROPER_INDICATE))
+			if (info->props & (GATT_CHR_PROP_NOTIFY |
+						GATT_CHR_PROP_INDICATE))
 				/* client characteristic configuration */
 				info->num_attrs += 1;
 
@@ -156,7 +156,7 @@ static int att_read_req(int authorization, int authentication, uint8_t props)
 	else if (authentication == GATT_CHR_VALUE_READ ||
 				authentication == GATT_CHR_VALUE_BOTH)
 		return ATT_AUTHENTICATION;
-	else if (!(props & ATT_CHAR_PROPER_READ))
+	else if (!(props & GATT_CHR_PROP_READ))
 		return ATT_NOT_PERMITTED;
 
 	return ATT_NONE;
@@ -170,8 +170,8 @@ static int att_write_req(int authorization, int authentication, uint8_t props)
 	else if (authentication == GATT_CHR_VALUE_WRITE ||
 				authentication == GATT_CHR_VALUE_BOTH)
 		return ATT_AUTHENTICATION;
-	else if (!(props & (ATT_CHAR_PROPER_WRITE |
-					ATT_CHAR_PROPER_WRITE_WITHOUT_RESP)))
+	else if (!(props & (GATT_CHR_PROP_WRITE |
+					GATT_CHR_PROP_WRITE_WITHOUT_RESP)))
 		return ATT_NOT_PERMITTED;
 
 	return ATT_NONE;
@@ -262,7 +262,7 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 		*info->value_handle = a->handle;
 
 	/* client characteristic configuration descriptor */
-	if (info->props & (ATT_CHAR_PROPER_NOTIFY | ATT_CHAR_PROPER_INDICATE)) {
+	if (info->props & (GATT_CHR_PROP_NOTIFY | GATT_CHR_PROP_INDICATE)) {
 		uint8_t cfg_val[2];
 
 		bt_uuid16_create(&bt_uuid, GATT_CLIENT_CHARAC_CFG_UUID);

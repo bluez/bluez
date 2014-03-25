@@ -1310,7 +1310,7 @@ static gboolean register_core_services(struct gatt_server *server)
 	/* GAP service: device name characteristic */
 	server->name_handle = 0x0006;
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(server->name_handle, &atval[1]);
 	put_le16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
 	attrib_db_add_new(server, 0x0004, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -1324,7 +1324,7 @@ static gboolean register_core_services(struct gatt_server *server)
 	/* GAP service: device appearance characteristic */
 	server->appearance_handle = 0x0008;
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(server->appearance_handle, &atval[1]);
 	put_le16(GATT_CHARAC_APPEARANCE, &atval[3]);
 	attrib_db_add_new(server, 0x0007, &uuid, ATT_NONE, ATT_NOT_PERMITTED,

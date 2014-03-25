@@ -154,14 +154,14 @@ static gboolean register_current_time_service(struct btd_adapter *adapter)
 	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
 				/* CT Time characteristic */
 				GATT_OPT_CHR_UUID16, CT_TIME_CHR_UUID,
-				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
-							ATT_CHAR_PROPER_NOTIFY,
+				GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ |
+							GATT_CHR_PROP_NOTIFY,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 						current_time_read, adapter,
 
 				/* Local Time Information characteristic */
 				GATT_OPT_CHR_UUID16, LOCAL_TIME_INFO_CHR_UUID,
-				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ,
+				GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 						local_time_info_read, adapter,
 
@@ -218,13 +218,13 @@ static gboolean register_ref_time_update_service(struct btd_adapter *adapter)
 				/* Time Update control point */
 				GATT_OPT_CHR_UUID16, TIME_UPDATE_CTRL_CHR_UUID,
 				GATT_OPT_CHR_PROPS,
-					ATT_CHAR_PROPER_WRITE_WITHOUT_RESP,
+					GATT_CHR_PROP_WRITE_WITHOUT_RESP,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_WRITE,
 						time_update_control, adapter,
 
 				/* Time Update status */
 				GATT_OPT_CHR_UUID16, TIME_UPDATE_STAT_CHR_UUID,
-				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ,
+				GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 						time_update_status, adapter,
 

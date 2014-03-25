@@ -116,8 +116,8 @@ static gboolean register_battery_service(struct btd_adapter *adapter)
 	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
 			/* battery state characteristic */
 			GATT_OPT_CHR_UUID16, BATTERY_STATE_UUID,
-			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
-							ATT_CHAR_PROPER_NOTIFY,
+			GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ |
+							GATT_CHR_PROP_NOTIFY,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 						battery_state_read, adapter,
 
@@ -176,7 +176,7 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 
 	/* Thermometer: temperature characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	put_le16(TEMPERATURE_UUID, &atval[3]);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -208,7 +208,7 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 
 	/* Thermometer: relative humidity characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	put_le16(RELATIVE_HUMIDITY_UUID, &atval[3]);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -277,7 +277,7 @@ static void register_manuf1_service(struct gatt_example_adapter *adapter,
 
 	/* Manufacturer name characteristic definition */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	put_le16(MANUFACTURER_NAME_UUID, &atval[3]);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -292,7 +292,7 @@ static void register_manuf1_service(struct gatt_example_adapter *adapter,
 
 	/* Manufacturer serial number characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	put_le16(MANUFACTURER_SERIAL_UUID, &atval[3]);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -341,7 +341,7 @@ static void register_manuf2_service(struct gatt_example_adapter *adapter,
 
 	/* Manufacturer name characteristic definition */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	put_le16(MANUFACTURER_NAME_UUID, &atval[3]);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -356,7 +356,7 @@ static void register_manuf2_service(struct gatt_example_adapter *adapter,
 
 	/* Characteristic: serial number */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	put_le16(MANUFACTURER_SERIAL_UUID, &atval[3]);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -402,7 +402,7 @@ static void register_vendor_service(struct gatt_example_adapter *adapter,
 
 	/* Vendor Specific Type characteristic definition */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	put_le16(VENDOR_SPECIFIC_TYPE_UUID, &atval[3]);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
@@ -475,7 +475,7 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 
 	/* Weight: characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[0] = GATT_CHR_PROP_READ;
 	put_le16(h + 1, &atval[1]);
 	memcpy(&atval[3], &char_weight_uuid_btorder, 16);
 	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,

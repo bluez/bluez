@@ -24,6 +24,24 @@
 
 #include <bluetooth/sdp.h>
 
+/*
+ * GATT Characteristic Property bit field
+ * Reference: Core SPEC 4.1 page 2183 (Table 3.5: Characteristic Properties
+ * bit field) defines how the Characteristic Value can be used, or how the
+ * characteristic descriptors (see Section 3.3.3 - page 2184) can be accessed.
+ * In the core spec, regular properties are included in the characteristic
+ * declaration, and the extended properties are defined as descriptor.
+ */
+
+#define GATT_CHR_PROP_BROADCAST				0x01
+#define GATT_CHR_PROP_READ				0x02
+#define GATT_CHR_PROP_WRITE_WITHOUT_RESP		0x04
+#define GATT_CHR_PROP_WRITE				0x08
+#define GATT_CHR_PROP_NOTIFY				0x10
+#define GATT_CHR_PROP_INDICATE				0x20
+#define GATT_CHR_PROP_AUTH				0x40
+#define GATT_CHR_PROP_EXT_PROP				0x80
+
 /* Client Characteristic Configuration bit field */
 #define GATT_CLIENT_CHARAC_CFG_NOTIF_BIT	0x0001
 #define GATT_CLIENT_CHARAC_CFG_IND_BIT		0x0002

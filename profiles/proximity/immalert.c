@@ -252,7 +252,7 @@ void imm_alert_register(struct btd_adapter *adapter)
 				/* Alert level characteristic */
 				GATT_OPT_CHR_UUID16, ALERT_LEVEL_CHR_UUID,
 				GATT_OPT_CHR_PROPS,
-					ATT_CHAR_PROPER_WRITE_WITHOUT_RESP,
+					GATT_CHR_PROP_WRITE_WITHOUT_RESP,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_WRITE,
 					imm_alert_alert_lvl_write, imadapter,
 				GATT_OPT_INVALID);

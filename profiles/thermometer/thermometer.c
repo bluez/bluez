@@ -721,12 +721,12 @@ static void process_thermometer_char(struct thermometer *t,
 
 		gatt_read_char(t->attrib, c->value_handle, read_interval_cb, t);
 
-		if (c->properties & ATT_CHAR_PROPER_WRITE) {
+		if (c->properties & GATT_CHR_PROP_WRITE) {
 			t->interval_val_handle = c->value_handle;
 			need_desc = true;
 		}
 
-		if (c->properties & ATT_CHAR_PROPER_INDICATE) {
+		if (c->properties & GATT_CHR_PROP_INDICATE) {
 			t->attio_interval_id = g_attrib_register(t->attrib,
 					ATT_OP_HANDLE_IND, c->value_handle,
 					interval_ind_handler, t, NULL);

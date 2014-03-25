@@ -294,7 +294,7 @@ void link_loss_register(struct btd_adapter *adapter)
 			/* Alert level characteristic */
 			GATT_OPT_CHR_UUID16, ALERT_LEVEL_CHR_UUID,
 			GATT_OPT_CHR_PROPS,
-				ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_WRITE,
+				GATT_CHR_PROP_READ | GATT_CHR_PROP_WRITE,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 				link_loss_alert_lvl_read, lladapter,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_WRITE,
