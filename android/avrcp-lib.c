@@ -1272,17 +1272,107 @@ int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
 						func, user_data);
 }
 
-int avrcp_get_element_attributes(struct avrcp *session, avctp_rsp_cb func,
-								void *user_data)
+static int parse_attribute_list(struct avrcp_header *pdu, uint8_t *number,
+						uint32_t *attrs, char **text)
 {
-	uint8_t buf[9];
+	uint8_t *ptr;
+	uint16_t params_len;
+	int i;
+
+	if (pdu->params_len < 1)
+		return -EPROTO;
+
+	*number = pdu->params[0];
+	if (*number > AVRCP_MEDIA_ATTRIBUTE_LAST) {
+		*number = 0;
+		return -EPROTO;
+	}
+
+	params_len = pdu->params_len - 1;
+	for (i = 0, ptr = &pdu->params[1]; i < *number && params_len > 0; i++) {
+		uint16_t len;
+
+		if (params_len < 8)
+			goto fail;
+
+		attrs[i] = bt_get_be32(&ptr[0]);
+		len = bt_get_be16(&ptr[6]);
+
+		params_len -= 8;
+		ptr += 8;
+
+		if (len > params_len)
+			goto fail;
+
+		if (len > 0) {
+			text[i] = g_strndup((const char *) &ptr[8], len);
+			params_len -= len;
+			ptr += len;
+		}
+	}
+
+	if (i != *number)
+		goto fail;
+
+	return 0;
+
+fail:
+	for (i -= 1; i >= 0; i--)
+		g_free(text[i]);
+
+	*number = 0;
+
+	return -EPROTO;
+}
+
+static gboolean get_element_attributes_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu;
+	uint8_t number = 0;
+	uint32_t attrs[AVRCP_MEDIA_ATTRIBUTE_LAST];
+	char *text[AVRCP_MEDIA_ATTRIBUTE_LAST];
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->get_element_attributes)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	err = parse_attribute_list(pdu, &number, attrs, text);
+
+done:
+	player->cfm->get_element_attributes(session, err, number, attrs, text,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_get_element_attributes(struct avrcp *session)
+{
+	uint8_t pdu[9];
 
 	/* This returns all attributes */
-	memset(buf, 0, sizeof(buf));
+	memset(pdu, 0, sizeof(pdu));
 
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
-				AVRCP_GET_ELEMENT_ATTRIBUTES, buf, sizeof(buf),
-				func, user_data);
+				AVRCP_GET_ELEMENT_ATTRIBUTES, pdu, sizeof(pdu),
+				get_element_attributes_rsp, session);
 }
 
 int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
