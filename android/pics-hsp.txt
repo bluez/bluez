@@ -42,10 +42,10 @@ TSPC_HSP_2_5	True (*)	Audio connection release from HS (C.5)
 TSPC_HSP_2_6	True 		Audio connection release from AG (M)
 TSPC_HSP_2_7	True		Audio connection transfer: AG to HS (M)
 TSPC_HSP_2_8	True		Audio connection transfer: HS to AG (M)
-TSPC_HSP_2_9	False		Remote audio volume control (C.1)
-TSPC_HSP_2_10	False		HS informs AG about local changes of audio
+TSPC_HSP_2_9	True (*)	Remote audio volume control (C.1)
+TSPC_HSP_2_10	True (*)	HS informs AG about local changes of audio
 					volume (O)
-TSPC_HSP_2_11	False		Audio volume setting storage by HS (O)
+TSPC_HSP_2_11	True (*)	Audio volume setting storage by HS (O)
 TSPC_HSP_2_12	False		Remote microphone gain control (C.2)
 TSPC_HSP_2_13	False		HS informs AG about local changes of microphone
 					gain (O)
