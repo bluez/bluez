@@ -646,7 +646,7 @@ static bt_status_t get_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
 	cmd->conn_id = conn_id;
 
 	srvc_id_to_hal(&cmd->srvc_id, srvc_id);
-	len += sizeof(cmd->srvc_id);
+	cmd->number = 0;
 
 	if (start_char_id) {
 		gatt_id_to_hal(&cmd->gatt_id[0], start_char_id);
