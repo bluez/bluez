@@ -676,7 +676,7 @@ static bt_status_t get_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
 	cmd->number = 1;
 
 	if (start_descr_id) {
-		gatt_id_to_hal(&cmd->gatt_id[1], char_id);
+		gatt_id_to_hal(&cmd->gatt_id[1], start_descr_id);
 		len += sizeof(cmd->gatt_id[1]);
 		cmd->number++;
 	}
