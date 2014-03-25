@@ -296,3 +296,21 @@ BlueZ.
 https://android-review.googlesource.com/82757
 https://android-review.googlesource.com/87670
 https://android-review.googlesource.com/88384
+
+
+Unimplemented Bluetooth features
+================================
+
+Some Bluetooth functionality require support from outside of BT stack
+eg. telephony stack. This sections describes profiles optional features not
+implemented due to lack of support in other Android subsystems or missing API
+in respective BT HALs.
+
+Profile		Feature				Comments
+--------------------------------------------------------
+HFP		Attach a phone number to	AT+BINP=1
+		a voice tag
+HFP		Enhanced Call Control		AT+CHLD={1x,2x}
+HFP		Explicit Call Transfer		AT+CHLD=4
+HFP		Response and Hold		AT+BTRH, +BTRH
+HFP		In-band Ring Tone		+BSIR
