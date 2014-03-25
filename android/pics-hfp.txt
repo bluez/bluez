@@ -41,7 +41,7 @@ TSPC_HFP_2_3	True		Audio connection handling (M)
 TSPC_HFP_2_3a	False		Audio connection establishment independent of
 					call processing (O)
 TSPC_HFP_2_3b	True (*)	eSCO support in Audio Connection (C.10)
-TSPC_HFP_2_3c	False		Codec negotiation (C.7)
+TSPC_HFP_2_3c	True (*)	Codec negotiation (C.7)
 TSPC_HFP_2_4a	False		Accept an incoming voice call
 					(in-band ring) (C.1)
 TSPC_HFP_2_4b	True (*)	Accept an incoming voice call
