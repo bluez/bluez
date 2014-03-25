@@ -138,6 +138,7 @@ static struct {
 	int num_active;
 	int num_held;
 	int setup_state;
+	bool call_hanging_up;
 
 	uint8_t negotiated_codec;
 	uint8_t proposed_codec;
@@ -2016,6 +2017,9 @@ static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 	if (device.setup_state == HAL_HANDSFREE_CALL_STATE_INCOMING)
 		return;
 
+	if (device.call_hanging_up)
+		return;
+
 	if (num_active > 0 || num_held > 0) {
 		phone_state_waiting(num_active, num_held, type, number,
 								number_len);
@@ -2062,6 +2066,11 @@ static void phone_state_idle(int num_active, int num_held)
 			update_indicator(IND_CALLHELD, 1);
 
 		update_indicator(IND_CALLSETUP, 0);
+
+		if (num_active == device.num_active &&
+						num_held == device.num_held)
+			device.call_hanging_up = true;
+
 		break;
 	case HAL_HANDSFREE_CALL_STATE_DIALING:
 	case HAL_HANDSFREE_CALL_STATE_ALERTING:
@@ -2071,6 +2080,12 @@ static void phone_state_idle(int num_active, int num_held)
 		update_indicator(IND_CALLSETUP, 0);
 		break;
 	case HAL_HANDSFREE_CALL_STATE_IDLE:
+
+		if (device.call_hanging_up) {
+			device.call_hanging_up = false;
+			return;
+		}
+
 		/* check if calls swapped */
 		if (num_held != 0 && num_active != 0 &&
 				device.num_active == num_held &&
