@@ -508,13 +508,12 @@ static void test_client(gconstpointer data)
 	}
 
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-11-C")) {
-		uint8_t attributes[2] = { AVRCP_ATTRIBUTE_EQUALIZER,
+		uint8_t attrs[2] = { AVRCP_ATTRIBUTE_EQUALIZER,
 						AVRCP_ATTRIBUTE_REPEAT_MODE };
-		uint8_t values[] = { 0xaa, 0xff };
+		uint8_t values[2] = { 0xaa, 0xff };
 
-		avrcp_set_player_value(context->session, attributes,
-						sizeof(attributes), values,
-						NULL, NULL);
+		avrcp_set_player_value(context->session, sizeof(attrs), attrs,
+								values);
 	}
 
 	if (g_str_equal(context->data->test_name, "/TP/MDI/BV-01-C"))

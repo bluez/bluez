@@ -182,6 +182,9 @@ struct avrcp_control_cfm {
 	void (*get_value) (struct avrcp *session, int err,
 					uint8_t number, uint8_t *attrs,
 					uint8_t *values, void *user_data);
+	void (*set_value) (struct avrcp *session, int err,
+					uint8_t number, uint8_t *attrs,
+					uint8_t *values, void *user_data);
 };
 
 struct avrcp_passthrough_handler {
@@ -218,9 +221,8 @@ int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t number,
 int avrcp_list_player_values(struct avrcp *session, uint8_t attr);
 int avrcp_get_player_value_text(struct avrcp *session, uint8_t attr,
 					uint8_t number, uint8_t *values);
-int avrcp_set_player_value(struct avrcp *session, uint8_t *attributes,
-					uint8_t attr_count, uint8_t *values,
-					avctp_rsp_cb func, void *user_data);
+int avrcp_set_player_value(struct avrcp *session, uint8_t number,
+					uint8_t *attrs, uint8_t *values);
 int avrcp_get_current_player_value(struct avrcp *session, uint8_t number,
 							uint8_t *attrs);
 int avrcp_get_play_status(struct avrcp *session, avctp_rsp_cb func,
