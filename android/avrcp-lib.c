@@ -1064,24 +1064,91 @@ int avrcp_get_player_value_text(struct avrcp *session, uint8_t attr,
 				sizeof(attr), get_value_text_rsp, session);
 }
 
-int avrcp_get_current_player_value(struct avrcp *session, uint8_t *attrs,
-					uint8_t attr_count, avctp_rsp_cb func,
+static int parse_value(struct avrcp_header *pdu, uint8_t *number,
+					uint8_t *attrs, uint8_t *values)
+{
+	int i;
+
+	if (pdu->params_len < 1)
+		return -EPROTO;
+
+	*number = pdu->params[0];
+
+	/* Check if PDU is big enough to hold the number of (attribute, value)
+	 * tuples.
+	 */
+	if (*number > AVRCP_ATTRIBUTE_LAST ||
+					1 + *number * 2 != pdu->params_len) {
+		number = 0;
+		return -EPROTO;
+	}
+
+	for (i = 0; i < *number; i++) {
+		attrs[i] = pdu->params[i * 2 + 1];
+		values[i] = pdu->params[i * 2 + 2];
+	}
+
+	return 0;
+}
+
+static gboolean get_value_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
 					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu = (void *) operands;
+	uint8_t number = 0;
+	uint8_t attrs[AVRCP_ATTRIBUTE_LAST];
+	uint8_t values[AVRCP_ATTRIBUTE_LAST];
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->get_value)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	err = parse_value(pdu, &number, attrs, values);
+
+done:
+	player->cfm->get_value(session, err, number, attrs, values,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_get_current_player_value(struct avrcp *session, uint8_t number,
+							uint8_t *attrs)
 
 {
-	uint8_t buf[AVRCP_ATTRIBUTE_LAST + 1];
+	uint8_t pdu[AVRCP_ATTRIBUTE_LAST + 1];
 
-	if (attr_count > AVRCP_ATTRIBUTE_LAST)
+	if (number > AVRCP_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	if (attrs && attr_count) {
-		buf[0] = attr_count;
-		memcpy(buf + 1, attrs, attr_count);
+	if (number > 0) {
+		if (!attrs)
+			return -EINVAL;
+
+		pdu[0] = number;
+		memcpy(&pdu[1], attrs, number);
 	}
 
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
-				AVRCP_GET_CURRENT_PLAYER_VALUE, buf,
-				attr_count + 1, func, user_data);
+				AVRCP_GET_CURRENT_PLAYER_VALUE, pdu,
+				number + 1, get_value_rsp, session);
 }
 
 int avrcp_set_player_value(struct avrcp *session, uint8_t *attributes,

@@ -500,11 +500,11 @@ static void test_client(gconstpointer data)
 		avrcp_get_player_attribute_text(context->session, 0, NULL);
 
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-09-C")) {
-		uint8_t attributes[2] = { AVRCP_ATTRIBUTE_EQUALIZER,
+		uint8_t attrs[2] = { AVRCP_ATTRIBUTE_EQUALIZER,
 						AVRCP_ATTRIBUTE_REPEAT_MODE };
 
-		avrcp_get_current_player_value(context->session, attributes,
-						sizeof(attributes), NULL, NULL);
+		avrcp_get_current_player_value(context->session, sizeof(attrs),
+									attrs);
 	}
 
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-11-C")) {
