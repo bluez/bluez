@@ -2088,6 +2088,9 @@ static void phone_state_idle(int num_active, int num_held)
 		if (num_active > device.num_active)
 			update_indicator(IND_CALL, 1);
 
+		update_indicator(IND_CALLHELD,
+					num_held ? (num_active ? 1 : 2) : 0);
+
 		update_indicator(IND_CALLSETUP, 0);
 		break;
 	case HAL_HANDSFREE_CALL_STATE_IDLE:
