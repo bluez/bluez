@@ -67,8 +67,8 @@ TSPC_HFP_2_12d	False		Explicit Call Transfer (AT+CHLD value 4) (C.3)
 TSPC_HFP_2_13	True		Calling Line Identification (CLI) (M)
 TSPC_HFP_2_14	True (*)	Echo canceling (EC) and Noise reduction (NR) (O)
 TSPC_HFP_2_15	True (*)	Voice recognition activation (O)
-TSPC_HFP_2_15a	False		Initiate voice recognition from AG (C.6)
-TSPC_HFP_2_15b	False		Autonomous voice deactivation (C.6)
+TSPC_HFP_2_15a	True (*)	Initiate voice recognition from AG (C.6)
+TSPC_HFP_2_15b	True (*)	Autonomous voice deactivation (C.6)
 TSPC_HFP_2_16	False		Attach a phone number to a voice tag (O)
 TSPC_HFP_2_17	True		Ability to transmit DTMF codes (M)
 TSPC_HFP_2_18a	True (*)	Remote audio volume control – speaker (O)
@@ -83,7 +83,7 @@ TSPC_HFP_2_21c	True (*)	Enhanced Call Status with limited network
 					notification (C.4)
 TSPC_HFP_2_22	False		Support for automatic link loss recovery (O)
 TSPC_HFP_2_23	True (*)	Individual Indicator Activation (C.9)
-TSPC_HFP_2_24	False		Wide Band Speech service (C.8)
+TSPC_HFP_2_24	True (*)s	Wide Band Speech service (C.8)
 TSPC_HFP_2_25	False		Support roaming function (O)
 -------------------------------------------------------------------------------
 C.1:  The AG must support one of item TSPC_HFP_2_4a or TSPC_HFP_2_4b
@@ -177,7 +177,7 @@ C.7: Mandatory if TSPC_HFP_3_24 otherwise optional
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_HFP_4_1	True		CVSD audio coding over SCO (M)
-TSPC_HFP_4_2	False		mSBC audio coding over eSCO (C.1)
+TSPC_HFP_4_2	True (*)	mSBC audio coding over eSCO (C.1)
 -------------------------------------------------------------------------------
 C.1: Mandatory if Wide band speech service is supported TSPC_HFP_2_24 or
 	TSPC_HFP_3_24, otherwise excluded
@@ -188,23 +188,23 @@ C.1: Mandatory if Wide band speech service is supported TSPC_HFP_2_24 or
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_HFP_8_1	False		Multiple audio transfers during call –
+TSPC_HFP_8_1	True (*)	Multiple audio transfers during call –
 					AG and HF initiated (C.1)
-TSPC_HFP_8_2	False		Audio transfer by SLC release during
+TSPC_HFP_8_2	True (*)	Audio transfer by SLC release during
 					an active call (C.1)
-TSPC_HFP_8_3	False		Audio transfer by powering ON HF (O)
-TSPC_HFP_8_4	False		SLC during SDP response (O)
-TSPC_HFP_8_5	False		Handle dynamic server channel number for HFP
+TSPC_HFP_8_3	True (*)	Audio transfer by powering ON HF (O)
+TSPC_HFP_8_4	True (*)	SLC during SDP response (O)
+TSPC_HFP_8_5	True (*)	Handle dynamic server channel number for HFP
 					service (O)
 TSPC_HFP_8_6	False		HF disallows connections in non-discoverable
 					mode (C.2)
-TSPC_HFP_8_7	False		HF connects to AG during incoming call (O)
-TSPC_HFP_8_8	False		Link loss during incoming call (C.3)
-TSPC_HFP_8_9	False		SLC release during incoming call (C.3)
-TSPC_HFP_8_10	False		Voice Recognition Activation (C.4)
-TSPC_HFP_8_11	False		Place outgoing call by dialing number on
+TSPC_HFP_8_7	True (*)	HF connects to AG during incoming call (O)
+TSPC_HFP_8_8	True (*)	Link loss during incoming call (C.3)
+TSPC_HFP_8_9	True (*)	SLC release during incoming call (C.3)
+TSPC_HFP_8_10	True (*)	Voice Recognition Activation (C.4)
+TSPC_HFP_8_11	True (*)	Place outgoing call by dialing number on
 					the AG (O)
-TSPC_HFP_8_12	False		Active call termination – NO CARRIER signal
+TSPC_HFP_8_12	True (*)	Active call termination – NO CARRIER signal
 					(C.5)
 -------------------------------------------------------------------------------
 C.1: Optional if TSPC_HFP_2_7a or TSPC_HFP_3_7a is supported,
