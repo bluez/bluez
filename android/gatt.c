@@ -1013,7 +1013,7 @@ static void discover_char_cb(uint8_t status, GSList *characteristics,
 	free(data);
 }
 
-static void hal_srvc_id_to_gatt_id(const struct hal_gatt_srvc_id *from,
+static void hal_srvc_id_to_element_id(const struct hal_gatt_srvc_id *from,
 							struct element_id *to)
 {
 	uint128_t uuid128;
@@ -1051,7 +1051,7 @@ static void handle_client_get_characteristic(const void *buf, uint16_t len)
 		goto done;
 	}
 
-	hal_srvc_id_to_gatt_id(&cmd->srvc_id, &match_id);
+	hal_srvc_id_to_element_id(&cmd->srvc_id, &match_id);
 	srvc = queue_find(dev->services, match_srvc_by_element_id, &match_id);
 	if (!srvc) {
 		error("gatt: Service with inst_id: %d not found",
