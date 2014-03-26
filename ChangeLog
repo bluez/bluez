@@ -1,3 +1,12 @@
+ver 5.17:
+	Fix issue with not resetting OBEX SRM setup.
+	Fix issue with BR/EDR devices and auto-connect list.
+	Fix issue with bonding complete detection as peripheral.
+	Fix issue with not updating bearer timestamp of connections.
+	Fix issue with paired property for multiple bearers.
+	Add support for Android Bluetooth Handsfree interface.
+	Add support for Android Bluetooth Wideband speech.
+
 ver 5.16:
 	Fix issue with HID over GATT physical location.
 	Fix issue with HID over GATT unique identifier.
