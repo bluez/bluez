@@ -949,13 +949,12 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 
 static void send_client_char_notify(const struct characteristic *ch,
 					int32_t conn_id,
-					const struct service *service,
-					uint8_t status)
+					const struct service *service)
 {
 	struct hal_ev_gatt_client_get_characteristic ev;
 
 	memset(&ev, 0, sizeof(ev));
-	ev.status = status;
+	ev.status = ch ? HAL_STATUS_SUCCESS : HAL_STATUS_FAILED;
 
 	if (ch) {
 		ev.char_prop = ch->ch.properties;
@@ -1024,11 +1023,9 @@ static void discover_char_cb(uint8_t status, GSList *characteristics,
 
 	if (!queue_isempty(data->service->chars))
 		send_client_char_notify(queue_peek_head(data->service->chars),
-						data->conn_id, data->service,
-						HAL_STATUS_SUCCESS);
+						data->conn_id, data->service);
 	else
-		send_client_char_notify(NULL, data->conn_id, data->service,
-							HAL_STATUS_FAILED);
+		send_client_char_notify(NULL, data->conn_id, data->service);
 
 	free(data);
 }
@@ -1124,12 +1121,7 @@ static void handle_client_get_characteristic(const void *buf, uint16_t len)
 	else
 		ch = queue_peek_head(srvc->chars);
 
-	if (ch)
-		send_client_char_notify(ch, dev->conn_id, srvc,
-							HAL_STATUS_SUCCESS);
-	else
-		send_client_char_notify(NULL, dev->conn_id, srvc,
-							HAL_STATUS_FAILED);
+	send_client_char_notify(ch, dev->conn_id, srvc);
 
 	status = HAL_STATUS_SUCCESS;
 
