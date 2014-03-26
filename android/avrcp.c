@@ -724,39 +724,37 @@ static const struct avrcp_control_ind control_ind = {
 	.register_notification = handle_register_notification_cmd,
 };
 
-static gboolean register_notification_rsp(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
-					uint8_t *operands, size_t operand_count,
-					void *user_data)
+static bool handle_register_notification_rsp(struct avrcp *session, int err,
+						uint8_t code, uint8_t event,
+						uint8_t *params,
+						void *user_data)
 {
 	struct avrcp_device *dev = user_data;
 	struct hal_ev_avrcp_volume_changed ev;
-	uint8_t *params;
+
+	if (err < 0) {
+		error("AVRCP: %s", strerror(-err));
+		return false;
+	}
 
 	if (code != AVC_CTYPE_INTERIM && code != AVC_CTYPE_CHANGED)
-		return FALSE;
+		return false;
 
-	if (operands == NULL || operand_count < 7)
-		return FALSE;
-
-	params = &operands[7];
-
-	if (params == NULL || params[0] != AVRCP_EVENT_VOLUME_CHANGED)
-		return FALSE;
+	if (event != AVRCP_EVENT_VOLUME_CHANGED)
+		return false;
 
 	ev.type = code;
-	ev.volume = params[1] & 0x7F;
+	ev.volume = params[0] & 0x7f;
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_AVRCP,
 					HAL_EV_AVRCP_VOLUME_CHANGED,
 					sizeof(ev), &ev);
 
 	if (code == AVC_CTYPE_INTERIM)
-		return TRUE;
+		return true;
 
-	avrcp_register_notification(dev->session, params[0], 0,
-					register_notification_rsp, dev);
-	return FALSE;
+	avrcp_register_notification(dev->session, event, 0);
+	return false;
 }
 
 static void handle_get_capabilities_rsp(struct avrcp *session, int err,
@@ -775,9 +773,7 @@ static void handle_get_capabilities_rsp(struct avrcp *session, int err,
 		if (events[i] != AVRCP_EVENT_VOLUME_CHANGED)
 			continue;
 
-		avrcp_register_notification(dev->session, events[i], 0,
-						register_notification_rsp,
-						dev);
+		avrcp_register_notification(dev->session, events[i], 0);
 		break;
 	}
 
@@ -786,6 +782,7 @@ static void handle_get_capabilities_rsp(struct avrcp *session, int err,
 
 static const struct avrcp_control_cfm control_cfm = {
 	.get_capabilities = handle_get_capabilities_rsp,
+	.register_notification = handle_register_notification_rsp,
 };
 
 static int avrcp_device_add_session(struct avrcp_device *dev, int fd,

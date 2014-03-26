@@ -524,8 +524,7 @@ static void test_client(gconstpointer data)
 
 	if (g_str_equal(context->data->test_name, "/TP/NFY/BV-01-C"))
 		avrcp_register_notification(context->session,
-						AVRCP_EVENT_STATUS_CHANGED, 0,
-						NULL, NULL);
+						AVRCP_EVENT_STATUS_CHANGED, 0);
 
 	if (g_str_equal(context->data->test_name, "/TP/BGN/BV-01-I"))
 		avrcp_send_passthrough(context->session, IEEEID_BTSIG,

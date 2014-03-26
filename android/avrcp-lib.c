@@ -801,6 +801,7 @@ done:
 	return FALSE;
 }
 
+
 int avrcp_get_capabilities(struct avrcp *session, uint8_t param)
 {
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
@@ -808,9 +809,96 @@ int avrcp_get_capabilities(struct avrcp *session, uint8_t param)
 				get_capabilities_rsp, session);
 }
 
-int avrcp_register_notification(struct avrcp *session, uint8_t event,
-					uint32_t interval, avctp_rsp_cb func,
+static gboolean register_notification_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
 					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu;
+	uint8_t event = 0;
+	uint16_t value16;
+	uint32_t value32;
+	uint64_t value64;
+	uint8_t *params = NULL;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->register_notification)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	if (pdu->params_len < 1) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	event = pdu->params[0];
+
+	switch (event) {
+	case AVRCP_EVENT_STATUS_CHANGED:
+	case AVRCP_EVENT_VOLUME_CHANGED:
+		if (pdu->params_len != 2) {
+			err = -EPROTO;
+			goto done;
+		}
+		params = &pdu->params[1];
+		break;
+	case AVRCP_EVENT_TRACK_CHANGED:
+		if (pdu->params_len != 9) {
+			err = -EPROTO;
+			goto done;
+		}
+		value64 = bt_get_be64(&pdu->params[1]);
+		params = (uint8_t *) &value64;
+		break;
+	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
+		if (pdu->params_len != 5) {
+			err = -EPROTO;
+			goto done;
+		}
+		value32 = bt_get_be32(&pdu->params[1]);
+		params = (uint8_t *) &value32;
+		break;
+	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
+	case AVRCP_EVENT_SETTINGS_CHANGED:
+		if (pdu->params_len < 2) {
+			err = -EPROTO;
+			goto done;
+		}
+		params = &pdu->params[1];
+		break;
+	case AVRCP_EVENT_UIDS_CHANGED:
+		if (pdu->params_len != 3) {
+			err = -EPROTO;
+			goto done;
+		}
+		value16 = bt_get_be16(&pdu->params[1]);
+		params = (uint8_t *) &value16;
+		break;
+	}
+
+	err = 0;
+
+done:
+	return player->cfm->register_notification(session, err, code, event,
+						params, player->user_data);
+}
+
+int avrcp_register_notification(struct avrcp *session, uint8_t event,
+							uint32_t interval)
 {
 	uint8_t params[5];
 
@@ -820,7 +908,7 @@ int avrcp_register_notification(struct avrcp *session, uint8_t event,
 	return avrcp_send_req(session, AVC_CTYPE_NOTIFY, AVC_SUBUNIT_PANEL,
 					AVRCP_REGISTER_NOTIFICATION,
 					params, sizeof(params),
-					func, user_data);
+					register_notification_rsp, session);
 }
 
 static gboolean list_attributes_rsp(struct avctp *conn,
