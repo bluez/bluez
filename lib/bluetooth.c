@@ -873,6 +873,18 @@ const char *bt_compidtostr(int compid)
 		return "Warehouse Innovations";
 	case 305:
 		return "Cypress Semiconductor Corporation";
+	case 306:
+		return "MADS Inc";
+	case 307:
+		return "Blue Maestro Limited";
+	case 308:
+		return "Resolution Products, Inc.";
+	case 309:
+		return "Airewear LLC";
+	case 310:
+		return "ETC sp. z.o.o.";
+	case 311:
+		return "Prestigio Plaza Ltd.";
 	case 65535:
 		return "internal use";
 	default:
