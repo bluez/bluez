@@ -151,7 +151,7 @@ static bool match_dev_by_conn_id(const void *data, const void *user_data)
 	return dev->conn_id == conn_id;
 }
 
-static bool match_srvc_by_gatt_id(const void *data, const void *user_data)
+static bool match_srvc_by_element_id(const void *data, const void *user_data)
 {
 	const struct element_id *exp_id = user_data;
 	const struct service *service = data;
@@ -1052,7 +1052,7 @@ static void handle_client_get_characteristic(const void *buf, uint16_t len)
 	}
 
 	hal_srvc_id_to_gatt_id(&cmd->srvc_id, &match_id);
-	srvc = queue_find(dev->services, match_srvc_by_gatt_id, &match_id);
+	srvc = queue_find(dev->services, match_srvc_by_element_id, &match_id);
 	if (!srvc) {
 		error("gatt: Service with inst_id: %d not found",
 							match_id.instance);
