@@ -96,9 +96,12 @@ static struct queue *conn_wait_queue = NULL;	/* Devs waiting to connect */
 
 static void bt_le_discovery_stop_cb(void);
 
-static void free_gatt_service(void *data)
+static void destroy_service(void *data)
 {
 	struct service *srvc = data;
+
+	if (!srvc)
+		return;
 
 	queue_destroy(srvc->chars, free);
 	free(srvc);
@@ -175,8 +178,11 @@ static void destroy_device(void *data)
 {
 	struct gatt_device *dev = data;
 
+	if (!dev)
+		return;
+
 	queue_destroy(dev->clients, NULL);
-	queue_destroy(dev->services, free_gatt_service);
+	queue_destroy(dev->services, destroy_service);
 	free(dev);
 }
 
