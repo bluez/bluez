@@ -970,7 +970,7 @@ static void cache_all_srvc_chars(GSList *characteristics, struct queue *q)
 		memcpy(&ch->ch, characteristics->data, sizeof(ch->ch));
 
 		bt_string_to_uuid(&uuid, ch->ch.uuid);
-		bt_uuid_to_uuid128(&ch->id.uuid, &uuid);
+		bt_uuid_to_uuid128(&uuid, &ch->id.uuid);
 
 		/* For now we increment inst_id and use it as characteristic
 		 * handle
