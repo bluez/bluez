@@ -1021,11 +1021,8 @@ static void discover_char_cb(uint8_t status, GSList *characteristics,
 
 	cache_all_srvc_chars(characteristics, data->service->chars);
 
-	if (!queue_isempty(data->service->chars))
-		send_client_char_notify(queue_peek_head(data->service->chars),
+	send_client_char_notify(queue_peek_head(data->service->chars),
 						data->conn_id, data->service);
-	else
-		send_client_char_notify(NULL, data->conn_id, data->service);
 
 	free(data);
 }
