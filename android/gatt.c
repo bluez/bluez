@@ -1054,7 +1054,6 @@ static bool find_service(int32_t conn_id, struct element_id *service_id,
 static void handle_client_get_characteristic(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_get_characteristic *cmd = buf;
-	struct discover_char_data *cb_data;
 	struct characteristic *ch;
 	struct element_id match_id;
 	struct gatt_device *dev;
@@ -1076,27 +1075,32 @@ static void handle_client_get_characteristic(const void *buf, uint16_t len)
 		goto done;
 	}
 
-	cb_data = new0(struct discover_char_data, 1);
-	if (!cb_data) {
-		error("gatt: Cannot allocate call data");
-		status = HAL_STATUS_FAILED;
-		goto done;
-	}
-
-	cb_data->service = srvc;
-	cb_data->conn_id = dev->conn_id;
-
 	/* Discover all characteristics for services if not cached yet */
 	if (queue_isempty(srvc->chars)) {
-		gatt_discover_char(dev->attrib, srvc->primary.range.start,
+		struct discover_char_data *cb_data =
+					new0(struct discover_char_data, 1);
+
+		if (!cb_data) {
+			error("gatt: Cannot allocate cb data");
+			status = HAL_STATUS_FAILED;
+			goto done;
+		}
+
+		cb_data->service = srvc;
+		cb_data->conn_id = dev->conn_id;
+
+		if (!gatt_discover_char(dev->attrib, srvc->primary.range.start,
 					srvc->primary.range.end, NULL,
-					discover_char_cb, cb_data);
+					discover_char_cb, cb_data)) {
+			free(cb_data);
+
+			status = HAL_STATUS_FAILED;
+			goto done;
+		}
 
 		status = HAL_STATUS_SUCCESS;
 		goto done;
 	}
-
-	free(cb_data);
 
 	if (cmd->number)
 		ch = queue_find(srvc->chars, match_char_by_higher_inst_id,
