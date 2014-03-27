@@ -368,6 +368,7 @@ static int register_external_characteristics(GSList *proxies)
 		btd_attr_read_t read_cb;
 		uint8_t propmask = 0;
 
+		/* Mandatory property */
 		if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
 			return -EINVAL;
 
@@ -379,10 +380,17 @@ static int register_external_characteristics(GSList *proxies)
 		if (bt_string_to_uuid(&uuid, str) < 0)
 			return -EINVAL;
 
-		if (!g_dbus_proxy_get_property(proxy, "Flags", &iter))
-			return -EINVAL;
-
-		propmask = flags_get_bitmask(&iter);
+		/*
+		 * Optional property. If is not informed, read and write
+		 * procedures will be allowed. Upper-layer should handle
+		 * characteristic requirements.
+		 */
+		if (g_dbus_proxy_get_property(proxy, "Flags", &iter))
+			propmask = flags_get_bitmask(&iter);
+		else
+			propmask = GATT_CHR_PROP_WRITE_WITHOUT_RESP
+						| GATT_CHR_PROP_WRITE
+						| GATT_CHR_PROP_READ;
 		if (!propmask)
 			return -EINVAL;
 
