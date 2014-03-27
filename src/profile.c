@@ -1047,7 +1047,7 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 						bdaddr_t *src, bdaddr_t *dst)
 {
 	struct btd_device *device;
-	struct btd_service *service = NULL;
+	struct btd_service *service;
 	struct ext_io *conn;
 	GIOCondition cond;
 	char addr[18];
@@ -1060,8 +1060,10 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 	}
 
 	/* Do not add UUID if client role is not enabled */
-	if (!server->ext->enable_client)
+	if (!server->ext->enable_client) {
+		service = NULL;
 		goto done;
+	}
 
 	btd_device_add_uuid(device, server->ext->remote_uuid);
 	service = btd_device_get_service(device, server->ext->remote_uuid);
