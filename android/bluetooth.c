@@ -3464,9 +3464,6 @@ static uint8_t set_device_friendly_name(struct device *dev, const uint8_t *val,
 	else
 		store_device_info(dev, CACHE_FILE);
 
-	send_device_property(&dev->bdaddr, HAL_PROP_DEVICE_FRIENDLY_NAME,
-				strlen(dev->friendly_name), dev->friendly_name);
-
 	return HAL_STATUS_SUCCESS;
 }
 
