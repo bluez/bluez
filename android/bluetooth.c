@@ -2759,6 +2759,7 @@ static void handle_get_adapter_prop_cmd(const void *buf, uint16_t len)
 
 static void get_adapter_properties(void)
 {
+	/* TODO should be done in single notification */
 	get_adapter_address();
 	get_adapter_name();
 	get_adapter_uuids();
@@ -3292,12 +3293,13 @@ static uint8_t get_device_timestamp(struct device *dev)
 
 static void get_remote_device_props(struct device *dev)
 {
+	/* TODO should be done in single notification */
+	get_device_friendly_name(dev);
 	get_device_name(dev);
 	get_device_uuids(dev);
 	get_device_class(dev);
 	get_device_type(dev);
 	get_device_service_rec(dev);
-	get_device_friendly_name(dev);
 	get_device_rssi(dev);
 	get_device_version_info(dev);
 	get_device_timestamp(dev);
