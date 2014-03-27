@@ -234,6 +234,11 @@ static void handle_client_register(const void *buf, uint16_t len)
 	}
 
 	client = new0(struct gatt_client, 1);
+	if (!client) {
+		error("gatt: cannot allocate memory for registering client");
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
 
 	memcpy(client->uuid, cmd->uuid, sizeof(client->uuid));
 
