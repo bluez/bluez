@@ -85,6 +85,7 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len);
 GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val);
 GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
+GObexHeader *g_obex_header_new_tag(guint8 id, GObexApparam *apparam);
 GObexHeader *g_obex_header_new_apparam(GObexApparam *apparam);
 
 GSList *g_obex_header_create_list(guint8 first_hdr_id, va_list args,
