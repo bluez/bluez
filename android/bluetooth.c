@@ -1236,6 +1236,15 @@ static void update_new_device(struct device *dev, int8_t rssi,
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
 						strlen(dev->name), dev->name);
 		ev->num_props++;
+
+		/* when updating name also send stored friendly name */
+		if (dev->friendly_name) {
+			size += fill_hal_prop(buf + size,
+						HAL_PROP_DEVICE_FRIENDLY_NAME,
+						strlen(dev->friendly_name),
+						dev->friendly_name);
+			ev->num_props++;
+		}
 	}
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_EV_DEVICE_FOUND,
@@ -1298,6 +1307,15 @@ static void update_device(struct device *dev, int8_t rssi,
 		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_NAME,
 						strlen(dev->name), dev->name);
 		ev->num_props++;
+
+		/* when updating name also send stored friendly name */
+		if (dev->friendly_name) {
+			size += fill_hal_prop(buf + size,
+						HAL_PROP_DEVICE_FRIENDLY_NAME,
+						strlen(dev->friendly_name),
+						dev->friendly_name);
+			ev->num_props++;
+		}
 	}
 
 	if (ev->num_props)
