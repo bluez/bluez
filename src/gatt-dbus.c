@@ -358,7 +358,7 @@ static int register_external_characteristics(GSList *proxies)
 {
 	GSList *list;
 
-	for (list = proxies; list; list = g_slist_next(proxies)) {
+	for (list = proxies; list; list = g_slist_next(list)) {
 		DBusMessageIter iter;
 		const char *str, *path;
 		bt_uuid_t uuid;
