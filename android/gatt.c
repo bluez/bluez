@@ -148,6 +148,11 @@ static bool match_client_by_id(const void *data, const void *user_data)
 	return client->id == exp_id;
 }
 
+static struct gatt_client *find_client_by_id(int32_t id)
+{
+	return queue_find(gatt_clients, match_client_by_id, INT_TO_PTR(id));
+}
+
 static bool match_by_value(const void *data, const void *user_data)
 {
 	return data == user_data;
@@ -633,8 +638,7 @@ static void handle_client_scan(const void *buf, uint16_t len)
 
 	DBG("new state %d", cmd->start);
 
-	registered = queue_find(gatt_clients, match_client_by_id,
-						INT_TO_PTR(cmd->client_if));
+	registered = find_client_by_id(cmd->client_if);
 	if (!registered) {
 		error("gatt: Client not registered");
 		status = HAL_STATUS_FAILED;
@@ -730,8 +734,7 @@ static void handle_client_connect(const void *buf, uint16_t len)
 	DBG("");
 
 	/* Check if client is registered */
-	l = queue_find(gatt_clients, match_client_by_id,
-						INT_TO_PTR(cmd->client_if));
+	l = find_client_by_id(cmd->client_if);
 	if (!l) {
 		error("gatt: Client id %d not found", cmd->client_if);
 		status = HAL_STATUS_FAILED;
