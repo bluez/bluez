@@ -65,13 +65,12 @@ Properties	string UUID [read-only]
 		array{string} Flags [read-only, optional]
 
 			Defines how the characteristic value can be used. See
-			Core spec page 1898, "Table 3.5: Characteristic
-			Properties bit field" and page 1900, "Table 3.8:
-			Characteristic Extended Properties bit field". Allowed
-			values: "broadcast", "read", "write-without-response",
-			"write", "notify", "indicate",
-			"authenticated-signed-writes", "reliable-write", and
-			"writable-auxiliaries".
+			Core spec "Table 3.5: Characteristic Properties bit
+			field", and "Table 3.8: Characteristic Extended
+			Properties bit field". Allowed values: "broadcast",
+			"read", "write-without-response", "write", "notify",
+			"indicate", "authenticated-signed-writes",
+			"reliable-write", and "writable-auxiliaries".
 
 
 Characteristic Descriptors hierarchy
