@@ -1323,6 +1323,23 @@ static void update_device(struct device *dev, int8_t rssi,
 					HAL_EV_REMOTE_DEVICE_PROPS, size, buf);
 }
 
+static bool is_new_device(const struct device *dev)
+{
+	if (!dev)
+		return true;
+
+	if (dev->found)
+		return false;
+
+	if (adapter.cur_discovery_type != SCAN_TYPE_DUAL)
+		return false;
+
+	if (dev->bond_state == HAL_BOND_STATE_BONDED)
+		return false;
+
+	return true;
+}
+
 static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, bool confirm,
 					const uint8_t *data, uint8_t data_len)
@@ -1352,7 +1369,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	/* Device found event needs to be send also for known device if this is
 	 * new discovery session. Otherwise framework will ignore it.
 	 */
-	if (!dev || !dev->found) {
+	if (is_new_device(dev)) {
 		if (!dev)
 			dev = create_device(bdaddr, bdaddr_type);
 
