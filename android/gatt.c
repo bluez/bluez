@@ -304,7 +304,6 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 		struct hal_ev_gatt_client_search_result ev_res;
 		struct gatt_primary *prim = l->data;
 		struct service *p;
-		bt_uuid_t uuid;
 
 		p = new0(struct service, 1);
 		if (!p) {
@@ -320,6 +319,11 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 		}
 
 		memset(&ev_res, 0, sizeof(ev_res));
+
+		if (bt_string_to_uuid(&p->id.uuid, prim->uuid) < 0) {
+			error("gatt: Cannot convert string to uuid");
+			continue;
+		}
 
 		/* Put primary service to our local list */
 		memcpy(&p->primary, prim, sizeof(p->primary));
@@ -337,12 +341,7 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 		ev_res.srvc_id.is_primary = 1;
 		ev_res.srvc_id.inst_id = 0;
 
-		if (bt_string_to_uuid(&uuid, prim->uuid) < 0) {
-			error("gatt: Cannot convert string to uuid");
-			continue;
-		}
-
-		uuid2android(&uuid, ev_res.srvc_id.uuid);
+		uuid2android(&p->id.uuid, ev_res.srvc_id.uuid);
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT ,
 					HAL_EV_GATT_CLIENT_SEARCH_RESULT,
