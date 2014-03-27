@@ -426,7 +426,7 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		value = list->data[i];
 		handle = get_le16(value);
 
-		if (format == 0x01)
+		if (format == ATT_FIND_INFO_RESP_FMT_16BIT)
 			bt_uuid16_create(&uuid, get_le16(&value[2]));
 		else {
 			uint128_t u128;
