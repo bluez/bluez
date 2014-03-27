@@ -364,6 +364,8 @@ static int register_external_characteristics(GSList *proxies)
 		bt_uuid_t uuid;
 		struct btd_attribute *attr;
 		GDBusProxy *proxy = list->data;
+		btd_attr_write_t write_cb;
+		btd_attr_read_t read_cb;
 		uint8_t propmask = 0;
 
 		if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
@@ -384,8 +386,18 @@ static int register_external_characteristics(GSList *proxies)
 		if (!propmask)
 			return -EINVAL;
 
-		attr = btd_gatt_add_char(&uuid, propmask, proxy_read_cb,
-							proxy_write_cb);
+		if (propmask & GATT_CHR_PROP_READ)
+			read_cb = proxy_read_cb;
+		else
+			read_cb = NULL;
+
+		if (propmask & (GATT_CHR_PROP_WRITE |
+					GATT_CHR_PROP_WRITE_WITHOUT_RESP))
+			write_cb = proxy_write_cb;
+		else
+			write_cb = NULL;
+
+		attr = btd_gatt_add_char(&uuid, propmask, read_cb, write_cb);
 		if (!attr)
 			return -EINVAL;
 
