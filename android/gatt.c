@@ -967,9 +967,23 @@ static struct service *find_service_by_uuid(struct gatt_device *device,
 	return queue_find(device->services, match_service_by_uuid, uuid);
 }
 
+struct get_included_data {
+	struct service *service;
+	struct gatt_device *device;
+};
+
+static void get_included_cb(uint8_t status, GSList *included, void *user_data)
+{
+	struct get_included_data *data = user_data;
+
+	/* TODO pass included services to notification */
+	free(data);
+}
+
 static void handle_client_get_included_service(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_get_included_service *cmd = buf;
+	struct get_included_data *data;
 	struct gatt_device *device;
 	struct service *service;
 	uint8_t status;
@@ -1001,8 +1015,19 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
+	data = new0(struct get_included_data, 1);
+	if (!data) {
+		error("gatt: failed to allocate memory for included_data");
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	data->service = service;
+	data->device = device;
+
 	gatt_find_included(device->attrib, service->primary.range.start,
-					service->primary.range.end, NULL, NULL);
+				service->primary.range.end, get_included_cb,
+				data);
 
 	status = HAL_STATUS_SUCCESS;
 
