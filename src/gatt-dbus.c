@@ -353,20 +353,71 @@ static int register_external_service(const struct external_app *eapp,
 	return 0;
 }
 
+static int add_char(GDBusProxy *proxy, const bt_uuid_t *uuid)
+{
+	DBusMessageIter iter;
+	struct btd_attribute *attr;
+	btd_attr_write_t write_cb;
+	btd_attr_read_t read_cb;
+	uint8_t propmask = 0;
+
+	/*
+	 * Optional property. If is not informed, read and write
+	 * procedures will be allowed. Upper-layer should handle
+	 * characteristic requirements.
+	 */
+	if (g_dbus_proxy_get_property(proxy, "Flags", &iter))
+		propmask = flags_get_bitmask(&iter);
+	else
+		propmask = GATT_CHR_PROP_WRITE_WITHOUT_RESP
+						| GATT_CHR_PROP_WRITE
+						| GATT_CHR_PROP_READ;
+	if (!propmask)
+		return -EINVAL;
+
+	if (propmask & GATT_CHR_PROP_READ)
+		read_cb = proxy_read_cb;
+	else
+		read_cb = NULL;
+
+	if (propmask & (GATT_CHR_PROP_WRITE | GATT_CHR_PROP_WRITE_WITHOUT_RESP))
+		write_cb = proxy_write_cb;
+	else
+		write_cb = NULL;
+
+	attr = btd_gatt_add_char(uuid, propmask, read_cb, write_cb);
+	if (!attr)
+		return -ENOMEM;
+
+	g_hash_table_insert(proxy_hash, attr, g_dbus_proxy_ref(proxy));
+
+	return 0;
+}
+
+static int add_char_desc(GDBusProxy *proxy, const bt_uuid_t *uuid)
+{
+	struct btd_attribute *attr;
+
+	attr = btd_gatt_add_char_desc(uuid, proxy_read_cb, proxy_write_cb);
+	if (!attr)
+		return -ENOMEM;
+
+	g_hash_table_insert(proxy_hash, attr, g_dbus_proxy_ref(proxy));
+
+	return 0;
+}
+
 static int register_external_characteristics(GSList *proxies)
 
 {
 	GSList *list;
 
 	for (list = proxies; list; list = g_slist_next(list)) {
-		DBusMessageIter iter;
-		const char *str, *path;
-		bt_uuid_t uuid;
-		struct btd_attribute *attr;
 		GDBusProxy *proxy = list->data;
-		btd_attr_write_t write_cb;
-		btd_attr_read_t read_cb;
-		uint8_t propmask = 0;
+		DBusMessageIter iter;
+		bt_uuid_t uuid;
+		const char *path, *iface, *str;
+		int ret;
 
 		/* Mandatory property */
 		if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
@@ -380,39 +431,18 @@ static int register_external_characteristics(GSList *proxies)
 		if (bt_string_to_uuid(&uuid, str) < 0)
 			return -EINVAL;
 
-		/*
-		 * Optional property. If is not informed, read and write
-		 * procedures will be allowed. Upper-layer should handle
-		 * characteristic requirements.
-		 */
-		if (g_dbus_proxy_get_property(proxy, "Flags", &iter))
-			propmask = flags_get_bitmask(&iter);
-		else
-			propmask = GATT_CHR_PROP_WRITE_WITHOUT_RESP
-						| GATT_CHR_PROP_WRITE
-						| GATT_CHR_PROP_READ;
-		if (!propmask)
-			return -EINVAL;
-
-		if (propmask & GATT_CHR_PROP_READ)
-			read_cb = proxy_read_cb;
-		else
-			read_cb = NULL;
-
-		if (propmask & (GATT_CHR_PROP_WRITE |
-					GATT_CHR_PROP_WRITE_WITHOUT_RESP))
-			write_cb = proxy_write_cb;
-		else
-			write_cb = NULL;
-
-		attr = btd_gatt_add_char(&uuid, propmask, read_cb, write_cb);
-		if (!attr)
-			return -EINVAL;
-
+		iface = g_dbus_proxy_get_interface(proxy);
 		path = g_dbus_proxy_get_path(proxy);
-		DBG("Added GATT CHR: %s (%s)", path, str);
 
-		g_hash_table_insert(proxy_hash, attr, g_dbus_proxy_ref(proxy));
+		if (!strcmp(GATT_CHR_IFACE, iface))
+			ret = add_char(proxy, &uuid);
+		else
+			ret = add_char_desc(proxy, &uuid);
+
+		if (ret < 0)
+			return ret;
+
+		DBG("Added GATT: %s (%s)", path, str);
 	}
 
 	return 0;
