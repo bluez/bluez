@@ -949,13 +949,67 @@ reply:
 			HAL_OP_GATT_CLIENT_SEARCH_SERVICE, status);
 }
 
+static bool match_service_by_uuid(const void *data, const void *user_data)
+{
+	const struct service *service = data;
+	const bt_uuid_t *uuid = user_data;
+	bt_uuid_t service_uuid;
+
+	if (bt_string_to_uuid(&service_uuid, service->primary.uuid) < 0)
+		return false;
+
+	return !bt_uuid_cmp(uuid, &service_uuid);
+}
+
+static struct service *find_service_by_uuid(struct gatt_device *device,
+								bt_uuid_t *uuid)
+{
+	return queue_find(device->services, match_service_by_uuid, uuid);
+}
+
 static void handle_client_get_included_service(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_client_get_included_service *cmd = buf;
+	struct gatt_device *device;
+	struct service *service;
+	uint8_t status;
+
 	DBG("");
 
+	device = find_device_by_conn_id(cmd->conn_id);
+	if (!device) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	if (queue_isempty(device->services)) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	if (!cmd->number) {
+		service = queue_peek_head(device->services);
+	} else {
+		bt_uuid_t uuid;
+
+		android2uuid(cmd->srvc_id->uuid, &uuid);
+		service = find_service_by_uuid(device, &uuid);
+	}
+
+	if (!service) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	gatt_find_included(device->attrib, service->primary.range.start,
+					service->primary.range.end, NULL, NULL);
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE,
-					HAL_STATUS_FAILED);
+					status);
 }
 
 static void send_client_char_notify(const struct characteristic *ch,
