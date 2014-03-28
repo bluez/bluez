@@ -974,10 +974,52 @@ struct get_included_data {
 
 static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 {
+	struct hal_ev_gatt_client_get_inc_service ev;
 	struct get_included_data *data = user_data;
+	struct gatt_device *device = data->device;
+	struct service *service = data->service;
+	bt_uuid_t uuid;
 
-	/* TODO pass included services to notification */
+	DBG("");
+
 	free(data);
+
+	if (status) {
+		error("gatt: no included services found");
+		return;
+	}
+
+	bt_string_to_uuid(&uuid, service->primary.uuid);
+
+	/* TODO store included services in device->services list */
+	for (; included; included = included->next) {
+		struct gatt_included *included_service = included->data;
+		bt_uuid_t included_uuid;
+
+		ev.conn_id = device->conn_id;
+		ev.status = HAL_STATUS_SUCCESS;
+
+		ev.srvc_id.inst_id = 0;
+		uuid2android(&uuid, ev.srvc_id.uuid);
+
+		ev.incl_srvc_id.inst_id = 0;
+		bt_string_to_uuid(&included_uuid, included_service->uuid);
+		uuid2android(&included_uuid, ev.incl_srvc_id.uuid);
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT ,
+					HAL_EV_GATT_CLIENT_GET_INC_SERVICE,
+					sizeof(ev), &ev);
+	}
+
+	/* Android expects notification with error status in the end */
+	ev.conn_id = device->conn_id;
+	ev.status = HAL_STATUS_FAILED;
+	ev.srvc_id.inst_id = 0;
+	uuid2android(&uuid, ev.srvc_id.uuid);
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT ,
+					HAL_EV_GATT_CLIENT_GET_INC_SERVICE,
+					sizeof(ev), &ev);
 }
 
 static void handle_client_get_included_service(const void *buf, uint16_t len)
