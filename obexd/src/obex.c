@@ -53,18 +53,6 @@
 #include "service.h"
 #include "transport.h"
 
-/* Challenge request */
-#define NONCE_TAG 0x00
-#define OPTIONS_TAG 0x01 /* Optional */
-#define REALM_TAG 0x02 /* Optional */
-
-#define NONCE_LEN 16
-
-/* Challenge response */
-#define DIGEST_TAG 0x00
-#define USER_ID_TAG 0x01 /* Optional */
-#define DIGEST_NONCE_TAG 0x02 /* Optional */
-
 static GSList *sessions = NULL;
 
 typedef struct {
@@ -305,53 +293,6 @@ static time_t parse_iso8610(const char *val, int size)
 	return time;
 }
 
-static uint8_t *extract_nonce(const uint8_t *buffer, unsigned int hlen)
-{
-	struct auth_header *hdr;
-	uint8_t *nonce = NULL;
-	uint32_t len = 0;
-
-	while (len < hlen) {
-		hdr = (void *) buffer + len;
-
-		switch (hdr->tag) {
-		case NONCE_TAG:
-			if (hdr->len != NONCE_LEN)
-				return NULL;
-
-			nonce = hdr->val;
-			break;
-		}
-
-		len += hdr->len + sizeof(struct auth_header);
-	}
-
-	return nonce;
-}
-
-static uint8_t *challenge_response(const uint8_t *nonce)
-{
-	GChecksum *md5;
-	uint8_t *result;
-	size_t size;
-
-	result = g_new0(uint8_t, NONCE_LEN);
-
-	md5 = g_checksum_new(G_CHECKSUM_MD5);
-	if (md5 == NULL)
-		return result;
-
-	g_checksum_update(md5, nonce, NONCE_LEN);
-	g_checksum_update(md5, (uint8_t *) ":BlueZ", 6);
-
-	size = NONCE_LEN;
-	g_checksum_get_digest(md5, result, &size);
-
-	g_checksum_free(md5);
-
-	return result;
-}
-
 static void parse_service(struct obex_session *os, GObexPacket *req)
 {
 	GObexHeader *hdr;
@@ -375,36 +316,6 @@ probe:
 	os->service = obex_service_driver_find(os->server->drivers,
 						target, target_size,
 						who, who_size);
-}
-
-static void parse_authchal(struct obex_session *session, GObexPacket *req,
-							GObexPacket *rsp)
-{
-	GObexHeader *hdr;
-	const guint8 *data, *nonce = NULL;
-	gsize len;
-	uint8_t challenge[18];
-	struct auth_header *auth = (struct auth_header *) challenge;
-	uint8_t *response;
-
-	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_AUTHCHAL);
-	if (hdr == NULL)
-		return;
-
-	if (!g_obex_header_get_bytes(hdr, &data, &len))
-		return;
-
-	nonce = extract_nonce(data, len);
-	DBG("AUTH CHALLENGE REQUEST");
-
-	response = challenge_response(nonce);
-	auth->tag = DIGEST_TAG;
-	auth->len = NONCE_LEN;
-	memcpy(auth->val, response, NONCE_LEN);
-
-	hdr = g_obex_header_new_bytes(G_OBEX_HDR_AUTHRESP, challenge,
-							sizeof(challenge));
-	g_obex_packet_add_header(rsp, hdr);
 }
 
 static void cmd_connect(GObex *obex, GObexPacket *req, void *user_data)
@@ -437,8 +348,6 @@ static void cmd_connect(GObex *obex, GObexPacket *req, void *user_data)
 	os->cmd = G_OBEX_OP_CONNECT;
 
 	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, G_OBEX_HDR_INVALID);
-
-	parse_authchal(os, req, rsp);
 
 	if (os->service->target) {
 		hdr = g_obex_header_new_bytes(G_OBEX_HDR_WHO,
