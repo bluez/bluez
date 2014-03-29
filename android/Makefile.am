@@ -204,6 +204,8 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pics-hsp.txt \
 				android/pics-hfp.txt \
 				android/pics-gatt.txt \
+				android/pics-mcap.txt \
+				android/pics-hdp.txt \
 				android/pixit-l2cap.txt \
 				android/pixit-gap.txt \
 				android/pixit-did.txt \
@@ -218,6 +220,8 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pixit-hsp.txt \
 				android/pixit-hfp.txt \
 				android/pixit-gatt.txt \
+				android/pixit-mcap.txt \
+				android/pixit-hdp.txt \
 				android/pts-l2cap.txt \
 				android/pts-gap.txt \
 				android/pts-did.txt \
