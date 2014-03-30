@@ -1331,9 +1331,6 @@ static bool is_new_device(const struct device *dev)
 	if (dev->found)
 		return false;
 
-	if (adapter.cur_discovery_type != SCAN_TYPE_DUAL)
-		return false;
-
 	if (dev->bond_state == HAL_BOND_STATE_BONDED)
 		return false;
 
