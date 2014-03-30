@@ -361,6 +361,30 @@ LOCAL_MODULE := btmgmt
 include $(BUILD_EXECUTABLE)
 
 #
+# hcitool
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	bluez/tools/hcitool.c \
+	bluez/src/oui.c \
+	bluez/lib/bluetooth.c \
+	bluez/lib/hci.c \
+
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/bluez \
+	$(LOCAL_PATH)/bluez/lib \
+
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
+LOCAL_MODULE_TAGS := debug
+LOCAL_MODULE := hcitool
+
+include $(BUILD_EXECUTABLE)
+
+#
 # l2ping
 #
 
