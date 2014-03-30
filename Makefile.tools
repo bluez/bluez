@@ -189,7 +189,7 @@ tools_hciconfig_SOURCES = tools/hciconfig.c tools/csr.h tools/csr.c
 tools_hciconfig_LDADD = lib/libbluetooth-internal.la
 
 tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c
-tools_hcitool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ @UDEV_LIBS@
+tools_hcitool_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
 
 tools_hcidump_SOURCES = tools/hcidump.c \
 				tools/parser/parser.h tools/parser/parser.c \

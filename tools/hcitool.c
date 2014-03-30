@@ -40,13 +40,10 @@
 #include <sys/socket.h>
 #include <signal.h>
 
-#include <glib.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include "src/textfile.h"
 #include "src/oui.h"
 
 /* Unofficial value, might still change */
@@ -416,36 +413,6 @@ static char *major_classes[] = {
 	"Audio/Video", "Peripheral", "Imaging", "Uncategorized"
 };
 
-static char *get_device_name(const bdaddr_t *local, const bdaddr_t *peer)
-{
-	char filename[PATH_MAX + 1];
-	char local_addr[18], peer_addr[18];
-	GKeyFile *key_file;
-	char *str = NULL;
-	int len;
-
-	ba2str(local, local_addr);
-	ba2str(peer, peer_addr);
-
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local_addr,
-			peer_addr);
-	filename[PATH_MAX] = '\0';
-	key_file = g_key_file_new();
-
-	if (g_key_file_load_from_file(key_file, filename, 0, NULL)) {
-		str = g_key_file_get_string(key_file, "General", "Name", NULL);
-		if (str) {
-			len = strlen(str);
-			if (len > HCI_MAX_NAME_LENGTH)
-				str[HCI_MAX_NAME_LENGTH] = '\0';
-		}
-	}
-
-	g_key_file_free(key_file);
-
-	return str;
-}
-
 /* Display local devices */
 
 static struct option dev_options[] = {
@@ -569,7 +536,6 @@ static struct option scan_options[] = {
 	{ "numrsp",	1, 0, 'n' },
 	{ "iac",	1, 0, 'i' },
 	{ "flush",	0, 0, 'f' },
-	{ "refresh",	0, 0, 'r' },
 	{ "class",	0, 0, 'C' },
 	{ "info",	0, 0, 'I' },
 	{ "oui",	0, 0, 'O' },
@@ -588,12 +554,12 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int num_rsp, length, flags;
 	uint8_t cls[3], features[8];
-	char addr[18], name[249], *comp, *tmp;
+	char addr[18], name[249], *comp;
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
-	int refresh = 0, extcls = 0, extinf = 0, extoui = 0;
-	int i, n, l, opt, dd, cc, nc;
+	int extcls = 0, extinf = 0, extoui = 0;
+	int i, n, l, opt, dd, cc;
 
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 0;
@@ -626,10 +592,6 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 		case 'f':
 			flags |= IREQ_CACHE_FLUSH;
-			break;
-
-		case 'r':
-			refresh = 1;
 			break;
 
 		case 'C':
@@ -690,25 +652,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	for (i = 0; i < num_rsp; i++) {
 		uint16_t handle = 0;
 
-		if (!refresh) {
-			memset(name, 0, sizeof(name));
-			tmp = get_device_name(&di.bdaddr, &(info+i)->bdaddr);
-			if (tmp) {
-				strncpy(name, tmp, 249);
-				free(tmp);
-				nc = 1;
-			} else
-				nc = 0;
-		} else
-			nc = 0;
-
 		if (!extcls && !extinf && !extoui) {
 			ba2str(&(info+i)->bdaddr, addr);
-
-			if (nc) {
-				printf("\t%s\t%s\n", addr, name);
-				continue;
-			}
 
 			if (hci_read_remote_name_with_clock_offset(dd,
 					&(info+i)->bdaddr,
@@ -770,27 +715,22 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			}
 		}
 
-		if (handle > 0 || !nc) {
-			if (hci_read_remote_name_with_clock_offset(dd,
+		if (hci_read_remote_name_with_clock_offset(dd,
 					&(info+i)->bdaddr,
 					(info+i)->pscan_rep_mode,
 					(info+i)->clock_offset | 0x8000,
 					sizeof(name), name, 100000) < 0) {
-				if (!nc)
-					strcpy(name, "n/a");
-			} else {
-				for (n = 0; n < 248 && name[n]; n++) {
-					if ((unsigned char) name[i] < 32 || name[i] == 127)
-						name[i] = '.';
-				}
-
-				name[248] = '\0';
-				nc = 0;
+		} else {
+			for (n = 0; n < 248 && name[n]; n++) {
+				if ((unsigned char) name[i] < 32 || name[i] == 127)
+					name[i] = '.';
 			}
+
+			name[248] = '\0';
 		}
 
 		if (strlen(name) > 0)
-			printf("Device name:\t%s%s\n", name, nc ? " [cached]" : "");
+			printf("Device name:\t%s\n", name);
 
 		if (extcls) {
 			memcpy(cls, (info+i)->dev_class, 3);
