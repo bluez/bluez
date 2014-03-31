@@ -977,6 +977,45 @@ static void test_auth(void)
 	g_assert_no_error(d.err);
 }
 
+static void test_auth_fail(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+				{ pkt_connect_req, sizeof(pkt_connect_req) },
+				{ pkt_auth_req, sizeof(pkt_auth_req) } }, {
+				{ pkt_unauth_rsp, sizeof(pkt_unauth_rsp) },
+				{ pkt_unauth_rsp, sizeof(pkt_unauth_rsp) } },
+				};
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_connect(obex, req_complete, &d, &d.err, G_OBEX_HDR_INVALID);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, 2);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
 static void test_setpath(void)
 {
 	GIOChannel *io;
@@ -1284,6 +1323,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_connect", test_connect);
 	g_test_add_func("/gobex/test_obex_disconnect", test_obex_disconnect);
 	g_test_add_func("/gobex/test_auth", test_auth);
+	g_test_add_func("/gobex/test_auth_fail", test_auth_fail);
 
 	g_test_add_func("/gobex/test_setpath", test_setpath);
 	g_test_add_func("/gobex/test_setpath_up", test_setpath_up);
