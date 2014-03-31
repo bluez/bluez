@@ -24,11 +24,6 @@ General
   Priority: high
   Complexity: C4
 
-- Add support for Authentication for client sessions in obexd
-
-  Priority: high
-  Complexity: C2
-
 - Update PBAP client/server implementation to 1.2 and create necessary APIs for
   new features it introduces.
 
