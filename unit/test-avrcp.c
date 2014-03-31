@@ -597,6 +597,9 @@ static void test_client(gconstpointer data)
 					AVRCP_MEDIA_PLAYER_VFS, 0x01, 0xaabb,
 					0, NULL);
 
+	if (g_str_equal(context->data->test_name, "/TP/MCN/SRC/BV-01-C"))
+		avrcp_search(context->session, "Country");
+
 	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED);
 
@@ -712,6 +715,16 @@ int main(int argc, char *argv[])
 				0x00, 0x00, 0x00, 0x01,	/* uuid */
 				0xaa, 0xbb,		/* counter */
 				0x00));			/* num attr */
+
+	/* Media Content Navigation Commands and Notifications for Search */
+
+	/* Search - CT */
+	define_test("/TP/MCN/SRC/BV-01-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, AVRCP_SEARCH,
+				0x00, 0x0b, 0x00, 0x6a,
+				0x00, 0x07,
+				0x43, 0x6f, 0x75, 0x6e, 0x74, 0x72, 0x79));
+
 
 	/* Media Player Selection IOP tests */
 
