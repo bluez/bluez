@@ -577,6 +577,10 @@ static void test_client(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/MPS/BV-03-C"))
 		avrcp_set_browsed_player(context->session, 0xabcd);
 
+	if (g_str_equal(context->data->test_name, "/TP/MPS/BV-08-C"))
+		avrcp_get_folder_items(context->session,
+					AVRCP_MEDIA_PLAYER_LIST, 0, 2, 0, NULL);
+
 	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED);
 
@@ -653,6 +657,14 @@ int main(int argc, char *argv[])
 	define_test("/TP/MPS/BV-03-C", test_client,
 			raw_pdu(0x00, 0x11, 0x0e, 0x70, 0x00, 0x02,
 				0xab, 0xcd));
+
+	/* GetFolderItems - CT */
+	define_test("/TP/MPS/BV-08-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+				0x00, 0x0a, AVRCP_MEDIA_PLAYER_LIST,
+				0x00, 0x00, 0x00, 0x00, /* start */
+				0x00, 0x00, 0x00, 0x02, /* end */
+				0x00));
 
 	/* Connection Establishment for Control tests */
 
