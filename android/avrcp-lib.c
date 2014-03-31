@@ -1964,7 +1964,10 @@ int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
 		ptr[0] = attrs[i];
 		put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
 		ptr[3] = len;
-		memcpy(&ptr[4], text[i], len);
+
+		if (len)
+			memcpy(&ptr[4], text[i], len);
+
 		ptr += 4 + len;
 		length += 4 + len;
 	}
