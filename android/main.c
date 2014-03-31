@@ -541,8 +541,11 @@ int main(int argc, char *argv[])
 	bt_bluetooth_cleanup();
 	g_main_loop_unref(event_loop);
 
-	ipc_unregister(hal_ipc, HAL_SERVICE_ID_CORE);
-	ipc_cleanup(hal_ipc);
+	/* If no adapter was initialized, hal_ipc is NULL */
+	if (hal_ipc) {
+		ipc_unregister(hal_ipc, HAL_SERVICE_ID_CORE);
+		ipc_cleanup(hal_ipc);
+	}
 
 	info("Exit");
 
