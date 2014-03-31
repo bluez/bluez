@@ -431,9 +431,14 @@ static int get_value_text(struct avrcp *session, uint8_t transaction,
 				uint8_t attr, uint8_t number, uint8_t *values,
 				void *user_data)
 {
-	const char *text[] = { "on" };
+	const char *text[number];
 
 	DBG("");
+
+	if (number) {
+		memset(text, 0, number);
+		text[0] = "on";
+	}
 
 	avrcp_get_player_values_text_rsp(session, transaction, number,
 								values, text);
