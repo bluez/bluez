@@ -680,6 +680,19 @@ int main(int argc, char *argv[])
 				0x00, 0x00, 0x00, 0x02, /* end */
 				0x00));
 
+	/* Connection Establishment for Browsing tests */
+
+	/*
+	 * Tests are checking connection establishment and release
+	 * for browsing channel. Since we are connected through socketpair
+	 * the tests are dummy
+	 */
+	define_test("/TP/CON/BV-01-C", test_dummy, raw_pdu(0x00));
+	define_test("/TP/CON/BV-02-C", test_dummy, raw_pdu(0x00));
+	define_test("/TP/CON/BV-03-C", test_dummy, raw_pdu(0x00));
+	define_test("/TP/CON/BV-04-C", test_dummy, raw_pdu(0x00));
+	define_test("/TP/CON/BV-05-C", test_dummy, raw_pdu(0x00));
+
 	/* Connection Establishment for Control tests */
 
 	/*
