@@ -63,6 +63,7 @@ struct characteristic {
 
 struct descriptor {
 	char *uuid;
+	char *path;
 	uint8_t *value;
 	int vlen;
 };
@@ -125,6 +126,10 @@ static void desc_set_value(const GDBusPropertyTable *property,
 	desc->vlen = vlen;
 
 	g_dbus_pending_property_success(id);
+
+	g_dbus_emit_property_changed(connection, desc->path,
+					GATT_DESCRIPTOR_IFACE, "Value");
+
 }
 
 static const GDBusPropertyTable desc_properties[] = {
@@ -274,6 +279,7 @@ static void desc_iface_destroy(gpointer user_data)
 
 	g_free(desc->uuid);
 	g_free(desc->value);
+	g_free(desc->path);
 	g_free(desc);
 }
 
@@ -286,8 +292,6 @@ static gboolean register_characteristic(const char *chr_uuid,
 	struct characteristic *chr;
 	struct descriptor *desc;
 	static int id = 1;
-	char *desc_path;
-	gboolean ret = TRUE;
 
 	chr = g_new0(struct characteristic, 1);
 	chr->uuid = g_strdup(chr_uuid);
@@ -309,9 +313,9 @@ static gboolean register_characteristic(const char *chr_uuid,
 
 	desc = g_new0(struct descriptor, 1);
 	desc->uuid = g_strdup(desc_uuid);
+	desc->path = g_strdup_printf("%s/descriptor%d", chr->path, id++);
 
-	desc_path = g_strdup_printf("%s/descriptor%d", chr->path, id++);
-	if (!g_dbus_register_interface(connection, desc_path,
+	if (!g_dbus_register_interface(connection, desc->path,
 					GATT_DESCRIPTOR_IFACE,
 					NULL, NULL, desc_properties,
 					desc, desc_iface_destroy)) {
@@ -320,12 +324,10 @@ static gboolean register_characteristic(const char *chr_uuid,
 							GATT_CHR_IFACE);
 
 		desc_iface_destroy(desc);
-		ret = FALSE;
+		return FALSE;
 	}
 
-	g_free(desc_path);
-
-	return ret;
+	return TRUE;
 }
 
 static char *register_service(const char *uuid)
