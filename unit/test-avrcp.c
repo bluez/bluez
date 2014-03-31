@@ -574,6 +574,9 @@ static void test_client(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/MPS/BV-01-C"))
 		avrcp_set_addressed_player(context->session, 0xabcd);
 
+	if (g_str_equal(context->data->test_name, "/TP/MPS/BV-03-C"))
+		avrcp_set_browsed_player(context->session, 0xabcd);
+
 	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED);
 
@@ -645,6 +648,11 @@ int main(int argc, char *argv[])
 				0x48, 0x00, 0x00, 0x19, 0x58,
 				AVRCP_SET_ADDRESSED_PLAYER,
 				0x00, 0x00, 0x01, 0x04));
+
+	/* SetBrowsedPlayer - CT */
+	define_test("/TP/MPS/BV-03-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x70, 0x00, 0x02,
+				0xab, 0xcd));
 
 	/* Connection Establishment for Control tests */
 
