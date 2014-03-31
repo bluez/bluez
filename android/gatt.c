@@ -805,11 +805,7 @@ static struct gatt_device *find_device(bdaddr_t *addr)
 	if (dev)
 		return dev;
 
-	dev = queue_find(conn_wait_queue, match_dev_by_bdaddr, addr);
-	if (dev)
-		return dev;
-
-	return NULL;
+	return queue_find(conn_wait_queue, match_dev_by_bdaddr, addr);
 }
 
 static struct gatt_device *find_device_by_conn_id(int32_t conn_id)
