@@ -592,6 +592,11 @@ static void test_client(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/MCN/CB/BV-04-C"))
 		avrcp_change_path(context->session, 0x01, 0x01, 0xaabb);
 
+	if (g_str_equal(context->data->test_name, "/TP/MCN/CB/BV-07-C"))
+		avrcp_get_item_attributes(context->session,
+					AVRCP_MEDIA_PLAYER_VFS, 0x01, 0xaabb,
+					0, NULL);
+
 	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED);
 
@@ -698,6 +703,15 @@ int main(int argc, char *argv[])
 				0x01,			/* direction */
 				0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x01	/* Folder UID */));
+
+	/* GetItemAttributes - CT */
+	define_test("/TP/MCN/CB/BV-07-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+				0x00, 0x0c, AVRCP_MEDIA_PLAYER_VFS,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x01,	/* uuid */
+				0xaa, 0xbb,		/* counter */
+				0x00));			/* num attr */
 
 	/* Media Player Selection IOP tests */
 
