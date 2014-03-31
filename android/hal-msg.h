@@ -383,37 +383,36 @@ struct hal_cmd_pan_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-struct hal_string {
-	uint8_t len;
-	uint8_t data[0];
-};
-
 #define HAL_OP_HEALTH_REG_APP		0x01
 struct hal_cmd_health_reg_app {
-	struct hal_string app_name;
-	struct hal_string provider_name;
-	struct hal_string service_name;
-	struct hal_string service_descr;
-	uint8_t num_of_mdep;
+	uint8_t  num_of_mdep;
+	uint16_t app_name_off;
+	uint16_t provider_name_off;
+	uint16_t service_name_off;
+	uint16_t service_descr_off;
+	uint16_t len;
+	uint8_t  data[0];
+} __attribute__((packed));
 
-	struct {
-		uint8_t role;
-		uint8_t data_type;
-		uint8_t channel_type;
-		struct  hal_string descr;
-	} mdep_cfg[0];
+#define HAL_OP_HEALTH_MDEP		0x02
+struct hal_cmd_health_mdep {
+	uint8_t  role;
+	uint8_t  data_type;
+	uint8_t  channel_type;
+	uint16_t descr_len;
+	uint8_t  descr[0];
 } __attribute__((packed));
 
 struct hal_rsp_health_reg_app {
 	uint16_t app_id;
 } __attribute__((packed));
 
-#define HAL_OP_HEALTH_UNREG_APP		0x02
+#define HAL_OP_HEALTH_UNREG_APP		0x03
 struct hal_cmd_health_unreg_app {
 	uint16_t app_id;
 } __attribute__((packed));
 
-#define HAL_OP_HEALTH_CONNECT_CHANNEL	0x03
+#define HAL_OP_HEALTH_CONNECT_CHANNEL	0x04
 struct hal_cmd_health_connect_channel {
 	uint16_t app_id;
 	uint8_t  bdaddr[6];
@@ -424,7 +423,7 @@ struct hal_rsp_health_connect_channel {
 	uint16_t  channel_id;
 } __attribute__((packed));
 
-#define HAL_OP_HEALTH_DESTROY_CHANNEL	0x04
+#define HAL_OP_HEALTH_DESTROY_CHANNEL	0x05
 struct hal_cmd_health_destroy_channel {
 	uint16_t channel_id;
 } __attribute__((packed));
