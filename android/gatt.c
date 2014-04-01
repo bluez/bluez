@@ -135,6 +135,20 @@ static void uuid2android(const bt_uuid_t *src, uint8_t *uuid)
 		uuid[15 - i] = src->value.u128.data[i];
 }
 
+static void hal_srvc_id_to_element_id(const struct hal_gatt_srvc_id *from,
+							struct element_id *to)
+{
+	to->instance = from->inst_id;
+	android2uuid(from->uuid, &to->uuid);
+}
+
+static void hal_gatt_id_to_element_id(const struct hal_gatt_gatt_id *from,
+							struct element_id *to)
+{
+	to->instance = from->inst_id;
+	android2uuid(from->uuid, &to->uuid);
+}
+
 static void destroy_service(void *data)
 {
 	struct service *srvc = data;
@@ -254,13 +268,6 @@ static bool match_char_by_element_id(const void *data, const void *user_data)
 		return !bt_uuid_cmp(&uuid, &exp_id->uuid);
 
 	return false;
-}
-
-static void hal_gatt_id_to_element_id(const struct hal_gatt_gatt_id *from,
-							struct element_id *to)
-{
-	to->instance = from->inst_id;
-	android2uuid(from->uuid, &to->uuid);
 }
 
 static void destroy_notification(void *data)
@@ -1266,13 +1273,6 @@ static void discover_char_cb(uint8_t status, GSList *characteristics,
 						data->conn_id, data->service);
 
 	free(data);
-}
-
-static void hal_srvc_id_to_element_id(const struct hal_gatt_srvc_id *from,
-							struct element_id *to)
-{
-	to->instance = from->inst_id;
-	android2uuid(from->uuid, &to->uuid);
 }
 
 static bool find_service(int32_t conn_id, struct element_id *service_id,
