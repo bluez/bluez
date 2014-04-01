@@ -2095,30 +2095,31 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	DBG("");
 
+	conn_list = queue_new();
+	conn_wait_queue = queue_new();
+	gatt_clients = queue_new();
+
+	if (!conn_list || !conn_wait_queue || !gatt_clients) {
+		error("gatt: Failed to allocate memory for queues");
+
+		queue_destroy(gatt_clients, NULL);
+		gatt_clients = NULL;
+
+		queue_destroy(conn_list, NULL);
+		conn_list = NULL;
+
+		queue_destroy(conn_wait_queue, NULL);
+		conn_wait_queue = NULL;
+
+		return false;
+	}
+
 	bacpy(&adapter_addr, addr);
 
 	hal_ipc = ipc;
 
-	conn_list = queue_new();
-	if (!conn_list) {
-		error("gatt: Can not create conn queue");
-		return false;
-	}
-
-	conn_wait_queue = queue_new();
-	if (!conn_wait_queue) {
-		error("gatt: Can not create conn queue");
-		return false;
-	}
-
 	ipc_register(hal_ipc, HAL_SERVICE_ID_GATT, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
-
-	gatt_clients = queue_new();
-	if (!gatt_clients) {
-		error("gatt: Cannot allocate gatt_clients");
-		return false;
-	}
 
 	return true;
 }
