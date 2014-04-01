@@ -2186,40 +2186,45 @@ failed:
 
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HANDSFREE_CONNECT */
-	{ handle_connect, false, sizeof(struct hal_cmd_handsfree_connect)},
+	{ handle_connect, false,
+		sizeof(struct hal_cmd_handsfree_connect) },
 	/* HAL_OP_HANDSFREE_DISCONNECT */
-	{handle_disconnect, false, sizeof(struct hal_cmd_handsfree_disconnect)},
+	{ handle_disconnect, false,
+		sizeof(struct hal_cmd_handsfree_disconnect) },
 	/*HAL_OP_HANDSFREE_CONNECT_AUDIO*/
-	{handle_connect_audio, false,
-			sizeof(struct hal_cmd_handsfree_connect_audio)},
+	{ handle_connect_audio, false,
+		sizeof(struct hal_cmd_handsfree_connect_audio) },
 	/*HAL_OP_HANDSFREE_DISCONNECT_AUDIO*/
-	{handle_disconnect_audio, false,
-			sizeof(struct hal_cmd_handsfree_disconnect_audio)},
+	{ handle_disconnect_audio, false,
+		sizeof(struct hal_cmd_handsfree_disconnect_audio) },
 	/* define HAL_OP_HANDSFREE_START_VR */
-	{handle_start_vr, false, 0 },
+	{ handle_start_vr, false, 0 },
 	/* define HAL_OP_HANDSFREE_STOP_VR */
-	{handle_stop_vr, false, 0 },
+	{ handle_stop_vr, false, 0 },
 	/* HAL_OP_HANDSFREE_VOLUME_CONTROL */
-	{handle_volume_control, false,
-			sizeof(struct hal_cmd_handsfree_volume_control)},
+	{ handle_volume_control, false,
+		sizeof(struct hal_cmd_handsfree_volume_control) },
 	/* HAL_OP_HANDSFREE_DEVICE_STATUS_NOTIF */
-	{handle_device_status_notif, false,
-			sizeof(struct hal_cmd_handsfree_device_status_notif)},
+	{ handle_device_status_notif, false,
+		sizeof(struct hal_cmd_handsfree_device_status_notif) },
 	/* HAL_OP_HANDSFREE_COPS_RESPONSE */
-	{handle_cops, true, sizeof(struct hal_cmd_handsfree_cops_response)},
+	{ handle_cops, true,
+		sizeof(struct hal_cmd_handsfree_cops_response) },
 	/* HAL_OP_HANDSFREE_CIND_RESPONSE */
-	{ handle_cind, false, sizeof(struct hal_cmd_handsfree_cind_response)},
+	{ handle_cind, false,
+		sizeof(struct hal_cmd_handsfree_cind_response) },
 	/* HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE */
-	{handle_formatted_at_resp, true,
-			sizeof(struct hal_cmd_handsfree_formatted_at_response)},
+	{ handle_formatted_at_resp, true,
+		sizeof(struct hal_cmd_handsfree_formatted_at_response) },
 	/* HAL_OP_HANDSFREE_AT_RESPONSE */
-	{handle_at_resp, false, sizeof(struct hal_cmd_handsfree_at_response)},
+	{ handle_at_resp, false,
+		sizeof(struct hal_cmd_handsfree_at_response) },
 	/* HAL_OP_HANDSFREE_CLCC_RESPONSE */
-	{handle_clcc_resp, true,
-			sizeof(struct hal_cmd_handsfree_clcc_response)},
+	{ handle_clcc_resp, true,
+		sizeof(struct hal_cmd_handsfree_clcc_response) },
 	/* HAL_OP_HANDSFREE_PHONE_STATE_CHANGE */
-	{handle_phone_state_change, true,
-			sizeof(struct hal_cmd_handsfree_phone_state_change)},
+	{ handle_phone_state_change, true,
+		sizeof(struct hal_cmd_handsfree_phone_state_change) },
 };
 
 static sdp_record_t *headset_ag_record(void)
