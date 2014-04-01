@@ -67,9 +67,16 @@ struct element_id {
 	uint8_t instance;
 };
 
+struct descriptor {
+	struct element_id id;
+	uint16_t handle;
+};
+
 struct characteristic {
 	struct element_id id;
 	struct gatt_char ch;
+
+	struct queue *descriptors;
 };
 
 struct service {
@@ -171,6 +178,17 @@ static void element_id_to_hal_gatt_id(const struct element_id *from,
 	uuid2android(&from->uuid, to->uuid);
 }
 
+static void destroy_characteristic(void *data)
+{
+	struct characteristic *chars = data;
+
+	if (!chars)
+		return;
+
+	queue_destroy(chars->descriptors, free);
+	free(chars);
+}
+
 static void destroy_service(void *data)
 {
 	struct service *srvc = data;
@@ -178,7 +196,7 @@ static void destroy_service(void *data)
 	if (!srvc)
 		return;
 
-	queue_destroy(srvc->chars, free);
+	queue_destroy(srvc->chars, destroy_characteristic);
 	free(srvc);
 }
 
@@ -1257,14 +1275,21 @@ static void cache_all_srvc_chars(GSList *characteristics, struct queue *q)
 
 	/* Refresh characteristics cache if already exist */
 	if (!queue_isempty(q))
-		queue_remove_all(q, NULL, NULL, free);
+		queue_remove_all(q, NULL, NULL, destroy_characteristic);
 
 	for (; characteristics; characteristics = characteristics->next) {
 		struct characteristic *ch;
 
 		ch = new0(struct characteristic, 1);
 		if (!ch) {
-			error("gatt: Could not allocate characteristic");
+			error("gatt: Error while caching characteristic");
+			continue;
+		}
+
+		ch->descriptors = queue_new();
+		if (!ch->descriptors) {
+			error("gatt: Error while caching characteristic");
+			free(ch);
 			continue;
 		}
 
@@ -1280,7 +1305,7 @@ static void cache_all_srvc_chars(GSList *characteristics, struct queue *q)
 
 		if (!queue_push_tail(q, ch)) {
 			error("gatt: Error while caching characteristic");
-			free(ch);
+			destroy_characteristic(ch);
 		}
 	}
 }
