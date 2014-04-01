@@ -57,6 +57,11 @@ struct gatt_client {
 	struct queue *notifications;
 };
 
+struct gatt_server {
+	int32_t id;
+	uint8_t uuid[16];
+};
+
 struct element_id {
 	bt_uuid_t uuid;
 	uint8_t instance;
@@ -105,6 +110,7 @@ static bdaddr_t adapter_addr;
 static bool scanning = false;
 
 static struct queue *gatt_clients = NULL;
+static struct queue *gatt_servers = NULL;
 static struct queue *conn_list	= NULL;		/* Connected devices */
 static struct queue *conn_wait_queue = NULL;	/* Devs waiting to connect */
 
@@ -182,6 +188,14 @@ static bool match_client_by_uuid(const void *data, const void *user_data)
 	const struct gatt_client *client = data;
 
 	return !memcmp(exp_uuid, client->uuid, sizeof(client->uuid));
+}
+
+static bool match_server_by_uuid(const void *data, const void *user_data)
+{
+	const uint8_t *exp_uuid = user_data;
+	const struct gatt_server *server = data;
+
+	return !memcmp(exp_uuid, server->uuid, sizeof(server->uuid));
 }
 
 static bool match_client_by_id(const void *data, const void *user_data)
@@ -338,6 +352,13 @@ static void destroy_gatt_client(void *data)
 	queue_destroy(client->notifications, free);
 
 	free(client);
+}
+
+static void destroy_gatt_server(void *data)
+{
+	struct gatt_server *server = data;
+
+	free(server);
 }
 
 static void handle_client_register(const void *buf, uint16_t len)
@@ -1874,10 +1895,55 @@ static void handle_client_test_command(const void *buf, uint16_t len)
 
 static void handle_server_register(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_server_register *cmd = buf;
+	struct hal_ev_gatt_server_register ev;
+	struct gatt_server *server;
+	static int32_t server_cnt = 1;
+	uint32_t status;
+
 	DBG("");
 
+	memset(&ev, 0, sizeof(ev));
+
+	if (queue_find(gatt_servers, match_server_by_uuid, &cmd->uuid)) {
+		error("gatt: Server uuid is already on list");
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	server = new0(struct gatt_server, 1);
+	if (!server) {
+		error("gatt: Cannot allocate memory for registering server");
+		status = HAL_STATUS_NOMEM;
+		goto failed;
+	}
+
+	memcpy(server->uuid, cmd->uuid, sizeof(server->uuid));
+
+	server->id = server_cnt++;
+
+	if (!queue_push_head(gatt_servers, server)) {
+		error("gatt: Cannot push server on the list");
+		free(server);
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	ev.status = GATT_SUCCESS;
+	ev.server_if = server->id;
+	memcpy(ev.uuid, server->uuid, sizeof(server->uuid));
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
+	if (status != HAL_STATUS_SUCCESS)
+		ev.status = GATT_FAILURE;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
+				HAL_EV_GATT_SERVER_REGISTER, sizeof(ev), &ev);
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_REGISTER,
-							HAL_STATUS_FAILED);
+									status);
 }
 
 static void handle_server_unregister(const void *buf, uint16_t len)
@@ -2092,9 +2158,13 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 	conn_list = queue_new();
 	conn_wait_queue = queue_new();
 	gatt_clients = queue_new();
+	gatt_servers = queue_new();
 
-	if (!conn_list || !conn_wait_queue || !gatt_clients) {
+	if (!conn_list || !conn_wait_queue || !gatt_clients || !gatt_servers) {
 		error("gatt: Failed to allocate memory for queues");
+
+		queue_destroy(gatt_servers, NULL);
+		gatt_servers = NULL;
 
 		queue_destroy(gatt_clients, NULL);
 		gatt_clients = NULL;
@@ -2124,6 +2194,9 @@ void bt_gatt_unregister(void)
 
 	ipc_unregister(hal_ipc, HAL_SERVICE_ID_GATT);
 	hal_ipc = NULL;
+
+	queue_destroy(gatt_servers, destroy_gatt_server);
+	gatt_servers = NULL;
 
 	queue_destroy(gatt_clients, destroy_gatt_client);
 	gatt_clients = NULL;
