@@ -2127,15 +2127,15 @@ void bt_gatt_unregister(void)
 {
 	DBG("");
 
-	queue_destroy(gatt_clients, free);
-
 	ipc_unregister(hal_ipc, HAL_SERVICE_ID_GATT);
 	hal_ipc = NULL;
+
+	queue_destroy(gatt_clients, destroy_gatt_client);
+	gatt_clients = NULL;
 
 	queue_destroy(conn_list, destroy_device);
 	conn_list = NULL;
 
 	queue_destroy(conn_wait_queue, destroy_device);
 	conn_wait_queue = NULL;
-
 }
