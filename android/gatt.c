@@ -350,12 +350,6 @@ static void handle_client_register(const void *buf, uint16_t len)
 
 	DBG("");
 
-	if (!cmd->uuid) {
-		error("gatt: no uuid received");
-		status = HAL_STATUS_FAILED;
-		goto failed;
-	}
-
 	if (queue_find(gatt_clients, match_client_by_uuid, &cmd->uuid)) {
 		error("gatt: client uuid is already on list");
 		status = HAL_STATUS_FAILED;
