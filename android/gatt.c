@@ -229,11 +229,9 @@ static bool match_srvc_by_element_id(const void *data, const void *user_data)
 {
 	const struct element_id *exp_id = user_data;
 	const struct service *service = data;
-	bt_uuid_t uuid;
 
-	bt_string_to_uuid(&uuid, service->primary.uuid);
 	if (service->id.instance == exp_id->instance)
-		return !bt_uuid_cmp(&uuid, &exp_id->uuid);
+		return !bt_uuid_cmp(&service->id.uuid, &exp_id->uuid);
 
 	return false;
 }
@@ -277,11 +275,9 @@ static bool match_char_by_element_id(const void *data, const void *user_data)
 {
 	const struct element_id *exp_id = user_data;
 	const struct characteristic *chars = data;
-	bt_uuid_t uuid;
 
-	bt_string_to_uuid(&uuid, chars->ch.uuid);
 	if (exp_id->instance == chars->id.instance)
-		return !bt_uuid_cmp(&uuid, &exp_id->uuid);
+		return !bt_uuid_cmp(&chars->id.uuid, &exp_id->uuid);
 
 	return false;
 }
