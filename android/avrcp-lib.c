@@ -1463,8 +1463,36 @@ int avrcp_get_element_attributes(struct avrcp *session)
 				get_element_attributes_rsp, session);
 }
 
-int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
-					avctp_rsp_cb func, void *user_data)
+static gboolean set_addressed_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->set_addressed)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	err = parse_status(pdu);
+
+done:
+	player->cfm->set_addressed(session, err, player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id)
 {
 	uint8_t params[2];
 
@@ -1472,7 +1500,8 @@ int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id,
 
 	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
 				AVRCP_SET_ADDRESSED_PLAYER, params,
-				sizeof(params), func, user_data);
+				sizeof(params), set_addressed_rsp,
+				session);
 }
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,

@@ -487,8 +487,7 @@ static void test_client(gconstpointer data)
 	struct context *context = create_context(0x0100, data);
 
 	if (g_str_equal(context->data->test_name, "/TP/MPS/BV-01-C"))
-		avrcp_set_addressed_player(context->session, 0xabcd, NULL,
-									NULL);
+		avrcp_set_addressed_player(context->session, 0xabcd);
 
 	if (g_str_equal(context->data->test_name, "/TP/CFG/BV-01-C"))
 		avrcp_get_capabilities(context->session, CAP_EVENTS_SUPPORTED);
