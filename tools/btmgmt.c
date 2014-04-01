@@ -342,6 +342,34 @@ static char *eir_get_name(const uint8_t *eir, uint16_t eir_len)
 	return NULL;
 }
 
+static unsigned int eir_get_flags(const uint8_t *eir, uint16_t eir_len)
+{
+	uint8_t parsed = 0;
+
+	if (eir_len < 2)
+		return 0;
+
+	while (parsed < eir_len - 1) {
+		uint8_t field_len = eir[0];
+
+		if (field_len == 0)
+			break;
+
+		parsed += field_len + 1;
+
+		if (parsed > eir_len)
+			break;
+
+		/* Check for short of complete name */
+		if (eir[1] == 0x01)
+			return eir[2];
+
+		eir += field_len + 1;
+	}
+
+	return 0;
+}
+
 static void device_found(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -372,6 +400,10 @@ static void device_found(uint16_t index, uint16_t len, const void *param,
 		printf("hci%u dev_found: %s type %s rssi %d "
 			"flags 0x%04x ", index, addr,
 			typestr(ev->addr.type), ev->rssi, flags);
+
+		if (ev->addr.type != BDADDR_BREDR)
+			printf("AD flags 0x%02x ",
+					eir_get_flags(ev->eir, eir_len));
 
 		name = eir_get_name(ev->eir, eir_len);
 		if (name)
