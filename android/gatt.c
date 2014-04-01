@@ -2034,12 +2034,130 @@ failed:
 			HAL_OP_GATT_CLIENT_READ_DESCRIPTOR, status);
 }
 
+static void send_client_descr_write_notify(int32_t status, int32_t conn_id,
+						const struct element_id *srvc,
+						const struct element_id *ch,
+						const struct element_id *descr,
+						uint8_t primary) {
+	uint8_t buf[IPC_MTU];
+	struct hal_ev_gatt_client_write_descriptor *ev = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+
+	ev->status = status;
+	ev->conn_id = conn_id;
+
+	element_id_to_hal_srvc_id(srvc, primary, &ev->data.srvc_id);
+	element_id_to_hal_gatt_id(ch, &ev->data.char_id);
+	element_id_to_hal_gatt_id(descr, &ev->data.descr_id);
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
+					HAL_EV_GATT_CLIENT_WRITE_DESCRIPTOR,
+					sizeof(*ev), ev);
+}
+
+static void write_descr_cb(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
+{
+	struct desc_data *cb_data = user_data;
+
+	if (status)
+		error("gatt: Write descriptors failed: %s",
+							att_ecode2str(status));
+
+	send_client_descr_write_notify(status, cb_data->conn_id,
+					cb_data->srvc_id, cb_data->char_id,
+					cb_data->descr_id, cb_data->primary);
+
+	free(cb_data);
+}
+
 static void handle_client_write_descriptor(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_client_write_descriptor *cmd = buf;
+	struct desc_data *cb_data;
+	struct characteristic *ch;
+	struct descriptor *descr;
+	struct service *srvc;
+	struct element_id srvc_id;
+	struct element_id char_id;
+	struct element_id descr_id;
+	struct gatt_device *dev;
+	int32_t conn_id;
+	uint8_t primary;
+	uint8_t status;
+
 	DBG("");
 
+	if (len != sizeof(*cmd) + cmd->len) {
+		error("Invalid write desriptor command (%u bytes), terminating",
+									len);
+		raise(SIGTERM);
+		return;
+	}
+
+	primary = cmd->srvc_id.is_primary;
+	conn_id = cmd->conn_id;
+
+	hal_srvc_id_to_element_id(&cmd->srvc_id, &srvc_id);
+	hal_gatt_id_to_element_id(&cmd->char_id, &char_id);
+	hal_gatt_id_to_element_id(&cmd->descr_id, &descr_id);
+
+	if (!find_service(cmd->conn_id, &srvc_id, &dev, &srvc)) {
+		error("gatt: Write descr. could not find service");
+
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	ch = queue_find(srvc->chars, match_char_by_element_id, &char_id);
+	if (!ch) {
+		error("gatt: Write descr. could not find characteristic");
+
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	descr = queue_find(ch->descriptors, match_descr_by_element_id,
+								&descr_id);
+	if (!descr) {
+		error("gatt: Write descr. could not find descriptor");
+
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	cb_data = new0(struct desc_data, 1);
+	if (!cb_data) {
+		error("gatt: Write descr. could not allocate callback data");
+
+		status = HAL_STATUS_NOMEM;
+		goto failed;
+	}
+
+	cb_data->conn_id = conn_id;
+	cb_data->srvc_id = &srvc->id;
+	cb_data->char_id = &ch->id;
+	cb_data->descr_id = &descr->id;
+	cb_data->primary = primary;
+
+	if (!gatt_write_char(dev->attrib, descr->handle, cmd->value, cmd->len,
+						write_descr_cb, cb_data)) {
+		free(cb_data);
+
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
+	if (status != HAL_STATUS_SUCCESS)
+		send_client_descr_write_notify(GATT_FAILURE, conn_id, &srvc_id,
+						&char_id, &descr_id, primary);
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_CLIENT_WRITE_DESCRIPTOR, HAL_STATUS_FAILED);
+				HAL_OP_GATT_CLIENT_WRITE_DESCRIPTOR, status);
 }
 
 static void handle_client_execute_write(const void *buf, uint16_t len)
