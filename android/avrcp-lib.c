@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include <glib.h>
 #include <errno.h>
+#include <string.h>
 
 #include "lib/bluetooth.h"
 
@@ -44,7 +45,7 @@
 #define AVRCP_PACKET_TYPE_CONTINUING		0x02
 #define AVRCP_PACKET_TYPE_END			0x03
 
-#define AVRCP_CHARSET_UTF8			106
+#define AVRCP_CHARSET_UTF8	0x006a
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
@@ -1839,6 +1840,67 @@ int avrcp_get_item_attributes(struct avrcp *session, uint8_t scope,
 	return avrcp_send_browsing_req(session, AVRCP_GET_ITEM_ATTRIBUTES,
 					pdu, sizeof(pdu),
 					get_item_attributes_rsp, session);
+}
+
+static gboolean search_rsp(struct avctp *conn, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_browsing_header *pdu;
+	uint16_t counter = 0;
+	uint32_t items = 0;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->search)
+		return FALSE;
+
+	pdu = parse_browsing_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	err = parse_browsing_status(pdu);
+	if (err < 0)
+		goto done;
+
+	if (pdu->params_len < 7) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	counter = get_be16(&pdu->params[1]);
+	items = get_be32(&pdu->params[3]);
+
+	err = 0;
+
+done:
+	player->cfm->search(session, err, counter, items, player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_search(struct avrcp *session, const char *string)
+{
+	uint8_t pdu[255];
+	size_t len;
+
+	if (!string)
+		return -EINVAL;
+
+	len = strnlen(string, 255 - 4);
+
+	put_be16(AVRCP_CHARSET_UTF8, &pdu[0]);
+	put_be16(len, &pdu[2]);
+
+	memcpy(&pdu[4], string, len);
+	len += 4;
+
+	return avrcp_send_browsing_req(session, AVRCP_SEARCH,
+					pdu, len, search_rsp, session);
 }
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
