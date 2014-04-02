@@ -389,7 +389,7 @@ static int cmd_chiprev(int transport, int argc, char *argv[])
 
 static int cmd_buildname(int transport, int argc, char *argv[])
 {
-	uint8_t array[130];
+	uint8_t array[131];
 	char name[64];
 	unsigned int i;
 	int err;
