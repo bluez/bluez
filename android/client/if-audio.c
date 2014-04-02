@@ -116,15 +116,6 @@ static void init_p(int argc, const char **argv)
 	if_audio = device;
 }
 
-static void playthread_cleanup(void *arg)
-{
-	pthread_mutex_lock(&state_mutex);
-	current_state = STATE_STOPPED;
-	pthread_mutex_unlock(&state_mutex);
-
-	haltest_info("Done playing.\n");
-}
-
 static int feed_from_file(short *buffer, void *data)
 {
 	FILE *in = data;
@@ -185,8 +176,6 @@ static void *playback_thread(void *data)
 	void *cb_data = NULL;
 	float freq = 440.0;
 
-	pthread_cleanup_push(playthread_cleanup, NULL);
-
 	/* Use file or fall back to generator */
 	if (in) {
 		filbuff_cb = feed_from_file;
@@ -228,7 +217,12 @@ static void *playback_thread(void *data)
 	if (in)
 		fclose(in);
 
-	pthread_cleanup_pop(1);
+	pthread_mutex_lock(&state_mutex);
+	current_state = STATE_STOPPED;
+	pthread_mutex_unlock(&state_mutex);
+
+	haltest_info("Done playing.\n");
+
 	return NULL;
 }
 
