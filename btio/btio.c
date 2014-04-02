@@ -886,28 +886,6 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	return TRUE;
 }
 
-static gboolean get_peers(int sock, struct sockaddr *src, struct sockaddr *dst,
-				socklen_t len, GError **err)
-{
-	socklen_t olen;
-
-	memset(src, 0, len);
-	olen = len;
-	if (getsockname(sock, src, &olen) < 0) {
-		ERROR_FAILED(err, "getsockname", errno);
-		return FALSE;
-	}
-
-	memset(dst, 0, len);
-	olen = len;
-	if (getpeername(sock, dst, &olen) < 0) {
-		ERROR_FAILED(err, "getpeername", errno);
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 static gboolean get_src(int sock, void *src, socklen_t len, GError **err)
 {
 	socklen_t olen;
@@ -1340,8 +1318,10 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		return FALSE;
 	}
 
-	if (!get_peers(sock, (struct sockaddr *) &src,
-				(struct sockaddr *) &dst, sizeof(src), err))
+	if (!get_src(sock, &src, sizeof(src), err))
+		return FALSE;
+
+	if (!get_dst(sock, &dst, sizeof(dst), err))
 		return FALSE;
 
 	while (opt != BT_IO_OPT_INVALID) {
