@@ -604,7 +604,7 @@ static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
 						HAL_EV_GATT_CLIENT_SCAN_RESULT,
-						sizeof(ev) + ev->len, ev);
+						sizeof(*ev) + ev->len, ev);
 
 connect:
 	if (!is_device_wating_for_connect(addr, addr_type))
