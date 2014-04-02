@@ -135,18 +135,6 @@ struct sbc_data {
 	unsigned frames_per_packet;
 };
 
-static inline void timespec_diff(struct timespec *a, struct timespec *b,
-							struct timespec *res)
-{
-	res->tv_sec = a->tv_sec - b->tv_sec;
-	res->tv_nsec = a->tv_nsec - b->tv_nsec;
-
-	if (res->tv_nsec < 0) {
-		res->tv_sec--;
-		res->tv_nsec += 1000000000; /* 1sec */
-	}
-}
-
 static void timespec_add(struct timespec *base, uint64_t time_us,
 							struct timespec *res)
 {
