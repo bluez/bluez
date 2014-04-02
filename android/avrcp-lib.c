@@ -1434,13 +1434,50 @@ int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
 						func, user_data);
 }
 
-static int parse_attribute_list(struct avrcp_header *pdu, uint8_t *number,
-						uint32_t *attrs, char **text)
+static int parse_attribute_list(uint8_t *params, uint16_t params_len,
+				uint8_t number, uint32_t *attrs, char **text)
 {
-	uint8_t *ptr;
-	uint16_t params_len;
 	int i;
 
+	if (number > AVRCP_MEDIA_ATTRIBUTE_LAST)
+		return -EPROTO;
+
+	for (i = 0; number > 0 && params_len > i; number--) {
+		uint16_t charset, len;
+
+		if (params_len < 8)
+			goto fail;
+
+		attrs[i] = get_be32(&params[i]);
+		i += sizeof(uint32_t);
+
+		charset = get_be16(&params[i]);
+		i += sizeof(uint16_t);
+
+		len = get_be16(&params[i]);
+		i += sizeof(uint16_t);
+
+		if (len > params_len)
+			goto fail;
+
+		if (charset == AVRCP_CHARSET_UTF8)
+			text[i] = g_strndup((const char *) &params[i], len);
+
+		i += len;
+	}
+
+	return 0;
+
+fail:
+	for (i -= 1; i >= 0; i--)
+		g_free(text[i]);
+
+	return -EPROTO;
+}
+
+static int parse_elements(struct avrcp_header *pdu, uint8_t *number,
+						uint32_t *attrs, char **text)
+{
 	if (pdu->params_len < 1)
 		return -EPROTO;
 
@@ -1450,41 +1487,24 @@ static int parse_attribute_list(struct avrcp_header *pdu, uint8_t *number,
 		return -EPROTO;
 	}
 
-	params_len = pdu->params_len - 1;
-	for (i = 0, ptr = &pdu->params[1]; i < *number && params_len > 0; i++) {
-		uint16_t len;
+	return parse_attribute_list(&pdu->params[1], pdu->params_len - 1,
+							*number, attrs, text);
+}
 
-		if (params_len < 8)
-			goto fail;
+static int parse_items(struct avrcp_browsing_header *pdu, uint8_t *number,
+						uint32_t *attrs, char **text)
+{
+	if (pdu->params_len < 2)
+		return -EPROTO;
 
-		attrs[i] = bt_get_be32(&ptr[0]);
-		len = bt_get_be16(&ptr[6]);
-
-		params_len -= 8;
-		ptr += 8;
-
-		if (len > params_len)
-			goto fail;
-
-		if (len > 0) {
-			text[i] = g_strndup((const char *) &ptr[8], len);
-			params_len -= len;
-			ptr += len;
-		}
+	*number = pdu->params[1];
+	if (*number > AVRCP_MEDIA_ATTRIBUTE_LAST) {
+		*number = 0;
+		return -EPROTO;
 	}
 
-	if (i != *number)
-		goto fail;
-
-	return 0;
-
-fail:
-	for (i -= 1; i >= 0; i--)
-		g_free(text[i]);
-
-	*number = 0;
-
-	return -EPROTO;
+	return parse_attribute_list(&pdu->params[2], pdu->params_len - 2,
+							*number, attrs, text);
 }
 
 static gboolean get_element_attributes_rsp(struct avctp *conn,
@@ -1516,7 +1536,7 @@ static gboolean get_element_attributes_rsp(struct avctp *conn,
 		goto done;
 	}
 
-	err = parse_attribute_list(pdu, &number, attrs, text);
+	err = parse_elements(pdu, &number, attrs, text);
 
 done:
 	player->cfm->get_element_attributes(session, err, number, attrs, text,
@@ -1765,6 +1785,60 @@ int avrcp_change_path(struct avrcp *session, uint8_t direction, uint64_t uid,
 	return avrcp_send_browsing_req(session, AVRCP_CHANGE_PATH,
 					pdu, sizeof(pdu),
 					change_path_rsp, session);
+}
+
+static gboolean get_item_attributes_rsp(struct avctp *conn, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_browsing_header *pdu;
+	uint8_t number = 0;
+	uint32_t attrs[AVRCP_MEDIA_ATTRIBUTE_LAST];
+	char *text[AVRCP_MEDIA_ATTRIBUTE_LAST];
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->get_item_attributes)
+		return FALSE;
+
+	pdu = parse_browsing_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	err = parse_browsing_status(pdu);
+	if (err < 0)
+		goto done;
+
+	err = parse_items(pdu, &number, attrs, text);
+
+done:
+	player->cfm->get_item_attributes(session, err, number, attrs, text,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_get_item_attributes(struct avrcp *session, uint8_t scope,
+				uint64_t uid, uint16_t counter, uint8_t number,
+				uint32_t *attrs)
+{
+	uint8_t pdu[12 + number * sizeof(uint32_t)];
+
+	pdu[0] = scope;
+	put_be64(uid, &pdu[1]);
+	put_be16(counter, &pdu[9]);
+	pdu[11] = number;
+
+	if (number > 0)
+		memcpy(&pdu[12], attrs, number * sizeof(uint32_t));
+
+	return avrcp_send_browsing_req(session, AVRCP_GET_ITEM_ATTRIBUTES,
+					pdu, sizeof(pdu),
+					get_item_attributes_rsp, session);
 }
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,

@@ -210,6 +210,9 @@ struct avrcp_control_cfm {
 					uint8_t *params, void *user_data);
 	void (*change_path) (struct avrcp *session, int err,
 					uint32_t items, void *user_data);
+	void (*get_item_attributes) (struct avrcp *session, int err,
+					uint8_t number, uint32_t *attrs,
+					char **text, void *user_data);
 };
 
 struct avrcp_passthrough_handler {
@@ -262,6 +265,9 @@ int avrcp_get_folder_items(struct avrcp *session, uint8_t scope,
 				uint32_t *attrs);
 int avrcp_change_path(struct avrcp *session, uint8_t direction, uint64_t uid,
 							uint16_t counter);
+int avrcp_get_item_attributes(struct avrcp *session, uint8_t scope,
+				uint64_t uid, uint16_t counter, uint8_t number,
+				uint32_t *attrs);
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *events);
