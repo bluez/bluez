@@ -1323,15 +1323,16 @@ static void update_device(struct device *dev, int8_t rssi,
 					HAL_EV_REMOTE_DEVICE_PROPS, size, buf);
 }
 
-static bool is_new_device(const struct device *dev)
+static bool is_new_device(const struct device *dev, unsigned int flags)
 {
-	if (!dev)
-		return true;
-
 	if (dev->found)
 		return false;
 
 	if (dev->bond_state == HAL_BOND_STATE_BONDED)
+		return false;
+
+	if (dev->bdaddr_type != BDADDR_BREDR &&
+				!(flags & (EIR_LIM_DISC | EIR_GEN_DISC)))
 		return false;
 
 	return true;
@@ -1348,34 +1349,21 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	eir_parse(&eir, data, data_len);
 
-	dev = find_device(bdaddr);
-
-	if (bdaddr_type != BDADDR_BREDR) {
-		/* Notify Gatt if its registered for LE events */
-		if (gatt_device_found_cb)
-			gatt_device_found_cb(bdaddr, bdaddr_type, rssi,
-							sizeof(eir), &eir);
-
-		if (!dev && adapter.cur_discovery_type != SCAN_TYPE_NONE &&
-				!(eir.flags & (EIR_LIM_DISC | EIR_GEN_DISC))) {
-			eir_data_free(&eir);
-			return;
-		}
-	}
+	dev = get_device(bdaddr, bdaddr_type);
 
 	/* Device found event needs to be send also for known device if this is
 	 * new discovery session. Otherwise framework will ignore it.
 	 */
-	if (is_new_device(dev)) {
-		if (!dev)
-			dev = create_device(bdaddr, bdaddr_type);
-
+	if (is_new_device(dev, eir.flags))
 		update_new_device(dev, rssi, &eir);
-	} else {
+	else
 		update_device(dev, rssi, &eir, bdaddr_type);
-	}
 
 	eir_data_free(&eir);
+
+	/* Notify Gatt if its registered for LE events */
+	if (bdaddr_type != BDADDR_BREDR && gatt_device_found_cb)
+		gatt_device_found_cb(bdaddr, bdaddr_type, rssi, data_len, data);
 
 	if (dev->bond_state != HAL_BOND_STATE_BONDED)
 		cache_device(dev);
