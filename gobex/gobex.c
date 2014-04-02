@@ -1017,7 +1017,7 @@ static void auth_challenge(GObex *obex)
 
 	/* Remove it as pending and add it back to the queue so it gets sent
 	 * again */
-	g_source_remove(p->timeout);
+	g_source_remove(p->timeout_id);
 	p->timeout_id = 0;
 	obex->pending_req = NULL;
 	g_obex_send_internal(obex, p, NULL);
