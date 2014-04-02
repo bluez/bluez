@@ -74,6 +74,13 @@ struct avrcp_header {
 #error "Unknown byte order"
 #endif
 
+struct avrcp_browsing_header {
+	uint8_t pdu_id;
+	uint16_t params_len;
+	uint8_t params[0];
+} __attribute__ ((packed));
+#define AVRCP_BROWSING_HEADER_LENGTH 3
+
 struct avrcp {
 	struct avctp *conn;
 	struct avrcp_player *player;
@@ -138,6 +145,28 @@ void avrcp_shutdown(struct avrcp *session)
 static struct avrcp_header *parse_pdu(uint8_t *operands, size_t operand_count)
 {
 	struct avrcp_header *pdu;
+
+	if (!operands || operand_count < sizeof(*pdu)) {
+		error("AVRCP: packet too small (%zu bytes)", operand_count);
+		return NULL;
+	}
+
+	pdu = (void *) operands;
+	pdu->params_len = ntohs(pdu->params_len);
+
+	if (operand_count != pdu->params_len + sizeof(*pdu)) {
+		error("AVRCP: invalid parameter length (%u bytes)",
+							pdu->params_len);
+		return NULL;
+	}
+
+	return pdu;
+}
+
+static struct avrcp_browsing_header *parse_browsing_pdu(uint8_t *operands,
+							size_t operand_count)
+{
+	struct avrcp_browsing_header *pdu;
 
 	if (!operands || operand_count < sizeof(*pdu)) {
 		error("AVRCP: packet too small (%zu bytes)", operand_count);
@@ -698,12 +727,9 @@ int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
 							session->tx_buf, len);
 }
 
-static int parse_status(struct avrcp_header *pdu)
+static int status2errno(uint8_t status)
 {
-	if (pdu->params_len < 1)
-		return -EPROTO;
-
-	switch (pdu->params[0]) {
+	switch (status) {
 	case AVRCP_STATUS_INVALID_COMMAND:
 		return -ENOSYS;
 	case AVRCP_STATUS_INVALID_PARAM:
@@ -721,6 +747,22 @@ static int parse_status(struct avrcp_header *pdu)
 	default:
 		return -EPROTO;
 	}
+}
+
+static int parse_status(struct avrcp_header *pdu)
+{
+	if (pdu->params_len < 1)
+		return -EPROTO;
+
+	return status2errno(pdu->params[0]);
+}
+
+static int parse_browsing_status(struct avrcp_browsing_header *pdu)
+{
+	if (pdu->params_len < 1)
+		return -EPROTO;
+
+	return status2errno(pdu->params[0]);
 }
 
 static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
@@ -749,6 +791,32 @@ static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
 
 	return avctp_send_vendordep_req(session->conn, code, subunit,
 					session->tx_buf, len, func, user_data);
+}
+
+static int avrcp_send_browsing_req(struct avrcp *session, uint8_t pdu_id,
+					uint8_t *params, size_t params_len,
+					avctp_browsing_rsp_cb func,
+					void *user_data)
+{
+	struct avrcp_browsing_header *pdu = (void *) session->tx_buf;
+	size_t len = sizeof(*pdu);
+
+	memset(pdu, 0, len);
+
+	pdu->pdu_id = pdu_id;
+
+	if (params_len > 0) {
+		len += params_len;
+
+		if (len > session->tx_mtu)
+			return -ENOBUFS;
+
+		memcpy(pdu->params, params, params_len);
+		pdu->params_len = htons(params_len);
+	}
+
+	return avctp_send_browsing_req(session->conn, session->tx_buf, len,
+							func, user_data);
 }
 
 static gboolean get_capabilities_rsp(struct avctp *conn,
@@ -1508,6 +1576,83 @@ int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id)
 				AVRCP_SET_ADDRESSED_PLAYER, params,
 				sizeof(params), set_addressed_rsp,
 				session);
+}
+
+static gboolean set_browsed_rsp(struct avctp *conn, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_browsing_header *pdu;
+	uint16_t counter = 0;
+	uint32_t items = 0;
+	uint8_t depth = 0, count;
+	char **folders, *path = NULL;
+	int err;
+	size_t i;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->set_browsed)
+		return FALSE;
+
+	pdu = parse_browsing_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	err = parse_browsing_status(pdu);
+	if (err < 0)
+		goto done;
+
+	if (pdu->params_len < 10) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	counter = bt_get_be16(&pdu->params[1]);
+	items = bt_get_be32(&pdu->params[3]);
+	depth = pdu->params[9];
+
+	folders = g_new0(char *, depth + 2);
+	folders[0] = g_strdup("/Filesystem");
+
+	for (i = 10, count = 1; count - 1 < depth && i < pdu->params_len;
+								count++) {
+		uint8_t len;
+
+		len = pdu->params[i++];
+
+		if (i + len > pdu->params_len || len == 0) {
+			g_strfreev(folders);
+			err = -EPROTO;
+			goto done;
+		}
+
+		folders[count] = g_memdup(&pdu->params[i], len);
+		i += len;
+	}
+
+	path = g_build_pathv("/", folders);
+	g_strfreev(folders);
+
+done:
+	player->cfm->set_browsed(session, err, counter, items, path,
+							player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_set_browsed_player(struct avrcp *session, uint16_t player_id)
+{
+	uint8_t pdu[2];
+
+	put_be16(player_id, pdu);
+
+	return avrcp_send_browsing_req(session, AVRCP_SET_BROWSED_PLAYER,
+					pdu, sizeof(pdu), set_browsed_rsp,
+					session);
 }
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,

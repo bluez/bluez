@@ -196,6 +196,9 @@ struct avrcp_control_cfm {
 					uint8_t *params, void *user_data);
 	void (*set_addressed) (struct avrcp *session, int err,
 					void *user_data);
+	void (*set_browsed) (struct avrcp *session, int err,
+					uint16_t counter, uint32_t items,
+					char *path, void *user_data);
 };
 
 struct avrcp_passthrough_handler {
@@ -242,6 +245,7 @@ int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
 							void *user_data);
 int avrcp_get_element_attributes(struct avrcp *session);
 int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id);
+int avrcp_set_browsed_player(struct avrcp *session, uint16_t player_id);
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *events);
