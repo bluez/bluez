@@ -469,66 +469,94 @@ static void handle_response_confirmation(void *buf, uint16_t len)
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
  */
 static const struct hal_ipc_handler ev_handlers[] = {
-	/* Client Event Handlers */
+	/* HAL_EV_GATT_CLIENT_REGISTER_CLIENT */
 	{ handle_register_client, false,
 		sizeof(struct hal_ev_gatt_client_register_client) },
+	/* HAL_EV_GATT_CLIENT_SCAN_RESULT */
 	{ handle_scan_result, true,
 		sizeof(struct hal_ev_gatt_client_scan_result) },
+	/* HAL_EV_GATT_CLIENT_CONNECT */
 	{ handle_connect, false, sizeof(struct hal_ev_gatt_client_connect) },
+	/* HAL_EV_GATT_CLIENT_DISCONNECT */
 	{ handle_disconnect, false,
 		sizeof(struct hal_ev_gatt_client_disconnect) },
+	/* HAL_EV_GATT_CLIENT_SEARCH_COMPLETE */
 	{ handle_search_complete, false,
 		sizeof(struct hal_ev_gatt_client_search_complete) },
+	/* HAL_EV_GATT_CLIENT_SEARCH_RESULT */
 	{ handle_search_result, false,
 		sizeof(struct hal_ev_gatt_client_search_result) },
+	/* HAL_EV_GATT_CLIENT_GET_CHARACTERISTIC */
 	{ handle_get_characteristic, false,
 		sizeof(struct hal_ev_gatt_client_get_characteristic) },
+	/* HAL_EV_GATT_CLIENT_GET_DESCRIPTOR */
 	{ handle_get_descriptor, false,
 		sizeof(struct hal_ev_gatt_client_get_descriptor) },
+	/* HAL_EV_GATT_CLIENT_GET_INC_SERVICE */
 	{ handle_get_included_service, false,
 		sizeof(struct hal_ev_gatt_client_get_inc_service) },
+	/* HAL_EV_GATT_CLIENT_REGISTER_FOR_NOTIF */
 	{ handle_register_for_notification, false,
 		sizeof(struct hal_ev_gatt_client_reg_for_notif) },
+	/* HAL_EV_GATT_CLIENT_NOTIFY */
 	{ handle_notify, true, sizeof(struct hal_ev_gatt_client_notify) },
+	/* HAL_EV_GATT_CLIENT_READ_CHARACTERISTIC */
 	{ handle_read_characteristic, true,
 		sizeof(struct hal_ev_gatt_client_read_characteristic) },
+	/* HAL_EV_GATT_CLIENT_WRITE_CHARACTERISTIC */
 	{ handle_write_characteristic, false,
 		sizeof(struct hal_ev_gatt_client_write_characteristic) },
+	/* HAL_EV_GATT_CLIENT_READ_DESCRIPTOR */
 	{ handle_read_descriptor, true,
 		sizeof(struct hal_ev_gatt_client_read_descriptor) },
+	/* HAL_EV_GATT_CLIENT_WRITE_DESCRIPTOR */
 	{ handle_write_descriptor, false,
 		sizeof(struct hal_ev_gatt_client_write_descriptor) },
+	/* HAL_EV_GATT_CLIENT_EXEC_WRITE */
 	{ handle_execute_write, false,
 		sizeof(struct hal_ev_gatt_client_exec_write) },
+	/* HAL_EV_GATT_CLIENT_READ_REMOTE_RSSI */
 	{ handle_read_remote_rssi, false,
 		sizeof(struct hal_ev_gatt_client_read_remote_rssi) },
+	/* HAL_EV_GATT_CLIENT_LISTEN */
 	{ handle_listen, false, sizeof(struct hal_ev_gatt_client_listen) },
-
-	/* Server Event Handlers */
+	/* HAL_EV_GATT_SERVER_REGISTER */
 	{ handle_register_server, false,
 		sizeof(struct hal_ev_gatt_server_register) },
+	/* HAL_EV_GATT_SERVER_CONNECTION */
 	{ handle_connection, false,
 		sizeof(struct hal_ev_gatt_server_connection) },
+	/* HAL_EV_GATT_SERVER_SERVICE_ADDED */
 	{ handle_service_added, false,
 		sizeof(struct hal_ev_gatt_server_service_added) },
+	/* HAL_EV_GATT_SERVER_INC_SRVC_ADDED */
 	{ handle_included_service_added, false,
 		sizeof(struct hal_ev_gatt_server_service_added) },
+	/* HAL_EV_GATT_SERVER_CHAR_ADDED */
 	{ handle_characteristic_added, false,
 		sizeof(struct hal_ev_gatt_server_characteristic_added) },
+	/* HAL_EV_GATT_SERVER_DESCRIPTOR_ADDED */
 	{ handle_descriptor_added, false,
 		sizeof(struct hal_ev_gatt_server_descriptor_added) },
+	/* HAL_EV_GATT_SERVER_SERVICE_STARTED */
 	{ handle_service_started, false,
 		sizeof(struct hal_ev_gatt_server_service_started) },
+	/* HAL_EV_GATT_SERVER_SERVICE_STOPPED */
 	{ handle_service_stopped, false,
 		sizeof(struct hal_ev_gatt_server_service_stopped) },
+	/* HAL_EV_GATT_SERVER_SERVICE_DELETED */
 	{ handle_service_deleted, false,
 		sizeof(struct hal_ev_gatt_server_service_deleted) },
+	/* HAL_EV_GATT_SERVER_REQUEST_READ */
 	{ handle_request_read, false,
 		sizeof(struct hal_ev_gatt_server_request_read) },
+	/* HAL_EV_GATT_SERVER_REQUEST_WRITE */
 	{ handle_request_write, true,
 		sizeof(struct hal_ev_gatt_server_request_write) },
+	/* HAL_EV_GATT_SERVER_REQUEST_EXEC_WRITE */
 	{ handle_request_exec_write, false,
 		sizeof(struct hal_ev_gatt_server_request_exec_write) },
+	/* HAL_EV_GATT_SERVER_RSP_CONFIRMATION */
 	{ handle_response_confirmation, false,
 		sizeof(struct hal_ev_gatt_server_rsp_confirmation) },
 };
