@@ -360,7 +360,7 @@ static unsigned int eir_get_flags(const uint8_t *eir, uint16_t eir_len)
 		if (parsed > eir_len)
 			break;
 
-		/* Check for short of complete name */
+		/* Check for flags */
 		if (eir[1] == 0x01)
 			return eir[2];
 
