@@ -124,9 +124,6 @@
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
 
-/* Parameters legths */
-#define AVRCP_REGISTER_NOTIFICATION_PARAM_LENGTH       5
-
 struct avrcp;
 
 struct avrcp_control_handler {
