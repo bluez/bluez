@@ -936,7 +936,7 @@ static gboolean register_notification_rsp(struct avctp *conn,
 			err = -EPROTO;
 			goto done;
 		}
-		value64 = bt_get_be64(&pdu->params[1]);
+		value64 = get_be64(&pdu->params[1]);
 		params = (uint8_t *) &value64;
 		break;
 	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
@@ -944,7 +944,7 @@ static gboolean register_notification_rsp(struct avctp *conn,
 			err = -EPROTO;
 			goto done;
 		}
-		value32 = bt_get_be32(&pdu->params[1]);
+		value32 = get_be32(&pdu->params[1]);
 		params = (uint8_t *) &value32;
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
@@ -960,7 +960,7 @@ static gboolean register_notification_rsp(struct avctp *conn,
 			err = -EPROTO;
 			goto done;
 		}
-		value16 = bt_get_be16(&pdu->params[1]);
+		value16 = get_be16(&pdu->params[1]);
 		params = (uint8_t *) &value16;
 		break;
 	}
@@ -1407,8 +1407,8 @@ static gboolean get_play_status_rsp(struct avctp *conn,
 		goto done;
 	}
 
-	duration = bt_get_be32(&pdu->params[0]);
-	position = bt_get_be32(&pdu->params[4]);
+	duration = get_be32(&pdu->params[0]);
+	position = get_be32(&pdu->params[4]);
 	status = pdu->params[8];
 	err = 0;
 
@@ -1632,8 +1632,8 @@ static gboolean set_browsed_rsp(struct avctp *conn, uint8_t *operands,
 		goto done;
 	}
 
-	counter = bt_get_be16(&pdu->params[1]);
-	items = bt_get_be32(&pdu->params[3]);
+	counter = get_be16(&pdu->params[1]);
+	items = get_be32(&pdu->params[3]);
 	depth = pdu->params[9];
 
 	folders = g_new0(char *, depth + 2);
@@ -1726,8 +1726,8 @@ int avrcp_get_folder_items(struct avrcp *session, uint8_t scope,
 	uint8_t pdu[10 + number * sizeof(uint32_t)];
 
 	pdu[0] = scope;
-	bt_put_be32(start, &pdu[1]);
-	bt_put_be32(end, &pdu[5]);
+	put_be32(start, &pdu[1]);
+	put_be32(end, &pdu[5]);
 	pdu[9] = number;
 
 	memcpy(&pdu[10], attrs, number);
