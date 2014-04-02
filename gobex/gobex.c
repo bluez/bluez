@@ -604,6 +604,7 @@ static void prepare_auth_rsp(GObex *obex, GObexPacket *rsp)
 	g_obex_packet_add_header(rsp, hdr);
 
 	g_obex_apparam_free(authrsp);
+	g_free(result);
 
 done:
 	g_obex_apparam_free(obex->authchal);
