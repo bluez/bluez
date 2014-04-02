@@ -17,6 +17,7 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "hal-log.h"
 #include "hal.h"
@@ -74,6 +75,11 @@ static void handle_register_client(void *buf, uint16_t len)
 static void handle_scan_result(void *buf, uint16_t len)
 {
 	struct hal_ev_gatt_client_scan_result *ev = buf;
+
+	if (len != sizeof(*ev) + ev->len ) {
+		error("gatt: invalid scan result event, aborting");
+		exit(EXIT_FAILURE);
+	}
 
 	if (cbs->client->scan_result_cb)
 		cbs->client->scan_result_cb((bt_bdaddr_t *) ev->bda, ev->rssi,
@@ -185,6 +191,11 @@ static void handle_notify(void *buf, uint16_t len)
 	struct hal_ev_gatt_client_notify *ev = buf;
 	btgatt_notify_params_t params;
 
+	if (len != sizeof(*ev) + ev->len ) {
+		error("gatt: invalid notify event, aborting");
+		exit(EXIT_FAILURE);
+	}
+
 	memset(&params, 0, sizeof(params));
 	memcpy(params.value, ev->value, ev->len);
 	memcpy(&params.bda, ev->bda, sizeof(params.bda));
@@ -203,6 +214,11 @@ static void handle_read_characteristic(void *buf, uint16_t len)
 {
 	struct hal_ev_gatt_client_read_characteristic *ev = buf;
 	btgatt_read_params_t params;
+
+	if (len != sizeof(*ev) + ev->data.len ) {
+		error("gatt: invalid read characteristic event, aborting");
+		exit(EXIT_FAILURE);
+	}
 
 	memset(&params, 0, sizeof(params));
 
@@ -243,6 +259,11 @@ static void handle_read_descriptor(void *buf, uint16_t len)
 {
 	struct hal_ev_gatt_client_read_descriptor *ev = buf;
 	btgatt_read_params_t params;
+
+	if (len != sizeof(*ev) + ev->data.len ) {
+		error("gatt: invalid read descriptor event, aborting");
+		exit(EXIT_FAILURE);
+	}
 
 	memset(&params, 0, sizeof(params));
 
@@ -412,6 +433,11 @@ static void handle_request_read(void *buf, uint16_t len)
 static void handle_request_write(void *buf, uint16_t len)
 {
 	struct hal_ev_gatt_server_request_write *ev = buf;
+
+	if (len != sizeof(*ev) + ev->length ) {
+		error("gatt: invalid request write event, aborting");
+		exit(EXIT_FAILURE);
+	}
 
 	if (cbs->server->request_write_cb)
 		cbs->server->request_write_cb(ev->conn_id, ev->trans_id,
