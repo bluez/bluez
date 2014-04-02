@@ -75,15 +75,20 @@ static void handle_register_client(void *buf, uint16_t len)
 static void handle_scan_result(void *buf, uint16_t len)
 {
 	struct hal_ev_gatt_client_scan_result *ev = buf;
+	uint8_t ad[62];
 
 	if (len != sizeof(*ev) + ev->len ) {
 		error("gatt: invalid scan result event, aborting");
 		exit(EXIT_FAILURE);
 	}
 
+	/* Java assumes that passed data has 62 bytes */
+	memset(ad, 0, sizeof(ad));
+	memcpy(ad, ev->adv_data, ev->len > sizeof(ad) ? sizeof(ad) : ev->len);
+
 	if (cbs->client->scan_result_cb)
 		cbs->client->scan_result_cb((bt_bdaddr_t *) ev->bda, ev->rssi,
-								ev->adv_data);
+									ad);
 }
 
 static void handle_connect(void *buf, uint16_t len)
