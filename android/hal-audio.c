@@ -1161,6 +1161,9 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
 	DBG("%s", kvpairs);
 
 	str = strdup(kvpairs);
+	if (!str)
+		return -ENOMEM;
+
 	kvpair = strtok_r(str, ";", &saveptr);
 
 	for (; kvpair && *kvpair; kvpair = strtok_r(NULL, ";", &saveptr)) {
