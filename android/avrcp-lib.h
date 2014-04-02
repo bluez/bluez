@@ -115,6 +115,12 @@
 #define AVRCP_MEDIA_ATTRIBUTE_DURATION	0x07
 #define AVRCP_MEDIA_ATTRIBUTE_LAST	AVRCP_MEDIA_ATTRIBUTE_DURATION
 
+/* Media Scope */
+#define AVRCP_MEDIA_PLAYER_LIST			0x00
+#define AVRCP_MEDIA_PLAYER_VFS			0x01
+#define AVRCP_MEDIA_SEARCH			0x02
+#define AVRCP_MEDIA_NOW_PLAYING			0x03
+
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
 
@@ -199,6 +205,9 @@ struct avrcp_control_cfm {
 	void (*set_browsed) (struct avrcp *session, int err,
 					uint16_t counter, uint32_t items,
 					char *path, void *user_data);
+	void (*get_folder_items) (struct avrcp *session, int err,
+					uint16_t counter, uint16_t number,
+					uint8_t *params, void *user_data);
 };
 
 struct avrcp_passthrough_handler {
@@ -246,6 +255,9 @@ int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
 int avrcp_get_element_attributes(struct avrcp *session);
 int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id);
 int avrcp_set_browsed_player(struct avrcp *session, uint16_t player_id);
+int avrcp_get_folder_items(struct avrcp *session, uint8_t scope,
+				uint32_t start, uint32_t end, uint8_t number,
+				uint32_t *attrs);
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *events);

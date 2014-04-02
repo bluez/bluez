@@ -1655,6 +1655,67 @@ int avrcp_set_browsed_player(struct avrcp *session, uint16_t player_id)
 					session);
 }
 
+static gboolean get_folder_items_rsp(struct avctp *conn,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_browsing_header *pdu;
+	uint16_t counter = 0, number = 0;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->get_folder_items)
+		return FALSE;
+
+	pdu = parse_browsing_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	err = parse_browsing_status(pdu);
+	if (err < 0)
+		goto done;
+
+	if (pdu->params_len < 5) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	counter = get_be16(&pdu->params[1]);
+	number = get_be16(&pdu->params[3]);
+
+	/* FIXME: Add proper parsing for each item type */
+
+done:
+	player->cfm->get_folder_items(session, err, counter, number,
+					&pdu->params[5], player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_get_folder_items(struct avrcp *session, uint8_t scope,
+				uint32_t start, uint32_t end, uint8_t number,
+				uint32_t *attrs)
+{
+
+	uint8_t pdu[10 + number * sizeof(uint32_t)];
+
+	pdu[0] = scope;
+	bt_put_be32(start, &pdu[1]);
+	bt_put_be32(end, &pdu[5]);
+	pdu[9] = number;
+
+	memcpy(&pdu[10], attrs, number);
+
+	return avrcp_send_browsing_req(session, AVRCP_GET_FOLDER_ITEMS,
+					pdu, sizeof(pdu),
+					get_folder_items_rsp, session);
+}
+
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 						uint8_t number, uint8_t *events)
 {
