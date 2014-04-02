@@ -1716,6 +1716,57 @@ int avrcp_get_folder_items(struct avrcp *session, uint8_t scope,
 					get_folder_items_rsp, session);
 }
 
+static gboolean change_path_rsp(struct avctp *conn, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_browsing_header *pdu;
+	uint32_t items = 0;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->change_path)
+		return FALSE;
+
+	pdu = parse_browsing_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	err = parse_browsing_status(pdu);
+	if (err < 0)
+		goto done;
+
+	if (pdu->params_len < 5) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	items = get_be32(&pdu->params[1]);
+
+done:
+	player->cfm->change_path(session, err, items, player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_change_path(struct avrcp *session, uint8_t direction, uint64_t uid,
+							uint16_t counter)
+{
+	uint8_t pdu[11];
+
+	put_be16(counter, &pdu[0]);
+	pdu[2] = direction;
+	put_be64(uid, &pdu[3]);
+
+	return avrcp_send_browsing_req(session, AVRCP_CHANGE_PATH,
+					pdu, sizeof(pdu),
+					change_path_rsp, session);
+}
+
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 						uint8_t number, uint8_t *events)
 {
