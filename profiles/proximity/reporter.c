@@ -38,13 +38,11 @@
 
 #include "lib/uuid.h"
 #include "src/dbus-common.h"
-#include "src/error.h"
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
 #include "src/shared/util.h"
-#include "src/hcid.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"

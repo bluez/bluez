@@ -32,7 +32,6 @@
 #include "lib/uuid.h"
 #include "src/plugin.h"
 #include "src/adapter.h"
-#include "src/hcid.h"
 #include "src/shared/util.h"
 #include "src/log.h"
 #include "attrib/gattrib.h"

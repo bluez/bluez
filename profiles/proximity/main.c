@@ -33,7 +33,6 @@
 
 #include "src/log.h"
 #include "src/plugin.h"
-#include "src/hcid.h"
 #include "manager.h"
 
 static GKeyFile *config = NULL;

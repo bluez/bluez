@@ -38,13 +38,9 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include <gdbus/gdbus.h>
-
 #include "lib/uuid.h"
 #include "btio/btio.h"
 #include "log.h"
-#include "sdpd.h"
-#include "hcid.h"
 #include "adapter.h"
 #include "device.h"
 #include "src/shared/util.h"
