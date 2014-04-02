@@ -192,14 +192,16 @@ static void *playback_thread(void *data)
 
 	do {
 		pthread_mutex_lock(&state_mutex);
+
 		if (current_state == STATE_STOPPING) {
 			pthread_mutex_unlock(&state_mutex);
 			break;
 		} else if (current_state == STATE_SUSPENDED) {
-				pthread_mutex_unlock(&state_mutex);
-				usleep(500);
-				continue;
+			pthread_mutex_unlock(&state_mutex);
+			usleep(500);
+			continue;
 		}
+
 		pthread_mutex_unlock(&state_mutex);
 
 		len = filbuff_cb(buffer, cb_data);
