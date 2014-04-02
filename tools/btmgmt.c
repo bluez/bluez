@@ -1186,20 +1186,52 @@ done:
 	mainloop_quit();
 }
 
+static void disconnect_usage(void)
+{
+	printf("Usage: btmgmt disconnect [-t type] <remote address>\n");
+}
+
+static struct option disconnect_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
 static void cmd_disconnect(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
 	struct mgmt_cp_disconnect cp;
+	uint8_t type = BDADDR_BREDR;
+	int opt;
 
-	if (argc < 2) {
-		printf("Usage: btmgmt %s <address>\n", argv[0]);
+	while ((opt = getopt_long(argc, argv, "+t:h", disconnect_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+		default:
+			disconnect_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		disconnect_usage();
 		exit(EXIT_FAILURE);
 	}
 
-	str2ba(argv[1], &cp.addr.bdaddr);
-
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
 
 	if (mgmt_send(mgmt, MGMT_OP_DISCONNECT, index, sizeof(cp), &cp,
 					disconnect_rsp, NULL, NULL) == 0) {
