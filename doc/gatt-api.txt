@@ -145,4 +145,5 @@ Methods		RegisterService(object service, dict options)
 			must match the same value that has been used
 			on registration.
 
-			Possible errors: org.bluez.Error.DoesNotExist
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist
