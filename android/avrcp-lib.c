@@ -1762,16 +1762,23 @@ int avrcp_get_folder_items(struct avrcp *session, uint8_t scope,
 				uint32_t start, uint32_t end, uint8_t number,
 				uint32_t *attrs)
 {
-
 	uint8_t pdu[10 + number * sizeof(uint32_t)];
+	int i;
 
 	pdu[0] = scope;
 	put_be32(start, &pdu[1]);
 	put_be32(end, &pdu[5]);
 	pdu[9] = number;
 
-	memcpy(&pdu[10], attrs, number);
+	if (!number)
+		goto done;
 
+	for (i = 0; i < number; i++)
+		put_be32(attrs[i], &attrs[i]);
+
+	memcpy(&pdu[10], attrs, number * sizeof(*attrs));
+
+done:
 	return avrcp_send_browsing_req(session, AVRCP_GET_FOLDER_ITEMS,
 					pdu, sizeof(pdu),
 					get_folder_items_rsp, session);
