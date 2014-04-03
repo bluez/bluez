@@ -197,6 +197,8 @@ struct avrcp_control_cfm {
 	bool (*register_notification) (struct avrcp *session, int err,
 					uint8_t code, uint8_t event,
 					uint8_t *params, void *user_data);
+	void (*set_volume) (struct avrcp *session, int err, uint8_t volume,
+					void *user_data);
 	void (*set_addressed) (struct avrcp *session, int err,
 					void *user_data);
 	void (*set_browsed) (struct avrcp *session, int err,
@@ -254,8 +256,7 @@ int avrcp_set_player_value(struct avrcp *session, uint8_t number,
 int avrcp_get_current_player_value(struct avrcp *session, uint8_t number,
 							uint8_t *attrs);
 int avrcp_get_play_status(struct avrcp *session);
-int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
-							void *user_data);
+int avrcp_set_volume(struct avrcp *session, uint8_t volume);
 int avrcp_get_element_attributes(struct avrcp *session);
 int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id);
 int avrcp_set_browsed_player(struct avrcp *session, uint16_t player_id);

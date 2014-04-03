@@ -1426,13 +1426,53 @@ int avrcp_get_play_status(struct avrcp *session)
 				get_play_status_rsp, session);
 }
 
-int avrcp_set_volume(struct avrcp *session, uint8_t volume, avctp_rsp_cb func,
-							void *user_data)
+static gboolean set_volume_rsp(struct avctp *conn,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_header *pdu;
+	uint8_t value = 0;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->set_volume)
+		return FALSE;
+
+	pdu = parse_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	if (code == AVC_CTYPE_REJECTED) {
+		err = parse_status(pdu);
+		goto done;
+	}
+
+	if (pdu->params_len < 1) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	value = pdu->params[0] & 0x7f;
+	err = 0;
+
+done:
+	player->cfm->set_volume(session, err, value, player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_set_volume(struct avrcp *session, uint8_t volume)
 {
 	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
 						AVRCP_SET_ABSOLUTE_VOLUME,
 						&volume, sizeof(volume),
-						func, user_data);
+						set_volume_rsp, session);
 }
 
 static int parse_attribute_list(uint8_t *params, uint16_t params_len,
