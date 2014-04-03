@@ -96,6 +96,19 @@ static gboolean external_service_destroy(void *user_data)
 	return FALSE;
 }
 
+static void external_service_free(void *user_data)
+{
+	struct external_service *esvc = user_data;
+
+	/*
+	 * Set callback to NULL to avoid potential race condition
+	 * when calling remove_service and GDBusClient unref.
+	 */
+	g_dbus_client_set_disconnect_watch(esvc->client, NULL, NULL);
+
+	external_service_destroy(user_data);
+}
+
 static void remove_service(DBusConnection *conn, void *user_data)
 {
 	struct external_service *esvc = user_data;
@@ -633,6 +646,8 @@ void gatt_dbus_manager_unregister(void)
 
 	g_hash_table_destroy(proxy_hash);
 	proxy_hash = NULL;
+
+	g_slist_free_full(external_services, external_service_free);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(), "/org/bluez",
 							GATT_MGR_IFACE);
