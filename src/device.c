@@ -1425,7 +1425,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 
 	if (dev->bredr_state.connected)
 		bdaddr_type = dev->bdaddr_type;
-	else if (dev->le_state.connected)
+	else if (dev->le_state.connected && dev->bredr)
 		bdaddr_type = BDADDR_BREDR;
 	else
 		bdaddr_type = select_conn_bearer(dev);
