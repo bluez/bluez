@@ -1912,8 +1912,15 @@ int avrcp_get_item_attributes(struct avrcp *session, uint8_t scope,
 						iov, 1, get_item_attributes_rsp,
 						session);
 
-	for (i = 0; i < number; i++)
+	if (number > AVRCP_MEDIA_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	for (i = 0; i < number; i++) {
+		if (attrs[i] > AVRCP_MEDIA_ATTRIBUTE_LAST ||
+				attrs[i] == AVRCP_MEDIA_ATTRIBUTE_ILLEGAL)
+			return -EINVAL;
 		put_be32(attrs[i], &attrs[i]);
+	}
 
 	iov[1].iov_base = attrs;
 	iov[1].iov_len = number * sizeof(*attrs);
