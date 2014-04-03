@@ -1868,15 +1868,22 @@ int avrcp_get_item_attributes(struct avrcp *session, uint8_t scope,
 				uint32_t *attrs)
 {
 	uint8_t pdu[12 + number * sizeof(uint32_t)];
+	int i;
 
 	pdu[0] = scope;
 	put_be64(uid, &pdu[1]);
 	put_be16(counter, &pdu[9]);
 	pdu[11] = number;
 
-	if (number > 0)
-		memcpy(&pdu[12], attrs, number * sizeof(uint32_t));
+	if (!number)
+		goto done;
 
+	for (i = 0; i < number; i++)
+		put_be32(attrs[i], &attrs[i]);
+
+	memcpy(&pdu[12], attrs, number * sizeof(uint32_t));
+
+done:
 	return avrcp_send_browsing_req(session, AVRCP_GET_ITEM_ATTRIBUTES,
 					pdu, sizeof(pdu),
 					get_item_attributes_rsp, session);
