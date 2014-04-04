@@ -4342,6 +4342,12 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	device_update_last_seen(dev, bdaddr_type);
 
+	/*
+	 * FIXME: We need to check for non-zero flags first because
+	 * older kernels send separate adv_ind and scan_rsp. Newer
+	 * kernels send them merged, so once we know which mgmt version
+	 * supports this we can make the non-zero check conditional.
+	 */
 	if (bdaddr_type != BDADDR_BREDR && eir_data.flags &&
 					!(eir_data.flags & EIR_BREDR_UNSUP))
 		device_set_bredr_support(dev, true);
