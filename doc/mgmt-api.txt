@@ -19,6 +19,7 @@ Linux kernel v3.5	Version 1.1
 Linux kernel v3.7	Version 1.2
 Linux kernel v3.9	Version 1.3
 Linux kernel v3.13	Version 1.4
+Linux kernel v3.15	Version 1.5	(not yet released)
 
 Version 1.1 introduces Set Device ID command.
 
@@ -28,6 +29,10 @@ Version 1.3 does not introduce any new command or event.
 
 Version 1.4 introduces Set Advertising, Set BR/EDR, Set Static Address
 and Set Scan Parameters commands.
+
+Version 1.5 introduces Set Secure Connections, Set Debug Keys, Set Privacy
+and Load Identity Resolving Keys commands. It also introduces New Identity
+Resolving Key and New Signature Resolving Key events.
 
 
 Example
