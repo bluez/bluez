@@ -76,7 +76,8 @@ tools_3dsp_SOURCES = tools/3dsp.c monitor/bt.h \
 				src/shared/timeout-mainloop.c \
 				src/shared/hci.h src/shared/hci.c \
 				src/shared/util.h src/shared/util.c \
-				src/shared/queue.h src/shared/queue.c
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/ringbuf.h src/shared/ringbuf.c
 
 tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
@@ -167,6 +168,7 @@ tools_hci_tester_SOURCES = tools/hci-tester.c monitor/bt.h \
 				src/shared/hci.h src/shared/hci.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/queue.h src/shared/queue.c \
+				src/shared/ringbuf.h src/shared/ringbuf.c \
 				src/shared/tester.h src/shared/tester.c
 tools_hci_tester_LDADD = @GLIB_LIBS@
 endif
@@ -242,7 +244,8 @@ tools_bluemoon_SOURCES = tools/bluemoon.c monitor/bt.h \
 				src/shared/io.h src/shared/io-mainloop.c \
 				src/shared/hci.h src/shared/hci.c \
 				src/shared/util.h src/shared/util.c \
-				src/shared/queue.h src/shared/queue.c
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/ringbuf.h src/shared/ringbuf.c
 
 dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
@@ -306,7 +309,8 @@ tools_btinfo_SOURCES = tools/btinfo.c monitor/bt.h \
 				src/shared/timeout-mainloop.c \
 				src/shared/hci.h src/shared/hci.c \
 				src/shared/util.h src/shared/util.c \
-				src/shared/queue.h src/shared/queue.c
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/ringbuf.h src/shared/ringbuf.c
 
 tools_btsnoop_SOURCES = tools/btsnoop.c \
 				src/shared/pcap.h src/shared/pcap.c \
@@ -334,7 +338,8 @@ tools_ibeacon_SOURCES = tools/ibeacon.c monitor/bt.h \
 				src/shared/timeout-mainloop.c \
 				src/shared/hci.h src/shared/hci.c \
 				src/shared/util.h src/shared/util.c \
-				src/shared/queue.h src/shared/queue.c
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/ringbuf.h src/shared/ringbuf.c
 
 EXTRA_DIST += tools/bdaddr.1
 endif
