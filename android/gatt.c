@@ -2233,7 +2233,7 @@ static void handle_client_register_for_notification(const void *buf,
 		goto failed;
 	}
 
-	android2bdaddr((bdaddr_t *)&cmd->bdaddr, &addr);
+	android2bdaddr(&cmd->bdaddr, &addr);
 
 	dev = queue_find(conn_list, match_dev_by_bdaddr, &addr);
 	if (!dev) {
