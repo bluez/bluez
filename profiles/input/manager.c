@@ -99,13 +99,12 @@ static int input_init(void)
 		int idle_timeout;
 
 		idle_timeout = g_key_file_get_integer(config, "General",
-						"IdleTimeout", &err);
-		if (err) {
-			DBG("input.conf: %s", err->message);
-			g_error_free(err);
-		}
-
-		input_set_idle_timeout(idle_timeout * 60);
+							"IdleTimeout", &err);
+		if (!err) {
+			DBG("input.conf: IdleTimeout=%d", idle_timeout);
+			input_set_idle_timeout(idle_timeout * 60);
+		} else
+			g_clear_error(&err);
 	}
 
 	btd_profile_register(&input_profile);
