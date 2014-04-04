@@ -184,7 +184,8 @@ tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_tialt.c \
 						tools/hciattach_ath3k.c \
 						tools/hciattach_qualcomm.c \
-						tools/hciattach_intel.c
+						tools/hciattach_intel.c \
+						tools/hciattach_bcm43xx.c
 tools_hciattach_LDADD = lib/libbluetooth-internal.la
 
 tools_hciconfig_SOURCES = tools/hciconfig.c tools/csr.h tools/csr.c
