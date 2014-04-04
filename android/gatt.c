@@ -310,14 +310,6 @@ static bool match_descr_by_higher_inst_id(const void *data,
 	return instance < descr->id.instance;
 }
 
-static bool match_char_by_instance(const void *data, const void *user_data)
-{
-	const struct characteristic *ch = data;
-	uint8_t inst_id = PTR_TO_INT(user_data);
-
-	return inst_id == ch->id.instance;
-}
-
 static bool match_notification(const void *a, const void *b)
 {
 	const struct notification_data *a1 = a;
@@ -2251,8 +2243,8 @@ static void handle_client_register_for_notification(const void *buf,
 		goto failed;
 	}
 
-	c = queue_find(service->chars, match_char_by_instance,
-					INT_TO_PTR(cmd->char_id.inst_id));
+	hal_gatt_id_to_element_id(&cmd->char_id, &match_id);
+	c = queue_find(service->chars, match_char_by_element_id, &match_id);
 	if (!c) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
