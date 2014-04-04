@@ -285,7 +285,7 @@ static bool io_read_callback(struct io *io, void *user_data)
 	return true;
 }
 
-struct bt_hci *bt_hci_new(int fd)
+static struct bt_hci *create_hci(int fd)
 {
 	struct bt_hci *hci;
 
@@ -344,6 +344,17 @@ struct bt_hci *bt_hci_new(int fd)
 	return bt_hci_ref(hci);
 }
 
+struct bt_hci *bt_hci_new(int fd)
+{
+	struct bt_hci *hci;
+
+	hci = create_hci(fd);
+	if (!hci)
+		return NULL;
+
+	return hci;
+}
+
 static int create_socket(uint16_t index, uint16_t channel)
 {
 	struct sockaddr_hci addr;
@@ -376,7 +387,7 @@ struct bt_hci *bt_hci_new_user_channel(uint16_t index)
 	if (fd < 0)
 		return NULL;
 
-	hci = bt_hci_new(fd);
+	hci = create_hci(fd);
 	if (!hci) {
 		close(fd);
 		return NULL;
@@ -409,7 +420,7 @@ struct bt_hci *bt_hci_new_raw_device(uint16_t index)
 		return NULL;
 	}
 
-	hci = bt_hci_new(fd);
+	hci = create_hci(fd);
 	if (!hci) {
 		close(fd);
 		return NULL;
