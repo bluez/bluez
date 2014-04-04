@@ -2215,7 +2215,6 @@ static void handle_client_register_for_notification(const void *buf,
 {
 	const struct hal_cmd_gatt_client_register_for_notification *cmd = buf;
 	struct notification_data *notification;
-	char uuid[MAX_LEN_UUID_STR];
 	struct gatt_client *client;
 	struct characteristic *c;
 	struct element_id match_id;
@@ -2247,7 +2246,6 @@ static void handle_client_register_for_notification(const void *buf,
 	hal_srvc_id_to_element_id(&cmd->srvc_id, &match_id);
 	service = queue_find(dev->services, match_srvc_by_element_id,
 								&match_id);
-	bt_uuid_to_string(&match_id.uuid, uuid, MAX_LEN_UUID_STR);
 	if (!service) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
