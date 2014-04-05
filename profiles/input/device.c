@@ -333,7 +333,7 @@ static int ioctl_connadd(struct hidp_connadd_req *req)
 	return err;
 }
 
-static int ioctl_is_connected(struct input_device *idev)
+static bool ioctl_is_connected(struct input_device *idev)
 {
 	struct hidp_conninfo ci;
 	int ctl;
@@ -342,7 +342,7 @@ static int ioctl_is_connected(struct input_device *idev)
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0) {
 		error("Can't open HIDP control socket");
-		return 0;
+		return false;
 	}
 
 	memset(&ci, 0, sizeof(ci));
@@ -350,15 +350,15 @@ static int ioctl_is_connected(struct input_device *idev)
 	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
 		error("Can't get HIDP connection info");
 		close(ctl);
-		return 0;
+		return false;
 	}
 
 	close(ctl);
 
 	if (ci.state != BT_CONNECTED)
-		return 0;
-	else
-		return 1;
+		return false;
+
+	return true;
 }
 
 static int ioctl_disconnect(struct input_device *idev, uint32_t flags)
@@ -510,7 +510,7 @@ cleanup:
 	return err;
 }
 
-static int is_connected(struct input_device *idev)
+static bool is_connected(struct input_device *idev)
 {
 	return ioctl_is_connected(idev);
 }
