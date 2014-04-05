@@ -692,6 +692,12 @@ Load Link Keys Command
 	this parameter are 0x00 and 0x01. All other values will return
 	an Invalid Parameters response.
 
+	Usage of the Debug_Keys parameter is deprecated and has been
+	replaced with the Set Debug Keys command. When setting the
+	Debug_Keys option via Load Link Keys command it has the same
+	affect as setting it via Set Debug Keys and applies to all
+	keys in the system.
+
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	Reserved (not in use)
