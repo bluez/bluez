@@ -698,6 +698,7 @@ static void get_xfer_progress_first(GObex *obex, GError *err, GObexPacket *rsp,
 	}
 
 	if (rspcode == G_OBEX_RSP_SUCCESS) {
+		transfer->req = 0;
 		xfer_complete(obex, err, transfer);
 		return;
 	}
