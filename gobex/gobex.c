@@ -1098,6 +1098,10 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 
 	p = obex->pending_req;
 
+	/* Reset if final so it can no longer be cancelled */
+	if (final_rsp)
+		obex->pending_req = NULL;
+
 	if (p->cancelled)
 		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
 					"The operation was cancelled");
@@ -1116,10 +1120,8 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 	if (p->cancelled)
 		g_error_free(err);
 
-	if (final_rsp) {
+	if (final_rsp)
 		pending_pkt_free(p);
-		obex->pending_req = NULL;
-	}
 
 	if (!disconn && g_queue_get_length(obex->tx_queue) > 0)
 		enable_tx(obex);
