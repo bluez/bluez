@@ -807,32 +807,25 @@ static int avrcp_send_browsing_req(struct avrcp *session, uint8_t pdu_id,
 					avctp_browsing_rsp_cb func,
 					void *user_data)
 {
-	struct avrcp_browsing_header *pdu = (void *) session->tx_buf;
-	size_t len = sizeof(*pdu);
+	struct iovec pdu[iov_cnt + 1];
+	struct avrcp_browsing_header hdr;
 	int i;
 
-	memset(pdu, 0, len);
-
-	pdu->pdu_id = pdu_id;
-
-	if (iov_cnt <= 0)
-		goto done;
+	memset(&hdr, 0, sizeof(hdr));
 
 	for (i = 0; i < iov_cnt; i++) {
-		len += iov[i].iov_len;
-
-		if (len > session->tx_mtu)
-			return -ENOBUFS;
-
-		memcpy(&pdu->params[pdu->params_len], iov[i].iov_base,
-							iov[i].iov_len);
-		pdu->params_len += iov[i].iov_len;
+		pdu[i + 1].iov_base = iov[i].iov_base;
+		pdu[i + 1].iov_len = iov[i].iov_len;
+		hdr.params_len += iov[i].iov_len;
 	}
 
-	pdu->params_len = htons(pdu->params_len);
+	hdr.pdu_id = pdu_id;
+	hdr.params_len = htons(hdr.params_len);
 
-done:
-	return avctp_send_browsing_req(session->conn, session->tx_buf, len,
+	pdu[0].iov_base = &hdr;
+	pdu[0].iov_len = sizeof(hdr);
+
+	return avctp_send_browsing_req(session->conn, pdu, iov_cnt + 1,
 							func, user_data);
 }
 

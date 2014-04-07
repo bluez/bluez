@@ -174,5 +174,5 @@ int avctp_send_vendordep_req(struct avctp *session, uint8_t code,
 					size_t operand_count,
 					avctp_rsp_cb func, void *user_data);
 int avctp_send_browsing_req(struct avctp *session,
-				uint8_t *operands, size_t operand_count,
+				const struct iovec *iov, int iov_cnt,
 				avctp_browsing_rsp_cb func, void *user_data);

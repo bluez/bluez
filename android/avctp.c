@@ -123,8 +123,8 @@ struct avctp_control_req {
 
 struct avctp_browsing_req {
 	struct avctp_pending_req *p;
-	uint8_t *operands;
-	uint16_t operand_count;
+	struct iovec *iov;
+	int iov_cnt;
 	avctp_browsing_rsp_cb func;
 	void *user_data;
 };
@@ -552,35 +552,39 @@ static int avctp_send(struct avctp_channel *control, uint8_t transaction,
 
 static int avctp_browsing_send(struct avctp_channel *browsing,
 				uint8_t transaction, uint8_t cr,
-				uint8_t *operands, size_t operand_count)
+				const struct iovec *iov, int iov_cnt)
 {
-	struct avctp_header *avctp;
+	struct avctp_header avctp;
 	struct msghdr msg;
-	struct iovec iov[2];
+	struct iovec pdu[iov_cnt + 1];
 	int sk, err = 0;
+	int i;
+	size_t len = sizeof(avctp);
 
-	iov[0].iov_base = browsing->buffer;
-	iov[0].iov_len  = sizeof(*avctp);
-	iov[1].iov_base = operands;
-	iov[1].iov_len  = operand_count;
+	for (i = 0; i < iov_cnt; i++) {
+		pdu[i + 1].iov_base = iov[i].iov_base;
+		pdu[i + 1].iov_len  = iov[i].iov_len;
+		len += iov[i].iov_len;
+	}
 
-	if (browsing->omtu < (iov[0].iov_len + iov[1].iov_len))
+	pdu[0].iov_base = &avctp;
+	pdu[0].iov_len  = sizeof(avctp);
+
+	if (browsing->omtu < len)
 		return -EOVERFLOW;
 
 	sk = g_io_channel_unix_get_fd(browsing->io);
 
-	memset(browsing->buffer, 0, iov[0].iov_len);
+	memset(&avctp, 0, sizeof(avctp));
 
-	avctp = (void *) browsing->buffer;
-
-	avctp->transaction = transaction;
-	avctp->packet_type = AVCTP_PACKET_SINGLE;
-	avctp->cr = cr;
-	avctp->pid = htons(AV_REMOTE_SVCLASS_ID);
+	avctp.transaction = transaction;
+	avctp.packet_type = AVCTP_PACKET_SINGLE;
+	avctp.cr = cr;
+	avctp.pid = htons(AV_REMOTE_SVCLASS_ID);
 
 	memset(&msg, 0, sizeof(msg));
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 2;
+	msg.msg_iov = pdu;
+	msg.msg_iovlen = iov_cnt + 1;
 
 	if (sendmsg(sk, &msg, 0) < 0)
 		err = -errno;
@@ -610,6 +614,7 @@ static void browsing_req_destroy(void *data)
 	struct avctp_browsing_req *req = data;
 	struct avctp_pending_req *p = req->p;
 	struct avctp *session = p->chan->session;
+	int i;
 
 	if (p->err == 0 || req->func == NULL)
 		goto done;
@@ -617,7 +622,10 @@ static void browsing_req_destroy(void *data)
 	req->func(session, NULL, 0, req->user_data);
 
 done:
-	g_free(req->operands);
+	for (i = 0; i < req->iov_cnt; i++)
+		g_free(req->iov[i].iov_base);
+
+	g_free(req->iov);
 	g_free(req);
 }
 
@@ -656,7 +664,7 @@ static int process_browsing(void *data)
 	struct avctp_pending_req *p = req->p;
 
 	return avctp_browsing_send(p->chan, p->transaction, AVCTP_COMMAND,
-					req->operands, req->operand_count);
+						req->iov, req->iov_cnt);
 }
 
 static gboolean process_queue(void *user_data)
@@ -1125,20 +1133,29 @@ static int avctp_send_req(struct avctp *session, uint8_t code,
 }
 
 int avctp_send_browsing_req(struct avctp *session,
-				uint8_t *operands, size_t operand_count,
+				const struct iovec *iov, int iov_cnt,
 				avctp_browsing_rsp_cb func, void *user_data)
 {
 	struct avctp_channel *browsing = session->browsing;
 	struct avctp_pending_req *p;
 	struct avctp_browsing_req *req;
+	struct iovec *pdu;
+	int i;
 
 	if (browsing == NULL)
 		return -ENOTCONN;
 
+	pdu = g_new0(struct iovec, iov_cnt);
+
+	for (i = 0; i < iov_cnt; i++) {
+		pdu[i].iov_len = iov[i].iov_len;
+		pdu[i].iov_base = g_memdup(iov[i].iov_base, iov[i].iov_len);
+	}
+
 	req = g_new0(struct avctp_browsing_req, 1);
 	req->func = func;
-	req->operands = g_memdup(operands, operand_count);
-	req->operand_count = operand_count;
+	req->iov = pdu;
+	req->iov_cnt = iov_cnt;
 	req->user_data = user_data;
 
 	p = pending_create(browsing, process_browsing, req,
