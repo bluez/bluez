@@ -1,7 +1,7 @@
 PTS test results for AVCTP
 
-PTS version: 5.0
-Tested: 18-Mar-2014
+PTS version: 5.1
+Tested: 07-April-2014
 Android version: 4.4.2
 
 Results:
@@ -20,7 +20,7 @@ TC_CT_CCM_BV_03_C	N/A
 TC_CT_CCM_BV_04_C	N/A
 TC_CT_CCM_BI_01_C	N/A
 TC_CT_NFR_BV_01_C	N/A
-TC_CT_NFR_BV_04_C	N/A
+TC_CT_NFR_BV_04_C	PASS	haltest: rc set_volume 5
 TC_CT_FRA_BV_01_C	N/A
 TC_CT_FRA_BV_04_C	N/A
 -------------------------------------------------------------------------------
