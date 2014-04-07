@@ -1,6 +1,6 @@
 AVCTP PICS for the PTS tool.
 
-PTS version: 5.0
+PTS version: 5.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -25,7 +25,7 @@ C.1: Mandatory to support only one Protocol Version.
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_AVCTP_1_1	False		Controller (C.1)
+TSPC_AVCTP_1_1	True (*)	Controller (C.1)
 TSPC_AVCTP_1_2	True (*)	Target (C.1)
 -------------------------------------------------------------------------------
 C.1: Mandatory to support at least one of the defined roles.
@@ -37,12 +37,12 @@ C.1: Mandatory to support at least one of the defined roles.
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_AVCTP_2_1	False		Message fragmentation (O)
-TSPC_AVCTP_2_2	False (*)	Transaction label management (M)
-TSPC_AVCTP_2_3	False (*)	Packet type field management (M)
-TSPC_AVCTP_2_4	False (*)	Message type field management (M)
-TSPC_AVCTP_2_5	False (*)	PID field management (M)
-TSPC_AVCTP_2_6	False (*)	IPID field mangement (M)
-TSPC_AVCTP_2_7	False (*)	Message information management (M)
+TSPC_AVCTP_2_2	True		Transaction label management (M)
+TSPC_AVCTP_2_3	True		Packet type field management (M)
+TSPC_AVCTP_2_4	True		Message type field management (M)
+TSPC_AVCTP_2_5	True		PID field management (M)
+TSPC_AVCTP_2_6	True		IPID field mangement (M)
+TSPC_AVCTP_2_7	True		Message information management (M)
 TSPC_AVCTP_2_8	False		Event registration for message reception (O)
 TSPC_AVCTP_2_9	False		Event registration for connection request (O)
 TSPC_AVCTP_2_10	False		Event registration for disconnection (O)
