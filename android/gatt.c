@@ -439,6 +439,8 @@ static void handle_client_register(const void *buf, uint16_t len)
 
 	DBG("");
 
+	memset(&ev, 0, sizeof(ev));
+
 	if (queue_find(gatt_clients, match_client_by_uuid, &cmd->uuid)) {
 		error("gatt: client uuid is already on list");
 		status = HAL_STATUS_FAILED;
@@ -448,36 +450,47 @@ static void handle_client_register(const void *buf, uint16_t len)
 	client = new0(struct gatt_client, 1);
 	if (!client) {
 		error("gatt: cannot allocate memory for registering client");
-		status = HAL_STATUS_FAILED;
+		status = HAL_STATUS_NOMEM;
 		goto failed;
 	}
-
-	memcpy(client->uuid, cmd->uuid, sizeof(client->uuid));
 
 	client->notifications = queue_new();
 	if (!client->notifications) {
 		error("gatt: couldn't allocate notifications queue");
 		destroy_gatt_client(client);
-		status = HAL_STATUS_FAILED;
+		status = HAL_STATUS_NOMEM;
 		goto failed;
 	}
 
+	memcpy(client->uuid, cmd->uuid, sizeof(client->uuid));
+
 	client->id = client_cnt++;
 
-	queue_push_head(gatt_clients, client);
+	if (!queue_push_head(gatt_clients, client)) {
+		error("gatt: Cannot push client on the list");
+		destroy_gatt_client(client);
+		status = HAL_STATUS_NOMEM;
+		goto failed;
+	}
+
+	ev.client_if = client->id;
 
 	status = HAL_STATUS_SUCCESS;
 
-	ev.status = GATT_SUCCESS;
-	ev.client_if = client->id;
-	memcpy(ev.app_uuid, client->uuid, sizeof(client->uuid));
+failed:
+	if (status == HAL_STATUS_SUCCESS)
+		ev.status = GATT_SUCCESS;
+	else
+		ev.status = GATT_FAILURE;
+
+	/* We should send notification with given in cmd UUID */
+	memcpy(ev.app_uuid, cmd->uuid, sizeof(ev.app_uuid));
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
 			HAL_EV_GATT_CLIENT_REGISTER_CLIENT, sizeof(ev), &ev);
 
-failed:
-	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-					HAL_OP_GATT_CLIENT_REGISTER, status);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_REGISTER,
+									status);
 }
 
 static void handle_client_unregister(const void *buf, uint16_t len)
