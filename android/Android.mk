@@ -74,27 +74,14 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/lib \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
 LOCAL_SHARED_LIBRARIES := \
 	libglib \
 
-lib_headers := \
-	bluetooth.h \
-	hci.h \
-	hci_lib.h \
-	l2cap.h \
-	sdp_lib.h \
-	sdp.h \
-	rfcomm.h \
-	sco.h \
-	bnep.h \
-
-$(shell mkdir -p $(LOCAL_PATH)/bluez/lib/bluetooth)
-
-$(foreach file,$(lib_headers), $(shell ln -sf ../$(file) $(LOCAL_PATH)/bluez/lib/bluetooth/$(file)))
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
 
 LOCAL_MODULE_TAGS := optional
 
@@ -215,9 +202,11 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/lib \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := debug
@@ -285,9 +274,11 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/lib \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := debug
@@ -350,9 +341,11 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/lib \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := debug
@@ -374,9 +367,11 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/lib \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := debug
@@ -395,10 +390,10 @@ LOCAL_SRC_FILES := \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
 
-LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH)/bluez/lib \
-
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := debug
@@ -417,10 +412,10 @@ LOCAL_SRC_FILES := \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
 
-LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH)/bluez/lib \
-
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := debug
@@ -490,3 +485,22 @@ LOCAL_REQUIRED_MODULES := \
 include $(BUILD_EXECUTABLE)
 
 endif
+
+#
+# bluetooth-headers
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := bluetooth-headers
+LOCAL_NODULE_TAGS := optional
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+
+include_path := $(local-intermediates-dir)/include
+include_files := $(wildcard $(LOCAL_PATH)/bluez/lib/*.h)
+$(shell mkdir -p $(include_path)/bluetooth)
+$(foreach file,$(include_files),$(shell cp -u $(file) $(include_path)/bluetooth))
+
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(include_path)
+
+include $(BUILD_STATIC_LIBRARY)
