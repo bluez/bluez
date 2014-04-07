@@ -314,3 +314,5 @@ HFP		Enhanced Call Control		AT+CHLD={1x,2x}
 HFP		Explicit Call Transfer		AT+CHLD=4
 HFP		Response and Hold		AT+BTRH, +BTRH
 HFP		In-band Ring Tone		+BSIR
+AVRCP		Player Settings			HAL API present but not used
+AVRCP		Browsing			No HAL API
