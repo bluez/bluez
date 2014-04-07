@@ -44,6 +44,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/handsfree.c \
 	bluez/android/gatt.c \
 	bluez/android/health.c \
+	bluez/android/mcap-lib.c \
 	bluez/src/log.c \
 	bluez/src/shared/mgmt.c \
 	bluez/src/shared/util.c \
