@@ -1,7 +1,7 @@
 PTS test results for HID
 
-PTS version: 4.9
-Tested: 14-Nov-2013
+PTS version: 5.1
+Tested: 07-April-2014
 
 Results:
 PASS	test passed
@@ -20,12 +20,12 @@ TC_HOS_HCR_BV_01_I	PASS
 TC_HOS_HCR_BV_02_I	PASS
 TC_HOS_HCR_BV_03_I	N/A
 TC_HOS_HCR_BV_04_I	N/A
-TC_HOS_HDT_BV_01_I	PASS	from shell execute:
+TC_HOS_HDT_BV_01_I	PASS
+TC_HOS_HDT_BV_02_I	PASS	from shell execute:
 				haltest
 				bluetooth enable
 				hidhost connect <PTS bdaddr>
 				hidhost send_data <PTS bdaddr> ff00
-TC_HOS_HDT_BV_02_I	PASS
 TC_HOS_HDT_BV_03_I	N/A
 TC_HOS_HDT_BV_04_I	N/A
 TC_HOS_HID_BV_01_C	N/A
@@ -47,8 +47,8 @@ TC_HOS_DAT_BI_01_C	N/A
 TC_HOS_DAT_BI_02_C	N/A
 TC_DEV_HCE_BV_01_I	N/A
 TC_DEV_HCE_BV_02_I	N/A
-TC_DEV_HCE_BV_03_I	PASS
-TC_DEV_HCE_BV_04_I	PASS
+TC_DEV_HCE_BV_03_I	N/A
+TC_DEV_HCE_BV_04_I	N/A
 TC_DEV_HCE_BV_05_I	N/A
 TC_DEV_HCR_BV_01_I	N/A
 TC_DEV_HCR_BV_02_I	N/A
