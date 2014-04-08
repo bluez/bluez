@@ -935,6 +935,28 @@ static struct gatt_device *find_device_by_conn_id(int32_t conn_id)
 	return queue_find(conn_list, match_dev_by_conn_id, INT_TO_PTR(conn_id));
 }
 
+static struct gatt_device *create_device(bdaddr_t *addr)
+{
+	struct gatt_device *dev;
+
+	dev = new0(struct gatt_device, 1);
+	if (!dev)
+		return NULL;
+
+	bacpy(&dev->bdaddr, addr);
+
+	dev->clients = queue_new();
+	dev->services = queue_new();
+
+	if (!dev->clients || !dev->services) {
+		error("gatt: Failed to allocate memory for client");
+		destroy_device(dev);
+		return NULL;
+	}
+
+	return dev;
+}
+
 static void handle_client_connect(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_connect *cmd = buf;
@@ -989,26 +1011,8 @@ static void handle_client_connect(const void *buf, uint16_t len)
 	/* Lets create new gatt device and put it on conn_wait_queue.
 	  * Once it is connected we move it to conn_list
 	  */
-	dev = new0(struct gatt_device, 1);
+	dev = create_device(&addr);
 	if (!dev) {
-		status = HAL_STATUS_FAILED;
-		goto reply;
-	}
-
-	memcpy(&dev->bdaddr, &addr, sizeof(bdaddr_t));
-
-	/* Create queue to keep list of clients for given device*/
-	dev->clients = queue_new();
-	if (!dev->clients) {
-		error("gatt: Cannot create client queue");
-		status = HAL_STATUS_FAILED;
-		goto reply;
-	}
-
-	dev->services = queue_new();
-	if (!dev->services) {
-		error("gatt: Cannot create services queue");
-		queue_destroy(dev->clients, NULL);
 		status = HAL_STATUS_FAILED;
 		goto reply;
 	}
