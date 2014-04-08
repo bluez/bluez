@@ -162,10 +162,18 @@ static void hid_device_remove(struct hid_device *dev)
 	hid_device_free(dev);
 }
 
+static void hex2buf(const uint8_t *hex, uint8_t *buf, int num)
+{
+	int i;
+
+	for (i = 0; i < num; i++)
+		sscanf((const char *)(hex + (i * 2)), "%02hhX", &buf[i]);
+}
+
 static void handle_uhid_output(struct hid_device *dev,
 						struct uhid_output_req *output)
 {
-	int fd, i;
+	int fd;
 	uint8_t *req = NULL;
 	uint8_t req_size = 0;
 
@@ -178,8 +186,7 @@ static void handle_uhid_output(struct hid_device *dev,
 		return;
 
 	req[0] = HID_MSG_SET_REPORT | output->rtype;
-	for (i = 0; i < (req_size - 1); i++)
-		sscanf((char *) &(output->data)[i * 2], "%hhx", &req[1 + i]);
+	hex2buf(output->data, req + 1, req_size - 1);
 
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
@@ -1096,7 +1103,7 @@ static void bt_hid_set_report(const void *buf, uint16_t len)
 	struct hid_device *dev;
 	GSList *l;
 	bdaddr_t dst;
-	int i, fd;
+	int fd;
 	uint8_t *req;
 	uint8_t req_size;
 	uint8_t status;
@@ -1145,8 +1152,7 @@ static void bt_hid_set_report(const void *buf, uint16_t len)
 	req[0] = HID_MSG_SET_REPORT | cmd->type;
 	/* Report data coming to HAL is in ascii format, HAL sends
 	 * data in hex to daemon, so convert to binary. */
-	for (i = 0; i < (req_size - 1); i++)
-		sscanf((char *) &(cmd->data)[i * 2], "%hhx", &(req + 1)[i]);
+	hex2buf(cmd->data, req + 1, req_size - 1);
 
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
@@ -1174,7 +1180,7 @@ static void bt_hid_send_data(const void *buf, uint16_t len)
 	struct hid_device *dev;
 	GSList *l;
 	bdaddr_t dst;
-	int i, fd;
+	int fd;
 	uint8_t *req;
 	uint8_t req_size;
 	uint8_t status;
@@ -1213,8 +1219,7 @@ static void bt_hid_send_data(const void *buf, uint16_t len)
 	req[0] = HID_MSG_DATA | HID_DATA_TYPE_OUTPUT;
 	/* Report data coming to HAL is in ascii format, HAL sends
 	 * data in hex to daemon, so convert to binary. */
-	for (i = 0; i < (req_size - 1); i++)
-		sscanf((char *) &(cmd->data)[i * 2], "%hhx", &(req + 1)[i]);
+	hex2buf(cmd->data, req + 1, req_size - 1);
 
 	fd = g_io_channel_unix_get_fd(dev->intr_io);
 
