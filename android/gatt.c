@@ -90,6 +90,7 @@ struct service {
 	bool primary;
 
 	struct queue *chars;
+	struct queue *included;	/* Valid only for primary services */
 };
 
 struct notification_data {
@@ -204,6 +205,16 @@ static void destroy_service(void *data)
 		return;
 
 	queue_destroy(srvc->chars, destroy_characteristic);
+
+	/* Included services we keep on two queues.
+	 * 1. On the same queue with primary services.
+	 * 2. On the queue inside primary service.
+	 * So we need to free service memory only once but we need to destroy
+	 * two queues
+	 */
+	if (srvc->primary)
+		queue_destroy(srvc->included, NULL);
+
 	free(srvc);
 }
 
@@ -548,6 +559,17 @@ static struct service *create_service(bool primary, char *uuid, void *data)
 		memcpy(&s->prim, data, sizeof(s->prim));
 	else
 		memcpy(&s->incl, data, sizeof(s->incl));
+
+	if (!s->primary)
+		return s;
+
+	/* For primary service allocate queue for included services */
+	s->included = queue_new();
+	if (!s->included) {
+		queue_destroy(s->chars, NULL);
+		free(s);
+		return NULL;
+	}
 
 	return s;
 }
@@ -1246,11 +1268,26 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 
 	bt_string_to_uuid(&uuid, service->prim.uuid);
 
-	/* TODO store included services in device->services list */
 	for (; included; included = included->next) {
 		struct gatt_included *included_service = included->data;
 		bt_uuid_t included_uuid;
+		struct service *incl;
 
+		incl = create_service(false, included_service->uuid,
+							included_service);
+		if (!incl)
+			continue;
+
+		/* Lets keep included service on two queues.
+		 * 1. on services queue together with primary service
+		 * 2. on special queue inside primary service
+		 */
+		if (!queue_push_tail(service->included, incl) ||
+				!queue_push_tail(device->services, incl)) {
+			error("gatt: Cannot push incl service to the list");
+			destroy_service(incl);
+			continue;
+		}
 		ev.conn_id = device->conn_id;
 		ev.status = GATT_SUCCESS;
 
