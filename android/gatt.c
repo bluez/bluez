@@ -774,7 +774,6 @@ static void send_client_connect_notify(void *data, void *user_data)
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
 				HAL_EV_GATT_CLIENT_CONNECT, sizeof(*ev), ev);
-
 }
 
 static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
@@ -1244,6 +1243,28 @@ static struct service *find_service_by_uuid(struct gatt_device *device,
 	return queue_find(device->services, match_service_by_uuid, uuid);
 }
 
+static void send_client_incl_service_notify(const struct service *prim,
+						const struct service *incl,
+						int32_t conn_id,
+						int32_t status)
+{
+	struct hal_ev_gatt_client_get_inc_service ev;
+
+	memset(&ev, 0, sizeof(ev));
+
+	ev.conn_id = conn_id;
+	ev.status = status;
+
+	element_id_to_hal_srvc_id(&prim->id, 1, &ev.srvc_id);
+
+	if (incl)
+		element_id_to_hal_srvc_id(&incl->id, 0, &ev.incl_srvc_id);
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT ,
+					HAL_EV_GATT_CLIENT_GET_INC_SERVICE,
+					sizeof(ev), &ev);
+}
+
 struct get_included_data {
 	struct service *prim;
 	struct gatt_device *device;
@@ -1251,11 +1272,11 @@ struct get_included_data {
 
 static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 {
-	struct hal_ev_gatt_client_get_inc_service ev;
 	struct get_included_data *data = user_data;
 	struct gatt_device *device = data->device;
 	struct service *service = data->prim;
 	bt_uuid_t uuid;
+	struct service *incl;
 
 	DBG("");
 
@@ -1270,8 +1291,6 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 
 	for (; included; included = included->next) {
 		struct gatt_included *included_service = included->data;
-		bt_uuid_t included_uuid;
-		struct service *incl;
 
 		incl = create_service(false, included_service->uuid,
 							included_service);
@@ -1288,30 +1307,19 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 			destroy_service(incl);
 			continue;
 		}
-		ev.conn_id = device->conn_id;
-		ev.status = GATT_SUCCESS;
-
-		ev.srvc_id.inst_id = 0;
-		uuid2android(&uuid, ev.srvc_id.uuid);
-
-		ev.incl_srvc_id.inst_id = 0;
-		bt_string_to_uuid(&included_uuid, included_service->uuid);
-		uuid2android(&included_uuid, ev.incl_srvc_id.uuid);
-
-		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT ,
-					HAL_EV_GATT_CLIENT_GET_INC_SERVICE,
-					sizeof(ev), &ev);
 	}
 
-	/* Android expects notification with error status in the end */
-	ev.conn_id = device->conn_id;
-	ev.status = GATT_FAILURE;
-	ev.srvc_id.inst_id = 0;
-	uuid2android(&uuid, ev.srvc_id.uuid);
+	/* Notify upper layer about first included service.
+	 * Android framework will iterate for next one.
+	 */
+	incl = queue_peek_head(service->included);
 
-	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT ,
-					HAL_EV_GATT_CLIENT_GET_INC_SERVICE,
-					sizeof(ev), &ev);
+	if (incl)
+		send_client_incl_service_notify(service, incl, device->conn_id,
+								GATT_SUCCESS);
+	else
+		send_client_incl_service_notify(service, NULL, device->conn_id,
+								GATT_FAILURE);
 }
 
 static void handle_client_get_included_service(const void *buf, uint16_t len)
