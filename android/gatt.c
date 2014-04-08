@@ -1145,6 +1145,14 @@ static void handle_client_search_service(const void *buf, uint16_t len)
 
 	/*TODO:  Handle filter uuid */
 
+	/* Use cache if possible */
+	if (!queue_isempty(dev->services)) {
+		status = HAL_STATUS_SUCCESS;
+		send_client_all_primary(GATT_SUCCESS, dev->services,
+								dev->conn_id);
+		goto reply;
+	}
+
 	if (!gatt_discover_primary(dev->attrib, NULL, primary_cb, dev)) {
 		status = HAL_STATUS_FAILED;
 		goto reply;
