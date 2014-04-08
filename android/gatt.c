@@ -518,6 +518,40 @@ static void send_client_all_primary(int32_t status, struct queue *services,
 
 }
 
+static struct service *create_service(bool primary, char *uuid, void *data)
+{
+	struct service *s;
+
+	s = new0(struct service, 1);
+	if (!s) {
+		error("gatt: Cannot allocate memory for gatt_primary");
+		return NULL;
+	}
+
+	s->chars = queue_new();
+	if (!s->chars) {
+		error("gatt: Cannot allocate memory for char cache");
+		free(s);
+		return NULL;
+	}
+
+	if (bt_string_to_uuid(&s->id.uuid, uuid) < 0) {
+		error("gatt: Cannot convert string to uuid");
+		queue_destroy(s->chars, NULL);
+		free(s);
+		return NULL;
+	}
+
+	/* Put primary service to our local list */
+	s->primary = primary;
+	if (s->primary)
+		memcpy(&s->prim, data, sizeof(s->prim));
+	else
+		memcpy(&s->incl, data, sizeof(s->incl));
+
+	return s;
+}
+
 static void primary_cb(uint8_t status, GSList *services, void *user_data)
 {
 	struct gatt_device *dev = user_data;
@@ -543,27 +577,9 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 		struct gatt_primary *prim = l->data;
 		struct service *p;
 
-		p = new0(struct service, 1);
-		if (!p) {
-			error("gatt: Cannot allocate memory for gatt_primary");
+		p = create_service(true, prim->uuid, prim);
+		if (!p)
 			continue;
-		}
-
-		p->chars = queue_new();
-		if (!p->chars) {
-			error("gatt: Cannot allocate memory for char cache");
-			free(p);
-			continue;
-		}
-
-		if (bt_string_to_uuid(&p->id.uuid, prim->uuid) < 0) {
-			error("gatt: Cannot convert string to uuid");
-			continue;
-		}
-
-		/* Put primary service to our local list */
-		memcpy(&p->prim, prim, sizeof(p->prim));
-		p->primary = true;
 
 		if (!queue_push_tail(dev->services, p)) {
 			error("gatt: Cannot push primary service to the list");
