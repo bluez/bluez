@@ -540,7 +540,8 @@ static void send_client_all_primary(int32_t status, struct queue *services,
 
 }
 
-static struct service *create_service(bool primary, char *uuid, void *data)
+static struct service *create_service(uint8_t id, bool primary, char *uuid,
+								void *data)
 {
 	struct service *s;
 
@@ -563,6 +564,8 @@ static struct service *create_service(bool primary, char *uuid, void *data)
 		free(s);
 		return NULL;
 	}
+
+	s->id.instance = id;
 
 	/* Put primary service to our local list */
 	s->primary = primary;
@@ -590,6 +593,7 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 	struct gatt_device *dev = user_data;
 	GSList *l;
 	int32_t gatt_status;
+	uint8_t instance_id;
 
 	DBG("Status %d", status);
 
@@ -606,11 +610,16 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 		goto done;
 	}
 
+	/* There might be multiply services with same uuid. Therefore make sure
+	 * each primary service one has unique instance_id
+	 */
+	instance_id = 0;
+
 	for (l = services; l; l = l->next) {
 		struct gatt_primary *prim = l->data;
 		struct service *p;
 
-		p = create_service(true, prim->uuid, prim);
+		p = create_service(instance_id++, true, prim->uuid, prim);
 		if (!p)
 			continue;
 
@@ -1258,12 +1267,23 @@ struct get_included_data {
 	struct gatt_device *device;
 };
 
+static int get_inst_id_of_prim_services(const struct gatt_device *dev)
+{
+	struct service *s = queue_peek_tail(dev->services);
+
+	if (s)
+		return s->id.instance;
+
+	return -1;
+}
+
 static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 {
 	struct get_included_data *data = user_data;
 	struct gatt_device *device = data->device;
 	struct service *service = data->prim;
 	struct service *incl;
+	int instance_id;
 
 	DBG("");
 
@@ -1277,11 +1297,20 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 	/* Remember that we already search included services.*/
 	service->incl_search_done = true;
 
+	/* There might be multiply services with same uuid. Therefore make sure
+	 * each service has unique instance id. Let's take the latest instance
+	 * id of primary service and start iterate included services from this
+	 * point.
+	 */
+	instance_id = get_inst_id_of_prim_services(device);
+	if (instance_id < 0)
+		goto failed;
 
 	for (; included; included = included->next) {
 		struct gatt_included *included_service = included->data;
 
-		incl = create_service(false, included_service->uuid,
+		incl = create_service(++instance_id, false,
+							included_service->uuid,
 							included_service);
 		if (!incl)
 			continue;
@@ -1303,11 +1332,14 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 	 */
 	incl = queue_peek_head(service->included);
 
-	if (incl)
+	if (incl) {
 		send_client_incl_service_notify(service, incl, device->conn_id,
 								GATT_SUCCESS);
-	else
-		send_client_incl_service_notify(service, NULL, device->conn_id,
+		return;
+	}
+
+failed:
+	send_client_incl_service_notify(service, NULL, device->conn_id,
 								GATT_FAILURE);
 }
 
