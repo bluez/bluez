@@ -1264,6 +1264,13 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 
 	DBG("");
 
+	if (len != sizeof(*cmd) + (cmd->number * sizeof(cmd->srvc_id[0]))) {
+		error("Invalid get incl services size (%u bytes), terminating",
+									len);
+		raise(SIGTERM);
+		return;
+	}
+
 	device = find_device_by_conn_id(cmd->conn_id);
 	if (!device) {
 		status = HAL_STATUS_FAILED;
