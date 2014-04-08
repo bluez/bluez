@@ -85,6 +85,7 @@ struct characteristic {
 struct service {
 	struct element_id id;
 	struct gatt_primary prim;
+	bool primary;
 
 	struct queue *chars;
 };
@@ -526,6 +527,8 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 
 		/* Put primary service to our local list */
 		memcpy(&p->prim, prim, sizeof(p->prim));
+		p->primary = true;
+
 		if (!queue_push_tail(dev->services, p)) {
 			error("gatt: Cannot push primary service to the list");
 			free(p);
