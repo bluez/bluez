@@ -264,7 +264,7 @@ static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(0x0100, data);
 
-	avctp_send_vendordep_req(context->session, AVC_CTYPE_CONTROL, 0, NULL,
+	avctp_send_vendor_req(context->session, AVC_CTYPE_CONTROL, 0, NULL,
 						0, handler_response, context);
 
 	execute_context(context);

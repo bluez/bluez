@@ -724,7 +724,7 @@ int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
 		pdu->params_len = htons(params_len);
 	}
 
-	return avctp_send_vendordep(session->conn, transaction, code, subunit,
+	return avctp_send_vendor(session->conn, transaction, code, subunit,
 							session->tx_buf, len);
 }
 
@@ -771,35 +771,28 @@ static int avrcp_send_req(struct avrcp *session, uint8_t code, uint8_t subunit,
 					int iov_cnt, avctp_rsp_cb func,
 					void *user_data)
 {
-	struct avrcp_header *pdu = (void *) session->tx_buf;
-	size_t len = sizeof(*pdu);
+	struct iovec pdu[iov_cnt + 1];
+	struct avrcp_header hdr;
 	int i;
 
-	memset(pdu, 0, len);
+	memset(&hdr, 0, sizeof(hdr));
 
-	hton24(pdu->company_id, IEEEID_BTSIG);
-	pdu->pdu_id = pdu_id;
-	pdu->packet_type = AVRCP_PACKET_TYPE_SINGLE;
-
-	if (iov_cnt <= 0)
-		goto done;
+	pdu[0].iov_base = &hdr;
+	pdu[0].iov_len = sizeof(hdr);
 
 	for (i = 0; i < iov_cnt; i++) {
-		len += iov[i].iov_len;
-
-		if (len > session->tx_mtu)
-			return -ENOBUFS;
-
-		memcpy(&pdu->params[pdu->params_len], iov[i].iov_base,
-							iov[i].iov_len);
-		pdu->params_len += iov[i].iov_len;
+		pdu[i + 1].iov_base = iov[i].iov_base;
+		pdu[i + 1].iov_len = iov[i].iov_len;
+		hdr.params_len += iov[i].iov_len;
 	}
 
-	pdu->params_len = htons(pdu->params_len);
+	hton24(hdr.company_id, IEEEID_BTSIG);
+	hdr.pdu_id = pdu_id;
+	hdr.packet_type = AVRCP_PACKET_TYPE_SINGLE;
+	hdr.params_len = htons(hdr.params_len);
 
-done:
-	return avctp_send_vendordep_req(session->conn, code, subunit,
-					session->tx_buf, len, func, user_data);
+	return avctp_send_vendor_req(session->conn, code, subunit, pdu,
+						iov_cnt + 1, func, user_data);
 }
 
 static int avrcp_send_browsing_req(struct avrcp *session, uint8_t pdu_id,
@@ -1409,8 +1402,8 @@ int avrcp_set_player_value(struct avrcp *session, uint8_t number,
 	iov.iov_len = 1 + number * 2;
 
 	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
-				AVRCP_SET_PLAYER_VALUE, &iov, 1,
-				set_value_rsp, session);
+					AVRCP_SET_PLAYER_VALUE, &iov, 1,
+					set_value_rsp, session);
 }
 
 static gboolean get_play_status_rsp(struct avctp *conn,
@@ -1686,8 +1679,8 @@ int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id)
 	iov.iov_len = sizeof(pdu);
 
 	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
-				AVRCP_SET_ADDRESSED_PLAYER, &iov, 1,
-				set_addressed_rsp, session);
+					AVRCP_SET_ADDRESSED_PLAYER, &iov, 1,
+					set_addressed_rsp, session);
 }
 
 static gboolean set_browsed_rsp(struct avctp *conn, uint8_t *operands,
