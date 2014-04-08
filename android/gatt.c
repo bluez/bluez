@@ -1342,12 +1342,12 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 	device = find_device_by_conn_id(cmd->conn_id);
 	if (!device) {
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	if (queue_isempty(device->services)) {
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	if (!cmd->number) {
@@ -1361,14 +1361,14 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 
 	if (!service) {
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	data = new0(struct get_included_data, 1);
 	if (!data) {
 		error("gatt: failed to allocate memory for included_data");
 		status = HAL_STATUS_FAILED;
-		goto failed;
+		goto reply;
 	}
 
 	data->prim = service;
@@ -1380,7 +1380,7 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 
-failed:
+reply:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE,
 					status);
