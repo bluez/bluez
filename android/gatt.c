@@ -1200,7 +1200,7 @@ static struct service *find_service_by_uuid(struct gatt_device *device,
 }
 
 struct get_included_data {
-	struct service *service;
+	struct service *prim;
 	struct gatt_device *device;
 };
 
@@ -1209,7 +1209,7 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 	struct hal_ev_gatt_client_get_inc_service ev;
 	struct get_included_data *data = user_data;
 	struct gatt_device *device = data->device;
-	struct service *service = data->service;
+	struct service *service = data->prim;
 	bt_uuid_t uuid;
 
 	DBG("");
@@ -1296,7 +1296,7 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	data->service = service;
+	data->prim = service;
 	data->device = device;
 
 	gatt_find_included(device->attrib, service->prim.range.start,
