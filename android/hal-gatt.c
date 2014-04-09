@@ -536,7 +536,7 @@ static const struct hal_ipc_handler ev_handlers[] = {
 		sizeof(struct hal_ev_gatt_server_service_added) },
 	/* HAL_EV_GATT_SERVER_INC_SRVC_ADDED */
 	{ handle_included_service_added, false,
-		sizeof(struct hal_ev_gatt_server_service_added) },
+		sizeof(struct hal_ev_gatt_server_inc_srvc_added) },
 	/* HAL_EV_GATT_SERVER_CHAR_ADDED */
 	{ handle_characteristic_added, false,
 		sizeof(struct hal_ev_gatt_server_characteristic_added) },
