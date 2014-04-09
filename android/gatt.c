@@ -2355,6 +2355,18 @@ static void handle_notification(const uint8_t *pdu, uint16_t len,
 	ev->len = len - data_offset;
 	memcpy(ev->value, pdu + data_offset, len - data_offset);
 
+	if (!ev->is_notify) {
+		uint8_t *res;
+		uint16_t len;
+		size_t plen;
+
+		res = g_attrib_get_buffer(notification->dev->attrib, &plen);
+		len = enc_confirmation(res, plen);
+		if (len > 0)
+			g_attrib_send(notification->dev->attrib, 0, res, len,
+							NULL, NULL, NULL);
+	}
+
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT, HAL_EV_GATT_CLIENT_NOTIFY,
 						sizeof(*ev) + ev->len, ev);
 }
