@@ -1281,13 +1281,8 @@ static void list_messages_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static void pbap_ls(GDBusProxy *proxy, int argc, char *argv[])
+static void pbap_list(GDBusProxy *proxy, int argc, char *argv[])
 {
-	if (argc > 1) {
-		pbap_search(proxy, argc, argv);
-		return;
-	}
-
 	if (g_dbus_proxy_method_call(proxy, "List", list_setup, list_reply,
 						NULL, NULL) == FALSE) {
 		rl_printf("Failed to List\n");
@@ -1295,6 +1290,51 @@ static void pbap_ls(GDBusProxy *proxy, int argc, char *argv[])
 	}
 
 	rl_printf("Attempting to List\n");
+}
+
+static void get_size_reply(DBusMessage *message, void *user_data)
+{
+	GDBusProxy *proxy = user_data;
+	DBusError error;
+	DBusMessageIter iter;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to GetSize: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	print_iter("\t", "Size", &iter);
+
+	pbap_list(proxy, 0, NULL);
+}
+
+static void pbap_get_size(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (g_dbus_proxy_method_call(proxy, "GetSize", NULL, get_size_reply,
+						proxy, NULL) == FALSE) {
+		rl_printf("Failed to GetSize\n");
+		return;
+	}
+
+	rl_printf("Attempting to GetSize\n");
+}
+
+static void pbap_ls(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc > 1) {
+		if (strcmp("-l", argv[1]))
+			pbap_search(proxy, argc, argv);
+		else
+			pbap_get_size(proxy, argc, argv);
+		return;
+	}
+
+	pbap_list(proxy, argc, argv);
 }
 
 static void map_ls_messages(GDBusProxy *proxy, int argc, char *argv[])
@@ -1940,7 +1980,7 @@ static const struct {
 	{ "resume",       "<transfer>", cmd_resume, "Resume transfer" },
 	{ "send",         "<file>",   cmd_send, "Send file" },
 	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
-	{ "ls",           NULL,       cmd_ls, "List current folder" },
+	{ "ls",           "<options>", cmd_ls, "List current folder" },
 	{ "cp",          "<source file> <destination file>",   cmd_cp,
 				"Copy source file to destination file" },
 	{ "mv",          "<source file> <destination file>",   cmd_mv,
