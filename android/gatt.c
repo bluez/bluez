@@ -1206,10 +1206,33 @@ static void handle_client_listen(const void *buf, uint16_t len)
 
 static void handle_client_refresh(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_client_refresh *cmd = buf;
+	struct gatt_device *dev;
+	uint8_t status;
+	bdaddr_t bda;
+
+	/* This is Android's framework hidden API call. It seams that no
+	 * notification is expected and Bluedroid silently updates device's
+	 * cache under the hood. As we use lazy caching ,we can just clear the
+	 * cache and we're done.
+	 */
+
 	DBG("");
 
+	android2bdaddr(&cmd->bdaddr, &bda);
+	dev = find_device(&bda);
+	if (!dev) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	queue_remove_all(dev->services, NULL, NULL, destroy_service);
+
+	status = HAL_STATUS_SUCCESS;
+
+done:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_REFRESH,
-							HAL_STATUS_FAILED);
+									status);
 }
 
 static void handle_client_search_service(const void *buf, uint16_t len)
