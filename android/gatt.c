@@ -2482,7 +2482,7 @@ static void handle_client_register_for_notification(const void *buf,
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	gatt_status  = status ? GATT_SUCCESS : GATT_FAILURE;
+	gatt_status = status ? GATT_FAILURE : GATT_SUCCESS;
 	send_register_for_notification_ev(conn_id, 1, gatt_status,
 						&cmd->srvc_id, &cmd->char_id);
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
@@ -2535,7 +2535,7 @@ static void handle_client_deregister_for_notification(const void *buf,
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	gatt_status  = status ? GATT_SUCCESS : GATT_FAILURE;
+	gatt_status = status ? GATT_FAILURE : GATT_SUCCESS;
 	send_register_for_notification_ev(conn_id, 0, gatt_status,
 						&cmd->srvc_id, &cmd->char_id);
 
