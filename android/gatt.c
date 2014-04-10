@@ -506,13 +506,11 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 	if (!cl) {
 		error("gatt: client_if=%d not found", cmd->client_if);
 		status = HAL_STATUS_FAILED;
-		goto failed;
+	} else {
+		destroy_gatt_client(cl);
+		status = HAL_STATUS_SUCCESS;
 	}
 
-	destroy_gatt_client(cl);
-	status = HAL_STATUS_SUCCESS;
-
-failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_UNREGISTER, status);
 }
