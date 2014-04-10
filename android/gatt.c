@@ -760,12 +760,11 @@ static void put_device_on_disc_list(struct gatt_device *dev)
 static gboolean disconnected_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
-	bdaddr_t *addr = user_data;
-	struct gatt_device *dev;
+	struct gatt_device *dev = user_data;
 	int sock, err = 0;
 	socklen_t len;
 
-	dev = queue_remove_if(conn_list, match_dev_by_bdaddr, addr);
+	queue_remove(conn_list, dev);
 
 	sock = g_io_channel_unix_get_fd(io);
 	len = sizeof(err);
@@ -811,16 +810,14 @@ static void send_client_connect_notify(void *data, void *user_data)
 
 static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
-	bdaddr_t *addr = user_data;
-	struct gatt_device *dev;
+	struct gatt_device *dev = user_data;
 	struct hal_ev_gatt_client_connect ev;
 	GAttrib *attrib;
 	static uint32_t conn_id = 0;
 	int32_t status;
 
 	/* Take device from conn waiting queue */
-	dev = queue_remove_if(conn_wait_queue, match_dev_by_bdaddr, addr);
-	if (!dev) {
+	if (!queue_remove(conn_wait_queue, dev)) {
 		error("gatt: Device not on the connect wait queue!?");
 		g_io_channel_shutdown(io, TRUE, NULL);
 		return;
