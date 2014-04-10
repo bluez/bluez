@@ -34,15 +34,16 @@
 
 static void run_valgrind(int debug, int mgmt_dbg)
 {
-	char *prg_argv[6];
+	char *prg_argv[7];
 	char *prg_envp[3];
 
 	prg_argv[0] = VALGRIND_BIN;
 	prg_argv[1] = "--leak-check=full";
-	prg_argv[2] = BLUETOOTHD_BIN;
-	prg_argv[3] = debug ? "-d" : NULL;
-	prg_argv[4] = mgmt_dbg ? "--mgmt-debug" : NULL;
-	prg_argv[5] = NULL;
+	prg_argv[2] = "--track-origins=yes";
+	prg_argv[3] = BLUETOOTHD_BIN;
+	prg_argv[4] = debug ? "-d" : NULL;
+	prg_argv[5] = mgmt_dbg ? "--mgmt-debug" : NULL;
+	prg_argv[6] = NULL;
 
 	prg_envp[0] = "G_SLICE=always-malloc";
 	prg_envp[1] = "G_DEBUG=gc-friendly";
