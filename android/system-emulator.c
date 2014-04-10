@@ -50,7 +50,7 @@ static pid_t snoop_pid = -1;
 static void ctl_start(void)
 {
 	char prg_name[PATH_MAX + 1];
-	char *prg_argv[5];
+	char *prg_argv[6];
 	char *prg_envp[3];
 	pid_t pid;
 
@@ -58,9 +58,10 @@ static void ctl_start(void)
 
 	prg_argv[0] = "/usr/bin/valgrind";
 	prg_argv[1] = "--leak-check=full";
-	prg_argv[2] = prg_name;
-	prg_argv[3] = "-d";
-	prg_argv[4] = NULL;
+	prg_argv[2] = "--track-origins=yes";
+	prg_argv[3] = prg_name;
+	prg_argv[4] = "-d";
+	prg_argv[5] = NULL;
 
 	prg_envp[0] = "G_SLICE=always-malloc";
 	prg_envp[1] = "G_DEBUG=gc-friendly";
