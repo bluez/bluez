@@ -623,6 +623,12 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 		goto done;
 	}
 
+	if (!queue_isempty(dev->services)) {
+		info("gatt: Services already cached");
+		gatt_status = GATT_SUCCESS;
+		goto done;
+	}
+
 	/* There might be multiply services with same uuid. Therefore make sure
 	 * each primary service one has unique instance_id
 	 */
@@ -1564,7 +1570,8 @@ static void discover_char_cb(uint8_t status, GSList *characteristics,
 {
 	struct discover_char_data *data = user_data;
 
-	cache_all_srvc_chars(characteristics, data->service->chars);
+	if (queue_isempty(data->service->chars))
+		cache_all_srvc_chars(characteristics, data->service->chars);
 
 	send_client_char_notify(queue_peek_head(data->service->chars),
 						data->conn_id, data->service);
@@ -1731,7 +1738,7 @@ static void gatt_discover_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 	if (status)
 		error("gatt: Discover all char descriptors failed: %s",
 							att_ecode2str(status));
-	else
+	else if (queue_isempty(data->ch->descriptors))
 		cache_all_descr(pdu, len, data->ch->descriptors);
 
 	descr = queue_peek_head(data->ch->descriptors);
