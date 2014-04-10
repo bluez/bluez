@@ -1152,12 +1152,14 @@ static void handle_client_disconnect(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_disconnect *cmd = buf;
 	struct gatt_device *dev;
+	bdaddr_t bdaddr;
 	uint8_t status;
 	char addr[18];
 
 	DBG("");
 
-	ba2str((bdaddr_t *)&cmd->bdaddr, addr);
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+	ba2str(&bdaddr, addr);
 
 	dev = find_device_by_conn_id(cmd->conn_id);
 	if (!dev) {
