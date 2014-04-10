@@ -1,6 +1,6 @@
 PAN PICS for the PTS tool.
 
-PTS version: 5.0
+PTS version: 5.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -120,7 +120,7 @@ C.4: Mandatory to support if (TSPC_PAN_3_10) is supported.
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_PAN_4_1	True		PANU: Support BNEP (M)
-TSPC_PAN_4_2	True		PANU: Support IPv4 (C.1)
+TSPC_PAN_4_2	True (*)	PANU: Support IPv4 (C.1)
 TSPC_PAN_4_3	False		PANU: Support ping client for IPv4 (O)
 TSPC_PAN_4_4	False		PANU: Support DHCP client for  IPv4 (O)
 TSPC_PAN_4_5	False		PANU: Support DNS/LLMNR Resolver for IPv4 (O)
