@@ -674,7 +674,7 @@ static void connection_cleanup(struct gatt_device *device)
 }
 
 static void send_client_disconnect_notify(int32_t id, struct gatt_device *dev,
-								uint8_t status)
+								int32_t status)
 {
 	struct hal_ev_gatt_client_disconnect ev;
 
