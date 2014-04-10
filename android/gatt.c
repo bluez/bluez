@@ -580,13 +580,12 @@ static struct service *create_service(uint8_t id, bool primary, char *uuid,
 
 	/* Put primary service to our local list */
 	s->primary = primary;
-	if (s->primary)
+	if (s->primary) {
 		memcpy(&s->prim, data, sizeof(s->prim));
-	else
+	} else {
 		memcpy(&s->incl, data, sizeof(s->incl));
-
-	if (!s->primary)
 		return s;
+	}
 
 	/* For primary service allocate queue for included services */
 	s->included = queue_new();
