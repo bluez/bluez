@@ -1196,7 +1196,7 @@ reply:
 
 	/* If this is last client do more cleaning */
 	connection_cleanup(dev);
-	dev = queue_remove_if(conn_list, match_dev_by_bdaddr, &dev->bdaddr);
+	queue_remove(conn_list, dev);
 	put_device_on_disc_list(dev);
 }
 
