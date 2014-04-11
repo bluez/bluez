@@ -1432,37 +1432,37 @@ static struct priority_property enable_done_props[] = {
 	.prop.type = BT_PROPERTY_UUIDS,
 	.prop.len = sizeof(enable_done_uuids_val),
 	.prop.val = &enable_done_uuids_val,
-	.prio = 3,
+	.prio = 2,
 	},
 	{
 	.prop.type = BT_PROPERTY_CLASS_OF_DEVICE,
 	.prop.len = sizeof(uint32_t),
 	.prop.val = NULL,
-	.prio = 4,
+	.prio = 2,
 	},
 	{
 	.prop.type = BT_PROPERTY_TYPE_OF_DEVICE,
 	.prop.len = sizeof(enable_done_tod_val),
 	.prop.val = &enable_done_tod_val,
-	.prio = 5,
+	.prio = 2,
 	},
 	{
 	.prop.type = BT_PROPERTY_ADAPTER_SCAN_MODE,
 	.prop.len = sizeof(enable_done_scanmode_val),
 	.prop.val = &enable_done_scanmode_val,
-	.prio = 6,
+	.prio = 2,
 	},
 	{
 	.prop.type = BT_PROPERTY_ADAPTER_BONDED_DEVICES,
 	.prop.len = 0,
 	.prop.val = NULL,
-	.prio = 7,
+	.prio = 2,
 	},
 	{
 	.prop.type = BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT,
 	.prop.len = sizeof(enable_done_disctimeout_val),
 	.prop.val = &enable_done_disctimeout_val,
-	.prio = 8,
+	.prio = 2,
 	},
 };
 
