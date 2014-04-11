@@ -2868,10 +2868,33 @@ static void handle_server_disconnect(const void *buf, uint16_t len)
 
 static void handle_server_add_service(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_server_add_service *cmd = buf;
+	char uuidstr[MAX_LEN_UUID_STR];
+	struct gatt_server *server;
+	struct element_id srvc_id;
+	uint8_t status;
+
 	DBG("");
 
+	server = find_server_by_id(cmd->server_if);
+	if (!server) {
+		error("gatt: server_if=%d not found", cmd->server_if);
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	hal_srvc_id_to_element_id(&cmd->srvc_id, &srvc_id);
+	bt_uuid_to_string(&srvc_id.uuid, uuidstr, MAX_LEN_UUID_STR);
+
+	/* TODO: execute attribute database transaction */
+	DBG("Add primary service: server: %d, srvc_uuid: %s, num_handles: %d",
+				cmd->server_if, uuidstr, cmd->num_handles);
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_SERVER_ADD_SERVICE, HAL_STATUS_FAILED);
+					HAL_OP_GATT_SERVER_ADD_SERVICE, status);
 }
 
 static void handle_server_add_included_service(const void *buf, uint16_t len)
