@@ -2957,10 +2957,33 @@ failed:
 
 static void handle_server_add_descriptor(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_server_add_descriptor *cmd = buf;
+	char uuidstr[MAX_LEN_UUID_STR];
+	struct gatt_server *server;
+	bt_uuid_t descr_uuid;
+	uint8_t status;
+
 	DBG("");
 
+	server = find_server_by_id(cmd->server_if);
+	if (!server) {
+		error("gatt: server_if=%d not found", cmd->server_if);
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	android2uuid(cmd->uuid, &descr_uuid);
+	bt_uuid_to_string(&descr_uuid, uuidstr, MAX_LEN_UUID_STR);
+
+	/* TODO: Add descriptor to attribute database */
+	DBG("Add descriptor: server: %d, srvc_hnd: %d, uuid: %s, perm: %d",
+		cmd->server_if, cmd->service_handle, uuidstr, cmd->permissions);
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_SERVER_ADD_DESCRIPTOR, HAL_STATUS_FAILED);
+				HAL_OP_GATT_SERVER_ADD_DESCRIPTOR, status);
 }
 
 static void handle_server_start_service(const void *buf, uint16_t len)
