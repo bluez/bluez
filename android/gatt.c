@@ -721,13 +721,14 @@ static bool is_device_wating_for_connect(const bdaddr_t *addr,
 
 static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 						int rssi, uint16_t eir_len,
-							const void *eir)
+							const void *eir,
+							bool discoverable)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_gatt_client_scan_result *ev = (void *) buf;
 	char bda[18];
 
-	if (!scanning)
+	if (!scanning || !discoverable)
 		goto connect;
 
 	ba2str(addr, bda);

@@ -1362,8 +1362,14 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	eir_data_free(&eir);
 
 	/* Notify Gatt if its registered for LE events */
-	if (bdaddr_type != BDADDR_BREDR && gatt_device_found_cb)
-		gatt_device_found_cb(bdaddr, bdaddr_type, rssi, data_len, data);
+	if (bdaddr_type != BDADDR_BREDR && gatt_device_found_cb) {
+		bool discoverable;
+
+		discoverable = eir.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
+
+		gatt_device_found_cb(bdaddr, bdaddr_type, rssi, data_len, data,
+								discoverable);
+	}
 
 	if (dev->bond_state != HAL_BOND_STATE_BONDED)
 		cache_device(dev);
