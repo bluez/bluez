@@ -492,6 +492,41 @@ failed:
 									status);
 }
 
+static void connection_cleanup(struct gatt_device *device)
+{
+	if (device->watch_id) {
+		g_source_remove(device->watch_id);
+		device->watch_id = 0;
+	}
+
+	if (device->att_io) {
+		g_io_channel_shutdown(device->att_io, FALSE, NULL);
+		g_io_channel_unref(device->att_io);
+		device->att_io = NULL;
+	}
+
+	if (device->attrib) {
+		GAttrib *attrib = device->attrib;
+		device->attrib = NULL;
+		g_attrib_cancel_all(attrib);
+		g_attrib_unref(attrib);
+	}
+}
+
+static void send_client_disconnect_notify(int32_t id, struct gatt_device *dev,
+								int32_t status)
+{
+	struct hal_ev_gatt_client_disconnect ev;
+
+	ev.client_if = id;
+	ev.conn_id = dev->conn_id;
+	ev.status = status;
+	bdaddr2android(&dev->bdaddr, &ev.bda);
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
+			HAL_EV_GATT_CLIENT_DISCONNECT, sizeof(ev), &ev);
+}
+
 static void send_client_connect_notify(int32_t id, struct gatt_device *dev,
 								int32_t status)
 {
@@ -511,6 +546,13 @@ static void remove_client_from_device_list(void *data, void *user_data)
 	struct gatt_device *dev = data;
 
 	queue_remove_if(dev->clients, match_by_value, user_data);
+}
+
+static void put_device_on_disc_list(struct gatt_device *dev)
+{
+	dev->conn_id = 0;
+	queue_remove_all(dev->clients, NULL, NULL, NULL);
+	queue_push_tail(disc_dev_list, dev);
 }
 
 static void remove_client_from_devices(int32_t id)
@@ -694,41 +736,6 @@ done:
 	send_client_all_primary(gatt_status, dev->services, dev->conn_id);
 }
 
-static void connection_cleanup(struct gatt_device *device)
-{
-	if (device->watch_id) {
-		g_source_remove(device->watch_id);
-		device->watch_id = 0;
-	}
-
-	if (device->att_io) {
-		g_io_channel_shutdown(device->att_io, FALSE, NULL);
-		g_io_channel_unref(device->att_io);
-		device->att_io = NULL;
-	}
-
-	if (device->attrib) {
-		GAttrib *attrib = device->attrib;
-		device->attrib = NULL;
-		g_attrib_cancel_all(attrib);
-		g_attrib_unref(attrib);
-	}
-}
-
-static void send_client_disconnect_notify(int32_t id, struct gatt_device *dev,
-								int32_t status)
-{
-	struct hal_ev_gatt_client_disconnect ev;
-
-	ev.client_if = id;
-	ev.conn_id = dev->conn_id;
-	ev.status = status;
-	bdaddr2android(&dev->bdaddr, &ev.bda);
-
-	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_EV_GATT_CLIENT_DISCONNECT, sizeof(ev), &ev);
-}
-
 static void client_disconnect_notify(void *data, void *user_data)
 {
 	struct gatt_device *dev = user_data;
@@ -791,13 +798,6 @@ connect:
 	 * and once it is stopped continue with creating ACL
 	 */
 	bt_le_discovery_stop(bt_le_discovery_stop_cb);
-}
-
-static void put_device_on_disc_list(struct gatt_device *dev)
-{
-	dev->conn_id = 0;
-	queue_remove_all(dev->clients, NULL, NULL, NULL);
-	queue_push_tail(disc_dev_list, dev);
 }
 
 static gboolean disconnected_cb(GIOChannel *io, GIOCondition cond,
