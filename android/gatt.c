@@ -255,6 +255,11 @@ static struct gatt_client *find_client_by_id(int32_t id)
 	return queue_find(gatt_clients, match_client_by_id, INT_TO_PTR(id));
 }
 
+static struct gatt_server *find_server_by_id(int32_t id)
+{
+	return queue_find(gatt_servers, match_server_by_id, INT_TO_PTR(id));
+}
+
 static bool match_by_value(const void *data, const void *user_data)
 {
 	return data == user_data;
@@ -2830,8 +2835,7 @@ static void handle_server_unregister(const void *buf, uint16_t len)
 
 	DBG("");
 
-	server = queue_remove_if(gatt_servers, match_server_by_id,
-						INT_TO_PTR(cmd->server_if));
+	server = find_server_by_id(cmd->server_if);
 	if (!server) {
 		error("gatt: server_if=%d not found", cmd->server_if);
 		status = HAL_STATUS_FAILED;
