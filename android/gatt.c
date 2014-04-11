@@ -283,6 +283,13 @@ static bool match_dev_by_conn_id(const void *data, const void *user_data)
 	return dev->conn_id == conn_id;
 }
 
+static bool match_dev_without_client(const void *data, const void *user_data)
+{
+	const struct gatt_device *dev = data;
+
+	return queue_isempty(dev->clients);
+}
+
 static bool match_srvc_by_element_id(const void *data, const void *user_data)
 {
 	const struct element_id *exp_id = user_data;
@@ -555,19 +562,55 @@ static void put_device_on_disc_list(struct gatt_device *dev)
 	queue_push_tail(disc_dev_list, dev);
 }
 
+static void cleanup_conn_list(int32_t id)
+{
+	struct gatt_device *dev;
+
+	/* Find device without client */
+	dev = queue_remove_if(conn_list, match_dev_without_client, NULL);
+	while (dev) {
+		/* Device is connected, lets disconnect and notify client */
+		connection_cleanup(dev);
+		send_client_disconnect_notify(id, dev, GATT_SUCCESS);
+
+		/* Put device on disconnected device list */
+		put_device_on_disc_list(dev);
+		dev = queue_remove_if(conn_list, match_dev_without_client,
+									NULL);
+	};
+}
+
+static void cleanup_conn_wait_queue(int32_t id)
+{
+	struct gatt_device *dev;
+
+	/* Find device without client */
+	dev = queue_remove_if(conn_wait_queue, match_dev_without_client, NULL);
+	while (dev) {
+		send_client_connect_notify(id, dev, GATT_FAILURE);
+
+		/* Put device on disconnected device list */
+		put_device_on_disc_list(dev);
+		dev = queue_remove_if(conn_wait_queue,
+						match_dev_without_client, NULL);
+	};
+
+	/* Stop scan we had for connecting devices */
+	if (queue_isempty(conn_wait_queue) && !scanning)
+		bt_le_discovery_stop(NULL);
+}
+
 static void remove_client_from_devices(int32_t id)
 {
 	DBG("");
 
 	queue_foreach(conn_list, remove_client_from_device_list,
 							INT_TO_PTR(id));
-
-	/*TODO: Check if there is any zombie device (connected no client)*/
+	cleanup_conn_list(id);
 
 	queue_foreach(conn_wait_queue, remove_client_from_device_list,
 							INT_TO_PTR(id));
-
-	/*TODO: Check if there is not zombie device plus stop scan */
+	cleanup_conn_wait_queue(id);
 }
 
 static void handle_client_unregister(const void *buf, uint16_t len)
