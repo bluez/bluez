@@ -703,29 +703,30 @@ int avrcp_init_uinput(struct avrcp *session, const char *name,
 
 int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
 					uint8_t subunit, uint8_t pdu_id,
-					uint8_t *params, size_t params_len)
+					const struct iovec *iov, int iov_cnt)
 {
-	struct avrcp_header *pdu = (void *) session->tx_buf;
-	size_t len = sizeof(*pdu);
+	struct iovec pdu[iov_cnt + 1];
+	struct avrcp_header hdr;
+	int i;
 
-	memset(pdu, 0, len);
+	memset(&hdr, 0, sizeof(hdr));
 
-	hton24(pdu->company_id, IEEEID_BTSIG);
-	pdu->pdu_id = pdu_id;
-	pdu->packet_type = AVRCP_PACKET_TYPE_SINGLE;
+	pdu[0].iov_base = &hdr;
+	pdu[0].iov_len = sizeof(hdr);
 
-	if (params_len > 0) {
-		len += params_len;
-
-		if (len > session->tx_mtu)
-			return -ENOBUFS;
-
-		memcpy(pdu->params, params, params_len);
-		pdu->params_len = htons(params_len);
+	for (i = 0; i < iov_cnt; i++) {
+		pdu[i + 1].iov_base = iov[i].iov_base;
+		pdu[i + 1].iov_len = iov[i].iov_len;
+		hdr.params_len += iov[i].iov_len;
 	}
 
+	hton24(hdr.company_id, IEEEID_BTSIG);
+	hdr.pdu_id = pdu_id;
+	hdr.packet_type = AVRCP_PACKET_TYPE_SINGLE;
+	hdr.params_len = htons(hdr.params_len);
+
 	return avctp_send_vendor(session->conn, transaction, code, subunit,
-							session->tx_buf, len);
+							pdu, iov_cnt + 1);
 }
 
 static int status2errno(uint8_t status)
@@ -2034,52 +2035,61 @@ int avrcp_search(struct avrcp *session, const char *string)
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 						uint8_t number, uint8_t *events)
 {
-	uint8_t pdu[AVRCP_EVENT_LAST + 1];
+	struct iovec iov[2];
 
 	if (number > AVRCP_EVENT_LAST)
 		return -EINVAL;
 
-	pdu[0] = number;
-	memcpy(&pdu[1], events, number);
+	iov[0].iov_base = &number;
+	iov[0].iov_len = sizeof(number);
+
+	iov[1].iov_base = events;
+	iov[1].iov_len = number;
 
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 				AVC_SUBUNIT_PANEL, AVRCP_GET_CAPABILITIES,
-				pdu, number + 1);
+				iov, 2);
 }
 
 int avrcp_list_player_attributes_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *attrs)
 {
-	uint8_t pdu[AVRCP_ATTRIBUTE_LAST + 1];
+	struct iovec iov[2];
 
 	if (number > AVRCP_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	pdu[0] = number;
+	iov[0].iov_base = &number;
+	iov[0].iov_len = sizeof(number);
 
-	if (number > 0)
-		memcpy(&pdu[1], attrs, number);
+	if (!number)
+		return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_LIST_PLAYER_ATTRIBUTES,
+				iov, 1);
+
+	iov[1].iov_base = attrs;
+	iov[1].iov_len = number;
 
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 				AVC_SUBUNIT_PANEL, AVRCP_LIST_PLAYER_ATTRIBUTES,
-				pdu, number + 1);
+				iov, 2);
 }
 
 int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
 					uint8_t transaction, uint8_t number,
 					uint8_t *attrs, const char **text)
 {
-	uint8_t pdu[AVRCP_ATTRIBUTE_LAST * (4 + 255)];
-	uint8_t *ptr;
-	uint16_t length;
+	struct iovec iov[1 + AVRCP_ATTRIBUTE_LAST * 2];
+	uint8_t val[AVRCP_ATTRIBUTE_LAST][4];
 	int i;
 
 	if (number > AVRCP_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	pdu[0] = number;
-	length = 1;
-	for (i = 0, ptr = &pdu[1]; i < number; i++) {
+	iov[0].iov_base = &number;
+	iov[0].iov_len = sizeof(number);
+
+	for (i = 0; i < number; i++) {
 		uint8_t len = 0;
 
 		if (attrs[i] > AVRCP_ATTRIBUTE_LAST ||
@@ -2089,135 +2099,161 @@ int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
 		if (text[i])
 			len = strlen(text[i]);
 
-		ptr[0] = attrs[i];
-		put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
-		ptr[3] = len;
+		val[i][0] = attrs[i];
+		put_be16(AVRCP_CHARSET_UTF8, &val[i][1]);
+		val[i][3] = len;
 
-		if (len)
-			memcpy(&ptr[4], text[i], len);
+		iov[i + 1].iov_base = val[i];
+		iov[i + 1].iov_len = sizeof(val[i]);
 
-		ptr += 4 + len;
-		length += 4 + len;
+		iov[i + 2].iov_base = (void *) text[i];
+		iov[i + 2].iov_len = len;
 	}
 
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 			AVC_SUBUNIT_PANEL, AVRCP_GET_PLAYER_ATTRIBUTE_TEXT,
-			pdu, length);
+			iov, 1 + i * 2);
 }
 
 int avrcp_list_player_values_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *values)
 {
-	uint8_t pdu[AVRCP_ATTRIBUTE_LAST + 1];
+	struct iovec iov[2];
 
 	if (number > AVRCP_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	pdu[0] = number;
-	memcpy(&pdu[1], values, number);
+	iov[0].iov_base = &number;
+	iov[0].iov_len = sizeof(number);
+
+	iov[1].iov_base = values;
+	iov[1].iov_len = number;
 
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
-			AVC_SUBUNIT_PANEL, AVRCP_LIST_PLAYER_VALUES,
-			pdu, number + 1);
+				AVC_SUBUNIT_PANEL, AVRCP_LIST_PLAYER_VALUES,
+				iov, 2);
 }
 
 int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 				uint32_t position, uint32_t duration,
 				uint8_t status)
 {
+	struct iovec iov;
 	uint8_t pdu[9];
 
 	put_be32(position, &pdu[0]);
 	put_be32(duration, &pdu[4]);
 	pdu[8] = status;
 
+	iov.iov_base = &pdu;
+	iov.iov_len = sizeof(pdu);
+
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 				AVC_SUBUNIT_PANEL, AVRCP_GET_PLAY_STATUS,
-				pdu, sizeof(pdu));
+				&iov, 1);
 }
 
 int avrcp_get_player_values_text_rsp(struct avrcp *session,
 					uint8_t transaction, uint8_t number,
 					uint8_t *values, const char **text)
 {
-	uint8_t pdu[AVRCP_ATTRIBUTE_LAST * (4 + 255)];
-	uint8_t *ptr;
-	uint16_t length;
+	struct iovec iov[1 + AVRCP_ATTRIBUTE_LAST * 2];
+	uint8_t val[AVRCP_ATTRIBUTE_LAST][4];
 	int i;
 
 	if (number > AVRCP_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	pdu[0] = number;
-	length = 1;
-	for (i = 0, ptr = &pdu[1]; i < number; i++) {
+	iov[0].iov_base = &number;
+	iov[0].iov_len = sizeof(number);
+
+	for (i = 0; i < number; i++) {
 		uint8_t len = 0;
 
 		if (text[i])
 			len = strlen(text[i]);
 
-		ptr[0] = values[i];
-		put_be16(AVRCP_CHARSET_UTF8, &ptr[1]);
-		ptr[3] = len;
-		memcpy(&ptr[4], text[i], len);
-		ptr += 4 + len;
-		length += 4 + len;
+		val[i][0] = values[i];
+		put_be16(AVRCP_CHARSET_UTF8, &val[i][1]);
+		val[i][3] = len;
+
+		iov[i + 1].iov_base = val[i];
+		iov[i + 1].iov_len = sizeof(val[i]);
+
+		iov[i + 2].iov_base = (void *) text[i];
+		iov[i + 2].iov_len = len;
 	}
 
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
-			AVC_SUBUNIT_PANEL, AVRCP_GET_PLAYER_VALUE_TEXT,
-			pdu, length);
+				AVC_SUBUNIT_PANEL, AVRCP_GET_PLAYER_VALUE_TEXT,
+				iov, 1 + i * 2);
 }
 
 int avrcp_get_current_player_value_rsp(struct avrcp *session,
 					uint8_t transaction, uint8_t number,
 					uint8_t *attrs, uint8_t *values)
 {
-	uint8_t pdu[AVRCP_ATTRIBUTE_LAST * 2  + 1];
-	uint8_t *ptr;
-	uint16_t length;
+	struct iovec iov[1 + AVRCP_ATTRIBUTE_LAST];
+	uint8_t val[AVRCP_ATTRIBUTE_LAST][2];
 	int i;
 
 	if (number > AVRCP_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	pdu[0] = number;
-	length = 1;
-	for (i = 0, ptr = &pdu[1]; i < number; i++) {
-		ptr[0] = attrs[i];
-		ptr[1] = values[i];
-		ptr += 2;
-		length += 2;
+	iov[0].iov_base = &number;
+	iov[0].iov_len = sizeof(number);
+
+	for (i = 0; i < number; i++) {
+		val[i][0] = attrs[i];
+		val[i][1] = values[i];
+
+		iov[i + 1].iov_base = val[i];
+		iov[i + 1].iov_len = sizeof(val[i]);
 	}
 
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 			AVC_SUBUNIT_PANEL, AVRCP_GET_CURRENT_PLAYER_VALUE,
-			pdu, length);
+			iov, 1 + i);
 }
 
 int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t *params, size_t params_len)
 {
+	struct iovec iov;
+
+	iov.iov_base = params;
+	iov.iov_len = params_len;
+
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 				AVC_SUBUNIT_PANEL, AVRCP_GET_ELEMENT_ATTRIBUTES,
-				params, params_len);
+				&iov, 1);
 }
 
 int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t code, uint8_t *params,
 					size_t params_len)
 {
+	struct iovec iov;
+
+	iov.iov_base = params;
+	iov.iov_len = params_len;
+
 	return avrcp_send(session, transaction, code,
 				AVC_SUBUNIT_PANEL, AVRCP_REGISTER_NOTIFICATION,
-				params, params_len);
+				&iov, 1);
 }
 
 int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
 							uint8_t status)
 {
+	struct iovec iov;
+
+	iov.iov_base = &status;
+	iov.iov_len = sizeof(status);
+
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 				AVC_SUBUNIT_PANEL, AVRCP_SET_ADDRESSED_PLAYER,
-				&status, sizeof(status));
+				&iov, 1);
 }
 
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op)

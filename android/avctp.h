@@ -168,7 +168,7 @@ int avctp_send_passthrough(struct avctp *session, uint8_t op, uint8_t *params,
 							size_t params_len);
 int avctp_send_vendor(struct avctp *session, uint8_t transaction,
 				uint8_t code, uint8_t subunit,
-				uint8_t *operands, size_t operand_count);
+				const struct iovec *iov, int iov_cnt);
 int avctp_send_vendor_req(struct avctp *session, uint8_t code, uint8_t subunit,
 					const struct iovec *iov, int iov_cnt,
 					avctp_rsp_cb func, void *user_data);

@@ -1352,19 +1352,15 @@ int avctp_send_passthrough(struct avctp *session, uint8_t op, uint8_t *params,
 
 int avctp_send_vendor(struct avctp *session, uint8_t transaction,
 				uint8_t code, uint8_t subunit,
-				uint8_t *operands, size_t operand_count)
+				const struct iovec *iov, int iov_cnt)
 {
 	struct avctp_channel *control = session->control;
-	struct iovec iov;
 
 	if (control == NULL)
 		return -ENOTCONN;
 
-	iov.iov_base = operands;
-	iov.iov_len = operand_count;
-
 	return avctp_send(control, transaction, AVCTP_RESPONSE, code, subunit,
-						AVC_OP_VENDORDEP, &iov, 1);
+						AVC_OP_VENDORDEP, iov, iov_cnt);
 }
 
 int avctp_send_vendor_req(struct avctp *session, uint8_t code, uint8_t subunit,

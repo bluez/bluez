@@ -241,7 +241,7 @@ int avrcp_init_uinput(struct avrcp *session, const char *name,
 							const char *address);
 int avrcp_send(struct avrcp *session, uint8_t transaction, uint8_t code,
 					uint8_t subunit, uint8_t pdu_id,
-					uint8_t *params, size_t params_len);
+					const struct iovec *iov, int iov_cnt);
 int avrcp_get_capabilities(struct avrcp *session, uint8_t param);
 int avrcp_register_notification(struct avrcp *session, uint8_t event,
 							uint32_t interval);
