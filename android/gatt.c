@@ -1509,8 +1509,7 @@ static void send_client_char_notify(const struct characteristic *ch,
 	}
 
 	ev.conn_id = conn_id;
-	/* TODO need to be handled for included services too */
-	element_id_to_hal_srvc_id(&service->id, 1, &ev.srvc_id);
+	element_id_to_hal_srvc_id(&service->id, service->primary, &ev.srvc_id);
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
 					HAL_EV_GATT_CLIENT_GET_CHARACTERISTIC,
