@@ -2988,10 +2988,29 @@ failed:
 
 static void handle_server_start_service(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_server_start_service *cmd = buf;
+	struct gatt_server *server;
+	uint8_t status;
+
 	DBG("");
 
+	server = find_server_by_id(cmd->server_if);
+	if (!server) {
+		error("gatt: server_if=%d not found", cmd->server_if);
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	/* TODO: support BR/EDR (cmd->transport) */
+	/* TODO: activate service in attribute database */
+	DBG("Start service: server: %d, srvc_hnd: %d, transport_layer: %d",
+			cmd->server_if, cmd->service_handle, cmd->transport);
+
+	status = HAL_STATUS_SUCCESS;
+
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_SERVER_START_SERVICE, HAL_STATUS_FAILED);
+				HAL_OP_GATT_SERVER_START_SERVICE, status);
 }
 
 static void handle_server_stop_service(const void *buf, uint16_t len)
