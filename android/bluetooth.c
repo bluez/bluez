@@ -2068,8 +2068,6 @@ static struct device *create_device_from_info(GKeyFile *key_file,
 	char **uuids;
 	char *str;
 
-	DBG("%s", peer);
-
 	/* BREDR if not present */
 	type = g_key_file_get_integer(key_file, peer, "AddressType", NULL);
 
