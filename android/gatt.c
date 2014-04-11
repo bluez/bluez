@@ -506,6 +506,28 @@ static void send_client_connect_notify(int32_t id, struct gatt_device *dev,
 				HAL_EV_GATT_CLIENT_CONNECT, sizeof(ev), &ev);
 }
 
+static void remove_client_from_device_list(void *data, void *user_data)
+{
+	struct gatt_device *dev = data;
+
+	queue_remove_if(dev->clients, match_by_value, user_data);
+}
+
+static void remove_client_from_devices(int32_t id)
+{
+	DBG("");
+
+	queue_foreach(conn_list, remove_client_from_device_list,
+							INT_TO_PTR(id));
+
+	/*TODO: Check if there is any zombie device (connected no client)*/
+
+	queue_foreach(conn_wait_queue, remove_client_from_device_list,
+							INT_TO_PTR(id));
+
+	/*TODO: Check if there is not zombie device plus stop scan */
+}
+
 static void handle_client_unregister(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_unregister *cmd = buf;
@@ -520,6 +542,10 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 		error("gatt: client_if=%d not found", cmd->client_if);
 		status = HAL_STATUS_FAILED;
 	} else {
+		/* Check if there is any connect request or connected device for this
+		 * client. If so, remove this client from those lists.
+		 */
+		remove_client_from_devices(cl->id);
 		destroy_gatt_client(cl);
 		status = HAL_STATUS_SUCCESS;
 	}
