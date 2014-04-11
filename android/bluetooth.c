@@ -1160,7 +1160,9 @@ static int fill_hal_prop(void *buf, uint8_t type, uint16_t len,
 
 	prop->type = type;
 	prop->len = len;
-	memcpy(prop->val, val, len);
+
+	if (len)
+		memcpy(prop->val, val, len);
 
 	return sizeof(*prop) + len;
 }
