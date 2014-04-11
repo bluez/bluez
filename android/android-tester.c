@@ -1864,37 +1864,31 @@ static struct priority_property remote_getprops_props[] = {
 	.prop.type = BT_PROPERTY_BDNAME,
 	.prop.val = &remote_get_properties_bdname_val,
 	.prop.len = sizeof(remote_get_properties_bdname_val) - 1,
-	.prio = 1,
 	},
 	{
 	.prop.type = BT_PROPERTY_UUIDS,
 	.prop.val = NULL,
 	.prop.len = 0,
-	.prio = 2,
 	},
 	{
 	.prop.type = BT_PROPERTY_CLASS_OF_DEVICE,
 	.prop.val = &remote_get_properties_cod_val,
 	.prop.len = sizeof(remote_get_properties_cod_val),
-	.prio = 3,
 	},
 	{
 	.prop.type = BT_PROPERTY_TYPE_OF_DEVICE,
 	.prop.val = &remote_get_properties_tod_val,
 	.prop.len = sizeof(remote_get_properties_tod_val),
-	.prio = 4,
 	},
 	{
 	.prop.type = BT_PROPERTY_REMOTE_RSSI,
 	.prop.val = &remote_get_properties_rssi_val,
 	.prop.len = sizeof(remote_get_properties_rssi_val),
-	.prio = 5,
 	},
 	{
 	.prop.type = BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP,
 	.prop.val = NULL,
 	.prop.len = 4,
-	.prio = 6,
 	},
 };
 
