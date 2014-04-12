@@ -1,3 +1,9 @@
+ver 5.18:
+	Fix issue with identifying LE single mode devices.
+	Fix issue with L2CAP and RFCOMM peer address lookup.
+	Add support for handling OBEX authentication procedure.
+	Add support for Android Bluetooth GATT client interface.
+
 ver 5.17:
 	Fix issue with not resetting OBEX SRM setup.
 	Fix issue with BR/EDR devices and auto-connect list.
