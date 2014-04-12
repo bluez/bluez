@@ -1952,6 +1952,25 @@ struct char_op_data {
 	uint8_t primary;
 };
 
+static struct char_op_data *create_char_op_data(int32_t conn_id,
+						const struct element_id *s_id,
+						const struct element_id *ch_id,
+						bool primary)
+{
+	struct char_op_data *d;
+
+	d = new0(struct char_op_data, 1);
+	if (!d)
+		return NULL;
+
+	d->conn_id = conn_id;
+	d->srvc_id = s_id;
+	d->char_id = ch_id;
+	d->primary = primary;
+
+	return d;
+}
+
 static void send_client_read_char_notify(int32_t status, const uint8_t *pdu,
 						uint16_t len, int32_t conn_id,
 						const struct element_id *s_id,
@@ -2029,17 +2048,13 @@ static void handle_client_read_characteristic(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	cb_data = new0(struct char_op_data, 1);
+	cb_data = create_char_op_data(cmd->conn_id, &srvc->id, &ch->id,
+						cmd->srvc_id.is_primary);
 	if (!cb_data) {
 		error("gatt: Cannot allocate cb data");
 		status = HAL_STATUS_NOMEM;
 		goto failed;
 	}
-
-	cb_data->conn_id = cmd->conn_id;
-	cb_data->primary = cmd->srvc_id.is_primary;
-	cb_data->srvc_id = &srvc->id;
-	cb_data->char_id = &ch->id;
 
 	if (!gatt_read_char(dev->attrib, ch->ch.value_handle,
 						read_char_cb, cb_data)) {
@@ -2132,17 +2147,13 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	cb_data = new0(struct char_op_data, 1);
+	cb_data = create_char_op_data(cmd->conn_id, &srvc->id, &ch->id,
+						cmd->srvc_id.is_primary);
 	if (!cb_data) {
 		error("gatt: Cannot allocate call data");
 		status = HAL_STATUS_NOMEM;
 		goto failed;
 	}
-
-	cb_data->conn_id = cmd->conn_id;
-	cb_data->primary = cmd->srvc_id.is_primary;
-	cb_data->srvc_id = &srvc->id;
-	cb_data->char_id = &ch->id;
 
 	if (!gatt_write_char(dev->attrib, ch->ch.value_handle, cmd->value,
 					cmd->len, write_char_cb, cb_data)) {
