@@ -2157,7 +2157,7 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 
 	if (!gatt_write_char(dev->attrib, ch->ch.value_handle, cmd->value,
 					cmd->len, write_char_cb, cb_data)) {
-		error("gatt: Cannot read characteristic with inst_id: %d",
+		error("gatt: Cannot write characteristic with inst_id: %d",
 							cmd->gatt_id.inst_id);
 		status = HAL_STATUS_FAILED;
 		free(cb_data);
