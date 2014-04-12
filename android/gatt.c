@@ -2114,13 +2114,14 @@ static void write_char_cb(guint8 status, const guint8 *pdu, guint16 len,
 static void handle_client_write_characteristic(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_write_characteristic *cmd = buf;
-	struct char_op_data *cb_data;
+	struct char_op_data *cb_data = NULL;
 	struct characteristic *ch;
 	struct gatt_device *dev;
 	struct service *srvc;
 	struct element_id srvc_id;
 	struct element_id char_id;
 	uint8_t status;
+	guint res;
 
 	DBG("");
 
@@ -2155,28 +2156,41 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (!gatt_write_char(dev->attrib, ch->ch.value_handle, cmd->value,
-					cmd->len, write_char_cb, cb_data)) {
-		error("gatt: Cannot write characteristic with inst_id: %d",
+	switch (cmd->write_type) {
+	case GATT_WRITE_TYPE_DEFAULT:
+		res = gatt_write_char(dev->attrib, ch->ch.value_handle,
+							cmd->value, cmd->len,
+							write_char_cb, cb_data);
+		break;
+	default:
+		error("gatt: Write type %d unsupported", cmd->write_type);
+		status = HAL_STATUS_UNSUPPORTED;
+		goto failed;
+	}
+
+	if (!res) {
+		error("gatt: Cannot write char. with inst_id: %d",
 							cmd->gatt_id.inst_id);
 		status = HAL_STATUS_FAILED;
-		free(cb_data);
 		goto failed;
 	}
 
 	status = HAL_STATUS_SUCCESS;
 
 failed:
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 			HAL_OP_GATT_CLIENT_WRITE_CHARACTERISTIC, status);
 
 	/* We should send notification with service, characteristic id in case
 	 * of errors.
 	 */
-	if (status != HAL_STATUS_SUCCESS)
+	if (status != HAL_STATUS_SUCCESS) {
 		send_client_write_char_notify(GATT_FAILURE, cmd->conn_id,
 						&srvc_id, &char_id,
 						cmd->srvc_id.is_primary);
+		free(cb_data);
+	}
 }
 
 static void send_client_descr_read_notify(int32_t status, const uint8_t *pdu,
@@ -2379,7 +2393,7 @@ static void write_descr_cb(guint8 status, const guint8 *pdu, guint16 len,
 static void handle_client_write_descriptor(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_write_descriptor *cmd = buf;
-	struct desc_data *cb_data;
+	struct desc_data *cb_data = NULL;
 	struct characteristic *ch;
 	struct descriptor *descr;
 	struct service *srvc;
@@ -2390,6 +2404,7 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 	int32_t conn_id;
 	uint8_t primary;
 	uint8_t status;
+	guint res;
 
 	DBG("");
 
@@ -2440,10 +2455,19 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (!gatt_write_char(dev->attrib, descr->handle, cmd->value, cmd->len,
-						write_descr_cb, cb_data)) {
-		free(cb_data);
+	switch (cmd->write_type) {
+	case GATT_WRITE_TYPE_DEFAULT:
+		res = gatt_write_char(dev->attrib, descr->handle, cmd->value,
+					cmd->len, write_descr_cb, cb_data);
+		break;
+	default:
+		error("gatt: Write type %d unsupported", cmd->write_type);
+		status = HAL_STATUS_UNSUPPORTED;
+		goto failed;
+	}
 
+	if (!res) {
+		error("gatt: Write desc, could not write desc");
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -2451,9 +2475,11 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	if (status != HAL_STATUS_SUCCESS)
+	if (status != HAL_STATUS_SUCCESS) {
 		send_client_descr_write_notify(GATT_FAILURE, conn_id, &srvc_id,
 						&char_id, &descr_id, primary);
+		free(cb_data);
+	}
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 				HAL_OP_GATT_CLIENT_WRITE_DESCRIPTOR, status);
