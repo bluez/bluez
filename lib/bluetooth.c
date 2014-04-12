@@ -746,7 +746,7 @@ const char *bt_compidtostr(int compid)
 	case 241:
 		return "Witron Technology Limited";
 	case 242:
-		return "Morse Project Inc.";
+		return "Aether Things Inc. (formerly Morse Project Inc.)";
 	case 243:
 		return "Kent Displays Inc.";
 	case 244:
@@ -885,6 +885,20 @@ const char *bt_compidtostr(int compid)
 		return "ETC sp. z.o.o.";
 	case 311:
 		return "Prestigio Plaza Ltd.";
+	case 312:
+		return "NTEO Inc.";
+	case 313:
+		return "Focus Systems Corporation";
+	case 314:
+		return "Tencent Holdings Limited";
+	case 315:
+		return "Allegion";
+	case 316:
+		return "Murata Manufacuring Co., Ltd.";
+	case 317:
+		return "WirelessWERX";
+	case 318:
+		return "nimai";
 	case 65535:
 		return "internal use";
 	default:
