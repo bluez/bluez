@@ -1,6 +1,6 @@
 GATT PIXIT for the PTS tool.
 
-PTS version: 5.0
+PTS version: 5.1
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -26,6 +26,6 @@ TSPX_mtu_size						23
 TSPX_pin_code						0000
 TSPX_use_dynamic_pin					FALSE
 TSPX_delete_ltk						FALSE
-TSPX_characteristic_readable
+TSPX_characteristic_readable				FALSE
 TSPX_tester_appearance					0000
 -------------------------------------------------------------------------------
