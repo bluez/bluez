@@ -2209,7 +2209,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p->local_uuid = ext->service ? ext->service : ext->uuid;
 	p->remote_uuid = ext->remote_uuid;
 
-	if (ext->enable_server || ext->record || ext->get_record) {
+	if (ext->enable_server) {
 		p->adapter_probe = ext_adapter_probe;
 		p->adapter_remove = ext_adapter_remove;
 	}
