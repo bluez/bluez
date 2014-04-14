@@ -1608,6 +1608,11 @@ Commands and responses:
 		Valid GATT ID: UUID (16 octets)
 		               Instance ID (1 octet)
 
+		Valid Write Type: 0x01 = No response
+		                  0x02 = Default
+		                  0x03 = Prepare
+		                  0x04 = Signed
+
 		In case of an error, the error response will be returned.
 
 	Opcode 0x0e - Read Descriptor command/response
@@ -1652,6 +1657,11 @@ Commands and responses:
 
 		Valid Descr. GATT ID: UUID (16 octets)
 		                      Instance ID (1 octet)
+
+		Valid Write Type: 0x01 = No response
+		                  0x02 = Default
+		                  0x03 = Prepare
+		                  0x04 = Signed
 
 		In case of an error, the error response will be returned.
 
