@@ -1844,7 +1844,7 @@ static bool build_descr_cache(int32_t conn_id, struct gatt_device *dev,
 
 	/* Clip range to given characteristic */
 	start = ch->ch.value_handle + 1;
-	end = srvc->prim.range.end;
+	end = srvc->primary ? srvc->prim.range.end : srvc->incl.range.end;
 
 	/* Use next characteristic start as end. If there is none -
 	 * service end is valid end.
