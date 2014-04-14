@@ -409,7 +409,7 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/dbusdef.py test/monitor-bluetooth test/list-devices \
 		test/test-discovery test/test-manager test/test-adapter \
 		test/test-device test/simple-agent \
-		test/simple-service test/simple-endpoint test/test-sap-server \
+		test/simple-endpoint test/test-sap-server \
 		test/test-proximity test/test-network \
 		test/test-thermometer test/test-profile test/test-health \
 		test/test-health-sink test/service-record.dtd \
