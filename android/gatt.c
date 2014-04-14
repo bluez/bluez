@@ -1254,7 +1254,7 @@ static void handle_client_disconnect(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	/*Check if client owns this connection */
+	/* Check if client owns this connection */
 	if (!queue_remove_if(dev->clients, match_by_value,
 						INT_TO_PTR(cmd->client_if))) {
 		error("gatt: cannot remove conn_id=%d", cmd->client_if);
@@ -1274,7 +1274,8 @@ reply:
 	 * device then this is what we shall to do.
 	 * If this is last client, this is still OK to do because on connect
 	 * request we do le scan and wait until remote device start
-	 * advertisement */
+	 * advertisement
+	 */
 	send_client_disconnect_notify(cmd->client_if, dev, GATT_SUCCESS);
 
 	/* If there is more clients just return */
@@ -1341,7 +1342,7 @@ static void handle_client_search_service(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	/*TODO:  Handle filter uuid */
+	/* TODO:  Handle filter uuid */
 
 	/* Use cache if possible */
 	if (!queue_isempty(dev->services)) {
