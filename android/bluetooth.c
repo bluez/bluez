@@ -2882,6 +2882,47 @@ static bool stop_discovery(uint8_t type)
 	return false;
 }
 
+struct adv_user_data {
+	bt_le_set_advertising_done cb;
+	void *user_data;
+};
+
+static void set_advertising_cb(uint8_t status, uint16_t length,
+			const void *param, void *user_data)
+{
+	struct adv_user_data *data = user_data;
+
+	DBG("");
+
+	if (status)
+		error("Failed to set adverising %s (0x%02x))",
+						mgmt_errstr(status), status);
+
+	data->cb(status, data->user_data);
+}
+
+bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
+							 void *user_data)
+{
+	struct adv_user_data *data;
+	uint8_t adv = advertising ? 0x01 : 0x00;
+
+	data = new0(struct adv_user_data, 1);
+	if (!data)
+		return false;
+
+	data->cb = cb;
+	data->user_data = user_data;
+
+	if (mgmt_send(mgmt_if, MGMT_OP_SET_ADVERTISING, adapter.index,
+			sizeof(adv), &adv, set_advertising_cb, data, free) > 0)
+		return true;
+
+	error("Failed to set advertising");
+	free(data);
+	return false;
+}
+
 bool bt_le_discovery_stop(bt_le_discovery_stopped cb)
 {
 	if (!adapter.cur_discovery_type) {
