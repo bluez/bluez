@@ -649,6 +649,11 @@ struct hal_cmd_gatt_client_read_characteristic {
 	int32_t auth_req;
 } __attribute__((packed));
 
+#define GATT_WRITE_TYPE_NO_RESPONSE	0x01
+#define GATT_WRITE_TYPE_DEFAULT		0x02
+#define GATT_WRITE_TYPE_PREPARE		0x03
+#define GATT_WRITE_TYPE_SIGNED		0x04
+
 #define HAL_OP_GATT_CLIENT_WRITE_CHARACTERISTIC	0x0d
 struct hal_cmd_gatt_client_write_characteristic {
 	int32_t conn_id;
