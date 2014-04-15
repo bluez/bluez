@@ -126,14 +126,6 @@
 
 struct avrcp;
 
-struct avrcp_control_handler {
-	uint8_t id;
-	uint8_t code;
-	uint8_t rsp;
-	ssize_t (*func) (struct avrcp *session, uint8_t transaction,
-			uint16_t params_len, uint8_t *params, void *user_data);
-};
-
 struct avrcp_control_ind {
 	int (*get_capabilities) (struct avrcp *session, uint8_t transaction,
 							void *user_data);

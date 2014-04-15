@@ -82,6 +82,14 @@ struct avrcp_browsing_header {
 } __attribute__ ((packed));
 #define AVRCP_BROWSING_HEADER_LENGTH 3
 
+struct avrcp_control_handler {
+	uint8_t id;
+	uint8_t code;
+	uint8_t rsp;
+	ssize_t (*func) (struct avrcp *session, uint8_t transaction,
+			uint16_t params_len, uint8_t *params, void *user_data);
+};
+
 struct avrcp {
 	struct avctp *conn;
 	struct avrcp_player *player;
