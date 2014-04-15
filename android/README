@@ -33,7 +33,7 @@ by BlueZ. SBC code is available at git://git.kernel.org/pub/scm/bluetooth/sbc
 - Bionic support - Currently only 'master' branch available at
 https://android.googlesource.com/platform/bionic provides all required
 functionality and running BlueZ on release branch requires backporting missing
-features (currently only epoll_create1 call for Android 4.4.2). Sample
+features (currently epoll_create1 and ppoll calls for Android 4.4.2). Sample
 Bionic for Android 4.4.2 with all required features backported is available at
 https://code.google.com/p/aosp-bluez.platform-bionic/
 

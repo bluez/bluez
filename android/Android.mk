@@ -443,6 +443,36 @@ LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/bluez/configure.ac
 include $(BUILD_EXECUTABLE)
 
 #
+# hciattach
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	bluez/tools/hciattach.c \
+	bluez/tools/hciattach_st.c \
+	bluez/tools/hciattach_ti.c \
+	bluez/tools/hciattach_tialt.c \
+	bluez/tools/hciattach_ath3k.c \
+	bluez/tools/hciattach_qualcomm.c \
+	bluez/tools/hciattach_intel.c \
+	bluez/tools/hciattach_bcm43xx.c \
+	bluez/lib/bluetooth.c \
+	bluez/lib/hci.c \
+
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
+
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := hciattach
+
+LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/bluez/configure.ac
+
+include $(BUILD_EXECUTABLE)
+
+#
 # libsbc
 #
 
