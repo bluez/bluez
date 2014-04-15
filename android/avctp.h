@@ -128,7 +128,7 @@ typedef gboolean (*avctp_rsp_cb) (struct avctp *session, uint8_t code,
 typedef gboolean (*avctp_browsing_rsp_cb) (struct avctp *session,
 					uint8_t *operands, size_t operand_count,
 					void *user_data);
-typedef size_t (*avctp_browsing_pdu_cb) (struct avctp *session,
+typedef ssize_t (*avctp_browsing_pdu_cb) (struct avctp *session,
 					uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
 					void *user_data);

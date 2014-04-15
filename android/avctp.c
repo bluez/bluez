@@ -839,9 +839,15 @@ static gboolean session_browsing_cb(GIOChannel *chan, GIOCondition cond,
 		goto send;
 	}
 
-	packet_size += handler->cb(session, avctp->transaction,
-						operands, operand_count,
-						handler->user_data);
+	ret = handler->cb(session, avctp->transaction, operands, operand_count,
+							handler->user_data);
+	if (ret < 0) {
+		if (ret == -EAGAIN)
+			return TRUE;
+		goto failed;
+	}
+
+	packet_size += ret;
 
 send:
 	if (packet_size != 0) {
