@@ -207,6 +207,7 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 
 	pdu = parse_pdu(operands, operand_count);
 	if (!pdu) {
+		pdu = (void *) operands;
 		pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
 		goto reject;
 	}
