@@ -603,7 +603,7 @@ struct hal_cmd_gatt_client_refresh {
 #define HAL_OP_GATT_CLIENT_SEARCH_SERVICE	0x08
 struct hal_cmd_gatt_client_search_service {
 	int32_t conn_id;
-	uint8_t number;
+	uint8_t filtered;
 	uint8_t filter_uuid[0];
 } __attribute__((packed));
 

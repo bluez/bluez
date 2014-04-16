@@ -684,7 +684,7 @@ static bt_status_t search_service(int conn_id, bt_uuid_t *filter_uuid)
 	if (filter_uuid) {
 		memcpy(cmd->filter_uuid, filter_uuid, sizeof(*filter_uuid));
 		len += sizeof(*filter_uuid);
-		cmd->number = 1;
+		cmd->filtered = 1;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,

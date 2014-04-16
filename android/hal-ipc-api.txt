@@ -1510,13 +1510,11 @@ Commands and responses:
 	Opcode 0x08 - Search Service command/response
 
 		Command parameters: Connection ID (4 octets)
-		                    Number of UUID Filters (1 octet)
-		                    UUID Filter # (16 octets)
-		                    ...
+		                    Filtered (1 octet)
+		                    Filter UUID (16 octets)
 		Response parameters: <none>
 
-		Valid Number of UUID Filters: 0x00
-		                              0x01
+		Filter UUID shall only be present when Filtered is non-zero.
 
 		In case of an error, the error response will be returned.
 
