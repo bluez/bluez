@@ -159,6 +159,10 @@ struct avrcp_control_ind {
 					uint32_t interval, void *user_data);
 	int (*set_addressed) (struct avrcp *session, uint8_t transaction,
 					uint16_t id, void *user_data);
+	int (*get_folder_items) (struct avrcp *session, uint8_t transaction,
+					uint8_t scope, uint32_t start,
+					uint32_t end, uint16_t number,
+					uint32_t *attrs, void *user_data);
 };
 
 struct avrcp_control_cfm {
@@ -290,4 +294,9 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 					size_t params_len);
 int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
 							uint8_t status);
+int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
+					uint16_t counter, uint8_t number,
+					uint8_t *type, uint16_t *len,
+					uint8_t **params);
+
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op);
