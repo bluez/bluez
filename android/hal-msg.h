@@ -616,8 +616,9 @@ struct hal_gatt_srvc_id {
 
 struct hal_cmd_gatt_client_get_included_service {
 	int32_t conn_id;
-	uint8_t number;
-	struct hal_gatt_srvc_id srvc_id[0];
+	struct hal_gatt_srvc_id srvc_id;
+	uint8_t continuation;
+	struct hal_gatt_srvc_id incl_srvc_id[0];
 } __attribute__((packed));
 
 #define HAL_OP_GATT_CLIENT_GET_CHARACTERISTIC	0x0a

@@ -1521,15 +1521,21 @@ Commands and responses:
 	Opcode 0x09 - Get Included Service command/response
 
 		Command parameters: Connection ID (4 octets)
-		                    Number of GATT Service ID Elements (1 octet)
-		                    GATT Service ID # UUID (16 octets)
-		                    GATT Service ID # Instance ID (1 octet)
-		                    GATT Service ID # Is Primary (1 octet)
+		                    GATT Service ID (18 octets)
+		                    Continuation (1 octet)
+		                    GATT Included Service ID (18 octets)
 		                    ...
 		Response parameters: <none>
 
-		Valid Number of GATT Service ID Elements: 0x01
-		                                          0x02
+		Valid GATT Service ID: UUID (16 octets)
+		                       Instance ID (1 octet)
+		                       Is Primary (1 octet)
+
+		Valid GATT Included Service ID: UUID (16 octets)
+		                                Instance ID (1 octet)
+		                                Is Primary (1 octet)
+
+		GATT Included Service ID shall only be present when Continuation is non-zero.
 
 		In case of an error, the error response will be returned.
 

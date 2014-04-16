@@ -1647,14 +1647,15 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 
 	DBG("");
 
-	if (len != sizeof(*cmd) + (cmd->number * sizeof(cmd->srvc_id[0]))) {
+	if (len != sizeof(*cmd) +
+			(cmd->continuation ? sizeof(cmd->incl_srvc_id[0]) : 0)) {
 		error("Invalid get incl services size (%u bytes), terminating",
 									len);
 		raise(SIGTERM);
 		return;
 	}
 
-	hal_srvc_id_to_element_id(&cmd->srvc_id[0], &match_id);
+	hal_srvc_id_to_element_id(&cmd->srvc_id, &match_id);
 	if (!find_service(cmd->conn_id, &match_id, &device, &prim_service)) {
 		status = HAL_STATUS_FAILED;
 		goto reply;
@@ -1670,10 +1671,10 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 	}
 
 	/* Try to use cache here */
-	if (cmd->number == 1) {
+	if (!cmd->continuation) {
 		incl_service = queue_peek_head(prim_service->included);
 	} else {
-		uint8_t inst_id = cmd->srvc_id[1].inst_id;
+		uint8_t inst_id = cmd->incl_srvc_id[0].inst_id;
 		incl_service = queue_find(prim_service->included,
 						match_srvc_by_higher_inst_id,
 						INT_TO_PTR(inst_id));

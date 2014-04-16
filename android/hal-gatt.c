@@ -704,14 +704,13 @@ static bt_status_t get_included_service(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	cmd->conn_id = conn_id;
 
-	srvc_id_to_hal(&cmd->srvc_id[0], srvc_id);
-	len += sizeof(cmd->srvc_id[0]);
-	cmd->number = 1;
+	srvc_id_to_hal(&cmd->srvc_id, srvc_id);
+	cmd->continuation = 0;
 
 	if (start_incl_srvc_id) {
-		srvc_id_to_hal(&cmd->srvc_id[1], start_incl_srvc_id);
-		len += sizeof(cmd->srvc_id[1]);
-		cmd->number++;
+		srvc_id_to_hal(&cmd->incl_srvc_id[0], start_incl_srvc_id);
+		len += sizeof(cmd->incl_srvc_id[0]);
+		cmd->continuation = 1;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
