@@ -2162,7 +2162,7 @@ static void handle_client_read_characteristic(const void *buf, uint16_t len)
 	/* TODO authorization needs to be handled */
 
 	hal_srvc_id_to_element_id(&cmd->srvc_id, &srvc_id);
-	hal_gatt_id_to_element_id(&cmd->gatt_id, &char_id);
+	hal_gatt_id_to_element_id(&cmd->char_id, &char_id);
 
 	if (!find_service(cmd->conn_id, &srvc_id, &dev, &srvc)) {
 		status = HAL_STATUS_FAILED;
@@ -2173,7 +2173,7 @@ static void handle_client_read_characteristic(const void *buf, uint16_t len)
 	ch = queue_find(srvc->chars, match_char_by_element_id, &char_id);
 	if (!ch) {
 		error("gatt: Characteristic with inst_id: %d not found",
-							cmd->gatt_id.inst_id);
+							cmd->char_id.inst_id);
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -2189,7 +2189,7 @@ static void handle_client_read_characteristic(const void *buf, uint16_t len)
 	if (!gatt_read_char(dev->attrib, ch->ch.value_handle,
 						read_char_cb, cb_data)) {
 		error("gatt: Cannot read characteristic with inst_id: %d",
-							cmd->gatt_id.inst_id);
+							cmd->char_id.inst_id);
 		status = HAL_STATUS_FAILED;
 		free(cb_data);
 		goto failed;

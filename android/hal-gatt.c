@@ -785,7 +785,7 @@ static bt_status_t read_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
 	cmd.auth_req = auth_req;
 
 	srvc_id_to_hal(&cmd.srvc_id, srvc_id);
-	gatt_id_to_hal(&cmd.gatt_id, char_id);
+	gatt_id_to_hal(&cmd.char_id, char_id);
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_READ_CHARACTERISTIC,
