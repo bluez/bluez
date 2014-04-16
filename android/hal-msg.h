@@ -638,8 +638,9 @@ struct hal_cmd_gatt_client_get_characteristic {
 struct hal_cmd_gatt_client_get_descriptor {
 	int32_t conn_id;
 	struct hal_gatt_srvc_id srvc_id;
-	uint8_t number;
-	struct hal_gatt_gatt_id gatt_id[0];
+	struct hal_gatt_gatt_id char_id;
+	uint8_t continuation;
+	struct hal_gatt_gatt_id descr_id[0];
 } __attribute__((packed));
 
 #define HAL_OP_GATT_CLIENT_READ_CHARACTERISTIC	0x0c

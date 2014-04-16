@@ -2017,8 +2017,8 @@ static void handle_client_get_descriptor(const void *buf, uint16_t len)
 
 	DBG("");
 
-	if ((len != sizeof(*cmd) + cmd->number * sizeof(cmd->gatt_id[0])) ||
-				(cmd->number != 1 && cmd->number != 2)) {
+	if (len != sizeof(*cmd) +
+			(cmd->continuation ? sizeof(cmd->descr_id[0]) : 0)) {
 		error("gatt: Invalid get descr command (%u bytes), terminating",
 									len);
 
@@ -2030,7 +2030,7 @@ static void handle_client_get_descriptor(const void *buf, uint16_t len)
 	primary = cmd->srvc_id.is_primary;
 
 	hal_srvc_id_to_element_id(&cmd->srvc_id, &srvc_id);
-	hal_gatt_id_to_element_id(&cmd->gatt_id[0], &char_id);
+	hal_gatt_id_to_element_id(&cmd->char_id, &char_id);
 
 	if (!find_service(conn_id, &srvc_id, &dev, &srvc)) {
 		error("gatt: Get descr. could not find service");
@@ -2059,10 +2059,10 @@ static void handle_client_get_descriptor(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 	/* Send from cache */
-	if (cmd->number > 1)
+	if (cmd->continuation)
 		descr = queue_find(ch->descriptors,
 					match_descr_by_higher_inst_id,
-					INT_TO_PTR(cmd->gatt_id[1].inst_id));
+					INT_TO_PTR(cmd->descr_id[0].inst_id));
 	else
 		descr = queue_peek_head(ch->descriptors);
 

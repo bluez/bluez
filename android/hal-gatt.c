@@ -758,15 +758,13 @@ static bt_status_t get_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
 	cmd->conn_id = conn_id;
 
 	srvc_id_to_hal(&cmd->srvc_id, srvc_id);
-
-	gatt_id_to_hal(&cmd->gatt_id[0], char_id);
-	len += sizeof(cmd->gatt_id[0]);
-	cmd->number = 1;
+	gatt_id_to_hal(&cmd->char_id, char_id);
+	cmd->continuation = 0;
 
 	if (start_descr_id) {
-		gatt_id_to_hal(&cmd->gatt_id[1], start_descr_id);
-		len += sizeof(cmd->gatt_id[1]);
-		cmd->number++;
+		gatt_id_to_hal(&cmd->descr_id[0], start_descr_id);
+		len += sizeof(cmd->descr_id[0]);
+		cmd->continuation = 1;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
