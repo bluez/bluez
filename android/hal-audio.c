@@ -47,6 +47,9 @@
 
 #define MAX_DELAY	100000 /* 100ms */
 
+#define SBC_QUALITY_MIN_BITPOOL	33
+#define SBC_QUALITY_STEP	5
+
 static const uint8_t a2dp_src_uuid[] = {
 		0x00, 0x00, 0x11, 0x0a, 0x00, 0x00, 0x10, 0x00,
 		0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb };
@@ -128,6 +131,8 @@ struct sbc_data {
 
 	sbc_t enc;
 
+	uint16_t payload_len;
+
 	size_t in_frame_len;
 	size_t in_buf_size;
 
@@ -189,6 +194,10 @@ static size_t sbc_get_mediapacket_duration(void *codec_data);
 static ssize_t sbc_encode_mediapacket(void *codec_data, const uint8_t *buffer,
 					size_t len, struct media_packet *mp,
 					size_t mp_data_len, size_t *written);
+static bool sbc_update_qos(void *codec_data, uint8_t op);
+
+#define QOS_POLICY_DEFAULT	0x00
+#define QOS_POLICY_DECREASE	0x01
 
 struct audio_codec {
 	uint8_t type;
@@ -205,6 +214,7 @@ struct audio_codec {
 	ssize_t (*encode_mediapacket) (void *codec_data, const uint8_t *buffer,
 					size_t len, struct media_packet *mp,
 					size_t mp_data_len, size_t *written);
+	bool (*update_qos) (void *codec_data, uint8_t op);
 };
 
 static const struct audio_codec audio_codecs[] = {
@@ -219,6 +229,7 @@ static const struct audio_codec audio_codecs[] = {
 		.get_buffer_size = sbc_get_buffer_size,
 		.get_mediapacket_duration = sbc_get_mediapacket_duration,
 		.encode_mediapacket = sbc_encode_mediapacket,
+		.update_qos = sbc_update_qos,
 	}
 };
 
@@ -421,13 +432,32 @@ static void sbc_init_encoder(struct sbc_data *sbc_data)
 			in->min_bitpool, in->max_bitpool);
 }
 
+static void sbc_codec_calculate(struct sbc_data *sbc_data)
+{
+	size_t in_frame_len;
+	size_t out_frame_len;
+	size_t num_frames;
+
+	in_frame_len = sbc_get_codesize(&sbc_data->enc);
+	out_frame_len = sbc_get_frame_length(&sbc_data->enc);
+	num_frames = sbc_data->payload_len / out_frame_len;
+
+	sbc_data->in_frame_len = in_frame_len;
+	sbc_data->in_buf_size = num_frames * in_frame_len;
+
+	sbc_data->out_frame_len = out_frame_len;
+
+	sbc_data->frame_duration = sbc_get_frame_duration(&sbc_data->enc);
+	sbc_data->frames_per_packet = num_frames;
+
+	DBG("in_frame_len=%zu out_frame_len=%zu frames_per_packet=%zu",
+				in_frame_len, out_frame_len, num_frames);
+}
+
 static int sbc_codec_init(struct audio_preset *preset, uint16_t payload_len,
 							void **codec_data)
 {
 	struct sbc_data *sbc_data;
-	size_t in_frame_len;
-	size_t out_frame_len;
-	size_t num_frames;
 
 	if (preset->len != sizeof(a2dp_sbc_t)) {
 		error("SBC: preset size mismatch");
@@ -442,20 +472,9 @@ static int sbc_codec_init(struct audio_preset *preset, uint16_t payload_len,
 
 	sbc_init_encoder(sbc_data);
 
-	in_frame_len = sbc_get_codesize(&sbc_data->enc);
-	out_frame_len = sbc_get_frame_length(&sbc_data->enc);
-	num_frames = payload_len / out_frame_len;
+	sbc_data->payload_len = payload_len;
 
-	sbc_data->in_frame_len = in_frame_len;
-	sbc_data->in_buf_size = num_frames * in_frame_len;
-
-	sbc_data->out_frame_len = out_frame_len;
-
-	sbc_data->frame_duration = sbc_get_frame_duration(&sbc_data->enc);
-	sbc_data->frames_per_packet = num_frames;
-
-	DBG("in_frame_len=%zu out_frame_len=%zu frames_per_packet=%zu",
-				in_frame_len, out_frame_len, num_frames);
+	sbc_codec_calculate(sbc_data);
 
 	*codec_data = sbc_data;
 
@@ -548,6 +567,38 @@ static ssize_t sbc_encode_mediapacket(void *codec_data, const uint8_t *buffer,
 	mp->payload.frame_count = frame_count;
 
 	return consumed;
+}
+
+static bool sbc_update_qos(void *codec_data, uint8_t op)
+{
+	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
+	uint8_t curr_bitpool = sbc_data->enc.bitpool;
+	uint8_t new_bitpool = curr_bitpool;
+
+	switch (op) {
+	case QOS_POLICY_DEFAULT:
+		new_bitpool = sbc_data->sbc.max_bitpool;
+		break;
+
+	case QOS_POLICY_DECREASE:
+		if (curr_bitpool > SBC_QUALITY_MIN_BITPOOL) {
+			new_bitpool = curr_bitpool - SBC_QUALITY_STEP;
+			if (new_bitpool < SBC_QUALITY_MIN_BITPOOL)
+				new_bitpool = SBC_QUALITY_MIN_BITPOOL;
+		}
+		break;
+	}
+
+	if (new_bitpool == curr_bitpool)
+		return false;
+
+	sbc_data->enc.bitpool = new_bitpool;
+
+	sbc_codec_calculate(sbc_data);
+
+	info("SBC: bitpool changed: %d -> %d", curr_bitpool, new_bitpool);
+
+	return true;
 }
 
 static int audio_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len,
