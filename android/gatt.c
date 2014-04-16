@@ -864,25 +864,9 @@ static gboolean disconnected_cb(GIOChannel *io, GIOCondition cond,
 
 	sock = g_io_channel_unix_get_fd(io);
 	len = sizeof(err);
-	if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
-		goto done;
+	if (!getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len))
+		DBG("%s (%d)", strerror(err), err);
 
-	DBG("%s (%d)", strerror(err), err);
-
-	/* Keep scanning/re-connection active if disconnection reason
-	 * is connection timeout, remote user terminated connection or local
-	 * initiated disconnection.
-	 */
-	if (err == ETIMEDOUT || err == ECONNRESET || err == ECONNABORTED) {
-		if (!queue_push_tail(conn_wait_queue, dev)) {
-			error("gatt: Cannot push data");
-		} else {
-			bt_le_discovery_start(le_device_found_handler);
-			return FALSE;
-		}
-	}
-
-done:
 	connection_cleanup(dev);
 
 	queue_foreach(dev->clients, client_disconnect_notify, dev);
