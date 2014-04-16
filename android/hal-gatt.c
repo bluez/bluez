@@ -810,7 +810,7 @@ static bt_status_t write_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
 	cmd->auth_req = auth_req;
 
 	srvc_id_to_hal(&cmd->srvc_id, srvc_id);
-	gatt_id_to_hal(&cmd->gatt_id, char_id);
+	gatt_id_to_hal(&cmd->char_id, char_id);
 
 	memcpy(cmd->value, p_value, len);
 
