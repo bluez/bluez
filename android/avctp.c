@@ -814,10 +814,17 @@ static gboolean session_browsing_cb(GIOChannel *chan, GIOCondition cond,
 	if (ret <= 0)
 		goto failed;
 
+	if (ret < AVCTP_HEADER_LENGTH) {
+		error("Too small AVCTP packet");
+		goto failed;
+	}
+
 	avctp = (struct avctp_header *) buf;
 
-	if (avctp->packet_type != AVCTP_PACKET_SINGLE)
+	if (avctp->packet_type != AVCTP_PACKET_SINGLE) {
+		error("Invalid packet type");
 		goto failed;
+	}
 
 	operands = buf + AVCTP_HEADER_LENGTH;
 	ret -= AVCTP_HEADER_LENGTH;
