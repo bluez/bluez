@@ -1458,6 +1458,13 @@ static void handle_client_search_service(const void *buf, uint16_t len)
 
 	DBG("");
 
+	if (len != sizeof(*cmd) + (cmd->filtered ? 16 : 0)) {
+		error("Invalid search service size (%u bytes), terminating",
+									len);
+		raise(SIGTERM);
+		return;
+	}
+
 	dev = find_device_by_conn_id(cmd->conn_id);
 	if (!dev) {
 		error("gatt: dev with conn_id=%d not found", cmd->conn_id);
