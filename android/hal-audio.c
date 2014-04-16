@@ -971,6 +971,8 @@ static bool resume_endpoint(struct audio_endpoint *ep)
 	ep->samples = 0;
 	ep->resync = false;
 
+	ep->codec->update_qos(ep->codec_data, QOS_POLICY_DEFAULT);
+
 	return true;
 }
 
@@ -1117,6 +1119,9 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 
 			if (diff > MAX_DELAY) {
 				warn("lag is %jums, resyncing", diff / 1000);
+
+				ep->codec->update_qos(ep->codec_data,
+							QOS_POLICY_DECREASE);
 				ep->resync = true;
 			}
 		}
