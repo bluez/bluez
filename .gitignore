@@ -92,6 +92,7 @@ unit/test-mgmt
 unit/test-uhid
 unit/test-hfp
 unit/test-crypto
+unit/test-ecc
 tools/mgmt-tester
 tools/smp-tester
 tools/gap-tester

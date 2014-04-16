@@ -102,6 +102,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/util.h src/shared/util.c \
 			src/shared/mgmt.h src/shared/mgmt.c \
 			src/shared/crypto.h src/shared/crypto.c \
+			src/shared/ecc.h src/shared/ecc.c \
 			src/shared/ringbuf.h src/shared/ringbuf.c \
 			src/shared/tester.h src/shared/tester.c \
 			src/shared/hci.h src/shared/hci.c \
@@ -281,6 +282,11 @@ unit_tests += unit/test-crypto
 
 unit_test_crypto_SOURCES = unit/test-crypto.c
 unit_test_crypto_LDADD = src/libshared-glib.la @GLIB_LIBS@
+
+unit_tests += unit/test-ecc
+
+unit_test_ecc_SOURCES = unit/test-ecc.c
+unit_test_ecc_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-ringbuf unit/test-queue
 
