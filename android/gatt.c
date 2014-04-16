@@ -1799,7 +1799,7 @@ static void handle_client_get_characteristic(const void *buf, uint16_t len)
 
 	DBG("");
 
-	if (len != sizeof(*cmd) + (cmd->number * sizeof(cmd->gatt_id[0]))) {
+	if (len != sizeof(*cmd) + (cmd->continuation ? sizeof(cmd->char_id[0]) : 0)) {
 		error("Invalid get characteristic size (%u bytes), terminating",
 									len);
 		raise(SIGTERM);
@@ -1843,9 +1843,9 @@ static void handle_client_get_characteristic(const void *buf, uint16_t len)
 		goto done;
 	}
 
-	if (cmd->number)
+	if (cmd->continuation)
 		ch = queue_find(srvc->chars, match_char_by_higher_inst_id,
-					INT_TO_PTR(cmd->gatt_id[0].inst_id));
+					INT_TO_PTR(cmd->char_id[0].inst_id));
 	else
 		ch = queue_peek_head(srvc->chars);
 

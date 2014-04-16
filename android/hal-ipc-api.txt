@@ -1543,9 +1543,8 @@ Commands and responses:
 
 		Command parameters: Connection ID (4 octets)
 		                    GATT Service ID (18 octets)
-		                    Number of GATT ID Elements (1 octet)
-		                    GATT ID # UUID (16 octets)
-		                    GATT ID # Instance ID (1 octet)
+		                    Continuation (1 octet)
+		                    GATT Characteristic ID (17 octets)
 		                    ...
 		Response parameters: <none>
 
@@ -1553,8 +1552,10 @@ Commands and responses:
 		                       Instance ID (1 octet)
 		                       Is Primary (1 octet)
 
-		Valid Number of GATT ID Elements: 0x00
-		                                  0x01
+		Valid GATT Characteristic ID: UUID (16 octets)
+		                              Instance ID (1 octet)
+
+		GATT Characteristic ID shall only be present when Continuation is non-zero.
 
 		In case of an error, the error response will be returned.
 
