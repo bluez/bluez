@@ -263,6 +263,8 @@ static gboolean req_timeout(gpointer user_data)
 	g_error_free(err);
 	pending_pkt_free(p);
 
+	p->timeout_id = 0;
+
 	return FALSE;
 }
 
@@ -778,7 +780,9 @@ static gboolean pending_req_abort(GObex *obex, GError **err)
 
 	p->cancelled = TRUE;
 
-	g_source_remove(p->timeout_id);
+	if (p->timeout_id > 0)
+		g_source_remove(p->timeout_id);
+
 	p->timeout = G_OBEX_ABORT_TIMEOUT;
 	p->timeout_id = g_timeout_add_seconds(p->timeout, req_timeout, obex);
 
@@ -922,7 +926,11 @@ static void g_obex_srm_suspend(GObex *obex)
 	struct pending_pkt *p = obex->pending_req;
 	GObexPacket *req;
 
-	g_source_remove(p->timeout_id);
+	if (p->timeout_id > 0) {
+		g_source_remove(p->timeout_id);
+		p->timeout_id = 0;
+	}
+
 	p->suspended = TRUE;
 
 	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE,
@@ -1017,8 +1025,10 @@ static void auth_challenge(GObex *obex)
 
 	/* Remove it as pending and add it back to the queue so it gets sent
 	 * again */
-	g_source_remove(p->timeout_id);
-	p->timeout_id = 0;
+	if (p->timeout_id > 0) {
+		g_source_remove(p->timeout_id);
+		p->timeout_id = 0;
+	}
 	obex->pending_req = NULL;
 	g_obex_send_internal(obex, p, NULL);
 }
@@ -1076,7 +1086,9 @@ static gboolean parse_response(GObex *obex, GObexPacket *rsp)
 	 * continue sending responses until the transfer is finished
 	 */
 	if (opcode == G_OBEX_OP_GET && rspcode == G_OBEX_RSP_CONTINUE) {
-		g_source_remove(p->timeout_id);
+		if (p->timeout_id > 0)
+			g_source_remove(p->timeout_id);
+
 		p->timeout_id = g_timeout_add_seconds(p->timeout, req_timeout,
 									obex);
 		return FALSE;
