@@ -2304,6 +2304,11 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 	}
 
 	switch (cmd->write_type) {
+	case GATT_WRITE_TYPE_PREPARE:
+		res = gatt_reliable_write_char(dev->attrib, ch->ch.value_handle,
+							cmd->value, cmd->len,
+							write_char_cb, cb_data);
+		break;
 	case GATT_WRITE_TYPE_DEFAULT:
 		res = gatt_write_char(dev->attrib, ch->ch.value_handle,
 							cmd->value, cmd->len,
@@ -2603,6 +2608,12 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 	}
 
 	switch (cmd->write_type) {
+	case GATT_WRITE_TYPE_PREPARE:
+		res = gatt_reliable_write_char(dev->attrib, descr->handle,
+							cmd->value, cmd->len,
+							write_descr_cb,
+							cb_data);
+		break;
 	case GATT_WRITE_TYPE_DEFAULT:
 		res = gatt_write_char(dev->attrib, descr->handle, cmd->value,
 					cmd->len, write_descr_cb, cb_data);
