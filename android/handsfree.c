@@ -2191,10 +2191,10 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HANDSFREE_DISCONNECT */
 	{ handle_disconnect, false,
 		sizeof(struct hal_cmd_handsfree_disconnect) },
-	/*HAL_OP_HANDSFREE_CONNECT_AUDIO*/
+	/* HAL_OP_HANDSFREE_CONNECT_AUDIO */
 	{ handle_connect_audio, false,
 		sizeof(struct hal_cmd_handsfree_connect_audio) },
-	/*HAL_OP_HANDSFREE_DISCONNECT_AUDIO*/
+	/* HAL_OP_HANDSFREE_DISCONNECT_AUDIO */
 	{ handle_disconnect_audio, false,
 		sizeof(struct hal_cmd_handsfree_disconnect_audio) },
 	/* define HAL_OP_HANDSFREE_START_VR */
