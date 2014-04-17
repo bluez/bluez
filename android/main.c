@@ -377,7 +377,7 @@ static void cleanup_services(void)
 
 	DBG("");
 
-	for (i = HAL_SERVICE_ID_BLUETOOTH; i < HAL_SERVICE_ID_MAX; i++) {
+	for (i = HAL_SERVICE_ID_BLUETOOTH; i < HAL_SERVICE_ID_MAX + 1; i++) {
 		if (!services[i])
 			continue;
 
