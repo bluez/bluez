@@ -332,9 +332,13 @@ static void proxy_write_cb(struct btd_attribute *attr,
 		wdata->result_cb = result;
 		wdata->user_data = user_data;
 
-		g_dbus_proxy_set_property_array(proxy, "Value", DBUS_TYPE_BYTE,
-						value, len, proxy_write_reply,
-						wdata, g_free);
+		if (!g_dbus_proxy_set_property_array(proxy, "Value",
+						DBUS_TYPE_BYTE, value, len,
+						proxy_write_reply,
+						wdata, g_free)) {
+			g_free(wdata);
+			result(-ENOENT, user_data);
+		}
 	} else {
 		/*
 		 * Caller is not interested in the Set method call result.
