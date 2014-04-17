@@ -2295,15 +2295,22 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	cb_data = create_char_op_data(cmd->conn_id, &srvc->id, &ch->id,
+	if (cmd->write_type != GATT_WRITE_TYPE_NO_RESPONSE) {
+		cb_data = create_char_op_data(cmd->conn_id, &srvc->id, &ch->id,
 						cmd->srvc_id.is_primary);
-	if (!cb_data) {
-		error("gatt: Cannot allocate call data");
-		status = HAL_STATUS_NOMEM;
-		goto failed;
+		if (!cb_data) {
+			error("gatt: Cannot allocate call data");
+			status = HAL_STATUS_NOMEM;
+			goto failed;
+		}
 	}
 
 	switch (cmd->write_type) {
+	case GATT_WRITE_TYPE_NO_RESPONSE:
+		res = gatt_write_cmd(dev->attrib, ch->ch.value_handle,
+							cmd->value, cmd->len,
+							NULL, NULL);
+		break;
 	case GATT_WRITE_TYPE_PREPARE:
 		res = gatt_reliable_write_char(dev->attrib, ch->ch.value_handle,
 							cmd->value, cmd->len,
@@ -2335,10 +2342,14 @@ failed:
 			HAL_OP_GATT_CLIENT_WRITE_CHARACTERISTIC, status);
 
 	/* We should send notification with service, characteristic id in case
-	 * of errors.
+	 * of error and write with no response
 	 */
-	if (status != HAL_STATUS_SUCCESS) {
-		send_client_write_char_notify(GATT_FAILURE, cmd->conn_id,
+	if (status != HAL_STATUS_SUCCESS ||
+			cmd->write_type == GATT_WRITE_TYPE_NO_RESPONSE) {
+		int32_t gatt_status = (status == HAL_STATUS_SUCCESS) ?
+						GATT_SUCCESS : GATT_FAILURE;
+
+		send_client_write_char_notify(gatt_status, cmd->conn_id,
 						&srvc_id, &char_id,
 						cmd->srvc_id.is_primary);
 		free(cb_data);
@@ -2598,16 +2609,22 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	cb_data = create_desc_data(conn_id, &srvc->id, &ch->id, &descr->id,
-								primary);
-	if (!cb_data) {
-		error("gatt: Write descr. could not allocate callback data");
+	if (cmd->write_type != GATT_WRITE_TYPE_NO_RESPONSE) {
+		cb_data = create_desc_data(conn_id, &srvc->id, &ch->id,
+							&descr->id, primary);
+		if (!cb_data) {
+			error("gatt: Write descr. could not allocate cb_data");
 
-		status = HAL_STATUS_NOMEM;
-		goto failed;
+			status = HAL_STATUS_NOMEM;
+			goto failed;
+		}
 	}
 
 	switch (cmd->write_type) {
+	case GATT_WRITE_TYPE_NO_RESPONSE:
+		res = gatt_write_cmd(dev->attrib, descr->handle, cmd->value,
+					cmd->len, NULL , NULL);
+		break;
 	case GATT_WRITE_TYPE_PREPARE:
 		res = gatt_reliable_write_char(dev->attrib, descr->handle,
 							cmd->value, cmd->len,
@@ -2633,8 +2650,12 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-	if (status != HAL_STATUS_SUCCESS) {
-		send_client_descr_write_notify(GATT_FAILURE, conn_id, &srvc_id,
+	if (status != HAL_STATUS_SUCCESS ||
+			cmd->write_type == GATT_WRITE_TYPE_NO_RESPONSE) {
+		int32_t gatt_status = (status == HAL_STATUS_SUCCESS) ?
+						GATT_SUCCESS : GATT_FAILURE;
+
+		send_client_descr_write_notify(gatt_status, conn_id, &srvc_id,
 						&char_id, &descr_id, primary);
 		free(cb_data);
 	}
