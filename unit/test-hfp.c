@@ -121,6 +121,8 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 	g_assert(!pdu->valid);
 	context_quit(context);
 
+	context->watch_id = 0;
+
 	return FALSE;
 }
 
@@ -187,7 +189,8 @@ static void execute_context(struct context *context)
 {
 	g_main_loop_run(context->main_loop);
 
-	g_source_remove(context->watch_id);
+	if (context->watch_id)
+		g_source_remove(context->watch_id);
 
 	g_main_loop_unref(context->main_loop);
 
