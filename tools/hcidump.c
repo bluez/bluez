@@ -59,7 +59,6 @@ enum {
 /* Default options */
 static int  snap_len = SNAP_LEN;
 static int  mode = PARSE;
-static int  permcheck = 1;
 static char *dump_file = NULL;
 static char *pppdump_file = NULL;
 static char *audio_file = NULL;
@@ -527,31 +526,7 @@ static int open_socket(int dev, unsigned long flags)
 {
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
-	struct hci_dev_info di;
-	int sk, dd, opt;
-
-	if (permcheck && dev != HCI_DEV_NONE) {
-		dd = hci_open_dev(dev);
-		if (dd < 0) {
-			perror("Can't open device");
-			return -1;
-		}
-
-		if (hci_devinfo(dev, &di) < 0) {
-			perror("Can't get device info");
-			return -1;
-		}
-
-		opt = hci_test_bit(HCI_RAW, &di.flags);
-		if (ioctl(dd, HCISETRAW, opt) < 0) {
-			if (errno == EACCES) {
-				perror("Can't access device");
-				return -1;
-			}
-		}
-
-		hci_close_dev(dd);
-	}
+	int sk, opt;
 
 	/* Create HCI socket */
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
@@ -688,7 +663,6 @@ static struct option main_options[] = {
 	{ "pppdump",		1, 0, 'D' },
 	{ "audio",		1, 0, 'A' },
 	{ "novendor",		0, 0, 'Y' },
-	{ "nopermcheck",	0, 0, 'Z' },
 	{ "help",		0, 0, 'h' },
 	{ "version",		0, 0, 'v' },
 	{ 0 }
@@ -705,7 +679,7 @@ int main(int argc, char *argv[])
 	uint16_t obex_port;
 
 	while ((opt = getopt_long(argc, argv,
-				"i:l:p:m:w:r:taxXRC:H:O:P:S:D:A:YZhv",
+				"i:l:p:m:w:r:taxXRC:H:O:P:S:D:A:Yhv",
 				main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
@@ -791,10 +765,6 @@ int main(int argc, char *argv[])
 
 		case 'Y':
 			flags |= DUMP_NOVENDOR;
-			break;
-
-		case 'Z':
-			permcheck = 0;
 			break;
 
 		case 'v':
