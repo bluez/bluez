@@ -1033,12 +1033,10 @@ static void clear_device_found(gpointer data, gpointer user_data)
 
 static uint8_t get_adapter_discovering_type(void)
 {
-	uint8_t type;
+	uint8_t type = SCAN_TYPE_NONE;
 
 	if (adapter.current_settings & MGMT_SETTING_BREDR)
-		type = SCAN_TYPE_BREDR;
-	else
-		type = 0;
+		type |= SCAN_TYPE_BREDR;
 
 	if (adapter.current_settings & MGMT_SETTING_LE)
 		type |= SCAN_TYPE_LE;
@@ -1053,6 +1051,9 @@ static bool start_discovery(uint8_t type)
 	cp.type = get_adapter_discovering_type() & type;
 
 	DBG("type=0x%x", cp.type);
+
+	if (cp.type == SCAN_TYPE_NONE)
+		return false;
 
 	if (mgmt_send(mgmt_if, MGMT_OP_START_DISCOVERY, adapter.index,
 				sizeof(cp), &cp, NULL, NULL, NULL) > 0)
@@ -2892,6 +2893,9 @@ static bool stop_discovery(uint8_t type)
 	cp.type = get_adapter_discovering_type() & type;
 
 	DBG("type=0x%x", cp.type);
+
+	if (cp.type == SCAN_TYPE_NONE)
+		return false;
 
 	/* Lets drop all confirm name request as we don't need it anymore */
 	g_slist_foreach(cached_devices, cancel_pending_confirm_name, NULL);
