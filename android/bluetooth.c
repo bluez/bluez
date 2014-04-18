@@ -3779,27 +3779,44 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 {
 	uint8_t status;
 
-	if (!adapter.cur_discovery_type) {
-		status = HAL_STATUS_SUCCESS;
-		goto reply;
-	}
-
 	if (!(adapter.current_settings & MGMT_SETTING_POWERED)) {
 		status = HAL_STATUS_NOT_READY;
-		goto reply;
+		goto failed;
 	}
 
-	/* Take into account that gatt might want to keep discover */
-	adapter.exp_discovery_type = gatt_device_found_cb ? SCAN_TYPE_LE : 0;
+	switch (adapter.cur_discovery_type) {
+	case SCAN_TYPE_NONE:
+		break;
+	case SCAN_TYPE_LE:
+		if (get_adapter_discovering_type() != SCAN_TYPE_LE)
+			break;
 
-	if (!stop_discovery(adapter.cur_discovery_type)) {
-		status = HAL_STATUS_FAILED;
-		goto reply;
+		if (gatt_device_found_cb) {
+			status = HAL_STATUS_BUSY;
+			goto failed;
+		}
+
+		if (!stop_discovery(SCAN_TYPE_LE)) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+
+		break;
+	case SCAN_TYPE_DUAL:
+	case SCAN_TYPE_BREDR:
+		if (!stop_discovery(SCAN_TYPE_DUAL)) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+
+		adapter.exp_discovery_type = gatt_device_found_cb ?
+						SCAN_TYPE_LE : SCAN_TYPE_NONE;
+		break;
 	}
 
 	status = HAL_STATUS_SUCCESS;
 
-reply:
+failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_DISCOVERY,
 									status);
 }
