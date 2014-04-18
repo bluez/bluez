@@ -2956,18 +2956,23 @@ bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
 
 bool bt_le_discovery_stop(bt_le_discovery_stopped cb)
 {
-	if (!adapter.cur_discovery_type) {
+	if (adapter.cur_discovery_type != SCAN_TYPE_LE) {
 		if (cb)
 			cb();
+
+		gatt_device_found_cb = NULL;
+
 		return true;
 	}
 
-	gatt_discovery_stopped_cb = cb;
-	/* Remove device found callback */
-	gatt_device_found_cb = NULL;
-	adapter.exp_discovery_type &= ~SCAN_TYPE_LE;
+	if (!stop_discovery(SCAN_TYPE_LE))
+		return false;
 
-	return stop_discovery(adapter.cur_discovery_type);
+	gatt_device_found_cb = NULL;
+	gatt_discovery_stopped_cb = cb;
+	adapter.exp_discovery_type = SCAN_TYPE_NONE;
+
+	return true;
 }
 
 bool bt_le_discovery_start(bt_le_device_found cb)
