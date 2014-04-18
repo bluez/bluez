@@ -180,13 +180,13 @@ static void handle_uhid_output(struct hid_device *dev,
 	if (!(dev->ctrl_io))
 		return;
 
-	req_size = 1 + (output->size / 2);
+	req_size = 1 + output->size;
 	req = g_try_malloc0(req_size);
 	if (!req)
 		return;
 
 	req[0] = HID_MSG_SET_REPORT | output->rtype;
-	hex2buf(output->data, req + 1, req_size - 1);
+	memcpy(req + 1, output->data, req_size - 1);
 
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
