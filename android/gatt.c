@@ -1776,12 +1776,13 @@ static void discover_char_cb(uint8_t status, GSList *characteristics,
 								void *user_data)
 {
 	struct discover_char_data *data = user_data;
+	struct service *srvc = data->service;
 
-	if (queue_isempty(data->service->chars))
-		cache_all_srvc_chars(data->service, characteristics);
+	if (queue_isempty(srvc->chars))
+		cache_all_srvc_chars(srvc, characteristics);
 
-	send_client_char_notify(queue_peek_head(data->service->chars),
-						data->conn_id, data->service);
+	send_client_char_notify(queue_peek_head(srvc->chars), data->conn_id,
+									srvc);
 
 	free(data);
 }
