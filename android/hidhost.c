@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 #include <glib.h>
 
@@ -162,12 +163,37 @@ static void hid_device_remove(struct hid_device *dev)
 	hid_device_free(dev);
 }
 
-static void hex2buf(const uint8_t *hex, uint8_t *buf, int num)
+static bool hex2buf(const uint8_t *hex, uint8_t *buf, int buf_size)
 {
-	int i;
+	int i, j;
+	char c;
+	uint8_t b;
 
-	for (i = 0; i < num; i++)
-		sscanf((const char *)(hex + (i * 2)), "%02hhX", &buf[i]);
+	for (i = 0, j = 0; i < buf_size; i++, j++) {
+		c = toupper(hex[j]);
+
+		if (c >= '0' && c <= '9')
+			b = c - '0';
+		else if (c >= 'A' && c <= 'F')
+			b = 10 + c - 'A';
+		else
+			return false;
+
+		j++;
+
+		c = toupper(hex[j]);
+
+		if (c >= '0' && c <= '9')
+			b = b * 16 + c - '0';
+		else if (c >= 'A' && c <= 'F')
+			b = b * 16 + 10 + c - 'A';
+		else
+			return false;
+
+		buf[i] = b;
+	}
+
+	return true;
 }
 
 static void handle_uhid_output(struct hid_device *dev,
