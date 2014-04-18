@@ -1880,22 +1880,22 @@ static void send_client_descr_notify(int32_t status, int32_t conn_id,
 			HAL_EV_GATT_CLIENT_GET_DESCRIPTOR, sizeof(ev), &ev);
 }
 
-static void cache_all_descr(const uint8_t *pdu, guint16 len,
+static uint16_t parse_descrs(const uint8_t *pdu, guint16 len,
 							struct queue *cache)
 {
 	struct att_data_list *list;
 	guint8 format;
+	uint16_t handle = 0xffff;
 	int i;
 
 	list = dec_find_info_resp(pdu, len, &format);
 	if (!list)
-		return;
+		return handle;
 
 	for (i = 0; i < list->num; i++) {
 		char uuidstr[MAX_LEN_UUID_STR];
 		struct descriptor *descr;
 		bt_uuid_t uuid128;
-		uint16_t handle;
 		uint8_t *value;
 		bt_uuid_t uuid;
 
@@ -1928,12 +1928,16 @@ static void cache_all_descr(const uint8_t *pdu, guint16 len,
 	}
 
 	att_data_list_free(list);
+
+	return handle;
 }
 
 struct discover_desc_data {
 	struct gatt_device *dev;
 	struct service *srvc;
 	struct characteristic *ch;
+
+	struct queue *result;
 };
 
 static void gatt_discover_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
@@ -1945,11 +1949,27 @@ static void gatt_discover_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 	struct characteristic *ch = data->ch;
 	struct descriptor *descr;
 
-	if (status)
+	if (!status) {
+		uint16_t last_handle = parse_descrs(pdu, len, data->result);
+
+		if (last_handle >= ch->end_handle)
+			goto reply;
+
+		if (!gatt_discover_char_desc(dev->attrib, last_handle + 1,
+						ch->end_handle,
+						gatt_discover_desc_cb, data))
+			goto reply;
+
+		/* Do not reply yet, wait for next piece */
+		return;
+	} else if (status != ATT_ECODE_ATTR_NOT_FOUND) {
 		error("gatt: Discover all char descriptors failed: %s",
 							att_ecode2str(status));
-	else if (queue_isempty(ch->descriptors))
-		cache_all_descr(pdu, len, ch->descriptors);
+	}
+
+reply:
+	queue_destroy(ch->descriptors, free);
+	ch->descriptors = data->result;
 
 	descr = queue_peek_head(ch->descriptors);
 
@@ -1982,9 +2002,16 @@ static bool build_descr_cache(struct gatt_device *dev,
 	cb_data->dev = dev;
 	cb_data->srvc = srvc;
 	cb_data->ch = ch;
+	cb_data->result = queue_new();
+
+	if (!cb_data->result) {
+		free(cb_data);
+		return false;
+	}
 
 	if (!gatt_discover_char_desc(dev->attrib, start, end,
 					gatt_discover_desc_cb, cb_data)) {
+		queue_destroy(cb_data->result, NULL);
 		free(cb_data);
 		return false;
 	}
