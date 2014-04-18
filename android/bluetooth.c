@@ -2975,15 +2975,18 @@ bool bt_le_discovery_start(bt_le_device_found cb)
 	if (!(adapter.current_settings & MGMT_SETTING_POWERED))
 		return false;
 
-	gatt_device_found_cb = cb;
-
-	adapter.exp_discovery_type |= SCAN_TYPE_LE;
-
 	/* If core is discovering, don't bother */
-	if (adapter.cur_discovery_type)
+	if (adapter.cur_discovery_type != SCAN_TYPE_NONE) {
+		gatt_device_found_cb = cb;
 		return true;
+	}
 
-	return start_discovery(adapter.exp_discovery_type);
+	if (start_discovery(SCAN_TYPE_LE)) {
+		gatt_device_found_cb = cb;
+		return true;
+	}
+
+	return false;
 }
 
 static uint8_t set_adapter_scan_mode(const void *buf, uint16_t len)
