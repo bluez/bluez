@@ -1963,21 +1963,11 @@ static bool build_descr_cache(int32_t conn_id, struct gatt_device *dev,
 					struct characteristic *ch)
 {
 	struct discover_desc_data *cb_data;
-	struct characteristic *next_ch;
 	uint16_t start, end;
 
 	/* Clip range to given characteristic */
 	start = ch->ch.value_handle + 1;
-	end = srvc->primary ? srvc->prim.range.end : srvc->incl.range.end;
-
-	/* Use next characteristic start as end. If there is none -
-	 * service end is valid end.
-	 * TODO: we should cache char end handle to avoid this search
-	 */
-	next_ch = queue_find(srvc->chars, match_char_by_higher_inst_id,
-					INT_TO_PTR(ch->id.instance));
-	if (next_ch)
-		end = next_ch->ch.handle - 1;
+	end = ch->end_handle;
 
 	/* If there are no descriptors, notify with fail status. */
 	if (start > end)
