@@ -1723,10 +1723,6 @@ static void cache_all_srvc_chars(GSList *characteristics, struct queue *q)
 	uint16_t inst_id = 0;
 	bt_uuid_t uuid;
 
-	/* Refresh characteristics cache if already exist */
-	if (!queue_isempty(q))
-		queue_remove_all(q, NULL, NULL, destroy_characteristic);
-
 	for (; characteristics; characteristics = characteristics->next) {
 		struct characteristic *ch;
 
