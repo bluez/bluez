@@ -764,6 +764,16 @@ int main(int argc, char *argv[])
 				0xaa, 0xbb,		/* counter */
 				0x00));			/* num attr */
 
+	/* GetFolderItems - Virtual FS - TG */
+	define_test("/TP/MCN/CB/BI-01-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+				0x00, 0x0a, AVRCP_MEDIA_PLAYER_VFS,
+				0x00, 0x00, 0x00, 0x01, /* start */
+				0x00, 0x00, 0x00, 0x00, /* end */
+				0x00),
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+				0x00, 0x01, 0x0b));
+
 	/* Media Content Navigation Commands and Notifications for Search */
 
 	/* Search - CT */
