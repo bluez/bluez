@@ -737,7 +737,6 @@ static void get_profile_interface_p(int argc, const char **argv)
 {
 	const char *id;
 	const void **pif = NULL;
-	const void *dummy = NULL;
 
 	RETURN_IF_NULL(if_bluetooth);
 	if (argc <= 2) {
@@ -752,7 +751,7 @@ static void get_profile_interface_p(int argc, const char **argv)
 	else if (strcmp(BT_PROFILE_ADVANCED_AUDIO_ID, id) == 0)
 		pif = (const void **) &if_av;
 	else if (strcmp(BT_PROFILE_HEALTH_ID, id) == 0)
-		pif = &dummy; /* TODO: change when if_hl is there */
+		pif = (const void **) &if_hl;
 	else if (strcmp(BT_PROFILE_SOCKETS_ID, id) == 0)
 		pif = (const void **) &if_sock;
 	else if (strcmp(BT_PROFILE_HIDHOST_ID, id) == 0)

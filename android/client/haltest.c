@@ -41,6 +41,7 @@ const struct interface *interfaces[] = {
 	&hf_if,
 	&hh_if,
 	&pan_if,
+	&hl_if,
 	&sock_if,
 	NULL
 };

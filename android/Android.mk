@@ -154,6 +154,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/client/if-hf.c \
 	bluez/android/client/if-hh.c \
 	bluez/android/client/if-pan.c \
+	bluez/android/client/if-hl.c \
 	bluez/android/client/if-sock.c \
 	bluez/android/client/if-gatt.c \
 	bluez/android/hal-utils.c \

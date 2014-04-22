@@ -52,6 +52,7 @@ extern const btrc_interface_t *if_rc;
 extern const bthf_interface_t *if_hf;
 extern const bthh_interface_t *if_hh;
 extern const btpan_interface_t *if_pan;
+extern const bthl_interface_t *if_hl;
 extern const btsock_interface_t *if_sock;
 extern const btgatt_interface_t *if_gatt;
 extern const btgatt_server_interface_t *if_gatt_server;
@@ -77,6 +78,7 @@ extern const struct interface pan_if;
 extern const struct interface sock_if;
 extern const struct interface hf_if;
 extern const struct interface hh_if;
+extern const struct interface hl_if;
 
 /* Interfaces that will show up in tool (first part of command line) */
 extern const struct interface *interfaces[];
