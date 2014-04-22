@@ -93,7 +93,7 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 						sizeof(*cmd) + cmd->len, &cmd,
 							&rsp_len, &rsp, NULL);
 
-	if (status != HAL_STATUS_SUCCESS)
+	if (status != BT_STATUS_SUCCESS)
 		return status;
 
 	for (i = 0; i < reg->number_of_mdeps; i++) {
@@ -109,7 +109,7 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 						sizeof(*mdep) + mdep->descr_len,
 						buf, 0, NULL, NULL);
 
-		if (status != HAL_STATUS_SUCCESS)
+		if (status != BT_STATUS_SUCCESS)
 			return status;
 
 	}
@@ -158,7 +158,7 @@ static bt_status_t connect_channel(int app_id, bt_bdaddr_t *bd_addr,
 					HAL_OP_HEALTH_CONNECT_CHANNEL,
 					sizeof(cmd), &cmd, &len, &rsp, NULL);
 
-	if (status == HAL_STATUS_SUCCESS)
+	if (status == BT_STATUS_SUCCESS)
 		*channel_id = rsp.channel_id;
 
 	return status;
