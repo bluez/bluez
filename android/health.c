@@ -80,7 +80,7 @@ static void bt_health_destroy_channel(const void *buf, uint16_t len)
 
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HEALTH_REG_APP */
-	{ bt_health_register_app, false,
+	{ bt_health_register_app, true,
 				sizeof(struct hal_cmd_health_reg_app) },
 	/* HAL_OP_HEALTH_UNREG_APP */
 	{ bt_health_unregister_app, false,
