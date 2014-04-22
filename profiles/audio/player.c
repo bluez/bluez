@@ -393,7 +393,7 @@ static gboolean browsable_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_player *mp = data;
 
-	return mp->scope != NULL;
+	return mp->folder != NULL;
 }
 
 static gboolean get_browsable(const GDBusPropertyTable *property,
@@ -402,7 +402,7 @@ static gboolean get_browsable(const GDBusPropertyTable *property,
 	struct media_player *mp = data;
 	dbus_bool_t value;
 
-	if (mp->scope == NULL)
+	if (mp->folder == NULL)
 		return FALSE;
 
 	DBG("%s", mp->browsable ? "true" : "false");
@@ -419,7 +419,7 @@ static gboolean searchable_exists(const GDBusPropertyTable *property,
 {
 	struct media_player *mp = data;
 
-	return mp->scope != NULL;
+	return mp->folder != NULL;
 }
 
 static gboolean get_searchable(const GDBusPropertyTable *property,
