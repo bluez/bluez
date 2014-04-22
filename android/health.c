@@ -54,6 +54,14 @@ static void bt_health_register_app(const void *buf, uint16_t len)
 							HAL_STATUS_UNSUPPORTED);
 }
 
+static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
+{
+	DBG("Not implemented");
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_MDEP,
+							HAL_STATUS_UNSUPPORTED);
+}
+
 static void bt_health_unregister_app(const void *buf, uint16_t len)
 {
 	DBG("Not implemented");
@@ -82,6 +90,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HEALTH_REG_APP */
 	{ bt_health_register_app, true,
 				sizeof(struct hal_cmd_health_reg_app) },
+	/* HAL_OP_HEALTH_MDEP */
+	{ bt_health_mdep_cfg_data, true,
+				sizeof(struct hal_cmd_health_mdep) },
 	/* HAL_OP_HEALTH_UNREG_APP */
 	{ bt_health_unregister_app, false,
 				sizeof(struct hal_cmd_health_unreg_app) },
