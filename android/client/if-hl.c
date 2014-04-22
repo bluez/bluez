@@ -36,12 +36,45 @@ SINTMAP(bthl_channel_type_t, -1, "(unknown)")
 	DELEMENT(BTHL_CHANNEL_TYPE_ANY),
 ENDMAP
 
+SINTMAP(bthl_app_reg_state_t, -1, "(unknown)")
+	DELEMENT(BTHL_APP_REG_STATE_REG_SUCCESS),
+	DELEMENT(BTHL_APP_REG_STATE_REG_FAILED),
+	DELEMENT(BTHL_APP_REG_STATE_DEREG_SUCCESS),
+	DELEMENT(BTHL_APP_REG_STATE_DEREG_FAILED),
+ENDMAP
+
+SINTMAP(bthl_channel_state_t, -1, "(unknown)")
+	DELEMENT(BTHL_CONN_STATE_CONNECTING),
+	DELEMENT(BTHL_CONN_STATE_CONNECTED),
+	DELEMENT(BTHL_CONN_STATE_DISCONNECTING),
+	DELEMENT(BTHL_CONN_STATE_DISCONNECTED),
+	DELEMENT(BTHL_CONN_STATE_DESTROYED),
+ENDMAP
+
 const bthl_interface_t *if_hl = NULL;
+
+static void app_reg_state_cb(int app_id, bthl_app_reg_state_t state)
+{
+	haltest_info("%s: app_id=%d app_reg_state=%s\n", __func__,
+				app_id, bthl_app_reg_state_t2str(state));
+}
+
+static void channel_state_cb(int app_id, bt_bdaddr_t *bd_addr,
+				int mdep_cfg_index, int channel_id,
+				bthl_channel_state_t state, int fd)
+{
+	char addr[MAX_ADDR_STR_LEN];
+
+	haltest_info("%s: app_id=%d bd_addr=%s mdep_cfg_index=%d\n"
+			"channel_id=%d channel_state=%s fd=%d\n", __func__,
+			app_id, bt_bdaddr_t2str(bd_addr, addr), mdep_cfg_index,
+			channel_id, bthl_channel_state_t2str(state), fd);
+}
 
 static bthl_callbacks_t hl_cbacks = {
 	.size = sizeof(hl_cbacks),
-	.app_reg_state_cb = NULL,
-	.channel_state_cb = NULL,
+	.app_reg_state_cb = app_reg_state_cb,
+	.channel_state_cb = channel_state_cb,
 };
 
 /* init */
