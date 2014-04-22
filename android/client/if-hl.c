@@ -180,6 +180,24 @@ static void connect_channel_p(int argc, const char **argv)
 								&channel_id);
 }
 
+/* destroy_channel */
+
+static void destroy_channel_p(int argc, const char **argv)
+{
+	uint32_t channel_id;
+
+	RETURN_IF_NULL(if_hl);
+
+	if (argc <= 2) {
+		haltest_error("No channel id is specified");
+		return;
+	}
+
+	channel_id = (uint32_t) atoi(argv[2]);
+
+	EXEC(if_hl->destroy_channel, channel_id);
+}
+
 /* cleanup */
 
 static void cleanup_p(int argc, const char **argv)
@@ -199,6 +217,7 @@ static struct method methods[] = {
 		"..."),
 	STD_METHODH(unregister_application, "<app_id>"),
 	STD_METHODH(connect_channel, "<app_id> <bd_addr> <mdep_cfg_index>"),
+	STD_METHODH(destroy_channel, "<channel_id>"),
 	STD_METHOD(cleanup),
 	END_METHOD
 };
