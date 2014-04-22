@@ -383,6 +383,13 @@ struct hal_cmd_pan_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_HEALTH_MDEP_ROLE_SOURCE	0x00
+#define HAL_HEALTH_MDEP_ROLE_SINK	0x01
+
+#define HAL_HEALTH_CHANNEL_TYPE_RELIABLE	0x00
+#define HAL_HEALTH_CHANNEL_TYPE_STREAMING	0x01
+#define HAL_HEALTH_CHANNEL_TYPE_ANY		0x02
+
 #define HAL_OP_HEALTH_REG_APP		0x01
 struct hal_cmd_health_reg_app {
 	uint8_t  num_of_mdep;
