@@ -826,8 +826,34 @@ static ssize_t get_folder_items(struct avrcp *session, uint8_t transaction,
 							player->user_data);
 }
 
+static ssize_t change_path(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	uint8_t direction;
+	uint16_t counter;
+	uint64_t uid;
+
+	DBG("");
+
+	if (!player->ind || !player->ind->change_path)
+		return -ENOSYS;
+
+	if (!params || params_len < 11)
+		return -EINVAL;
+
+	counter = get_be16(&params[0]);
+	direction = params[2];
+	uid = get_be64(&params[3]);
+
+	return player->ind->change_path(session, transaction, counter,
+					direction, uid, player->user_data);
+}
+
 static const struct avrcp_browsing_handler browsing_handlers[] = {
 		{ AVRCP_GET_FOLDER_ITEMS, get_folder_items },
+		{ AVRCP_CHANGE_PATH, change_path },
 		{ },
 };
 
@@ -2485,6 +2511,22 @@ int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
 
 	return avrcp_send_browsing(session, transaction, AVRCP_GET_FOLDER_ITEMS,
 							iov, number * 2 + 1);
+}
+
+int avrcp_change_path_rsp(struct avrcp *session, uint8_t transaction,
+								uint32_t items)
+{
+	struct iovec iov;
+	uint8_t pdu[5];
+
+	pdu[0] = AVRCP_STATUS_SUCCESS;
+	put_be32(items, &pdu[1]);
+
+	iov.iov_base = pdu;
+	iov.iov_len = sizeof(pdu);
+
+	return avrcp_send_browsing(session, transaction, AVRCP_CHANGE_PATH,
+								&iov, 1);
 }
 
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op)
