@@ -133,6 +133,24 @@ static void register_application_p(int argc, const char **argv)
 	free(reg.mdep_cfg);
 }
 
+/* unregister_application */
+
+static void unregister_application_p(int argc, const char **argv)
+{
+	uint32_t app_id;
+
+	RETURN_IF_NULL(if_hl);
+
+	if (argc <= 2) {
+		haltest_error("No app id is specified");
+		return;
+	}
+
+	app_id = (uint32_t) atoi(argv[2]);
+
+	EXEC(if_hl->unregister_application, app_id);
+}
+
 /* cleanup */
 
 static void cleanup_p(int argc, const char **argv)
@@ -150,6 +168,7 @@ static struct method methods[] = {
 		"<num_of_mdeps>\n"
 		"[[<mdep_role>] [<data_type>] [<channel_type>] [<mdep_descr>]]"
 		"..."),
+	STD_METHODH(unregister_application, "<app_id>"),
 	STD_METHOD(cleanup),
 	END_METHOD
 };
