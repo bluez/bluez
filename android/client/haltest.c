@@ -254,12 +254,12 @@ static int command_line_to_argv(char *line_buffer, char *argv[], int argv_size)
 
 static void process_line(char *line_buffer)
 {
-	char *argv[10];
+	char *argv[50];
 	int argc;
 	int i = 0;
 	struct method *m;
 
-	argc = command_line_to_argv(line_buffer, argv, 10);
+	argc = command_line_to_argv(line_buffer, argv, 50);
 	if (argc < 1)
 		return;
 
