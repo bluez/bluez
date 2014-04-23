@@ -573,6 +573,9 @@ static int change_path(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
+	if (!uid)
+		return -ENOTDIR;
+
 	avrcp_change_path_rsp(session, transaction, 0);
 
 	return -EAGAIN;
@@ -840,6 +843,17 @@ int main(int argc, char *argv[])
 				0x00),
 			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x01, 0x0b));
+
+	/* ChangePath - TG */
+	define_test("/TP/MCN/CB/BI-04-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_CHANGE_PATH,
+				0x00, 0x0b,
+				0xaa, 0xbb,		/* counter */
+				0x01,			/* direction */
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00	/* Folder UID */),
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_CHANGE_PATH,
+				0x00, 0x01, 0x08));
 
 	/* Media Content Navigation Commands and Notifications for Search */
 
