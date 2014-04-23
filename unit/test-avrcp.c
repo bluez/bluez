@@ -1166,6 +1166,12 @@ int main(int argc, char *argv[])
 				0xff, 0x00, 0x00, 0x01,
 				AVRCP_STATUS_INVALID_COMMAND));
 
+	/* Invalid PDU ID - Browsing TG */
+	define_test("/TP/INV/BI-02-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, 0xff, 0x00, 0x00),
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GENERAL_REJECT,
+				0x00, 0x01, AVRCP_STATUS_INVALID_COMMAND));
+
 	/* Next Group command transfer - CT */
 	define_test("/TP/BGN/BV-01-I", test_client,
 			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48,
