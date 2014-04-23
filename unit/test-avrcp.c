@@ -581,6 +581,18 @@ static int change_path(struct avrcp *session, uint8_t transaction,
 	return -EAGAIN;
 }
 
+static int get_item_attributes(struct avrcp *session, uint8_t transaction,
+					uint8_t scope, uint64_t uid,
+					uint16_t counter, uint8_t number,
+					uint32_t *attrs, void *user_data)
+{
+	DBG("");
+
+	avrcp_get_item_attributes_rsp(session, transaction, 0, NULL, NULL);
+
+	return -EAGAIN;
+}
+
 static const struct avrcp_control_ind control_ind = {
 	.get_capabilities = get_capabilities,
 	.list_attributes = list_attributes,
@@ -595,6 +607,7 @@ static const struct avrcp_control_ind control_ind = {
 	.set_addressed = set_addressed,
 	.get_folder_items = get_folder_items,
 	.change_path = change_path,
+	.get_item_attributes = get_item_attributes,
 };
 
 static void test_server(gconstpointer data)
@@ -813,6 +826,17 @@ int main(int argc, char *argv[])
 				0x00, 0x00, 0x00, 0x01,	/* uuid */
 				0xaa, 0xbb,		/* counter */
 				0x00));			/* num attr */
+
+	/* GetItemAttributes - TG */
+	define_test("/TP/MCN/CB/BV-08-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+				0x00, 0x0c, AVRCP_MEDIA_PLAYER_VFS,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x01,	/* uuid */
+				0xaa, 0xbb,		/* counter */
+				0x00),			/* num attr */
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+				0x00, 0x02, 0x04, 0x00));
 
 	/* GetFolderItems - Virtual FS - TG */
 	define_test("/TP/MCN/CB/BI-01-C", test_server,
