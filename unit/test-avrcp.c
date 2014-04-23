@@ -915,6 +915,17 @@ int main(int argc, char *argv[])
 				0xaa, 0xbb,		/* counter */
 				0x00));			/* num attr */
 
+	/* GetItemAttributes - TG */
+	define_test("/TP/MCN/SRC/BV-06-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+				0x00, 0x0c, AVRCP_MEDIA_SEARCH,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x01,	/* uid */
+				0xaa, 0xbb,		/* counter */
+				0x00),			/* num attr */
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+				0x00, 0x02, 0x04, 0x00));
+
 	/* Media Content Navigation Commands and Notifications for NowPlaying */
 
 	/* GetFolderItems - NowPlaying - CT */
@@ -934,7 +945,6 @@ int main(int argc, char *argv[])
 				0x00),
 			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x05, 0x04, 0xab, 0xcd, 0x00, 0x00));
-
 
 	/* Media Player Selection IOP tests */
 
