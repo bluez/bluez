@@ -2394,9 +2394,6 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (missing_settings & MGMT_SETTING_PAIRABLE)
 		set_mode(MGMT_OP_SET_PAIRABLE, 0x01);
 
-	if (missing_settings & MGMT_SETTING_LE)
-		set_mode(MGMT_OP_SET_LE, 0x01);
-
 	load_devices_info(cb);
 	load_devices_cache();
 
