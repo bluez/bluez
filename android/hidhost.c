@@ -1306,7 +1306,7 @@ static const struct ipc_handler cmd_handlers[] = {
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct hid_device *dev;
-	bdaddr_t src, dst;
+	bdaddr_t dst;
 	char address[18];
 	uint16_t psm;
 	GError *gerr = NULL;
@@ -1319,7 +1319,6 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	bt_io_get(chan, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_PSM, &psm,
 			BT_IO_OPT_INVALID);
@@ -1346,7 +1345,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		dev->uhid_fd = -1;
 
 		sdp_uuid16_create(&uuid, PNP_INFO_SVCLASS_ID);
-		if (bt_search_service(&src, &dev->dst, &uuid,
+		if (bt_search_service(&adapter_addr, &dev->dst, &uuid,
 				hid_sdp_did_search_cb, dev, NULL, 0) < 0) {
 			error("hidhost: Failed to search DID SDP details");
 			hid_device_remove(dev);
