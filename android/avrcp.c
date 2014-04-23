@@ -955,11 +955,10 @@ static void confirm_cb(GIOChannel *chan, gpointer data)
 {
 	struct avrcp_device *dev;
 	char address[18];
-	bdaddr_t src, dst;
+	bdaddr_t dst;
 	GError *err = NULL;
 
 	bt_io_get(chan, &err,
-			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
 			BT_IO_OPT_INVALID);
