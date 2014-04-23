@@ -873,6 +873,10 @@ static void cmd_put(GObex *obex, GObexPacket *req, gpointer user_data)
 
 	os->cmd = G_OBEX_OP_PUT;
 
+	/* Set size to unknown if a body header exists */
+	if (g_obex_packet_get_body(req))
+		os->size = OBJECT_SIZE_UNKNOWN;
+
 	parse_name(os, req);
 	parse_length(os, req);
 	parse_time(os, req);
