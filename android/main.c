@@ -86,7 +86,10 @@ static void service_register(const void *buf, uint16_t len)
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
-		bt_bluetooth_register(hal_ipc, m->mode);
+		if (!bt_bluetooth_register(hal_ipc, m->mode)) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
 
 		break;
 	case HAL_SERVICE_ID_SOCKET:

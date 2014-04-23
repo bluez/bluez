@@ -3892,14 +3892,51 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_le_test_mode_cmd, true, sizeof(struct hal_cmd_le_test_mode) },
 };
 
-void bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
+bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 {
-	DBG("");
+	DBG("mode 0x%x", mode);
+
+	switch (mode) {
+	case HAL_MODE_DEFAULT:
+		if (!(adapter.current_settings & MGMT_SETTING_LE) &&
+				(adapter.supported_settings & MGMT_SETTING_LE))
+			set_mode(MGMT_OP_SET_LE, 0x01);
+		break;
+	case HAL_MODE_LE:
+		/* Fail if controller does not support LE */
+		if (!(adapter.supported_settings & MGMT_SETTING_LE)) {
+			error("LE Mode not supported by controller");
+			return false;
+		}
+
+		/* If LE it is not yet enabled then enable it */
+		if (!(adapter.current_settings & MGMT_SETTING_LE))
+			set_mode(MGMT_OP_SET_LE, 0x01);
+
+		/* Disable BR/EDR if it is enabled */
+		if (adapter.current_settings & MGMT_SETTING_BREDR)
+			set_mode(MGMT_OP_SET_BREDR, 0x00);
+		break;
+	case HAL_MODE_BREDR:
+		/* BR/EDR Should be enabled on start, if it is not that means
+		 * there is LE controller only and we should fail
+		 */
+		if (!(adapter.current_settings & MGMT_SETTING_BREDR)) {
+			error("BR/EDR Mode not supported");
+			return false;
+		}
+		break;
+	default:
+		error("Unknown mode 0x%x", mode);
+		return false;
+	}
 
 	hal_ipc = ipc;
 
 	ipc_register(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
+
+	return true;
 }
 
 void bt_bluetooth_unregister(void)

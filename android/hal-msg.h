@@ -55,6 +55,8 @@ static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
 #define HAL_OP_STATUS			IPC_OP_STATUS
 
 #define HAL_MODE_DEFAULT		0x00
+#define HAL_MODE_BREDR			0x01
+#define HAL_MODE_LE			0x02
 
 #define HAL_OP_REGISTER_MODULE		0x01
 struct hal_cmd_register_module {

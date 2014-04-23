@@ -166,6 +166,10 @@ options.
 
 Property	Value		Description
 -------------------------------------------
+mode		bredr		Enable BlueZ in BR/EDR mode
+		le		Enable BlueZ in LE mode
+		<none>		Enable BlueZ in default mode - enable BR/EDR/LE
+				if available.
 handsfree	hfp		Enable Handsfree Profile (HFP) with narrowband
 				speech only
 		hfp_wbs		Enable Handsfree Profile (HFP) with narrowband
