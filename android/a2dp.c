@@ -709,7 +709,7 @@ static void transport_connect_cb(GIOChannel *chan, GError *err,
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct a2dp_device *dev;
-	bdaddr_t src, dst;
+	bdaddr_t dst;
 	char address[18];
 	GError *gerr = NULL;
 	GSList *l;
@@ -720,7 +720,6 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	bt_io_get(chan, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
