@@ -173,6 +173,8 @@ struct avrcp_control_ind {
 	int (*play_item) (struct avrcp *session, uint8_t transaction,
 					uint8_t scope, uint64_t uid,
 					uint16_t counter, void *user_data);
+	int (*search) (struct avrcp *session, uint8_t transaction,
+					const char *string, void *user_data);
 };
 
 struct avrcp_control_cfm {
@@ -317,5 +319,7 @@ int avrcp_get_item_attributes_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint32_t *attrs,
 					const char **text);
 int avrcp_play_item_rsp(struct avrcp *session, uint8_t transaction);
+int avrcp_search_rsp(struct avrcp *session, uint8_t transaction,
+					uint16_t counter, uint32_t items);
 
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op);
