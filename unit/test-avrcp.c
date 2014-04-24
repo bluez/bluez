@@ -593,6 +593,16 @@ static int get_item_attributes(struct avrcp *session, uint8_t transaction,
 	return -EAGAIN;
 }
 
+static int play_item(struct avrcp *session, uint8_t transaction, uint8_t scope,
+			uint64_t uid, uint16_t counter, void *user_data)
+{
+	DBG("");
+
+	avrcp_play_item_rsp(session, transaction);
+
+	return -EAGAIN;
+}
+
 static const struct avrcp_control_ind control_ind = {
 	.get_capabilities = get_capabilities,
 	.list_attributes = list_attributes,
@@ -608,6 +618,7 @@ static const struct avrcp_control_ind control_ind = {
 	.get_folder_items = get_folder_items,
 	.change_path = change_path,
 	.get_item_attributes = get_item_attributes,
+	.play_item = play_item,
 };
 
 static void test_server(gconstpointer data)
@@ -943,6 +954,15 @@ int main(int argc, char *argv[])
 				0x00, 0x0b, AVRCP_MEDIA_NOW_PLAYING,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
 				0x00, 0x01));
+
+	/* PlayItem - NowPlaying - TG */
+	define_test("/TP/MCN/NP/BV-02-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_PLAY_ITEM,
+				0x00, 0x0b, AVRCP_MEDIA_NOW_PLAYING,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x01),
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_PLAY_ITEM,
+				0x00, 0x01, 0x04));
 
 	/* GetFolderItems - NowPlaying - CT */
 	define_test("/TP/MCN/NP/BV-05-C", test_client,
