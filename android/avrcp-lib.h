@@ -218,6 +218,7 @@ struct avrcp_control_cfm {
 	void (*get_item_attributes) (struct avrcp *session, int err,
 					uint8_t number, uint32_t *attrs,
 					char **text, void *user_data);
+	void (*play_item) (struct avrcp *session, int err, void *user_data);
 	void (*search) (struct avrcp *session, int err, uint16_t counter,
 					uint32_t items, void *user_data);
 };
@@ -274,6 +275,8 @@ int avrcp_change_path(struct avrcp *session, uint8_t direction, uint64_t uid,
 int avrcp_get_item_attributes(struct avrcp *session, uint8_t scope,
 				uint64_t uid, uint16_t counter, uint8_t number,
 				uint32_t *attrs);
+int avrcp_play_item(struct avrcp *session, uint8_t scope, uint64_t uid,
+							uint16_t counter);
 int avrcp_search(struct avrcp *session, const char *string);
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
