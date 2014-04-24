@@ -50,6 +50,13 @@ struct gatt_db_service {
 	struct gatt_db_attribute **attributes;
 };
 
+static bool match_service_by_handle(const void *data, const void *user_data)
+{
+	const struct gatt_db_service *service = data;
+
+	return service->attributes[0]->handle == PTR_TO_INT(user_data);
+}
+
 struct gatt_db *gatt_db_new(void)
 {
 	struct gatt_db *db;
@@ -169,4 +176,18 @@ uint16_t gatt_db_add_service(struct gatt_db *db, const bt_uuid_t *uuid,
 	service->num_handles = num_handles;
 
 	return service->attributes[0]->handle;
+}
+
+bool gatt_db_remove_service(struct gatt_db *db, uint16_t handle)
+{
+	struct gatt_db_service *service;
+
+	service = queue_remove_if(db->services, match_service_by_handle,
+							INT_TO_PTR(handle));
+	if (!service)
+		return false;
+
+	gatt_db_service_destroy(service);
+
+	return true;
 }

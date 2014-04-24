@@ -28,3 +28,4 @@ void gatt_db_destroy(struct gatt_db *db);
 
 uint16_t gatt_db_add_service(struct gatt_db *db, const bt_uuid_t *uuid,
 					bool primary, uint16_t num_handles);
+bool gatt_db_remove_service(struct gatt_db *db, uint16_t handle);
