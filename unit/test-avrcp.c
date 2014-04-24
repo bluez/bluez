@@ -622,6 +622,9 @@ static int add_to_now_playing(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
+	if (!uid)
+		return -ENOENT;
+
 	avrcp_add_to_now_playing_rsp(session, transaction);
 
 	return -EAGAIN;
@@ -1068,6 +1071,16 @@ int main(int argc, char *argv[])
 				0x00, 0x00, 0x00, 0x00, /* uid */
 				0xaa, 0xbb),		/* counter */
 			brs_pdu(0x02, 0x11, 0x0e, AVRCP_PLAY_ITEM,
+				0x00, 0x01, 0x09));
+
+	/* AddToNowPlaying - NowPlaying - TG */
+	define_test("/TP/MCN/NP/BI-02-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_ADD_TO_NOW_PLAYING,
+				0x00, 0x0b, AVRCP_MEDIA_NOW_PLAYING,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, /* uid */
+				0xaa, 0xbb),		/* counter */
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_ADD_TO_NOW_PLAYING,
 				0x00, 0x01, 0x09));
 
 	/* Media Player Selection IOP tests */
