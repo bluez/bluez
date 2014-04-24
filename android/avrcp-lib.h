@@ -226,6 +226,8 @@ struct avrcp_control_cfm {
 	void (*play_item) (struct avrcp *session, int err, void *user_data);
 	void (*search) (struct avrcp *session, int err, uint16_t counter,
 					uint32_t items, void *user_data);
+	void (*add_to_now_playing) (struct avrcp *session, int err,
+					void *user_data);
 };
 
 struct avrcp_passthrough_handler {
@@ -283,6 +285,8 @@ int avrcp_get_item_attributes(struct avrcp *session, uint8_t scope,
 int avrcp_play_item(struct avrcp *session, uint8_t scope, uint64_t uid,
 							uint16_t counter);
 int avrcp_search(struct avrcp *session, const char *string);
+int avrcp_add_to_now_playing(struct avrcp *session, uint8_t scope, uint64_t uid,
+							uint16_t counter);
 
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t number, uint8_t *events);

@@ -2407,6 +2407,54 @@ int avrcp_search(struct avrcp *session, const char *string)
 							search_rsp, session);
 }
 
+static gboolean add_to_now_playing_rsp(struct avctp *conn, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_browsing_header *pdu;
+	int err;
+
+	DBG("");
+
+	if (!player || !player->cfm || !player->cfm->add_to_now_playing)
+		return FALSE;
+
+	pdu = parse_browsing_pdu(operands, operand_count);
+	if (!pdu) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	err = parse_browsing_status(pdu);
+
+done:
+	player->cfm->add_to_now_playing(session, err, player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_add_to_now_playing(struct avrcp *session, uint8_t scope, uint64_t uid,
+							uint16_t counter)
+{
+	struct iovec iov;
+	uint8_t pdu[11];
+
+	if (scope > AVRCP_MEDIA_NOW_PLAYING)
+		return -EINVAL;
+
+	pdu[0] = scope;
+	put_be64(uid, &pdu[1]);
+	put_be16(counter, &pdu[9]);
+
+	iov.iov_base = pdu;
+	iov.iov_len = sizeof(pdu);
+
+	return avrcp_send_browsing_req(session, AVRCP_ADD_TO_NOW_PLAYING,
+					&iov, 1, add_to_now_playing_rsp,
+					session);
+}
+
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 						uint8_t number, uint8_t *events)
 {
