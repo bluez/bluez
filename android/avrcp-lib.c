@@ -951,12 +951,41 @@ static ssize_t search(struct avrcp *session, uint8_t transaction,
 	return ret;
 }
 
+static ssize_t add_to_now_playing(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	uint8_t scope;
+	uint64_t uid;
+	uint16_t counter;
+
+	DBG("");
+
+	if (!player->ind || !player->ind->add_to_now_playing)
+		return -ENOSYS;
+
+	if (!params || params_len < 11)
+		return -EINVAL;
+
+	scope = params[0];
+	if (scope > AVRCP_MEDIA_NOW_PLAYING)
+		return -EBADRQC;
+
+	uid = get_be64(&params[1]);
+	counter = get_be16(&params[9]);
+
+	return player->ind->add_to_now_playing(session, transaction, scope, uid,
+						counter, player->user_data);
+}
+
 static const struct avrcp_browsing_handler browsing_handlers[] = {
 		{ AVRCP_GET_FOLDER_ITEMS, get_folder_items },
 		{ AVRCP_CHANGE_PATH, change_path },
 		{ AVRCP_GET_ITEM_ATTRIBUTES, get_item_attributes },
 		{ AVRCP_PLAY_ITEM, play_item },
 		{ AVRCP_SEARCH, search },
+		{ AVRCP_ADD_TO_NOW_PLAYING, add_to_now_playing },
 		{ },
 };
 
@@ -2800,6 +2829,20 @@ int avrcp_search_rsp(struct avrcp *session, uint8_t transaction,
 
 	return avrcp_send_browsing(session, transaction, AVRCP_SEARCH,
 								&iov, 1);
+}
+
+int avrcp_add_to_now_playing_rsp(struct avrcp *session, uint8_t transaction)
+{
+	struct iovec iov;
+	uint8_t pdu;
+
+	pdu = AVRCP_STATUS_SUCCESS;
+
+	iov.iov_base = &pdu;
+	iov.iov_len = sizeof(pdu);
+
+	return avrcp_send_browsing(session, transaction,
+					AVRCP_ADD_TO_NOW_PLAYING, &iov, 1);
 }
 
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op)
