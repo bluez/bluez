@@ -606,6 +606,16 @@ static int play_item(struct avrcp *session, uint8_t transaction, uint8_t scope,
 	return -EAGAIN;
 }
 
+static int search(struct avrcp *session, uint8_t transaction,
+					const char *string, void *user_data)
+{
+	DBG("");
+
+	avrcp_search_rsp(session, transaction, 0xaabb, 0);
+
+	return -EAGAIN;
+}
+
 static const struct avrcp_control_ind control_ind = {
 	.get_capabilities = get_capabilities,
 	.list_attributes = list_attributes,
@@ -622,6 +632,7 @@ static const struct avrcp_control_ind control_ind = {
 	.change_path = change_path,
 	.get_item_attributes = get_item_attributes,
 	.play_item = play_item,
+	.search = search,
 };
 
 static void test_server(gconstpointer data)
@@ -910,6 +921,16 @@ int main(int argc, char *argv[])
 				0x00, 0x0b, 0x00, 0x6a,
 				0x00, 0x07,
 				0x43, 0x6f, 0x75, 0x6e, 0x74, 0x72, 0x79));
+
+	define_test("/TP/MCN/SRC/BV-02-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_SEARCH,
+				0x00, 0x0b, 0x00, 0x6a,
+				0x00, 0x07,
+				0x43, 0x6f, 0x75, 0x6e, 0x74, 0x72, 0x79),
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_SEARCH,
+				0x00, 0x07, 0x04,
+				0xaa, 0xbb,		/* counter */
+				0x00, 0x00, 0x00, 0x00));
 
 	/* GetFolderItems - CT */
 	define_test("/TP/MCN/SRC/BV-03-C", test_client,
