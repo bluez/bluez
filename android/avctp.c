@@ -1208,6 +1208,18 @@ int avctp_send_browsing_req(struct avctp *session,
 	return 0;
 }
 
+int avctp_send_browsing(struct avctp *session, uint8_t transaction,
+					const struct iovec *iov, int iov_cnt)
+{
+	struct avctp_channel *browsing = session->browsing;
+
+	if (browsing == NULL)
+		return -ENOTCONN;
+
+	return avctp_browsing_send(browsing, transaction, AVCTP_RESPONSE,
+								iov, iov_cnt);
+}
+
 static const char *op2str(uint8_t op)
 {
 	int i;
