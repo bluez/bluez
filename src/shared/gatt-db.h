@@ -25,3 +25,6 @@ struct gatt_db;
 
 struct gatt_db *gatt_db_new(void);
 void gatt_db_destroy(struct gatt_db *db);
+
+uint16_t gatt_db_add_service(struct gatt_db *db, const bt_uuid_t *uuid,
+					bool primary, uint16_t num_handles);
