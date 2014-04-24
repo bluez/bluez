@@ -694,6 +694,10 @@ static void test_client(gconstpointer data)
 		avrcp_play_item(context->session, AVRCP_MEDIA_NOW_PLAYING, 1,
 									1);
 
+	if (g_str_equal(context->data->test_name, "/TP/MCN/NP/BV-03-C"))
+		avrcp_add_to_now_playing(context->session,
+					AVRCP_MEDIA_NOW_PLAYING, 0x01, 0xaabb);
+
 	if (g_str_equal(context->data->test_name, "/TP/MCN/NP/BV-05-C"))
 		avrcp_get_folder_items(context->session,
 					AVRCP_MEDIA_NOW_PLAYING, 0, 2, 0, NULL);
@@ -987,6 +991,14 @@ int main(int argc, char *argv[])
 				0x00, 0x01),
 			brs_pdu(0x02, 0x11, 0x0e, AVRCP_PLAY_ITEM,
 				0x00, 0x01, 0x04));
+
+	/* AddToNowPlaying - NowPlaying - CT */
+	define_test("/TP/MCN/NP/BV-03-C", test_client,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_ADD_TO_NOW_PLAYING,
+				0x00, 0x0b, AVRCP_MEDIA_NOW_PLAYING,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x01, /* uid */
+				0xaa, 0xbb));
 
 	/* GetFolderItems - NowPlaying - CT */
 	define_test("/TP/MCN/NP/BV-05-C", test_client,
