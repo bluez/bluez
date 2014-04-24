@@ -149,6 +149,10 @@ Bluetooth Core HAL (ID 1)
 
 Android HAL name: "bluetooth" (BT_HARDWARE_MODULE_ID)
 
+	Service modes: 0x00 = Enable BR/EDR/LE if supported (default)
+	               0x01 = Enable BR/EDR only
+	               0x02 = Enable LE only
+
 Commands and responses:
 
 	Opcode 0x00 - Error response
