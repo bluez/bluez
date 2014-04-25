@@ -29,3 +29,18 @@ void gatt_db_destroy(struct gatt_db *db);
 uint16_t gatt_db_add_service(struct gatt_db *db, const bt_uuid_t *uuid,
 					bool primary, uint16_t num_handles);
 bool gatt_db_remove_service(struct gatt_db *db, uint16_t handle);
+
+typedef void (*gatt_db_read_t) (uint16_t handle, uint16_t request_id,
+							void *user_data);
+
+typedef void (*gatt_db_write_t) (uint16_t handle, uint16_t request_id,
+					const uint8_t *value, size_t len,
+					void *user_data);
+
+uint16_t gatt_db_add_characteristic(struct gatt_db *db, uint16_t handle,
+						const bt_uuid_t *uuid,
+						uint8_t permissions,
+						uint8_t properties,
+						gatt_db_read_t read_func,
+						gatt_db_write_t write_func,
+						void *user_data);
