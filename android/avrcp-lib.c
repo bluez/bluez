@@ -100,9 +100,6 @@ struct avrcp {
 	struct avctp *conn;
 	struct avrcp_player *player;
 
-	size_t tx_mtu;
-	uint8_t *tx_buf;
-
 	const struct avrcp_control_handler *control_handlers;
 	void *control_data;
 	unsigned int control_id;
@@ -157,7 +154,6 @@ void avrcp_shutdown(struct avrcp *session)
 		session->destroy(session->destroy_data);
 
 	g_free(session->player);
-	g_free(session->tx_buf);
 	g_free(session);
 }
 
@@ -335,9 +331,6 @@ struct avrcp *avrcp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 		g_free(session);
 		return NULL;
 	}
-
-	session->tx_mtu = omtu;
-	session->tx_buf = g_malloc(omtu);
 
 	session->passthrough_id = avctp_register_passthrough_handler(
 							session->conn,
