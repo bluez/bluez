@@ -29,6 +29,7 @@
 #include "src/shared/gatt-db.h"
 
 #define MAX_CHAR_DECL_VALUE_LEN 19
+#define MAX_INCLUDED_VALUE_LEN 6
 
 static const bt_uuid_t primary_service_uuid = { .type = BT_UUID16,
 					.value.u16 = GATT_PRIM_SVC_UUID };
@@ -36,6 +37,8 @@ static const bt_uuid_t secondary_service_uuid = { .type = BT_UUID16,
 					.value.u16 = GATT_SND_SVC_UUID };
 static const bt_uuid_t characteristic_uuid = { .type = BT_UUID16,
 					.value.u16 = GATT_CHARAC_UUID };
+static const bt_uuid_t included_service_uuid = { .type = BT_UUID16,
+					.value.u16 = GATT_INCLUDE_UUID };
 
 struct gatt_db {
 	uint16_t next_handle;
@@ -320,4 +323,59 @@ uint16_t gatt_db_add_char_descriptor(struct gatt_db *db, uint16_t handle,
 							permissions, user_data);
 
 	return update_attribute_handle(service, i);
+}
+
+uint16_t gatt_db_add_included_service(struct gatt_db *db, uint16_t handle,
+						uint16_t included_handle)
+{
+	struct gatt_db_service *included_service;
+	uint8_t value[MAX_INCLUDED_VALUE_LEN];
+	uint16_t len = 0;
+	struct gatt_db_service *service;
+	int index;
+
+	service = queue_find(db->services, match_service_by_handle,
+							INT_TO_PTR(handle));
+	if (!service)
+		return 0;
+
+	included_service = queue_find(db->services, match_service_by_handle,
+						INT_TO_PTR(included_handle));
+
+	if (!included_service)
+		return 0;
+
+	put_le16(included_handle, &value[len]);
+	len += sizeof(uint16_t);
+
+	put_le16(included_handle + included_service->num_handles - 1,
+								&value[len]);
+	len += sizeof(uint16_t);
+
+	/* The Service UUID shall only be present when the UUID is a 16-bit
+	 * Bluetooth UUID. Vol 2. Part G. 3.2
+	 */
+	if (included_service->attributes[0]->val_len == sizeof(uint16_t)) {
+		memcpy(&value[len], included_service->attributes[0]->value,
+				included_service->attributes[0]->val_len);
+		len += included_service->attributes[0]->val_len;
+	}
+
+	index = get_attribute_index(service, 0);
+	if (!index)
+		return 0;
+
+	service->attributes[index] = new_attribute(&included_service_uuid,
+								value, len);
+	if (!service->attributes[index])
+		return 0;
+
+	/* The Attribute Permissions shall be read only and not require
+	 * authentication or authorization. Vol 2. Part G. 3.2
+	 *
+	 * TODO handle permissions
+	 */
+	set_attribute_data(service->attributes[index], NULL, NULL, 0, NULL);
+
+	return update_attribute_handle(service, index);
 }

@@ -51,3 +51,6 @@ uint16_t gatt_db_add_char_descriptor(struct gatt_db *db, uint16_t handle,
 						gatt_db_read_t read_func,
 						gatt_db_write_t write_func,
 						void *user_data);
+
+uint16_t gatt_db_add_included_service(struct gatt_db *db, uint16_t handle,
+						uint16_t included_handle);
