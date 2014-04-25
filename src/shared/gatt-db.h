@@ -54,3 +54,6 @@ uint16_t gatt_db_add_char_descriptor(struct gatt_db *db, uint16_t handle,
 
 uint16_t gatt_db_add_included_service(struct gatt_db *db, uint16_t handle,
 						uint16_t included_handle);
+
+bool gatt_db_service_set_active(struct gatt_db *db, uint16_t handle,
+								bool active);

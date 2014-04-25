@@ -57,6 +57,7 @@ struct gatt_db_attribute {
 };
 
 struct gatt_db_service {
+	bool active;
 	uint16_t num_handles;
 	struct gatt_db_attribute **attributes;
 };
@@ -378,4 +379,19 @@ uint16_t gatt_db_add_included_service(struct gatt_db *db, uint16_t handle,
 	set_attribute_data(service->attributes[index], NULL, NULL, 0, NULL);
 
 	return update_attribute_handle(service, index);
+}
+
+bool gatt_db_service_set_active(struct gatt_db *db, uint16_t handle,
+								bool active)
+{
+	struct gatt_db_service *service;
+
+	service = queue_find(db->services, match_service_by_handle,
+							INT_TO_PTR(handle));
+	if (!service)
+		return false;
+
+	service->active = active;
+
+	return true;
 }
