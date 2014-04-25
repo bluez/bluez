@@ -44,3 +44,10 @@ uint16_t gatt_db_add_characteristic(struct gatt_db *db, uint16_t handle,
 						gatt_db_read_t read_func,
 						gatt_db_write_t write_func,
 						void *user_data);
+
+uint16_t gatt_db_add_char_descriptor(struct gatt_db *db, uint16_t handle,
+						const bt_uuid_t *uuid,
+						uint8_t permissions,
+						gatt_db_read_t read_func,
+						gatt_db_write_t write_func,
+						void *user_data);

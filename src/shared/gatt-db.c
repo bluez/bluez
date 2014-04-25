@@ -292,3 +292,32 @@ uint16_t gatt_db_add_characteristic(struct gatt_db *db, uint16_t handle,
 
 	return update_attribute_handle(service, i);
 }
+
+uint16_t gatt_db_add_char_descriptor(struct gatt_db *db, uint16_t handle,
+						const bt_uuid_t *uuid,
+						uint8_t permissions,
+						gatt_db_read_t read_func,
+						gatt_db_write_t write_func,
+						void *user_data)
+{
+	struct gatt_db_service *service;
+	int i;
+
+	service = queue_find(db->services, match_service_by_handle,
+							INT_TO_PTR(handle));
+	if (!service)
+		return 0;
+
+	i = get_attribute_index(service, 0);
+	if (!i)
+		return 0;
+
+	service->attributes[i] = new_attribute(uuid, NULL, 0);
+	if (!service->attributes[i])
+		return 0;
+
+	set_attribute_data(service->attributes[i], read_func, write_func,
+							permissions, user_data);
+
+	return update_attribute_handle(service, i);
+}
