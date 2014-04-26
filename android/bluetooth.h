@@ -46,3 +46,5 @@ bool bt_le_discovery_stop(bt_le_discovery_stopped cb);
 typedef void (*bt_le_set_advertising_done)(uint8_t status, void *user_data);
 bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
 							void *user_data);
+
+uint8_t bt_get_device_android_type(const bdaddr_t *addr);

@@ -1180,6 +1180,15 @@ static uint8_t get_device_android_type(struct device *dev)
 	return HAL_TYPE_BREDR;
 }
 
+uint8_t bt_get_device_android_type(const bdaddr_t *addr)
+{
+	struct device *dev;
+
+	dev = get_device(addr, BDADDR_BREDR);
+
+	return get_device_android_type(dev);
+}
+
 static bool rssi_above_threshold(int old, int new)
 {
 	/* only 8 dBm or more */
