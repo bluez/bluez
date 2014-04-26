@@ -117,8 +117,9 @@ static struct gatt_db_attribute *new_attribute(const bt_uuid_t *type,
 		return NULL;
 
 	attribute->uuid = *type;
-	memcpy(&attribute->value, val, len);
 	attribute->val_len = len;
+	if (len)
+		memcpy(&attribute->value, val, len);
 
 	return attribute;
 }
