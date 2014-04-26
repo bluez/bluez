@@ -730,6 +730,10 @@ struct hal_cmd_gatt_client_get_device_type {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+struct hal_rsp_gatt_client_get_device_type {
+	uint8_t type;
+} __attribute__((packed));
+
 #define HAL_OP_GATT_CLIENT_SET_ADV_DATA		0x015
 struct hal_cmd_gatt_client_set_adv_data {
 	int32_t  server_if;

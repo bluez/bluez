@@ -3047,10 +3047,19 @@ failed:
 
 static void handle_client_get_device_type(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_client_get_device_type *cmd = buf;
+	struct hal_rsp_gatt_client_get_device_type rsp;
+	bdaddr_t bdaddr;
+
 	DBG("");
 
-	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_CLIENT_GET_DEVICE_TYPE, HAL_STATUS_FAILED);
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+
+	rsp.type = bt_get_device_android_type(&bdaddr);
+
+	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_GET_DEVICE_TYPE,
+					sizeof(rsp), &rsp, -1);
 }
 
 static void handle_client_set_adv_data(const void *buf, uint16_t len)
