@@ -49,11 +49,12 @@ struct gatt_db_attribute {
 	uint16_t handle;
 	bt_uuid_t uuid;
 	uint8_t permissions;
+	uint16_t value_len;
+	uint8_t *value;
+
 	gatt_db_read_t read_func;
 	gatt_db_write_t write_func;
 	void *user_data;
-	uint16_t val_len;
-	uint8_t value[0];
 };
 
 struct gatt_db_service {
@@ -67,6 +68,39 @@ static bool match_service_by_handle(const void *data, const void *user_data)
 	const struct gatt_db_service *service = data;
 
 	return service->attributes[0]->handle == PTR_TO_INT(user_data);
+}
+
+static struct gatt_db_attribute *new_attribute(const bt_uuid_t *type,
+							const uint8_t *val,
+							uint16_t len)
+{
+	struct gatt_db_attribute *attribute;
+
+	attribute = new0(struct gatt_db_attribute, 1);
+	if (!attribute)
+		return NULL;
+
+	attribute->uuid = *type;
+	attribute->value_len = len;
+	if (len) {
+		attribute->value = malloc0(len);
+		if (!attribute->value) {
+			free(attribute);
+			return NULL;
+		}
+
+		memcpy(attribute->value, val, len);
+	}
+
+	return attribute;
+}
+
+static void attribute_destroy(void *data)
+{
+	struct gatt_db_attribute *attribute = data;
+
+	free(attribute->value);
+	free(attribute);
 }
 
 struct gatt_db *gatt_db_new(void)
@@ -94,7 +128,7 @@ static void gatt_db_service_destroy(void *data)
 	int i;
 
 	for (i = 0; i < service->num_handles; i++)
-		free(service->attributes[i]);
+		attribute_destroy(service->attributes[i]);
 
 	free(service->attributes);
 	free(service);
@@ -104,24 +138,6 @@ void gatt_db_destroy(struct gatt_db *db)
 {
 	queue_destroy(db->services, gatt_db_service_destroy);
 	free(db);
-}
-
-static struct gatt_db_attribute *new_attribute(const bt_uuid_t *type,
-							const uint8_t *val,
-							uint16_t len)
-{
-	struct gatt_db_attribute *attribute;
-
-	attribute = malloc0(sizeof(struct gatt_db_attribute) + len);
-	if (!attribute)
-		return NULL;
-
-	attribute->uuid = *type;
-	attribute->val_len = len;
-	if (len)
-		memcpy(&attribute->value, val, len);
-
-	return attribute;
 }
 
 static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)
@@ -354,10 +370,10 @@ uint16_t gatt_db_add_included_service(struct gatt_db *db, uint16_t handle,
 	/* The Service UUID shall only be present when the UUID is a 16-bit
 	 * Bluetooth UUID. Vol 2. Part G. 3.2
 	 */
-	if (included_service->attributes[0]->val_len == sizeof(uint16_t)) {
+	if (included_service->attributes[0]->value_len == sizeof(uint16_t)) {
 		memcpy(&value[len], included_service->attributes[0]->value,
-				included_service->attributes[0]->val_len);
-		len += included_service->attributes[0]->val_len;
+				included_service->attributes[0]->value_len);
+		len += included_service->attributes[0]->value_len;
 	}
 
 	index = get_attribute_index(service, 0);
