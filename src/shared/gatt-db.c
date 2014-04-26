@@ -125,19 +125,16 @@ static struct gatt_db_attribute *new_attribute(const bt_uuid_t *type,
 
 static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)
 {
-	switch (uuid->type) {
-	case BT_UUID16:
+	bt_uuid_t uuid128;
+
+	if (uuid->type == BT_UUID16) {
 		put_le16(uuid->value.u16, dst);
-		break;
-	case BT_UUID32:
-		put_le32(uuid->value.u32, dst);
-		break;
-	default:
-		bswap_128(&uuid->value.u128, dst);
-		break;
+		return bt_uuid_len(uuid);
 	}
 
-	return bt_uuid_len(uuid);
+	bt_uuid_to_uuid128(uuid, &uuid128);
+	bswap_128(&uuid128.value.u128, dst);
+	return bt_uuid_len(&uuid128);
 }
 
 uint16_t gatt_db_add_service(struct gatt_db *db, const bt_uuid_t *uuid,
