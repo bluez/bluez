@@ -3116,13 +3116,14 @@ static void handle_server_register(const void *buf, uint16_t len)
 
 	ev.status = GATT_SUCCESS;
 	ev.server_if = server->id;
-	memcpy(ev.uuid, server->uuid, sizeof(server->uuid));
 
 	status = HAL_STATUS_SUCCESS;
 
 failed:
 	if (status != HAL_STATUS_SUCCESS)
 		ev.status = GATT_FAILURE;
+
+	memcpy(ev.uuid, cmd->uuid, sizeof(ev.uuid));
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
 				HAL_EV_GATT_SERVER_REGISTER, sizeof(ev), &ev);
