@@ -626,12 +626,28 @@ static void send_client_connection_notify(struct app_connection *connection,
 							sizeof(ev), &ev);
 }
 
+static void send_server_connection_notify(struct app_connection *connection,
+								bool connected)
+{
+	struct hal_ev_gatt_server_connection ev;
+
+	ev.server_if = connection->app->id;
+	ev.conn_id = connection->id;
+	ev.connected = connected;
+
+	bdaddr2android(&connection->device->bdaddr, &ev.bdaddr);
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
+				HAL_EV_GATT_SERVER_CONNECTION, sizeof(ev), &ev);
+}
+
 static void send_app_disconnect_notify(struct app_connection *connection,
 								int32_t status)
 {
 	if (connection->app->type == APP_CLIENT)
 		send_client_disconnection_notify(connection, status);
-	/* TODO: handle APP_SERVER */
+	else
+		send_server_connection_notify(connection, !!status);
 }
 
 static void send_app_connect_notify(struct app_connection *connection,
@@ -639,7 +655,8 @@ static void send_app_connect_notify(struct app_connection *connection,
 {
 	if (connection->app->type == APP_CLIENT)
 		send_client_connection_notify(connection, status);
-	/* TODO: handle APP_SERVER */
+	else
+		send_server_connection_notify(connection, !status);
 }
 
 static void disconnect_notify_by_device(void *data, void *user_data)
@@ -3137,18 +3154,35 @@ failed:
 
 static void handle_server_connect(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_server_connect *cmd = buf;
+	uint8_t status;
+	bdaddr_t addr;
+
 	DBG("");
 
+	status = handle_connect(cmd->server_if, &addr);
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_CONNECT,
-							HAL_STATUS_FAILED);
+								status);
 }
 
 static void handle_server_disconnect(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_server_disconnect *cmd = buf;
+	struct app_connection *conn;
+	uint8_t status;
+
 	DBG("");
 
+	/* TODO: should we care to match also bdaddr when conn_id is unique? */
+	conn = find_connection_by_id(cmd->conn_id);
+	if (conn)
+		trigger_disconnection(conn);
+
+	status = HAL_STATUS_SUCCESS;
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_SERVER_DISCONNECT, HAL_STATUS_FAILED);
+					HAL_OP_GATT_SERVER_DISCONNECT, status);
 }
 
 static void handle_server_add_service(const void *buf, uint16_t len)
