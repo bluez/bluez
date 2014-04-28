@@ -218,9 +218,9 @@ Profile ID    HAL header         Status
 ---------------------------------------
 core          bluetooth.h        complete
 a2dp          bt_av.h            complete
-gatt          bt_gatt.h          initial
-              bt_gatt_client.h   initial
-              bt_gatt_server.h   not started
+gatt          bt_gatt.h          partial
+              bt_gatt_client.h   partial
+              bt_gatt_server.h   initial
 handsfree     bt_hf.h            complete
 hidhost       bt_hh.h            complete
 health        bt_hl.h            initial
