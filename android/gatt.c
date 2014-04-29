@@ -1248,8 +1248,7 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 					HAL_OP_GATT_CLIENT_UNREGISTER, status);
 }
 
-static struct app_connection *find_conn(const bdaddr_t *addr, int32_t app_id,
-							int32_t app_type)
+static struct app_connection *find_conn(const bdaddr_t *addr, int32_t app_id)
 {
 	struct app_connection conn_match;
 	struct gatt_device *dev = NULL;
@@ -2891,7 +2890,7 @@ static void handle_client_register_for_notification(const void *buf,
 
 	android2bdaddr(&cmd->bdaddr, &addr);
 
-	conn = find_conn(&addr, cmd->client_if, APP_CLIENT);
+	conn = find_conn(&addr, cmd->client_if);
 	if (!conn) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
@@ -2997,7 +2996,7 @@ static void handle_client_deregister_for_notification(const void *buf,
 
 	android2bdaddr(&cmd->bdaddr, &addr);
 
-	conn = find_conn(&addr, cmd->client_if, APP_CLIENT);
+	conn = find_conn(&addr, cmd->client_if);
 	if (!conn) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
