@@ -102,9 +102,7 @@ typedef struct {
 	uint16_t	mdl;
 } __attribute__ ((packed)) mcap_md_req;
 
-/*
- * MCAP Response Packet Format
- */
+/* MCAP Response Packet Format */
 
 typedef struct {
 	uint8_t		op;
@@ -113,9 +111,7 @@ typedef struct {
 	uint8_t		data[0];
 } __attribute__ ((packed)) mcap_rsp;
 
-/*
- * MCAP Clock Synchronization Protocol
- */
+/*  MCAP Clock Synchronization Protocol */
 
 typedef struct {
 	uint8_t		op;

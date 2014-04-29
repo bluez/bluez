@@ -46,7 +46,8 @@ static const char * const uuids[] = {
 static void receive_from_client(struct pollfd *pollfd)
 {
 	char buf[16];
-	/* Buffer for lines:
+	/*
+	 * Buffer for lines:
 	 * 41 42 43 20 20 00 31 32 00 07 04 00 00 00 00 00 ABC  .12.....
 	 */
 	char outbuf[sizeof(buf) * 4 + 2];
@@ -187,7 +188,7 @@ static void client_connected(struct pollfd *pollfd)
 		read_accepted(pollfd->fd);
 }
 
-/** listen */
+/* listen */
 
 static void listen_c(int argc, const char **argv, enum_func *enum_func,
 								void **user)
@@ -259,7 +260,7 @@ static void listen_p(int argc, const char **argv)
 	}
 }
 
-/** connect */
+/* connect */
 
 static void connect_c(int argc, const char **argv, enum_func *enum_func,
 								void **user)

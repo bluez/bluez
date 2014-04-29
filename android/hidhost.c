@@ -249,20 +249,23 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 	switch (ev.type) {
 	case UHID_START:
 	case UHID_STOP:
-		/* These are called to start and stop the underlying hardware.
+		/*
+		 * These are called to start and stop the underlying hardware.
 		 * We open the channels before creating the device so the
 		 * hardware is always ready. No need to handle these.
 		 * The kernel never destroys a device itself! Only an explicit
-		 * UHID_DESTROY request can remove a device. */
-
+		 * UHID_DESTROY request can remove a device.
+		 */
 		break;
 	case UHID_OPEN:
 	case UHID_CLOSE:
-		/* OPEN/CLOSE are sent whenever user-space opens any interface
+		/*
+		 * OPEN/CLOSE are sent whenever user-space opens any interface
 		 * provided by the kernel HID device. Whenever the open-count
 		 * is non-zero we must be ready for I/O. As long as it is zero,
 		 * we can decide to drop all I/O and put the device
-		 * asleep This is optional, though. */
+		 * asleep This is optional, though.
+		 */
 		break;
 	case UHID_OUTPUT:
 		handle_uhid_output(dev, &ev.u.output);
@@ -271,11 +274,13 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 		/* TODO */
 		break;
 	case UHID_OUTPUT_EV:
-		/* This is only sent by kernels prior to linux-3.11. It
+		/*
+		 * This is only sent by kernels prior to linux-3.11. It
 		 * requires us to parse HID-descriptors in user-space to
 		 * properly handle it. This is redundant as the kernel
 		 * does it already. That's why newer kernels assemble
-		 * the output-reports and send it to us via UHID_OUTPUT. */
+		 * the output-reports and send it to us via UHID_OUTPUT.
+		 */
 		DBG("UHID_OUTPUT_EV unsupported");
 		break;
 	default:
@@ -358,9 +363,11 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond,
 error:
 	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 
-	/* Checking for ctrl_watch avoids a double g_io_channel_shutdown since
+	/*
+	 * Checking for ctrl_watch avoids a double g_io_channel_shutdown since
 	 * it's likely that ctrl_watch_cb has been queued for dispatching in
-	 * this mainloop iteration */
+	 * this mainloop iteration
+	 */
 	if ((cond & (G_IO_HUP | G_IO_ERR)) && dev->ctrl_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
 
@@ -424,15 +431,19 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 		goto send;
 	}
 
-	/* Report porotocol mode reply contains id after hdr, in boot
-	 * protocol mode id doesn't exist */
+	/*
+	 * Report porotocol mode reply contains id after hdr, in boot
+	 * protocol mode id doesn't exist
+	 */
 	ev_len += (dev->boot_dev) ? (len - 1) : (len - 2);
 	ev = g_malloc0(ev_len);
 	ev->status = HAL_HIDHOST_STATUS_OK;
 	bdaddr2android(&dev->dst, ev->bdaddr);
 
-	/* Report porotocol mode reply contains id after hdr, in boot
-	 * protocol mode id doesn't exist */
+	/*
+	 * Report porotocol mode reply contains id after hdr, in boot
+	 * protocol mode id doesn't exist
+	 */
 	if (dev->boot_dev) {
 		ev->len = len - 1;
 		memcpy(ev->data, buf + 1, ev->len);
@@ -520,9 +531,11 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond,
 error:
 	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 
-	/* Checking for intr_watch avoids a double g_io_channel_shutdown since
+	/*
+	 * Checking for intr_watch avoids a double g_io_channel_shutdown since
 	 * it's likely that intr_watch_cb has been queued for dispatching in
-	 * this mainloop iteration */
+	 * this mainloop iteration
+	 */
 	if ((cond & (G_IO_HUP | G_IO_ERR)) && dev->intr_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
 
@@ -954,10 +967,12 @@ static void bt_hid_info(const void *buf, uint16_t len)
 		return;
 	}
 
-	/* Data from hal_cmd_hidhost_set_info is usefull only when we create
+	/*
+	 * Data from hal_cmd_hidhost_set_info is usefull only when we create
 	 * UHID device. Once device is created all the transactions will be
 	 * done through the fd. There is no way to use this information
-	 * once device is created with HID internals. */
+	 * once device is created with HID internals.
+	 */
 	DBG("Not supported");
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_INFO,
@@ -1184,8 +1199,10 @@ static void bt_hid_set_report(const void *buf, uint16_t len)
 	}
 
 	req[0] = HID_MSG_SET_REPORT | cmd->type;
-	/* Report data coming to HAL is in ascii format, HAL sends
-	 * data in hex to daemon, so convert to binary. */
+	/*
+	 * Report data coming to HAL is in ascii format, HAL sends
+	 * data in hex to daemon, so convert to binary.
+	 */
 	if (!hex2buf(cmd->data, req + 1, req_size - 1)) {
 		status = HAL_STATUS_INVALID;
 		goto failed;
@@ -1254,8 +1271,10 @@ static void bt_hid_send_data(const void *buf, uint16_t len)
 	}
 
 	req[0] = HID_MSG_DATA | HID_DATA_TYPE_OUTPUT;
-	/* Report data coming to HAL is in ascii format, HAL sends
-	 * data in hex to daemon, so convert to binary. */
+	/*
+	 * Report data coming to HAL is in ascii format, HAL sends
+	 * data in hex to daemon, so convert to binary.
+	 */
 	if (!hex2buf(cmd->data, req + 1, req_size - 1)) {
 		status = HAL_STATUS_INVALID;
 		goto failed;

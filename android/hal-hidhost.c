@@ -102,8 +102,10 @@ static void handle_virtual_unplug(void *buf, uint16_t len)
 								ev->status);
 }
 
-/* handlers will be called from notification thread context,
- * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+/*
+ * handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
+ */
 static const struct hal_ipc_handler ev_handlers[] = {
 	{	/* HAL_EV_HIDHOST_CONN_STATE */
 		.handler = handle_conn_state,

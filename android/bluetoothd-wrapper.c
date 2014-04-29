@@ -87,7 +87,8 @@ int main(int argc, char *argv[])
 			(!strcasecmp(value, "true") || atoi(value) > 0))
 		run_valgrind(debug, mgmt_dbg);
 
-	/* In case we failed to execute Valgrind, try to run bluetoothd
+	/*
+	 * In case we failed to execute Valgrind, try to run bluetoothd
 	 * without it
 	 */
 	run_bluetoothd(debug, mgmt_dbg);

@@ -22,9 +22,7 @@
 
 #include "history.h"
 
-/*
- * Very simple history storage for easy usage of tool
- */
+/* Very simple history storage for easy usage of tool */
 
 #define HISTORY_DEPTH 20
 #define LINE_SIZE 100

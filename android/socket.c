@@ -735,7 +735,8 @@ static int find_free_channel(void)
 
 static BtIOSecLevel get_sec_level(uint8_t flags)
 {
-	/* HAL_SOCK_FLAG_AUTH should require MITM but in our case setting
+	/*
+	 * HAL_SOCK_FLAG_AUTH should require MITM but in our case setting
 	 * security to BT_IO_SEC_HIGH would also require 16-digits PIN code
 	 * for pre-2.1 devices which is not what Android expects. For this
 	 * reason we ignore this flag to not break apps which use "secure"
@@ -1145,7 +1146,8 @@ void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 
 	DBG("");
 
-	/* make sure channels assigned for profiles are reserved and not used
+	/*
+	 * make sure channels assigned for profiles are reserved and not used
 	 * for app services
 	 */
 	for (i = 0; i < G_N_ELEMENTS(profiles); i++)

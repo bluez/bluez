@@ -767,7 +767,8 @@ static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		/* Android HAL defines start and stop parameter for NREC
+		/*
+		 * Android HAL defines start and stop parameter for NREC
 		 * callback, but spec allows HF to only disable AG's NREC
 		 * feature for SLC duration. Follow spec here.
 		 */
@@ -940,7 +941,8 @@ static void at_cmd_bcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 			select_codec(0);
 			return;
 		}
-		/* we try connect to negotiated codec. If it fails, and it isn't
+		/*
+		 * we try connect to negotiated codec. If it fails, and it isn't
 		 * CVSD codec, try connect CVSD
 		 */
 		if (!connect_sco() && device.negotiated_codec != CODEC_ID_CVSD)
@@ -1110,7 +1112,8 @@ static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	switch (type) {
 	case HFP_GW_CMD_TYPE_TEST:
 
-		/* If device supports Codec Negotiation, AT+BAC should be
+		/*
+		 * If device supports Codec Negotiation, AT+BAC should be
 		 * received first
 		 */
 		if ((device.features & HFP_HF_FEAT_CODEC) &&
@@ -1249,7 +1252,8 @@ static void at_cmd_bac(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		init_codecs();
 		device.negotiated_codec = 0;
 
-		/* At least CVSD mandatory codec must exist
+		/*
+		 * At least CVSD mandatory codec must exist
 		 * HFP V1.6 4.34.1
 		 */
 		if (!hfp_gw_result_get_number(result, &val) ||
@@ -2017,7 +2021,8 @@ static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 	if (device.setup_state == HAL_HANDSFREE_CALL_STATE_INCOMING) {
 		if (device.num_active != num_active ||
 						device.num_held != num_held) {
-			/* calls changed while waiting call ie. due to
+			/*
+			 * calls changed while waiting call ie. due to
 			 * termination of active call
 			 */
 			update_indicator(IND_CALLHELD,
@@ -2109,7 +2114,8 @@ static void phone_state_idle(int num_active, int num_held)
 		} else if ((num_active > 0 || num_held > 0) &&
 						device.num_active == 0 &&
 						device.num_held == 0) {
-			/* If number of active or held calls change but there
+			/*
+			 * If number of active or held calls change but there
 			 * was no call setup change this means that there were
 			 * calls present when headset was connected.
 			 */

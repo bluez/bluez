@@ -346,7 +346,8 @@ static void handle_set_volume(const void *buf, uint16_t len)
 		goto done;
 	}
 
-	/* Peek the first device since the HAL cannot really address a specific
+	/*
+	 * Peek the first device since the HAL cannot really address a specific
 	 * device it might mean there could only be one connected.
 	 */
 	dev = devices->data;
@@ -578,9 +579,11 @@ static int handle_get_capabilities_cmd(struct avrcp *session,
 
 	DBG("");
 
-	/* Android do not provide this info via HAL so the list most
+	/*
+	 * Android do not provide this info via HAL so the list most
 	 * be hardcoded according to what RegisterNotification can
-	 * actually handle */
+	 * actually handle
+	 */
 	avrcp_get_capabilities_rsp(session, transaction, sizeof(events),
 								events);
 

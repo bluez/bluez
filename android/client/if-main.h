@@ -131,9 +131,7 @@ int haltest_error(const char *format, ...)
 int haltest_info(const char *format, ...)__attribute__((format(printf, 1, 2)));
 int haltest_warn(const char *format, ...)__attribute__((format(printf, 1, 2)));
 
-/*
- * Enumerator for discovered devices, to be used as tab completion enum_func
- */
+/* Enumerator for discovered devices, to be used as tab completion enum_func */
 const char *enum_devices(void *v, int i);
 const char *interface_name(void *v, int i);
 const char *command_name(void *v, int i);

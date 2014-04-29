@@ -200,7 +200,8 @@ static void set_capabilities(void)
 	header.version = _LINUX_CAPABILITY_VERSION;
 	header.pid = 0;
 
-	/* CAP_NET_RAW: for snooping
+	/*
+	 * CAP_NET_RAW: for snooping
 	 * CAP_DAC_READ_SEARCH: override path search permissions
 	 */
 	cap.effective = cap.permitted =

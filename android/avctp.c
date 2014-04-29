@@ -49,7 +49,8 @@
 
 #include "avctp.h"
 
-/* AV/C Panel 1.23, page 76:
+/*
+ * AV/C Panel 1.23, page 76:
  * command with the pressed value is valid for two seconds
  */
 #define AVC_PRESS_TIMEOUT	2
@@ -416,10 +417,12 @@ static ssize_t handle_unit_info(struct avctp *session,
 
 	*code = AVC_CTYPE_STABLE;
 
-	/* The first operand should be 0x07 for the UNITINFO response.
+	/*
+	 * The first operand should be 0x07 for the UNITINFO response.
 	 * Neither AVRCP (section 22.1, page 117) nor AVC Digital
 	 * Interface Command Set (section 9.2.1, page 45) specs
-	 * explain this value but both use it */
+	 * explain this value but both use it
+	 */
 	if (operand_count >= 1)
 		operands[0] = 0x07;
 	if (operand_count >= 2)
@@ -442,10 +445,12 @@ static ssize_t handle_subunit_info(struct avctp *session,
 
 	*code = AVC_CTYPE_STABLE;
 
-	/* The first operand should be 0x07 for the UNITINFO response.
+	/*
+	 * The first operand should be 0x07 for the UNITINFO response.
 	 * Neither AVRCP (section 22.1, page 117) nor AVC Digital
 	 * Interface Command Set (section 9.2.1, page 45) specs
-	 * explain this value but both use it */
+	 * explain this value but both use it
+	 */
 	if (operand_count >= 2)
 		operands[1] = AVC_SUBUNIT_PANEL << 3;
 

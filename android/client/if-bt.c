@@ -80,9 +80,7 @@ static void dump_properties(int num_properties, bt_property_t *properties)
 	}
 }
 
-/*
- * Cache for remote devices, stored in sorted array
- */
+/* Cache for remote devices, stored in sorted array */
 static bt_bdaddr_t *remote_devices = NULL;
 static int remote_devices_cnt = 0;
 static int remote_devices_capacity = 0;
@@ -466,9 +464,7 @@ static void set_adapter_property_p(int argc, const char **argv)
 	EXEC(if_bluetooth->set_adapter_property, &property);
 }
 
-/*
- * This function is to be used for completion methods that need only address
- */
+/* This function is to be used for completion methods that need only address */
 static void complete_addr_c(int argc, const char **argv, enum_func *enum_func,
 								void **user)
 {
@@ -543,9 +539,7 @@ static void set_remote_device_property_p(int argc, const char **argv)
 	EXEC(if_bluetooth->set_remote_device_property, &addr, &property);
 }
 
-/*
- * For now uuid is not autocompleted. Use routine for complete_addr_c
- */
+/* For now uuid is not autocompleted. Use routine for complete_addr_c */
 #define get_remote_service_record_c complete_addr_c
 
 static void get_remote_service_record_p(int argc, const char **argv)

@@ -170,8 +170,10 @@ static void handle_hsp_key_press(void *buf, uint16_t len)
 		cbs->key_pressed_cmd_cb();
 }
 
-/* handlers will be called from notification thread context,
- * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+/*
+ * handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
+ */
 static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_HANDSFREE_CONN_STATE */
 	{ handle_conn_state, false,

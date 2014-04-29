@@ -401,8 +401,10 @@ static struct device *create_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 	dev->bond_state = HAL_BOND_STATE_NONE;
 	dev->timestamp = time(NULL);
 
-	/* use address for name, will be change if one is present
-	 * eg. in EIR or set by set_property. */
+	/*
+	 * Use address for name, will be change if one is present
+	 * eg. in EIR or set by set_property.
+	 */
 	dev->name = g_strdup(addr);
 
 	return dev;
@@ -788,8 +790,10 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	struct device *dev;
 	uuid_t uuid;
 
-	/* If we have a valid response and req->search_uuid == 2, then L2CAP
-	 * UUID & PNP searching was successful -- we are done */
+	/*
+	 * If we have a valid response and req->search_uuid == 2, then L2CAP
+	 * UUID & PNP searching was successful -- we are done
+	 */
 	if (err < 0 || req->search_uuid == 2) {
 		if (err == -ECONNRESET && req->reconnect_attempt < 1) {
 			req->search_uuid--;
@@ -912,8 +916,10 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 
 	dev = get_device(&ev->addr.bdaddr, BDADDR_BREDR);
 
-	/* Workaround for Android Bluetooth.apk issue: send remote
-	 * device property */
+	/*
+	 * Workaround for Android Bluetooth.apk issue: send remote
+	 * device property
+	 */
 	get_device_name(dev);
 
 	set_device_bond_state(&ev->addr.bdaddr, HAL_STATUS_SUCCESS,
@@ -935,10 +941,11 @@ static void send_ssp_request(const bdaddr_t *addr, uint8_t variant,
 {
 	struct hal_ev_ssp_request ev;
 
-	/* It is ok to have empty name and CoD of remote devices here since
-	* those information has been already provided on device_connected event
-	* or during device scaning. Android will use that instead.
-	*/
+	/*
+	 * It is ok to have empty name and CoD of remote devices here since
+	 * those information has been already provided on device_connected event
+	 * or during device scaning. Android will use that instead.
+	 */
 	memset(&ev, 0, sizeof(ev));
 	bdaddr2android(addr, ev.bdaddr);
 	ev.pairing_variant = variant;
@@ -1097,7 +1104,8 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 		gatt_discovery_stopped_cb = NULL;
 	}
 
-	/* If discovery is ON or there is no expected next discovery session
+	/*
+	 * If discovery is ON or there is no expected next discovery session
 	 * then just return
 	 */
 	if ((adapter.cur_discovery_type != SCAN_TYPE_NONE) ||
@@ -1106,7 +1114,8 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 
 	start_discovery(adapter.exp_discovery_type);
 
-	/* Maintain expected discovery type if there is gatt client
+	/*
+	 * Maintain expected discovery type if there is gatt client
 	 * registered
 	 */
 	adapter.exp_discovery_type = gatt_device_found_cb ?
@@ -1364,7 +1373,8 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	dev = get_device(bdaddr, bdaddr_type);
 
-	/* Device found event needs to be send also for known device if this is
+	/*
+	 * Device found event needs to be send also for known device if this is
 	 * new discovery session. Otherwise framework will ignore it.
 	 */
 	if (is_new_device(dev, eir.flags))
@@ -1393,8 +1403,10 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 		ba2str(bdaddr, addr);
 
-		/* Don't need to confirm name if we have it already in cache
-		 * Just check if device name is different than bdaddr */
+		/*
+		 * Don't need to confirm name if we have it already in cache
+		 * Just check if device name is different than bdaddr
+		 */
 		if (g_strcmp0(dev->name, addr)) {
 			get_device_name(dev);
 			resolve_name = false;
@@ -1525,9 +1537,11 @@ static void mgmt_connect_failed_event(uint16_t index, uint16_t length,
 
 	dev = find_device(&ev->addr.bdaddr);
 
-	/* In case security mode 3 pairing we will get connect failed event
-	* in case e.g wrong PIN code entered. Let's check if device is
-	* bonding, if so update bond state */
+	/*
+	 * In case security mode 3 pairing we will get connect failed event
+	 * in case e.g wrong PIN code entered. Let's check if device is
+	 * bonding, if so update bond state
+	 */
 
 	if (dev && dev->bond_state == HAL_BOND_STATE_BONDING)
 		set_device_bond_state(&ev->addr.bdaddr,
@@ -1779,7 +1793,8 @@ static void load_ltks(GSList *ltks)
 
 	cp = g_malloc0(cp_size);
 
-	/* Even if the list of stored keys is empty, it is important to load
+	/*
+	 * Even if the list of stored keys is empty, it is important to load
 	 * an empty list into the kernel. That way it is ensured that no old
 	 * keys from a previous daemon are present.
 	 */
@@ -2045,9 +2060,11 @@ static uint8_t set_adapter_discoverable_timeout(const void *buf, uint16_t len)
 		return HAL_STATUS_FAILED;
 	}
 
-	/* Android handles discoverable timeout in Settings app.
+	/*
+	 * Android handles discoverable timeout in Settings app.
 	 * There is no need to use kernel feature for that.
-	 * Just need to store this value here */
+	 * Just need to store this value here
+	 */
 
 	memcpy(&adapter.discoverable_timeout, timeout, sizeof(uint32_t));
 
@@ -3070,8 +3087,10 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 
 	DBG("status %u", status);
 
-	/* On success bond state change will be send when new link key or LTK
-	 * event is received */
+	/*
+	 * On success bond state change will be send when new link key or LTK
+	 * event is received
+	 */
 	if (status == MGMT_STATUS_SUCCESS)
 		return;
 
@@ -3498,8 +3517,10 @@ static void handle_enable_cmd(const void *buf, uint16_t len)
 {
 	uint8_t status;
 
-	/* Framework expects all properties to be emitted while
-	 * enabling adapter */
+	/*
+	 * Framework expects all properties to be emitted while enabling
+	 * adapter
+	 */
 	get_adapter_properties();
 
 	/* Sent also properties of bonded devices */
@@ -3736,8 +3757,10 @@ static void handle_start_discovery_cmd(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	/* Stop discovery here. Once it is stop we will restart it
-	 * with exp_discovery_settings */
+	/*
+	 * Stop discovery here. Once it is stop we will restart it
+	 * with exp_discovery_settings
+	 */
 	if (!stop_discovery(adapter.cur_discovery_type)) {
 		status = HAL_STATUS_FAILED;
 		goto reply;
@@ -3927,7 +3950,8 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 			set_mode(MGMT_OP_SET_BREDR, 0x00);
 		break;
 	case HAL_MODE_BREDR:
-		/* BR/EDR Should be enabled on start, if it is not that means
+		/*
+		 * BR/EDR Should be enabled on start, if it is not that means
 		 * there is LE controller only and we should fail
 		 */
 		if (!(adapter.current_settings & MGMT_SETTING_BREDR)) {

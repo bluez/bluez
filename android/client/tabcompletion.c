@@ -116,9 +116,7 @@ struct command_completion_args {
 	const char *user_help; /* additional data (used by short_help) */
 };
 
-/*
- * complete command line
- */
+/* complete command line */
 static void tab_completion(struct command_completion_args *args)
 {
 	const char *name = args->typed;
@@ -142,10 +140,7 @@ static void tab_completion(struct command_completion_args *args)
 			continue;
 		}
 
-		/*
-		 * Prefix matches next time
-		 * reduce prefix to common part
-		 */
+		/* Prefix matches next time reduce prefix to common part */
 		for (j = 0; prefix[j] != 0
 			&& prefix[j] == enum_name[j];)
 			++j;

@@ -33,8 +33,10 @@ static bool interface_ready(void)
 	return cbacks != NULL;
 }
 
-/* handlers will be called from notification thread context,
- * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+/*
+ * handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
+ */
 static const struct hal_ipc_handler ev_handlers[] = {
 };
 

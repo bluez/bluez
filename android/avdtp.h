@@ -156,8 +156,10 @@ struct avdtp_sep_cfm {
 				struct avdtp_error *err, void *user_data);
 };
 
-/* Callbacks for indicating when we received a new command. The return value
- * indicates whether the command should be rejected or accepted */
+/*
+ * Callbacks for indicating when we received a new command. The return value
+ * indicates whether the command should be rejected or accepted
+ */
 struct avdtp_sep_ind {
 	gboolean (*get_capability) (struct avdtp *session,
 					struct avdtp_local_sep *sep,

@@ -45,7 +45,8 @@ static void handle_ctrl_state(void *buf, uint16_t len)
 {
 	struct hal_ev_pan_ctrl_state *ev = buf;
 
-	/* FIXME: Callback declared in bt_pan.h is 'typedef void
+	/*
+	 * FIXME: Callback declared in bt_pan.h is 'typedef void
 	 * (*btpan_control_state_callback)(btpan_control_state_t state,
 	 * bt_status_t error, int local_role, const char* ifname);
 	 * But PanService.Java defined it wrong way.
@@ -59,8 +60,10 @@ static void handle_ctrl_state(void *buf, uint16_t len)
 							(char *)ev->name);
 }
 
-/* handlers will be called from notification thread context,
- * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+/*
+ * handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
+ */
 static const struct hal_ipc_handler ev_handlers[] = {
 	{	/* HAL_EV_PAN_CTRL_STATE */
 		.handler = handle_ctrl_state,

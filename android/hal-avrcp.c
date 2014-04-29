@@ -165,8 +165,10 @@ static void handle_passthrough_cmd(void *buf, uint16_t len)
 		cbs->passthrough_cmd_cb(ev->id, ev->state);
 }
 
-/* handlers will be called from notification thread context,
- * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+/*
+ * handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
+ */
 static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_AVRCP_REMOTE_FEATURES */
 	{ handle_remote_features, false,

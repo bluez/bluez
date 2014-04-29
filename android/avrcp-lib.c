@@ -1619,7 +1619,8 @@ static int parse_value(struct avrcp_header *pdu, uint8_t *number,
 
 	*number = pdu->params[0];
 
-	/* Check if PDU is big enough to hold the number of (attribute, value)
+	/*
+	 * Check if PDU is big enough to hold the number of (attribute, value)
 	 * tuples.
 	 */
 	if (*number > AVRCP_ATTRIBUTE_LAST ||

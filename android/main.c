@@ -201,8 +201,10 @@ static void service_unregister(const void *buf, uint16_t len)
 		bt_health_unregister();
 		break;
 	default:
-		/* This would indicate bug in HAL, as unregister should not be
-		 * called in init failed */
+		/*
+		 * This would indicate bug in HAL, as unregister should not be
+		 * called in init failed
+		 */
 		DBG("service %u not supported", m->service_id);
 		status = HAL_STATUS_FAILED;
 		goto failed;
@@ -427,9 +429,11 @@ static bool set_capabilities(void)
 	header.version = _LINUX_CAPABILITY_VERSION;
 	header.pid = 0;
 
-	/* CAP_NET_ADMIN: Allow use of MGMT interface
+	/*
+	 * CAP_NET_ADMIN: Allow use of MGMT interface
 	 * CAP_NET_BIND_SERVICE: Allow use of privileged PSM
-	 * CAP_NET_RAW: Allow use of bnep ioctl calls */
+	 * CAP_NET_RAW: Allow use of bnep ioctl calls
+	 */
 	cap.effective = cap.permitted =
 		CAP_TO_MASK(CAP_NET_RAW) |
 		CAP_TO_MASK(CAP_NET_ADMIN) |

@@ -841,8 +841,10 @@ static void mcap_cache_mcl(struct mcap_mcl *mcl)
 		mcl->mi->cached = g_slist_remove(mcl->mi->cached, last);
 		last->ctrl &= ~MCAP_CTRL_CACHED;
 		if (last->ctrl & MCAP_CTRL_CONN) {
-			/* We have to release this MCL if */
-			/* connection is not successful    */
+			/*
+			 * We have to release this MCL if connection is not
+			 * successful
+			 */
 			last->ctrl |= MCAP_CTRL_FREE;
 		} else {
 			mcap_mcl_release(last);
@@ -1064,8 +1066,10 @@ static void process_md_create_mdl_req(struct mcap_mcl *mcl, void *cmd,
 
 	mdl = get_mdl(mcl, mdl_id);
 	if (mdl && (mdl->state == MDL_WAITING || mdl->state == MDL_DELETING )) {
-		/* Creation request arrives for a MDL that is being managed
-		* at current moment */
+		/*
+		 *  Creation request arrives for a MDL that is being managed
+		 * at current moment
+		 */
 		mcap_send_cmd(mcl, MCAP_MD_CREATE_MDL_RSP, MCAP_MDL_BUSY,
 							mdl_id, NULL, 0);
 		return;
@@ -1081,9 +1085,11 @@ static void process_md_create_mdl_req(struct mcap_mcl *mcl, void *cmd,
 	}
 
 	if (cfga != 0 && cfga != conf) {
-		/* Remote device set default configuration but upper profile */
-		/* has changed it. Protocol Error: force closing the MCL by */
-		/* remote device using UNSPECIFIED_ERROR response */
+		/*
+		 * Remote device set default configuration but upper profile
+		 * has changed it. Protocol Error: force closing the MCL by
+		 * remote device using UNSPECIFIED_ERROR response
+		 */
 		mcap_send_cmd(mcl, MCAP_MD_CREATE_MDL_RSP,
 				MCAP_UNSPECIFIED_ERROR, mdl_id, NULL, 0);
 		return;
@@ -1101,8 +1107,10 @@ static void process_md_create_mdl_req(struct mcap_mcl *mcl, void *cmd,
 		mcl->mdls = g_slist_insert_sorted(mcl->mdls, mcap_mdl_ref(mdl),
 								compare_mdl);
 	} else if (mdl->state == MDL_CONNECTED) {
-		/* MCAP specification says that we should close the MCL if
-		 * it is open when we receive a MD_CREATE_MDL_REQ */
+		/*
+		 * MCAP specification says that we should close the MCL if
+		 * it is open when we receive a MD_CREATE_MDL_REQ
+		 */
 		shutdown_mdl(mdl);
 	}
 
@@ -1135,8 +1143,10 @@ static void process_md_reconnect_mdl_req(struct mcap_mcl *mcl, void *cmd,
 							mdl_id, NULL, 0);
 		return;
 	} else if (mdl->state == MDL_WAITING || mdl->state == MDL_DELETING ) {
-		/* Creation request arrives for a MDL that is being managed
-		* at current moment */
+		/*
+		 * Creation request arrives for a MDL that is being managed
+		 * at current moment
+		 */
 		mcap_send_cmd(mcl, MCAP_MD_RECONNECT_MDL_RSP, MCAP_MDL_BUSY,
 							mdl_id, NULL, 0);
 		return;
@@ -1267,8 +1277,10 @@ static void invalid_req_state(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 
 	error("Invalid cmd received (op code = %d) in state %d", cmd[0],
 								mcl->state);
-	/* Get previously mdlid sent to generate an appropriate
-	 * response if it is possible */
+	/*
+	 * Get previously mdlid sent to generate an appropriate
+	 * response if it is possible
+	 */
 	mdlr = len < sizeof(mcap_md_req) ? MCAP_MDLID_RESERVED :
 					ntohs(((mcap_md_req *) cmd)->mdl);
 	mcap_send_cmd(mcl, cmd[0]+1, MCAP_INVALID_OPERATION, mdlr, NULL, 0);
@@ -1557,12 +1569,16 @@ static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 static void post_process_rsp(struct mcap_mcl *mcl, struct mcap_mdl_op_cb *op)
 {
 	if (mcl->priv_data != op) {
-		/* Queued MCAP request in some callback. */
-		/* We should not delete the mcl private data */
+		/*
+		 * Queued MCAP request in some callback.
+		 * We should not delete the mcl private data
+		 */
 		free_mcap_mdl_op(op);
 	} else {
-		/* This is not a queued request. It's safe */
-		/* delete the mcl private data here. */
+		/*
+		 * This is not a queued request. It's safe
+		 * delete the mcl private data here.
+		 */
 		free_mcl_priv_data(mcl);
 	}
 }
@@ -2374,9 +2390,11 @@ static gboolean valid_btclock(uint32_t btclk)
 static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 							uint16_t *btaccuracy)
 {
-	/* FIXME: btd_adapter_read_clock(...) always return FALSE, current
-	code doesn't support CSP (Clock Synchronization Protocol). To avoid
-	build dependancy on struct 'btd_adapter', removing this code. */
+	/*
+	 * FIXME: btd_adapter_read_clock(...) always return FALSE, current
+	 * code doesn't support CSP (Clock Synchronization Protocol). To avoid
+	 * build dependancy on struct 'btd_adapter', removing this code.
+	 */
 
 	return FALSE;
 }
@@ -2637,7 +2655,8 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 
 		clock_gettime(CLK, base_time);
 
-		/* Tries to detect preemption between clock_gettime
+		/*
+		 * Tries to detect preemption between clock_gettime
 		 * and read_btclock by measuring transaction time
 		 */
 		latency = time_us(base_time) - time_us(&t0);
@@ -2847,8 +2866,10 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	}
 
 	if (update) {
-		/* Indication frequency: required accuracy divided by ours */
-		/* Converted to milisseconds */
+		/*
+		 * Indication frequency: required accuracy divided by ours
+		 * Converted to milisseconds
+		 */
 		ind_freq = (1000 * mcl->csp->rem_req_acc) / caps(mcl)->ts_acc;
 
 		if (ind_freq < MAX(caps(mcl)->latency * 2 / 1000, 100)) {
@@ -2879,9 +2900,11 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	set_data->ind_freq = ind_freq;
 	set_data->role = get_btrole(mcl);
 
-	/* TODO is there some way to schedule a call based directly on
+	/*
+	 * TODO is there some way to schedule a call based directly on
 	 * a BT clock value, instead of this estimation that uses
-	 * the SO clock? */
+	 * the SO clock?
+	 */
 
 	if (phase2_delay > 0) {
 		when = phase2_delay + caps(mcl)->syncleadtime_ms;

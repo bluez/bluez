@@ -351,8 +351,10 @@ static void handle_le_test_mode(void *buf, uint16_t len)
 		bt_hal_cbacks->le_test_mode_cb(ev->status, ev->num_packets);
 }
 
-/* handlers will be called from notification thread context,
- * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+/*
+ * handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
+ */
 static const struct hal_ipc_handler ev_handlers[] = {
 	{	/* HAL_EV_ADAPTER_STATE_CHANGED */
 		.handler = handle_adapter_state_changed,

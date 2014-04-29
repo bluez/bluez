@@ -176,7 +176,8 @@ static uint64_t timespec_diff_us(struct timespec *a, struct timespec *b)
 }
 
 #if defined(ANDROID)
-/* Bionic does not have clock_nanosleep() prototype in time.h even though
+/*
+ * Bionic does not have clock_nanosleep() prototype in time.h even though
  * it provides its implementation.
  */
 extern int clock_nanosleep(clockid_t clock_id, int flags,
@@ -1030,7 +1031,8 @@ static bool write_to_endpoint(struct audio_endpoint *ep, size_t bytes)
 		if (ret >= 0)
 			break;
 
-		/* this should not happen so let's issue warning, but do not
+		/*
+		 * this should not happen so let's issue warning, but do not
 		 * fail, we can try to write next packet
 		 */
 		if (errno == EAGAIN) {
@@ -1066,7 +1068,8 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 		uint64_t audio_sent, audio_passed;
 		bool do_write = false;
 
-		/* prepare media packet in advance so we don't waste time after
+		/*
+		 * prepare media packet in advance so we don't waste time after
 		 * wakeup
 		 */
 		mp->hdr.sequence_number = htons(ep->seq++);
@@ -1076,7 +1079,8 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 						bytes - consumed, mp,
 						free_space, &written);
 
-		/* not much we can do here, let's just ignore remaining
+		/*
+		 * not much we can do here, let's just ignore remaining
 		 * data and continue
 		 */
 		if (read <= 0)
@@ -1089,7 +1093,8 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 		audio_sent = ep->samples * 1000000ll / out->cfg.rate;
 		audio_passed = timespec_diff_us(&current, &ep->start);
 
-		/* if we're ahead of stream then wait for next write point
+		/*
+		 * if we're ahead of stream then wait for next write point,
 		 * if we're lagging more than 100ms then stop writing and just
 		 * skip data until we're back in sync
 		 */
@@ -1139,7 +1144,8 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 					return false;
 		}
 
-		/* AudioFlinger provides 16bit PCM, so sample size is 2 bytes
+		/*
+		 * AudioFlinger provides 16bit PCM, so sample size is 2 bytes
 		 * multiplied by number of channels. Number of channels is
 		 * simply number of bits set in channels mask.
 		 */
@@ -1182,7 +1188,8 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 		return -1;
 	}
 
-	/* currently Android audioflinger is not able to provide mono stream on
+	/*
+	 * currently Android audioflinger is not able to provide mono stream on
 	 * A2DP output so down mixing needs to be done in hal-audio plugin.
 	 *
 	 * for reference see
@@ -1234,7 +1241,8 @@ static size_t out_get_buffer_size(const struct audio_stream *stream)
 {
 	DBG("");
 
-	/* We should return proper buffer size calculated by codec (so each
+	/*
+	 * We should return proper buffer size calculated by codec (so each
 	 * input buffer is encoded into single media packed) but this does not
 	 * work well with AudioFlinger and causes problems. For this reason we
 	 * use magic value here and out_write code takes care of splitting
@@ -1247,7 +1255,8 @@ static uint32_t out_get_channels(const struct audio_stream *stream)
 {
 	DBG("");
 
-	/* AudioFlinger can only provide stereo stream, so we return it here and
+	/*
+	 * AudioFlinger can only provide stereo stream, so we return it here and
 	 * later we'll downmix this to mono in case codec requires it
 	 */
 
@@ -1862,9 +1871,11 @@ static int audio_open(const hw_module_t *module, const char *name,
 	a2dp_dev->dev.close_input_stream = audio_close_input_stream;
 	a2dp_dev->dev.dump = audio_dump;
 
-	/* Note that &a2dp_dev->dev.common is the same pointer as a2dp_dev.
+	/*
+	 * Note that &a2dp_dev->dev.common is the same pointer as a2dp_dev.
 	 * This results from the structure of following structs:a2dp_audio_dev,
-	 * audio_hw_device. We will rely on this later in the code.*/
+	 * audio_hw_device. We will rely on this later in the code.
+	 */
 	*device = &a2dp_dev->dev.common;
 
 	return 0;

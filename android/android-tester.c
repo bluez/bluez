@@ -153,7 +153,8 @@ static gint scheduled_cbacks_num = 0;
 
 static gboolean check_callbacks_called(gpointer user_data)
 {
-	/* Wait for all callbacks scheduled in current test context to execute
+	/*
+	 * Wait for all callbacks scheduled in current test context to execute
 	 * in main loop. This will avoid late callback calls after test case has
 	 * already failed or timed out.
 	 */
@@ -4065,8 +4066,10 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 	case HID_GET_FEATURE_REPORT:
 		hid_prepare_reply_report(data, len);
 		break;
-	/* HID device doesnot reply for this commads, so reaching pdu's
-	 * to hid device means assuming test passed */
+	/*
+	 * HID device doesnot reply for this commads, so reaching pdu's
+	 * to hid device means assuming test passed
+	 */
 	case HID_SET_INPUT_REPORT:
 	case HID_SET_OUTPUT_REPORT:
 	case HID_SET_FEATURE_REPORT:

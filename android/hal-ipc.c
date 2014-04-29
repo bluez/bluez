@@ -99,8 +99,10 @@ static void handle_msg(void *buf, ssize_t len)
 		exit(EXIT_FAILURE);
 	}
 
-	/* opcode is used as table offset and must be adjusted as events start
-	 * with HAL_MINIMUM_EVENT offset */
+	/*
+	 * opcode is used as table offset and must be adjusted as events start
+	 * with HAL_MINIMUM_EVENT offset
+	 */
 	opcode = msg->opcode - HAL_MINIMUM_EVENT;
 
 	/* if opcode is valid */

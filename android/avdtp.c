@@ -1297,8 +1297,10 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 					&stream->codec,
 					&stream->delay_reporting);
 
-	/* Verify that the Media Transport capability's length = 0.
-	 * Reject otherwise */
+	/*
+	 * Verify that the Media Transport capability's length = 0.
+	 * Reject otherwise
+	 */
 	for (l = stream->caps; l != NULL; l = g_slist_next(l)) {
 		struct avdtp_service_capability *cap = l->data;
 

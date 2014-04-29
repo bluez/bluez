@@ -22,7 +22,8 @@
 
 const btgatt_interface_t *if_gatt = NULL;
 
-/* In version 19 some callback were changed.
+/*
+ * In version 19 some callback were changed.
  * btgatt_char_id_t -> btgatt_gatt_id_t
  * bt_uuid_t        -> btgatt_gatt_id_t
  */

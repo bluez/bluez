@@ -232,7 +232,8 @@ static void destroy_service(void *data)
 
 	queue_destroy(srvc->chars, destroy_characteristic);
 
-	/* Included services we keep on two queues.
+	/*
+	 * Included services we keep on two queues.
 	 * 1. On the same queue with primary services.
 	 * 2. On the queue inside primary service.
 	 * So we need to free service memory only once but we need to destroy
@@ -452,7 +453,8 @@ static void unregister_notification(void *data)
 	struct notification_data *notification = data;
 	struct gatt_device *dev = notification->conn->device;
 
-	/* No device means it was already disconnected and client cleanup was
+	/*
+	 * No device means it was already disconnected and client cleanup was
 	 * triggered afterwards, but once client unregisters, device stays if
 	 * used by others. Then just unregister single handle.
 	 */
@@ -497,7 +499,8 @@ static void connection_cleanup(struct gatt_device *device)
 		g_attrib_unref(attrib);
 	}
 
-	/* If device was in connection_pending or connectable state we
+	/*
+	 * If device was in connection_pending or connectable state we
 	 * search device list if we should stop the scan.
 	 */
 	if (!scanning && (device->state == DEVICE_CONNECT_INIT ||
@@ -513,7 +516,8 @@ static void destroy_gatt_app(void *data)
 {
 	struct gatt_app *app = data;
 
-	/* First we want to get all notifications and unregister them.
+	/*
+	 * First we want to get all notifications and unregister them.
 	 * We don't pass unregister_notification to queue_destroy,
 	 * because destroy notification performs operations on queue
 	 * too. So remove all elements and then destroy queue.
@@ -845,7 +849,8 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 		goto done;
 	}
 
-	/* There might be multiply services with same uuid. Therefore make sure
+	/*
+	 * There might be multiply services with same uuid. Therefore make sure
 	 * each primary service one has unique instance_id
 	 */
 	instance_id = 0;
@@ -908,7 +913,8 @@ connect:
 	device_set_state(dev, DEVICE_CONNECT_READY);
 	dev->bdaddr_type = addr_type;
 
-	/* We are ok to perform connect now. Stop discovery
+	/*
+	 * We are ok to perform connect now. Stop discovery
 	 * and once it is stopped continue with creating ACL
 	 */
 	bt_le_discovery_stop(bt_le_discovery_stop_cb);
@@ -1017,7 +1023,8 @@ static int connect_le(struct gatt_device *dev)
 	/* TODO: If we are bonded then we should use higier sec level */
 	sec_level = BT_IO_SEC_LOW;
 
-	/* This connection will help us catch any PDUs that comes before
+	/*
+	 * This connection will help us catch any PDUs that comes before
 	 * pairing finishes
 	 */
 	io = bt_io_connect(connect_cb, device_ref(dev), NULL, &gerr,
@@ -1149,9 +1156,7 @@ static struct app_connection *create_connection(struct gatt_device *device,
 	if (!new_conn)
 		return NULL;
 
-	/* Make connection id unique to connection record
-	 * (app, device) pair.
-	 */
+	/* Make connection id unique to connection record (app, device) pair */
 	new_conn->app = app;
 	new_conn->id = last_conn_id++;
 
@@ -1230,7 +1235,8 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 		error("gatt: client_if=%d not found", cmd->client_if);
 		status = HAL_STATUS_FAILED;
 	} else {
-		/* Check if there is any connect request or connected device
+		/*
+		 * Check if there is any connect request or connected device
 		 * for this client. If so, remove this client from those lists.
 		 */
 		app_disconnect_devices(cl);
@@ -1368,7 +1374,8 @@ static void set_advertising_cb(uint8_t status, void *user_data)
 
 	send_client_listen_notify(l->client_id, status);
 
-	/* Let's remove client from the list in two cases
+	/*
+	 * Let's remove client from the list in two cases
 	 * 1. Start failed
 	 * 2. Stop succeed
 	 */
@@ -1416,9 +1423,7 @@ static void handle_client_listen(const void *buf, uint16_t len)
 			goto reply;
 		}
 	} else {
-		/* Stop listening.
-		 * Check if client was listening
-		 */
+		/* Stop listening. Check if client was listening */
 		if (!listening_client) {
 			error("gatt: This client %d does not listen",
 							cmd->client_if);
@@ -1426,9 +1431,10 @@ static void handle_client_listen(const void *buf, uint16_t len)
 			goto reply;
 		}
 
-		/* In case there is more listening clients don't stop
+		/*
+		 * In case there is more listening clients don't stop
 		 * advertising
-		*/
+		 */
 		if (queue_length(listen_clients) > 1) {
 			queue_remove(listen_clients,
 						INT_TO_PTR(cmd->client_if));
@@ -1454,7 +1460,8 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	/* Use this flag to keep in mind that we are waiting for callback with
+	/*
+	 * Use this flag to keep in mind that we are waiting for callback with
 	 * result
 	 */
 	req_sent = true;
@@ -1480,7 +1487,8 @@ static void handle_client_refresh(const void *buf, uint16_t len)
 	uint8_t status;
 	bdaddr_t bda;
 
-	/* This is Android's framework hidden API call. It seams that no
+	/*
+	 * This is Android's framework hidden API call. It seams that no
 	 * notification is expected and Bluedroid silently updates device's
 	 * cache under the hood. As we use lazy caching ,we can just clear the
 	 * cache and we're done.
@@ -1617,7 +1625,8 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 	/* Remember that we already search included services.*/
 	service->incl_search_done = true;
 
-	/* There might be multiply services with same uuid. Therefore make sure
+	/*
+	 * There might be multiply services with same uuid. Therefore make sure
 	 * each service has unique instance id. Let's take the latest instance
 	 * id of primary service and start iterate included services from this
 	 * point.
@@ -1635,7 +1644,8 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 		if (!incl)
 			continue;
 
-		/* Lets keep included service on two queues.
+		/*
+		 * Lets keep included service on two queues.
 		 * 1. on services queue together with primary service
 		 * 2. on special queue inside primary service
 		 */
@@ -1647,7 +1657,8 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 		}
 	}
 
-	/* Notify upper layer about first included service.
+	/*
+	 * Notify upper layer about first included service.
 	 * Android framework will iterate for next one.
 	 */
 	incl = queue_peek_head(service->included);
@@ -1754,7 +1765,8 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 						INT_TO_PTR(inst_id));
 	}
 
-	/* Note that Android framework expects failure notification
+	/*
+	 * Note that Android framework expects failure notification
 	 * which is treat as the end of included services
 	 */
 	if (!incl_service)
@@ -1771,7 +1783,8 @@ reply:
 					HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE,
 					status);
 
-	/* In case of error in handling request we need to send event with
+	/*
+	 * In case of error in handling request we need to send event with
 	 * Android framework is stupid and do not check status of response
 	 */
 	if (status)
@@ -1828,7 +1841,8 @@ static void cache_all_srvc_chars(struct service *srvc,
 		bt_string_to_uuid(&uuid, ch->ch.uuid);
 		bt_uuid_to_uuid128(&uuid, &ch->id.uuid);
 
-		/* For now we increment inst_id and use it as characteristic
+		/*
+		 * For now we increment inst_id and use it as characteristic
 		 * handle
 		 */
 		ch->id.instance = ++inst_id;
@@ -2300,7 +2314,8 @@ failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 				HAL_OP_GATT_CLIENT_READ_CHARACTERISTIC, status);
 
-	/* We should send notification with service, characteristic id in case
+	/*
+	 * We should send notification with service, characteristic id in case
 	 * of errors.
 	 */
 	if (status != HAL_STATUS_SUCCESS)
@@ -2424,7 +2439,8 @@ failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 			HAL_OP_GATT_CLIENT_WRITE_CHARACTERISTIC, status);
 
-	/* We should send notification with service, characteristic id in case
+	/*
+	 * We should send notification with service, characteristic id in case
 	 * of error and write with no response
 	 */
 	if (status != HAL_STATUS_SUCCESS ||
@@ -2942,7 +2958,8 @@ static void handle_client_register_for_notification(const void *buf,
 		goto failed;
 	}
 
-	/* Because same data - notification - is shared by two handlers, we
+	/*
+	 * Because same data - notification - is shared by two handlers, we
 	 * introduce ref counter to be sure that data can be freed with no risk.
 	 * Counter is decremented in destroy_notification.
 	 */

@@ -470,7 +470,8 @@ static void handle_response_confirmation(void *buf, uint16_t len)
 		cbs->server->response_confirmation_cb(ev->status, ev->handle);
 }
 
-/* handlers will be called from notification thread context,
+/*
+ * handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
  */
 static const struct hal_ipc_handler ev_handlers[] = {

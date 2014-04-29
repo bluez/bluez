@@ -128,9 +128,7 @@ static void protocol_mode_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status,
 					bthh_protocol_mode_t2str(mode));
 }
 
-/*
- * Callback for get/set_idle_time api.
- */
+/* Callback for get/set_idle_time api. */
 static void idle_time_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status,
 								int idle_rate)
 {
@@ -242,8 +240,10 @@ static void set_info_p(int argc, const char **argv)
 
 	memset(&hid_info, 0, sizeof(hid_info));
 
-	/* This command is intentionally not supported. See comment from
-	 * bt_hid_info() in android/hidhost.c */
+	/*
+	 * This command is intentionally not supported. See comment from
+	 * bt_hid_info() in android/hidhost.c
+	 */
 	EXEC(if_hh->set_info, &addr, hid_info);
 }
 

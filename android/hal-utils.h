@@ -34,7 +34,7 @@ void str2bt_uuid_t(const char *str, bt_uuid_t *uuid);
 const char *btproperty2str(const bt_property_t *property);
 const char *bdaddr2str(const bt_bdaddr_t *bd_addr);
 
-/**
+/*
  * Begin mapping section
  *
  * There are some mappings between integer values (enums) and strings
