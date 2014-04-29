@@ -345,6 +345,46 @@ static void external_report_reference_cb(guint8 status, const guint8 *pdu,
 					external_service_char_cb, hogdev);
 }
 
+static bool get_descriptor_item_info(uint8_t *buf, ssize_t blen, ssize_t *len,
+								bool *is_long)
+{
+	if (!blen)
+		return false;
+
+	*is_long = (buf[0] == 0xfe);
+
+	if (*is_long) {
+		if (blen < 3)
+			return false;
+
+		/*
+		 * long item:
+		 * byte 0 -> 0xFE
+		 * byte 1 -> data size
+		 * byte 2 -> tag
+		 * + data
+		 */
+
+		*len = buf[1] + 3;
+	} else {
+		uint8_t b_size;
+
+		/*
+		 * short item:
+		 * byte 0[1..0] -> data size (=0, 1, 2, 4)
+		 * byte 0[3..2] -> type
+		 * byte 0[7..4] -> tag
+		 * + data
+		 */
+
+		b_size = buf[0] & 0x03;
+		*len = (b_size ? 1 << (b_size - 1) : 0) + 1;
+	}
+
+	/* item length should be no more than input buffer length */
+	return *len <= blen;
+}
+
 static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -355,6 +395,7 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	uint16_t vendor_src, vendor, product, version;
 	ssize_t vlen;
 	int i;
+	int next_item = 0;
 
 	if (status != 0) {
 		error("Report Map read failed: %s", att_ecode2str(status));
@@ -369,11 +410,27 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	DBG("Report MAP:");
 	for (i = 0; i < vlen; i++) {
-		switch (value[i]) {
-		case 0x85:
-		case 0x86:
-		case 0x87:
-			hogdev->has_report_id = TRUE;
+		ssize_t ilen = 0;
+		bool long_item = false;
+
+		if (i == next_item) {
+			if (get_descriptor_item_info(&value[i], vlen - i,
+							&ilen, &long_item)) {
+				/*
+				 * Report ID is short item with prefix 100001xx
+				 */
+				if (!long_item && (value[i] & 0xfc) == 0x84)
+					hogdev->has_report_id = TRUE;
+
+				next_item += ilen;
+			} else {
+				error("Report Map parsing failed at %d", i);
+
+				/*
+				 * We do not increase next_item here so we won't
+				 * parse subsequent data - this is what we want.
+				 */
+			}
 		}
 
 		if (i % 2 == 0) {
