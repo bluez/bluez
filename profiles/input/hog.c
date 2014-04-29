@@ -385,6 +385,28 @@ static bool get_descriptor_item_info(uint8_t *buf, ssize_t blen, ssize_t *len,
 	return *len <= blen;
 }
 
+static char *item2string(char *str, uint8_t *buf, uint8_t len)
+{
+	char *p = str;
+	int i;
+
+	/*
+	 * Since long item tags are not defined except for vendor ones, we
+	 * just ensure that short items are printed properly (up to 5 bytes).
+	 */
+	for (i = 0; i < 6 && i < len; i++)
+		p += sprintf(p, " %02x", buf[i]);
+
+	/*
+	 * If there are some data left, just add continuation mark to indicate
+	 * this.
+	 */
+	if (i < len)
+		sprintf(p, " ...");
+
+	return str;
+}
+
 static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -394,8 +416,8 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	struct uhid_event ev;
 	uint16_t vendor_src, vendor, product, version;
 	ssize_t vlen;
+	char itemstr[20]; /* 5x3 (data) + 4 (continuation) + 1 (null) */
 	int i;
-	int next_item = 0;
 
 	if (status != 0) {
 		error("Report Map read failed: %s", att_ecode2str(status));
@@ -409,35 +431,25 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	DBG("Report MAP:");
-	for (i = 0; i < vlen; i++) {
+	for (i = 0; i < vlen;) {
 		ssize_t ilen = 0;
 		bool long_item = false;
 
-		if (i == next_item) {
-			if (get_descriptor_item_info(&value[i], vlen - i,
-							&ilen, &long_item)) {
-				/*
-				 * Report ID is short item with prefix 100001xx
-				 */
-				if (!long_item && (value[i] & 0xfc) == 0x84)
-					hogdev->has_report_id = TRUE;
+		if (get_descriptor_item_info(&value[i], vlen - i, &ilen,
+								&long_item)) {
+			/* Report ID is short item with prefix 100001xx */
+			if (!long_item && (value[i] & 0xfc) == 0x84)
+				hogdev->has_report_id = TRUE;
 
-				next_item += ilen;
-			} else {
-				error("Report Map parsing failed at %d", i);
+			DBG("\t%s", item2string(itemstr, &value[i], ilen));
 
-				/*
-				 * We do not increase next_item here so we won't
-				 * parse subsequent data - this is what we want.
-				 */
-			}
-		}
+			i += ilen;
+		} else {
+			error("Report Map parsing failed at %d", i);
 
-		if (i % 2 == 0) {
-			if (i + 1 == vlen)
-				DBG("\t %02x", value[i]);
-			else
-				DBG("\t %02x %02x", value[i], value[i + 1]);
+			/* Just print remaining items at once and break */
+			DBG("\t%s", item2string(itemstr, &value[i], vlen - i));
+			break;
 		}
 	}
 
