@@ -30,8 +30,8 @@ TC_CLIENT_BCP_BV_05_I   N/A
 TC_CLIENT_CON_BV_01_C	N/A
 TC_CLIENT_OPH_BI_01_C	PASS	PTS issue: ID: 12081 (bluetooth.org)
 				ETS-12081 required
-TC_CLIENT_OPH_BV_01_I	NONE	OBEX_DISCONNECT_REQ sent on closed channel
-				PTS issue reported: ID: 12081
+TC_CLIENT_OPH_BV_01_I	PASS	PTS issue: ID: 12081.
+				ETS-12160 required
 TC_CLIENT_OPH_BV_02_I	N/A
 TC_CLIENT_OPH_BV_03_I	PASS	ETS-12081 required (bluetooth.org)
 TC_CLIENT_OPH_BV_04_I	N/A
