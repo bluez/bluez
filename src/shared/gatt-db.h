@@ -72,3 +72,15 @@ void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,
 							struct queue *queue);
+
+struct gatt_db_range {
+	uint16_t handle;
+	uint16_t end_group;
+};
+
+void gatt_db_find_by_type_value(struct gatt_db *db, uint16_t start_handle,
+							uint16_t end_handle,
+							const bt_uuid_t type,
+							const uint8_t *value,
+							uint16_t length,
+							struct queue *queue);
