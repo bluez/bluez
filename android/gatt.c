@@ -575,6 +575,13 @@ static int register_app(const uint8_t *uuid, gatt_app_type_t app_type)
 		return 0;
 	}
 
+	if ((app->type == APP_SERVER) &&
+			!queue_push_tail(listen_apps, INT_TO_PTR(app->id))) {
+		error("gatt: Cannot push server on the list");
+		destroy_gatt_app(app);
+		return 0;
+	}
+
 	return app->id;
 }
 
