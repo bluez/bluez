@@ -2662,6 +2662,12 @@ int avrcp_get_current_player_value_rsp(struct avrcp *session,
 			iov, 1 + i);
 }
 
+int avrcp_set_player_value_rsp(struct avrcp *session, uint8_t transaction)
+{
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+			AVC_SUBUNIT_PANEL, AVRCP_SET_PLAYER_VALUE, NULL, 0);
+}
+
 int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t *params, size_t params_len)
 {

@@ -466,7 +466,9 @@ static int set_value(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
-	return 0;
+	avrcp_set_player_value_rsp(session, transaction);
+
+	return -EAGAIN;
 }
 
 static int get_play_status(struct avrcp *session, uint8_t transaction,
