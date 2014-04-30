@@ -1198,6 +1198,11 @@ uint8_t bt_get_device_android_type(const bdaddr_t *addr)
 	return get_device_android_type(dev);
 }
 
+const char *bt_get_adapter_name(void)
+{
+	return adapter.name;
+}
+
 static bool rssi_above_threshold(int old, int new)
 {
 	/* only 8 dBm or more */

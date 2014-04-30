@@ -48,3 +48,4 @@ bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
 							void *user_data);
 
 uint8_t bt_get_device_android_type(const bdaddr_t *addr);
+const char *bt_get_adapter_name(void);
