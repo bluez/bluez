@@ -847,6 +847,9 @@ struct hal_cmd_gatt_server_send_indication {
 struct hal_cmd_gatt_server_send_response {
 	int32_t conn_id;
 	int32_t trans_id;
+	uint16_t handle;
+	uint16_t offset;
+	uint8_t auth_req;
 	int32_t status;
 	uint16_t len;
 	uint8_t data[0];

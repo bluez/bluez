@@ -1237,9 +1237,12 @@ static bt_status_t send_response(int conn_id, int trans_id, int status,
 	cmd->conn_id = conn_id;
 	cmd->trans_id = trans_id;
 	cmd->status = status;
-	cmd->len = sizeof(*response);
+	cmd->handle = response->attr_value.handle;
+	cmd->offset = response->attr_value.offset;
+	cmd->auth_req = response->attr_value.auth_req;
+	cmd->len = response->attr_value.len;
 
-	memcpy(cmd->data, response, sizeof(*response));
+	memcpy(cmd->data, response->attr_value.value, cmd->len);
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_SEND_RESPONSE,

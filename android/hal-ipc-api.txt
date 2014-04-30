@@ -1828,6 +1828,9 @@ Commands and responses:
 
 		Command parameters: Connection ID (4 octets)
 		                    Transaction ID (4 octets)
+		                    Handle (2 octets)
+		                    Offset (2 octets)
+		                    Auth Request (1 octect)
 		                    Status (4 octets)
 		                    GATT Response (4 octets)
 		Response parameters: <none>
