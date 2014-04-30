@@ -3764,6 +3764,51 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 	return 0;
 }
 
+static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
+					uint8_t *rsp, size_t rsp_size,
+					struct gatt_device *dev,
+					uint16_t *length)
+{
+	uint16_t mtu, imtu, omtu;
+	GIOChannel *io;
+	GError *gerr = NULL;
+	uint16_t len;
+
+	DBG("");
+
+	len = dec_mtu_req(cmd, cmd_len, &mtu);
+	if (!len)
+		return ATT_ECODE_INVALID_PDU;
+
+	if (mtu < ATT_DEFAULT_LE_MTU)
+		return ATT_ECODE_REQ_NOT_SUPP;
+
+	io = g_attrib_get_channel(dev->attrib);
+
+	bt_io_get(io, &gerr,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_OMTU, &omtu,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		return ATT_ECODE_UNLIKELY;
+	}
+
+	/* Limit OMTU to received value */
+	mtu = MIN(mtu, omtu);
+	g_attrib_set_mtu(dev->attrib, mtu);
+
+	/* Respond with our IMTU */
+	len = enc_mtu_resp(imtu, rsp, rsp_size);
+	if (!len)
+		return ATT_ECODE_UNLIKELY;
+
+	*length = len;
+
+	return 0;
+}
+
 static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 {
 	struct gatt_device *dev = user_data;
@@ -3797,6 +3842,9 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 			return;
 		break;
 	case ATT_OP_MTU_REQ:
+		status = mtu_att_handle(ipdu, len, opdu, sizeof(opdu), dev,
+								&length);
+		break;
 	case ATT_OP_FIND_INFO_REQ:
 	case ATT_OP_WRITE_REQ:
 	case ATT_OP_WRITE_CMD:
