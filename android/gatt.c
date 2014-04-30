@@ -152,7 +152,7 @@ static struct queue *gatt_apps = NULL;
 static struct queue *gatt_devices = NULL;
 static struct queue *app_connections = NULL;
 
-static struct queue *listen_clients = NULL;
+static struct queue *listen_apps = NULL;
 
 static void bt_le_discovery_stop_cb(void);
 
@@ -1379,7 +1379,7 @@ static void set_advertising_cb(uint8_t status, void *user_data)
 	 * 2. Stop succeed
 	 */
 	if ((l->start && status) || (!l->start && !status))
-		queue_remove(listen_clients, INT_TO_PTR(l->client_id));
+		queue_remove(listen_apps, INT_TO_PTR(l->client_id));
 
 	free(l);
 }
@@ -1400,7 +1400,7 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	listening_client = queue_find(listen_clients, match_by_value,
+	listening_client = queue_find(listen_apps, match_by_value,
 						INT_TO_PTR(cmd->client_if));
 	/* Start listening */
 	if (cmd->start) {
@@ -1409,7 +1409,7 @@ static void handle_client_listen(const void *buf, uint16_t len)
 			goto reply;
 		}
 
-		if (!queue_push_tail(listen_clients,
+		if (!queue_push_tail(listen_apps,
 						INT_TO_PTR(cmd->client_if))) {
 			error("gatt: Could not put client on listen queue");
 			status = HAL_STATUS_FAILED;
@@ -1417,7 +1417,7 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		}
 
 		/* If listen is already on just return success*/
-		if (queue_length(listen_clients) > 1) {
+		if (queue_length(listen_apps) > 1) {
 			status = HAL_STATUS_SUCCESS;
 			goto reply;
 		}
@@ -1434,8 +1434,8 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		 * In case there is more listening clients don't stop
 		 * advertising
 		 */
-		if (queue_length(listen_clients) > 1) {
-			queue_remove(listen_clients,
+		if (queue_length(listen_apps) > 1) {
+			queue_remove(listen_apps,
 						INT_TO_PTR(cmd->client_if));
 			status = HAL_STATUS_SUCCESS;
 			goto reply;
@@ -3502,9 +3502,9 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 	gatt_devices = queue_new();
 	gatt_apps = queue_new();
 	app_connections = queue_new();
-	listen_clients = queue_new();
+	listen_apps = queue_new();
 
-	if (!gatt_devices || !gatt_apps || !listen_clients ||
+	if (!gatt_devices || !gatt_apps || !listen_apps ||
 							!app_connections) {
 		error("gatt: Failed to allocate memory for queues");
 
@@ -3517,8 +3517,8 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 		queue_destroy(app_connections, NULL);
 		app_connections = NULL;
 
-		queue_destroy(listen_clients, NULL);
-		listen_clients = NULL;
+		queue_destroy(listen_apps, NULL);
+		listen_apps = NULL;
 
 		return false;
 	}
@@ -3549,6 +3549,6 @@ void bt_gatt_unregister(void)
 	queue_destroy(gatt_devices, destroy_device);
 	gatt_devices = NULL;
 
-	queue_destroy(listen_clients, NULL);
-	listen_clients = NULL;
+	queue_destroy(listen_apps, NULL);
+	listen_apps = NULL;
 }
