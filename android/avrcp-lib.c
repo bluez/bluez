@@ -2481,13 +2481,17 @@ int avrcp_add_to_now_playing(struct avrcp *session, uint8_t scope, uint64_t uid,
 int avrcp_get_capabilities_rsp(struct avrcp *session, uint8_t transaction,
 						uint8_t number, uint8_t *events)
 {
+	uint8_t pdu[2];
 	struct iovec iov[2];
 
 	if (number > AVRCP_EVENT_LAST)
 		return -EINVAL;
 
-	iov[0].iov_base = &number;
-	iov[0].iov_len = sizeof(number);
+	pdu[0] = CAP_EVENTS_SUPPORTED;
+	pdu[1] = number;
+
+	iov[0].iov_base = pdu;
+	iov[0].iov_len = sizeof(pdu);
 
 	iov[1].iov_base = events;
 	iov[1].iov_len = number;
