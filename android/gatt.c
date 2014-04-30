@@ -3898,6 +3898,65 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 	return 0;
 }
 
+static uint8_t write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
+						struct gatt_device *dev)
+{
+	uint8_t value[ATT_DEFAULT_LE_MTU];
+	uint16_t handle;
+	uint16_t len;
+	size_t vlen;
+
+	len = dec_write_cmd(cmd, cmd_len, &handle, value, &vlen);
+	if (!len)
+		return ATT_ECODE_INVALID_PDU;
+
+	if (!gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
+								&dev->bdaddr))
+		return ATT_ECODE_UNLIKELY;
+
+	return 0;
+}
+
+static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
+						struct gatt_device *dev)
+{
+	uint8_t value[ATT_DEFAULT_LE_MTU];
+	uint16_t handle;
+	uint16_t len;
+	size_t vlen;
+
+	len = dec_write_req(cmd, cmd_len, &handle, value, &vlen);
+	if (!len)
+		return ATT_ECODE_INVALID_PDU;
+
+	if (!gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
+								&dev->bdaddr))
+		return ATT_ECODE_UNLIKELY;
+
+	return 0;
+}
+
+static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
+						struct gatt_device *dev)
+{
+	uint8_t value[ATT_DEFAULT_LE_MTU];
+	uint16_t handle;
+	uint16_t offset;
+	uint16_t len;
+	size_t vlen;
+
+	len = dec_prep_write_req(cmd, cmd_len, &handle, &offset,
+						value, &vlen);
+	if (!len)
+		return ATT_ECODE_INVALID_PDU;
+
+	if (!gatt_db_write(gatt_db, handle, offset, value, vlen, cmd[0],
+								&dev->bdaddr))
+		return ATT_ECODE_UNLIKELY;
+
+	return 0;
+}
+
 static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 {
 	struct gatt_device *dev = user_data;
@@ -3939,14 +3998,27 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 								&length);
 		break;
 	case ATT_OP_WRITE_REQ:
+		status = write_req_request(ipdu, len, dev);
+		if (!status)
+			return;
+		break;
 	case ATT_OP_WRITE_CMD:
+		status = write_cmd_request(ipdu, len, dev);
+		if (!status)
+			return;
+		break;
+	case ATT_OP_PREP_WRITE_REQ:
+		status = write_prep_request(ipdu, len, dev);
+		if (!status)
+			return;
+		break;
+	case ATT_OP_EXEC_WRITE_REQ:
+		/* TODO */
 	case ATT_OP_FIND_BY_TYPE_REQ:
 	case ATT_OP_HANDLE_CNF:
 	case ATT_OP_HANDLE_IND:
 	case ATT_OP_HANDLE_NOTIFY:
 	case ATT_OP_READ_MULTI_REQ:
-	case ATT_OP_PREP_WRITE_REQ:
-	case ATT_OP_EXEC_WRITE_REQ:
 	default:
 		DBG("Unsupported request 0x%02x", ipdu[0]);
 		status = ATT_ECODE_REQ_NOT_SUPP;
