@@ -95,3 +95,12 @@ void gatt_db_read_by_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,
 							struct queue *queue);
+
+struct gatt_db_find_information {
+	uint16_t handle;
+	bt_uuid_t uuid;
+};
+
+void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
+							uint16_t end_handle,
+							struct queue *queue);
