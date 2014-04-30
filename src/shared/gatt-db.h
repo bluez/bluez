@@ -31,11 +31,13 @@ uint16_t gatt_db_add_service(struct gatt_db *db, const bt_uuid_t *uuid,
 bool gatt_db_remove_service(struct gatt_db *db, uint16_t handle);
 
 typedef void (*gatt_db_read_t) (uint16_t handle, uint16_t offset,
-					bdaddr_t *bdaddr, void *user_data);
+					uint8_t att_opcode, bdaddr_t *bdaddr,
+					void *user_data);
 
 typedef void (*gatt_db_write_t) (uint16_t handle, uint16_t offset,
 					const uint8_t *value, size_t len,
-					bdaddr_t *bdaddr, void *user_data);
+					uint8_t att_opcode, bdaddr_t *bdaddr,
+					void *user_data);
 
 uint16_t gatt_db_add_characteristic(struct gatt_db *db, uint16_t handle,
 						const bt_uuid_t *uuid,
