@@ -670,3 +670,39 @@ void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 
 	queue_foreach(db->services, find_information, &data);
 }
+
+static bool find_service_for_handle(const void *data, const void *user_data)
+{
+	const struct gatt_db_service *service = data;
+	uint16_t handle = PTR_TO_INT(user_data);
+	uint16_t start, end;
+
+	start = service->attributes[0]->handle;
+	end = start + service->num_handles;
+
+	return (start <= handle) && (handle < end);
+}
+
+bool gatt_db_read(struct gatt_db *db, uint16_t handle, uint16_t offset,
+				uint8_t att_opcode, bdaddr_t *bdaddr)
+{
+	struct gatt_db_service *service;
+	uint16_t service_handle;
+	struct gatt_db_attribute *a;
+
+	service = queue_find(db->services, find_service_for_handle,
+						INT_TO_PTR(handle));
+	if (!service)
+		return false;
+
+	service_handle = service->attributes[0]->handle;
+
+	a = service->attributes[handle - service_handle];
+	if (!a || !a->read_func)
+		return false;
+
+	a->read_func(handle, offset, att_opcode, bdaddr, a->user_data);
+
+
+	return true;
+}
