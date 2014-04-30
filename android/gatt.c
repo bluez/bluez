@@ -3647,10 +3647,38 @@ failed:
 
 static void handle_server_send_indication(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_server_send_indication *cmd = buf;
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
+	struct app_connection *conn;
+	uint8_t status;
+	uint16_t length;
+
 	DBG("");
 
+	conn = find_connection_by_id(cmd->conn_id);
+	if (!conn) {
+		error("gatt: Could not find connection");
+		status = HAL_STATUS_FAILED;
+		goto reply;
+	}
+
+	if (cmd->confirm)
+		/* TODO: Add data to track confirmation for this request */
+		length = enc_indication(cmd->attribute_handle,
+					(uint8_t *)cmd->value, cmd->len,
+					pdu, sizeof(pdu));
+	else
+		length = enc_notification(cmd->attribute_handle,
+						(uint8_t *)cmd->value, cmd->len,
+						pdu, sizeof(pdu));
+
+	g_attrib_send(conn->device->attrib, 0, pdu, length, NULL, NULL, NULL);
+
+	status = HAL_STATUS_SUCCESS;
+
+reply:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_SERVER_SEND_INDICATION, HAL_STATUS_FAILED);
+				HAL_OP_GATT_SERVER_SEND_INDICATION, status);
 }
 
 static void handle_server_send_response(const void *buf, uint16_t len)
