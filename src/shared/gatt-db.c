@@ -703,6 +703,30 @@ bool gatt_db_read(struct gatt_db *db, uint16_t handle, uint16_t offset,
 
 	a->read_func(handle, offset, att_opcode, bdaddr, a->user_data);
 
+	return true;
+}
+
+bool gatt_db_write(struct gatt_db *db, uint16_t handle, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t att_opcode, bdaddr_t *bdaddr)
+{
+	struct gatt_db_service *service;
+	uint16_t service_handle;
+	struct gatt_db_attribute *a;
+
+	service = queue_find(db->services, find_service_for_handle,
+						INT_TO_PTR(handle));
+	if (!service)
+		return false;
+
+	service_handle = service->attributes[0]->handle;
+
+	a = service->attributes[handle - service_handle];
+	if (!a || !a->write_func)
+		return false;
+
+	a->write_func(handle, offset, value, len, att_opcode, bdaddr,
+								a->user_data);
 
 	return true;
 }

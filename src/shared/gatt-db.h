@@ -107,3 +107,7 @@ void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 
 bool gatt_db_read(struct gatt_db *db, uint16_t handle, uint16_t offset,
 					uint8_t att_opcode, bdaddr_t *bdaddr);
+
+bool gatt_db_write(struct gatt_db *db, uint16_t handle, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t att_opcode, bdaddr_t *bdaddr);
