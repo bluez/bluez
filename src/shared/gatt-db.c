@@ -409,3 +409,73 @@ bool gatt_db_service_set_active(struct gatt_db *db, uint16_t handle,
 
 	return true;
 }
+
+struct read_by_group_type_data {
+	struct queue *queue;
+	bt_uuid_t uuid;
+	uint16_t start_handle;
+	uint16_t end_handle;
+	uint16_t uuid_size;
+	bool stop_search;
+};
+
+static void read_by_group_type(void *data, void *user_data)
+{
+	struct read_by_group_type_data *search_data = user_data;
+	struct gatt_db_service *service = data;
+	struct gatt_db_group *group;
+
+	if (!service->active)
+		return;
+
+	/* Don't want more results as they have different size */
+	if (search_data->stop_search)
+		return;
+
+	if (bt_uuid_cmp(&search_data->uuid, &service->attributes[0]->uuid))
+		return;
+
+	if (service->attributes[0]->handle < search_data->start_handle)
+		return;
+
+	/* Remember size of uuid */
+	if (!search_data->uuid_size) {
+		search_data->uuid_size = service->attributes[0]->value_len;
+	} else if (search_data->uuid_size !=
+					service->attributes[0]->value_len) {
+		/* Don't want more results. This is last */
+		search_data->stop_search = true;
+		return;
+	}
+
+	group = malloc0(sizeof(struct gatt_db_group) +
+					service->attributes[0]->value_len);
+	if (!group)
+		return;
+
+	group->len = service->attributes[0]->value_len;
+	memcpy(group->value, service->attributes[0]->value, group->len);
+	group->handle = service->attributes[0]->handle;
+	group->end_group = service->attributes[0]->handle +
+						service->num_handles - 1;
+
+	if (!queue_push_tail(search_data->queue, group))
+		free(group);
+}
+
+void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
+							uint16_t end_handle,
+							const bt_uuid_t type,
+							struct queue *queue)
+{
+	struct read_by_group_type_data data;
+
+	data.uuid = type;
+	data.start_handle = start_handle;
+	data.end_handle = end_handle;
+	data.queue = queue;
+	data.uuid_size = 0;
+	data.stop_search = false;
+
+	queue_foreach(db->services, read_by_group_type, &data);
+}

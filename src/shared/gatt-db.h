@@ -59,3 +59,16 @@ uint16_t gatt_db_add_included_service(struct gatt_db *db, uint16_t handle,
 
 bool gatt_db_service_set_active(struct gatt_db *db, uint16_t handle,
 								bool active);
+
+struct gatt_db_group {
+	uint16_t handle;
+	uint16_t end_group;
+	uint16_t len;
+	uint8_t value[0];
+};
+
+/* Returns queue with struct gatt_db_group */
+void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
+							uint16_t end_handle,
+							const bt_uuid_t type,
+							struct queue *queue);
