@@ -156,6 +156,8 @@ static struct queue *app_connections = NULL;
 static struct queue *listen_apps = NULL;
 static struct gatt_db *gatt_db = NULL;
 
+static GIOChannel *listening_io = NULL;
+
 static void bt_le_discovery_stop_cb(void);
 
 static void android2uuid(const uint8_t *uuid, bt_uuid_t *dst)
@@ -3574,9 +3576,109 @@ static const struct ipc_handler cmd_handlers[] = {
 		sizeof(struct hal_cmd_gatt_server_send_response) },
 };
 
+static void create_listen_connections(void *data, void *user_data)
+{
+	struct gatt_device *dev = user_data;
+	int32_t id = PTR_TO_INT(data);
+	struct gatt_app *app;
+
+	app = find_app_by_id(id);
+	if (app)
+		create_connection(dev, app);
+}
+
+static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
+{
+	struct gatt_device *dev;
+	uint8_t dst_type;
+	bdaddr_t dst;
+	struct connect_data data;
+
+	DBG("");
+
+	if (gerr) {
+		error("gatt: %s", gerr->message);
+		g_error_free(gerr);
+		return;
+	}
+
+	bt_io_get(io, &gerr,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST_TYPE, &dst_type,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("gatt: bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		return;
+	}
+
+	/* TODO Handle collision */
+	dev = find_device_by_addr(&dst);
+	if (!dev) {
+		dev = create_device(&dst);
+		if (!dev) {
+			error("gatt: Could not create device");
+			return;
+		}
+
+		dev->bdaddr_type = dst_type;
+	} else {
+		if (dev->state != DEVICE_DISCONNECTED) {
+			char addr[18];
+
+			ba2str(&dst, addr);
+			info("gatt: Rejecting incoming connection from %s",
+									addr);
+			return;
+		}
+	}
+
+	dev->attrib = g_attrib_new(io);
+	if (!dev->attrib) {
+		error("gatt: unable to create new GAttrib instance");
+		destroy_device(dev);
+		return;
+	}
+	dev->watch_id = g_io_add_watch(io, G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+							disconnected_cb, dev);
+
+	queue_foreach(listen_apps, create_listen_connections, dev);
+
+	data.dev = dev;
+	data.status = GATT_SUCCESS;
+	device_set_state(dev, DEVICE_CONNECTED);
+
+	queue_foreach(app_connections, send_app_connect_notifications, &data);
+
+	/* TODO: Attach to attrib db */
+}
+
+static bool start_listening_io(void)
+{
+	GError *gerr = NULL;
+
+	/* For now only listen on BLE */
+	listening_io = bt_io_listen(connect_event, NULL,
+					&listening_io, NULL, &gerr,
+					BT_IO_OPT_SOURCE_TYPE, BDADDR_LE_PUBLIC,
+					BT_IO_OPT_CID, ATT_CID,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
+	if (!listening_io) {
+		error("gatt: Failed to start listening IO (%s)", gerr->message);
+		g_error_free(gerr);
+		return false;
+	}
+
+	return true;
+}
+
 bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	DBG("");
+
+	if (!start_listening_io())
+		return false;
 
 	gatt_devices = queue_new();
 	gatt_apps = queue_new();
@@ -3602,6 +3704,9 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 
 		gatt_db_destroy(gatt_db);
 		gatt_db = NULL;
+
+		g_io_channel_unref(listening_io);
+		listening_io = NULL;
 
 		return false;
 	}
@@ -3637,4 +3742,7 @@ void bt_gatt_unregister(void)
 
 	gatt_db_destroy(gatt_db);
 	gatt_db = NULL;
+
+	g_io_channel_unref(listening_io);
+	listening_io = NULL;
 }
