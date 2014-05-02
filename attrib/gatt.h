@@ -67,6 +67,12 @@ struct gatt_char {
 	uint16_t value_handle;
 };
 
+struct gatt_desc {
+	char uuid[MAX_LEN_UUID_STR + 1];
+	uint16_t handle;
+	uint16_t uuid16;
+};
+
 guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 							gpointer user_data);
 
@@ -83,6 +89,10 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 guint gatt_write_char(GAttrib *attrib, uint16_t handle, const uint8_t *value,
 					size_t vlen, GAttribResultFunc func,
 					gpointer user_data);
+
+guint gatt_discover_desc(GAttrib *attrib, uint16_t start, uint16_t end,
+						bt_uuid_t *uuid, gatt_cb_t func,
+						gpointer user_data);
 
 guint gatt_reliable_write_char(GAttrib *attrib, uint16_t handle,
 					const uint8_t *value, size_t vlen,
