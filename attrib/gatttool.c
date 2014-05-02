@@ -400,49 +400,23 @@ error:
 	return FALSE;
 }
 
-static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
-							gpointer user_data)
+static void char_desc_cb(uint8_t status, GSList *descriptors, void *user_data)
 {
-	struct att_data_list *list;
-	guint8 format;
-	int i;
+	GSList *l;
 
-	if (status != 0) {
-		g_printerr("Discover all characteristic descriptors failed: "
-						"%s\n", att_ecode2str(status));
-		goto done;
+	if (status) {
+		g_printerr("Discover descriptors failed: %s\n",
+							att_ecode2str(status));
+		return;
 	}
 
-	list = dec_find_info_resp(pdu, plen, &format);
-	if (list == NULL)
-		goto done;
+	for (l = descriptors; l; l = l->next) {
+		struct gatt_desc *desc = l->data;
 
-	for (i = 0; i < list->num; i++) {
-		char uuidstr[MAX_LEN_UUID_STR];
-		uint16_t handle;
-		uint8_t *value;
-		bt_uuid_t uuid;
-
-		value = list->data[i];
-		handle = get_le16(value);
-
-		if (format == ATT_FIND_INFO_RESP_FMT_16BIT)
-			bt_uuid16_create(&uuid, get_le16(&value[2]));
-		else {
-			uint128_t u128;
-
-			/* Converts from LE to BE byte order */
-			bswap_128(&value[2], &u128);
-			bt_uuid128_create(&uuid, u128);
-		}
-
-		bt_uuid_to_string(&uuid, uuidstr, MAX_LEN_UUID_STR);
-		g_print("handle = 0x%04x, uuid = %s\n", handle, uuidstr);
+		g_print("handle = 0x%04x, uuid = %s\n", desc->handle,
+								desc->uuid);
 	}
 
-	att_data_list_free(list);
-
-done:
 	if (!opt_listen)
 		g_main_loop_quit(event_loop);
 }
@@ -451,7 +425,8 @@ static gboolean characteristics_desc(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	gatt_discover_char_desc(attrib, opt_start, opt_end, char_desc_cb, NULL);
+	gatt_discover_desc(attrib, opt_start, opt_end, NULL, char_desc_cb,
+									NULL);
 
 	return FALSE;
 }
