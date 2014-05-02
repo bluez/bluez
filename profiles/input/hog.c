@@ -102,11 +102,6 @@ struct report {
 	struct hog_device	*hogdev;
 };
 
-struct disc_desc_cb_data {
-	uint16_t end;
-	gpointer data;
-};
-
 static gboolean suspend_supported = FALSE;
 static GSList *devices = NULL;
 
@@ -202,7 +197,6 @@ static void external_report_reference_cb(guint8 status, const guint8 *pdu,
 static void discover_descriptor_cb(uint8_t status, GSList *descs,
 								void *user_data)
 {
-	struct disc_desc_cb_data *ddcb_data = user_data;
 	struct report *report;
 	struct hog_device *hogdev;
 	GAttrib *attrib = NULL;
@@ -210,7 +204,7 @@ static void discover_descriptor_cb(uint8_t status, GSList *descs,
 	if (status != 0) {
 		error("Discover all descriptors failed: %s",
 							att_ecode2str(status));
-		goto done;
+		return;
 	}
 
 	for ( ; descs; descs = descs->next) {
@@ -218,43 +212,34 @@ static void discover_descriptor_cb(uint8_t status, GSList *descs,
 
 		switch (desc->uuid16) {
 		case GATT_CLIENT_CHARAC_CFG_UUID:
-			report = ddcb_data->data;
+			report = user_data;
 			attrib = report->hogdev->attrib;
 			write_ccc(desc->handle, report);
 			break;
 		case GATT_REPORT_REFERENCE:
-			report = ddcb_data->data;
+			report = user_data;
 			attrib = report->hogdev->attrib;
 			gatt_read_char(attrib, desc->handle,
 						report_reference_cb, report);
 			break;
 		case GATT_EXTERNAL_REPORT_REFERENCE:
-			hogdev = ddcb_data->data;
+			hogdev = user_data;
 			attrib = hogdev->attrib;
 			gatt_read_char(attrib, desc->handle,
 					external_report_reference_cb, hogdev);
 			break;
 		}
 	}
-
-done:
-	g_free(ddcb_data);
 }
 
 static void discover_descriptor(GAttrib *attrib, uint16_t start, uint16_t end,
 							gpointer user_data)
 {
-	struct disc_desc_cb_data *ddcb_data;
-
 	if (start > end)
 		return;
 
-	ddcb_data = g_new0(struct disc_desc_cb_data, 1);
-	ddcb_data->end = end;
-	ddcb_data->data = user_data;
-
 	gatt_discover_desc(attrib, start, end, NULL,
-					discover_descriptor_cb, ddcb_data);
+					discover_descriptor_cb, user_data);
 }
 
 static void external_service_char_cb(uint8_t status, GSList *chars,
