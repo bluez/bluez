@@ -1489,13 +1489,19 @@ done:
 int avrcp_get_player_attribute_text(struct avrcp *session, uint8_t number,
 								uint8_t *attrs)
 {
-	struct iovec iov;
+	struct iovec iov[2];
 
-	iov.iov_base = attrs;
-	iov.iov_len = number;
+	if (!number || number > AVRCP_ATTRIBUTE_LAST)
+		return -EINVAL;
+
+	iov[0].iov_base = &number;
+	iov[0].iov_len = sizeof(number);
+
+	iov[1].iov_base = attrs;
+	iov[1].iov_len = number;
 
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
-				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT, &iov, 1,
+				AVRCP_GET_PLAYER_ATTRIBUTE_TEXT, iov, 2,
 				get_attribute_text_rsp, session);
 }
 
