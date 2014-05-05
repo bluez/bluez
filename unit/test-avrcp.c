@@ -472,7 +472,8 @@ static int get_value(struct avrcp *session, uint8_t transaction,
 }
 
 static int set_value(struct avrcp *session, uint8_t transaction,
-			uint8_t number, uint8_t *attrs, void *user_data)
+			uint8_t number, uint8_t *attrs, uint8_t *values,
+			void *user_data)
 {
 	DBG("");
 
