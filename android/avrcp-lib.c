@@ -1703,9 +1703,6 @@ static gboolean set_value_rsp(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->player;
 	struct avrcp_header *pdu;
-	uint8_t number = 0;
-	uint8_t attrs[AVRCP_ATTRIBUTE_LAST];
-	uint8_t values[AVRCP_ATTRIBUTE_LAST];
 	int err;
 
 	DBG("");
@@ -1724,11 +1721,10 @@ static gboolean set_value_rsp(struct avctp *conn,
 		goto done;
 	}
 
-	err = parse_value(pdu, &number, attrs, values);
+	err = 0;
 
 done:
-	player->cfm->set_value(session, err, number, attrs, values,
-							player->user_data);
+	player->cfm->set_value(session, err, player->user_data);
 
 	return FALSE;
 }

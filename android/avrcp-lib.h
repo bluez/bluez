@@ -199,9 +199,7 @@ struct avrcp_control_cfm {
 	void (*get_value) (struct avrcp *session, int err,
 					uint8_t number, uint8_t *attrs,
 					uint8_t *values, void *user_data);
-	void (*set_value) (struct avrcp *session, int err,
-					uint8_t number, uint8_t *attrs,
-					uint8_t *values, void *user_data);
+	void (*set_value) (struct avrcp *session, int err, void *user_data);
 	void (*get_play_status) (struct avrcp *session, int err,
 					uint8_t status, uint32_t position,
 					uint32_t duration, void *user_data);
