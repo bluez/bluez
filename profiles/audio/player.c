@@ -1013,6 +1013,14 @@ static DBusMessage *media_folder_change_folder(DBusConnection *conn,
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
+	/*
+	 * ChangePath can only navigate one level up/down so check if folder
+	 * is direct child or parent of the current folder otherwise fail.
+	 */
+	if (!g_slist_find(mp->folder->subfolders, folder) &&
+				!g_slist_find(folder->subfolders, mp->folder))
+		return btd_error_invalid_args(msg);
+
 	if (cb->cbs->change_folder == NULL)
 		return btd_error_not_supported(msg);
 
