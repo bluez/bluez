@@ -1,0 +1,91 @@
+SM PICS for the PTS tool.
+
+PTS version: 5.1
+
+* - different than PTS defaults
+
+M - mandatory
+O - optional
+
+		Connection Roles
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_SM_1_1	True		Master Role (Initiator) (C.1)
+TSPC_SM_1_2	True		Slave Role (Responder) (C.1)
+-------------------------------------------------------------------------------
+C.1: At least one of these features shall be supported.
+-------------------------------------------------------------------------------
+
+
+		Security Properties
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_SM_2_1	True		Authenticated MITM protection (O)
+TSPC_SM_2_2	True		Unauthenticated no MITM protection (C.1)
+TSPC_SM_2_3	True		No security requirements (M)
+TSPC_SM_2_4	True		OOB supported (O)
+-------------------------------------------------------------------------------
+C.1: If TSPC_SM_2_1 is supported then Mandatory, else Optional
+-------------------------------------------------------------------------------
+
+
+		Encryption Key Size
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_SM_3_1	True		Encryption Key Size Negotiation (M)
+-------------------------------------------------------------------------------
+
+
+		Pairing Method
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_SM_4_1	True		Just Works (O)
+TSPC_SM_4_2	True		Passkey Entry (C.1)
+TSPC_SM_4_3	True		Out of Band (C.1)
+-------------------------------------------------------------------------------
+C.1: If TSPC_SM_2_1 is supported, at least one of these features shall be
+	supported.
+-------------------------------------------------------------------------------
+
+
+		Security Initiation
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_SM_5_1	True		Encryption Setup using STK (C.3)
+TSPC_SM_5_2	True		Encryption Setup using LTK (O)
+TSPC_SM_5_3	True		Slave Initiated Security (C.1)
+TSPC_SM_5_4	True		Slave Initiated Security – Master response(C.2)
+-------------------------------------------------------------------------------
+C.1: Mandatory if TSPC_SM_1_2 is supported, otherwise Excluded
+C.2: Mandatory if TSPC_SM_1_1 is supported, otherwise Excluded
+C.3: Mandatory IF TSPC_SM_2_1 OR TSPC_SM_2_1 OR TSPC_SM_2_4 is supported,
+	otherwise Excluded
+-------------------------------------------------------------------------------
+
+
+		Signing Algorithm
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_SM_6_1	True		Signing Algorithm - Generation (O)
+TSPC_SM_6_2	True		Signing Algorithm - Resolving (O)
+-------------------------------------------------------------------------------
+
+
+		Key Distribution
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_SM_7_1	True		Encryption Key (C.1)
+TSPC_SM_7_2	True		Identity Key (C.2)
+TSPC_SM_7_3	True		Signing Key (C.3)
+-------------------------------------------------------------------------------
+C.1: Mandatory if GAP (24/2 OR 42/6) is supported, ELSE Optional
+C.2: Mandatory if GAP (26/3) is supported, ELSE Optional
+C.3: Mandatory if GAP (25/6 OR 35/6) is supported, ELSE Optional
+-------------------------------------------------------------------------------
