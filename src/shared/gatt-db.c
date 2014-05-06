@@ -162,7 +162,7 @@ uint16_t gatt_db_add_service(struct gatt_db *db, const bt_uuid_t *uuid,
 	uint8_t value[16];
 	uint16_t len;
 
-	if (num_handles < 1)
+	if (num_handles < 1 || (num_handles + db->next_handle) > UINT16_MAX)
 		return 0;
 
 	service = new0(struct gatt_db_service, 1);
