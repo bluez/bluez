@@ -778,8 +778,7 @@ static void send_client_primary_notify(void *data, void *user_data)
 	uuid2android(&p->id.uuid, ev.srvc_id.uuid);
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
-					HAL_EV_GATT_CLIENT_SEARCH_RESULT,
-					sizeof(ev), &ev);
+			HAL_EV_GATT_CLIENT_SEARCH_RESULT, sizeof(ev), &ev);
 }
 
 static void send_client_all_primary(struct app_connection *connection,
@@ -796,7 +795,6 @@ static void send_client_all_primary(struct app_connection *connection,
 	ev.conn_id = connection->id;
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
 			HAL_EV_GATT_CLIENT_SEARCH_COMPLETE, sizeof(ev), &ev);
-
 }
 
 static struct service *create_service(uint8_t id, bool primary, char *uuid,
@@ -1379,7 +1377,7 @@ static void handle_client_disconnect(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_CLIENT_DISCONNECT, status);
+					HAL_OP_GATT_CLIENT_DISCONNECT, status);
 }
 
 static void send_client_listen_notify(int32_t id, int32_t status)
@@ -1390,9 +1388,8 @@ static void send_client_listen_notify(int32_t id, int32_t status)
 	ev.server_if = id;
 	ev.status = status;
 
-	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
-						HAL_EV_GATT_CLIENT_LISTEN,
-						sizeof(ev), &ev);
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT, HAL_EV_GATT_CLIENT_LISTEN,
+							sizeof(ev), &ev);
 }
 
 struct listen_data {
@@ -1833,8 +1830,7 @@ static void send_client_char_notify(const struct characteristic *ch,
 					sizeof(ev), &ev);
 }
 
-static void cache_all_srvc_chars(struct service *srvc,
-							GSList *characteristics)
+static void cache_all_srvc_chars(struct service *srvc, GSList *characteristics)
 {
 	uint16_t inst_id = 0;
 	bt_uuid_t uuid;
@@ -2397,7 +2393,6 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 	status = HAL_STATUS_SUCCESS;
 
 failed:
-
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 			HAL_OP_GATT_CLIENT_WRITE_CHARACTERISTIC, status);
 
@@ -2940,8 +2935,7 @@ failed:
 	send_register_for_notification_ev(conn_id, 1, gatt_status,
 						&cmd->srvc_id, &cmd->char_id);
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-				HAL_OP_GATT_CLIENT_REGISTER_FOR_NOTIFICATION,
-				status);
+			HAL_OP_GATT_CLIENT_REGISTER_FOR_NOTIFICATION, status);
 }
 
 static void handle_client_deregister_for_notification(const void *buf,
@@ -2988,8 +2982,7 @@ failed:
 						&cmd->srvc_id, &cmd->char_id);
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-				HAL_OP_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION,
-				status);
+			HAL_OP_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION, status);
 }
 
 static void handle_client_read_remote_rssi(const void *buf, uint16_t len)
