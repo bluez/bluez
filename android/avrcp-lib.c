@@ -1600,15 +1600,19 @@ int avrcp_get_player_value_text(struct avrcp *session, uint8_t attr,
 					uint8_t number, uint8_t *values)
 {
 	struct iovec iov[2];
+	uint8_t pdu[2];
 
 	if (!number)
 		return -EINVAL;
 
-	iov[0].iov_base = &attr;
-	iov[0].iov_len = sizeof(attr);
+	pdu[0] = attr;
+	pdu[1] = number;
+
+	iov[0].iov_base = pdu;
+	iov[0].iov_len = sizeof(pdu);
 
 	iov[1].iov_base = values;
-	iov[0].iov_len = number;
+	iov[1].iov_len = number;
 
 	return avrcp_send_req(session, AVC_CTYPE_STATUS, AVC_SUBUNIT_PANEL,
 					AVRCP_GET_PLAYER_VALUE_TEXT, iov, 2,
