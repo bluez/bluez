@@ -742,6 +742,14 @@ static void test_client(gconstpointer data)
 		avrcp_list_player_values(context->session,
 						AVRCP_ATTRIBUTE_EQUALIZER);
 
+	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-07-C")) {
+		uint8_t values[2] = { AVRCP_EQUALIZER_OFF, AVRCP_EQUALIZER_ON };
+
+		avrcp_get_player_value_text(context->session,
+						AVRCP_ATTRIBUTE_EQUALIZER,
+						sizeof(values), values);
+	}
+
 	if (g_str_equal(context->data->test_name, "/TP/PAS/BV-09-C")) {
 		uint8_t attrs[2] = { AVRCP_ATTRIBUTE_EQUALIZER,
 						AVRCP_ATTRIBUTE_REPEAT_MODE };
@@ -1252,6 +1260,15 @@ int main(int argc, char *argv[])
 				0x00, 0x19, 0x58,
 				AVRCP_LIST_PLAYER_VALUES,
 				0x00, 0x00, 0x01, 0x00));
+
+	define_test("/TP/PAS/BV-07-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
+				0x00, 0x19, 0x58,
+				AVRCP_GET_PLAYER_VALUE_TEXT,
+				0x00, 0x00, 0x04,
+				AVRCP_ATTRIBUTE_EQUALIZER, 0x02,
+				AVRCP_EQUALIZER_OFF,
+				AVRCP_EQUALIZER_ON));
 
 	define_test("/TP/PAS/BV-08-C", test_server,
 			raw_pdu(0x00, 0x11, 0x0e, 0x01, 0x48, 0x00,
