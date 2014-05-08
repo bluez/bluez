@@ -172,7 +172,7 @@ static bool hidp_send_message(GIOChannel *chan, uint8_t hdr,
 		return false;
 	}
 
-	if ((size_t)len < size) {
+	if ((size_t) len < size) {
 		error("BT socket write error: partial write (%zd of %zu bytes)",
 								len, size);
 		return false;
@@ -227,7 +227,7 @@ static bool uhid_send_feature_answer(struct input_device *idev,
 	}
 
 	/* uHID kernel driver does not handle partial writes */
-	if ((size_t)len < sizeof(ev)) {
+	if ((size_t) len < sizeof(ev)) {
 		error("uHID dev write error: partial write (%zd of %lu bytes)",
 							len, sizeof(ev));
 		return false;
@@ -269,7 +269,7 @@ static bool uhid_send_input_report(struct input_device *idev,
 	}
 
 	/* uHID kernel driver does not handle partial writes */
-	if ((size_t)len < sizeof(ev)) {
+	if ((size_t) len < sizeof(ev)) {
 		error("uHID dev write error: partial write (%zd of %lu bytes)",
 							len, sizeof(ev));
 		return false;
@@ -680,7 +680,7 @@ static gboolean uhid_watch_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	if ((size_t)len < sizeof(ev.type)) {
+	if ((size_t) len < sizeof(ev.type)) {
 		error("uHID dev read returned too few bytes");
 		goto failed;
 	}
@@ -698,7 +698,8 @@ static gboolean uhid_watch_cb(GIOChannel *chan, GIOCondition cond,
 		 * simply keep the hardware alive during transitions and it
 		 * works just fine.
 		 * The kernel never destroys a device itself! Only an explicit
-		 * UHID_DESTROY request can remove a device. */
+		 * UHID_DESTROY request can remove a device.
+		 */
 		break;
 	case UHID_OPEN:
 	case UHID_CLOSE:
@@ -709,7 +710,8 @@ static gboolean uhid_watch_cb(GIOChannel *chan, GIOCondition cond,
 		 * asleep This is optional, though. Moreover, some
 		 * special device drivers are buggy in that regard, so
 		 * maybe we just keep I/O always awake like HIDP in the
-		 * kernel does. */
+		 * kernel does.
+		 */
 		break;
 	case UHID_OUTPUT:
 		hidp_send_set_report(idev, &ev);
@@ -725,7 +727,8 @@ static gboolean uhid_watch_cb(GIOChannel *chan, GIOCondition cond,
 		 * the output-reports and send it to us via UHID_OUTPUT.
 		 * We never implemented this, so we rely on users to use
 		 * recent-enough kernels if they want this feature. No reason
-		 * to implement this for older kernels. */
+		 * to implement this for older kernels.
+		 */
 		DBG("Unsupported uHID output event: type %u code %u value %d",
 				ev.u.output_ev.type, ev.u.output_ev.code,
 				ev.u.output_ev.value);
@@ -1249,12 +1252,12 @@ static int dev_connect(struct input_device *idev)
 		bt_clear_cached_session(&idev->src, &idev->dst);
 
 	io = bt_io_connect(control_connect_cb, idev,
-			NULL, &err,
-			BT_IO_OPT_SOURCE_BDADDR, &idev->src,
-			BT_IO_OPT_DEST_BDADDR, &idev->dst,
-			BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
-			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-			BT_IO_OPT_INVALID);
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
+				BT_IO_OPT_DEST_BDADDR, &idev->dst,
+				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
 	idev->ctrl_io = io;
 
 	if (err == NULL)
@@ -1272,8 +1275,9 @@ static gboolean input_device_auto_reconnect(gpointer user_data)
 
 	DBG("path=%s, attempt=%d", idev->path, idev->reconnect_attempt);
 
-	/* Stop the recurrent reconnection attempts if the device is reconnected
-	 * or is marked for removal. */
+	/* Stop the recurrent reconnection attempts if the device is
+	 * reconnected or is marked for removal.
+	 */
 	if (device_is_temporary(idev->device) ||
 					btd_device_is_connected(idev->device))
 		return FALSE;
@@ -1312,14 +1316,16 @@ static void input_device_enter_reconnect_mode(struct input_device *idev)
 	DBG("path=%s reconnect_mode=%s", idev->path,
 				reconnect_mode_to_string(idev->reconnect_mode));
 
-	/* Only attempt an auto-reconnect when the device is required to accept
-	 * reconnections from the host. */
+	/* Only attempt an auto-reconnect when the device is required to
+	 * accept reconnections from the host.
+	 */
 	if (idev->reconnect_mode != RECONNECT_ANY &&
 				idev->reconnect_mode != RECONNECT_HOST)
 		return;
 
-	/* If the device is temporary we are not required to reconnect with the
-	 * device. This is likely the case of a removing device. */
+	/* If the device is temporary we are not required to reconnect
+	 * with the device. This is likely the case of a removing device.
+	 */
 	if (device_is_temporary(idev->device) ||
 					btd_device_is_connected(idev->device))
 		return;
@@ -1556,17 +1562,15 @@ static int input_device_connadd(struct input_device *idev)
 	int err;
 
 	err = input_device_connected(idev);
-	if (err < 0)
-		goto error;
+	if (err == 0)
+		return 0;
 
-	return 0;
-
-error:
 	if (idev->ctrl_io) {
 		g_io_channel_shutdown(idev->ctrl_io, FALSE, NULL);
 		g_io_channel_unref(idev->ctrl_io);
 		idev->ctrl_io = NULL;
 	}
+
 	if (idev->intr_io) {
 		g_io_channel_shutdown(idev->intr_io, FALSE, NULL);
 		g_io_channel_unref(idev->intr_io);
