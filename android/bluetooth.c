@@ -933,18 +933,15 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 						sizeof(hal_ev), &hal_ev);
 }
 
-static void send_ssp_request(const bdaddr_t *addr, uint8_t variant,
+static void send_ssp_request(struct device *dev, uint8_t variant,
 							uint32_t passkey)
 {
 	struct hal_ev_ssp_request ev;
 
-	/*
-	 * It is ok to have empty name and CoD of remote devices here since
-	 * those information has been already provided on device_connected event
-	 * or during device scaning. Android will use that instead.
-	 */
-	memset(&ev, 0, sizeof(ev));
-	bdaddr2android(addr, ev.bdaddr);
+	bdaddr2android(&dev->bdaddr, ev.bdaddr);
+	memcpy(ev.name, dev->name, strlen(dev->name));
+	ev.class_of_dev = dev->class;
+
 	ev.pairing_variant = variant;
 	ev.passkey = passkey;
 
@@ -974,10 +971,9 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	set_device_bond_state(dev, HAL_STATUS_SUCCESS, HAL_BOND_STATE_BONDING);
 
 	if (ev->confirm_hint)
-		send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_CONSENT, 0);
+		send_ssp_request(dev, HAL_SSP_VARIANT_CONSENT, 0);
 	else
-		send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_CONFIRM,
-								ev->value);
+		send_ssp_request(dev, HAL_SSP_VARIANT_CONFIRM, ev->value);
 }
 
 static void user_passkey_request_callback(uint16_t index, uint16_t length,
@@ -1001,7 +997,7 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 
 	set_device_bond_state(dev, HAL_STATUS_SUCCESS, HAL_BOND_STATE_BONDING);
 
-	send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_ENTRY, 0);
+	send_ssp_request(dev, HAL_SSP_VARIANT_ENTRY, 0);
 }
 
 static void user_passkey_notify_callback(uint16_t index, uint16_t length,
@@ -1030,7 +1026,7 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 
 	set_device_bond_state(dev, HAL_STATUS_SUCCESS, HAL_BOND_STATE_BONDING);
 
-	send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_NOTIF, ev->passkey);
+	send_ssp_request(dev, HAL_SSP_VARIANT_NOTIF, ev->passkey);
 }
 
 static void clear_device_found(gpointer data, gpointer user_data)
