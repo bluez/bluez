@@ -3103,6 +3103,8 @@ static void handle_server_connect(const void *buf, uint16_t len)
 
 	DBG("");
 
+	android2bdaddr(&cmd->bdaddr, &addr);
+
 	status = handle_connect(cmd->server_if, &addr);
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_CONNECT,
