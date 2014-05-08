@@ -3157,19 +3157,15 @@ static void handle_create_bond_cmd(const void *buf, uint16_t len)
 	cp.io_cap = DEFAULT_IO_CAPABILITY;
 	android2bdaddr(cmd->bdaddr, &cp.addr.bdaddr);
 
-	dev = find_device(&cp.addr.bdaddr);
+	/* type is used only as fallback when device is not in cache */
+	dev = get_device(&cp.addr.bdaddr, BDADDR_BREDR);
 
-	if (dev) {
-		if (dev->bond_state != HAL_BOND_STATE_NONE) {
-			status = HAL_STATUS_FAILED;
-			goto fail;
-		}
-
-		cp.addr.type = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
-	} else {
-		/* Fallback to BREDR if device is unknown eg. OOB */
-		cp.addr.type = BDADDR_BREDR;
+	if (dev->bond_state != HAL_BOND_STATE_NONE) {
+		status = HAL_STATUS_FAILED;
+		goto fail;
 	}
+
+	cp.addr.type = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
 
 	if (mgmt_send(mgmt_if, MGMT_OP_PAIR_DEVICE, adapter.index, sizeof(cp),
 				&cp, pair_device_complete, NULL, NULL) == 0) {
@@ -3179,9 +3175,7 @@ static void handle_create_bond_cmd(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 
-	if (dev)
-		set_device_bond_state(dev, HAL_STATUS_SUCCESS,
-							HAL_BOND_STATE_BONDING);
+	set_device_bond_state(dev, HAL_STATUS_SUCCESS, HAL_BOND_STATE_BONDING);
 
 fail:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CREATE_BOND,
