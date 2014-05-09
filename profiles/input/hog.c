@@ -76,6 +76,7 @@
 
 #define HOG_REPORT_MAP_MAX_SIZE        512
 #define HID_INFO_SIZE			4
+#define ATT_NOTIFICATION_HEADER_SIZE	3
 
 struct hog_device {
 	uint16_t		id;
@@ -110,27 +111,31 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 	struct report *report = user_data;
 	struct hog_device *hogdev = report->hogdev;
 	struct uhid_event ev;
-	uint16_t report_size = len - 3;
 	uint8_t *buf;
 	ssize_t status;
 
-	if (len < 3) { /* 1-byte opcode + 2-byte handle */
+	if (len < ATT_NOTIFICATION_HEADER_SIZE) {
 		error("Malformed ATT notification");
 		return;
 	}
 
+	pdu += ATT_NOTIFICATION_HEADER_SIZE;
+	len -= ATT_NOTIFICATION_HEADER_SIZE;
+
 	memset(&ev, 0, sizeof(ev));
 	ev.type = UHID_INPUT;
-	ev.u.input.size = MIN(report_size, UHID_DATA_MAX);
-
 	buf = ev.u.input.data;
-	if (hogdev->has_report_id) {
-		*buf = report->id;
-		buf++;
-		ev.u.input.size++;
-	}
 
-	memcpy(buf, &pdu[3], MIN(report_size, UHID_DATA_MAX));
+	if (hogdev->has_report_id) {
+		buf[0] = report->id;
+		len = MIN(len, sizeof(ev.u.input.data) - 1);
+		memcpy(buf + 1, pdu, len);
+		ev.u.input.size = ++len;
+	} else {
+		len = MIN(len, sizeof(ev.u.input.data));
+		memcpy(buf, pdu, len);
+		ev.u.input.size = len;
+	}
 
 	status = write(hogdev->uhid_fd, &ev, sizeof(ev));
 	if (status < 0) {
