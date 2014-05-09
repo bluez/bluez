@@ -112,6 +112,7 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 	struct uhid_event ev;
 	uint16_t report_size = len - 3;
 	uint8_t *buf;
+	ssize_t status;
 
 	if (len < 3) { /* 1-byte opcode + 2-byte handle */
 		error("Malformed ATT notification");
@@ -131,11 +132,21 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 
 	memcpy(buf, &pdu[3], MIN(report_size, UHID_DATA_MAX));
 
-	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
-		error("uHID write failed: %s", strerror(errno));
-	else
-		DBG("Report from HoG device 0x%04X written to uHID fd %d",
-						hogdev->id, hogdev->uhid_fd);
+	status = write(hogdev->uhid_fd, &ev, sizeof(ev));
+	if (status < 0) {
+		error("uHID dev write error: %s (%d)", strerror(errno), errno);
+		return;
+	}
+
+	/* uHID kernel driver does not handle partial writes */
+	if ((size_t) status < sizeof(ev)) {
+		error("uHID dev write error: partial write (%zd of %lu bytes)",
+							status, sizeof(ev));
+		return;
+	}
+
+	DBG("HoG report (%u bytes) -> uHID fd %d", ev.u.input.size,
+							hogdev->uhid_fd);
 }
 
 static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
