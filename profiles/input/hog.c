@@ -105,8 +105,7 @@ struct report {
 static gboolean suspend_supported = FALSE;
 static GSList *devices = NULL;
 
-static void report_value_cb(const uint8_t *pdu, uint16_t len,
-							gpointer user_data)
+static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 {
 	struct report *report = user_data;
 	struct hog_device *hogdev = report->hogdev;
