@@ -2597,8 +2597,8 @@ int avrcp_get_play_status_rsp(struct avrcp *session, uint8_t transaction,
 	struct iovec iov;
 	uint8_t pdu[9];
 
-	put_be32(position, &pdu[0]);
-	put_be32(duration, &pdu[4]);
+	put_be32(duration, &pdu[0]);
+	put_be32(position, &pdu[4]);
 	pdu[8] = status;
 
 	iov.iov_base = &pdu;
