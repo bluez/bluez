@@ -169,6 +169,20 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hardware/hardware.h \
 					android/system/audio.h
 
+android_audio_sco_default_la_SOURCES = android/hal-log.h \
+					android/hal-sco.c \
+					android/hardware/audio.h \
+					android/hardware/audio_effect.h \
+					android/hardware/hardware.h \
+					android/system/audio.h
+
+android_audio_sco_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+
+android_audio_sco_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
+					-no-undefined -lrt
+
+plugin_LTLIBRARIES += android/audio.sco.default.la
+
 unit_tests += android/test-ipc
 
 android_test_ipc_SOURCES = android/test-ipc.c \
