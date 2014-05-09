@@ -896,8 +896,9 @@ static bool connect_sco(void)
 	if (device.sco)
 		return false;
 
-	if ((device.features & HFP_HF_FEAT_CODEC) &&
-				device.negotiated_codec != CODEC_ID_CVSD)
+	if (!(device.features & HFP_HF_FEAT_CODEC))
+		voice_settings = 0;
+	else if (device.negotiated_codec != CODEC_ID_CVSD)
 		voice_settings = BT_VOICE_TRANSPARENT;
 	else
 		voice_settings = BT_VOICE_CVSD_16BIT;
