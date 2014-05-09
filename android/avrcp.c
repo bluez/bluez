@@ -271,8 +271,6 @@ static void handle_register_notification(const void *buf, uint16_t len)
 	struct hal_cmd_avrcp_register_notification *cmd = (void *) buf;
 	uint8_t status;
 	struct avrcp_request *req;
-	uint8_t pdu[IPC_MTU];
-	size_t pdu_len;
 	uint8_t code;
 	bool peek = false;
 	int ret;
@@ -298,24 +296,10 @@ static void handle_register_notification(const void *buf, uint16_t len)
 		goto done;
 	}
 
-	pdu[0] = cmd->event;
-	pdu_len = 1;
-
-	switch (cmd->event) {
-	case AVRCP_EVENT_STATUS_CHANGED:
-	case AVRCP_EVENT_TRACK_CHANGED:
-	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
-		memcpy(&pdu[1], cmd->data, cmd->len);
-		pdu_len += cmd->len;
-		break;
-	default:
-		status = HAL_STATUS_FAILED;
-		goto done;
-	}
-
 	ret = avrcp_register_notification_rsp(req->dev->session,
 						req->transaction, code,
-						pdu, pdu_len);
+						cmd->event, cmd->data,
+						cmd->len);
 	if (ret < 0) {
 		status = HAL_STATUS_FAILED;
 		if (!peek)

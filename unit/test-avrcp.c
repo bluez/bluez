@@ -520,40 +520,42 @@ static int register_notification(struct avrcp *session, uint8_t transaction,
 					void *user_data)
 {
 	struct context *context = user_data;
-	uint8_t pdu[9];
-	size_t pdu_len;
+	uint64_t track;
+	uint8_t settings[3];
+	void *data;
+	size_t len;
 
 	DBG("");
-
-	pdu[0] = event;
-	pdu_len = 1;
 
 	switch (event) {
 	case AVRCP_EVENT_TRACK_CHANGED:
 		if (g_str_equal(context->data->test_name, "/TP/NFY/BV-05-C") ||
 			g_str_equal(context->data->test_name,
 							"/TP/NFY/BV-08-C"))
-			memset(&pdu[1], 0, 8);
+			memset(&track, 0, sizeof(track));
 		else
-			memset(&pdu[1], 0xff, 8);
+			memset(&track, 0xff, sizeof(track));
 
-		pdu_len += 8;
+		data = &track;
+		len = sizeof(track);
 		break;
 	case AVRCP_EVENT_SETTINGS_CHANGED:
-		pdu[1] = 0x01;
-		pdu[2] = 0x01;
-		pdu[3] = 0x02;
-		pdu_len = 4;
+		settings[0] = 0x01;
+		settings[1] = 0x01;
+		settings[2] = 0x02;
+
+		data = settings;
+		len = sizeof(settings);
 		break;
 	default:
 		return -EINVAL;
 	}
 
 	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
-						pdu, pdu_len);
+							event, data, len);
 
 	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
-						pdu, pdu_len);
+							event, data, len);
 
 	return -EAGAIN;
 }

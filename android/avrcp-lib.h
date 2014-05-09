@@ -313,8 +313,8 @@ int avrcp_set_player_value_rsp(struct avrcp *session, uint8_t transaction);
 int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t *params, size_t params_len);
 int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
-					uint8_t code, uint8_t *params,
-					size_t params_len);
+					uint8_t code, uint8_t event,
+					void *data, size_t len);
 int avrcp_set_volume_rsp(struct avrcp *session, uint8_t transaction,
 							uint8_t volume);
 int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
