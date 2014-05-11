@@ -246,6 +246,7 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pixit-hdp.txt \
 				android/pixit-iopt.txt \
 				android/pixit-sm.txt \
+				android/bite-rfcomm.txt \
 				android/pts-l2cap.txt \
 				android/pts-gap.txt \
 				android/pts-did.txt \

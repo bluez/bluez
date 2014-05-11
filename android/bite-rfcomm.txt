@@ -1,0 +1,35 @@
+
+BITE test results for RFCOMM
+
+Results:
+PASS	test passed
+FAIL	test failed
+INC	test is inconclusive
+N/A	test is disabled due to PICS setup
+
+-------------------------------------------------------------------------------
+Test Name	Result	Notes
+-------------------------------------------------------------------------------
+TP/RFC/BV-01-C	PASS
+TP/RFC/BV-02-C	PASS
+TP/RFC/BV-03-C	PASS
+TP/RFC/BV-04-C	PASS
+TP/RFC/BV-05-C	PASS
+TP/RFC/BV-06-C	PASS
+TP/RFC/BV-07-C	PASS
+TP/RFC/BV-08-C	PASS
+TP/RFC/BV-09-C	PASS
+TP/RFC/BV-10-C	PASS
+TP/RFC/BV-11-C	PASS
+TP/RFC/BV-12-C	PASS
+TP/RFC/BV-13-C	PASS
+TP/RFC/BV-14-C	PASS
+TP/RFC/BV-15-C	PASS
+TP/RFC/BV-17-C	PASS
+TP/RFC/BV-19-C	PASS
+TP/RFC/BV-20-C	PASS
+TP/RFC/BV-21-C	PASS
+TP/RFC/BV-22-C	PASS
+TP/RFC/BV-23-C	PASS
+TP/RFC/BV-24-C	PASS
+-------------------------------------------------------------------------------
