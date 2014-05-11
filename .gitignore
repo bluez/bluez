@@ -61,6 +61,7 @@ tools/avtest
 tools/bdaddr
 tools/bluemoon
 tools/seq2bseq
+tools/hex2hcd
 tools/btiotest
 tools/mpris-player
 tools/bluetooth-player
