@@ -207,6 +207,7 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/init.bluetooth.rc \
 				android/hal-ipc-api.txt \
 				android/audio-ipc-api.txt \
+				android/pics-rfcomm.txt \
 				android/pics-l2cap.txt \
 				android/pics-gap.txt \
 				android/pics-did.txt \

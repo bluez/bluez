@@ -1,0 +1,54 @@
+
+* - different than BITE defaults
+# - not yet implemented/supported
+
+M - mandatory
+O - optional
+
+
+		Protocol Version
+-------------------------------------------------------------------------------
+Item		Selected	Description
+-------------------------------------------------------------------------------
+F.1.0.1		False		RFCOMM 1.1 with TS 07.10 (C.1)
+F.1.0.2		True		RFCOMM 1.2 with TS 07.10 (C.1)
+-------------------------------------------------------------------------------
+C.1: Mandatory to support one and only one of the protocol versions.
+-------------------------------------------------------------------------------
+
+
+		Supported Procedures
+-------------------------------------------------------------------------------
+Item		Selected	Description
+-------------------------------------------------------------------------------
+F.1.1.1		True		Initialize RFCOMM Session (C.2)
+F.1.1.2		True		Respond to Initialization of an RFCOMM
+				Session (C.1)
+F.1.1.3		True		Shutdown RFCOMM Session (M)
+F.1.1.4		True		Respond to a Shutdown of an RFCOMM Session (M)
+F.1.1.5		True		Establish DLC (C.2)
+F.1.1.6		True		Respond to Establishment of a DLC (C.1)
+F.1.1.7		True		Disconnect DLC (M)
+F.1.1.8		True		Respond to Disconnection of a DLC (M)
+F.1.1.9		True		Respond to and send MSC Command (M)
+F.1.1.10	True		Initiate Transfer Information (M)
+F.1.1.11	True		Respond to Test Command (M)
+F.1.1.12	True		Send Test Command (O)
+F.1.1.13	True		React to Aggregate Flow Control (M)
+F.1.1.14	True		Respond to RLS Command (M)
+F.1.1.15	False (*)	Send RLS Command (O)
+F.1.1.16	True		Respond to PN Command (M)
+F.1.1.17	True		Send PN Command (C.3)
+F.1.1.18	True		Send Non-Supported Command (NSC) response (C.4)
+F.1.1.19	True		Respond to RPN Command (M)
+F.1.1.18			Send RPN Command (O)
+F.1.1.21	True		Closing Multiplexer by First Sending a DISC
+				Command (O)
+F.1.1.22	True		Support of Credit Based Flow Control (M)
+F.1.1.23	True		IUT Responds to Establishment of a DLC (C.1)
+-------------------------------------------------------------------------------
+C.1: Mandatory if SPP 1/2 (Device B) is supported, otherwise Excluded.
+C.2: Mandatory if SPP 1/1 (Device A) is supported, otherwise Excluded.
+C.3: Mandatory if SPP 1/1 (Device A) is supported, otherwise Optional
+C.4: Mandatory to support if 0/2 (RFCOMM 1.2) is supported, otherwise Optional.
+-------------------------------------------------------------------------------
