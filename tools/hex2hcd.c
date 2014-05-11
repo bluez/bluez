@@ -21,6 +21,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -52,14 +56,14 @@ static int check_sum(const char *str, int len)
 	sum = hex_to_int(str + len - 2);
 	for (cal = 0, i = 1; i < len - 2; i += 2)
 		cal += hex_to_int(str + i);
-	cal = 0x100 - cal & 0xFF;
+	cal = 0x100 - (cal & 0xFF);
 	return sum == cal;
 }
 
-static int check_hex_line(const char *str, int len)
+static int check_hex_line(const char *str, unsigned int len)
 {
 	if ((str[0] != ':') || (len < 11) || !check_sum(str, len) ||
-		(hex_to_int(str + 1) * 2 + 11 != len))
+			(hex_to_int(str + 1) * 2 + 11 != len))
 		return 0;
 	return 1;
 }
