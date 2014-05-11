@@ -208,6 +208,7 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/hal-ipc-api.txt \
 				android/audio-ipc-api.txt \
 				android/pics-rfcomm.txt \
+				android/pics-spp.txt \
 				android/pics-l2cap.txt \
 				android/pics-gap.txt \
 				android/pics-did.txt \

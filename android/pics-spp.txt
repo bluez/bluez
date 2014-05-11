@@ -1,0 +1,64 @@
+
+* - different than BITE defaults
+# - not yet implemented/supported
+
+M - mandatory
+O - optional
+
+
+		Profile Version
+-------------------------------------------------------------------------------
+Item		Selected	Description
+-------------------------------------------------------------------------------
+K.5.0.1		False		SPP v1.1 (C.1)
+K.5.0.2		True		SPP v1.2 (C.1)
+-------------------------------------------------------------------------------
+C.1: Mandatory to support only one Profile version.
+-------------------------------------------------------------------------------
+
+		Device Role
+-------------------------------------------------------------------------------
+Item		Selected	Description
+-------------------------------------------------------------------------------
+K.5.1.1		True		Device A (DevA) (C.1)
+K.5.1.2		True		Device B (DevB) (C.1)
+-------------------------------------------------------------------------------
+C.1: It is mandatory to support at least one of the defined roles.
+-------------------------------------------------------------------------------
+
+
+		Support of SPP Service
+-------------------------------------------------------------------------------
+Item		Selected	Description
+-------------------------------------------------------------------------------
+K.5.2.1		True		Support of Serial Profile Service (C.1)
+-------------------------------------------------------------------------------
+C.1: Mandatory for devices that support Serial Profile for serial cable
+     emulation as a Bluetooth service. Irrelevant of devices that only
+     support Serial Profile for usage by another application profile
+     e.g. Fax Profile, Dun Profile, Hands free Profile, etc.
+-------------------------------------------------------------------------------
+
+
+		Application Procedures
+-------------------------------------------------------------------------------
+Item		Selected	Description
+-------------------------------------------------------------------------------
+K.5.3.1		True		Establish link and set up virtual serial
+				connection (C.1)
+K.5.3.2		True		Accept link and virtual serial connection
+				establishment (C.2)
+K.5.3.3		True		Register Service record for application in
+				local SDP database (C.2)
+K.5.3.4		True		No release in Sniff mode. Sniff mode enabled
+				in the Link Manager (O)
+K.5.3.5		True		No release in Hold mode. Hold mode enabled
+				in the Link Manager (O)
+K.5.3.6		True		No release in Park mode. Park mode enabled
+				in the Link Manager (O)
+K.5.3.7		True		No release after Master/Slave switch. M/S
+				switch enabled in the Link manager (O)
+-------------------------------------------------------------------------------
+C.1: Mandatory for Device A, Irrelevant for Device B.
+C.2: Mandatory for Device B, Irrelevant for Device A.
+-------------------------------------------------------------------------------
