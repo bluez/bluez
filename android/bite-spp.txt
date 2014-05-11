@@ -1,0 +1,19 @@
+
+BITE test results for SPP
+
+Results:
+PASS	test passed
+FAIL	test failed
+INC	test is inconclusive
+N/A	test is disabled due to PICS setup
+
+-------------------------------------------------------------------------------
+Test Name	Result	Notes
+-------------------------------------------------------------------------------
+TP/APP/BV-01-C	PASS
+TP/APP/BV-02-C	PASS
+TP/APP/BV-03-C	PASS
+TP/APP/BV-04-C	PASS
+TP/APP/BV-05-C	PASS
+TP/APP/BV-06-C	PASS
+-------------------------------------------------------------------------------
