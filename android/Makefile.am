@@ -171,6 +171,7 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/system/audio.h
 
 android_audio_sco_default_la_SOURCES = android/hal-log.h \
+					android/sco-msg.h \
 					android/hal-sco.c \
 					android/hardware/audio.h \
 					android/hardware/audio_effect.h \
