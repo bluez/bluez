@@ -259,6 +259,13 @@ if (test "${enable_android}" = "yes"); then
 	AC_SUBST(SBC_LIBS)
 fi
 
+if (test "${enable_android}" = "yes"); then
+	PKG_CHECK_MODULES(SPEEXDSP, speexdsp >= 1.2, dummy=yes,
+					AC_MSG_ERROR(SPEEXDSP library >= 1.2 is required))
+	AC_SUBST(SPEEXDSP_CFLAGS)
+	AC_SUBST(SPEEXDSP_LIBS)
+fi
+
 AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
 			[Directory for the Android daemon storage files])
 

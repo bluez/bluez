@@ -177,9 +177,13 @@ android_audio_sco_default_la_SOURCES = android/hal-log.h \
 					android/hardware/audio.h \
 					android/hardware/audio_effect.h \
 					android/hardware/hardware.h \
+					android/audio_utils/resampler.c \
+					android/audio_utils/resampler.h \
 					android/system/audio.h
 
 android_audio_sco_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+
+android_audio_sco_default_la_LIBADD = @SPEEXDSP_LIBS@
 
 android_audio_sco_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 					-no-undefined -lrt

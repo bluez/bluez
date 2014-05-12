@@ -282,9 +282,11 @@ LOCAL_SRC_FILES := bluez/android/hal-sco.c
 LOCAL_C_INCLUDES = \
 	$(call include-path-for, system-core) \
 	$(call include-path-for, libhardware) \
+	$(call include-path-for, audio-utils) \
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
+	libaudioutils \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
