@@ -68,6 +68,7 @@ struct interface {
 };
 
 extern const struct interface audio_if;
+extern const struct interface sco_if;
 extern const struct interface bluetooth_if;
 extern const struct interface av_if;
 extern const struct interface rc_if;

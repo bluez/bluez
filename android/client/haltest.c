@@ -32,6 +32,7 @@
 
 const struct interface *interfaces[] = {
 	&audio_if,
+	&sco_if,
 	&bluetooth_if,
 	&av_if,
 	&rc_if,
@@ -394,10 +395,12 @@ static void init(void)
 	const struct method *m;
 	const char *argv[4];
 	char init_audio[] = "audio init";
+	char init_sco[] = "sco init";
 	char init_bt[] = "bluetooth init";
 	uint32_t i;
 
 	process_line(init_audio);
+	process_line(init_sco);
 	process_line(init_bt);
 
 	m = get_interface_method("bluetooth", "get_profile_interface");
