@@ -1,0 +1,37 @@
+Bluetooth SCO Audio Plugin
+==========================
+
+The SCO Audio Plugin communicate through abstract socket name
+"\0bluez_sco_socket".
+
+	.----SCO----.                             .--Android--.
+	|   Plugin  |                             |   Daemon  |
+	|           |          Command            |           |
+	|           | --------------------------> |           |
+	|           |                             |           |
+	|           | <-------------------------- |           |
+	|           |          Response           |           |
+	|           |                             |           |
+	|           |                             |           |
+	|           |                             |           |
+	'-----------'                             '-----------'
+
+
+	SCO HAL                               Daemon
+	----------------------------------------------------
+
+	call connect_sco()                    --> create SCO socket
+	return connect_sco()                  <-- return socket fd and mtu
+
+SCO Audio Service (ID 0)
+========================
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+	Opcode 0x01 - Connect SCO command
+
+		Command parameters: <none>
+		Response parameters: MTU (2 octets)
+				     File descriptor (inline)

@@ -18,6 +18,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				src/log.c \
 				android/hal-msg.h \
 				android/audio-msg.h \
+				android/sco-msg.h \
 				android/utils.h \
 				src/sdpd-database.c src/sdpd-server.c \
 				src/sdpd-service.c src/sdpd-request.c \
