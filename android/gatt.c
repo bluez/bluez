@@ -571,6 +571,10 @@ static void connection_cleanup(struct gatt_device *device)
 			bt_le_discovery_stop(NULL);
 	}
 
+	/* If device is not bonded service cache should be refreshed */
+	if (!bt_device_is_bonded(&device->bdaddr))
+		queue_remove_all(device->services, NULL, NULL, destroy_service);
+
 	device_set_state(device, DEVICE_DISCONNECTED);
 }
 
