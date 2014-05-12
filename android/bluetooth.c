@@ -1218,6 +1218,14 @@ const char *bt_get_adapter_name(void)
 	return adapter.name;
 }
 
+bool bt_device_is_bonded(const bdaddr_t *bdaddr)
+{
+	if (g_slist_find_custom(bonded_devices, bdaddr, device_match))
+		return true;
+
+	return false;
+}
+
 static bool rssi_above_threshold(int old, int new)
 {
 	/* only 8 dBm or more */
