@@ -22,7 +22,7 @@
 #include <math.h>
 
 audio_hw_device_t *if_audio = NULL;
-struct audio_stream_out *stream_out = NULL;
+static struct audio_stream_out *stream_out = NULL;
 
 static size_t buffer_size = 0;
 static pthread_t play_thread = 0;
