@@ -110,7 +110,6 @@ struct device {
 
 	bool found; /* if device is found in current discovery session */
 	unsigned int confirm_id; /* mgtm command id if command pending */
-
 };
 
 struct browse_req {
@@ -2263,7 +2262,8 @@ static struct mgmt_ltk_info *get_ltk_info(GKeyFile *key_file, const char *peer,
 
 	info->type = g_key_file_get_integer(key_file, peer, keytype_s, NULL);
 
-	info->enc_size = g_key_file_get_integer(key_file, peer, encsize_s, NULL);
+	info->enc_size = g_key_file_get_integer(key_file, peer, encsize_s,
+									NULL);
 
 	info->rand = g_key_file_get_uint64(key_file, peer, rand_s, NULL);
 	info->rand = cpu_to_le64(info->rand);
