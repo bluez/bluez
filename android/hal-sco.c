@@ -41,6 +41,8 @@
 #define OUT_BUFFER_SIZE			2560
 #define OUT_STREAM_FRAMES		2560
 
+#define SOCKET_POLL_TIMEOUT_MS		500
+
 static int listen_sk = -1;
 static int ipc_sk = -1;
 
@@ -275,6 +277,75 @@ static void downmix_to_mono(struct sco_stream_out *out, const uint8_t *buffer,
 	}
 }
 
+static bool write_data(struct sco_stream_out *out, const uint8_t *buffer,
+								size_t bytes)
+{
+	struct pollfd pfd;
+	size_t len, written = 0;
+	int ret;
+	uint16_t mtu = /* out->cfg.mtu */ 48;
+	uint8_t read_buf[mtu];
+	bool do_write = false;
+
+	pfd.fd = out->fd;
+	pfd.events = POLLOUT | POLLIN | POLLHUP | POLLNVAL;
+
+	while (bytes > written) {
+
+		/* poll for sending */
+		if (poll(&pfd, 1, SOCKET_POLL_TIMEOUT_MS) == 0) {
+			DBG("timeout fd %d", out->fd);
+			return false;
+		}
+
+		if (pfd.revents & (POLLHUP | POLLNVAL)) {
+			error("error fd %d, events 0x%x", out->fd, pfd.revents);
+			return false;
+		}
+
+		/* FIXME synchronize by time instead of read() */
+		if (pfd.revents & POLLIN) {
+			ret = read(out->fd, read_buf, mtu);
+			if (ret < 0) {
+				error("Error reading fd %d (%s)", out->fd,
+							strerror(errno));
+				return false;
+			}
+
+			do_write = true;
+		}
+
+		if (!do_write)
+			continue;
+
+		len = bytes - written > mtu ? mtu : bytes - written;
+
+		ret = write(out->fd, buffer + written, len);
+		if (ret > 0) {
+			written += ret;
+			do_write = false;
+			continue;
+		}
+
+		if (errno == EAGAIN) {
+			ret = errno;
+			warn("write failed (%d)", ret);
+			continue;
+		}
+
+		if (errno != EINTR) {
+			ret = errno;
+			error("write failed (%d) fd %d bytes %zd", ret, out->fd,
+									bytes);
+			return false;
+		}
+	}
+
+	DBG("written %zd bytes", bytes);
+
+	return true;
+}
+
 static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 								size_t bytes)
 {
@@ -319,6 +390,9 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 	total = output_frame_num * sizeof(int16_t) * 1;
 
 	DBG("total %zd", total);
+
+	if (!write_data(out, send_buf, total))
+		return -1;
 
 	return bytes;
 }
