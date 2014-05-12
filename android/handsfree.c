@@ -45,6 +45,7 @@
 #include "bluetooth.h"
 #include "src/log.h"
 #include "utils.h"
+#include "sco-msg.h"
 
 #define HSP_AG_CHANNEL 12
 #define HFP_AG_CHANNEL 13
@@ -156,7 +157,9 @@ static struct {
 static uint32_t hfp_ag_features = 0;
 
 static bdaddr_t adapter_addr;
+
 static struct ipc *hal_ipc = NULL;
+static struct ipc *sco_ipc = NULL;
 
 static uint32_t hfp_record_id = 0;
 static GIOChannel *hfp_server = NULL;
@@ -822,6 +825,8 @@ static gboolean sco_watch_cb(GIOChannel *chan, GIOCondition cond,
 	g_io_channel_unref(device.sco);
 	device.sco = NULL;
 
+	DBG("");
+
 	device.sco_watch = 0;
 
 	device_set_audio_state(HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED);
@@ -856,6 +861,30 @@ done:
 	hfp_gw_send_info(device.gw, "+BCS: %u", type);
 }
 
+static void send_sco_fd(GIOChannel *chan)
+{
+	if (sco_ipc) {
+		int fd = g_io_channel_unix_get_fd(chan);
+		GError *err = NULL;
+		uint16_t mtu = 48;
+		struct sco_rsp_connect rsp;
+
+		if (!bt_io_get(chan, &err, BT_IO_OPT_MTU, &mtu,
+							BT_IO_OPT_INVALID)) {
+			error("Unable to get MTU: %s\n", err->message);
+			g_clear_error(&err);
+		}
+
+		DBG("fd %d mtu %u", fd, mtu);
+
+		rsp.mtu = mtu;
+
+		ipc_send_rsp_full(sco_ipc, SCO_SERVICE_ID,
+					SCO_OP_CONNECT, sizeof(rsp), &rsp,
+					fd);
+	}
+}
+
 static void connect_sco_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	if (err) {
@@ -885,6 +914,7 @@ static void connect_sco_cb(GIOChannel *chan, GError *err, gpointer user_data)
 							sco_watch_cb, NULL);
 
 	device_set_audio_state(HAL_EV_HANDSFREE_AUDIO_STATE_CONNECTED);
+	send_sco_fd(chan);
 }
 
 static bool connect_sco(void)
@@ -2560,6 +2590,46 @@ static void disable_sco_server(void)
 	}
 }
 
+static void bt_sco_connect(const void *buf, uint16_t len)
+{
+	DBG("");
+
+	if (device.sco) {
+		send_sco_fd(device.sco);
+		return;
+	}
+
+	connect_audio();
+}
+
+static const struct ipc_handler sco_handlers[] = {
+	/* SCO_OP_CONNECT */
+	{ bt_sco_connect, false, 0 }
+};
+
+static void bt_sco_unregister(void)
+{
+	DBG("");
+
+	ipc_cleanup(sco_ipc);
+	sco_ipc = NULL;
+}
+
+static bool bt_sco_register(ipc_disconnect_cb disconnect)
+{
+	DBG("");
+
+	sco_ipc = ipc_init(BLUEZ_SCO_SK_PATH, sizeof(BLUEZ_SCO_SK_PATH),
+				SCO_SERVICE_ID, false, disconnect, NULL);
+	if (!sco_ipc)
+		return false;
+
+	ipc_register(sco_ipc, SCO_SERVICE_ID, sco_handlers,
+						G_N_ELEMENTS(sco_handlers));
+
+	return true;
+}
+
 bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 {
 	DBG("mode 0x%x", mode);
@@ -2594,6 +2664,9 @@ done:
 	hal_ipc = ipc;
 	ipc_register(hal_ipc, HAL_SERVICE_ID_HANDSFREE, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
+
+	bt_sco_register(NULL);
+
 	return true;
 }
 
@@ -2601,6 +2674,7 @@ void bt_handsfree_unregister(void)
 {
 	DBG("");
 
+	bt_sco_unregister();
 	ipc_unregister(hal_ipc, HAL_SERVICE_ID_HANDSFREE);
 	hal_ipc = NULL;
 
