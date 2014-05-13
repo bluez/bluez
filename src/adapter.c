@@ -98,6 +98,7 @@ static uint8_t mgmt_revision = 0;
 static GSList *adapter_drivers = NULL;
 
 static GSList *disconnect_list = NULL;
+static GSList *conn_fail_list = NULL;
 
 struct link_key_info {
 	bdaddr_t bdaddr;
@@ -6268,6 +6269,26 @@ static void device_unblocked_callback(uint16_t index, uint16_t length,
 		device_unblock(device, FALSE, TRUE);
 }
 
+static void conn_fail_notify(struct btd_device *dev, uint8_t status)
+{
+	GSList *l;
+
+	for (l = conn_fail_list; l; l = g_slist_next(l)) {
+		btd_conn_fail_cb conn_fail_cb = l->data;
+		conn_fail_cb(dev, status);
+	}
+}
+
+void btd_add_conn_fail_cb(btd_conn_fail_cb func)
+{
+	conn_fail_list = g_slist_append(conn_fail_list, func);
+}
+
+void btd_remove_conn_fail_cb(btd_conn_fail_cb func)
+{
+	conn_fail_list = g_slist_remove(conn_fail_list, func);
+}
+
 static void connect_failed_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -6288,6 +6309,8 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (device) {
+		conn_fail_notify(device, ev->status);
+
 		/* If the device is in a bonding process cancel any auth request
 		 * sent to the agent before proceeding, but keep the bonding
 		 * request structure. */
