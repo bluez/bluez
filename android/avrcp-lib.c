@@ -189,6 +189,14 @@ struct register_notification_rsp {
 	uint8_t data[0];
 } __attribute__ ((packed));
 
+struct set_volume_req {
+	uint8_t value;
+} __attribute__ ((packed));
+
+struct set_volume_rsp {
+	uint8_t value;
+} __attribute__ ((packed));
+
 struct avrcp_control_handler {
 	uint8_t id;
 	uint8_t code;
@@ -893,6 +901,7 @@ static ssize_t set_volume(struct avrcp *session, uint8_t transaction,
 					void *user_data)
 {
 	struct avrcp_player *player = user_data;
+	struct set_volume_req *req;
 	uint8_t volume;
 
 	DBG("");
@@ -903,7 +912,9 @@ static ssize_t set_volume(struct avrcp *session, uint8_t transaction,
 	if (!params || params_len != sizeof(volume))
 		return -EINVAL;
 
-	volume = params[0] & 0x7f;
+	req = (void *) params;
+
+	volume = req->value & 0x7f;
 
 	return player->ind->set_volume(session, transaction, volume,
 							player->user_data);
@@ -2199,6 +2210,7 @@ static gboolean set_volume_rsp(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->player;
 	struct avrcp_header *pdu;
+	struct set_volume_rsp *rsp;
 	uint8_t value = 0;
 	int err;
 
@@ -2218,12 +2230,14 @@ static gboolean set_volume_rsp(struct avctp *conn,
 		goto done;
 	}
 
-	if (pdu->params_len < 1) {
+	if (pdu->params_len < sizeof(*rsp)) {
 		err = -EPROTO;
 		goto done;
 	}
 
-	value = pdu->params[0] & 0x7f;
+	rsp = (void *) pdu->params;
+
+	value = rsp->value & 0x7f;
 	err = 0;
 
 done:
