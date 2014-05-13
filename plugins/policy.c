@@ -59,6 +59,7 @@ struct reconnect_data {
 	guint timer;
 	bool active;
 	time_t start;
+	int timeout;
 };
 
 static const char *default_reconnect[] = {
@@ -423,6 +424,12 @@ static void target_cb(struct btd_service *service,
 	}
 }
 
+static void reconnect_reset(struct reconnect_data *reconnect)
+{
+	reconnect->start = 0;
+	reconnect->timeout = 1;
+}
+
 static bool reconnect_match(const char *uuid)
 {
 	char **str;
@@ -554,7 +561,7 @@ static void service_cb(struct btd_service *service,
 	reconnect = reconnect_add(service);
 
 	reconnect->active = false;
-	reconnect->start = 0;
+	reconnect_reset(reconnect);
 
 	/*
 	 * Should this device be reconnected? A matching UUID might not
@@ -574,12 +581,19 @@ static gboolean reconnect_timeout(gpointer data)
 
 	DBG("Reconnecting profiles");
 
+	/* Mark the GSource as invalid */
 	reconnect->timer = 0;
 
+	/* Increase timeout for the next attempt if this * one fails. */
+	reconnect->timeout *= 2;
+
 	err = btd_device_connect_services(reconnect->dev, reconnect->services);
-	if (err < 0)
+	if (err < 0) {
 		error("Reconnecting services failed: %s (%d)",
 							strerror(-err), -err);
+		reconnect_reset(reconnect);
+		return FALSE;
+	}
 
 	reconnect->active = true;
 
@@ -605,7 +619,7 @@ static void disconnect_cb(struct btd_device *dev, uint8_t reason)
 	DBG("Device %s identified for auto-reconnection",
 							device_get_path(dev));
 
-	reconnect->timer = g_timeout_add_seconds(RECONNECT_TIMEOUT,
+	reconnect->timer = g_timeout_add_seconds(reconnect->timeout,
 							reconnect_timeout,
 							reconnect);
 }
@@ -613,6 +627,7 @@ static void disconnect_cb(struct btd_device *dev, uint8_t reason)
 static void conn_fail_cb(struct btd_device *dev, uint8_t status)
 {
 	struct reconnect_data *reconnect;
+	time_t duration;
 
 	DBG("status %u", status);
 
@@ -627,17 +642,18 @@ static void conn_fail_cb(struct btd_device *dev, uint8_t status)
 
 	/* Give up if we were powered off */
 	if (status == MGMT_STATUS_NOT_POWERED) {
-		reconnect->start = 0;
+		reconnect_reset(reconnect);
 		return;
 	}
 
 	/* Give up if we've tried for too long */
-	if (time(NULL) - reconnect->start > RECONNECT_GIVE_UP) {
-		reconnect->start = 0;
+	duration = time(NULL) - reconnect->start;
+	if (duration + reconnect->timeout >= RECONNECT_GIVE_UP) {
+		reconnect_reset(reconnect);
 		return;
 	}
 
-	reconnect->timer = g_timeout_add_seconds(RECONNECT_TIMEOUT,
+	reconnect->timer = g_timeout_add_seconds(reconnect->timeout,
 							reconnect_timeout,
 							reconnect);
 }
