@@ -63,6 +63,10 @@ int adapter_init(void);
 void adapter_cleanup(void);
 void adapter_shutdown(void);
 
+typedef void (*btd_disconnect_cb) (struct btd_device *device, uint8_t reason);
+void btd_add_disconnect_cb(btd_disconnect_cb func);
+void btd_remove_disconnect_cb(btd_disconnect_cb func);
+
 struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
 void adapter_foreach(adapter_cb func, gpointer user_data);

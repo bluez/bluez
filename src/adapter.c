@@ -97,6 +97,8 @@ static uint8_t mgmt_revision = 0;
 
 static GSList *adapter_drivers = NULL;
 
+static GSList *disconnect_list = NULL;
+
 struct link_key_info {
 	bdaddr_t bdaddr;
 	unsigned char key[16];
@@ -5396,6 +5398,16 @@ int adapter_bonding_attempt(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	return 0;
 }
 
+static void disconnect_notify(struct btd_device *dev, uint8_t reason)
+{
+	GSList *l;
+
+	for (l = disconnect_list; l; l = g_slist_next(l)) {
+		btd_disconnect_cb disconnect_cb = l->data;
+		disconnect_cb(dev, reason);
+	}
+}
+
 static void dev_disconnected(struct btd_adapter *adapter,
 					const struct mgmt_addr_info *addr,
 					uint8_t reason)
@@ -5408,11 +5420,23 @@ static void dev_disconnected(struct btd_adapter *adapter,
 	DBG("Device %s disconnected, reason %u", dst, reason);
 
 	device = btd_adapter_find_device(adapter, &addr->bdaddr, addr->type);
-	if (device)
+	if (device) {
 		adapter_remove_connection(adapter, device, addr->type);
+		disconnect_notify(device, reason);
+	}
 
 	bonding_attempt_complete(adapter, &addr->bdaddr, addr->type,
 						MGMT_STATUS_DISCONNECTED);
+}
+
+void btd_add_disconnect_cb(btd_disconnect_cb func)
+{
+	disconnect_list = g_slist_append(disconnect_list, func);
+}
+
+void btd_remove_disconnect_cb(btd_disconnect_cb func)
+{
+	disconnect_list = g_slist_remove(disconnect_list, func);
 }
 
 static void disconnect_complete(uint8_t status, uint16_t length,
