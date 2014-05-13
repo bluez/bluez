@@ -32,6 +32,7 @@
 #include <glib.h>
 
 #include "lib/uuid.h"
+#include "lib/mgmt.h"
 #include "src/log.h"
 #include "src/plugin.h"
 #include "src/adapter.h"
@@ -44,6 +45,22 @@
 #define SINK_RETRY_TIMEOUT SOURCE_RETRY_TIMEOUT
 #define SOURCE_RETRIES 1
 #define SINK_RETRIES SOURCE_RETRIES
+
+/* Tracking of remote services to be auto-reconnected upon link loss */
+
+#define RECONNECT_TIMEOUT 1
+
+struct reconnect_data {
+	struct btd_device *dev;
+	bool reconnect;
+	GSList *services;
+	guint timer;
+};
+
+static const char *default_reconnect[] = {
+			HSP_AG_UUID, HFP_AG_UUID, A2DP_SOURCE_UUID, NULL };
+static char **reconnect = NULL;
+static GSList *reconnects = NULL;
 
 static unsigned int service_id = 0;
 static GSList *devices = NULL;
@@ -402,12 +419,100 @@ static void target_cb(struct btd_service *service,
 	}
 }
 
+static bool reconnect_match(const char *uuid)
+{
+	char **str;
+
+	for (str = reconnect; *str; str++) {
+		if (!bt_uuid_strcmp(uuid, *str))
+			return true;
+	}
+
+	return false;
+}
+
+static struct reconnect_data *reconnect_find(struct btd_device *dev)
+{
+	GSList *l;
+
+	for (l = reconnects; l; l = g_slist_next(l)) {
+		struct reconnect_data *reconnect = l->data;
+
+		if (reconnect->dev == dev)
+			return reconnect;
+	}
+
+	return NULL;
+}
+
+static struct reconnect_data *reconnect_add(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	struct reconnect_data *reconnect;
+
+	reconnect = reconnect_find(dev);
+	if (!reconnect) {
+		reconnect = g_new0(struct reconnect_data, 1);
+		reconnect->dev = dev;
+		reconnects = g_slist_append(reconnects, reconnect);
+	}
+
+	if (g_slist_find(reconnect->services, service))
+		return reconnect;
+
+	reconnect->services = g_slist_append(reconnect->services,
+						btd_service_ref(service));
+
+	return reconnect;
+}
+
+static void reconnect_destroy(gpointer data)
+{
+	struct reconnect_data *reconnect = data;
+
+	if (reconnect->timer > 0)
+		g_source_remove(reconnect->timer);
+
+	g_slist_free_full(reconnect->services,
+					(GDestroyNotify) btd_service_unref);
+	g_free(reconnect);
+}
+
+static void reconnect_remove(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	struct reconnect_data *reconnect;
+	GSList *l;
+
+	reconnect = reconnect_find(dev);
+	if (!reconnect)
+		return;
+
+	l = g_slist_find(reconnect->services, service);
+	if (!l)
+		return;
+
+	reconnect->services = g_slist_delete_link(reconnect->services, l);
+	btd_service_unref(service);
+
+	if (reconnect->services)
+		return;
+
+	reconnects = g_slist_remove(reconnects, reconnect);
+
+	if (reconnect->timer > 0)
+		g_source_remove(reconnect->timer);
+
+	g_free(reconnect);
+}
+
 static void service_cb(struct btd_service *service,
 						btd_service_state_t old_state,
 						btd_service_state_t new_state,
 						void *user_data)
 {
 	struct btd_profile *profile = btd_service_get_profile(service);
+	struct reconnect_data *reconnect;
 
 	if (g_str_equal(profile->remote_uuid, A2DP_SINK_UUID))
 		sink_cb(service, old_state, new_state);
@@ -417,17 +522,102 @@ static void service_cb(struct btd_service *service,
 		controller_cb(service, old_state, new_state);
 	else if (g_str_equal(profile->remote_uuid, AVRCP_TARGET_UUID))
 		target_cb(service, old_state, new_state);
+
+	/*
+	 * We're only interested in reconnecting profiles which have set
+	 * auto_connect to true.
+	 */
+	if (!profile->auto_connect)
+		return;
+
+	/*
+	 * If the service went away remove it from the reconnection
+	 * tracking. The function will remove the entire tracking data
+	 * if this was the last service for the device.
+	 */
+	if (new_state == BTD_SERVICE_STATE_UNAVAILABLE) {
+		reconnect_remove(service);
+		return;
+	}
+
+	if (new_state != BTD_SERVICE_STATE_CONNECTED)
+		return;
+
+	/*
+	 * Add an entry to track reconnections. The function will return
+	 * an existing entry if there is one.
+	 */
+	reconnect = reconnect_add(service);
+
+	/*
+	 * Should this device be reconnected? A matching UUID might not
+	 * be the first profile that's connected so we might have an
+	 * entry but with the reconnect flag set to false.
+	 */
+	if (!reconnect->reconnect)
+		reconnect->reconnect = reconnect_match(profile->remote_uuid);
+
+	DBG("Added %s reconnect %u", profile->name, reconnect->reconnect);
+}
+
+static gboolean reconnect_timeout(gpointer data)
+{
+	struct reconnect_data *reconnect = data;
+	int err;
+
+	DBG("Reconnecting profiles");
+
+	reconnect->timer = 0;
+
+	err = btd_device_connect_services(reconnect->dev, reconnect->services);
+	if (err < 0)
+		error("Reconnecting services failed: %s (%d)",
+							strerror(-err), -err);
+
+	return FALSE;
+}
+
+static void disconnect_cb(struct btd_device *dev, uint8_t reason)
+{
+	struct reconnect_data *reconnect;
+
+	DBG("reason %u", reason);
+
+	if (reason != MGMT_DEV_DISCONN_TIMEOUT)
+		return;
+
+	reconnect = reconnect_find(dev);
+	if (!reconnect || !reconnect->reconnect)
+		return;
+
+	DBG("Device %s identified for auto-reconnection",
+							device_get_path(dev));
+
+	reconnect->timer = g_timeout_add_seconds(RECONNECT_TIMEOUT,
+							reconnect_timeout,
+							reconnect);
 }
 
 static int policy_init(void)
 {
 	service_id = btd_service_add_state_cb(service_cb, NULL);
 
+	/* TODO: Add overriding default from config file */
+	reconnect = g_strdupv((char **) default_reconnect);
+
+	btd_add_disconnect_cb(disconnect_cb);
+
 	return 0;
 }
 
 static void policy_exit(void)
 {
+	btd_remove_disconnect_cb(disconnect_cb);
+
+	g_strfreev(reconnect);
+
+	g_slist_free_full(reconnects, reconnect_destroy);
+
 	g_slist_free_full(devices, policy_remove);
 
 	btd_service_remove_state_cb(service_id);
