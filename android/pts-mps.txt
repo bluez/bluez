@@ -1,0 +1,53 @@
+PTS test results for MPS
+
+PTS version: 5.1
+Tested: not tested
+Android version: 4.4.2
+
+Results:
+PASS	test passed
+FAIL	test failed
+INC	test is inconclusive
+N/A	test is disabled due to PICS setup
+NONE	test result is none
+
+-------------------------------------------------------------------------------
+Test Name				Result	Notes
+-------------------------------------------------------------------------------
+TC_AG_SRC_HFAV_ACT_SD_BV_01_I		INC
+TC_AG_SRC_HFAV_ACT_SD_BV_02_I		INC
+TC_AG_SRC_HFAV_ACT_SD_BV_03_I		INC
+TC_AG_SRC_HFAV_CLH_SD_BV_01_I		INC
+TC_AG_SRC_HFAV_CLH_SD_BV_02_I		N/A
+TC_AG_SRC_HFAV_CLH_SD_BV_03_I		INC
+TC_AG_SRC_HFAV_CLH_SD_BV_04_I		INC
+TC_AG_SRC_HFAV_CLH_SD_BV_05_I		INC
+TC_AG_SRC_HFAV_CLH_SD_BV_06_I		INC
+TC_AVP_CTH_SD_BI_01_I			INC
+TC_AVP_CTH_SD_BI_02_I			INC
+TC_HF_SNK_HFAV_ACT_SD_BV_01_I		N/A
+TC_HF_SNK_HFAV_ACT_SD_BV_02_I		N/A
+TC_HF_SNK_HFAV_ACT_SD_BV_03_I		N/A
+TC_HF_SNK_HFAV_CLH_SD_BV_01_I		N/A
+TC_HF_SNK_HFAV_CLH_SD_BV_02_I		N/A
+TC_HF_SNK_HFAV_CLH_SD_BV_03_I		N/A
+TC_HF_SNK_HFAV_CLH_SD_BV_04_I		N/A
+TC_HF_SNK_HFAV_CLH_SD_BV_05_I		N/A
+TC_HF_SNK_HFAV_CLH_SD_BV_06_I		N/A
+TC_HF_SNK_CT_HFAV_ACT_MD_BV_01_I	N/A
+TC_HF_SNK_CT_HFAV_CLH_MD_BV_01_I	N/A
+TC_HF_SNK_CT_HFAV_CLH_MD_BV_02_I	N/A
+TC_HF_SNK_CT_HFAV_CLH_MD_BV_03_I	N/A
+TC_HF_SNK_CT_HFAV_CLH_MD_BV_04_I	N/A
+TC_HF_SNK_CT_HFAV_CLH_MD_BV_05_I	N/A
+TC_HF_SNK_CT_HFAV_CLH_MD_BV_06_I	N/A
+TC_SDP_CTH_SD_BV_01_I			INC
+TC_SRC_TG_HFAV_ACT_MD_BV_01_I		INC
+TC_SRC_TG_HFAV_CLH_MD_BV_01_I		INC
+TC_SRC_TG_HFAV_CLH_MD_BV_02_I		INC
+TC_SRC_TG_HFAV_CLH_MD_BV_03_I		INC
+TC_SRC_TG_HFAV_CLH_MD_BV_04_I		INC
+TC_SRC_TG_HFAV_CLH_MD_BV_05_I		INC
+TC_SRC_TG_HFAV_CLH_MD_BV_06_I		INC
+TC_PAIRING_HF_SNK_CT			INC
+-------------------------------------------------------------------------------
