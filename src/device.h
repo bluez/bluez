@@ -146,6 +146,7 @@ struct btd_service *btd_device_get_service(struct btd_device *dev,
 						const char *remote_uuid);
 
 int device_discover_services(struct btd_device *device);
+int btd_device_connect_services(struct btd_device *dev, GSList *services);
 
 void btd_device_init(void);
 void btd_device_cleanup(void);

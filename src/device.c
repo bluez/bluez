@@ -1331,6 +1331,29 @@ static GSList *create_pending_list(struct btd_device *dev, const char *uuid)
 	return dev->pending;
 }
 
+int btd_device_connect_services(struct btd_device *dev, GSList *services)
+{
+	GSList *l;
+
+	if (dev->pending || dev->connect || dev->browse)
+		return -EBUSY;
+
+	if (!btd_adapter_get_powered(dev->adapter))
+		return -ENETDOWN;
+
+	if (!dev->bredr_state.svc_resolved)
+		return -ENOENT;
+
+	for (l = services; l; l = g_slist_next(l)) {
+		struct btd_service *service = l->data;
+
+		dev->pending = g_slist_append(dev->pending,
+						btd_service_ref(service));
+	}
+
+	return connect_next(dev);
+}
+
 static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type,
 					DBusMessage *msg, const char *uuid)
 {
