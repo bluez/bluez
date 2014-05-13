@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <glib.h>
 
@@ -48,6 +49,7 @@
 
 /* Tracking of remote services to be auto-reconnected upon link loss */
 
+#define RECONNECT_GIVE_UP (3 * 60)
 #define RECONNECT_TIMEOUT 1
 
 struct reconnect_data {
@@ -55,6 +57,8 @@ struct reconnect_data {
 	bool reconnect;
 	GSList *services;
 	guint timer;
+	bool active;
+	time_t start;
 };
 
 static const char *default_reconnect[] = {
@@ -549,6 +553,9 @@ static void service_cb(struct btd_service *service,
 	 */
 	reconnect = reconnect_add(service);
 
+	reconnect->active = false;
+	reconnect->start = 0;
+
 	/*
 	 * Should this device be reconnected? A matching UUID might not
 	 * be the first profile that's connected so we might have an
@@ -574,6 +581,11 @@ static gboolean reconnect_timeout(gpointer data)
 		error("Reconnecting services failed: %s (%d)",
 							strerror(-err), -err);
 
+	reconnect->active = true;
+
+	if (!reconnect->start)
+		reconnect->start = time(NULL);
+
 	return FALSE;
 }
 
@@ -598,6 +610,38 @@ static void disconnect_cb(struct btd_device *dev, uint8_t reason)
 							reconnect);
 }
 
+static void conn_fail_cb(struct btd_device *dev, uint8_t status)
+{
+	struct reconnect_data *reconnect;
+
+	DBG("status %u", status);
+
+	reconnect = reconnect_find(dev);
+	if (!reconnect || !reconnect->reconnect)
+		return;
+
+	if (!reconnect->active)
+		return;
+
+	reconnect->active = false;
+
+	/* Give up if we were powered off */
+	if (status == MGMT_STATUS_NOT_POWERED) {
+		reconnect->start = 0;
+		return;
+	}
+
+	/* Give up if we've tried for too long */
+	if (time(NULL) - reconnect->start > RECONNECT_GIVE_UP) {
+		reconnect->start = 0;
+		return;
+	}
+
+	reconnect->timer = g_timeout_add_seconds(RECONNECT_TIMEOUT,
+							reconnect_timeout,
+							reconnect);
+}
+
 static int policy_init(void)
 {
 	service_id = btd_service_add_state_cb(service_cb, NULL);
@@ -607,12 +651,15 @@ static int policy_init(void)
 
 	btd_add_disconnect_cb(disconnect_cb);
 
+	btd_add_conn_fail_cb(conn_fail_cb);
+
 	return 0;
 }
 
 static void policy_exit(void)
 {
 	btd_remove_disconnect_cb(disconnect_cb);
+	btd_remove_conn_fail_cb(conn_fail_cb);
 
 	g_strfreev(reconnect);
 
