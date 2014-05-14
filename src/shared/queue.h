@@ -44,7 +44,7 @@ void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 typedef bool (*queue_match_func_t)(const void *a, const void *b);
 
 void *queue_find(struct queue *queue, queue_match_func_t function,
-							void *user_data);
+							const void *match_data);
 
 bool queue_remove(struct queue *queue, void *data);
 void *queue_remove_if(struct queue *queue, queue_match_func_t function,
