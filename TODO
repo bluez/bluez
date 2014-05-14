@@ -103,12 +103,6 @@ Low Energy
   Priority: Medium
   Complexity: C2
 
-- Add new property in the DeviceFound signal to report the device type:
-  BR/EDR, single mode or dual-mode.
-
-  Priority: Medium
-  Complexity: C1
-
 - Privacy: When privacy is enabled in the adapter, LE scanning/connection
   should use a private address. StartDiscovery method shall be changed and
   new adapter property shall be added.
