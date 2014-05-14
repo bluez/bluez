@@ -1679,6 +1679,35 @@ Load Identity Resolving Keys Command
 				Invalid Index
 
 
+Get Connection Information Command
+==================================
+
+	Command Code:		0x0031
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				RSSI (1 Octet)
+				TX_Power (1 Octet)
+				Max_TX_Power (1 Octet)
+
+	This command is used to get connection information.
+
+	TX_Power and Max_TX_Power can be set to 127 if values are invalid or
+	unknown.
+
+	This command generates a Command Complete event on success and
+	on failure. In case of failure only Address and Address_Type fields
+	are valid and values of remaining parameters are considered invalid
+	and shall be ignored.
+
+	Possible errors:	Not Connected
+				Not Powered
+				Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
