@@ -167,6 +167,7 @@ struct app_connection {
 static struct ipc *hal_ipc = NULL;
 static bdaddr_t adapter_addr;
 static bool scanning = false;
+static unsigned int advertising_cnt = 0;
 
 static struct queue *gatt_apps = NULL;
 static struct queue *gatt_devices = NULL;
@@ -1374,6 +1375,10 @@ static void set_advertising_cb(uint8_t status, void *user_data)
 
 	send_client_listen_notify(l->client_id, status);
 
+	/* In case of success update advertising state*/
+	if (!status)
+		advertising_cnt = l->start ? 1 : 0;
+
 	/*
 	 * Let's remove client from the list in two cases
 	 * 1. Start failed
@@ -1418,7 +1423,8 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		}
 
 		/* If listen is already on just return success*/
-		if (queue_length(listen_apps) > 1) {
+		if (advertising_cnt > 0) {
+			advertising_cnt++;
 			status = HAL_STATUS_SUCCESS;
 			goto reply;
 		}
@@ -1435,7 +1441,8 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		 * In case there is more listening clients don't stop
 		 * advertising
 		 */
-		if (queue_length(listen_apps) > 1) {
+		if (advertising_cnt > 1) {
+			advertising_cnt--;
 			queue_remove(listen_apps,
 						INT_TO_PTR(cmd->client_if));
 			status = HAL_STATUS_SUCCESS;
