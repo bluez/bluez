@@ -225,15 +225,6 @@ ATT/GATT
   Priority: Low
   Complexity: C2
 
-- Define attribute server API. External applications needs to register,
-  change attributes and to be notified about changes. Example: Proximity,
-  Time and Alert Profiles. "Local Service hierarchy" in the attribute-api
-  needs to be proposed and a RFC shall be sent to the ML.
-
-  Priority: Low
-  Complexity: C2
-  Owner: Anderson Lizardo <anderson.lizardo@openbossa.org>
-
 Management Interface
 ====================
 
