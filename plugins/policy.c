@@ -64,7 +64,7 @@ struct reconnect_data {
 
 static const char *default_reconnect[] = {
 			HSP_AG_UUID, HFP_AG_UUID, A2DP_SOURCE_UUID, NULL };
-static char **reconnect = NULL;
+static char **reconnect_uuids = NULL;
 static GSList *reconnects = NULL;
 
 static unsigned int service_id = 0;
@@ -434,7 +434,7 @@ static bool reconnect_match(const char *uuid)
 {
 	char **str;
 
-	for (str = reconnect; *str; str++) {
+	for (str = reconnect_uuids; *str; str++) {
 		if (!bt_uuid_strcmp(uuid, *str))
 			return true;
 	}
@@ -663,7 +663,7 @@ static int policy_init(void)
 	service_id = btd_service_add_state_cb(service_cb, NULL);
 
 	/* TODO: Add overriding default from config file */
-	reconnect = g_strdupv((char **) default_reconnect);
+	reconnect_uuids = g_strdupv((char **) default_reconnect);
 
 	btd_add_disconnect_cb(disconnect_cb);
 
@@ -677,7 +677,7 @@ static void policy_exit(void)
 	btd_remove_disconnect_cb(disconnect_cb);
 	btd_remove_conn_fail_cb(conn_fail_cb);
 
-	g_strfreev(reconnect);
+	g_strfreev(reconnect_uuids);
 
 	g_slist_free_full(reconnects, reconnect_destroy);
 
