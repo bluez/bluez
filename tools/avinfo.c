@@ -170,6 +170,10 @@ static void print_vendor(a2dp_vendor_codec_t *vendor)
 			vendor->codec_id[0], vendor->codec_id[1]);
 }
 
+static void print_mpeg24(a2dp_mpeg_t *mpeg)
+{
+	printf("\tMedia Codec: MPEG24\n");
+}
 
 static void print_mpeg12(a2dp_mpeg_t *mpeg)
 {
@@ -303,6 +307,9 @@ static void print_media_codec(struct avdtp_media_codec_capability *cap)
 		break;
 	case A2DP_CODEC_MPEG12:
 		print_mpeg12((void *) cap->data);
+		break;
+	case A2DP_CODEC_MPEG24:
+		print_mpeg24((void *) cap->data);
 		break;
 	case A2DP_CODEC_VENDOR:
 		print_vendor((void *) cap->data);
