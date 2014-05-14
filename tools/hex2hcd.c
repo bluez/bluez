@@ -70,10 +70,10 @@ static int check_hex_line(const char *str, unsigned int len)
 
 int main(int argc, char *argv[])
 {
-	unsigned int addr = 0;
+	unsigned int i, addr = 0;
 	FILE *ifp, *ofp;
 	char *rbuf;
-	ssize_t len, i;
+	ssize_t len;
 	size_t buflen;
 
 	if (argc != 3) {
