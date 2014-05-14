@@ -386,7 +386,7 @@ static bool match_connection_by_app(const void *data, const void *user_data)
 
 static struct gatt_device *find_device_by_addr(const bdaddr_t *addr)
 {
-	return queue_find(gatt_devices, match_device_by_bdaddr, (void *)addr);
+	return queue_find(gatt_devices, match_device_by_bdaddr, addr);
 }
 
 static struct gatt_device *find_pending_device()
@@ -610,7 +610,7 @@ static int register_app(const uint8_t *uuid, gatt_app_type_t app_type)
 	static int32_t application_id = 1;
 	struct gatt_app *app;
 
-	if (queue_find(gatt_apps, match_app_by_uuid, (void *) uuid)) {
+	if (queue_find(gatt_apps, match_app_by_uuid, uuid)) {
 		error("gatt: app uuid is already on list");
 		return 0;
 	}
