@@ -181,17 +181,6 @@ ATT/GATT
   Priority: Low
   Complexity: C1
 
-- Refactoring of gatt.c functions. Currently, the callbacks of the services
-  and characteristics discovery functions return the ATT PDU and the caller
-  needs to call again the same function to fetch the remaining data when
-  necessary. Investigate if all results can be returned in the callback
-  result to avoid repeated code. Before change the code, please analyze
-  if this change will not break the GATT/ATT qualification tests. Maybe
-  an interactive fetch/query is necessary to pass the tests.
-
-  Priority: Low
-  Complexity: C1
-
 - Client needs to export a property in the Device Characteristic hierarchy
   to manage characteristic value changes reports in the remote device.
   Currently, Client Characteristic Configuration attribute is not exposed
