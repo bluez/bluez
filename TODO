@@ -167,11 +167,6 @@ ATT/GATT
   Priority: Medium
   Complexity: C1
 
-- Fix hard-coded PSM for GATT services over basic rate.
-
-  Priority: Low
-  Complexity: C1
-
 - Refactor read_by_group() and read_by_type() in src/attrib-server.c
   (they've grown simply too big). First step could be to move out the
   long for-loops to new functions called e.g. get_groups() and get_types().
@@ -221,11 +216,6 @@ ATT/GATT
 
   Priority: Low
   Complecity: C1
-
-- Add sdp discovery support to gatttool with BR (--sdp, default is 0x1f)
-
-  Priority: Low
-  Complexity: C1
 
 - Implement Server characteristic Configuration support in the attribute
   server to manage characteristic value broadcasting. There is a single
