@@ -716,16 +716,13 @@ done:
 }
 
 static const GDBusMethodTable media_player_methods[] = {
-	{ GDBUS_EXPERIMENTAL_METHOD("Play", NULL, NULL, media_player_play) },
-	{ GDBUS_EXPERIMENTAL_METHOD("Pause", NULL, NULL, media_player_pause) },
-	{ GDBUS_EXPERIMENTAL_METHOD("Stop", NULL, NULL, media_player_stop) },
-	{ GDBUS_EXPERIMENTAL_METHOD("Next", NULL, NULL, media_player_next) },
-	{ GDBUS_EXPERIMENTAL_METHOD("Previous", NULL, NULL,
-						media_player_previous) },
-	{ GDBUS_EXPERIMENTAL_METHOD("FastForward", NULL, NULL,
-						media_player_fast_forward) },
-	{ GDBUS_EXPERIMENTAL_METHOD("Rewind", NULL, NULL,
-						media_player_rewind) },
+	{ GDBUS_METHOD("Play", NULL, NULL, media_player_play) },
+	{ GDBUS_METHOD("Pause", NULL, NULL, media_player_pause) },
+	{ GDBUS_METHOD("Stop", NULL, NULL, media_player_stop) },
+	{ GDBUS_METHOD("Next", NULL, NULL, media_player_next) },
+	{ GDBUS_METHOD("Previous", NULL, NULL, media_player_previous) },
+	{ GDBUS_METHOD("FastForward", NULL, NULL, media_player_fast_forward) },
+	{ GDBUS_METHOD("Rewind", NULL, NULL, media_player_rewind) },
 	{ }
 };
 
@@ -734,34 +731,20 @@ static const GDBusSignalTable media_player_signals[] = {
 };
 
 static const GDBusPropertyTable media_player_properties[] = {
-	{ "Name", "s", get_name, NULL, name_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Type", "s", get_type, NULL, type_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Subtype", "s", get_subtype, NULL, subtype_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Position", "u", get_position, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Status", "s", get_status, NULL, status_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Equalizer", "s", get_setting, set_setting, setting_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Repeat", "s", get_setting, set_setting, setting_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Shuffle", "s", get_setting, set_setting, setting_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Scan", "s", get_setting, set_setting, setting_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Track", "a{sv}", get_track, NULL, track_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Device", "o", get_device, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Browsable", "b", get_browsable, NULL, browsable_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Searchable", "b", get_searchable, NULL, searchable_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Playlist", "o", get_playlist, NULL, playlist_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Name", "s", get_name, NULL, name_exists },
+	{ "Type", "s", get_type, NULL, type_exists },
+	{ "Subtype", "s", get_subtype, NULL, subtype_exists },
+	{ "Position", "u", get_position, NULL, NULL },
+	{ "Status", "s", get_status, NULL, status_exists },
+	{ "Equalizer", "s", get_setting, set_setting, setting_exists },
+	{ "Repeat", "s", get_setting, set_setting, setting_exists },
+	{ "Shuffle", "s", get_setting, set_setting, setting_exists },
+	{ "Scan", "s", get_setting, set_setting, setting_exists },
+	{ "Track", "a{sv}", get_track, NULL, track_exists },
+	{ "Device", "o", get_device, NULL, NULL },
+	{ "Browsable", "b", get_browsable, NULL, browsable_exists },
+	{ "Searchable", "b", get_searchable, NULL, searchable_exists },
+	{ "Playlist", "o", get_playlist, NULL, playlist_exists },
 	{ }
 };
 
@@ -1088,15 +1071,15 @@ static gboolean get_items(const GDBusPropertyTable *property,
 }
 
 static const GDBusMethodTable media_folder_methods[] = {
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("Search",
+	{ GDBUS_ASYNC_METHOD("Search",
 			GDBUS_ARGS({ "string", "s" }, { "filter", "a{sv}" }),
 			GDBUS_ARGS({ "folder", "o" }),
 			media_folder_search) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("ListItems",
+	{ GDBUS_ASYNC_METHOD("ListItems",
 			GDBUS_ARGS({ "filter", "a{sv}" }),
 			GDBUS_ARGS({ "items", "a{oa{sv}}" }),
 			media_folder_list_items) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("ChangeFolder",
+	{ GDBUS_ASYNC_METHOD("ChangeFolder",
 			GDBUS_ARGS({ "folder", "o" }), NULL,
 			media_folder_change_folder) },
 	{ }
@@ -1684,26 +1667,19 @@ static gboolean get_metadata(const GDBusPropertyTable *property,
 }
 
 static const GDBusMethodTable media_item_methods[] = {
-	{ GDBUS_EXPERIMENTAL_METHOD("Play", NULL, NULL,
-					media_item_play) },
-	{ GDBUS_EXPERIMENTAL_METHOD("AddtoNowPlaying", NULL, NULL,
+	{ GDBUS_METHOD("Play", NULL, NULL, media_item_play) },
+	{ GDBUS_METHOD("AddtoNowPlaying", NULL, NULL,
 					media_item_add_to_nowplaying) },
 	{ }
 };
 
 static const GDBusPropertyTable media_item_properties[] = {
-	{ "Player", "o", get_player, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Name", "s", get_item_name, NULL, item_name_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Type", "s", get_item_type, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "FolderType", "s", get_folder_type, NULL, folder_type_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Playable", "b", get_playable, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Metadata", "a{sv}", get_metadata, NULL, metadata_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Player", "o", get_player, NULL, NULL },
+	{ "Name", "s", get_item_name, NULL, item_name_exists },
+	{ "Type", "s", get_item_type, NULL, NULL },
+	{ "FolderType", "s", get_folder_type, NULL, folder_type_exists },
+	{ "Playable", "b", get_playable, NULL, NULL },
+	{ "Metadata", "a{sv}", get_metadata, NULL, metadata_exists },
 	{ }
 };
 

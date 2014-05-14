@@ -121,7 +121,7 @@ MediaPlayer1 hierarchy
 ======================
 
 Service		org.bluez (Controller role)
-Interface	org.bluez.MediaPlayer1 [Experimental]
+Interface	org.bluez.MediaPlayer1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
 
 Methods		void Play()
@@ -309,7 +309,7 @@ MediaFolder1 hierarchy
 
 Service		unique name (Target role)
 		org.bluez (Controller role)
-Interface	org.bluez.MediaFolder1 [Experimental]
+Interface	org.bluez.MediaFolder1
 Object path	freely definable (Target role)
 		[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
 		(Controller role)
@@ -390,7 +390,7 @@ MediaItem1 hierarchy
 
 Service		unique name (Target role)
 		org.bluez (Controller role)
-Interface	org.bluez.MediaItem1 [Experimental]
+Interface	org.bluez.MediaItem1
 Object path	freely definable (Target role)
 		[variable
 		prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX/itemX

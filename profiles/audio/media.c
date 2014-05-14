@@ -1828,10 +1828,10 @@ static const GDBusMethodTable media_methods[] = {
 		NULL, register_endpoint) },
 	{ GDBUS_METHOD("UnregisterEndpoint",
 		GDBUS_ARGS({ "endpoint", "o" }), NULL, unregister_endpoint) },
-	{ GDBUS_EXPERIMENTAL_METHOD("RegisterPlayer",
+	{ GDBUS_METHOD("RegisterPlayer",
 		GDBUS_ARGS({ "player", "o" }, { "properties", "a{sv}" }),
 		NULL, register_player) },
-	{ GDBUS_EXPERIMENTAL_METHOD("UnregisterPlayer",
+	{ GDBUS_METHOD("UnregisterPlayer",
 		GDBUS_ARGS({ "player", "o" }), NULL, unregister_player) },
 	{ },
 };
