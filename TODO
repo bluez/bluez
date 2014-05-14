@@ -148,12 +148,6 @@ ATT/GATT
   Priority: Medium
   Complexity: C1
 
-- ATT/GATT parsing to hcidump. Partially implemented, missing to fix
-  multiple advertises in the same event and RSSI.
-
-  Priority: Medium
-  Complexity: C2
-
 - Implement ATT PDU validation. Malformed PDUs can cause division by zero
   when decoding PDUs. A proper error PDU should be returned for this case.
   See decoding function in att.c file.
