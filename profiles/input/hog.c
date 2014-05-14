@@ -145,7 +145,7 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 
 	/* uHID kernel driver does not handle partial writes */
 	if ((size_t) status < sizeof(ev)) {
-		error("uHID dev write error: partial write (%zd of %lu bytes)",
+		error("uHID dev write error: partial write (%zd of %zu bytes)",
 							status, sizeof(ev));
 		return;
 	}
