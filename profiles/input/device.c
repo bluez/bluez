@@ -228,7 +228,7 @@ static bool uhid_send_feature_answer(struct input_device *idev,
 
 	/* uHID kernel driver does not handle partial writes */
 	if ((size_t) len < sizeof(ev)) {
-		error("uHID dev write error: partial write (%zd of %lu bytes)",
+		error("uHID dev write error: partial write (%zd of %zu bytes)",
 							len, sizeof(ev));
 		return false;
 	}
@@ -270,7 +270,7 @@ static bool uhid_send_input_report(struct input_device *idev,
 
 	/* uHID kernel driver does not handle partial writes */
 	if ((size_t) len < sizeof(ev)) {
-		error("uHID dev write error: partial write (%zd of %lu bytes)",
+		error("uHID dev write error: partial write (%zd of %zu bytes)",
 							len, sizeof(ev));
 		return false;
 	}
