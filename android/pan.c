@@ -468,7 +468,7 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 	uint8_t packet[BNEP_MTU];
 	struct bnep_setup_conn_req *req = (void *) packet;
 	uint16_t src_role, dst_role, rsp = BNEP_CONN_NOT_ALLOWED;
-	int sk, n;
+	int sk, n, err;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
 		error("Hangup or error or inval on BNEP socket");
@@ -511,8 +511,12 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	if (nap_create_bridge() < 0)
+	err = nap_create_bridge();
+	if (err < 0) {
+		error("pan: Failed to create bridge: %s (%d)", strerror(-err),
+									-err);
 		goto failed;
+	}
 
 	if (bnep_server_add(sk, dst_role, BNEP_BRIDGE, dev->iface,
 							&dev->dst) < 0) {
