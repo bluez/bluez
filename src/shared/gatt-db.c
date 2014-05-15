@@ -614,7 +614,6 @@ static void find_information(void *data, void *user_data)
 	struct find_information_data *search_data = user_data;
 	struct gatt_db_service *service = data;
 	struct gatt_db_attribute *attribute;
-	struct gatt_db_find_information *value;
 	int i;
 
 	if (!service->active)
@@ -636,14 +635,8 @@ static void find_information(void *data, void *user_data)
 		if (attribute->handle > search_data->end_handle)
 			return;
 
-		value = new0(struct gatt_db_find_information, 1);
-		if (!value)
-			return;
-
-		value->handle = attribute->handle;
-		value->uuid = attribute->uuid;
-		if (!queue_push_tail(search_data->queue, value))
-			free(value);
+		queue_push_tail(search_data->queue,
+						UINT_TO_PTR(attribute->handle));
 	}
 }
 
