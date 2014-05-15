@@ -70,6 +70,7 @@ struct bt_crypto {
 	int ref_count;
 	int ecb_aes;
 	int urandom;
+	int cmac_aes;
 };
 
 static int urandom_setup(void)
@@ -105,6 +106,28 @@ static int ecb_aes_setup(void)
 	return fd;
 }
 
+static int cmac_aes_setup(void)
+{
+	struct sockaddr_alg salg;
+	int fd;
+
+	fd = socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return -1;
+
+	memset(&salg, 0, sizeof(salg));
+	salg.salg_family = AF_ALG;
+	strcpy((char *) salg.salg_type, "hash");
+	strcpy((char *) salg.salg_name, "cmac(aes)");
+
+	if (bind(fd, (struct sockaddr *) &salg, sizeof(salg)) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
 struct bt_crypto *bt_crypto_new(void)
 {
 	struct bt_crypto *crypto;
@@ -121,6 +144,14 @@ struct bt_crypto *bt_crypto_new(void)
 
 	crypto->urandom = urandom_setup();
 	if (crypto->urandom < 0) {
+		close(crypto->ecb_aes);
+		free(crypto);
+		return NULL;
+	}
+
+	crypto->cmac_aes = cmac_aes_setup();
+	if (crypto->cmac_aes < 0) {
+		close(crypto->urandom);
 		close(crypto->ecb_aes);
 		free(crypto);
 		return NULL;
@@ -149,6 +180,7 @@ void bt_crypto_unref(struct bt_crypto *crypto)
 
 	close(crypto->urandom);
 	close(crypto->ecb_aes);
+	close(crypto->cmac_aes);
 
 	free(crypto);
 }
