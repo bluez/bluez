@@ -67,7 +67,6 @@ struct gatt_db_group {
 	uint8_t value[0];
 };
 
-/* Returns queue with struct gatt_db_group */
 void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,

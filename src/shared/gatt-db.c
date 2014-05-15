@@ -423,7 +423,6 @@ static void read_by_group_type(void *data, void *user_data)
 {
 	struct read_by_group_type_data *search_data = user_data;
 	struct gatt_db_service *service = data;
-	struct gatt_db_group *group;
 
 	if (!service->active)
 		return;
@@ -448,19 +447,8 @@ static void read_by_group_type(void *data, void *user_data)
 		return;
 	}
 
-	group = malloc0(sizeof(struct gatt_db_group) +
-					service->attributes[0]->value_len);
-	if (!group)
-		return;
-
-	group->len = service->attributes[0]->value_len;
-	memcpy(group->value, service->attributes[0]->value, group->len);
-	group->handle = service->attributes[0]->handle;
-	group->end_group = service->attributes[0]->handle +
-						service->num_handles - 1;
-
-	if (!queue_push_tail(search_data->queue, group))
-		free(group);
+	queue_push_tail(search_data->queue,
+			UINT_TO_PTR(service->attributes[0]->handle));
 }
 
 void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
