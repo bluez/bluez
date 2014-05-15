@@ -104,3 +104,5 @@ bool gatt_db_write(struct gatt_db *db, uint16_t handle, uint16_t offset,
 
 const bt_uuid_t *gatt_db_get_attribute_type(struct gatt_db *db,
 							uint16_t handle);
+
+uint16_t gatt_db_get_end_handle(struct gatt_db *db, uint16_t handle);

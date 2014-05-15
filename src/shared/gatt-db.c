@@ -751,3 +751,15 @@ const bt_uuid_t *gatt_db_get_attribute_type(struct gatt_db *db,
 
 	return &attribute->uuid;
 }
+
+uint16_t gatt_db_get_end_handle(struct gatt_db *db, uint16_t handle)
+{
+	struct gatt_db_service *service;
+
+	service = queue_find(db->services, find_service_for_handle,
+						INT_TO_PTR(handle));
+	if (!service)
+		return 0;
+
+	return service->attributes[0]->handle + service->num_handles - 1;
+}
