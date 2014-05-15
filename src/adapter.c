@@ -4308,9 +4308,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	struct btd_device *dev;
 	struct eir_data eir_data;
 	bool name_known, discoverable;
-	struct device_addr_type addr_type;
 	char addr[18];
-	GSList *list;
 
 	memset(&eir_data, 0, sizeof(eir_data));
 	eir_parse(&eir_data, data, data_len);
@@ -4322,30 +4320,20 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	ba2str(bdaddr, addr);
 
-	bacpy(&addr_type.bdaddr, bdaddr);
-	addr_type.bdaddr_type = bdaddr_type;
-
-	list = g_slist_find_custom(adapter->devices, &addr_type,
-							device_addr_type_cmp);
-	if (!list) {
+	dev = btd_adapter_find_device(adapter, bdaddr, bdaddr_type);
+	if (!dev) {
 		/*
-		 * If no client has requested discovery, then do not
-		 * create new device objects.
+		 * If no client has requested discovery or the device is
+		 * not marked as discoverable, then do not create new
+		 * device objects.
 		 */
-		if (!adapter->discovery_list) {
+		if (!adapter->discovery_list || !discoverable) {
 			eir_data_free(&eir_data);
 			return;
 		}
 
-		if (discoverable)
-			dev = adapter_create_device(adapter, bdaddr,
-								bdaddr_type);
-		else
-			dev = btd_adapter_find_device(adapter, bdaddr,
-								bdaddr_type);
-
-	} else
-		dev = list->data;
+		dev = adapter_create_device(adapter, bdaddr, bdaddr_type);
+	}
 
 	if (!dev) {
 		error("Unable to create object for found device %s", addr);
