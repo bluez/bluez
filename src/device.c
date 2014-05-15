@@ -2476,6 +2476,17 @@ void device_set_bredr_support(struct btd_device *device)
 	store_device_info(device);
 }
 
+void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
+{
+	if (device->le)
+		return;
+
+	device->le = true;
+	device->bdaddr_type = bdaddr_type;
+
+	store_device_info(device);
+}
+
 void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
 {
 	if (bdaddr_type == BDADDR_BREDR)
