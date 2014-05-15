@@ -66,7 +66,7 @@
 #define SHUTDOWN_GRACE_SECONDS 10
 
 struct main_opts main_opts;
-GKeyFile *main_conf;
+static GKeyFile *main_conf;
 
 static const char * const supported_options[] = {
 	"Name",
