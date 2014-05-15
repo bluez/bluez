@@ -473,16 +473,13 @@ struct find_by_type_value_data {
 	bt_uuid_t uuid;
 	uint16_t start_handle;
 	uint16_t end_handle;
-	uint16_t value_length;
-	const uint8_t *value;
 };
 
-static void find_by_type_value(void *data, void *user_data)
+static void find_by_type(void *data, void *user_data)
 {
 	struct find_by_type_value_data *search_data = user_data;
 	struct gatt_db_service *service = data;
 	struct gatt_db_attribute *attribute;
-	struct gatt_db_range *range;
 	int i;
 
 	if (!service->active)
@@ -501,43 +498,24 @@ static void find_by_type_value(void *data, void *user_data)
 		if (bt_uuid_cmp(&search_data->uuid, &attribute->uuid))
 			continue;
 
-		if (attribute->value_len != search_data->value_length)
-			continue;
-
-		if (!memcmp(attribute->value, search_data->value,
-							attribute->value_len))
-			continue;
-
-		range = new0(struct gatt_db_range, 1);
-		if (!range)
-			return;
-
-		range->handle = attribute->handle;
-		range->end_group = service->attributes[0]->handle +
-						service->num_handles - 1;
-
-		if (!queue_push_tail(search_data->queue, range))
-			free(range);
+		queue_push_tail(search_data->queue,
+						UINT_TO_PTR(attribute->handle));
 	}
 }
 
-void gatt_db_find_by_type_value(struct gatt_db *db, uint16_t start_handle,
+void gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
-							const bt_uuid_t type,
-							const uint8_t *value,
-							uint16_t length,
+							const bt_uuid_t *type,
 							struct queue *queue)
 {
 	struct find_by_type_value_data data;
 
-	data.uuid = type;
+	data.uuid = *type;
 	data.start_handle = start_handle;
 	data.end_handle = end_handle;
 	data.queue = queue;
-	data.value_length = length;
-	data.value = value;
 
-	queue_foreach(db->services, find_by_type_value, &data);
+	queue_foreach(db->services, find_by_type, &data);
 }
 
 struct read_by_type_data {
