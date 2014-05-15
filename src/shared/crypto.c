@@ -256,6 +256,42 @@ static inline void swap128(const uint8_t src[16], uint8_t dst[16])
 		dst[15 - i] = src[i];
 }
 
+bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
+					const uint8_t *m, uint16_t m_len,
+					uint8_t signature[12])
+{
+	int fd;
+	int len;
+	uint8_t tmp[16], out[16];
+
+	if (!crypto)
+		return false;
+
+	/* The most significant octet of key corresponds to key[0] */
+	swap128(key, tmp);
+
+	fd = alg_new(crypto->cmac_aes, tmp, 16);
+	if (fd < 0)
+		return false;
+
+	len = send(fd, m, m_len, 0);
+	if (len < 0)
+		return false;
+
+	len = read(fd, out, 16);
+	if (len < 0)
+		return false;
+
+	/*
+	 * The most significant octet of hash corresponds to out[0]  - swap it.
+	 * Then truncate in most significant bit first order to a length of
+	 * 12 octets
+	 */
+	swap128(out, tmp);
+	memcpy(signature, tmp + 4, 12);
+
+	return true;
+}
 /*
  * Security function e
  *
