@@ -1945,12 +1945,10 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type)
 	}
 
 	/* If this is the first connection over this bearer */
-	if (bdaddr_type == BDADDR_BREDR) {
-		dev->bredr = true;
-	} else {
-		dev->le = true;
-		dev->bdaddr_type = bdaddr_type;
-	}
+	if (bdaddr_type == BDADDR_BREDR)
+		device_set_bredr_support(dev);
+	else
+		device_set_le_support(dev, bdaddr_type);
 
 	state->connected = true;
 
