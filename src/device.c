@@ -2467,9 +2467,13 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 						DEVICE_INTERFACE, "Address");
 }
 
-void device_set_bredr_support(struct btd_device *device, bool bredr)
+void device_set_bredr_support(struct btd_device *device)
 {
-	device->bredr = bredr;
+	if (device->bredr)
+		return;
+
+	device->bredr = true;
+	store_device_info(device);
 }
 
 void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
