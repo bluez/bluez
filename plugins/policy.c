@@ -440,6 +440,9 @@ static bool reconnect_match(const char *uuid)
 {
 	char **str;
 
+	if (!reconnect_uuids)
+		return false;
+
 	for (str = reconnect_uuids; *str; str++) {
 		if (!bt_uuid_strcmp(uuid, *str))
 			return true;
@@ -544,7 +547,7 @@ static void service_cb(struct btd_service *service,
 	 * Return if the reconnection feature is not enabled (all
 	 * subsequent code in this function is about that).
 	 */
-	if (!reconnect_uuids)
+	if (!reconnect_uuids || !reconnect_uuids[0])
 		return;
 
 	/*
@@ -693,7 +696,7 @@ static int policy_init(void)
 		goto add_cb;
 	}
 add_cb:
-	if (reconnect_uuids) {
+	if (reconnect_uuids && reconnect_uuids[0]) {
 		btd_add_disconnect_cb(disconnect_cb);
 		btd_add_conn_fail_cb(conn_fail_cb);
 	}
@@ -706,7 +709,8 @@ static void policy_exit(void)
 	btd_remove_disconnect_cb(disconnect_cb);
 	btd_remove_conn_fail_cb(conn_fail_cb);
 
-	g_strfreev(reconnect_uuids);
+	if (reconnect_uuids)
+		g_strfreev(reconnect_uuids);
 
 	g_slist_free_full(reconnects, reconnect_destroy);
 
