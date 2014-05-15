@@ -564,7 +564,6 @@ static void read_by_type(void *data, void *user_data)
 	struct read_by_type_data *search_data = user_data;
 	struct gatt_db_service *service = data;
 	struct gatt_db_attribute *attribute;
-	struct gatt_db_handle_value *value;
 	int i;
 
 	if (!service->active)
@@ -584,18 +583,8 @@ static void read_by_type(void *data, void *user_data)
 		if (bt_uuid_cmp(&search_data->uuid, &attribute->uuid))
 			continue;
 
-		value = malloc0(sizeof(struct gatt_db_handle_value) +
-							attribute->value_len);
-		if (!value)
-			return;
-
-		value->handle = attribute->handle;
-		value->length = attribute->value_len;
-		if (attribute->value_len)
-			memcpy(value->value, attribute->value, value->length);
-
-		if (!queue_push_tail(search_data->queue, value))
-			free(value);
+		queue_push_tail(search_data->queue,
+						UINT_TO_PTR(attribute->handle));
 	}
 }
 
