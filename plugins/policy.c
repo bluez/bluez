@@ -429,6 +429,11 @@ static void reconnect_reset(struct reconnect_data *reconnect)
 {
 	reconnect->start = 0;
 	reconnect->timeout = 1;
+
+	if (reconnect->timer > 0) {
+		g_source_remove(reconnect->timer);
+		reconnect->timer = 0;
+	}
 }
 
 static bool reconnect_match(const char *uuid)
