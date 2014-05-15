@@ -730,3 +730,24 @@ bool gatt_db_write(struct gatt_db *db, uint16_t handle, uint16_t offset,
 
 	return true;
 }
+
+const bt_uuid_t *gatt_db_get_attribute_type(struct gatt_db *db,
+							uint16_t handle)
+{
+	struct gatt_db_service *service;
+	struct gatt_db_attribute *attribute;
+	uint16_t service_handle;
+
+	service = queue_find(db->services, find_service_for_handle,
+						INT_TO_PTR(handle));
+	if (!service)
+		return NULL;
+
+	service_handle = service->attributes[0]->handle;
+
+	attribute = service->attributes[handle - service_handle];
+	if (!attribute)
+		return NULL;
+
+	return &attribute->uuid;
+}
