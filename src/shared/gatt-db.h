@@ -106,7 +106,8 @@ void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 							struct queue *queue);
 
 bool gatt_db_read(struct gatt_db *db, uint16_t handle, uint16_t offset,
-					uint8_t att_opcode, bdaddr_t *bdaddr);
+					uint8_t att_opcode, bdaddr_t *bdaddr,
+					uint8_t **value, int *length);
 
 bool gatt_db_write(struct gatt_db *db, uint16_t handle, uint16_t offset,
 					const uint8_t *value, size_t len,

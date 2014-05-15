@@ -4116,7 +4116,8 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_REQ_NOT_SUPP;
 	}
 
-	if (!gatt_db_read(gatt_db, handle, offset, cmd[0], &dev->bdaddr))
+	if (!gatt_db_read(gatt_db, handle, offset, cmd[0], &dev->bdaddr, NULL,
+									NULL))
 		return ATT_ECODE_UNLIKELY;
 
 	return 0;

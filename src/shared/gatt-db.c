@@ -684,11 +684,15 @@ static bool find_service_for_handle(const void *data, const void *user_data)
 }
 
 bool gatt_db_read(struct gatt_db *db, uint16_t handle, uint16_t offset,
-				uint8_t att_opcode, bdaddr_t *bdaddr)
+				uint8_t att_opcode, bdaddr_t *bdaddr,
+				uint8_t **value, int *length)
 {
 	struct gatt_db_service *service;
 	uint16_t service_handle;
 	struct gatt_db_attribute *a;
+
+	if (!value || !length)
+		return false;
 
 	service = queue_find(db->services, find_service_for_handle,
 						INT_TO_PTR(handle));
@@ -698,10 +702,24 @@ bool gatt_db_read(struct gatt_db *db, uint16_t handle, uint16_t offset,
 	service_handle = service->attributes[0]->handle;
 
 	a = service->attributes[handle - service_handle];
-	if (!a || !a->read_func)
+	if (!a)
 		return false;
 
-	a->read_func(handle, offset, att_opcode, bdaddr, a->user_data);
+	/*
+	 * We call callback, and set length to -1, to notify user that callback
+	 * has been called. Otherwise we set length to value length in database.
+	 */
+	if (a->read_func) {
+		*value = NULL;
+		*length = -1;
+		a->read_func(handle, offset, att_opcode, bdaddr, a->user_data);
+	} else {
+		if (offset > a->value_len)
+			return false;
+
+		*value = &a->value[offset];
+		*length = a->value_len - offset;
+	}
 
 	return true;
 }
