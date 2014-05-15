@@ -66,6 +66,7 @@
 #define SHUTDOWN_GRACE_SECONDS 10
 
 struct main_opts main_opts;
+GKeyFile *main_conf;
 
 static const char * const supported_options[] = {
 	"Name",
@@ -78,6 +79,11 @@ static const char * const supported_options[] = {
 	"NameResolving",
 	"DebugKeys",
 };
+
+GKeyFile *btd_get_main_conf(void)
+{
+	return main_conf;
+}
 
 static GKeyFile *load_config(const char *file)
 {
@@ -488,7 +494,6 @@ int main(int argc, char *argv[])
 	uint16_t sdp_mtu = 0;
 	uint32_t sdp_flags = 0;
 	int gdbus_flags = 0;
-	GKeyFile *config;
 	guint signal, watchdog;
 	const char *watchdog_usec;
 
@@ -523,9 +528,9 @@ int main(int argc, char *argv[])
 
 	sd_notify(0, "STATUS=Starting up");
 
-	config = load_config(CONFIGDIR "/main.conf");
+	main_conf = load_config(CONFIGDIR "/main.conf");
 
-	parse_config(config);
+	parse_config(main_conf);
 
 	if (connect_dbus() < 0) {
 		error("Unable to get on D-Bus");
@@ -609,8 +614,8 @@ int main(int argc, char *argv[])
 
 	g_main_loop_unref(event_loop);
 
-	if (config)
-		g_key_file_free(config);
+	if (main_conf)
+		g_key_file_free(main_conf);
 
 	disconnect_dbus();
 

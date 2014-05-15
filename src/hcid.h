@@ -47,4 +47,6 @@ void plugin_cleanup(void);
 void rfkill_init(void);
 void rfkill_exit(void);
 
+GKeyFile *btd_get_main_conf(void);
+
 void btd_exit(void);
