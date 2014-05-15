@@ -139,6 +139,7 @@ done:
 
 static void check_config(GKeyFile *config)
 {
+	const char *valid_groups[] = { "General", "Policy", NULL };
 	char **keys;
 	int i;
 
@@ -148,7 +149,17 @@ static void check_config(GKeyFile *config)
 	keys = g_key_file_get_groups(config, NULL);
 
 	for (i = 0; keys != NULL && keys[i] != NULL; i++) {
-		if (!g_str_equal(keys[i], "General"))
+		const char **group;
+		bool match = false;
+
+		for (group = valid_groups; *group; group++) {
+			if (g_str_equal(keys[i], *group)) {
+				match = true;
+				break;
+			}
+		}
+
+		if (!match)
 			warn("Unknown group %s in main.conf", keys[i]);
 	}
 
