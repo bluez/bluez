@@ -739,6 +739,16 @@ struct btd_device *btd_adapter_find_device(struct btd_adapter *adapter,
 
 	device = list->data;
 
+	/*
+	 * If we're looking up based on public address and the address
+	 * was not previously used over this bearer we may need to
+	 * update LE or BR/EDR support information.
+	 */
+	if (bdaddr_type == BDADDR_BREDR)
+		device_set_bredr_support(device);
+	else
+		device_set_le_support(device, bdaddr_type);
+
 	return device;
 }
 
