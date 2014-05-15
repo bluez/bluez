@@ -40,6 +40,7 @@
 #include "src/device.h"
 #include "src/service.h"
 #include "src/profile.h"
+#include "src/hcid.h"
 
 #define CONTROL_CONNECT_TIMEOUT 2
 #define SOURCE_RETRY_TIMEOUT 2
@@ -535,6 +536,13 @@ static void service_cb(struct btd_service *service,
 		target_cb(service, old_state, new_state);
 
 	/*
+	 * Return if the reconnection feature is not enabled (all
+	 * subsequent code in this function is about that).
+	 */
+	if (!reconnect_uuids)
+		return;
+
+	/*
 	 * We're only interested in reconnecting profiles which have set
 	 * auto_connect to true.
 	 */
@@ -660,14 +668,30 @@ static void conn_fail_cb(struct btd_device *dev, uint8_t status)
 
 static int policy_init(void)
 {
+	GError *gerr = NULL;
+	GKeyFile *conf;
+
 	service_id = btd_service_add_state_cb(service_cb, NULL);
 
-	/* TODO: Add overriding default from config file */
-	reconnect_uuids = g_strdupv((char **) default_reconnect);
+	conf = btd_get_main_conf();
+	if (!conf) {
+		reconnect_uuids = g_strdupv((char **) default_reconnect);
+		goto add_cb;
+	}
 
-	btd_add_disconnect_cb(disconnect_cb);
-
-	btd_add_conn_fail_cb(conn_fail_cb);
+	reconnect_uuids = g_key_file_get_string_list(conf, "Policy",
+							"ReconnectUUIDs",
+							NULL, &gerr);
+	if (gerr) {
+		g_error_free(gerr);
+		reconnect_uuids = g_strdupv((char **) default_reconnect);
+		goto add_cb;
+	}
+add_cb:
+	if (reconnect_uuids) {
+		btd_add_disconnect_cb(disconnect_cb);
+		btd_add_conn_fail_cb(conn_fail_cb);
+	}
 
 	return 0;
 }
