@@ -85,12 +85,6 @@ void gatt_db_find_by_type_value(struct gatt_db *db, uint16_t start_handle,
 							uint16_t length,
 							struct queue *queue);
 
-struct gatt_db_handle_value {
-	uint16_t handle;
-	uint16_t length;
-	uint8_t value[0];
-};
-
 void gatt_db_read_by_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,
