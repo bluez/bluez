@@ -2700,16 +2700,36 @@ int device_bdaddr_cmp(gconstpointer a, gconstpointer b)
 	return bacmp(&device->bdaddr, bdaddr);
 }
 
+static bool addr_is_public(uint8_t addr_type)
+{
+	if (addr_type == BDADDR_BREDR || addr_type == BDADDR_LE_PUBLIC)
+		return true;
+
+	return false;
+}
+
 int device_addr_type_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct btd_device *dev = a;
 	const struct device_addr_type *addr = b;
+	int cmp;
+
+	cmp = bacmp(&dev->bdaddr, &addr->bdaddr);
+
+	/*
+	 * Address matches and both old and new are public addresses
+	 * (doesn't matter whether LE or BR/EDR, then consider this a
+	 * match.
+	 */
+	if (!cmp && addr_is_public(addr->bdaddr_type) &&
+					addr_is_public(dev->bdaddr_type))
+		return 0;
 
 	if (addr->bdaddr_type == BDADDR_BREDR) {
 		if (!dev->bredr)
 			return -1;
 
-		return bacmp(&dev->bdaddr, &addr->bdaddr);
+		return cmp;
 	}
 
 	if (!dev->le)
@@ -2718,7 +2738,7 @@ int device_addr_type_cmp(gconstpointer a, gconstpointer b)
 	if (addr->bdaddr_type != dev->bdaddr_type)
 		return -1;
 
-	return bacmp(&dev->bdaddr, &addr->bdaddr);
+	return cmp;
 }
 
 static gboolean record_has_uuid(const sdp_record_t *rec,
