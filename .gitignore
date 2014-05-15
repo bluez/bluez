@@ -87,6 +87,7 @@ unit/test-sdp
 unit/test-lib
 unit/test-mgmt
 unit/test-hfp
+unit/test-crypto
 tools/mgmt-tester
 tools/smp-tester
 tools/gap-tester
