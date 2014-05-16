@@ -3033,6 +3033,62 @@ bool bt_le_discovery_start(bt_le_device_found cb)
 	return false;
 }
 
+struct read_rssi_user_data {
+	bt_read_device_rssi_done cb;
+	void *user_data;
+};
+
+static void read_device_rssi_cb(uint8_t status, uint16_t length,
+			const void *param, void *user_data)
+{
+	const struct mgmt_rp_get_conn_info *rp = param;
+	struct read_rssi_user_data *data = user_data;
+
+	DBG("");
+
+	if (status)
+		error("Failed to get conn info: %s (0x%02x))",
+						mgmt_errstr(status), status);
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of get conn info response");
+		return;
+	}
+
+	data->cb(status, &rp->addr.bdaddr, rp->rssi, data->user_data);
+}
+
+bool bt_read_device_rssi(const bdaddr_t *addr, bt_read_device_rssi_done cb,
+							void *user_data)
+{
+	struct device *dev;
+	struct read_rssi_user_data *data;
+	struct mgmt_cp_get_conn_info cp;
+
+	dev = find_device(addr);
+	if (!dev)
+		return false;
+
+	memcpy(&cp.addr.bdaddr, addr, sizeof(cp.addr.bdaddr));
+	cp.addr.type = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
+
+	data = new0(struct read_rssi_user_data, 1);
+	if (!data)
+		return false;
+
+	data->cb = cb;
+	data->user_data = user_data;
+
+	if (!mgmt_send(mgmt_if, MGMT_OP_GET_CONN_INFO, adapter.index,
+			sizeof(cp), &cp, read_device_rssi_cb, data, free)) {
+		free(data);
+		error("Failed to get conn info");
+		return false;
+	}
+
+	return true;
+}
+
 static uint8_t set_adapter_scan_mode(const void *buf, uint16_t len)
 {
 	const uint8_t *mode = buf;

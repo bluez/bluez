@@ -50,3 +50,8 @@ bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
 uint8_t bt_get_device_android_type(const bdaddr_t *addr);
 const char *bt_get_adapter_name(void);
 bool bt_device_is_bonded(const bdaddr_t *bdaddr);
+
+typedef void (*bt_read_device_rssi_done)(uint8_t status, const bdaddr_t *addr,
+						int8_t rssi, void *user_data);
+bool bt_read_device_rssi(const bdaddr_t *addr, bt_read_device_rssi_done cb,
+							void *user_data);
