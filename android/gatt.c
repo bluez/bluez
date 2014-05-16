@@ -3656,8 +3656,10 @@ static void read_requested_attributes(void *data, void *user_data)
 						resp_data->offset,
 						process_data->opcode,
 						&process_data->device->bdaddr,
-						&value, &value_len))
+						&value, &value_len)) {
 		resp_data->length = READ_FAILED;
+		return;
+	}
 
 	/* We have value here already if no callback will be called */
 	if (value_len >= 0) {
