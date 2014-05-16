@@ -365,6 +365,17 @@ struct mgmt_cp_load_irks {
 	struct mgmt_irk_info irks[0];
 } __packed;
 
+#define MGMT_OP_GET_CONN_INFO		0x0031
+struct mgmt_cp_get_conn_info {
+	struct mgmt_addr_info addr;
+} __packed;
+struct mgmt_rp_get_conn_info {
+	struct mgmt_addr_info addr;
+	int8_t rssi;
+	int8_t tx_power;
+	int8_t max_tx_power;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -570,6 +581,7 @@ static const char *mgmt_op[] = {
 	"Set Debug Keys",
 	"Set Privacy",
 	"Load Identity Resolving Keys",
+	"Get Connection Information",
 };
 
 static const char *mgmt_ev[] = {
