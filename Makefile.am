@@ -266,6 +266,14 @@ unit_test_mgmt_SOURCES = unit/test-mgmt.c \
 				src/shared/mgmt.h src/shared/mgmt.c
 unit_test_mgmt_LDADD = @GLIB_LIBS@
 
+unit_tests += unit/test-uhid
+
+unit_test_uhid_SOURCES = unit/test-uhid.c \
+				src/shared/uhid.h src/shared/uhid.c \
+				src/shared/io.h src/shared/io-glib.c \
+				src/shared/util.h src/shared/util.c
+unit_test_uhid_LDADD = @GLIB_LIBS@
+
 unit_tests += unit/test-sdp
 
 unit_test_sdp_SOURCES = unit/test-sdp.c \
