@@ -4346,11 +4346,6 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 
 	process_dev_pending_requests(device, ATT_OP_READ_BY_TYPE_REQ);
 
-	/* We send immediate if no data left to be filled by async callbacks */
-	if (!queue_find(device->pending_requests, match_pending_dev_request,
-									NULL))
-		send_dev_pending_response(device, ATT_OP_READ_BY_TYPE_REQ);
-
 	return 0;
 }
 
@@ -4564,11 +4559,6 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 	queue_destroy(q, NULL);
 
 	process_dev_pending_requests(device, ATT_OP_FIND_BY_TYPE_REQ);
-
-	/* Send if no response_data elements left to be filled by callbacks */
-	if (!queue_find(device->pending_requests, match_pending_dev_request,
-									NULL))
-		send_dev_pending_response(device, cmd[0]);
 
 	return 0;
 }
