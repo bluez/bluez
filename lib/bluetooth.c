@@ -898,7 +898,41 @@ const char *bt_compidtostr(int compid)
 	case 317:
 		return "WirelessWERX";
 	case 318:
-		return "nimai";
+		return "Nod, Inc.";
+	case 319:
+		return "B&B Manufacturing Company";
+	case 320:
+		return "Alpine Electronics (China) Co., Ltd";
+	case 321:
+		return "FedEx Services";
+	case 322:
+		return "Grape Systems Inc.";
+	case 323:
+		return "Bkon Connect";
+	case 324:
+		return "Lintech GmbH";
+	case 325:
+		return "Novatel Wireless";
+	case 326:
+		return "Ciright";
+	case 327:
+		return "Mighty Cast, Inc.";
+	case 328:
+		return "Ambimat Electronics";
+	case 329:
+		return "Perytons Ltd.";
+	case 330:
+		return "Tivoli Audio, LLC";
+	case 331:
+		return "Master Lock";
+	case 332:
+		return "Mesh-Net Ltd";
+	case 333:
+		return "HUIZHOU DESAY SV AUTOMOTIVE CO., LTD.";
+	case 334:
+		return "Tangerine, Inc.";
+	case 335:
+		return "B&W Group Ltd.";
 	case 65535:
 		return "internal use";
 	default:
