@@ -785,6 +785,9 @@ static void test_client(gconstpointer data)
 		avrcp_send_passthrough(context->session, IEEEID_BTSIG,
 						AVC_VENDOR_PREV_GROUP);
 
+	if (g_str_equal(context->data->test_name, "/TP/VLH/BV-01-C"))
+		avrcp_set_volume(context->session, 0x00);
+
 	execute_context(context);
 }
 
@@ -1573,6 +1576,14 @@ int main(int argc, char *argv[])
 				0x48, AVC_OP_PASSTHROUGH,
 				AVC_VENDOR_UNIQUE, 0x05, 0x00, 0x19,
 				0x58, 0x00, AVC_VENDOR_PREV_GROUP));
+
+	/* Volume Level Handling */
+
+	/* Set absolute volume – CT */
+	define_test("/TP/VLH/BV-01-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
+				0x00, 0x00, 0x01, 0x00));
 
 	return g_test_run();
 }
