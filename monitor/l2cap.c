@@ -2456,6 +2456,18 @@ static void smp_pairing_failed(const struct l2cap_frame *frame)
 	case 0x0a:
 		str = "Invalid parameters";
 		break;
+	case 0x0b:
+		str = "DHKey check failed";
+		break;
+	case 0x0c:
+		str = "Numeric comparison failed";
+		break;
+	case 0x0d:
+		str = "BR/EDR pairing in progress";
+		break;
+	case 0x0e:
+		str = "Cross-transport Key Derivation/Generation not allowed";
+		break;
 	default:
 		str = "Reserved";
 		break;
