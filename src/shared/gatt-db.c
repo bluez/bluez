@@ -99,6 +99,10 @@ static void attribute_destroy(void *data)
 {
 	struct gatt_db_attribute *attribute = data;
 
+	/* Attribute was not initialized by user */
+	if (!attribute)
+		return;
+
 	free(attribute->value);
 	free(attribute);
 }
