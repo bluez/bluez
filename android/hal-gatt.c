@@ -1231,6 +1231,8 @@ static bt_status_t send_response(int conn_id, int trans_id, int status,
 	struct hal_cmd_gatt_server_send_response *cmd = (void *) buf;
 	size_t cmd_len = sizeof(*cmd) + sizeof(*response);
 
+	memset(buf, 0 , IPC_MTU);
+
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
