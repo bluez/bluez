@@ -2779,6 +2779,22 @@ struct bt_l2cap_smp_security_request {
 	uint8_t  auth_req;
 } __attribute__ ((packed));
 
+#define BT_L2CAP_SMP_PUBLIC_KEY		0x0c
+struct bt_l2cap_smp_public_key {
+	uint8_t  x[32];
+	uint8_t  y[32];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_DHKEY_CHECK	0x0d
+struct bt_l2cap_smp_dhkey_check {
+	uint8_t  e[16];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_KEYPRESS_NOTIFY	0x0e
+struct bt_l2cap_smp_keypress_notify {
+	uint8_t  type;
+} __attribute__ ((packed));
+
 struct bt_sdp_hdr {
 	uint8_t  pdu;
 	uint16_t tid;
