@@ -3670,7 +3670,7 @@ static void read_requested_attributes(void *data, void *user_data)
 
 		memcpy(resp_data->value, value, value_len);
 		resp_data->length = value_len;
-	} else {
+	} else if (resp_data->length == READ_INIT) {
 		resp_data->length = READ_PENDING;
 	}
 }
