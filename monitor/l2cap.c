@@ -2524,6 +2524,50 @@ static void smp_security_request(const struct l2cap_frame *frame)
 	print_smp_auth_req(pdu->auth_req);
 }
 
+static void smp_pairing_public_key(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_public_key *pdu = frame->data;
+
+	print_hex_field("X", pdu->x, 32);
+	print_hex_field("Y", pdu->y, 32);
+}
+
+static void smp_pairing_dhkey_check(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_dhkey_check *pdu = frame->data;
+
+	print_hex_field("E", pdu->e, 16);
+}
+
+static void smp_pairing_keypress_notification(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_keypress_notify *pdu = frame->data;
+	const char *str;
+
+	switch (pdu->type) {
+	case 0x00:
+		str = "Passkey entry started";
+		break;
+	case 0x01:
+		str = "Passkey digit entered";
+		break;
+	case 0x02:
+		str = "Passkey digit erased";
+		break;
+	case 0x03:
+		str = "Passkey cleared";
+		break;
+	case 0x04:
+		str = "Passkey entry completed";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, pdu->type);
+}
+
 struct smp_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -2555,6 +2599,12 @@ static const struct smp_opcode_data smp_opcode_table[] = {
 			smp_signing_info, 16, true },
 	{ 0x0b, "Security Request",
 			smp_security_request, 1, true },
+	{ 0x0c, "Pairing Public Key",
+			smp_pairing_public_key, 64, true },
+	{ 0x0d, "Pairing DHKey Check",
+			smp_pairing_dhkey_check, 16, true },
+	{ 0x0e, "Pairing Keypress Notification",
+			smp_pairing_keypress_notification, 1, true },
 	{ }
 };
 
