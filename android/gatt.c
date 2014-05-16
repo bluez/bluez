@@ -4337,6 +4337,7 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 			return ATT_ECODE_INSUFF_RESOURCES;
 		}
 
+		data->length = READ_INIT;
 		data->handle = handle;
 		queue_push_tail(device->pending_requests, data);
 	}
@@ -4550,6 +4551,7 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 			return ATT_ECODE_INSUFF_RESOURCES;
 		}
 
+		data->length = READ_INIT;
 		data->handle = handle;
 		data->filter_vlen = search_vlen;
 		memcpy(data->filter_value, search_value, search_vlen);
