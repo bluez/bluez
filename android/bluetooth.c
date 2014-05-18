@@ -3430,13 +3430,26 @@ static void handle_remove_bond_cmd(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	cp.addr.type = select_device_bearer(dev);
+	if (dev->le_paired) {
+		cp.addr.type = dev->bdaddr_type;
 
-	if (mgmt_send(mgmt_if, MGMT_OP_UNPAIR_DEVICE, adapter.index,
-				sizeof(cp), &cp, unpair_device_complete,
-				NULL, NULL) ==  0) {
-		status = HAL_STATUS_FAILED;
-		goto failed;
+		if (mgmt_send(mgmt_if, MGMT_OP_UNPAIR_DEVICE, adapter.index,
+					sizeof(cp), &cp, unpair_device_complete,
+					NULL, NULL) == 0) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+	}
+
+	if (dev->bredr_paired) {
+		cp.addr.type = BDADDR_BREDR;
+
+		if (mgmt_send(mgmt_if, MGMT_OP_UNPAIR_DEVICE, adapter.index,
+					sizeof(cp), &cp, unpair_device_complete,
+					NULL, NULL) == 0) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
 	}
 
 	status = HAL_STATUS_SUCCESS;
