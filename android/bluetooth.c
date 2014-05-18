@@ -1389,7 +1389,7 @@ static void update_device(struct device *dev, int8_t rssi,
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_remote_device_props *ev = (void *) buf;
-	uint8_t android_type;
+	uint8_t old_type, new_type;
 	int size;
 
 	memset(buf, 0, sizeof(buf));
@@ -1399,25 +1399,21 @@ static void update_device(struct device *dev, int8_t rssi,
 	ev->status = HAL_STATUS_SUCCESS;
 	bdaddr2android(&dev->bdaddr, ev->bdaddr);
 
-	if (dev->bdaddr_type != bdaddr_type) {
-		bool type_changed = false;
+	old_type = get_device_android_type(dev);
 
+	if (bdaddr_type == BDADDR_BREDR) {
+		dev->bredr = true;
+	} else {
+		dev->le = true;
 		dev->bdaddr_type = bdaddr_type;
-		if (bdaddr_type == BDADDR_BREDR) {
-			type_changed = !dev->bredr;
-			dev->bredr = true;
-		} else {
-			type_changed = !dev->le;
-			dev->le = true;
-		}
+	}
 
-		if (type_changed) {
-			android_type = get_device_android_type(dev);
-			size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_TYPE,
-							sizeof(android_type),
-							&android_type);
-			ev->num_props++;
-		}
+	new_type = get_device_android_type(dev);
+
+	if (old_type != new_type) {
+		size += fill_hal_prop(buf + size, HAL_PROP_DEVICE_TYPE,
+						sizeof(new_type), &new_type);
+		ev->num_props++;
 	}
 
 	if (eir->class && dev->class != eir->class) {
