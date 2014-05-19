@@ -6336,6 +6336,42 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 		btd_adapter_remove_device(adapter, device);
 }
 
+static void remove_keys(struct btd_adapter *adapter,
+					struct btd_device *device, uint8_t type)
+{
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	gsize length = 0;
+	char *str;
+
+	ba2str(btd_adapter_get_address(adapter), adapter_addr);
+	ba2str(device_get_address(device), device_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+								device_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	if (type == BDADDR_BREDR) {
+		g_key_file_remove_group(key_file, "LinkKey", NULL);
+	} else {
+		g_key_file_remove_group(key_file, "LongTermKey", NULL);
+		g_key_file_remove_group(key_file, "LocalSignatureKey", NULL);
+		g_key_file_remove_group(key_file, "RemoteSignatureKey", NULL);
+		g_key_file_remove_group(key_file, "IdentityResolvingKey", NULL);
+	}
+
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+
+	g_key_file_free(key_file);
+}
+
 static void unpaired_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -6360,12 +6396,8 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	btd_device_set_temporary(device, TRUE);
-
-	if (btd_device_is_connected(device))
-		device_request_disconnect(device, NULL);
-	else
-		btd_adapter_remove_device(adapter, device);
+	remove_keys(adapter, device, ev->addr.type);
+	device_set_unpaired(device, ev->addr.type);
 }
 
 static void read_info_complete(uint8_t status, uint16_t length,

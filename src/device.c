@@ -4109,6 +4109,38 @@ void device_set_paired(struct btd_device *dev, uint8_t bdaddr_type)
 						DEVICE_INTERFACE, "Paired");
 }
 
+void device_set_unpaired(struct btd_device *dev, uint8_t bdaddr_type)
+{
+	struct bearer_state *state = get_state(dev, bdaddr_type);
+
+	if (!state->paired)
+		return;
+
+	state->paired = false;
+
+	/*
+	 * If the other bearer state is still true we don't need to
+	 * send any property signals or remove device.
+	 */
+	if (dev->bredr_state.paired != dev->le_state.paired) {
+		/* TODO disconnect only unpaired bearer */
+		if (state->connected)
+			device_request_disconnect(dev, NULL);
+
+		return;
+	}
+
+	g_dbus_emit_property_changed(dbus_conn, dev->path,
+						DEVICE_INTERFACE, "Paired");
+
+	btd_device_set_temporary(dev, TRUE);
+
+	if (btd_device_is_connected(dev))
+		device_request_disconnect(dev, NULL);
+	else
+		btd_adapter_remove_device(dev->adapter, dev);
+}
+
 static void device_auth_req_free(struct btd_device *device)
 {
 	struct authentication_req *authr = device->authr;
