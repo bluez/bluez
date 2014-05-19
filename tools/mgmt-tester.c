@@ -392,6 +392,7 @@ struct generic_data {
 	bool client_enable_ssp;
 	uint8_t io_cap;
 	uint8_t client_io_cap;
+	uint8_t client_auth_req;
 	bool reject_ssp;
 	bool client_reject_ssp;
 };
@@ -2423,6 +2424,7 @@ static const struct generic_data pair_device_ssp_reject_1 = {
 	.expect_hci_func = client_bdaddr_param_func,
 	.io_cap = 0x01, /* DisplayYesNo */
 	.client_io_cap = 0x01, /* DisplayYesNo */
+	.client_auth_req = 0x01, /* No Bonding - MITM */
 	.reject_ssp = true,
 };
 
@@ -3127,6 +3129,9 @@ static void test_setup(const void *test_data)
 
 	if (test->client_io_cap)
 		bthost_set_io_capability(bthost, test->client_io_cap);
+
+	if (test->client_auth_req)
+		bthost_set_auth_req(bthost, test->client_auth_req);
 
 	if (test->client_reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
