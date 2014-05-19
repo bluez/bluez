@@ -157,6 +157,8 @@ struct avrcp_control_ind {
 	int (*register_notification) (struct avrcp *session,
 					uint8_t transaction, uint8_t event,
 					uint32_t interval, void *user_data);
+	int (*set_volume) (struct avrcp *session, uint8_t transaction,
+					uint8_t volume, void *user_data);
 	int (*set_addressed) (struct avrcp *session, uint8_t transaction,
 					uint16_t id, void *user_data);
 	int (*get_folder_items) (struct avrcp *session, uint8_t transaction,
@@ -313,6 +315,8 @@ int avrcp_get_element_attrs_rsp(struct avrcp *session, uint8_t transaction,
 int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t code, uint8_t *params,
 					size_t params_len);
+int avrcp_set_volume_rsp(struct avrcp *session, uint8_t transaction,
+							uint8_t volume);
 int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
 							uint8_t status);
 int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,

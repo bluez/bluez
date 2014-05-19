@@ -709,6 +709,27 @@ static ssize_t register_notification(struct avrcp *session, uint8_t transaction,
 							player->user_data);
 }
 
+static ssize_t set_volume(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	uint8_t volume;
+
+	DBG("");
+
+	if (!player->ind || !player->ind->set_volume)
+		return -ENOSYS;
+
+	if (!params || params_len != sizeof(volume))
+		return -EINVAL;
+
+	volume = params[0] & 0x7f;
+
+	return player->ind->set_volume(session, transaction, volume,
+							player->user_data);
+}
+
 static ssize_t set_addressed(struct avrcp *session, uint8_t transaction,
 					uint16_t params_len, uint8_t *params,
 					void *user_data)
@@ -761,6 +782,9 @@ static const struct avrcp_control_handler player_handlers[] = {
 		{ AVRCP_REGISTER_NOTIFICATION,
 					AVC_CTYPE_NOTIFY, AVC_CTYPE_INTERIM,
 					register_notification },
+		{ AVRCP_SET_ABSOLUTE_VOLUME,
+					AVC_CTYPE_CONTROL, AVC_CTYPE_STABLE,
+					set_volume },
 		{ AVRCP_SET_ADDRESSED_PLAYER,
 					AVC_CTYPE_CONTROL, AVC_CTYPE_STABLE,
 					set_addressed },
@@ -2702,6 +2726,22 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 
 	return avrcp_send(session, transaction, code,
 				AVC_SUBUNIT_PANEL, AVRCP_REGISTER_NOTIFICATION,
+				&iov, 1);
+}
+
+int avrcp_set_volume_rsp(struct avrcp *session, uint8_t transaction,
+							uint8_t volume)
+{
+	struct iovec iov;
+
+	if (volume > 127)
+		return -EINVAL;
+
+	iov.iov_base = &volume;
+	iov.iov_len = sizeof(volume);
+
+	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
+				AVC_SUBUNIT_PANEL, AVRCP_SET_ABSOLUTE_VOLUME,
 				&iov, 1);
 }
 
