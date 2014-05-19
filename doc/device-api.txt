@@ -192,4 +192,4 @@ Properties	string Address [readonly]
 		int16 RSSI [readonly, optional]
 
 			Received Signal Strength Indicator of the remote
-			device.
+			device (inquiry or advertising).
