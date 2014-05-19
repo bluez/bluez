@@ -536,6 +536,16 @@ static int register_notification(struct avrcp *session, uint8_t transaction,
 	return -EAGAIN;
 }
 
+static int set_volume(struct avrcp *session, uint8_t transaction,
+					uint8_t volume, void *user_data)
+{
+	DBG("");
+
+	avrcp_set_volume_rsp(session, transaction, volume);
+
+	return -EAGAIN;
+}
+
 static int set_addressed(struct avrcp *session, uint8_t transaction,
 						uint16_t id, void *user_data)
 {
@@ -643,6 +653,7 @@ static const struct avrcp_control_ind control_ind = {
 	.get_play_status = get_play_status,
 	.get_element_attributes = get_element_attributes,
 	.register_notification = register_notification,
+	.set_volume = set_volume,
 	.set_addressed = set_addressed,
 	.get_folder_items = get_folder_items,
 	.change_path = change_path,
@@ -1582,6 +1593,15 @@ int main(int argc, char *argv[])
 	/* Set absolute volume – CT */
 	define_test("/TP/VLH/BV-01-C", test_client,
 			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
+				0x00, 0x00, 0x01, 0x00));
+
+	/* Set absolute volume – TG */
+	define_test("/TP/VLH/BV-02-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
+				0x00, 0x00, 0x01, 0x00),
+			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
 				0x00, 0x00, 0x01, 0x00));
 
