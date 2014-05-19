@@ -206,6 +206,7 @@ struct bthost {
 	uint8_t pin[16];
 	uint8_t pin_len;
 	uint8_t io_capability;
+	uint8_t auth_req;
 	bool reject_user_confirm;
 	void *smp_data;
 	bool conn_init;
@@ -997,7 +998,7 @@ static void evt_io_cap_request(struct bthost *bthost, const void *data,
 	memcpy(cp.bdaddr, ev->bdaddr, 6);
 	cp.capability = bthost->io_capability;
 	cp.oob_data = 0x00;
-	cp.authentication = 0x00;
+	cp.authentication = bthost->auth_req;
 
 	send_command(bthost, BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY,
 							&cp, sizeof(cp));
@@ -2144,6 +2145,11 @@ void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
 void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability)
 {
 	bthost->io_capability = io_capability;
+}
+
+void bthost_set_auth_req(struct bthost *bthost, uint8_t auth_req)
+{
+	bthost->auth_req = auth_req;
 }
 
 void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject)

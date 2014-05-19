@@ -87,6 +87,7 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
 							uint8_t pin_len);
 void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability);
+void bthost_set_auth_req(struct bthost *bthost, uint8_t auth_req);
 void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject);
 
 typedef void (*bthost_rfcomm_connect_cb) (uint16_t handle, uint16_t cid,
