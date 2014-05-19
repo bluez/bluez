@@ -1,3 +1,15 @@
+ver 5.19:
+	Fix issue with OBEX Put-Delete and Create-Empty methods.
+	Fix issue with AVRCP browsable/searchable player properties.
+	Fix issue with handling multiple default agents.
+	Fix issue with handling unpair event per bearer.
+	Fix issue with HID over GATT report ID presence.
+	Add support for HID protocol handling in userspace.
+	Add support for Bluetooth reconnection policy framework.
+	Add support for Android Bluetooth SCO over HCI transport.
+	Add support for Android Bluetooth audio quality control.
+	Add support for Android Bluetooth Low Energy only mode.
+
 ver 5.18:
 	Fix issue with identifying LE single mode devices.
 	Fix issue with L2CAP and RFCOMM peer address lookup.
