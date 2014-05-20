@@ -154,9 +154,9 @@ static void *notification_handler(void *data)
 
 		ret = recvmsg(notif_sk, &msg, 0);
 		if (ret < 0) {
-			error("Receiving notifications failed, aborting :%s",
+			error("Receiving notifications failed: %s",
 							strerror(errno));
-			exit(EXIT_FAILURE);
+			goto failed;
 		}
 
 		/* socket was shutdown */
@@ -168,8 +168,8 @@ static void *notification_handler(void *data)
 			}
 			pthread_mutex_unlock(&cmd_sk_mutex);
 
-			error("Notification socket closed, aborting");
-			exit(EXIT_FAILURE);
+			error("Notification socket closed");
+			goto failed;
 		}
 
 		fd = -1;
@@ -185,7 +185,7 @@ static void *notification_handler(void *data)
 		}
 
 		if (!handle_msg(buf, ret))
-			exit(EXIT_FAILURE);
+			goto failed;
 	}
 
 	close(notif_sk);
@@ -196,6 +196,9 @@ static void *notification_handler(void *data)
 	DBG("exit");
 
 	return NULL;
+
+failed:
+	exit(EXIT_FAILURE);
 }
 
 static int accept_connection(int sk)
