@@ -366,6 +366,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	/* socket was shutdown */
 	if (ret == 0) {
 		error("Command socket closed, aborting");
+		pthread_mutex_unlock(&cmd_sk_mutex);
 		exit(EXIT_FAILURE);
 	}
 
