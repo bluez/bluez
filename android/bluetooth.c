@@ -1503,7 +1503,8 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		discoverable = eir.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
 
 		gatt_device_found_cb(bdaddr, bdaddr_type, rssi, data_len, data,
-								discoverable);
+								discoverable,
+								dev->le_bonded);
 	}
 
 	if (!dev->bredr_paired && !dev->le_paired)
