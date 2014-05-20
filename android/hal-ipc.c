@@ -229,7 +229,7 @@ static int accept_connection(int sk)
 	return new_sk;
 }
 
-bool hal_ipc_init(void)
+bool hal_ipc_init(const char *path, size_t size)
 {
 	struct sockaddr_un addr;
 	int sk;
@@ -246,7 +246,7 @@ bool hal_ipc_init(void)
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 
-	memcpy(addr.sun_path, BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH));
+	memcpy(addr.sun_path, path, size);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = errno;

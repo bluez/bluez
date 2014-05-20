@@ -21,7 +21,7 @@ struct hal_ipc_handler {
 	size_t data_len;
 };
 
-bool hal_ipc_init(void);
+bool hal_ipc_init(const char *path, size_t size);
 void hal_ipc_cleanup(void);
 
 int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,

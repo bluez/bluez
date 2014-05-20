@@ -420,7 +420,7 @@ static int init(bt_callbacks_t *callbacks)
 	hal_ipc_register(HAL_SERVICE_ID_BLUETOOTH, ev_handlers,
 				sizeof(ev_handlers)/sizeof(ev_handlers[0]));
 
-	if (!hal_ipc_init()) {
+	if (!hal_ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH))) {
 		bt_hal_cbacks = NULL;
 		return BT_STATUS_FAIL;
 	}
