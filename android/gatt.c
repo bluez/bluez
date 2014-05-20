@@ -4762,11 +4762,13 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 	case ATT_OP_FIND_BY_TYPE_REQ:
 		status = find_by_type_request(ipdu, len, dev);
 		break;
+        case ATT_OP_HANDLE_IND:
+        case ATT_OP_HANDLE_NOTIFY:
+		/* Client will handle this */
+		return;
 	case ATT_OP_EXEC_WRITE_REQ:
 		/* TODO */
 	case ATT_OP_HANDLE_CNF:
-	case ATT_OP_HANDLE_IND:
-	case ATT_OP_HANDLE_NOTIFY:
 	case ATT_OP_READ_MULTI_REQ:
 	default:
 		DBG("Unsupported request 0x%02x", ipdu[0]);
