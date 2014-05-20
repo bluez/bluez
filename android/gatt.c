@@ -553,11 +553,12 @@ static void connection_cleanup(struct gatt_device *device)
 		device->att_io = NULL;
 	}
 
-	if (device->server_id > 0)
-		g_attrib_unregister(device->attrib, device->server_id);
-
 	if (device->attrib) {
 		GAttrib *attrib = device->attrib;
+
+		if (device->server_id > 0)
+			g_attrib_unregister(device->attrib, device->server_id);
+
 		device->attrib = NULL;
 		g_attrib_cancel_all(attrib);
 		g_attrib_unref(attrib);
