@@ -35,6 +35,7 @@
 
 #define CONNECT_TIMEOUT (10 * 1000)
 
+static int listen_sk = -1;
 static int cmd_sk = -1;
 static int notif_sk = -1;
 
@@ -233,6 +234,44 @@ static int accept_connection(int sk)
 	return new_sk;
 }
 
+bool hal_ipc_accept(void)
+{
+	int err;
+
+	/* Start Android Bluetooth daemon service */
+	if (property_set("bluetooth.start", "daemon") < 0) {
+		error("Failed to set bluetooth.start=daemon");
+		return false;
+	}
+
+	cmd_sk = accept_connection(listen_sk);
+	if (cmd_sk < 0)
+		return false;
+
+	notif_sk = accept_connection(listen_sk);
+	if (notif_sk < 0) {
+		close(cmd_sk);
+		cmd_sk = -1;
+		return false;
+	}
+
+	err = pthread_create(&notif_th, NULL, notification_handler, NULL);
+	if (err) {
+		notif_th = 0;
+		error("Failed to start notification thread: %d (%s)", err,
+							strerror(err));
+		close(cmd_sk);
+		cmd_sk = -1;
+		close(notif_sk);
+		notif_sk = -1;
+		return false;
+	}
+
+	info("IPC connected");
+
+	return true;
+}
+
 bool hal_ipc_init(const char *path, size_t size)
 {
 	struct sockaddr_un addr;
@@ -267,52 +306,25 @@ bool hal_ipc_init(const char *path, size_t size)
 		return false;
 	}
 
-	/* Start Android Bluetooth daemon service */
-	if (property_set("bluetooth.start", "daemon") < 0) {
-		error("Failed to set bluetooth.start=daemon");
-		close(sk);
-		return false;
-	}
-
-	cmd_sk = accept_connection(sk);
-	if (cmd_sk < 0) {
-		close(sk);
-		return false;
-	}
-
-	notif_sk = accept_connection(sk);
-	if (notif_sk < 0) {
-		close(sk);
-		close(cmd_sk);
-		cmd_sk = -1;
-		return false;
-	}
-
-	info("bluetoothd connected");
-
-	close(sk);
-
-	err = pthread_create(&notif_th, NULL, notification_handler, NULL);
-	if (err) {
-		notif_th = 0;
-		error("Failed to start notification thread: %d (%s)", err,
-							strerror(err));
-		close(cmd_sk);
-		cmd_sk = -1;
-		close(notif_sk);
-		notif_sk = -1;
-		return false;
-	}
+	listen_sk = sk;
 
 	return true;
 }
 
 void hal_ipc_cleanup(void)
 {
+	close(listen_sk);
+	listen_sk = -1;
+
 	pthread_mutex_lock(&cmd_sk_mutex);
-	close(cmd_sk);
-	cmd_sk = -1;
+	if (cmd_sk >= 0) {
+		close(cmd_sk);
+		cmd_sk = -1;
+	}
 	pthread_mutex_unlock(&cmd_sk_mutex);
+
+	if (notif_sk < 0)
+		return;
 
 	shutdown(notif_sk, SHUT_RD);
 

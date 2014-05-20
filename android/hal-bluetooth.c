@@ -415,12 +415,16 @@ static int init(bt_callbacks_t *callbacks)
 	if (interface_ready())
 		return BT_STATUS_DONE;
 
-	bt_hal_cbacks = callbacks;
-
 	hal_ipc_register(HAL_SERVICE_ID_BLUETOOTH, ev_handlers,
 				sizeof(ev_handlers)/sizeof(ev_handlers[0]));
 
-	if (!hal_ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH))) {
+	if (!hal_ipc_init(BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH)))
+		return BT_STATUS_FAIL;
+
+	bt_hal_cbacks = callbacks;
+
+	if (!hal_ipc_accept()) {
+		hal_ipc_cleanup();
 		bt_hal_cbacks = NULL;
 		return BT_STATUS_FAIL;
 	}
