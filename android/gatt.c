@@ -4651,7 +4651,7 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 	return 0;
 }
 
-static uint8_t write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
+static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *dev)
 {
 	uint8_t value[ATT_DEFAULT_LE_MTU];
@@ -4661,13 +4661,9 @@ static uint8_t write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	len = dec_write_cmd(cmd, cmd_len, &handle, value, &vlen);
 	if (!len)
-		return ATT_ECODE_INVALID_PDU;
+		return;
 
-	if (!gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
-								&dev->bdaddr))
-		return ATT_ECODE_UNLIKELY;
-
-	return 0;
+	gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0], &dev->bdaddr);
 }
 
 static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
@@ -4753,10 +4749,9 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 			return;
 		break;
 	case ATT_OP_WRITE_CMD:
-		status = write_cmd_request(ipdu, len, dev);
-		if (!status)
-			return;
-		break;
+		write_cmd_request(ipdu, len, dev);
+		/* No response on write cmd */
+		return;
 	case ATT_OP_PREP_WRITE_REQ:
 		status = write_prep_request(ipdu, len, dev);
 		if (!status)
