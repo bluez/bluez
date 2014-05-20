@@ -10,7 +10,7 @@ PTS version: 5.1
 -------------------------------------------------------------------------------
 Parameter Name						Value
 -------------------------------------------------------------------------------
-TSPX_avrcp_revision
+TSPX_avrcp_revision					1.5 (^)
 TSPX_class_of_device					20050C
 TSPX_establish_avdtp_stream				TRUE
 TSPX_iut_establishes_initial_condition			FALSE
