@@ -40,6 +40,11 @@
 #include "ipc.h"
 #include "src/log.h"
 
+struct service_handler {
+	const struct ipc_handler *handler;
+	uint8_t size;
+};
+
 struct ipc {
 	struct service_handler *services;
 	int service_max;

@@ -27,11 +27,6 @@ struct ipc_handler {
 	size_t data_len;
 };
 
-struct service_handler {
-	const struct ipc_handler *handler;
-	uint8_t size;
-};
-
 struct ipc;
 
 typedef void (*ipc_disconnect_cb) (void *data);
