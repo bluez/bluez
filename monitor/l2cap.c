@@ -2343,22 +2343,37 @@ static void print_smp_oob_data(uint8_t oob_data)
 
 static void print_smp_auth_req(uint8_t auth_req)
 {
-	const char *str;
+	const char *bond, *mitm, *sc, *kp;
 
 	switch (auth_req & 0x03) {
 	case 0x00:
-		str = "No bonding";
+		bond = "No bonding";
 		break;
 	case 0x01:
-		str = "Bonding";
+		bond = "Bonding";
 		break;
 	default:
-		str = "Reserved";
+		bond = "Reserved";
 		break;
 	}
 
-	print_field("Authentication requirement: %s - %s (0x%2.2x)",
-			str, (auth_req & 0x04) ? "MITM" : "No MITM", auth_req);
+	if ((auth_req & 0x04))
+		mitm = "MITM";
+	else
+		mitm = "No MITM";
+
+	if ((auth_req & 0x08))
+		sc = "SC";
+	else
+		sc = "Legacy";
+
+	if ((auth_req & 0x10))
+		kp = "Keypresses";
+	else
+		kp = "No Keypresses";
+
+	print_field("Authentication requirement: %s, %s, %s, %s (0x%2.2x)",
+						bond, mitm, sc, kp, auth_req);
 }
 
 static void print_smp_key_dist(const char *label, uint8_t dist)
