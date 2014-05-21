@@ -3007,20 +3007,6 @@ static void handle_notification(const uint8_t *pdu, uint16_t len,
 	ev->len = len - data_offset;
 	memcpy(ev->value, pdu + data_offset, len - data_offset);
 
-	if (!ev->is_notify) {
-		uint8_t *res;
-		uint16_t len;
-		size_t plen;
-
-		res = g_attrib_get_buffer(
-				notification->conn->device->attrib,
-				&plen);
-		len = enc_confirmation(res, plen);
-		if (len > 0)
-			g_attrib_send(notification->conn->device->attrib,
-						0, res, len, NULL, NULL, NULL);
-	}
-
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT, HAL_EV_GATT_CLIENT_NOTIFY,
 						sizeof(*ev) + ev->len, ev);
 }
@@ -4764,8 +4750,16 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 	case ATT_OP_FIND_BY_TYPE_REQ:
 		status = find_by_type_request(ipdu, len, dev);
 		break;
-        case ATT_OP_HANDLE_IND:
-        case ATT_OP_HANDLE_NOTIFY:
+	case ATT_OP_HANDLE_IND:
+		/*
+		 * We have to send confirmation here. If some client is
+		 * registered for this indication, event will be send in
+		 * handle_notification
+		 */
+		length = enc_confirmation(opdu, sizeof(opdu));
+		status = 0;
+		break;
+	case ATT_OP_HANDLE_NOTIFY:
 		/* Client will handle this */
 		return;
 	case ATT_OP_EXEC_WRITE_REQ:
