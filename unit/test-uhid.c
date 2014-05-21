@@ -239,6 +239,10 @@ static const struct uhid_event ev_input = {
 	.type = UHID_INPUT,
 };
 
+static const struct uhid_event ev_output = {
+	.type = UHID_OUTPUT,
+};
+
 static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(data);
@@ -259,6 +263,24 @@ static void test_client(gconstpointer data)
 	execute_context(context);
 }
 
+static void handle_output(struct uhid_event *ev, void *user_data)
+{
+	g_assert_cmpint(ev->type, ==, UHID_OUTPUT);
+
+	context_quit(user_data);
+}
+
+static void test_server(gconstpointer data)
+{
+	struct context *context = create_context(data);
+
+	bt_uhid_register(context->uhid, UHID_OUTPUT, handle_output, context);
+
+	g_idle_add(send_pdu, context);
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -268,6 +290,8 @@ int main(int argc, char *argv[])
 	define_test("/uhid/command/feature_answer", test_client,
 						event(&ev_feature_answer));
 	define_test("/uhid/command/input", test_client, event(&ev_input));
+
+	define_test("/uhid/event/output", test_server, event(&ev_output));
 
 	return g_test_run();
 }
