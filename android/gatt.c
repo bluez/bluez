@@ -364,8 +364,14 @@ static bool match_connection_by_device_and_app(const void *data,
 
 static struct app_connection *find_connection_by_id(int32_t conn_id)
 {
-	return queue_find(app_connections, match_connection_by_id,
+	struct app_connection *conn;
+
+	conn = queue_find(app_connections, match_connection_by_id,
 							INT_TO_PTR(conn_id));
+	if (conn && conn->device->state == DEVICE_CONNECTED)
+		return conn;
+
+	return NULL;
 }
 
 static bool match_connection_by_device(const void *data, const void *user_data)
