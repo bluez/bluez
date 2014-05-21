@@ -271,7 +271,8 @@ unit_tests += unit/test-uhid
 unit_test_uhid_SOURCES = unit/test-uhid.c \
 				src/shared/uhid.h src/shared/uhid.c \
 				src/shared/io.h src/shared/io-glib.c \
-				src/shared/util.h src/shared/util.c
+				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c
 unit_test_uhid_LDADD = @GLIB_LIBS@
 
 unit_tests += unit/test-sdp
