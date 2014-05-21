@@ -235,6 +235,10 @@ static const struct uhid_event ev_feature_answer = {
 	.type = UHID_FEATURE_ANSWER,
 };
 
+static const struct uhid_event ev_input = {
+	.type = UHID_INPUT,
+};
+
 static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(data);
@@ -249,6 +253,9 @@ static void test_client(gconstpointer data)
 						"/uhid/command/feature_answer"))
 		bt_uhid_send(context->uhid, &ev_feature_answer);
 
+	if (g_str_equal(context->data->test_name, "/uhid/command/input"))
+		bt_uhid_send(context->uhid, &ev_input);
+
 	execute_context(context);
 }
 
@@ -260,6 +267,7 @@ int main(int argc, char *argv[])
 	define_test("/uhid/command/destroy", test_client, event(&ev_destroy));
 	define_test("/uhid/command/feature_answer", test_client,
 						event(&ev_feature_answer));
+	define_test("/uhid/command/input", test_client, event(&ev_input));
 
 	return g_test_run();
 }
