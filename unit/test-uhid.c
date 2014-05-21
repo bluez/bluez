@@ -227,12 +227,19 @@ static const struct uhid_event ev_create = {
 	.type = UHID_CREATE,
 };
 
+static const struct uhid_event ev_destroy = {
+	.type = UHID_DESTROY,
+};
+
 static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(data);
 
 	if (g_str_equal(context->data->test_name, "/uhid/command/create"))
 		bt_uhid_send(context->uhid, &ev_create);
+
+	if (g_str_equal(context->data->test_name, "/uhid/command/destroy"))
+		bt_uhid_send(context->uhid, &ev_destroy);
 
 	execute_context(context);
 }
@@ -242,6 +249,7 @@ int main(int argc, char *argv[])
 	g_test_init(&argc, &argv, NULL);
 
 	define_test("/uhid/command/create", test_client, event(&ev_create));
+	define_test("/uhid/command/destroy", test_client, event(&ev_destroy));
 
 	return g_test_run();
 }
