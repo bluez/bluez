@@ -252,7 +252,9 @@ include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := bluez/android/hal-audio.c
+LOCAL_SRC_FILES := \
+	bluez/android/hal-audio.c \
+	bluez/android/hal-audio-sbc.c \
 
 LOCAL_C_INCLUDES = \
 	$(call include-path-for, system-core) \

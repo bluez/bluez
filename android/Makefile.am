@@ -165,7 +165,9 @@ android_ipc_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hal-msg.h \
+					android/hal-audio.h \
 					android/hal-audio.c \
+					android/hal-audio-sbc.c \
 					android/hardware/audio.h \
 					android/hardware/audio_effect.h \
 					android/hardware/hardware.h \
