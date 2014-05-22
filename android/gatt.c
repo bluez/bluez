@@ -4657,6 +4657,7 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *dev)
 {
 	uint8_t value[ATT_DEFAULT_LE_MTU];
+	struct pending_request *data;
 	uint16_t handle;
 	uint16_t len;
 	size_t vlen;
@@ -4664,6 +4665,18 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 	len = dec_write_req(cmd, cmd_len, &handle, value, &vlen);
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
+
+	data = new0(struct pending_request, 1);
+	if (!data)
+		return ATT_ECODE_INSUFF_RESOURCES;
+
+	data->handle = handle;
+	data->state = REQUEST_INIT;
+
+	if (!queue_push_tail(dev->pending_requests, data)) {
+		free(data);
+		return ATT_ECODE_INSUFF_RESOURCES;
+	}
 
 	if (!gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
 								&dev->bdaddr))
@@ -4676,6 +4689,7 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *dev)
 {
 	uint8_t value[ATT_DEFAULT_LE_MTU];
+	struct pending_request *data;
 	uint16_t handle;
 	uint16_t offset;
 	uint16_t len;
@@ -4685,6 +4699,19 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 						value, &vlen);
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
+
+	data = new0(struct pending_request, 1);
+	if (!data)
+		return ATT_ECODE_INSUFF_RESOURCES;
+
+	data->handle = handle;
+	data->offset = offset;
+	data->state = REQUEST_INIT;
+
+	if (!queue_push_tail(dev->pending_requests, data)) {
+		free(data);
+		return ATT_ECODE_INSUFF_RESOURCES;
+	}
 
 	if (!gatt_db_write(gatt_db, handle, offset, value, vlen, cmd[0],
 								&dev->bdaddr))
