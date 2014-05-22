@@ -2390,6 +2390,8 @@ static void print_smp_key_dist(const char *label, uint8_t dist)
 			strcat(str, "IdKey ");
 		if (dist & 0x04)
 			strcat(str, "Sign ");
+		if (dist & 0x08)
+			strcat(str, "LinkKey ");
 	}
 
 	print_field("%s: %s(0x%2.2x)", label, str, dist);
