@@ -44,6 +44,7 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/gatt-db.h"
+#include "src/shared/crypto.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
@@ -179,6 +180,8 @@ static struct queue *listen_apps = NULL;
 static struct gatt_db *gatt_db = NULL;
 
 static GIOChannel *listening_io = NULL;
+
+static struct bt_crypto *crypto = NULL;
 
 static void bt_le_discovery_stop_cb(void);
 
@@ -5246,9 +5249,10 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 	app_connections = queue_new();
 	listen_apps = queue_new();
 	gatt_db = gatt_db_new();
+	crypto = bt_crypto_new();
 
 	if (!gatt_devices || !gatt_apps || !listen_apps ||
-						!app_connections || !gatt_db) {
+				!app_connections || !gatt_db || !crypto) {
 		error("gatt: Failed to allocate memory for queues");
 
 		queue_destroy(gatt_apps, NULL);
@@ -5268,6 +5272,8 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 
 		g_io_channel_unref(listening_io);
 		listening_io = NULL;
+
+		bt_crypto_unref(crypto);
 
 		return false;
 	}
@@ -5310,4 +5316,7 @@ void bt_gatt_unregister(void)
 
 	g_io_channel_unref(listening_io);
 	listening_io = NULL;
+
+	bt_crypto_unref(crypto);
+	crypto = NULL;
 }

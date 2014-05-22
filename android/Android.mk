@@ -53,6 +53,7 @@ LOCAL_SRC_FILES := \
 	bluez/src/shared/hfp.c \
 	bluez/src/shared/gatt-db.c \
 	bluez/src/shared/io-glib.c \
+	bluez/src/shared/crypto.c \
 	bluez/src/sdpd-database.c \
 	bluez/src/sdpd-service.c \
 	bluez/src/sdpd-request.c \
