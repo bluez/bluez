@@ -1805,6 +1805,42 @@ static void new_long_term_key_event(uint16_t index, uint16_t length,
 	/* TODO browse services here? */
 }
 
+static void new_csrk_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_new_csrk *ev = param;
+	struct device *dev;
+	char dst[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small csrk event (%u bytes)", length);
+		return;
+	}
+
+	ba2str(&ev->key.addr.bdaddr, dst);
+	dev = find_device(&ev->key.addr.bdaddr);
+	if (!dev)
+		return;
+
+	switch (ev->key.master) {
+	case 0x00:
+		memcpy(dev->local_csrk, ev->key.val, 16);
+		dev->local_sign_cnt = 0;
+		dev->valid_local_csrk = true;
+		break;
+	case 0x01:
+		memcpy(dev->remote_csrk, ev->key.val, 16);
+		dev->remote_sign_cnt = 0;
+		dev->valid_remote_csrk = true;
+		break;
+	default:
+		error("Unknown CSRK key type 02%02x", ev->key.master);
+		return;
+	}
+
+	/*TODO: Store it. Remember about Sign Counter*/
+}
+
 static void register_mgmt_handlers(void)
 {
 	mgmt_register(mgmt_if, MGMT_EV_NEW_SETTINGS, adapter.index,
@@ -1854,6 +1890,10 @@ static void register_mgmt_handlers(void)
 
 	mgmt_register(mgmt_if, MGMT_EV_NEW_LONG_TERM_KEY, adapter.index,
 					new_long_term_key_event, NULL, NULL);
+
+	mgmt_register(mgmt_if, MGMT_EV_NEW_CSRK, adapter.index,
+						new_csrk_callback, NULL, NULL);
+
 }
 
 static void load_link_keys_complete(uint8_t status, uint16_t length,
