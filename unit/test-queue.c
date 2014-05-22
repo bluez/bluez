@@ -58,11 +58,32 @@ static void test_basic(void)
 	queue_destroy(queue, NULL);
 }
 
+static void foreach_destroy(void *data, void *user_data)
+{
+	struct queue *queue = user_data;
+
+	queue_destroy(queue, NULL);
+}
+
+static void test_foreach_destroy(void)
+{
+	struct queue *queue;
+
+	queue = queue_new();
+	g_assert(queue != NULL);
+
+	queue_push_tail(queue, UINT_TO_PTR(1));
+	queue_push_tail(queue, UINT_TO_PTR(2));
+
+	queue_foreach(queue, foreach_destroy, queue);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
 
 	g_test_add_func("/queue/basic", test_basic);
+	g_test_add_func("/queue/foreach_destroy", test_foreach_destroy);
 
 	return g_test_run();
 }
