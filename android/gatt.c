@@ -762,9 +762,11 @@ static void disconnect_notify_by_device(void *data, void *user_data)
 		send_app_connect_notify(conn, GATT_FAILURE);
 }
 
-#define READ_INIT -3
-#define READ_PENDING -2
-#define READ_FAILED -1
+enum pend_req_state {
+	REQUEST_INIT,
+	REQUEST_PENDING,
+	REQUEST_DONE,
+};
 
 struct pending_request {
 	uint16_t handle;
@@ -774,6 +776,9 @@ struct pending_request {
 
 	uint8_t *filter_value;
 	uint16_t filter_vlen;
+
+	enum pend_req_state state;
+	uint8_t error;
 };
 
 static void destroy_pending_request(void *data)
@@ -3542,8 +3547,8 @@ static void send_dev_pending_response(struct gatt_device *device,
 	}
 	case ATT_OP_READ_BLOB_REQ:
 		val = queue_pop_head(device->pending_requests);
-		if (!val || val->length < 0) {
-			error = ATT_ECODE_ATTR_NOT_FOUND;
+		if (val->error) {
+			error = val->error;
 			goto done;
 		}
 
@@ -3553,8 +3558,8 @@ static void send_dev_pending_response(struct gatt_device *device,
 		break;
 	case ATT_OP_READ_REQ:
 		val = queue_pop_head(device->pending_requests);
-		if (!val || val->length < 0) {
-			error = ATT_ECODE_ATTR_NOT_FOUND;
+		if (val->error) {
+			error = val->error;
 			goto done;
 		}
 
@@ -3662,9 +3667,9 @@ static void send_dev_pending_response(struct gatt_device *device,
 	}
 	case ATT_OP_EXEC_WRITE_REQ:
 		val = queue_pop_head(device->pending_requests);
-		if (!val) {
-			error = ATT_ECODE_ATTR_NOT_FOUND;
-			break;
+		if (val->error) {
+			error = val->error;
+			goto done;
 		}
 
 		len = enc_exec_write_resp(rsp);
@@ -3672,9 +3677,9 @@ static void send_dev_pending_response(struct gatt_device *device,
 		break;
 	case ATT_OP_WRITE_REQ:
 		val = queue_pop_head(device->pending_requests);
-		if (!val) {
-			error = ATT_ECODE_ATTR_NOT_FOUND;
-			break;
+		if (val->error) {
+			error = val->error;
+			goto done;
 		}
 
 		len = enc_write_resp(rsp);
@@ -3682,9 +3687,9 @@ static void send_dev_pending_response(struct gatt_device *device,
 		break;
 	case ATT_OP_PREP_WRITE_REQ:
 		val = queue_pop_head(device->pending_requests);
-		if (!val) {
-			error = ATT_ECODE_ATTR_NOT_FOUND;
-			break;
+		if (val->error) {
+			error = val->error;
+			goto done;
 		}
 
 		len = enc_prep_write_resp(val->handle, val->offset, val->value,
@@ -3715,7 +3720,7 @@ static bool match_pending_dev_request(const void *data, const void *user_data)
 {
 	const struct pending_request *pending_request = data;
 
-	return pending_request->length == READ_PENDING;
+	return pending_request->state == REQUEST_PENDING;
 }
 
 static bool match_dev_request_by_handle(const void *data, const void *user_data)
@@ -3738,7 +3743,8 @@ static void read_requested_attributes(void *data, void *user_data)
 						process_data->opcode,
 						&process_data->device->bdaddr,
 						&value, &value_len)) {
-		resp_data->length = READ_FAILED;
+		resp_data->state = REQUEST_DONE;
+		resp_data->error = ATT_ECODE_UNLIKELY;
 		return;
 	}
 
@@ -3747,14 +3753,15 @@ static void read_requested_attributes(void *data, void *user_data)
 		resp_data->value = malloc0(value_len);
 		if (!resp_data->value) {
 			/* If data cannot be copied, act like when read fails */
-			resp_data->length = READ_FAILED;
+			resp_data->state = REQUEST_DONE;
+			resp_data->error = ATT_ECODE_INSUFF_RESOURCES;
 			return;
 		}
 
 		memcpy(resp_data->value, value, value_len);
 		resp_data->length = value_len;
-	} else if (resp_data->length == READ_INIT) {
-		resp_data->length = READ_PENDING;
+	} else if (resp_data->state == REQUEST_INIT) {
+		resp_data->state = REQUEST_PENDING;
 	}
 }
 
@@ -3789,9 +3796,6 @@ static void send_gatt_response(uint8_t opcode, uint16_t handle,
 		goto done;
 	}
 
-	if (status)
-		goto done;
-
 	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
 							UINT_TO_PTR(handle));
 	if (!entry) {
@@ -3802,15 +3806,15 @@ static void send_gatt_response(uint8_t opcode, uint16_t handle,
 	entry->handle = handle;
 	entry->offset = offset;
 	entry->length = len;
+	entry->state = REQUEST_DONE;
+	entry->error = status;
 
 	if (!len)
 		goto done;
 
 	entry->value = malloc0(len);
 	if (!entry->value) {
-		/* send_dev_pending_request on empty queue sends error resp. */
-		queue_remove(dev->pending_requests, entry);
-		destroy_pending_request(entry);
+		entry->error = ATT_ECODE_INSUFF_RESOURCES;
 
 		goto done;
 	}
@@ -4355,7 +4359,7 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 		}
 
 		entry->handle = handle;
-		entry->length = READ_INIT;
+		entry->state = REQUEST_INIT;
 
 		if (!queue_push_tail(device->pending_requests, entry)) {
 			queue_remove_all(device->pending_requests, NULL, NULL,
@@ -4409,7 +4413,7 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 			return ATT_ECODE_INSUFF_RESOURCES;
 		}
 
-		data->length = READ_INIT;
+		data->state = REQUEST_INIT;
 		data->handle = handle;
 		queue_push_tail(device->pending_requests, data);
 	}
@@ -4454,7 +4458,7 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	data->offset = offset;
 	data->handle = handle;
-	data->length = READ_INIT;
+	data->state = REQUEST_INIT;
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
 		return ATT_ECODE_INSUFF_RESOURCES;
@@ -4618,7 +4622,7 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 			return ATT_ECODE_INSUFF_RESOURCES;
 		}
 
-		data->length = READ_INIT;
+		data->state = REQUEST_INIT;
 		data->handle = handle;
 		data->filter_vlen = search_vlen;
 		memcpy(data->filter_value, search_value, search_vlen);
@@ -4879,9 +4883,8 @@ static void gap_read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 
 		entry->value = malloc0(strlen(name));
 		if (!entry->value) {
-			queue_remove(dev->pending_requests, entry);
-			free(entry);
-			return;
+			entry->error = ATT_ECODE_INSUFF_RESOURCES;
+			goto done;
 		}
 
 		entry->length = strlen(name);
@@ -4889,9 +4892,8 @@ static void gap_read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 	} else if (handle == gap_srvc_data.appear) {
 		entry->value = malloc0(2);
 		if (!entry->value) {
-			queue_remove(dev->pending_requests, entry);
-			free(entry);
-			return;
+			entry->error = ATT_ECODE_INSUFF_RESOURCES;
+			goto done;
 		}
 
 		put_le16(APPEARANCE_GENERIC_PHONE, entry->value);
@@ -4899,16 +4901,20 @@ static void gap_read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 	} else if (handle == gap_srvc_data.priv) {
 		entry->value = malloc0(1);
 		if (!entry->value) {
-			queue_remove(dev->pending_requests, entry);
-			free(entry);
-			return;
+			entry->error = ATT_ECODE_INSUFF_RESOURCES;
+			goto done;
 		}
 
 		*entry->value = PERIPHERAL_PRIVACY_DISABLE;
 		entry->length = sizeof(uint8_t);
+	} else {
+		entry->error = ATT_ECODE_ATTR_NOT_FOUND;
 	}
 
 	entry->offset = offset;
+
+done:
+	entry->state  = REQUEST_DONE;
 }
 
 static void register_gap_service(void)
@@ -4989,14 +4995,16 @@ static void device_info_read_cb(uint16_t handle, uint16_t offset,
 
 	entry->value = malloc0(strlen(buf));
 	if (!entry->value) {
-		queue_remove(dev->pending_requests, entry);
-		free(entry);
-		return;
+		entry->error = ATT_ECODE_UNLIKELY;
+		goto done;
 	}
 
 	entry->length = strlen(buf);
 	memcpy(entry->value, buf, entry->length);
 	entry->offset = offset;
+
+done:
+	entry->state = REQUEST_DONE;
 }
 
 static void register_device_info_service(void)
