@@ -3231,6 +3231,20 @@ bool bt_get_csrk(const bdaddr_t *addr, enum bt_csrk_type type, uint8_t key[16],
 	return true;
 }
 
+void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type)
+{
+	struct device *dev;
+
+	dev = find_device(addr);
+	if (!dev)
+		return;
+
+	if (type == LOCAL_CSRK)
+		dev->local_sign_cnt++;
+	else
+		dev->remote_sign_cnt++;
+}
+
 static uint8_t set_adapter_scan_mode(const void *buf, uint16_t len)
 {
 	const uint8_t *mode = buf;
