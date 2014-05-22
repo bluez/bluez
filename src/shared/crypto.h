@@ -47,5 +47,5 @@ bool bt_crypto_s1(struct bt_crypto *crypto, const uint8_t k[16],
 			const uint8_t r1[16], const uint8_t r2[16],
 			uint8_t res[16]);
 bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
-					const uint8_t *m, uint16_t m_len,
-					uint8_t signature[12]);
+				const uint8_t *m, uint16_t m_len,
+				uint32_t sign_cnt, uint8_t signature[12]);

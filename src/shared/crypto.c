@@ -257,30 +257,45 @@ static inline void swap128(const uint8_t src[16], uint8_t dst[16])
 }
 
 bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
-					const uint8_t *m, uint16_t m_len,
-					uint8_t signature[12])
+				const uint8_t *m, uint16_t m_len,
+				uint32_t sign_cnt, uint8_t signature[12])
 {
 	int fd;
 	int len;
 	uint8_t tmp[16], out[16];
+	uint16_t msg_len = m_len + sizeof(uint32_t);
+	uint8_t msg[msg_len];
 
 	if (!crypto)
 		return false;
 
+	memset(msg, 0, msg_len);
+	memcpy(msg, m, m_len);
+
+	/* Add sign_counter to the message */
+	put_le32(sign_cnt, msg + msg_len);
+
 	/* The most significant octet of key corresponds to key[0] */
 	swap128(key, tmp);
 
+	memcpy(signature, tmp + 4, 12);
 	fd = alg_new(crypto->cmac_aes, tmp, 16);
 	if (fd < 0)
 		return false;
 
-	len = send(fd, m, m_len, 0);
+	len = send(fd, msg, msg_len, 0);
 	if (len < 0)
 		return false;
 
 	len = read(fd, out, 16);
 	if (len < 0)
 		return false;
+
+	/*
+	 * As to BT spec. 4.1 Vol[3], Part C, chapter 10.4.1 sign counter should
+	 * be placed in the signature
+	 */
+	put_le32(sign_cnt, out + 8);
 
 	/*
 	 * The most significant octet of hash corresponds to out[0]  - swap it.
