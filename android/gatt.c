@@ -4768,6 +4768,44 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0], &dev->bdaddr);
 }
 
+static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
+						struct gatt_device *dev)
+{
+	uint8_t value[ATT_DEFAULT_LE_MTU];
+	uint8_t s[ATT_SIGNATURE_LEN];
+	uint16_t handle;
+	uint16_t len;
+	size_t vlen;
+	uint8_t csrk[16];
+	uint32_t sign_cnt;
+
+	if (!bt_get_csrk(&dev->bdaddr, REMOTE_CSRK, csrk, &sign_cnt)) {
+		error("gatt: No valid csrk from remote device");
+		return;
+	}
+
+	len = dec_signed_write_cmd(cmd, cmd_len, &handle, value, &vlen, s);
+	if (len) {
+		uint8_t t[ATT_SIGNATURE_LEN];
+
+		/* Generate signature and verify it */
+		if (!bt_crypto_sign_att(crypto, csrk, value, vlen, sign_cnt,
+									t)) {
+			error("gatt: Error when generating att signature");
+			return;
+		}
+
+		if (memcmp(t, s, ATT_SIGNATURE_LEN)) {
+			error("gatt: signature does not match");
+			return;
+		}
+		/* Signature OK, proceed with write */
+		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK);
+		gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
+								&dev->bdaddr);
+	}
+}
+
 static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *dev)
 {
@@ -4880,6 +4918,10 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 	case ATT_OP_WRITE_CMD:
 		write_cmd_request(ipdu, len, dev);
 		/* No response on write cmd */
+		return;
+	case ATT_OP_SIGNED_WRITE_CMD:
+		write_signed_cmd_request(ipdu, len, dev);
+		/* No response on write signed cmd */
 		return;
 	case ATT_OP_PREP_WRITE_REQ:
 		status = write_prep_request(ipdu, len, dev);
