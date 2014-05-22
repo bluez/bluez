@@ -274,7 +274,7 @@ static void test_condition_complete(struct test_data *data)
 		user = calloc(1, sizeof(struct test_data)); \
 		if (!user) \
 			break; \
-		user->hciemu_type = HCIEMU_TYPE_LE; \
+		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
