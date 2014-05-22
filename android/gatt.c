@@ -3505,7 +3505,6 @@ static void send_dev_pending_response(struct gatt_device *device,
 		int length;
 		struct queue *temp;
 
-
 		temp = queue_new();
 		if (!temp)
 			goto done;
