@@ -990,6 +990,73 @@ static void send_app_connect_notifications(void *data, void *user_data)
 
 static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data);
 
+static void exchange_mtu_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct gatt_device *device = user_data;
+	GIOChannel *io;
+	GError *gerr = NULL;
+	uint16_t rmtu, mtu, imtu;
+
+	if (status) {
+		error("gatt: MTU exchange: %s", att_ecode2str(status));
+		goto failed;
+	}
+
+	if (!dec_mtu_resp(pdu, plen, &rmtu)) {
+		error("gatt: MTU exchange: protocol error");
+		goto failed;
+	}
+
+	if (rmtu < ATT_DEFAULT_LE_MTU) {
+		error("gatt: MTU exchange: mtu error");
+		goto failed;
+	}
+
+	io = g_attrib_get_channel(device->attrib);
+
+	bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &imtu, BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("gatt: Could not get imtu: %s", gerr->message);
+		g_error_free(gerr);
+
+		return;
+	}
+
+	mtu = MIN(rmtu, imtu);
+	if (mtu != imtu && !g_attrib_set_mtu(device->attrib, mtu)) {
+		error("gatt: MTU exchange failed");
+		goto failed;
+	}
+
+	DBG("MTU exchange succeeded: rmtu:%d, old mtu:%d, new mtu:%d", rmtu,
+								imtu, mtu);
+
+failed:
+	device_unref(device);
+}
+
+static void send_exchange_mtu_request(struct gatt_device *device)
+{
+	GIOChannel *io;
+	GError *gerr = NULL;
+	uint16_t imtu;
+
+	io = g_attrib_get_channel(device->attrib);
+
+	bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &imtu, BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("gatt: Could not get imtu: %s", gerr->message);
+		g_error_free(gerr);
+
+		return;
+	}
+
+	if (!gatt_exchange_mtu(device->attrib, imtu, exchange_mtu_cb,
+							device_ref(device)))
+		device_unref(device);
+}
+
 static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct gatt_device *dev = user_data;
@@ -1034,6 +1101,10 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		error("gatt: Could not attach to server");
 
 	device_set_state(dev, DEVICE_CONNECTED);
+
+	/* Send exchange mtu request as we assume being client and server */
+	/* TODO: Dont exchange mtu if no client apps */
+	send_exchange_mtu_request(dev);
 
 	status = GATT_SUCCESS;
 
