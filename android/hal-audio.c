@@ -527,9 +527,12 @@ static void downmix_to_mono(struct a2dp_stream_out *out, const uint8_t *buffer,
 {
 	const int16_t *input = (const void *) buffer;
 	int16_t *output = (void *) out->downmix_buf;
-	size_t i;
+	size_t i, frames;
 
-	for (i = 0; i < bytes / 2; i++) {
+	/* PCM 16bit stereo */
+	frames = bytes / (2 * sizeof(int16_t));
+
+	for (i = 0; i < frames; i++) {
 		int16_t l = le16_to_cpu(get_unaligned(&input[i * 2]));
 		int16_t r = le16_to_cpu(get_unaligned(&input[i * 2 + 1]));
 
