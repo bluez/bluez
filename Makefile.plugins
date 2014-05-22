@@ -56,7 +56,8 @@ builtin_modules += input
 builtin_sources += profiles/input/manager.c \
 			profiles/input/server.h profiles/input/server.c \
 			profiles/input/device.h profiles/input/device.c \
-			profiles/input/uhid_copy.h profiles/input/hidp_defs.h
+			src/shared/uhid.h src/shared/uhid.c \
+			profiles/input/hidp_defs.h
 
 builtin_modules += hog
 builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
