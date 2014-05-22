@@ -116,6 +116,14 @@ struct device {
 
 	bool found; /* if device is found in current discovery session */
 	unsigned int confirm_id; /* mgtm command id if command pending */
+
+	bool valid_remote_csrk;
+	uint8_t remote_csrk[16];
+	uint32_t remote_sign_cnt;
+
+	bool valid_local_csrk;
+	uint8_t local_csrk[16];
+	uint32_t local_sign_cnt;
 };
 
 struct browse_req {
@@ -3194,6 +3202,29 @@ bool bt_read_device_rssi(const bdaddr_t *addr, bt_read_device_rssi_done cb,
 			sizeof(cp), &cp, read_device_rssi_cb, data, free)) {
 		free(data);
 		error("Failed to get conn info");
+		return false;
+	}
+
+	return true;
+}
+
+bool bt_get_csrk(const bdaddr_t *addr, enum bt_csrk_type type, uint8_t key[16],
+							uint32_t *sign_cnt)
+{
+	struct device *dev;
+	bool local = (type == LOCAL_CSRK);
+
+	dev = find_device(addr);
+	if (!dev)
+		return false;
+
+	if (local && dev->valid_local_csrk) {
+		memcpy(key, dev->local_csrk, 16);
+		*sign_cnt = dev->local_sign_cnt;
+	} else if (!local && dev->valid_remote_csrk) {
+		memcpy(key, dev->remote_csrk, 16);
+		*sign_cnt = dev->remote_sign_cnt;
+	} else {
 		return false;
 	}
 
