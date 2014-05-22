@@ -187,6 +187,17 @@ void *queue_peek_tail(struct queue *queue)
 	return queue->tail->data;
 }
 
+static bool queue_find_entry(struct queue *queue, const void *data)
+{
+	struct queue_entry *entry;
+
+	for (entry = queue->head; entry; entry = entry->next)
+		if (entry == data)
+			return true;
+
+	return false;
+}
+
 void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 							void *user_data)
 {
@@ -206,6 +217,9 @@ void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 		entry = tmp->next;
 
 		function(tmp->data, user_data);
+
+		if (!queue_find_entry(queue, entry))
+			break;
 	}
 	queue_unref(queue);
 }
