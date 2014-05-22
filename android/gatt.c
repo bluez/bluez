@@ -4346,8 +4346,6 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 
 	while (queue_peek_head(q)) {
 		uint16_t handle = PTR_TO_UINT(queue_pop_head(q));
-		uint8_t *value;
-		int value_len;
 		struct pending_request *entry;
 
 		entry = new0(struct pending_request, 1);
@@ -4357,19 +4355,7 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 		}
 
 		entry->handle = handle;
-
-		if (!gatt_db_read(gatt_db, handle, 0, ATT_OP_READ_BY_GROUP_REQ,
-					&device->bdaddr, &value, &value_len))
-			break;
-
-		entry->value = malloc0(value_len);
-		if (!entry->value) {
-			queue_destroy(q, destroy_pending_request);
-			return ATT_ECODE_UNLIKELY;
-		}
-
-		memcpy(entry->value, value, value_len);
-		entry->length = value_len;
+		entry->length = READ_INIT;
 
 		if (!queue_push_tail(device->pending_requests, entry)) {
 			queue_remove_all(device->pending_requests, NULL, NULL,
@@ -4380,8 +4366,7 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 	}
 
 	queue_destroy(q, NULL);
-
-	send_dev_pending_response(device, cmd[0]);
+	process_dev_pending_requests(device, cmd[0]);
 
 	return 0;
 }
