@@ -4394,6 +4394,9 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
+	if (start > end)
+		return ATT_ECODE_INVALID_HANDLE;
+
 	q = queue_new();
 	if (!q)
 		return ATT_ECODE_INSUFF_RESOURCES;
