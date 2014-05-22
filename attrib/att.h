@@ -22,6 +22,9 @@
  *
  */
 
+/* Len of signature in write signed packet */
+#define ATT_SIGNATURE_LEN		12
+
 /* Attribute Protocol Opcodes */
 #define ATT_OP_ERROR			0x01
 #define ATT_OP_MTU_REQ			0x02
@@ -129,6 +132,14 @@ uint16_t enc_write_cmd(uint16_t handle, const uint8_t *value, size_t vlen,
 						uint8_t *pdu, size_t len);
 uint16_t dec_write_cmd(const uint8_t *pdu, size_t len, uint16_t *handle,
 						uint8_t *value, size_t *vlen);
+uint16_t enc_signed_write_cmd(uint16_t handle,
+					const uint8_t *value, size_t vlen,
+					const uint8_t signature[12],
+					uint8_t *pdu, size_t len);
+uint16_t dec_signed_write_cmd(const uint8_t *pdu, size_t len,
+						uint16_t *handle,
+						uint8_t *value, size_t *vlen,
+						uint8_t signature[12]);
 struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, size_t len);
 uint16_t enc_write_req(uint16_t handle, const uint8_t *value, size_t vlen,
 						uint8_t *pdu, size_t len);
