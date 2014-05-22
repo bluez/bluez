@@ -617,6 +617,9 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 
 	return 0;
 failed:
+	if (out->resampler)
+		release_resampler(out->resampler);
+
 	free(out->downmix_buf);
 	free(out);
 	stream_out = NULL;
@@ -637,6 +640,9 @@ static void sco_close_output_stream(struct audio_hw_device *dev,
 		close(sco_dev->out->fd);
 		sco_dev->out->fd = -1;
 	}
+
+	if (out->resampler)
+		release_resampler(out->resampler);
 
 	free(out->downmix_buf);
 	free(out);
