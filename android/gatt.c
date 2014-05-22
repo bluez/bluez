@@ -2615,6 +2615,38 @@ static void write_char_cb(guint8 status, const guint8 *pdu, guint16 len,
 	free(data);
 }
 
+static bool signed_write_cmd(struct gatt_device *dev, uint16_t handle,
+					const uint8_t *value, uint16_t vlen)
+{
+	uint8_t s[ATT_SIGNATURE_LEN];
+	uint8_t csrk[16];
+	uint32_t sign_cnt;
+
+	memset(csrk, 0, 16);
+
+	if (!bt_get_csrk(&dev->bdaddr, LOCAL_CSRK, csrk, &sign_cnt)) {
+		error("gatt: Could not get csrk key");
+		return false;
+	}
+
+	memset(s, 0, ATT_SIGNATURE_LEN);
+
+	if (!bt_crypto_sign_att(crypto, csrk, value, vlen, sign_cnt, s)) {
+		error("gatt: Could not sign att data");
+		return false;
+	}
+
+	if (!gatt_signed_write_cmd(dev->attrib, handle, value, vlen, s, NULL,
+									NULL)) {
+		error("gatt: Could write signed cmd");
+		return false;
+	}
+
+	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK);
+
+	return true;
+}
+
 static void handle_client_write_characteristic(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_write_characteristic *cmd = buf;
@@ -2678,6 +2710,10 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 		res = gatt_write_char(conn->device->attrib, ch->ch.value_handle,
 							cmd->value, cmd->len,
 							write_char_cb, cb_data);
+		break;
+	case GATT_WRITE_TYPE_SIGNED:
+		res = signed_write_cmd(conn->device, ch->ch.value_handle,
+					cmd->value, cmd->len);
 		break;
 	default:
 		error("gatt: Write type %d unsupported", cmd->write_type);
