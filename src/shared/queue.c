@@ -224,6 +224,11 @@ void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 	queue_unref(queue);
 }
 
+static bool direct_match(const void *a, const void *b)
+{
+	return a == b;
+}
+
 void *queue_find(struct queue *queue, queue_match_func_t function,
 							const void *match_data)
 {
@@ -231,6 +236,9 @@ void *queue_find(struct queue *queue, queue_match_func_t function,
 
 	if (!queue || !function)
 		return NULL;
+
+	if (!function)
+		function = direct_match;
 
 	for (entry = queue->head; entry; entry = entry->next)
 		if (function(entry->data, match_data))
