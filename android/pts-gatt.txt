@@ -171,24 +171,108 @@ TC_GAR_SR_BI_32_C	INC
 TC_GAR_SR_BI_33_C	INC
 TC_GAR_SR_BI_34_C	INC
 TC_GAR_SR_BI_35_C	INC
-TC_GAW_CL_BV_01_C	INC
+TC_GAW_CL_BV_01_C	PASS 	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic
+				gattc disconnect
 TC_GAW_CL_BV_02_C	INC
-TC_GAW_CL_BV_03_C	INC
+TC_GAW_CL_BV_03_C	PASS 	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic
+				gattc disconnect
 TC_GAW_CL_BI_02_C	INC
-TC_GAW_CL_BI_03_C	INC
-TC_GAW_CL_BI_04_C	INC
-TC_GAW_CL_BI_05_C	INC
-TC_GAW_CL_BI_06_C	INC
-TC_GAW_CL_BV_05_C	INC
+TC_GAW_CL_BI_03_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BI_04_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long value>
+				gattc disconnect
+TC_GAW_CL_BI_05_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BI_06_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BV_05_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
 TC_GAW_CL_BI_07_C	INC
-TC_GAW_CL_BI_08_C	INC
-TC_GAW_CL_BI_09_C	INC
-TC_GAW_CL_BI_11_C	INC
-TC_GAW_CL_BI_12_C	INC
-TC_GAW_CL_BI_13_C	INC
-TC_GAW_CL_BV_06_C	INC
+TC_GAW_CL_BI_08_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BI_09_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BI_11_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BI_12_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BI_13_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
+TC_GAW_CL_BV_06_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
 TC_GAW_CL_BI_14_C	INC
-TC_GAW_CL_BI_15_C	INC
+TC_GAW_CL_BI_15_C	PASS	haltest:
+				gattc connect
+				gattc search_service
+				gattc get_characteristic: srvc_id based on
+								handle from logs
+				gattc write_characteristic 2 <long_value>
+				gattc disconnect
 TC_GAW_CL_BI_17_C	INC
 TC_GAW_CL_BI_18_C	INC
 TC_GAW_CL_BI_19_C	INC
