@@ -14,7 +14,7 @@ TSPX_avrcp_revision					1.5 (^)
 TSPX_class_of_device					20050C
 TSPX_establish_avdtp_stream				TRUE
 TSPX_iut_establishes_initial_condition			FALSE
-TSPX_tester_device
+TSPX_tester_device					A (*)
 TSPX_media_directory
 TSPX_bd_addr_iut					112233445566 (*&)
 TSPX_delete_link_key					FALSE
