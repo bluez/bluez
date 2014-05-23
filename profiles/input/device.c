@@ -79,7 +79,6 @@ struct input_device {
 	guint			intr_watch;
 	guint			sec_watch;
 	struct hidp_connadd_req *req;
-	guint			dc_id;
 	bool			disable_sdp;
 	enum reconnect_mode_t	reconnect_mode;
 	guint			reconnect_timer;
@@ -109,9 +108,6 @@ static int connection_disconnect(struct input_device *idev, uint32_t flags);
 
 static void input_device_free(struct input_device *idev)
 {
-	if (idev->dc_id)
-		device_remove_disconnect_watch(idev->device, idev->dc_id);
-
 	if (idev->uhid) {
 		if (idev->uhid_created) {
 			int err;
@@ -333,9 +329,6 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	 * this mainloop iteration */
 	if ((cond & (G_IO_HUP | G_IO_ERR)) && idev->ctrl_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
-
-	device_remove_disconnect_watch(idev->device, idev->dc_id);
-	idev->dc_id = 0;
 
 	idev->intr_watch = 0;
 
@@ -1044,19 +1037,6 @@ static int connection_disconnect(struct input_device *idev, uint32_t flags)
 		return ioctl_disconnect(idev, flags);
 }
 
-static void disconnect_cb(struct btd_device *device, gboolean removal,
-				void *user_data)
-{
-	struct input_device *idev = user_data;
-	int flags;
-
-	info("Input: disconnect %s", idev->path);
-
-	flags = removal ? (1 << HIDP_VIRTUAL_CABLE_UNPLUG) : 0;
-
-	connection_disconnect(idev, flags);
-}
-
 static int input_device_connected(struct input_device *idev)
 {
 	int err;
@@ -1067,9 +1047,6 @@ static int input_device_connected(struct input_device *idev)
 	err = hidp_add_connection(idev);
 	if (err < 0)
 		return err;
-
-	idev->dc_id = device_add_disconnect_watch(idev->device, disconnect_cb,
-							idev, NULL);
 
 	btd_service_connecting_complete(idev->service, 0);
 
@@ -1278,13 +1255,16 @@ int input_device_connect(struct btd_service *service)
 int input_device_disconnect(struct btd_service *service)
 {
 	struct input_device *idev;
-	int err;
+	int err, flags;
 
 	DBG("");
 
 	idev = btd_service_get_user_data(service);
 
-	err = connection_disconnect(idev, 0);
+	flags = device_is_temporary(idev->device) ?
+					(1 << HIDP_VIRTUAL_CABLE_UNPLUG) : 0;
+
+	err = connection_disconnect(idev, flags);
 	if (err < 0)
 		return err;
 
