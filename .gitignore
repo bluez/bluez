@@ -86,6 +86,7 @@ unit/test-gdbus-client
 unit/test-sdp
 unit/test-lib
 unit/test-mgmt
+unit/test-uhid
 unit/test-hfp
 unit/test-crypto
 tools/mgmt-tester
