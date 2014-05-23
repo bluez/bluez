@@ -2165,6 +2165,9 @@ static void cache_all_srvc_chars(struct service *srvc, GSList *characteristics)
 							srvc->incl.range.end;
 		}
 
+		DBG("attr handle = 0x%04x, end handle = 0x%04x uuid: %s",
+				ch->ch.handle, ch->end_handle, ch->ch.uuid);
+
 		if (!queue_push_tail(srvc->chars, ch)) {
 			error("gatt: Error while caching characteristic");
 			destroy_characteristic(ch);
@@ -2320,6 +2323,8 @@ static void gatt_discover_desc_cb(guint8 status, GSList *descs,
 
 		descr->id.instance = i++;
 		descr->handle = desc->handle;
+
+		DBG("attr handle = 0x%04x, uuid: %s", desc->handle, desc->uuid);
 
 		if (!queue_push_tail(ch->descriptors, descr))
 			free(descr);
