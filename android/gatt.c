@@ -194,6 +194,12 @@ static GIOChannel *listening_io = NULL;
 
 static struct bt_crypto *crypto = NULL;
 
+static int test_client_if = 0;
+static const uint8_t TEST_UUID[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04
+};
+
 static void bt_le_discovery_stop_cb(void);
 
 static bool is_bluetooth_uuid(const uint8_t *uuid)
@@ -3450,6 +3456,20 @@ static void handle_client_test_command(const void *buf, uint16_t len)
 
 	switch (cmd->command) {
 	case GATT_CLIENT_TEST_CMD_ENABLE:
+		if (cmd->u1) {
+			if (!test_client_if)
+				test_client_if = register_app(TEST_UUID,
+								APP_CLIENT);
+
+			if (test_client_if)
+				status = HAL_STATUS_SUCCESS;
+			else
+				status = HAL_STATUS_FAILED;
+		} else {
+			status = unregister_client(test_client_if);
+			test_client_if = 0;
+		}
+		break;
 	case GATT_CLIENT_TEST_CMD_CONNECT:
 	case GATT_CLIENT_TEST_CMD_DISCONNECT:
 	case GATT_CLIENT_TEST_CMD_DISCOVER:
