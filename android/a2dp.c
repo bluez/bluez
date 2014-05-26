@@ -371,10 +371,40 @@ static int aac_check_config(void *caps, uint8_t caps_len, void *conf,
 	return 0;
 }
 
+static int aptx_check_config(void *caps, uint8_t caps_len, void *conf,
+							uint8_t conf_len)
+{
+	a2dp_aptx_t *cap, *config;
+
+	if (conf_len != caps_len || conf_len != sizeof(a2dp_aptx_t)) {
+		error("APTX: Invalid configuration size (%u)", conf_len);
+		return -EINVAL;
+	}
+
+	cap = caps;
+	config = conf;
+
+	if (!(cap->frequency & config->frequency)) {
+		error("APTX: Unsupported frequenct (%u) by endpoint",
+							config->frequency);
+		return -EINVAL;
+	}
+
+	if (!(cap->channel_mode & config->channel_mode)) {
+		error("APTX: Unsupported channel mode (%u) by endpoint",
+							config->channel_mode);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int check_capabilities(struct a2dp_preset *preset,
 				struct avdtp_media_codec_capability *codec,
 				uint8_t codec_len)
 {
+	a2dp_vendor_codec_t *vndcodec;
+
 	/* Codec specific */
 	switch (codec->media_codec_type) {
 	case A2DP_CODEC_SBC:
@@ -383,6 +413,13 @@ static int check_capabilities(struct a2dp_preset *preset,
 	case A2DP_CODEC_MPEG24:
 		return aac_check_config(codec->data, codec_len, preset->data,
 								preset->len);
+	case A2DP_CODEC_VENDOR:
+		vndcodec = (void *) codec->data;
+		if (btohl(vndcodec->vendor_id) == APTX_VENDOR_ID &&
+				btohs(vndcodec->codec_id) == APTX_CODEC_ID)
+			return aptx_check_config(codec->data, codec_len,
+						preset->data, preset->len);
+		return -EINVAL;
 	default:
 		return -EINVAL;
 	}
