@@ -106,6 +106,30 @@
 #define AAC_CHANNELS_1			0x02
 #define AAC_CHANNELS_2			0x01
 
+#define AAC_GET_BITRATE(a) ((a).bitrate1 << 16 | \
+					(a).bitrate2 << 8 | (a).bitrate3)
+#define AAC_GET_FREQUENCY(a) ((a).frequency1 << 4 | (a).frequency2)
+
+#define AAC_SET_BITRATE(a, b) \
+	do { \
+		(a).bitrate1 = (b >> 16) & 0x7f; \
+		(a).bitrate2 = (b >> 8) & 0xff; \
+		(a).bitrate3 = b & 0xff; \
+	} while (0)
+#define AAC_SET_FREQUENCY(a, f) \
+	do { \
+		(a).frequency1 = (f >> 4) & 0xff; \
+		(a).frequency2 = f & 0x0f; \
+	} while (0)
+
+#define AAC_INIT_BITRATE(b) \
+	.bitrate1 = (b >> 16) & 0x7f, \
+	.bitrate2 = (b >> 8) & 0xff, \
+	.bitrate3 = b & 0xff,
+#define AAC_INIT_FREQUENCY(f) \
+	.frequency1 = (f >> 4) & 0xff, \
+	.frequency2 = f & 0x0f,
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 typedef struct {
