@@ -1390,18 +1390,14 @@ static gboolean check_vendor_codec(struct a2dp_sep *sep, uint8_t *cap,
 
 	local_codec = (a2dp_vendor_codec_t *) capabilities;
 
-	if (memcmp(remote_codec->vendor_id, local_codec->vendor_id,
-					sizeof(local_codec->vendor_id)))
+	if (btohl(remote_codec->vendor_id) != btohl(local_codec->vendor_id))
 		return FALSE;
 
-	if (memcmp(remote_codec->codec_id, local_codec->codec_id,
-					sizeof(local_codec->codec_id)))
+	if (btohs(remote_codec->codec_id) != btohs(local_codec->codec_id))
 		return FALSE;
 
-	DBG("vendor 0x%02x%02x%02x%02x codec 0x%02x%02x",
-			remote_codec->vendor_id[0], remote_codec->vendor_id[1],
-			remote_codec->vendor_id[2], remote_codec->vendor_id[3],
-			remote_codec->codec_id[0], remote_codec->codec_id[1]);
+	DBG("vendor 0x%08x codec 0x%04x", btohl(remote_codec->vendor_id),
+						btohs(remote_codec->codec_id));
 
 	return TRUE;
 }

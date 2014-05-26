@@ -162,12 +162,10 @@ static void print_vendor(a2dp_vendor_codec_t *vendor)
 {
 	printf("\tMedia Codec: Vendor Specific A2DP Codec");
 
-	printf("\n\t\tVendor ID 0x%02x%02x%02x%02x", vendor->vendor_id[0],
-		vendor->vendor_id[1], vendor->vendor_id[2],
-		vendor->vendor_id[3]);
+	printf("\n\t\tVendor ID 0x%08x", btohl(vendor->vendor_id));
 
-	printf("\n\t\tVendor Specific Codec ID 0x%02x%02x\n",
-			vendor->codec_id[0], vendor->codec_id[1]);
+	printf("\n\t\tVendor Specific Codec ID 0x%04x\n",
+						btohs(vendor->codec_id));
 }
 
 static void print_mpeg24(a2dp_mpeg_t *mpeg)

@@ -134,6 +134,6 @@ typedef struct {
 #endif
 
 typedef struct {
-	uint8_t vendor_id[4];
-	uint8_t codec_id[2];
+	uint32_t vendor_id;
+	uint16_t codec_id;
 } __attribute__ ((packed)) a2dp_vendor_codec_t;
