@@ -87,6 +87,7 @@ struct smp_data {
 	const void *expect_hci_param;
 	uint8_t expect_hci_len;
 	const void * (*expect_hci_func)(uint8_t *len);
+	bool sc;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -383,6 +384,7 @@ static const uint8_t smp_basic_req_2[] = {	0x01,	/* Pairing Request */
 						0x05,	/* Init. key dist. */
 						0x05,	/* Rsp. key dist. */
 };
+
 static const struct smp_req_rsp cli_basic_req_2[] = {
 	{ NULL, 0, smp_basic_req_2, sizeof(smp_basic_req_2) },
 	{ smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp),
@@ -412,6 +414,30 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	mgmt_reply(data->mgmt, MGMT_OP_USER_CONFIRM_REPLY,
 			data->mgmt_index, sizeof(cp), &cp, NULL, NULL, NULL);
 }
+
+static const uint8_t smp_sc_req_1[] = {	0x01,	/* Pairing Request */
+					0x03,	/* NoInputNoOutput */
+					0x00,	/* OOB Flag */
+					0x09,	/* Bonding - no MITM, SC */
+					0x10,	/* Max key size */
+					0x0d,	/* Init. key dist. */
+					0x0d,	/* Rsp. key dist. */
+};
+
+static const struct smp_req_rsp cli_sc_req_1[] = {
+	{ NULL, 0, smp_sc_req_1, sizeof(smp_sc_req_1) },
+	{ smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp),
+			smp_confirm_req_1, sizeof(smp_confirm_req_1) },
+	{ smp_confirm_req_1, sizeof(smp_confirm_req_1),
+			smp_random_req_1, sizeof(smp_random_req_1) },
+	{ smp_random_req_1, sizeof(smp_random_req_1), NULL, 0 },
+};
+
+static const struct smp_data smp_client_sc_req_1_test = {
+	.req = cli_sc_req_1,
+	.req_count = G_N_ELEMENTS(cli_sc_req_1),
+	.sc = true,
+};
 
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
@@ -449,6 +475,7 @@ static void setup_powered_client_callback(uint8_t status, uint16_t length,
 static void setup_powered_client(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct smp_data *smp = data->test_data;
 	unsigned char param[] = { 0x01 };
 
 	tester_print("Powering on controller");
@@ -457,6 +484,10 @@ static void setup_powered_client(const void *test_data)
 				sizeof(param), param, NULL, NULL, NULL);
 	mgmt_send(data->mgmt, MGMT_OP_SET_BONDABLE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
+	if (smp->sc)
+		mgmt_send(data->mgmt, MGMT_OP_SET_SECURE_CONN,
+				data->mgmt_index, sizeof(param), param, NULL,
+				NULL, NULL);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_client_callback,
 			NULL, NULL);
@@ -750,6 +781,7 @@ static void setup_powered_server_callback(uint8_t status, uint16_t length,
 static void setup_powered_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct smp_data *smp = data->test_data;
 	unsigned char param[] = { 0x01 };
 
 	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
@@ -766,6 +798,11 @@ static void setup_powered_server(const void *test_data)
 				sizeof(param), param, NULL, NULL, NULL);
 	mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
+	if (smp->sc)
+		mgmt_send(data->mgmt, MGMT_OP_SET_SECURE_CONN,
+				data->mgmt_index, sizeof(param), param, NULL,
+				NULL, NULL);
+
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_server_callback,
 			NULL, NULL);
@@ -817,6 +854,10 @@ int main(int argc, char *argv[])
 					setup_powered_client, test_client);
 	test_smp("SMP Client - Basic Request 2",
 					&smp_client_basic_req_2_test,
+					setup_powered_client, test_client);
+
+	test_smp("SMP Client - SC Request 1",
+					&smp_client_sc_req_1_test,
 					setup_powered_client, test_client);
 
 	return tester_run();
