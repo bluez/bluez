@@ -39,8 +39,10 @@
 
 #include <glib.h>
 
+#include "lib/bluetooth.h"
 #include "src/log.h"
 #include "avdtp.h"
+#include "../profiles/audio/a2dp-codecs.h"
 
 #define AVDTP_PSM 25
 
@@ -317,6 +319,8 @@ struct avdtp_local_sep {
 	struct avdtp_stream *stream;
 	struct seid_info info;
 	uint8_t codec;
+	uint32_t vndcodec_vendor;
+	uint16_t vndcodec_codec;
 	gboolean delay_reporting;
 	GSList *caps;
 	struct avdtp_sep_ind *ind;
@@ -1088,6 +1092,18 @@ struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
 
 		if (codec_data->media_codec_type != lsep->codec)
 			continue;
+
+		/* FIXME: Add Vendor Specific Codec match to SEP callback */
+		if (lsep->codec == A2DP_CODEC_VENDOR) {
+			a2dp_vendor_codec_t *vndcodec =
+						(void *) codec_data->data;
+
+			if (btohl(vndcodec->vendor_id) != lsep->vndcodec_vendor)
+				continue;
+
+			if (btohs(vndcodec->codec_id) != lsep->vndcodec_codec)
+				continue;
+		}
 
 		if (sep->stream == NULL)
 			return sep;
@@ -3347,6 +3363,13 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 	lseps = g_slist_append(lseps, sep);
 
 	return sep;
+}
+
+void avdtp_sep_set_vendor_codec(struct avdtp_local_sep *sep, uint32_t vendor_id,
+							uint16_t codec_id)
+{
+	sep->vndcodec_vendor = vendor_id;
+	sep->vndcodec_codec = codec_id;
 }
 
 int avdtp_unregister_sep(struct avdtp_local_sep *sep)

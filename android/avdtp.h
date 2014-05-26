@@ -268,6 +268,8 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 						struct avdtp_sep_ind *ind,
 						struct avdtp_sep_cfm *cfm,
 						void *user_data);
+void avdtp_sep_set_vendor_codec(struct avdtp_local_sep *sep, uint32_t vendor_id,
+							uint16_t codec_id);
 
 /* Find a matching pair of local and remote SEP ID's */
 struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,

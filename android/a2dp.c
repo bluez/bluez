@@ -1226,6 +1226,14 @@ static uint8_t register_endpoint(const uint8_t *uuid, uint8_t codec,
 	endpoint->caps = presets->data;
 	endpoint->presets = g_slist_copy(g_slist_nth(presets, 1));
 
+	if (endpoint->codec == A2DP_CODEC_VENDOR) {
+		a2dp_vendor_codec_t *vndcodec = (void *) endpoint->caps->data;
+
+		avdtp_sep_set_vendor_codec(endpoint->sep,
+						btohl(vndcodec->vendor_id),
+						btohs(vndcodec->codec_id));
+	}
+
 	endpoints = g_slist_append(endpoints, endpoint);
 
 	return endpoint->id;
