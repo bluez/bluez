@@ -573,6 +573,9 @@ static bt_status_t register_client(bt_uuid_t *uuid)
 {
 	struct hal_cmd_gatt_client_register cmd;
 
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
 	memcpy(cmd.uuid, uuid, sizeof(*uuid));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_REGISTER,
