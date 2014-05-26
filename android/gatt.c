@@ -3431,10 +3431,29 @@ failed:
 
 static void handle_client_test_command(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_gatt_client_test_command *cmd = buf;
+	bdaddr_t bdaddr;
+	bt_uuid_t uuid;
+	uint8_t status;
+
 	DBG("");
 
+	android2bdaddr(cmd->bda1, &bdaddr);
+	android2uuid(cmd->uuid1, &uuid);
+
+	switch (cmd->command) {
+	case GATT_CLIENT_TEST_CMD_ENABLE:
+	case GATT_CLIENT_TEST_CMD_CONNECT:
+	case GATT_CLIENT_TEST_CMD_DISCONNECT:
+	case GATT_CLIENT_TEST_CMD_DISCOVER:
+	case GATT_CLIENT_TEST_CMD_PAIRING_CONFIG:
+	default:
+		status = HAL_STATUS_FAILED;
+		break;
+	}
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_CLIENT_TEST_COMMAND, HAL_STATUS_FAILED);
+				HAL_OP_GATT_CLIENT_TEST_COMMAND, status);
 }
 
 static void handle_server_register(const void *buf, uint16_t len)

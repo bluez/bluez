@@ -747,6 +747,12 @@ struct hal_cmd_gatt_client_set_adv_data {
 	uint8_t  manufacturer_data[0];
 } __attribute__((packed));
 
+#define GATT_CLIENT_TEST_CMD_ENABLE		0x01
+#define GATT_CLIENT_TEST_CMD_CONNECT		0x02
+#define GATT_CLIENT_TEST_CMD_DISCONNECT		0x03
+#define GATT_CLIENT_TEST_CMD_DISCOVER		0x04
+#define GATT_CLIENT_TEST_CMD_PAIRING_CONFIG	0xf0
+
 #define HAL_OP_GATT_CLIENT_TEST_COMMAND		0x16
 struct hal_cmd_gatt_client_test_command {
 	int32_t command;
