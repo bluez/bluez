@@ -4478,6 +4478,7 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 		if (!queue_push_tail(device->pending_requests, entry)) {
 			queue_remove_all(device->pending_requests, NULL, NULL,
 						destroy_pending_request);
+			free(entry);
 			queue_destroy(q, NULL);
 			return ATT_ECODE_UNLIKELY;
 		}
