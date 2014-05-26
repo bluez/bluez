@@ -1470,7 +1470,10 @@ static void bt_stream_open(const void *buf, uint16_t len)
 
 	DBG("");
 
-	setup = find_setup(cmd->id);
+	if (cmd->id)
+		setup = find_setup(cmd->id);
+	else
+		setup = setups ? setups->data : NULL;
 	if (!setup) {
 		error("Unable to find stream for endpoint %u", cmd->id);
 		ipc_send_rsp(audio_ipc, AUDIO_SERVICE_ID, AUDIO_OP_OPEN_STREAM,
@@ -1489,6 +1492,7 @@ static void bt_stream_open(const void *buf, uint16_t len)
 	len = sizeof(struct audio_rsp_open_stream) +
 			sizeof(struct audio_preset) + setup->preset->len;
 	rsp = g_malloc0(len);
+	rsp->id = setup->endpoint->id;
 	rsp->mtu = omtu;
 	rsp->preset->len = setup->preset->len;
 	memcpy(rsp->preset->data, setup->preset->data, setup->preset->len);

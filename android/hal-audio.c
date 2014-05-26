@@ -337,7 +337,7 @@ static int ipc_close_cmd(uint8_t endpoint_id)
 	return result;
 }
 
-static int ipc_open_stream_cmd(uint8_t endpoint_id, uint16_t *mtu, int *fd,
+static int ipc_open_stream_cmd(uint8_t *endpoint_id, uint16_t *mtu, int *fd,
 						struct audio_preset **caps)
 {
 	char buf[BLUEZ_AUDIO_MTU];
@@ -352,13 +352,14 @@ static int ipc_open_stream_cmd(uint8_t endpoint_id, uint16_t *mtu, int *fd,
 	if (!caps)
 		return AUDIO_STATUS_FAILED;
 
-	cmd.id = endpoint_id;
+	cmd.id = *endpoint_id;
 
 	result = audio_ipc_cmd(AUDIO_SERVICE_ID, AUDIO_OP_OPEN_STREAM,
 				sizeof(cmd), &cmd, &rsp_len, rsp, fd);
 	if (result == AUDIO_STATUS_SUCCESS) {
 		size_t buf_len = sizeof(struct audio_preset) +
 					rsp->preset[0].len;
+		*endpoint_id = rsp->id;
 		*mtu = rsp->mtu;
 		*caps = malloc(buf_len);
 		memcpy(*caps, &rsp->preset, buf_len);
@@ -452,20 +453,39 @@ static void unregister_endpoints(void)
 	}
 }
 
-static bool open_endpoint(struct audio_endpoint *ep,
+static bool open_endpoint(struct audio_endpoint **epp,
 						struct audio_input_config *cfg)
 {
 	struct audio_preset *preset;
+	struct audio_endpoint *ep = *epp;
 	const struct audio_codec *codec;
 	uint16_t mtu;
 	uint16_t payload_len;
 	int fd;
+	size_t i;
+	uint8_t ep_id = 0;
 
-	if (ipc_open_stream_cmd(ep->id, &mtu, &fd, &preset) !=
+	if (ep)
+		ep_id = ep->id;
+
+	if (ipc_open_stream_cmd(&ep_id, &mtu, &fd, &preset) !=
 							AUDIO_STATUS_SUCCESS)
 		return false;
 
-	DBG("mtu=%u", mtu);
+	DBG("ep_id=%d mtu=%u", ep_id, mtu);
+
+	for (i = 0; i < MAX_AUDIO_ENDPOINTS; i++)
+		if (audio_endpoints[i].id == ep_id) {
+			ep = &audio_endpoints[i];
+			break;
+		}
+
+	if (!ep) {
+		error("Cound not find opened endpoint");
+		return false;
+	}
+
+	*epp = ep;
 
 	payload_len = mtu;
 	if (ep->codec->use_rtp)
@@ -1096,10 +1116,10 @@ static int audio_open_output_stream(struct audio_hw_device *dev,
 	out->stream.write = out_write;
 	out->stream.get_render_position = out_get_render_position;
 
-	/* TODO: for now we always use endpoint 0 */
-	out->ep = &audio_endpoints[0];
+	/* We want to autoselect opened endpoint */
+	out->ep = NULL;
 
-	if (!open_endpoint(out->ep, &out->cfg))
+	if (!open_endpoint(&out->ep, &out->cfg))
 		goto fail;
 
 	DBG("rate=%d channels=%d format=%d", out->cfg.rate,
