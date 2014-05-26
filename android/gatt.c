@@ -3445,6 +3445,7 @@ failed:
 static void handle_client_test_command(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_test_command *cmd = buf;
+	struct gatt_app *app;
 	bdaddr_t bdaddr;
 	bt_uuid_t uuid;
 	uint8_t status;
@@ -3475,6 +3476,13 @@ static void handle_client_test_command(const void *buf, uint16_t len)
 		status = handle_connect(test_client_if, &bdaddr);
 		break;
 	case GATT_CLIENT_TEST_CMD_DISCONNECT:
+		app = queue_find(gatt_apps, match_app_by_id,
+						INT_TO_PTR(test_client_if));
+		if (app)
+			app_disconnect_devices(app);
+
+		status = HAL_STATUS_SUCCESS;
+		break;
 	case GATT_CLIENT_TEST_CMD_DISCOVER:
 	case GATT_CLIENT_TEST_CMD_PAIRING_CONFIG:
 	default:
