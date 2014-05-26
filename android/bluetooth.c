@@ -1026,6 +1026,8 @@ static void send_ssp_request(struct device *dev, uint8_t variant,
 {
 	struct hal_ev_ssp_request ev;
 
+	memset(&ev, 0, sizeof(ev));
+
 	bdaddr2android(&dev->bdaddr, ev.bdaddr);
 	memcpy(ev.name, dev->name, strlen(dev->name));
 	ev.class_of_dev = dev->class;
