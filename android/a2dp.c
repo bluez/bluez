@@ -325,6 +325,52 @@ static int sbc_check_config(void *caps, uint8_t caps_len, void *conf,
 	return 0;
 }
 
+static int aac_check_config(void *caps, uint8_t caps_len, void *conf,
+							uint8_t conf_len)
+{
+	a2dp_aac_t *cap, *config;
+
+	if (conf_len != caps_len || conf_len != sizeof(a2dp_aac_t)) {
+		error("AAC: Invalid configuration size (%u)", conf_len);
+		return -EINVAL;
+	}
+
+	cap = caps;
+	config = conf;
+
+	if (!(cap->object_type & config->object_type)) {
+		error("AAC: Unsupported object type (%u) by endpoint",
+							config->object_type);
+		return -EINVAL;
+	}
+
+	if (!(AAC_GET_FREQUENCY(*cap) & AAC_GET_FREQUENCY(*config))) {
+		error("AAC: Unsupported frequency (%u) by endpoint",
+						AAC_GET_FREQUENCY(*config));
+		return -EINVAL;
+	}
+
+	if (!(cap->channels & config->channels)) {
+		error("AAC: Unsupported channels (%u) by endpoint",
+							config->channels);
+		return -EINVAL;
+	}
+
+	/* VBR support in SNK is mandatory but let's make sure we don't try to
+	 * have VBR on remote which for some reason does not support it
+	 */
+	if (!cap->vbr && config->vbr) {
+		error("AAC: Unsupported VBR (%u) by endpoint",
+							config->vbr);
+		return -EINVAL;
+	}
+
+	if (AAC_GET_BITRATE(*cap) < AAC_GET_BITRATE(*config))
+		return -ERANGE;
+
+	return 0;
+}
+
 static int check_capabilities(struct a2dp_preset *preset,
 				struct avdtp_media_codec_capability *codec,
 				uint8_t codec_len)
@@ -333,6 +379,9 @@ static int check_capabilities(struct a2dp_preset *preset,
 	switch (codec->media_codec_type) {
 	case A2DP_CODEC_SBC:
 		return sbc_check_config(codec->data, codec_len, preset->data,
+								preset->len);
+	case A2DP_CODEC_MPEG24:
+		return aac_check_config(codec->data, codec_len, preset->data,
 								preset->len);
 	default:
 		return -EINVAL;
@@ -358,6 +407,26 @@ static struct a2dp_preset *sbc_select_range(void *caps, uint8_t caps_len,
 	return p;
 }
 
+static struct a2dp_preset *aac_select_range(void *caps, uint8_t caps_len,
+						void *conf, uint8_t conf_len)
+{
+	struct a2dp_preset *p;
+	a2dp_aac_t *cap, *config;
+	uint32_t bitrate;
+
+	cap = caps;
+	config = conf;
+
+	bitrate = MIN(AAC_GET_BITRATE(*cap), AAC_GET_BITRATE(*config));
+	AAC_SET_BITRATE(*config, bitrate);
+
+	p = g_new0(struct a2dp_preset, 1);
+	p->len = conf_len;
+	p->data = g_memdup(conf, p->len);
+
+	return p;
+}
+
 static struct a2dp_preset *select_preset_range(struct a2dp_preset *preset,
 				struct avdtp_media_codec_capability *codec,
 				uint8_t codec_len)
@@ -366,6 +435,9 @@ static struct a2dp_preset *select_preset_range(struct a2dp_preset *preset,
 	switch (codec->media_codec_type) {
 	case A2DP_CODEC_SBC:
 		return sbc_select_range(codec->data, codec_len, preset->data,
+								preset->len);
+	case A2DP_CODEC_MPEG24:
+		return aac_select_range(codec->data, codec_len, preset->data,
 								preset->len);
 	default:
 		return NULL;
