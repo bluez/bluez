@@ -691,8 +691,12 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 			}
 		}
 
-		/* in resync mode we'll just drop mediapackets */
-		if (!ep->resync) {
+		/* we send data only in case codec encoded some data, i.e. some
+		 * codecs do internal buffering and output data only if full
+		 * frame can be encoded
+		 * in resync mode we'll just drop mediapackets
+		 */
+		if (written > 0 && !ep->resync) {
 			/* wait some time for socket to be ready for write,
 			 * but we'll just skip writing data if timeout occurs
 			 */
