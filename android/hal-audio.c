@@ -479,7 +479,7 @@ static bool open_endpoint(struct audio_endpoint *ep,
 	if (!ep->mp)
 		goto failed;
 	ep->mp->hdr.v = 2;
-	ep->mp->hdr.pt = 1;
+	ep->mp->hdr.pt = 0x60;
 	ep->mp->hdr.ssrc = htonl(1);
 
 	ep->mp_data_len = payload_len;
