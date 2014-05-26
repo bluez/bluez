@@ -541,14 +541,12 @@ static void signaling_connect_cb(GIOChannel *chan, GError *err,
 
 	avdtp_add_disconnect_cb(dev->session, disconnect_cb, dev);
 
+	/* Proceed to stream setup if initiator */
 	if (dev->io) {
+		int perr;
+
 		g_io_channel_unref(dev->io);
 		dev->io = NULL;
-	}
-
-	/* Proceed to stream setup if initiator */
-	if (dev->state == HAL_A2DP_STATE_CONNECTING) {
-		int perr;
 
 		perr = avdtp_discover(dev->session, discover_cb, dev);
 		if (perr < 0) {
@@ -739,6 +737,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	dev = a2dp_device_new(&dst);
+	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_CONNECTING);
 	signaling_connect_cb(chan, err, dev);
 }
 
