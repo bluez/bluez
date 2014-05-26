@@ -4969,8 +4969,11 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 	}
 
 	if (!gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
-								&dev->bdaddr))
+								&dev->bdaddr)) {
+		queue_remove(dev->pending_requests, data);
+		free(data);
 		return ATT_ECODE_UNLIKELY;
+	}
 
 	return 0;
 }
