@@ -3471,6 +3471,9 @@ static void handle_client_test_command(const void *buf, uint16_t len)
 		}
 		break;
 	case GATT_CLIENT_TEST_CMD_CONNECT:
+		/* TODO u1 holds device type, for now assume BLE */
+		status = handle_connect(test_client_if, &bdaddr);
+		break;
 	case GATT_CLIENT_TEST_CMD_DISCONNECT:
 	case GATT_CLIENT_TEST_CMD_DISCOVER:
 	case GATT_CLIENT_TEST_CMD_PAIRING_CONFIG:
