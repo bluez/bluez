@@ -30,6 +30,37 @@
 #define SBC_QUALITY_MIN_BITPOOL	33
 #define SBC_QUALITY_STEP	5
 
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
+struct rtp_payload {
+	unsigned frame_count:4;
+	unsigned rfa0:1;
+	unsigned is_last_fragment:1;
+	unsigned is_first_fragment:1;
+	unsigned is_fragmented:1;
+} __attribute__ ((packed));
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+struct rtp_payload {
+	unsigned is_fragmented:1;
+	unsigned is_first_fragment:1;
+	unsigned is_last_fragment:1;
+	unsigned rfa0:1;
+	unsigned frame_count:4;
+} __attribute__ ((packed));
+
+#else
+#error "Unknown byte order"
+#endif
+
+struct media_packet_sbc {
+	struct media_packet hdr;
+	struct rtp_payload payload;
+	uint8_t data[0];
+};
+
 struct sbc_data {
 	a2dp_sbc_t sbc;
 
@@ -306,9 +337,12 @@ static ssize_t sbc_encode_mediapacket(void *codec_data, const uint8_t *buffer,
 					size_t mp_data_len, size_t *written)
 {
 	struct sbc_data *sbc_data = (struct sbc_data *) codec_data;
+	struct media_packet_sbc *mp_sbc = (struct media_packet_sbc *) mp;
 	size_t consumed = 0;
 	size_t encoded = 0;
 	uint8_t frame_count = 0;
+
+	mp_data_len -= sizeof(mp_sbc->payload);
 
 	while (len - consumed >= sbc_data->in_frame_len &&
 			mp_data_len - encoded >= sbc_data->out_frame_len &&
@@ -317,7 +351,7 @@ static ssize_t sbc_encode_mediapacket(void *codec_data, const uint8_t *buffer,
 		ssize_t written = 0;
 
 		read = sbc_encode(&sbc_data->enc, buffer + consumed,
-				sbc_data->in_frame_len, mp->data + encoded,
+				sbc_data->in_frame_len, mp_sbc->data + encoded,
 				mp_data_len - encoded, &written);
 
 		if (read < 0) {
@@ -331,8 +365,8 @@ static ssize_t sbc_encode_mediapacket(void *codec_data, const uint8_t *buffer,
 		encoded += written;
 	}
 
-	*written = encoded;
-	mp->payload.frame_count = frame_count;
+	*written = encoded + sizeof(mp_sbc->payload);
+	mp_sbc->payload.frame_count = frame_count;
 
 	return consumed;
 }

@@ -35,14 +35,6 @@ struct rtp_header {
 	uint32_t csrc[0];
 } __attribute__ ((packed));
 
-struct rtp_payload {
-	unsigned frame_count:4;
-	unsigned rfa0:1;
-	unsigned is_last_fragment:1;
-	unsigned is_first_fragment:1;
-	unsigned is_fragmented:1;
-} __attribute__ ((packed));
-
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
 struct rtp_header {
@@ -60,21 +52,12 @@ struct rtp_header {
 	uint32_t csrc[0];
 } __attribute__ ((packed));
 
-struct rtp_payload {
-	unsigned is_fragmented:1;
-	unsigned is_first_fragment:1;
-	unsigned is_last_fragment:1;
-	unsigned rfa0:1;
-	unsigned frame_count:4;
-} __attribute__ ((packed));
-
 #else
 #error "Unknown byte order"
 #endif
 
 struct media_packet {
 	struct rtp_header hdr;
-	struct rtp_payload payload;
 	uint8_t data[0];
 };
 
