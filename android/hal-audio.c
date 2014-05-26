@@ -467,7 +467,9 @@ static bool open_endpoint(struct audio_endpoint *ep,
 
 	DBG("mtu=%u", mtu);
 
-	payload_len = mtu - sizeof(*ep->mp);
+	payload_len = mtu;
+	if (ep->codec->use_rtp)
+		payload_len -= sizeof(struct rtp_header);
 
 	ep->fd = fd;
 
@@ -478,9 +480,14 @@ static bool open_endpoint(struct audio_endpoint *ep,
 	ep->mp = calloc(mtu, 1);
 	if (!ep->mp)
 		goto failed;
-	ep->mp->hdr.v = 2;
-	ep->mp->hdr.pt = 0x60;
-	ep->mp->hdr.ssrc = htonl(1);
+
+	if (ep->codec->use_rtp) {
+		struct media_packet_rtp *mp_rtp =
+					(struct media_packet_rtp *) ep->mp;
+		mp_rtp->hdr.v = 2;
+		mp_rtp->hdr.pt = 0x60;
+		mp_rtp->hdr.ssrc = htonl(1);
+	}
 
 	ep->mp_data_len = payload_len;
 
@@ -574,7 +581,7 @@ static bool write_to_endpoint(struct audio_endpoint *ep, size_t bytes)
 	int ret;
 
 	while (true) {
-		ret = write(ep->fd, mp, sizeof(*mp) + bytes);
+		ret = write(ep->fd, mp, bytes);
 
 		if (ret >= 0)
 			break;
@@ -604,6 +611,7 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 {
 	struct audio_endpoint *ep = out->ep;
 	struct media_packet *mp = (struct media_packet *) ep->mp;
+	struct media_packet_rtp *mp_rtp = (struct media_packet_rtp *) ep->mp;
 	size_t free_space = ep->mp_data_len;
 	size_t consumed = 0;
 
@@ -620,8 +628,10 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 		 * prepare media packet in advance so we don't waste time after
 		 * wakeup
 		 */
-		mp->hdr.sequence_number = htons(ep->seq++);
-		mp->hdr.timestamp = htonl(ep->samples);
+		if (ep->codec->use_rtp) {
+			mp_rtp->hdr.sequence_number = htons(ep->seq++);
+			mp_rtp->hdr.timestamp = htonl(ep->samples);
+		}
 		read = ep->codec->encode_mediapacket(ep->codec_data,
 						buffer + consumed,
 						bytes - consumed, mp,
@@ -687,9 +697,13 @@ static bool write_data(struct a2dp_stream_out *out, const void *buffer,
 			if (!wait_for_endpoint(ep, &do_write))
 				return false;
 
-			if (do_write)
+			if (do_write) {
+				if (ep->codec->use_rtp)
+					written += sizeof(struct rtp_header);
+
 				if (!write_to_endpoint(ep, written))
 					return false;
+			}
 		}
 
 		/*

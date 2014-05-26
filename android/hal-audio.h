@@ -57,6 +57,10 @@ struct rtp_header {
 #endif
 
 struct media_packet {
+	uint8_t data[0];
+};
+
+struct media_packet_rtp {
 	struct rtp_header hdr;
 	uint8_t data[0];
 };
@@ -69,6 +73,7 @@ struct audio_input_config {
 
 struct audio_codec {
 	uint8_t type;
+	bool use_rtp;
 
 	int (*get_presets) (struct audio_preset *preset, size_t *len);
 

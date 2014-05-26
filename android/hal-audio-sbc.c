@@ -56,7 +56,7 @@ struct rtp_payload {
 #endif
 
 struct media_packet_sbc {
-	struct media_packet hdr;
+	struct media_packet_rtp hdr;
 	struct rtp_payload payload;
 	uint8_t data[0];
 };
@@ -405,6 +405,7 @@ static bool sbc_update_qos(void *codec_data, uint8_t op)
 
 static const struct audio_codec codec = {
 	.type = A2DP_CODEC_SBC,
+	.use_rtp = true,
 
 	.get_presets = sbc_get_presets,
 
