@@ -439,6 +439,26 @@ static const struct smp_data smp_client_sc_req_1_test = {
 	.sc = true,
 };
 
+static const uint8_t smp_sc_rsp_1[] = {	0x02,	/* Pairing Response */
+					0x03,	/* NoInputNoOutput */
+					0x00,	/* OOB Flag */
+					0x09,	/* Bonding - no MITM, SC */
+					0x10,	/* Max key size */
+					0x0d,	/* Init. key dist. */
+					0x0d,	/* Rsp. key dist. */
+};
+
+static const struct smp_req_rsp cli_sc_req_2[] = {
+	{ NULL, 0, smp_sc_req_1, sizeof(smp_sc_req_1) },
+	{ smp_sc_rsp_1, sizeof(smp_sc_rsp_1), NULL, 0 },
+};
+
+static const struct smp_data smp_client_sc_req_2_test = {
+	.req = cli_sc_req_2,
+	.req_count = G_N_ELEMENTS(cli_sc_req_2),
+	.sc = true,
+};
+
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -858,6 +878,9 @@ int main(int argc, char *argv[])
 
 	test_smp("SMP Client - SC Request 1",
 					&smp_client_sc_req_1_test,
+					setup_powered_client, test_client);
+	test_smp("SMP Client - SC Request 2",
+					&smp_client_sc_req_2_test,
 					setup_powered_client, test_client);
 
 	return tester_run();
