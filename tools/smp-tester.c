@@ -640,19 +640,22 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 	}
 
 next:
-	if (smp->req_count == test_data->counter) {
-		test_condition_complete(test_data);
-		return;
+	while (true) {
+		if (smp->req_count == test_data->counter) {
+			test_condition_complete(test_data);
+			break;
+		}
+
+		req = &smp->req[test_data->counter];
+
+		pdu = get_pdu(req->send);
+		bthost_send_cid(bthost, test_data->handle, SMP_CID, pdu,
+								req->send_len);
+		if (req->expect)
+			break;
+		else
+			test_data->counter++;
 	}
-
-	req = &smp->req[test_data->counter];
-
-	pdu = get_pdu(req->send);
-	bthost_send_cid(bthost, test_data->handle, SMP_CID, pdu,
-							req->send_len);
-
-	if (!req->expect)
-		test_condition_complete(test_data);
 
 	return;
 
