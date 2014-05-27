@@ -4994,6 +4994,8 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_UNLIKELY;
 	}
 
+	process_dev_pending_requests(dev, cmd[0]);
+
 	return 0;
 }
 
