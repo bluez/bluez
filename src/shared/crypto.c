@@ -66,6 +66,9 @@ struct af_alg_iv {
 #define SOL_ALG		279
 #endif
 
+/* Maximum message length that can be passed to aes_cmac */
+#define CMAC_MSG_MAX	80
+
 struct bt_crypto {
 	int ref_count;
 	int ecb_aes;
@@ -559,4 +562,52 @@ bool bt_crypto_s1(struct bt_crypto *crypto, const uint8_t k[16],
 	memcpy(res + 8, r1, 8);
 
 	return bt_crypto_e(crypto, k, res, res);
+}
+
+static bool aes_cmac(struct bt_crypto *crypto, uint8_t key[16], uint8_t *msg,
+					size_t msg_len, uint8_t res[16])
+{
+	uint8_t key_msb[16], out[16], msg_msb[CMAC_MSG_MAX];
+	ssize_t len;
+	int fd;
+
+	if (msg_len > CMAC_MSG_MAX)
+		return false;
+
+	swap_buf(key, key_msb, 16);
+	fd = alg_new(crypto->cmac_aes, key_msb, 16);
+	if (fd < 0)
+		return false;
+
+	swap_buf(msg, msg_msb, msg_len);
+	len = send(fd, msg_msb, msg_len, 0);
+	if (len < 0) {
+		close(fd);
+		return false;
+	}
+
+	len = read(fd, out, 16);
+	if (len < 0) {
+		close(fd);
+		return false;
+	}
+
+	swap_buf(out, res, 16);
+
+	return true;
+}
+
+bool bt_crypto_f4(struct bt_crypto *crypto, uint8_t u[32], uint8_t v[32],
+				uint8_t x[16], uint8_t z, uint8_t res[16])
+{
+	uint8_t m[65];
+
+	if (!crypto)
+		return false;
+
+	m[0] = z;
+	memcpy(&m[1], v, 32);
+	memcpy(&m[33], u, 32);
+
+	return aes_cmac(crypto, x, m, sizeof(m), res);
 }
