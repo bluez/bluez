@@ -86,8 +86,8 @@
 #define ATT_PSM					31
 
 /* Flags for Execute Write Request Operation */
-#define ATT_CANCEL_ALL_PREP_WRITES              0x00
-#define ATT_WRITE_ALL_PREP_WRITES               0x01
+#define ATT_CANCEL_ALL_PREP_WRITES		0x00
+#define ATT_WRITE_ALL_PREP_WRITES		0x01
 
 /* Find Information Response Formats */
 #define ATT_FIND_INFO_RESP_FMT_16BIT		0x01
