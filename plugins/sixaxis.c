@@ -63,11 +63,13 @@ static const struct {
 };
 
 struct leds_data {
+	char *syspath_prefix;
 	uint8_t bitmap;
 };
 
 static void leds_data_destroy(struct leds_data *data)
 {
+	free(data->syspath_prefix);
 	free(data);
 }
 
@@ -188,10 +190,43 @@ static void set_leds_hidraw(int fd, uint8_t leds_bitmap)
 		error("sixaxis: failed to set LEDS (%d bytes written)", ret);
 }
 
+static bool set_leds_sysfs(struct leds_data *data)
+{
+	int i;
+
+	if (!data->syspath_prefix)
+		return false;
+
+	/* start from 1, LED0 is never used */
+	for (i = 1; i <= 4; i++) {
+		char path[PATH_MAX] = { 0 };
+		char buf[2] = { 0 };
+		int fd;
+		int ret;
+
+		snprintf(path, PATH_MAX, "%s%d/brightness",
+						data->syspath_prefix, i);
+
+		fd = open(path, O_WRONLY);
+		if (fd < 0) {
+			error("sixaxis: cannot open %s (%s)", path,
+							strerror(errno));
+			return false;
+		}
+
+		buf[0] = '0' + !!(data->bitmap & (1 << i));
+		ret = write(fd, buf, sizeof(buf));
+		close(fd);
+		if (ret != sizeof(buf))
+			return false;
+	}
+
+	return true;
+}
+
 static gboolean setup_leds(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
-	int fd;
 	struct leds_data *data = user_data;
 
 	if (!data)
@@ -200,9 +235,10 @@ static gboolean setup_leds(GIOChannel *channel, GIOCondition cond,
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		goto out;
 
-	fd = g_io_channel_unix_get_fd(channel);
-
-	set_leds_hidraw(fd, data->bitmap);
+	if(!set_leds_sysfs(data)) {
+		int fd = g_io_channel_unix_get_fd(channel);
+		set_leds_hidraw(fd, data->bitmap);
+	}
 
 out:
 	leds_data_destroy(data);
@@ -342,6 +378,45 @@ next:
 	return number;
 }
 
+static char *get_leds_syspath_prefix(struct udev_device *udevice)
+{
+	struct udev_list_entry *dev_list_entry;
+	struct udev_enumerate *enumerate;
+	struct udev_device *hid_parent;
+	const char *syspath;
+	char *syspath_prefix;
+
+	hid_parent = udev_device_get_parent_with_subsystem_devtype(udevice,
+								"hid", NULL);
+
+	enumerate = udev_enumerate_new(udev_device_get_udev(udevice));
+	udev_enumerate_add_match_parent(enumerate, hid_parent);
+	udev_enumerate_add_match_subsystem(enumerate, "leds");
+	udev_enumerate_scan_devices(enumerate);
+
+	dev_list_entry = udev_enumerate_get_list_entry(enumerate);
+	if (!dev_list_entry) {
+		syspath_prefix = NULL;
+		goto out;
+	}
+
+	syspath = udev_list_entry_get_name(dev_list_entry);
+
+	/*
+	 * All the sysfs paths of the LEDs have the same structure, just the
+	 * number changes, so strip it and store only the common prefix.
+	 *
+	 * Subtracting 1 here means assuming that the LED number is a single
+	 * digit, this is safe as the kernel driver only exposes 4 LEDs.
+	 */
+	syspath_prefix = strndup(syspath, strlen(syspath) - 1);
+
+out:
+	udev_enumerate_unref(enumerate);
+
+	return syspath_prefix;
+}
+
 static struct leds_data *get_leds_data(struct udev_device *udevice)
 {
 	struct leds_data *data;
@@ -359,6 +434,12 @@ static struct leds_data *get_leds_data(struct udev_device *udevice)
 		leds_data_destroy(data);
 		return NULL;
 	}
+
+	/*
+	 * It's OK if this fails, set_leds_hidraw() will be used in
+	 * case data->syspath_prefix is NULL.
+	 */
+	data->syspath_prefix = get_leds_syspath_prefix(udevice);
 
 	return data;
 }
