@@ -538,12 +538,12 @@ static void confirm_rsp(uint8_t status, uint16_t len, const void *param,
 }
 
 static int mgmt_confirm_reply(struct mgmt *mgmt, uint16_t index,
-							const bdaddr_t *bdaddr)
+					const struct mgmt_addr_info *addr)
 {
 	struct mgmt_cp_user_confirm_reply cp;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.addr.bdaddr, bdaddr);
+	memcpy(&cp.addr, addr, sizeof(*addr));
 
 	return mgmt_reply(mgmt, MGMT_OP_USER_CONFIRM_REPLY, index,
 				sizeof(cp), &cp, confirm_rsp, NULL, NULL);
@@ -564,12 +564,12 @@ static void confirm_neg_rsp(uint8_t status, uint16_t len, const void *param,
 }
 
 static int mgmt_confirm_neg_reply(struct mgmt *mgmt, uint16_t index,
-							const bdaddr_t *bdaddr)
+					const struct mgmt_addr_info *addr)
 {
 	struct mgmt_cp_user_confirm_reply cp;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.addr.bdaddr, bdaddr);
+	memcpy(&cp.addr, addr, sizeof(*addr));
 
 	return mgmt_reply(mgmt, MGMT_OP_USER_CONFIRM_NEG_REPLY, index,
 				sizeof(cp), &cp, confirm_neg_rsp, NULL, NULL);
@@ -609,7 +609,7 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 	memset(rsp, 0, sizeof(rsp));
 
 	if (fgets(rsp, sizeof(rsp), stdin) == NULL || rsp[0] == '\n') {
-		mgmt_confirm_neg_reply(mgmt, index, &ev->addr.bdaddr);
+		mgmt_confirm_neg_reply(mgmt, index, &ev->addr);
 		return;
 	}
 
@@ -618,9 +618,9 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 		rsp[rsp_len - 1] = '\0';
 
 	if (rsp[0] == 'y' || rsp[0] == 'Y')
-		mgmt_confirm_reply(mgmt, index, &ev->addr.bdaddr);
+		mgmt_confirm_reply(mgmt, index, &ev->addr);
 	else
-		mgmt_confirm_neg_reply(mgmt, index, &ev->addr.bdaddr);
+		mgmt_confirm_neg_reply(mgmt, index, &ev->addr);
 }
 
 static void cmd_monitor(struct mgmt *mgmt, uint16_t index, int argc,
