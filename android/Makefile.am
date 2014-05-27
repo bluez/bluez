@@ -38,6 +38,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				src/shared/uhid.h src/shared/uhid.c \
 				android/bluetooth.h android/bluetooth.c \
 				android/hidhost.h android/hidhost.c \
+				android/hog.h android/hog.c \
 				android/ipc-common.h \
 				android/ipc.h android/ipc.c \
 				android/avdtp.h android/avdtp.c \

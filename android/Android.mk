@@ -35,6 +35,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
 	bluez/android/main.c \
 	bluez/android/bluetooth.c \
+	bluez/android/hog.c \
 	bluez/android/hidhost.c \
 	bluez/android/socket.c \
 	bluez/android/ipc.c \
