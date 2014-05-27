@@ -44,6 +44,7 @@
 #include "src/device.h"
 #include "src/plugin.h"
 #include "src/log.h"
+#include "src/shared/util.h"
 
 static const struct {
 	const char *name;
@@ -60,6 +61,15 @@ static const struct {
 		.version = 0x0000,
 	},
 };
+
+struct leds_data {
+	uint8_t bitmap;
+};
+
+static void leds_data_destroy(struct leds_data *data)
+{
+	free(data);
+}
 
 static struct udev *ctx = NULL;
 static struct udev_monitor *monitor = NULL;
@@ -181,20 +191,21 @@ static void set_leds_hidraw(int fd, uint8_t leds_bitmap)
 static gboolean setup_leds(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
-	int number = GPOINTER_TO_INT(user_data);
-	uint8_t bitmap;
 	int fd;
+	struct leds_data *data = user_data;
 
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+	if (!data)
 		return FALSE;
 
-	DBG("number %d", number);
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+		goto out;
 
 	fd = g_io_channel_unix_get_fd(channel);
 
-	bitmap = calc_leds_bitmap(number);
-	if (bitmap != 0)
-		set_leds_hidraw(fd, bitmap);
+	set_leds_hidraw(fd, data->bitmap);
+
+out:
+	leds_data_destroy(data);
 
 	return FALSE;
 }
@@ -331,6 +342,27 @@ next:
 	return number;
 }
 
+static struct leds_data *get_leds_data(struct udev_device *udevice)
+{
+	struct leds_data *data;
+	int number;
+
+	number = get_js_number(udevice);
+	DBG("number %d", number);
+
+	data = malloc0(sizeof(*data));
+	if (!data)
+		return NULL;
+
+	data->bitmap = calc_leds_bitmap(number);
+	if (data->bitmap == 0) {
+		leds_data_destroy(data);
+		return NULL;
+	}
+
+	return data;
+}
+
 static int get_supported_device(struct udev_device *udevice, uint16_t *bus)
 {
 	struct udev_device *hid_parent;
@@ -391,8 +423,7 @@ static void device_added(struct udev_device *udevice)
 	case BUS_BLUETOOTH:
 		/* wait for events before setting leds */
 		g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				setup_leds,
-				GINT_TO_POINTER(get_js_number(udevice)));
+				setup_leds, get_leds_data(udevice));
 
 		break;
 	default:
