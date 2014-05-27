@@ -258,7 +258,7 @@ static uint16_t update_attribute_handle(struct gatt_db_service *service,
 static void set_attribute_data(struct gatt_db_attribute *attribute,
 						gatt_db_read_t read_func,
 						gatt_db_write_t write_func,
-						uint8_t permissions,
+						uint32_t permissions,
 						void *user_data)
 {
 	attribute->permissions = permissions;
