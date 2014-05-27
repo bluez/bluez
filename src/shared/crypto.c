@@ -284,12 +284,18 @@ bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
 		return false;
 
 	len = send(fd, msg, msg_len, 0);
-	if (len < 0)
+	if (len < 0) {
+		close(fd);
 		return false;
+	}
 
 	len = read(fd, out, 16);
-	if (len < 0)
+	if (len < 0) {
+		close(fd);
 		return false;
+	}
+
+	close(fd);
 
 	/*
 	 * As to BT spec. 4.1 Vol[3], Part C, chapter 10.4.1 sign counter should
