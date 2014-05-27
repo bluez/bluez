@@ -329,6 +329,11 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 		DBG("MTU Exchange: Requesting %d", imtu);
 	}
 
+	if (gerr) {
+		error("Could not acquire att imtu and cid: %s", gerr->message);
+		g_error_free(gerr);
+	}
+
 	if (device_get_appearance(gas->device, &app) < 0) {
 		bt_uuid_t uuid;
 
