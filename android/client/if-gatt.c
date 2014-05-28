@@ -1772,15 +1772,11 @@ static void gatts_send_response_p(int argc, const char *argv[])
 	data.attr_value.auth_req = 0;
 	data.attr_value.len = 0;
 
-	if (argc <= 7) {
-		haltest_error("No data specified\n");
-		return;
-	}
-
-	data.attr_value.len = strlen(argv[7]);
-	scan_field(argv[7], data.attr_value.len, data.attr_value.value,
+	if (argc > 7) {
+		data.attr_value.len = strlen(argv[7]);
+		scan_field(argv[7], data.attr_value.len, data.attr_value.value,
 						sizeof(data.attr_value.value));
-
+	}
 
 	haltest_info("conn_id %d, trans_id %d, status %d", conn_id, trans_id,
 									status);
