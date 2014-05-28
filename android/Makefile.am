@@ -32,6 +32,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				src/shared/hfp.h src/shared/hfp.c \
 				src/shared/gatt-db.h src/shared/gatt-db.c \
 				src/shared/crypto.h src/shared/crypto.c \
+				src/shared/uhid.h src/shared/uhid.c \
 				android/bluetooth.h android/bluetooth.c \
 				android/hidhost.h android/hidhost.c \
 				android/ipc-common.h \
