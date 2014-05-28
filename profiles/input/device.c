@@ -108,22 +108,7 @@ static int connection_disconnect(struct input_device *idev, uint32_t flags);
 
 static void input_device_free(struct input_device *idev)
 {
-	if (idev->uhid) {
-		if (idev->uhid_created) {
-			int err;
-			struct uhid_event ev;
-
-			memset(&ev, 0, sizeof(ev));
-			ev.type = UHID_DESTROY;
-			err = bt_uhid_send(idev->uhid, &ev);
-			if (err < 0)
-				error("bt_uhid_send: %s (%d)", strerror(-err),
-									-err);
-		}
-
-		bt_uhid_unref(idev->uhid);
-	}
-
+	bt_uhid_unref(idev->uhid);
 	btd_service_unref(idev->service);
 	btd_device_unref(idev->device);
 	g_free(idev->path);

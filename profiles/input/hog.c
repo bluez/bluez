@@ -750,17 +750,7 @@ static struct hog_device *hog_register_device(struct btd_device *device,
 
 static int hog_unregister_device(struct hog_device *hogdev)
 {
-	struct uhid_event ev;
-	int err;
-
 	btd_device_remove_attio_callback(hogdev->device, hogdev->attioid);
-
-	memset(&ev, 0, sizeof(ev));
-	ev.type = UHID_DESTROY;
-	err = bt_uhid_send(hogdev->uhid, &ev);
-	if (err < 0)
-		error("bt_uhid_send: %s (%d)", strerror(-err), -err);
-
 	bt_uhid_unref(hogdev->uhid);
 	hog_free_device(hogdev);
 
