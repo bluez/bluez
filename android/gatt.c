@@ -3643,9 +3643,15 @@ static void send_dev_pending_response(struct gatt_device *device,
 			goto done;
 		}
 
+		if (val->error) {
+			queue_destroy(temp, NULL);
+			error = val->error;
+			goto done;
+		}
+
 		length = val->length;
 
-		while (val && val->length == length) {
+		while (val && val->length == length && val->error == 0) {
 			queue_push_tail(temp, val);
 			val = queue_pop_head(device->pending_requests);
 		}
