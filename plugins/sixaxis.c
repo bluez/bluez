@@ -257,15 +257,24 @@ static int get_js_number(struct udev_device *udevice)
 	struct udev_enumerate *enumerate;
 	struct udev_device *hid_parent;
 	const char *hidraw_node;
-	const char *hid_phys;
+	const char *hid_id;
 	int number = 0;
 
 	hid_parent = udev_device_get_parent_with_subsystem_devtype(udevice,
 								"hid", NULL);
 
-	hid_phys = udev_device_get_property_value(hid_parent, "HID_PHYS");
+	/*
+	 * Look for HID_UNIQ first for the correct behavior via BT, if
+	 * HID_UNIQ is not available it means the USB bus is being used and we
+	 * can rely on HID_PHYS.
+	 */
+	hid_id = udev_device_get_property_value(hid_parent, "HID_UNIQ");
+	if (!hid_id)
+		hid_id = udev_device_get_property_value(hid_parent,
+							"HID_PHYS");
+
 	hidraw_node = udev_device_get_devnode(udevice);
-	if (!hid_phys || !hidraw_node)
+	if (!hid_id || !hidraw_node)
 		return 0;
 
 	enumerate = udev_enumerate_new(udev_device_get_udev(udevice));
@@ -276,7 +285,7 @@ static int get_js_number(struct udev_device *udevice)
 	udev_list_entry_foreach(dev_list_entry, devices) {
 		struct udev_device *input_parent;
 		struct udev_device *js_dev;
-		const char *input_phys;
+		const char *input_id;
 		const char *devname;
 
 		devname = udev_list_entry_get_name(dev_list_entry);
@@ -291,12 +300,20 @@ static int get_js_number(struct udev_device *udevice)
 
 		/* check if this is the joystick relative to the hidraw device
 		 * above */
-		input_phys = udev_device_get_sysattr_value(input_parent,
-									"phys");
-		if (!input_phys)
+		input_id = udev_device_get_sysattr_value(input_parent, "uniq");
+
+		/*
+		 * A strlen() check is needed because input device over USB
+		 * have the UNIQ attribute defined but with an empty value.
+		 */
+		if (!input_id || strlen(input_id) == 0)
+			input_id = udev_device_get_sysattr_value(input_parent,
+								 "phys");
+
+		if (!input_id)
 			goto next;
 
-		if (!strcmp(input_phys, hid_phys)) {
+		if (!strcmp(input_id, hid_id)) {
 			number = atoi(udev_device_get_sysnum(js_dev));
 
 			/* joystick numbers start from 0, leds from 1 */
