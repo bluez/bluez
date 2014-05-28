@@ -5499,15 +5499,24 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 	if (!start_listening_io())
 		return false;
 
+	crypto = bt_crypto_new();
+	if (!crypto) {
+		error("gatt: Failed to setup crypto");
+
+		g_io_channel_unref(listening_io);
+		listening_io = NULL;
+
+		return false;
+	}
+
 	gatt_devices = queue_new();
 	gatt_apps = queue_new();
 	app_connections = queue_new();
 	listen_apps = queue_new();
 	gatt_db = gatt_db_new();
-	crypto = bt_crypto_new();
 
-	if (!gatt_devices || !gatt_apps || !listen_apps ||
-				!app_connections || !gatt_db || !crypto) {
+	if (!gatt_devices || !gatt_apps || !listen_apps || !app_connections ||
+								!gatt_db) {
 		error("gatt: Failed to allocate memory for queues");
 
 		queue_destroy(gatt_apps, NULL);
