@@ -18,11 +18,17 @@ TC_PROT_BV_01_C		PASS
 TC_PROT_BV_02_C		FAIL	JIRA: BZ-24
 				btmgmt advertising on
 TC_JW_BV_01_C		FAIL	JIRA: BZ-25
-TC_JW_BV_02_C		INC	JIRA: BZ-26
+TC_JW_BV_02_C		PASS
 TC_JW_BV_05_C		INC
 TC_JW_BI_01_C		PASS
-TC_JW_BI_02_C		INC
-TC_JW_BI_03_C		INC
+TC_JW_BI_02_C		PASS
+TC_JW_BI_03_C		PASS	bluetoothd is NOT running
+				btmgmt power on
+				btmgmt le on
+				btmgmt connectable on
+				btmgmt pairable on
+				btmgmt discov on
+				btmgmt advertising on
 TC_JW_BI_04_C		FAIL
 TC_PKE_BV_01_C		FAIL
 TC_PKE_BV_02_C		INC
