@@ -159,9 +159,24 @@ TC_GAR_SR_BI_06_C	PASS	haltest:
 				gatts start_service
 TC_GAR_SR_BI_07_C	PASS
 TC_GAR_SR_BI_08_C	PASS
-TC_GAR_SR_BI_09_C	INC
-TC_GAR_SR_BI_10_C	INC
-TC_GAR_SR_BI_11_C	INC
+TC_GAR_SR_BI_09_C	PASS	haltest:
+				gatts add_service
+				gatts add_chaaracteristic:
+						<properties> 2 <permissions> 1
+				gatts start_service
+				gatts send_response: <status> 8
+TC_GAR_SR_BI_10_C	PASS	haltest:
+				gatts add_service
+				gatts add_chaaracteristic:
+						<properties> 2 <permissions> 1
+				gatts start_service
+				gatts send_response: <status> 5
+TC_GAR_SR_BI_11_C	PASS	haltest:
+				gatts add_service
+				gatts add_chaaracteristic:
+						<properties> 2 <permissions> 1
+				gatts start_service
+				gatts send_response: <status> 12
 TC_GAR_SR_BV_04_C	PASS	haltest:
 				gatts add_service
 				gatts add_chaaracteristic:
@@ -265,7 +280,13 @@ TC_GAR_SR_BV_07_C	PASS	haltest:
 				gatts send_response:
 						<data> value greater than MTU
 						repeat with correct offset
-TC_GAR_SR_BV_08_C	INC
+TC_GAR_SR_BV_08_C	PASS	haltest:
+				gatts add_service
+				gatts add_chaaracteristic:
+						<properties> 2 <permissions> 1
+				gatts add_descriptor: <permissions> 1
+				gatts start_service
+				gatts send_response: repeat with correct offset
 TC_GAR_SR_BI_28_C	PASS	haltest:
 				gatts add_service
 				gatts add_chaaracteristic:
