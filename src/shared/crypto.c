@@ -279,7 +279,6 @@ bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
 	/* The most significant octet of key corresponds to key[0] */
 	swap_buf(key, tmp, 16);
 
-	memcpy(signature, tmp + 4, 12);
 	fd = alg_new(crypto->cmac_aes, tmp, 16);
 	if (fd < 0)
 		return false;
