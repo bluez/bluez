@@ -3475,6 +3475,9 @@ static uint8_t test_read_write(bdaddr_t *bdaddr, bt_uuid_t *uuid, uint16_t op,
 	case ATT_OP_READ_MULTI_REQ:
 		return HAL_STATUS_UNSUPPORTED;
 	case ATT_OP_WRITE_REQ:
+		length = enc_write_req(u2, (uint8_t *) &u3, sizeof(u3), pdu,
+									mtu);
+		break;
 	case ATT_OP_WRITE_CMD:
 	case ATT_OP_PREP_WRITE_REQ:
 	case ATT_OP_EXEC_WRITE_REQ:
