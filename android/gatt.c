@@ -5066,6 +5066,13 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	if (len) {
 		uint8_t t[ATT_SIGNATURE_LEN];
+		uint32_t r_sign_cnt = get_le32(s);
+
+		if (r_sign_cnt != sign_cnt) {
+			error("gatt: sign_cnt does not match (%d!=%d)",
+							sign_cnt, r_sign_cnt);
+			return;
+		}
 
 		/* Generate signature and verify it */
 		if (!bt_crypto_sign_att(crypto, csrk, value, vlen, sign_cnt,
