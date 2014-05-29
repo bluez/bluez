@@ -3487,6 +3487,8 @@ static uint8_t test_read_write(bdaddr_t *bdaddr, bt_uuid_t *uuid, uint16_t op,
 								pdu, mtu);
 		break;
 	case ATT_OP_EXEC_WRITE_REQ:
+		length = enc_exec_write_req(u2, pdu, mtu);
+		break;
 	default:
 		error("gatt: Unknown operation type");
 
