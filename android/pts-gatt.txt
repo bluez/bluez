@@ -121,12 +121,27 @@ TC_GAR_CL_BI_03_C	PASS	haltest:
 TC_GAR_CL_BI_04_C	PASS	haltest:
 				gattc read_characteristic
 TC_GAR_CL_BI_05_C	INC	not implemented (encryption)
-TC_GAR_CL_BV_03_C	INC	JIRA: BZ-31
-TC_GAR_CL_BI_06_C	INC	JIRA: BZ-31
-TC_GAR_CL_BI_07_C	INC	JIRA: BZ-31
-TC_GAR_CL_BI_09_C	INC	JIRA: BZ-31
-TC_GAR_CL_BI_10_C	INC	JIRA: BZ-31
-TC_GAR_CL_BI_11_C	INC	not implemented (encryption)
+TC_GAR_CL_BV_03_C	INC	JIRA: BZ-31, Possible PTS issue #12227
+TC_GAR_CL_BI_06_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 224 [u1] 8
+				gattc disconnect
+TC_GAR_CL_BI_07_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 224 [u1] 8
+				gattc disconnect
+TC_GAR_CL_BI_09_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 224 [u1] 8
+				gattc disconnect
+TC_GAR_CL_BI_10_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 224 [u1] 8
+				gattc disconnect
+TC_GAR_CL_BI_11_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 224 [u1] 8
+				gattc disconnect
 TC_GAR_CL_BV_04_C	PASS	haltest:
 				gattc read_characteristic
 TC_GAR_CL_BI_12_C	PASS	haltest:
