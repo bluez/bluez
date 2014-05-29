@@ -3467,6 +3467,8 @@ static uint8_t handle_test_command_read(bdaddr_t *bdaddr, bt_uuid_t *uuid,
 		length = enc_read_by_type_req(u2, u3, uuid, pdu, mtu);
 		break;
 	case ATT_OP_READ_BLOB_REQ:
+		length = enc_read_blob_req(u2, u3, pdu, mtu);
+		break;
 	case ATT_OP_READ_BY_GROUP_REQ:
 	case ATT_OP_READ_MULTI_REQ:
 	default:
