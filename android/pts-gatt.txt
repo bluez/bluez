@@ -428,7 +428,15 @@ TC_GAW_CL_BV_01_C	PASS	haltest:
 								handle from logs
 				gattc write_characteristic
 				gattc disconnect
-TC_GAW_CL_BV_02_C	INC
+TC_GAW_CL_BV_02_C	PASS	haltest:
+				bluetooth create_bond
+				gattc disconnect
+				gattc connect
+				gattc search_service
+				gattc get_characteristics
+				gattc write_characteristics: <type> 4
+				gattc disconnect
+
 TC_GAW_CL_BV_03_C	PASS	haltest:
 				gattc connect
 				gattc search_service
@@ -687,7 +695,15 @@ TC_GAW_SR_BV_01_C	PASS	haltest:
 				gatts add_characteristic:
 						<properties> 4 <permissions> 16
 				gatts start_service
-TC_GAW_SR_BV_02_C	INC
+TC_GAW_SR_BV_02_C	PASS	haltest:
+				gatts add service
+				gatts add_characteristics:
+					<properties> 66 <permisions> 147
+				gatts start_service
+				gattc listen
+				gatts send_response: (twice)
+				NOTE: gatts_request_write_cb shall be called
+								 (verify it)
 TC_GAW_SR_BI_01_C	PASS	haltest:
 				gatts add_service
 				gatts add_characteristic:
