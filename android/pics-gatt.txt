@@ -13,8 +13,8 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_GATT_1_1	True		Generic Attribute Profile Client (C.1)
 TSPC_GATT_1_2	True		Generic Attribute Profile Server (C.2)
-TSPC_GATT_1A_1	False (*)	Complete GATT client (C.3)
-TSPC_GATT_1A_2	False (*)	Complete GATT server (C.4)
+TSPC_GATT_1A_1	True		Complete GATT client (C.3)
+TSPC_GATT_1A_2	True		Complete GATT server (C.4)
 -------------------------------------------------------------------------------
 C.1: Optional to support IF TSPC_GATT_2_2; else IF TSPC_GATT_2_1 it is mandatory
 	to support at least one of TSPC_GATT_1_1 OR TSPC_GATT_1_2
@@ -58,7 +58,7 @@ TSPC_GATT_3_7	True		Client: Discover All Characteristic Descriptors
 TSPC_GATT_3_8	True		Client: Read Characteristic Value (C.1)
 TSPC_GATT_3_9	True		Client: Read using Characteristic UUID (C.1)
 TSPC_GATT_3_10	True		Client: Read Long Characteristic Values (C.1)
-TSPC_GATT_3_11	True		Client: Read Multiple Characteristic
+TSPC_GATT_3_11	False (*)	Client: Read Multiple Characteristic
 					Values (C.1)
 TSPC_GATT_3_12	True		Client: Write without Response (C.1)
 TSPC_GATT_3_13	True		Client: Signed Write Without Response (C.1)
@@ -140,10 +140,10 @@ TSPC_GATT_4_7	True		Server: Discover All Characteristic
 TSPC_GATT_4_8	True		Server: Read Characteristic Value (M)
 TSPC_GATT_4_9	True		Server: Read using Characteristic UUID (M)
 TSPC_GATT_4_10	True		Server: Read Long Characteristic Values (C.4)
-TSPC_GATT_4_11	True		Server: Read Multiple Characteristic
+TSPC_GATT_4_11	False (*)	Server: Read Multiple Characteristic
 					Values (C.4)
 TSPC_GATT_4_12	True		Server: Write without Response (C.2)
-TSPC_GATT_4_13	False (*)	Server: Signed Write Without Response (C.4)
+TSPC_GATT_4_13	True		Server: Signed Write Without Response (C.4)
 TSPC_GATT_4_14	True		Server: Write Characteristic Value (C.3)
 TSPC_GATT_4_15	True		Server: Write Long Characteristic Values (C.4)
 TSPC_GATT_4_16	True		Server: Characteristic Value Reliable
@@ -221,7 +221,7 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_GATT_6_2	True		Discover GATT Services using Service Discovery
 					Profile (C.1)
-TSPC_GATT_6_3	False  (*)	Publish SDP record for GATT services support
+TSPC_GATT_6_3	False (*)	Publish SDP record for GATT services support
 					via BR/EDR (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory IF TSPC_GATT_1_1 is supported, otherwise Excluded
@@ -239,7 +239,7 @@ TSPC_GATT_7_3	True		LE Security Mode 2 (C.2)
 TSPC_GATT_7_4	True		LE Authentication Procedure (C.2)
 TSPC_GATT_7_5	True		LE connection data signing procedure (C.2)
 TSPC_GATT_7_6	True		LE Authenticate signed data procedure (C.2)
-TSPC_GATT_7_7	False (*)	LE Authorization Procedure (C.2)
+TSPC_GATT_7_7	True		LE Authorization Procedure (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory IF TSPC_GATT_2_1 is supported, otherwise Excluded
 C.2: Optional IF TSPC_GATT_2_2 is supported, otherwise Excluded
@@ -251,20 +251,20 @@ C.2: Optional IF TSPC_GATT_2_2 is supported, otherwise Excluded
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_ATT_3_1	True		Attribute Error Response (M)
-TSPC_ATT_3_2	False (*)	Exchange MTU Request (O)
-TSPC_ATT_3_4	False (*)	Find Information Request (O)
-TSPC_ATT_3_6	False (*)	Find by Type Value Request (O)
-TSPC_ATT_3_8	False (*)	Read by Type Request (O)
-TSPC_ATT_3_10	False (*)	Read Request (O)
-TSPC_ATT_3_12	False (*)	Read Blob Request (O)
-TSPC_ATT_3_14	False (*)	Read Multiple Request (O)
-TSPC_ATT_3_16	False (*)	Read by Group Type Request (O)
-TSPC_ATT_3_17	False (*)	Read by Group Type Response (C.6)
-TSPC_ATT_3_18	False (*)	Write Request (O)
-TSPC_ATT_3_20	False (*)	Write Command (O)
-TSPC_ATT_3_21	False (*)	Signed Write Command (O)
-TSPC_ATT_3_22	False (*)	Prepare Write Request (O)
-TSPC_ATT_3_24	False (*)	Execute Write Request (C.8)
+TSPC_ATT_3_2	True		Exchange MTU Request (O)
+TSPC_ATT_3_4	True		Find Information Request (O)
+TSPC_ATT_3_6	True		Find by Type Value Request (O)
+TSPC_ATT_3_8	True		Read by Type Request (O)
+TSPC_ATT_3_10	True		Read Request (O)
+TSPC_ATT_3_12	True		Read Blob Request (O)
+TSPC_ATT_3_14	True		Read Multiple Request (O)
+TSPC_ATT_3_16	True		Read by Group Type Request (O)
+TSPC_ATT_3_17	True		Read by Group Type Response (C.6)
+TSPC_ATT_3_18	True		Write Request (O)
+TSPC_ATT_3_20	True		Write Command (O)
+TSPC_ATT_3_21	True		Signed Write Command (O)
+TSPC_ATT_3_22	True		Prepare Write Request (O)
+TSPC_ATT_3_24	True		Execute Write Request (C.8)
 TSPC_ATT_3_26	True		Handle Value Notification (M)
 -------------------------------------------------------------------------------
 C.6: Mandatory IF TSPC_ATT_3_16 is supported, otherwise Excluded
@@ -284,12 +284,12 @@ TSPC_ATT_4_9	True		Read by Type Response (M)
 TSPC_ATT_4_11	True		Read Response (M)
 TSPC_ATT_4_15	False (*)	Read Multiple Response (C.2)
 TSPC_ATT_4_17	True		Read by Group Type Response (M)
-TSPC_ATT_4_19	False (*)	Write Response (C.3)
-TSPC_ATT_4_20	False (*)	Write Command (O)
-TSPC_ATT_4_21	False (*)	Signed Write Command (O)
-TSPC_ATT_4_23	False (*)	Prepare Write Response (C.4)
-TSPC_ATT_4_25	False (*)	Execute Write Response (C.5)
-TSPC_ATT_4_26	False (*)	Handle Value Notification (O)
+TSPC_ATT_4_19	True		Write Response (C.3)
+TSPC_ATT_4_20	True		Write Command (O)
+TSPC_ATT_4_21	True		Signed Write Command (O)
+TSPC_ATT_4_23	True		Prepare Write Response (C.4)
+TSPC_ATT_4_25	True		Execute Write Response (C.5)
+TSPC_ATT_4_26	True		Handle Value Notification (O)
 -------------------------------------------------------------------------------
 C.2: Mandatory IF TSPC_ATT_4_14 is supported, otherwise Excluded
 C.3: Mandatory IF TSPC_ATT_4_18 is supported, otherwise Excluded
@@ -302,9 +302,9 @@ C.5: Mandatory IF TSPC_ATT_4_27 is supported, otherwise Excluded
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_ATT_5_2	False (*)	LE Security Mode 1 (C.2)
-TSPC_ATT_5_4	False (*)	LE Authentication Procedure (C.2)
-TSPC_ATT_5_7	False (*)	LE Authorization Procedure (C.2)
+TSPC_ATT_5_2	True		LE Security Mode 1 (C.2)
+TSPC_ATT_5_4	True		LE Authentication Procedure (C.2)
+TSPC_ATT_5_7	True		LE Authorization Procedure (C.2)
 -------------------------------------------------------------------------------
 C.2: Optional to support if 2/2 (Attribute Protocol Supported over LE),
 	otherwise Excluded
@@ -315,7 +315,7 @@ C.2: Optional to support if 2/2 (Attribute Protocol Supported over LE),
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_GAP_0_2	False (*)	LE (C.2)
+TSPC_GAP_0_2	True		LE (C.2)
 -------------------------------------------------------------------------------
 C.2: Mandatory IF (SUM ICS 34/2 (LE GAP) AND NOT SUM ICS 32/3 (BR/EDR GAP))
 	is supported, otherwise Excluded
