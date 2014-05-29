@@ -5075,8 +5075,9 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		}
 
 		/* Generate signature and verify it */
-		if (!bt_crypto_sign_att(crypto, csrk, value, vlen, sign_cnt,
-									t)) {
+		if (!bt_crypto_sign_att(crypto, csrk, cmd,
+						cmd_len - ATT_SIGNATURE_LEN,
+						sign_cnt, t)) {
 			error("gatt: Error when generating att signature");
 			return;
 		}
