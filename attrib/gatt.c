@@ -1067,7 +1067,9 @@ guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, const uint8_t *value,
 
 guint gatt_signed_write_cmd(GAttrib *attrib, uint16_t handle,
 						const uint8_t *value, int vlen,
-						const uint8_t signature[12],
+						struct bt_crypto *crypto,
+						const uint8_t csrk[16],
+						uint32_t sign_cnt,
 						GDestroyNotify notify,
 						gpointer user_data)
 {
@@ -1076,8 +1078,11 @@ guint gatt_signed_write_cmd(GAttrib *attrib, uint16_t handle,
 	guint16 plen;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
-	plen = enc_signed_write_cmd(handle, value, vlen, signature, buf,
-									buflen);
+	plen = enc_signed_write_cmd(handle, value, vlen, crypto, csrk, sign_cnt,
+								buf, buflen);
+	if (plen == 0)
+		return 0;
+
 	return g_attrib_send(attrib, 0, buf, plen, NULL, user_data, notify);
 }
 

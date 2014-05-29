@@ -561,9 +561,10 @@ uint16_t dec_write_cmd(const uint8_t *pdu, size_t len, uint16_t *handle,
 	return len;
 }
 
-uint16_t enc_signed_write_cmd(uint16_t handle,
-					const uint8_t *value, size_t vlen,
-					const uint8_t signature[12],
+uint16_t enc_signed_write_cmd(uint16_t handle, const uint8_t *value,
+					size_t vlen, struct bt_crypto *crypto,
+					const uint8_t csrk[16],
+					uint32_t sign_cnt,
 					uint8_t *pdu, size_t len)
 {
 	const uint16_t hdr_len = sizeof(pdu[0]) + sizeof(handle);
@@ -581,7 +582,9 @@ uint16_t enc_signed_write_cmd(uint16_t handle,
 	if (vlen > 0)
 		memcpy(&pdu[hdr_len], value, vlen);
 
-	memcpy(&pdu[hdr_len + vlen], signature, ATT_SIGNATURE_LEN);
+	if (!bt_crypto_sign_att(crypto, csrk, pdu, hdr_len + vlen, sign_cnt,
+							&pdu[hdr_len + vlen]))
+		return 0;
 
 	return min_len + vlen;
 }

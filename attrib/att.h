@@ -22,6 +22,8 @@
  *
  */
 
+#include "src/shared/crypto.h"
+
 /* Len of signature in write signed packet */
 #define ATT_SIGNATURE_LEN		12
 
@@ -134,7 +136,9 @@ uint16_t dec_write_cmd(const uint8_t *pdu, size_t len, uint16_t *handle,
 						uint8_t *value, size_t *vlen);
 uint16_t enc_signed_write_cmd(uint16_t handle,
 					const uint8_t *value, size_t vlen,
-					const uint8_t signature[12],
+					struct bt_crypto *crypto,
+					const uint8_t csrk[16],
+					uint32_t sign_cnt,
 					uint8_t *pdu, size_t len);
 uint16_t dec_signed_write_cmd(const uint8_t *pdu, size_t len,
 						uint16_t *handle,

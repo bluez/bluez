@@ -44,7 +44,6 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/gatt-db.h"
-#include "src/shared/crypto.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
@@ -2642,7 +2641,6 @@ static void write_char_cb(guint8 status, const guint8 *pdu, guint16 len,
 static bool signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 					const uint8_t *value, uint16_t vlen)
 {
-	uint8_t s[ATT_SIGNATURE_LEN];
 	uint8_t csrk[16];
 	uint32_t sign_cnt;
 
@@ -2653,15 +2651,8 @@ static bool signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 		return false;
 	}
 
-	memset(s, 0, ATT_SIGNATURE_LEN);
-
-	if (!bt_crypto_sign_att(crypto, csrk, value, vlen, sign_cnt, s)) {
-		error("gatt: Could not sign att data");
-		return false;
-	}
-
-	if (!gatt_signed_write_cmd(dev->attrib, handle, value, vlen, s, NULL,
-									NULL)) {
+	if (!gatt_signed_write_cmd(dev->attrib, handle, value, vlen, crypto,
+					csrk, sign_cnt, NULL, NULL)) {
 		error("gatt: Could write signed cmd");
 		return false;
 	}

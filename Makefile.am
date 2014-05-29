@@ -98,7 +98,8 @@ gdbus_libgdbus_internal_la_SOURCES = gdbus/gdbus.h \
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
 		attrib/gattrib.h attrib/gattrib.c \
-		attrib/gatt-service.h attrib/gatt-service.c
+		attrib/gatt-service.h attrib/gatt-service.c \
+		src/shared/crypto.h src/shared/crypto.c
 
 btio_sources = btio/btio.h btio/btio.c
 
