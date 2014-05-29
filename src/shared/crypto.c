@@ -265,6 +265,7 @@ bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
 	uint8_t tmp[16], out[16];
 	uint16_t msg_len = m_len + sizeof(uint32_t);
 	uint8_t msg[msg_len];
+	uint8_t msg_s[msg_len];
 
 	if (!crypto)
 		return false;
@@ -283,7 +284,10 @@ bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
 	if (fd < 0)
 		return false;
 
-	len = send(fd, msg, msg_len, 0);
+	/* Swap msg before signing */
+	swap_buf(msg, msg_s, msg_len);
+
+	len = send(fd, msg_s, msg_len, 0);
 	if (len < 0) {
 		close(fd);
 		return false;
