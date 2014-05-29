@@ -3442,9 +3442,9 @@ failed:
 				HAL_OP_GATT_CLIENT_SET_ADV_DATA, status);
 }
 
-static uint8_t handle_test_command_read(bdaddr_t *bdaddr, bt_uuid_t *uuid,
-					uint16_t read_type, uint16_t u2,
-					uint16_t u3, uint16_t u4, uint16_t u5)
+static uint8_t test_read_write(bdaddr_t *bdaddr, bt_uuid_t *uuid, uint16_t op,
+						uint16_t u2,uint16_t u3,
+						uint16_t u4, uint16_t u5)
 {
 	guint16 length = 0;
 	struct gatt_device *dev;
@@ -3459,7 +3459,7 @@ static uint8_t handle_test_command_read(bdaddr_t *bdaddr, bt_uuid_t *uuid,
 	if (!pdu)
 		return HAL_STATUS_FAILED;
 
-	switch (read_type) {
+	switch (op) {
 	case ATT_OP_READ_REQ:
 		length = enc_read_req(u2, pdu, mtu);
 		break;
@@ -3473,8 +3473,13 @@ static uint8_t handle_test_command_read(bdaddr_t *bdaddr, bt_uuid_t *uuid,
 		length = enc_read_by_grp_req(u2, u3, uuid, pdu, mtu);
 		break;
 	case ATT_OP_READ_MULTI_REQ:
+		return HAL_STATUS_UNSUPPORTED;
+	case ATT_OP_WRITE_REQ:
+	case ATT_OP_WRITE_CMD:
+	case ATT_OP_PREP_WRITE_REQ:
+	case ATT_OP_EXEC_WRITE_REQ:
 	default:
-		error("gatt: Unknown read type");
+		error("gatt: Unknown operation type");
 
 		return HAL_STATUS_UNSUPPORTED;
 	}
@@ -3532,9 +3537,9 @@ static void handle_client_test_command(const void *buf, uint16_t len)
 		status = HAL_STATUS_FAILED;
 		break;
 	case GATT_CLIENT_TEST_CMD_READ:
-		status = handle_test_command_read(&bdaddr, &uuid, cmd->u1,
-							cmd->u2, cmd->u3,
-							cmd->u4, cmd->u5);
+	case GATT_CLIENT_TEST_CMD_WRITE:
+		status = test_read_write(&bdaddr, &uuid, cmd->u1, cmd->u2,
+						cmd->u3, cmd->u4, cmd->u5);
 		break;
 	case GATT_CLIENT_TEST_CMD_PAIRING_CONFIG:
 	default:
