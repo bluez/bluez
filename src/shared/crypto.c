@@ -273,7 +273,7 @@ bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
 	memcpy(msg, m, m_len);
 
 	/* Add sign_counter to the message */
-	put_le32(sign_cnt, msg + msg_len);
+	put_le32(sign_cnt, msg + m_len);
 
 	/* The most significant octet of key corresponds to key[0] */
 	swap128(key, tmp);
