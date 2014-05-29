@@ -3442,6 +3442,43 @@ failed:
 				HAL_OP_GATT_CLIENT_SET_ADV_DATA, status);
 }
 
+static uint8_t handle_test_command_read(bdaddr_t *bdaddr, bt_uuid_t *uuid,
+					uint16_t read_type, uint16_t u2,
+					uint16_t u3, uint16_t u4, uint16_t u5)
+{
+	guint16 length = 0;
+	struct gatt_device *dev;
+	uint8_t *pdu;
+	size_t mtu;
+
+	dev = find_device_by_addr(bdaddr);
+	if (!dev || dev->state != DEVICE_CONNECTED)
+		return HAL_STATUS_FAILED;
+
+	pdu = g_attrib_get_buffer(dev->attrib, &mtu);
+	if (!pdu)
+		return HAL_STATUS_FAILED;
+
+	switch (read_type) {
+	case ATT_OP_READ_REQ:
+	case ATT_OP_READ_BY_TYPE_REQ:
+	case ATT_OP_READ_BLOB_REQ:
+	case ATT_OP_READ_BY_GROUP_REQ:
+	case ATT_OP_READ_MULTI_REQ:
+	default:
+		error("gatt: Unknown read type");
+
+		return HAL_STATUS_UNSUPPORTED;
+	}
+
+	if (!length)
+		return HAL_STATUS_FAILED;
+
+	g_attrib_send(dev->attrib, 0, pdu, length, NULL, NULL, NULL);
+
+	return HAL_STATUS_SUCCESS;
+}
+
 static void handle_client_test_command(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_test_command *cmd = buf;
@@ -3484,6 +3521,13 @@ static void handle_client_test_command(const void *buf, uint16_t len)
 		status = HAL_STATUS_SUCCESS;
 		break;
 	case GATT_CLIENT_TEST_CMD_DISCOVER:
+		status = HAL_STATUS_FAILED;
+		break;
+	case GATT_CLIENT_TEST_CMD_READ:
+		status = handle_test_command_read(&bdaddr, &uuid, cmd->u1,
+							cmd->u2, cmd->u3,
+							cmd->u4, cmd->u5);
+		break;
 	case GATT_CLIENT_TEST_CMD_PAIRING_CONFIG:
 	default:
 		status = HAL_STATUS_FAILED;
