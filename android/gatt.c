@@ -3461,6 +3461,8 @@ static uint8_t handle_test_command_read(bdaddr_t *bdaddr, bt_uuid_t *uuid,
 
 	switch (read_type) {
 	case ATT_OP_READ_REQ:
+		length = enc_read_req(u2, pdu, mtu);
+		break;
 	case ATT_OP_READ_BY_TYPE_REQ:
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_BY_GROUP_REQ:
