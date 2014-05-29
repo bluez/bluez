@@ -5043,7 +5043,7 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_INSUFF_RESOURCES;
 
 	data->handle = handle;
-	data->state = REQUEST_INIT;
+	data->state = REQUEST_PENDING;
 
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
@@ -5057,7 +5057,8 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_UNLIKELY;
 	}
 
-	process_dev_pending_requests(dev, cmd[0]);
+	if (!queue_find(dev->pending_requests, match_pending_dev_request, NULL))
+		send_dev_pending_response(dev, cmd[0]);
 
 	return 0;
 }
