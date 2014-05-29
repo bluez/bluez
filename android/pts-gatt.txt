@@ -436,7 +436,10 @@ TC_GAW_CL_BV_03_C	PASS	haltest:
 								handle from logs
 				gattc write_characteristic
 				gattc disconnect
-TC_GAW_CL_BI_02_C	INC	gatttool required
+TC_GAW_CL_BI_02_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 225 [u1] 18
+				gattc disconnect
 TC_GAW_CL_BI_03_C	PASS	haltest:
 				gattc connect
 				gattc search_service
@@ -472,7 +475,10 @@ TC_GAW_CL_BV_05_C	PASS	haltest:
 								handle from logs
 				gattc write_characteristic 2 <long_value>
 				gattc disconnect
-TC_GAW_CL_BI_07_C	INC	gatttool required
+TC_GAW_CL_BI_07_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 225 [u1] 22
+				gattc disconnect
 TC_GAW_CL_BI_08_C	PASS	haltest:
 				gattc connect
 				gattc search_service
@@ -515,7 +521,10 @@ TC_GAW_CL_BV_06_C	PASS	haltest:
 								handle from logs
 				gattc write_characteristic 2 <long_value>
 				gattc disconnect
-TC_GAW_CL_BI_14_C	INC	gatttool required
+TC_GAW_CL_BI_14_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 225 [u1] 22
+				gattc disconnect
 TC_GAW_CL_BI_15_C	PASS	haltest:
 				gattc connect
 				gattc search_service
@@ -552,7 +561,10 @@ TC_GAW_CL_BV_08_C	PASS	haltest:
 				gattc get_descriptor
 				gattc write_descriptor 2 <short_value>
 				gattc disconnect
-TC_GAW_CL_BI_20_C	INC	gatttool required
+TC_GAW_CL_BI_20_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 225 [u1] 18
+				gattc disconnect
 TC_GAW_CL_BI_21_C	PASS	haltest:
 				gattc connect
 				gattc search_service
@@ -593,7 +605,10 @@ TC_GAW_CL_BV_09_C	PASS	haltest:
 				gattc get_descriptor
 				gattc write_descriptor 2 <long_value>
 				gattc disconnect
-TC_GAW_CL_BI_25_C	INC	gatttool required
+TC_GAW_CL_BI_25_C	PASS	haltest:
+				gattc connect
+				test_command: <cmd> 225 [u1] 22
+				gattc disconnect
 TC_GAW_CL_BI_26_C	PASS	haltest:
 				gattc connect
 				gattc search_service
