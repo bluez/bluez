@@ -3479,6 +3479,9 @@ static uint8_t test_read_write(bdaddr_t *bdaddr, bt_uuid_t *uuid, uint16_t op,
 									mtu);
 		break;
 	case ATT_OP_WRITE_CMD:
+		length = enc_write_cmd(u2, (uint8_t *) &u3, sizeof(u3), pdu,
+									mtu);
+		break;
 	case ATT_OP_PREP_WRITE_REQ:
 	case ATT_OP_EXEC_WRITE_REQ:
 	default:
