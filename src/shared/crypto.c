@@ -301,7 +301,7 @@ bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
 	 * As to BT spec. 4.1 Vol[3], Part C, chapter 10.4.1 sign counter should
 	 * be placed in the signature
 	 */
-	put_le32(sign_cnt, out + 8);
+	put_be32(sign_cnt, out + 8);
 
 	/*
 	 * The most significant octet of hash corresponds to out[0]  - swap it.
