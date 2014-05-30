@@ -147,7 +147,9 @@ TC_BOND_BON_BV_01_C	PASS	gattc register_client
 				gattc listen 1
 				bluetooth create_bond <pts_bdaddr>
 TC_BOND_BON_BV_02_C	PASS
-TC_BOND_BON_BV_03_C	FAIL
+TC_BOND_BON_BV_03_C	PASS	haltest: bluetooth remove_bond <pts_bdaddr>
+				gattc_register_client
+				gattc listen 1
 TC_BOND_BON_BV_04_C	PASS	haltest: gattc_register_client
 				gattc connect <client_id> <address>
 				bluetooth remove_bond <address>
