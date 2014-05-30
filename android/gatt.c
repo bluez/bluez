@@ -4086,10 +4086,11 @@ static void read_requested_attributes(void *data, void *user_data)
 
 	/* We have value here already if no callback will be called */
 	if (value_len >= 0) {
+		resp_data->state = REQUEST_DONE;
+
 		resp_data->value = malloc0(value_len);
 		if (!resp_data->value) {
 			/* If data cannot be copied, act like when read fails */
-			resp_data->state = REQUEST_DONE;
 			resp_data->error = ATT_ECODE_INSUFF_RESOURCES;
 			return;
 		}
