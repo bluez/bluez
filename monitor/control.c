@@ -245,6 +245,7 @@ static void mgmt_new_link_key(uint16_t len, const void *buf)
 static void mgmt_new_long_term_key(uint16_t len, const void *buf)
 {
 	const struct mgmt_ev_new_long_term_key *ev = buf;
+	const char *type;
 	char str[18];
 
 	if (len < sizeof(*ev)) {
@@ -252,10 +253,38 @@ static void mgmt_new_long_term_key(uint16_t len, const void *buf)
 		return;
 	}
 
+	/* LE SC keys are both for master and slave */
+	switch (ev->key.type) {
+	case 0x00:
+		if (ev->key.master)
+			type = "Master (Unauthenticated)";
+		else
+			type = "Slave (Unauthenticated)";
+		break;
+	case 0x01:
+		if (ev->key.master)
+			type = "Master (Authenticated)";
+		else
+			type = "Slave (Authenticated)";
+		break;
+	case 0x02:
+		type = "SC (Unauthenticated)";
+		break;
+	case 0x03:
+		type = "SC (Authenticated)";
+		break;
+	case 0x04:
+		type = "SC (Debug)";
+		break;
+	default:
+		type = "<unknown>";
+		break;
+	}
+
 	ba2str(&ev->key.addr.bdaddr, str);
 
-	printf("@ New Long Term Key: %s (%d) %s\n", str, ev->key.addr.type,
-					ev->key.master ? "Master" : "Slave");
+	printf("@ New Long Term Key: %s (%d) %s 0x%02x\n", str,
+			ev->key.addr.type, type, ev->key.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
