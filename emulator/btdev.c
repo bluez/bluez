@@ -1022,6 +1022,7 @@ static void le_conn_complete(struct btdev *btdev,
 								bdaddr_type);
 
 		btdev->conn = remote;
+		btdev->le_adv_enable = 0;
 		remote->conn = btdev;
 		remote->le_adv_enable = 0;
 
