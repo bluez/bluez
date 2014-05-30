@@ -734,7 +734,8 @@ uint16_t gatt_db_get_end_handle(struct gatt_db *db, uint16_t handle)
 	return service->attributes[0]->handle + service->num_handles - 1;
 }
 
-uint32_t gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle)
+bool gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle,
+							uint32_t *permissions)
 {
 	struct gatt_db_attribute *attribute;
 	struct gatt_db_service *service;
@@ -743,7 +744,7 @@ uint32_t gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle)
 	service = queue_find(db->services, find_service_for_handle,
 							INT_TO_PTR(handle));
 	if (!service)
-		return 0;
+		return false;
 
 	service_handle = service->attributes[0]->handle;
 
@@ -754,7 +755,9 @@ uint32_t gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle)
 	 */
 	attribute = service->attributes[handle - service_handle];
 	if (!attribute)
-		return 0;
+		return false;
 
-	return attribute->permissions;
+	*permissions = attribute->permissions;
+	return true;
+
 }

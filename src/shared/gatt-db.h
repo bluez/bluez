@@ -92,4 +92,5 @@ const bt_uuid_t *gatt_db_get_attribute_type(struct gatt_db *db,
 
 uint16_t gatt_db_get_end_handle(struct gatt_db *db, uint16_t handle);
 
-uint32_t gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle);
+bool gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle,
+							uint32_t *permissions);

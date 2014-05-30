@@ -4056,8 +4056,12 @@ static void read_requested_attributes(void *data, void *user_data)
 	uint8_t *value;
 	int value_len;
 
-	permissions = gatt_db_get_attribute_permissions(gatt_db,
-							resp_data->handle);
+	if (!gatt_db_get_attribute_permissions(gatt_db, resp_data->handle,
+								&permissions)) {
+		resp_data->error = ATT_ECODE_ATTR_NOT_FOUND;
+		resp_data->state = REQUEST_DONE;
+		return;
+	}
 
 	/*
 	 * Check if it is attribute we didn't declare permissions, like service
@@ -5028,7 +5032,9 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return;
 
-	permissions = gatt_db_get_attribute_permissions(gatt_db, handle);
+	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+		return;
+
 	if (check_device_permissions(dev, cmd[0], permissions))
 		return;
 
@@ -5054,7 +5060,9 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	len = dec_signed_write_cmd(cmd, cmd_len, &handle, value, &vlen, s);
 
-	permissions = gatt_db_get_attribute_permissions(gatt_db, handle);
+	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+		return;
+
 	if (check_device_permissions(dev, cmd[0], permissions))
 		return;
 
@@ -5102,7 +5110,8 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
-	permissions = gatt_db_get_attribute_permissions(gatt_db, handle);
+	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+		return ATT_ECODE_ATTR_NOT_FOUND;
 
 	error = check_device_permissions(dev, cmd[0], permissions);
 	if (error)
@@ -5150,7 +5159,8 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
-	permissions = gatt_db_get_attribute_permissions(gatt_db, handle);
+	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+		return ATT_ECODE_ATTR_NOT_FOUND;
 
 	error = check_device_permissions(dev, cmd[0], permissions);
 	if (error)
