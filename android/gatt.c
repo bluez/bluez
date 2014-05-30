@@ -4007,6 +4007,8 @@ static uint8_t check_device_permissions(struct gatt_device *device,
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
 	case ATT_OP_READ_BY_GROUP_REQ:
+	case ATT_OP_FIND_BY_TYPE_REQ:
+	case ATT_OP_FIND_INFO_REQ:
 		if (!(permissions & GATT_PERM_READ))
 			return ATT_ECODE_READ_NOT_PERM;
 
