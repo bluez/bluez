@@ -4715,6 +4715,9 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
+	if (start > end || start == 0)
+		return ATT_ECODE_INVALID_HANDLE;
+
 	q = queue_new();
 	if (!q)
 		return ATT_ECODE_INSUFF_RESOURCES;
@@ -4768,7 +4771,7 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
-	if (start > end)
+	if (start > end || start == 0)
 		return ATT_ECODE_INVALID_HANDLE;
 
 	q = queue_new();
@@ -4830,6 +4833,9 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 		error("gatt: Unexpected read type 0x%02x", cmd[0]);
 		return ATT_ECODE_REQ_NOT_SUPP;
 	}
+
+	if (handle == 0)
+		return ATT_ECODE_INVALID_HANDLE;
 
 	data = new0(struct pending_request, 1);
 	if (!data)
@@ -4910,6 +4916,9 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
+	if (start > end || start == 0)
+		return ATT_ECODE_INVALID_HANDLE;
+
 	q = queue_new();
 	if (!q)
 		return ATT_ECODE_UNLIKELY;
@@ -4979,6 +4988,9 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
+	if (start > end || start == 0)
+		return ATT_ECODE_INVALID_HANDLE;
+
 	q = queue_new();
 	if (!q)
 		return ATT_ECODE_UNLIKELY;
@@ -5032,6 +5044,9 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return;
 
+	if (handle == 0)
+		return;
+
 	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
 		return;
 
@@ -5059,6 +5074,9 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	}
 
 	len = dec_signed_write_cmd(cmd, cmd_len, &handle, value, &vlen, s);
+
+	if (handle == 0)
+		return;
 
 	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
 		return;
@@ -5110,6 +5128,9 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
 
+	if (handle == 0)
+		return ATT_ECODE_INVALID_HANDLE;
+
 	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
 		return ATT_ECODE_ATTR_NOT_FOUND;
 
@@ -5158,6 +5179,9 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 						value, &vlen);
 	if (!len)
 		return ATT_ECODE_INVALID_PDU;
+
+	if (handle == 0)
+		return ATT_ECODE_INVALID_HANDLE;
 
 	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
 		return ATT_ECODE_ATTR_NOT_FOUND;
