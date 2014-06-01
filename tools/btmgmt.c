@@ -717,6 +717,27 @@ static void request_passkey(uint16_t index, uint16_t len, const void *param,
 	mgmt_passkey_reply(mgmt, index, &ev->addr, atoi(passkey));
 }
 
+static void passkey_notify(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_passkey_notify *ev = param;
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid passkey request length (%u bytes)\n", len);
+		return;
+	}
+
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->addr.bdaddr, addr);
+		printf("hci%u %s request passkey\n", index, addr);
+	}
+
+	printf("Passkey Notify: %06u (entered %u)\n", get_le32(&ev->passkey),
+								ev->entered);
+}
+
 static void cmd_monitor(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
@@ -2526,6 +2547,8 @@ int main(int argc, char *argv[])
 								mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_USER_PASSKEY_REQUEST, index,
 						request_passkey, mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_PASSKEY_NOTIFY, index,
+						passkey_notify, mgmt, NULL);
 
 	exit_status = mainloop_run();
 
