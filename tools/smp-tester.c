@@ -81,6 +81,7 @@ struct smp_req_rsp {
 struct smp_data {
 	const struct smp_req_rsp *req;
 	size_t req_count;
+	bool mitm;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -342,6 +343,29 @@ static const struct smp_data smp_client_basic_req_1_test = {
 	.req_count = G_N_ELEMENTS(cli_basic_req_1),
 };
 
+static const uint8_t smp_basic_req_2[] = {	0x01,	/* Pairing Request */
+						0x04,	/* NoInputNoOutput */
+						0x00,	/* OOB Flag */
+						0x05,	/* Bonding - MITM */
+						0x10,	/* Max key size */
+						0x05,	/* Init. key dist. */
+						0x05,	/* Rsp. key dist. */
+};
+static const struct smp_req_rsp cli_basic_req_2[] = {
+	{ NULL, 0, smp_basic_req_2, sizeof(smp_basic_req_2) },
+	{ smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp),
+			smp_confirm_req_1, sizeof(smp_confirm_req_1) },
+	{ smp_confirm_req_1, sizeof(smp_confirm_req_1),
+			smp_random_req_1, sizeof(smp_random_req_1) },
+	{ smp_random_req_1, sizeof(smp_random_req_1), NULL, 0 },
+};
+
+static const struct smp_data smp_client_basic_req_2_test = {
+	.req = cli_basic_req_2,
+	.req_count = G_N_ELEMENTS(cli_basic_req_1),
+	.mitm = true,
+};
+
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -601,6 +625,7 @@ static void init_bdaddr(struct test_data *data)
 static void test_client(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct smp_data *smp = data->test_data;
 	struct mgmt_cp_pair_device cp;
 	struct bthost *bthost;
 
@@ -611,7 +636,10 @@ static void test_client(const void *test_data)
 
 	memcpy(&cp.addr.bdaddr, data->ra, sizeof(data->ra));
 	cp.addr.type = BDADDR_LE_PUBLIC;
-	cp.io_cap = 0x03; /* NoInputNoOutput */
+	if (smp->mitm)
+		cp.io_cap = 0x04; /* KeyboardDisplay */
+	else
+		cp.io_cap = 0x03; /* NoInputNoOutput */
 
 	mgmt_send(data->mgmt, MGMT_OP_PAIR_DEVICE, data->mgmt_index,
 			sizeof(cp), &cp, pair_device_complete, NULL, NULL);
@@ -686,6 +714,9 @@ int main(int argc, char *argv[])
 
 	test_smp("SMP Client - Basic Request 1",
 					&smp_client_basic_req_1_test,
+					setup_powered_client, test_client);
+	test_smp("SMP Client - Basic Request 2",
+					&smp_client_basic_req_2_test,
 					setup_powered_client, test_client);
 
 	return tester_run();
