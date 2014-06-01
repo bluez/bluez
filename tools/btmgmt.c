@@ -623,6 +623,100 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 		mgmt_confirm_neg_reply(mgmt, index, &ev->addr);
 }
 
+static void passkey_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr,
+			"User Passkey reply failed. status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+
+	printf("User Passkey Reply successful\n");
+}
+
+static int mgmt_passkey_reply(struct mgmt *mgmt, uint16_t index,
+					const struct mgmt_addr_info *addr,
+					uint32_t passkey)
+{
+	struct mgmt_cp_user_passkey_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr, addr, sizeof(*addr));
+	put_le32(passkey, &cp.passkey);
+
+	return mgmt_reply(mgmt, MGMT_OP_USER_PASSKEY_REPLY, index,
+				sizeof(cp), &cp, passkey_rsp, NULL, NULL);
+}
+
+static void passkey_neg_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr,
+			"Passkey Neg reply failed. status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+
+	printf("User Passkey Negative Reply successful\n");
+}
+
+static int mgmt_passkey_neg_reply(struct mgmt *mgmt, uint16_t index,
+					const struct mgmt_addr_info *addr)
+{
+	struct mgmt_cp_user_passkey_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr, addr, sizeof(*addr));
+
+	return mgmt_reply(mgmt, MGMT_OP_USER_PASSKEY_NEG_REPLY, index,
+				sizeof(cp), &cp, passkey_neg_rsp, NULL, NULL);
+}
+
+
+static void request_passkey(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_user_passkey_request *ev = param;
+	struct mgmt *mgmt = user_data;
+	char passkey[7];
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid passkey request length (%u bytes)\n", len);
+		return;
+	}
+
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->addr.bdaddr, addr);
+		printf("hci%u %s request passkey\n", index, addr);
+	}
+
+	printf("Passkey Request (press enter to reject) >> ");
+	fflush(stdout);
+
+	memset(passkey, 0, sizeof(passkey));
+
+	if (fgets(passkey, sizeof(passkey), stdin) == NULL ||
+							passkey[0] == '\n') {
+		mgmt_passkey_neg_reply(mgmt, index, &ev->addr);
+		return;
+	}
+
+	len = strlen(passkey);
+	if (passkey[len - 1] == '\n') {
+		passkey[len - 1] = '\0';
+		len--;
+	}
+
+	mgmt_passkey_reply(mgmt, index, &ev->addr, atoi(passkey));
+}
+
 static void cmd_monitor(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
@@ -2430,6 +2524,8 @@ int main(int argc, char *argv[])
 								mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
 								mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_USER_PASSKEY_REQUEST, index,
+						request_passkey, mgmt, NULL);
 
 	exit_status = mainloop_run();
 
