@@ -345,7 +345,7 @@ static void mgmt_user_passkey_request(uint16_t len, const void *buf)
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ PIN User Passkey Request: %s (%d)\n", str, ev->addr.type);
+	printf("@ User Passkey Request: %s (%d)\n", str, ev->addr.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
