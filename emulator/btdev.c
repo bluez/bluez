@@ -223,6 +223,29 @@ static inline struct btdev *find_btdev_by_bdaddr(const uint8_t *bdaddr)
 	return NULL;
 }
 
+static inline struct btdev *find_btdev_by_bdaddr_type(const uint8_t *bdaddr,
+							uint8_t bdaddr_type)
+{
+	int i;
+
+	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
+		int cmp;
+
+		if (!btdev_list[i])
+			continue;
+
+		if (bdaddr_type == 0x01)
+			cmp = memcmp(btdev_list[i]->random_addr, bdaddr, 6);
+		else
+			cmp = memcmp(btdev_list[i]->bdaddr, bdaddr, 6);
+
+		if (!cmp)
+			return btdev_list[i];
+	}
+
+	return NULL;
+}
+
 static void hexdump(const unsigned char *buf, uint16_t len)
 {
 	static const char hexdigits[] = "0123456789abcdef";
@@ -981,7 +1004,8 @@ static void sco_conn_complete(struct btdev *btdev, uint8_t status)
 }
 
 static void le_conn_complete(struct btdev *btdev,
-					const uint8_t *bdaddr, uint8_t status)
+					const uint8_t *bdaddr, uint8_t bdaddr_type,
+					uint8_t status)
 {
 	char buf[1 + sizeof(struct bt_hci_evt_le_conn_complete)];
 	struct bt_hci_evt_le_conn_complete *cc = (void *) &buf[1];
@@ -991,7 +1015,8 @@ static void le_conn_complete(struct btdev *btdev,
 	buf[0] = BT_HCI_EVT_LE_CONN_COMPLETE;
 
 	if (!status) {
-		struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
+		struct btdev *remote = find_btdev_by_bdaddr_type(bdaddr,
+								bdaddr_type);
 
 		btdev->conn = remote;
 		remote->conn = btdev;
@@ -1050,14 +1075,15 @@ static bool adv_connectable(struct btdev *btdev)
 	return btdev->le_adv_type != 0x03;
 }
 
-static void le_conn_request(struct btdev *btdev, const uint8_t *bdaddr)
+static void le_conn_request(struct btdev *btdev, const uint8_t *bdaddr,
+							uint8_t bdaddr_type)
 {
-	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
+	struct btdev *remote = find_btdev_by_bdaddr_type(bdaddr, bdaddr_type);
 
 	if (remote && adv_connectable(remote) && adv_match(btdev, remote))
-		le_conn_complete(btdev, bdaddr, 0);
+		le_conn_complete(btdev, bdaddr, bdaddr_type, 0);
 	else
-		le_conn_complete(btdev, bdaddr,
+		le_conn_complete(btdev, bdaddr, bdaddr_type,
 					BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH);
 }
 
@@ -2944,7 +2970,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 			return;
 		lecc = data;
 		btdev->le_scan_own_addr_type = lecc->own_addr_type;
-		le_conn_request(btdev, lecc->peer_addr);
+		le_conn_request(btdev, lecc->peer_addr, lecc->peer_addr_type);
 		break;
 	}
 }
