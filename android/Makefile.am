@@ -205,7 +205,8 @@ android_test_ipc_LDADD = @GLIB_LIBS@
 
 plugin_LTLIBRARIES += android/audio.a2dp.default.la
 
-android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
+					@SBC_CFLAGS@
 
 android_audio_a2dp_default_la_LIBADD = @SBC_LIBS@
 
