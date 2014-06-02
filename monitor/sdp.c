@@ -737,12 +737,12 @@ void sdp_packet(const struct l2cap_frame *frame, uint16_t channel)
 	print_indent(6, pdu_color, "SDP: ", pdu_str, COLOR_OFF,
 				" (0x%2.2x) tid %d len %d", pdu, tid, plen);
 
-	if (!sdp_data || !sdp_data->func) {
+	tid_info = get_tid(tid, channel);
+
+	if (!sdp_data || !sdp_data->func || !tid_info) {
 		packet_hexdump(frame->data + 5, frame->size - 5);
 		return;
 	}
-
-	tid_info = get_tid(tid, channel);
 
 	l2cap_frame_pull(&sdp_frame, frame, 5);
 	sdp_data->func(&sdp_frame, tid_info);
