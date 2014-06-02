@@ -75,6 +75,9 @@ struct audio_codec {
 	uint8_t type;
 	bool use_rtp;
 
+	bool (*load) (void);
+	void (*unload) (void);
+
 	int (*get_presets) (struct audio_preset *preset, size_t *len);
 
 	bool (*init) (struct audio_preset *preset, uint16_t mtu,

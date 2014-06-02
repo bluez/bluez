@@ -35,7 +35,8 @@
 #include "hal-log.h"
 #include "hal-msg.h"
 #include "hal-audio.h"
-#include "../src/shared/util.h"
+#include "src/shared/util.h"
+#include "src/shared/queue.h"
 
 #define FIXED_A2DP_PLAYBACK_LATENCY_MS 25
 
@@ -103,6 +104,8 @@ static const audio_codec_get_t audio_codecs[] = {
 #define NUM_CODECS (sizeof(audio_codecs) / sizeof(audio_codecs[0]))
 
 #define MAX_AUDIO_ENDPOINTS NUM_CODECS
+
+static struct queue *loaded_codecs;
 
 struct audio_endpoint {
 	uint8_t id;
@@ -415,28 +418,46 @@ static int ipc_suspend_stream_cmd(uint8_t endpoint_id)
 	return result;
 }
 
-static int register_endpoints(void)
+struct register_state {
+	struct audio_endpoint *ep;
+	bool error;
+};
+
+static void register_endpoint(void *data, void *user_data)
 {
-	struct audio_endpoint *ep = &audio_endpoints[0];
-	size_t i;
+	struct audio_codec *codec = data;
+	struct register_state *state = user_data;
+	struct audio_endpoint *ep = state->ep;
 
-	for (i = 0; i < NUM_CODECS; i++, ep++) {
-		const struct audio_codec *codec = audio_codecs[i]();
+	/* don't even try to register more endpoints if one failed */
+	if (state->error)
+		return;
 
-		if (!codec)
-			return AUDIO_STATUS_FAILED;
+	ep->id = ipc_open_cmd(codec);
 
-		ep->id = ipc_open_cmd(codec);
-
-		if (!ep->id)
-			return AUDIO_STATUS_FAILED;
-
-		ep->codec = codec;
-		ep->codec_data = NULL;
-		ep->fd = -1;
+	if (!ep->id) {
+		state->error = true;
+		error("Failed to register endpoint");
+		return;
 	}
 
-	return AUDIO_STATUS_SUCCESS;
+	ep->codec = codec;
+	ep->codec_data = NULL;
+	ep->fd = -1;
+
+	state->ep++;
+}
+
+static int register_endpoints(void)
+{
+	struct register_state state;
+
+	state.ep = &audio_endpoints[0];
+	state.error = false;
+
+	queue_foreach(loaded_codecs, register_endpoint, &state);
+
+	return state.error ? AUDIO_STATUS_FAILED : AUDIO_STATUS_SUCCESS;
 }
 
 static void unregister_endpoints(void)
@@ -1272,6 +1293,14 @@ static int audio_dump(const audio_hw_device_t *device, int fd)
 	return -ENOSYS;
 }
 
+static void unload_codec(void *data)
+{
+	struct audio_codec *codec = data;
+
+	if (codec->unload)
+		codec->unload();
+}
+
 static int audio_close(hw_device_t *device)
 {
 	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *)device;
@@ -1279,6 +1308,9 @@ static int audio_close(hw_device_t *device)
 	DBG("");
 
 	unregister_endpoints();
+
+	queue_destroy(loaded_codecs, unload_codec);
+	loaded_codecs = NULL;
 
 	shutdown(listen_sk, SHUT_RDWR);
 	shutdown(audio_sk, SHUT_RDWR);
@@ -1419,6 +1451,7 @@ static int audio_open(const hw_module_t *module, const char *name,
 							hw_device_t **device)
 {
 	struct a2dp_audio_dev *a2dp_dev;
+	size_t i;
 	int err;
 
 	DBG("");
@@ -1456,6 +1489,18 @@ static int audio_open(const hw_module_t *module, const char *name,
 	a2dp_dev->dev.open_input_stream = audio_open_input_stream;
 	a2dp_dev->dev.close_input_stream = audio_close_input_stream;
 	a2dp_dev->dev.dump = audio_dump;
+
+	loaded_codecs = queue_new();
+
+	for (i = 0; i < NUM_CODECS; i++) {
+		audio_codec_get_t get_codec = audio_codecs[i];
+		const struct audio_codec *codec = get_codec();
+
+		if (codec->load && !codec->load())
+			continue;
+
+		queue_push_tail(loaded_codecs, (void *) codec);
+	}
 
 	/*
 	 * Note that &a2dp_dev->dev.common is the same pointer as a2dp_dev.
