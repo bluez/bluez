@@ -27,6 +27,8 @@
 #include "src/shared/util.h"
 #include "profiles/audio/a2dp-codecs.h"
 
+#define APTX_SO_NAME	"libbt-aptx.so"
+
 struct aptx_data {
 	a2dp_aptx_t aptx;
 
@@ -61,15 +63,56 @@ static const a2dp_aptx_t aptx_presets[] = {
 	},
 };
 
+static void *aptx_handle;
+static int aptx_btencsize;
+static int (*aptx_init)(void *, short);
+static int (*aptx_encode)(void *, void *, void *, void *);
+
 static bool aptx_load(void)
 {
-	/* TODO: load aptX codec library */
-	return false;
+	const char * (*aptx_version)(void);
+	const char * (*aptx_build)(void);
+	int (*aptx_sizeofenc)(void);
+
+	aptx_handle = dlopen(APTX_SO_NAME, RTLD_LAZY);
+	if (!aptx_handle) {
+		error("APTX: failed to open library %s (%s)", APTX_SO_NAME,
+								dlerror());
+		return false;
+	}
+
+	aptx_version = dlsym(aptx_handle, "aptxbtenc_version");
+	aptx_build = dlsym(aptx_handle, "aptxbtenc_build");
+
+	if (aptx_version && aptx_build)
+		info("APTX: using library version %s build %s", aptx_version(),
+								aptx_build());
+	else
+		warn("APTX: cannot retrieve library version");
+
+	aptx_sizeofenc = dlsym(aptx_handle, "SizeofAptxbtenc");
+	aptx_init = dlsym(aptx_handle, "aptxbtenc_init");
+	aptx_encode = dlsym(aptx_handle, "aptxbtenc_encodestereo");
+	if (!aptx_sizeofenc || !aptx_init || !aptx_encode) {
+		error("APTX: failed initialize library");
+		dlclose(aptx_handle);
+		aptx_handle = NULL;
+		return false;
+	}
+	aptx_btencsize = aptx_sizeofenc();
+
+	info("APTX: codec library initialized (size=%d)", aptx_btencsize);
+
+	return true;
 }
 
 static void aptx_unload(void)
 {
-	/* TODO: unload aptX codec library */
+	if (!aptx_handle)
+		return;
+
+	dlclose(aptx_handle);
+	aptx_handle = NULL;
 }
 
 static int aptx_get_presets(struct audio_preset *preset, size_t *len)
