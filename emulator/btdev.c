@@ -1022,7 +1022,11 @@ static void le_conn_complete(struct btdev *btdev,
 		remote->conn = btdev;
 
 		cc->status = status;
-		memcpy(cc->peer_addr, btdev->bdaddr, 6);
+		cc->peer_addr_type = btdev->le_scan_own_addr_type;
+		if (cc->peer_addr_type == 0x01)
+			memcpy(cc->peer_addr, btdev->random_addr, 6);
+		else
+			memcpy(cc->peer_addr, btdev->bdaddr, 6);
 
 		cc->role = 0x01;
 		cc->handle = cpu_to_le16(42);
@@ -1033,6 +1037,7 @@ static void le_conn_complete(struct btdev *btdev,
 	}
 
 	cc->status = status;
+	cc->peer_addr_type = bdaddr_type;
 	memcpy(cc->peer_addr, bdaddr, 6);
 	cc->role = 0x00;
 
