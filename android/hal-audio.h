@@ -99,3 +99,4 @@ struct audio_codec {
 typedef const struct audio_codec * (*audio_codec_get_t) (void);
 
 const struct audio_codec *codec_sbc(void);
+const struct audio_codec *codec_aptx(void);

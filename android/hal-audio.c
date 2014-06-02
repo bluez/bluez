@@ -98,6 +98,7 @@ extern int clock_nanosleep(clockid_t clock_id, int flags,
 #endif
 
 static const audio_codec_get_t audio_codecs[] = {
+		codec_aptx,
 		codec_sbc,
 };
 

@@ -258,6 +258,7 @@ LOCAL_SRC_FILES := \
 	bluez/src/shared/queue.c \
 	bluez/android/hal-audio.c \
 	bluez/android/hal-audio-sbc.c \
+	bluez/android/hal-audio-aptx.c \
 
 LOCAL_C_INCLUDES = \
 	$(LOCAL_PATH)/bluez \
@@ -270,6 +271,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libsbc \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+LOCAL_LDFLAGS := -ldl
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE_TAGS := optional
