@@ -2355,7 +2355,7 @@ static void io_cap_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void io_cap_usage(void)
 {
-	printf("Usage: btmgmt [cap]\n");
+	printf("Usage: btmgmt io-cap <cap>\n");
 }
 
 static void cmd_io_cap(struct mgmt *mgmt, uint16_t index,
