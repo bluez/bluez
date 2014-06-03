@@ -527,6 +527,8 @@ static void setup_powered_client(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_BONDABLE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 	if (smp->sc) {
+		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
 		mgmt_send(data->mgmt, MGMT_OP_SET_SECURE_CONN,
 				data->mgmt_index, sizeof(param), param, NULL,
 				NULL, NULL);
