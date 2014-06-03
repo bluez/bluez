@@ -2443,7 +2443,7 @@ static struct {
 	{ "hs",		cmd_hs,		"Toggle HS support"		},
 	{ "le",		cmd_le,		"Toggle LE support"		},
 	{ "advertising",cmd_advertising,"Toggle LE advertising",	},
-	{ "bredr",      cmd_bredr,      "Toggle BR/EDR support",	},
+	{ "bredr",	cmd_bredr,	"Toggle BR/EDR support",	},
 	{ "privacy",	cmd_privacy,	"Toggle privacy support"	},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
