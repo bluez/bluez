@@ -1032,6 +1032,8 @@ static const char *repeat_to_loop_status(const char *value)
 		return "Track";
 	else if (strcasecmp(value, "alltracks") == 0)
 		return "Playlist";
+	else if (strcasecmp(value, "group") == 0)
+		return "Playlist";
 
 	return NULL;
 }
