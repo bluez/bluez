@@ -100,6 +100,39 @@ static void print_buf(const char *label, uint8_t *buf, size_t len)
 	printf("\n");
 }
 
+static int test_sample(uint8_t priv_a[32], uint8_t priv_b[32],
+				uint8_t pub_a[64], uint8_t pub_b[64],
+				uint8_t dhkey[32])
+{
+	uint8_t dhkey_a[32], dhkey_b[32];
+	int fails = 0;
+
+	ecdh_shared_secret(pub_b, priv_a, dhkey_a);
+	ecdh_shared_secret(pub_a, priv_b, dhkey_b);
+
+	printf("\n");
+
+	print_buf("DHKey  ", dhkey, 32);
+	print_buf("DHKey A", dhkey_a, 32);
+	print_buf("DHKey B", dhkey_b, 32);
+
+	if (memcmp(dhkey_a, dhkey, 32)) {
+		printf("DHKey A doesn't match!\n");
+		fails++;
+	} else {
+		printf("DHKey A matches :)\n");
+	}
+
+	if (memcmp(dhkey_b, dhkey, 32)) {
+		printf("DHKey B doesn't match!\n");
+		fails++;
+	} else {
+		printf("DHKey B matches :)\n");
+	}
+
+	return fails;
+}
+
 static void test_sample_1(void)
 {
 	uint8_t priv_a[32] = {	0xbd, 0x1a, 0x3c, 0xcd, 0xa6, 0xb8, 0x99, 0x58,
@@ -137,31 +170,9 @@ static void test_sample_1(void)
 				0x9b, 0x7d, 0x39, 0x0a, 0xa6, 0x10, 0x10, 0x34,
 				0x05, 0xad, 0xc8, 0x57, 0xa3, 0x34, 0x02, 0xec,
 	};
-	uint8_t dhkey_a[32], dhkey_b[32];
-	int fails = 0;
+	int fails;
 
-	ecdh_shared_secret(pub_b, priv_a, dhkey_a);
-	ecdh_shared_secret(pub_a, priv_b, dhkey_b);
-
-	printf("\n");
-
-	print_buf("DHKey  ", dhkey, 32);
-	print_buf("DHKey A", dhkey_a, 32);
-	print_buf("DHKey B", dhkey_b, 32);
-
-	if (memcmp(dhkey_a, dhkey, 32)) {
-		printf("DHKey A doesn't match!\n");
-		fails++;
-	} else {
-		printf("DHKey A matches :)\n");
-	}
-
-	if (memcmp(dhkey_b, dhkey, 32)) {
-		printf("DHKey B doesn't match!\n");
-		fails++;
-	} else {
-		printf("DHKey B matches :)\n");
-	}
+	fails = test_sample(priv_a, priv_b, pub_a, pub_b, dhkey);
 
 	g_assert(fails == 0);
 }
@@ -203,31 +214,9 @@ static void test_sample_2(void)
 				0x33, 0x07, 0xe3, 0x38, 0x4b, 0x68, 0xe5, 0x62,
 				0x3f, 0x88, 0x6d, 0x2f, 0x3a, 0x84, 0x85, 0xab,
 	};
-	uint8_t dhkey_a[32], dhkey_b[32];
-	int fails = 0;
+	int fails;
 
-	ecdh_shared_secret(pub_b, priv_a, dhkey_a);
-	ecdh_shared_secret(pub_a, priv_b, dhkey_b);
-
-	printf("\n");
-
-	print_buf("DHKey  ", dhkey, 32);
-	print_buf("DHKey A", dhkey_a, 32);
-	print_buf("DHKey B", dhkey_b, 32);
-
-	if (memcmp(dhkey_a, dhkey, 32)) {
-		printf("DHKey A doesn't match!\n");
-		fails++;
-	} else {
-		printf("DHKey A matches :)\n");
-	}
-
-	if (memcmp(dhkey_b, dhkey, 32)) {
-		printf("DHKey B doesn't match!\n");
-		fails++;
-	} else {
-		printf("DHKey B matches :)\n");
-	}
+	fails = test_sample(priv_a, priv_b, pub_a, pub_b, dhkey);
 
 	g_assert(fails == 0);
 }
