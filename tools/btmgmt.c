@@ -2340,7 +2340,7 @@ static void cmd_conn_info(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
-static void set_io_cap_rsp(uint8_t status, uint16_t len, const void *param,
+static void io_cap_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
 	if (status != 0)
@@ -2353,19 +2353,19 @@ static void set_io_cap_rsp(uint8_t status, uint16_t len, const void *param,
 	mainloop_quit();
 }
 
-static void set_io_cap_usage(void)
+static void io_cap_usage(void)
 {
 	printf("Usage: btmgmt [cap]\n");
 }
 
-static void cmd_set_io_cap(struct mgmt *mgmt, uint16_t index,
+static void cmd_io_cap(struct mgmt *mgmt, uint16_t index,
 						int argc, char **argv)
 {
 	struct mgmt_cp_set_io_capability cp;
 	uint8_t cap;
 
 	if (argc < 2) {
-		set_io_cap_usage();
+		io_cap_usage();
 		exit(EXIT_FAILURE);
 	}
 
@@ -2377,7 +2377,7 @@ static void cmd_set_io_cap(struct mgmt *mgmt, uint16_t index,
 	cp.io_capability = cap;
 
 	if (mgmt_send(mgmt, MGMT_OP_SET_IO_CAPABILITY, index, sizeof(cp), &cp,
-					set_io_cap_rsp, NULL, NULL) == 0) {
+					io_cap_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send set-io-cap cmd\n");
 		exit(EXIT_FAILURE);
 	}
@@ -2466,7 +2466,7 @@ static struct {
 	{ "static-addr",cmd_static_addr,"Set static address"		},
 	{ "debug-keys",	cmd_debug_keys,	"Toogle debug keys"		},
 	{ "conn-info",	cmd_conn_info,	"Get connection information"	},
-	{ "set-io-cap",	cmd_set_io_cap,	"Set IO Capability"		},
+	{ "io-cap",	cmd_io_cap,	"Set IO Capability"		},
 	{ "scan-params",cmd_scan_params,"Set Scan Parameters"		},
 	{ }
 };
