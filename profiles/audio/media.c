@@ -1059,11 +1059,16 @@ static int set_setting(const char *key, const char *value, void *user_data)
 	const char *iface = MEDIA_PLAYER_INTERFACE;
 	DBusMessage *msg;
 	DBusMessageIter iter;
+	const char *curval;
 
 	DBG("%s = %s", key, value);
 
-	if (!g_hash_table_lookup(mp->settings, key))
+	curval = g_hash_table_lookup(mp->settings, key);
+	if (!curval)
 		return -EINVAL;
+
+	if (strcasecmp(curval, value) == 0)
+		return 0;
 
 	msg = dbus_message_new_method_call(mp->sender, mp->path,
 					DBUS_INTERFACE_PROPERTIES, "Set");
