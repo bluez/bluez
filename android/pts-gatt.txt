@@ -1040,7 +1040,14 @@ TC_GPA_SR_BV_11_C	PASS	haltest:
 						<properties> 138 <permissions> 17
 				gatts add_descriptor <UUID> 2905
 				gatts start_service
-				gatts send_respons: repeat with correct offset
+				gatts send_response: repeat with correct offset
 								and data
-TC_GPA_SR_BV_12_C	INC
+TC_GPA_SR_BV_12_C	PASS	For this test use build from PTS issue #12262
+				haltest:
+				gatts add_service
+				gatts add_chaaracteristic:
+						<properties> 10 <permissions> 17
+				gatts add_descriptor <UUID> 2904
+				gatts start_service
+				gatts send_response: repeat with correct data
 -------------------------------------------------------------------------------
