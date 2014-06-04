@@ -1220,6 +1220,9 @@ static void device_profile_connected(struct btd_device *dev,
 		return;
 
 done:
+	g_slist_free(dev->pending);
+	dev->pending = NULL;
+
 	if (!dev->connect)
 		return;
 
@@ -1240,9 +1243,6 @@ done:
 			device_browse_sdp(dev, NULL);
 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
 	}
-
-	g_slist_free(dev->pending);
-	dev->pending = NULL;
 
 	dbus_message_unref(dev->connect);
 	dev->connect = NULL;
