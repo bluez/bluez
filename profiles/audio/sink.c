@@ -229,11 +229,14 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	if (err) {
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-		if (avdtp_error_category(err) == AVDTP_ERRNO
-				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-			perr = -EAGAIN;
-		} else
-			perr = -EIO;
+
+		perr = -avdtp_error_posix_errno(err);
+		if (perr != -EHOSTDOWN) {
+			if (avdtp_error_category(err) == AVDTP_ERRNO)
+				perr = -EAGAIN;
+			else
+				perr = -EIO;
+		}
 		goto failed;
 	}
 
