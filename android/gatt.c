@@ -4917,8 +4917,8 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 							struct gatt_device *dev)
 {
-	uint16_t mtu, imtu;
-	size_t omtu;
+	uint16_t mtu, imtu, omtu;
+	size_t length;
 	GIOChannel *io;
 	GError *gerr = NULL;
 	uint16_t len;
@@ -4937,6 +4937,7 @@ static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 
 	bt_io_get(io, &gerr,
 			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_OMTU, &omtu,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
@@ -4944,10 +4945,10 @@ static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_UNLIKELY;
 	}
 
-	rsp = g_attrib_get_buffer(dev->attrib, &omtu);
+	rsp = g_attrib_get_buffer(dev->attrib, &length);
 
 	/* Respond with our IMTU */
-	len = enc_mtu_resp(imtu, rsp, omtu);
+	len = enc_mtu_resp(imtu, rsp, length);
 	if (!len)
 		return ATT_ECODE_UNLIKELY;
 
