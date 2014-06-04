@@ -158,6 +158,7 @@ struct device {
 	bool valid_local_csrk;
 	uint8_t local_csrk[16];
 	uint32_t local_sign_cnt;
+	uint16_t gatt_ccc;
 };
 
 struct browse_req {
@@ -643,6 +644,51 @@ static void mgmt_dev_class_changed_event(uint16_t index, uint16_t length,
 	adapter_class_changed();
 
 	/* TODO: Gatt attrib set*/
+}
+
+void bt_store_gatt_ccc(const bdaddr_t *dst, uint16_t value)
+{
+	struct device *dev;
+	GKeyFile *key_file;
+	gsize length = 0;
+	char addr[18];
+	char *data;
+
+	dev = find_device(dst);
+	if (!dev)
+		return;
+
+	key_file = g_key_file_new();
+
+	if (!g_key_file_load_from_file(key_file, DEVICES_FILE, 0, NULL)) {
+		g_key_file_free(key_file);
+		return;
+	}
+
+	ba2str(dst, addr);
+
+	DBG("%s Gatt CCC %d", addr, value);
+
+	g_key_file_set_integer(key_file, addr, "GattCCC", value);
+
+	data = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(DEVICES_FILE, data, length, NULL);
+	g_free(data);
+
+	g_key_file_free(key_file);
+
+	dev->gatt_ccc = value;
+}
+
+uint16_t bt_get_gatt_ccc(const bdaddr_t *addr)
+{
+	struct device *dev;
+
+	dev = find_device(addr);
+	if (!dev)
+		return 0;
+
+	return dev->gatt_ccc;
 }
 
 static void store_link_key(const bdaddr_t *dst, const uint8_t *key,
@@ -2406,6 +2452,12 @@ static struct device *create_device_from_info(GKeyFile *key_file,
 
 		dev->remote_sign_cnt = g_key_file_get_integer(key_file, peer,
 						"RemoteCSRKSignCounter", NULL);
+	}
+
+	str = g_key_file_get_string(key_file, peer, "GattCCC", NULL);
+	if (str) {
+		dev->gatt_ccc = atoi(str);
+		g_free(str);
 	}
 
 	str = g_key_file_get_string(key_file, peer, "Name", NULL);
