@@ -381,6 +381,7 @@ static void process_input(struct hfp_gw *hfp)
 {
 	char *str, *ptr;
 	size_t len, count;
+	bool free_ptr = false;
 
 	str = ringbuf_peek(hfp->read_buf, 0, &len);
 	if (!str)
@@ -407,6 +408,7 @@ static void process_input(struct hfp_gw *hfp)
 
 		*ptr = '\0';
 		count = asprintf(&ptr, "%s%s", str, str2);
+		free_ptr = true;
 		str = ptr;
 	} else {
 		count = ptr - str;
@@ -424,7 +426,7 @@ static void process_input(struct hfp_gw *hfp)
 
 	len = ringbuf_drain(hfp->read_buf, count + 1);
 
-	if (str == ptr)
+	if (free_ptr)
 		free(ptr);
 }
 
