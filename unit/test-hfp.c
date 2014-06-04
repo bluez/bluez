@@ -465,6 +465,9 @@ int main(int argc, char *argv[])
 									'\r'),
 			type_pdu(HFP_GW_CMD_TYPE_SET, 0),
 			data_end());
+	define_test("/hfp/test_empty", test_fragmented, NULL,
+			raw_pdu('\r'),
+			data_end());
 
 	return g_test_run();
 }
