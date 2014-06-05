@@ -5219,7 +5219,7 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	data->handle = handle;
 	data->offset = offset;
-	data->state = REQUEST_INIT;
+	data->state = REQUEST_PENDING;
 
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
