@@ -40,10 +40,11 @@ const btgatt_interface_t *if_gatt = NULL;
 #define MAX_READ_PARAMS_STR_LEN (MAX_SRVC_ID_STR_LEN + MAX_CHAR_ID_STR_LEN \
 		+ MAX_UUID_STR_LEN + MAX_HEX_VAL_STR_LEN + 80)
 
+/* Hex arguments must have "0x" or "0X" prefix */
 #define VERIFY_INT_ARG(n, v, err) \
 	do { \
 		if (n < argc) \
-			v = atoi(argv[n]); \
+			v = strtol(argv[n], NULL, 0); \
 		else { \
 			haltest_error(err); \
 			return;\
