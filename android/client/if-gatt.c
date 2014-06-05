@@ -68,6 +68,7 @@ const btgatt_interface_t *if_gatt = NULL;
 #define VERIFY_TRANS_ID(n, v) VERIFY_INT_ARG(n, v, "No trans_id specified\n")
 #define VERIFY_STATUS(n, v) VERIFY_INT_ARG(n, v, "No status specified\n")
 #define VERIFY_OFFSET(n, v) VERIFY_INT_ARG(n, v, "No offset specified\n")
+#define VERIFY_TEST_ARG(n, v) VERIFY_INT_ARG(n, v, "No test arg specified\n")
 #define VERIFY_HANDLE(n, v) VERIFY_HEX_ARG(n, v, "No "#v" specified\n")
 #define VERIFY_SERVICE_HANDLE(n, v) VERIFY_HANDLE(n, v)
 
@@ -1406,7 +1407,7 @@ static void test_command_p(int argc, const char **argv)
 	VERIFY_UUID(4, &uuid);
 
 	for (i = 5; i < argc; i++)
-		*u++ = atoi(argv[i]);
+		VERIFY_TEST_ARG(i, *u++);
 
 	EXEC(if_gatt->client->test_command, command, &params);
 }
