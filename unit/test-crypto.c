@@ -107,12 +107,6 @@ static const struct test_data test_data_4 = {
 	.t = t_msg_4
 };
 
-static void test_start(void)
-{
-	crypto = bt_crypto_new();
-	g_assert(crypto);
-}
-
 static void print_buf(const uint8_t *t, uint8_t len)
 {
 	int i;
@@ -152,21 +146,24 @@ static void test_sign(gconstpointer data)
 	g_assert(result_compare(d->t, t));
 }
 
-static void test_stop(void)
-{
-	bt_crypto_unref(crypto);
-}
-
 int main(int argc, char *argv[])
 {
+	int exit_status;
+
+	crypto = bt_crypto_new();
+	if (!crypto)
+		return 0;
+
 	g_test_init(&argc, &argv, NULL);
 
-	g_test_add_func("/crypto/start", test_start);
 	g_test_add_data_func("/crypto/sign_att_1", &test_data_1, test_sign);
 	g_test_add_data_func("/crypto/sign_att_2", &test_data_2, test_sign);
 	g_test_add_data_func("/crypto/sign_att_3", &test_data_3, test_sign);
 	g_test_add_data_func("/crypto/sign_att_4", &test_data_4, test_sign);
-	g_test_add_func("/crypto/stop", test_stop);
 
-	return g_test_run();
+	exit_status = g_test_run();
+
+	bt_crypto_unref(crypto);
+
+	return exit_status;
 }

@@ -13,7 +13,7 @@ test-lib		  14	SDP library functions
 test-sdp		 133	SDP qualification test cases
 test-uuid		  30	UUID conversion handling
 test-mgmt		   2	Management interface handling
-test-crypto		   6	Cryptographic toolbox helpers
+test-crypto		   4	Cryptographic toolbox helpers
 test-textfile		   4	Old textfile storage format
 test-ringbuf		   3	Ring buffer functionality
 test-queue		   1	Queue handling functionality
@@ -29,7 +29,7 @@ test-gobex-apparam	  18	OBEX apparam handling
 test-gobex-transfer	  36	OBEX transfer handling
 test-gdbus-client	  12	D-Bus client handling
 			-----
-			 520
+			 518
 
 
 Automated end-to-end testing
