@@ -61,6 +61,7 @@ bool bt_is_device_le(const bdaddr_t *addr);
 
 const char *bt_get_adapter_name(void);
 bool bt_device_is_bonded(const bdaddr_t *bdaddr);
+bool bt_device_set_uuids(const bdaddr_t *bdaddr, GSList *uuids);
 
 typedef void (*bt_read_device_rssi_done)(uint8_t status, const bdaddr_t *addr,
 						int8_t rssi, void *user_data);

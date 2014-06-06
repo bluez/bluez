@@ -1409,6 +1409,19 @@ bool bt_device_is_bonded(const bdaddr_t *bdaddr)
 	return false;
 }
 
+bool bt_device_set_uuids(const bdaddr_t *addr, GSList *uuids)
+{
+	struct device *dev;
+
+	dev = find_device(addr);
+	if (!dev)
+		return false;
+
+	set_device_uuids(dev, uuids);
+
+	return true;
+}
+
 static bool rssi_above_threshold(int old, int new)
 {
 	/* only 8 dBm or more */
