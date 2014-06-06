@@ -4112,6 +4112,46 @@ static uint8_t check_device_permissions(struct gatt_device *device,
 	return 0;
 }
 
+static void fill_gatt_response(struct pending_request *request, uint16_t handle,
+					uint16_t offset, uint8_t status,
+					uint16_t len, const uint8_t *data)
+{
+	request->handle = handle;
+	request->offset = offset;
+	request->length = len;
+	request->state = REQUEST_DONE;
+	request->error = status;
+
+	if (!len)
+		return;
+
+	request->value = malloc0(len);
+	if (!request->value) {
+		request->error = ATT_ECODE_INSUFF_RESOURCES;
+
+		return;
+	}
+
+	memcpy(request->value, data, len);
+}
+
+static void fill_gatt_response_by_handle(uint16_t handle, uint16_t offset,
+						uint8_t status, uint16_t len,
+						const uint8_t *data,
+						struct gatt_device *dev)
+{
+	struct pending_request *entry;
+
+	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
+							UINT_TO_PTR(handle));
+	if (entry) {
+		DBG("No pending response found! Bogus android response?");
+		return;
+	}
+
+	fill_gatt_response(entry, handle, offset, status, len, data);
+}
+
 static void read_requested_attributes(void *data, void *user_data)
 {
 	struct pending_request *resp_data = data;
@@ -4186,46 +4226,6 @@ static void process_dev_pending_requests(struct gatt_device *device,
 								&process_data);
 
 	send_dev_complete_response(device, att_opcode);
-}
-
-static void fill_gatt_response(struct pending_request *request, uint16_t handle,
-					uint16_t offset, uint8_t status,
-					uint16_t len, const uint8_t *data)
-{
-	request->handle = handle;
-	request->offset = offset;
-	request->length = len;
-	request->state = REQUEST_DONE;
-	request->error = status;
-
-	if (!len)
-		return;
-
-	request->value = malloc0(len);
-	if (!request->value) {
-		request->error = ATT_ECODE_INSUFF_RESOURCES;
-
-		return;
-	}
-
-	memcpy(request->value, data, len);
-}
-
-static void fill_gatt_response_by_handle(uint16_t handle, uint16_t offset,
-						uint8_t status, uint16_t len,
-						const uint8_t *data,
-						struct gatt_device *dev)
-{
-	struct pending_request *entry;
-
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
-	if (entry) {
-		DBG("No pending response found! Bogus android response?");
-		return;
-	}
-
-	fill_gatt_response(entry, handle, offset, status, len, data);
 }
 
 static struct pending_trans_data *conn_add_transact(struct app_connection *conn,
