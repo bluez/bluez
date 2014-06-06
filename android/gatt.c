@@ -4199,7 +4199,7 @@ static void send_gatt_response(uint8_t opcode, uint16_t handle,
 	dev = find_device_by_addr(bdaddr);
 	if (!dev) {
 		error("gatt: send_gatt_response, could not find dev");
-		goto done;
+		return;
 	}
 
 	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
@@ -4216,19 +4216,16 @@ static void send_gatt_response(uint8_t opcode, uint16_t handle,
 	entry->error = status;
 
 	if (!len)
-		goto done;
+		return;
 
 	entry->value = malloc0(len);
 	if (!entry->value) {
 		entry->error = ATT_ECODE_INSUFF_RESOURCES;
 
-		goto done;
+		return;
 	}
 
 	memcpy(entry->value, data, len);
-
-done:
-	send_dev_complete_response(dev, opcode);
 }
 
 static struct pending_trans_data *conn_add_transact(struct app_connection *conn,
@@ -4720,6 +4717,7 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 	send_gatt_response(transaction->opcode, handle, cmd->offset,
 					cmd->status, cmd->len, cmd->data,
 					&conn->device->bdaddr);
+	send_dev_complete_response(conn->device, transaction->opcode);
 
 done:
 	/* Clean request data */
