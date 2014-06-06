@@ -179,6 +179,7 @@ static struct {
 	uint32_t current_settings;
 	uint32_t supported_settings;
 
+	bool le_scanning;
 	uint8_t cur_discovery_type;
 	uint8_t exp_discovery_type;
 	uint32_t discoverable_timeout;
@@ -1301,10 +1302,8 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 	}
 
 	type = adapter.exp_discovery_type;
-	adapter.exp_discovery_type = SCAN_TYPE_NONE;
-
-	if (type == SCAN_TYPE_NONE && gatt_device_found_cb)
-		type = SCAN_TYPE_LE;
+	adapter.exp_discovery_type = adapter.le_scanning ? SCAN_TYPE_LE :
+								SCAN_TYPE_NONE;
 
 	if (type != SCAN_TYPE_NONE)
 		start_discovery(type);
@@ -3512,13 +3511,31 @@ bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
 	return false;
 }
 
+bool bt_le_register(bt_le_device_found cb)
+{
+	if (gatt_device_found_cb)
+		return false;
+
+	gatt_device_found_cb = cb;
+
+	return true;
+}
+
+void bt_le_unregister(void)
+{
+	gatt_device_found_cb = NULL;
+}
+
 bool bt_le_discovery_stop(bt_le_discovery_stopped cb)
 {
+	if (!(adapter.current_settings & MGMT_SETTING_POWERED))
+		return false;
+
+	adapter.le_scanning = false;
+
 	if (adapter.cur_discovery_type != SCAN_TYPE_LE) {
 		if (cb)
 			cb();
-
-		gatt_device_found_cb = NULL;
 
 		return true;
 	}
@@ -3526,28 +3543,25 @@ bool bt_le_discovery_stop(bt_le_discovery_stopped cb)
 	if (!stop_discovery(SCAN_TYPE_LE))
 		return false;
 
-	gatt_device_found_cb = NULL;
 	gatt_discovery_stopped_cb = cb;
 	adapter.exp_discovery_type = SCAN_TYPE_NONE;
 
 	return true;
 }
 
-bool bt_le_discovery_start(bt_le_device_found cb)
+bool bt_le_discovery_start(void)
 {
 	if (!(adapter.current_settings & MGMT_SETTING_POWERED))
 		return false;
 
-	/* If core is discovering, don't bother */
-	if (adapter.cur_discovery_type != SCAN_TYPE_NONE) {
-		gatt_device_found_cb = cb;
-		return true;
-	}
+	adapter.le_scanning = true;
 
-	if (start_discovery(SCAN_TYPE_LE)) {
-		gatt_device_found_cb = cb;
+	/* If core is discovering, don't bother */
+	if (adapter.cur_discovery_type != SCAN_TYPE_NONE)
 		return true;
-	}
+
+	if (start_discovery(SCAN_TYPE_LE))
+		return true;
 
 	return false;
 }

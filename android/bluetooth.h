@@ -44,7 +44,10 @@ typedef void (*bt_le_device_found)(const bdaddr_t *addr, uint8_t addr_type,
 					int rssi, uint16_t eir_len,
 					const void *eir, bool discoverable,
 					bool bonded);
-bool bt_le_discovery_start(bt_le_device_found cb);
+bool bt_le_register(bt_le_device_found cb);
+void bt_le_unregister(void);
+
+bool bt_le_discovery_start(void);
 
 typedef void (*bt_le_discovery_stopped)(void);
 bool bt_le_discovery_stop(bt_le_discovery_stopped cb);
