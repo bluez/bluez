@@ -3640,21 +3640,11 @@ static void handle_server_unregister(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_server_unregister *cmd = buf;
 	uint8_t status;
-	struct gatt_app *server;
 
 	DBG("");
 
-	server = find_app_by_id(cmd->server_if);
-	if (!server) {
-		error("gatt: server_if=%d not found", cmd->server_if);
-		status = HAL_STATUS_FAILED;
-		goto failed;
-	}
+	status = unregister_client(cmd->server_if);
 
-	destroy_gatt_app(server);
-	status = HAL_STATUS_SUCCESS;
-
-failed:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_UNREGISTER, status);
 }
