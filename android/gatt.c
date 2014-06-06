@@ -4175,6 +4175,9 @@ static void process_dev_pending_requests(struct gatt_device *device,
 {
 	struct request_processing_data process_data;
 
+	if (queue_isempty(device->pending_requests))
+		return;
+
 	process_data.device = device;
 	process_data.opcode = att_opcode;
 
