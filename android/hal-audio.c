@@ -504,7 +504,7 @@ static bool open_endpoint(struct audio_endpoint **epp,
 
 	if (!ep) {
 		error("Cound not find opened endpoint");
-		return false;
+		goto failed;
 	}
 
 	*epp = ep;
