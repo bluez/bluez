@@ -1822,7 +1822,7 @@ static int parse_value(struct avrcp_header *pdu, uint8_t *number,
 	 */
 	if (*number > AVRCP_ATTRIBUTE_LAST ||
 					1 + *number * 2 != pdu->params_len) {
-		number = 0;
+		*number = 0;
 		return -EPROTO;
 	}
 
