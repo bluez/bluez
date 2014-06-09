@@ -405,6 +405,7 @@ struct hal_cmd_health_reg_app {
 
 #define HAL_OP_HEALTH_MDEP		0x02
 struct hal_cmd_health_mdep {
+	uint16_t app_id;
 	uint8_t  role;
 	uint8_t  data_type;
 	uint8_t  channel_type;

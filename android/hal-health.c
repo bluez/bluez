@@ -100,6 +100,7 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 
 	for (i = 0; i < reg->number_of_mdeps; i++) {
 		memset(buf, 0, IPC_MTU);
+		mdep->app_id = rsp.app_id;
 		mdep->role = reg->mdep_cfg[i].mdep_role;
 		mdep->data_type = reg->mdep_cfg[i].data_type;
 		mdep->channel_type = reg->mdep_cfg[i].channel_type;
