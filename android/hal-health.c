@@ -92,7 +92,7 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 
 	cmd->len = off;
 	status = hal_ipc_cmd(HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_REG_APP,
-						sizeof(*cmd) + cmd->len, &cmd,
+						sizeof(*cmd) + cmd->len, buf,
 							&rsp_len, &rsp, NULL);
 
 	if (status != BT_STATUS_SUCCESS)
