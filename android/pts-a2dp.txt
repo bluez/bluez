@@ -1,7 +1,7 @@
 PTS test results for A2DP
 
 PTS version: 5.1
-Tested: 07-April-2014
+Tested: 06-June-2014
 Android version: 4.4.2
 
 Results:

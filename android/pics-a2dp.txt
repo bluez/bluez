@@ -50,7 +50,7 @@ C.1: At least one of the values shall be supported.
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_A2DP_3_1	True		SRC: SBC encoder Codec (M)
-TSPC_A2DP_3_2	False		SRC: Additional encoder Codec (O)
+TSPC_A2DP_3_2	True (*)	SRC: Additional encoder Codec (O)
 -------------------------------------------------------------------------------
 
 
