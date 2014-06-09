@@ -1947,8 +1947,10 @@ static void handle_client_search_service(const void *buf, uint16_t len)
 		if (s) {
 			send_client_primary_notify(s, INT_TO_PTR(conn->id));
 		} else {
-			if (!search_dev_for_srvc(conn, &uuid))
+			if (!search_dev_for_srvc(conn, &uuid)) {
 				status = HAL_STATUS_FAILED;
+				goto reply;
+			}
 
 			status = HAL_STATUS_SUCCESS;
 			goto reply;
