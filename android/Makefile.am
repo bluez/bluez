@@ -220,6 +220,7 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/init.bluetooth.rc \
 				android/hal-ipc-api.txt \
 				android/audio-ipc-api.txt \
+				android/cts.txt \
 				android/pics-rfcomm.txt \
 				android/pics-spp.txt \
 				android/pics-sdp.txt \

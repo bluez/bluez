@@ -1,0 +1,32 @@
+Android Compatibility Test Suite results
+
+Tested: 10-June-2014
+Android version: 4.4.2
+
+-------------------------------------------------------------------------------
+android.bluetooth.cts.BasicAdapterTest (automated tests)
+Test Name				Result	Notes
+-------------------------------------------------------------------------------
+testAndroidTestCaseSetupProperly	PASS
+test_checkBluetoothAddress		PASS
+test_enableDisable			PASS
+test_getAddress				PASS
+test_getBondedDevices			PASS
+test_getDefaultAdapter			PASS
+test_getName				PASS
+test_getRemoteDevice			PASS
+test_listenUsingRfcommWithServiceRecord	PASS
+-------------------------------------------------------------------------------
+
+
+-------------------------------------------------------------------------------
+com.android.cts.verifier (manual tests)
+Test Name		Result	Notes
+-------------------------------------------------------------------------------
+Toggle Bluetooth	PASS
+Insecure Client		PASS
+Insecure Server		PASS	Required kernel patch commit ID:
+				6453462e99e8be13a2c8f2b3535f340b742d8192
+Secure Client		PASS
+Secure Server		PASS
+-------------------------------------------------------------------------------
