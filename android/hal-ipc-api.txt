@@ -1145,7 +1145,7 @@ Commands and responses:
 
 		Command parameters: Application ID (2 octets)
                                     MDEP Role (1 octet)
-		                    Data type (1 octet)
+		                    Data type (2 octets)
 		                    Channel type (1 octet)
 		                    MDEP description length (2 octets)
 		                    MDEP description (MDEP desciption length)

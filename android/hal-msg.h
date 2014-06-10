@@ -407,7 +407,7 @@ struct hal_cmd_health_reg_app {
 struct hal_cmd_health_mdep {
 	uint16_t app_id;
 	uint8_t  role;
-	uint8_t  data_type;
+	uint16_t data_type;
 	uint8_t  channel_type;
 	uint16_t descr_len;
 	uint8_t  descr[0];
