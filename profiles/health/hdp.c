@@ -747,8 +747,11 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 {
 	struct hdp_channel *hdp_chann;
 
-	if (dev == NULL)
+	if (dev == NULL) {
+		g_set_error(err, HDP_ERROR, HDP_UNSPECIFIED_ERROR,
+					"HDP device uninitialized");
 		return NULL;
+	}
 
 	hdp_chann = g_new0(struct hdp_channel, 1);
 	hdp_chann->config = config;
