@@ -222,9 +222,9 @@ Profile ID    HAL header         Status
 ---------------------------------------
 core          bluetooth.h        complete
 a2dp          bt_av.h            complete
-gatt          bt_gatt.h          partial
-              bt_gatt_client.h   partial
-              bt_gatt_server.h   initial
+gatt          bt_gatt.h          complete
+              bt_gatt_client.h   complete
+              bt_gatt_server.h   complete
 handsfree     bt_hf.h            complete
 hidhost       bt_hh.h            complete
 health        bt_hl.h            initial
@@ -293,6 +293,14 @@ get_player_app_values_text_cb      NULL JNI implementation
 set_player_app_value_cb            NULL JNI implementation
 
 
+HAL GATT
+--------
+
+methods:
+client->set_adv_data               missing kernel support for vendor data
+client->connect                    is_direct parameter is ignored
+
+
 Known Android issues
 ====================
 
@@ -324,3 +332,4 @@ HFP		Response and Hold		AT+BTRH, +BTRH
 HFP		In-band Ring Tone		+BSIR
 AVRCP		Player Settings			HAL API present but not used
 AVRCP		Browsing			No HAL API
+GATT		Read multiple characteristics	No HAL API
