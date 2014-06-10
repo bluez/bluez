@@ -1143,7 +1143,8 @@ Commands and responses:
 
 	Opcode 0x02 - Register Application MDEP data command/response
 
-		Command parameters: MDEP Role (1 octet)
+		Command parameters: Application ID (2 octets)
+                                    MDEP Role (1 octet)
 		                    Data type (1 octet)
 		                    Channel type (1 octet)
 		                    MDEP description length (2 octets)
