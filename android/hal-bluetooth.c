@@ -356,64 +356,38 @@ static void handle_le_test_mode(void *buf, uint16_t len)
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
  */
 static const struct hal_ipc_handler ev_handlers[] = {
-	{	/* HAL_EV_ADAPTER_STATE_CHANGED */
-		.handler = handle_adapter_state_changed,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_adapter_state_changed)
-	},
-	{	/* HAL_EV_ADAPTER_PROPS_CHANGED */
-		.handler = handle_adapter_props_changed,
-		.var_len = true,
-		.data_len = sizeof(struct hal_ev_adapter_props_changed) +
-						sizeof(struct hal_property),
-	},
-	{	/* HAL_EV_REMOTE_DEVICE_PROPS */
-		.handler = handle_device_state_changed,
-		.var_len = true,
-		.data_len = sizeof(struct hal_ev_remote_device_props) +
-						sizeof(struct hal_property),
-	},
-	{	/* HAL_EV_DEVICE_FOUND */
-		.handler = handle_device_found,
-		.var_len = true,
-		.data_len = sizeof(struct hal_ev_device_found) +
-						sizeof(struct hal_property),
-	},
-	{	/* HAL_EV_DISCOVERY_STATE_CHANGED */
-		.handler = handle_discovery_state_changed,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_discovery_state_changed),
-	},
-	{	/* HAL_EV_PIN_REQUEST */
-		.handler = handle_pin_request,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_pin_request),
-	},
-	{	/* HAL_EV_SSP_REQUEST */
-		.handler = handle_ssp_request,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_ssp_request),
-	},
-	{	/* HAL_EV_BOND_STATE_CHANGED */
-		.handler = handle_bond_state_change,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_bond_state_changed),
-	},
-	{	/* HAL_EV_ACL_STATE_CHANGED */
-		.handler = handle_acl_state_changed,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_acl_state_changed),
-	},
-	{	/* HAL_EV_DUT_MODE_RECEIVE */
-		.handler = handle_dut_mode_receive,
-		.var_len = true,
-		.data_len = sizeof(struct hal_ev_dut_mode_receive),
-	},
-	{	/* HAL_EV_LE_TEST_MODE */
-		.handler = handle_le_test_mode,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_le_test_mode),
-	}
+	/* HAL_EV_ADAPTER_STATE_CHANGED */
+	{ handle_adapter_state_changed, false,
+				sizeof(struct hal_ev_adapter_state_changed) },
+	/* HAL_EV_ADAPTER_PROPS_CHANGED */
+	{ handle_adapter_props_changed, true,
+				sizeof(struct hal_ev_adapter_props_changed) +
+				sizeof(struct hal_property) },
+	/* HAL_EV_REMOTE_DEVICE_PROPS */
+	{ handle_device_state_changed, true,
+				sizeof(struct hal_ev_remote_device_props) +
+				sizeof(struct hal_property) },
+	/* HAL_EV_DEVICE_FOUND */
+	{ handle_device_found, true, sizeof(struct hal_ev_device_found) +
+				sizeof(struct hal_property) },
+	/* HAL_EV_DISCOVERY_STATE_CHANGED */
+	{ handle_discovery_state_changed, false,
+				sizeof(struct hal_ev_discovery_state_changed) },
+	/* HAL_EV_PIN_REQUEST */
+	{ handle_pin_request, false, sizeof(struct hal_ev_pin_request) },
+	/* HAL_EV_SSP_REQUEST */
+	{ handle_ssp_request, false, sizeof(struct hal_ev_ssp_request) },
+	/* HAL_EV_BOND_STATE_CHANGED */
+	{ handle_bond_state_change, false,
+				sizeof(struct hal_ev_bond_state_changed) },
+	/* HAL_EV_ACL_STATE_CHANGED */
+	{ handle_acl_state_changed, false,
+				sizeof(struct hal_ev_acl_state_changed) },
+	/* HAL_EV_DUT_MODE_RECEIVE */
+	{ handle_dut_mode_receive, true,
+				sizeof(struct hal_ev_dut_mode_receive) },
+	/* HAL_EV_LE_TEST_MODE */
+	{ handle_le_test_mode, false, sizeof(struct hal_ev_le_test_mode) },
 };
 
 static uint8_t get_mode(void)
