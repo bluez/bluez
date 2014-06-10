@@ -395,6 +395,7 @@ struct generic_data {
 	uint8_t client_auth_req;
 	bool reject_ssp;
 	bool client_reject_ssp;
+	bool just_works;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -2521,6 +2522,7 @@ static const struct generic_data pairing_acceptor_ssp_1 = {
 	.expect_hci_func = client_bdaddr_param_func,
 	.io_cap = 0x03, /* NoInputNoOutput */
 	.client_io_cap = 0x03, /* NoInputNoOutput */
+	.just_works = true,
 };
 
 static const struct generic_data pairing_acceptor_ssp_2 = {
@@ -2532,6 +2534,18 @@ static const struct generic_data pairing_acceptor_ssp_2 = {
 	.expect_hci_func = client_bdaddr_param_func,
 	.io_cap = 0x01, /* DisplayYesNo */
 	.client_io_cap = 0x01, /* DisplayYesNo */
+};
+
+static const struct generic_data pairing_acceptor_ssp_3 = {
+	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.client_enable_ssp = true,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+	.just_works = true,
 };
 
 static const char unpair_device_param[] = {
@@ -3151,6 +3165,12 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	struct mgmt_cp_user_confirm_reply cp;
 	uint16_t opcode;
 
+	if (test->just_works) {
+		tester_warn("User Confirmation received for just-works case");
+		tester_test_failed();
+		return;
+	}
+
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 
@@ -3193,6 +3213,9 @@ static void test_setup(const void *test_data)
 
 	if (test->client_auth_req)
 		bthost_set_auth_req(bthost, test->client_auth_req);
+
+	if (!test->just_works)
+		bthost_set_auth_req(bthost, 0x01);
 
 	if (test->client_reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
@@ -4061,6 +4084,9 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - SSP 2",
 				&pairing_acceptor_ssp_2, setup_ssp_acceptor,
+				test_pairing_acceptor);
+	test_bredrle("Pairing Acceptor - SSP 3",
+				&pairing_acceptor_ssp_3, setup_ssp_acceptor,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
