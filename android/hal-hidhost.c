@@ -107,36 +107,19 @@ static void handle_virtual_unplug(void *buf, uint16_t len)
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
  */
 static const struct hal_ipc_handler ev_handlers[] = {
-	{	/* HAL_EV_HIDHOST_CONN_STATE */
-		.handler = handle_conn_state,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_hidhost_conn_state)
-	},
-	{	/* HAL_EV_HIDHOST_INFO */
-		.handler = handle_info,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_hidhost_info),
-	},
-	{	/* HAL_EV_HIDHOST_PROTO_MODE */
-		.handler = handle_proto_mode,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_hidhost_proto_mode),
-	},
-	{	/* HAL_EV_HIDHOST_IDLE_TIME */
-		.handler = handle_idle_time,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_hidhost_idle_time),
-	},
-	{	/* HAL_EV_HIDHOST_GET_REPORT */
-		.handler = handle_get_report,
-		.var_len = true,
-		.data_len = sizeof(struct hal_ev_hidhost_get_report),
-	},
-	{	/* HAL_EV_HIDHOST_VIRTUAL_UNPLUG */
-		.handler = handle_virtual_unplug,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_hidhost_virtual_unplug),
-	},
+	/* HAL_EV_HIDHOST_CONN_STATE */
+	{ handle_conn_state, false, sizeof(struct hal_ev_hidhost_conn_state) },
+	/* HAL_EV_HIDHOST_INFO */
+	{ handle_info, false, sizeof(struct hal_ev_hidhost_info) },
+	/* HAL_EV_HIDHOST_PROTO_MODE */
+	{ handle_proto_mode, false, sizeof(struct hal_ev_hidhost_proto_mode) },
+	/* HAL_EV_HIDHOST_IDLE_TIME */
+	{ handle_idle_time, false, sizeof(struct hal_ev_hidhost_idle_time) },
+	/* HAL_EV_HIDHOST_GET_REPORT */
+	{ handle_get_report, true, sizeof(struct hal_ev_hidhost_get_report) },
+	/* HAL_EV_HIDHOST_VIRTUAL_UNPLUG */
+	{ handle_virtual_unplug, false,
+				sizeof(struct hal_ev_hidhost_virtual_unplug) },
 };
 
 static bt_status_t hidhost_connect(bt_bdaddr_t *bd_addr)
