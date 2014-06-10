@@ -18,7 +18,7 @@ test-textfile		   4	Old textfile storage format
 test-ringbuf		   3	Ring buffer functionality
 test-queue		   1	Queue handling functionality
 test-uhid		   6	Userspace HID functionality
-test-hfp		  13	HFP Audio Gateway functionality
+test-hfp		  14	HFP Audio Gateway functionality
 test-avdtp		  60	AVDTP qualification test cases
 test-avctp		   9	AVCTP qualification test cases
 test-avrcp		  92	AVRCP qualification test cases
@@ -29,7 +29,7 @@ test-gobex-apparam	  18	OBEX apparam handling
 test-gobex-transfer	  36	OBEX transfer handling
 test-gdbus-client	  12	D-Bus client handling
 			-----
-			 518
+			 519
 
 
 Automated end-to-end testing
