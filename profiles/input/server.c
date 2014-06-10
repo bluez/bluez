@@ -47,12 +47,17 @@
 #include "device.h"
 #include "server.h"
 
+struct confirm_data {
+	bdaddr_t dst;
+	GIOChannel *io;
+};
+
 static GSList *servers = NULL;
 struct input_server {
 	bdaddr_t src;
 	GIOChannel *ctrl;
 	GIOChannel *intr;
-	GIOChannel *confirm;
+	struct confirm_data *confirm;
 };
 
 static int server_cmp(gconstpointer s, gconstpointer user_data)
@@ -191,44 +196,36 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 static void auth_callback(DBusError *derr, void *user_data)
 {
 	struct input_server *server = user_data;
-	bdaddr_t src, dst;
+	struct confirm_data *confirm = server->confirm;
 	GError *err = NULL;
-
-	bt_io_get(server->confirm, &err,
-			BT_IO_OPT_SOURCE_BDADDR, &src,
-			BT_IO_OPT_DEST_BDADDR, &dst,
-			BT_IO_OPT_INVALID);
-	if (err) {
-		error("%s", err->message);
-		g_error_free(err);
-		goto reject;
-	}
 
 	if (derr) {
 		error("Access denied: %s", derr->message);
 		goto reject;
 	}
 
-	if (!input_device_exists(&src, &dst) && !dev_is_sixaxis(&src, &dst))
+	if (!input_device_exists(&server->src, &confirm->dst) &&
+				!dev_is_sixaxis(&server->src, &confirm->dst))
 		return;
 
-	if (!bt_io_accept(server->confirm, connect_event_cb, server,
-				NULL, &err)) {
+	if (!bt_io_accept(confirm->io, connect_event_cb, server, NULL, &err)) {
 		error("bt_io_accept: %s", err->message);
 		g_error_free(err);
 		goto reject;
 	}
 
-	g_io_channel_unref(server->confirm);
+	g_io_channel_unref(confirm->io);
+	g_free(server->confirm);
 	server->confirm = NULL;
 
 	return;
 
 reject:
-	g_io_channel_shutdown(server->confirm, TRUE, NULL);
-	g_io_channel_unref(server->confirm);
+	g_io_channel_shutdown(confirm->io, TRUE, NULL);
+	g_io_channel_unref(confirm->io);
 	server->confirm = NULL;
-	input_device_close_channels(&src, &dst);
+	input_device_close_channels(&server->src, &confirm->dst);
+	g_free(confirm);
 }
 
 static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
@@ -248,7 +245,8 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 	if (err) {
 		error("%s", err->message);
 		g_error_free(err);
-		goto drop;
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
 	}
 
 	ba2str(&dst, addr);
@@ -263,7 +261,9 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 		goto drop;
 	}
 
-	server->confirm = g_io_channel_ref(chan);
+	server->confirm = g_new0(struct confirm_data, 1);
+	server->confirm->io = g_io_channel_ref(chan);
+	bacpy(&server->confirm->dst, &dst);
 
 	ret = btd_request_authorization(&src, &dst, HID_UUID,
 					auth_callback, server);
@@ -272,7 +272,8 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 
 	error("input: authorization for device %s failed", addr);
 
-	g_io_channel_unref(server->confirm);
+	g_io_channel_unref(server->confirm->io);
+	g_free(server->confirm);
 	server->confirm = NULL;
 
 drop:
