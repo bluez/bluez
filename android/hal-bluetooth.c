@@ -423,6 +423,14 @@ static int init(bt_callbacks_t *callbacks)
 
 	bt_hal_cbacks = callbacks;
 
+	/* Start Android Bluetooth daemon service */
+	if (property_set("bluetooth.start", "daemon") < 0) {
+		error("Failed to set bluetooth.start=daemon");
+		hal_ipc_cleanup();
+		bt_hal_cbacks = NULL;
+		return BT_STATUS_FAIL;
+	}
+
 	if (!hal_ipc_accept()) {
 		hal_ipc_cleanup();
 		bt_hal_cbacks = NULL;

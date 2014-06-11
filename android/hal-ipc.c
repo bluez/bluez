@@ -238,12 +238,6 @@ bool hal_ipc_accept(void)
 {
 	int err;
 
-	/* Start Android Bluetooth daemon service */
-	if (property_set("bluetooth.start", "daemon") < 0) {
-		error("Failed to set bluetooth.start=daemon");
-		return false;
-	}
-
 	cmd_sk = accept_connection(listen_sk);
 	if (cmd_sk < 0)
 		return false;
