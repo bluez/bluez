@@ -3,12 +3,15 @@ LOCAL_PATH := external/bluetooth
 # Retrieve BlueZ version from configure.ac file
 BLUEZ_VERSION := `grep "^AC_INIT" $(LOCAL_PATH)/bluez/configure.ac | sed -e "s/.*,.\(.*\))/\1/"`
 
+ANDROID_VERSION := `echo $(PLATFORM_VERSION) | awk -F. '{ printf "0x%02d%02d%02d",$$1,$$2,$$3 }'`
+
 # Specify pathmap for glib and sbc
 pathmap_INCL += glib:external/bluetooth/glib \
 		sbc:external/bluetooth/sbc \
 
 # Specify common compiler flags
 BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
+			-DANDROID_VERSION=$(ANDROID_VERSION) \
 			-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
 
 # Enable warnings enabled in autotools build

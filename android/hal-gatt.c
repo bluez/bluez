@@ -971,7 +971,7 @@ static int get_device_type(const bt_bdaddr_t *bd_addr)
 	return dev_type;
 }
 
-static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
+static bt_status_t set_adv_data_real(int server_if, bool set_scan_rsp,
 				bool include_name, bool include_txpower,
 				int min_interval, int max_interval,
 				int appearance, uint16_t manufacturer_len,
@@ -1024,6 +1024,41 @@ static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_SET_ADV_DATA,
 						cmd_len, cmd, 0, NULL, NULL);
 }
+
+/*
+ * This is temporary solution and support for older Android versions might
+ * be removed at any time.
+ */
+#if ANDROID_VERSION < PLATFORM_VER(4,4,3)
+static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
+				bool include_name, bool include_txpower,
+				int min_interval, int max_interval,
+				int appearance, uint16_t manufacturer_len,
+				char *manufacturer_data)
+{
+	return set_adv_data_real(server_if, set_scan_rsp, include_name,
+					include_txpower, min_interval,
+					max_interval, appearance,
+					manufacturer_len, manufacturer_data,
+					0, NULL, 0, NULL);
+}
+#else
+static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
+				bool include_name, bool include_txpower,
+				int min_interval, int max_interval,
+				int appearance, uint16_t manufacturer_len,
+				char *manufacturer_data,
+				uint16_t service_data_len, char *service_data,
+				uint16_t service_uuid_len, char *service_uuid)
+{
+	return set_adv_data_real(server_if, set_scan_rsp, include_name,
+					include_txpower, min_interval,
+					max_interval, appearance,
+					manufacturer_len, manufacturer_data,
+					service_data_len, service_data,
+					service_uuid_len, service_uuid);
+}
+#endif
 
 static bt_status_t test_command(int command, btgatt_test_params_t *params)
 {

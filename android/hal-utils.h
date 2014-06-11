@@ -17,6 +17,8 @@
 
 #include <hardware/bluetooth.h>
 
+#define PLATFORM_VER(a,b,c) ((a << 16) | ( b << 8) | (c))
+
 #define MAX_UUID_STR_LEN	37
 #define HAL_UUID_LEN		16
 #define MAX_ADDR_STR_LEN	18

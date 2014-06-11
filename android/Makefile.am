@@ -1,4 +1,7 @@
 if ANDROID
+
+AM_CFLAGS += -DANDROID_VERSION=0xFFFFFF
+
 android_plugindir = $(abs_top_srcdir)/android/.libs
 
 noinst_PROGRAMS += android/system-emulator
