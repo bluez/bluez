@@ -404,11 +404,17 @@ void ipc_send_rsp_full(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
 void ipc_send_notif(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
 						uint16_t len, void *param)
 {
+	return ipc_send_notif_with_fd(ipc, service_id, opcode, len, param, -1);
+}
+
+void ipc_send_notif_with_fd(struct ipc *ipc, uint8_t service_id, uint8_t opcode,
+					uint16_t len, void *param, int fd)
+{
 	if (!ipc || !ipc->notif_io)
 		return;
 
 	ipc_send(g_io_channel_unix_get_fd(ipc->notif_io), service_id, opcode,
-								len, param, -1);
+								len, param, fd);
 }
 
 void ipc_register(struct ipc *ipc, uint8_t service,
