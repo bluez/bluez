@@ -3466,19 +3466,18 @@ static void handle_client_set_adv_data(const void *buf, uint16_t len)
 		return;
 	}
 
-	DBG("scan_rsp=%u name=%u tx=%u min=%d max=%d app=%d manufacturer=%u",
+	DBG("scan_rsp=%u name=%u tx=%u min=%d max=%d app=%d",
 		cmd->set_scan_rsp, cmd->include_name, cmd->include_txpower,
-		cmd->min_interval, cmd->max_interval, cmd->appearance,
-		cmd->manufacturer_len);
+		cmd->min_interval, cmd->max_interval, cmd->appearance);
 
-	/*
-	 * TODO
-	 * Currently kernel is setting all except for vendor data.
-	 * This should be implemented when kernel supports it.
-	 */
+	DBG("manufacturer=%u service_data=%u service_uuid=%u",
+				cmd->manufacturer_len, cmd->service_data_len,
+				cmd->service_uuid_len);
 
-	if (cmd->manufacturer_len) {
-		error("gatt: Manufacturer advertising data not supported");
+	/* TODO This should be implemented when kernel supports it */
+	if (cmd->manufacturer_len || cmd->service_data_len ||
+							cmd->service_uuid_len) {
+		error("gatt: Extra advertising data not supported");
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}

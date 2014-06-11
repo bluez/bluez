@@ -745,7 +745,9 @@ struct hal_cmd_gatt_client_set_adv_data {
 	int32_t  max_interval;
 	int32_t  appearance;
 	uint16_t manufacturer_len;
-	uint8_t  manufacturer_data[0];
+	uint16_t service_data_len;
+	uint16_t service_uuid_len;
+	uint8_t  data[0];
 } __attribute__((packed));
 
 #define GATT_CLIENT_TEST_CMD_ENABLE		0x01

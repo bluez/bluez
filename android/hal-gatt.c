@@ -981,10 +981,17 @@ static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
 {
 	char buf[IPC_MTU];
 	struct hal_cmd_gatt_client_set_adv_data *cmd = (void *) buf;
-	size_t cmd_len = sizeof(*cmd) + manufacturer_len;
+	size_t cmd_len;
+	uint8_t *data;
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
+
+	cmd_len = sizeof(*cmd) + manufacturer_len + service_data_len +
+							service_uuid_len;
+
+	if (cmd_len > IPC_MTU)
+		return BT_STATUS_FAIL;
 
 	cmd->server_if = server_if;
 	cmd->set_scan_rsp = set_scan_rsp;
@@ -994,8 +1001,25 @@ static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
 	cmd->max_interval = max_interval;
 	cmd->appearance = appearance;
 	cmd->manufacturer_len = manufacturer_len;
+	cmd->service_data_len = service_data_len;
+	cmd->service_uuid_len = service_uuid_len;
 
-	memcpy(cmd->manufacturer_data, manufacturer_data, manufacturer_len);
+	data = cmd->data;
+
+	if (manufacturer_data && manufacturer_len) {
+		memcpy(data, manufacturer_data, manufacturer_len);
+		data += manufacturer_len;
+	}
+
+	if (service_data && service_data_len) {
+		memcpy(data, service_data, service_data_len);
+		data += service_data_len;
+	}
+
+	if (service_uuid && service_uuid_len) {
+		memcpy(data, service_uuid, service_uuid_len);
+		data += service_uuid_len;
+	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_SET_ADV_DATA,
 						cmd_len, cmd, 0, NULL, NULL);
