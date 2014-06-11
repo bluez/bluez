@@ -975,7 +975,9 @@ static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
 				bool include_name, bool include_txpower,
 				int min_interval, int max_interval,
 				int appearance, uint16_t manufacturer_len,
-				char *manufacturer_data)
+				char *manufacturer_data,
+				uint16_t service_data_len, char *service_data,
+				uint16_t service_uuid_len, char *service_uuid)
 {
 	char buf[IPC_MTU];
 	struct hal_cmd_gatt_client_set_adv_data *cmd = (void *) buf;

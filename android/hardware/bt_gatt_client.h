@@ -278,7 +278,9 @@ typedef struct {
     /** Set the advertising data or scan response data */
     bt_status_t (*set_adv_data)(int server_if, bool set_scan_rsp, bool include_name,
                     bool include_txpower, int min_interval, int max_interval, int appearance,
-                    uint16_t manufacturer_len, char* manufacturer_data);
+                    uint16_t manufacturer_len, char* manufacturer_data,
+                    uint16_t service_data_len, char* service_data,
+                    uint16_t service_uuid_len, char* service_uuid);
 
     /** Test mode interface */
     bt_status_t (*test_command)( int command, btgatt_test_params_t* params);
