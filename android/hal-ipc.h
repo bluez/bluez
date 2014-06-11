@@ -16,7 +16,7 @@
  */
 
 struct hal_ipc_handler {
-	void (*handler) (void *buf, uint16_t len);
+	void (*handler) (void *buf, uint16_t len, int fd);
 	bool var_len;
 	size_t data_len;
 };

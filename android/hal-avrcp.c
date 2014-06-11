@@ -33,7 +33,7 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
-static void handle_remote_features(void *buf, uint16_t len)
+static void handle_remote_features(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_remote_features *ev = buf;
 
@@ -42,19 +42,19 @@ static void handle_remote_features(void *buf, uint16_t len)
 								ev->features);
 }
 
-static void handle_get_play_status(void *buf, uint16_t len)
+static void handle_get_play_status(void *buf, uint16_t len, int fd)
 {
 	if (cbs->get_play_status_cb)
 		cbs->get_play_status_cb();
 }
 
-static void handle_list_player_attrs(void *buf, uint16_t len)
+static void handle_list_player_attrs(void *buf, uint16_t len, int fd)
 {
 	if (cbs->list_player_app_attr_cb)
 		cbs->list_player_app_attr_cb();
 }
 
-static void handle_list_player_values(void *buf, uint16_t len)
+static void handle_list_player_values(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_list_player_values *ev = buf;
 
@@ -62,7 +62,7 @@ static void handle_list_player_values(void *buf, uint16_t len)
 		cbs->list_player_app_values_cb(ev->attr);
 }
 
-static void handle_get_player_values(void *buf, uint16_t len)
+static void handle_get_player_values(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_get_player_values *ev = buf;
 	btrc_player_attr_t attrs[4];
@@ -78,7 +78,7 @@ static void handle_get_player_values(void *buf, uint16_t len)
 	cbs->get_player_app_value_cb(ev->number, attrs);
 }
 
-static void handle_get_player_attrs_text(void *buf, uint16_t len)
+static void handle_get_player_attrs_text(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_get_player_attrs_text *ev = buf;
 	btrc_player_attr_t attrs[4];
@@ -94,7 +94,7 @@ static void handle_get_player_attrs_text(void *buf, uint16_t len)
 	cbs->get_player_app_attrs_text_cb(ev->number, attrs);
 }
 
-static void handle_get_player_values_text(void *buf, uint16_t len)
+static void handle_get_player_values_text(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_get_player_values_text *ev = buf;
 
@@ -103,7 +103,7 @@ static void handle_get_player_values_text(void *buf, uint16_t len)
 								ev->values);
 }
 
-static void handle_set_player_value(void *buf, uint16_t len)
+static void handle_set_player_value(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_set_player_values *ev = buf;
 	struct hal_avrcp_player_attr_value *attrs;
@@ -125,7 +125,7 @@ static void handle_set_player_value(void *buf, uint16_t len)
 	cbs->set_player_app_value_cb(&values);
 }
 
-static void handle_get_element_attrs(void *buf, uint16_t len)
+static void handle_get_element_attrs(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_get_element_attrs *ev = buf;
 	btrc_media_attr_t attrs[BTRC_MAX_APP_SETTINGS];
@@ -141,7 +141,7 @@ static void handle_get_element_attrs(void *buf, uint16_t len)
 	cbs->get_element_attr_cb(ev->number, attrs);
 }
 
-static void handle_register_notification(void *buf, uint16_t len)
+static void handle_register_notification(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_register_notification *ev = buf;
 
@@ -149,7 +149,7 @@ static void handle_register_notification(void *buf, uint16_t len)
 		cbs->register_notification_cb(ev->event, ev->param);
 }
 
-static void handle_volume_changed(void *buf, uint16_t len)
+static void handle_volume_changed(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_volume_changed *ev = buf;
 
@@ -157,7 +157,7 @@ static void handle_volume_changed(void *buf, uint16_t len)
 		cbs->volume_change_cb(ev->volume, ev->type);
 }
 
-static void handle_passthrough_cmd(void *buf, uint16_t len)
+static void handle_passthrough_cmd(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_avrcp_passthrough_cmd *ev = buf;
 

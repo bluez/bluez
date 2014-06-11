@@ -33,7 +33,7 @@ static bool interface_ready(void)
 	return cbacks != NULL;
 }
 
-static void handle_conn_state(void *buf, uint16_t len)
+static void handle_conn_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_hidhost_conn_state *ev = buf;
 
@@ -42,7 +42,7 @@ static void handle_conn_state(void *buf, uint16_t len)
 								ev->state);
 }
 
-static void handle_info(void *buf, uint16_t len)
+static void handle_info(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_hidhost_info *ev = buf;
 	bthh_hid_info_t info;
@@ -61,7 +61,7 @@ static void handle_info(void *buf, uint16_t len)
 		cbacks->hid_info_cb((bt_bdaddr_t *) ev->bdaddr, info);
 }
 
-static void handle_proto_mode(void *buf, uint16_t len)
+static void handle_proto_mode(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_hidhost_proto_mode *ev = buf;
 
@@ -70,7 +70,7 @@ static void handle_proto_mode(void *buf, uint16_t len)
 							ev->status, ev->mode);
 }
 
-static void handle_idle_time(void *buf, uint16_t len)
+static void handle_idle_time(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_hidhost_idle_time *ev = buf;
 
@@ -79,7 +79,7 @@ static void handle_idle_time(void *buf, uint16_t len)
 								ev->idle_rate);
 }
 
-static void handle_get_report(void *buf, uint16_t len)
+static void handle_get_report(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_hidhost_get_report *ev = buf;
 
@@ -93,7 +93,7 @@ static void handle_get_report(void *buf, uint16_t len)
 							ev->data, ev->len);
 }
 
-static void handle_virtual_unplug(void *buf, uint16_t len)
+static void handle_virtual_unplug(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_hidhost_virtual_unplug *ev = buf;
 

@@ -31,7 +31,7 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
-static void handle_conn_state(void *buf, uint16_t len)
+static void handle_conn_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_pan_conn_state *ev = buf;
 
@@ -41,7 +41,7 @@ static void handle_conn_state(void *buf, uint16_t len)
 					ev->local_role, ev->remote_role);
 }
 
-static void handle_ctrl_state(void *buf, uint16_t len)
+static void handle_ctrl_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_pan_ctrl_state *ev = buf;
 

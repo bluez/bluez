@@ -33,7 +33,7 @@ static bool interface_ready(void)
 	return cbacks != NULL;
 }
 
-static void handle_app_registration_state(void *buf, uint16_t len)
+static void handle_app_registration_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_health_app_reg_state *ev = buf;
 

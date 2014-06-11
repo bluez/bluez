@@ -37,7 +37,7 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
-static void handle_conn_state(void *buf, uint16_t len)
+static void handle_conn_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_conn_state *ev = buf;
 
@@ -46,7 +46,7 @@ static void handle_conn_state(void *buf, uint16_t len)
 						(bt_bdaddr_t *) (ev->bdaddr));
 }
 
-static void handle_audio_state(void *buf, uint16_t len)
+static void handle_audio_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_audio_state *ev = buf;
 
@@ -54,7 +54,7 @@ static void handle_audio_state(void *buf, uint16_t len)
 		cbs->audio_state_cb(ev->state, (bt_bdaddr_t *) (ev->bdaddr));
 }
 
-static void handle_vr_state(void *buf, uint16_t len)
+static void handle_vr_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_vr_state *ev = buf;
 
@@ -62,19 +62,19 @@ static void handle_vr_state(void *buf, uint16_t len)
 		cbs->vr_cmd_cb(ev->state);
 }
 
-static void handle_answer(void *buf, uint16_t len)
+static void handle_answer(void *buf, uint16_t len, int fd)
 {
 	if (cbs->answer_call_cmd_cb)
 		cbs->answer_call_cmd_cb();
 }
 
-static void handle_hangup(void *buf, uint16_t len)
+static void handle_hangup(void *buf, uint16_t len, int fd)
 {
 	if (cbs->hangup_call_cmd_cb)
 		cbs->hangup_call_cmd_cb();
 }
 
-static void handle_volume(void *buf, uint16_t len)
+static void handle_volume(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_volume *ev = buf;
 
@@ -82,7 +82,7 @@ static void handle_volume(void *buf, uint16_t len)
 		cbs->volume_cmd_cb(ev->type, ev->volume);
 }
 
-static void handle_dial(void *buf, uint16_t len)
+static void handle_dial(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_dial *ev = buf;
 	uint16_t num_len = ev->number_len;
@@ -102,7 +102,7 @@ static void handle_dial(void *buf, uint16_t len)
 		cbs->dial_call_cmd_cb(NULL);
 }
 
-static void handle_dtmf(void *buf, uint16_t len)
+static void handle_dtmf(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_dtmf *ev = buf;
 
@@ -110,7 +110,7 @@ static void handle_dtmf(void *buf, uint16_t len)
 		cbs->dtmf_cmd_cb(ev->tone);
 }
 
-static void handle_nrec(void *buf, uint16_t len)
+static void handle_nrec(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_nrec *ev = buf;
 
@@ -118,7 +118,7 @@ static void handle_nrec(void *buf, uint16_t len)
 		cbs->nrec_cmd_cb(ev->nrec);
 }
 
-static void handle_chld(void *buf, uint16_t len)
+static void handle_chld(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_chld *ev = buf;
 
@@ -126,31 +126,31 @@ static void handle_chld(void *buf, uint16_t len)
 		cbs->chld_cmd_cb(ev->chld);
 }
 
-static void handle_cnum(void *buf, uint16_t len)
+static void handle_cnum(void *buf, uint16_t len, int fd)
 {
 	if (cbs->cnum_cmd_cb)
 		cbs->cnum_cmd_cb();
 }
 
-static void handle_cind(void *buf, uint16_t len)
+static void handle_cind(void *buf, uint16_t len, int fd)
 {
 	if (cbs->cind_cmd_cb)
 		cbs->cind_cmd_cb();
 }
 
-static void handle_cops(void *buf, uint16_t len)
+static void handle_cops(void *buf, uint16_t len, int fd)
 {
 	if (cbs->cops_cmd_cb)
 		cbs->cops_cmd_cb();
 }
 
-static void handle_clcc(void *buf, uint16_t len)
+static void handle_clcc(void *buf, uint16_t len, int fd)
 {
 	if (cbs->clcc_cmd_cb)
 		cbs->clcc_cmd_cb();
 }
 
-static void handle_unknown_at(void *buf, uint16_t len)
+static void handle_unknown_at(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_unknown_at *ev = buf;
 
@@ -164,7 +164,7 @@ static void handle_unknown_at(void *buf, uint16_t len)
 		cbs->unknown_at_cmd_cb((char *) ev->buf);
 }
 
-static void handle_hsp_key_press(void *buf, uint16_t len)
+static void handle_hsp_key_press(void *buf, uint16_t len, int fd)
 {
 	if (cbs->key_pressed_cmd_cb)
 		cbs->key_pressed_cmd_cb();

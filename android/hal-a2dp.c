@@ -31,7 +31,7 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
-static void handle_conn_state(void *buf, uint16_t len)
+static void handle_conn_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_a2dp_conn_state *ev = buf;
 
@@ -40,7 +40,7 @@ static void handle_conn_state(void *buf, uint16_t len)
 						(bt_bdaddr_t *) (ev->bdaddr));
 }
 
-static void handle_audio_state(void *buf, uint16_t len)
+static void handle_audio_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_a2dp_audio_state *ev = buf;
 

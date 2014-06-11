@@ -52,7 +52,7 @@ static const bt_callbacks_t *bt_hal_cbacks = NULL;
 	*hal_len = 1; \
 } while (0)
 
-static void handle_adapter_state_changed(void *buf, uint16_t len)
+static void handle_adapter_state_changed(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_adapter_state_changed *ev = buf;
 
@@ -197,7 +197,7 @@ static void device_props_to_hal(bt_property_t *send_props,
 	exit(EXIT_FAILURE);
 }
 
-static void handle_adapter_props_changed(void *buf, uint16_t len)
+static void handle_adapter_props_changed(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_adapter_props_changed *ev = buf;
 	bt_property_t props[ev->num_props];
@@ -213,7 +213,7 @@ static void handle_adapter_props_changed(void *buf, uint16_t len)
 	bt_hal_cbacks->adapter_properties_cb(ev->status, ev->num_props, props);
 }
 
-static void handle_bond_state_change(void *buf, uint16_t len)
+static void handle_bond_state_change(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_bond_state_changed *ev = buf;
 	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
@@ -225,7 +225,7 @@ static void handle_bond_state_change(void *buf, uint16_t len)
 								ev->state);
 }
 
-static void handle_pin_request(void *buf, uint16_t len)
+static void handle_pin_request(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_pin_request *ev = buf;
 	/* Those are declared as packed, so it's safe to assign pointers */
@@ -238,7 +238,7 @@ static void handle_pin_request(void *buf, uint16_t len)
 		bt_hal_cbacks->pin_request_cb(addr, name, ev->class_of_dev);
 }
 
-static void handle_ssp_request(void *buf, uint16_t len)
+static void handle_ssp_request(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_ssp_request *ev = buf;
 	/* Those are declared as packed, so it's safe to assign pointers */
@@ -270,7 +270,7 @@ static bool interface_ready(void)
 	return bt_hal_cbacks != NULL;
 }
 
-static void handle_discovery_state_changed(void *buf, uint16_t len)
+static void handle_discovery_state_changed(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_discovery_state_changed *ev = buf;
 
@@ -280,7 +280,7 @@ static void handle_discovery_state_changed(void *buf, uint16_t len)
 		bt_hal_cbacks->discovery_state_changed_cb(ev->state);
 }
 
-static void handle_device_found(void *buf, uint16_t len)
+static void handle_device_found(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_device_found *ev = buf;
 	bt_property_t props[ev->num_props];
@@ -296,7 +296,7 @@ static void handle_device_found(void *buf, uint16_t len)
 	bt_hal_cbacks->device_found_cb(ev->num_props, props);
 }
 
-static void handle_device_state_changed(void *buf, uint16_t len)
+static void handle_device_state_changed(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_remote_device_props *ev = buf;
 	bt_property_t props[ev->num_props];
@@ -314,7 +314,7 @@ static void handle_device_state_changed(void *buf, uint16_t len)
 						ev->num_props, props);
 }
 
-static void handle_acl_state_changed(void *buf, uint16_t len)
+static void handle_acl_state_changed(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_acl_state_changed *ev = buf;
 	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
@@ -326,7 +326,7 @@ static void handle_acl_state_changed(void *buf, uint16_t len)
 								ev->state);
 }
 
-static void handle_dut_mode_receive(void *buf, uint16_t len)
+static void handle_dut_mode_receive(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_dut_mode_receive *ev = buf;
 
@@ -341,7 +341,7 @@ static void handle_dut_mode_receive(void *buf, uint16_t len)
 		bt_hal_cbacks->dut_mode_recv_cb(ev->opcode, ev->data, ev->len);
 }
 
-static void handle_le_test_mode(void *buf, uint16_t len)
+static void handle_le_test_mode(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_le_test_mode *ev = buf;
 

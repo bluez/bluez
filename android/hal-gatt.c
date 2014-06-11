@@ -63,7 +63,7 @@ static void srvc_id_to_hal(struct hal_gatt_srvc_id *to, btgatt_srvc_id_t *from)
 
 /* Client Event Handlers */
 
-static void handle_register_client(void *buf, uint16_t len)
+static void handle_register_client(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_register_client *ev = buf;
 
@@ -72,7 +72,7 @@ static void handle_register_client(void *buf, uint16_t len)
 						(bt_uuid_t *) ev->app_uuid);
 }
 
-static void handle_scan_result(void *buf, uint16_t len)
+static void handle_scan_result(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_scan_result *ev = buf;
 	uint8_t ad[62];
@@ -91,7 +91,7 @@ static void handle_scan_result(void *buf, uint16_t len)
 									ad);
 }
 
-static void handle_connect(void *buf, uint16_t len)
+static void handle_connect(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_connect *ev = buf;
 
@@ -100,7 +100,7 @@ static void handle_connect(void *buf, uint16_t len)
 						(bt_bdaddr_t *) ev->bda);
 }
 
-static void handle_disconnect(void *buf, uint16_t len)
+static void handle_disconnect(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_disconnect *ev = buf;
 
@@ -109,7 +109,7 @@ static void handle_disconnect(void *buf, uint16_t len)
 						(bt_bdaddr_t *) ev->bda);
 }
 
-static void handle_search_complete(void *buf, uint16_t len)
+static void handle_search_complete(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_search_complete *ev = buf;
 
@@ -117,7 +117,7 @@ static void handle_search_complete(void *buf, uint16_t len)
 		cbs->client->search_complete_cb(ev->conn_id, ev->status);
 }
 
-static void handle_search_result(void *buf, uint16_t len)
+static void handle_search_result(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_search_result *ev = buf;
 	btgatt_srvc_id_t srvc_id;
@@ -128,7 +128,7 @@ static void handle_search_result(void *buf, uint16_t len)
 		cbs->client->search_result_cb(ev->conn_id, &srvc_id);
 }
 
-static void handle_get_characteristic(void *buf, uint16_t len)
+static void handle_get_characteristic(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_get_characteristic *ev = buf;
 	btgatt_gatt_id_t char_id;
@@ -143,7 +143,7 @@ static void handle_get_characteristic(void *buf, uint16_t len)
 							ev->char_prop);
 }
 
-static void handle_get_descriptor(void *buf, uint16_t len)
+static void handle_get_descriptor(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_get_descriptor *ev = buf;
 	btgatt_gatt_id_t descr_id;
@@ -159,7 +159,7 @@ static void handle_get_descriptor(void *buf, uint16_t len)
 						&srvc_id, &char_id, &descr_id);
 }
 
-static void handle_get_included_service(void *buf, uint16_t len)
+static void handle_get_included_service(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_get_inc_service *ev = buf;
 	btgatt_srvc_id_t srvc_id;
@@ -174,7 +174,7 @@ static void handle_get_included_service(void *buf, uint16_t len)
 								&incl_srvc_id);
 }
 
-static void handle_register_for_notification(void *buf, uint16_t len)
+static void handle_register_for_notification(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_reg_for_notif *ev = buf;
 	btgatt_gatt_id_t char_id;
@@ -191,7 +191,7 @@ static void handle_register_for_notification(void *buf, uint16_t len)
 								&char_id);
 }
 
-static void handle_notify(void *buf, uint16_t len)
+static void handle_notify(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_notify *ev = buf;
 	btgatt_notify_params_t params;
@@ -215,7 +215,7 @@ static void handle_notify(void *buf, uint16_t len)
 		cbs->client->notify_cb(ev->conn_id, &params);
 }
 
-static void handle_read_characteristic(void *buf, uint16_t len)
+static void handle_read_characteristic(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_read_characteristic *ev = buf;
 	btgatt_read_params_t params;
@@ -242,7 +242,7 @@ static void handle_read_characteristic(void *buf, uint16_t len)
 								&params);
 }
 
-static void handle_write_characteristic(void *buf, uint16_t len)
+static void handle_write_characteristic(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_write_characteristic *ev = buf;
 	btgatt_write_params_t params;
@@ -260,7 +260,7 @@ static void handle_write_characteristic(void *buf, uint16_t len)
 								&params);
 }
 
-static void handle_read_descriptor(void *buf, uint16_t len)
+static void handle_read_descriptor(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_read_descriptor *ev = buf;
 	btgatt_read_params_t params;
@@ -287,7 +287,7 @@ static void handle_read_descriptor(void *buf, uint16_t len)
 								&params);
 }
 
-static void handle_write_descriptor(void *buf, uint16_t len)
+static void handle_write_descriptor(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_write_descriptor *ev = buf;
 	btgatt_write_params_t params;
@@ -305,7 +305,7 @@ static void handle_write_descriptor(void *buf, uint16_t len)
 								&params);
 }
 
-static void handle_execute_write(void *buf, uint16_t len)
+static void handle_execute_write(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_exec_write *ev = buf;
 
@@ -313,7 +313,7 @@ static void handle_execute_write(void *buf, uint16_t len)
 		cbs->client->execute_write_cb(ev->conn_id, ev->status);
 }
 
-static void handle_read_remote_rssi(void *buf, uint16_t len)
+static void handle_read_remote_rssi(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_read_remote_rssi *ev = buf;
 
@@ -323,7 +323,7 @@ static void handle_read_remote_rssi(void *buf, uint16_t len)
 						ev->rssi, ev->status);
 }
 
-static void handle_listen(void *buf, uint16_t len)
+static void handle_listen(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_client_listen *ev = buf;
 
@@ -333,7 +333,7 @@ static void handle_listen(void *buf, uint16_t len)
 
 /* Server Event Handlers */
 
-static void handle_register_server(void *buf, uint16_t len)
+static void handle_register_server(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_register *ev = buf;
 
@@ -342,7 +342,7 @@ static void handle_register_server(void *buf, uint16_t len)
 						(bt_uuid_t *) &ev->uuid);
 }
 
-static void handle_connection(void *buf, uint16_t len)
+static void handle_connection(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_connection *ev = buf;
 
@@ -352,7 +352,7 @@ static void handle_connection(void *buf, uint16_t len)
 						(bt_bdaddr_t *) &ev->bdaddr);
 }
 
-static void handle_service_added(void *buf, uint16_t len)
+static void handle_service_added(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_service_added *ev = buf;
 	btgatt_srvc_id_t srvc_id;
@@ -364,7 +364,7 @@ static void handle_service_added(void *buf, uint16_t len)
 						&srvc_id, ev->srvc_handle);
 }
 
-static void handle_included_service_added(void *buf, uint16_t len)
+static void handle_included_service_added(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_inc_srvc_added *ev = buf;
 
@@ -375,7 +375,7 @@ static void handle_included_service_added(void *buf, uint16_t len)
 							ev->incl_srvc_handle);
 }
 
-static void handle_characteristic_added(void *buf, uint16_t len)
+static void handle_characteristic_added(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_characteristic_added *ev = buf;
 
@@ -386,7 +386,7 @@ static void handle_characteristic_added(void *buf, uint16_t len)
 							ev->char_handle);
 }
 
-static void handle_descriptor_added(void *buf, uint16_t len)
+static void handle_descriptor_added(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_descriptor_added *ev = buf;
 
@@ -397,7 +397,7 @@ static void handle_descriptor_added(void *buf, uint16_t len)
 							ev->descr_handle);
 }
 
-static void handle_service_started(void *buf, uint16_t len)
+static void handle_service_started(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_service_started *ev = buf;
 
@@ -406,7 +406,7 @@ static void handle_service_started(void *buf, uint16_t len)
 							ev->srvc_handle);
 }
 
-static void handle_service_stopped(void *buf, uint16_t len)
+static void handle_service_stopped(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_service_stopped *ev = buf;
 
@@ -415,7 +415,7 @@ static void handle_service_stopped(void *buf, uint16_t len)
 							ev->srvc_handle);
 }
 
-static void handle_service_deleted(void *buf, uint16_t len)
+static void handle_service_deleted(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_service_deleted *ev = buf;
 
@@ -424,7 +424,7 @@ static void handle_service_deleted(void *buf, uint16_t len)
 							ev->srvc_handle);
 }
 
-static void handle_request_read(void *buf, uint16_t len)
+static void handle_request_read(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_request_read *ev = buf;
 
@@ -435,7 +435,7 @@ static void handle_request_read(void *buf, uint16_t len)
 						ev->is_long);
 }
 
-static void handle_request_write(void *buf, uint16_t len)
+static void handle_request_write(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_request_write *ev = buf;
 
@@ -452,7 +452,7 @@ static void handle_request_write(void *buf, uint16_t len)
 						ev->is_prep, ev->value);
 }
 
-static void handle_request_exec_write(void *buf, uint16_t len)
+static void handle_request_exec_write(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_request_exec_write *ev = buf;
 
@@ -462,7 +462,7 @@ static void handle_request_exec_write(void *buf, uint16_t len)
 						ev->exec_write);
 }
 
-static void handle_response_confirmation(void *buf, uint16_t len)
+static void handle_response_confirmation(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_rsp_confirmation *ev = buf;
 

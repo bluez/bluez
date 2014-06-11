@@ -63,7 +63,7 @@ void hal_ipc_unregister(uint8_t service)
 	services[service].size = 0;
 }
 
-static bool handle_msg(void *buf, ssize_t len)
+static bool handle_msg(void *buf, ssize_t len, int fd)
 {
 	struct ipc_hdr *msg = buf;
 	const struct hal_ipc_handler *handler;
@@ -122,7 +122,7 @@ static bool handle_msg(void *buf, ssize_t len)
 		return false;
 	}
 
-	handler->handler(msg->payload, msg->len);
+	handler->handler(msg->payload, msg->len, fd);
 
 	return true;
 }
@@ -185,7 +185,7 @@ static void *notification_handler(void *data)
 			}
 		}
 
-		if (!handle_msg(buf, ret))
+		if (!handle_msg(buf, ret, fd))
 			goto failed;
 	}
 
