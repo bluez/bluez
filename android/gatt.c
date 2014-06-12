@@ -2835,6 +2835,22 @@ static bool signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 	return true;
 }
 
+static int get_sec_level(struct gatt_device *dev)
+{
+	GIOChannel *io;
+	int sec_level;
+
+	io = g_attrib_get_channel(dev->attrib);
+
+	if (!bt_io_get(io, NULL, BT_IO_OPT_SEC_LEVEL, &sec_level,
+							BT_IO_OPT_INVALID)) {
+		error("gatt: Failed to get sec_level");
+		return -1;
+	}
+
+	return sec_level;
+}
+
 static void handle_client_write_characteristic(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_write_characteristic *cmd = buf;
@@ -2900,8 +2916,14 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 							write_char_cb, cb_data);
 		break;
 	case GATT_WRITE_TYPE_SIGNED:
-		res = signed_write_cmd(conn->device, ch->ch.value_handle,
-					cmd->value, cmd->len);
+		if (get_sec_level(conn->device) != BT_SECURITY_LOW) {
+			error("gatt: Cannot write signed on encrypted link");
+			res = HAL_STATUS_FAILED;
+		} else {
+			res = signed_write_cmd(conn->device,
+							ch->ch.value_handle,
+							cmd->value, cmd->len);
+		}
 		break;
 	default:
 		error("gatt: Write type %d unsupported", cmd->write_type);
@@ -5305,6 +5327,12 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	size_t vlen;
 	uint8_t csrk[16];
 	uint32_t sign_cnt;
+
+	if (get_sec_level(dev) != BT_SECURITY_LOW) {
+		error("gatt: Remote tries write signed on encrypted link");
+		connection_cleanup(dev);
+		return;
+	}
 
 	if (!bt_get_csrk(&dev->bdaddr, REMOTE_CSRK, csrk, &sign_cnt)) {
 		error("gatt: No valid csrk from remote device");
