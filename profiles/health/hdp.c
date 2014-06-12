@@ -930,7 +930,8 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 	struct hdp_device *dev = data;
 	struct hdp_channel *chan;
 
-	DBG("hdp_mcap_mdl_connected_cb");
+	DBG("");
+
 	if (dev->ndc == NULL)
 		return;
 
