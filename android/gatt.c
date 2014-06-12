@@ -4064,13 +4064,13 @@ static uint8_t check_device_permissions(struct gatt_device *device,
 		if (!(permissions & GATT_PERM_READ))
 			return ATT_ECODE_READ_NOT_PERM;
 
-		if ((permissions & GATT_PERM_READ_ENCRYPTED) &&
-						sec_level < BT_SECURITY_MEDIUM)
-			return ATT_ECODE_INSUFF_ENC;
-
 		if ((permissions & GATT_PERM_READ_MITM) &&
 						sec_level < BT_SECURITY_HIGH)
 			return ATT_ECODE_AUTHENTICATION;
+
+		if ((permissions & GATT_PERM_READ_ENCRYPTED) &&
+						sec_level < BT_SECURITY_MEDIUM)
+			return ATT_ECODE_INSUFF_ENC;
 
 		if (permissions & GATT_PERM_READ_AUTHORIZATION)
 			return ATT_ECODE_AUTHORIZATION;
@@ -4082,13 +4082,13 @@ static uint8_t check_device_permissions(struct gatt_device *device,
 		if (!(permissions & GATT_PERM_WRITE))
 			return ATT_ECODE_WRITE_NOT_PERM;
 
-		if ((permissions & GATT_PERM_WRITE_ENCRYPTED) &&
-						sec_level < BT_SECURITY_MEDIUM)
-			return ATT_ECODE_INSUFF_ENC;
-
 		if ((permissions & GATT_PERM_WRITE_MITM) &&
 						sec_level < BT_SECURITY_HIGH)
 			return ATT_ECODE_AUTHENTICATION;
+
+		if ((permissions & GATT_PERM_WRITE_ENCRYPTED) &&
+						sec_level < BT_SECURITY_MEDIUM)
+			return ATT_ECODE_INSUFF_ENC;
 
 		if (permissions & GATT_PERM_WRITE_AUTHORIZATION)
 			return ATT_ECODE_AUTHORIZATION;
