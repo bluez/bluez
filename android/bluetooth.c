@@ -1292,8 +1292,11 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 
 	adapter.cur_discovery_type = type;
 
-	if (ev->discovering)
+	if (ev->discovering) {
+		adapter.exp_discovery_type = adapter.le_scanning ?
+						SCAN_TYPE_LE : SCAN_TYPE_NONE;
 		return;
+	}
 
 	/* One shot notification about discovery stopped */
 	if (gatt_discovery_stopped_cb) {
