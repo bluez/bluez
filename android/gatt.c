@@ -4168,6 +4168,8 @@ static void read_requested_attributes(void *data, void *user_data)
 	if (error)
 		goto done;
 
+	resp_data->state = REQUEST_PENDING;
+
 	if (!gatt_db_read(gatt_db, resp_data->handle,
 						resp_data->offset,
 						process_data->opcode,
