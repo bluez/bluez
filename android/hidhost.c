@@ -109,6 +109,7 @@ struct hid_device {
 	struct bt_uhid	*uhid;
 	uint8_t		last_hid_msg;
 	struct bt_hog	*hog;
+	guint		reconnect_id;
 };
 
 static int device_cmp(gconstpointer s, gconstpointer user_data)
@@ -122,6 +123,9 @@ static int device_cmp(gconstpointer s, gconstpointer user_data)
 static void hid_device_free(void *data)
 {
 	struct hid_device *dev = data;
+
+	if (dev->reconnect_id > 0)
+		g_source_remove(dev->reconnect_id);
 
 	if (dev->ctrl_watch > 0)
 		g_source_remove(dev->ctrl_watch);
@@ -732,6 +736,19 @@ fail:
 	hid_device_remove(dev);
 }
 
+static gboolean hog_reconnect(void *user_data)
+{
+	struct hid_device *dev = user_data;
+
+	DBG("");
+
+	dev->reconnect_id = 0;
+
+	bt_gatt_connect_app(hog_app, &dev->dst);
+
+	return FALSE;
+}
+
 static void hog_conn_cb(const bdaddr_t *addr, int err, void *attrib)
 {
 	GSList *l;
@@ -743,6 +760,13 @@ static void hog_conn_cb(const bdaddr_t *addr, int err, void *attrib)
 	if (err < 0) {
 		if (!dev)
 			return;
+		if (dev->hog && !dev->reconnect_id) {
+			bt_hid_notify_state(dev,
+						HAL_HIDHOST_STATE_DISCONNECTED);
+			bt_hog_detach(dev->hog);
+			dev->reconnect_id = g_idle_add(hog_reconnect, dev);
+			return;
+		}
 		goto fail;
 	}
 
