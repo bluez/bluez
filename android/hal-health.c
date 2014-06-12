@@ -41,6 +41,16 @@ static void handle_app_registration_state(void *buf, uint16_t len, int fd)
 		cbacks->app_reg_state_cb(ev->id, ev->state);
 }
 
+static void handle_channel_state(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_health_channel_state *ev = buf;
+
+	if (cbacks->channel_state_cb)
+		cbacks->channel_state_cb(ev->app_id, (bt_bdaddr_t *) ev->bdaddr,
+						ev->mdep_index, ev->channel_id,
+						ev->channel_state, fd);
+}
+
 /*
  * handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
@@ -49,6 +59,9 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_HEALTH_APP_REG_STATE */
 	{ handle_app_registration_state, false,
 				sizeof(struct hal_ev_health_app_reg_state) },
+	/* HAL_EV_HEALTH_CHANNEL_STATE */
+	{ handle_channel_state, false,
+				sizeof(struct hal_ev_health_channel_state) },
 };
 
 static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
