@@ -41,15 +41,15 @@ TC_COS_IEX_BV_02_C	PASS
 TC_COS_ECH_BV_01_C	PASS
 TC_COS_ECH_BV_02_C	PASS	l2ping <bdaddr>
 TC_CLS_CLR_BV_01_C	N/A
-TC_CLS_UCD_BV_01_C	N/A
-TC_CLS_UCD_BV_02_C	N/A
-TC_CLS_UCD_BV_03_C	N/A
+TC_CLS_UCD_BV_01_C	INC	not tested yet
+TC_CLS_UCD_BV_02_C	INC	not tested yet
+TC_CLS_UCD_BV_03_C	INC	not tested yet
 TC_EXF_BV_01_C		PASS
 TC_EXF_BV_02_C		PASS
 TC_EXF_BV_03_C		PASS
-TC_EXF_BV_04_C		N/A
+TC_EXF_BV_04_C		INC	not tested yet
 TC_EXF_BV_05_C		PASS
-TC_EXF_BV_06_C		N/A
+TC_EXF_BV_06_C		INC	not tested yet
 
 TC_CMC_BV_01_C		PASS    l2test -X ertm -P <PSM - not reserved>
 TC_CMC_BV_02_C		PASS    l2test -X ertm -P <PSM - not reserved>
@@ -109,7 +109,7 @@ TC_ERM_BV_13_C		PASS
 TC_ERM_BV_14_C		PASS
 TC_ERM_BV_15_C		PASS	l2test -X ertm -P <PSM - not reserved> -N 4
 				-Y 4
-TC_ERM_BV_16_C		N/A
+TC_ERM_BV_16_C		INC	not tested yet
 TC_ERM_BV_17_C		PASS	l2test -X ertm -P <PSM - not reserved>
 TC_ERM_BV_18_C		PASS
 TC_ERM_BV_19_C		PASS	l2test -x -X ertm -P <PSM - not reserved> -N 1
@@ -117,7 +117,7 @@ TC_ERM_BV_20_C		PASS	l2test -x -X ertm -P <PSM - not reserved> -N 1
 TC_ERM_BV_21_C		PASS	l2test -w -X ertm -P 4097 -N 3
 TC_ERM_BV_22_C		PASS
 TC_ERM_BV_23_C		PASS
-TC_ERM_BI_01_C		N/A
+TC_ERM_BI_01_C		INC	not tested yet
 TC_ERM_BI_02_C		PASS	l2test -X ertm -P <PSM - not reserved>
 TC_ERM_BI_03_C		PASS
 TC_ERM_BI_04_C		PASS
@@ -129,11 +129,11 @@ TC_STM_BV_03_C		PASS
 TC_STM_BV_11_C		N/A
 TC_STM_BV_12_C		N/A
 TC_STM_BV_13_C		N/A
-TC_FIX_BV_01_C		N/A
+TC_FIX_BV_01_C		INC	not tested yet
 TC_FIX_BV_02_C		N/A
-TC_EWC_BV_01_C		N/A
-TC_EWC_BV_02_C		N/A
-TC_EWC_BV_03_C		N/A
+TC_EWC_BV_01_C		INC	not tested yet
+TC_EWC_BV_02_C		INC	not tested yet
+TC_EWC_BV_03_C		INC	not tested yet
 TC_LSC_BV_01_C		N/A
 TC_LSC_BV_02_C		N/A
 TC_LSC_BV_03_C		N/A
@@ -150,16 +150,16 @@ TC_CCH_BV_01_C		N/A
 TC_CCH_BV_02_C		N/A
 TC_CCH_BV_03_C		N/A
 TC_CCH_BV_04_C		N/A
-TC_ECF_BV_01_C		N/A
-TC_ECF_BV_02_C		N/A
-TC_ECF_BV_03_C		N/A
-TC_ECF_BV_04_C		N/A
-TC_ECF_BV_05_C		N/A
-TC_ECF_BV_06_C		N/A
-TC_ECF_BV_07_C		N/A
-TC_ECF_BV_08_C		N/A
-TC_LE_CPU_BV_01_C	N/A
-TC_LE_CPU_BV_02_C	N/A
-TC_LE_CPU_BI_01_C	N/A
-TC_LE_CPU_BI_02_C	N/A
-TC_LE_REJ_BV_01_C	N/A
+TC_ECF_BV_01_C		INC	not tested yet
+TC_ECF_BV_02_C		INC	not tested yet
+TC_ECF_BV_03_C		INC	not tested yet
+TC_ECF_BV_04_C		INC	not tested yet
+TC_ECF_BV_05_C		INC	not tested yet
+TC_ECF_BV_06_C		INC	not tested yet
+TC_ECF_BV_07_C		INC	not tested yet
+TC_ECF_BV_08_C		INC	not tested yet
+TC_LE_CPU_BV_01_C	INC	not tested yet
+TC_LE_CPU_BV_02_C	INC	not tested yet
+TC_LE_CPU_BI_01_C	INC	not tested yet
+TC_LE_CPU_BI_02_C	INC	not tested yet
+TC_LE_REJ_BV_01_C	INC	not tested yet

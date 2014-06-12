@@ -70,21 +70,21 @@ TSPC_L2CAP_2_31	False		AMP Manager Support (C.12)
 TSPC_L2CAP_2_32	False		ERTM over AMP (C.12)
 TSPC_L2CAP_2_33	False		Streaming Mode Source over AMP Support (C.15)
 TSPC_L2CAP_2_34	False		Streaming Mode Sink over AMP Support (C.15)
-TSPC_L2CAP_2_35	False		Unicast Connectionless Data, Reception (C.1, C.16)
-TSPC_L2CAP_2_36	False		Ability to transmit an unencrypted packet over
+TSPC_L2CAP_2_35	True (*)	Unicast Connectionless Data, Reception (C.1, C.16)
+TSPC_L2CAP_2_36	True (*)	Ability to transmit an unencrypted packet over
 					a Unicast connectionless L2CAP
 					channel (C.16)
-TSPC_L2CAP_2_37	False		Ability to transmit an encrypted packet over
+TSPC_L2CAP_2_37	True (*)	Ability to transmit an encrypted packet over
 					a Unicast connectionless L2CAP
 					channel (C.16)
-TSPC_L2CAP_2_38	False		Extended Flow Specification for BR/EDR (C.8)
-TSPC_L2CAP_2_39	False		Extended Window Size (C.8)
+TSPC_L2CAP_2_38	True (*)	Extended Flow Specification for BR/EDR (C.8)
+TSPC_L2CAP_2_39	True (*)	Extended Window Size (C.8)
 TSPC_L2CAP_2_40	True (*)	Support of Low Energy signaling channel (C.17)
 TSPC_L2CAP_2_41	True (*)	Support of command reject (C.17)
 TSPC_L2CAP_2_42	True (*)	Send Connection Parameter Update Request (C.18)
 TSPC_L2CAP_2_43	True (*)	Send Connection Parameter Update Response (C.19)
 TSPC_L2CAP_2_44	False		Extended Flow Specification for AMP (C.22)
-TSPC_L2CAP_2_45	False		Send disconnect request command (O)
+TSPC_L2CAP_2_45	True (*)	Send disconnect request command (O)
 -------------------------------------------------------------------------------
 C.1: Mandatory to support at least one of TSPC_L2CAP_2_12 OR TSPC_L2CAP_2_13 OR
 	TSPC_L2CAP_2_35 IF BR/EDR BR/EDR/LE AND SUM_ICS 31/7 (CSA1) OR
