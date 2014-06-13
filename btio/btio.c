@@ -1087,7 +1087,7 @@ parse_opts:
 
 			if (getsockopt(sock, SOL_BLUETOOTH, BT_SNDMTU,
 							&l2o.omtu, &len) < 0) {
-				ERROR_FAILED(err, "getsockopt(BT_RCVMTU)",
+				ERROR_FAILED(err, "getsockopt(BT_SNDMTU)",
 									errno);
 				return FALSE;
 			}
