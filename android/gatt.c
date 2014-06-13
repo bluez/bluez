@@ -1430,8 +1430,8 @@ static int connect_le(struct gatt_device *dev)
 
 	DBG("Connection attempt to: %s", addr);
 
-	/* TODO: If we are bonded then we should use higier sec level */
-	sec_level = BT_IO_SEC_LOW;
+	sec_level = bt_device_is_bonded(&dev->bdaddr) ? BT_IO_SEC_MEDIUM :
+								BT_IO_SEC_LOW;
 
 	/*
 	 * This connection will help us catch any PDUs that comes before
