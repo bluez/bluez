@@ -267,10 +267,21 @@ fail:
 
 static void bt_health_unregister_app(const void *buf, uint16_t len)
 {
-	DBG("Not implemented");
+	const struct hal_cmd_health_unreg_app *cmd = buf;
+	struct health_app *app;
 
-	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_UNREG_APP,
-							HAL_STATUS_UNSUPPORTED);
+	DBG("");
+
+	app = queue_remove_if(apps, app_by_app_id, INT_TO_PTR(cmd->app_id));
+	if (!app) {
+		ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH,
+				HAL_OP_HEALTH_UNREG_APP, HAL_STATUS_INVALID);
+		return;
+	}
+
+	free_health_app(app);
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH,
+				HAL_OP_HEALTH_UNREG_APP, HAL_STATUS_SUCCESS);
 }
 
 static void bt_health_connect_channel(const void *buf, uint16_t len)
