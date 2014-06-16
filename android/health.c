@@ -732,6 +732,8 @@ static void bt_health_unregister_app(const void *buf, uint16_t len)
 		return;
 	}
 
+	send_app_reg_notify(app, HAL_HEALTH_APP_DEREG_SUCCESS);
+
 	if (record_id > 0) {
 		bt_adapter_remove_record(record_id);
 		record_id = 0;
