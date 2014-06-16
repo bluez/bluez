@@ -369,6 +369,8 @@ static sdp_data_t *sdp_xml_parse_url(const char *data)
 
 	url = sdp_xml_parse_string_decode(data,
 				SDP_XML_ENCODING_NORMAL, &length);
+	if (!url)
+		return NULL;
 
 	if (length > UCHAR_MAX)
 		dtd = SDP_URL_STR16;
@@ -388,6 +390,8 @@ static sdp_data_t *sdp_xml_parse_text(const char *data, char encoding)
 	sdp_data_t *ret;
 
 	text = sdp_xml_parse_string_decode(data, encoding, &length);
+	if (!text)
+		return NULL;
 
 	if (length > UCHAR_MAX)
 		dtd = SDP_TEXT_STR16;
