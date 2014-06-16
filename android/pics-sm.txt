@@ -25,7 +25,7 @@ Parameter Name	Selected	Description
 TSPC_SM_2_1	True		Authenticated MITM protection (O)
 TSPC_SM_2_2	True		Unauthenticated no MITM protection (C.1)
 TSPC_SM_2_3	True		No security requirements (M)
-TSPC_SM_2_4	True		OOB supported (O)
+TSPC_SM_2_4	False		OOB supported (O)
 -------------------------------------------------------------------------------
 C.1: If TSPC_SM_2_1 is supported then Mandatory, else Optional
 -------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_SM_4_1	True		Just Works (O)
 TSPC_SM_4_2	True		Passkey Entry (C.1)
-TSPC_SM_4_3	True		Out of Band (C.1)
+TSPC_SM_4_3	False		Out of Band (C.1)
 -------------------------------------------------------------------------------
 C.1: If TSPC_SM_2_1 is supported, at least one of these features shall be
 	supported.
