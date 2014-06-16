@@ -68,7 +68,6 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_cmd_health_reg_app *cmd = (void *) buf;
-	struct hal_cmd_health_mdep *mdep = (void *) buf;
 	struct hal_rsp_health_reg_app rsp;
 	size_t rsp_len = sizeof(rsp);
 	bt_status_t status;
@@ -123,6 +122,8 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 		return status;
 
 	for (i = 0; i < reg->number_of_mdeps; i++) {
+		struct hal_cmd_health_mdep *mdep = (void *) buf;
+
 		memset(buf, 0, IPC_MTU);
 		mdep->app_id = rsp.app_id;
 		mdep->role = reg->mdep_cfg[i].mdep_role;
