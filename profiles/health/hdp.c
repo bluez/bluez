@@ -863,7 +863,10 @@ static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 	chan->edata->echo_done = TRUE;
 
 	fd = g_io_channel_unix_get_fd(io_chan);
+
 	len = read(fd, buf, sizeof(buf));
+	if (len < 0)
+		goto fail;
 
 	if (send_echo_data(fd, buf, len)  >= 0)
 		return TRUE;
