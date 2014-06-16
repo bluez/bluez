@@ -5273,7 +5273,7 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 		}
 
 		data->filter_value = malloc0(search_vlen);
-		if (!data) {
+		if (!data->filter_value) {
 			destroy_pending_request(data);
 			queue_destroy(q, NULL);
 			return ATT_ECODE_INSUFF_RESOURCES;
