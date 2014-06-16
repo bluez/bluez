@@ -48,6 +48,18 @@ static struct ipc *hal_ipc = NULL;
 
 static void bt_health_register_app(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_health_reg_app *cmd = buf;
+
+	if (len != sizeof(*cmd) + cmd->len ||
+			cmd->app_name_off > cmd->provider_name_off ||
+			cmd->provider_name_off > cmd->service_name_off ||
+			cmd->service_name_off > cmd->service_descr_off ||
+			cmd->service_descr_off > cmd->len) {
+		error("health: Invalid register app command, terminating");
+		raise(SIGTERM);
+		return;
+	}
+
 	DBG("Not implemented");
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_REG_APP,
