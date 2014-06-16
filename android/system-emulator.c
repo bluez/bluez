@@ -47,14 +47,10 @@ static char exec_dir[PATH_MAX + 1];
 static pid_t daemon_pid = -1;
 static pid_t snoop_pid = -1;
 
-static void ctl_start(void)
+static void run_valgrind(char *prg_name)
 {
-	char prg_name[PATH_MAX + 1];
 	char *prg_argv[6];
 	char *prg_envp[3];
-	pid_t pid;
-
-	snprintf(prg_name, sizeof(prg_name), "%s/%s", exec_dir, "bluetoothd");
 
 	prg_argv[0] = "/usr/bin/valgrind";
 	prg_argv[1] = "--leak-check=full";
@@ -67,6 +63,30 @@ static void ctl_start(void)
 	prg_envp[1] = "G_DEBUG=gc-friendly";
 	prg_envp[2] = NULL;
 
+	execve(prg_argv[0], prg_argv, prg_envp);
+}
+
+static void run_bluetoothd(char *prg_name)
+{
+	char *prg_argv[3];
+	char *prg_envp[1];
+
+	prg_argv[0] = prg_name;
+	prg_argv[1] = "-d";
+	prg_argv[2] = NULL;
+
+	prg_envp[0] = NULL;
+
+	execve(prg_argv[0], prg_argv, prg_envp);
+}
+
+static void ctl_start(void)
+{
+	char prg_name[PATH_MAX + 1];
+	pid_t pid;
+
+	snprintf(prg_name, sizeof(prg_name), "%s/%s", exec_dir, "bluetoothd");
+
 	printf("Starting %s\n", prg_name);
 
 	pid = fork();
@@ -76,7 +96,10 @@ static void ctl_start(void)
 	}
 
 	if (pid == 0) {
-		execve(prg_argv[0], prg_argv, prg_envp);
+		run_valgrind(prg_name);
+
+		/* Fallback to no valgrind if running with valgind failed */
+		run_bluetoothd(prg_name);
 		exit(0);
 	}
 
