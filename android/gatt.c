@@ -3674,6 +3674,11 @@ static uint8_t test_read_write(bdaddr_t *bdaddr, bt_uuid_t *uuid, uint16_t op,
 	case ATT_OP_EXEC_WRITE_REQ:
 		length = enc_exec_write_req(u2, pdu, mtu);
 		break;
+	case ATT_OP_SIGNED_WRITE_CMD:
+		if (signed_write_cmd(dev, u2, (uint8_t *) &u3, sizeof(u3)))
+			return HAL_STATUS_SUCCESS;
+		else
+			return HAL_STATUS_FAILED;
 	default:
 		error("gatt: Unknown operation type");
 
