@@ -1505,8 +1505,8 @@ static gboolean check_echo(GIOChannel *io_chan, GIOCondition cond,
 	}
 
 	fd = g_io_channel_unix_get_fd(io_chan);
-	len = read(fd, buf, sizeof(buf));
 
+	len = read(fd, buf, sizeof(buf));
 	if (len != HDP_ECHO_LEN) {
 		value = FALSE;
 		goto end;
