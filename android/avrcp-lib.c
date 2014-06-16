@@ -569,18 +569,22 @@ static bool check_value(uint8_t attr, uint8_t number, const uint8_t *values)
 			if (values[i] < AVRCP_EQUALIZER_OFF ||
 						values[i] > AVRCP_EQUALIZER_ON)
 				return false;
+			break;
 		case AVRCP_ATTRIBUTE_REPEAT_MODE:
 			if (values[i] < AVRCP_REPEAT_MODE_OFF ||
 					values[i] > AVRCP_REPEAT_MODE_GROUP)
 				return false;
+			break;
 		case AVRCP_ATTRIBUTE_SHUFFLE:
 			if (values[i] < AVRCP_SHUFFLE_OFF ||
 					values[i] > AVRCP_SHUFFLE_GROUP)
 				return false;
+			break;
 		case AVRCP_ATTRIBUTE_SCAN:
 			if (values[i] < AVRCP_SCAN_OFF ||
 					values[i] > AVRCP_SCAN_GROUP)
 				return false;
+			break;
 		}
 	}
 
