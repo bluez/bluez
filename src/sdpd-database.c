@@ -157,6 +157,12 @@ static int compare_indices(const void *i1, const void *i2)
 void sdp_svcdb_set_collectable(sdp_record_t *record, int sock)
 {
 	sdp_indexed_t *item = malloc(sizeof(sdp_indexed_t));
+
+	if (!item) {
+		SDPDBG("No memory");
+		return;
+	}
+
 	item->sock = sock;
 	item->record = record;
 	socket_index = sdp_list_insert_sorted(socket_index, item, compare_indices);
