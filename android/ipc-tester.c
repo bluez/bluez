@@ -279,7 +279,8 @@ static void emulator(int pipe, int hci_index)
 
 failed:
 	close(pipe);
-	close(fd);
+	if (fd >= 0)
+		close(fd);
 }
 
 static int accept_connection(int sk)
