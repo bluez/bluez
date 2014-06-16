@@ -105,6 +105,19 @@ static void free_health_app(void *data)
 	free(app);
 }
 
+static void send_app_reg_notify(struct health_app *app, uint8_t state)
+{
+	struct hal_ev_health_app_reg_state ev;
+
+	DBG("");
+
+	ev.id = app->id;
+	ev.state = state;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HEALTH,
+				HAL_EV_HEALTH_APP_REG_STATE, sizeof(ev), &ev);
+}
+
 static bool mdep_by_mdep_role(const void *data, const void *user_data)
 {
 	const struct mdep_cfg *mdep = data;
@@ -686,6 +699,8 @@ static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
 		status = HAL_STATUS_FAILED;
 		goto fail;
 	}
+
+	send_app_reg_notify(app, HAL_HEALTH_APP_REG_SUCCESS);
 
 send_rsp:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_MDEP,
