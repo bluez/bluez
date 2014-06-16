@@ -143,7 +143,6 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 
 		if (status != BT_STATUS_SUCCESS)
 			return status;
-
 	}
 
 	*app_id = rsp.app_id;
