@@ -93,23 +93,23 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 	memcpy(cmd->data, reg->application_name, len);
 	off += len;
 
+	cmd->provider_name_off = off;
 	if (reg->provider_name) {
 		len = strlen(reg->provider_name) + 1;
-		cmd->provider_name_off = off;
 		memcpy(cmd->data + off, reg->provider_name, len);
 		off += len;
 	}
 
+	cmd->service_name_off = off;
 	if (reg->srv_name) {
 		len = strlen(reg->srv_name) + 1;
-		cmd->service_name_off = off;
 		memcpy(cmd->data + off, reg->srv_name, len);
 		off += len;
 	}
 
+	cmd->service_descr_off = off;
 	if (reg->srv_desp) {
 		len = strlen(reg->srv_desp) + 1;
-		cmd->service_descr_off = off;
 		memcpy(cmd->data + off, reg->srv_desp, len);
 		off += len;
 	}
