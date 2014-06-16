@@ -95,10 +95,8 @@ static struct gatt_db_attribute *new_attribute(const bt_uuid_t *type,
 	return attribute;
 }
 
-static void attribute_destroy(void *data)
+static void attribute_destroy(struct gatt_db_attribute *attribute)
 {
-	struct gatt_db_attribute *attribute = data;
-
 	/* Attribute was not initialized by user */
 	if (!attribute)
 		return;
