@@ -796,6 +796,12 @@ static void update_le_state(struct device *dev, bool pairing, bool paired,
 	} else if (!paired && !dev->bredr_paired) {
 		bonded_devices = g_slist_remove(bonded_devices, dev);
 		remove_device_info(dev, DEVICES_FILE);
+		dev->valid_local_csrk = false;
+		dev->valid_remote_csrk = false;
+		dev->local_sign_cnt = 0;
+		dev->remote_sign_cnt = 0;
+		memset(dev->local_csrk, 0, sizeof(dev->local_csrk));
+		memset(dev->remote_csrk, 0, sizeof(dev->remote_csrk));
 		cache_device(dev);
 	}
 
