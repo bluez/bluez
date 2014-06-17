@@ -1992,6 +1992,9 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
+	update_device_state(dev, ev->key.addr.type, HAL_STATUS_SUCCESS, false,
+							true, !!ev->store_hint);
+
 	if (ev->store_hint)
 		store_csrk(dev);
 }
