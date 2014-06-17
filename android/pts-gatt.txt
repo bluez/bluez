@@ -1172,7 +1172,7 @@ TC_GPA_SR_BV_11_C	PASS	haltest:
 				gatts start_service
 				gatts send_response: repeat with correct offset
 								and data
-TC_GPA_SR_BV_12_C	PASS	For this test use build from PTS issue #12262
+TC_GPA_SR_BV_12_C	PASS	PTS issue #12262
 				haltest:
 				gatts add_service
 				gatts add_chaaracteristic:

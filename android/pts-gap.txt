@@ -217,7 +217,7 @@ TC_SEC_AUT_BV_18_C	PASS	haltest: gattc register_client
 				bluetooth create_bond
 				gattc read_characteristic
 TC_SEC_AUT_BV_19_C	PASS
-TC_SEC_AUT_BV_20_C	INC	PTS issue [ID:12284]
+TC_SEC_AUT_BV_20_C	INC	PTS issue #12284
 TC_SEC_AUT_BV_21_C	PASS	haltest: gattc register_client
 				gattc connect
 				bluetooth create_bond

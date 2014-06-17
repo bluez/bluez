@@ -28,9 +28,9 @@ TC_CLIENT_BCP_BV_03_I   N/A
 TC_CLIENT_BCP_BV_04_I   N/A
 TC_CLIENT_BCP_BV_05_I   N/A
 TC_CLIENT_CON_BV_01_C	N/A
-TC_CLIENT_OPH_BI_01_C	PASS	PTS issue: ID: 12081 (bluetooth.org)
+TC_CLIENT_OPH_BI_01_C	PASS	PTS issue #12081
 				ETS-12081 required
-TC_CLIENT_OPH_BV_01_I	PASS	PTS issue: ID: 12081.
+TC_CLIENT_OPH_BV_01_I	PASS	PTS issue #12081
 				ETS-12160 required
 TC_CLIENT_OPH_BV_02_I	N/A
 TC_CLIENT_OPH_BV_03_I	PASS	ETS-12081 required (bluetooth.org)
@@ -48,10 +48,13 @@ TC_CLIENT_OPH_BV_15_I	N/A
 TC_CLIENT_OPH_BV_16_I	N/A
 TC_CLIENT_OPH_BV_17_I	N/A
 TC_CLIENT_OPH_BV_18_I	N/A
-TC_CLIENT_OPH_BV_19_I	PASS	ETS-12081 required
+TC_CLIENT_OPH_BV_19_I	PASS	PTS issue #12081
+				ETS-12081 required
 TC_CLIENT_OPH_BV_20_I	PASS
-TC_CLIENT_OPH_BV_22_I	PASS	ETS-12081 required
-TC_CLIENT_OPH_BV_23_I	PASS	ETS-12081 required
+TC_CLIENT_OPH_BV_22_I	PASS	PTS issue #12081
+				ETS-12081 required
+TC_CLIENT_OPH_BV_23_I	PASS	PTS issue #12081
+				ETS-12081 required
 TC_CLIENT_OPH_BV_24_I	N/A
 TC_CLIENT_OPH_BV_25_I	N/A
 TC_CLIENT_OPH_BV_26_I	N/A
@@ -73,43 +76,53 @@ TC_SERVER_BCE_BV_05_I	N/A
 TC_SERVER_BCE_BV_06_I	N/A
 TC_SERVER_BCE_BV_07_I	N/A
 TC_SERVER_BCP_BV_01_I	N/A
-TC_SERVER_BCP_BV_02_I	PASS	ETS-12081 required (bluetooth.org)
+TC_SERVER_BCP_BV_02_I	PASS	PTS issue #12081
+				ETS-12081 required
 TC_SERVER_BCP_BV_03_I	N/A
 TC_SERVER_BCP_BV_04_I	N/A
 TC_SERVER_BCP_BV_05_I	N/A
 TC_SERVER_CON_BV_02_C	N/A
 TC_SERVER_OPH_BV_01_I	PASS
 TC_SERVER_OPH_BV_02_I	PASS
-TC_SERVER_OPH_BV_03_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_03_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode. Tester must
 					accept incoming file
-TC_SERVER_OPH_BV_04_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_04_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode. Tester must
 					accept incoming file
-TC_SERVER_OPH_BV_05_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_05_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode. Tester must
 					reject incoming file
 TC_SERVER_OPH_BV_07_I	N/A
 TC_SERVER_OPH_BV_08_I	N/A
 TC_SERVER_OPH_BV_09_I	N/A
-TC_SERVER_OPH_BV_10_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_10_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode
 TC_SERVER_OPH_BV_11_I	N/A
 TC_SERVER_OPH_BV_12_I	N/A
 TC_SERVER_OPH_BV_13_I	N/A
-TC_SERVER_OPH_BV_14_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_14_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode
 TC_SERVER_OPH_BV_15_I	N/A
 TC_SERVER_OPH_BV_16_I	N/A
 TC_SERVER_OPH_BV_17_I	N/A
-TC_SERVER_OPH_BV_18_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_18_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode
-TC_SERVER_OPH_BV_19_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_19_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode
 TC_SERVER_OPH_BV_21_I	N/A
-TC_SERVER_OPH_BV_22_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_22_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode
-TC_SERVER_OPH_BV_23_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_23_I	PASS	PTS issue #12081
+				ETS-12081 required
 				IUT must be in the connectable mode
 TC_SERVER_OPH_BV_24_I	N/A
 TC_SERVER_OPH_BV_25_I	N/A
@@ -129,5 +142,6 @@ TC_SERVER_OPH_BV_30_I	N/A
 TC_SERVER_OPH_BV_31_I	N/A
 TC_SERVER_OPH_BV_32_I	N/A
 TC_SERVER_OPH_BV_33_I	N/A
-TC_SERVER_OPH_BV_34_I	PASS	ETS-12081 required
+TC_SERVER_OPH_BV_34_I	PASS	PTS issue #12081
+				ETS-12081 required
 -------------------------------------------------------------------------------
