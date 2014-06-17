@@ -465,7 +465,6 @@ static void free_hdp_list(void *list)
 	sdp_list_t *hdp_list = list;
 
 	sdp_list_free(hdp_list, (sdp_free_func_t)sdp_data_free);
-	hdp_list = NULL;
 }
 
 static void register_features(void *data, void *user_data)
