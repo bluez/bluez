@@ -2766,7 +2766,7 @@ int device_addr_type_cmp(gconstpointer a, gconstpointer b)
 	}
 
 	if (!dev->le)
-	       return -1;
+		return -1;
 
 	if (addr->bdaddr_type != dev->bdaddr_type)
 		return -1;
