@@ -217,8 +217,11 @@ TC_SEC_AUT_BV_18_C	PASS	haltest: gattc register_client
 				bluetooth create_bond
 				gattc read_characteristic
 TC_SEC_AUT_BV_19_C	PASS
-TC_SEC_AUT_BV_20_C	INC	Link security level elevation - not implemented
-TC_SEC_AUT_BV_21_C	INC	Link security level elevation - not implemented
+TC_SEC_AUT_BV_20_C	INC	PTS issue [ID:12284]
+TC_SEC_AUT_BV_21_C	PASS	haltest: gattc register_client
+				gattc connect
+				bluetooth create_bond
+				gattc connect
 TC_SEC_AUT_BV_22_C	INC	Link security level elevation - not implemented
 TC_SEC_AUT_BV_23_C	PASS	haltest: gatts register_server
 				gatts add_service 2 <uuid> 3
