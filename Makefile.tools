@@ -279,7 +279,7 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/hcieventmask tools/hcisecfilter \
 			tools/btmgmt tools/btinfo tools/btattach \
 			tools/btsnoop tools/btproxy tools/btiotest \
-			tools/mpris-player tools/cltest tools/seq2bseq \
+			tools/mpris-proxy tools/cltest tools/seq2bseq \
 			tools/hex2hcd tools/ibeacon
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
@@ -336,8 +336,8 @@ tools_btproxy_SOURCES = tools/btproxy.c monitor/bt.h \
 tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
 tools_btiotest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-tools_mpris_player_SOURCES = tools/mpris-player.c
-tools_mpris_player_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
+tools_mpris_proxy_SOURCES = tools/mpris-proxy.c
+tools_mpris_proxy_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_cltest_SOURCES = tools/cltest.c monitor/mainloop.h monitor/mainloop.c
 tools_cltest_LDADD = lib/libbluetooth-internal.la
