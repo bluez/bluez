@@ -47,7 +47,7 @@ TSPC_HDP_2_7	True (*)	Supports General Inquiry (C.5) (C.4)
 TSPC_HDP_2_8	True		Supports Acceptance of Bonding requests (M)
 TSPC_HDP_2_9	True (*)	Supports Initiation of Bonding (O)
 TSPC_HDP_2_10	True (*)	Supports Extended Inquiry Response (C.7)
-TSPC_HDP_2_11	True (*)	Supports use of Health Class of Device (O)
+TSPC_HDP_2_11	False		Supports use of Health Class of Device (O)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_HDP_2_9 is supported, otherwise Optional.
 C.2: Mandatory if Security Mode 2, 3, or 4 is supported, otherwise Optional.
@@ -189,9 +189,9 @@ TSPC_HDP_8_5	True		Supports Acceptance of Encryption request (M)
 TSPC_HDP_8_6	True		Supports Initiation of Encryption (M) (C.3)
 TSPC_HDP_8_7	True		Supports General Inquiry (M) C.4)
 TSPC_HDP_8_8	True		Supports Acceptance of Bonding requests (M)
-TSPC_HDP_8_9	Ture (*)	Supports Initiation of Bonding (O)
+TSPC_HDP_8_9	True (*)	Supports Initiation of Bonding (O)
 TSPC_HDP_8_10	True (*)	Supports Extended Inquiry Response (C.5) (C.6)
-TSPC_HDP_8_11	True (*)	Supports use of Health Class of Device (O)
+TSPC_HDP_8_11	False		Supports use of Health Class of Device (O)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_HDP_8_9 is supported, otherwise Optional.
 C.2: Mandatory if Security Mode 2, 3, or 4 is supported, otherwise Optional.
