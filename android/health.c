@@ -52,6 +52,10 @@
 #define HDP_VERSION			0x0101
 #define DATA_EXCHANGE_SPEC_11073	0x01
 
+#define CHANNEL_TYPE_ANY       0x00
+#define CHANNEL_TYPE_RELIABLE  0x01
+#define CHANNEL_TYPE_STREAM    0x02
+
 static bdaddr_t adapter_addr;
 static struct ipc *hal_ipc = NULL;
 static struct queue *apps = NULL;
@@ -639,6 +643,18 @@ fail:
 							HAL_STATUS_FAILED);
 }
 
+static uint8_t android2channel_type(uint8_t type)
+{
+	switch (type) {
+	case HAL_HEALTH_CHANNEL_TYPE_RELIABLE:
+		return CHANNEL_TYPE_RELIABLE;
+	case HAL_HEALTH_CHANNEL_TYPE_STREAMING:
+		return CHANNEL_TYPE_STREAM;
+	default:
+		return CHANNEL_TYPE_ANY;
+	}
+}
+
 static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_health_mdep *cmd = buf;
@@ -662,7 +678,7 @@ static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
 
 	mdep->role = cmd->role;
 	mdep->data_type = cmd->data_type;
-	mdep->channel_type = cmd->channel_type;
+	mdep->channel_type = android2channel_type(cmd->channel_type);
 	mdep->id = queue_length(app->mdeps) + 1;
 
 	if (cmd->descr_len > 0) {
