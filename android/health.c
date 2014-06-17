@@ -1102,7 +1102,7 @@ static struct health_device *create_device(uint16_t app_id,
 	if (!dev)
 		return NULL;
 
-	android2bdaddr(&addr, &dev->dst);
+	android2bdaddr(addr, &dev->dst);
 	dev->app_id = app_id;
 
 	return dev;
