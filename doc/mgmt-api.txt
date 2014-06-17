@@ -915,9 +915,18 @@ Set IO Capability Command
 	Return Parameters:
 
 	This command is used to set the IO Capability used for pairing.
-	The command accepts both SSP and SMP values. The KeyboardDisplay
-	SMP value (which doesn't exist for SSP will) automatically be
-	downgraded to DisplayYesNo by the kernel for SSP pairing events.
+	The command accepts both SSP and SMP values.
+
+	Possible values for the IO_Capability parameter:
+		0	DisplayOnly
+		1	DisplayYesNo
+		2	KeyboardOnly
+		3	NoInputNoOutput
+		4	KeyboardDisplay
+
+	Passing a value 4 (KeyboardDisplay) will cause the kernel to
+	convert it to 1 (DisplayYesNo) in the case of a BR/EDR
+	connection (as KeyboardDisplay is specific to SMP).
 
 	This command can be used when the controller is not powered.
 
@@ -948,6 +957,17 @@ Pair Device Command
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
+
+	Possible values for the IO_Capability parameter:
+		0	DisplayOnly
+		1	DisplayYesNo
+		2	KeyboardOnly
+		3	NoInputNoOutput
+		4	KeyboardDisplay
+
+	Passing a value 4 (KeyboardDisplay) will cause the kernel to
+	convert it to 1 (DisplayYesNo) in the case of a BR/EDR
+	connection (as KeyboardDisplay is specific to SMP).
 
 	The Address and Address_Type of the return parameters will
 	return the identity address if know. In case of resolvable
