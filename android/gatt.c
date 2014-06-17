@@ -2715,6 +2715,22 @@ static void read_char_cb(guint8 status, const guint8 *pdu, guint16 len,
 	free(data);
 }
 
+static int get_sec_level(struct gatt_device *dev)
+{
+	GIOChannel *io;
+	int sec_level;
+
+	io = g_attrib_get_channel(dev->attrib);
+
+	if (!bt_io_get(io, NULL, BT_IO_OPT_SEC_LEVEL, &sec_level,
+							BT_IO_OPT_INVALID)) {
+		error("gatt: Failed to get sec_level");
+		return -1;
+	}
+
+	return sec_level;
+}
+
 static void handle_client_read_characteristic(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_read_characteristic *cmd = buf;
@@ -2833,22 +2849,6 @@ static bool signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK);
 
 	return true;
-}
-
-static int get_sec_level(struct gatt_device *dev)
-{
-	GIOChannel *io;
-	int sec_level;
-
-	io = g_attrib_get_channel(dev->attrib);
-
-	if (!bt_io_get(io, NULL, BT_IO_OPT_SEC_LEVEL, &sec_level,
-							BT_IO_OPT_INVALID)) {
-		error("gatt: Failed to get sec_level");
-		return -1;
-	}
-
-	return sec_level;
 }
 
 static void handle_client_write_characteristic(const void *buf, uint16_t len)
