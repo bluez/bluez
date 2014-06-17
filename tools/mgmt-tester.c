@@ -2213,6 +2213,15 @@ static const struct generic_data load_ltks_invalid_params_test_3 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const char set_io_cap_invalid_param_1[] = { 0xff };
+
+static const struct generic_data set_io_cap_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_IO_CAPABILITY,
+	.send_param = set_io_cap_invalid_param_1,
+	.send_len = sizeof(set_io_cap_invalid_param_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const char pair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char pair_device_rsp[] = {
@@ -2221,6 +2230,10 @@ static const char pair_device_invalid_param_1[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff, 0x00 };
 static const char pair_device_invalid_param_rsp_1[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff };
+static const char pair_device_invalid_param_2[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x05 };
+static const char pair_device_invalid_param_rsp_2[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00 };
 
 static const struct generic_data pair_device_not_powered_test_1 = {
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -2238,6 +2251,15 @@ static const struct generic_data pair_device_invalid_param_test_1 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 	.expect_param = pair_device_invalid_param_rsp_1,
 	.expect_len = sizeof(pair_device_invalid_param_rsp_1),
+};
+
+static const struct generic_data pair_device_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_param = pair_device_invalid_param_2,
+	.send_len = sizeof(pair_device_invalid_param_2),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = pair_device_invalid_param_rsp_2,
+	.expect_len = sizeof(pair_device_invalid_param_rsp_2),
 };
 
 static const void *pair_device_send_param_func(uint16_t *len)
@@ -4027,11 +4049,18 @@ int main(int argc, char *argv[])
 				&load_ltks_invalid_params_test_3,
 				NULL, test_command_generic);
 
+	test_bredrle("Set IO Capability - Invalid Params 1",
+				&set_io_cap_invalid_param_test_1,
+				NULL, test_command_generic);
+
 	test_bredrle("Pair Device - Not Powered 1",
 				&pair_device_not_powered_test_1,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Invalid Parameters 1",
 				&pair_device_invalid_param_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - Invalid Parameters 2",
+				&pair_device_invalid_param_test_2,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Legacy Success 1",
 				&pair_device_success_test_1,
