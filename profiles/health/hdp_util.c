@@ -652,6 +652,8 @@ static gboolean register_service_sup_features(GSList *app_list,
 		return FALSE;
 	}
 
+	sdp_list_free(sup_features, free_hdp_list);
+
 	return TRUE;
 }
 
