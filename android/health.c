@@ -345,7 +345,7 @@ static int register_service_additional_protocols(sdp_record_t *rec,
 	sdp_list_t *access_proto_list = NULL;
 	sdp_data_t *psm = NULL;
 	uint32_t dcpsm;
-	GError *err;
+	GError *err = NULL;
 
 	DBG("");
 
