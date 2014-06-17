@@ -1093,8 +1093,7 @@ static int connect_mcl(struct health_channel *channel)
 						search_cb, channel, NULL, 0);
 }
 
-static struct health_device *create_device(uint16_t app_id,
-						const uint8_t addr[])
+static struct health_device *create_device(uint16_t app_id, const uint8_t *addr)
 {
 	struct health_device *dev;
 
