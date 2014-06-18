@@ -360,6 +360,7 @@ static sdp_record_t *create_app_record(uint8_t chan,
 	uuid_t uuid;
 
 	sdp_uuid128_create(&uuid, app_uuid);
+	sdp_uuid128_to_uuid(&uuid);
 
 	record = create_rfcomm_record(chan, &uuid, svc_name, false);
 	if (!record)
