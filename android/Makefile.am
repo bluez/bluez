@@ -288,4 +288,5 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pts-hdp.txt \
 				android/pts-mcap.txt \
 				android/pts-mps.txt \
-				android/pts-sm.txt
+				android/pts-sm.txt \
+				android/pts-hogp.txt
