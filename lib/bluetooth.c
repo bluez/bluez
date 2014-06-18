@@ -336,7 +336,7 @@ const char *bt_compidtostr(int compid)
 	case 36:
 		return "Alcatel";
 	case 37:
-		return "Philips Semiconductors";
+		return "NXP Semiconductors (formerly Philips Semiconductors)";
 	case 38:
 		return "C Technologies";
 	case 39:
@@ -542,7 +542,7 @@ const char *bt_compidtostr(int compid)
 	case 139:
 		return "Topcorn Positioning Systems, LLC";
 	case 140:
-		return "Qualcomm Retail Solutions, Inc. (formerly Qualcomm Labs, Inc.)";
+		return "Gimbal Inc. (formerly Qualcomm Labs, Inc. and Qualcomm Retail Solutions, Inc.)";
 	case 141:
 		return "Zscan Software";
 	case 142:
@@ -928,11 +928,35 @@ const char *bt_compidtostr(int compid)
 	case 332:
 		return "Mesh-Net Ltd";
 	case 333:
-		return "HUIZHOU DESAY SV AUTOMOTIVE CO., LTD.";
+		return "Huizhou Desay SV Automotive CO., LTD.";
 	case 334:
 		return "Tangerine, Inc.";
 	case 335:
 		return "B&W Group Ltd.";
+	case 336:
+		return "Pioneer Corporation";
+	case 337:
+		return "OnBeep";
+	case 338:
+		return "Vernier Software & Technology";
+	case 339:
+		return "ROL Ergo";
+	case 340:
+		return "Pebble Technology";
+	case 341:
+		return "NETATMO";
+	case 342:
+		return "Accumulate AB";
+	case 343:
+		return "Anhui Huami Information Technology Co., Ltd.";
+	case 344:
+		return "Inmite s.r.o.";
+	case 345:
+		return "ChefSteps, Inc.";
+	case 346:
+		return "micus AG";
+	case 347:
+		return "Biomedical Research Ltd.";
 	case 65535:
 		return "internal use";
 	default:
