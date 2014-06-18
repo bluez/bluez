@@ -3859,8 +3859,9 @@ static void handle_server_register(const void *buf, uint16_t len)
 	if (app) {
 		ev.server_if = app->id;
 		ev.status = GATT_SUCCESS;
-	} else
+	} else {
 		ev.status = GATT_FAILURE;
+	}
 
 	memcpy(ev.uuid, cmd->uuid, sizeof(ev.uuid));
 
