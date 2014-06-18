@@ -3762,6 +3762,20 @@ static uint8_t test_read_write(bdaddr_t *bdaddr, bt_uuid_t *uuid, uint16_t op,
 	return HAL_STATUS_SUCCESS;
 }
 
+static uint8_t test_increase_security(bdaddr_t *bdaddr, uint16_t u1)
+{
+	struct gatt_device *device;
+
+	device = find_device_by_addr(bdaddr);
+	if (!device)
+		return HAL_STATUS_FAILED;
+
+	if (!set_security(device, u1))
+		return HAL_STATUS_FAILED;
+
+	return HAL_STATUS_SUCCESS;
+}
+
 static void handle_client_test_command(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_test_command *cmd = buf;
@@ -3812,6 +3826,9 @@ static void handle_client_test_command(const void *buf, uint16_t len)
 	case GATT_CLIENT_TEST_CMD_WRITE:
 		status = test_read_write(&bdaddr, &uuid, cmd->u1, cmd->u2,
 						cmd->u3, cmd->u4, cmd->u5);
+		break;
+	case GATT_CLIENT_TEST_CMD_INCREASE_SECURITY:
+		status = test_increase_security(&bdaddr, cmd->u1);
 		break;
 	case GATT_CLIENT_TEST_CMD_PAIRING_CONFIG:
 	default:
