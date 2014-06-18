@@ -431,6 +431,14 @@ Methods		void Select(string location, string phonebook)
 			Possible errors: org.bluez.obex.Error.Forbidden
 					 org.bluez.obex.Error.Failed
 
+		uint16, uint16 GetVersion()
+
+			Return the primary and secondary folder version counters
+			for the selected phonebook.
+
+			Possible errors: org.bluez.obex.Error.Forbidden
+					 org.bluez.obex.Error.Failed
+
 		array{string} ListFilterFields()
 
 			Return All Available fields that can be used in Fields
@@ -464,6 +472,30 @@ Filter:		string Format:
 			Item vcard fields, default is all values.
 
 			Possible values can be query with ListFilterFields.
+
+		array{string} FilterBy:
+
+			Filter items by fields. Default do not filter by
+			fields.
+
+			Possible values can be query with ListFilterFields
+			excluding the first item that must be either '&' or
+			'|' that apply AND or OR logic respectively.
+
+		bool ResetNewMissedCalls
+
+			Reset new the missed calls items, shall only be used
+			for folders mch and cch.
+
+Properties	string Folder [readonly]
+
+			Current folder.
+
+		string DatabaseIdentifier [readonly]
+
+			128 bits persistent identifier.
+
+			Value '0' shall be considered as not supported.
 
 
 Synchronization hierarchy
