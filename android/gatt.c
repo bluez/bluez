@@ -2731,6 +2731,49 @@ static int get_sec_level(struct gatt_device *dev)
 	return sec_level;
 }
 
+static bool set_security(struct gatt_device *device, int auth_type)
+{
+	int req_sec_level, sec_level;
+	GError *gerr = NULL;
+	GIOChannel *io;
+
+	switch (auth_type) {
+	case HAL_GATT_AUTHENTICATION_MITM:
+		req_sec_level = BT_SECURITY_HIGH;
+		break;
+	case HAL_GATT_AUTHENTICATION_NO_MITM:
+		req_sec_level = BT_SECURITY_MEDIUM;
+		break;
+	case HAL_GATT_AUTHENTICATION_NONE:
+		req_sec_level = BT_SECURITY_LOW;
+		break;
+	default:
+		error("gatt: Invalid auth_type value: %d", auth_type);
+		return false;
+	}
+
+	sec_level = get_sec_level(device);
+	if (sec_level < 0)
+		return false;
+
+	if (req_sec_level <= sec_level)
+		return true;
+
+	io = g_attrib_get_channel(device->attrib);
+	if (!io)
+		return false;
+
+	bt_io_set(io, &gerr, BT_IO_OPT_SEC_LEVEL, req_sec_level,
+							BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("gatt: Failed to set security level: %s", gerr->message);
+		g_error_free(gerr);
+		return false;
+	}
+
+	return true;
+}
+
 static void handle_client_read_characteristic(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_read_characteristic *cmd = buf;
@@ -2768,6 +2811,13 @@ static void handle_client_read_characteristic(const void *buf, uint16_t len)
 	if (!cb_data) {
 		error("gatt: Cannot allocate cb data");
 		status = HAL_STATUS_NOMEM;
+		goto failed;
+	}
+
+	if (!set_security(conn->device, cmd->auth_req)) {
+		error("gatt: Failed to set security %d", cmd->auth_req);
+		status = HAL_STATUS_FAILED;
+		free(cb_data);
 		goto failed;
 	}
 
@@ -2896,6 +2946,12 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 			status = HAL_STATUS_NOMEM;
 			goto failed;
 		}
+	}
+
+	if (!set_security(conn->device, cmd->auth_req)) {
+		error("gatt: Failed to set security %d", cmd->auth_req);
+		status = HAL_STATUS_FAILED;
+		goto failed;
 	}
 
 	switch (cmd->write_type) {
@@ -3099,6 +3155,13 @@ static void handle_client_read_descriptor(const void *buf, uint16_t len)
 		goto failed;
 	}
 
+	if (!set_security(conn->device, cmd->auth_req)) {
+		error("gatt: Failed to set security %d", cmd->auth_req);
+		status = HAL_STATUS_FAILED;
+		free(cb_data);
+		goto failed;
+	}
+
 	if (!gatt_read_char(conn->device->attrib, descr->handle, read_desc_cb,
 								cb_data)) {
 		free(cb_data);
@@ -3222,6 +3285,12 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 			status = HAL_STATUS_NOMEM;
 			goto failed;
 		}
+	}
+
+	if (!set_security(conn->device, cmd->auth_req)) {
+		error("gatt: Failed to set security %d", cmd->auth_req);
+		status = HAL_STATUS_FAILED;
+		goto failed;
 	}
 
 	switch (cmd->write_type) {
