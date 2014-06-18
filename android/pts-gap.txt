@@ -222,7 +222,10 @@ TC_SEC_AUT_BV_21_C	PASS	haltest: gattc register_client
 				gattc connect
 				bluetooth create_bond
 				gattc connect
-TC_SEC_AUT_BV_22_C	INC	Link security level elevation - not implemented
+TC_SEC_AUT_BV_22_C	PASS	btmgmt io-cap 3
+				haltest: gattc register_client
+				gattc listen
+				gattc test_command 226 <addr> <u1> 1
 TC_SEC_AUT_BV_23_C	PASS	haltest: gatts register_server
 				gatts add_service 2 <uuid> 3
 				gatts add_characteristic 2 <service_handle>
@@ -273,8 +276,25 @@ TC_SEC_CSIGN_BI_02_C	PASS	haltest:
 				gatts start_service
 				gatts disconnect
 				gattc disconnect
-TC_SEC_CSIGN_BI_03_C	INC	Link security level elevation - not implemented
-TC_SEC_CSIGN_BI_04_C	INC	Link security level elevation - not implemented
+TC_SEC_CSIGN_BI_03_C	PASS	haltest:
+				gatts add_service
+				gatts add_characteristic:
+						<properties> 64
+						<permissions> 128
+				gatts start_service
+				gattc listen
+				bluetooth ssp_reply
+				gatts disconnect
+				bluetooth remove_bond
+TC_SEC_CSIGN_BI_04_C	PASS	haltest:
+				gatts add_service
+				gatts add_characteristic:
+						<properties> 64
+						<permissions> 256
+				gatts start_service
+				gattc listen
+				bluetooth ssp_reply
+				gatts disconnect
 TC_PRIV_CONN_BV_01_C	INC	Privacy feature - not implemented
 TC_PRIV_CONN_BV_02_C	INC	Privacy feature - not implemented
 TC_PRIV_CONN_BV_03_C	INC	Privacy feature - not implemented
