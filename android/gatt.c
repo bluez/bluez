@@ -1245,11 +1245,15 @@ static void discover_primary_cb(uint8_t status, GSList *services,
 	if (status) {
 		error("gatt: Discover all primary services failed: %s",
 							att_ecode2str(status));
+		free(cb_data);
+
 		return;
 	}
 
 	if (!services) {
 		info("gatt: No primary services found");
+		free(cb_data);
+
 		return;
 	}
 
