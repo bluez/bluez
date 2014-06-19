@@ -275,7 +275,7 @@ static void emulator(int pipe, int hci_index)
 
 	close(pipe);
 	close(fd);
-	bluetoothd_start(hci_index);
+	return bluetoothd_start(hci_index);
 
 failed:
 	close(pipe);
