@@ -5325,11 +5325,6 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 
 	}
 
-	if (!adl) {
-		queue_destroy(q, NULL);
-		return ATT_ECODE_INSUFF_RESOURCES;
-	}
-
 	len = enc_find_info_resp(ATT_FIND_INFO_RESP_FMT_16BIT, adl, rsp,
 								rsp_size);
 	if (!len)
