@@ -1135,7 +1135,7 @@ static gboolean get_position(const GDBusPropertyTable *property,
 
 	dbus_message_iter_get_basic(&var, &position);
 
-	value = position * 1000;
+	value = position * 1000ll;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_INT64, &value);
 
@@ -1195,7 +1195,7 @@ static gboolean parse_int64_metadata(DBusMessageIter *iter, const char *key,
 
 	dbus_message_iter_get_basic(iter, &duration);
 
-	value = duration * 1000;
+	value = duration * 1000ll;
 
 	dict_append_entry(metadata, key, DBUS_TYPE_INT64, &value);
 
@@ -2412,7 +2412,7 @@ static void player_property_changed(GDBusProxy *proxy, const char *name,
 
 	dbus_message_iter_get_basic(iter, &position);
 
-	value = position * 1000;
+	value = position * 1000ll;
 
 	g_dbus_emit_signal(player->conn, MPRIS_PLAYER_PATH,
 					MPRIS_PLAYER_INTERFACE, "Seeked",
