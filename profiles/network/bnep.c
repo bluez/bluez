@@ -556,7 +556,7 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 int bnep_server_add(int sk, uint16_t dst, char *bridge, char *iface,
 						const bdaddr_t *addr)
 {
-	if (!bridge || !bridge || !iface || !addr)
+	if (!bridge || !iface || !addr)
 		return -EINVAL;
 
 	if (bnep_connadd(sk, dst, iface) < 0) {
