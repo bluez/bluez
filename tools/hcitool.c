@@ -363,6 +363,7 @@ static char *get_minor_device_name(int major, int minor)
 		}
 		if (strlen(cls_str) > 0)
 			return cls_str;
+		break;
 	}
 	case 6:	/* imaging */
 		if (minor & 4)
