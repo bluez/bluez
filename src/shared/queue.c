@@ -234,7 +234,7 @@ void *queue_find(struct queue *queue, queue_match_func_t function,
 {
 	struct queue_entry *entry;
 
-	if (!queue || !function)
+	if (!queue)
 		return NULL;
 
 	if (!function)
