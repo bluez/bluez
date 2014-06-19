@@ -5708,7 +5708,7 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 		 * registered for this indication, event will be send in
 		 * handle_notification
 		 */
-		resp_length = enc_confirmation(opdu, sizeof(opdu));
+		resp_length = enc_confirmation(opdu, length);
 		status = 0;
 		break;
 	case ATT_OP_HANDLE_NOTIFY:
