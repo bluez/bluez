@@ -2637,8 +2637,6 @@ static struct mgmt_link_key_info *get_key_info(GKeyFile *key_file,
 
 	str2ba(peer, &info->addr.bdaddr);
 
-	info->addr.type = g_key_file_get_integer(key_file, peer, "Type", NULL);
-
 	for (i = 0; i < sizeof(info->val); i++)
 		sscanf(str + (i * 2), "%02hhX", &info->val[i]);
 
@@ -2675,7 +2673,8 @@ static struct mgmt_ltk_info *get_ltk_info(GKeyFile *key_file, const char *peer,
 
 	str2ba(peer, &info->addr.bdaddr);
 
-	info->addr.type = g_key_file_get_integer(key_file, peer, "Type", NULL);
+	info->addr.type = g_key_file_get_integer(key_file, peer, "AddressType",
+									NULL);
 
 	for (i = 0; i < sizeof(info->val); i++)
 		sscanf(key + (i * 2), "%02hhX", &info->val[i]);
@@ -2714,7 +2713,8 @@ static struct mgmt_irk_info *get_irk_info(GKeyFile *key_file, const char *peer)
 
 	str2ba(peer, &info->addr.bdaddr);
 
-	info->addr.type = g_key_file_get_integer(key_file, peer, "Type", NULL);
+	info->addr.type = g_key_file_get_integer(key_file, peer, "AddressType",
+									NULL);
 
 	for (i = 0; i < sizeof(info->val); i++)
 		sscanf(str + (i * 2), "%02hhX", &info->val[i]);
