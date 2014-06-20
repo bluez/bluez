@@ -1,0 +1,24 @@
+PTS test results for ScPP
+
+PTS version: 5.1
+Tested: 27-June-2014
+Android version: 4.4.2
+
+Results:
+PASS	test passed
+FAIL	test failed
+INC	test is inconclusive
+N/A	test is disabled due to PICS setup
+NONE	test result is none
+
+-------------------------------------------------------------------------------
+Test Name		Result	Notes
+-------------------------------------------------------------------------------
+TC_SPDS_SC_BV_01_I	PASS	PTS issue #12049
+TC_SPDC_SC_BV_01_I	PASS	PTS issue #12049
+TC_SPDC_SC_BV_02_I	PASS	PTS issue #12049
+TC_SPDC_SC_BV_03_I	PASS	PTS issue #12049
+TC_SPWF_SC_BV_03_I	PASS	PTS issue #12049
+TC_SPCF_SC_BV_03_I	PASS	PTS issue #12049
+TC_SPNF_SC_BV_03_I	PASS	PTS issue #12049
+-------------------------------------------------------------------------------
