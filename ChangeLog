@@ -1,3 +1,12 @@
+ver 5.20:
+	Fix issue with LED handling of PS3 controllers.
+	Add support for Android Bluetooth GATT server interface.
+	Add support for Android Bluetooth HID over GATT feature.
+	Add support for Android Bluetooth multi-profile feature.
+	Add support for Android Bluetooth aptX audio integration.
+
+	Note: aptX codec not included
+
 ver 5.19:
 	Fix issue with OBEX Put-Delete and Create-Empty methods.
 	Fix issue with AVRCP browsable/searchable player properties.
