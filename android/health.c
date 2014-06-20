@@ -678,6 +678,14 @@ static struct health_app *create_health_app(const char *app_name,
 			goto fail;
 	}
 
+	app->mdeps = queue_new();
+	if (!app->mdeps)
+		goto fail;
+
+	app->devices = queue_new();
+	if (!app->devices)
+		goto fail;
+
 	return app;
 
 fail:
@@ -782,14 +790,6 @@ static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
 	if (cmd->descr_len > 0) {
 		mdep->descr = malloc0(cmd->descr_len);
 		memcpy(mdep->descr, cmd->descr, cmd->descr_len);
-	}
-
-	if (app->num_of_mdep > 0 && !app->mdeps) {
-		app->mdeps = queue_new();
-		if (!app->mdeps) {
-			status = HAL_STATUS_FAILED;
-			goto fail;
-		}
 	}
 
 	if (!queue_push_tail(app->mdeps, mdep)) {
@@ -1102,6 +1102,11 @@ static struct health_device *create_device(uint16_t app_id, const uint8_t *addr)
 
 	android2bdaddr(addr, &dev->dst);
 	dev->app_id = app_id;
+	dev->channels = queue_new();
+	if (!dev->channels) {
+		free_health_device(dev);
+		return NULL;
+	}
 
 	return dev;
 }
@@ -1159,20 +1164,8 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 
 	channel->dev = dev;
 
-	if (!app->devices) {
-		app->devices = queue_new();
-		if (!app->devices)
-			goto fail;
-	}
-
 	if (!queue_push_tail(app->devices, dev))
 		goto fail;
-
-	if (!dev->channels) {
-		dev->channels = queue_new();
-		if (!dev->channels)
-			goto fail;
-	}
 
 	if (!queue_push_tail(dev->channels, channel)) {
 		queue_remove(app->devices, dev);
