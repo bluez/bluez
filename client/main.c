@@ -1464,6 +1464,13 @@ static GOptionEntry options[] = {
 	{ NULL },
 };
 
+static void client_ready(GDBusClient *client, void *user_data)
+{
+	guint *input = user_data;
+
+	*input = setup_standard_input();
+}
+
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
@@ -1501,7 +1508,6 @@ int main(int argc, char *argv[])
 	rl_set_prompt(PROMPT_OFF);
 	rl_redisplay();
 
-	input = setup_standard_input();
 	signal = setup_signalfd();
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
 
@@ -1512,11 +1518,15 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 							property_changed, NULL);
 
+	input = 0;
+	g_dbus_client_set_ready_watch(client, client_ready, &input);
+
 	g_main_loop_run(main_loop);
 
 	g_dbus_client_unref(client);
 	g_source_remove(signal);
-	g_source_remove(input);
+	if (input > 0)
+		g_source_remove(input);
 
 	rl_message("");
 	rl_callback_handler_remove();
