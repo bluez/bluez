@@ -146,6 +146,16 @@ static void send_channel_state_notify(struct health_channel *channel,
 					sizeof(ev), &ev, fd);
 }
 
+static void unref_mdl(struct health_channel *channel)
+{
+	if (!channel || !channel->mdl)
+		return;
+
+	mcap_mdl_unref(channel->mdl);
+	channel->mdl = NULL;
+	channel->mdl_conn = false;
+}
+
 static void free_health_channel(void *data)
 {
 	struct health_channel *channel = data;
@@ -153,6 +163,7 @@ static void free_health_channel(void *data)
 	if (!channel)
 		return;
 
+	unref_mdl(channel);
 	free(channel);
 }
 
@@ -1016,6 +1027,93 @@ static void mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 	DBG("Not Implemeneted");
 }
 
+static void connect_mdl_cb(struct mcap_mdl *mdl, GError *gerr, gpointer data)
+{
+	struct health_channel *channel = data;
+	int fd;
+
+	DBG("");
+
+	if (gerr) {
+		error("health: error connecting to MDL %s", gerr->message);
+		goto fail;
+	}
+
+	fd = mcap_mdl_get_fd(channel->mdl);
+	if (fd < 0) {
+		error("health: error retrieving fd");
+		goto fail;
+	}
+
+	info("health: MDL connected");
+	channel->mdl_conn = true;
+
+	/* first data channel should be reliable data channel */
+	if (!queue_length(channel->dev->channels))
+		if (channel->type != CHANNEL_TYPE_RELIABLE)
+			goto fail;
+
+	send_channel_state_notify(channel, HAL_HEALTH_CHANNEL_CONNECTED, fd);
+
+	return;
+
+fail:
+	/* TODO: mcap_mdl_abort */
+	destroy_channel(channel);
+}
+
+static void create_mdl_cb(struct mcap_mdl *mdl, uint8_t type, GError *gerr,
+								gpointer data)
+{
+	struct health_channel *channel = data;
+	uint8_t mode;
+	GError *err = NULL;
+
+	DBG("");
+	if (gerr) {
+		error("health: error creating MDL %s", gerr->message);
+		goto fail;
+	}
+
+	if (channel->type == CHANNEL_TYPE_ANY && type != CHANNEL_TYPE_ANY)
+		channel->type = type;
+
+	/*
+	 * if requested channel type is not same as preferred
+	 * channel type from remote device, then abort the connection.
+	 */
+	if (channel->type != type) {
+		/* TODO: abort mdl */
+		error("abort, channel-type requested %d, preferred %d not same",
+							channel->type, type);
+		goto fail;
+	}
+
+	if (!channel->mdl)
+		channel->mdl = mcap_mdl_ref(mdl);
+
+	channel->type = type;
+	channel->mdl_id = mcap_mdl_get_mdlid(mdl);
+
+	if (channel->type == CHANNEL_TYPE_RELIABLE)
+		mode = L2CAP_MODE_ERTM;
+	else
+		mode = L2CAP_MODE_STREAMING;
+
+	if (!mcap_connect_mdl(channel->mdl, mode, channel->dev->dcpsm,
+						connect_mdl_cb, channel,
+						NULL, &err)) {
+		error("health: error connecting to mdl");
+		g_error_free(err);
+		goto fail;
+	}
+
+	return;
+
+fail:
+	destroy_channel(channel);
+}
+
 static bool check_role(uint8_t rec_role, uint8_t app_role)
 {
 	if ((rec_role == HAL_HEALTH_MDEP_ROLE_SINK &&
@@ -1078,7 +1176,8 @@ static void get_mdep_cb(sdp_list_t *recs, int err, gpointer user_data)
 	struct health_channel *channel = user_data;
 	struct health_app *app;
 	struct mdep_cfg *mdep;
-	uint8_t mdep_id;
+	uint8_t mdep_id, type;
+	GError *gerr = NULL;
 
 	if (err < 0 || !recs) {
 		error("health: error getting remote SDP records");
@@ -1102,7 +1201,18 @@ static void get_mdep_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	channel->remote_mdep = mdep_id;
 
-	/* TODO : create mdl */
+	if (mdep->role == HAL_HEALTH_MDEP_ROLE_SOURCE)
+		type = channel->type;
+	else
+		type = CHANNEL_TYPE_ANY;
+
+	if (!mcap_create_mdl(channel->dev->mcl, channel->remote_mdep,
+				type, create_mdl_cb, channel, NULL, &gerr)) {
+		error("health: error creating mdl %s", gerr->message);
+		g_error_free(gerr);
+		goto fail;
+	}
+
 	return;
 
 fail:
@@ -1344,6 +1454,13 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 	channel = get_channel(cmd->app_id, cmd->mdep_index, dev);
 	if (!channel)
 		goto fail;
+
+	if (!queue_length(dev->channels)) {
+		if (channel->type != CHANNEL_TYPE_RELIABLE) {
+			error("error, first data shannel should be reliable");
+			goto fail;
+		}
+	}
 
 	if (!dev->mcl) {
 		if (connect_mcl(channel) < 0) {
