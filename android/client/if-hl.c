@@ -17,6 +17,7 @@
 
 #include<stdio.h>
 #include<ctype.h>
+#include<unistd.h>
 
 #include<hardware/bluetooth.h>
 #include<hardware/bt_hl.h>
@@ -52,6 +53,7 @@ SINTMAP(bthl_channel_state_t, -1, "(unknown)")
 ENDMAP
 
 const bthl_interface_t *if_hl = NULL;
+static int fd_list[256] = {-1};
 
 static void app_reg_state_cb(int app_id, bthl_app_reg_state_t state)
 {
@@ -69,6 +71,13 @@ static void channel_state_cb(int app_id, bt_bdaddr_t *bd_addr,
 			"channel_id=%d channel_state=%s fd=%d\n", __func__,
 			app_id, bt_bdaddr_t2str(bd_addr, addr), mdep_cfg_index,
 			channel_id, bthl_channel_state_t2str(state), fd);
+
+	if (state == BTHL_CONN_STATE_CONNECTED)
+		fd_list[channel_id] = fd;
+
+	if (state == BTHL_CONN_STATE_DISCONNECTED ||
+			state == BTHL_CONN_STATE_DESTROYED)
+		close(fd_list[channel_id]);
 }
 
 static bthl_callbacks_t hl_cbacks = {
