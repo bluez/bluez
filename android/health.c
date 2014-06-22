@@ -1006,9 +1006,30 @@ static void mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 	DBG("Not Implemeneted");
 }
 
+static void notify_channel(void *data, void *user_data)
+{
+	struct health_channel *channel = data;
+
+	send_channel_state_notify(channel, HAL_HEALTH_CHANNEL_DESTROYED, -1);
+}
+
 static void mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 {
-	DBG("Not Implemeneted");
+	struct health_channel *channel = data;
+	struct health_device *dev;
+
+	DBG("");
+
+	dev = channel->dev;
+	/* mdl == NULL means, delete all mdls */
+	if (!mdl) {
+		queue_foreach(dev->channels, notify_channel, NULL);
+		queue_destroy(dev->channels, free_health_channel);
+		dev->channels = NULL;
+		return;
+	}
+
+	destroy_channel(channel);
 }
 
 static void mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
