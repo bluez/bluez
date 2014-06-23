@@ -52,8 +52,10 @@ SINTMAP(bthl_channel_state_t, -1, "(unknown)")
 	DELEMENT(BTHL_CONN_STATE_DESTROYED),
 ENDMAP
 
+#define FD_LIST_SIZE 256
+
 const bthl_interface_t *if_hl = NULL;
-static int fd_list[256] = {-1};
+static int fd_list[FD_LIST_SIZE];
 
 static void app_reg_state_cb(int app_id, bthl_app_reg_state_t state)
 {
@@ -72,12 +74,21 @@ static void channel_state_cb(int app_id, bt_bdaddr_t *bd_addr,
 			app_id, bt_bdaddr_t2str(bd_addr, addr), mdep_cfg_index,
 			channel_id, bthl_channel_state_t2str(state), fd);
 
-	if (state == BTHL_CONN_STATE_CONNECTED)
+	if (channel_id >= FD_LIST_SIZE)
+		return;
+
+	if (state == BTHL_CONN_STATE_CONNECTED) {
 		fd_list[channel_id] = fd;
+		return;
+	}
 
 	if (state == BTHL_CONN_STATE_DISCONNECTED ||
-			state == BTHL_CONN_STATE_DESTROYED)
-		close(fd_list[channel_id]);
+			state == BTHL_CONN_STATE_DESTROYED) {
+		if (fd_list[channel_id] >= 0) {
+			close(fd_list[channel_id]);
+			fd_list[channel_id] = -1;
+		}
+	}
 }
 
 static bthl_callbacks_t hl_cbacks = {
@@ -90,6 +101,11 @@ static bthl_callbacks_t hl_cbacks = {
 
 static void init_p(int argc, const char **argv)
 {
+	int i;
+
+	for (i = 0; i < FD_LIST_SIZE; i++)
+		fd_list[i] = -1;
+
 	RETURN_IF_NULL(if_hl);
 
 	EXEC(if_hl->init, &hl_cbacks);
