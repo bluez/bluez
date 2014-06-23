@@ -593,9 +593,8 @@ static gboolean dev_property_get_name(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
-	const char *empty = "", *ptr;
+	const char *ptr = device->name;
 
-	ptr = device->name ?: empty;
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
 
 	return TRUE;
