@@ -191,7 +191,7 @@ static bool encode_pdu(struct att_send_op *op, const void *param,
 	switch (op->opcode) {
 	case BT_ATT_OP_MTU_REQ:
 		return encode_mtu_req(op, param, length, mtu);
-	dafault:
+	default:
 		break;
 	}
 
@@ -444,7 +444,6 @@ static bool handle_error_rsp(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 								ssize_t pdu_len)
 {
 	struct bt_att_error_rsp_param param;
-	bool result;
 
 	if (pdu_len != 5)
 		return false;
@@ -461,7 +460,6 @@ static bool handle_mtu_rsp(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 								ssize_t pdu_len)
 {
 	struct bt_att_mtu_rsp_param param;
-	bool result;
 
 	if (pdu_len != 3)
 		return false;
@@ -671,7 +669,7 @@ uint16_t bt_att_get_mtu(struct bt_att *att)
 
 bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu)
 {
-	char *buf;
+	void *buf;
 
 	if (!att)
 		return false;
