@@ -15,12 +15,12 @@
  *
  */
 
-#include<stdio.h>
-#include<ctype.h>
-#include<unistd.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <unistd.h>
 
-#include<hardware/bluetooth.h>
-#include<hardware/bt_hl.h>
+#include <hardware/bluetooth.h>
+#include <hardware/bt_hl.h>
 
 #include "if-main.h"
 #include "pollhandler.h"
