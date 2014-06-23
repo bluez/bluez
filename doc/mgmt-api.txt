@@ -2430,11 +2430,11 @@ New Connection Parameter Event
 					Supervision_Timeout (2 Octets)
 				}
 
-	This event indicates a new set of connection parameter from
+	This event indicates a new set of connection parameters from
 	a peripheral device.
 
 	The Store_Hint parameter indicates whether the host is expected
-	to store these information persistently or not.
+	to store this information persistently or not.
 
 	Possible values for the Address_Type parameter:
 		0	Reserved (not in use)
