@@ -213,10 +213,21 @@ Read Controller Information Command
 	getting the response to the Read Controller Index List command
 	or an Index Added event.
 
-	If not short name is set the Short_Name parameter will be empty
+	The Address parameter describes the controllers public address
+	and it can be expected that it is set. However in case of single
+	mode Low Energy only controllers it can be 00:00:00:00:00:00. To
+	power on the controller in this case, it is required to configure
+	a static address using Set Static Address command first.
+
+	If the public address is set, then it will be used as identity
+	address for the controller. If no public address is available,
+	then the configured static address will be used as identity
+	address.
+
+	If no short name is set the Short_Name parameter will be empty
 	(begin with a nul byte).
 
-	Current_Settings & Supported_Settings is a bitmask with
+	Current_Settings and Supported_Settings is a bitmask with
 	currently the following available bits:
 
 		0	Powered
