@@ -244,11 +244,11 @@ TSPC_HOGP_11_11a True		Report characteristic configuration with 0x0000
 
 TSPC_HOGP_11_12	True		Read HID Information characteristic
 					(M)
-TSPC_HOGP_11_13	True		Suspend State (O)
-TSPC_HOGP_11_14	True		Exit Suspend State (C.1)
-TSPC_HOGP_11_15	True		Write HID Control Point characteristic: Suspend
+TSPC_HOGP_11_13	False		Suspend State (O)
+TSPC_HOGP_11_14	False		Exit Suspend State (C.1)
+TSPC_HOGP_11_15	False		Write HID Control Point characteristic: Suspend
 					command (C.1)
-TSPC_HOGP_11_16	True		Write HID Control Point characteristic: Exit
+TSPC_HOGP_11_16	False		Write HID Control Point characteristic: Exit
 					Suspend command (C.1)
 TSPC_HOGP_11_17	True		Read Protocol Mode characteristic: Get Protocol
 					command (O)
