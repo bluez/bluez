@@ -846,9 +846,12 @@ static void bt_hid_connect(const void *buf, uint16_t len)
 	ba2str(&dev->dst, addr);
 	DBG("connecting to %s", addr);
 
+	devices = g_slist_append(devices, dev);
+
 	if (bt_is_device_le(&dst)) {
 		if (!hog_connect(dev)) {
 			status = HAL_STATUS_FAILED;
+			hid_device_remove(dev);
 			goto failed;
 		}
 		goto done;
@@ -864,8 +867,6 @@ static void bt_hid_connect(const void *buf, uint16_t len)
 	}
 
 done:
-	devices = g_slist_append(devices, dev);
-
 	if (dev->state == HAL_HIDHOST_STATE_DISCONNECTED)
 		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_CONNECTING);
 
