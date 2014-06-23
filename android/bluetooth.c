@@ -127,6 +127,9 @@ struct device {
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
 
+	bdaddr_t rpa;
+	uint8_t rpa_type;
+
 	bool le;
 	bool bredr;
 
@@ -220,7 +223,15 @@ static struct ipc *hal_ipc = NULL;
 
 static void get_device_android_addr(struct device *dev, uint8_t *addr)
 {
-	bdaddr2android(&dev->bdaddr, addr);
+	/*
+	 * If RPA is set it means that IRK was received and ID address is being
+	 * used. Android Framework is still using old RPA and it needs to be
+	 * used in notifications.
+	 */
+	if (bacmp(&dev->rpa, BDADDR_ANY))
+		bdaddr2android(&dev->rpa, addr);
+	else
+		bdaddr2android(&dev->bdaddr, addr);
 }
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -381,6 +392,10 @@ static int device_match(gconstpointer a, gconstpointer b)
 {
 	const struct device *dev = a;
 	const bdaddr_t *bdaddr = b;
+
+	/* Android is using RPA even if IRK was received and ID addr resolved */
+	if (!bacmp(&dev->rpa, bdaddr))
+		return 0;
 
 	return bacmp(&dev->bdaddr, bdaddr);
 }
@@ -689,7 +704,7 @@ void bt_store_gatt_ccc(const bdaddr_t *dst, uint16_t value)
 		return;
 	}
 
-	ba2str(dst, addr);
+	ba2str(&dev->bdaddr, addr);
 
 	DBG("%s Gatt CCC %d", addr, value);
 
@@ -1642,12 +1657,27 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	/* Notify Gatt if its registered for LE events */
 	if (bdaddr_type != BDADDR_BREDR && gatt_device_found_cb) {
 		bool discoverable;
+		bdaddr_t *addr;
+		uint8_t addr_type;
 
 		discoverable = eir.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
 
-		gatt_device_found_cb(bdaddr, bdaddr_type, rssi, data_len, data,
-								discoverable,
-								dev->le_bonded);
+		/*
+		 * If RPA is set it means that IRK was received and ID address
+		 * is being used. Android Framework is still using old RPA and
+		 * it needs to be used also in GATT notifications. Also GATT
+		 * HAL implementation is using RPA for devices matching.
+		 */
+		if (bacmp(&dev->rpa, BDADDR_ANY)) {
+			addr = &dev->rpa;
+			addr_type = dev->rpa_type;
+		} else {
+			addr = &dev->bdaddr;
+			addr_type = dev->bdaddr_type;
+		}
+
+		gatt_device_found_cb(addr, addr_type, rssi, data_len, data,
+						discoverable, dev->le_bonded);
 	}
 
 	if (!dev->bredr_paired && !dev->le_paired)
@@ -2078,10 +2108,42 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 
 	DBG("new IRK for %s, RPA %s", dst, rpa);
 
-	/* TODO: handle new Identity to RPA mapping */
-	dev = find_device(&addr->bdaddr);
-	if (!dev)
-		return;
+	if (!bacmp(&ev->rpa, BDADDR_ANY)) {
+		dev = find_device(&addr->bdaddr);
+		if (!dev)
+			return;
+	} else {
+		dev = find_device(&addr->bdaddr);
+
+		if (dev && dev->bredr_paired) {
+			bacpy(&dev->rpa, &addr->bdaddr);
+			dev->rpa_type = addr->type;
+
+			/* TODO merge properties ie. UUIDs */
+		} else {
+			dev = find_device(&ev->rpa);
+			if (!dev)
+				return;
+
+			/* don't leave garbage in cache file */
+			remove_device_info(dev, CACHE_FILE);
+
+			/*
+			 * RPA resolution is transparent for Android Framework
+			 * ie. device is still access by RPA so it need to be
+			 * keep. After bluetoothd restart device is advertised
+			 * to Android with IDA and RPA is not set.
+			 */
+			bacpy(&dev->rpa, &dev->bdaddr);
+			dev->rpa_type = dev->bdaddr_type;
+
+			bacpy(&dev->bdaddr, &addr->bdaddr);
+			dev->bdaddr_type = addr->type;
+		}
+	}
+
+	update_device_state(dev, ev->key.addr.type, HAL_STATUS_SUCCESS, false,
+							true, !!ev->store_hint);
 
 	if (ev->store_hint)
 		store_irk(dev, ev->key.val);
