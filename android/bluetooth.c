@@ -745,14 +745,14 @@ static void store_link_key(const bdaddr_t *dst, const uint8_t *key,
 	g_key_file_free(key_file);
 }
 
-static void send_bond_state_change(const bdaddr_t *addr, uint8_t status,
+static void send_bond_state_change(struct device *dev, uint8_t status,
 								uint8_t state)
 {
 	struct hal_ev_bond_state_changed ev;
 
 	ev.status = status;
 	ev.state = state;
-	bdaddr2android(addr, ev.bdaddr);
+	bdaddr2android(&dev->bdaddr, ev.bdaddr);
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
 				HAL_EV_BOND_STATE_CHANGED, sizeof(ev), &ev);
@@ -861,7 +861,7 @@ static void update_device_state(struct device *dev, uint8_t addr_type,
 	new_bond = device_bond_state(dev);
 
 	if (old_bond != new_bond)
-		send_bond_state_change(&dev->bdaddr, status, new_bond);
+		send_bond_state_change(dev, status, new_bond);
 }
 
 static void send_device_property(struct device *dev, uint8_t type,
