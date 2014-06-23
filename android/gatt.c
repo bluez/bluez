@@ -1423,6 +1423,8 @@ static int connect_le(struct gatt_device *dev)
 	GIOChannel *io;
 	GError *gerr = NULL;
 	char addr[18];
+	const bdaddr_t *bdaddr;
+	uint8_t bdaddr_type;
 
 	ba2str(&dev->bdaddr, addr);
 
@@ -1438,6 +1440,20 @@ static int connect_le(struct gatt_device *dev)
 								BT_IO_SEC_LOW;
 
 	/*
+	 * If address type is random it might be that IRK was received and
+	 * random is just for faking Android Framework. ID address should be
+	 * used for connection if present.
+	 */
+	if (dev->bdaddr_type == BDADDR_LE_RANDOM) {
+		bdaddr = bt_get_id_addr(&dev->bdaddr, &bdaddr_type);
+		if (!bdaddr)
+			return -EINVAL;
+	} else {
+		bdaddr = &dev->bdaddr;
+		bdaddr_type = dev->bdaddr_type;
+	}
+
+	/*
 	 * This connection will help us catch any PDUs that comes before
 	 * pairing finishes
 	 */
@@ -1445,8 +1461,8 @@ static int connect_le(struct gatt_device *dev)
 			BT_IO_OPT_SOURCE_BDADDR,
 			&adapter_addr,
 			BT_IO_OPT_SOURCE_TYPE, BDADDR_LE_PUBLIC,
-			BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
-			BT_IO_OPT_DEST_TYPE, dev->bdaddr_type,
+			BT_IO_OPT_DEST_BDADDR, bdaddr,
+			BT_IO_OPT_DEST_TYPE, bdaddr_type,
 			BT_IO_OPT_CID, ATT_CID,
 			BT_IO_OPT_SEC_LEVEL, sec_level,
 			BT_IO_OPT_INVALID);

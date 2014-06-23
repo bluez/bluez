@@ -1442,6 +1442,20 @@ bool bt_is_device_le(const bdaddr_t *addr)
 	return dev->le;
 }
 
+const bdaddr_t *bt_get_id_addr(const bdaddr_t *addr, uint8_t *type)
+{
+	struct device *dev;
+
+	dev = find_device(addr);
+	if (!dev)
+		return NULL;
+
+	if (type)
+		*type = dev->bdaddr_type;
+
+	return &dev->bdaddr;
+}
+
 const char *bt_get_adapter_name(void)
 {
 	return adapter.name;
