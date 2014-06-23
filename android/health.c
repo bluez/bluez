@@ -137,7 +137,7 @@ static void send_channel_state_notify(struct health_channel *channel,
 
 	bdaddr2android(&channel->dev->dst, ev.bdaddr);
 	ev.app_id = channel->dev->app_id;
-	ev.mdep_index = channel->mdep_id;
+	ev.mdep_index = channel->mdep_id - 1;
 	ev.channel_id = channel->id;
 	ev.channel_state = state;
 
