@@ -1285,7 +1285,7 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 
 	ret = set_mcl_cb(channel->dev->mcl, channel->dev, &gerr);
 	if (!ret) {
-		error("health: error setting mdl callbacks on mcl");
+		error("health: error setting mdl callbacks: %s", gerr->message);
 		g_error_free(gerr);
 		goto fail;
 	}
