@@ -1020,6 +1020,9 @@ static void mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 
 	DBG("");
 
+	if (!channel)
+		return;
+
 	dev = channel->dev;
 	/* mdl == NULL means, delete all mdls */
 	if (!mdl) {
@@ -1540,12 +1543,30 @@ static const struct ipc_handler cmd_handlers[] = {
 
 static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 {
-	DBG("Not implemented");
+	GError *gerr = NULL;
+	bool ret;
+
+	DBG("");
+
+	ret = set_mcl_cb(mcl, NULL, &gerr);
+	if (!ret) {
+		error("health: error setting mcl callbacks: %s", gerr->message);
+		g_error_free(gerr);
+	}
 }
 
 static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 {
-	DBG("Not implemented");
+	GError *gerr = NULL;
+	bool ret;
+
+	DBG("");
+
+	ret = set_mcl_cb(mcl, NULL, &gerr);
+	if (!ret) {
+		error("health: error setting mcl callbacks: %s", gerr->message);
+		g_error_free(gerr);
+	}
 }
 
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
