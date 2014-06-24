@@ -1849,7 +1849,7 @@ static DBusMessage *device_echo(DBusConnection *conn,
 	data->cb = hdp_echo_connect_cb;
 	hdp_create_data_ref(data);
 
-	if (device->mcl_conn && device->mcl != NULL) {
+	if (device->mcl_conn && device->mcl) {
 		if (mcap_create_mdl(device->mcl, data->mdep, data->config,
 						device_create_mdl_cb, data,
 						destroy_create_dc_data, &err))
