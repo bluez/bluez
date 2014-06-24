@@ -1453,6 +1453,7 @@ static struct health_channel *get_channel(uint16_t app_id,
 
 	return create_channel(app_id, mdep_index, dev);
 }
+
 static void bt_health_connect_channel(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_health_connect_channel *cmd = buf;
