@@ -1324,10 +1324,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer data)
 	if (!mcap_create_mcl(mcap, &channel->dev->dst, channel->dev->ccpsm,
 					create_mcl_cb, channel, NULL, &gerr)) {
 		error("health: error creating mcl %s", gerr->message);
-
-		if (gerr)
-			g_error_free(gerr);
-
+		g_error_free(gerr);
 		goto fail;
 	}
 
