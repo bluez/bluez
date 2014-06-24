@@ -473,7 +473,7 @@ static gboolean register_service_additional_protocols(
 						struct hdp_adapter *adapter,
 						sdp_record_t *sdp_record)
 {
-	gboolean ret;
+	gboolean ret = TRUE;
 	uuid_t l2cap_uuid, mcap_d_uuid;
 	sdp_list_t *l2cap_list, *proto_list = NULL, *mcap_list = NULL;
 	sdp_list_t *access_proto_list = NULL;
@@ -524,10 +524,7 @@ static gboolean register_service_additional_protocols(
 		goto end;
 	}
 
-	if (sdp_set_add_access_protos(sdp_record, access_proto_list) < 0)
-		ret = FALSE;
-	else
-		ret = TRUE;
+	sdp_set_add_access_protos(sdp_record, access_proto_list);
 
 end:
 	if (l2cap_list != NULL)
