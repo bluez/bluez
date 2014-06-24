@@ -1281,10 +1281,7 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 			MCAP_MDL_CB_INVALID);
 	if (!ret) {
 		error("health: error setting mdl callbacks on mcl");
-
-		if (gerr)
-			g_error_free(gerr);
-
+		g_error_free(gerr);
 		goto fail;
 	}
 
