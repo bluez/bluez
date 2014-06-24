@@ -425,11 +425,8 @@ static gboolean register_service_protocols(struct hdp_adapter *adapter,
 		goto end;
 	}
 
-	if (sdp_set_access_protos(sdp_record, access_proto_list) < 0) {
-		ret = FALSE;
-		goto end;
-	}
 	ret = TRUE;
+	sdp_set_access_protos(sdp_record, access_proto_list);
 
 end:
 	if (l2cap_list != NULL)
