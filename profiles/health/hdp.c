@@ -91,7 +91,7 @@ static struct hdp_channel *hdp_channel_ref(struct hdp_channel *chan)
 
 	chan->ref++;
 
-	DBG("health_channel_ref(%p): ref=%d", chan, chan->ref);
+	DBG("(%p): ref=%d", chan, chan->ref);
 	return chan;
 }
 
@@ -115,7 +115,7 @@ static void hdp_channel_unref(struct hdp_channel *chan)
 		return;
 
 	chan->ref --;
-	DBG("health_channel_unref(%p): ref=%d", chan, chan->ref);
+	DBG("(%p): ref=%d", chan, chan->ref);
 
 	if (chan->ref > 0)
 		return;
@@ -136,7 +136,7 @@ static struct hdp_create_dc *hdp_create_data_ref(struct hdp_create_dc *dc_data)
 {
 	dc_data->ref++;
 
-	DBG("hdp_create_data_ref(%p): ref=%d", dc_data, dc_data->ref);
+	DBG("(%p): ref=%d", dc_data, dc_data->ref);
 
 	return dc_data;
 }
@@ -145,7 +145,7 @@ static void hdp_create_data_unref(struct hdp_create_dc *dc_data)
 {
 	dc_data->ref--;
 
-	DBG("hdp_create_data_unref(%p): ref=%d", dc_data, dc_data->ref);
+	DBG("(%p): ref=%d", dc_data, dc_data->ref);
 
 	if (dc_data->ref > 0)
 		return;
@@ -993,7 +993,7 @@ static void hdp_mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 {
 	/* struct hdp_device *dev = data; */
 
-	DBG("hdp_mcap_mdl_closed_cb");
+	DBG("");
 
 	/* Nothing to do */
 }
@@ -1005,7 +1005,8 @@ static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 	char *path;
 	GSList *l;
 
-	DBG("hdp_mcap_mdl_deleted_cb");
+	DBG("");
+
 	l = g_slist_find_custom(dev->channels, mdl, cmp_chan_mdl);
 	if (l == NULL)
 		return;
@@ -1023,7 +1024,8 @@ static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
 
-	DBG("hdp_mcap_mdl_aborted_cb");
+	DBG("");
+
 	if (dev->ndc == NULL)
 		return;
 
@@ -2232,7 +2234,7 @@ struct hdp_device *health_device_ref(struct hdp_device *hdp_dev)
 {
 	hdp_dev->ref++;
 
-	DBG("health_device_ref(%p): ref=%d", hdp_dev, hdp_dev->ref);
+	DBG("(%p): ref=%d", hdp_dev, hdp_dev->ref);
 
 	return hdp_dev;
 }
@@ -2241,7 +2243,7 @@ void health_device_unref(struct hdp_device *hdp_dev)
 {
 	hdp_dev->ref--;
 
-	DBG("health_device_unref(%p): ref=%d", hdp_dev, hdp_dev->ref);
+	DBG("(%p): ref=%d", hdp_dev, hdp_dev->ref);
 
 	if (hdp_dev->ref > 0)
 		return;
