@@ -187,7 +187,7 @@ void mcap_sync_stop(struct mcap_mcl *mcl)
 
 static uint64_t time_us(struct timespec *tv)
 {
-	return tv->tv_sec * 1000000 + tv->tv_nsec / 1000;
+	return tv->tv_sec * 1000000ll + tv->tv_nsec / 1000ll;
 }
 
 static int64_t bt2us(int bt)
