@@ -1193,7 +1193,6 @@ gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err)
 		MCAP_MDL_CB_REMOTE_CONN_REQ, hdp_mcap_mdl_conn_req_cb,
 		MCAP_MDL_CB_REMOTE_RECONN_REQ, hdp_mcap_mdl_reconn_req_cb,
 		MCAP_MDL_CB_INVALID);
-
 	if (ret)
 		return TRUE;
 
@@ -1350,7 +1349,6 @@ static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 				mcl_disconnected, mcl_uncached,
 				NULL, /* CSP is not used by now */
 				hdp_adapter, &err);
-
 	if (hdp_adapter->mi == NULL) {
 		error("Error creating the MCAP instance: %s", err->message);
 		g_error_free(err);
