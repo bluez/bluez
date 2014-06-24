@@ -1252,6 +1252,18 @@ static int get_mdep(struct health_channel *channel)
 						get_mdep_cb, channel, NULL, 0);
 }
 
+static bool set_mcl_cb(struct mcap_mcl *mcl, gpointer user_data, GError **err)
+{
+	return mcap_mcl_set_cb(mcl, user_data, err,
+			MCAP_MDL_CB_CONNECTED, mcap_mdl_connected_cb,
+			MCAP_MDL_CB_CLOSED, mcap_mdl_closed_cb,
+			MCAP_MDL_CB_DELETED, mcap_mdl_deleted_cb,
+			MCAP_MDL_CB_ABORTED, mcap_mdl_aborted_cb,
+			MCAP_MDL_CB_REMOTE_CONN_REQ, mcap_mdl_conn_req_cb,
+			MCAP_MDL_CB_REMOTE_RECONN_REQ, mcap_mdl_reconn_req_cb,
+			MCAP_MDL_CB_INVALID);
+}
+
 static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 {
 	struct health_channel *channel = data;
@@ -1271,14 +1283,7 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 	channel->dev->mcl_conn = true;
 	info("MCL connected");
 
-	ret = mcap_mcl_set_cb(channel->dev->mcl, channel, &gerr,
-			MCAP_MDL_CB_CONNECTED, mcap_mdl_connected_cb,
-			MCAP_MDL_CB_CLOSED, mcap_mdl_closed_cb,
-			MCAP_MDL_CB_DELETED, mcap_mdl_deleted_cb,
-			MCAP_MDL_CB_ABORTED, mcap_mdl_aborted_cb,
-			MCAP_MDL_CB_REMOTE_CONN_REQ, mcap_mdl_conn_req_cb,
-			MCAP_MDL_CB_REMOTE_RECONN_REQ, mcap_mdl_reconn_req_cb,
-			MCAP_MDL_CB_INVALID);
+	ret = set_mcl_cb(channel->dev->mcl, channel->dev, &gerr);
 	if (!ret) {
 		error("health: error setting mdl callbacks on mcl");
 		g_error_free(gerr);
