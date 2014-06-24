@@ -2648,12 +2648,14 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 
 	while (latency > caps(mcl)->preempt_thresh && --retry >= 0) {
 
-		clock_gettime(CLK, &t0);
+		if (clock_gettime(CLK, &t0) < 0)
+			return FALSE;
 
 		if (!read_btclock(mcl, btclock, &btres))
 			continue;
 
-		clock_gettime(CLK, base_time);
+		if (clock_gettime(CLK, base_time) < 0)
+			return FALSE;
 
 		/*
 		 * Tries to detect preemption between clock_gettime
@@ -2661,6 +2663,9 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 		 */
 		latency = time_us(base_time) - time_us(&t0);
 	}
+
+	if (retry < 0)
+		return FALSE;
 
 	*timestamp = mcap_get_timestamp(mcl, base_time);
 
