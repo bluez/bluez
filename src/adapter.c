@@ -1505,7 +1505,8 @@ static void discovering_callback(uint16_t index, uint16_t length,
 	 * passive scanning attempt.
 	 */
 	if (!adapter->discovery_list) {
-		trigger_passive_scanning(adapter);
+		if (!adapter->connect_le)
+			trigger_passive_scanning(adapter);
 		return;
 	}
 
