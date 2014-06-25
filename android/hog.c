@@ -193,7 +193,6 @@ static void report_reference_cb(guint8 status, const guint8 *pdu,
 static void external_report_reference_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data);
 
-
 static void discover_descriptor_cb(uint8_t status, GSList *descs,
 								void *user_data)
 {
@@ -607,8 +606,7 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 			report = g_new0(struct report, 1);
 			report->hog = hog;
 			report->decl = g_memdup(chr, sizeof(*chr));
-			hog->reports = g_slist_append(hog->reports,
-								report);
+			hog->reports = g_slist_append(hog->reports, report);
 			discover_descriptor(hog->attrib, start, end, report);
 		} else if (bt_uuid_cmp(&uuid, &report_map_uuid) == 0) {
 			gatt_read_char(hog->attrib, chr->value_handle,
@@ -629,8 +627,7 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 	}
 
 	if (info_handle)
-		gatt_read_char(hog->attrib, info_handle, info_read_cb,
-									hog);
+		gatt_read_char(hog->attrib, info_handle, info_read_cb, hog);
 }
 
 static void report_free(void *data)
