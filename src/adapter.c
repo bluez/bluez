@@ -3025,7 +3025,7 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	if (g_slist_find(adapter->connect_list, device)) {
 		DBG("ignoring already added device %s",
 						device_get_path(device));
-		return 0;
+		goto done;
 	}
 
 	if (!(adapter->supported_settings & MGMT_SETTING_LE)) {
@@ -3038,6 +3038,7 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	DBG("%s added to %s's connect_list", device_get_path(device),
 							adapter->system_name);
 
+done:
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return 0;
 
