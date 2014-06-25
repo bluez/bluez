@@ -82,6 +82,7 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 	if (!reg || !app_id || !reg->application_name)
 		return BT_STATUS_PARM_INVALID;
 
+	*app_id = -1;
 	memset(buf, 0, IPC_MTU);
 
 	cmd->num_of_mdep = reg->number_of_mdeps;
@@ -180,6 +181,7 @@ static bt_status_t connect_channel(int app_id, bt_bdaddr_t *bd_addr,
 	if (!bd_addr || !channel_id)
 		return BT_STATUS_PARM_INVALID;
 
+	*channel_id = -1;
 	cmd.app_id = app_id;
 	cmd.mdep_index = mdep_cfg_index;
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
