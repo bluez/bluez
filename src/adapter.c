@@ -1228,7 +1228,12 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 	dev = adapter->connect_le;
 	adapter->connect_le = NULL;
 
-	if (status != MGMT_STATUS_SUCCESS) {
+	/*
+	 * MGMT_STATUS_REJECTED may be returned from kernel because the passive
+	 * scan timer had expired in kernel and passive scan was disabled just
+	 * around the time we called stop_passive_scanning().
+	 */
+	if (status != MGMT_STATUS_SUCCESS && status != MGMT_STATUS_REJECTED) {
 		error("Stopping passive scanning failed: %s",
 							mgmt_errstr(status));
 		return;
