@@ -1,7 +1,8 @@
 Android Compatibility Test Suite results
 
-Tested: 10-June-2014
+Tested: 25-June-2014
 Android version: 4.4.2
+CTS version: 4.4 R3
 
 -------------------------------------------------------------------------------
 android.bluetooth.cts.BasicAdapterTest (automated tests)
