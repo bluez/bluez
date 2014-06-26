@@ -275,6 +275,34 @@ static void destroy_channel_p(int argc, const char **argv)
 	EXEC(if_hl->destroy_channel, channel_id);
 }
 
+/* close_channel */
+
+static void close_channel_p(int argc, const char **argv)
+{
+	uint32_t app_id;
+	uint8_t mdep_cfg_index;
+
+	RETURN_IF_NULL(if_hl);
+
+	if (argc <= 2) {
+		haltest_error("No app id is specified");
+		return;
+	}
+
+	if (argc <= 3) {
+		haltest_error("No mdep_cfg_index is specified");
+		return;
+	}
+
+	app_id = (uint32_t) atoi(argv[2]);
+	mdep_cfg_index = (uint8_t) atoi(argv[3]);
+
+	if (app_info[app_id][mdep_cfg_index][2] >= 0) {
+		shutdown(app_info[app_id][mdep_cfg_index][2], SHUT_RDWR);
+		app_info[app_id][mdep_cfg_index][2] = -1;
+	}
+}
+
 /* cleanup */
 
 static void cleanup_p(int argc, const char **argv)
@@ -295,6 +323,7 @@ static struct method methods[] = {
 	STD_METHODH(unregister_application, "<app_id>"),
 	STD_METHODH(connect_channel, "<app_id> <bd_addr> <mdep_cfg_index>"),
 	STD_METHODH(destroy_channel, "<channel_id>"),
+	STD_METHODH(close_channel, "<app_id> <mdep_cfg_index>"),
 	STD_METHOD(cleanup),
 	END_METHOD
 };
