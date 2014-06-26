@@ -11,7 +11,7 @@ Parameter Name						Value
 -------------------------------------------------------------------------------
 TSPX_bd_addr_iut					112233445566 (*&)
 TSPX_delete_link_key					FALSE
-TSPX_MCAP_DC_max					2
+TSPX_MCAP_DC_max					1
 TSPX_MCAP_l2cap_psm_control				1003
 TSPX_MCAP_l2cap_psm_control_B
 TSPX_MCAP_l2cap_psm_data				1005
