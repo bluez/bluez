@@ -2163,7 +2163,7 @@ static void get_included_cb(uint8_t status, GSList *included, void *user_data)
 
 	if (status) {
 		error("gatt: no included services found");
-		return;
+		goto failed;
 	}
 
 	/* Remember that we already search included services.*/
