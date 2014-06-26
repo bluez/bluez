@@ -387,7 +387,7 @@ static int register_service_additional_protocols(sdp_record_t *rec,
 	if (!l2cap_list)
 		goto fail;
 
-	dcpsm = mcap_get_ctrl_psm(mcap, &err);
+	dcpsm = mcap_get_data_psm(mcap, &err);
 	if (err)
 		goto fail;
 
