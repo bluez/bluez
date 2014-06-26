@@ -95,6 +95,17 @@ android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
 android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 					-no-undefined
 
+noinst_PROGRAMS += android/mcaptest
+
+android_mcaptest_SOURCES = android/mcaptest.c \
+				src/log.h src/log.c \
+				btio/btio.h btio/btio.c \
+				android/mcap-lib.h android/mcap-lib.c
+
+android_mcaptest_CFLAGS = $(AM_CFLAGS)
+
+android_mcaptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
 noinst_PROGRAMS += android/haltest
 
 android_haltest_SOURCES = android/client/haltest.c \

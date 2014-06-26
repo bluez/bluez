@@ -123,6 +123,7 @@ unit/test-*.trs
 
 android/system-emulator
 android/bluetoothd
+android/mcaptest
 android/haltest
 android/android-tester
 android/ipc-tester
