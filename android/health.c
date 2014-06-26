@@ -1057,7 +1057,14 @@ static void mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 static void mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 {
-	DBG("Not Implemeneted");
+	struct health_channel *channel = data;
+
+	info("MDL closed");
+
+	if (!channel)
+		return;
+
+	channel->mdl_conn = false;
 }
 
 static void notify_channel(void *data, void *user_data)
