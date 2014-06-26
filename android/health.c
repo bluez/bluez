@@ -1088,8 +1088,8 @@ static void mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 	/* mdl == NULL means, delete all mdls */
 	if (!mdl) {
 		queue_foreach(dev->channels, notify_channel, NULL);
-		queue_destroy(dev->channels, free_health_channel);
-		dev->channels = NULL;
+		queue_remove_all(dev->channels, NULL, NULL,
+						free_health_channel);
 		return;
 	}
 
