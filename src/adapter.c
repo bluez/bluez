@@ -4677,9 +4677,6 @@ static void svc_complete(struct btd_device *dev, int err, void *user_data)
 
 	auth->svc_id = 0;
 
-	if (adapter->auths->length != 1)
-		return;
-
 	if (adapter->auth_idle_id != 0)
 		return;
 
