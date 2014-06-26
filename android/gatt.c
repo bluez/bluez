@@ -2283,19 +2283,17 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 	hal_srvc_id_to_element_id(&cmd->srvc_id, &match_id);
 	if (!find_service(cmd->conn_id, &match_id, &conn, &prim_service)) {
 		status = HAL_STATUS_FAILED;
-		goto reply;
+		goto notify;
 	}
 
 	if (!prim_service->incl_search_done) {
-		if (search_included_services(conn, prim_service))
+		if (search_included_services(conn, prim_service)) {
 			status = HAL_STATUS_SUCCESS;
-		else
-			status = HAL_STATUS_FAILED;
+			goto reply;
+		}
 
-		ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-				HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE,
-				status);
-		return;
+		status = HAL_STATUS_FAILED;
+		goto notify;
 	}
 
 	/* Try to use cache here */
@@ -2310,15 +2308,16 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 
-reply:
-	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
-			HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE, status);
-
+notify:
 	/*
 	 * In case of error in handling request we need to send event with
 	 * service id of cmd and gatt failure status.
 	 */
 	send_client_incl_service_notify(&srvc_id, incl_service, cmd->conn_id);
+
+reply:
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
+			HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE, status);
 }
 
 static void send_client_char_notify(const struct characteristic *ch,
