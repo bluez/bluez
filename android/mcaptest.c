@@ -118,10 +118,22 @@ static uint8_t mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 	return MCAP_SUCCESS;
 }
 
+static void create_mdl_cb(struct mcap_mdl *mcap_mdl, uint8_t type, GError *gerr,
+								gpointer data);
+
 static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 {
-	/* TODO */
-	printf("MCL reconnected unsupported\n");
+	GError *gerr = NULL;
+
+	printf("%s\n", __func__);
+
+	if (data_mode == MODE_CONNECT) {
+		mcap_create_mdl(mcl, 1, 0, create_mdl_cb, NULL, NULL, &gerr);
+		if (gerr) {
+			printf("Could not connect MDL: %s\n", gerr->message);
+			g_error_free(gerr);
+		}
+	}
 }
 
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
