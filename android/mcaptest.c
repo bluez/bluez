@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <unistd.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -56,18 +57,38 @@ static uint16_t mdlid;
 static int control_mode = MODE_LISTEN;
 static int data_mode = MODE_LISTEN;
 
+static gboolean mcl_disconnect = FALSE;
+static gboolean mdl_disconnect = FALSE;
+static int mcl_disconnect_timeout = -1;
+static int mdl_disconnect_timeout = -1;
+
 static struct mcap_mcl *mcl = NULL;
 
 static void mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
-	/* TODO */
+	int fd = -1;
+
 	printf("%s\n", __func__);
+
+	if (mdl_disconnect && mdl_disconnect_timeout >= 0) {
+		sleep(mdl_disconnect_timeout);
+
+		fd = mcap_mdl_get_fd(mdl);
+
+		if (fd > 0)
+			close(fd);
+	}
 }
 
 static void mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 {
-	/* TODO */
 	printf("%s\n", __func__);
+
+	if (mcl_disconnect && mcl_disconnect_timeout >= 0) {
+		sleep(mcl_disconnect_timeout);
+
+		mcap_close_mcl(mcl, TRUE);
+	}
 }
 
 static void mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
@@ -205,9 +226,11 @@ static void usage(void)
 	printf("Usage:\n"
 		"\tmcaptest <control_mode> <data_mode> [options]\n");
 	printf("Control Link Mode:\n"
-		"\t-c connect <dst_addr>\n");
+		"\t-c connect <dst_addr>\n"
+		"\t-e <timeout> disconnect MCL and quit after MDL is closed\n");
 	printf("Data Link Mode:\n"
-		"\t-d connect\n");
+		"\t-d connect\n"
+		"\t-f <timeout> disconnect MDL after it's connected\n");
 	printf("Options:\n"
 		"\t-i <hcidev>        HCI device\n"
 		"\t-C <control_ch>    Control channel PSM\n"
@@ -215,12 +238,14 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
-	{ "help",	0, 0, 'h' },
-	{ "device",	1, 0, 'i' },
-	{ "connect_cl",	1, 0, 'c' },
-	{ "connect_dl",	0, 0, 'd' },
-	{ "control_ch",	1, 0, 'C' },
-	{ "data_ch",	1, 0, 'D' },
+	{ "help",		0, 0, 'h' },
+	{ "device",		1, 0, 'i' },
+	{ "connect_cl",		1, 0, 'c' },
+	{ "disconnect_cl",	1, 0, 'e' },
+	{ "connect_dl",		0, 0, 'd' },
+	{ "disconnect_dl",	1, 0, 'f' },
+	{ "control_ch",		1, 0, 'C' },
+	{ "data_ch",		1, 0, 'D' },
 	{ 0, 0, 0, 0 }
 };
 int main(int argc, char *argv[])
@@ -240,7 +265,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	while ((opt = getopt_long(argc, argv, "+i:c:C:D:hd",
+	while ((opt = getopt_long(argc, argv, "+i:c:C:D:e:f:hd",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -259,6 +284,18 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			data_mode = MODE_CONNECT;
+
+			break;
+
+		case 'e':
+			mcl_disconnect = TRUE;
+			mcl_disconnect_timeout = atoi(optarg);
+
+			break;
+
+		case 'f':
+			mdl_disconnect = TRUE;
+			mdl_disconnect_timeout = atoi(optarg);
 
 			break;
 
