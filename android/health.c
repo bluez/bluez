@@ -1637,19 +1637,40 @@ fail:
 			HAL_OP_HEALTH_CONNECT_CHANNEL, HAL_STATUS_FAILED);
 }
 
+static void channel_delete_cb(GError *gerr, gpointer data)
+{
+	struct health_channel *channel = data;
+
+	DBG("");
+
+	if (!gerr) {
+		error("health: channel delete failed %s", gerr->message);
+		return;
+	}
+
+	destroy_channel(channel);
+}
+
 static void bt_health_destroy_channel(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_health_destroy_channel *cmd = buf;
 	struct health_channel *channel;
+	GError *gerr = NULL;
 
-	DBG("Not Implemented");
+	DBG("");
 
 	channel = search_channel_by_id(cmd->channel_id);
 	if (!channel)
 		goto fail;
 
+	if (!mcap_delete_mdl(channel->mdl, channel_delete_cb, channel,
+							NULL, &gerr)) {
+		error("health: channel delete failed %s", gerr->message);
+		goto fail;
+	}
+
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH,
-			HAL_OP_HEALTH_DESTROY_CHANNEL, HAL_STATUS_UNSUPPORTED);
+			HAL_OP_HEALTH_DESTROY_CHANNEL, HAL_STATUS_SUCCESS);
 
 	return;
 
