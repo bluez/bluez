@@ -52,6 +52,7 @@
 
 #include "btio/btio.h"
 
+#include "android/scpp.h"
 #include "android/hog.h"
 
 #define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
@@ -89,6 +90,7 @@ struct bt_hog {
 	uint16_t		proto_mode_handle;
 	uint16_t		ctrlpt_handle;
 	uint8_t			flags;
+	struct bt_scpp		*scpp;
 };
 
 struct report {
@@ -644,6 +646,7 @@ static void report_free(void *data)
 
 static void hog_free(struct bt_hog *hog)
 {
+	bt_scpp_unref(hog->scpp);
 	bt_uhid_unref(hog->uhid);
 	g_slist_free_full(hog->reports, report_free);
 	g_attrib_unref(hog->attrib);
@@ -747,6 +750,18 @@ static void find_included_cb(uint8_t status, GSList *services, void *user_data)
 						char_discovered_cb, hog);
 }
 
+static void hog_attach_scpp(struct bt_hog *hog, struct gatt_primary *primary)
+{
+	if (hog->scpp) {
+		bt_scpp_attach(hog->scpp, hog->attrib);
+		return;
+	}
+
+	hog->scpp = bt_scpp_new(primary);
+	if (hog->scpp)
+		bt_scpp_attach(hog->scpp, hog->attrib);
+}
+
 static void primary_cb(uint8_t status, GSList *services, void *user_data)
 {
 	struct bt_hog *hog = user_data;
@@ -768,6 +783,11 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 
 	for (l = services; l; l = l->next) {
 		primary = l->data;
+
+		if (strcmp(primary->uuid, SCAN_PARAMETERS_UUID) == 0) {
+			hog_attach_scpp(hog, primary);
+			continue;
+		}
 
 		if (strcmp(primary->uuid, HOG_UUID) == 0)
 			break;
@@ -806,6 +826,9 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 		return true;
 	}
 
+	if (hog->scpp)
+		bt_scpp_attach(hog->scpp, gatt);
+
 	if (hog->reports == NULL) {
 		gatt_discover_char(hog->attrib, primary->range.start,
 						primary->range.end, NULL,
@@ -838,6 +861,9 @@ void bt_hog_detach(struct bt_hog *hog)
 		g_attrib_unregister(hog->attrib, r->notifyid);
 	}
 
+
+	if (hog->scpp)
+		bt_scpp_detach(hog->scpp);
 	g_attrib_unref(hog->attrib);
 	hog->attrib = NULL;
 }
