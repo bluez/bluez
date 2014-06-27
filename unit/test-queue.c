@@ -96,6 +96,7 @@ static void test_foreach_remove_all(void)
 	queue_push_tail(queue, UINT_TO_PTR(2));
 
 	queue_foreach(queue, foreach_remove_all, queue);
+	queue_destroy(queue, NULL);
 }
 
 int main(int argc, char *argv[])
