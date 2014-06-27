@@ -820,6 +820,8 @@ static void bt_health_register_app(const void *buf, uint16_t len)
 
 	app = create_health_app(app_name, provider, srv_name, srv_descr,
 							cmd->num_of_mdep);
+	if (!app)
+		goto fail;
 
 	if (!queue_push_tail(apps, app))
 		goto fail;
