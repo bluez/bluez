@@ -54,6 +54,7 @@
 
 #include "android/scpp.h"
 #include "android/dis.h"
+#include "android/bas.h"
 #include "android/hog.h"
 
 #define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
@@ -93,6 +94,7 @@ struct bt_hog {
 	uint8_t			flags;
 	struct bt_scpp		*scpp;
 	struct bt_dis		*dis;
+	struct bt_bas		*bas;
 };
 
 struct report {
@@ -650,6 +652,7 @@ static void hog_free(struct bt_hog *hog)
 {
 	bt_scpp_unref(hog->scpp);
 	bt_dis_unref(hog->dis);
+	bt_bas_unref(hog->bas);
 	bt_uhid_unref(hog->uhid);
 	g_slist_free_full(hog->reports, report_free);
 	g_attrib_unref(hog->attrib);
@@ -789,6 +792,18 @@ static void hog_attach_dis(struct bt_hog *hog, struct gatt_primary *primary)
 	}
 }
 
+static void hog_attach_bas(struct bt_hog *hog, struct gatt_primary *primary)
+{
+	if (hog->bas) {
+		bt_bas_attach(hog->bas, hog->attrib);
+		return;
+	}
+
+	hog->bas = bt_bas_new(primary);
+	if (hog->bas)
+		bt_bas_attach(hog->bas, hog->attrib);
+}
+
 static void primary_cb(uint8_t status, GSList *services, void *user_data)
 {
 	struct bt_hog *hog = user_data;
@@ -818,6 +833,11 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 
 		if (strcmp(primary->uuid, DEVICE_INFORMATION_UUID) == 0) {
 			hog_attach_dis(hog, primary);
+			continue;
+		}
+
+		if (strcmp(primary->uuid, BATTERY_UUID) == 0) {
+			hog_attach_bas(hog, primary);
 			continue;
 		}
 
@@ -863,6 +883,9 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 	if (hog->dis)
 		bt_dis_attach(hog->dis, gatt);
 
+	if (hog->bas)
+		bt_bas_attach(hog->bas, gatt);
+
 	if (hog->reports == NULL) {
 		gatt_discover_char(hog->attrib, primary->range.start,
 						primary->range.end, NULL,
@@ -900,6 +923,9 @@ void bt_hog_detach(struct bt_hog *hog)
 
 	if (hog->dis)
 		bt_dis_detach(hog->dis);
+
+	if (hog->bas)
+		bt_bas_detach(hog->bas);
 
 	g_attrib_unref(hog->attrib);
 	hog->attrib = NULL;
