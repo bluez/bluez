@@ -30,3 +30,6 @@ void bt_scpp_unref(struct bt_scpp *scan);
 
 bool bt_scpp_attach(struct bt_scpp *scan, void *gatt);
 void bt_scpp_detach(struct bt_scpp *scan);
+
+bool bt_scpp_set_interval(struct bt_scpp *scan, uint16_t value);
+bool bt_scpp_set_window(struct bt_scpp *scan, uint16_t value);
