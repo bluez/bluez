@@ -1647,7 +1647,7 @@ static void channel_delete_cb(GError *gerr, gpointer data)
 
 	DBG("");
 
-	if (!gerr) {
+	if (gerr) {
 		error("health: channel delete failed %s", gerr->message);
 		return;
 	}
