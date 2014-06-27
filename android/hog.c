@@ -102,6 +102,7 @@ struct report {
 	struct bt_hog		*hog;
 	uint8_t			id;
 	uint8_t			type;
+	uint16_t		ccc_handle;
 	guint			notifyid;
 	struct gatt_char	*decl;
 };
@@ -195,6 +196,10 @@ static void report_reference_cb(guint8 status, const guint8 *pdu,
 	report->id = pdu[1];
 	report->type = pdu[2];
 	DBG("Report ID: 0x%02x Report type: 0x%02x", pdu[1], pdu[2]);
+
+	/* Enable notifications only for Input Reports */
+	if (report->type == 0x01)
+		write_ccc(report->hog->attrib, report->ccc_handle, report);
 }
 
 static void external_report_reference_cb(guint8 status, const guint8 *pdu,
@@ -248,7 +253,7 @@ static void discover_report_cb(uint8_t status, GSList *descs, void *user_data)
 
 		switch (desc->uuid16) {
 		case GATT_CLIENT_CHARAC_CFG_UUID:
-			write_ccc(hog->attrib, desc->handle, report);
+			report->ccc_handle = desc->handle;
 			break;
 		case GATT_REPORT_REFERENCE:
 			gatt_read_char(hog->attrib, desc->handle,
