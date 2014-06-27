@@ -2442,7 +2442,8 @@ uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 	if (given_time)
 		now = *given_time;
 	else
-		clock_gettime(CLK, &now);
+		if (clock_gettime(CLK, &now) < 0)
+			return MCAP_TMSTAMP_DONTSET;
 
 	tmstamp = time_us(&now) - time_us(&mcl->csp->base_time)
 		+ mcl->csp->base_tmstamp;
