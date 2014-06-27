@@ -51,6 +51,8 @@ struct bt_dis {
 	GAttrib			*attrib;	/* GATT connection */
 	struct gatt_primary	*primary;	/* Primary details */
 	GSList			*chars;		/* Characteristics */
+	bt_dis_notify		notify;
+	void			*notify_data;
 };
 
 struct characteristic {
@@ -132,6 +134,13 @@ static void read_pnpid_cb(guint8 status, const guint8 *pdu, guint16 len,
 	dis->vendor = get_le16(&value[1]);
 	dis->product = get_le16(&value[3]);
 	dis->version = get_le16(&value[5]);
+
+	DBG("source: 0x%02X vendor: 0x%04X product: 0x%04X version: 0x%04X",
+			dis->source, dis->vendor, dis->product, dis->version);
+
+	if (dis->notify)
+		dis->notify(dis->source, dis->vendor, dis->product,
+						dis->version, dis->notify_data);
 }
 
 static void process_deviceinfo_char(struct characteristic *ch)
@@ -193,4 +202,16 @@ void bt_dis_detach(struct bt_dis *dis)
 
 	g_attrib_unref(dis->attrib);
 	dis->attrib = NULL;
+}
+
+bool bt_dis_set_notification(struct bt_dis *dis, bt_dis_notify func,
+							void *user_data)
+{
+	if (!dis)
+		return false;
+
+	dis->notify = func;
+	dis->notify_data = user_data;
+
+	return true;
 }
