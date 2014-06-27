@@ -1101,15 +1101,19 @@ static void mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 	DBG("Not Implemeneted");
 }
 
-static void mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
+static uint8_t mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 				uint16_t mdlid, uint8_t *conf, void *data)
 {
 	DBG("Not Implemeneted");
+
+	return MCAP_SUCCESS;
 }
 
-static void mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
+static uint8_t mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 {
 	DBG("Not Implemeneted");
+
+	return MCAP_SUCCESS;
 }
 
 static void connect_mdl_cb(struct mcap_mdl *mdl, GError *gerr, gpointer data)
