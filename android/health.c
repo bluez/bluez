@@ -1157,7 +1157,6 @@ static struct health_channel *create_channel(struct health_app *app,
 {
 	struct mdep_cfg *mdep;
 	struct health_channel *channel;
-	uint8_t index;
 	static unsigned int channel_id = 1;
 
 	DBG("mdep %u", mdep_index);
@@ -1165,10 +1164,23 @@ static struct health_channel *create_channel(struct health_app *app,
 	if (!dev || !app)
 		return NULL;
 
-	index = mdep_index + 1;
-	mdep = queue_find(app->mdeps, match_mdep_by_id, INT_TO_PTR(index));
-	if (!mdep)
-		return NULL;
+	mdep = queue_find(app->mdeps, match_mdep_by_id, INT_TO_PTR(mdep_index));
+	if (!mdep) {
+		if (mdep_index == MDEP_ECHO) {
+			mdep = new0(struct mdep_cfg, 1);
+			if (!mdep)
+				return NULL;
+
+			/* Leave other configuration zeroes */
+			mdep->id = MDEP_ECHO;
+
+			if (!queue_push_tail(app->mdeps, mdep)) {
+				free_mdep_cfg(mdep);
+				return NULL;
+			}
+		} else
+			return NULL;
+	}
 
 	/* create channel and push it to device */
 	channel = new0(struct health_channel, 1);
