@@ -42,8 +42,6 @@
 #include "attrib/gatt.h"
 #include "src/attio.h"
 
-#define SCAN_PARAMETERS_UUID		"00001813-0000-1000-8000-00805f9b34fb"
-
 #define SCAN_INTERVAL_WIN_UUID		0x2A4F
 #define SCAN_REFRESH_UUID		0x2A31
 
