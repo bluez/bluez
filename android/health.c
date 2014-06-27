@@ -1110,7 +1110,41 @@ static void mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 static uint8_t mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 				uint16_t mdlid, uint8_t *conf, void *data)
 {
-	DBG("Not Implemeneted");
+	GError *gerr = NULL;
+
+	DBG("Data channel request: mdepid %u mdlid %u", mdepid, mdlid);
+
+	/* TODO: find / create device */
+
+	if (mdepid == MDEP_ECHO) {
+		switch (*conf) {
+		case CHANNEL_TYPE_ANY:
+			*conf = CHANNEL_TYPE_RELIABLE;
+		case CHANNEL_TYPE_RELIABLE:
+			break;
+		case CHANNEL_TYPE_STREAM:
+			return MCAP_CONFIGURATION_REJECTED;
+		default:
+			/*
+			 * Special case defined in HDP spec 3.4.
+			 * When an invalid configuration is received we shall
+			 * close the MCL when we are still processing the
+			 * callback.
+			 */
+			/* TODO close device */
+			return MCAP_CONFIGURATION_REJECTED; /* not processed */
+		}
+
+		if (!mcap_set_data_chan_mode(mcap, L2CAP_MODE_ERTM, &gerr)) {
+			error("Error: %s", gerr->message);
+			g_error_free(gerr);
+			return MCAP_MDL_BUSY;
+		}
+
+		/* TODO: Create channel */
+
+		return MCAP_SUCCESS;
+	}
 
 	return MCAP_SUCCESS;
 }
