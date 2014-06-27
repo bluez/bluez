@@ -1829,6 +1829,43 @@ Load Connection Parameters Command
 				Not Supported
 
 
+Get Clock Information Command
+=============================
+
+	Command Code:		0x0033
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Local_Clock (4 Octets)
+				Piconet_Clock (4 Octets)
+				Accuracy (2 Octets)
+
+	This command is used to get local and piconet clock information.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	Reserved (not in use)
+		2	Reserved (not in use)
+
+	The Accuracy can be set to 0xffff which means the value is unknown.
+
+	If the Address is set to 00:00:00:00:00:00, then only the
+	Local_Clock field has a valid value. The Piconet_Clock and
+	Accuracy fields are invalid and shall be ignored.
+
+	This command generates a Command Complete event on success and
+	on failure. In case of failure only Address and Address_Type fields
+	are valid and values of remaining parameters are considered invalid
+	and shall be ignored.
+
+	Possible errors:	Not Connected
+				Not Powered
+				Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
