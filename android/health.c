@@ -1213,6 +1213,9 @@ static struct health_channel *connect_channel(struct mcap_mcl *mcl,
 		channel = create_channel(app, mdepid, device);
 	}
 
+	/* Device is created here */
+	mcl->cb->user_data = channel;
+
 	return channel;
 }
 
