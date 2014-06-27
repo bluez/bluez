@@ -75,23 +75,10 @@ struct queue *queue_new(void)
 
 void queue_destroy(struct queue *queue, queue_destroy_func_t destroy)
 {
-	struct queue_entry *entry;
-
 	if (!queue)
 		return;
 
-	entry = queue->head;
-
-	while (entry) {
-		struct queue_entry *tmp = entry;
-
-		if (destroy)
-			destroy(entry->data);
-
-		entry = entry->next;
-
-		free(tmp);
-	}
+	queue_remove_all(queue, NULL, NULL, destroy);
 
 	queue_unref(queue);
 }
