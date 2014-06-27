@@ -1539,46 +1539,42 @@ static struct health_device *create_device(struct health_app *app,
 		return NULL;
 	}
 
+	dev->app_id = app->id;
+
 	return dev;
 }
 
-static struct health_device *get_device(uint16_t app_id, const uint8_t *addr)
+static struct health_app *get_app(uint16_t app_id)
 {
-	struct health_app *app;
+	return queue_find(apps, match_app_by_id, INT_TO_PTR(app_id));
+}
+
+static struct health_device *get_device(struct health_app *app,
+							const uint8_t *addr)
+{
 	struct health_device *dev;
 	bdaddr_t bdaddr;
-
-	app = queue_find(apps, match_app_by_id, INT_TO_PTR(app_id));
-	if (!app)
-		return NULL;
 
 	android2bdaddr(addr, &bdaddr);
 	dev = queue_find(app->devices, match_dev_by_addr, &bdaddr);
 	if (dev)
 		return dev;
 
-	dev = create_device(app, addr);
-	if (dev)
-		dev->app_id = app_id;
-
-	return dev;
+	return create_device(app, addr);
 }
 
-static struct health_channel *create_channel(uint16_t app_id,
+static struct health_channel *create_channel(struct health_app *app,
 						uint8_t mdep_index,
 						struct health_device *dev)
 {
-	struct health_app *app;
 	struct mdep_cfg *mdep;
 	struct health_channel *channel;
 	uint8_t index;
 	static unsigned int channel_id = 1;
 
-	if (!dev)
-		return NULL;
+	DBG("mdep %u", mdep_index);
 
-	app = queue_find(apps, match_app_by_id, INT_TO_PTR(app_id));
-	if (!app)
+	if (!dev || !app)
 		return NULL;
 
 	index = mdep_index + 1;
@@ -1604,7 +1600,7 @@ static struct health_channel *create_channel(uint16_t app_id,
 	return channel;
 }
 
-static struct health_channel *get_channel(uint16_t app_id,
+static struct health_channel *get_channel(struct health_app *app,
 						uint8_t mdep_index,
 						struct health_device *dev)
 {
@@ -1620,7 +1616,7 @@ static struct health_channel *get_channel(uint16_t app_id,
 	if (channel)
 		return channel;
 
-	return create_channel(app_id, mdep_index, dev);
+	return create_channel(app, index, dev);
 }
 
 static void bt_health_connect_channel(const void *buf, uint16_t len)
@@ -1629,14 +1625,19 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 	struct hal_rsp_health_connect_channel rsp;
 	struct health_device *dev = NULL;
 	struct health_channel *channel = NULL;
+	struct health_app *app;
 
 	DBG("");
 
-	dev = get_device(cmd->app_id, cmd->bdaddr);
+	app = get_app(cmd->app_id);
+	if (!app)
+		goto fail;
+
+	dev = get_device(app, cmd->bdaddr);
 	if (!dev)
 		goto fail;
 
-	channel = get_channel(cmd->app_id, cmd->mdep_index, dev);
+	channel = get_channel(app, cmd->mdep_index, dev);
 	if (!channel)
 		goto fail;
 
