@@ -1766,6 +1766,11 @@ Get Connection Information Command
 
 	This command is used to get connection information.
 
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
 	TX_Power and Max_TX_Power can be set to 127 if values are invalid or
 	unknown.
 
