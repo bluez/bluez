@@ -240,6 +240,6 @@ TC_SNK_DE_BV_02_I	PASS	haltest:
 				bluez-hdp health-device-profile 1
 				BTHL_MDEP_ROLE_SINK 4100
 				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
-TC_SNK_DEP_BV_03_I	INC
-TC_SNK_DEP_BV_04_I	INC
+TC_SNK_DEP_BV_03_I	N/A
+TC_SNK_DEP_BV_04_I	N/A
 -------------------------------------------------------------------------------
