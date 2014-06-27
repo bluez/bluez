@@ -36,6 +36,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/main.c \
 	bluez/android/bluetooth.c \
 	bluez/android/scpp.c \
+	bluez/android/dis.c \
 	bluez/android/hog.c \
 	bluez/android/hidhost.c \
 	bluez/android/socket.c \
