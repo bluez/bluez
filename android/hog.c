@@ -328,6 +328,11 @@ static void external_report_reference_cb(guint8 status, const guint8 *pdu,
 	uuid16 = get_le16(&pdu[1]);
 	DBG("External report reference read, external report characteristic "
 						"UUID: 0x%04x", uuid16);
+
+	/* Do not discover if is not a Report */
+	if (uuid16 != HOG_REPORT_UUID)
+		return;
+
 	bt_uuid16_create(&uuid, uuid16);
 	gatt_discover_char(hog->attrib, 0x0001, 0xffff, &uuid,
 					external_service_char_cb, hog);
