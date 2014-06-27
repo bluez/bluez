@@ -5910,15 +5910,13 @@ static void register_gap_service(void)
 /* TODO: Get those data from device possible via androig/bluetooth.c */
 static struct device_info {
 	const char *manufacturer_name;
-	const char *system_id;
 	const char *model_number;
 	const char *serial_number;
 	const char *firmware_rev;
 	const char *hardware_rev;
 	const char *software_rev;
 } device_info = {
-	.manufacturer_name =	"BlueZ",
-	.system_id =		"BlueZ for Android",
+	.manufacturer_name =	"BlueZ for Android",
 	.model_number =		"model no",
 	.serial_number =	"serial no",
 	.firmware_rev =		"firmware rev",
@@ -5971,12 +5969,6 @@ static void register_device_info_service(void)
 	srvc_handle = gatt_db_add_service(gatt_db, &uuid, true, 15);
 
 	/* User data are not const hence (void *) cast is used */
-	bt_uuid16_create(&uuid, GATT_CHARAC_SYSTEM_ID);
-	gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid, GATT_PERM_READ,
-					GATT_CHR_PROP_READ,
-					device_info_read_cb, NULL,
-					(void *) device_info.system_id);
-
 	bt_uuid16_create(&uuid, GATT_CHARAC_MODEL_NUMBER_STRING);
 	gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid, GATT_PERM_READ,
 					GATT_CHR_PROP_READ,
