@@ -60,6 +60,10 @@
 #define CHANNEL_TYPE_RELIABLE  0x01
 #define CHANNEL_TYPE_STREAM    0x02
 
+#define MDEP_ECHO		0x00
+#define MDEP_INITIAL		0x01
+#define MDEP_FINAL		0x7F
+
 static bdaddr_t adapter_addr;
 static struct ipc *hal_ipc = NULL;
 static struct queue *apps = NULL;
