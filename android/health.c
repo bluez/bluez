@@ -164,6 +164,8 @@ static void free_health_channel(void *data)
 {
 	struct health_channel *channel = data;
 
+	DBG("channel %p", channel);
+
 	if (!channel)
 		return;
 
@@ -1147,12 +1149,13 @@ static void mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 	struct health_channel *channel = data;
 	struct health_device *dev;
 
-	DBG("");
-
 	if (!channel)
 		return;
 
 	dev = channel->dev;
+
+	DBG("device %p channel %p mdl %p", dev, channel, mdl);
+
 	/* mdl == NULL means, delete all mdls */
 	if (!mdl) {
 		queue_foreach(dev->channels, notify_channel, NULL);
@@ -1269,6 +1272,8 @@ static struct health_channel *connect_channel(struct mcap_mcl *mcl,
 	struct health_device *device;
 	struct health_channel *channel = NULL;
 	bdaddr_t addr;
+
+	DBG("mcl %p mdepid %u", mcl, mdepid);
 
 	mcap_mcl_get_addr(mcl, &addr);
 
@@ -1568,7 +1573,7 @@ static void get_mdep_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	if (!get_mdep_from_rec(recs->data, mdep->role, mdep->data_type,
 								&mdep_id)) {
-		error("health: no matching MDEP found");
+		error("health: no matching MDEP: %u", channel->mdep_id);
 		goto fail;
 	}
 
