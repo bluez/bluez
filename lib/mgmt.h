@@ -593,6 +593,8 @@ static const char *mgmt_op[] = {
 	"Set Privacy",
 	"Load Identity Resolving Keys",
 	"Get Connection Information",
+	"Load Connection Parameters",
+	"Get Clock Information",
 };
 
 static const char *mgmt_ev[] = {
@@ -622,6 +624,7 @@ static const char *mgmt_ev[] = {
 	"Passkey Notify",
 	"New Identity Resolving Key",
 	"New Signature Resolving Key",
+	"New Connection Parameter",
 };
 
 static const char *mgmt_status[] = {
