@@ -2423,6 +2423,49 @@ static void cmd_scan_params(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static void clock_info_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_get_clock_info *rp = param;
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Unexpected Get Clock Info len %u\n", len);
+		exit(EXIT_FAILURE);
+	}
+
+	if (status) {
+		fprintf(stderr, "Get Clock Info failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Local Clock:   %u\n", le32_to_cpu(rp->local_clock));
+	printf("Piconet Clock: %u\n", le32_to_cpu(rp->piconet_clock));
+	printf("Accurary:      %u\n", le16_to_cpu(rp->accuracy));
+
+	mainloop_quit();
+}
+
+static void cmd_clock_info(struct mgmt *mgmt, uint16_t index,
+							int argc, char **argv)
+{
+	struct mgmt_cp_get_clock_info cp;
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+
+	if (argc > 1)
+		str2ba(argv[1], &cp.addr.bdaddr);
+
+	if (mgmt_send(mgmt, MGMT_OP_GET_CLOCK_INFO, index, sizeof(cp), &cp,
+					clock_info_rsp, NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send get_clock_info cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
@@ -2468,6 +2511,7 @@ static struct {
 	{ "conn-info",	cmd_conn_info,	"Get connection information"	},
 	{ "io-cap",	cmd_io_cap,	"Set IO Capability"		},
 	{ "scan-params",cmd_scan_params,"Set Scan Parameters"		},
+	{ "get-clock",	cmd_clock_info,	"Get Clock Information"		},
 	{ }
 };
 
