@@ -793,7 +793,7 @@ static void update_bredr_state(struct device *dev, bool pairing, bool paired,
 	if (!pairing && !paired && dev->pairing && dev->bredr_paired)
 		goto done;
 
-	if (paired && !dev->le_paired) {
+	if (paired && !dev->le_paired && !dev->bredr_paired) {
 		cached_devices = g_slist_remove(cached_devices, dev);
 		bonded_devices = g_slist_prepend(bonded_devices, dev);
 		remove_device_info(dev, CACHE_FILE);
@@ -826,7 +826,7 @@ static void update_le_state(struct device *dev, bool pairing, bool paired,
 	if (!pairing && !paired && dev->pairing && dev->le_paired)
 		goto done;
 
-	if (paired && !dev->bredr_paired) {
+	if (paired && !dev->bredr_paired && !dev->le_paired) {
 		cached_devices = g_slist_remove(cached_devices, dev);
 		bonded_devices = g_slist_prepend(bonded_devices, dev);
 		remove_device_info(dev, CACHE_FILE);
