@@ -1853,7 +1853,8 @@ Add Device Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
-	Possible errors:	Busy
+	Possible errors:	Rejected
+				Not Supported
 				Invalid Parameters
 				Invalid Index
 
@@ -1879,7 +1880,8 @@ Remove Device Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
-	Possible errors:	Busy
+	Possible errors:	Rejected
+				Not Supported
 				Invalid Parameters
 				Invalid Index
 
