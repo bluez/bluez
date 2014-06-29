@@ -1856,8 +1856,8 @@ Add Device Command
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
-	This command generates a Command Complete event on success or
-	a Command Status event on failure.
+	This command generates a Command Complete event on success
+	or failure.
 
 	Possible errors:	Failed
 				Invalid Parameters
@@ -1888,8 +1888,8 @@ Remove Device Command
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
-	This command generates a Command Complete event on success or
-	a Command Status event on failure.
+	This command generates a Command Complete event on success
+	or failure.
 
 	Possible errors:	Invalid Parameters
 				Invalid Index
