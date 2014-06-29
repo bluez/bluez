@@ -376,7 +376,7 @@ struct mgmt_rp_get_conn_info {
 	int8_t max_tx_power;
 } __packed;
 
-#define MGMT_OP_GET_CLOCK_INFO		0x0033
+#define MGMT_OP_GET_CLOCK_INFO		0x0032
 struct mgmt_cp_get_clock_info {
 	struct mgmt_addr_info addr;
 } __packed;
@@ -593,8 +593,10 @@ static const char *mgmt_op[] = {
 	"Set Privacy",
 	"Load Identity Resolving Keys",
 	"Get Connection Information",
-	"Load Connection Parameters",
 	"Get Clock Information",
+	"Add Device",
+	"Remove Device",
+	"Load Connection Parameters",
 };
 
 static const char *mgmt_ev[] = {
