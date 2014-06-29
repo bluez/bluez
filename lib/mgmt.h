@@ -387,6 +387,17 @@ struct mgmt_rp_get_clock_info {
 	uint16_t  accuracy;
 } __packed;
 
+#define MGMT_OP_ADD_DEVICE		0x0033
+struct mgmt_cp_add_device {
+	struct mgmt_addr_info addr;
+	uint8_t action;
+} __packed;
+
+#define MGMT_OP_REMOVE_DEVICE		0x0034
+struct mgmt_cp_remove_device {
+	struct mgmt_addr_info addr;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -594,6 +605,8 @@ static const char *mgmt_op[] = {
 	"Load Identity Resolving Keys",
 	"Get Connection Information",
 	"Get Clock Information",
+	"Add Device",
+	"Remove Device",
 };
 
 static const char *mgmt_ev[] = {
