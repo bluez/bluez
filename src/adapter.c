@@ -1188,6 +1188,14 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 	}
 
 	/*
+	 * When the kernel background scanning is available, there is
+	 * no need to start any discovery. The kernel will keep scanning
+	 * as long as devices are in its auto-connection list.
+	 */
+	if (kernel_bg_scan)
+		return;
+
+	/*
 	 * If any client is running a discovery right now, then do not
 	 * even try to start passive scanning.
 	 *
@@ -1226,6 +1234,14 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 	int err;
 
 	DBG("status 0x%02x (%s)", status, mgmt_errstr(status));
+
+	/*
+	 * When the kernel background scanning is available, there is
+	 * no need to stop any discovery. The kernel will handle the
+	 * auto-connection by itself.
+	 */
+	if (kernel_bg_scan)
+		return;
 
 	dev = adapter->connect_le;
 	adapter->connect_le = NULL;
@@ -3040,6 +3056,25 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	DBG("%s added to %s's connect_list", device_get_path(device),
 							adapter->system_name);
 
+	if (kernel_bg_scan) {
+		struct mgmt_cp_add_device cp;
+		const bdaddr_t *bdaddr;
+		uint8_t bdaddr_type;
+
+		bdaddr = device_get_address(device);
+		bdaddr_type = btd_device_get_bdaddr_type(device);
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.addr.bdaddr, bdaddr);
+		cp.addr.type = bdaddr_type;
+		cp.action = 0x01;
+
+		if (mgmt_send(adapter->mgmt, MGMT_OP_ADD_DEVICE,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, NULL, NULL) > 0)
+			return 0;
+	}
+
 done:
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return 0;
@@ -3069,6 +3104,24 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	adapter->connect_list = g_slist_remove(adapter->connect_list, device);
 	DBG("%s removed from %s's connect_list", device_get_path(device),
 							adapter->system_name);
+
+	if (kernel_bg_scan) {
+		struct mgmt_cp_remove_device cp;
+		const bdaddr_t *bdaddr;
+		uint8_t bdaddr_type;
+
+		bdaddr = device_get_address(device);
+		bdaddr_type = btd_device_get_bdaddr_type(device);
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.addr.bdaddr, bdaddr);
+		cp.addr.type = bdaddr_type;
+
+		if (mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_DEVICE,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, NULL, NULL) > 0)
+			return;
+	}
 
 	if (!adapter->connect_list) {
 		stop_passive_scanning(adapter);
@@ -6406,6 +6459,37 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 	device_set_unpaired(device, ev->addr.type);
 }
 
+static void clear_devices_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to clear devices: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+}
+
+static int clear_devices(struct btd_adapter *adapter)
+{
+	struct mgmt_cp_remove_device cp;
+
+	if (!kernel_bg_scan)
+		return 0;
+
+	memset(&cp, 0, sizeof(cp));
+
+	DBG("sending clear devices command for index %u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				clear_devices_complete, adapter, NULL) > 0)
+		return 0;
+
+	error("Failed to clear devices for index %u", adapter->dev_id);
+
+	return -EIO;
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -6449,6 +6533,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	adapter->current_settings = btohs(rp->current_settings);
 
 	clear_uuids(adapter);
+	clear_devices(adapter);
 
 	err = adapter_register(adapter);
 	if (err < 0) {
