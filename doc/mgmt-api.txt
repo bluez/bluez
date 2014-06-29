@@ -2541,6 +2541,47 @@ New Signature Resolving Key Event
 	a device. So either its public address or static random address.
 
 
+Device Added Event
+==================
+
+	Event Code:		0x001a
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Action (1 Octet)
+
+	This event indicates that a device has been added using the
+	Add Device command.
+
+	Possible values for the Address_Type parameter:
+		0	Reserved (not in use)
+		1	LE Public
+		2	LE Random
+
+	The event will only be sent to management sockets other than the
+	one through which the command was sent.
+
+
+Device Removed Event
+====================
+
+	Event Code:		0x001b
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+
+	This event indicates that a device has been removed using the
+	Remove Device command.
+
+	Possible values for the Address_Type parameter:
+		0	Reserved (not in use)
+		1	LE Public
+		2	LE Random
+
+	The event will only be sent to management sockets other than the
+	one through which the command was sent.
+
+
 New Connection Parameter Event
 ==============================
 
