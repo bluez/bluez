@@ -1830,11 +1830,17 @@ Add Device Command
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 				Action (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 	This command is used to add a device to the action list. The
 	action list allows scanning for devices and auto-connection
 	to known devices.
+
+	Possible values for the Address_Type parameter:
+		0	Reserved (not in use)
+		1	LE Public
+		2	LE Random
 
 	Possible values for the Action parameter:
 		0	Background scan for device
@@ -1853,8 +1859,7 @@ Add Device Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
-	Possible errors:	Rejected
-				Not Supported
+	Possible errors:	Failed
 				Invalid Parameters
 				Invalid Index
 
@@ -1866,10 +1871,16 @@ Remove Device Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 	This command is used to remove a device from the action list
 	previously added by using the Add Device command.
+
+	Possible values for the Address_Type parameter:
+		0	Reserved (not in use)
+		1	LE Public
+		2	LE Random
 
 	When the Address parameter is 00:00:00:00:00:00, then all
 	previously added devices wil be removed.
@@ -1880,9 +1891,7 @@ Remove Device Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
-	Possible errors:	Rejected
-				Not Supported
-				Invalid Parameters
+	Possible errors:	Invalid Parameters
 				Invalid Index
 
 
