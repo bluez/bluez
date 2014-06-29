@@ -2466,6 +2466,155 @@ static void cmd_clock_info(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static void add_device_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		fprintf(stderr, "Add device failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+	mainloop_quit();
+}
+
+static void add_device_usage(void)
+{
+	printf("Usage: btmgmt add-device [-a action] [-t type] <address>\n");
+}
+
+static struct option add_device_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "action",	1, 0, 'a' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+static void cmd_add_device(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	struct mgmt_cp_add_device cp;
+	uint8_t action = 0x00;
+	uint8_t type = BDADDR_BREDR;
+	char addr[18];
+	int opt;
+
+	while ((opt = getopt_long(argc, argv, "+a:t:h", add_device_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 'a':
+			action = strtol(optarg, NULL, 0);
+			break;
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+		default:
+			add_device_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		add_device_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
+	cp.action = action;
+
+	ba2str(&cp.addr.bdaddr, addr);
+	printf("Adding device with %s (%s)\n", addr, typestr(cp.addr.type));
+
+	if (mgmt_send(mgmt, MGMT_OP_ADD_DEVICE, index, sizeof(cp), &cp,
+					add_device_rsp, NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send add device command\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void remove_device_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		fprintf(stderr, "Remove device failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+	mainloop_quit();
+}
+
+static void del_device_usage(void)
+{
+	printf("Usage: btmgmt del-device [-t type] <address>\n");
+}
+
+static struct option del_device_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+static void cmd_del_device(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	struct mgmt_cp_remove_device cp;
+	uint8_t type = BDADDR_BREDR;
+	char addr[18];
+	int opt;
+
+	while ((opt = getopt_long(argc, argv, "+t:h", del_device_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+		default:
+			add_device_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		del_device_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
+
+	ba2str(&cp.addr.bdaddr, addr);
+	printf("Removing device with %s (%s)\n", addr, typestr(cp.addr.type));
+
+	if (mgmt_send(mgmt, MGMT_OP_REMOVE_DEVICE, index, sizeof(cp), &cp,
+					remove_device_rsp, NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send remove device command\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void cmd_clr_devices(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	char *bdaddr_any = "00:00:00:00:00:00";
+	char *rm_argv[] = { "del-device", bdaddr_any, NULL };
+
+	cmd_del_device(mgmt, index, 2, rm_argv);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
@@ -2512,6 +2661,9 @@ static struct {
 	{ "io-cap",	cmd_io_cap,	"Set IO Capability"		},
 	{ "scan-params",cmd_scan_params,"Set Scan Parameters"		},
 	{ "get-clock",	cmd_clock_info,	"Get Clock Information"		},
+	{ "add-device", cmd_add_device, "Add Device"			},
+	{ "del-device", cmd_del_device, "Remove Device"			},
+	{ "clr-devices",cmd_clr_devices,"Clear Devices"			},
 	{ }
 };
 
