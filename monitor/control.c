@@ -540,6 +540,46 @@ static void mgmt_new_csrk(uint16_t len, const void *buf)
 	packet_hexdump(buf, len);
 }
 
+static void mgmt_device_added(uint16_t len, const void *buf)
+{
+	const struct mgmt_ev_device_added *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Added control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Added: %s (%d) %d\n", str, ev->addr.type, ev->action);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	packet_hexdump(buf, len);
+}
+
+static void mgmt_device_removed(uint16_t len, const void *buf)
+{
+	const struct mgmt_ev_device_removed *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Removed control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Removed: %s (%d)\n", str, ev->addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	packet_hexdump(buf, len);
+}
+
 void control_message(uint16_t opcode, const void *data, uint16_t size)
 {
 	switch (opcode) {
@@ -611,6 +651,12 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		break;
 	case MGMT_EV_NEW_CSRK:
 		mgmt_new_csrk(size, data);
+		break;
+	case MGMT_EV_DEVICE_ADDED:
+		mgmt_device_added(size, data);
+		break;
+	case MGMT_EV_DEVICE_REMOVED:
+		mgmt_device_removed(size, data);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, size);
