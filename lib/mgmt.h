@@ -553,6 +553,17 @@ struct mgmt_ev_new_csrk {
 	struct mgmt_csrk_info key;
 } __packed;
 
+#define MGMT_EV_DEVICE_ADDED		0x001a
+struct mgmt_ev_device_added {
+	struct mgmt_addr_info addr;
+	uint8_t action;
+} __packed;
+
+#define MGMT_EV_DEVICE_REMOVED		0x001b
+struct mgmt_ev_device_removed {
+	struct mgmt_addr_info addr;
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -636,6 +647,8 @@ static const char *mgmt_ev[] = {
 	"Passkey Notify",
 	"New Identity Resolving Key",
 	"New Signature Resolving Key",
+	"Device Added",
+	"Device Removed",
 };
 
 static const char *mgmt_status[] = {
