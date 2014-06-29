@@ -248,11 +248,11 @@ TSPC_HOGP_11_13	False (*)	Suspend State (O)
 TSPC_HOGP_11_14	False (*)	Exit Suspend State (C.1)
 TSPC_HOGP_11_15	False (*)	Write HID Control Point characteristic: Suspend
 					command (C.1)
-TSPC_HOGP_11_16	False		Write HID Control Point characteristic: Exit
+TSPC_HOGP_11_16	False (*)	Write HID Control Point characteristic: Exit
 					Suspend command (C.1)
-TSPC_HOGP_11_17	True		Read Protocol Mode characteristic: Get Protocol
+TSPC_HOGP_11_17	False (*)	Read Protocol Mode characteristic: Get Protocol
 					command (O)
-TSPC_HOGP_11_18	True		Write Protocol Mode characteristic: Set Report
+TSPC_HOGP_11_18	False (*)	Write Protocol Mode characteristic: Set Report
 					Protocol Mode command (O)
 TSPC_HOGP_11_19	True		Read Battery Level characteristic (M)
 TSPC_HOGP_11_20	True		Read Battery Level characteristic: Client
