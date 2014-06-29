@@ -84,6 +84,8 @@
 
 static DBusConnection *dbus_conn = NULL;
 
+static bool kernel_bg_scan = false;
+
 static GList *adapter_list = NULL;
 static unsigned int adapter_remaining = 0;
 static bool powering_down = false;
@@ -6705,6 +6707,9 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 {
 	const struct mgmt_rp_read_commands *rp = param;
 	uint16_t num_commands, num_events;
+	const uint16_t *opcode;
+	size_t expected_len;
+	int i;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to read supported commands: %s (0x%02x)",
@@ -6722,6 +6727,26 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 
 	DBG("Number of commands: %d", num_commands);
 	DBG("Number of events: %d", num_events);
+
+	expected_len = sizeof(*rp) + num_commands * sizeof(uint16_t) +
+						num_events * sizeof(uint16_t);
+
+	if (length < expected_len) {
+		error("Too small reply for supported commands: (%u != %zu)",
+							length, expected_len);
+		return;
+	}
+
+	opcode = rp->opcodes;
+
+	for (i = 0; i < num_commands; i++) {
+		uint16_t op = get_le16(opcode++);
+
+		if (op == MGMT_OP_ADD_DEVICE) {
+			DBG("enabling kernel background scanning");
+			kernel_bg_scan = true;
+		}
+	}
 }
 
 static void read_version_complete(uint8_t status, uint16_t length,
