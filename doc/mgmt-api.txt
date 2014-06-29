@@ -2585,7 +2585,7 @@ Device Removed Event
 New Connection Parameter Event
 ==============================
 
-	Event Code:		0x001a
+	Event Code:		0x001c
 	Controller Index:	<controller id>
 	Event Parameters:	Store_Hint (1 Octet)
 				Param {
