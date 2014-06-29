@@ -805,7 +805,11 @@ static void update_bredr_state(struct device *dev, bool pairing, bool paired,
 	}
 
 	dev->bredr_paired = paired;
-	dev->bredr_bonded = bonded;
+
+	if (dev->bredr_paired)
+		dev->bredr_bonded = dev->bredr_bonded || bonded;
+	else
+		dev->bredr_bonded = false;
 
 done:
 	dev->pairing = pairing;
@@ -844,7 +848,11 @@ static void update_le_state(struct device *dev, bool pairing, bool paired,
 	}
 
 	dev->le_paired = paired;
-	dev->le_bonded = bonded;
+
+	if (dev->le_paired)
+		dev->le_bonded = dev->le_bonded || bonded;
+	else
+		dev->le_bonded = false;
 
 done:
 	dev->pairing = pairing;
