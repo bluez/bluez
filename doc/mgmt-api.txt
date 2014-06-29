@@ -1887,7 +1887,7 @@ Remove Device Command
 Load Connection Parameters Command
 ==================================
 
-	Command Code:		0x0032
+	Command Code:		0x0035
 	Controller Index:	<controller id>
 	Command Parameters:	Param_Count (2 Octets)
 				Param1 {
