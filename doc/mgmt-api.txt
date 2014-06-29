@@ -39,6 +39,10 @@ Version 1.6 introduces Get Connection Information command. It also updates
 the Device Found event to combine advertising data and scan response data
 into a single event.
 
+Version 1.7 introduces Get Clock Information, Add Device and Remove Device
+commands. It also introduces Device Added and Device Removed events. The
+Set Debug Keys command gained an extra mode for enabling SSP debug mode.
+
 
 Example
 =======
