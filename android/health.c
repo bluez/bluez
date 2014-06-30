@@ -2026,7 +2026,12 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 
 static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 {
-	DBG("Not implemented");
+	struct health_device *dev;
+
+	DBG("");
+
+	dev = search_dev_by_mcl(mcl);
+	free_health_device(dev);
 }
 
 bool bt_health_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
