@@ -270,6 +270,11 @@ void bt_scpp_detach(struct bt_scpp *scan)
 	if (!scan || !scan->attrib)
 		return;
 
+	if (scan->refresh_cb_id > 0) {
+		g_attrib_unregister(scan->attrib, scan->refresh_cb_id);
+		scan->refresh_cb_id = 0;
+	}
+
 	g_attrib_unref(scan->attrib);
 	scan->attrib = NULL;
 }
