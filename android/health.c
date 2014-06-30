@@ -1370,6 +1370,7 @@ static uint8_t mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 		switch (*conf) {
 		case CHANNEL_TYPE_ANY:
 			*conf = CHANNEL_TYPE_RELIABLE;
+			break;
 		case CHANNEL_TYPE_RELIABLE:
 			break;
 		case CHANNEL_TYPE_STREAM:
