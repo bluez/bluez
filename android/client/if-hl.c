@@ -295,7 +295,16 @@ static void close_channel_p(int argc, const char **argv)
 	}
 
 	app_id = (uint32_t) atoi(argv[2]);
+	if (app_id >= APP_ID_SIZE) {
+		haltest_error("Wrong app_id specidied: %u\n", app_id);
+		return;
+	}
+
 	mdep_cfg_index = (uint8_t) atoi(argv[3]);
+	if (mdep_cfg_index >= MDEP_CFG_SIZE) {
+		haltest_error("Wrong mdep cgf index: %u\n", mdep_cfg_index);
+		return;
+	}
 
 	if (app_info[app_id][mdep_cfg_index][2] >= 0) {
 		shutdown(app_info[app_id][mdep_cfg_index][2], SHUT_RDWR);
