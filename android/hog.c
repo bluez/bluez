@@ -699,10 +699,6 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 static void report_free(void *data)
 {
 	struct report *report = data;
-	struct bt_hog *hog = report->hog;
-
-	if (hog->attrib)
-		g_attrib_unregister(hog->attrib, report->notifyid);
 
 	g_free(report->decl);
 	g_free(report);
