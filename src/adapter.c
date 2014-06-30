@@ -1235,6 +1235,9 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 
 	DBG("status 0x%02x (%s)", status, mgmt_errstr(status));
 
+	dev = adapter->connect_le;
+	adapter->connect_le = NULL;
+
 	/*
 	 * When the kernel background scanning is available, there is
 	 * no need to stop any discovery. The kernel will handle the
@@ -1242,9 +1245,6 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 	 */
 	if (kernel_bg_scan)
 		return;
-
-	dev = adapter->connect_le;
-	adapter->connect_le = NULL;
 
 	/*
 	 * MGMT_STATUS_REJECTED may be returned from kernel because the passive
