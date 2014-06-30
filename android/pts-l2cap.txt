@@ -145,5 +145,5 @@ TC_ECF_BV_08_C		N/A
 TC_LE_CPU_BV_01_C	INC
 TC_LE_CPU_BV_02_C	PASS	l2test -n -V le_public -J 4 <braddr>
 TC_LE_CPU_BI_01_C	PASS	l2test -n -V le_public -J 4 <braddr>
-TC_LE_CPU_BI_02_C	INC
+TC_LE_CPU_BI_02_C	PASS	l2test -r -V le_public -J 4
 TC_LE_REJ_BV_01_C	PASS	l2test -n -V le_public -J 4 <braddr>
