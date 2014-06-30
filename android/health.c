@@ -329,6 +329,38 @@ static struct health_channel *search_channel_by_id(uint16_t id)
 	return search.channel;
 }
 
+struct app_search {
+	uint8_t mdepid;
+	struct health_app *app;
+};
+
+static void app_search_mdep(void *data, void *user_data)
+{
+	struct health_app *app = data;
+	struct app_search *search = user_data;
+
+	if (search->app)
+		return;
+
+	if (queue_find(app->mdeps, match_mdep_by_id,
+						INT_TO_PTR(search->mdepid)))
+		search->app = app;
+}
+
+static struct health_app *search_app_by_mdepid(uint8_t mdepid)
+{
+	struct app_search search;
+
+	DBG("");
+
+	search.mdepid = mdepid;
+	search.app = NULL;
+
+	queue_foreach(apps, app_search_mdep, &search);
+
+	return search.app;
+}
+
 static int register_service_protocols(sdp_record_t *rec,
 					struct health_app *app)
 {
@@ -1277,22 +1309,24 @@ static struct health_channel *connect_channel(struct mcap_mcl *mcl,
 
 	mcap_mcl_get_addr(mcl, &addr);
 
-	/* TODO: Search app for mdepid */
-
-	if (mdepid == MDEP_ECHO) {
+	if (mdepid == MDEP_ECHO)
 		/* For echo service take last app */
 		app = queue_peek_tail(apps);
-		if (!app)
-			return NULL;
+	else
+		app = search_app_by_mdepid(mdepid);
 
-		device = get_device(app, (uint8_t *) &addr);
-		if (!device)
-			return NULL;
-
-		channel = create_channel(app, mdepid, device);
+	if (!app) {
+		DBG("No app found for mdepid %u", mdepid);
+		return NULL;
 	}
 
-	/* Device is created here */
+	device = get_device(app, (uint8_t *) &addr);
+	if (!device)
+		return NULL;
+
+	channel = create_channel(app, mdepid, device);
+
+	/* Channel is assigned here after creation */
 	mcl->cb->user_data = channel;
 
 	return channel;
