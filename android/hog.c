@@ -177,6 +177,19 @@ static void write_ccc(GAttrib *attrib, uint16_t handle, void *user_data)
 					report_ccc_written_cb, user_data);
 }
 
+static void ccc_read_cb(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
+{
+	struct report *report = user_data;
+
+	if (status != 0) {
+		error("Error reading CCC value: %s", att_ecode2str(status));
+		return;
+	}
+
+	write_ccc(report->hog->attrib, report->ccc_handle, report);
+}
+
 static void report_reference_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
@@ -199,7 +212,8 @@ static void report_reference_cb(guint8 status, const guint8 *pdu,
 
 	/* Enable notifications only for Input Reports */
 	if (report->type == HOG_REPORT_TYPE_INPUT)
-		write_ccc(report->hog->attrib, report->ccc_handle, report);
+		gatt_read_char(report->hog->attrib, report->ccc_handle,
+							ccc_read_cb, report);
 }
 
 static void external_report_reference_cb(guint8 status, const guint8 *pdu,
