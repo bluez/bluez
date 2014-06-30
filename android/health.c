@@ -1136,25 +1136,36 @@ static gboolean serve_echo(GIOChannel *io, GIOCondition cond, gpointer data)
 static void mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct health_channel *channel = data;
+	int fd;
 
 	if (!channel->mdl)
 		channel->mdl = mcap_mdl_ref(mdl);
 
 	DBG("Data channel connected: mdl %p channel %p", mdl, channel);
 
+	fd = mcap_mdl_get_fd(channel->mdl);
+	if (fd < 0) {
+		error("health: error retrieving fd");
+		goto fail;
+	}
+
 	if (channel->mdep_id == MDEP_ECHO) {
 		GIOChannel *io;
-		int fd;
-
-		fd = mcap_mdl_get_fd(channel->mdl);
-		if (fd < 0)
-			return;
 
 		io = g_io_channel_unix_new(fd);
 		g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
 							serve_echo, channel);
 		g_io_channel_unref(io);
+
+		return;
 	}
+
+	send_channel_state_notify(channel, HAL_HEALTH_CHANNEL_CONNECTED, fd);
+
+	return;
+fail:
+	/* TODO: mcap_mdl_abort */
+	destroy_channel(channel);
 }
 
 static void mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
