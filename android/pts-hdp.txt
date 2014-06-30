@@ -108,9 +108,21 @@ TC_SRC_HCT_BV_02_I	PASS	haltest:
 				BTHL_MDEP_ROLE_SOURCE 4100
 				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
 TC_SRC_HCT_BV_03_I	N/A
-TC_SRC_HCT_BV_04_I	INC
+TC_SRC_HCT_BV_04_I	PASS    haltest:
+				hl register_application bluez-android Bluez
+				bluez-hdp health-device-profile 1
+				BTHL_MDEP_ROLE_SOURCE 4100
+				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
+
+				when prompted: bluetooth ssp_reply <args>
 TC_SRC_HCT_BV_05_C	N/A
-TC_SRC_HCT_BV_06_C	INC
+TC_SRC_HCT_BV_06_C	PASS    haltest:
+				hl register_application bluez-android Bluez
+				bluez-hdp health-device-profile 1
+				BTHL_MDEP_ROLE_SOURCE 4100
+				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
+
+				when prompted: bluetooth ssp_reply <args>
 TC_SRC_HCT_BV_07_C	INC
 TC_SRC_DE_BV_01_I	INC
 TC_SRC_DE_BV_02_I	PASS	haltest:
@@ -222,7 +234,13 @@ TC_SNK_HCT_BV_02_I	PASS	haltest:
 				BTHL_MDEP_ROLE_SINK 4100
 				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
 TC_SNK_HCT_BV_03_I	N/A
-TC_SNK_HCT_BV_04_I	INC
+TC_SNK_HCT_BV_04_I	PASS    haltest:
+				hl register_application bluez-android Bluez
+				bluez-hdp health-device-profile 1
+				BTHL_MDEP_ROLE_SINK 4100
+				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
+
+				when prompted: bluetooth ssp_reply <args>
 TC_SNK_HCT_BV_05_C	N/A
 TC_SNK_HCT_BV_06_C	PASS	haltest:
 				hl register_application bluez-android Bluez
