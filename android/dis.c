@@ -62,8 +62,7 @@ struct characteristic {
 
 static void dis_free(struct bt_dis *dis)
 {
-	if (dis->attrib)
-		g_attrib_unref(dis->attrib);
+	bt_dis_detach(dis);
 
 	g_free(dis->primary);
 	g_free(dis);
