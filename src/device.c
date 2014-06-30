@@ -3344,6 +3344,8 @@ static void attio_connected(gpointer data, gpointer user_data)
 	struct attio_data *attio = data;
 	GAttrib *attrib = user_data;
 
+	DBG("");
+
 	if (attio->cfunc)
 		attio->cfunc(attrib, attio->user_data);
 }
@@ -3351,6 +3353,8 @@ static void attio_connected(gpointer data, gpointer user_data)
 static void attio_disconnected(gpointer data, gpointer user_data)
 {
 	struct attio_data *attio = data;
+
+	DBG("");
 
 	if (attio->dcfunc)
 		attio->dcfunc(attio->user_data);
@@ -3362,6 +3366,8 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 	struct btd_device *device = user_data;
 	int sock, err = 0;
 	socklen_t len;
+
+	DBG("");
 
 	if (device->browse)
 		goto done;
@@ -3597,6 +3603,15 @@ bool device_attach_attrib(struct btd_device *dev, GIOChannel *io)
 	dev->cleanup_id = g_io_add_watch(io, G_IO_HUP,
 					attrib_disconnected_cb, dev);
 
+	/*
+	 * Remove the device from the connect_list and give the passive
+	 * scanning another chance to be restarted in case there are
+	 * other devices in the connect_list.
+	 */
+	adapter_connect_list_remove(dev->adapter, dev);
+
+	g_slist_foreach(dev->attios, attio_connected, dev->attrib);
+
 	return true;
 }
 
@@ -3677,24 +3692,6 @@ static void att_error_cb(const GError *gerr, gpointer user_data)
 	}
 }
 
-static void att_success_cb(gpointer user_data)
-{
-	struct att_callbacks *attcb = user_data;
-	struct btd_device *device = attcb->user_data;
-
-	if (device->attios == NULL)
-		return;
-
-	/*
-	 * Remove the device from the connect_list and give the passive
-	 * scanning another chance to be restarted in case there are
-	 * other devices in the connect_list.
-	 */
-	adapter_connect_list_remove(device->adapter, device);
-
-	g_slist_foreach(device->attios, attio_connected, device->attrib);
-}
-
 int device_connect_le(struct btd_device *dev)
 {
 	struct btd_adapter *adapter = dev->adapter;
@@ -3714,7 +3711,6 @@ int device_connect_le(struct btd_device *dev)
 
 	attcb = g_new0(struct att_callbacks, 1);
 	attcb->err = att_error_cb;
-	attcb->success = att_success_cb;
 	attcb->user_data = dev;
 
 	if (dev->le_state.paired)
@@ -4834,6 +4830,8 @@ void device_set_appearance(struct btd_device *device, uint16_t value)
 static gboolean notify_attios(gpointer user_data)
 {
 	struct btd_device *device = user_data;
+
+	DBG("");
 
 	if (device->attrib == NULL)
 		return FALSE;
