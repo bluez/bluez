@@ -712,6 +712,8 @@ static void hog_free(void *data)
 {
 	struct bt_hog *hog = data;
 
+	bt_hog_detach(hog);
+
 	g_slist_free_full(hog->instances, hog_free);
 
 	bt_scpp_unref(hog->scpp);
@@ -719,7 +721,6 @@ static void hog_free(void *data)
 	bt_bas_unref(hog->bas);
 	bt_uhid_unref(hog->uhid);
 	g_slist_free_full(hog->reports, report_free);
-	g_attrib_unref(hog->attrib);
 	g_free(hog->name);
 	g_free(hog->primary);
 	g_free(hog);
