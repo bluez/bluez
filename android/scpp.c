@@ -62,8 +62,7 @@ struct bt_scpp {
 
 static void scpp_free(struct bt_scpp *scan)
 {
-	if (scan->attrib)
-		g_attrib_unref(scan->attrib);
+	bt_scpp_detach(scan);
 
 	g_free(scan->primary);
 	g_free(scan);
