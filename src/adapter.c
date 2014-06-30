@@ -3105,23 +3105,8 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	DBG("%s removed from %s's connect_list", device_get_path(device),
 							adapter->system_name);
 
-	if (kernel_bg_scan) {
-		struct mgmt_cp_remove_device cp;
-		const bdaddr_t *bdaddr;
-		uint8_t bdaddr_type;
-
-		bdaddr = device_get_address(device);
-		bdaddr_type = btd_device_get_bdaddr_type(device);
-
-		memset(&cp, 0, sizeof(cp));
-		bacpy(&cp.addr.bdaddr, bdaddr);
-		cp.addr.type = bdaddr_type;
-
-		if (mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_DEVICE,
-					adapter->dev_id, sizeof(cp), &cp,
-					NULL, NULL, NULL) > 0)
-			return;
-	}
+	if (kernel_bg_scan)
+		return;
 
 	if (!adapter->connect_list) {
 		stop_passive_scanning(adapter);
@@ -3132,6 +3117,49 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 		return;
 
 	trigger_passive_scanning(adapter);
+}
+
+void adapter_auto_connect_add(struct btd_adapter *adapter,
+					struct btd_device *device)
+{
+	struct mgmt_cp_add_device cp;
+	const bdaddr_t *bdaddr;
+	uint8_t bdaddr_type;
+
+	if (!kernel_bg_scan)
+		return;
+
+	bdaddr = device_get_address(device);
+	bdaddr_type = btd_device_get_bdaddr_type(device);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+	cp.action = 0x01;
+
+	mgmt_send(adapter->mgmt, MGMT_OP_ADD_DEVICE,
+			adapter->dev_id, sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
+void adapter_auto_connect_remove(struct btd_adapter *adapter,
+					struct btd_device *device)
+{
+	struct mgmt_cp_remove_device cp;
+	const bdaddr_t *bdaddr;
+	uint8_t bdaddr_type;
+
+	if (!kernel_bg_scan)
+		return;
+
+	bdaddr = device_get_address(device);
+	bdaddr_type = btd_device_get_bdaddr_type(device);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+
+	mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_DEVICE,
+			adapter->dev_id, sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
 static void adapter_start(struct btd_adapter *adapter)

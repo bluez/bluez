@@ -4049,11 +4049,15 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 
 	DBG("%s auto connect: %d", addr, enable);
 
+	if (device->auto_connect == enable)
+		return;
+
 	device->auto_connect = enable;
 
 	/* Disabling auto connect */
 	if (enable == FALSE) {
 		adapter_connect_list_remove(device->adapter, device);
+		adapter_auto_connect_remove(device->adapter, device);
 		return;
 	}
 
@@ -4064,6 +4068,7 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 
 	/* Enabling auto connect */
 	adapter_connect_list_add(device->adapter, device);
+	adapter_auto_connect_add(device->adapter, device);
 }
 
 static gboolean start_discovery(gpointer user_data)
