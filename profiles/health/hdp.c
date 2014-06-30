@@ -1066,6 +1066,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 		switch (*conf) {
 		case HDP_NO_PREFERENCE_DC:
 			*conf = HDP_RELIABLE_DC;
+			break;
 		case HDP_RELIABLE_DC:
 			break;
 		case HDP_STREAMING_DC:
@@ -1112,6 +1113,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 	case HDP_STREAMING_DC:
 		if (!dev->fr || app->role == HDP_SOURCE)
 			return MCAP_CONFIGURATION_REJECTED;
+		break;
 	case HDP_RELIABLE_DC:
 		if (app->role == HDP_SOURCE)
 			return MCAP_CONFIGURATION_REJECTED;
