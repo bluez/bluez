@@ -1007,7 +1007,10 @@ void bt_hog_detach(struct bt_hog *hog)
 	for (l = hog->reports; l; l = l->next) {
 		struct report *r = l->data;
 
-		g_attrib_unregister(hog->attrib, r->notifyid);
+		if (r->notifyid > 0) {
+			g_attrib_unregister(hog->attrib, r->notifyid);
+			r->notifyid = 0;
+		}
 	}
 
 	if (hog->scpp)
