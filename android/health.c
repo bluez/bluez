@@ -2001,16 +2001,17 @@ static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 
 static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 {
-	GError *gerr = NULL;
-	bool ret;
+	struct health_device *dev;
 
 	DBG("");
 
-	ret = set_mcl_cb(mcl, NULL, &gerr);
-	if (!ret) {
-		error("health: error setting mcl callbacks: %s", gerr->message);
-		g_error_free(gerr);
+	dev = search_dev_by_mcl(mcl);
+	if (!dev) {
+		error("device data does not exists");
+		return;
 	}
+
+	dev->mcl_conn = true;
 }
 
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
