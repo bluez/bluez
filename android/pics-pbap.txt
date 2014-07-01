@@ -209,7 +209,7 @@ TSPC_PBAP_9_13j	False		PSE: SIM1/Telecom/och (O)
 TSPC_PBAP_9_13k	False (*)	PSE: SIM1/Telecom/mch (O)
 TSPC_PBAP_9_13l	False		PSE: SIM1/Telecom/cch (O)
 TSPC_PBAP_9_14	False		PSE: Deleted Handles Behavior
-TSPC_PBAP_9_14a	False (*)	PSE: Error reporting (C.5)
+TSPC_PBAP_9_14a	True		PSE: Error reporting (C.5)
 TSPC_PBAP_9_14b	False		PSE: Change tracking (C.5)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_PBAP_0_3 (PBAP 1.2) is supported, otherwise Excluded.

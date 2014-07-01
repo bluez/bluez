@@ -67,7 +67,7 @@ TC_PSE_PBD_BV_02_C	PASS	Tester must compare phone book size with the
 TC_PSE_PBD_BV_03_C	PASS	Tester must compare phone book size with the
 				value given by PTS
 TC_PSE_PBD_BV_05_C	N/A
-TC_PSE_PBD_BI_01_C	FAIL	Android PBAP server bug
+TC_PSE_PBD_BI_01_C	PASS
 TC_PSE_PBD_BV_06_C	N/A
 TC_PSE_PBD_BV_07_C	N/A
 TC_PSE_PBD_BV_08_C	N/A
