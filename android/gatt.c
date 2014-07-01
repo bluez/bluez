@@ -82,7 +82,7 @@ typedef enum {
 	DEVICE_CONNECTED,		/* connection has been established */
 } gatt_device_state_t;
 
-static const char const *device_state_str[] = {
+static const char *device_state_str[] = {
 	"DISCONNECTED",
 	"CONNECT INIT",
 	"CONNECT READY",
