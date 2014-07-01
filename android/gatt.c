@@ -415,7 +415,7 @@ static struct gatt_device *find_device_by_addr(const bdaddr_t *addr)
 	return queue_find(gatt_devices, match_device_by_bdaddr, addr);
 }
 
-static struct gatt_device *find_pending_device()
+static struct gatt_device *find_pending_device(void)
 {
 	return queue_find(gatt_devices, match_pending_device, NULL);
 }

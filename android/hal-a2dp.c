@@ -118,7 +118,7 @@ static bt_status_t init(btav_callbacks_t *callbacks)
 	return ret;
 }
 
-static void cleanup()
+static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
 
@@ -145,7 +145,7 @@ static btav_interface_t iface = {
 	.cleanup = cleanup
 };
 
-btav_interface_t *bt_get_a2dp_interface()
+btav_interface_t *bt_get_a2dp_interface(void)
 {
 	return &iface;
 }

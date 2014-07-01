@@ -645,7 +645,7 @@ static bt_status_t set_volume(uint8_t volume)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-static void cleanup()
+static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
 
@@ -680,7 +680,7 @@ static btrc_interface_t iface = {
 	.cleanup = cleanup
 };
 
-btrc_interface_t *bt_get_avrcp_interface()
+btrc_interface_t *bt_get_avrcp_interface(void)
 {
 	return &iface;
 }

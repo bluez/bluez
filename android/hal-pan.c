@@ -196,7 +196,7 @@ static btpan_interface_t pan_if = {
 	.cleanup = pan_cleanup
 };
 
-btpan_interface_t *bt_get_pan_interface()
+btpan_interface_t *bt_get_pan_interface(void)
 {
 	return &pan_if;
 }
