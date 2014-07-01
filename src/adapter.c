@@ -3084,6 +3084,9 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	if (device == adapter->connect_le)
 		adapter->connect_le = NULL;
 
+	if (kernel_bg_scan)
+		return;
+
 	if (!g_slist_find(adapter->connect_list, device)) {
 		DBG("device %s is not on the list, ignoring",
 						device_get_path(device));
@@ -3093,9 +3096,6 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	adapter->connect_list = g_slist_remove(adapter->connect_list, device);
 	DBG("%s removed from %s's connect_list", device_get_path(device),
 							adapter->system_name);
-
-	if (kernel_bg_scan)
-		return;
 
 	if (!adapter->connect_list) {
 		stop_passive_scanning(adapter);
@@ -3108,15 +3108,55 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	trigger_passive_scanning(adapter);
 }
 
+static void add_device_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_add_device *rp = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *dev;
+	char addr[18];
+
+	if (length < sizeof(*rp)) {
+		error("Too small Add Device complete event");
+		return;
+	}
+
+	ba2str(&rp->addr.bdaddr, addr);
+
+	dev = btd_adapter_find_device(adapter, &rp->addr.bdaddr,
+							rp->addr.type);
+	if (!dev) {
+		error("Add Device complete for unknown device %s", addr);
+		return;
+	}
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to add device %s (%u): %s (0x%02x)",
+			addr, rp->addr.type, mgmt_errstr(status), status);
+		adapter->connect_list = g_slist_remove(adapter->connect_list,
+									dev);
+		return;
+	}
+
+	DBG("%s (%u) added to kernel connect list", addr, rp->addr.type);
+}
+
 void adapter_auto_connect_add(struct btd_adapter *adapter,
 					struct btd_device *device)
 {
 	struct mgmt_cp_add_device cp;
 	const bdaddr_t *bdaddr;
 	uint8_t bdaddr_type;
+	unsigned int id;
 
 	if (!kernel_bg_scan)
 		return;
+
+	if (g_slist_find(adapter->connect_list, device)) {
+		DBG("ignoring already added device %s",
+						device_get_path(device));
+		return;
+	}
 
 	bdaddr = device_get_address(device);
 	bdaddr_type = btd_device_get_bdaddr_type(device);
@@ -3126,8 +3166,35 @@ void adapter_auto_connect_add(struct btd_adapter *adapter,
 	cp.addr.type = bdaddr_type;
 	cp.action = 0x01;
 
-	mgmt_send(adapter->mgmt, MGMT_OP_ADD_DEVICE,
-			adapter->dev_id, sizeof(cp), &cp, NULL, NULL, NULL);
+	id = mgmt_send(adapter->mgmt, MGMT_OP_ADD_DEVICE,
+			adapter->dev_id, sizeof(cp), &cp, add_device_complete,
+			adapter, NULL);
+	if (id == 0)
+		return;
+
+	adapter->connect_list = g_slist_append(adapter->connect_list, device);
+}
+
+static void remove_device_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_remove_device *rp = param;
+	char addr[18];
+
+	if (length < sizeof(*rp)) {
+		error("Too small Remove Device complete event");
+		return;
+	}
+
+	ba2str(&rp->addr.bdaddr, addr);
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to remove device %s (%u): %s (0x%02x)",
+			addr, rp->addr.type, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("%s (%u) removed from kernel connect list", addr, rp->addr.type);
 }
 
 void adapter_auto_connect_remove(struct btd_adapter *adapter,
@@ -3136,9 +3203,15 @@ void adapter_auto_connect_remove(struct btd_adapter *adapter,
 	struct mgmt_cp_remove_device cp;
 	const bdaddr_t *bdaddr;
 	uint8_t bdaddr_type;
+	unsigned int id;
 
 	if (!kernel_bg_scan)
 		return;
+
+	if (!g_slist_find(adapter->connect_list, device)) {
+		DBG("ignoring not added device %s", device_get_path(device));
+		return;
+	}
 
 	bdaddr = device_get_address(device);
 	bdaddr_type = btd_device_get_bdaddr_type(device);
@@ -3147,8 +3220,13 @@ void adapter_auto_connect_remove(struct btd_adapter *adapter,
 	bacpy(&cp.addr.bdaddr, bdaddr);
 	cp.addr.type = bdaddr_type;
 
-	mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_DEVICE,
-			adapter->dev_id, sizeof(cp), &cp, NULL, NULL, NULL);
+	id = mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_DEVICE,
+			adapter->dev_id, sizeof(cp), &cp,
+			remove_device_complete, adapter, NULL);
+	if (id == 0)
+		return;
+
+	adapter->connect_list = g_slist_remove(adapter->connect_list, device);
 }
 
 static void adapter_start(struct btd_adapter *adapter)
@@ -4498,6 +4576,13 @@ connect_le:
 	 * ignore this one.
 	 */
 	if (adapter->connect_le)
+		return;
+
+	/*
+	 * If kernel background scan is used then the kernel is
+	 * responsible for connecting.
+	 */
+	if (kernel_bg_scan)
 		return;
 
 	/*
