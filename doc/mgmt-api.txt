@@ -2162,6 +2162,7 @@ Device Connected Event
 	The following bits are defined for the Flags parameter:
 		0	Reserved (not in use)
 		1	Legacy Pairing
+		2	Reserved (not in use)
 
 
 Device Disconnected Event
@@ -2332,6 +2333,7 @@ Device Found Event
 	The following bits are defined for the Flags parameter:
 		0	Confirm name
 		1	Legacy Pairing
+		2	Not Connectable
 
 	The Confirm name flag indicates that the kernel wants to know
 	whether user space knows the name for this device or not. If
@@ -2345,6 +2347,10 @@ Device Found Event
 	local input timeout when pairing. Note that there is a risk of
 	false-positives for this flag so user space should be able to
 	handle getting something else as a PIN Request when pairing.
+
+	The Not Connectable flag indicates that the device will not
+	accept any connections. This can be indicated by Low Energy
+	devices that are in broadcaster role.
 
 
 Discovering Event
