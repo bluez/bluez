@@ -83,7 +83,7 @@ static bt_status_t pan_enable(int local_role)
 	cmd.local_role = local_role;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int pan_get_local_role(void)
@@ -120,7 +120,7 @@ static bt_status_t pan_connect(const bt_bdaddr_t *bd_addr, int local_role,
 	cmd.remote_role = remote_role;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_CONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t pan_disconnect(const bt_bdaddr_t *bd_addr)
@@ -135,7 +135,7 @@ static bt_status_t pan_disconnect(const bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_DISCONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
@@ -157,7 +157,7 @@ static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
 	cmd.mode = HAL_MODE_DEFAULT;
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	if (ret != BT_STATUS_SUCCESS) {
 		cbs = NULL;
@@ -181,7 +181,7 @@ static void pan_cleanup(void)
 	cmd.service_id = HAL_SERVICE_ID_PAN;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_PAN);
 }

@@ -139,7 +139,7 @@ static bt_status_t register_application(bthl_reg_param_t *reg, int *app_id)
 
 		status = hal_ipc_cmd(HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_MDEP,
 						sizeof(*mdep) + mdep->descr_len,
-						buf, 0, NULL, NULL);
+						buf, NULL, NULL, NULL);
 
 		if (status != BT_STATUS_SUCCESS)
 			return status;
@@ -162,7 +162,7 @@ static bt_status_t unregister_application(int app_id)
 	cmd.app_id = app_id;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_UNREG_APP,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t connect_channel(int app_id, bt_bdaddr_t *bd_addr,
@@ -208,7 +208,7 @@ static bt_status_t destroy_channel(int channel_id)
 	cmd.channel_id = channel_id;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_DESTROY_CHANNEL,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t init(bthl_callbacks_t *callbacks)
@@ -231,7 +231,7 @@ static bt_status_t init(bthl_callbacks_t *callbacks)
 	cmd.mode = HAL_MODE_DEFAULT;
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	if (ret != BT_STATUS_SUCCESS) {
 		cbacks = NULL;
@@ -255,7 +255,7 @@ static void cleanup(void)
 	cmd.service_id = HAL_SERVICE_ID_HEALTH;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_HEALTH);
 }

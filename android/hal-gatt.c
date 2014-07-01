@@ -579,7 +579,7 @@ static bt_status_t register_client(bt_uuid_t *uuid)
 	memcpy(cmd.uuid, uuid, sizeof(*uuid));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_REGISTER,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t unregister_client(int client_if)
@@ -592,7 +592,7 @@ static bt_status_t unregister_client(int client_if)
 	cmd.client_if = client_if;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_UNREGISTER,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t scan(int client_if, bool start)
@@ -606,7 +606,7 @@ static bt_status_t scan(int client_if, bool start)
 	cmd.start = start;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_SCAN,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t connect(int client_if, const bt_bdaddr_t *bd_addr,
@@ -623,7 +623,7 @@ static bt_status_t connect(int client_if, const bt_bdaddr_t *bd_addr,
 	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_CONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t disconnect(int client_if, const bt_bdaddr_t *bd_addr,
@@ -640,7 +640,7 @@ static bt_status_t disconnect(int client_if, const bt_bdaddr_t *bd_addr,
 	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_DISCONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t listen(int client_if, bool start)
@@ -654,7 +654,7 @@ static bt_status_t listen(int client_if, bool start)
 	cmd.start = start;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_LISTEN,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t refresh(int client_if, const bt_bdaddr_t *bd_addr)
@@ -669,7 +669,7 @@ static bt_status_t refresh(int client_if, const bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_REFRESH,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t search_service(int conn_id, bt_uuid_t *filter_uuid)
@@ -693,7 +693,7 @@ static bt_status_t search_service(int conn_id, bt_uuid_t *filter_uuid)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_SEARCH_SERVICE,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t get_included_service(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -719,7 +719,7 @@ static bt_status_t get_included_service(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_GET_INCLUDED_SERVICE,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t get_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -745,7 +745,7 @@ static bt_status_t get_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_GET_CHARACTERISTIC,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t get_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -773,7 +773,7 @@ static bt_status_t get_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_GET_DESCRIPTOR,
-					len, cmd, 0 , NULL, NULL);
+					len, cmd, NULL , NULL, NULL);
 }
 
 static bt_status_t read_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -793,7 +793,7 @@ static bt_status_t read_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_READ_CHARACTERISTIC,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t write_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -820,7 +820,7 @@ static bt_status_t write_characteristic(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_WRITE_CHARACTERISTIC,
-					cmd_len, cmd, 0, NULL, NULL);
+					cmd_len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t read_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -842,7 +842,7 @@ static bt_status_t read_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_READ_DESCRIPTOR,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t write_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
@@ -871,7 +871,7 @@ static bt_status_t write_descriptor(int conn_id, btgatt_srvc_id_t *srvc_id,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_WRITE_DESCRIPTOR,
-					cmd_len, cmd, 0, NULL, NULL);
+					cmd_len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t execute_write(int conn_id, int execute)
@@ -886,7 +886,7 @@ static bt_status_t execute_write(int conn_id, int execute)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_EXECUTE_WRITE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t register_for_notification(int client_if,
@@ -908,7 +908,7 @@ static bt_status_t register_for_notification(int client_if,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 				HAL_OP_GATT_CLIENT_REGISTER_FOR_NOTIFICATION,
-				sizeof(cmd), &cmd, 0, NULL, NULL);
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t deregister_for_notification(int client_if,
@@ -930,7 +930,7 @@ static bt_status_t deregister_for_notification(int client_if,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 				HAL_OP_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION,
-				sizeof(cmd), &cmd, 0, NULL, NULL);
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t read_remote_rssi(int client_if, const bt_bdaddr_t *bd_addr)
@@ -946,7 +946,7 @@ static bt_status_t read_remote_rssi(int client_if, const bt_bdaddr_t *bd_addr)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_READ_REMOTE_RSSI,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int get_device_type(const bt_bdaddr_t *bd_addr)
@@ -1022,7 +1022,7 @@ static bt_status_t set_adv_data_real(int server_if, bool set_scan_rsp,
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_SET_ADV_DATA,
-						cmd_len, cmd, 0, NULL, NULL);
+						cmd_len, cmd, NULL, NULL, NULL);
 }
 
 /*
@@ -1079,7 +1079,7 @@ static bt_status_t test_command(int command, btgatt_test_params_t *params)
 	cmd.u5 = params->u5;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_TEST_COMMAND,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 /* Server API */
@@ -1094,7 +1094,7 @@ static bt_status_t register_server(bt_uuid_t *uuid)
 	memcpy(cmd.uuid, uuid, sizeof(*uuid));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_REGISTER,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t unregister_server(int server_if)
@@ -1107,7 +1107,7 @@ static bt_status_t unregister_server(int server_if)
 	cmd.server_if = server_if;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_UNREGISTER,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t server_connect(int server_if, const bt_bdaddr_t *bd_addr,
@@ -1124,7 +1124,7 @@ static bt_status_t server_connect(int server_if, const bt_bdaddr_t *bd_addr,
 	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_CONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t server_disconnect(int server_if, const bt_bdaddr_t *bd_addr,
@@ -1141,7 +1141,7 @@ static bt_status_t server_disconnect(int server_if, const bt_bdaddr_t *bd_addr,
 	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_DISCONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t add_service(int server_if, btgatt_srvc_id_t *srvc_id,
@@ -1158,7 +1158,7 @@ static bt_status_t add_service(int server_if, btgatt_srvc_id_t *srvc_id,
 	srvc_id_to_hal(&cmd.srvc_id, srvc_id);
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_ADD_SERVICE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t add_included_service(int server_if, int service_handle,
@@ -1175,7 +1175,7 @@ static bt_status_t add_included_service(int server_if, int service_handle,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_ADD_INC_SERVICE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t add_characteristic(int server_if, int service_handle,
@@ -1196,7 +1196,7 @@ static bt_status_t add_characteristic(int server_if, int service_handle,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_ADD_CHARACTERISTIC,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t add_descriptor(int server_if, int service_handle,
@@ -1215,7 +1215,7 @@ static bt_status_t add_descriptor(int server_if, int service_handle,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_ADD_DESCRIPTOR,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t start_service(int server_if, int service_handle,
@@ -1232,7 +1232,7 @@ static bt_status_t start_service(int server_if, int service_handle,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_START_SERVICE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t stop_service(int server_if, int service_handle)
@@ -1246,7 +1246,7 @@ static bt_status_t stop_service(int server_if, int service_handle)
 	cmd.service_handle = service_handle;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_STOP_SERVICE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t delete_service(int server_if, int service_handle)
@@ -1261,7 +1261,7 @@ static bt_status_t delete_service(int server_if, int service_handle)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_DELETE_SERVICE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t send_indication(int server_if, int attribute_handle,
@@ -1285,7 +1285,7 @@ static bt_status_t send_indication(int server_if, int attribute_handle,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_SEND_INDICATION,
-					cmd_len, cmd, 0, NULL, NULL);
+					cmd_len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t send_response(int conn_id, int trans_id, int status,
@@ -1312,7 +1312,7 @@ static bt_status_t send_response(int conn_id, int trans_id, int status,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_SERVER_SEND_RESPONSE,
-					cmd_len, cmd, 0, NULL, NULL);
+					cmd_len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t init(const btgatt_callbacks_t *callbacks)
@@ -1334,7 +1334,7 @@ static bt_status_t init(const btgatt_callbacks_t *callbacks)
 	cmd.mode = HAL_MODE_DEFAULT;
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	if (ret != BT_STATUS_SUCCESS) {
 		cbs = NULL;
@@ -1358,7 +1358,7 @@ static void cleanup(void)
 	cmd.service_id = HAL_SERVICE_ID_GATT;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_GATT);
 }

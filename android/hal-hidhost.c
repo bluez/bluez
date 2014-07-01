@@ -137,7 +137,7 @@ static bt_status_t hidhost_connect(bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_CONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
@@ -155,7 +155,7 @@ static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_DISCONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t virtual_unplug(bt_bdaddr_t *bd_addr)
@@ -174,7 +174,7 @@ static bt_status_t virtual_unplug(bt_bdaddr_t *bd_addr)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
 					HAL_OP_HIDHOST_VIRTUAL_UNPLUG,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
@@ -200,7 +200,7 @@ static bt_status_t set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 	memcpy(cmd.descr, hid_info.dsc_list, cmd.descr_len);
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_INFO,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t get_protocol(bt_bdaddr_t *bd_addr,
@@ -223,7 +223,7 @@ static bt_status_t get_protocol(bt_bdaddr_t *bd_addr,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
 				HAL_OP_HIDHOST_GET_PROTOCOL,
-				sizeof(cmd), &cmd, 0, NULL, NULL);
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t set_protocol(bt_bdaddr_t *bd_addr,
@@ -246,7 +246,7 @@ static bt_status_t set_protocol(bt_bdaddr_t *bd_addr,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
 				HAL_OP_HIDHOST_SET_PROTOCOL,
-				sizeof(cmd), &cmd, 0, NULL, NULL);
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t get_report(bt_bdaddr_t *bd_addr,
@@ -272,7 +272,7 @@ static bt_status_t get_report(bt_bdaddr_t *bd_addr,
 	cmd.type = report_type;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_GET_REPORT,
-			sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t set_report(bt_bdaddr_t *bd_addr,
@@ -298,7 +298,7 @@ static bt_status_t set_report(bt_bdaddr_t *bd_addr,
 	cmd->type = report_type;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_REPORT,
-				sizeof(*cmd) + cmd->len, buf, 0, NULL, NULL);
+				sizeof(*cmd) + cmd->len, buf, NULL, NULL, NULL);
 }
 
 static bt_status_t send_data(bt_bdaddr_t *bd_addr, char *data)
@@ -319,7 +319,7 @@ static bt_status_t send_data(bt_bdaddr_t *bd_addr, char *data)
 	memcpy(cmd->data, data, cmd->len);
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SEND_DATA,
-				sizeof(*cmd) + cmd->len, buf, 0, NULL, NULL);
+			sizeof(*cmd) + cmd->len, buf, NULL, NULL, NULL);
 }
 
 static bt_status_t init(bthh_callbacks_t *callbacks)
@@ -342,7 +342,7 @@ static bt_status_t init(bthh_callbacks_t *callbacks)
 	cmd.mode = HAL_MODE_DEFAULT;
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	if (ret != BT_STATUS_SUCCESS) {
 		cbacks = NULL;
@@ -366,7 +366,7 @@ static void cleanup(void)
 	cmd.service_id = HAL_SERVICE_ID_HIDHOST;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_HIDHOST);
 }

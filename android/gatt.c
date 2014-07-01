@@ -1553,7 +1553,7 @@ static struct gatt_app *register_app(const uint8_t *uuid, gatt_type_t type)
 	app = new0(struct gatt_app, 1);
 	if (!app) {
 		error("gatt: Cannot allocate memory for registering app");
-		return 0;
+		return NULL;
 	}
 
 	app->type = type;

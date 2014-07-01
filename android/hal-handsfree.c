@@ -245,7 +245,7 @@ static bt_status_t init(bthf_callbacks_t *callbacks)
 	cmd.mode = get_mode();
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	if (ret != BT_STATUS_SUCCESS) {
 		cbs = NULL;
@@ -270,7 +270,7 @@ static bt_status_t handsfree_connect(bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_CONNECT,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
@@ -289,7 +289,7 @@ static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 				HAL_OP_HANDSFREE_DISCONNECT, sizeof(cmd), &cmd,
-				0, NULL, NULL);
+				NULL, NULL, NULL);
 }
 
 static bt_status_t connect_audio(bt_bdaddr_t *bd_addr)
@@ -308,7 +308,7 @@ static bt_status_t connect_audio(bt_bdaddr_t *bd_addr)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 				HAL_OP_HANDSFREE_CONNECT_AUDIO, sizeof(cmd),
-				&cmd, 0, NULL, NULL);
+				&cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t disconnect_audio(bt_bdaddr_t *bd_addr)
@@ -327,7 +327,7 @@ static bt_status_t disconnect_audio(bt_bdaddr_t *bd_addr)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 				HAL_OP_HANDSFREE_DISCONNECT_AUDIO, sizeof(cmd),
-				&cmd, 0, NULL, NULL);
+				&cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t start_voice_recognition(void)
@@ -338,7 +338,7 @@ static bt_status_t start_voice_recognition(void)
 		return BT_STATUS_NOT_READY;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_START_VR,
-							0, NULL, 0, NULL, NULL);
+						0, NULL, NULL, NULL, NULL);
 }
 
 static bt_status_t stop_voice_recognition(void)
@@ -349,7 +349,7 @@ static bt_status_t stop_voice_recognition(void)
 		return BT_STATUS_NOT_READY;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_STOP_VR,
-							0, NULL, 0, NULL, NULL);
+						0, NULL, NULL, NULL, NULL);
 }
 
 static bt_status_t volume_control(bthf_volume_type_t type, int volume)
@@ -366,7 +366,7 @@ static bt_status_t volume_control(bthf_volume_type_t type, int volume)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 				HAL_OP_HANDSFREE_VOLUME_CONTROL, sizeof(cmd),
-				&cmd, 0, NULL, NULL);
+				&cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t device_status_notification(bthf_network_state_t state,
@@ -387,7 +387,7 @@ static bt_status_t device_status_notification(bthf_network_state_t state,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_DEVICE_STATUS_NOTIF,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t cops_response(const char *cops)
@@ -411,7 +411,7 @@ static bt_status_t cops_response(const char *cops)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 						HAL_OP_HANDSFREE_COPS_RESPONSE,
-						len, cmd, 0, NULL, NULL);
+						len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t cind_response(int svc, int num_active, int num_held,
@@ -435,7 +435,7 @@ static bt_status_t cind_response(int svc, int num_active, int num_held,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_CIND_RESPONSE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t formatted_at_response(const char *rsp)
@@ -459,7 +459,7 @@ static bt_status_t formatted_at_response(const char *rsp)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t at_response(bthf_at_response_t response, int error)
@@ -476,7 +476,7 @@ static bt_status_t at_response(bthf_at_response_t response, int error)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_AT_RESPONSE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
@@ -513,7 +513,7 @@ static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 						HAL_OP_HANDSFREE_CLCC_RESPONSE,
-						len, cmd, 0, NULL, NULL);
+						len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t phone_state_change(int num_active, int num_held,
@@ -546,7 +546,7 @@ static bt_status_t phone_state_change(int num_active, int num_held,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_PHONE_STATE_CHANGE,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static void cleanup(void)
@@ -563,7 +563,7 @@ static void cleanup(void)
 	cmd.service_id = HAL_SERVICE_ID_HANDSFREE;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_HANDSFREE);
 }

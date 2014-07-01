@@ -225,7 +225,7 @@ static bt_status_t init(btrc_callbacks_t *callbacks)
 	cmd.mode = HAL_MODE_DEFAULT;
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	if (ret != BT_STATUS_SUCCESS) {
 		cbs = NULL;
@@ -250,7 +250,7 @@ static bt_status_t get_play_status_rsp(btrc_play_status_t status,
 	cmd.position = song_pos;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_GET_PLAY_STATUS,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t list_player_app_attr_rsp(int num_attr,
@@ -277,7 +277,7 @@ static bt_status_t list_player_app_attr_rsp(int num_attr,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_LIST_PLAYER_ATTRS,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t list_player_app_value_rsp(int num_val, uint8_t *p_vals)
@@ -304,7 +304,7 @@ static bt_status_t list_player_app_value_rsp(int num_val, uint8_t *p_vals)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_LIST_PLAYER_VALUES,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t get_player_app_value_rsp(btrc_player_settings_t *p_vals)
@@ -338,7 +338,7 @@ static bt_status_t get_player_app_value_rsp(btrc_player_settings_t *p_vals)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_GET_PLAYER_ATTRS,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static int write_text(uint8_t *ptr, uint8_t id, uint8_t *text, size_t *len)
@@ -405,7 +405,7 @@ static bt_status_t get_player_app_attr_text_rsp(int num_attr,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_GET_PLAYER_ATTRS_TEXT,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t get_player_app_value_text_rsp(int num_val,
@@ -430,7 +430,7 @@ static bt_status_t get_player_app_value_text_rsp(int num_val,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_GET_PLAYER_VALUES_TEXT,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static uint8_t write_element_attr_text(uint8_t *ptr, uint8_t num_attr,
@@ -471,7 +471,7 @@ static bt_status_t get_element_attr_rsp(uint8_t num_attr,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_GET_ELEMENT_ATTRS_TEXT,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t set_player_app_value_rsp(btrc_status_t rsp_status)
@@ -487,7 +487,7 @@ static bt_status_t set_player_app_value_rsp(btrc_status_t rsp_status)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_SET_PLAYER_ATTRS_VALUE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t play_status_changed_rsp(btrc_notification_type_t type,
@@ -506,7 +506,7 @@ static bt_status_t play_status_changed_rsp(btrc_notification_type_t type,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_REGISTER_NOTIFICATION,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t track_change_rsp(btrc_notification_type_t type,
@@ -525,7 +525,7 @@ static bt_status_t track_change_rsp(btrc_notification_type_t type,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_REGISTER_NOTIFICATION,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t track_reached_end_rsp(btrc_notification_type_t type)
@@ -538,7 +538,7 @@ static bt_status_t track_reached_end_rsp(btrc_notification_type_t type)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_REGISTER_NOTIFICATION,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t track_reached_start_rsp(btrc_notification_type_t type)
@@ -551,7 +551,7 @@ static bt_status_t track_reached_start_rsp(btrc_notification_type_t type)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_REGISTER_NOTIFICATION,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t play_pos_changed_rsp(btrc_notification_type_t type,
@@ -570,7 +570,7 @@ static bt_status_t play_pos_changed_rsp(btrc_notification_type_t type,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_REGISTER_NOTIFICATION,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t settings_changed_rsp(btrc_notification_type_t type,
@@ -600,7 +600,7 @@ static bt_status_t settings_changed_rsp(btrc_notification_type_t type,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP,
 					HAL_OP_AVRCP_REGISTER_NOTIFICATION,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t register_notification_rsp(btrc_event_id_t event_id,
@@ -642,7 +642,7 @@ static bt_status_t set_volume(uint8_t volume)
 	cmd.value = volume;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_AVRCP, HAL_OP_AVRCP_SET_VOLUME,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static void cleanup()
@@ -659,7 +659,7 @@ static void cleanup()
 	cmd.service_id = HAL_SERVICE_ID_AVRCP;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_AVRCP);
 }

@@ -475,8 +475,8 @@ static int enable(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, 0, NULL, 0,
-								NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, 0, NULL,
+							NULL, NULL, NULL);
 }
 
 static int disable(void)
@@ -486,8 +486,8 @@ static int disable(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, 0, NULL, 0,
-								NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, 0, NULL,
+							NULL, NULL, NULL);
 }
 
 static void cleanup(void)
@@ -512,7 +512,7 @@ static int get_adapter_properties(void)
 		return BT_STATUS_NOT_READY;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROPS,
-						0, NULL, 0, NULL, NULL);
+						0, NULL, NULL, NULL, NULL);
 }
 
 static int get_adapter_property(bt_property_type_t type)
@@ -528,7 +528,7 @@ static int get_adapter_property(bt_property_type_t type)
 	cmd.type = type;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROP,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int set_adapter_property(const bt_property_t *property)
@@ -547,7 +547,7 @@ static int set_adapter_property(const bt_property_t *property)
 	len = sizeof(*cmd) + cmd->len;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_ADAPTER_PROP,
-						len, cmd, 0, NULL, NULL);
+						len, cmd, NULL, NULL, NULL);
 }
 
 static int get_remote_device_properties(bt_bdaddr_t *remote_addr)
@@ -563,7 +563,7 @@ static int get_remote_device_properties(bt_bdaddr_t *remote_addr)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
 					HAL_OP_GET_REMOTE_DEVICE_PROPS,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int get_remote_device_property(bt_bdaddr_t *remote_addr,
@@ -584,7 +584,7 @@ static int get_remote_device_property(bt_bdaddr_t *remote_addr,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
 					HAL_OP_GET_REMOTE_DEVICE_PROP,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int set_remote_device_property(bt_bdaddr_t *remote_addr,
@@ -611,7 +611,7 @@ static int set_remote_device_property(bt_bdaddr_t *remote_addr,
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
 					HAL_OP_SET_REMOTE_DEVICE_PROP,
-					len, cmd, 0, NULL, NULL);
+					len, cmd, NULL, NULL, NULL);
 }
 
 static int get_remote_service_record(bt_bdaddr_t *remote_addr, bt_uuid_t *uuid)
@@ -628,7 +628,7 @@ static int get_remote_service_record(bt_bdaddr_t *remote_addr, bt_uuid_t *uuid)
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
 					HAL_OP_GET_REMOTE_SERVICE_REC,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int get_remote_services(bt_bdaddr_t *remote_addr)
@@ -642,9 +642,8 @@ static int get_remote_services(bt_bdaddr_t *remote_addr)
 
 	memcpy(cmd.bdaddr, remote_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
-			HAL_OP_GET_REMOTE_SERVICES, sizeof(cmd), &cmd, 0,
-			NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_REMOTE_SERVICES,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int start_discovery(void)
@@ -654,9 +653,8 @@ static int start_discovery(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
-				HAL_OP_START_DISCOVERY, 0, NULL, 0,
-				NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_START_DISCOVERY, 0,
+						NULL, NULL, NULL, NULL);
 }
 
 static int cancel_discovery(void)
@@ -666,9 +664,8 @@ static int cancel_discovery(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
-				HAL_OP_CANCEL_DISCOVERY, 0, NULL, 0,
-				NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_DISCOVERY, 0,
+						NULL, NULL, NULL, NULL);
 }
 
 static int create_bond(const bt_bdaddr_t *bd_addr)
@@ -683,7 +680,7 @@ static int create_bond(const bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CREATE_BOND,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int cancel_bond(const bt_bdaddr_t *bd_addr)
@@ -698,7 +695,7 @@ static int cancel_bond(const bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_BOND,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int remove_bond(const bt_bdaddr_t *bd_addr)
@@ -713,7 +710,7 @@ static int remove_bond(const bt_bdaddr_t *bd_addr)
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_REMOVE_BOND,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int pin_reply(const bt_bdaddr_t *bd_addr, uint8_t accept,
@@ -732,7 +729,7 @@ static int pin_reply(const bt_bdaddr_t *bd_addr, uint8_t accept,
 	memcpy(cmd.pin_code, pin_code, sizeof(cmd.pin_code));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_PIN_REPLY,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int ssp_reply(const bt_bdaddr_t *bd_addr, bt_ssp_variant_t variant,
@@ -752,7 +749,7 @@ static int ssp_reply(const bt_bdaddr_t *bd_addr, bt_ssp_variant_t variant,
 	cmd.passkey = passkey;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SSP_REPLY,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static const void *get_profile_interface(const char *profile_id)
@@ -801,7 +798,7 @@ static int dut_mode_configure(uint8_t enable)
 	cmd.enable = enable;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_CONF,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t buf_len)
@@ -822,7 +819,7 @@ static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t buf_len)
 	len = sizeof(*cmd) + cmd->len;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_SEND,
-						len, cmd, 0, NULL, NULL);
+						len, cmd, NULL, NULL, NULL);
 }
 
 static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t buf_len)
@@ -843,7 +840,7 @@ static int le_test_mode(uint16_t opcode, uint8_t *buf, uint8_t buf_len)
 	len = sizeof(*cmd) + cmd->len;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_LE_TEST_MODE,
-						len, cmd, 0, NULL, NULL);
+						len, cmd, NULL, NULL, NULL);
 }
 
 static int config_hci_snoop_log(uint8_t enable)
