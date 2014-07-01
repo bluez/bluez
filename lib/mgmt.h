@@ -635,6 +635,7 @@ static const char *mgmt_op[] = {
 	"Get Clock Information",
 	"Add Device",
 	"Remove Device",
+	"Load Connection Parameters",
 };
 
 static const char *mgmt_ev[] = {
@@ -666,6 +667,7 @@ static const char *mgmt_ev[] = {
 	"New Signature Resolving Key",
 	"Device Added",
 	"Device Removed",
+	"New Connection Parameter",
 };
 
 static const char *mgmt_status[] = {
