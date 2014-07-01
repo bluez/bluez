@@ -3584,7 +3584,30 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 
 bool device_attach_attrib(struct btd_device *dev, GIOChannel *io)
 {
+	GError *gerr = NULL;
 	GAttrib *attrib;
+	BtIOSecLevel sec_level;
+
+	bt_io_get(io, &gerr, BT_IO_OPT_SEC_LEVEL, &sec_level,
+						BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		return false;
+	}
+
+	if (sec_level == BT_IO_SEC_LOW && dev->le_state.paired) {
+		DBG("Elevating security level since LTK is available");
+
+		sec_level = BT_IO_SEC_MEDIUM;
+		bt_io_set(io, &gerr, BT_IO_OPT_SEC_LEVEL, sec_level,
+							BT_IO_OPT_INVALID);
+		if (gerr) {
+			error("bt_io_set: %s", gerr->message);
+			g_error_free(gerr);
+			return false;
+		}
+	}
 
 	attrib = g_attrib_new(io);
 	if (!attrib) {
