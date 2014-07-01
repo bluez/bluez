@@ -601,7 +601,7 @@ struct vardata {
 				_servicelist);				\
 	} while (0)
 
-struct regmod_msg register_bt_msg = {
+static struct regmod_msg register_bt_msg = {
 	.header = {
 		.service_id = HAL_SERVICE_ID_CORE,
 		.opcode = HAL_OP_REGISTER_MODULE,
@@ -612,7 +612,7 @@ struct regmod_msg register_bt_msg = {
 		},
 };
 
-struct regmod_msg register_bt_malformed_size_msg = {
+static struct regmod_msg register_bt_malformed_size_msg = {
 	.header = {
 		.service_id = HAL_SERVICE_ID_CORE,
 		.opcode = HAL_OP_REGISTER_MODULE,
@@ -645,13 +645,13 @@ static struct malformed_data3_struct malformed_data3_msg = {
 	. redundant_data = 666,
 };
 
-struct ipc_hdr enable_unknown_service_hdr = {
+static struct ipc_hdr enable_unknown_service_hdr = {
 	.service_id = HAL_SERVICE_ID_MAX + 1,
 	.opcode = HAL_OP_REGISTER_MODULE,
 	.len = 0,
 };
 
-struct ipc_hdr enable_bt_service_hdr = {
+static struct ipc_hdr enable_bt_service_hdr = {
 	.service_id = HAL_SERVICE_ID_BLUETOOTH,
 	.opcode = HAL_OP_ENABLE,
 	.len = 0,

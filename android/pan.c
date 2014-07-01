@@ -63,8 +63,8 @@
 #define BNEP_NAP_INTERFACE "bt-pan%d"
 
 static bdaddr_t adapter_addr;
-GSList *devices = NULL;
-uint8_t local_role = HAL_PAN_ROLE_NONE;
+static GSList *devices = NULL;
+static uint8_t local_role = HAL_PAN_ROLE_NONE;
 static struct ipc *hal_ipc = NULL;
 
 struct pan_device {
