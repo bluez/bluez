@@ -4632,6 +4632,10 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
 			index, addr, ev->rssi, flags, eir_len);
 
+	/* Ignore non-connectable events for now */
+	if (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE)
+		return;
+
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
 
