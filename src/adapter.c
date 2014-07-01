@@ -3040,6 +3040,14 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	if (device == adapter->connect_le)
 		adapter->connect_le = NULL;
 
+	/*
+	 * If kernel background scanning is supported then the
+	 * adapter_auto_connect_add() function is used to maintain what to
+	 * connect.
+	 */
+	if (kernel_bg_scan)
+		return 0;
+
 	if (g_slist_find(adapter->connect_list, device)) {
 		DBG("ignoring already added device %s",
 						device_get_path(device));
@@ -3055,25 +3063,6 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	adapter->connect_list = g_slist_append(adapter->connect_list, device);
 	DBG("%s added to %s's connect_list", device_get_path(device),
 							adapter->system_name);
-
-	if (kernel_bg_scan) {
-		struct mgmt_cp_add_device cp;
-		const bdaddr_t *bdaddr;
-		uint8_t bdaddr_type;
-
-		bdaddr = device_get_address(device);
-		bdaddr_type = btd_device_get_bdaddr_type(device);
-
-		memset(&cp, 0, sizeof(cp));
-		bacpy(&cp.addr.bdaddr, bdaddr);
-		cp.addr.type = bdaddr_type;
-		cp.action = 0x01;
-
-		if (mgmt_send(adapter->mgmt, MGMT_OP_ADD_DEVICE,
-					adapter->dev_id, sizeof(cp), &cp,
-					NULL, NULL, NULL) > 0)
-			return 0;
-	}
 
 done:
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
