@@ -4084,14 +4084,15 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 		return;
 	}
 
+	/* Enabling auto connect */
+	adapter_auto_connect_add(device->adapter, device);
+
 	if (device->attrib) {
 		DBG("Already connected");
 		return;
 	}
 
-	/* Enabling auto connect */
 	adapter_connect_list_add(device->adapter, device);
-	adapter_auto_connect_add(device->adapter, device);
 }
 
 static gboolean start_discovery(gpointer user_data)
