@@ -392,9 +392,15 @@ struct mgmt_cp_add_device {
 	struct mgmt_addr_info addr;
 	uint8_t action;
 } __packed;
+struct mgmt_rp_add_device {
+	struct mgmt_addr_info addr;
+} __packed;
 
 #define MGMT_OP_REMOVE_DEVICE		0x0034
 struct mgmt_cp_remove_device {
+	struct mgmt_addr_info addr;
+} __packed;
+struct mgmt_rp_remove_device {
 	struct mgmt_addr_info addr;
 } __packed;
 
