@@ -78,7 +78,17 @@ TC_HGWF_BH_BV_09_I	N/A
 TC_HGWF_BH_BV_10_I	N/A
 TC_HGWF_BH_BV_11_I	N/A
 TC_HGCF_RH_BV_01_I	PASS
-TC_HGCF_RH_BV_02_I	INC
+TC_HGCF_RH_BV_02_I	PASS	haltest: hidhost connect <addr>
+				gattc search_service 1
+				gattc get_characteristic 1 {1812,2,1}
+				gattc get_descriptor 1 {1812,2,1} {2a4d,5}
+				gattc write_descriptor 1 {1812,2,1} {2a4d,5}
+					{2902,0} 2 0x0000 0
+				gattc get_characteristic 1 {1812,5,1}
+				gattc get_descriptor 1 {1812,5,1} {2a4d,4}
+				gattc write_descriptor 1 {1812,5,1}
+					{2a4d,4} {2902,0} 2 0x0000 0
+				hidhost disconnect <addr>
 TC_HGCF_BH_BV_03_I	N/A
 TC_HGCF_BH_BV_04_I	N/A
 TC_HGCF_BH_BV_05_I	N/A
