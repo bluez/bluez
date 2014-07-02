@@ -595,6 +595,8 @@ struct mgmt_ev_new_conn_param {
 	uint16_t timeout;
 } __packed;
 
+#define MGMT_EV_UNCONF_INDEX_ADDED	0x001d
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -682,6 +684,7 @@ static const char *mgmt_ev[] = {
 	"Device Added",
 	"Device Removed",
 	"New Connection Parameter",
+	"Unconfigured Index Added",
 };
 
 static const char *mgmt_status[] = {
