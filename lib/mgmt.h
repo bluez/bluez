@@ -597,6 +597,8 @@ struct mgmt_ev_new_conn_param {
 
 #define MGMT_EV_UNCONF_INDEX_ADDED	0x001d
 
+#define MGMT_EV_UNCONF_INDEX_REMOVED	0x001e
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -685,6 +687,7 @@ static const char *mgmt_ev[] = {
 	"Device Removed",
 	"New Connection Parameter",
 	"Unconfigured Index Added",
+	"Unconfigured Index Removed",
 };
 
 static const char *mgmt_status[] = {
