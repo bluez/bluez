@@ -70,6 +70,13 @@ static void free_data(void *user_data)
 	free(data);
 }
 
+static void mgmt_unconf_index_added(uint16_t len, const void *buf)
+{
+	printf("@ Unconfigured Index Added\n");
+
+	packet_hexdump(buf, len);
+}
+
 static void mgmt_index_added(uint16_t len, const void *buf)
 {
 	printf("@ Index Added\n");
@@ -687,6 +694,9 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		break;
 	case MGMT_EV_NEW_CONN_PARAM:
 		mgmt_new_conn_param(size, data);
+		break;
+	case MGMT_EV_UNCONF_INDEX_ADDED:
+		mgmt_unconf_index_added(size, data);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, size);
