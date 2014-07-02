@@ -226,3 +226,13 @@ Long term key) related to a remote device.
 [SlaveLongTermKey] group contains:
 
   Same as the [LongTermKey] group, except for slave keys.
+
+[ConnectionParameters] group contains:
+
+  MinInterval		Integer		Minimum Connection Interval
+
+  MaxInterval		Integer		Maximum Connection Interval
+
+  Latency		Integer		Connection Latency
+
+  Timeout		Integer		Supervision Timeout
