@@ -852,6 +852,68 @@ static void cmd_commands(struct mgmt *mgmt, uint16_t index, int argc,
 	}
 }
 
+static void unconf_index_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_unconf_index_list *rp = param;
+	uint16_t count;
+	unsigned int i;
+
+	if (status != 0) {
+		fprintf(stderr,
+			"Reading index list failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		goto done;
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small index list reply (%u bytes)\n",
+									len);
+		goto done;
+	}
+
+	count = get_le16(&rp->num_controllers);
+
+	if (len < sizeof(*rp) + count * sizeof(uint16_t)) {
+		fprintf(stderr,
+			"Index count (%u) doesn't match reply length (%u)\n",
+								count, len);
+		goto done;
+	}
+
+	printf("Unconfigured index list with %u item%s\n",
+						count, count > 1 ? "s" : "");
+
+	for (i = 0; i < count; i++) {
+		uint16_t index;
+
+		index = get_le16(&rp->index[i]);
+
+		printf("\thci%u\n", index);
+
+	}
+
+done:
+	mainloop_quit();
+}
+
+static void cmd_unconf(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
+{
+	if (index == MGMT_INDEX_NONE) {
+		if (mgmt_send(mgmt, MGMT_OP_READ_UNCONF_INDEX_LIST,
+					MGMT_INDEX_NONE, 0, NULL,
+					unconf_index_rsp, mgmt, NULL) == 0) {
+			fprintf(stderr, "Unable to send unconf_index_list cmd\n");
+			exit(EXIT_FAILURE);
+		}
+
+		return;
+	}
+
+	fprintf(stderr, "Unable to send read_conf_info cmd\n");
+	exit(EXIT_FAILURE);
+}
+
 static void info_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -2637,6 +2699,7 @@ static struct {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
 	{ "version",	cmd_version,	"Get the MGMT Version"		},
 	{ "commands",	cmd_commands,	"List supported commands"	},
+	{ "unconf",	cmd_unconf,	"Show unconfigured controllers"	},
 	{ "info",	cmd_info,	"Show controller info"		},
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
