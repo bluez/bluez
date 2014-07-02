@@ -404,6 +404,20 @@ struct mgmt_rp_remove_device {
 	struct mgmt_addr_info addr;
 } __packed;
 
+struct mgmt_conn_param {
+	struct mgmt_addr_info addr;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t timeout;
+} __packed;
+
+#define MGMT_OP_LOAD_CONN_PARAM		0x0035
+struct mgmt_cp_load_conn_param {
+	uint16_t param_count;
+	struct mgmt_conn_param params[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
