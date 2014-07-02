@@ -418,6 +418,12 @@ struct mgmt_cp_load_conn_param {
 	struct mgmt_conn_param params[0];
 } __packed;
 
+#define MGMT_OP_READ_UNCONF_INDEX_LIST	0x0036
+struct mgmt_rp_read_unconf_index_list {
+	uint16_t num_controllers;
+	uint16_t index[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -654,6 +660,7 @@ static const char *mgmt_op[] = {
 	"Add Device",
 	"Remove Device",
 	"Load Connection Parameters",
+	"Read Unconfigured Index List",
 };
 
 static const char *mgmt_ev[] = {
