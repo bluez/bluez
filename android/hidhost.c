@@ -1228,7 +1228,7 @@ static void bt_hid_set_report(const void *buf, uint16_t len)
 
 	dev = l->data;
 
-	if (!(dev->ctrl_io)) {
+	if (!dev->ctrl_io && !dev->hog) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -1250,6 +1250,16 @@ static void bt_hid_set_report(const void *buf, uint16_t len)
 		goto failed;
 	}
 
+	if (dev->hog) {
+		if (bt_hog_send_report(dev->hog, req + 1, req_size - 1,
+							cmd->type) < 0) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+
+		goto done;
+	}
+
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
 	if (write(fd, req, req_size) < 0) {
@@ -1261,6 +1271,7 @@ static void bt_hid_set_report(const void *buf, uint16_t len)
 
 	dev->last_hid_msg = HID_MSG_SET_REPORT;
 
+done:
 	status = HAL_STATUS_SUCCESS;
 
 failed:
