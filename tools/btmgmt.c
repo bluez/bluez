@@ -84,6 +84,20 @@ static void index_removed(uint16_t index, uint16_t len,
 		printf("hci%u removed\n", index);
 }
 
+static void unconf_index_added(uint16_t index, uint16_t len,
+				const void *param, void *user_data)
+{
+	if (monitor)
+		printf("hci%u added (unconfigured)\n", index);
+}
+
+static void unconf_index_removed(uint16_t index, uint16_t len,
+				const void *param, void *user_data)
+{
+	if (monitor)
+		printf("hci%u removed (unconfigured)\n", index);
+}
+
 static const char *settings_str[] = {
 				"powered",
 				"connectable",
@@ -2786,6 +2800,10 @@ int main(int argc, char *argv[])
 						request_passkey, mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_PASSKEY_NOTIFY, index,
 						passkey_notify, mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_ADDED, index,
+					unconf_index_added, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_REMOVED, index,
+					unconf_index_removed, NULL, NULL);
 
 	exit_status = mainloop_run();
 
