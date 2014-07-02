@@ -1958,8 +1958,9 @@ Read Unconfigured Controller Index List Command
 	monitored using the Unconfigured Index Added event.
 
 	An unconfigured controller can either move to a configured state
-	indicated by the Index Added event or it can be removed which
-	would be indicated by the Index Removed event.
+	by indicating Unconfigured Index Removed event followed by an
+	Index Added event; or it can be removed from the system which
+	would be indicated by the Unconfigured Index Removed event.
 
 	Only controllers that require configuration will be listed with
 	this command. A controller that is fully configured will not
@@ -2040,10 +2041,10 @@ Set Public Address Command
 	the now fully configured controller can be expected.
 
 	For a fully configured controller, the current controller index
-	will become invalid and an Index Removed event will be send. Once
-	the address has been successfully changed an Index Added event
-	will be send. There is no guarantee that the controller index
-	stays the same.
+	will become invalid and an Unconfigured Index Removed event will
+	be send. Once the address has been successfully changed an Index
+	Added event will be send. There is no guarantee that the controller
+	index stays the same.
 
 	All previous configured parameters and settings are lost when
 	this command succeeds. The controller has to be treated as new
@@ -2753,3 +2754,13 @@ Unconfigured Index Added Event
 	Only when a controller requires further configuration, it will
 	be announced with this event. If it supports configuration, but
 	does not require it, then an Index Added event will be used.
+
+Unconfigured Index Removed Event
+================================
+
+	Event Code:		0x001e
+	Controller Index:	<controller id>
+	Event Parameters:
+
+	This event indicates that an unconfigured controller has been
+	removed from the system.
