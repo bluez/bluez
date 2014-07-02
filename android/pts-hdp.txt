@@ -90,7 +90,15 @@ TC_SRC_CC_BV_07_C	PASS    haltest:
 				when prompted:
 				hl connect_channel <app_id> <bd_addr>
 				<mdep_cfg_index>
-TC_SRC_CC_BV_09_C	INC
+TC_SRC_CC_BV_09_C	PASS    haltest:
+				hl register_application bluez-android Bluez
+				bluez-hdp health-device-profile 2
+				BTHL_MDEP_ROLE_SOURCE 4100
+				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
+				BTHL_MDEP_ROLE_SOURCE 4100
+				BTHL_CHANNEL_TYPE_STREAMING pulse-oximeter
+
+				when prompted: bluetooth ssp_reply <args>
 TC_SRC_CC_BI_12_C	PASS	haltest:
 				hl register_application bluez-android Bluez
 				bluez-hdp health-device-profile 1
