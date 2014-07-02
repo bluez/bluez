@@ -6038,6 +6038,31 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 		btd_device_set_temporary(device, FALSE);
 }
 
+static void new_conn_param(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_new_conn_param *ev = param;
+	struct btd_adapter *adapter = user_data;
+	uint16_t min, max, latency, timeout;
+	char dst[18];
+
+
+	if (length < sizeof(*ev)) {
+		error("Too small New Connection Parameter event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, dst);
+
+	min = btohs(ev->min_interval);
+	max = btohs(ev->max_interval);
+	latency = btohs(ev->latency);
+	timeout = btohs(ev->timeout);
+
+	DBG("hci%u %s (%u) min 0x%04x max 0x%04x latency 0x%04x timeout 0x%04x",
+		adapter->dev_id, dst, ev->addr.type, min, max, latency, timeout);
+}
+
 int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 {
 	struct mgmt_cp_set_io_capability cp;
@@ -6719,6 +6744,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_IRK,
 						adapter->dev_id,
 						new_irk_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_NEW_CONN_PARAM,
+						adapter->dev_id,
+						new_conn_param,
 						adapter, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_BLOCKED,
