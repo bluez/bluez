@@ -1038,3 +1038,40 @@ int bt_hog_set_control_point(struct bt_hog *hog, bool suspend)
 
 	return 0;
 }
+
+int bt_hog_send_report(struct bt_hog *hog, void *data, size_t size, int type)
+{
+	struct report *report;
+	GSList *l;
+
+	if (!hog)
+		return -EINVAL;
+
+	if (!hog->attrib)
+		return -ENOTCONN;
+
+	l = g_slist_find_custom(hog->reports, GUINT_TO_POINTER(type),
+							report_type_cmp);
+	if (!l)
+		return -ENOTSUP;
+
+	report = l->data;
+
+	DBG("hog: Write report, handle 0x%X", report->decl->value_handle);
+
+	if (report->decl->properties & GATT_CHR_PROP_WRITE)
+		gatt_write_char(hog->attrib, report->decl->value_handle,
+				data, size, output_written_cb, hog);
+
+	if (report->decl->properties & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
+		gatt_write_cmd(hog->attrib, report->decl->value_handle,
+						data, size, NULL, NULL);
+
+	for (l = hog->instances; l; l = l->next) {
+		struct bt_hog *instance = l->data;
+
+		bt_hog_send_report(instance, data, size, type);
+	}
+
+	return 0;
+}
