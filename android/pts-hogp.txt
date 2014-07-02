@@ -54,10 +54,22 @@ TC_HGRF_BH_BV_15_I	N/A
 TC_HGRF_BH_BV_16_I	N/A
 TC_HGRF_BH_BV_17_I	N/A
 TC_HGRF_HH_BV_18_I	N/A
-TC_HGWF_RH_BV_01_I	INC
-TC_HGWF_RH_BV_02_I	INC
-TC_HGWF_RH_BV_03_I	INC
-TC_HGWF_RH_BV_04_I	INC
+TC_HGWF_RH_BV_01_I	PASS	haltest: hidhost connect <addr>
+				hidhost set_report <addr> BTHH_INPUT_REPORT
+					AAB3F8A6CD
+				hidhost disconnect <addr>
+TC_HGWF_RH_BV_02_I	PASS	haltest: hidhost connect <addr>
+				hidhost set_report <addr> BTHH_OUTPUT_REPORT
+					EF907856341200
+				hidhost disconnect <addr>
+TC_HGWF_RH_BV_03_I	PASS	haltest: hidhost connect <addr>
+				hidhost set_report <addr> BTHH_OUTPUT_REPORT
+					EF907856341200
+				hidhost disconnect <addr>
+TC_HGWF_RH_BV_04_I	PASS	haltest: hidhost connect <addr>
+				hidhost set_report <addr> BTHH_FEATURE_REPORT
+					EA453F2D87
+				hidhost disconnect <addr>
 TC_HGWF_RH_BV_05_I	N/A
 TC_HGWF_RH_BV_06_I	N/A
 TC_HGWF_RH_BV_07_I	N/A
