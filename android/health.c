@@ -1423,7 +1423,8 @@ static uint8_t mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 	struct health_app *app;
 	struct mdep_cfg *mdep;
 
-	DBG("Data channel request: mdepid %u mdlid %u", mdepid, mdlid);
+	DBG("Data channel request: mdepid %u mdlid %u conf %u",
+							mdepid, mdlid, *conf);
 
 	if (mdepid == MDEP_ECHO)
 		/* For echo service take last app */
@@ -1478,10 +1479,14 @@ static uint8_t mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 
 	switch (*conf) {
 	case CHANNEL_TYPE_ANY:
-		if (mdep->role == HAL_HEALTH_MDEP_ROLE_SINK)
+		if (mdep->role == HAL_HEALTH_MDEP_ROLE_SINK) {
 			return MCAP_CONFIGURATION_REJECTED;
-		else
-			*conf = CHANNEL_TYPE_RELIABLE;
+		} else {
+			if (queue_length(channel->dev->channels) <= 1)
+				*conf = CHANNEL_TYPE_RELIABLE;
+			else
+				*conf = CHANNEL_TYPE_STREAM;
+		}
 		break;
 	case CHANNEL_TYPE_STREAM:
 		if (mdep->role == HAL_HEALTH_MDEP_ROLE_SOURCE)
