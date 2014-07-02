@@ -126,6 +126,15 @@ struct irk_info {
 	uint8_t val[16];
 };
 
+struct conn_param {
+	bdaddr_t bdaddr;
+	uint8_t  bdaddr_type;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t timeout;
+};
+
 struct watch_client {
 	struct btd_adapter *adapter;
 	char *owner;
@@ -2430,6 +2439,34 @@ static struct irk_info *get_irk_info(GKeyFile *key_file, const char *peer,
 	return irk;
 }
 
+static struct conn_param *get_conn_param(GKeyFile *key_file, const char *peer,
+							uint8_t bdaddr_type)
+{
+	struct conn_param *param;
+
+	if (!g_key_file_has_group(key_file, "ConnectionParameters"))
+		return NULL;
+
+	param = g_new0(struct conn_param, 1);
+
+	param->min_interval = g_key_file_get_integer(key_file,
+							"ConnectionParameters",
+							"MinInterval", NULL);
+	param->max_interval = g_key_file_get_integer(key_file,
+							"ConnectionParameters",
+							"MaxInterval", NULL);
+	param->latency = g_key_file_get_integer(key_file,
+							"ConnectionParameters",
+							"Latency", NULL);
+	param->timeout = g_key_file_get_integer(key_file,
+							"ConnectionParameters",
+							"Timeout", NULL);
+	str2ba(peer, &param->bdaddr);
+	param->bdaddr_type = bdaddr_type;
+
+	return param;
+}
+
 static void load_link_keys_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2683,6 +2720,62 @@ static void load_irks(struct btd_adapter *adapter, GSList *irks)
 		error("Failed to IRKs for hci%u", adapter->dev_id);
 }
 
+static void load_conn_params_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("hci%u Load Connection Parameters failed: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("Connection Parameters loaded for hci%u", adapter->dev_id);
+}
+
+static void load_conn_params(struct btd_adapter *adapter, GSList *params)
+{
+	struct mgmt_cp_load_conn_param *cp;
+	struct mgmt_conn_param *param;
+	size_t param_count, cp_size;
+	unsigned int id;
+	GSList *l;
+
+	param_count = g_slist_length(params);
+
+	DBG("hci%u conn params %zu", adapter->dev_id, param_count);
+
+	cp_size = sizeof(*cp) + (param_count * sizeof(*param));
+
+	cp = g_try_malloc0(cp_size);
+	if (cp == NULL) {
+		error("Failed to allocate memory for connection parameters");
+		return;
+	}
+
+	cp->param_count = htobs(param_count);
+
+	for (l = params, param = cp->params; l; l = g_slist_next(l), param++) {
+		struct conn_param *info = l->data;
+
+		bacpy(&param->addr.bdaddr, &info->bdaddr);
+		param->addr.type = info->bdaddr_type;
+		param->min_interval = htobs(info->min_interval);
+		param->max_interval = htobs(info->max_interval);
+		param->latency = htobs(info->latency);
+		param->timeout = htobs(info->timeout);
+	}
+
+	id = mgmt_send(adapter->mgmt, MGMT_OP_LOAD_CONN_PARAM, adapter->dev_id,
+			cp_size, cp, load_conn_params_complete, adapter, NULL);
+
+	g_free(cp);
+
+	if (id == 0)
+		error("Load connection parameters failed");
+}
+
 static uint8_t get_le_addr_type(GKeyFile *keyfile)
 {
 	uint8_t addr_type;
@@ -2711,6 +2804,7 @@ static void load_devices(struct btd_adapter *adapter)
 	GSList *keys = NULL;
 	GSList *ltks = NULL;
 	GSList *irks = NULL;
+	GSList *params = NULL;
 	DIR *dir;
 	struct dirent *entry;
 
@@ -2732,6 +2826,7 @@ static void load_devices(struct btd_adapter *adapter)
 		struct link_key_info *key_info;
 		GSList *list, *ltk_info;
 		struct irk_info *irk_info;
+		struct conn_param *param;
 		uint8_t bdaddr_type;
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
@@ -2755,6 +2850,10 @@ static void load_devices(struct btd_adapter *adapter)
 		irk_info = get_irk_info(key_file, entry->d_name, bdaddr_type);
 		if (irk_info)
 			irks = g_slist_append(irks, irk_info);
+
+		param = get_conn_param(key_file, entry->d_name, bdaddr_type);
+		if (param)
+			params = g_slist_append(params, param);
 
 		list = g_slist_find_custom(adapter->devices, entry->d_name,
 							device_address_cmp);
@@ -2801,6 +2900,8 @@ free:
 	g_slist_free_full(ltks, g_free);
 	load_irks(adapter, irks);
 	g_slist_free_full(irks, g_free);
+	load_conn_params(adapter, params);
+	g_slist_free_full(params, g_free);
 }
 
 int btd_adapter_block_address(struct btd_adapter *adapter,
@@ -6038,12 +6139,55 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 		btd_device_set_temporary(device, FALSE);
 }
 
+static void store_conn_param(struct btd_adapter *adapter, const bdaddr_t *peer,
+				uint8_t bdaddr_type, uint16_t min_interval,
+				uint16_t max_interval, uint16_t latency,
+				uint16_t timeout)
+{
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char *store_data;
+	size_t length = 0;
+
+	ba2str(&adapter->bdaddr, adapter_addr);
+	ba2str(peer, device_addr);
+
+	DBG("");
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+								device_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	g_key_file_set_integer(key_file, "ConnectionParameters",
+						"MinInterval", min_interval);
+	g_key_file_set_integer(key_file, "ConnectionParameters",
+						"MaxInterval", max_interval);
+	g_key_file_set_integer(key_file, "ConnectionParameters",
+						"Latency", latency);
+	g_key_file_set_integer(key_file, "ConnectionParameters",
+						"Timeout", timeout);
+
+	create_file(filename, S_IRUSR | S_IWUSR);
+
+	store_data = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, store_data, length, NULL);
+	g_free(store_data);
+
+	g_key_file_free(key_file);
+}
+
 static void new_conn_param(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_ev_new_conn_param *ev = param;
 	struct btd_adapter *adapter = user_data;
 	uint16_t min, max, latency, timeout;
+	struct btd_device *dev;
 	char dst[18];
 
 
@@ -6061,6 +6205,21 @@ static void new_conn_param(uint16_t index, uint16_t length,
 
 	DBG("hci%u %s (%u) min 0x%04x max 0x%04x latency 0x%04x timeout 0x%04x",
 		adapter->dev_id, dst, ev->addr.type, min, max, latency, timeout);
+
+	dev = btd_adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
+	if (!dev) {
+		error("Unable to get device object for %s", dst);
+		return;
+	}
+
+	if (!ev->store_hint) {
+		device_set_conn_param(dev, min, max, latency, timeout);
+		return;
+	}
+
+	store_conn_param(adapter, &ev->addr.bdaddr, ev->addr.type,
+					ev->min_interval, ev->max_interval,
+					ev->latency, ev->timeout);
 }
 
 int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
