@@ -2742,6 +2742,14 @@ static void load_conn_params(struct btd_adapter *adapter, GSList *params)
 	unsigned int id;
 	GSList *l;
 
+	/*
+	 * If the controller does not support Low Energy operation,
+	 * there is no point in trying to load the connection
+	 * parameters into the kernel.
+	 */
+	if (!(adapter->supported_settings & MGMT_SETTING_LE))
+		return;
+
 	param_count = g_slist_length(params);
 
 	DBG("hci%u conn params %zu", adapter->dev_id, param_count);
