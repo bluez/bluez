@@ -2847,7 +2847,7 @@ static const struct generic_data load_conn_params_fail_1 = {
 	.send_opcode = MGMT_OP_LOAD_CONN_PARAM,
 	.send_param = load_conn_param_nval_1,
 	.send_len = sizeof(load_conn_param_nval_1),
-	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
@@ -4206,7 +4206,7 @@ int main(int argc, char *argv[])
 				&get_conn_info_ncon_test, NULL,
 				test_command_generic);
 
-	test_bredrle("Load Connection Parameter - Invalid Params 1",
+	test_bredrle("Load Connection Parameters - Invalid Params 1",
 				&load_conn_params_fail_1,
 				NULL, test_command_generic);
 
