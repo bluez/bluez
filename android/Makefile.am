@@ -163,6 +163,30 @@ android_android_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 android_android_tester_LDFLAGS = -pthread -ldl
 
+noinst_PROGRAMS += android/android-tester-ng
+
+android_android_tester_ng_SOURCES = emulator/btdev.h emulator/btdev.c \
+				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c \
+				src/shared/crypto.h src/shared/crypto.c \
+				src/shared/io.h src/shared/io-glib.c \
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c \
+				src/shared/hciemu.h src/shared/hciemu.c \
+				src/shared/tester.h src/shared/tester.c \
+				src/shared/timeout.h src/shared/timeout-glib.c \
+				monitor/rfcomm.h \
+				android/hardware/hardware.c \
+				android/tester-main.h android/tester-main.c
+
+android_android_tester_ng_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
+				-DPLUGINDIR=\""$(android_plugindir)"\"
+
+android_android_tester_ng_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
+android_android_tester_ng_LDFLAGS = -pthread -ldl
+
 noinst_PROGRAMS += android/ipc-tester
 
 android_ipc_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
