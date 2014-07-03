@@ -108,6 +108,30 @@ static struct test_case bluetooth_enable_success2_tc = {
 	.step_num = get_test_case_step_num(bluetooth_enable_success2_steps),
 };
 
+static struct step bluetooth_disable_success_steps[] = {
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.action = bluetooth_enable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_STATE_CHANGED,
+		.callback_result.state = BT_STATE_ON,
+	},
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.action = bluetooth_disable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_STATE_CHANGED,
+		.callback_result.state = BT_STATE_OFF,
+	},
+};
+static struct test_case bluetooth_disable_success_tc = {
+	.step = bluetooth_disable_success_steps,
+	.title = "Bluetooth Disable - Success",
+	.step_num = get_test_case_step_num(bluetooth_disable_success_steps),
+};
+
 struct queue *get_bluetooth_tests(void)
 {
 	list = queue_new();
@@ -119,6 +143,9 @@ struct queue *get_bluetooth_tests(void)
 		return NULL;
 
 	if (!queue_push_tail(list, &bluetooth_enable_success2_tc))
+		return NULL;
+
+	if (!queue_push_tail(list, &bluetooth_disable_success_tc))
 		return NULL;
 
 	return list;

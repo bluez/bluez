@@ -871,6 +871,17 @@ void bluetooth_enable_action(void)
 	verify_step(&step, NULL);
 }
 
+void bluetooth_disable_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step step;
+
+	memset(&step, 0, sizeof(step));
+	step.action_result.status = data->if_bluetooth->disable();
+
+	verify_step(&step, NULL);
+}
+
 static void generic_test_function(const void *test_data)
 {
 	struct test_data *data = tester_get_data();

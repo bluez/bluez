@@ -184,3 +184,4 @@ void remove_gatt_tests(void);
 /* Actions */
 void dummy_action(void);
 void bluetooth_enable_action(void);
+void bluetooth_disable_action(void);
