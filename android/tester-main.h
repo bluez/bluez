@@ -91,3 +91,4 @@ void remove_bluetooth_tests(void);
 
 /* Actions */
 void dummy_action(void);
+void bluetooth_enable_action(void);

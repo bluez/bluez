@@ -30,11 +30,26 @@ static struct test_case bluetooth_init = {
 	.step_num = get_test_case_step_num(dummy_steps),
 };
 
+static struct step bluetooth_enable_success_steps[] = {
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.action = bluetooth_enable_action,
+	},
+};
+static struct test_case bluetooth_enable_success_tc = {
+	.step = bluetooth_enable_success_steps,
+	.title = "Bluetooth Enable - Success",
+	.step_num = get_test_case_step_num(bluetooth_enable_success_steps),
+};
+
 struct queue *get_bluetooth_tests(void)
 {
 	list = queue_new();
 
 	if (!queue_push_tail(list, &bluetooth_init))
+		return NULL;
+
+	if (!queue_push_tail(list, &bluetooth_enable_success_tc))
 		return NULL;
 
 	return list;
