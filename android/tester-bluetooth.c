@@ -166,6 +166,41 @@ static struct test_case bluetooth_setprop_bdname_success_tc = {
 		get_test_case_step_num(bluetooth_setprop_bdname_success_steps),
 };
 
+static bt_scan_mode_t test_setprop_scanmode_val =
+					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE;
+
+static bt_property_t setprop_scanmode_prop = {
+	.type = BT_PROPERTY_ADAPTER_SCAN_MODE,
+	.val = &test_setprop_scanmode_val,
+	.len = sizeof(bt_scan_mode_t),
+};
+
+static struct step bluetooth_setprop_scanmode_success_steps[] = {
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.action = bluetooth_enable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_STATE_CHANGED,
+		.callback_result.state = BT_STATE_ON,
+	},
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.set_data = &setprop_scanmode_prop,
+		.action = bt_set_property_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_PROPERTIES,
+		.callback_result.properties = &setprop_scanmode_prop,
+	},
+};
+static struct test_case bluetooth_setprop_scanmode_success_tc = {
+	.step = bluetooth_setprop_scanmode_success_steps,
+	.title = "Bluetooth Set SCAN_MODE - Success",
+	.step_num = get_test_case_step_num(
+				bluetooth_setprop_scanmode_success_steps),
+};
+
 struct queue *get_bluetooth_tests(void)
 {
 	list = queue_new();
@@ -183,6 +218,9 @@ struct queue *get_bluetooth_tests(void)
 		return NULL;
 
 	if (!queue_push_tail(list, &bluetooth_setprop_bdname_success_tc))
+		return NULL;
+
+	if (!queue_push_tail(list, &bluetooth_setprop_scanmode_success_tc))
 		return NULL;
 
 	return list;
