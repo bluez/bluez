@@ -1979,8 +1979,8 @@ Read Controller Configuration Information Command
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Manufacturer (2 Octets)
-				Supported_Configurations (4 Octets)
-				Missing_Configurations (4 Octets)
+				Supported_Options (4 Octets)
+				Missing_Options (4 Octets)
 
 	This command is used to retreive the supported configuration
 	options of a controller and the missing configuration options.
@@ -1991,8 +1991,8 @@ Read Controller Configuration Information Command
 	response to Read Unconfigured Controller Index List command or
 	Unconfigured Index Added event.
 
-	Supported_Configurations and Missing_Configurations is a
-	bitmask with currently the following available bits:
+	Supported_Options and Missing_Options is a bitmask with currently
+	the following available bits:
 
 		0	Bluetooth public address configuration
 
@@ -2008,8 +2008,8 @@ Read Controller Configuration Information Command
 	setting option will not be present.
 
 	When all configurations have been completed and as a result the
-	Missing_Configurations mask would become empty, then the now
-	ready controller will be announced via Index Added event.
+	Missing_Options mask would become empty, then the now ready
+	controller will be announced via Index Added event.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -2024,7 +2024,7 @@ Set Public Address Command
 	Command Code:		0x0038
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
-	Return Parameters:	Missing_Configurations (4 Octets)
+	Return Parameters:	Missing_Options (4 Octets)
 
 	This command allows configuration of public address. Since a vendor
 	specific procedure is required, this command might not be supported
@@ -2032,15 +2032,15 @@ Set Public Address Command
 	controllers will offer support for this command.
 
 	When the support for Bluetooth public address configuration is
-	indicated in the Supported Configurations mask, then this command
+	indicated in the supported options mask, then this command
 	can be used to configure the public address.
 
 	It is only possible to configure the public address when the
 	controller is powered off.
 
-	For an unconfigured controller and when Missing_Configurations
-	returns an empty mask, this means that a Index Added event for
-	the now fully configured controller can be expected.
+	For an unconfigured controller and when Missing_Options returns
+	an empty mask, this means that a Index Added event for the now
+	fully configured controller can be expected.
 
 	For a fully configured controller, the current controller index
 	will become invalid and an Unconfigured Index Removed event will
