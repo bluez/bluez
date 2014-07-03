@@ -46,6 +46,9 @@
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
 #include <hardware/bt_hh.h>
+#include <hardware/bt_gatt.h>
+#include <hardware/bt_gatt_client.h>
+#include <hardware/bt_gatt_server.h>
 
 #define get_test_case_step_num(tc) (sizeof(tc) / sizeof(struct step))
 
@@ -75,6 +78,41 @@ typedef enum {
 	CB_HH_IDLE_TIME,
 	CB_HH_GET_REPORT,
 	CB_HH_VIRTUAL_UNPLUG,
+
+	/* Gatt client */
+	CB_GATTC_REGISTER_CLIENT,
+	CB_GATTC_SCAN_RESULT,
+	CB_GATTC_OPEN,
+	CB_GATTC_CLOSE,
+	CB_GATTC_SEARCH_COMPLETE,
+	CB_GATTC_SEARCH_RESULT,
+	CB_GATTC_GET_CHARACTERISTIC,
+	CB_GATTC_GET_DESCRIPTOR,
+	CB_GATTC_GET_INCLUDED_SERVICE,
+	CB_GATTC_REGISTER_FOR_NOTIFICATION,
+	CB_GATTC_NOTIFY,
+	CB_GATTC_READ_CHARACTERISTIC,
+	CB_GATTC_WRITE_CHARACTERISTIC,
+	CB_GATTC_READ_DESCRIPTOR,
+	CB_GATTC_WRITE_DESCRIPTOR,
+	CB_GATTC_EXECUTE_WRITE,
+	CB_GATTC_READ_REMOTE_RSSI,
+	CB_GATTC_LISTEN,
+
+	/* Gatt server */
+	CB_GATTS_REGISTER_SERVER,
+	CB_GATTS_CONNECTION,
+	CB_GATTS_SERVICE_ADDED,
+	CB_GATTS_INCLUDED_SERVICE_ADDED,
+	CB_GATTS_CHARACTERISTIC_ADDED,
+	CB_GATTS_DESCRIPTOR_ADDED,
+	CB_GATTS_SERVICE_STARTED,
+	CB_GATTS_SERVICE_STOPPED,
+	CB_GATTS_SERVICE_DELETED,
+	CB_GATTS_REQUEST_READ,
+	CB_GATTS_REQUEST_WRITE,
+	CB_GATTS_REQUEST_EXEC_WRITE,
+	CB_GATTS_RESPONSE_CONFIRMATION,
 } expected_bt_callback_t;
 
 struct test_data {
@@ -86,6 +124,7 @@ struct test_data {
 	const bt_interface_t *if_bluetooth;
 	const btsock_interface_t *if_sock;
 	const bthh_interface_t *if_hid;
+	const btgatt_interface_t *if_gatt;
 
 	const void *test_data;
 	struct queue *steps;
@@ -136,6 +175,8 @@ struct queue *get_socket_tests(void);
 void remove_socket_tests(void);
 struct queue *get_hidhost_tests(void);
 void remove_hidhost_tests(void);
+struct queue *get_gatt_tests(void);
+void remove_gatt_tests(void);
 
 /* Actions */
 void dummy_action(void);

@@ -486,6 +486,49 @@ static bthh_callbacks_t bthh_callbacks = {
 	.virtual_unplug_cb = NULL
 };
 
+static const btgatt_client_callbacks_t btgatt_client_callbacks = {
+	.register_client_cb = NULL,
+	.scan_result_cb = NULL,
+	.open_cb = NULL,
+	.close_cb = NULL,
+	.search_complete_cb = NULL,
+	.search_result_cb = NULL,
+	.get_characteristic_cb = NULL,
+	.get_descriptor_cb = NULL,
+	.get_included_service_cb = NULL,
+	.register_for_notification_cb = NULL,
+	.notify_cb = NULL,
+	.read_characteristic_cb = NULL,
+	.write_characteristic_cb = NULL,
+	.read_descriptor_cb = NULL,
+	.write_descriptor_cb = NULL,
+	.execute_write_cb = NULL,
+	.read_remote_rssi_cb = NULL,
+	.listen_cb = NULL
+};
+
+static const btgatt_server_callbacks_t btgatt_server_callbacks = {
+	.register_server_cb = NULL,
+	.connection_cb = NULL,
+	.service_added_cb = NULL,
+	.included_service_added_cb = NULL,
+	.characteristic_added_cb = NULL,
+	.descriptor_added_cb = NULL,
+	.service_started_cb = NULL,
+	.service_stopped_cb = NULL,
+	.service_deleted_cb = NULL,
+	.request_read_cb = NULL,
+	.request_write_cb = NULL,
+	.request_exec_write_cb = NULL,
+	.response_confirmation_cb = NULL
+};
+
+static const btgatt_callbacks_t btgatt_callbacks = {
+	.size = sizeof(btgatt_callbacks),
+	.client = &btgatt_client_callbacks,
+	.server = &btgatt_server_callbacks
+};
+
 static bool setup_base(struct test_data *data)
 {
 	const hw_module_t *module;
@@ -634,12 +677,54 @@ static void setup_hidhost(const void *test_data)
 	tester_setup_complete();
 }
 
+static void setup_gatt(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_status_t status;
+	const void *gatt;
+
+	if (!setup_base(data)) {
+		tester_setup_failed();
+		return;
+	}
+
+	status = data->if_bluetooth->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	gatt = data->if_bluetooth->get_profile_interface(BT_PROFILE_GATT_ID);
+	if (!gatt) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_gatt = gatt;
+
+	status = data->if_gatt->init(&btgatt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_gatt = NULL;
+
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
 static void teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
 	queue_destroy(data->steps, NULL);
 	data->steps = NULL;
+
+	if (data->if_gatt) {
+		data->if_gatt->cleanup();
+		data->if_gatt = NULL;
+	}
 
 	if (data->if_hid) {
 		data->if_hid->cleanup();
@@ -748,6 +833,13 @@ static void add_hidhost_tests(void *data, void *user_data)
 	test_bredrle(tc, setup_hidhost, generic_test_function, teardown);
 }
 
+static void add_gatt_tests(void *data, void *user_data)
+{
+	struct test_case *tc = data;
+
+	test_bredrle(tc, setup_gatt, generic_test_function, teardown);
+}
+
 int main(int argc, char *argv[])
 {
 	snprintf(exec_dir, sizeof(exec_dir), "%s", dirname(argv[0]));
@@ -757,6 +849,7 @@ int main(int argc, char *argv[])
 	queue_foreach(get_bluetooth_tests(), add_bluetooth_tests, NULL);
 	queue_foreach(get_socket_tests(), add_socket_tests, NULL);
 	queue_foreach(get_hidhost_tests(), add_hidhost_tests, NULL);
+	queue_foreach(get_gatt_tests(), add_gatt_tests, NULL);
 
 	if (tester_run())
 		return 1;
