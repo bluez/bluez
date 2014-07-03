@@ -417,9 +417,52 @@ static void verify_step(struct step *step, queue_destroy_func_t cleanup_cb)
 		next_step->action();
 }
 
+/*
+ * NOTICE:
+ * Its mandatory for callback to set proper step.callback value so that
+ * step verification could pass and move to next test step
+ */
+
+static void destroy_callback_step(void *data)
+{
+	struct step *step = data;
+
+	g_free(step);
+	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
+}
+
+static gboolean verify_callback(gpointer user_data)
+{
+	struct step *step = user_data;
+
+	/*
+	 * TODO: This may call action from next step before callback data
+	 * from previous step was freed.
+	 */
+	verify_step(step, destroy_callback_step);
+
+	return FALSE;
+}
+
+static void schedule_callback_call(struct step *step)
+{
+	g_atomic_int_inc(&scheduled_cbacks_num);
+	g_idle_add(verify_callback, step);
+}
+
+static void adapter_state_changed_cb(bt_state_t state)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback_result.state = state;
+	step->callback = CB_BT_ADAPTER_STATE_CHANGED;
+
+	schedule_callback_call(step);
+}
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
-	.adapter_state_changed_cb = NULL,
+	.adapter_state_changed_cb = adapter_state_changed_cb,
 	.adapter_properties_cb = NULL,
 	.remote_device_properties_cb = NULL,
 	.device_found_cb = NULL,

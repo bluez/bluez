@@ -35,6 +35,10 @@ static struct step bluetooth_enable_success_steps[] = {
 		.action_result.status = BT_STATUS_SUCCESS,
 		.action = bluetooth_enable_action,
 	},
+	{
+		.callback = CB_BT_ADAPTER_STATE_CHANGED,
+		.callback_result.state = BT_STATE_ON,
+	},
 };
 static struct test_case bluetooth_enable_success_tc = {
 	.step = bluetooth_enable_success_steps,

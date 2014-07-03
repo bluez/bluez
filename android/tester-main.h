@@ -47,6 +47,26 @@
 
 #define get_test_case_step_num(tc) (sizeof(tc) / sizeof(struct step))
 
+/*
+ * NOTICE:
+ * Callback enum sections should be
+ * updated while adding new HAL to tester.
+ */
+typedef enum {
+	CB_BT_ADAPTER_STATE_CHANGED = 1,
+	CB_BT_ADAPTER_PROPERTIES,
+	CB_BT_REMOTE_DEVICE_PROPERTIES,
+	CB_BT_DEVICE_FOUND,
+	CB_BT_DISCOVERY_STATE_CHANGED,
+	CB_BT_PIN_REQUEST,
+	CB_BT_SSP_REQUEST,
+	CB_BT_BOND_STATE_CHANGED,
+	CB_BT_ACL_STATE_CHANGED,
+	CB_BT_THREAD_EVT,
+	CB_BT_DUT_MODE_RECV,
+	CB_BT_LE_TEST_MODE,
+} expected_bt_callback_t;
+
 struct test_data {
 	struct mgmt *mgmt;
 	struct hw_device_t *device;
@@ -77,12 +97,24 @@ struct bt_action_data {
 };
 
 /*
+ * Callback data structure should be enhanced with data
+ * returned by callbacks. It's used for test case step
+ * matching with expected step data.
+ */
+struct bt_callback_data {
+	bt_state_t state;
+};
+
+/*
  * Step structure contains expected step data and step
  * action, which should be performed before step check.
  */
 struct step {
 	void (*action)(void);
 	struct bt_action_data action_result;
+
+	expected_bt_callback_t callback;
+	struct bt_callback_data callback_result;
 };
 
 /* Get, remove test cases API */
