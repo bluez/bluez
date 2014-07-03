@@ -179,6 +179,7 @@ android_android_tester_ng_SOURCES = emulator/btdev.h emulator/btdev.c \
 				monitor/rfcomm.h \
 				android/hardware/hardware.c \
 				android/tester-bluetooth.c \
+				android/tester-socket.c \
 				android/tester-main.h android/tester-main.c
 
 android_android_tester_ng_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \

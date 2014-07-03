@@ -559,6 +559,35 @@ static void setup(const void *test_data)
 	tester_setup_complete();
 }
 
+static void setup_socket(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_status_t status;
+	const void *sock;
+
+	if (!setup_base(data)) {
+		tester_setup_failed();
+		return;
+	}
+
+	status = data->if_bluetooth->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	sock = data->if_bluetooth->get_profile_interface(BT_PROFILE_SOCKETS_ID);
+	if (!sock) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_sock = sock;
+
+	tester_setup_complete();
+}
+
 static void teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -644,6 +673,7 @@ static void generic_test_function(const void *test_data)
 static void tester_testcases_cleanup(void)
 {
 	remove_bluetooth_tests();
+	remove_socket_tests();
 }
 
 static void add_bluetooth_tests(void *data, void *user_data)
@@ -653,6 +683,13 @@ static void add_bluetooth_tests(void *data, void *user_data)
 	test_bredrle(tc, setup, generic_test_function, teardown);
 }
 
+static void add_socket_tests(void *data, void *user_data)
+{
+	struct test_case *tc = data;
+
+	test_bredrle(tc, setup_socket, generic_test_function, teardown);
+}
+
 int main(int argc, char *argv[])
 {
 	snprintf(exec_dir, sizeof(exec_dir), "%s", dirname(argv[0]));
@@ -660,6 +697,7 @@ int main(int argc, char *argv[])
 	tester_init(&argc, &argv);
 
 	queue_foreach(get_bluetooth_tests(), add_bluetooth_tests, NULL);
+	queue_foreach(get_socket_tests(), add_socket_tests, NULL);
 
 	if (tester_run())
 		return 1;

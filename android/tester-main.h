@@ -44,6 +44,7 @@
 
 #include <hardware/hardware.h>
 #include <hardware/bluetooth.h>
+#include <hardware/bt_sock.h>
 
 #define get_test_case_step_num(tc) (sizeof(tc) / sizeof(struct step))
 
@@ -74,6 +75,7 @@ struct test_data {
 	enum hciemu_type hciemu_type;
 
 	const bt_interface_t *if_bluetooth;
+	const btsock_interface_t *if_sock;
 
 	const void *test_data;
 	struct queue *steps;
@@ -120,6 +122,8 @@ struct step {
 /* Get, remove test cases API */
 struct queue *get_bluetooth_tests(void);
 void remove_bluetooth_tests(void);
+struct queue *get_socket_tests(void);
+void remove_socket_tests(void);
 
 /* Actions */
 void dummy_action(void);
