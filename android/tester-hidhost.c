@@ -19,9 +19,23 @@
 
 static struct queue *list; /* List of hidhost test cases */
 
+static struct step dummy_steps[] = {
+	{
+		.action = dummy_action,
+	},
+};
+static struct test_case hidhost_init = {
+	.step = dummy_steps,
+	.title = "Hidhost Init",
+	.step_num = get_test_case_step_num(dummy_steps),
+};
+
 struct queue *get_hidhost_tests(void)
 {
 	list = queue_new();
+
+	if (!queue_push_tail(list, &hidhost_init))
+		return NULL;
 
 	return list;
 }
