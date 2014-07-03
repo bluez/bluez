@@ -134,6 +134,20 @@ void tester_print(const char *format, ...)
 	printf("%s\n", COLOR_OFF);
 }
 
+void tester_debug(const char *format, ...)
+{
+	va_list ap;
+
+	if (!tester_use_debug())
+		return;
+
+	printf("  %s", COLOR_WHITE);
+	va_start(ap, format);
+	vprintf(format, ap);
+	va_end(ap);
+	printf("%s\n", COLOR_OFF);
+}
+
 void tester_warn(const char *format, ...)
 {
 	va_list ap;

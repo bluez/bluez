@@ -33,6 +33,8 @@ void tester_print(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 void tester_warn(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
+void tester_debug(const char *format, ...)
+				__attribute__((format(printf, 1, 2)));
 
 typedef void (*tester_destroy_func_t)(void *user_data);
 typedef void (*tester_data_func_t)(const void *test_data);
