@@ -98,6 +98,20 @@ static void unconf_index_removed(uint16_t index, uint16_t len,
 		printf("hci%u removed (unconfigured)\n", index);
 }
 
+static const char *options_str[] = {
+				"public-address",
+};
+
+static void print_options(uint32_t options)
+{
+	unsigned i;
+
+	for (i = 0; i < NELEM(options_str); i++) {
+		if ((options & (1 << i)) != 0)
+			printf("%s ", options_str[i]);
+	}
+}
+
 static const char *settings_str[] = {
 				"powered",
 				"connectable",
@@ -113,6 +127,7 @@ static const char *settings_str[] = {
 				"secure-conn",
 				"debug-keys",
 				"privacy",
+				"configuration",
 };
 
 static void print_settings(uint32_t settings)
@@ -897,8 +912,42 @@ done:
 	mainloop_quit();
 }
 
-static void cmd_unconf(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
+static void config_info_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_rp_read_config_info *rp = param;
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status != 0) {
+		fprintf(stderr,
+			"Reading hci%u info failed with status 0x%02x (%s)\n",
+					index, status, mgmt_errstr(status));
+		goto done;
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small info reply (%u bytes)\n", len);
+		goto done;
+	}
+
+	printf("hci%u:\tmanufacturer %u\n", index, get_le16(&rp->manufacturer));
+
+	printf("\tsupported options: ");
+	print_options(get_le32(&rp->supported_options));
+	printf("\n");
+
+	printf("\tmissing options: ");
+	print_options(get_le32(&rp->missing_options));
+	printf("\n");
+
+done:
+	mainloop_quit();
+}
+
+static void cmd_config(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
+{
+	void *data;
+
 	if (index == MGMT_INDEX_NONE) {
 		if (mgmt_send(mgmt, MGMT_OP_READ_UNCONF_INDEX_LIST,
 					MGMT_INDEX_NONE, 0, NULL,
@@ -910,8 +959,13 @@ static void cmd_unconf(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		return;
 	}
 
-	fprintf(stderr, "Unable to send read_conf_info cmd\n");
-	exit(EXIT_FAILURE);
+	data = UINT_TO_PTR(index);
+
+	if (mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO, index, 0, NULL,
+					config_info_rsp, data, NULL) == 0) {
+		fprintf(stderr, "Unable to send read_config_info cmd\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void info_rsp(uint8_t status, uint16_t len, const void *param,
@@ -2699,7 +2753,7 @@ static struct {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
 	{ "version",	cmd_version,	"Get the MGMT Version"		},
 	{ "commands",	cmd_commands,	"List supported commands"	},
-	{ "unconf",	cmd_unconf,	"Show unconfigured controllers"	},
+	{ "config",	cmd_config,	"Show configuration info"	},
 	{ "info",	cmd_info,	"Show controller info"		},
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
