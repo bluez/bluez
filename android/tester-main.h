@@ -45,6 +45,7 @@
 #include <hardware/hardware.h>
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
+#include <hardware/bt_hh.h>
 
 #define get_test_case_step_num(tc) (sizeof(tc) / sizeof(struct step))
 
@@ -66,6 +67,14 @@ typedef enum {
 	CB_BT_THREAD_EVT,
 	CB_BT_DUT_MODE_RECV,
 	CB_BT_LE_TEST_MODE,
+
+	/* Hidhost cb */
+	CB_HH_CONNECTION_STATE,
+	CB_HH_HID_INFO,
+	CB_HH_PROTOCOL_MODE,
+	CB_HH_IDLE_TIME,
+	CB_HH_GET_REPORT,
+	CB_HH_VIRTUAL_UNPLUG,
 } expected_bt_callback_t;
 
 struct test_data {
@@ -76,6 +85,7 @@ struct test_data {
 
 	const bt_interface_t *if_bluetooth;
 	const btsock_interface_t *if_sock;
+	const bthh_interface_t *if_hid;
 
 	const void *test_data;
 	struct queue *steps;
@@ -124,6 +134,8 @@ struct queue *get_bluetooth_tests(void);
 void remove_bluetooth_tests(void);
 struct queue *get_socket_tests(void);
 void remove_socket_tests(void);
+struct queue *get_hidhost_tests(void);
+void remove_hidhost_tests(void);
 
 /* Actions */
 void dummy_action(void);

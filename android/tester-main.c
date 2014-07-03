@@ -476,6 +476,16 @@ static bt_callbacks_t bt_callbacks = {
 	.le_test_mode_cb = NULL
 };
 
+static bthh_callbacks_t bthh_callbacks = {
+	.size = sizeof(bthh_callbacks),
+	.connection_state_cb = NULL,
+	.hid_info_cb = NULL,
+	.protocol_mode_cb = NULL,
+	.idle_time_cb = NULL,
+	.get_report_cb = NULL,
+	.virtual_unplug_cb = NULL
+};
+
 static bool setup_base(struct test_data *data)
 {
 	const hw_module_t *module;
@@ -588,12 +598,53 @@ static void setup_socket(const void *test_data)
 	tester_setup_complete();
 }
 
+static void setup_hidhost(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_status_t status;
+	const void *hid;
+
+	if (!setup_base(data)) {
+		tester_setup_failed();
+		return;
+	}
+
+	status = data->if_bluetooth->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	hid = data->if_bluetooth->get_profile_interface(BT_PROFILE_HIDHOST_ID);
+	if (!hid) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_hid = hid;
+
+	status = data->if_hid->init(&bthh_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_hid = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
 static void teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
 	queue_destroy(data->steps, NULL);
 	data->steps = NULL;
+
+	if (data->if_hid) {
+		data->if_hid->cleanup();
+		data->if_hid = NULL;
+	}
 
 	if (data->if_bluetooth) {
 		data->if_bluetooth->cleanup();
@@ -690,6 +741,13 @@ static void add_socket_tests(void *data, void *user_data)
 	test_bredrle(tc, setup_socket, generic_test_function, teardown);
 }
 
+static void add_hidhost_tests(void *data, void *user_data)
+{
+	struct test_case *tc = data;
+
+	test_bredrle(tc, setup_hidhost, generic_test_function, teardown);
+}
+
 int main(int argc, char *argv[])
 {
 	snprintf(exec_dir, sizeof(exec_dir), "%s", dirname(argv[0]));
@@ -698,6 +756,7 @@ int main(int argc, char *argv[])
 
 	queue_foreach(get_bluetooth_tests(), add_bluetooth_tests, NULL);
 	queue_foreach(get_socket_tests(), add_socket_tests, NULL);
+	queue_foreach(get_hidhost_tests(), add_hidhost_tests, NULL);
 
 	if (tester_run())
 		return 1;
