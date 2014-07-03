@@ -170,7 +170,17 @@ while select == None:
 
 adapter = dbus.Interface(bus.get_object(BUS_NAME, select), ADAPTER_INTERFACE)
 
-devices = adapter.GetProperties()["Devices"]
+devices = []
+for path, interfaces in objects.iteritems():
+	if "org.bluez.Device1" not in interfaces:
+		continue
+	properties = interfaces["org.bluez.Device1"]
+	if properties["Adapter"] != select:
+		continue;
+
+	if HEALTH_DEVICE_INTERFACE not in interfaces:
+		continue
+	devices.append(path)
 
 if len(devices) == 0:
 	print("No devices available")
