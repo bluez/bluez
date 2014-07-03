@@ -434,6 +434,11 @@ struct mgmt_rp_read_config_info {
 	uint32_t missing_options;
 } __packed;
 
+#define MGMT_OP_SET_PUBLIC_ADDRESS	0x0038
+struct mgmt_cp_set_public_address {
+	bdaddr_t bdaddr;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -672,6 +677,7 @@ static const char *mgmt_op[] = {
 	"Load Connection Parameters",
 	"Read Unconfigured Index List",
 	"Read Controller Configuration Information",
+	"Set Public Address",
 };
 
 static const char *mgmt_ev[] = {
