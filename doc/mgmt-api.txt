@@ -2757,6 +2757,7 @@ Unconfigured Index Added Event
 	be announced with this event. If it supports configuration, but
 	does not require it, then an Index Added event will be used.
 
+
 Unconfigured Index Removed Event
 ================================
 
