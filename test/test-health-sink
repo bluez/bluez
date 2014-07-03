@@ -23,9 +23,13 @@ loop = GObject.MainLoop()
 
 bus = dbus.SystemBus()
 
+type = 4103
+if len(sys.argv) > 1:
+	type = int(sys.argv[1])
+
 hdp_manager = dbus.Interface(bus.get_object(BUS_NAME, PATH),
 						HEALTH_MANAGER_INTERFACE)
-app_path = hdp_manager.CreateApplication({"DataType": dbus.types.UInt16(4103),
+app_path = hdp_manager.CreateApplication({"DataType": dbus.types.UInt16(type),
 					"Role": "sink"})
 
 print(app_path)
