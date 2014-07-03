@@ -2213,6 +2213,14 @@ static const struct generic_data load_ltks_invalid_params_test_3 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const char load_ltks_invalid_param_4[22] = { 0x1d, 0x07 };
+static const struct generic_data load_ltks_invalid_params_test_4 = {
+	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
+	.send_param = load_ltks_invalid_param_4,
+	.send_len = sizeof(load_ltks_invalid_param_4),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const char set_io_cap_invalid_param_1[] = { 0xff };
 
 static const struct generic_data set_io_cap_invalid_param_test_1 = {
@@ -2832,6 +2840,14 @@ static const struct generic_data get_conn_info_ncon_test = {
 	.send_func = get_conn_info_send_param_func,
 	.expect_status = MGMT_STATUS_NOT_CONNECTED,
 	.expect_func = get_conn_info_error_expect_param_func,
+};
+
+static const uint8_t load_conn_param_nval_1[16] = { 0x12, 0x11 };
+static const struct generic_data load_conn_params_fail_1 = {
+	.send_opcode = MGMT_OP_LOAD_CONN_PARAM,
+	.send_param = load_conn_param_nval_1,
+	.send_len = sizeof(load_conn_param_nval_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
@@ -4048,6 +4064,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Load Long Term Keys - Invalid Parameters 3",
 				&load_ltks_invalid_params_test_3,
 				NULL, test_command_generic);
+	test_bredrle("Load Long Term Keys - Invalid Parameters 4",
+				&load_ltks_invalid_params_test_4,
+				NULL, test_command_generic);
 
 	test_bredrle("Set IO Capability - Invalid Params 1",
 				&set_io_cap_invalid_param_test_1,
@@ -4186,6 +4205,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Get Conn Info - Not Connected",
 				&get_conn_info_ncon_test, NULL,
 				test_command_generic);
+
+	test_bredrle("Load Connection Parameter - Invalid Params 1",
+				&load_conn_params_fail_1,
+				NULL, test_command_generic);
 
 	return tester_run();
 }
