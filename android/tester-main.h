@@ -169,6 +169,9 @@ struct step {
 
 	expected_bt_callback_t callback;
 	struct bt_callback_data callback_result;
+
+	void *set_data;
+	int set_data_len;
 };
 
 /* Get, remove test cases API */
@@ -185,3 +188,4 @@ void remove_gatt_tests(void);
 void dummy_action(void);
 void bluetooth_enable_action(void);
 void bluetooth_disable_action(void);
+void bt_set_property_action(void);

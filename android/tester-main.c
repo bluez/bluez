@@ -882,6 +882,28 @@ void bluetooth_disable_action(void)
 	verify_step(&step, NULL);
 }
 
+void bt_set_property_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step step;
+	struct step *current_data_step = queue_peek_head(data->steps);
+	bt_property_t *prop;
+
+	if (!current_data_step->set_data) {
+		tester_debug("BT property not set for step");
+		tester_test_failed();
+		return;
+	}
+
+	prop = (bt_property_t *)current_data_step->set_data;
+
+	memset(&step, 0, sizeof(step));
+	step.action_result.status = data->if_bluetooth->set_adapter_property(
+									prop);
+
+	verify_step(&step, NULL);
+}
+
 static void generic_test_function(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
