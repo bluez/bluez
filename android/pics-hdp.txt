@@ -167,7 +167,7 @@ Parameter Name	Selected	Description
 TSPC_HDP_7_1	False		Supports Initiation of Echo Test (O)
 TSPC_HDP_7_2	True		Supports Acceptance of Echo Test (M)
 TSPC_HDP_7_3	True		Supports IEEE 11073-20601 (M)
-TSPC_HDP_7_4	True		Supports IEEE 11073-20601 Agent Role (C.1)
+TSPC_HDP_7_4	False (*)	Supports IEEE 11073-20601 Agent Role (C.1)
 TSPC_HDP_7_5	True (*)	Supports IEEE 11073-20601 Manager Role (C.1)
 TSPC_HDP_7_6	False		Supports Initiation of Association Release (O)
 -------------------------------------------------------------------------------

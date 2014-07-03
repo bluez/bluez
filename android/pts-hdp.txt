@@ -146,7 +146,7 @@ TC_SRC_DE_BV_02_I	PASS	haltest:
 				bluez-hdp health-device-profile 1
 				BTHL_MDEP_ROLE_SOURCE 4100
 				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
-TC_SRC_DEP_BV_01_I	INC	PTS issue #12340
+TC_SRC_DEP_BV_01_I	N/A
 TC_SRC_DEP_BV_02_I	N/A
 TC_SNK_CON_BV_01_I	PASS	haltest:
 				hl register_application <args>
