@@ -154,6 +154,9 @@ struct bt_action_data {
  */
 struct bt_callback_data {
 	bt_state_t state;
+	bt_status_t status;
+	int num_properties;
+	bt_property_t *properties;
 };
 
 /*

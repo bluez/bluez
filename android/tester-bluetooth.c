@@ -30,10 +30,47 @@ static struct test_case bluetooth_init = {
 	.step_num = get_test_case_step_num(dummy_steps),
 };
 
+static bt_bdaddr_t enable_bdaddr_val = {
+	.address = { 0x00, 0xaa, 0x01, 0x00, 0x00, 0x00 },
+};
+static const char enable_bdname_val[] = "BlueZ for Android";
+static const char enable_uuids_val[] = {
+	/* Multi profile UUID */
+	0x00, 0x00, 0x11, 0x3b, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00,
+					0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB,
+	/* Device identification profile UUID */
+	0x00, 0x00, 0x12, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00,
+					0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB,
+};
+static bt_device_type_t enable_tod_val = BT_DEVICE_DEVTYPE_DUAL;
+static bt_scan_mode_t enable_scanmode_val = BT_SCAN_MODE_NONE;
+static uint32_t enable_disctimeout_val = 120;
+
+static bt_property_t enable_props[] = {
+	{ BT_PROPERTY_BDADDR, sizeof(enable_bdaddr_val), NULL },
+	{ BT_PROPERTY_BDNAME, sizeof(enable_bdname_val) - 1,
+						&enable_bdname_val },
+	{ BT_PROPERTY_CLASS_OF_DEVICE, sizeof(uint32_t), NULL },
+	{ BT_PROPERTY_TYPE_OF_DEVICE, sizeof(enable_tod_val),
+						&enable_tod_val },
+	{ BT_PROPERTY_ADAPTER_SCAN_MODE, sizeof(enable_scanmode_val),
+						&enable_scanmode_val },
+	{ BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT,
+						sizeof(enable_disctimeout_val),
+						&enable_disctimeout_val },
+	{ BT_PROPERTY_ADAPTER_BONDED_DEVICES, 0, NULL },
+	{ BT_PROPERTY_UUIDS, sizeof(enable_uuids_val), &enable_uuids_val },
+};
+
 static struct step bluetooth_enable_success_steps[] = {
 	{
 		.action_result.status = BT_STATUS_SUCCESS,
 		.action = bluetooth_enable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_PROPERTIES,
+		.callback_result.properties = enable_props,
+		.callback_result.num_properties = 8,
 	},
 	{
 		.callback = CB_BT_ADAPTER_STATE_CHANGED,
@@ -50,6 +87,11 @@ static struct step bluetooth_enable_success2_steps[] = {
 	{
 		.action_result.status = BT_STATUS_SUCCESS,
 		.action = bluetooth_enable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_PROPERTIES,
+		.callback_result.properties = enable_props,
+		.callback_result.num_properties = 8,
 	},
 	{
 		.callback = CB_BT_ADAPTER_STATE_CHANGED,
