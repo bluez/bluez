@@ -19,6 +19,9 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "hal-log.h"
 #include "hal.h"
@@ -44,6 +47,19 @@ static void handle_app_registration_state(void *buf, uint16_t len, int fd)
 static void handle_channel_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_health_channel_state *ev = buf;
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0) {
+		error("health: fcntl GETFL error: %s", strerror(errno));
+		return;
+	}
+
+	/* Clean O_NONBLOCK fd flag as Android Java layer expects */
+	if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+		error("health: fcntl SETFL error: %s", strerror(errno));
+		return;
+	}
 
 	if (cbacks->channel_state_cb)
 		cbacks->channel_state_cb(ev->app_id, (bt_bdaddr_t *) ev->bdaddr,
