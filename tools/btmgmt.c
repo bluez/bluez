@@ -2376,6 +2376,46 @@ static void cmd_static_addr(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static void public_addr_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		fprintf(stderr, "Set public address failed "
+						"with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+	else
+		printf("Public address successfully set\n");
+
+	mainloop_quit();
+}
+
+static void public_addr_usage(void)
+{
+	printf("Usage: btmgmt public-addr <address>\n");
+}
+
+static void cmd_public_addr(struct mgmt *mgmt, uint16_t index,
+							int argc, char **argv)
+{
+	struct mgmt_cp_set_public_address cp;
+
+	if (argc < 2) {
+		public_addr_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	str2ba(argv[1], &cp.bdaddr);
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_PUBLIC_ADDRESS, index, sizeof(cp), &cp,
+					public_addr_rsp, NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send set_public_address cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static void cmd_debug_keys(struct mgmt *mgmt, uint16_t index,
 						int argc, char **argv)
 {
@@ -2787,6 +2827,7 @@ static struct {
 	{ "local-oob",	cmd_local_oob,	"Local OOB data"		},
 	{ "did",	cmd_did,	"Set Device ID"			},
 	{ "static-addr",cmd_static_addr,"Set static address"		},
+	{ "public-addr",cmd_public_addr,"Set public address"		},
 	{ "debug-keys",	cmd_debug_keys,	"Toogle debug keys"		},
 	{ "conn-info",	cmd_conn_info,	"Get connection information"	},
 	{ "io-cap",	cmd_io_cap,	"Set IO Capability"		},
