@@ -954,9 +954,25 @@ const char *bt_compidtostr(int compid)
 	case 345:
 		return "ChefSteps, Inc.";
 	case 346:
-		return "micus AG";
+		return "micas AG";
 	case 347:
 		return "Biomedical Research Ltd.";
+	case 348:
+		return "Pitius Tec S.L.";
+	case 349:
+		return "Estimote, Inc.";
+	case 350:
+		return "Unikey Technologies, Inc.";
+	case 351:
+		return "Timer Cap Co.";
+	case 352:
+		return "AwoX";
+	case 353:
+		return "yikes";
+	case 354:
+		return "MADSGlobal NZ Ltd.";
+	case 355:
+		return "PCH International";
 	case 65535:
 		return "internal use";
 	default:
