@@ -84,3 +84,7 @@ struct step {
 	void (*action)(void);
 	struct bt_action_data action_result;
 };
+
+/* Get, remove test cases API */
+struct queue *get_bluetooth_tests(void);
+void remove_bluetooth_tests(void);
