@@ -2957,7 +2957,8 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (cmd->write_type != GATT_WRITE_TYPE_NO_RESPONSE) {
+	if (cmd->write_type == GATT_WRITE_TYPE_PREPARE ||
+				cmd->write_type == GATT_WRITE_TYPE_DEFAULT) {
 		cb_data = create_char_op_data(cmd->conn_id, &srvc->id, &ch->id,
 						cmd->srvc_id.is_primary);
 		if (!cb_data) {
