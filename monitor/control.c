@@ -172,12 +172,14 @@ static void mgmt_new_settings(uint16_t len, const void *buf)
 
 	printf("@ New Settings: 0x%4.4x\n", settings);
 
-	printf("%-12c", ' ');
-	for (i = 0; i < NELEM(settings_str); i++) {
-		if (settings & (1 << i))
-			printf("%s ", settings_str[i]);
+	if (settings) {
+		printf("%-12c", ' ');
+		for (i = 0; i < NELEM(settings_str); i++) {
+			if (settings & (1 << i))
+				printf("%s ", settings_str[i]);
+		}
+		printf("\n");
 	}
-	printf("\n");
 
 	buf += 4;
 	len -= 4;
