@@ -335,3 +335,13 @@ HFP		In-band Ring Tone		+BSIR
 AVRCP		Player Settings			HAL API present but not used
 AVRCP		Browsing			No HAL API
 GATT		Read multiple characteristics	No HAL API
+
+
+Reporting Bugs
+==============
+
+Bugs should be reported at https://01.org/jira/browse/BA. When reporting
+a bug please attach logs from logcat (logcat -v time) and HCI trace. Daemon
+debug logs should be enabled. When reporting daemon crash please run it under
+valgrind if possible. For details on how to enabled debug logs and valgrind see
+"Enabling BlueZ debugs" section.
