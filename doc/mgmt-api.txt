@@ -2824,3 +2824,14 @@ Unconfigured Index Removed Event
 
 	This event indicates that an unconfigured controller has been
 	removed from the system.
+
+
+New Configuration Options Event
+===============================
+
+	Event Code:		0x001f
+	Controller Index:	<controller id>
+	Event Parameters:	Missing_Options (4 Octets)
+
+	This event indicates that one or more of the options for the
+	controller configuration has changed.
