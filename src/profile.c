@@ -1295,10 +1295,6 @@ failed:
 		ext->servers = g_slist_remove(ext->servers, l2cap);
 		ext_io_destroy(l2cap);
 	}
-	if (rfcomm) {
-		ext->servers = g_slist_remove(ext->servers, rfcomm);
-		ext_io_destroy(rfcomm);
-	}
 
 	return 0;
 }
