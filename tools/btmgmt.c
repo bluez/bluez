@@ -921,7 +921,7 @@ static void config_info_rsp(uint8_t status, uint16_t len, const void *param,
 
 	if (status != 0) {
 		fprintf(stderr,
-			"Reading hci%u info failed with status 0x%02x (%s)\n",
+			"Reading hci%u config failed with status 0x%02x (%s)\n",
 					index, status, mgmt_errstr(status));
 		goto done;
 	}
@@ -2377,31 +2377,39 @@ static void cmd_static_addr(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
-static void public_addr_rsp(uint8_t status, uint16_t len, const void *param,
-							void *user_data)
+static void options_rsp(uint16_t op, uint16_t id, uint8_t status,
+					uint16_t len, const void *param)
 {
-	if (status != 0)
-		fprintf(stderr, "Set public address failed "
-						"with status 0x%02x (%s)\n",
-						status, mgmt_errstr(status));
-	else
-		printf("Public address successfully set\n");
+	const uint32_t *rp = param;
 
+	if (status != 0) {
+		fprintf(stderr,
+			"%s for hci%u failed with status 0x%02x (%s)\n",
+			mgmt_opstr(op), id, status, mgmt_errstr(status));
+		goto done;
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small %s response (%u bytes)\n",
+							mgmt_opstr(op), len);
+		goto done;
+	}
+
+	printf("hci%u %s complete, options: ", id, mgmt_opstr(op));
+	print_options(get_le32(rp));
+	printf("\n");
+
+done:
 	mainloop_quit();
 }
 
-static void public_addr_usage(void)
-{
-	printf("Usage: btmgmt public-addr <address>\n");
-}
-
 static void cmd_public_addr(struct mgmt *mgmt, uint16_t index,
-							int argc, char **argv)
+						int argc, char **argv)
 {
 	struct mgmt_cp_set_public_address cp;
 
 	if (argc < 2) {
-		public_addr_usage();
+		printf("Usage: btmgmt public-addr <address>\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -2410,9 +2418,36 @@ static void cmd_public_addr(struct mgmt *mgmt, uint16_t index,
 
 	str2ba(argv[1], &cp.bdaddr);
 
-	if (mgmt_send(mgmt, MGMT_OP_SET_PUBLIC_ADDRESS, index, sizeof(cp), &cp,
-					public_addr_rsp, NULL, NULL) == 0) {
-		fprintf(stderr, "Unable to send set_public_address cmd\n");
+	if (send_cmd(mgmt, MGMT_OP_SET_PUBLIC_ADDRESS, index, sizeof(cp), &cp,
+							options_rsp) == 0) {
+		fprintf(stderr, "Unable to send Set Public Address cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void cmd_ext_config(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	struct mgmt_cp_set_external_config cp;
+
+	if (argc < 2) {
+		printf("Specify \"on\" or \"off\"\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
+		cp.config = 0x01;
+	else if (strcasecmp(argv[1], "off") == 0)
+		cp.config = 0x00;
+	else
+		cp.config = atoi(argv[1]);
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (send_cmd(mgmt, MGMT_OP_SET_EXTERNAL_CONFIG, index, sizeof(cp), &cp,
+							options_rsp) == 0) {
+		fprintf(stderr, "Unable to send Set External Config cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -2829,6 +2864,7 @@ static struct {
 	{ "did",	cmd_did,	"Set Device ID"			},
 	{ "static-addr",cmd_static_addr,"Set static address"		},
 	{ "public-addr",cmd_public_addr,"Set public address"		},
+	{ "ext-config",	cmd_ext_config,	"External configuration"	},
 	{ "debug-keys",	cmd_debug_keys,	"Toogle debug keys"		},
 	{ "conn-info",	cmd_conn_info,	"Get connection information"	},
 	{ "io-cap",	cmd_io_cap,	"Set IO Capability"		},
