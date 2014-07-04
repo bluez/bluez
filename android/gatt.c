@@ -4439,7 +4439,7 @@ static void read_requested_attributes(void *data, void *user_data)
 
 done:
 	/* We have value here already if no callback will be called */
-	if (value_len >= 0)
+	if (value_len > 0)
 		fill_gatt_response(resp_data, resp_data->handle,
 					resp_data->offset, error, value_len,
 					value);
