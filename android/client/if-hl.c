@@ -329,6 +329,10 @@ static void close_channel_p(int argc, const char **argv)
 	}
 
 	channel_id = atoi(argv[4]);
+	if (channel_id >= CHANNEL_ID_SIZE) {
+		haltest_error("Wrong channel id: %u\n", channel_id);
+		return;
+	}
 
 	if (app[app_id].mdep[index].channel[channel_id].fd >= 0) {
 		shutdown(app[app_id].mdep[index].channel[channel_id].fd,
