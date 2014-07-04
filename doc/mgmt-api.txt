@@ -40,10 +40,12 @@ the Device Found event to combine advertising data and scan response data
 into a single event.
 
 Version 1.7 introduces Get Clock Information, Add Device, Remove Device,
-Load Connection Parameters and Read Unconfigured Index List commands. It
-also introduces Device Added, Device Removed, New Connection Parameter,
-Unconfigured Index Added and Unconfigured Index Removed events. The existing
-Set Debug Keys command gained an extra setting for enabling SSP debug mode.
+Load Connection Parameters, Read Unconfigured Index List, Read Controller
+Configuration Information, Set External Configuration and Set Public Address
+commands. It also introduces Device Added, Device Removed, New Connection
+Parameter, Unconfigured Index Added, Unconfigured Index Removed and New
+Configuration Options events. The existing Set Debug Keys command gained
+an extra setting for enabling SSP debug mode.
 
 
 Example
