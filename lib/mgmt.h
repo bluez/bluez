@@ -425,7 +425,8 @@ struct mgmt_rp_read_unconf_index_list {
 	uint16_t index[0];
 } __packed;
 
-#define MGMT_OPTION_PUBLIC_ADDRESS	0x00000001
+#define MGMT_OPTION_EXTERNAL_CONFIG	0x00000001
+#define MGMT_OPTION_PUBLIC_ADDRESS	0x00000002
 
 #define MGMT_OP_READ_CONFIG_INFO	0x0037
 struct mgmt_rp_read_config_info {
@@ -434,7 +435,12 @@ struct mgmt_rp_read_config_info {
 	uint32_t missing_options;
 } __packed;
 
-#define MGMT_OP_SET_PUBLIC_ADDRESS	0x0038
+#define MGMT_OP_SET_EXTERNAL_CONFIG	0x0038
+struct mgmt_cp_set_external_config {
+	uint8_t config;
+} __packed;
+
+#define MGMT_OP_SET_PUBLIC_ADDRESS	0x0039
 struct mgmt_cp_set_public_address {
 	bdaddr_t bdaddr;
 } __packed;
@@ -677,6 +683,7 @@ static const char *mgmt_op[] = {
 	"Load Connection Parameters",
 	"Read Unconfigured Index List",
 	"Read Controller Configuration Information",
+	"Set External Configuration",
 	"Set Public Address",
 };
 
