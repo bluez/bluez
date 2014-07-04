@@ -272,7 +272,7 @@ void analyze_trace(const char *path)
 		break;
 	default:
 		fprintf(stderr, "Unsupported packet format\n");
-		return;
+		goto done;
 	}
 
 	dev_list = queue_new();
