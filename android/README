@@ -227,7 +227,7 @@ gatt          bt_gatt.h          complete
               bt_gatt_server.h   complete
 handsfree     bt_hf.h            complete
 hidhost       bt_hh.h            complete
-health        bt_hl.h            initial
+health        bt_hl.h            complete
 pan           bt_pan.h           complete
 avrcp         bt_rc.h            complete
 socket        bt_sock.h          complete
