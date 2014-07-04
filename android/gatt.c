@@ -6062,7 +6062,7 @@ static void gatt_srvc_change_read_cb(uint16_t handle, uint16_t offset,
 	ccc = bt_get_gatt_ccc(&dev->bdaddr);
 	entry->state = REQUEST_DONE;
 
-	entry->value = (uint8_t *) new0(uint16_t, 1);
+	entry->value = new0(uint8_t, 2);
 	if (!entry->value) {
 		entry->error = ATT_ECODE_INSUFF_RESOURCES;
 
