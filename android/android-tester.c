@@ -1011,7 +1011,7 @@ static void remote_setprop_device_found_cb(int num_properties,
 									&prop);
 	check_expected_status(status);
 
-	status = data->if_bluetooth->get_remote_device_property(&remote_addr, prop.type);
+	data->if_bluetooth->get_remote_device_property(&remote_addr, prop.type);
 }
 
 static void remote_setprop_fail_device_found_cb(int num_properties,
