@@ -2093,9 +2093,13 @@ static void handle_client_search_service(const void *buf, uint16_t len)
 		}
 	} else {
 		/* Refresh service cache if only partial search was performed */
-		if (conn->device->partial_srvc_search)
+		if (conn->device->partial_srvc_search) {
 			srvc_search_success = search_dev_for_srvc(conn, NULL);
-		else
+			if (!srvc_search_success) {
+				status = HAL_STATUS_FAILED;
+				goto reply;
+			}
+		} else
 			queue_foreach(conn->device->services,
 						send_client_primary_notify,
 						INT_TO_PTR(cmd->conn_id));
