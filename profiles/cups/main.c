@@ -332,12 +332,10 @@ static gboolean device_is_printer(const char *adapter, const char *device_path, 
 static void remote_device_found(const char *adapter, const char *bdaddr,
 							const char *name)
 {
-	DBusMessage *message, *reply, *adapter_reply;
+	DBusMessage *message, *reply;
 	DBusMessageIter iter;
 	char *object_path = NULL;
 	char *id;
-
-	adapter_reply = NULL;
 
 	assert(adapter != NULL);
 
@@ -346,9 +344,6 @@ static void remote_device_found(const char *adapter, const char *bdaddr,
 							"FindDevice");
 	dbus_message_iter_init_append(message, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
-
-	if (adapter_reply != NULL)
-		dbus_message_unref(adapter_reply);
 
 	reply = dbus_connection_send_with_reply_and_block(conn,
 							message, -1, NULL);
