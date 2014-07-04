@@ -113,6 +113,23 @@ static void print_options(uint32_t options)
 	}
 }
 
+static void new_config_options(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const uint32_t *ev = param;
+
+	if (len < sizeof(*ev)) {
+		fprintf(stderr, "Too short new_config_options event (%u)\n", len);
+		return;
+	}
+
+	if (monitor) {
+		printf("hci%u new_config_options: ", index);
+		print_options(get_le32(ev));
+		printf("\n");
+	}
+}
+
 static const char *settings_str[] = {
 				"powered",
 				"connectable",
@@ -2999,6 +3016,8 @@ int main(int argc, char *argv[])
 					unconf_index_added, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_REMOVED, index,
 					unconf_index_removed, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_NEW_CONFIG_OPTIONS, index,
+					new_config_options, NULL, NULL);
 
 	exit_status = mainloop_run();
 
