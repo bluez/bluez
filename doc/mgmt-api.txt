@@ -1865,7 +1865,6 @@ Add Device Command
 	Possible values for the Action parameter:
 		0	Background scan for device
 		1	Auto-connect device
-		2	Auto-connect device and encrypt connection
 
 	With the Action 0, when the device is found, a new Device Found
 	event will be send indicating this device is available.
@@ -1873,18 +1872,10 @@ Add Device Command
 	With the Action 1, when the device is found, it will be connected
 	and if successful a Device Connected event will be send.
 
-	With the Action 2, when the device is found and it is paired (has
-	a long term key), it will be connected, encryption will be started
-	and if successful a Device Connected event will be send.
-
-	Add a device the requires a encryption, but has no long term
-	key can be added with Action 2, but it will not be connected
-	until it has been paired.
-
 	Devices using directed advertising will be automatically connected
 	if the connectable setting is enabled. If connectable is not set,
 	then devices using undirected advertising will only connect when
-	using Action 1 or Action 2.
+	using the auto-connect action.
 
 	When a device is blocked using Block Device command, then it is
 	valid to add the device here, but all actions will be ignored
