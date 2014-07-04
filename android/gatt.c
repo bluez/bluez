@@ -4387,7 +4387,7 @@ static void fill_gatt_response_by_handle(uint16_t handle, uint16_t offset,
 	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
 							UINT_TO_PTR(handle));
 	if (!entry) {
-		DBG("No pending response found! Bogus android response?");
+		error("gatt: No pending response! Bogus android response?");
 		return;
 	}
 
