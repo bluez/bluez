@@ -1,3 +1,12 @@
+ver 5.21:
+	Fix issue with SDP requests and wrong PDU size.
+	Fix issue with handling passive scanning triggers.
+	Add support for storing and loading connection parameters.
+	Add support for kernel background auto-connection feature.
+	Add support for Android Bluetooth Scan Parameters feature.
+	Add support for Android Bluetooth Device Information feature.
+	Add support for Android Bluetooth Health Device interface.
+
 ver 5.20:
 	Fix issue with LED handling of PS3 controllers.
 	Add support for Android Bluetooth GATT server interface.
