@@ -2024,7 +2024,8 @@ Read Controller Configuration Information Command
 	Supported_Options and Missing_Options is a bitmask with currently
 	the following available bits:
 
-		0	Bluetooth public address configuration
+		0	External configuration
+		1	Bluetooth public address configuration
 
 	It is valid to call this command on controllers that do not
 	require any configuration. It is possible that a fully configured
@@ -2048,10 +2049,45 @@ Read Controller Configuration Information Command
 				Invalid Index
 
 
+Set External Configuration Command
+==================================
+
+	Command Code:		0x0038
+	Controller Index:	<controller id>
+	Command Parameters:	Configuration (1 Octet)
+	Return Parameters:	Missing_Options (4 Octets)
+
+	This command allows to change external configuration option to
+	indicate that a controller is now configured or unconfigured.
+
+	The value 0x00 sets unconfigured state and the value 0x01 sets
+	configured state of the controller.
+
+	It is not mandatory that this configuration option is provided
+	by a controller. If it is provided, the configuration has to
+	happen externally using user channel operation or via vendor
+	specific methods.
+
+	Setting this option and when Missing_Options returns zero, this
+	means that the controller will switch to configured state and it
+	can be expected that it will be announced via Index Added event.
+
+	Wrongly configured controllers might still cause an error when
+	trying to power them via Set Powered commmand.
+
+	This command generates a Command Complete event on success or a
+	Command Status event on failure.
+
+	Possible errors:	Rejected
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
 Set Public Address Command
 ==========================
 
-	Command Code:		0x0038
+	Command Code:		0x0039
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Missing_Options (4 Octets)
