@@ -119,6 +119,39 @@ static void mgmt_controller_error(uint16_t len, const void *buf)
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
+static const char *config_options_str[] = {
+	"external", "public-address",
+};
+
+static void mgmt_new_config_options(uint16_t len, const void *buf)
+{
+	uint32_t options;
+	unsigned int i;
+
+	if (len < 4) {
+		printf("* Malformed New Configuration Options control\n");
+		return;
+	}
+
+	options = get_le32(buf);
+
+	printf("@ New Configuration Options: 0x%4.4x\n", options);
+
+	if (options) {
+		printf("%-12c", ' ');
+		for (i = 0; i < NELEM(config_options_str); i++) {
+			if (options & (1 << i))
+				printf("%s ", config_options_str[i]);
+		}
+		printf("\n");
+	}
+
+	buf += 4;
+	len -= 4;
+
+	packet_hexdump(buf, len);
+}
+
 static const char *settings_str[] = {
 	"powered", "connectable", "fast-connectable", "discoverable",
 	"pairable", "link-security", "ssp", "br/edr", "hs", "le",
@@ -707,6 +740,9 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		break;
 	case MGMT_EV_UNCONF_INDEX_REMOVED:
 		mgmt_unconf_index_removed(size, data);
+		break;
+	case MGMT_EV_NEW_CONFIG_OPTIONS:
+		mgmt_new_config_options(size, data);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, size);
