@@ -403,6 +403,10 @@ struct hal_cmd_health_reg_app {
 	uint8_t  data[0];
 } __attribute__((packed));
 
+struct hal_rsp_health_reg_app {
+	uint16_t app_id;
+} __attribute__((packed));
+
 #define HAL_OP_HEALTH_MDEP		0x02
 struct hal_cmd_health_mdep {
 	uint16_t app_id;
@@ -411,10 +415,6 @@ struct hal_cmd_health_mdep {
 	uint8_t  channel_type;
 	uint16_t descr_len;
 	uint8_t  descr[0];
-} __attribute__((packed));
-
-struct hal_rsp_health_reg_app {
-	uint16_t app_id;
 } __attribute__((packed));
 
 #define HAL_OP_HEALTH_UNREG_APP		0x03
