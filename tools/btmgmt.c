@@ -99,6 +99,7 @@ static void unconf_index_removed(uint16_t index, uint16_t len,
 }
 
 static const char *options_str[] = {
+				"external",
 				"public-address",
 };
 
