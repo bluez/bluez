@@ -266,7 +266,8 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
 			__func__, last_remote_addr, bd_name->name, cod,
 			bt_ssp_variant_t2str(pairing_variant), pass_key);
 
-	if (pairing_variant == BT_SSP_VARIANT_PASSKEY_CONFIRMATION) {
+	switch (pairing_variant) {
+	case BT_SSP_VARIANT_PASSKEY_CONFIRMATION:
 		sprintf(prompt, "Does other device show %d [Y/n] ?", pass_key);
 
 		ssp_request_addr = *remote_bd_addr;
@@ -274,6 +275,19 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
 		ssp_request_pask_key = pass_key;
 
 		terminal_prompt_for(prompt, ssp_request_yes_no_answer);
+		break;
+	case BT_SSP_VARIANT_CONSENT:
+		sprintf(prompt, "Consent pairing [Y/n] ?");
+
+		ssp_request_addr = *remote_bd_addr;
+		ssp_request_variant = pairing_variant;
+		ssp_request_pask_key = 0;
+
+		terminal_prompt_for(prompt, ssp_request_yes_no_answer);
+		break;
+	default:
+		haltest_info("Not automatically handled\n");
+		break;
 	}
 }
 
