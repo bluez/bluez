@@ -1016,10 +1016,8 @@ static bt_status_t set_adv_data_real(int server_if, bool set_scan_rsp,
 		data += service_data_len;
 	}
 
-	if (service_uuid && service_uuid_len) {
+	if (service_uuid && service_uuid_len)
 		memcpy(data, service_uuid, service_uuid_len);
-		data += service_uuid_len;
-	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_SET_ADV_DATA,
 						cmd_len, cmd, NULL, NULL, NULL);
