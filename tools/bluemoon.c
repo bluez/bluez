@@ -398,32 +398,6 @@ static void read_version_complete(const void *data, uint8_t size,
 	mainloop_quit();
 }
 
-static void read_local_version_complete(const void *data, uint8_t size,
-							void *user_data)
-{
-	const struct bt_hci_rsp_read_local_version *rsp = data;
-	uint16_t manufacturer;
-
-	if (rsp->status) {
-		fprintf(stderr, "Failed to read local version (0x%02x)\n",
-								rsp->status);
-		mainloop_quit();
-		return;
-	}
-
-	manufacturer = le16_to_cpu(rsp->manufacturer);
-
-	if (manufacturer != 2) {
-		fprintf(stderr, "Unsupported manufacturer (%u)\n",
-							manufacturer);
-		mainloop_quit();
-		return;
-	}
-
-	bt_hci_send(hci_dev, CMD_READ_VERSION, NULL, 0,
-					read_version_complete, NULL, NULL);
-}
-
 static void signal_callback(int signum, void *user_data)
 {
 	switch (signum) {
@@ -530,8 +504,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_READ_LOCAL_VERSION, NULL, 0,
-				read_local_version_complete, NULL, NULL);
+	bt_hci_send(hci_dev, CMD_READ_VERSION, NULL, 0,
+					read_version_complete, NULL, NULL);
 
 	exit_status = mainloop_run();
 
