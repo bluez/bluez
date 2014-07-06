@@ -27,9 +27,13 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <sys/stat.h>
+#include <sys/param.h>
 
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
@@ -91,16 +95,25 @@ struct cmd_act_deact_traces {
 	uint8_t  rx_trace;
 } __attribute__ ((packed));
 
+#define CMD_MEMORY_WRITE	0xfc8e
+
 static struct bt_hci *hci_dev;
 static uint16_t hci_index = 0;
 
+#define FIRMWARE_BASE_PATH "/lib/firmware"
+
 static bool set_bdaddr = false;
 static const char *set_bdaddr_value = NULL;
-
-static bool reset_on_exit = false;
-static bool use_manufacturer_mode = false;
 static bool get_bddata = false;
+static bool load_firmware = false;
+static const char *load_firmware_value = NULL;
+static uint8_t *firmware_data = NULL;
+static size_t firmware_size = 0;
+static size_t firmware_offset = 0;
+uint8_t manufacturer_mode_reset = 0x00;
+static bool use_manufacturer_mode = false;
 static bool set_traces = false;
+static bool reset_on_exit = false;
 
 static void reset_complete(const void *data, uint8_t size, void *user_data)
 {
@@ -140,11 +153,13 @@ static void shutdown_device(void)
 {
 	bt_hci_flush(hci_dev);
 
+	free(firmware_data);
+
 	if (use_manufacturer_mode) {
 		struct cmd_manufacturer_mode cmd;
 
 		cmd.mode_switch = 0x00;
-		cmd.reset = 0x00;
+		cmd.reset = manufacturer_mode_reset;
 
 		bt_hci_send(hci_dev, CMD_MANUFACTURER_MODE, &cmd, sizeof(cmd),
 				leave_manufacturer_mode_complete, NULL, NULL);
@@ -304,6 +319,51 @@ static void read_bd_data_complete(const void *data, uint8_t size,
 	shutdown_device();
 }
 
+static void firmware_command_complete(const void *data, uint8_t size,
+							void *user_data)
+{
+	uint8_t status = *((uint8_t *) data);
+
+	if (status) {
+		fprintf(stderr, "Failed to load firmware (0x%02x)\n", status);
+		manufacturer_mode_reset = 0x01;
+		shutdown_device();
+		return;
+	}
+
+	if (firmware_offset >= firmware_size) {
+		printf("Activating firmware\n");
+		manufacturer_mode_reset = 0x02;
+		shutdown_device();
+		return;
+	}
+
+	if (firmware_data[firmware_offset] == 0x01) {
+		uint16_t opcode;
+		uint8_t dlen;
+
+		opcode = firmware_data[firmware_offset + 2] << 8 |
+					firmware_data[firmware_offset + 1];
+		dlen = firmware_data[firmware_offset + 3];
+
+		bt_hci_send(hci_dev, opcode, firmware_data +
+						firmware_offset + 4, dlen,
+					firmware_command_complete, NULL, NULL);
+
+		firmware_offset += dlen + 4;
+
+		if (firmware_data[firmware_offset] == 0x02) {
+			dlen = firmware_data[firmware_offset + 2];
+			firmware_offset += dlen + 3;
+		}
+	} else {
+		fprintf(stderr, "Invalid packet in firmware\n");
+		manufacturer_mode_reset = 0x01;
+		shutdown_device();
+	}
+
+}
+
 static void enter_manufacturer_mode_complete(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -313,6 +373,12 @@ static void enter_manufacturer_mode_complete(const void *data, uint8_t size,
 		fprintf(stderr, "Failed to enter manufacturer mode (0x%02x)\n",
 									status);
 		mainloop_quit();
+		return;
+	}
+
+	if (load_firmware) {
+		uint8_t status = BT_HCI_ERR_SUCCESS;
+		firmware_command_complete(&status, sizeof(status), NULL);
 		return;
 	}
 
@@ -330,6 +396,98 @@ static void enter_manufacturer_mode_complete(const void *data, uint8_t size,
 	shutdown_device();
 }
 
+static void request_firmware(const char *path)
+{
+	unsigned int cmd_num = 0;
+	unsigned int evt_num = 0;
+	struct stat st;
+	ssize_t len;
+	int fd;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open firmware %s\n", path);
+		shutdown_device();
+		return;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		fprintf(stderr, "Failed to get firmware size\n");
+		close(fd);
+		shutdown_device();
+		return;
+	}
+
+	firmware_data = malloc(st.st_size);
+	if (!firmware_data) {
+		fprintf(stderr, "Failed to allocate firmware buffer\n");
+		close(fd);
+		shutdown_device();
+		return;
+	}
+
+	len = read(fd, firmware_data, st.st_size);
+	if (len < 0) {
+		fprintf(stderr, "Failed to read firmware file\n");
+		close(fd);
+		shutdown_device();
+		return;
+	}
+
+	close(fd);
+
+	if (len < st.st_size) {
+		fprintf(stderr, "Firmware size does not match buffer\n");
+		shutdown_device();
+		return;
+	}
+
+	firmware_size = len;
+
+	if (firmware_data[0] == 0xff)
+		firmware_offset = 1;
+
+	while (firmware_offset < firmware_size) {
+		uint16_t opcode;
+		uint8_t evt, dlen;
+
+		switch (firmware_data[firmware_offset]) {
+		case 0x01:
+			opcode = firmware_data[firmware_offset + 2] << 8 |
+					firmware_data[firmware_offset + 1];
+			dlen = firmware_data[firmware_offset + 3];
+
+			if (opcode != CMD_MEMORY_WRITE)
+				printf("Unexpected opcode 0x%02x\n", opcode);
+
+			firmware_offset += dlen + 4;
+			cmd_num++;
+			break;
+
+		case 0x02:
+			evt = firmware_data[firmware_offset + 1];
+			dlen = firmware_data[firmware_offset + 2];
+
+			if (evt != BT_HCI_EVT_CMD_COMPLETE)
+				printf("Unexpected event 0x%02x\n", evt);
+
+			firmware_offset += dlen + 3;
+			evt_num++;
+			break;
+
+		default:
+			fprintf(stderr, "Invalid firmware file\n");
+			shutdown_device();
+			return;
+		}
+	}
+
+	printf("Firmware with %u commands and %u events\n", cmd_num, evt_num);
+
+	if (firmware_data[0] == 0xff)
+		firmware_offset = 1;
+}
+
 static void read_version_complete(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -341,6 +499,27 @@ static void read_version_complete(const void *data, uint8_t size,
 							rsp->status);
 		mainloop_quit();
 		return;
+	}
+
+	if (load_firmware) {
+		if (load_firmware_value) {
+			printf("Firmware: %s\n", load_firmware_value);
+			request_firmware(load_firmware_value);
+		} else {
+			char fw_name[PATH_MAX];
+
+			snprintf(fw_name, sizeof(fw_name),
+				"%s/%s/ibt-hw-%x.%x.%x-fw-%x.%x.%x.%x.%x.bseq",
+				FIRMWARE_BASE_PATH, "intel",
+				rsp->hw_platform, rsp->hw_variant,
+				rsp->hw_revision, rsp->fw_variant,
+				rsp->fw_revision, rsp->fw_build_nn,
+				rsp->fw_build_cw, rsp->fw_build_yy);
+
+			printf("Firmware: %s\n", fw_name);
+			printf("Patch level: %d\n", rsp->fw_patch);
+			request_firmware(fw_name);
+		}
 	}
 
 	if (use_manufacturer_mode) {
@@ -415,6 +594,7 @@ static void usage(void)
 	printf("\tbluemoon [options]\n");
 	printf("Options:\n"
 		"\t-B, --bdaddr [addr]    Set Bluetooth address\n"
+		"\t-F, --firwmare [file]  Load firmware\n"
 		"\t-R, --reset            Reset controller\n"
 		"\t-i, --index <num>      Use specified controller\n"
 		"\t-h, --help             Show help options\n");
@@ -423,6 +603,7 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "bdaddr",  optional_argument, NULL, 'A' },
 	{ "bddata",  no_argument,       NULL, 'D' },
+	{ "firmware",optional_argument, NULL, 'F' },
 	{ "traces",  no_argument,       NULL, 'T' },
 	{ "reset",   no_argument,       NULL, 'R' },
 	{ "index",   required_argument, NULL, 'i' },
@@ -440,7 +621,8 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "A::DTRi:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "A::DF::TRi:vh",
+						main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -453,6 +635,12 @@ int main(int argc, char *argv[])
 		case 'D':
 			use_manufacturer_mode = true;
 			get_bddata = true;
+			break;
+		case 'F':
+			use_manufacturer_mode = true;
+			if (optarg)
+				load_firmware_value = optarg;
+			load_firmware = true;
 			break;
 		case 'T':
 			use_manufacturer_mode = true;
