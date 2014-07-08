@@ -35,13 +35,12 @@ void bt_att_unref(struct bt_att *att);
 
 bool bt_att_set_close_on_unref(struct bt_att *att, bool do_close);
 
-typedef void (*bt_att_request_func_t)(uint8_t opcode, const void *param,
+typedef void (*bt_att_response_func_t)(uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data);
+typedef void (*bt_att_notify_func_t)(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data);
 typedef void (*bt_att_destroy_func_t)(void *user_data);
 typedef void (*bt_att_debug_func_t)(const char *str, void *user_data);
-typedef void (*bt_att_notify_func_t)(uint8_t opcode,
-					const struct bt_att_notify_param *param,
-					void *user_data);
 typedef void (*bt_att_timeout_func_t)(unsigned int id, uint8_t opcode,
 							void *user_data);
 
@@ -56,14 +55,16 @@ bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 						bt_att_destroy_func_t destroy);
 
 unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
-				const void *param, uint16_t length,
-				bt_att_request_func_t callback, void *user_data,
-				bt_att_destroy_func_t destroy);
+					const void *pdu, uint16_t length,
+					bt_att_response_func_t callback,
+					void *user_data,
+					bt_att_destroy_func_t destroy);
 bool bt_att_cancel(struct bt_att *att, unsigned int id);
 bool bt_att_cancel_all(struct bt_att *att);
 
 unsigned int bt_att_register(struct bt_att *att, uint8_t opcode,
-				bt_att_request_func_t callback,
-				void *user_data, bt_att_destroy_func_t destroy);
+						bt_att_notify_func_t callback,
+						void *user_data,
+						bt_att_destroy_func_t destroy);
 bool bt_att_unregister(struct bt_att *att, unsigned int id);
 bool bt_att_unregister_all(struct bt_att *att);

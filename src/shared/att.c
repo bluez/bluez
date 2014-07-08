@@ -130,6 +130,36 @@ static enum att_op_type get_op_type(uint8_t opcode)
 	return ATT_OP_TYPE_UNKNOWN;
 }
 
+static const struct {
+	uint8_t req_opcode;
+	uint8_t rsp_opcode;
+} att_req_rsp_mapping_table[] = {
+	{ BT_ATT_OP_MTU_REQ,			BT_ATT_OP_MTU_RSP },
+	{ BT_ATT_OP_FIND_INFO_REQ,		BT_ATT_OP_FIND_INFO_RSP},
+	{ BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,	BT_ATT_OP_FIND_BY_TYPE_VAL_RSP },
+	{ BT_ATT_OP_READ_BY_TYPE_REQ,		BT_ATT_OP_READ_BY_TYPE_RSP },
+	{ BT_ATT_OP_READ_REQ,			BT_ATT_OP_READ_RSP },
+	{ BT_ATT_OP_READ_BLOB_REQ,		BT_ATT_OP_READ_BLOB_RSP },
+	{ BT_ATT_OP_READ_MULT_REQ,		BT_ATT_OP_READ_MULT_RSP },
+	{ BT_ATT_OP_READ_BY_GRP_TYPE_REQ,	BT_ATT_OP_READ_BY_GRP_TYPE_RSP },
+	{ BT_ATT_OP_WRITE_REQ,			BT_ATT_OP_WRITE_RSP },
+	{ BT_ATT_OP_PREP_WRITE_REQ,		BT_ATT_OP_PREP_WRITE_RSP },
+	{ BT_ATT_OP_EXEC_WRITE_REQ,		BT_ATT_OP_EXEC_WRITE_RSP },
+	{ }
+};
+
+static uint8_t get_req_opcode(uint8_t rsp_opcode)
+{
+	int i;
+
+	for (i = 0; att_req_rsp_mapping_table[i].rsp_opcode; i++) {
+		if (att_req_rsp_mapping_table[i].rsp_opcode == rsp_opcode)
+			return att_req_rsp_mapping_table[i].req_opcode;
+	}
+
+	return 0;
+}
+
 struct att_send_op {
 	unsigned int id;
 	unsigned int timeout_id;
@@ -137,77 +167,44 @@ struct att_send_op {
 	uint16_t opcode;
 	void *pdu;
 	uint16_t len;
-	bt_att_request_func_t callback;
+	bt_att_response_func_t callback;
 	bt_att_destroy_func_t destroy;
 	void *user_data;
 };
 
-static bool encode_mtu_req(struct att_send_op *op, const void *param,
+static bool encode_pdu(struct att_send_op *op, const void *pdu,
 						uint16_t length, uint16_t mtu)
 {
-	const struct bt_att_mtu_req_param *p = param;
-	const uint16_t len = 3;
+	uint16_t pdu_len = 1;
 
-	if (length != sizeof(*p))
+	if (length && pdu)
+		pdu_len += length;
+
+	if (pdu_len > mtu)
 		return false;
 
-	if (len > mtu)
-		return false;
-
-	op->pdu = malloc(len);
+	op->len = pdu_len;
+	op->pdu = malloc(op->len);
 	if (!op->pdu)
 		return false;
 
 	((uint8_t *) op->pdu)[0] = op->opcode;
-	put_le16(p->client_rx_mtu, ((uint8_t *) op->pdu) + 1);
-	op->len = len;
+	if (pdu_len > 1)
+		memcpy(op->pdu + 1, pdu, length);
 
 	return true;
 }
 
-static bool encode_pdu(struct att_send_op *op, const void *param,
-						uint16_t length, uint16_t mtu)
-{
-	/* If no parameters are given, simply set the PDU to consist of the
-	 * opcode (e.g. BT_ATT_OP_WRITE_RSP),
-	 */
-	if (!length || !param) {
-		op->len = 1;
-		op->pdu = malloc(1);
-		if (!op->pdu)
-			return false;
-
-		((uint8_t *) op->pdu)[0] = op->opcode;
-		return true;
-	}
-
-	/* TODO: If the opcode has the "signed" bit set, make sure that the
-	 * resulting PDU contains the authentication signature. Return an error,
-	 * if the provided parameters structure is such that it leaves no room
-	 * for an authentication signature in the PDU, or if no signing data
-	 * has been set to generate the authentication signature.
-	 */
-
-	switch (op->opcode) {
-	case BT_ATT_OP_MTU_REQ:
-		return encode_mtu_req(op, param, length, mtu);
-	default:
-		break;
-	}
-
-	return false;
-}
-
-static struct att_send_op *create_att_send_op(uint8_t opcode, const void *param,
+static struct att_send_op *create_att_send_op(uint8_t opcode, const void *pdu,
 						uint16_t length, uint16_t mtu,
-						bt_att_request_func_t callback,
+						bt_att_response_func_t callback,
 						void *user_data,
 						bt_att_destroy_func_t destroy)
 {
 	struct att_send_op *op;
 	enum att_op_type op_type;
 
-	if (!length && !param)
+	if (length && !pdu)
 		return NULL;
 
 	op_type = get_op_type(opcode);
@@ -237,7 +234,7 @@ static struct att_send_op *create_att_send_op(uint8_t opcode, const void *param,
 	op->destroy = destroy;
 	op->user_data = user_data;
 
-	if (!encode_pdu(op, param, length, mtu)) {
+	if (!encode_pdu(op, pdu, length, mtu)) {
 		free(op);
 		return NULL;
 	}
@@ -411,94 +408,58 @@ static void wakeup_writer(struct bt_att *att)
 	att->writer_active = true;
 }
 
-static bool request_complete(struct bt_att *att, uint8_t req_opcode,
-					uint8_t rsp_opcode, const void *param,
-					uint16_t len)
+static void handle_rsp(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
+								ssize_t pdu_len)
 {
 	struct att_send_op *op = att->pending_req;
+	uint8_t req_opcode;
+	uint8_t rsp_opcode;
+	uint8_t *rsp_pdu = NULL;
+	uint16_t rsp_pdu_len = 0;
 
+	/* If no request is pending, then the response is unexpected. */
 	if (!op) {
-		/* There is no pending request so the response is unexpected. */
 		wakeup_writer(att);
-		return false;
+		return;
 	}
 
-	if (op->opcode != req_opcode) {
-		/* The request opcode corresponding to the received response
-		 * opcode does not match the currently pending request.
-		 */
-		return false;
+	/* If the received response doesn't match the pending request, or if
+	 * the request is malformed, end the current request with failure.
+	 */
+	if (opcode == BT_ATT_OP_ERROR_RSP) {
+		if (pdu_len != 4)
+			goto fail;
+
+		req_opcode = pdu[0];
+	} else if (!(req_opcode = get_req_opcode(opcode)))
+		goto fail;
+
+	if (req_opcode != op->opcode)
+		goto fail;
+
+	rsp_opcode = opcode;
+
+	if (pdu_len > 0) {
+		rsp_pdu = pdu;
+		rsp_pdu_len = pdu_len;
 	}
 
+	goto done;
+
+fail:
+	util_debug(att->debug_callback, att->debug_data,
+			"Failed to handle response PDU; opcode: 0x%02x", opcode);
+
+	rsp_opcode = BT_ATT_OP_ERROR_RSP;
+
+done:
 	if (op->callback)
-		op->callback(rsp_opcode, param, len, op->user_data);
+		op->callback(rsp_opcode, rsp_pdu, rsp_pdu_len, op->user_data);
 
 	destroy_att_send_op(op);
 	att->pending_req = NULL;
 
 	wakeup_writer(att);
-	return true;
-}
-
-static bool handle_error_rsp(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
-								ssize_t pdu_len)
-{
-	struct bt_att_error_rsp_param param;
-
-	if (pdu_len != 5)
-		return false;
-
-	memset(&param, 0, sizeof(param));
-	param.request_opcode = pdu[1];
-	param.handle = get_le16(pdu + 2);
-	param.error_code = pdu[4];
-
-	return request_complete(att, pdu[1], opcode, &param, sizeof(param));
-}
-
-static bool handle_mtu_rsp(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
-								ssize_t pdu_len)
-{
-	struct bt_att_mtu_rsp_param param;
-
-	if (pdu_len != 3)
-		return false;
-
-	memset(&param, 0, sizeof(param));
-	param.server_rx_mtu = get_le16(pdu + 1);
-
-	return request_complete(att, BT_ATT_OP_MTU_REQ, opcode,
-							&param, sizeof(param));
-}
-
-static void handle_rsp(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
-								ssize_t pdu_len)
-{
-	bool success;
-
-	switch (opcode) {
-	case BT_ATT_OP_ERROR_RSP:
-		success = handle_error_rsp(att, opcode, pdu, pdu_len);
-		break;
-	case BT_ATT_OP_MTU_RSP:
-		success = handle_mtu_rsp(att, opcode, pdu, pdu_len);
-		break;
-	default:
-		success = false;
-		util_debug(att->debug_callback, att->debug_data,
-				"Unknown response opcode: 0x%02x", opcode);
-		break;
-	}
-
-	if (success)
-		return;
-
-	util_debug(att->debug_callback, att->debug_data,
-			"Failed to handle respone PDU; opcode: 0x%02x", opcode);
-
-	if (att->pending_req)
-		request_complete(att, att->pending_req->opcode,
-						BT_ATT_OP_ERROR_RSP, NULL, 0);
 }
 
 static bool can_read_data(struct io *io, void *user_data)
@@ -524,7 +485,7 @@ static bool can_read_data(struct io *io, void *user_data)
 	/* Act on the received PDU based on the opcode type */
 	switch (get_op_type(opcode)) {
 	case ATT_OP_TYPE_RSP:
-		handle_rsp(att, opcode, pdu, bytes_read);
+		handle_rsp(att, opcode, pdu + 1, bytes_read - 1);
 		break;
 	default:
 		util_debug(att->debug_callback, att->debug_data,
@@ -707,8 +668,8 @@ bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 }
 
 unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
-				const void *param, uint16_t length,
-				bt_att_request_func_t callback, void *user_data,
+				const void *pdu, uint16_t length,
+				bt_att_response_func_t callback, void *user_data,
 				bt_att_destroy_func_t destroy)
 {
 	struct att_send_op *op;
@@ -720,7 +681,7 @@ unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 	if (att->invalid)
 		return 0;
 
-	op = create_att_send_op(opcode, param, length, att->mtu, callback,
+	op = create_att_send_op(opcode, pdu, length, att->mtu, callback,
 							user_data, destroy);
 	if (!op)
 		return 0;
@@ -821,8 +782,9 @@ bool bt_att_cancel_all(struct bt_att *att)
 }
 
 unsigned int bt_att_register(struct bt_att *att, uint8_t opcode,
-				bt_att_request_func_t callback,
-				void *user_data, bt_att_destroy_func_t destroy)
+						bt_att_notify_func_t callback,
+						void *user_data,
+						bt_att_destroy_func_t destroy)
 {
 	/* TODO */
 	return 0;
