@@ -1,0 +1,34 @@
+PTS test results for RFCOMM
+
+PTS version: 5.2
+Tested: 08-July-2014
+Android version: 4.4.4
+
+Results:
+PASS	test passed
+FAIL	test failed
+INC	test is inconclusive
+N/A	test is disabled due to PICS setup
+NONE	test result is none
+
+-------------------------------------------------------------------------------
+Test Name		Result	Notes
+-------------------------------------------------------------------------------
+TC_RFC_BV_01_C		INC
+TC_RFC_BV_02_C		INC
+TC_RFC_BV_03_C		INC
+TC_RFC_BV_04_C		INC
+TC_RFC_BV_05_C		INC
+TC_RFC_BV_06_C		INC
+TC_RFC_BV_07_C		INC
+TC_RFC_BV_08_C		INC
+TC_RFC_BV_11_C		INC
+TC_RFC_BV_13_C		INC
+TC_RFC_BV_14_C		N/A
+TC_RFC_BV_15_C		INC
+TC_RFC_BV_17_C		INC
+TC_RFC_BV_19_C		INC
+TC_RFC_BV_21_C		INC
+TC_RFC_BV_22_C		INC
+TC_RFC_BV_25_C		INC
+-------------------------------------------------------------------------------
