@@ -1,8 +1,8 @@
 PTS test results for A2DP
 
-PTS version: 5.1
-Tested: 06-June-2014
-Android version: 4.4.2
+PTS version: 5.2
+Tested: 08-July-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
@@ -16,7 +16,8 @@ Test Name		Result	Notes
 -------------------------------------------------------------------------------
 TC_SRC_CC_BV_09_I	PASS	Start streaming
 TC_SRC_CC_BV_10_I	N/A
-TC_SRC_REL_BV_01_I	PASS	Connect to PTS from IUT. When requested
+TC_SRC_REL_BV_01_I	INC	JIRA: BA-2
+				Connect to PTS from IUT. When requested
 				disconnect from IUT
 TC_SRC_REL_BV_02_I	PASS
 TC_SRC_SET_BV_01_I	PASS	Connect to PTS (open a2dp)
