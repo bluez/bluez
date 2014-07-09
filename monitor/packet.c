@@ -4873,7 +4873,7 @@ static void read_sync_train_params_rsp(const void *data, uint8_t size)
 	print_field("Timeout: %.3f msec (0x%8.8x)",
 					le32_to_cpu(rsp->timeout) * 0.625,
 					le32_to_cpu(rsp->timeout));
-	print_field("Service Data: 0x%2.2x", rsp->service_data);
+	print_field("Service data: 0x%2.2x", rsp->service_data);
 }
 
 static void write_sync_train_params_cmd(const void *data, uint8_t size)
@@ -4885,7 +4885,7 @@ static void write_sync_train_params_cmd(const void *data, uint8_t size)
 	print_field("Timeout: %.3f msec (0x%8.8x)",
 					le32_to_cpu(cmd->timeout) * 0.625,
 					le32_to_cpu(cmd->timeout));
-	print_field("Service Data: 0x%2.2x", cmd->service_data);
+	print_field("Service data: 0x%2.2x", cmd->service_data);
 }
 
 static void write_sync_train_params_rsp(const void *data, uint8_t size)
