@@ -4884,9 +4884,14 @@ static void handle_server_send_indication(const void *buf, uint16_t len)
 						(uint8_t *)cmd->value, cmd->len,
 						pdu, mtu);
 
-	g_attrib_send(conn->device->attrib, 0, pdu, length, NULL, NULL, NULL);
-
-	status = HAL_STATUS_SUCCESS;
+	if (length == 0) {
+		error("gatt: Failed to encode indication");
+		status = HAL_STATUS_FAILED;
+	} else {
+		g_attrib_send(conn->device->attrib, 0, pdu, length, NULL, NULL,
+									NULL);
+		status = HAL_STATUS_SUCCESS;
+	}
 
 reply:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
