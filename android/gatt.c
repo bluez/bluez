@@ -4580,7 +4580,10 @@ static void write_cb(uint16_t handle, uint16_t offset,
 	ev->trans_id = transaction->id;
 
 	ev->is_prep = att_opcode == ATT_OP_PREP_WRITE_REQ;
-	ev->need_rsp = att_opcode == ATT_OP_WRITE_REQ;
+
+	if (att_opcode == ATT_OP_WRITE_REQ ||
+					att_opcode == ATT_OP_PREP_WRITE_REQ)
+		ev->need_rsp = 0x01;
 
 	ev->length = len;
 	memcpy(ev->value, value, len);
