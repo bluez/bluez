@@ -177,6 +177,11 @@ struct app_connection {
 	bool wait_execute_write;
 };
 
+struct service_sdp {
+	int32_t service_handle;
+	uint32_t sdp_handle;
+};
+
 static struct ipc *hal_ipc = NULL;
 static bdaddr_t adapter_addr;
 static bool scanning = false;
@@ -185,6 +190,8 @@ static unsigned int advertising_cnt = 0;
 static struct queue *gatt_apps = NULL;
 static struct queue *gatt_devices = NULL;
 static struct queue *app_connections = NULL;
+
+static struct queue *services_sdp = NULL;
 
 static struct queue *listen_apps = NULL;
 static struct gatt_db *gatt_db = NULL;
@@ -4883,6 +4890,84 @@ static uint32_t add_sdp_record(const bt_uuid_t *uuid, uint16_t start,
 	return rec->handle;
 }
 
+static bool match_service_sdp(const void *data, const void *user_data)
+{
+	const struct service_sdp *s = data;
+
+	return s->service_handle == PTR_TO_INT(user_data);
+}
+
+static struct service_sdp *new_service_sdp_record(int32_t service_handle)
+{
+	bt_uuid_t uuid;
+	struct service_sdp *s;
+	uint16_t end_handle;
+
+	end_handle = gatt_db_get_end_handle(gatt_db, service_handle);
+	if (!end_handle)
+		return NULL;
+
+	if (!gatt_db_get_service_uuid(gatt_db, service_handle, &uuid))
+		return NULL;
+
+	s = new0(struct service_sdp, 1);
+	if (!s)
+		return NULL;
+
+	s->service_handle = service_handle;
+	s->sdp_handle = add_sdp_record(&uuid, service_handle, end_handle, NULL);
+	if (!s->sdp_handle) {
+		free(s);
+		return NULL;
+	}
+
+	return s;
+}
+
+static void free_service_sdp_record(void *data)
+{
+	struct service_sdp *s = data;
+
+	if (!s)
+		return;
+
+	bt_adapter_remove_record(s->sdp_handle);
+	free(s);
+}
+
+static bool add_service_sdp_record(int32_t service_handle)
+{
+	struct service_sdp *s;
+
+	s = queue_find(services_sdp, match_service_sdp,
+						INT_TO_PTR(service_handle));
+	if (s)
+		return true;
+
+	s = new_service_sdp_record(service_handle);
+	if (!s)
+		return false;
+
+	if (!queue_push_tail(services_sdp, s)) {
+		free_service_sdp_record(s);
+		return false;
+	}
+
+	return true;
+}
+
+static void remove_service_sdp_record(int32_t service_handle)
+{
+	struct service_sdp *s;
+
+	s = queue_remove_if(services_sdp, match_service_sdp,
+						INT_TO_PTR(service_handle));
+	if (!s)
+		return;
+
+	free_service_sdp_record(s);
+}
+
 static void handle_server_start_service(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_server_start_service *cmd = buf;
@@ -4900,10 +4985,26 @@ static void handle_server_start_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	/* TODO: support BR/EDR (cmd->transport) */
+	switch (cmd->transport) {
+	case GATT_SERVER_TRANSPORT_BREDR:
+	case GATT_SERVER_TRANSPORT_LE_BREDR:
+		if (!add_service_sdp_record(cmd->service_handle)) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+		break;
+	case GATT_SERVER_TRANSPORT_LE:
+		break;
+	default:
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
 
 	if (!gatt_db_service_set_active(gatt_db, cmd->service_handle, true)) {
-		/* we ignore service now */
+		/*
+		 * no need to clean SDP since this can fail only if service
+		 * handle is invalid in which case add_sdp_record() also fails
+		 */
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -4942,10 +5043,14 @@ static void handle_server_stop_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (!gatt_db_service_set_active(gatt_db, cmd->service_handle, false))
+	if (!gatt_db_service_set_active(gatt_db, cmd->service_handle, false)) {
 		status = HAL_STATUS_FAILED;
-	else
-		status = HAL_STATUS_SUCCESS;
+		goto failed;
+	}
+
+	remove_service_sdp_record(cmd->service_handle);
+
+	status = HAL_STATUS_SUCCESS;
 
 	queue_foreach(gatt_devices, notify_service_change,
 					UINT_TO_PTR(cmd->service_handle));
@@ -4983,6 +5088,8 @@ static void handle_server_delete_service(const void *buf, uint16_t len)
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
+
+	remove_service_sdp_record(cmd->service_handle);
 
 	status = HAL_STATUS_SUCCESS;
 
@@ -6316,10 +6423,11 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 	gatt_apps = queue_new();
 	app_connections = queue_new();
 	listen_apps = queue_new();
+	services_sdp = queue_new();
 	gatt_db = gatt_db_new();
 
 	if (!gatt_devices || !gatt_apps || !listen_apps || !app_connections ||
-								!gatt_db) {
+						!services_sdp || !gatt_db) {
 		error("gatt: Failed to allocate memory for queues");
 		goto failed;
 	}
@@ -6358,6 +6466,9 @@ failed:
 	queue_destroy(listen_apps, NULL);
 	listen_apps = NULL;
 
+	queue_destroy(services_sdp, NULL);
+	services_sdp = NULL;
+
 	gatt_db_destroy(gatt_db);
 	gatt_db = NULL;
 
@@ -6392,6 +6503,9 @@ void bt_gatt_unregister(void)
 
 	queue_destroy(gatt_devices, destroy_device);
 	gatt_devices = NULL;
+
+	queue_destroy(services_sdp, free_service_sdp_record);
+	services_sdp = NULL;
 
 	queue_destroy(listen_apps, NULL);
 	listen_apps = NULL;
