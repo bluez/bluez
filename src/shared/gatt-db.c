@@ -732,6 +732,37 @@ uint16_t gatt_db_get_end_handle(struct gatt_db *db, uint16_t handle)
 	return service->attributes[0]->handle + service->num_handles - 1;
 }
 
+bool gatt_db_get_service_uuid(struct gatt_db *db, uint16_t handle,
+								bt_uuid_t *uuid)
+{
+	struct gatt_db_service *service;
+
+	service = queue_find(db->services, find_service_for_handle,
+						INT_TO_PTR(handle));
+	if (!service)
+		return false;
+
+	if (service->attributes[0]->value_len == 2) {
+		uint16_t value;
+
+		value = get_le16(service->attributes[0]->value);
+		bt_uuid16_create(uuid, value);
+
+		return true;
+	}
+
+	if (service->attributes[0]->value_len == 16) {
+		uint128_t value;
+
+		bswap_128(service->attributes[0]->value, &value);
+		bt_uuid128_create(uuid, value);
+
+		return true;
+	}
+
+	return false;
+}
+
 bool gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle,
 							uint32_t *permissions)
 {
