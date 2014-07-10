@@ -1,6 +1,6 @@
 AVCTP PIXIT for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -12,7 +12,7 @@ Parameter Name			Value
 -------------------------------------------------------------------------------
 TSPX_avctp_psm			0017
 TSPX_avctp_profile_id		110E
-TSPX_connect_avdtp		TRUE
+TSPX_connect_avdtp		FALSE (*)
 TSPX_avctp_tester_command_data
 TSPX_avctp_tester_response_data
 TSPX_avctp_iut_command_data
