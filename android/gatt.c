@@ -1702,6 +1702,49 @@ static void app_disconnect_devices(struct gatt_app *client)
 	}
 }
 
+static int connect_bredr(struct gatt_device *dev)
+{
+	BtIOSecLevel sec_level;
+	GIOChannel *io;
+	GError *gerr = NULL;
+	char addr[18];
+
+	ba2str(&dev->bdaddr, addr);
+
+	/* There is one connection attempt going on */
+	if (dev->att_io) {
+		info("gatt: connection to dev %s is ongoing", addr);
+		return -EALREADY;
+	}
+
+	DBG("Connection attempt to: %s", addr);
+
+	sec_level = bt_device_is_bonded(&dev->bdaddr) ? BT_IO_SEC_MEDIUM :
+								BT_IO_SEC_LOW;
+
+	io = bt_io_connect(connect_cb, device_ref(dev), NULL, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
+			BT_IO_OPT_SOURCE_TYPE, BDADDR_BREDR,
+			BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
+			BT_IO_OPT_DEST_TYPE, BDADDR_BREDR,
+			BT_IO_OPT_PSM, ATT_PSM,
+			BT_IO_OPT_SEC_LEVEL, sec_level,
+			BT_IO_OPT_INVALID);
+	if (!io) {
+		error("gatt: Failed bt_io_connect(%s): %s", addr,
+							gerr->message);
+		g_error_free(gerr);
+		return -EIO;
+	}
+
+	device_set_state(dev, DEVICE_CONNECT_READY);
+
+	/* Keep this, so we can cancel the connection */
+	dev->att_io = io;
+
+	return 0;
+}
+
 static bool trigger_connection(struct app_connection *connection)
 {
 	switch (connection->device->state) {
@@ -1714,6 +1757,11 @@ static bool trigger_connection(struct app_connection *connection)
 	default:
 		break;
 	}
+
+	/* If device was last seen over BR/EDR connect over it */
+	if (bt_device_last_seen_bearer(&connection->device->bdaddr) ==
+								BDADDR_BREDR)
+		return connect_bredr(connection->device) == 0;
 
 	/* after state change trigger discovering */
 	if (!scanning && (connection->device->state == DEVICE_CONNECT_INIT))
