@@ -58,6 +58,7 @@ bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
 
 uint8_t bt_get_device_android_type(const bdaddr_t *addr);
 bool bt_is_device_le(const bdaddr_t *addr);
+uint8_t bt_device_last_seen_bearer(const bdaddr_t *bdaddr);
 
 const char *bt_get_adapter_name(void);
 bool bt_device_is_bonded(const bdaddr_t *bdaddr);

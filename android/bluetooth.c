@@ -3985,6 +3985,17 @@ static uint8_t select_device_bearer(struct device *dev)
 	return dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
 }
 
+uint8_t bt_device_last_seen_bearer(const bdaddr_t *bdaddr)
+{
+	 struct device *dev;
+
+	dev = find_device(bdaddr);
+	if (!dev)
+		return BDADDR_BREDR;
+
+	return select_device_bearer(dev);
+}
+
 static bool device_is_paired(struct device *dev, uint8_t addr_type)
 {
 	if (addr_type == BDADDR_BREDR)
