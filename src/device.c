@@ -307,7 +307,7 @@ static gboolean store_device_info_cb(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	GKeyFile *key_file;
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	char adapter_addr[18];
 	char device_addr[18];
 	char *str;
@@ -321,7 +321,6 @@ static gboolean store_device_info_cb(gpointer user_data)
 	ba2str(&device->bdaddr, device_addr);
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
 			device_addr);
-	filename[PATH_MAX] = '\0';
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -436,7 +435,7 @@ static void store_device_info(struct btd_device *device)
 
 void device_store_cached_name(struct btd_device *dev, const char *name)
 {
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	char s_addr[18], d_addr[18];
 	GKeyFile *key_file;
 	char *data;
@@ -451,7 +450,6 @@ void device_store_cached_name(struct btd_device *dev, const char *name)
 	ba2str(btd_adapter_get_address(dev->adapter), s_addr);
 	ba2str(&dev->bdaddr, d_addr);
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", s_addr, d_addr);
-	filename[PATH_MAX] = '\0';
 	create_file(filename, S_IRUSR | S_IWUSR);
 
 	key_file = g_key_file_new();
@@ -2050,13 +2048,12 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 static char *load_cached_name(struct btd_device *device, const char *local,
 				const char *peer)
 {
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	GKeyFile *key_file;
 	char *str = NULL;
 	int len;
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local, peer);
-	filename[PATH_MAX] = '\0';
 
 	key_file = g_key_file_new();
 
@@ -2211,7 +2208,7 @@ next:
 static void load_att_info(struct btd_device *device, const char *local,
 				const char *peer)
 {
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	GKeyFile *key_file;
 	char *prim_uuid, *str;
 	char **groups, **handle, *service_uuid;
@@ -2225,7 +2222,6 @@ static void load_att_info(struct btd_device *device, const char *local,
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/attributes", local,
 			peer);
-	filename[PATH_MAX] = '\0';
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -2587,7 +2583,7 @@ static void delete_folder_tree(const char *dirname)
 {
 	DIR *dir;
 	struct dirent *entry;
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 
 	dir = opendir(dirname);
 	if (dir == NULL)
@@ -2599,7 +2595,6 @@ static void delete_folder_tree(const char *dirname)
 			continue;
 
 		snprintf(filename, PATH_MAX, "%s/%s", dirname, entry->d_name);
-		filename[PATH_MAX] = '\0';
 
 		if (entry->d_type == DT_DIR)
 			delete_folder_tree(filename);
@@ -2616,7 +2611,7 @@ static void device_remove_stored(struct btd_device *device)
 	const bdaddr_t *src = btd_adapter_get_address(device->adapter);
 	char adapter_addr[18];
 	char device_addr[18];
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	GKeyFile *key_file;
 	char *data;
 	gsize length = 0;
@@ -2644,12 +2639,10 @@ static void device_remove_stored(struct btd_device *device)
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s", adapter_addr,
 			device_addr);
-	filename[PATH_MAX] = '\0';
 	delete_folder_tree(filename);
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", adapter_addr,
 			device_addr);
-	filename[PATH_MAX] = '\0';
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -3029,8 +3022,8 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	struct btd_device *device = req->device;
 	sdp_list_t *seq;
 	char srcaddr[18], dstaddr[18];
-	char sdp_file[PATH_MAX + 1];
-	char att_file[PATH_MAX + 1];
+	char sdp_file[PATH_MAX];
+	char att_file[PATH_MAX];
 	GKeyFile *sdp_key_file = NULL;
 	GKeyFile *att_key_file = NULL;
 	char *data;
@@ -3042,14 +3035,12 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	if (!device->temporary) {
 		snprintf(sdp_file, PATH_MAX, STORAGEDIR "/%s/cache/%s",
 							srcaddr, dstaddr);
-		sdp_file[PATH_MAX] = '\0';
 
 		sdp_key_file = g_key_file_new();
 		g_key_file_load_from_file(sdp_key_file, sdp_file, 0, NULL);
 
 		snprintf(att_file, PATH_MAX, STORAGEDIR "/%s/%s/attributes",
 							srcaddr, dstaddr);
-		att_file[PATH_MAX] = '\0';
 
 		att_key_file = g_key_file_new();
 		g_key_file_load_from_file(att_key_file, att_file, 0, NULL);
@@ -3290,7 +3281,7 @@ done:
 static void store_services(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	char src_addr[18], dst_addr[18];
 	uuid_t uuid;
 	char *prim_uuid;
@@ -3315,8 +3306,6 @@ static void store_services(struct btd_device *device)
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/attributes", src_addr,
 								dst_addr);
-	filename[PATH_MAX] = '\0';
-
 	key_file = g_key_file_new();
 
 	for (l = device->primaries; l; l = l->next) {
@@ -4780,7 +4769,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 static sdp_list_t *read_device_records(struct btd_device *device)
 {
 	char local[18], peer[18];
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	GKeyFile *key_file;
 	char **keys, **handle;
 	char *str;
@@ -4791,7 +4780,6 @@ static sdp_list_t *read_device_records(struct btd_device *device)
 	ba2str(&device->bdaddr, peer);
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local, peer);
-	filename[PATH_MAX] = '\0';
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
