@@ -2804,18 +2804,6 @@ static uint8_t get_le_addr_type(GKeyFile *keyfile)
 	return addr_type;
 }
 
-static unsigned char dirent_type(const char *parent, const char *name)
-{
-	char filename[PATH_MAX];
-	struct stat st;
-
-	snprintf(filename, sizeof(filename), "%s/%s", parent, name);
-	if (lstat(filename, &st) == 0 && S_ISDIR(st.st_mode))
-		return DT_DIR;
-
-	return DT_UNKNOWN;
-}
-
 static void load_devices(struct btd_adapter *adapter)
 {
 	char dirname[PATH_MAX];
@@ -2848,7 +2836,7 @@ static void load_devices(struct btd_adapter *adapter)
 		uint8_t bdaddr_type;
 
 		if (entry->d_type == DT_UNKNOWN)
-			entry->d_type = dirent_type(dirname, entry->d_name);
+			entry->d_type = util_get_dt(dirname, entry->d_name);
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
 			continue;

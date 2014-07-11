@@ -45,6 +45,7 @@
 
 #include "log.h"
 
+#include "src/shared/util.h"
 #include "btio/btio.h"
 #include "lib/uuid.h"
 #include "lib/mgmt.h"
@@ -2593,6 +2594,9 @@ static void delete_folder_tree(const char *dirname)
 		if (g_str_equal(entry->d_name, ".") ||
 				g_str_equal(entry->d_name, ".."))
 			continue;
+
+		if (entry->d_type == DT_UNKNOWN)
+			entry->d_type = util_get_dt(dirname, entry->d_name);
 
 		snprintf(filename, PATH_MAX, "%s/%s", dirname, entry->d_name);
 

@@ -28,6 +28,10 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
 
 #include "src/shared/util.h"
 
@@ -87,4 +91,17 @@ void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 		str[67] = '\0';
 		function(str, user_data);
 	}
+}
+
+/* Helper for getting the dirent type in case readdir returns DT_UNKNOWN */
+unsigned char util_get_dt(const char *parent, const char *name)
+{
+	char filename[PATH_MAX];
+	struct stat st;
+
+	snprintf(filename, sizeof(filename), "%s/%s", parent, name);
+	if (lstat(filename, &st) == 0 && S_ISDIR(st.st_mode))
+		return DT_DIR;
+
+	return DT_UNKNOWN;
 }
