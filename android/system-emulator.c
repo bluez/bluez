@@ -42,7 +42,7 @@
 
 #include "monitor/mainloop.h"
 
-static char exec_dir[PATH_MAX + 1];
+static char exec_dir[PATH_MAX];
 
 static pid_t daemon_pid = -1;
 static pid_t snoop_pid = -1;
@@ -82,7 +82,7 @@ static void run_bluetoothd(char *prg_name)
 
 static void ctl_start(void)
 {
-	char prg_name[PATH_MAX + 1];
+	char prg_name[PATH_MAX];
 	pid_t pid;
 
 	snprintf(prg_name, sizeof(prg_name), "%s/%s", exec_dir, "bluetoothd");
@@ -110,7 +110,7 @@ static void ctl_start(void)
 
 static void snoop_start(void)
 {
-	char prg_name[PATH_MAX + 1];
+	char prg_name[PATH_MAX];
 	char *prg_argv[3];
 	char *prg_envp[1];
 	pid_t pid;

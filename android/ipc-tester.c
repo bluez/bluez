@@ -81,7 +81,7 @@ struct regmod_msg {
 #define CONNECT_TIMEOUT (5 * 1000)
 #define SERVICE_NAME "bluetoothd"
 
-static char exec_dir[PATH_MAX + 1];
+static char exec_dir[PATH_MAX];
 
 static int cmd_sk = -1;
 static int notif_sk = -1;
@@ -218,7 +218,7 @@ static void test_post_teardown(const void *data)
 
 static void bluetoothd_start(int hci_index)
 {
-	char prg_name[PATH_MAX + 1];
+	char prg_name[PATH_MAX];
 	char index[8];
 	char *prg_argv[4];
 

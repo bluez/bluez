@@ -147,7 +147,7 @@ struct hh_cb_data {
 	int size;
 };
 
-static char exec_dir[PATH_MAX + 1];
+static char exec_dir[PATH_MAX];
 
 static gint scheduled_cbacks_num = 0;
 
@@ -604,7 +604,7 @@ static void test_post_teardown(const void *test_data)
 
 static void bluetoothd_start(int hci_index)
 {
-	char prg_name[PATH_MAX + 1];
+	char prg_name[PATH_MAX];
 	char index[8];
 	char *prg_argv[5];
 
