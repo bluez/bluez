@@ -2818,7 +2818,7 @@ static unsigned char dirent_type(const char *parent, const char *name)
 
 static void load_devices(struct btd_adapter *adapter)
 {
-	char filename[PATH_MAX], dirname[PATH_MAX];
+	char dirname[PATH_MAX];
 	char srcaddr[18];
 	GSList *keys = NULL;
 	GSList *ltks = NULL;
@@ -2833,7 +2833,7 @@ static void load_devices(struct btd_adapter *adapter)
 
 	dir = opendir(dirname);
 	if (!dir) {
-		error("Unable to open adapter storage directory: %s", filename);
+		error("Unable to open adapter storage directory: %s", dirname);
 		return;
 	}
 
