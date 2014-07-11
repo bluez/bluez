@@ -918,7 +918,7 @@ static int hidp_add_connection(struct input_device *idev)
 	struct hidp_connadd_req *req;
 	sdp_record_t *rec;
 	char src_addr[18], dst_addr[18];
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX];
 	GKeyFile *key_file;
 	char handle[11], *str;
 	GError *gerr = NULL;
@@ -935,7 +935,6 @@ static int hidp_add_connection(struct input_device *idev)
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", src_addr,
 								dst_addr);
-	filename[PATH_MAX] = '\0';
 	sprintf(handle, "0x%8.8X", idev->handle);
 
 	key_file = g_key_file_new();
