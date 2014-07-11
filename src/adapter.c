@@ -2805,9 +2805,21 @@ static uint8_t get_le_addr_type(GKeyFile *keyfile)
 	return addr_type;
 }
 
+static unsigned char dirent_type(const char *parent, const char *name)
+{
+	char filename[PATH_MAX];
+	struct stat st;
+
+	snprintf(filename, sizeof(filename), "%s/%s", parent, name);
+	if (lstat(filename, &st) == 0 && S_ISDIR(st.st_mode))
+		return DT_DIR;
+
+	return DT_UNKNOWN;
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX + 1], dirname[PATH_MAX + 1];
 	char srcaddr[18];
 	GSList *keys = NULL;
 	GSList *ltks = NULL;
@@ -2818,10 +2830,10 @@ static void load_devices(struct btd_adapter *adapter)
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s", srcaddr);
-	filename[PATH_MAX] = '\0';
+	snprintf(dirname, PATH_MAX, STORAGEDIR "/%s", srcaddr);
+	dirname[PATH_MAX] = '\0';
 
-	dir = opendir(filename);
+	dir = opendir(dirname);
 	if (!dir) {
 		error("Unable to open adapter storage directory: %s", filename);
 		return;
@@ -2836,6 +2848,9 @@ static void load_devices(struct btd_adapter *adapter)
 		struct irk_info *irk_info;
 		struct conn_param *param;
 		uint8_t bdaddr_type;
+
+		if (entry->d_type == DT_UNKNOWN)
+			entry->d_type = dirent_type(dirname, entry->d_name);
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
 			continue;
