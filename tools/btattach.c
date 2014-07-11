@@ -84,7 +84,7 @@ static int open_serial(const char *path)
 static int attach_proto(const char *path, unsigned int proto,
 						unsigned int flags)
 {
-	int fd;
+	int fd, dev_id;
 
 	fd = open_serial(path);
 	if (fd < 0)
@@ -101,6 +101,15 @@ static int attach_proto(const char *path, unsigned int proto,
 		close(fd);
 		return -1;
 	}
+
+	dev_id = ioctl(fd, HCIUARTGETDEVICE, NULL);
+	if (dev_id < 0) {
+		perror("Failed to get device id");
+		close(fd);
+		return -1;
+	}
+
+	printf("Device index %d attached\n", dev_id);
 
 	return fd;
 }
