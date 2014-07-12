@@ -32,6 +32,7 @@
 #include <getopt.h>
 
 #include "monitor/mainloop.h"
+#include "serial.h"
 #include "server.h"
 #include "vhci.h"
 #include "amp.h"
@@ -53,6 +54,7 @@ static void usage(void)
 		"Usage:\n");
 	printf("\tbtvirt [options]\n");
 	printf("options:\n"
+		"\t-S                    Create local serial port\n"
 		"\t-s                    Create local server sockets\n"
 		"\t-l [num]              Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
@@ -62,6 +64,7 @@ static void usage(void)
 }
 
 static const struct option main_options[] = {
+	{ "serial",  no_argument,       NULL, 'S' },
 	{ "server",  no_argument,       NULL, 's' },
 	{ "local",   optional_argument, NULL, 'l' },
 	{ "le",      no_argument,       NULL, 'L' },
@@ -82,6 +85,7 @@ int main(int argc, char *argv[])
 	struct server *server4;
 	struct server *server5;
 	bool server_enabled = false;
+	bool serial_enabled = false;
 	int letest_count = 0;
 	int amptest_count = 0;
 	int vhci_count = 0;
@@ -94,12 +98,15 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "sl::LBAUTvh",
+		opt = getopt_long(argc, argv, "Ssl::LBAUTvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'S':
+			serial_enabled = true;
+			break;
 		case 's':
 			server_enabled = true;
 			break;
@@ -142,7 +149,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (letest_count < 1 && amptest_count < 1 &&
-					vhci_count < 1 && !server_enabled) {
+			vhci_count < 1 && !server_enabled && !serial_enabled) {
 		fprintf(stderr, "No emulator specified\n");
 		return EXIT_FAILURE;
 	}
@@ -183,6 +190,14 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed to open Virtual HCI device\n");
 			return EXIT_FAILURE;
 		}
+	}
+
+	if (serial_enabled) {
+		struct serial *serial;
+
+		serial = serial_open(SERIAL_TYPE_BREDRLE);
+		if (!serial)
+			fprintf(stderr, "Failed to open serial emulation\n");
 	}
 
 	if (server_enabled) {

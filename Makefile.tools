@@ -50,6 +50,7 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 				src/shared/timeout-mainloop.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/crypto.h src/shared/crypto.c \
+				emulator/serial.h emulator/serial.c \
 				emulator/server.h emulator/server.c \
 				emulator/vhci.h emulator/vhci.c \
 				emulator/btdev.h emulator/btdev.c \
