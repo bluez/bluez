@@ -121,6 +121,8 @@ unit/test-avrcp
 unit/test-*.log
 unit/test-*.trs
 
+doc/btmon.1
+
 android/system-emulator
 android/bluetoothd
 android/mcaptest

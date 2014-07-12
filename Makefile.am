@@ -367,10 +367,16 @@ if LIBRARY
 pkgconfig_DATA = lib/bluez.pc
 endif
 
+manual_pages = doc/btmon.1
+
+dist_man_MANS += $(manual_pages)
+
+EXTRA_DIST += $(manual_pages:.1=.txt)
+
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 					--disable-systemd --disable-udev
 
-DISTCLEANFILES = $(pkgconfig_DATA)
+DISTCLEANFILES = $(pkgconfig_DATA) $(manual_pages)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
@@ -382,6 +388,9 @@ SED_PROCESS = $(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
 
 %.service: %.service.in Makefile
 	$(SED_PROCESS)
+
+%.1: %.txt
+	$(AM_V_GEN)a2x --doctype manpage --format manpage $(srcdir)/$<
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
