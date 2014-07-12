@@ -369,11 +369,14 @@ endif
 
 manual_pages = doc/btmon.1
 
+if MANPAGES
 dist_man_MANS += $(manual_pages)
+endif
 
 EXTRA_DIST += $(manual_pages:.1=.txt)
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
+					--enable-manpages \
 					--disable-systemd --disable-udev
 
 DISTCLEANFILES = $(pkgconfig_DATA) $(manual_pages)

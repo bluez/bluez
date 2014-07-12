@@ -11,6 +11,7 @@ fi
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
+		--enable-manpages \
 		--enable-experimental \
 		--enable-android \
 		--enable-sixaxis \
