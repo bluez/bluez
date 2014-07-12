@@ -57,15 +57,17 @@ struct serial {
 	uint16_t pkt_offset;
 };
 
+static void open_pty(struct serial *serial);
+
 static void serial_destroy(void *user_data)
 {
 	struct serial *serial = user_data;
 
 	btdev_destroy(serial->btdev);
+	serial->btdev = NULL;
 
 	close(serial->fd);
-
-	free(serial);
+	serial->fd = -1;
 }
 
 static void serial_write_callback(const void *data, uint16_t len,
@@ -89,6 +91,7 @@ static void serial_read_callback(int fd, uint32_t events, void *user_data)
 
 	if (events & (EPOLLERR | EPOLLHUP)) {
 		mainloop_remove_fd(serial->fd);
+		open_pty(serial);
 		return;
 	}
 
@@ -152,6 +155,68 @@ again:
 	}
 }
 
+static void open_pty(struct serial *serial)
+{
+	enum btdev_type uninitialized_var(type);
+
+	serial->fd = getpt();
+	if (serial->fd < 0) {
+		perror("Failed to get master pseudo terminal");
+		return;
+	}
+
+	if (grantpt(serial->fd) < 0) {
+		perror("Failed to grant slave pseudo terminal");
+		close(serial->fd);
+		serial->fd = -1;
+		return;
+	}
+
+	if (unlockpt(serial->fd) < 0) {
+		perror("Failed to unlock slave pseudo terminal");
+		close(serial->fd);
+		serial->fd = -1;
+		return;
+	}
+
+	ptsname_r(serial->fd, serial->path, sizeof(serial->path));
+
+	printf("Pseudo terminal at %s\n", serial->path);
+
+	switch (serial->type) {
+	case SERIAL_TYPE_BREDRLE:
+		type = BTDEV_TYPE_BREDRLE;
+		break;
+	case SERIAL_TYPE_BREDR:
+		type = BTDEV_TYPE_BREDR;
+		break;
+	case SERIAL_TYPE_LE:
+		type = BTDEV_TYPE_LE;
+		break;
+	case SERIAL_TYPE_AMP:
+		type = BTDEV_TYPE_AMP;
+		break;
+	}
+
+	serial->btdev = btdev_create(type, serial->id);
+	if (!serial->btdev) {
+		close(serial->fd);
+		serial->fd = -1;
+		return;
+	}
+
+	btdev_set_send_handler(serial->btdev, serial_write_callback, serial);
+
+	if (mainloop_add_fd(serial->fd, EPOLLIN, serial_read_callback,
+						serial, serial_destroy) < 0) {
+		btdev_destroy(serial->btdev);
+		serial->btdev = NULL;
+		close(serial->fd);
+		serial->fd = -1;
+		return;
+	}
+}
+
 struct serial *serial_open(enum serial_type type)
 {
 	struct serial *serial;
@@ -165,62 +230,7 @@ struct serial *serial_open(enum serial_type type)
 	serial->type = type;
 	serial->id = 0x42;
 
-	serial->fd = getpt();
-	if (serial->fd < 0) {
-		perror("Failed to get master pseudo terminal");
-		free(serial);
-		return NULL;
-	}
-
-	if (grantpt(serial->fd) < 0) {
-		perror("Failed to grant slave pseudo terminal");
-		close(serial->fd);
-		free(serial);
-		return NULL;
-	}
-
-	if (unlockpt(serial->fd) < 0) {
-		perror("Failed to unlock slave pseudo terminal");
-		close(serial->fd);
-		free(serial);
-		return NULL;
-	}
-
-	ptsname_r(serial->fd, serial->path, sizeof(serial->path));
-
-	printf("Pseudo terminal at %s\n", serial->path);
-
-	switch (serial->type) {
-	case SERIAL_TYPE_BREDRLE:
-		dev_type = BTDEV_TYPE_BREDRLE;
-		break;
-	case SERIAL_TYPE_BREDR:
-		dev_type = BTDEV_TYPE_BREDR;
-		break;
-	case SERIAL_TYPE_LE:
-		dev_type = BTDEV_TYPE_LE;
-		break;
-	case SERIAL_TYPE_AMP:
-		dev_type = BTDEV_TYPE_AMP;
-		break;
-	}
-
-	serial->btdev = btdev_create(type, serial->id);
-	if (!serial->btdev) {
-		close(serial->fd);
-		free(serial);
-		return NULL;
-	}
-
-	btdev_set_send_handler(serial->btdev, serial_write_callback, serial);
-
-	if (mainloop_add_fd(serial->fd, EPOLLIN, serial_read_callback,
-						serial, serial_destroy) < 0) {
-		btdev_destroy(serial->btdev);
-		close(serial->fd);
-		free(serial);
-		return NULL;
-	}
+	open_pty(serial);
 
 	return serial;
 }
@@ -231,4 +241,6 @@ void serial_close(struct serial *serial)
 		return;
 
 	mainloop_remove_fd(serial->fd);
+
+	free(serial);
 }
