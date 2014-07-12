@@ -370,7 +370,7 @@ endif
 manual_pages = doc/btmon.1
 
 if MANPAGES
-dist_man_MANS += $(manual_pages)
+dist_noinst_MANS += $(manual_pages)
 endif
 
 EXTRA_DIST += $(manual_pages:.1=.txt)
