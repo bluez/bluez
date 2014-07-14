@@ -2961,28 +2961,30 @@ static void write_char_cb(guint8 status, const guint8 *pdu, guint16 len,
 	free(data);
 }
 
-static bool signed_write_cmd(struct gatt_device *dev, uint16_t handle,
+static guint signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 					const uint8_t *value, uint16_t vlen)
 {
 	uint8_t csrk[16];
 	uint32_t sign_cnt;
+	guint res;
 
 	memset(csrk, 0, 16);
 
 	if (!bt_get_csrk(&dev->bdaddr, LOCAL_CSRK, csrk, &sign_cnt)) {
 		error("gatt: Could not get csrk key");
-		return false;
+		return 0;
 	}
 
-	if (!gatt_signed_write_cmd(dev->attrib, handle, value, vlen, crypto,
-					csrk, sign_cnt, NULL, NULL)) {
+	res = gatt_signed_write_cmd(dev->attrib, handle, value, vlen, crypto,
+						csrk, sign_cnt, NULL, NULL);
+	if (!res) {
 		error("gatt: Could write signed cmd");
-		return false;
+		return 0;
 	}
 
 	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK);
 
-	return true;
+	return res;
 }
 
 static void handle_client_write_characteristic(const void *buf, uint16_t len)
