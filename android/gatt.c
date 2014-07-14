@@ -2799,6 +2799,21 @@ static void read_char_cb(guint8 status, const guint8 *pdu, guint16 len,
 	free(data);
 }
 
+static int get_cid(struct gatt_device *dev)
+{
+	GIOChannel *io;
+	int cid;
+
+	io = g_attrib_get_channel(dev->attrib);
+
+	if (!bt_io_get(io, NULL, BT_IO_OPT_CID, &cid, BT_IO_OPT_INVALID)) {
+		error("gatt: Failed to get CID");
+		return -1;
+	}
+
+	return cid;
+}
+
 static int get_sec_level(struct gatt_device *dev)
 {
 	GIOChannel *io;
@@ -3059,6 +3074,12 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 							write_char_cb, cb_data);
 		break;
 	case GATT_WRITE_TYPE_SIGNED:
+		if (get_cid(conn->device) != ATT_CID) {
+			error("gatt: Cannot write signed on BR/EDR bearer");
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+
 		if (get_sec_level(conn->device) != BT_SECURITY_LOW) {
 			error("gatt: Cannot write signed on encrypted link");
 			status = HAL_STATUS_FAILED;
@@ -5697,6 +5718,12 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	size_t vlen;
 	uint8_t csrk[16];
 	uint32_t sign_cnt;
+
+	if (get_cid(dev) != ATT_CID) {
+		error("gatt: Remote tries write signed on BR/EDR bearer");
+		connection_cleanup(dev);
+		return;
+	}
 
 	if (get_sec_level(dev) != BT_SECURITY_LOW) {
 		error("gatt: Remote tries write signed on encrypted link");
