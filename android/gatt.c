@@ -3092,7 +3092,8 @@ failed:
 	 * of error and write with no response
 	 */
 	if (status != HAL_STATUS_SUCCESS ||
-			cmd->write_type == GATT_WRITE_TYPE_NO_RESPONSE) {
+			cmd->write_type == GATT_WRITE_TYPE_NO_RESPONSE ||
+			cmd->write_type == GATT_WRITE_TYPE_SIGNED) {
 		int32_t gatt_status = (status == HAL_STATUS_SUCCESS) ?
 						GATT_SUCCESS : GATT_FAILURE;
 
