@@ -198,8 +198,10 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	if (writer_path)
-		control_writer(writer_path);
+	if (writer_path && !control_writer(writer_path)) {
+		printf("Failed to open '%s'\n", writer_path);
+		return EXIT_FAILURE;
+	}
 
 	if (ellisys_server)
 		ellisys_enable(ellisys_server, ellisys_port);

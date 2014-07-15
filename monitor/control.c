@@ -996,9 +996,11 @@ void control_server(const char *path)
 	server_fd = fd;
 }
 
-void control_writer(const char *path)
+bool control_writer(const char *path)
 {
 	btsnoop_file = btsnoop_create(path, BTSNOOP_TYPE_MONITOR);
+
+	return !!btsnoop_file;
 }
 
 void control_reader(const char *path)

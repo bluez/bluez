@@ -24,7 +24,7 @@
 
 #include <stdint.h>
 
-void control_writer(const char *path);
+bool control_writer(const char *path);
 void control_reader(const char *path);
 void control_server(const char *path);
 int control_tracing(void);
