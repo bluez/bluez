@@ -15,6 +15,8 @@
  *
  */
 
+#include "../src/shared/util.h"
+
 #include "if-main.h"
 #include "../hal-utils.h"
 #include "pthread.h"
@@ -239,12 +241,29 @@ static void *playback_thread(void *data)
 	return NULL;
 }
 
+static void write_stereo_pcm16(char *buffer, size_t len, FILE *out)
+{
+	const int16_t *input = (const void *) buffer;
+	int16_t sample[2];
+	size_t i;
+
+	for (i = 0; i < len / 2; i++) {
+		int16_t mono = get_unaligned(&input[i]);
+
+		put_unaligned(mono, &sample[0]);
+		put_unaligned(mono, &sample[1]);
+
+		fwrite(sample, sizeof(sample), 1, out);
+	}
+}
+
 static void *read_thread(void *data)
 {
 	int (*filbuff_cb) (short*, void*) = feed_from_in;
-	short buffer[buffer_size / sizeof(short)];
+	short buffer[buffer_size_in / sizeof(short)];
 	size_t len = 0;
 	void *cb_data = NULL;
+	FILE *out = data;
 
 	pthread_mutex_lock(&state_mutex);
 	current_state = STATE_PLAYING;
@@ -266,8 +285,17 @@ static void *read_thread(void *data)
 		pthread_mutex_unlock(&state_mutex);
 
 		len = filbuff_cb(buffer, cb_data);
-		haltest_info("len %zd\n", len);
+
+		haltest_info("Read %zd bytes\n", len);
+
+		if (out) {
+			write_stereo_pcm16((char *) buffer, len, out);
+			haltest_info("Written %zd bytes\n", len * 2);
+		}
 	} while (len);
+
+	if (out)
+		fclose(out);
 
 	pthread_mutex_lock(&state_mutex);
 	current_state = STATE_STOPPED;
@@ -355,13 +383,11 @@ static void loop_p(int argc, const char **argv)
 
 static void read_p(int argc, const char **argv)
 {
+	const char *fname = NULL;
+	FILE *out = NULL;
+
 	RETURN_IF_NULL(if_audio_sco);
 	RETURN_IF_NULL(stream_in);
-
-	if (!buffer_size_in) {
-		haltest_error("Invalid buffer sizes. Streams opened\n");
-		return;
-	}
 
 	pthread_mutex_lock(&state_mutex);
 	if (current_state != STATE_STOPPED) {
@@ -371,10 +397,32 @@ static void read_p(int argc, const char **argv)
 	}
 	pthread_mutex_unlock(&state_mutex);
 
-	if (pthread_create(&play_thread, NULL, read_thread,
-							stream_in) != 0)
-		haltest_error("Cannot create playback thread!\n");
+	if (argc < 3) {
+		haltest_error("Invalid audio file path.\n");
+		haltest_info("Using read and through away\n");
+	} else {
+		fname = argv[2];
+		out = fopen(fname, "w");
+		if (!out) {
+			haltest_error("Cannot open file: %s\n", fname);
+			return;
+		}
 
+		haltest_info("Reading to file: %s\n", fname);
+	}
+
+	if (!buffer_size_in) {
+		haltest_error("Invalid buffer size.\n");
+		goto failed;
+	}
+
+	if (pthread_create(&play_thread, NULL, read_thread, out) != 0) {
+		haltest_error("Cannot create playback thread!\n");
+		goto failed;
+	}
+failed:
+	if (out)
+		fclose(out);
 }
 
 static void stop_p(int argc, const char **argv)

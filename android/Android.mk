@@ -174,6 +174,9 @@ LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \
 	$(call include-path-for, libhardware) \
 
+LOCAL_C_INCLUDES += \
+	$(LOCAL_PATH)/bluez/android \
+
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
 LOCAL_SHARED_LIBRARIES := libhardware
