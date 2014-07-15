@@ -376,6 +376,14 @@ static int verify_property(bt_property_t *exp_props, int exp_num_props,
 		}
 	}
 
+	if ((i == 0) && exp_props) {
+		tester_warn("No property was verified: %s", exp_num_props ?
+				"unknown error!" :
+				"wrong \'.callback_result.num_properties\'?");
+
+		return 1;
+	}
+
 	return exp_prop_to_find;
 }
 
