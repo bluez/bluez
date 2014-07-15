@@ -157,6 +157,7 @@ static struct step bluetooth_setprop_bdname_success_steps[] = {
 	{
 		.callback = CB_BT_ADAPTER_PROPERTIES,
 		.callback_result.properties = &setprop_bdname_prop,
+		.callback_result.num_properties = 1,
 	}
 };
 static struct test_case bluetooth_setprop_bdname_success_tc = {
@@ -192,6 +193,7 @@ static struct step bluetooth_setprop_scanmode_success_steps[] = {
 	{
 		.callback = CB_BT_ADAPTER_PROPERTIES,
 		.callback_result.properties = &setprop_scanmode_prop,
+		.callback_result.num_properties = 1,
 	},
 };
 static struct test_case bluetooth_setprop_scanmode_success_tc = {
