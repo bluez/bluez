@@ -237,6 +237,78 @@ static struct test_case bluetooth_setprop_disctimeout_success_tc = {
 				bluetooth_setprop_disctimeout_success_steps),
 };
 
+static bt_bdaddr_t test_getprop_bdaddr_val = {
+	{0x00, 0xaa, 0x01, 0x00, 0x00, 0x00},
+};
+
+static bt_property_t getprop_bdaddr_prop = {
+	.type = BT_PROPERTY_BDADDR,
+	.val = &test_getprop_bdaddr_val,
+	.len = sizeof(test_getprop_bdaddr_val),
+};
+
+static struct step bluetooth_getprop_bdaddr_success_steps[] = {
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.action = bluetooth_enable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_STATE_CHANGED,
+		.callback_result.state = BT_STATE_ON,
+	},
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.set_data = &getprop_bdaddr_prop,
+		.action = bt_get_property_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_PROPERTIES,
+		.callback_result.properties = &getprop_bdaddr_prop,
+		.callback_result.num_properties = 1,
+	},
+};
+static struct test_case bluetooth_getprop_bdaddr_success_tc = {
+	.step = bluetooth_getprop_bdaddr_success_steps,
+	.title = "Bluetooth Get BDADDR - Success",
+	.step_num = get_test_case_step_num(
+					bluetooth_getprop_bdaddr_success_steps),
+};
+
+static const char test_getprop_bdname_val[] = "BlueZ for Android";
+
+static bt_property_t getprop_bdname_prop = {
+	.type = BT_PROPERTY_BDNAME,
+	.val = &test_getprop_bdname_val,
+	.len = sizeof(test_getprop_bdname_val) - 1,
+};
+
+static struct step bluetooth_getprop_bdname_success_steps[] = {
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.action = bluetooth_enable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_STATE_CHANGED,
+		.callback_result.state = BT_STATE_ON,
+	},
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.set_data = &getprop_bdname_prop,
+		.action = bt_get_property_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_PROPERTIES,
+		.callback_result.properties = &getprop_bdname_prop,
+		.callback_result.num_properties = 1,
+	},
+};
+static struct test_case bluetooth_getprop_bdname_success_tc = {
+	.step = bluetooth_getprop_bdname_success_steps,
+	.title = "Bluetooth Get BDNAME - Success",
+	.step_num = get_test_case_step_num(
+					bluetooth_getprop_bdname_success_steps),
+};
+
 static struct test_case *test_cases[] = {
 	&bluetooth_init,
 	&bluetooth_enable_success_tc,
@@ -245,6 +317,8 @@ static struct test_case *test_cases[] = {
 	&bluetooth_setprop_bdname_success_tc,
 	&bluetooth_setprop_scanmode_success_tc,
 	&bluetooth_setprop_disctimeout_success_tc,
+	&bluetooth_getprop_bdaddr_success_tc,
+	&bluetooth_getprop_bdname_success_tc,
 };
 
 struct queue *get_bluetooth_tests(void)
