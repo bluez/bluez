@@ -811,11 +811,11 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 			packet_control(tv, index, opcode, data->buf, pktlen);
 			break;
 		case HCI_CHANNEL_MONITOR:
-			packet_monitor(tv, index, opcode, data->buf, pktlen);
 			btsnoop_write_hci(btsnoop_file, tv, index, opcode,
 							data->buf, pktlen);
 			ellisys_inject_hci(tv, index, opcode,
 							data->buf, pktlen);
+			packet_monitor(tv, index, opcode, data->buf, pktlen);
 			break;
 		}
 	}
