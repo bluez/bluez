@@ -404,8 +404,7 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
-	if (exp->action_result.status && (exp->action_result.status !=
-						step->action_result.status)) {
+	if (exp->action_result.status != step->action_result.status) {
 		tester_debug("Action status don't match");
 		return false;
 	}
