@@ -174,10 +174,24 @@ static void prepare_sample(void)
 	sample_pos = 0;
 }
 
+static void mono_to_stereo_pcm16(const int16_t *in, int16_t *out, size_t samples)
+{
+	int16_t mono;
+	size_t i;
+
+	for (i = 0; i < samples; i++) {
+		mono = get_unaligned(&in[i]);
+
+		put_unaligned(mono, &out[2 * i]);
+		put_unaligned(mono, &out[2 * i + 1]);
+	}
+}
+
 static void *playback_thread(void *data)
 {
 	int (*filbuff_cb) (short*, void*);
 	short buffer[buffer_size / sizeof(short)];
+	short buffer_in[buffer_size_in / sizeof(short)];
 	size_t len = 0;
 	ssize_t w_len = 0;
 	FILE *in = data;
@@ -217,7 +231,19 @@ static void *playback_thread(void *data)
 
 		pthread_mutex_unlock(&state_mutex);
 
-		len = filbuff_cb(buffer, cb_data);
+		if (data && data == stream_in) {
+			int chan_in = popcount(stream_in->common.get_channels(&stream_in->common));
+			int chan_out = popcount(stream_out->common.get_channels(&stream_out->common));
+
+			len = filbuff_cb(buffer_in, cb_data);
+
+			if (chan_in == 1 && chan_out == 2) {
+				mono_to_stereo_pcm16(buffer_in,
+							buffer,
+							buffer_size_in / 2);
+			}
+		} else
+			len = filbuff_cb(buffer, cb_data);
 
 		pthread_mutex_lock(&outstream_mutex);
 		if (!stream_out) {
