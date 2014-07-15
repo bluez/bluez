@@ -527,6 +527,41 @@ static struct test_case bluetooth_setprop_bonded_dev_fail_tc = {
 				bluetooth_setprop_bonded_dev_fail_steps),
 };
 
+static bt_scan_mode_t setprop_scan_mode_conn_val = BT_SCAN_MODE_CONNECTABLE;
+
+static bt_property_t setprop_scan_mode_conn_prop = {
+	.type = BT_PROPERTY_ADAPTER_SCAN_MODE,
+	.val = &setprop_scan_mode_conn_val,
+	.len = sizeof(setprop_scan_mode_conn_val),
+};
+
+static struct step bluetooth_setprop_scan_mode_conn_success_steps[] = {
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.action = bluetooth_enable_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_STATE_CHANGED,
+		.callback_result.state = BT_STATE_ON,
+	},
+	{
+		.action_result.status = BT_STATUS_SUCCESS,
+		.set_data = &setprop_scan_mode_conn_prop,
+		.action = bt_set_property_action,
+	},
+	{
+		.callback = CB_BT_ADAPTER_PROPERTIES,
+		.callback_result.properties = &setprop_scan_mode_conn_prop,
+		.callback_result.num_properties = 1,
+	},
+};
+static struct test_case bluetooth_setprop_scan_mode_conn_success_tc = {
+	.step = bluetooth_setprop_scan_mode_conn_success_steps,
+	.title = "Bluetooth Set SCAN_MODE_CONNECTABLE - SUCCESS",
+	.step_num = get_test_case_step_num(
+				bluetooth_setprop_scan_mode_conn_success_steps),
+};
+
 static struct test_case *test_cases[] = {
 	&bluetooth_init,
 	&bluetooth_enable_success_tc,
@@ -544,6 +579,7 @@ static struct test_case *test_cases[] = {
 	&bluetooth_setprop_srvc_record_fail_tc,
 	&bluetooth_setprop_bdaddr_fail_tc,
 	&bluetooth_setprop_bonded_dev_fail_tc,
+	&bluetooth_setprop_scan_mode_conn_success_tc,
 };
 
 struct queue *get_bluetooth_tests(void)
