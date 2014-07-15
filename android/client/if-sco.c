@@ -230,6 +230,45 @@ static void *playback_thread(void *data)
 	return NULL;
 }
 
+static void *read_thread(void *data)
+{
+	int (*filbuff_cb) (short*, void*) = feed_from_in;
+	short buffer[buffer_size / sizeof(short)];
+	size_t len = 0;
+	void *cb_data = NULL;
+
+	pthread_mutex_lock(&state_mutex);
+	current_state = STATE_PLAYING;
+	pthread_mutex_unlock(&state_mutex);
+
+	do {
+		pthread_mutex_lock(&state_mutex);
+
+		if (current_state == STATE_STOPPING) {
+			haltest_info("Detected stopping\n");
+			pthread_mutex_unlock(&state_mutex);
+			break;
+		} else if (current_state == STATE_SUSPENDED) {
+			pthread_mutex_unlock(&state_mutex);
+			usleep(500);
+			continue;
+		}
+
+		pthread_mutex_unlock(&state_mutex);
+
+		len = filbuff_cb(buffer, cb_data);
+		haltest_info("len %zd\n", len);
+	} while (len);
+
+	pthread_mutex_lock(&state_mutex);
+	current_state = STATE_STOPPED;
+	pthread_mutex_unlock(&state_mutex);
+
+	haltest_info("Done reading.\n");
+
+	return NULL;
+}
+
 static void play_p(int argc, const char **argv)
 {
 	const char *fname = NULL;
@@ -274,6 +313,30 @@ static void play_p(int argc, const char **argv)
 fail:
 	if (in)
 		fclose(in);
+}
+
+static void read_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio_sco);
+	RETURN_IF_NULL(stream_in);
+
+	if (!buffer_size_in) {
+		haltest_error("Invalid buffer sizes. Streams opened\n");
+		return;
+	}
+
+	pthread_mutex_lock(&state_mutex);
+	if (current_state != STATE_STOPPED) {
+		haltest_error("Already playing or stream suspended!\n");
+		pthread_mutex_unlock(&state_mutex);
+		return;
+	}
+	pthread_mutex_unlock(&state_mutex);
+
+	if (pthread_create(&play_thread, NULL, read_thread,
+							stream_in) != 0)
+		haltest_error("Cannot create playback thread!\n");
+
 }
 
 static void stop_p(int argc, const char **argv)
@@ -551,6 +614,7 @@ static struct method methods[] = {
 	STD_METHOD(open_input_stream),
 	STD_METHOD(close_input_stream),
 	STD_METHODH(play, "<path to pcm file>"),
+	STD_METHOD(read),
 	STD_METHOD(stop),
 	STD_METHOD(suspend),
 	STD_METHOD(resume),
