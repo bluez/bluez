@@ -703,7 +703,8 @@ guint g_dbus_add_service_watch(DBusConnection *connection, const char *name,
 	if (name == NULL)
 		return 0;
 
-	data = filter_data_get(connection, service_filter, NULL, NULL,
+	data = filter_data_get(connection, service_filter,
+				DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
 				DBUS_INTERFACE_DBUS, "NameOwnerChanged",
 				name);
 	if (data == NULL)
