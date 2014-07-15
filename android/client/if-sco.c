@@ -458,6 +458,9 @@ failed:
 
 static void stop_p(int argc, const char **argv)
 {
+	RETURN_IF_NULL(if_audio_sco);
+	RETURN_IF_NULL(play_thread);
+
 	pthread_mutex_lock(&state_mutex);
 	if (current_state == STATE_STOPPED || current_state == STATE_STOPPING) {
 		pthread_mutex_unlock(&state_mutex);
@@ -466,6 +469,9 @@ static void stop_p(int argc, const char **argv)
 
 	current_state = STATE_STOPPING;
 	pthread_mutex_unlock(&state_mutex);
+
+	pthread_join(play_thread, NULL);
+	play_thread = 0;
 
 	pthread_mutex_lock(&outstream_mutex);
 	stream_out->common.standby(&stream_out->common);
@@ -528,10 +534,8 @@ static void close_output_stream_p(int argc, const char **argv)
 	RETURN_IF_NULL(if_audio_sco);
 	RETURN_IF_NULL(stream_out);
 
-	stop_p(argc, argv);
-
-	haltest_info("Waiting for playback thread...\n");
-	pthread_join(play_thread, NULL);
+	if (play_thread)
+		stop_p(argc, argv);
 
 	if_audio_sco->close_output_stream(if_audio_sco, stream_out);
 
@@ -592,10 +596,8 @@ static void close_input_stream_p(int argc, const char **argv)
 	RETURN_IF_NULL(if_audio_sco);
 	RETURN_IF_NULL(stream_in);
 
-	stop_p(argc, argv);
-
-	haltest_info("Waiting for playback thread...\n");
-	pthread_join(play_thread, NULL);
+	if (play_thread)
+		stop_p(argc, argv);
 
 	if_audio_sco->close_input_stream(if_audio_sco, stream_in);
 
