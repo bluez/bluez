@@ -30,12 +30,19 @@ static struct test_case gatt_init = {
 	.step_num = get_test_case_step_num(dummy_steps),
 };
 
+static struct test_case *test_cases[] = {
+	&gatt_init,
+};
+
 struct queue *get_gatt_tests(void)
 {
+	uint16_t i = 0;
+
 	list = queue_new();
 
-	if (!queue_push_tail(list, &gatt_init))
-		return NULL;
+	for (; i < sizeof(test_cases) / sizeof(test_cases[0]); ++i)
+		if (!queue_push_tail(list, test_cases[i]))
+			return NULL;
 
 	return list;
 }

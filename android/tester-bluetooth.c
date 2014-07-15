@@ -235,30 +235,25 @@ static struct test_case bluetooth_setprop_disctimeout_success_tc = {
 				bluetooth_setprop_disctimeout_success_steps),
 };
 
+static struct test_case *test_cases[] = {
+	&bluetooth_init,
+	&bluetooth_enable_success_tc,
+	&bluetooth_enable_success2_tc,
+	&bluetooth_disable_success_tc,
+	&bluetooth_setprop_bdname_success_tc,
+	&bluetooth_setprop_scanmode_success_tc,
+	&bluetooth_setprop_disctimeout_success_tc,
+};
+
 struct queue *get_bluetooth_tests(void)
 {
+	uint16_t i = 0;
+
 	list = queue_new();
 
-	if (!queue_push_tail(list, &bluetooth_init))
-		return NULL;
-
-	if (!queue_push_tail(list, &bluetooth_enable_success_tc))
-		return NULL;
-
-	if (!queue_push_tail(list, &bluetooth_enable_success2_tc))
-		return NULL;
-
-	if (!queue_push_tail(list, &bluetooth_disable_success_tc))
-		return NULL;
-
-	if (!queue_push_tail(list, &bluetooth_setprop_bdname_success_tc))
-		return NULL;
-
-	if (!queue_push_tail(list, &bluetooth_setprop_scanmode_success_tc))
-		return NULL;
-
-	if (!queue_push_tail(list, &bluetooth_setprop_disctimeout_success_tc))
-		return NULL;
+	for (; i < sizeof(test_cases) / sizeof(test_cases[0]); ++i)
+		if (!queue_push_tail(list, test_cases[i]))
+			return NULL;
 
 	return list;
 }
