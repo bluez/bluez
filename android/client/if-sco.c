@@ -148,6 +148,11 @@ static int feed_from_generator(short *buffer, void *data)
 	return buffer_size;
 }
 
+static int feed_from_in(short *buffer, void *data)
+{
+	return stream_in->read(stream_in, buffer, buffer_size_in);
+}
+
 static void prepare_sample(void)
 {
 	int x;
@@ -179,8 +184,12 @@ static void *playback_thread(void *data)
 
 	/* Use file or fall back to generator */
 	if (in) {
-		filbuff_cb = feed_from_file;
-		cb_data = in;
+		if (data == stream_in)
+			filbuff_cb = feed_from_in;
+		else {
+			filbuff_cb = feed_from_file;
+			cb_data = in;
+		}
 	} else {
 		prepare_sample();
 		filbuff_cb = feed_from_generator;
@@ -218,7 +227,7 @@ static void *playback_thread(void *data)
 		pthread_mutex_unlock(&outstream_mutex);
 	} while (len && w_len > 0);
 
-	if (in)
+	if (in && data != stream_in)
 		fclose(in);
 
 	pthread_mutex_lock(&state_mutex);
@@ -313,6 +322,35 @@ static void play_p(int argc, const char **argv)
 fail:
 	if (in)
 		fclose(in);
+}
+
+static void loop_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_audio_sco);
+	RETURN_IF_NULL(stream_out);
+	RETURN_IF_NULL(stream_in);
+
+	if (!buffer_size || !buffer_size_in) {
+		haltest_error("Invalid buffer sizes. Streams opened\n");
+		return;
+	}
+
+	if (buffer_size != buffer_size_in) {
+		haltest_error("read/write buffers differ, not supported\n");
+		return;
+	}
+
+	pthread_mutex_lock(&state_mutex);
+	if (current_state != STATE_STOPPED) {
+		haltest_error("Already playing or stream suspended!\n");
+		pthread_mutex_unlock(&state_mutex);
+		return;
+	}
+	pthread_mutex_unlock(&state_mutex);
+
+	if (pthread_create(&play_thread, NULL, playback_thread,
+							stream_in) != 0)
+		haltest_error("Cannot create playback thread!\n");
 }
 
 static void read_p(int argc, const char **argv)
@@ -615,6 +653,7 @@ static struct method methods[] = {
 	STD_METHOD(close_input_stream),
 	STD_METHODH(play, "<path to pcm file>"),
 	STD_METHOD(read),
+	STD_METHOD(loop),
 	STD_METHOD(stop),
 	STD_METHOD(suspend),
 	STD_METHOD(resume),
