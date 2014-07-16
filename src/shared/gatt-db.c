@@ -138,6 +138,9 @@ static void gatt_db_service_destroy(void *data)
 
 void gatt_db_destroy(struct gatt_db *db)
 {
+	if (!db)
+		return;
+
 	queue_destroy(db->services, gatt_db_service_destroy);
 	free(db);
 }
