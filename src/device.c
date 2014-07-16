@@ -4006,8 +4006,14 @@ void btd_device_set_temporary(struct btd_device *device, gboolean temporary)
 
 	DBG("temporary %d", temporary);
 
-	if (temporary)
+	if (temporary) {
+		if (device->bredr)
+			adapter_whitelist_remove(device->adapter, device);
 		adapter_connect_list_remove(device->adapter, device);
+	} else {
+		if (device->bredr)
+			adapter_whitelist_add(device->adapter, device);
+	}
 
 	device->temporary = temporary;
 }

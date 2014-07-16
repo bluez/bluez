@@ -3239,6 +3239,92 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	trigger_passive_scanning(adapter);
 }
 
+static void add_whitelist_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_add_device *rp = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *dev;
+	char addr[18];
+
+	if (length < sizeof(*rp)) {
+		error("Too small Add Device complete event");
+		return;
+	}
+
+	ba2str(&rp->addr.bdaddr, addr);
+
+	dev = btd_adapter_find_device(adapter, &rp->addr.bdaddr,
+							rp->addr.type);
+	if (!dev) {
+		error("Add Device complete for unknown device %s", addr);
+		return;
+	}
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to add device %s: %s (0x%02x)",
+					addr, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("%s added to kernel whitelist", addr);
+}
+
+void adapter_whitelist_add(struct btd_adapter *adapter, struct btd_device *dev)
+{
+	struct mgmt_cp_add_device cp;
+
+	if (!kernel_conn_control)
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, device_get_address(dev));
+	cp.addr.type = BDADDR_BREDR;
+	cp.action = 0x01;
+
+	mgmt_send(adapter->mgmt, MGMT_OP_ADD_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				add_whitelist_complete, adapter, NULL);
+}
+
+static void remove_whitelist_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_remove_device *rp = param;
+	char addr[18];
+
+	if (length < sizeof(*rp)) {
+		error("Too small Remove Device complete event");
+		return;
+	}
+
+	ba2str(&rp->addr.bdaddr, addr);
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to remove device %s: %s (0x%02x)",
+					addr, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("%s removed from kernel whitelist", addr);
+}
+
+void adapter_whitelist_remove(struct btd_adapter *adapter, struct btd_device *dev)
+{
+	struct mgmt_cp_remove_device cp;
+
+	if (!kernel_conn_control)
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, device_get_address(dev));
+	cp.addr.type = BDADDR_BREDR;
+
+	mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				remove_whitelist_complete, adapter, NULL);
+}
+
 static void add_device_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
