@@ -562,6 +562,15 @@ static bool set_discoverable(struct btd_adapter *adapter, uint8_t mode,
 
 	DBG("sending set mode command for index %u", adapter->dev_id);
 
+	if (kernel_conn_control) {
+		if (mode)
+			set_mode(adapter, MGMT_OP_SET_CONNECTABLE, mode);
+		else
+			/* This also disables discoverable so we're done */
+			return set_mode(adapter, MGMT_OP_SET_CONNECTABLE,
+									mode);
+	}
+
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DISCOVERABLE,
 				adapter->dev_id, sizeof(cp), &cp,
 				set_mode_complete, adapter, NULL) > 0)
@@ -1983,6 +1992,18 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 		len = sizeof(mode);
 		break;
 	case MGMT_SETTING_DISCOVERABLE:
+		if (kernel_conn_control) {
+			if (mode) {
+				set_mode(adapter, MGMT_OP_SET_CONNECTABLE,
+									mode);
+			} else {
+				opcode = MGMT_OP_SET_CONNECTABLE;
+				param = &mode;
+				len = sizeof(mode);
+				break;
+			}
+		}
+
 		memset(&cp, 0, sizeof(cp));
 		cp.val = mode;
 		if (cp.val)
@@ -6908,7 +6929,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		set_mode(adapter, MGMT_OP_SET_LE, 0x01);
 
 	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
-	set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
+	if (!kernel_conn_control)
+		set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
 
 	if (adapter->stored_discoverable && !adapter->discoverable_timeout)
 		set_discoverable(adapter, 0x01, 0);
