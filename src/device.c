@@ -1065,9 +1065,16 @@ int device_unblock(struct btd_device *device, gboolean silent,
 	if (!device->blocked)
 		return 0;
 
-	if (!update_only)
-		err = btd_adapter_unblock_address(device->adapter,
-					&device->bdaddr, device->bdaddr_type);
+	if (!update_only) {
+		if (device->le)
+			err = btd_adapter_unblock_address(device->adapter,
+							&device->bdaddr,
+							device->bdaddr_type);
+		if (!err && device->bredr)
+			err = btd_adapter_unblock_address(device->adapter,
+							&device->bdaddr,
+							BDADDR_BREDR);
+	}
 
 	if (err < 0)
 		return err;
