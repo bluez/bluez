@@ -84,7 +84,7 @@
 
 static DBusConnection *dbus_conn = NULL;
 
-static bool kernel_bg_scan = false;
+static bool kernel_conn_control = false;
 
 static GList *adapter_list = NULL;
 static unsigned int adapter_remaining = 0;
@@ -1200,7 +1200,7 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 	 * no need to start any discovery. The kernel will keep scanning
 	 * as long as devices are in its auto-connection list.
 	 */
-	if (kernel_bg_scan)
+	if (kernel_conn_control)
 		return;
 
 	/*
@@ -1251,7 +1251,7 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 	 * no need to stop any discovery. The kernel will handle the
 	 * auto-connection by itself.
 	 */
-	if (kernel_bg_scan)
+	if (kernel_conn_control)
 		return;
 
 	/*
@@ -3155,7 +3155,7 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	 * adapter_auto_connect_add() function is used to maintain what to
 	 * connect.
 	 */
-	if (kernel_bg_scan)
+	if (kernel_conn_control)
 		return 0;
 
 	if (g_slist_find(adapter->connect_list, device)) {
@@ -3194,7 +3194,7 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	if (device == adapter->connect_le)
 		adapter->connect_le = NULL;
 
-	if (kernel_bg_scan)
+	if (kernel_conn_control)
 		return;
 
 	if (!g_slist_find(adapter->connect_list, device)) {
@@ -3259,7 +3259,7 @@ void adapter_auto_connect_add(struct btd_adapter *adapter,
 	uint8_t bdaddr_type;
 	unsigned int id;
 
-	if (!kernel_bg_scan)
+	if (!kernel_conn_control)
 		return;
 
 	if (g_slist_find(adapter->connect_list, device)) {
@@ -3315,7 +3315,7 @@ void adapter_auto_connect_remove(struct btd_adapter *adapter,
 	uint8_t bdaddr_type;
 	unsigned int id;
 
-	if (!kernel_bg_scan)
+	if (!kernel_conn_control)
 		return;
 
 	if (!g_slist_find(adapter->connect_list, device)) {
@@ -4649,7 +4649,7 @@ connect_le:
 	 * If kernel background scan is used then the kernel is
 	 * responsible for connecting.
 	 */
-	if (kernel_bg_scan)
+	if (kernel_conn_control)
 		return;
 
 	/*
@@ -6719,7 +6719,7 @@ static int clear_devices(struct btd_adapter *adapter)
 {
 	struct mgmt_cp_remove_device cp;
 
-	if (!kernel_bg_scan)
+	if (!kernel_conn_control)
 		return 0;
 
 	memset(&cp, 0, sizeof(cp));
@@ -7079,8 +7079,8 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 		uint16_t op = get_le16(opcode++);
 
 		if (op == MGMT_OP_ADD_DEVICE) {
-			DBG("enabling kernel background scanning");
-			kernel_bg_scan = true;
+			DBG("enabling kernel-side connection control");
+			kernel_conn_control = true;
 		}
 	}
 }
