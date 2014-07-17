@@ -68,6 +68,7 @@
 #define GATT_PERM_WRITE_AUTHORIZATION	0x00000800
 #define GATT_PERM_WRITE_SIGNED		0x00010000
 #define GATT_PERM_WRITE_SIGNED_MITM	0x00020000
+#define GATT_PERM_NONE			0x10000000
 
 #define GATT_CONN_TIMEOUT 2
 
@@ -6393,7 +6394,7 @@ static void register_gatt_service(void)
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
 	service_changed_handle =  gatt_db_add_characteristic(gatt_db,
-					srvc_handle, &uuid, 0,
+					srvc_handle, &uuid, GATT_PERM_NONE,
 					GATT_CHR_PROP_INDICATE, NULL, NULL,
 					NULL);
 
