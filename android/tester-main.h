@@ -217,3 +217,4 @@ void bluetooth_enable_action(void);
 void bluetooth_disable_action(void);
 void bt_set_property_action(void);
 void bt_get_property_action(void);
+void bt_start_discovery_action(void);

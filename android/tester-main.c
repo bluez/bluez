@@ -575,13 +575,23 @@ static void adapter_properties_cb(bt_status_t status, int num_properties,
 	schedule_callback_call(step);
 }
 
+static void discovery_state_changed_cb(bt_discovery_state_t state)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_BT_DISCOVERY_STATE_CHANGED;
+	step->callback_result.state = state;
+
+	schedule_callback_call(step);
+}
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
 	.adapter_properties_cb = adapter_properties_cb,
 	.remote_device_properties_cb = NULL,
 	.device_found_cb = NULL,
-	.discovery_state_changed_cb = NULL,
+	.discovery_state_changed_cb = discovery_state_changed_cb,
 	.pin_request_cb = NULL,
 	.ssp_request_cb = NULL,
 	.bond_state_changed_cb = NULL,
@@ -929,6 +939,16 @@ void bt_get_property_action(void)
 	memset(&step, 0, sizeof(step));
 	step.action_result.status = data->if_bluetooth->get_adapter_property(
 								prop->type);
+
+	verify_step(&step, NULL);
+}
+
+void bt_start_discovery_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step step;
+
+	step.action_result.status = data->if_bluetooth->start_discovery();
 
 	verify_step(&step, NULL);
 }

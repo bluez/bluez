@@ -329,6 +329,21 @@ static struct test_case test_cases[] = {
 						&prop_test_scan_mode_none),
 		CALLBACK_ADAPTER_PROPS(&prop_test_scan_mode_none, 1),
 	),
+	TEST_CASE("Bluetooth BR/EDR Discovery Start - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+	),
+	TEST_CASE("Bluetooth BR/EDR Discovery Start - Done",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+	),
 };
 
 struct queue *get_bluetooth_tests(void)
