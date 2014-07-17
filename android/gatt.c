@@ -4488,7 +4488,7 @@ static void read_requested_attributes(void *data, void *user_data)
 	struct pending_request *resp_data = data;
 	struct request_processing_data *process_data = user_data;
 	uint32_t permissions;
-	uint8_t *value, error;
+	uint8_t *value = NULL, error;
 	int value_len = 0;
 
 	if (!gatt_db_get_attribute_permissions(gatt_db, resp_data->handle,
@@ -4524,7 +4524,7 @@ static void read_requested_attributes(void *data, void *user_data)
 		error = ATT_ECODE_UNLIKELY;
 
 	/* We have value here already if no callback will be called */
-	if (value_len > 0)
+	if (value_len >= 0)
 		fill_gatt_response(resp_data, resp_data->handle,
 					resp_data->offset, error, value_len,
 					value);
