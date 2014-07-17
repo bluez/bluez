@@ -1136,28 +1136,28 @@ static void discover_srvc_by_uuid_cb(uint8_t status, GSList *ranges,
 	}
 
 	bt_uuid_to_string(&cb_data->uuid, prim.uuid, sizeof(prim.uuid));
-	/*
-	 * If multiple instances of the same service (as identified by UUID)
-	 * exist, the first instance of the service is returned.
-	 */
-	memcpy(&prim.range, ranges->data, sizeof(prim.range));
 
-	s = create_service(instance_id++, true, prim.uuid, &prim);
-	if (!s) {
-		gatt_status = GATT_FAILURE;
-		goto reply;
+	for (; ranges; ranges = ranges->next) {
+		memcpy(&prim.range, ranges->data, sizeof(prim.range));
+
+		s = create_service(instance_id++, true, prim.uuid, &prim);
+		if (!s) {
+			gatt_status = GATT_FAILURE;
+			goto reply;
+		}
+
+		if (!queue_push_tail(dev->services, s)) {
+			error("gatt: Cannot push primary service to the list");
+			destroy_service(s);
+			gatt_status = GATT_FAILURE;
+			goto reply;
+		}
+
+		send_client_primary_notify(s, INT_TO_PTR(cb_data->conn->id));
+
+		DBG("attr handle = 0x%04x, end grp handle = 0x%04x uuid: %s",
+				prim.range.start, prim.range.end, prim.uuid);
 	}
-
-	if (!queue_push_tail(dev->services, s)) {
-		error("gatt: Cannot push primary service to the list");
-		gatt_status = GATT_FAILURE;
-		goto reply;
-	}
-
-	send_client_primary_notify(s, INT_TO_PTR(cb_data->conn->id));
-
-	DBG("attr handle = 0x%04x, end grp handle = 0x%04x uuid: %s",
-		prim.range.start, prim.range.end, prim.uuid);
 
 	/* Partial search service scanning was performed */
 	dev->partial_srvc_search = true;
