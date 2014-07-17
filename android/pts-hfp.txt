@@ -1,8 +1,8 @@
 PTS test results for HFP
 
-PTS version: 5.1
-Tested: 25-Mar-2014
-Android version: 4.4.2
+PTS version: 5.2
+Tested: 14-Jul-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
