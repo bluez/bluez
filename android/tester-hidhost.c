@@ -20,9 +20,7 @@
 static struct queue *list; /* List of hidhost test cases */
 
 static struct step dummy_steps[] = {
-	{
-		.action = dummy_action,
-	},
+	ACTION_SUCCESS(dummy_action, NULL),
 };
 static struct test_case hidhost_init = {
 	.step = dummy_steps,

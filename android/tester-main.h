@@ -52,6 +52,29 @@
 
 #define get_test_case_step_num(tc) (sizeof(tc) / sizeof(struct step))
 
+#define ACTION_SUCCESS(act_fun, data_set) { \
+		.action_result.status = BT_STATUS_SUCCESS, \
+		.action = act_fun, \
+		.set_data = data_set, \
+	}
+
+#define ACTION_FAIL(act_fun, data_set) { \
+		.action_result.status = BT_STATUS_FAIL, \
+		.action = act_fun, \
+		.set_data = data_set, \
+	}
+
+#define CALLBACK_STATE(cb, cb_res) { \
+		.callback = cb, \
+		.callback_result.state = cb_res, \
+	}
+
+#define CALLBACK_ADAPTER_PROPS(props, prop_cnt) { \
+		.callback = CB_BT_ADAPTER_PROPERTIES, \
+		.callback_result.properties = props, \
+		.callback_result.num_properties = prop_cnt, \
+	}
+
 /*
  * NOTICE:
  * Callback enum sections should be
