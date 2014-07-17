@@ -2480,10 +2480,12 @@ static const struct generic_data pair_device_ssp_nonpairable_1 = {
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
-	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_func = pair_device_expect_param_func,
-	.expect_alt_ev = MGMT_EV_AUTH_FAILED,
-	.expect_alt_ev_len = 8,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
 	.io_cap = 0x01, /* DisplayYesNo */
 	.client_io_cap = 0x01, /* DisplayYesNo */
 };
