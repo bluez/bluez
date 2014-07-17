@@ -6199,6 +6199,7 @@ static void register_gap_service(void)
 	gatt_db_service_set_active(gatt_db, gap_srvc_data.srvc , true);
 
 	/* SDP */
+	bt_uuid16_create(&uuid, 0x1800);
 	start = gap_srvc_data.srvc;
 	end = gatt_db_get_end_handle(gatt_db, gap_srvc_data.srvc);
 	gap_sdp_handle = add_sdp_record(&uuid, start, end,
@@ -6308,6 +6309,7 @@ static void register_device_info_service(void)
 	gatt_db_service_set_active(gatt_db, srvc_handle, true);
 
 	/* SDP */
+	bt_uuid16_create(&uuid, 0x180a);
 	end_handle = gatt_db_get_end_handle(gatt_db, srvc_handle);
 	dis_sdp_handle = add_sdp_record(&uuid, srvc_handle, end_handle,
 						"Device Information Service");
@@ -6404,6 +6406,7 @@ static void register_gatt_service(void)
 	gatt_db_service_set_active(gatt_db, srvc_handle, true);
 
 	/* SDP */
+	bt_uuid16_create(&uuid, 0x1801);
 	end_handle = gatt_db_get_end_handle(gatt_db, srvc_handle);
 	gatt_sdp_handle = add_sdp_record(&uuid, srvc_handle, end_handle,
 						"Generic Attribute Profile");
