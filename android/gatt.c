@@ -3140,12 +3140,13 @@ static void send_client_descr_read_notify(int32_t status, const uint8_t *pdu,
 
 	ev->status = status;
 	ev->conn_id = conn_id;
+	ev->data.status = ev->status;
 
 	element_id_to_hal_srvc_id(srvc, primary, &ev->data.srvc_id);
 	element_id_to_hal_gatt_id(ch, &ev->data.char_id);
 	element_id_to_hal_gatt_id(descr, &ev->data.descr_id);
 
-	if (len && pdu) {
+	if (status == 0 && pdu) {
 		ssize_t ret;
 
 		ret = dec_read_resp(pdu, len, ev->data.value,
