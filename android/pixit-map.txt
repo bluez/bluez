@@ -1,6 +1,6 @@
 MAP PIXIT for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -36,12 +36,9 @@ TSPX_filter_recipient					PTS
 TSPX_filter_originator					PTS
 TSPX_default_message_upload_folder_in_msg		draft
 TSPX_default_test_folder_in_msg				inbox
-TSPX_use_fixed_MASInstanceID				FALSE
-TSPX_MASInstanceID_SMS					0
-TSPX_MASInstanceID_MMS					0
-TSPX_MASInstanceID_Email				0
 TSPX_message_notification_l2cap_psm			1003
 TSPX_message_notification_rfcomm_channel		9
 TSPX_upload_msg_phonenumber				123456789 (#)
 TSPX_upload_msg_emailaddress				IUT-email ($)
+TSPX_Automation						FALSE
 -------------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 PTS test results for MAP
 
-PTS version: 5.1
-Tested: 07-April-2014
+PTS version: 5.2
+Tested: 16-July-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
@@ -49,35 +50,31 @@ TC_MCE_SRMP_BV_01_I	N/A
 TC_MCE_SRMP_BV_04_I	N/A
 TC_MCE_SRMP_BV_05_I	N/A
 TC_MCE_SRMP_BV_06_I	N/A
-TC_MSE_MSM_BV_05_I	PASS	If prompted tester must accept obex request
-TC_MSE_MSM_BV_06_I	PASS	If prompted tester must accept obex request
-TC_MSE_MSM_BV_07_I	PASS	If prompted tester must accept obex request
-TC_MSE_MSM_BV_08_I	PASS	If prompted tester must accept obex request
+TC_MSE_MSM_BV_05_I	PASS
+TC_MSE_MSM_BV_06_I	PASS
+TC_MSE_MSM_BV_07_I	PASS
+TC_MSE_MSM_BV_08_I	PASS
 TC_MSE_MSM_BV_09_I	N/A
 TC_MSE_MSM_BV_10_I	N/A
 TC_MSE_MSM_BV_11_I	N/A
 TC_MSE_MSM_BV_12_I	N/A
-TC_MSE_MNR_BV_03_I	PASS	If prompted tester must accept obex request
-TC_MSE_MNR_BV_04_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMB_BV_09_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMB_BV_10_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMB_BV_11_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMB_BV_20_I	PASS	If prompted tester must accept obex request
+TC_MSE_MNR_BV_03_I	PASS
+TC_MSE_MNR_BV_04_I	PASS
+TC_MSE_MMB_BV_09_I	PASS
+TC_MSE_MMB_BV_10_I	PASS
+TC_MSE_MMB_BV_11_I	PASS
+TC_MSE_MMB_BV_20_I	PASS
 TC_MSE_MMB_BV_12_I	N/A
 TC_MSE_MMB_BV_18_I	N/A
-TC_MSE_MMB_BV_13_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMB_BV_14_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMB_BV_15_I	PASS	If prompted tester must accept obex request
+TC_MSE_MMB_BV_13_I	PASS
+TC_MSE_MMB_BV_14_I	PASS
+TC_MSE_MMB_BV_15_I	PASS
 TC_MSE_MMB_BV_16_I	PASS	Android MAP server bug, fix provided at
 				android-review.googlesource.com/#/c/82757
-TC_MSE_MMD_BV_02_I	PASS	If prompted tester must accept obex request
-TC_MSE_MMU_BV_02_I	PASS	If prompted tester must accept obex request,
-				at least one SMS must be present in inbox
-TC_MSE_MMU_BV_03_I	PASS	If prompted tester must accept obex request,
-				when asked by PTS tester must verify that SMS
-				was successfully delivered onto network
-TC_MSE_MMN_BV_02_I	PASS	If prompted tester must accept obex request,
-				when asked by PTS tester must send SMS to IUT
+TC_MSE_MMD_BV_02_I	PASS
+TC_MSE_MMU_BV_02_I	PASS	At least one SMS must be present in inbox
+TC_MSE_MMU_BV_03_I	PASS
+TC_MSE_MMN_BV_02_I	PASS
 TC_MSE_MMN_BV_04_I	N/A
 TC_MSE_MMI_BV_02_I	N/A
 TC_MSE_MFB_BV_02_I	N/A
