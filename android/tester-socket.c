@@ -19,14 +19,10 @@
 
 static struct queue *list; /* List of socket test cases */
 
-static struct step dummy_steps[] = {
+TEST_CASE(socket_init,
+	"Socket Init",
 	ACTION_SUCCESS(dummy_action, NULL),
-};
-static struct test_case socket_init = {
-	.step = dummy_steps,
-	.title = "Socket Init",
-	.step_num = get_test_case_step_num(dummy_steps),
-};
+);
 
 static struct test_case *test_cases[] = {
 	&socket_init,

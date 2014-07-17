@@ -440,7 +440,7 @@ static void init_test_steps(struct test_data *data)
 	int i = 0;
 
 	for (i = 0; i < test_steps->step_num; i++)
-		queue_push_tail(data->steps, &(test_steps->step[i]));
+		queue_push_tail(data->steps, (void *) &(test_steps->step[i]));
 
 	tester_print("tester: Number of test steps=%d",
 						queue_length(data->steps));

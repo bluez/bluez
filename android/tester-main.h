@@ -50,7 +50,11 @@
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
 
-#define get_test_case_step_num(tc) (sizeof(tc) / sizeof(struct step))
+#define TEST_CASE(decl_name, text, ...) static struct test_case decl_name = { \
+		text, \
+		sizeof((struct step[]) {__VA_ARGS__}) / sizeof(struct step), \
+		{__VA_ARGS__}, \
+	}
 
 #define ACTION_SUCCESS(act_fun, data_set) { \
 		.action_result.status = BT_STATUS_SUCCESS, \
@@ -157,12 +161,6 @@ struct test_data {
 	pid_t bluetoothd_pid;
 };
 
-struct test_case {
-	struct step *step;
-	char *title;
-	uint16_t step_num;
-};
-
 /*
  * Struct of data to check within step action.
  */
@@ -195,6 +193,12 @@ struct step {
 
 	void *set_data;
 	int set_data_len;
+};
+
+struct test_case {
+	char *title;
+	uint16_t step_num;
+	struct step step[];
 };
 
 /* Get, remove test cases API */
