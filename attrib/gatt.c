@@ -1004,7 +1004,7 @@ static void desc_discovered_cb(guint8 status, const guint8 *ipdu,
 
 	att_data_list_free(list);
 
-	if (last + 1 < dd->end && !uuid_found) {
+	if (last < dd->end && !uuid_found) {
 		guint16 oplen;
 		size_t buflen;
 		uint8_t *buf;
