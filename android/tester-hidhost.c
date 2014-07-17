@@ -19,13 +19,10 @@
 
 static struct queue *list; /* List of hidhost test cases */
 
-TEST_CASE(hidhost_init,
-	"Hidhost Init",
-	ACTION_SUCCESS(dummy_action, NULL),
-);
-
-static struct test_case *test_cases[] = {
-	&hidhost_init,
+static struct test_case test_cases[] = {
+	TEST_CASE("Hidhost Init",
+		ACTION_SUCCESS(dummy_action, NULL),
+	),
 };
 
 struct queue *get_hidhost_tests(void)
@@ -35,7 +32,7 @@ struct queue *get_hidhost_tests(void)
 	list = queue_new();
 
 	for (; i < sizeof(test_cases) / sizeof(test_cases[0]); ++i)
-		if (!queue_push_tail(list, test_cases[i]))
+		if (!queue_push_tail(list, &test_cases[i]))
 			return NULL;
 
 	return list;

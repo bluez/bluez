@@ -50,10 +50,10 @@
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
 
-#define TEST_CASE(decl_name, text, ...) static struct test_case decl_name = { \
+#define TEST_CASE(text, ...) { \
 		text, \
 		sizeof((struct step[]) {__VA_ARGS__}) / sizeof(struct step), \
-		{__VA_ARGS__}, \
+		(struct step[]) {__VA_ARGS__}, \
 	}
 
 #define ACTION_SUCCESS(act_fun, data_set) { \
@@ -198,7 +198,7 @@ struct step {
 struct test_case {
 	char *title;
 	uint16_t step_num;
-	struct step step[];
+	const struct step const *step;
 };
 
 /* Get, remove test cases API */
