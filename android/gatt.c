@@ -4508,8 +4508,11 @@ static void read_requested_attributes(void *data, void *user_data)
 	error = check_device_permissions(process_data->device,
 							process_data->opcode,
 							permissions);
-	if (error)
-		goto done;
+	if (error != 0) {
+		resp_data->error = error;
+		resp_data->state = REQUEST_DONE;
+		return;
+	}
 
 	resp_data->state = REQUEST_PENDING;
 
@@ -4517,12 +4520,9 @@ static void read_requested_attributes(void *data, void *user_data)
 						resp_data->offset,
 						process_data->opcode,
 						&process_data->device->bdaddr,
-						&value, &value_len)) {
+						&value, &value_len))
 		error = ATT_ECODE_UNLIKELY;
-		goto done;
-	}
 
-done:
 	/* We have value here already if no callback will be called */
 	if (value_len > 0)
 		fill_gatt_response(resp_data, resp_data->handle,
