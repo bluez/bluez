@@ -300,7 +300,7 @@ static bool write_data(struct sco_stream_out *out, const uint8_t *buffer,
 	struct pollfd pfd;
 	size_t len, written = 0;
 	int ret;
-	uint16_t mtu = /* out->cfg.mtu */ 48;
+	uint16_t mtu = out->cfg.mtu;
 	uint64_t audio_sent_us, audio_passed_us;
 
 	pfd.fd = out->fd;
@@ -594,7 +594,9 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 	out->cfg.channels = AUDIO_CHANNEL_OUT_STEREO;
 	out->cfg.rate = AUDIO_STREAM_DEFAULT_RATE;
 	out->cfg.frame_num = OUT_STREAM_FRAMES;
-	out->cfg.mtu = mtu;
+
+	/* we get wrong mtu size for some reason */
+	out->cfg.mtu = /* mtu */ 48;
 
 	out->downmix_buf = malloc(out_get_buffer_size(&out->stream.common));
 	if (!out->downmix_buf) {
