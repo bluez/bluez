@@ -656,8 +656,6 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 		return -ENOMEM;
 	}
 
-	DBG("size %zd", out_get_buffer_size(&out->stream.common));
-
 	/* Channel numbers for resampler */
 	chan_num = 1;
 
@@ -668,9 +666,6 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 		error("Failed to create resampler (%s)", strerror(ret));
 		goto failed;
 	}
-
-	DBG("Created resampler: input rate [%d] output rate [%d] channels [%d]",
-				out->cfg.rate, AUDIO_STREAM_SCO_RATE, chan_num);
 
 	out->resample_frame_num = get_resample_frame_num(AUDIO_STREAM_SCO_RATE,
 							out->cfg.rate,
@@ -690,8 +685,9 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 		goto failed;
 	}
 
-	DBG("resampler: frame num %u buf size %zd bytes",
-					out->resample_frame_num, resample_size);
+	DBG("Resampler: input %d output %d chan %d frames %u size %zd",
+				out->cfg.rate, AUDIO_STREAM_SCO_RATE, chan_num,
+				out->resample_frame_num, resample_size);
 
 	*stream_out = &out->stream;
 	adev->out = out;
