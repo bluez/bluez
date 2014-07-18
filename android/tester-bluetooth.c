@@ -83,6 +83,12 @@ static bt_property_t prop_emu_bonded_devs = {
 	.len = 0,
 };
 
+static uint32_t emu_remote_type_val = BT_DEVICE_DEVTYPE_BLE;
+static int32_t emu_remote_rssi_val = 127;
+static bt_bdaddr_t emu_remote_bdaddr_val = {
+	.address = { 0x00, 0xaa, 0x01, 0x01, 0x00, 0x00 },
+};
+
 static bt_property_t prop_emu_default_set[] = {
 	{ BT_PROPERTY_BDADDR, sizeof(emu_bdaddr_val), NULL },
 	{ BT_PROPERTY_BDNAME, sizeof(emu_bdname_val) - 1, &emu_bdname_val },
@@ -94,6 +100,15 @@ static bt_property_t prop_emu_default_set[] = {
 							&emu_disc_timeout_val},
 	{ BT_PROPERTY_ADAPTER_BONDED_DEVICES, 0, NULL },
 	{ BT_PROPERTY_UUIDS, sizeof(emu_uuids_val), &emu_uuids_val },
+};
+
+static bt_property_t prop_emu_ble_remotes_default_set[] = {
+	{ BT_PROPERTY_BDADDR, sizeof(emu_remote_bdaddr_val),
+						&emu_remote_bdaddr_val },
+	{ BT_PROPERTY_TYPE_OF_DEVICE, sizeof(emu_remote_type_val),
+							&emu_remote_type_val },
+	{ BT_PROPERTY_REMOTE_RSSI, sizeof(emu_remote_rssi_val),
+							&emu_remote_rssi_val },
 };
 
 static char test_bdname[] = "test_bdname";
@@ -364,6 +379,18 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
 							BT_DISCOVERY_STOPPED),
 		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+	),
+	TEST_CASE("Bluetooth BR/EDR Discovery Device Found",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		CALLBACK_DEVICE_FOUND(prop_emu_ble_remotes_default_set, 3),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
 	),
 };
 

@@ -79,6 +79,12 @@
 		.callback_result.num_properties = prop_cnt, \
 	}
 
+#define CALLBACK_DEVICE_FOUND(props, prop_cnt) { \
+		.callback = CB_BT_DEVICE_FOUND, \
+		.callback_result.properties = props, \
+		.callback_result.num_properties = prop_cnt, \
+	}
+
 /*
  * NOTICE:
  * Callback enum sections should be
@@ -210,6 +216,9 @@ struct queue *get_hidhost_tests(void);
 void remove_hidhost_tests(void);
 struct queue *get_gatt_tests(void);
 void remove_gatt_tests(void);
+
+/* Emulator actions */
+void emu_setup_powered_remote_action(void);
 
 /* Actions */
 void dummy_action(void);

@@ -17,6 +17,9 @@
 
 #include "tester-main.h"
 
+#include "emulator/bthost.h"
+#include "monitor/bt.h"
+
 static char exec_dir[PATH_MAX + 1];
 
 static gint scheduled_cbacks_num;
@@ -585,12 +588,25 @@ static void discovery_state_changed_cb(bt_discovery_state_t state)
 	schedule_callback_call(step);
 }
 
+static void device_found_cb(int num_properties, bt_property_t *properties)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback_result.num_properties = num_properties;
+	step->callback_result.properties = copy_properties(num_properties,
+								properties);
+
+	step->callback = CB_BT_DEVICE_FOUND;
+
+	schedule_callback_call(step);
+}
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
 	.adapter_properties_cb = adapter_properties_cb,
 	.remote_device_properties_cb = NULL,
-	.device_found_cb = NULL,
+	.device_found_cb = device_found_cb,
 	.discovery_state_changed_cb = discovery_state_changed_cb,
 	.pin_request_cb = NULL,
 	.ssp_request_cb = NULL,
@@ -865,6 +881,48 @@ static void teardown(const void *test_data)
 
 	if (!data->bluetoothd_pid)
 		tester_teardown_complete();
+}
+
+static void emu_connectable_complete(uint16_t opcode, uint8_t status,
+					const void *param, uint8_t len,
+					void *user_data)
+{
+	struct step step;
+
+	switch (opcode) {
+	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
+	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+		break;
+	default:
+		return;
+	}
+
+	memset(&step, 0, sizeof(step));
+
+	if (status) {
+		tester_warn("Emulated remote setup failed.");
+		step.action_result.status = BT_STATUS_FAIL;
+	} else {
+		tester_warn("Emulated remote setup done.");
+		step.action_result.status = BT_STATUS_SUCCESS;
+	}
+
+	verify_step(&step, NULL);
+}
+
+void emu_setup_powered_remote_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_cmd_complete_cb(bthost, emu_connectable_complete, data);
+
+	if ((data->hciemu_type == HCIEMU_TYPE_LE) ||
+				(data->hciemu_type == HCIEMU_TYPE_BREDRLE))
+		bthost_set_adv_enable(bthost, 0x01, 0x02);
+	else
+		bthost_write_scan_enable(bthost, 0x03);
 }
 
 void dummy_action(void)
