@@ -735,7 +735,7 @@ failed:
 	free(out->cache);
 	free(out->downmix_buf);
 	free(out);
-	stream_out = NULL;
+	*stream_out = NULL;
 	adev->out = NULL;
 	sco_stream_out = NULL;
 
