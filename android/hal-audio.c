@@ -286,8 +286,7 @@ static int audio_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len,
 			goto failed;
 	}
 
-	if (rsp_len)
-		*rsp_len = cmd.len;
+	*rsp_len = cmd.len;
 
 	return AUDIO_STATUS_SUCCESS;
 
