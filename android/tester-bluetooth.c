@@ -368,7 +368,7 @@ static struct bt_action_data prop_test_ble_bonded_dev_req = {
 	.prop = &prop_test_bonded_dev_addr,
 };
 
-static long test_remote_timestamp_val = 0x7f3d79965adf;
+static uint32_t test_remote_timestamp_val = 42;
 static bt_property_t prop_test_ble_remote_timestamp_prop = {
 	.type = BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP,
 	.val = &test_remote_timestamp_val,
