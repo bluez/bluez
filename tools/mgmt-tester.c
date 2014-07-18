@@ -2604,6 +2604,36 @@ static const struct generic_data pairing_acceptor_ssp_3 = {
 	.just_works = true,
 };
 
+static const void *client_io_cap_reject_param_func(uint8_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static uint8_t param[7];
+
+	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
+	param[6] = 0x18; /* Pairing Not Allowed */
+
+	*len = sizeof(param);
+
+	return param;
+}
+
+static uint16_t settings_powered_connectable_ssp[] = {
+						MGMT_OP_SET_CONNECTABLE,
+						MGMT_OP_SET_SSP,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data pairing_acceptor_ssp_4 = {
+	.setup_settings = settings_powered_connectable_ssp,
+	.client_enable_ssp = true,
+	.expect_alt_ev = MGMT_EV_AUTH_FAILED,
+	.expect_alt_ev_len = 8,
+	.expect_hci_command = BT_HCI_CMD_IO_CAPABILITY_REQUEST_NEG_REPLY,
+	.expect_hci_func = client_io_cap_reject_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+	.client_auth_req = 0x02, /* Dedicated Bonding - No MITM */
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -4166,6 +4196,9 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - SSP 3",
 				&pairing_acceptor_ssp_3, setup_ssp_acceptor,
+				test_pairing_acceptor);
+	test_bredrle("Pairing Acceptor - SSP 4",
+				&pairing_acceptor_ssp_4, setup_ssp_acceptor,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
