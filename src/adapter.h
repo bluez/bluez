@@ -75,6 +75,7 @@ struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
 void adapter_foreach(adapter_cb func, gpointer user_data);
 
+void adapter_set_pairable(struct btd_adapter *adapter, bool enable);
 bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 bool btd_adapter_get_powered(struct btd_adapter *adapter);
 bool btd_adapter_get_connectable(struct btd_adapter *adapter);

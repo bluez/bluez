@@ -3128,6 +3128,16 @@ bool btd_adapter_get_pairable(struct btd_adapter *adapter)
 	return false;
 }
 
+void adapter_set_pairable(struct btd_adapter *adapter, bool enable)
+{
+	bool current = (adapter->current_settings & MGMT_SETTING_PAIRABLE);
+
+	if (current == enable)
+		return;
+
+	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+}
+
 bool btd_adapter_get_powered(struct btd_adapter *adapter)
 {
 	if (adapter->current_settings & MGMT_SETTING_POWERED)
