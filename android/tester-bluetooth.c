@@ -86,6 +86,10 @@ static bt_property_t prop_emu_bonded_devs = {
 static bt_bdaddr_t emu_remote_bdaddr_val = {
 	.address = { 0x00, 0xaa, 0x01, 0x01, 0x00, 0x00 },
 };
+static struct bt_action_data prop_emu_ble_remote_bdaddr_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_BDADDR,
+};
 
 static uint32_t emu_remote_type_val = BT_DEVICE_DEVTYPE_BLE;
 static bt_property_t prop_emu_ble_remote_tod_prop = {
@@ -149,6 +153,31 @@ static bt_property_t prop_emu_ble_remote_timestamp_prop = {
 static struct bt_action_data prop_emu_ble_remote_timestamp_req = {
 	.addr = &emu_remote_bdaddr_val,
 	.prop_type = BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP,
+};
+
+static struct bt_action_data prop_emu_ble_remote_scan_mode_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_ADAPTER_SCAN_MODE,
+};
+
+static struct bt_action_data prop_emu_ble_remote_bondeddev_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_ADAPTER_BONDED_DEVICES,
+};
+
+static struct bt_action_data prop_emu_ble_remote_disctimeout_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT,
+};
+
+static struct bt_action_data prop_emu_ble_remote_verinfo_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_REMOTE_VERSION_INFO,
+};
+
+static struct bt_action_data prop_emu_ble_remote_fname_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_REMOTE_FRIENDLY_NAME,
 };
 
 static bt_property_t prop_emu_default_set[] = {
@@ -564,6 +593,84 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(bt_get_device_prop_action,
 					&prop_emu_ble_remote_timestamp_req),
 		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_timestamp_prop, 1),
+	),
+	TEST_CASE("Bluetooth Device Get BDADDR - Fail",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_FAIL(bt_get_device_prop_action,
+					&prop_emu_ble_remote_bdaddr_req),
+	),
+	TEST_CASE("Bluetooth Device Get SCAN_MODE - Fail",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_FAIL(bt_get_device_prop_action,
+					&prop_emu_ble_remote_scan_mode_req),
+	),
+	TEST_CASE("Bluetooth Device Get BONDED_DEVICES - Fail",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_FAIL(bt_get_device_prop_action,
+					&prop_emu_ble_remote_bondeddev_req),
+	),
+	TEST_CASE("Bluetooth Device Get DISCOVERY_TIMEOUT - Fail",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_FAIL(bt_get_device_prop_action,
+					&prop_emu_ble_remote_disctimeout_req),
+	),
+	TEST_CASE("Bluetooth Device Get VERSION_INFO - Fail",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_FAIL(bt_get_device_prop_action,
+					&prop_emu_ble_remote_verinfo_req),
+	),
+	TEST_CASE("Bluetooth Device Get FRIENDLY_NAME - Fail",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_FAIL(bt_get_device_prop_action,
+						&prop_emu_ble_remote_fname_req),
 	),
 };
 
