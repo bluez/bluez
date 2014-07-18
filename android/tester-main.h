@@ -57,13 +57,13 @@
 	}
 
 #define ACTION_SUCCESS(act_fun, data_set) { \
-		.action_result.status = BT_STATUS_SUCCESS, \
+		.action_status = BT_STATUS_SUCCESS, \
 		.action = act_fun, \
 		.set_data = data_set, \
 	}
 
 #define ACTION_FAIL(act_fun, data_set) { \
-		.action_result.status = BT_STATUS_FAIL, \
+		.action_status = BT_STATUS_FAIL, \
 		.action = act_fun, \
 		.set_data = data_set, \
 	}
@@ -174,13 +174,6 @@ struct test_data {
 };
 
 /*
- * Struct of data to check within step action.
- */
-struct bt_action_data {
-	uint8_t status;
-};
-
-/*
  * Callback data structure should be enhanced with data
  * returned by callbacks. It's used for test case step
  * matching with expected step data.
@@ -198,7 +191,7 @@ struct bt_callback_data {
  */
 struct step {
 	void (*action)(void);
-	struct bt_action_data action_result;
+	int action_status;
 
 	expected_bt_callback_t callback;
 	struct bt_callback_data callback_result;

@@ -407,7 +407,7 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
-	if (exp->action_result.status != step->action_result.status) {
+	if (exp->action_status != step->action_status) {
 		tester_debug("Action status don't match");
 		return false;
 	}
@@ -916,10 +916,10 @@ static void emu_connectable_complete(uint16_t opcode, uint8_t status,
 
 	if (status) {
 		tester_warn("Emulated remote setup failed.");
-		step.action_result.status = BT_STATUS_FAIL;
+		step.action_status = BT_STATUS_FAIL;
 	} else {
 		tester_warn("Emulated remote setup done.");
-		step.action_result.status = BT_STATUS_SUCCESS;
+		step.action_status = BT_STATUS_SUCCESS;
 	}
 
 	verify_step(&step, NULL);
@@ -956,7 +956,7 @@ void bluetooth_enable_action(void)
 	struct step step;
 
 	memset(&step, 0, sizeof(step));
-	step.action_result.status = data->if_bluetooth->enable();
+	step.action_status = data->if_bluetooth->enable();
 
 	verify_step(&step, NULL);
 }
@@ -967,7 +967,7 @@ void bluetooth_disable_action(void)
 	struct step step;
 
 	memset(&step, 0, sizeof(step));
-	step.action_result.status = data->if_bluetooth->disable();
+	step.action_status = data->if_bluetooth->disable();
 
 	verify_step(&step, NULL);
 }
@@ -988,7 +988,7 @@ void bt_set_property_action(void)
 	prop = (bt_property_t *)current_data_step->set_data;
 
 	memset(&step, 0, sizeof(step));
-	step.action_result.status = data->if_bluetooth->set_adapter_property(
+	step.action_status = data->if_bluetooth->set_adapter_property(
 									prop);
 
 	verify_step(&step, NULL);
@@ -1010,7 +1010,7 @@ void bt_get_property_action(void)
 	prop = (bt_property_t *)current_data_step->set_data;
 
 	memset(&step, 0, sizeof(step));
-	step.action_result.status = data->if_bluetooth->get_adapter_property(
+	step.action_status = data->if_bluetooth->get_adapter_property(
 								prop->type);
 
 	verify_step(&step, NULL);
@@ -1021,7 +1021,7 @@ void bt_start_discovery_action(void)
 	struct test_data *data = tester_get_data();
 	struct step step;
 
-	step.action_result.status = data->if_bluetooth->start_discovery();
+	step.action_status = data->if_bluetooth->start_discovery();
 
 	verify_step(&step, NULL);
 }
@@ -1032,7 +1032,7 @@ void bt_cancel_discovery_action(void)
 	struct step step;
 
 	memset(&step, 0, sizeof(step));
-	step.action_result.status = data->if_bluetooth->cancel_discovery();
+	step.action_status = data->if_bluetooth->cancel_discovery();
 
 	verify_step(&step, NULL);
 }
@@ -1050,7 +1050,7 @@ void bt_get_device_props_action(void)
 	}
 
 	memset(&step, 0, sizeof(step));
-	step.action_result.status =
+	step.action_status =
 		data->if_bluetooth->get_remote_device_properties(
 						current_data_step->set_data);
 
