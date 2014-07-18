@@ -661,6 +661,9 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 		return -ENOMEM;
 	}
 
+	if (out->cfg.rate == AUDIO_STREAM_SCO_RATE)
+		goto skip_resampler;
+
 	/* Channel numbers for resampler */
 	chan_num = 1;
 
@@ -693,7 +696,7 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 	DBG("Resampler: input %d output %d chan %d frames %u size %zd",
 				out->cfg.rate, AUDIO_STREAM_SCO_RATE, chan_num,
 				out->resample_frame_num, resample_size);
-
+skip_resampler:
 	*stream_out = &out->stream;
 	adev->out = out;
 
