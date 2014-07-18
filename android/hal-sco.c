@@ -632,10 +632,8 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 		return -EIO;
 	}
 
-	if (ipc_connect_sco() != SCO_STATUS_SUCCESS) {
-		error("sco: cannot get fd");
-		return -EIO;
-	}
+	if (ipc_connect_sco() != SCO_STATUS_SUCCESS)
+		DBG("SCO is not connected yet; get fd on write()");
 
 	out = calloc(1, sizeof(struct sco_stream_out));
 	if (!out)
