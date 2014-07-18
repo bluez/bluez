@@ -601,11 +601,26 @@ static void device_found_cb(int num_properties, bt_property_t *properties)
 	schedule_callback_call(step);
 }
 
+static void remote_device_properties_cb(bt_status_t status,
+				bt_bdaddr_t *bd_addr, int num_properties,
+				bt_property_t *properties)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback_result.num_properties = num_properties;
+	step->callback_result.properties = copy_properties(num_properties,
+								properties);
+
+	step->callback = CB_BT_REMOTE_DEVICE_PROPERTIES;
+
+	schedule_callback_call(step);
+}
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
 	.adapter_properties_cb = adapter_properties_cb,
-	.remote_device_properties_cb = NULL,
+	.remote_device_properties_cb = remote_device_properties_cb,
 	.device_found_cb = device_found_cb,
 	.discovery_state_changed_cb = discovery_state_changed_cb,
 	.pin_request_cb = NULL,
@@ -1018,6 +1033,26 @@ void bt_cancel_discovery_action(void)
 
 	memset(&step, 0, sizeof(step));
 	step.action_result.status = data->if_bluetooth->cancel_discovery();
+
+	verify_step(&step, NULL);
+}
+
+void bt_get_device_props_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct step step;
+
+	if (!current_data_step->set_data) {
+		tester_debug("bdaddr not defined");
+		tester_test_failed();
+		return;
+	}
+
+	memset(&step, 0, sizeof(step));
+	step.action_result.status =
+		data->if_bluetooth->get_remote_device_properties(
+						current_data_step->set_data);
 
 	verify_step(&step, NULL);
 }

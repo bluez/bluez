@@ -79,6 +79,12 @@
 		.callback_result.num_properties = prop_cnt, \
 	}
 
+#define CALLBACK_DEVICE_PROPS(props, prop_cnt) { \
+		.callback = CB_BT_REMOTE_DEVICE_PROPERTIES, \
+		.callback_result.properties = props, \
+		.callback_result.num_properties = prop_cnt, \
+	}
+
 #define CALLBACK_DEVICE_FOUND(props, prop_cnt) { \
 		.callback = CB_BT_DEVICE_FOUND, \
 		.callback_result.properties = props, \
@@ -228,3 +234,4 @@ void bt_set_property_action(void);
 void bt_get_property_action(void);
 void bt_start_discovery_action(void);
 void bt_cancel_discovery_action(void);
+void bt_get_device_props_action(void);
