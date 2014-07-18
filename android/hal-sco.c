@@ -280,15 +280,16 @@ failed:
 
 static int ipc_connect_sco(void)
 {
-	struct sco_rsp_connect rsp;
-	size_t rsp_len = sizeof(rsp);
 	int ret = SCO_STATUS_SUCCESS;
-
-	DBG("");
 
 	pthread_mutex_lock(&sco_mutex);
 
 	if (sco_fd < 0) {
+		struct sco_rsp_connect rsp;
+		size_t rsp_len = sizeof(rsp);
+
+		DBG("Connecting SCO");
+
 		ret = sco_ipc_cmd(SCO_SERVICE_ID, SCO_OP_CONNECT, 0, NULL,
 						&rsp_len, &rsp, &sco_fd);
 
@@ -445,7 +446,7 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 
 	DBG("write to fd %d bytes %zu", sco_fd, bytes);
 
-	if (sco_fd < 0)
+	if (ipc_connect_sco() != SCO_STATUS_SUCCESS)
 		return -1;
 
 	if (!out->downmix_buf) {
@@ -1009,7 +1010,7 @@ static ssize_t in_read(struct audio_stream_in *stream, void *buffer,
 
 	DBG("Read from fd %d bytes %zu", sco_fd, bytes);
 
-	if (sco_fd < 0)
+	if (ipc_connect_sco() != SCO_STATUS_SUCCESS)
 		return -1;
 
 	if (!in->resampler && in->cfg.rate != AUDIO_STREAM_SCO_RATE) {
