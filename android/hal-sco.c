@@ -715,11 +715,11 @@ static void sco_close_output_stream(struct audio_hw_device *dev,
 	struct sco_dev *sco_dev = (struct sco_dev *) dev;
 	struct sco_stream_out *out = (struct sco_stream_out *) stream_out;
 
-	DBG("dev %p stream %p fd %d", dev, stream_out, sco_dev->out->fd);
+	DBG("dev %p stream %p fd %d", dev, out, sco_dev->out->fd);
 
-	if (sco_dev->out && sco_dev->out->fd) {
-		close(sco_dev->out->fd);
-		sco_dev->out->fd = -1;
+	if (out && out->fd >= 0) {
+		close(out->fd);
+		out->fd = -1;
 	}
 
 	if (out->resampler)
