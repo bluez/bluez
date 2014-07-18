@@ -175,9 +175,16 @@ static struct bt_action_data prop_emu_ble_remote_verinfo_req = {
 	.prop_type = BT_PROPERTY_REMOTE_VERSION_INFO,
 };
 
+static const char prop_test_fname_val[] = "FriendlyTestName";
+static bt_property_t prop_emu_ble_remote_fname_prop = {
+	.type = BT_PROPERTY_REMOTE_FRIENDLY_NAME,
+	.val = &prop_test_fname_val,
+	.len = sizeof(prop_test_fname_val) - 1,
+};
 static struct bt_action_data prop_emu_ble_remote_fname_req = {
 	.addr = &emu_remote_bdaddr_val,
 	.prop_type = BT_PROPERTY_REMOTE_FRIENDLY_NAME,
+	.prop = &prop_emu_ble_remote_fname_prop,
 };
 
 static bt_property_t prop_emu_default_set[] = {
@@ -671,6 +678,22 @@ static struct test_case test_cases[] = {
 							BT_DISCOVERY_STOPPED),
 		ACTION_FAIL(bt_get_device_prop_action,
 						&prop_emu_ble_remote_fname_req),
+	),
+	TEST_CASE("Bluetooth Device Set FRIENDLY_NAME - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_set_device_prop_action,
+						&prop_emu_ble_remote_fname_req),
+		ACTION_SUCCESS(bt_get_device_prop_action,
+						&prop_emu_ble_remote_fname_req),
+		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_fname_prop, 1),
 	),
 };
 

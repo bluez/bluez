@@ -181,6 +181,7 @@ struct bt_action_data {
 
 	/* Remote props action arguments */
 	int prop_type;
+	bt_property_t *prop;
 };
 
 /*
@@ -239,3 +240,4 @@ void bt_start_discovery_action(void);
 void bt_cancel_discovery_action(void);
 void bt_get_device_props_action(void);
 void bt_get_device_prop_action(void);
+void bt_set_device_prop_action(void);
