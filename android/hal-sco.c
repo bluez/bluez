@@ -731,8 +731,10 @@ static void sco_close_output_stream(struct audio_hw_device *dev,
 
 	close_sco_socket();
 
-	if (out->resampler)
+	if (out->resampler) {
 		release_resampler(out->resampler);
+		free(out->resample_buf);
+	}
 
 	free(out->cache);
 	free(out->downmix_buf);
