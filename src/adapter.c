@@ -7300,6 +7300,17 @@ static void read_version_complete(uint8_t status, uint16_t length,
 		abort();
 	}
 
+	/*
+	 * Pre-1.7 mgmt kernel versions don't support outgoing pairing
+	 * with pairable set to false, so we must always keep pairable
+	 * as true.
+	 */
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 7) &&
+						!main_opts.always_pairable) {
+		info("Enabling AlwaysPairable because of old kernel");
+		main_opts.always_pairable = TRUE;
+	}
+
 	DBG("sending read supported commands command");
 
 	/*
