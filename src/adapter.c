@@ -3132,6 +3132,9 @@ void adapter_set_pairable(struct btd_adapter *adapter, bool enable)
 {
 	bool current = (adapter->current_settings & MGMT_SETTING_PAIRABLE);
 
+	if (main_opts.always_pairable)
+		return;
+
 	if (current == enable)
 		return;
 

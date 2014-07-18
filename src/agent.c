@@ -153,8 +153,7 @@ static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
 
 	adapter_set_io_capability(adapter, io_cap);
 
-	if (!main_opts.always_pairable)
-		adapter_set_pairable(adapter, agent ? true : false);
+	adapter_set_pairable(adapter, agent ? true : false);
 }
 
 static bool add_default_agent(struct agent *agent)
