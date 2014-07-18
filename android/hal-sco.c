@@ -584,7 +584,7 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 	size_t resample_size;
 	uint16_t mtu;
 
-	DBG("");
+	DBG("config %p device flags 0x%02x", config, devices);
 
 	if (ipc_connect_sco(&fd, &mtu) != SCO_STATUS_SUCCESS) {
 		error("sco: cannot get fd");
@@ -614,10 +614,20 @@ static int sco_open_output_stream(struct audio_hw_device *dev,
 	out->stream.write = out_write;
 	out->stream.get_render_position = out_get_render_position;
 
-	/* Configuration for Android */
-	out->cfg.format = AUDIO_STREAM_DEFAULT_FORMAT;
-	out->cfg.channels = AUDIO_CHANNEL_OUT_STEREO;
-	out->cfg.rate = AUDIO_STREAM_DEFAULT_RATE;
+	if (config) {
+		DBG("config: rate %u chan mask %x format %d offload %p",
+				config->sample_rate, config->channel_mask,
+				config->format, &config->offload_info);
+
+		out->cfg.format = config->format;
+		out->cfg.channels = config->channel_mask;
+		out->cfg.rate = config->sample_rate;
+	} else {
+		out->cfg.format = AUDIO_STREAM_DEFAULT_FORMAT;
+		out->cfg.channels = AUDIO_CHANNEL_OUT_STEREO;
+		out->cfg.rate = AUDIO_STREAM_DEFAULT_RATE;
+	}
+
 	out->cfg.frame_num = OUT_STREAM_FRAMES;
 
 	/* we get wrong mtu size for some reason */
