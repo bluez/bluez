@@ -2081,6 +2081,13 @@ static void property_set_discoverable(const GDBusPropertyTable *property,
 {
 	struct btd_adapter *adapter = user_data;
 
+	if (adapter->discoverable_timeout > 0 &&
+			!(adapter->current_settings & MGMT_SETTING_POWERED)) {
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
+								"Not Powered");
+		return;
+	}
+
 	property_set_mode(adapter, MGMT_SETTING_DISCOVERABLE, iter, id);
 }
 
