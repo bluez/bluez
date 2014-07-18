@@ -492,6 +492,10 @@ static size_t out_get_buffer_size(const struct audio_stream *stream)
 	size_t size = audio_stream_frame_size(&out->stream.common) *
 							out->cfg.frame_num;
 
+	/* buffer size without resampling */
+	if (out->cfg.rate == AUDIO_STREAM_SCO_RATE)
+		size = 576 * 2;
+
 	DBG("buf size %zd", size);
 
 	return size;
@@ -837,6 +841,10 @@ static size_t in_get_buffer_size(const struct audio_stream *stream)
 	struct sco_stream_in *in = (struct sco_stream_in *) stream;
 	size_t size = audio_stream_frame_size(&in->stream.common) *
 							in->cfg.frame_num;
+
+	/* buffer size without resampling */
+	if (in->cfg.rate == AUDIO_STREAM_SCO_RATE)
+		size = 576;
 
 	DBG("buf size %zd", size);
 
