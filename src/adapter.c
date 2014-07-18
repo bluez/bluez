@@ -599,9 +599,6 @@ static void trigger_pairable_timeout(struct btd_adapter *adapter)
 		adapter->pairable_timeout_id = 0;
 	}
 
-	g_dbus_emit_property_changed(dbus_conn, adapter->path,
-					ADAPTER_INTERFACE, "PairableTimeout");
-
 	if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
 		return;
 
@@ -2169,6 +2166,9 @@ static void property_set_pairable_timeout(const GDBusPropertyTable *property,
 	g_dbus_pending_property_success(id);
 
 	store_adapter_info(adapter);
+
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "PairableTimeout");
 
 	trigger_pairable_timeout(adapter);
 }
