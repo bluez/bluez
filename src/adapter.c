@@ -437,6 +437,24 @@ static void trigger_pairable_timeout(struct btd_adapter *adapter);
 static void adapter_start(struct btd_adapter *adapter);
 static void adapter_stop(struct btd_adapter *adapter);
 static void trigger_passive_scanning(struct btd_adapter *adapter);
+static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
+							uint8_t mode);
+
+static void update_pairable(struct btd_adapter *adapter)
+{
+	if (main_opts.always_pairable)
+		return;
+
+	if ((adapter->current_settings & MGMT_SETTING_DISCOVERABLE) &&
+						agent_default_available()) {
+		if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE) &&
+						agent_default_available())
+			set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+	} else {
+		if (adapter->current_settings & MGMT_SETTING_PAIRABLE)
+			set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x00);
+	}
+}
 
 static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 {
@@ -479,7 +497,7 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 	if (changed_mask & MGMT_SETTING_DISCOVERABLE) {
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable");
-
+		update_pairable(adapter);
 		store_adapter_info(adapter);
 	}
 
@@ -600,6 +618,13 @@ static void trigger_pairable_timeout(struct btd_adapter *adapter)
 	}
 
 	if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
+		return;
+
+	/*
+	 * If pairable is tied to connectable & discoverable then we
+	 * don't have a separate pairable timeout.
+	 */
+	if (!main_opts.always_pairable)
 		return;
 
 	if (adapter->pairable_timeout > 0)
@@ -2114,10 +2139,18 @@ static void property_set_discoverable_timeout(
 
 	g_dbus_pending_property_success(id);
 
+	if (!main_opts.always_pairable) {
+		adapter->pairable_timeout = value;
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE,
+						"PairableTimeout");
+	}
+
 	store_adapter_info(adapter);
 
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 				ADAPTER_INTERFACE, "DiscoverableTimeout");
+
 
 	if (adapter->current_settings & MGMT_SETTING_DISCOVERABLE)
 		set_discoverable(adapter, 0x01, adapter->discoverable_timeout);
@@ -2128,6 +2161,9 @@ static gboolean property_get_pairable(const GDBusPropertyTable *property,
 {
 	struct btd_adapter *adapter = user_data;
 
+	if (!main_opts.always_pairable)
+		return property_get_discoverable(property, iter, user_data);
+
 	return property_get_mode(adapter, MGMT_SETTING_PAIRABLE, iter);
 }
 
@@ -2136,6 +2172,11 @@ static void property_set_pairable(const GDBusPropertyTable *property,
 				GDBusPendingPropertySet id, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
+
+	if (!main_opts.always_pairable) {
+		property_set_discoverable(property, iter, id, user_data);
+		return;
+	}
 
 	property_set_mode(adapter, MGMT_SETTING_PAIRABLE, iter, id);
 }
@@ -2146,6 +2187,9 @@ static gboolean property_get_pairable_timeout(
 {
 	struct btd_adapter *adapter = user_data;
 	dbus_uint32_t value = adapter->pairable_timeout;
+
+	if (!main_opts.always_pairable)
+		return property_get_discoverable_timeout(property, iter, user_data);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &value);
 
@@ -2158,6 +2202,11 @@ static void property_set_pairable_timeout(const GDBusPropertyTable *property,
 {
 	struct btd_adapter *adapter = user_data;
 	dbus_uint32_t value;
+
+	if (!main_opts.always_pairable) {
+		property_set_discoverable_timeout(property, iter, id, user_data);
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &value);
 
@@ -3143,6 +3192,9 @@ void adapter_set_pairable(struct btd_adapter *adapter, bool enable)
 		return;
 
 	if (current == enable)
+		return;
+
+	if (enable && !(adapter->current_settings & MGMT_SETTING_DISCOVERABLE))
 		return;
 
 	set_mode(adapter, MGMT_OP_SET_PAIRABLE, enable ? 0x01 : 0x00);
@@ -7038,13 +7090,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
 			set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
 	} else {
-		if (adapter->current_settings & MGMT_SETTING_PAIRABLE) {
-			if (!agent_default_available())
-				set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x00);
-		} else {
-			if (agent_default_available())
-				set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
-		}
+		update_pairable(adapter);
 	}
 
 	if (!kernel_conn_control)
