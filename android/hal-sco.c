@@ -1246,14 +1246,12 @@ static void *ipc_handler(void *data)
 		/* Check if socket is still alive. Empty while loop.*/
 		while (poll(&pfd, 1, -1) < 0 && errno == EINTR);
 
-		if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
-			info("SCO HAL: Socket closed");
+		info("SCO HAL: Socket closed");
 
-			pthread_mutex_lock(&sk_mutex);
-			close(ipc_sk);
-			ipc_sk = -1;
-			pthread_mutex_unlock(&sk_mutex);
-		}
+		pthread_mutex_lock(&sk_mutex);
+		close(ipc_sk);
+		ipc_sk = -1;
+		pthread_mutex_unlock(&sk_mutex);
 	}
 
 	info("Closing SCO IPC thread");
