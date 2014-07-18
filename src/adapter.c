@@ -7039,6 +7039,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	if (!kernel_conn_control)
 		set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
+	else if (adapter->current_settings & MGMT_SETTING_CONNECTABLE)
+		set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x00);
 
 	if (adapter->stored_discoverable && !adapter->discoverable_timeout)
 		set_discoverable(adapter, 0x01, 0);
