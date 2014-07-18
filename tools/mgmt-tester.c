@@ -2528,6 +2528,16 @@ static const struct generic_data pairing_acceptor_legacy_2 = {
 	.expect_alt_ev_len = 8,
 };
 
+static const struct generic_data pairing_acceptor_legacy_3 = {
+	.setup_settings = settings_powered_connectable,
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+	.expect_alt_ev = MGMT_EV_AUTH_FAILED,
+	.expect_alt_ev_len = 8,
+	.expect_hci_command = BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+};
+
 static uint16_t settings_powered_connectable_pairable_linksec[] = {
 						MGMT_OP_SET_PAIRABLE,
 						MGMT_OP_SET_CONNECTABLE,
@@ -4139,6 +4149,9 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - Legacy 2",
 				&pairing_acceptor_legacy_2, NULL,
+				test_pairing_acceptor);
+	test_bredrle("Pairing Acceptor - Legacy 3",
+				&pairing_acceptor_legacy_3, NULL,
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - Link Sec 1",
 				&pairing_acceptor_linksec_1, NULL,
