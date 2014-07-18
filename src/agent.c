@@ -42,6 +42,7 @@
 
 #include "log.h"
 #include "error.h"
+#include "hcid.h"
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
@@ -151,6 +152,9 @@ static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
 		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	adapter_set_io_capability(adapter, io_cap);
+
+	if (!main_opts.always_pairable)
+		adapter_set_pairable(adapter, agent ? true : false);
 }
 
 static bool add_default_agent(struct agent *agent)

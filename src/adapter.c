@@ -3135,7 +3135,7 @@ void adapter_set_pairable(struct btd_adapter *adapter, bool enable)
 	if (current == enable)
 		return;
 
-	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+	set_mode(adapter, MGMT_OP_SET_PAIRABLE, enable ? 0x01 : 0x00);
 }
 
 bool btd_adapter_get_powered(struct btd_adapter *adapter)
@@ -7024,7 +7024,26 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			!(adapter->current_settings & MGMT_SETTING_LE))
 		set_mode(adapter, MGMT_OP_SET_LE, 0x01);
 
-	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+	if (main_opts.always_pairable) {
+		if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
+			set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+	} else {
+		struct agent *agent = agent_get(NULL);
+
+		if (adapter->current_settings & MGMT_SETTING_PAIRABLE) {
+			if (!agent)
+				set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x00);
+		} else {
+			if (agent)
+				set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+		}
+
+		if (agent) {
+			agent_unref(agent);
+			agent = NULL;
+		}
+	}
+
 	if (!kernel_conn_control)
 		set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
 
