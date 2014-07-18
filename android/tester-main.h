@@ -174,6 +174,16 @@ struct test_data {
 };
 
 /*
+ * Struct holding bluetooth HAL action parameters
+ */
+struct bt_action_data {
+	bt_bdaddr_t *addr;
+
+	/* Remote props action arguments */
+	int prop_type;
+};
+
+/*
  * Callback data structure should be enhanced with data
  * returned by callbacks. It's used for test case step
  * matching with expected step data.
@@ -228,3 +238,4 @@ void bt_get_property_action(void);
 void bt_start_discovery_action(void);
 void bt_cancel_discovery_action(void);
 void bt_get_device_props_action(void);
+void bt_get_device_prop_action(void);

@@ -83,13 +83,73 @@ static bt_property_t prop_emu_bonded_devs = {
 	.len = 0,
 };
 
-static uint32_t emu_remote_type_val = BT_DEVICE_DEVTYPE_BLE;
-static int32_t emu_remote_rssi_val = 127;
 static bt_bdaddr_t emu_remote_bdaddr_val = {
 	.address = { 0x00, 0xaa, 0x01, 0x01, 0x00, 0x00 },
 };
+
+static uint32_t emu_remote_type_val = BT_DEVICE_DEVTYPE_BLE;
+static bt_property_t prop_emu_ble_remote_tod_prop = {
+	.type = BT_PROPERTY_TYPE_OF_DEVICE,
+	.val = &emu_remote_type_val,
+	.len = sizeof(emu_remote_type_val),
+};
+static struct bt_action_data prop_emu_ble_remote_tod_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_TYPE_OF_DEVICE,
+};
+
+static int32_t emu_remote_rssi_val = 127;
+static bt_property_t prop_emu_ble_remote_rssi_prop = {
+	.type = BT_PROPERTY_REMOTE_RSSI,
+	.val = &emu_remote_rssi_val,
+	.len = sizeof(emu_remote_rssi_val),
+};
+static struct bt_action_data prop_emu_ble_remote_rssi_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_REMOTE_RSSI,
+};
+
 static const char emu_remote_bdname_val[] = "00:AA:01:01:00:00";
+static bt_property_t prop_emu_ble_remote_bdname_prop = {
+	.type = BT_PROPERTY_BDNAME,
+	.val = &emu_remote_bdname_val,
+	.len = sizeof(emu_remote_bdname_val) - 1,
+};
+static struct bt_action_data prop_emu_ble_remote_bdname_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_BDNAME,
+};
+
 static uint32_t emu_remote_cod_val = 0;
+static bt_property_t prop_emu_ble_remote_cod_prop = {
+	.type = BT_PROPERTY_CLASS_OF_DEVICE,
+	.val = &emu_remote_cod_val,
+	.len = sizeof(emu_remote_cod_val),
+};
+static struct bt_action_data prop_emu_ble_remote_cod_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_CLASS_OF_DEVICE,
+};
+
+static bt_property_t prop_emu_ble_remote_uuids_prop = {
+	.type = BT_PROPERTY_UUIDS,
+	.val = NULL,
+	.len = 0,
+};
+static struct bt_action_data prop_emu_ble_remote_uuids_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_UUIDS,
+};
+
+static bt_property_t prop_emu_ble_remote_timestamp_prop = {
+	.type = BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP,
+	.val = NULL,
+	.len = 4,
+};
+static struct bt_action_data prop_emu_ble_remote_timestamp_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP,
+};
 
 static bt_property_t prop_emu_default_set[] = {
 	{ BT_PROPERTY_BDADDR, sizeof(emu_bdaddr_val), NULL },
@@ -420,6 +480,90 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(bt_get_device_props_action,
 							&emu_remote_bdaddr_val),
 		CALLBACK_DEVICE_PROPS(prop_emu_ble_remotes_query_set, 6),
+	),
+	TEST_CASE("Bluetooth Device Get BDNAME - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_get_device_prop_action,
+					&prop_emu_ble_remote_bdname_req),
+		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_bdname_prop, 1),
+	),
+	TEST_CASE("Bluetooth Device Get UUIDS - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_get_device_prop_action,
+						&prop_emu_ble_remote_uuids_req),
+		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_uuids_prop, 1),
+	),
+	TEST_CASE("Bluetooth Device Get COD - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_get_device_prop_action,
+						&prop_emu_ble_remote_cod_req),
+		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_cod_prop, 1),
+	),
+	TEST_CASE("Bluetooth Device Get TOD - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_get_device_prop_action,
+						&prop_emu_ble_remote_tod_req),
+		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_tod_prop, 1),
+	),
+	TEST_CASE("Bluetooth Device Get RSSI - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_get_device_prop_action,
+						&prop_emu_ble_remote_rssi_req),
+		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_rssi_prop, 1),
+	),
+	TEST_CASE("Bluetooth Device Get TIMESTAMP - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_get_device_prop_action,
+					&prop_emu_ble_remote_timestamp_req),
+		CALLBACK_DEVICE_PROPS(&prop_emu_ble_remote_timestamp_prop, 1),
 	),
 };
 

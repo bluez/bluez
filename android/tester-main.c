@@ -1057,6 +1057,27 @@ void bt_get_device_props_action(void)
 	verify_step(&step, NULL);
 }
 
+void bt_get_device_prop_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *action_data = current_data_step->set_data;
+	struct step step;
+
+	if (!action_data) {
+		tester_warn("No arguments for 'get remote device prop' req.");
+		tester_test_failed();
+		return;
+	}
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = data->if_bluetooth->get_remote_device_property(
+							action_data->addr,
+							action_data->prop_type);
+
+	verify_step(&step, NULL);
+}
+
 static void generic_test_function(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
