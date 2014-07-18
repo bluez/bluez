@@ -70,7 +70,8 @@ bool bthost_l2cap_req(struct bthost *bthost, uint16_t handle, uint8_t req,
 
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan);
 
-void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable);
+void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable,
+								uint8_t flags);
 
 void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode);
 

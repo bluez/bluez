@@ -535,7 +535,7 @@ static void setup_powered_client_callback(uint8_t status, uint16_t length,
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, user_data);
 	if (data->hciemu_type == HCIEMU_TYPE_LE)
-		bthost_set_adv_enable(bthost, 0x01);
+		bthost_set_adv_enable(bthost, 0x01, 0x00);
 	else
 		bthost_write_scan_enable(bthost, 0x03);
 }

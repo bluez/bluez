@@ -701,7 +701,7 @@ static void setup_powered_emulated_remote(void)
 	bthost_set_cmd_complete_cb(bthost, emu_connectable_complete, data);
 
 	if (data->hciemu_type == HCIEMU_TYPE_LE)
-		bthost_set_adv_enable(bthost, 0x01);
+		bthost_set_adv_enable(bthost, 0x01, 0x00);
 	else
 		bthost_write_scan_enable(bthost, 0x03);
 }
