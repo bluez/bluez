@@ -36,6 +36,7 @@ typedef void (*agent_passkey_cb) (struct agent *agent, DBusError *err,
 struct agent *agent_ref(struct agent *agent);
 void agent_unref(struct agent *agent);
 
+bool agent_default_available(void);
 struct agent *agent_get(const char *owner);
 
 int agent_authorize_service(struct agent *agent, const char *path,

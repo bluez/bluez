@@ -7028,19 +7028,12 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
 			set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
 	} else {
-		struct agent *agent = agent_get(NULL);
-
 		if (adapter->current_settings & MGMT_SETTING_PAIRABLE) {
-			if (!agent)
+			if (!agent_default_available())
 				set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x00);
 		} else {
-			if (agent)
+			if (agent_default_available())
 				set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
-		}
-
-		if (agent) {
-			agent_unref(agent);
-			agent = NULL;
 		}
 	}
 

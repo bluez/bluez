@@ -261,6 +261,11 @@ void agent_unref(struct agent *agent)
 	g_free(agent);
 }
 
+bool agent_default_available(void)
+{
+	return !queue_isempty(default_agents);
+}
+
 struct agent *agent_get(const char *owner)
 {
 	struct agent *agent;
