@@ -3277,8 +3277,7 @@ static void test_setup(const void *test_data)
 
 	if (test->client_auth_req)
 		bthost_set_auth_req(bthost, test->client_auth_req);
-
-	if (!test->just_works)
+	else if (!test->just_works)
 		bthost_set_auth_req(bthost, 0x01);
 
 	if (test->client_reject_ssp)
