@@ -2342,6 +2342,20 @@ static const struct generic_data pair_device_success_test_2 = {
 	.client_pin_len = sizeof(pair_device_pin),
 };
 
+static const struct generic_data pair_device_legacy_nonpairable_1 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+};
+
 static const void *client_bdaddr_param_func(uint8_t *len)
 {
 	struct test_data *data = tester_get_data();
@@ -4085,6 +4099,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Legacy Success 1",
 				&pair_device_success_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - Legacy Non-pairable 1",
+				&pair_device_legacy_nonpairable_1,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Sec Mode 3 Success 1",
 				&pair_device_success_test_2,
