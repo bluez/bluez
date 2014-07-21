@@ -53,7 +53,7 @@
 		printf(color fmt COLOR_OFF "\n", ## args)
 
 #define print_summary(label, color, value, fmt, args...) \
-			printf("%-45s " color "%-10s" COLOR_OFF fmt "\n", \
+			printf("%-52s " color "%-10s" COLOR_OFF fmt "\n", \
 							label, value, ## args)
 
 #define print_progress(name, color, fmt, args...) \
