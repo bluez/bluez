@@ -20,8 +20,8 @@ The SCO Audio Plugin communicate through abstract socket name
 	SCO HAL                               Daemon
 	----------------------------------------------------
 
-	call connect_sco()                    --> create SCO socket
-	return connect_sco()                  <-- return socket fd and mtu
+	call get_fd()                    --> Get SCO socket fd
+	return get_fd()                  <-- Return SCO socket fd and mtu
 
 SCO Audio Service (ID 0)
 ========================
@@ -30,7 +30,7 @@ SCO Audio Service (ID 0)
 
 		Response parameters: Status (1 octet)
 
-	Opcode 0x01 - Connect SCO command
+	Opcode 0x01 - Get SCO fd command
 
 		Command parameters: <none>
 		Response parameters: MTU (2 octets)

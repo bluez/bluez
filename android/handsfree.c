@@ -2565,11 +2565,11 @@ static void disable_sco_server(void)
 	}
 }
 
-static void bt_sco_connect(const void *buf, uint16_t len)
+static void bt_sco_get_fd(const void *buf, uint16_t len)
 {
 	int fd;
 	GError *err;
-	struct sco_rsp_connect rsp;
+	struct sco_rsp_get_fd rsp;
 
 	DBG("");
 
@@ -2588,7 +2588,7 @@ static void bt_sco_connect(const void *buf, uint16_t len)
 
 	DBG("fd %d mtu %u", fd, rsp.mtu);
 
-	ipc_send_rsp_full(sco_ipc, SCO_SERVICE_ID, SCO_OP_CONNECT,
+	ipc_send_rsp_full(sco_ipc, SCO_SERVICE_ID, SCO_OP_GET_FD,
 							sizeof(rsp), &rsp, fd);
 
 	return;
@@ -2598,8 +2598,8 @@ failed:
 }
 
 static const struct ipc_handler sco_handlers[] = {
-	/* SCO_OP_CONNECT */
-	{ bt_sco_connect, false, 0 }
+	/* SCO_OP_GET_FD */
+	{ bt_sco_get_fd, false, 0 }
 };
 
 static void bt_sco_unregister(void)
