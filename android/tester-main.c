@@ -1305,6 +1305,32 @@ void bt_ssp_reply_accept_action(void)
 	verify_step(&step, NULL);
 }
 
+void bt_cancel_bond_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	bt_bdaddr_t *addr = current_data_step->set_data;
+	struct step step;
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = data->if_bluetooth->cancel_bond(addr);
+
+	verify_step(&step, NULL);
+}
+
+void bt_remove_bond_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	bt_bdaddr_t *addr = current_data_step->set_data;
+	struct step step;
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = data->if_bluetooth->remove_bond(addr);
+
+	verify_step(&step, NULL);
+}
+
 static void generic_test_function(const void *test_data)
 {
 	struct test_data *data = tester_get_data();

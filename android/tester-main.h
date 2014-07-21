@@ -285,3 +285,5 @@ void bt_set_device_prop_action(void);
 void bt_create_bond_action(void);
 void bt_pin_reply_accept_action(void);
 void bt_ssp_reply_accept_action(void);
+void bt_cancel_bond_action(void);
+void bt_remove_bond_action(void);
