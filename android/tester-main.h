@@ -99,6 +99,13 @@
 #define CALLBACK_DEVICE_FOUND(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_DEVICE_FOUND, props, prop_cnt)
 
+#define CALLBACK_BOND_STATE(cb_res, props, prop_cnt) { \
+		.callback = CB_BT_BOND_STATE_CHANGED, \
+		.callback_result.state = cb_res, \
+		.callback_result.properties = props, \
+		.callback_result.num_properties = prop_cnt, \
+	}
+
 /*
  * NOTICE:
  * Callback enum sections should be
@@ -190,6 +197,10 @@ struct bt_action_data {
 	/* Remote props action arguments */
 	int prop_type;
 	bt_property_t *prop;
+
+	/* Bonding requests parameters */
+	bt_pin_code_t *pin;
+	uint8_t pin_len;
 };
 
 /*
@@ -238,6 +249,7 @@ void remove_gatt_tests(void);
 
 /* Emulator actions */
 void emu_setup_powered_remote_action(void);
+void emu_set_pin_code_action(void);
 
 /* Actions */
 void dummy_action(void);
@@ -250,3 +262,5 @@ void bt_cancel_discovery_action(void);
 void bt_get_device_props_action(void);
 void bt_get_device_prop_action(void);
 void bt_set_device_prop_action(void);
+void bt_create_bond_action(void);
+void bt_pin_reply_accept_action(void);

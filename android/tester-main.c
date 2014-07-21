@@ -1019,6 +1019,27 @@ void emu_setup_powered_remote_action(void)
 		bthost_write_scan_enable(bthost, 0x03);
 }
 
+void emu_set_pin_code_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *action_data = current_data_step->set_data;
+	struct bthost *bthost;
+	struct step step;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	bthost_set_pin_code(bthost, action_data->pin->pin,
+							action_data->pin_len);
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = BT_STATUS_SUCCESS;
+
+	tester_print("Setting emu pin done.");
+
+	verify_step(&step, NULL);
+}
+
 void dummy_action(void)
 {
 	struct step step;
@@ -1174,6 +1195,47 @@ void bt_set_device_prop_action(void)
 	step.action_status = data->if_bluetooth->set_remote_device_property(
 							action_data->addr,
 							action_data->prop);
+
+	verify_step(&step, NULL);
+}
+
+void bt_create_bond_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *action_data = current_data_step->set_data;
+	struct step step;
+
+	if (!action_data || !action_data->addr) {
+		tester_warn("Bad arguments for 'create bond' req.");
+		tester_test_failed();
+		return;
+	}
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = data->if_bluetooth->create_bond(action_data->addr);
+
+	verify_step(&step, NULL);
+}
+
+void bt_pin_reply_accept_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *action_data = current_data_step->set_data;
+	struct step step;
+
+	if (!action_data || !action_data->addr || !action_data->pin) {
+		tester_warn("Bad arguments for 'pin reply' req.");
+		tester_test_failed();
+		return;
+	}
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = data->if_bluetooth->pin_reply(action_data->addr,
+							TRUE,
+							action_data->pin_len,
+							action_data->pin);
 
 	verify_step(&step, NULL);
 }

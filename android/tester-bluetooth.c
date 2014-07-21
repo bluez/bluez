@@ -86,10 +86,17 @@ static bt_property_t prop_emu_bonded_devs = {
 static bt_bdaddr_t emu_remote_bdaddr_val = {
 	.address = { 0x00, 0xaa, 0x01, 0x01, 0x00, 0x00 },
 };
+static bt_property_t prop_emu_remote_bdadr = {
+	.type = BT_PROPERTY_BDADDR,
+	.val = &emu_remote_bdaddr_val,
+	.len = sizeof(emu_remote_bdaddr_val),
+};
 static struct bt_action_data prop_emu_remote_ble_bdaddr_req = {
 	.addr = &emu_remote_bdaddr_val,
 	.prop_type = BT_PROPERTY_BDADDR,
 };
+
+static uint32_t emu_remote_type_val = BT_DEVICE_DEVTYPE_BREDR;
 
 static uint32_t emu_remote_tod_ble_val = BT_DEVICE_DEVTYPE_BLE;
 static bt_property_t prop_emu_remote_ble_tod_prop = {
@@ -101,6 +108,8 @@ static struct bt_action_data prop_emu_remote_ble_tod_req = {
 	.addr = &emu_remote_bdaddr_val,
 	.prop_type = BT_PROPERTY_TYPE_OF_DEVICE,
 };
+
+static int32_t emu_remote_rssi_val = -60;
 
 static int32_t emu_remote_ble_rssi_val = 127;
 static bt_property_t prop_emu_remote_ble_rssi_prop = {
@@ -187,6 +196,15 @@ static struct bt_action_data prop_emu_remote_ble_fname_req = {
 	.prop = &prop_emu_remote_ble_fname_prop,
 };
 
+static bt_pin_code_t emu_pin_value = {
+	.pin = { 0x30, 0x30, 0x30, 0x30 },
+};
+static struct bt_action_data emu_pin_set_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.pin = &emu_pin_value,
+	.pin_len = 4,
+};
+
 static bt_property_t prop_emu_default_set[] = {
 	{ BT_PROPERTY_BDADDR, sizeof(emu_bdaddr_val), NULL },
 	{ BT_PROPERTY_BDNAME, sizeof(emu_bdname_val) - 1, &emu_bdname_val },
@@ -210,6 +228,15 @@ static bt_property_t prop_emu_remote_bles_default_set[] = {
 						&emu_remote_ble_rssi_val },
 };
 
+static bt_property_t prop_emu_remotes_default_set[] = {
+	{ BT_PROPERTY_BDADDR, sizeof(emu_remote_bdaddr_val),
+						&emu_remote_bdaddr_val },
+	{ BT_PROPERTY_TYPE_OF_DEVICE, sizeof(emu_remote_type_val),
+						&emu_remote_type_val },
+	{ BT_PROPERTY_REMOTE_RSSI, sizeof(emu_remote_rssi_val),
+						&emu_remote_rssi_val },
+};
+
 static bt_property_t prop_emu_remote_bles_query_set[] = {
 	{ BT_PROPERTY_TYPE_OF_DEVICE, sizeof(emu_remote_tod_ble_val),
 						&emu_remote_tod_ble_val },
@@ -221,6 +248,15 @@ static bt_property_t prop_emu_remote_bles_query_set[] = {
 						&emu_remote_bdname_val },
 	{ BT_PROPERTY_UUIDS, 0, NULL },
 	{ BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP, 4, NULL },
+};
+
+static bt_property_t prop_emu_remotes_pin_req_set[] = {
+	{ BT_PROPERTY_BDADDR, sizeof(emu_remote_bdaddr_val),
+						&emu_remote_bdaddr_val },
+	{ BT_PROPERTY_CLASS_OF_DEVICE, sizeof(emu_remote_cod_val),
+						&emu_remote_cod_val },
+	{ BT_PROPERTY_BDNAME, sizeof(emu_remote_bdname_val) - 1,
+						&emu_remote_bdname_val },
 };
 
 static char test_bdname[] = "test_bdname";
@@ -900,6 +936,29 @@ static struct test_case test_cases[] = {
 							BT_DISCOVERY_STOPPED),
 		ACTION_FAIL(bt_set_device_prop_action,
 					&prop_test_remote_ble_disc_timeout_req),
+	),
+	TEST_CASE_BREDR("Bt. Create Bond PIN - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_pin_code_action, &emu_pin_set_req),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		CALLBACK_DEVICE_FOUND(prop_emu_remotes_default_set, 3),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STOPPED),
+		ACTION_SUCCESS(bt_create_bond_action,
+					&prop_test_remote_ble_bdaddr_req),
+		CALLBACK_BOND_STATE(BT_BOND_STATE_BONDING,
+						&prop_emu_remote_bdadr, 1),
+		CALLBACK_PROPS(CB_BT_PIN_REQUEST, prop_emu_remotes_pin_req_set,
+									2),
+		ACTION_SUCCESS(bt_pin_reply_accept_action,
+							&emu_pin_set_req),
+		CALLBACK_BOND_STATE(BT_BOND_STATE_BONDED,
+						&prop_emu_remote_bdadr, 1),
 	),
 };
 
