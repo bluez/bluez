@@ -87,17 +87,17 @@
 		.callback_result.num_properties = prop_cnt, \
 	}
 
-#define CALLBACK_DEVICE_PROPS(props, prop_cnt) { \
-		.callback = CB_BT_REMOTE_DEVICE_PROPERTIES, \
+#define CALLBACK_PROPS(cb, props, prop_cnt) { \
+		.callback = cb, \
 		.callback_result.properties = props, \
 		.callback_result.num_properties = prop_cnt, \
 	}
 
-#define CALLBACK_DEVICE_FOUND(props, prop_cnt) { \
-		.callback = CB_BT_DEVICE_FOUND, \
-		.callback_result.properties = props, \
-		.callback_result.num_properties = prop_cnt, \
-	}
+#define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
+	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
+
+#define CALLBACK_DEVICE_FOUND(props, prop_cnt) \
+	CALLBACK_PROPS(CB_BT_DEVICE_FOUND, props, prop_cnt)
 
 /*
  * NOTICE:
