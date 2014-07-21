@@ -424,6 +424,12 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+		if (exp->callback_result.status !=
+						step->callback_result.status) {
+			tester_debug("Callback status don't match");
+			return false;
+		}
+
 		if (exp->callback_result.properties &&
 				verify_property(exp->callback_result.properties,
 				exp->callback_result.num_properties,
