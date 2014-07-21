@@ -114,6 +114,13 @@
 		.callback_result.num_properties = prop_cnt, \
 	}
 
+#define CALLBACK_SSP_REQ(pair_var, props, prop_cnt) { \
+		.callback = CB_BT_SSP_REQUEST, \
+		.callback_result.pairing_variant = pair_var, \
+		.callback_result.properties = props, \
+		.callback_result.num_properties = prop_cnt, \
+	}
+
 /*
  * NOTICE:
  * Callback enum sections should be
@@ -209,6 +216,8 @@ struct bt_action_data {
 	/* Bonding requests parameters */
 	bt_pin_code_t *pin;
 	uint8_t pin_len;
+	uint8_t ssp_variant;
+	bool accept;
 };
 
 /*
@@ -221,6 +230,8 @@ struct bt_callback_data {
 	bt_status_t status;
 	int num_properties;
 	bt_property_t *properties;
+
+	bt_ssp_variant_t pairing_variant;
 };
 
 /*
@@ -258,6 +269,7 @@ void remove_gatt_tests(void);
 /* Emulator actions */
 void emu_setup_powered_remote_action(void);
 void emu_set_pin_code_action(void);
+void emu_set_ssp_mode_action(void);
 
 /* Actions */
 void dummy_action(void);
@@ -272,3 +284,4 @@ void bt_get_device_prop_action(void);
 void bt_set_device_prop_action(void);
 void bt_create_bond_action(void);
 void bt_pin_reply_accept_action(void);
+void bt_ssp_reply_accept_action(void);

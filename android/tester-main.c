@@ -430,6 +430,12 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+		if (exp->callback_result.pairing_variant !=
+					step->callback_result.pairing_variant) {
+			tester_debug("Callback pairing result don't match");
+			return false;
+		}
+
 		if (exp->callback_result.properties &&
 				verify_property(exp->callback_result.properties,
 				exp->callback_result.num_properties,
@@ -695,6 +701,34 @@ static void pin_request_cb(bt_bdaddr_t *remote_bd_addr,
 	schedule_callback_call(step);
 }
 
+static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr,
+					bt_bdname_t *bd_name, uint32_t cod,
+					bt_ssp_variant_t pairing_variant,
+					uint32_t pass_key)
+{
+	struct step *step = g_new0(struct step, 1);
+	bt_property_t *props[3];
+
+	step->callback = CB_BT_SSP_REQUEST;
+
+	/* Utilize property verification mechanism for those */
+	props[0] = create_property(BT_PROPERTY_BDADDR, remote_bd_addr,
+						sizeof(*remote_bd_addr));
+	props[1] = create_property(BT_PROPERTY_BDNAME, bd_name->name,
+						strlen((char *) bd_name->name));
+	props[2] = create_property(BT_PROPERTY_CLASS_OF_DEVICE, &cod,
+								sizeof(cod));
+
+	step->callback_result.num_properties = 3;
+	step->callback_result.properties = repack_properties(3, props);
+
+	g_free(props[0]);
+	g_free(props[1]);
+	g_free(props[2]);
+
+	schedule_callback_call(step);
+}
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
@@ -703,7 +737,7 @@ static bt_callbacks_t bt_callbacks = {
 	.device_found_cb = device_found_cb,
 	.discovery_state_changed_cb = discovery_state_changed_cb,
 	.pin_request_cb = pin_request_cb,
-	.ssp_request_cb = NULL,
+	.ssp_request_cb = ssp_request_cb,
 	.bond_state_changed_cb = bond_state_changed_cb,
 	.acl_state_changed_cb = NULL,
 	.thread_evt_cb = NULL,
@@ -1040,6 +1074,22 @@ void emu_set_pin_code_action(void)
 	verify_step(&step, NULL);
 }
 
+void emu_set_ssp_mode_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+	struct step step;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	bthost_write_ssp_mode(bthost, 0x01);
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = BT_STATUS_SUCCESS;
+
+	verify_step(&step, NULL);
+}
+
 void dummy_action(void)
 {
 	struct step step;
@@ -1236,6 +1286,21 @@ void bt_pin_reply_accept_action(void)
 							TRUE,
 							action_data->pin_len,
 							action_data->pin);
+
+	verify_step(&step, NULL);
+}
+
+void bt_ssp_reply_accept_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *action_data = current_data_step->set_data;
+	struct step step;
+
+	memset(&step, 0, sizeof(step));
+	step.action_status = data->if_bluetooth->ssp_reply(action_data->addr,
+						action_data->ssp_variant,
+						action_data->accept, 0);
 
 	verify_step(&step, NULL);
 }
