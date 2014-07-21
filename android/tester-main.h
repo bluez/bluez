@@ -52,14 +52,14 @@
 
 #define TEST_CASE_BREDR(text, ...) { \
 		HCIEMU_TYPE_BREDR, \
-		text, \
+		"[BR/EDR] "text, \
 		sizeof((struct step[]) {__VA_ARGS__}) / sizeof(struct step), \
 		(struct step[]) {__VA_ARGS__}, \
 	}
 
 #define TEST_CASE_BREDRLE(text, ...) { \
 		HCIEMU_TYPE_BREDRLE, \
-		text, \
+		"[DUAL] "text, \
 		sizeof((struct step[]) {__VA_ARGS__}) / sizeof(struct step), \
 		(struct step[]) {__VA_ARGS__}, \
 	}
