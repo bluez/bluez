@@ -20,7 +20,7 @@
 static struct queue *list; /* List of hidhost test cases */
 
 static struct test_case test_cases[] = {
-	TEST_CASE("Hidhost Init",
+	TEST_CASE_BREDRLE("Hidhost Init",
 		ACTION_SUCCESS(dummy_action, NULL),
 	),
 };

@@ -20,7 +20,7 @@
 static struct queue *list; /* List of gatt test cases */
 
 static struct test_case test_cases[] = {
-	TEST_CASE("Gatt Init",
+	TEST_CASE_BREDRLE("Gatt Init",
 		ACTION_SUCCESS(dummy_action, NULL),
 	),
 };

@@ -1116,26 +1116,13 @@ static void generic_test_function(const void *test_data)
 	first_step->action();
 }
 
-#define test_bredr(data, test_setup, test, test_teardown) \
+#define test(data, test_setup, test, test_teardown) \
 	do { \
 		struct test_data *user; \
 		user = g_malloc0(sizeof(struct test_data)); \
 		if (!user) \
 			break; \
-		user->hciemu_type = HCIEMU_TYPE_BREDR; \
-		user->test_data = data; \
-		tester_add_full(data->title, data, test_pre_setup, \
-					test_setup, test, test_teardown, \
-					test_post_teardown, 3, user, g_free); \
-	} while (0)
-
-#define test_bredrle(data, test_setup, test, test_teardown) \
-	do { \
-		struct test_data *user; \
-		user = g_malloc0(sizeof(struct test_data)); \
-		if (!user) \
-			break; \
-		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
+		user->hciemu_type = data->emu_type; \
 		user->test_data = data; \
 		tester_add_full(data->title, data, test_pre_setup, \
 					test_setup, test, test_teardown, \
@@ -1152,28 +1139,28 @@ static void add_bluetooth_tests(void *data, void *user_data)
 {
 	struct test_case *tc = data;
 
-	test_bredrle(tc, setup, generic_test_function, teardown);
+	test(tc, setup, generic_test_function, teardown);
 }
 
 static void add_socket_tests(void *data, void *user_data)
 {
 	struct test_case *tc = data;
 
-	test_bredrle(tc, setup_socket, generic_test_function, teardown);
+	test(tc, setup_socket, generic_test_function, teardown);
 }
 
 static void add_hidhost_tests(void *data, void *user_data)
 {
 	struct test_case *tc = data;
 
-	test_bredrle(tc, setup_hidhost, generic_test_function, teardown);
+	test(tc, setup_hidhost, generic_test_function, teardown);
 }
 
 static void add_gatt_tests(void *data, void *user_data)
 {
 	struct test_case *tc = data;
 
-	test_bredrle(tc, setup_gatt, generic_test_function, teardown);
+	test(tc, setup_gatt, generic_test_function, teardown);
 }
 
 int main(int argc, char *argv[])

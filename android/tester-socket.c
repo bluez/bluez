@@ -20,7 +20,7 @@
 static struct queue *list; /* List of socket test cases */
 
 static struct test_case test_cases[] = {
-	TEST_CASE("Socket Init",
+	TEST_CASE_BREDRLE("Socket Init",
 		ACTION_SUCCESS(dummy_action, NULL),
 	),
 };

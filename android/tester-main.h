@@ -50,7 +50,15 @@
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
 
-#define TEST_CASE(text, ...) { \
+#define TEST_CASE_BREDR(text, ...) { \
+		HCIEMU_TYPE_BREDR, \
+		text, \
+		sizeof((struct step[]) {__VA_ARGS__}) / sizeof(struct step), \
+		(struct step[]) {__VA_ARGS__}, \
+	}
+
+#define TEST_CASE_BREDRLE(text, ...) { \
+		HCIEMU_TYPE_BREDRLE, \
 		text, \
 		sizeof((struct step[]) {__VA_ARGS__}) / sizeof(struct step), \
 		(struct step[]) {__VA_ARGS__}, \
@@ -212,6 +220,7 @@ struct step {
 };
 
 struct test_case {
+	uint8_t emu_type;
 	char *title;
 	uint16_t step_num;
 	const struct step const *step;
