@@ -106,6 +106,14 @@
 		.callback_result.num_properties = prop_cnt, \
 	}
 
+#define CALLBACK_BOND_STATE_FAILED(cb_res, props, prop_cnt, reason) { \
+		.callback = CB_BT_BOND_STATE_CHANGED, \
+		.callback_result.state = cb_res, \
+		.callback_result.status = reason, \
+		.callback_result.properties = props, \
+		.callback_result.num_properties = prop_cnt, \
+	}
+
 /*
  * NOTICE:
  * Callback enum sections should be
