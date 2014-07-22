@@ -15,11 +15,12 @@
  *
  */
 
+#include <pthread.h>
+#include <unistd.h>
+#include <math.h>
+
 #include "if-main.h"
 #include "../hal-utils.h"
-#include "pthread.h"
-#include "unistd.h"
-#include <math.h>
 
 audio_hw_device_t *if_audio = NULL;
 static struct audio_stream_out *stream_out = NULL;
