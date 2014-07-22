@@ -315,8 +315,9 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pixit-scpp.txt \
 				android/pixit-dis.txt \
 				android/pixit-rfcomm.txt \
+				android/pixit-spp.txt \
 				android/pts-rfcomm.txt \
-				android/bite-spp.txt \
+				android/pts-spp.txt \
 				android/pts-l2cap.txt \
 				android/pts-gap.txt \
 				android/pts-did.txt \
