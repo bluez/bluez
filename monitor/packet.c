@@ -1192,6 +1192,40 @@ static void print_air_mode(uint8_t mode)
 	print_field("Air mode: %s (0x%2.2x)", str, mode);
 }
 
+static void print_codec(uint8_t codec)
+{
+	const char *str;
+
+	switch (codec) {
+	case 0x00:
+		str = "u-law log";
+		break;
+	case 0x01:
+		str = "A-law log";
+		break;
+	case 0x02:
+		str = "CVSD";
+		break;
+	case 0x03:
+		str = "Transparent";
+		break;
+	case 0x04:
+		str = "Linear PCM";
+		break;
+	case 0x05:
+		str = "mSBC";
+		break;
+	case 0xff:
+		str = "Vendor specific";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Codec: %s (0x%2.2x)", str, codec);
+}
+
 static void print_inquiry_mode(uint8_t mode)
 {
 	const char *str;
@@ -5058,6 +5092,25 @@ static void read_data_block_size_rsp(const void *data, uint8_t size)
 	print_field("Num blocks: %d", le16_to_cpu(rsp->num_blocks));
 }
 
+static void read_local_codecs_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_codecs *rsp = data;
+	uint8_t i, num_vnd_codecs;
+
+	print_status(rsp->status);
+	print_field("Number of supported codecs: %d", rsp->num_codecs);
+
+	for (i = 0; i < rsp->num_codecs; i++)
+		print_codec(rsp->codec[i]);
+
+	num_vnd_codecs = rsp->codec[rsp->num_codecs];
+
+	print_field("Number of vendor codecs: %d", num_vnd_codecs);
+
+	packet_hexdump(data + rsp->num_codecs + 3,
+					size - rsp->num_codecs - 3);
+}
+
 static void read_failed_contact_counter_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_failed_contact_counter *cmd = data;
@@ -6205,7 +6258,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x100a, 186, "Read Data Block Size",
 				null_cmd, 0, true,
 				read_data_block_size_rsp, 7, true },
-	{ 0x100b, 237, "Read Local Supported Codecs" },
+	{ 0x100b, 237, "Read Local Supported Codecs",
+				null_cmd, 0, true,
+				read_local_codecs_rsp, 2, false },
 
 	/* OGF 5 - Status Parameter */
 	{ 0x1401, 122, "Read Failed Contact Counter",
