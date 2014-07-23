@@ -1018,8 +1018,8 @@ Pair Device Command
 				Invalid Index
 
 
-Cancel Pair Device
-==================
+Cancel Pair Device Command
+==========================
 
 	Command Code:		0x001A
 	Controller Index:	<controller id>
