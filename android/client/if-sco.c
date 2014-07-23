@@ -287,7 +287,7 @@ static void *read_thread(void *data)
 {
 	int (*filbuff_cb) (short*, void*) = feed_from_in;
 	short buffer[buffer_size_in / sizeof(short)];
-	size_t len = 0;
+	ssize_t len = 0;
 	void *cb_data = NULL;
 	FILE *out = data;
 
@@ -311,6 +311,10 @@ static void *read_thread(void *data)
 		pthread_mutex_unlock(&state_mutex);
 
 		len = filbuff_cb(buffer, cb_data);
+		if (len < 0) {
+			haltest_error("Error receiving SCO data");
+			break;
+		}
 
 		haltest_info("Read %zd bytes\n", len);
 
