@@ -451,6 +451,8 @@ static void read_p(int argc, const char **argv)
 		haltest_error("Cannot create playback thread!\n");
 		goto failed;
 	}
+
+	return;
 failed:
 	if (out)
 		fclose(out);
