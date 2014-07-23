@@ -473,15 +473,17 @@ static void stop_p(int argc, const char **argv)
 		return;
 	}
 
+	if (stream_out) {
+		pthread_mutex_lock(&outstream_mutex);
+		stream_out->common.standby(&stream_out->common);
+		pthread_mutex_unlock(&outstream_mutex);
+	}
+
 	current_state = STATE_STOPPING;
 	pthread_mutex_unlock(&state_mutex);
 
 	pthread_join(play_thread, NULL);
 	play_thread = 0;
-
-	pthread_mutex_lock(&outstream_mutex);
-	stream_out->common.standby(&stream_out->common);
-	pthread_mutex_unlock(&outstream_mutex);
 
 	haltest_info("Ended %s\n", __func__);
 }
