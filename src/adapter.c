@@ -3450,10 +3450,15 @@ void adapter_auto_connect_add(struct btd_adapter *adapter,
 	bdaddr = device_get_address(device);
 	bdaddr_type = btd_device_get_bdaddr_type(device);
 
+	if (bdaddr_type == BDADDR_BREDR) {
+		DBG("auto-connection feature is not avaiable for BR/EDR");
+		return;
+	}
+
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
 	cp.addr.type = bdaddr_type;
-	cp.action = 0x01;
+	cp.action = 0x02;
 
 	id = mgmt_send(adapter->mgmt, MGMT_OP_ADD_DEVICE,
 			adapter->dev_id, sizeof(cp), &cp, add_device_complete,
@@ -3504,6 +3509,11 @@ void adapter_auto_connect_remove(struct btd_adapter *adapter,
 
 	bdaddr = device_get_address(device);
 	bdaddr_type = btd_device_get_bdaddr_type(device);
+
+	if (bdaddr_type == BDADDR_BREDR) {
+		DBG("auto-connection feature is not avaiable for BR/EDR");
+		return;
+	}
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
