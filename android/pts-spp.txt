@@ -20,6 +20,8 @@ TC_DevB_APP_BV_02_C	PASS	haltest: socket listen BTSOCK_RFCOMM
 				<srvc_name> <uuid>
 TC_APP_BV_03_C		N/A	Missing in PTS
 				PTS issue #12388
+				Note: tests BV_03 : BV_6 currently not supported
+				ETA: December 2014 (PTS 6.0)
 TC_APP_BV_04_C		N/A	Missing in PTS
 TC_APP_BV_05_C		N/A	Missing in PTS
 TC_APP_BV_06_C		N/A	Missing in PTS
