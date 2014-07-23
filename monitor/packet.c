@@ -5301,6 +5301,61 @@ static void write_remote_amp_assoc_rsp(const void *data, uint8_t size)
 	print_phy_handle(rsp->phy_handle);
 }
 
+static void get_mws_transport_config_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_get_mws_transport_config *rsp = data;
+	uint8_t sum_baud_rates = 0;
+	int i;
+
+	print_status(rsp->status);
+	print_field("Number of transports: %d", rsp->num_transports);
+
+	for (i = 0; i < rsp->num_transports; i++) {
+		uint8_t transport = rsp->transport[0];
+		uint8_t num_baud_rates = rsp->transport[1];
+		const char *str;
+
+		switch (transport) {
+		case 0x00:
+			str = "Disbabled";
+			break;
+		case 0x01:
+			str = "WCI-1";
+			break;
+		case 0x02:
+			str = "WCI-2";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  Transport layer: %s (0x%2.2x)", str, transport);
+		print_field("  Number of baud rates: %d", num_baud_rates);
+
+		sum_baud_rates += num_baud_rates;
+	}
+
+	print_field("Baud rate list: %u entr%s", sum_baud_rates,
+					sum_baud_rates == 1 ? "y" : "ies");
+
+	for (i = 0; i < sum_baud_rates; i++) {
+		uint32_t to_baud_rate, from_baud_rate;
+
+		to_baud_rate = get_le32(data + 2 +
+					rsp->num_transports * 2 + i * 4);
+		from_baud_rate = get_le32(data + 2 +
+						rsp->num_transports * 2 +
+						sum_baud_rates * 4 + i * 4);
+
+		print_field("  Bluetooth to MWS: %d", to_baud_rate);
+		print_field("  MWS to Bluetooth: %d", from_baud_rate);
+	}
+
+	packet_hexdump(data + 2 + rsp->num_transports * 2 + sum_baud_rates * 8,
+		size - 2 - rsp->num_transports * 2 - sum_baud_rates * 8);
+}
+
 static void set_triggered_clock_capture_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_set_triggered_clock_capture *cmd = data;
@@ -6293,7 +6348,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x140b, 183, "Write Remote AMP ASSOC",
 				write_remote_amp_assoc_cmd, 6, false,
 				write_remote_amp_assoc_rsp, 2, true },
-	{ 0x140c, 243, "Get MWS Transport Layer Configuration" },
+	{ 0x140c, 243, "Get MWS Transport Layer Configuration",
+				null_cmd, 0, true,
+				get_mws_transport_config_rsp, 2, false },
 	{ 0x140d, 245, "Set Triggered Clock Capture",
 				set_triggered_clock_capture_cmd, 6, true,
 				status_rsp, 1, true },

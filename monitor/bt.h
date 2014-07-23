@@ -1603,6 +1603,13 @@ struct bt_hci_rsp_write_remote_amp_assoc {
 	uint8_t  phy_handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_GET_MWS_TRANSPORT_CONFIG	0x140c
+struct bt_hci_rsp_get_mws_transport_config {
+	uint8_t  status;
+	uint8_t  num_transports;
+	uint8_t  transport[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_SET_TRIGGERED_CLOCK_CAPTURE	0x140d
 struct bt_hci_cmd_set_triggered_clock_capture {
 	uint16_t handle;
