@@ -1870,6 +1870,7 @@ Add Device Command
 	Possible values for the Action parameter:
 		0	Background scan for device
 		1	Allow incoming connection
+		2	Auto-connect remote device
 
 	With the Action 0, when the device is found, a new Device Found
 	event will be send indicating this device is available. This
@@ -1877,9 +1878,13 @@ Add Device Command
 
 	With the Action 1, the device is allowed to connect. For BR/EDR
 	address type this means an incoming connection. For LE Public
-	and LE Random address types, background scanning is used to
-	find the device and when avaiable it will be connected. If
-	successful a Device Connected event will be send.
+	and LE Random address types, a connection will be established
+	to devices using directed advertising. If successful a Device
+	Connected event will be send.
+
+	With the Action 2, when the device is found, it will be connected
+	and if successful a Device Connected event will be send. This
+	action is only valid for LE Public and LE Random address types.
 
 	When a device is blocked using Block Device command, then it is
 	valid to add the device here, but all actions will be ignored
