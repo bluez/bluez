@@ -1192,7 +1192,7 @@ static void print_air_mode(uint8_t mode)
 	print_field("Air mode: %s (0x%2.2x)", str, mode);
 }
 
-static void print_codec(uint8_t codec)
+static void print_codec(const char *label, uint8_t codec)
 {
 	const char *str;
 
@@ -1223,7 +1223,7 @@ static void print_codec(uint8_t codec)
 		break;
 	}
 
-	print_field("Codec: %s (0x%2.2x)", str, codec);
+	print_field("%s: %s (0x%2.2x)", label, str, codec);
 }
 
 static void print_inquiry_mode(uint8_t mode)
@@ -5101,7 +5101,7 @@ static void read_local_codecs_rsp(const void *data, uint8_t size)
 	print_field("Number of supported codecs: %d", rsp->num_codecs);
 
 	for (i = 0; i < rsp->num_codecs; i++)
-		print_codec(rsp->codec[i]);
+		print_codec("  Codec", rsp->codec[i]);
 
 	num_vnd_codecs = rsp->codec[rsp->num_codecs];
 
