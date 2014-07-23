@@ -996,7 +996,7 @@ Pair Device Command
 	connection (as KeyboardDisplay is specific to SMP).
 
 	The Address and Address_Type of the return parameters will
-	return the identity address if know. In case of resolvable
+	return the identity address if known. In case of resolvable
 	random address given as command parameters and the remote
 	provides an identity resolving key, the return parameters
 	will provide the resolved address.
