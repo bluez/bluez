@@ -6260,7 +6260,7 @@ static const struct opcode_data opcode_table[] = {
 				read_data_block_size_rsp, 7, true },
 	{ 0x100b, 237, "Read Local Supported Codecs",
 				null_cmd, 0, true,
-				read_local_codecs_rsp, 2, false },
+				read_local_codecs_rsp, 3, false },
 
 	/* OGF 5 - Status Parameter */
 	{ 0x1401, 122, "Read Failed Contact Counter",
