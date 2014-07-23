@@ -2798,7 +2798,7 @@ static void cmd_del_device(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'h':
 		default:
-			add_device_usage();
+			del_device_usage();
 			exit(EXIT_SUCCESS);
 		}
 	}
