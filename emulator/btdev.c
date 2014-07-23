@@ -380,6 +380,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[18] |= 0x80;	/* IO Capability Request Reply */
 	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
 	btdev->commands[29] |= 0x20;	/* Read Local Supported Codecs */
+	btdev->commands[30] |= 0x08;	/* Get MWS Transport Layer Config */
 }
 
 static void set_le_commands(struct btdev *btdev)
@@ -1834,6 +1835,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_local_codecs *rlsc;
 	struct bt_hci_rsp_read_local_amp_info rlai;
 	struct bt_hci_rsp_read_local_amp_assoc rlaa_rsp;
+	struct bt_hci_rsp_get_mws_transport_config *gmtc;
 	struct bt_hci_rsp_le_read_buffer_size lrbs;
 	struct bt_hci_rsp_le_read_local_features lrlf;
 	struct bt_hci_rsp_le_read_adv_tx_power lratp;
@@ -2579,6 +2581,15 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		memset(rlaa_rsp.assoc_fragment + 1, 0,
 					sizeof(rlaa_rsp.assoc_fragment) - 1);
 		cmd_complete(btdev, opcode, &rlaa_rsp, sizeof(rlaa_rsp));
+		break;
+
+	case BT_HCI_CMD_GET_MWS_TRANSPORT_CONFIG:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		gmtc = alloca(sizeof(*gmtc));
+		gmtc->status = BT_HCI_ERR_SUCCESS;
+		gmtc->num_transports = 0x00;
+		cmd_complete(btdev, opcode, gmtc, sizeof(*gmtc));
 		break;
 
 	case BT_HCI_CMD_SET_EVENT_MASK_PAGE2:
