@@ -364,6 +364,9 @@ Set Connectable Command
 	When switching connectable off, it will expire a discoverable
 	setting with a timeout.
 
+	This setting does not affect known devices from Add Device
+	command. These devices are always allowed to connect.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -1856,32 +1859,35 @@ Add Device Command
 				Address_Type (1 Octet)
 
 	This command is used to add a device to the action list. The
-	action list allows scanning for devices and auto-connection
-	to known devices.
+	action list allows scanning for devices and enables incoming
+	connections from known devices.
 
 	Possible values for the Address_Type parameter:
-		0	Reserved (not in use)
+		0	BR/EDR
 		1	LE Public
 		2	LE Random
 
 	Possible values for the Action parameter:
 		0	Background scan for device
-		1	Auto-connect device
+		1	Allow incoming connection
 
 	With the Action 0, when the device is found, a new Device Found
-	event will be send indicating this device is available.
+	event will be send indicating this device is available. This
+	action is only valid for LE Public and LE Random address types.
 
-	With the Action 1, when the device is found, it will be connected
-	and if successful a Device Connected event will be send.
-
-	Devices using directed advertising will be automatically connected
-	if the connectable setting is enabled. If connectable is not set,
-	then devices using undirected advertising will only connect when
-	using the auto-connect action.
+	With the Action 1, the device is allowed to connect. For BR/EDR
+	address type this means an incoming connection. For LE Public
+	and LE Random address types, background scanning is used to
+	find the device and when avaiable it will be connected. If
+	successful a Device Connected event will be send.
 
 	When a device is blocked using Block Device command, then it is
 	valid to add the device here, but all actions will be ignored
 	until the device is unblocked.
+
+	Devices added with Action 1 are allowed to connect even if the
+	connectable setting is off. This acts as list of known trusted
+	devices.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -1908,7 +1914,7 @@ Remove Device Command
 	previously added by using the Add Device command.
 
 	Possible values for the Address_Type parameter:
-		0	Reserved (not in use)
+		0	BR/EDR
 		1	LE Public
 		2	LE Random
 
@@ -2742,7 +2748,7 @@ Device Added Event
 	Add Device command.
 
 	Possible values for the Address_Type parameter:
-		0	Reserved (not in use)
+		0	BR/EDR
 		1	LE Public
 		2	LE Random
 
@@ -2762,7 +2768,7 @@ Device Removed Event
 	Remove Device command.
 
 	Possible values for the Address_Type parameter:
-		0	Reserved (not in use)
+		0	BR/EDR
 		1	LE Public
 		2	LE Random
 
