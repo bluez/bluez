@@ -300,6 +300,34 @@ methods:
 client->set_adv_data               missing kernel support for vendor data
 client->connect                    is_direct parameter is ignored
 
+Audio SCO HAL
+=============
+
+When Bluetooth chip's audio is not wired directly to device audio, Audio SCO
+HAL is used to enable SCO support. It needs to be loaded by AudioFlinger
+following audio_policy.cong configuration. Example of configuration is shown
+below:
+
+...
+  sco {
+    outputs {
+      sco {
+        sampling_rates 8000|44100
+        channel_masks AUDIO_CHANNEL_OUT_STEREO
+        formats AUDIO_FORMAT_PCM_16_BIT
+        devices AUDIO_DEVICE_OUT_ALL_SCO
+      }
+    }
+    inputs {
+      sco {
+        sampling_rates 8000|44100
+        channel_masks AUDIO_CHANNEL_IN_MONO
+        formats AUDIO_FORMAT_PCM_16_BIT
+        devices AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET
+      }
+    }
+  }
+...
 
 Known Android issues
 ====================
