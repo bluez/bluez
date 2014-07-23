@@ -29,7 +29,7 @@ C.4: Optional IF TSPC_GATT_1_2 is supported, otherwise Excluded
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_GATT_2_1	False (*)	Attribute Protocol Supported over BR/EDR
+TSPC_GATT_2_1	True		Attribute Protocol Supported over BR/EDR
 					(L2CAP fixed channel support) (C.1)
 TSPC_GATT_2_2	True		Attribute Protocol Supported over LE (C.2)
 -------------------------------------------------------------------------------
@@ -221,7 +221,7 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_GATT_6_2	True		Discover GATT Services using Service Discovery
 					Profile (C.1)
-TSPC_GATT_6_3	False (*)	Publish SDP record for GATT services support
+TSPC_GATT_6_3	True		Publish SDP record for GATT services support
 					via BR/EDR (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory IF TSPC_GATT_1_1 is supported, otherwise Excluded
