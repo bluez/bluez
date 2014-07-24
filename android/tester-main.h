@@ -76,6 +76,12 @@
 		.set_data = data_set, \
 	}
 
+#define ACTION(status, act_fun, data_set) { \
+		.action_status = status, \
+		.action = act_fun, \
+		.set_data = data_set, \
+	}
+
 #define CALLBACK_STATE(cb, cb_res) { \
 		.callback = cb, \
 		.callback_result.state = cb_res, \
@@ -218,6 +224,14 @@ struct bt_action_data {
 	uint8_t pin_len;
 	uint8_t ssp_variant;
 	bool accept;
+
+	/* Socket HAL specific params */
+	btsock_type_t sock_type;
+	int channel;
+	const uint8_t *service_uuid;
+	const char *service_name;
+	int flags;
+	int *fd;
 };
 
 /*
