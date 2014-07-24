@@ -1029,15 +1029,26 @@ static void emu_connectable_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
 {
-	struct step *step = g_new0(struct step, 1);
+	struct step *step;
+	struct test_data *data = user_data;
 
 	switch (opcode) {
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
+		break;
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+		/*
+		 * For BREDRLE emulator we want to verify step after scan
+		 * enable and not after le_set_adv_enable
+		 */
+		if (data->hciemu_type == HCIEMU_TYPE_BREDRLE)
+			return;
+
 		break;
 	default:
 		return;
 	}
+
+	step = g_new0(struct step, 1);
 
 	if (status) {
 		tester_warn("Emulated remote setup failed.");
@@ -1061,7 +1072,8 @@ void emu_setup_powered_remote_action(void)
 	if ((data->hciemu_type == HCIEMU_TYPE_LE) ||
 				(data->hciemu_type == HCIEMU_TYPE_BREDRLE))
 		bthost_set_adv_enable(bthost, 0x01, 0x02);
-	else
+
+	if (data->hciemu_type != HCIEMU_TYPE_LE)
 		bthost_write_scan_enable(bthost, 0x03);
 }
 
