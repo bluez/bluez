@@ -266,6 +266,9 @@ void remove_hidhost_tests(void);
 struct queue *get_gatt_tests(void);
 void remove_gatt_tests(void);
 
+/* Generic tester API */
+void schedule_action_verification(struct step *step);
+
 /* Emulator actions */
 void emu_setup_powered_remote_action(void);
 void emu_set_pin_code_action(void);

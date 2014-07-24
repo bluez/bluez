@@ -560,7 +560,7 @@ static void schedule_callback_call(struct step *step)
 	g_idle_add(verify_callback, step);
 }
 
-static void schedule_action_verification(struct step *step)
+void schedule_action_verification(struct step *step)
 {
 	g_idle_add_full(G_PRIORITY_HIGH_IDLE, verify_action, step, NULL);
 }
