@@ -49,6 +49,16 @@ static struct bt_action_data btsock_param_socktype_l2cap = {
 	.fd = &got_fd_result,
 };
 
+static struct bt_action_data btsock_param_channel_0 = {
+	.addr = &bdaddr_dummy,
+	.sock_type = BTSOCK_RFCOMM,
+	.channel = 0,
+	.service_uuid = NULL,
+	.service_name = "Test service",
+	.flags = 0,
+	.fd = &got_fd_result,
+};
+
 static void socket_listen_action(void)
 {
 	struct test_data *data = tester_get_data();
@@ -85,6 +95,14 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
 		ACTION(BT_STATUS_UNSUPPORTED, socket_listen_action,
 						&btsock_param_socktype_l2cap),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("Socket Listen - Invalid: chan, uuid",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION(BT_STATUS_PARM_INVALID, socket_listen_action,
+						&btsock_param_channel_0),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
