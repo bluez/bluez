@@ -340,16 +340,10 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 		size = ev->u.output.size;
 	}
 
-	switch (ev->type) {
-	case UHID_OUTPUT:
-		type = HOG_REPORT_TYPE_OUTPUT;
-		break;
-	case UHID_FEATURE:
-		type = HOG_REPORT_TYPE_FEATURE;
-		break;
-	default:
+	if (ev->type != UHID_OUTPUT)
 		return;
-	}
+
+	type = HOG_REPORT_TYPE_OUTPUT;
 
 	l = g_slist_find_custom(hogdev->reports, GUINT_TO_POINTER(type),
 							report_type_cmp);
@@ -512,7 +506,6 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	bt_uhid_register(hogdev->uhid, UHID_OUTPUT, forward_report, hogdev);
-	bt_uhid_register(hogdev->uhid, UHID_FEATURE, forward_report, hogdev);
 }
 
 static void info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
