@@ -234,6 +234,13 @@ struct bt_action_data {
 	int *fd;
 };
 
+/* bthost's l2cap server setup parameters */
+struct emu_set_l2cap_data {
+	uint16_t psm;
+	bthost_l2cap_connect_cb func;
+	void *user_data;
+};
+
 /*
  * Callback data structure should be enhanced with data
  * returned by callbacks. It's used for test case step
@@ -287,6 +294,8 @@ void schedule_action_verification(struct step *step);
 void emu_setup_powered_remote_action(void);
 void emu_set_pin_code_action(void);
 void emu_set_ssp_mode_action(void);
+void emu_add_l2cap_server_action(void);
+void emu_add_rfcomm_server_action(void);
 
 /* Actions */
 void dummy_action(void);

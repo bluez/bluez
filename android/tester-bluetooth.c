@@ -14,7 +14,9 @@
  * limitations under the License.
  *
  */
+#include <stdbool.h>
 
+#include "emulator/bthost.h"
 #include "tester-main.h"
 
 static struct queue *list; /* List of bluetooth test cases */

@@ -14,10 +14,11 @@
  * limitations under the License.
  *
  */
-
-#include "tester-main.h"
+#include <stdbool.h>
 
 #include "emulator/bthost.h"
+#include "tester-main.h"
+
 #include "monitor/bt.h"
 
 static char exec_dir[PATH_MAX + 1];
@@ -1113,6 +1114,65 @@ void emu_set_ssp_mode_action(void)
 	bthost = hciemu_client_get_host(data->hciemu);
 
 	bthost_write_ssp_mode(bthost, 0x01);
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
+void emu_add_l2cap_server_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct emu_set_l2cap_data *l2cap_data = current_data_step->set_data;
+	struct bthost *bthost;
+	struct step *step = g_new0(struct step, 1);
+
+	if (!l2cap_data) {
+		tester_warn("Invalid l2cap_data params");
+		return;
+	}
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	bthost_add_l2cap_server(bthost, l2cap_data->psm, l2cap_data->func,
+							l2cap_data->user_data);
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
+static void rfcomm_connect_cb(uint16_t handle, uint16_t cid, void *user_data,
+								bool status)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	tester_print("Connect handle %d, cid %d cb status: %d", handle, cid,
+									status);
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
+void emu_add_rfcomm_server_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *rfcomm_data = current_data_step->set_data;
+	struct bthost *bthost;
+	struct step *step = g_new0(struct step, 1);
+
+	if (!rfcomm_data) {
+		tester_warn("Invalid l2cap_data params");
+		return;
+	}
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	bthost_add_rfcomm_server(bthost, rfcomm_data->channel,
+						rfcomm_connect_cb, data);
 
 	step->action_status = BT_STATUS_SUCCESS;
 
