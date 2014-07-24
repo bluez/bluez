@@ -136,6 +136,29 @@ done:
 	schedule_action_verification(step);
 }
 
+static void socket_close_channel_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *action_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	if (!*action_data->fd) {
+		tester_warn("Ups no action_data->fd");
+
+		step->action_status = BT_STATUS_FAIL;
+		goto done;
+	}
+
+	close(*action_data->fd);
+	*action_data->fd = -1;
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+done:
+	schedule_action_verification(step);
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("Socket Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -175,6 +198,19 @@ static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("Socket Listen - Check returned channel",
 		ACTION_SUCCESS(bluetooth_enable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(socket_listen_action, &btsock_param),
+		ACTION_SUCCESS(socket_verify_fd_action, &btsock_param),
+		ACTION_SUCCESS(socket_verify_channel_action, &btsock_param),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("Socket Listen - Close and Listen again",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(socket_listen_action, &btsock_param),
+		ACTION_SUCCESS(socket_verify_fd_action, &btsock_param),
+		ACTION_SUCCESS(socket_verify_channel_action, &btsock_param),
+		ACTION_SUCCESS(socket_close_channel_action, &btsock_param),
 		ACTION_SUCCESS(socket_listen_action, &btsock_param),
 		ACTION_SUCCESS(socket_verify_fd_action, &btsock_param),
 		ACTION_SUCCESS(socket_verify_channel_action, &btsock_param),
