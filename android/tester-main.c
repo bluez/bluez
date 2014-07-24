@@ -543,7 +543,14 @@ static gboolean verify_action(gpointer user_data)
 
 static gboolean verify_callback(gpointer user_data)
 {
+	struct test_data *data = tester_get_data();
 	struct step *step = user_data;
+
+	/* Return if callback came when all steps are already verified */
+	if (queue_isempty(data->steps)) {
+		destroy_callback_step(step);
+		return FALSE;
+	}
 
 	/*
 	 * TODO: This may call action from next step before callback data
