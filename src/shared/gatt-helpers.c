@@ -852,13 +852,81 @@ bool bt_gatt_discover_descriptors(struct bt_att *att,
 	return true;
 }
 
+struct read_op {
+	bt_gatt_read_callback_t callback;
+	void *user_data;
+	bt_gatt_destroy_func_t destroy;
+};
+
+static void destroy_read_op(void *data)
+{
+	struct read_op *op = data;
+
+	if (op->destroy)
+		op->destroy(op->user_data);
+
+	free(op);
+}
+
+static void read_cb(uint8_t opcode, const void *pdu, uint16_t length,
+								void *user_data)
+{
+	struct read_op *op = user_data;
+	bool success;
+	uint8_t att_ecode = 0;
+	const uint8_t *value = NULL;
+	uint16_t value_len = 0;
+
+	if (opcode == BT_ATT_OP_ERROR_RSP) {
+		success = false;
+		att_ecode = process_error(pdu, length);
+		goto done;
+	}
+
+	if (opcode != BT_ATT_OP_READ_RSP || (!pdu && length)) {
+		success = false;
+		goto done;
+	}
+
+	success = true;
+	value_len = length;
+	if (value_len)
+		value = pdu;
+
+done:
+	if (op->callback)
+		op->callback(success, att_ecode, value, length, op->user_data);
+}
+
 bool bt_gatt_read_value(struct bt_att *att, uint16_t value_handle,
 					bt_gatt_read_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy)
 {
-	/* TODO */
-	return false;
+	struct read_op *op;
+	uint8_t pdu[2];
+
+	if (!att)
+		return false;
+
+	op = new0(struct read_op, 1);
+	if (!op)
+		return false;
+
+	op->callback = callback;
+	op->user_data = user_data;
+	op->destroy = destroy;
+
+	put_le16(value_handle, pdu);
+
+	if (!bt_att_send(att, BT_ATT_OP_READ_REQ, pdu, sizeof(pdu),
+							read_cb, op,
+							destroy_read_op)) {
+		free(op);
+		return false;
+	}
+
+	return true;
 }
 
 bool bt_gatt_read_long_value(struct bt_att *att,
