@@ -2428,60 +2428,104 @@ void packet_print_features_ll(const uint8_t *features)
 	print_features(0, features, 0x01);
 }
 
+#define LE_STATE_SCAN_ADV		0x0001
+#define LE_STATE_CONN_ADV		0x0002
+#define LE_STATE_NONCONN_ADV		0x0004
+#define LE_STATE_HIGH_DIRECT_ADV	0x0008
+#define LE_STATE_LOW_DIRECT_ADV		0x0010
+#define LE_STATE_ACTIVE_SCAN		0x0020
+#define LE_STATE_PASSIVE_SCAN		0x0040
+#define LE_STATE_INITIATING		0x0080
+#define LE_STATE_CONN_MASTER		0x0100
+#define LE_STATE_CONN_SLAVE		0x0200
+#define LE_STATE_MASTER_MASTER		0x0400
+#define LE_STATE_SLAVE_SLAVE		0x0800
+#define LE_STATE_MASTER_SLAVE		0x1000
+
 static const struct {
 	uint8_t bit;
 	const char *str;
-} le_states_table[] = {
-	{  0, "Non-connectable Advertising State"			},
-	{  1, "Scannable Advertising State"				},
-	{  2, "Connectable Advertising State"				},
-	{  3, "Directed Advertising State"				},
-	{  4, "Passive Scanning State"					},
-	{  5, "Active Scanning State"					},
-	{  6, "Initiating State and Connection State in Master Role"	},
-	{  7, "Connection State in Slave Role"				},
-	{  8, "Non-connectable Advertising State and "
-				"Passive Scanning State combination"	},
-	{  9, "Scannable Advertising State and "
-				"Passive Scanning State combination"	},
-	{ 10, "Connectable Advertising State and "
-				"Passive Scanning State combination"	},
-	{ 11, "Directed Advertising State and "
-				"Passive Scanning State combination"	},
-	{ 12, "Non-connectable Advertising State and "
-				"Active Scanning State combination"	},
-	{ 13, "Scannable Advertising State and "
-				"Active Scanning State combination"	},
-	{ 14, "Connectable Advertising State and "
-				"Active Scanning State combination"	},
-	{ 15, "Directed Advertising State and "
-				"Active Scanning State combination"	},
-	{ 16, "Non-connectable Advertising State and "
-				"Initiating State combination"		},
-	{ 17, "Scannable Advertising State and "
-				"Initiating State combination"		},
-	{ 18, "Non-connectable Advertising State and "
-				"Mater Role combination"		},
-	{ 19, "Scannable Advertising State and "
-				"Master Role combination"		},
-	{ 20, "Non-connectable Advertising State and "
-				"Slave Role combination"		},
-	{ 21, "Scannable Advertising State and "
-				"Slave Role combination"		},
-	{ 22, "Passive Scanning State and Initiating State combination"	},
-	{ 23, "Active Scanning State and Initiating State combination"	},
-	{ 24, "Passive Scanning State and Master Role combination"	},
-	{ 25, "Active Scanning State and Master Role combination"	},
-	{ 26, "Passive Scanning State and Slave Role combination"	},
-	{ 27, "Active Scanning State and Slave Role combination"	},
-	{ 28, "Initiating State and Master Role combination"		},
+} le_states_desc_table[] = {
+	{  0, "Scannable Advertising State"			},
+	{  1, "Connectable Advertising State"			},
+	{  2, "Non-connectable Advertising State"		},
+	{  3, "High Duty Cycle Directed Advertising State"	},
+	{  4, "Low Duty Cycle Directed Advertising State"	},
+	{  5, "Active Scanning State"				},
+	{  6, "Passive Scanning State"				},
+	{  7, "Initiating State"				},
+	{  8, "Connection State (Master Role)"			},
+	{  9, "Connection State (Slave Role)"			},
+	{ 10, "Master Role & Master Role"			},
+	{ 11, "Slave Role & Slave Role"				},
+	{ 12, "Master Role & Slave Role"			},
+	{ }
+};
+
+static const struct {
+	uint8_t bit;
+	uint16_t states;
+} le_states_comb_table[] = {
+	{  0, LE_STATE_NONCONN_ADV				},
+	{  1, LE_STATE_SCAN_ADV					},
+	{  2, LE_STATE_CONN_ADV					},
+	{  3, LE_STATE_HIGH_DIRECT_ADV				},
+	{  4, LE_STATE_PASSIVE_SCAN				},
+	{  5, LE_STATE_ACTIVE_SCAN				},
+	{  6, LE_STATE_INITIATING | LE_STATE_CONN_MASTER	},
+	{  7, LE_STATE_CONN_SLAVE				},
+	{  8, LE_STATE_PASSIVE_SCAN | LE_STATE_NONCONN_ADV	},
+	{  9, LE_STATE_PASSIVE_SCAN | LE_STATE_SCAN_ADV		},
+	{ 10, LE_STATE_PASSIVE_SCAN | LE_STATE_CONN_ADV		},
+	{ 11, LE_STATE_PASSIVE_SCAN | LE_STATE_HIGH_DIRECT_ADV	},
+	{ 12, LE_STATE_ACTIVE_SCAN | LE_STATE_NONCONN_ADV	},
+	{ 13, LE_STATE_ACTIVE_SCAN | LE_STATE_SCAN_ADV		},
+	{ 14, LE_STATE_ACTIVE_SCAN | LE_STATE_CONN_ADV		},
+	{ 15, LE_STATE_ACTIVE_SCAN | LE_STATE_HIGH_DIRECT_ADV	},
+	{ 16, LE_STATE_INITIATING | LE_STATE_NONCONN_ADV	},
+	{ 17, LE_STATE_INITIATING | LE_STATE_SCAN_ADV		},
+	{ 18, LE_STATE_CONN_MASTER | LE_STATE_NONCONN_ADV	},
+	{ 19, LE_STATE_CONN_MASTER | LE_STATE_SCAN_ADV		},
+	{ 20, LE_STATE_CONN_SLAVE | LE_STATE_NONCONN_ADV	},
+	{ 21, LE_STATE_CONN_SLAVE | LE_STATE_SCAN_ADV		},
+	{ 22, LE_STATE_INITIATING | LE_STATE_PASSIVE_SCAN	},
+	{ 23, LE_STATE_INITIATING | LE_STATE_ACTIVE_SCAN	},
+	{ 24, LE_STATE_CONN_MASTER | LE_STATE_PASSIVE_SCAN	},
+	{ 25, LE_STATE_CONN_MASTER | LE_STATE_ACTIVE_SCAN	},
+	{ 26, LE_STATE_CONN_SLAVE | LE_STATE_PASSIVE_SCAN	},
+	{ 27, LE_STATE_CONN_SLAVE | LE_STATE_ACTIVE_SCAN	},
+	{ 28, LE_STATE_INITIATING | LE_STATE_CONN_MASTER |
+					LE_STATE_MASTER_MASTER	},
+	{ 29, LE_STATE_LOW_DIRECT_ADV				},
+	{ 30, LE_STATE_LOW_DIRECT_ADV | LE_STATE_PASSIVE_SCAN	},
+	{ 31, LE_STATE_LOW_DIRECT_ADV | LE_STATE_ACTIVE_SCAN	},
+	{ 32, LE_STATE_INITIATING | LE_STATE_CONN_ADV |
+					LE_STATE_MASTER_SLAVE	},
+	{ 33, LE_STATE_INITIATING | LE_STATE_HIGH_DIRECT_ADV |
+					LE_STATE_MASTER_SLAVE	},
+	{ 34, LE_STATE_INITIATING | LE_STATE_LOW_DIRECT_ADV |
+					LE_STATE_MASTER_SLAVE	},
+	{ 35, LE_STATE_CONN_MASTER | LE_STATE_CONN_ADV |
+					LE_STATE_MASTER_SLAVE	},
+	{ 36, LE_STATE_CONN_MASTER | LE_STATE_HIGH_DIRECT_ADV |
+					LE_STATE_MASTER_SLAVE	},
+	{ 37, LE_STATE_CONN_MASTER | LE_STATE_LOW_DIRECT_ADV |
+					LE_STATE_MASTER_SLAVE	},
+	{ 38, LE_STATE_CONN_SLAVE | LE_STATE_CONN_ADV |
+					LE_STATE_MASTER_SLAVE	},
+	{ 39, LE_STATE_CONN_SLAVE | LE_STATE_HIGH_DIRECT_ADV |
+					LE_STATE_SLAVE_SLAVE	},
+	{ 40, LE_STATE_CONN_SLAVE| LE_STATE_LOW_DIRECT_ADV |
+					LE_STATE_SLAVE_SLAVE	},
+	{ 41, LE_STATE_INITIATING | LE_STATE_CONN_SLAVE |
+					LE_STATE_MASTER_SLAVE	},
 	{ }
 };
 
 static void print_le_states(const uint8_t *states_array)
 {
 	uint64_t mask, states = 0;
-	int i;
+	int i, n;
 
 	for (i = 0; i < 8; i++)
 		states |= ((uint64_t) states_array[i]) << (i * 8);
@@ -2490,11 +2534,26 @@ static void print_le_states(const uint8_t *states_array)
 
 	mask = states;
 
-	for (i = 0; le_states_table[i].str; i++) {
-		if (states & (((uint64_t) 1) << le_states_table[i].bit)) {
-			print_field("  %s", le_states_table[i].str);
-			mask &= ~(((uint64_t) 1) << le_states_table[i].bit);
+	for (i = 0; le_states_comb_table[i].states; i++) {
+		uint64_t val = (((uint64_t) 1) << le_states_comb_table[i].bit);
+		const char *str[3] = { NULL, };
+		int num = 0;
+
+		if (!(states & val))
+			continue;
+
+		for (n = 0; n < 16; n++) {
+			if (le_states_comb_table[i].states & (1 << n))
+				str[num++] = le_states_desc_table[n].str;
 		}
+
+		if (num > 0) {
+			print_field("  %s", str[0]);
+			for (n = 1; n < num; n++)
+				print_field("    and %s", str[n]);
+		}
+
+		mask &= ~val;
 	}
 
 	if (mask)
