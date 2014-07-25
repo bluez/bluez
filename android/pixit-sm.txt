@@ -1,6 +1,6 @@
 SM PIXIT for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -67,4 +67,6 @@ TSPX_use_implicit_send					TRUE
 TSPX_use_dynamic_pin					FALSE
 TSPX_iut_SDU_size_in_bytes				144
 TSPX_secure_simple_pairing_pass_key_confirmation	FALSE
+TSPX_Min_Encryption_Key_Length				07
+TSPX_Bonding_Flags					00
 -------------------------------------------------------------------------------

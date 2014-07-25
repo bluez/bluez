@@ -1,7 +1,7 @@
 PTS test results for SM
 
-PTS version: 5.1
-Tested: 14-May-2014
+PTS version: 5.2
+Tested: 25-July-2014
 Android version: 4.4.2
 kernel version: 3.17
 
@@ -16,8 +16,8 @@ NONE	test result is none
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
 TC_PROT_BV_01_C		PASS
-TC_PROT_BV_02_C		PASS
-				btmgmt advertising on
+TC_PROT_BV_02_C		PASS	btmgmt advertising on
+				btmgmt pair -c 0x03 -t 0x01 <addr>
 TC_JW_BV_01_C		PASS	btmgmt pairable off
 				btmgmt pair -c 0x03 -t 0x01 <addr>
 TC_JW_BV_02_C		PASS
@@ -46,7 +46,8 @@ TC_PKE_BV_05_C		PASS	btmgmt io-cap 0x04
 				l2test -r -J4 -AES -V le_public
 TC_PKE_BI_01_C		PASS	btmgmt pair -c 0x04 -t 0x01 <addr>
 				Note: Enter invalid passkey in PTS
-TC_PKE_BI_02_C		PASS
+TC_PKE_BI_02_C		PASS	btmgmt pair -c 0x04 -t 0x01 <addr>
+				Note: provide passkey
 TC_PKE_BI_03_C		PASS	btmgmt io-cap 0x04
 				btmgmt advertising on
 				btmgmt monitor
@@ -65,7 +66,7 @@ TC_OOB_BI_01_C		NA
 TC_OOB_BI_02_C		NA
 TC_EKS_BV_01_C		PASS
 TC_EKS_BV_02_C		PASS
-TC_EKS_BI_01_C		PASS	btmgmt io-cap 0x03
+TC_EKS_BI_01_C		INC	btmgmt io-cap 0x03
 TC_EKS_BI_02_C		PASS
 TC_SIGN_BV_01_C		INC	PTS issue #12305
 TC_SIGN_BV_03_C		PASS	haltest
@@ -84,17 +85,20 @@ TC_KDU_BV_02_C		PASS	PTS issue #12302
 TC_KDU_BV_03_C		PASS	btmgmt pairable on
 				btmgmt advertising on
 
-TC_KDU_BV_04_C		INC	PTS issue #12301
+TC_KDU_BV_04_C		PASS	btmgmt pair -c 0x03 -t 0x01 <addr>
+
+
 TC_KDU_BV_05_C		PASS	PTS issue #12302
 				Note: Can pass it with following instructions:
 				btmgmt privacy on
 				Check our random address (valid for 15 min)
 				Set PIXIT TSPX_bd_addr_iut to random address
 				Set PIXIT TSPX_peer_type to 01
-TC_KDU_BV_06_C		FAIL	PTS issue #12301
-				PTS issue #12302
+TC_KDU_BV_06_C		PASS	btmgmt pair -c 0x03 -t 0x01 <addr>
 TC_KDU_BV_07_C		PASS	btmgmt pairable on
+
+
 TC_SIP_BV_01_C		PASS	btmgmt pair -c 0x03 -t 0x01 <addr>
 TC_SIP_BV_02_C		PASS	l2test -n -J4 -V le_public <addr>
-TC_SIE_BV_01_C		INC	PTS issue #12306
+TC_SIE_BV_01_C		PASS	btmgmt pair -c 0x03 -t 0x01 <addr>
 -------------------------------------------------------------------------------
