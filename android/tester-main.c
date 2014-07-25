@@ -413,7 +413,7 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
-	if (exp->callback) {
+	if (exp->callback || step->callback) {
 		if (exp->callback != step->callback) {
 			tester_debug("Callback type don't match");
 			return false;
