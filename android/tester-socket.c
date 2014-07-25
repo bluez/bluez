@@ -255,7 +255,7 @@ static void socket_verify_channel_action(void)
 	struct step *current_data_step = queue_peek_head(data->steps);
 	struct bt_action_data *action_data = current_data_step->set_data;
 	int channel, len;
-	struct step *step = g_new(struct step, 1);
+	struct step *step = g_new0(struct step, 1);
 
 	if (!*action_data->fd) {
 		tester_warn("Ups no action_data->fd");
