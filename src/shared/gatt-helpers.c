@@ -1477,11 +1477,69 @@ bool bt_gatt_write_long_value(struct bt_att *att, bool reliable,
 	return true;
 }
 
+struct notify_data {
+	struct bt_att *att;
+	bt_gatt_notify_callback_t callback;
+	void *user_data;
+	bt_gatt_destroy_func_t destroy;
+};
+
+static void notify_data_destroy(void *data)
+{
+	struct notify_data *notd = data;
+
+	if (notd->destroy)
+		notd->destroy(notd->user_data);
+
+	free(notd);
+}
+
+static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
+								void *user_data)
+{
+	struct notify_data *data = user_data;
+	uint16_t value_handle;
+	const uint8_t *value = NULL;
+
+	value_handle = get_le16(pdu);
+
+	if (length > 2)
+		value = pdu + 2;
+
+	if (data->callback)
+		data->callback(value_handle, value, length - 2, data->user_data);
+
+	if (opcode == BT_ATT_OP_HANDLE_VAL_IND)
+		bt_att_send(data->att, BT_ATT_OP_HANDLE_VAL_CONF, NULL, 0,
+							NULL, NULL, NULL);
+}
+
 unsigned int bt_gatt_register(struct bt_att *att, bool indications,
 					bt_gatt_notify_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy)
 {
-	/* TODO */
-	return false;
+	struct notify_data *data;
+	uint8_t opcode;
+	unsigned int id;
+
+	if (!att)
+		return 0;
+
+	data = new0(struct notify_data, 1);
+	if (!data)
+		return 0;
+
+	data->att = att;
+	data->callback = callback;
+	data->user_data = user_data;
+	data->destroy = destroy;
+
+	opcode = indications ? BT_ATT_OP_HANDLE_VAL_IND : BT_ATT_OP_HANDLE_VAL_NOT;
+
+	id = bt_att_register(att, opcode, notify_cb, data, notify_data_destroy);
+	if (!id)
+		free(data);
+
+	return id;
 }
