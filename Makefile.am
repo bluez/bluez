@@ -157,7 +157,8 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/shared/queue.h src/shared/queue.c \
 			src/shared/util.h src/shared/util.c \
 			src/shared/mgmt.h src/shared/mgmt.c \
-			src/shared/att-types.h src/shared/att.h src/shared/att.c
+			src/shared/att-types.h src/shared/att.h src/shared/att.c \
+			src/shared/gatt-helpers.h src/shared/gatt-helpers.c
 src_bluetoothd_LDADD = lib/libbluetooth-internal.la gdbus/libgdbus-internal.la \
 			@GLIB_LIBS@ @DBUS_LIBS@ -ldl -lrt
 src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \
