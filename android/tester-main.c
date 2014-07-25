@@ -744,8 +744,11 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr,
 	step->callback_result.num_properties = 3;
 	step->callback_result.properties = repack_properties(3, props);
 
+	g_free(props[0]->val);
 	g_free(props[0]);
+	g_free(props[1]->val);
 	g_free(props[1]);
+	g_free(props[2]->val);
 	g_free(props[2]);
 
 	schedule_callback_call(step);
