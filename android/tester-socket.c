@@ -21,8 +21,6 @@
 #include "emulator/bthost.h"
 #include "tester-main.h"
 
-#include "src/shared/util.h"
-
 static struct queue *list; /* List of socket test cases */
 
 static bt_bdaddr_t bdaddr_dummy = {
