@@ -216,28 +216,28 @@ struct bt_action_data {
 	bt_bdaddr_t *addr;
 
 	/* Remote props action arguments */
-	int prop_type;
-	bt_property_t *prop;
+	const int prop_type;
+	const bt_property_t *prop;
 
 	/* Bonding requests parameters */
 	bt_pin_code_t *pin;
-	uint8_t pin_len;
-	uint8_t ssp_variant;
-	bool accept;
+	const uint8_t pin_len;
+	const uint8_t ssp_variant;
+	const bool accept;
 
 	/* Socket HAL specific params */
-	btsock_type_t sock_type;
-	int channel;
+	const btsock_type_t sock_type;
+	const int channel;
 	const uint8_t *service_uuid;
 	const char *service_name;
-	int flags;
+	const int flags;
 	int *fd;
 };
 
 /* bthost's l2cap server setup parameters */
 struct emu_set_l2cap_data {
-	uint16_t psm;
-	bthost_l2cap_connect_cb func;
+	const uint16_t psm;
+	const bthost_l2cap_connect_cb func;
 	void *user_data;
 };
 
@@ -271,9 +271,9 @@ struct step {
 };
 
 struct test_case {
-	uint8_t emu_type;
-	char *title;
-	uint16_t step_num;
+	const uint8_t emu_type;
+	const char *title;
+	const uint16_t step_num;
 	const struct step const *step;
 };
 
