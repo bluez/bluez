@@ -31,6 +31,7 @@
 #define PROPERTY_VALUE_MAX 32
 
 #define BLUETOOTH_MODE_PROPERTY_NAME "persist.sys.bluetooth.mode"
+#define BLUETOOTH_MODE_PROPERTY_HANDSFREE "persist.sys.bluetooth.handsfree"
 
 static inline int property_get(const char *key, char *value,
 						const char *default_value)
@@ -39,6 +40,9 @@ static inline int property_get(const char *key, char *value,
 
 	if (!strcmp(key, BLUETOOTH_MODE_PROPERTY_NAME))
 		prop = getenv("BLUETOOTH_MODE");
+
+	if (!strcmp(key, BLUETOOTH_MODE_PROPERTY_HANDSFREE))
+		prop = getenv("BLUETOOTH_HANDSFREE_MODE");
 
 	if (!prop)
 		prop = default_value;
