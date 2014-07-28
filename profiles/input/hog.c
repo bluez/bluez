@@ -340,9 +340,6 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 		size = ev->u.output.size;
 	}
 
-	if (ev->type != UHID_OUTPUT)
-		return;
-
 	type = HOG_REPORT_TYPE_OUTPUT;
 
 	l = g_slist_find_custom(hogdev->reports, GUINT_TO_POINTER(type),
