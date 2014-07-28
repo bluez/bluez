@@ -41,6 +41,7 @@
 #include "uuid.h"
 #include "keys.h"
 #include "sdp.h"
+#include "avctp.h"
 
 #define MAX_CHAN 64
 
@@ -2620,6 +2621,7 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 	default:
 		l2cap_frame_init(&frame, index, in, handle, cid, data, size);
 		psm = get_psm(&frame);
+		frame.psm = psm;
 		mode = get_mode(&frame);
 		chan = get_chan(&frame);
 
@@ -2633,6 +2635,10 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 			break;
 		case 0x001f:
 			att_packet(index, in, handle, cid, data, size);
+			break;
+		case 0x0017:
+		case 0x001B:
+			avctp_packet(&frame);
 			break;
 		default:
 			packet_hexdump(data, size);
