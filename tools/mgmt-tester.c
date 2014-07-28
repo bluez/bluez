@@ -1418,7 +1418,7 @@ static const char set_le_invalid_param[] = { 0x02 };
 static const char set_le_garbage_param[] = { 0x01, 0x00 };
 static const char set_le_settings_param_1[] = { 0x80, 0x02, 0x00, 0x00 };
 static const char set_le_settings_param_2[] = { 0x81, 0x02, 0x00, 0x00 };
-static const char set_le_on_write_le_host_param[] = { 0x01, 0x01 };
+static const char set_le_on_write_le_host_param[] = { 0x01, 0x00 };
 
 static const struct generic_data set_le_on_success_test_1 = {
 	.send_opcode = MGMT_OP_SET_LE,
