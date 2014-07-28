@@ -2333,6 +2333,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
+	device->temporary = TRUE;
 
 	return btd_device_ref(device);
 }
