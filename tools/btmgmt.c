@@ -915,7 +915,7 @@ static void unconf_index_rsp(uint8_t status, uint16_t len, const void *param,
 	}
 
 	printf("Unconfigured index list with %u item%s\n",
-						count, count > 1 ? "s" : "");
+						count, count != 1 ? "s" : "");
 
 	for (i = 0; i < count; i++) {
 		uint16_t index;
@@ -1061,7 +1061,7 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 
 	if (monitor)
 		printf("Index list with %u item%s\n",
-						count, count > 1 ? "s" : "");
+						count, count != 1 ? "s" : "");
 
 	if (count == 0)
 		goto done;
