@@ -41,6 +41,8 @@
 #define HID_MODE_BREDR			0x01
 #define HID_MODE_LE			0x02
 
+#define HID_EXPECTED_REPORT_SIZE	0x02
+
 static struct queue *list; /* List of hidhost test cases */
 
 struct emu_cid_data {
@@ -342,6 +344,22 @@ static void hidhost_set_protocol_action(void)
 	schedule_action_verification(step);
 }
 
+static void hidhost_get_report_action(void)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
+	struct step *step = g_new0(struct step, 1);
+	bt_bdaddr_t bdaddr;
+
+	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
+
+	step->action_status = data->if_hid->get_report(&bdaddr,
+							BTHH_INPUT_REPORT, 1,
+							20);
+
+	schedule_action_verification(step);
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("HidHost Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -434,6 +452,24 @@ static struct test_case test_cases[] = {
 						BTHH_CONN_STATE_CONNECTED),
 		ACTION_SUCCESS(hidhost_set_protocol_action, NULL),
 		CALLBACK_HH_MODE(CB_HH_PROTOCOL_MODE, BTHH_OK, HID_MODE_BREDR),
+	),
+	TEST_CASE_BREDRLE("HidHost GetReport Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_sdp_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_cc_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_ic_data),
+		ACTION_SUCCESS(hidhost_connect_action, NULL),
+		CALLBACK_STATE(CB_HH_CONNECTION_STATE,
+						BTHH_CONN_STATE_CONNECTED),
+		ACTION_SUCCESS(hidhost_get_report_action, NULL),
+		CALLBACK_HHREPORT(CB_HH_GET_REPORT, BTHH_OK,
+						HID_EXPECTED_REPORT_SIZE),
 	),
 };
 

@@ -114,6 +114,12 @@
 		.callback_result.mode = cb_mode, \
 	}
 
+#define CALLBACK_HHREPORT(cb, cb_res, cb_rep_size) { \
+		.callback = cb, \
+		.callback_result.status = cb_res, \
+		.callback_result.report_size = cb_rep_size, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -247,6 +253,9 @@ struct bt_action_data {
 	const char *service_name;
 	const int flags;
 	int *fd;
+
+	/* HidHost params */
+	const int report_size;
 };
 
 /* bthost's l2cap server setup parameters */
@@ -270,6 +279,7 @@ struct bt_callback_data {
 	bt_ssp_variant_t pairing_variant;
 
 	bthh_protocol_mode_t mode;
+	int report_size;
 };
 
 /*

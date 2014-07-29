@@ -437,6 +437,12 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+		if (exp->callback_result.report_size !=
+					step->callback_result.report_size) {
+			tester_debug("Callback report size don't match");
+			return false;
+		}
+
 		if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
 			tester_debug("Callback pairing result don't match");
@@ -821,13 +827,26 @@ static void hidhost_hid_info_cb(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid)
 	schedule_callback_call(step);
 }
 
+static void hidhost_get_report_cb(bt_bdaddr_t *bd_addr, bthh_status_t status,
+						uint8_t *report, int size)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_HH_GET_REPORT;
+
+	step->callback_result.status = status;
+	step->callback_result.report_size = size;
+
+	schedule_callback_call(step);
+}
+
 static bthh_callbacks_t bthh_callbacks = {
 	.size = sizeof(bthh_callbacks),
 	.connection_state_cb = hidhost_connection_state_cb,
 	.hid_info_cb = hidhost_hid_info_cb,
 	.protocol_mode_cb = hidhost_protocol_mode_cb,
 	.idle_time_cb = NULL,
-	.get_report_cb = NULL,
+	.get_report_cb = hidhost_get_report_cb,
 	.virtual_unplug_cb = hidhost_virual_unplug_cb
 };
 
