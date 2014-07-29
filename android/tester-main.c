@@ -770,9 +770,20 @@ static bt_callbacks_t bt_callbacks = {
 	.le_test_mode_cb = NULL
 };
 
+static void hidhost_connection_state_cb(bt_bdaddr_t *bd_addr,
+						bthh_connection_state_t state)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_HH_CONNECTION_STATE;
+	step->callback_result.state = state;
+
+	schedule_callback_call(step);
+}
+
 static bthh_callbacks_t bthh_callbacks = {
 	.size = sizeof(bthh_callbacks),
-	.connection_state_cb = NULL,
+	.connection_state_cb = hidhost_connection_state_cb,
 	.hid_info_cb = NULL,
 	.protocol_mode_cb = NULL,
 	.idle_time_cb = NULL,
