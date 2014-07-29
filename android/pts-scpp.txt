@@ -1,8 +1,8 @@
 PTS test results for ScPP
 
-PTS version: 5.1
-Tested: 27-June-2014
-Android version: 4.4.2
+PTS version: 5.2
+Tested: 29-July-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
@@ -14,11 +14,11 @@ NONE	test result is none
 -------------------------------------------------------------------------------
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
-TC_SPDS_SC_BV_01_I	PASS	PTS issue #12049
-TC_SPDC_SC_BV_01_I	PASS	PTS issue #12049
-TC_SPDC_SC_BV_02_I	PASS	PTS issue #12049
-TC_SPDC_SC_BV_03_I	PASS	PTS issue #12049
-TC_SPWF_SC_BV_03_I	PASS	PTS issue #12049
-TC_SPCF_SC_BV_03_I	PASS	PTS issue #12049
-TC_SPNF_SC_BV_03_I	PASS	PTS issue #12049
+TC_SPDS_SC_BV_01_I	PASS	PTS issue #12119
+TC_SPDC_SC_BV_01_I	PASS	PTS issue #12119
+TC_SPDC_SC_BV_02_I	PASS	PTS issue #12119
+TC_SPDC_SC_BV_03_I	PASS	PTS issue #12119
+TC_SPWF_SC_BV_03_I	PASS	PTS issue #12119
+TC_SPCF_SC_BV_03_I	PASS	PTS issue #12119
+TC_SPNF_SC_BV_03_I	PASS	PTS issue #12119
 -------------------------------------------------------------------------------
