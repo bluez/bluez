@@ -238,7 +238,7 @@ bool queue_remove(struct queue *queue, void *data)
 {
 	struct queue_entry *entry, *prev;
 
-	if (!queue || !data)
+	if (!queue)
 		return false;
 
 	for (entry = queue->head, prev = NULL; entry;
