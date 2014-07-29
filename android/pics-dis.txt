@@ -1,6 +1,6 @@
 DIS PICS for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 
@@ -11,7 +11,7 @@ O - optional
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_DIS_1_1	False (*)	Service supported over BR/EDR (C.1)
+TSPC_DIS_1_1	True		Service supported over BR/EDR (C.1)
 TSPC_DIS_1_2	True		Service supported over LE (C.1)
 -------------------------------------------------------------------------------
 C.1: Mandatory to support at least one of 1/1 or 1/2.
@@ -32,7 +32,7 @@ TSPC_DIS_2_7	True		Software Revision String Characteristic (O)
 TSPC_DIS_2_8	False (*)	System ID Characteristic (O)
 TSPC_DIS_2_9	False (*)	IEEE 11073-20601 Regulatory Certification
 				Data List Characteristic (O)
-TSPC_DIS_2_10	False (*)	SDP Interoperability (C.1)
+TSPC_DIS_2_10	True		SDP Interoperability (C.1)
 TSPC_DIS_2_11	False (*)	PnP ID (O)
 -------------------------------------------------------------------------------
 C.1: Mandatory if 1/1 (BR/EDR) is supported, otherwise excluded.
@@ -51,9 +51,9 @@ TSPC_DIS_3_1	True		Generic Attribute Profile Server (M)
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_DIS_4_1	False (*)	Support for server role (M)
-TSPC_DIS_4_2	False (*)	ProtocolDescriptorList (M)
-TSPC_DIS_4_3	False (*)	BrowseGroupList (M)
+TSPC_DIS_4_1	True		Support for server role (M)
+TSPC_DIS_4_2	True		ProtocolDescriptorList (M)
+TSPC_DIS_4_3	True		BrowseGroupList (M)
 -------------------------------------------------------------------------------
 Note: Marked as False as TSPC_DIS_1_1 is set to False
 -------------------------------------------------------------------------------
