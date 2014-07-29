@@ -340,6 +340,7 @@ static gboolean characteristics_write(gpointer user_data)
 
 	gatt_write_cmd(attrib, opt_handle, value, len, mainloop_quit, value);
 
+	g_free(value);
 	return FALSE;
 
 error:
@@ -393,6 +394,7 @@ static gboolean characteristics_write_req(gpointer user_data)
 	gatt_write_char(attrib, opt_handle, value, len, char_write_req_cb,
 									NULL);
 
+	g_free(value);
 	return FALSE;
 
 error:
