@@ -1272,7 +1272,6 @@ static uint32_t ext_start_servers(struct ext_profile *ext,
 			error("RFCOMM server failed for %s: %s",
 						ext->name, err->message);
 			g_free(rfcomm);
-			rfcomm = NULL;
 			g_clear_error(&err);
 			goto failed;
 		} else {
