@@ -128,7 +128,6 @@ android/bluetoothd
 android/mcaptest
 android/haltest
 android/android-tester
-android/android-tester-ng
 android/ipc-tester
 android/bluetoothd-snoop
 android/test-ipc
