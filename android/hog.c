@@ -105,6 +105,8 @@ struct report {
 	uint16_t		ccc_handle;
 	guint			notifyid;
 	struct gatt_char	*decl;
+	uint16_t		len;
+	uint8_t			*value;
 };
 
 static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
@@ -290,8 +292,18 @@ static void discover_report(GAttrib *attrib, uint16_t start, uint16_t end,
 static void report_read_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
-	if (status != 0)
+	struct report *report = user_data;
+
+	if (status != 0) {
 		error("Error reading Report value: %s", att_ecode2str(status));
+		return;
+	}
+
+	if (report->value)
+		g_free(report->value);
+
+	report->value = g_memdup(pdu, len);
+	report->len = len;
 }
 
 static struct report *report_new(struct bt_hog *hog, struct gatt_char *chr)
@@ -690,6 +702,7 @@ static void report_free(void *data)
 {
 	struct report *report = data;
 
+	g_free(report->value);
 	g_free(report->decl);
 	g_free(report);
 }
