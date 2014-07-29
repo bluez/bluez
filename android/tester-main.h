@@ -91,6 +91,11 @@
 		.callback_result.state = cb_res, \
 	}
 
+#define CALLBACK_STATUS(cb, cb_res) { \
+		.callback = cb, \
+		.callback_result.status = cb_res, \
+	}
+
 #define CALLBACK_ADAPTER_PROPS(props, prop_cnt) { \
 		.callback = CB_BT_ADAPTER_PROPERTIES, \
 		.callback_result.properties = props, \
@@ -101,6 +106,12 @@
 		.callback = cb, \
 		.callback_result.properties = props, \
 		.callback_result.num_properties = prop_cnt, \
+	}
+
+#define CALLBACK_HH_MODE(cb, cb_res, cb_mode) { \
+		.callback = cb, \
+		.callback_result.status = cb_res, \
+		.callback_result.mode = cb_mode, \
 	}
 
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
@@ -257,6 +268,8 @@ struct bt_callback_data {
 	bt_property_t *properties;
 
 	bt_ssp_variant_t pairing_variant;
+
+	bthh_protocol_mode_t mode;
 };
 
 /*
