@@ -290,8 +290,7 @@ static void load_adapter_config(void)
 				"General", "DiscoverableTimeout", &gerr);
 	if (gerr) {
 		adapter.discoverable_timeout = DEFAULT_DISCOVERABLE_TIMEOUT;
-		g_error_free(gerr);
-		gerr = NULL;
+		g_clear_error(&gerr);
 	}
 
 	g_key_file_free(key_file);
