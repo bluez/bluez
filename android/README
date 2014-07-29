@@ -111,7 +111,7 @@ Also BT chip driver needs to be enabled e.g:
 CONFIG_BT_HCIBTUSB
 
 If it is not possible to use new enough Linux kernel one can use updated
-bluetooth subsytem from Backports project. More information about Backports can
+bluetooth subsystem from Backports project. More information about Backports can
 be found at https://backports.wiki.kernel.org. Sample kernels using backports
 for running BlueZ on Android are available at
 https://code.google.com/p/aosp-bluez.
@@ -143,15 +143,16 @@ see https://code.google.com/p/aosp-bluez.glib/ for an example.
 Enabling BlueZ debugs
 ---------------------
 
-BlueZ debug logs can be enabled in runtime by setting "persist.sys.bluetooth.debug"
-property to either literal "true" or any numeric value >0. For example:
+BlueZ debug logs can be enabled in runtime by setting
+"persist.sys.bluetooth.debug" property to either literal "true" or any
+numeric value >0. For example:
 adb root
 adb shell setprop persist.sys.bluetooth.debug 1
 
 After changing property value Bluetooth needs to be restarted to apply changes.
 
 There is also a possibility to enable mgmt debug logs which also enables debugs
-as above. To enable it procced in the same way as described above but use
+as above. To enable it proceed in the same way as described above but use
 system properties called: persist.sys.bluetooth.mgmtdbg
 
 Note: Debugs are only available on NON USER build variants
@@ -305,7 +306,7 @@ Audio SCO HAL
 
 When Bluetooth chip's audio is not wired directly to device audio, Audio SCO
 HAL is used to enable SCO support. It needs to be loaded by AudioFlinger
-following audio_policy.cong configuration. Example of configuration is shown
+following audio_policy.conf configuration. Example of configuration is shown
 below:
 
 ...
