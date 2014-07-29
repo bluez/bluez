@@ -82,6 +82,10 @@
 		.set_data = data_set, \
 	}
 
+#define CALLBACK(cb) { \
+		.callback = cb, \
+	}
+
 #define CALLBACK_STATE(cb, cb_res) { \
 		.callback = cb, \
 		.callback_result.state = cb_res, \

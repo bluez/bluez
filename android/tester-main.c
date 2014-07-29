@@ -781,14 +781,33 @@ static void hidhost_connection_state_cb(bt_bdaddr_t *bd_addr,
 	schedule_callback_call(step);
 }
 
+static void hidhost_virual_unplug_cb(bt_bdaddr_t *bd_addr, bthh_status_t status)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_HH_VIRTUAL_UNPLUG;
+	step->callback_result.status = status;
+
+	schedule_callback_call(step);
+}
+
+static void hidhost_hid_info_cb(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_HH_HID_INFO;
+
+	schedule_callback_call(step);
+}
+
 static bthh_callbacks_t bthh_callbacks = {
 	.size = sizeof(bthh_callbacks),
 	.connection_state_cb = hidhost_connection_state_cb,
-	.hid_info_cb = NULL,
+	.hid_info_cb = hidhost_hid_info_cb,
 	.protocol_mode_cb = NULL,
 	.idle_time_cb = NULL,
 	.get_report_cb = NULL,
-	.virtual_unplug_cb = NULL
+	.virtual_unplug_cb = hidhost_virual_unplug_cb
 };
 
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
