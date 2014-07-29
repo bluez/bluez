@@ -176,9 +176,9 @@ Properties	string Address [readonly]
 		boolean LegacyPairing [readonly]
 
 			Set to true if the device only supports the pre-2.1
-			pairing mechanism. This property is useful in the
-			Adapter.DeviceFound signal to anticipate whether
-			legacy or simple pairing will occur.
+			pairing mechanism. This property is useful during
+			device discovery to anticipate whether legacy or
+			simple pairing will occur if pairing is initiated.
 
 			Note that this property can exhibit false-positives
 			in the case of Bluetooth 2.1 (or newer) devices that
