@@ -191,6 +191,7 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 {
 	struct emu_cid_data *cid_data = user_data;
 	uint8_t header = ((uint8_t *) data)[0];
+	struct step *step;
 
 	switch (header) {
 	case HID_GET_REPORT_PROTOCOL:
@@ -212,7 +213,12 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 	case HID_SET_OUTPUT_REPORT:
 	case HID_SET_FEATURE_REPORT:
 	case HID_SEND_DATA:
-		/* Todo verify step with success */
+		/* Successfully verify sending data step */
+		step = g_new0(struct step, 1);
+
+		step->action_status = BT_STATUS_SUCCESS;
+
+		schedule_action_verification(step);
 		break;
 	}
 }
@@ -360,6 +366,26 @@ static void hidhost_get_report_action(void)
 	schedule_action_verification(step);
 }
 
+static void hidhost_set_report_action(void)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
+	char *buf = "010101";
+	bt_bdaddr_t bdaddr;
+	int status;
+
+	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
+
+	/* Successfull result should be verified on the other end (hook) */
+	status = data->if_hid->set_report(&bdaddr, BTHH_INPUT_REPORT, buf);
+	if (status) {
+		struct step *step = g_new0(struct step, 1);
+
+		step->action_status = status;
+		schedule_action_verification(step);
+	}
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("HidHost Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -470,6 +496,24 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(hidhost_get_report_action, NULL),
 		CALLBACK_HHREPORT(CB_HH_GET_REPORT, BTHH_OK,
 						HID_EXPECTED_REPORT_SIZE),
+	),
+	TEST_CASE_BREDRLE("HidHost SetReport Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_sdp_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_cc_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_ic_data),
+		ACTION_SUCCESS(hidhost_connect_action, NULL),
+		CALLBACK_STATE(CB_HH_CONNECTION_STATE,
+						BTHH_CONN_STATE_CONNECTING),
+		CALLBACK_STATE(CB_HH_CONNECTION_STATE,
+						BTHH_CONN_STATE_CONNECTED),
+		ACTION_SUCCESS(hidhost_set_report_action, NULL),
 	),
 };
 
