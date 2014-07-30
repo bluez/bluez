@@ -2318,7 +2318,7 @@ static void load_ltks(GSList *ltks)
 	cp->key_count = htobs(ltk_count);
 
 	for (l = ltks, ltk = cp->keys; l != NULL; l = g_slist_next(l), ltk++)
-		memcpy(ltk, ltks->data, sizeof(*ltk));
+		memcpy(ltk, l->data, sizeof(*ltk));
 
 	if (mgmt_send(mgmt_if, MGMT_OP_LOAD_LONG_TERM_KEYS, adapter.index,
 			cp_size, cp, load_ltk_complete, NULL, NULL) == 0)
