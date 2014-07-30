@@ -3092,6 +3092,22 @@ static const struct generic_data remove_device_success_1 = {
 	.expect_alt_ev_len = sizeof(remove_device_param_1),
 };
 
+static const struct generic_data remove_device_success_2 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_REMOVE_DEVICE,
+	.send_param = remove_device_param_1,
+	.send_len = sizeof(remove_device_param_1),
+	.expect_param = remove_device_param_1,
+	.expect_len = sizeof(remove_device_param_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
+	.expect_alt_ev_param = remove_device_param_1,
+	.expect_alt_ev_len = sizeof(remove_device_param_1),
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_connectable_off_scan_enable_param,
+	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -4513,6 +4529,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Remove Device - Success 1",
 				&remove_device_success_1,
+				setup_add_device, test_command_generic);
+	test_bredrle("Remove Device - Success 2",
+				&remove_device_success_2,
 				setup_add_device, test_command_generic);
 
 	return tester_run();
