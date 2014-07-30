@@ -802,6 +802,11 @@ static void hog_conn_cb(const bdaddr_t *addr, int err, void *attrib)
 		goto fail;
 	}
 
+	if (!bt_gatt_set_security(addr, BT_IO_SEC_MEDIUM)) {
+		error("Failed to set security level");
+		goto fail;
+	}
+
 	DBG("");
 
 	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_CONNECTED);
