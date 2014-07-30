@@ -828,45 +828,45 @@ static const struct generic_data set_fast_conn_on_not_supported_test_1 = {
 	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
 };
 
-static const char set_pairable_on_param[] = { 0x01 };
-static const char set_pairable_invalid_param[] = { 0x02 };
-static const char set_pairable_garbage_param[] = { 0x01, 0x00 };
-static const char set_pairable_settings_param[] = { 0x90, 0x00, 0x00, 0x00 };
+static const char set_bondable_on_param[] = { 0x01 };
+static const char set_bondable_invalid_param[] = { 0x02 };
+static const char set_bondable_garbage_param[] = { 0x01, 0x00 };
+static const char set_bondable_settings_param[] = { 0x90, 0x00, 0x00, 0x00 };
 
-static const struct generic_data set_pairable_on_success_test = {
-	.send_opcode = MGMT_OP_SET_PAIRABLE,
-	.send_param = set_pairable_on_param,
-	.send_len = sizeof(set_pairable_on_param),
+static const struct generic_data set_bondable_on_success_test = {
+	.send_opcode = MGMT_OP_SET_BONDABLE,
+	.send_param = set_bondable_on_param,
+	.send_len = sizeof(set_bondable_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_pairable_settings_param,
-	.expect_len = sizeof(set_pairable_settings_param),
-	.expect_settings_set = MGMT_SETTING_PAIRABLE,
+	.expect_param = set_bondable_settings_param,
+	.expect_len = sizeof(set_bondable_settings_param),
+	.expect_settings_set = MGMT_SETTING_BONDABLE,
 };
 
-static const struct generic_data set_pairable_on_invalid_param_test_1 = {
-	.send_opcode = MGMT_OP_SET_PAIRABLE,
+static const struct generic_data set_bondable_on_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_BONDABLE,
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
-static const struct generic_data set_pairable_on_invalid_param_test_2 = {
-	.send_opcode = MGMT_OP_SET_PAIRABLE,
-	.send_param = set_pairable_invalid_param,
-	.send_len = sizeof(set_pairable_invalid_param),
+static const struct generic_data set_bondable_on_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_BONDABLE,
+	.send_param = set_bondable_invalid_param,
+	.send_len = sizeof(set_bondable_invalid_param),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
-static const struct generic_data set_pairable_on_invalid_param_test_3 = {
-	.send_opcode = MGMT_OP_SET_PAIRABLE,
-	.send_param = set_pairable_garbage_param,
-	.send_len = sizeof(set_pairable_garbage_param),
+static const struct generic_data set_bondable_on_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_BONDABLE,
+	.send_param = set_bondable_garbage_param,
+	.send_len = sizeof(set_bondable_garbage_param),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
-static const struct generic_data set_pairable_on_invalid_index_test = {
+static const struct generic_data set_bondable_on_invalid_index_test = {
 	.send_index_none = true,
-	.send_opcode = MGMT_OP_SET_PAIRABLE,
-	.send_param = set_pairable_on_param,
-	.send_len = sizeof(set_pairable_on_param),
+	.send_opcode = MGMT_OP_SET_BONDABLE,
+	.send_param = set_bondable_on_param,
+	.send_len = sizeof(set_bondable_on_param),
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
@@ -2298,13 +2298,13 @@ static const void *pair_device_expect_param_func(uint16_t *len)
 	return param;
 }
 
-static uint16_t settings_powered_pairable[] = { MGMT_OP_SET_PAIRABLE,
+static uint16_t settings_powered_bondable[] = { MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_POWERED, 0 };
 static uint8_t auth_req_param[] = { 0x2a, 0x00 };
 static uint8_t pair_device_pin[] = { 0x30, 0x30, 0x30, 0x30 }; /* "0000" */
 
 static const struct generic_data pair_device_success_test_1 = {
-	.setup_settings = settings_powered_pairable,
+	.setup_settings = settings_powered_bondable,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_SUCCESS,
@@ -2320,13 +2320,13 @@ static const struct generic_data pair_device_success_test_1 = {
 	.client_pin_len = sizeof(pair_device_pin),
 };
 
-static uint16_t settings_powered_pairable_linksec[] = { MGMT_OP_SET_PAIRABLE,
+static uint16_t settings_powered_bondable_linksec[] = { MGMT_OP_SET_BONDABLE,
 							MGMT_OP_SET_POWERED,
 							MGMT_OP_SET_LINK_SECURITY,
 							0 };
 
 static const struct generic_data pair_device_success_test_2 = {
-	.setup_settings = settings_powered_pairable_linksec,
+	.setup_settings = settings_powered_bondable_linksec,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_SUCCESS,
@@ -2342,7 +2342,7 @@ static const struct generic_data pair_device_success_test_2 = {
 	.client_pin_len = sizeof(pair_device_pin),
 };
 
-static const struct generic_data pair_device_legacy_nonpairable_1 = {
+static const struct generic_data pair_device_legacy_nonbondable_1 = {
 	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
@@ -2369,7 +2369,7 @@ static const void *client_bdaddr_param_func(uint8_t *len)
 }
 
 static const struct generic_data pair_device_reject_test_1 = {
-	.setup_settings = settings_powered_pairable,
+	.setup_settings = settings_powered_bondable,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_AUTH_FAILED,
@@ -2384,7 +2384,7 @@ static const struct generic_data pair_device_reject_test_1 = {
 };
 
 static const struct generic_data pair_device_reject_test_2 = {
-	.setup_settings = settings_powered_pairable,
+	.setup_settings = settings_powered_bondable,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_AUTH_FAILED,
@@ -2399,7 +2399,7 @@ static const struct generic_data pair_device_reject_test_2 = {
 };
 
 static const struct generic_data pair_device_reject_test_3 = {
-	.setup_settings = settings_powered_pairable_linksec,
+	.setup_settings = settings_powered_bondable_linksec,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_AUTH_FAILED,
@@ -2412,7 +2412,7 @@ static const struct generic_data pair_device_reject_test_3 = {
 };
 
 static const struct generic_data pair_device_reject_test_4 = {
-	.setup_settings = settings_powered_pairable_linksec,
+	.setup_settings = settings_powered_bondable_linksec,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.expect_status = MGMT_STATUS_AUTH_FAILED,
@@ -2421,13 +2421,13 @@ static const struct generic_data pair_device_reject_test_4 = {
 	.pin_len = sizeof(pair_device_pin),
 };
 
-static uint16_t settings_powered_pairable_ssp[] = {	MGMT_OP_SET_PAIRABLE,
+static uint16_t settings_powered_bondable_ssp[] = {	MGMT_OP_SET_BONDABLE,
 							MGMT_OP_SET_SSP,
 							MGMT_OP_SET_POWERED,
 							0 };
 
 static const struct generic_data pair_device_ssp_test_1 = {
-	.setup_settings = settings_powered_pairable_ssp,
+	.setup_settings = settings_powered_bondable_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
@@ -2442,7 +2442,7 @@ static const struct generic_data pair_device_ssp_test_1 = {
 };
 
 static const struct generic_data pair_device_ssp_test_2 = {
-	.setup_settings = settings_powered_pairable_ssp,
+	.setup_settings = settings_powered_bondable_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
@@ -2457,7 +2457,7 @@ static const struct generic_data pair_device_ssp_test_2 = {
 };
 
 static const struct generic_data pair_device_ssp_reject_1 = {
-	.setup_settings = settings_powered_pairable_ssp,
+	.setup_settings = settings_powered_bondable_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
@@ -2474,7 +2474,7 @@ static const struct generic_data pair_device_ssp_reject_1 = {
 };
 
 static const struct generic_data pair_device_ssp_reject_2 = {
-	.setup_settings = settings_powered_pairable_ssp,
+	.setup_settings = settings_powered_bondable_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
@@ -2489,7 +2489,7 @@ static const struct generic_data pair_device_ssp_reject_2 = {
 	.client_reject_ssp = true,
 };
 
-static const struct generic_data pair_device_ssp_nonpairable_1 = {
+static const struct generic_data pair_device_ssp_nonbondable_1 = {
 	.setup_settings = settings_powered_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -2504,13 +2504,13 @@ static const struct generic_data pair_device_ssp_nonpairable_1 = {
 	.client_io_cap = 0x01, /* DisplayYesNo */
 };
 
-static uint16_t settings_powered_connectable_pairable[] = {
-						MGMT_OP_SET_PAIRABLE,
+static uint16_t settings_powered_connectable_bondable[] = {
+						MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_CONNECTABLE,
 						MGMT_OP_SET_POWERED, 0 };
 
 static const struct generic_data pairing_acceptor_legacy_1 = {
-	.setup_settings = settings_powered_connectable_pairable,
+	.setup_settings = settings_powered_connectable_bondable,
 	.pin = pair_device_pin,
 	.pin_len = sizeof(pair_device_pin),
 	.client_pin = pair_device_pin,
@@ -2520,7 +2520,7 @@ static const struct generic_data pairing_acceptor_legacy_1 = {
 };
 
 static const struct generic_data pairing_acceptor_legacy_2 = {
-	.setup_settings = settings_powered_connectable_pairable,
+	.setup_settings = settings_powered_connectable_bondable,
 	.expect_pin = true,
 	.client_pin = pair_device_pin,
 	.client_pin_len = sizeof(pair_device_pin),
@@ -2538,14 +2538,14 @@ static const struct generic_data pairing_acceptor_legacy_3 = {
 	.expect_hci_func = client_bdaddr_param_func,
 };
 
-static uint16_t settings_powered_connectable_pairable_linksec[] = {
-						MGMT_OP_SET_PAIRABLE,
+static uint16_t settings_powered_connectable_bondable_linksec[] = {
+						MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_CONNECTABLE,
 						MGMT_OP_SET_LINK_SECURITY,
 						MGMT_OP_SET_POWERED, 0 };
 
 static const struct generic_data pairing_acceptor_linksec_1 = {
-	.setup_settings = settings_powered_connectable_pairable_linksec,
+	.setup_settings = settings_powered_connectable_bondable_linksec,
 	.pin = pair_device_pin,
 	.pin_len = sizeof(pair_device_pin),
 	.client_pin = pair_device_pin,
@@ -2555,7 +2555,7 @@ static const struct generic_data pairing_acceptor_linksec_1 = {
 };
 
 static const struct generic_data pairing_acceptor_linksec_2 = {
-	.setup_settings = settings_powered_connectable_pairable_linksec,
+	.setup_settings = settings_powered_connectable_bondable_linksec,
 	.expect_pin = true,
 	.client_pin = pair_device_pin,
 	.client_pin_len = sizeof(pair_device_pin),
@@ -2563,14 +2563,14 @@ static const struct generic_data pairing_acceptor_linksec_2 = {
 	.expect_alt_ev_len = 8,
 };
 
-static uint16_t settings_powered_connectable_pairable_ssp[] = {
-						MGMT_OP_SET_PAIRABLE,
+static uint16_t settings_powered_connectable_bondable_ssp[] = {
+						MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_CONNECTABLE,
 						MGMT_OP_SET_SSP,
 						MGMT_OP_SET_POWERED, 0 };
 
 static const struct generic_data pairing_acceptor_ssp_1 = {
-	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.setup_settings = settings_powered_connectable_bondable_ssp,
 	.client_enable_ssp = true,
 	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
 	.expect_alt_ev_len = 26,
@@ -2582,7 +2582,7 @@ static const struct generic_data pairing_acceptor_ssp_1 = {
 };
 
 static const struct generic_data pairing_acceptor_ssp_2 = {
-	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.setup_settings = settings_powered_connectable_bondable_ssp,
 	.client_enable_ssp = true,
 	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
 	.expect_alt_ev_len = 26,
@@ -2593,7 +2593,7 @@ static const struct generic_data pairing_acceptor_ssp_2 = {
 };
 
 static const struct generic_data pairing_acceptor_ssp_3 = {
-	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.setup_settings = settings_powered_connectable_bondable_ssp,
 	.client_enable_ssp = true,
 	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
 	.expect_alt_ev_len = 26,
@@ -2883,7 +2883,7 @@ static const void *get_conn_info_error_expect_param_func(uint16_t *len)
 }
 
 static const struct generic_data get_conn_info_succes1_test = {
-	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.setup_settings = settings_powered_connectable_bondable_ssp,
 	.send_opcode = MGMT_OP_GET_CONN_INFO,
 	.send_func = get_conn_info_send_param_func,
 	.expect_status = MGMT_STATUS_SUCCESS,
@@ -2891,7 +2891,7 @@ static const struct generic_data get_conn_info_succes1_test = {
 };
 
 static const struct generic_data get_conn_info_ncon_test = {
-	.setup_settings = settings_powered_connectable_pairable_ssp,
+	.setup_settings = settings_powered_connectable_bondable_ssp,
 	.send_opcode = MGMT_OP_GET_CONN_INFO,
 	.send_func = get_conn_info_send_param_func,
 	.expect_status = MGMT_STATUS_NOT_CONNECTED,
@@ -3784,20 +3784,20 @@ int main(int argc, char *argv[])
 				&set_fast_conn_on_not_supported_test_1,
 				NULL, test_command_generic);
 
-	test_bredrle("Set pairable on - Success",
-				&set_pairable_on_success_test,
+	test_bredrle("Set bondable on - Success",
+				&set_bondable_on_success_test,
 				NULL, test_command_generic);
-	test_bredrle("Set pairable on - Invalid parameters 1",
-				&set_pairable_on_invalid_param_test_1,
+	test_bredrle("Set bondable on - Invalid parameters 1",
+				&set_bondable_on_invalid_param_test_1,
 				NULL, test_command_generic);
-	test_bredrle("Set pairable on - Invalid parameters 2",
-				&set_pairable_on_invalid_param_test_2,
+	test_bredrle("Set bondable on - Invalid parameters 2",
+				&set_bondable_on_invalid_param_test_2,
 				NULL, test_command_generic);
-	test_bredrle("Set pairable on - Invalid parameters 3",
-				&set_pairable_on_invalid_param_test_3,
+	test_bredrle("Set bondable on - Invalid parameters 3",
+				&set_bondable_on_invalid_param_test_3,
 				NULL, test_command_generic);
-	test_bredrle("Set pairable on - Invalid index",
-				&set_pairable_on_invalid_index_test,
+	test_bredrle("Set bondable on - Invalid index",
+				&set_bondable_on_invalid_index_test,
 				NULL, test_command_generic);
 
 	test_bredrle("Set discoverable on - Invalid parameters 1",
@@ -4139,8 +4139,8 @@ int main(int argc, char *argv[])
 	test_bredrle("Pair Device - Legacy Success 1",
 				&pair_device_success_test_1,
 				NULL, test_command_generic);
-	test_bredrle("Pair Device - Legacy Non-pairable 1",
-				&pair_device_legacy_nonpairable_1,
+	test_bredrle("Pair Device - Legacy Non-bondable 1",
+				&pair_device_legacy_nonbondable_1,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Sec Mode 3 Success 1",
 				&pair_device_success_test_2,
@@ -4169,8 +4169,8 @@ int main(int argc, char *argv[])
 	test_bredrle("Pair Device - SSP Confirm Reject 2",
 				&pair_device_ssp_reject_2,
 				NULL, test_command_generic);
-	test_bredrle("Pair Device - SSP Non-pairable 1",
-				&pair_device_ssp_nonpairable_1,
+	test_bredrle("Pair Device - SSP Non-bondable 1",
+				&pair_device_ssp_nonbondable_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Pairing Acceptor - Legacy 1",

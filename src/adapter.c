@@ -484,7 +484,7 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 		store_adapter_info(adapter);
 	}
 
-	if (changed_mask & MGMT_SETTING_PAIRABLE) {
+	if (changed_mask & MGMT_SETTING_BONDABLE) {
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Pairable");
 
@@ -588,7 +588,7 @@ static gboolean pairable_timeout_handler(gpointer user_data)
 
 	adapter->pairable_timeout_id = 0;
 
-	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x00);
+	set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x00);
 
 	return FALSE;
 }
@@ -600,7 +600,7 @@ static void trigger_pairable_timeout(struct btd_adapter *adapter)
 		adapter->pairable_timeout_id = 0;
 	}
 
-	if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
+	if (!(adapter->current_settings & MGMT_SETTING_BONDABLE))
 		return;
 
 	if (adapter->pairable_timeout > 0)
@@ -2009,8 +2009,8 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 		param = &cp;
 		len = sizeof(cp);
 		break;
-	case MGMT_SETTING_PAIRABLE:
-		opcode = MGMT_OP_SET_PAIRABLE;
+	case MGMT_SETTING_BONDABLE:
+		opcode = MGMT_OP_SET_BONDABLE;
 		param = &mode;
 		len = sizeof(mode);
 		break;
@@ -2128,7 +2128,7 @@ static gboolean property_get_pairable(const GDBusPropertyTable *property,
 {
 	struct btd_adapter *adapter = user_data;
 
-	return property_get_mode(adapter, MGMT_SETTING_PAIRABLE, iter);
+	return property_get_mode(adapter, MGMT_SETTING_BONDABLE, iter);
 }
 
 static void property_set_pairable(const GDBusPropertyTable *property,
@@ -2137,7 +2137,7 @@ static void property_set_pairable(const GDBusPropertyTable *property,
 {
 	struct btd_adapter *adapter = user_data;
 
-	property_set_mode(adapter, MGMT_SETTING_PAIRABLE, iter, id);
+	property_set_mode(adapter, MGMT_SETTING_BONDABLE, iter, id);
 }
 
 static gboolean property_get_pairable_timeout(
@@ -3129,7 +3129,7 @@ static void load_connections(struct btd_adapter *adapter)
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter)
 {
-	if (adapter->current_settings & MGMT_SETTING_PAIRABLE)
+	if (adapter->current_settings & MGMT_SETTING_BONDABLE)
 		return true;
 
 	return false;
@@ -7031,8 +7031,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			!(adapter->current_settings & MGMT_SETTING_LE))
 		set_mode(adapter, MGMT_OP_SET_LE, 0x01);
 
-	if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
-		set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+	if (!(adapter->current_settings & MGMT_SETTING_BONDABLE))
+		set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);
 
 	if (!kernel_conn_control)
 		set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);

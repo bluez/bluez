@@ -1265,10 +1265,10 @@ static void cmd_fast_conn(struct mgmt *mgmt, uint16_t index, int argc,
 	cmd_setting(mgmt, index, MGMT_OP_SET_FAST_CONNECTABLE, argc, argv);
 }
 
-static void cmd_pairable(struct mgmt *mgmt, uint16_t index, int argc,
+static void cmd_bondable(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
-	cmd_setting(mgmt, index, MGMT_OP_SET_PAIRABLE, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_BONDABLE, argc, argv);
 }
 
 static void cmd_linksec(struct mgmt *mgmt, uint16_t index, int argc,
@@ -2852,7 +2852,8 @@ static struct {
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
 	{ "connectable",cmd_connectable,"Toggle connectable state"	},
 	{ "fast-conn",	cmd_fast_conn,	"Toggle fast connectable state"	},
-	{ "pairable",	cmd_pairable,	"Toggle pairable state"		},
+	{ "bondable",	cmd_bondable,	"Toggle bondable state"		},
+	{ "pairable",	cmd_bondable,	"Toggle bondable state"		},
 	{ "linksec",	cmd_linksec,	"Toggle link level security"	},
 	{ "ssp",	cmd_ssp,	"Toggle SSP mode"		},
 	{ "sc",		cmd_sc,		"Toogle SC support"		},

@@ -685,7 +685,7 @@ static void setup_powered_common(void)
 		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
-	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
+	mgmt_send(data->mgmt, MGMT_OP_SET_BONDABLE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 }
 
