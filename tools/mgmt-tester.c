@@ -722,6 +722,20 @@ static const struct generic_data set_connectable_off_success_test_3 = {
 	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
 };
 
+static const struct generic_data set_connectable_off_success_test_4 = {
+	.setup_settings = settings_powered_discoverable,
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_off_param,
+	.send_len = sizeof(set_connectable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_off_settings_2,
+	.expect_len = sizeof(set_connectable_off_settings_2),
+	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_connectable_scan_enable_param,
+	.expect_hci_len = sizeof(set_connectable_scan_enable_param),
+};
+
 static const char set_connectable_off_le_settings_1[] = { 0x00, 0x02, 0x00, 0x00 };
 static const char set_connectable_off_le_settings_2[] = { 0x01, 0x06, 0x00, 0x00 };
 
@@ -3338,6 +3352,23 @@ static void setup_uuid_mix(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
+static void setup_add_device(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Powering on controller (with added BR/EDR device))");
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
+				sizeof(add_device_success_param_1),
+				add_device_success_param_1,
+				NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
+}
+
 static void setup_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -3897,6 +3928,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Set connectable off - Success 3",
 				&set_connectable_off_success_test_3,
 				NULL, test_command_generic);
+	test_bredrle("Set connectable off - Success 4",
+				&set_connectable_off_success_test_4,
+				setup_add_device, test_command_generic);
 
 	test_le("Set connectable off (LE) - Success 1",
 				&set_connectable_off_le_test_1,
