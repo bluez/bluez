@@ -3007,6 +3007,22 @@ static const struct generic_data add_device_success_3 = {
 	.expect_alt_ev_len = sizeof(add_device_success_param_3),
 };
 
+static const struct generic_data add_device_success_4 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_success_param_1,
+	.send_len = sizeof(add_device_success_param_1),
+	.expect_param = add_device_rsp,
+	.expect_len = sizeof(add_device_rsp),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_success_param_1,
+	.expect_alt_ev_len = sizeof(add_device_success_param_1),
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_connectable_scan_enable_param,
+	.expect_hci_len = sizeof(set_connectable_scan_enable_param),
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -4392,6 +4408,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Add Device - Success 3",
 				&add_device_success_3,
+				NULL, test_command_generic);
+	test_bredrle("Add Device - Success 4",
+				&add_device_success_4,
 				NULL, test_command_generic);
 
 	return tester_run();
