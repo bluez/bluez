@@ -1433,7 +1433,6 @@ reply:
 
 static int connect_le(struct gatt_device *dev)
 {
-	BtIOSecLevel sec_level;
 	GIOChannel *io;
 	GError *gerr = NULL;
 	char addr[18];
@@ -1449,9 +1448,6 @@ static int connect_le(struct gatt_device *dev)
 	}
 
 	DBG("Connection attempt to: %s", addr);
-
-	sec_level = bt_device_is_bonded(&dev->bdaddr) ? BT_IO_SEC_MEDIUM :
-								BT_IO_SEC_LOW;
 
 	/*
 	 * If address type is random it might be that IRK was received and
@@ -1478,7 +1474,7 @@ static int connect_le(struct gatt_device *dev)
 			BT_IO_OPT_DEST_BDADDR, bdaddr,
 			BT_IO_OPT_DEST_TYPE, bdaddr_type,
 			BT_IO_OPT_CID, ATT_CID,
-			BT_IO_OPT_SEC_LEVEL, sec_level,
+			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 			BT_IO_OPT_INVALID);
 	if (!io) {
 		error("gatt: Failed bt_io_connect(%s): %s", addr,
