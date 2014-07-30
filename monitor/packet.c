@@ -5888,6 +5888,45 @@ static void le_test_end_rsp(const void *data, uint8_t size)
 	print_field("Number of packets: %d", le16_to_cpu(rsp->num_packets));
 }
 
+static void le_conn_param_req_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_conn_param_req_reply *cmd = data;
+
+	print_handle(cmd->handle);
+	print_slot_125("Min connection interval", cmd->min_interval);
+	print_slot_125("Max connection interval", cmd->max_interval);
+	print_field("Connection latency: 0x%4.4x", le16_to_cpu(cmd->latency));
+	print_field("Supervision timeout: %d msec (0x%4.4x)",
+					le16_to_cpu(cmd->supv_timeout) * 10,
+					le16_to_cpu(cmd->supv_timeout));
+	print_slot_625("Min connection length", cmd->min_length);
+	print_slot_625("Max connection length", cmd->max_length);
+}
+
+static void le_conn_param_req_reply_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_conn_param_req_reply *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
+static void le_conn_param_req_neg_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_conn_param_req_neg_reply *cmd = data;
+
+	print_handle(cmd->handle);
+	print_reason(cmd->reason);
+}
+
+static void le_conn_param_req_neg_reply_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_conn_param_req_neg_reply *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -6515,8 +6554,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x201f, 230, "LE Test End",
 				null_cmd, 0, true,
 				le_test_end_rsp, 3, true },
-	{ 0x2020, 268, "LE Remote Connection Parameter Request Reply" },
-	{ 0x2021, 269, "LE Remote Connection Parameter Request Negative Reply" },
+	{ 0x2020, 268, "LE Remote Connection Parameter Request Reply",
+				le_conn_param_req_reply_cmd, 14, true,
+				le_conn_param_req_reply_rsp, 3, true },
+	{ 0x2021, 269, "LE Remote Connection Parameter Request Negative Reply",
+				le_conn_param_req_neg_reply_cmd, 3, true,
+				le_conn_param_req_neg_reply_rsp, 3, true },
 	{ }
 };
 

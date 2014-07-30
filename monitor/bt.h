@@ -1835,6 +1835,31 @@ struct bt_hci_rsp_le_test_end {
 	uint16_t num_packets;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_CONN_PARAM_REQ_REPLY	0x2020
+struct bt_hci_cmd_le_conn_param_req_reply {
+	uint16_t handle;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+	uint16_t min_length;
+	uint16_t max_length;
+} __attribute__ ((packed));
+struct bt_hci_rsp_le_conn_param_req_reply {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_CONN_PARAM_REQ_NEG_REPLY	0x2021
+struct bt_hci_cmd_le_conn_param_req_neg_reply {
+	uint16_t handle;
+	uint8_t  reason;
+} __attribute__ ((packed));
+struct bt_hci_rsp_le_conn_param_req_neg_reply {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
