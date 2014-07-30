@@ -3071,17 +3071,25 @@ static const uint8_t remove_device_param_1[] = {
 					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
 					0x00,
 };
-static const uint8_t remove_device_rsp[] =  {
-					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
-					0x00,
-};
 static const struct generic_data remove_device_fail_2 = {
 	.send_opcode = MGMT_OP_REMOVE_DEVICE,
 	.send_param = remove_device_param_1,
 	.send_len = sizeof(remove_device_param_1),
-	.expect_param = remove_device_rsp,
-	.expect_len = sizeof(remove_device_rsp),
+	.expect_param = remove_device_param_1,
+	.expect_len = sizeof(remove_device_param_1),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data remove_device_success_1 = {
+	.send_opcode = MGMT_OP_REMOVE_DEVICE,
+	.send_param = remove_device_param_1,
+	.send_len = sizeof(remove_device_param_1),
+	.expect_param = remove_device_param_1,
+	.expect_len = sizeof(remove_device_param_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
+	.expect_alt_ev_param = remove_device_param_1,
+	.expect_alt_ev_len = sizeof(remove_device_param_1),
 };
 
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
@@ -4503,6 +4511,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Remove Device - Invalid Params 2",
 				&remove_device_fail_2,
 				NULL, test_command_generic);
+	test_bredrle("Remove Device - Success 1",
+				&remove_device_success_1,
+				setup_add_device, test_command_generic);
 
 	return tester_run();
 }
