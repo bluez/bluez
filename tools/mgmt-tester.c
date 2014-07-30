@@ -3023,6 +3023,23 @@ static const struct generic_data add_device_success_4 = {
 	.expect_hci_len = sizeof(set_connectable_scan_enable_param),
 };
 
+static const uint8_t le_scan_enable[] = { 0x01, 0x01 };
+static const struct generic_data add_device_success_5 = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_success_param_2,
+	.send_len = sizeof(add_device_success_param_2),
+	.expect_param = add_device_rsp_le,
+	.expect_len = sizeof(add_device_rsp_le),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_success_param_2,
+	.expect_alt_ev_len = sizeof(add_device_success_param_2),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+	.expect_hci_param = le_scan_enable,
+	.expect_hci_len = sizeof(le_scan_enable),
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -4411,6 +4428,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Add Device - Success 4",
 				&add_device_success_4,
+				NULL, test_command_generic);
+	test_bredrle("Add Device - Success 5",
+				&add_device_success_5,
 				NULL, test_command_generic);
 
 	return tester_run();
