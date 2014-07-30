@@ -47,17 +47,27 @@ struct bt_gatt_descriptor {
 	uint8_t uuid[16];
 };
 
-struct bt_gatt_list;
+struct bt_gatt_result;
 
-struct bt_gatt_list *bt_gatt_list_get_next(struct bt_gatt_list *l);
-void *bt_gatt_list_get_data(struct bt_gatt_list *l);
+struct bt_gatt_iter {
+	struct bt_gatt_result *result;
+	uint16_t pos;
+};
+
+bool bt_gatt_iter_init(struct bt_gatt_iter *iter, struct bt_gatt_result *result);
+bool bt_gatt_iter_next_service(struct bt_gatt_iter *iter,
+					struct bt_gatt_service *service);
+bool bt_gatt_iter_next_characteristic(struct bt_gatt_iter *iter,
+				struct bt_gatt_characteristic *characteristic);
+bool bt_gatt_iter_next_descriptor(struct bt_gatt_iter *iter,
+					struct bt_gatt_descriptor *descriptor);
 
 typedef void (*bt_gatt_destroy_func_t)(void *user_data);
 
 typedef void (*bt_gatt_result_callback_t)(bool success, uint8_t att_ecode,
 							void *user_data);
-typedef void (*bt_gatt_discovery_callback_t)(bool success, uint8_t att_ecode,
-						struct bt_gatt_list *results,
+typedef void (*bt_gatt_discovery_callback_t)(bool success, uint8_t att_code,
+						struct bt_gatt_result *result,
 						void *user_data);
 typedef void (*bt_gatt_read_callback_t)(bool success, uint8_t att_ecode,
 					const uint8_t *value, uint16_t length,
@@ -86,7 +96,6 @@ bool bt_gatt_discover_included_services(struct bt_att *att,
 					bt_gatt_destroy_func_t destroy);
 bool bt_gatt_discover_characteristics(struct bt_att *att,
 					uint16_t start, uint16_t end,
-					bt_uuid_t *uuid,
 					bt_gatt_discovery_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);
