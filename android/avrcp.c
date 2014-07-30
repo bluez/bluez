@@ -892,6 +892,9 @@ static void search_cb(sdp_list_t *recs, int err, gpointer data)
 
 	DBG("");
 
+	if (!g_slist_find(devices, dev))
+		return;
+
 	if (err < 0) {
 		error("Unable to get AV_REMOTE_SVCLASS_ID SDP record: %s",
 							strerror(-err));
