@@ -2952,6 +2952,61 @@ static const struct generic_data add_device_fail_3 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const uint8_t add_device_success_param_1[] = {
+					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+					0x00,
+					0x01,
+};
+static const struct generic_data add_device_success_1 = {
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_success_param_1,
+	.send_len = sizeof(add_device_success_param_1),
+	.expect_param = add_device_rsp,
+	.expect_len = sizeof(add_device_rsp),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_success_param_1,
+	.expect_alt_ev_len = sizeof(add_device_success_param_1),
+};
+
+static const uint8_t add_device_success_param_2[] = {
+					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+					0x01,
+					0x00,
+};
+static const uint8_t add_device_rsp_le[] =  {
+					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+					0x01,
+};
+static const struct generic_data add_device_success_2 = {
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_success_param_2,
+	.send_len = sizeof(add_device_success_param_2),
+	.expect_param = add_device_rsp_le,
+	.expect_len = sizeof(add_device_rsp_le),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_success_param_2,
+	.expect_alt_ev_len = sizeof(add_device_success_param_2),
+};
+
+static const uint8_t add_device_success_param_3[] = {
+					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+					0x02,
+					0x00,
+};
+static const struct generic_data add_device_success_3 = {
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_success_param_3,
+	.send_len = sizeof(add_device_success_param_3),
+	.expect_param = add_device_rsp_le,
+	.expect_len = sizeof(add_device_rsp_le),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_success_param_3,
+	.expect_alt_ev_len = sizeof(add_device_success_param_3),
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -4328,6 +4383,15 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Add Device - Invalid Params 3",
 				&add_device_fail_3,
+				NULL, test_command_generic);
+	test_bredrle("Add Device - Success 1",
+				&add_device_success_1,
+				NULL, test_command_generic);
+	test_bredrle("Add Device - Success 2",
+				&add_device_success_1,
+				NULL, test_command_generic);
+	test_bredrle("Add Device - Success 3",
+				&add_device_success_1,
 				NULL, test_command_generic);
 
 	return tester_run();
