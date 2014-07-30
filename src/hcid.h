@@ -29,7 +29,6 @@ struct main_opts {
 	uint16_t	autoto;
 	uint32_t	pairto;
 	uint32_t	discovto;
-	gboolean	always_pairable;
 	gboolean	reverse_sdp;
 	gboolean	name_resolv;
 	gboolean	debug_keys;

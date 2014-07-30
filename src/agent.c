@@ -152,8 +152,6 @@ static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
 		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	adapter_set_io_capability(adapter, io_cap);
-
-	adapter_set_pairable(adapter, agent ? true : false);
 }
 
 static bool add_default_agent(struct agent *agent)
@@ -258,11 +256,6 @@ void agent_unref(struct agent *agent)
 	g_free(agent->path);
 
 	g_free(agent);
-}
-
-bool agent_default_available(void)
-{
-	return !queue_isempty(default_agents);
 }
 
 struct agent *agent_get(const char *owner)

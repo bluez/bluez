@@ -201,14 +201,6 @@ static void parse_config(GKeyFile *config)
 
 	DBG("parsing main.conf");
 
-	boolean = g_key_file_get_boolean(config, "General",
-						"AlwaysPairable", &err);
-	if (err) {
-		DBG("%s", err->message);
-		g_clear_error(&err);
-	} else
-		main_opts.always_pairable = boolean;
-
 	val = g_key_file_get_integer(config, "General",
 						"DiscoverableTimeout", &err);
 	if (err) {
@@ -300,7 +292,6 @@ static void init_defaults(void)
 	memset(&main_opts, 0, sizeof(main_opts));
 	main_opts.name = g_strdup_printf("BlueZ %s", VERSION);
 	main_opts.class = 0x000000;
-	main_opts.always_pairable = FALSE;
 	main_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
 	main_opts.discovto = DEFAULT_DISCOVERABLE_TIMEOUT;
 	main_opts.reverse_sdp = TRUE;
