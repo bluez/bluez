@@ -3108,6 +3108,27 @@ static const struct generic_data remove_device_success_2 = {
 	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
 };
 
+static const uint8_t remove_device_param_2[] =  {
+					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+					0x01,
+};
+static const uint8_t set_le_scan_off[] = { 0x00, 0x00 };
+static const struct generic_data remove_device_success_3 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_REMOVE_DEVICE,
+	.send_param = remove_device_param_2,
+	.send_len = sizeof(remove_device_param_2),
+	.expect_param = remove_device_param_2,
+	.expect_len = sizeof(remove_device_param_2),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
+	.expect_alt_ev_param = remove_device_param_2,
+	.expect_alt_ev_len = sizeof(remove_device_param_2),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+	.expect_hci_param = set_le_scan_off,
+	.expect_hci_len = sizeof(set_le_scan_off),
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -3410,13 +3431,21 @@ static void setup_add_device(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
+	const unsigned char *add_param;
+	size_t add_param_len;
 
-	tester_print("Powering on controller (with added BR/EDR device))");
+	tester_print("Powering on controller (with added device))");
+
+	if (data->hciemu_type == HCIEMU_TYPE_LE) {
+		add_param = add_device_success_param_2;
+		add_param_len = sizeof(add_device_success_param_2);
+	} else {
+		add_param = add_device_success_param_1;
+		add_param_len = sizeof(add_device_success_param_1);
+	}
 
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
-				sizeof(add_device_success_param_1),
-				add_device_success_param_1,
-				NULL, NULL, NULL);
+			add_param_len, add_param, NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
@@ -4532,6 +4561,9 @@ int main(int argc, char *argv[])
 				setup_add_device, test_command_generic);
 	test_bredrle("Remove Device - Success 2",
 				&remove_device_success_2,
+				setup_add_device, test_command_generic);
+	test_le("Remove Device - Success 3",
+				&remove_device_success_3,
 				setup_add_device, test_command_generic);
 
 	return tester_run();
