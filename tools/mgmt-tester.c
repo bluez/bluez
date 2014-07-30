@@ -2455,21 +2455,6 @@ static const struct generic_data pair_device_ssp_test_1 = {
 	.client_io_cap = 0x03, /* NoInputNoOutput */
 };
 
-static const struct generic_data pair_device_ssp_test_2 = {
-	.setup_settings = settings_powered_bondable_ssp,
-	.client_enable_ssp = true,
-	.send_opcode = MGMT_OP_PAIR_DEVICE,
-	.send_func = pair_device_send_param_func,
-	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_func = pair_device_expect_param_func,
-	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
-	.expect_alt_ev_len = 26,
-	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
-	.expect_hci_func = client_bdaddr_param_func,
-	.io_cap = 0x01, /* DisplayYesNo */
-	.client_io_cap = 0x01, /* DisplayYesNo */
-};
-
 static const void *client_io_cap_param_func(uint8_t *len)
 {
 	struct test_data *data = tester_get_data();
@@ -2485,7 +2470,7 @@ static const void *client_io_cap_param_func(uint8_t *len)
 }
 
 const uint8_t no_bonding_io_cap[] = { 0x03, 0x00, 0x00 };
-static const struct generic_data pair_device_ssp_test_3 = {
+static const struct generic_data pair_device_ssp_test_2 = {
 	.setup_settings = settings_powered_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -2503,7 +2488,7 @@ static const struct generic_data pair_device_ssp_test_3 = {
 };
 
 const uint8_t bonding_io_cap[] = { 0x03, 0x00, 0x02 };
-static const struct generic_data pair_device_ssp_test_4 = {
+static const struct generic_data pair_device_ssp_test_3 = {
 	.setup_settings = settings_powered_bondable_ssp,
 	.client_enable_ssp = true,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -2518,6 +2503,21 @@ static const struct generic_data pair_device_ssp_test_4 = {
 	.expect_hci_len = sizeof(bonding_io_cap),
 	.io_cap = 0x03, /* NoInputNoOutput */
 	.client_io_cap = 0x03, /* NoInputNoOutput */
+};
+
+static const struct generic_data pair_device_ssp_test_4 = {
+	.setup_settings = settings_powered_bondable_ssp,
+	.client_enable_ssp = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
 };
 
 static const struct generic_data pair_device_ssp_reject_1 = {
@@ -4462,13 +4462,13 @@ int main(int argc, char *argv[])
 				&pair_device_ssp_test_1,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Just-Works Success 2",
-				&pair_device_ssp_test_3,
+				&pair_device_ssp_test_2,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Just-Works Success 3",
-				&pair_device_ssp_test_4,
+				&pair_device_ssp_test_3,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Confirm Success 1",
-				&pair_device_ssp_test_2,
+				&pair_device_ssp_test_4,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Confirm Reject 1",
 				&pair_device_ssp_reject_1,
