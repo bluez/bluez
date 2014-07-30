@@ -2520,6 +2520,42 @@ static const struct generic_data pair_device_ssp_test_4 = {
 	.client_io_cap = 0x01, /* DisplayYesNo */
 };
 
+const uint8_t mitm_no_bonding_io_cap[] = { 0x01, 0x00, 0x01 };
+static const struct generic_data pair_device_ssp_test_5 = {
+	.setup_settings = settings_powered_ssp,
+	.client_enable_ssp = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.expect_hci_command = BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY,
+	.expect_hci_func = client_io_cap_param_func,
+	.expect_hci_param = mitm_no_bonding_io_cap,
+	.expect_hci_len = sizeof(mitm_no_bonding_io_cap),
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+};
+
+const uint8_t mitm_bonding_io_cap[] = { 0x01, 0x00, 0x03 };
+static const struct generic_data pair_device_ssp_test_6 = {
+	.setup_settings = settings_powered_bondable_ssp,
+	.client_enable_ssp = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.expect_hci_command = BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY,
+	.expect_hci_func = client_io_cap_param_func,
+	.expect_hci_param = mitm_bonding_io_cap,
+	.expect_hci_len = sizeof(mitm_bonding_io_cap),
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+};
+
 static const struct generic_data pair_device_ssp_reject_1 = {
 	.setup_settings = settings_powered_bondable_ssp,
 	.client_enable_ssp = true,
@@ -4469,6 +4505,12 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Confirm Success 1",
 				&pair_device_ssp_test_4,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - SSP Confirm Success 2",
+				&pair_device_ssp_test_5,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - SSP Confirm Success 3",
+				&pair_device_ssp_test_6,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Confirm Reject 1",
 				&pair_device_ssp_reject_1,
