@@ -2860,6 +2860,17 @@ static bool set_security(struct gatt_device *device, int req_sec_level)
 	return true;
 }
 
+bool bt_gatt_set_security(const bdaddr_t *bdaddr, int sec_level)
+{
+	struct gatt_device *device;
+
+	device = find_device_by_addr(bdaddr);
+	if (!device)
+		return false;
+
+	return set_security(device, sec_level);
+}
+
 static bool set_auth_type(struct gatt_device *device, int auth_type)
 {
 	int sec_level;

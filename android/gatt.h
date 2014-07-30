@@ -38,3 +38,4 @@ bool bt_gatt_unregister_app(unsigned int id);
 
 bool bt_gatt_connect_app(unsigned int id, const bdaddr_t *addr);
 bool bt_gatt_disconnect_app(unsigned int id, const bdaddr_t *addr);
+bool bt_gatt_set_security(const bdaddr_t *bdaddr, int sec_level);
