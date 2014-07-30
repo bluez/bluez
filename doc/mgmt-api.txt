@@ -244,7 +244,7 @@ Read Controller Information Command
 		1	Connectable
 		2	Fast Connectable
 		3	Discoverable
-		4	Pairable
+		4	Bondable
 		5	Link Level Security (Sec. mode 3)
 		6	Secure Simple Pairing
 		7	Basic Rate/Enhanced Data Rate
@@ -416,23 +416,23 @@ Set Fast Connectable Command
 				Invalid Index
 
 
-Set Pairable Command
+Set Bondable Command
 ====================
 
 	Command Code:		0x0009
 	Controller Index:	<controller id>
-	Command Parameters:	Pairable (1 Octet)
+	Command Parameters:	Bondable (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
-	This command is used to set the pairable property of an
-	controller. The allowed values for the Pairable command
+	This command is used to set the bondable property of an
+	controller. The allowed values for the Bondable command
 	parameter are 0x00 and 0x01. All other values will return
 	Invalid Parameters.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
-	Turning pairable on will not automatically switch the controller
+	Turning bondable on will not automatically switch the controller
 	into connectable mode. That needs to be done separately.
 
 	The setting will be remembered during power down/up toggles.
@@ -1707,11 +1707,11 @@ Set Privacy Command
 	discoverable and also when pairing is initiated.
 
 	With value 0x02 the kernel will use privacy mode with resolvable
-	private address. In case the conroller is pairable and discoverable
+	private address. In case the conroller is bondable and discoverable
 	the identity address is used. Also when pairing is initiated, the
 	connection will be established with the identity address.
 
-	Exposing the identity address when pairable and discoverable or
+	Exposing the identity address when bondable and discoverable or
 	during initated pairing can be a privacy issue. For dual-mode
 	controllers this can be neglected since its public address will
 	be exposed over BR/EDR anyway. The benefit of exposing the
