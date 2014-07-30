@@ -7474,6 +7474,19 @@ static void le_long_term_key_request_evt(const void *data, uint8_t size)
 	print_encrypted_diversifier(evt->ediv);
 }
 
+static void le_conn_param_request_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_conn_param_request *evt = data;
+
+	print_handle(evt->handle);
+	print_slot_125("Min connection interval", evt->min_interval);
+	print_slot_125("Max connection interval", evt->max_interval);
+	print_field("Connection latency: 0x%4.4x", le16_to_cpu(evt->latency));
+	print_field("Supervision timeout: %d msec (0x%4.4x)",
+					le16_to_cpu(evt->supv_timeout) * 10,
+					le16_to_cpu(evt->supv_timeout));
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -7493,7 +7506,8 @@ static const struct subevent_data subevent_table[] = {
 				le_remote_features_complete_evt, 11, true },
 	{ 0x05, "LE Long Term Key Request",
 				le_long_term_key_request_evt, 12, true },
-	{ 0x06, "LE Remote Connection Parameter Request" },
+	{ 0x06, "LE Remote Connection Parameter Request",
+				le_conn_param_request_evt, 10, true },
 	{ }
 };
 

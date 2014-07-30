@@ -2394,8 +2394,8 @@ struct bt_hci_evt_le_long_term_key_request {
 	uint16_t ediv;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_REMOTE_CONN_PARAM_REQUEST	0x06
-struct bt_hci_evt_le_remote_conn_param_request {
+#define BT_HCI_EVT_LE_CONN_PARAM_REQUEST	0x06
+struct bt_hci_evt_le_conn_param_request {
 	uint16_t handle;
 	uint16_t min_interval;
 	uint16_t max_interval;
