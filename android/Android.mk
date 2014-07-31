@@ -236,6 +236,7 @@ LOCAL_SRC_FILES := \
 	bluez/monitor/control.c \
 	bluez/monitor/packet.c \
 	bluez/monitor/l2cap.c \
+	bluez/monitor/avctp.c \
 	bluez/monitor/uuid.c \
 	bluez/monitor/sdp.c \
 	bluez/monitor/vendor.c \
