@@ -2250,7 +2250,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	}
 
 	items = g_slist_length(p->items);
-	total = p->end - p->start;
+	total = p->end - p->start + 1;
 	if (items < total) {
 		avrcp_list_items(session, p->start + items + 1, p->end);
 		return FALSE;
