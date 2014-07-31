@@ -30,22 +30,12 @@ struct l2cap_frame {
 	bool in;
 	uint16_t handle;
 	uint16_t cid;
+	uint16_t psm;
+	uint16_t chan;
+	uint8_t mode;
 	const void *data;
 	uint16_t size;
-	uint16_t psm;
 };
-
-static inline void l2cap_frame_init(struct l2cap_frame *frame,
-				uint16_t index, bool in, uint16_t handle,
-				uint16_t cid, const void *data, uint16_t size)
-{
-	frame->index  = index;
-	frame->in     = in;
-	frame->handle = handle;
-	frame->cid    = cid;
-	frame->data   = data;
-	frame->size   = size;
-}
 
 static inline void l2cap_frame_pull(struct l2cap_frame *frame,
 				const struct l2cap_frame *source, uint16_t len)
@@ -54,6 +44,9 @@ static inline void l2cap_frame_pull(struct l2cap_frame *frame,
 	frame->in      = source->in;
 	frame->handle  = source->handle;
 	frame->cid     = source->cid;
+	frame->psm     = source->psm;
+	frame->chan    = source->chan;
+	frame->mode    = source->mode;
 	frame->data    = source->data + len;
 	frame->size    = source->size - len;
 }

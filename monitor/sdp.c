@@ -686,7 +686,7 @@ static const struct sdp_data sdp_table[] = {
 	{ }
 };
 
-void sdp_packet(const struct l2cap_frame *frame, uint16_t channel)
+void sdp_packet(const struct l2cap_frame *frame)
 {
 	uint8_t pdu;
 	uint16_t tid, plen;
@@ -737,7 +737,7 @@ void sdp_packet(const struct l2cap_frame *frame, uint16_t channel)
 	print_indent(6, pdu_color, "SDP: ", pdu_str, COLOR_OFF,
 				" (0x%2.2x) tid %d len %d", pdu, tid, plen);
 
-	tid_info = get_tid(tid, channel);
+	tid_info = get_tid(tid, frame->chan);
 
 	if (!sdp_data || !sdp_data->func || !tid_info) {
 		packet_hexdump(frame->data + 5, frame->size - 5);

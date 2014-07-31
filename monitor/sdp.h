@@ -22,4 +22,4 @@
  *
  */
 
-void sdp_packet(const struct l2cap_frame *frame, uint16_t channel);
+void sdp_packet(const struct l2cap_frame *frame);

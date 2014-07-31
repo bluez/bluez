@@ -1113,6 +1113,21 @@ static const struct sig_opcode_data le_sig_opcode_table[] = {
 	{ },
 };
 
+static void l2cap_frame_init(struct l2cap_frame *frame,
+				uint16_t index, bool in, uint16_t handle,
+				uint16_t cid, const void *data, uint16_t size)
+{
+	frame->index  = index;
+	frame->in     = in;
+	frame->handle = handle;
+	frame->cid    = cid;
+	frame->data   = data;
+	frame->size   = size;
+	frame->psm    = get_psm(frame);
+	frame->mode   = get_mode(frame);
+	frame->chan   = get_chan(frame);
+}
+
 static void bredr_sig_packet(uint16_t index, bool in, uint16_t handle,
 				uint16_t cid, const void *data, uint16_t size)
 {
@@ -2596,8 +2611,6 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 			uint16_t cid, const void *data, uint16_t size)
 {
 	struct l2cap_frame frame;
-	uint16_t psm, chan;
-	uint8_t mode;
 
 	switch (cid) {
 	case 0x0001:
@@ -2620,18 +2633,15 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		break;
 	default:
 		l2cap_frame_init(&frame, index, in, handle, cid, data, size);
-		psm = get_psm(&frame);
-		frame.psm = psm;
-		mode = get_mode(&frame);
-		chan = get_chan(&frame);
 
 		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
 				" %d len %d [PSM %d mode %d] {chan %d}",
-						cid, size, psm, mode, chan);
+						cid, size, frame.psm,
+						frame.mode, frame.chan);
 
-		switch (psm) {
+		switch (frame.psm) {
 		case 0x0001:
-			sdp_packet(&frame, chan);
+			sdp_packet(&frame);
 			break;
 		case 0x001f:
 			att_packet(index, in, handle, cid, data, size);
