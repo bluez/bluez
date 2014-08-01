@@ -1898,7 +1898,7 @@ static const char *att_format_str(uint8_t format)
 	}
 }
 
-static uint16_t print_info_data_16(const uint16_t *data, uint16_t len)
+static uint16_t print_info_data_16(const void *data, uint16_t len)
 {
 	while (len >= 4) {
 		print_field("Handle: 0x%4.4x", get_le16(data));
@@ -1910,7 +1910,7 @@ static uint16_t print_info_data_16(const uint16_t *data, uint16_t len)
 	return len;
 }
 
-static uint16_t print_info_data_128(const uint16_t *data, uint16_t len)
+static uint16_t print_info_data_128(const void *data, uint16_t len)
 {
 	while (len >= 18) {
 		print_field("Handle: 0x%4.4x", get_le16(data));
