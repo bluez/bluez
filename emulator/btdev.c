@@ -335,6 +335,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[2]  |= 0x10;	/* Cancel Remote Name Request */
 	btdev->commands[2]  |= 0x20;	/* Read Remote Supported Features */
 	btdev->commands[2]  |= 0x40;	/* Read Remote Extended Features */
+	btdev->commands[3]  |= 0x01;	/* Read Clock Offset */
 	btdev->commands[5]  |= 0x08;	/* Read Default Link Policy */
 	btdev->commands[5]  |= 0x10;	/* Write Default Link Policy */
 	btdev->commands[6]  |= 0x01;	/* Set Event Filter */
@@ -1466,6 +1467,24 @@ static void remote_version_complete(struct btdev *btdev, uint16_t handle)
 							&rvc, sizeof(rvc));
 }
 
+static void remote_clock_offset_complete(struct btdev *btdev, uint16_t handle)
+{
+	struct bt_hci_evt_clock_offset_complete coc;
+
+	if (btdev->conn) {
+		coc.status = BT_HCI_ERR_SUCCESS;
+		coc.handle = cpu_to_le16(handle);
+		coc.clock_offset = 0;
+	} else {
+		coc.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		coc.handle = cpu_to_le16(handle);
+		coc.clock_offset = 0;
+	}
+
+	send_event(btdev, BT_HCI_EVT_CLOCK_OFFSET_COMPLETE,
+							&coc, sizeof(coc));
+}
+
 static void io_cap_req_reply_complete(struct btdev *btdev,
 					const uint8_t *bdaddr,
 					uint8_t capability, uint8_t oob_data,
@@ -1967,6 +1986,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_REMOTE_VERSION:
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+		break;
+
+	case BT_HCI_CMD_READ_CLOCK_OFFSET:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		break;
 
@@ -2874,6 +2899,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_read_remote_features *rrf;
 	const struct bt_hci_cmd_read_remote_ext_features *rref;
 	const struct bt_hci_cmd_read_remote_version *rrv;
+	const struct bt_hci_cmd_read_clock_offset *rco;
 	const struct bt_hci_cmd_le_create_conn *lecc;
 
 	switch (opcode) {
@@ -2997,6 +3023,13 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_READ_REMOTE_VERSION:
 		rrv = data;
 		remote_version_complete(btdev, le16_to_cpu(rrv->handle));
+		break;
+
+	case BT_HCI_CMD_READ_CLOCK_OFFSET:
+		if (btdev->type == BTDEV_TYPE_LE)
+			return;
+		rco = data;
+		remote_clock_offset_complete(btdev, le16_to_cpu(rco->handle));
 		break;
 
 	case BT_HCI_CMD_LE_CREATE_CONN:
