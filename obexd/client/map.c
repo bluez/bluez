@@ -1183,8 +1183,10 @@ static void message_listing_cb(struct obc_session *session,
 	}
 
 	reply = dbus_message_new_method_return(request->msg);
-	if (reply == NULL)
-		return;
+	if (reply == NULL) {
+		g_free(contents);
+		goto clean;
+	}
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -1211,6 +1213,7 @@ static void message_listing_cb(struct obc_session *session,
 
 done:
 	g_dbus_send_message(conn, reply);
+clean:
 	pending_request_free(request);
 }
 
