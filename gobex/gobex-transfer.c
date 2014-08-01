@@ -378,6 +378,7 @@ static void transfer_put_req_first(struct transfer *transfer, GObexPacket *req,
 	if (!g_obex_send(transfer->obex, rsp, &err)) {
 		transfer_complete(transfer, err);
 		g_error_free(err);
+		return;
 	}
 
 	if (rspcode != G_OBEX_RSP_CONTINUE)
