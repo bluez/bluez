@@ -3815,9 +3815,16 @@ bool bt_le_discovery_start(void)
 
 	adapter.le_scanning = true;
 
-	/* If core is discovering, don't bother */
-	if (adapter.cur_discovery_type != SCAN_TYPE_NONE)
+	/*
+	 * If core is discovering - just set expected next scan type.
+	 * It will be triggered in case current scan session is almost done
+	 * i.e. we missed LE phase in interleaved scan, or we're trying to
+	 * connect to device that was already discovered.
+	 */
+	if (adapter.cur_discovery_type != SCAN_TYPE_NONE) {
+		adapter.exp_discovery_type = SCAN_TYPE_LE;
 		return true;
+	}
 
 	if (start_discovery(SCAN_TYPE_LE))
 		return true;
@@ -4804,7 +4811,7 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 		if (get_supported_discovery_type() != SCAN_TYPE_LE)
 			break;
 
-		if (gatt_device_found_cb) {
+		if (adapter.exp_discovery_type == SCAN_TYPE_LE) {
 			status = HAL_STATUS_BUSY;
 			goto failed;
 		}
@@ -4822,8 +4829,9 @@ static void handle_cancel_discovery_cmd(const void *buf, uint16_t len)
 			goto failed;
 		}
 
-		adapter.exp_discovery_type = gatt_device_found_cb ?
-						SCAN_TYPE_LE : SCAN_TYPE_NONE;
+		if (adapter.exp_discovery_type != SCAN_TYPE_LE)
+			adapter.exp_discovery_type = SCAN_TYPE_NONE;
+
 		break;
 	}
 
