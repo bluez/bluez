@@ -1496,6 +1496,37 @@ bool bt_kernel_conn_control(void)
 	return kernel_conn_control;
 }
 
+bool bt_auto_connect_add(const bdaddr_t *addr)
+{
+	struct mgmt_cp_add_device cp;
+	struct device *dev;
+
+	if (!kernel_conn_control)
+		return false;
+
+	dev = find_device(addr);
+	if (!dev)
+		return false;
+
+	if (dev->bdaddr_type == BDADDR_BREDR) {
+		DBG("auto-connection feature is not available for BR/EDR");
+		return false;
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, addr);
+	cp.addr.type = dev->bdaddr_type;
+	cp.action = 0x02;
+
+	if (mgmt_send(mgmt_if, MGMT_OP_ADD_DEVICE, adapter.index, sizeof(cp),
+						&cp, NULL, NULL, NULL) > 0)
+		return true;
+
+	error("Failed to add device");
+
+	return false;
+}
+
 static bool rssi_above_threshold(int old, int new)
 {
 	/* only 8 dBm or more */
