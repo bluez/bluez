@@ -1751,31 +1751,42 @@ static int connect_bredr(struct gatt_device *dev)
 
 static bool trigger_connection(struct app_connection *connection)
 {
+	bool ret;
+
 	switch (connection->device->state) {
 	case DEVICE_DISCONNECTED:
+		/*
+		 *  If device was last seen over BR/EDR connect over it.
+		 *  Note: Connection state is handled in connect_bredr() func
+		 */
+		if (bt_device_last_seen_bearer(&connection->device->bdaddr) ==
+								BDADDR_BREDR)
+			return connect_bredr(connection->device) == 0;
+
+		/* Trigger discovery if not already started */
+		if (!scanning) {
+			if (!bt_le_discovery_start()) {
+				error("gatt: Could not start scan");
+				ret = false;
+				break;
+			}
+		}
+		ret = true;
 		device_set_state(connection->device, DEVICE_CONNECT_INIT);
 		break;
 	case DEVICE_CONNECTED:
 		send_app_connect_notify(connection, GATT_SUCCESS);
+		ret = true;
 		break;
+	case DEVICE_CONNECT_READY:
+	case DEVICE_CONNECT_INIT:
 	default:
+		/* In those cases connection is already triggered. */
+		ret = true;
 		break;
 	}
 
-	/* If device was last seen over BR/EDR connect over it */
-	if (bt_device_last_seen_bearer(&connection->device->bdaddr) ==
-								BDADDR_BREDR)
-		return connect_bredr(connection->device) == 0;
-
-	/* after state change trigger discovering */
-	if (!scanning && (connection->device->state == DEVICE_CONNECT_INIT))
-		if (!bt_le_discovery_start()) {
-			error("gatt: Could not start scan");
-
-			return false;
-		}
-
-	return true;
+	return ret;
 }
 
 static uint8_t unregister_app(int client_if)
