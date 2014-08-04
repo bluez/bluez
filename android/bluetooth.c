@@ -221,6 +221,8 @@ static GSList *browse_reqs;
 
 static struct ipc *hal_ipc = NULL;
 
+static bool kernel_conn_control = false;
+
 static void get_device_android_addr(struct device *dev, uint8_t *addr)
 {
 	/*
@@ -1487,6 +1489,11 @@ bool bt_device_set_uuids(const bdaddr_t *addr, GSList *uuids)
 	set_device_uuids(dev, uuids);
 
 	return true;
+}
+
+bool bt_kernel_conn_control(void)
+{
+	return kernel_conn_control;
 }
 
 static bool rssi_above_threshold(int old, int new)
@@ -3266,6 +3273,12 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 3)) {
 		error("Version 1.3 or later of management interface required");
 		goto failed;
+	}
+
+	/* Starting from mgmt 1.7, kernel can handle connection control */
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) >= MGMT_VERSION(1, 7)) {
+		info("Kernel connection control will be used");
+		kernel_conn_control = true;
 	}
 
 	mgmt_register(mgmt_if, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
