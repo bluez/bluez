@@ -1527,6 +1527,34 @@ bool bt_auto_connect_add(const bdaddr_t *addr)
 	return false;
 }
 
+void bt_auto_connect_remove(const bdaddr_t *addr)
+{
+	struct mgmt_cp_remove_device cp;
+	struct device *dev;
+
+	if (!kernel_conn_control)
+		return;
+
+	dev = find_device(addr);
+	if (!dev)
+		return;
+
+	if (dev->bdaddr_type == BDADDR_BREDR) {
+		DBG("auto-connection feature is not available for BR/EDR");
+		return;
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, addr);
+	cp.addr.type = dev->bdaddr_type;
+
+	if (mgmt_send(mgmt_if, MGMT_OP_REMOVE_DEVICE, adapter.index,
+					sizeof(cp), &cp, NULL, NULL, NULL) > 0)
+		return;
+
+	error("Failed to remove device");
+}
+
 static bool rssi_above_threshold(int old, int new)
 {
 	/* only 8 dBm or more */

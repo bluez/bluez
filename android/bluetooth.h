@@ -83,3 +83,5 @@ const bdaddr_t *bt_get_id_addr(const bdaddr_t *addr, uint8_t *type);
 bool bt_kernel_conn_control(void);
 
 bool bt_auto_connect_add(const bdaddr_t *addr);
+
+void bt_auto_connect_remove(const bdaddr_t *addr);
