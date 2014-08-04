@@ -120,6 +120,13 @@
 		.callback_result.report_size = cb_rep_size, \
 	}
 
+#define CLLBACK_GATTC_SCAN_RES(props, prop_cnt, cb_adv_data) {\
+		.callback = CB_GATTC_SCAN_RESULT, \
+		.callback_result.properties = props, \
+		.callback_result.num_properties = prop_cnt, \
+		.callback_result.adv_data = cb_adv_data, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -280,6 +287,8 @@ struct bt_callback_data {
 
 	bthh_protocol_mode_t mode;
 	int report_size;
+
+	bool adv_data;
 };
 
 /*

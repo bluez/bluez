@@ -449,6 +449,12 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+		if (exp->callback_result.adv_data !=
+					step->callback_result.adv_data) {
+			tester_debug("Callback adv. data status don't match");
+			return false;
+		}
+
 		if (exp->callback_result.properties &&
 				verify_property(exp->callback_result.properties,
 				exp->callback_result.num_properties,
@@ -853,9 +859,45 @@ static bthh_callbacks_t bthh_callbacks = {
 	.virtual_unplug_cb = hidhost_virual_unplug_cb
 };
 
+static void gattc_register_client_cb(int status, int client_if,
+							bt_uuid_t *app_uuid)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTC_REGISTER_CLIENT;
+
+	step->callback_result.status = status;
+
+	schedule_callback_call(step);
+}
+
+static void gattc_scan_result_cb(bt_bdaddr_t *bda, int rssi, uint8_t *adv_data)
+{
+	struct step *step = g_new0(struct step, 1);
+	bt_property_t *props[2];
+
+	step->callback = CB_GATTC_SCAN_RESULT;
+	step->callback_result.adv_data = adv_data ? TRUE : FALSE;
+
+	/* Utilize property verification mechanism for those */
+	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
+	props[1] = create_property(BT_PROPERTY_REMOTE_RSSI, &rssi,
+								sizeof(rssi));
+
+	step->callback_result.num_properties = 2;
+	step->callback_result.properties = repack_properties(2, props);
+
+	g_free(props[0]->val);
+	g_free(props[0]);
+	g_free(props[1]->val);
+	g_free(props[1]);
+
+	schedule_callback_call(step);
+}
+
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
-	.register_client_cb = NULL,
-	.scan_result_cb = NULL,
+	.register_client_cb = gattc_register_client_cb,
+	.scan_result_cb = gattc_scan_result_cb,
 	.open_cb = NULL,
 	.close_cb = NULL,
 	.search_complete_cb = NULL,
