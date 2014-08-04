@@ -953,6 +953,16 @@ static void gattc_disconnect_cb(int conn_id, int status, int client_if,
 	schedule_callback_call(step);
 }
 
+static void gattc_listen_cb(int status, int server_if)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTC_LISTEN;
+	step->callback_result.status = status;
+
+	schedule_callback_call(step);
+}
+
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.register_client_cb = gattc_register_client_cb,
 	.scan_result_cb = gattc_scan_result_cb,
@@ -971,7 +981,7 @@ static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.write_descriptor_cb = NULL,
 	.execute_write_cb = NULL,
 	.read_remote_rssi_cb = NULL,
-	.listen_cb = NULL
+	.listen_cb = gattc_listen_cb
 };
 
 static const btgatt_server_callbacks_t btgatt_server_callbacks = {

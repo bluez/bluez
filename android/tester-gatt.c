@@ -66,11 +66,25 @@ static bt_property_t prop_emu_remotes_default_set[] = {
 						&emu_remote_bdaddr_val },
 };
 
+static bt_scan_mode_t setprop_scan_mode_conn_val =
+					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE;
+
+static bt_property_t prop_test_scan_mode_conn = {
+	.type = BT_PROPERTY_ADAPTER_SCAN_MODE,
+	.val = &setprop_scan_mode_conn_val,
+	.len = sizeof(setprop_scan_mode_conn_val),
+};
+
 static struct emu_cid_data cid_data;
 
 static struct gatt_connect_data client1_conn_req = {
 	.client_id = CLIENT1_ID,
 	.conn_id = CONN1_ID,
+};
+
+static struct gatt_connect_data client1_conn2_req = {
+	.client_id = CLIENT1_ID,
+	.conn_id = CONN2_ID,
 };
 
 static struct gatt_connect_data client2_conn_req = {
@@ -164,6 +178,34 @@ static void gatt_client_disconnect_action(void)
 	schedule_action_verification(step);
 }
 
+static void gatt_client_do_listen_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct gatt_connect_data *conn_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->client->listen(
+							conn_data->client_id,
+							1);
+
+	schedule_action_verification(step);
+}
+
+static void gatt_client_stop_listen_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct gatt_connect_data *conn_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->client->listen(
+							conn_data->client_id,
+							0);
+
+	schedule_action_verification(step);
+}
+
 static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *t_data = tester_get_data();
@@ -220,6 +262,24 @@ static void emu_set_connect_cb_action(void)
 	struct step *step = g_new0(struct step, 1);
 
 	bthost_set_connect_cb(bthost, cb, data);
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
+static void emu_remote_connect_hci_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	struct step *step = g_new0(struct step, 1);
+	const uint8_t *master_addr;
+
+	master_addr = hciemu_get_master_bdaddr(data->hciemu);
+
+	tester_print("Trying to connect hci");
+
+	bthost_hci_connect(bthost, master_addr, BDADDR_LE_PUBLIC);
 
 	step->action_status = BT_STATUS_SUCCESS;
 
@@ -337,6 +397,76 @@ static struct test_case test_cases[] = {
 		CALLBACK_GATTC_DISCONNECT(GATT_STATUS_SUCCESS,
 						prop_emu_remotes_default_set,
 						CONN1_ID, CLIENT1_ID),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("Gatt Client - Listen and Disconnect",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_set_connect_cb_action, gatt_conn_cb),
+		ACTION_SUCCESS(bt_set_property_action,
+						&prop_test_scan_mode_conn),
+		CALLBACK_ADAPTER_PROPS(&prop_test_scan_mode_conn, 1),
+		ACTION_SUCCESS(gatt_client_register_action, &client_app_uuid),
+		CALLBACK_STATUS(CB_GATTC_REGISTER_CLIENT, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),
+		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
+		ACTION_SUCCESS(emu_remote_connect_hci_action, NULL),
+		CALLBACK_GATTC_CONNECT(GATT_STATUS_SUCCESS,
+						prop_emu_remotes_default_set,
+						CONN1_ID, CLIENT1_ID),
+		ACTION_SUCCESS(gatt_client_stop_listen_action,
+							&client1_conn_req),
+		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_client_disconnect_action,
+							&client1_conn_req),
+		CALLBACK_GATTC_DISCONNECT(GATT_STATUS_SUCCESS,
+						prop_emu_remotes_default_set,
+						CONN1_ID, CLIENT1_ID),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("Gatt Client - Double Listen",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_set_connect_cb_action, gatt_conn_cb),
+		ACTION_SUCCESS(bt_set_property_action,
+						&prop_test_scan_mode_conn),
+		CALLBACK_ADAPTER_PROPS(&prop_test_scan_mode_conn, 1),
+		ACTION_SUCCESS(gatt_client_register_action, &client_app_uuid),
+		CALLBACK_STATUS(CB_GATTC_REGISTER_CLIENT, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),
+		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
+		ACTION_SUCCESS(emu_remote_connect_hci_action, NULL),
+		CALLBACK_GATTC_CONNECT(GATT_STATUS_SUCCESS,
+						prop_emu_remotes_default_set,
+						CONN1_ID, CLIENT1_ID),
+		ACTION_SUCCESS(gatt_client_stop_listen_action,
+							&client1_conn_req),
+		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_client_disconnect_action,
+							&client1_conn_req),
+		CALLBACK_GATTC_DISCONNECT(GATT_STATUS_SUCCESS,
+						prop_emu_remotes_default_set,
+						CONN1_ID, CLIENT1_ID),
+		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),
+		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
+		ACTION_SUCCESS(emu_remote_connect_hci_action, NULL),
+		CALLBACK_GATTC_CONNECT(GATT_STATUS_SUCCESS,
+						prop_emu_remotes_default_set,
+						CONN2_ID, CLIENT1_ID),
+		ACTION_SUCCESS(gatt_client_disconnect_action,
+							&client1_conn2_req),
+		CALLBACK_GATTC_DISCONNECT(GATT_STATUS_SUCCESS,
+						prop_emu_remotes_default_set,
+						CONN2_ID, CLIENT1_ID),
+		ACTION_SUCCESS(gatt_client_stop_listen_action,
+							&client1_conn_req),
+		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
