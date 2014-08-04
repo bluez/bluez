@@ -455,6 +455,18 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+		if (exp->callback_result.conn_id !=
+						step->callback_result.conn_id) {
+			tester_debug("Callback conn_id don't match");
+			return false;
+		}
+
+		if (exp->callback_result.client_id !=
+					step->callback_result.client_id) {
+				tester_debug("Callback client_id don't match");
+				return false;
+		}
+
 		if (exp->callback_result.properties &&
 				verify_property(exp->callback_result.properties,
 				exp->callback_result.num_properties,
@@ -895,11 +907,57 @@ static void gattc_scan_result_cb(bt_bdaddr_t *bda, int rssi, uint8_t *adv_data)
 	schedule_callback_call(step);
 }
 
+static void gattc_connect_cb(int conn_id, int status, int client_if,
+							bt_bdaddr_t *bda)
+{
+	struct step *step = g_new0(struct step, 1);
+	bt_property_t *props[1];
+
+	step->callback = CB_GATTC_OPEN;
+	step->callback_result.status = status;
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.client_id = client_if;
+
+	/* Utilize property verification mechanism for bdaddr */
+	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
+
+	step->callback_result.num_properties = 1;
+	step->callback_result.properties = repack_properties(1, props);
+
+	g_free(props[0]->val);
+	g_free(props[0]);
+
+	schedule_callback_call(step);
+}
+
+static void gattc_disconnect_cb(int conn_id, int status, int client_if,
+							bt_bdaddr_t *bda)
+{
+	struct step *step = g_new0(struct step, 1);
+	bt_property_t *props[1];
+
+	step->callback = CB_GATTC_CLOSE;
+	step->callback_result.status = status;
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.client_id = client_if;
+
+	/* Utilize property verification mechanism for bdaddr */
+	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
+
+	step->callback_result.num_properties = 1;
+	step->callback_result.properties = repack_properties(1, props);
+
+	g_free(props[0]->val);
+	g_free(props[0]);
+
+	schedule_callback_call(step);
+}
+
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.register_client_cb = gattc_register_client_cb,
 	.scan_result_cb = gattc_scan_result_cb,
-	.open_cb = NULL,
-	.close_cb = NULL,
+	.open_cb = gattc_connect_cb,
+	.close_cb = gattc_disconnect_cb,
 	.search_complete_cb = NULL,
 	.search_result_cb = NULL,
 	.get_characteristic_cb = NULL,

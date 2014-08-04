@@ -127,6 +127,24 @@
 		.callback_result.adv_data = cb_adv_data, \
 	}
 
+#define CALLBACK_GATTC_CONNECT(cb_res, cb_prop, cb_conn_id, cb_client_id) { \
+		.callback = CB_GATTC_OPEN, \
+		.callback_result.status = cb_res, \
+		.callback_result.properties = cb_prop, \
+		.callback_result.num_properties = 1, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.client_id = cb_client_id, \
+	}
+
+#define CALLBACK_GATTC_DISCONNECT(cb_res, cb_prop, cb_conn_id, cb_client_id) { \
+		.callback = CB_GATTC_CLOSE, \
+		.callback_result.status = cb_res, \
+		.callback_result.properties = cb_prop, \
+		.callback_result.num_properties = 1, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.client_id = cb_client_id, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -289,6 +307,9 @@ struct bt_callback_data {
 	int report_size;
 
 	bool adv_data;
+
+	int client_id;
+	int conn_id;
 };
 
 /*
