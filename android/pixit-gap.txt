@@ -1,6 +1,6 @@
 GAP PIXIT for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -54,4 +54,5 @@ TSPX_pairing_before_service_request			False
 TSPX_iut_mandates_mitm					False
 TSPX_encryption_before_service_request			False
 TSPX_tester_appearance					0000
+TSPX_iut_advertising_data_in_broadcasting_mode		[set to default value]
 -------------------------------------------------------------------------------

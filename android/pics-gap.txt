@@ -1,6 +1,6 @@
 GAP PICS for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 
@@ -709,7 +709,7 @@ C.5: Mandatory if (TSPC_GAP_4_1 or TSPC_GAP_4_2) is supported over BR/EDR,
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_GAP_41_1	True ()	Central BR/EDR/LE: Security Aspects (M)
+TSPC_GAP_41_1	True		Central BR/EDR/LE: Security Aspects (M)
 -------------------------------------------------------------------------------
 
 
@@ -779,4 +779,5 @@ TSPC_SM_1_1	True (*)	Master Role (Initiator)
 TSPC_SM_1_2	True (*)	Slave Role (Responder)
 TSPC_SM_2_4	True (*)	OOB supported (O)
 TSPC_ALL	False		Turns on all
+TSPC_GATT_1_1	True		GATT Client Role
 -------------------------------------------------------------------------------
