@@ -1169,6 +1169,40 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 							device);
 }
 
+static void device_set_auto_connect(struct btd_device *device, gboolean enable)
+{
+	char addr[18];
+
+	if (!device || !device->le)
+		return;
+
+	ba2str(&device->bdaddr, addr);
+
+	DBG("%s auto connect: %d", addr, enable);
+
+	if (device->auto_connect == enable)
+		return;
+
+	device->auto_connect = enable;
+
+	/* Disabling auto connect */
+	if (enable == FALSE) {
+		adapter_connect_list_remove(device->adapter, device);
+		adapter_auto_connect_remove(device->adapter, device);
+		return;
+	}
+
+	/* Enabling auto connect */
+	adapter_auto_connect_add(device->adapter, device);
+
+	if (device->attrib) {
+		DBG("Already connected");
+		return;
+	}
+
+	adapter_connect_list_add(device->adapter, device);
+}
+
 static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
@@ -1178,8 +1212,10 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 	 * Disable connections through passive scanning until
 	 * Device1.Connect is called
 	 */
-	if (device->auto_connect)
+	if (device->auto_connect) {
 		device->disable_auto_connect = TRUE;
+		device_set_auto_connect(device, FALSE);
+	}
 
 	device_request_disconnect(device, msg);
 
@@ -1484,7 +1520,10 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 
 		btd_device_set_temporary(dev, FALSE);
 
-		dev->disable_auto_connect = FALSE;
+		if (dev->disable_auto_connect) {
+			dev->disable_auto_connect = FALSE;
+			device_set_auto_connect(dev, TRUE);
+		}
 
 		err = device_connect_le(dev);
 		if (err < 0)
@@ -4097,40 +4136,6 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "RSSI");
-}
-
-static void device_set_auto_connect(struct btd_device *device, gboolean enable)
-{
-	char addr[18];
-
-	if (!device || !device->le)
-		return;
-
-	ba2str(&device->bdaddr, addr);
-
-	DBG("%s auto connect: %d", addr, enable);
-
-	if (device->auto_connect == enable)
-		return;
-
-	device->auto_connect = enable;
-
-	/* Disabling auto connect */
-	if (enable == FALSE) {
-		adapter_connect_list_remove(device->adapter, device);
-		adapter_auto_connect_remove(device->adapter, device);
-		return;
-	}
-
-	/* Enabling auto connect */
-	adapter_auto_connect_add(device->adapter, device);
-
-	if (device->attrib) {
-		DBG("Already connected");
-		return;
-	}
-
-	adapter_connect_list_add(device->adapter, device);
 }
 
 static gboolean start_discovery(gpointer user_data)
