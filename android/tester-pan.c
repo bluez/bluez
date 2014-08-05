@@ -111,6 +111,16 @@ static void pan_get_local_role_action(void)
 	schedule_action_verification(step);
 }
 
+static void pan_enable_nap_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_pan->enable(BTPAN_ROLE_PANNAP);
+
+	schedule_action_verification(step);
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("PAN Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -188,6 +198,11 @@ static struct test_case test_cases[] = {
 					BTPAN_STATE_DISCONNECTED,
 					BTPAN_ROLE_PANU, BTPAN_ROLE_PANNAP),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("PAN Enable NAP - Success",
+		ACTION_SUCCESS(pan_enable_nap_action, NULL),
+		CALLBACK_PAN_CTRL_STATE(CB_PAN_CONTROL_STATE, BT_STATUS_SUCCESS,
+					BTPAN_STATE_ENABLED, BTPAN_ROLE_PANNAP),
 	),
 };
 
