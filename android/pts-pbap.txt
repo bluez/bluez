@@ -1,8 +1,8 @@
 PTS test results for PBAP
 
-PTS version: 5.1
-Tested: 08-April-2014
-Android version: 4.4.2
+PTS version: 5.2
+Tested: 04-August-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
@@ -126,12 +126,14 @@ TC_PSE_PBB_BV_46_C	N/A
 TC_PSE_PBB_BV_28_C	N/A
 TC_PSE_PBB_BV_29_C	N/A
 TC_PSE_PBB_BV_30_C	N/A
-TC_PSE_PBB_BV_31_C	PASS
+TC_PSE_PBB_BV_31_C	INC	JIRA #BA-71
 TC_PSE_PBB_BV_32_C	N/A
 TC_PSE_PBF_BV_01_I	PASS
 TC_PSE_PBF_BV_02_I	PASS	Tester must verify vcard content received by PTS
+TC_PSE_PBF_BV_03_I	PASS
 TC_PSE_PDF_BV_01_I	PASS	Tester must compare phone book size with the
 				value given by PTS
+TC_PSE_PDF_BV_06_I	PASS
 TC_PSE_BC_BV_03_I	N/A
 TC_PSE_CON_BV_02_I	N/A
 TC_PSE_ROB_BV_01_I	N/A

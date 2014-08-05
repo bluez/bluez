@@ -1,6 +1,6 @@
 PBAP PIXIT for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -32,4 +32,5 @@ TSPX_rfcomm_channel					2
 TSPX_obex_auth_password					0000
 TSPX_no_confirmations					False
 TSPX_PSE_vCardSelector					0000000000000001
+TSPX_Automation						False
 -------------------------------------------------------------------------------
