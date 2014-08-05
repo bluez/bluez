@@ -1,8 +1,8 @@
 PTS test results for PAN
 
-PTS version: 5.1
-Tested: 07-April-2014
-Android version: 4.4.2
+PTS version: 5.2
+Tested: 05-August-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
@@ -34,12 +34,7 @@ TC_BNEP_NAP_FORWARD_UNICAST_BV_05_C	N/A
 TC_BNEP_NAP_FORWARD_UNICAST_BV_06_C	N/A
 TC_BNEP_NAP_MULTICAST_0_BV_03_C		N/A
 TC_BNEP_NAP_MULTICAST_0_BV_04_C		N/A
-TC_BNEP_BRIDGE_RX_BV_02_I		PASS	Tester needs to send one
-						forward-unicast	BNEP packet
-						with given data (5 times)
-						0x00, 0x01, 0xFF followed by
-						0x00, 0x01, 0x9E, 0x9F
-						sendip -d <hexdata>
+TC_BNEP_BRIDGE_RX_BV_02_I		INC	PTS issue #12464
 TC_BNEP_BRIDGE_TX_BV_01_I		PASS
 TC_NAP_Ipv4_Autonet_BV_01_I		N/A
 TC_NAP_Ipv6_Autonet_BV_02_I		N/A
@@ -56,14 +51,12 @@ TC_SDP_NAP_BV_01_C			PASS
 TC_MISC_NAP_UUID_BV_01_C		PASS
 TC_MISC_NAP_UUID_BV_02_C		PASS
 TC_BNEP_PANU_BROADCAST_0_BV_04_C	N/A
-TC_PANU_Ipv4_Autonet_BV_01_I		PASS	When prompted connect to PTS.
-						From IUT: issue ARP request
-						iperf -c <addr> -p <port#>
+TC_PANU_Ipv4_Autonet_BV_01_I		PASS	After DHCP request fail send
+						DHCP address request.
+						From IUT: send address request
+						dhcpd -r 169.254.x.x bt-pan
 TC_PANU_Ipv6_Autonet_BV_02_I		N/A
-TC_PANU_IP_LLMNR_BV_01_I		PASS	When prompted connect to PTS.
-						From IUT: send LLMNR request
-						command
-						iperf -c <addr> -p <port#>
+TC_PANU_IP_LLMNR_BV_01_I		INC	PTS TSE errata #5871
 TC_PANU_IP_LLMNR_BV_02_I		N/A
 TC_PANU_IP_DHCP_BV_03_I			N/A
 TC_PANU_IP_DNS_BV_01_I			N/A
@@ -71,9 +64,7 @@ TC_PANU_IP_APP_BV_01_I			N/A
 TC_PANU_IP_APP_BV_02_I			N/A
 TC_PANU_IP_APP_BV_03_I			N/A
 TC_PANU_IP_APP_BV_04_I			N/A
-TC_PANU_IP_APP_BV_05_I			PASS	When prompted, connect to PTS
-						and then when prompted terminate
-						connection (IUT side)
+TC_PANU_IP_APP_BV_05_I			PASS
 TC_SDP_PANU_BV_01_C			N/A
 TC_MISC_PANU_UUID_BV_01_C		N/A
 TC_MISC_PANU_UUID_BV_02_C		N/A

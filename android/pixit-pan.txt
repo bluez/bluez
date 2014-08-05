@@ -1,6 +1,6 @@
 PAN PIXIT for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 & - should be set to IUT or PTS Bluetooth address respectively
@@ -18,7 +18,7 @@ TSPX_security_enabled					False
 TSPX_pin_code						0000
 TSPX_delete_link_key					False
 TSPX_use_implicit_send					True
-TSPX_iut_ip_address					192.168.167.152
+TSPX_iut_ip_address					192.168.1.100 (*&)
 TSPX_iut_port_number					4242
 TSPX_PTS_ip_address					192.168.168.100
 TSPX_PTS_port_number					4242
