@@ -157,6 +157,7 @@ android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
 				android/tester-bluetooth.c \
 				android/tester-socket.c \
 				android/tester-hidhost.c \
+				android/tester-pan.c \
 				android/tester-gatt.c \
 				android/tester-main.h android/tester-main.c
 

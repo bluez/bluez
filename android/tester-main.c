@@ -443,6 +443,30 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+		if (exp->callback_result.ctrl_state !=
+					step->callback_result.ctrl_state) {
+			tester_debug("Callback ctrl state don't match");
+			return false;
+		}
+
+		if (exp->callback_result.conn_state !=
+					step->callback_result.conn_state) {
+			tester_debug("Callback connection state don't match");
+			return false;
+		}
+
+		if (exp->callback_result.local_role !=
+					step->callback_result.local_role) {
+			tester_debug("Callback local_role don't match");
+			return false;
+		}
+
+		if (exp->callback_result.remote_role !=
+					step->callback_result.remote_role) {
+			tester_debug("Callback remote_role don't match");
+			return false;
+		}
+
 		if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
 			tester_debug("Callback pairing result don't match");
@@ -963,6 +987,42 @@ static void gattc_listen_cb(int status, int server_if)
 	schedule_callback_call(step);
 }
 
+static void pan_control_state_cb(btpan_control_state_t state,
+					bt_status_t error, int local_role,
+							const char *ifname)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_PAN_CONTROL_STATE;
+	step->callback_result.state = local_role;
+	step->callback_result.ctrl_state = error;
+	step->callback_result.local_role = state;
+
+	schedule_callback_call(step);
+}
+
+static void pan_connection_state_cb(btpan_connection_state_t state,
+					bt_status_t error,
+					const bt_bdaddr_t *bd_addr,
+					int local_role, int remote_role)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_PAN_CONNECTION_STATE;
+	step->callback_result.state = error;
+	step->callback_result.conn_state = state;
+	step->callback_result.local_role = local_role;
+	step->callback_result.remote_role = remote_role;
+
+	schedule_callback_call(step);
+}
+
+static btpan_callbacks_t btpan_callbacks = {
+	.size = sizeof(btpan_callbacks),
+	.control_state_cb = pan_control_state_cb,
+	.connection_state_cb = pan_connection_state_cb,
+};
+
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.register_client_cb = gattc_register_client_cb,
 	.scan_result_cb = gattc_scan_result_cb,
@@ -1154,6 +1214,42 @@ static void setup_hidhost(const void *test_data)
 	tester_setup_complete();
 }
 
+static void setup_pan(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_status_t status;
+	const void *pan;
+
+	if (!setup_base(data)) {
+		tester_setup_failed();
+		return;
+	}
+
+	status = data->if_bluetooth->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	pan = data->if_bluetooth->get_profile_interface(BT_PROFILE_PAN_ID);
+	if (!pan) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_pan = pan;
+
+	status = data->if_pan->init(&btpan_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_pan = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
 static void setup_gatt(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1206,6 +1302,11 @@ static void teardown(const void *test_data)
 	if (data->if_hid) {
 		data->if_hid->cleanup();
 		data->if_hid = NULL;
+	}
+
+	if (data->if_pan) {
+		data->if_pan->cleanup();
+		data->if_pan = NULL;
 	}
 
 	if (data->if_bluetooth) {
@@ -1650,6 +1751,13 @@ static void add_hidhost_tests(void *data, void *user_data)
 	test(tc, setup_hidhost, generic_test_function, teardown);
 }
 
+static void add_pan_tests(void *data, void *user_data)
+{
+	struct test_case *tc = data;
+
+	test(tc, setup_pan, generic_test_function, teardown);
+}
+
 static void add_gatt_tests(void *data, void *user_data)
 {
 	struct test_case *tc = data;
@@ -1666,6 +1774,7 @@ int main(int argc, char *argv[])
 	queue_foreach(get_bluetooth_tests(), add_bluetooth_tests, NULL);
 	queue_foreach(get_socket_tests(), add_socket_tests, NULL);
 	queue_foreach(get_hidhost_tests(), add_hidhost_tests, NULL);
+	queue_foreach(get_pan_tests(), add_pan_tests, NULL);
 	queue_foreach(get_gatt_tests(), add_gatt_tests, NULL);
 
 	if (tester_run())

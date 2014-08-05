@@ -46,6 +46,7 @@
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
 #include <hardware/bt_hh.h>
+#include <hardware/bt_pan.h>
 #include <hardware/bt_gatt.h>
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
@@ -145,6 +146,22 @@
 		.callback_result.client_id = cb_client_id, \
 	}
 
+#define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
+		.callback = cb, \
+		.callback_result.status = cb_res, \
+		.callback_result.ctrl_state = cb_state, \
+		.callback_result.local_role = cb_local_role, \
+	}
+
+#define CALLBACK_PAN_CONN_STATE(cb, cb_res, cb_state, cb_local_role, \
+							cb_remote_role) { \
+		.callback = cb, \
+		.callback_result.status = cb_res, \
+		.callback_result.conn_state = cb_state, \
+		.callback_result.local_role = cb_local_role, \
+		.callback_result.remote_role = cb_remote_role, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -200,6 +217,10 @@ typedef enum {
 	CB_HH_GET_REPORT,
 	CB_HH_VIRTUAL_UNPLUG,
 
+	/* PAN cb */
+	CB_PAN_CONTROL_STATE,
+	CB_PAN_CONNECTION_STATE,
+
 	/* Gatt client */
 	CB_GATTC_REGISTER_CLIENT,
 	CB_GATTC_SCAN_RESULT,
@@ -245,6 +266,7 @@ struct test_data {
 	const bt_interface_t *if_bluetooth;
 	const btsock_interface_t *if_sock;
 	const bthh_interface_t *if_hid;
+	const btpan_interface_t *if_pan;
 	const btgatt_interface_t *if_gatt;
 
 	const void *test_data;
@@ -310,6 +332,11 @@ struct bt_callback_data {
 
 	int client_id;
 	int conn_id;
+
+	btpan_control_state_t ctrl_state;
+	btpan_connection_state_t conn_state;
+	int local_role;
+	int remote_role;
 };
 
 /*
@@ -341,6 +368,8 @@ struct queue *get_socket_tests(void);
 void remove_socket_tests(void);
 struct queue *get_hidhost_tests(void);
 void remove_hidhost_tests(void);
+struct queue *get_pan_tests(void);
+void remove_pan_tests(void);
 struct queue *get_gatt_tests(void);
 void remove_gatt_tests(void);
 
