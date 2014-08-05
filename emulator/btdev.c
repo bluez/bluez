@@ -1088,7 +1088,8 @@ static void le_conn_request(struct btdev *btdev, const uint8_t *bdaddr,
 {
 	struct btdev *remote = find_btdev_by_bdaddr_type(bdaddr, bdaddr_type);
 
-	if (remote && adv_connectable(remote) && adv_match(btdev, remote))
+	if (remote && adv_connectable(remote) && adv_match(btdev, remote) &&
+					remote->le_adv_own_addr == bdaddr_type)
 		le_conn_complete(btdev, bdaddr, bdaddr_type, 0);
 	else
 		le_conn_complete(btdev, bdaddr, bdaddr_type,
