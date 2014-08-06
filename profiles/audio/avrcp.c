@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
@@ -191,6 +192,7 @@ struct pending_list_items {
 	GSList *items;
 	uint32_t start;
 	uint32_t end;
+	uint64_t total;
 };
 
 struct avrcp_player {
@@ -2190,7 +2192,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	struct avrcp_player *player = session->controller->player;
 	struct pending_list_items *p = player->p;
 	uint16_t count;
-	uint32_t items, total;
+	uint64_t items;
 	size_t i;
 	int err = 0;
 
@@ -2250,8 +2252,11 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	}
 
 	items = g_slist_length(p->items);
-	total = p->end - p->start + 1;
-	if (items < total) {
+
+	DBG("start %u end %u items %" PRIu64 " total %" PRIu64 "", p->start,
+						p->end, items, p->total);
+
+	if (items < p->total) {
 		avrcp_list_items(session, p->start + items, p->end);
 		return FALSE;
 	}
@@ -2621,6 +2626,7 @@ static int ct_list_items(struct media_player *mp, const char *name,
 	p = g_new0(struct pending_list_items, 1);
 	p->start = start;
 	p->end = end;
+	p->total = (uint64_t) (p->end - p->start) + 1;
 	player->p = p;
 
 	return 0;
