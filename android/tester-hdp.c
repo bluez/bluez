@@ -21,11 +21,170 @@
 #include "tester-main.h"
 #include "android/utils.h"
 
+typedef enum {
+	HDP_APP_SINK_RELIABLE,
+	HDP_APP_SINK_STREAM,
+	HDP_APP_SOURCE_RELIABLE,
+	HDP_APP_SOURCE_STREAM,
+} hdp_app_reg_type;
+
 static struct queue *list; /* List of hdp test cases */
+
+static bthl_reg_param_t *create_app(hdp_app_reg_type type)
+{
+	bthl_reg_param_t *reg;
+	bthl_mdep_cfg_t mdep1, mdep2;
+
+	reg = malloc(sizeof(bthl_reg_param_t));
+	reg->application_name = "bluez-android";
+	reg->provider_name = "Bluez";
+	reg->srv_name = "bluez-hdp";
+	reg->srv_desp = "health-device-profile";
+
+	mdep1.data_type = 4100;
+	mdep1.mdep_description = "pulse-oximeter";
+	mdep2.data_type = 4100;
+	mdep1.mdep_description = "pulse-oximeter";
+
+	switch (type) {
+	case HDP_APP_SINK_RELIABLE:
+		reg->number_of_mdeps = 1;
+		mdep1.mdep_role = BTHL_MDEP_ROLE_SINK;
+		mdep1.channel_type = BTHL_CHANNEL_TYPE_RELIABLE;
+		reg->mdep_cfg = malloc(reg->number_of_mdeps *
+						sizeof(bthl_mdep_cfg_t));
+		reg->mdep_cfg[0] = mdep1;
+		break;
+
+	case HDP_APP_SINK_STREAM:
+		reg->number_of_mdeps = 2;
+
+		mdep1.mdep_role = BTHL_MDEP_ROLE_SINK;
+		mdep1.channel_type = BTHL_CHANNEL_TYPE_RELIABLE;
+
+		mdep2.mdep_role = BTHL_MDEP_ROLE_SINK;
+		mdep2.channel_type = BTHL_CHANNEL_TYPE_STREAMING;
+
+		reg->mdep_cfg = malloc(reg->number_of_mdeps *
+						sizeof(bthl_mdep_cfg_t));
+		reg->mdep_cfg[0] = mdep1;
+		reg->mdep_cfg[1] = mdep2;
+		break;
+
+	case HDP_APP_SOURCE_RELIABLE:
+		reg->number_of_mdeps = 1;
+
+		mdep1.mdep_role = BTHL_MDEP_ROLE_SOURCE;
+		mdep1.channel_type = BTHL_CHANNEL_TYPE_RELIABLE;
+
+		reg->mdep_cfg = malloc(reg->number_of_mdeps *
+						sizeof(bthl_mdep_cfg_t));
+		reg->mdep_cfg[0] = mdep1;
+		break;
+
+	case HDP_APP_SOURCE_STREAM:
+		reg->number_of_mdeps = 2;
+
+		mdep1.mdep_role = BTHL_MDEP_ROLE_SOURCE;
+		mdep1.channel_type = BTHL_CHANNEL_TYPE_RELIABLE;
+
+		mdep2.mdep_role = BTHL_MDEP_ROLE_SOURCE;
+		mdep2.channel_type = BTHL_CHANNEL_TYPE_STREAMING;
+
+		reg->mdep_cfg = malloc(reg->number_of_mdeps *
+						sizeof(bthl_mdep_cfg_t));
+		reg->mdep_cfg[0] = mdep1;
+		reg->mdep_cfg[1] = mdep2;
+		break;
+	}
+
+
+	return reg;
+}
+
+static void hdp_register_sink_reliable_app_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+	int app_id = 0;
+	bthl_reg_param_t *reg;
+
+	reg = create_app(HDP_APP_SINK_RELIABLE);
+	step->action_status = data->if_hdp->register_application(reg, &app_id);
+
+	schedule_action_verification(step);
+	free(reg->mdep_cfg);
+	free(reg);
+}
+
+static void hdp_register_sink_stream_app_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+	int app_id = 0;
+	bthl_reg_param_t *reg;
+
+	reg = create_app(HDP_APP_SINK_STREAM);
+	step->action_status = data->if_hdp->register_application(reg, &app_id);
+
+	schedule_action_verification(step);
+	free(reg->mdep_cfg);
+	free(reg);
+}
+
+static void hdp_register_source_reliable_app_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+	int app_id = 0;
+	bthl_reg_param_t *reg;
+
+	reg = create_app(HDP_APP_SOURCE_RELIABLE);
+	step->action_status = data->if_hdp->register_application(reg, &app_id);
+
+	schedule_action_verification(step);
+	free(reg->mdep_cfg);
+	free(reg);
+}
+
+static void hdp_register_source_stream_app_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+	int app_id = 0;
+	bthl_reg_param_t *reg;
+
+	reg = create_app(HDP_APP_SOURCE_STREAM);
+	step->action_status = data->if_hdp->register_application(reg, &app_id);
+
+	schedule_action_verification(step);
+	free(reg->mdep_cfg);
+	free(reg);
+}
 
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("HDP Init",
 		ACTION_SUCCESS(dummy_action, NULL),
+	),
+	TEST_CASE_BREDRLE("HDP Register Sink Reliable Application",
+		ACTION_SUCCESS(hdp_register_sink_reliable_app_action, NULL),
+		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
+					BTHL_APP_REG_STATE_REG_SUCCESS),
+	),
+	TEST_CASE_BREDRLE("HDP Register Sink Stream Application",
+		ACTION_SUCCESS(hdp_register_sink_stream_app_action, NULL),
+		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
+					BTHL_APP_REG_STATE_REG_SUCCESS),
+	),
+	TEST_CASE_BREDRLE("HDP Register Source Reliable Application",
+		ACTION_SUCCESS(hdp_register_source_reliable_app_action, NULL),
+		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
+					BTHL_APP_REG_STATE_REG_SUCCESS),
+	),
+	TEST_CASE_BREDRLE("HDP Register Source Stream Application",
+		ACTION_SUCCESS(hdp_register_source_stream_app_action, NULL),
+		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
+					BTHL_APP_REG_STATE_REG_SUCCESS),
 	),
 };
 
