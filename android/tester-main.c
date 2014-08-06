@@ -467,6 +467,36 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+		if (exp->callback_result.app_id !=
+					step->callback_result.app_id) {
+			tester_debug("Callback app_id don't match");
+			return false;
+		}
+
+		if (exp->callback_result.channel_id !=
+					step->callback_result.channel_id) {
+			tester_debug("Callback channel_id don't match");
+			return false;
+		}
+
+		if (exp->callback_result.mdep_cfg_index !=
+					step->callback_result.mdep_cfg_index) {
+			tester_debug("Callback mdep_cfg_index don't match");
+			return false;
+		}
+
+		if (exp->callback_result.app_state !=
+					step->callback_result.app_state) {
+			tester_debug("Callback app_state don't match");
+			return false;
+		}
+
+		if (exp->callback_result.channel_state !=
+					step->callback_result.channel_state) {
+			tester_debug("Callback channel_state don't match");
+			return false;
+		}
+
 		if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
 			tester_debug("Callback pairing result don't match");
@@ -1023,6 +1053,38 @@ static btpan_callbacks_t btpan_callbacks = {
 	.connection_state_cb = pan_connection_state_cb,
 };
 
+static void hdp_app_reg_state_cb(int app_id, bthl_app_reg_state_t state)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_HDP_APP_REG_STATE;
+	step->callback_result.app_id = app_id;
+	step->callback_result.app_state = state;
+
+	schedule_callback_call(step);
+}
+
+static void hdp_channel_state_cb(int app_id, bt_bdaddr_t *bd_addr,
+				int mdep_cfg_index, int channel_id,
+				bthl_channel_state_t state, int fd)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_HDP_CHANNEL_STATE;
+	step->callback_result.app_id = app_id;
+	step->callback_result.channel_id = channel_id;
+	step->callback_result.mdep_cfg_index = mdep_cfg_index;
+	step->callback_result.channel_state = state;
+
+	schedule_callback_call(step);
+}
+
+static bthl_callbacks_t bthl_callbacks = {
+	.size = sizeof(bthl_callbacks),
+	.app_reg_state_cb = hdp_app_reg_state_cb,
+	.channel_state_cb = hdp_channel_state_cb,
+};
+
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.register_client_cb = gattc_register_client_cb,
 	.scan_result_cb = gattc_scan_result_cb,
@@ -1250,6 +1312,42 @@ static void setup_pan(const void *test_data)
 	tester_setup_complete();
 }
 
+static void setup_hdp(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_status_t status;
+	const void *hdp;
+
+	if (!setup_base(data)) {
+		tester_setup_failed();
+		return;
+	}
+
+	status = data->if_bluetooth->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	hdp = data->if_bluetooth->get_profile_interface(BT_PROFILE_HEALTH_ID);
+	if (!hdp) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_hdp = hdp;
+
+	status = data->if_hdp->init(&bthl_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_hdp = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
 static void setup_gatt(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1307,6 +1405,11 @@ static void teardown(const void *test_data)
 	if (data->if_pan) {
 		data->if_pan->cleanup();
 		data->if_pan = NULL;
+	}
+
+	if (data->if_hdp) {
+		data->if_hdp->cleanup();
+		data->if_hdp = NULL;
 	}
 
 	if (data->if_bluetooth) {
@@ -1758,6 +1861,13 @@ static void add_pan_tests(void *data, void *user_data)
 	test(tc, setup_pan, generic_test_function, teardown);
 }
 
+static void add_hdp_tests(void *data, void *user_data)
+{
+	struct test_case *tc = data;
+
+	test(tc, setup_hdp, generic_test_function, teardown);
+}
+
 static void add_gatt_tests(void *data, void *user_data)
 {
 	struct test_case *tc = data;
@@ -1775,6 +1885,7 @@ int main(int argc, char *argv[])
 	queue_foreach(get_socket_tests(), add_socket_tests, NULL);
 	queue_foreach(get_hidhost_tests(), add_hidhost_tests, NULL);
 	queue_foreach(get_pan_tests(), add_pan_tests, NULL);
+	queue_foreach(get_hdp_tests(), add_hdp_tests, NULL);
 	queue_foreach(get_gatt_tests(), add_gatt_tests, NULL);
 
 	if (tester_run())

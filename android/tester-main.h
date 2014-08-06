@@ -47,6 +47,7 @@
 #include <hardware/bt_sock.h>
 #include <hardware/bt_hh.h>
 #include <hardware/bt_pan.h>
+#include <hardware/bt_hl.h>
 #include <hardware/bt_gatt.h>
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
@@ -162,6 +163,21 @@
 		.callback_result.remote_role = cb_remote_role, \
 	}
 
+#define CALLBACK_HDP_APP_REG_STATE(cb, cb_app_id, cb_state) { \
+		.callback = cb, \
+		.callback_result.app_id = cb_app_id, \
+		.callback_result.app_state = cb_state, \
+	}
+
+#define CALLBACK_HDP_CHANNEL_STATE(cb, cb_app_id, cb_channel_id, \
+					cb_mdep_cfg_index, cb_state) { \
+		.callback = cb, \
+		.callback_result.app_id = cb_app_id, \
+		.callback_result.channel_id = cb_channel_id, \
+		.callback_result.mdep_cfg_index = cb_mdep_cfg_index, \
+		.callback_result.channel_state = cb_state, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -221,6 +237,10 @@ typedef enum {
 	CB_PAN_CONTROL_STATE,
 	CB_PAN_CONNECTION_STATE,
 
+	/* HDP cb */
+	CB_HDP_APP_REG_STATE,
+	CB_HDP_CHANNEL_STATE,
+
 	/* Gatt client */
 	CB_GATTC_REGISTER_CLIENT,
 	CB_GATTC_SCAN_RESULT,
@@ -267,6 +287,7 @@ struct test_data {
 	const btsock_interface_t *if_sock;
 	const bthh_interface_t *if_hid;
 	const btpan_interface_t *if_pan;
+	const bthl_interface_t *if_hdp;
 	const btgatt_interface_t *if_gatt;
 
 	const void *test_data;
@@ -337,6 +358,12 @@ struct bt_callback_data {
 	btpan_connection_state_t conn_state;
 	int local_role;
 	int remote_role;
+
+	int app_id;
+	int channel_id;
+	int mdep_cfg_index;
+	bthl_app_reg_state_t app_state;
+	bthl_channel_state_t channel_state;
 };
 
 /*
@@ -370,6 +397,8 @@ struct queue *get_hidhost_tests(void);
 void remove_hidhost_tests(void);
 struct queue *get_pan_tests(void);
 void remove_pan_tests(void);
+struct queue *get_hdp_tests(void);
+void remove_hdp_tests(void);
 struct queue *get_gatt_tests(void);
 void remove_gatt_tests(void);
 
