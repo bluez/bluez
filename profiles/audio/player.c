@@ -192,8 +192,6 @@ static gboolean get_status(const GDBusPropertyTable *property,
 	if (mp->status == NULL)
 		return FALSE;
 
-	DBG("%s", mp->status);
-
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->status);
 
 	return TRUE;
@@ -218,8 +216,6 @@ static gboolean get_setting(const GDBusPropertyTable *property,
 	value = g_hash_table_lookup(mp->settings, property->name);
 	if (value == NULL)
 		return FALSE;
-
-	DBG("%s %s", property->name, value);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &value);
 
@@ -338,8 +334,6 @@ static gboolean get_name(const GDBusPropertyTable *property,
 	if (mp->name == NULL)
 		return FALSE;
 
-	DBG("%s", mp->name);
-
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->name);
 
 	return TRUE;
@@ -359,8 +353,6 @@ static gboolean get_type(const GDBusPropertyTable *property,
 
 	if (mp->type == NULL)
 		return FALSE;
-
-	DBG("%s", mp->type);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->type);
 
@@ -382,8 +374,6 @@ static gboolean get_subtype(const GDBusPropertyTable *property,
 	if (mp->subtype == NULL)
 		return FALSE;
 
-	DBG("%s", mp->subtype);
-
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->subtype);
 
 	return TRUE;
@@ -404,8 +394,6 @@ static gboolean get_browsable(const GDBusPropertyTable *property,
 
 	if (mp->folder == NULL)
 		return FALSE;
-
-	DBG("%s", mp->browsable ? "true" : "false");
 
 	value = mp->browsable;
 
@@ -430,8 +418,6 @@ static gboolean get_searchable(const GDBusPropertyTable *property,
 
 	if (mp->folder == NULL)
 		return FALSE;
-
-	DBG("%s", mp->searchable ? "true" : "false");
 
 	value = mp->searchable;
 
@@ -1495,8 +1481,6 @@ static gboolean get_player(const GDBusPropertyTable *property,
 {
 	struct media_item *item = data;
 
-	DBG("%s", item->player->path);
-
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
 							&item->player->path);
 
@@ -1518,8 +1502,6 @@ static gboolean get_item_name(const GDBusPropertyTable *property,
 
 	if (item->name == NULL)
 		return FALSE;
-
-	DBG("%s", item->name);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &item->name);
 
@@ -1548,8 +1530,6 @@ static gboolean get_item_type(const GDBusPropertyTable *property,
 
 	string = type_to_string(item->type);
 
-	DBG("%s", string);
-
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &string);
 
 	return TRUE;
@@ -1560,8 +1540,6 @@ static gboolean get_playable(const GDBusPropertyTable *property,
 {
 	struct media_item *item = data;
 	dbus_bool_t value;
-
-	DBG("%s", item->playable ? "true" : "false");
 
 	value = item->playable;
 
@@ -1609,8 +1587,6 @@ static gboolean get_folder_type(const GDBusPropertyTable *property,
 	string = folder_type_to_string(item->folder_type);
 	if (string == NULL)
 		return FALSE;
-
-	DBG("%s", string);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &string);
 
