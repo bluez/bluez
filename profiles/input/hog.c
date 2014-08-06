@@ -333,32 +333,29 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 	struct report *report, cmp;
 	GSList *l;
 	uint8_t *data;
-	int size, type, id;
+	int size;
 
 	switch (ev->u.output.rtype) {
 	case UHID_FEATURE_REPORT:
-		type = HOG_REPORT_TYPE_FEATURE;
+		cmp.type = HOG_REPORT_TYPE_FEATURE;
 		break;
 	case UHID_OUTPUT_REPORT:
-		type = HOG_REPORT_TYPE_OUTPUT;
+		cmp.type = HOG_REPORT_TYPE_OUTPUT;
 		break;
 	case UHID_INPUT_REPORT:
-		type = HOG_REPORT_TYPE_INPUT;
+		cmp.type = HOG_REPORT_TYPE_INPUT;
 		break;
 	default:
 		return;
 	}
 
-	id = 0;
+	cmp.id = 0;
 	data = ev->u.output.data;
 	size = ev->u.output.size;
 	if (hogdev->has_report_id && size > 0) {
-		id = *data++;
+		cmp.id = *data++;
 		--size;
 	}
-
-	cmp.type = type;
-	cmp.id = id;
 
 	l = g_slist_find_custom(hogdev->reports, &cmp, report_cmp);
 	if (!l)
@@ -367,7 +364,7 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 	report = l->data;
 
 	DBG("Sending report type %d ID %d to device 0x%04X handle 0x%X",
-			type, id, hogdev->id, report->decl->value_handle);
+		cmp.type, cmp.id, hogdev->id, report->decl->value_handle);
 
 	if (hogdev->attrib == NULL)
 		return;
