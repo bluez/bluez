@@ -1,3 +1,11 @@
+ver 5.22:
+	Fix issue with UHID_OUTPUT events mapping.
+	Fix issue with UHID_FEATURE events handling.
+	Fix issue with UINT32_MAX overflow and AVRCP.
+	Fix issue when dirent type DT_UNKNOWN is returned.
+	Add support for kernel whitelist filtering feature.
+	Add support for Android Bluetooth GATT over BR/EDR.
+
 ver 5.21:
 	Fix issue with SDP requests and wrong PDU size.
 	Fix issue with handling passive scanning triggers.
