@@ -29,8 +29,9 @@ struct emu_cid_data {
 };
 
 struct emu_cid_data cid_data;
-static uint8_t pan_conn_req_pdu[] = {0x01, 0x01, 0x02, 0x11, 0x16, 0x11, 0x15};
-static uint8_t pan_conn_rsp_pdu[] = {0x01, 0x02, 0x00, 0x00};
+static uint8_t pan_conn_req_pdu[] = { 0x01, 0x01, 0x02, 0x11, 0x16,
+								0x11, 0x15 };
+static uint8_t pan_conn_rsp_pdu[] = { 0x01, 0x02, 0x00, 0x00 };
 
 static void pan_nap_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 {
