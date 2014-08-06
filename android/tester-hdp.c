@@ -162,6 +162,16 @@ static void hdp_register_source_stream_app_action(void)
 	free(reg);
 }
 
+static void hdp_unregister_app_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_hdp->unregister_application(1);
+
+	schedule_action_verification(step);
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("HDP Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -185,6 +195,14 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(hdp_register_source_stream_app_action, NULL),
 		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
 					BTHL_APP_REG_STATE_REG_SUCCESS),
+	),
+	TEST_CASE_BREDRLE("HDP Unegister Application",
+		ACTION_SUCCESS(hdp_register_source_stream_app_action, NULL),
+		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
+					BTHL_APP_REG_STATE_REG_SUCCESS),
+		ACTION_SUCCESS(hdp_unregister_app_action, NULL),
+		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
+					BTHL_APP_REG_STATE_DEREG_SUCCESS),
 	),
 };
 
