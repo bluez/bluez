@@ -57,7 +57,7 @@ struct emu_cid_data {
 	uint16_t intr_cid;
 };
 
-struct emu_cid_data cid_data;
+static struct emu_cid_data cid_data;
 
 static const uint8_t did_req_pdu[] = { 0x06, /* PDU id */
 			0x00, 0x00, /* Transaction id */
