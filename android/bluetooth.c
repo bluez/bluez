@@ -4199,19 +4199,16 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 
 	DBG("status %u", status);
 
-	/*
-	 * On success bond state change will be send when new link key or LTK
-	 * event is received
-	 */
-	if (status == MGMT_STATUS_SUCCESS)
-		return;
-
 	dev = find_device(&rp->addr.bdaddr);
 	if (!dev)
 		return;
 
+	/*
+	 * Update pairing and paired status. Bonded status will be updated once
+	 * any link key come
+	 */
 	update_device_state(dev, rp->addr.type, status_mgmt2hal(status), false,
-								false, false);
+								!status, false);
 }
 
 static uint8_t select_device_bearer(struct device *dev)
