@@ -49,6 +49,7 @@
 #include <hardware/bt_hh.h>
 #include <hardware/bt_pan.h>
 #include <hardware/bt_hl.h>
+#include <hardware/bt_av.h>
 #include <hardware/bt_gatt.h>
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
@@ -290,6 +291,7 @@ struct test_data {
 	const bthh_interface_t *if_hid;
 	const btpan_interface_t *if_pan;
 	const bthl_interface_t *if_hdp;
+	const btav_interface_t *if_a2dp;
 	const btgatt_interface_t *if_gatt;
 
 	const void *test_data;
@@ -401,6 +403,8 @@ struct queue *get_pan_tests(void);
 void remove_pan_tests(void);
 struct queue *get_hdp_tests(void);
 void remove_hdp_tests(void);
+struct queue *get_a2dp_tests(void);
+void remove_a2dp_tests(void);
 struct queue *get_gatt_tests(void);
 void remove_gatt_tests(void);
 
