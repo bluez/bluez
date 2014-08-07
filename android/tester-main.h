@@ -358,7 +358,7 @@ struct test_case {
 	const uint8_t emu_type;
 	const char *title;
 	const uint16_t step_num;
-	const struct step const *step;
+	const struct step *step;
 };
 
 /* Get, remove test cases API */
