@@ -198,7 +198,9 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/hardware/audio.h \
 					android/hardware/audio_effect.h \
 					android/hardware/hardware.h \
-					android/system/audio.h
+					android/system/audio.h \
+					src/shared/queue.h \
+					src/shared/queue.c
 
 android_audio_sco_default_la_SOURCES = android/hal-log.h \
 					android/sco-msg.h \
