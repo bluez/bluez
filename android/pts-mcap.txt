@@ -1,8 +1,8 @@
 PTS test results for MCAP
 
-PTS version: 5.1
-Tested: 27-June-2014
-Android version: 4.4.2
+PTS version: 5.2
+Tested: 07-August-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
@@ -37,7 +37,7 @@ TC_MCAP_CM_REC_BV_02_C	PASS	mcaptest -C 4099 -D 4101
 TC_MCAP_CM_REC_BV_03_C	N/A
 TC_MCAP_CM_REC_BV_04_C	PASS	mcaptest -C 4099 -D 4101
 				Note: It may be necessary to confirm pairing
-					twice (second time when UIT is back in
+					twice (second time when IUT is back in
 					range).
 TC_MCAP_CM_REC_BV_05_C	N/A
 TC_MCAP_CM_REC_BV_06_C	PASS	mcaptest -C 4099 -D 4101
