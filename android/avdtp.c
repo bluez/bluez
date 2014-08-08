@@ -3244,13 +3244,14 @@ int avdtp_close(struct avdtp *session, struct avdtp_stream *stream,
 	if (!g_slist_find(session->streams, stream))
 		return -EINVAL;
 
-	if (stream->lsep->state < AVDTP_STATE_OPEN)
-		return -EINVAL;
-
 	if (stream->close_int == TRUE) {
 		error("avdtp_close: rejecting since close is already initiated");
 		return -EINVAL;
 	}
+
+	/* If stream is not yet in the OPEN state, let's use ABORT_CMD */
+	if (stream->lsep->state < AVDTP_STATE_OPEN)
+		return avdtp_abort(session, stream);
 
 	if (immediate && session->req && stream == session->req->stream)
 		return avdtp_abort(session, stream);
