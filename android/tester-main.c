@@ -1085,8 +1085,20 @@ static bthl_callbacks_t bthl_callbacks = {
 	.channel_state_cb = hdp_channel_state_cb,
 };
 
+static void a2dp_connection_state_cb(btav_connection_state_t state,
+							bt_bdaddr_t *bd_addr)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_A2DP_CONN_STATE;
+	step->callback_result.state = state;
+
+	schedule_callback_call(step);
+}
+
 static btav_callbacks_t bta2dp_callbacks = {
 	.size = sizeof(bta2dp_callbacks),
+	.connection_state_cb = a2dp_connection_state_cb,
 };
 
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {

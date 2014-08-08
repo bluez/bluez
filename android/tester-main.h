@@ -180,6 +180,11 @@
 		.callback_result.channel_state = cb_state, \
 	}
 
+#define CALLBACK_AV_CONN_STATE(cb, cb_state) { \
+		.callback = cb, \
+		.callback_result.state = cb_state, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -242,6 +247,9 @@ typedef enum {
 	/* HDP cb */
 	CB_HDP_APP_REG_STATE,
 	CB_HDP_CHANNEL_STATE,
+
+	/* A2DP cb */
+	CB_A2DP_CONN_STATE,
 
 	/* Gatt client */
 	CB_GATTC_REGISTER_CLIENT,
