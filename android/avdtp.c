@@ -2180,7 +2180,8 @@ void avdtp_shutdown(struct avdtp *session)
 	for (l = session->streams; l; l = g_slist_next(l)) {
 		struct avdtp_stream *stream = l->data;
 
-		if (stream->abort_int || avdtp_abort(session, stream) == 0)
+		if (stream->abort_int ||
+					avdtp_close(session, stream, TRUE) == 0)
 			aborting = true;
 	}
 
