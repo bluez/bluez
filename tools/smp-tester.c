@@ -435,12 +435,10 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 {
 	if (status != MGMT_STATUS_SUCCESS) {
 		tester_warn("Pairing failed: %s", mgmt_errstr(status));
-		tester_test_failed();
 		return;
 	}
 
 	tester_print("Pairing succeedded");
-	tester_test_passed();
 }
 
 static const void *get_pdu(const uint8_t *pdu)
