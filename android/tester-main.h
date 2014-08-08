@@ -43,6 +43,7 @@
 #include "src/shared/queue.h"
 
 #include <hardware/hardware.h>
+#include <hardware/audio.h>
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
 #include <hardware/bt_hh.h>
@@ -279,6 +280,7 @@ typedef enum {
 
 struct test_data {
 	struct mgmt *mgmt;
+	audio_hw_device_t *audio;
 	struct hw_device_t *device;
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;

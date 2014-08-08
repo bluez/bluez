@@ -1169,6 +1169,15 @@ static bool setup_base(struct test_data *data)
 
 	close(signal_fd[0]);
 
+	err = hw_get_module_by_class(AUDIO_HARDWARE_MODULE_ID,
+					AUDIO_HARDWARE_MODULE_ID_A2DP, &module);
+	if (err)
+		return false;
+
+	err = audio_hw_device_open(module, &data->audio);
+	if (err)
+		return false;
+
 	err = hw_get_module(BT_HARDWARE_MODULE_ID, &module);
 	if (err)
 		return false;
@@ -1186,7 +1195,6 @@ static bool setup_base(struct test_data *data)
 
 	if (!(data->steps = queue_new()))
 		return false;
-
 
 	return true;
 }
@@ -1418,6 +1426,7 @@ static void teardown(const void *test_data)
 	}
 
 	data->device->close(data->device);
+	audio_hw_device_close(data->audio);
 
 	if (!data->bluetoothd_pid)
 		tester_teardown_complete();
