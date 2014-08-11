@@ -32,6 +32,25 @@ Properties	string UUID [read-only]
 
 			128-bit service UUID.
 
+		boolean Primary [read-only]
+
+			Indicates whether or not this GATT service is a
+			primary service. If false, the service is secondary.
+
+		object Device [read-only, optional]
+
+			Object path of the Bluetooth device the service
+			belongs to. Only present on services from remote
+			devices.
+
+		array{object} Characteristics [read-only]
+
+			Array of object paths representing the characteristics
+			of this service. This property is set only when the
+			characteristic discovery has been completed, however the
+			characteristic objects will become available via
+			ObjectManager as soon as they get discovered.
+
 		array{object} Includes [read-only]: Not implemented
 
 			Array of object paths representing the included
@@ -48,6 +67,50 @@ Service		org.bluez
 Interface	org.bluez.GattCharacteristic1 [Experimental]
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY
 
+Methods		array{byte} ReadValue()
+
+			Issues a request to read the value of the
+			characteristic and returns the value if the
+			operation was successful.
+
+			Possible Errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.ReadNotPermitted
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NotPaired
+					 org.bluez.Error.NotSupported
+
+		void WriteValue(array{byte} value)
+
+			Issues a request to write the value of the
+			characteristic.
+
+			Possible Errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.WriteNotPermitted
+					 org.bluez.Error.InvalidValueLength
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NotPaired
+					 org.bluez.Error.NotSupported
+
+		void StartNotify()
+
+			Starts a notification session from this characteristic
+			if it supports value notifications or indications.
+
+			Possible Errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NotSupported
+
+		void StopNotify()
+
+			This method will cancel any previous StartNotify
+			transaction. Note that notifications from a
+			characteristic are shared between sessions thus
+			calling StopNotify will release a single session.
+
+			Possible Errors: org.bluez.Error.Failed
+
 Properties	string UUID [read-only]
 
 			128-bit characteristic UUID.
@@ -57,12 +120,19 @@ Properties	string UUID [read-only]
 			Object path of the GATT service the characteristc
 			belongs to.
 
-		array{byte} Value [read-write]
+		array{byte} Value [read-only, optional]
 
-			Value read from the remote Bluetooth device or from
-			the external application implementing GATT services.
+			The cached value of the characteristic. This property
+			gets updated only after a successful read request and
+			when a notification or indication is received, upon
+			which a PropertiesChanged signal will be emitted.
 
-		array{string} Flags [read-only, optional]
+		boolean Notifying [read-only]
+
+			True, if notifications or indications on this
+			characteristic are currently enabled.
+
+		array{string} Flags [read-only]
 
 			Defines how the characteristic value can be used. See
 			Core spec "Table 3.5: Characteristic Properties bit
@@ -79,6 +149,14 @@ Properties	string UUID [read-only]
 				"reliable-write"
 				"writable-auxiliaries"
 
+		array{object} Descriptors [read-only]
+
+			Array of object paths representing the descriptors
+			of this service. This property is set only when the
+			descriptor discovery has been completed, however the
+			descriptor objects will become available via
+			ObjectManager as soon as they get discovered.
+
 
 Characteristic Descriptors hierarchy
 ====================================
@@ -89,6 +167,32 @@ Service		org.bluez
 Interface	org.bluez.GattDescriptor1 [Experimental]
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY/descriptorZZZ
 
+Methods		array{byte} ReadValue()
+
+			Issues a request to read the value of the
+			characteristic and returns the value if the
+			operation was successful.
+
+			Possible Errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.ReadNotPermitted
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NotPaired
+					 org.bluez.Error.NotSupported
+
+		void WriteValue(array{byte} value)
+
+			Issues a request to write the value of the
+			characteristic.
+
+			Possible Errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.WriteNotPermitted
+					 org.bluez.Error.InvalidValueLength
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NotPaired
+					 org.bluez.Error.NotSupported
+
 Properties	string UUID [read-only]
 
 			128-bit descriptor UUID.
@@ -98,16 +202,12 @@ Properties	string UUID [read-only]
 			Object path of the GATT characteristc the descriptor
 			belongs to.
 
-		array{byte} Value [read-write]
+		array{byte} Value [read-only, optional]
 
-			Raw characteristic descriptor value read from the
-			remote Bluetooth device or from the external
-			application implementing GATT services.
+			The cached value of the descriptor. This property
+			gets updated only after a successful read request, upon
+			which a PropertiesChanged signal will be emitted.
 
-		string Permissions [read-only]: To be defined
-
-			Defines read/write authentication and authorization
-			requirements.
 
 Service Manager hierarchy
 =============================
