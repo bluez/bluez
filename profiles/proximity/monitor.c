@@ -606,13 +606,13 @@ static void monitor_destroy(gpointer user_data)
 {
 	struct monitor *monitor = user_data;
 
+	monitors = g_slist_remove(monitors, monitor);
+
 	btd_device_unref(monitor->device);
 	g_free(monitor->linklosslevel);
 	g_free(monitor->immediatelevel);
 	g_free(monitor->signallevel);
 	g_free(monitor);
-
-	monitors = g_slist_remove(monitors, monitor);
 }
 
 static struct monitor *register_monitor(struct btd_device *device)
