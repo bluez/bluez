@@ -43,8 +43,9 @@ static bthl_reg_param_t *create_app(hdp_app_reg_type type)
 
 	mdep1.data_type = 4100;
 	mdep1.mdep_description = "pulse-oximeter";
+
 	mdep2.data_type = 4100;
-	mdep1.mdep_description = "pulse-oximeter";
+	mdep2.mdep_description = "pulse-oximeter";
 
 	switch (type) {
 	case HDP_APP_SINK_RELIABLE:
