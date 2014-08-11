@@ -583,6 +583,7 @@ static int l2cap_connect(bdaddr_t *src, bdaddr_t *dst)
 
 	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
 		printf("Bind failed. %s (%d)\n", strerror(errno), errno);
+		close(sk);
 		return -errno;
 	}
 
@@ -593,6 +594,7 @@ static int l2cap_connect(bdaddr_t *src, bdaddr_t *dst)
 
 	if (connect(sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
 		printf("Connect failed. %s(%d)\n", strerror(errno), errno);
+		close(sk);
 		return -errno;
 	}
 
