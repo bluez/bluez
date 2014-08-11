@@ -203,6 +203,7 @@ static int do_connect(const char *node, const char *service)
 
 		if (connect(fd, res->ai_addr, res->ai_addrlen) < 0) {
 			perror("Failed to connect");
+			close(fd);
 			continue;
 		}
 
