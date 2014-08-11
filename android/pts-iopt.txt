@@ -1,8 +1,8 @@
 PTS test results for IOPT
 
-PTS version: 5.1
-Tested: 08-May-2014
-Android version: 4.4.2
+PTS version: 5.2
+Tested: 11-August-2014
+Android version: 4.4.4
 
 Results:
 PASS	test passed
@@ -18,6 +18,6 @@ TC_COD_BV_02_I	N/A	Under PTS 5.1 test shall be disabled as there is
 			matching test case in HFP test suit (test No. 15)
 			PICS settings for HFP shall be disabled for IOPT
 TC_SDSS_BV_02_I	PASS
-TC_SDSA_BV_03_I	PASS
-TC_SDR_BV_04_I	PASS
+TC_SDSA_BV_03_I	FAIL	JIRA #BA-92
+TC_SDR_BV_04_I	FAIL	JIRA #BA-95
 -------------------------------------------------------------------------------

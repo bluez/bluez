@@ -1,6 +1,6 @@
 IOPT PICS for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -69,13 +69,13 @@ TSPC_support_DialUpNetworkingProfile_GW	False		Support for: Dial-Up
 							Networking Profile.
 							Role: Gateway
 
-TSPC_support_				True (*)	Support for: Extended
+TSPC_support_				False		Support for: Extended
 ExtendedServiceDiscoveryProfile_IP_LAP			SDP. Version: IP-LAP
 
-TSPC_support_				True (*)	Support for: Extended
+TSPC_support_				False		Support for: Extended
 ExtendedServiceDiscoveryProfile_IP_PAN			SDP. Version: IP-PAN
 
-TSPC_support_				True (*)	Support for: Extended
+TSPC_support_				False		Support for: Extended
 ExtendedServiceDiscoveryProfile_L2CAP			SDP. Version: L2CAP
 
 TSPC_support_FAXProfile_DE		False		Support for: FAX Profile
@@ -90,10 +90,10 @@ TSPC_support_FileTransferProfile_CLIENT	False		Support for: FTP
 TSPC_support_FileTransferProfile_SERVER	False		Support for: FTP
 							Role: Server
 
-TSPC_support_HealthDeviceProfile_Sink	False (#)	Support for: HDP
+TSPC_support_HealthDeviceProfile_Sink	True (*)	Support for: HDP
 							Role: Sink
 
-TSPC_support_HealthDeviceProfile_Source	False (#)	Support for: HDP
+TSPC_support_HealthDeviceProfile_Source	False		Support for: HDP
 							Role: Source
 
 TSPC_support_NewHandsFreeProfile_AG	False		Support for: HFP
