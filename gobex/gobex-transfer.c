@@ -406,6 +406,7 @@ static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
 	if (!g_obex_send(obex, rsp, &err)) {
 		transfer_complete(transfer, err);
 		g_error_free(err);
+		return;
 	}
 
 done:
