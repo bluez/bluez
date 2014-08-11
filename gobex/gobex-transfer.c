@@ -553,7 +553,8 @@ static gssize get_get_data(void *buf, gsize len, gpointer user_data)
 	return ret;
 }
 
-static void transfer_get_req_first(struct transfer *transfer, GObexPacket *rsp)
+static gboolean transfer_get_req_first(struct transfer *transfer,
+							GObexPacket *rsp)
 {
 	GError *err = NULL;
 
@@ -564,7 +565,10 @@ static void transfer_get_req_first(struct transfer *transfer, GObexPacket *rsp)
 	if (!g_obex_send(transfer->obex, rsp, &err)) {
 		transfer_complete(transfer, err);
 		g_error_free(err);
+		return FALSE;
 	}
+
+	return TRUE;
 }
 
 static void transfer_get_req(GObex *obex, GObexPacket *req, gpointer user_data)
@@ -596,7 +600,8 @@ guint g_obex_get_rsp_pkt(GObex *obex, GObexPacket *rsp,
 	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
 	transfer->data_producer = data_func;
 
-	transfer_get_req_first(transfer, rsp);
+	if (!transfer_get_req_first(transfer, rsp))
+		return 0;
 
 	if (!g_slist_find(transfers, transfer))
 		return 0;
