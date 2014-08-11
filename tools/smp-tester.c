@@ -295,6 +295,19 @@ static const struct smp_data smp_server_nval_req_3_test = {
 	.req_count = G_N_ELEMENTS(srv_nval_req_2),
 };
 
+static const uint8_t smp_nval_req_4[] = { 0xff, 0xff };
+static const uint8_t smp_nval_req_4_rsp[] = { 0x05, 0x07 };
+
+static const struct smp_req_rsp srv_nval_req_3[] = {
+	{ smp_nval_req_4, sizeof(smp_nval_req_4),
+			smp_nval_req_4_rsp, sizeof(smp_nval_req_4_rsp) },
+};
+
+static const struct smp_data smp_server_nval_req_4_test = {
+	.req = srv_nval_req_3,
+	.req_count = G_N_ELEMENTS(srv_nval_req_3),
+};
+
 static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
 						0x03,	/* NoInputNoOutput */
 						0x00,	/* OOB Flag */
@@ -727,6 +740,9 @@ int main(int argc, char *argv[])
 					setup_powered_server, test_server);
 	test_smp("SMP Server - Invalid Request 3",
 					&smp_server_nval_req_3_test,
+					setup_powered_server, test_server);
+	test_smp("SMP Server - Invalid Request 4",
+					&smp_server_nval_req_4_test,
 					setup_powered_server, test_server);
 
 	test_smp("SMP Client - Basic Request 1",
