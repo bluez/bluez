@@ -286,7 +286,7 @@ static const uint8_t smp_nval_req_3[] = { 0x01, 0xff };
 static const uint8_t smp_nval_req_3_rsp[] = { 0x05, 0x0a };
 
 static const struct smp_req_rsp srv_nval_req_2[] = {
-	{ smp_nval_req_2, sizeof(smp_nval_req_3),
+	{ smp_nval_req_3, sizeof(smp_nval_req_3),
 			smp_nval_req_3_rsp, sizeof(smp_nval_req_3_rsp) },
 };
 
