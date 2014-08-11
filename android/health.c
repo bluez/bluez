@@ -1949,7 +1949,7 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 		}
 	}
 
-	if (!dev->mcl) {
+	if (!dev->mcl || (dev->mcl && !dev->mcl_conn)) {
 		if (connect_mcl(channel) < 0) {
 			error("health: error retrieving HDP SDP record");
 			goto fail;
