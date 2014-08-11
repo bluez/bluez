@@ -250,6 +250,7 @@ static gboolean req_timeout(gpointer user_data)
 
 	g_assert(p != NULL);
 
+	p->timeout_id = 0;
 	obex->pending_req = NULL;
 
 	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_TIMEOUT,
@@ -262,8 +263,6 @@ static gboolean req_timeout(gpointer user_data)
 
 	g_error_free(err);
 	pending_pkt_free(p);
-
-	p->timeout_id = 0;
 
 	return FALSE;
 }
