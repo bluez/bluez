@@ -362,6 +362,7 @@ static void service_data_free(struct service_data *data)
 	callback->data = NULL;
 }
 
+/* Returns TRUE if data is freed */
 static gboolean filter_data_remove_callback(struct filter_data *data,
 						struct filter_callback *cb)
 {
@@ -383,7 +384,7 @@ static gboolean filter_data_remove_callback(struct filter_data *data,
 	/* Don't remove the filter if other callbacks exist or data is lock
 	 * processing callbacks */
 	if (data->callbacks || data->lock)
-		return TRUE;
+		return FALSE;
 
 	if (data->registered && !remove_match(data))
 		return FALSE;
@@ -405,7 +406,9 @@ static DBusHandlerResult signal_filter(DBusConnection *connection,
 
 		if (cb->signal_func && !cb->signal_func(connection, message,
 							cb->user_data)) {
-			filter_data_remove_callback(data, cb);
+			if (filter_data_remove_callback(data, cb))
+				break;
+
 			continue;
 		}
 
@@ -489,7 +492,9 @@ static DBusHandlerResult service_filter(DBusConnection *connection,
 		/* Only auto remove if it is a bus name watch */
 		if (data->argument[0] == ':' &&
 				(cb->conn_func == NULL || cb->disc_func == NULL)) {
-			filter_data_remove_callback(data, cb);
+			if (filter_data_remove_callback(data, cb))
+				break;
+
 			continue;
 		}
 
