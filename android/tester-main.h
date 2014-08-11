@@ -185,6 +185,11 @@
 		.callback_result.state = cb_state, \
 	}
 
+#define CALLBACK_AV_AUDIO_STATE(cb, cb_state) { \
+		.callback = cb, \
+		.callback_result.state = cb_state, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -250,6 +255,7 @@ typedef enum {
 
 	/* A2DP cb */
 	CB_A2DP_CONN_STATE,
+	CB_A2DP_AUDIO_STATE,
 
 	/* Gatt client */
 	CB_GATTC_REGISTER_CLIENT,
@@ -300,6 +306,7 @@ struct test_data {
 	const btpan_interface_t *if_pan;
 	const bthl_interface_t *if_hdp;
 	const btav_interface_t *if_a2dp;
+	struct audio_stream_out *if_stream;
 	const btgatt_interface_t *if_gatt;
 
 	const void *test_data;

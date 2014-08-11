@@ -1096,9 +1096,20 @@ static void a2dp_connection_state_cb(btav_connection_state_t state,
 	schedule_callback_call(step);
 }
 
+static void a2dp_audio_state_cb(btav_audio_state_t state, bt_bdaddr_t *bd_addr)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_A2DP_AUDIO_STATE;
+	step->callback_result.state = state;
+
+	schedule_callback_call(step);
+}
+
 static btav_callbacks_t bta2dp_callbacks = {
 	.size = sizeof(bta2dp_callbacks),
 	.connection_state_cb = a2dp_connection_state_cb,
+	.audio_state_cb = a2dp_audio_state_cb,
 };
 
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
@@ -1473,6 +1484,11 @@ static void teardown(const void *test_data)
 	if (data->if_hdp) {
 		data->if_hdp->cleanup();
 		data->if_hdp = NULL;
+	}
+
+	if (data->if_stream) {
+		data->audio->close_output_stream(data->audio, data->if_stream);
+		data->if_stream = NULL;
 	}
 
 	if (data->if_a2dp) {
