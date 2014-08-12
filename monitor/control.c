@@ -52,12 +52,10 @@
 static struct btsnoop *btsnoop_file = NULL;
 static bool hcidump_fallback = false;
 
-#define MAX_PACKET_SIZE		(1486 + 4)
-
 struct control_data {
 	uint16_t channel;
 	int fd;
-	unsigned char buf[MAX_PACKET_SIZE];
+	unsigned char buf[BTSNOOP_MAX_PACKET_SIZE];
 	uint16_t offset;
 };
 
@@ -1005,7 +1003,7 @@ bool control_writer(const char *path)
 
 void control_reader(const char *path)
 {
-	unsigned char buf[MAX_PACKET_SIZE];
+	unsigned char buf[BTSNOOP_MAX_PACKET_SIZE];
 	uint16_t pktlen;
 	uint32_t type;
 	struct timeval tv;

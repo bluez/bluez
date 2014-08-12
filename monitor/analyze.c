@@ -35,8 +35,6 @@
 #include "monitor/bt.h"
 #include "analyze.h"
 
-#define MAX_PACKET_SIZE		(1486 + 4)
-
 struct hci_dev {
 	uint16_t index;
 	uint8_t type;
@@ -282,7 +280,7 @@ void analyze_trace(const char *path)
 	}
 
 	while (1) {
-		unsigned char buf[MAX_PACKET_SIZE];
+		unsigned char buf[BTSNOOP_MAX_PACKET_SIZE];
 		struct timeval tv;
 		uint16_t index, opcode, pktlen;
 

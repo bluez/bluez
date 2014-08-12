@@ -42,10 +42,8 @@
 
 #define DEFAULT_SNOOP_FILE "/sdcard/btsnoop_hci.log"
 
-#define MAX_PACKET_SIZE (1486 + 4)
-
 static struct btsnoop *snoop = NULL;
-static uint8_t monitor_buf[MAX_PACKET_SIZE];
+static uint8_t monitor_buf[BTSNOOP_MAX_PACKET_SIZE];
 static int monitor_fd = -1;
 
 static void signal_callback(int signum, void *user_data)

@@ -44,6 +44,8 @@
 #define BTSNOOP_OPCODE_SCO_TX_PKT	6
 #define BTSNOOP_OPCODE_SCO_RX_PKT	7
 
+#define BTSNOOP_MAX_PACKET_SIZE		(1486 + 4)
+
 struct btsnoop_opcode_new_index {
 	uint8_t  type;
 	uint8_t  bus;
