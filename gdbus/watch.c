@@ -595,7 +595,6 @@ static gboolean update_service(void *user_data)
 	struct filter_callback *cb = data->callback;
 	DBusConnection *conn;
 
-	update_name_cache(data->name, data->owner);
 	conn = dbus_connection_ref(data->conn);
 	service_data_free(data);
 
