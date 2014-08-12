@@ -88,16 +88,22 @@ static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 	struct watch_info *info = data;
 	unsigned int flags = 0;
 	DBusDispatchStatus status;
+	DBusConnection *conn;
 
 	if (cond & G_IO_IN)  flags |= DBUS_WATCH_READABLE;
 	if (cond & G_IO_OUT) flags |= DBUS_WATCH_WRITABLE;
 	if (cond & G_IO_HUP) flags |= DBUS_WATCH_HANGUP;
 	if (cond & G_IO_ERR) flags |= DBUS_WATCH_ERROR;
 
+	/* Protect connection from being destroyed by dbus_watch_handle */
+	conn = dbus_connection_ref(info->conn);
+
 	dbus_watch_handle(info->watch, flags);
 
-	status = dbus_connection_get_dispatch_status(info->conn);
-	queue_dispatch(info->conn, status);
+	status = dbus_connection_get_dispatch_status(conn);
+	queue_dispatch(conn, status);
+
+	dbus_connection_unref(conn);
 
 	return TRUE;
 }
