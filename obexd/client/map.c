@@ -447,8 +447,7 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
 
-	if (snprintf(handle, sizeof(handle), "%" PRIx64, msg->handle) < 0)
-		goto fail;
+	snprintf(handle, sizeof(handle), "%" PRIx64, msg->handle);
 
 	transfer = obc_transfer_get("x-bt/message", handle, target_file, &err);
 	if (transfer == NULL)
@@ -746,8 +745,7 @@ static void set_status(const GDBusPropertyTable *property,
 
 	contents[0] = FILLER_BYTE;
 
-	if (snprintf(handle, sizeof(handle), "%" PRIx64, msg->handle) < 0)
-		goto fail;
+	snprintf(handle, sizeof(handle), "%" PRIx64, msg->handle);
 
 	transfer = obc_transfer_put("x-bt/messageStatus", handle, NULL,
 					contents, sizeof(contents), &err);
