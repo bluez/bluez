@@ -304,6 +304,13 @@ int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 	}
 
 	toread = be32toh(pkt.size);
+	if (toread > BTSNOOP_MAX_PACKET_SIZE) {
+		perror("Packet len suspicially big: %u", toread);
+		close(btsnoop_fd);
+		btsnoop_fd = -1;
+		return -1;
+	}
+
 	flags = be32toh(pkt.flags);
 
 	ts = be64toh(pkt.ts) - 0x00E03AB44A676000ll;
