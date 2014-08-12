@@ -45,30 +45,30 @@
 
 void avctp_packet(const struct l2cap_frame *frame)
 {
-        uint8_t hdr;
-        uint16_t pid;
-        const char *pdu_color;
+	uint8_t hdr;
+	uint16_t pid;
+	const char *pdu_color;
 
-        if (frame->size < 3) {
-                print_text(COLOR_ERROR, "frame too short");
-                packet_hexdump(frame->data, frame->size);
-                return;
+	if (frame->size < 3) {
+		print_text(COLOR_ERROR, "frame too short");
+		packet_hexdump(frame->data, frame->size);
+		return;
         }
 
-        hdr = *((uint8_t *) frame->data);
+	hdr = *((uint8_t *) frame->data);
 
-        pid = get_be16(frame->data + 1);
+	pid = get_be16(frame->data + 1);
 
-        if (frame->in)
-                pdu_color = COLOR_MAGENTA;
-        else
-                pdu_color = COLOR_BLUE;
+	if (frame->in)
+		pdu_color = COLOR_MAGENTA;
+	else
+		pdu_color = COLOR_BLUE;
 
-        print_indent(6, pdu_color, "AVCTP", "", COLOR_OFF,
-                        " %s: %s: type 0x%02x label %d PID 0x%04x",
-                        frame->psm == 23 ? "Control" : "Browsing",
-                        hdr & 0x02 ? "Response" : "Command",
-                        hdr & 0x0c, hdr >> 4, pid);
+	print_indent(6, pdu_color, "AVCTP", "", COLOR_OFF,
+				" %s: %s: type 0x%02x label %d PID 0x%04x",
+				frame->psm == 23 ? "Control" : "Browsing",
+				hdr & 0x02 ? "Response" : "Command",
+				hdr & 0x0c, hdr >> 4, pid);
 
 	packet_hexdump(frame->data + 3, frame->size - 3);
 }
