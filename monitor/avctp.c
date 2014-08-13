@@ -590,16 +590,14 @@ static void avrcp_pdu_packet(const struct l2cap_frame *frame, uint8_t ctype,
 	uint16_t len;
 	int i;
 	const struct avrcp_ctrl_pdu_data *ctrl_pdu_data = NULL;
-	const char *ctrl_pdu_data_color;
 	struct l2cap_frame avrcp_frame;
 
 	pduid = *((uint8_t *) frame->data);
 	pt = *((uint8_t *) (frame->data + 1));
 	len = get_be16(frame->data + 2);
 
-	print_indent(indent, ctrl_pdu_data_color, "AVRCP: ", pdu2str(pduid),
-						COLOR_OFF, " pt %s len 0x%04x",
-						pt2str(pt), len);
+	print_indent(indent, COLOR_OFF, "AVRCP: ", pdu2str(pduid), COLOR_OFF,
+					" pt %s len 0x%04x", pt2str(pt), len);
 
 	if ((frame->size < 4) || ((frame->size - 4) != len)) {
 		print_text(COLOR_ERROR, "PDU malformed");
