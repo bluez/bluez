@@ -52,18 +52,18 @@ TC_PKE_BI_03_C		PASS	btmgmt io-cap 0x04
 				btmgmt advertising on
 				btmgmt monitor
 				Note: Enter invalid passkey in PTS
-TC_OOB_BV_01_C		NA
-TC_OOB_BV_02_C		NA
-TC_OOB_BV_03_C		NA
-TC_OOB_BV_04_C		NA
+TC_OOB_BV_01_C		N/A
+TC_OOB_BV_02_C		N/A
+TC_OOB_BV_03_C		N/A
+TC_OOB_BV_04_C		N/A
 TC_OOB_BV_05_C		PASS
 TC_OOB_BV_06_C		PASS
 TC_OOB_BV_07_C		PASS
 TC_OOB_BV_08_C		PASS
-TC_OOB_BV_09_C		NA
-TC_OOB_BV_10_C		NA
-TC_OOB_BI_01_C		NA
-TC_OOB_BI_02_C		NA
+TC_OOB_BV_09_C		N/A
+TC_OOB_BV_10_C		N/A
+TC_OOB_BI_01_C		N/A
+TC_OOB_BI_02_C		N/A
 TC_EKS_BV_01_C		PASS
 TC_EKS_BV_02_C		PASS
 TC_EKS_BI_01_C		INC	btmgmt io-cap 0x03

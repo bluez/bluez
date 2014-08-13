@@ -141,5 +141,5 @@ TC_PSE_SRM_BI_03_I	N/A
 TC_PSE_SRM_BI_05_I	N/A
 TC_PSE_SRM_BV_08_I	N/A
 TC_PSE_SRMP_BI_02_I	N/A
-TX_PSE_SRMP_BV_02_I	N/A
+TC_PSE_SRMP_BV_02_I	N/A
 -------------------------------------------------------------------------------
