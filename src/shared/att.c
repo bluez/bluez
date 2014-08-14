@@ -47,7 +47,6 @@ struct att_send_op;
 struct bt_att {
 	int ref_count;
 	int fd;
-	bool close_on_unref;
 	struct io *io;
 	bool invalid;  /* bt_att becomes invalid when a request times out */
 
@@ -692,9 +691,6 @@ void bt_att_unref(struct bt_att *att)
 	io_destroy(att->io);
 	att->io = NULL;
 
-	if (att->close_on_unref)
-		close(att->fd);
-
 	if (att->timeout_destroy)
 		att->timeout_destroy(att->timeout_data);
 
@@ -712,9 +708,7 @@ bool bt_att_set_close_on_unref(struct bt_att *att, bool do_close)
 	if (!att)
 		return false;
 
-	att->close_on_unref = do_close;
-
-	return true;
+	return io_set_close_on_destroy(att->io, do_close);
 }
 
 bool bt_att_set_debug(struct bt_att *att, bt_att_debug_func_t callback,
