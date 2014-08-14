@@ -92,12 +92,15 @@ static void io_callback(int fd, uint32_t events, void *user_data)
 {
 	struct io *io = user_data;
 
+	io_ref(io);
+
 	if ((events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))) {
 		io->read_callback = NULL;
 		io->write_callback = NULL;
 
 		if (!io->disconnect_callback) {
 			mainloop_remove_fd(io->fd);
+			io_unref(io);
 			return;
 		}
 
@@ -144,6 +147,8 @@ static void io_callback(int fd, uint32_t events, void *user_data)
 			mainloop_modify_fd(io->fd, io->events);
 		}
 	}
+
+	io_unref(io);
 }
 
 struct io *io_new(int fd)
