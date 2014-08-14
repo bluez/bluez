@@ -19,5 +19,7 @@ TC_COD_BV_02_I	N/A	Under PTS 5.1 test shall be disabled as there is
 			PICS settings for HFP shall be disabled for IOPT
 TC_SDSS_BV_02_I	PASS
 TC_SDSA_BV_03_I	FAIL	JIRA #BA-92
-TC_SDR_BV_04_I	FAIL	JIRA #BA-95
+TC_SDR_BV_04_I	PASS	for every PTS bt profile:
+			haltest: bluetooth get_remote_service_record <addr>
+							<requred 128 sdp uuid>
 -------------------------------------------------------------------------------
