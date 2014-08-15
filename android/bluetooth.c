@@ -1075,7 +1075,7 @@ static void send_remote_sdp_rec_notify(bt_uuid_t *uuid, int channel,
 	struct hal_prop_device_service_rec *prop;
 	uint8_t buf[BASELEN_REMOTE_DEV_PROP + name_len + sizeof(*prop)];
 	struct hal_ev_remote_device_props *ev = (void *) buf;
-	int prop_len = sizeof(*prop) + name_len;
+	size_t prop_len = sizeof(*prop) + name_len;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -1101,11 +1101,11 @@ static void send_remote_sdp_rec_notify(bt_uuid_t *uuid, int channel,
 static void find_remote_sdp_rec_cb(sdp_list_t *recs, int err,
 							gpointer user_data)
 {
+	bdaddr_t *addr = user_data;
 	uint8_t name_len;
 	uint8_t status;
 	char name_buf[256];
 	int channel;
-	bdaddr_t *addr = user_data;
 	bt_uuid_t uuid;
 	uuid_t uuid128_sdp;
 	sdp_list_t *protos;
@@ -1175,13 +1175,13 @@ done:
 static uint8_t find_remote_sdp_rec(const bdaddr_t *addr,
 						const uint8_t *find_uuid)
 {
-	uuid_t uuid;
 	bdaddr_t *bdaddr;
+	uuid_t uuid;
 
 	/* from android we always get full 128bit length uuid */
 	sdp_uuid128_create(&uuid, find_uuid);
 
-	bdaddr = g_malloc(sizeof(*bdaddr));
+	bdaddr = g_new(bdaddr_t, 1);
 	if (!bdaddr)
 		return HAL_STATUS_NOMEM;
 
@@ -1696,7 +1696,7 @@ static void update_new_device(struct device *dev, int8_t rssi,
 	struct hal_ev_device_found *ev = (void *) buf;
 	uint8_t android_bdaddr[6];
 	uint8_t android_type;
-	int size;
+	size_t size;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -1763,7 +1763,7 @@ static void update_device(struct device *dev, int8_t rssi,
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_remote_device_props *ev = (void *) buf;
 	uint8_t old_type, new_type;
-	int size;
+	size_t size;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -2560,8 +2560,8 @@ static uint8_t get_adapter_uuids(void)
 {
 	struct hal_ev_adapter_props_changed *ev;
 	GSList *list = adapter.uuids;
-	unsigned int uuid_count = g_slist_length(list);
-	int len = uuid_count * sizeof(uint128_t);
+	size_t uuid_count = g_slist_length(list);
+	size_t len = uuid_count * sizeof(uint128_t);
 	uint8_t buf[BASELEN_PROP_CHANGED + len];
 	uint8_t *p;
 
@@ -3763,7 +3763,7 @@ static void get_adapter_properties(void)
 	uint128_t uuids[g_slist_length(adapter.uuids)];
 	uint8_t android_bdaddr[6];
 	uint8_t type, mode;
-	int size, i;
+	size_t size, i;
 	GSList *l;
 
 	size = sizeof(*ev);
@@ -4610,7 +4610,7 @@ static void get_remote_device_props(struct device *dev)
 	uint128_t uuids[g_slist_length(dev->uuids)];
 	uint8_t android_type;
 	uint32_t timestamp;
-	int size, i;
+	size_t size, i;
 	GSList *l;
 
 	memset(buf, 0, sizeof(buf));
