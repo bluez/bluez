@@ -1145,7 +1145,7 @@ static void find_remote_sdp_rec_cb(sdp_list_t *recs, int err,
 		}
 
 		if (!sdp_get_access_protos(sdp_rec, &protos)) {
-			channel = sdp_get_proto_port(protos, L2CAP_UUID);
+			channel = sdp_get_proto_port(protos, RFCOMM_UUID);
 
 			sdp_list_foreach(protos,
 						(sdp_list_func_t) sdp_list_free,
