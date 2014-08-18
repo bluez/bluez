@@ -1880,10 +1880,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer data)
 	return;
 
 fail:
-	send_channel_state_notify(channel, HAL_HEALTH_CHANNEL_DESTROYED, -1);
-
-	queue_remove(channel->dev->channels, channel);
-	free_health_channel(channel);
+	destroy_channel(channel);
 }
 
 static int connect_mcl(struct health_channel *channel)
