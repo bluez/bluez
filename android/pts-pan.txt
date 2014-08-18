@@ -56,7 +56,7 @@ TC_PANU_Ipv4_Autonet_BV_01_I		PASS	After DHCP request fail send
 						From IUT: send address request
 						dhcpd -r 169.254.x.x bt-pan
 TC_PANU_Ipv6_Autonet_BV_02_I		N/A
-TC_PANU_IP_LLMNR_BV_01_I		INC	PTS TSE errata #5871
+TC_PANU_IP_LLMNR_BV_01_I		N/A	SE #3558, TSE #4382, TCW #448
 TC_PANU_IP_LLMNR_BV_02_I		N/A
 TC_PANU_IP_DHCP_BV_03_I			N/A
 TC_PANU_IP_DNS_BV_01_I			N/A
