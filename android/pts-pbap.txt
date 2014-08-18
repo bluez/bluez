@@ -126,7 +126,7 @@ TC_PSE_PBB_BV_46_C	N/A
 TC_PSE_PBB_BV_28_C	N/A
 TC_PSE_PBB_BV_29_C	N/A
 TC_PSE_PBB_BV_30_C	N/A
-TC_PSE_PBB_BV_31_C	INC	JIRA #BA-71
+TC_PSE_PBB_BV_31_C	PASS	Requires entries in IUT's /och and /ich folders
 TC_PSE_PBB_BV_32_C	N/A
 TC_PSE_PBF_BV_01_I	PASS
 TC_PSE_PBF_BV_02_I	PASS	Tester must verify vcard content received by PTS
