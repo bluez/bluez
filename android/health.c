@@ -1978,6 +1978,7 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 	return;
 
 fail:
+	queue_remove(channel->dev->channels, channel);
 	free_health_channel(channel);
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH,
 			HAL_OP_HEALTH_CONNECT_CHANNEL, HAL_STATUS_FAILED);
