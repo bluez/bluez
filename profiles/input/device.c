@@ -149,6 +149,11 @@ static bool hidp_send_message(GIOChannel *chan, uint8_t hdr,
 	ssize_t len;
 	uint8_t msg[size + 1];
 
+	if (!chan) {
+		error("BT socket not connected");
+		return false;
+	}
+
 	if (data == NULL)
 		size = 0;
 
