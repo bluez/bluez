@@ -69,6 +69,7 @@ struct test_data {
 	uint8_t preq[7];
 	uint8_t prsp[7];
 	uint8_t ltk[16];
+	int unmet_conditions;
 };
 
 struct smp_req_rsp {
@@ -241,6 +242,26 @@ static void test_data_free(void *test_data)
 	struct test_data *data = test_data;
 
 	free(data);
+}
+
+static void test_add_condition(struct test_data *data)
+{
+	data->unmet_conditions++;
+
+	tester_print("Test condition added, total %d", data->unmet_conditions);
+}
+
+static void test_condition_complete(struct test_data *data)
+{
+	data->unmet_conditions--;
+
+	tester_print("Test condition complete, %d left",
+						data->unmet_conditions);
+
+	if (data->unmet_conditions > 0)
+		return;
+
+	tester_test_passed();
 }
 
 #define test_smp(name, data, setup, func) \
@@ -531,7 +552,7 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 	tester_print("Received SMP opcode 0x%02x", opcode);
 
 	if (test_data->counter >= smp->req_count) {
-		tester_test_passed();
+		test_condition_complete(test_data);
 		return;
 	}
 
@@ -571,7 +592,7 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 
 next:
 	if (smp->req_count == test_data->counter) {
-		tester_test_passed();
+		test_condition_complete(test_data);
 		return;
 	}
 
@@ -582,7 +603,7 @@ next:
 							req->send_len);
 
 	if (!req->expect)
-		tester_test_passed();
+		test_condition_complete(test_data);
 
 	return;
 
@@ -616,6 +637,9 @@ static void smp_new_conn(uint16_t handle, void *user_data)
 
 	pdu = get_pdu(req->send);
 	bthost_send_cid(bthost, handle, SMP_CID, pdu, req->send_len);
+
+	if (!req->expect)
+		test_condition_complete(data);
 }
 
 static void init_bdaddr(struct test_data *data)
@@ -659,6 +683,7 @@ static void test_client(const void *test_data)
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, smp_new_conn, data);
+	test_add_condition(data);
 
 	memcpy(&cp.addr.bdaddr, data->ra, sizeof(data->ra));
 	cp.addr.type = BDADDR_LE_PUBLIC;
@@ -721,6 +746,7 @@ static void test_server(const void *test_data)
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, smp_new_conn, data);
+	test_add_condition(data);
 
 	bthost_hci_connect(bthost, data->ra, BDADDR_LE_PUBLIC);
 }
