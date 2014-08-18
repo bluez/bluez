@@ -83,6 +83,10 @@ struct smp_data {
 	const struct smp_req_rsp *req;
 	size_t req_count;
 	bool mitm;
+	uint16_t expect_hci_command;
+	const void *expect_hci_param;
+	uint8_t expect_hci_len;
+	const void * (*expect_hci_func)(uint8_t *len);
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -611,6 +615,37 @@ failed:
 	tester_test_failed();
 }
 
+static void command_hci_callback(uint16_t opcode, const void *param,
+					uint8_t length, void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct smp_data *smp = data->test_data;
+	const void *expect_hci_param = smp->expect_hci_param;
+	uint8_t expect_hci_len = smp->expect_hci_len;
+
+	tester_print("HCI Command 0x%04x length %u", opcode, length);
+
+	if (opcode != smp->expect_hci_command)
+		return;
+
+	if (smp->expect_hci_func)
+		expect_hci_param = smp->expect_hci_func(&expect_hci_len);
+
+	if (length != expect_hci_len) {
+		tester_warn("Invalid parameter size for HCI command");
+		tester_test_failed();
+		return;
+	}
+
+	if (memcmp(param, expect_hci_param, length) != 0) {
+		tester_warn("Unexpected HCI command parameter value");
+		tester_test_failed();
+		return;
+	}
+
+	test_condition_complete(data);
+}
+
 static void smp_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
@@ -685,6 +720,13 @@ static void test_client(const void *test_data)
 	bthost_set_connect_cb(bthost, smp_new_conn, data);
 	test_add_condition(data);
 
+	if (smp->expect_hci_command) {
+		tester_print("Registering HCI command callback");
+		hciemu_add_master_post_command_hook(data->hciemu,
+						command_hci_callback, data);
+		test_add_condition(data);
+	}
+
 	memcpy(&cp.addr.bdaddr, data->ra, sizeof(data->ra));
 	cp.addr.type = BDADDR_LE_PUBLIC;
 	if (smp->mitm)
@@ -738,6 +780,7 @@ static void setup_powered_server(const void *test_data)
 static void test_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct smp_data *smp = data->test_data;
 	struct bthost *bthost;
 
 	data->out = true;
@@ -749,6 +792,13 @@ static void test_server(const void *test_data)
 	test_add_condition(data);
 
 	bthost_hci_connect(bthost, data->ra, BDADDR_LE_PUBLIC);
+
+	if (smp->expect_hci_command) {
+		tester_print("Registering HCI command callback");
+		hciemu_add_master_post_command_hook(data->hciemu,
+						command_hci_callback, data);
+		test_add_condition(data);
+	}
 }
 
 int main(int argc, char *argv[])
