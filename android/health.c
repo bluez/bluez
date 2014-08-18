@@ -1235,6 +1235,7 @@ static void mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 		return;
 	}
 
+	info("health: MDL connected");
 	send_channel_state_notify(channel, HAL_HEALTH_CHANNEL_CONNECTED, fd);
 
 	return;
@@ -1247,7 +1248,7 @@ static void mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct health_channel *channel = data;
 
-	info("MDL closed");
+	info("health: MDL closed");
 
 	if (!channel)
 		return;
@@ -1273,6 +1274,7 @@ static void mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 	dev = channel->dev;
 
 	DBG("device %p channel %p mdl %p", dev, channel, mdl);
+	info("health: MDL deleted");
 
 	/* mdl == NULL means, delete all mdls */
 	if (!mdl) {
@@ -1825,7 +1827,7 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 		channel->dev->mcl = mcap_mcl_ref(mcl);
 
 	channel->dev->mcl_conn = true;
-	info("MCL connected");
+	info("health: MCL connected");
 
 	ret = set_mcl_cb(channel->dev->mcl, channel, &gerr);
 	if (!ret) {
@@ -2051,6 +2053,7 @@ static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 
 	DBG("");
 
+	info("health: MCL connected");
 	ret = set_mcl_cb(mcl, NULL, &gerr);
 	if (!ret) {
 		error("health: error setting mcl callbacks: %s", gerr->message);
@@ -2064,6 +2067,7 @@ static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 
 	DBG("");
 
+	info("health: MCL reconnected");
 	dev = search_dev_by_mcl(mcl);
 	if (!dev) {
 		error("device data does not exists");
@@ -2079,6 +2083,7 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 
 	DBG("");
 
+	info("health: MCL disconnected");
 	dev = search_dev_by_mcl(mcl);
 	if (dev)
 		dev->mcl_conn = false;
