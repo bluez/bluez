@@ -3,7 +3,7 @@ PTS test results for GAP
 PTS version: 5.2
 Tested: 01-August-2014
 Android version: 4.4.4
-Kernel version: 3.17
+Kernel version: 3.18
 
 Results:
 PASS	test passed
@@ -179,11 +179,11 @@ TC_BOND_BON_BV_01_C	INC	gattc register_client
 TC_BOND_BON_BV_02_C	PASS
 TC_BOND_BON_BV_03_C	PASS	gattc register_client
 				gattc listen 1
-TC_BOND_BON_BV_04_C	FAIL	haltest: gattc_register_client
+TC_BOND_BON_BV_04_C	PASS	haltest: gattc_register_client
 				gattc connect <client_id> <address>
-				bluetooth remove_bond <address>
+				gattc disconnect
 				gattc connect <client_id> <address>
-				JIRA #BA-70
+				gattc test_command 226 <addr> 0 2
 TC_SEC_AUT_BV_11_C	PASS	haltest: gattc register_client
 				gatts register_server
 				gatts add_service 2 <uuid> 3
