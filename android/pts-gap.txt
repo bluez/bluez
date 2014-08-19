@@ -137,7 +137,6 @@ TC_CONN_GCEP_BV_03_C	PASS	gattc connect
 				gattc disconnect
 TC_CONN_GCEP_BV_04_C	INC	Privacy feature - PTS issue #12308
 TC_CONN_SCEP_BV_01_C	PASS	'gattc connect' prior to pressing OK on PTS
-				Note: test is not always passing. JIRA: BA-55
 TC_CONN_SCEP_BV_02_C	INC	Privacy feature - PTS issue #12308
 TC_CONN_DCEP_BV_01_C	PASS	'gattc connect' prior to pressing OK on PTS
 TC_CONN_DCEP_BV_02_C	INC	Privacy feature - PTS issue #12308
