@@ -1830,7 +1830,8 @@ static void update_device(struct device *dev, int8_t rssi,
 					HAL_EV_REMOTE_DEVICE_PROPS, size, buf);
 }
 
-static bool is_new_device(const struct device *dev, unsigned int flags)
+static bool is_new_device(const struct device *dev, unsigned int flags,
+							uint8_t bdaddr_type)
 {
 	if (dev->found)
 		return false;
@@ -1838,7 +1839,7 @@ static bool is_new_device(const struct device *dev, unsigned int flags)
 	if (dev->bredr_paired || dev->le_paired)
 		return false;
 
-	if (dev->bdaddr_type != BDADDR_BREDR &&
+	if (bdaddr_type != BDADDR_BREDR &&
 				!(flags & (EIR_LIM_DISC | EIR_GEN_DISC)))
 		return false;
 
@@ -1867,7 +1868,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	 * Device found event needs to be send also for known device if this is
 	 * new discovery session. Otherwise framework will ignore it.
 	 */
-	if (is_new_device(dev, eir.flags))
+	if (is_new_device(dev, eir.flags, bdaddr_type))
 		update_new_device(dev, rssi, &eir);
 	else
 		update_device(dev, rssi, &eir, bdaddr_type);
