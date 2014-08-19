@@ -1,9 +1,9 @@
 PTS test results for L2CAP
 
-PTS version: 5.1
-Tested: 27-June-2014
-Android version: 4.4.2
-Kernel version: 3.17
+PTS version: 5.2
+Tested: 14-August-2014
+Android version: 4.4.4
+Kernel version: 3.18
 
 Results:
 PASS   test passed
@@ -58,8 +58,8 @@ TC_CMC_BV_08_C		PASS	l2test -r -X streaming -P 4113
 TC_CMC_BV_09_C		PASS	l2test -r -X basic -P 4113
 TC_CMC_BV_10_C		PASS	l2test -n -P 4113 <bdaddr>
 TC_CMC_BV_11_C		PASS	l2test -n -P 4113 <bdaddr>
-TC_CMC_BV_12_C		PASS	l2test -s -X ertm -P 4113 -U <bdaddr>
-TC_CMC_BV_13_C		PASS	l2test -s -X ertm -P 4113 -U <bdaddr>
+TC_CMC_BV_12_C		PASS	l2test -z -X ertm <bdaddr>
+TC_CMC_BV_13_C		PASS	l2test -z -X ertm <bdaddr>
 TC_CMC_BV_14_C		PASS	l2test -r -X streaming -P 4113
 TC_CMC_BV_15_C		PASS	l2test -r -X streaming -P 4113
 TC_CMC_BI_01_C		PASS	l2test -r -X ertm -P 4113
@@ -71,10 +71,9 @@ TC_CMC_BI_06_C		PASS	l2test -r -P 4113
 TC_FOC_BV_01_C		PASS	l2test -r -X ertm -P 4113 -F 0
 TC_FOC_BV_02_C		PASS	l2test -r -X ertm -P 4113 -F 0
 TC_FOC_BV_03_C		PASS	l2test -r -X ertm -P 4113 -F 0
-TC_FOC_BV_04_C		PASS	l2test -r -X ertm -P 4113 -F 0
-TC_OFS_BV_01_C		PASS	l2test -x -X ertm -P 4113 -F 0 N 1
+TC_OFS_BV_01_C		PASS	l2test -x -X ertm -P 4113 -F 0 -N 1
 TC_OFS_BV_02_C		PASS	l2test -r -X ertm -P 4113 -F 0
-TC_OFS_BV_03_C		PASS	l2test -r -X streaming -P 4113 -F 0
+TC_OFS_BV_03_C		PASS	l2test -x -X streaming -P 4113 -F 0 -N 1
 TC_OFS_BV_04_C		PASS	l2test -r -X streaming -P 4113 -F 0
 TC_OFS_BV_05_C		PASS	l2test -x -X ertm -P 4113 -N 1
 TC_OFS_BV_06_C		PASS	l2test -r -X ertm -P 4113
@@ -85,31 +84,31 @@ TC_ERM_BV_02_C		PASS	l2test -r -X ertm -P 4113
 TC_ERM_BV_03_C		PASS	l2test -r -X ertm -P 4113
 TC_ERM_BV_05_C		PASS	l2test -x -X ertm -P 4113 -N 2 -Y 2
 TC_ERM_BV_06_C		PASS	l2test -x -X ertm -P 4113 -N 2 -Y 2
-TC_ERM_BV_07_C		PASS	l2test -X ertm -P 4113
+TC_ERM_BV_07_C		PASS	l2test -r -H 1000 -K 10000 -X ertm -P 4113
 TC_ERM_BV_08_C		PASS	l2test -x -X ertm -P 4113 -N 1
 TC_ERM_BV_09_C		PASS	l2test -X ertm -P 4113
 TC_ERM_BV_10_C		PASS	l2test -x -X ertm -P 4113 -N 1
 TC_ERM_BV_11_C		PASS	l2test -x -X ertm -P 4113 -N 1 -Q 1
 TC_ERM_BV_12_C		PASS	l2test -x -X ertm -P 4113 -R -N 1 -Q 1
-TC_ERM_BV_13_C		PASS
-TC_ERM_BV_14_C		PASS
-TC_ERM_BV_15_C		PASS	l2test -X ertm -P 4113 -N 4 -Y 4
+TC_ERM_BV_13_C		PASS	l2test -x -X ertm -P 4113 -N 2
+TC_ERM_BV_14_C		PASS	l2test -x -X ertm -P 4113 -N 4
+TC_ERM_BV_15_C		PASS	l2test -X ertm -P 4113 -N 4
 TC_ERM_BV_16_C		N/A
 TC_ERM_BV_17_C		PASS	l2test -X ertm -P 4113
-TC_ERM_BV_18_C		PASS
-TC_ERM_BV_19_C		PASS	l2test -x -X ertm -P 4113 -N 1
+TC_ERM_BV_18_C		PASS	l2test -x -X ertm -P 4113 -N 1
+TC_ERM_NV_19_C		PASS	l2test -x -X ertm -P 4113 -N 1
 TC_ERM_BV_20_C		PASS	l2test -x -X ertm -P 4113 -N 1
-TC_ERM_BV_21_C		PASS	l2test -w -X ertm -P 4113 -N 3
-TC_ERM_BV_22_C		PASS
-TC_ERM_BV_23_C		PASS
+TC_ERM_BV_21_C		PASS	l2test -x -X ertm -P 4113 -D 2000 -N 2
+TC_ERM_BV_22_C		PASS	l2test -r -H 1000 -K 5000 -X ertm -P 4113
+TC_ERM_BV_23_C		PASS	l2test -x -X ertm -P 4113 -N 2
 TC_ERM_BI_01_C		N/A
 TC_ERM_BI_02_C		PASS	l2test -X ertm -P 4113
-TC_ERM_BI_03_C		PASS
-TC_ERM_BI_04_C		PASS
-TC_ERM_BI_05_C		PASS
+TC_ERM_BI_03_C		PASS	l2test -x -X ertm -P 4113 -N 2
+TC_ERM_BI_04_C		PASS	l2test -x -X ertm -P 4113 -N 2
+TC_ERM_BI_05_C		PASS	l2test -x -X ertm -P 4113 -N 2
 TC_STM_BV_01_C		PASS	l2test -x -X streaming -P 4113 -N 3 -Y 3
 TC_STM_BV_02_C		PASS	l2test -r -X streaming -P 4113
-TC_STM_BV_03_C		PASS
+TC_STM_BV_03_C		PASS	l2test -x -X streaming -P 4113 -N 2
 TC_STM_BV_11_C		N/A
 TC_STM_BV_12_C		N/A
 TC_STM_BV_13_C		N/A
@@ -142,6 +141,9 @@ TC_ECF_BV_05_C		N/A
 TC_ECF_BV_06_C		N/A
 TC_ECF_BV_07_C		N/A
 TC_ECF_BV_08_C		N/A
+				NOTE: for LE tests daemon should be stopped
+				then:
+				setprop ctl.start hciattach
 TC_LE_CPU_BV_01_C	PASS	l2test -r -V le_public -J 4
 TC_LE_CPU_BV_02_C	PASS	l2test -n -V le_public -J 4 <braddr>
 TC_LE_CPU_BI_01_C	PASS	l2test -n -V le_public -J 4 <braddr>

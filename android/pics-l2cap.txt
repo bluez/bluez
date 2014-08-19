@@ -1,6 +1,6 @@
 L2CAP PICS for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -70,7 +70,8 @@ TSPC_L2CAP_2_31	False		AMP Manager Support (C.12)
 TSPC_L2CAP_2_32	False		ERTM over AMP (C.12)
 TSPC_L2CAP_2_33	False		Streaming Mode Source over AMP Support (C.15)
 TSPC_L2CAP_2_34	False		Streaming Mode Sink over AMP Support (C.15)
-TSPC_L2CAP_2_35	True (*)	Unicast Connectionless Data, Reception (C.1, C.16)
+TSPC_L2CAP_2_35	True (*)	Unicast Connectionless Data, Reception
+				(C.1, C.16)
 TSPC_L2CAP_2_36	True (*)	Ability to transmit an unencrypted packet over
 					a Unicast connectionless L2CAP
 					channel (C.16)
@@ -105,7 +106,8 @@ C.10: Optional IF TSPC_L2CAP_2_12 is claimed, ELSE Excluded.
 C.11: Optional IF TSPC_L2CAP_2_12 is claimed, ELSE Excluded.
 C.12: Mandatory IF SUM_ICS 31/9 (3.0 + HS) is claimed, ELSE Optional.
 C.13: Mandatory IF SUM_ICS 31/9 (3.0 + HS) is claimed, ELSE Optional.
-C.14: Optional IF SUM_ICS 31/8 OR 31/9 OR 31/10 OR 31/11 is claimed, ELSE Excluded.
+C.14: Optional IF SUM_ICS 31/8 OR 31/9 OR 31/10 OR 31/11 is claimed,
+	ELSE Excluded.
 C.15: Optional IF TSPC_L2CAP_2_29 is claimed, ELSE Excluded.
 C.16: Optional IF (SUM_ICS 31/8 OR SUM_ICS 31/9 OR 31/10 OR 31/11) is claimed,
        ELSE Excluded.
@@ -154,6 +156,7 @@ C.4: Mandatory IF BR/EDR OR BR/EDR/LE is claimed, ELSE Excluded.
 C.5: Optional IF BR/EDR OR BR/EDR/LE is claimed, ELSE Excluded.
 C.6: Mandatory IF LE OR BR/EDR/LE is claimed, ELSE Excluded.
 C.7: Optional if TSPC_L2CAP_2_44 OR TSPC_L2CAP_2_38 is supported, ELSE Excluded.
-C.8: Mandatory if TSPC_L2CAP_2_44 OR TSPC_L2CAP_2_38 is supported, ELSE Excluded.
+C.8: Mandatory if TSPC_L2CAP_2_44 OR TSPC_L2CAP_2_38 is supported,
+	ELSE Excluded.
 C.9: Optional if TSPC_L2CAP_2_44 OR TSPC_L2CAP_2_38 is supported, ELSE Excluded.
 -------------------------------------------------------------------------------
