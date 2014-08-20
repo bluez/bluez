@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <time.h>
+#include <limits.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
