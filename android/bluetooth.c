@@ -4497,11 +4497,13 @@ static void handle_ssp_reply_cmd(const void *buf, uint16_t len)
 	switch (cmd->ssp_variant) {
 	case HAL_SSP_VARIANT_CONFIRM:
 	case HAL_SSP_VARIANT_CONSENT:
-		status = user_confirm_reply(&dev->bdaddr, dev->bdaddr_type,
-								cmd->accept);
+		status = user_confirm_reply(&dev->bdaddr,
+						select_device_bearer(dev),
+						cmd->accept);
 		break;
 	case HAL_SSP_VARIANT_ENTRY:
-		status = user_passkey_reply(&dev->bdaddr, dev->bdaddr_type,
+		status = user_passkey_reply(&dev->bdaddr,
+						select_device_bearer(dev),
 						cmd->accept, cmd->passkey);
 		break;
 	case HAL_SSP_VARIANT_NOTIF:
