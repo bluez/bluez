@@ -36,10 +36,8 @@
 #include <unistd.h>
 
 #include <sys/signalfd.h>
-#if defined(ANDROID)
+#include <sys/prctl.h>
 #include <sys/capability.h>
-#include <linux/prctl.h>
-#endif
 
 #include <glib.h>
 
