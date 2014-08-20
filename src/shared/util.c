@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <limits.h>
 
 #include "src/shared/util.h"
 
