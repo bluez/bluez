@@ -1135,6 +1135,7 @@ static void avdtp_free(void *data)
 
 	g_free(session->buf);
 
+	btd_device_unref(session->device);
 	g_free(session);
 }
 
@@ -1160,7 +1161,6 @@ static void connection_lost(struct avdtp *session, int err)
 		return;
 
 	server->sessions = g_slist_remove(server->sessions, session);
-	btd_device_unref(session->device);
 	avdtp_free(session);
 }
 
