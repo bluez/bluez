@@ -4213,14 +4213,21 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 
 static uint8_t select_device_bearer(struct device *dev)
 {
+	uint8_t res;
+
 	if (dev->bredr && dev->le) {
 		if (dev->le_seen > dev->bredr_seen)
-			return dev->bdaddr_type;
+			res = dev->bdaddr_type;
+		else
+			res = BDADDR_BREDR;
 
-		return BDADDR_BREDR;
+	} else {
+		res = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
 	}
 
-	return dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
+	DBG("Selected bearer %d", res);
+
+	return res;
 }
 
 uint8_t bt_device_last_seen_bearer(const bdaddr_t *bdaddr)
