@@ -1931,15 +1931,15 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 
 	app = get_app(cmd->app_id);
 	if (!app)
-		goto fail;
+		goto send_rsp;
 
 	dev = get_device(app, cmd->bdaddr);
 	if (!dev)
-		goto fail;
+		goto send_rsp;
 
 	channel = get_channel(app, cmd->mdep_index, dev);
 	if (!channel)
-		goto fail;
+		goto send_rsp;
 
 	if (!queue_length(dev->channels)) {
 		if (channel->type != CHANNEL_TYPE_RELIABLE) {
@@ -1979,6 +1979,8 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 fail:
 	queue_remove(channel->dev->channels, channel);
 	free_health_channel(channel);
+
+send_rsp:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HEALTH,
 			HAL_OP_HEALTH_CONNECT_CHANNEL, HAL_STATUS_FAILED);
 }
