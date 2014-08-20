@@ -610,7 +610,8 @@ static const struct avrcp_ctrl_pdu_data avrcp_ctrl_pdu_table[] = {
 	{ }
 };
 
-static void avrcp_rejected_packet(const struct l2cap_frame *frame)
+static void avrcp_rejected_packet(const struct l2cap_frame *frame,
+					uint8_t indent)
 {
 	uint8_t status;
 
@@ -621,7 +622,8 @@ static void avrcp_rejected_packet(const struct l2cap_frame *frame)
 	}
 
 	status = *((uint8_t *) frame->data);
-	print_field("Error: 0x%02x (%s)", status, error2str(status));
+	print_field("%*cError: 0x%02x (%s)", (indent - 8), ' ',
+					status, error2str(status));
 }
 
 static void avrcp_pdu_packet(const struct l2cap_frame *frame, uint8_t ctype,
@@ -647,7 +649,8 @@ static void avrcp_pdu_packet(const struct l2cap_frame *frame, uint8_t ctype,
 	}
 
 	if (ctype == 0xA) {
-		avrcp_rejected_packet(frame);
+		l2cap_frame_pull(&avrcp_frame, frame, 4);
+		avrcp_rejected_packet(&avrcp_frame, indent + 2);
 		return;
 	}
 
