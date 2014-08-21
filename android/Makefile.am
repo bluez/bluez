@@ -109,6 +109,17 @@ android_mcaptest_CFLAGS = $(AM_CFLAGS)
 
 android_mcaptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
+noinst_PROGRAMS += android/avdtptest
+
+android_avdtptest_SOURCES = android/avdtptest.c \
+				src/log.h src/log.c \
+				btio/btio.h btio/btio.c \
+				android/avdtp.h android/avdtp.c
+
+android_avdtptest_CFLAGS = $(AM_CFLAGS)
+
+android_avdtptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
 noinst_PROGRAMS += android/haltest
 
 android_haltest_SOURCES = android/client/haltest.c \

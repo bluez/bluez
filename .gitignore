@@ -126,6 +126,7 @@ doc/btmon.1
 
 android/system-emulator
 android/bluetoothd
+android/avdtptest
 android/mcaptest
 android/haltest
 android/android-tester
