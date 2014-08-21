@@ -172,10 +172,17 @@ TC_BOND_NBON_BV_02_C	PASS	haltest: gattc register_client
 				bluetooth create_bond <address>
 				bluetooth remove_bond <address>
 TC_BOND_NBON_BV_03_C	PASS	haltest: gattc listen
-TC_BOND_BON_BV_01_C	INC	gattc register_client
-				gattc listen 1
-				bluetooth create_bond <pts_bdaddr>
-				JIRA #BA-68
+TC_BOND_BON_BV_01_C	PASS	PTS issue #12503
+				possible to pass without MITM:
+				btmgmt power on
+				btmgmt le on
+				btmgmt ssp on
+				btmgmt connectable on
+				btmgmt discov on
+				btmgmt advertising on
+				btmgmt pairable on
+				To bond with PTS execute
+				btmgmt pair -t 0x01 -c 0x03 <PTS addr>
 TC_BOND_BON_BV_02_C	PASS
 TC_BOND_BON_BV_03_C	PASS	gattc register_client
 				gattc listen 1
