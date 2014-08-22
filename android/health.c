@@ -85,7 +85,6 @@ struct health_device {
 	uint16_t app_id;
 
 	struct mcap_mcl *mcl;
-	bool mcl_conn;
 
 	struct queue *channels;     /* data channels */
 
@@ -193,7 +192,6 @@ static void unref_mcl(struct health_device *dev)
 	mcap_close_mcl(dev->mcl, FALSE);
 	mcap_mcl_unref(dev->mcl);
 	dev->mcl = NULL;
-	dev->mcl_conn = false;
 }
 
 static void free_health_device(void *data)
@@ -1826,7 +1824,6 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 	if (!channel->dev->mcl)
 		channel->dev->mcl = mcap_mcl_ref(mcl);
 
-	channel->dev->mcl_conn = true;
 	info("health: MCL connected");
 
 	ret = set_mcl_cb(channel->dev->mcl, channel, &gerr);
@@ -1948,7 +1945,7 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 		}
 	}
 
-	if (!dev->mcl || (dev->mcl && !dev->mcl_conn)) {
+	if (!dev->mcl) {
 		if (connect_mcl(channel) < 0) {
 			error("health: error retrieving HDP SDP record");
 			goto fail;
@@ -2072,8 +2069,6 @@ static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 		error("device data does not exists");
 		return;
 	}
-
-	dev->mcl_conn = true;
 }
 
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
@@ -2084,18 +2079,12 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 
 	info("health: MCL disconnected");
 	dev = search_dev_by_mcl(mcl);
-	if (dev)
-		dev->mcl_conn = false;
+	unref_mcl(dev);
 }
 
 static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 {
-	struct health_device *dev;
-
-	DBG("");
-
-	dev = search_dev_by_mcl(mcl);
-	free_health_device(dev);
+	/* mcap library maintains cache of mcls, not required here */
 }
 
 bool bt_health_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
