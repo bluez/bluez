@@ -453,6 +453,8 @@ static struct test_case test_cases[] = {
 		CALLBACK_GATTC_DISCONNECT(GATT_STATUS_SUCCESS,
 						prop_emu_remotes_default_set,
 						CONN1_ID, CLIENT1_ID),
+		CALLBACK_STATE(CB_BT_ACL_STATE_CHANGED,
+						BT_ACL_STATE_DISCONNECTED),
 		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),
 		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
 		ACTION_SUCCESS(emu_remote_connect_hci_action, NULL),

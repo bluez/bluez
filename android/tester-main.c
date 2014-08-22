@@ -841,6 +841,19 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr,
 	schedule_callback_call(step);
 }
 
+static void acl_state_changed_cb(bt_status_t status,
+					bt_bdaddr_t *remote_bd_addr,
+					bt_acl_state_t state) {
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_BT_ACL_STATE_CHANGED;
+
+	step->callback_result.status = status;
+	step->callback_result.state = state;
+
+	schedule_callback_call(step);
+}
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
@@ -851,7 +864,7 @@ static bt_callbacks_t bt_callbacks = {
 	.pin_request_cb = pin_request_cb,
 	.ssp_request_cb = ssp_request_cb,
 	.bond_state_changed_cb = bond_state_changed_cb,
-	.acl_state_changed_cb = NULL,
+	.acl_state_changed_cb = acl_state_changed_cb,
 	.thread_evt_cb = NULL,
 	.dut_mode_recv_cb = NULL,
 	.le_test_mode_cb = NULL
