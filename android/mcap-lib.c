@@ -1007,10 +1007,10 @@ static void mcap_del_mdl(gpointer elem, gpointer user_data)
 	struct mcap_mdl *mdl = elem;
 	gboolean notify = *(gboolean *) user_data;
 
-	shutdown_mdl(mdl);
 	if (notify)
 		mdl->mcl->cb->mdl_deleted(mdl, mdl->mcl->cb->user_data);
 
+	shutdown_mdl(mdl);
 	mcap_mdl_unref(mdl);
 }
 
@@ -1231,13 +1231,11 @@ static void process_md_delete_mdl_req(struct mcap_mcl *mcl, void *cmd,
 	req = cmd;
 	mdlid = ntohs(req->mdl);
 	if (mdlid == MCAP_ALL_MDLIDS) {
-		notify = FALSE;
+		notify = TRUE;
 		g_slist_foreach(mcl->mdls, mcap_del_mdl, &notify);
 		g_slist_free(mcl->mdls);
 		mcl->mdls = NULL;
 		mcl->state = MCL_CONNECTED;
-		/* NULL mdl means ALL_MDLS */
-		mcl->cb->mdl_deleted(NULL, mcl->cb->user_data);
 		goto resp;
 	}
 

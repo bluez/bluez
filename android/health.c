@@ -1254,34 +1254,17 @@ static void mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 	channel->mdl_conn = false;
 }
 
-static void notify_channel(void *data, void *user_data)
-{
-	struct health_channel *channel = data;
-
-	send_channel_state_notify(channel, HAL_HEALTH_CHANNEL_DESTROYED, -1);
-}
-
 static void mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 {
-	struct health_channel *channel = data;
-	struct health_device *dev;
+	struct health_channel *channel;
 
+	info("health: MDL deleted");
+
+	channel = search_channel_by_mdl(mdl);
 	if (!channel)
 		return;
 
-	dev = channel->dev;
-
-	DBG("device %p channel %p mdl %p", dev, channel, mdl);
-	info("health: MDL deleted");
-
-	/* mdl == NULL means, delete all mdls */
-	if (!mdl) {
-		queue_foreach(dev->channels, notify_channel, NULL);
-		queue_remove_all(dev->channels, NULL, NULL,
-						free_health_channel);
-		return;
-	}
-
+	DBG("channel %p mdl %p", channel, mdl);
 	destroy_channel(channel);
 }
 
