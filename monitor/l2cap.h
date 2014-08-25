@@ -54,38 +54,38 @@ static inline void l2cap_frame_pull(struct l2cap_frame *frame,
 	frame->size = source->size - len;
 }
 
-static inline int l2cap_frame_get_u8(struct l2cap_frame *frame, uint8_t *value)
+static inline bool l2cap_frame_get_u8(struct l2cap_frame *frame, uint8_t *value)
 {
 	if (frame->size < sizeof(*value))
-		return -1;
+		return false;
 
 	if (value)
 		*value = *((uint8_t *) frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
 
-	return 0;
+	return true;
 }
 
-static inline int l2cap_frame_get_be16(struct l2cap_frame *frame,
+static inline bool l2cap_frame_get_be16(struct l2cap_frame *frame,
 								uint16_t *value)
 {
 	if (frame->size < sizeof(*value))
-		return -1;
+		return false;
 
 	if (value)
 		*value = get_be16(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
 
-	return 0;
+	return true;
 }
 
-static inline int l2cap_frame_get_le16(struct l2cap_frame *frame,
+static inline bool l2cap_frame_get_le16(struct l2cap_frame *frame,
 								uint16_t *value)
 {
 	if (frame->size < sizeof(*value))
-		return -1;
+		return false;
 
 	if (value)
 		*value = get_le16(frame->data);
@@ -95,60 +95,60 @@ static inline int l2cap_frame_get_le16(struct l2cap_frame *frame,
 	return 0;
 }
 
-static inline int l2cap_frame_get_be32(struct l2cap_frame *frame,
+static inline bool l2cap_frame_get_be32(struct l2cap_frame *frame,
 								uint32_t *value)
 {
 	if (frame->size < sizeof(*value))
-		return -1;
+		return false;
 
 	if (value)
 		*value = get_be32(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
 
-	return 0;
+	return true;
 }
 
-static inline int l2cap_frame_get_le32(struct l2cap_frame *frame,
+static inline bool l2cap_frame_get_le32(struct l2cap_frame *frame,
 								uint32_t *value)
 {
 	if (frame->size < sizeof(*value))
-		return -1;
+		return false;
 
 	if (value)
 		*value = get_le32(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
 
-	return 0;
+	return true;
 }
 
-static inline int l2cap_frame_get_be64(struct l2cap_frame *frame,
+static inline bool l2cap_frame_get_be64(struct l2cap_frame *frame,
 								uint64_t *value)
 {
 	if (frame->size < sizeof(*value))
-		return -1;
+		return false;
 
 	if (value)
 		*value = get_be64(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
 
-	return 0;
+	return true;
 }
 
-static inline int l2cap_frame_get_le64(struct l2cap_frame *frame,
+static inline bool l2cap_frame_get_le64(struct l2cap_frame *frame,
 								uint64_t *value)
 {
 	if (frame->size < sizeof(*value))
-		return -1;
+		return false;
 
 	if (value)
 		*value = get_le64(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
 
-	return 0;
+	return true;
 }
 
 void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,

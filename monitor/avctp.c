@@ -495,7 +495,7 @@ static bool avrcp_get_capabilities(struct l2cap_frame *frame, uint8_t ctype,
 	uint8_t cap, count;
 	int i;
 
-	if (l2cap_frame_get_u8(frame, &cap))
+	if (!l2cap_frame_get_u8(frame, &cap))
 		return false;
 
 	print_field("%*cCapabilityID: 0x%02x (%s)", (indent - 8), ' ', cap,
@@ -504,7 +504,7 @@ static bool avrcp_get_capabilities(struct l2cap_frame *frame, uint8_t ctype,
 	if (len == 1)
 		return true;
 
-	if (l2cap_frame_get_u8(frame, &count))
+	if (!l2cap_frame_get_u8(frame, &count))
 		return false;
 
 	print_field("%*cCapabilityCount: 0x%02x", (indent - 8), ' ', count);
@@ -530,7 +530,7 @@ static bool avrcp_get_capabilities(struct l2cap_frame *frame, uint8_t ctype,
 		for (i = 0; count > 0; count--, i++) {
 			uint8_t event;
 
-			if (l2cap_frame_get_u8(frame, &event))
+			if (!l2cap_frame_get_u8(frame, &event))
 				return false;
 
 			print_field("%*c%s: 0x%02x (%s)", (indent - 8), ' ',
@@ -557,7 +557,7 @@ static bool avrcp_list_player_attributes(struct l2cap_frame *frame,
 
 	l2cap_frame_pull(&avrcp_frame, frame, 0);
 
-	if (l2cap_frame_get_u8(&avrcp_frame, &num))
+	if (!l2cap_frame_get_u8(&avrcp_frame, &num))
 		return false;
 
 	print_field("%*cAttributeCount: 0x%02x", (indent - 8), ' ', num);
@@ -565,7 +565,7 @@ static bool avrcp_list_player_attributes(struct l2cap_frame *frame,
 	for (i = 0; num > 0; num--, i++) {
 		uint8_t attr;
 
-		if (l2cap_frame_get_u8(&avrcp_frame, &attr))
+		if (!l2cap_frame_get_u8(&avrcp_frame, &attr))
 			return false;
 
 		print_field("%*cAttributeID: 0x%02x (%s)", (indent - 8), ' ',
@@ -584,7 +584,7 @@ static bool avrcp_list_player_values(struct l2cap_frame *frame, uint8_t ctype,
 	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
 		goto response;
 
-	if (l2cap_frame_get_u8(frame, &attr))
+	if (!l2cap_frame_get_u8(frame, &attr))
 		return false;
 
 	print_field("%*cAttributeID: 0x%02x (%s)", (indent - 8), ' ',
@@ -593,7 +593,7 @@ static bool avrcp_list_player_values(struct l2cap_frame *frame, uint8_t ctype,
 	return true;
 
 response:
-	if (l2cap_frame_get_u8(frame, &num))
+	if (!l2cap_frame_get_u8(frame, &num))
 		return false;
 
 	print_field("%*cValueCount: 0x%02x", (indent - 8), ' ', num);
@@ -601,7 +601,7 @@ response:
 	for (; num > 0; num--) {
 		uint8_t value;
 
-		if (l2cap_frame_get_u8(frame, &value))
+		if (!l2cap_frame_get_u8(frame, &value))
 			return false;
 
 		print_field("%*cValueID: 0x%02x (%s)", (indent - 8),
@@ -628,7 +628,7 @@ static bool avrcp_rejected_packet(struct l2cap_frame *frame, uint8_t indent)
 {
 	uint8_t status;
 
-	if (l2cap_frame_get_u8(frame, &status))
+	if (!l2cap_frame_get_u8(frame, &status))
 		return false;
 
 	print_field("%*cError: 0x%02x (%s)", (indent - 8), ' ', status,
