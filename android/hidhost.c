@@ -950,6 +950,19 @@ failed:
 									status);
 }
 
+static bool bt_hid_write_virtual_unplug(GIOChannel *chan)
+{
+	uint8_t hdr = HID_MSG_CONTROL | HID_VIRTUAL_CABLE_UNPLUG;
+	int fd = g_io_channel_unix_get_fd(chan);
+
+	if (write(fd, &hdr, sizeof(hdr)) == sizeof(hdr))
+		return true;
+
+	error("hidhost: Error writing virtual unplug command: %s (%d)",
+							strerror(errno), errno);
+	return false;
+}
+
 static void bt_hid_virtual_unplug(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_hidhost_virtual_unplug *cmd = buf;
@@ -957,8 +970,6 @@ static void bt_hid_virtual_unplug(const void *buf, uint16_t len)
 	GSList *l;
 	uint8_t status;
 	bdaddr_t dst;
-	uint8_t hdr;
-	int fd;
 
 	DBG("");
 
@@ -977,13 +988,7 @@ static void bt_hid_virtual_unplug(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	hdr = HID_MSG_CONTROL | HID_VIRTUAL_CABLE_UNPLUG;
-
-	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
-
-	if (write(fd, &hdr, sizeof(hdr)) < 0) {
-		error("hidhost: Error writing virtual unplug command: %s (%d)",
-						strerror(errno), errno);
+	if (!bt_hid_write_virtual_unplug(dev->ctrl_io)) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -1409,6 +1414,16 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	ba2str(&dst, address);
 	DBG("Incoming connection from %s on PSM %d", address, psm);
+
+	if (!bt_device_is_bonded(&dst)) {
+		warn("hidhost: Rejecting connection from unknown device %s",
+								address);
+		if (psm == L2CAP_PSM_HIDP_CTRL)
+			bt_hid_write_virtual_unplug(chan);
+
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
+	}
 
 	switch (psm) {
 	case L2CAP_PSM_HIDP_CTRL:
