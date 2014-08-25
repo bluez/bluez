@@ -483,31 +483,30 @@ static const char *value2str(uint8_t attr, uint8_t value)
 	}
 }
 
-static void avrcp_passthrough_packet(const struct l2cap_frame *frame)
+static bool avrcp_passthrough_packet(struct l2cap_frame *frame)
 {
+	packet_hexdump(frame->data, frame->size);
+	return true;
 }
 
-static void avrcp_get_capabilities(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
+static bool avrcp_get_capabilities(struct l2cap_frame *frame, uint8_t ctype,
+						uint8_t len, uint8_t indent)
 {
 	uint8_t cap, count;
 	int i;
 
-	if (len < 1) {
-		print_text(COLOR_ERROR, "PDU malformed");
-		packet_hexdump(frame->data, frame->size);
-		return;
-	}
+	if (l2cap_frame_get_u8(frame, &cap))
+		return false;
 
-	cap = *((uint8_t *) frame->data);
 	print_field("%*cCapabilityID: 0x%02x (%s)", (indent - 8), ' ', cap,
 								cap2str(cap));
 
 	if (len == 1)
-		return;
+		return true;
 
-	count = *((uint8_t *) (frame->data + 1));
+	if (l2cap_frame_get_u8(frame, &count))
+		return false;
+
 	print_field("%*cCapabilityCount: 0x%02x", (indent - 8), ' ', count);
 
 	switch (cap) {
@@ -522,229 +521,137 @@ static void avrcp_get_capabilities(const struct l2cap_frame *frame,
 	case 0x3:
 		for (i = 0; count > 0; count--, i++) {
 			uint8_t event;
-			event = *((uint8_t *) (frame->data + 2 + i));
+
+			if (l2cap_frame_get_u8(frame, &event))
+				return false;
+
 			print_field("%*c%s: 0x%02x (%s)", (indent - 8), ' ',
 					cap2str(cap), event, event2str(event));
 		}
 		break;
 	default:
-		packet_hexdump(frame->data + 1, frame->size - 1);
+		packet_hexdump(frame->data, frame->size);
 	}
+
+	return true;
 }
 
-static void avrcp_list_player_attributes(const struct l2cap_frame *frame,
+static bool avrcp_list_player_attributes(struct l2cap_frame *frame,
 						uint8_t ctype, uint8_t len,
 						uint8_t indent)
 {
+	struct l2cap_frame avrcp_frame;
 	uint8_t num;
 	int i;
 
 	if (len == 0)
-		return;
+		return true;
 
-	num = *((uint8_t *) frame->data);
+	l2cap_frame_pull(&avrcp_frame, frame, 0);
+
+	if (l2cap_frame_get_u8(&avrcp_frame, &num))
+		return false;
+
 	print_field("%*cAttributeCount: 0x%02x", (indent - 8), ' ', num);
 
 	for (i = 0; num > 0; num--, i++) {
 		uint8_t attr;
 
-		attr = *((uint8_t *) (frame->data + 1 + i));
+		if (l2cap_frame_get_u8(&avrcp_frame, &attr))
+			return false;
+
 		print_field("%*cAttributeID: 0x%02x (%s)", (indent - 8), ' ',
 							attr, attr2str(attr));
 	}
+
+	return true;
 }
 
-static void avrcp_list_player_values(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
+static bool avrcp_list_player_values(struct l2cap_frame *frame, uint8_t ctype,
+						uint8_t len, uint8_t indent)
 {
-	struct l2cap_frame avrcp_frame;
 	static uint8_t attr = 0;
 	uint8_t num;
-
-	l2cap_frame_pull(&avrcp_frame, frame, 0);
 
 	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
 		goto response;
 
-	if (l2cap_frame_get_u8(&avrcp_frame, &attr))
-		goto error;
+	if (l2cap_frame_get_u8(frame, &attr))
+		return false;
 
 	print_field("%*cAttributeID: 0x%02x (%s)", (indent - 8), ' ',
 						attr, attr2str(attr));
 
-	return;
+	return true;
 
 response:
-	if (l2cap_frame_get_u8(&avrcp_frame, &num))
-		goto error;
+	if (l2cap_frame_get_u8(frame, &num))
+		return false;
 
 	print_field("%*cValueCount: 0x%02x", (indent - 8), ' ', num);
 
 	for (; num > 0; num--) {
 		uint8_t value;
 
-		if (l2cap_frame_get_u8(&avrcp_frame, &value))
-			goto error;
+		if (l2cap_frame_get_u8(frame, &value))
+			return false;
 
 		print_field("%*cValueID: 0x%02x (%s)", (indent - 8),
 					' ', value, value2str(attr, value));
 	}
 
-	return;
-
-error:
-	print_text(COLOR_ERROR, "PDU malformed");
-	packet_hexdump(frame->data, frame->size);
-}
-
-static void avrcp_get_current_player_value(const struct l2cap_frame *frame,
-						uint8_t ctype, uint8_t len,
-						uint8_t indent)
-{
-}
-
-static void avrcp_set_player_value(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_get_player_attribute_text(const struct l2cap_frame *frame,
-						uint8_t ctype, uint8_t len,
-						uint8_t indent)
-{
-}
-
-static void avrcp_get_player_value_text(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_displayable_charset(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_ct_battery_status(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_get_element_attributes(const struct l2cap_frame *frame,
-						uint8_t ctype, uint8_t len,
-						uint8_t indent)
-{
-}
-
-static void avrcp_get_play_status(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_register_notification(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_set_absolute_volume(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_set_addressed_player(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
-}
-
-static void avrcp_play_item(const struct l2cap_frame *frame,
-				uint8_t ctype, uint8_t len,
-				uint8_t indent)
-{
-}
-
-static void avrcp_add_to_now_playing(const struct l2cap_frame *frame,
-					uint8_t ctype, uint8_t len,
-					uint8_t indent)
-{
+	return true;
 }
 
 struct avrcp_ctrl_pdu_data {
 	uint8_t pduid;
-	void (*func) (const struct l2cap_frame *frame, uint8_t ctype,
-	uint8_t len, uint8_t indent);
+	bool (*func) (struct l2cap_frame *frame, uint8_t ctype, uint8_t len,
+							uint8_t indent);
 };
 
 static const struct avrcp_ctrl_pdu_data avrcp_ctrl_pdu_table[] = {
 	{ 0x10, avrcp_get_capabilities			},
 	{ 0x11, avrcp_list_player_attributes		},
 	{ 0x12, avrcp_list_player_values		},
-	{ 0x13, avrcp_get_current_player_value		},
-	{ 0x14, avrcp_set_player_value			},
-	{ 0x15, avrcp_get_player_attribute_text		},
-	{ 0x16, avrcp_get_player_value_text		},
-	{ 0x17, avrcp_displayable_charset		},
-	{ 0x18, avrcp_ct_battery_status			},
-	{ 0x20, avrcp_get_element_attributes		},
-	{ 0x30, avrcp_get_play_status			},
-	{ 0x31, avrcp_register_notification		},
-	{ 0x50, avrcp_set_absolute_volume		},
-	{ 0x60, avrcp_set_addressed_player		},
-	{ 0x74, avrcp_play_item				},
-	{ 0x90, avrcp_add_to_now_playing		},
 	{ }
 };
 
-static void avrcp_rejected_packet(const struct l2cap_frame *frame,
-					uint8_t indent)
+static bool avrcp_rejected_packet(struct l2cap_frame *frame, uint8_t indent)
 {
 	uint8_t status;
 
-	if (frame->size < 1) {
-		print_text(COLOR_ERROR, "PDU malformed");
-		packet_hexdump(frame->data, frame->size);
-		return;
-	}
+	if (l2cap_frame_get_u8(frame, &status))
+		return false;
 
-	status = *((uint8_t *) frame->data);
-	print_field("%*cError: 0x%02x (%s)", (indent - 8), ' ',
-					status, error2str(status));
+	print_field("%*cError: 0x%02x (%s)", (indent - 8), ' ', status,
+							error2str(status));
+
+	return true;
 }
 
-static void avrcp_pdu_packet(const struct l2cap_frame *frame, uint8_t ctype,
-				uint8_t indent)
+static bool avrcp_pdu_packet(struct l2cap_frame *frame, uint8_t ctype,
+								uint8_t indent)
 {
 	uint8_t pduid, pt;
 	uint16_t len;
 	int i;
 	const struct avrcp_ctrl_pdu_data *ctrl_pdu_data = NULL;
-	struct l2cap_frame avrcp_frame;
 
-	pduid = *((uint8_t *) frame->data);
-	pt = *((uint8_t *) (frame->data + 1));
-	len = get_be16(frame->data + 2);
+	if (frame->size < 4)
+		return false;
+
+	l2cap_frame_get_u8(frame, &pduid);
+	l2cap_frame_get_u8(frame, &pt);
+	l2cap_frame_get_be16(frame, &len);
 
 	print_indent(indent, COLOR_OFF, "AVRCP: ", pdu2str(pduid), COLOR_OFF,
 					" pt %s len 0x%04x", pt2str(pt), len);
 
-	if ((frame->size < 4) || ((frame->size - 4) != len)) {
-		print_text(COLOR_ERROR, "PDU malformed");
-		packet_hexdump(frame->data, frame->size);
-		return;
-	}
+	if (frame->size != len)
+		return false;
 
-	if (ctype == 0xA) {
-		l2cap_frame_pull(&avrcp_frame, frame, 4);
-		avrcp_rejected_packet(&avrcp_frame, indent + 2);
-		return;
-	}
+	if (ctype == 0xA)
+		return avrcp_rejected_packet(frame, indent + 2);
 
 	for (i = 0; avrcp_ctrl_pdu_table[i].func; i++) {
 		if (avrcp_ctrl_pdu_table[i].pduid == pduid) {
@@ -754,22 +661,23 @@ static void avrcp_pdu_packet(const struct l2cap_frame *frame, uint8_t ctype,
 	}
 
 	if (!ctrl_pdu_data || !ctrl_pdu_data->func) {
-		packet_hexdump(frame->data + 4, frame->size - 4);
-		return;
+		packet_hexdump(frame->data, frame->size);
+		return true;
 	}
 
-	l2cap_frame_pull(&avrcp_frame, frame, 4);
-	ctrl_pdu_data->func(&avrcp_frame, ctype, len, indent + 2);
+	return ctrl_pdu_data->func(frame, ctype, len, indent + 2);
 }
 
-static void avrcp_control_packet(const struct l2cap_frame *frame)
+static bool avrcp_control_packet(struct l2cap_frame *frame)
 {
-	uint8_t ctype, address, subunit, opcode, indent = 2;
-	struct l2cap_frame avrcp_frame;
+	uint8_t ctype, address, subunit, opcode, company[3], indent = 2;
 
-	ctype = *((uint8_t *) frame->data);
-	address = *((uint8_t *) (frame->data + 1));
-	opcode = *((uint8_t *) (frame->data + 2));
+	if (frame->size < 3)
+		return false;
+
+	l2cap_frame_get_u8(frame, &ctype);
+	l2cap_frame_get_u8(frame, &address);
+	l2cap_frame_get_u8(frame, &opcode);
 
 	print_field("AV/C: %s: address 0x%02x opcode 0x%02x",
 				ctype2str(ctype), address, opcode);
@@ -783,47 +691,60 @@ static void avrcp_control_packet(const struct l2cap_frame *frame)
 	/* Skip non-panel subunit packets */
 	if (subunit != 0x09) {
 		packet_hexdump(frame->data, frame->size);
-		return;
+		return true;
 	}
 
 	/* Not implemented should not contain any operand */
 	if (ctype == 0x8) {
 		packet_hexdump(frame->data, frame->size);
-		return;
+		return true;
 	}
 
 	switch (opcode) {
 	case 0x7c:
-		avrcp_passthrough_packet(frame);
-		break;
+		return avrcp_passthrough_packet(frame);
 	case 0x00:
-		print_field("%*cCompany ID: 0x%02x%02x%02x", indent, ' ',
-					*((uint8_t *) (frame->data + 3)),
-					*((uint8_t *) (frame->data + 4)),
-					*((uint8_t *) (frame->data + 5)));
+		if (frame->size < 3)
+			return false;
 
-		l2cap_frame_pull(&avrcp_frame, frame, 6);
-		avrcp_pdu_packet(&avrcp_frame, ctype, 10);
-		break;
+		l2cap_frame_get_u8(frame, &company[0]);
+		l2cap_frame_get_u8(frame, &company[1]);
+		l2cap_frame_get_u8(frame, &company[2]);
+
+		print_field("%*cCompany ID: 0x%02x%02x%02x", indent, ' ',
+					company[0], company[1], company[2]);
+
+		return avrcp_pdu_packet(frame, ctype, 10);
 	default:
 		packet_hexdump(frame->data, frame->size);
+		return true;
 	}
 }
 
-static void avrcp_browsing_packet(const struct l2cap_frame *frame, uint8_t hdr)
+static bool avrcp_browsing_packet(struct l2cap_frame *frame, uint8_t hdr)
 {
+	packet_hexdump(frame->data, frame->size);
+	return true;
 }
 
-static void avrcp_packet(const struct l2cap_frame *frame, uint8_t hdr)
+static void avrcp_packet(struct l2cap_frame *frame, uint8_t hdr)
 {
+	bool ret;
+
 	switch (frame->psm) {
 	case 0x17:
-		avrcp_control_packet(frame);
+		ret = avrcp_control_packet(frame);
 		break;
 	case 0x1B:
-		avrcp_browsing_packet(frame, hdr);
+		ret = avrcp_browsing_packet(frame, hdr);
 		break;
 	default:
+		packet_hexdump(frame->data, frame->size);
+		return;
+	}
+
+	if (!ret) {
+		print_text(COLOR_ERROR, "PDU malformed");
 		packet_hexdump(frame->data, frame->size);
 	}
 }
@@ -841,9 +762,10 @@ void avctp_packet(const struct l2cap_frame *frame)
 		return;
         }
 
-	hdr = *((uint8_t *) frame->data);
+	l2cap_frame_pull(&avctp_frame, frame, 0);
 
-	pid = get_be16(frame->data + 1);
+	l2cap_frame_get_u8(&avctp_frame, &hdr);
+	l2cap_frame_get_be16(&avctp_frame, &pid);
 
 	if (frame->in)
 		pdu_color = COLOR_MAGENTA;
@@ -856,10 +778,8 @@ void avctp_packet(const struct l2cap_frame *frame)
 				hdr & 0x02 ? "Response" : "Command",
 				hdr & 0x0c, hdr >> 4, pid);
 
-	l2cap_frame_pull(&avctp_frame, frame, 3);
-
 	if (pid == 0x110e || pid == 0x110c)
 		avrcp_packet(&avctp_frame, hdr);
 	else
-		packet_hexdump(frame->data + 3, frame->size - 3);
+		packet_hexdump(frame->data, frame->size);
 }
