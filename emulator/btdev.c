@@ -1023,6 +1023,7 @@ static void le_conn_complete(struct btdev *btdev,
 
 		btdev->conn = remote;
 		remote->conn = btdev;
+		remote->le_adv_enable = 0;
 
 		cc->status = status;
 		cc->peer_addr_type = btdev->le_scan_own_addr_type;
