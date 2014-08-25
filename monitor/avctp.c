@@ -512,10 +512,18 @@ static bool avrcp_get_capabilities(struct l2cap_frame *frame, uint8_t ctype,
 	switch (cap) {
 	case 0x2:
 		for (; count > 0; count--) {
-			print_field("%s: 0x", cap2str(cap));
-			for (i = 0; i < 3; i++)
-				print_field("%*c%02x", (indent - 8), ' ',
-					*((uint8_t *) (frame->data + 2 + i)));
+			uint8_t company[3] = {};
+
+			if (frame->size < 3)
+				return false;
+
+			l2cap_frame_get_u8(frame, &company[0]);
+			l2cap_frame_get_u8(frame, &company[1]);
+			l2cap_frame_get_u8(frame, &company[2]);
+
+			print_field("%*c%s: 0x%02x%02x%02x", (indent - 8), ' ',
+					cap2str(cap), company[0], company[1],
+					company[2]);
 		}
 		break;
 	case 0x3:
