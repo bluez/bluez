@@ -162,11 +162,16 @@ static void unref_mdl(struct health_channel *channel)
 static void free_health_channel(void *data)
 {
 	struct health_channel *channel = data;
+	int fd;
 
 	DBG("channel %p", channel);
 
 	if (!channel)
 		return;
+
+	fd = mcap_mdl_get_fd(channel->mdl);
+	if (fd >= 0)
+		shutdown(fd, SHUT_RDWR);
 
 	unref_mdl(channel);
 	free(channel);
