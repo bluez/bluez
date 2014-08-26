@@ -112,6 +112,15 @@ const btgatt_interface_t *if_gatt = NULL;
 		} \
 	} while (0)
 
+#define GET_VERIFY_HEX_STRING(n, v, l) \
+	do { \
+		if (n[0] != '0' || (n[1] != 'X' && n[1] != 'x')) { \
+			haltest_error("Value must be hex string\n"); \
+			return; \
+		} \
+		l = fill_buffer(n + 2, (uint8_t *) v, sizeof(v)); \
+	} while (0)
+
 /* Gatt uses little endian uuid */
 static const char GATT_BASE_UUID[] = {
 	0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,
@@ -1191,12 +1200,7 @@ static void write_characteristic_p(int argc, const char **argv)
 		return;
 	}
 
-	if (argv[6][0] != '0' || (argv[6][1] != 'X' && argv[6][1] != 'x')) {
-		haltest_error("Value must be hex string");
-		return;
-	}
-
-	len = fill_buffer(argv[6] + 2, value, sizeof(value));
+	GET_VERIFY_HEX_STRING(argv[6], value, len);
 
 	/* auth_req */
 	if (argc > 7)
@@ -1791,15 +1795,8 @@ static void gatts_send_indication_p(int argc, const char *argv[])
 	}
 	confirm = atoi(argv[5]);
 
-	if (argc > 6) {
-		if (argv[6][0] != '0' ||
-				(argv[6][1] != 'X' && argv[6][1] != 'x')) {
-			haltest_error("Value must be hex string");
-			return;
-		}
-
-		len = fill_buffer(argv[6] + 2, (uint8_t *) data, sizeof(data));
-	}
+	if (argc > 6)
+		GET_VERIFY_HEX_STRING(argv[6], data, len);
 
 	EXEC(if_gatt->server->send_indication, server_if, attr_handle, conn_id,
 							len, confirm, data);
@@ -1828,17 +1825,9 @@ static void gatts_send_response_p(int argc, const char *argv[])
 	data.attr_value.len = 0;
 
 	if (argc > 7) {
-		const char *str;
+		GET_VERIFY_HEX_STRING(argv[7], data.attr_value.value,
+							data.attr_value.len);
 
-		if (strncmp(argv[7], "0X", 2) && strncmp(argv[7], "0x", 2)) {
-			haltest_error("Value must be hex string");
-			return;
-		}
-
-		str = argv[7] + 2;
-
-		data.attr_value.len = fill_buffer(str, data.attr_value.value,
-						sizeof(data.attr_value.value));
 		if (data.attr_value.len == 0) {
 			haltest_error("Failed to parse response value");
 			return;
