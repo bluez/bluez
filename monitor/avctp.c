@@ -861,6 +861,32 @@ response:
 	return true;
 }
 
+static bool avrcp_displayable_charset(struct l2cap_frame *frame, uint8_t ctype,
+					uint8_t len, uint8_t indent)
+{
+	uint8_t num;
+
+	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
+		return true;
+
+	if (!l2cap_frame_get_u8(frame, &num))
+		return false;
+
+	print_field("%*cCharsetCount: 0x%02x", (indent - 8), ' ', num);
+
+	for (; num > 0; num--) {
+		uint16_t charset;
+
+		if (!l2cap_frame_get_be16(frame, &charset))
+			return false;
+
+		print_field("%*cCharsetID: 0x%04x (%s)", (indent - 8),
+					' ', charset, charset2str(charset));
+	}
+
+	return true;
+}
+
 struct avrcp_ctrl_pdu_data {
 	uint8_t pduid;
 	bool (*func) (struct l2cap_frame *frame, uint8_t ctype, uint8_t len,
@@ -875,6 +901,7 @@ static const struct avrcp_ctrl_pdu_data avrcp_ctrl_pdu_table[] = {
 	{ 0x14, avrcp_set_player_value			},
 	{ 0x15, avrcp_get_player_attribute_text		},
 	{ 0x16, avrcp_get_player_value_text		},
+	{ 0x17, avrcp_displayable_charset		},
 	{ }
 };
 
