@@ -1,6 +1,6 @@
 HDP PICS for the PTS tool.
 
-PTS version: 5.1
+PTS version: 5.2
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -14,7 +14,7 @@ O - optional
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_HDP_0_1	False		HDP 1.0 (C.1)
-TSPC_HDP_0_2	True		HDP 1.1(C.1)
+TSPC_HDP_0_2	True		HDP 1.1 (C.1)
 -------------------------------------------------------------------------------
 C.1: Mandatory to support only one Profile version.
 -------------------------------------------------------------------------------
