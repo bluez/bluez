@@ -275,18 +275,15 @@ HAL Bluetooth
 methods:
 dut_mode_send                      never called from Android Framework
 le_test_mode                       never called from Android Framework
-get_remote_service_record          never called from Android Framework
 
 callbacks:
 dut_mode_recv_cb                   empty JNI implementation
 le_test_mode_cb                    empty JNI implementation
 
 properties:
-BT_PROPERTY_SERVICE_RECORD         not supported for adapter and device, for
-                                   device this property is to be returned as
-                                   response to get_remote_service_record,
-                                   not sure what to return on get_property
-                                   calls (records of all services?)
+BT_PROPERTY_SERVICE_RECORD         not supported for adapter, for device this
+                                   property is returned as a response to
+                                   get_remote_service_record call
 
 BT_PROPERTY_REMOTE_VERSION_INFO    information required by this property (LMP
                                    information) are not accessible from mgmt
