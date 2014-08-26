@@ -88,16 +88,16 @@ Downloading and building for Intel devices
 ------------------------------------------
 
 Sample Android tree with all required components for Intel devices based on
-Intel reference image (https://01.org/android-ia) is availabe at
-https://code.google.com/p/android-bluez/
+Intel reference image (https://01.org/android-ia) can be reconstructed following
+instructions below.
 
 This tree provides support for Dell XPS12, Minnowboard MAX, Intel NUC,
 Acer Iconia W700 and other devices mentioned in:
 https://01.org/android-ia/guides/devices
 
 Downloading:
-repo init -u https://code.google.com/p/android-bluez.manifest/ -b android-ia \
-	-m topic/bluez/master
+repo init -u https://github.com/01org/android-bluez-manifest.git -b android-ia \
+	-m topic/bluez
 repo sync
 
 Building:
