@@ -889,8 +889,20 @@ static void update_device_state(struct device *dev, uint8_t addr_type,
 
 	new_bond = device_bond_state(dev);
 
-	if (old_bond != new_bond)
+	if (old_bond != new_bond) {
+		/*
+		 * For incoming just works bonding we will switch here from
+		 * non bonded to bonded directly. This is something Android
+		 * will not handle in their bond state machine. To make Android
+		 * handle it corretly we need to send BONDING state before BOND
+		 */
+		if (old_bond == HAL_BOND_STATE_NONE &&
+					new_bond == HAL_BOND_STATE_BONDED)
+			send_bond_state_change(dev, status,
+							HAL_BOND_STATE_BONDING);
+
 		send_bond_state_change(dev, status, new_bond);
+	}
 }
 
 static void send_device_property(struct device *dev, uint8_t type,
