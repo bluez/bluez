@@ -1191,11 +1191,12 @@ static void write_characteristic_p(int argc, const char **argv)
 		return;
 	}
 
-	/* len in chars */
-	len = strlen(argv[6]);
-	scan_field(argv[6], len, value, sizeof(value));
-	/* len in bytes converted from ascii chars */
-	len = (len + 1) / 2;
+	if (argv[6][0] != '0' || (argv[6][1] != 'X' && argv[6][1] != 'x')) {
+		haltest_error("Value must be hex string");
+		return;
+	}
+
+	len = fill_buffer(argv[6] + 2, value, sizeof(value));
 
 	/* auth_req */
 	if (argc > 7)
@@ -1791,8 +1792,13 @@ static void gatts_send_indication_p(int argc, const char *argv[])
 	confirm = atoi(argv[5]);
 
 	if (argc > 6) {
-		len = strlen(argv[6]);
-		scan_field(argv[6], len, (uint8_t *) data, sizeof(data));
+		if (argv[6][0] != '0' ||
+				(argv[6][1] != 'X' && argv[6][1] != 'x')) {
+			haltest_error("Value must be hex string");
+			return;
+		}
+
+		len = fill_buffer(argv[6] + 2, (uint8_t *) data, sizeof(data));
 	}
 
 	EXEC(if_gatt->server->send_indication, server_if, attr_handle, conn_id,
