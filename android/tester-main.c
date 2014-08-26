@@ -1665,6 +1665,26 @@ void emu_remote_disconnect_hci_action(void)
 	schedule_action_verification(step);
 }
 
+void emu_set_io_cap(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct bt_action_data *action_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	if (action_data)
+		bthost_set_io_capability(bthost, action_data->io_cap);
+	else
+		bthost_set_io_capability(bthost, 0x01);
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
 void emu_add_l2cap_server_action(void)
 {
 	struct test_data *data = tester_get_data();

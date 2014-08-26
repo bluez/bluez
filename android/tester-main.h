@@ -332,6 +332,7 @@ struct bt_action_data {
 	const uint8_t pin_len;
 	const uint8_t ssp_variant;
 	const bool accept;
+	const uint16_t io_cap;
 
 	/* Socket HAL specific params */
 	const btsock_type_t sock_type;
@@ -436,6 +437,7 @@ void emu_set_ssp_mode_action(void);
 void emu_set_connect_cb_action(void);
 void emu_remote_connect_hci_action(void);
 void emu_remote_disconnect_hci_action(void);
+void emu_set_io_cap(void);
 void emu_add_l2cap_server_action(void);
 void emu_add_rfcomm_server_action(void);
 
