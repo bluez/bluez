@@ -62,6 +62,7 @@ enum {
 	TRANSFER_STATUS_ACTIVE,
 	TRANSFER_STATUS_SUSPENDED,
 	TRANSFER_STATUS_COMPLETE,
+	TRANSFER_STATUS_SUSPENDED_QUEUED,
 	TRANSFER_STATUS_ERROR
 };
 
@@ -213,6 +214,7 @@ static DBusMessage *obc_transfer_suspend(DBusConnection *connection,
 {
 	struct obc_transfer *transfer = user_data;
 	const char *sender;
+	uint8_t status;
 
 	sender = dbus_message_get_sender(message);
 	if (g_strcmp0(transfer->owner, sender) != 0)
@@ -220,14 +222,22 @@ static DBusMessage *obc_transfer_suspend(DBusConnection *connection,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
-	if (transfer->xfer == 0)
+	switch (transfer->status) {
+	case TRANSFER_STATUS_QUEUED:
+		status = TRANSFER_STATUS_SUSPENDED_QUEUED;
+		break;
+	case TRANSFER_STATUS_ACTIVE:
+		if (transfer->xfer)
+			g_obex_suspend(transfer->obex);
+		status = TRANSFER_STATUS_SUSPENDED;
+		break;
+	default:
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".NotInProgress",
 				"Not in progress");
+	}
 
-	g_obex_suspend(transfer->obex);
-
-	transfer_set_status(transfer, TRANSFER_STATUS_SUSPENDED);
+	transfer_set_status(transfer, status);
 
 	return g_dbus_create_reply(message, DBUS_TYPE_INVALID);
 }
@@ -237,6 +247,7 @@ static DBusMessage *obc_transfer_resume(DBusConnection *connection,
 {
 	struct obc_transfer *transfer = user_data;
 	const char *sender;
+	uint8_t status;
 
 	sender = dbus_message_get_sender(message);
 	if (g_strcmp0(transfer->owner, sender) != 0)
@@ -244,14 +255,24 @@ static DBusMessage *obc_transfer_resume(DBusConnection *connection,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
-	if (transfer->xfer == 0)
+	switch (transfer->status) {
+	case TRANSFER_STATUS_SUSPENDED_QUEUED:
+		status = TRANSFER_STATUS_QUEUED;
+		break;
+	case TRANSFER_STATUS_SUSPENDED:
+		if (transfer->xfer)
+			g_obex_resume(transfer->obex);
+		else
+			obc_transfer_start(transfer, NULL, NULL);
+		status = TRANSFER_STATUS_ACTIVE;
+		break;
+	default:
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".NotInProgress",
 				"Not in progress");
+	}
 
-	g_obex_resume(transfer->obex);
-
-	transfer_set_status(transfer, TRANSFER_STATUS_ACTIVE);
+	transfer_set_status(transfer, status);
 
 	return g_dbus_create_reply(message, DBUS_TYPE_INVALID);
 }
@@ -338,6 +359,7 @@ static const char *status2str(uint8_t status)
 		return "queued";
 	case TRANSFER_STATUS_ACTIVE:
 		return "active";
+	case TRANSFER_STATUS_SUSPENDED_QUEUED:
 	case TRANSFER_STATUS_SUSPENDED:
 		return "suspended";
 	case TRANSFER_STATUS_COMPLETE:
@@ -861,7 +883,14 @@ static gboolean transfer_start_put(struct obc_transfer *transfer, GError **err)
 gboolean obc_transfer_start(struct obc_transfer *transfer, void *obex,
 								GError **err)
 {
-	transfer->obex = g_obex_ref(obex);
+	if (!transfer->obex)
+		transfer->obex = g_obex_ref(obex);
+
+	if (transfer->status == TRANSFER_STATUS_SUSPENDED_QUEUED) {
+		/* Reset status so the transfer can be resumed */
+		transfer->status = TRANSFER_STATUS_SUSPENDED;
+		return TRUE;
+	}
 
 	switch (transfer->op) {
 	case G_OBEX_OP_GET:
