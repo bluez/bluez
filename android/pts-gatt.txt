@@ -468,8 +468,8 @@ TC_GAW_CL_BV_01_C	PASS	haltest:
 								handle from logs
 				gattc write_characteristic
 				gattc disconnect
-TC_GAW_CL_BV_02_C	INC	PTS issue #12446
-				haltest:
+TC_GAW_CL_BV_02_C	PASS	haltest:
+				gattc connect
 				bluetooth create_bond
 				gattc disconnect
 				gattc connect
