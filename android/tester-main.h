@@ -343,6 +343,9 @@ struct bt_action_data {
 
 	/* HidHost params */
 	const int report_size;
+
+	/*Connection params*/
+	const uint8_t bearer_type;
 };
 
 /* bthost's l2cap server setup parameters */

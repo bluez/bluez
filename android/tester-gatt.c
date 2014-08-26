@@ -95,6 +95,10 @@ static struct gatt_connect_data client2_conn_req = {
 static const uint8_t exchange_mtu_req_pdu[] = { 0x02, 0xa0, 0x02 };
 static const uint8_t exchange_mtu_resp_pdu[] = { 0x03, 0xa0, 0x02 };
 
+static struct bt_action_data bearer_type = {
+	.bearer_type = BDADDR_LE_PUBLIC,
+};
+
 static void gatt_client_register_action(void)
 {
 	struct test_data *data = tester_get_data();
@@ -380,7 +384,7 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATUS(CB_GATTC_REGISTER_CLIENT, BT_STATUS_SUCCESS),
 		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),
 		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
-		ACTION_SUCCESS(emu_remote_connect_hci_action, NULL),
+		ACTION_SUCCESS(emu_remote_connect_hci_action, &bearer_type),
 		CALLBACK_GATTC_CONNECT(GATT_STATUS_SUCCESS,
 						prop_emu_remotes_default_set,
 						CONN1_ID, CLIENT1_ID),
@@ -408,7 +412,7 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATUS(CB_GATTC_REGISTER_CLIENT, BT_STATUS_SUCCESS),
 		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),
 		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
-		ACTION_SUCCESS(emu_remote_connect_hci_action, NULL),
+		ACTION_SUCCESS(emu_remote_connect_hci_action, &bearer_type),
 		CALLBACK_GATTC_CONNECT(GATT_STATUS_SUCCESS,
 						prop_emu_remotes_default_set,
 						CONN1_ID, CLIENT1_ID),
@@ -427,7 +431,7 @@ static struct test_case test_cases[] = {
 						BT_ACL_STATE_DISCONNECTED),
 		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),
 		CALLBACK_STATUS(CB_GATTC_LISTEN, GATT_STATUS_SUCCESS),
-		ACTION_SUCCESS(emu_remote_connect_hci_action, NULL),
+		ACTION_SUCCESS(emu_remote_connect_hci_action, &bearer_type),
 		CALLBACK_GATTC_CONNECT(GATT_STATUS_SUCCESS,
 						prop_emu_remotes_default_set,
 						CONN2_ID, CLIENT1_ID),
