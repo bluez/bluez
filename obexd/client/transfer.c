@@ -160,6 +160,9 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 				ERROR_INTERFACE ".InProgress",
 				"Cancellation already in progress");
 
+	if (transfer->status == TRANSFER_STATUS_SUSPENDED)
+		g_obex_resume(transfer->obex);
+
 	if (transfer->req > 0) {
 		if (!g_obex_cancel_req(transfer->obex, transfer->req, TRUE))
 			return g_dbus_create_error(message,
@@ -414,6 +417,9 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 {
 	DBG("%p", transfer);
 
+	if (transfer->status == TRANSFER_STATUS_SUSPENDED)
+		g_obex_resume(transfer->obex);
+
 	if (transfer->req > 0)
 		g_obex_cancel_req(transfer->obex, transfer->req, TRUE);
 
@@ -658,6 +664,9 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 		g_source_remove(transfer->progress_id);
 		transfer->progress_id = 0;
 	}
+
+	if (transfer->status == TRANSFER_STATUS_SUSPENDED)
+		g_obex_resume(transfer->obex);
 
 	if (err)
 		transfer_set_status(transfer, TRANSFER_STATUS_ERROR);
