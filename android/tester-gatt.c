@@ -253,52 +253,6 @@ static void gatt_conn_cb(uint16_t handle, void *user_data)
 								&cid_data);
 }
 
-static void emu_set_connect_cb_action(void)
-{
-	struct test_data *data = tester_get_data();
-	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
-	struct step *current_data_step = queue_peek_head(data->steps);
-	void *cb = current_data_step->set_data;
-	struct step *step = g_new0(struct step, 1);
-
-	bthost_set_connect_cb(bthost, cb, data);
-
-	step->action_status = BT_STATUS_SUCCESS;
-
-	schedule_action_verification(step);
-}
-
-static void emu_remote_connect_hci_action(void)
-{
-	struct test_data *data = tester_get_data();
-	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
-	struct step *step = g_new0(struct step, 1);
-	const uint8_t *master_addr;
-
-	master_addr = hciemu_get_master_bdaddr(data->hciemu);
-
-	tester_print("Trying to connect hci");
-
-	bthost_hci_connect(bthost, master_addr, BDADDR_LE_PUBLIC);
-
-	step->action_status = BT_STATUS_SUCCESS;
-
-	schedule_action_verification(step);
-}
-
-static void emu_remote_disconnect_hci_action(void)
-{
-	struct test_data *data = tester_get_data();
-	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
-	struct step *step = g_new0(struct step, 1);
-
-	bthost_hci_disconnect(bthost, cid_data.handle, 0x13);
-
-	step->action_status = BT_STATUS_SUCCESS;
-
-	schedule_action_verification(step);
-}
-
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("Gatt Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -467,7 +421,8 @@ static struct test_case test_cases[] = {
 						prop_emu_remotes_default_set,
 						CONN1_ID, CLIENT1_ID),
 		/* Close ACL on emulated remotes side so it can reconnect */
-		ACTION_SUCCESS(emu_remote_disconnect_hci_action, NULL),
+		ACTION_SUCCESS(emu_remote_disconnect_hci_action,
+							&cid_data.handle),
 		CALLBACK_STATE(CB_BT_ACL_STATE_CHANGED,
 						BT_ACL_STATE_DISCONNECTED),
 		ACTION_SUCCESS(gatt_client_do_listen_action, &client1_conn_req),

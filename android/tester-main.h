@@ -430,6 +430,9 @@ void schedule_action_verification(struct step *step);
 void emu_setup_powered_remote_action(void);
 void emu_set_pin_code_action(void);
 void emu_set_ssp_mode_action(void);
+void emu_set_connect_cb_action(void);
+void emu_remote_connect_hci_action(void);
+void emu_remote_disconnect_hci_action(void);
 void emu_add_l2cap_server_action(void);
 void emu_add_rfcomm_server_action(void);
 

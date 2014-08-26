@@ -1608,6 +1608,57 @@ void emu_set_ssp_mode_action(void)
 	schedule_action_verification(step);
 }
 
+void emu_set_connect_cb_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	struct step *current_data_step = queue_peek_head(data->steps);
+	void *cb = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	bthost_set_connect_cb(bthost, cb, data);
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
+void emu_remote_connect_hci_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	struct step *step = g_new0(struct step, 1);
+	const uint8_t *master_addr;
+
+	master_addr = hciemu_get_master_bdaddr(data->hciemu);
+
+	tester_print("Trying to connect hci");
+
+	bthost_hci_connect(bthost, master_addr, BDADDR_LE_PUBLIC);
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
+void emu_remote_disconnect_hci_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	struct step *current_data_step = queue_peek_head(data->steps);
+	uint16_t *handle = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	if (handle) {
+		bthost_hci_disconnect(bthost, *handle, 0x13);
+		step->action_status = BT_STATUS_SUCCESS;
+	} else {
+		step->action_status = BT_STATUS_FAIL;
+	}
+
+	schedule_action_verification(step);
+}
+
 void emu_add_l2cap_server_action(void)
 {
 	struct test_data *data = tester_get_data();
