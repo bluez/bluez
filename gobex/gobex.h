@@ -95,6 +95,9 @@ guint g_obex_move(GObex *obex, const char *name, const char *dest,
 			GObexResponseFunc func, gpointer user_data,
 			GError **err);
 
+guint g_obex_abort(GObex *obex, GObexResponseFunc func, gpointer user_data,
+								GError **err);
+
 /* Transfer related high-level functions */
 
 guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,

@@ -1676,6 +1676,16 @@ guint g_obex_move(GObex *obex, const char *name, const char *dest,
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
 
+guint g_obex_abort(GObex *obex, GObexResponseFunc func, gpointer user_data,
+								GError **err)
+{
+	GObexPacket *req;
+
+	req = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_INVALID);
+
+	return g_obex_send_req(obex, req, -1, func, user_data, err);
+}
+
 guint8 g_obex_errno_to_rsp(int err)
 {
 	switch (err) {

@@ -152,11 +152,8 @@ static gssize put_get_data(void *buf, gsize len, gpointer user_data)
 		goto done;
 	}
 
-	req = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_INVALID);
-
-	transfer->req_id = g_obex_send_req(transfer->obex, req, -1,
-						transfer_abort_response,
-						transfer, &err);
+	transfer->req_id = g_obex_abort(transfer->obex, transfer_abort_response,
+								transfer, &err);
 done:
 	if (err != NULL) {
 		transfer_complete(transfer, err);
