@@ -325,6 +325,8 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	g_obex_debug(G_OBEX_DEBUG_PACKET, "");
 
 	if (data_policy == G_OBEX_DATA_INHERIT) {
+		if (!err)
+			return NULL;
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_INVALID_ARGS,
 							"Invalid data policy");
 		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
@@ -332,6 +334,8 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	}
 
 	if (len < 3 + header_offset) {
+		if (!err)
+			return NULL;
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 					"Not enough data to decode packet");
 		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
@@ -343,6 +347,8 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 
 	packet_len = g_ntohs(packet_len);
 	if (packet_len != len) {
+		if (!err)
+			return NULL;
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 				"Incorrect packet length (%u != %zu)",
 				packet_len, len);

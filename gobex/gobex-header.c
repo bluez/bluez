@@ -146,6 +146,8 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 	GError *conv_err = NULL;
 
 	if (len < 2) {
+		if (!err)
+			return NULL;
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 						"Too short header in packet");
 		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);

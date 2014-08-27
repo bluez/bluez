@@ -526,6 +526,8 @@ static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p,
 {
 
 	if (obex->io == NULL) {
+		if (!err)
+			return FALSE;
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED,
 					"The transport is not connected");
 		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
@@ -663,6 +665,8 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
 
 	if (obex == NULL || pkt == NULL) {
+		if (!err)
+			return FALSE;
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_INVALID_ARGS,
 				"Invalid arguments");
 		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
@@ -1230,6 +1234,8 @@ static gboolean read_stream(GObex *obex, GError **err)
 	obex->rx_pkt_len = g_ntohs(u16);
 
 	if (obex->rx_pkt_len > obex->rx_mtu) {
+		if (!err)
+			return FALSE;
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 				"Too big incoming packet");
 		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
@@ -1302,7 +1308,9 @@ static gboolean read_packet(GObex *obex, GError **err)
 
 	return TRUE;
 fail:
-	g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
+	if (err)
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
+
 	return FALSE;
 }
 
