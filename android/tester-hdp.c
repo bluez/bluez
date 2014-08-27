@@ -427,6 +427,24 @@ static void hdp_connect_sink_stream_action(void)
 	schedule_action_verification(step);
 }
 
+static void hdp_destroy_sink_reliable_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_hdp->destroy_channel(1);
+	schedule_action_verification(step);
+}
+
+static void hdp_destroy_sink_stream_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_hdp->destroy_channel(2);
+	schedule_action_verification(step);
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("HDP Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -524,6 +542,35 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(hdp_connect_sink_stream_action, NULL),
 		CALLBACK_HDP_CHANNEL_STATE(CB_HDP_CHANNEL_STATE, 1, 2, 1,
 						BTHL_CONN_STATE_CONNECTED),
+	),
+	TEST_CASE_BREDRLE("HDP Destroy Sink Streaming Channel",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_sdp_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_cc_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action,
+							&l2cap_setup_dc_data),
+		ACTION_SUCCESS(hdp_register_sink_stream_app_action, NULL),
+		CALLBACK_HDP_APP_REG_STATE(CB_HDP_APP_REG_STATE, 1,
+					BTHL_APP_REG_STATE_REG_SUCCESS),
+		ACTION_SUCCESS(hdp_connect_sink_reliable_action, NULL),
+		CALLBACK_HDP_CHANNEL_STATE(CB_HDP_CHANNEL_STATE, 1, 1, 0,
+						BTHL_CONN_STATE_CONNECTING),
+		CALLBACK_HDP_CHANNEL_STATE(CB_HDP_CHANNEL_STATE, 1, 1, 0,
+						BTHL_CONN_STATE_CONNECTED),
+		ACTION_SUCCESS(hdp_connect_sink_stream_action, NULL),
+		CALLBACK_HDP_CHANNEL_STATE(CB_HDP_CHANNEL_STATE, 1, 2, 1,
+						BTHL_CONN_STATE_CONNECTED),
+		ACTION_SUCCESS(hdp_destroy_sink_reliable_action, NULL),
+		CALLBACK_HDP_CHANNEL_STATE(CB_HDP_CHANNEL_STATE, 1, 1, 0,
+						BTHL_CONN_STATE_DESTROYED),
+		ACTION_SUCCESS(hdp_destroy_sink_stream_action, NULL),
+		CALLBACK_HDP_CHANNEL_STATE(CB_HDP_CHANNEL_STATE, 1, 2, 1,
+						BTHL_CONN_STATE_DESTROYED),
 	),
 };
 
