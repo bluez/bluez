@@ -653,8 +653,13 @@ gboolean g_obex_cancel_transfer(guint id, GObexFunc complete_func,
 	transfer->complete_func = complete_func;
 	transfer->user_data = user_data;
 
-	if (transfer->req_id == 0)
-		goto done;
+	if (!transfer->req_id) {
+		transfer->req_id = g_obex_abort(transfer->obex,
+						transfer_abort_response,
+						transfer, NULL);
+		if (transfer->req_id)
+			return TRUE;
+	}
 
 	ret = g_obex_cancel_req(transfer->obex, transfer->req_id, FALSE);
 	if (ret)
