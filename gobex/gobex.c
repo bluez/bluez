@@ -514,7 +514,7 @@ static void enable_tx(GObex *obex)
 	if (obex->suspended)
 		return;
 
-	if (obex->write_source > 0)
+	if (!obex->io || obex->write_source > 0)
 		return;
 
 	cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
