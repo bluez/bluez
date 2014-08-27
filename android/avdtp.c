@@ -2960,7 +2960,8 @@ struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep)
 }
 
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
-							void *data, int length)
+							const void *data,
+							int length)
 {
 	struct avdtp_service_capability *cap;
 
