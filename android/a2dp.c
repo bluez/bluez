@@ -49,7 +49,6 @@
 #include "avrcp.h"
 #include "audio-msg.h"
 
-#define L2CAP_PSM_AVDTP 0x19
 #define SVC_HINT_CAPTURING 0x08
 #define IDLE_TIMEOUT 1
 #define AUDIO_RETRY_TIMEOUT 2
@@ -201,7 +200,7 @@ static bool a2dp_device_connect(struct a2dp_device *dev, BtIOConnect cb)
 	dev->io = bt_io_connect(cb, dev, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
 					BT_IO_OPT_DEST_BDADDR, &dev->dst,
-					BT_IO_OPT_PSM, L2CAP_PSM_AVDTP,
+					BT_IO_OPT_PSM, AVDTP_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID);
 	if (err) {
@@ -1694,7 +1693,7 @@ bool bt_a2dp_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 
 	server = bt_io_listen(connect_cb, NULL, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
-				BT_IO_OPT_PSM, L2CAP_PSM_AVDTP,
+				BT_IO_OPT_PSM, AVDTP_PSM,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_MASTER, true,
 				BT_IO_OPT_INVALID);

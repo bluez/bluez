@@ -44,8 +44,6 @@
 #include "avdtp.h"
 #include "../profiles/audio/a2dp-codecs.h"
 
-#define AVDTP_PSM 25
-
 #define MAX_SEID 0x3E
 
 #ifndef MAX

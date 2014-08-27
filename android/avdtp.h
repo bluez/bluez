@@ -34,6 +34,8 @@ struct avdtp_error {
 	} err;
 };
 
+#define AVDTP_PSM 25
+
 /* SEP capability categories */
 #define AVDTP_MEDIA_TRANSPORT			0x01
 #define AVDTP_REPORTING				0x02
