@@ -225,8 +225,10 @@ static void session_free(struct obc_session *session)
 	if (session->watch)
 		g_dbus_remove_watch(session->conn, session->watch);
 
-	if (session->obex != NULL)
+	if (session->obex) {
+		g_obex_set_disconnect_function(session->obex, NULL, NULL);
 		g_obex_unref(session->obex);
+	}
 
 	if (session->id > 0 && session->transport != NULL)
 		session->transport->disconnect(session->id);
