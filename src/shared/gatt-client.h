@@ -23,6 +23,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+
+#define BT_GATT_UUID_SIZE 16
 
 struct bt_gatt_client;
 
@@ -36,6 +39,7 @@ typedef void (*bt_gatt_client_callback_t)(bool success, uint8_t att_ecode,
 							void *user_data);
 typedef void (*bt_gatt_client_debug_func_t)(const char *str, void *user_data);
 
+bool bt_gatt_client_is_ready(struct bt_gatt_client *client);
 bool bt_gatt_client_set_ready_handler(struct bt_gatt_client *client,
 					bt_gatt_client_callback_t callback,
 					void *user_data,
@@ -44,3 +48,41 @@ bool bt_gatt_client_set_debug(struct bt_gatt_client *client,
 					bt_gatt_client_debug_func_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
+
+typedef struct {
+	uint16_t handle;
+	uint8_t uuid[BT_GATT_UUID_SIZE];
+} bt_gatt_descriptor_t;
+
+typedef struct {
+	uint16_t handle;
+	uint16_t value_handle;
+	uint8_t properties;
+	uint8_t uuid[BT_GATT_UUID_SIZE];
+	const bt_gatt_descriptor_t *descs;
+	size_t num_descs;
+} bt_gatt_characteristic_t;
+
+typedef struct {
+	uint16_t start_handle;
+	uint16_t end_handle;
+	uint8_t uuid[BT_GATT_UUID_SIZE];
+	const bt_gatt_characteristic_t *chrcs;
+	size_t num_chrcs;
+} bt_gatt_service_t;
+
+struct bt_gatt_service_iter {
+	struct bt_gatt_client *client;
+	void *ptr;
+};
+
+bool bt_gatt_service_iter_init(struct bt_gatt_service_iter *iter,
+						struct bt_gatt_client *client);
+bool bt_gatt_service_iter_next(struct bt_gatt_service_iter *iter,
+						bt_gatt_service_t *service);
+bool bt_gatt_service_iter_next_by_handle(struct bt_gatt_service_iter *iter,
+						uint16_t start_handle,
+						bt_gatt_service_t *service);
+bool bt_gatt_service_iter_next_by_uuid(struct bt_gatt_service_iter *iter,
+					const uint8_t uuid[BT_GATT_UUID_SIZE],
+					bt_gatt_service_t *service);
