@@ -28,6 +28,10 @@
 struct bt_gatt_client {
 	struct bt_att *att;
 	int ref_count;
+
+	bt_gatt_client_debug_func_t debug_callback;
+	bt_gatt_client_destroy_func_t debug_destroy;
+	void *debug_data;
 };
 
 struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu)
@@ -66,6 +70,9 @@ void bt_gatt_client_unref(struct bt_gatt_client *client)
 	if (__sync_sub_and_fetch(&client->ref_count, 1))
 		return;
 
+	if (client->debug_destroy)
+		client->debug_destroy(client->debug_data);
+
 	bt_att_unref(client->att);
 	free(client);
 }
@@ -76,4 +83,21 @@ bool bt_gatt_client_set_ready_handler(struct bt_gatt_client *client,
 					bt_gatt_client_destroy_func_t destroy)
 {
 	/* TODO */
+}
+
+bool bt_gatt_client_set_debug(struct bt_gatt_client *client,
+					bt_gatt_client_debug_func_t callback,
+					void *user_data,
+					bt_gatt_client_destroy_func_t destroy) {
+	if (!client)
+		return false;
+
+	if (client->debug_destroy)
+		client->debug_destroy(client->debug_data);
+
+	client->debug_callback = callback;
+	client->debug_destroy = destroy;
+	client->debug_data = user_data;
+
+	return true;
 }
