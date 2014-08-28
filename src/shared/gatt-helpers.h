@@ -54,7 +54,7 @@ typedef void (*bt_gatt_destroy_func_t)(void *user_data);
 
 typedef void (*bt_gatt_result_callback_t)(bool success, uint8_t att_ecode,
 							void *user_data);
-typedef void (*bt_gatt_discovery_callback_t)(bool success, uint8_t att_code,
+typedef void (*bt_gatt_discovery_callback_t)(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data);
 typedef void (*bt_gatt_read_callback_t)(bool success, uint8_t att_ecode,
