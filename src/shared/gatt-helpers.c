@@ -88,6 +88,55 @@ static void result_destroy(struct bt_gatt_result *result)
 	}
 }
 
+static unsigned int result_element_count(struct bt_gatt_result *result)
+{
+	unsigned int count = 0;
+	struct bt_gatt_result *cur;
+
+	cur = result;
+
+	while (cur) {
+		count += cur->pdu_len / cur->data_len;
+		cur = cur->next;
+	}
+
+	return count;
+}
+
+unsigned int bt_gatt_result_service_count(struct bt_gatt_result *result)
+{
+	if (!result)
+		return 0;
+
+	if (result->opcode != BT_ATT_OP_READ_BY_GRP_TYPE_RSP &&
+			result->opcode != BT_ATT_OP_FIND_BY_TYPE_VAL_RSP)
+		return 0;
+
+	return result_element_count(result);
+}
+
+unsigned int bt_gatt_result_characteristic_count(struct bt_gatt_result *result)
+{
+	if (!result)
+		return 0;
+
+	if (result->opcode != BT_ATT_OP_READ_BY_TYPE_RSP)
+		return 0;
+
+	return result_element_count(result);
+}
+
+unsigned int bt_gatt_result_descriptor_count(struct bt_gatt_result *result)
+{
+	if (!result)
+		return 0;
+
+	if (result->opcode != BT_ATT_OP_FIND_INFO_RSP)
+		return 0;
+
+	return result_element_count(result);
+}
+
 bool bt_gatt_iter_init(struct bt_gatt_iter *iter, struct bt_gatt_result *result)
 {
 	if (!iter || !result)

@@ -35,6 +35,10 @@ struct bt_gatt_iter {
 	uint16_t pos;
 };
 
+unsigned int bt_gatt_result_service_count(struct bt_gatt_result *result);
+unsigned int bt_gatt_result_characteristic_count(struct bt_gatt_result *result);
+unsigned int bt_gatt_result_descriptor_count(struct bt_gatt_result *result);
+
 bool bt_gatt_iter_init(struct bt_gatt_iter *iter, struct bt_gatt_result *result);
 bool bt_gatt_iter_next_service(struct bt_gatt_iter *iter,
 				uint16_t *start_handle, uint16_t *end_handle,
