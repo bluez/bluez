@@ -28,25 +28,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct bt_gatt_service {
-	uint16_t start;
-	uint16_t end;
-	uint8_t uuid[16];
-};
-
-struct bt_gatt_characteristic {
-	uint16_t start;
-	uint16_t end;
-	uint16_t value;
-	uint8_t properties;
-	uint8_t uuid[16];
-};
-
-struct bt_gatt_descriptor {
-	uint16_t handle;
-	uint8_t uuid[16];
-};
-
 struct bt_gatt_result;
 
 struct bt_gatt_iter {
@@ -56,11 +37,14 @@ struct bt_gatt_iter {
 
 bool bt_gatt_iter_init(struct bt_gatt_iter *iter, struct bt_gatt_result *result);
 bool bt_gatt_iter_next_service(struct bt_gatt_iter *iter,
-					struct bt_gatt_service *service);
+				uint16_t *start_handle, uint16_t *end_handle,
+				uint8_t uuid[16]);
 bool bt_gatt_iter_next_characteristic(struct bt_gatt_iter *iter,
-				struct bt_gatt_characteristic *characteristic);
-bool bt_gatt_iter_next_descriptor(struct bt_gatt_iter *iter,
-					struct bt_gatt_descriptor *descriptor);
+				uint16_t *start_handle, uint16_t *end_handle,
+				uint16_t *value_handle, uint8_t *properties,
+				uint8_t uuid[16]);
+bool bt_gatt_iter_next_descriptor(struct bt_gatt_iter *iter, uint16_t *handle,
+							uint8_t uuid[16]);
 
 typedef void (*bt_gatt_destroy_func_t)(void *user_data);
 
