@@ -145,22 +145,6 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C1
 
-- Introduce shared/gatt-client as a standalone client implementation that can
-  operate on a single instance of bt_att as the ATT protocol transport. The
-  basic API should include functions for reference counting, setting a handler
-  for util_debug, and a high-level abstraction for GATT services,
-  characteristics, and descriptors.
-
-  Priority: Medium
-  Complexity: C1
-
-- Implement attribute discovery for shared/gatt-client. All services,
-  characteristics, and descriptors should be discovered and cached during the
-  set up process, which should also involve the initial MTU exchange.
-
-  Priority: Medium
-  Complexity: C1
-
 - Merge functions from shared/gatt-helpers involving value reads and writes into
   shared/gatt-client. These functions should accept an instance of
   bt_gatt_client instead of taking a bt_att directly.
