@@ -55,7 +55,8 @@ typedef struct {
 } bt_gatt_descriptor_t;
 
 typedef struct {
-	uint16_t handle;
+	uint16_t start_handle;
+	uint16_t end_handle;
 	uint16_t value_handle;
 	uint8_t properties;
 	uint8_t uuid[BT_GATT_UUID_SIZE];
