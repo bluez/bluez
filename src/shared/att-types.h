@@ -23,6 +23,8 @@
 
 #include <stdint.h>
 
+#define BT_ATT_DEFAULT_LE_MTU 23
+
 /* ATT protocol opcodes */
 #define BT_ATT_OP_ERROR_RSP	      		0x01
 #define BT_ATT_OP_MTU_REQ			0x02

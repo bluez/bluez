@@ -35,8 +35,8 @@
 #include "src/shared/timeout.h"
 #include "lib/uuid.h"
 #include "src/shared/att.h"
+#include "src/shared/att-types.h"
 
-#define ATT_DEFAULT_LE_MTU		23
 #define ATT_MIN_PDU_LEN			1  /* At least 1 byte for the opcode. */
 #define ATT_OP_CMD_MASK			0x40
 #define ATT_OP_SIGNED_MASK		0x80
@@ -698,7 +698,7 @@ struct bt_att *bt_att_new(int fd)
 
 	att->fd = fd;
 
-	att->mtu = ATT_DEFAULT_LE_MTU;
+	att->mtu = BT_ATT_DEFAULT_LE_MTU;
 	att->buf = malloc(att->mtu);
 	if (!att->buf)
 		goto fail;
@@ -833,7 +833,7 @@ bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu)
 	if (!att)
 		return false;
 
-	if (mtu < ATT_DEFAULT_LE_MTU)
+	if (mtu < BT_ATT_DEFAULT_LE_MTU)
 		return false;
 
 	buf = malloc(mtu);
