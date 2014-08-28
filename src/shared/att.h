@@ -54,10 +54,6 @@ bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu);
 bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 						void *user_data,
 						bt_att_destroy_func_t destroy);
-bool bt_att_set_disconnect_cb(struct bt_att *att,
-					bt_att_disconnect_func_t callback,
-					void *user_data,
-					bt_att_destroy_func_t destroy);
 
 unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 					const void *pdu, uint16_t length,
@@ -72,4 +68,11 @@ unsigned int bt_att_register(struct bt_att *att, uint8_t opcode,
 						void *user_data,
 						bt_att_destroy_func_t destroy);
 bool bt_att_unregister(struct bt_att *att, unsigned int id);
+
+unsigned int bt_att_register_disconnect(struct bt_att *att,
+					bt_att_disconnect_func_t callback,
+					void *user_data,
+					bt_att_destroy_func_t destroy);
+bool bt_att_unregister_disconnect(struct bt_att *att, unsigned int id);
+
 bool bt_att_unregister_all(struct bt_att *att);

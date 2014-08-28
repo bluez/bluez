@@ -60,6 +60,10 @@ struct bt_att {
 	bool in_notify;
 	bool need_notify_cleanup;
 
+	struct queue *disconn_list;	/* List of disconnect handlers */
+	bool in_disconn;
+	bool need_disconn_cleanup;
+
 	uint8_t *buf;
 	uint16_t mtu;
 
@@ -73,10 +77,6 @@ struct bt_att {
 	bt_att_debug_func_t debug_callback;
 	bt_att_destroy_func_t debug_destroy;
 	void *debug_data;
-
-	bt_att_disconnect_func_t disconn_callback;
-	bt_att_destroy_func_t disconn_destroy;
-	void *disconn_data;
 };
 
 enum att_op_type {
@@ -231,6 +231,46 @@ static void mark_notify_removed(void *data, void *user_data)
 	struct att_notify *notify = data;
 
 	notify->removed = true;
+}
+
+struct att_disconn {
+	unsigned int id;
+	bool removed;
+	bt_att_disconnect_func_t callback;
+	bt_att_destroy_func_t destroy;
+	void *user_data;
+};
+
+static void destroy_att_disconn(void *data)
+{
+	struct att_disconn *disconn = data;
+
+	if (disconn->destroy)
+		disconn->destroy(disconn->user_data);
+
+	free(disconn);
+}
+
+static bool match_disconn_id(const void *a, const void *b)
+{
+	const struct att_disconn *disconn = a;
+	unsigned int id = PTR_TO_UINT(b);
+
+	return disconn->id == id;
+}
+
+static bool match_disconn_removed(const void *a, const void *b)
+{
+	const struct att_disconn *disconn = a;
+
+	return disconn->removed;
+}
+
+static void mark_disconn_removed(void *data, void *user_data)
+{
+	struct att_disconn *disconn = data;
+
+	disconn->removed = true;
 }
 
 static bool encode_pdu(struct att_send_op *op, const void *pdu,
@@ -605,12 +645,20 @@ static bool can_read_data(struct io *io, void *user_data)
 	return true;
 }
 
+static void disconn_handler(void *data, void *user_data)
+{
+	struct att_disconn *disconn = data;
+
+	if (disconn->removed)
+		return;
+
+	if (disconn->callback)
+		disconn->callback(disconn->user_data);
+}
+
 static bool disconnect_cb(struct io *io, void *user_data)
 {
 	struct bt_att *att = user_data;
-
-	bt_att_cancel_all(att);
-	bt_att_unregister_all(att);
 
 	io_destroy(att->io);
 	att->io = NULL;
@@ -618,8 +666,21 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	util_debug(att->debug_callback, att->debug_data,
 						"Physical link disconnected");
 
-	if (att->disconn_callback)
-		att->disconn_callback(att->disconn_data);
+	bt_att_ref(att);
+	att->in_disconn = true;
+	queue_foreach(att->disconn_list, disconn_handler, NULL);
+	att->in_disconn = false;
+
+	if (att->need_disconn_cleanup) {
+		queue_remove_all(att->disconn_list, match_disconn_removed, NULL,
+							destroy_att_disconn);
+		att->need_disconn_cleanup = false;
+	}
+
+	bt_att_cancel_all(att);
+	bt_att_unregister_all(att);
+
+	bt_att_unref(att);
 
 	return false;
 }
@@ -662,6 +723,10 @@ struct bt_att *bt_att_new(int fd)
 	if (!att->notify_list)
 		goto fail;
 
+	att->disconn_list = queue_new();
+	if (!att->disconn_list)
+		goto fail;
+
 	if (!io_set_read_handler(att->io, can_read_data, att, NULL))
 		goto fail;
 
@@ -674,6 +739,8 @@ fail:
 	queue_destroy(att->req_queue, NULL);
 	queue_destroy(att->ind_queue, NULL);
 	queue_destroy(att->write_queue, NULL);
+	queue_destroy(att->notify_list, NULL);
+	queue_destroy(att->disconn_list, NULL);
 	io_destroy(att->io);
 	free(att->buf);
 	free(att);
@@ -709,6 +776,7 @@ void bt_att_unref(struct bt_att *att)
 	queue_destroy(att->ind_queue, NULL);
 	queue_destroy(att->write_queue, NULL);
 	queue_destroy(att->notify_list, NULL);
+	queue_destroy(att->disconn_list, NULL);
 	att->req_queue = NULL;
 	att->ind_queue = NULL;
 	att->write_queue = NULL;
@@ -719,9 +787,6 @@ void bt_att_unref(struct bt_att *att)
 
 	if (att->debug_destroy)
 		att->debug_destroy(att->debug_data);
-
-	if (att->disconn_destroy)
-		att->disconn_destroy(att->disconn_data);
 
 	free(att->buf);
 	att->buf = NULL;
@@ -800,20 +865,57 @@ bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 	return true;
 }
 
-bool bt_att_set_disconnect_cb(struct bt_att *att,
+unsigned int bt_att_register_disconnect(struct bt_att *att,
 					bt_att_disconnect_func_t callback,
 					void *user_data,
 					bt_att_destroy_func_t destroy)
 {
-	if (!att)
+	struct att_disconn *disconn;
+
+	if (!att || !att->io)
+		return 0;
+
+	disconn = new0(struct att_disconn, 1);
+	if (!disconn)
+		return 0;
+
+	disconn->callback = callback;
+	disconn->destroy = destroy;
+	disconn->user_data = user_data;
+
+	if (att->next_reg_id < 1)
+		att->next_reg_id = 1;
+
+	disconn->id = att->next_reg_id++;
+
+	if (!queue_push_tail(att->disconn_list, disconn)) {
+		free(disconn);
+		return 0;
+	}
+
+	return disconn->id;
+}
+
+bool bt_att_unregister_disconnect(struct bt_att *att, unsigned int id)
+{
+	struct att_disconn *disconn;
+
+	if (!att || !id)
 		return false;
 
-	if (att->disconn_destroy)
-		att->disconn_destroy(att->disconn_data);
+	disconn = queue_find(att->disconn_list, match_disconn_id,
+							UINT_TO_PTR(id));
+	if (!disconn)
+		return false;
 
-	att->disconn_callback = callback;
-	att->disconn_destroy = destroy;
-	att->disconn_data = user_data;
+	if (!att->in_disconn) {
+		queue_remove(att->disconn_list, disconn);
+		destroy_att_disconn(disconn);
+		return true;
+	}
+
+	disconn->removed = true;
+	att->need_disconn_cleanup = true;
 
 	return true;
 }
@@ -996,14 +1098,21 @@ bool bt_att_unregister_all(struct bt_att *att)
 	if (!att)
 		return false;
 
-	if (!att->in_notify) {
+	if (att->in_notify) {
+		queue_foreach(att->notify_list, mark_notify_removed, NULL);
+		att->need_notify_cleanup = true;
+	} else {
 		queue_remove_all(att->notify_list, NULL, NULL,
 							destroy_att_notify);
-		return true;
 	}
 
-	queue_foreach(att->notify_list, mark_notify_removed, NULL);
-	att->need_notify_cleanup = true;
+	if (att->in_disconn) {
+		queue_foreach(att->disconn_list, mark_disconn_removed, NULL);
+		att->need_disconn_cleanup = true;
+	} else {
+		queue_remove_all(att->disconn_list, NULL, NULL,
+							destroy_att_disconn);
+	}
 
 	return true;
 }
