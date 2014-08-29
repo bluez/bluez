@@ -41,6 +41,7 @@
 #include "lib/uuid.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
+#include "src/shared/queue.h"
 #include "src/eir.h"
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
@@ -222,6 +223,8 @@ static GSList *browse_reqs;
 static struct ipc *hal_ipc = NULL;
 
 static bool kernel_conn_control = false;
+
+static struct queue *unpaired_cb_list = NULL;
 
 static void get_device_android_addr(struct device *dev, uint8_t *addr)
 {
@@ -1698,6 +1701,24 @@ void bt_auto_connect_remove(const bdaddr_t *addr)
 		return;
 
 	error("Failed to remove device");
+}
+
+static bool match_by_value(const void *data, const void *user_data)
+{
+	return data == user_data;
+}
+
+bool bt_unpaired_register(bt_unpaired_device_cb cb)
+{
+	if (queue_find(unpaired_cb_list, match_by_value, cb))
+		return false;
+
+	return queue_push_head(unpaired_cb_list, cb);
+}
+
+void bt_unpaired_unregister(bt_unpaired_device_cb cb)
+{
+	queue_remove(unpaired_cb_list, cb);
 }
 
 static bool rssi_above_threshold(int old, int new)
@@ -4325,6 +4346,14 @@ failed:
 									status);
 }
 
+static void send_unpaired_notification(void *data, void *user_data)
+{
+	bt_unpaired_device_cb cb = data;
+	struct mgmt_addr_info *addr = user_data;
+
+	cb(&addr->bdaddr, addr->type);
+}
+
 static void unpair_device_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -4342,6 +4371,10 @@ static void unpair_device_complete(uint8_t status, uint16_t length,
 
 	update_device_state(dev, rp->addr.type, HAL_STATUS_SUCCESS, false,
 								false, false);
+
+	/* Cast rp->addr to (void *) since queue_foreach don't take const */
+	queue_foreach(unpaired_cb_list, send_unpaired_notification,
+							(void *)&rp->addr);
 }
 
 static void handle_remove_bond_cmd(const void *buf, uint16_t len)
@@ -5126,6 +5159,12 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 
 	DBG("mode 0x%x", mode);
 
+	unpaired_cb_list = queue_new();
+	if (!unpaired_cb_list) {
+		error("Can not allocate queue for unpaired callbacks");
+		return false;
+	}
+
 	missing_settings = adapter.current_settings ^
 					adapter.supported_settings;
 
@@ -5141,7 +5180,7 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 		/* Fail if controller does not support LE */
 		if (!(adapter.supported_settings & MGMT_SETTING_LE)) {
 			error("LE Mode not supported by controller");
-			return false;
+			goto failed;
 		}
 
 		/* If LE it is not yet enabled then enable it */
@@ -5156,7 +5195,7 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 		/* Fail if controller does not support BR/EDR */
 		if (!(adapter.supported_settings & MGMT_SETTING_BREDR)) {
 			error("BR/EDR Mode not supported");
-			return false;
+			goto failed;
 		}
 
 		/* Enable BR/EDR if it is not enabled */
@@ -5174,7 +5213,7 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 		break;
 	default:
 		error("Unknown mode 0x%x", mode);
-		return false;
+		goto failed;
 	}
 
 	hal_ipc = ipc;
@@ -5183,6 +5222,10 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
+
+failed:
+	queue_destroy(unpaired_cb_list, NULL);
+	return false;
 }
 
 void bt_bluetooth_unregister(void)
@@ -5197,4 +5240,6 @@ void bt_bluetooth_unregister(void)
 
 	ipc_unregister(hal_ipc, HAL_SERVICE_ID_CORE);
 	hal_ipc = NULL;
+
+	queue_destroy(unpaired_cb_list, NULL);
 }

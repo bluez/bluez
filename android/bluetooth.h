@@ -85,3 +85,7 @@ bool bt_kernel_conn_control(void);
 bool bt_auto_connect_add(const bdaddr_t *addr);
 
 void bt_auto_connect_remove(const bdaddr_t *addr);
+
+typedef void (*bt_unpaired_device_cb)(const bdaddr_t *addr, uint8_t type);
+bool bt_unpaired_register(bt_unpaired_device_cb cb);
+void bt_unpaired_unregister(bt_unpaired_device_cb cb);
