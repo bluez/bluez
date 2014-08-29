@@ -1483,11 +1483,34 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 }
 
+static void hid_unpaired_cb(const bdaddr_t *addr, uint8_t type)
+{
+	GSList *l;
+	struct hid_device *dev;
+	char address[18];
+
+	l = g_slist_find_custom(devices, addr, device_cmp);
+	if (!l)
+		return;
+
+	dev = l->data;
+
+	ba2str(addr, address);
+	DBG("Unpaired device %s", address);
+
+	hid_device_remove(dev);
+}
+
 bool bt_hid_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 {
 	GError *err = NULL;
 
 	DBG("");
+
+	if (!bt_unpaired_register(hid_unpaired_cb)) {
+		error("hidhost: Could not register unpaired callback");
+		return false;
+	}
 
 	bacpy(&adapter_addr, addr);
 
@@ -1552,4 +1575,6 @@ void bt_hid_unregister(void)
 
 	ipc_unregister(hal_ipc, HAL_SERVICE_ID_HIDHOST);
 	hal_ipc = NULL;
+
+	bt_unpaired_unregister(hid_unpaired_cb);
 }
