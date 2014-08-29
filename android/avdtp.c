@@ -1974,8 +1974,11 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 	DBG("");
 
-	if (cond & G_IO_NVAL)
+	if (cond & G_IO_NVAL) {
+		session->io_id = 0;
+
 		return FALSE;
+	}
 
 	header = (void *) session->buf;
 
@@ -2077,6 +2080,8 @@ next:
 
 failed:
 	connection_lost(session, EIO);
+
+	session->io_id = 0;
 
 	return FALSE;
 }
