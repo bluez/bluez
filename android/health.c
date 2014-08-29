@@ -1949,7 +1949,7 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 			goto fail;
 
 		/* create mdl if it does not exists */
-		if (!channel->mdl && !create_mdl(channel) < 0)
+		if (!channel->mdl && !create_mdl(channel))
 			goto fail;
 
 		/* reconnect mdl if it exists */
