@@ -512,14 +512,12 @@ static bool avrcp_get_capabilities(struct l2cap_frame *frame, uint8_t ctype,
 	switch (cap) {
 	case 0x2:
 		for (; count > 0; count--) {
-			uint8_t company[3] = {};
+			uint8_t company[3];
 
-			if (frame->size < 3)
+			if (!l2cap_frame_get_u8(frame, &company[0]) ||
+				!l2cap_frame_get_u8(frame, &company[1]) ||
+				!l2cap_frame_get_u8(frame, &company[2]))
 				return false;
-
-			l2cap_frame_get_u8(frame, &company[0]);
-			l2cap_frame_get_u8(frame, &company[1]);
-			l2cap_frame_get_u8(frame, &company[2]);
 
 			print_field("%*c%s: 0x%02x%02x%02x", (indent - 8), ' ',
 					cap2str(cap), company[0], company[1],
@@ -645,12 +643,14 @@ static bool avrcp_pdu_packet(struct l2cap_frame *frame, uint8_t ctype,
 	int i;
 	const struct avrcp_ctrl_pdu_data *ctrl_pdu_data = NULL;
 
-	if (frame->size < 4)
+	if (!l2cap_frame_get_u8(frame, &pduid))
 		return false;
 
-	l2cap_frame_get_u8(frame, &pduid);
-	l2cap_frame_get_u8(frame, &pt);
-	l2cap_frame_get_be16(frame, &len);
+	if (!l2cap_frame_get_u8(frame, &pt))
+		return false;
+
+	if (!l2cap_frame_get_be16(frame, &len))
+		return false;
 
 	print_indent(indent, COLOR_OFF, "AVRCP: ", pdu2str(pduid), COLOR_OFF,
 					" pt %s len 0x%04x", pt2str(pt), len);
@@ -680,12 +680,10 @@ static bool avrcp_control_packet(struct l2cap_frame *frame)
 {
 	uint8_t ctype, address, subunit, opcode, company[3], indent = 2;
 
-	if (frame->size < 3)
+	if (!l2cap_frame_get_u8(frame, &ctype) ||
+				!l2cap_frame_get_u8(frame, &address) ||
+				!l2cap_frame_get_u8(frame, &opcode))
 		return false;
-
-	l2cap_frame_get_u8(frame, &ctype);
-	l2cap_frame_get_u8(frame, &address);
-	l2cap_frame_get_u8(frame, &opcode);
 
 	print_field("AV/C: %s: address 0x%02x opcode 0x%02x",
 				ctype2str(ctype), address, opcode);
@@ -712,12 +710,10 @@ static bool avrcp_control_packet(struct l2cap_frame *frame)
 	case 0x7c:
 		return avrcp_passthrough_packet(frame);
 	case 0x00:
-		if (frame->size < 3)
+		if (!l2cap_frame_get_u8(frame, &company[0]) ||
+				!l2cap_frame_get_u8(frame, &company[1]) ||
+				!l2cap_frame_get_u8(frame, &company[2]))
 			return false;
-
-		l2cap_frame_get_u8(frame, &company[0]);
-		l2cap_frame_get_u8(frame, &company[1]);
-		l2cap_frame_get_u8(frame, &company[2]);
 
 		print_field("%*cCompany ID: 0x%02x%02x%02x", indent, ' ',
 					company[0], company[1], company[2]);
@@ -764,16 +760,14 @@ void avctp_packet(const struct l2cap_frame *frame)
 	struct l2cap_frame avctp_frame;
 	const char *pdu_color;
 
-	if (frame->size < 3) {
+	l2cap_frame_pull(&avctp_frame, frame, 0);
+
+	if (!l2cap_frame_get_u8(&avctp_frame, &hdr) ||
+				!l2cap_frame_get_be16(&avctp_frame, &pid)) {
 		print_text(COLOR_ERROR, "frame too short");
 		packet_hexdump(frame->data, frame->size);
 		return;
-        }
-
-	l2cap_frame_pull(&avctp_frame, frame, 0);
-
-	l2cap_frame_get_u8(&avctp_frame, &hdr);
-	l2cap_frame_get_be16(&avctp_frame, &pid);
+	}
 
 	if (frame->in)
 		pdu_color = COLOR_MAGENTA;

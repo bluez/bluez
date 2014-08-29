@@ -696,17 +696,15 @@ void sdp_packet(const struct l2cap_frame *frame)
 	const char *pdu_color, *pdu_str;
 	int i;
 
-	if (frame->size < 5) {
+	l2cap_frame_pull(&sdp_frame, frame, 0);
+
+	if (!l2cap_frame_get_u8(&sdp_frame, &pdu) ||
+				!l2cap_frame_get_be16(&sdp_frame, &tid) ||
+				!l2cap_frame_get_be16(&sdp_frame, &plen)) {
 		print_text(COLOR_ERROR, "frame too short");
 		packet_hexdump(frame->data, frame->size);
 		return;
 	}
-
-	l2cap_frame_pull(&sdp_frame, frame, 0);
-
-	l2cap_frame_get_u8(&sdp_frame, &pdu);
-	l2cap_frame_get_be16(&sdp_frame, &tid);
-	l2cap_frame_get_be16(&sdp_frame, &plen);
 
 	if (sdp_frame.size != plen) {
 		print_text(COLOR_ERROR, "invalid frame size");
