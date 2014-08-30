@@ -179,7 +179,7 @@ if TOOLS
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
 			tools/rfcomm tools/rctest tools/l2test tools/l2ping \
 			tools/sdptool tools/ciptool tools/bccmd \
-			tools/bluemoon tools/mpris-proxy tools/btgatt-client
+			tools/bluemoon tools/mpris-proxy
 
 tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_st.c \
@@ -254,17 +254,6 @@ tools_bluemoon_SOURCES = tools/bluemoon.c monitor/bt.h \
 tools_mpris_proxy_SOURCES = tools/mpris-proxy.c
 tools_mpris_proxy_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 
-tools_btgatt_client_SOURCES = tools/btgatt-client.c src/uuid-helper.c \
-				monitor/mainloop.h monitor/mainloop.c \
-				src/shared/io.h src/shared/io-mainloop.c \
-				src/shared/queue.h src/shared/queue.c \
-				src/shared/util.h src/shared/util.c \
-				src/shared/timeout.h src/shared/timeout-mainloop.c \
-				src/shared/att-types.h src/shared/att.h src/shared/att.c \
-				src/shared/gatt-helpers.h src/shared/gatt-helpers.c \
-				src/shared/gatt-client.h src/shared/gatt-client.c
-tools_btgatt_client_LDADD = lib/libbluetooth-internal.la
-
 dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
 			tools/rfcomm.1 tools/rctest.1 tools/l2ping.1 \
@@ -295,7 +284,7 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btmgmt tools/btinfo tools/btattach \
 			tools/btsnoop tools/btproxy tools/btiotest \
 			tools/cltest tools/seq2bseq tools/hex2hcd \
-			tools/ibeacon
+			tools/ibeacon tools/btgatt-client
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
 tools_bdaddr_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
@@ -367,6 +356,17 @@ tools_ibeacon_SOURCES = tools/ibeacon.c monitor/bt.h \
 				src/shared/util.h src/shared/util.c \
 				src/shared/queue.h src/shared/queue.c \
 				src/shared/ringbuf.h src/shared/ringbuf.c
+
+tools_btgatt_client_SOURCES = tools/btgatt-client.c src/uuid-helper.c \
+				monitor/mainloop.h monitor/mainloop.c \
+				src/shared/io.h src/shared/io-mainloop.c \
+				src/shared/queue.h src/shared/queue.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/timeout.h src/shared/timeout-mainloop.c \
+				src/shared/att-types.h src/shared/att.h src/shared/att.c \
+				src/shared/gatt-helpers.h src/shared/gatt-helpers.c \
+				src/shared/gatt-client.h src/shared/gatt-client.c
+tools_btgatt_client_LDADD = lib/libbluetooth-internal.la
 
 EXTRA_DIST += tools/bdaddr.1
 endif
