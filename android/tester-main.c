@@ -1212,6 +1212,10 @@ static btav_callbacks_t bta2dp_callbacks = {
 	.audio_state_cb = a2dp_audio_state_cb,
 };
 
+static btrc_callbacks_t btavrcp_callbacks = {
+	.size = sizeof(btavrcp_callbacks),
+};
+
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.register_client_cb = gattc_register_client_cb,
 	.scan_result_cb = gattc_scan_result_cb,
@@ -1528,6 +1532,60 @@ static void setup_a2dp(const void *test_data)
 	tester_setup_complete();
 }
 
+static void setup_avrcp(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const bt_interface_t *if_bt;
+	bt_status_t status;
+	const void *a2dp, *avrcp;
+
+	if (!setup_base(data)) {
+		tester_setup_failed();
+		return;
+	}
+
+	if_bt = data->if_bluetooth;
+
+	status = if_bt->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	a2dp = if_bt->get_profile_interface(BT_PROFILE_ADVANCED_AUDIO_ID);
+	if (!a2dp) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_a2dp = a2dp;
+
+	status = data->if_a2dp->init(&bta2dp_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_a2dp = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	avrcp = if_bt->get_profile_interface(BT_PROFILE_AV_RC_ID);
+	if (!a2dp) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_avrcp = avrcp;
+
+	status = data->if_avrcp->init(&btavrcp_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_avrcp = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
 static void setup_gatt(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1603,6 +1661,11 @@ static void teardown(const void *test_data)
 	if (data->if_a2dp) {
 		data->if_a2dp->cleanup();
 		data->if_a2dp = NULL;
+	}
+
+	if (data->if_avrcp) {
+		data->if_avrcp->cleanup();
+		data->if_avrcp = NULL;
 	}
 
 	if (data->if_bluetooth) {
@@ -2131,6 +2194,7 @@ static void tester_testcases_cleanup(void)
 	remove_hidhost_tests();
 	remove_gatt_tests();
 	remove_a2dp_tests();
+	remove_avrcp_tests();
 	remove_hdp_tests();
 	remove_pan_tests();
 }
@@ -2177,6 +2241,13 @@ static void add_a2dp_tests(void *data, void *user_data)
 	test(tc, setup_a2dp, generic_test_function, teardown);
 }
 
+static void add_avrcp_tests(void *data, void *user_data)
+{
+	struct test_case *tc = data;
+
+	test(tc, setup_avrcp, generic_test_function, teardown);
+}
+
 static void add_gatt_tests(void *data, void *user_data)
 {
 	struct test_case *tc = data;
@@ -2196,6 +2267,7 @@ int main(int argc, char *argv[])
 	queue_foreach(get_pan_tests(), add_pan_tests, NULL);
 	queue_foreach(get_hdp_tests(), add_hdp_tests, NULL);
 	queue_foreach(get_a2dp_tests(), add_a2dp_tests, NULL);
+	queue_foreach(get_avrcp_tests(), add_avrcp_tests, NULL);
 	queue_foreach(get_gatt_tests(), add_gatt_tests, NULL);
 
 	if (tester_run())

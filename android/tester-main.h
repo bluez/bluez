@@ -50,6 +50,7 @@
 #include <hardware/bt_pan.h>
 #include <hardware/bt_hl.h>
 #include <hardware/bt_av.h>
+#include <hardware/bt_rc.h>
 #include <hardware/bt_gatt.h>
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
@@ -321,6 +322,7 @@ struct test_data {
 	const bthl_interface_t *if_hdp;
 	const btav_interface_t *if_a2dp;
 	struct audio_stream_out *if_stream;
+	const btrc_interface_t *if_avrcp;
 	const btgatt_interface_t *if_gatt;
 
 	const void *test_data;
@@ -443,6 +445,8 @@ struct queue *get_hdp_tests(void);
 void remove_hdp_tests(void);
 struct queue *get_a2dp_tests(void);
 void remove_a2dp_tests(void);
+struct queue *get_avrcp_tests(void);
+void remove_avrcp_tests(void);
 struct queue *get_gatt_tests(void);
 void remove_gatt_tests(void);
 
