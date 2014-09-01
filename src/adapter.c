@@ -4663,7 +4663,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	if (bdaddr_type == BDADDR_BREDR)
 		discoverable = true;
-	 else
+	else
 		discoverable = eir_data.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
 
 	ba2str(bdaddr, addr);
@@ -5533,7 +5533,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 }
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
-							 uint8_t addr_type)
+							uint8_t addr_type)
 {
 	struct mgmt_addr_info cp;
 	char addr[18];
