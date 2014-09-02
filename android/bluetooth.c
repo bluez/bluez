@@ -1242,7 +1242,7 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	dev = find_device(&ev->key.addr.bdaddr);
+	dev = get_device(&ev->key.addr.bdaddr, ev->key.addr.type);
 	if (!dev)
 		return;
 
@@ -1337,7 +1337,7 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, dst);
 	DBG("%s confirm_hint %u", dst, ev->confirm_hint);
 
-	dev = find_device(&ev->addr.bdaddr);
+	dev = get_device(&ev->addr.bdaddr, ev->addr.type);
 	if (!dev)
 		return;
 
@@ -1365,7 +1365,7 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, dst);
 	DBG("%s", dst);
 
-	dev = find_device(&ev->addr.bdaddr);
+	dev = get_device(&ev->addr.bdaddr, ev->addr.type);
 	if (!dev)
 		return;
 
@@ -2307,7 +2307,7 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 	}
 
 	ba2str(&ev->key.addr.bdaddr, dst);
-	dev = find_device(&ev->key.addr.bdaddr);
+	dev = get_device(&ev->key.addr.bdaddr, ev->key.addr.type);
 	if (!dev)
 		return;
 
@@ -2382,7 +2382,7 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 	DBG("new IRK for %s, RPA %s", dst, rpa);
 
 	if (!bacmp(&ev->rpa, BDADDR_ANY)) {
-		dev = find_device(&addr->bdaddr);
+		dev = get_device(&addr->bdaddr, addr->type);
 		if (!dev)
 			return;
 	} else {
