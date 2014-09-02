@@ -144,6 +144,15 @@
 		.callback = CB_GATTC_SEARCH_COMPLETE, \
 		.callback_result.conn_id = cb_conn_id \
 	}
+#define CALLBACK_GATTC_GET_CHARACTERISTIC_CB(cb_res, cb_conn_id, cb_service, \
+						cb_char, cb_char_prop) { \
+		.callback = CB_GATTC_GET_CHARACTERISTIC, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.status = cb_res, \
+		.callback_result.service = cb_service, \
+		.callback_result.characteristic = cb_char, \
+		.callback_result.char_prop = cb_char_prop \
+	}
 
 #define CALLBACK_GATTC_DISCONNECT(cb_res, cb_prop, cb_conn_id, cb_client_id) { \
 		.callback = CB_GATTC_CLOSE, \
@@ -384,6 +393,8 @@ struct bt_callback_data {
 	int client_id;
 	int conn_id;
 	btgatt_srvc_id_t *service;
+	btgatt_gatt_id_t *characteristic;
+	int char_prop;
 
 	btpan_control_state_t ctrl_state;
 	btpan_connection_state_t conn_state;
