@@ -867,12 +867,13 @@ static void bt_hid_connect(const void *buf, uint16_t len)
 	android2bdaddr(&cmd->bdaddr, &dst);
 
 	l = g_slist_find_custom(devices, &dst, device_cmp);
-	if (l) {
-		status = HAL_STATUS_FAILED;
-		goto failed;
-	}
+	if (l)
+		dev = l->data;
+	else
+		dev = hid_device_new(&dst);
 
-	dev = hid_device_new(&dst);
+	if (dev->state != HAL_HIDHOST_STATE_DISCONNECTED)
+		goto done;
 
 	ba2str(&dev->dst, addr);
 	DBG("connecting to %s", addr);
