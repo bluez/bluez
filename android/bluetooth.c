@@ -2051,6 +2051,19 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 			HAL_EV_ACL_STATE_CHANGED, sizeof(hal_ev), &hal_ev);
 }
 
+static bool device_is_paired(struct device *dev, uint8_t addr_type)
+{
+	if (addr_type == BDADDR_BREDR)
+		return dev->bredr_paired;
+
+	return dev->le_paired;
+}
+
+static bool device_is_bonded(struct device *dev)
+{
+	return dev->bredr_bonded || dev->le_bonded;
+}
+
 static void mgmt_device_disconnected_event(uint16_t index, uint16_t length,
 							const void *param,
 							void *user_data)
@@ -2058,6 +2071,7 @@ static void mgmt_device_disconnected_event(uint16_t index, uint16_t length,
 	const struct mgmt_ev_device_disconnected *ev = param;
 	struct hal_ev_acl_state_changed hal_ev;
 	struct device *dev;
+	uint8_t type = ev->addr.type;
 
 	if (length < sizeof(*ev)) {
 		error("Too short device disconnected event (%u bytes)", length);
@@ -2074,6 +2088,11 @@ static void mgmt_device_disconnected_event(uint16_t index, uint16_t length,
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
 			HAL_EV_ACL_STATE_CHANGED, sizeof(hal_ev), &hal_ev);
+
+	if (device_is_paired(dev, type) && !device_is_bonded(dev))
+		update_device_state(dev, type, HAL_STATUS_SUCCESS, false,
+								false, false);
+
 }
 
 static uint8_t status_mgmt2hal(uint8_t mgmt)
@@ -4300,14 +4319,6 @@ uint8_t bt_device_last_seen_bearer(const bdaddr_t *bdaddr)
 		return BDADDR_BREDR;
 
 	return select_device_bearer(dev);
-}
-
-static bool device_is_paired(struct device *dev, uint8_t addr_type)
-{
-	if (addr_type == BDADDR_BREDR)
-		return dev->bredr_paired;
-
-	return dev->le_paired;
 }
 
 static void handle_create_bond_cmd(const void *buf, uint16_t len)
