@@ -447,9 +447,9 @@ void tester_pre_setup_failed(void)
 	if (test->stage != TEST_STAGE_PRE_SETUP)
 		return;
 
-	test->stage = TEST_STAGE_SETUP;
+	print_progress(test->name, COLOR_RED, "pre setup failed");
 
-	tester_setup_failed();
+	g_idle_add(done_callback, test);
 }
 
 void tester_setup_complete(void)
@@ -481,14 +481,17 @@ void tester_setup_failed(void)
 	if (test->stage != TEST_STAGE_SETUP)
 		return;
 
+	test->stage = TEST_STAGE_POST_TEARDOWN;
+
 	if (test->timeout_id > 0) {
 		g_source_remove(test->timeout_id);
 		test->timeout_id = 0;
 	}
 
 	print_progress(test->name, COLOR_RED, "setup failed");
+	print_progress(test->name, COLOR_MAGENTA, "teardown");
 
-	g_idle_add(done_callback, test);
+	test->post_teardown_func(test->test_data);
 }
 
 void tester_test_passed(void)
