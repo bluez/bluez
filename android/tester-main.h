@@ -134,6 +134,17 @@
 		.callback_result.client_id = cb_client_id, \
 	}
 
+#define CALLBACK_GATTC_SEARCH_RESULT(cb_conn_id, cb_service) { \
+		.callback = CB_GATTC_SEARCH_RESULT, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.service = cb_service \
+	}
+
+#define CALLBACK_GATTC_SEARCH_COMPLETE(cb_res, cb_conn_id) { \
+		.callback = CB_GATTC_SEARCH_COMPLETE, \
+		.callback_result.conn_id = cb_conn_id \
+	}
+
 #define CALLBACK_GATTC_DISCONNECT(cb_res, cb_prop, cb_conn_id, cb_client_id) { \
 		.callback = CB_GATTC_CLOSE, \
 		.callback_result.status = cb_res, \
@@ -309,6 +320,8 @@ struct test_data {
 	guint signalfd;
 	uint16_t mgmt_index;
 	pid_t bluetoothd_pid;
+
+	struct queue *pdus;
 };
 
 /*
@@ -370,6 +383,7 @@ struct bt_callback_data {
 
 	int client_id;
 	int conn_id;
+	btgatt_srvc_id_t *service;
 
 	btpan_control_state_t ctrl_state;
 	btpan_connection_state_t conn_state;

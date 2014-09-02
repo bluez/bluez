@@ -395,6 +395,18 @@ static int verify_property(bt_property_t *exp_props, int exp_num_props,
  * Check each test case step if test case expected
  * data is set and match it with expected result.
  */
+
+static bool verify_services(btgatt_srvc_id_t *a, btgatt_srvc_id_t *b)
+{
+	if (a->is_primary != b->is_primary)
+		return false;
+
+	if (memcmp(&a->id.uuid, &b->id.uuid, sizeof(bt_uuid_t)))
+		return false;
+
+	return true;
+}
+
 static bool match_data(struct step *step)
 {
 	struct test_data *data = tester_get_data();
@@ -529,6 +541,13 @@ static bool match_data(struct step *step)
 			tester_debug("Gatt properties don't match");
 			return false;
 		}
+
+		if (exp->callback_result.service &&
+				!verify_services(step->callback_result.service,
+						exp->callback_result.service)) {
+			tester_debug("Gatt service doesn't match");
+			return false;
+		}
 	}
 
 	return true;
@@ -612,6 +631,9 @@ static void destroy_callback_step(void *data)
 
 	if (step->callback_result.properties)
 		free_properties(step);
+
+	if (step->callback_result.service)
+		free(step->callback_result.service);
 
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
@@ -1030,6 +1052,27 @@ static void gattc_listen_cb(int status, int server_if)
 	schedule_callback_call(step);
 }
 
+static void gattc_search_result_cb(int conn_id, btgatt_srvc_id_t *srvc_id)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTC_SEARCH_RESULT;
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.service = g_memdup(srvc_id, sizeof(*srvc_id));
+
+	schedule_callback_call(step);
+}
+
+static void gattc_search_complete_cb(int conn_id, int status)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTC_SEARCH_COMPLETE;
+	step->callback_result.conn_id = conn_id;
+
+	schedule_callback_call(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1130,8 +1173,8 @@ static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.scan_result_cb = gattc_scan_result_cb,
 	.open_cb = gattc_connect_cb,
 	.close_cb = gattc_disconnect_cb,
-	.search_complete_cb = NULL,
-	.search_result_cb = NULL,
+	.search_complete_cb = gattc_search_complete_cb,
+	.search_result_cb = gattc_search_result_cb,
 	.get_characteristic_cb = NULL,
 	.get_descriptor_cb = NULL,
 	.get_included_service_cb = NULL,
@@ -1235,6 +1278,12 @@ static bool setup_base(struct test_data *data)
 
 	if (!(data->steps = queue_new()))
 		return false;
+
+	data->pdus = queue_new();
+	if (!data->pdus) {
+		queue_destroy(data->steps, NULL);
+		return false;
+	}
 
 	return true;
 }
@@ -1478,6 +1527,9 @@ static void teardown(const void *test_data)
 
 	queue_destroy(data->steps, NULL);
 	data->steps = NULL;
+
+	queue_destroy(data->pdus, NULL);
+	data->pdus = NULL;
 
 	if (data->if_gatt) {
 		data->if_gatt->cleanup();
