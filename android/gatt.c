@@ -6115,8 +6115,6 @@ static void connect_confirm(GIOChannel *io, void *user_data)
 			error("gatt: Could not create device");
 			goto drop;
 		}
-
-		dev->bdaddr_type = dst_type;
 	} else {
 		if ((dev->state != DEVICE_DISCONNECTED) &&
 					!(dev->state == DEVICE_CONNECT_INIT &&
@@ -6129,6 +6127,8 @@ static void connect_confirm(GIOChannel *io, void *user_data)
 			goto drop;
 		}
 	}
+
+	dev->bdaddr_type = dst_type;
 
 	if (!bt_io_accept(io, connect_cb, device_ref(dev), NULL, NULL)) {
 		error("gatt: failed to accept connection");
