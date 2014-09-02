@@ -6725,3 +6725,33 @@ bool bt_gatt_disconnect_app(unsigned int id, const bdaddr_t *addr)
 
 	return true;
 }
+
+bool bt_gatt_add_autoconnect(unsigned int id, const bdaddr_t *addr)
+{
+	struct gatt_device *dev;
+	struct gatt_app *app;
+
+	DBG("");
+
+	app = find_app_by_id(id);
+	if (!app) {
+		error("gatt: App ID=%d not found", id);
+		return false;
+	}
+
+	dev = find_device_by_addr(addr);
+	if (!dev) {
+		error("gatt: Device not found");
+		return false;
+	}
+
+	/* Take reference of device for auto connect purpose */
+	if (queue_isempty(dev->autoconnect_apps))
+		device_ref(dev);
+
+	if (!queue_find(dev->autoconnect_apps, match_by_value,
+							INT_TO_PTR(id)))
+		return queue_push_head(dev->autoconnect_apps, INT_TO_PTR(id));
+
+	return true;
+}
