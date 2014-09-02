@@ -1373,6 +1373,21 @@ static struct app_connection *find_conn(const bdaddr_t *addr, int32_t app_id)
 								&conn_match);
 }
 
+static void create_app_connection(void *data, void *user_data)
+{
+	struct gatt_device *dev = user_data;
+	struct gatt_app *app;
+
+	app = find_app_by_id(PTR_TO_INT(data));
+	if (!app)
+		return;
+
+	DBG("Autoconnect application id=%d", app->id);
+
+	if (!find_conn(&dev->bdaddr, PTR_TO_INT(data)))
+		create_connection(dev, app);
+}
+
 static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct gatt_device *dev = user_data;
@@ -1419,7 +1434,8 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 
 	device_set_state(dev, DEVICE_CONNECTED);
 
-	bt_auto_connect_remove(&dev->bdaddr);
+	if (queue_isempty(dev->autoconnect_apps))
+		bt_auto_connect_remove(&dev->bdaddr);
 
 	/* Send exchange mtu request as we assume being client and server */
 	/* TODO: Dont exchange mtu if no client apps */
@@ -1444,6 +1460,12 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	status = GATT_SUCCESS;
 
 reply:
+	/*
+	 * Make sure there are app_connections for all apps interested in auto
+	 * connect to that device
+	 */
+	queue_foreach(dev->autoconnect_apps, create_app_connection, dev);
+
 	if (!dev->conn_cnt) {
 		struct app_connection *conn;
 
