@@ -68,23 +68,17 @@
 		(struct step[]) {__VA_ARGS__}, \
 	}
 
-#define ACTION_SUCCESS(act_fun, data_set) { \
-		.action_status = BT_STATUS_SUCCESS, \
-		.action = act_fun, \
-		.set_data = data_set, \
-	}
-
-#define ACTION_FAIL(act_fun, data_set) { \
-		.action_status = BT_STATUS_FAIL, \
-		.action = act_fun, \
-		.set_data = data_set, \
-	}
-
 #define ACTION(status, act_fun, data_set) { \
 		.action_status = status, \
 		.action = act_fun, \
 		.set_data = data_set, \
 	}
+
+#define ACTION_FAIL(act_fun, data_set) \
+		ACTION(BT_STATUS_FAIL, act_fun, data_set)
+
+#define ACTION_SUCCESS(act_fun, data_set) \
+		ACTION(BT_STATUS_SUCCESS, act_fun, data_set)
 
 #define CALLBACK(cb) { \
 		.callback = cb, \
