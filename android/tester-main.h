@@ -451,3 +451,4 @@ void bt_pin_reply_accept_action(void);
 void bt_ssp_reply_accept_action(void);
 void bt_cancel_bond_action(void);
 void bt_remove_bond_action(void);
+void set_default_ssp_request_handler(void);

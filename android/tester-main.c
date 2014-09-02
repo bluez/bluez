@@ -1972,6 +1972,27 @@ void bt_remove_bond_action(void)
 	schedule_action_verification(step);
 }
 
+static void default_ssp_req_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *name,
+				uint32_t cod, bt_ssp_variant_t pairing_variant,
+				uint32_t pass_key)
+{
+	struct test_data *t_data = tester_get_data();
+
+	t_data->if_bluetooth->ssp_reply(remote_bd_addr, pairing_variant, true,
+								pass_key);
+}
+
+void set_default_ssp_request_handler(void)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	bt_callbacks.ssp_request_cb = default_ssp_req_cb;
+
+	step->action_status = BT_STATUS_SUCCESS;
+
+	schedule_action_verification(step);
+}
+
 static void generic_test_function(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
