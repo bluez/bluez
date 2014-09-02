@@ -1813,15 +1813,19 @@ static int connect_bredr(struct gatt_device *dev)
 	return 0;
 }
 
-static bool auto_connect(struct gatt_device *dev)
+static bool auto_connect_le(struct gatt_device *dev)
 {
-	bool err;
+	/*  For LE devices use auto connect feature if possible */
+	if (bt_kernel_conn_control())
+		return  bt_auto_connect_add(&dev->bdaddr);
 
-	err = bt_auto_connect_add(&dev->bdaddr);
-	if (!err)
-		return false;
-
-	device_set_state(dev, DEVICE_CONNECT_INIT);
+	/* Trigger discovery if not already started */
+	if (!scanning) {
+		if (!bt_le_discovery_start()) {
+			error("gatt: Could not start scan");
+			return false;
+		}
+	}
 
 	return true;
 }
@@ -1840,24 +1844,11 @@ static bool trigger_connection(struct app_connection *connection)
 								BDADDR_BREDR)
 			return connect_bredr(connection->device) == 0;
 
-		/*
-		 * For LE devices use auto connect feature if possible
-		 * Note: Connection state is handled inside auto_connect() func
-		 */
-		if (bt_kernel_conn_control())
-			return auto_connect(connection->device);
-
-		/* Trigger discovery if not already started */
-		if (!scanning) {
-			if (!bt_le_discovery_start()) {
-				error("gatt: Could not start scan");
-				ret = false;
-				break;
-			}
-		}
-
-		ret = true;
-		device_set_state(connection->device, DEVICE_CONNECT_INIT);
+		/* For LE use auto connect feature */
+		ret = auto_connect_le(connection->device);
+		if (ret)
+			device_set_state(connection->device,
+							DEVICE_CONNECT_INIT);
 		break;
 	case DEVICE_CONNECTED:
 		send_app_connect_notify(connection, GATT_SUCCESS);
