@@ -893,7 +893,7 @@ static void update_bond_state(struct device *dev, uint8_t status,
 	 */
 	if (old_bond == HAL_BOND_STATE_NONE &&
 				new_bond == HAL_BOND_STATE_BONDED)
-		send_bond_state_change(dev, status,
+		send_bond_state_change(dev, HAL_STATUS_SUCCESS,
 						HAL_BOND_STATE_BONDING);
 
 	send_bond_state_change(dev, status, new_bond);
