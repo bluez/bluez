@@ -1346,6 +1346,33 @@ static void send_app_connect_notifications(void *data, void *user_data)
 		send_app_connect_notify(conn, con_data->status);
 }
 
+static struct app_connection *find_conn(const bdaddr_t *addr, int32_t app_id)
+{
+	struct app_connection conn_match;
+	struct gatt_device *dev = NULL;
+	struct gatt_app *app;
+
+	/* Check if app is registered */
+	app = find_app_by_id(app_id);
+	if (!app) {
+		error("gatt: Client id %d not found", app_id);
+		return NULL;
+	}
+
+	/* Check if device is known */
+	dev = find_device_by_addr(addr);
+	if (!dev) {
+		error("gatt: Client id %d not found", app_id);
+		return NULL;
+	}
+
+	conn_match.device = dev;
+	conn_match.app = app;
+
+	return queue_find(app_connections, match_connection_by_device_and_app,
+								&conn_match);
+}
+
 static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct gatt_device *dev = user_data;
@@ -1854,33 +1881,6 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
 					HAL_OP_GATT_CLIENT_UNREGISTER, status);
-}
-
-static struct app_connection *find_conn(const bdaddr_t *addr, int32_t app_id)
-{
-	struct app_connection conn_match;
-	struct gatt_device *dev = NULL;
-	struct gatt_app *app;
-
-	/* Check if app is registered */
-	app = find_app_by_id(app_id);
-	if (!app) {
-		error("gatt: Client id %d not found", app_id);
-		return NULL;
-	}
-
-	/* Check if device is known */
-	dev = find_device_by_addr(addr);
-	if (!dev) {
-		error("gatt: Client id %d not found", app_id);
-		return NULL;
-	}
-
-	conn_match.device = dev;
-	conn_match.app = app;
-
-	return queue_find(app_connections, match_connection_by_device_and_app,
-								&conn_match);
 }
 
 static uint8_t handle_connect(int32_t app_id, const bdaddr_t *addr)
