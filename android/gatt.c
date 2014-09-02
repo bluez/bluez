@@ -164,6 +164,8 @@ struct gatt_device {
 	int ref;
 	int conn_cnt;
 
+	struct queue *autoconnect_apps;
+
 	struct queue *pending_requests;
 };
 
@@ -682,6 +684,7 @@ static void destroy_device(void *data)
 
 	queue_destroy(dev->services, destroy_service);
 	queue_destroy(dev->pending_requests, destroy_pending_request);
+	queue_destroy(dev->autoconnect_apps, NULL);
 
 	free(dev);
 }
@@ -724,6 +727,12 @@ static struct gatt_device *create_device(const bdaddr_t *addr)
 		return NULL;
 	}
 
+	dev->autoconnect_apps = queue_new();
+	if (!dev->autoconnect_apps) {
+		error("gatt: Failed to allocate memory for client");
+		destroy_device(dev);
+		return NULL;
+	}
 
 	dev->pending_requests = queue_new();
 	if (!dev->pending_requests) {
