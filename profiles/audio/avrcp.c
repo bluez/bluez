@@ -3227,7 +3227,8 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 	uint16_t events = 0;
 	uint8_t count;
 
-	if (pdu == NULL || pdu->params[0] != CAP_EVENTS_SUPPORTED)
+	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED ||
+			pdu == NULL || pdu->params[0] != CAP_EVENTS_SUPPORTED)
 		return FALSE;
 
 	/* Connect browsing if pending */
