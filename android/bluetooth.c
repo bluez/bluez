@@ -886,13 +886,14 @@ static void update_bond_state(struct device *dev, uint8_t status,
 		return;
 
 	/*
-	 * For incoming just works bonding we will switch here from
-	 * non bonded to bonded directly. This is something Android
-	 * will not handle in their bond state machine. To make Android
-	 * handle it corretly we need to send BONDING state before BOND
+	 * When internal bond state changes from bond to non-bond or other way,
+	 * BfA needs to send bonding state to Android in the middle. Otherwise
+	 * Android will not handle it correctly
 	 */
-	if (old_bond == HAL_BOND_STATE_NONE &&
-				new_bond == HAL_BOND_STATE_BONDED)
+	if ((old_bond == HAL_BOND_STATE_NONE &&
+				new_bond == HAL_BOND_STATE_BONDED) ||
+				(old_bond == HAL_BOND_STATE_BONDED &&
+				new_bond == HAL_BOND_STATE_NONE))
 		send_bond_state_change(dev, HAL_STATUS_SUCCESS,
 						HAL_BOND_STATE_BONDING);
 
