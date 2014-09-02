@@ -582,6 +582,23 @@ static void device_set_state(struct gatt_device *dev, uint32_t state)
 	dev->state = state;
 }
 
+static bool auto_connect_le(struct gatt_device *dev)
+{
+	/*  For LE devices use auto connect feature if possible */
+	if (bt_kernel_conn_control())
+		return  bt_auto_connect_add(&dev->bdaddr);
+
+	/* Trigger discovery if not already started */
+	if (!scanning) {
+		if (!bt_le_discovery_start()) {
+			error("gatt: Could not start scan");
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static void connection_cleanup(struct gatt_device *device)
 {
 	if (device->watch_id) {
@@ -1811,23 +1828,6 @@ static int connect_bredr(struct gatt_device *dev)
 	dev->att_io = io;
 
 	return 0;
-}
-
-static bool auto_connect_le(struct gatt_device *dev)
-{
-	/*  For LE devices use auto connect feature if possible */
-	if (bt_kernel_conn_control())
-		return  bt_auto_connect_add(&dev->bdaddr);
-
-	/* Trigger discovery if not already started */
-	if (!scanning) {
-		if (!bt_le_discovery_start()) {
-			error("gatt: Could not start scan");
-			return false;
-		}
-	}
-
-	return true;
 }
 
 static bool trigger_connection(struct app_connection *connection)
