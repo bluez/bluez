@@ -676,6 +676,9 @@ static ssize_t any_get_next_header(void *object, void *buf, size_t mtu,
 		return 0;
 
 	mas->ap_sent = TRUE;
+	if (!mas->outparams)
+		return 0;
+
 	return g_obex_apparam_encode(mas->outparams, buf, mtu);
 }
 
