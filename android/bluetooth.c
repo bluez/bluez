@@ -5281,4 +5281,5 @@ void bt_bluetooth_unregister(void)
 	hal_ipc = NULL;
 
 	queue_destroy(unpaired_cb_list, NULL);
+	unpaired_cb_list = NULL;
 }
