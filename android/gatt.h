@@ -40,3 +40,4 @@ bool bt_gatt_connect_app(unsigned int id, const bdaddr_t *addr);
 bool bt_gatt_disconnect_app(unsigned int id, const bdaddr_t *addr);
 bool bt_gatt_set_security(const bdaddr_t *bdaddr, int sec_level);
 bool bt_gatt_add_autoconnect(unsigned int id, const bdaddr_t *addr);
+void bt_gatt_remove_autoconnect(unsigned int id, const bdaddr_t *addr);

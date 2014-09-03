@@ -6810,3 +6810,27 @@ bool bt_gatt_add_autoconnect(unsigned int id, const bdaddr_t *addr)
 
 	return true;
 }
+
+void bt_gatt_remove_autoconnect(unsigned int id, const bdaddr_t *addr)
+{
+	struct gatt_device *dev;
+
+	DBG("");
+
+	dev = find_device_by_addr(addr);
+	if (!dev) {
+		error("gatt: Device not found");
+		return;
+	}
+
+	queue_remove(dev->autoconnect_apps, INT_TO_PTR(id));
+
+	if (queue_isempty(dev->autoconnect_apps)) {
+		bt_auto_connect_remove(addr);
+
+		if (dev->state == DEVICE_CONNECT_INIT)
+			device_set_state(dev, DEVICE_DISCONNECTED);
+
+		device_unref(dev);
+	}
+}
