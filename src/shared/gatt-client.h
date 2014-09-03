@@ -38,6 +38,9 @@ typedef void (*bt_gatt_client_destroy_func_t)(void *user_data);
 typedef void (*bt_gatt_client_callback_t)(bool success, uint8_t att_ecode,
 							void *user_data);
 typedef void (*bt_gatt_client_debug_func_t)(const char *str, void *user_data);
+typedef void (*bt_gatt_client_write_long_callback_t)(bool success,
+					bool reliable_error, uint8_t att_ecode,
+					void *user_data);
 
 bool bt_gatt_client_is_ready(struct bt_gatt_client *client);
 bool bt_gatt_client_set_ready_handler(struct bt_gatt_client *client,
@@ -113,3 +116,10 @@ bool bt_gatt_client_write_value(struct bt_gatt_client *client,
 					bt_gatt_client_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
+bool bt_gatt_client_write_long_value(struct bt_gatt_client *client,
+				bool reliable,
+				uint16_t value_handle, uint16_t offset,
+				uint8_t *value, uint16_t length,
+				bt_gatt_client_write_long_callback_t callback,
+				void *user_data,
+				bt_gatt_client_destroy_func_t destroy);
