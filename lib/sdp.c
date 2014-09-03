@@ -4181,10 +4181,15 @@ int sdp_process(sdp_session_t *session)
 		goto end;
 	}
 
-	if (n == 0 || reqhdr->tid != rsphdr->tid ||
-		(n != (int) (ntohs(rsphdr->plen) + sizeof(sdp_pdu_hdr_t)))) {
+	if (reqhdr->tid != rsphdr->tid) {
 		t->err = EPROTO;
-		SDPERR("Protocol error.");
+		SDPERR("Protocol error: transaction id does not match");
+		goto end;
+	}
+
+	if (n != (int) (ntohs(rsphdr->plen) + sizeof(sdp_pdu_hdr_t))) {
+		t->err = EPROTO;
+		SDPERR("Protocol error: invalid length");
 		goto end;
 	}
 
