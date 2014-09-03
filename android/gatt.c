@@ -710,6 +710,8 @@ static void destroy_device(void *data)
 	queue_destroy(dev->pending_requests, destroy_pending_request);
 	queue_destroy(dev->autoconnect_apps, NULL);
 
+	bt_auto_connect_remove(&dev->bdaddr);
+
 	free(dev);
 }
 
