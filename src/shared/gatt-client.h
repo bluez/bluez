@@ -97,3 +97,8 @@ bool bt_gatt_client_read_value(struct bt_gatt_client *client,
 					bt_gatt_client_read_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
+bool bt_gatt_client_read_long_value(struct bt_gatt_client *client,
+					uint16_t value_handle, uint16_t offset,
+					bt_gatt_client_read_callback_t callback,
+					void *user_data,
+					bt_gatt_client_destroy_func_t destroy);

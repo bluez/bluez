@@ -57,9 +57,6 @@ typedef void (*bt_gatt_result_callback_t)(bool success, uint8_t att_ecode,
 typedef void (*bt_gatt_discovery_callback_t)(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data);
-typedef void (*bt_gatt_read_callback_t)(bool success, uint8_t att_ecode,
-					const uint8_t *value, uint16_t length,
-					void *user_data);
 typedef void (*bt_gatt_write_long_callback_t)(bool success, bool reliable_error,
 					uint8_t att_ecode, void *user_data);
 
@@ -90,12 +87,6 @@ bool bt_gatt_discover_characteristics(struct bt_att *att,
 bool bt_gatt_discover_descriptors(struct bt_att *att,
 					uint16_t start, uint16_t end,
 					bt_gatt_discovery_callback_t callback,
-					void *user_data,
-					bt_gatt_destroy_func_t destroy);
-
-bool bt_gatt_read_long_value(struct bt_att *att,
-					uint16_t value_handle, uint16_t offset,
-					bt_gatt_read_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);
 
