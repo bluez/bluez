@@ -1865,9 +1865,30 @@ static bool trigger_connection(struct app_connection *connection)
 	return ret;
 }
 
+static void clear_autoconnect_devices(void *data, void *user_data)
+{
+	struct gatt_device *dev = data;
+
+	if (queue_remove(dev->autoconnect_apps, user_data))
+		if (queue_isempty(dev->autoconnect_apps)) {
+			bt_auto_connect_remove(&dev->bdaddr);
+
+			if (dev->state == DEVICE_CONNECT_INIT)
+				device_set_state(dev, DEVICE_DISCONNECTED);
+
+			device_unref(dev);
+		}
+}
+
 static uint8_t unregister_app(int client_if)
 {
 	struct gatt_app *cl;
+
+	/*
+	 * Make sure that there is no devices in auto connect list for this
+	 * application
+	 */
+	queue_foreach(gatt_devices, clear_autoconnect_devices, INT_TO_PTR(client_if));
 
 	cl = queue_remove_if(gatt_apps, match_app_by_id, INT_TO_PTR(client_if));
 	if (!cl) {
