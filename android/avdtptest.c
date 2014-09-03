@@ -350,6 +350,8 @@ static void discover_cb(struct avdtp *session, GSList *seps,
 		return;
 	}
 
+	printf("Matching endpoint found\n");
+
 	service = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT, NULL, 0);
 	caps = g_slist_append(caps, service);
 
