@@ -145,13 +145,6 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C1
 
-- Merge functions from shared/gatt-helpers involving value reads and writes into
-  shared/gatt-client. These functions should accept an instance of
-  bt_gatt_client instead of taking a bt_att directly.
-
-  Priority: Medium
-  Complexity: C1
-
 - Properly handle indications from the "Service Changed" characteristic.
   shared/gatt-client should automatically rediscover all changed GATT services
   and notify the upper layer using a specially assigned handler.
