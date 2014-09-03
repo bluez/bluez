@@ -1884,8 +1884,7 @@ void bt_set_property_action(void)
 
 	prop = (bt_property_t *)current_data_step->set_data;
 
-	step->action_status = data->if_bluetooth->set_adapter_property(
-									prop);
+	step->action_status = data->if_bluetooth->set_adapter_property(prop);
 
 	schedule_action_verification(step);
 }
