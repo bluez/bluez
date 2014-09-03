@@ -1226,7 +1226,7 @@ static bool l2cap_conn_req(struct bthost *bthost, struct btconn *conn,
 
 	cb_data = bthost_find_l2cap_cb_by_psm(bthost, psm);
 	if (cb_data)
-		rsp.dcid = cpu_to_le16(conn->next_cid++);
+		rsp.dcid = rsp.scid;
 	else
 		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
 
