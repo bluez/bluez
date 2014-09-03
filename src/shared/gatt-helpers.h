@@ -93,10 +93,6 @@ bool bt_gatt_discover_descriptors(struct bt_att *att,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);
 
-bool bt_gatt_read_value(struct bt_att *att, uint16_t value_handle,
-					bt_gatt_read_callback_t callback,
-					void *user_data,
-					bt_gatt_destroy_func_t destroy);
 bool bt_gatt_read_long_value(struct bt_att *att,
 					uint16_t value_handle, uint16_t offset,
 					bt_gatt_read_callback_t callback,

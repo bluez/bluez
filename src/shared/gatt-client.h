@@ -87,3 +87,13 @@ bool bt_gatt_service_iter_next_by_handle(struct bt_gatt_service_iter *iter,
 bool bt_gatt_service_iter_next_by_uuid(struct bt_gatt_service_iter *iter,
 					const uint8_t uuid[BT_GATT_UUID_SIZE],
 					bt_gatt_service_t *service);
+
+typedef void (*bt_gatt_client_read_callback_t)(bool success, uint8_t att_ecode,
+					const uint8_t *value, uint16_t length,
+					void *user_data);
+
+bool bt_gatt_client_read_value(struct bt_gatt_client *client,
+					uint16_t value_handle,
+					bt_gatt_client_read_callback_t callback,
+					void *user_data,
+					bt_gatt_client_destroy_func_t destroy);
