@@ -229,7 +229,7 @@ static void discover_descs_cb(bool success, uint8_t att_ecode,
 	op->cur_chrc->num_descs = desc_count;
 	op->cur_chrc->descs = descs;
 
-	for (i = op->cur_chrc_index;
+	for (i = op->cur_chrc_index + 1;
 				i < op->cur_service->service.num_chrcs; i++) {
 		op->cur_chrc_index = i;
 		op->cur_chrc++;
