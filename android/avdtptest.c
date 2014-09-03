@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
 	}
 
 	local_sep = avdtp_register_sep(dev_role, AVDTP_MEDIA_TYPE_AUDIO,
-					0x00, FALSE, &sep_ind, &sep_cfm, NULL);
+					0x00, TRUE, &sep_ind, &sep_cfm, NULL);
 	if (!local_sep) {
 		printf("Failed to register sep\n");
 		exit(0);
