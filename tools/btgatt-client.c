@@ -401,6 +401,47 @@ static void cmd_read_value(struct client *cli, char *cmd_str)
 		printf("Failed to initiate read value procedure\n");
 }
 
+static void read_long_value_usage(void)
+{
+	printf("Usage: read-long-value <value_handle> <offset>\n");
+}
+
+static void cmd_read_long_value(struct client *cli, char *cmd_str)
+{
+	char *argv[3];
+	int argc = 0;
+	uint16_t handle;
+	uint16_t offset;
+	char *endptr = NULL;
+
+	if (!bt_gatt_client_is_ready(cli->gatt)) {
+		printf("GATT client not initialized\n");
+		return;
+	}
+
+	if (!parse_args(cmd_str, 2, argv, &argc) || argc != 2) {
+		read_long_value_usage();
+		return;
+	}
+
+	handle = strtol(argv[0], &endptr, 16);
+	if (!endptr || *endptr != '\0' || !handle) {
+		printf("Invalid value handle: %s\n", argv[0]);
+		return;
+	}
+
+	endptr = NULL;
+	offset = strtol(argv[1], &endptr, 16);
+	if (!endptr || *endptr != '\0' || !handle) {
+		printf("Invalid offset: %s\n", argv[1]);
+		return;
+	}
+
+	if (!bt_gatt_client_read_long_value(cli->gatt, handle, offset, read_cb,
+								NULL, NULL))
+		printf("Failed to initiate read long value procedure\n");
+}
+
 static void cmd_help(struct client *cli, char *cmd_str);
 
 typedef void (*command_func_t)(struct client *cli, char *cmd_str);
@@ -414,6 +455,8 @@ static struct {
 	{ "services", cmd_services, "\tShow discovered services" },
 	{ "read-value", cmd_read_value,
 				"\tRead a characteristic or descriptor Value" },
+	{ "read-long-value", cmd_read_long_value,
+		"\tRead a long characteristic or desctriptor value" },
 	{ }
 };
 
