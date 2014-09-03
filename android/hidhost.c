@@ -110,7 +110,7 @@ struct hid_device {
 	uint8_t		last_hid_msg;
 	struct bt_hog	*hog;
 	guint		reconnect_id;
-	int sec_level;
+	int		sec_level;
 };
 
 static int device_cmp(gconstpointer s, gconstpointer user_data)
