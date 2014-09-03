@@ -244,13 +244,19 @@ static gboolean media_reader(GIOChannel *source, GIOCondition condition,
 	struct rtp_header *rtp = (void *) buf;
 	static bool decode = false;
 	uint16_t imtu;
-	int fd;
+	int fd, ret;
 
 	if (!avdtp_stream_get_transport(avdtp_stream, &fd, &imtu, NULL, NULL))
 		return TRUE;
 
-	if (read(fd, buf, imtu) < 0) {
+	ret = read(fd, buf, imtu);
+	if (ret < 0) {
 		printf("Reading failed (%s)\n", strerror(errno));
+		return TRUE;
+	}
+
+	if (ret < (int) sizeof(*rtp)) {
+		printf("Not enough media data received (%u bytes)", ret);
 		return TRUE;
 	}
 
