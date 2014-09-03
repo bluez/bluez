@@ -20,7 +20,7 @@ TSPX_media_directory
 TSPX_bd_addr_iut		11223344556677 (*&)
 TSPX_delete_link_key		FALSE
 TSPX_pin_code			1234
-TSPX_security_enabled		FALSE
+TSPX_security_enabled		TRUE (*)
 TSPX_time_guard			300000
 TSPX_use_implicit_send		TRUE
 TSPX_auth_password		0000
