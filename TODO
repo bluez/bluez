@@ -177,12 +177,6 @@ ATT/GATT (new shared stack)
   Priority: Low
   Complexity: C4
 
-- Introduce a new GATT client command-line tool to test and use a single
-  instance of bt_gatt_client.
-
-  Priority: Low
-  Complexity: C1
-
 - Move all daemon plugins and profiles that are GATT based to use
   shared/gatt-client instead of attrib/*. This is a complicated task that
   potentially needs a new plugin/profile probing interface and a lot of
