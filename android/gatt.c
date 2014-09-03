@@ -1900,6 +1900,20 @@ struct listen_data {
 	bool start;
 };
 
+static struct listen_data *create_listen_data(int32_t client_id, bool start)
+{
+	struct listen_data *d;
+
+	d = new0(struct listen_data, 1);
+	if (!d)
+		return NULL;
+
+	d->client_id = client_id;
+	d->start = start;
+
+	return d;
+}
+
 static void set_advertising_cb(uint8_t status, void *user_data)
 {
 	struct listen_data *l = user_data;
@@ -1942,15 +1956,12 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 	}
 
 	if (!advertising_cnt) {
-		data = new0(struct listen_data, 1);
+		data = create_listen_data(cmd->client_if, false);
 		if (!data) {
-			error("gatt: Could not allocate memory for listen data");
+			error("gatt: Could not allocate listen data");
 			status = HAL_STATUS_NOMEM;
 			goto reply;
 		}
-
-		data->client_id = cmd->client_if;
-		data->start = false;
 
 		if (!bt_le_set_advertising(data->start, set_advertising_cb,
 								data)) {
@@ -2102,15 +2113,12 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		}
 	}
 
-	data = new0(struct listen_data, 1);
+	data = create_listen_data(cmd->client_if, cmd->start);
 	if (!data) {
-		error("gatt: Could not allocate memory for listen data");
+		error("gatt: Could not allocate listen data");
 		status = HAL_STATUS_NOMEM;
 		goto reply;
 	}
-
-	data->client_id = cmd->client_if;
-	data->start = cmd->start;
 
 	if (!bt_le_set_advertising(cmd->start, set_advertising_cb, data)) {
 		error("gatt: Could not set advertising");
