@@ -638,6 +638,13 @@ static void connection_cleanup(struct gatt_device *device)
 		queue_remove_all(device->services, NULL, NULL, destroy_service);
 
 	device_set_state(device, DEVICE_DISCONNECTED);
+
+	if (!queue_isempty(device->autoconnect_apps)) {
+		auto_connect_le(device);
+		device_set_state(device, DEVICE_CONNECT_INIT);
+	} else {
+		bt_auto_connect_remove(&device->bdaddr);
+	}
 }
 
 static void destroy_gatt_app(void *data)
@@ -1450,9 +1457,6 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		error("gatt: Could not attach to server");
 
 	device_set_state(dev, DEVICE_CONNECTED);
-
-	if (queue_isempty(dev->autoconnect_apps))
-		bt_auto_connect_remove(&dev->bdaddr);
 
 	/* Send exchange mtu request as we assume being client and server */
 	/* TODO: Dont exchange mtu if no client apps */
