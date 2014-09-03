@@ -90,14 +90,7 @@ bool bt_gatt_discover_descriptors(struct bt_att *att,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);
 
-bool bt_gatt_write_without_response(struct bt_att *att, uint16_t value_handle,
-					bool signed_write,
-					uint8_t *value, uint16_t length);
-bool bt_gatt_write_value(struct bt_att *att, uint16_t value_handle,
-					uint8_t *value, uint16_t length,
-					bt_gatt_result_callback_t callback,
-					void *user_data,
-					bt_gatt_destroy_func_t destroy);
+
 bool bt_gatt_write_long_value(struct bt_att *att, bool reliable,
 					uint16_t value_handle, uint16_t offset,
 					uint8_t *value, uint16_t length,
