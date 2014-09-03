@@ -2122,6 +2122,11 @@ static void tester_testcases_cleanup(void)
 {
 	remove_bluetooth_tests();
 	remove_socket_tests();
+	remove_hidhost_tests();
+	remove_gatt_tests();
+	remove_a2dp_tests();
+	remove_hdp_tests();
+	remove_pan_tests();
 }
 
 static void add_bluetooth_tests(void *data, void *user_data)
