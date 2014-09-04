@@ -114,17 +114,6 @@ static struct bt_action_data prop_emu_remote_bdaddr_req = {
 	.prop = &prop_emu_remote_bdadr,
 };
 
-static bt_property_t prop_emu_remotes_pin_req_set[] = {
-	{ BT_PROPERTY_BDADDR, sizeof(emu_remote_bdaddr_val),
-						&emu_remote_bdaddr_val },
-};
-
-static struct bt_action_data ssp_confirm_accept_reply = {
-	.addr = &emu_remote_bdaddr_val,
-	.ssp_variant = BT_SSP_VARIANT_PASSKEY_CONFIRMATION,
-	.accept = TRUE,
-};
-
 static void socket_listen_action(void)
 {
 	struct test_data *data = tester_get_data();
@@ -400,6 +389,7 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
 	TEST_CASE_BREDRLE("Socket Connect - Check returned fd valid",
+		ACTION_SUCCESS(set_default_ssp_request_handler, NULL),
 		ACTION_SUCCESS(bluetooth_enable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
 		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
@@ -409,10 +399,8 @@ static struct test_case test_cases[] = {
 		CALLBACK_BOND_STATE(BT_BOND_STATE_BONDING,
 						&prop_emu_remote_bdadr, 1),
 		CALLBACK_DEVICE_FOUND(prop_emu_remotes_default_set, 1),
-		CALLBACK_SSP_REQ(BT_SSP_VARIANT_PASSKEY_CONFIRMATION,
-					prop_emu_remotes_pin_req_set, 1),
-		ACTION_SUCCESS(bt_ssp_reply_accept_action,
-						&ssp_confirm_accept_reply),
+		CALLBACK_BOND_STATE(BT_BOND_STATE_BONDED,
+						&prop_emu_remote_bdadr, 1),
 		CALLBACK_DEVICE_PROPS(NULL, 0),
 		ACTION_SUCCESS(emu_add_l2cap_server_action, &l2cap_setup_data),
 		ACTION_SUCCESS(emu_add_rfcomm_server_action,
@@ -424,6 +412,7 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
 	TEST_CASE_BREDRLE("Socket Connect - Check returned chann",
+		ACTION_SUCCESS(set_default_ssp_request_handler, NULL),
 		ACTION_SUCCESS(bluetooth_enable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
 		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
@@ -433,10 +422,8 @@ static struct test_case test_cases[] = {
 		CALLBACK_BOND_STATE(BT_BOND_STATE_BONDING,
 						&prop_emu_remote_bdadr, 1),
 		CALLBACK_DEVICE_FOUND(prop_emu_remotes_default_set, 1),
-		CALLBACK_SSP_REQ(BT_SSP_VARIANT_PASSKEY_CONFIRMATION,
-					prop_emu_remotes_pin_req_set, 1),
-		ACTION_SUCCESS(bt_ssp_reply_accept_action,
-						&ssp_confirm_accept_reply),
+		CALLBACK_BOND_STATE(BT_BOND_STATE_BONDED,
+						&prop_emu_remote_bdadr, 1),
 		CALLBACK_DEVICE_PROPS(NULL, 0),
 		ACTION_SUCCESS(emu_add_l2cap_server_action, &l2cap_setup_data),
 		ACTION_SUCCESS(emu_add_rfcomm_server_action,
