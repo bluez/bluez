@@ -1428,7 +1428,7 @@ static void remote_ext_features_complete(struct btdev *btdev, uint16_t handle,
 			break;
 		case 0x01:
 			refc.status = BT_HCI_ERR_SUCCESS;
-			btdev_get_host_features(btdev, refc.features);
+			btdev_get_host_features(btdev->conn, refc.features);
 			break;
 		default:
 			refc.status = BT_HCI_ERR_INVALID_PARAMETERS;
