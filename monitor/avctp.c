@@ -580,16 +580,13 @@ static bool avrcp_list_player_attributes(struct l2cap_frame *frame,
 						uint8_t ctype, uint8_t len,
 						uint8_t indent)
 {
-	struct l2cap_frame avrcp_frame;
 	uint8_t num;
 	int i;
 
 	if (len == 0)
 		return true;
 
-	l2cap_frame_pull(&avrcp_frame, frame, 0);
-
-	if (!l2cap_frame_get_u8(&avrcp_frame, &num))
+	if (!l2cap_frame_get_u8(frame, &num))
 		return false;
 
 	print_field("%*cAttributeCount: 0x%02x", (indent - 8), ' ', num);
@@ -597,7 +594,7 @@ static bool avrcp_list_player_attributes(struct l2cap_frame *frame,
 	for (i = 0; num > 0; num--, i++) {
 		uint8_t attr;
 
-		if (!l2cap_frame_get_u8(&avrcp_frame, &attr))
+		if (!l2cap_frame_get_u8(frame, &attr))
 			return false;
 
 		print_field("%*cAttributeID: 0x%02x (%s)", (indent - 8), ' ',
