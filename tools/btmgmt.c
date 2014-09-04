@@ -135,7 +135,7 @@ static const char *settings_str[] = {
 				"connectable",
 				"fast-connectable",
 				"discoverable",
-				"pairable",
+				"bondable",
 				"link-security",
 				"ssp",
 				"br/edr",
