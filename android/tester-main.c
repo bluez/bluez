@@ -1613,6 +1613,12 @@ static void teardown(const void *test_data)
 	data->device->close(data->device);
 	audio_hw_device_close(data->audio);
 
+	/*
+	 * Ssp_request_cb pointer can be set do default_ssp_req_cb.
+	 * Set it back to ssp_request_cb
+	 */
+	bt_callbacks.ssp_request_cb = ssp_request_cb;
+
 	if (!data->bluetoothd_pid)
 		tester_teardown_complete();
 }
