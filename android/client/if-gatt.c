@@ -114,11 +114,17 @@ const btgatt_interface_t *if_gatt = NULL;
 
 #define GET_VERIFY_HEX_STRING(n, v, l) \
 	do { \
+		int ll;\
 		if (n[0] != '0' || (n[1] != 'X' && n[1] != 'x')) { \
 			haltest_error("Value must be hex string\n"); \
 			return; \
 		} \
-		l = fill_buffer(n + 2, (uint8_t *) v, sizeof(v)); \
+		ll = fill_buffer(n + 2, (uint8_t *) v, sizeof(v)); \
+		if (ll < 0) { \
+			haltest_error("Value must be byte hex string\n"); \
+			return; \
+		} \
+		l = ll; \
 	} while (0)
 
 /* Gatt uses little endian uuid */
@@ -802,6 +808,10 @@ static int fill_buffer(const char *str, uint8_t *out, int out_size)
 	uint8_t b;
 
 	str_len = strlen(str);
+
+	/* Hex string must be byte format */
+	if (str_len % 2)
+		return -1;
 
 	for (i = 0, j = 0; i < out_size && j < str_len; i++, j++) {
 		c = str[j];
