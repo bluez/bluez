@@ -4984,7 +4984,7 @@ static gboolean process_auth_queue(gpointer user_data)
 
 		/* Wait services to be resolved before asking authorization */
 		if (auth->svc_id > 0)
-			return TRUE;
+			return FALSE;
 
 		if (device_is_trusted(device) == TRUE) {
 			auth->cb(NULL, auth->user_data);
