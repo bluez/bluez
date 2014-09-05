@@ -208,7 +208,6 @@ However if the enum comes from an external header file outside BlueZ, such as
 Android headers, we cannot make any assumption of how the enum is defined and
 this rule might not apply.
 
-
 M11: Always use parenthesis with sizeof
 =======================================
 
