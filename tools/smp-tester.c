@@ -327,16 +327,6 @@ static const struct smp_req_rsp srv_nval_req_3[] = {
 	{ smp_nval_req_4, sizeof(smp_nval_req_4), NULL, 0 },
 };
 
-static const uint8_t disconn_param[] = { 0x2a, 0x00, 0x05 };
-
-static const struct smp_data smp_server_nval_req_4_test = {
-	.req = srv_nval_req_3,
-	.req_count = G_N_ELEMENTS(srv_nval_req_3),
-	.expect_hci_command = BT_HCI_CMD_DISCONNECT,
-	.expect_hci_param = disconn_param,
-	.expect_hci_len = sizeof(disconn_param),
-};
-
 static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
 						0x03,	/* NoInputNoOutput */
 						0x00,	/* OOB Flag */
@@ -820,9 +810,6 @@ int main(int argc, char *argv[])
 					setup_powered_server, test_server);
 	test_smp("SMP Server - Invalid Request 3",
 					&smp_server_nval_req_3_test,
-					setup_powered_server, test_server);
-	test_smp("SMP Server - Invalid Request 4",
-					&smp_server_nval_req_4_test,
 					setup_powered_server, test_server);
 
 	test_smp("SMP Client - Basic Request 1",
