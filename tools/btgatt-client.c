@@ -758,6 +758,9 @@ static void prompt_read_cb(int fd, uint32_t events, void *user_data)
 		if (*cmd != '\0')
 			break;
 
+	if (!cmd)
+		goto failed;
+
 	for (i = 0; command[i].cmd; i++) {
 		if (strcmp(command[i].cmd, cmd) == 0)
 			break;
@@ -768,6 +771,7 @@ static void prompt_read_cb(int fd, uint32_t events, void *user_data)
 	else
 		fprintf(stderr, "Unknown command: %s\n", line);
 
+failed:
 	print_prompt();
 
 	free(line);
