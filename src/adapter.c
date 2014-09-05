@@ -4964,6 +4964,16 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr,
 
 	g_free(auth);
 
+	/* Stop processing if queue is empty */
+	if (g_queue_is_empty(adapter->auths)) {
+		if (adapter->auth_idle_id > 0)
+			g_source_remove(adapter->auth_idle_id);
+		return;
+	}
+
+	if (adapter->auth_idle_id > 0)
+		return;
+
 	adapter->auth_idle_id = g_idle_add(process_auth_queue, adapter);
 }
 
@@ -4990,6 +5000,10 @@ static gboolean process_auth_queue(gpointer user_data)
 			auth->cb(NULL, auth->user_data);
 			goto next;
 		}
+
+		/* If agent is set authorization is already ongoing */
+		if (auth->agent)
+			return FALSE;
 
 		auth->agent = agent_get(NULL);
 		if (auth->agent == NULL) {
