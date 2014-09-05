@@ -58,7 +58,7 @@ void rl_printf(const char *fmt, ...)
 		rl_restore_prompt();
 		rl_replace_line(saved_line, 0);
 		rl_point = saved_point;
-		rl_redisplay();
+		rl_forced_update_display();
 		free(saved_line);
 	}
 }
