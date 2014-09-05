@@ -24,8 +24,8 @@
 
 /* Very simple history storage for easy usage of tool */
 
-#define HISTORY_DEPTH 20
-#define LINE_SIZE 100
+#define HISTORY_DEPTH 40
+#define LINE_SIZE 200
 static char lines[HISTORY_DEPTH][LINE_SIZE];
 static int last_line = 0;
 static int history_size = 0;
