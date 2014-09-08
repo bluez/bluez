@@ -382,7 +382,7 @@ const char *bt_compidtostr(int compid)
 	case 59:
 		return "Gennum Corporation";
 	case 60:
-		return "Research In Motion";
+		return "BlackBerry Limited (formerly Research In Motion)";
 	case 61:
 		return "IPextreme, Inc.";
 	case 62:
@@ -973,6 +973,56 @@ const char *bt_compidtostr(int compid)
 		return "MADSGlobal NZ Ltd.";
 	case 355:
 		return "PCH International";
+	case 356:
+		return "Qingdao Yeelink Information Technology Co., Ltd.";
+	case 357:
+		return "Milwaukee Tool (formerly Milwaukee Electric Tools)";
+	case 358:
+		return "MISHIK Pte Ltd";
+	case 359:
+		return "Bayer HealthCare";
+	case 360:
+		return "Spicebox LLC";
+	case 361:
+		return "emberlight";
+	case 362:
+		return "Cooper-Atkins Corporation";
+	case 363:
+		return "Qblinks";
+	case 364:
+		return "MYSPHERA";
+	case 365:
+		return "LifeScan Inc";
+	case 366:
+		return "Volantic AB";
+	case 367:
+		return "Podo Labs, Inc";
+	case 368:
+		return "Roche Diabetes Care AG";
+	case 369:
+		return "Amazon Fulfillment Service";
+	case 370:
+		return "Connovate Technology Private Limited";
+	case 371:
+		return "Kocomojo, LLC";
+	case 372:
+		return "Everykey LLC";
+	case 373:
+		return "Dynamic Controls";
+	case 374:
+		return "SentriLock";
+	case 375:
+		return "I-SYST inc.";
+	case 376:
+		return "CASIO COMPUTER CO., LTD.";
+	case 377:
+		return "LAPIS Semiconductor Co., Ltd.";
+	case 378:
+		return "Telemonitor, Inc.";
+	case 379:
+		return "taskit GmbH";
+	case 380:
+		return "Daimler AG";
 	case 65535:
 		return "internal use";
 	default:
