@@ -1,3 +1,13 @@
+ver 5.23:
+	Fix issue with concurrent authorization requests.
+	Fix issue with HID report identifier mismatch.
+	Fix issue with crash when receiving uHID events.
+	Fix issue with crash and OBEX disconnect handling.
+	Fix issue with OBEX client transfers and suspend.
+	Fix issue with parsing of MAP application parameters.
+	Fix issue with devices rejecting AVRCP GetCapabilities.
+	Add support for kernel whitelist and Android Bluetooth.
+
 ver 5.22:
 	Fix issue with UHID_OUTPUT events mapping.
 	Fix issue with UHID_FEATURE events handling.
