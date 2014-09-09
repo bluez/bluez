@@ -49,15 +49,18 @@ struct cached_sdp_session {
 
 static GSList *cached_sdp_sessions = NULL;
 
+static void cleanup_cached_session(struct cached_sdp_session *cached)
+{
+	cached_sdp_sessions = g_slist_remove(cached_sdp_sessions, cached);
+	sdp_close(cached->session);
+	g_free(cached);
+}
+
 static gboolean cached_session_expired(gpointer user_data)
 {
 	struct cached_sdp_session *cached = user_data;
 
-	cached_sdp_sessions = g_slist_remove(cached_sdp_sessions, cached);
-
-	sdp_close(cached->session);
-
-	g_free(cached);
+	cleanup_cached_session(cached);
 
 	return FALSE;
 }
