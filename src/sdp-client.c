@@ -67,7 +67,8 @@ static gboolean cached_session_expired(gpointer user_data)
 	return FALSE;
 }
 
-static sdp_session_t *get_cached_sdp_session(const bdaddr_t *src, const bdaddr_t *dst)
+static sdp_session_t *get_cached_sdp_session(const bdaddr_t *src,
+							const bdaddr_t *dst)
 {
 	GSList *l;
 
