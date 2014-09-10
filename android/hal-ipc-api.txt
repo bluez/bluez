@@ -2209,9 +2209,9 @@ Commands and response:
 
 		In case of an error, the error response will be returned.
 
-	Opcode 0x14 - Send DTMF Code command/response
+	Opcode 0x14 - Send DTMF Tone command/response
 
-		Command parameters: Code (1 octet)
+		Command parameters: Tone (1 octet)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.
