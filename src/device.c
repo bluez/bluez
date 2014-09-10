@@ -223,12 +223,6 @@ struct btd_device {
 	GIOChannel	*att_io;
 	guint		cleanup_id;
 	guint		store_id;
-
-	bool		pending_conn_params;
-	uint16_t	min_interval;
-	uint16_t	max_interval;
-	uint16_t	latency;
-	uint16_t	timeout;
 };
 
 static const uint16_t uuid_list[] = {
@@ -380,18 +374,6 @@ static gboolean store_device_info_cb(gpointer user_data)
 					device->version);
 	} else {
 		g_key_file_remove_group(key_file, "DeviceID", NULL);
-	}
-
-	if (device->pending_conn_params) {
-		device->pending_conn_params = false;
-		g_key_file_set_integer(key_file, "ConnectionParameters",
-					"MinInterval", device->min_interval);
-		g_key_file_set_integer(key_file, "ConnectionParameters",
-					"MaxInterval", device->max_interval);
-		g_key_file_set_integer(key_file, "ConnectionParameters",
-					"Latency", device->latency);
-		g_key_file_set_integer(key_file, "ConnectionParameters",
-					"Timeout", device->timeout);
 	}
 
 	create_file(filename, S_IRUSR | S_IWUSR);
@@ -2552,19 +2534,6 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
 		device->bredr_seen = time(NULL);
 	else
 		device->le_seen = time(NULL);
-}
-
-void device_set_conn_param(struct btd_device *dev, uint16_t min_interval,
-				uint16_t max_interval, uint16_t latency,
-				uint16_t timeout)
-{
-	dev->pending_conn_params = true;
-	dev->min_interval = min_interval;
-	dev->max_interval = max_interval;
-	dev->latency = latency;
-	dev->timeout = timeout;
-
-	store_device_info(dev);
 }
 
 /* It is possible that we have two device objects for the same device in
