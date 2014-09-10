@@ -2162,7 +2162,7 @@ Commands and response:
 
 	Opcode 0x09 - Dial Memory command/response
 
-		Command parameters: Location (1 octet)
+		Command parameters: Location (2 octet)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.
