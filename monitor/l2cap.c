@@ -676,6 +676,7 @@ static struct {
 	{ 0x0004, "Attribute Protocol"		},
 	{ 0x0005, "L2CAP Signaling (LE)"	},
 	{ 0x0006, "Security Manager"		},
+	{ 0x0007, "Security Manager (BR/EDR)"	},
 	{ 0x003f, "AMP Test Manager"		},
 	{ }
 };
@@ -2661,8 +2662,9 @@ static void smp_packet(uint16_t index, bool in, uint16_t handle,
 		opcode_str = "Unknown";
 	}
 
-	print_indent(6, opcode_color, "SMP: ", opcode_str, COLOR_OFF,
-				" (0x%2.2x) len %d", opcode, size - 1);
+	print_indent(6, opcode_color, cid == 0x0006 ? "SMP: " : "BR/EDR SMP: ",
+				opcode_str, COLOR_OFF, " (0x%2.2x) len %d",
+				opcode, size - 1);
 
 	if (!opcode_data || !opcode_data->func) {
 		packet_hexdump(data + 1, size - 1);
@@ -2709,6 +2711,7 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		le_sig_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0006:
+	case 0x0007:
 		smp_packet(index, in, handle, cid, data, size);
 		break;
 	default:
