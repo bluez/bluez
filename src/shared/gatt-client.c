@@ -97,6 +97,9 @@ struct bt_gatt_client {
 	/* List of registered notification/indication callbacks */
 	struct queue *notify_list;
 	int next_reg_id;
+	unsigned int notify_id, ind_id;
+	bool in_notify;
+	bool need_notify_cleanup;
 };
 
 static bool gatt_client_add_service(struct bt_gatt_client *client,
@@ -575,6 +578,7 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 
 struct notify_data {
 	struct bt_gatt_client *client;
+	bool removed;
 	unsigned int id;
 	int ref_count;
 	struct chrc_data *chrc;
@@ -612,6 +616,18 @@ static bool match_notify_data_id(const void *a, const void *b)
 	return notify_data->id == id;
 }
 
+static bool match_notify_data_removed(const void *a, const void *b)
+{
+	const struct notify_data *notify_data = a;
+
+	return notify_data->removed;
+}
+
+struct pdu_data {
+	const void *pdu;
+	uint16_t length;
+};
+
 static void complete_notify_request(void *data)
 {
 	struct notify_data *notify_data = data;
@@ -638,6 +654,7 @@ static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
 {
 	uint8_t pdu[4];
 
+	assert(notify_data->chrc->ccc_handle);
 	memset(pdu, 0, sizeof(pdu));
 	put_le16(notify_data->chrc->ccc_handle, pdu);
 
@@ -733,6 +750,72 @@ static void disable_ccc_callback(uint8_t opcode, const void *pdu,
 	}
 }
 
+static void complete_unregister_notify(void *data)
+{
+	struct notify_data *notify_data = data;
+
+	if (__sync_sub_and_fetch(&notify_data->chrc->notify_count, 1)) {
+		notify_data_unref(notify_data);
+		return;
+	}
+
+	notify_data_write_ccc(notify_data, false, disable_ccc_callback);
+}
+
+static void notify_handler(void *data, void *user_data)
+{
+	struct notify_data *notify_data = data;
+	struct pdu_data *pdu_data = user_data;
+	uint16_t value_handle;
+	const uint8_t *value = NULL;
+
+	if (notify_data->removed)
+		return;
+
+	value_handle = get_le16(pdu_data->pdu);
+
+	if (notify_data->chrc->chrc_external.value_handle != value_handle)
+		return;
+
+	if (pdu_data->length > 2)
+		value = pdu_data->pdu + 2;
+
+	if (notify_data->notify)
+		notify_data->notify(value_handle, value, pdu_data->length - 2,
+							notify_data->user_data);
+}
+
+static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
+								void *user_data)
+{
+	struct bt_gatt_client *client = user_data;
+	struct pdu_data pdu_data;
+
+	bt_gatt_client_ref(client);
+
+	client->in_notify = true;
+
+	memset(&pdu_data, 0, sizeof(pdu_data));
+	pdu_data.pdu = pdu;
+	pdu_data.length = length;
+
+	queue_foreach(client->notify_list, notify_handler, &pdu_data);
+
+	client->in_notify = false;
+
+	if (client->need_notify_cleanup) {
+		queue_remove_all(client->notify_list, match_notify_data_removed,
+					NULL, complete_unregister_notify);
+		client->need_notify_cleanup = false;
+	}
+
+	if (opcode == BT_ATT_OP_HANDLE_VAL_IND)
+		bt_att_send(client->att, BT_ATT_OP_HANDLE_VAL_CONF, NULL, 0,
+							NULL, NULL, NULL);
+
+	bt_gatt_client_unref(client);
+}
+
 struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu)
 {
 	struct bt_gatt_client *client;
@@ -752,6 +835,23 @@ struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu)
 
 	client->notify_list = queue_new();
 	if (!client->notify_list) {
+		queue_destroy(client->long_write_queue, NULL);
+		free(client);
+		return NULL;
+	}
+
+	client->notify_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_NOT,
+						notify_cb, client, NULL);
+	if (!client->notify_id) {
+		queue_destroy(client->long_write_queue, NULL);
+		free(client);
+		return NULL;
+	}
+
+	client->ind_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_IND,
+						notify_cb, client, NULL);
+	if (!client->ind_id) {
+		bt_att_unregister(att, client->notify_id);
 		queue_destroy(client->long_write_queue, NULL);
 		free(client);
 		return NULL;
@@ -790,8 +890,12 @@ void bt_gatt_client_unref(struct bt_gatt_client *client)
 	if (client->debug_destroy)
 		client->debug_destroy(client->debug_data);
 
+	bt_att_unregister(client->att, client->notify_id);
+	bt_att_unregister(client->att, client->ind_id);
+
 	queue_destroy(client->long_write_queue, long_write_op_unref);
 	queue_destroy(client->notify_list, notify_data_unref);
+
 	bt_att_unref(client->att);
 	free(client);
 }
@@ -1698,23 +1802,19 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 
 	notify_data = queue_find(client->notify_list, match_notify_data_id,
 							UINT_TO_PTR(id));
-	if (!notify_data)
+	if (!notify_data || notify_data->removed)
 		return false;
 
 	assert(notify_data->chrc->notify_count > 0);
 	assert(!notify_data->chrc->ccc_write_id);
 
-	/* TODO: Delay destruction/removal if we're in the middle of processing
-	 * a notification.
-	 */
-	queue_remove(client->notify_list, notify_data);
-
-	if (__sync_sub_and_fetch(&notify_data->chrc->notify_count, 1)) {
-		notify_data_unref(notify_data);
+	if (!client->in_notify) {
+		queue_remove(client->notify_list, notify_data);
+		complete_unregister_notify(notify_data);
 		return true;
 	}
 
-	notify_data_write_ccc(notify_data, false, disable_ccc_callback);
-
+	notify_data->removed = true;
+	client->need_notify_cleanup = true;
 	return true;
 }
