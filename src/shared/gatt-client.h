@@ -27,6 +27,16 @@
 
 #define BT_GATT_UUID_SIZE 16
 
+#define BT_GATT_CHRC_PROP_BROADCAST			0x01
+#define BT_GATT_CHRC_PROP_READ				0x02
+#define BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP		0x04
+#define BT_GATT_CHRC_PROP_WRITE				0x08
+#define BT_GATT_CHRC_PROP_NOTIFY			0x10
+#define BT_GATT_CHRC_PROP_INDICATE			0x20
+#define BT_GATT_CHRC_PROP_AUTH				0x40
+#define BT_GATT_CHRC_PROP_EXT_PROP			0x80
+
+/* Client Characteristic Configuration bit field */
 struct bt_gatt_client;
 
 struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu);
@@ -41,6 +51,12 @@ typedef void (*bt_gatt_client_debug_func_t)(const char *str, void *user_data);
 typedef void (*bt_gatt_client_write_long_callback_t)(bool success,
 					bool reliable_error, uint8_t att_ecode,
 					void *user_data);
+typedef void (*bt_gatt_client_notify_callback_t)(uint16_t value_handle,
+					const uint8_t *value, uint16_t length,
+					void *user_data);
+typedef void (*bt_gatt_client_notify_id_callback_t)(unsigned int id,
+							uint16_t att_ecode,
+							void *user_data);
 
 bool bt_gatt_client_is_ready(struct bt_gatt_client *client);
 bool bt_gatt_client_set_ready_handler(struct bt_gatt_client *client,
@@ -131,3 +147,12 @@ bool bt_gatt_client_write_long_value(struct bt_gatt_client *client,
 				bt_gatt_client_write_long_callback_t callback,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy);
+
+bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
+				uint16_t chrc_value_handle,
+				bt_gatt_client_notify_id_callback_t callback,
+				bt_gatt_client_notify_callback_t notify,
+				void *user_data,
+				bt_gatt_client_destroy_func_t destroy);
+bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
+							unsigned int id);
