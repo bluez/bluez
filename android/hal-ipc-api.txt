@@ -2083,7 +2083,7 @@ Notifications:
 Bluetooth Handsfree Client HAL (ID 10)
 ======================================
 
-Android HAL name: "hf_client" (BT_PROFILE_HF_CLIENT_ID)
+Android HAL name: "hf_client" (BT_PROFILE_HANDSFREE_CLIENT_ID)
 
 Commands and response:
 
