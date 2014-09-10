@@ -205,6 +205,19 @@ struct set_addressed_rsp {
 	uint8_t status;
 } __attribute__ ((packed));
 
+struct set_browsed_req {
+	uint16_t id;
+} __attribute__ ((packed));
+
+struct set_browsed_rsp {
+	uint8_t status;
+	uint16_t counter;
+	uint16_t charset;
+	uint32_t items;
+	uint8_t depth;
+	uint8_t data[0];
+} __attribute__ ((packed));
+
 struct avrcp_control_handler {
 	uint8_t id;
 	uint8_t code;
@@ -2436,18 +2449,47 @@ int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id)
 					set_addressed_rsp, session);
 }
 
+static char *parse_folder_list(uint8_t *params, uint16_t params_len,
+								uint8_t depth)
+{
+	char **folders, *path;
+	uint8_t count;
+	size_t i;
+
+	folders = g_new0(char *, depth + 2);
+	folders[0] = g_strdup("/Filesystem");
+
+	for (i = 0, count = 1; count <= depth && i < params_len; count++) {
+		uint8_t len;
+
+		len = params[i++];
+
+		if (i + len > params_len || len == 0) {
+			g_strfreev(folders);
+			return NULL;
+		}
+
+		folders[count] = g_memdup(&params[i], len);
+		i += len;
+	}
+
+	path = g_build_pathv("/", folders);
+	g_strfreev(folders);
+
+	return path;
+}
+
 static gboolean set_browsed_rsp(struct avctp *conn, uint8_t *operands,
 					size_t operand_count, void *user_data)
 {
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->player;
 	struct avrcp_browsing_header *pdu;
+	struct set_browsed_rsp *rsp;
 	uint16_t counter = 0;
 	uint32_t items = 0;
-	uint8_t depth = 0, count;
-	char **folders, *path = NULL;
+	char *path = NULL;
 	int err;
-	size_t i;
 
 	DBG("");
 
@@ -2464,36 +2506,20 @@ static gboolean set_browsed_rsp(struct avctp *conn, uint8_t *operands,
 	if (err < 0)
 		goto done;
 
-	if (pdu->params_len < 10) {
+	if (pdu->params_len < sizeof(*rsp)) {
 		err = -EPROTO;
 		goto done;
 	}
 
-	counter = get_be16(&pdu->params[1]);
-	items = get_be32(&pdu->params[3]);
-	depth = pdu->params[9];
+	rsp = (void *) pdu->params;
 
-	folders = g_new0(char *, depth + 2);
-	folders[0] = g_strdup("/Filesystem");
+	counter = get_be16(&rsp->counter);
+	items = get_be32(&rsp->items);
 
-	for (i = 10, count = 1; count - 1 < depth && i < pdu->params_len;
-								count++) {
-		uint8_t len;
-
-		len = pdu->params[i++];
-
-		if (i + len > pdu->params_len || len == 0) {
-			g_strfreev(folders);
-			err = -EPROTO;
-			goto done;
-		}
-
-		folders[count] = g_memdup(&pdu->params[i], len);
-		i += len;
-	}
-
-	path = g_build_pathv("/", folders);
-	g_strfreev(folders);
+	path = parse_folder_list(rsp->data, pdu->params_len - sizeof(*rsp),
+								rsp->depth);
+	if (!path)
+		err = -EPROTO;
 
 done:
 	player->cfm->set_browsed(session, err, counter, items, path,
