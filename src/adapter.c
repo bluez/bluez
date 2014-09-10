@@ -6308,10 +6308,8 @@ static void new_conn_param(uint16_t index, uint16_t length,
 		return;
 	}
 
-	if (!ev->store_hint) {
-		device_set_conn_param(dev, min, max, latency, timeout);
+	if (!ev->store_hint)
 		return;
-	}
 
 	store_conn_param(adapter, &ev->addr.bdaddr, ev->addr.type,
 					ev->min_interval, ev->max_interval,
