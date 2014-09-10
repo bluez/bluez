@@ -40,6 +40,8 @@
 
 struct service_list {
 	bt_gatt_service_t service;
+	bt_gatt_characteristic_t *chrcs;
+	size_t num_chrcs;
 	struct service_list *next;
 };
 
@@ -93,14 +95,14 @@ static bool gatt_client_add_service(struct bt_gatt_client *client,
 	return true;
 }
 
-static void service_destroy_characteristics(bt_gatt_service_t *service)
+static void service_destroy_characteristics(struct service_list *service)
 {
 	unsigned int i;
 
 	for (i = 0; i < service->num_chrcs; i++)
 		free((bt_gatt_descriptor_t *) service->chrcs[i].descs);
 
-	free((bt_gatt_characteristic_t *) service->chrcs);
+	free(service->chrcs);
 }
 
 static void gatt_client_clear_services(struct bt_gatt_client *client)
@@ -110,7 +112,7 @@ static void gatt_client_clear_services(struct bt_gatt_client *client)
 	l = client->svc_head;
 
 	while (l) {
-		service_destroy_characteristics(&l->service);
+		service_destroy_characteristics(l);
 		tmp = l;
 		l = tmp->next;
 		free(tmp);
@@ -229,8 +231,7 @@ static void discover_descs_cb(bool success, uint8_t att_ecode,
 	op->cur_chrc->num_descs = desc_count;
 	op->cur_chrc->descs = descs;
 
-	for (i = op->cur_chrc_index + 1;
-				i < op->cur_service->service.num_chrcs; i++) {
+	for (i = op->cur_chrc_index + 1; i < op->cur_service->num_chrcs; i++) {
 		op->cur_chrc_index = i;
 		op->cur_chrc++;
 		desc_start = op->cur_chrc->value_handle + 1;
@@ -332,8 +333,8 @@ static void discover_chrcs_cb(bool success, uint8_t att_ecode,
 		i++;
 	}
 
-	op->cur_service->service.chrcs = chrcs;
-	op->cur_service->service.num_chrcs = chrc_count;
+	op->cur_service->chrcs = chrcs;
+	op->cur_service->num_chrcs = chrc_count;
 
 	for (i = 0; i < chrc_count; i++) {
 		op->cur_chrc_index = i;
@@ -627,7 +628,7 @@ bool bt_gatt_service_iter_init(struct bt_gatt_service_iter *iter,
 }
 
 bool bt_gatt_service_iter_next(struct bt_gatt_service_iter *iter,
-						bt_gatt_service_t *service)
+					const bt_gatt_service_t **service)
 {
 	struct service_list *l;
 
@@ -644,18 +645,18 @@ bool bt_gatt_service_iter_next(struct bt_gatt_service_iter *iter,
 	if (!l)
 		return false;
 
-	*service = l->service;
+	*service = &l->service;
 	iter->ptr = l;
 
 	return true;
 }
 
 bool bt_gatt_service_iter_next_by_handle(struct bt_gatt_service_iter *iter,
-						uint16_t start_handle,
-						bt_gatt_service_t *service)
+					uint16_t start_handle,
+					const bt_gatt_service_t **service)
 {
 	while (bt_gatt_service_iter_next(iter, service)) {
-		if (service->start_handle == start_handle)
+		if ((*service)->start_handle == start_handle)
 			return true;
 	}
 
@@ -664,14 +665,44 @@ bool bt_gatt_service_iter_next_by_handle(struct bt_gatt_service_iter *iter,
 
 bool bt_gatt_service_iter_next_by_uuid(struct bt_gatt_service_iter *iter,
 					const uint8_t uuid[BT_GATT_UUID_SIZE],
-					bt_gatt_service_t *service)
+					const bt_gatt_service_t **service)
 {
 	while (bt_gatt_service_iter_next(iter, service)) {
-		if (memcmp(service->uuid, uuid, UUID_BYTES) == 0)
+		if (memcmp((*service)->uuid, uuid, UUID_BYTES) == 0)
 			return true;
 	}
 
 	return false;
+}
+
+bool bt_gatt_characteristic_iter_init(struct bt_gatt_characteristic_iter *iter,
+					const bt_gatt_service_t *service)
+{
+	if (!iter || !service)
+		return false;
+
+	memset(iter, 0, sizeof(*iter));
+	iter->service = (struct service_list *) service;
+
+	return true;
+}
+
+bool bt_gatt_characteristic_iter_next(struct bt_gatt_characteristic_iter *iter,
+					const bt_gatt_characteristic_t **chrc)
+{
+	struct service_list *service;
+
+	if (!iter || !chrc)
+		return false;
+
+	service = iter->service;
+
+	if (iter->pos >= service->num_chrcs)
+		return false;
+
+	*chrc = service->chrcs + iter->pos++;
+
+	return true;
 }
 
 struct read_op {

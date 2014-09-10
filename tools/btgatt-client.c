@@ -169,16 +169,21 @@ static void print_uuid(const uint8_t uuid[16])
 
 static void print_service(const bt_gatt_service_t *service)
 {
+	struct bt_gatt_characteristic_iter iter;
 	const bt_gatt_characteristic_t *chrc;
-	size_t i, j;
+	size_t i;
+
+	if (!bt_gatt_characteristic_iter_init(&iter, service)) {
+		PRLOG("Failed to initialize characteristic iterator\n");
+		return;
+	}
 
 	printf(COLOR_RED "service" COLOR_OFF " - start: 0x%04x, "
 				"end: 0x%04x, uuid: ",
 				service->start_handle, service->end_handle);
 	print_uuid(service->uuid);
 
-	for (i = 0; i < service->num_chrcs; i++) {
-		chrc = service->chrcs + i;
+	while (bt_gatt_characteristic_iter_next(&iter, &chrc)) {
 		printf("\t  " COLOR_YELLOW "charac" COLOR_OFF
 				" - start: 0x%04x, end: 0x%04x, "
 				"value: 0x%04x, props: 0x%02x, uuid: ",
@@ -186,13 +191,13 @@ static void print_service(const bt_gatt_service_t *service)
 				chrc->end_handle,
 				chrc->value_handle,
 				chrc->properties);
-		print_uuid(service->chrcs[i].uuid);
+		print_uuid(chrc->uuid);
 
-		for (j = 0; j < chrc->num_descs; j++) {
+		for (i = 0; i < chrc->num_descs; i++) {
 			printf("\t\t  " COLOR_MAGENTA "descr" COLOR_OFF
 						" - handle: 0x%04x, uuid: ",
-						chrc->descs[j].handle);
-			print_uuid(chrc->descs[j].uuid);
+						chrc->descs[i].handle);
+			print_uuid(chrc->descs[i].uuid);
 		}
 	}
 
@@ -202,7 +207,7 @@ static void print_service(const bt_gatt_service_t *service)
 static void print_services(struct client *cli)
 {
 	struct bt_gatt_service_iter iter;
-	bt_gatt_service_t service;
+	const bt_gatt_service_t *service;
 
 	if (!bt_gatt_service_iter_init(&iter, cli->gatt)) {
 		PRLOG("Failed to initialize service iterator\n");
@@ -212,13 +217,13 @@ static void print_services(struct client *cli)
 	printf("\n");
 
 	while (bt_gatt_service_iter_next(&iter, &service))
-		print_service(&service);
+		print_service(service);
 }
 
 static void print_services_by_uuid(struct client *cli, const bt_uuid_t *uuid)
 {
 	struct bt_gatt_service_iter iter;
-	bt_gatt_service_t service;
+	const bt_gatt_service_t *service;
 
 	if (!bt_gatt_service_iter_init(&iter, cli->gatt)) {
 		PRLOG("Failed to initialize service iterator\n");
@@ -229,13 +234,13 @@ static void print_services_by_uuid(struct client *cli, const bt_uuid_t *uuid)
 
 	while (bt_gatt_service_iter_next_by_uuid(&iter, uuid->value.u128.data,
 								&service))
-		print_service(&service);
+		print_service(service);
 }
 
 static void print_services_by_handle(struct client *cli, uint16_t handle)
 {
 	struct bt_gatt_service_iter iter;
-	bt_gatt_service_t service;
+	const bt_gatt_service_t *service;
 
 	if (!bt_gatt_service_iter_init(&iter, cli->gatt)) {
 		PRLOG("Failed to initialize service iterator\n");
@@ -245,7 +250,7 @@ static void print_services_by_handle(struct client *cli, uint16_t handle)
 	printf("\n");
 
 	while (bt_gatt_service_iter_next_by_handle(&iter, handle, &service))
-		print_service(&service);
+		print_service(service);
 }
 
 static void ready_cb(bool success, uint8_t att_ecode, void *user_data)
