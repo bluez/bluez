@@ -770,6 +770,42 @@ static void cmd_register_notify(struct client *cli, char *cmd_str)
 	printf("\n");
 }
 
+static void unregister_notify_usage(void)
+{
+	printf("Usage: unregister-notify <notify id>\n");
+}
+
+static void cmd_unregister_notify(struct client *cli, char *cmd_str)
+{
+	char *argv[2];
+	int argc = 0;
+	unsigned int id;
+	char *endptr = NULL;
+
+	if (!bt_gatt_client_is_ready(cli->gatt)) {
+		printf("GATT client not initialized\n");
+		return;
+	}
+
+	if (!parse_args(cmd_str, 1, argv, &argc) || argc != 1) {
+		unregister_notify_usage();
+		return;
+	}
+
+	id = strtol(argv[0], &endptr, 10);
+	if (!endptr || *endptr != '\0' || !id) {
+		printf("Invalid notify id: %s\n", argv[0]);
+		return;
+	}
+
+	if (!bt_gatt_client_unregister_notify(cli->gatt, id)) {
+		printf("Failed to unregister notify handler with id: %u\n", id);
+		return;
+	}
+
+	printf("Unregistered notify handler with id: %u\n", id);
+}
+
 static void cmd_help(struct client *cli, char *cmd_str);
 
 typedef void (*command_func_t)(struct client *cli, char *cmd_str);
@@ -791,6 +827,8 @@ static struct {
 			"Write long characteristic or descriptor value" },
 	{ "register-notify", cmd_register_notify,
 			"\tSubscribe to not/ind from a characteristic" },
+	{ "unregister-notify", cmd_unregister_notify,
+						"Unregister a not/ind session"},
 	{ }
 };
 
