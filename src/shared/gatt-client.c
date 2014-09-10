@@ -604,6 +604,14 @@ static void notify_data_unref(void *data)
 	free(notify_data);
 }
 
+static bool match_notify_data_id(const void *a, const void *b)
+{
+	const struct notify_data *notify_data = a;
+	unsigned int id = PTR_TO_UINT(b);
+
+	return notify_data->id == id;
+}
+
 static void complete_notify_request(void *data)
 {
 	struct notify_data *notify_data = data;
@@ -706,7 +714,23 @@ static void enable_ccc_callback(uint8_t opcode, const void *pdu,
 static void disable_ccc_callback(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
-	/* TODO */
+	struct notify_data *notify_data = user_data;
+	struct notify_data *next_data;
+
+	assert(!notify_data->chrc->notify_count);
+	assert(notify_data->chrc->ccc_write_id);
+
+	notify_data->chrc->ccc_write_id = 0;
+
+	/* This is a best effort procedure, so ignore errors and process any
+	 * queued requests.
+	 */
+	while (1) {
+		next_data = queue_pop_head(notify_data->chrc->reg_notify_queue);
+		if (!next_data || notify_data_write_ccc(notify_data, true,
+							enable_ccc_callback))
+			return;
+	}
 }
 
 struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu)
@@ -1667,6 +1691,30 @@ bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
 bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 							unsigned int id)
 {
-	/* TODO */
-	return false;
+	struct notify_data *notify_data;
+
+	if (!client || !id)
+		return false;
+
+	notify_data = queue_find(client->notify_list, match_notify_data_id,
+							UINT_TO_PTR(id));
+	if (!notify_data)
+		return false;
+
+	assert(notify_data->chrc->notify_count > 0);
+	assert(!notify_data->chrc->ccc_write_id);
+
+	/* TODO: Delay destruction/removal if we're in the middle of processing
+	 * a notification.
+	 */
+	queue_remove(client->notify_list, notify_data);
+
+	if (__sync_sub_and_fetch(&notify_data->chrc->notify_count, 1)) {
+		notify_data_unref(notify_data);
+		return true;
+	}
+
+	notify_data_write_ccc(notify_data, false, disable_ccc_callback);
+
+	return true;
 }
