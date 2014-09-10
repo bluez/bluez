@@ -2228,7 +2228,8 @@ Notifications:
 	Opcode 0x81 - Connection State Changed notification
 
 		Notification parameters: State (1 octet)
-		                         Peer Features (1 octet)
+		                         Peer Features (2 octets)
+		                         CHLD Features (2 octets)
 		                         Address (6 octets)
 
 		Valid State values: 0x00 = Disconnected
