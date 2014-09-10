@@ -152,16 +152,6 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C1
 
-- Define API functions in shared/gatt-client for enabling/disabling
-  characteristic handle-value notifications/indications on a reference counted
-  basis. Code that is no longer interested in notifications from a
-  characteristic should be able to unregister any callbacks without writing to
-  the "Client Characteristic Configuration" descriptor if there are others who
-  are still interested.
-
-  Priority: Medium
-  Complexity: C2
-
 - Introduce a handler interface to shared/gatt-client which can be used by the
   upper layer to determine when the link has been disconnected or an ATT
   protocol request times out.
