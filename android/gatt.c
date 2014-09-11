@@ -2772,9 +2772,9 @@ static void gatt_discover_desc_cb(guint8 status, GSList *descs,
 reply:
 	descr = queue_peek_head(ch->descriptors);
 
-	send_client_descr_notify(status, conn->id, srvc->primary, &srvc->id,
-						&ch->id,
-						descr ? &descr->id : NULL);
+	send_client_descr_notify(status ? GATT_FAILURE : GATT_SUCCESS, conn->id,
+					srvc->primary, &srvc->id, &ch->id,
+					descr ? &descr->id : NULL);
 
 	free(data);
 }
