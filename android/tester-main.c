@@ -572,6 +572,18 @@ static bool match_data(struct step *step)
 			tester_debug("Gatt char prop doesn't match");
 			return false;
 		}
+
+		if (exp->callback_result.descriptor) {
+			btgatt_gatt_id_t *a;
+			btgatt_gatt_id_t *b;
+			a = step->callback_result.descriptor;
+			b = exp->callback_result.descriptor;
+
+			if (!verify_gatt_ids(a, b)) {
+				tester_debug("Gatt desc doesn't match");
+				return false;
+			}
+		}
 	}
 
 	return true;
@@ -661,6 +673,9 @@ static void destroy_callback_step(void *data)
 
 	if (step->callback_result.characteristic)
 		free(step->callback_result.characteristic);
+
+	if (step->callback_result.descriptor)
+		free(step->callback_result.descriptor);
 
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
@@ -1117,6 +1132,24 @@ static void gattc_get_characteristic_cb(int conn_id, int status,
 	schedule_callback_call(step);
 }
 
+static void gattc_get_descriptor_cb(int conn_id, int status,
+			btgatt_srvc_id_t *srvc_id, btgatt_gatt_id_t *char_id,
+			btgatt_gatt_id_t *descr_id)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTC_GET_DESCRIPTOR;
+	step->callback_result.status = status;
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.service = g_memdup(srvc_id, sizeof(*srvc_id));
+	step->callback_result.characteristic = g_memdup(char_id,
+							sizeof(*char_id));
+	step->callback_result.descriptor = g_memdup(descr_id,
+							sizeof(*descr_id));
+
+	schedule_callback_call(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1224,7 +1257,7 @@ static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.search_complete_cb = gattc_search_complete_cb,
 	.search_result_cb = gattc_search_result_cb,
 	.get_characteristic_cb = gattc_get_characteristic_cb,
-	.get_descriptor_cb = NULL,
+	.get_descriptor_cb = gattc_get_descriptor_cb,
 	.get_included_service_cb = NULL,
 	.register_for_notification_cb = NULL,
 	.notify_cb = NULL,
