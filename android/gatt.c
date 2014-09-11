@@ -2760,7 +2760,7 @@ static void gatt_discover_desc_cb(guint8 status, GSList *descs,
 		bt_string_to_uuid(&uuid, desc->uuid);
 		bt_uuid_to_uuid128(&uuid, &descr->id.uuid);
 
-		descr->id.instance = i++;
+		descr->id.instance = ++i;
 		descr->handle = desc->handle;
 
 		DBG("attr handle = 0x%04x, uuid: %s", desc->handle, desc->uuid);
