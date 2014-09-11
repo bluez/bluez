@@ -402,6 +402,9 @@ static bool verify_gatt_ids(btgatt_gatt_id_t *a, btgatt_gatt_id_t *b)
 	if (memcmp(&a->uuid, &b->uuid, sizeof(bt_uuid_t)))
 		return false;
 
+	if (a->inst_id != b->inst_id)
+		return false;
+
 	return true;
 }
 
