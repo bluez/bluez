@@ -584,6 +584,14 @@ static bool match_data(struct step *step)
 				return false;
 			}
 		}
+
+		if (exp->callback_result.included) {
+			if (!verify_services(step->callback_result.included,
+					exp->callback_result.included)) {
+				tester_debug("Gatt include srvc doesn't match");
+				return false;
+			}
+		}
 	}
 
 	return true;
@@ -676,6 +684,9 @@ static void destroy_callback_step(void *data)
 
 	if (step->callback_result.descriptor)
 		free(step->callback_result.descriptor);
+
+	if (step->callback_result.included)
+		free(step->callback_result.included);
 
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
@@ -1150,6 +1161,21 @@ static void gattc_get_descriptor_cb(int conn_id, int status,
 	schedule_callback_call(step);
 }
 
+static void gattc_get_included_service_cb(int conn_id, int status,
+		btgatt_srvc_id_t *srvc_id, btgatt_srvc_id_t *incl_srvc_id)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTC_GET_INCLUDED_SERVICE;
+	step->callback_result.status = status;
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.service = g_memdup(srvc_id, sizeof(*srvc_id));
+	step->callback_result.included = g_memdup(incl_srvc_id,
+							sizeof(*srvc_id));
+
+	schedule_callback_call(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1258,7 +1284,7 @@ static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 	.search_result_cb = gattc_search_result_cb,
 	.get_characteristic_cb = gattc_get_characteristic_cb,
 	.get_descriptor_cb = gattc_get_descriptor_cb,
-	.get_included_service_cb = NULL,
+	.get_included_service_cb = gattc_get_included_service_cb,
 	.register_for_notification_cb = NULL,
 	.notify_cb = NULL,
 	.read_characteristic_cb = NULL,
