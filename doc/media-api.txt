@@ -593,54 +593,10 @@ Properties	object Device [readonly]
 			property is only writeable when the transport was
 			acquired by the sender.
 
-		boolean NREC [readwrite]
-
-			Optional and HFP specific (external to BlueZ).
-			Indicates if echo cancelling and noise reduction
-			functions are active in the transport, this
-			property is only writeable when the transport
-			was acquired by the sender.
-
-		boolean InbandRingtone [readwrite]
-
-			Optional and HFP specific (external to BlueZ).
-			Indicates if the transport support sending
-			ringtones, this property is only writeable when
-			the transport was acquired by the sender.
-
-		string Routing [readonly]
-
-			Optional and HFP specific (external to BlueZ).
-			Indicates where is the transport being routed.
-
-			Possible Values: "HCI" or "PCM"
-
 		uint16 Volume [readwrite]
 
 			Optional. Indicates volume level of the transport,
 			this property is only writeable when the transport was
 			acquired by the sender.
 
-			Note: the property will not be present for HSP/HFP
-			transports and MicrophoneGain/SpeakerGain should be
-			used instead.
-
 			Possible Values: 0-127
-
-		byte MicrophoneGain [readwrite]
-
-			Optional. Indicates volume level of the transport's
-			incoming audio stream for HSP/HFP transports. This
-			property is only writeable when the transport was
-			acquired by the sender.
-
-			Possible Values: 0-15
-
-		byte SpeakerGain [readwrite]
-
-			Optional. Indicates volume level of the transport's
-			outgoing audio stream for HSP/HFP transports. This
-			property is only writeable when the transport was
-			acquired by the sender.
-
-			Possible Values: 0-15
