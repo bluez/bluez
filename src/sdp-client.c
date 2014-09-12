@@ -130,6 +130,8 @@ static void cache_sdp_session(bdaddr_t *src, bdaddr_t *dst,
 
 	cached->io_id = g_io_add_watch(chan, G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 						disconnect_watch, cached);
+
+	g_io_channel_unref(chan);
 }
 
 struct search_context {
