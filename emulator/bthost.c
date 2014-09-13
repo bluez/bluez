@@ -222,6 +222,9 @@ struct bthost *bthost_create(void)
 
 	memset(bthost, 0, sizeof(*bthost));
 
+	/* Set defaults */
+	bthost->io_capability = 0x03;
+
 	return bthost;
 }
 
@@ -2132,7 +2135,7 @@ void bthost_request_auth(struct bthost *bthost, uint16_t handle)
 		cp.handle = cpu_to_le16(handle);
 		send_command(bthost, BT_HCI_CMD_AUTH_REQUESTED, &cp, sizeof(cp));
 	} else {
-		smp_pair(conn->smp_data);
+		smp_pair(conn->smp_data, bthost->io_capability);
 	}
 }
 

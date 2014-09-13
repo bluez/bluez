@@ -128,4 +128,4 @@ void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
 void smp_conn_del(void *conn_data);
 void smp_data(void *conn_data, const void *data, uint16_t len);
 int smp_get_ltk(void *smp_data, uint64_t rand, uint16_t ediv, uint8_t *ltk);
-void smp_pair(void *conn_data);
+void smp_pair(void *conn_data, uint8_t io_cap);

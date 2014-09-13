@@ -152,12 +152,12 @@ static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
 }
 
-void smp_pair(void *conn_data)
+void smp_pair(void *conn_data, uint8_t io_cap)
 {
 	struct smp_conn *conn = conn_data;
 	struct bthost *bthost = conn->smp->bthost;
 	const uint8_t smp_pair_req[] = {	0x01,	/* Pairing Request */
-						0x03,	/* NoInputNoOutput */
+						io_cap,	/* IO Capability */
 						0x00,	/* OOB Flag */
 						0x01,	/* Bonding - no MITM */
 						0x10,	/* Max key size */
