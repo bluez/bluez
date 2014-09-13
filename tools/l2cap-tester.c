@@ -73,6 +73,7 @@ struct l2cap_data {
 	const void *write_data;
 
 	bool enable_ssp;
+	uint8_t client_io_cap;
 	int sec_level;
 	bool reject_ssp;
 
@@ -275,6 +276,7 @@ static const struct l2cap_data client_connect_ssp_success_test_2 = {
 	.server_psm = 0x1001,
 	.enable_ssp = true,
 	.sec_level  = BT_SECURITY_HIGH,
+	.client_io_cap = 0x04,
 };
 
 static const struct l2cap_data client_connect_pin_success_test = {
@@ -670,6 +672,9 @@ static void setup_powered_common(void)
 		mgmt_register(data->mgmt, MGMT_EV_PIN_CODE_REQUEST,
 				data->mgmt_index, pin_code_request_callback,
 				data, NULL);
+
+	if (test->client_io_cap)
+		bthost_set_io_capability(bthost, test->client_io_cap);
 
 	if (test && test->client_pin)
 		bthost_set_pin_code(bthost, test->client_pin,
