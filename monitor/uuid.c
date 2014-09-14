@@ -176,7 +176,13 @@ static struct {
 	{ 0x2906, "Valid Range"					},
 	{ 0x2907, "External Report Reference"			},
 	{ 0x2908, "Report Reference"				},
-	/* 0x2909 to 0x29ff undefined */
+	{ 0x2909, "Number of Digitals"				},
+	{ 0x290a, "Value Trigger Setting"			},
+	{ 0x290b, "Environmental Sensing Configuration"		},
+	{ 0x290c, "Environmental Sensing Measurement"		},
+	{ 0x290d, "Environmental Sensing Trigger Setting"	},
+	{ 0x290e, "Time Trigger Setting"			},
+	/* 0x290f to 0x29ff undefined */
 	{ 0x2a00, "Device Name"					},
 	{ 0x2a01, "Appearance"					},
 	{ 0x2a02, "Peripheral Privacy Flag"			},
