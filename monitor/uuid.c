@@ -152,9 +152,16 @@ static struct {
 	{ 0x1812, "Human Interface Device"			},
 	{ 0x1813, "Scan Parameters"				},
 	{ 0x1814, "Running Speed and Cadence"			},
-	/* 0x1815 undefined */
+	{ 0x1815, "Automation IO"				},
 	{ 0x1816, "Cycling Speed and Cadence"			},
-	/* 0x1817 to 0x27ff undefined */
+	/* 0x1817 undefined */
+	{ 0x1818, "Cycling Power"				},
+	{ 0x1819, "Location and Navigation"			},
+	{ 0x181a, "Environmental Sensing"			},
+	{ 0x181b, "Body Composition"				},
+	{ 0x181c, "User Data"					},
+	{ 0x181d, "Weight Scale"				},
+	/* 0x181e to 0x27ff undefined */
 	{ 0x2800, "Primary Service"				},
 	{ 0x2801, "Secondary Service"				},
 	{ 0x2802, "Include"					},
