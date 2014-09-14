@@ -52,9 +52,11 @@ static struct {
 	{ 0x001e, "MCAP Control Channel"			},
 	{ 0x001f, "MCAP Data Channel"				},
 	{ 0x0100, "L2CAP"					},
+	/* 0x0101 to 0x0fff undefined */
 	{ 0x1000, "Service Discovery Server Service Class"	},
 	{ 0x1001, "Browse Group Descriptor Service Class"	},
 	{ 0x1002, "Public Browse Root"				},
+	/* 0x1003 to 0x1100 undefined */
 	{ 0x1101, "Serial Port"					},
 	{ 0x1102, "LAN Access Using PPP"			},
 	{ 0x1103, "Dialup Networking"				},
@@ -95,6 +97,7 @@ static struct {
 	{ 0x1126, "HCR Print"					},
 	{ 0x1127, "HCR Scan"					},
 	{ 0x1128, "Common ISDN Access"				},
+	/* 0x1129 and 0x112a undefined */
 	{ 0x112d, "SIM Access"					},
 	{ 0x112e, "Phonebook Access Client"			},
 	{ 0x112f, "Phonebook Access Server"			},
@@ -105,6 +108,12 @@ static struct {
 	{ 0x1134, "Message Access Profile"			},
 	{ 0x1135, "GNSS"					},
 	{ 0x1136, "GNSS Server"					},
+	{ 0x1137, "3D Display"					},
+	{ 0x1138, "3D Glasses"					},
+	{ 0x1139, "3D Synchronization"				},
+	{ 0x113a, "MPS Profile"					},
+	{ 0x113b, "MPS Service"					},
+	/* 0x113c to 0x11ff undefined */
 	{ 0x1200, "PnP Information"				},
 	{ 0x1201, "Generic Networking"				},
 	{ 0x1202, "Generic File Transfer"			},
@@ -118,9 +127,11 @@ static struct {
 	{ 0x1303, "Video Source"				},
 	{ 0x1304, "Video Sink"					},
 	{ 0x1305, "Video Distribution"				},
+	/* 0x1306 to 0x13ff undefined */
 	{ 0x1400, "HDP"						},
 	{ 0x1401, "HDP Source"					},
 	{ 0x1402, "HDP Sink"					},
+	/* 0x1403 to 0x17ff undefined */
 	{ 0x1800, "Generic Access Profile"			},
 	{ 0x1801, "Generic Attribute Profile"			},
 	{ 0x1802, "Immediate Alert"				},
@@ -143,10 +154,12 @@ static struct {
 	{ 0x1814, "Running Speed and Cadence"			},
 	/* 0x1815 undefined */
 	{ 0x1816, "Cycling Speed and Cadence"			},
+	/* 0x1817 to 0x27ff undefined */
 	{ 0x2800, "Primary Service"				},
 	{ 0x2801, "Secondary Service"				},
 	{ 0x2802, "Include"					},
 	{ 0x2803, "Characteristic"				},
+	/* 0x2804 to 0x28ff undefined */
 	{ 0x2900, "Characteristic Extended Properties"		},
 	{ 0x2901, "Characteristic User Description"		},
 	{ 0x2902, "Client Characteristic Configuration"		},
@@ -156,6 +169,7 @@ static struct {
 	{ 0x2906, "Valid Range"					},
 	{ 0x2907, "External Report Reference"			},
 	{ 0x2908, "Report Reference"				},
+	/* 0x2909 to 0x29ff undefined */
 	{ 0x2a00, "Device Name"					},
 	{ 0x2a01, "Appearance"					},
 	{ 0x2a02, "Peripheral Privacy Flag"			},
