@@ -52,6 +52,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/socket.h android/socket.c \
 				android/pan.h android/pan.c \
 				android/handsfree.h android/handsfree.c \
+				android/handsfree-client.c android/handsfree-client.h \
 				android/gatt.h android/gatt.c \
 				android/health.h android/health.c \
 				android/mcap-lib.h android/mcap-lib.c \

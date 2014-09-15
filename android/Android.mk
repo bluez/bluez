@@ -49,6 +49,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/avrcp-lib.c \
 	bluez/android/pan.c \
 	bluez/android/handsfree.c \
+	bluez/android/handsfree-client.c \
 	bluez/android/gatt.c \
 	bluez/android/health.c \
 	bluez/android/mcap-lib.c \
