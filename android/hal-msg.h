@@ -1010,6 +1010,17 @@ struct hal_cmd_hf_client_volume_control {
 	uint8_t volume;
 } __attribute__((packed));
 
+#define HAL_OP_HF_CLIENT_DIAL			0x08
+struct hal_cmd_hf_client_dial {
+	uint16_t number_len;
+	uint8_t number[0];
+} __attribute__((packed));
+
+#define HAL_OP_HF_CLIENT_DIAL_MEMORY		0x09
+struct hal_cmd_hf_client_dial_memory {
+	int32_t location;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
