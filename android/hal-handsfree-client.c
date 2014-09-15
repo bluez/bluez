@@ -229,6 +229,23 @@ static bt_status_t dial_memory(int location)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
+static bt_status_t call_action(bthf_client_call_action_t action, int index)
+{
+	struct hal_cmd_hf_client_call_action cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	cmd.action = action;
+	cmd.index = index;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_CALL_ACTION, sizeof(cmd), &cmd,
+				NULL, NULL, NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -260,6 +277,7 @@ static bthf_client_interface_t iface = {
 	.volume_control = volume_control,
 	.dial = dial,
 	.dial_memory = dial_memory,
+	.handle_call_action = call_action,
 	.cleanup = cleanup
 };
 

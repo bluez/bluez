@@ -109,6 +109,13 @@ static void handle_dial_memory(const void *buf, uint16_t len)
 			HAL_OP_HF_CLIENT_DIAL_MEMORY, HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_call_action(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_OP_HF_CLIENT_CALL_ACTION, HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_CONNECT */
 	{ handle_connect, false,
@@ -134,6 +141,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_DIAL_MEMORY */
 	{ handle_dial_memory, false,
 				sizeof(struct hal_cmd_hf_client_dial_memory) },
+	/* HAL_OP_HF_CLIENT_CALL_ACTION */
+	{ handle_call_action, false,
+				sizeof(struct hal_cmd_hf_client_call_action) },
 };
 
 bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)

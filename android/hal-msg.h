@@ -1021,6 +1021,25 @@ struct hal_cmd_hf_client_dial_memory {
 	int32_t location;
 } __attribute__((packed));
 
+#define HAL_HF_CLIENT_ACTION_CHLD_0		0x00
+#define HAL_HF_CLIENT_ACTION_CHLD_1		0x01
+#define HAL_HF_CLIENT_ACTION_CHLD_2		0x02
+#define HAL_HF_CLIENT_ACTION_CHLD_3		0x03
+#define HAL_HF_CLIENT_ACTION_CHLD_4		0x04
+#define HAL_HF_CLIENT_ACTION_CHLD_1x	0x05
+#define HAL_HF_CLIENT_ACTION_CHLD_2x	0x06
+#define HAL_HF_CLIENT_ACTION_ATA		0x07
+#define HAL_HF_CLIENT_ACTION_CHUP		0x08
+#define HAL_HF_CLIENT_ACTION_BRTH_0		0x09
+#define HAL_HF_CLIENT_ACTION_BRTH_1		0x10
+#define HAL_HF_CLIENT_ACTION_BRTH_02	0x11
+
+#define HAL_OP_HF_CLIENT_CALL_ACTION		0x0a
+struct hal_cmd_hf_client_call_action {
+	uint8_t action;
+	uint8_t index;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
