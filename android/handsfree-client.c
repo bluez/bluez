@@ -44,7 +44,27 @@ static bdaddr_t adapter_addr;
 
 static struct ipc *hal_ipc = NULL;
 
+static void handle_connect(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_OP_HF_CLIENT_CONNECT, HAL_STATUS_UNSUPPORTED);
+}
+
+static void handle_disconnect(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_OP_HF_CLIENT_DISCONNECT, HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
+	/* HAL_OP_HF_CLIENT_CONNECT */
+	{ handle_connect, false,
+				sizeof(struct hal_cmd_hf_client_connect) },
+	/* HAL_OP_HF_CLIENT_DISCONNECT */
+	{ handle_disconnect, false,
+				sizeof(struct hal_cmd_hf_client_disconnect) },
 };
 
 bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)

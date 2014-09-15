@@ -70,6 +70,44 @@ static bt_status_t init(bthf_client_callbacks_t *callbacks)
 	return ret;
 }
 
+static bt_status_t hf_client_connect(bt_bdaddr_t *bd_addr)
+{
+	struct hal_cmd_hf_client_connect cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	if (!bd_addr)
+		return BT_STATUS_PARM_INVALID;
+
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_CONNECT, sizeof(cmd), &cmd,
+				NULL, NULL, NULL);
+}
+
+static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
+{
+	struct hal_cmd_hf_client_disconnect cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	if (!bd_addr)
+		return BT_STATUS_PARM_INVALID;
+
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_DISCONNECT, sizeof(cmd), &cmd,
+				NULL, NULL, NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -92,6 +130,8 @@ static void cleanup(void)
 static bthf_client_interface_t iface = {
 	.size = sizeof(iface),
 	.init = init,
+	.connect = hf_client_connect,
+	.disconnect = disconnect,
 	.cleanup = cleanup
 };
 

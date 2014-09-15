@@ -976,6 +976,18 @@ struct hal_cmd_gatt_server_send_response {
 	uint8_t data[0];
 } __attribute__((packed));
 
+/* Handsfree client HAL API */
+
+#define HAL_OP_HF_CLIENT_CONNECT		0x01
+struct hal_cmd_hf_client_connect {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
+#define HAL_OP_HF_CLIENT_DISCONNECT		0x02
+struct hal_cmd_hf_client_disconnect {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
