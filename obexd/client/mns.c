@@ -191,9 +191,6 @@ static void parse_event_report_handle(struct map_event *event,
 static void parse_event_report_folder(struct map_event *event,
 							const char *value)
 {
-	if (!value)
-		return;
-
 	g_free(event->folder);
 
 	if (g_str_has_prefix(value, "/"))
@@ -205,9 +202,6 @@ static void parse_event_report_folder(struct map_event *event,
 static void parse_event_report_old_folder(struct map_event *event,
 							const char *value)
 {
-	if (!value)
-		return;
-
 	g_free(event->old_folder);
 
 	if (g_str_has_prefix(value, "/"))
@@ -219,9 +213,6 @@ static void parse_event_report_old_folder(struct map_event *event,
 static void parse_event_report_msg_type(struct map_event *event,
 							const char *value)
 {
-	if (!value)
-		return;
-
 	g_free(event->msg_type);
 	event->msg_type = g_strdup(value);
 }
@@ -256,7 +247,8 @@ static void event_report_element(GMarkupParseContext *ctxt,
 		for (parser = event_report_parsers; parser && parser->name;
 								parser++) {
 			if (strcasecmp(key, parser->name) == 0) {
-				parser->func(event, values[i]);
+				if (values[i])
+					parser->func(event, values[i]);
 				break;
 			}
 		}
