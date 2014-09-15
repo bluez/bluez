@@ -1001,6 +1001,15 @@ struct hal_cmd_hf_client_disconnect_audio {
 #define HAL_OP_HF_CLIENT_START_VR		0x05
 #define HAL_OP_HF_CLIENT_STOP_VR		0x06
 
+#define HF_CLIENT_VOLUME_TYPE_SPEAKER	0x00
+#define HF_CLIENT_VOLUME_TYPE_MIC	0x01
+
+#define HAL_OP_HF_CLIENT_VOLUME_CONTROL		0x07
+struct hal_cmd_hf_client_volume_control {
+	uint8_t type;
+	uint8_t volume;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

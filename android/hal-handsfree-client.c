@@ -170,6 +170,24 @@ static bt_status_t stop_voice_recognition(void)
 				NULL);
 }
 
+static bt_status_t volume_control(bthf_client_volume_type_t type,
+								int volume)
+{
+	struct hal_cmd_hf_client_volume_control cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	cmd.type = type;
+	cmd.volume = volume;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_VOLUME_CONTROL, sizeof(cmd),
+				&cmd, NULL, NULL, NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -198,6 +216,7 @@ static bthf_client_interface_t iface = {
 	.disconnect_audio = disconnect_audio,
 	.start_voice_recognition = start_voice_recognition,
 	.stop_voice_recognition = stop_voice_recognition,
+	.volume_control = volume_control,
 	.cleanup = cleanup
 };
 
