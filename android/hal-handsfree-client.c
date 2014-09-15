@@ -298,6 +298,18 @@ static bt_status_t send_dtmf(char tone)
 				NULL, NULL, NULL);
 }
 
+static bt_status_t request_last_voice_tag_number(void)
+{
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_OP_HF_CLIENT_GET_LAST_VOICE_TAG_NUM,
+					0, NULL, NULL, NULL, NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -334,6 +346,7 @@ static bthf_client_interface_t iface = {
 	.query_current_operator_name = query_operator_name,
 	.retrieve_subscriber_info = retrieve_subsr_info,
 	.send_dtmf = send_dtmf,
+	.request_last_voice_tag_number = request_last_voice_tag_number,
 	.cleanup = cleanup
 };
 

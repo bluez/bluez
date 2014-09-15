@@ -1049,6 +1049,8 @@ struct hal_cmd_hf_client_send_dtmf {
 	uint8_t tone;
 } __attribute__((packed));
 
+#define HAL_OP_HF_CLIENT_GET_LAST_VOICE_TAG_NUM	0x0f
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
