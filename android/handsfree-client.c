@@ -73,6 +73,20 @@ static void handle_disconnect_audio(const void *buf, uint16_t len)
 					HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_start_vr(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_OP_HF_CLIENT_START_VR, HAL_STATUS_UNSUPPORTED);
+}
+
+static void handle_stop_vr(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_OP_HF_CLIENT_STOP_VR, HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_CONNECT */
 	{ handle_connect, false,
@@ -86,6 +100,10 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_DISCONNECT_AUDIO */
 	{ handle_disconnect_audio, false,
 			sizeof(struct hal_cmd_hf_client_disconnect_audio) },
+	/* define HAL_OP_HF_CLIENT_START_VR */
+	{ handle_start_vr, false, 0 },
+	/* define HAL_OP_HF_CLIENT_STOP_VR */
+	{ handle_stop_vr, false, 0 },
 };
 
 bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)

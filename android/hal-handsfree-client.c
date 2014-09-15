@@ -146,6 +146,30 @@ static bt_status_t disconnect_audio(bt_bdaddr_t *bd_addr)
 				&cmd, NULL, NULL, NULL);
 }
 
+static bt_status_t start_voice_recognition(void)
+{
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_START_VR, 0, NULL, NULL, NULL,
+				NULL);
+}
+
+static bt_status_t stop_voice_recognition(void)
+{
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_STOP_VR, 0, NULL, NULL, NULL,
+				NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -172,6 +196,8 @@ static bthf_client_interface_t iface = {
 	.disconnect = disconnect,
 	.connect_audio = connect_audio,
 	.disconnect_audio = disconnect_audio,
+	.start_voice_recognition = start_voice_recognition,
+	.stop_voice_recognition = stop_voice_recognition,
 	.cleanup = cleanup
 };
 
