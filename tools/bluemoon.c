@@ -488,11 +488,33 @@ static void request_firmware(const char *path)
 		firmware_offset = 1;
 }
 
+static const struct {
+	uint8_t val;
+	const char *str;
+} hw_variant_table[] = {
+	{ 0x06, "iBT 1.1 (XG223)"	},
+	{ 0x07, "iBT 2.0 (WP)"		},
+	{ 0x08, "iBT 2.5 (StP)"		},
+	{ 0x09, "iBT 1.5 (AG610)"	},
+	{ 0x0a, "iBT 2.1 (AG620)"	},
+	{ }
+};
+
+static const struct {
+	uint8_t val;
+	const char *str;
+} fw_variant_table[] = {
+	{ 0x01, "iBT 1.0 - iBT 2.5"	},
+	{ 0x06, "iBT Bootloader"	},
+	{ }
+};
+
 static void read_version_complete(const void *data, uint8_t size,
 							void *user_data)
 {
 	const struct rsp_read_version *rsp = data;
 	const char *str;
+	int i;
 
 	if (rsp->status) {
 		fprintf(stderr, "Failed to read version (0x%02x)\n",
@@ -542,29 +564,26 @@ static void read_version_complete(const void *data, uint8_t size,
 	printf("Controller Version Information\n");
 	printf("\tHardware Platform:\t%u\n", rsp->hw_platform);
 
-	switch (rsp->hw_variant) {
-	case 0x07:
-		str = "iBT 2.0";
-		break;
-	default:
-		str = "Reserved";
-		break;
+	str = "Reserved";
+
+	for (i = 0; hw_variant_table[i].str; i++) {
+		if (hw_variant_table[i].val == rsp->hw_variant) {
+			str = hw_variant_table[i].str;
+			break;
+		}
 	}
 
 	printf("\tHardware Variant:\t%s (0x%02x)\n", str, rsp->hw_variant);
 	printf("\tHardware Revision:\t%u.%u\n", rsp->hw_revision >> 4,
 						rsp->hw_revision & 0x0f);
 
-	switch (rsp->fw_variant) {
-	case 0x01:
-		str = "BT IP 4.0";
-		break;
-	case 0x06:
-		str = "iBT Bootloader";
-		break;
-	default:
-		str = "Reserved";
-		break;
+	str = "Reserved";
+
+	for (i = 0; fw_variant_table[i].str; i++) {
+		if (fw_variant_table[i].val == rsp->fw_variant) {
+			str = fw_variant_table[i].str;
+			break;
+		}
 	}
 
 	printf("\tFirmware Variant:\t%s (0x%02x)\n", str, rsp->fw_variant);
