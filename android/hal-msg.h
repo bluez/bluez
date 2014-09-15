@@ -1042,6 +1042,7 @@ struct hal_cmd_hf_client_call_action {
 
 #define HAL_OP_HF_CLIENT_QUERY_CURRENT_CALLS	0x0b
 #define HAL_OP_HF_CLIENT_QUERY_OPERATOR_NAME	0x0c
+#define HAL_OP_HF_CLIENT_RETRIEVE_SUBSCR_INFO	0x0d
 
 /* Notifications and confirmations */
 

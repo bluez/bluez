@@ -270,6 +270,18 @@ static bt_status_t query_operator_name(void)
 				NULL, NULL, NULL);
 }
 
+static bt_status_t retrieve_subsr_info(void)
+{
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_RETRIEVE_SUBSCR_INFO, 0, NULL,
+				NULL, NULL, NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -304,6 +316,7 @@ static bthf_client_interface_t iface = {
 	.handle_call_action = call_action,
 	.query_current_calls = query_current_calls,
 	.query_current_operator_name = query_operator_name,
+	.retrieve_subscriber_info = retrieve_subsr_info,
 	.cleanup = cleanup
 };
 
