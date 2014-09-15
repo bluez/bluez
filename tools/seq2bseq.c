@@ -40,7 +40,7 @@ static int convert_line(int fd, const char *line)
 	char str[3];
 	unsigned char val;
 
-	if (line[0] == '*' || line[0] == '\r' || line[0] == '\r')
+	if (line[0] == '*' || line[0] == '\r' || line[0] == '\n')
 		return 0;
 
 	while (1) {
