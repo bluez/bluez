@@ -58,6 +58,21 @@ static void handle_disconnect(const void *buf, uint16_t len)
 			HAL_OP_HF_CLIENT_DISCONNECT, HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_connect_audio(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_OP_HF_CLIENT_CONNECT_AUDIO, HAL_STATUS_UNSUPPORTED);
+}
+
+static void handle_disconnect_audio(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_OP_HF_CLIENT_DISCONNECT_AUDIO,
+					HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_CONNECT */
 	{ handle_connect, false,
@@ -65,6 +80,12 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_DISCONNECT */
 	{ handle_disconnect, false,
 				sizeof(struct hal_cmd_hf_client_disconnect) },
+	/* HAL_OP_HF_CLIENT_CONNECT_AUDIO */
+	{ handle_connect_audio, false,
+			sizeof(struct hal_cmd_hf_client_connect_audio) },
+	/* HAL_OP_HF_CLIENT_DISCONNECT_AUDIO */
+	{ handle_disconnect_audio, false,
+			sizeof(struct hal_cmd_hf_client_disconnect_audio) },
 };
 
 bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)

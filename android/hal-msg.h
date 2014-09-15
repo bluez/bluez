@@ -988,6 +988,16 @@ struct hal_cmd_hf_client_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_OP_HF_CLIENT_CONNECT_AUDIO		0x03
+struct hal_cmd_hf_client_connect_audio {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
+#define HAL_OP_HF_CLIENT_DISCONNECT_AUDIO	0x04
+struct hal_cmd_hf_client_disconnect_audio {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

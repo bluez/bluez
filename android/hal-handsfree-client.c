@@ -108,6 +108,44 @@ static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
 				NULL, NULL, NULL);
 }
 
+static bt_status_t connect_audio(bt_bdaddr_t *bd_addr)
+{
+	struct hal_cmd_hf_client_connect_audio cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	if (!bd_addr)
+		return BT_STATUS_PARM_INVALID;
+
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_CONNECT_AUDIO, sizeof(cmd),
+				&cmd, NULL, NULL, NULL);
+}
+
+static bt_status_t disconnect_audio(bt_bdaddr_t *bd_addr)
+{
+	struct hal_cmd_hf_client_disconnect_audio cmd;
+
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	if (!bd_addr)
+		return BT_STATUS_PARM_INVALID;
+
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_DISCONNECT_AUDIO, sizeof(cmd),
+				&cmd, NULL, NULL, NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -132,6 +170,8 @@ static bthf_client_interface_t iface = {
 	.init = init,
 	.connect = hf_client_connect,
 	.disconnect = disconnect,
+	.connect_audio = connect_audio,
+	.disconnect_audio = disconnect_audio,
 	.cleanup = cleanup
 };
 
