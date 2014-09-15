@@ -1132,7 +1132,8 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 
 		for (parser = msg_parsers; parser && parser->name; parser++) {
 			if (strcasecmp(key, parser->name) == 0) {
-				parser->func(msg, values[i]);
+				if (values[i])
+					parser->func(msg, values[i]);
 				break;
 			}
 		}
