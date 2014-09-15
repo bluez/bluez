@@ -1040,6 +1040,9 @@ struct hal_cmd_hf_client_call_action {
 	uint8_t index;
 } __attribute__((packed));
 
+#define HAL_OP_HF_CLIENT_QUERY_CURRENT_CALLS	0x0b
+#define HAL_OP_HF_CLIENT_QUERY_OPERATOR_NAME	0x0c
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00

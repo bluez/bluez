@@ -116,6 +116,22 @@ static void handle_call_action(const void *buf, uint16_t len)
 			HAL_OP_HF_CLIENT_CALL_ACTION, HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_query_current_calls(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_OP_HF_CLIENT_QUERY_CURRENT_CALLS,
+					HAL_STATUS_UNSUPPORTED);
+}
+
+static void handle_query_operator_name(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_OP_HF_CLIENT_QUERY_OPERATOR_NAME,
+					HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_CONNECT */
 	{ handle_connect, false,
@@ -144,6 +160,10 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_CALL_ACTION */
 	{ handle_call_action, false,
 				sizeof(struct hal_cmd_hf_client_call_action) },
+	/* HAL_OP_HF_CLIENT_QUERY_CURRENT_CALLS */
+	{ handle_query_current_calls, false, 0 },
+	/* HAL_OP_HF_CLIENT_QUERY_OPERATOR_NAME */
+	{ handle_query_operator_name, false, 0 },
 };
 
 bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)

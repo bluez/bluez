@@ -246,6 +246,30 @@ static bt_status_t call_action(bthf_client_call_action_t action, int index)
 				NULL, NULL, NULL);
 }
 
+static bt_status_t query_current_calls(void)
+{
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_QUERY_CURRENT_CALLS, 0, NULL,
+				NULL, NULL, NULL);
+}
+
+static bt_status_t query_operator_name(void)
+{
+	DBG("");
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_OP_HF_CLIENT_QUERY_OPERATOR_NAME, 0, NULL,
+				NULL, NULL, NULL);
+}
+
 static void cleanup(void)
 {
 	struct hal_cmd_unregister_module cmd;
@@ -278,6 +302,8 @@ static bthf_client_interface_t iface = {
 	.dial = dial,
 	.dial_memory = dial_memory,
 	.handle_call_action = call_action,
+	.query_current_calls = query_current_calls,
+	.query_current_operator_name = query_operator_name,
 	.cleanup = cleanup
 };
 
