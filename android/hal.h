@@ -27,6 +27,10 @@
 #include <hardware/bt_gatt_server.h>
 #include <hardware/bt_hl.h>
 
+#ifdef BLUEZ_EXTENSIONS
+#include <hardware/bt_hf_client.h>
+#endif
+
 btsock_interface_t *bt_get_socket_interface(void);
 bthh_interface_t *bt_get_hidhost_interface(void);
 btpan_interface_t *bt_get_pan_interface(void);
@@ -35,6 +39,10 @@ btrc_interface_t *bt_get_avrcp_interface(void);
 bthf_interface_t *bt_get_handsfree_interface(void);
 btgatt_interface_t *bt_get_gatt_interface(void);
 bthl_interface_t *bt_get_health_interface(void);
+
+#ifdef BLUEZ_EXTENSIONS
+bthf_client_interface_t *bt_get_hf_client_interface(void);
+#endif
 
 void bt_thread_associate(void);
 void bt_thread_disassociate(void);

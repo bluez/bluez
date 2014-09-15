@@ -75,6 +75,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-a2dp.c \
 					android/hal-avrcp.c \
 					android/hal-handsfree.c \
+					android/hal-handsfree-client.c \
 					android/hal-gatt.c \
 					android/hardware/bluetooth.h \
 					android/hardware/bt_av.h \
@@ -88,6 +89,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hardware/bt_pan.h \
 					android/hardware/bt_rc.h \
 					android/hardware/bt_sock.h \
+					android/hardware/bt_hf_client.h \
 					android/hardware/hardware.h \
 					android/cutils/properties.h \
 					android/ipc-common.h \
@@ -95,7 +97,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-ipc.h android/hal-ipc.c \
 					android/hal-utils.h android/hal-utils.c
 
-android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android -DBLUEZ_EXTENSIONS
 android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 					-no-undefined
 

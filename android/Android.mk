@@ -129,6 +129,10 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-utils.c \
 	bluez/android/hal-health.c \
 
+ifeq ($(BLUEZ_EXTENSIONS), true)
+LOCAL_SRC_FILES += bluez/android/hal-handsfree-client.c
+endif
+
 LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \
 	$(call include-path-for, libhardware) \
@@ -137,6 +141,10 @@ LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+ifeq ($(BLUEZ_EXTENSIONS), true)
+LOCAL_CFLAGS += -DBLUEZ_EXTENSIONS
+endif
 
 LOCAL_MODULE := bluetooth.default
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
