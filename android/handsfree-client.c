@@ -140,6 +140,13 @@ static void handle_retrieve_subscr_info(const void *buf, uint16_t len)
 					HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_send_dtmf(const void *buf, uint16_t len)
+{
+	DBG("Not Implemented");
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_OP_HF_CLIENT_SEND_DTMF, HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HF_CLIENT_CONNECT */
 	{ handle_connect, false,
@@ -174,6 +181,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_query_operator_name, false, 0 },
 	/* HAL_OP_HF_CLIENT_RETRIEVE_SUBSCR_INFO */
 	{ handle_retrieve_subscr_info, false, 0 },
+	/* HAL_OP_HF_CLIENT_SEND_DTMF */
+	{ handle_send_dtmf, false,
+				sizeof(struct hal_cmd_hf_client_send_dtmf) },
 };
 
 bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)

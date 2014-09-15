@@ -1044,6 +1044,11 @@ struct hal_cmd_hf_client_call_action {
 #define HAL_OP_HF_CLIENT_QUERY_OPERATOR_NAME	0x0c
 #define HAL_OP_HF_CLIENT_RETRIEVE_SUBSCR_INFO	0x0d
 
+#define HAL_OP_HF_CLIENT_SEND_DTMF		0x0e
+struct hal_cmd_hf_client_send_dtmf {
+	uint8_t tone;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
