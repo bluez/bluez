@@ -593,7 +593,7 @@ static void usage(void)
 		"Usage:\n");
 	printf("\tbluemoon [options]\n");
 	printf("Options:\n"
-		"\t-B, --bdaddr [addr]    Set Bluetooth address\n"
+		"\t-A, --bdaddr [addr]    Set Bluetooth address\n"
 		"\t-F, --firwmare [file]  Load firmware\n"
 		"\t-R, --reset            Reset controller\n"
 		"\t-i, --index <num>      Use specified controller\n"
