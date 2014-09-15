@@ -371,7 +371,7 @@ static bool write_data(struct sco_stream_out *out, const uint8_t *buffer,
 		if ((int) (audio_sent_us - audio_passed_us) > 1500) {
 			struct timespec timeout = {0,
 						(audio_sent_us -
-						 audio_passed_us) * 1000};
+						audio_passed_us) * 1000};
 			DBG("Sleeping for %d ms",
 					(int) (audio_sent_us - audio_passed_us));
 			nanosleep(&timeout, NULL);
