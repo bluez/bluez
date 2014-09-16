@@ -1731,6 +1731,7 @@ static void le_encrypt_complete(struct btdev *btdev)
 	struct bt_hci_evt_encrypt_change ev;
 	struct bt_hci_rsp_le_ltk_req_reply rp;
 	struct btdev *remote = btdev->conn;
+	uint8_t status;
 
 	memset(&rp, 0, sizeof(rp));
 	rp.handle = cpu_to_le16(42);
@@ -1742,10 +1743,16 @@ static void le_encrypt_complete(struct btdev *btdev)
 		return;
 	}
 
-	rp.status = BT_HCI_ERR_SUCCESS;
+	if (memcmp(btdev->le_ltk, remote->le_ltk, 16))
+		status = BT_HCI_ERR_AUTH_FAILURE;
+	else
+		status = BT_HCI_ERR_SUCCESS;
+
+	rp.status = status;
 	cmd_complete(btdev, BT_HCI_CMD_LE_LTK_REQ_REPLY, &rp, sizeof(rp));
 
 	memset(&ev, 0, sizeof(ev));
+	ev.status = status;
 	ev.handle = cpu_to_le16(42);
 	ev.encr_mode = 0x01;
 
