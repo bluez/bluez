@@ -491,11 +491,9 @@ Properties	string Folder [readonly]
 
 			Current folder.
 
-		string DatabaseIdentifier [readonly]
+		string DatabaseIdentifier [readonly, optional]
 
 			128 bits persistent identifier.
-
-			Value '0' shall be considered as not supported.
 
 
 Synchronization hierarchy
