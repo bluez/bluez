@@ -114,23 +114,35 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 
 static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 {
+	struct smp *smp = conn->smp;
+	uint8_t cfm[17];
+
 	memcpy(conn->prsp, data, sizeof(conn->prsp));
 
-	/*bthost_send_cid(bthost, handle, SMP_CID, pdu, req->send_len);*/
+	cfm[0] = 0x03;
+	bt_crypto_c1(smp->crypto, conn->tk, conn->prnd, conn->prsp,
+			conn->preq, conn->ia_type, conn->ia,
+			conn->ra_type, conn->ra, &cfm[1]);
+
+	bthost_send_cid(smp->bthost, conn->handle, SMP_CID, cfm, sizeof(cfm));
 }
 
 static void pairing_cfm(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	struct bthost *bthost = conn->smp->bthost;
-	const uint8_t *cfm = data;
 	uint8_t rsp[17];
 
 	memcpy(conn->pcnf, data + 1, 16);
 
-	rsp[0] = cfm[0];
-	bt_crypto_c1(conn->smp->crypto, conn->tk, conn->prnd, conn->prsp,
-				conn->preq, conn->ia_type, conn->ia,
-				conn->ra_type, conn->ra, &rsp[1]);
+	if (conn->out) {
+		rsp[0] = 0x04;
+		memset(&rsp[1], 0, 16);
+	} else {
+		rsp[0] = 0x03;
+		bt_crypto_c1(conn->smp->crypto, conn->tk, conn->prnd,
+				conn->prsp, conn->preq, conn->ia_type,
+				conn->ia, conn->ra_type, conn->ra, &rsp[1]);
+	}
 
 	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
 }
@@ -146,8 +158,11 @@ static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 	if (!verify_random(conn, data + 1))
 		return;
 
+	if (conn->out)
+		return;
+
 	rsp[0] = rnd[0];
-	memcpy(&rsp[1], conn->prnd, 16);
+	memset(&rsp[1], 0, 16);
 
 	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
 }
