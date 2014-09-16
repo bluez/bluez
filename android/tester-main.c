@@ -1631,7 +1631,7 @@ static void setup_avrcp(const void *test_data)
 	}
 
 	avrcp = if_bt->get_profile_interface(BT_PROFILE_AV_RC_ID);
-	if (!a2dp) {
+	if (!avrcp) {
 		tester_setup_failed();
 		return;
 	}
