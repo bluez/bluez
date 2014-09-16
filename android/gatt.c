@@ -1267,6 +1267,7 @@ reply:
 	send_client_search_complete_notify(gatt_status, cb_data->conn->id);
 	free(cb_data);
 }
+
 static gboolean connection_timeout(void *user_data)
 {
 	struct app_connection *conn = user_data;
@@ -1886,8 +1887,6 @@ static void clear_autoconnect_devices(void *data, void *user_data)
 	if (queue_remove(dev->autoconnect_apps, user_data))
 		if (queue_isempty(dev->autoconnect_apps))
 			remove_autoconnect_device(dev);
-
-
 }
 
 static uint8_t unregister_app(int client_if)
@@ -2655,11 +2654,10 @@ static void handle_client_get_characteristic(const void *buf, uint16_t len)
 
 	/* Discover all characteristics for services if not cached yet */
 	if (queue_isempty(srvc->chars)) {
+		struct discover_char_data *cb_data;
 		struct att_range range;
 
-		struct discover_char_data *cb_data =
-					new0(struct discover_char_data, 1);
-
+		cb_data = new0(struct discover_char_data, 1);
 		if (!cb_data) {
 			error("gatt: Cannot allocate cb data");
 			status = HAL_STATUS_FAILED;
@@ -5354,7 +5352,6 @@ static bool match_trans_id(const void *data, const void *user_data)
 	return transaction->id == PTR_TO_UINT(user_data);
 }
 
-
 static bool find_conn_waiting_exec_write(const void *data,
 							const void *user_data)
 {
@@ -5780,7 +5777,6 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 
 		put_le16(handle, value);
 		memcpy(&value[2], &type->value.u16, bt_uuid_len(type));
-
 	}
 
 	len = enc_find_info_resp(ATT_FIND_INFO_RESP_FMT_16BIT, adl, rsp,
