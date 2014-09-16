@@ -216,8 +216,6 @@ static const uint8_t TEST_UUID[] = {
 	0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04
 };
 
-static void bt_le_discovery_stop_cb(void);
-
 static bool is_bluetooth_uuid(const uint8_t *uuid)
 {
 	int i;
@@ -1585,6 +1583,15 @@ static int connect_next_dev(void)
 	return connect_le(dev);
 }
 
+static void bt_le_discovery_stop_cb(void)
+{
+	DBG("");
+
+	/* Check now if there is any device ready to connect */
+	if (connect_next_dev() < 0)
+		bt_le_discovery_start();
+}
+
 static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 						int rssi, uint16_t eir_len,
 						const void *eir,
@@ -1758,15 +1765,6 @@ static void handle_client_scan(const void *buf, uint16_t len)
 reply:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_SCAN,
 									status);
-}
-
-static void bt_le_discovery_stop_cb(void)
-{
-	DBG("");
-
-	/* Check now if there is any device ready to connect */
-	if (connect_next_dev() < 0)
-		bt_le_discovery_start();
 }
 
 static void trigger_disconnection(struct app_connection *connection)
