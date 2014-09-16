@@ -2135,7 +2135,7 @@ void bthost_request_auth(struct bthost *bthost, uint16_t handle)
 		cp.handle = cpu_to_le16(handle);
 		send_command(bthost, BT_HCI_CMD_AUTH_REQUESTED, &cp, sizeof(cp));
 	} else {
-		smp_pair(conn->smp_data, bthost->io_capability);
+		smp_pair(conn->smp_data, bthost->io_capability, bthost->auth_req);
 	}
 }
 
