@@ -725,6 +725,8 @@ static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	case HFP_GW_CMD_TYPE_SET:
 		break;
 	}
+
+	hfp_gw_send_result(device.gw, HFP_RESULT_ERROR);
 }
 
 static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
