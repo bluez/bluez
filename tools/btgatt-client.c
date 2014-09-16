@@ -539,8 +539,7 @@ static void cmd_write_value(struct client *cli, char *cmd_str)
 			if (strlen(argv[i]) != 2) {
 				printf("Invalid value byte: %s\n",
 								argv[i]);
-				free(value);
-				return;
+				goto done;
 			}
 
 			value[i-1] = strtol(argv[i], &endptr, 16);
@@ -548,8 +547,7 @@ static void cmd_write_value(struct client *cli, char *cmd_str)
 							|| errno == ERANGE) {
 				printf("Invalid value byte: %s\n",
 								argv[i]);
-				free(value);
-				return;
+				goto done;
 			}
 		}
 	}
@@ -559,11 +557,11 @@ static void cmd_write_value(struct client *cli, char *cmd_str)
 							false, value, length)) {
 			printf("Failed to initiate write without response "
 								"procedure\n");
-			return;
+			goto done;
 		}
 
 		printf("Write command sent\n");
-		return;
+		goto done;
 	}
 
 	if (!bt_gatt_client_write_value(cli->gatt, handle, value, length,
@@ -571,6 +569,7 @@ static void cmd_write_value(struct client *cli, char *cmd_str)
 								NULL, NULL))
 		printf("Failed to initiate write procedure\n");
 
+done:
 	free(value);
 }
 
