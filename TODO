@@ -78,51 +78,11 @@ Low Energy
   Priority: Medium
   Complexity: C2
 
-- Define Auto Connection Establishment Procedure. Some profiles such as
-  Proximity requires an active link to identify path lost situation. It is
-  necessary to define how to manage connections, it seems that White List
-  is appropriated to address auto connections, however is not clear if the
-  this procedure shall be a profile specific detail or if the remote device
-  object can expose a property "WhiteList", maybe "Trusted" property can be
-  also used for this purpose. Another alternative is to define a method to
-  allow application to request/register the wanted scanning/connection
-  parameters. Before start this task, a RFC/PATCH shall be sent to the ML.
-  See Volume 3, Part C, section 9.3.5 for more information.
-
-  Priority: Medium
-  Complexity: C2
-
-- Implement a tool(or extend hciconfig) to setup the advertising parameters
-  and data. Extend hciconfig passing extra arguments when enabling the
-  advertises is not the right approach, it will be almost impossible to
-  address all arguments needed in an acceptable way. For testing, we need
-  a tool to change easily the AD Flags, the UUIDs and other data that can be
-  exported through the advertising data field. Suggestions: 1) extend hciconfig
-  passing a config file when enabling advertises; 2) write a ncurses based tool
-
-  Priority: Medium
-  Complexity: C2
-
-- Privacy: When privacy is enabled in the adapter, LE scanning/connection
-  should use a private address. StartDiscovery method shall be changed and
-  new adapter property shall be added.
-
-  Priority: Medium
-  Complexity: C1
-
 - Static random address setup and storage. Once this address is written
   in a given remote, the address can not be changed anymore.
 
   Priority: Low
   Complexity: C1
-
-- Reconnection address: Reconnection address is a non resolvable private
-  address that the central writes in the peripheral. BlueZ will support
-  multiple profiles, it is not clear how it needs to be implemented.
-  Further discussion is necessary.
-
-  Priority: Low
-  Complexity: C2
 
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
