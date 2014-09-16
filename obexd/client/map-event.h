@@ -41,6 +41,10 @@ struct map_event {
 	char *folder;
 	char *old_folder;
 	char *msg_type;
+	char *datetime;
+	char *subject;
+	char *sender_name;
+	char *priority;
 };
 
 /* Handle notification in map client.

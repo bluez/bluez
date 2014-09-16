@@ -217,6 +217,34 @@ static void parse_event_report_msg_type(struct map_event *event,
 	event->msg_type = g_strdup(value);
 }
 
+static void parse_event_report_date_time(struct map_event *event,
+							const char *value)
+{
+	g_free(event->datetime);
+	event->datetime = g_strdup(value);
+}
+
+static void parse_event_report_subject(struct map_event *event,
+							const char *value)
+{
+	g_free(event->subject);
+	event->subject = g_strdup(value);
+}
+
+static void parse_event_report_sender_name(struct map_event *event,
+							const char *value)
+{
+	g_free(event->sender_name);
+	event->sender_name = g_strdup(value);
+}
+
+static void parse_event_report_priority(struct map_event *event,
+							const char *value)
+{
+	g_free(event->priority);
+	event->priority = g_strdup(value);
+}
+
 static struct map_event_report_parser {
 	const char *name;
 	void (*func) (struct map_event *event, const char *value);
@@ -226,6 +254,10 @@ static struct map_event_report_parser {
 		{ "folder", parse_event_report_folder },
 		{ "old_folder", parse_event_report_old_folder },
 		{ "msg_type", parse_event_report_msg_type },
+		{ "datetime", parse_event_report_date_time },
+		{ "subject", parse_event_report_subject },
+		{ "sender_name", parse_event_report_sender_name },
+		{ "priority", parse_event_report_priority },
 		{ }
 };
 
@@ -268,6 +300,10 @@ static void map_event_free(struct map_event *event)
 	g_free(event->folder);
 	g_free(event->old_folder);
 	g_free(event->msg_type);
+	g_free(event->datetime);
+	g_free(event->subject);
+	g_free(event->sender_name);
+	g_free(event->priority);
 	g_free(event);
 }
 
