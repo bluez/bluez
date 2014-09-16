@@ -233,9 +233,3 @@ ATT/GATT (old/outdated)
 
 Management Interface
 ====================
-
-- Whitelist support (initially only for LE)
-
-  Priority: Medium
-  Complexity: C2
-  Owner: Andre Guedes <andre.guedes@openbossa.org>
