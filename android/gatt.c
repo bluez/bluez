@@ -6882,6 +6882,4 @@ void bt_gatt_remove_autoconnect(unsigned int id, const bdaddr_t *addr)
 
 	if (queue_isempty(dev->autoconnect_apps))
 		remove_autoconnect_device(dev);
-
-		device_unref(dev);
 }
