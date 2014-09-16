@@ -2734,6 +2734,21 @@ static const struct generic_data pairing_acceptor_ssp_4 = {
 	.client_auth_req = 0x02, /* Dedicated Bonding - No MITM */
 };
 
+static uint16_t settings_powered_bondable_connectable_advertising[] = {
+					MGMT_OP_SET_BONDABLE,
+					MGMT_OP_SET_CONNECTABLE,
+					MGMT_OP_SET_ADVERTISING,
+					MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data pairing_acceptor_le_1 = {
+	.setup_settings = settings_powered_bondable_connectable_advertising,
+	.io_cap = 0x03, /* NoInputNoOutput */
+	.client_io_cap = 0x03, /* NoInputNoOutput */
+	.just_works = true,
+	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -4548,6 +4563,9 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - SSP 4",
 				&pairing_acceptor_ssp_4, setup_ssp_acceptor,
+				test_pairing_acceptor);
+	test_le("Pairing Acceptor - LE 1",
+				&pairing_acceptor_le_1, NULL,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
