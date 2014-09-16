@@ -110,22 +110,7 @@ struct hfp_codec {
 	bool remote_supported;
 };
 
-static const struct indicator inds_defaults[] = {
-		{ "service",   0, 1, 0, false, true },
-		{ "call",      0, 1, 0, true, true },
-		{ "callsetup", 0, 3, 0, true, true },
-		{ "callheld",  0, 2, 0, true, true },
-		{ "signal",    0, 5, 0, false, true },
-		{ "roam",      0, 1, 0, false, true },
-		{ "battchg",   0, 5, 0, false, true },
-};
-
-static const struct hfp_codec codecs_defaults[] = {
-	{ CODEC_ID_CVSD, true, false},
-	{ CODEC_ID_MSBC, false, false},
-};
-
-static struct {
+struct hf_device {
 	bdaddr_t bdaddr;
 	uint8_t state;
 	uint8_t audio_state;
@@ -152,7 +137,24 @@ static struct {
 
 	GIOChannel *sco;
 	guint sco_watch;
-} device;
+};
+
+static const struct indicator inds_defaults[] = {
+		{ "service",   0, 1, 0, false, true },
+		{ "call",      0, 1, 0, true, true },
+		{ "callsetup", 0, 3, 0, true, true },
+		{ "callheld",  0, 2, 0, true, true },
+		{ "signal",    0, 5, 0, false, true },
+		{ "roam",      0, 1, 0, false, true },
+		{ "battchg",   0, 5, 0, false, true },
+};
+
+static const struct hfp_codec codecs_defaults[] = {
+	{ CODEC_ID_CVSD, true, false},
+	{ CODEC_ID_MSBC, false, false},
+};
+
+static struct hf_device device;
 
 static uint32_t hfp_ag_features = 0;
 
