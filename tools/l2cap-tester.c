@@ -673,7 +673,7 @@ static void setup_powered_common(void)
 				data->mgmt_index, pin_code_request_callback,
 				data, NULL);
 
-	if (test->client_io_cap)
+	if (test && test->client_io_cap)
 		bthost_set_io_capability(bthost, test->client_io_cap);
 
 	if (test && test->client_pin)
