@@ -15,7 +15,7 @@ Background
   once the task is better understood.
 
 General
-==========
+=======
 
 - UUID handling: Use the new functions created for UUID handling in all parts
   of BlueZ code.  Currently, the new bt_uuid_* functions are being used by
