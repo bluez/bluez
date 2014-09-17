@@ -393,8 +393,8 @@ struct generic_data {
 	uint8_t io_cap;
 	uint8_t client_io_cap;
 	uint8_t client_auth_req;
-	bool reject_ssp;
-	bool client_reject_ssp;
+	bool reject_confirm;
+	bool client_reject_confirm;
 	bool just_works;
 };
 
@@ -2570,7 +2570,7 @@ static const struct generic_data pair_device_ssp_reject_1 = {
 	.io_cap = 0x01, /* DisplayYesNo */
 	.client_io_cap = 0x01, /* DisplayYesNo */
 	.client_auth_req = 0x01, /* No Bonding - MITM */
-	.reject_ssp = true,
+	.reject_confirm = true,
 };
 
 static const struct generic_data pair_device_ssp_reject_2 = {
@@ -2586,7 +2586,7 @@ static const struct generic_data pair_device_ssp_reject_2 = {
 	.expect_hci_func = client_bdaddr_param_func,
 	.io_cap = 0x01, /* DisplayYesNo */
 	.client_io_cap = 0x01, /* DisplayYesNo */
-	.client_reject_ssp = true,
+	.client_reject_confirm = true,
 };
 
 static const struct generic_data pair_device_ssp_nonbondable_1 = {
@@ -3625,7 +3625,7 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 
-	if (test->reject_ssp)
+	if (test->reject_confirm)
 		opcode = MGMT_OP_USER_CONFIRM_NEG_REPLY;
 	else
 		opcode = MGMT_OP_USER_CONFIRM_REPLY;
@@ -3667,7 +3667,7 @@ static void test_setup(const void *test_data)
 	else if (!test->just_works)
 		bthost_set_auth_req(bthost, 0x01);
 
-	if (test->client_reject_ssp)
+	if (test->client_reject_confirm)
 		bthost_set_reject_user_confirm(bthost, true);
 
 proceed:
