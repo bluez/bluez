@@ -84,13 +84,19 @@ static void client_destroy(void *user_data)
 	free(client);
 }
 
-static void client_write_callback(const void *data, uint16_t len,
+static void client_write_callback(const struct iovec *iov, int iovlen,
 							void *user_data)
 {
 	struct client *client = user_data;
+	struct msghdr msg;
 	ssize_t written;
 
-	written = send(client->fd, data, len, MSG_DONTWAIT);
+	memset(&msg, 0, sizeof(msg));
+
+	msg.msg_iov = (struct iovec *) iov;
+	msg.msg_iovlen = iovlen;
+
+	written = sendmsg(client->fd, &msg, MSG_DONTWAIT);
 	if (written < 0)
 		return;
 }

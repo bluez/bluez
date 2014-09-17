@@ -60,12 +60,13 @@ static void vhci_destroy(void *user_data)
 	free(vhci);
 }
 
-static void vhci_write_callback(const void *data, uint16_t len, void *user_data)
+static void vhci_write_callback(const struct iovec *iov, int iovlen,
+							void *user_data)
 {
 	struct vhci *vhci = user_data;
 	ssize_t written;
 
-	written = write(vhci->fd, data, len);
+	written = writev(vhci->fd, iov, iovlen);
 	if (written < 0)
 		return;
 }

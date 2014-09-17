@@ -51,7 +51,7 @@ typedef void (*btdev_command_func) (uint16_t opcode,
 				const void *data, uint8_t len,
 				btdev_callback callback, void *user_data);
 
-typedef void (*btdev_send_func) (const void *data, uint16_t len,
+typedef void (*btdev_send_func) (const struct iovec *iov, int iovlen,
 							void *user_data);
 
 typedef bool (*btdev_hook_func) (const void *data, uint16_t len,

@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <alloca.h>
+#include <sys/uio.h>
 
 #include "src/shared/util.h"
 #include "src/shared/timeout.h"
@@ -622,103 +623,99 @@ void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
 	btdev->send_data = user_data;
 }
 
-static void send_packet(struct btdev *btdev, const void *data, uint16_t len)
+static void send_packet(struct btdev *btdev, const struct iovec *iov,
+								int iovlen)
 {
 	if (!btdev->send_handler)
 		return;
 
-	btdev->send_handler(data, len, btdev->send_data);
+	btdev->send_handler(iov, iovlen, btdev->send_data);
 }
 
 static void send_event(struct btdev *btdev, uint8_t event,
 						const void *data, uint8_t len)
 {
-	struct bt_hci_evt_hdr *hdr;
-	uint16_t pkt_len;
-	void *pkt_data;
+	struct bt_hci_evt_hdr hdr;
+	struct iovec iov[3];
+	uint8_t pkt = BT_H4_EVT_PKT;
 
-	pkt_len = 1 + sizeof(*hdr) + len;
+	iov[0].iov_base = &pkt;
+	iov[0].iov_len = sizeof(pkt);
 
-	pkt_data = malloc(pkt_len);
-	if (!pkt_data)
-		return;
+	hdr.evt = event;
+	hdr.plen = len;
 
-	((uint8_t *) pkt_data)[0] = BT_H4_EVT_PKT;
+	iov[1].iov_base = &hdr;
+	iov[1].iov_len = sizeof(hdr);
 
-	hdr = pkt_data + 1;
-	hdr->evt = event;
-	hdr->plen = len;
+	if (len > 0) {
+		iov[2].iov_base = (void *) data;
+		iov[2].iov_len = len;
+	}
 
-	if (len > 0)
-		memcpy(pkt_data + 1 + sizeof(*hdr), data, len);
+	if (run_hooks(btdev, BTDEV_HOOK_POST_EVT, event, data, len))
+		send_packet(btdev, iov, len > 0 ? 3 : 2);
+}
 
-	if (run_hooks(btdev, BTDEV_HOOK_POST_EVT, event, pkt_data, pkt_len))
-		send_packet(btdev, pkt_data, pkt_len);
+static void send_cmd(struct btdev *btdev, uint8_t evt, uint16_t opcode,
+					const struct iovec *iov, int iovlen)
+{
+	struct bt_hci_evt_hdr hdr;
+	struct iovec iov2[2 + iovlen];
+	uint8_t pkt = BT_H4_EVT_PKT;
+	int i;
 
-	free(pkt_data);
+	iov2[0].iov_base = &pkt;
+	iov2[0].iov_len = sizeof(pkt);
+
+	hdr.evt = evt;
+	hdr.plen = 0;
+
+	iov2[1].iov_base = &hdr;
+	iov2[1].iov_len = sizeof(hdr);
+
+	for (i = 0; i < iovlen; i++) {
+		hdr.plen += iov[i].iov_len;
+		iov2[2 + i].iov_base = iov[i].iov_base;
+		iov2[2 + i].iov_len = iov[i].iov_len;
+	}
+
+	if (run_hooks(btdev, BTDEV_HOOK_POST_CMD, opcode, iov[i].iov_base,
+								iov[i].iov_len))
+		send_packet(btdev, iov2, 2 + iovlen);
 }
 
 static void cmd_complete(struct btdev *btdev, uint16_t opcode,
 						const void *data, uint8_t len)
 {
-	struct bt_hci_evt_hdr *hdr;
-	struct bt_hci_evt_cmd_complete *cc;
-	uint16_t pkt_len;
-	void *pkt_data;
+	struct bt_hci_evt_cmd_complete cc;
+	struct iovec iov[2];
 
-	pkt_len = 1 + sizeof(*hdr) + sizeof(*cc) + len;
+	cc.ncmd = 0x01;
+	cc.opcode = cpu_to_le16(opcode);
 
-	pkt_data = malloc(pkt_len);
-	if (!pkt_data)
-		return;
+	iov[0].iov_base = &cc;
+	iov[0].iov_len = sizeof(cc);
 
-	((uint8_t *) pkt_data)[0] = BT_H4_EVT_PKT;
+	iov[1].iov_base = (void *) data;
+	iov[1].iov_len = len;
 
-	hdr = pkt_data + 1;
-	hdr->evt = BT_HCI_EVT_CMD_COMPLETE;
-	hdr->plen = sizeof(*cc) + len;
-
-	cc = pkt_data + 1 + sizeof(*hdr);
-	cc->ncmd = 0x01;
-	cc->opcode = cpu_to_le16(opcode);
-
-	if (len > 0)
-		memcpy(pkt_data + 1 + sizeof(*hdr) + sizeof(*cc), data, len);
-
-	if (run_hooks(btdev, BTDEV_HOOK_POST_CMD, opcode, pkt_data, pkt_len))
-		send_packet(btdev, pkt_data, pkt_len);
-
-	free(pkt_data);
+	send_cmd(btdev, BT_HCI_EVT_CMD_COMPLETE, opcode, iov, 2);
 }
 
 static void cmd_status(struct btdev *btdev, uint8_t status, uint16_t opcode)
 {
-	struct bt_hci_evt_hdr *hdr;
-	struct bt_hci_evt_cmd_status *cs;
-	uint16_t pkt_len;
-	void *pkt_data;
+	struct bt_hci_evt_cmd_status cs;
+	struct iovec iov;
 
-	pkt_len = 1 + sizeof(*hdr) + sizeof(*cs);
+	cs.status = status;
+	cs.ncmd = 0x01;
+	cs.opcode = cpu_to_le16(opcode);
 
-	pkt_data = malloc(pkt_len);
-	if (!pkt_data)
-		return;
+	iov.iov_base = &cs;
+	iov.iov_len = sizeof(cs);
 
-	((uint8_t *) pkt_data)[0] = BT_H4_EVT_PKT;
-
-	hdr = pkt_data + 1;
-	hdr->evt = BT_HCI_EVT_CMD_STATUS;
-	hdr->plen = sizeof(*cs);
-
-	cs = pkt_data + 1 + sizeof(*hdr);
-	cs->status = status;
-	cs->ncmd = 0x01;
-	cs->opcode = cpu_to_le16(opcode);
-
-	if (run_hooks(btdev, BTDEV_HOOK_POST_CMD, opcode, pkt_data, pkt_len))
-		send_packet(btdev, pkt_data, pkt_len);
-
-	free(pkt_data);
+	send_cmd(btdev, BT_HCI_EVT_CMD_STATUS, opcode, &iov, 1);
 }
 
 static void num_completed_packets(struct btdev *btdev)
@@ -3184,6 +3181,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 {
 	uint8_t pkt_type;
+	struct iovec iov;
 
 	if (!btdev)
 		return;
@@ -3198,8 +3196,11 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 		process_cmd(btdev, data + 1, len - 1);
 		break;
 	case BT_H4_ACL_PKT:
-		if (btdev->conn)
-			send_packet(btdev->conn, data, len);
+		if (btdev->conn) {
+			iov.iov_base = (void *) data;
+			iov.iov_len = len;
+			send_packet(btdev->conn, &iov, 1);
+		}
 		num_completed_packets(btdev);
 		break;
 	default:

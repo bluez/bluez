@@ -120,6 +120,20 @@ static void write_callback(const void *data, uint16_t len, void *user_data)
 		return;
 }
 
+static void writev_callback(const struct iovec *iov, int iovlen,
+								void *user_data)
+{
+	GIOChannel *channel = user_data;
+	ssize_t written;
+	int fd;
+
+	fd = g_io_channel_unix_get_fd(channel);
+
+	written = writev(fd, iov, iovlen);
+	if (written < 0)
+		return;
+}
+
 static gboolean receive_bthost(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
@@ -203,7 +217,7 @@ static guint create_source_btdev(int fd, struct btdev *btdev)
 	g_io_channel_set_encoding(channel, NULL, NULL);
 	g_io_channel_set_buffered(channel, FALSE);
 
-	btdev_set_send_handler(btdev, write_callback, channel);
+	btdev_set_send_handler(btdev, writev_callback, channel);
 
 	source = g_io_add_watch_full(channel, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
