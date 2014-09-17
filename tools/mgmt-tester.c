@@ -4565,7 +4565,7 @@ int main(int argc, char *argv[])
 				&pairing_acceptor_ssp_4, setup_pairing_acceptor,
 				test_pairing_acceptor);
 	test_le("Pairing Acceptor - LE 1",
-				&pairing_acceptor_le_1, NULL,
+				&pairing_acceptor_le_1, setup_pairing_acceptor,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
