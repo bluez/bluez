@@ -131,6 +131,7 @@ struct hf_device {
 	struct hfp_codec codecs[CODECS_COUNT];
 
 	guint ring;
+	char *clip;
 	bool hsp;
 
 	struct hfp_gw *gw;
@@ -255,6 +256,8 @@ static void device_cleanup(struct hf_device *dev)
 	if (dev->ring) {
 		g_source_remove(dev->ring);
 		dev->ring = 0;
+
+		g_free(dev->clip);
 	}
 
 	set_audio_state(dev, HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED);
@@ -2017,12 +2020,12 @@ done:
 
 static gboolean ring_cb(gpointer user_data)
 {
-	char *clip = user_data;
+	struct hf_device *dev = user_data;
 
-	hfp_gw_send_info(device.gw, "RING");
+	hfp_gw_send_info(dev->gw, "RING");
 
-	if (device.clip_enabled && clip)
-		hfp_gw_send_info(device.gw, "%s", clip);
+	if (dev->clip_enabled && dev->clip)
+		hfp_gw_send_info(dev->gw, "%s", dev->clip);
 
 	return TRUE;
 }
@@ -2064,7 +2067,7 @@ static void phone_state_waiting(int num_active, int num_held, uint8_t type,
 static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 					const uint8_t *number, int number_len)
 {
-	char *clip, *num;
+	char *num;
 
 	if (device.setup_state == HAL_HANDSFREE_CALL_STATE_INCOMING) {
 		if (device.num_active != num_active ||
@@ -2095,19 +2098,20 @@ static void phone_state_incoming(int num_active, int num_held, uint8_t type,
 	num = number_len ? (char *) number : "";
 
 	if (type == HAL_HANDSFREE_CALL_ADDRTYPE_INTERNATIONAL && num[0] != '+')
-		clip = g_strdup_printf("+CLIP: \"+%s\",%u", num, type);
+		device.clip = g_strdup_printf("+CLIP: \"+%s\",%u", num, type);
 	else
-		clip = g_strdup_printf("+CLIP: \"%s\",%u", num, type);
+		device.clip = g_strdup_printf("+CLIP: \"%s\",%u", num, type);
 
 	/* send first RING */
-	ring_cb(clip);
+	ring_cb(&device);
 
 	device.ring = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT,
 							RING_TIMEOUT, ring_cb,
-							clip, g_free);
-
-	if (!device.ring)
-		g_free(clip);
+							&device, NULL);
+	if (!device.ring) {
+		g_free(device.clip);
+		device.clip = NULL;
+	}
 }
 
 static void phone_state_idle(int num_active, int num_held)
@@ -2115,6 +2119,11 @@ static void phone_state_idle(int num_active, int num_held)
 	if (device.ring) {
 		g_source_remove(device.ring);
 		device.ring = 0;
+
+		if (device.clip) {
+			g_free(device.clip);
+			device.clip = NULL;
+		}
 	}
 
 	switch (device.setup_state) {
