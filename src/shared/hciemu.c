@@ -107,19 +107,6 @@ static void client_command_callback(uint16_t opcode,
 	btdev_command_default(callback);
 }
 
-static void write_callback(const void *data, uint16_t len, void *user_data)
-{
-	GIOChannel *channel = user_data;
-	ssize_t written;
-	int fd;
-
-	fd = g_io_channel_unix_get_fd(channel);
-
-	written = write(fd, data, len);
-	if (written < 0)
-		return;
-}
-
 static void writev_callback(const struct iovec *iov, int iovlen,
 								void *user_data)
 {
@@ -167,7 +154,7 @@ static guint create_source_bthost(int fd, struct bthost *bthost)
 	g_io_channel_set_encoding(channel, NULL, NULL);
 	g_io_channel_set_buffered(channel, FALSE);
 
-	bthost_set_send_handler(bthost, write_callback, channel);
+	bthost_set_send_handler(bthost, writev_callback, channel);
 
 	source = g_io_add_watch_full(channel, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
