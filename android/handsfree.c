@@ -267,9 +267,11 @@ static void device_cleanup(struct hf_device *dev)
 
 static void disconnect_watch(void *user_data)
 {
+	struct hf_device *dev = user_data;
+
 	DBG("");
 
-	device_cleanup(&device);
+	device_cleanup(dev);
 }
 
 static void at_cmd_unknown(const char *command, void *user_data)
@@ -1375,7 +1377,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	hfp_gw_set_close_on_unref(dev->gw, true);
 	hfp_gw_set_command_handler(dev->gw, at_cmd_unknown, dev, NULL);
-	hfp_gw_set_disconnect_handler(dev->gw, disconnect_watch, NULL, NULL);
+	hfp_gw_set_disconnect_handler(dev->gw, disconnect_watch, dev, NULL);
 
 	if (dev->hsp) {
 		register_post_slc_at(dev);
