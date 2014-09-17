@@ -3275,7 +3275,7 @@ static void setup_bthost(void)
 		bthost_write_scan_enable(bthost, 0x03);
 }
 
-static void setup_ssp_acceptor(const void *test_data)
+static void setup_pairing_acceptor(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
@@ -4553,16 +4553,16 @@ int main(int argc, char *argv[])
 				&pairing_acceptor_linksec_2, NULL,
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - SSP 1",
-				&pairing_acceptor_ssp_1, setup_ssp_acceptor,
+				&pairing_acceptor_ssp_1, setup_pairing_acceptor,
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - SSP 2",
-				&pairing_acceptor_ssp_2, setup_ssp_acceptor,
+				&pairing_acceptor_ssp_2, setup_pairing_acceptor,
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - SSP 3",
-				&pairing_acceptor_ssp_3, setup_ssp_acceptor,
+				&pairing_acceptor_ssp_3, setup_pairing_acceptor,
 				test_pairing_acceptor);
 	test_bredrle("Pairing Acceptor - SSP 4",
-				&pairing_acceptor_ssp_4, setup_ssp_acceptor,
+				&pairing_acceptor_ssp_4, setup_pairing_acceptor,
 				test_pairing_acceptor);
 	test_le("Pairing Acceptor - LE 1",
 				&pairing_acceptor_le_1, NULL,
