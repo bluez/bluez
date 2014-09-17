@@ -2757,6 +2757,15 @@ static const struct generic_data pairing_acceptor_le_2 = {
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
 };
 
+static const struct generic_data pairing_acceptor_le_3 = {
+	.setup_settings = settings_powered_bondable_connectable_advertising,
+	.io_cap = 0x04, /* KeyboardDisplay */
+	.client_io_cap = 0x04, /* KeyboardDisplay */
+	.expect_alt_ev =  MGMT_EV_AUTH_FAILED,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_auth_failed),
+	.reject_confirm = true,
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -4577,6 +4586,9 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_le("Pairing Acceptor - LE 2",
 				&pairing_acceptor_le_2, setup_pairing_acceptor,
+				test_pairing_acceptor);
+	test_le("Pairing Acceptor - LE 3",
+				&pairing_acceptor_le_3, setup_pairing_acceptor,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
