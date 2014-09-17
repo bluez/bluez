@@ -1115,6 +1115,34 @@ static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 	}
 }
 
+static void le_conn_update(struct btdev *btdev, uint16_t handle,
+				uint16_t max_interval, uint16_t min_interval,
+				uint16_t latency, uint16_t supv_timeout,
+				uint16_t min_length, uint16_t max_length)
+{
+	struct btdev *remote = btdev->conn;
+	struct __packed {
+		uint8_t subevent;
+		struct bt_hci_evt_le_conn_update_complete ev;
+	} ev;
+
+	ev.subevent = BT_HCI_EVT_LE_CONN_UPDATE_COMPLETE;
+	ev.ev.handle = cpu_to_le16(handle);
+	ev.ev.interval = cpu_to_le16(min_interval);
+	ev.ev.latency = cpu_to_le16(latency);
+	ev.ev.supv_timeout = cpu_to_le16(supv_timeout);
+
+	if (remote)
+		ev.ev.status = BT_HCI_ERR_SUCCESS;
+	else
+		ev.ev.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+
+	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, &ev, sizeof(ev));
+
+	if (remote)
+		send_event(remote, BT_HCI_EVT_LE_META_EVENT, &ev, sizeof(ev));
+}
+
 static void disconnect_complete(struct btdev *btdev, uint16_t handle,
 							uint8_t reason)
 {
@@ -2762,6 +2790,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &lrwls, sizeof(lrwls));
 		break;
 
+	case BT_HCI_CMD_LE_CONN_UPDATE:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+		break;
+
 	case BT_HCI_CMD_LE_CLEAR_WHITE_LIST:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
@@ -2912,6 +2946,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_read_remote_version *rrv;
 	const struct bt_hci_cmd_read_clock_offset *rco;
 	const struct bt_hci_cmd_le_create_conn *lecc;
+	const struct bt_hci_cmd_le_conn_update *lecu;
 
 	switch (opcode) {
 	case BT_HCI_CMD_INQUIRY:
@@ -3049,6 +3084,19 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 		lecc = data;
 		btdev->le_scan_own_addr_type = lecc->own_addr_type;
 		le_conn_request(btdev, lecc->peer_addr, lecc->peer_addr_type);
+		break;
+
+	case BT_HCI_CMD_LE_CONN_UPDATE:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			return;
+		lecu = data;
+		le_conn_update(btdev, le16_to_cpu(lecu->handle),
+				le16_to_cpu(lecu->min_interval),
+				le16_to_cpu(lecu->max_interval),
+				le16_to_cpu(lecu->latency),
+				le16_to_cpu(lecu->supv_timeout),
+				le16_to_cpu(lecu->min_length),
+				le16_to_cpu(lecu->max_length));
 		break;
 	}
 }
