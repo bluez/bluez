@@ -379,6 +379,7 @@ struct generic_data {
 	uint32_t expect_settings_unset;
 	uint16_t expect_alt_ev;
 	const void *expect_alt_ev_param;
+	bool (*verify_alt_ev_func)(const void *param, uint16_t length);
 	uint16_t expect_alt_ev_len;
 	uint16_t expect_hci_command;
 	const void *expect_hci_param;
@@ -2614,11 +2615,37 @@ static const struct generic_data pair_device_le_success_test_1 = {
 	.setup_settings = settings_powered_bondable,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
+	.just_works = true,
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_func = pair_device_expect_param_func,
 	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
 };
+
+static bool verify_ltk(const void *param, uint16_t length)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const struct mgmt_ev_new_long_term_key *ev = param;
+
+	if (length != sizeof(struct mgmt_ev_new_long_term_key)) {
+		tester_warn("Invalid new ltk length %u != %u", length,
+				sizeof(struct mgmt_ev_new_long_term_key));
+		return false;
+	}
+
+	if (test->just_works && ev->key.type != 0x00) {
+		tester_warn("Authenticated key for just-works");
+		return false;
+	}
+
+	if (!test->just_works && ev->key.type != 0x01) {
+		tester_warn("Unauthenticated key for MITM");
+		return false;
+	}
+
+	return true;
+}
 
 static const struct generic_data pair_device_le_success_test_2 = {
 	.setup_settings = settings_powered_bondable,
@@ -2630,6 +2657,7 @@ static const struct generic_data pair_device_le_success_test_2 = {
 	.expect_func = pair_device_expect_param_func,
 	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+	.verify_alt_ev_func = verify_ltk,
 };
 
 static uint16_t settings_powered_connectable_bondable[] = {
@@ -3862,6 +3890,15 @@ static void command_generic_event_alt(uint16_t index, uint16_t length,
 	if (length != test->expect_alt_ev_len) {
 		tester_warn("Invalid length %s event",
 					mgmt_evstr(test->expect_alt_ev));
+		mgmt_unregister(data->mgmt_alt, data->mgmt_alt_ev_id);
+		tester_test_failed();
+		return;
+	}
+
+	if (test->verify_alt_ev_func &&
+				!test->verify_alt_ev_func(param, length)) {
+		tester_warn("Incorrect event parameters");
+		mgmt_unregister(data->mgmt_alt, data->mgmt_alt_ev_id);
 		tester_test_failed();
 		return;
 	}
