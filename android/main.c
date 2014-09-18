@@ -170,17 +170,12 @@ failed:
 								status);
 }
 
-static void service_unregister(const void *buf, uint16_t len)
+static bool unregister_service(uint8_t id)
 {
-	const struct hal_cmd_unregister_module *m = buf;
-	uint8_t status;
+	if (id > HAL_SERVICE_ID_MAX || !services[id])
+		return false;
 
-	if (m->service_id > HAL_SERVICE_ID_MAX || !services[m->service_id]) {
-		status = HAL_STATUS_FAILED;
-		goto failed;
-	}
-
-	switch (m->service_id) {
+	switch (id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
 		bt_bluetooth_unregister();
 		break;
@@ -212,16 +207,24 @@ static void service_unregister(const void *buf, uint16_t len)
 		bt_hf_client_unregister();
 		break;
 	default:
-		/*
-		 * This would indicate bug in HAL, as unregister should not be
-		 * called in init failed
-		 */
-		DBG("service %u not supported", m->service_id);
+		DBG("service %u not supported", id);
+		return false;
+	}
+
+	services[id] = false;
+
+	return true;
+}
+
+static void service_unregister(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_unregister_module *m = buf;
+	uint8_t status;
+
+	if (!unregister_service(m->service_id)) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
-
-	services[m->service_id] = false;
 
 	status = HAL_STATUS_SUCCESS;
 
@@ -393,42 +396,8 @@ static void cleanup_services(void)
 
 	DBG("");
 
-	for (i = HAL_SERVICE_ID_MAX; i > HAL_SERVICE_ID_CORE; i--) {
-		if (!services[i])
-			continue;
-
-		switch (i) {
-		case HAL_SERVICE_ID_BLUETOOTH:
-			bt_bluetooth_unregister();
-			break;
-		case HAL_SERVICE_ID_SOCKET:
-			bt_socket_unregister();
-			break;
-		case HAL_SERVICE_ID_HIDHOST:
-			bt_hid_unregister();
-			break;
-		case HAL_SERVICE_ID_A2DP:
-			bt_a2dp_unregister();
-			break;
-		case HAL_SERVICE_ID_AVRCP:
-			bt_avrcp_unregister();
-			break;
-		case HAL_SERVICE_ID_PAN:
-			bt_pan_unregister();
-			break;
-		case HAL_SERVICE_ID_HANDSFREE:
-			bt_handsfree_unregister();
-			break;
-		case HAL_SERVICE_ID_GATT:
-			bt_gatt_unregister();
-			break;
-		case HAL_SERVICE_ID_HEALTH:
-			bt_health_unregister();
-			break;
-		}
-
-		services[i] = false;
-	}
+	for (i = HAL_SERVICE_ID_MAX; i > HAL_SERVICE_ID_CORE; i--)
+		unregister_service(i);
 }
 
 static bool set_capabilities(void)
