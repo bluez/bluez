@@ -680,8 +680,8 @@ static void send_cmd(struct btdev *btdev, uint8_t evt, uint16_t opcode,
 		iov2[2 + i].iov_len = iov[i].iov_len;
 	}
 
-	if (run_hooks(btdev, BTDEV_HOOK_POST_CMD, opcode, iov[i].iov_base,
-								iov[i].iov_len))
+	if (run_hooks(btdev, BTDEV_HOOK_POST_CMD, opcode, iov[i -1].iov_base,
+							iov[i -1].iov_len))
 		send_packet(btdev, iov2, 2 + iovlen);
 }
 
