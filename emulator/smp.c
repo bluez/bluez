@@ -106,8 +106,8 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 	rsp[2] = 0x00;				/* OOB Flag */
 	rsp[3] = bthost_get_auth_req(bthost);
 	rsp[4] = 0x10;				/* Max key size */
-	rsp[5] = 0x00;				/* Init. key dist. */
-	rsp[6] = conn->preq[6] & 0x01;		/* Rsp. key dist. */
+	rsp[5] = conn->preq[5] & 0x01;		/* Init. key dist. */
+	rsp[6] = 0x00;				/* Rsp. key dist. */
 
 	memcpy(conn->prsp, rsp, sizeof(rsp));
 
