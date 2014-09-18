@@ -2775,6 +2775,16 @@ static const struct generic_data pairing_acceptor_le_4 = {
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
 };
 
+static const struct generic_data pairing_acceptor_le_5 = {
+	.setup_settings = settings_powered_bondable_connectable_advertising,
+	.io_cap = 0x02, /* KeyboardOnly */
+	.client_io_cap = 0x04, /* KeyboardDisplay */
+	.client_auth_req = 0x05, /* Bonding - MITM */
+	.reject_confirm = true,
+	.expect_alt_ev =  MGMT_EV_AUTH_FAILED,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_auth_failed),
+};
+
 static const char unpair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char unpair_device_rsp[] = {
@@ -3660,7 +3670,6 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	struct test_data *data = user_data;
 	const struct generic_data *test = data->test_data;
 	struct mgmt_cp_user_passkey_reply cp;
-	uint16_t opcode;
 
 	if (test->just_works) {
 		tester_warn("User Passkey Request for just-works case");
@@ -3671,13 +3680,15 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 
-	if (test->reject_confirm)
-		opcode = MGMT_OP_USER_PASSKEY_NEG_REPLY;
-	else
-		opcode = MGMT_OP_USER_PASSKEY_REPLY;
+	if (test->reject_confirm) {
+		mgmt_reply(data->mgmt, MGMT_OP_USER_PASSKEY_NEG_REPLY,
+				data->mgmt_index, sizeof(cp.addr), &cp.addr,
+				NULL, NULL, NULL);
+		return;
+	}
 
-	mgmt_reply(data->mgmt, opcode, data->mgmt_index, sizeof(cp), &cp,
-							NULL, NULL, NULL);
+	mgmt_reply(data->mgmt, MGMT_OP_USER_PASSKEY_REPLY, data->mgmt_index,
+					sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
 static void test_setup(const void *test_data)
@@ -4633,6 +4644,9 @@ int main(int argc, char *argv[])
 				test_pairing_acceptor);
 	test_le("Pairing Acceptor - LE 4",
 				&pairing_acceptor_le_4, setup_pairing_acceptor,
+				test_pairing_acceptor);
+	test_le("Pairing Acceptor - LE 5",
+				&pairing_acceptor_le_5, setup_pairing_acceptor,
 				test_pairing_acceptor);
 
 	test_bredrle("Unpair Device - Not Powered 1",
