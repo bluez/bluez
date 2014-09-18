@@ -97,16 +97,18 @@ static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
 static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	struct bthost *bthost = conn->smp->bthost;
-	static const uint8_t rsp[] = {	0x02,	/* Pairing Response */
-					0x03,	/* NoInputNoOutput */
-					0x00,	/* OOB Flag */
-					0x01,	/* Bonding - no MITM */
-					0x10,	/* Max key size */
-					0x00,	/* Init. key dist. */
-					0x01,	/* Rsp. key dist. */
-				};
+	uint8_t rsp[7];
 
 	memcpy(conn->preq, data, sizeof(conn->preq));
+
+	rsp[0] = 0x02;				/* Pairing Response */
+	rsp[1] = bthost_get_io_capability(bthost);
+	rsp[2] = 0x00;				/* OOB Flag */
+	rsp[3] = bthost_get_auth_req(bthost);
+	rsp[4] = 0x10;				/* Max key size */
+	rsp[5] = 0x00;				/* Init. key dist. */
+	rsp[6] = conn->preq[6] & 0x01;		/* Rsp. key dist. */
+
 	memcpy(conn->prsp, rsp, sizeof(rsp));
 
 	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
