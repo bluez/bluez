@@ -2186,14 +2186,29 @@ void bthost_set_io_capability(struct bthost *bthost, uint8_t io_capability)
 	bthost->io_capability = io_capability;
 }
 
+uint8_t bthost_get_io_capability(struct bthost *bthost)
+{
+	return bthost->io_capability;
+}
+
 void bthost_set_auth_req(struct bthost *bthost, uint8_t auth_req)
 {
 	bthost->auth_req = auth_req;
 }
 
+uint8_t bthost_get_auth_req(struct bthost *bthost)
+{
+	return bthost->auth_req;
+}
+
 void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject)
 {
 	bthost->reject_user_confirm = reject;
+}
+
+bool bthost_get_reject_user_confirm(struct bthost *bthost)
+{
+	return bthost->reject_user_confirm;
 }
 
 void bthost_add_rfcomm_server(struct bthost *bthost, uint8_t channel,
