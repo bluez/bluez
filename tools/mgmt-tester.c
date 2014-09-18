@@ -2291,7 +2291,10 @@ static const void *pair_device_send_param_func(uint16_t *len)
 	static uint8_t param[8];
 
 	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
-	param[6] = 0x00; /* Address type */
+	if (data->hciemu_type == HCIEMU_TYPE_LE)
+		param[6] = 0x01; /* Address type */
+	else
+		param[6] = 0x00; /* Address type */
 	param[7] = test->io_cap;
 
 	*len = sizeof(param);
@@ -2305,7 +2308,10 @@ static const void *pair_device_expect_param_func(uint16_t *len)
 	static uint8_t param[7];
 
 	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
-	param[6] = 0x00; /* Address type */
+	if (data->hciemu_type == HCIEMU_TYPE_LE)
+		param[6] = 0x01; /* Address type */
+	else
+		param[6] = 0x00; /* Address type */
 
 	*len = sizeof(param);
 
@@ -2602,6 +2608,16 @@ static const struct generic_data pair_device_ssp_nonbondable_1 = {
 	.expect_hci_func = client_bdaddr_param_func,
 	.io_cap = 0x01, /* DisplayYesNo */
 	.client_io_cap = 0x01, /* DisplayYesNo */
+};
+
+static const struct generic_data pair_device_le_success_test_1 = {
+	.setup_settings = settings_powered_bondable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
 };
 
 static uint16_t settings_powered_connectable_bondable[] = {
@@ -4604,6 +4620,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - SSP Non-bondable 1",
 				&pair_device_ssp_nonbondable_1,
+				NULL, test_command_generic);
+	test_le("Pair Device - LE Success 1",
+				&pair_device_le_success_test_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Pairing Acceptor - Legacy 1",
