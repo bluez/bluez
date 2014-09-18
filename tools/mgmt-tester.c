@@ -2803,14 +2803,17 @@ static const struct generic_data pairing_acceptor_le_1 = {
 	.just_works = true,
 	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+	.verify_alt_ev_func = verify_ltk,
 };
 
 static const struct generic_data pairing_acceptor_le_2 = {
 	.setup_settings = settings_powered_bondable_connectable_advertising,
 	.io_cap = 0x04, /* KeyboardDisplay */
 	.client_io_cap = 0x04, /* KeyboardDisplay */
+	.client_auth_req = 0x05, /* Bonding - MITM */
 	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+	.verify_alt_ev_func = verify_ltk,
 };
 
 static const struct generic_data pairing_acceptor_le_3 = {
@@ -2829,6 +2832,7 @@ static const struct generic_data pairing_acceptor_le_4 = {
 	.client_auth_req = 0x05, /* Bonding - MITM */
 	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+	.verify_alt_ev_func = verify_ltk,
 };
 
 static const struct generic_data pairing_acceptor_le_5 = {
