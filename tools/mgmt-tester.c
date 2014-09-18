@@ -2629,7 +2629,7 @@ static bool verify_ltk(const void *param, uint16_t length)
 	const struct mgmt_ev_new_long_term_key *ev = param;
 
 	if (length != sizeof(struct mgmt_ev_new_long_term_key)) {
-		tester_warn("Invalid new ltk length %u != %u", length,
+		tester_warn("Invalid new ltk length %u != %zu", length,
 				sizeof(struct mgmt_ev_new_long_term_key));
 		return false;
 	}
