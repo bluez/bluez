@@ -3884,40 +3884,49 @@ done:
 	test_condition_complete(data);
 }
 
+static bool verify_alt_ev(const void *param, uint16_t length)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+
+	if (length != test->expect_alt_ev_len) {
+		tester_warn("Invalid length %u != %u", length,
+						test->expect_alt_ev_len);
+		return false;
+	}
+
+	if (test->expect_alt_ev_param &&
+			memcmp(test->expect_alt_ev_param, param, length)) {
+		tester_warn("Event parameters do not match");
+		return false;
+	}
+
+	return true;
+}
+
 static void command_generic_event_alt(uint16_t index, uint16_t length,
 							const void *param,
 							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
-
-	if (length != test->expect_alt_ev_len) {
-		tester_warn("Invalid length %s event",
-					mgmt_evstr(test->expect_alt_ev));
-		mgmt_unregister(data->mgmt_alt, data->mgmt_alt_ev_id);
-		tester_test_failed();
-		return;
-	}
-
-	if (test->verify_alt_ev_func &&
-				!test->verify_alt_ev_func(param, length)) {
-		tester_warn("Incorrect event parameters");
-		mgmt_unregister(data->mgmt_alt, data->mgmt_alt_ev_id);
-		tester_test_failed();
-		return;
-	}
+	bool (*verify)(const void *param, uint16_t length);
 
 	tester_print("New %s event received", mgmt_evstr(test->expect_alt_ev));
 
-	if (test->expect_alt_ev_param &&
-			memcmp(param, test->expect_alt_ev_param,
-						test->expect_alt_ev_len) != 0)
-		return;
-
-	tester_print("Unregistering %s notification",
-					mgmt_evstr(test->expect_alt_ev));
-
 	mgmt_unregister(data->mgmt_alt, data->mgmt_alt_ev_id);
+
+	if (test->verify_alt_ev_func)
+		verify = test->verify_alt_ev_func;
+	else
+		verify = verify_alt_ev;
+
+	if (!verify(param, length)) {
+		tester_warn("Incorrect %s event parameters",
+					mgmt_evstr(test->expect_alt_ev));
+		tester_test_failed();
+		return;
+	}
 
 	test_condition_complete(data);
 }
