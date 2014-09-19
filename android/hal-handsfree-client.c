@@ -35,11 +35,45 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
+static void handle_conn_state(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_conn_state *ev = buf;
+
+	if (cbs->connection_state_cb)
+		cbs->connection_state_cb(ev->state, ev->peer_feat,
+						ev->chld_feat,
+						(bt_bdaddr_t *) ev->bdaddr);
+}
+
+static void handle_audio_state(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_audio_state *ev = buf;
+
+	if (cbs->audio_state_cb)
+		cbs->audio_state_cb(ev->state, (bt_bdaddr_t *) (ev->bdaddr));
+}
+
+static void handle_vr_state(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_vr_state *ev = buf;
+
+	if (cbs->vr_cmd_cb)
+		cbs->vr_cmd_cb(ev->state);
+}
+
 /*
  * handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
  */
 static const struct hal_ipc_handler ev_handlers[] = {
+	/* HAL_EV_HF_CLIENT_CONN_STATE */
+	{ handle_conn_state, false,
+				sizeof(struct hal_ev_hf_client_conn_state) },
+	/* HAL_EV_HF_CLIENT_AUDIO_STATE */
+	{ handle_audio_state, false,
+				sizeof(struct hal_ev_hf_client_audio_state) },
+	/* HAL_EV_HF_CLIENT_VR_STATE */
+	{ handle_vr_state, false, sizeof(struct hal_ev_hf_client_vr_state) },
 };
 
 static bt_status_t init(bthf_client_callbacks_t *callbacks)
