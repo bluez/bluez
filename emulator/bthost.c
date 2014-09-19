@@ -975,6 +975,9 @@ static void evt_encrypt_change(struct bthost *bthost, const void *data,
 	if (!conn)
 		return;
 
+	if (ev->status)
+		return;
+
 	conn->encr_mode = ev->encr_mode;
 }
 
