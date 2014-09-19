@@ -31,6 +31,9 @@
 #include <gdbus/gdbus.h>
 #include <glib.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "lib/uuid.h"
 #include "src/plugin.h"
