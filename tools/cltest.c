@@ -32,7 +32,7 @@
 #include <alloca.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 

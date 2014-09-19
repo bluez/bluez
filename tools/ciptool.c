@@ -32,7 +32,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <signal.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 

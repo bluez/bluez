@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
+#include <endian.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
 

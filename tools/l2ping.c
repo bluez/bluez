@@ -35,7 +35,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <sys/time.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>

@@ -38,7 +38,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <sys/time.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
