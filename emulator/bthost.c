@@ -979,6 +979,9 @@ static void evt_encrypt_change(struct bthost *bthost, const void *data,
 		return;
 
 	conn->encr_mode = ev->encr_mode;
+
+	if (conn->smp_data)
+		smp_conn_encrypted(conn->smp_data, conn->encr_mode);
 }
 
 static void evt_io_cap_response(struct bthost *bthost, const void *data,

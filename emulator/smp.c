@@ -54,6 +54,8 @@ struct smp_conn {
 	struct smp *smp;
 	uint16_t handle;
 	bool out;
+	uint8_t local_key_dist;
+	uint8_t remote_key_dist;
 	uint8_t ia[6];
 	uint8_t ia_type;
 	uint8_t ra[6];
@@ -228,6 +230,19 @@ int smp_get_ltk(void *smp_data, uint64_t rand, uint16_t ediv, uint8_t *ltk)
 	memcpy(ltk, conn->ltk, 16);
 
 	return 0;
+}
+
+void smp_conn_encrypted(void *conn_data, uint8_t encrypt)
+{
+	struct smp_conn *conn = conn_data;
+
+	if (!encrypt)
+		return;
+
+	if (conn->out && conn->remote_key_dist)
+		return;
+
+	/* Distribute keys */
 }
 
 void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
