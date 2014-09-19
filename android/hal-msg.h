@@ -1762,3 +1762,35 @@ struct hal_ev_hf_client_audio_state {
 struct hal_ev_hf_client_vr_state {
 	uint8_t state;
 } __attribute__((packed));
+
+#define HAL_HF_CLIENT_NET_NOT_AVAILABLE		0x00
+#define HAL_HF_CLIENT_NET_AVAILABLE		0x01
+
+#define HAL_EV_HF_CLIENT_NET_STATE			0x84
+struct hal_ev_hf_client_net_state {
+	uint8_t state;
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_NET_ROAMING_TYPE_HOME		0x00
+#define HAL_HF_CLIENT_NET_ROAMING_TYPE_ROAMING		0x01
+
+#define HAL_EV_HF_CLIENT_NET_ROAMING_TYPE		0x85
+struct hal_ev_hf_client_net_roaming_type {
+	uint8_t state;
+} __attribute__((packed));
+
+#define HAL_EV_HF_CLIENT_NET_SIGNAL_STRENGTH		0x86
+struct hal_ev_hf_client_net_signal_strength {
+	uint8_t signal_strength;
+} __attribute__((packed));
+
+#define HAL_EV_HF_CLIENT_BATTERY_LEVEL			0x87
+struct hal_ev_hf_client_battery_level {
+	uint8_t battery_level;
+} __attribute__((packed));
+
+#define HAL_EV_HF_CLIENT_OPERATOR_NAME			0x88
+struct hal_ev_hf_client_operator_name {
+	uint16_t name_len;
+	uint8_t name[0];
+} __attribute__((packed));

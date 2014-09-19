@@ -61,6 +61,57 @@ static void handle_vr_state(void *buf, uint16_t len, int fd)
 		cbs->vr_cmd_cb(ev->state);
 }
 
+static void handle_network_state(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_net_state *ev = buf;
+
+	if (cbs->network_state_cb)
+		cbs->network_state_cb(ev->state);
+}
+
+static void handle_network_roaming(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_net_roaming_type *ev = buf;
+
+	if (cbs->network_roaming_cb)
+		cbs->network_roaming_cb(ev->state);
+}
+
+static void handle_network_signal(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_net_signal_strength *ev = buf;
+
+	if (cbs->network_signal_cb)
+		cbs->network_signal_cb(ev->signal_strength);
+}
+
+static void handle_battery_level(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_battery_level *ev = buf;
+
+	if (cbs->battery_level_cb)
+		cbs->battery_level_cb(ev->battery_level);
+}
+
+static void handle_operator_name(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_operator_name *ev = buf;
+	uint16_t name_len = ev->name_len;
+	char *name = NULL;
+
+	if (len != sizeof(*ev) + name_len ||
+		(name_len != 0 && ev->name[name_len - 1] != '\0')) {
+		error("invalid operator name, aborting");
+		exit(EXIT_FAILURE);
+	}
+
+	if (name_len)
+		name = (char *) ev->name;
+
+	if (cbs->current_operator_cb)
+		cbs->current_operator_cb(name);
+}
+
 /*
  * handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
@@ -74,6 +125,21 @@ static const struct hal_ipc_handler ev_handlers[] = {
 				sizeof(struct hal_ev_hf_client_audio_state) },
 	/* HAL_EV_HF_CLIENT_VR_STATE */
 	{ handle_vr_state, false, sizeof(struct hal_ev_hf_client_vr_state) },
+	/*HAL_EV_HF_CLIENT_NET_STATE */
+	{ handle_network_state, false,
+				sizeof(struct hal_ev_hf_client_net_state)},
+	/*HAL_EV_HF_CLIENT_NET_ROAMING_TYPE */
+	{ handle_network_roaming, false,
+			sizeof(struct hal_ev_hf_client_net_roaming_type) },
+	/* HAL_EV_HF_CLIENT_NET_SIGNAL_STRENGTH */
+	{ handle_network_signal, false,
+			sizeof(struct hal_ev_hf_client_net_signal_strength) },
+	/* HAL_EV_HF_CLIENT_BATTERY_LEVEL */
+	{ handle_battery_level, false,
+			sizeof(struct hal_ev_hf_client_battery_level) },
+	/* HAL_EV_HF_CLIENT_OPERATOR_NAME */
+	{ handle_operator_name, true,
+			sizeof(struct hal_ev_hf_client_operator_name) },
 };
 
 static bt_status_t init(bthf_client_callbacks_t *callbacks)
