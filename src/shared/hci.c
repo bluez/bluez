@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 
 #include "monitor/bt.h"
 #include "monitor/mainloop.h"
