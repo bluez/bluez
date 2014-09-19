@@ -15,6 +15,8 @@
  *
  */
 
+#include <string.h>
+
 #include "if-main.h"
 #include "terminal.h"
 #include "../hal-utils.h"

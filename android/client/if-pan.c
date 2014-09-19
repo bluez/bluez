@@ -15,8 +15,6 @@
  *
  */
 
-#include <hardware/bluetooth.h>
-
 #include "if-main.h"
 #include "../hal-utils.h"
 
