@@ -16,7 +16,7 @@ test-mgmt		   2	Management interface handling
 test-crypto		   4	Cryptographic toolbox helpers
 test-textfile		   4	Old textfile storage format
 test-ringbuf		   3	Ring buffer functionality
-test-queue		   1	Queue handling functionality
+test-queue		   3	Queue handling functionality
 test-uhid		   6	Userspace HID functionality
 test-hfp		  14	HFP Audio Gateway functionality
 test-avdtp		  60	AVDTP qualification test cases
@@ -27,9 +27,9 @@ test-gobex-packet	   9	OBEX packet handling
 test-gobex-header	  28	OBEX header handling
 test-gobex-apparam	  18	OBEX apparam handling
 test-gobex-transfer	  36	OBEX transfer handling
-test-gdbus-client	  12	D-Bus client handling
+test-gdbus-client	  13	D-Bus client handling
 			-----
-			 519
+			 523
 
 
 Automated end-to-end testing
