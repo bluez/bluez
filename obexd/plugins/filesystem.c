@@ -37,7 +37,7 @@
 #include <sys/statvfs.h>
 #include <sys/sendfile.h>
 #include <fcntl.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <inttypes.h>
 
 #include <glib.h>
