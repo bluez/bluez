@@ -2660,6 +2660,19 @@ static const struct generic_data pair_device_le_success_test_2 = {
 	.verify_alt_ev_func = verify_ltk,
 };
 
+static const struct generic_data pair_device_le_reject_test_1 = {
+	.setup_settings = settings_powered_bondable,
+	.io_cap = 0x02, /* KeyboardOnly */
+	.client_io_cap = 0x04, /* KeyboardDisplay */
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_AUTH_FAILED,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev =  MGMT_EV_AUTH_FAILED,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_auth_failed),
+	.reject_confirm = true,
+};
+
 static uint16_t settings_powered_connectable_bondable[] = {
 						MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_CONNECTABLE,
@@ -4688,6 +4701,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_le("Pair Device - LE Success 2",
 				&pair_device_le_success_test_2,
+				NULL, test_command_generic);
+	test_le("Pair Device - LE Reject 1",
+				&pair_device_le_reject_test_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Pairing Acceptor - Legacy 1",
