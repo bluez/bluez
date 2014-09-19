@@ -202,6 +202,74 @@ static void handle_current_calls(void *buf, uint16_t len, int fd)
 							ev->multiparty, number);
 }
 
+static void handle_volume_change(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_volume_changed *ev = buf;
+
+	if (cbs->volume_change_cb)
+		cbs->volume_change_cb(ev->type, ev->volume);
+}
+
+static void handle_command_cmp(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_command_complete *ev = buf;
+
+	if (cbs->cmd_complete_cb)
+		cbs->cmd_complete_cb(ev->type, ev->cme);
+}
+
+static void handle_subscriber_info(void *buf, uint16_t len, int fd)
+{
+	const struct hal_ev_hf_client_subscriber_service_info *ev = buf;
+	uint16_t name_len = ev->name_len;
+	char *name = NULL;
+
+	if (len != sizeof(*ev) + name_len ||
+		(name_len != 0 && ev->name[name_len - 1] != '\0')) {
+		error("invalid sunscriber info, aborting");
+		exit(EXIT_FAILURE);
+	}
+
+	if (name_len)
+		name = (char *) ev->name;
+
+	if (cbs->subscriber_info_cb)
+		cbs->subscriber_info_cb(name, ev->type);
+}
+
+static void handle_in_band_ringtone(void *buf, uint16_t len, int fd)
+{
+	struct hal_ev_hf_client_inband_settings *ev = buf;
+
+	if (cbs->in_band_ring_tone_cb)
+		cbs->in_band_ring_tone_cb(ev->state);
+}
+
+static void handle_last_voice_tag_number(void *buf, uint16_t len, int fd)
+{
+	const struct hal_ev_hf_client_last_void_call_tag_num *ev = buf;
+	char *number = NULL;
+	uint16_t num_len = ev->number_len;
+
+	if (len != sizeof(*ev) + num_len ||
+		(num_len != 0 && ev->number[num_len - 1] != '\0')) {
+		error("invalid voice tag, aborting");
+		exit(EXIT_FAILURE);
+	}
+
+	if (num_len)
+		number = (char *) ev->number;
+
+	if (cbs->last_voice_tag_number_callback)
+		cbs->last_voice_tag_number_callback(number);
+}
+
+static void handle_ring_indication(void *buf, uint16_t len, int fd)
+{
+	if (cbs->ring_indication_cb)
+		cbs->ring_indication_cb();
+}
+
 /*
  * handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
@@ -251,6 +319,23 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_HF_CLIENT_CURRENT_CALL */
 	{ handle_current_calls, true,
 			sizeof(struct hal_ev_hf_client_current_call) },
+	/* HAL_EV_CLIENT_VOLUME_CHANGED */
+	{ handle_volume_change, false,
+			sizeof(struct hal_ev_hf_client_volume_changed) },
+	/* HAL_EV_CLIENT_COMMAND_COMPLETE */
+	{ handle_command_cmp, false,
+			sizeof(struct hal_ev_hf_client_command_complete) },
+	/* HAL_EV_CLIENT_SUBSCRIBER_SERVICE_INFO */
+	{ handle_subscriber_info, true,
+		sizeof(struct hal_ev_hf_client_subscriber_service_info) },
+	/* HAL_EV_CLIENT_INBAND_SETTINGS */
+	{ handle_in_band_ringtone, false,
+		sizeof(struct hal_ev_hf_client_inband_settings) },
+	/* HAL_EV_CLIENT_LAST_VOICE_CALL_TAG_NUM */
+	{ handle_last_voice_tag_number, true,
+		sizeof(struct hal_ev_hf_client_last_void_call_tag_num) },
+	/* HAL_EV_CLIENT_RING_INDICATION */
+	{ handle_ring_indication, false, 0 },
 };
 
 static bt_status_t init(bthf_client_callbacks_t *callbacks)

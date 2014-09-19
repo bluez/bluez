@@ -1863,3 +1863,51 @@ struct hal_ev_hf_client_current_call {
 	uint16_t number_len;
 	uint8_t number[0];
 } __attribute__((packed));
+
+#define HAL_EV_CLIENT_VOLUME_CHANGED			0x90
+struct hal_ev_hf_client_volume_changed {
+	uint8_t type;
+	uint8_t volume;
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_CMD_COMP_OK			0x00
+#define HAL_HF_CLIENT_CMD_COMP_ERR			0x01
+#define HAL_HF_CLIENT_CMD_COMP_ERR_NO_CARRIER		0x02
+#define HAL_HF_CLIENT_CMD_COMP_ERR_BUSY			0x03
+#define HAL_HF_CLIENT_CMD_COMP_ERR_NO_ANSWER		0x04
+#define HAL_HF_CLIENT_CMD_COMP_ERR_DELAYED		0x05
+#define HAL_HF_CLIENT_CMD_COMP_ERR_BACKLISTED		0x06
+#define HAL_HF_CLIENT_CMD_COMP_ERR_CME			0x07
+
+#define HAL_EV_CLIENT_COMMAND_COMPLETE			0x91
+struct hal_ev_hf_client_command_complete {
+	uint8_t type;
+	uint8_t cme;
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_SUBSCR_TYPE_UNKNOWN	0x00
+#define HAL_HF_CLIENT_SUBSCR_TYPE_VOICE		0x01
+#define HAL_HF_CLIENT_SUBSCR_TYPE_FAX		0x02
+
+#define HAL_EV_CLIENT_SUBSCRIBER_SERVICE_INFO		0x92
+struct hal_ev_hf_client_subscriber_service_info {
+	uint8_t type;
+	uint16_t name_len;
+	uint8_t name[0];
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_INBAND_RINGTONE_NOT_PROVIDED	0x00
+#define HAL_HF_CLIENT_INBAND_RINGTONE_PROVIDED		0x01
+
+#define HAL_EV_CLIENT_INBAND_SETTINGS			0x93
+struct hal_ev_hf_client_inband_settings {
+	uint8_t state;
+} __attribute__((packed));
+
+#define HAL_EV_CLIENT_LAST_VOICE_CALL_TAG_NUM		0x94
+struct hal_ev_hf_client_last_void_call_tag_num {
+	uint16_t number_len;
+	uint8_t number[0];
+} __attribute__((packed));
+
+#define HAL_EV_CLIENT_RING_INDICATION			0x95
