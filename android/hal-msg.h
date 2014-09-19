@@ -1794,3 +1794,72 @@ struct hal_ev_hf_client_operator_name {
 	uint16_t name_len;
 	uint8_t name[0];
 } __attribute__((packed));
+
+#define HAL_HF_CLIENT_CALL_IND_NO_CALL_IN_PROGERSS	0x00
+#define HAL_HF_CLIENT_CALL_IND_CALL_IN_PROGERSS		0x01
+
+#define HAL_EV_HF_CLIENT_CALL_INDICATOR			0x89
+struct hal_ev_hf_client_call_indicator {
+	uint8_t call;
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_CALL_SETUP_NONE			0x00
+#define HAL_HF_CLIENT_CALL_SETUP_INCOMING		0x01
+#define HAL_HF_CLIENT_CALL_SETUP_OUTGOING		0x02
+#define HAL_HF_CLIENT_CALL_SETUP_ALERTING		0x03
+
+#define HAL_EV_HF_CLIENT_CALL_SETUP_INDICATOR		0x8a
+struct hal_ev_hf_client_call_setup_indicator {
+	uint8_t call_setup;
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_CALL_HELD_IND_NONE		0x00
+#define HAL_HF_CLIENT_CALL_HELD_IND_HOLD_AND_ACTIVE	0x01
+#define HAL_HF_CLIENT_CALL_SETUP_IND_HOLD		0x02
+
+#define HAL_EV_HF_CLIENT_CALL_HELD_INDICATOR		0x8b
+struct hal_ev_hf_client_call_held_indicator {
+	uint8_t call_held;
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_RESP_AND_HOLD_STATUS_HELD		0x00
+#define HAL_HF_CLIENT_RESP_AND_HOLD_STATUS_ACCEPT	0x01
+#define HAL_HF_CLIENT_RESP_AND_HOLD_STATUS_REJECT	0x02
+
+#define HAL_EV_HF_CLIENT_RESPONSE_AND_HOLD_STATUS	0x8c
+struct hal_ev_hf_client_response_and_hold_status {
+	uint8_t status;
+} __attribute__((packed));
+
+#define HAL_EV_HF_CLIENT_CALLING_LINE_IDENT		0x8d
+struct hal_ev_hf_client_calling_line_ident {
+	uint16_t number_len;
+	uint8_t number[0];
+} __attribute__((packed));
+
+#define HAL_EV_HF_CLIENT_CALL_WAITING			0x8e
+struct hal_ev_hf_client_call_waiting {
+	uint16_t number_len;
+	uint8_t number[0];
+} __attribute__((packed));
+
+#define HAL_HF_CLIENT_DIRECTION_OUTGOING	0x00
+#define HAL_HF_CLIENT_DIRECTION_INCOMIGN	0x01
+
+#define HAL_HF_CLIENT_CALL_STATE_ACTIVE			0x00
+#define HAL_HF_CLIENT_CALL_STATE_HELD			0x01
+#define HAL_HF_CLIENT_CALL_STATE_DIALING		0x02
+#define HAL_HF_CLIENT_CALL_STATE_ALERTING		0x03
+#define HAL_HF_CLIENT_CALL_STATE_INCOMING		0x04
+#define HAL_HF_CLIENT_CALL_STATE_WAITING		0x05
+#define HAL_HF_CLIENT_CALL_STATE_HELD_BY_RESP_AND_HOLD	0x06
+
+#define HAL_EV_HF_CLIENT_CURRENT_CALL			0x8f
+struct hal_ev_hf_client_current_call {
+	uint8_t index;
+	uint8_t direction;
+	uint8_t call_state;
+	uint8_t multiparty;
+	uint16_t number_len;
+	uint8_t number[0];
+} __attribute__((packed));
