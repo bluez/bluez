@@ -101,7 +101,7 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 
 	memcpy(conn->preq, data, sizeof(conn->preq));
 
-	rsp[0] = 0x02;				/* Pairing Response */
+	rsp[0] = BT_L2CAP_SMP_PAIRING_RESPONSE;
 	rsp[1] = bthost_get_io_capability(bthost);
 	rsp[2] = 0x00;				/* OOB Flag */
 	rsp[3] = bthost_get_auth_req(bthost);
@@ -121,7 +121,7 @@ static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 
 	memcpy(conn->prsp, data, sizeof(conn->prsp));
 
-	cfm[0] = 0x03;
+	cfm[0] = BT_L2CAP_SMP_PAIRING_CONFIRM;
 	bt_crypto_c1(smp->crypto, conn->tk, conn->prnd, conn->prsp,
 			conn->preq, conn->ia_type, conn->ia,
 			conn->ra_type, conn->ra, &cfm[1]);
@@ -137,10 +137,10 @@ static void pairing_cfm(struct smp_conn *conn, const void *data, uint16_t len)
 	memcpy(conn->pcnf, data + 1, 16);
 
 	if (conn->out) {
-		rsp[0] = 0x04;
+		rsp[0] = BT_L2CAP_SMP_PAIRING_RANDOM;
 		memset(&rsp[1], 0, 16);
 	} else {
-		rsp[0] = 0x03;
+		rsp[0] = BT_L2CAP_SMP_PAIRING_CONFIRM;
 		bt_crypto_c1(conn->smp->crypto, conn->tk, conn->prnd,
 				conn->prsp, conn->preq, conn->ia_type,
 				conn->ia, conn->ra_type, conn->ra, &rsp[1]);
@@ -152,7 +152,6 @@ static void pairing_cfm(struct smp_conn *conn, const void *data, uint16_t len)
 static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	struct bthost *bthost = conn->smp->bthost;
-	const uint8_t *rnd = data;
 	uint8_t rsp[17];
 
 	memcpy(conn->rrnd, data + 1, 16);
@@ -163,7 +162,7 @@ static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 	if (conn->out)
 		return;
 
-	rsp[0] = rnd[0];
+	rsp[0] = BT_L2CAP_SMP_PAIRING_RANDOM;
 	memset(&rsp[1], 0, 16);
 
 	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
@@ -173,7 +172,7 @@ void smp_pair(void *conn_data, uint8_t io_cap, uint8_t auth_req)
 {
 	struct smp_conn *conn = conn_data;
 	struct bthost *bthost = conn->smp->bthost;
-	const uint8_t smp_pair_req[] = {	0x01,     /* Pairing Request */
+	const uint8_t smp_pair_req[] = {	BT_L2CAP_SMP_PAIRING_REQUEST,
 						io_cap,   /* IO Capability */
 						0x00,     /* OOB Flag */
 						auth_req, /* Auth requirement */
@@ -201,16 +200,16 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 	opcode = *((const uint8_t *) data);
 
 	switch (opcode) {
-	case 0x01: /* Pairing Request */
+	case BT_L2CAP_SMP_PAIRING_REQUEST:
 		pairing_req(conn, data, len);
 		break;
-	case 0x02: /* Pairing Response */
+	case BT_L2CAP_SMP_PAIRING_RESPONSE:
 		pairing_rsp(conn, data, len);
 		break;
-	case 0x03: /* Pairing Confirm */
+	case BT_L2CAP_SMP_PAIRING_CONFIRM:
 		pairing_cfm(conn, data, len);
 		break;
-	case 0x04: /* Pairing Random */
+	case BT_L2CAP_SMP_PAIRING_RANDOM:
 		pairing_rnd(conn, data, len);
 		break;
 	default:
