@@ -777,6 +777,7 @@ voice:
 	if (!voice)
 		return TRUE;
 
+	memset(&bt_voice, 0, sizeof(bt_voice));
 	bt_voice.setting = voice;
 	if (setsockopt(sock, SOL_BLUETOOTH, BT_VOICE, &bt_voice,
 						sizeof(bt_voice)) < 0) {
