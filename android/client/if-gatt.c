@@ -15,6 +15,8 @@
  *
  */
 
+#include <stdbool.h>
+
 #include <hardware/bluetooth.h>
 
 #include "../hal-utils.h"

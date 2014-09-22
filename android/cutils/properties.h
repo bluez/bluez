@@ -29,6 +29,7 @@
 #include <sys/un.h>
 
 #define PROPERTY_VALUE_MAX 32
+#define PROPERTY_KEY_MAX 32
 
 #define BLUETOOTH_MODE_PROPERTY_NAME "persist.sys.bluetooth.mode"
 #define BLUETOOTH_MODE_PROPERTY_HANDSFREE "persist.sys.bluetooth.handsfree"

@@ -18,6 +18,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
+
+#include <cutils/properties.h>
 
 #include "hal-utils.h"
 
@@ -329,4 +332,33 @@ const char *btproperty2str(const bt_property_t *property)
 	}
 
 	return buf;
+}
+
+#define PROP_PREFIX "persist.sys.bluetooth."
+#define PROP_PREFIX_RO "ro.bluetooth."
+
+int get_config(const char *config_key, char *value, const char *fallback)
+{
+	char key[PROPERTY_KEY_MAX];
+	int ret;
+
+	if (strlen(config_key) + sizeof(PROP_PREFIX) >= sizeof(key))
+		return 0;
+
+	snprintf(key, sizeof(key), PROP_PREFIX"%s", config_key);
+
+	ret = property_get(key, value, "");
+	if (ret > 0)
+		return ret;
+
+	snprintf(key, sizeof(key), PROP_PREFIX_RO"%s", config_key);
+
+	ret = property_get(key, value, "");
+	if (ret > 0)
+		return ret;
+
+	if (!fallback)
+		return 0;
+
+	return property_get(fallback, value, "");
 }
