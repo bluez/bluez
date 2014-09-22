@@ -397,6 +397,7 @@ struct generic_data {
 	bool reject_confirm;
 	bool client_reject_confirm;
 	bool just_works;
+	bool sc;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -2628,6 +2629,29 @@ static const struct generic_data pair_device_le_success_test_1 = {
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
 };
 
+static bool ltk_is_authenticated(const struct mgmt_ltk_info *ltk)
+{
+	switch (ltk->type) {
+	case 0x01:
+	case 0x03:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool ltk_is_sc(const struct mgmt_ltk_info *ltk)
+{
+	switch (ltk->type) {
+	case 0x02:
+	case 0x03:
+	case 0x04:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static bool verify_ltk(const void *param, uint16_t length)
 {
 	struct test_data *data = tester_get_data();
@@ -2640,13 +2664,23 @@ static bool verify_ltk(const void *param, uint16_t length)
 		return false;
 	}
 
-	if (test->just_works && ev->key.type != 0x00) {
+	if (test->just_works && ltk_is_authenticated(&ev->key)) {
 		tester_warn("Authenticated key for just-works");
 		return false;
 	}
 
-	if (!test->just_works && ev->key.type != 0x01) {
+	if (!test->just_works && !ltk_is_authenticated(&ev->key)) {
 		tester_warn("Unauthenticated key for MITM");
+		return false;
+	}
+
+	if (test->sc && !ltk_is_sc(&ev->key)) {
+		tester_warn("Non-LE SC key for SC pairing");
+		return false;
+	}
+
+	if (!test->sc && ltk_is_sc(&ev->key)) {
+		tester_warn("SC key for Non-SC pairing");
 		return false;
 	}
 
@@ -2677,6 +2711,22 @@ static const struct generic_data pair_device_le_reject_test_1 = {
 	.expect_alt_ev =  MGMT_EV_AUTH_FAILED,
 	.expect_alt_ev_len = sizeof(struct mgmt_ev_auth_failed),
 	.reject_confirm = true,
+};
+
+static uint16_t settings_powered_sc_bondable[] = { MGMT_OP_SET_BONDABLE,
+						MGMT_OP_SET_SECURE_CONN,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data pair_device_le_sc_legacy_test_1 = {
+	.setup_settings = settings_powered_sc_bondable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.just_works = true,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+	.verify_alt_ev_func = verify_ltk,
 };
 
 static uint16_t settings_powered_connectable_bondable[] = {
@@ -4710,6 +4760,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_le("Pair Device - LE Reject 1",
 				&pair_device_le_reject_test_1,
+				NULL, test_command_generic);
+	test_le("Pair Device - LE SC Legacy 1",
+				&pair_device_le_sc_legacy_test_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Pairing Acceptor - Legacy 1",
