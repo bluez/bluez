@@ -40,6 +40,8 @@
 #include "monitor/rfcomm.h"
 #include "bthost.h"
 
+#define lmp_bredr_capable(bthost)     (!((bthost)->features[4] & 0x20))
+
 /* ACL handle and flags pack/unpack */
 #define acl_handle_pack(h, f)	(uint16_t)((h & 0x0fff)|(f << 12))
 #define acl_handle(h)		(h & 0x0fff)
@@ -190,6 +192,7 @@ struct rfcomm_connection_data {
 
 struct bthost {
 	uint8_t bdaddr[6];
+	uint8_t features[8];
 	bthost_send_func send_handler;
 	void *send_data;
 	struct cmd_queue cmd_q;
@@ -733,6 +736,20 @@ static void read_bd_addr_complete(struct bthost *bthost, const void *data,
 	memcpy(bthost->bdaddr, ev->bdaddr, 6);
 }
 
+static void read_local_features_complete(struct bthost *bthost,
+						const void *data, uint8_t len)
+{
+	const struct bt_hci_rsp_read_local_features *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (ev->status)
+		return;
+
+	memcpy(bthost->features, ev->features, 8);
+}
+
 static void evt_cmd_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -751,6 +768,9 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 
 	switch (opcode) {
 	case BT_HCI_CMD_RESET:
+		break;
+	case BT_HCI_CMD_READ_LOCAL_FEATURES:
+		read_local_features_complete(bthost, param, len - sizeof(*ev));
 		break;
 	case BT_HCI_CMD_READ_BD_ADDR:
 		read_bd_addr_complete(bthost, param, len - sizeof(*ev));
@@ -2256,6 +2276,7 @@ void bthost_start(struct bthost *bthost)
 
 	send_command(bthost, BT_HCI_CMD_RESET, NULL, 0);
 
+	send_command(bthost, BT_HCI_CMD_READ_LOCAL_FEATURES, NULL, 0);
 	send_command(bthost, BT_HCI_CMD_READ_BD_ADDR, NULL, 0);
 }
 
