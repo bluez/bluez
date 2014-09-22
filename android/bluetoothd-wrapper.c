@@ -72,12 +72,12 @@ int main(int argc, char *argv[])
 
 	if (get_config("debug", value, NULL) > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0))
-			debug = 1;
+		debug = 1;
 
 	if (get_config("mgmtdbg", value, NULL) > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0)) {
-			debug = 1;
-			mgmt_dbg = 1;
+		debug = 1;
+		mgmt_dbg = 1;
 	}
 
 	if (get_config("valgrind", value, NULL) > 0 &&
