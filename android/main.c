@@ -62,6 +62,11 @@
 #include "gatt.h"
 #include "health.h"
 #include "handsfree-client.h"
+#include "utils.h"
+
+#define DEFAULT_VENDOR "BlueZ"
+#define DEFAULT_MODEL "BlueZ for Android"
+#define DEFAULT_NAME "BlueZ for Android"
 
 #define STARTUP_GRACE_SECONDS 5
 #define SHUTDOWN_GRACE_SECONDS 10
@@ -79,6 +84,30 @@ static GMainLoop *event_loop;
 static struct ipc *hal_ipc = NULL;
 
 static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
+
+const char *bt_config_get_vendor(void)
+{
+	if (config_vendor)
+		return config_vendor;
+
+	return DEFAULT_VENDOR;
+}
+
+const char *bt_config_get_name(void)
+{
+	if (config_name)
+		return config_name;
+
+	return DEFAULT_NAME;
+}
+
+const char *bt_config_get_model(void)
+{
+	if (config_model)
+		return config_model;
+
+	return DEFAULT_MODEL;
+}
 
 static void service_register(const void *buf, uint16_t len)
 {

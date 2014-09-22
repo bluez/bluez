@@ -30,3 +30,7 @@ static inline void bdaddr2android(const bdaddr_t *src, void *buf)
 {
 	baswap(buf, src);
 }
+
+const char *bt_config_get_vendor(void);
+const char *bt_config_get_model(void);
+const char *bt_config_get_name(void);
