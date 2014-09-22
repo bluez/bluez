@@ -31,6 +31,10 @@
 
 #define MODE_PROPERTY_NAME "persist.sys.bluetooth.mode"
 
+#define CONFIG_PROP_VENDOR "ro.product.manufacturer"
+#define CONFIG_PROP_NAME "ro.product.name"
+#define CONFIG_PROP_MODEL "ro.product.model"
+
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
 #define enum_prop_to_hal(prop, hal_prop, type) do { \
@@ -405,6 +409,53 @@ static uint8_t get_mode(void)
 	return HAL_MODE_DEFAULT;
 }
 
+static struct hal_config_prop *add_prop(const char *prop, uint8_t type,
+					struct hal_config_prop *hal_prop)
+{
+	void *ptr;
+
+	hal_prop->type = type;
+	hal_prop->len = strlen(prop) + 1;
+	memcpy(hal_prop->val, prop, hal_prop->len);
+
+	ptr = hal_prop;
+	ptr += sizeof(*hal_prop) + hal_prop->len;
+
+	return ptr;
+}
+
+static int send_configuration(void)
+{
+	char buf[IPC_MTU];
+	struct hal_cmd_configuration *cmd = (void *) buf;
+	struct hal_config_prop *hal_prop;
+	char prop[PROPERTY_VALUE_MAX];
+	uint16_t len = sizeof(*cmd);
+
+	cmd->num = 0;
+	hal_prop = &cmd->props[0];
+
+	if (property_get(CONFIG_PROP_VENDOR, prop, NULL) > 0) {
+		hal_prop = add_prop(prop, HAL_CONFIG_VENDOR, hal_prop);
+		cmd->num++;
+	}
+
+	if (property_get(CONFIG_PROP_NAME, prop, NULL) > 0) {
+		hal_prop = add_prop(prop, HAL_CONFIG_NAME, hal_prop);
+		cmd->num++;
+	}
+
+	if (property_get(CONFIG_PROP_MODEL, prop, NULL) > 0) {
+		hal_prop = add_prop(prop, HAL_CONFIG_MODEL, hal_prop);
+		cmd->num++;
+	}
+
+	len += (char *) hal_prop - buf;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_CONFIGURATION, len, cmd,
+							NULL, NULL, NULL);
+}
+
 static int init(bt_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
@@ -435,6 +486,12 @@ static int init(bt_callbacks_t *callbacks)
 		hal_ipc_cleanup();
 		bt_hal_cbacks = NULL;
 		return BT_STATUS_FAIL;
+	}
+
+	status = send_configuration();
+	if (status != BT_STATUS_SUCCESS) {
+		error("Failed to send configuration");
+		goto fail;
 	}
 
 	cmd.service_id = HAL_SERVICE_ID_BLUETOOTH;
