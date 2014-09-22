@@ -88,8 +88,6 @@
 /* MPMD bit dependent on HFP AG support */
 #define MPS_MPMD_HFP_AG_DEP (1ULL << 6)
 
-#define DEFAULT_ADAPTER_NAME "BlueZ for Android"
-
 #define DUT_MODE_FILE "/sys/kernel/debug/bluetooth/hci%u/dut_mode"
 
 #define SETTINGS_FILE ANDROID_STORAGEDIR"/settings"
@@ -261,7 +259,11 @@ static void store_adapter_config(void)
 	ba2str(&adapter.bdaddr, addr);
 
 	g_key_file_set_string(key_file, "General", "Address", addr);
-	g_key_file_set_string(key_file, "General", "Name", adapter.name);
+
+	if (adapter.name)
+		g_key_file_set_string(key_file, "General", "Name",
+				adapter.name);
+
 	g_key_file_set_integer(key_file, "General", "DiscoverableTimeout",
 						adapter.discoverable_timeout);
 
@@ -3401,7 +3403,6 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	if (!bacmp(&adapter.bdaddr, BDADDR_ANY)) {
 		bacpy(&adapter.bdaddr, &rp->bdaddr);
-		adapter.name = g_strdup(DEFAULT_ADAPTER_NAME);
 		store_adapter_config();
 	} else if (bacmp(&adapter.bdaddr, &rp->bdaddr)) {
 		error("Bluetooth address mismatch");
@@ -3409,7 +3410,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		goto failed;
 	}
 
-	if (g_strcmp0(adapter.name, (const char *) rp->name))
+	if (adapter.name && g_strcmp0(adapter.name, (const char *) rp->name))
 		set_adapter_name((uint8_t *)adapter.name, strlen(adapter.name));
 
 	set_adapter_class();
@@ -5248,6 +5249,12 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 	default:
 		error("Unknown mode 0x%x", mode);
 		goto failed;
+	}
+
+	/* Set initial default name */
+	if (!adapter.name) {
+		adapter.name = g_strdup(bt_config_get_model());
+		set_adapter_name((uint8_t *)adapter.name, strlen(adapter.name));
 	}
 
 	hal_ipc = ipc;
