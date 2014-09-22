@@ -90,6 +90,9 @@ the socket and register both "bluetooth" and "socket" service modules. It is
 required to register "socket" service at the same time since the HAL module
 does not have its own init() function.
 
+It is possible to send Configure command before registering any services to
+customize stack. This step is optional.
+
 When new profiles are initiated, the get_profile_interface() callback
 will load the profile and during init() of the profile, it should register the
 specific service.
@@ -143,6 +146,20 @@ Core Service (ID 0)
 
 		In case of an error, the error response will be returned.
 
+	Opcode 0x03 - Configuration
+
+		Command parameters: Num options (1 octet)
+		                    Option Type # (1 octet)
+		                    Option Length # (2 octets)
+		                    Option Value # (variable)
+
+		Response parameters: <none>
+
+		Valid configure option types: 0x00 = Vendor
+		                              0x01 = Model
+		                              0x02 = Name
+
+		In case of an error, the error response will be returned.
 
 Bluetooth Core HAL (ID 1)
 =========================
