@@ -45,6 +45,7 @@
 
 #include "src/log.h"
 #include "src/sdpd.h"
+#include "src/shared/util.h"
 
 #include "lib/bluetooth.h"
 
@@ -64,6 +65,10 @@
 
 #define STARTUP_GRACE_SECONDS 5
 #define SHUTDOWN_GRACE_SECONDS 10
+
+static char *config_vendor = NULL;
+static char *config_model = NULL;
+static char *config_name = NULL;
 
 static guint bluetooth_start_timeout = 0;
 
@@ -235,11 +240,75 @@ failed:
 								status);
 }
 
+static char *get_prop(char *prop, uint16_t len, const uint8_t *val)
+{
+	/* TODO should fail if set more than once ? */
+	free(prop);
+
+	prop = malloc0(len);
+	if (!prop)
+		return NULL;
+
+	memcpy(prop, val, len);
+	prop[len - 1] = '\0';
+
+	return prop;
+}
+
+static void configuration(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_configuration *cmd = buf;
+	const struct hal_config_prop *prop;
+	unsigned int i;
+
+	buf += sizeof(*cmd);
+	len -= sizeof(*cmd);
+
+	for (i = 0; i < cmd->num; i++) {
+		prop = buf;
+
+		if (len < sizeof(*prop) || len < sizeof(*prop) + prop->len) {
+			error("Invalid configuration command, terminating");
+			raise(SIGTERM);
+			return;
+		}
+
+		switch (prop->type) {
+		case HAL_CONFIG_VENDOR:
+			config_vendor = get_prop(config_vendor, prop->len,
+								prop->val);
+			break;
+		case HAL_CONFIG_NAME:
+			config_name = get_prop(config_name, prop->len,
+								prop->val);
+			break;
+		case HAL_CONFIG_MODEL:
+			config_model = get_prop(config_model, prop->len,
+								prop->val);
+			break;
+		default:
+			error("Invalid configuration option (%u), terminating",
+								prop->type);
+			raise(SIGTERM);
+			return;
+		}
+
+		buf += sizeof(*prop) + prop->len;
+		len -= sizeof(*prop) + prop->len;
+		prop = buf;
+	}
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_CORE, HAL_OP_CONFIGURATION,
+							HAL_STATUS_SUCCESS);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_REGISTER_MODULE */
 	{ service_register, false, sizeof(struct hal_cmd_register_module) },
 	/* HAL_OP_UNREGISTER_MODULE */
 	{ service_unregister, false, sizeof(struct hal_cmd_unregister_module) },
+	/* HAL_OP_CONFIGURATION */
+	{ configuration, true, sizeof(struct hal_cmd_configuration) },
 };
 
 static void bluetooth_stopped(void)
@@ -537,6 +606,10 @@ int main(int argc, char *argv[])
 	info("Exit");
 
 	__btd_log_cleanup();
+
+	free(config_vendor);
+	free(config_model);
+	free(config_name);
 
 	return EXIT_SUCCESS;
 }
