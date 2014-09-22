@@ -29,12 +29,6 @@
 #include "hal-ipc.h"
 #include "hal-utils.h"
 
-#define MODE_PROPERTY_NAME "persist.sys.bluetooth.mode"
-
-#define CONFIG_PROP_VENDOR "ro.product.manufacturer"
-#define CONFIG_PROP_NAME "ro.product.name"
-#define CONFIG_PROP_MODEL "ro.product.model"
-
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
 #define enum_prop_to_hal(prop, hal_prop, type) do { \
@@ -398,13 +392,13 @@ static uint8_t get_mode(void)
 {
 	char value[PROPERTY_VALUE_MAX];
 
-	if (property_get(MODE_PROPERTY_NAME, value, "") > 0 &&
-					(!strcasecmp(value, "bredr")))
-		return HAL_MODE_BREDR;
+	if (get_config("mode", value, NULL) > 0) {
+		if (!strcasecmp(value, "bredr"))
+			return HAL_MODE_BREDR;
 
-	if (property_get(MODE_PROPERTY_NAME, value, "") > 0 &&
-					(!strcasecmp(value, "le")))
-		return HAL_MODE_LE;
+		if (!strcasecmp(value, "le"))
+			return HAL_MODE_LE;
+	}
 
 	return HAL_MODE_DEFAULT;
 }
@@ -435,17 +429,17 @@ static int send_configuration(void)
 	cmd->num = 0;
 	hal_prop = &cmd->props[0];
 
-	if (property_get(CONFIG_PROP_VENDOR, prop, NULL) > 0) {
+	if (get_config("vendor", prop, "ro.product.manufacturer") > 0) {
 		hal_prop = add_prop(prop, HAL_CONFIG_VENDOR, hal_prop);
 		cmd->num++;
 	}
 
-	if (property_get(CONFIG_PROP_NAME, prop, NULL) > 0) {
+	if (get_config("name", prop, "ro.product.name") > 0) {
 		hal_prop = add_prop(prop, HAL_CONFIG_NAME, hal_prop);
 		cmd->num++;
 	}
 
-	if (property_get(CONFIG_PROP_MODEL, prop, NULL) > 0) {
+	if (get_config("model", prop, "ro.product.model") > 0) {
 		hal_prop = add_prop(prop, HAL_CONFIG_MODEL, hal_prop);
 		cmd->num++;
 	}

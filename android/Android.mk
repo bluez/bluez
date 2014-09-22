@@ -636,7 +636,8 @@ ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
-	bluez/android/bluetoothd-wrapper.c
+	bluez/android/bluetoothd-wrapper.c \
+	bluez/android/hal-utils.c
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 

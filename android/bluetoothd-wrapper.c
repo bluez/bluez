@@ -19,14 +19,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include <cutils/properties.h>
 
-#define PROPERTY_VALGRIND_NAME "persist.sys.bluetooth.valgrind"
-
-#define PROPERTY_DEBUG_NAME "persist.sys.bluetooth.debug"
-
-#define PROPERTY_MGMT_DEBUG_NAME "persist.sys.bluetooth.mgmtdbg"
+#include "hal-utils.h"
 
 #define VALGRIND_BIN "/system/bin/valgrind"
 
@@ -73,17 +70,17 @@ int main(int argc, char *argv[])
 	int debug = 0;
 	int mgmt_dbg = 0;
 
-	if (property_get(PROPERTY_DEBUG_NAME, value, "") > 0 &&
+	if (get_config("debug", value, NULL) > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0))
 			debug = 1;
 
-	if (property_get(PROPERTY_MGMT_DEBUG_NAME, value, "") > 0 &&
+	if (get_config("mgmtdbg", value, NULL) > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0)) {
 			debug = 1;
 			mgmt_dbg = 1;
 	}
 
-	if (property_get(PROPERTY_VALGRIND_NAME, value, "") > 0 &&
+	if (get_config("valgrind", value, NULL) > 0 &&
 			(!strcasecmp(value, "true") || atoi(value) > 0))
 		run_valgrind(debug, mgmt_dbg);
 

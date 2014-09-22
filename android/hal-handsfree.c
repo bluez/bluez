@@ -27,8 +27,7 @@
 #include "hal-msg.h"
 #include "ipc-common.h"
 #include "hal-ipc.h"
-
-#define MODE_PROPERTY_NAME "persist.sys.bluetooth.handsfree"
+#include "hal-utils.h"
 
 static const bthf_callbacks_t *cbs = NULL;
 
@@ -216,13 +215,13 @@ static uint8_t get_mode(void)
 {
 	char value[PROPERTY_VALUE_MAX];
 
-	if (property_get(MODE_PROPERTY_NAME, value, "") > 0 &&
-					(!strcasecmp(value, "hfp")))
-		return HAL_MODE_HANDSFREE_HFP;
+	if (get_config("handsfree", value, NULL) > 0) {
+		if (!strcasecmp(value, "hfp"))
+			return HAL_MODE_HANDSFREE_HFP;
 
-	if (property_get(MODE_PROPERTY_NAME, value, "") > 0 &&
-					(!strcasecmp(value, "hfp_wbs")))
-		return HAL_MODE_HANDSFREE_HFP_WBS;
+		if (!strcasecmp(value, "hfp_wbs"))
+			return HAL_MODE_HANDSFREE_HFP_WBS;
+	}
 
 	return HAL_MODE_HANDSFREE_HSP_ONLY;
 }
