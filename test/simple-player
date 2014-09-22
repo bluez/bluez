@@ -34,9 +34,9 @@ class Player(dbus.service.Object):
 		else:
 			track = dbus.Dictionary({
 					"xesam:title" : "Title",
-					"xesam:artist" : "Artist",
+					"xesam:artist" : ["Artist"],
 					"xesam:album" : "Album",
-					"xesam:genre" : "Genre",
+					"xesam:genre" : ["Genre"],
 					"xesam:trackNumber" : dbus.Int32(1),
 					"mpris:length" : dbus.Int64(10000) },
 					signature="sv")
@@ -48,7 +48,7 @@ class Player(dbus.service.Object):
 					"Shuffle" : dbus.Boolean(False),
 					"Metadata" : track,
 					"Volume" : dbus.Double(1.0),
-					"Position" : dbus.UInt32(0),
+					"Position" : dbus.Int64(0),
 					"MinimumRate" : dbus.Double(1.0),
 					"MaximumRate" : dbus.Double(1.0),
 					"CanGoNext" : dbus.Boolean(False),
