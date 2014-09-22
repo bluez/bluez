@@ -213,6 +213,7 @@ struct bthost {
 	bool reject_user_confirm;
 	void *smp_data;
 	bool conn_init;
+	bool sc;
 };
 
 struct bthost *bthost_create(void)
@@ -2184,7 +2185,12 @@ void bthost_request_auth(struct bthost *bthost, uint16_t handle)
 		cp.handle = cpu_to_le16(handle);
 		send_command(bthost, BT_HCI_CMD_AUTH_REQUESTED, &cp, sizeof(cp));
 	} else {
-		smp_pair(conn->smp_data, bthost->io_capability, bthost->auth_req);
+		uint8_t auth_req = bthost->auth_req;
+
+		if (bthost->sc)
+			auth_req |= 0x08;
+
+		smp_pair(conn->smp_data, bthost->io_capability, auth_req);
 	}
 }
 
@@ -2217,6 +2223,20 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 	bthost->new_l2cap_conn_data = data;
 }
 
+void bthost_set_sc_support(struct bthost *bthost, bool enable)
+{
+	struct bt_hci_cmd_write_secure_conn_support cmd;
+
+	bthost->sc = enable;
+
+	if (!lmp_bredr_capable(bthost))
+		return;
+
+	cmd.support = enable;
+	send_command(bthost, BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT,
+							&cmd, sizeof(cmd));
+}
+
 void bthost_set_pin_code(struct bthost *bthost, const uint8_t *pin,
 							uint8_t pin_len)
 {
@@ -2241,7 +2261,12 @@ void bthost_set_auth_req(struct bthost *bthost, uint8_t auth_req)
 
 uint8_t bthost_get_auth_req(struct bthost *bthost)
 {
-	return bthost->auth_req;
+	uint8_t auth_req = bthost->auth_req;
+
+	if (bthost->sc)
+		auth_req |= 0x08;
+
+	return auth_req;
 }
 
 void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject)
