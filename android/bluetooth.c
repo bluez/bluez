@@ -4145,7 +4145,8 @@ static void store_sign_counter(struct device *dev, enum bt_csrk_type type)
 	g_key_file_free(key_file);
 }
 
-void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type)
+void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type,
+								uint32_t val)
 {
 	struct device *dev;
 
@@ -4154,9 +4155,9 @@ void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type)
 		return;
 
 	if (type == LOCAL_CSRK)
-		dev->local_sign_cnt++;
+		dev->local_sign_cnt = val;
 	else
-		dev->remote_sign_cnt++;
+		dev->remote_sign_cnt = val;
 
 	store_sign_counter(dev, type);
 }

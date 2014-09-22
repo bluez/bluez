@@ -3169,7 +3169,7 @@ static guint signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 		return 0;
 	}
 
-	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK);
+	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK, sign_cnt++);
 
 	return res;
 }
@@ -5941,7 +5941,7 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 			return;
 		}
 		/* Signature OK, proceed with write */
-		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK);
+		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK, sign_cnt++);
 		gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
 								&dev->bdaddr);
 	}

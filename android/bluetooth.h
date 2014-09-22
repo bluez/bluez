@@ -72,7 +72,8 @@ bool bt_read_device_rssi(const bdaddr_t *addr, bt_read_device_rssi_done cb,
 bool bt_get_csrk(const bdaddr_t *addr, enum bt_csrk_type type,
 					uint8_t key[16], uint32_t *sign_cnt);
 
-void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type);
+void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type,
+								uint32_t val);
 
 void bt_store_gatt_ccc(const bdaddr_t *addr, uint16_t value);
 
