@@ -70,6 +70,22 @@ struct hal_cmd_unregister_module {
 	uint8_t service_id;
 } __attribute__((packed));
 
+#define HAL_CONFIG_VENDOR		0x00
+#define HAL_CONFIG_MODEL		0x01
+#define HAL_CONFIG_NAME			0x02
+
+struct hal_config_prop {
+	uint8_t type;
+	uint16_t len;
+	uint8_t val[0];
+} __attribute__((packed));
+
+#define HAL_OP_CONFIGURATION		0x03
+struct hal_cmd_configuration {
+	uint8_t num;
+	struct hal_config_prop props[0];
+} __attribute__((packed));
+
 /* Bluetooth Core HAL API */
 
 #define HAL_OP_ENABLE			0x01
