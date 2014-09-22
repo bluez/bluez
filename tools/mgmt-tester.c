@@ -2731,6 +2731,19 @@ static const struct generic_data pair_device_le_sc_legacy_test_1 = {
 	.verify_alt_ev_func = verify_ltk,
 };
 
+static const struct generic_data pair_device_le_sc_success_test_1 = {
+	.setup_settings = settings_powered_sc_bondable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.just_works = true,
+	.sc = true,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+	.verify_alt_ev_func = verify_ltk,
+};
+
 static uint16_t settings_powered_connectable_bondable[] = {
 						MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_CONNECTABLE,
@@ -3854,6 +3867,9 @@ static void test_setup(const void *test_data)
 	if (test->client_io_cap)
 		bthost_set_io_capability(bthost, test->client_io_cap);
 
+	if (test->sc)
+		bthost_set_sc_support(bthost, test->sc);
+
 	if (test->client_auth_req)
 		bthost_set_auth_req(bthost, test->client_auth_req);
 	else if (!test->just_works)
@@ -4765,6 +4781,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_le("Pair Device - LE SC Legacy 1",
 				&pair_device_le_sc_legacy_test_1,
+				NULL, test_command_generic);
+	test_le("Pair Device - LE SC Success 1",
+				&pair_device_le_sc_success_test_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Pairing Acceptor - Legacy 1",
