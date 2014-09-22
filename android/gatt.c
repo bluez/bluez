@@ -5922,16 +5922,16 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		uint8_t t[ATT_SIGNATURE_LEN];
 		uint32_t r_sign_cnt = get_le32(s);
 
-		if (r_sign_cnt != sign_cnt) {
-			error("gatt: sign_cnt does not match (%d!=%d)",
-							sign_cnt, r_sign_cnt);
+		if (r_sign_cnt <= sign_cnt) {
+			error("gatt: Invalid sign counter (%d<=%d)",
+							r_sign_cnt, sign_cnt);
 			return;
 		}
 
 		/* Generate signature and verify it */
 		if (!bt_crypto_sign_att(crypto, csrk, cmd,
 						cmd_len - ATT_SIGNATURE_LEN,
-						sign_cnt, t)) {
+						r_sign_cnt, t)) {
 			error("gatt: Error when generating att signature");
 			return;
 		}
@@ -5941,7 +5941,7 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 			return;
 		}
 		/* Signature OK, proceed with write */
-		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK, sign_cnt++);
+		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK, r_sign_cnt);
 		gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
 								&dev->bdaddr);
 	}
