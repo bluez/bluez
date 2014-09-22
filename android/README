@@ -193,9 +193,11 @@ It is possible to customize BlueZ for Android through Android system properties.
 This may include enabling extra profiles or features inside HALs implementation
 These properties are read on Bluetooth stack startup only and require stack
 restart if changed. All customization properties names start with
-"persist.sys.bluetooth." followed by specific HAL name e.g.
-"persist.sys.bluetooth.handsfree". This section list available customization
-options.
+"persist.sys.bluetooth." or "ro.bluerooth." followed by specific HAL name e.g.
+"persist.sys.bluetooth.handsfree". If both are present "persist.sys.bluetooth."
+takes precedence. This allows for read only properties to be set during build
+leaving enough flexibility for developing or debugging purposes.
+This section list available customization options.
 
 Property	Value		Description
 -------------------------------------------
@@ -208,6 +210,12 @@ handsfree	hfp		Enable Handsfree Profile (HFP) with narrowband
 		hfp_wbs		Enable Handsfree Profile (HFP) with narrowband
 				and wideband speech support
 		<none>		Don't enable Handsfree Profile (HFP)
+vendor		<any>		Set vendor name in DIS. If not set fallback to
+				"ro.product.manufacturer".
+model		<any>		Set model name used as default adapter name.
+				If not set fallback to "ro.product.model".
+name		<any>		Set model number in DIS. If not set fallback to
+				"ro.product.name".
 
 
 Building and running on Linux
