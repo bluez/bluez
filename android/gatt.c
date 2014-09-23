@@ -6451,6 +6451,7 @@ static void register_device_info_service(void)
 	bt_uuid_t uuid;
 	uint16_t srvc_handle, end_handle;
 	const char *data;
+	uint32_t enc_perm = GATT_PERM_READ | GATT_PERM_READ_ENCRYPTED;
 
 	DBG("");
 
@@ -6473,8 +6474,7 @@ static void register_device_info_service(void)
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_SERIAL_NUMBER_STRING);
 		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
-						GATT_PERM_READ,
-						GATT_CHR_PROP_READ,
+						enc_perm, GATT_CHR_PROP_READ,
 						device_info_read_cb, NULL,
 						(void *) data);
 	}
@@ -6482,8 +6482,7 @@ static void register_device_info_service(void)
 	if (bt_config_get_system_id()) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_SYSTEM_ID);
 		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
-						GATT_PERM_READ,
-						GATT_CHR_PROP_READ,
+						enc_perm, GATT_CHR_PROP_READ,
 						device_info_read_system_id_cb,
 						NULL, NULL);
 	}
