@@ -299,9 +299,15 @@ static void service_attr_del(struct btd_adapter *adapter, uint16_t start_handle,
 {
 	uint16_t handle;
 
-	for (handle = start_handle; handle <= end_handle; handle++)
+	/* For a 128-bit category primary service below handle should be checked
+	 * for both non-zero as well as >= 0xffff. As on last iteration the
+	 * handle will turn to 0 from 0xffff and loop will be infinite.
+	 */
+	for (handle = start_handle; (handle != 0 && handle <= end_handle);
+								handle++) {
 		if (attrib_db_del(adapter, handle) < 0)
 			error("Can't delete handle 0x%04x", handle);
+	}
 }
 
 gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
