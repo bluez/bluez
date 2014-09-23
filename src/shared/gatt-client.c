@@ -744,15 +744,36 @@ struct service_changed_op {
 	uint16_t end_handle;
 };
 
+static void service_changed_reregister_cb(unsigned int id, uint16_t att_ecode,
+								void *user_data)
+{
+	struct bt_gatt_client *client = user_data;
+
+	if (!id || att_ecode) {
+		util_debug(client->debug_callback, client->debug_data,
+			"Failed to register handler for \"Service Changed\"");
+		return;
+	}
+
+	client->svc_chngd_ind_id = id;
+
+	util_debug(client->debug_callback, client->debug_data,
+		"Re-registered handler for \"Service Changed\" after change in "
+		"GATT service");
+}
+
 static void process_service_changed(struct bt_gatt_client *client,
 							uint16_t start_handle,
 							uint16_t end_handle);
+static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
+					uint16_t length, void *user_data);
 
 static void service_changed_complete(struct discovery_op *op, bool success,
 							uint8_t att_ecode)
 {
 	struct bt_gatt_client *client = op->client;
 	struct service_changed_op *next_sc_op;
+	bt_gatt_service_t *head, *tail;
 
 	client->in_svc_chngd = false;
 
@@ -781,9 +802,23 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 		return;
 	}
 
-	/* TODO: if the GATT service has changed then register a handler
-	 * for "Service Changed".
-	 */
+	/* Check if the GATT service is not present or has remained unchanged */
+	head = &op->result_head->service;
+	tail = &op->result_tail->service;
+	if (!client->svc_chngd_val_handle ||
+			client->svc_chngd_val_handle < head->start_handle ||
+			client->svc_chngd_val_handle > tail->end_handle)
+		return;
+
+	if (bt_gatt_client_register_notify(client,
+						client->svc_chngd_val_handle,
+						service_changed_reregister_cb,
+						service_changed_cb,
+						client, NULL))
+		return;
+
+	util_debug(client->debug_callback, client->debug_data,
+		"Failed to re-register handler for \"Service Changed\"");
 }
 
 static void process_service_changed(struct bt_gatt_client *client,
@@ -808,6 +843,13 @@ static void process_service_changed(struct bt_gatt_client *client,
 				"Failed to initiate primary service discovery"
 				" after Service Changed");
 		return;
+	}
+
+	if (client->gatt_svc_handle >= start_handle &&
+					client->gatt_svc_handle <= end_handle) {
+		client->gatt_svc_handle = 0;
+		client->svc_chngd_val_handle = 0;
+		client->svc_chngd_ind_id = 0;
 	}
 
 	op->client = client;
