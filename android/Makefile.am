@@ -1,6 +1,6 @@
 if ANDROID
 
-AM_CFLAGS += -DANDROID_VERSION=0xFFFFFF
+AM_CFLAGS += -DANDROID_VERSION=0xFFFFFF -DBLUEZ_EXTENSIONS
 
 android_plugindir = $(abs_top_srcdir)/android/.libs
 
@@ -97,7 +97,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-ipc.h android/hal-ipc.c \
 					android/hal-utils.h android/hal-utils.c
 
-android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android -DBLUEZ_EXTENSIONS
+android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
 android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 					-no-undefined
 
