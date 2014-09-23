@@ -75,7 +75,7 @@ static char *config_vendor = NULL;
 static char *config_model = NULL;
 static char *config_name = NULL;
 
-static guint bluetooth_start_timeout = 0;
+static guint quit_timeout = 0;
 
 static bdaddr_t adapter_bdaddr;
 
@@ -358,7 +358,7 @@ static gboolean quit_eventloop(gpointer user_data)
 {
 	g_main_loop_quit(event_loop);
 
-	bluetooth_start_timeout = 0;
+	quit_timeout = 0;
 
 	return FALSE;
 }
@@ -377,7 +377,8 @@ static void stop_bluetooth(void)
 		return;
 	}
 
-	g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS, quit_eventloop, NULL);
+	quit_timeout = g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS,
+							quit_eventloop, NULL);
 }
 
 static void ipc_disconnected(void *data)
@@ -394,9 +395,9 @@ static void adapter_ready(int err, const bdaddr_t *addr)
 
 	bacpy(&adapter_bdaddr, addr);
 
-	if (bluetooth_start_timeout > 0) {
-		g_source_remove(bluetooth_start_timeout);
-		bluetooth_start_timeout = 0;
+	if (quit_timeout > 0) {
+		g_source_remove(quit_timeout);
+		quit_timeout = 0;
 	}
 
 	info("Adapter initialized");
@@ -602,9 +603,9 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	bluetooth_start_timeout = g_timeout_add_seconds(STARTUP_GRACE_SECONDS,
+	quit_timeout = g_timeout_add_seconds(STARTUP_GRACE_SECONDS,
 							quit_eventloop, NULL);
-	if (bluetooth_start_timeout == 0) {
+	if (quit_timeout == 0) {
 		error("Failed to init startup timeout");
 		__btd_log_cleanup();
 		g_source_remove(signal);
@@ -613,7 +614,7 @@ int main(int argc, char *argv[])
 
 	if (!bt_bluetooth_start(option_index, option_mgmt_dbg, adapter_ready)) {
 		__btd_log_cleanup();
-		g_source_remove(bluetooth_start_timeout);
+		g_source_remove(quit_timeout);
 		g_source_remove(signal);
 		return EXIT_FAILURE;
 	}
@@ -629,8 +630,8 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
-	if (bluetooth_start_timeout > 0)
-		g_source_remove(bluetooth_start_timeout);
+	if (quit_timeout > 0)
+		g_source_remove(quit_timeout);
 
 	cleanup_services();
 
