@@ -403,48 +403,40 @@ static uint8_t get_mode(void)
 	return HAL_MODE_DEFAULT;
 }
 
-static struct hal_config_prop *add_prop(const char *prop, uint8_t type,
-					struct hal_config_prop *hal_prop)
+static uint16_t add_prop(const char *prop, uint8_t type, void *buf)
 {
-	void *ptr;
+	struct hal_config_prop *hal_prop = buf;
 
 	hal_prop->type = type;
 	hal_prop->len = strlen(prop) + 1;
 	memcpy(hal_prop->val, prop, hal_prop->len);
 
-	ptr = hal_prop;
-	ptr += sizeof(*hal_prop) + hal_prop->len;
-
-	return ptr;
+	return sizeof(*hal_prop) + hal_prop->len;
 }
 
 static int send_configuration(void)
 {
 	char buf[IPC_MTU];
 	struct hal_cmd_configuration *cmd = (void *) buf;
-	struct hal_config_prop *hal_prop;
 	char prop[PROPERTY_VALUE_MAX];
 	uint16_t len = sizeof(*cmd);
 
 	cmd->num = 0;
-	hal_prop = &cmd->props[0];
 
 	if (get_config("vendor", prop, "ro.product.manufacturer") > 0) {
-		hal_prop = add_prop(prop, HAL_CONFIG_VENDOR, hal_prop);
+		len += add_prop(prop, HAL_CONFIG_VENDOR, buf + len);
 		cmd->num++;
 	}
 
 	if (get_config("name", prop, "ro.product.name") > 0) {
-		hal_prop = add_prop(prop, HAL_CONFIG_NAME, hal_prop);
+		len += add_prop(prop, HAL_CONFIG_NAME, buf + len);
 		cmd->num++;
 	}
 
 	if (get_config("model", prop, "ro.product.model") > 0) {
-		hal_prop = add_prop(prop, HAL_CONFIG_MODEL, hal_prop);
+		len += add_prop(prop, HAL_CONFIG_MODEL, buf + len);
 		cmd->num++;
 	}
-
-	len += (char *) hal_prop - buf;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_CONFIGURATION, len, cmd,
 							NULL, NULL, NULL);
