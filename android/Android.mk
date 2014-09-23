@@ -14,6 +14,10 @@ BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
 			-DANDROID_VERSION=$(ANDROID_VERSION) \
 			-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
 
+ifeq ($(BLUEZ_EXTENSIONS), true)
+BLUEZ_COMMON_CFLAGS += -DBLUEZ_EXTENSIONS
+endif
+
 # Enable warnings enabled in autotools build
 BLUEZ_COMMON_CFLAGS += -Wall -Wextra \
 			-Wdeclaration-after-statement \
@@ -141,10 +145,6 @@ LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
-
-ifeq ($(BLUEZ_EXTENSIONS), true)
-LOCAL_CFLAGS += -DBLUEZ_EXTENSIONS
-endif
 
 LOCAL_MODULE := bluetooth.default
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
