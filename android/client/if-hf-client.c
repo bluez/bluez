@@ -30,6 +30,13 @@ SINTMAP(bthf_client_connection_state_t, -1, "(unknown)")
 	DELEMENT(BTHF_CLIENT_CONNECTION_STATE_DISCONNECTING),
 ENDMAP
 
+SINTMAP(bthf_client_audio_state_t, -1, "(unknown)")
+	DELEMENT(BTHF_CLIENT_AUDIO_STATE_DISCONNECTED),
+	DELEMENT(BTHF_CLIENT_AUDIO_STATE_CONNECTING),
+	DELEMENT(BTHF_CLIENT_AUDIO_STATE_CONNECTED),
+	DELEMENT(BTHF_CLIENT_AUDIO_STATE_CONNECTED_MSBC),
+ENDMAP
+
 /* Callbacks */
 
 static char features_str[512];
@@ -103,7 +110,9 @@ static void hf_client_connection_state_callback(
 static void hf_client_audio_state_callback(bthf_client_audio_state_t state,
 							bt_bdaddr_t *bd_addr)
 {
-	haltest_info("%s\n", __func__);
+	haltest_info("%s: state=%s bd_addr=%s\n", __func__,
+				bthf_client_audio_state_t2str(state),
+				bt_bdaddr_t2str(bd_addr, last_addr));
 }
 
 /* Callback for VR connection state change. */
