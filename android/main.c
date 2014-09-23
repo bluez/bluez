@@ -357,6 +357,9 @@ static void bluetooth_stopped(void)
 static gboolean quit_eventloop(gpointer user_data)
 {
 	g_main_loop_quit(event_loop);
+
+	bluetooth_start_timeout = 0;
+
 	return FALSE;
 }
 
