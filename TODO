@@ -105,13 +105,6 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C1
 
-- Properly handle indications from the "Service Changed" characteristic.
-  shared/gatt-client should automatically rediscover all changed GATT services
-  and notify the upper layer using a specially assigned handler.
-
-  Priority: Medium
-  Complexity: C1
-
 - Introduce a handler interface to shared/gatt-client which can be used by the
   upper layer to determine when the link has been disconnected or an ATT
   protocol request times out.
