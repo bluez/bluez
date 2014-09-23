@@ -80,6 +80,10 @@ struct bt_gatt_client {
 	bt_gatt_client_destroy_func_t ready_destroy;
 	void *ready_data;
 
+	bt_gatt_client_service_changed_callback_t svc_chngd_callback;
+	bt_gatt_client_destroy_func_t svc_chngd_destroy;
+	void *svc_chngd_data;
+
 	bt_gatt_client_debug_func_t debug_callback;
 	bt_gatt_client_destroy_func_t debug_destroy;
 	void *debug_data;
@@ -773,7 +777,7 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 {
 	struct bt_gatt_client *client = op->client;
 	struct service_changed_op *next_sc_op;
-	bt_gatt_service_t *head, *tail;
+	uint16_t start_handle, end_handle;
 
 	client->in_svc_chngd = false;
 
@@ -788,10 +792,18 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 	if (!op->result_head || !op->result_tail)
 		return;
 
+	start_handle = op->result_head->service.start_handle;
+	end_handle = op->result_tail->service.end_handle;
+
 	/* Insert all newly discovered services in their correct place as a
 	 * contiguous chunk */
 	service_list_insert_services(&client->svc_head, &client->svc_tail,
 					op->result_head, op->result_tail);
+
+	/* Notify the upper layer of changed services */
+	if (client->svc_chngd_callback)
+		client->svc_chngd_callback(start_handle, end_handle,
+							client->svc_chngd_data);
 
 	/* Process any queued events */
 	next_sc_op = queue_pop_head(client->svc_chngd_queue);
@@ -803,13 +815,14 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 	}
 
 	/* Check if the GATT service is not present or has remained unchanged */
-	head = &op->result_head->service;
-	tail = &op->result_tail->service;
 	if (!client->svc_chngd_val_handle ||
-			client->svc_chngd_val_handle < head->start_handle ||
-			client->svc_chngd_val_handle > tail->end_handle)
+				client->svc_chngd_val_handle < start_handle ||
+				client->svc_chngd_val_handle > end_handle)
 		return;
 
+	/* The GATT service was modified. Re-register the handler for
+	 * indications from the "Service Changed" characteristic.
+	 */
 	if (bt_gatt_client_register_notify(client,
 						client->svc_chngd_val_handle,
 						service_changed_reregister_cb,
@@ -1316,6 +1329,24 @@ bool bt_gatt_client_set_ready_handler(struct bt_gatt_client *client,
 	client->ready_callback = callback;
 	client->ready_destroy = destroy;
 	client->ready_data = user_data;
+
+	return true;
+}
+
+bool bt_gatt_client_set_service_changed(struct bt_gatt_client *client,
+			bt_gatt_client_service_changed_callback_t callback,
+			void *user_data,
+			bt_gatt_client_destroy_func_t destroy)
+{
+	if (!client)
+		return false;
+
+	if (client->svc_chngd_destroy)
+		client->svc_chngd_destroy(client->svc_chngd_data);
+
+	client->svc_chngd_callback = callback;
+	client->svc_chngd_destroy = destroy;
+	client->svc_chngd_data = user_data;
 
 	return true;
 }
