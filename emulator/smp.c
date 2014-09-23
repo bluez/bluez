@@ -39,6 +39,7 @@
 #include "bluetooth/hci.h"
 
 #include "src/shared/crypto.h"
+#include "src/shared/ecc.h"
 #include "monitor/bt.h"
 #include "bthost.h"
 
@@ -47,8 +48,11 @@
 #define DIST_ENC_KEY	0x01
 #define DIST_ID_KEY	0x02
 #define DIST_SIGN	0x04
+#define DIST_LINK_KEY	0x08
 
-#define KEY_DIST (DIST_ENC_KEY | DIST_ID_KEY | DIST_SIGN)
+#define KEY_DIST	(DIST_ENC_KEY | DIST_ID_KEY | DIST_SIGN)
+
+#define SC_NO_DIST	(DIST_ENC_KEY | DIST_LINK_KEY)
 
 struct smp {
 	struct bthost *bthost;
@@ -60,6 +64,7 @@ struct smp_conn {
 	struct smp *smp;
 	uint16_t handle;
 	bool out;
+	bool sc;
 	uint8_t local_key_dist;
 	uint8_t remote_key_dist;
 	uint8_t ia[6];
@@ -73,6 +78,11 @@ struct smp_conn {
 	uint8_t preq[7];
 	uint8_t prsp[7];
 	uint8_t ltk[16];
+
+	uint8_t local_sk[32];
+	uint8_t local_pk[64];
+	uint8_t remote_pk[64];
+	uint8_t dhkey[32];
 };
 
 static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
@@ -87,6 +97,16 @@ static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
 	iov[1].iov_len = len;
 
 	bthost_send_cid_v(conn->smp->bthost, conn->handle, SMP_CID, iov, 2);
+}
+
+static bool send_public_key(struct smp_conn *conn)
+{
+	if (!ecc_make_key(conn->local_pk, conn->local_sk))
+		return false;
+
+	smp_send(conn, BT_L2CAP_SMP_PUBLIC_KEY, conn->local_pk, 64);
+
+	return true;
 }
 
 static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
@@ -136,6 +156,12 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 	conn->local_key_dist	= rsp.resp_key_dist;
 	conn->remote_key_dist	= rsp.init_key_dist;
 
+	if ((conn->prsp[3] & 0x08) && (conn->preq[3] & 0x08)) {
+		conn->sc = true;
+		conn->local_key_dist &= ~SC_NO_DIST;
+		conn->remote_key_dist &= ~SC_NO_DIST;
+	}
+
 	smp_send(conn, BT_L2CAP_SMP_PAIRING_RESPONSE, &rsp, sizeof(rsp));
 }
 
@@ -148,6 +174,14 @@ static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 
 	conn->local_key_dist = conn->prsp[5];
 	conn->remote_key_dist = conn->prsp[6];
+
+	if ((conn->prsp[3] & 0x08) && (conn->preq[3] & 0x08)) {
+		conn->sc = true;
+		conn->local_key_dist &= ~SC_NO_DIST;
+		conn->remote_key_dist &= ~SC_NO_DIST;
+		send_public_key(conn);
+		return;
+	}
 
 	bt_crypto_c1(smp->crypto, conn->tk, conn->prnd, conn->prsp,
 			conn->preq, conn->ia_type, conn->ia,
@@ -254,6 +288,34 @@ static void signing_info(struct smp_conn *conn, const void *data, uint16_t len)
 		distribute_keys(conn);
 }
 
+static void public_key(struct smp_conn *conn, const void *data, uint16_t len)
+{
+	struct smp *smp = conn->smp;
+	uint8_t buf[16];
+
+	if (len != 65)
+		return;
+
+	memcpy(conn->remote_pk, data + 1, 64);
+
+	if (!conn->out) {
+		if (!send_public_key(conn))
+			return;
+	}
+
+	if (!ecdh_shared_secret(conn->remote_pk, conn->local_sk, conn->dhkey))
+		return;
+
+	if (conn->out)
+		return;
+
+	if (!bt_crypto_f4(smp->crypto, conn->local_pk, conn->remote_pk,
+							conn->prnd, 0, buf))
+		return;
+
+	smp_send(conn, BT_L2CAP_SMP_PAIRING_CONFIRM, buf, sizeof(buf));
+}
+
 void smp_pair(void *conn_data, uint8_t io_cap, uint8_t auth_req)
 {
 	struct smp_conn *conn = conn_data;
@@ -311,6 +373,9 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 		break;
 	case BT_L2CAP_SMP_SIGNING_INFO:
 		signing_info(conn, data, len);
+		break;
+	case BT_L2CAP_SMP_PUBLIC_KEY:
+		public_key(conn, data, len);
 		break;
 	default:
 		break;
