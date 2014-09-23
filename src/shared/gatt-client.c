@@ -530,7 +530,7 @@ static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)
 					"MTU exchange complete, with MTU: %u",
 					bt_att_get_mtu(client->att));
 
-	if (bt_gatt_discover_primary_services(client->att, NULL,
+	if (bt_gatt_discover_all_primary_services(client->att, NULL,
 							discover_primary_cb,
 							discovery_op_ref(op),
 							discovery_op_unref))
