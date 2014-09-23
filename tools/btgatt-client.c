@@ -93,6 +93,8 @@ static void gatt_debug_cb(const char *str, void *user_data)
 }
 
 static void ready_cb(bool success, uint8_t att_ecode, void *user_data);
+static void service_changed_cb(uint16_t start_handle, uint16_t end_handle,
+							void *user_data);
 
 static struct client *client_create(int fd, uint16_t mtu)
 {
@@ -143,6 +145,8 @@ static struct client *client_create(int fd, uint16_t mtu)
 	}
 
 	bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, cli, NULL);
+	bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, cli,
+									NULL);
 
 	/* bt_gatt_client already holds a reference */
 	bt_att_unref(att);
@@ -266,6 +270,36 @@ static void ready_cb(bool success, uint8_t att_ecode, void *user_data)
 	PRLOG("GATT discovery procedures complete\n");
 
 	print_services(cli);
+	print_prompt();
+}
+
+static void service_changed_cb(uint16_t start_handle, uint16_t end_handle,
+								void *user_data)
+{
+	struct client *cli = user_data;
+	struct bt_gatt_service_iter iter;
+	const bt_gatt_service_t *service;
+
+	if (!bt_gatt_service_iter_init(&iter, cli->gatt)) {
+		PRLOG("Failed to initialize service iterator\n");
+		return;
+	}
+
+	printf("\nService Changed handled - start: 0x%04x end: 0x%04x\n",
+						start_handle, end_handle);
+
+	if (!bt_gatt_service_iter_next_by_handle(&iter, start_handle, &service))
+		return;
+
+	print_service(service);
+
+	while (bt_gatt_service_iter_next(&iter, &service)) {
+		if (service->start_handle >= end_handle)
+			break;
+
+		print_service(service);
+	}
+
 	print_prompt();
 }
 
