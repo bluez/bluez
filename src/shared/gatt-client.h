@@ -36,7 +36,6 @@
 #define BT_GATT_CHRC_PROP_AUTH				0x40
 #define BT_GATT_CHRC_PROP_EXT_PROP			0x80
 
-/* Client Characteristic Configuration bit field */
 struct bt_gatt_client;
 
 struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu);
