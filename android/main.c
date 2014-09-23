@@ -306,14 +306,23 @@ static void configuration(const void *buf, uint16_t len)
 		case HAL_CONFIG_VENDOR:
 			config_vendor = get_prop(config_vendor, prop->len,
 								prop->val);
+
+			DBG("vendor %s", config_vendor);
+
 			break;
 		case HAL_CONFIG_NAME:
 			config_name = get_prop(config_name, prop->len,
 								prop->val);
+
+			DBG("name %s", config_name);
+
 			break;
 		case HAL_CONFIG_MODEL:
 			config_model = get_prop(config_model, prop->len,
 								prop->val);
+
+			DBG("model %s", config_model);
+
 			break;
 		default:
 			error("Invalid configuration option (%u), terminating",
