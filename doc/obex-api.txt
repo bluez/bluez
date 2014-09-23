@@ -473,14 +473,19 @@ Filter:		string Format:
 
 			Possible values can be query with ListFilterFields.
 
-		array{string} FilterBy:
+		array{string} FilterAll:
 
-			Filter items by fields. Default do not filter by
-			fields.
+			Filter items by fields using AND logic, cannot be used
+			together with FilterAny.
 
-			Possible values can be query with ListFilterFields
-			excluding the first item that must be either '&' or
-			'|' that apply AND or OR logic respectively.
+			Possible values can be query with ListFilterFields.
+
+		array{string} FilterAny:
+
+			Filter items by fields using OR logic, cannot be used
+			together with FilterAll.
+
+			Possible values can be query with ListFilterFields.
 
 		bool ResetNewMissedCalls
 
