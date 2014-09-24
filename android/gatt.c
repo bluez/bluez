@@ -6469,7 +6469,7 @@ static void register_device_info_service(void)
 						(void *) data);
 	}
 
-	/* TODO */
+	data = bt_config_get_serial();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_SERIAL_NUMBER_STRING);
 		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
