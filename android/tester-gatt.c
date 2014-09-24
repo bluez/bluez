@@ -545,7 +545,7 @@ static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 		}
 		queue_pop_head(t_data->pdus);
 		gatt_pdu = queue_pop_head(t_data->pdus);
-		if (!gatt_pdu->data)
+		if (!gatt_pdu || !gatt_pdu->data)
 			break;
 
 		bthost_send_cid(bthost, cid_data->handle, cid_data->cid,
