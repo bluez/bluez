@@ -174,6 +174,35 @@
 		.callback_result.included = cb_incl, \
 	}
 
+#define CALLBACK_GATTC_READ_CHARACTERISTIC(cb_res, cb_conn_id, cb_read_data) { \
+		.callback = CB_GATTC_READ_CHARACTERISTIC, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.status = cb_res, \
+		.callback_result.read_params = cb_read_data, \
+	}
+
+#define CALLBACK_GATTC_READ_DESCRIPTOR(cb_res, cb_conn_id, cb_read_data) { \
+		.callback = CB_GATTC_READ_DESCRIPTOR, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.status = cb_res, \
+		.callback_result.read_params = cb_read_data, \
+	}
+
+#define CALLBACK_GATTC_WRITE_DESCRIPTOR(cb_res, cb_conn_id, cb_write_data) { \
+		.callback = CB_GATTC_WRITE_DESCRIPTOR, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.status = cb_res, \
+		.callback_result.write_params = cb_write_data, \
+	}
+
+#define CALLBACK_GATTC_WRITE_CHARACTERISTIC(cb_res, cb_conn_id, \
+							cb_write_data) { \
+		.callback = CB_GATTC_WRITE_CHARACTERISTIC, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.status = cb_res, \
+		.callback_result.write_params = cb_write_data, \
+	}
+
 #define CALLBACK_GATTC_DISCONNECT(cb_res, cb_prop, cb_conn_id, cb_client_id) { \
 		.callback = CB_GATTC_CLOSE, \
 		.callback_result.status = cb_res, \
@@ -417,6 +446,8 @@ struct bt_callback_data {
 	btgatt_gatt_id_t *characteristic;
 	btgatt_gatt_id_t *descriptor;
 	btgatt_srvc_id_t *included;
+	btgatt_read_params_t *read_params;
+	btgatt_write_params_t *write_params;
 	int char_prop;
 
 	btpan_control_state_t ctrl_state;
