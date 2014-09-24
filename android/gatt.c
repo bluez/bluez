@@ -6546,16 +6546,10 @@ static void register_device_info_service(void)
 						(void *) data);
 	}
 
-	/* TODO */
-	data = NULL;
-	if (data) {
-		bt_uuid16_create(&uuid, GATT_CHARAC_SOFTWARE_REVISION_STRING);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
-						GATT_PERM_READ,
-						GATT_CHR_PROP_READ,
-						device_info_read_cb, NULL,
-						(void *) data);
-	}
+	bt_uuid16_create(&uuid, GATT_CHARAC_SOFTWARE_REVISION_STRING);
+	gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid, GATT_PERM_READ,
+					GATT_CHR_PROP_READ, device_info_read_cb,
+					NULL, VERSION);
 
 	data = bt_config_get_vendor();
 	if (data) {
