@@ -46,7 +46,6 @@ struct hfp_gw {
 	struct ringbuf *write_buf;
 	struct queue *cmd_handlers;
 	bool writer_active;
-	bool permissive_syntax;
 	bool result_pending;
 	hfp_command_func_t command_callback;
 	hfp_destroy_func_t command_destroy;
@@ -507,7 +506,6 @@ struct hfp_gw *hfp_gw_new(int fd)
 	}
 
 	hfp->writer_active = false;
-	hfp->permissive_syntax = false;
 	hfp->result_pending = false;
 
 	return hfp_gw_ref(hfp);
@@ -606,16 +604,6 @@ bool hfp_gw_set_close_on_unref(struct hfp_gw *hfp, bool do_close)
 		return false;
 
 	hfp->close_on_unref = do_close;
-
-	return true;
-}
-
-bool hfp_gw_set_permissive_syntax(struct hfp_gw *hfp, bool permissive)
-{
-	if (!hfp)
-		return false;
-
-	hfp->permissive_syntax = permissive;
 
 	return true;
 }
