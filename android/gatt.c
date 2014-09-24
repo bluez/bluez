@@ -6446,6 +6446,43 @@ done:
 	entry->state = REQUEST_DONE;
 }
 
+static void device_info_read_pnp_id_cb(uint16_t handle, uint16_t offset,
+					uint8_t att_opcode, bdaddr_t *bdaddr,
+					void *user_data)
+{
+	struct pending_request *entry;
+	struct gatt_device *dev;
+
+	dev = find_device_by_addr(bdaddr);
+	if (!dev) {
+		error("gatt: Could not find device ?!");
+		return;
+	}
+
+	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
+							UINT_TO_PTR(handle));
+	if (!entry)
+		return;
+
+	entry->value = malloc0(sizeof(uint8_t) + 3 * sizeof(uint16_t));
+	if (!entry->value) {
+		entry->error = ATT_ECODE_UNLIKELY;
+		goto done;
+	}
+
+	entry->length = sizeof(uint8_t) + 3 * sizeof(uint16_t);
+
+	entry->value[0] = bt_config_get_pnp_source();
+	put_le16(bt_config_get_pnp_vendor(), entry->value + 1);
+	put_le16(bt_config_get_pnp_product(), entry->value + 3);
+	put_le16(bt_config_get_pnp_version(), entry->value + 5);
+
+	entry->offset = offset;
+
+done:
+	entry->state = REQUEST_DONE;
+}
+
 static void register_device_info_service(void)
 {
 	bt_uuid_t uuid;
@@ -6528,6 +6565,15 @@ static void register_device_info_service(void)
 						GATT_CHR_PROP_READ,
 						device_info_read_cb, NULL,
 						(void *) data);
+	}
+
+	if (bt_config_get_pnp_source()) {
+		bt_uuid16_create(&uuid, GATT_CHARAC_PNP_ID);
+		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+						GATT_PERM_READ,
+						GATT_CHR_PROP_READ,
+						device_info_read_pnp_id_cb,
+						NULL, NULL);
 	}
 
 	gatt_db_service_set_active(gatt_db, srvc_handle, true);
