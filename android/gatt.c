@@ -3127,6 +3127,7 @@ static void send_client_write_char_notify(int32_t status, int32_t conn_id,
 
 	ev.conn_id = conn_id;
 	ev.status = status;
+	ev.data.status = status;
 
 	element_id_to_hal_srvc_id(srvc_id, primary, &ev.data.srvc_id);
 	element_id_to_hal_gatt_id(char_id, &ev.data.char_id);
