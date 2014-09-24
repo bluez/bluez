@@ -15,6 +15,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
@@ -336,12 +340,9 @@ enum {
 	PRINT_VERSION = 1000
 };
 
-int version = 1;
-int revision = 0;
-
 static void print_version(void)
 {
-	printf("haltest version %d.%d\n", version, revision);
+	printf("haltest version %s\n", VERSION);
 }
 
 static const struct option main_options[] = {
