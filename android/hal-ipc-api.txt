@@ -158,6 +158,9 @@ Core Service (ID 0)
 		Valid configure option types: 0x00 = Vendor
 		                              0x01 = Model
 		                              0x02 = Name
+		                              0x03 = Serial Number
+		                              0x04 = System ID
+		                              0x05 = PnP ID
 
 		In case of an error, the error response will be returned.
 

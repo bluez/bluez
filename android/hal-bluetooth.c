@@ -438,6 +438,21 @@ static int send_configuration(void)
 		cmd->num++;
 	}
 
+	if (get_config("serialno", prop, "ro.serialno") > 0) {
+		len += add_prop(prop, HAL_CONFIG_SERIAL_NUMBER, buf + len);
+		cmd->num++;
+	}
+
+	if (get_config("systemid", prop, NULL) > 0) {
+		len += add_prop(prop, HAL_CONFIG_SYSTEM_ID, buf + len);
+		cmd->num++;
+	}
+
+	if (get_config("pnpid", prop, NULL) > 0) {
+		len += add_prop(prop, HAL_CONFIG_PNP_ID, buf + len);
+		cmd->num++;
+	}
+
 	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_CONFIGURATION, len, cmd,
 							NULL, NULL, NULL);
 }

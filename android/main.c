@@ -74,6 +74,12 @@
 static char *config_vendor = NULL;
 static char *config_model = NULL;
 static char *config_name = NULL;
+static char *config_serial = NULL;
+static uint64_t config_system_id = 0;
+static uint16_t config_pnp_source = 0x0002;	/* USB */
+static uint16_t config_pnp_vendor = 0x1d6b;	/* Linux Foundation */
+static uint16_t config_pnp_product = 0x0247;	/* BlueZ for Android */
+static uint16_t config_pnp_version = 0x0000;
 
 static guint quit_timeout = 0;
 
@@ -107,6 +113,36 @@ const char *bt_config_get_model(void)
 		return config_model;
 
 	return DEFAULT_MODEL;
+}
+
+const char *bt_config_get_serial(void)
+{
+	return config_serial;
+}
+
+uint64_t bt_config_get_system_id(void)
+{
+	return config_system_id;
+}
+
+uint16_t bt_config_get_pnp_source(void)
+{
+	return config_pnp_source;
+}
+
+uint16_t bt_config_get_pnp_vendor(void)
+{
+	return config_pnp_vendor;
+}
+
+uint16_t bt_config_get_pnp_product(void)
+{
+	return config_pnp_product;
+}
+
+uint16_t bt_config_get_pnp_version(void)
+{
+	return config_pnp_version;
 }
 
 static void service_register(const void *buf, uint16_t len)
@@ -284,6 +320,61 @@ static char *get_prop(char *prop, uint16_t len, const uint8_t *val)
 	return prop;
 }
 
+static void parse_pnp_id(uint16_t len, const uint8_t *val)
+{
+	int result;
+	uint16_t vendor, product, version , source;
+	char *pnp;
+
+	/* version is optional */
+	version = config_pnp_version;
+
+	pnp = get_prop(NULL, len, val);
+	if (!pnp)
+		return;
+
+	DBG("pnp_id %s", pnp);
+
+	result = sscanf(pnp, "bluetooth:%4hx:%4hx:%4hx",
+						&vendor, &product, &version);
+	if (result != EOF && result >= 2) {
+		source = 0x0001;
+		goto done;
+	}
+
+	result = sscanf(pnp, "usb:%4hx:%4hx:%4hx", &vendor, &product, &version);
+	if (result != EOF && result >= 2) {
+		source = 0x0002;
+		goto done;
+	}
+
+	free(pnp);
+	return;
+done:
+	free(pnp);
+
+	config_pnp_source = source;
+	config_pnp_vendor = vendor;
+	config_pnp_product = product;
+	config_pnp_version = version;
+}
+
+static void parse_system_id(uint16_t len, const uint8_t *val)
+{
+	uint64_t res;
+	char *id;
+
+	id = get_prop(NULL, len, val);
+	if (!id)
+		return;
+
+	res = strtoull(id, NULL, 16);
+	if (res == ULLONG_MAX && errno == ERANGE)
+		return;
+
+	config_system_id = res;
+}
+
 static void configuration(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_configuration *cmd = buf;
@@ -322,6 +413,21 @@ static void configuration(const void *buf, uint16_t len)
 								prop->val);
 
 			DBG("model %s", config_model);
+
+			break;
+		case HAL_CONFIG_SERIAL_NUMBER:
+			config_serial = get_prop(config_serial, prop->len,
+								prop->val);
+
+			DBG("serial %s", config_serial);
+
+			break;
+		case HAL_CONFIG_SYSTEM_ID:
+			parse_system_id(prop->len, prop->val);
+
+			break;
+		case HAL_CONFIG_PNP_ID:
+			parse_pnp_id(prop->len, prop->val);
 
 			break;
 		default:
@@ -561,11 +667,23 @@ static bool set_capabilities(void)
 	return true;
 }
 
+static void set_version(void)
+{
+	uint8_t major, minor;
+
+	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
+		return;
+
+	config_pnp_version = major << 8 | minor;
+}
+
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
 	GError *err = NULL;
 	guint signal;
+
+	set_version();
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -651,6 +769,7 @@ int main(int argc, char *argv[])
 	free(config_vendor);
 	free(config_model);
 	free(config_name);
+	free(config_serial);
 
 	return EXIT_SUCCESS;
 }

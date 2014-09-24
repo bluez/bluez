@@ -73,6 +73,9 @@ struct hal_cmd_unregister_module {
 #define HAL_CONFIG_VENDOR		0x00
 #define HAL_CONFIG_MODEL		0x01
 #define HAL_CONFIG_NAME			0x02
+#define HAL_CONFIG_SERIAL_NUMBER	0x03
+#define HAL_CONFIG_SYSTEM_ID		0x04
+#define HAL_CONFIG_PNP_ID		0x05
 
 struct hal_config_prop {
 	uint8_t type;
