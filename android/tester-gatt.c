@@ -219,7 +219,7 @@ static struct get_desc_data get_desc_data_2 = {
 	.desc = &desc_1,
 };
 
-struct get_incl_data get_incl_data_1 = {
+static struct get_incl_data get_incl_data_1 = {
 	.conn_id = CONN1_ID,
 	.service = &service_1
 };
