@@ -48,6 +48,7 @@
 #include "monitor/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
+#include "src/shared/gap.h"
 
 static bool monitor = false;
 static bool discovery = false;
@@ -2894,6 +2895,10 @@ static struct {
 	{ }
 };
 
+static void gap_ready(bool status, void *user_data)
+{
+}
+
 static void usage(void)
 {
 	int i;
@@ -2925,6 +2930,7 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
+	struct bt_gap *gap;
 	int opt, i;
 	uint16_t index = MGMT_INDEX_NONE;
 	struct mgmt *mgmt;
@@ -2960,6 +2966,10 @@ int main(int argc, char *argv[])
 	}
 
 	mainloop_init();
+
+	gap = bt_gap_new();
+
+	bt_gap_set_ready_handler(gap, gap_ready, NULL, NULL);
 
 	mgmt = mgmt_new_default();
 	if (!mgmt) {
@@ -3025,6 +3035,8 @@ int main(int argc, char *argv[])
 	mgmt_cancel_all(mgmt);
 	mgmt_unregister_all(mgmt);
 	mgmt_unref(mgmt);
+
+	bt_gap_unref(gap);
 
 	return exit_status;
 }
