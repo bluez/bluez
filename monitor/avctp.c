@@ -176,6 +176,12 @@
 #define AVRCP_PLAY_STATUS_REV_SEEK	0x04
 #define AVRCP_PLAY_STATUS_ERROR		0xFF
 
+/* media scope */
+#define AVRCP_MEDIA_PLAYER_LIST		0x00
+#define AVRCP_MEDIA_PLAYER_VFS		0x01
+#define AVRCP_MEDIA_SEARCH		0x02
+#define AVRCP_MEDIA_NOW_PLAYING		0x03
+
 struct avctp_frame {
 	uint8_t hdr;
 	uint8_t pt;
@@ -606,6 +612,22 @@ static const char *status2str(uint8_t status)
 		return "FULL_CHARGE";
 	default:
 		return "Reserved";
+	}
+}
+
+static const char *scope2str(uint8_t scope)
+{
+	switch (scope) {
+	case AVRCP_MEDIA_PLAYER_LIST:
+		return "Media Player List";
+	case AVRCP_MEDIA_PLAYER_VFS:
+		return "Media Player Virtual Filesystem";
+	case AVRCP_MEDIA_SEARCH:
+		return "Search";
+	case AVRCP_MEDIA_NOW_PLAYING:
+		return "Now Playing";
+	default:
+		return "Unknown";
 	}
 }
 
@@ -1336,6 +1358,47 @@ response:
 	return true;
 }
 
+static bool avrcp_play_item(struct avctp_frame *avctp_frame, uint8_t ctype,
+						uint8_t len, uint8_t indent)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint64_t uid;
+	uint16_t uidcounter;
+	uint8_t scope, status;
+
+	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
+		goto response;
+
+	if (!l2cap_frame_get_u8(frame, &scope))
+		return false;
+
+	print_field("%*cScope: 0x%02x (%s)", (indent - 8), ' ',
+						scope, scope2str(scope));
+
+	if (!l2cap_frame_get_be64(frame, &uid))
+		return false;
+
+	print_field("%*cUID: 0x%16" PRIx64 " (%" PRIu64 ")", (indent - 8),
+								' ', uid, uid);
+
+	if (!l2cap_frame_get_be16(frame, &uidcounter))
+		return false;
+
+	print_field("%*cUIDCounter: 0x%04x (%u)", (indent - 8), ' ',
+							uidcounter, uidcounter);
+
+	return true;
+
+response:
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cStatus: 0x%02x (%s)", (indent - 8), ' ', status,
+							error2str(status));
+
+	return true;
+}
+
 struct avrcp_ctrl_pdu_data {
 	uint8_t pduid;
 	bool (*func) (struct avctp_frame *avctp_frame, uint8_t ctype,
@@ -1356,6 +1419,7 @@ static const struct avrcp_ctrl_pdu_data avrcp_ctrl_pdu_table[] = {
 	{ 0x31, avrcp_register_notification		},
 	{ 0x50, avrcp_set_absolute_volume		},
 	{ 0x60, avrcp_set_addressed_player		},
+	{ 0x74, avrcp_play_item				},
 	{ }
 };
 
