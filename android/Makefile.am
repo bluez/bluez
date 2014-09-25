@@ -185,7 +185,8 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
 					android/system/audio.h
 android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
 					@SBC_CFLAGS@
-android_audio_a2dp_default_la_LIBADD = src/libshared-mainloop.la @SBC_LIBS@
+android_audio_a2dp_default_la_LIBADD = lib/libbluetooth-internal.la \
+					src/libshared-mainloop.la @SBC_LIBS@
 android_audio_a2dp_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 					-no-undefined -pthread -lrt
 
