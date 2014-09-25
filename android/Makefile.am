@@ -138,7 +138,8 @@ android_haltest_LDFLAGS = -pthread -ldl -lm
 
 noinst_PROGRAMS += android/android-tester
 
-android_android_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
+android_android_tester_SOURCES = emulator/hciemu.h emulator/hciemu.c \
+				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c \
 				monitor/rfcomm.h \
@@ -160,7 +161,8 @@ android_android_tester_LDFLAGS = -pthread -ldl
 
 noinst_PROGRAMS += android/ipc-tester
 
-android_ipc_tester_SOURCES = emulator/btdev.h emulator/btdev.c \
+android_ipc_tester_SOURCES = emulator/hciemu.h emulator/hciemu.c \
+				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c \
 				android/hal-utils.h android/hal-utils.c \

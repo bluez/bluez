@@ -42,7 +42,7 @@
 
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
-#include "src/shared/hciemu.h"
+#include "emulator/hciemu.h"
 
 #include "hal-msg.h"
 #include "ipc-common.h"

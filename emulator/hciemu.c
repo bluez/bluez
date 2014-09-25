@@ -44,7 +44,7 @@
 #include "emulator/bthost.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
-#include "src/shared/hciemu.h"
+#include "emulator/hciemu.h"
 
 struct hciemu {
 	int ref_count;

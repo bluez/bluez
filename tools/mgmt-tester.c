@@ -35,11 +35,11 @@
 
 #include "monitor/bt.h"
 #include "emulator/bthost.h"
+#include "emulator/hciemu.h"
 
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
-#include "src/shared/hciemu.h"
 
 struct test_data {
 	tester_data_func_t test_setup;

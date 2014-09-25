@@ -38,9 +38,9 @@
 #include "lib/mgmt.h"
 
 #include "src/shared/tester.h"
-#include "src/shared/hciemu.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/queue.h"
+#include "emulator/hciemu.h"
 
 #include <hardware/hardware.h>
 #include <hardware/audio.h>

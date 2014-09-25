@@ -62,6 +62,7 @@ tools_3dsp_SOURCES = tools/3dsp.c monitor/bt.h
 tools_3dsp_LDADD = src/libshared-mainloop.la
 
 tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
+				emulator/hciemu.h emulator/hciemu.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c
@@ -69,6 +70,7 @@ tools_mgmt_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la @GLIB_LIBS@
 
 tools_l2cap_tester_SOURCES = tools/l2cap-tester.c monitor/bt.h \
+				emulator/hciemu.h emulator/hciemu.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c
@@ -76,6 +78,7 @@ tools_l2cap_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la @GLIB_LIBS@
 
 tools_rfcomm_tester_SOURCES = tools/rfcomm-tester.c monitor/bt.h \
+				emulator/hciemu.h emulator/hciemu.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c
@@ -83,6 +86,7 @@ tools_rfcomm_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la @GLIB_LIBS@
 
 tools_smp_tester_SOURCES = tools/smp-tester.c monitor/bt.h \
+				emulator/hciemu.h emulator/hciemu.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c
@@ -90,6 +94,7 @@ tools_smp_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la @GLIB_LIBS@
 
 tools_gap_tester_SOURCES = tools/gap-tester.c monitor/bt.h \
+				emulator/hciemu.h emulator/hciemu.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c
@@ -99,6 +104,7 @@ tools_gap_tester_LDADD =  lib/libbluetooth-internal.la \
 				@GLIB_LIBS@ @DBUS_LIBS@
 
 tools_sco_tester_SOURCES = tools/sco-tester.c monitor/bt.h \
+				emulator/hciemu.h emulator/hciemu.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c
