@@ -281,6 +281,8 @@
 		.callback_result.num_properties = prop_cnt, \
 	}
 
+#define DBG_CB(cb) { cb, #cb }
+
 /*
  * NOTICE:
  * Callback enum sections should be
