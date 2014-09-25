@@ -132,7 +132,7 @@
 		.callback_result.properties = cb_prop, \
 		.callback_result.num_properties = 1, \
 		.callback_result.conn_id = cb_conn_id, \
-		.callback_result.client_id = cb_client_id, \
+		.callback_result.gatt_app_id = cb_client_id, \
 	}
 
 #define CALLBACK_GATTC_SEARCH_RESULT(cb_conn_id, cb_service) { \
@@ -209,7 +209,7 @@
 		.callback_result.properties = cb_prop, \
 		.callback_result.num_properties = 1, \
 		.callback_result.conn_id = cb_conn_id, \
-		.callback_result.client_id = cb_client_id, \
+		.callback_result.gatt_app_id = cb_client_id, \
 	}
 
 #define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
@@ -440,7 +440,7 @@ struct bt_callback_data {
 
 	bool adv_data;
 
-	int client_id;
+	int gatt_app_id;
 	int conn_id;
 	btgatt_srvc_id_t *service;
 	btgatt_gatt_id_t *characteristic;

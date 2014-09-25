@@ -534,10 +534,10 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
-		if (exp->callback_result.client_id !=
-					step->callback_result.client_id) {
-				tester_debug("Callback client_id don't match");
-				return false;
+		if (exp->callback_result.gatt_app_id !=
+					step->callback_result.gatt_app_id) {
+			tester_debug("Callback gatt_app_id don't match");
+			return false;
 		}
 
 		if (exp->callback_result.properties &&
@@ -1083,7 +1083,7 @@ static void gattc_connect_cb(int conn_id, int status, int client_if,
 	step->callback = CB_GATTC_OPEN;
 	step->callback_result.status = status;
 	step->callback_result.conn_id = conn_id;
-	step->callback_result.client_id = client_if;
+	step->callback_result.gatt_app_id = client_if;
 
 	/* Utilize property verification mechanism for bdaddr */
 	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
@@ -1106,7 +1106,7 @@ static void gattc_disconnect_cb(int conn_id, int status, int client_if,
 	step->callback = CB_GATTC_CLOSE;
 	step->callback_result.status = status;
 	step->callback_result.conn_id = conn_id;
-	step->callback_result.client_id = client_if;
+	step->callback_result.gatt_app_id = client_if;
 
 	/* Utilize property verification mechanism for bdaddr */
 	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
