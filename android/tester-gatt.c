@@ -836,6 +836,35 @@ static void gatt_client_write_characteristic_action(void)
 	schedule_action_verification(step);
 }
 
+static void gatt_server_register_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	bt_uuid_t *app_uuid = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	if (!app_uuid) {
+		tester_warn("No app uuid provided for register action.");
+		return;
+	}
+
+	step->action_status = data->if_gatt->server->register_server(app_uuid);
+
+	schedule_action_verification(step);
+}
+
+static void gatt_server_unregister_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	int32_t sr_id = PTR_TO_INT(current_data_step->set_data);
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->server->unregister_server(sr_id);
+
+	schedule_action_verification(step);
+}
+
 static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *t_data = tester_get_data();
@@ -1821,6 +1850,19 @@ static struct test_case test_cases[] = {
 						CONN1_ID, &write_params_1),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+
+	TEST_CASE_BREDRLE("Gatt Server - Register",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Unregister",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_unregister_action,
+							INT_TO_PTR(APP1_ID)),
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
 	),
 };
 

@@ -1253,6 +1253,18 @@ static void gattc_write_descriptor_cb(int conn_id, int status,
 	schedule_callback_call(step);
 }
 
+static void gatts_register_server_cb(int status, int server_if,
+							bt_uuid_t *app_uuid)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTS_REGISTER_SERVER;
+
+	step->callback_result.status = status;
+
+	schedule_callback_call(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1374,7 +1386,7 @@ static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 };
 
 static const btgatt_server_callbacks_t btgatt_server_callbacks = {
-	.register_server_cb = NULL,
+	.register_server_cb = gatts_register_server_cb,
 	.connection_cb = NULL,
 	.service_added_cb = NULL,
 	.included_service_added_cb = NULL,
