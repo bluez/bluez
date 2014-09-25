@@ -1399,6 +1399,48 @@ response:
 	return true;
 }
 
+static bool avrcp_add_to_now_playing(struct avctp_frame *avctp_frame,
+						uint8_t ctype, uint8_t len,
+						uint8_t indent)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint64_t uid;
+	uint16_t uidcounter;
+	uint8_t scope, status;
+
+	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
+		goto response;
+
+	if (!l2cap_frame_get_u8(frame, &scope))
+		return false;
+
+	print_field("%*cScope: 0x%02x (%s)", (indent - 8), ' ',
+						scope, scope2str(scope));
+
+	if (!l2cap_frame_get_be64(frame, &uid))
+		return false;
+
+	print_field("%*cUID: 0x%16" PRIx64 " (%" PRIu64 ")", (indent - 8),
+								' ', uid, uid);
+
+	if (!l2cap_frame_get_be16(frame, &uidcounter))
+		return false;
+
+	print_field("%*cUIDCounter: 0x%04x (%u)", (indent - 8), ' ',
+							uidcounter, uidcounter);
+
+	return true;
+
+response:
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cStatus: 0x%02x (%s)", (indent - 8), ' ', status,
+							error2str(status));
+
+	return true;
+}
+
 struct avrcp_ctrl_pdu_data {
 	uint8_t pduid;
 	bool (*func) (struct avctp_frame *avctp_frame, uint8_t ctype,
@@ -1420,6 +1462,7 @@ static const struct avrcp_ctrl_pdu_data avrcp_ctrl_pdu_table[] = {
 	{ 0x50, avrcp_set_absolute_volume		},
 	{ 0x60, avrcp_set_addressed_player		},
 	{ 0x74, avrcp_play_item				},
+	{ 0x90, avrcp_add_to_now_playing		},
 	{ }
 };
 
