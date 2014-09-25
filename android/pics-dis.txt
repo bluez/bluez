@@ -29,11 +29,11 @@ TSPC_DIS_2_4	True		Serial Number String Characteristic (O)
 TSPC_DIS_2_5	True		Hardware Revision String Characteristic (O)
 TSPC_DIS_2_6	True		Firmware Revision String Characteristic (O)
 TSPC_DIS_2_7	True		Software Revision String Characteristic (O)
-TSPC_DIS_2_8	False (*)	System ID Characteristic (O)
+TSPC_DIS_2_8	True		System ID Characteristic (O)
 TSPC_DIS_2_9	False (*)	IEEE 11073-20601 Regulatory Certification
 				Data List Characteristic (O)
 TSPC_DIS_2_10	True		SDP Interoperability (C.1)
-TSPC_DIS_2_11	False (*)	PnP ID (O)
+TSPC_DIS_2_11	True		PnP ID (O)
 -------------------------------------------------------------------------------
 C.1: Mandatory if 1/1 (BR/EDR) is supported, otherwise excluded.
 -------------------------------------------------------------------------------
