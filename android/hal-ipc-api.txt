@@ -161,6 +161,8 @@ Core Service (ID 0)
 		                              0x03 = Serial Number
 		                              0x04 = System ID
 		                              0x05 = PnP ID
+		                              0x06 = Firmware Rev
+		                              0x07 = Hardware Rev
 
 		In case of an error, the error response will be returned.
 

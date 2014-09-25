@@ -35,6 +35,8 @@ const char *bt_config_get_vendor(void);
 const char *bt_config_get_model(void);
 const char *bt_config_get_name(void);
 const char *bt_config_get_serial(void);
+const char *bt_config_get_fw_rev(void);
+const char *bt_config_get_hw_rev(void);
 uint64_t bt_config_get_system_id(void);
 uint16_t bt_config_get_pnp_source(void);
 uint16_t bt_config_get_pnp_vendor(void);

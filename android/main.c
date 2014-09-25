@@ -75,6 +75,8 @@ static char *config_vendor = NULL;
 static char *config_model = NULL;
 static char *config_name = NULL;
 static char *config_serial = NULL;
+static char *config_fw_rev = NULL;
+static char *config_hw_rev = NULL;
 static uint64_t config_system_id = 0;
 static uint16_t config_pnp_source = 0x0002;	/* USB */
 static uint16_t config_pnp_vendor = 0x1d6b;	/* Linux Foundation */
@@ -118,6 +120,16 @@ const char *bt_config_get_model(void)
 const char *bt_config_get_serial(void)
 {
 	return config_serial;
+}
+
+const char *bt_config_get_fw_rev(void)
+{
+	return config_fw_rev;
+}
+
+const char *bt_config_get_hw_rev(void)
+{
+	return config_hw_rev;
 }
 
 uint64_t bt_config_get_system_id(void)
@@ -419,6 +431,16 @@ static void configuration(const void *buf, uint16_t len)
 			break;
 		case HAL_CONFIG_PNP_ID:
 			parse_pnp_id(prop->len, prop->val);
+			break;
+		case HAL_CONFIG_FW_REV:
+			config_fw_rev = get_prop(config_fw_rev, prop->len,
+								prop->val);
+			DBG("fw_rev %s", config_fw_rev);
+			break;
+		case HAL_CONFIG_HW_REV:
+			config_hw_rev = get_prop(config_hw_rev, prop->len,
+								prop->val);
+			DBG("hw_rev %s", config_hw_rev);
 			break;
 		default:
 			error("Invalid configuration option (%u), terminating",
@@ -760,6 +782,8 @@ int main(int argc, char *argv[])
 	free(config_model);
 	free(config_name);
 	free(config_serial);
+	free(config_fw_rev);
+	free(config_hw_rev);
 
 	return EXIT_SUCCESS;
 }

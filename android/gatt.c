@@ -6524,8 +6524,7 @@ static void register_device_info_service(void)
 						NULL, NULL);
 	}
 
-	/* TODO */
-	data = NULL;
+	data = bt_config_get_fw_rev();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_FIRMWARE_REVISION_STRING);
 		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
@@ -6535,8 +6534,7 @@ static void register_device_info_service(void)
 						(void *) data);
 	}
 
-	/* TODO */
-	data = NULL;
+	data = bt_config_get_hw_rev();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_HARDWARE_REVISION_STRING);
 		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,

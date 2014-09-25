@@ -453,6 +453,16 @@ static int send_configuration(void)
 		cmd->num++;
 	}
 
+	if (get_config("fwrev", prop, "ro.build.version.release") > 0) {
+		len += add_prop(prop, HAL_CONFIG_FW_REV, buf + len);
+		cmd->num++;
+	}
+
+	if (get_config("hwrev", prop, "ro.board.platform") > 0) {
+		len += add_prop(prop, HAL_CONFIG_HW_REV, buf + len);
+		cmd->num++;
+	}
+
 	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_CONFIGURATION, len, cmd,
 							NULL, NULL, NULL);
 }
