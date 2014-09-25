@@ -24,7 +24,6 @@
 #include "audio-msg.h"
 #include "hal-audio.h"
 #include "hal-log.h"
-#include "src/shared/util.h"
 #include "profiles/audio/a2dp-codecs.h"
 
 #define APTX_SO_NAME	"libbt-aptx.so"
@@ -157,10 +156,11 @@ static bool aptx_codec_init(struct audio_preset *preset, uint16_t payload_len,
 		return false;
 	}
 
-	aptx_data = new0(struct aptx_data, 1);
+	aptx_data = malloc(sizeof(*aptx_data));
 	if (!aptx_data)
 		return false;
 
+	memset(aptx_data, 0, sizeof(*aptx_data));
 	memcpy(&aptx_data->aptx, preset->data, preset->len);
 
 	aptx_data->enc = calloc(1, aptx_btencsize);
