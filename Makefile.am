@@ -95,11 +95,40 @@ gdbus_libgdbus_internal_la_SOURCES = gdbus/gdbus.h \
 				gdbus/mainloop.c gdbus/watch.c \
 				gdbus/object.c gdbus/client.c gdbus/polkit.c
 
+noinst_LTLIBRARIES += src/libshared-glib.la src/libshared-mainloop.la
+
+shared_sources = src/shared/io.h src/shared/timeout.h \
+			src/shared/queue.h src/shared/queue.c \
+			src/shared/util.h src/shared/util.c \
+			src/shared/mgmt.h src/shared/mgmt.c \
+			src/shared/crypto.h src/shared/crypto.c \
+			src/shared/ringbuf.h src/shared/ringbuf.c \
+			src/shared/tester.h src/shared/tester.c \
+			src/shared/hciemu.h src/shared/hciemu.c \
+			src/shared/hci.h src/shared/hci.c \
+			src/shared/hfp.h src/shared/hfp.c \
+			src/shared/uhid.h src/shared/uhid.c \
+			src/shared/pcap.h src/shared/pcap.c \
+			src/shared/btsnoop.h src/shared/btsnoop.c \
+			src/shared/att-types.h \
+			src/shared/att.h src/shared/att.c \
+			src/shared/gatt-helpers.h src/shared/gatt-helpers.c \
+			src/shared/gatt-client.h src/shared/gatt-client.c \
+			src/shared/gatt-db.h src/shared/gatt-db.c
+
+src_libshared_glib_la_SOURCES = $(shared_sources) \
+				src/shared/io-glib.c \
+				src/shared/timeout-glib.c
+
+src_libshared_mainloop_la_SOURCES = $(shared_sources) \
+				src/shared/io-mainloop.c \
+				src/shared/timeout-mainloop.c \
+				monitor/mainloop.h monitor/mainloop.c
+
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
 		attrib/gattrib.h attrib/gattrib.c \
-		attrib/gatt-service.h attrib/gatt-service.c \
-		src/shared/crypto.h src/shared/crypto.c
+		attrib/gatt-service.h attrib/gatt-service.c
 
 btio_sources = btio/btio.h btio/btio.c
 
@@ -151,22 +180,18 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/gatt.h src/gatt.c \
 			src/device.h src/device.c src/attio.h \
 			src/dbus-common.c src/dbus-common.h \
-			src/eir.h src/eir.c \
-			src/shared/io.h src/shared/io-glib.c \
-			src/shared/timeout.h src/shared/timeout-glib.c \
-			src/shared/queue.h src/shared/queue.c \
-			src/shared/util.h src/shared/util.c \
-			src/shared/mgmt.h src/shared/mgmt.c \
-			src/shared/att-types.h src/shared/att.h src/shared/att.c \
-			src/shared/gatt-helpers.h src/shared/gatt-helpers.c \
-			src/shared/gatt-client.h src/shared/gatt-client.c
-src_bluetoothd_LDADD = lib/libbluetooth-internal.la gdbus/libgdbus-internal.la \
+			src/eir.h src/eir.c
+src_bluetoothd_LDADD = lib/libbluetooth-internal.la \
+			gdbus/libgdbus-internal.la \
+			src/libshared-glib.la \
 			@GLIB_LIBS@ @DBUS_LIBS@ -ldl -lrt
 src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
 
 src_bluetoothd_DEPENDENCIES = lib/libbluetooth-internal.la \
-				gdbus/libgdbus-internal.la src/bluetooth.service
+				gdbus/libgdbus-internal.la \
+				src/libshared-glib.la \
+				src/bluetooth.service
 
 src_bluetoothd_CFLAGS = $(AM_CFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
 					-DPLUGINDIR=\""$(build_plugindir)"\"
@@ -245,85 +270,63 @@ unit_test_textfile_LDADD = @GLIB_LIBS@
 unit_test_crc_SOURCES = unit/test-crc.c monitor/crc.h monitor/crc.c
 unit_test_crc_LDADD = @GLIB_LIBS@
 
-unit_test_crypto_SOURCES = unit/test-crypto.c \
-				src/shared/crypto.h src/shared/crypto.c
-unit_test_crypto_LDADD = @GLIB_LIBS@
+unit_test_crypto_SOURCES = unit/test-crypto.c
+unit_test_crypto_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-ringbuf unit/test-queue
 
-unit_test_ringbuf_SOURCES = unit/test-ringbuf.c \
-				src/shared/util.h src/shared/util.c \
-				src/shared/ringbuf.h src/shared/ringbuf.c
-unit_test_ringbuf_LDADD = @GLIB_LIBS@
+unit_test_ringbuf_SOURCES = unit/test-ringbuf.c
+unit_test_ringbuf_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
-unit_test_queue_SOURCES = unit/test-queue.c \
-				src/shared/util.h src/shared/util.c \
-				src/shared/queue.h src/shared/queue.c
-unit_test_queue_LDADD = @GLIB_LIBS@
+unit_test_queue_SOURCES = unit/test-queue.c
+unit_test_queue_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-mgmt
 
-unit_test_mgmt_SOURCES = unit/test-mgmt.c \
-				src/shared/io.h src/shared/io-glib.c \
-				src/shared/queue.h src/shared/queue.c \
-				src/shared/util.h src/shared/util.c \
-				src/shared/mgmt.h src/shared/mgmt.c
-unit_test_mgmt_LDADD = @GLIB_LIBS@
+unit_test_mgmt_SOURCES = unit/test-mgmt.c
+unit_test_mgmt_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-uhid
 
-unit_test_uhid_SOURCES = unit/test-uhid.c \
-				src/shared/uhid.h src/shared/uhid.c \
-				src/shared/io.h src/shared/io-glib.c \
-				src/shared/util.h src/shared/util.c \
-				src/shared/queue.h src/shared/queue.c
-unit_test_uhid_LDADD = @GLIB_LIBS@
+unit_test_uhid_SOURCES = unit/test-uhid.c
+unit_test_uhid_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-sdp
 
 unit_test_sdp_SOURCES = unit/test-sdp.c \
-				src/shared/util.h src/shared/util.c \
 				src/sdpd.h src/sdpd-database.c \
 				src/log.h src/log.c \
 				src/sdpd-service.c src/sdpd-request.c
-unit_test_sdp_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+unit_test_sdp_LDADD = lib/libbluetooth-internal.la \
+				src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-avdtp
 
 unit_test_avdtp_SOURCES = unit/test-avdtp.c \
-				src/shared/util.h src/shared/util.c \
 				src/log.h src/log.c \
 				android/avdtp.c android/avdtp.h
-unit_test_avdtp_LDADD = @GLIB_LIBS@
+unit_test_avdtp_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-avctp
 
 unit_test_avctp_SOURCES = unit/test-avctp.c \
-				src/shared/util.h src/shared/util.c \
 				src/log.h src/log.c \
 				android/avctp.c android/avctp.h
-unit_test_avctp_LDADD = @GLIB_LIBS@
+unit_test_avctp_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-avrcp
 
 unit_test_avrcp_SOURCES = unit/test-avrcp.c \
-				src/shared/util.h src/shared/util.c \
 				src/log.h src/log.c \
 				android/avctp.c android/avctp.h \
 				android/avrcp-lib.c android/avrcp-lib.h
-unit_test_avrcp_LDADD = @GLIB_LIBS@ lib/libbluetooth-internal.la
+unit_test_avrcp_LDADD = lib/libbluetooth-internal.la \
+				src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-hfp
 
-unit_test_hfp_SOURCES = unit/test-hfp.c \
-				src/shared/io.h src/shared/io-glib.c \
-				src/shared/queue.h src/shared/queue.c \
-				src/shared/util.h src/shared/util.c \
-				src/shared/mgmt.h src/shared/mgmt.c \
-				src/shared/ringbuf.h src/shared/ringbuf.c \
-				src/shared/hfp.h src/shared/hfp.c
-
-unit_test_hfp_LDADD = @GLIB_LIBS@
+unit_test_hfp_SOURCES = unit/test-hfp.c
+unit_test_hfp_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-gdbus-client
 
