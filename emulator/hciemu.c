@@ -179,6 +179,13 @@ static gboolean receive_btdev(GIOChannel *channel, GIOCondition condition,
 	fd = g_io_channel_unix_get_fd(channel);
 
 	len = read(fd, buf, sizeof(buf));
+	if (len < 0) {
+		if (errno == EAGAIN || errno == EINTR)
+			return TRUE;
+
+		return FALSE;
+	}
+
 	if (len < 1)
 		return FALSE;
 
