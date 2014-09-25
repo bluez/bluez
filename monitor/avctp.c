@@ -1291,6 +1291,23 @@ response:
 	return true;
 }
 
+static bool avrcp_set_absolute_volume(struct avctp_frame *avctp_frame,
+						uint8_t ctype, uint8_t len,
+						uint8_t indent)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint8_t value;
+
+	if (!l2cap_frame_get_u8(frame, &value))
+		return false;
+
+	value &= 0x7F;
+	print_field("%*cVolume: %.2f%% (%d/127)", (indent - 8),
+						' ', value/1.27, value);
+
+	return true;
+}
+
 struct avrcp_ctrl_pdu_data {
 	uint8_t pduid;
 	bool (*func) (struct avctp_frame *avctp_frame, uint8_t ctype,
@@ -1309,6 +1326,7 @@ static const struct avrcp_ctrl_pdu_data avrcp_ctrl_pdu_table[] = {
 	{ 0x20, avrcp_get_element_attributes		},
 	{ 0x30, avrcp_get_play_status			},
 	{ 0x31, avrcp_register_notification		},
+	{ 0x50, avrcp_set_absolute_volume		},
 	{ }
 };
 
