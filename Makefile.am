@@ -105,6 +105,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/ringbuf.h src/shared/ringbuf.c \
 			src/shared/tester.h src/shared/tester.c \
 			src/shared/hci.h src/shared/hci.c \
+			src/shared/hci-crypto.h src/shared/hci-crypto.c \
 			src/shared/hfp.h src/shared/hfp.c \
 			src/shared/uhid.h src/shared/uhid.c \
 			src/shared/pcap.h src/shared/pcap.c \
