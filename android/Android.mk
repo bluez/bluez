@@ -179,6 +179,10 @@ LOCAL_SRC_FILES := \
 	bluez/android/client/if-gatt.c \
 	bluez/android/hal-utils.c \
 
+ifeq ($(BLUEZ_EXTENSIONS), true)
+LOCAL_SRC_FILES += bluez/android/client/if-hf-client.c
+endif
+
 LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \
 	$(call include-path-for, libhardware) \

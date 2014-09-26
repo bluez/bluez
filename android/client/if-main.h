@@ -37,6 +37,10 @@
 #include <hardware/bt_hf.h>
 #include <hardware/bt_hl.h>
 
+#ifdef BLUEZ_EXTENSIONS
+#include <hardware/bt_hf_client.h>
+#endif
+
 #include <hardware/bt_rc.h>
 #include <hardware/bt_gatt.h>
 #include <hardware/bt_gatt_types.h>
@@ -57,6 +61,9 @@ extern const btsock_interface_t *if_sock;
 extern const btgatt_interface_t *if_gatt;
 extern const btgatt_server_interface_t *if_gatt_server;
 extern const btgatt_client_interface_t *if_gatt_client;
+#ifdef BLUEZ_EXTENSIONS
+extern const bthf_client_interface_t *if_hf_client;
+#endif
 
 /*
  * Structure defines top level interfaces that can be used in test tool
@@ -80,6 +87,9 @@ extern const struct interface sock_if;
 extern const struct interface hf_if;
 extern const struct interface hh_if;
 extern const struct interface hl_if;
+#ifdef BLUEZ_EXTENSIONS
+extern const struct interface hf_client_if;
+#endif
 
 /* Interfaces that will show up in tool (first part of command line) */
 extern const struct interface *interfaces[];

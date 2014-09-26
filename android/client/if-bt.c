@@ -734,6 +734,9 @@ static void get_profile_interface_c(int argc, const char **argv,
 		BT_PROFILE_PAN_ID,
 		BT_PROFILE_GATT_ID,
 		BT_PROFILE_AV_RC_ID,
+#ifdef BLUEZ_EXTENSIONS
+		BT_PROFILE_HANDSFREE_CLIENT_ID,
+#endif
 		NULL
 	};
 
@@ -772,6 +775,10 @@ static void get_profile_interface_p(int argc, const char **argv)
 		pif = (const void **) &if_rc;
 	else if (strcmp(BT_PROFILE_GATT_ID, id) == 0)
 		pif = (const void **) &if_gatt;
+#ifdef BLUEZ_EXTENSIONS
+	else if (strcmp(BT_PROFILE_HANDSFREE_CLIENT_ID, id) == 0)
+		pif = (const void **) &if_hf_client;
+#endif
 	else
 		haltest_error("%s is not correct for get_profile_interface\n",
 									id);

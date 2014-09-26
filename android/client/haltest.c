@@ -48,6 +48,9 @@ const struct interface *interfaces[] = {
 	&pan_if,
 	&hl_if,
 	&sock_if,
+#ifdef BLUEZ_EXTENSIONS
+	&hf_client_if,
+#endif
 	NULL
 };
 
@@ -391,7 +394,10 @@ static void init(void)
 		BT_PROFILE_HIDHOST_ID,
 		BT_PROFILE_PAN_ID,
 		BT_PROFILE_GATT_ID,
-		BT_PROFILE_SOCKETS_ID
+		BT_PROFILE_SOCKETS_ID,
+#ifdef BLUEZ_EXTENSIONS
+		BT_PROFILE_HANDSFREE_CLIENT_ID,
+#endif
 	};
 	const struct method *m;
 	const char *argv[4];
