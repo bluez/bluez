@@ -347,7 +347,6 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
-	bluez/src/shared/queue.c \
 	bluez/android/hal-audio.c \
 	bluez/android/hal-audio-sbc.c \
 	bluez/android/hal-audio-aptx.c \

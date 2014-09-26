@@ -36,7 +36,6 @@
 #include "hal-msg.h"
 #include "hal-audio.h"
 #include "src/shared/util.h"
-#include "src/shared/queue.h"
 
 #define FIXED_A2DP_PLAYBACK_LATENCY_MS 25
 
@@ -97,16 +96,17 @@ extern int clock_nanosleep(clockid_t clock_id, int flags,
 					struct timespec *remain);
 #endif
 
-static const audio_codec_get_t audio_codecs[] = {
-		codec_aptx,
-		codec_sbc,
+static struct {
+	const audio_codec_get_t get_codec;
+	bool loaded;
+} audio_codecs[] = {
+		{ .get_codec = codec_aptx, .loaded = false },
+		{ .get_codec = codec_sbc, .loaded = false },
 };
 
 #define NUM_CODECS (sizeof(audio_codecs) / sizeof(audio_codecs[0]))
 
 #define MAX_AUDIO_ENDPOINTS NUM_CODECS
-
-static struct queue *loaded_codecs;
 
 struct audio_endpoint {
 	uint8_t id;
@@ -423,10 +423,9 @@ struct register_state {
 	bool error;
 };
 
-static void register_endpoint(void *data, void *user_data)
+static void register_endpoint(const struct audio_codec *codec,
+						struct register_state *state)
 {
-	struct audio_codec *codec = data;
-	struct register_state *state = user_data;
 	struct audio_endpoint *ep = state->ep;
 
 	/* don't even try to register more endpoints if one failed */
@@ -451,11 +450,19 @@ static void register_endpoint(void *data, void *user_data)
 static int register_endpoints(void)
 {
 	struct register_state state;
+	unsigned int i;
 
 	state.ep = &audio_endpoints[0];
 	state.error = false;
 
-	queue_foreach(loaded_codecs, register_endpoint, &state);
+	for (i = 0; i < NUM_CODECS; i++) {
+		const struct audio_codec *codec = audio_codecs[i].get_codec();
+
+		if (!audio_codecs[i].loaded)
+			continue;
+
+		register_endpoint(codec, &state);
+	}
 
 	return state.error ? AUDIO_STATUS_FAILED : AUDIO_STATUS_SUCCESS;
 }
@@ -1293,24 +1300,26 @@ static int audio_dump(const audio_hw_device_t *device, int fd)
 	return -ENOSYS;
 }
 
-static void unload_codec(void *data)
-{
-	struct audio_codec *codec = data;
-
-	if (codec->unload)
-		codec->unload();
-}
-
 static int audio_close(hw_device_t *device)
 {
 	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *)device;
+	unsigned int i;
 
 	DBG("");
 
 	unregister_endpoints();
 
-	queue_destroy(loaded_codecs, unload_codec);
-	loaded_codecs = NULL;
+	for (i = 0; i < NUM_CODECS; i++) {
+		const struct audio_codec *codec = audio_codecs[i].get_codec();
+
+		if (!audio_codecs[i].loaded)
+			continue;
+
+		if (codec->unload)
+			codec->unload();
+
+		audio_codecs[i].loaded = false;
+	}
 
 	shutdown(listen_sk, SHUT_RDWR);
 	shutdown(audio_sk, SHUT_RDWR);
@@ -1488,16 +1497,13 @@ static int audio_open(const hw_module_t *module, const char *name,
 	a2dp_dev->dev.close_input_stream = audio_close_input_stream;
 	a2dp_dev->dev.dump = audio_dump;
 
-	loaded_codecs = queue_new();
-
 	for (i = 0; i < NUM_CODECS; i++) {
-		audio_codec_get_t get_codec = audio_codecs[i];
-		const struct audio_codec *codec = get_codec();
+		const struct audio_codec *codec = audio_codecs[i].get_codec();
 
 		if (codec->load && !codec->load())
 			continue;
 
-		queue_push_tail(loaded_codecs, (void *) codec);
+		audio_codecs[i].loaded = true;
 	}
 
 	/*
