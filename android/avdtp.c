@@ -2079,9 +2079,8 @@ next:
 	return TRUE;
 
 failed:
-	connection_lost(session, EIO);
-
 	session->io_id = 0;
+	connection_lost(session, EIO);
 
 	return FALSE;
 }
