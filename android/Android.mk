@@ -472,6 +472,7 @@ LOCAL_SRC_FILES := \
 	bluez/src/shared/mgmt.c \
 	bluez/src/shared/queue.c \
 	bluez/src/shared/util.c \
+	bluez/src/shared/gap.c \
 	bluez/src/uuid-helper.c \
 
 LOCAL_C_INCLUDES := \
