@@ -216,6 +216,18 @@ model		<any>		Set model name used as default adapter name.
 				If not set fallback to "ro.product.model".
 name		<any>		Set model number in DIS. If not set fallback to
 				"ro.product.name".
+serialno	<any>		Set serial number in DIS. If not set fallback to
+				"ro.serialno".
+systemid	<uint64>	Set system ID in DIS. Hex string encoded uint64.
+pnpid		<any>		PnP information used in DIS and DID profiles.
+				Required format: "Source:VID:PID:Version".
+				Source must be either "bluetooth" or "usb".
+				VID, PID and Version are uint16. Version is
+				optional.
+fwrev		<any>		Firmware revision in DIS. If not set fallback to
+				"ro.build.version.release".
+hwrew		<any>		Hardware revision in DIS. If not set fallback to
+				"ro.board.platform".
 
 
 Building and running on Linux
