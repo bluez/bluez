@@ -29,7 +29,7 @@
 #include <hardware/hardware.h>
 #include <audio_utils/resampler.h>
 
-#include "../src/shared/util.h"
+#include "hal-utils.h"
 #include "sco-msg.h"
 #include "ipc-common.h"
 #include "hal-log.h"
@@ -311,10 +311,10 @@ static void downmix_to_mono(struct sco_stream_out *out, const uint8_t *buffer,
 	size_t i;
 
 	for (i = 0; i < frame_num; i++) {
-		int16_t l = le16_to_cpu(get_unaligned(&input[i * 2]));
-		int16_t r = le16_to_cpu(get_unaligned(&input[i * 2 + 1]));
+		int16_t l = get_le16(&input[i * 2]);
+		int16_t r = get_le16(&input[i * 2 + 1]);
 
-		put_unaligned(cpu_to_le16((l + r) >> 1), &output[i]);
+		put_le16((l + r) / 2, &output[i]);
 	}
 }
 
