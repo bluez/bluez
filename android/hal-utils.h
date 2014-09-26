@@ -15,6 +15,8 @@
  *
  */
 
+#include <endian.h>
+
 #include <hardware/bluetooth.h>
 
 #define PLATFORM_VER(a,b,c) ((a << 16) | ( b << 8) | (c))
@@ -132,3 +134,21 @@ DECINTMAP(bt_bond_state_t);
 DECINTMAP(bt_ssp_variant_t);
 DECINTMAP(bt_property_type_t);
 DECINTMAP(bt_cb_thread_evt);
+
+static inline uint16_t get_le16(const void *src)
+{
+	const struct __attribute__((packed)) {
+		uint16_t le16;
+	} *p = src;
+
+	return le16toh(p->le16);
+}
+
+static inline void put_le16(uint16_t val, void *dst)
+{
+	struct __attribute__((packed)) {
+		uint16_t le16;
+	} *p = dst;
+
+	p->le16 = htole16(val);
+}
