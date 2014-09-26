@@ -1,6 +1,6 @@
 OPP PICS for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -23,7 +23,7 @@ C.1: Mandatory to support at least one of the defined roles.
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_OPP_1b_1	True		Client supports OPP version 1.1. (C.1)
+TSPC_OPP_1b_1	True (*)	Client supports OPP version 1.1. (C.1)
 TSPC_OPP_1b_2	False		Client supports OPP version 1.2. (C.1)
 -------------------------------------------------------------------------------
 C.1: It is mandatory to support at least one of the profile versions.
@@ -107,7 +107,7 @@ C.11: Mandatory if TSPC_OPP_17 and TSPC_OPP_21 supported else excluded.
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_OPP_2b_1	True		Server supports OPP version 1.1.
+TSPC_OPP_2b_1	True (*)	Server supports OPP version 1.1.
 TSPC_OPP_2b_2	False		Server supports OPP version 1.2.
 -------------------------------------------------------------------------------
 C.1: It is mandatory to support at least one of the profile versions.
