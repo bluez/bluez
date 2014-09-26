@@ -97,6 +97,15 @@ static void handle_volume_control(const void *buf, uint16_t len)
 
 static void handle_dial(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_hf_client_dial *cmd = buf;
+
+	if (len != sizeof(*cmd) + cmd->number_len) {
+		error("Malformed number data, size (%u bytes), terminating",
+									len);
+		raise(SIGTERM);
+		return;
+	}
+
 	DBG("Not Implemented");
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
 				HAL_OP_HF_CLIENT_DIAL, HAL_STATUS_UNSUPPORTED);
