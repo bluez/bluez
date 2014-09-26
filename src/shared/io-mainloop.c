@@ -301,6 +301,23 @@ bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
 	return true;
 }
 
+ssize_t io_send(struct io *io, const struct iovec *iov, int iovcnt)
+{
+	ssize_t ret;
+
+	if (!io || io->fd < 0)
+		return -ENOTCONN;
+
+	do {
+		ret = writev(io->fd, iov, iovcnt);
+	} while (ret < 0 && errno == EINTR);
+
+	if (ret < 0)
+		return -errno;
+
+	return ret;
+}
+
 bool io_shutdown(struct io *io)
 {
 	if (!io || io->fd < 0)

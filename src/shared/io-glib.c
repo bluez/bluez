@@ -326,6 +326,26 @@ done:
 	return true;
 }
 
+ssize_t io_send(struct io *io, const struct iovec *iov, int iovcnt)
+{
+	int fd;
+	ssize_t ret;
+
+	if (!io || !io->channel)
+		return -ENOTCONN;
+
+	fd = io_get_fd(io);
+
+	do {
+		ret = writev(fd, iov, iovcnt);
+	} while (ret < 0 && errno == EINTR);
+
+	if (ret < 0)
+		return -errno;
+
+	return ret;
+}
+
 bool io_shutdown(struct io *io)
 {
 	if (!io || !io->channel)

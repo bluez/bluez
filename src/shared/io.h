@@ -22,6 +22,7 @@
  */
 
 #include <stdbool.h>
+#include <sys/uio.h>
 
 typedef void (*io_destroy_func_t)(void *data);
 
@@ -33,6 +34,7 @@ void io_destroy(struct io *io);
 int io_get_fd(struct io *io);
 bool io_set_close_on_destroy(struct io *io, bool do_close);
 
+ssize_t io_send(struct io *io, const struct iovec *iov, int iovcnt);
 bool io_shutdown(struct io *io);
 
 typedef bool (*io_callback_func_t)(struct io *io, void *user_data);
