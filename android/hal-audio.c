@@ -35,7 +35,7 @@
 #include "hal-log.h"
 #include "hal-msg.h"
 #include "hal-audio.h"
-#include "src/shared/util.h"
+#include "hal-utils.h"
 
 #define FIXED_A2DP_PLAYBACK_LATENCY_MS 25
 
@@ -588,10 +588,10 @@ static void downmix_to_mono(struct a2dp_stream_out *out, const uint8_t *buffer,
 	frames = bytes / (2 * sizeof(int16_t));
 
 	for (i = 0; i < frames; i++) {
-		int16_t l = le16_to_cpu(get_unaligned(&input[i * 2]));
-		int16_t r = le16_to_cpu(get_unaligned(&input[i * 2 + 1]));
+		int16_t l = get_le16(&input[i * 2]);
+		int16_t r = get_le16(&input[i * 2 + 1]);
 
-		put_unaligned(cpu_to_le16((l + r) / 2), &output[i]);
+		put_le16((l + r) / 2, &output[i]);
 	}
 }
 
