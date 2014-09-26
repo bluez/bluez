@@ -333,7 +333,6 @@ static void configuration(const void *buf, uint16_t len)
 
 		buf += sizeof(*prop) + prop->len;
 		len -= sizeof(*prop) + prop->len;
-		prop = buf;
 	}
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_CORE, HAL_OP_CONFIGURATION,
