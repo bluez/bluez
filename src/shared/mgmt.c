@@ -162,7 +162,8 @@ static bool can_write_data(struct io *io, void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 	struct mgmt_request *request;
-	ssize_t bytes_written;
+	struct iovec iov;
+	ssize_t ret;
 
 	request = queue_pop_head(mgmt->reply_queue);
 	if (!request) {
@@ -175,10 +176,13 @@ static bool can_write_data(struct io *io, void *user_data)
 			return false;
 	}
 
-	bytes_written = write(mgmt->fd, request->buf, request->len);
-	if (bytes_written < 0) {
+	iov.iov_base = request->buf;
+	iov.iov_len = request->len;
+
+	ret = io_send(io, &iov, 1);
+	if (ret < 0) {
 		util_debug(mgmt->debug_callback, mgmt->debug_data,
-				"write failed: %s", strerror(errno));
+				"write failed: %s", strerror(-ret));
 		if (request->callback)
 			request->callback(MGMT_STATUS_FAILED, 0, NULL,
 							request->user_data);
@@ -190,8 +194,8 @@ static bool can_write_data(struct io *io, void *user_data)
 				"[0x%04x] command 0x%04x",
 				request->index, request->opcode);
 
-	util_hexdump('<', request->buf, bytes_written,
-				mgmt->debug_callback, mgmt->debug_data);
+	util_hexdump('<', request->buf, ret, mgmt->debug_callback,
+							mgmt->debug_data);
 
 	queue_push_tail(mgmt->pending_list, request);
 
