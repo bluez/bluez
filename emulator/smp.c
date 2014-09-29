@@ -75,6 +75,20 @@ struct smp_conn {
 	uint8_t ltk[16];
 };
 
+static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
+								uint8_t len)
+{
+	struct iovec iov[2];
+
+	iov[0].iov_base = &smp_cmd;
+	iov[0].iov_len = 1;
+
+	iov[1].iov_base = (void *) data;
+	iov[1].iov_len = len;
+
+	bthost_send_cid_v(conn->smp->bthost, conn->handle, SMP_CID, iov, 2);
+}
+
 static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
 {
 	uint8_t confirm[16];
@@ -105,68 +119,63 @@ static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
 static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	struct bthost *bthost = conn->smp->bthost;
-	uint8_t rsp[7];
+	struct bt_l2cap_smp_pairing_response rsp;
 
 	memcpy(conn->preq, data, sizeof(conn->preq));
 
-	rsp[0] = BT_L2CAP_SMP_PAIRING_RESPONSE;
-	rsp[1] = bthost_get_io_capability(bthost);
-	rsp[2] = 0x00;				/* OOB Flag */
-	rsp[3] = bthost_get_auth_req(bthost);
-	rsp[4] = 0x10;				/* Max key size */
-	rsp[5] = conn->preq[5] & KEY_DIST;	/* Init. key dist. */
-	rsp[6] = conn->preq[6] & KEY_DIST;	/* Rsp. key dist. */
+	rsp.io_capa		= bthost_get_io_capability(bthost);
+	rsp.oob_data		= 0x00;
+	rsp.auth_req		= bthost_get_auth_req(bthost);
+	rsp.max_key_size	= 0x10;
+	rsp.init_key_dist	= conn->preq[5] & KEY_DIST;
+	rsp.resp_key_dist	= conn->preq[6] & KEY_DIST;
 
-	memcpy(conn->prsp, rsp, sizeof(rsp));
+	conn->prsp[0] = BT_L2CAP_SMP_PAIRING_RESPONSE;
+	memcpy(&conn->prsp[1], &rsp, sizeof(rsp));
 
-	conn->local_key_dist = rsp[6];
-	conn->remote_key_dist = rsp[5];
+	conn->local_key_dist	= rsp.resp_key_dist;
+	conn->remote_key_dist	= rsp.init_key_dist;
 
-	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
+	smp_send(conn, BT_L2CAP_SMP_PAIRING_RESPONSE, &rsp, sizeof(rsp));
 }
 
 static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	struct smp *smp = conn->smp;
-	uint8_t cfm[17];
+	uint8_t cfm[16];
 
 	memcpy(conn->prsp, data, sizeof(conn->prsp));
 
 	conn->local_key_dist = conn->prsp[5];
 	conn->remote_key_dist = conn->prsp[6];
 
-	cfm[0] = BT_L2CAP_SMP_PAIRING_CONFIRM;
 	bt_crypto_c1(smp->crypto, conn->tk, conn->prnd, conn->prsp,
 			conn->preq, conn->ia_type, conn->ia,
-			conn->ra_type, conn->ra, &cfm[1]);
+			conn->ra_type, conn->ra, cfm);
 
-	bthost_send_cid(smp->bthost, conn->handle, SMP_CID, cfm, sizeof(cfm));
+	smp_send(conn, BT_L2CAP_SMP_PAIRING_CONFIRM, cfm, sizeof(cfm));
 }
 
 static void pairing_cfm(struct smp_conn *conn, const void *data, uint16_t len)
 {
-	struct bthost *bthost = conn->smp->bthost;
-	uint8_t rsp[17];
+	uint8_t rsp[16];
 
 	memcpy(conn->pcnf, data + 1, 16);
 
 	if (conn->out) {
-		rsp[0] = BT_L2CAP_SMP_PAIRING_RANDOM;
-		memset(&rsp[1], 0, 16);
+		memset(rsp, 0, sizeof(rsp));
+		smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM, rsp, sizeof(rsp));
 	} else {
-		rsp[0] = BT_L2CAP_SMP_PAIRING_CONFIRM;
 		bt_crypto_c1(conn->smp->crypto, conn->tk, conn->prnd,
 				conn->prsp, conn->preq, conn->ia_type,
-				conn->ia, conn->ra_type, conn->ra, &rsp[1]);
+				conn->ia, conn->ra_type, conn->ra, rsp);
+		smp_send(conn, BT_L2CAP_SMP_PAIRING_CONFIRM, rsp, sizeof(rsp));
 	}
-
-	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
 }
 
 static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 {
-	struct bthost *bthost = conn->smp->bthost;
-	uint8_t rsp[17];
+	uint8_t rsp[16];
 
 	memcpy(conn->rrnd, data + 1, 16);
 
@@ -176,49 +185,39 @@ static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 	if (conn->out)
 		return;
 
-	rsp[0] = BT_L2CAP_SMP_PAIRING_RANDOM;
-	memset(&rsp[1], 0, 16);
-
-	bthost_send_cid(bthost, conn->handle, SMP_CID, rsp, sizeof(rsp));
+	memset(rsp, 0, sizeof(rsp));
+	smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM, rsp, sizeof(rsp));
 }
 
 static void distribute_keys(struct smp_conn *conn)
 {
-	uint8_t buf[17];
-	struct bthost *bthost = conn->smp->bthost;
+	uint8_t buf[16];
 
 	if (conn->local_key_dist & DIST_ENC_KEY) {
 		memset(buf, 0, sizeof(buf));
-
-		buf[0] = BT_L2CAP_SMP_ENCRYPT_INFO;
-		bthost_send_cid(bthost, conn->handle, SMP_CID, buf, 17);
-
-		buf[0] = BT_L2CAP_SMP_MASTER_IDENT;
-		bthost_send_cid(bthost, conn->handle, SMP_CID, buf, 11);
+		smp_send(conn, BT_L2CAP_SMP_ENCRYPT_INFO, buf, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_MASTER_IDENT, buf, 10);
 	}
 
 	if (conn->local_key_dist & DIST_ID_KEY) {
 		memset(buf, 0, sizeof(buf));
 
-		buf[0] = BT_L2CAP_SMP_IDENT_ADDR_INFO;
 		if (conn->out) {
-			buf[1] = conn->ia_type;
-			memcpy(&buf[2], conn->ia, 6);
+			buf[0] = conn->ia_type;
+			memcpy(&buf[1], conn->ia, 6);
 		} else {
-			buf[1] = conn->ra_type;
-			memcpy(&buf[2], conn->ra, 6);
+			buf[0] = conn->ra_type;
+			memcpy(&buf[1], conn->ra, 6);
 		}
-		bthost_send_cid(bthost, conn->handle, SMP_CID, buf, 8);
+		smp_send(conn, BT_L2CAP_SMP_IDENT_ADDR_INFO, buf, 7);
 
-		buf[0] = BT_L2CAP_SMP_IDENT_INFO;
-		memset(&buf[1], 0, 16);
-		bthost_send_cid(bthost, conn->handle, SMP_CID, buf, 17);
+		memset(buf, 0, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_IDENT_INFO, buf, sizeof(buf));
 	}
 
 	if (conn->local_key_dist & DIST_SIGN) {
 		memset(buf, 0, sizeof(buf));
-		buf[0] = BT_L2CAP_SMP_SIGNING_INFO;
-		bthost_send_cid(bthost, conn->handle, SMP_CID, buf, 17);
+		smp_send(conn, BT_L2CAP_SMP_SIGNING_INFO, buf, sizeof(buf));
 	}
 }
 
@@ -258,19 +257,19 @@ static void signing_info(struct smp_conn *conn, const void *data, uint16_t len)
 void smp_pair(void *conn_data, uint8_t io_cap, uint8_t auth_req)
 {
 	struct smp_conn *conn = conn_data;
-	struct bthost *bthost = conn->smp->bthost;
-	const uint8_t req[] = {	BT_L2CAP_SMP_PAIRING_REQUEST,
-				io_cap,		/* IO Capability */
-				0x00,		/* OOB Flag */
-				auth_req,	/* Auth requirement */
-				0x10,		/* Max key size */
-				KEY_DIST,	/* Init. key dist. */
-				KEY_DIST,	/* Rsp. key dist. */
-			};
+	struct bt_l2cap_smp_pairing_request req;
 
-	memcpy(conn->preq, req, sizeof(req));
+	req.io_capa		= io_cap;
+	req.oob_data		= 0x00;
+	req.auth_req		= auth_req;
+	req.max_key_size	= 0x10;
+	req.init_key_dist	= KEY_DIST;
+	req.resp_key_dist	= KEY_DIST;
 
-	bthost_send_cid(bthost, conn->handle, SMP_CID, req, sizeof(req));
+	conn->preq[0] = BT_L2CAP_SMP_PAIRING_REQUEST;
+	memcpy(&conn->preq[1], &req, sizeof(req));
+
+	smp_send(conn, BT_L2CAP_SMP_PAIRING_REQUEST, &req, sizeof(req));
 }
 
 void smp_data(void *conn_data, const void *data, uint16_t len)
