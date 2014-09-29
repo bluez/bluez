@@ -47,7 +47,7 @@
 #include "src/oui.h"
 
 /* Unofficial value, might still change */
-#define LE_LINK		0x03
+#define LE_LINK		0x80
 
 #define FLAGS_AD_TYPE 0x01
 #define FLAGS_LIMITED_MODE_BIT 0x01
