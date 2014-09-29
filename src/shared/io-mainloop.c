@@ -26,6 +26,7 @@
 #endif
 
 #include <unistd.h>
+#include <errno.h>
 #include <sys/socket.h>
 
 #include "monitor/mainloop.h"
@@ -192,7 +193,7 @@ void io_destroy(struct io *io)
 int io_get_fd(struct io *io)
 {
 	if (!io)
-		return -1;
+		return -ENOTCONN;
 
 	return io->fd;
 }

@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <glib.h>
 
 #include "src/shared/io.h"
@@ -122,7 +124,7 @@ void io_destroy(struct io *io)
 int io_get_fd(struct io *io)
 {
 	if (!io)
-		return -1;
+		return -ENOTCONN;
 
 	return g_io_channel_unix_get_fd(io->channel);
 }
