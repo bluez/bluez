@@ -2528,13 +2528,13 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 	}
 
 	err = hci_le_set_scan_parameters(dd, scan_type, interval, window,
-						own_type, filter_policy, 1000);
+						own_type, filter_policy, 10000);
 	if (err < 0) {
 		perror("Set scan parameters failed");
 		exit(1);
 	}
 
-	err = hci_le_set_scan_enable(dd, 0x01, filter_dup, 1000);
+	err = hci_le_set_scan_enable(dd, 0x01, filter_dup, 10000);
 	if (err < 0) {
 		perror("Enable scan failed");
 		exit(1);
@@ -2548,7 +2548,7 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	err = hci_le_set_scan_enable(dd, 0x00, filter_dup, 1000);
+	err = hci_le_set_scan_enable(dd, 0x00, filter_dup, 10000);
 	if (err < 0) {
 		perror("Disable scan failed");
 		exit(1);
