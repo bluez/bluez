@@ -228,15 +228,16 @@ bool bt_uhid_unregister(struct bt_uhid *uhid, unsigned int id)
 
 int bt_uhid_send(struct bt_uhid *uhid, const struct uhid_event *ev)
 {
-	int fd;
 	ssize_t len;
+	struct iovec iov;
 
 	if (!uhid->io)
 		return -ENOTCONN;
 
-	fd = io_get_fd(uhid->io);
+	iov.iov_base = (void *) ev;
+	iov.iov_len = sizeof(*ev);
 
-	len = write(fd, ev, sizeof(*ev));
+	len = io_send(uhid->io, &iov, 1);
 	if (len < 0)
 		return -errno;
 
