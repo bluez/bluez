@@ -434,182 +434,177 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
-	if (exp->callback || step->callback) {
-		if (exp->callback != step->callback) {
-			tester_debug("Callback type don't match");
-			return false;
-		}
+	if (!exp->callback && !step->callback)
+		return true;
 
-		if (exp->callback_result.state != step->callback_result.state) {
-			tester_debug("Callback state don't match");
-			return false;
-		}
+	if (exp->callback != step->callback) {
+		tester_debug("Callback type don't match");
+		return false;
+	}
 
-		if (exp->callback_result.status !=
-						step->callback_result.status) {
-			tester_debug("Callback status don't match");
-			return false;
-		}
+	if (exp->callback_result.state != step->callback_result.state) {
+		tester_debug("Callback state don't match");
+		return false;
+	}
 
-		if (exp->callback_result.mode != step->callback_result.mode) {
-			tester_debug("Callback mode don't match");
-			return false;
-		}
+	if (exp->callback_result.status != step->callback_result.status) {
+		tester_debug("Callback status don't match");
+		return false;
+	}
 
-		if (exp->callback_result.report_size !=
+	if (exp->callback_result.mode != step->callback_result.mode) {
+		tester_debug("Callback mode don't match");
+		return false;
+	}
+
+	if (exp->callback_result.report_size !=
 					step->callback_result.report_size) {
-			tester_debug("Callback report size don't match");
-			return false;
-		}
+		tester_debug("Callback report size don't match");
+		return false;
+	}
 
-		if (exp->callback_result.ctrl_state !=
+	if (exp->callback_result.ctrl_state !=
 					step->callback_result.ctrl_state) {
-			tester_debug("Callback ctrl state don't match");
-			return false;
-		}
+		tester_debug("Callback ctrl state don't match");
+		return false;
+	}
 
-		if (exp->callback_result.conn_state !=
+	if (exp->callback_result.conn_state !=
 					step->callback_result.conn_state) {
-			tester_debug("Callback connection state don't match");
-			return false;
-		}
+		tester_debug("Callback connection state don't match");
+		return false;
+	}
 
-		if (exp->callback_result.local_role !=
+	if (exp->callback_result.local_role !=
 					step->callback_result.local_role) {
-			tester_debug("Callback local_role don't match");
-			return false;
-		}
+		tester_debug("Callback local_role don't match");
+		return false;
+	}
 
-		if (exp->callback_result.remote_role !=
+	if (exp->callback_result.remote_role !=
 					step->callback_result.remote_role) {
-			tester_debug("Callback remote_role don't match");
-			return false;
-		}
+		tester_debug("Callback remote_role don't match");
+		return false;
+	}
 
-		if (exp->callback_result.app_id !=
-						step->callback_result.app_id) {
-			tester_debug("Callback app_id don't match");
-			return false;
-		}
+	if (exp->callback_result.app_id != step->callback_result.app_id) {
+		tester_debug("Callback app_id don't match");
+		return false;
+	}
 
-		if (exp->callback_result.channel_id !=
+	if (exp->callback_result.channel_id !=
 					step->callback_result.channel_id) {
-			tester_debug("Callback channel_id don't match");
-			return false;
-		}
+		tester_debug("Callback channel_id don't match");
+		return false;
+	}
 
-		if (exp->callback_result.mdep_cfg_index !=
+	if (exp->callback_result.mdep_cfg_index !=
 					step->callback_result.mdep_cfg_index) {
-			tester_debug("Callback mdep_cfg_index don't match");
-			return false;
-		}
+		tester_debug("Callback mdep_cfg_index don't match");
+		return false;
+	}
 
-		if (exp->callback_result.app_state !=
-					step->callback_result.app_state) {
-			tester_debug("Callback app_state don't match");
-			return false;
-		}
+	if (exp->callback_result.app_state != step->callback_result.app_state) {
+		tester_debug("Callback app_state don't match");
+		return false;
+	}
 
-		if (exp->callback_result.channel_state !=
+	if (exp->callback_result.channel_state !=
 					step->callback_result.channel_state) {
-			tester_debug("Callback channel_state don't match");
-			return false;
-		}
+		tester_debug("Callback channel_state don't match");
+		return false;
+	}
 
-		if (exp->callback_result.pairing_variant !=
+	if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
-			tester_debug("Callback pairing result don't match");
-			return false;
-		}
+		tester_debug("Callback pairing result don't match");
+		return false;
+	}
 
-		if (exp->callback_result.adv_data !=
-					step->callback_result.adv_data) {
-			tester_debug("Callback adv. data status don't match");
-			return false;
-		}
+	if (exp->callback_result.adv_data != step->callback_result.adv_data) {
+		tester_debug("Callback adv. data status don't match");
+		return false;
+	}
 
-		if (exp->callback_result.conn_id !=
-						step->callback_result.conn_id) {
-			tester_debug("Callback conn_id don't match");
-			return false;
-		}
+	if (exp->callback_result.conn_id != step->callback_result.conn_id) {
+		tester_debug("Callback conn_id don't match");
+		return false;
+	}
 
-		if (exp->callback_result.gatt_app_id !=
+	if (exp->callback_result.gatt_app_id !=
 					step->callback_result.gatt_app_id) {
-			tester_debug("Callback gatt_app_id don't match");
-			return false;
-		}
+		tester_debug("Callback gatt_app_id don't match");
+		return false;
+	}
 
-		if (exp->callback_result.properties &&
-				verify_property(exp->callback_result.properties,
-				exp->callback_result.num_properties,
-				step->callback_result.properties,
-				step->callback_result.num_properties)) {
-			tester_debug("Gatt properties don't match");
-			return false;
-		}
+	if (exp->callback_result.properties &&
+			verify_property(exp->callback_result.properties,
+					exp->callback_result.num_properties,
+					step->callback_result.properties,
+					step->callback_result.num_properties)) {
+		tester_debug("Gatt properties don't match");
+		return false;
+	}
 
-		if (exp->callback_result.service &&
-				!verify_services(step->callback_result.service,
+	if (exp->callback_result.service &&
+			!verify_services(step->callback_result.service,
 						exp->callback_result.service)) {
-			tester_debug("Gatt service doesn't match");
+		tester_debug("Gatt service doesn't match");
+		return false;
+	}
+
+	if (exp->callback_result.characteristic) {
+		btgatt_gatt_id_t *a;
+		btgatt_gatt_id_t *b;
+		a = step->callback_result.characteristic;
+		b = exp->callback_result.characteristic;
+
+		if (!verify_gatt_ids(a, b)) {
+			tester_debug("Gatt char doesn't match");
 			return false;
 		}
+	}
 
-		if (exp->callback_result.characteristic) {
-			btgatt_gatt_id_t *a;
-			btgatt_gatt_id_t *b;
-			a = step->callback_result.characteristic;
-			b = exp->callback_result.characteristic;
+	if (exp->callback_result.char_prop != step->callback_result.char_prop) {
+		tester_debug("Gatt char prop doesn't match");
+		return false;
+	}
 
-			if (!verify_gatt_ids(a, b)) {
-				tester_debug("Gatt char doesn't match");
-				return false;
-			}
-		}
+	if (exp->callback_result.descriptor) {
+		btgatt_gatt_id_t *a;
+		btgatt_gatt_id_t *b;
+		a = step->callback_result.descriptor;
+		b = exp->callback_result.descriptor;
 
-		if (exp->callback_result.char_prop !=
-					step->callback_result.char_prop) {
-			tester_debug("Gatt char prop doesn't match");
+		if (!verify_gatt_ids(a, b)) {
+			tester_debug("Gatt desc doesn't match");
 			return false;
 		}
+	}
 
-		if (exp->callback_result.descriptor) {
-			btgatt_gatt_id_t *a;
-			btgatt_gatt_id_t *b;
-			a = step->callback_result.descriptor;
-			b = exp->callback_result.descriptor;
-
-			if (!verify_gatt_ids(a, b)) {
-				tester_debug("Gatt desc doesn't match");
-				return false;
-			}
-		}
-
-		if (exp->callback_result.included) {
-			if (!verify_services(step->callback_result.included,
+	if (exp->callback_result.included) {
+		if (!verify_services(step->callback_result.included,
 					exp->callback_result.included)) {
-				tester_debug("Gatt include srvc doesn't match");
-				return false;
-			}
+			tester_debug("Gatt include srvc doesn't match");
+			return false;
 		}
+	}
 
-		if (exp->callback_result.read_params) {
-			if (memcmp(step->callback_result.read_params,
-					exp->callback_result.read_params,
-					sizeof(btgatt_read_params_t))) {
-				tester_debug("Gatt read_param doesn't match");
-				return false;
-			}
+	if (exp->callback_result.read_params) {
+		if (memcmp(step->callback_result.read_params,
+				exp->callback_result.read_params,
+				sizeof(btgatt_read_params_t))) {
+			tester_debug("Gatt read_param doesn't match");
+			return false;
 		}
+	}
 
-		if (exp->callback_result.write_params) {
-			if (memcmp(step->callback_result.write_params,
-					exp->callback_result.write_params,
-					sizeof(btgatt_write_params_t))) {
-				tester_debug("Gatt write_param doesn't match");
-				return false;
-			}
+	if (exp->callback_result.write_params) {
+		if (memcmp(step->callback_result.write_params,
+				exp->callback_result.write_params,
+				sizeof(btgatt_write_params_t))) {
+			tester_debug("Gatt write_param doesn't match");
+			return false;
 		}
 	}
 
