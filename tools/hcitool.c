@@ -2573,6 +2573,7 @@ static void cmd_leinfo(int dev_id, int argc, char **argv)
 	uint8_t bdaddr_type;
 	uint16_t handle;
 	uint8_t features[8];
+	struct hci_version version;
 	uint16_t interval, latency, max_ce_length, max_interval, min_ce_length;
 	uint16_t min_interval, supervision_timeout, window;
 	uint8_t initiator_filter, own_type;
@@ -2626,6 +2627,19 @@ static void cmd_leinfo(int dev_id, int argc, char **argv)
 	}
 
 	printf("\tHandle: %d (0x%04x)\n", handle, handle);
+
+	if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {
+		char *ver = lmp_vertostr(version.lmp_ver);
+		printf("\tLMP Version: %s (0x%x) LMP Subversion: 0x%x\n"
+			"\tManufacturer: %s (%d)\n",
+			ver ? ver : "n/a",
+			version.lmp_ver,
+			version.lmp_subver,
+			bt_compidtostr(version.manufacturer),
+			version.manufacturer);
+		if (ver)
+			bt_free(ver);
+	}
 
 	memset(features, 0, sizeof(features));
 	hci_le_read_remote_features(dd, handle, features, 20000);
