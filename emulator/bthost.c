@@ -604,6 +604,18 @@ void bthost_send_cid(struct bthost *bthost, uint16_t handle, uint16_t cid,
 	send_acl(bthost, handle, cid, data, len);
 }
 
+void bthost_send_cid_v(struct bthost *bthost, uint16_t handle, uint16_t cid,
+					const struct iovec *iov, int iovcnt)
+{
+	struct btconn *conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	send_iov(bthost, handle, cid, iov, iovcnt);
+}
+
 bool bthost_l2cap_req(struct bthost *bthost, uint16_t handle, uint8_t code,
 				const void *data, uint16_t len,
 				bthost_l2cap_rsp_cb cb, void *user_data)
