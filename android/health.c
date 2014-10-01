@@ -43,6 +43,7 @@
 #include "src/shared/queue.h"
 #include "src/uuid-helper.h"
 #include "src/sdp-client.h"
+#include "profiles/health/mcap-lib.h"
 
 #include "hal-msg.h"
 #include "ipc-common.h"
@@ -50,7 +51,6 @@
 #include "utils.h"
 #include "bluetooth.h"
 #include "health.h"
-#include "mcap-lib.h"
 
 #define SVC_HINT_HEALTH			0x00
 #define HDP_VERSION			0x0101

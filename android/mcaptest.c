@@ -38,7 +38,7 @@
 
 #include "btio/btio.h"
 #include "lib/l2cap.h"
-#include "android/mcap-lib.h"
+#include "profiles/health/mcap-lib.h"
 
 enum {
 	MODE_NONE,

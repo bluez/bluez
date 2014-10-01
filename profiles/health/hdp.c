@@ -42,11 +42,10 @@
 #include "src/sdpd.h"
 #include "btio/btio.h"
 
-#include "mcap_lib.h"
 #include "hdp_types.h"
 #include "hdp_util.h"
 #include "hdp.h"
-#include "mcap.h"
+#include "mcap-lib.h"
 
 #define ECHO_TIMEOUT	1 /* second */
 #define HDP_ECHO_LEN	15
