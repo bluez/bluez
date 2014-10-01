@@ -1862,6 +1862,7 @@ static void rfcomm_pn_recv(struct bthost *bthost, struct btconn *conn,
 	}
 
 	pn_cmd.dlci = pn->dlci;
+	pn_cmd.flow_ctrl = pn->flow_ctrl;
 	pn_cmd.priority = pn->priority;
 	pn_cmd.ack_timer = pn->ack_timer;
 	pn_cmd.max_retrans = pn->max_retrans;
