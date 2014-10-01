@@ -1224,11 +1224,11 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 	bt_att_unregister(client->att, client->notify_id);
 	bt_att_unregister(client->att, client->ind_id);
 
+	gatt_client_clear_services(client);
+
 	queue_destroy(client->svc_chngd_queue, free);
 	queue_destroy(client->long_write_queue, long_write_op_unref);
 	queue_destroy(client->notify_list, notify_data_unref);
-
-	gatt_client_clear_services(client);
 
 	bt_att_unref(client->att);
 	free(client);
