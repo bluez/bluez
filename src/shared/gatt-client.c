@@ -1211,86 +1211,10 @@ static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	bt_gatt_client_unref(client);
 }
 
-struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu)
-{
-	struct bt_gatt_client *client;
-
-	if (!att)
-		return NULL;
-
-	client = new0(struct bt_gatt_client, 1);
-	if (!client)
-		return NULL;
-
-	client->long_write_queue = queue_new();
-	if (!client->long_write_queue) {
-		free(client);
-		return NULL;
-	}
-
-	client->svc_chngd_queue = queue_new();
-	if (!client->svc_chngd_queue) {
-		queue_destroy(client->long_write_queue, NULL);
-		free(client);
-		return NULL;
-	}
-
-	client->notify_list = queue_new();
-	if (!client->notify_list) {
-		queue_destroy(client->svc_chngd_queue, NULL);
-		queue_destroy(client->long_write_queue, NULL);
-		free(client);
-		return NULL;
-	}
-
-	client->notify_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_NOT,
-						notify_cb, client, NULL);
-	if (!client->notify_id) {
-		queue_destroy(client->notify_list, NULL);
-		queue_destroy(client->svc_chngd_queue, NULL);
-		queue_destroy(client->long_write_queue, NULL);
-		free(client);
-		return NULL;
-	}
-
-	client->ind_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_IND,
-						notify_cb, client, NULL);
-	if (!client->ind_id) {
-		bt_att_unregister(att, client->notify_id);
-		queue_destroy(client->notify_list, NULL);
-		queue_destroy(client->svc_chngd_queue, NULL);
-		queue_destroy(client->long_write_queue, NULL);
-		free(client);
-		return NULL;
-	}
-
-	client->att = bt_att_ref(att);
-
-	gatt_client_init(client, mtu);
-
-	return bt_gatt_client_ref(client);
-}
-
-struct bt_gatt_client *bt_gatt_client_ref(struct bt_gatt_client *client)
-{
-	if (!client)
-		return NULL;
-
-	__sync_fetch_and_add(&client->ref_count, 1);
-
-	return client;
-}
-
 static void long_write_op_unref(void *data);
 
-void bt_gatt_client_unref(struct bt_gatt_client *client)
+static void bt_gatt_client_free(struct bt_gatt_client *client)
 {
-	if (!client)
-		return;
-
-	if (__sync_sub_and_fetch(&client->ref_count, 1))
-		return;
-
 	if (client->ready_destroy)
 		client->ready_destroy(client->ready_data);
 
@@ -1308,6 +1232,71 @@ void bt_gatt_client_unref(struct bt_gatt_client *client)
 
 	bt_att_unref(client->att);
 	free(client);
+}
+
+struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu)
+{
+	struct bt_gatt_client *client;
+
+	if (!att)
+		return NULL;
+
+	client = new0(struct bt_gatt_client, 1);
+	if (!client)
+		return NULL;
+
+	client->long_write_queue = queue_new();
+	if (!client->long_write_queue)
+		goto fail;
+
+	client->svc_chngd_queue = queue_new();
+	if (!client->svc_chngd_queue)
+		goto fail;
+
+	client->notify_list = queue_new();
+	if (!client->notify_list)
+		goto fail;
+
+	client->notify_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_NOT,
+						notify_cb, client, NULL);
+	if (!client->notify_id)
+		goto fail;
+
+	client->ind_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_IND,
+						notify_cb, client, NULL);
+	if (!client->ind_id)
+		goto fail;
+
+	client->att = bt_att_ref(att);
+
+	gatt_client_init(client, mtu);
+
+	return bt_gatt_client_ref(client);
+
+fail:
+	bt_gatt_client_free(client);
+	return NULL;
+}
+
+struct bt_gatt_client *bt_gatt_client_ref(struct bt_gatt_client *client)
+{
+	if (!client)
+		return NULL;
+
+	__sync_fetch_and_add(&client->ref_count, 1);
+
+	return client;
+}
+
+void bt_gatt_client_unref(struct bt_gatt_client *client)
+{
+	if (!client)
+		return;
+
+	if (__sync_sub_and_fetch(&client->ref_count, 1))
+		return;
+
+	bt_gatt_client_free(client);
 }
 
 bool bt_gatt_client_is_ready(struct bt_gatt_client *client)
