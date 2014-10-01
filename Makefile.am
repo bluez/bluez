@@ -363,6 +363,13 @@ unit_tests += unit/test-lib
 unit_test_lib_SOURCES = unit/test-lib.c
 unit_test_lib_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
+unit_tests += unit/test-gatt
+
+unit_test_gatt_SOURCES = unit/test-gatt.c
+unit_test_gatt_LDADD = src/libshared-glib.la lib/libbluetooth-internal.la \
+			@GLIB_LIBS@
+
+
 noinst_PROGRAMS += $(unit_tests)
 
 TESTS = $(unit_tests)
