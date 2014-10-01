@@ -611,3 +611,65 @@ bool bt_crypto_f4(struct bt_crypto *crypto, uint8_t u[32], uint8_t v[32],
 
 	return aes_cmac(crypto, x, m, sizeof(m), res);
 }
+
+bool bt_crypto_f5(struct bt_crypto *crypto, uint8_t w[32], uint8_t n1[16],
+				uint8_t n2[16], uint8_t a1[7], uint8_t a2[7],
+				uint8_t mackey[16], uint8_t ltk[16])
+{
+	uint8_t btle[4] = { 0x65, 0x6c, 0x74, 0x62 };
+	uint8_t salt[16] = { 0xbe, 0x83, 0x60, 0x5a, 0xdb, 0x0b, 0x37, 0x60,
+			     0x38, 0xa5, 0xf5, 0xaa, 0x91, 0x83, 0x88, 0x6c };
+	uint8_t length[2] = { 0x00, 0x01 };
+	uint8_t m[53], t[16];
+
+	if (!aes_cmac(crypto, salt, w, 32, t))
+		return false;
+
+	memcpy(&m[0], length, 2);
+	memcpy(&m[2], a2, 7);
+	memcpy(&m[9], a1, 7);
+	memcpy(&m[16], n2, 16);
+	memcpy(&m[32], n1, 16);
+	memcpy(&m[48], btle, 4);
+
+	m[52] = 0; /* Counter */
+	if (!aes_cmac(crypto, t, m, sizeof(m), mackey))
+		return false;
+
+	m[52] = 1; /* Counter */
+	return aes_cmac(crypto, t, m, sizeof(m), ltk);
+}
+
+bool bt_crypto_f6(struct bt_crypto *crypto, uint8_t w[16], uint8_t n1[16],
+			uint8_t n2[16], uint8_t r[16], uint8_t io_cap[3],
+			uint8_t a1[7], uint8_t a2[7], uint8_t res[16])
+{
+	uint8_t m[65];
+
+	memcpy(&m[0], a2, 7);
+	memcpy(&m[7], a1, 7);
+	memcpy(&m[14], io_cap, 3);
+	memcpy(&m[17], r, 16);
+	memcpy(&m[33], n2, 16);
+	memcpy(&m[49], n1, 16);
+
+	return aes_cmac(crypto, w, m, sizeof(m), res);
+}
+
+bool bt_crypto_g2(struct bt_crypto *crypto, uint8_t u[32], uint8_t v[32],
+				uint8_t x[16], uint8_t y[16], uint32_t *val)
+{
+	uint8_t m[80], tmp[16];
+
+	memcpy(&m[0], y, 16);
+	memcpy(&m[16], v, 32);
+	memcpy(&m[48], u, 32);
+
+	if (!aes_cmac(crypto, x, m, sizeof(m), tmp))
+		return false;
+
+	*val = get_le32(tmp);
+	*val %= 1000000;
+
+	return true;
+}
