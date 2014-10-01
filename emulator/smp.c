@@ -38,6 +38,7 @@
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hci.h"
 
+#include "src/shared/util.h"
 #include "src/shared/crypto.h"
 #include "src/shared/ecc.h"
 #include "monitor/bt.h"
@@ -83,6 +84,7 @@ struct smp_conn {
 	uint8_t local_pk[64];
 	uint8_t remote_pk[64];
 	uint8_t dhkey[32];
+	uint8_t mackey[16];
 };
 
 static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
@@ -107,6 +109,55 @@ static bool send_public_key(struct smp_conn *conn)
 	smp_send(conn, BT_L2CAP_SMP_PUBLIC_KEY, conn->local_pk, 64);
 
 	return true;
+}
+
+static void sc_dhkey_check(struct smp_conn *conn)
+{
+	uint8_t io_cap[3], r[16], a[7], b[7], *local_addr, *remote_addr;
+	struct bt_l2cap_smp_dhkey_check check;
+
+	memcpy(a, conn->ia, 6);
+	memcpy(b, conn->ra, 6);
+	a[6] = conn->ia_type;
+	b[6] = conn->ra_type;
+
+	if (conn->out) {
+		local_addr = a;
+		remote_addr = b;
+		memcpy(io_cap, &conn->preq[1], 3);
+	} else {
+		local_addr = b;
+		remote_addr = a;
+		memcpy(io_cap, &conn->prsp[1], 3);
+	}
+
+	memset(r, 0, sizeof(r));
+
+	bt_crypto_f6(conn->smp->crypto, conn->mackey, conn->prnd, conn->rrnd,
+				r, io_cap, local_addr, remote_addr, check.e);
+
+	smp_send(conn, BT_L2CAP_SMP_DHKEY_CHECK, &check, sizeof(check));
+}
+
+static void sc_mackey_and_ltk(struct smp_conn *conn)
+{
+	uint8_t *na, *nb, a[7], b[7];
+
+	if (conn->out) {
+		na = conn->prnd;
+		nb = conn->rrnd;
+	} else {
+		na = conn->rrnd;
+		nb = conn->prnd;
+	}
+
+	memcpy(a, conn->ia, 6);
+	memcpy(b, conn->ra, 6);
+	a[6] = conn->ia_type;
+	b[6] = conn->ra_type;
+
+	bt_crypto_f5(conn->smp->crypto, conn->dhkey, na, nb, a, b,
+						conn->mackey, conn->ltk);
 }
 
 static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
@@ -189,12 +240,23 @@ static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 
 	smp_send(conn, BT_L2CAP_SMP_PAIRING_CONFIRM, cfm, sizeof(cfm));
 }
+static void sc_check_confirm(struct smp_conn *conn)
+{
+	if (conn->out)
+		smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM, conn->prnd,
+							sizeof(conn->prnd));
+}
 
 static void pairing_cfm(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	uint8_t rsp[16];
 
 	memcpy(conn->pcnf, data + 1, 16);
+
+	if (conn->sc) {
+		sc_check_confirm(conn);
+		return;
+	}
 
 	if (conn->out) {
 		memset(rsp, 0, sizeof(rsp));
@@ -207,11 +269,42 @@ static void pairing_cfm(struct smp_conn *conn, const void *data, uint16_t len)
 	}
 }
 
+static uint8_t sc_random(struct smp_conn *conn)
+{
+
+	if (conn->out) {
+		uint8_t cfm[16];
+
+		bt_crypto_f4(conn->smp->crypto, conn->remote_pk,
+					conn->local_pk, conn->rrnd, 0, cfm);
+
+		if (memcmp(conn->pcnf, cfm, 16))
+			return 0x04; /* Confirm Value Failed */
+	} else {
+		smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM, conn->prnd, 16);
+	}
+
+	sc_mackey_and_ltk(conn);
+
+	if (conn->out)
+		sc_dhkey_check(conn);
+
+	return 0;
+}
+
 static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	uint8_t rsp[16];
 
 	memcpy(conn->rrnd, data + 1, 16);
+
+	if (conn->sc) {
+		uint8_t reason = sc_random(conn);
+		if (reason)
+			smp_send(conn, BT_L2CAP_SMP_PAIRING_FAILED, &reason,
+							sizeof(reason));
+		return;
+	}
 
 	if (!verify_random(conn, data + 1))
 		return;
@@ -293,9 +386,6 @@ static void public_key(struct smp_conn *conn, const void *data, uint16_t len)
 	struct smp *smp = conn->smp;
 	uint8_t buf[16];
 
-	if (len != 65)
-		return;
-
 	memcpy(conn->remote_pk, data + 1, 64);
 
 	if (!conn->out) {
@@ -314,6 +404,46 @@ static void public_key(struct smp_conn *conn, const void *data, uint16_t len)
 		return;
 
 	smp_send(conn, BT_L2CAP_SMP_PAIRING_CONFIRM, buf, sizeof(buf));
+}
+
+static void dhkey_check(struct smp_conn *conn, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_smp_dhkey_check *cmd = data + 1;
+	uint8_t a[7], b[7], *local_addr, *remote_addr;
+	uint8_t io_cap[3], r[16], e[16];
+
+	memcpy(a, &conn->ia, 6);
+	memcpy(b, &conn->ra, 6);
+	a[6] = conn->ia_type;
+	b[6] = conn->ra_type;
+
+	if (conn->out) {
+		local_addr = a;
+		remote_addr = b;
+		memcpy(io_cap, &conn->prsp[1], 3);
+	} else {
+		local_addr = b;
+		remote_addr = a;
+		memcpy(io_cap, &conn->preq[1], 3);
+	}
+
+	memset(r, 0, sizeof(r));
+
+	if (!bt_crypto_f6(conn->smp->crypto, conn->mackey, conn->rrnd,
+			conn->prnd, r, io_cap, remote_addr, local_addr, e))
+		return;
+
+	if (memcmp(cmd->e, e, 16)) {
+		uint8_t reason = 0x0b; /* DHKey Check Failed */
+		smp_send(conn, BT_L2CAP_SMP_PAIRING_FAILED, &reason,
+							sizeof(reason));
+	}
+
+	if (conn->out)
+		bthost_le_start_encrypt(conn->smp->bthost, conn->handle,
+								conn->ltk);
+	else
+		sc_dhkey_check(conn);
 }
 
 void smp_pair(void *conn_data, uint8_t io_cap, uint8_t auth_req)
@@ -376,6 +506,9 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 		break;
 	case BT_L2CAP_SMP_PUBLIC_KEY:
 		public_key(conn, data, len);
+		break;
+	case BT_L2CAP_SMP_DHKEY_CHECK:
+		dhkey_check(conn, data, len);
 		break;
 	default:
 		break;
