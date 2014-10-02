@@ -64,7 +64,7 @@ builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
 
 if EXPERIMENTAL
 builtin_modules += health
-builtin_sources += profiles/health/mcap-lib.h profiles/health/mcap-lib.c \
+builtin_sources += profiles/health/mcap.h profiles/health/mcap.c \
 			profiles/health/hdp_main.c profiles/health/hdp_types.h \
 			profiles/health/hdp_manager.h \
 			profiles/health/hdp_manager.c \

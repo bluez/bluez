@@ -56,7 +56,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/handsfree-client.c \
 	bluez/android/gatt.c \
 	bluez/android/health.c \
-	bluez/profiles/health/mcap-lib.c \
+	bluez/profiles/health/mcap.c \
 	bluez/src/log.c \
 	bluez/src/shared/mgmt.c \
 	bluez/src/shared/util.c \
@@ -211,7 +211,7 @@ LOCAL_SRC_FILES := \
 	bluez/btio/btio.c \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
-	bluez/profiles/health/mcap-lib.c \
+	bluez/profiles/health/mcap.c \
 	bluez/android/mcaptest.c \
 
 LOCAL_C_INCLUDES := \

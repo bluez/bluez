@@ -38,7 +38,7 @@
 #include "btio/btio.h"
 #include "src/log.h"
 
-#include "mcap-lib.h"
+#include "mcap.h"
 
 #define MCAP_BTCLOCK_HALF (MCAP_BTCLOCK_FIELD / 2)
 #define CLK CLOCK_MONOTONIC

@@ -45,7 +45,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/handsfree-client.c android/handsfree-client.h \
 				android/gatt.h android/gatt.c \
 				android/health.h android/health.c \
-				profiles/health/mcap-lib.h profiles/health/mcap-lib.c \
+				profiles/health/mcap.h profiles/health/mcap.c \
 				attrib/att.c attrib/att.h \
 				attrib/gatt.c attrib/gatt.h \
 				attrib/gattrib.c attrib/gattrib.h \
@@ -95,7 +95,7 @@ noinst_PROGRAMS += android/mcaptest
 android_mcaptest_SOURCES = android/mcaptest.c \
 				src/log.h src/log.c \
 				btio/btio.h btio/btio.c \
-				profiles/health/mcap-lib.h profiles/health/mcap-lib.c
+				profiles/health/mcap.h profiles/health/mcap.c
 android_mcaptest_CFLAGS = $(AM_CFLAGS)
 android_mcaptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 

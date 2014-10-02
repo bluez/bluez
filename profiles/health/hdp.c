@@ -45,7 +45,7 @@
 #include "hdp_types.h"
 #include "hdp_util.h"
 #include "hdp.h"
-#include "mcap-lib.h"
+#include "mcap.h"
 
 #define ECHO_TIMEOUT	1 /* second */
 #define HDP_ECHO_LEN	15

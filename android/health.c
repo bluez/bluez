@@ -43,7 +43,7 @@
 #include "src/shared/queue.h"
 #include "src/uuid-helper.h"
 #include "src/sdp-client.h"
-#include "profiles/health/mcap-lib.h"
+#include "profiles/health/mcap.h"
 
 #include "hal-msg.h"
 #include "ipc-common.h"
