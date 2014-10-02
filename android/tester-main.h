@@ -218,6 +218,22 @@ struct pdu_set {
 		.callback_result.write_params = cb_write_data, \
 	}
 
+#define CALLBACK_GATTC_REGISTER_FOR_NOTIF(cb_res, cb_conn_id, cb_char,\
+						cb_service, cb_registered) { \
+		.callback = CB_GATTC_REGISTER_FOR_NOTIFICATION, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.status = cb_res, \
+		.callback_result.service = cb_service, \
+		.callback_result.characteristic = cb_char, \
+		.callback_result.notification_registered = cb_registered \
+	}
+
+#define CALLBACK_GATTC_NOTIFY(cb_conn_id, cb_notify) { \
+		.callback = CB_GATTC_NOTIFY, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.notify_params = cb_notify \
+	}
+
 #define CALLBACK_GATTC_DISCONNECT(cb_res, cb_prop, cb_conn_id, cb_client_id) { \
 		.callback = CB_GATTC_CLOSE, \
 		.callback_result.status = cb_res, \
@@ -473,6 +489,8 @@ struct bt_callback_data {
 	btgatt_srvc_id_t *included;
 	btgatt_read_params_t *read_params;
 	btgatt_write_params_t *write_params;
+	btgatt_notify_params_t *notify_params;
+	int notification_registered;
 	int char_prop;
 
 	btpan_control_state_t ctrl_state;
