@@ -35,20 +35,9 @@ static struct emu_l2cap_cid_data cid_data = {
 	.pdu = pdus,
 };
 
-static void pan_connect_request_cb(uint16_t handle, uint16_t cid,
-							void *user_data)
-{
-	struct emu_l2cap_cid_data *cid_data = user_data;
-
-	cid_data->handle = handle;
-	cid_data->cid = cid;
-
-	tester_handle_l2cap_data_exchange(cid_data);
-}
-
 static struct emu_set_l2cap_data l2cap_setup_data = {
 	.psm = 15,
-	.func = pan_connect_request_cb,
+	.func = tester_generic_connect_cb,
 	.user_data = &cid_data,
 };
 

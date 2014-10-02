@@ -2188,6 +2188,16 @@ void tester_handle_l2cap_data_exchange(struct emu_l2cap_cid_data *cid_data)
 					emu_generic_cid_hook_cb, cid_data);
 }
 
+void tester_generic_connect_cb(uint16_t handle, uint16_t cid, void *user_data)
+{
+	struct emu_l2cap_cid_data *cid_data = user_data;
+
+	cid_data->handle = handle;
+	cid_data->cid = cid;
+
+	tester_handle_l2cap_data_exchange(cid_data);
+}
+
 static void rfcomm_connect_cb(uint16_t handle, uint16_t cid, void *user_data,
 								bool status)
 {

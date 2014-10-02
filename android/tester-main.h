@@ -510,6 +510,7 @@ struct test_case {
 };
 
 void tester_handle_l2cap_data_exchange(struct emu_l2cap_cid_data *cid_data);
+void tester_generic_connect_cb(uint16_t handle, uint16_t cid, void *user_data);
 
 /* Get, remove test cases API */
 struct queue *get_bluetooth_tests(void);

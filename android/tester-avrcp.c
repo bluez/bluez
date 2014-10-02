@@ -139,20 +139,9 @@ static struct emu_set_l2cap_data a2dp_setup_data = {
 	.user_data = &a2dp_data,
 };
 
-static void sdp_connect_request_cb(uint16_t handle, uint16_t cid,
-							void *user_data)
-{
-	struct emu_l2cap_cid_data *cid_data = user_data;
-
-	cid_data->handle = handle;
-	cid_data->cid = cid;
-
-	tester_handle_l2cap_data_exchange(cid_data);
-}
-
 static struct emu_set_l2cap_data sdp_setup_data = {
 	.psm = 1,
-	.func = sdp_connect_request_cb,
+	.func = tester_generic_connect_cb,
 	.user_data = &sdp_data,
 };
 

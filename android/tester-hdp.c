@@ -243,16 +243,6 @@ static void hdp_unregister_app_action(void)
 	schedule_action_verification(step);
 }
 
-static void hdp_sdp_search_cb(uint16_t handle, uint16_t cid, void *user_data)
-{
-	struct emu_l2cap_cid_data *cid_data = user_data;
-
-	cid_data->handle = handle;
-	cid_data->cid = cid;
-
-	tester_handle_l2cap_data_exchange(cid_data);
-}
-
 static void mcap_ctrl_cid_hook_cb(const void *data, uint16_t len,
 							void *user_data)
 {
@@ -315,28 +305,10 @@ static void mcap_ctrl_connect_cb(uint16_t handle, uint16_t cid, void *user_data)
 								cid_data);
 }
 
-static void mcap_data_cid_hook_cb(const void *data, uint16_t len,
-							void *user_data)
-{
-}
-
-static void mcap_data_connect_cb(uint16_t handle, uint16_t cid, void *user_data)
-{
-	struct test_data *data = tester_get_data();
-	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
-	struct emu_l2cap_cid_data *cid_data = user_data;
-
-	cid_data->handle = handle;
-	cid_data->cid = cid;
-
-	bthost_add_cid_hook(bthost, handle, cid, mcap_data_cid_hook_cb,
-								cid_data);
-}
-
 /* Emulate SDP (PSM = 1) */
 static struct emu_set_l2cap_data l2cap_setup_sdp_data = {
 	.psm = 1,
-	.func = hdp_sdp_search_cb,
+	.func = tester_generic_connect_cb,
 	.user_data = &sdp_cid_data,
 };
 
@@ -350,7 +322,7 @@ static struct emu_set_l2cap_data l2cap_setup_cc_data = {
 /* Emulate Data Channel (PSM = 0x1003) */
 static struct emu_set_l2cap_data l2cap_setup_dc_data = {
 	.psm = 0x1003,
-	.func = mcap_data_connect_cb,
+	.func = tester_generic_connect_cb,
 	.user_data = &data_cid_data,
 };
 

@@ -135,16 +135,6 @@ static struct emu_l2cap_cid_data sdp_cid_data = {
 static struct emu_l2cap_cid_data ctrl_cid_data;
 static struct emu_l2cap_cid_data intr_cid_data;
 
-static void hid_sdp_search_cb(uint16_t handle, uint16_t cid, void *user_data)
-{
-	struct emu_l2cap_cid_data *cid_data = user_data;
-
-	cid_data->handle = handle;
-	cid_data->cid = cid;
-
-	tester_handle_l2cap_data_exchange(cid_data);
-}
-
 static void hid_prepare_reply_protocol_mode(struct emu_l2cap_cid_data *cid_data)
 {
 	struct test_data *t_data = tester_get_data();
@@ -245,7 +235,7 @@ static void hid_intr_connect_cb(uint16_t handle, uint16_t cid, void *user_data)
 /* Emulate SDP (PSM = 1) */
 static struct emu_set_l2cap_data l2cap_setup_sdp_data = {
 	.psm = 1,
-	.func = hid_sdp_search_cb,
+	.func = tester_generic_connect_cb,
 	.user_data = &sdp_cid_data,
 };
 
