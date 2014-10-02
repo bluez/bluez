@@ -1005,10 +1005,8 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 							exchange_mtu_cb,
 							discovery_op_ref(op),
 							discovery_op_unref)) {
-		if (client->ready_callback)
-			client->ready_callback(false, 0, client->ready_data);
-
 		free(op);
+		return false;
 	}
 
 	client->in_init = true;
@@ -1269,7 +1267,8 @@ struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu)
 
 	client->att = bt_att_ref(att);
 
-	gatt_client_init(client, mtu);
+	if (!gatt_client_init(client, mtu))
+		goto fail;
 
 	return bt_gatt_client_ref(client);
 
