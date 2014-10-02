@@ -212,7 +212,7 @@ LOCAL_SRC_FILES := \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
 	bluez/profiles/health/mcap.c \
-	bluez/android/mcaptest.c \
+	bluez/tools/mcaptest.c \
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, glib) \

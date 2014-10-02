@@ -119,7 +119,7 @@ if TOOLS
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
 			tools/rfcomm tools/rctest tools/l2test tools/l2ping \
 			tools/sdptool tools/ciptool tools/bccmd \
-			tools/bluemoon tools/mpris-proxy
+			tools/bluemoon tools/mpris-proxy tools/mcaptest
 
 tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_st.c \
@@ -188,6 +188,12 @@ tools_bluemoon_LDADD = src/libshared-mainloop.la
 
 tools_mpris_proxy_SOURCES = tools/mpris-proxy.c
 tools_mpris_proxy_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
+
+tools_mcaptest_SOURCES = tools/mcaptest.c \
+				btio/btio.h btio/btio.c \
+				src/log.c src/log.h \
+				profiles/health/mcap.h profiles/health/mcap.c
+tools_mcaptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
