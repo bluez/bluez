@@ -55,6 +55,21 @@
 #include <hardware/bt_gatt_client.h>
 #include <hardware/bt_gatt_server.h>
 
+struct pdu_set {
+	struct iovec req;
+	struct iovec rsp;
+};
+
+#define raw_data(args...) ((unsigned char[]) { args })
+
+#define raw_pdu(args...)					\
+	{							\
+		.iov_base = raw_data(args),			\
+		.iov_len = sizeof(raw_data(args)),		\
+	}
+
+#define end_pdu { .iov_base = NULL }
+
 #define TEST_CASE_BREDR(text, ...) { \
 		HCIEMU_TYPE_BREDR, \
 		text, \

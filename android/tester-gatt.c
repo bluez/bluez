@@ -34,16 +34,6 @@
 #define CONN1_ID	1
 #define CONN2_ID	2
 
-#define raw_data(args...) ((unsigned char[]) { args })
-
-#define raw_pdu(args...)					\
-	{							\
-		.iov_base = raw_data(args),			\
-		.iov_len = sizeof(raw_data(args)),		\
-	}
-
-#define end_pdu { .iov_base = NULL }
-
 static struct queue *list; /* List of gatt test cases */
 
 static bt_uuid_t app1_uuid = {
