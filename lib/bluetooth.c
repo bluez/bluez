@@ -1023,6 +1023,18 @@ const char *bt_compidtostr(int compid)
 		return "taskit GmbH";
 	case 380:
 		return "Daimler AG";
+	case 381:
+		return "BatAndCat";
+	case 382:
+		return "BluDotz Ltd";
+	case 383:
+		return "XTel ApS";
+	case 384:
+		return "Gigaset Communications GmbH";
+	case 385:
+		return "Gecko Health Innovations, Inc.";
+	case 386:
+		return "HOP Ubiquitous";
 	case 65535:
 		return "internal use";
 	default:
