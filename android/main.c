@@ -382,9 +382,11 @@ static void parse_system_id(uint16_t len, const uint8_t *val)
 
 	res = strtoull(id, NULL, 16);
 	if (res == ULLONG_MAX && errno == ERANGE)
-		return;
+		goto done;
 
 	config_system_id = res;
+done:
+	free(id);
 }
 
 static void configuration(const void *buf, uint16_t len)
