@@ -439,6 +439,14 @@ struct emu_set_l2cap_data {
 	void *user_data;
 };
 
+struct emu_l2cap_cid_data {
+	const struct pdu_set *pdu;
+
+	uint16_t handle;
+	uint16_t cid;
+	bool is_sdp;
+};
+
 /*
  * Callback data structure should be enhanced with data
  * returned by callbacks. It's used for test case step
@@ -500,6 +508,8 @@ struct test_case {
 	const uint16_t step_num;
 	const struct step *step;
 };
+
+void tester_handle_l2cap_data_exchange(struct emu_l2cap_cid_data *cid_data);
 
 /* Get, remove test cases API */
 struct queue *get_bluetooth_tests(void);

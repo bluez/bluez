@@ -16,6 +16,7 @@
  */
 #include <stdbool.h>
 
+#include "src/shared/util.h"
 #include "emulator/bthost.h"
 #include "tester-main.h"
 
@@ -2125,6 +2126,66 @@ void emu_add_l2cap_server_action(void)
 	step->action_status = BT_STATUS_SUCCESS;
 
 	schedule_action_verification(step);
+}
+
+static void print_data(const char *str, void *user_data)
+{
+	tester_debug("tester: %s", str);
+}
+
+static void emu_generic_cid_hook_cb(const void *data, uint16_t len,
+								void *user_data)
+{
+	struct test_data *t_data = tester_get_data();
+	struct emu_l2cap_cid_data *cid_data = user_data;
+	const struct pdu_set *pdus = cid_data->pdu;
+	struct bthost *bthost = hciemu_client_get_host(t_data->hciemu);
+	int i;
+
+	for (i = 0; pdus[i].rsp.iov_base; i++) {
+		if (pdus[i].req.iov_base) {
+			if (pdus[i].req.iov_len != len)
+				continue;
+
+			if (memcmp(pdus[i].req.iov_base, data, len))
+				continue;
+		}
+
+		if (pdus[i].rsp.iov_base) {
+			util_hexdump('>', pdus[i].rsp.iov_base,
+					pdus[i].rsp.iov_len, print_data, NULL);
+
+			/* if its sdp pdu use transaction ID from request */
+			if (cid_data->is_sdp) {
+				struct iovec rsp[3];
+
+				rsp[0].iov_base = pdus[i].rsp.iov_base;
+				rsp[0].iov_len = 1;
+
+				rsp[1].iov_base = ((uint8_t *) data) + 1;
+				rsp[1].iov_len = 2;
+
+				rsp[2].iov_base = pdus[i].rsp.iov_base + 3;
+				rsp[2].iov_len = pdus[i].rsp.iov_len - 3;
+
+				bthost_send_cid_v(bthost, cid_data->handle,
+							cid_data->cid, rsp, 3);
+			} else {
+				bthost_send_cid_v(bthost, cid_data->handle,
+						cid_data->cid, &pdus[i].rsp, 1);
+			}
+
+		}
+	}
+}
+
+void tester_handle_l2cap_data_exchange(struct emu_l2cap_cid_data *cid_data)
+{
+	struct test_data *t_data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(t_data->hciemu);
+
+	bthost_add_cid_hook(bthost, cid_data->handle, cid_data->cid,
+					emu_generic_cid_hook_cb, cid_data);
 }
 
 static void rfcomm_connect_cb(uint16_t handle, uint16_t cid, void *user_data,
