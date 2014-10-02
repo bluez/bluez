@@ -41,14 +41,6 @@ static bt_uuid_t app1_uuid = {
 				0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 },
 };
 
-struct emu_cid_data {
-	const int pdu_len;
-	const void *pdu;
-
-	uint16_t handle;
-	uint16_t cid;
-};
-
 struct gatt_connect_data {
 	const int app_id;
 	const int conn_id;
@@ -124,7 +116,7 @@ static bt_property_t prop_test_scan_mode_conn = {
 	.len = sizeof(setprop_scan_mode_conn_val),
 };
 
-static struct emu_cid_data cid_data;
+static struct emu_l2cap_cid_data cid_data;
 
 static struct gatt_connect_data app1_conn_req = {
 	.app_id = APP1_ID,
@@ -854,7 +846,7 @@ static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *t_data = tester_get_data();
 	struct bthost *bthost = hciemu_client_get_host(t_data->hciemu);
-	struct emu_cid_data *cid_data = user_data;
+	struct emu_l2cap_cid_data *cid_data = user_data;
 	const uint8_t *pdu = data;
 	struct iovec *gatt_pdu = queue_peek_head(t_data->pdus);
 
