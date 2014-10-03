@@ -33,6 +33,7 @@ static struct {
 	uint16_t cb_num;
 	const char *str;
 } cb_table[] = {
+	DBG_CB(CB_BT_NONE),
 	DBG_CB(CB_BT_ADAPTER_STATE_CHANGED),
 	DBG_CB(CB_BT_ADAPTER_PROPERTIES),
 	DBG_CB(CB_BT_REMOTE_DEVICE_PROPERTIES),

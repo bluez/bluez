@@ -320,7 +320,8 @@ struct pdu_set {
  * updated while adding new HAL to tester.
  */
 typedef enum {
-	CB_BT_ADAPTER_STATE_CHANGED = 1,
+	CB_BT_NONE,
+	CB_BT_ADAPTER_STATE_CHANGED,
 	CB_BT_ADAPTER_PROPERTIES,
 	CB_BT_REMOTE_DEVICE_PROPERTIES,
 	CB_BT_DEVICE_FOUND,
