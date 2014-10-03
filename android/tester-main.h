@@ -397,6 +397,9 @@ typedef enum {
 	CB_GATTS_REQUEST_WRITE,
 	CB_GATTS_REQUEST_EXEC_WRITE,
 	CB_GATTS_RESPONSE_CONFIRMATION,
+
+	/* Emulator callbacks */
+	CB_EMU_CONFIRM_SEND_DATA,
 } expected_bt_callback_t;
 
 struct test_data {

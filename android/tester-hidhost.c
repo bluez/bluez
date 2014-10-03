@@ -183,9 +183,9 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 		/* Successfully verify sending data step */
 		step = g_new0(struct step, 1);
 
-		step->action_status = BT_STATUS_SUCCESS;
+		step->callback = CB_EMU_CONFIRM_SEND_DATA;
 
-		schedule_action_verification(step);
+		schedule_callback_verification(step);
 		break;
 	}
 }
@@ -213,9 +213,9 @@ static void hid_intr_cid_hook_cb(const void *data, uint16_t len,
 		/* Successfully verify sending data step */
 		step = g_new0(struct step, 1);
 
-		step->action_status = BT_STATUS_SUCCESS;
+		step->callback = CB_EMU_CONFIRM_SEND_DATA;
 
-		schedule_action_verification(step);
+		schedule_callback_verification(step);
 		break;
 	}
 }
@@ -345,40 +345,29 @@ static void hidhost_set_report_action(void)
 {
 	struct test_data *data = tester_get_data();
 	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
+	struct step *step = g_new0(struct step, 1);
 	char *buf = "fe0201";
 	bt_bdaddr_t bdaddr;
-	int status;
 
 	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
 
-	/* Successfull result should be verified on the other end (hook) */
-	status = data->if_hid->send_data(&bdaddr, buf);
-	if (status) {
-		struct step *step = g_new0(struct step, 1);
-
-		step->action_status = status;
-		schedule_action_verification(step);
-	}
+	step->action_status = data->if_hid->send_data(&bdaddr, buf);
+	schedule_action_verification(step);
 }
 
 static void hidhost_send_data_action(void)
 {
 	struct test_data *data = tester_get_data();
 	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
+	struct step *step = g_new0(struct step, 1);
 	char *buf = "010101";
 	bt_bdaddr_t bdaddr;
-	int status;
 
 	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
 
-	/* Successfull result should be verified on the other end (hook) */
-	status = data->if_hid->set_report(&bdaddr, BTHH_INPUT_REPORT, buf);
-	if (status) {
-		struct step *step = g_new0(struct step, 1);
-
-		step->action_status = status;
-		schedule_action_verification(step);
-	}
+	step->action_status = data->if_hid->set_report(&bdaddr,
+							BTHH_INPUT_REPORT, buf);
+	schedule_action_verification(step);
 }
 
 static struct test_case test_cases[] = {
@@ -509,6 +498,7 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATE(CB_HH_CONNECTION_STATE,
 						BTHH_CONN_STATE_CONNECTED),
 		ACTION_SUCCESS(hidhost_set_report_action, NULL),
+		CALLBACK(CB_EMU_CONFIRM_SEND_DATA),
 	),
 	TEST_CASE_BREDRLE("HidHost SendData Success",
 		ACTION_SUCCESS(bluetooth_enable_action, NULL),
@@ -525,6 +515,7 @@ static struct test_case test_cases[] = {
 		CALLBACK_STATE(CB_HH_CONNECTION_STATE,
 						BTHH_CONN_STATE_CONNECTED),
 		ACTION_SUCCESS(hidhost_send_data_action, NULL),
+		CALLBACK(CB_EMU_CONFIRM_SEND_DATA),
 	),
 };
 

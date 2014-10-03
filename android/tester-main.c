@@ -101,6 +101,9 @@ static struct {
 	DBG_CB(CB_GATTS_REQUEST_WRITE),
 	DBG_CB(CB_GATTS_REQUEST_EXEC_WRITE),
 	DBG_CB(CB_GATTS_RESPONSE_CONFIRMATION),
+
+	/* Emulator callbacks */
+	DBG_CB(CB_EMU_CONFIRM_SEND_DATA),
 };
 
 static gboolean check_callbacks_called(gpointer user_data)
