@@ -134,7 +134,10 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-health.c \
 
 ifeq ($(BLUEZ_EXTENSIONS), true)
-LOCAL_SRC_FILES += bluez/android/hal-handsfree-client.c
+LOCAL_SRC_FILES += \
+	bluez/android/hal-handsfree-client.c \
+	bluez/android/hal-map-client.c \
+
 endif
 
 LOCAL_C_INCLUDES += \

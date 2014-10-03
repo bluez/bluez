@@ -854,6 +854,9 @@ static const void *get_profile_interface(const char *profile_id)
 #if BLUEZ_EXTENSIONS
 	if (!strcmp(profile_id, BT_PROFILE_HANDSFREE_CLIENT_ID))
 		return bt_get_hf_client_interface();
+
+	if (!strcmp(profile_id, BT_PROFILE_MAP_CLIENT_ID))
+		return bt_get_map_client_interface();
 #endif
 
 	return NULL;

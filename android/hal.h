@@ -29,6 +29,7 @@
 
 #ifdef BLUEZ_EXTENSIONS
 #include <hardware/bt_hf_client.h>
+#include <hardware/bt_mce.h>
 #endif
 
 btsock_interface_t *bt_get_socket_interface(void);
@@ -42,6 +43,7 @@ bthl_interface_t *bt_get_health_interface(void);
 
 #ifdef BLUEZ_EXTENSIONS
 bthf_client_interface_t *bt_get_hf_client_interface(void);
+btmce_interface_t *bt_get_map_client_interface(void);
 #endif
 
 void bt_thread_associate(void);
