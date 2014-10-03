@@ -109,6 +109,7 @@ static void read_info_callback(uint8_t status, uint16_t length,
 	char addr[18];
 	uint16_t manufacturer;
 	uint32_t supported_settings, current_settings;
+	struct bthost *bthost;
 
 	tester_print("Read Info callback");
 	tester_print("  Status: 0x%02x", status);
@@ -164,7 +165,8 @@ static void read_info_callback(uint8_t status, uint16_t length,
 		return;
 	}
 
-	tester_pre_setup_complete();
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_notify_ready(bthost, tester_pre_setup_complete);
 }
 
 static void index_added_callback(uint16_t index, uint16_t length,
