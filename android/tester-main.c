@@ -736,6 +736,14 @@ static bool match_data(struct step *step)
 		}
 	}
 
+	if (exp->callback_result.connected !=
+				step->callback_result.connected) {
+		tester_debug("Gatt server conn status mismatch: %d vs %d",
+						step->callback_result.connected,
+						exp->callback_result.connected);
+		return false;
+	}
+
 	return true;
 }
 
@@ -1420,6 +1428,29 @@ static void gatts_register_server_cb(int status, int server_if,
 	schedule_callback_call(step);
 }
 
+static void gatts_connection_cb(int conn_id, int server_if, int connected,
+							bt_bdaddr_t *bda)
+{
+	struct step *step = g_new0(struct step, 1);
+	bt_property_t *props[1];
+
+	step->callback = CB_GATTS_CONNECTION;
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.gatt_app_id = server_if;
+	step->callback_result.connected = connected;
+
+	/* Utilize property verification mechanism for bdaddr */
+	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
+
+	step->callback_result.num_properties = 1;
+	step->callback_result.properties = repack_properties(1, props);
+
+	g_free(props[0]->val);
+	g_free(props[0]);
+
+	schedule_callback_call(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1542,7 +1573,7 @@ static const btgatt_client_callbacks_t btgatt_client_callbacks = {
 
 static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.register_server_cb = gatts_register_server_cb,
-	.connection_cb = NULL,
+	.connection_cb = gatts_connection_cb,
 	.service_added_cb = NULL,
 	.included_service_added_cb = NULL,
 	.characteristic_added_cb = NULL,

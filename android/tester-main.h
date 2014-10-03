@@ -243,6 +243,15 @@ struct pdu_set {
 		.callback_result.gatt_app_id = cb_client_id, \
 	}
 
+#define CALLBACK_GATTS_CONNECTION(cb_res, cb_prop, cb_conn_id, cb_server_id) { \
+		.callback = CB_GATTS_CONNECTION, \
+		.callback_result.connected = cb_res, \
+		.callback_result.properties = cb_prop, \
+		.callback_result.num_properties = 1, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.gatt_app_id = cb_server_id, \
+	}
+
 #define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
 		.callback = cb, \
 		.callback_result.status = cb_res, \
@@ -484,6 +493,7 @@ struct bt_callback_data {
 
 	int gatt_app_id;
 	int conn_id;
+	int connected;
 	btgatt_srvc_id_t *service;
 	btgatt_gatt_id_t *characteristic;
 	btgatt_gatt_id_t *descriptor;
