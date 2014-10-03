@@ -120,6 +120,7 @@ unit/test-gobex-transfer
 unit/test-avdtp
 unit/test-avctp
 unit/test-avrcp
+unit/test-gatt
 unit/test-*.log
 unit/test-*.trs
 
