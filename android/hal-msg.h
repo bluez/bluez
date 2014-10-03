@@ -1072,6 +1072,13 @@ struct hal_cmd_hf_client_send_dtmf {
 
 #define HAL_OP_HF_CLIENT_GET_LAST_VOICE_TAG_NUM	0x0f
 
+/* MAP CLIENT HAL API */
+
+#define HAL_OP_MAP_CLIENT_GET_INSTANCES	0x01
+struct hal_cmd_map_client_get_instances {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 #define HAL_POWER_OFF			0x00
@@ -1916,3 +1923,19 @@ struct hal_ev_hf_client_last_void_call_tag_num {
 } __attribute__((packed));
 
 #define HAL_EV_CLIENT_RING_INDICATION			0x95
+
+#define HAL_EV_MAP_CLIENT_REMOTE_MAS_INSTANCES	0x81
+struct hal_map_client_mas_instance {
+	int32_t id;
+	int32_t scn;
+	int32_t msg_types;
+	int32_t name_len;
+	uint8_t name[0];
+} __attribute__((packed));
+
+struct hal_ev_map_client_remote_mas_instances {
+	int8_t status;
+	uint8_t bdaddr[6];
+	int32_t num_instances;
+	struct hal_map_client_mas_instance instances[0];
+} __attribute__((packed));
