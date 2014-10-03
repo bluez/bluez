@@ -256,20 +256,27 @@ AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 AM_CPPFLAGS = -I$(builddir)/lib -I$(srcdir)/gdbus
 
 
-unit_tests += unit/test-eir unit/test-uuid unit/test-textfile unit/test-crc \
-							 unit/test-crypto
+unit_tests += unit/test-eir
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/uuid-helper.c
 unit_test_eir_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
+unit_tests += unit/test-uuid
+
 unit_test_uuid_SOURCES = unit/test-uuid.c
 unit_test_uuid_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
+unit_tests += unit/test-textfile
 
 unit_test_textfile_SOURCES = unit/test-textfile.c src/textfile.h src/textfile.c
 unit_test_textfile_LDADD = @GLIB_LIBS@
 
+unit_tests += unit/test-crc
+
 unit_test_crc_SOURCES = unit/test-crc.c monitor/crc.h monitor/crc.c
 unit_test_crc_LDADD = @GLIB_LIBS@
+
+unit_tests += unit/test-crypto
 
 unit_test_crypto_SOURCES = unit/test-crypto.c
 unit_test_crypto_LDADD = src/libshared-glib.la @GLIB_LIBS@
@@ -366,9 +373,8 @@ unit_test_lib_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 unit_tests += unit/test-gatt
 
 unit_test_gatt_SOURCES = unit/test-gatt.c
-unit_test_gatt_LDADD = src/libshared-glib.la lib/libbluetooth-internal.la \
-			@GLIB_LIBS@
-
+unit_test_gatt_LDADD = src/libshared-glib.la \
+				lib/libbluetooth-internal.la @GLIB_LIBS@
 
 noinst_PROGRAMS += $(unit_tests)
 
