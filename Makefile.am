@@ -376,7 +376,9 @@ unit_test_gatt_SOURCES = unit/test-gatt.c
 unit_test_gatt_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la @GLIB_LIBS@
 
+if MAINTAINER_MODE
 noinst_PROGRAMS += $(unit_tests)
+endif
 
 TESTS = $(unit_tests)
 
@@ -398,7 +400,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 					--enable-manpages \
 					--disable-systemd --disable-udev
 
-DISTCLEANFILES = $(pkgconfig_DATA) $(manual_pages)
+DISTCLEANFILES = $(pkgconfig_DATA) $(unit_tests) $(manual_pages)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
