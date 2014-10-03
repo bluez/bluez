@@ -33,6 +33,9 @@ struct bthost;
 struct bthost *bthost_create(void);
 void bthost_destroy(struct bthost *bthost);
 
+typedef void (*bthost_ready_cb) (void);
+void bthost_notify_ready(struct bthost *bthost, bthost_ready_cb cb);
+
 void bthost_set_send_handler(struct bthost *bthost, bthost_send_func handler,
 							void *user_data);
 

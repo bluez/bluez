@@ -191,6 +191,8 @@ struct rfcomm_connection_data {
 };
 
 struct bthost {
+	bool ready;
+	bthost_ready_cb ready_cb;
 	uint8_t bdaddr[6];
 	uint8_t features[8];
 	bthost_send_func send_handler;
@@ -741,6 +743,23 @@ static void read_bd_addr_complete(struct bthost *bthost, const void *data,
 		return;
 
 	memcpy(bthost->bdaddr, ev->bdaddr, 6);
+
+	bthost->ready = true;
+
+	if (bthost->ready_cb) {
+		bthost->ready_cb();
+		bthost->ready_cb = NULL;
+	}
+}
+
+void bthost_notify_ready(struct bthost *bthost, bthost_ready_cb cb)
+{
+	if (bthost->ready) {
+		cb();
+		return;
+	}
+
+	bthost->ready_cb = cb;
 }
 
 static void read_local_features_complete(struct bthost *bthost,
