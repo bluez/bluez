@@ -402,6 +402,7 @@ typedef enum {
 	CB_EMU_CONFIRM_SEND_DATA,
 	CB_EMU_ENCRYPTION_ENABLED,
 	CB_EMU_ENCRYPTION_DISABLED,
+	CB_EMU_CONNECTION_REJECTED,
 } expected_bt_callback_t;
 
 struct test_data {
