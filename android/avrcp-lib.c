@@ -197,6 +197,14 @@ struct set_volume_rsp {
 	uint8_t value;
 } __attribute__ ((packed));
 
+struct set_addressed_req {
+	uint16_t id;
+} __attribute__ ((packed));
+
+struct set_addressed_rsp {
+	uint8_t status;
+} __attribute__ ((packed));
+
 struct avrcp_control_handler {
 	uint8_t id;
 	uint8_t code;
@@ -2416,12 +2424,12 @@ done:
 int avrcp_set_addressed_player(struct avrcp *session, uint16_t player_id)
 {
 	struct iovec iov;
-	uint8_t pdu[2];
+	struct set_addressed_req req;
 
-	put_be16(player_id, pdu);
+	put_be16(player_id, &req.id);
 
-	iov.iov_base = pdu;
-	iov.iov_len = sizeof(pdu);
+	iov.iov_base = &req;
+	iov.iov_len = sizeof(req);
 
 	return avrcp_send_req(session, AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
 					AVRCP_SET_ADDRESSED_PLAYER, &iov, 1,
