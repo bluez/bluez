@@ -561,6 +561,7 @@ void remove_gatt_tests(void);
 
 /* Generic tester API */
 void schedule_action_verification(struct step *step);
+void schedule_callback_verification(struct step *step);
 
 /* Emulator actions */
 void emu_setup_powered_remote_action(void);
