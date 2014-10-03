@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "hal-log.h"
 #include "hal.h"
@@ -99,7 +100,16 @@ static const struct hal_ipc_handler ev_handlers[] = {
 
 static bt_status_t get_remote_mas_instances(bt_bdaddr_t *bd_addr)
 {
-	return BT_STATUS_UNSUPPORTED;
+	struct hal_cmd_map_client_get_instances cmd;
+
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_MAP_CLIENT,
+				HAL_OP_MAP_CLIENT_GET_INSTANCES, sizeof(cmd),
+				&cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t init(btmce_callbacks_t *callbacks)
