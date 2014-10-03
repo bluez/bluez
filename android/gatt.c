@@ -6193,17 +6193,6 @@ done:
 									NULL);
 }
 
-static void create_listen_connections(void *data, void *user_data)
-{
-	struct gatt_device *dev = user_data;
-	int32_t id = PTR_TO_INT(data);
-	struct gatt_app *app;
-
-	app = find_app_by_id(id);
-	if (app)
-		create_connection(dev, app);
-}
-
 static void connect_confirm(GIOChannel *io, void *user_data)
 {
 	struct gatt_device *dev;
@@ -6252,7 +6241,7 @@ static void connect_confirm(GIOChannel *io, void *user_data)
 		goto drop;
 	}
 
-	queue_foreach(listen_apps, create_listen_connections, dev);
+	queue_foreach(listen_apps, create_app_connection, dev);
 	device_set_state(dev, DEVICE_CONNECT_READY);
 
 	return;
