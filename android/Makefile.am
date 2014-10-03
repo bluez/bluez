@@ -80,6 +80,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hardware/bt_rc.h \
 					android/hardware/bt_sock.h \
 					android/hardware/bt_hf_client.h \
+					android/hardware/bt_mce.h \
 					android/hardware/hardware.h \
 					android/cutils/properties.h \
 					android/ipc-common.h \
