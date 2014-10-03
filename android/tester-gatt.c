@@ -41,6 +41,11 @@ static bt_uuid_t app1_uuid = {
 				0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 },
 };
 
+static bt_uuid_t app2_uuid = {
+	.uu = { 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+				0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02 },
+};
+
 struct gatt_connect_data {
 	const int app_id;
 	const int conn_id;
@@ -99,11 +104,6 @@ struct notif_data {
 	const bt_bdaddr_t *bdaddr;
 	btgatt_srvc_id_t *service;
 	btgatt_gatt_id_t *charac;
-};
-
-static bt_uuid_t client2_app_uuid = {
-	.uu = { 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-				0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02 },
 };
 
 static bt_bdaddr_t emu_remote_bdaddr_val = {
@@ -1263,7 +1263,7 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(emu_set_connect_cb_action, gatt_conn_cb),
 		ACTION_SUCCESS(gatt_client_register_action, &app1_uuid),
 		CALLBACK_STATUS(CB_GATTC_REGISTER_CLIENT, BT_STATUS_SUCCESS),
-		ACTION_SUCCESS(gatt_client_register_action, &client2_app_uuid),
+		ACTION_SUCCESS(gatt_client_register_action, &app2_uuid),
 		CALLBACK_STATUS(CB_GATTC_REGISTER_CLIENT, BT_STATUS_SUCCESS),
 		ACTION_SUCCESS(gatt_client_start_scan_action,
 							INT_TO_PTR(APP1_ID)),
