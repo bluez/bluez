@@ -28,8 +28,9 @@ test-gobex-header	  28	OBEX header handling
 test-gobex-apparam	  18	OBEX apparam handling
 test-gobex-transfer	  36	OBEX transfer handling
 test-gdbus-client	  13	D-Bus client handling
+test-gatt		   1	GATT qualification test cases
 			-----
-			 523
+			 524
 
 
 Automated end-to-end testing
