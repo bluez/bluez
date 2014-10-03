@@ -400,6 +400,8 @@ typedef enum {
 
 	/* Emulator callbacks */
 	CB_EMU_CONFIRM_SEND_DATA,
+	CB_EMU_ENCRYPTION_ENABLED,
+	CB_EMU_ENCRYPTION_DISABLED,
 } expected_bt_callback_t;
 
 struct test_data {

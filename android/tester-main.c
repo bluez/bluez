@@ -104,6 +104,8 @@ static struct {
 
 	/* Emulator callbacks */
 	DBG_CB(CB_EMU_CONFIRM_SEND_DATA),
+	DBG_CB(CB_EMU_ENCRYPTION_ENABLED),
+	DBG_CB(CB_EMU_ENCRYPTION_DISABLED),
 };
 
 static gboolean check_callbacks_called(gpointer user_data)
@@ -291,6 +293,25 @@ static void mgmt_debug(const char *str, void *user_data)
 	tester_print("%s%s", prefix, str);
 }
 
+static bool hciemu_post_encr_hook(const void *data, uint16_t len,
+							void *user_data)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	/*
+	 * Expected data: status (1 octet) + conn. handle (2 octets) +
+	 * encryption flag (1 octet)
+	 */
+	if (len < 4)
+		return true;
+
+	step->callback = ((uint8_t *)data)[3] ? CB_EMU_ENCRYPTION_ENABLED :
+						CB_EMU_ENCRYPTION_DISABLED;
+
+	schedule_callback_verification(step);
+	return true;
+}
+
 static void read_info_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -327,6 +348,10 @@ static void read_info_callback(uint8_t status, uint16_t length,
 		tester_pre_setup_failed();
 		return;
 	}
+
+	/* set hook for encryption change */
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT, 0x08,
+						hciemu_post_encr_hook, NULL);
 
 	tester_pre_setup_complete();
 }
