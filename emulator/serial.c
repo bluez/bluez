@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/param.h>
 #include <sys/epoll.h>
 #include <sys/uio.h>
@@ -160,7 +161,7 @@ static void open_pty(struct serial *serial)
 {
 	enum btdev_type uninitialized_var(type);
 
-	serial->fd = getpt();
+	serial->fd = posix_openpt(O_RDWR | O_NOCTTY);
 	if (serial->fd < 0) {
 		perror("Failed to get master pseudo terminal");
 		return;
