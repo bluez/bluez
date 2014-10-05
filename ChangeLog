@@ -1,3 +1,9 @@
+ver 5.24:
+	Fix issue with storing of connection parameters.
+	Add support for Phonebook Access Profile 1.2 features.
+	Add support for Message Access Profile 1.2 event reports.
+	Add support for Android Bluetooth configuration options.
+
 ver 5.23:
 	Fix issue with concurrent authorization requests.
 	Fix issue with HID report identifier mismatch.
