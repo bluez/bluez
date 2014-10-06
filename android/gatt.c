@@ -3480,6 +3480,7 @@ static void send_client_descr_write_notify(int32_t status, int32_t conn_id,
 	element_id_to_hal_srvc_id(srvc, primary, &ev->data.srvc_id);
 	element_id_to_hal_gatt_id(ch, &ev->data.char_id);
 	element_id_to_hal_gatt_id(descr, &ev->data.descr_id);
+	ev->data.status = status;
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
 					HAL_EV_GATT_CLIENT_WRITE_DESCRIPTOR,
