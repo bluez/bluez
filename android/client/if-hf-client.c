@@ -203,6 +203,10 @@ static void hf_client_connection_state_callback(
 	haltest_info("%s: state=%s bd_addr=%s\n", __func__,
 				bthf_client_connection_state_t2str(state),
 				bt_bdaddr_t2str(bd_addr, last_addr));
+
+	if (state != BTHF_CLIENT_CONNECTION_STATE_CONNECTED)
+		return;
+
 	haltest_info("\tpeer_features%s\n", pear_features_t2str(peer_feat));
 	haltest_info("\tchld_feat=%s\n", chld_features_t2str(chld_feat));
 }
