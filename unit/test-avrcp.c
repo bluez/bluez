@@ -853,12 +853,12 @@ int main(int argc, char *argv[])
 
 	/* SetBrowsedPlayer - CT */
 	define_test("/TP/MPS/BV-03-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, 0x70, 0x00, 0x02,
+			brs_pdu(0x00, 0x11, 0x0e, 0x70, 0x00, 0x02,
 				0xab, 0xcd));
 
 	/* GetFolderItems - CT */
 	define_test("/TP/MPS/BV-08-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x0a, AVRCP_MEDIA_PLAYER_LIST,
 				0x00, 0x00, 0x00, 0x00, /* start */
 				0x00, 0x00, 0x00, 0x02, /* end */
@@ -881,7 +881,7 @@ int main(int argc, char *argv[])
 
 	/* GetFolderItems - Virtual FS - CT */
 	define_test("/TP/MCN/CB/BV-01-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x0a, AVRCP_MEDIA_PLAYER_VFS,
 				0x00, 0x00, 0x00, 0x00, /* start */
 				0x00, 0x00, 0x00, 0x02, /* end */
@@ -899,7 +899,7 @@ int main(int argc, char *argv[])
 
 	/* ChangePath - CT */
 	define_test("/TP/MCN/CB/BV-04-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_CHANGE_PATH,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_CHANGE_PATH,
 				0x00, 0x0b,
 				0xaa, 0xbb,		/* counter */
 				0x01,			/* direction */
@@ -930,7 +930,7 @@ int main(int argc, char *argv[])
 
 	/* GetItemAttributes - CT */
 	define_test("/TP/MCN/CB/BV-07-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
 				0x00, 0x0c, AVRCP_MEDIA_PLAYER_VFS,
 				0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x01,	/* uuid */
@@ -993,7 +993,7 @@ int main(int argc, char *argv[])
 
 	/* Search - CT */
 	define_test("/TP/MCN/SRC/BV-01-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_SEARCH,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_SEARCH,
 				0x00, 0x0b, 0x00, 0x6a,
 				0x00, 0x07,
 				0x43, 0x6f, 0x75, 0x6e, 0x74, 0x72, 0x79));
@@ -1010,7 +1010,7 @@ int main(int argc, char *argv[])
 
 	/* GetFolderItems - CT */
 	define_test("/TP/MCN/SRC/BV-03-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x0a, AVRCP_MEDIA_SEARCH,
 				0x00, 0x00, 0x00, 0x00, /* start */
 				0x00, 0x00, 0x00, 0x02, /* end */
@@ -1028,7 +1028,7 @@ int main(int argc, char *argv[])
 
 	/* GetItemAttributes - CT */
 	define_test("/TP/MCN/SRC/BV-05-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
 				0x00, 0x0c, AVRCP_MEDIA_SEARCH,
 				0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x01,	/* uuid */
@@ -1102,7 +1102,7 @@ int main(int argc, char *argv[])
 
 	/* GetItemAttributes - CT */
 	define_test("/TP/MCN/NP/BV-08-C", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
 				0x00, 0x0c, AVRCP_MEDIA_NOW_PLAYING,
 				0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x01,	/* uid */
@@ -1144,7 +1144,7 @@ int main(int argc, char *argv[])
 
 	/* Listing of available media players */
 	define_test("/TP/MPS/BV-01-I", test_client,
-			raw_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x0a, AVRCP_MEDIA_PLAYER_LIST,
 				0x00, 0x00, 0x00, 0x00, /* start */
 				0x00, 0x00, 0x00, 0x02, /* end */
