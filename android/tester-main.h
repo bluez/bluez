@@ -272,6 +272,19 @@ struct pdu_set {
 		.callback_result.inc_srvc_handle = cb_inc_srvc_handle, \
 	}
 
+#define CALLBACK_GATTS_CHARACTERISTIC_ADDED(cb_res, cb_server_id, cb_uuid, \
+						cb_srvc_handle, \
+						cb_char_handle, \
+						cb_store_char_handle) { \
+		.callback = CB_GATTS_CHARACTERISTIC_ADDED, \
+		.callback_result.status = cb_res, \
+		.callback_result.gatt_app_id = cb_server_id, \
+		.callback_result.uuid = cb_uuid, \
+		.callback_result.srvc_handle = cb_srvc_handle, \
+		.callback_result.char_handle = cb_char_handle, \
+		.store_char_handle = cb_store_char_handle, \
+	}
+
 #define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
 		.callback = cb, \
 		.callback_result.status = cb_res, \
@@ -509,6 +522,7 @@ struct bt_callback_data {
 	bt_status_t status;
 	int num_properties;
 	bt_property_t *properties;
+	bt_uuid_t *uuid;
 
 	bt_ssp_variant_t pairing_variant;
 
@@ -522,6 +536,7 @@ struct bt_callback_data {
 	int connected;
 	int *srvc_handle;
 	int *inc_srvc_handle;
+	int *char_handle;
 	btgatt_srvc_id_t *service;
 	btgatt_gatt_id_t *characteristic;
 	btgatt_gatt_id_t *descriptor;
@@ -559,6 +574,7 @@ struct step {
 	int set_data_len;
 
 	int *store_srvc_handle;
+	int *store_char_handle;
 };
 
 struct test_case {

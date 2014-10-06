@@ -123,6 +123,14 @@ struct add_included_service_data {
 	int *inc_srvc_handle;
 	int *srvc_handle;
 };
+struct add_char_data {
+	int app_id;
+	int *srvc_handle;
+	bt_uuid_t *uuid;
+	int properties;
+	int permissions;
+};
+
 static bt_bdaddr_t emu_remote_bdaddr_val = {
 	.address = { 0x00, 0xaa, 0x01, 0x01, 0x00, 0x00 },
 };
@@ -369,6 +377,12 @@ static struct add_service_data add_service_data_4 = {
 	.num_handles = 2
 };
 
+static struct add_service_data add_service_data_5 = {
+	.app_id = APP1_ID,
+	.service = &service_add_1,
+	.num_handles = 3
+};
+
 static struct add_service_data add_bad_service_data_1 = {
 	.app_id = APP1_ID,
 	.service = &service_add_1,
@@ -393,6 +407,22 @@ static struct add_included_service_data add_bad_inc_service_data_1 = {
 	.app_id = APP1_ID,
 	.inc_srvc_handle = &srvc_bad_handle,
 	.srvc_handle = &srvc1_handle
+};
+
+static struct add_char_data add_char_data_1 = {
+	.app_id = APP1_ID,
+	.srvc_handle = &srvc1_handle,
+	.uuid = &app1_uuid,
+	.properties = 0,
+	.permissions = 0
+};
+
+static struct add_char_data add_bad_char_data_1 = {
+	.app_id = APP1_ID,
+	.srvc_handle = &srvc_bad_handle,
+	.uuid = &app1_uuid,
+	.properties = 0,
+	.permissions = 0
 };
 
 struct set_read_params {
@@ -1121,6 +1151,23 @@ static void gatt_server_add_inc_service_action(void)
 					add_inc_srvc_data->app_id,
 					*add_inc_srvc_data->srvc_handle,
 					*add_inc_srvc_data->inc_srvc_handle);
+
+	schedule_action_verification(step);
+}
+
+static void gatt_server_add_char_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct add_char_data *add_char_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->server->add_characteristic(
+						add_char_data->app_id,
+						*add_char_data->srvc_handle,
+						add_char_data->uuid,
+						add_char_data->properties,
+						add_char_data->permissions);
 
 	schedule_action_verification(step);
 }
@@ -2468,6 +2515,33 @@ static struct test_case test_cases[] = {
 						&add_bad_inc_service_data_1),
 		CALLBACK_GATTS_INC_SERVICE_ADDED(GATT_STATUS_FAILURE, APP1_ID,
 							&srvc1_handle, NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Single Characteristic Successful",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_5),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_SUCCESS(gatt_server_add_char_action, &add_char_data_1),
+		CALLBACK_GATTS_CHARACTERISTIC_ADDED(GATT_STATUS_SUCCESS,
+							APP1_ID, &app1_uuid,
+							&srvc1_handle, NULL,
+							NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Char. wrong service handle",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_5),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_FAIL(gatt_server_add_char_action, &add_bad_char_data_1),
+		CALLBACK_GATTS_CHARACTERISTIC_ADDED(GATT_STATUS_FAILURE,
+							APP1_ID, &app1_uuid,
+							NULL, NULL, NULL),
 	),
 };
 

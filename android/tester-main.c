@@ -793,10 +793,23 @@ static bool match_data(struct step *step)
 			return false;
 		}
 
+	if (exp->callback_result.uuid && step->callback_result.uuid)
+		if (memcmp(exp->callback_result.uuid,
+					step->callback_result.uuid,
+					sizeof(*exp->callback_result.uuid))) {
+			tester_debug("Uuid mismatch");
+			return false;
+		}
+
 	if (exp->store_srvc_handle)
 		memcpy(exp->store_srvc_handle,
 					step->callback_result.srvc_handle,
 					sizeof(*exp->store_srvc_handle));
+
+	if (exp->store_char_handle)
+		memcpy(exp->store_char_handle,
+					step->callback_result.char_handle,
+					sizeof(*exp->store_char_handle));
 
 	return true;
 }
@@ -906,6 +919,12 @@ static void destroy_callback_step(void *data)
 
 	if (step->callback_result.inc_srvc_handle)
 		free(step->callback_result.inc_srvc_handle);
+
+	if (step->callback_result.uuid)
+		free(step->callback_result.uuid);
+
+	if (step->callback_result.char_handle)
+		free(step->callback_result.char_handle);
 
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
@@ -1546,6 +1565,26 @@ static void gatts_included_service_added_cb(int status, int server_if,
 	schedule_callback_verification(step);
 }
 
+static void gatts_characteristic_added_cb(int status, int server_if,
+								bt_uuid_t *uuid,
+								int srvc_handle,
+								int char_handle)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTS_CHARACTERISTIC_ADDED;
+
+	step->callback_result.status = status;
+	step->callback_result.gatt_app_id = server_if;
+	step->callback_result.srvc_handle = g_memdup(&srvc_handle,
+							sizeof(srvc_handle));
+	step->callback_result.uuid = g_memdup(uuid, sizeof(*uuid));
+	step->callback_result.char_handle = g_memdup(&char_handle,
+							sizeof(char_handle));
+
+	schedule_callback_verification(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1671,7 +1710,7 @@ static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.connection_cb = gatts_connection_cb,
 	.service_added_cb = gatts_service_added_cb,
 	.included_service_added_cb = gatts_included_service_added_cb,
-	.characteristic_added_cb = NULL,
+	.characteristic_added_cb = gatts_characteristic_added_cb,
 	.descriptor_added_cb = NULL,
 	.service_started_cb = NULL,
 	.service_stopped_cb = NULL,
