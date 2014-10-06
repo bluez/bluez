@@ -311,6 +311,13 @@ struct pdu_set {
 		.callback_result.srvc_handle = cb_srvc_handle, \
 	}
 
+#define CALLBACK_GATTS_SERVICE_DELETED(cb_res, cb_server_id, cb_srvc_handle) { \
+		.callback = CB_GATTS_SERVICE_DELETED, \
+		.callback_result.status = cb_res, \
+		.callback_result.gatt_app_id = cb_server_id, \
+		.callback_result.srvc_handle = cb_srvc_handle, \
+	}
+
 #define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
 		.callback = cb, \
 		.callback_result.status = cb_res, \
