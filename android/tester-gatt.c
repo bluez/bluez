@@ -37,6 +37,10 @@
 #define CONN1_ID	1
 #define CONN2_ID	2
 
+#define GATT_SERVER_TRANSPORT_LE		0x00
+#define GATT_SERVER_TRANSPORT_BREDR		0x01
+#define GATT_SERVER_TRANSPORT_LE_BREDR		0x02
+
 static struct queue *list; /* List of gatt test cases */
 
 static int srvc1_handle;
@@ -147,6 +151,12 @@ struct add_desc_data {
 	int *srvc_handle;
 	bt_uuid_t *uuid;
 	int permissions;
+};
+
+struct start_srvc_data {
+	int app_id;
+	int *srvc_handle;
+	int transport;
 };
 
 static bt_bdaddr_t emu_remote_bdaddr_val = {
@@ -490,6 +500,30 @@ static struct add_desc_data add_desc_data_1 = {
 	.srvc_handle = &srvc1_handle,
 	.uuid = &app2_uuid,
 	.permissions = 0
+};
+
+static struct start_srvc_data start_srvc_data_1 = {
+	.app_id = APP1_ID,
+	.srvc_handle = &srvc1_handle,
+	.transport = GATT_SERVER_TRANSPORT_LE_BREDR
+};
+
+static struct start_srvc_data start_srvc_data_2 = {
+	.app_id = APP1_ID,
+	.srvc_handle = &srvc1_handle,
+	.transport = GATT_SERVER_TRANSPORT_LE
+};
+
+static struct start_srvc_data start_bad_srvc_data_1 = {
+	.app_id = APP1_ID,
+	.srvc_handle = &srvc_bad_handle,
+	.transport = GATT_SERVER_TRANSPORT_LE
+};
+
+static struct start_srvc_data start_bad_srvc_data_2 = {
+	.app_id = APP1_ID,
+	.srvc_handle = &srvc1_handle,
+	.transport = -1
 };
 
 struct set_read_params {
@@ -1334,6 +1368,21 @@ static void gatt_client_write_descriptor_action(void)
 						write_desc_data->p_value);
 
 	step->action_status = status;
+
+	schedule_action_verification(step);
+}
+
+static void gatt_server_start_srvc_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct start_srvc_data *start_srvc_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->server->start_service(
+						start_srvc_data->app_id,
+						*start_srvc_data->srvc_handle,
+						start_srvc_data->transport);
 
 	schedule_action_verification(step);
 }
@@ -2867,6 +2916,57 @@ static struct test_case test_cases[] = {
 		ACTION_FAIL(gatt_server_add_desc_action, &add_bad_desc_data_2),
 		CALLBACK_GATTS_DESCRIPTOR_ADDED(GATT_STATUS_FAILURE, APP2_ID,
 						&app2_uuid, NULL, NULL, NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Start Service Successful BREDRLE",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_SUCCESS(gatt_server_start_srvc_action,
+							&start_srvc_data_1),
+		CALLBACK_GATTS_SERVICE_STARTED(GATT_STATUS_SUCCESS, APP1_ID,
+								&srvc1_handle),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Start Service Successful LE",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_SUCCESS(gatt_server_start_srvc_action,
+							&start_srvc_data_2),
+		CALLBACK_GATTS_SERVICE_STARTED(GATT_STATUS_SUCCESS, APP1_ID,
+								&srvc1_handle),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Start Service wrong service handle",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+						&service_add_1, NULL, NULL),
+		ACTION_FAIL(gatt_server_start_srvc_action,
+							&start_bad_srvc_data_1),
+		CALLBACK_GATTS_SERVICE_STARTED(GATT_STATUS_FAILURE, APP1_ID,
+									NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Start Service wrong server transport",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_FAIL(gatt_server_start_srvc_action,
+							&start_bad_srvc_data_2),
+		CALLBACK_GATTS_SERVICE_STARTED(GATT_STATUS_FAILURE, APP1_ID,
+								&srvc1_handle),
 	),
 };
 
