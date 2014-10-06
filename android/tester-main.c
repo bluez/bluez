@@ -1622,6 +1622,20 @@ static void gatts_service_started_cb(int status, int server_if, int srvc_handle)
 	schedule_callback_verification(step);
 }
 
+static void gatts_service_stopped_cb(int status, int server_if, int srvc_handle)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTS_SERVICE_STOPPED;
+
+	step->callback_result.status = status;
+	step->callback_result.gatt_app_id = server_if;
+	step->callback_result.srvc_handle = g_memdup(&srvc_handle,
+							sizeof(srvc_handle));
+
+	schedule_callback_verification(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1750,7 +1764,7 @@ static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.characteristic_added_cb = gatts_characteristic_added_cb,
 	.descriptor_added_cb = gatts_descriptor_added_cb,
 	.service_started_cb = gatts_service_started_cb,
-	.service_stopped_cb = NULL,
+	.service_stopped_cb = gatts_service_stopped_cb,
 	.service_deleted_cb = NULL,
 	.request_read_cb = NULL,
 	.request_write_cb = NULL,
