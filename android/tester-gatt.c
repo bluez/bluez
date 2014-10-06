@@ -39,6 +39,9 @@
 
 static struct queue *list; /* List of gatt test cases */
 
+static int srvc1_handle;
+static int inc_srvc1_handle;
+
 static bt_uuid_t app1_uuid = {
 	.uu = { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
 				0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 },
@@ -115,6 +118,11 @@ struct add_service_data {
 	int num_handles;
 };
 
+struct add_included_service_data {
+	int app_id;
+	int *inc_srvc_handle;
+	int *srvc_handle;
+};
 static bt_bdaddr_t emu_remote_bdaddr_val = {
 	.address = { 0x00, 0xaa, 0x01, 0x01, 0x00, 0x00 },
 };
@@ -355,6 +363,12 @@ static struct add_service_data add_service_data_3 = {
 	.num_handles = 1
 };
 
+static struct add_service_data add_service_data_4 = {
+	.app_id = APP1_ID,
+	.service = &service_add_1,
+	.num_handles = 2
+};
+
 static struct add_service_data add_bad_service_data_1 = {
 	.app_id = APP1_ID,
 	.service = &service_add_1,
@@ -365,6 +379,20 @@ static struct add_service_data add_sec_service_data_1 = {
 	.app_id = APP1_ID,
 	.service = &included_1,
 	.num_handles = 1
+};
+
+static int srvc_bad_handle = -1;
+
+static struct add_included_service_data add_inc_service_data_1 = {
+	.app_id = APP1_ID,
+	.inc_srvc_handle = &inc_srvc1_handle,
+	.srvc_handle = &srvc1_handle
+};
+
+static struct add_included_service_data add_bad_inc_service_data_1 = {
+	.app_id = APP1_ID,
+	.inc_srvc_handle = &srvc_bad_handle,
+	.srvc_handle = &srvc1_handle
 };
 
 struct set_read_params {
@@ -1077,6 +1105,22 @@ static void gatt_server_add_service_action(void)
 						add_srvc_data->app_id,
 						add_srvc_data->service,
 						add_srvc_data->num_handles);
+
+	schedule_action_verification(step);
+}
+
+static void gatt_server_add_inc_service_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct add_included_service_data *add_inc_srvc_data =
+						current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->server->add_included_service(
+					add_inc_srvc_data->app_id,
+					*add_inc_srvc_data->srvc_handle,
+					*add_inc_srvc_data->inc_srvc_handle);
 
 	schedule_action_verification(step);
 }
@@ -2389,6 +2433,41 @@ static struct test_case test_cases[] = {
 						&add_sec_service_data_1),
 		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
 						&included_1, NULL, NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Included Service Successful",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_4),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_4),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&inc_srvc1_handle),
+		ACTION_SUCCESS(gatt_server_add_inc_service_action,
+						&add_inc_service_data_1),
+		CALLBACK_GATTS_INC_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&srvc1_handle, NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Inc. Service with wrong handle",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_4),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_4),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+						&service_add_1, NULL, NULL),
+		ACTION_FAIL(gatt_server_add_inc_service_action,
+						&add_bad_inc_service_data_1),
+		CALLBACK_GATTS_INC_SERVICE_ADDED(GATT_STATUS_FAILURE, APP1_ID,
+							&srvc1_handle, NULL),
 	),
 };
 
