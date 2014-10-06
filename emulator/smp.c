@@ -55,6 +55,14 @@
 
 #define SC_NO_DIST	(DIST_ENC_KEY | DIST_LINK_KEY)
 
+#define MAX_IO_CAP	0x04
+
+#define SMP_AUTH_NONE		0x00
+#define SMP_AUTH_BONDING	0x01
+#define SMP_AUTH_MITM		0x04
+#define SMP_AUTH_SC		0x08
+#define SMP_AUTH_KEYPRESS	0x10
+
 struct smp {
 	struct bthost *bthost;
 	struct smp_conn *conn;
@@ -66,6 +74,8 @@ struct smp_conn {
 	uint16_t handle;
 	bool out;
 	bool sc;
+	bool initiator;
+	uint8_t method;
 	uint8_t local_key_dist;
 	uint8_t remote_key_dist;
 	uint8_t ia[6];
@@ -86,6 +96,81 @@ struct smp_conn {
 	uint8_t dhkey[32];
 	uint8_t mackey[16];
 };
+
+enum {
+	JUST_WORKS,
+	JUST_CFM,
+	REQ_PASSKEY,
+	CFM_PASSKEY,
+	REQ_OOB,
+	DSP_PASSKEY,
+	OVERLAP,
+};
+
+static const uint8_t gen_method[5][5] = {
+	{ JUST_WORKS,  JUST_CFM,    REQ_PASSKEY, JUST_WORKS, REQ_PASSKEY },
+	{ JUST_WORKS,  JUST_CFM,    REQ_PASSKEY, JUST_WORKS, REQ_PASSKEY },
+	{ CFM_PASSKEY, CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, CFM_PASSKEY },
+	{ JUST_WORKS,  JUST_CFM,    JUST_WORKS,  JUST_WORKS, JUST_CFM    },
+	{ CFM_PASSKEY, CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, OVERLAP     },
+};
+
+static const uint8_t sc_method[5][5] = {
+	{ JUST_WORKS,  JUST_CFM,    REQ_PASSKEY, JUST_WORKS, REQ_PASSKEY },
+	{ JUST_WORKS,  CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, CFM_PASSKEY },
+	{ DSP_PASSKEY, DSP_PASSKEY, REQ_PASSKEY, JUST_WORKS, DSP_PASSKEY },
+	{ JUST_WORKS,  JUST_CFM,    JUST_WORKS,  JUST_WORKS, JUST_CFM    },
+	{ DSP_PASSKEY, CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, CFM_PASSKEY },
+};
+
+static uint8_t get_auth_method(struct smp_conn *conn, uint8_t local_io,
+							uint8_t remote_io)
+{
+	/* If either side has unknown io_caps, use JUST_CFM (which gets
+	 * converted later to JUST_WORKS if we're initiators.
+	 */
+	if (local_io > MAX_IO_CAP || remote_io > MAX_IO_CAP)
+		return JUST_CFM;
+
+	if (conn->sc)
+		return sc_method[remote_io][local_io];
+
+	return gen_method[remote_io][local_io];
+}
+
+static uint8_t sc_select_method(struct smp_conn *conn)
+{
+	struct bt_l2cap_smp_pairing_request *local, *remote;
+	uint8_t local_mitm, remote_mitm, local_io, remote_io, method;
+
+	if (conn->out) {
+		local = (void *) &conn->preq[1];
+		remote = (void *) &conn->prsp[1];
+	} else {
+		local = (void *) &conn->prsp[1];
+		remote = (void *) &conn->preq[1];
+	}
+
+	local_io = local->io_capa;
+	remote_io = remote->io_capa;
+
+	local_mitm = (local->auth_req & SMP_AUTH_MITM);
+	remote_mitm = (remote->auth_req & SMP_AUTH_MITM);
+
+	/* If either side wants MITM, look up the method from the table,
+	 * otherwise use JUST WORKS.
+	 */
+	if (local_mitm || remote_mitm)
+		method = get_auth_method(conn, local_io, remote_io);
+	else
+		method = JUST_WORKS;
+
+	/* Don't confirm locally initiated pairing attempts */
+	if (method == JUST_CFM && conn->initiator)
+		method = JUST_WORKS;
+
+	return method;
+}
 
 static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
 								uint8_t len)
@@ -395,6 +480,14 @@ static void public_key(struct smp_conn *conn, const void *data, uint16_t len)
 
 	if (!ecdh_shared_secret(conn->remote_pk, conn->local_sk, conn->dhkey))
 		return;
+
+	conn->method = sc_select_method(conn);
+
+	if (conn->method == DSP_PASSKEY) {
+		return;
+	} else if (conn->method == REQ_PASSKEY) {
+		return;
+	}
 
 	if (conn->out)
 		return;
