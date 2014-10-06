@@ -926,6 +926,9 @@ static void destroy_callback_step(void *data)
 	if (step->callback_result.char_handle)
 		free(step->callback_result.char_handle);
 
+	if (step->callback_result.desc_handle)
+		free(step->callback_result.desc_handle);
+
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
 }
@@ -1585,6 +1588,26 @@ static void gatts_characteristic_added_cb(int status, int server_if,
 	schedule_callback_verification(step);
 }
 
+static void gatts_descriptor_added_cb(int status, int server_if,
+								bt_uuid_t *uuid,
+								int srvc_handle,
+								int desc_handle)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_GATTS_DESCRIPTOR_ADDED;
+
+	step->callback_result.status = status;
+	step->callback_result.gatt_app_id = server_if;
+	step->callback_result.srvc_handle = g_memdup(&srvc_handle,
+							sizeof(srvc_handle));
+	step->callback_result.uuid = g_memdup(uuid, sizeof(*uuid));
+	step->callback_result.desc_handle = g_memdup(&desc_handle,
+							sizeof(desc_handle));
+
+	schedule_callback_verification(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1711,7 +1734,7 @@ static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.service_added_cb = gatts_service_added_cb,
 	.included_service_added_cb = gatts_included_service_added_cb,
 	.characteristic_added_cb = gatts_characteristic_added_cb,
-	.descriptor_added_cb = NULL,
+	.descriptor_added_cb = gatts_descriptor_added_cb,
 	.service_started_cb = NULL,
 	.service_stopped_cb = NULL,
 	.service_deleted_cb = NULL,
