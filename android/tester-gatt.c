@@ -109,6 +109,12 @@ struct notif_data {
 	btgatt_gatt_id_t *charac;
 };
 
+struct add_service_data {
+	int app_id;
+	btgatt_srvc_id_t *service;
+	int num_handles;
+};
+
 static bt_bdaddr_t emu_remote_bdaddr_val = {
 	.address = { 0x00, 0xaa, 0x01, 0x01, 0x00, 0x00 },
 };
@@ -178,6 +184,33 @@ static btgatt_srvc_id_t service_2 = {
 		.inst_id = 1,
 		.uuid.uu = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,
 			0x00, 0x10, 0x00, 0x00,  0x01, 0x18, 0x00, 0x00},
+	}
+};
+
+static btgatt_srvc_id_t service_add_1 = {
+	.is_primary = true,
+	.id = {
+		.inst_id = 0,
+		.uuid.uu = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,
+			0x00, 0x10, 0x00, 0x00, 0xFF, 0xEF, 0x00, 0x00},
+	}
+};
+
+static btgatt_srvc_id_t service_add_2 = {
+	.is_primary = true,
+	.id = {
+		.inst_id = 1,
+		.uuid.uu = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,
+			0x00, 0x10, 0x00, 0x00, 0xFF, 0xDF, 0x00, 0x00},
+	}
+};
+
+static btgatt_srvc_id_t service_add_3 = {
+	.is_primary = true,
+	.id = {
+		.inst_id = 2,
+		.uuid.uu = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,
+			0x00, 0x10, 0x00, 0x00, 0xFF, 0xCF, 0x00, 0x00},
 	}
 };
 
@@ -302,6 +335,36 @@ static struct notif_data notif_data_1 = {
 	.service = &service_1,
 	.charac = &characteristic_1,
 	.bdaddr = &emu_remote_bdaddr_val,
+};
+
+static struct add_service_data add_service_data_1 = {
+	.app_id = APP1_ID,
+	.service = &service_add_1,
+	.num_handles = 1
+};
+
+static struct add_service_data add_service_data_2 = {
+	.app_id = APP1_ID,
+	.service = &service_add_2,
+	.num_handles = 1
+};
+
+static struct add_service_data add_service_data_3 = {
+	.app_id = APP1_ID,
+	.service = &service_add_3,
+	.num_handles = 1
+};
+
+static struct add_service_data add_bad_service_data_1 = {
+	.app_id = APP1_ID,
+	.service = &service_add_1,
+	.num_handles = 0
+};
+
+static struct add_service_data add_sec_service_data_1 = {
+	.app_id = APP1_ID,
+	.service = &included_1,
+	.num_handles = 1
 };
 
 struct set_read_params {
@@ -999,6 +1062,21 @@ static void gatt_server_disconnect_action(void)
 							conn_data->app_id,
 							&emu_remote_bdaddr_val,
 							conn_data->conn_id);
+
+	schedule_action_verification(step);
+}
+
+static void gatt_server_add_service_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct add_service_data *add_srvc_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->server->add_service(
+						add_srvc_data->app_id,
+						add_srvc_data->service,
+						add_srvc_data->num_handles);
 
 	schedule_action_verification(step);
 }
@@ -2271,6 +2349,46 @@ static struct test_case test_cases[] = {
 						CONN1_ID, APP1_ID),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Single Service Successful",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+						&service_add_1, NULL, NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Multiple Services Successful",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+						&service_add_1, NULL, NULL),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_2),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+						&service_add_2, NULL, NULL),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_3),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+						&service_add_3, NULL, NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Service with 0 handles",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_FAIL(gatt_server_add_service_action,
+						&add_bad_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_FAILURE, APP1_ID,
+						&service_add_1, NULL, NULL),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Add Secondary Service",
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+						&add_sec_service_data_1),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+						&included_1, NULL, NULL),
 	),
 };
 
