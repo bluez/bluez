@@ -3169,7 +3169,7 @@ static guint signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 		return 0;
 	}
 
-	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK, sign_cnt++);
+	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK, ++sign_cnt);
 
 	return res;
 }
