@@ -212,8 +212,8 @@ struct set_browsed_req {
 struct set_browsed_rsp {
 	uint8_t status;
 	uint16_t counter;
-	uint16_t charset;
 	uint32_t items;
+	uint16_t charset;
 	uint8_t depth;
 	uint8_t data[0];
 } __attribute__ ((packed));
