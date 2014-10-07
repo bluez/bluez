@@ -586,6 +586,20 @@ static int set_addressed(struct avrcp *session, uint8_t transaction,
 	return -EAGAIN;
 }
 
+static int set_browsed(struct avrcp *session, uint8_t transaction,
+						uint16_t id, void *user_data)
+{
+	const char *folders[1] = { "Filesystem" };
+
+	DBG("");
+
+	avrcp_set_browsed_player_rsp(session, transaction,
+					AVRCP_STATUS_SUCCESS, 0xabcd, 0, 1,
+					folders);
+
+	return -EAGAIN;
+}
+
 static int get_folder_items(struct avrcp *session, uint8_t transaction,
 				uint8_t scope, uint32_t start, uint32_t end,
 				uint16_t number, uint32_t *attrs,
@@ -683,6 +697,7 @@ static const struct avrcp_control_ind control_ind = {
 	.register_notification = register_notification,
 	.set_volume = set_volume,
 	.set_addressed = set_addressed,
+	.set_browsed = set_browsed,
 	.get_folder_items = get_folder_items,
 	.change_path = change_path,
 	.get_item_attributes = get_item_attributes,
@@ -860,6 +875,16 @@ int main(int argc, char *argv[])
 			brs_pdu(0x00, 0x11, 0x0e, 0x70, 0x00, 0x02,
 				0xab, 0xcd));
 
+	/* SetBrowsedPlayer - TG */
+	define_test("/TP/MPS/BV-04-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, 0x70, 0x00, 0x02,
+				0xab, 0xcd),
+			brs_pdu(0x02, 0x11, 0x0e, 0x70, 0x00, 0x16,
+				0x04, 0xab, 0xcd, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x6a, 0x01, 0x00, 0x0a,
+				0x46, 0x69, 0x6c, 0x65, 0x73, 0x79,
+				0x73, 0x74, 0x65, 0x6d));
+
 	/* GetFolderItems - CT */
 	define_test("/TP/MPS/BV-08-C", test_client,
 			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
@@ -893,6 +918,16 @@ int main(int argc, char *argv[])
 
 	/* GetFolderItems - Virtual FS - TG */
 	define_test("/TP/MCN/CB/BV-02-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+				0x00, 0x0a, AVRCP_MEDIA_PLAYER_VFS,
+				0x00, 0x00, 0x00, 0x00, /* start */
+				0x00, 0x00, 0x00, 0x02, /* end */
+				0x00),
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
+				0x00, 0x05, 0x04, 0xab, 0xcd, 0x00, 0x00));
+
+	/* GetFolderItems - Virtual FS - TG */
+	define_test("/TP/MCN/CB/BV-03-C", test_server,
 			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x0a, AVRCP_MEDIA_PLAYER_VFS,
 				0x00, 0x00, 0x00, 0x00, /* start */
