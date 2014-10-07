@@ -1018,17 +1018,20 @@ static ssize_t set_addressed(struct avrcp *session, uint8_t transaction,
 					void *user_data)
 {
 	struct avrcp_player *player = user_data;
+	struct set_addressed_req *req;
 	uint16_t id;
 
 	DBG("");
 
-	if (!params || params_len != 2)
-		return -EINVAL;
-
 	if (!player->ind || !player->ind->set_addressed)
 		return -ENOSYS;
 
-	id = get_be16(params);
+	if (!params || params_len != sizeof(*req))
+		return -EINVAL;
+
+	req = (void *) params;
+
+	id = get_be16(&req->id);
 
 	return player->ind->set_addressed(session, transaction, id,
 							player->user_data);
