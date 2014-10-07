@@ -1891,8 +1891,6 @@ static void handle_formatted_at_resp(const void *buf, uint16_t len)
 		return;
 	}
 
-	DBG("");
-
 	hfp_gw_send_info(device.gw, "%s", cmd->len ? (char *) cmd->buf : "");
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
