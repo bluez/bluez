@@ -161,6 +161,8 @@ struct avrcp_control_ind {
 					uint8_t volume, void *user_data);
 	int (*set_addressed) (struct avrcp *session, uint8_t transaction,
 					uint16_t id, void *user_data);
+	int (*set_browsed) (struct avrcp *session, uint8_t transaction,
+					uint16_t id, void *user_data);
 	int (*get_folder_items) (struct avrcp *session, uint8_t transaction,
 					uint8_t scope, uint32_t start,
 					uint32_t end, uint16_t number,
@@ -319,6 +321,10 @@ int avrcp_set_volume_rsp(struct avrcp *session, uint8_t transaction,
 							uint8_t volume);
 int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
 							uint8_t status);
+int avrcp_set_browsed_player_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t status, uint16_t counter,
+					uint32_t items, uint8_t depth,
+					const char **folders);
 int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
 					uint16_t counter, uint8_t number,
 					uint8_t *type, uint16_t *len,

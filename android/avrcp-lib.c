@@ -1243,6 +1243,30 @@ static void avrcp_set_control_handlers(struct avrcp *session,
 	session->control_data = user_data;
 }
 
+static ssize_t set_browsed(struct avrcp *session, uint8_t transaction,
+					uint16_t params_len, uint8_t *params,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	struct set_browsed_req *req;
+	uint16_t id;
+
+	DBG("");
+
+	if (!player->ind || !player->ind->set_browsed)
+		return -ENOSYS;
+
+	if (!params || params_len != sizeof(*req))
+		return -EINVAL;
+
+	req = (void *) params;
+
+	id = get_be16(&req->id);
+
+	return player->ind->set_browsed(session, transaction, id,
+							player->user_data);
+}
+
 static ssize_t get_folder_items(struct avrcp *session, uint8_t transaction,
 					uint16_t params_len, uint8_t *params,
 					void *user_data)
@@ -1449,6 +1473,7 @@ static ssize_t add_to_now_playing(struct avrcp *session, uint8_t transaction,
 }
 
 static const struct avrcp_browsing_handler browsing_handlers[] = {
+		{ AVRCP_SET_BROWSED_PLAYER, set_browsed },
 		{ AVRCP_GET_FOLDER_ITEMS, get_folder_items },
 		{ AVRCP_CHANGE_PATH, change_path },
 		{ AVRCP_GET_ITEM_ATTRIBUTES, get_item_attributes },
@@ -3293,6 +3318,58 @@ int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
 	return avrcp_send(session, transaction, AVC_CTYPE_STABLE,
 				AVC_SUBUNIT_PANEL, AVRCP_SET_ADDRESSED_PLAYER,
 				&iov, 1);
+}
+
+int avrcp_set_browsed_player_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t status, uint16_t counter,
+					uint32_t items, uint8_t depth,
+					const char **folders)
+{
+	struct iovec iov[UINT8_MAX * 2 + 1];
+	struct set_browsed_rsp rsp;
+	uint16_t len[UINT8_MAX];
+	int i;
+
+	if (status != AVRCP_STATUS_SUCCESS) {
+		iov[0].iov_base = &status;
+		iov[0].iov_len = sizeof(status);
+		return avrcp_send_browsing(session, transaction,
+						AVRCP_SET_BROWSED_PLAYER,
+						iov, 1);
+	}
+
+	rsp.status = status;
+	put_be16(counter, &rsp.counter);
+	put_be32(items, &rsp.items);
+	put_be16(AVRCP_CHARSET_UTF8, &rsp.charset);
+	rsp.depth = depth;
+
+	iov[0].iov_base = &rsp;
+	iov[0].iov_len = sizeof(rsp);
+
+	if (!depth)
+		return avrcp_send_browsing(session, transaction,
+						AVRCP_SET_BROWSED_PLAYER,
+						iov, 1);
+
+	for (i = 0; i < depth; i++) {
+		if (!folders[i])
+			return -EINVAL;
+
+		len[i] = strlen(folders[i]);
+
+		iov[i * 2 + 2].iov_base = (void *) folders[i];
+		iov[i * 2 + 2].iov_len = len[i];
+
+		put_be16(len[i], &len[i]);
+
+		iov[i * 2 + 1].iov_base = &len[i];
+		iov[i * 2 + 1].iov_len = sizeof(len[i]);
+	}
+
+	return avrcp_send_browsing(session, transaction,
+					AVRCP_SET_BROWSED_PLAYER, iov,
+					depth * 2 + 1);
 }
 
 int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
