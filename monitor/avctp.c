@@ -182,6 +182,20 @@
 #define AVRCP_MEDIA_SEARCH		0x02
 #define AVRCP_MEDIA_NOW_PLAYING		0x03
 
+/* operands in passthrough commands */
+#define AVC_PANEL_VOLUME_UP		0x41
+#define AVC_PANEL_VOLUME_DOWN		0x42
+#define AVC_PANEL_MUTE			0x43
+#define AVC_PANEL_PLAY			0x44
+#define AVC_PANEL_STOP			0x45
+#define AVC_PANEL_PAUSE			0x46
+#define AVC_PANEL_RECORD		0x47
+#define AVC_PANEL_REWIND		0x48
+#define AVC_PANEL_FAST_FORWARD		0x49
+#define AVC_PANEL_EJECT			0x4a
+#define AVC_PANEL_FORWARD		0x4b
+#define AVC_PANEL_BACKWARD		0x4c
+
 struct avctp_frame {
 	uint8_t hdr;
 	uint8_t pt;
@@ -631,9 +645,54 @@ static const char *scope2str(uint8_t scope)
 	}
 }
 
-static bool avrcp_passthrough_packet(struct avctp_frame *avctp_frame)
+static char *op2str(uint8_t op)
+{
+	switch (op & 0x7f) {
+	case AVC_PANEL_VOLUME_UP:
+		return "VOLUME UP";
+	case AVC_PANEL_VOLUME_DOWN:
+		return "VOLUME DOWN";
+	case AVC_PANEL_MUTE:
+		return "MUTE";
+	case AVC_PANEL_PLAY:
+		return "PLAY";
+	case AVC_PANEL_STOP:
+		return "STOP";
+	case AVC_PANEL_PAUSE:
+		return "PAUSE";
+	case AVC_PANEL_RECORD:
+		return "RECORD";
+	case AVC_PANEL_REWIND:
+		return "REWIND";
+	case AVC_PANEL_FAST_FORWARD:
+		return "FAST FORWARD";
+	case AVC_PANEL_EJECT:
+		return "EJECT";
+	case AVC_PANEL_FORWARD:
+		return "FORWARD";
+	case AVC_PANEL_BACKWARD:
+		return "BACKWARD";
+	default:
+		return "UNKNOWN";
+	}
+}
+
+static bool avrcp_passthrough_packet(struct avctp_frame *avctp_frame,
+								uint8_t indent)
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint8_t op, len;
+
+	if (!l2cap_frame_get_u8(frame, &op))
+		return false;
+
+	print_field("%*cOperation: 0x%02x (%s %s)", (indent - 2), ' ', op,
+				op2str(op), op & 0x80 ? "Released" : "Pressed");
+
+	if (!l2cap_frame_get_u8(frame, &len))
+		return false;
+
+	print_field("%*cLength: 0x%02x", (indent - 2), ' ', len);
 
 	packet_hexdump(frame->data, frame->size);
 	return true;
@@ -1555,7 +1614,7 @@ static bool avrcp_control_packet(struct avctp_frame *avctp_frame)
 
 	switch (opcode) {
 	case 0x7c:
-		return avrcp_passthrough_packet(avctp_frame);
+		return avrcp_passthrough_packet(avctp_frame, 10);
 	case 0x00:
 		if (!l2cap_frame_get_u8(frame, &company[0]) ||
 				!l2cap_frame_get_u8(frame, &company[1]) ||
