@@ -46,6 +46,20 @@
 
 #define SMP_CID 0x0006
 
+#define SMP_PASSKEY_ENTRY_FAILED	0x01
+#define SMP_OOB_NOT_AVAIL		0x02
+#define SMP_AUTH_REQUIREMENTS		0x03
+#define SMP_CONFIRM_FAILED		0x04
+#define SMP_PAIRING_NOTSUPP		0x05
+#define SMP_ENC_KEY_SIZE		0x06
+#define SMP_CMD_NOTSUPP			0x07
+#define SMP_UNSPECIFIED			0x08
+#define SMP_REPEATED_ATTEMPTS		0x09
+#define SMP_INVALID_PARAMS		0x0a
+#define SMP_DHKEY_CHECK_FAILED		0x0b
+#define SMP_NUMERIC_COMP_FAILED		0x0c
+#define SMP_BREDR_PAIRING_IN_PROGRESS	0x0d
+
 #define DIST_ENC_KEY	0x01
 #define DIST_ID_KEY	0x02
 #define DIST_SIGN	0x04
@@ -95,6 +109,9 @@ struct smp_conn {
 	uint8_t remote_pk[64];
 	uint8_t dhkey[32];
 	uint8_t mackey[16];
+
+	uint8_t passkey_notify;
+	uint8_t passkey_round;
 };
 
 enum {
@@ -245,6 +262,89 @@ static void sc_mackey_and_ltk(struct smp_conn *conn)
 						conn->mackey, conn->ltk);
 }
 
+static uint8_t sc_passkey_send_confirm(struct smp_conn *conn)
+{
+	struct bt_l2cap_smp_pairing_confirm cfm;
+	uint8_t r;
+
+	r = ((conn->passkey_notify >> conn->passkey_round) & 0x01);
+	r |= 0x80;
+
+	if (!bt_crypto_f4(conn->smp->crypto, conn->local_pk, conn->remote_pk,
+					conn->prnd, r, cfm.value))
+		return SMP_UNSPECIFIED;
+
+	smp_send(conn, BT_L2CAP_SMP_PAIRING_CONFIRM, &cfm, sizeof(cfm));
+
+	return 0;
+}
+
+static uint8_t sc_passkey_round(struct smp_conn *conn, uint8_t smp_op)
+{
+	uint8_t cfm[16], r;
+
+	/* Ignore the PDU if we've already done 20 rounds (0 - 19) */
+	if (conn->passkey_round >= 20)
+		return 0;
+
+	switch (smp_op) {
+	case BT_L2CAP_SMP_PAIRING_RANDOM:
+		r = ((conn->passkey_notify >> conn->passkey_round) & 0x01);
+		r |= 0x80;
+
+		if (!bt_crypto_f4(conn->smp->crypto, conn->remote_pk,
+					conn->local_pk, conn->rrnd, r, cfm))
+			return SMP_UNSPECIFIED;
+
+		if (memcmp(conn->pcnf, cfm, 16))
+			return SMP_CONFIRM_FAILED;
+
+		conn->passkey_round++;
+
+		if (conn->passkey_round == 20) {
+			/* Generate MacKey and LTK */
+			sc_mackey_and_ltk(conn);
+		}
+
+		/* The round is only complete when the initiator
+		 * receives pairing random.
+		 */
+		if (!conn->out) {
+			smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM,
+					conn->prnd, sizeof(conn->prnd));
+			return 0;
+		}
+
+		/* Start the next round */
+		if (conn->passkey_round != 20)
+			return sc_passkey_round(conn, 0);
+
+		/* Passkey rounds are complete - start DHKey Check */
+		sc_dhkey_check(conn);
+
+		break;
+
+	case BT_L2CAP_SMP_PAIRING_CONFIRM:
+		if (conn->out) {
+			smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM,
+					conn->prnd, sizeof(conn->prnd));
+			return 0;
+		}
+
+		return sc_passkey_send_confirm(conn);
+
+	case BT_L2CAP_SMP_PUBLIC_KEY:
+	default:
+		/* Initiating device starts the round */
+		if (!conn->out)
+			return 0;
+
+		return sc_passkey_send_confirm(conn);
+	}
+
+	return 0;
+}
+
 static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
 {
 	uint8_t confirm[16];
@@ -327,6 +427,11 @@ static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 }
 static void sc_check_confirm(struct smp_conn *conn)
 {
+	if (conn->method == REQ_PASSKEY || conn->method == DSP_PASSKEY) {
+		sc_passkey_round(conn, BT_L2CAP_SMP_PAIRING_CONFIRM);
+		return;
+	}
+
 	if (conn->out)
 		smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM, conn->prnd,
 							sizeof(conn->prnd));
@@ -356,6 +461,9 @@ static void pairing_cfm(struct smp_conn *conn, const void *data, uint16_t len)
 
 static uint8_t sc_random(struct smp_conn *conn)
 {
+	/* Passkey entry has special treatment */
+	if (conn->method == REQ_PASSKEY || conn->method == DSP_PASSKEY)
+		return sc_passkey_round(conn, BT_L2CAP_SMP_PAIRING_RANDOM);
 
 	if (conn->out) {
 		uint8_t cfm[16];
@@ -483,9 +591,8 @@ static void public_key(struct smp_conn *conn, const void *data, uint16_t len)
 
 	conn->method = sc_select_method(conn);
 
-	if (conn->method == DSP_PASSKEY) {
-		return;
-	} else if (conn->method == REQ_PASSKEY) {
+	if (conn->method == DSP_PASSKEY || conn->method == REQ_PASSKEY) {
+		sc_passkey_round(conn, BT_L2CAP_SMP_PUBLIC_KEY);
 		return;
 	}
 
@@ -521,6 +628,9 @@ static void dhkey_check(struct smp_conn *conn, const void *data, uint16_t len)
 	}
 
 	memset(r, 0, sizeof(r));
+
+	if (conn->method == REQ_PASSKEY || conn->method == DSP_PASSKEY)
+		put_le32(conn->passkey_notify, r);
 
 	if (!bt_crypto_f6(conn->smp->crypto, conn->mackey, conn->rrnd,
 			conn->prnd, r, io_cap, remote_addr, local_addr, e))
