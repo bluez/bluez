@@ -1610,7 +1610,6 @@ static void handle_disconnect(const void *buf, uint16_t len)
 			bacmp(&device.bdaddr, &bdaddr)) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
-
 	}
 
 	if (device.state == HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTING) {
