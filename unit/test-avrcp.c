@@ -607,13 +607,19 @@ static int set_addressed(struct avrcp *session, uint8_t transaction,
 static int set_browsed(struct avrcp *session, uint8_t transaction,
 						uint16_t id, void *user_data)
 {
+	struct context *context = user_data;
 	const char *folders[1] = { "Filesystem" };
 
 	DBG("");
 
-	avrcp_set_browsed_player_rsp(session, transaction,
-					AVRCP_STATUS_SUCCESS, 0xabcd, 0, 1,
-					folders);
+	if (g_str_equal(context->data->test_name, "/TP/MPS/BI-02-C"))
+		avrcp_set_browsed_player_rsp(session, transaction,
+						AVRCP_STATUS_INVALID_PLAYER_ID,
+						0, 0, 0, NULL);
+	else
+		avrcp_set_browsed_player_rsp(session, transaction,
+						AVRCP_STATUS_SUCCESS,
+						0xabcd, 0, 1, folders);
 
 	return -EAGAIN;
 }
@@ -990,6 +996,13 @@ int main(int argc, char *argv[])
 				0x48, 0x00, 0x00, 0x19, 0x58,
 				AVRCP_SET_ADDRESSED_PLAYER,
 				0x00, 0x00, 0x01, 0x11));
+
+	/* SetBrowsedPlayer - TG */
+	define_test("/TP/MPS/BI-02-C", test_server,
+			brs_pdu(0x00, 0x11, 0x0e, 0x70, 0x00, 0x02,
+				0xab, 0xcd),
+			brs_pdu(0x02, 0x11, 0x0e, 0x70, 0x00, 0x01,
+				0x11));
 
 	/*
 	 * Media Content Navigation Commands and Notifications for Content
