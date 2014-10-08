@@ -189,6 +189,8 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 
 	pdu = &context->data->pdu_list[context->pdu_offset++];
 
+	g_assert(!pdu->browse);
+
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		context->source = 0;
 		g_print("%s: cond %x\n", __func__, cond);
@@ -227,6 +229,8 @@ static gboolean browse_test_handler(GIOChannel *channel, GIOCondition cond,
 	DBG("");
 
 	pdu = &context->data->pdu_list[context->pdu_offset++];
+
+	g_assert(pdu->browse);
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		context->browse_source = 0;
