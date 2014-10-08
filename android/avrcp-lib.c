@@ -1739,7 +1739,7 @@ static gboolean register_notification_rsp(struct avctp *conn,
 	struct avrcp_header *pdu;
 	struct register_notification_rsp *rsp;
 	uint8_t event = 0;
-	uint16_t value16;
+	uint16_t value16, value16_2[2];
 	uint32_t value32;
 	uint64_t value64;
 	uint8_t *params = NULL;
@@ -1772,14 +1772,14 @@ static gboolean register_notification_rsp(struct avctp *conn,
 	switch (event) {
 	case AVRCP_EVENT_STATUS_CHANGED:
 	case AVRCP_EVENT_VOLUME_CHANGED:
-		if (pdu->params_len != 2) {
+		if (pdu->params_len != sizeof(*rsp) + sizeof(uint8_t)) {
 			err = -EPROTO;
 			goto done;
 		}
 		params = rsp->data;
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
-		if (pdu->params_len != 9) {
+		if (pdu->params_len != sizeof(*rsp) + sizeof(value64)) {
 			err = -EPROTO;
 			goto done;
 		}
@@ -1787,7 +1787,7 @@ static gboolean register_notification_rsp(struct avctp *conn,
 		params = (uint8_t *) &value64;
 		break;
 	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
-		if (pdu->params_len != 5) {
+		if (pdu->params_len != sizeof(*rsp) + sizeof(value32)) {
 			err = -EPROTO;
 			goto done;
 		}
@@ -1795,15 +1795,23 @@ static gboolean register_notification_rsp(struct avctp *conn,
 		params = (uint8_t *) &value32;
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
+		if (pdu->params_len < sizeof(*rsp) + sizeof(value16_2)) {
+			err = -EPROTO;
+			goto done;
+		}
+		value16_2[0] = get_be16(rsp->data);
+		value16_2[1] = get_be16(rsp->data + 2);
+		params = (uint8_t *) value16_2;
+		break;
 	case AVRCP_EVENT_SETTINGS_CHANGED:
-		if (pdu->params_len < 2) {
+		if (pdu->params_len < sizeof(*rsp) + sizeof(uint8_t)) {
 			err = -EPROTO;
 			goto done;
 		}
 		params = rsp->data;
 		break;
 	case AVRCP_EVENT_UIDS_CHANGED:
-		if (pdu->params_len != 3) {
+		if (pdu->params_len < sizeof(*rsp) + sizeof(value16)) {
 			err = -EPROTO;
 			goto done;
 		}
@@ -3243,6 +3251,7 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 					void *data, size_t len)
 {
 	struct iovec iov[2];
+	uint16_t *player;
 
 	if (event > AVRCP_EVENT_LAST)
 		return -EINVAL;
@@ -3269,6 +3278,14 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 		put_be32(*(uint32_t *) data, data);
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
+		if (len != 4)
+			return -EINVAL;
+
+		player = data;
+		put_be16(player[0], &player[0]);
+		put_be16(player[1], &player[1]);
+
+		break;
 	case AVRCP_EVENT_SETTINGS_CHANGED:
 		if (len < sizeof(uint8_t))
 			return -EINVAL;
