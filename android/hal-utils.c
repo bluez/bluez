@@ -342,7 +342,7 @@ int get_config(const char *config_key, char *value, const char *fallback)
 	char key[PROPERTY_KEY_MAX];
 	int ret;
 
-	if (strlen(config_key) + sizeof(PROP_PREFIX) >= sizeof(key))
+	if (strlen(config_key) + sizeof(PROP_PREFIX) > sizeof(key))
 		return 0;
 
 	snprintf(key, sizeof(key), PROP_PREFIX"%s", config_key);
