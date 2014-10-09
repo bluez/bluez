@@ -620,6 +620,13 @@ static int uids_changed(struct avrcp *session, uint8_t transaction,
 						AVRCP_EVENT_UIDS_CHANGED,
 						&counter, sizeof(counter));
 
+	if (!g_str_equal(context->data->test_name, "/TP/MCN/CB/BV-11-C"))
+		return -EAGAIN;
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+						AVRCP_EVENT_UIDS_CHANGED,
+						&counter, sizeof(counter));
+
 	return -EAGAIN;
 }
 
@@ -1195,6 +1202,21 @@ int main(int argc, char *argv[])
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x03, 0x0c,
 				0x00, 0x01));
+
+	/* UIDcounter - TG */
+	define_test("/TP/MCN/CB/BV-11-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, 0x0c,
+				0x00, 0x00, 0x00, 0x00),
+			frg_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x03, 0x0c,
+				0x00, 0x01),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x03, 0x0c,
+				0x01, 0x00));
 
 	/* GetFolderItems - Virtual FS - TG */
 	define_test("/TP/MCN/CB/BI-01-C", test_server,
