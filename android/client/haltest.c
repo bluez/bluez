@@ -50,6 +50,7 @@ const struct interface *interfaces[] = {
 	&sock_if,
 #ifdef BLUEZ_EXTENSIONS
 	&hf_client_if,
+	&mce_if,
 #endif
 	NULL
 };
@@ -397,6 +398,7 @@ static void init(void)
 		BT_PROFILE_SOCKETS_ID,
 #ifdef BLUEZ_EXTENSIONS
 		BT_PROFILE_HANDSFREE_CLIENT_ID,
+		BT_PROFILE_MAP_CLIENT_ID,
 #endif
 	};
 	const struct method *m;

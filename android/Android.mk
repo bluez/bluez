@@ -183,7 +183,9 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-utils.c \
 
 ifeq ($(BLUEZ_EXTENSIONS), true)
-LOCAL_SRC_FILES += bluez/android/client/if-hf-client.c
+LOCAL_SRC_FILES += \
+	bluez/android/client/if-hf-client.c \
+	bluez/android/client/if-mce.c
 endif
 
 LOCAL_C_INCLUDES += \

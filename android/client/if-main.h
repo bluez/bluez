@@ -39,6 +39,7 @@
 
 #ifdef BLUEZ_EXTENSIONS
 #include <hardware/bt_hf_client.h>
+#include <hardware/bt_mce.h>
 #endif
 
 #include <hardware/bt_rc.h>
@@ -63,6 +64,7 @@ extern const btgatt_server_interface_t *if_gatt_server;
 extern const btgatt_client_interface_t *if_gatt_client;
 #ifdef BLUEZ_EXTENSIONS
 extern const bthf_client_interface_t *if_hf_client;
+extern const btmce_interface_t *if_mce;
 #endif
 
 /*
@@ -89,6 +91,7 @@ extern const struct interface hh_if;
 extern const struct interface hl_if;
 #ifdef BLUEZ_EXTENSIONS
 extern const struct interface hf_client_if;
+extern const struct interface mce_if;
 #endif
 
 /* Interfaces that will show up in tool (first part of command line) */
