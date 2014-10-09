@@ -58,6 +58,12 @@ static void init_p(int argc, const char **argv)
 
 static void get_remote_mas_instances_p(int argc, const char **argv)
 {
+	bt_bdaddr_t addr;
+
+	RETURN_IF_NULL(if_mce);
+	VERIFY_ADDR_ARG(2, &addr);
+
+	EXEC(if_mce->get_remote_mas_instances, &addr);
 }
 
 static struct method methods[] = {
