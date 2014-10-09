@@ -606,11 +606,15 @@ static int addressed_player_changed(struct avrcp *session, uint8_t transaction,
 static int uids_changed(struct avrcp *session, uint8_t transaction,
 					uint32_t interval, void *user_data)
 {
+	struct context *context = user_data;
 	uint16_t counter;
 
 	DBG("");
 
-	counter = 0x0000;
+	if (g_str_equal(context->data->test_name, "/TP/MCN/CB/BV-09-C"))
+		counter = 0x0000;
+	else
+		counter = 0x0001;
 
 	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
 						AVRCP_EVENT_UIDS_CHANGED,
@@ -1180,6 +1184,17 @@ int main(int argc, char *argv[])
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x03, 0x0c,
 				0x00, 0x00));
+
+	/* UIDcounter - TG */
+	define_test("/TP/MCN/CB/BV-10-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, 0x0c,
+				0x00, 0x00, 0x00, 0x00),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x03, 0x0c,
+				0x00, 0x01));
 
 	/* GetFolderItems - Virtual FS - TG */
 	define_test("/TP/MCN/CB/BI-01-C", test_server,
