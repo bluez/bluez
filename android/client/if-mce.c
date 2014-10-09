@@ -28,6 +28,16 @@ static void btmce_remote_mas_instances_cb(bt_status_t status,
 						int num_instances,
 						btmce_mas_instance_t *instances)
 {
+	int i;
+
+	haltest_info("%s: status=%s bd_addr=%s num_instance=%d\n", __func__,
+				bt_status_t2str(status), bdaddr2str(bd_addr),
+				num_instances);
+
+	for (i = 0; i < num_instances; i++)
+		haltest_info("id=%d scn=%d msg_types=%d name=%s\n",
+				instances[i].id, instances[i].scn,
+				instances[i].msg_types, instances[i].p_name);
 }
 
 static btmce_callbacks_t mce_cbacks = {
