@@ -1,7 +1,7 @@
 PTS test results for RFCOMM
 
-PTS version: 5.2
-Tested: 17-July-2014
+PTS version: 5.3
+Tested: 08-October-2014
 Android version: 4.4.4
 
 Results:
@@ -17,29 +17,23 @@ Test Name		Result	Notes
 TC_RFC_BV_01_C		PASS	rctest -n -P 1 <btaddr>
 TC_RFC_BV_02_C		PASS	rctest -r -P 1
 TC_RFC_BV_03_C		PASS	rctest -r -P 1
-TC_RFC_BV_04_C		FAIL	PTS issue #12421
-				PTS issue #12414
-				NOTE: DISC on DLC is expected; IUT disconnects
-					rfcomm session (close)
+TC_RFC_BV_04_C		PASS	Note: use ETS provided in PTS issue #12414
 TC_RFC_BV_05_C		PASS	rctest -n -P 4 <btaddr>
 				Note: test requires IUT to connect on the given
 				channel. sdptool browse <btaddr> to check the
 				channel.
 TC_RFC_BV_06_C		PASS	rctest -r -P 1
 TC_RFC_BV_07_C		PASS	rctest -r -P 1
-TC_RFC_BV_08_C		INC	PTS issue #12397
-				NOTE: Incorrect frame type sent in response to
-					the DISC command
+TC_RFC_BV_08_C		PASS	Note: use ETS provided in PTS issue #12397
+				rctest -r -P 1
 TC_RFC_BV_11_C		PASS	rctest -r -P 1
-TC_RFC_BV_13_C		FAIL	PTS issue #12397
-				NOTE: IUT sent the correct frame type (UIH)
-				but the parameters did not match the
-				requirements
+TC_RFC_BV_13_C		PASS	Note: use ETS provided in PTS issue #12397
+				rctest -r -P 1
 TC_RFC_BV_14_C		N/A
 TC_RFC_BV_15_C		PASS	rctest -r -P 1
 TC_RFC_BV_17_C		PASS	rctest -d -P 1
 TC_RFC_BV_19_C		PASS
 TC_RFC_BV_21_C		INC	PTS issue #12421
 TC_RFC_BV_22_C		INC	PTS issue #12421
-TC_RFC_BV_25_C		INC	PTS issue #12421
+TC_RFC_BV_25_C		INC	PTS issue #12621
 -------------------------------------------------------------------------------
