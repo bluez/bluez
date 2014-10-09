@@ -519,61 +519,129 @@ static int get_element_attributes(struct avrcp *session, uint8_t transaction,
 	return -EAGAIN;
 }
 
+static int track_changed(struct avrcp *session, uint8_t transaction,
+					uint32_t interval, void *user_data)
+{
+	struct context *context = user_data;
+	uint64_t track;
+
+	DBG("");
+
+	if (g_str_equal(context->data->test_name, "/TP/NFY/BV-05-C") ||
+		g_str_equal(context->data->test_name, "/TP/NFY/BV-08-C"))
+		memset(&track, 0, sizeof(track));
+	else
+		memset(&track, 0xff, sizeof(track));
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+						AVRCP_EVENT_TRACK_CHANGED,
+						&track, sizeof(track));
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+						AVRCP_EVENT_TRACK_CHANGED,
+						&track, sizeof(track));
+
+	return -EAGAIN;
+}
+
+static int settings_changed(struct avrcp *session, uint8_t transaction,
+					uint32_t interval, void *user_data)
+{
+	uint8_t settings[3];
+
+	DBG("");
+
+	settings[0] = 0x01;
+	settings[1] = 0x01;
+	settings[2] = 0x02;
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+						AVRCP_EVENT_SETTINGS_CHANGED,
+						settings, sizeof(settings));
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+						AVRCP_EVENT_SETTINGS_CHANGED,
+						settings, sizeof(settings));
+
+	return -EAGAIN;
+}
+
+static int available_players_changed(struct avrcp *session, uint8_t transaction,
+					uint32_t interval, void *user_data)
+{
+	DBG("");
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+					AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED,
+					NULL, 0);
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+					AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED,
+					NULL, 0);
+
+	return -EAGAIN;
+}
+
+static int addressed_player_changed(struct avrcp *session, uint8_t transaction,
+					uint32_t interval, void *user_data)
+{
+	uint16_t player[2];
+
+	DBG("");
+
+	player[0] = 0x0001;
+	player[1] = 0xabcd;
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+					AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED,
+					player, sizeof(player));
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+					AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED,
+					player, sizeof(player));
+
+	return -EAGAIN;
+}
+
+static int uids_changed(struct avrcp *session, uint8_t transaction,
+					uint32_t interval, void *user_data)
+{
+	uint16_t counter;
+
+	DBG("");
+
+	counter = 0x0000;
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+						AVRCP_EVENT_UIDS_CHANGED,
+						&counter, sizeof(counter));
+
+	return -EAGAIN;
+}
+
 static int register_notification(struct avrcp *session, uint8_t transaction,
 					uint8_t event, uint32_t interval,
 					void *user_data)
 {
-	struct context *context = user_data;
-	uint64_t track;
-	uint8_t settings[3];
-	uint16_t player[2];
-	void *data;
-	size_t len;
-
 	DBG("");
 
 	switch (event) {
 	case AVRCP_EVENT_TRACK_CHANGED:
-		if (g_str_equal(context->data->test_name, "/TP/NFY/BV-05-C") ||
-			g_str_equal(context->data->test_name,
-							"/TP/NFY/BV-08-C"))
-			memset(&track, 0, sizeof(track));
-		else
-			memset(&track, 0xff, sizeof(track));
-
-		data = &track;
-		len = sizeof(track);
-		break;
+		return track_changed(session, transaction, interval, user_data);
 	case AVRCP_EVENT_SETTINGS_CHANGED:
-		settings[0] = 0x01;
-		settings[1] = 0x01;
-		settings[2] = 0x02;
-
-		data = settings;
-		len = sizeof(settings);
-		break;
+		return settings_changed(session, transaction, interval,
+								user_data);
 	case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
-		data = NULL;
-		len = 0;
-		break;
+		return available_players_changed(session, transaction, interval,
+								user_data);
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
-		player[0] = 0x0001;
-		player[1] = 0xabcd;
-
-		data = player;
-		len = sizeof(player);
-		break;
+		return addressed_player_changed(session, transaction, interval,
+								user_data);
+	case AVRCP_EVENT_UIDS_CHANGED:
+		return uids_changed(session, transaction, interval, user_data);
 	default:
 		return -EINVAL;
 	}
-
-	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
-							event, data, len);
-
-	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
-							event, data, len);
-
-	return -EAGAIN;
 }
 
 static int set_volume(struct avrcp *session, uint8_t transaction,
@@ -1101,6 +1169,17 @@ int main(int argc, char *argv[])
 				0x00),			/* num attr */
 			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
 				0x00, 0x02, 0x04, 0x00));
+
+	/* UIDcounter - TG */
+	define_test("/TP/MCN/CB/BV-09-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, 0x0c,
+				0x00, 0x00, 0x00, 0x00),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x03, 0x0c,
+				0x00, 0x00));
 
 	/* GetFolderItems - Virtual FS - TG */
 	define_test("/TP/MCN/CB/BI-01-C", test_server,
