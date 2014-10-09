@@ -54,6 +54,15 @@ static void init_p(int argc, const char **argv)
 	EXEC(if_mce->init, &mce_cbacks);
 }
 
+static void get_remote_mas_instances_c(int argc, const char **argv,
+					enum_func *enum_func, void **user)
+{
+	if (argc == 3) {
+		*user = NULL;
+		*enum_func = enum_devices;
+	}
+}
+
 /* search for MAS instances on remote device */
 
 static void get_remote_mas_instances_p(int argc, const char **argv)
@@ -68,7 +77,7 @@ static void get_remote_mas_instances_p(int argc, const char **argv)
 
 static struct method methods[] = {
 	STD_METHOD(init),
-	STD_METHODH(get_remote_mas_instances, "<addr>"),
+	STD_METHODCH(get_remote_mas_instances, "<addr>"),
 	END_METHOD
 };
 
