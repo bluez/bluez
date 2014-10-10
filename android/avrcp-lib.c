@@ -496,6 +496,9 @@ static ssize_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 
 	ret = handler->func(session, transaction, pdu->params_len, pdu->params,
 							session->control_data);
+	if (ret == 0)
+		return -EAGAIN;
+
 	if (ret < 0) {
 		if (ret == -EAGAIN)
 			return ret;
@@ -622,6 +625,9 @@ static ssize_t handle_browsing_pdu(struct avctp *conn,
 
 	ret = handler->func(session, transaction, pdu->params_len, pdu->params,
 							session->control_data);
+	if (ret == 0)
+		return -EAGAIN;
+
 	if (ret < 0) {
 		if (ret == -EAGAIN)
 			return ret;
@@ -1171,7 +1177,7 @@ static ssize_t request_continuing(struct avrcp *session, uint8_t transaction,
 	if (err < 0)
 		return -EINVAL;
 
-	return -EAGAIN;
+	return 0;
 }
 
 static ssize_t abort_continuing(struct avrcp *session, uint8_t transaction,
@@ -1185,6 +1191,10 @@ static ssize_t abort_continuing(struct avrcp *session, uint8_t transaction,
 
 	continuing_free(session->continuing);
 	session->continuing = NULL;
+
+	avrcp_send_internal(session, transaction, AVC_CTYPE_ACCEPTED,
+				AVC_SUBUNIT_PANEL, AVRCP_ABORT_CONTINUING,
+				AVRCP_PACKET_TYPE_SINGLE, NULL, 0);
 
 	return 0;
 }

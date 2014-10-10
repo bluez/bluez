@@ -642,7 +642,7 @@ static int handle_get_capabilities_cmd(struct avrcp *session,
 	avrcp_get_capabilities_rsp(session, transaction, sizeof(events),
 								events);
 
-	return -EAGAIN;
+	return 0;
 }
 
 static void push_request(struct avrcp_device *dev, uint8_t pdu_id,
@@ -671,7 +671,7 @@ static int handle_get_play_status_cmd(struct avrcp *session,
 
 	push_request(dev, AVRCP_GET_PLAY_STATUS, 0, transaction);
 
-	return -EAGAIN;
+	return 0;
 }
 
 static int handle_get_element_attrs_cmd(struct avrcp *session,
@@ -707,7 +707,7 @@ done:
 
 	push_request(dev, AVRCP_GET_ELEMENT_ATTRIBUTES, 0, transaction);
 
-	return -EAGAIN;
+	return 0;
 
 }
 
@@ -741,7 +741,7 @@ static int handle_register_notification_cmd(struct avrcp *session,
 
 	push_request(dev, AVRCP_REGISTER_NOTIFICATION, event, transaction);
 
-	return -EAGAIN;
+	return 0;
 }
 
 static const struct avrcp_control_ind control_ind = {
