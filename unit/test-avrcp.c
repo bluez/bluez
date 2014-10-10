@@ -719,8 +719,8 @@ static int get_folder_items(struct avrcp *session, uint8_t transaction,
 	if (start > 1)
 		return -ERANGE;
 
-	avrcp_get_folder_items_rsp(session, transaction, 0xabcd, 0, NULL, NULL,
-									NULL);
+	avrcp_get_folder_items_rsp(session, transaction, AVRCP_STATUS_SUCCESS,
+						0xabcd, 0, NULL, NULL, NULL);
 
 	return -EAGAIN;
 }
@@ -734,7 +734,7 @@ static int change_path(struct avrcp *session, uint8_t transaction,
 	if (!uid)
 		return -ENOTDIR;
 
-	avrcp_change_path_rsp(session, transaction, 0);
+	avrcp_change_path_rsp(session, transaction, AVRCP_STATUS_SUCCESS, 0);
 
 	return -EAGAIN;
 }
@@ -768,7 +768,7 @@ static int play_item(struct avrcp *session, uint8_t transaction, uint8_t scope,
 	if (!uid)
 		return -ENOENT;
 
-	avrcp_play_item_rsp(session, transaction);
+	avrcp_play_item_rsp(session, transaction, AVRCP_STATUS_SUCCESS);
 
 	return -EAGAIN;
 }
@@ -778,7 +778,7 @@ static int search(struct avrcp *session, uint8_t transaction,
 {
 	DBG("");
 
-	avrcp_search_rsp(session, transaction, 0xaabb, 0);
+	avrcp_search_rsp(session, transaction, AVRCP_STATUS_SUCCESS, 0xaabb, 0);
 
 	return -EAGAIN;
 }
@@ -792,7 +792,8 @@ static int add_to_now_playing(struct avrcp *session, uint8_t transaction,
 	if (!uid)
 		return -ENOENT;
 
-	avrcp_add_to_now_playing_rsp(session, transaction);
+	avrcp_add_to_now_playing_rsp(session, transaction,
+							AVRCP_STATUS_SUCCESS);
 
 	return -EAGAIN;
 }

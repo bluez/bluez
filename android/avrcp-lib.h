@@ -327,17 +327,19 @@ int avrcp_set_browsed_player_rsp(struct avrcp *session, uint8_t transaction,
 					uint32_t items, uint8_t depth,
 					const char **folders);
 int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
-					uint16_t counter, uint8_t number,
-					uint8_t *type, uint16_t *len,
-					uint8_t **params);
+					uint8_t status, uint16_t counter,
+					uint8_t number, uint8_t *type,
+					uint16_t *len, uint8_t **params);
 int avrcp_change_path_rsp(struct avrcp *session, uint8_t transaction,
-								uint32_t items);
+						uint8_t status, uint32_t items);
 int avrcp_get_item_attributes_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t status, uint8_t number,
 					uint32_t *attrs, const char **text);
-int avrcp_play_item_rsp(struct avrcp *session, uint8_t transaction);
-int avrcp_search_rsp(struct avrcp *session, uint8_t transaction,
+int avrcp_play_item_rsp(struct avrcp *session, uint8_t transaction,
+					uint8_t status);
+int avrcp_search_rsp(struct avrcp *session, uint8_t transaction, uint8_t status,
 					uint16_t counter, uint32_t items);
-int avrcp_add_to_now_playing_rsp(struct avrcp *session, uint8_t transaction);
+int avrcp_add_to_now_playing_rsp(struct avrcp *session, uint8_t transaction,
+								uint8_t status);
 
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op);

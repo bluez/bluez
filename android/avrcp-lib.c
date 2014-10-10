@@ -3337,6 +3337,20 @@ int avrcp_set_addressed_player_rsp(struct avrcp *session, uint8_t transaction,
 				&iov, 1);
 }
 
+static int avrcp_status_rsp(struct avrcp *session, uint8_t transaction,
+						uint8_t pdu_id, uint8_t status)
+{
+	struct iovec iov;
+
+	if (status > AVRCP_STATUS_ADDRESSED_PLAYER_CHANGED)
+		return -EINVAL;
+
+	iov.iov_base = &status;
+	iov.iov_len = sizeof(status);
+
+	return avrcp_send_browsing(session, transaction, pdu_id, &iov, 1);
+}
+
 int avrcp_set_browsed_player_rsp(struct avrcp *session, uint8_t transaction,
 					uint8_t status, uint16_t counter,
 					uint32_t items, uint8_t depth,
@@ -3347,13 +3361,9 @@ int avrcp_set_browsed_player_rsp(struct avrcp *session, uint8_t transaction,
 	uint16_t len[UINT8_MAX];
 	int i;
 
-	if (status != AVRCP_STATUS_SUCCESS) {
-		iov[0].iov_base = &status;
-		iov[0].iov_len = sizeof(status);
-		return avrcp_send_browsing(session, transaction,
-						AVRCP_SET_BROWSED_PLAYER,
-						iov, 1);
-	}
+	if (status != AVRCP_STATUS_SUCCESS)
+		return avrcp_status_rsp(session, transaction,
+					AVRCP_SET_BROWSED_PLAYER, status);
 
 	rsp.status = status;
 	put_be16(counter, &rsp.counter);
@@ -3390,16 +3400,20 @@ int avrcp_set_browsed_player_rsp(struct avrcp *session, uint8_t transaction,
 }
 
 int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
-					uint16_t counter, uint8_t number,
-					uint8_t *type, uint16_t *len,
-					uint8_t **params)
+					uint8_t status, uint16_t counter,
+					uint8_t number, uint8_t *type,
+					uint16_t *len, uint8_t **params)
 {
 	struct iovec iov[UINT8_MAX * 2 + 1];
 	struct get_folder_items_rsp rsp;
 	uint8_t item[UINT8_MAX][3];
 	int i;
 
-	rsp.status = AVRCP_STATUS_SUCCESS;
+	if (status != AVRCP_STATUS_SUCCESS)
+		return avrcp_status_rsp(session, transaction,
+					AVRCP_GET_FOLDER_ITEMS, status);
+
+	rsp.status = status;
 	put_be16(counter, &rsp.counter);
 	put_be16(number, &rsp.number);
 
@@ -3422,12 +3436,16 @@ int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
 }
 
 int avrcp_change_path_rsp(struct avrcp *session, uint8_t transaction,
-								uint32_t items)
+						uint8_t status, uint32_t items)
 {
 	struct iovec iov;
 	struct change_path_rsp rsp;
 
-	rsp.status = AVRCP_STATUS_SUCCESS;
+	if (status != AVRCP_STATUS_SUCCESS)
+		return avrcp_status_rsp(session, transaction, AVRCP_CHANGE_PATH,
+									status);
+
+	rsp.status = status;
 	put_be32(items, &rsp.items);
 
 	iov.iov_base = &rsp;
@@ -3477,12 +3495,9 @@ int avrcp_get_item_attributes_rsp(struct avrcp *session, uint8_t transaction,
 	if (number > AVRCP_MEDIA_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	if (status != AVRCP_STATUS_SUCCESS) {
-		iov[0].iov_base = &status;
-		iov[0].iov_len = sizeof(status);
-		return avrcp_send_browsing(session, transaction,
-					AVRCP_GET_ITEM_ATTRIBUTES, iov, 1);
-	}
+	if (status != AVRCP_STATUS_SUCCESS)
+		return avrcp_status_rsp(session, transaction,
+					AVRCP_GET_ITEM_ATTRIBUTES, status);
 
 	rsp.status = status;
 	rsp.number = number;
@@ -3498,27 +3513,24 @@ int avrcp_get_item_attributes_rsp(struct avrcp *session, uint8_t transaction,
 					number * 2 + 1);
 }
 
-int avrcp_play_item_rsp(struct avrcp *session, uint8_t transaction)
+int avrcp_play_item_rsp(struct avrcp *session, uint8_t transaction,
+								uint8_t status)
 {
-	struct iovec iov;
-	struct play_item_rsp rsp;
-
-	rsp.status = AVRCP_STATUS_SUCCESS;
-
-	iov.iov_base = &rsp;
-	iov.iov_len = sizeof(rsp);
-
-	return avrcp_send_browsing(session, transaction, AVRCP_PLAY_ITEM,
-								&iov, 1);
+	return avrcp_status_rsp(session, transaction, AVRCP_PLAY_ITEM,
+								status);
 }
 
-int avrcp_search_rsp(struct avrcp *session, uint8_t transaction,
+int avrcp_search_rsp(struct avrcp *session, uint8_t transaction, uint8_t status,
 					uint16_t counter, uint32_t items)
 {
 	struct iovec iov;
 	struct search_rsp rsp;
 
-	rsp.status = AVRCP_STATUS_SUCCESS;
+	if (status != AVRCP_STATUS_SUCCESS)
+		return avrcp_status_rsp(session, transaction, AVRCP_SEARCH,
+								status);
+
+	rsp.status = status;
 	put_be16(counter, &rsp.counter);
 	put_be32(items, &rsp.items);
 
@@ -3529,18 +3541,11 @@ int avrcp_search_rsp(struct avrcp *session, uint8_t transaction,
 								&iov, 1);
 }
 
-int avrcp_add_to_now_playing_rsp(struct avrcp *session, uint8_t transaction)
+int avrcp_add_to_now_playing_rsp(struct avrcp *session, uint8_t transaction,
+								uint8_t status)
 {
-	struct iovec iov;
-	struct add_to_now_playing_rsp rsp;
-
-	rsp.status = AVRCP_STATUS_SUCCESS;
-
-	iov.iov_base = &rsp;
-	iov.iov_len = sizeof(rsp);
-
-	return avrcp_send_browsing(session, transaction,
-					AVRCP_ADD_TO_NOW_PLAYING, &iov, 1);
+	return avrcp_status_rsp(session, transaction, AVRCP_ADD_TO_NOW_PLAYING,
+								status);
 }
 
 int avrcp_send_passthrough(struct avrcp *session, uint32_t vendor, uint8_t op)
