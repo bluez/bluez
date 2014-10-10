@@ -6931,6 +6931,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			set_mode(adapter, MGMT_OP_SET_BREDR, 0x01);
 		break;
 	case BT_MODE_BREDR:
+		if (!(adapter->supported_settings & MGMT_SETTING_BREDR)) {
+			error("Ignoring adapter withouth BR/EDR support");
+			goto failed;
+		}
+
 		if (missing_settings & MGMT_SETTING_SSP)
 			set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
 		if (missing_settings & MGMT_SETTING_BREDR)
@@ -6939,6 +6944,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			set_mode(adapter, MGMT_OP_SET_LE, 0x00);
 		break;
 	case BT_MODE_LE:
+		if (!(adapter->supported_settings & MGMT_SETTING_LE)) {
+			error("Ignoring adapter withouth LE support");
+			goto failed;
+		}
+
 		if (missing_settings & MGMT_SETTING_LE)
 			set_mode(adapter, MGMT_OP_SET_LE, 0x01);
 		if (adapter->current_settings & MGMT_SETTING_BREDR)
