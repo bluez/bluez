@@ -620,7 +620,8 @@ static int uids_changed(struct avrcp *session, uint8_t transaction,
 						AVRCP_EVENT_UIDS_CHANGED,
 						&counter, sizeof(counter));
 
-	if (!g_str_equal(context->data->test_name, "/TP/MCN/CB/BV-11-C"))
+	if (!g_str_equal(context->data->test_name, "/TP/MCN/CB/BV-11-C") &&
+		!g_str_equal(context->data->test_name, "/TP/MCN/CB/BI-05-C"))
 		return -EAGAIN;
 
 	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
@@ -743,9 +744,18 @@ static int get_item_attributes(struct avrcp *session, uint8_t transaction,
 					uint16_t counter, uint8_t number,
 					uint32_t *attrs, void *user_data)
 {
+	struct context *context = user_data;
+	uint8_t status;
+
 	DBG("");
 
-	avrcp_get_item_attributes_rsp(session, transaction, 0, NULL, NULL);
+	if (g_str_equal(context->data->test_name, "/TP/MCN/CB/BI-05-C"))
+		status = AVRCP_STATUS_UID_CHANGED;
+	else
+		status = AVRCP_STATUS_SUCCESS;
+
+	avrcp_get_item_attributes_rsp(session, transaction, status, 0, NULL,
+									NULL);
 
 	return -EAGAIN;
 }
@@ -1258,6 +1268,29 @@ int main(int argc, char *argv[])
 				0x00, 0x00, 0x00, 0x00	/* Folder UID */),
 			brs_pdu(0x02, 0x11, 0x0e, AVRCP_CHANGE_PATH,
 				0x00, 0x01, 0x08));
+
+	/* UIDcounter - TG */
+	define_test("/TP/MCN/CB/BI-05-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, 0x0c,
+				0x00, 0x00, 0x00, 0x00),
+			frg_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x03, 0x0c,
+				0x00, 0x01),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x03, 0x0c,
+				0x01, 0x00),
+			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+				0x00, 0x0c, AVRCP_MEDIA_NOW_PLAYING,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x01,
+				0xaa, 0xbb,
+				0x00),
+			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
+				0x00, 0x01, 0x05));
 
 	/* Media Content Navigation Commands and Notifications for Search */
 

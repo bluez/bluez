@@ -66,6 +66,7 @@
 #define AVRCP_STATUS_PARAM_NOT_FOUND		0x02
 #define AVRCP_STATUS_INTERNAL_ERROR		0x03
 #define AVRCP_STATUS_SUCCESS			0x04
+#define AVRCP_STATUS_UID_CHANGED		0x05
 #define AVRCP_STATUS_NOT_DIRECTORY		0x08
 #define AVRCP_STATUS_DOES_NOT_EXIST		0x09
 #define AVRCP_STATUS_INVALID_SCOPE		0x0a
@@ -332,8 +333,8 @@ int avrcp_get_folder_items_rsp(struct avrcp *session, uint8_t transaction,
 int avrcp_change_path_rsp(struct avrcp *session, uint8_t transaction,
 								uint32_t items);
 int avrcp_get_item_attributes_rsp(struct avrcp *session, uint8_t transaction,
-					uint8_t number, uint32_t *attrs,
-					const char **text);
+					uint8_t status, uint8_t number,
+					uint32_t *attrs, const char **text);
 int avrcp_play_item_rsp(struct avrcp *session, uint8_t transaction);
 int avrcp_search_rsp(struct avrcp *session, uint8_t transaction,
 					uint16_t counter, uint32_t items);

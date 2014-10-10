@@ -3468,8 +3468,8 @@ static bool pack_attribute_list(struct iovec *iov, uint8_t number,
 }
 
 int avrcp_get_item_attributes_rsp(struct avrcp *session, uint8_t transaction,
-					uint8_t number, uint32_t *attrs,
-					const char **text)
+					uint8_t status, uint8_t number,
+					uint32_t *attrs, const char **text)
 {
 	struct iovec iov[AVRCP_MEDIA_ATTRIBUTE_LAST * 2 + 1];
 	struct get_item_attributes_rsp rsp;
@@ -3477,7 +3477,14 @@ int avrcp_get_item_attributes_rsp(struct avrcp *session, uint8_t transaction,
 	if (number > AVRCP_MEDIA_ATTRIBUTE_LAST)
 		return -EINVAL;
 
-	rsp.status = AVRCP_STATUS_SUCCESS;
+	if (status != AVRCP_STATUS_SUCCESS) {
+		iov[0].iov_base = &status;
+		iov[0].iov_len = sizeof(status);
+		return avrcp_send_browsing(session, transaction,
+					AVRCP_GET_ITEM_ATTRIBUTES, iov, 1);
+	}
+
+	rsp.status = status;
 	rsp.number = number;
 
 	iov[0].iov_base = &rsp;
