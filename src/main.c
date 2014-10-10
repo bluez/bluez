@@ -187,6 +187,20 @@ static void check_config(GKeyFile *config)
 	g_strfreev(keys);
 }
 
+static int get_mode(const char *str)
+{
+	if (strcmp(str, "dual") == 0)
+		return BT_MODE_DUAL;
+	else if (strcmp(str, "bredr") == 0)
+		return BT_MODE_BREDR;
+	else if (strcmp(str, "le") == 0)
+		return BT_MODE_LE;
+
+	error("Unknown controller mode \"%s\"", str);
+
+	return BT_MODE_DUAL;
+}
+
 static void parse_config(GKeyFile *config)
 {
 	GError *err = NULL;
@@ -282,6 +296,15 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	else
 		main_opts.debug_keys = boolean;
+
+	str = g_key_file_get_string(config, "General", "ControllerMode", &err);
+	if (err) {
+		g_clear_error(&err);
+	} else {
+		DBG("ControllerMode=%s", str);
+		main_opts.mode = get_mode(str);
+		g_free(str);
+	}
 }
 
 static void init_defaults(void)

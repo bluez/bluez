@@ -6877,6 +6877,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 {
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_rp_read_info *rp = param;
+	uint32_t missing_settings;
 	int err;
 
 	DBG("index %u status 0x%02x", adapter->dev_id, status);
@@ -6916,6 +6917,34 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	clear_uuids(adapter);
 	clear_devices(adapter);
+
+	missing_settings = adapter->current_settings ^
+						adapter->supported_settings;
+
+	switch (main_opts.mode) {
+	case BT_MODE_DUAL:
+		if (missing_settings & MGMT_SETTING_SSP)
+			set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
+		if (missing_settings & MGMT_SETTING_LE)
+			set_mode(adapter, MGMT_OP_SET_LE, 0x01);
+		if (missing_settings & MGMT_SETTING_BREDR)
+			set_mode(adapter, MGMT_OP_SET_BREDR, 0x01);
+		break;
+	case BT_MODE_BREDR:
+		if (missing_settings & MGMT_SETTING_SSP)
+			set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
+		if (missing_settings & MGMT_SETTING_BREDR)
+			set_mode(adapter, MGMT_OP_SET_BREDR, 0x01);
+		if (adapter->current_settings & MGMT_SETTING_LE)
+			set_mode(adapter, MGMT_OP_SET_LE, 0x00);
+		break;
+	case BT_MODE_LE:
+		if (missing_settings & MGMT_SETTING_LE)
+			set_mode(adapter, MGMT_OP_SET_LE, 0x01);
+		if (adapter->current_settings & MGMT_SETTING_BREDR)
+			set_mode(adapter, MGMT_OP_SET_BREDR, 0x00);
+		break;
+	}
 
 	err = adapter_register(adapter);
 	if (err < 0) {
@@ -7034,14 +7063,6 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	set_dev_class(adapter);
 
 	set_name(adapter, btd_adapter_get_name(adapter));
-
-	if ((adapter->supported_settings & MGMT_SETTING_SSP) &&
-			!(adapter->current_settings & MGMT_SETTING_SSP))
-		set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
-
-	if ((adapter->supported_settings & MGMT_SETTING_LE) &&
-			!(adapter->current_settings & MGMT_SETTING_LE))
-		set_mode(adapter, MGMT_OP_SET_LE, 0x01);
 
 	if (!(adapter->current_settings & MGMT_SETTING_BONDABLE))
 		set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);

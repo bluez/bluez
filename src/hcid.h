@@ -23,6 +23,12 @@
  *
  */
 
+typedef enum {
+	BT_MODE_DUAL,
+	BT_MODE_BREDR,
+	BT_MODE_LE,
+} bt_mode_t;
+
 struct main_opts {
 	char		*name;
 	uint32_t	class;
@@ -37,6 +43,8 @@ struct main_opts {
 	uint16_t	did_vendor;
 	uint16_t	did_product;
 	uint16_t	did_version;
+
+	bt_mode_t	mode;
 };
 
 extern struct main_opts main_opts;
