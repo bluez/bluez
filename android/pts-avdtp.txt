@@ -1,7 +1,7 @@
 PTS test results for AVDTP
 
-PTS version: 5.2
-Tested: 03-September-2014
+PTS version: 5.3
+Tested: 10-October-2014
 Android version: 4.4.4
 
 Results:
@@ -150,6 +150,7 @@ TC_INT_SNK_SIG_SMG_BV_23_C		PASS	avdtptest -d SINK -l -p -s abort
 TC_INT_SNK_SIG_SMG_BV_25_C		PASS	avdtptest -d SINK -l -p
 TC_INT_SNK_SIG_SMG_BV_28_C		PASS	avdtptest -d SINK -l -p
 TC_INT_SNK_SIG_SMG_BV_31_C		PASS	avdtptest -d SINK -l -p
+						-v 0x0100
 TC_INT_SNK_SIG_SMG_ESR05_BV_13_C	N/A
 TC_INT_SNK_SIG_SMG_BI_01_C		N/A
 TC_INT_SNK_SIG_SMG_BI_04_C		N/A
@@ -202,7 +203,7 @@ TC_INT_SRC_SIG_SMG_BV_21_C		PASS	avdtptest -d SRC -l -s suspend
 TC_INT_SRC_SIG_SMG_BV_23_C		PASS	avdtptest -d SRC -l -p -s abort
 TC_INT_SRC_SIG_SMG_BV_25_C		PASS	avdtptest -d SRC -l -p
 TC_INT_SRC_SIG_SMG_BV_28_C		PASS	avdtptest -d SRC -l -p
-TC_INT_SRC_SIG_SMG_BV_31_C		PASS	avdtptest -d SRC -l -p
+TC_INT_SRC_SIG_SMG_BV_31_C		PASS	avdtptest -d SRC -l -p -v 0x0100
 TC_INT_SRC_SIG_SMG_ESR05_BV_13_C	N/A
 TC_INT_SRC_SIG_SMG_BI_01_C		N/A
 TC_INT_SRC_SIG_SMG_BI_04_C		N/A
