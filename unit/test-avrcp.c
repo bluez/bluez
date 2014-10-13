@@ -631,6 +631,23 @@ static int uids_changed(struct avrcp *session, uint8_t transaction,
 	return 0;
 }
 
+static int now_playing_content_changed(struct avrcp *session,
+					uint8_t transaction, uint32_t interval,
+					void *user_data)
+{
+	DBG("");
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+					AVRCP_EVENT_NOW_PLAYING_CONTENT_CHANGED,
+					NULL, 0);
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+					AVRCP_EVENT_NOW_PLAYING_CONTENT_CHANGED,
+					NULL, 0);
+
+	return 0;
+}
+
 static int register_notification(struct avrcp *session, uint8_t transaction,
 					uint8_t event, uint32_t interval,
 					void *user_data)
@@ -651,6 +668,9 @@ static int register_notification(struct avrcp *session, uint8_t transaction,
 								user_data);
 	case AVRCP_EVENT_UIDS_CHANGED:
 		return uids_changed(session, transaction, interval, user_data);
+	case AVRCP_EVENT_NOW_PLAYING_CONTENT_CHANGED:
+		return now_playing_content_changed(session, transaction,
+							interval, user_data);
 	default:
 		return -EINVAL;
 	}
@@ -1403,6 +1423,19 @@ int main(int argc, char *argv[])
 				0x00),
 			brs_pdu(0x02, 0x11, 0x0e, AVRCP_GET_FOLDER_ITEMS,
 				0x00, 0x05, 0x04, 0xab, 0xcd, 0x00, 0x00));
+
+	/* NowPlayingContentChanged Notification – TG */
+	define_test("/TP/MCN/NP/BV-07-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, 0x09,
+				0x00, 0x00, 0x00, 0x00),
+			frg_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x01, 0x09),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x01, 0x09));
 
 	/* GetItemAttributes - CT */
 	define_test("/TP/MCN/NP/BV-08-C", test_client,
