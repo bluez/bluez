@@ -64,6 +64,8 @@ struct bt_att {
 	bool in_disconn;
 	bool need_disconn_cleanup;
 
+	bool in_req;			/* There's a pending incoming request */
+
 	uint8_t *buf;
 	uint16_t mtu;
 
@@ -460,6 +462,9 @@ static bool can_write_data(struct io *io, void *user_data)
 	case ATT_OP_TYPE_IND:
 		att->pending_ind = op;
 		break;
+	case ATT_OP_TYPE_RSP:
+		/* Set in_req to false to indicate that no request is pending */
+		att->in_req = false;
 	default:
 		destroy_att_send_op(op);
 		return true;
@@ -604,50 +609,6 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 	bt_att_unref(att);
 }
 
-static bool can_read_data(struct io *io, void *user_data)
-{
-	struct bt_att *att = user_data;
-	uint8_t opcode;
-	uint8_t *pdu;
-	ssize_t bytes_read;
-
-	bytes_read = read(att->fd, att->buf, att->mtu);
-	if (bytes_read < 0)
-		return false;
-
-	util_hexdump('>', att->buf, bytes_read,
-					att->debug_callback, att->debug_data);
-
-	if (bytes_read < ATT_MIN_PDU_LEN)
-		return true;
-
-	pdu = att->buf;
-	opcode = pdu[0];
-
-	/* Act on the received PDU based on the opcode type */
-	switch (get_op_type(opcode)) {
-	case ATT_OP_TYPE_RSP:
-		util_debug(att->debug_callback, att->debug_data,
-				"ATT response received: 0x%02x", opcode);
-		handle_rsp(att, opcode, pdu + 1, bytes_read - 1);
-		break;
-	case ATT_OP_TYPE_CONF:
-		util_debug(att->debug_callback, att->debug_data,
-				"ATT opcode cannot be handled: 0x%02x", opcode);
-		break;
-	default:
-		/* For all other opcodes notify the upper layer of the PDU and
-		 * let them act on it.
-		 */
-		util_debug(att->debug_callback, att->debug_data,
-					"ATT PDU received: 0x%02x", opcode);
-		handle_notify(att, opcode, pdu + 1, bytes_read - 1);
-		break;
-	}
-
-	return true;
-}
-
 static void disconn_handler(void *data, void *user_data)
 {
 	struct att_disconn *disconn = data;
@@ -686,6 +647,67 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	bt_att_unref(att);
 
 	return false;
+}
+
+static bool can_read_data(struct io *io, void *user_data)
+{
+	struct bt_att *att = user_data;
+	uint8_t opcode;
+	uint8_t *pdu;
+	ssize_t bytes_read;
+
+	bytes_read = read(att->fd, att->buf, att->mtu);
+	if (bytes_read < 0)
+		return false;
+
+	util_hexdump('>', att->buf, bytes_read,
+					att->debug_callback, att->debug_data);
+
+	if (bytes_read < ATT_MIN_PDU_LEN)
+		return true;
+
+	pdu = att->buf;
+	opcode = pdu[0];
+
+	/* Act on the received PDU based on the opcode type */
+	switch (get_op_type(opcode)) {
+	case ATT_OP_TYPE_RSP:
+		util_debug(att->debug_callback, att->debug_data,
+				"ATT response received: 0x%02x", opcode);
+		handle_rsp(att, opcode, pdu + 1, bytes_read - 1);
+		break;
+	case ATT_OP_TYPE_CONF:
+		util_debug(att->debug_callback, att->debug_data,
+				"ATT opcode cannot be handled: 0x%02x", opcode);
+		break;
+	case ATT_OP_TYPE_REQ:
+		/*
+		 * If a request is currently pending, then the sequential
+		 * protocol was violated. Disconnect the bearer and notify the
+		 * upper-layer.
+		 */
+		if (att->in_req) {
+			util_debug(att->debug_callback, att->debug_data,
+					"Received request while another is "
+					"pending: 0x%02x", opcode);
+			disconnect_cb(att->io, att);
+			return false;
+		}
+
+		att->in_req = true;
+
+		/* Fall through to the next case */
+	default:
+		/* For all other opcodes notify the upper layer of the PDU and
+		 * let them act on it.
+		 */
+		util_debug(att->debug_callback, att->debug_data,
+					"ATT PDU received: 0x%02x", opcode);
+		handle_notify(att, opcode, pdu + 1, bytes_read - 1);
+		break;
+	}
+
+	return true;
 }
 
 struct bt_att *bt_att_new(int fd)
