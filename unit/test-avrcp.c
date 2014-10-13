@@ -648,6 +648,26 @@ static int now_playing_content_changed(struct avrcp *session,
 	return 0;
 }
 
+static int volume_changed(struct avrcp *session, uint8_t transaction,
+					uint32_t interval, void *user_data)
+{
+	uint8_t volume = 0x00;
+
+	DBG("");
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
+					AVRCP_EVENT_VOLUME_CHANGED,
+					&volume, sizeof(volume));
+
+	volume = 0x01;
+
+	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
+					AVRCP_EVENT_VOLUME_CHANGED,
+					&volume, sizeof(volume));
+
+	return 0;
+}
+
 static int register_notification(struct avrcp *session, uint8_t transaction,
 					uint8_t event, uint32_t interval,
 					void *user_data)
@@ -670,6 +690,9 @@ static int register_notification(struct avrcp *session, uint8_t transaction,
 		return uids_changed(session, transaction, interval, user_data);
 	case AVRCP_EVENT_NOW_PLAYING_CONTENT_CHANGED:
 		return now_playing_content_changed(session, transaction,
+							interval, user_data);
+	case AVRCP_EVENT_VOLUME_CHANGED:
+		return volume_changed(session, transaction,
 							interval, user_data);
 	default:
 		return -EINVAL;
@@ -2002,6 +2025,21 @@ int main(int argc, char *argv[])
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x02, 0x0d,
 				0x00));
+
+	/* NotifyVolumeChange - TG */
+	define_test("/TP/VLH/BV-04-C", test_server,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, 0x0d,
+				0x00, 0x00, 0x00, 0x00),
+			frg_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x02, 0x0d,
+				0x00),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x02, 0x0d,
+				0x01));
 
 	/* Set absolute volume – TG */
 	define_test("/TP/VLH/BI-01-C", test_server,
