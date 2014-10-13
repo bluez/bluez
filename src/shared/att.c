@@ -562,6 +562,7 @@ struct notify_data {
 	uint8_t opcode;
 	uint8_t *pdu;
 	ssize_t pdu_len;
+	bool handler_found;
 };
 
 static void notify_handler(void *data, void *user_data)
@@ -575,9 +576,24 @@ static void notify_handler(void *data, void *user_data)
 	if (notify->opcode != not_data->opcode)
 		return;
 
+	not_data->handler_found = true;
+
 	if (notify->callback)
 		notify->callback(not_data->opcode, not_data->pdu,
 					not_data->pdu_len, notify->user_data);
+}
+
+static void respond_not_supported(struct bt_att *att, uint8_t opcode)
+{
+	uint8_t pdu[4];
+
+	pdu[0] = opcode;
+	pdu[1] = 0;
+	pdu[2] = 0;
+	pdu[3] = BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+
+	bt_att_send(att, BT_ATT_OP_ERROR_RSP, pdu, sizeof(pdu), NULL, NULL,
+									NULL);
 }
 
 static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
@@ -607,6 +623,13 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 	}
 
 	bt_att_unref(att);
+
+	/*
+	 * If this was a request and no handler was registered for it, respond
+	 * with "Not Supported"
+	 */
+	if (!data.handler_found && get_op_type(opcode) == ATT_OP_TYPE_REQ)
+		respond_not_supported(att, opcode);
 }
 
 static void disconn_handler(void *data, void *user_data)
