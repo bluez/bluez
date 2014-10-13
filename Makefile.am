@@ -114,6 +114,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/att.h src/shared/att.c \
 			src/shared/gatt-helpers.h src/shared/gatt-helpers.c \
 			src/shared/gatt-client.h src/shared/gatt-client.c \
+			src/shared/gatt-server.h src/shared/gatt-server.c \
 			src/shared/gatt-db.h src/shared/gatt-db.c \
 			src/shared/gap.h src/shared/gap.c
 
