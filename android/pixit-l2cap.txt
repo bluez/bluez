@@ -1,6 +1,6 @@
 L2CAP PIXIT for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -19,8 +19,15 @@ TSPX_flushto                                           FFFF
 TSPX_inmtu                                             02A0
 TSPX_no_fail_verditcs                                  FALSE
 TSPX_oumtu                                             02A0
-TSPX_iut_role_initiator                                TRUE
+TSPX_tester_mps                                        0010
+TSPX_tester_mtu                                        02A0
+TSPX_iut_role_initiator                                TRUE (*)
+TSPX_le_psm                                            0080 (*)
 TSPX_psm                                               1011 (*)
+TSPX_psm_unsupported                                   00F1
+TSPX_psm_authentication_required                       00F2
+TSPX_psm_authorization_required                        00F3
+TSPX_psm_encryption_key_size_required                  00F4
 TSPX_time_guard                                        180000
 TSPX_timer_ertx                                        120000
 TSPX_timer_ertx_max                                    300000
@@ -38,4 +45,5 @@ TSPX_use_implicit_send                                 TRUE
 TSPX_use_dynamic_pin                                   FALSE
 TSPX_iut_SDU_size_in_bytes                             144
 TSPX_secure_simple_pairing_pass_key_confirmation       FALSE
+TSPX_iut_address_type_random                           FALSE
 -------------------------------------------------------------------------------
