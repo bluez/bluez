@@ -1779,6 +1779,11 @@ static gboolean register_notification_rsp(struct avctp *conn,
 	rsp = (void *) pdu->params;
 	event = rsp->event;
 
+	if (event > AVRCP_EVENT_LAST) {
+		err = -EPROTO;
+		goto done;
+	}
+
 	switch (event) {
 	case AVRCP_EVENT_STATUS_CHANGED:
 	case AVRCP_EVENT_VOLUME_CHANGED:
@@ -1842,6 +1847,9 @@ int avrcp_register_notification(struct avrcp *session, uint8_t event,
 {
 	struct iovec iov;
 	struct register_notification_req req;
+
+	if (event > AVRCP_EVENT_LAST)
+		return -EINVAL;
 
 	req.event = event;
 	put_be32(interval, &req.interval);
