@@ -891,6 +891,17 @@ static void get_folder_items_rsp(struct avrcp *session, int err,
 	context_quit(context);
 }
 
+static void set_volume_rsp(struct avrcp *session, int err, uint8_t volume,
+							void *user_data)
+{
+	struct context *context = user_data;
+
+	g_assert_cmpint(err, ==, 0);
+	g_assert_cmpint(volume, ==, 1);
+
+	context_quit(context);
+}
+
 static bool register_notification_rsp(struct avrcp *session, int err,
 					uint8_t code, uint8_t event,
 					uint8_t *params, void *user_data)
@@ -914,6 +925,7 @@ static bool register_notification_rsp(struct avrcp *session, int err,
 
 static const struct avrcp_control_cfm control_cfm = {
 	.register_notification = register_notification_rsp,
+	.set_volume = set_volume_rsp,
 	.get_folder_items = get_folder_items_rsp,
 };
 
@@ -1046,6 +1058,9 @@ static void test_client(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/VLH/BV-03-C"))
 		avrcp_register_notification(context->session,
 						AVRCP_EVENT_VOLUME_CHANGED, 0);
+
+	if (g_str_equal(context->data->test_name, "/TP/VLH/BI-03-C"))
+		avrcp_set_volume(context->session, 0x01);
 
 	execute_context(context);
 }
@@ -2058,6 +2073,15 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
 				0x00, 0x00, 0x01, 0x00));
+
+	/* Set Absolute Volume invalid behavior CT */
+	define_test("/TP/VLH/BI-03-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
+				0x00, 0x00, 0x01, 0x01),
+			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
+				0x00, 0x00, 0x01, 0x81));
 
 	/* Request continuing response - TG */
 	define_test("/TP/RCR/BV-02-C", test_server,
