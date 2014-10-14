@@ -1786,12 +1786,19 @@ static gboolean register_notification_rsp(struct avctp *conn,
 
 	switch (event) {
 	case AVRCP_EVENT_STATUS_CHANGED:
+		if (pdu->params_len != sizeof(*rsp) + sizeof(uint8_t)) {
+			err = -EPROTO;
+			goto done;
+		}
+		params = rsp->data;
+		break;
 	case AVRCP_EVENT_VOLUME_CHANGED:
 		if (pdu->params_len != sizeof(*rsp) + sizeof(uint8_t)) {
 			err = -EPROTO;
 			goto done;
 		}
 		params = rsp->data;
+		params[0] &= 0x7f;
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
 		if (pdu->params_len != sizeof(*rsp) + sizeof(value64)) {
@@ -3270,6 +3277,7 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 {
 	struct iovec iov[2];
 	uint16_t *player;
+	uint8_t *volume;
 
 	if (event > AVRCP_EVENT_LAST)
 		return -EINVAL;
@@ -3279,8 +3287,14 @@ int avrcp_register_notification_rsp(struct avrcp *session, uint8_t transaction,
 
 	switch (event) {
 	case AVRCP_EVENT_STATUS_CHANGED:
+		if (len != sizeof(uint8_t))
+			return -EINVAL;
+		break;
 	case AVRCP_EVENT_VOLUME_CHANGED:
 		if (len != sizeof(uint8_t))
+			return -EINVAL;
+		volume = data;
+		if (volume[0] > 127)
 			return -EINVAL;
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
