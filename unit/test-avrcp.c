@@ -914,7 +914,14 @@ static bool register_notification_rsp(struct avrcp *session, int err,
 
 	switch (event) {
 	case AVRCP_EVENT_VOLUME_CHANGED:
-		g_assert_cmpint(params[0], ==, 0);
+		if (g_str_equal(context->data->test_name, "/TP/VLH/BV-03-C")) {
+			g_assert_cmpint(params[0], ==, 0);
+			break;
+		} else if (code == AVC_CTYPE_INTERIM) {
+			g_assert_cmpint(params[0], ==, 0);
+			return true;
+		}
+		g_assert_cmpint(params[0], ==, 1);
 		break;
 	}
 
@@ -1061,6 +1068,10 @@ static void test_client(gconstpointer data)
 
 	if (g_str_equal(context->data->test_name, "/TP/VLH/BI-03-C"))
 		avrcp_set_volume(context->session, 0x01);
+
+	if (g_str_equal(context->data->test_name, "/TP/VLH/BI-04-C"))
+		avrcp_register_notification(context->session,
+						AVRCP_EVENT_VOLUME_CHANGED, 0);
 
 	execute_context(context);
 }
@@ -2082,6 +2093,21 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_SET_ABSOLUTE_VOLUME,
 				0x00, 0x00, 0x01, 0x81));
+
+	/* Set Absolute Volume invalid behavior CT */
+	define_test("/TP/VLH/BI-04-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x03, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x05, 0x0d,
+				0x00, 0x00, 0x00, 0x00),
+			frg_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x02, 0x0d,
+				0x00),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
+				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
+				0x00, 0x00, 0x02, 0x0d,
+				0x81));
 
 	/* Request continuing response - TG */
 	define_test("/TP/RCR/BV-02-C", test_server,
