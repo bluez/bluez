@@ -940,6 +940,10 @@ int main(int argc, char *argv[])
 			HAL_SERVICE_ID_BLUETOOTH,
 			HAL_SERVICE_ID_HANDSFREE_CLIENT);
 
+	test_opcode_valid("MAP_CLIENT", HAL_SERVICE_ID_MAP_CLIENT, 0x01, 0,
+						HAL_SERVICE_ID_BLUETOOTH,
+						HAL_SERVICE_ID_MAP_CLIENT);
+
 	/* check for valid data size */
 	test_datasize_valid("CORE Register+", HAL_SERVICE_ID_CORE,
 			HAL_OP_REGISTER_MODULE,
