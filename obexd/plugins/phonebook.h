@@ -37,6 +37,8 @@
 #define PB_CALLS_INCOMING_FOLDER "/telecom/ich"
 #define PB_CALLS_MISSED_FOLDER "/telecom/mch"
 #define PB_CALLS_OUTGOING_FOLDER "/telecom/och"
+#define PB_CALLS_SPEEDDIAL_FOLDER "/telecom/spd"
+#define PB_CALLS_FAVORITE_FOLDER "/telecom/fav"
 #define PB_LUID_FOLDER "/telecom/pb/luid"
 
 #define PB_CONTACTS "/telecom/pb.vcf"
@@ -44,6 +46,8 @@
 #define PB_CALLS_INCOMING "/telecom/ich.vcf"
 #define PB_CALLS_MISSED "/telecom/mch.vcf"
 #define PB_CALLS_OUTGOING "/telecom/och.vcf"
+#define PB_CALLS_SPEEDDIAL "/telecom/spd.vcf"
+#define PB_CALLS_FAVORITE "/telecom/fav.vcf"
 #define PB_DEVINFO "/telecom/devinfo.txt"
 #define PB_INFO_LOG "/telecom/pb/info.log"
 #define PB_CC_LOG "/telecom/pb/luid/cc.log"

@@ -180,14 +180,17 @@ static const GMarkupParser listing_parser = {
 	NULL,
 	NULL
 };
+
 static char *build_phonebook_path(const char *location, const char *item)
 {
 	char *path = NULL, *tmp, *tmp1;
+	gboolean internal = FALSE;
 
 	if (!g_ascii_strcasecmp(location, "int") ||
-			!g_ascii_strcasecmp(location, "internal"))
+			!g_ascii_strcasecmp(location, "internal")) {
 		path = g_strdup("/telecom");
-	else if (!g_ascii_strncasecmp(location, "sim", 3)) {
+		internal = TRUE;
+	} else if (!g_ascii_strncasecmp(location, "sim", 3)) {
 		if (strlen(location) == 3)
 			tmp = g_strdup("sim1");
 		else
@@ -202,7 +205,9 @@ static char *build_phonebook_path(const char *location, const char *item)
 		!g_ascii_strcasecmp(item, "ich") ||
 		!g_ascii_strcasecmp(item, "och") ||
 		!g_ascii_strcasecmp(item, "mch") ||
-		!g_ascii_strcasecmp(item, "cch")) {
+		!g_ascii_strcasecmp(item, "cch") ||
+		(internal && !g_ascii_strcasecmp(item, "spd")) ||
+		(internal && !g_ascii_strcasecmp(item, "fav"))) {
 		tmp = path;
 		tmp1 = g_ascii_strdown(item, -1);
 		path = g_build_filename(tmp, tmp1, NULL);
