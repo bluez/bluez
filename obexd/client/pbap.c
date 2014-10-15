@@ -103,6 +103,9 @@ static const char *filter_list[] = {
 	"CLASS",
 	"SORT-STRING",
 	"X-IRMC-CALL-DATETIME",
+	"X-BT-SPEEDDIALKEY",
+	"X-BT-UCI",
+	"X-BT-UID",
 	NULL
 };
 
