@@ -686,13 +686,13 @@ static bool avrcp_passthrough_packet(struct avctp_frame *avctp_frame,
 	if (!l2cap_frame_get_u8(frame, &op))
 		return false;
 
-	print_field("%*cOperation: 0x%02x (%s %s)", (indent - 2), ' ', op,
+	print_field("%*cOperation: 0x%02x (%s %s)", (indent - 8), ' ', op,
 				op2str(op), op & 0x80 ? "Released" : "Pressed");
 
 	if (!l2cap_frame_get_u8(frame, &len))
 		return false;
 
-	print_field("%*cLength: 0x%02x", (indent - 2), ' ', len);
+	print_field("%*cLength: 0x%02x", (indent - 8), ' ', len);
 
 	packet_hexdump(frame->data, frame->size);
 	return true;
