@@ -46,6 +46,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/gatt.h android/gatt.c \
 				android/health.h android/health.c \
 				profiles/health/mcap.h profiles/health/mcap.c \
+				android/map-client.h android/map-client.c \
 				attrib/att.c attrib/att.h \
 				attrib/gatt.c attrib/gatt.h \
 				attrib/gattrib.c attrib/gattrib.h \

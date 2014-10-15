@@ -62,6 +62,7 @@
 #include "gatt.h"
 #include "health.h"
 #include "handsfree-client.h"
+#include "map-client.h"
 #include "utils.h"
 
 #define DEFAULT_VENDOR "BlueZ"
@@ -235,6 +236,14 @@ static void service_register(const void *buf, uint16_t len)
 		}
 
 		break;
+	case HAL_SERVICE_ID_MAP_CLIENT:
+		if (!bt_map_client_register(hal_ipc, &adapter_bdaddr,
+								m->mode)) {
+			status = HAL_STATUS_FAILED;
+			goto failed;
+		}
+
+		break;
 	default:
 		DBG("service %u not supported", m->service_id);
 		status = HAL_STATUS_FAILED;
@@ -287,6 +296,9 @@ static bool unregister_service(uint8_t id)
 		break;
 	case HAL_SERVICE_ID_HANDSFREE_CLIENT:
 		bt_hf_client_unregister();
+		break;
+	case HAL_SERVICE_ID_MAP_CLIENT:
+		bt_map_client_unregister();
 		break;
 	default:
 		DBG("service %u not supported", id);
