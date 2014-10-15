@@ -199,7 +199,8 @@ const char *obex_option_capability(void)
 	return option_capability;
 }
 
-static gboolean is_dir(const char *dir) {
+static gboolean is_dir(const char *dir)
+{
 	struct stat st;
 
 	if (stat(dir, &st) < 0) {
@@ -290,8 +291,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (option_root[0] != '/') {
-		char *old_root = option_root, *home = getenv("HOME");
+		const char *home = getenv("HOME");
 		if (home) {
+			char *old_root = option_root;
 			option_root = g_strdup_printf("%s/%s", home, old_root);
 			g_free(old_root);
 		}
