@@ -1486,5 +1486,19 @@ int main(int argc, char *argv[])
 			HAL_SERVICE_ID_BLUETOOTH,
 			HAL_SERVICE_ID_HANDSFREE_CLIENT);
 
+	/* check for valid data size for MAP CLIENT */
+	test_datasize_valid("MAP CLIENT Get instances+",
+				HAL_SERVICE_ID_MAP_CLIENT,
+				HAL_OP_MAP_CLIENT_GET_INSTANCES,
+				sizeof(struct hal_cmd_map_client_get_instances),
+				1, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_SERVICE_ID_MAP_CLIENT);
+	test_datasize_valid("MAP CLIENT Get instances-",
+				HAL_SERVICE_ID_MAP_CLIENT,
+				HAL_OP_MAP_CLIENT_GET_INSTANCES,
+				sizeof(struct hal_cmd_map_client_get_instances),
+				-1, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_SERVICE_ID_MAP_CLIENT);
+
 	return tester_run();
 }
