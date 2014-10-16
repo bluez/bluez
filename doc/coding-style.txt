@@ -1,4 +1,4 @@
-﻿BlueZ coding style
+BlueZ coding style
 ******************
 
 Every project has its coding style, and BlueZ is not an exception. This
