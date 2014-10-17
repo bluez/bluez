@@ -21,8 +21,12 @@
 #include "tester-main.h"
 #include "src/shared/util.h"
 
+#define ATT_HANDLE_SIZE	2
+
 #define L2CAP_ATT_EXCHANGE_MTU_REQ	0x02
 #define L2CAP_ATT_EXCHANGE_MTU_RSP	0x03
+#define L2CAP_ATT_READ_REQ		0x0a
+#define L2CAP_ATT_READ_RSP		0x0b
 #define L2CAP_ATT_HANDLE_VALUE_NOTIFY	0x1b
 #define L2CAP_ATT_HANDLE_VALUE_IND	0x1d
 
@@ -39,6 +43,8 @@
 #define CONN1_ID	1
 #define CONN2_ID	2
 
+#define TRANS1_ID	1
+
 #define GATT_SERVER_TRANSPORT_LE		0x00
 #define GATT_SERVER_TRANSPORT_BREDR		0x01
 #define GATT_SERVER_TRANSPORT_LE_BREDR		0x02
@@ -52,6 +58,13 @@ static struct queue *list; /* List of gatt test cases */
 
 static int srvc1_handle;
 static int inc_srvc1_handle;
+static int char1_handle;
+
+struct set_att_data {
+	char *to;
+	char *from;
+	int len;
+};
 
 static bt_uuid_t app1_uuid = {
 	.uu = { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
@@ -185,6 +198,13 @@ struct send_indication_data {
 	int len;
 	int confirm;
 	char *p_value;
+};
+
+struct send_resp_data {
+	int conn_id;
+	int trans_id;
+	int status;
+	btgatt_response_t *response;
 };
 
 static bt_bdaddr_t emu_remote_bdaddr_val = {
@@ -746,6 +766,21 @@ static struct set_notify_params set_notify_param_2 = {
 	.bdaddr = &emu_remote_bdaddr_val
 };
 
+static btgatt_response_t response_1 = {
+	.handle = 0x1c,
+	.attr_value.auth_req = 0,
+	.attr_value.handle = 0x1d,
+	.attr_value.len = 0,
+	.attr_value.offset = 0,
+};
+
+static struct send_resp_data send_resp_data_1 = {
+	.conn_id = CONN1_ID,
+	.trans_id = TRANS1_ID,
+	.status = BT_STATUS_SUCCESS,
+	.response = &response_1,
+};
+
 static struct iovec search_service[] = {
 	raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28),
 	raw_pdu(0x11, 0x06, 0x01, 0x00, 0x10, 0x00, 0x00, 0x18),
@@ -1055,6 +1090,36 @@ static struct iovec send_notification_1[] = {
 	raw_pdu(0x1b, 0x01, 0x00, 0x00, 0x01, 0x02, 0x03),
 	end_pdu
 };
+
+/* att commands define raw pdus */
+static struct iovec att_read_req = raw_pdu(0x0a, 0x00, 0x00);
+
+static void gatt_att_pdu_modify(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct iovec *store_pdu = current_data_step->set_data_to;
+	struct step *step = g_new0(struct step, 1);
+	unsigned char *raw_pdu = store_pdu->iov_base;
+	int set_data_len = current_data_step->set_data_len;
+
+	switch (raw_pdu[0]) {
+	case L2CAP_ATT_READ_REQ: {
+		uint16_t handle = *((int *)current_data_step->set_data);
+
+		memcpy(raw_pdu + 1, &handle, set_data_len);
+		tester_debug("gatt: modify pdu read request handle to 0x%02x",
+									handle);
+
+		break;
+	}
+
+	default:
+		break;
+	}
+
+	schedule_action_verification(step);
+}
 
 static void gatt_client_register_action(void)
 {
@@ -1520,6 +1585,22 @@ static void gatt_server_send_indication_action(void)
 	schedule_action_verification(step);
 }
 
+static void gatt_server_send_response_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct send_resp_data *send_resp_data = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_gatt->server->send_response(
+						send_resp_data->conn_id,
+						send_resp_data->trans_id,
+						send_resp_data->status,
+						send_resp_data->response);
+
+	schedule_action_verification(step);
+}
+
 static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *t_data = tester_get_data();
@@ -1556,6 +1637,14 @@ static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 		step = g_new0(struct step, 1);
 
 		step->callback = CB_EMU_VALUE_NOTIFICATION;
+
+		schedule_callback_verification(step);
+		break;
+	case L2CAP_ATT_READ_RSP:
+		/* TODO - More complicated cases should also verify pdu data */
+		step = g_new0(struct step, 1);
+
+		step->callback = CB_EMU_READ_RESPONSE;
 
 		schedule_callback_verification(step);
 		break;
@@ -1602,6 +1691,26 @@ static void gatt_remote_send_frame_action(void)
 		bthost_send_cid_v(bthost, cid_data.handle, cid_data.cid,
 								gatt_pdu, 1);
 		step->action_status = BT_STATUS_SUCCESS;
+	}
+
+	schedule_action_verification(step);
+}
+
+static void gatt_remote_send_raw_pdu_action(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	struct step *current_data_step = queue_peek_head(data->steps);
+	struct iovec *pdu = current_data_step->set_data;
+	struct step *step = g_new0(struct step, 1);
+
+	if (cid_data.handle && cid_data.cid) {
+		bthost_send_cid_v(bthost, cid_data.handle, cid_data.cid,
+									pdu, 1);
+		step->action_status = BT_STATUS_SUCCESS;
+	} else {
+		tester_debug("No connection set up");
+		step->action_status = BT_STATUS_FAIL;
 	}
 
 	schedule_action_verification(step);
@@ -3244,6 +3353,50 @@ static struct test_case test_cases[] = {
 						CONN1_ID, APP1_ID),
 		ACTION_FAIL(gatt_server_send_indication_action,
 						&send_bad_indication_data_1),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Send response to read char request",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_set_connect_cb_action, gatt_conn_cb),
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_5),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_SUCCESS(gatt_server_add_char_action, &add_char_data_1),
+		CALLBACK_GATTS_CHARACTERISTIC_ADDED(GATT_STATUS_SUCCESS,
+							APP1_ID, &app1_uuid,
+							&srvc1_handle, NULL,
+							&char1_handle),
+		ACTION_SUCCESS(gatt_server_start_srvc_action,
+							&start_srvc_data_2),
+		CALLBACK_GATTS_SERVICE_STARTED(GATT_STATUS_SUCCESS, APP1_ID,
+								&srvc1_handle),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		CALLBACK_DEVICE_FOUND(prop_emu_remotes_default_le_set, 2),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		ACTION_SUCCESS(gatt_server_connect_action, &app1_conn_req),
+		CALLBACK_GATTS_CONNECTION(GATT_SERVER_CONNECTED,
+						prop_emu_remotes_default_set,
+						CONN1_ID, APP1_ID),
+		MODIFY_DATA(GATT_STATUS_SUCCESS, gatt_att_pdu_modify,
+						&char1_handle, &att_read_req,
+						ATT_HANDLE_SIZE),
+		ACTION_SUCCESS(gatt_remote_send_raw_pdu_action, &att_read_req),
+		CALLBACK_GATTS_REQUEST_READ(CONN1_ID, TRANS1_ID,
+						prop_emu_remotes_default_set,
+						&char1_handle, 0, false),
+		ACTION_SUCCESS(gatt_server_send_response_action,
+							&send_resp_data_1),
+		CALLBACK(CB_EMU_READ_RESPONSE),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),

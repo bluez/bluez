@@ -109,6 +109,7 @@ static struct {
 	DBG_CB(CB_EMU_CONNECTION_REJECTED),
 	DBG_CB(CB_EMU_VALUE_INDICATION),
 	DBG_CB(CB_EMU_VALUE_NOTIFICATION),
+	DBG_CB(CB_EMU_READ_RESPONSE),
 };
 
 static gboolean check_callbacks_called(gpointer user_data)
@@ -778,6 +779,16 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
+	if (exp->callback_result.attr_handle &&
+					step->callback_result.attr_handle)
+		if (*exp->callback_result.attr_handle !=
+					*step->callback_result.attr_handle) {
+			tester_debug("Gatt attribute handle mismatch: %d vs %d",
+					*step->callback_result.attr_handle,
+					*exp->callback_result.attr_handle);
+			return false;
+		}
+
 	if (exp->callback_result.srvc_handle &&
 					step->callback_result.srvc_handle)
 		if (*exp->callback_result.srvc_handle !=
@@ -805,6 +816,27 @@ static bool match_data(struct step *step)
 			tester_debug("Uuid mismatch");
 			return false;
 		}
+
+	if (exp->callback_result.trans_id != step->callback_result.trans_id) {
+		tester_debug("Gatt trans id mismatch: %d vs %d",
+						exp->callback_result.trans_id,
+						step->callback_result.trans_id);
+		return false;
+	}
+
+	if (exp->callback_result.offset != step->callback_result.offset) {
+		tester_debug("Gatt offset mismatch: %d vs %d",
+						exp->callback_result.offset,
+						step->callback_result.offset);
+		return false;
+	}
+
+	if (exp->callback_result.is_long != step->callback_result.is_long) {
+		tester_debug("Gatt is long attr value flag mismatch: %d vs %d",
+						exp->callback_result.is_long,
+						step->callback_result.is_long);
+		return false;
+	}
 
 	if (exp->store_srvc_handle)
 		memcpy(exp->store_srvc_handle,
@@ -933,6 +965,9 @@ static void destroy_callback_step(void *data)
 
 	if (step->callback_result.desc_handle)
 		free(step->callback_result.desc_handle);
+
+	if (step->callback_result.attr_handle)
+		free(step->callback_result.attr_handle);
 
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
@@ -1655,6 +1690,34 @@ static void gatts_service_deleted_cb(int status, int server_if, int srvc_handle)
 	schedule_callback_verification(step);
 }
 
+static void gatts_request_read_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
+						int attr_handle, int offset,
+						bool is_long)
+{
+	struct step *step = g_new0(struct step, 1);
+	bt_property_t *props[1];
+
+	step->callback = CB_GATTS_REQUEST_READ;
+
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.trans_id = trans_id;
+	step->callback_result.attr_handle = g_memdup(&attr_handle,
+							sizeof(attr_handle));
+	step->callback_result.offset = offset;
+	step->callback_result.is_long = is_long;
+
+	/* Utilize property verification mechanism for bdaddr */
+	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
+
+	step->callback_result.num_properties = 1;
+	step->callback_result.properties = repack_properties(1, props);
+
+	g_free(props[0]->val);
+	g_free(props[0]);
+
+	schedule_callback_verification(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1785,7 +1848,7 @@ static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.service_started_cb = gatts_service_started_cb,
 	.service_stopped_cb = gatts_service_stopped_cb,
 	.service_deleted_cb = gatts_service_deleted_cb,
-	.request_read_cb = NULL,
+	.request_read_cb = gatts_request_read_cb,
 	.request_write_cb = NULL,
 	.request_exec_write_cb = NULL,
 	.response_confirmation_cb = NULL

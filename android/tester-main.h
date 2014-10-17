@@ -84,6 +84,14 @@ struct pdu_set {
 		(struct step[]) {__VA_ARGS__}, \
 	}
 
+#define MODIFY_DATA(status, modif_fun, from, to, len) { \
+		.action_status = status, \
+		.action = modif_fun, \
+		.set_data = from, \
+		.set_data_to = to, \
+		.set_data_len = len, \
+	}
+
 #define ACTION(status, act_fun, data_set) { \
 		.action_status = status, \
 		.action = act_fun, \
@@ -318,6 +326,19 @@ struct pdu_set {
 		.callback_result.srvc_handle = cb_srvc_handle, \
 	}
 
+#define CALLBACK_GATTS_REQUEST_READ(cb_conn_id, cb_trans_id, cb_prop, \
+						cb_attr_handle, cb_offset, \
+						cb_is_long) { \
+		.callback = CB_GATTS_REQUEST_READ, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.trans_id = cb_trans_id, \
+		.callback_result.properties = cb_prop, \
+		.callback_result.num_properties = 1, \
+		.callback_result.attr_handle = cb_attr_handle, \
+		.callback_result.offset = cb_offset, \
+		.callback_result.is_long = cb_is_long, \
+	}
+
 #define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
 		.callback = cb, \
 		.callback_result.status = cb_res, \
@@ -471,6 +492,7 @@ typedef enum {
 	CB_EMU_CONNECTION_REJECTED,
 	CB_EMU_VALUE_INDICATION,
 	CB_EMU_VALUE_NOTIFICATION,
+	CB_EMU_READ_RESPONSE,
 } expected_bt_callback_t;
 
 struct test_data {
@@ -568,7 +590,11 @@ struct bt_callback_data {
 
 	int gatt_app_id;
 	int conn_id;
+	int trans_id;
+	int offset;
+	bool is_long;
 	int connected;
+	int *attr_handle;
 	int *srvc_handle;
 	int *inc_srvc_handle;
 	int *char_handle;
@@ -607,6 +633,7 @@ struct step {
 	struct bt_callback_data callback_result;
 
 	void *set_data;
+	void *set_data_to;
 	int set_data_len;
 
 	int *store_srvc_handle;
