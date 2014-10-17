@@ -1,6 +1,6 @@
 DIS PIXIT for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -19,7 +19,7 @@ TSPX_delete_link_key					FALSE
 TSPX_pin_code						0000
 TSPX_use_dynamic_pin					FALSE
 TSPX_delete_ltk						FALSE
-TSPX_security_enabled					TRUE
+TSPX_security_enabled					TRUE (*)
 TSPX_iut_setup_att_over_br_edr				FALSE
 TSPX_tester_appearance					0000
 -------------------------------------------------------------------------------

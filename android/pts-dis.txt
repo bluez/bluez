@@ -1,7 +1,7 @@
 PTS test results for DIS
 
-PTS version: 5.2
-Tested: 29-July-2014
+PTS version: 5.3
+Tested: 18-October-2014
 Android version: 4.4.4
 
 Results:
@@ -10,6 +10,9 @@ FAIL	test failed
 INC	test is inconclusive
 N/A	test is disabled due to PICS setup
 NONE	test result is none
+
+NOTE: DIS testing might require some extra properties to be set. Please refer
+to the README file in android folder. Section: Customization.
 
 -------------------------------------------------------------------------------
 Test Name		Result	Notes
