@@ -611,7 +611,7 @@ static struct set_read_params set_read_param_3 = {
 	.params = &read_params_1,
 	.srvc_id = &service_2,
 	.char_id = &characteristic_1,
-	.status = 0x01,
+	.status = BT_STATUS_FAIL
 };
 
 static struct set_read_params set_read_param_4 = {
@@ -637,7 +637,7 @@ static struct set_read_params set_read_param_6 = {
 	.srvc_id = &service_1,
 	.char_id = &characteristic_1,
 	.descr_id = &desc_2,
-	.status = 0x01
+	.status = BT_STATUS_FAIL
 };
 
 static struct set_write_params set_write_param_1 = {
@@ -658,7 +658,7 @@ static struct set_write_params set_write_param_3 = {
 	.params = &write_params_1,
 	.srvc_id = &service_1,
 	.char_id = &characteristic_1,
-	.status = 0x01
+	.status = BT_STATUS_FAIL
 };
 
 static struct set_write_params set_write_param_4 = {
@@ -674,7 +674,7 @@ static struct set_write_params set_write_param_5 = {
 	.srvc_id = &service_1,
 	.char_id = &characteristic_1,
 	.descr_id = &desc_2,
-	.status = 0x01
+	.status = BT_STATUS_FAIL
 };
 
 static struct set_write_params set_write_param_6 = {
