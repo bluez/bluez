@@ -212,6 +212,9 @@ static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
+	/* remove hook for encryption change */
+	hciemu_del_hook(data->hciemu, HCIEMU_HOOK_POST_EVT, 0x08);
+
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
 
