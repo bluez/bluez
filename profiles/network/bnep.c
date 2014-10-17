@@ -319,7 +319,6 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 
 	if (bnep_if_up(session->iface)) {
-		error("bnep: could not up %s", session->iface);
 		bnep_conndel(&session->dst_addr);
 		goto failed;
 	}
@@ -569,13 +568,7 @@ int bnep_server_add(int sk, uint16_t dst, char *bridge, char *iface,
 		return -errno;
 	}
 
-	if (bnep_if_up(iface) < 0) {
-		error("bnep: Can't up the interface %s: %s(%d)",
-						iface, strerror(errno), errno);
-		return -errno;
-	}
-
-	return 0;
+	return bnep_if_up(iface);
 }
 
 void bnep_server_delete(char *bridge, char *iface, const bdaddr_t *addr)
