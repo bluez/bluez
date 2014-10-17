@@ -1457,6 +1457,8 @@ static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 	const uint8_t *pdu = data;
 	struct iovec *gatt_pdu = queue_peek_head(t_data->pdus);
 
+	tester_debug("Received att pdu with opcode 0x%02x", pdu[0]);
+
 	switch (pdu[0]) {
 	case L2CAP_ATT_EXCHANGE_MTU_REQ:
 		tester_print("Exchange MTU request received.");
