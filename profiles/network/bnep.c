@@ -491,7 +491,7 @@ static int bnep_add_to_bridge(const char *devname, const char *bridge)
 {
 	int ifindex;
 	struct ifreq ifr;
-	int sk, err;
+	int sk, err = 0;
 
 	if (!devname || !bridge)
 		return -EINVAL;
@@ -506,16 +506,16 @@ static int bnep_add_to_bridge(const char *devname, const char *bridge)
 	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
 	ifr.ifr_ifindex = ifindex;
 
-	err = ioctl(sk, SIOCBRADDIF, &ifr);
+	if (ioctl(sk, SIOCBRADDIF, &ifr) < 0) {
+		err = -errno;
+		error("bnep: Can't add %s to the bridge %s: %s(%d)",
+					devname, bridge, strerror(-err), -err);
+	} else
+		info("bridge %s: interface %s added", bridge, devname);
 
 	close(sk);
 
-	if (err < 0)
-		return err;
-
-	info("bridge %s: interface %s added", bridge, devname);
-
-	return 0;
+	return err;
 }
 
 static int bnep_del_from_bridge(const char *devname, const char *bridge)
@@ -561,11 +561,10 @@ int bnep_server_add(int sk, uint16_t dst, char *bridge, char *iface,
 	if (err < 0)
 		return err;
 
-	if (bnep_add_to_bridge(iface, bridge) < 0) {
-		error("bnep: Can't add %s to the bridge %s: %s(%d)",
-					iface, bridge, strerror(errno), errno);
+	err = bnep_add_to_bridge(iface, bridge);
+	if (err < 0) {
 		bnep_conndel(addr);
-		return -errno;
+		return err;
 	}
 
 	return bnep_if_up(iface);
