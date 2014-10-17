@@ -195,7 +195,7 @@ static int bnep_connadd(int sk, uint16_t role, char *dev)
 static int bnep_if_up(const char *devname)
 {
 	struct ifreq ifr;
-	int sk, err;
+	int sk, err = 0;
 
 	sk = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -205,16 +205,15 @@ static int bnep_if_up(const char *devname)
 	ifr.ifr_flags |= IFF_UP;
 	ifr.ifr_flags |= IFF_MULTICAST;
 
-	err = ioctl(sk, SIOCSIFFLAGS, (void *) &ifr);
+	if (ioctl(sk, SIOCSIFFLAGS, (void *) &ifr) < 0) {
+		err = -errno;
+		error("bnep: Could not bring up %s: %s(%d)",
+				devname, strerror(-err), -err);
+	}
 
 	close(sk);
 
-	if (err < 0) {
-		error("bnep: Could not bring up %s", devname);
-		return err;
-	}
-
-	return 0;
+	return err;
 }
 
 static int bnep_if_down(const char *devname)
