@@ -162,7 +162,7 @@ static int bnep_conndel(const bdaddr_t *dst)
 	memset(&req, 0, sizeof(req));
 	baswap((bdaddr_t *)&req.dst, dst);
 	req.flags = 0;
-	if (ioctl(ctl, BNEPCONNDEL, &req)) {
+	if (ioctl(ctl, BNEPCONNDEL, &req) < 0) {
 		int err = -errno;
 		error("bnep: Failed to kill connection: %s (%d)",
 						strerror(-err), -err);
