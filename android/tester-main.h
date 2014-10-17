@@ -339,6 +339,23 @@ struct pdu_set {
 		.callback_result.is_long = cb_is_long, \
 	}
 
+#define CALLBACK_GATTS_REQUEST_WRITE(cb_conn_id, cb_trans_id, cb_prop, \
+						cb_attr_handle, cb_offset, \
+						cb_length, cb_need_rsp, \
+						cb_is_prep, cb_value) { \
+		.callback = CB_GATTS_REQUEST_WRITE, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.trans_id = cb_trans_id, \
+		.callback_result.properties = cb_prop, \
+		.callback_result.num_properties = 1, \
+		.callback_result.attr_handle = cb_attr_handle, \
+		.callback_result.offset = cb_offset, \
+		.callback_result.length = cb_length, \
+		.callback_result.need_rsp = cb_need_rsp, \
+		.callback_result.is_prep = cb_is_prep, \
+		.callback_result.value = cb_value, \
+	}
+
 #define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
 		.callback = cb, \
 		.callback_result.status = cb_res, \
@@ -493,6 +510,7 @@ typedef enum {
 	CB_EMU_VALUE_INDICATION,
 	CB_EMU_VALUE_NOTIFICATION,
 	CB_EMU_READ_RESPONSE,
+	CB_EMU_WRITE_RESPONSE,
 } expected_bt_callback_t;
 
 struct test_data {
@@ -608,6 +626,10 @@ struct bt_callback_data {
 	btgatt_notify_params_t *notify_params;
 	int notification_registered;
 	int char_prop;
+	int length;
+	uint8_t *value;
+	bool need_rsp;
+	bool is_prep;
 
 	btpan_control_state_t ctrl_state;
 	btpan_connection_state_t conn_state;

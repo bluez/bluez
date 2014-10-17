@@ -110,6 +110,7 @@ static struct {
 	DBG_CB(CB_EMU_VALUE_INDICATION),
 	DBG_CB(CB_EMU_VALUE_NOTIFICATION),
 	DBG_CB(CB_EMU_READ_RESPONSE),
+	DBG_CB(CB_EMU_WRITE_RESPONSE),
 };
 
 static gboolean check_callbacks_called(gpointer user_data)
@@ -838,6 +839,41 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
+	if (exp->callback_result.length > 0) {
+		if (exp->callback_result.length !=
+						step->callback_result.length) {
+			tester_debug("Gatt attr length mismatch: %d vs %d",
+						exp->callback_result.length,
+						step->callback_result.length);
+			return false;
+		}
+		if (!exp->callback_result.value ||
+						!step->callback_result.value) {
+			tester_debug("Gatt attr values are wrong set");
+			return false;
+		}
+		if (!memcmp(exp->callback_result.value,
+						step->callback_result.value,
+						exp->callback_result.length)) {
+			tester_debug("Gatt attr value mismatch");
+			return false;
+		}
+	}
+
+	if (exp->callback_result.need_rsp != step->callback_result.need_rsp) {
+		tester_debug("Gatt need response value flag mismatch: %d vs %d",
+						exp->callback_result.need_rsp,
+						step->callback_result.need_rsp);
+		return false;
+	}
+
+	if (exp->callback_result.is_prep != step->callback_result.is_prep) {
+		tester_debug("Gatt is prepared value flag mismatch: %d vs %d",
+						exp->callback_result.is_prep,
+						step->callback_result.is_prep);
+		return false;
+	}
+
 	if (exp->store_srvc_handle)
 		memcpy(exp->store_srvc_handle,
 					step->callback_result.srvc_handle,
@@ -968,6 +1004,9 @@ static void destroy_callback_step(void *data)
 
 	if (step->callback_result.attr_handle)
 		free(step->callback_result.attr_handle);
+
+	if (step->callback_result.value)
+		free(step->callback_result.value);
 
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
@@ -1718,6 +1757,38 @@ static void gatts_request_read_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 	schedule_callback_verification(step);
 }
 
+static void gatts_request_write_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
+						int attr_handle, int offset,
+						int length, bool need_rsp,
+						bool is_prep, uint8_t *value)
+{
+	struct step *step = g_new0(struct step, 1);
+	bt_property_t *props[1];
+
+	step->callback = CB_GATTS_REQUEST_WRITE;
+
+	step->callback_result.conn_id = conn_id;
+	step->callback_result.trans_id = trans_id;
+	step->callback_result.attr_handle = g_memdup(&attr_handle,
+							sizeof(attr_handle));
+	step->callback_result.offset = offset;
+	step->callback_result.length = length;
+	step->callback_result.need_rsp = need_rsp;
+	step->callback_result.is_prep = is_prep;
+	step->callback_result.value = g_memdup(&value, length);
+
+	/* Utilize property verification mechanism for bdaddr */
+	props[0] = create_property(BT_PROPERTY_BDADDR, bda, sizeof(*bda));
+
+	step->callback_result.num_properties = 1;
+	step->callback_result.properties = repack_properties(1, props);
+
+	g_free(props[0]->val);
+	g_free(props[0]);
+
+	schedule_callback_verification(step);
+}
+
 static void pan_control_state_cb(btpan_control_state_t state,
 					bt_status_t error, int local_role,
 							const char *ifname)
@@ -1849,7 +1920,7 @@ static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.service_stopped_cb = gatts_service_stopped_cb,
 	.service_deleted_cb = gatts_service_deleted_cb,
 	.request_read_cb = gatts_request_read_cb,
-	.request_write_cb = NULL,
+	.request_write_cb = gatts_request_write_cb,
 	.request_exec_write_cb = NULL,
 	.response_confirmation_cb = NULL
 };

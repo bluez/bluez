@@ -27,6 +27,8 @@
 #define L2CAP_ATT_EXCHANGE_MTU_RSP	0x03
 #define L2CAP_ATT_READ_REQ		0x0a
 #define L2CAP_ATT_READ_RSP		0x0b
+#define L2CAP_ATT_WRITE_REQ		0x12
+#define L2CAP_ATT_WRITE_RSP		0x13
 #define L2CAP_ATT_HANDLE_VALUE_NOTIFY	0x1b
 #define L2CAP_ATT_HANDLE_VALUE_IND	0x1d
 
@@ -54,6 +56,24 @@
 #define GATT_WRITE_TYPE_PREPARE		0x03
 #define GATT_WRITE_TYPE_SIGNED		0x04
 
+#define CHAR_PROP_BROADCAST			0x01
+#define CHAR_PROP_READ				0x02
+#define CHAR_PROP_WRITE_WITHOUT_RESPONSE	0x04
+#define CHAR_PROP_WRITE				0x08
+#define CHAR_PROP_NOTIFY			0x10
+#define CHAR_PROP_INDICATE			0x20
+#define CHAR_PROP_AUTHENTICATED_SIGNED_WRITES	0x40
+#define CHAR_PROP_EXTENDED_PROPERTIES		0x80
+
+#define CHAR_PERM_READ			0x0001
+#define CHAR_PERM_READ_ENCRYPTED	0x0002
+#define CHAR_PERM_READ_ENCRYPTED_MITM	0x0004
+#define CHAR_PERM_WRITE			0x0010
+#define CHAR_PERM_WRITE_ENCRYPTED	0x0020
+#define CHAR_PERM_WRITE_ENCRYPTED_MITM	0x0040
+#define CHAR_PERM_WRITE_SIGNED		0x0080
+#define CHAR_PERM_WRITE_SIGNED_MITM	0x0100
+
 static struct queue *list; /* List of gatt test cases */
 
 static int srvc1_handle;
@@ -64,6 +84,11 @@ struct set_att_data {
 	char *to;
 	char *from;
 	int len;
+};
+
+struct att_write_req_data {
+	int *attr_handle;
+	uint8_t *value;
 };
 
 static bt_uuid_t app1_uuid = {
@@ -77,6 +102,8 @@ static bt_uuid_t app2_uuid = {
 };
 
 static uint8_t value_1[] = {0x01};
+
+static uint8_t att_write_req_value_1[] = {0x00, 0x01, 0x02, 0x03};
 
 struct gatt_connect_data {
 	const int app_id;
@@ -521,6 +548,14 @@ static struct add_char_data add_char_data_1 = {
 	.permissions = 0
 };
 
+static struct add_char_data add_char_data_2 = {
+	.app_id = APP1_ID,
+	.srvc_handle = &srvc1_handle,
+	.uuid = &app1_uuid,
+	.properties = CHAR_PROP_WRITE,
+	.permissions = CHAR_PERM_WRITE
+};
+
 static struct add_char_data add_bad_char_data_1 = {
 	.app_id = APP1_ID,
 	.srvc_handle = &srvc_bad_handle,
@@ -774,11 +809,26 @@ static btgatt_response_t response_1 = {
 	.attr_value.offset = 0,
 };
 
+static btgatt_response_t response_2 = {
+	.handle = 0x1c,
+	.attr_value.auth_req = 0,
+	.attr_value.handle = 0x1d,
+	.attr_value.len = sizeof(att_write_req_value_1),
+	.attr_value.offset = 0,
+};
+
 static struct send_resp_data send_resp_data_1 = {
 	.conn_id = CONN1_ID,
 	.trans_id = TRANS1_ID,
 	.status = BT_STATUS_SUCCESS,
 	.response = &response_1,
+};
+
+static struct send_resp_data send_resp_data_2 = {
+	.conn_id = CONN1_ID,
+	.trans_id = TRANS1_ID,
+	.status = BT_STATUS_SUCCESS,
+	.response = &response_2,
 };
 
 static struct iovec search_service[] = {
@@ -1091,8 +1141,15 @@ static struct iovec send_notification_1[] = {
 	end_pdu
 };
 
+static struct att_write_req_data att_write_req_data_1  = {
+	.attr_handle = &char1_handle,
+	.value = att_write_req_value_1,
+};
+
 /* att commands define raw pdus */
 static struct iovec att_read_req = raw_pdu(0x0a, 0x00, 0x00);
+static struct iovec att_write_req_1 = raw_pdu(0x12, 0x00, 0x00, 0x00, 0x00,
+								0x00, 0x00);
 
 static void gatt_att_pdu_modify(void)
 {
@@ -1114,7 +1171,21 @@ static void gatt_att_pdu_modify(void)
 		break;
 	}
 
+	case L2CAP_ATT_WRITE_REQ: {
+		struct att_write_req_data *pdu_set_data =
+						current_data_step->set_data;
+		uint16_t handle = *((int *)(pdu_set_data->attr_handle));
+		uint8_t *value = pdu_set_data->value;
+
+		memcpy(raw_pdu + 1, &handle, sizeof(handle));
+		memcpy(raw_pdu + 3, value, set_data_len - sizeof(handle));
+
+		break;
+	}
 	default:
+		tester_debug("modify att pdu with opcode 0x%02x not handled",
+								raw_pdu[0]);
+
 		break;
 	}
 
@@ -1645,6 +1716,14 @@ static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 		step = g_new0(struct step, 1);
 
 		step->callback = CB_EMU_READ_RESPONSE;
+
+		schedule_callback_verification(step);
+		break;
+	case L2CAP_ATT_WRITE_RSP:
+		/* TODO - More complicated cases should also verify pdu data */
+		step = g_new0(struct step, 1);
+
+		step->callback = CB_EMU_WRITE_RESPONSE;
 
 		schedule_callback_verification(step);
 		break;
@@ -3397,6 +3476,55 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(gatt_server_send_response_action,
 							&send_resp_data_1),
 		CALLBACK(CB_EMU_READ_RESPONSE),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("Gatt Server - Send response to write char request",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_set_connect_cb_action, gatt_conn_cb),
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(gatt_server_add_service_action,
+							&add_service_data_5),
+		CALLBACK_GATTS_SERVICE_ADDED(GATT_STATUS_SUCCESS, APP1_ID,
+							&service_add_1, NULL,
+							&srvc1_handle),
+		ACTION_SUCCESS(gatt_server_add_char_action, &add_char_data_2),
+		CALLBACK_GATTS_CHARACTERISTIC_ADDED(GATT_STATUS_SUCCESS,
+							APP1_ID, &app1_uuid,
+							&srvc1_handle, NULL,
+							&char1_handle),
+		ACTION_SUCCESS(gatt_server_start_srvc_action,
+							&start_srvc_data_2),
+		CALLBACK_GATTS_SERVICE_STARTED(GATT_STATUS_SUCCESS, APP1_ID,
+								&srvc1_handle),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		CALLBACK_DEVICE_FOUND(prop_emu_remotes_default_le_set, 2),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		ACTION_SUCCESS(gatt_server_connect_action, &app1_conn_req),
+		CALLBACK_GATTS_CONNECTION(GATT_SERVER_CONNECTED,
+						prop_emu_remotes_default_set,
+						CONN1_ID, APP1_ID),
+		MODIFY_DATA(GATT_STATUS_SUCCESS, gatt_att_pdu_modify,
+					&att_write_req_data_1, &att_write_req_1,
+					sizeof(att_write_req_value_1) +
+					ATT_HANDLE_SIZE),
+		ACTION_SUCCESS(gatt_remote_send_raw_pdu_action,
+							&att_write_req_1),
+		CALLBACK_GATTS_REQUEST_WRITE(CONN1_ID, TRANS1_ID,
+						prop_emu_remotes_default_set,
+						&char1_handle, 0,
+						sizeof(att_write_req_value_1),
+						true, false,
+						att_write_req_value_1),
+		ACTION_SUCCESS(gatt_server_send_response_action,
+							&send_resp_data_2),
+		CALLBACK(CB_EMU_WRITE_RESPONSE),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
