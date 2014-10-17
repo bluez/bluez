@@ -41,6 +41,11 @@
 #define GATT_SERVER_TRANSPORT_BREDR		0x01
 #define GATT_SERVER_TRANSPORT_LE_BREDR		0x02
 
+#define GATT_WRITE_TYPE_NO_RESPONSE	0x01
+#define GATT_WRITE_TYPE_DEFAULT		0x02
+#define GATT_WRITE_TYPE_PREPARE		0x03
+#define GATT_WRITE_TYPE_SIGNED		0x04
+
 static struct queue *list; /* List of gatt test cases */
 
 static int srvc1_handle;
@@ -368,7 +373,7 @@ static struct write_char_data write_char_data_1 = {
 	.conn_id = CONN1_ID,
 	.service = &service_1,
 	.characteristic = &characteristic_1,
-	.write_type = 1,
+	.write_type = GATT_WRITE_TYPE_NO_RESPONSE,
 	.len = sizeof(value_2),
 	.p_value = value_2,
 	.auth_req = 0
@@ -378,7 +383,7 @@ static struct write_char_data write_char_data_2 = {
 	.conn_id = CONN1_ID,
 	.service = &service_1,
 	.characteristic = &characteristic_1,
-	.write_type = 2,
+	.write_type = GATT_WRITE_TYPE_DEFAULT,
 	.len = sizeof(value_2),
 	.p_value = value_2,
 	.auth_req = 0
