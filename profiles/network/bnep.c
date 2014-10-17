@@ -316,10 +316,8 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
 
 	sk = g_io_channel_unix_get_fd(session->io);
-	if (bnep_connadd(sk, session->src, session->iface)) {
-		error("bnep conn could not be added");
+	if (bnep_connadd(sk, session->src, session->iface) < 0)
 		goto failed;
-	}
 
 	if (bnep_if_up(session->iface)) {
 		error("could not up %s", session->iface);
@@ -556,14 +554,14 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 int bnep_server_add(int sk, uint16_t dst, char *bridge, char *iface,
 						const bdaddr_t *addr)
 {
+	int err;
+
 	if (!bridge || !iface || !addr)
 		return -EINVAL;
 
-	if (bnep_connadd(sk, dst, iface) < 0) {
-		error("Can't add connection to the bridge %s: %s(%d)",
-						bridge, strerror(errno), errno);
-		return -errno;
-	}
+	err = bnep_connadd(sk, dst, iface);
+	if (err < 0)
+		return err;
 
 	if (bnep_add_to_bridge(iface, bridge) < 0) {
 		error("Can't add %s to the bridge %s: %s(%d)",
