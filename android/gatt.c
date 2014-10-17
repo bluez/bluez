@@ -3759,7 +3759,7 @@ static void handle_client_register_for_notification(const void *buf,
 
 	notification = new0(struct notification_data, 1);
 	if (!notification) {
-		status = HAL_STATUS_FAILED;
+		status = HAL_STATUS_NOMEM;
 		goto failed;
 	}
 
