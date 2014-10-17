@@ -107,6 +107,8 @@ static struct {
 	DBG_CB(CB_EMU_ENCRYPTION_ENABLED),
 	DBG_CB(CB_EMU_ENCRYPTION_DISABLED),
 	DBG_CB(CB_EMU_CONNECTION_REJECTED),
+	DBG_CB(CB_EMU_VALUE_INDICATION),
+	DBG_CB(CB_EMU_VALUE_NOTIFICATION),
 };
 
 static gboolean check_callbacks_called(gpointer user_data)
