@@ -1,6 +1,6 @@
 HFP PICS for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -14,6 +14,7 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_HFP_0_1	False		Version: Hands-Free Profile v1.5 (O.1)
 TSPC_HFP_0_2	True (*)	Version: Hands-Free Profile v1.6 (O.1)
+TSPC_HFP_0_3	False		Version: Hands-Free Profile v1.7 (O.1)
 -------------------------------------------------------------------------------
 O.1: It is mandatory to support only one of the adopted versions.
 -------------------------------------------------------------------------------
@@ -83,8 +84,10 @@ TSPC_HFP_2_21c	True (*)	Enhanced Call Status with limited network
 					notification (C.4)
 TSPC_HFP_2_22	False		Support for automatic link loss recovery (O)
 TSPC_HFP_2_23	True (*)	Individual Indicator Activation (C.9)
-TSPC_HFP_2_24	True (*)s	Wide Band Speech service (C.8)
+TSPC_HFP_2_24	True (*)	Wide Band Speech service (C.8)
 TSPC_HFP_2_25	False		Support roaming function (O)
+TSPC_HFP_2_26	False		HF Indicators (C.11)
+TSPC_HFP_2_27	False		Support CVSD eSCO s4 setting (C.12)
 -------------------------------------------------------------------------------
 C.1:  The AG must support one of item TSPC_HFP_2_4a or TSPC_HFP_2_4b
 C.2:  Mandatory if TSPC_HFP_2_12is TRUE; otherwise excluded
@@ -96,6 +99,10 @@ C.7:  Mandatory if TSPC_HFP_2_24 otherwise excluded
 C.8:  Excluded if TSPC_HFP_0_1 otherwise optional
 C.9:  Excluded if TSPC_HFP_0_1 otherwise mandatory
 C.10: Mandatory if TSPC_HFP_2_24 otherwise optional
+C.11: Optional IF HFP v1.5 (TSPC_HFP_0_1) OR HFP v1.6 (TSPC_HFP_0_2) is NOT
+	supported, otherwise Excluded.
+C.12: Excluded IF HFP v1.5 (TSPC_HFP_0_1) OR HFP v1.6 (TSPC_HFP_0_2) is
+	supported, otherwise Mandatory.
 -------------------------------------------------------------------------------
 
 
@@ -161,6 +168,8 @@ TSPC_HFP_3_21b	False		Enhanced Call Control (C.2)
 TSPC_HFP_3_22	False		Support for automatic link loss recovery (O)
 TSPC_HFP_3_23	False		Individual Indicator Activation (C.6)
 TSPC_HFP_3_24	False		Wide Band Speech service (C.6)
+TSPC_HFP_3_25	False		HF Indicators (C.8)
+TSPC_HFP_3_36	False		Support CVSD eSCO S4 setting (C.9)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_HFP_3_12; otherwise excluded
 C.2: Optional if TSPC_HFP_3_12; otherwise excluded
@@ -169,6 +178,10 @@ C.4: Mandatory if TSPC_HFP_3_18a, otherwise optional
 C.5: Mandatory if TSPC_HFP_3_24 otherwise excluded
 C.6: Excluded if TSPC_HFP_0_1 otherwise optional
 C.7: Mandatory if TSPC_HFP_3_24 otherwise optional
+C.8: Optional IF HFP v1.5 (TSPC_HFP_0_1) OR HFP v1.6 (TSPC_HFP_0_2) is NOT
+	supported, otherwise Excluded.
+C.9: Excluded IF HFP v1.5 (TSPC_HFP_0_1) OR HFP v1.6 (TSPC_HFP_0_2) is
+	supported, otherwise Mandatory.
 -------------------------------------------------------------------------------
 
 
@@ -178,9 +191,14 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_HFP_4_1	True		CVSD audio coding over SCO (M)
 TSPC_HFP_4_2	True (*)	mSBC audio coding over eSCO (C.1)
+TSPC_HFP_4_3	True (*)	CVSD audio coding over eSCO (Initiating) (C.2)
+TSPC_HFP_4_2	True (*)	CVSD audio coding over eSCO (Accepting) (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory if Wide band speech service is supported TSPC_HFP_2_24 or
 	TSPC_HFP_3_24, otherwise excluded
+C.2: Mandatory IF TPSC_HFP_2_3b (eSCO support in Audio Connection - AG) OR
+	TSPC_HFP_3_3b (eSCO support in Audio Connection - HF); otherwise
+	Excluded.
 -------------------------------------------------------------------------------
 
 

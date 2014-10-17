@@ -1,6 +1,6 @@
 HFP PIXIT for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -35,4 +35,7 @@ TSPX_no_fail_verdict					FALSE
 TSPX_network_supports_correct_call_and_callstatus	TRUE
 TSPX_secure_simple_pairing_pass_key_confirmation	FALSE
 TSPX_AG_match_tester_BRSF_codec_negotiation_bit		FALSE
+TSPX_HFP_Unsupported_HF_Indicator_1			99
+TSPX_HFP_Supported_HF_Indiccator_1			1
+TSPX_Automation						FALSE
 -------------------------------------------------------------------------------
