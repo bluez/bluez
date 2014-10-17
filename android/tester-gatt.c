@@ -596,7 +596,7 @@ static struct set_read_params set_read_param_1 = {
 	.srvc_id = &service_1,
 	.char_id = &characteristic_1,
 	.value = value_1,
-	.len = 1,
+	.len = sizeof(value_1),
 	.status = BT_STATUS_SUCCESS
 };
 
@@ -620,7 +620,7 @@ static struct set_read_params set_read_param_4 = {
 	.char_id = &characteristic_1,
 	.descr_id = &desc_1,
 	.value = value_1,
-	.len = 1,
+	.len = sizeof(value_1),
 	.status = BT_STATUS_SUCCESS
 };
 
