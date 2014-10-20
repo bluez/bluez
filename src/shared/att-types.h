@@ -74,6 +74,18 @@
 #define BT_ATT_ERROR_UNSUPPORTED_GROUP_TYPE		0x10
 #define BT_ATT_ERROR_INSUFFICIENT_RESOURCES		0x11
 
+/*
+ * ATT attribute permission bitfield values. Permissions are grouped as
+ * "Access", "Encryption", "Authentication", and "Authorization". A bitmask of
+ * permissions is a byte that encodes a combination of these.
+ */
+#define BT_ATT_PERM_READ	0x01
+#define BT_ATT_PERM_WRITE	0x02
+#define BT_ATT_PERM_ENCRYPT	0x04
+#define BT_ATT_PERM_AUTHEN	0x08
+#define BT_ATT_PERM_AUTHOR	0x10
+#define BT_ATT_PERM_NONE	0x20
+
 /* GATT Characteristic Properties Bitfield values */
 #define BT_GATT_CHRC_PROP_BROADCAST			0x01
 #define BT_GATT_CHRC_PROP_READ				0x02
