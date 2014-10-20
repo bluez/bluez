@@ -439,6 +439,9 @@
 		<attribute id=\"0x0316\">				\
 			<uint8 value=\"0x0F\"/>				\
 		</attribute>						\
+		<attribute id=\"0x0317\">				\
+			<uint32 value=\"0x0000007f\"/>			\
+		</attribute>						\
 	</record>"
 
 #define MNS_RECORD							\
