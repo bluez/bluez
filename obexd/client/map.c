@@ -100,6 +100,7 @@ struct map_data {
 	GHashTable *messages;
 	int16_t mas_instance_id;
 	uint8_t supported_message_types;
+	uint32_t supported_features;
 };
 
 struct pending_request {
@@ -2003,6 +2004,14 @@ static void parse_service_record(struct map_data *map)
 		map->supported_message_types = *(uint8_t *)data;
 	else
 		DBG("Failed to read supported message types");
+
+	/* Supported Feature Bits */
+	data = obc_session_get_attribute(map->session,
+					SDP_ATTR_MAP_SUPPORTED_FEATURES);
+	if(data != NULL)
+		map->supported_features = *(uint32_t *) data;
+	else
+		map->supported_features = 0x0000001f;
 }
 
 static int map_probe(struct obc_session *session)
