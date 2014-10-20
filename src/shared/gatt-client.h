@@ -27,15 +27,6 @@
 
 #define BT_GATT_UUID_SIZE 16
 
-#define BT_GATT_CHRC_PROP_BROADCAST			0x01
-#define BT_GATT_CHRC_PROP_READ				0x02
-#define BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP		0x04
-#define BT_GATT_CHRC_PROP_WRITE				0x08
-#define BT_GATT_CHRC_PROP_NOTIFY			0x10
-#define BT_GATT_CHRC_PROP_INDICATE			0x20
-#define BT_GATT_CHRC_PROP_AUTH				0x40
-#define BT_GATT_CHRC_PROP_EXT_PROP			0x80
-
 struct bt_gatt_client;
 
 struct bt_gatt_client *bt_gatt_client_new(struct bt_att *att, uint16_t mtu);
