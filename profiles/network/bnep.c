@@ -318,7 +318,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	if (bnep_connadd(sk, session->src, session->iface) < 0)
 		goto failed;
 
-	if (bnep_if_up(session->iface)) {
+	if (bnep_if_up(session->iface) < 0) {
 		bnep_conndel(&session->dst_addr);
 		goto failed;
 	}
