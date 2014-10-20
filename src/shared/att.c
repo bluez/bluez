@@ -1029,15 +1029,17 @@ bool bt_att_cancel(struct bt_att *att, unsigned int id)
 		return false;
 
 	if (att->pending_req && att->pending_req->id == id) {
-		op = att->pending_req;
-		att->pending_req = NULL;
-		goto done;
+		/* Don't cancel the pending request; remove it's handlers */
+		att->pending_req->callback = NULL;
+		att->pending_req->destroy = NULL;
+		return true;
 	}
 
 	if (att->pending_ind && att->pending_ind->id == id) {
-		op = att->pending_ind;
-		att->pending_ind = NULL;
-		goto done;
+		/* Don't cancel the pending indication; remove it's handlers */
+		att->pending_ind->callback = NULL;
+		att->pending_ind->destroy = NULL;
+		return true;
 	}
 
 	op = queue_remove_if(att->req_queue, match_op_id, UINT_TO_PTR(id));
@@ -1073,13 +1075,15 @@ bool bt_att_cancel_all(struct bt_att *att)
 	queue_remove_all(att->write_queue, NULL, NULL, destroy_att_send_op);
 
 	if (att->pending_req) {
-		destroy_att_send_op(att->pending_req);
-		att->pending_req = NULL;
+		/* Don't cancel the pending request; remove it's handlers */
+		att->pending_req->callback = NULL;
+		att->pending_req->destroy = NULL;
 	}
 
 	if (att->pending_ind) {
-		destroy_att_send_op(att->pending_ind);
-		att->pending_ind = NULL;
+		/* Don't cancel the pending indication; remove it's handlers */
+		att->pending_ind->callback = NULL;
+		att->pending_ind->destroy = NULL;
 	}
 
 	return true;
