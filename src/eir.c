@@ -53,6 +53,8 @@ void eir_data_free(struct eir_data *eir)
 	eir->hash = NULL;
 	g_free(eir->randomizer);
 	eir->randomizer = NULL;
+	g_slist_free_full(eir->msd_list, g_free);
+	eir->msd_list = NULL;
 }
 
 static void eir_parse_uuid16(struct eir_data *eir, const void *data,
@@ -135,6 +137,22 @@ static char *name2utf8(const uint8_t *name, uint8_t len)
 	g_strstrip(utf8_name);
 
 	return g_strdup(utf8_name);
+}
+
+static void eir_parse_msd(struct eir_data *eir, const uint8_t *data,
+								uint8_t len)
+{
+	struct eir_msd *msd;
+
+	if (len < 2 || len > 2 + sizeof(msd->data))
+		return;
+
+	msd = g_malloc(sizeof(*msd));
+	msd->company = get_le16(data);
+	msd->data_len = len - 2;
+	memcpy(&msd->data, data + 2, msd->data_len);
+
+	eir->msd_list = g_slist_append(eir->msd_list, msd);
 }
 
 void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
@@ -239,6 +257,10 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 			eir->did_vendor = data[2] | (data[3] << 8);
 			eir->did_product = data[4] | (data[5] << 8);
 			eir->did_version = data[6] | (data[7] << 8);
+			break;
+
+		case EIR_MANUFACTURER_DATA:
+			eir_parse_msd(eir, data, data_len);
 			break;
 		}
 
