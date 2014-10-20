@@ -70,7 +70,7 @@
  */
 #define MPS_DEFAULT_MPMD ((1ULL << 1) | (1ULL << 3) | (1ULL << 5) | \
 				(1ULL << 6) | (1ULL << 8) | (1ULL << 10) | \
-				(1ULL << 12) | (1ULL << 15) | (1ULL << 18))
+				(1ULL << 12) | (1ULL << 15) | (1ULL << 17))
 
 /*
  * bits in bitmask as defined in table 6.5 of Multi Profile Specification
