@@ -1,7 +1,7 @@
 PTS test results for IOPT
 
-PTS version: 5.2
-Tested: 11-August-2014
+PTS version: 5.3
+Tested: 20-October-2014
 Android version: 4.4.4
 
 Results:
