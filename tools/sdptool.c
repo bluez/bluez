@@ -236,6 +236,7 @@ static struct attrib_def goep_attrib_names[] = {
 static struct attrib_def mas_attrib_names[] = {
 	{ 0x0315, "MASInstanceID", NULL, 0 },
 	{ 0x0316, "SupportedMessageTypes", NULL, 0 },
+	{ 0x0317, "MapSupportedFeatures", NULL, 0 },
 };
 
 /* Same for the UUIDs. See BT assigned numbers */
