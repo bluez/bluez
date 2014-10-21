@@ -30,6 +30,7 @@
 #include <glib.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <sys/time.h>
 
 #include <gobex/gobex.h>
 #include <gobex/gobex-apparam.h>
@@ -228,6 +229,35 @@ static void g_string_append_escaped_printf(GString *string,
 	va_end(ap);
 }
 
+static gchar *get_mse_timestamp(void)
+{
+	struct timeval time_val;
+	struct tm ltime;
+	gchar *local_ts;
+	char sign;
+
+	if (gettimeofday(&time_val, NULL) < 0)
+		return NULL;
+
+	if (!localtime_r(&time_val.tv_sec, &ltime))
+		return NULL;
+
+	if (difftime(mktime(localtime(&time_val.tv_sec)),
+				mktime(gmtime(&time_val.tv_sec))) < 0)
+		sign = '+';
+	else
+		sign = '-';
+
+	local_ts = g_strdup_printf("%04d%02d%02dT%02d%02d%02d%c%2ld%2ld",
+					ltime.tm_year + 1900, ltime.tm_mon + 1,
+					ltime.tm_mday, ltime.tm_hour,
+					ltime.tm_min, ltime.tm_sec, sign,
+					ltime.tm_gmtoff/3600,
+					(ltime.tm_gmtoff%3600)/60);
+
+	return local_ts;
+}
+
 static const char *yesorno(gboolean a)
 {
 	if (a)
@@ -243,6 +273,7 @@ static void get_messages_listing_cb(void *session, int err, uint16_t size,
 {
 	struct mas_session *mas = user_data;
 	uint16_t max = 1024;
+	gchar *mse_time;
 
 	if (err < 0 && err != -EAGAIN) {
 		obex_object_set_io_flags(mas, G_IO_ERR, err);
@@ -358,6 +389,13 @@ proceed:
 		mas->outparams = g_obex_apparam_set_uint8(mas->outparams,
 						MAP_AP_NEWMESSAGE,
 						newmsg ? 1 : 0);
+		/* Response to report the local time of MSE */
+		mse_time = get_mse_timestamp();
+		if (mse_time) {
+			g_obex_apparam_set_string(mas->outparams,
+						MAP_AP_MSETIME, mse_time);
+			g_free(mse_time);
+		}
 	}
 
 	if (err != -EAGAIN)
