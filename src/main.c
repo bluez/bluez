@@ -79,6 +79,7 @@ static const char * const supported_options[] = {
 	"ReverseServiceDiscovery",
 	"NameResolving",
 	"DebugKeys",
+	"ControllerMode",
 };
 
 GKeyFile *btd_get_main_conf(void)
