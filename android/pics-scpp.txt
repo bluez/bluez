@@ -1,6 +1,6 @@
 ScPP PICS for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 
@@ -54,7 +54,7 @@ TSPC_ScPP_4_6	False (*)	LE Security Mode 1 (peripheral) (M)
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_ScPP_5_1	False (*)	No security (LE Security Level 1) (M)
+TSPC_ScPP_5_1	False (*)	SM 2.3.1-
 TSPC_ScPP_5_2	False (*)	Unauthenticated no MITM protection. (LE Security
 				Level 2, Just Works) (O)
 TSPC_ScPP_5_3	False (*)	Authenticated MITM protection (LE Security
