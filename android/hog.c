@@ -404,20 +404,7 @@ static struct report *find_report(struct bt_hog *hog, uint8_t type, uint8_t id)
 	struct report cmp;
 	GSList *l;
 
-	switch (type) {
-	case UHID_FEATURE_REPORT:
-		cmp.type = HOG_REPORT_TYPE_FEATURE;
-		break;
-	case UHID_OUTPUT_REPORT:
-		cmp.type = HOG_REPORT_TYPE_OUTPUT;
-		break;
-	case UHID_INPUT_REPORT:
-		cmp.type = HOG_REPORT_TYPE_INPUT;
-		break;
-	default:
-		return NULL;
-	}
-
+	cmp.type = type;
 	cmp.id = hog->has_report_id ? id : 0;
 
 	l = g_slist_find_custom(hog->reports, &cmp, report_cmp);
@@ -438,10 +425,25 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 {
 	struct bt_hog *hog = user_data;
 	struct report *report;
+	uint8_t type;
 	void *data;
 	int size;
 
-	report = find_report(hog, ev->u.output.rtype, ev->u.output.data[0]);
+	switch (ev->u.output.rtype) {
+	case UHID_FEATURE_REPORT:
+		type = HOG_REPORT_TYPE_FEATURE;
+		break;
+	case UHID_OUTPUT_REPORT:
+		type = HOG_REPORT_TYPE_OUTPUT;
+		break;
+	case UHID_INPUT_REPORT:
+		type = HOG_REPORT_TYPE_INPUT;
+		break;
+	default:
+		return;
+	}
+
+	report = find_report(hog, type, ev->u.output.data[0]);
 	if (!report)
 		return;
 
