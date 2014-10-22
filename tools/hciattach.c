@@ -329,7 +329,7 @@ static int intel(int fd, struct uart_t *u, struct termios *ti)
 
 static int bcm43xx(int fd, struct uart_t *u, struct termios *ti)
 {
-	return bcm43xx_init(fd, u->speed, ti, u->bdaddr);
+	return bcm43xx_init(fd, u->init_speed, u->speed, ti, u->bdaddr);
 }
 
 static int read_check(int fd, void *buf, int count)
