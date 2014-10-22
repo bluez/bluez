@@ -520,7 +520,7 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 {
 	int ifindex;
 	struct ifreq ifr;
-	int sk, err;
+	int sk, err = 0;
 
 	if (!devname || !bridge)
 		return -EINVAL;
@@ -535,16 +535,16 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
 	ifr.ifr_ifindex = ifindex;
 
-	err = ioctl(sk, SIOCBRDELIF, &ifr);
+	if (ioctl(sk, SIOCBRDELIF, &ifr) < 0) {
+		err = -errno;
+		error("bnep: Can't delete %s from the bridge %s: %s(%d)",
+					devname, bridge, strerror(-err), -err);
+	} else
+		info("bridge %s: interface %s removed", bridge, devname);
 
 	close(sk);
 
-	if (err < 0)
-		return err;
-
-	info("bridge %s: interface %s removed", bridge, devname);
-
-	return 0;
+	return err;
 }
 
 int bnep_server_add(int sk, uint16_t dst, char *bridge, char *iface,
