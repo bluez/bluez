@@ -211,6 +211,7 @@ android_test_ipc_LDADD = src/libshared-glib.la @GLIB_LIBS@
 endif
 
 EXTRA_DIST += android/Android.mk android/README \
+				android/bluetoothd-wrapper.c \
 				android/init.bluetooth.rc \
 				android/hal-ipc-api.txt \
 				android/audio-ipc-api.txt \
