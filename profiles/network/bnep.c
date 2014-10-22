@@ -133,7 +133,6 @@ const char *bnep_name(uint16_t id)
 int bnep_init(void)
 {
 	ctl = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_BNEP);
-
 	if (ctl < 0) {
 		int err = -errno;
 
@@ -141,7 +140,7 @@ int bnep_init(void)
 			warn("kernel lacks bnep-protocol support");
 		else
 			error("bnep: Failed to open control socket: %s (%d)",
-						strerror(-err), -err);
+							strerror(-err), -err);
 
 		return err;
 	}
@@ -165,7 +164,7 @@ static int bnep_conndel(const bdaddr_t *dst)
 	if (ioctl(ctl, BNEPCONNDEL, &req) < 0) {
 		int err = -errno;
 		error("bnep: Failed to kill connection: %s (%d)",
-						strerror(-err), -err);
+							strerror(-err), -err);
 		return err;
 	}
 	return 0;
@@ -184,7 +183,7 @@ static int bnep_connadd(int sk, uint16_t role, char *dev)
 	if (ioctl(ctl, BNEPCONNADD, &req) < 0) {
 		int err = -errno;
 		error("bnep: Failed to add device %s: %s(%d)",
-				dev, strerror(-err), -err);
+						dev, strerror(-err), -err);
 		return err;
 	}
 
@@ -208,7 +207,7 @@ static int bnep_if_up(const char *devname)
 	if (ioctl(sk, SIOCSIFFLAGS, (void *) &ifr) < 0) {
 		err = -errno;
 		error("bnep: Could not bring up %s: %s(%d)",
-				devname, strerror(-err), -err);
+						devname, strerror(-err), -err);
 	}
 
 	close(sk);
