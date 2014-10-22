@@ -219,7 +219,7 @@ static int bnep_if_up(const char *devname)
 static int bnep_if_down(const char *devname)
 {
 	struct ifreq ifr;
-	int sk, err;
+	int sk, err = 0;
 
 	sk = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -229,16 +229,15 @@ static int bnep_if_down(const char *devname)
 	ifr.ifr_flags &= ~IFF_UP;
 
 	/* Bring down the interface */
-	err = ioctl(sk, SIOCSIFFLAGS, (void *) &ifr);
+	if (ioctl(sk, SIOCSIFFLAGS, (void *) &ifr) < 0) {
+		err = -errno;
+		error("bnep: Could not bring down %s: %s(%d)",
+						devname, strerror(-err), -err);
+	}
 
 	close(sk);
 
-	if (err < 0) {
-		error("bnep: Could not bring down %s", devname);
-		return err;
-	}
-
-	return 0;
+	return err;
 }
 
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
