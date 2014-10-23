@@ -113,6 +113,11 @@ struct bt_gatt_characteristic_iter {
 	size_t pos;
 };
 
+struct bt_gatt_incl_service_iter {
+	void *service;
+	size_t pos;
+};
+
 bool bt_gatt_service_iter_init(struct bt_gatt_service_iter *iter,
 						struct bt_gatt_client *client);
 bool bt_gatt_service_iter_next(struct bt_gatt_service_iter *iter,
@@ -128,6 +133,11 @@ bool bt_gatt_characteristic_iter_init(struct bt_gatt_characteristic_iter *iter,
 					const bt_gatt_service_t *service);
 bool bt_gatt_characteristic_iter_next(struct bt_gatt_characteristic_iter *iter,
 					const bt_gatt_characteristic_t **chrc);
+
+bool bt_gatt_include_service_iter_init(struct bt_gatt_incl_service_iter *iter,
+					const bt_gatt_service_t *service);
+bool bt_gatt_include_service_iter_next(struct bt_gatt_incl_service_iter *iter,
+					const bt_gatt_included_service_t **inc);
 
 typedef void (*bt_gatt_client_read_callback_t)(bool success, uint8_t att_ecode,
 					const uint8_t *value, uint16_t length,

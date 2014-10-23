@@ -1662,6 +1662,36 @@ bool bt_gatt_characteristic_iter_next(struct bt_gatt_characteristic_iter *iter,
 	return true;
 }
 
+bool bt_gatt_include_service_iter_init(struct bt_gatt_incl_service_iter *iter,
+					const bt_gatt_service_t *service)
+{
+	if (!iter || !service)
+		return false;
+
+	memset(iter, 0, sizeof(*iter));
+	iter->service = (struct service_list *) service;
+
+	return true;
+}
+
+bool bt_gatt_include_service_iter_next(struct bt_gatt_incl_service_iter *iter,
+					const bt_gatt_included_service_t **incl)
+{
+	struct service_list *service;
+
+	if (!iter || !incl)
+		return false;
+
+	service = iter->service;
+
+	if (iter->pos >= service->num_includes)
+		return false;
+
+	*incl = &service->includes[iter->pos++];
+
+	return true;
+}
+
 struct read_op {
 	bt_gatt_client_read_callback_t callback;
 	void *user_data;
