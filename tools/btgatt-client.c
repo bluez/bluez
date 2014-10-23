@@ -183,8 +183,9 @@ static void print_service(const bt_gatt_service_t *service)
 	}
 
 	printf(COLOR_RED "service" COLOR_OFF " - start: 0x%04x, "
-				"end: 0x%04x, uuid: ",
-				service->start_handle, service->end_handle);
+				"end: 0x%04x, type: %s, uuid: ",
+				service->start_handle, service->end_handle,
+				service->primary ? "primary" : "secondary");
 	print_uuid(service->uuid);
 
 	while (bt_gatt_characteristic_iter_next(&iter, &chrc)) {
