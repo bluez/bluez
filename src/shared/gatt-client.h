@@ -96,6 +96,13 @@ typedef struct {
 	size_t num_descs;
 } bt_gatt_characteristic_t;
 
+typedef struct {
+	uint16_t handle;
+	uint16_t start_handle;
+	uint16_t end_handle;
+	uint8_t uuid[BT_GATT_UUID_SIZE];
+} bt_gatt_included_service_t;
+
 struct bt_gatt_service_iter {
 	struct bt_gatt_client *client;
 	void *ptr;
