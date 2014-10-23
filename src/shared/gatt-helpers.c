@@ -147,6 +147,34 @@ unsigned int bt_gatt_result_descriptor_count(struct bt_gatt_result *result)
 	return result_element_count(result);
 }
 
+unsigned int bt_gatt_result_included_count(struct bt_gatt_result *result)
+{
+	struct bt_gatt_result *cur;
+	unsigned int count = 0;
+
+	if (!result)
+		return 0;
+
+	if (result->opcode != BT_ATT_OP_READ_BY_TYPE_RSP)
+		return 0;
+
+	/*
+	 * Data length can be of length 6 or 8 octets:
+	 * 2 octets - include service handle
+	 * 2 octets - start handle of included service
+	 * 2 octets - end handle of included service
+	 * 2 octets (optionally) - 16 bit Bluetooth UUID
+	 */
+	if (result->data_len != 6 && result->data_len != 8)
+		return 0;
+
+	for (cur = result; cur; cur = cur->next)
+		if (cur->opcode == BT_ATT_OP_READ_BY_TYPE_RSP)
+			count += cur->pdu_len / cur->data_len;
+
+	return count;
+}
+
 bool bt_gatt_iter_init(struct bt_gatt_iter *iter, struct bt_gatt_result *result)
 {
 	if (!iter || !result)
