@@ -112,15 +112,6 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C2
 
-- Support included services in shared/gatt-client. This requires helper
-  functions to be added to discover secondary services and include declarations
-  to shared/gatt-helpers. shared/gatt-client's attribute discovery procedure
-  needs to be extended to discover all secondary services and store include
-  declarations for all discovered services.
-
-  Priority: Low
-  Complexity: C2
-
 - Introduce long-term caching of attributes to shared/gatt-client, such that the
   services, characteristics, and descriptors obtained from a peripheral are
   remembered in the case of bonding. This may involve storing data about GATT
