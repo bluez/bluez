@@ -75,6 +75,7 @@ bool bt_gatt_client_set_debug(struct bt_gatt_client *client,
 					bt_gatt_client_destroy_func_t destroy);
 
 typedef struct {
+	bool primary;
 	uint16_t start_handle;
 	uint16_t end_handle;
 	uint8_t uuid[BT_GATT_UUID_SIZE];

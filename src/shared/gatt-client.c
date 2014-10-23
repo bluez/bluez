@@ -202,7 +202,8 @@ static void mark_notify_data_invalid_if_in_range(void *data, void *user_data)
 
 static bool service_list_add_service(struct service_list **head,
 						struct service_list **tail,
-						uint16_t start, uint16_t end,
+						bool primary, uint16_t start,
+						uint16_t end,
 						uint8_t uuid[BT_GATT_UUID_SIZE])
 {
 	struct service_list *list;
@@ -211,6 +212,7 @@ static bool service_list_add_service(struct service_list **head,
 	if (!list)
 		return false;
 
+	list->service.primary = primary;
 	list->service.start_handle = start;
 	list->service.end_handle = end;
 	memcpy(list->service.uuid, uuid, UUID_BYTES);
@@ -668,7 +670,8 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 
 		/* Store the service */
 		if (!service_list_add_service(&op->result_head,
-					&op->result_tail, start, end, uuid)) {
+					&op->result_tail, true, start, end,
+					uuid)) {
 			util_debug(client->debug_callback, client->debug_data,
 						"Failed to store service");
 			success = false;
