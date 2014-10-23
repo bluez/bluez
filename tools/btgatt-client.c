@@ -174,11 +174,18 @@ static void print_uuid(const uint8_t uuid[16])
 static void print_service(const bt_gatt_service_t *service)
 {
 	struct bt_gatt_characteristic_iter iter;
+	struct bt_gatt_incl_service_iter include_iter;
 	const bt_gatt_characteristic_t *chrc;
+	const bt_gatt_included_service_t *incl;
 	size_t i;
 
 	if (!bt_gatt_characteristic_iter_init(&iter, service)) {
 		PRLOG("Failed to initialize characteristic iterator\n");
+		return;
+	}
+
+	if (!bt_gatt_include_service_iter_init(&include_iter, service)) {
+		PRLOG("Failed to initialize include service iterator\n");
 		return;
 	}
 
@@ -187,6 +194,14 @@ static void print_service(const bt_gatt_service_t *service)
 				service->start_handle, service->end_handle,
 				service->primary ? "primary" : "secondary");
 	print_uuid(service->uuid);
+
+	while (bt_gatt_include_service_iter_next(&include_iter, &incl)) {
+		printf("\t  " COLOR_GREEN "include" COLOR_OFF " - handle: "
+					"0x%04x, - start: 0x%04x, end: 0x%04x,"
+					"uuid: ", incl->handle,
+					incl->start_handle, incl->end_handle);
+		print_uuid(incl->uuid);
+	}
 
 	while (bt_gatt_characteristic_iter_next(&iter, &chrc)) {
 		printf("\t  " COLOR_YELLOW "charac" COLOR_OFF
