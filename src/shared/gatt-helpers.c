@@ -193,6 +193,80 @@ struct discovery_op {
 	bt_gatt_destroy_func_t destroy;
 };
 
+bool bt_gatt_iter_next_included_service(struct bt_gatt_iter *iter,
+				uint16_t *handle, uint16_t *start_handle,
+				uint16_t *end_handle, uint8_t uuid[16])
+{
+	struct bt_gatt_result *read_result;
+	const void *pdu_ptr;
+	int i = 0;
+
+	if (!iter || !iter->result || !handle || !start_handle || !end_handle
+								|| !uuid)
+		return false;
+
+	if (iter->result->opcode != BT_ATT_OP_READ_BY_TYPE_RSP)
+		return false;
+
+	/*
+	 * iter->result points to READ_BY_TYPE_RSP with data length containing:
+	 * 2 octets - include service handle
+	 * 2 octets - start handle of included service
+	 * 2 octets - end handle of included service
+	 * optional 2  octets - Bluetooth UUID
+	 */
+	if (iter->result->data_len != 8 && iter->result->data_len != 6)
+		return false;
+
+	pdu_ptr = iter->result->pdu + iter->pos;
+
+	/* This result contains 16 bit UUID */
+	if (iter->result->data_len == 8) {
+		*handle = get_le16(pdu_ptr);
+		*start_handle = get_le16(pdu_ptr + 2);
+		*end_handle = get_le16(pdu_ptr + 4);
+		convert_uuid_le(pdu_ptr + 6, 2, uuid);
+
+		iter->pos += iter->result->data_len;
+
+		if (iter->pos == iter->result->pdu_len) {
+			iter->result = iter->result->next;
+			iter->pos = 0;
+		}
+
+		return true;
+	}
+
+	*handle = get_le16(pdu_ptr);
+	*start_handle = get_le16(pdu_ptr + 2);
+	*end_handle = get_le16(pdu_ptr + 4);
+	read_result = iter->result;
+
+	/*
+	 * Find READ_RSP with include service UUID.
+	 * If number of current data set in READ_BY_TYPE_RSP is n, then we must
+	 * go to n'th PDU next to current item->result
+	 */
+	for (read_result = read_result->next; read_result; i++) {
+		if (i >= (iter->pos / iter->result->data_len))
+			break;
+
+		read_result = read_result->next;
+	}
+
+	if (!read_result)
+		return false;
+
+	convert_uuid_le(read_result->pdu, read_result->data_len, uuid);
+	iter->pos += iter->result->data_len;
+	if (iter->pos == iter->result->pdu_len) {
+		iter->result = read_result->next;
+		iter->pos = 0;
+	}
+
+	return true;
+}
+
 bool bt_gatt_iter_next_service(struct bt_gatt_iter *iter,
 				uint16_t *start_handle, uint16_t *end_handle,
 				uint8_t uuid[16])
