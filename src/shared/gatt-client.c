@@ -706,8 +706,8 @@ static void discover_chrcs_cb(bool success, uint8_t att_ecode,
 	for (i = 0; i < chrc_count; i++) {
 		op->cur_chrc_index = i;
 		op->cur_chrc = chrcs + i;
-		desc_start = chrcs[i].chrc_external.value_handle + 1;
-		if (desc_start > chrcs[i].chrc_external.end_handle)
+		desc_start = chrcs[i].chrc_external.value_handle;
+		if (desc_start++ == chrcs[i].chrc_external.end_handle)
 			continue;
 
 		if (bt_gatt_discover_descriptors(client->att, desc_start,
