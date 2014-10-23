@@ -123,6 +123,16 @@ unsigned int bt_gatt_result_characteristic_count(struct bt_gatt_result *result)
 	if (result->opcode != BT_ATT_OP_READ_BY_TYPE_RSP)
 		return 0;
 
+	/*
+	 * Data length contains 7 or 21 octets:
+	 * 2 octets: Attribute handle
+	 * 1 octet: Characteristic properties
+	 * 2 octets: Characteristic value handle
+	 * 2 or 16 octets: characteristic UUID
+	 */
+	if (result->data_len != 21 && result->data_len != 7)
+		return 0;
+
 	return result_element_count(result);
 }
 
@@ -237,6 +247,16 @@ bool bt_gatt_iter_next_characteristic(struct bt_gatt_iter *iter,
 		return false;
 
 	if (iter->result->opcode != BT_ATT_OP_READ_BY_TYPE_RSP)
+		return false;
+
+	/*
+	 * Data length contains 7 or 21 octets:
+	 * 2 octets: Attribute handle
+	 * 1 octet: Characteristic properties
+	 * 2 octets: Characteristic value handle
+	 * 2 or 16 octets: characteristic UUID
+	 */
+	if (iter->result->data_len != 21 && iter->result->data_len != 7)
 		return false;
 
 	op = iter->result->op;
