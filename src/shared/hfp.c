@@ -62,6 +62,18 @@ struct hfp_gw {
 	bool destroyed;
 };
 
+struct hfp_hf {
+	int ref_count;
+	int fd;
+	bool close_on_unref;
+	struct io *io;
+	struct ringbuf *read_buf;
+	struct ringbuf *write_buf;
+
+	bool in_disconnect;
+	bool destroyed;
+};
+
 struct cmd_handler {
 	char *prefix;
 	void *user_data;
@@ -806,4 +818,84 @@ bool hfp_gw_disconnect(struct hfp_gw *hfp)
 		return false;
 
 	return io_shutdown(hfp->io);
+}
+
+struct hfp_hf *hfp_hf_new(int fd)
+{
+	struct hfp_hf *hfp;
+
+	if (fd < 0)
+		return NULL;
+
+	hfp = new0(struct hfp_hf, 1);
+	if (!hfp)
+		return NULL;
+
+	hfp->fd = fd;
+	hfp->close_on_unref = false;
+
+	hfp->read_buf = ringbuf_new(4096);
+	if (!hfp->read_buf) {
+		free(hfp);
+		return NULL;
+	}
+
+	hfp->write_buf = ringbuf_new(4096);
+	if (!hfp->write_buf) {
+		ringbuf_free(hfp->read_buf);
+		free(hfp);
+		return NULL;
+	}
+
+	hfp->io = io_new(fd);
+	if (!hfp->io) {
+		ringbuf_free(hfp->write_buf);
+		ringbuf_free(hfp->read_buf);
+		free(hfp);
+		return NULL;
+	}
+
+	return hfp_hf_ref(hfp);
+}
+
+struct hfp_hf *hfp_hf_ref(struct hfp_hf *hfp)
+{
+	if (!hfp)
+		return NULL;
+
+	__sync_fetch_and_add(&hfp->ref_count, 1);
+
+	return hfp;
+}
+
+void hfp_hf_unref(struct hfp_hf *hfp)
+{
+	if (!hfp)
+		return;
+
+	if (__sync_sub_and_fetch(&hfp->ref_count, 1))
+		return;
+
+	io_set_write_handler(hfp->io, NULL, NULL, NULL);
+	io_set_read_handler(hfp->io, NULL, NULL, NULL);
+	io_set_disconnect_handler(hfp->io, NULL, NULL, NULL);
+
+	io_destroy(hfp->io);
+	hfp->io = NULL;
+
+	if (hfp->close_on_unref)
+		close(hfp->fd);
+
+	ringbuf_free(hfp->read_buf);
+	hfp->read_buf = NULL;
+
+	ringbuf_free(hfp->write_buf);
+	hfp->write_buf = NULL;
+
+	if (!hfp->in_disconnect) {
+		free(hfp);
+		return;
+	}
+
+	hfp->destroyed = true;
 }

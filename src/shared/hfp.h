@@ -124,3 +124,10 @@ bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 								uint8_t len);
 bool hfp_gw_result_has_next(struct hfp_gw_result *result);
+
+struct hfp_hf;
+
+struct hfp_hf *hfp_hf_new(int fd);
+
+struct hfp_hf *hfp_hf_ref(struct hfp_hf *hfp);
+void hfp_hf_unref(struct hfp_hf *hfp);
