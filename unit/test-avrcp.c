@@ -1076,6 +1076,9 @@ static void test_client(gconstpointer data)
 	if (g_str_equal(context->data->test_name, "/TP/PTH/BV-01-C"))
 		avrcp_send_passthrough(context->session, 0, AVC_PLAY);
 
+	if (g_str_equal(context->data->test_name, "/TP/PTH/BV-02-C"))
+		avrcp_send_passthrough(context->session, 0, AVC_FAST_FORWARD);
+
 	execute_context(context);
 }
 
@@ -2122,6 +2125,19 @@ int main(int argc, char *argv[])
 				AVC_OP_PASSTHROUGH, AVC_PLAY),
 			raw_pdu(0x10, 0x11, 0x0e, 0x00, 0x48,
 				AVC_OP_PASSTHROUGH, AVC_PLAY | 0x80, 0x00));
+
+	define_test("/TP/PTH/BV-02-C", test_client,
+			raw_pdu(0x00, 0x11, 0x0e, 0x00, 0x48,
+				AVC_OP_PASSTHROUGH, AVC_FAST_FORWARD, 0x00),
+			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_ACCEPTED, 0x48,
+				AVC_OP_PASSTHROUGH, AVC_FAST_FORWARD),
+			raw_pdu(0x10, 0x11, 0x0e, 0x00, 0x48,
+				AVC_OP_PASSTHROUGH, AVC_FAST_FORWARD | 0x80,
+				0x00),
+			raw_pdu(0x12, 0x11, 0x0e, AVC_CTYPE_ACCEPTED, 0x48,
+				AVC_OP_PASSTHROUGH, AVC_FAST_FORWARD | 0x80),
+			raw_pdu(0x20, 0x11, 0x0e, 0x00, 0x48,
+				AVC_OP_PASSTHROUGH, AVC_FAST_FORWARD, 0x00));
 
 	/* Request continuing response - TG */
 	define_test("/TP/RCR/BV-02-C", test_server,
