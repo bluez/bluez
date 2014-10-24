@@ -527,6 +527,42 @@ static void test_hf_send_command(gconstpointer data)
 	execute_context(context);
 }
 
+static void hf_result_handler(struct hfp_hf_result *result,
+							void *user_data)
+{
+	struct context *context = user_data;
+
+	hfp_hf_disconnect(context->hfp_hf);
+}
+
+static void test_hf_unsolicited(gconstpointer data)
+{
+	struct context *context = create_context(data);
+	bool ret;
+
+	context->hfp_hf = hfp_hf_new(context->fd_client);
+	g_assert(context->hfp_hf);
+
+	ret = hfp_hf_set_close_on_unref(context->hfp_hf, true);
+	g_assert(ret);
+
+	if (context->data->hf_result_func) {
+		const struct test_pdu *pdu;
+
+		pdu = &context->data->pdu_list[context->pdu_offset++];
+
+		ret = hfp_hf_register(context->hfp_hf,
+						context->data->hf_result_func,
+						(char *)pdu->data, context,
+						NULL);
+		g_assert(ret);
+	}
+
+	send_pdu(context);
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -612,6 +648,30 @@ int main(int argc, char *argv[])
 			frg_pdu('\r', '\n', '+', 'B', 'R', 'S', 'F', '\r',
 									'\n'),
 			frg_pdu('\r', '\n', 'O', 'k', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_unsolicited_1", test_hf_unsolicited,
+			hf_result_handler, NULL,
+			raw_pdu('+', 'C', 'L', 'C', 'C', '\0'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C'),
+			frg_pdu('C', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_unsolicited_2", test_hf_unsolicited,
+			hf_result_handler, NULL,
+			raw_pdu('+', 'C', 'L', 'C', 'C', '\0'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1'),
+			frg_pdu(',', '3', ',', '0', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_unsolicited_3", test_hf_unsolicited,
+			hf_result_handler, NULL,
+			raw_pdu('+', 'C', 'L', 'C', 'C', '\0'),
+			frg_pdu('\r'), frg_pdu('\n'), frg_pdu('+'),
+			frg_pdu('C'), frg_pdu('L'), frg_pdu('C'), frg_pdu('C'),
+			frg_pdu(':'), frg_pdu('1'), frg_pdu(','), frg_pdu('3'),
+			frg_pdu(','), frg_pdu('0'), frg_pdu('\r'),
+			frg_pdu('\n'),
 			data_end());
 
 	return g_test_run();
