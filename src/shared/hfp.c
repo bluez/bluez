@@ -70,6 +70,10 @@ struct hfp_hf {
 	struct ringbuf *read_buf;
 	struct ringbuf *write_buf;
 
+	hfp_debug_func_t debug_callback;
+	hfp_destroy_func_t debug_destroy;
+	void *debug_data;
+
 	bool in_disconnect;
 	bool destroyed;
 };
@@ -886,6 +890,8 @@ void hfp_hf_unref(struct hfp_hf *hfp)
 	if (hfp->close_on_unref)
 		close(hfp->fd);
 
+	hfp_hf_set_debug(hfp, NULL, NULL, NULL);
+
 	ringbuf_free(hfp->read_buf);
 	hfp->read_buf = NULL;
 
@@ -898,4 +904,55 @@ void hfp_hf_unref(struct hfp_hf *hfp)
 	}
 
 	hfp->destroyed = true;
+}
+
+static void hf_read_tracing(const void *buf, size_t count,
+							void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	util_hexdump('>', buf, count, hfp->debug_callback, hfp->debug_data);
+}
+
+static void hf_write_tracing(const void *buf, size_t count,
+							void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	util_hexdump('<', buf, count, hfp->debug_callback, hfp->debug_data);
+}
+
+bool hfp_hf_set_debug(struct hfp_hf *hfp, hfp_debug_func_t callback,
+				void *user_data, hfp_destroy_func_t destroy)
+{
+	if (!hfp)
+		return false;
+
+	if (hfp->debug_destroy)
+		hfp->debug_destroy(hfp->debug_data);
+
+	hfp->debug_callback = callback;
+	hfp->debug_destroy = destroy;
+	hfp->debug_data = user_data;
+
+	if (hfp->debug_callback) {
+		ringbuf_set_input_tracing(hfp->read_buf, hf_read_tracing, hfp);
+		ringbuf_set_input_tracing(hfp->write_buf, hf_write_tracing,
+									hfp);
+	} else {
+		ringbuf_set_input_tracing(hfp->read_buf, NULL, NULL);
+		ringbuf_set_input_tracing(hfp->write_buf, NULL, NULL);
+	}
+
+	return true;
+}
+
+bool hfp_hf_set_close_on_unref(struct hfp_hf *hfp, bool do_close)
+{
+	if (!hfp)
+		return false;
+
+	hfp->close_on_unref = do_close;
+
+	return true;
 }

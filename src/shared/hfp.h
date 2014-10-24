@@ -131,3 +131,6 @@ struct hfp_hf *hfp_hf_new(int fd);
 
 struct hfp_hf *hfp_hf_ref(struct hfp_hf *hfp);
 void hfp_hf_unref(struct hfp_hf *hfp);
+bool hfp_hf_set_debug(struct hfp_hf *hfp, hfp_debug_func_t callback,
+				void *user_data, hfp_destroy_func_t destroy);
+bool hfp_hf_set_close_on_unref(struct hfp_hf *hfp, bool do_close);
