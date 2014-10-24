@@ -563,6 +563,25 @@ static void test_hf_unsolicited(gconstpointer data)
 	execute_context(context);
 }
 
+static void test_hf_robustness(gconstpointer data)
+{
+	struct context *context = create_context(data);
+	bool ret;
+
+	context->hfp_hf = hfp_hf_new(context->fd_client);
+	g_assert(context->hfp_hf);
+
+	ret = hfp_hf_set_close_on_unref(context->hfp_hf, true);
+	g_assert(ret);
+
+	send_pdu(context);
+
+	hfp_hf_unref(context->hfp_hf);
+	context->hfp_hf = NULL;
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -672,6 +691,27 @@ int main(int argc, char *argv[])
 			frg_pdu(':'), frg_pdu('1'), frg_pdu(','), frg_pdu('3'),
 			frg_pdu(','), frg_pdu('0'), frg_pdu('\r'),
 			frg_pdu('\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_corrupted_1", test_hf_unsolicited,
+			hf_result_handler, NULL,
+			raw_pdu('+', 'C', 'L', 'C', 'C', '\0'),
+			frg_pdu('\r', 'X', '\r', '\n'),
+			frg_pdu('+', 'C', 'L', 'C', 'C', ':', '1', ',', '3'),
+			frg_pdu(',', '0', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_corrupted_2", test_hf_unsolicited,
+			hf_result_handler, NULL,
+			raw_pdu('+', 'C', 'L', 'C', 'C', '\0'),
+			raw_pdu('+', 'C', 'L', 'C', 'C', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_empty", test_hf_robustness, NULL, NULL,
+			raw_pdu('\r'), data_end());
+
+	define_hf_test("/hfp_hf/test_unknown", test_hf_robustness, NULL, NULL,
+			raw_pdu('\r', '\n', 'B', 'R', '\r', '\n'),
 			data_end());
 
 	return g_test_run();
