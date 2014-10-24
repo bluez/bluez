@@ -32,6 +32,8 @@ enum hfp_result {
 	HFP_RESULT_NO_DIALTONE	= 6,
 	HFP_RESULT_BUSY		= 7,
 	HFP_RESULT_NO_ANSWER	= 8,
+	HFP_RESULT_DELAYED	= 9,
+	HFP_RESULT_BLACKLISTED	= 10,
 };
 
 enum hfp_error {
@@ -130,6 +132,8 @@ struct hfp_hf_result;
 typedef void (*hfp_hf_result_func_t)(struct hfp_hf_result *result,
 							void *user_data);
 
+typedef void (*hfp_response_func_t)(enum hfp_result result, void *user_data);
+
 struct hfp_hf;
 
 struct hfp_hf *hfp_hf_new(int fd);
@@ -148,3 +152,5 @@ bool hfp_hf_register(struct hfp_hf *hfp, hfp_hf_result_func_t callback,
 					const char *prefix, void *user_data,
 					hfp_destroy_func_t destroy);
 bool hfp_hf_unregister(struct hfp_hf *hfp, const char *prefix);
+bool hfp_hf_send_command(struct hfp_hf *hfp, hfp_response_func_t resp_cb,
+				void *user_data, const char *format, ...);
