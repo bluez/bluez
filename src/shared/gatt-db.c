@@ -802,3 +802,54 @@ bool gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle,
 	return true;
 
 }
+
+struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
+							uint16_t handle)
+{
+	return NULL;
+}
+
+const bt_uuid_t *gatt_db_attribute_get_type(struct gatt_db_attribute *attrib)
+{
+	return NULL;
+}
+
+uint16_t gatt_db_attribute_get_handle(struct gatt_db_attribute *attrib)
+{
+	return 0;
+}
+
+bool gatt_db_attribute_get_service_uuid(struct gatt_db_attribute *attrib,
+							bt_uuid_t *uuid)
+{
+	return false;
+}
+
+bool gatt_db_attribute_get_service_handles(struct gatt_db_attribute *attrib,
+						uint16_t *start_handle,
+						uint16_t *end_handle)
+{
+	return false;
+}
+
+bool gatt_db_attribute_get_permissions(struct gatt_db_attribute *attrib,
+							uint32_t *permissions)
+{
+	return false;
+}
+
+bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
+				uint8_t opcode, bdaddr_t *bdaddr,
+				gatt_db_attribute_read_t func, void *user_data)
+{
+	return false;
+}
+
+bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t opcode, bdaddr_t *bdaddr,
+					gatt_db_attribute_write_t func,
+					void *user_data)
+{
+	return false;
+}
