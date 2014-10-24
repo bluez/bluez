@@ -70,6 +70,8 @@ struct hfp_hf {
 	struct ringbuf *read_buf;
 	struct ringbuf *write_buf;
 
+	struct queue *event_handlers;
+
 	hfp_debug_func_t debug_callback;
 	hfp_destroy_func_t debug_destroy;
 	void *debug_data;
@@ -92,6 +94,18 @@ struct cmd_handler {
 struct hfp_gw_result {
 	const char *data;
 	unsigned int offset;
+};
+
+struct hfp_hf_result {
+	const char *data;
+	unsigned int offset;
+};
+
+struct event_handler {
+	char *prefix;
+	void *user_data;
+	hfp_destroy_func_t destroy;
+	hfp_hf_result_func_t callback;
 };
 
 static void destroy_cmd_handler(void *data)
@@ -828,6 +842,29 @@ bool hfp_gw_disconnect(struct hfp_gw *hfp)
 	return io_shutdown(hfp->io);
 }
 
+static bool match_handler_event_prefix(const void *a, const void *b)
+{
+	const struct event_handler *handler = a;
+	const char *prefix = b;
+
+	if (memcmp(handler->prefix, prefix, strlen(prefix)))
+		return false;
+
+	return true;
+}
+
+static void destroy_event_handler(void *data)
+{
+	struct event_handler *handler = data;
+
+	if (handler->destroy)
+		handler->destroy(handler->user_data);
+
+	free(handler->prefix);
+
+	free(handler);
+}
+
 struct hfp_hf *hfp_hf_new(int fd)
 {
 	struct hfp_hf *hfp;
@@ -857,6 +894,15 @@ struct hfp_hf *hfp_hf_new(int fd)
 
 	hfp->io = io_new(fd);
 	if (!hfp->io) {
+		ringbuf_free(hfp->write_buf);
+		ringbuf_free(hfp->read_buf);
+		free(hfp);
+		return NULL;
+	}
+
+	hfp->event_handlers = queue_new();
+	if (!hfp->event_handlers) {
+		io_destroy(hfp->io);
 		ringbuf_free(hfp->write_buf);
 		ringbuf_free(hfp->read_buf);
 		free(hfp);
@@ -901,6 +947,9 @@ void hfp_hf_unref(struct hfp_hf *hfp)
 
 	ringbuf_free(hfp->write_buf);
 	hfp->write_buf = NULL;
+
+	queue_destroy(hfp->event_handlers, destroy_event_handler);
+	hfp->event_handlers = NULL;
 
 	if (!hfp->in_disconnect) {
 		free(hfp);
@@ -957,6 +1006,57 @@ bool hfp_hf_set_close_on_unref(struct hfp_hf *hfp, bool do_close)
 		return false;
 
 	hfp->close_on_unref = do_close;
+
+	return true;
+}
+
+bool hfp_hf_register(struct hfp_hf *hfp, hfp_hf_result_func_t callback,
+						const char *prefix,
+						void *user_data,
+						hfp_destroy_func_t destroy)
+{
+	struct event_handler *handler;
+
+	if (!callback)
+		return false;
+
+	handler = new0(struct event_handler, 1);
+	if (!handler)
+		return false;
+
+	handler->callback = callback;
+	handler->user_data = user_data;
+
+	handler->prefix = strdup(prefix);
+	if (!handler->prefix) {
+		free(handler);
+		return false;
+	}
+
+	if (queue_find(hfp->event_handlers, match_handler_event_prefix,
+							handler->prefix)) {
+		destroy_event_handler(handler);
+		return false;
+	}
+
+	handler->destroy = destroy;
+
+	return queue_push_tail(hfp->event_handlers, handler);
+}
+
+bool hfp_hf_unregister(struct hfp_hf *hfp, const char *prefix)
+{
+	struct cmd_handler *handler;
+
+	/* Cast to void as queue_remove needs that */
+	handler = queue_remove_if(hfp->event_handlers,
+						match_handler_event_prefix,
+						(void *) prefix);
+
+	if (!handler)
+		return false;
+
+	destroy_event_handler(handler);
 
 	return true;
 }

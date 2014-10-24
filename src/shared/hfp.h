@@ -125,6 +125,11 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 								uint8_t len);
 bool hfp_gw_result_has_next(struct hfp_gw_result *result);
 
+struct hfp_hf_result;
+
+typedef void (*hfp_hf_result_func_t)(struct hfp_hf_result *result,
+							void *user_data);
+
 struct hfp_hf;
 
 struct hfp_hf *hfp_hf_new(int fd);
@@ -139,3 +144,7 @@ bool hfp_hf_set_disconnect_handler(struct hfp_hf *hfp,
 					void *user_data,
 					hfp_destroy_func_t destroy);
 bool hfp_hf_disconnect(struct hfp_hf *hfp);
+bool hfp_hf_register(struct hfp_hf *hfp, hfp_hf_result_func_t callback,
+					const char *prefix, void *user_data,
+					hfp_destroy_func_t destroy);
+bool hfp_hf_unregister(struct hfp_hf *hfp, const char *prefix);
