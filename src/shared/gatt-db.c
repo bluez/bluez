@@ -428,6 +428,7 @@ static void read_by_group_type(void *data, void *user_data)
 {
 	struct read_by_group_type_data *search_data = user_data;
 	struct gatt_db_service *service = data;
+	uint16_t grp_start, grp_end;
 
 	if (!service->active)
 		return;
@@ -439,7 +440,15 @@ static void read_by_group_type(void *data, void *user_data)
 	if (bt_uuid_cmp(&search_data->uuid, &service->attributes[0]->uuid))
 		return;
 
-	if (service->attributes[0]->handle < search_data->start_handle)
+	grp_start = service->attributes[0]->handle;
+	grp_end = grp_start + service->num_handles - 1;
+
+	if (grp_end < search_data->start_handle ||
+				grp_start > search_data->end_handle)
+		return;
+
+	if (service->attributes[0]->handle < search_data->start_handle ||
+		service->attributes[0]->handle > search_data->end_handle)
 		return;
 
 	/* Remember size of uuid */
