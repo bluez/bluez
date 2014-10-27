@@ -914,7 +914,28 @@ bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
 				uint8_t opcode, bdaddr_t *bdaddr,
 				gatt_db_attribute_read_t func, void *user_data)
 {
-	return false;
+	uint8_t *value;
+
+	if (!attrib || !func)
+		return false;
+
+	if (attrib->read_func) {
+		/* TODO: Pass callback function to read_func */
+		attrib->read_func(attrib->handle, offset, opcode, bdaddr,
+							attrib->user_data);
+		return true;
+	}
+
+	/* Check boundary if value is stored in the db */
+	if (offset > attrib->value_len)
+		return false;
+
+	/* Guard against invalid access if offset equals to value length */
+	value = offset == attrib->value_len ? NULL : &attrib->value[offset];
+
+	func(attrib, 0, value, attrib->value_len - offset, user_data);
+
+	return true;
 }
 
 bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
