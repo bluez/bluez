@@ -961,20 +961,20 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 {
 	struct bt_gatt_client *client = op->client;
 	struct service_changed_op *next_sc_op;
-	uint16_t start_handle, end_handle;
+	uint16_t start_handle = 0, end_handle = 0;
 
 	client->in_svc_chngd = false;
 
-	if (!success) {
+	if (!success && att_ecode != BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND) {
 		util_debug(client->debug_callback, client->debug_data,
 			"Failed to discover services within changed range - "
 			"error: 0x%02x", att_ecode);
-		return;
+		goto next;
 	}
 
 	/* No new services in the modified range */
 	if (!op->result_head || !op->result_tail)
-		return;
+		goto next;
 
 	start_handle = op->result_head->service.start_handle;
 	end_handle = op->result_tail->service.end_handle;
@@ -984,6 +984,7 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 	service_list_insert_services(&client->svc_head, &client->svc_tail,
 					op->result_head, op->result_tail);
 
+next:
 	/* Notify the upper layer of changed services */
 	if (client->svc_chngd_callback)
 		client->svc_chngd_callback(start_handle, end_handle,
@@ -999,7 +1000,7 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 	}
 
 	/* Check if the GATT service is not present or has remained unchanged */
-	if (!client->svc_chngd_val_handle ||
+	if (!start_handle || !client->svc_chngd_val_handle ||
 				client->svc_chngd_val_handle < start_handle ||
 				client->svc_chngd_val_handle > end_handle)
 		return;
