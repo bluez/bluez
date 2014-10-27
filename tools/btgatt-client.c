@@ -709,7 +709,7 @@ static void cmd_write_long_value(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	length = argc - 1;
+	length = argc - 2;
 
 	if (length > 0) {
 		if (length > UINT16_MAX) {
