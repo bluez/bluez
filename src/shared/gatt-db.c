@@ -829,7 +829,10 @@ struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
 
 const bt_uuid_t *gatt_db_attribute_get_type(struct gatt_db_attribute *attrib)
 {
-	return NULL;
+	if (!attrib)
+		return NULL;
+
+	return &attrib->uuid;
 }
 
 uint16_t gatt_db_attribute_get_handle(struct gatt_db_attribute *attrib)
