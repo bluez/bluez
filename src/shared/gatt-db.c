@@ -806,7 +806,25 @@ bool gatt_db_get_attribute_permissions(struct gatt_db *db, uint16_t handle,
 struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
 							uint16_t handle)
 {
-	return NULL;
+	struct gatt_db_service *service;
+	uint16_t service_handle;
+
+	if (!db || !handle)
+		return NULL;
+
+	service = queue_find(db->services, find_service_for_handle,
+							UINT_TO_PTR(handle));
+	if (!service)
+		return NULL;
+
+	service_handle = service->attributes[0]->handle;
+
+	/*
+	 * We can safely get attribute from attributes array with offset,
+	 * because find_service_for_handle() check if given handle is
+	 * in service range.
+	 */
+	return service->attributes[handle - service_handle];
 }
 
 const bt_uuid_t *gatt_db_attribute_get_type(struct gatt_db_attribute *attrib)
