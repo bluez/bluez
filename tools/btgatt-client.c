@@ -486,8 +486,8 @@ static void cmd_read_long_value(struct client *cli, char *cmd_str)
 	}
 
 	endptr = NULL;
-	offset = strtol(argv[1], &endptr, 16);
-	if (!endptr || *endptr != '\0' || !handle) {
+	offset = strtol(argv[1], &endptr, 10);
+	if (!endptr || *endptr != '\0') {
 		printf("Invalid offset: %s\n", argv[1]);
 		return;
 	}
