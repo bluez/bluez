@@ -1095,6 +1095,9 @@ static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
 	if (!op)
 		return;
 
+	op->start_handle = start;
+	op->end_handle = end;
+
 	queue_push_tail(client->svc_chngd_queue, op);
 }
 
