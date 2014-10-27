@@ -902,7 +902,12 @@ bool gatt_db_attribute_get_service_handles(struct gatt_db_attribute *attrib,
 bool gatt_db_attribute_get_permissions(struct gatt_db_attribute *attrib,
 							uint32_t *permissions)
 {
-	return false;
+	if (!attrib || !permissions)
+		return false;
+
+	*permissions = attrib->permissions;
+
+	return true;
 }
 
 bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
