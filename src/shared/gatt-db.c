@@ -944,5 +944,30 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 					gatt_db_attribute_write_t func,
 					void *user_data)
 {
-	return false;
+	if (!attrib || !func)
+		return false;
+
+	if (attrib->write_func) {
+		attrib->write_func(attrib->handle, offset, value, len, opcode,
+						bdaddr, attrib->user_data);
+		return true;
+	}
+
+	/* For values stored in db allocate on demand */
+	if (!attrib->value || offset >= attrib->value_len ||
+				len > (unsigned) (attrib->value_len - offset)) {
+		attrib->value = realloc(attrib->value, len + offset);
+		if (!attrib->value)
+			return false;
+		/* Init data in the first allocation */
+		if (!attrib->value_len)
+			memset(attrib->value, 0, offset);
+		attrib->value_len = len + offset;
+	}
+
+	memcpy(&attrib->value[offset], value, len);
+
+	func(attrib, 0, user_data);
+
+	return true;
 }
