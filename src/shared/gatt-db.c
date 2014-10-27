@@ -882,7 +882,21 @@ bool gatt_db_attribute_get_service_handles(struct gatt_db_attribute *attrib,
 						uint16_t *start_handle,
 						uint16_t *end_handle)
 {
-	return false;
+	struct gatt_db_service *service;
+
+	if (!attrib)
+		return false;
+
+	service = attrib->service;
+
+	if (start_handle)
+		*start_handle = service->attributes[0]->handle;
+
+	if (end_handle)
+		*end_handle = service->attributes[0]->handle +
+						service->num_handles - 1;
+
+	return true;
 }
 
 bool gatt_db_attribute_get_permissions(struct gatt_db_attribute *attrib,
