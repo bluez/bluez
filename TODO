@@ -105,6 +105,21 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C1
 
+- Add complete GATT test coverage in unit/test-gatt following the GATT test
+  spec. This could use shared/gatt-client and shared/gatt-server at the same
+  time to test both against eachother. We should definitely have tests for
+  gatt-server and gatt-client simultaneously on one side of the connection.
+
+  Priority: High
+  Complexity: C4
+
+- Define packed structs for ATT protocol PDUs in shared/att-types to improve
+  readability. We should probably do this once there are extensive unit tests
+  for gatt-client/gatt-server so that we don't accidentally break working code.
+
+  Priority: Medium
+  Complexity: C2
+
 - Introduce a handler interface to shared/gatt-client which can be used by the
   upper layer to determine when the link has been disconnected or an ATT
   protocol request times out.
