@@ -304,8 +304,11 @@ static void service_changed_cb(uint16_t start_handle, uint16_t end_handle,
 	printf("\nService Changed handled - start: 0x%04x end: 0x%04x\n",
 						start_handle, end_handle);
 
-	if (!bt_gatt_service_iter_next_by_handle(&iter, start_handle, &service))
+	if (!bt_gatt_service_iter_next_by_handle(&iter, start_handle,
+								&service)) {
+		print_prompt();
 		return;
+	}
 
 	print_service(service);
 
