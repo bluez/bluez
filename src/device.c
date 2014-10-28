@@ -1879,6 +1879,7 @@ static void bonding_request_free(struct bonding_req *bonding)
 		g_free(bonding->cb_iter);
 
 	if (bonding->agent) {
+		agent_cancel(bonding->agent);
 		agent_unref(bonding->agent);
 		bonding->agent = NULL;
 	}
