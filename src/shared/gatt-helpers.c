@@ -1035,7 +1035,7 @@ static void discover_included_cb(uint8_t opcode, const void *pdu,
 		data = new_read_included(cur_result);
 		if (!data) {
 			success = false;
-			goto done;
+			goto failed;
 		}
 
 		read_included(data);
