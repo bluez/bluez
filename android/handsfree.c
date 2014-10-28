@@ -140,6 +140,7 @@ struct hf_device {
 
 	GIOChannel *sco;
 	guint sco_watch;
+	guint delay_sco;
 };
 
 static const struct indicator inds_defaults[] = {
@@ -253,6 +254,9 @@ static void device_destroy(struct hf_device *dev)
 
 	if (dev->sco_watch)
 		g_source_remove(dev->sco_watch);
+
+	if (dev->delay_sco)
+		g_source_remove(dev->delay_sco);
 
 	if (dev->sco) {
 		g_io_channel_shutdown(dev->sco, TRUE, NULL);
@@ -1009,6 +1013,27 @@ static bool connect_sco(struct hf_device *dev)
 	return true;
 }
 
+static gboolean connect_sco_delayed(void *data)
+{
+	struct hf_device *dev = data;
+
+	DBG("");
+
+	dev->delay_sco = 0;
+
+	if (connect_sco(dev))
+		return FALSE;
+
+	/*
+	 * we try connect to negotiated codec. If it fails, and it isn't
+	 * CVSD codec, try connect CVSD
+	 */
+	if (dev->negotiated_codec != CODEC_ID_CVSD)
+		select_codec(dev, CODEC_ID_CVSD);
+
+	return FALSE;
+}
+
 static void at_cmd_bcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
@@ -1031,13 +1056,10 @@ static void at_cmd_bcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 			select_codec(dev, 0);
 			return;
 		}
-		/*
-		 * we try connect to negotiated codec. If it fails, and it isn't
-		 * CVSD codec, try connect CVSD
-		 */
-		if (!connect_sco(dev) && dev->negotiated_codec != CODEC_ID_CVSD)
-			select_codec(dev, CODEC_ID_CVSD);
 
+		/* Delay SCO connection so that OK response is send first */
+		if (dev->delay_sco == 0)
+			dev->delay_sco = g_idle_add(connect_sco_delayed, dev);
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -1075,8 +1097,12 @@ static void at_cmd_bcs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 		hfp_gw_send_result(dev->gw, HFP_RESULT_OK);
 
-		/* Connect sco with negotiated parameters */
-		connect_sco(dev);
+		/*
+		 * Delay SCO connection so that OK response is send first,
+		 * then connect with negotiated parameters.
+		 */
+		if (dev->delay_sco == 0)
+			dev->delay_sco = g_idle_add(connect_sco_delayed, dev);
 		return;
 	case HFP_GW_CMD_TYPE_READ:
 	case HFP_GW_CMD_TYPE_TEST:
@@ -1747,8 +1773,14 @@ failed:
 
 static bool disconnect_sco(struct hf_device *dev)
 {
-	if (!dev->sco)
+	if (!dev->sco) {
+		if (dev->delay_sco) {
+			g_source_remove(dev->delay_sco);
+			dev->delay_sco = 0;
+		}
+
 		return false;
+	}
 
 	set_audio_state(dev, HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTING);
 
