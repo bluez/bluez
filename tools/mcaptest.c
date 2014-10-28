@@ -151,6 +151,8 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 {
 	/* TODO */
 	printf("MCL disconnected\n");
+
+	g_main_loop_quit(mloop);
 }
 
 static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
@@ -174,6 +176,7 @@ static void create_mdl_cb(struct mcap_mdl *mcap_mdl, uint8_t type, GError *gerr,
 	if (gerr) {
 		printf("MDL error: %s\n", gerr->message);
 
+		g_main_loop_quit(mloop);
 		return;
 	}
 
@@ -186,6 +189,8 @@ static void create_mdl_cb(struct mcap_mdl *mcap_mdl, uint8_t type, GError *gerr,
 								NULL, &err)) {
 		printf("Error connecting to mdl: %s\n", err->message);
 		g_error_free(err);
+
+		g_main_loop_quit(mloop);
 	}
 }
 
@@ -255,6 +260,7 @@ static void create_mcl_cb(struct mcap_mcl *mcap_mcl, GError *err, gpointer data)
 	if (err) {
 		printf("Could not connect MCL: %s\n", err->message);
 
+		g_main_loop_quit(mloop);
 		return;
 	}
 
