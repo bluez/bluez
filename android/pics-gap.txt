@@ -1,6 +1,6 @@
 GAP PICS for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 
@@ -224,7 +224,7 @@ TSPC_GAP_9_1	False (*)	Broadcaster: Non-Connectable Mode
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_GAP_10_1	False (*)	Broadcaster: Broadcast Mode
-TSPC_GAP_11_1	False (*)	Broadcaster: Privacy Feature
+TSPC_GAP_11_1	False (*)	Broadcaster: Privacy Feature v.1.0
 TSPC_GAP_11_1A	False (*)	Broadcaster: Privacy Feature v1.1 (O)
 TSPC_GAP_11_2	False (*)	Broadcaster: Resolvable Private Address
 					Generation Procedure
@@ -280,7 +280,7 @@ TSPC_GAP_16_1	False (*)	Observer: Observation Procedure
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_GAP_17_1	False (*)	Observer: Privacy Feature (O)
+TSPC_GAP_17_1	False (*)	Observer: Privacy Feature v1.0 (O)
 TSPC_GAP_17_1A	False (*)	Observer: Privacy Feature v1.1 (O)
 TSPC_GAP_17_2	False (*)	Observer: Non-Resolvable Private Address
 					Generation Procedure (C.1)
@@ -460,7 +460,7 @@ C.2: Mandatory if TSPC_GAP_0A_1 and TSPC_GAP_27_4 are supported,
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_GAP_26_1	False (*)	Peripheral: Privacy Feature (O)
+TSPC_GAP_26_1	False (*)	Peripheral: Privacy Feature v1.0 (O)
 TSPC_GAP_26_1A	True		Peripheral: Privacy Feature v1.1 (O)
 TSPC_GAP_26_2	True		Peripheral: Non-Resolvable Private Address
 					Generation Procedure (C.1)
@@ -624,13 +624,13 @@ C.1: Optional if TSPC_GAP_35_1 is supported, otherwise Excluded.
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_GAP_36_1	True		Central: Privacy Feature (C.3)
+TSPC_GAP_36_1	False (*)	Central: Privacy Feature v1.0 (C.2)
 TSPC_GAP_36_1A	True		Central: Privacy Feature v1.1 (C.4)
 TSPC_GAP_36_2	True		Central: Non-Resolvable Private Address
 					Generation Procedure (C.1)
 TSPC_GAP_36_3	True		Central: Resolvable Private Address Resolution
 					Procedure (C.2)
-TSPC_GAP_36_4	True		Central: Write to Privacy Characteristic
+TSPC_GAP_36_4	False (*)	Central: Write to Privacy Characteristic
 					(Enable/Disable Privacy) (O)
 TSPC_GAP_36_5	True		Central: Resolvable Private Address Generation
 					Procedure (C.6)
@@ -721,7 +721,7 @@ TSPC_GAP_42_1	True		Peripheral BR/EDR/LE: Non-Discoverable Mode
 				(See Spec)
 TSPC_GAP_42_2	True		Peripheral BR/EDR/LE: Discoverable Mode
 				(See Spec)
-TSPC_GAP_42_3	False (*)	Peripheral BR/EDR/LE: Non-Connectable Mode
+TSPC_GAP_42_3	True		Peripheral BR/EDR/LE: Non-Connectable Mode
 				(See Spec)
 TSPC_GAP_42_4	True		Peripheral BR/EDR/LE: Connectable Mode (M)
 TSPC_GAP_42_5	True		Peripheral BR/EDR/LE: Non-Bondable Mode
