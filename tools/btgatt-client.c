@@ -390,7 +390,7 @@ static void cmd_services(struct client *cli, char *cmd_str)
 		uint16_t handle;
 		char *endptr = NULL;
 
-		handle = strtol(argv[1], &endptr, 16);
+		handle = strtol(argv[1], &endptr, 0);
 		if (!endptr || *endptr != '\0') {
 			printf("Invalid start handle: %s\n", argv[1]);
 			return;
@@ -448,7 +448,7 @@ static void cmd_read_value(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	handle = strtol(argv[0], &endptr, 16);
+	handle = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || !handle) {
 		printf("Invalid value handle: %s\n", argv[0]);
 		return;
@@ -482,14 +482,14 @@ static void cmd_read_long_value(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	handle = strtol(argv[0], &endptr, 16);
+	handle = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || !handle) {
 		printf("Invalid value handle: %s\n", argv[0]);
 		return;
 	}
 
 	endptr = NULL;
-	offset = strtol(argv[1], &endptr, 10);
+	offset = strtol(argv[1], &endptr, 0);
 	if (!endptr || *endptr != '\0') {
 		printf("Invalid offset: %s\n", argv[1]);
 		return;
@@ -568,7 +568,7 @@ static void cmd_write_value(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	handle = strtol(argv[0], &endptr, 16);
+	handle = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || !handle) {
 		printf("Invalid handle: %s\n", argv[0]);
 		return;
@@ -595,7 +595,7 @@ static void cmd_write_value(struct client *cli, char *cmd_str)
 				goto done;
 			}
 
-			value[i-1] = strtol(argv[i], &endptr, 16);
+			value[i-1] = strtol(argv[i], &endptr, 0);
 			if (endptr == argv[i] || *endptr != '\0'
 							|| errno == ERANGE) {
 				printf("Invalid value byte: %s\n",
@@ -699,14 +699,14 @@ static void cmd_write_long_value(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	handle = strtol(argv[0], &endptr, 16);
+	handle = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || !handle) {
 		printf("Invalid handle: %s\n", argv[0]);
 		return;
 	}
 
 	endptr = NULL;
-	offset = strtol(argv[1], &endptr, 10);
+	offset = strtol(argv[1], &endptr, 0);
 	if (!endptr || *endptr != '\0' || errno == ERANGE) {
 		printf("Invalid offset: %s\n", argv[1]);
 		return;
@@ -734,7 +734,7 @@ static void cmd_write_long_value(struct client *cli, char *cmd_str)
 				return;
 			}
 
-			value[i-2] = strtol(argv[i], &endptr, 16);
+			value[i-2] = strtol(argv[i], &endptr, 0);
 			if (endptr == argv[i] || *endptr != '\0'
 							|| errno == ERANGE) {
 				printf("Invalid value byte: %s\n",
@@ -808,7 +808,7 @@ static void cmd_register_notify(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	value_handle = strtol(argv[0], &endptr, 16);
+	value_handle = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || !value_handle) {
 		printf("Invalid value handle: %s\n", argv[0]);
 		return;
@@ -844,7 +844,7 @@ static void cmd_unregister_notify(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	id = strtol(argv[0], &endptr, 10);
+	id = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || !id) {
 		printf("Invalid notify id: %s\n", argv[0]);
 		return;
