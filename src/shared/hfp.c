@@ -1321,8 +1321,10 @@ bool hfp_hf_send_command(struct hfp_hf *hfp, hfp_response_func_t resp_cb,
 		return false;
 
 	cmd = new0(struct cmd_response, 1);
-	if (!cmd)
+	if (!cmd) {
+		free(fmt);
 		return false;
+	}
 
 	va_start(ap, format);
 	len = ringbuf_vprintf(hfp->write_buf, fmt, ap);
