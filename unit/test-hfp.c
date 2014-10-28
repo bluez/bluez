@@ -154,8 +154,7 @@ static gboolean send_pdu(gpointer user_data)
 	ssize_t len;
 
 	pdu = &context->data->pdu_list[context->pdu_offset++];
-
-	if (pdu && !pdu->valid)
+	if (!pdu || !pdu->valid)
 		return FALSE;
 
 	len = write(context->fd_server, pdu->data, pdu->size);
