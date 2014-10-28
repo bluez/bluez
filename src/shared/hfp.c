@@ -1098,6 +1098,8 @@ static void hf_process_input(struct hfp_hf *hfp)
 		*ptr = '\0';
 
 		tmp = malloc(len + count);
+		if (!tmp)
+			goto done;
 
 		/* "str" here is not a string so we need to use memcpy */
 		memcpy(tmp, str, len);
