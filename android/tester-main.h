@@ -397,6 +397,13 @@ struct pdu_set {
 		.callback_result.av_audio_state = cb_av_audio_state, \
 	}
 
+#define CALLBACK_RC_PLAY_STATUS(cb, cb_length, cb_position, cb_status) { \
+		.callback = cb, \
+		.callback_result.song_length = cb_length, \
+		.callback_result.song_position = cb_position, \
+		.callback_result.play_status = cb_status, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -466,6 +473,10 @@ typedef enum {
 	/* A2DP cb */
 	CB_A2DP_CONN_STATE,
 	CB_A2DP_AUDIO_STATE,
+
+	/* AVRCP */
+	CB_AVRCP_PLAY_STATUS_REQ,
+	CB_AVRCP_PLAY_STATUS_RSP,
 
 	/* Gatt client */
 	CB_GATTC_REGISTER_CLIENT,
@@ -644,6 +655,9 @@ struct bt_callback_data {
 
 	btav_connection_state_t av_conn_state;
 	btav_audio_state_t av_audio_state;
+	uint32_t song_length;
+	uint32_t song_position;
+	btrc_play_status_t play_status;
 };
 
 /*

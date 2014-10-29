@@ -670,6 +670,30 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
+	if (exp->callback_result.song_length !=
+					step->callback_result.song_length) {
+		tester_debug("Callback song_length mismatch: 0x%x vs 0x%x",
+					step->callback_result.song_length,
+					exp->callback_result.song_length);
+		return false;
+	}
+
+	if (exp->callback_result.song_position !=
+					step->callback_result.song_position) {
+		tester_debug("Callback song_position mismatch: 0x%x vs 0x%x",
+					step->callback_result.song_position,
+					exp->callback_result.song_position);
+		return false;
+	}
+
+	if (exp->callback_result.play_status !=
+					step->callback_result.play_status) {
+		tester_debug("Callback play_status mismatch: 0x%x vs 0x%x",
+					step->callback_result.play_status,
+					exp->callback_result.play_status);
+		return false;
+	}
+
 	if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
 		tester_debug("Callback pairing result mismatch: %d vs %d",
@@ -1900,8 +1924,17 @@ static btav_callbacks_t bta2dp_callbacks = {
 	.audio_state_cb = a2dp_audio_state_cb,
 };
 
+static void avrcp_get_play_status_cb(void)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_AVRCP_PLAY_STATUS_REQ;
+	schedule_callback_verification(step);
+}
+
 static btrc_callbacks_t btavrcp_callbacks = {
 	.size = sizeof(btavrcp_callbacks),
+	.get_play_status_cb = avrcp_get_play_status_cb,
 };
 
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {
