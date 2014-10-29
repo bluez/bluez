@@ -447,7 +447,15 @@ static void process_input(struct hfp_gw *hfp)
 			return;
 
 		*ptr = '\0';
-		count = asprintf(&ptr, "%s%s", str, str2);
+
+		count = len2 + len;
+		ptr = malloc(count);
+		if (!ptr)
+			return;
+
+		memcpy(ptr, str, len);
+		memcpy(ptr + len, str2, len2);
+
 		free_ptr = true;
 		str = ptr;
 	} else {
