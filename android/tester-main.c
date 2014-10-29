@@ -694,6 +694,12 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
+	if (exp->callback_result.rc_index !=
+					step->callback_result.rc_index) {
+		tester_debug("Callback rc_index mismatch");
+		return false;
+	}
+
 	if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
 		tester_debug("Callback pairing result mismatch: %d vs %d",
@@ -1932,9 +1938,19 @@ static void avrcp_get_play_status_cb(void)
 	schedule_callback_verification(step);
 }
 
+static void avrcp_register_notification_cb(btrc_event_id_t event_id,
+								uint32_t param)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_AVRCP_REG_NOTIF_REQ;
+	schedule_callback_verification(step);
+}
+
 static btrc_callbacks_t btavrcp_callbacks = {
 	.size = sizeof(btavrcp_callbacks),
 	.get_play_status_cb = avrcp_get_play_status_cb,
+	.register_notification_cb = avrcp_register_notification_cb,
 };
 
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {

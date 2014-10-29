@@ -26,6 +26,7 @@
 static struct queue *list;
 
 #define AVRCP_GET_PLAY_STATUS		0x30
+#define AVRCP_REGISTER_NOTIFICATION	0x31
 
 #define sdp_rsp_pdu	0x07, \
 			0x00, 0x00, \
@@ -81,6 +82,13 @@ static struct emu_l2cap_cid_data sdp_data = {
 			0x30, 0x00, 0x00, 0x09, 0xbb, 0xbb, 0xbb, 0xbb, 0xaa, \
 							0xaa, 0xaa, 0xaa, 0x00
 
+#define req_track_notif 0x00, 0x11, 0x0e, 0x03, 0x48, 0x00, 0x00, 0x19, 0x58, \
+			0x31, 0x00, 0x00, 0x05, 0x02, 0x00, 0x00, 0x00, 0x00
+
+#define rsp_track_notif 0x00, 0x11, 0x0e, 0x0F, 0x48, 0x00, 0x00, 0x19, 0x58, \
+			0x31, 0x00, 0x00, 0x09, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, \
+							0xFF, 0xFF, 0xFF, 0xFF
+
 static const struct pdu_set pdus[] = {
 	{ raw_pdu(req_dsc), raw_pdu(rsp_dsc) },
 	{ raw_pdu(req_get), raw_pdu(rsp_get) },
@@ -106,7 +114,7 @@ static void print_avrcp(const char *str, void *user_data)
 static void avrcp_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 {
 	struct step *step;
-	uint8_t pdu;
+	uint8_t pdu, event;
 
 	util_hexdump('>', data, len, print_avrcp, NULL);
 
@@ -119,6 +127,15 @@ static void avrcp_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 		step->callback_result.song_position = get_be32(data + 17);
 		step->callback_result.play_status = ((uint8_t *) data)[21];
 		schedule_callback_verification(step);
+		break;
+	case AVRCP_REGISTER_NOTIFICATION:
+		event = ((uint8_t *) data)[13];
+		if (event == 0x02) {
+			step = g_new0(struct step, 1);
+			step->callback = CB_AVRCP_REG_NOTIF_RSP;
+			step->callback_result.rc_index = get_be64(data + 14);
+			schedule_callback_verification(step);
+		}
 		break;
 	}
 }
@@ -229,6 +246,34 @@ static void avrcp_get_play_status_rsp(void)
 	schedule_action_verification(step);
 }
 
+static void avrcp_reg_notif_track_changed_req(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	const struct iovec pdu = raw_pdu(req_track_notif);
+	struct step *step = g_new0(struct step, 1);
+
+	bthost_send_cid_v(bthost, avrcp_data.handle, avrcp_data.cid, &pdu, 1);
+	step->action_status = BT_STATUS_SUCCESS;
+	schedule_action_verification(step);
+}
+
+static void avrcp_reg_notif_track_changed_rsp(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+	uint64_t track;
+	btrc_register_notification_t reg;
+
+	track = 0xffffffffffffffff;
+	memcpy(reg.track, &track, sizeof(btrc_uid_t));
+	step->action_status = data->if_avrcp->register_notification_rsp(
+							BTRC_EVT_TRACK_CHANGE,
+					BTRC_NOTIFICATION_TYPE_INTERIM, &reg);
+
+	schedule_action_verification(step);
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("AVRCP Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -291,6 +336,28 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(avrcp_get_play_status_rsp, NULL),
 		CALLBACK_RC_PLAY_STATUS(CB_AVRCP_PLAY_STATUS_RSP, 0xbbbbbbbb,
 							0xaaaaaaaa, 0x00),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("AVRCP RegNotifTrackChanged - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(set_default_ssp_request_handler, NULL),
+		ACTION_SUCCESS(emu_add_l2cap_server_action, &sdp_setup_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action, &a2dp_setup_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action, &avrcp_setup_data),
+		ACTION_SUCCESS(avrcp_connect_action, NULL),
+		CALLBACK_AV_CONN_STATE(CB_A2DP_CONN_STATE,
+					BTAV_CONNECTION_STATE_CONNECTING),
+		CALLBACK_AV_CONN_STATE(CB_A2DP_CONN_STATE,
+					BTAV_CONNECTION_STATE_CONNECTED),
+		ACTION_SUCCESS(avrcp_reg_notif_track_changed_req, NULL),
+		CALLBACK(CB_AVRCP_REG_NOTIF_REQ),
+		ACTION_SUCCESS(avrcp_reg_notif_track_changed_rsp, NULL),
+		CALLBACK_RC_REG_NOTIF_TRACK_CHANGED(CB_AVRCP_REG_NOTIF_RSP,
+							0xffffffffffffffff),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),

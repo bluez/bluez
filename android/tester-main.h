@@ -404,6 +404,11 @@ struct pdu_set {
 		.callback_result.play_status = cb_status, \
 	}
 
+#define CALLBACK_RC_REG_NOTIF_TRACK_CHANGED(cb, cb_index) { \
+		.callback = cb, \
+		.callback_result.rc_index = cb_index, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -477,6 +482,8 @@ typedef enum {
 	/* AVRCP */
 	CB_AVRCP_PLAY_STATUS_REQ,
 	CB_AVRCP_PLAY_STATUS_RSP,
+	CB_AVRCP_REG_NOTIF_REQ,
+	CB_AVRCP_REG_NOTIF_RSP,
 
 	/* Gatt client */
 	CB_GATTC_REGISTER_CLIENT,
@@ -658,6 +665,7 @@ struct bt_callback_data {
 	uint32_t song_length;
 	uint32_t song_position;
 	btrc_play_status_t play_status;
+	uint64_t rc_index;
 };
 
 /*
