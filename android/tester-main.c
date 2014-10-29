@@ -654,6 +654,22 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
+	if (exp->callback_result.av_conn_state !=
+					step->callback_result.av_conn_state) {
+		tester_debug("Callback av conn state mismatch: 0x%x vs 0x%x",
+					step->callback_result.av_conn_state,
+					exp->callback_result.av_conn_state);
+		return false;
+	}
+
+	if (exp->callback_result.av_audio_state !=
+					step->callback_result.av_audio_state) {
+		tester_debug("Callback av audio state mismatch: 0x%x vs 0x%x",
+					step->callback_result.av_audio_state,
+					exp->callback_result.av_audio_state);
+		return false;
+	}
+
 	if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
 		tester_debug("Callback pairing result mismatch: %d vs %d",
@@ -1863,7 +1879,7 @@ static void a2dp_connection_state_cb(btav_connection_state_t state,
 	struct step *step = g_new0(struct step, 1);
 
 	step->callback = CB_A2DP_CONN_STATE;
-	step->callback_result.state = state;
+	step->callback_result.av_conn_state = state;
 
 	schedule_callback_verification(step);
 }
@@ -1873,7 +1889,7 @@ static void a2dp_audio_state_cb(btav_audio_state_t state, bt_bdaddr_t *bd_addr)
 	struct step *step = g_new0(struct step, 1);
 
 	step->callback = CB_A2DP_AUDIO_STATE;
-	step->callback_result.state = state;
+	step->callback_result.av_audio_state = state;
 
 	schedule_callback_verification(step);
 }

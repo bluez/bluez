@@ -387,14 +387,14 @@ struct pdu_set {
 		.callback_result.channel_state = cb_state, \
 	}
 
-#define CALLBACK_AV_CONN_STATE(cb, cb_state) { \
+#define CALLBACK_AV_CONN_STATE(cb, cb_av_conn_state) { \
 		.callback = cb, \
-		.callback_result.state = cb_state, \
+		.callback_result.av_conn_state = cb_av_conn_state, \
 	}
 
-#define CALLBACK_AV_AUDIO_STATE(cb, cb_state) { \
+#define CALLBACK_AV_AUDIO_STATE(cb, cb_av_audio_state) { \
 		.callback = cb, \
-		.callback_result.state = cb_state, \
+		.callback_result.av_audio_state = cb_av_audio_state, \
 	}
 
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
@@ -641,6 +641,9 @@ struct bt_callback_data {
 	int mdep_cfg_index;
 	bthl_app_reg_state_t app_state;
 	bthl_channel_state_t channel_state;
+
+	btav_connection_state_t av_conn_state;
+	btav_audio_state_t av_audio_state;
 };
 
 /*
