@@ -700,6 +700,22 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
+	if (exp->callback_result.num_of_attrs !=
+					step->callback_result.num_of_attrs) {
+		tester_debug("Callback rc num of attrs mismatch");
+		return false;
+	}
+
+	if (exp->callback_result.attrs) {
+		if (memcmp(step->callback_result.attrs,
+				exp->callback_result.attrs,
+				exp->callback_result.num_of_attrs *
+				sizeof(btrc_element_attr_val_t))) {
+			tester_debug("Callback rc element attributes doesn't match");
+			return false;
+		}
+	}
+
 	if (exp->callback_result.pairing_variant !=
 					step->callback_result.pairing_variant) {
 		tester_debug("Callback pairing result mismatch: %d vs %d",
@@ -1947,10 +1963,20 @@ static void avrcp_register_notification_cb(btrc_event_id_t event_id,
 	schedule_callback_verification(step);
 }
 
+static void avrcp_get_element_attr_cb(uint8_t num_attr,
+						btrc_media_attr_t *p_attrs)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback = CB_AVRCP_GET_ATTR_REQ;
+	schedule_callback_verification(step);
+}
+
 static btrc_callbacks_t btavrcp_callbacks = {
 	.size = sizeof(btavrcp_callbacks),
 	.get_play_status_cb = avrcp_get_play_status_cb,
 	.register_notification_cb = avrcp_register_notification_cb,
+	.get_element_attr_cb = avrcp_get_element_attr_cb,
 };
 
 static const btgatt_client_callbacks_t btgatt_client_callbacks = {

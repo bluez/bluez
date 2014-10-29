@@ -409,6 +409,12 @@ struct pdu_set {
 		.callback_result.rc_index = cb_index, \
 	}
 
+#define CALLBACK_RC_GET_ELEMENT_ATTRIBUTES(cb, cb_num_of_attrs, cb_attrs) { \
+		.callback = cb, \
+		.callback_result.num_of_attrs = cb_num_of_attrs, \
+		.callback_result.attrs = cb_attrs, \
+	}
+
 #define CALLBACK_DEVICE_PROPS(props, prop_cnt) \
 	CALLBACK_PROPS(CB_BT_REMOTE_DEVICE_PROPERTIES, props, prop_cnt)
 
@@ -484,6 +490,8 @@ typedef enum {
 	CB_AVRCP_PLAY_STATUS_RSP,
 	CB_AVRCP_REG_NOTIF_REQ,
 	CB_AVRCP_REG_NOTIF_RSP,
+	CB_AVRCP_GET_ATTR_REQ,
+	CB_AVRCP_GET_ATTR_RSP,
 
 	/* Gatt client */
 	CB_GATTC_REGISTER_CLIENT,
@@ -666,6 +674,8 @@ struct bt_callback_data {
 	uint32_t song_position;
 	btrc_play_status_t play_status;
 	uint64_t rc_index;
+	uint8_t num_of_attrs;
+	btrc_element_attr_val_t *attrs;
 };
 
 /*

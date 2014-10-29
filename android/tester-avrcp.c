@@ -25,6 +25,7 @@
 
 static struct queue *list;
 
+#define AVRCP_GET_ELEMENT_ATTRIBUTES	0x20
 #define AVRCP_GET_PLAY_STATUS		0x30
 #define AVRCP_REGISTER_NOTIFICATION	0x31
 
@@ -89,6 +90,18 @@ static struct emu_l2cap_cid_data sdp_data = {
 			0x31, 0x00, 0x00, 0x09, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, \
 							0xFF, 0xFF, 0xFF, 0xFF
 
+#define req_ele_attr 0x00, 0x11, 0x0e, 0x01, 0x48, 0x00, 0x00, 0x19, 0x58, \
+			0x20, 0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x00, \
+			0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x07
+
+#define rsp_ele_attr 0x02, 0x11, 0x0e, 0x0c, 0x48, 0x00, 0x00, 0x19, 0x58, \
+			0x20, 0x00, 0x00, 0x2a, 0x02, 0x00, 0x00, 0x00, 0x01, \
+			0x00, 0x6a, 0x00, 0x13, 0x47, 0x69, 0x76, 0x65, 0x20, \
+			0x50, 0x65, 0x61, 0x63, 0x65, 0x20, 0x61, 0x20, 0x43, \
+			0x68, 0x61, 0x6e, 0x63, 0x65, 0x00, 0x00, 0x00, 0x07, \
+			0x00, 0x6a, 0x00, 0x06, 0x31, 0x30, 0x33, 0x30, 0x30, \
+									0x30
+
 static const struct pdu_set pdus[] = {
 	{ raw_pdu(req_dsc), raw_pdu(rsp_dsc) },
 	{ raw_pdu(req_get), raw_pdu(rsp_get) },
@@ -105,6 +118,20 @@ static struct emu_l2cap_cid_data a2dp_data = {
 };
 
 static struct emu_l2cap_cid_data avrcp_data;
+
+static btrc_element_attr_val_t ele_attrs[2] = {
+	{
+	.attr_id = BTRC_MEDIA_ATTR_TITLE,
+	.text = {0x47, 0x69, 0x76, 0x65, 0x20, 0x50, 0x65, 0x61, 0x63, 0x65,
+			 0x20, 0x61, 0x20, 0x43, 0x68, 0x61, 0x6e, 0x63, 0x65}
+	},
+	{
+	.attr_id = BTRC_MEDIA_ATTR_PLAYING_TIME,
+	.text = {0x31, 0x30, 0x33, 0x30, 0x30, 0x30}
+	}
+};
+
+static btrc_element_attr_val_t exp_attrs[2];
 
 static void print_avrcp(const char *str, void *user_data)
 {
@@ -136,6 +163,19 @@ static void avrcp_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 			step->callback_result.rc_index = get_be64(data + 14);
 			schedule_callback_verification(step);
 		}
+		break;
+	case AVRCP_GET_ELEMENT_ATTRIBUTES:
+		step = g_new0(struct step, 1);
+		step->callback = CB_AVRCP_GET_ATTR_RSP;
+		step->callback_result.num_of_attrs = ((uint8_t *) data)[13];
+
+		memset(exp_attrs, 0, 2 * sizeof(btrc_element_attr_val_t));
+		exp_attrs[0].attr_id = get_be16(data + 16);
+		memcpy(exp_attrs[0].text, data + 22, 19);
+		exp_attrs[1].attr_id = get_be16(data + 43);
+		memcpy(exp_attrs[1].text, data + 49, 6);
+		step->callback_result.attrs = exp_attrs;
+		schedule_callback_verification(step);
 		break;
 	}
 }
@@ -274,6 +314,29 @@ static void avrcp_reg_notif_track_changed_rsp(void)
 	schedule_action_verification(step);
 }
 
+static void avrcp_get_element_attributes_req(void)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	const struct iovec pdu = raw_pdu(req_ele_attr);
+	struct step *step = g_new0(struct step, 1);
+
+	bthost_send_cid_v(bthost, avrcp_data.handle, avrcp_data.cid, &pdu, 1);
+	step->action_status = BT_STATUS_SUCCESS;
+	schedule_action_verification(step);
+}
+
+static void avrcp_get_element_attributes_rsp(void)
+{
+	struct test_data *data = tester_get_data();
+	struct step *step = g_new0(struct step, 1);
+
+	step->action_status = data->if_avrcp->get_element_attr_rsp(2,
+								ele_attrs);
+
+	schedule_action_verification(step);
+}
+
 static struct test_case test_cases[] = {
 	TEST_CASE_BREDRLE("AVRCP Init",
 		ACTION_SUCCESS(dummy_action, NULL),
@@ -358,6 +421,28 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(avrcp_reg_notif_track_changed_rsp, NULL),
 		CALLBACK_RC_REG_NOTIF_TRACK_CHANGED(CB_AVRCP_REG_NOTIF_RSP,
 							0xffffffffffffffff),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	TEST_CASE_BREDRLE("AVRCP GetElementAttributes - Success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(set_default_ssp_request_handler, NULL),
+		ACTION_SUCCESS(emu_add_l2cap_server_action, &sdp_setup_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action, &a2dp_setup_data),
+		ACTION_SUCCESS(emu_add_l2cap_server_action, &avrcp_setup_data),
+		ACTION_SUCCESS(avrcp_connect_action, NULL),
+		CALLBACK_AV_CONN_STATE(CB_A2DP_CONN_STATE,
+					BTAV_CONNECTION_STATE_CONNECTING),
+		CALLBACK_AV_CONN_STATE(CB_A2DP_CONN_STATE,
+					BTAV_CONNECTION_STATE_CONNECTED),
+		ACTION_SUCCESS(avrcp_get_element_attributes_req, NULL),
+		CALLBACK(CB_AVRCP_GET_ATTR_REQ),
+		ACTION_SUCCESS(avrcp_get_element_attributes_rsp, NULL),
+		CALLBACK_RC_GET_ELEMENT_ATTRIBUTES(CB_AVRCP_GET_ATTR_RSP, 2,
+								ele_attrs),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
