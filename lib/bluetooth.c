@@ -1035,6 +1035,44 @@ const char *bt_compidtostr(int compid)
 		return "Gecko Health Innovations, Inc.";
 	case 386:
 		return "HOP Ubiquitous";
+	case 387:
+		return "To Be Assigned";
+	case 388:
+		return "Nectar";
+	case 389:
+		return "bel'apps LLC";
+	case 390:
+		return "CORE Lighting Ltd";
+	case 391:
+		return "Seraphim Sense Ltd";
+	case 392:
+		return "Unico RBC";
+	case 393:
+		return "Physical Enterprises Inc.";
+	case 394:
+		return "Able Trend Technology Limited";
+	case 395:
+		return "Konica Minolta, Inc.";
+	case 396:
+		return "Wilo SE";
+	case 397:
+		return "Extron Design Services";
+	case 398:
+		return "Fitbit, Inc.";
+	case 399:
+		return "Fireflies Systems";
+	case 400:
+		return "Intelletto Technologies Inc.";
+	case 401:
+		return "FDK CORPORATION";
+	case 402:
+		return "Cloudleaf, Inc";
+	case 403:
+		return "Maveric Automation LLC";
+	case 404:
+		return "Acoustic Stream Corporation";
+	case 405:
+		return "Zuli";
 	case 65535:
 		return "internal use";
 	default:
