@@ -257,6 +257,8 @@ static void mcl_connected(struct mcap_mcl *mcap_mcl, gpointer data)
 
 static void create_mcl_cb(struct mcap_mcl *mcap_mcl, GError *err, gpointer data)
 {
+	printf("%s\n", __func__);
+
 	if (err) {
 		printf("Could not connect MCL: %s\n", err->message);
 
