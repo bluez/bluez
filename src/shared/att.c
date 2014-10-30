@@ -194,6 +194,16 @@ static void destroy_att_send_op(void *data)
 	free(op);
 }
 
+static void cancel_att_send_op(struct att_send_op *op)
+{
+	if (op->destroy)
+		op->destroy(op->user_data);
+
+	op->user_data = NULL;
+	op->callback = NULL;
+	op->destroy = NULL;
+}
+
 struct att_notify {
 	unsigned int id;
 	uint16_t opcode;
@@ -1036,15 +1046,13 @@ bool bt_att_cancel(struct bt_att *att, unsigned int id)
 
 	if (att->pending_req && att->pending_req->id == id) {
 		/* Don't cancel the pending request; remove it's handlers */
-		att->pending_req->callback = NULL;
-		att->pending_req->destroy = NULL;
+		cancel_att_send_op(att->pending_req);
 		return true;
 	}
 
 	if (att->pending_ind && att->pending_ind->id == id) {
 		/* Don't cancel the pending indication; remove it's handlers */
-		att->pending_ind->callback = NULL;
-		att->pending_ind->destroy = NULL;
+		cancel_att_send_op(att->pending_ind);
 		return true;
 	}
 
@@ -1080,17 +1088,13 @@ bool bt_att_cancel_all(struct bt_att *att)
 	queue_remove_all(att->ind_queue, NULL, NULL, destroy_att_send_op);
 	queue_remove_all(att->write_queue, NULL, NULL, destroy_att_send_op);
 
-	if (att->pending_req) {
+	if (att->pending_req)
 		/* Don't cancel the pending request; remove it's handlers */
-		att->pending_req->callback = NULL;
-		att->pending_req->destroy = NULL;
-	}
+		cancel_att_send_op(att->pending_req);
 
-	if (att->pending_ind) {
-		/* Don't cancel the pending indication; remove it's handlers */
-		att->pending_ind->callback = NULL;
-		att->pending_ind->destroy = NULL;
-	}
+	if (att->pending_ind)
+		/* Don't cancel the pending request; remove it's handlers */
+		cancel_att_send_op(att->pending_ind);
 
 	return true;
 }
