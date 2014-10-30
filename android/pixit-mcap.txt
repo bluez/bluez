@@ -1,6 +1,6 @@
 MCAP PIXIT for the PTS tool.
 
-PTS version: 5.2
+PTS version: 5.3
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -19,7 +19,7 @@ TSPX_MCAP_l2cap_psm_data_B
 TSPX_MCAP_bluetooth_clock_access_resolution		55
 TSPX_MCAP_create_mdl_configuration
 TSPX_MCAP_data_channel_setup_mode
-TSPX_MCAP_iut_initiate_connection			TRUE (*)
+TSPX_MCAP_iut_initiate_connection			FALSE
 TSPX_MCAP_mdep_id					12
 TSPX_MCAP_profile_name
 TSPX_MCAP_sync_lead_time				0BB8
