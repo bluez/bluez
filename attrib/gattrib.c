@@ -651,11 +651,6 @@ gboolean g_attrib_cancel_all(GAttrib *attrib)
 	return ret;
 }
 
-gboolean g_attrib_set_debug(GAttrib *attrib,
-		GAttribDebugFunc func, gpointer user_data)
-{
-	return TRUE;
-}
 
 uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
 {
