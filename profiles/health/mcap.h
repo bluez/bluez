@@ -124,12 +124,12 @@ typedef struct {
 } __attribute__ ((packed)) mcap_md_sync_rsp;
 
 typedef struct {
-        uint8_t         op;
-	uint8_t         rc;
-	uint8_t         btclock;
-        uint16_t        sltime;
-	uint16_t        timestnr;
-	uint16_t        timestna;
+	uint8_t		op;
+	uint8_t		rc;
+	uint8_t		btclock;
+	uint16_t	sltime;
+	uint16_t	timestnr;
+	uint16_t	timestna;
 } __attribute__ ((packed)) mcap_md_sync_cap_rsp;
 
 typedef struct {
