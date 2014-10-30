@@ -817,6 +817,12 @@ void bt_att_unref(struct bt_att *att)
 	bt_att_unregister_all(att);
 	bt_att_cancel_all(att);
 
+	if (att->pending_req)
+		destroy_att_send_op(att->pending_req);
+
+	if (att->pending_ind)
+		destroy_att_send_op(att->pending_ind);
+
 	io_destroy(att->io);
 	att->io = NULL;
 
