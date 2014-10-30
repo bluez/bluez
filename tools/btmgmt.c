@@ -2292,6 +2292,117 @@ static void cmd_local_oob(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static void remote_oob_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_addr_info *rp = param;
+	char addr[18];
+
+	if (status != 0) {
+		fprintf(stderr, "Add Remote OOB Data failed: 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		return;
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small (%u bytes) add_remote_oob rsp\n",
+									len);
+		return;
+	}
+
+	ba2str(&rp->bdaddr, addr);
+	printf("Remote OOB data added for %s (%u)\n", addr, rp->type);
+}
+
+static void remote_oob_usage(void)
+{
+	printf("Usage: btmgmt remote-oob [-t <addr_type>] "
+		"[-r <rand192>] [-h <hash192>] [-R <rand256>] [-H <hash256>] "
+		"<addr>\n");
+}
+
+static struct option remote_oob_opt[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
+static int str2buf(const char *str, uint8_t *buf, size_t blen)
+{
+	int i, dlen;
+
+	if (str == NULL)
+		return -EINVAL;
+
+	memset(buf, 0, blen);
+
+	dlen = MIN((strlen(str) / 2), blen);
+
+	for (i = 0; i < dlen; i++)
+		sscanf(str + (i * 2), "%02hhX", &buf[i]);
+
+	return 0;
+}
+
+static void cmd_remote_oob(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	struct mgmt_cp_add_remote_oob_data cp;
+	int opt;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.addr.type = BDADDR_BREDR;
+
+	while ((opt = getopt_long(argc, argv, "+t:r:R:h:H:",
+					remote_oob_opt, NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			cp.addr.type = strtol(optarg, NULL, 0);
+			break;
+		case 'r':
+			str2buf(optarg, cp.rand192, 16);
+			break;
+		case 'h':
+			str2buf(optarg, cp.hash192, 16);
+			break;
+		case 'R':
+			str2buf(optarg, cp.rand256, 16);
+			break;
+		case 'H':
+			str2buf(optarg, cp.hash256, 16);
+			break;
+		default:
+			remote_oob_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		remote_oob_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	str2ba(argv[0], &cp.addr.bdaddr);
+
+	printf("Adding OOB data for %s (%s)\n", argv[0], typestr(cp.addr.type));
+
+	if (mgmt_send(mgmt, MGMT_OP_ADD_REMOTE_OOB_DATA, index,
+				sizeof(cp), &cp, remote_oob_rsp,
+				NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send add_remote_oob cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static void did_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -2880,6 +2991,7 @@ static struct {
 	{ "rm-uuid",	cmd_remove_uuid,"Remove UUID"			},
 	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs"			},
 	{ "local-oob",	cmd_local_oob,	"Local OOB data"		},
+	{ "remote-oob",	cmd_remote_oob,	"Remote OOB data"		},
 	{ "did",	cmd_did,	"Set Device ID"			},
 	{ "static-addr",cmd_static_addr,"Set static address"		},
 	{ "public-addr",cmd_public_addr,"Set public address"		},
