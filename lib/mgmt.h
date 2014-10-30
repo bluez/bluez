@@ -284,8 +284,10 @@ struct mgmt_rp_read_local_oob_ext_data {
 #define MGMT_OP_ADD_REMOTE_OOB_DATA	0x0021
 struct mgmt_cp_add_remote_oob_data {
 	struct mgmt_addr_info addr;
-	uint8_t hash[16];
-	uint8_t randomizer[16];
+	uint8_t hash192[16];
+	uint8_t rand192[16];
+	uint8_t hash256[16];
+	uint8_t rand256[16];
 } __packed;
 
 #define MGMT_OP_REMOVE_REMOTE_OOB_DATA	0x0022

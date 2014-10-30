@@ -6389,10 +6389,10 @@ int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
-	memcpy(cp.hash, hash, 16);
+	memcpy(cp.hash192, hash, 16);
 
 	if (randomizer)
-		memcpy(cp.randomizer, randomizer, 16);
+		memcpy(cp.rand192, randomizer, 16);
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_ADD_REMOTE_OOB_DATA,
 				adapter->dev_id, sizeof(cp), &cp,
