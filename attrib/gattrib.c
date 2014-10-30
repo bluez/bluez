@@ -476,27 +476,16 @@ done:
 GAttrib *g_attrib_new(GIOChannel *io)
 {
 	struct _GAttrib *attrib;
-	uint16_t imtu;
 	uint16_t att_mtu;
-	uint16_t cid;
-	GError *gerr = NULL;
 
 	g_io_channel_set_encoding(io, NULL, NULL);
 	g_io_channel_set_buffered(io, FALSE);
-
-	bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &imtu,
-				BT_IO_OPT_CID, &cid, BT_IO_OPT_INVALID);
-	if (gerr) {
-		error("%s", gerr->message);
-		g_error_free(gerr);
-		return NULL;
-	}
 
 	attrib = g_try_new0(struct _GAttrib, 1);
 	if (attrib == NULL)
 		return NULL;
 
-	att_mtu = (cid == ATT_CID) ? ATT_DEFAULT_LE_MTU : imtu;
+	att_mtu = ATT_DEFAULT_LE_MTU;
 
 	attrib->buf = g_malloc0(att_mtu);
 	attrib->buflen = att_mtu;
@@ -650,7 +639,6 @@ gboolean g_attrib_cancel_all(GAttrib *attrib)
 
 	return ret;
 }
-
 
 uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
 {
