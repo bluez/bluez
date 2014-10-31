@@ -123,6 +123,9 @@ static gboolean listen_start(gpointer user_data)
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	GAttrib *attrib;
+	uint16_t mtu;
+	uint16_t cid;
+	GError *gerr = NULL;
 
 	if (err) {
 		g_printerr("%s\n", err->message);
@@ -130,7 +133,20 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		g_main_loop_quit(event_loop);
 	}
 
-	attrib = g_attrib_new(io);
+	bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &mtu,
+				BT_IO_OPT_CID, &cid, BT_IO_OPT_INVALID);
+
+	if (gerr) {
+		g_printerr("Can't detect MTU, using default: %s",
+								gerr->message);
+		g_error_free(gerr);
+		mtu = ATT_DEFAULT_LE_MTU;
+	}
+
+	if (cid == ATT_CID)
+		mtu = ATT_DEFAULT_LE_MTU;
+
+	attrib = g_attrib_new(io, mtu);
 
 	if (opt_listen)
 		g_idle_add(listen_start, attrib);

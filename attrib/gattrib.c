@@ -473,10 +473,9 @@ done:
 	return TRUE;
 }
 
-GAttrib *g_attrib_new(GIOChannel *io)
+GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu)
 {
 	struct _GAttrib *attrib;
-	uint16_t att_mtu;
 
 	g_io_channel_set_encoding(io, NULL, NULL);
 	g_io_channel_set_buffered(io, FALSE);
@@ -485,10 +484,8 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	if (attrib == NULL)
 		return NULL;
 
-	att_mtu = ATT_DEFAULT_LE_MTU;
-
-	attrib->buf = g_malloc0(att_mtu);
-	attrib->buflen = att_mtu;
+	attrib->buf = g_malloc0(mtu);
+	attrib->buflen = mtu;
 
 	attrib->io = g_io_channel_ref(io);
 	attrib->requests = g_queue_new();

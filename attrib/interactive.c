@@ -150,13 +150,28 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
+	uint16_t mtu;
+	uint16_t cid;
+
 	if (err) {
 		set_state(STATE_DISCONNECTED);
 		error("%s\n", err->message);
 		return;
 	}
 
-	attrib = g_attrib_new(iochannel);
+	bt_io_get(io, &err, BT_IO_OPT_IMTU, &mtu,
+				BT_IO_OPT_CID, &cid, BT_IO_OPT_INVALID);
+
+	if (err) {
+		g_printerr("Can't detect MTU, using default: %s", err->message);
+		g_error_free(err);
+		mtu = ATT_DEFAULT_LE_MTU;
+	}
+
+	if (cid == ATT_CID)
+		mtu = ATT_DEFAULT_LE_MTU;
+
+	attrib = g_attrib_new(iochannel, mtu);
 	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, GATTRIB_ALL_HANDLES,
 						events_handler, attrib, NULL);
 	g_attrib_register(attrib, ATT_OP_HANDLE_IND, GATTRIB_ALL_HANDLES,

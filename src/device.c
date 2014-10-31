@@ -3628,9 +3628,14 @@ bool device_attach_attrib(struct btd_device *dev, GIOChannel *io)
 	GError *gerr = NULL;
 	GAttrib *attrib;
 	BtIOSecLevel sec_level;
+	uint16_t mtu;
+	uint16_t cid;
 
 	bt_io_get(io, &gerr, BT_IO_OPT_SEC_LEVEL, &sec_level,
+						BT_IO_OPT_IMTU, &mtu,
+						BT_IO_OPT_CID, &cid,
 						BT_IO_OPT_INVALID);
+
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
 		g_error_free(gerr);
@@ -3650,7 +3655,10 @@ bool device_attach_attrib(struct btd_device *dev, GIOChannel *io)
 		}
 	}
 
-	attrib = g_attrib_new(io);
+	if (cid == ATT_CID)
+		mtu = ATT_DEFAULT_LE_MTU;
+
+	attrib = g_attrib_new(io, mtu);
 	if (!attrib) {
 		error("Unable to create new GAttrib instance");
 		return false;

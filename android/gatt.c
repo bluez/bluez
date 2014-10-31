@@ -1420,6 +1420,8 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	struct att_range range;
 	uint32_t status;
 	GAttrib *attrib;
+	uint16_t mtu;
+	uint16_t cid;
 
 	if (dev->state != DEVICE_CONNECT_READY) {
 		error("gatt: Device not in a connecting state!?");
@@ -1439,7 +1441,11 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		goto reply;
 	}
 
-	attrib = g_attrib_new(io);
+	if (!bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &mtu, BT_IO_OPT_CID, &cid,
+				BT_IO_OPT_INVALID) || cid == ATT_CID)
+		mtu = ATT_DEFAULT_LE_MTU;
+
+	attrib = g_attrib_new(io, mtu);
 	if (!attrib) {
 		error("gatt: unable to create new GAttrib instance");
 		device_set_state(dev, DEVICE_DISCONNECTED);

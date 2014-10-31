@@ -42,7 +42,7 @@ typedef void (*GAttribDebugFunc)(const char *str, gpointer user_data);
 typedef void (*GAttribNotifyFunc)(const guint8 *pdu, guint16 len,
 							gpointer user_data);
 
-GAttrib *g_attrib_new(GIOChannel *io);
+GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu);
 GAttrib *g_attrib_ref(GAttrib *attrib);
 void g_attrib_unref(GAttrib *attrib);
 
