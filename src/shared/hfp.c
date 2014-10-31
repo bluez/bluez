@@ -135,10 +135,7 @@ static bool match_handler_prefix(const void *a, const void *b)
 	const struct cmd_handler *handler = a;
 	const char *prefix = b;
 
-	if (strlen(handler->prefix) != strlen(prefix))
-		return false;
-
-	if (memcmp(handler->prefix, prefix, strlen(prefix)))
+	if (strcmp(handler->prefix, prefix) != 0)
 		return false;
 
 	return true;
