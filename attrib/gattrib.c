@@ -147,6 +147,27 @@ static bool is_response(guint8 opcode)
 	return false;
 }
 
+static bool is_request(guint8 opcode)
+{
+	switch (opcode) {
+	case ATT_OP_MTU_REQ:
+	case ATT_OP_FIND_INFO_REQ:
+	case ATT_OP_FIND_BY_TYPE_REQ:
+	case ATT_OP_READ_BY_TYPE_REQ:
+	case ATT_OP_READ_REQ:
+	case ATT_OP_READ_BLOB_REQ:
+	case ATT_OP_READ_MULTI_REQ:
+	case ATT_OP_READ_BY_GROUP_REQ:
+	case ATT_OP_WRITE_REQ:
+	case ATT_OP_WRITE_CMD:
+	case ATT_OP_PREP_WRITE_REQ:
+	case ATT_OP_EXEC_WRITE_REQ:
+		return true;
+	}
+
+	return false;
+}
+
 GAttrib *g_attrib_ref(GAttrib *attrib)
 {
 	int refs;
@@ -373,7 +394,7 @@ static bool match_event(struct event *evt, const uint8_t *pdu, gsize len)
 	if (evt->expected == GATTRIB_ALL_EVENTS)
 		return true;
 
-	if (!is_response(pdu[0]) && evt->expected == GATTRIB_ALL_REQS)
+	if (is_request(pdu[0]) && evt->expected == GATTRIB_ALL_REQS)
 		return true;
 
 	if (evt->expected == pdu[0] && evt->handle == GATTRIB_ALL_HANDLES)
