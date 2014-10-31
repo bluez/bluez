@@ -270,6 +270,17 @@ static void primary_cb(bool success, uint8_t att_ecode,
 	context_quit(context);
 }
 
+static void characteristic_cb(bool success, uint8_t att_ecode,
+						struct bt_gatt_result *result,
+						void *user_data)
+{
+	struct context *context = user_data;
+
+	g_assert(success);
+
+	context_quit(context);
+}
+
 static void included_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data)
@@ -328,6 +339,17 @@ static void test_search_included(gconstpointer data)
 
 	bt_gatt_discover_included_services(context->att, 0x0001, 0xffff,
 						included_cb, context, NULL);
+
+	execute_context(context);
+}
+
+static void test_search_chars(gconstpointer data)
+{
+	struct context *context = create_context(512, data);
+
+	g_assert(bt_gatt_discover_characteristics(context->att, 0x0010, 0x0020,
+						characteristic_cb, context,
+						NULL));
 
 	execute_context(context);
 }
@@ -412,6 +434,20 @@ int main(int argc, char *argv[])
 								0x0a, 0x18),
 			raw_pdu(0x08, 0x06, 0x00, 0xff, 0xff, 0x02, 0x28),
 			raw_pdu(0x01, 0x08, 0x06, 0x00, 0x0a));
+
+	define_test("/TP/GAD/CL/BV-04-C", test_search_chars, ATT, NULL,
+			raw_pdu(0x02, 0x00, 0x02),
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x08, 0x10, 0x00, 0x20, 0x00, 0x03, 0x28),
+			raw_pdu(0x09, 0x07, 0x11, 0x00, 02, 0x12, 0x00, 0x25,
+					0x2a),
+			raw_pdu(0x08, 0x12, 0x00, 0x20, 0x00, 0x03, 0x28),
+			raw_pdu(0x09, 0x15, 0x13, 0x00, 0x02, 0x14, 0x00, 0x85,
+					0x00, 0xef, 0xcd, 0xab, 0x89, 0x67,
+					0x45, 0x23, 0x01, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00),
+			raw_pdu(0x08, 0x14, 0x00, 0x20, 0x00, 0x03, 0x28),
+			raw_pdu(0x01, 0x08, 0x12, 0x00, 0x0a));
 
 	return g_test_run();
 }
