@@ -115,6 +115,11 @@ void io_destroy(struct io *io)
 		io->write_watch = 0;
 	}
 
+	if (io->disconnect_watch > 0) {
+		g_source_remove(io->disconnect_watch);
+		io->disconnect_watch = 0;
+	}
+
 	g_io_channel_unref(io->channel);
 	io->channel = NULL;
 
