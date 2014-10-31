@@ -407,7 +407,7 @@ static void notify_canary_expect(const guint8 *pdu, guint16 len, gpointer data)
 static void test_register(struct context *cxt, gconstpointer user_data)
 {
 	guint reg_id;
-	gboolean success;
+	gboolean canceled;
 	struct test_pdu pdus[] = {
 		/* Unmatched by any (GATTRIB_ALL_EVENTS) */
 		PDU_MTU_RESP,
@@ -437,6 +437,7 @@ static void test_register(struct context *cxt, gconstpointer user_data)
 		{ },
 	};
 	struct test_pdu followed_ind_pdus[] = { PDU_IND_DATA, { } };
+	struct test_pdu *current_pdu;
 
 	/*
 	 * Without registering anything, should be able to ignore everything but
@@ -449,7 +450,12 @@ static void test_register(struct context *cxt, gconstpointer user_data)
 
 	send_test_pdus(cxt, pdus);
 
-	g_attrib_unregister(cxt->att, reg_id);
+	canceled = g_attrib_unregister(cxt->att, reg_id);
+
+	g_assert(canceled);
+
+	for (current_pdu = pdus; current_pdu->valid; current_pdu++)
+		g_assert(current_pdu->received);
 
 	if (g_test_verbose())
 		g_print("ALL_REQS, ALL_HANDLES\r\n");
@@ -460,7 +466,12 @@ static void test_register(struct context *cxt, gconstpointer user_data)
 
 	send_test_pdus(cxt, pdus);
 
-	g_attrib_unregister(cxt->att, reg_id);
+	canceled = g_attrib_unregister(cxt->att, reg_id);
+
+	g_assert(canceled);
+
+	for (current_pdu = req_pdus; current_pdu->valid; current_pdu++)
+		g_assert(current_pdu->received);
 
 	if (g_test_verbose())
 		g_print("IND, ALL_HANDLES\r\n");
@@ -471,7 +482,12 @@ static void test_register(struct context *cxt, gconstpointer user_data)
 
 	send_test_pdus(cxt, pdus);
 
-	g_attrib_unregister(cxt->att, reg_id);
+	canceled = g_attrib_unregister(cxt->att, reg_id);
+
+	g_assert(canceled);
+
+	for (current_pdu = all_ind_pdus; current_pdu->valid; current_pdu++)
+		g_assert(current_pdu->received);
 
 	if (g_test_verbose())
 		g_print("IND, 0x0014\r\n");
@@ -482,11 +498,16 @@ static void test_register(struct context *cxt, gconstpointer user_data)
 
 	send_test_pdus(cxt, pdus);
 
-	g_attrib_unregister(cxt->att, reg_id);
+	canceled = g_attrib_unregister(cxt->att, reg_id);
 
-	success = g_attrib_unregister(cxt->att, reg_id);
+	g_assert(canceled);
 
-	g_assert(!success);
+	for (current_pdu = followed_ind_pdus; current_pdu->valid; current_pdu++)
+		g_assert(current_pdu->received);
+
+	canceled = g_attrib_unregister(cxt->att, reg_id);
+
+	g_assert(!canceled);
 }
 
 static void test_buffers(struct context *cxt, gconstpointer unused)
