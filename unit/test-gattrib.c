@@ -557,7 +557,8 @@ int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
 
-	__btd_log_init("*", 0);
+	if (g_test_verbose())
+		__btd_log_init("*", 0);
 
 	/*
 	 * Test the GAttrib API behavior
