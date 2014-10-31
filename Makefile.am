@@ -377,6 +377,13 @@ unit_test_gatt_SOURCES = unit/test-gatt.c
 unit_test_gatt_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la @GLIB_LIBS@
 
+unit_tests += unit/test-gattrib
+
+unit_test_gattrib_SOURCES = unit/test-gattrib.c attrib/gattrib.c $(btio_sources) src/log.h src/log.c
+unit_test_gattrib_LDADD = lib/libbluetooth-internal.la \
+			src/libshared-glib.la \
+			@GLIB_LIBS@ @DBUS_LIBS@ -ldl -lrt
+
 if MAINTAINER_MODE
 noinst_PROGRAMS += $(unit_tests)
 endif
