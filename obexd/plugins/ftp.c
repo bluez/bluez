@@ -494,6 +494,13 @@ static void ftp_progress(struct obex_session *os, void *user_data)
 	manager_emit_transfer_progress(ftp->transfer);
 }
 
+static void ftp_reset(struct obex_session *os, void *user_data)
+{
+	struct ftp_session *ftp = user_data;
+
+	manager_emit_transfer_completed(ftp->transfer);
+}
+
 static struct obex_service_driver ftp = {
 	.name = "File Transfer server",
 	.service = OBEX_FTP,
@@ -506,7 +513,8 @@ static struct obex_service_driver ftp = {
 	.chkput = ftp_chkput,
 	.setpath = ftp_setpath,
 	.action = ftp_action,
-	.disconnect = ftp_disconnect
+	.disconnect = ftp_disconnect,
+	.reset = ftp_reset
 };
 
 static int ftp_init(void)
