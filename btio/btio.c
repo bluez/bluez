@@ -970,7 +970,7 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 	struct l2cap_options l2o;
 	int flags;
 	uint8_t dev_class[3];
-	uint16_t handle;
+	uint16_t handle = 0;
 	socklen_t len;
 	gboolean flushable = FALSE, have_dst = FALSE;
 	uint32_t priority;
@@ -1180,7 +1180,7 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 	int flags;
 	socklen_t len;
 	uint8_t dev_class[3];
-	uint16_t handle;
+	uint16_t handle = 0;
 
 	if (!get_src(sock, &src, sizeof(src), err))
 		return FALSE;
@@ -1311,7 +1311,7 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 	struct sco_options sco_opt;
 	socklen_t len;
 	uint8_t dev_class[3];
-	uint16_t handle;
+	uint16_t handle = 0;
 
 	len = sizeof(sco_opt);
 	memset(&sco_opt, 0, len);
