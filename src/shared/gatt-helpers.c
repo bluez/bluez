@@ -686,7 +686,13 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 		op->result_tail = cur_result;
 	}
 
-	last_end = get_le16(pdu + length - 6);
+	/*
+	 * Each data set contains:
+	 * 2 octets with start handle
+	 * 2 octets with end handle
+	 * last_end is end handle of last data set
+	 */
+	last_end = get_le16(pdu + length - 2);
 	if (last_end < op->end_handle) {
 		uint8_t pdu[6 + get_uuid_len(&op->uuid)];
 
