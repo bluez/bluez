@@ -1219,6 +1219,9 @@ static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	}
 
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
+
+	if (dev->state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
+		hfp_gw_disconnect(dev->gw);
 }
 
 static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -1277,6 +1280,9 @@ static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	}
 
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
+
+	if (dev->state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
+		hfp_gw_disconnect(dev->gw);
 }
 
 static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -1306,6 +1312,9 @@ static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	}
 
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
+
+	if (dev->state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
+		hfp_gw_disconnect(dev->gw);
 }
 
 static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
@@ -1345,6 +1354,9 @@ static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	}
 
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
+
+	if (dev->state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
+		hfp_gw_disconnect(dev->gw);
 }
 
 static struct hfp_codec *find_codec_by_type(struct hf_device *dev, uint8_t type)
@@ -1418,6 +1430,9 @@ static void at_cmd_bac(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 failed:
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
+
+	if (dev->state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
+		hfp_gw_disconnect(dev->gw);
 }
 
 static void register_slc_at(struct hf_device *dev)
