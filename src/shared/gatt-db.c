@@ -837,7 +837,10 @@ const bt_uuid_t *gatt_db_attribute_get_type(struct gatt_db_attribute *attrib)
 
 uint16_t gatt_db_attribute_get_handle(struct gatt_db_attribute *attrib)
 {
-	return 0;
+	if (!attrib)
+		return 0;
+
+	return attrib->handle;
 }
 
 bool gatt_db_attribute_get_service_uuid(struct gatt_db_attribute *attrib,
