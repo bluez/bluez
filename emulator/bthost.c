@@ -219,11 +219,9 @@ struct bthost *bthost_create(void)
 {
 	struct bthost *bthost;
 
-	bthost = malloc(sizeof(*bthost));
+	bthost = new0(struct bthost, 1);
 	if (!bthost)
 		return NULL;
-
-	memset(bthost, 0, sizeof(*bthost));
 
 	/* Set defaults */
 	bthost->io_capability = 0x03;
