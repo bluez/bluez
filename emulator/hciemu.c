@@ -376,8 +376,6 @@ void hciemu_unref(struct hciemu *hciemu)
 
 	queue_destroy(hciemu->post_command_hooks, destroy_command_hook);
 
-	bthost_stop(hciemu->host_stack);
-
 	g_source_remove(hciemu->host_source);
 	g_source_remove(hciemu->client_source);
 	g_source_remove(hciemu->master_source);

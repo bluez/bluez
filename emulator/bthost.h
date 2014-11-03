@@ -123,7 +123,6 @@ void bthost_send_rfcomm_data(struct bthost *bthost, uint16_t handle,
 					uint16_t len);
 
 void bthost_start(struct bthost *bthost);
-void bthost_stop(struct bthost *bthost);
 
 /* LE SMP support */
 

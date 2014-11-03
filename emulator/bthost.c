@@ -2386,7 +2386,3 @@ void bthost_send_rfcomm_data(struct bthost *bthost, uint16_t handle,
 
 	free(uih_frame);
 }
-
-void bthost_stop(struct bthost *bthost)
-{
-}
