@@ -1679,6 +1679,8 @@ static const struct generic_data start_discovery_not_powered_test_1 = {
 	.send_param = start_discovery_bredr_param,
 	.send_len = sizeof(start_discovery_bredr_param),
 	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.expect_param = start_discovery_bredr_param,
+	.expect_len = sizeof(start_discovery_bredr_param),
 };
 
 static const struct generic_data start_discovery_invalid_param_test_1 = {
@@ -1687,6 +1689,8 @@ static const struct generic_data start_discovery_invalid_param_test_1 = {
 	.send_param = start_discovery_invalid_param,
 	.send_len = sizeof(start_discovery_invalid_param),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = start_discovery_invalid_param,
+	.expect_len = sizeof(start_discovery_invalid_param),
 };
 
 static const struct generic_data start_discovery_not_supported_test_1 = {
@@ -1695,6 +1699,8 @@ static const struct generic_data start_discovery_not_supported_test_1 = {
 	.send_param = start_discovery_le_param,
 	.send_len = sizeof(start_discovery_le_param),
 	.expect_status = MGMT_STATUS_REJECTED,
+	.expect_param = start_discovery_le_param,
+	.expect_len = sizeof(start_discovery_le_param),
 };
 
 static const struct generic_data start_discovery_valid_param_test_1 = {
