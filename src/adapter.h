@@ -225,3 +225,5 @@ gboolean btd_adapter_check_oob_handler(struct btd_adapter *adapter);
 void btd_adapter_for_each_device(struct btd_adapter *adapter,
 			void (*cb)(struct btd_device *device, void *data),
 			void *data);
+
+bool btd_le_connect_before_pairing(void);

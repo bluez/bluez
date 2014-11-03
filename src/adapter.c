@@ -7450,3 +7450,16 @@ void adapter_shutdown(void)
 	if (!adapter_remaining)
 		btd_exit();
 }
+
+/*
+ * Check if workaround for broken ATT server socket behavior is needed
+ * where we need to connect an ATT client socket before pairing to get
+ * early access to the ATT channel.
+ */
+bool btd_le_connect_before_pairing(void)
+{
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 4))
+		return true;
+
+	return false;
+}

@@ -1815,7 +1815,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	 * this in the ATT connect callback)
 	 */
 	if (bdaddr_type != BDADDR_BREDR) {
-		if (!state->connected)
+		if (!state->connected && btd_le_connect_before_pairing())
 			err = device_connect_le(device);
 		else
 			err = adapter_create_bonding(adapter, &device->bdaddr,
