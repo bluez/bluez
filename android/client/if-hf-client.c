@@ -486,7 +486,7 @@ static void stop_voice_recognition_p(int argc, const char **argv)
 {
 	RETURN_IF_NULL(if_hf_client);
 
-	EXEC(if_hf_client->start_voice_recognition);
+	EXEC(if_hf_client->stop_voice_recognition);
 }
 
 static void volume_control_c(int argc, const char **argv, enum_func *enum_func,
