@@ -327,6 +327,8 @@ bool hfp_context_close_container(struct hfp_context *context)
 
 	context->offset++;
 
+	next_field(context);
+
 	return true;
 }
 
