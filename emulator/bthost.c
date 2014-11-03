@@ -223,6 +223,12 @@ struct bthost *bthost_create(void)
 	if (!bthost)
 		return NULL;
 
+	bthost->smp_data = smp_start(bthost);
+	if (!bthost->smp_data) {
+		free(bthost);
+		return NULL;
+	}
+
 	/* Set defaults */
 	bthost->io_capability = 0x03;
 
@@ -435,6 +441,8 @@ void bthost_destroy(struct bthost *bthost)
 
 	if (bthost->rfcomm_conn_data)
 		free(bthost->rfcomm_conn_data);
+
+	smp_stop(bthost->smp_data);
 
 	free(bthost);
 }
@@ -2268,8 +2276,6 @@ void bthost_start(struct bthost *bthost)
 	if (!bthost)
 		return;
 
-	bthost->smp_data = smp_start(bthost);
-
 	bthost->ncmd = 1;
 
 	send_command(bthost, BT_HCI_CMD_RESET, NULL, 0);
@@ -2383,8 +2389,4 @@ void bthost_send_rfcomm_data(struct bthost *bthost, uint16_t handle,
 
 void bthost_stop(struct bthost *bthost)
 {
-	if (bthost->smp_data) {
-		smp_stop(bthost->smp_data);
-		bthost->smp_data = NULL;
-	}
 }
