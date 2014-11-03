@@ -556,6 +556,23 @@ static void hf_chld_result_handler(struct hfp_context *hf_context,
 	hfp_hf_disconnect(context->hfp_hf);
 }
 
+static void hf_chld_skip_field(struct hfp_context *hf_context,
+							void *user_data)
+{
+	struct context *context = user_data;
+	char str[3];
+
+	g_assert(hf_context);
+
+	hfp_context_skip_field(hf_context);
+
+	g_assert(hfp_context_get_unquoted_string(hf_context, str,
+								sizeof(str)));
+	g_assert_cmpstr(str, ==, "2x");
+
+	hfp_hf_disconnect(context->hfp_hf);
+}
+
 static void hf_clcc_result_handler(struct hfp_context *hf_context,
 							void *user_data)
 {
@@ -796,6 +813,13 @@ int main(int argc, char *argv[])
 
 	define_hf_test("/hfp_hf/test_context_parser_2", test_hf_unsolicited,
 			hf_chld_result_handler, NULL,
+			raw_pdu('+', 'C', 'H', 'L', 'D', '\0'),
+			frg_pdu('+', 'C', 'H', 'L', 'D', ':'),
+			frg_pdu('1', ',', '2', 'x', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_context_skip_field", test_hf_unsolicited,
+			hf_chld_skip_field, NULL,
 			raw_pdu('+', 'C', 'H', 'L', 'D', '\0'),
 			frg_pdu('+', 'C', 'H', 'L', 'D', ':'),
 			frg_pdu('1', ',', '2', 'x', '\r', '\n'),
