@@ -415,6 +415,37 @@ bool hfp_context_has_next(struct hfp_context *context)
 	return context->data[context->offset] != '\0';
 }
 
+bool hfp_context_get_range(struct hfp_context *context, uint32_t *min,
+								uint32_t *max)
+{
+	uint32_t l, h;
+	uint32_t start;
+
+	start = context->offset;
+
+	if (!hfp_context_get_number(context, &l))
+		goto failed;
+
+	if (context->data[context->offset] != '-')
+		goto failed;
+
+	context->offset++;
+
+	if (!hfp_context_get_number(context, &h))
+		goto failed;
+
+	*min = l;
+	*max = h;
+
+	next_field(context);
+
+	return true;
+
+failed:
+	context->offset = start;
+	return false;
+}
+
 static void process_input(struct hfp_gw *hfp)
 {
 	char *str, *ptr;
