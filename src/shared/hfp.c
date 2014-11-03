@@ -415,6 +415,18 @@ bool hfp_context_has_next(struct hfp_context *context)
 	return context->data[context->offset] != '\0';
 }
 
+void hfp_context_skip_field(struct hfp_context *context)
+{
+	const char *data = context->data;
+	unsigned int offset = context->offset;
+
+	while (data[offset] != '\0' && data[offset] != ',')
+		offset++;
+
+	context->offset = offset;
+	next_field(context);
+}
+
 bool hfp_context_get_range(struct hfp_context *context, uint32_t *min,
 								uint32_t *max)
 {

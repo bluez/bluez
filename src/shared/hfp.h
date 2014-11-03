@@ -130,6 +130,7 @@ bool hfp_context_get_unquoted_string(struct hfp_context *context,
 bool hfp_context_get_range(struct hfp_context *context, unsigned int *min,
 							unsigned int *max);
 bool hfp_context_has_next(struct hfp_context *context);
+void hfp_context_skip_field(struct hfp_context *context);
 
 typedef void (*hfp_hf_result_func_t)(struct hfp_context *context,
 							void *user_data);
