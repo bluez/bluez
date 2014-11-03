@@ -530,7 +530,8 @@ static void dial_p(int argc, const char **argv)
 
 	/* number string */
 	if (argc <= 2) {
-		haltest_error("No number specified\n");
+		haltest_info("Number not specified. Redial\n");
+		EXEC(if_hf_client->dial, NULL);
 		return;
 	}
 
