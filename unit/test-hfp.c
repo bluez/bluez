@@ -370,7 +370,7 @@ static void check_ustring_1(struct hfp_context *result,
 
 	g_assert(type == pdu->type);
 
-	g_assert(hfp_gw_result_get_unquoted_string(result, str, sizeof(str)));
+	g_assert(hfp_context_get_unquoted_string(result, str, sizeof(str)));
 
 	while (context->data->pdu_list[1].data[i] != '\r') {
 		g_assert(j < sizeof(str));
@@ -398,7 +398,7 @@ static void check_ustring_2(struct hfp_context *result,
 
 	g_assert(type == pdu->type);
 
-	g_assert(!hfp_gw_result_get_unquoted_string(result, str, 3));
+	g_assert(!hfp_context_get_unquoted_string(result, str, 3));
 
 	g_assert(str[3] == 'X');
 
@@ -417,7 +417,7 @@ static void check_string_1(struct hfp_context *result,
 
 	g_assert(type == pdu->type);
 
-	g_assert(hfp_gw_result_get_string(result, str, sizeof(str)));
+	g_assert(hfp_context_get_string(result, str, sizeof(str)));
 
 	while (context->data->pdu_list[1].data[i] != '\"') {
 		g_assert(j < sizeof(str));
@@ -446,7 +446,7 @@ static void check_string_2(struct hfp_context *result,
 
 	g_assert(type == pdu->type);
 
-	g_assert(!hfp_gw_result_get_string(result, str, 3));
+	g_assert(!hfp_context_get_string(result, str, 3));
 
 	g_assert(str[3] == 'X');
 

@@ -261,7 +261,7 @@ static void next_field(struct hfp_context *context)
 		context->offset++;
 }
 
-bool hfp_gw_result_get_number_default(struct hfp_context *context,
+bool hfp_context_get_number_default(struct hfp_context *context,
 						unsigned int *val,
 						unsigned int default_val)
 {
@@ -275,10 +275,10 @@ bool hfp_gw_result_get_number_default(struct hfp_context *context,
 		return true;
 	}
 
-	return hfp_gw_result_get_number(context, val);
+	return hfp_context_get_number(context, val);
 }
 
-bool hfp_gw_result_get_number(struct hfp_context *context,
+bool hfp_context_get_number(struct hfp_context *context,
 							unsigned int *val)
 {
 	unsigned int i;
@@ -304,7 +304,7 @@ bool hfp_gw_result_get_number(struct hfp_context *context,
 	return true;
 }
 
-bool hfp_gw_result_open_container(struct hfp_context *context)
+bool hfp_context_open_container(struct hfp_context *context)
 {
 	skip_whitespace(context);
 
@@ -317,7 +317,7 @@ bool hfp_gw_result_open_container(struct hfp_context *context)
 	return true;
 }
 
-bool hfp_gw_result_close_container(struct hfp_context *context)
+bool hfp_context_close_container(struct hfp_context *context)
 {
 	skip_whitespace(context);
 
@@ -330,7 +330,7 @@ bool hfp_gw_result_close_container(struct hfp_context *context)
 	return true;
 }
 
-bool hfp_gw_result_get_string(struct hfp_context *context, char *buf,
+bool hfp_context_get_string(struct hfp_context *context, char *buf,
 								uint8_t len)
 {
 	int i = 0;
@@ -371,7 +371,7 @@ bool hfp_gw_result_get_string(struct hfp_context *context, char *buf,
 	return true;
 }
 
-bool hfp_gw_result_get_unquoted_string(struct hfp_context *context,
+bool hfp_context_get_unquoted_string(struct hfp_context *context,
 							char *buf, uint8_t len)
 {
 	const char *data = context->data;
@@ -408,7 +408,7 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_context *context,
 	return true;
 }
 
-bool hfp_gw_result_has_next(struct hfp_context *context)
+bool hfp_context_has_next(struct hfp_context *context)
 {
 	return context->data[context->offset] != '\0';
 }
