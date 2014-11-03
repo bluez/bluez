@@ -486,6 +486,18 @@ static void hf_response_with_data(enum hfp_result res,
 	hfp_hf_disconnect(context->hfp_hf);
 }
 
+static void hf_cme_error_response_cb(enum hfp_result res,
+							enum hfp_error cme_err,
+							void *user_data)
+{
+	struct context *context = user_data;
+
+	g_assert_cmpint(res, ==, HFP_RESULT_CME_ERROR);
+	g_assert_cmpint(cme_err, ==, 30);
+
+	hfp_hf_disconnect(context->hfp_hf);
+}
+
 static void hf_response_cb(enum hfp_result res, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -716,6 +728,14 @@ int main(int argc, char *argv[])
 			frg_pdu('\r', '\n', '+', 'B', 'R', 'S', 'F', '\r',
 									'\n'),
 			frg_pdu('\r', '\n', 'O', 'k', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/hfp_hf/test_send_command_3", test_hf_send_command,
+			NULL, hf_cme_error_response_cb,
+			raw_pdu('A', 'T', '+', 'C', 'H', 'L', 'D', '=',
+								'1', '\0'),
+			frg_pdu('\r', '\n', '+', 'C', 'M', 'E', ' ', 'E'),
+			frg_pdu('R', 'R', 'O', 'R', ':', '3', '0', '\r', '\n'),
 			data_end());
 
 	define_hf_test("/hfp_hf/test_unsolicited_1", test_hf_unsolicited,
