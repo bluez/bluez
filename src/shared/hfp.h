@@ -34,6 +34,7 @@ enum hfp_result {
 	HFP_RESULT_NO_ANSWER	= 8,
 	HFP_RESULT_DELAYED	= 9,
 	HFP_RESULT_BLACKLISTED	= 10,
+	HFP_RESULT_CME_ERROR	= 11,
 };
 
 enum hfp_error {
@@ -131,7 +132,9 @@ bool hfp_context_has_next(struct hfp_context *context);
 typedef void (*hfp_hf_result_func_t)(struct hfp_context *context,
 							void *user_data);
 
-typedef void (*hfp_response_func_t)(enum hfp_result result, void *user_data);
+typedef void (*hfp_response_func_t)(enum hfp_result result,
+							enum hfp_error cme_err,
+							void *user_data);
 
 struct hfp_hf;
 

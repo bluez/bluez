@@ -475,6 +475,7 @@ static void hf_unsolicited_resp_cb(struct hfp_context *context,
 }
 
 static void hf_response_with_data(enum hfp_result res,
+							enum hfp_error cme_err,
 							void *user_data)
 {
 	struct context *context = user_data;
@@ -485,7 +486,8 @@ static void hf_response_with_data(enum hfp_result res,
 	hfp_hf_disconnect(context->hfp_hf);
 }
 
-static void hf_response_cb(enum hfp_result res, void *user_data)
+static void hf_response_cb(enum hfp_result res, enum hfp_error cme_err,
+							void *user_data)
 {
 	struct context *context = user_data;
 

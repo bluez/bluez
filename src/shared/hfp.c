@@ -904,40 +904,67 @@ static void hf_skip_whitespace(struct hfp_context *context)
 		context->offset++;
 }
 
-static bool is_response(const char *prefix, enum hfp_result *result)
+static bool is_response(const char *prefix, enum hfp_result *result,
+						enum hfp_error *cme_err,
+						struct hfp_context *context)
 {
 	if (strcmp(prefix, "OK") == 0) {
 		*result = HFP_RESULT_OK;
+		/*
+		 * Set cme_err to 0 as this is not valid when result is not
+		 * CME ERROR
+		 */
+		*cme_err = 0;
 		return true;
 	}
 
 	if (strcmp(prefix, "ERROR") == 0) {
 		*result = HFP_RESULT_ERROR;
+		*cme_err = 0;
 		return true;
 	}
 
 	if (strcmp(prefix, "NO CARRIER") == 0) {
 		*result = HFP_RESULT_NO_CARRIER;
+		*cme_err = 0;
 		return true;
 	}
 
 	if (strcmp(prefix, "NO ANSWER") == 0) {
 		*result = HFP_RESULT_NO_ANSWER;
+		*cme_err = 0;
 		return true;
 	}
 
 	if (strcmp(prefix, "BUSY") == 0) {
 		*result = HFP_RESULT_BUSY;
+		*cme_err = 0;
 		return true;
 	}
 
 	if (strcmp(prefix, "DELAYED") == 0) {
 		*result = HFP_RESULT_DELAYED;
+		*cme_err = 0;
 		return true;
 	}
 
 	if (strcmp(prefix, "BLACKLISTED") == 0) {
 		*result = HFP_RESULT_BLACKLISTED;
+		*cme_err = 0;
+		return true;
+	}
+
+	if (strcmp(prefix, "+CME ERROR") == 0) {
+		uint32_t val;
+
+		*result = HFP_RESULT_CME_ERROR;
+
+		if (hfp_context_get_number(context, &val) &&
+					val <= HFP_ERROR_NETWORK_NOT_ALLOWED)
+			*cme_err = val;
+		else
+			*cme_err = HFP_ERROR_AG_FAILURE;
+
 		return true;
 	}
 
@@ -965,6 +992,7 @@ static void hf_call_prefix_handler(struct hfp_hf *hfp, const char *data)
 	const char *separators = ";:\0";
 	struct hfp_context context;
 	enum hfp_result result;
+	enum hfp_error cme_err;
 	char lookup_prefix[18];
 	uint8_t pref_len = 0;
 	const char *prefix;
@@ -990,14 +1018,14 @@ static void hf_call_prefix_handler(struct hfp_hf *hfp, const char *data)
 	lookup_prefix[pref_len] = '\0';
 	context.offset += pref_len + 1;
 
-	if (is_response(lookup_prefix, &result)) {
+	if (is_response(lookup_prefix, &result, &cme_err, &context)) {
 		struct cmd_response *cmd;
 
 		cmd = queue_peek_head(hfp->cmd_queue);
 		if (!cmd)
 			return;
 
-		cmd->resp_cb(result, cmd->user_data);
+		cmd->resp_cb(result, cme_err, cmd->user_data);
 
 		queue_remove(hfp->cmd_queue, cmd);
 		free(cmd);
