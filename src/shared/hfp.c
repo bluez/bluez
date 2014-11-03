@@ -94,7 +94,7 @@ struct cmd_handler {
 	hfp_result_func_t callback;
 };
 
-struct hfp_gw_result {
+struct hfp_context {
 	const char *data;
 	unsigned int offset;
 };
@@ -178,37 +178,37 @@ static void wakeup_writer(struct hfp_gw *hfp)
 	hfp->writer_active = true;
 }
 
-static void skip_whitespace(struct hfp_gw_result *result)
+static void skip_whitespace(struct hfp_context *context)
 {
-	while (result->data[result->offset] == ' ')
-		result->offset++;
+	while (context->data[context->offset] == ' ')
+		context->offset++;
 }
 
 static bool call_prefix_handler(struct hfp_gw *hfp, const char *data)
 {
 	struct cmd_handler *handler;
 	const char *separators = ";?=\0";
-	struct hfp_gw_result result;
+	struct hfp_context context;
 	enum hfp_gw_cmd_type type;
 	char lookup_prefix[18];
 	uint8_t pref_len = 0;
 	const char *prefix;
 	int i;
 
-	result.offset = 0;
-	result.data = data;
+	context.offset = 0;
+	context.data = data;
 
-	skip_whitespace(&result);
+	skip_whitespace(&context);
 
-	if (strlen(data + result.offset) < 3)
+	if (strlen(data + context.offset) < 3)
 		return false;
 
-	if (strncmp(data + result.offset, "AT", 2))
-		if (strncmp(data + result.offset, "at", 2))
+	if (strncmp(data + context.offset, "AT", 2))
+		if (strncmp(data + context.offset, "at", 2))
 			return false;
 
-	result.offset += 2;
-	prefix = data + result.offset;
+	context.offset += 2;
+	prefix = data + context.offset;
 
 	if (isalpha(prefix[0])) {
 		lookup_prefix[pref_len++] = toupper(prefix[0]);
@@ -222,17 +222,17 @@ static bool call_prefix_handler(struct hfp_gw *hfp, const char *data)
 	}
 
 	lookup_prefix[pref_len] = '\0';
-	result.offset += pref_len;
+	context.offset += pref_len;
 
 	if (lookup_prefix[0] == 'D') {
 		type = HFP_GW_CMD_TYPE_SET;
 		goto done;
 	}
 
-	if (data[result.offset] == '=') {
-		result.offset++;
-		if (data[result.offset] == '?') {
-			result.offset++;
+	if (data[context.offset] == '=') {
+		context.offset++;
+		if (data[context.offset] == '?') {
+			context.offset++;
 			type = HFP_GW_CMD_TYPE_TEST;
 		} else {
 			type = HFP_GW_CMD_TYPE_SET;
@@ -240,8 +240,8 @@ static bool call_prefix_handler(struct hfp_gw *hfp, const char *data)
 		goto done;
 	}
 
-	if (data[result.offset] == '?') {
-		result.offset++;
+	if (data[context.offset] == '?') {
+		context.offset++;
 		type = HFP_GW_CMD_TYPE_READ;
 		goto done;
 	}
@@ -255,98 +255,99 @@ done:
 	if (!handler)
 		return false;
 
-	handler->callback(&result, type, handler->user_data);
+	handler->callback(&context, type, handler->user_data);
 
 	return true;
 }
 
-static void next_field(struct hfp_gw_result *result)
+static void next_field(struct hfp_context *context)
 {
-	if (result->data[result->offset] == ',')
-		result->offset++;
+	if (context->data[context->offset] == ',')
+		context->offset++;
 }
 
-bool hfp_gw_result_get_number_default(struct hfp_gw_result *result,
+bool hfp_gw_result_get_number_default(struct hfp_context *context,
 						unsigned int *val,
 						unsigned int default_val)
 {
-	skip_whitespace(result);
+	skip_whitespace(context);
 
-	if (result->data[result->offset] == ',') {
+	if (context->data[context->offset] == ',') {
 		if (val)
 			*val = default_val;
 
-		result->offset++;
+		context->offset++;
 		return true;
 	}
 
-	return hfp_gw_result_get_number(result, val);
+	return hfp_gw_result_get_number(context, val);
 }
 
-bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val)
+bool hfp_gw_result_get_number(struct hfp_context *context,
+							unsigned int *val)
 {
 	unsigned int i;
 	int tmp = 0;
 
-	skip_whitespace(result);
+	skip_whitespace(context);
 
-	i = result->offset;
+	i = context->offset;
 
-	while (result->data[i] >= '0' && result->data[i] <= '9')
-		tmp = tmp * 10 + result->data[i++] - '0';
+	while (context->data[i] >= '0' && context->data[i] <= '9')
+		tmp = tmp * 10 + context->data[i++] - '0';
 
-	if (i == result->offset)
+	if (i == context->offset)
 		return false;
 
 	if (val)
 		*val = tmp;
-	result->offset = i;
+	context->offset = i;
 
-	skip_whitespace(result);
-	next_field(result);
+	skip_whitespace(context);
+	next_field(context);
 
 	return true;
 }
 
-bool hfp_gw_result_open_container(struct hfp_gw_result *result)
+bool hfp_gw_result_open_container(struct hfp_context *context)
 {
-	skip_whitespace(result);
+	skip_whitespace(context);
 
 	/* The list shall be preceded by a left parenthesis "(") */
-	if (result->data[result->offset] != '(')
+	if (context->data[context->offset] != '(')
 		return false;
 
-	result->offset++;
+	context->offset++;
 
 	return true;
 }
 
-bool hfp_gw_result_close_container(struct hfp_gw_result *result)
+bool hfp_gw_result_close_container(struct hfp_context *context)
 {
-	skip_whitespace(result);
+	skip_whitespace(context);
 
 	/* The list shall be followed by a right parenthesis (")" V250 5.7.3.1*/
-	if (result->data[result->offset] != ')')
+	if (context->data[context->offset] != ')')
 		return false;
 
-	result->offset++;
+	context->offset++;
 
 	return true;
 }
 
-bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
+bool hfp_gw_result_get_string(struct hfp_context *context, char *buf,
 								uint8_t len)
 {
 	int i = 0;
-	const char *data = result->data;
+	const char *data = context->data;
 	unsigned int offset;
 
-	skip_whitespace(result);
+	skip_whitespace(context);
 
-	if (data[result->offset] != '"')
+	if (data[context->offset] != '"')
 		return false;
 
-	offset = result->offset;
+	offset = context->offset;
 	offset++;
 
 	while (data[offset] != '\0' && data[offset] != '"') {
@@ -367,29 +368,29 @@ bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
 	else
 		return false;
 
-	result->offset = offset;
+	context->offset = offset;
 
-	skip_whitespace(result);
-	next_field(result);
+	skip_whitespace(context);
+	next_field(context);
 
 	return true;
 }
 
-bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
-								uint8_t len)
+bool hfp_gw_result_get_unquoted_string(struct hfp_context *context,
+							char *buf, uint8_t len)
 {
-	const char *data = result->data;
+	const char *data = context->data;
 	unsigned int offset;
 	int i = 0;
 	char c;
 
-	skip_whitespace(result);
+	skip_whitespace(context);
 
-	c = data[result->offset];
+	c = data[context->offset];
 	if (c == '"' || c == ')' || c == '(')
 		return false;
 
-	offset = result->offset;
+	offset = context->offset;
 
 	while (data[offset] != '\0' && data[offset] != ',' &&
 							data[offset] != ')') {
@@ -405,16 +406,16 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
 
 	buf[i] = '\0';
 
-	result->offset = offset;
+	context->offset = offset;
 
-	next_field(result);
+	next_field(context);
 
 	return true;
 }
 
-bool hfp_gw_result_has_next(struct hfp_gw_result *result)
+bool hfp_gw_result_has_next(struct hfp_context *context)
 {
-	return result->data[result->offset] != '\0';
+	return context->data[context->offset] != '\0';
 }
 
 static void process_input(struct hfp_gw *hfp)

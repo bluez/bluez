@@ -69,9 +69,9 @@ enum hfp_gw_cmd_type {
 	HFP_GW_CMD_TYPE_COMMAND
 };
 
-struct hfp_gw_result;
+struct hfp_context;
 
-typedef void (*hfp_result_func_t)(struct hfp_gw_result *result,
+typedef void (*hfp_result_func_t)(struct hfp_context *context,
 				enum hfp_gw_cmd_type type, void *user_data);
 
 typedef void (*hfp_destroy_func_t)(void *user_data);
@@ -115,17 +115,18 @@ bool hfp_gw_register(struct hfp_gw *hfp, hfp_result_func_t callback,
 						hfp_destroy_func_t destroy);
 bool hfp_gw_unregister(struct hfp_gw *hfp, const char *prefix);
 
-bool hfp_gw_result_get_number(struct hfp_gw_result *result, unsigned int *val);
-bool hfp_gw_result_get_number_default(struct hfp_gw_result *result,
+bool hfp_gw_result_get_number(struct hfp_context *context,
+							unsigned int *val);
+bool hfp_gw_result_get_number_default(struct hfp_context *context,
 						unsigned int *val,
 						unsigned int default_val);
-bool hfp_gw_result_open_container(struct hfp_gw_result *result);
-bool hfp_gw_result_close_container(struct hfp_gw_result *result);
-bool hfp_gw_result_get_string(struct hfp_gw_result *result, char *buf,
+bool hfp_gw_result_open_container(struct hfp_context *context);
+bool hfp_gw_result_close_container(struct hfp_context *context);
+bool hfp_gw_result_get_string(struct hfp_context *context, char *buf,
 								uint8_t len);
-bool hfp_gw_result_get_unquoted_string(struct hfp_gw_result *result, char *buf,
-								uint8_t len);
-bool hfp_gw_result_has_next(struct hfp_gw_result *result);
+bool hfp_gw_result_get_unquoted_string(struct hfp_context *context,
+						char *buf, uint8_t len);
+bool hfp_gw_result_has_next(struct hfp_context *context);
 
 struct hfp_hf_result;
 

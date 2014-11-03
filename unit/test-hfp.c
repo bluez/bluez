@@ -206,7 +206,7 @@ static void cmd_handler(const char *command, void *user_data)
 	hfp_gw_send_result(context->hfp, HFP_RESULT_ERROR);
 }
 
-static void prefix_handler(struct hfp_gw_result *result,
+static void prefix_handler(struct hfp_context *result,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct context *context = user_data;
@@ -358,7 +358,7 @@ static void test_fragmented(gconstpointer data)
 	execute_context(context);
 }
 
-static void check_ustring_1(struct hfp_gw_result *result,
+static void check_ustring_1(struct hfp_context *result,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct context *context = user_data;
@@ -385,7 +385,7 @@ static void check_ustring_1(struct hfp_gw_result *result,
 	hfp_gw_send_result(context->hfp, HFP_RESULT_ERROR);
 }
 
-static void check_ustring_2(struct hfp_gw_result *result,
+static void check_ustring_2(struct hfp_context *result,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct context *context = user_data;
@@ -405,7 +405,7 @@ static void check_ustring_2(struct hfp_gw_result *result,
 	hfp_gw_send_result(context->hfp, HFP_RESULT_ERROR);
 }
 
-static void check_string_1(struct hfp_gw_result *result,
+static void check_string_1(struct hfp_context *result,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct context *context = user_data;
@@ -433,7 +433,7 @@ static void check_string_1(struct hfp_gw_result *result,
 	hfp_gw_send_result(context->hfp, HFP_RESULT_ERROR);
 }
 
-static void check_string_2(struct hfp_gw_result *result,
+static void check_string_2(struct hfp_context *result,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct context *context = user_data;

@@ -342,8 +342,8 @@ static void at_cmd_unknown(const char *command, void *user_data)
 			HAL_EV_HANDSFREE_UNKNOWN_AT, sizeof(*ev) + ev->len, ev);
 }
 
-static void at_cmd_vgm(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_vgm(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	struct hal_ev_handsfree_volume ev;
@@ -353,10 +353,10 @@ static void at_cmd_vgm(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_number(result, &val) || val > 15)
+		if (!hfp_gw_result_get_number(context, &val) || val > 15)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ev.type = HAL_HANDSFREE_VOLUME_TYPE_MIC;
@@ -377,8 +377,8 @@ static void at_cmd_vgm(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_vgs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_vgs(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	struct hal_ev_handsfree_volume ev;
@@ -388,10 +388,10 @@ static void at_cmd_vgs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_number(result, &val) || val > 15)
+		if (!hfp_gw_result_get_number(context, &val) || val > 15)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ev.type = HAL_HANDSFREE_VOLUME_TYPE_SPEAKER;
@@ -412,21 +412,21 @@ static void at_cmd_vgs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_cops(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_cops(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	unsigned int val;
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_number(result, &val) || val != 3)
+		if (!hfp_gw_result_get_number(context, &val) || val != 3)
 			break;
 
-		if (!hfp_gw_result_get_number(result, &val) || val != 0)
+		if (!hfp_gw_result_get_number(context, &val) || val != 0)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		hfp_gw_send_result(dev->gw, HFP_RESULT_OK);
@@ -443,8 +443,8 @@ static void at_cmd_cops(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_bia(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_bia(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	unsigned int val, i, def;
@@ -462,7 +462,8 @@ static void at_cmd_bia(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		do {
 			def = (i < IND_COUNT) ? dev->inds[i].active : 0;
 
-			if (!hfp_gw_result_get_number_default(result, &val, def))
+			if (!hfp_gw_result_get_number_default(context, &val,
+									def))
 				goto failed;
 
 			if (val > 1)
@@ -472,7 +473,7 @@ static void at_cmd_bia(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 				tmp[i] = val || dev->inds[i].always_active;
 				i++;
 			}
-		} while (hfp_gw_result_has_next(result));
+		} while (hfp_gw_result_has_next(context));
 
 		for (i = 0; i < IND_COUNT; i++)
 			dev->inds[i].active = tmp[i];
@@ -489,8 +490,8 @@ failed:
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_a(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_a(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 
@@ -498,7 +499,7 @@ static void at_cmd_a(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_COMMAND:
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
@@ -516,8 +517,8 @@ static void at_cmd_a(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_d(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	char buf[IPC_MTU];
@@ -528,7 +529,7 @@ static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_unquoted_string(result,
+		if (!hfp_gw_result_get_unquoted_string(context,
 						(char *) ev->number, 255))
 			break;
 
@@ -560,8 +561,8 @@ static void at_cmd_d(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_ccwa(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_ccwa(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	unsigned int val;
@@ -570,10 +571,10 @@ static void at_cmd_ccwa(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+		if (!hfp_gw_result_get_number(context, &val) || val > 1)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		dev->ccwa_enabled = val;
@@ -589,8 +590,8 @@ static void at_cmd_ccwa(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_chup(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_chup(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 
@@ -598,7 +599,7 @@ static void at_cmd_chup(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_COMMAND:
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
@@ -616,8 +617,8 @@ static void at_cmd_chup(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_clcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_clcc(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 
@@ -625,7 +626,7 @@ static void at_cmd_clcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_COMMAND:
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
@@ -640,8 +641,8 @@ static void at_cmd_clcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_cmee(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_cmee(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	unsigned int val;
@@ -650,10 +651,10 @@ static void at_cmd_cmee(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+		if (!hfp_gw_result_get_number(context, &val) || val > 1)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		dev->cmee_enabled = val;
@@ -669,8 +670,8 @@ static void at_cmd_cmee(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_clip(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_clip(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	unsigned int val;
@@ -679,10 +680,10 @@ static void at_cmd_clip(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+		if (!hfp_gw_result_get_number(context, &val) || val > 1)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		dev->clip_enabled = val;
@@ -698,8 +699,8 @@ static void at_cmd_clip(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_vts(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	struct hal_ev_handsfree_dtmf ev;
@@ -709,7 +710,7 @@ static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_unquoted_string(result, str, 2))
+		if (!hfp_gw_result_get_unquoted_string(context, str, 2))
 			break;
 
 		if (!((str[0] >= '0' && str[0] <= '9') ||
@@ -717,7 +718,7 @@ static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 				str[0] == '*' || str[0] == '#'))
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ev.tone = str[0];
@@ -737,8 +738,8 @@ static void at_cmd_vts(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_cnum(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_cnum(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 
@@ -746,7 +747,7 @@ static void at_cmd_cnum(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_COMMAND:
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
@@ -761,8 +762,8 @@ static void at_cmd_cnum(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_binp(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_binp(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 
@@ -773,8 +774,8 @@ static void at_cmd_binp(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_bldn(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	struct hal_ev_handsfree_dial ev;
@@ -783,7 +784,7 @@ static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_COMMAND:
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ev.number_len = 0;
@@ -800,8 +801,8 @@ static void at_cmd_bldn(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_bvra(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	struct hal_ev_handsfree_vr_state ev;
@@ -811,10 +812,10 @@ static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 
 	switch (type) {
 	case HFP_GW_CMD_TYPE_SET:
-		if (!hfp_gw_result_get_number(result, &val) || val > 1)
+		if (!hfp_gw_result_get_number(context, &val) || val > 1)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		if (val)
@@ -834,8 +835,8 @@ static void at_cmd_bvra(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_nrec(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 	struct hal_ev_handsfree_nrec ev;
@@ -850,10 +851,10 @@ static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		 * callback, but spec allows HF to only disable AG's NREC
 		 * feature for SLC duration. Follow spec here.
 		 */
-		if (!hfp_gw_result_get_number(result, &val) || val != 0)
+		if (!hfp_gw_result_get_number(context, &val) || val != 0)
 			break;
 
-		if (hfp_gw_result_has_next(result))
+		if (hfp_gw_result_has_next(context))
 			break;
 
 		ev.nrec = HAL_HANDSFREE_NREC_STOP;
@@ -861,7 +862,7 @@ static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_NREC, sizeof(ev), &ev);
 
-		/* Framework is not replying with result for AT+NREC */
+		/* Framework is not replying with context for AT+NREC */
 		hfp_gw_send_result(dev->gw, HFP_RESULT_OK);
 		return;
 	case HFP_GW_CMD_TYPE_READ:
@@ -873,8 +874,8 @@ static void at_cmd_nrec(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_bsir(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_bsir(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 
@@ -885,8 +886,8 @@ static void at_cmd_bsir(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_btrh(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
-								void *user_data)
+static void at_cmd_btrh(struct hfp_context *context,
+				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
 
@@ -1034,7 +1035,7 @@ static gboolean connect_sco_delayed(void *data)
 	return FALSE;
 }
 
-static void at_cmd_bcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_bcc(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
@@ -1070,7 +1071,7 @@ static void at_cmd_bcc(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_bcs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_bcs(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
@@ -1113,7 +1114,7 @@ static void at_cmd_bcs(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 }
 
-static void at_cmd_ckpd(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_ckpd(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
@@ -1175,7 +1176,7 @@ static void register_post_slc_at(struct hf_device *dev)
 	hfp_gw_register(dev->gw, at_cmd_bcs, "+BCS", dev, NULL);
 }
 
-static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_cmer(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
@@ -1224,7 +1225,7 @@ static void at_cmd_cmer(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		hfp_gw_disconnect(dev->gw);
 }
 
-static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_cind(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
@@ -1285,7 +1286,7 @@ static void at_cmd_cind(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		hfp_gw_disconnect(dev->gw);
 }
 
-static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_brsf(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
@@ -1317,7 +1318,7 @@ static void at_cmd_brsf(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
 		hfp_gw_disconnect(dev->gw);
 }
 
-static void at_cmd_chld(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_chld(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
@@ -1370,7 +1371,7 @@ static struct hfp_codec *find_codec_by_type(struct hf_device *dev, uint8_t type)
 	return NULL;
 }
 
-static void at_cmd_bac(struct hfp_gw_result *result, enum hfp_gw_cmd_type type,
+static void at_cmd_bac(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
