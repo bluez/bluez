@@ -128,9 +128,7 @@ bool hfp_gw_result_get_unquoted_string(struct hfp_context *context,
 						char *buf, uint8_t len);
 bool hfp_gw_result_has_next(struct hfp_context *context);
 
-struct hfp_hf_result;
-
-typedef void (*hfp_hf_result_func_t)(struct hfp_hf_result *result,
+typedef void (*hfp_hf_result_func_t)(struct hfp_context *context,
 							void *user_data);
 
 typedef void (*hfp_response_func_t)(enum hfp_result result, void *user_data);

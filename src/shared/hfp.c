@@ -99,14 +99,9 @@ struct hfp_context {
 	unsigned int offset;
 };
 
-struct hfp_hf_result {
-	const char *data;
-	unsigned int offset;
-};
-
 struct cmd_response {
 	hfp_response_func_t resp_cb;
-	struct hfp_hf_result *response;
+	struct hfp_context *response;
 	char *resp_data;
 	void *user_data;
 };
@@ -903,10 +898,10 @@ static void hf_write_watch_destroy(void *user_data)
 	hfp->writer_active = false;
 }
 
-static void hf_skip_whitespace(struct hfp_hf_result *result)
+static void hf_skip_whitespace(struct hfp_context *context)
 {
-	while (result->data[result->offset] == ' ')
-		result->offset++;
+	while (context->data[context->offset] == ' ')
+		context->offset++;
 }
 
 static bool is_response(const char *prefix, enum hfp_result *result)
@@ -968,22 +963,22 @@ static void hf_call_prefix_handler(struct hfp_hf *hfp, const char *data)
 {
 	struct event_handler *handler;
 	const char *separators = ";:\0";
-	struct hfp_hf_result result_data;
+	struct hfp_context context;
 	enum hfp_result result;
 	char lookup_prefix[18];
 	uint8_t pref_len = 0;
 	const char *prefix;
 	int i;
 
-	result_data.offset = 0;
-	result_data.data = data;
+	context.offset = 0;
+	context.data = data;
 
-	hf_skip_whitespace(&result_data);
+	hf_skip_whitespace(&context);
 
-	if (strlen(data + result_data.offset) < 2)
+	if (strlen(data + context.offset) < 2)
 		return;
 
-	prefix = data + result_data.offset;
+	prefix = data + context.offset;
 
 	pref_len = strcspn(prefix, separators);
 	if (pref_len > 17 || pref_len < 2)
@@ -993,7 +988,7 @@ static void hf_call_prefix_handler(struct hfp_hf *hfp, const char *data)
 		lookup_prefix[i] = toupper(prefix[i]);
 
 	lookup_prefix[pref_len] = '\0';
-	result_data.offset += pref_len + 1;
+	context.offset += pref_len + 1;
 
 	if (is_response(lookup_prefix, &result)) {
 		struct cmd_response *cmd;
@@ -1016,7 +1011,7 @@ static void hf_call_prefix_handler(struct hfp_hf *hfp, const char *data)
 	if (!handler)
 		return;
 
-	handler->callback(&result_data, handler->user_data);
+	handler->callback(&context, handler->user_data);
 }
 
 static char *find_cr_lf(char *str, size_t len)

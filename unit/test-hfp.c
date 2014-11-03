@@ -469,7 +469,7 @@ static void test_hf_init(gconstpointer data)
 
 static bool unsolicited_resp = false;
 
-static void hf_unsolicited_resp_cb(struct hfp_hf_result *result,
+static void hf_unsolicited_resp_cb(struct hfp_context *context,
 							void *user_data) {
 	unsolicited_resp = true;
 }
@@ -526,7 +526,7 @@ static void test_hf_send_command(gconstpointer data)
 	execute_context(context);
 }
 
-static void hf_result_handler(struct hfp_hf_result *result,
+static void hf_result_handler(struct hfp_context *result,
 							void *user_data)
 {
 	struct context *context = user_data;
