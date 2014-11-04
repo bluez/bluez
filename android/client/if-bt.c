@@ -328,6 +328,13 @@ static void le_test_mode_cb(bt_status_t status, uint16_t num_packets)
 								num_packets);
 }
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static void energy_info_cb(bt_activity_energy_info *energy_info)
+{
+	haltest_info("%s\n", __func__);
+}
+#endif
+
 static bt_callbacks_t bt_callbacks = {
 	.size = sizeof(bt_callbacks),
 	.adapter_state_changed_cb = adapter_state_changed_cb,
@@ -341,7 +348,10 @@ static bt_callbacks_t bt_callbacks = {
 	.acl_state_changed_cb = acl_state_changed_cb,
 	.thread_evt_cb = thread_evt_cb,
 	.dut_mode_recv_cb = dut_mode_recv_cb,
-	.le_test_mode_cb = le_test_mode_cb
+	.le_test_mode_cb = le_test_mode_cb,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.energy_info_cb = energy_info_cb,
+#endif
 };
 
 static void init_p(int argc, const char **argv)
