@@ -1354,6 +1354,51 @@ static int audio_dump(const audio_hw_device_t *device, int fd)
 	return -ENOSYS;
 }
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static int set_master_mute(struct audio_hw_device *dev, bool mute)
+{
+	DBG("");
+	return -ENOSYS;
+}
+
+static int get_master_mute(struct audio_hw_device *dev, bool *mute)
+{
+	DBG("");
+	return -ENOSYS;
+}
+
+static int create_audio_patch(struct audio_hw_device *dev,
+					unsigned int num_sources,
+					const struct audio_port_config *sources,
+					unsigned int num_sinks,
+					const struct audio_port_config *sinks,
+					audio_patch_handle_t *handle)
+{
+	DBG("");
+	return -ENOSYS;
+}
+
+static int release_audio_patch(struct audio_hw_device *dev,
+					audio_patch_handle_t handle)
+{
+	DBG("");
+	return -ENOSYS;
+}
+
+static int get_audio_port(struct audio_hw_device *dev, struct audio_port *port)
+{
+	DBG("");
+	return -ENOSYS;
+}
+
+static int set_audio_port_config(struct audio_hw_device *dev,
+					const struct audio_port_config *config)
+{
+	DBG("");
+	return -ENOSYS;
+}
+#endif
+
 static int audio_close(hw_device_t *device)
 {
 	struct a2dp_audio_dev *a2dp_dev = (struct a2dp_audio_dev *)device;
@@ -1550,6 +1595,14 @@ static int audio_open(const hw_module_t *module, const char *name,
 	a2dp_dev->dev.open_input_stream = audio_open_input_stream;
 	a2dp_dev->dev.close_input_stream = audio_close_input_stream;
 	a2dp_dev->dev.dump = audio_dump;
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	a2dp_dev->dev.set_master_mute = set_master_mute;
+	a2dp_dev->dev.get_master_mute = get_master_mute;
+	a2dp_dev->dev.create_audio_patch = create_audio_patch;
+	a2dp_dev->dev.release_audio_patch = release_audio_patch;
+	a2dp_dev->dev.get_audio_port = get_audio_port;
+	a2dp_dev->dev.set_audio_port_config = set_audio_port_config;
+#endif
 
 	for (i = 0; i < NUM_CODECS; i++) {
 		const struct audio_codec *codec = audio_codecs[i].get_codec();
