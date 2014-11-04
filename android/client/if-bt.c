@@ -19,6 +19,7 @@
 
 #include "if-main.h"
 #include "terminal.h"
+#include "../hal-msg.h"
 #include "../hal-utils.h"
 
 const bt_interface_t *if_bluetooth;
@@ -609,11 +610,23 @@ static void cancel_discovery_p(int argc, const char **argv)
 static void create_bond_p(int argc, const char **argv)
 {
 	bt_bdaddr_t addr;
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	int transport;
+#endif
 
 	RETURN_IF_NULL(if_bluetooth);
 	VERIFY_ADDR_ARG(2, &addr);
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	if (argc < 3)
+		transport = BT_TRANSPORT_UNKNOWN;
+	else
+		transport = atoi(argv[3]);
+
+	EXEC(if_bluetooth->create_bond, &addr, transport);
+#else
 	EXEC(if_bluetooth->create_bond, &addr);
+#endif
 }
 
 /* Just addres to complete, use complete_addr_c */
