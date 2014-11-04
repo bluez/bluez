@@ -1,7 +1,7 @@
 PTS test results for HDP
 
 PTS version: 5.3
-Tested: 30-September-2014
+Tested: 04-November-2014
 Android version: 4.4.4
 
 Results:
@@ -140,7 +140,7 @@ TC_SRC_HCT_BV_07_C	PASS	haltest:
 				bluez-hdp health-device-profile 1
 				BTHL_MDEP_ROLE_SOURCE 4100
 				BTHL_CHANNEL_TYPE_RELIABLE pulse-oximeter
-TC_SRC_DE_BV_01_I	INC	PTS issue #12340
+TC_SRC_DE_BV_01_I	N/A
 TC_SRC_DE_BV_02_I	PASS	haltest:
 				hl register_application bluez-android Bluez
 				bluez-hdp health-device-profile 1
