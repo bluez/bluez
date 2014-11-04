@@ -4323,6 +4323,12 @@ static void handle_create_bond_cmd(const void *buf, uint16_t len)
 	cp.addr.type = select_device_bearer(dev);
 	bacpy(&cp.addr.bdaddr, &dev->bdaddr);
 
+	/* TODO: Handle transport parameter */
+        if (cmd->transport > BT_TRANSPORT_LE) {
+                status = HAL_STATUS_INVALID;
+		goto fail;
+	}
+
 	if (device_is_paired(dev, cp.addr.type)) {
 		status = HAL_STATUS_FAILED;
 		goto fail;

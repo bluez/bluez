@@ -275,6 +275,7 @@ Commands and responses:
 	Opcode 0x0d - Create Bond command/response
 
 		Command parameters: Remote address (6 octets)
+		                    Transport (1 octet)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.

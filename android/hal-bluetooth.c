@@ -736,7 +736,7 @@ static int cancel_discovery(void)
 						NULL, NULL, NULL, NULL);
 }
 
-static int create_bond(const bt_bdaddr_t *bd_addr)
+static int create_bond_real(const bt_bdaddr_t *bd_addr, int transport)
 {
 	struct hal_cmd_create_bond cmd;
 
@@ -745,11 +745,25 @@ static int create_bond(const bt_bdaddr_t *bd_addr)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
+	cmd.transport = transport;
+
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CREATE_BOND,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static int create_bond(const bt_bdaddr_t *bd_addr, int transport)
+{
+	return create_bond_real(bd_addr, transport);
+}
+#else
+static int create_bond(const bt_bdaddr_t *bd_addr)
+{
+	return create_bond_real(bd_addr, BT_TRANSPORT_UNKNOWN);
+}
+#endif
 
 static int cancel_bond(const bt_bdaddr_t *bd_addr)
 {

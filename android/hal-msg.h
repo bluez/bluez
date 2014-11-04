@@ -190,9 +190,14 @@ struct hal_cmd_get_remote_services {
 
 #define HAL_OP_CANCEL_DISCOVERY		0x0c
 
+#define BT_TRANSPORT_UNKNOWN		0x00
+#define BT_TRANSPORT_BR_EDR		0x01
+#define BT_TRANSPORT_LE			0x02
+
 #define HAL_OP_CREATE_BOND		0x0d
 struct hal_cmd_create_bond {
 	uint8_t bdaddr[6];
+	uint8_t transport;
 } __attribute__((packed));
 
 #define HAL_OP_REMOVE_BOND		0x0e
