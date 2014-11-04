@@ -949,6 +949,35 @@ static int config_hci_snoop_log(uint8_t enable)
 	return BT_STATUS_SUCCESS;
 }
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static int get_connection_state(const bt_bdaddr_t *bd_addr)
+{
+	DBG("bdaddr: %s", bdaddr2str(bd_addr));
+
+	/* TODO: implement */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+static int set_os_callouts(bt_os_callouts_t *callouts)
+{
+	DBG("callouts: %p", callouts);
+
+	/* TODO: implement */
+
+	return BT_STATUS_SUCCESS;
+}
+
+static int read_energy_info(void)
+{
+	DBG("");
+
+	/* TODO: implement */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+#endif
+
 static const bt_interface_t bluetooth_if = {
 	.size = sizeof(bt_interface_t),
 	.init = init,
@@ -975,6 +1004,11 @@ static const bt_interface_t bluetooth_if = {
 	.dut_mode_send = dut_mode_send,
 	.le_test_mode = le_test_mode,
 	.config_hci_snoop_log = config_hci_snoop_log,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.get_connection_state = get_connection_state,
+	.set_os_callouts = set_os_callouts,
+	.read_energy_info = read_energy_info,
+#endif
 };
 
 static const bt_interface_t *get_bluetooth_interface(void)
