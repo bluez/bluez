@@ -4324,8 +4324,8 @@ static void handle_create_bond_cmd(const void *buf, uint16_t len)
 	bacpy(&cp.addr.bdaddr, &dev->bdaddr);
 
 	/* TODO: Handle transport parameter */
-        if (cmd->transport > BT_TRANSPORT_LE) {
-                status = HAL_STATUS_INVALID;
+	if (cmd->transport > BT_TRANSPORT_LE) {
+		status = HAL_STATUS_INVALID;
 		goto fail;
 	}
 
