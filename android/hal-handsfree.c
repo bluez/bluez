@@ -405,7 +405,8 @@ static bt_status_t stop_voice_recognition(void)
 }
 #endif
 
-static bt_status_t volume_control(bthf_volume_type_t type, int volume)
+static bt_status_t volume_control_real(bthf_volume_type_t type, int volume,
+							bt_bdaddr_t *bd_addr)
 {
 	struct hal_cmd_handsfree_volume_control cmd;
 
@@ -414,13 +415,31 @@ static bt_status_t volume_control(bthf_volume_type_t type, int volume)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
+	memset(&cmd, 0, sizeof(cmd));
+
 	cmd.type = type;
 	cmd.volume = volume;
+
+	if (bd_addr)
+		memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
 				HAL_OP_HANDSFREE_VOLUME_CONTROL, sizeof(cmd),
 				&cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t volume_control(bthf_volume_type_t type, int volume,
+							bt_bdaddr_t *bd_addr)
+{
+	return volume_control_real(type, volume, bd_addr);
+}
+#else
+static bt_status_t volume_control(bthf_volume_type_t type, int volume)
+{
+	return volume_control_real(type, volume, NULL);
+}
+#endif
 
 static bt_status_t device_status_notification(bthf_network_state_t state,
 						bthf_service_type_t type,

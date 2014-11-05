@@ -510,6 +510,7 @@ struct hal_cmd_handsfree_stop_vr {
 struct hal_cmd_handsfree_volume_control {
 	uint8_t type;
 	uint8_t volume;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_HANDSFREE_NETWORK_STATE_NOT_AVAILABLE	0x00

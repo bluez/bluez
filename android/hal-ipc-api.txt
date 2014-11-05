@@ -851,6 +851,7 @@ Commands and responses:
 
 		Command parameters: Volume type (1 octet)
 		                    Volume (1 octet)
+		                    Remote address (6 octets)
 		Response parameters: <none>
 
 		Valid volume types: 0x00 = Speaker

@@ -1947,10 +1947,13 @@ static void handle_volume_control(const void *buf, uint16_t len)
 	const struct hal_cmd_handsfree_volume_control *cmd = buf;
 	struct hf_device *dev;
 	uint8_t status, volume;
+	bdaddr_t bdaddr;
 
 	DBG("type=%u volume=%u", cmd->type, cmd->volume);
 
-	dev = find_default_device();
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+
+	dev = find_device(&bdaddr);
 	if (!dev) {
 		status = HAL_STATUS_FAILED;
 		goto done;
