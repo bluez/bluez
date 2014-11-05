@@ -2901,7 +2901,8 @@ static bool bt_sco_register(ipc_disconnect_cb disconnect)
 	return true;
 }
 
-bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
+bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode,
+								int max_clients)
 {
 	DBG("mode 0x%x", mode);
 
@@ -2919,6 +2920,8 @@ bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 
 	if (mode == HAL_MODE_HANDSFREE_HSP_ONLY)
 		goto done;
+
+	/* TODO: Handle max_clients argument */
 
 	hfp_ag_features = HFP_AG_FEATURES;
 

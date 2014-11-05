@@ -226,7 +226,7 @@ static uint8_t get_mode(void)
 	return HAL_MODE_HANDSFREE_HSP_ONLY;
 }
 
-static bt_status_t init(bthf_callbacks_t *callbacks)
+static bt_status_t init_real(bthf_callbacks_t *callbacks, int max_hf_clients)
 {
 	struct hal_cmd_register_module cmd;
 	int ret;
@@ -243,6 +243,7 @@ static bt_status_t init(bthf_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_HANDSFREE;
 	cmd.mode = get_mode();
+	cmd.max_clients = max_hf_clients;
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
@@ -254,6 +255,18 @@ static bt_status_t init(bthf_callbacks_t *callbacks)
 
 	return ret;
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t init(bthf_callbacks_t *callbacks, int max_hf_clients)
+{
+	return init_real(callbacks, max_hf_clients);
+}
+#else
+static bt_status_t init(bthf_callbacks_t *callbacks)
+{
+	return init_real(callbacks, 1);
+}
+#endif
 
 static bt_status_t handsfree_connect(bt_bdaddr_t *bd_addr)
 {

@@ -128,6 +128,7 @@ Core Service (ID 0)
 
 		Command parameters: Service id (1 octet)
 		                    Mode (1 octet)
+		                    Max Clients (4 octets)
 		Response parameters: <none>
 
 		In case a command is sent for an undeclared service ID, it will

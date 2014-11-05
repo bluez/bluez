@@ -209,7 +209,8 @@ static void service_register(const void *buf, uint16_t len)
 
 		break;
 	case HAL_SERVICE_ID_HANDSFREE:
-		if (!bt_handsfree_register(hal_ipc, &adapter_bdaddr, m->mode)) {
+		if (!bt_handsfree_register(hal_ipc, &adapter_bdaddr, m->mode,
+							m->max_clients)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}

@@ -21,5 +21,6 @@
  *
  */
 
-bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode);
+bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode,
+							int max_clients);
 void bt_handsfree_unregister(void);

@@ -64,6 +64,7 @@ static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
 struct hal_cmd_register_module {
 	uint8_t service_id;
 	uint8_t mode;
+	int32_t max_clients;
 } __attribute__((packed));
 
 #define HAL_OP_UNREGISTER_MODULE	0x02
