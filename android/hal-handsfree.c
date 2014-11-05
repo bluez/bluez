@@ -595,7 +595,8 @@ static bt_status_t formatted_at_response(const char *rsp)
 }
 #endif
 
-static bt_status_t at_response(bthf_at_response_t response, int error)
+static bt_status_t at_response_real(bthf_at_response_t response, int error,
+							bt_bdaddr_t *bd_addr)
 {
 	struct hal_cmd_handsfree_at_response cmd;
 
@@ -604,6 +605,11 @@ static bt_status_t at_response(bthf_at_response_t response, int error)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
+	if (bd_addr)
+		memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	memset(&cmd, 0, sizeof(cmd));
+
 	cmd.response = response;
 	cmd.error = error;
 
@@ -611,6 +617,19 @@ static bt_status_t at_response(bthf_at_response_t response, int error)
 					HAL_OP_HANDSFREE_AT_RESPONSE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t at_response(bthf_at_response_t response, int error,
+							bt_bdaddr_t *bd_addr)
+{
+	return at_response_real(response, error, bd_addr);
+}
+#else
+static bt_status_t at_response(bthf_at_response_t response, int error)
+{
+	return at_response_real(response, error, NULL);
+}
+#endif
 
 static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
 					bthf_call_state_t state,

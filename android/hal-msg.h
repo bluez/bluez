@@ -568,6 +568,7 @@ struct hal_cmd_handsfree_formatted_at_response {
 struct hal_cmd_handsfree_at_response {
 	uint8_t response;
 	uint8_t error;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_HANDSFREE_CALL_DIRECTION_OUTGOING	0x00

@@ -917,6 +917,7 @@ Commands and responses:
 
 		Command parameters: Response code (1 octet)
 		                    Error code (1 octet)
+		                    Remote address (6 octets)
 		Response parameters: <none>
 
 		Valid response codes: 0x00 = ERROR
