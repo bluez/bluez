@@ -21,6 +21,8 @@
  *
  */
 
+#include <sys/uio.h>
+
 #include "src/shared/att.h"
 #include "lib/uuid.h"
 #include "src/shared/queue.h"
@@ -91,31 +93,41 @@ static bool get_uuid_le(const uint8_t *uuid, size_t len, bt_uuid_t *out_uuid)
 	return false;
 }
 
+static void attribute_read_cb(struct gatt_db_attribute *attrib, int err,
+					const uint8_t *value, size_t length,
+					void *user_data)
+{
+	struct iovec *iov = user_data;
+
+	iov->iov_base = (void *) value;
+	iov->iov_len = length;
+}
+
 static bool encode_read_by_grp_type_rsp(struct gatt_db *db, struct queue *q,
 						uint16_t mtu,
 						uint8_t *pdu, uint16_t *len)
 {
 	int iter = 0;
 	uint16_t start_handle, end_handle;
-	uint8_t *value;
-	int value_len;
+	struct iovec value;
 	uint8_t data_val_len;
 
 	*len = 0;
 
 	while (queue_peek_head(q)) {
-		start_handle = PTR_TO_UINT(queue_pop_head(q));
-		value = NULL;
-		value_len = 0;
+		struct gatt_db_attribute *attrib = queue_pop_head(q);
+
+		value.iov_base = NULL;
+		value.iov_len = 0;
 
 		/*
 		 * This should never be deferred to the read callback for
 		 * primary/secondary service declarations.
 		 */
-		if (!gatt_db_read(db, start_handle, 0,
+		if (!gatt_db_attribute_read(attrib, 0,
 						BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
-						NULL, &value,
-						&value_len) || value_len < 0)
+						NULL, attribute_read_cb,
+						&value) || !value.iov_len)
 			return false;
 
 		/*
@@ -124,21 +136,22 @@ static bool encode_read_by_grp_type_rsp(struct gatt_db *db, struct queue *q,
 		 * value is seen.
 		 */
 		if (iter == 0) {
-			data_val_len = value_len;
+			data_val_len = value.iov_len;
 			pdu[0] = data_val_len + 4;
 			iter++;
-		} else if (value_len != data_val_len)
+		} else if (value.iov_len != data_val_len)
 			break;
 
 		/* Stop if this unit would surpass the MTU */
 		if (iter + data_val_len + 4 > mtu)
 			break;
 
-		end_handle = gatt_db_get_end_handle(db, start_handle);
+		gatt_db_attribute_get_service_handles(attrib, &start_handle,
+								&end_handle);
 
 		put_le16(start_handle, pdu + iter);
 		put_le16(end_handle, pdu + iter + 2);
-		memcpy(pdu + iter + 4, value, value_len);
+		memcpy(pdu + iter + 4, value.iov_base, value.iov_len);
 
 		iter += data_val_len + 4;
 	}

@@ -94,6 +94,8 @@ static const char *device_state_str[] = {
 struct pending_trans_data {
 	unsigned int id;
 	uint8_t opcode;
+	struct gatt_db_attribute *attrib;
+	unsigned int serial_id;
 };
 
 struct gatt_app {
@@ -199,7 +201,7 @@ static struct queue *services_sdp = NULL;
 static struct queue *listen_apps = NULL;
 static struct gatt_db *gatt_db = NULL;
 
-static uint16_t service_changed_handle = 0;
+static struct gatt_db_attribute *service_changed_attrib = NULL;
 
 static GIOChannel *le_io = NULL;
 static GIOChannel *bredr_io = NULL;
@@ -675,7 +677,7 @@ enum pend_req_state {
 };
 
 struct pending_request {
-	uint16_t handle;
+	struct gatt_db_attribute *attrib;
 	int length;
 	uint8_t *value;
 	uint16_t offset;
@@ -997,10 +999,15 @@ static void send_exchange_mtu_request(struct gatt_device *device)
 static void notify_att_range_change(struct gatt_device *dev,
 							struct att_range *range)
 {
+	uint16_t handle;
 	uint16_t length = 0;
 	uint16_t ccc;
 	uint8_t *pdu;
 	size_t mtu;
+
+	handle = gatt_db_attribute_get_handle(service_changed_attrib);
+	if (!handle)
+		return;
 
 	ccc = bt_get_gatt_ccc(&dev->bdaddr);
 	if (!ccc)
@@ -1010,14 +1017,12 @@ static void notify_att_range_change(struct gatt_device *dev,
 
 	switch (ccc) {
 	case 0x0001:
-		length = enc_notification(service_changed_handle,
-						(uint8_t *) range,
+		length = enc_notification(handle, (uint8_t *) range,
 						sizeof(*range), pdu, mtu);
 		break;
 	case 0x0002:
-		length = enc_indication(service_changed_handle,
-					(uint8_t *) range, sizeof(*range), pdu,
-					mtu);
+		length = enc_indication(handle, (uint8_t *) range,
+						sizeof(*range), pdu, mtu);
 		break;
 	default:
 		/* 0xfff4 reserved for future use */
@@ -1472,7 +1477,7 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	 * constant all the time, thus they should be excluded from
 	 * range indicating changes.
 	 */
-	range.start = service_changed_handle + 2;
+	range.start = gatt_db_attribute_get_handle(service_changed_attrib) + 2;
 	range.end = 0xffff;
 
 	/*
@@ -4222,6 +4227,7 @@ static void handle_server_add_service(const void *buf, uint16_t len)
 	const struct hal_cmd_gatt_server_add_service *cmd = buf;
 	struct hal_ev_gatt_server_service_added ev;
 	struct gatt_app *server;
+	struct gatt_db_attribute *service;
 	uint8_t status;
 	bt_uuid_t uuid;
 
@@ -4237,9 +4243,14 @@ static void handle_server_add_service(const void *buf, uint16_t len)
 
 	android2uuid(cmd->srvc_id.uuid, &uuid);
 
-	ev.srvc_handle = gatt_db_add_service(gatt_db, &uuid,
-							cmd->srvc_id.is_primary,
+	service = gatt_db_add_service(gatt_db, &uuid, cmd->srvc_id.is_primary,
 							cmd->num_handles);
+	if (!service) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	ev.srvc_handle = gatt_db_attribute_get_handle(service);
 	if (!ev.srvc_handle) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
@@ -4264,6 +4275,7 @@ static void handle_server_add_included_service(const void *buf, uint16_t len)
 	const struct hal_cmd_gatt_server_add_inc_service *cmd = buf;
 	struct hal_ev_gatt_server_inc_srvc_added ev;
 	struct gatt_app *server;
+	struct gatt_db_attribute *service, *include;
 	uint8_t status;
 
 	DBG("");
@@ -4276,10 +4288,20 @@ static void handle_server_add_included_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	ev.incl_srvc_handle = gatt_db_add_included_service(gatt_db,
-							cmd->service_handle,
-							cmd->included_handle);
-	if (!ev.incl_srvc_handle) {
+	service = gatt_db_get_attribute(gatt_db, cmd->service_handle);
+	if (!service) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	include = gatt_db_get_attribute(gatt_db, cmd->included_handle);
+	if (!service) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	service = gatt_db_service_add_included(service, include);
+	if (!service) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -4376,8 +4398,11 @@ static void send_dev_complete_response(struct gatt_device *device,
 		val = queue_pop_head(temp);
 		while (val) {
 			uint8_t *value = adl->data[iterator++];
+			uint16_t handle;
 
-			put_le16(val->handle, value);
+			handle = gatt_db_attribute_get_handle(val->attrib);
+
+			put_le16(handle, value);
 			memcpy(&value[2], val->value, val->length);
 
 			destroy_pending_request(val);
@@ -4442,12 +4467,13 @@ static void send_dev_complete_response(struct gatt_device *device,
 		val = queue_pop_head(temp);
 		while (val) {
 			uint8_t *value = adl->data[iterator++];
-			uint16_t end_handle;
+			uint16_t start_handle, end_handle;
 
-			end_handle = gatt_db_get_end_handle(gatt_db,
-								val->handle);
+			gatt_db_attribute_get_service_handles(val->attrib,
+								&start_handle,
+								&end_handle);
 
-			put_le16(val->handle, value);
+			put_le16(start_handle, value);
 			put_le16(end_handle, &value[2]);
 			memcpy(&value[4], val->value, val->length);
 
@@ -4487,14 +4513,17 @@ static void send_dev_complete_response(struct gatt_device *device,
 				break;
 			}
 
-			range->start = val->handle;
+			range->start = gatt_db_attribute_get_handle(
+								val->attrib);
 			range->end = range->start;
 
-			/* Get proper end handle if its group type */
-			type = gatt_db_get_attribute_type(gatt_db, val->handle);
+			type = gatt_db_attribute_get_type(val->attrib);
 			if (is_service(type))
-				range->end = gatt_db_get_end_handle(gatt_db,
-								val->handle);
+				range->end =
+					gatt_db_attribute_get_service_handles(
+								val->attrib,
+								NULL,
+								&range->end);
 
 			list = g_slist_append(list, range);
 
@@ -4531,17 +4560,22 @@ static void send_dev_complete_response(struct gatt_device *device,
 		len = enc_write_resp(rsp);
 		destroy_pending_request(val);
 		break;
-	case ATT_OP_PREP_WRITE_REQ:
+	case ATT_OP_PREP_WRITE_REQ: {
+		uint16_t handle;
+
 		val = queue_pop_head(device->pending_requests);
 		if (val->error) {
 			error = val->error;
 			goto done;
 		}
 
-		len = enc_prep_write_resp(val->handle, val->offset, val->value,
+		handle = gatt_db_attribute_get_handle(val->attrib);
+
+		len = enc_prep_write_resp(handle, val->offset, val->value,
 							val->length, rsp, mtu);
 		destroy_pending_request(val);
 		break;
+	}
 	default:
 		break;
 	}
@@ -4561,12 +4595,11 @@ struct request_processing_data {
 	struct gatt_device *device;
 };
 
-static bool match_dev_request_by_handle(const void *data, const void *user_data)
+static bool match_dev_request_by_attrib(const void *data, const void *user_data)
 {
 	const struct pending_request *handle_data = data;
-	uint16_t handle = PTR_TO_UINT(user_data);
 
-	return handle_data->handle == handle;
+	return handle_data->attrib == user_data;
 }
 
 static uint8_t check_device_permissions(struct gatt_device *device,
@@ -4639,11 +4672,12 @@ static uint8_t check_device_permissions(struct gatt_device *device,
 	return 0;
 }
 
-static void fill_gatt_response(struct pending_request *request, uint16_t handle,
+static void fill_gatt_response(struct pending_request *request,
+					struct gatt_db_attribute *attrib,
 					uint16_t offset, uint8_t status,
 					uint16_t len, const uint8_t *data)
 {
-	request->handle = handle;
+	request->attrib = attrib;
 	request->offset = offset;
 	request->length = len;
 	request->state = REQUEST_DONE;
@@ -4662,37 +4696,48 @@ static void fill_gatt_response(struct pending_request *request, uint16_t handle,
 	memcpy(request->value, data, len);
 }
 
-static void fill_gatt_response_by_handle(uint16_t handle, uint16_t offset,
-						uint8_t status, uint16_t len,
-						const uint8_t *data,
-						struct gatt_device *dev)
+static uint8_t err_to_att(int err)
 {
-	struct pending_request *entry;
+	if (!err || (err > 0 && err < UINT8_MAX))
+		return err;
 
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
-	if (!entry) {
-		error("gatt: No pending response! Bogus android response?");
-		return;
+	switch (err) {
+	case -ENOENT:
+		return ATT_ECODE_INVALID_HANDLE;
+	case -ENOMEM:
+		return ATT_ECODE_INSUFF_RESOURCES;
+	default:
+		return ATT_ECODE_UNLIKELY;
 	}
+}
 
-	fill_gatt_response(entry, handle, offset, status, len, data);
+static void attribute_read_cb(struct gatt_db_attribute *attrib, int err,
+					const uint8_t *value, size_t length,
+					void *user_data)
+{
+	struct pending_request *resp_data = user_data;
+	uint8_t error = err_to_att(err);
+
+	fill_gatt_response(resp_data, attrib, resp_data->offset, error, length,
+									value);
 }
 
 static void read_requested_attributes(void *data, void *user_data)
 {
 	struct pending_request *resp_data = data;
 	struct request_processing_data *process_data = user_data;
+	struct gatt_db_attribute *attrib;
 	uint32_t permissions;
-	uint8_t *value = NULL, error;
-	int value_len = 0;
+	uint8_t error;
 
-	if (!gatt_db_get_attribute_permissions(gatt_db, resp_data->handle,
-								&permissions)) {
+	attrib = resp_data->attrib;
+	if (!attrib) {
 		resp_data->error = ATT_ECODE_ATTR_NOT_FOUND;
 		resp_data->state = REQUEST_DONE;
 		return;
 	}
+
+	gatt_db_attribute_get_permissions(attrib, &permissions);
 
 	/*
 	 * Check if it is attribute we didn't declare permissions, like service
@@ -4712,18 +4757,9 @@ static void read_requested_attributes(void *data, void *user_data)
 
 	resp_data->state = REQUEST_PENDING;
 
-	if (!gatt_db_read(gatt_db, resp_data->handle,
-						resp_data->offset,
-						process_data->opcode,
-						&process_data->device->bdaddr,
-						&value, &value_len))
-		error = ATT_ECODE_UNLIKELY;
-
-	/* We have value here already if no callback will be called */
-	if (value_len >= 0)
-		fill_gatt_response(resp_data, resp_data->handle,
-					resp_data->offset, error, value_len,
-					value);
+	gatt_db_attribute_read(attrib, resp_data->offset, process_data->opcode,
+					&process_data->device->bdaddr,
+					attribute_read_cb, resp_data);
 }
 
 static void process_dev_pending_requests(struct gatt_device *device,
@@ -4745,7 +4781,9 @@ static void process_dev_pending_requests(struct gatt_device *device,
 }
 
 static struct pending_trans_data *conn_add_transact(struct app_connection *conn,
-								uint8_t opcode)
+					uint8_t opcode,
+					struct gatt_db_attribute *attrib,
+					unsigned int serial_id)
 {
 	struct pending_trans_data *transaction;
 	static int32_t trans_id = 1;
@@ -4761,21 +4799,25 @@ static struct pending_trans_data *conn_add_transact(struct app_connection *conn,
 
 	transaction->id = trans_id++;
 	transaction->opcode = opcode;
+	transaction->attrib = attrib;
+	transaction->serial_id = serial_id;
 
 	return transaction;
 }
 
-static void read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
-					bdaddr_t *bdaddr, void *user_data)
+static void read_cb(struct gatt_db_attribute *attrib, unsigned int id,
+			uint16_t offset, uint8_t opcode, bdaddr_t *bdaddr,
+			void *user_data)
 {
 	struct pending_trans_data *transaction;
 	struct hal_ev_gatt_server_request_read ev;
 	struct gatt_app *app;
 	struct app_connection *conn;
-	int32_t id = PTR_TO_INT(user_data);
-	struct gatt_device *dev;
+	int32_t app_id = PTR_TO_INT(user_data);
 
-	app = find_app_by_id(id);
+	DBG("id %u", id);
+
+	app = find_app_by_id(app_id);
 	if (!app) {
 		error("gatt: read_cb, cound not found app id");
 		goto failed;
@@ -4790,15 +4832,15 @@ static void read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 	memset(&ev, 0, sizeof(ev));
 
 	/* Store the request data, complete callback and transaction id */
-	transaction = conn_add_transact(conn, att_opcode);
+	transaction = conn_add_transact(conn, opcode, attrib, id);
 	if (!transaction)
 		goto failed;
 
 	bdaddr2android(bdaddr, ev.bdaddr);
 	ev.conn_id = conn->id;
-	ev.attr_handle = handle;
+	ev.attr_handle = gatt_db_attribute_get_handle(attrib);
 	ev.offset = offset;
-	ev.is_long = att_opcode == ATT_OP_READ_BLOB_REQ;
+	ev.is_long = opcode == ATT_OP_READ_BLOB_REQ;
 	ev.trans_id = transaction->id;
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
@@ -4808,26 +4850,23 @@ static void read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 	return;
 
 failed:
-	dev = find_device_by_addr(bdaddr);
-	if (dev)
-		fill_gatt_response_by_handle(handle, 0, ATT_ECODE_UNLIKELY, 0,
-							NULL, dev);
+	gatt_db_attribute_read_result(attrib, id, -ENOENT, NULL, 0);
 }
 
-static void write_cb(uint16_t handle, uint16_t offset,
-					const uint8_t *value, size_t len,
-					uint8_t att_opcode, bdaddr_t *bdaddr,
-					void *user_data)
+static void write_cb(struct gatt_db_attribute *attrib, unsigned int id,
+			uint16_t offset, const uint8_t *value, size_t len,
+			uint8_t opcode, bdaddr_t *bdaddr, void *user_data)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_gatt_server_request_write *ev = (void *) buf;
 	struct pending_trans_data *transaction;
 	struct gatt_app *app;
-	int32_t id = PTR_TO_INT(user_data);
+	int32_t app_id = PTR_TO_INT(user_data);
 	struct app_connection *conn;
-	struct gatt_device *dev;
 
-	app = find_app_by_id(id);
+	DBG("id %u", id);
+
+	app = find_app_by_id(app_id);
 	if (!app) {
 		error("gatt: write_cb could not found app id");
 		goto failed;
@@ -4843,27 +4882,26 @@ static void write_cb(uint16_t handle, uint16_t offset,
 	 * Remember that this application has ongoing prep write
 	 * Need it later to find out where to send execute write
 	 */
-	if (att_opcode == ATT_OP_PREP_WRITE_REQ)
+	if (opcode == ATT_OP_PREP_WRITE_REQ)
 		conn->wait_execute_write = true;
 
 	/* Store the request data, complete callback and transaction id */
-	transaction = conn_add_transact(conn, att_opcode);
+	transaction = conn_add_transact(conn, opcode, attrib, id);
 	if (!transaction)
 		goto failed;
 
 	memset(ev, 0, sizeof(*ev));
 
 	bdaddr2android(bdaddr, &ev->bdaddr);
-	ev->attr_handle = handle;
+	ev->attr_handle = gatt_db_attribute_get_handle(attrib);
 	ev->offset = offset;
 
 	ev->conn_id = conn->id;
 	ev->trans_id = transaction->id;
 
-	ev->is_prep = att_opcode == ATT_OP_PREP_WRITE_REQ;
+	ev->is_prep = opcode == ATT_OP_PREP_WRITE_REQ;
 
-	if (att_opcode == ATT_OP_WRITE_REQ ||
-					att_opcode == ATT_OP_PREP_WRITE_REQ)
+	if (opcode == ATT_OP_WRITE_REQ || opcode == ATT_OP_PREP_WRITE_REQ)
 		ev->need_rsp = 0x01;
 
 	ev->length = len;
@@ -4875,10 +4913,7 @@ static void write_cb(uint16_t handle, uint16_t offset,
 	return;
 
 failed:
-	dev = find_device_by_addr(bdaddr);
-	if (dev)
-		fill_gatt_response_by_handle(handle, 0, ATT_ECODE_UNLIKELY, 0,
-								NULL, dev);
+	gatt_db_attribute_write_result(attrib, id, ATT_ECODE_UNLIKELY);
 }
 
 static uint32_t android_to_gatt_permissions(int32_t hal_permissions)
@@ -4920,6 +4955,7 @@ static void handle_server_add_characteristic(const void *buf, uint16_t len)
 	const struct hal_cmd_gatt_server_add_characteristic *cmd = buf;
 	struct hal_ev_gatt_server_characteristic_added ev;
 	struct gatt_app *server;
+	struct gatt_db_attribute *attrib;
 	bt_uuid_t uuid;
 	uint8_t status;
 	uint32_t permissions;
@@ -4935,22 +4971,28 @@ static void handle_server_add_characteristic(const void *buf, uint16_t len)
 		goto failed;
 	}
 
+	attrib = gatt_db_get_attribute(gatt_db, cmd->service_handle);
+	if (!attrib) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
 	android2uuid(cmd->uuid, &uuid);
 	permissions = android_to_gatt_permissions(cmd->permissions);
 
-	ev.char_handle = gatt_db_add_characteristic(gatt_db,
-							cmd->service_handle,
+	attrib = gatt_db_service_add_characteristic(attrib,
 							&uuid, permissions,
 							cmd->properties,
 							read_cb, write_cb,
 							INT_TO_PTR(app_id));
-	if (!ev.char_handle)
+	if (!attrib)
 		status = HAL_STATUS_FAILED;
 	else
 		status = HAL_STATUS_SUCCESS;
 
 failed:
 	ev.srvc_handle = cmd->service_handle;
+	ev.char_handle = gatt_db_attribute_get_handle(attrib);
 	ev.status = status;
 	ev.server_if = app_id;
 	ev.status = status == HAL_STATUS_SUCCESS ? GATT_SUCCESS : GATT_FAILURE;
@@ -4968,6 +5010,7 @@ static void handle_server_add_descriptor(const void *buf, uint16_t len)
 	const struct hal_cmd_gatt_server_add_descriptor *cmd = buf;
 	struct hal_ev_gatt_server_descriptor_added ev;
 	struct gatt_app *server;
+	struct gatt_db_attribute *attrib;
 	bt_uuid_t uuid;
 	uint8_t status;
 	uint32_t permissions;
@@ -4986,12 +5029,16 @@ static void handle_server_add_descriptor(const void *buf, uint16_t len)
 	android2uuid(cmd->uuid, &uuid);
 	permissions = android_to_gatt_permissions(cmd->permissions);
 
-	ev.descr_handle = gatt_db_add_char_descriptor(gatt_db,
-							cmd->service_handle,
-							&uuid, permissions,
+	attrib = gatt_db_get_attribute(gatt_db, cmd->service_handle);
+	if (!attrib) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	attrib = gatt_db_service_add_descriptor(attrib, &uuid, permissions,
 							read_cb, write_cb,
 							INT_TO_PTR(app_id));
-	if (!ev.descr_handle)
+	if (!attrib)
 		status = HAL_STATUS_FAILED;
 	else
 		status = HAL_STATUS_SUCCESS;
@@ -5012,9 +5059,9 @@ failed:
 static void notify_service_change(void *data, void *user_data)
 {
 	struct att_range range;
+	struct gatt_db_attribute *attrib = user_data;
 
-	range.start = PTR_TO_UINT(user_data);
-	range.end = gatt_db_get_end_handle(gatt_db, range.start);
+	gatt_db_attribute_get_service_handles(attrib, &range.start, &range.end);
 
 	/* In case of db error */
 	if (!range.end)
@@ -5121,13 +5168,18 @@ static struct service_sdp *new_service_sdp_record(int32_t service_handle)
 {
 	bt_uuid_t uuid;
 	struct service_sdp *s;
+	struct gatt_db_attribute *attrib;
 	uint16_t end_handle;
 
-	end_handle = gatt_db_get_end_handle(gatt_db, service_handle);
+	attrib = gatt_db_get_attribute(gatt_db, service_handle);
+	if (!attrib)
+		return NULL;
+
+	gatt_db_attribute_get_service_handles(attrib, NULL, &end_handle);
 	if (!end_handle)
 		return NULL;
 
-	if (!gatt_db_get_service_uuid(gatt_db, service_handle, &uuid))
+	if (!gatt_db_attribute_get_service_uuid(attrib, &uuid))
 		return NULL;
 
 	s = new0(struct service_sdp, 1);
@@ -5193,6 +5245,7 @@ static void handle_server_start_service(const void *buf, uint16_t len)
 	const struct hal_cmd_gatt_server_start_service *cmd = buf;
 	struct hal_ev_gatt_server_service_started ev;
 	struct gatt_app *server;
+	struct gatt_db_attribute *attrib;
 	uint8_t status;
 
 	DBG("");
@@ -5220,7 +5273,13 @@ static void handle_server_start_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (!gatt_db_service_set_active(gatt_db, cmd->service_handle, true)) {
+	attrib = gatt_db_get_attribute(gatt_db, cmd->service_handle);
+	if (!attrib) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	if (!gatt_db_service_set_active(attrib, true)) {
 		/*
 		 * no need to clean SDP since this can fail only if service
 		 * handle is invalid in which case add_sdp_record() also fails
@@ -5229,8 +5288,7 @@ static void handle_server_start_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	queue_foreach(gatt_devices, notify_service_change,
-					UINT_TO_PTR(cmd->service_handle));
+	queue_foreach(gatt_devices, notify_service_change, attrib);
 
 	status = HAL_STATUS_SUCCESS;
 
@@ -5251,6 +5309,7 @@ static void handle_server_stop_service(const void *buf, uint16_t len)
 	const struct hal_cmd_gatt_server_stop_service *cmd = buf;
 	struct hal_ev_gatt_server_service_stopped ev;
 	struct gatt_app *server;
+	struct gatt_db_attribute *attrib;
 	uint8_t status;
 
 	DBG("");
@@ -5263,7 +5322,13 @@ static void handle_server_stop_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (!gatt_db_service_set_active(gatt_db, cmd->service_handle, false)) {
+	attrib = gatt_db_get_attribute(gatt_db, cmd->service_handle);
+	if (!attrib) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	if (!gatt_db_service_set_active(attrib, false)) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -5272,8 +5337,7 @@ static void handle_server_stop_service(const void *buf, uint16_t len)
 
 	status = HAL_STATUS_SUCCESS;
 
-	queue_foreach(gatt_devices, notify_service_change,
-					UINT_TO_PTR(cmd->service_handle));
+	queue_foreach(gatt_devices, notify_service_change, attrib);
 
 failed:
 	ev.status = status == HAL_STATUS_SUCCESS ? GATT_SUCCESS : GATT_FAILURE;
@@ -5292,6 +5356,7 @@ static void handle_server_delete_service(const void *buf, uint16_t len)
 	const struct hal_cmd_gatt_server_delete_service *cmd = buf;
 	struct hal_ev_gatt_server_service_deleted ev;
 	struct gatt_app *server;
+	struct gatt_db_attribute *attrib;
 	uint8_t status;
 
 	DBG("");
@@ -5304,7 +5369,13 @@ static void handle_server_delete_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	if (!gatt_db_remove_service(gatt_db, cmd->service_handle)) {
+	attrib = gatt_db_get_attribute(gatt_db, cmd->service_handle);
+	if (!attrib) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
+
+	if (!gatt_db_remove_service(gatt_db, attrib)) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
@@ -5393,7 +5464,6 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_server_send_response *cmd = buf;
 	struct pending_trans_data *transaction;
-	uint16_t handle = cmd->handle;
 	struct app_connection *conn;
 	uint8_t status;
 
@@ -5421,17 +5491,22 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 		if (pending_execute_write())
 			goto done;
 
-		/* Make sure handle is 0. We need it to find pending request */
-		handle = 0;
-
 		/*
 		 * FIXME: Handle situation when not all server applications
 		 * respond with a success.
 		 */
 	}
 
-	fill_gatt_response_by_handle(handle, cmd->offset, cmd->status, cmd->len,
-						cmd->data, conn->device);
+	if (transaction->opcode < ATT_OP_WRITE_REQ)
+		gatt_db_attribute_read_result(transaction->attrib,
+						transaction->serial_id,
+						cmd->status,
+						cmd->data, cmd->len);
+	else
+		gatt_db_attribute_write_result(transaction->attrib,
+						transaction->serial_id,
+						cmd->status);
+
 	send_dev_complete_response(conn->device, transaction->opcode);
 
 done:
@@ -5580,7 +5655,7 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 	}
 
 	while (queue_peek_head(q)) {
-		uint16_t handle = PTR_TO_UINT(queue_pop_head(q));
+		struct gatt_db_attribute *attrib = queue_pop_head(q);
 		struct pending_request *entry;
 
 		entry = new0(struct pending_request, 1);
@@ -5589,7 +5664,7 @@ static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
 			return ATT_ECODE_UNLIKELY;
 		}
 
-		entry->handle = handle;
+		entry->attrib = attrib;
 		entry->state = REQUEST_INIT;
 
 		if (!queue_push_tail(device->pending_requests, entry)) {
@@ -5637,7 +5712,7 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 
 	while (queue_peek_head(q)) {
 		struct pending_request *data;
-		uint16_t handle = PTR_TO_UINT(queue_pop_head(q));
+		struct gatt_db_attribute *attrib = queue_pop_head(q);
 
 		data = new0(struct pending_request, 1);
 		if (!data) {
@@ -5646,7 +5721,7 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 		}
 
 		data->state = REQUEST_INIT;
-		data->handle = handle;
+		data->attrib = attrib;
 		if (!queue_push_tail(device->pending_requests, data))
 			free(data);
 	}
@@ -5661,6 +5736,7 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 							struct gatt_device *dev)
 {
+	struct gatt_db_attribute *attrib;
 	uint16_t handle;
 	uint16_t len;
 	uint16_t offset;
@@ -5685,7 +5761,8 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_REQ_NOT_SUPP;
 	}
 
-	if (handle == 0)
+	attrib = gatt_db_get_attribute(gatt_db, handle);
+	if (attrib == 0)
 		return ATT_ECODE_INVALID_HANDLE;
 
 	data = new0(struct pending_request, 1);
@@ -5693,7 +5770,7 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_INSUFF_RESOURCES;
 
 	data->offset = offset;
-	data->handle = handle;
+	data->attrib = attrib;
 	data->state = REQUEST_INIT;
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
@@ -5792,14 +5869,16 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 	while (queue_peek_head(q)) {
 		uint8_t *value;
 		const bt_uuid_t *type;
-		uint16_t handle = PTR_TO_UINT(queue_pop_head(q));
+		struct gatt_db_attribute *attrib = queue_pop_head(q);
+		uint16_t handle;
 
-		type = gatt_db_get_attribute_type(gatt_db, handle);
+		type = gatt_db_attribute_get_type(attrib);
 		if (!type)
 			break;
 
 		value = adl->data[iterator++];
 
+		handle = gatt_db_attribute_get_handle(attrib);
 		put_le16(handle, value);
 		memcpy(&value[2], &type->value.u16, bt_uuid_len(type));
 	}
@@ -5822,7 +5901,6 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 	uint8_t search_value[cmd_len];
 	size_t search_vlen;
 	uint16_t start, end;
-	uint16_t handle;
 	struct queue *q;
 	bt_uuid_t uuid;
 	uint16_t len;
@@ -5843,8 +5921,8 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	gatt_db_find_by_type(gatt_db, start, end, &uuid, q);
 
-	handle = PTR_TO_UINT(queue_pop_head(q));
-	while (handle) {
+	while (queue_peek_head(q)) {
+		struct gatt_db_attribute *attrib = queue_pop_head(q);
 		struct pending_request *data;
 
 		data = new0(struct pending_request, 1);
@@ -5861,13 +5939,11 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 		}
 
 		data->state = REQUEST_INIT;
-		data->handle = handle;
+		data->attrib = attrib;
 		data->filter_vlen = search_vlen;
 		memcpy(data->filter_value, search_value, search_vlen);
 
 		queue_push_tail(device->pending_requests, data);
-
-		handle = PTR_TO_UINT(queue_pop_head(q));
 	}
 
 	queue_destroy(q, NULL);
@@ -5881,6 +5957,7 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *dev)
 {
 	uint8_t value[cmd_len];
+	struct gatt_db_attribute *attrib;
 	uint32_t permissions;
 	uint16_t handle;
 	uint16_t len;
@@ -5893,13 +5970,18 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (handle == 0)
 		return;
 
-	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+	attrib = gatt_db_get_attribute(gatt_db, handle);
+	if (!attrib)
+		return;
+
+	if (!gatt_db_attribute_get_permissions(attrib, &permissions))
 		return;
 
 	if (check_device_permissions(dev, cmd[0], permissions))
 		return;
 
-	gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0], &dev->bdaddr);
+	gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0], &dev->bdaddr,
+								NULL, NULL);
 }
 
 static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
@@ -5907,6 +5989,7 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 {
 	uint8_t value[ATT_DEFAULT_LE_MTU];
 	uint8_t s[ATT_SIGNATURE_LEN];
+	struct gatt_db_attribute *attrib;
 	uint32_t permissions;
 	uint16_t handle;
 	uint16_t len;
@@ -5936,8 +6019,11 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (handle == 0)
 		return;
 
-	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+	attrib = gatt_db_get_attribute(gatt_db, handle);
+	if (!attrib)
 		return;
+
+	gatt_db_attribute_get_permissions(attrib, &permissions);
 
 	if (check_device_permissions(dev, cmd[0], permissions))
 		return;
@@ -5966,9 +6052,20 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		}
 		/* Signature OK, proceed with write */
 		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK, r_sign_cnt);
-		gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
-								&dev->bdaddr);
+		gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
+						&dev->bdaddr, NULL, NULL);
 	}
+}
+
+static void attribute_write_cb(struct gatt_db_attribute *attrib, int err,
+								void *user_data)
+{
+	struct pending_request *data = user_data;
+	uint8_t error = err_to_att(err);
+
+	DBG("");
+
+	fill_gatt_response(data, attrib, data->offset, error, 0, NULL);
 }
 
 static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
@@ -5976,6 +6073,7 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 {
 	uint8_t value[cmd_len];
 	struct pending_request *data;
+	struct gatt_db_attribute *attrib;
 	uint32_t permissions;
 	uint16_t handle;
 	uint16_t len;
@@ -5989,8 +6087,11 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (handle == 0)
 		return ATT_ECODE_INVALID_HANDLE;
 
-	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+	attrib = gatt_db_get_attribute(gatt_db, handle);
+	if (!attrib)
 		return ATT_ECODE_ATTR_NOT_FOUND;
+
+	gatt_db_attribute_get_permissions(attrib, &permissions);
 
 	error = check_device_permissions(dev, cmd[0], permissions);
 	if (error)
@@ -6000,7 +6101,7 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!data)
 		return ATT_ECODE_INSUFF_RESOURCES;
 
-	data->handle = handle;
+	data->attrib = attrib;
 	data->state = REQUEST_PENDING;
 
 	if (!queue_push_tail(dev->pending_requests, data)) {
@@ -6008,8 +6109,9 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_INSUFF_RESOURCES;
 	}
 
-	if (!gatt_db_write(gatt_db, handle, 0, value, vlen, cmd[0],
-								&dev->bdaddr)) {
+	if (!gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
+					&dev->bdaddr, attribute_write_cb,
+					data)) {
 		queue_remove(dev->pending_requests, data);
 		free(data);
 		return ATT_ECODE_UNLIKELY;
@@ -6025,6 +6127,7 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 {
 	uint8_t value[cmd_len];
 	struct pending_request *data;
+	struct gatt_db_attribute *attrib;
 	uint32_t permissions;
 	uint16_t handle;
 	uint16_t offset;
@@ -6040,8 +6143,11 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (handle == 0)
 		return ATT_ECODE_INVALID_HANDLE;
 
-	if (!gatt_db_get_attribute_permissions(gatt_db, handle, &permissions))
+	attrib = gatt_db_get_attribute(gatt_db, handle);
+	if (!attrib)
 		return ATT_ECODE_ATTR_NOT_FOUND;
+
+	gatt_db_attribute_get_permissions(attrib, &permissions);
 
 	error = check_device_permissions(dev, cmd[0], permissions);
 	if (error)
@@ -6051,7 +6157,7 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!data)
 		return ATT_ECODE_INSUFF_RESOURCES;
 
-	data->handle = handle;
+	data->attrib = attrib;
 	data->offset = offset;
 	data->state = REQUEST_PENDING;
 
@@ -6060,8 +6166,8 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_INSUFF_RESOURCES;
 	}
 
-	if (!gatt_db_write(gatt_db, handle, offset, value, vlen, cmd[0],
-								&dev->bdaddr))
+	if (!gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
+					&dev->bdaddr, attribute_write_cb, data))
 		return ATT_ECODE_UNLIKELY;
 
 	return 0;
@@ -6078,7 +6184,7 @@ static void send_server_write_execute_notify(void *data, void *user_data)
 
 	ev->conn_id = conn->id;
 
-	transaction = conn_add_transact(conn, ATT_OP_EXEC_WRITE_REQ);
+	transaction = conn_add_transact(conn, ATT_OP_EXEC_WRITE_REQ, NULL, 0);
 	if (!transaction) {
 		conn->wait_execute_write = false;
 		return;
@@ -6275,12 +6381,12 @@ drop:
 }
 
 struct gap_srvc_handles {
-	uint16_t srvc;
+	struct gatt_db_attribute *srvc;
 
 	/* Characteristics */
-	uint16_t dev_name;
-	uint16_t appear;
-	uint16_t priv;
+	struct gatt_db_attribute *dev_name;
+	struct gatt_db_attribute *appear;
+	struct gatt_db_attribute *priv;
 };
 
 static struct gap_srvc_handles gap_srvc_data;
@@ -6288,8 +6394,9 @@ static struct gap_srvc_handles gap_srvc_data;
 #define APPEARANCE_GENERIC_PHONE 0x0040
 #define PERIPHERAL_PRIVACY_DISABLE 0x00
 
-static void gap_read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
-					bdaddr_t *bdaddr, void *user_data)
+static void gap_read_cb(struct gatt_db_attribute *attrib, unsigned int id,
+			uint16_t offset, uint8_t opcode, bdaddr_t *bdaddr,
+			void *user_data)
 {
 	struct pending_request *entry;
 	struct gatt_device *dev;
@@ -6302,12 +6409,12 @@ static void gap_read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 		return;
 	}
 
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
+	entry = queue_find(dev->pending_requests, match_dev_request_by_attrib,
+									attrib);
 	if (!entry)
 		return;
 
-	if (handle == gap_srvc_data.dev_name) {
+	if (attrib == gap_srvc_data.dev_name) {
 		const char *name = bt_get_adapter_name();
 
 		entry->value = malloc0(strlen(name));
@@ -6318,7 +6425,7 @@ static void gap_read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 
 		entry->length = strlen(name);
 		memcpy(entry->value, bt_get_adapter_name(), entry->length);
-	} else if (handle == gap_srvc_data.appear) {
+	} else if (attrib == gap_srvc_data.appear) {
 		entry->value = malloc0(2);
 		if (!entry->value) {
 			entry->error = ATT_ECODE_INSUFF_RESOURCES;
@@ -6327,7 +6434,7 @@ static void gap_read_cb(uint16_t handle, uint16_t offset, uint8_t att_opcode,
 
 		put_le16(APPEARANCE_GENERIC_PHONE, entry->value);
 		entry->length = sizeof(uint8_t) * 2;
-	} else if (handle == gap_srvc_data.priv) {
+	} else if (attrib == gap_srvc_data.priv) {
 		entry->value = malloc0(1);
 		if (!entry->value) {
 			entry->error = ATT_ECODE_INSUFF_RESOURCES;
@@ -6358,7 +6465,7 @@ static void register_gap_service(void)
 	/* Device name characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
 	gap_srvc_data.dev_name =
-			gatt_db_add_characteristic(gatt_db, gap_srvc_data.srvc,
+			gatt_db_service_add_characteristic(gap_srvc_data.srvc,
 							&uuid, GATT_PERM_READ,
 							GATT_CHR_PROP_READ,
 							gap_read_cb, NULL,
@@ -6367,7 +6474,7 @@ static void register_gap_service(void)
 	/* Appearance */
 	bt_uuid16_create(&uuid, GATT_CHARAC_APPEARANCE);
 	gap_srvc_data.appear =
-			gatt_db_add_characteristic(gatt_db, gap_srvc_data.srvc,
+			gatt_db_service_add_characteristic(gap_srvc_data.srvc,
 							&uuid, GATT_PERM_READ,
 							GATT_CHR_PROP_READ,
 							gap_read_cb, NULL,
@@ -6376,29 +6483,28 @@ static void register_gap_service(void)
 	/* Pripheral privacy flag */
 	bt_uuid16_create(&uuid, GATT_CHARAC_PERIPHERAL_PRIV_FLAG);
 	gap_srvc_data.priv =
-			gatt_db_add_characteristic(gatt_db, gap_srvc_data.srvc,
+			gatt_db_service_add_characteristic(gap_srvc_data.srvc,
 							&uuid, GATT_PERM_READ,
 							GATT_CHR_PROP_READ,
 							gap_read_cb, NULL,
 							NULL);
 
-	gatt_db_service_set_active(gatt_db, gap_srvc_data.srvc , true);
+	gatt_db_service_set_active(gap_srvc_data.srvc , true);
 
 	/* SDP */
 	bt_uuid16_create(&uuid, 0x1800);
-	start = gap_srvc_data.srvc;
-	end = gatt_db_get_end_handle(gatt_db, gap_srvc_data.srvc);
+	gatt_db_attribute_get_service_handles(gap_srvc_data.srvc, &start, &end);
 	gap_sdp_handle = add_sdp_record(&uuid, start, end,
 						"Generic Access Profile");
 	if (!gap_sdp_handle)
 		error("gatt: Failed to register GAP SDP record");
 }
 
-static void device_info_read_cb(uint16_t handle, uint16_t offset,
-					uint8_t att_opcode, bdaddr_t *bdaddr,
+static void device_info_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, bdaddr_t *bdaddr,
 					void *user_data)
 {
-	struct pending_request *entry;
 	struct gatt_device *dev;
 	char *buf = user_data;
 
@@ -6408,31 +6514,16 @@ static void device_info_read_cb(uint16_t handle, uint16_t offset,
 		return;
 	}
 
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
-	if (!entry)
-		return;
-
-	entry->value = malloc0(strlen(buf));
-	if (!entry->value) {
-		entry->error = ATT_ECODE_UNLIKELY;
-		goto done;
-	}
-
-	entry->length = strlen(buf);
-	memcpy(entry->value, buf, entry->length);
-	entry->offset = offset;
-
-done:
-	entry->state = REQUEST_DONE;
+	gatt_db_attribute_read_result(attrib, id, 0, user_data, strlen(buf));
 }
 
-static void device_info_read_system_id_cb(uint16_t handle, uint16_t offset,
-					uint8_t att_opcode, bdaddr_t *bdaddr,
+static void device_info_read_system_id_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, bdaddr_t *bdaddr,
 					void *user_data)
 {
-	struct pending_request *entry;
 	struct gatt_device *dev;
+	uint8_t pdu[8];
 
 	dev = find_device_by_addr(bdaddr);
 	if (!dev) {
@@ -6440,31 +6531,18 @@ static void device_info_read_system_id_cb(uint16_t handle, uint16_t offset,
 		return;
 	}
 
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
-	if (!entry)
-		return;
+	put_le64(bt_config_get_system_id(), pdu);
 
-	entry->value = malloc0(sizeof(uint64_t));
-	if (!entry->value) {
-		entry->error = ATT_ECODE_UNLIKELY;
-		goto done;
-	}
-
-	entry->length = sizeof(uint64_t);
-	put_le64(bt_config_get_system_id(), entry->value);
-	entry->offset = offset;
-
-done:
-	entry->state = REQUEST_DONE;
+	gatt_db_attribute_read_result(attrib, id, 0, pdu, sizeof(pdu));
 }
 
-static void device_info_read_pnp_id_cb(uint16_t handle, uint16_t offset,
-					uint8_t att_opcode, bdaddr_t *bdaddr,
+static void device_info_read_pnp_id_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, bdaddr_t *bdaddr,
 					void *user_data)
 {
-	struct pending_request *entry;
 	struct gatt_device *dev;
+	uint8_t pdu[7];
 
 	dev = find_device_by_addr(bdaddr);
 	if (!dev) {
@@ -6472,34 +6550,19 @@ static void device_info_read_pnp_id_cb(uint16_t handle, uint16_t offset,
 		return;
 	}
 
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
-	if (!entry)
-		return;
+	pdu[0] = bt_config_get_pnp_source();
+	put_le16(bt_config_get_pnp_vendor(), &pdu[1]);
+	put_le16(bt_config_get_pnp_product(), &pdu[3]);
+	put_le16(bt_config_get_pnp_version(), &pdu[5]);
 
-	entry->value = malloc0(sizeof(uint8_t) + 3 * sizeof(uint16_t));
-	if (!entry->value) {
-		entry->error = ATT_ECODE_UNLIKELY;
-		goto done;
-	}
-
-	entry->length = sizeof(uint8_t) + 3 * sizeof(uint16_t);
-
-	entry->value[0] = bt_config_get_pnp_source();
-	put_le16(bt_config_get_pnp_vendor(), entry->value + 1);
-	put_le16(bt_config_get_pnp_product(), entry->value + 3);
-	put_le16(bt_config_get_pnp_version(), entry->value + 5);
-
-	entry->offset = offset;
-
-done:
-	entry->state = REQUEST_DONE;
+	gatt_db_attribute_read_result(attrib, id, 0, pdu, sizeof(pdu));
 }
 
 static void register_device_info_service(void)
 {
 	bt_uuid_t uuid;
-	uint16_t srvc_handle, end_handle;
+	struct gatt_db_attribute *service;
+	uint16_t start_handle, end_handle;
 	const char *data;
 	uint32_t enc_perm = GATT_PERM_READ | GATT_PERM_READ_ENCRYPTED;
 
@@ -6507,13 +6570,13 @@ static void register_device_info_service(void)
 
 	/* Device Information Service */
 	bt_uuid16_create(&uuid, 0x180a);
-	srvc_handle = gatt_db_add_service(gatt_db, &uuid, true, 15);
+	service = gatt_db_add_service(gatt_db, &uuid, true, 15);
 
 	/* User data are not const hence (void *) cast is used */
 	data = bt_config_get_name();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_MODEL_NUMBER_STRING);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+		gatt_db_service_add_characteristic(service, &uuid,
 						GATT_PERM_READ,
 						GATT_CHR_PROP_READ,
 						device_info_read_cb, NULL,
@@ -6523,7 +6586,7 @@ static void register_device_info_service(void)
 	data = bt_config_get_serial();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_SERIAL_NUMBER_STRING);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+		gatt_db_service_add_characteristic(service, &uuid,
 						enc_perm, GATT_CHR_PROP_READ,
 						device_info_read_cb, NULL,
 						(void *) data);
@@ -6531,7 +6594,7 @@ static void register_device_info_service(void)
 
 	if (bt_config_get_system_id()) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_SYSTEM_ID);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+		gatt_db_service_add_characteristic(service, &uuid,
 						enc_perm, GATT_CHR_PROP_READ,
 						device_info_read_system_id_cb,
 						NULL, NULL);
@@ -6540,7 +6603,7 @@ static void register_device_info_service(void)
 	data = bt_config_get_fw_rev();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_FIRMWARE_REVISION_STRING);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+		gatt_db_service_add_characteristic(service, &uuid,
 						GATT_PERM_READ,
 						GATT_CHR_PROP_READ,
 						device_info_read_cb, NULL,
@@ -6550,7 +6613,7 @@ static void register_device_info_service(void)
 	data = bt_config_get_hw_rev();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_HARDWARE_REVISION_STRING);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+		gatt_db_service_add_characteristic(service, &uuid,
 						GATT_PERM_READ,
 						GATT_CHR_PROP_READ,
 						device_info_read_cb, NULL,
@@ -6558,14 +6621,14 @@ static void register_device_info_service(void)
 	}
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_SOFTWARE_REVISION_STRING);
-	gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid, GATT_PERM_READ,
+	gatt_db_service_add_characteristic(service, &uuid, GATT_PERM_READ,
 					GATT_CHR_PROP_READ, device_info_read_cb,
 					NULL, VERSION);
 
 	data = bt_config_get_vendor();
 	if (data) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_MANUFACTURER_NAME_STRING);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+		gatt_db_service_add_characteristic(service, &uuid,
 						GATT_PERM_READ,
 						GATT_CHR_PROP_READ,
 						device_info_read_cb, NULL,
@@ -6574,31 +6637,31 @@ static void register_device_info_service(void)
 
 	if (bt_config_get_pnp_source()) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_PNP_ID);
-		gatt_db_add_characteristic(gatt_db, srvc_handle, &uuid,
+		gatt_db_service_add_characteristic(service, &uuid,
 						GATT_PERM_READ,
 						GATT_CHR_PROP_READ,
 						device_info_read_pnp_id_cb,
 						NULL, NULL);
 	}
 
-	gatt_db_service_set_active(gatt_db, srvc_handle, true);
+	gatt_db_service_set_active(service, true);
 
 	/* SDP */
 	bt_uuid16_create(&uuid, 0x180a);
-	end_handle = gatt_db_get_end_handle(gatt_db, srvc_handle);
-	dis_sdp_handle = add_sdp_record(&uuid, srvc_handle, end_handle,
+	gatt_db_attribute_get_service_handles(service, &start_handle,
+								&end_handle);
+	dis_sdp_handle = add_sdp_record(&uuid, start_handle, end_handle,
 						"Device Information Service");
 	if (!dis_sdp_handle)
 		error("gatt: Failed to register DIS SDP record");
 }
 
-static void gatt_srvc_change_write_cb(uint16_t handle, uint16_t offset,
-						const uint8_t *val, size_t len,
-						uint8_t att_opcode,
-						bdaddr_t *bdaddr,
-						void *user_data)
+static void gatt_srvc_change_write_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t opcode, bdaddr_t *bdaddr,
+					void *user_data)
 {
-	struct pending_request *entry;
 	struct gatt_device *dev;
 
 	dev = find_device_by_addr(bdaddr);
@@ -6607,29 +6670,25 @@ static void gatt_srvc_change_write_cb(uint16_t handle, uint16_t offset,
 		return;
 	}
 
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
-	if (!entry)
-		return;
-
-	entry->state = REQUEST_DONE;
-
 	if (!bt_device_is_bonded(bdaddr)) {
-		entry->error = ATT_ECODE_AUTHORIZATION;
+		gatt_db_attribute_write_result(attrib, id,
+						ATT_ECODE_AUTHORIZATION);
 		return;
 	}
 
 	/* Set services changed indication value */
-	bt_store_gatt_ccc(bdaddr, *val);
+	bt_store_gatt_ccc(bdaddr, *value);
+
+	gatt_db_attribute_write_result(attrib, id, 0);
 }
 
-static void gatt_srvc_change_read_cb(uint16_t handle, uint16_t offset,
-					uint8_t att_opcode, bdaddr_t *bdaddr,
+static void gatt_srvc_change_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, bdaddr_t *bdaddr,
 					void *user_data)
 {
-	struct pending_request *entry;
 	struct gatt_device *dev;
-	uint16_t ccc = 0;
+	uint8_t pdu[2];
 
 	dev = find_device_by_addr(bdaddr);
 	if (!dev) {
@@ -6637,53 +6696,41 @@ static void gatt_srvc_change_read_cb(uint16_t handle, uint16_t offset,
 		return;
 	}
 
-	entry = queue_find(dev->pending_requests, match_dev_request_by_handle,
-							UINT_TO_PTR(handle));
-	if (!entry)
-		return;
+	put_le16(bt_get_gatt_ccc(&dev->bdaddr), pdu);
 
-	ccc = bt_get_gatt_ccc(&dev->bdaddr);
-	entry->state = REQUEST_DONE;
-
-	entry->value = new0(uint8_t, 2);
-	if (!entry->value) {
-		entry->error = ATT_ECODE_INSUFF_RESOURCES;
-
-		return;
-	}
-
-	entry->length = sizeof(uint16_t);
-	memcpy(entry->value, &ccc, sizeof(ccc));
+	gatt_db_attribute_read_result(attrib, id, 0, pdu, sizeof(pdu));
 }
 
 static void register_gatt_service(void)
 {
-	uint16_t srvc_handle, end_handle;
+	struct gatt_db_attribute *service;
+	uint16_t start_handle, end_handle;
 	bt_uuid_t uuid;
 
 	DBG("");
 
 	bt_uuid16_create(&uuid, 0x1801);
-	srvc_handle = gatt_db_add_service(gatt_db, &uuid, true, 4);
+	service = gatt_db_add_service(gatt_db, &uuid, true, 4);
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
-	service_changed_handle =  gatt_db_add_characteristic(gatt_db,
-					srvc_handle, &uuid, GATT_PERM_NONE,
-					GATT_CHR_PROP_INDICATE, NULL, NULL,
-					NULL);
+	service_changed_attrib = gatt_db_service_add_characteristic(service,
+							&uuid, GATT_PERM_NONE,
+							GATT_CHR_PROP_INDICATE,
+							NULL, NULL, NULL);
 
 	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
-	gatt_db_add_char_descriptor(gatt_db, srvc_handle, &uuid,
+	gatt_db_service_add_descriptor(service, &uuid,
 					GATT_PERM_READ | GATT_PERM_WRITE,
 					gatt_srvc_change_read_cb,
 					gatt_srvc_change_write_cb, NULL);
 
-	gatt_db_service_set_active(gatt_db, srvc_handle, true);
+	gatt_db_service_set_active(service, true);
 
 	/* SDP */
 	bt_uuid16_create(&uuid, 0x1801);
-	end_handle = gatt_db_get_end_handle(gatt_db, srvc_handle);
-	gatt_sdp_handle = add_sdp_record(&uuid, srvc_handle, end_handle,
+	gatt_db_attribute_get_service_handles(service, &start_handle,
+								&end_handle);
+	gatt_sdp_handle = add_sdp_record(&uuid, start_handle, end_handle,
 						"Generic Attribute Profile");
 
 	if (!gatt_sdp_handle)
