@@ -462,7 +462,7 @@ static bt_status_t device_status_notification(bthf_network_state_t state,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-static bt_status_t cops_response(const char *cops)
+static bt_status_t cops_response_real(const char *cops, bt_bdaddr_t *bd_addr)
 {
 	char buf[IPC_MTU];
 	struct hal_cmd_handsfree_cops_response *cmd = (void *) buf;
@@ -476,6 +476,12 @@ static bt_status_t cops_response(const char *cops)
 	if (!cops)
 		return BT_STATUS_PARM_INVALID;
 
+	memset(cmd, 0, sizeof(*cmd));
+
+	if (bd_addr)
+		memcpy(cmd->bdaddr, bd_addr, sizeof(cmd->bdaddr));
+
+	/* Size of cmd.buf */
 	cmd->len = strlen(cops) + 1;
 	memcpy(cmd->buf, cops, cmd->len);
 
@@ -485,6 +491,18 @@ static bt_status_t cops_response(const char *cops)
 						HAL_OP_HANDSFREE_COPS_RESPONSE,
 						len, cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t cops_response(const char *cops, bt_bdaddr_t *bd_addr)
+{
+	return cops_response_real(cops, bd_addr);
+}
+#else
+static bt_status_t cops_response(const char *cops)
+{
+	return cops_response_real(cops, NULL);
+}
+#endif
 
 static bt_status_t cind_response(int svc, int num_active, int num_held,
 					bthf_call_state_t state, int signal,

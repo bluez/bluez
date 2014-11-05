@@ -878,6 +878,7 @@ Commands and responses:
 	Opcode 0x09 - COPS Response command/response
 
 		Command parameters: COPS command response (string)
+		                    Remote address (6 octets)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.
