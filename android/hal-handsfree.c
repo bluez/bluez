@@ -373,16 +373,37 @@ static bt_status_t start_voice_recognition(void)
 }
 #endif
 
-static bt_status_t stop_voice_recognition(void)
+static bt_status_t stop_voice_recognition_real(bt_bdaddr_t *bd_addr)
 {
+	struct hal_cmd_handsfree_stop_vr cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
+	memset(&cmd, 0, sizeof(cmd));
+
+	if (bd_addr)
+		memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_STOP_VR,
-						0, NULL, NULL, NULL, NULL);
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t stop_voice_recognition(bt_bdaddr_t *bd_addr)
+{
+	return stop_voice_recognition_real(bd_addr);
+}
+#else
+static bt_status_t stop_voice_recognition(void)
+{
+	return stop_voice_recognition_real(NULL);
+}
+#endif
 
 static bt_status_t volume_control(bthf_volume_type_t type, int volume)
 {
