@@ -892,6 +892,7 @@ Commands and responses:
 		                    Signal strength (1 octet)
 		                    Roaming indicator (1 octet)
 		                    Battery level (1 octet)
+		                    Remote address (6 octets)
 		Response parameters: <none>
 
 		Valid call setup states: 0x00 = Active

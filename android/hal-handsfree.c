@@ -504,9 +504,10 @@ static bt_status_t cops_response(const char *cops)
 }
 #endif
 
-static bt_status_t cind_response(int svc, int num_active, int num_held,
+static bt_status_t cind_response_real(int svc, int num_active, int num_held,
 					bthf_call_state_t state, int signal,
-					int roam, int batt_chg)
+					int roam, int batt_chg,
+					bt_bdaddr_t *bd_addr)
 {
 	struct hal_cmd_handsfree_cind_response cmd;
 
@@ -514,6 +515,11 @@ static bt_status_t cind_response(int svc, int num_active, int num_held,
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	if (bd_addr)
+		memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
 	cmd.svc = svc;
 	cmd.num_active = num_active;
@@ -527,6 +533,25 @@ static bt_status_t cind_response(int svc, int num_active, int num_held,
 					HAL_OP_HANDSFREE_CIND_RESPONSE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t cind_response(int svc, int num_active, int num_held,
+					bthf_call_state_t state, int signal,
+					int roam, int batt_chg,
+					bt_bdaddr_t *bd_addr)
+{
+	return cind_response_real(svc, num_active, num_held, state, signal,
+						roam, batt_chg, bd_addr);
+}
+#else
+static bt_status_t cind_response(int svc, int num_active, int num_held,
+					bthf_call_state_t state, int signal,
+					int roam, int batt_chg)
+{
+	return cind_response_real(svc, num_active, num_held, state, signal,
+						roam, batt_chg, NULL);
+}
+#endif
 
 static bt_status_t formatted_at_response(const char *rsp)
 {

@@ -551,6 +551,7 @@ struct hal_cmd_handsfree_cind_response {
 	uint8_t signal;
 	uint8_t roam;
 	uint8_t batt_chg;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE	0x0B
