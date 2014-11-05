@@ -595,7 +595,7 @@ static bt_status_t unregister_client(int client_if)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-static bt_status_t scan(int client_if, bool start)
+static bt_status_t scan_real(int client_if, bool start)
 {
 	struct hal_cmd_gatt_client_scan cmd;
 
@@ -608,6 +608,18 @@ static bt_status_t scan(int client_if, bool start)
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_SCAN,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t scan(bool start)
+{
+	return scan_real(0, start);
+}
+#else
+static bt_status_t scan(int client_if, bool start)
+{
+	return scan_real(client_if, start);
+}
+#endif
 
 static bt_status_t connect(int client_if, const bt_bdaddr_t *bd_addr,
 								bool is_direct)

@@ -1730,15 +1730,17 @@ static void handle_client_scan(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_client_scan *cmd = buf;
 	uint8_t status;
-	void *registered;
 
 	DBG("new state %d", cmd->start);
 
-	registered = find_app_by_id(cmd->client_if);
-	if (!registered) {
-		error("gatt: Client not registered");
-		status = HAL_STATUS_FAILED;
-		goto reply;
+	if (cmd->client_if != 0) {
+		void *registered = find_app_by_id(cmd->client_if);
+
+		if (!registered) {
+			error("gatt: Client not registered");
+			status = HAL_STATUS_FAILED;
+			goto reply;
+		}
 	}
 
 	/* Turn off scan */
