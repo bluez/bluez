@@ -239,6 +239,11 @@ static struct attrib_def mas_attrib_names[] = {
 	{ 0x0317, "MapSupportedFeatures", NULL, 0 },
 };
 
+/* Name of the various MNS attributes. See BT assigned numbers */
+static struct attrib_def mns_attrib_names[] = {
+	{ 0x0317, "MapSupportedFeatures", NULL, 0 },
+};
+
 /* Same for the UUIDs. See BT assigned numbers */
 static struct uuid_def uuid16_names[] = {
 	/* -- Protocols -- */
@@ -327,7 +332,8 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1131, "Headset (HSP)", NULL, 0 },
 	{ 0x1132, "Message Access (MAP) - MAS",
 		mas_attrib_names, N_ELEMENTS(mas_attrib_names) },
-	{ 0x1133, "Message Access (MAP) - MNS", NULL, 0 },
+	{ 0x1133, "Message Access (MAP) - MNS",
+		mns_attrib_names, N_ELEMENTS(mns_attrib_names) },
 	{ 0x1134, "Message Access (MAP)", NULL, 0 },
 	/* ... */
 	{ 0x1200, "PnPInformation",
