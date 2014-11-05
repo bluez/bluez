@@ -32,6 +32,6 @@ SCO Audio Service (ID 0)
 
 	Opcode 0x01 - Get SCO fd command
 
-		Command parameters: <none>
+		Command parameters: Remote address (6 octets)
 		Response parameters: MTU (2 octets)
 				     File descriptor (inline)

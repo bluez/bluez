@@ -31,6 +31,10 @@ static const char BLUEZ_SCO_SK_PATH[] = "\0bluez_sco_socket";
 #define SCO_OP_STATUS			IPC_OP_STATUS
 
 #define SCO_OP_GET_FD			0x01
+struct sco_cmd_get_fd {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 struct sco_rsp_get_fd {
 	uint16_t mtu;
 } __attribute__((packed));
