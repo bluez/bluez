@@ -908,6 +908,7 @@ Commands and responses:
 	Opcode 0x0b - Formatted AT Response command/response
 
 		Command parameters: Pre-formatted AT response (string)
+		                    Remote address (6 octets)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.

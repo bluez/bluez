@@ -553,7 +553,8 @@ static bt_status_t cind_response(int svc, int num_active, int num_held,
 }
 #endif
 
-static bt_status_t formatted_at_response(const char *rsp)
+static bt_status_t formatted_at_response_real(const char *rsp,
+							bt_bdaddr_t *bd_addr)
 {
 	char buf[IPC_MTU];
 	struct hal_cmd_handsfree_formatted_at_response *cmd = (void *) buf;
@@ -567,6 +568,11 @@ static bt_status_t formatted_at_response(const char *rsp)
 	if (!rsp)
 		return BT_STATUS_PARM_INVALID;
 
+	memset(cmd, 0, sizeof(*cmd));
+
+	if (bd_addr)
+		memcpy(cmd->bdaddr, bd_addr, sizeof(cmd->bdaddr));
+
 	cmd->len = strlen(rsp) + 1;
 	memcpy(cmd->buf, rsp, cmd->len);
 
@@ -576,6 +582,18 @@ static bt_status_t formatted_at_response(const char *rsp)
 					HAL_OP_HANDSFREE_FORMATTED_AT_RESPONSE,
 					len, cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t formatted_at_response(const char *rsp, bt_bdaddr_t *bd_addr)
+{
+	return formatted_at_response_real(rsp, bd_addr);
+}
+#else
+static bt_status_t formatted_at_response(const char *rsp)
+{
+	return formatted_at_response_real(rsp, NULL);
+}
+#endif
 
 static bt_status_t at_response(bthf_at_response_t response, int error)
 {
