@@ -835,7 +835,7 @@ Commands and responses:
 
 	Opcode 0x05 - Start Voice Recognition command/response
 
-		Command parameters: <none>
+		Command parameters: Remote address (6 octets)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.

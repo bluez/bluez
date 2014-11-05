@@ -494,6 +494,9 @@ struct hal_cmd_handsfree_disconnect_audio {
 } __attribute__((packed));
 
 #define HAL_OP_HANDSFREE_START_VR		0x05
+struct hal_cmd_handsfree_start_vr {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
 
 #define HAL_OP_HANDSFREE_STOP_VR		0x06
 

@@ -1886,12 +1886,16 @@ done:
 
 static void handle_start_vr(const void *buf, uint16_t len)
 {
+	const struct hal_cmd_handsfree_start_vr *cmd = buf;
 	struct hf_device *dev;
+	bdaddr_t bdaddr;
 	uint8_t status;
 
 	DBG("");
 
-	dev = find_default_device();
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+
+	dev = find_device(&bdaddr);
 	if (!dev) {
 		status = HAL_STATUS_FAILED;
 		goto done;
