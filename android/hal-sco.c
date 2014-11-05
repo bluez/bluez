@@ -79,6 +79,8 @@ struct sco_stream_out {
 	struct resampler_itfe *resampler;
 	int16_t *resample_buf;
 	uint32_t resample_frame_num;
+
+	bt_bdaddr_t bd_addr;
 };
 
 static void sco_close_socket(void)
@@ -666,6 +668,14 @@ static int sco_open_output_stream_real(struct audio_hw_device *dev,
 	out->stream.set_volume = out_set_volume;
 	out->stream.write = out_write;
 	out->stream.get_render_position = out_get_render_position;
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	if (address) {
+		DBG("address %s", address);
+
+		str2bt_bdaddr_t(address, &out->bd_addr);
+	}
+#endif
 
 	if (config) {
 		DBG("config: rate %u chan mask %x format %d offload %p",

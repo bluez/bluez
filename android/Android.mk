@@ -382,7 +382,8 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := bluez/android/hal-sco.c
+LOCAL_SRC_FILES := bluez/android/hal-sco.c \
+	bluez/android/hal-utils.c
 
 LOCAL_C_INCLUDES = \
 	$(call include-path-for, system-core) \
