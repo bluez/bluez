@@ -1180,6 +1180,9 @@ static void gatt_att_pdu_modify(void)
 		memcpy(raw_pdu + 1, &handle, sizeof(handle));
 		memcpy(raw_pdu + 3, value, set_data_len - sizeof(handle));
 
+		tester_debug("gatt: modify pdu write request handle to 0x%02x",
+									handle);
+
 		break;
 	}
 	default:
