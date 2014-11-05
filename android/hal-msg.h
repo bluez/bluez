@@ -919,6 +919,7 @@ struct hal_cmd_gatt_server_connect {
 	int32_t server_if;
 	uint8_t bdaddr[6];
 	uint8_t is_direct;
+	int32_t transport;
 } __attribute__((packed));
 
 #define HAL_OP_GATT_SERVER_DISCONNECT		0x1a

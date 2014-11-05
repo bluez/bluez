@@ -1136,8 +1136,9 @@ static bt_status_t unregister_server(int server_if)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-static bt_status_t server_connect(int server_if, const bt_bdaddr_t *bd_addr,
-								bool is_direct)
+static bt_status_t server_connect_real(int server_if,
+						const bt_bdaddr_t *bd_addr,
+						bool is_direct, int transport)
 {
 	struct hal_cmd_gatt_server_connect cmd;
 
@@ -1146,12 +1147,28 @@ static bt_status_t server_connect(int server_if, const bt_bdaddr_t *bd_addr,
 
 	cmd.server_if = server_if;
 	cmd.is_direct = is_direct;
+	cmd.transport = transport;
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(*bd_addr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_GATT, HAL_OP_GATT_SERVER_CONNECT,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t server_connect(int server_if, const bt_bdaddr_t *bd_addr,
+						bool is_direct, int transport)
+{
+	return server_connect_real(server_if, bd_addr, is_direct, transport);
+}
+#else
+static bt_status_t server_connect(int server_if, const bt_bdaddr_t *bd_addr,
+								bool is_direct)
+{
+	return server_connect_real(server_if, bd_addr, is_direct,
+							BT_TRANSPORT_UNKNOWN);
+}
+#endif
 
 static bt_status_t server_disconnect(int server_if, const bt_bdaddr_t *bd_addr,
 								int conn_id)

@@ -1756,6 +1756,7 @@ Commands and responses:
 		Command parameters: Server (4 octets)
 		                    Remote address (6 octes)
 		                    Is Direct (1 octet)
+		                    Transport (4 octets)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.
