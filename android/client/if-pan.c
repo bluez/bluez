@@ -40,8 +40,13 @@ SINTMAP(btpan_control_state_t, -1, "(unknown)")
 	DELEMENT(BTPAN_STATE_DISABLED),
 ENDMAP
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static void control_state_cb(btpan_control_state_t state, int local_role,
+					bt_status_t error, const char *ifname)
+#else
 static void control_state_cb(btpan_control_state_t state, bt_status_t error,
 					int local_role, const char *ifname)
+#endif
 {
 	haltest_info("%s: state=%s error=%s local_role=%s ifname=%s\n",
 			__func__, btpan_control_state_t2str(state),
