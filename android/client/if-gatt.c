@@ -1594,6 +1594,9 @@ static void gatts_connect_p(int argc, const char *argv[])
 	int server_if;
 	bt_bdaddr_t bd_addr;
 	int is_direct = 1;
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	int transport = 1;
+#endif
 
 	RETURN_IF_NULL(if_gatt);
 	VERIFY_SERVER_IF(2, server_if);
@@ -1603,7 +1606,16 @@ static void gatts_connect_p(int argc, const char *argv[])
 	if (argc > 4)
 		is_direct = atoi(argv[4]);
 
+#if ANDROID_VERSION < PLATFORM_VER(5, 0, 0)
 	EXEC(if_gatt->server->connect, server_if, &bd_addr, is_direct);
+#else
+	/* transport */
+	if (argc > 5)
+		transport = atoi(argv[5]);
+
+	EXEC(if_gatt->server->connect, server_if, &bd_addr, is_direct,
+								transport);
+#endif
 }
 
 /* disconnect */
