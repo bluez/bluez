@@ -2066,6 +2066,8 @@ static void handle_client_connect(const void *buf, uint16_t len)
 
 	/* TODO handle is_direct flag */
 
+	/* TODO handle transport flag */
+
 	status = handle_connect(cmd->client_if, &addr);
 
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT, HAL_OP_GATT_CLIENT_CONNECT,

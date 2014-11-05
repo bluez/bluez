@@ -721,6 +721,7 @@ struct hal_cmd_gatt_client_connect {
 	int32_t client_if;
 	uint8_t bdaddr[6];
 	uint8_t is_direct;
+	int32_t transport;
 } __attribute__((packed));
 
 #define HAL_OP_GATT_CLIENT_DISCONNECT		0x05
