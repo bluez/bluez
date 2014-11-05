@@ -612,12 +612,13 @@ static int out_remove_audio_effect(const struct audio_stream *stream,
 	return -ENOSYS;
 }
 
-static int sco_open_output_stream(struct audio_hw_device *dev,
+static int sco_open_output_stream_real(struct audio_hw_device *dev,
 					audio_io_handle_t handle,
 					audio_devices_t devices,
 					audio_output_flags_t flags,
 					struct audio_config *config,
-					struct audio_stream_out **stream_out)
+					struct audio_stream_out **stream_out,
+					const char *address)
 {
 	struct sco_dev *adev = (struct sco_dev *) dev;
 	struct sco_stream_out *out;
@@ -740,6 +741,31 @@ failed:
 
 	return ret;
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static int sco_open_output_stream(struct audio_hw_device *dev,
+					audio_io_handle_t handle,
+					audio_devices_t devices,
+					audio_output_flags_t flags,
+					struct audio_config *config,
+					struct audio_stream_out **stream_out,
+					const char *address)
+{
+	return  sco_open_output_stream_real(dev, handle, devices, flags,
+						config, stream_out, address);
+}
+#else
+static int sco_open_output_stream(struct audio_hw_device *dev,
+					audio_io_handle_t handle,
+					audio_devices_t devices,
+					audio_output_flags_t flags,
+					struct audio_config *config,
+					struct audio_stream_out **stream_out)
+{
+	return sco_open_output_stream_real(dev, handle, devices, flags,
+						config, stream_out, NULL);
+}
+#endif
 
 static void sco_close_output_stream(struct audio_hw_device *dev,
 					struct audio_stream_out *stream_out)
@@ -1060,11 +1086,14 @@ static uint32_t in_get_input_frames_lost(struct audio_stream_in *stream)
 	return -ENOSYS;
 }
 
-static int sco_open_input_stream(struct audio_hw_device *dev,
+static int sco_open_input_stream_real(struct audio_hw_device *dev,
 					audio_io_handle_t handle,
 					audio_devices_t devices,
 					struct audio_config *config,
-					struct audio_stream_in **stream_in)
+					struct audio_stream_in **stream_in,
+					audio_input_flags_t flags,
+					const char *address,
+					audio_source_t source)
 {
 	struct sco_dev *sco_dev = (struct sco_dev *) dev;
 	struct sco_stream_in *in;
@@ -1164,6 +1193,32 @@ failed2:
 
 	return ret;
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static int sco_open_input_stream(struct audio_hw_device *dev,
+					audio_io_handle_t handle,
+					audio_devices_t devices,
+					struct audio_config *config,
+					struct audio_stream_in **stream_in,
+					audio_input_flags_t flags,
+					const char *address,
+					audio_source_t source)
+{
+	return sco_open_input_stream_real(dev, handle, devices, config,
+						stream_in, flags, address,
+						source);
+}
+#else
+static int sco_open_input_stream(struct audio_hw_device *dev,
+					audio_io_handle_t handle,
+					audio_devices_t devices,
+					struct audio_config *config,
+					struct audio_stream_in **stream_in)
+{
+	return sco_open_input_stream_real(dev, handle, devices, config,
+						stream_in, 0, NULL, 0);
+}
+#endif
 
 static void sco_close_input_stream(struct audio_hw_device *dev,
 					struct audio_stream_in *stream_in)
