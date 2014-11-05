@@ -631,12 +631,13 @@ static bt_status_t at_response(bthf_at_response_t response, int error)
 }
 #endif
 
-static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
+static bt_status_t clcc_response_real(int index, bthf_call_direction_t dir,
 					bthf_call_state_t state,
 					bthf_call_mode_t mode,
 					bthf_call_mpty_type_t mpty,
 					const char *number,
-					bthf_call_addrtype_t type)
+					bthf_call_addrtype_t type,
+					bt_bdaddr_t *bd_addr)
 {
 	char buf[IPC_MTU];
 	struct hal_cmd_handsfree_clcc_response *cmd = (void *) buf;
@@ -646,6 +647,11 @@ static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
+
+	memset(cmd, 0, sizeof(*cmd));
+
+	if (bd_addr)
+		memcpy(cmd->bdaddr, bd_addr, sizeof(cmd->bdaddr));
 
 	cmd->index = index;
 	cmd->dir = dir;
@@ -667,6 +673,31 @@ static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
 						HAL_OP_HANDSFREE_CLCC_RESPONSE,
 						len, cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
+					bthf_call_state_t state,
+					bthf_call_mode_t mode,
+					bthf_call_mpty_type_t mpty,
+					const char *number,
+					bthf_call_addrtype_t type,
+					bt_bdaddr_t *bd_addr)
+{
+	return clcc_response_real(index, dir, state, mode, mpty, number, type,
+								bd_addr);
+}
+#else
+static bt_status_t clcc_response(int index, bthf_call_direction_t dir,
+					bthf_call_state_t state,
+					bthf_call_mode_t mode,
+					bthf_call_mpty_type_t mpty,
+					const char *number,
+					bthf_call_addrtype_t type)
+{
+	return clcc_response_real(index, dir, state, mode, mpty, number, type,
+									NULL);
+}
+#endif
 
 static bt_status_t phone_state_change(int num_active, int num_held,
 					bthf_call_state_t state,

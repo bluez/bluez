@@ -934,6 +934,7 @@ Commands and responses:
 		                    Call multiparty type (1 octet)
 		                    Call number type (1 octet)
 		                    Call number (string)
+		                    Remote address (6 octets)
 		Response parameters: <none>
 
 		Valid call directions: 0x00 = Outgoing

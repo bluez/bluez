@@ -592,6 +592,7 @@ struct hal_cmd_handsfree_clcc_response {
 	uint8_t mode;
 	uint8_t mpty;
 	uint8_t type;
+	uint8_t bdaddr[6];
 	uint16_t number_len;
 	uint8_t number[0];
 } __attribute__((packed));

@@ -2192,6 +2192,7 @@ static void handle_clcc_resp(const void *buf, uint16_t len)
 	const struct hal_cmd_handsfree_clcc_response *cmd = buf;
 	struct hf_device *dev;
 	uint8_t status;
+	bdaddr_t bdaddr;
 	char *number;
 
 	if (len != sizeof(*cmd) + cmd->number_len || (cmd->number_len != 0 &&
@@ -2203,7 +2204,9 @@ static void handle_clcc_resp(const void *buf, uint16_t len)
 
 	DBG("");
 
-	dev = find_default_device();
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+
+	dev = find_device(&bdaddr);
 	if (!dev) {
 		status = HAL_STATUS_FAILED;
 		goto done;
