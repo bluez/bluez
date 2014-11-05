@@ -933,6 +933,7 @@ static void scan_p(int argc, const char **argv)
 
 	RETURN_IF_NULL(if_gatt);
 
+#if ANDROID_VERSION < PLATFORM_VER(5, 0, 0)
 	VERIFY_CLIENT_IF(2, client_if);
 
 	/* start */
@@ -940,6 +941,13 @@ static void scan_p(int argc, const char **argv)
 		start = atoi(argv[3]);
 
 	EXEC(if_gatt->client->scan, client_if, start);
+#else
+	/* start */
+	if (argc >= 3)
+		start = atoi(argv[2]);
+
+	EXEC(if_gatt->client->scan, start);
+#endif
 }
 
 /* connect */
