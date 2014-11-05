@@ -312,6 +312,9 @@ static void hf_client_current_calls_callback(int index,
 					bthf_client_call_direction_t2str(dir),
 					bthf_client_call_state_t2str(state),
 					bthf_client_call_mpty_type_t2str(mpty));
+
+	if (number)
+		haltest_info("%s: number=%s\n", __func__, number);
 }
 
 /* Callback for audio volume change */
