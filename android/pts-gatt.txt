@@ -48,7 +48,13 @@ TC_GAD_CL_BV_02_C	PASS	haltest:
 				gattc disconnect
 				gattc connect
 				gattc refresh
-TC_GAD_CL_BV_03_C	FAIL	JIRA #BA-188
+TC_GAD_CL_BV_03_C	PASS	haltest:
+                                gattc register_client
+                                gattc scan
+                                gattc connect
+                                gattc search_service
+				gattc get_included_service
+				gattc_disconnect
 TC_GAD_CL_BV_04_C	PASS	haltest:
 				when requested: gattc get_characteristic
 TC_GAD_CL_BV_05_C	PASS	haltest:
