@@ -1032,7 +1032,8 @@ Notifications:
 
 	Opcode 0x87 - Dial Call Command notification
 
-		Notification parameters: Number (string)
+		Notification parameters: Remote address (6 octets)
+		                         Number (string)
 
 	Opcode 0x88 - DTMF Command notification
 

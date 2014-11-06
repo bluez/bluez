@@ -122,7 +122,11 @@ static void handle_dial(void *buf, uint16_t len, int fd)
 	if (ev->number_len)
 		number = (char *) ev->number;
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	cbs->dial_call_cmd_cb(number, (bt_bdaddr_t *) (ev->bdaddr));
+#else
 	cbs->dial_call_cmd_cb(number);
+#endif
 }
 
 static void handle_dtmf(void *buf, uint16_t len, int fd)

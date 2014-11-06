@@ -1368,6 +1368,7 @@ struct hal_ev_handsfree_volume {
 
 #define HAL_EV_HANDSFREE_DIAL		0x87
 struct hal_ev_handsfree_dial {
+	uint8_t bdaddr[6];
 	uint16_t number_len;
 	uint8_t number[0];
 } __attribute__((packed));

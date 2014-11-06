@@ -537,6 +537,8 @@ static void at_cmd_d(struct hfp_context *context,
 						(char *) ev->number, 255))
 			break;
 
+		bdaddr2android(&dev->bdaddr, ev->bdaddr);
+
 		ev->number_len = strlen((char *) ev->number);
 
 		if (ev->number[ev->number_len - 1] != ';')
@@ -794,6 +796,7 @@ static void at_cmd_bldn(struct hfp_context *context,
 		if (hfp_context_has_next(context))
 			break;
 
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
 		ev.number_len = 0;
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
