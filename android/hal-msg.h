@@ -1415,6 +1415,9 @@ struct hal_ev_handsfree_cops {
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_CLCC		0x8E
+struct hal_ev_handsfree_clcc {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_UNKNOWN_AT	0x8F
 struct hal_ev_handsfree_unknown_at {

@@ -206,8 +206,15 @@ static void handle_cops(void *buf, uint16_t len, int fd)
 
 static void handle_clcc(void *buf, uint16_t len, int fd)
 {
-	if (cbs->clcc_cmd_cb)
+	if (cbs->clcc_cmd_cb) {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		struct hal_ev_handsfree_clcc *ev = buf;
+
+		cbs->clcc_cmd_cb((bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->clcc_cmd_cb();
+#endif
+	}
 }
 
 static void handle_unknown_at(void *buf, uint16_t len, int fd)
