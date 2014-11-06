@@ -466,8 +466,6 @@ static bt_status_t stop_voice_recognition_real(bt_bdaddr_t *bd_addr)
 	if (bd_addr)
 		memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
-
 	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE, HAL_OP_HANDSFREE_STOP_VR,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
