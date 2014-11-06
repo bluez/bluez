@@ -730,6 +730,7 @@ static void at_cmd_vts(struct hfp_context *context,
 		if (hfp_context_has_next(context))
 			break;
 
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
 		ev.tone = str[0];
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,

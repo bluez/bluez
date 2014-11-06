@@ -134,7 +134,11 @@ static void handle_dtmf(void *buf, uint16_t len, int fd)
 	struct hal_ev_handsfree_dtmf *ev = buf;
 
 	if (cbs->dtmf_cmd_cb)
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		cbs->dtmf_cmd_cb(ev->tone, (bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->dtmf_cmd_cb(ev->tone);
+#endif
 }
 
 static void handle_nrec(void *buf, uint16_t len, int fd)

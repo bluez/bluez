@@ -1038,6 +1038,7 @@ Notifications:
 	Opcode 0x88 - DTMF Command notification
 
 		Notification parameters: Tone (1 octet)
+		                         Remote address (6 octets)
 
 	Opcode 0x89 - NREC Command notification
 

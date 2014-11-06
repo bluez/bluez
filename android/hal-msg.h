@@ -1376,6 +1376,7 @@ struct hal_ev_handsfree_dial {
 #define HAL_EV_HANDSFREE_DTMF		0x88
 struct hal_ev_handsfree_dtmf {
 	uint8_t tone;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_HANDSFREE_NREC_STOP		0x00
