@@ -822,6 +822,8 @@ static void at_cmd_bvra(struct hfp_context *context,
 		else
 			ev.state = HAL_HANDSFREE_VR_STOPPED;
 
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
+
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_VR, sizeof(ev), &ev);
 		return;

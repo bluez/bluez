@@ -1346,6 +1346,7 @@ struct hal_ev_handsfree_audio_state {
 #define HAL_EV_HANDSFREE_VR		0x83
 struct hal_ev_handsfree_vr_state {
 	uint8_t state;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_ANSWER		0x84

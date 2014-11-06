@@ -1008,6 +1008,7 @@ Notifications:
 	Opcode 0x83 - Voice Recognition Command notification
 
 		Notification parameters: Voice recognition state (1 octet)
+		                         Remote address (6 octets)
 
 		Valid voice recognition states: 0x00 = Stopped
 		                                0x01 = Started

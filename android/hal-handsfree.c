@@ -58,7 +58,11 @@ static void handle_vr_state(void *buf, uint16_t len, int fd)
 	struct hal_ev_handsfree_vr_state *ev = buf;
 
 	if (cbs->vr_cmd_cb)
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		cbs->vr_cmd_cb(ev->state, (bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->vr_cmd_cb(ev->state);
+#endif
 }
 
 static void handle_answer(void *buf, uint16_t len, int fd)
