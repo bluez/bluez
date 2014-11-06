@@ -290,6 +290,9 @@ static bool match_by_bdaddr(const void *data, const void *match_data)
 
 static struct hf_device *find_device(const bdaddr_t *bdaddr)
 {
+	if (!bacmp(bdaddr, BDADDR_ANY))
+		return find_default_device();
+
 	return queue_find(devices, match_by_bdaddr, bdaddr);
 }
 
