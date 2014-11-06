@@ -1427,6 +1427,9 @@ struct hal_ev_handsfree_unknown_at {
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_HSP_KEY_PRESS	0x90
+struct hal_ev_handsfree_hsp_key_press {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
 
 #define HAL_AVRCP_FEATURE_NONE			0x00
 #define HAL_AVRCP_FEATURE_METADATA		0x01

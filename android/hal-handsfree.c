@@ -238,8 +238,15 @@ static void handle_unknown_at(void *buf, uint16_t len, int fd)
 
 static void handle_hsp_key_press(void *buf, uint16_t len, int fd)
 {
-	if (cbs->key_pressed_cmd_cb)
+	if (cbs->key_pressed_cmd_cb) {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		struct hal_ev_handsfree_hsp_key_press *ev = buf;
+
+		cbs->key_pressed_cmd_cb((bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->key_pressed_cmd_cb();
+#endif
+	}
 }
 
 /*

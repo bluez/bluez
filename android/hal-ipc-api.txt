@@ -1081,7 +1081,7 @@ Notifications:
 
 	Opcode 0x90 - Key Pressed Command notification
 
-		Notification parameters: <none>
+		Notification parameters: Remote address (6 octets)
 
 
 Bluetooth Advanced Audio HAL (ID 6)

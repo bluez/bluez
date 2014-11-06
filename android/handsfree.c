@@ -1143,6 +1143,7 @@ static void at_cmd_ckpd(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
+	struct hal_ev_handsfree_hsp_key_press ev;
 	unsigned int val;
 
 	DBG("");
@@ -1155,8 +1156,11 @@ static void at_cmd_ckpd(struct hfp_context *result, enum hfp_gw_cmd_type type,
 		if (hfp_context_has_next(result))
 			break;
 
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
+
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-				HAL_EV_HANDSFREE_HSP_KEY_PRESS, 0, NULL);
+						HAL_EV_HANDSFREE_HSP_KEY_PRESS,
+						sizeof(ev), &ev);
 
 		hfp_gw_send_result(dev->gw, HFP_RESULT_OK);
 		return;
