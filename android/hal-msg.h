@@ -1405,6 +1405,9 @@ struct hal_ev_handsfree_cnum {
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_CIND		0x8C
+struct hal_ev_handsfree_cind {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_COPS		0x8D
 

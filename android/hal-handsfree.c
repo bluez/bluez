@@ -180,8 +180,15 @@ static void handle_cnum(void *buf, uint16_t len, int fd)
 
 static void handle_cind(void *buf, uint16_t len, int fd)
 {
-	if (cbs->cind_cmd_cb)
+	if (cbs->cind_cmd_cb) {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		struct hal_ev_handsfree_cind *ev = buf;
+
+		cbs->cind_cmd_cb((bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->cind_cmd_cb();
+#endif
+	}
 }
 
 static void handle_cops(void *buf, uint16_t len, int fd)

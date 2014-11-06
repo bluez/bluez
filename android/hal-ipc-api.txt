@@ -1064,7 +1064,7 @@ Notifications:
 
 	Opcode 0x8c - CIND Command notification
 
-		Notification parameters: <none>
+		Notification parameters: Remote address (6 octets)
 
 	Opcode 0x8d - COPS Command notification
 

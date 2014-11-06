@@ -1246,6 +1246,7 @@ static void at_cmd_cind(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
+	struct hal_ev_handsfree_cind ev;
 	char *buf, *ptr;
 	int len;
 	unsigned int i;
@@ -1289,8 +1290,10 @@ static void at_cmd_cind(struct hfp_context *result, enum hfp_gw_cmd_type type,
 		g_free(buf);
 		return;
 	case HFP_GW_CMD_TYPE_READ:
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
+
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-						HAL_EV_HANDSFREE_CIND, 0, NULL);
+					HAL_EV_HANDSFREE_CIND, sizeof(ev), &ev);
 		return;
 	case HFP_GW_CMD_TYPE_SET:
 	case HFP_GW_CMD_TYPE_COMMAND:
