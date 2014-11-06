@@ -2971,7 +2971,7 @@ static void read_char_cb(guint8 status, const guint8 *pdu, guint16 len,
 static int get_cid(struct gatt_device *dev)
 {
 	GIOChannel *io;
-	int cid;
+	uint16_t cid;
 
 	io = g_attrib_get_channel(dev->attrib);
 
