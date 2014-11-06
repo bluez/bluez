@@ -41,8 +41,10 @@ TC_COS_IEX_BV_01_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_IEX_BV_02_C	PASS
 TC_COS_ECH_BV_01_C	PASS
 TC_COS_ECH_BV_02_C	PASS	l2ping -c 1 <bdaddr>
-TC_COS_CFC_BV_01_C	INC	PTS issue #12711
-TC_COS_CFC_BV_02_C	INC	PTS issue #12711
+TC_COS_CFC_BV_01_C	INC	PTS issue #12728
+				l2test -y -N 1 -b 40 -V le_public <braddr>
+TC_COS_CFC_BV_02_C	INC	PTS issue #12728
+				l2test -y -N 1 -b 1 -V le_public <bdaddr>
 TC_COS_CFC_BV_03_C	PASS	l2test -u -V le_public <bdaddr>
 TC_COS_CFC_BV_04_C	PASS	l2test -u -V le_public <bdaddr>
 TC_COS_CFC_BV_05_C	PASS	l2test -m -V le_public <bdaddr>
@@ -169,9 +171,12 @@ TC_LE_CFC_BV_02_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_03_C	INC	PTS issue #12665
 TC_LE_CFC_BV_04_C	PASS	l2test -n -V le_public -P 241  <braddr>
 TC_LE_CFC_BV_05_C	INC	PTS issue #12665
-TC_LE_CFC_BV_06_C	INC	PTS issue #12711
-TC_LE_CFC_BV_07_C	INC	PTS issue #12711
-TC_LE_CFC_BI_01_C	INC	PTS issue #12711
+TC_LE_CFC_BV_06_C	INC	PTS issue #12711 #12729
+				l2test -s -V le_public <braddr>
+TC_LE_CFC_BV_07_C	INC	PTS issue #12728
+				l2test -u -V le_public <braddr>
+TC_LE_CFC_BI_01_C	INC	PTS issue #12728 #12712
+				l2test -u -V le_public <bdaddr>
 TC_LE_CFC_BV_08_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_09_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_16_C	PASS	l2test -n -V le_public -P 37 <braddr>

@@ -19,7 +19,7 @@ TSPX_flushto                                           FFFF
 TSPX_inmtu                                             02A0
 TSPX_no_fail_verditcs                                  FALSE
 TSPX_oumtu                                             02A0
-TSPX_tester_mps                                        0010
+TSPX_tester_mps                                        0017 (*)
 TSPX_tester_mtu                                        02A0
 TSPX_iut_role_initiator                                TRUE (*)
 TSPX_le_psm                                            0080 (*)
