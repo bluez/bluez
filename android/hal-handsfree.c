@@ -96,7 +96,12 @@ static void handle_volume(void *buf, uint16_t len, int fd)
 	struct hal_ev_handsfree_volume *ev = buf;
 
 	if (cbs->volume_cmd_cb)
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		cbs->volume_cmd_cb(ev->type, ev->volume,
+						(bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->volume_cmd_cb(ev->type, ev->volume);
+#endif
 }
 
 static void handle_dial(void *buf, uint16_t len, int fd)

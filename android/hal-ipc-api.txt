@@ -1025,6 +1025,7 @@ Notifications:
 
 		Notification parameters: Volume type (1 octet)
 		                         Volume (1 octet)
+		                         Remote address (6 octets)
 
 		Valid volume types: 0x00 = Speaker
 		                    0x01 = Microphone

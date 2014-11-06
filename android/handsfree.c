@@ -361,6 +361,7 @@ static void at_cmd_vgm(struct hfp_context *context,
 
 		ev.type = HAL_HANDSFREE_VOLUME_TYPE_MIC;
 		ev.volume = val;
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 				HAL_EV_HANDSFREE_VOLUME, sizeof(ev), &ev);
@@ -396,6 +397,7 @@ static void at_cmd_vgs(struct hfp_context *context,
 
 		ev.type = HAL_HANDSFREE_VOLUME_TYPE_SPEAKER;
 		ev.volume = val;
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 				HAL_EV_HANDSFREE_VOLUME, sizeof(ev), &ev);

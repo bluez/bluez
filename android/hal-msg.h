@@ -1363,6 +1363,7 @@ struct hal_ev_handsfree_hangup {
 struct hal_ev_handsfree_volume {
 	uint8_t type;
 	uint8_t volume;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_DIAL		0x87
