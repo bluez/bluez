@@ -4985,14 +4985,16 @@ static void handle_server_add_characteristic(const void *buf, uint16_t len)
 							cmd->properties,
 							read_cb, write_cb,
 							INT_TO_PTR(app_id));
-	if (!attrib)
+	if (!attrib) {
 		status = HAL_STATUS_FAILED;
-	else
-		status = HAL_STATUS_SUCCESS;
+		goto failed;
+	}
+
+	ev.char_handle = gatt_db_attribute_get_handle(attrib);
+	status = HAL_STATUS_SUCCESS;
 
 failed:
 	ev.srvc_handle = cmd->service_handle;
-	ev.char_handle = gatt_db_attribute_get_handle(attrib);
 	ev.status = status;
 	ev.server_if = app_id;
 	ev.status = status == HAL_STATUS_SUCCESS ? GATT_SUCCESS : GATT_FAILURE;
