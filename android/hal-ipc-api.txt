@@ -1051,6 +1051,7 @@ Notifications:
 	Opcode 0x8a - CHLD Command notification
 
 		Notification parameters: NREC types (1 octet)
+		                         Remote address (6 octets)
 
 		Valid CHLD types: 0x00 = Release and hold
 		                  0x01 = Release active and accept held

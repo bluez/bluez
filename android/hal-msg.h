@@ -1396,6 +1396,7 @@ struct hal_ev_handsfree_nrec {
 #define HAL_EV_HANDSFREE_CHLD		0x8A
 struct hal_ev_handsfree_chld {
 	uint8_t chld;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_CNUM		0x8B

@@ -158,7 +158,11 @@ static void handle_chld(void *buf, uint16_t len, int fd)
 	struct hal_ev_handsfree_chld *ev = buf;
 
 	if (cbs->chld_cmd_cb)
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		cbs->chld_cmd_cb(ev->chld, (bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->chld_cmd_cb(ev->chld);
+#endif
 }
 
 static void handle_cnum(void *buf, uint16_t len, int fd)

@@ -1352,6 +1352,7 @@ static void at_cmd_chld(struct hfp_context *result, enum hfp_gw_cmd_type type,
 
 		/* value match HAL type */
 		ev.chld = val;
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_CHLD, sizeof(ev), &ev);
