@@ -4356,6 +4356,7 @@ static void send_dev_complete_response(struct gatt_device *device,
 		if (val->error) {
 			queue_destroy(temp, NULL);
 			error = val->error;
+			destroy_pending_request(val);
 			goto done;
 		}
 
@@ -4368,6 +4369,9 @@ static void send_dev_complete_response(struct gatt_device *device,
 
 		adl = att_data_list_alloc(queue_length(temp), sizeof(uint16_t) +
 									length);
+
+		if (val)
+			destroy_pending_request(val);
 
 		val = queue_pop_head(temp);
 		while (val) {
@@ -5643,7 +5647,8 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 
 		data->state = REQUEST_INIT;
 		data->handle = handle;
-		queue_push_tail(device->pending_requests, data);
+		if (!queue_push_tail(device->pending_requests, data))
+			free(data);
 	}
 
 	queue_destroy(q, NULL);
