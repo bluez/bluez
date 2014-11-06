@@ -167,8 +167,15 @@ static void handle_chld(void *buf, uint16_t len, int fd)
 
 static void handle_cnum(void *buf, uint16_t len, int fd)
 {
-	if (cbs->cnum_cmd_cb)
-		cbs->cnum_cmd_cb();
+	if (cbs->cnum_cmd_cb) {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		struct hal_ev_handsfree_cnum *ev = buf;
+
+		cbs->cnum_cmd_cb((bt_bdaddr_t *) (ev->bdaddr));
+#else
+		cbs->cnum_cmd_cb(NULL);
+#endif
+	}
 }
 
 static void handle_cind(void *buf, uint16_t len, int fd)
