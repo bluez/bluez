@@ -2904,14 +2904,18 @@ static void disable_sco_server(void)
 
 static void bt_sco_get_fd(const void *buf, uint16_t len)
 {
-	int fd;
-	GError *err;
+	const struct sco_cmd_get_fd *cmd = buf;
 	struct sco_rsp_get_fd rsp;
 	struct hf_device *dev;
+	bdaddr_t bdaddr;
+	GError *err;
+	int fd;
 
 	DBG("");
 
-	dev = find_default_device();
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+
+	dev = find_device(&bdaddr);
 	if (!dev || !dev->sco)
 		goto failed;
 
