@@ -1355,6 +1355,9 @@ struct hal_ev_handsfree_answer {
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_HANGUP		0x85
+struct hal_ev_handsfree_hangup {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_VOLUME		0x86
 struct hal_ev_handsfree_volume {

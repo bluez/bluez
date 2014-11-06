@@ -1019,7 +1019,7 @@ Notifications:
 
 	Opcode 0x85 - Hangup Call Command notification
 
-		Notification parameters: <none>
+		Notification parameters: Remote address (6 octets)
 
 	Opcode 0x86 - Volume Command notification
 

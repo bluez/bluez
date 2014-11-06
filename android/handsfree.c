@@ -596,6 +596,7 @@ static void at_cmd_chup(struct hfp_context *context,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
+	struct hal_ev_handsfree_hangup ev;
 
 	DBG("");
 
@@ -604,8 +605,10 @@ static void at_cmd_chup(struct hfp_context *context,
 		if (hfp_context_has_next(context))
 			break;
 
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
+
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-					HAL_EV_HANDSFREE_HANGUP, 0, NULL);
+				HAL_EV_HANDSFREE_HANGUP, sizeof(ev), &ev);
 
 		/* Framework is not replying with result for AT+CHUP */
 		hfp_gw_send_result(dev->gw, HFP_RESULT_OK);
