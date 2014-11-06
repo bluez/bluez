@@ -2416,6 +2416,7 @@ static bool search_included_services(struct app_connection *connection,
 							struct service *service)
 {
 	struct get_included_data *data;
+	uint16_t start, end;
 
 	data = new0(struct get_included_data, 1);
 	if (!data) {
@@ -2426,9 +2427,17 @@ static bool search_included_services(struct app_connection *connection,
 	data->prim = service;
 	data->conn = connection;
 
-	gatt_find_included(connection->device->attrib,
-				service->prim.range.start,
-				service->prim.range.end, get_included_cb, data);
+	if (service->primary) {
+		start = service->prim.range.start;
+		end = service->prim.range.end;
+	} else {
+		start = service->incl.range.start;
+		end = service->incl.range.end;
+	}
+
+	gatt_find_included(connection->device->attrib, start, end,
+							get_included_cb, data);
+
 	return true;
 }
 
