@@ -928,7 +928,9 @@ static void unregister_client_p(int argc, const char **argv)
 
 static void scan_p(int argc, const char **argv)
 {
+#if ANDROID_VERSION < PLATFORM_VER(5, 0, 0)
 	int client_if;
+#endif
 	int start = 1;
 
 	RETURN_IF_NULL(if_gatt);
