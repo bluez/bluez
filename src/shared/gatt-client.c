@@ -411,6 +411,8 @@ static void discovery_op_unref(void *data)
 	if (__sync_sub_and_fetch(&op->ref_count, 1))
 		return;
 
+	service_list_clear(&op->result_head, &op->result_tail);
+
 	free(data);
 }
 
@@ -1140,6 +1142,10 @@ static void init_complete(struct discovery_op *op, bool success,
 	client->svc_head = op->result_head;
 	client->svc_tail = op->result_tail;
 
+	/* Change owner of service list */
+	op->result_head = NULL;
+	op->result_tail = NULL;
+
 	if (!client->svc_chngd_val_handle) {
 		client->ready = true;
 		goto done;
@@ -1164,12 +1170,10 @@ static void init_complete(struct discovery_op *op, bool success,
 	util_debug(client->debug_callback, client->debug_data,
 			"Failed to register handler for \"Service Changed\"");
 
-	client->svc_head = client->svc_tail = NULL;
-
 fail:
 	util_debug(client->debug_callback, client->debug_data,
 			"Failed to initialize gatt-client");
-	service_list_clear(&op->result_head, &op->result_tail);
+	service_list_clear(&client->svc_head, &client->svc_head);
 
 done:
 	if (client->ready_callback)
