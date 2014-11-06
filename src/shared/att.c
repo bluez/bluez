@@ -575,6 +575,15 @@ struct notify_data {
 	bool handler_found;
 };
 
+static bool opcode_match(uint8_t opcode, uint8_t test_opcode)
+{
+	if (opcode == BT_ATT_ALL_REQUESTS &&
+				    get_op_type(test_opcode) == ATT_OP_TYPE_REQ)
+		return true;
+
+	return opcode == test_opcode;
+}
+
 static void notify_handler(void *data, void *user_data)
 {
 	struct att_notify *notify = data;
@@ -583,7 +592,7 @@ static void notify_handler(void *data, void *user_data)
 	if (notify->removed)
 		return;
 
-	if (notify->opcode != not_data->opcode)
+	if (!opcode_match(notify->opcode, not_data->opcode))
 		return;
 
 	not_data->handler_found = true;

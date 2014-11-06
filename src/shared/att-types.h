@@ -55,6 +55,9 @@
 #define BT_ATT_OP_HANDLE_VAL_IND		0x1D
 #define BT_ATT_OP_HANDLE_VAL_CONF		0x1E
 
+/* Special opcode to receive all requests (legacy servers) */
+#define BT_ATT_ALL_REQUESTS 0x00
+
 /* Error codes for Error response PDU */
 #define BT_ATT_ERROR_INVALID_HANDLE			0x01
 #define BT_ATT_ERROR_READ_NOT_PERMITTED			0x02
