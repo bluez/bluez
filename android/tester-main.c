@@ -1338,7 +1338,7 @@ static void hidhost_connection_state_cb(bt_bdaddr_t *bd_addr,
 	schedule_callback_verification(step);
 }
 
-static void hidhost_virual_unplug_cb(bt_bdaddr_t *bd_addr, bthh_status_t status)
+static void hidhost_virtual_unplug_cb(bt_bdaddr_t *bd_addr, bthh_status_t status)
 {
 	struct step *step = g_new0(struct step, 1);
 
@@ -1392,7 +1392,7 @@ static bthh_callbacks_t bthh_callbacks = {
 	.protocol_mode_cb = hidhost_protocol_mode_cb,
 	.idle_time_cb = NULL,
 	.get_report_cb = hidhost_get_report_cb,
-	.virtual_unplug_cb = hidhost_virual_unplug_cb
+	.virtual_unplug_cb = hidhost_virtual_unplug_cb
 };
 
 static void gattc_register_client_cb(int status, int client_if,
