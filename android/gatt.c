@@ -584,8 +584,24 @@ static void device_set_state(struct gatt_device *dev, uint32_t state)
 static bool auto_connect_le(struct gatt_device *dev)
 {
 	/*  For LE devices use auto connect feature if possible */
-	if (bt_kernel_conn_control())
-		return  bt_auto_connect_add(&dev->bdaddr);
+	if (bt_kernel_conn_control()) {
+		const bdaddr_t *bdaddr;
+
+		/*
+		 * If address type is random it might be that IRK was received
+		 * and random is just for faking Android Framework. ID address
+		 * should be used for connection if present.
+		 */
+		if (dev->bdaddr_type == BDADDR_LE_RANDOM) {
+			bdaddr = bt_get_id_addr(&dev->bdaddr, NULL);
+			if (!bdaddr)
+				return -EINVAL;
+		} else {
+			bdaddr = &dev->bdaddr;
+		}
+
+		return bt_auto_connect_add(bdaddr);
+	}
 
 	/* Trigger discovery if not already started */
 	if (!scanning) {
