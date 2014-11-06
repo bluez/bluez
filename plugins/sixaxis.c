@@ -60,6 +60,13 @@ static const struct {
 		.pid = 0x0268,
 		.version = 0x0000,
 	},
+	{
+		.name = "Navigation Controller",
+		.source = 0x0002,
+		.vid = 0x054c,
+		.pid = 0x042f,
+		.version = 0x0000,
+	},
 };
 
 struct leds_data {
