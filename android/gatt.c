@@ -318,8 +318,7 @@ static void destroy_service(void *data)
 	 * So we need to free service memory only once but we need to destroy
 	 * two queues
 	 */
-	if (srvc->primary)
-		queue_destroy(srvc->included, NULL);
+	queue_destroy(srvc->included, NULL);
 
 	free(srvc);
 }
@@ -1081,6 +1080,14 @@ static struct service *create_service(uint8_t id, bool primary, char *uuid,
 		return NULL;
 	}
 
+	s->included = queue_new();
+	if (!s->included) {
+		error("gatt: Cannot allocate memory for included queue");
+		queue_destroy(s->chars, NULL);
+		free(s);
+		return NULL;
+	}
+
 	if (bt_string_to_uuid(&s->id.uuid, uuid) < 0) {
 		error("gatt: Cannot convert string to uuid");
 		queue_destroy(s->chars, NULL);
@@ -1092,20 +1099,10 @@ static struct service *create_service(uint8_t id, bool primary, char *uuid,
 
 	/* Put primary service to our local list */
 	s->primary = primary;
-	if (s->primary) {
+	if (s->primary)
 		memcpy(&s->prim, data, sizeof(s->prim));
-	} else {
+	else
 		memcpy(&s->incl, data, sizeof(s->incl));
-		return s;
-	}
-
-	/* For primary service allocate queue for included services */
-	s->included = queue_new();
-	if (!s->included) {
-		queue_destroy(s->chars, NULL);
-		free(s);
-		return NULL;
-	}
 
 	return s;
 }
