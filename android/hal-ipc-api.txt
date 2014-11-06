@@ -1761,7 +1761,7 @@ Commands and responses:
 	Opcode 0x19 - Connect Peripheral command/response
 
 		Command parameters: Server (4 octets)
-		                    Remote address (6 octes)
+		                    Remote address (6 octets)
 		                    Is Direct (1 octet)
 		                    Transport (4 octets)
 		Response parameters: <none>
@@ -1771,7 +1771,7 @@ Commands and responses:
 	Opcode 0x1a - Disconnect Peripheral command/response
 
 		Command parameters: Server (4 octets)
-		                    Remote address (6 octes)
+		                    Remote address (6 octets)
 		                    Connection ID (1 octet)
 		Response parameters: <none>
 
