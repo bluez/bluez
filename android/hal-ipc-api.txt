@@ -1043,6 +1043,7 @@ Notifications:
 	Opcode 0x89 - NREC Command notification
 
 		Notification parameters: NREC types (1 octet)
+		                         Remote address (6 octets)
 
 		Valid NREC types: 0x00 = Stop
 		                  0x01 = Start

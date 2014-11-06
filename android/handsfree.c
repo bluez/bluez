@@ -871,6 +871,7 @@ static void at_cmd_nrec(struct hfp_context *context,
 			break;
 
 		ev.nrec = HAL_HANDSFREE_NREC_STOP;
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
 
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_EV_HANDSFREE_NREC, sizeof(ev), &ev);

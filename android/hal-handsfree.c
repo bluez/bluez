@@ -146,7 +146,11 @@ static void handle_nrec(void *buf, uint16_t len, int fd)
 	struct hal_ev_handsfree_nrec *ev = buf;
 
 	if (cbs->nrec_cmd_cb)
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		cbs->nrec_cmd_cb(ev->nrec, (bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->nrec_cmd_cb(ev->nrec);
+#endif
 }
 
 static void handle_chld(void *buf, uint16_t len, int fd)

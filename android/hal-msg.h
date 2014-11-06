@@ -1385,6 +1385,7 @@ struct hal_ev_handsfree_dtmf {
 #define HAL_EV_HANDSFREE_NREC		0x89
 struct hal_ev_handsfree_nrec {
 	uint8_t nrec;
+	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_HANDSFREE_CHLD_TYPE_RELEASEHELD			0x00
