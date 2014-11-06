@@ -5941,8 +5941,8 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		uint8_t t[ATT_SIGNATURE_LEN];
 		uint32_t r_sign_cnt = get_le32(s);
 
-		if (r_sign_cnt <= sign_cnt) {
-			error("gatt: Invalid sign counter (%d<=%d)",
+		if (r_sign_cnt < sign_cnt) {
+			error("gatt: Invalid sign counter (%d<%d)",
 							r_sign_cnt, sign_cnt);
 			return;
 		}
