@@ -140,6 +140,10 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 	if (vid == 0x054c && pid == 0x05c4)
 		return true;
 
+	/* Navigation Controller */
+	if (vid == 0x054c && pid == 0x042f)
+		return true;
+
 	return false;
 }
 
