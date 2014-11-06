@@ -1350,6 +1350,9 @@ struct hal_ev_handsfree_vr_state {
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_ANSWER		0x84
+struct hal_ev_handsfree_answer {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_HANGUP		0x85
 

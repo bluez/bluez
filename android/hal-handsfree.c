@@ -67,8 +67,15 @@ static void handle_vr_state(void *buf, uint16_t len, int fd)
 
 static void handle_answer(void *buf, uint16_t len, int fd)
 {
-	if (cbs->answer_call_cmd_cb)
+	if (cbs->answer_call_cmd_cb) {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		struct hal_ev_handsfree_answer *ev = buf;
+
+		cbs->answer_call_cmd_cb((bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->answer_call_cmd_cb();
+#endif
+	}
 }
 
 static void handle_hangup(void *buf, uint16_t len, int fd)
