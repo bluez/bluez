@@ -124,7 +124,7 @@ static void destroy_canary_increment(gpointer data)
 static void test_refcount(struct context *cxt, gconstpointer unused)
 {
 	GAttrib *extra_ref;
-	int destroy_canary;
+	int destroy_canary = 0;
 
 	g_attrib_set_destroy_function(cxt->att, destroy_canary_increment,
 							       &destroy_canary);
