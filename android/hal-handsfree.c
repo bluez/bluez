@@ -828,6 +828,17 @@ static void cleanup(void)
 	hal_ipc_unregister(HAL_SERVICE_ID_HANDSFREE);
 }
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t configure_wbs(bt_bdaddr_t *bd_addr, bthf_wbs_config_t config)
+{
+	/* TODO: implement */
+
+	DBG("");
+
+	return BT_STATUS_UNSUPPORTED;
+}
+#endif
+
 static bthf_interface_t iface = {
 	.size = sizeof(iface),
 	.init = init,
@@ -845,7 +856,10 @@ static bthf_interface_t iface = {
 	.at_response = at_response,
 	.clcc_response = clcc_response,
 	.phone_state_change = phone_state_change,
-	.cleanup = cleanup
+	.cleanup = cleanup,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.configure_wbs = configure_wbs,
+#endif
 };
 
 bthf_interface_t *bt_get_handsfree_interface(void)
