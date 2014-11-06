@@ -425,8 +425,6 @@ static void test_register(struct context *cxt, gconstpointer user_data)
 	guint reg_id;
 	gboolean canceled;
 	struct test_pdu pdus[] = {
-		/* Unmatched by any (GATTRIB_ALL_EVENTS) */
-		PDU_MTU_RESP,
 		/*
 		 * Unmatched PDU opcode
 		 * Unmatched handle (GATTRIB_ALL_REQS) */
@@ -461,21 +459,7 @@ static void test_register(struct context *cxt, gconstpointer user_data)
 	/*
 	 * Without registering anything, should be able to ignore everything but
 	 * an unexpected response. */
-	send_test_pdus(cxt, pdus + 1);
-
-	expect.expected = pdus;
-	reg_id = g_attrib_register(cxt->att, GATTRIB_ALL_EVENTS,
-				      GATTRIB_ALL_HANDLES, notify_canary_expect,
-								 &expect, NULL);
-
 	send_test_pdus(cxt, pdus);
-
-	canceled = g_attrib_unregister(cxt->att, reg_id);
-
-	g_assert(canceled);
-
-	for (current_pdu = pdus; current_pdu->valid; current_pdu++)
-		g_assert(current_pdu->received);
 
 	if (g_test_verbose())
 		g_print("ALL_REQS, ALL_HANDLES\r\n");

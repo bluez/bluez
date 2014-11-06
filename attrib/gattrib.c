@@ -391,9 +391,6 @@ static bool match_event(struct event *evt, const uint8_t *pdu, gsize len)
 {
 	guint16 handle;
 
-	if (evt->expected == GATTRIB_ALL_EVENTS)
-		return true;
-
 	if (is_request(pdu[0]) && evt->expected == GATTRIB_ALL_REQS)
 		return true;
 
