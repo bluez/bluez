@@ -1421,6 +1421,7 @@ struct hal_ev_handsfree_clcc {
 
 #define HAL_EV_HANDSFREE_UNKNOWN_AT	0x8F
 struct hal_ev_handsfree_unknown_at {
+	uint8_t bdaddr[6];
 	uint16_t len;
 	uint8_t buf[0];
 } __attribute__((packed));

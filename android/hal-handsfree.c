@@ -228,7 +228,12 @@ static void handle_unknown_at(void *buf, uint16_t len, int fd)
 	}
 
 	if (cbs->unknown_at_cmd_cb)
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		cbs->unknown_at_cmd_cb((char *) ev->buf,
+						(bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->unknown_at_cmd_cb((char *) ev->buf);
+#endif
 }
 
 static void handle_hsp_key_press(void *buf, uint16_t len, int fd)

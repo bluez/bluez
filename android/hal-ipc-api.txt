@@ -1076,7 +1076,8 @@ Notifications:
 
 	Opcode 0x8f - Unknown AT Command notification
 
-		Notification parameters: AT command (string)
+		Notification parameters: Remote address (6 octets)
+		                         AT command (string)
 
 	Opcode 0x90 - Key Pressed Command notification
 

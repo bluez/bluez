@@ -329,6 +329,8 @@ static void at_cmd_unknown(const char *command, void *user_data)
 		return;
 	}
 
+	bdaddr2android(&dev->bdaddr, ev->bdaddr);
+
 	/* copy while string including terminating NULL */
 	ev->len = strlen(command) + 1;
 	memcpy(ev->buf, command, ev->len);
