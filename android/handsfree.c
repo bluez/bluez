@@ -418,6 +418,7 @@ static void at_cmd_cops(struct hfp_context *context,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
 	struct hf_device *dev = user_data;
+	struct hal_ev_handsfree_cops ev;
 	unsigned int val;
 
 	switch (type) {
@@ -434,8 +435,10 @@ static void at_cmd_cops(struct hfp_context *context,
 		hfp_gw_send_result(dev->gw, HFP_RESULT_OK);
 		return;
 	case HFP_GW_CMD_TYPE_READ:
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
+
 		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
-						HAL_EV_HANDSFREE_COPS, 0, NULL);
+					HAL_EV_HANDSFREE_COPS, sizeof(ev), &ev);
 		return;
 	case HFP_GW_CMD_TYPE_TEST:
 	case HFP_GW_CMD_TYPE_COMMAND:

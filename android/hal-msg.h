@@ -1410,6 +1410,9 @@ struct hal_ev_handsfree_cind {
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_COPS		0x8D
+struct hal_ev_handsfree_cops {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_CLCC		0x8E
 

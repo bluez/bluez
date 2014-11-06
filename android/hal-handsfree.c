@@ -193,8 +193,15 @@ static void handle_cind(void *buf, uint16_t len, int fd)
 
 static void handle_cops(void *buf, uint16_t len, int fd)
 {
-	if (cbs->cops_cmd_cb)
+	if (cbs->cops_cmd_cb) {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+		struct hal_ev_handsfree_cops *ev = buf;
+
+		cbs->cops_cmd_cb((bt_bdaddr_t *) (ev->bdaddr));
+#else
 		cbs->cops_cmd_cb();
+#endif
+	}
 }
 
 static void handle_clcc(void *buf, uint16_t len, int fd)
