@@ -193,7 +193,7 @@ LOCAL_C_INCLUDES += \
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/bluez/android \
 
-LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS) -Wno-declaration-after-statement
 
 LOCAL_SHARED_LIBRARIES := libhardware
 
