@@ -1853,16 +1853,15 @@ static void gatts_request_write_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 	schedule_callback_verification(step);
 }
 
-static void pan_control_state_cb(btpan_control_state_t state,
-					int local_role,	bt_status_t error,
-					const char *ifname)
+static void pan_control_state_cb(btpan_control_state_t state, int local_role,
+					bt_status_t error, const char *ifname)
 {
 	struct step *step = g_new0(struct step, 1);
 
 	step->callback = CB_PAN_CONTROL_STATE;
-	step->callback_result.state = local_role;
-	step->callback_result.ctrl_state = error;
-	step->callback_result.local_role = state;
+	step->callback_result.state = error;
+	step->callback_result.ctrl_state = state;
+	step->callback_result.local_role = local_role;
 
 	schedule_callback_verification(step);
 }
