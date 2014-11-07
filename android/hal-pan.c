@@ -19,6 +19,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "hal-utils.h"
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
@@ -45,19 +46,25 @@ static void handle_ctrl_state(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_pan_ctrl_state *ev = buf;
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	if (cbs->control_state_cb)
+		cbs->control_state_cb(ev->state, ev->local_role, ev->status,
+							(char *)ev->name);
+#else
 	/*
-	 * FIXME: Callback declared in bt_pan.h is 'typedef void
+	 * Callback declared in bt_pan.h is 'typedef void
 	 * (*btpan_control_state_callback)(btpan_control_state_t state,
 	 * bt_status_t error, int local_role, const char* ifname);
 	 * But PanService.Java defined it wrong way.
 	 * private void onControlStateChanged(int local_role, int state,
 	 * int error, String ifname).
 	 * First and third parameters are misplaced, so sending data according
-	 * to PanService.Java, fix this if issue fixed in PanService.Java.
+	 * to PanService.Java.
 	 */
 	if (cbs->control_state_cb)
 		cbs->control_state_cb(ev->local_role, ev->state, ev->status,
 							(char *)ev->name);
+#endif
 }
 
 /*
