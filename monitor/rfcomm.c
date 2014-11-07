@@ -80,6 +80,31 @@ static void print_rfcomm_hdr(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	print_field("%*cFCS: 0x%2.2x", indent, ' ', hdr.fcs);
 }
 
+static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
+{
+	uint8_t credits;
+	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
+	struct rfcomm_lhdr *hdr = &rfcomm_frame->hdr;
+
+	if (!RFCOMM_GET_CHANNEL(hdr->address)) {
+		/* MCC frame parser implementation */
+		goto done;
+	}
+
+	/* fetching credits from UIH frame */
+	if (GET_PF(hdr->control)) {
+		if (!l2cap_frame_get_u8(frame, &credits))
+			return false;
+		hdr->credits = credits;
+		print_field("%*cCredits: %d", indent, ' ', hdr->credits);
+		return true;
+	}
+
+done:
+	packet_hexdump(frame->data, frame->size);
+	return true;
+}
+
 struct rfcomm_data {
 	uint8_t frame;
 	const char *str;
@@ -164,8 +189,9 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	print_rfcomm_hdr(&rfcomm_frame, indent);
 
 	/* UIH frame */
-	if(ctype == 0xef)
-		packet_hexdump(l2cap_frame->data, l2cap_frame->size);
+	if (ctype == 0xef)
+		if (!uih_frame(&rfcomm_frame, indent))
+			goto fail;
 
 	return;
 
