@@ -171,7 +171,7 @@ typedef void (* btrc_volume_change_callback) (uint8_t volume, uint8_t ctype);
 /** Callback for passthrough commands */
 typedef void (* btrc_passthrough_cmd_callback) (int id, int key_state);
 
-/** BT-RC callback structure. */
+/** BT-RC Target callback structure. */
 typedef struct {
     /** set to sizeof(BtRcCallbacks) */
     size_t      size;
@@ -189,7 +189,7 @@ typedef struct {
     btrc_passthrough_cmd_callback               passthrough_cmd_cb;
 } btrc_callbacks_t;
 
-/** Represents the standard BT-RC interface. */
+/** Represents the standard BT-RC AVRCP Target interface. */
 typedef struct {
 
     /** set to sizeof(BtRcInterface) */
@@ -260,6 +260,36 @@ typedef struct {
     /** Closes the interface. */
     void  (*cleanup)( void );
 } btrc_interface_t;
+
+
+typedef void (* btrc_passthrough_rsp_callback) (int id, int key_state);
+
+typedef void (* btrc_connection_state_callback) (bool state, bt_bdaddr_t *bd_addr);
+
+/** BT-RC Controller callback structure. */
+typedef struct {
+    /** set to sizeof(BtRcCallbacks) */
+    size_t      size;
+    btrc_passthrough_rsp_callback               passthrough_rsp_cb;
+    btrc_connection_state_callback              connection_state_cb;
+} btrc_ctrl_callbacks_t;
+
+/** Represents the standard BT-RC AVRCP Controller interface. */
+typedef struct {
+
+    /** set to sizeof(BtRcInterface) */
+    size_t          size;
+    /**
+     * Register the BtRc callbacks
+     */
+    bt_status_t (*init)( btrc_ctrl_callbacks_t* callbacks );
+
+    /** send pass through command to target */
+    bt_status_t (*send_pass_through_cmd) ( bt_bdaddr_t *bd_addr, uint8_t key_code, uint8_t key_state );
+
+    /** Closes the interface. */
+    void  (*cleanup)( void );
+} btrc_ctrl_interface_t;
 
 __END_DECLS
 

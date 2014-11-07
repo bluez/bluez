@@ -104,6 +104,19 @@ typedef void (*request_exec_write_callback)(int conn_id, int trans_id,
  */
 typedef void (*response_confirmation_callback)(int status, int handle);
 
+/**
+ * Callback confirming that a notification or indication has been sent
+ * to a remote device.
+ */
+typedef void (*indication_sent_callback)(int conn_id, int status);
+
+/**
+ * Callback notifying an application that a remote device connection is currently congested
+ * and cannot receive any more data. An application should avoid sending more data until
+ * a further callback is received indicating the congestion status has been cleared.
+ */
+typedef void (*congestion_callback)(int conn_id, bool congested);
+
 typedef struct {
     register_server_callback        register_server_cb;
     connection_callback             connection_cb;
@@ -118,6 +131,8 @@ typedef struct {
     request_write_callback          request_write_cb;
     request_exec_write_callback     request_exec_write_cb;
     response_confirmation_callback  response_confirmation_cb;
+    indication_sent_callback        indication_sent_cb;
+    congestion_callback             congestion_cb;
 } btgatt_server_callbacks_t;
 
 /** Represents the standard BT-GATT server interface. */
@@ -129,7 +144,8 @@ typedef struct {
     bt_status_t (*unregister_server)(int server_if );
 
     /** Create a connection to a remote peripheral */
-    bt_status_t (*connect)(int server_if, const bt_bdaddr_t *bd_addr, bool is_direct );
+    bt_status_t (*connect)(int server_if, const bt_bdaddr_t *bd_addr,
+                            bool is_direct, int transport);
 
     /** Disconnect an established connection or cancel a pending one */
     bt_status_t (*disconnect)(int server_if, const bt_bdaddr_t *bd_addr,
@@ -168,6 +184,7 @@ typedef struct {
     /** Send a response to a read/write operation */
     bt_status_t (*send_response)(int conn_id, int trans_id,
                                  int status, btgatt_response_t *response);
+
 } btgatt_server_interface_t;
 
 __END_DECLS

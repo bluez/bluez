@@ -120,7 +120,7 @@ static void audio_resume_action(void)
 						AUDIO_DEVICE_OUT_ALL_A2DP,
 						AUDIO_OUTPUT_FLAG_NONE,
 						NULL,
-						&data->if_stream);
+						&data->if_stream, NULL);
 	if (err < 0) {
 		step->action_status = BT_STATUS_FAIL;
 		goto done;

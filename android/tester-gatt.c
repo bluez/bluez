@@ -19,6 +19,7 @@
 
 #include "emulator/bthost.h"
 #include "tester-main.h"
+#include "hal-msg.h"
 #include "src/shared/util.h"
 
 #define ATT_HANDLE_SIZE	2
@@ -1227,11 +1228,9 @@ static void gatt_client_unregister_action(void)
 static void gatt_client_start_scan_action(void)
 {
 	struct test_data *data = tester_get_data();
-	struct step *current_data_step = queue_peek_head(data->steps);
-	int32_t cl_id = PTR_TO_INT(current_data_step->set_data);
 	struct step *step = g_new0(struct step, 1);
 
-	step->action_status = data->if_gatt->client->scan(cl_id, TRUE);
+	step->action_status = data->if_gatt->client->scan(TRUE);
 
 	schedule_action_verification(step);
 }
@@ -1239,11 +1238,9 @@ static void gatt_client_start_scan_action(void)
 static void gatt_client_stop_scan_action(void)
 {
 	struct test_data *data = tester_get_data();
-	struct step *current_data_step = queue_peek_head(data->steps);
-	int32_t cl_id = PTR_TO_INT(current_data_step->set_data);
 	struct step *step = g_new0(struct step, 1);
 
-	step->action_status = data->if_gatt->client->scan(cl_id, FALSE);
+	step->action_status = data->if_gatt->client->scan(FALSE);
 
 	schedule_action_verification(step);
 }
@@ -1258,7 +1255,8 @@ static void gatt_client_connect_action(void)
 	step->action_status = data->if_gatt->client->connect(
 							conn_data->app_id,
 							&emu_remote_bdaddr_val,
-							0);
+							0,
+							BT_TRANSPORT_UNKNOWN);
 
 	schedule_action_verification(step);
 }
@@ -1490,7 +1488,8 @@ static void gatt_server_connect_action(void)
 	step->action_status = data->if_gatt->server->connect(
 							conn_data->app_id,
 							&emu_remote_bdaddr_val,
-							0);
+							0,
+							BT_TRANSPORT_UNKNOWN);
 
 	schedule_action_verification(step);
 }

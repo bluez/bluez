@@ -26,6 +26,7 @@
 
 #include <system/audio.h>
 
+
 __BEGIN_DECLS
 
 
@@ -812,7 +813,7 @@ typedef struct buffer_config_s {
     uint32_t   samplingRate;    // sampling rate
     uint32_t   channels;        // channel mask (see audio_channel_mask_t in audio.h)
     buffer_provider_t bufferProvider;   // buffer provider
-    uint8_t    format;          // Audio format  (see see audio_format_t in audio.h)
+    uint8_t    format;          // Audio format (see audio_format_t in audio.h)
     uint8_t    accessMode;      // read/write or accumulate in buffer (effect_buffer_access_e)
     uint16_t   mask;            // indicates which of the above fields is valid
 } buffer_config_t;

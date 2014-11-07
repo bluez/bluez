@@ -99,10 +99,10 @@ typedef void (* bthh_virtual_unplug_callback)(bt_bdaddr_t *bd_addr, bthh_status_
  */
 typedef void (* bthh_hid_info_callback)(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info);
 
-/** Callback for get/set protocal api.
+/** Callback for get protocol api.
  *  the protocol mode is one of the value from bthh_protocol_mode_t
  */
-typedef void (* bthh_protocol_mode_callback)(bt_bdaddr_t *bd_addr, bthh_status_t hh_status,bthh_protocol_mode_t mode);
+typedef void (* bthh_protocol_mode_callback)(bt_bdaddr_t *bd_addr, bthh_status_t hh_status, bthh_protocol_mode_t mode);
 
 /** Callback for get/set_idle_time api.
  */
@@ -113,6 +113,11 @@ typedef void (* bthh_idle_time_callback)(bt_bdaddr_t *bd_addr, bthh_status_t hh_
  *  if staus is ok rpt_data contains the report data
  */
 typedef void (* bthh_get_report_callback)(bt_bdaddr_t *bd_addr, bthh_status_t hh_status, uint8_t* rpt_data, int rpt_size);
+
+/** Callback for set_report/set_protocol api and if error
+ *  occurs for get_report/get_protocol api.
+ */
+typedef void (* bthh_handshake_callback)(bt_bdaddr_t *bd_addr, bthh_status_t hh_status);
 
 
 /** BT-HH callback structure. */
@@ -125,6 +130,7 @@ typedef struct {
     bthh_idle_time_callback         idle_time_cb;
     bthh_get_report_callback        get_report_cb;
     bthh_virtual_unplug_callback    virtual_unplug_cb;
+    bthh_handshake_callback         handshake_cb;
 
 } bthh_callbacks_t;
 

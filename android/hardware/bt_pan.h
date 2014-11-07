@@ -40,8 +40,8 @@ typedef enum {
 */
 typedef void (*btpan_connection_state_callback)(btpan_connection_state_t state, bt_status_t error,
                                                 const bt_bdaddr_t *bd_addr, int local_role, int remote_role);
-typedef void (*btpan_control_state_callback)(btpan_control_state_t state, bt_status_t error,
-                                            int local_role, const char* ifname);
+typedef void (*btpan_control_state_callback)(btpan_control_state_t state, int local_role,
+                                            bt_status_t error, const char* ifname);
 
 typedef struct {
     size_t size;

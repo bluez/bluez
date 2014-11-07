@@ -47,12 +47,23 @@ typedef void (* btav_connection_state_callback)(btav_connection_state_t state,
 typedef void (* btav_audio_state_callback)(btav_audio_state_t state, 
                                                bt_bdaddr_t *bd_addr);
 
+/** Callback for audio configuration change.
+ *  Used only for the A2DP sink interface.
+ *  state will have one of the values from btav_audio_state_t
+ *  sample_rate: sample rate in Hz
+ *  channel_count: number of channels (1 for mono, 2 for stereo)
+ */
+typedef void (* btav_audio_config_callback)(bt_bdaddr_t *bd_addr,
+                                                uint32_t sample_rate,
+                                                uint8_t channel_count);
+
 /** BT-AV callback structure. */
 typedef struct {
     /** set to sizeof(btav_callbacks_t) */
     size_t      size;
     btav_connection_state_callback  connection_state_cb;
     btav_audio_state_callback audio_state_cb;
+    btav_audio_config_callback audio_config_cb;
 } btav_callbacks_t;
 
 /** 
@@ -65,7 +76,9 @@ typedef struct {
  *    android_audio_hw library and the Bluetooth stack.
  * 
  */
-/** Represents the standard BT-AV interface. */
+/** Represents the standard BT-AV interface.
+ *  Used for both the A2DP source and sink interfaces.
+ */
 typedef struct {
 
     /** set to sizeof(btav_interface_t) */

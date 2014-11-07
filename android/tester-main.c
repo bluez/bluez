@@ -19,6 +19,7 @@
 #include "src/shared/util.h"
 #include "emulator/bthost.h"
 #include "tester-main.h"
+#include "hal-msg.h"
 
 #include "monitor/bt.h"
 
@@ -1324,7 +1325,8 @@ static bt_callbacks_t bt_callbacks = {
 	.acl_state_changed_cb = acl_state_changed_cb,
 	.thread_evt_cb = NULL,
 	.dut_mode_recv_cb = NULL,
-	.le_test_mode_cb = NULL
+	.le_test_mode_cb = NULL,
+	.energy_info_cb = NULL,
 };
 
 static void hidhost_connection_state_cb(bt_bdaddr_t *bd_addr,
@@ -1852,8 +1854,8 @@ static void gatts_request_write_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 }
 
 static void pan_control_state_cb(btpan_control_state_t state,
-					bt_status_t error, int local_role,
-							const char *ifname)
+					int local_role,	bt_status_t error,
+					const char *ifname)
 {
 	struct step *step = g_new0(struct step, 1);
 
@@ -2905,7 +2907,8 @@ void bt_create_bond_action(void)
 	}
 
 	step->action_status =
-			data->if_bluetooth->create_bond(action_data->addr);
+			data->if_bluetooth->create_bond(action_data->addr,
+							BT_TRANSPORT_UNKNOWN);
 
 	schedule_action_verification(step);
 }
