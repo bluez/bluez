@@ -44,6 +44,11 @@
 #include "sdp.h"
 #include "rfcomm.h"
 
+#define GET_LEN8(length) ((length & 0xfe) >> 1)
+#define GET_LEN16(length) ((length & 0xfffe) >> 1)
+#define GET_CR(type)	((type & 0x02) >> 1)
+#define GET_PF(ctr) (((ctr) >> 4) & 0x1)
+
 struct rfcomm_lhdr {
 	uint8_t address;
 	uint8_t control;
@@ -56,6 +61,24 @@ struct rfcomm_frame {
 	struct rfcomm_lhdr hdr;
 	struct l2cap_frame l2cap_frame;
 };
+
+static void print_rfcomm_hdr(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
+{
+	struct rfcomm_lhdr hdr = rfcomm_frame->hdr;
+
+	/* Address field */
+	print_field("%*cAddress: 0x%2.2x cr %d dlci 0x%2.2x", indent, ' ',
+					hdr.address, GET_CR(hdr.address),
+					RFCOMM_GET_DLCI(hdr.address));
+
+	/* Control field */
+	print_field("%*cControl: 0x%2.2x poll/final %d", indent, ' ',
+					hdr.control, GET_PF(hdr.control));
+
+	/* Length and FCS */
+	print_field("%*cLength: %d", indent, ' ', hdr.length);
+	print_field("%*cFCS: 0x%2.2x", indent, ' ', hdr.fcs);
+}
 
 struct rfcomm_data {
 	uint8_t frame;
@@ -73,9 +96,9 @@ static const struct rfcomm_data rfcomm_table[] = {
 
 void rfcomm_packet(const struct l2cap_frame *frame)
 {
-	uint8_t ctype;
+	uint8_t ctype, length, ex_length, indent = 1;
 	const char *frame_str, *frame_color;
-	struct l2cap_frame *l2cap_frame;
+	struct l2cap_frame *l2cap_frame, tmp_frame;
 	struct rfcomm_frame rfcomm_frame;
 	struct rfcomm_lhdr hdr;
 	const struct rfcomm_data *rfcomm_data = NULL;
@@ -89,7 +112,23 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 		goto fail;
 
 	if (!l2cap_frame_get_u8(l2cap_frame, &hdr.address) ||
-			!l2cap_frame_get_u8(l2cap_frame, &hdr.control))
+			!l2cap_frame_get_u8(l2cap_frame, &hdr.control) ||
+			!l2cap_frame_get_u8(l2cap_frame, &length))
+		goto fail;
+
+	/* length maybe 1 or 2 octets */
+	if (RFCOMM_TEST_EA(length))
+		hdr.length = (uint16_t) GET_LEN8(length);
+	else {
+		if (!l2cap_frame_get_u8(l2cap_frame, &ex_length))
+			goto fail;
+		hdr.length = ((uint16_t)length << 8) | ex_length;
+		hdr.length = GET_LEN16(hdr.length);
+	}
+
+	l2cap_frame_pull(&tmp_frame, l2cap_frame, l2cap_frame->size-1);
+
+	if(!l2cap_frame_get_u8(&tmp_frame, &hdr.fcs))
 		goto fail;
 
 	/* Decoding frame type */
@@ -122,7 +161,12 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 						"(0x%2.2x)", ctype);
 
 	rfcomm_frame.hdr = hdr;
-	packet_hexdump(l2cap_frame->data, l2cap_frame->size);
+	print_rfcomm_hdr(&rfcomm_frame, indent);
+
+	/* UIH frame */
+	if(ctype == 0xef)
+		packet_hexdump(l2cap_frame->data, l2cap_frame->size);
+
 	return;
 
 fail:
