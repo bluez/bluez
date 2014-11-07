@@ -36,6 +36,7 @@
 #include "hal-msg.h"
 #include "hal-audio.h"
 #include "hal-utils.h"
+#include "hal.h"
 
 #define FIXED_A2DP_PLAYBACK_LATENCY_MS 25
 

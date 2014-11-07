@@ -27,7 +27,9 @@
 #include <hardware/bt_gatt_server.h>
 #include <hardware/bt_hl.h>
 
-#ifdef BLUEZ_EXTENSIONS
+#define PLATFORM_VER(a, b, c) ((a << 16) | ( b << 8) | (c))
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 #include <hardware/bt_hf_client.h>
 #include <hardware/bt_mce.h>
 #endif
@@ -41,7 +43,7 @@ bthf_interface_t *bt_get_handsfree_interface(void);
 btgatt_interface_t *bt_get_gatt_interface(void);
 bthl_interface_t *bt_get_health_interface(void);
 
-#ifdef BLUEZ_EXTENSIONS
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 bthf_client_interface_t *bt_get_hf_client_interface(void);
 btmce_interface_t *bt_get_map_client_interface(void);
 #endif

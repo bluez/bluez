@@ -865,7 +865,7 @@ static const void *get_profile_interface(const char *profile_id)
 	if (!strcmp(profile_id, BT_PROFILE_HEALTH_ID))
 		return bt_get_health_interface();
 
-#if BLUEZ_EXTENSIONS
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	if (!strcmp(profile_id, BT_PROFILE_HANDSFREE_CLIENT_ID))
 		return bt_get_hf_client_interface();
 

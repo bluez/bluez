@@ -37,10 +37,6 @@ features (currently epoll_create1 and ppoll calls for Android 4.4). Sample
 Bionic for Android 4.4 with all required features backported is available at
 https://code.google.com/p/aosp-bluez.platform-bionic/
 
-- Some of the bluetooth HALs are available only when BLUEZ_EXTENSIONS flag is
-set in BoardConfig.mk or similar. Please read below for detail which HALs needs
-that.
-
 Runtime requirements
 --------------------
 

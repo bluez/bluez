@@ -33,6 +33,7 @@
 #include "sco-msg.h"
 #include "ipc-common.h"
 #include "hal-log.h"
+#include "hal.h"
 
 #define AUDIO_STREAM_DEFAULT_RATE	44100
 #define AUDIO_STREAM_SCO_RATE		8000

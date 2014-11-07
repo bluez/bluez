@@ -37,7 +37,9 @@
 #include <hardware/bt_hf.h>
 #include <hardware/bt_hl.h>
 
-#ifdef BLUEZ_EXTENSIONS
+#include "hal.h"
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 #include <hardware/bt_hf_client.h>
 #include <hardware/bt_mce.h>
 #endif
@@ -62,7 +64,7 @@ extern const btsock_interface_t *if_sock;
 extern const btgatt_interface_t *if_gatt;
 extern const btgatt_server_interface_t *if_gatt_server;
 extern const btgatt_client_interface_t *if_gatt_client;
-#ifdef BLUEZ_EXTENSIONS
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 extern const bthf_client_interface_t *if_hf_client;
 extern const btmce_interface_t *if_mce;
 #endif
@@ -89,7 +91,7 @@ extern const struct interface sock_if;
 extern const struct interface hf_if;
 extern const struct interface hh_if;
 extern const struct interface hl_if;
-#ifdef BLUEZ_EXTENSIONS
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 extern const struct interface hf_client_if;
 extern const struct interface mce_if;
 #endif

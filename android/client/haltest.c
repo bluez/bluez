@@ -48,7 +48,7 @@ const struct interface *interfaces[] = {
 	&pan_if,
 	&hl_if,
 	&sock_if,
-#ifdef BLUEZ_EXTENSIONS
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	&hf_client_if,
 	&mce_if,
 #endif
@@ -396,7 +396,7 @@ static void init(void)
 		BT_PROFILE_PAN_ID,
 		BT_PROFILE_GATT_ID,
 		BT_PROFILE_SOCKETS_ID,
-#ifdef BLUEZ_EXTENSIONS
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 		BT_PROFILE_HANDSFREE_CLIENT_ID,
 		BT_PROFILE_MAP_CLIENT_ID,
 #endif

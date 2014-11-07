@@ -1,6 +1,6 @@
 if ANDROID
 
-AM_CFLAGS += -DANDROID_VERSION=0x050000 -DBLUEZ_EXTENSIONS
+AM_CFLAGS += -DANDROID_VERSION=0x050000
 
 android_plugindir = $(abs_top_srcdir)/android/.libs
 

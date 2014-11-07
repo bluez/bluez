@@ -5,6 +5,10 @@ BLUEZ_VERSION := `grep "^AC_INIT" $(LOCAL_PATH)/bluez/configure.ac | sed -e "s/.
 
 ANDROID_VERSION := `echo $(PLATFORM_VERSION) | awk -F. '{ printf "0x%02d%02d%02d",$$1,$$2,$$3 }'`
 
+ANDROID_VERSION_DEC := `echo $(PLATFORM_VERSION) | awk -F. '{ printf "%02d%02d%02d",$$1,$$2,$$3 }'`
+
+ANDROID_GE_5_0 := $(shell echo $(ANDROID_VERSION_DEC)\>=050000 | bc)
+
 # Specify pathmap for glib and sbc
 pathmap_INCL += glib:external/bluetooth/glib \
 		sbc:external/bluetooth/sbc \
@@ -13,10 +17,6 @@ pathmap_INCL += glib:external/bluetooth/glib \
 BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
 			-DANDROID_VERSION=$(ANDROID_VERSION) \
 			-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
-
-ifeq ($(BLUEZ_EXTENSIONS), true)
-BLUEZ_COMMON_CFLAGS += -DBLUEZ_EXTENSIONS
-endif
 
 # Enable warnings enabled in autotools build
 BLUEZ_COMMON_CFLAGS += -Wall -Wextra \
@@ -134,11 +134,10 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-utils.c \
 	bluez/android/hal-health.c \
 
-ifeq ($(BLUEZ_EXTENSIONS), true)
+ifeq ($(ANDROID_GE_5_0), 1)
 LOCAL_SRC_FILES += \
 	bluez/android/hal-handsfree-client.c \
-	bluez/android/hal-map-client.c \
-
+	bluez/android/hal-map-client.c
 endif
 
 LOCAL_C_INCLUDES += \
@@ -183,7 +182,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/client/if-gatt.c \
 	bluez/android/hal-utils.c \
 
-ifeq ($(BLUEZ_EXTENSIONS), true)
+ifeq ($(ANDROID_GE_5_0), 1)
 LOCAL_SRC_FILES += \
 	bluez/android/client/if-hf-client.c \
 	bluez/android/client/if-mce.c
