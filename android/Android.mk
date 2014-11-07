@@ -3,11 +3,9 @@ LOCAL_PATH := external/bluetooth
 # Retrieve BlueZ version from configure.ac file
 BLUEZ_VERSION := `grep "^AC_INIT" $(LOCAL_PATH)/bluez/configure.ac | sed -e "s/.*,.\(.*\))/\1/"`
 
-ANDROID_VERSION := `echo $(PLATFORM_VERSION) | awk -F. '{ printf "0x%02d%02d%02d",$$1,$$2,$$3 }'`
+ANDROID_VERSION := $(shell echo $(PLATFORM_VERSION) | awk -F. '{ printf "0x%02d%02d%02d",$$1,$$2,$$3 }')
 
-ANDROID_VERSION_DEC := `echo $(PLATFORM_VERSION) | awk -F. '{ printf "%02d%02d%02d",$$1,$$2,$$3 }'`
-
-ANDROID_GE_5_0 := $(shell echo $(ANDROID_VERSION_DEC)\>=050000 | bc)
+ANDROID_GE_5_0_0 := $(shell test `echo $$(($(ANDROID_VERSION)))` -lt `echo $$((0x050000))`; echo $$?)
 
 # Specify pathmap for glib and sbc
 pathmap_INCL += glib:external/bluetooth/glib \
@@ -134,7 +132,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/hal-utils.c \
 	bluez/android/hal-health.c \
 
-ifeq ($(ANDROID_GE_5_0), 1)
+ifeq ($(ANDROID_GE_5_0_0), 1)
 LOCAL_SRC_FILES += \
 	bluez/android/hal-handsfree-client.c \
 	bluez/android/hal-map-client.c
@@ -182,7 +180,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/client/if-gatt.c \
 	bluez/android/hal-utils.c \
 
-ifeq ($(ANDROID_GE_5_0), 1)
+ifeq ($(ANDROID_GE_5_0_0), 1)
 LOCAL_SRC_FILES += \
 	bluez/android/client/if-hf-client.c \
 	bluez/android/client/if-mce.c
