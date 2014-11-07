@@ -42,6 +42,7 @@
 #include "keys.h"
 #include "sdp.h"
 #include "avctp.h"
+#include "rfcomm.h"
 
 #define MAX_CHAN 64
 
@@ -2642,6 +2643,9 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		switch (frame.psm) {
 		case 0x0001:
 			sdp_packet(&frame);
+			break;
+		case 0x0003:
+			rfcomm_packet(&frame);
 			break;
 		case 0x001f:
 			att_packet(index, in, handle, cid, data, size);
