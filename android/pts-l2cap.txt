@@ -181,5 +181,10 @@ TC_LE_CFC_BV_08_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_09_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_16_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_17_C	N/A
-TC_LE_CID_BV_01_C	INC
-TC_LE_CID_BV_02_I	INC
+TC_LE_CID_BV_01_C	INC	PTS issue #12730
+			l2test -s -N 1 <bdaddr>
+			l2test -s -N 1 -V le_public <bdaddr>
+TC_LE_CID_BV_02_I	INC	PTS issue #12730
+			Note: PIXIT TSPX_iut_role_initiator=FALSE
+			l2test -w -N 1
+			l2test -w -N 1 -V le_public
