@@ -1074,7 +1074,7 @@ struct hal_cmd_hf_client_dial_memory {
 #define HAL_HF_CLIENT_ACTION_CHUP		0x08
 #define HAL_HF_CLIENT_ACTION_BRTH_0		0x09
 #define HAL_HF_CLIENT_ACTION_BRTH_1		0x0a
-#define HAL_HF_CLIENT_ACTION_BRTH_02		0x0b
+#define HAL_HF_CLIENT_ACTION_BRTH_2		0x0b
 
 #define HAL_OP_HF_CLIENT_CALL_ACTION		0x0a
 struct hal_cmd_hf_client_call_action {
