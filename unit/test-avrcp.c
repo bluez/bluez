@@ -590,11 +590,14 @@ static int addressed_player_changed(struct avrcp *session, uint8_t transaction,
 	DBG("");
 
 	player[0] = 0x0001;
-	player[1] = 0xabcd;
+	player[1] = 0x0001;
 
 	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_INTERIM,
 					AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED,
 					player, sizeof(player));
+
+	player[0] = 0x0200;
+	player[1] = 0x0200;
 
 	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
 					AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED,
@@ -623,6 +626,8 @@ static int uids_changed(struct avrcp *session, uint8_t transaction,
 	if (!g_str_equal(context->data->test_name, "/TP/MCN/CB/BV-11-C") &&
 		!g_str_equal(context->data->test_name, "/TP/MCN/CB/BI-05-C"))
 		return 0;
+
+	counter = 0x0200;
 
 	avrcp_register_notification_rsp(session, transaction, AVC_CTYPE_CHANGED,
 						AVRCP_EVENT_UIDS_CHANGED,
@@ -1131,11 +1136,11 @@ int main(int argc, char *argv[])
 			frg_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_INTERIM, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x05, 0x0b,
-				0x00, 0x01, 0xab, 0xcd),
+				0x00, 0x01, 0x00, 0x01),
 			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x05, 0x0b,
-				0x01, 0x00, 0xcd, 0xab));
+				0x02, 0x00, 0x02, 0x00));
 
 	/* GetFolderItems - CT */
 	define_test("/TP/MPS/BV-06-C", test_client,
@@ -1328,7 +1333,7 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x03, 0x0c,
-				0x01, 0x00));
+				0x02, 0x00));
 
 	/* GetFolderItems - Virtual FS - TG */
 	define_test("/TP/MCN/CB/BI-01-C", test_server,
@@ -1384,7 +1389,7 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x11, 0x0e, AVC_CTYPE_CHANGED, 0x48, 0x00,
 				0x00, 0x19, 0x58, AVRCP_REGISTER_NOTIFICATION,
 				0x00, 0x00, 0x03, 0x0c,
-				0x01, 0x00),
+				0x02, 0x00),
 			brs_pdu(0x00, 0x11, 0x0e, AVRCP_GET_ITEM_ATTRIBUTES,
 				0x00, 0x0c, AVRCP_MEDIA_NOW_PLAYING,
 				0x00, 0x00, 0x00, 0x00,
