@@ -1073,6 +1073,20 @@ const char *bt_compidtostr(int compid)
 		return "Acoustic Stream Corporation";
 	case 405:
 		return "Zuli";
+	case 406:
+		return "Paxton Access Ltd";
+	case 407:
+		return "WiSilica Inc";
+	case 408:
+		return "Vengit Limited";
+	case 409:
+		return "SALTO SYSTEMS S.L.";
+	case 410:
+		return "T-Engine Forum";
+	case 411:
+		return "CUBETECH s.r.o.";
+	case 412:
+		return "Cokiya Incorporated";
 	case 65535:
 		return "internal use";
 	default:
