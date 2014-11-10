@@ -628,7 +628,7 @@ static void create_bond_p(int argc, const char **argv)
 	VERIFY_ADDR_ARG(2, &addr);
 
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
-	if (argc < 3)
+	if (argc < 4)
 		transport = BT_TRANSPORT_UNKNOWN;
 	else
 		transport = atoi(argv[3]);
