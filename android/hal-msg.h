@@ -37,6 +37,7 @@ static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
 #define HAL_SERVICE_ID_GATT		9
 #define HAL_SERVICE_ID_HANDSFREE_CLIENT	10
 #define HAL_SERVICE_ID_MAP_CLIENT	11
+#define HAL_SERVICE_ID_AVRCP_CTRL	12
 
 #define HAL_SERVICE_ID_MAX HAL_SERVICE_ID_MAP_CLIENT
 
@@ -607,7 +608,7 @@ struct hal_cmd_handsfree_phone_state_change {
 	uint8_t number[0];
 } __attribute__((packed));
 
-/* AVRCP HAL API */
+/* AVRCP TARGET HAL API */
 
 #define HAL_AVRCP_PLAY_STATUS_STOPPED	0x00
 #define HAL_AVRCP_PLAY_STATUS_PLAYING	0x01
@@ -709,6 +710,15 @@ struct hal_cmd_avrcp_register_notification {
 #define HAL_OP_AVRCP_SET_VOLUME			0x0a
 struct hal_cmd_avrcp_set_volume {
 	uint8_t value;
+} __attribute__((packed));
+
+/* AVRCP CTRL HAL API */
+
+#define HAL_OP_AVRCP_CTRL_SEND_PASSTHROUGH	0x01
+struct hal_cmd_avrcp_ctrl_send_passthrough {
+	uint8_t bdaddr[6];
+	uint8_t key_code;
+	uint8_t key_state;
 } __attribute__((packed));
 
 /* GATT HAL API */
@@ -1497,6 +1507,18 @@ struct hal_ev_avrcp_volume_changed {
 struct hal_ev_avrcp_passthrough_cmd {
 	uint8_t id;
 	uint8_t state;
+} __attribute__((packed));
+
+#define HAL_EV_AVRCP_CTRL_CONN_STATE		0x80
+struct hal_ev_avrcp_ctrl_conn_state {
+	uint8_t state;
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
+#define HAL_EV_AVRCP_CTRL_PASSTHROUGH_RSP	0x81
+struct hal_ev_avrcp_ctrl_passthrough_rsp {
+	uint8_t id;
+	uint8_t key_state;
 } __attribute__((packed));
 
 #define HAL_EV_GATT_CLIENT_REGISTER_CLIENT	0x81
