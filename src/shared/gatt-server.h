@@ -33,8 +33,20 @@ void bt_gatt_server_unref(struct bt_gatt_server *server);
 
 typedef void (*bt_gatt_server_destroy_func_t)(void *user_data);
 typedef void (*bt_gatt_server_debug_func_t)(const char *str, void *user_data);
+typedef void (*bt_gatt_server_conf_func_t)(void *user_data);
 
 bool bt_gatt_server_set_debug(struct bt_gatt_server *server,
 					bt_gatt_server_debug_func_t callback,
+					void *user_data,
+					bt_gatt_server_destroy_func_t destroy);
+
+bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
+					uint16_t handle, const uint8_t *value,
+					uint16_t length);
+
+bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
+					uint16_t handle, const uint8_t *value,
+					uint16_t length,
+					bt_gatt_server_conf_func_t callback,
 					void *user_data,
 					bt_gatt_server_destroy_func_t destroy);

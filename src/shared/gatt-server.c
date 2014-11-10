@@ -1068,3 +1068,98 @@ bool bt_gatt_server_set_debug(struct bt_gatt_server *server,
 
 	return true;
 }
+
+bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
+					uint16_t handle, const uint8_t *value,
+					uint16_t length)
+{
+	uint16_t pdu_len;
+	uint8_t *pdu;
+	bool result;
+
+	if (!server || (length && !value))
+		return false;
+
+	pdu_len = MIN(bt_att_get_mtu(server->att), length + 2);
+	pdu = malloc(pdu_len);
+	if (!pdu)
+		return false;
+
+	put_le16(handle, pdu);
+	memcpy(pdu + 2, value, length);
+
+	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_VAL_NOT, pdu,
+						pdu_len, NULL, NULL, NULL);
+	free(pdu);
+
+	return result;
+}
+
+struct ind_data {
+	bt_gatt_server_conf_func_t callback;
+	bt_gatt_server_destroy_func_t destroy;
+	void *user_data;
+};
+
+static void destroy_ind_data(void *user_data)
+{
+	struct ind_data *data = user_data;
+
+	if (data->destroy)
+		data->destroy(data->user_data);
+
+	free(data);
+}
+
+static void conf_cb(uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
+{
+	struct ind_data *data = user_data;
+
+	if (data->callback)
+		data->callback(data->user_data);
+}
+
+bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
+					uint16_t handle, const uint8_t *value,
+					uint16_t length,
+					bt_gatt_server_conf_func_t callback,
+					void *user_data,
+					bt_gatt_server_destroy_func_t destroy)
+{
+	uint16_t pdu_len;
+	uint8_t *pdu;
+	struct ind_data *data;
+	bool result;
+
+	if (!server || (length && !value))
+		return false;
+
+	pdu_len = MIN(bt_att_get_mtu(server->att), length + 2);
+	pdu = malloc(pdu_len);
+	if (!pdu)
+		return false;
+
+	data = new0(struct ind_data, 1);
+	if (!data) {
+		free(pdu);
+		return false;
+	}
+
+	data->callback = callback;
+	data->destroy = destroy;
+	data->user_data = user_data;
+
+	put_le16(handle, pdu);
+	memcpy(pdu + 2, value, length);
+
+	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_VAL_IND, pdu,
+							pdu_len, conf_cb,
+							data, destroy_ind_data);
+	if (!result)
+		destroy_ind_data(data);
+
+	free(pdu);
+
+	return result;
+}
