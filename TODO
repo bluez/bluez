@@ -120,6 +120,12 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C2
 
+- Use struct iovec to pass around byte buffers that will be sent over the wire,
+  instead of passing uint8_t and size_t parameters everywhere.
+
+  Priority: Medium
+  Complexity: C1
+
 - Introduce a handler interface to shared/gatt-client which can be used by the
   upper layer to determine when the link has been disconnected or an ATT
   protocol request times out.
@@ -155,11 +161,27 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C2
 
-- Introduce shared/gatt-server, which combined with shared/gatt-db, can be used
-  as a GATT server implementation.
+- Introduce a way for shared/gatt-server to check security permissions on the
+  current connection through bt_att.
 
   Priority: Medium
   Complexity: C2
+
+- Provide a tool for shared/gatt-server. This tool should demonstrate how a
+  shared/gatt-db can be used together with a shared/gatt-server to implement the
+  GATT server role. This should be written in a way so that it can be easily
+  used in conjunction with a remote instance of tools/btgatt-client (i.e. it
+  should listen for incoming connections, have similar verbose output, etc.)
+
+  Priority: Medium
+  Complexity: C2
+
+- Implement other low-priority ATT protocol operations for shared/gatt-server:
+
+      Read Multiple Request
+
+  Priority: Low
+  Complexity: C1
 
 - Implement the server portion of doc/gatt-api.txt using shared/gatt-server once
   it exists.
