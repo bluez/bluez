@@ -1647,7 +1647,7 @@ bool bt_gatt_characteristic_iter_init(struct bt_gatt_characteristic_iter *iter,
 		return false;
 
 	memset(iter, 0, sizeof(*iter));
-	iter->service = (struct service_list *) service;
+	iter->service = (void *) service;
 
 	return true;
 }
@@ -1677,7 +1677,7 @@ bool bt_gatt_include_service_iter_init(struct bt_gatt_incl_service_iter *iter,
 		return false;
 
 	memset(iter, 0, sizeof(*iter));
-	iter->service = (struct service_list *) service;
+	iter->service = (void *) service;
 
 	return true;
 }
@@ -2402,7 +2402,7 @@ bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
 	while (bt_gatt_service_iter_next(&iter, &service)) {
 		if (chrc_value_handle >= service->start_handle &&
 				chrc_value_handle <= service->end_handle) {
-			svc_data = (struct service_list *) service;
+			svc_data = (void *) service;
 			break;
 		}
 	}
