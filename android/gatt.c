@@ -4311,7 +4311,7 @@ static void handle_server_add_included_service(const void *buf, uint16_t len)
 	}
 
 	include = gatt_db_get_attribute(gatt_db, cmd->included_handle);
-	if (!service) {
+	if (!include) {
 		status = HAL_STATUS_FAILED;
 		goto failed;
 	}
