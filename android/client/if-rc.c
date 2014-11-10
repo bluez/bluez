@@ -28,6 +28,10 @@
 
 const btrc_interface_t *if_rc = NULL;
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+const btrc_ctrl_interface_t *if_rc_ctrl = NULL;
+#endif
+
 SINTMAP(btrc_play_status_t, -1, "(unknown)")
 	DELEMENT(BTRC_PLAYSTATE_STOPPED),
 	DELEMENT(BTRC_PLAYSTATE_PLAYING),
@@ -398,3 +402,87 @@ const struct interface rc_if = {
 	.name = "rc",
 	.methods = methods
 };
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static void passthrough_rsp_cb(int id, int key_state)
+{
+	haltest_info("%s: id=%d key_state=%d\n", __func__, id, key_state);
+}
+
+static void connection_state_cb(bool state, bt_bdaddr_t *bd_addr)
+{
+	haltest_info("%s: state=%s bd_addr=%s\n", __func__,
+					state ? "true" : "false",
+					bt_bdaddr_t2str(bd_addr, last_addr));
+}
+
+static btrc_ctrl_callbacks_t rc_ctrl_cbacks = {
+	.size = sizeof(rc_ctrl_cbacks),
+	.passthrough_rsp_cb = passthrough_rsp_cb,
+	.connection_state_cb = connection_state_cb,
+};
+
+/* ctrl_init */
+
+static void ctrl_init_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_rc_ctrl);
+
+	EXEC(if_rc_ctrl->init, &rc_ctrl_cbacks);
+}
+
+/* ctrl_cleanup */
+
+static void ctrl_cleanup_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_rc_ctrl);
+
+	EXECV(if_rc_ctrl->cleanup);
+	if_rc_ctrl = NULL;
+}
+
+/* send_pass_through_cmd */
+
+static void send_pass_through_cmd_c(int argc, const char **argv,
+					enum_func *enum_func, void **user)
+{
+}
+
+static void send_pass_through_cmd_p(int argc, const char **argv)
+{
+	bt_bdaddr_t addr;
+	uint8_t key_code, key_state;
+
+	RETURN_IF_NULL(if_rc);
+	VERIFY_ADDR_ARG(2, &addr);
+
+	if (argc <= 4) {
+		haltest_error("No key code specified");
+		return;
+	}
+
+	key_code = (uint8_t) atoi(argv[3]);
+
+	if (argc <= 5) {
+		haltest_error("No key state specified");
+		return;
+	}
+
+	key_state = (uint8_t) atoi(argv[4]);
+
+	EXEC(if_rc_ctrl->send_pass_through_cmd, &addr, key_code, key_state);
+}
+
+static struct method ctrl_methods[] = {
+	STD_METHOD(ctrl_init),
+	STD_METHODCH(send_pass_through_cmd,
+					"<bd_addr> <key_code> <key_state>"),
+	STD_METHOD(ctrl_cleanup),
+	END_METHOD
+};
+
+const struct interface ctrl_rc_if = {
+	.name = "rc-ctrl",
+	.methods = ctrl_methods
+};
+#endif

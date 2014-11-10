@@ -65,6 +65,7 @@ extern const btgatt_interface_t *if_gatt;
 extern const btgatt_server_interface_t *if_gatt_server;
 extern const btgatt_client_interface_t *if_gatt_client;
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+extern const btrc_ctrl_interface_t *if_rc_ctrl;
 extern const bthf_client_interface_t *if_hf_client;
 extern const btmce_interface_t *if_mce;
 #endif
@@ -92,6 +93,7 @@ extern const struct interface hf_if;
 extern const struct interface hh_if;
 extern const struct interface hl_if;
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+extern const struct interface ctrl_rc_if;
 extern const struct interface hf_client_if;
 extern const struct interface mce_if;
 #endif

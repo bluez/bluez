@@ -800,6 +800,8 @@ static void get_profile_interface_p(int argc, const char **argv)
 	else if (strcmp(BT_PROFILE_GATT_ID, id) == 0)
 		pif = (const void **) &if_gatt;
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	else if (strcmp(BT_PROFILE_AV_RC_CTRL_ID, id) == 0)
+		pif = (const void **) &if_rc_ctrl;
 	else if (strcmp(BT_PROFILE_HANDSFREE_CLIENT_ID, id) == 0)
 		pif = (const void **) &if_hf_client;
 	else if (strcmp(BT_PROFILE_MAP_CLIENT_ID, id) == 0)
