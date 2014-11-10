@@ -1394,7 +1394,8 @@ static bthh_callbacks_t bthh_callbacks = {
 	.protocol_mode_cb = hidhost_protocol_mode_cb,
 	.idle_time_cb = NULL,
 	.get_report_cb = hidhost_get_report_cb,
-	.virtual_unplug_cb = hidhost_virtual_unplug_cb
+	.virtual_unplug_cb = hidhost_virtual_unplug_cb,
+	.handshake_cb = NULL,
 };
 
 static void gattc_register_client_cb(int status, int client_if,
