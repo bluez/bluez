@@ -1241,7 +1241,7 @@ Notifications:
 		                      0x04 = Destroyed
 
 
-Bluetooth Remote Control HAL (ID 8)
+Bluetooth Remote Control Target HAL (ID 8)
 ===================================
 
 Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
@@ -1469,7 +1469,6 @@ Notifications:
 
 		Notification parameters: ID (1 octet)
 		                         State (1 octet)
-
 
 Bluetooth GATT HAL (ID 9)
 =========================
@@ -2505,3 +2504,45 @@ Notifications:
 		                         Channel # (4 octets)
 		                         Message types (4 octets)
 		                         Name # (string)
+
+Bluetooth Remote Control Controller HAL (ID 12)
+===================================
+
+Android HAL name: "avrcp-ctrl" (BT_PROFILE_AV_RC_CTRL_ID)
+
+Commands and responses:
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Send Pass Through command/response
+
+		Command parameters: Remote Address (6 octets)
+		                    Key Code (1 octet)
+		                    Key State (1 octet)
+
+		In case of an error, the error response will be returned.
+
+Notifications:
+
+	Opcode 0x81 - Passthrough Response Notification
+
+		Notification parameters: ID (1 octet)
+		                         Key State (1 octet)
+
+	Opcode 0x82 - Connection State Notification
+
+		Notification parameters: State (1 octet)
+		                         Remote Address (6 octets)
