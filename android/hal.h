@@ -44,6 +44,7 @@ btgatt_interface_t *bt_get_gatt_interface(void);
 bthl_interface_t *bt_get_health_interface(void);
 
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+btrc_ctrl_interface_t *bt_get_avrcp_ctrl_interface(void);
 bthf_client_interface_t *bt_get_hf_client_interface(void);
 btmce_interface_t *bt_get_map_client_interface(void);
 #endif
