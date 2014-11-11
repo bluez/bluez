@@ -1122,7 +1122,9 @@ response:
 		num = avrcp_continuing.num;
 
 		if (avrcp_continuing.size > 0) {
+			char attrval[UINT8_MAX];
 			uint16_t size;
+			uint8_t idx;
 
 			if (avrcp_continuing.size > len) {
 				size = len;
@@ -1132,16 +1134,17 @@ response:
 				avrcp_continuing.size = 0;
 			}
 
-			printf("ContinuingAttributeValue: ");
-			for (; size > 0; size--) {
+			for (idx = 0; size > 0; idx++, size--) {
 				uint8_t c;
 
 				if (!l2cap_frame_get_u8(frame, &c))
 					goto failed;
 
-				printf("%1c", isprint(c) ? c : '.');
+				sprintf(&attrval[idx], "%1c",
+							isprint(c) ? c : '.');
 			}
-			printf("\n");
+			print_field("%*cContinuingAttributeValue: %s",
+						(indent - 8), ' ', attrval);
 
 			len -= size;
 		}
@@ -1153,6 +1156,8 @@ response:
 	while (num > 0 && len > 0) {
 		uint32_t attr;
 		uint16_t charset, attrlen;
+		uint8_t idx;
+		char attrval[UINT8_MAX];
 
 		if (!l2cap_frame_get_be32(frame, &attr))
 			goto failed;
@@ -1175,15 +1180,16 @@ response:
 		len -= sizeof(attr) + sizeof(charset) + sizeof(attrlen);
 		num--;
 
-		print_field("%*cAttributeValue: ", (indent - 8), ' ');
-		for (; attrlen > 0 && len > 0; attrlen--, len--) {
+		for (idx = 0; attrlen > 0 && len > 0; idx++, attrlen--, len--) {
 			uint8_t c;
 
 			if (!l2cap_frame_get_u8(frame, &c))
 				goto failed;
 
-			printf("%1c", isprint(c) ? c : '.');
+			sprintf(&attrval[idx], "%1c", isprint(c) ? c : '.');
 		}
+		print_field("%*cAttributeValue: %s", (indent - 8),
+								' ', attrval);
 
 		if (attrlen > 0)
 			avrcp_continuing.size = attrlen;
