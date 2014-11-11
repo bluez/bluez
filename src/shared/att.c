@@ -1146,7 +1146,7 @@ unsigned int bt_att_register(struct bt_att *att, uint8_t opcode,
 {
 	struct att_notify *notify;
 
-	if (!att || !opcode || !callback || !att->io)
+	if (!att || !callback || !att->io)
 		return 0;
 
 	notify = new0(struct att_notify, 1);
