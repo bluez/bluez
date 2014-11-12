@@ -39,7 +39,7 @@ static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
 #define HAL_SERVICE_ID_MAP_CLIENT	11
 #define HAL_SERVICE_ID_AVRCP_CTRL	12
 
-#define HAL_SERVICE_ID_MAX HAL_SERVICE_ID_MAP_CLIENT
+#define HAL_SERVICE_ID_MAX HAL_SERVICE_ID_AVRCP_CTRL
 
 /* Core Service */
 
