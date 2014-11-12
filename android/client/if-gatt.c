@@ -1503,8 +1503,13 @@ static void test_command_p(int argc, const char **argv)
 static struct method client_methods[] = {
 	STD_METHODH(register_client, "[<uuid>]"),
 	STD_METHODCH(unregister_client, "<client_if>"),
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	STD_METHODCH(scan, "[1|0]"),
+	STD_METHODCH(connect, "<client_if> <addr> [<is_direct>] [<transport]"),
+#else
 	STD_METHODCH(scan, "<client_if> [1|0]"),
 	STD_METHODCH(connect, "<client_if> <addr> [<is_direct>]"),
+#endif
 	STD_METHODCH(disconnect, "<client_if> <addr> <conn_id>"),
 	STD_METHODCH(refresh, "<client_if> <addr>"),
 	STD_METHODCH(search_service, "<conn_id> [<uuid>]"),
