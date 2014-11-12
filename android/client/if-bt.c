@@ -760,6 +760,7 @@ static void get_profile_interface_c(int argc, const char **argv,
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 		BT_PROFILE_HANDSFREE_CLIENT_ID,
 		BT_PROFILE_MAP_CLIENT_ID,
+		BT_PROFILE_AV_RC_CTRL_ID,
 #endif
 		NULL
 	};
