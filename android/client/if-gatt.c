@@ -1894,7 +1894,11 @@ static void gatts_send_response_p(int argc, const char *argv[])
 static struct method server_methods[] = {
 	GATTS_METHODH(register_server, "[<uuid>]"),
 	GATTS_METHODCH(unregister_server, "<server_if>"),
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	GATTS_METHODCH(connect, "<server_if> <addr> [<is_direct>] [<transport>]"),
+#else
 	GATTS_METHODCH(connect, "<server_if> <addr> [<is_direct>]"),
+#endif
 	GATTS_METHODCH(disconnect, "<server_if> <addr> <conn_id>"),
 	GATTS_METHODCH(add_service, "<server_if> <srvc_id> <num_handles>"),
 	GATTS_METHODCH(add_included_service,
