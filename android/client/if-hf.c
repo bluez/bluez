@@ -355,6 +355,14 @@ static void key_pressed_cmd_cb(void)
 }
 #endif
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static void wbs_cb(bthf_wbs_config_t wbs, bt_bdaddr_t *bd_addr)
+{
+	haltest_info("%s: bd_addr=%s\n", __func__,
+					bt_bdaddr_t2str(bd_addr, last_addr));
+}
+#endif
+
 static bthf_callbacks_t hf_cbacks = {
 	.size = sizeof(hf_cbacks),
 	.connection_state_cb = connection_state_cb,
@@ -366,6 +374,9 @@ static bthf_callbacks_t hf_cbacks = {
 	.dial_call_cmd_cb = dial_call_cmd_cb,
 	.dtmf_cmd_cb = dtmf_cmd_cb,
 	.nrec_cmd_cb = nrec_cmd_cb,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.wbs_cb = wbs_cb,
+#endif
 	.chld_cmd_cb = chld_cmd_cb,
 	.cnum_cmd_cb = cnum_cmd_cb,
 	.cind_cmd_cb = cind_cmd_cb,
