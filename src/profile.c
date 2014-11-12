@@ -393,6 +393,9 @@
 		<attribute id=\"0x0314\">				\
 			<uint8 value=\"0x01\"/>				\
 		</attribute>						\
+		<attribute id=\"0x0317\">				\
+			<uint32 value=\"0x00000003\"/>			\
+		</attribute>						\
 	</record>"
 
 #define MAS_RECORD							\
