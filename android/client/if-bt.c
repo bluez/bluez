@@ -876,7 +876,11 @@ static struct method methods[] = {
 	STD_METHODCH(get_remote_services, "<addr>"),
 	STD_METHOD(start_discovery),
 	STD_METHOD(cancel_discovery),
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	STD_METHODCH(create_bond, "<addr> [<transport>]"),
+#else
 	STD_METHODCH(create_bond, "<addr>"),
+#endif
 	STD_METHODCH(remove_bond, "<addr>"),
 	STD_METHODCH(cancel_bond, "<addr>"),
 	STD_METHODCH(pin_reply, "<address> [<pin>]"),
