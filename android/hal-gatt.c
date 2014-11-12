@@ -1108,6 +1108,196 @@ static bt_status_t test_command(int command, btgatt_test_params_t *params)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0 ,0)
+static bt_status_t scan_filter_param_setup(int client_if, int action,
+						int filt_index, int feat_seln,
+						int list_logic_type,
+						int filt_logic_type,
+						int rssi_high_thres,
+						int rssi_low_thres,
+						int dely_mode,
+						int found_timeout,
+						int lost_timeout,
+						int found_timeout_cnt)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+static bt_status_t scan_filter_add_remove(int client_if, int action,
+						int filt_type, int filt_index,
+						int company_id,
+						int company_id_mask,
+						const bt_uuid_t *p_uuid,
+						const bt_uuid_t *p_uuid_mask,
+						const bt_bdaddr_t *bd_addr,
+						char addr_type,
+						int data_len, char *p_data,
+						int mask_len, char *p_mask)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+static bt_status_t scan_filter_clear(int client_if, int filt_index)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t scan_filter_enable(int client_if, bool enable)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t configure_mtu(int conn_id, int mtu)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t conn_parameter_update(const bt_bdaddr_t *bd_addr,
+						int min_interval,
+						int max_interval, int latency,
+						int timeout)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t set_scan_parameters(int scan_interval, int scan_window)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t multi_adv_enable(int client_if, int min_interval,
+					int max_interval, int adv_type,
+					int chnl_map, int tx_power,
+					int timeout_s)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t multi_adv_update(int client_if, int min_interval,
+					int max_interval, int adv_type,
+					int chnl_map, int tx_power,
+					int timeout_s)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t multi_adv_set_inst_data(int client_if, bool set_scan_rsp,
+						bool include_name,
+						bool incl_txpower,
+						int appearance,
+						int manufacturer_len,
+						char *manufacturer_data,
+						int service_data_len,
+						char *service_data,
+						int service_uuid_len,
+						char* service_uuid)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t multi_adv_disable(int client_if)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t batchscan_cfg_storage(int client_if, int batch_scan_full_max,
+						int batch_scan_trunc_max,
+						int batch_scan_notify_threshold)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t batchscan_enb_batch_scan(int client_if, int scan_mode,
+						int scan_interval,
+						int scan_window, int addr_type,
+						int discard_rule)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t batchscan_dis_batch_scan(int client_if)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+
+
+static bt_status_t batchscan_read_reports(int client_if, int scan_mode)
+{
+	DBG("");
+
+	/* TODO */
+
+	return BT_STATUS_UNSUPPORTED;
+}
+#endif
+
 /* Server API */
 
 static bt_status_t register_server(bt_uuid_t *uuid)
@@ -1426,8 +1616,27 @@ static btgatt_client_interface_t client_iface = {
 	.register_for_notification = register_for_notification,
 	.deregister_for_notification = deregister_for_notification,
 	.read_remote_rssi = read_remote_rssi,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.scan_filter_param_setup = scan_filter_param_setup,
+	.scan_filter_add_remove = scan_filter_add_remove,
+	.scan_filter_clear = scan_filter_clear,
+	.scan_filter_enable = scan_filter_enable,
+#endif
 	.get_device_type = get_device_type,
 	.set_adv_data = set_adv_data,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.configure_mtu = configure_mtu,
+	.conn_parameter_update = conn_parameter_update,
+	.set_scan_parameters = set_scan_parameters,
+	.multi_adv_enable = multi_adv_enable,
+	.multi_adv_update = multi_adv_update,
+	.multi_adv_set_inst_data = multi_adv_set_inst_data,
+	.multi_adv_disable = multi_adv_disable,
+	.batchscan_cfg_storage = batchscan_cfg_storage,
+	.batchscan_enb_batch_scan = batchscan_enb_batch_scan,
+	.batchscan_dis_batch_scan = batchscan_dis_batch_scan,
+	.batchscan_read_reports = batchscan_read_reports,
+#endif
 	.test_command = test_command,
 };
 
