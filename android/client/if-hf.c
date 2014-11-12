@@ -976,25 +976,44 @@ static void cleanup_p(int argc, const char **argv)
 }
 
 static struct method methods[] = {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	STD_METHODH(init, "[<max_hf_clients>]"),
+	STD_METHODH(start_voice_recognition, "<addr>"),
+	STD_METHODH(stop_voice_recognition, "<addr>"),
+	STD_METHODCH(volume_control, "<vol_type> <volume> <addr>"),
+	STD_METHODH(cops_response, "<cops string> <addr>"),
+	STD_METHODCH(cind_response,
+			"<svc> <num_active> <num_held> <setup_state> <signal> "
+			"<roam> <batt_chg> <addr>"),
+	STD_METHODH(formatted_at_response, "<at_response> <addr>"),
+	STD_METHODCH(at_response, "<response_code> [<error_code> <bdaddr>]"),
+	STD_METHODCH(clcc_response,
+			"<index> <direction> <state> <mode> <mpty> <number> "
+			"<type> <addr>"),
+#else
 	STD_METHOD(init),
+	STD_METHOD(start_voice_recognition),
+	STD_METHOD(stop_voice_recognition),
+	STD_METHODCH(volume_control, "<vol_type> <volume>"),
+	STD_METHODH(cops_response, "<cops string>"),
+	STD_METHODCH(cind_response,
+			"<svc> <num_active> <num_held> <setup_state> <signal> "
+			"<roam> <batt_chg>"),
+	STD_METHODH(formatted_at_response, "<at_response>"),
+	STD_METHODCH(at_response, "<response_code> [<error_code>]"),
+	STD_METHODCH(clcc_response,
+			"<index> <direction> <state> <mode> <mpty> <number> "
+			"<type>"),
+#endif
 	STD_METHODCH(connect, "<addr>"),
 	STD_METHODCH(disconnect, "<addr>"),
 	STD_METHODCH(connect_audio, "<addr>"),
 	STD_METHODCH(disconnect_audio, "<addr>"),
-	STD_METHOD(start_voice_recognition),
-	STD_METHOD(stop_voice_recognition),
-	STD_METHODCH(volume_control, "<vol_type> <volume>"),
 	STD_METHODCH(device_status_notification,
 			"<ntk_state> <svt_type> <signal> <batt_chg>"),
-	STD_METHODH(cops_response, "<cops string>"),
-	STD_METHODCH(cind_response,
-			"<svc> <num_active> <num_held> <setup_state> <signal> <roam> <batt_chg>"),
-	STD_METHODH(formatted_at_response, "<at_response>"),
-	STD_METHODCH(at_response, "<response_code> [<error_code>]"),
-	STD_METHODCH(clcc_response,
-			"<index> <direction> <state> <mode> <mpty> <number> <type>"),
 	STD_METHODCH(phone_state_change,
-			"<num_active> <num_held> <setup_state> <number> <type>"),
+			"<num_active> <num_held> <setup_state> <number> "
+			"<type>"),
 	STD_METHOD(cleanup),
 	END_METHOD
 };
