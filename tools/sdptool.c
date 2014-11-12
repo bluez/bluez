@@ -227,6 +227,11 @@ static struct attrib_def audio_attrib_names[] = {
 	{ 0x302, "Remote audio volume control", NULL, 0 },
 };
 
+/* Name of the various IrMCSync attributes. See BT assigned numbers */
+static struct attrib_def irmc_attrib_names[] = {
+	{ 0x0301, "SupportedDataStoresList", NULL, 0 },
+};
+
 /* Name of the various GOEP attributes. See BT assigned numbers */
 static struct attrib_def goep_attrib_names[] = {
 	{ 0x200, "GoepL2capPsm", NULL, 0 },
@@ -284,7 +289,8 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1101, "SerialPort", NULL, 0 },
 	{ 0x1102, "LANAccessUsingPPP", NULL, 0 },
 	{ 0x1103, "DialupNetworking (DUN)", NULL, 0 },
-	{ 0x1104, "IrMCSync", NULL, 0 },
+	{ 0x1104, "IrMCSync",
+		irmc_attrib_names, N_ELEMENTS(irmc_attrib_names) },
 	{ 0x1105, "OBEXObjectPush",
 		goep_attrib_names, N_ELEMENTS(goep_attrib_names) },
 	{ 0x1106, "OBEXFileTransfer",
