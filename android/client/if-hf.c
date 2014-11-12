@@ -386,7 +386,7 @@ static void init_p(int argc, const char **argv)
 	RETURN_IF_NULL(if_hf);
 
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
-	if (argc < 2)
+	if (argc <= 2)
 		max_hf_clients = 1;
 	else
 		max_hf_clients = atoi(argv[2]);
