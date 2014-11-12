@@ -1122,7 +1122,7 @@ response:
 		num = avrcp_continuing.num;
 
 		if (avrcp_continuing.size > 0) {
-			char attrval[UINT8_MAX];
+			char attrval[UINT8_MAX] = {0};
 			uint16_t size;
 			uint8_t idx;
 
@@ -1157,7 +1157,7 @@ response:
 		uint32_t attr;
 		uint16_t charset, attrlen;
 		uint8_t idx;
-		char attrval[UINT8_MAX];
+		char attrval[UINT8_MAX] = {0};
 
 		if (!l2cap_frame_get_be32(frame, &attr))
 			goto failed;
