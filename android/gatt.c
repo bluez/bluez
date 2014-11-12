@@ -6494,14 +6494,7 @@ static void device_info_read_cb(struct gatt_db_attribute *attrib,
 					uint8_t opcode, bdaddr_t *bdaddr,
 					void *user_data)
 {
-	struct gatt_device *dev;
 	char *buf = user_data;
-
-	dev = find_device_by_addr(bdaddr);
-	if (!dev) {
-		error("gatt: Could not find device ?!");
-		return;
-	}
 
 	gatt_db_attribute_read_result(attrib, id, 0, user_data, strlen(buf));
 }
@@ -6511,14 +6504,7 @@ static void device_info_read_system_id_cb(struct gatt_db_attribute *attrib,
 					uint8_t opcode, bdaddr_t *bdaddr,
 					void *user_data)
 {
-	struct gatt_device *dev;
 	uint8_t pdu[8];
-
-	dev = find_device_by_addr(bdaddr);
-	if (!dev) {
-		error("gatt: Could not find device ?!");
-		return;
-	}
 
 	put_le64(bt_config_get_system_id(), pdu);
 
@@ -6530,14 +6516,7 @@ static void device_info_read_pnp_id_cb(struct gatt_db_attribute *attrib,
 					uint8_t opcode, bdaddr_t *bdaddr,
 					void *user_data)
 {
-	struct gatt_device *dev;
 	uint8_t pdu[7];
-
-	dev = find_device_by_addr(bdaddr);
-	if (!dev) {
-		error("gatt: Could not find device ?!");
-		return;
-	}
 
 	pdu[0] = bt_config_get_pnp_source();
 	put_le16(bt_config_get_pnp_vendor(), &pdu[1]);
