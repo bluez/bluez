@@ -284,7 +284,7 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 	return TRUE;
 }
 
-static void gatt_debug(const char *str, void *user_data)
+static void print_debug(const char *str, void *user_data)
 {
 	const char *prefix = user_data;
 
@@ -400,6 +400,10 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 	case ATT:
 		context->att = att;
 
+		if (g_test_verbose())
+			bt_att_set_debug(context->att, print_debug, "bt_att:",
+									NULL);
+
 		bt_gatt_exchange_mtu(context->att, mtu, NULL, NULL, NULL);
 		break;
 	case CLIENT:
@@ -407,8 +411,8 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 		g_assert(context->client);
 
 		if (g_test_verbose())
-			bt_gatt_client_set_debug(context->client, gatt_debug,
-								"gatt:", NULL);
+			bt_gatt_client_set_debug(context->client, print_debug,
+						"bt_gatt_client:", NULL);
 
 		bt_gatt_client_set_ready_handler(context->client,
 						client_ready_cb, context, NULL);
