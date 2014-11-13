@@ -323,6 +323,18 @@ static void compare_chars(const bt_gatt_characteristic_t *a,
 		compare_descs(&a->descs[i], &b->descs[i]);
 }
 
+typedef void (*test_step_t)(struct context *context);
+
+struct test_step {
+	test_step_t func;
+	uint16_t handle;
+	uint16_t end_handle;
+	uint8_t uuid[16];
+	uint8_t expected_att_ecode;
+	const uint8_t *value;
+	uint16_t length;
+};
+
 static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 {
 	struct context *context = user_data;
@@ -356,6 +368,13 @@ static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 	}
 
 	g_assert(!bt_gatt_service_iter_next(&iter, &service));
+
+	if (context->data->step) {
+		const struct test_step *step = context->data->step;
+
+		step->func(context);
+		return;
+	}
 
 	context_quit(context);
 }
@@ -452,16 +471,6 @@ static void execute_context(struct context *context)
 
 	destroy_context(context);
 }
-
-typedef void (*test_step_t)(struct context *context);
-
-struct test_step {
-	test_step_t func;
-	uint16_t handle;
-	uint8_t expected_att_ecode;
-	const uint8_t *value;
-	uint16_t length;
-};
 
 static void test_read_cb(bool success, uint8_t att_ecode,
 					const uint8_t *value, uint16_t length,
