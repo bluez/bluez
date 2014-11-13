@@ -55,7 +55,9 @@ The unique service ID is assigned by this specification for each HAL.
 As general rule of thumb, the opcode for command matches the opcode for a
 response. Or the opcode 0x00 for an error is returned.
 
-Notification opcodes start from 0x80.
+Notification opcodes start from 0x81.
+
+Opcode 0x80 is reserved and shall not be used.
 
 All command/response opcodes have the least significant bit not set. And all
 notifications have the least significant bit set.
@@ -115,14 +117,29 @@ specific service.
 	init()                  --> register module handsfree
 
 
-Core Service (ID 0)
-===================
+Error response is common for all services and has fixed structure:
 
 	Opcode 0x00 - Error response
 
 		Response parameters: Status (1 octet)
 
-		Valid status values: 0x01	Failed
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+		                     0x0b = Authentication rejected
+
+
+Core Service (ID 0)
+===================
+
+	Opcode 0x00 - Error response
 
 	Opcode 0x01 - Register module command/response
 
@@ -179,8 +196,6 @@ Android HAL name: "bluetooth" (BT_HARDWARE_MODULE_ID)
 Commands and responses:
 
 	Opcode 0x00 - Error response
-
-		Response parameters: Status (1 octet)
 
 	Opcode 0x01 - Enable command/response
 
@@ -436,19 +451,6 @@ Commands and responses:
 
 	Opcode 0x00 - Error response
 
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
-
 	Opcode 0x01 - Listen command/response
 
 		Command parameters: Socket type (1 octet)
@@ -494,19 +496,6 @@ Android HAL name: "hidhost" (BT_PROFILE_HIDHOST_ID)
 Commands and responses:
 
 	Opcode 0x00 - Error response
-
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
 
 	Opcode 0x01 - Connect command/response
 
@@ -692,19 +681,6 @@ Commands and responses:
 
 	Opcode 0x00 - Error response
 
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
-
 	Opcode 0x01 - Enable command/response
 
 		Command parameters: Local role (1 octet)
@@ -791,19 +767,6 @@ Android HAL name: "handsfree" (BT_PROFILE_HANDSFREE_ID)
 Commands and responses:
 
 	Opcode 0x00 - Error response
-
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
 
 	Opcode 0x01 - Connect command/response
 
@@ -1093,19 +1056,6 @@ Commands and responses:
 
 	Opcode 0x00 - Error response
 
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
-
 	Opcode 0x01 - Connect command/response
 
 		Command parameters: Remote address (6 octets)
@@ -1150,19 +1100,6 @@ Android HAL name: "health" (BT_PROFILE_HEALTH_ID)
 Commands and responses:
 
 	Opcode 0x00 - Error response
-
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
 
 	Opcode 0x01 - Register Application command/response
 
@@ -1249,19 +1186,6 @@ Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
 Commands and responses:
 
 	Opcode 0x00 - Error response
-
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
 
 	Opcode 0x01 - Get Play Status Response command/response
 
@@ -1494,19 +1418,6 @@ Structures:
 Commands and responses:
 
 	Opcode 0x00 - Error response
-
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
 
 	Opcode 0x01 - Register Client command/response
 
@@ -2127,17 +2038,6 @@ Commands and response:
 
 	Opcode 0x00 - Error response
 
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
-
 	Opcode 0x01 - Connect command/respose
 
 		Command parameters: Remote address (6 octects)
@@ -2473,19 +2373,6 @@ Commands and responses:
 
 	Opcode 0x00 - Error response
 
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
-
 	Opcode 0x01 - Get Remote MAS Instances
 
 		Command parameters: Remote address (6 octets)
@@ -2513,19 +2400,6 @@ Android HAL name: "avrcp-ctrl" (BT_PROFILE_AV_RC_CTRL_ID)
 Commands and responses:
 
 	Opcode 0x00 - Error response
-
-		Response parameters: Status (1 octet)
-
-		Valid status values: 0x01 = Fail
-		                     0x02 = Not ready
-		                     0x03 = No memory
-		                     0x04 = Busy
-		                     0x05 = Done (already completed)
-		                     0x06 = Unsupported
-		                     0x07 = Parameter invalid
-		                     0x08 = Unhandled
-		                     0x09 = Authentication failure
-		                     0x0a = Remote device down
 
 	Opcode 0x01 - Send Pass Through command/response
 
