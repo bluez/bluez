@@ -2038,24 +2038,31 @@ static void update_indicator(struct hf_device *dev, int ind, uint8_t val)
 	hfp_gw_send_info(dev->gw, "+CIEV: %u,%u", ind + 1, val);
 }
 
-static void handle_device_status_notif(const void *buf, uint16_t len)
+static void device_status_notif(void *data, void *user_data)
 {
-	const struct hal_cmd_handsfree_device_status_notif *cmd = buf;
-	struct hf_device *dev;
-	uint8_t status;
-
-	DBG("");
-
-	dev = find_default_device();
-	if (!dev) {
-		status = HAL_STATUS_FAILED;
-		goto done;
-	}
+	struct hf_device *dev = data;
+	struct hal_cmd_handsfree_device_status_notif *cmd = user_data;
 
 	update_indicator(dev, IND_SERVICE, cmd->state);
 	update_indicator(dev, IND_ROAM, cmd->type);
 	update_indicator(dev, IND_SIGNAL, cmd->signal);
 	update_indicator(dev, IND_BATTCHG, cmd->battery);
+}
+
+static void handle_device_status_notif(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_handsfree_device_status_notif *cmd = buf;
+	uint8_t status;
+
+	DBG("");
+
+	if (queue_isempty(devices)) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	/* Cast cmd to void as queue api needs that */
+	queue_foreach(devices, device_status_notif, (void *) cmd);
 
 	status = HAL_STATUS_SUCCESS;
 
