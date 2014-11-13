@@ -5407,6 +5407,12 @@ failed:
 				HAL_OP_GATT_SERVER_DELETE_SERVICE, status);
 }
 
+static void ignore_confirmation_cb(guint8 status, const guint8 *pdu,
+						guint16 len, gpointer user_data)
+{
+	/* Ignored. */
+}
+
 static void handle_server_send_indication(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_gatt_server_send_indication *cmd = buf;
@@ -5415,6 +5421,7 @@ static void handle_server_send_indication(const void *buf, uint16_t len)
 	uint16_t length;
 	uint8_t *pdu;
 	size_t mtu;
+	GAttribResultFunc confirmation_cb = NULL;
 
 	DBG("");
 
@@ -5427,22 +5434,24 @@ static void handle_server_send_indication(const void *buf, uint16_t len)
 
 	pdu = g_attrib_get_buffer(conn->device->attrib, &mtu);
 
-	if (cmd->confirm)
+	if (cmd->confirm) {
 		/* TODO: Add data to track confirmation for this request */
 		length = enc_indication(cmd->attribute_handle,
 					(uint8_t *)cmd->value, cmd->len, pdu,
 					mtu);
-	else
+		confirmation_cb = ignore_confirmation_cb;
+	} else {
 		length = enc_notification(cmd->attribute_handle,
 						(uint8_t *)cmd->value, cmd->len,
 						pdu, mtu);
+	}
 
 	if (length == 0) {
 		error("gatt: Failed to encode indication");
 		status = HAL_STATUS_FAILED;
 	} else {
-		g_attrib_send(conn->device->attrib, 0, pdu, length, NULL, NULL,
-									NULL);
+		g_attrib_send(conn->device->attrib, 0, pdu, length,
+						   confirmation_cb, NULL, NULL);
 		status = HAL_STATUS_SUCCESS;
 	}
 
