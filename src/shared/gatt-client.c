@@ -1285,10 +1285,14 @@ static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
 
 static uint8_t process_error(const void *pdu, uint16_t length)
 {
-	if (!pdu || length != 4)
+	const struct bt_att_pdu_error_rsp *error_pdu;
+
+	if (!pdu || length != sizeof(struct bt_att_pdu_error_rsp))
 		return 0;
 
-	return ((uint8_t *) pdu)[3];
+	error_pdu = pdu;
+
+	return error_pdu->ecode;
 }
 
 static void enable_ccc_callback(uint8_t opcode, const void *pdu,

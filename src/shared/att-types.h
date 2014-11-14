@@ -23,6 +23,10 @@
 
 #include <stdint.h>
 
+#ifndef __packed
+#define __packed __attribute__((packed))
+#endif
+
 #define BT_ATT_DEFAULT_LE_MTU 23
 
 /* ATT protocol opcodes */
@@ -54,6 +58,14 @@
 #define BT_ATT_OP_HANDLE_VAL_NOT		0x1B
 #define BT_ATT_OP_HANDLE_VAL_IND		0x1D
 #define BT_ATT_OP_HANDLE_VAL_CONF		0x1E
+
+/* Packed struct definitions for ATT protocol PDUs */
+/* TODO: Complete these definitions for all opcodes */
+struct bt_att_pdu_error_rsp {
+	uint8_t opcode;
+	uint16_t handle;
+	uint8_t ecode;
+} __packed;
 
 /* Special opcode to receive all requests (legacy servers) */
 #define BT_ATT_ALL_REQUESTS 0x00

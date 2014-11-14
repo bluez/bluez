@@ -35,12 +35,21 @@
 #include "src/shared/timeout.h"
 #include "lib/uuid.h"
 #include "src/shared/att.h"
-#include "src/shared/att-types.h"
 
 #define ATT_MIN_PDU_LEN			1  /* At least 1 byte for the opcode. */
 #define ATT_OP_CMD_MASK			0x40
 #define ATT_OP_SIGNED_MASK		0x80
 #define ATT_TIMEOUT_INTERVAL		30000  /* 30000 ms */
+
+/*
+ * Common Profile and Service Error Code descriptions (see Supplement to the
+ * Bluetooth Core Specification, sections 1.2 and 2). The error codes within
+ * 0xE0-0xFC are reserved for future use. The remaining 3 are defined as the
+ * following:
+ */
+#define BT_ERROR_CCC_IMPROPERLY_CONFIGURED	0xfd
+#define BT_ERROR_ALREADY_IN_PROGRESS		0xfe
+#define BT_ERROR_OUT_OF_RANGE			0xff
 
 struct att_send_op;
 
@@ -1137,6 +1146,55 @@ bool bt_att_cancel_all(struct bt_att *att)
 		cancel_att_send_op(att->pending_ind);
 
 	return true;
+}
+
+static uint8_t att_ecode_from_error(int err)
+{
+	/*
+	 * If the error fits in a single byte, treat it as an ATT protocol
+	 * error as is. Since "0" is not a valid ATT protocol error code, we map
+	 * that to UNLIKELY below.
+	 */
+	if (err > 0 && err < UINT8_MAX)
+		return err;
+
+	/*
+	 * Since we allow UNIX errnos, map them to appropriate ATT protocol
+	 * and "Common Profile and Service" error codes.
+	 */
+	switch (err) {
+	case -ENOENT:
+		return BT_ATT_ERROR_INVALID_HANDLE;
+	case -ENOMEM:
+		return BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
+	case -EALREADY:
+		return BT_ERROR_ALREADY_IN_PROGRESS;
+	case -EOVERFLOW:
+		return BT_ERROR_OUT_OF_RANGE;
+	}
+
+	return BT_ATT_ERROR_UNLIKELY;
+}
+
+unsigned int bt_att_send_error_rsp(struct bt_att *att, uint8_t opcode,
+						uint16_t handle, int error)
+{
+	struct bt_att_pdu_error_rsp pdu;
+	uint8_t ecode;
+
+	if (!att || !opcode)
+		return 0;
+
+	ecode = att_ecode_from_error(error);
+
+	memset(&pdu, 0, sizeof(pdu));
+
+	pdu.opcode = opcode;
+	put_le16(handle, &pdu.handle);
+	pdu.ecode = ecode;
+
+	return bt_att_send(att, BT_ATT_OP_ERROR_RSP, &pdu, sizeof(pdu),
+							NULL, NULL, NULL);
 }
 
 unsigned int bt_att_register(struct bt_att *att, uint8_t opcode,
