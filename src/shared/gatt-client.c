@@ -993,6 +993,10 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 	service_list_insert_services(&client->svc_head, &client->svc_tail,
 					op->result_head, op->result_tail);
 
+	/* Relinquish ownership of services, as the client now owns them */
+	op->result_head = NULL;
+	op->result_tail = NULL;
+
 next:
 	/* Notify the upper layer of changed services */
 	if (client->svc_chngd_callback)
@@ -1155,7 +1159,7 @@ static void init_complete(struct discovery_op *op, bool success,
 	client->svc_head = op->result_head;
 	client->svc_tail = op->result_tail;
 
-	/* Change owner of service list */
+	/* Relinquish ownership of services, as the client now owns them */
 	op->result_head = NULL;
 	op->result_tail = NULL;
 
