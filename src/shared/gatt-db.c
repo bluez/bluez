@@ -929,12 +929,18 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 	/* For values stored in db allocate on demand */
 	if (!attrib->value || offset >= attrib->value_len ||
 				len > (unsigned) (attrib->value_len - offset)) {
-		attrib->value = realloc(attrib->value, len + offset);
-		if (!attrib->value)
+		void *buf;
+
+		buf = realloc(attrib->value, len + offset);
+		if (!buf)
 			return false;
+
+		attrib->value = buf;
+
 		/* Init data in the first allocation */
 		if (!attrib->value_len)
 			memset(attrib->value, 0, offset);
+
 		attrib->value_len = len + offset;
 	}
 
