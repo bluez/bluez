@@ -226,7 +226,8 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btmgmt tools/btinfo tools/btattach \
 			tools/btsnoop tools/btproxy tools/btiotest \
 			tools/cltest tools/seq2bseq tools/hex2hcd \
-			tools/ibeacon tools/btgatt-client
+			tools/ibeacon tools/btgatt-client \
+			tools/btgatt-server
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
 tools_bdaddr_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
@@ -272,8 +273,12 @@ tools_ibeacon_SOURCES = tools/ibeacon.c monitor/bt.h
 tools_ibeacon_LDADD = src/libshared-mainloop.la
 
 tools_btgatt_client_SOURCES = tools/btgatt-client.c src/uuid-helper.c
-tools_btgatt_client_LDADD = lib/libbluetooth-internal.la \
-				src/libshared-mainloop.la
+tools_btgatt_client_LDADD = src/libshared-mainloop.la \
+						lib/libbluetooth-internal.la
+
+tools_btgatt_server_SOURCES = tools/btgatt-server.c src/uuid-helper.c
+tools_btgatt_server_LDADD = src/libshared-mainloop.la \
+						lib/libbluetooth-internal.la
 
 EXTRA_DIST += tools/bdaddr.1
 endif
