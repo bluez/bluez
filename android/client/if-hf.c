@@ -105,11 +105,13 @@ SINTMAP(bthf_call_addrtype_t, -1, "(unknown)")
 	DELEMENT(BTHF_CALL_ADDRTYPE_INTERNATIONAL),
 ENDMAP
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 SINTMAP(bthf_wbs_config_t, -1, "(unknown)")
 	DELEMENT(BTHF_WBS_NONE),
 	DELEMENT(BTHF_WBS_NO),
 	DELEMENT(BTHF_WBS_YES),
 ENDMAP
+#endif
 
 /* Callbacks */
 
