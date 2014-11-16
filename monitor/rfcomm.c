@@ -171,7 +171,6 @@ static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 			return false;
 		hdr->credits = credits;
 		print_field("%*cCredits: %d", indent, ' ', hdr->credits);
-		return true;
 	}
 
 	packet_hexdump(frame->data, frame->size);
