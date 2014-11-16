@@ -262,9 +262,9 @@ static const struct hal_ipc_handler ev_handlers[] = {
 				sizeof(struct hal_ev_handsfree_audio_state) },
 	/* HAL_EV_HANDSFREE_VR */
 	{ handle_vr_state, false, sizeof(struct hal_ev_handsfree_vr_state) },
-	/*HAL_EV_HANDSFREE_ANSWER */
+	/* HAL_EV_HANDSFREE_ANSWER */
 	{ handle_answer, false, sizeof(struct hal_ev_handsfree_answer) },
-	/*HAL_EV_HANDSFREE_HANGUP */
+	/* HAL_EV_HANDSFREE_HANGUP */
 	{ handle_hangup, false, sizeof(struct hal_ev_handsfree_hangup) },
 	/* HAL_EV_HANDSFREE_VOLUME */
 	{ handle_volume, false, sizeof(struct hal_ev_handsfree_volume) },
