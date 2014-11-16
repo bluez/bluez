@@ -263,9 +263,9 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_HANDSFREE_VR */
 	{ handle_vr_state, false, sizeof(struct hal_ev_handsfree_vr_state) },
 	/*HAL_EV_HANDSFREE_ANSWER */
-	{ handle_answer, false, 0 },
+	{ handle_answer, false, sizeof(struct hal_ev_handsfree_answer) },
 	/*HAL_EV_HANDSFREE_HANGUP */
-	{ handle_hangup, false, 0 },
+	{ handle_hangup, false, sizeof(struct hal_ev_handsfree_hangup) },
 	/* HAL_EV_HANDSFREE_VOLUME */
 	{ handle_volume, false, sizeof(struct hal_ev_handsfree_volume) },
 	/* HAL_EV_HANDSFREE_DIAL */
@@ -277,17 +277,18 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_HANDSFREE_CHLD */
 	{ handle_chld, false, sizeof(struct hal_ev_handsfree_chld) },
 	/* HAL_EV_HANDSFREE_CNUM */
-	{ handle_cnum, false, 0 },
+	{ handle_cnum, false, sizeof(struct hal_ev_handsfree_cnum) },
 	/* HAL_EV_HANDSFREE_CIND */
-	{ handle_cind, false, 0 },
+	{ handle_cind, false, sizeof(struct hal_ev_handsfree_cind) },
 	/* HAL_EV_HANDSFREE_COPS */
-	{ handle_cops, false, 0 },
+	{ handle_cops, false, sizeof(struct hal_ev_handsfree_cops) },
 	/* HAL_EV_HANDSFREE_CLCC */
-	{ handle_clcc, false, 0 },
+	{ handle_clcc, false, sizeof(struct hal_ev_handsfree_clcc) },
 	/* HAL_EV_HANDSFREE_UNKNOWN_AT */
 	{ handle_unknown_at, true, sizeof(struct hal_ev_handsfree_unknown_at) },
 	/* HAL_EV_HANDSFREE_HSP_KEY_PRESS */
-	{ handle_hsp_key_press, false, 0 },
+	{ handle_hsp_key_press, false,
+				sizeof(struct hal_ev_handsfree_hsp_key_press) },
 };
 
 static uint8_t get_mode(void)
