@@ -160,6 +160,14 @@ static void gap_device_name_write_cb(struct gatt_db_attribute *attrib,
 
 	PRLOG("GAP Device Name Write called\n");
 
+	/* If the value is being completely truncated, clean up and return */
+	if (!(offset + len)) {
+		free(server->device_name);
+		server->device_name = NULL;
+		server->name_len = 0;
+		goto done;
+	}
+
 	/* Implement this as a variable length attribute value. */
 	if (offset > server->name_len) {
 		error = BT_ATT_ERROR_INVALID_OFFSET;
