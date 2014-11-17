@@ -1509,13 +1509,13 @@ struct hal_ev_avrcp_passthrough_cmd {
 	uint8_t state;
 } __attribute__((packed));
 
-#define HAL_EV_AVRCP_CTRL_CONN_STATE		0x80
+#define HAL_EV_AVRCP_CTRL_CONN_STATE		0x81
 struct hal_ev_avrcp_ctrl_conn_state {
 	uint8_t state;
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_EV_AVRCP_CTRL_PASSTHROUGH_RSP	0x81
+#define HAL_EV_AVRCP_CTRL_PASSTHROUGH_RSP	0x82
 struct hal_ev_avrcp_ctrl_passthrough_rsp {
 	uint8_t id;
 	uint8_t key_state;
