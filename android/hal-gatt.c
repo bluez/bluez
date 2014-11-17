@@ -77,7 +77,7 @@ static void handle_scan_result(void *buf, uint16_t len, int fd)
 	struct hal_ev_gatt_client_scan_result *ev = buf;
 	uint8_t ad[62];
 
-	if (len != sizeof(*ev) + ev->len ) {
+	if (len != sizeof(*ev) + ev->len) {
 		error("gatt: invalid scan result event, aborting");
 		exit(EXIT_FAILURE);
 	}
@@ -196,7 +196,7 @@ static void handle_notify(void *buf, uint16_t len, int fd)
 	struct hal_ev_gatt_client_notify *ev = buf;
 	btgatt_notify_params_t params;
 
-	if (len != sizeof(*ev) + ev->len ) {
+	if (len != sizeof(*ev) + ev->len) {
 		error("gatt: invalid notify event, aborting");
 		exit(EXIT_FAILURE);
 	}
@@ -220,7 +220,7 @@ static void handle_read_characteristic(void *buf, uint16_t len, int fd)
 	struct hal_ev_gatt_client_read_characteristic *ev = buf;
 	btgatt_read_params_t params;
 
-	if (len != sizeof(*ev) + ev->data.len ) {
+	if (len != sizeof(*ev) + ev->data.len) {
 		error("gatt: invalid read characteristic event, aborting");
 		exit(EXIT_FAILURE);
 	}
@@ -265,7 +265,7 @@ static void handle_read_descriptor(void *buf, uint16_t len, int fd)
 	struct hal_ev_gatt_client_read_descriptor *ev = buf;
 	btgatt_read_params_t params;
 
-	if (len != sizeof(*ev) + ev->data.len ) {
+	if (len != sizeof(*ev) + ev->data.len) {
 		error("gatt: invalid read descriptor event, aborting");
 		exit(EXIT_FAILURE);
 	}
@@ -439,7 +439,7 @@ static void handle_request_write(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_gatt_server_request_write *ev = buf;
 
-	if (len != sizeof(*ev) + ev->length ) {
+	if (len != sizeof(*ev) + ev->length) {
 		error("gatt: invalid request write event, aborting");
 		exit(EXIT_FAILURE);
 	}
@@ -1055,7 +1055,7 @@ static bt_status_t set_adv_data_real(int server_if, bool set_scan_rsp,
  * This is temporary solution and support for older Android versions might
  * be removed at any time.
  */
-#if ANDROID_VERSION < PLATFORM_VER(4,4,3)
+#if ANDROID_VERSION < PLATFORM_VER(4, 4, 3)
 static bt_status_t set_adv_data(int server_if, bool set_scan_rsp,
 				bool include_name, bool include_txpower,
 				int min_interval, int max_interval,
@@ -1108,7 +1108,7 @@ static bt_status_t test_command(int command, btgatt_test_params_t *params)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-#if ANDROID_VERSION >= PLATFORM_VER(5, 0 ,0)
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 static bt_status_t scan_filter_param_setup(int client_if, int action,
 						int filt_index, int feat_seln,
 						int list_logic_type,
@@ -1164,7 +1164,6 @@ static bt_status_t scan_filter_enable(int client_if, bool enable)
 	return BT_STATUS_UNSUPPORTED;
 }
 
-
 static bt_status_t configure_mtu(int conn_id, int mtu)
 {
 	DBG("");
@@ -1173,7 +1172,6 @@ static bt_status_t configure_mtu(int conn_id, int mtu)
 
 	return BT_STATUS_UNSUPPORTED;
 }
-
 
 static bt_status_t conn_parameter_update(const bt_bdaddr_t *bd_addr,
 						int min_interval,
@@ -1187,7 +1185,6 @@ static bt_status_t conn_parameter_update(const bt_bdaddr_t *bd_addr,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-
 static bt_status_t set_scan_parameters(int scan_interval, int scan_window)
 {
 	DBG("");
@@ -1196,7 +1193,6 @@ static bt_status_t set_scan_parameters(int scan_interval, int scan_window)
 
 	return BT_STATUS_UNSUPPORTED;
 }
-
 
 static bt_status_t multi_adv_enable(int client_if, int min_interval,
 					int max_interval, int adv_type,
@@ -1210,7 +1206,6 @@ static bt_status_t multi_adv_enable(int client_if, int min_interval,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-
 static bt_status_t multi_adv_update(int client_if, int min_interval,
 					int max_interval, int adv_type,
 					int chnl_map, int tx_power,
@@ -1223,7 +1218,6 @@ static bt_status_t multi_adv_update(int client_if, int min_interval,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-
 static bt_status_t multi_adv_set_inst_data(int client_if, bool set_scan_rsp,
 						bool include_name,
 						bool incl_txpower,
@@ -1233,7 +1227,7 @@ static bt_status_t multi_adv_set_inst_data(int client_if, bool set_scan_rsp,
 						int service_data_len,
 						char *service_data,
 						int service_uuid_len,
-						char* service_uuid)
+						char *service_uuid)
 {
 	DBG("");
 
@@ -1241,7 +1235,6 @@ static bt_status_t multi_adv_set_inst_data(int client_if, bool set_scan_rsp,
 
 	return BT_STATUS_UNSUPPORTED;
 }
-
 
 static bt_status_t multi_adv_disable(int client_if)
 {
@@ -1251,7 +1244,6 @@ static bt_status_t multi_adv_disable(int client_if)
 
 	return BT_STATUS_UNSUPPORTED;
 }
-
 
 static bt_status_t batchscan_cfg_storage(int client_if, int batch_scan_full_max,
 						int batch_scan_trunc_max,
@@ -1263,7 +1255,6 @@ static bt_status_t batchscan_cfg_storage(int client_if, int batch_scan_full_max,
 
 	return BT_STATUS_UNSUPPORTED;
 }
-
 
 static bt_status_t batchscan_enb_batch_scan(int client_if, int scan_mode,
 						int scan_interval,
@@ -1277,7 +1268,6 @@ static bt_status_t batchscan_enb_batch_scan(int client_if, int scan_mode,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-
 static bt_status_t batchscan_dis_batch_scan(int client_if)
 {
 	DBG("");
@@ -1286,7 +1276,6 @@ static bt_status_t batchscan_dis_batch_scan(int client_if)
 
 	return BT_STATUS_UNSUPPORTED;
 }
-
 
 static bt_status_t batchscan_read_reports(int client_if, int scan_mode)
 {
