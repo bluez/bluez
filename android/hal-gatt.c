@@ -1592,11 +1592,19 @@ static bt_status_t batchscan_cfg_storage(int client_if, int batch_scan_full_max,
 						int batch_scan_trunc_max,
 						int batch_scan_notify_threshold)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_configure_batchscan cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+	cmd.full_max = batch_scan_full_max;
+	cmd.trunc_max = batch_scan_trunc_max;
+	cmd.notify_threshold = batch_scan_notify_threshold;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_CONFIGURE_BATCHSCAN,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t batchscan_enb_batch_scan(int client_if, int scan_mode,
