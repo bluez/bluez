@@ -1067,6 +1067,12 @@ struct hal_cmd_gatt_client_scan_filter_clear {
 	int32_t index;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SCAN_FILTER_ENABLE		0x27
+struct hal_cmd_gatt_client_scan_filter_enable {
+	int32_t client_if;
+	uint8_t enable;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01

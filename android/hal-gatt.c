@@ -1398,11 +1398,17 @@ static bt_status_t scan_filter_clear(int client_if, int filt_index)
 
 static bt_status_t scan_filter_enable(int client_if, bool enable)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_scan_filter_enable cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+	cmd.enable = enable;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_SCAN_FILTER_ENABLE,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t configure_mtu(int conn_id, int mtu)
