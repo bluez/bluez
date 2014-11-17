@@ -1452,11 +1452,17 @@ static bt_status_t conn_parameter_update(const bt_bdaddr_t *bd_addr,
 
 static bt_status_t set_scan_parameters(int scan_interval, int scan_window)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_set_scan_param cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.interval = scan_interval;
+	cmd.window = scan_window;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_SET_SCAN_PARAM,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t multi_adv_enable(int client_if, int min_interval,

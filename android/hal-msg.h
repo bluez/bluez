@@ -1088,6 +1088,12 @@ struct hal_cmd_gatt_client_conn_param_update {
 	int32_t timeout;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SET_SCAN_PARAM		0x2a
+struct hal_cmd_gatt_client_set_scan_param {
+	int32_t interval;
+	int32_t window;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01

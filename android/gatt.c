@@ -5627,6 +5627,19 @@ static void handle_client_conn_param_update(const void *buf, uint16_t len)
 					HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_client_set_scan_param(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_gatt_client_set_scan_param *cmd = buf;
+
+	DBG("interval %d window %d", cmd->interval, cmd->window);
+
+	/* TODO */
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_SET_SCAN_PARAM,
+					HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_REGISTER */
 	{ handle_client_register, false,
@@ -5751,6 +5764,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_CONN_PARAM_UPDATE */
 	{ handle_client_conn_param_update, false,
 		sizeof(struct hal_cmd_gatt_client_conn_param_update) },
+	/* HAL_OP_GATT_CLIENT_SET_SCAN_PARAM */
+	{ handle_client_set_scan_param, false,
+		sizeof(struct hal_cmd_gatt_client_set_scan_param) },
 };
 
 static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
