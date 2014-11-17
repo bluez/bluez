@@ -1383,13 +1383,18 @@ static bt_status_t scan_filter_add_remove(int client_if, int action,
 
 static bt_status_t scan_filter_clear(int client_if, int filt_index)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_scan_filter_clear cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+	cmd.index = filt_index;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_SCAN_FILTER_CLEAR,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
-
 
 static bt_status_t scan_filter_enable(int client_if, bool enable)
 {

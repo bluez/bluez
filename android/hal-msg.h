@@ -1061,6 +1061,12 @@ struct hal_cmd_gatt_client_scan_filter_add_remove {
 	uint8_t data_mask[0]; /* common buffer for data and mask */
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SCAN_FILTER_CLEAR		0x26
+struct hal_cmd_gatt_client_scan_filter_clear {
+	int32_t client_if;
+	int32_t index;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01
