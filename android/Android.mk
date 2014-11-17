@@ -54,6 +54,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/handsfree-client.c \
 	bluez/android/gatt.c \
 	bluez/android/health.c \
+	bluez/android/sco.c \
 	bluez/profiles/health/mcap.c \
 	bluez/android/map-client.c \
 	bluez/src/log.c \
