@@ -1157,6 +1157,12 @@ struct hal_cmd_gatt_client_disable_batchscan {
 	int32_t client_if;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_READ_BATCHSCAN_REPORTS	0x32
+struct hal_cmd_gatt_client_read_batchscan_reports {
+	int32_t client_if;
+	int32_t scan_mode;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01

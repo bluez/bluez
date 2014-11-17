@@ -1645,11 +1645,17 @@ static bt_status_t batchscan_dis_batch_scan(int client_if)
 
 static bt_status_t batchscan_read_reports(int client_if, int scan_mode)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_read_batchscan_reports cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+	cmd.scan_mode = scan_mode;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+				HAL_OP_GATT_CLIENT_READ_BATCHSCAN_REPORTS,
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 #endif
 
