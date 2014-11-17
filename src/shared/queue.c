@@ -327,6 +327,10 @@ unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 
 		queue->entries -= count;
 	} else {
+		queue->head = NULL;
+		queue->tail = NULL;
+		queue->entries = 0;
+
 		while (entry) {
 			struct queue_entry *tmp = entry;
 
@@ -338,10 +342,6 @@ unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 			free(tmp);
 			count++;
 		}
-
-		queue->head = NULL;
-		queue->tail = NULL;
-		queue->entries = 0;
 	}
 
 	return count;
