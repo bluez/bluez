@@ -5609,6 +5609,24 @@ static void handle_client_configure_mtu(const void *buf, uint16_t len)
 					HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_client_conn_param_update(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_gatt_client_conn_param_update *cmd = buf;
+	char address[18];
+	bdaddr_t bdaddr;
+
+	android2bdaddr(cmd->address, &bdaddr);
+	ba2str(&bdaddr, address);
+
+	DBG("%s", address);
+
+	/* TODO */
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_CONN_PARAM_UPDATE,
+					HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_REGISTER */
 	{ handle_client_register, false,
@@ -5730,6 +5748,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_CONFIGURE_MTU */
 	{ handle_client_configure_mtu, false,
 		sizeof(struct hal_cmd_gatt_client_configure_mtu) },
+	/* HAL_OP_GATT_CLIENT_CONN_PARAM_UPDATE */
+	{ handle_client_conn_param_update, false,
+		sizeof(struct hal_cmd_gatt_client_conn_param_update) },
 };
 
 static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,

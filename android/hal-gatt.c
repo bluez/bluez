@@ -1431,11 +1431,23 @@ static bt_status_t conn_parameter_update(const bt_bdaddr_t *bd_addr,
 						int max_interval, int latency,
 						int timeout)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_conn_param_update cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	if (!bd_addr)
+		return BT_STATUS_PARM_INVALID;
+
+	memcpy(cmd.address, bd_addr, sizeof(*bd_addr));
+	cmd.min_interval = min_interval;
+	cmd.max_interval = max_interval;
+	cmd.latency = latency;
+	cmd.timeout = timeout;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_CONN_PARAM_UPDATE,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t set_scan_parameters(int scan_interval, int scan_window)

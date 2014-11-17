@@ -1079,6 +1079,15 @@ struct hal_cmd_gatt_client_configure_mtu {
 	int32_t mtu;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_CONN_PARAM_UPDATE		0x29
+struct hal_cmd_gatt_client_conn_param_update {
+	uint8_t address[6];
+	int32_t min_interval;
+	int32_t max_interval;
+	int32_t latency;
+	int32_t timeout;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01
