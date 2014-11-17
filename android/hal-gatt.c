@@ -1413,11 +1413,17 @@ static bt_status_t scan_filter_enable(int client_if, bool enable)
 
 static bt_status_t configure_mtu(int conn_id, int mtu)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_configure_mtu cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.conn_id = conn_id;
+	cmd.mtu = mtu;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_CONFIGURE_MTU,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t conn_parameter_update(const bt_bdaddr_t *bd_addr,

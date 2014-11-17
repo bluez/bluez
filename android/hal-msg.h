@@ -1073,6 +1073,12 @@ struct hal_cmd_gatt_client_scan_filter_enable {
 	uint8_t enable;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_CONFIGURE_MTU		0x28
+struct hal_cmd_gatt_client_configure_mtu {
+	int32_t conn_id;
+	int32_t mtu;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01
