@@ -1782,6 +1782,119 @@ struct hal_ev_gatt_server_rsp_confirmation {
 	int32_t handle;
 } __attribute__((packed));
 
+#define HAL_EV_GATT_CLIENT_CONFIGURE_MTU	0xa0
+struct hal_ev_gatt_client_configure_mtu {
+	int32_t conn_id;
+	int32_t status;
+	int32_t mtu;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_FILTER_CONFIG	0xa1
+struct hal_ev_gatt_client_filter_config {
+	int32_t action;
+	int32_t client_if;
+	int32_t status;
+	int32_t type;
+	int32_t space;
+}  __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_FILTER_PARAMS	0xa2
+struct hal_ev_gatt_client_filter_params {
+	int32_t action;
+	int32_t client_if;
+	int32_t status;
+	int32_t space;
+}  __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_FILTER_STATUS	0xa3
+struct hal_ev_gatt_client_filter_status {
+	int32_t enable;
+	int32_t client_if;
+	int32_t status;
+}  __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_MULTI_ADV_ENABLE	0xa4
+struct hal_ev_gatt_client_multi_adv_enable {
+	int32_t client_if;
+	int32_t status;
+} __attribute__((packed));
+
+
+#define HAL_EV_GATT_CLIENT_MULTI_ADV_UPDATE	0xa5
+struct hal_ev_gatt_client_multi_adv_update {
+	int32_t client_if;
+	int32_t status;
+} __attribute__((packed));
+
+
+#define HAL_EV_GATT_CLIENT_MULTI_ADV_DATA	0xa6
+struct hal_ev_gatt_client_multi_adv_data {
+	int32_t client_if;
+	int32_t status;
+} __attribute__((packed));
+
+
+#define HAL_EV_GATT_CLIENT_MULTI_ADV_DISABLE	0xa7
+struct hal_ev_gatt_client_multi_adv_disable {
+	int32_t client_if;
+	int32_t status;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_CONGESTION		0xa8
+struct hal_ev_gatt_client_congestion {
+	int32_t conn_id;
+	uint8_t congested;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_CONFIG_BATCHSCAN	0xa9
+struct hal_ev_gatt_client_config_batchscan {
+	int32_t client_if;
+	int32_t status;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_ENABLE_BATCHSCAN	0xaa
+struct hal_ev_gatt_client_enable_batchscan {
+	int32_t action;
+	int32_t client_if;
+	int32_t status;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_BATCHSCAN_REPORTS	0xab
+struct hal_ev_gatt_client_batchscan_reports {
+	int32_t client_if;
+	int32_t status;
+	int32_t format;
+	int32_t num;
+	int32_t data_len;
+	uint8_t data[0];
+} __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_BATCHSCAN_THRESHOLD	0xac
+struct hal_ev_gatt_client_batchscan_threshold {
+	int32_t client_if;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_CLIENT_TRACK_ADV		0xad
+struct hal_ev_gatt_client_track_adv {
+	int32_t client_if;
+	int32_t filetr_index;
+	int32_t address_type;
+	uint8_t address[6];
+	int32_t state;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_INDICATION_SENT	0xae
+struct hal_ev_gatt_server_indication_sent {
+	int32_t conn_id;
+	int32_t status;
+} __attribute__((packed));
+
+#define HAL_EV_GATT_SERVER_CONGESTION		0xaf
+struct hal_ev_gatt_server_congestion {
+	int32_t conn_id;
+	uint8_t congested;
+} __attribute__((packed));
+
 #define HAL_GATT_PERMISSION_READ			0x0001
 #define HAL_GATT_PERMISSION_READ_ENCRYPTED		0x0002
 #define HAL_GATT_PERMISSION_READ_ENCRYPTED_MITM		0x0004
