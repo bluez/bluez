@@ -1094,6 +1094,17 @@ struct hal_cmd_gatt_client_set_scan_param {
 	int32_t window;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SETUP_MULTI_ADV		0x2b
+struct hal_cmd_gatt_client_setup_multi_adv {
+	int32_t client_if;
+	int32_t min_interval;
+	int32_t max_interval;
+	int32_t type;
+	int32_t channel_map;
+	int32_t tx_power;
+	int32_t timeout;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01
