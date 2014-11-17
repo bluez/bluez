@@ -5451,7 +5451,7 @@ static void handle_server_send_indication(const void *buf, uint16_t len)
 		status = HAL_STATUS_FAILED;
 	} else {
 		g_attrib_send(conn->device->attrib, 0, pdu, length,
-						   confirmation_cb, NULL, NULL);
+						confirmation_cb, NULL, NULL);
 		status = HAL_STATUS_SUCCESS;
 	}
 
