@@ -312,31 +312,17 @@ unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 	entry = queue->head;
 
 	if (function) {
-		struct queue_entry *prev = NULL;
-
 		while (entry) {
-			if (function(entry->data, user_data)) {
-				struct queue_entry *tmp = entry;
+			void *data;
 
-				if (prev)
-					prev->next = entry->next;
-				else
-					queue->head = entry->next;
+			data = queue_remove_if(queue, function, user_data);
+			if (!data)
+				break;
 
-				if (!entry->next)
-					queue->tail = prev;
+			if (destroy)
+				destroy(data);
 
-				entry = entry->next;
-
-				if (destroy)
-					destroy(tmp->data);
-
-				free(tmp);
-				count++;
-			} else {
-				prev = entry;
-				entry = entry->next;
-			}
+			count++;
 		}
 
 		queue->entries -= count;
