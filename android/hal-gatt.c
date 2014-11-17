@@ -1311,11 +1311,27 @@ static bt_status_t scan_filter_param_setup(int client_if, int action,
 						int lost_timeout,
 						int found_timeout_cnt)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_scan_filter_setup cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+	cmd.action = action;
+	cmd.filter_index = filt_index;
+	cmd.features = feat_seln;
+	cmd.list_type = list_logic_type;
+	cmd.filter_type = filt_logic_type;
+	cmd.rssi_hi = rssi_high_thres;
+	cmd.rssi_lo = rssi_low_thres;
+	cmd.delivery_mode = dely_mode;
+	cmd.found_timeout = found_timeout;
+	cmd.lost_timeout = lost_timeout;
+	cmd.found_timeout_cnt = found_timeout_cnt;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_SCAN_FILTER_SETUP,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t scan_filter_add_remove(int client_if, int action,

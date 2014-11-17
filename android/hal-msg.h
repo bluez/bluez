@@ -1028,6 +1028,22 @@ struct hal_cmd_gatt_server_send_response {
 	uint8_t data[0];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SCAN_FILTER_SETUP	0x024
+struct hal_cmd_gatt_client_scan_filter_setup {
+	int32_t client_if;
+	int32_t action;
+	int32_t filter_index;
+	int32_t features;
+	int32_t list_type;
+	int32_t filter_type;
+	int32_t rssi_hi;
+	int32_t rssi_lo;
+	int32_t delivery_mode;
+	int32_t found_timeout;
+	int32_t lost_timeout;
+	int32_t found_timeout_cnt;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01
