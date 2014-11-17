@@ -5679,6 +5679,19 @@ static void handle_client_setup_multi_adv_inst(const void *buf, uint16_t len)
 					HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_client_disable_multi_adv_inst(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_gatt_client_disable_multi_adv_inst *cmd = buf;
+
+	DBG("client_if %d", cmd->client_if);
+
+	/* TODO */
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
+				HAL_OP_GATT_CLIENT_DISABLE_MULTI_ADV_INST,
+				HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_REGISTER */
 	{ handle_client_register, false,
@@ -5815,6 +5828,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_SETUP_MULTI_ADV_INST */
 	{ handle_client_setup_multi_adv_inst, false,
 		sizeof(struct hal_cmd_gatt_client_setup_multi_adv_inst) },
+	/* HAL_OP_GATT_CLIENT_DISABLE_MULTI_ADV_INST */
+	{ handle_client_disable_multi_adv_inst, false,
+		sizeof(struct hal_cmd_gatt_client_disable_multi_adv_inst) },
 };
 
 static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,

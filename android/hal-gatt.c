@@ -1576,11 +1576,16 @@ static bt_status_t multi_adv_set_inst_data(int client_if, bool set_scan_rsp,
 
 static bt_status_t multi_adv_disable(int client_if)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_disable_multi_adv_inst cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+				HAL_OP_GATT_CLIENT_DISABLE_MULTI_ADV_INST,
+				sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t batchscan_cfg_storage(int client_if, int batch_scan_full_max,

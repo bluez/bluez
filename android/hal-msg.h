@@ -1129,6 +1129,11 @@ struct hal_cmd_gatt_client_setup_multi_adv_inst {
 	uint8_t data_service_uuid[0];
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_DISABLE_MULTI_ADV_INST	0x2e
+struct hal_cmd_gatt_client_disable_multi_adv_inst {
+	int32_t client_if;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01
