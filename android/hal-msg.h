@@ -1142,6 +1142,16 @@ struct hal_cmd_gatt_client_configure_batchscan {
 	int32_t notify_threshold;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_ENABLE_BATCHSCAN		0x30
+struct hal_cmd_gatt_client_enable_batchscan {
+	int32_t client_if;
+	int32_t mode;
+	int32_t interval;
+	int32_t window;
+	int32_t address_type;
+	int32_t discard_rule;
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01

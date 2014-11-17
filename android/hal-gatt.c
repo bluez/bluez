@@ -1612,11 +1612,21 @@ static bt_status_t batchscan_enb_batch_scan(int client_if, int scan_mode,
 						int scan_window, int addr_type,
 						int discard_rule)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_enable_batchscan cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+	cmd.mode = scan_mode;
+	cmd.interval = scan_interval;
+	cmd.window = scan_window;
+	cmd.address_type = addr_type;
+	cmd.discard_rule = discard_rule;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_ENABLE_BATCHSCAN,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t batchscan_dis_batch_scan(int client_if)
