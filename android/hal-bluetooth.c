@@ -507,6 +507,7 @@ static int init(bt_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_BLUETOOTH;
 	cmd.mode = get_mode();
+	cmd.max_clients = 1;
 
 	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
@@ -517,6 +518,7 @@ static int init(bt_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_SOCKET;
 	cmd.mode = HAL_MODE_DEFAULT;
+	cmd.max_clients = 1;
 
 	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);

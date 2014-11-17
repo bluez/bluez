@@ -1565,6 +1565,7 @@ static bt_status_t init(const btgatt_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_GATT;
 	cmd.mode = HAL_MODE_DEFAULT;
+	cmd.max_clients = 1;
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
