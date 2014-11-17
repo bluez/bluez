@@ -359,7 +359,6 @@ static bt_status_t init(bthf_client_callbacks_t *callbacks)
 
 	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
-
 	if (ret != BT_STATUS_SUCCESS) {
 		cbs = NULL;
 		hal_ipc_unregister(HAL_SERVICE_ID_HANDSFREE_CLIENT);
