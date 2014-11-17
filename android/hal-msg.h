@@ -1116,6 +1116,19 @@ struct hal_cmd_gatt_client_update_multi_adv {
 	int32_t timeout;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SETUP_MULTI_ADV_INST		0x2d
+struct hal_cmd_gatt_client_setup_multi_adv_inst {
+	int32_t client_if;
+	uint8_t set_scan_rsp;
+	uint8_t include_name;
+	uint8_t include_tx_power;
+	int32_t appearance;
+	int32_t manufacturer_data_len;
+	int32_t service_data_len;
+	int32_t service_uuid_len;
+	uint8_t data_service_uuid[0];
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01

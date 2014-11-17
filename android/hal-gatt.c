@@ -1522,11 +1522,56 @@ static bt_status_t multi_adv_set_inst_data(int client_if, bool set_scan_rsp,
 						int service_uuid_len,
 						char *service_uuid)
 {
-	DBG("");
+	char buf[IPC_MTU];
+	struct hal_cmd_gatt_client_setup_multi_adv_inst *cmd = (void *) buf;
+	int off = 0;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	if (manufacturer_len > 0 && !manufacturer_data)
+		return BT_STATUS_PARM_INVALID;
+
+	if (service_data_len > 0 && !service_data)
+		return BT_STATUS_PARM_INVALID;
+
+	if (service_uuid_len > 0 && !service_uuid)
+		return BT_STATUS_PARM_INVALID;
+
+	if (sizeof(*cmd) + manufacturer_len + service_data_len
+						+ service_uuid_len > IPC_MTU)
+		return BT_STATUS_FAIL;
+
+	cmd->client_if = client_if;
+	cmd->set_scan_rsp = set_scan_rsp;
+	cmd->include_name = include_name;
+	cmd->include_tx_power = incl_txpower;
+	cmd->appearance = appearance;
+	cmd->manufacturer_data_len = manufacturer_len;
+	cmd->service_data_len = service_data_len;
+	cmd->service_uuid_len = service_uuid_len;
+
+	if (manufacturer_len > 0) {
+		memcpy(cmd->data_service_uuid, manufacturer_data,
+							manufacturer_len);
+		off += manufacturer_len;
+	}
+
+	if (service_data_len > 0) {
+		memcpy(cmd->data_service_uuid + off, service_data,
+							service_data_len);
+		off += service_data_len;
+	}
+
+	if (service_uuid_len > 0) {
+		memcpy(cmd->data_service_uuid + off, service_uuid,
+							service_uuid_len);
+		off += service_uuid_len;
+	}
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+				HAL_OP_GATT_CLIENT_SETUP_MULTI_ADV_INST,
+				sizeof(*cmd) + off, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t multi_adv_disable(int client_if)
