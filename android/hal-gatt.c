@@ -1493,11 +1493,22 @@ static bt_status_t multi_adv_update(int client_if, int min_interval,
 					int chnl_map, int tx_power,
 					int timeout_s)
 {
-	DBG("");
+	struct hal_cmd_gatt_client_update_multi_adv cmd;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.client_if = client_if;
+	cmd.min_interval = min_interval;
+	cmd.max_interval = max_interval;
+	cmd.type = adv_type;
+	cmd.channel_map = chnl_map;
+	cmd.tx_power = tx_power;
+	cmd.timeout = timeout_s;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+					HAL_OP_GATT_CLIENT_UPDATE_MULTI_ADV,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t multi_adv_set_inst_data(int client_if, bool set_scan_rsp,
