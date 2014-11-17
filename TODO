@@ -167,15 +167,6 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C2
 
-- Provide a tool for shared/gatt-server. This tool should demonstrate how a
-  shared/gatt-db can be used together with a shared/gatt-server to implement the
-  GATT server role. This should be written in a way so that it can be easily
-  used in conjunction with a remote instance of tools/btgatt-client (i.e. it
-  should listen for incoming connections, have similar verbose output, etc.)
-
-  Priority: Medium
-  Complexity: C2
-
 - Implement other low-priority ATT protocol operations for shared/gatt-server:
 
       Read Multiple Request
