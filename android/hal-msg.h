@@ -1044,6 +1044,23 @@ struct hal_cmd_gatt_client_scan_filter_setup {
 	int32_t found_timeout_cnt;
 } __attribute__((packed));
 
+#define HAL_OP_GATT_CLIENT_SCAN_FILTER_ADD_REMOVE	0x025
+struct hal_cmd_gatt_client_scan_filter_add_remove {
+	int32_t client_if;
+	int32_t action;
+	int32_t filter_type;
+	int32_t filter_index;
+	int32_t company_id;
+	int32_t company_id_mask;
+	uint8_t uuid[16];
+	uint8_t uuid_mask[16];
+	uint8_t address[6];
+	uint8_t address_type;
+	int32_t data_len;
+	int32_t mask_len;
+	uint8_t data_mask[0]; /* common buffer for data and mask */
+} __attribute__((packed));
+
 /* Handsfree client HAL API */
 
 #define HAL_OP_HF_CLIENT_CONNECT		0x01

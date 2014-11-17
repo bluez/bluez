@@ -1345,11 +1345,40 @@ static bt_status_t scan_filter_add_remove(int client_if, int action,
 						int data_len, char *p_data,
 						int mask_len, char *p_mask)
 {
-	DBG("");
+	char buf[IPC_MTU];
+	struct hal_cmd_gatt_client_scan_filter_add_remove *cmd = (void *) buf;
+	size_t cmd_len;
 
-	/* TODO */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	if (!p_uuid || !p_uuid_mask || !bd_addr)
+		return BT_STATUS_PARM_INVALID;
+
+	cmd_len = sizeof(*cmd) + data_len + mask_len;
+	if (cmd_len > IPC_MTU)
+		return BT_STATUS_FAIL;
+
+	cmd->client_if = client_if;
+	cmd->action = action;
+	cmd->filter_type = filt_type;
+	cmd->filter_index = filt_index;
+	cmd->company_id = company_id;
+	cmd->company_id_mask = company_id_mask;
+	memcpy(cmd->uuid, p_uuid, sizeof(*p_uuid));
+	memcpy(cmd->uuid_mask, p_uuid_mask, sizeof(*p_uuid_mask));
+	memcpy(cmd->address, bd_addr, sizeof(*bd_addr));
+	cmd->address_type = addr_type;
+
+	cmd->data_len = data_len;
+	memcpy(cmd->data_mask, p_data, data_len);
+
+	cmd->mask_len = mask_len;
+	memcpy(cmd->data_mask + data_len, p_mask, mask_len);
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_GATT,
+				HAL_OP_GATT_CLIENT_SCAN_FILTER_ADD_REMOVE,
+				cmd_len, cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t scan_filter_clear(int client_if, int filt_index)

@@ -5557,6 +5557,19 @@ static void handle_client_scan_filter_setup(const void *buf, uint16_t len)
 					HAL_STATUS_UNSUPPORTED);
 }
 
+static void handle_client_scan_filter_add_remove(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_gatt_client_scan_filter_add_remove *cmd = buf;
+
+	DBG("client_if %u", cmd->client_if);
+
+	/* TODO */
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_GATT,
+				HAL_OP_GATT_CLIENT_SCAN_FILTER_ADD_REMOVE,
+				HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_REGISTER */
 	{ handle_client_register, false,
@@ -5666,6 +5679,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GATT_CLIENT_SCAN_FILTER_SETUP */
 	{ handle_client_scan_filter_setup, false,
 		sizeof(struct hal_cmd_gatt_client_scan_filter_setup) },
+	/* HAL_OP_GATT_CLIENT_SCAN_FILTER_ADD_REMOVE */
+	{ handle_client_scan_filter_add_remove, true,
+		sizeof(struct hal_cmd_gatt_client_scan_filter_add_remove) },
 };
 
 static uint8_t read_by_group_type(const uint8_t *cmd, uint16_t cmd_len,
