@@ -4322,6 +4322,7 @@ static void handle_server_add_included_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
+	ev.incl_srvc_handle = gatt_db_attribute_get_handle(service);
 	status = HAL_STATUS_SUCCESS;
 failed:
 	ev.srvc_handle = cmd->service_handle;
@@ -5049,10 +5050,13 @@ static void handle_server_add_descriptor(const void *buf, uint16_t len)
 	attrib = gatt_db_service_add_descriptor(attrib, &uuid, permissions,
 							read_cb, write_cb,
 							INT_TO_PTR(app_id));
-	if (!attrib)
+	if (!attrib) {
 		status = HAL_STATUS_FAILED;
-	else
-		status = HAL_STATUS_SUCCESS;
+		goto failed;
+	}
+
+	ev.descr_handle = gatt_db_attribute_get_handle(attrib);
+	status = HAL_STATUS_SUCCESS;
 
 failed:
 	ev.server_if = app_id;
