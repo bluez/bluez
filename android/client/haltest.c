@@ -51,6 +51,7 @@ const struct interface *interfaces[] = {
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	&hf_client_if,
 	&mce_if,
+	&ctrl_rc_if,
 #endif
 	NULL
 };
@@ -399,6 +400,7 @@ static void init(void)
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 		BT_PROFILE_HANDSFREE_CLIENT_ID,
 		BT_PROFILE_MAP_CLIENT_ID,
+		BT_PROFILE_AV_RC_CTRL_ID,
 #endif
 	};
 	const struct method *m;
