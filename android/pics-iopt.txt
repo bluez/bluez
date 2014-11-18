@@ -96,7 +96,7 @@ TSPC_support_HealthDeviceProfile_Sink	True (*)	Support for: HDP
 TSPC_support_HealthDeviceProfile_Source	False		Support for: HDP
 							Role: Source
 
-TSPC_support_NewHandsFreeProfile_AG	False		Support for: HFP
+TSPC_support_NewHandsFreeProfile_AG	True		Support for: HFP
 							Role: Audio gateway
 
 TSPC_support_NewHandsFreeProfile_HF	False		Support for: HFP
