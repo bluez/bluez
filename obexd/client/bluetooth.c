@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
 
@@ -481,6 +482,26 @@ static const void *bluetooth_getattribute(guint id, int attribute_id)
 
 		if (session->sdp_record == NULL)
 			break;
+
+		/* Read version since UUID is already known */
+		if (attribute_id == SDP_ATTR_PFILE_DESC_LIST) {
+			sdp_list_t *descs;
+
+			if (sdp_get_profile_descs(session->sdp_record,
+								&descs) < 0)
+				return NULL;
+
+			if (descs && descs->data) {
+				sdp_profile_desc_t *desc = descs->data;
+				uint16_t version = desc->version;
+
+				sdp_list_free(descs, free);
+
+				return GINT_TO_POINTER(version);
+			}
+
+			return NULL;
+		}
 
 		data = sdp_data_get(session->sdp_record, attribute_id);
 		if (!data)
