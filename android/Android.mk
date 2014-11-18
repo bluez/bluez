@@ -137,7 +137,8 @@ LOCAL_SRC_FILES := \
 ifeq ($(ANDROID_GE_5_0_0), 1)
 LOCAL_SRC_FILES += \
 	bluez/android/hal-handsfree-client.c \
-	bluez/android/hal-map-client.c
+	bluez/android/hal-map-client.c \
+	bluez/android/hal-avrcp-ctrl.c
 endif
 
 LOCAL_C_INCLUDES += \
