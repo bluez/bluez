@@ -938,6 +938,9 @@ static void slc_completed(struct device *dev)
 	hfp_hf_register(dev->hf, clcc_cb, "+CLCC", dev, NULL);
 	hfp_hf_register(dev->hf, ciev_cb, "+CIEV", dev, NULL);
 	hfp_hf_register(dev->hf, cops_cb, "+COPS", dev, NULL);
+
+	if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, NULL, "AT+COPS=3,0"))
+		info("hf-client: Could not send AT+COPS=3,0");
 }
 
 static void slc_chld_cb(struct hfp_context *context, void *user_data)
