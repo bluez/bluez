@@ -672,9 +672,25 @@ done:
 
 static void handle_send_dtmf(const void *buf, uint16_t len)
 {
-	DBG("Not Implemented");
+	const struct hal_cmd_hf_client_send_dtmf *cmd = buf;
+	struct device *dev;
+	uint8_t status;
+
+	dev = find_default_device();
+	if (!dev) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	if (hfp_hf_send_command(dev->hf, cmd_complete_cb, NULL, "AT+VTS=%c",
+							(char) cmd->tone))
+		status = HAL_STATUS_SUCCESS;
+	else
+		status = HAL_STATUS_FAILED;
+
+done:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
-			HAL_OP_HF_CLIENT_SEND_DTMF, HAL_STATUS_UNSUPPORTED);
+					HAL_OP_HF_CLIENT_SEND_DTMF, status);
 }
 
 static void handle_get_last_vc_tag_num(const void *buf, uint16_t len)
