@@ -865,14 +865,24 @@ static void ciev_cb(struct hfp_context *context, void *user_data)
 
 static void slc_completed(struct device *dev)
 {
+	int i;
+	struct indicator *ag_ind;
+
 	DBG("");
+
+	ag_ind = dev->ag_ind;
 
 	device_set_state(dev, HAL_HF_CLIENT_CONN_STATE_SLC_CONNECTED);
 
-	/*
-	 * TODO: Notify Android with indicators, register unsolicited result
-	 * handlers
-	 */
+	/* Notify Android with indicators */
+	for (i = 0; i < HFP_INDICATOR_LAST; i++) {
+		if (!ag_ind[i].cb)
+			continue;
+
+		ag_ind[i].cb(ag_ind[i].val);
+	}
+
+	/* TODO: register unsolicited results handlers */
 
 	hfp_hf_register(dev->hf, bvra_cb, "+BRVA", dev, NULL);
 	hfp_hf_register(dev->hf, vgm_cb, "+VGM", dev, NULL);
@@ -965,6 +975,7 @@ static void set_indicator_value(uint8_t index, unsigned int val,
 			continue;
 
 		ag_ind[i].val = val;
+		ag_ind[i].cb(val);
 		return;
 	}
 }
