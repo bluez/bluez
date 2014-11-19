@@ -4532,15 +4532,15 @@ static void send_dev_complete_response(struct gatt_device *device,
 
 			range->start = gatt_db_attribute_get_handle(
 								val->attrib);
-			range->end = range->start;
 
 			type = gatt_db_attribute_get_type(val->attrib);
 			if (is_service(type))
-				range->end =
-					gatt_db_attribute_get_service_handles(
+				gatt_db_attribute_get_service_handles(
 								val->attrib,
 								NULL,
 								&range->end);
+			else
+				range->end = range->start;
 
 			list = g_slist_append(list, range);
 
