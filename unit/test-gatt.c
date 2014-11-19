@@ -642,6 +642,12 @@ const struct test_step test_read_by_type_3 = {
 	.expected_att_ecode = 0x0a,
 };
 
+const struct test_step test_read_by_type_4 = {
+	.handle = 0x0001,
+	.end_handle = 0xffff,
+	.expected_att_ecode = 0x08,
+};
+
 static void read_by_type_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data)
@@ -853,6 +859,13 @@ int main(int argc, char *argv[])
 			raw_pdu(0x03, 0x00, 0x02),
 			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
 			raw_pdu(0x01, 0x08, 0x0b, 0x00, 0x0a));
+
+	define_test_att("/TP/GAR/CL/BI-09-C", test_read_by_type, &uuid_char_16,
+			&test_read_by_type_4,
+			raw_pdu(0x02, 0x00, 0x02),
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x01, 0x08, 0x0b, 0x00, 0x08));
 
 	return g_test_run();
 }
