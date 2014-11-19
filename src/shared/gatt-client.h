@@ -145,6 +145,13 @@ bool bt_gatt_client_read_long_value(struct bt_gatt_client *client,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
 
+
+bool bt_gatt_client_read_multiple(struct bt_gatt_client *client,
+					uint16_t *handles, uint8_t num_handles,
+					bt_gatt_client_read_callback_t callback,
+					void *user_data,
+					bt_gatt_client_destroy_func_t destroy);
+
 bool bt_gatt_client_write_without_response(struct bt_gatt_client *client,
 					uint16_t value_handle,
 					bool signed_write,
