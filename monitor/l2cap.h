@@ -92,7 +92,7 @@ static inline bool l2cap_frame_get_le16(struct l2cap_frame *frame,
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
 
-	return 0;
+	return true;
 }
 
 static inline bool l2cap_frame_get_be32(struct l2cap_frame *frame,
