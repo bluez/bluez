@@ -139,6 +139,13 @@ and Command Complete events:
 0x10	Cancelled
 0x11	Invalid Index
 
+As a general rule all commands generate the events as specified below,
+however invalid lengths or unknown commands will always generate a
+Command Status response (with Unknown Command or Invalid Parameters
+status). Sending a command with an invalid Controller Index value will
+also always generate a Command Status event with the Invalid Index
+status code.
+
 
 Read Management Version Information Command
 ===========================================
