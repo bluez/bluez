@@ -53,6 +53,9 @@ bool bt_gatt_iter_next_descriptor(struct bt_gatt_iter *iter, uint16_t *handle,
 bool bt_gatt_iter_next_included_service(struct bt_gatt_iter *iter,
 				uint16_t *handle, uint16_t *start_handle,
 				uint16_t *end_handle, uint8_t uuid[16]);
+bool bt_gatt_iter_next_read_by_type(struct bt_gatt_iter *iter,
+				uint16_t *handle, uint16_t *length,
+				const uint8_t **value);
 
 typedef void (*bt_gatt_destroy_func_t)(void *user_data);
 
