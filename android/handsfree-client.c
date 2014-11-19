@@ -95,11 +95,14 @@ enum hfp_indicator {
 	HFP_INDICATOR_LAST
 };
 
+typedef void (*ciev_func_t)(uint8_t val);
+
 struct indicator {
 	uint8_t index;
 	uint32_t min;
 	uint32_t max;
 	uint32_t val;
+	ciev_func_t cb;
 };
 
 struct hfp_codec {
@@ -834,6 +837,32 @@ static void clcc_cb(struct hfp_context *context, void *user_data)
 					sizeof(*ev) + ev->number_len, ev);
 }
 
+static void ciev_cb(struct hfp_context *context, void *user_data)
+{
+	struct device *dev = user_data;
+	unsigned int index, val;
+	int i;
+
+	DBG("");
+
+	if (!hfp_context_get_number(context, &index))
+		return;
+
+	if (!hfp_context_get_number(context, &val))
+		return;
+
+	for (i = 0; i < HFP_INDICATOR_LAST; i++) {
+		if (dev->ag_ind[i].index != index)
+			continue;
+
+		if (dev->ag_ind[i].cb) {
+			dev->ag_ind[i].val = val;
+			dev->ag_ind[i].cb(val);
+			return;
+		}
+	}
+}
+
 static void slc_completed(struct device *dev)
 {
 	DBG("");
@@ -850,6 +879,7 @@ static void slc_completed(struct device *dev)
 	hfp_hf_register(dev->hf, vgs_cb, "+VGS", dev, NULL);
 	hfp_hf_register(dev->hf, brth_cb, "+BTRH", dev, NULL);
 	hfp_hf_register(dev->hf, clcc_cb, "+CLCC", dev, NULL);
+	hfp_hf_register(dev->hf, ciev_cb, "+CIEV", dev, NULL);
 }
 
 static void slc_chld_cb(struct hfp_context *context, void *user_data)
@@ -1020,6 +1050,129 @@ failed:
 	slc_error(dev);
 }
 
+static void ciev_service_cb(uint8_t val)
+{
+	struct hal_ev_hf_client_net_state ev;
+
+	DBG("");
+
+	if (val > HAL_HF_CLIENT_NET_ROAMING_TYPE_ROAMING) {
+		error("hf-client: Incorrect state %u:", val);
+		return;
+	}
+
+	ev.state = val;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+				HAL_EV_HF_CLIENT_NET_STATE, sizeof(ev), &ev);
+}
+
+static void ciev_call_cb(uint8_t val)
+{
+	struct hal_ev_hf_client_call_indicator ev;
+
+	DBG("");
+
+	if (val > HAL_HF_CLIENT_CALL_IND_CALL_IN_PROGERSS) {
+		error("hf-client: Incorrect call state %u:", val);
+		return;
+	}
+
+	ev.call = val;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_EV_HF_CLIENT_CALL_INDICATOR, sizeof(ev), &ev);
+}
+
+static void ciev_callsetup_cb(uint8_t val)
+{
+	struct hal_ev_hf_client_call_setup_indicator ev;
+
+	DBG("");
+
+	if (val > HAL_HF_CLIENT_CALL_SETUP_ALERTING) {
+		error("hf-client: Incorrect call setup state %u:", val);
+		return;
+	}
+
+	ev.call_setup = val;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_EV_HF_CLIENT_CALL_SETUP_INDICATOR,
+					sizeof(ev), &ev);
+}
+
+static void ciev_callheld_cb(uint8_t val)
+{
+	struct hal_ev_hf_client_call_held_indicator ev;
+
+	DBG("");
+
+	if (val > HAL_HF_CLIENT_CALL_SETUP_IND_HOLD) {
+		error("hf-client: Incorrect call held state %u:", val);
+		return;
+	}
+
+	ev.call_held = val;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_EV_HF_CLIENT_CALL_HELD_INDICATOR,
+					sizeof(ev), &ev);
+}
+
+static void ciev_signal_cb(uint8_t val)
+{
+	struct hal_ev_hf_client_net_signal_strength ev;
+
+	DBG("");
+
+	if (val > 5) {
+		error("hf-client: Incorrect signal value %u:", val);
+		return;
+	}
+
+	ev.signal_strength = val;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_EV_HF_CLIENT_NET_SIGNAL_STRENGTH,
+					sizeof(ev), &ev);
+}
+
+static void ciev_roam_cb(uint8_t val)
+{
+	struct hal_ev_hf_client_net_roaming_type ev;
+
+	DBG("");
+
+	if (val > HAL_HF_CLIENT_NET_ROAMING_TYPE_ROAMING) {
+		error("hf-client: Incorrect roaming state %u:", val);
+		return;
+	}
+
+	ev.state = val;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+					HAL_EV_HF_CLIENT_NET_ROAMING_TYPE,
+					sizeof(ev), &ev);
+}
+
+static void ciev_battchg_cb(uint8_t val)
+{
+	struct hal_ev_hf_client_battery_level ev;
+
+	DBG("");
+
+	if (val > 5) {
+		error("hf-client: Incorrect battery charge value %u:", val);
+		return;
+	}
+
+	ev.battery_level = val;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT,
+			HAL_EV_HF_CLIENT_BATTERY_LEVEL, sizeof(ev), &ev);
+}
+
 static void set_indicator_parameters(uint8_t index, const char *indicator,
 						unsigned int min,
 						unsigned int max,
@@ -1033,6 +1186,7 @@ static void set_indicator_parameters(uint8_t index, const char *indicator,
 		ag_ind[HFP_INDICATOR_SERVICE].index = index;
 		ag_ind[HFP_INDICATOR_SERVICE].min = min;
 		ag_ind[HFP_INDICATOR_SERVICE].max = max;
+		ag_ind[HFP_INDICATOR_SERVICE].cb = ciev_service_cb;
 		return;
 	}
 
@@ -1040,6 +1194,7 @@ static void set_indicator_parameters(uint8_t index, const char *indicator,
 		ag_ind[HFP_INDICATOR_CALL].index = index;
 		ag_ind[HFP_INDICATOR_CALL].min = min;
 		ag_ind[HFP_INDICATOR_CALL].max = max;
+		ag_ind[HFP_INDICATOR_CALL].cb = ciev_call_cb;
 		return;
 	}
 
@@ -1047,6 +1202,7 @@ static void set_indicator_parameters(uint8_t index, const char *indicator,
 		ag_ind[HFP_INDICATOR_CALLSETUP].index = index;
 		ag_ind[HFP_INDICATOR_CALLSETUP].min = min;
 		ag_ind[HFP_INDICATOR_CALLSETUP].max = max;
+		ag_ind[HFP_INDICATOR_CALLSETUP].cb = ciev_callsetup_cb;
 		return;
 	}
 
@@ -1054,6 +1210,7 @@ static void set_indicator_parameters(uint8_t index, const char *indicator,
 		ag_ind[HFP_INDICATOR_CALLHELD].index = index;
 		ag_ind[HFP_INDICATOR_CALLHELD].min = min;
 		ag_ind[HFP_INDICATOR_CALLHELD].max = max;
+		ag_ind[HFP_INDICATOR_CALLHELD].cb = ciev_callheld_cb;
 		return;
 	}
 
@@ -1061,6 +1218,7 @@ static void set_indicator_parameters(uint8_t index, const char *indicator,
 		ag_ind[HFP_INDICATOR_SIGNAL].index = index;
 		ag_ind[HFP_INDICATOR_SIGNAL].min = min;
 		ag_ind[HFP_INDICATOR_SIGNAL].max = max;
+		ag_ind[HFP_INDICATOR_SIGNAL].cb = ciev_signal_cb;
 		return;
 	}
 
@@ -1068,6 +1226,7 @@ static void set_indicator_parameters(uint8_t index, const char *indicator,
 		ag_ind[HFP_INDICATOR_ROAM].index = index;
 		ag_ind[HFP_INDICATOR_ROAM].min = min;
 		ag_ind[HFP_INDICATOR_ROAM].max = max;
+		ag_ind[HFP_INDICATOR_ROAM].cb = ciev_roam_cb;
 		return;
 	}
 
@@ -1075,6 +1234,7 @@ static void set_indicator_parameters(uint8_t index, const char *indicator,
 		ag_ind[HFP_INDICATOR_BATTCHG].index = index;
 		ag_ind[HFP_INDICATOR_BATTCHG].min = min;
 		ag_ind[HFP_INDICATOR_BATTCHG].max = max;
+		ag_ind[HFP_INDICATOR_BATTCHG].cb = ciev_battchg_cb;
 		return;
 	}
 
