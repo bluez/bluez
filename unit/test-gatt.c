@@ -705,6 +705,13 @@ const struct test_step test_multiple_read_2 = {
 	.expected_att_ecode = 0x02
 };
 
+const struct test_step test_multiple_read_3 = {
+	.handle = 0x0003,
+	.end_handle = 0x0007,
+	.func = test_multiple_read,
+	.expected_att_ecode = 0x01
+};
+
 static void read_by_type_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data)
@@ -949,6 +956,12 @@ int main(int argc, char *argv[])
 			SERVICE_DATA_1_PDU,
 			raw_pdu(0x0e, 0x03, 0x00, 0x07, 0x00),
 			raw_pdu(0x01, 0x0e, 0x03, 0x00, 0x02));
+
+	define_test_client("/TP/GAR/CL/BI-19-C", test_client, service_data_1,
+			&test_multiple_read_3,
+			SERVICE_DATA_1_PDU,
+			raw_pdu(0x0e, 0x03, 0x00, 0x07, 0x00),
+			raw_pdu(0x01, 0x0e, 0x03, 0x00, 0x01));
 
 	return g_test_run();
 }
