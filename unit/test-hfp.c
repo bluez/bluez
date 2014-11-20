@@ -358,6 +358,25 @@ static void test_fragmented(gconstpointer data)
 	execute_context(context);
 }
 
+static void test_send_and_close(gconstpointer data)
+{
+	struct context *context = create_context(data);
+	bool ret;
+
+	context->hfp = hfp_gw_new(context->fd_client);
+	g_assert(context->hfp);
+
+	ret = hfp_gw_set_close_on_unref(context->hfp, true);
+	g_assert(ret);
+
+	send_pdu(context);
+
+	hfp_gw_unref(context->hfp);
+	context->hfp = NULL;
+
+	execute_context(context);
+}
+
 static void check_ustring_1(struct hfp_context *result,
 				enum hfp_gw_cmd_type type, void *user_data)
 {
@@ -744,7 +763,7 @@ int main(int argc, char *argv[])
 								'\"', '\r'),
 			type_pdu(HFP_GW_CMD_TYPE_SET, 0),
 			data_end());
-	define_test("/hfp/test_empty", test_fragmented, NULL,
+	define_test("/hfp/test_empty", test_send_and_close, NULL,
 			raw_pdu('\r'),
 			data_end());
 	define_hf_test("/hfp_hf/test_init", test_hf_init, NULL, NULL,
