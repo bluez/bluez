@@ -1215,6 +1215,9 @@ struct bt_gatt_server *bt_gatt_server_ref(struct bt_gatt_server *server)
 
 void bt_gatt_server_unref(struct bt_gatt_server *server)
 {
+	if (!server)
+		return;
+
 	if (__sync_sub_and_fetch(&server->ref_count, 1))
 		return;
 
