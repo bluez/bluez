@@ -473,7 +473,8 @@ static void process_input(struct hfp_gw *hfp)
 		char *str2;
 		size_t len2;
 
-		/* If there is no more data in ringbuffer,
+		/*
+		 * If there is no more data in ringbuffer,
 		 * it's just an incomplete command.
 		 */
 		if (len == ringbuf_len(hfp->read_buf))
