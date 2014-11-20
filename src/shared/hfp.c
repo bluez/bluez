@@ -520,7 +520,7 @@ static void process_input(struct hfp_gw *hfp)
 
 	handle_at_command(hfp, str);
 
-	len = ringbuf_drain(hfp->read_buf, count + 1);
+	ringbuf_drain(hfp->read_buf, count + 1);
 
 	if (free_ptr)
 		free(ptr);
