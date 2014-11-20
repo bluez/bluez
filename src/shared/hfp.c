@@ -476,54 +476,73 @@ static void process_input(struct hfp_gw *hfp)
 	char *str, *ptr;
 	size_t len, count;
 	bool free_ptr = false;
+	bool read_again;
 
-	str = ringbuf_peek(hfp->read_buf, 0, &len);
-	if (!str)
-		return;
-
-	ptr = memchr(str, '\r', len);
-	if (!ptr) {
-		char *str2;
-		size_t len2;
-
-		/*
-		 * If there is no more data in ringbuffer,
-		 * it's just an incomplete command.
-		 */
-		if (len == ringbuf_len(hfp->read_buf))
+	do {
+		str = ringbuf_peek(hfp->read_buf, 0, &len);
+		if (!str)
 			return;
 
-		str2 = ringbuf_peek(hfp->read_buf, len, &len2);
-		if (!str2)
-			return;
+		ptr = memchr(str, '\r', len);
+		if (!ptr) {
+			char *str2;
+			size_t len2;
 
-		ptr = memchr(str2, '\r', len2);
-		if (!ptr)
-			return;
+			/*
+			 * If there is no more data in ringbuffer,
+			 * it's just an incomplete command.
+			 */
+			if (len == ringbuf_len(hfp->read_buf))
+				return;
 
-		*ptr = '\0';
+			str2 = ringbuf_peek(hfp->read_buf, len, &len2);
+			if (!str2)
+				return;
 
-		count = len2 + len;
-		ptr = malloc(count);
-		if (!ptr)
-			return;
+			ptr = memchr(str2, '\r', len2);
+			if (!ptr)
+				return;
 
-		memcpy(ptr, str, len);
-		memcpy(ptr + len, str2, len2);
+			*ptr = '\0';
 
-		free_ptr = true;
-		str = ptr;
-	} else {
-		count = ptr - str;
-		*ptr = '\0';
-	}
+			count = len2 + len;
+			ptr = malloc(count);
+			if (!ptr)
+				return;
 
-	handle_at_command(hfp, str);
+			memcpy(ptr, str, len);
+			memcpy(ptr + len, str2, len2);
 
-	ringbuf_drain(hfp->read_buf, count + 1);
+			free_ptr = true;
+			str = ptr;
+		} else {
+			count = ptr - str;
+			*ptr = '\0';
+		}
 
-	if (free_ptr)
-		free(ptr);
+		if (!handle_at_command(hfp, str))
+			/*
+			 * Command is not handled that means that was some
+			 * trash. Let's skip that and keep reading from ring
+			 * buffer.
+			 */
+			read_again = true;
+		else
+			/*
+			 * Command has been handled. If we are waiting for a
+			 * result from upper layer, we can stop reading. If we
+			 * already reply i.e. ERROR on unknown command, then we
+			 * can keep reading ring buffer. Actually ring buffer
+			 * should be empty but lets just look there.
+			 */
+			read_again = !hfp->result_pending;
+
+		ringbuf_drain(hfp->read_buf, count + 1);
+
+		if (free_ptr)
+			free(ptr);
+
+	} while (read_again);
 }
 
 static void read_watch_destroy(void *user_data)
