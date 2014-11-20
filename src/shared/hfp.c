@@ -505,13 +505,13 @@ static void process_input(struct hfp_gw *hfp)
 		*ptr = '\0';
 	}
 
-	hfp->result_pending = true;
-
 	if (!call_prefix_handler(hfp, str)) {
-		if (hfp->command_callback)
+		if (hfp->command_callback) {
 			hfp->command_callback(str, hfp->command_data);
-		else
+			hfp->result_pending = true;
+		} else {
 			hfp_gw_send_result(hfp, HFP_RESULT_ERROR);
+		}
 	}
 
 	len = ringbuf_drain(hfp->read_buf, count + 1);
