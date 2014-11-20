@@ -116,9 +116,14 @@ const btgatt_interface_t *if_gatt = NULL;
 		} \
 	} while (0)
 
-#define GET_VERIFY_HEX_STRING(n, v, l) \
+#define GET_VERIFY_HEX_STRING(i, v, l) \
 	do { \
 		int ll;\
+		const char *n = argv[i]; \
+		if (argc <= i) { \
+			haltest_error("No value specified\n"); \
+			return; \
+		} \
 		if (n[0] != '0' || (n[1] != 'X' && n[1] != 'x')) { \
 			haltest_error("Value must be hex string\n"); \
 			return; \
@@ -1366,13 +1371,7 @@ static void write_characteristic_p(int argc, const char **argv)
 	}
 	write_type = atoi(argv[5]);
 
-	/* value */
-	if (argc <= 6) {
-		haltest_error("No value specified\n");
-		return;
-	}
-
-	GET_VERIFY_HEX_STRING(argv[6], value, len);
+	GET_VERIFY_HEX_STRING(6, value, len);
 
 	/* auth_req */
 	if (argc > 7)
@@ -1984,8 +1983,7 @@ static void gatts_send_indication_p(int argc, const char *argv[])
 	}
 	confirm = atoi(argv[5]);
 
-	if (argc > 6)
-		GET_VERIFY_HEX_STRING(argv[6], data, len);
+	GET_VERIFY_HEX_STRING(6, data, len);
 
 	EXEC(if_gatt->server->send_indication, server_if, attr_handle, conn_id,
 							len, confirm, data);
@@ -2013,15 +2011,7 @@ static void gatts_send_response_p(int argc, const char *argv[])
 	data.attr_value.auth_req = 0;
 	data.attr_value.len = 0;
 
-	if (argc > 7) {
-		GET_VERIFY_HEX_STRING(argv[7], data.attr_value.value,
-							data.attr_value.len);
-
-		if (data.attr_value.len == 0) {
-			haltest_error("Failed to parse response value");
-			return;
-		}
-	}
+	GET_VERIFY_HEX_STRING(7, data.attr_value.value, data.attr_value.len);
 
 	haltest_info("conn_id %d, trans_id %d, status %d", conn_id, trans_id,
 									status);
