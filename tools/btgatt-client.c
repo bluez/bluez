@@ -449,6 +449,7 @@ static void cmd_read_multiple(struct client *cli, char *cmd_str)
 		value[i] = strtol(argv[i], &endptr, 0);
 		if (endptr == argv[i] || *endptr != '\0' || !value[i]) {
 			printf("Invalid value byte: %s\n", argv[i]);
+			free(value);
 			return;
 		}
 	}
