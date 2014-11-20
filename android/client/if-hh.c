@@ -100,6 +100,18 @@ static void virtual_unplug_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status)
 						bthh_status_t2str(hh_status));
 }
 
+/* Callback for Android 5.0 handshake api. */
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static void handshake_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status)
+{
+	char addr[MAX_ADDR_STR_LEN];
+
+	haltest_info("%s: bd_addr=%s hh_status=%s\n", __func__,
+						bt_bdaddr_t2str(bd_addr, addr),
+						bthh_status_t2str(hh_status));
+}
+#endif
+
 /*
  * Callback for get hid info
  * hid_info will contain attr_mask, sub_class, app_id, vendor_id, product_id,
@@ -163,7 +175,10 @@ static bthh_callbacks_t bthh_callbacks = {
 	.protocol_mode_cb = protocol_mode_cb,
 	.idle_time_cb = idle_time_cb,
 	.get_report_cb = get_report_cb,
-	.virtual_unplug_cb = virtual_unplug_cb
+	.virtual_unplug_cb = virtual_unplug_cb,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.handshake_cb = handshake_cb
+#endif
 };
 
 /* init */
