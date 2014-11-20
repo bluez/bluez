@@ -500,8 +500,10 @@ Properties	string Folder [readonly]
 
 		string DatabaseIdentifier [readonly, optional]
 
-			128 bits persistent identifier.
+			128 bits persistent database identifier.
 
+			Possible values: 32-character hexadecimal such
+			as A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
 
 Synchronization hierarchy
 =========================
