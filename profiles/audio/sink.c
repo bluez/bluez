@@ -292,6 +292,9 @@ int sink_connect(struct btd_service *service)
 	if (sink->connect_id > 0 || sink->disconnect_id > 0)
 		return -EBUSY;
 
+	if (sink->state == SINK_STATE_CONNECTING)
+		return -EBUSY;
+
 	if (sink->stream_state >= AVDTP_STATE_OPEN)
 		return -EALREADY;
 
