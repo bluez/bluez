@@ -256,6 +256,10 @@ static void pbap_setpath_cb(struct obc_session *session,
 
 	if (err != NULL)
 		pbap_reset_path(pbap);
+	else
+		g_dbus_emit_property_changed(conn,
+					obc_session_get_path(pbap->session),
+					PBAP_INTERFACE, "Folder");
 
 	if (err) {
 		DBusMessage *reply = g_dbus_create_error(request->msg,
@@ -971,6 +975,31 @@ static const GDBusMethodTable pbap_methods[] = {
 	{ }
 };
 
+static gboolean folder_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct pbap_data *pbap = data;
+
+	return pbap->path != NULL;
+}
+
+static gboolean get_folder(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct pbap_data *pbap = data;
+
+	if (!pbap->path)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &pbap->path);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable pbap_properties[] = {
+	{ "Folder", "s", get_folder, NULL, folder_exists },
+	{ }
+};
+
 static void pbap_free(void *data)
 {
 	struct pbap_data *pbap = data;
@@ -1030,7 +1059,8 @@ static int pbap_probe(struct obc_session *session)
 						pbap->supported_features);
 
 	if (!g_dbus_register_interface(conn, path, PBAP_INTERFACE, pbap_methods,
-						NULL, NULL, pbap, pbap_free)) {
+						NULL, pbap_properties, pbap,
+						pbap_free)) {
 		pbap_free(pbap);
 		return -ENOMEM;
 	}
