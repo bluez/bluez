@@ -588,6 +588,9 @@ static void put_uuid_le(const bt_uuid_t *src, void *dst)
 
 static inline int get_uuid_len(const bt_uuid_t *uuid)
 {
+	if (!uuid)
+		return 0;
+
 	return (uuid->type == BT_UUID16) ? 2 : 16;
 }
 
