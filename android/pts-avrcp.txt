@@ -1,8 +1,8 @@
 PTS test results for AVRCP
 
 PTS version: 5.3
-Tested: 08-October-2014
-Android version: 4.4.4
+Tested: 20-November-2014
+Android version: 5.0
 
 Results:
 PASS	test passed
@@ -188,7 +188,7 @@ TC_TG_PTT_BV_02_I	PASS
 TC_TG_PTT_BV_03_I	N/A
 TC_TG_PTT_BV_04_I	N/A
 TC_TG_PTT_BV_05_I	N/A
-TC_TG_RCR_BV_02_C	PASS
+TC_TG_RCR_BV_02_C	PASS	One can use: lame --ta/tl for creating metadata
 TC_TG_RCR_BV_04_C	PASS
 TC_TG_VLH_BI_01_C	N/A
 TC_TG_VLH_BI_02_C	N/A
