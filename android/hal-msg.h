@@ -1353,8 +1353,22 @@ struct hal_ev_hidhost_conn_state {
 	uint8_t state;
 } __attribute__((packed));
 
-#define HAL_HIDHOST_STATUS_OK		0x00
-#define HAL_HIDHOST_GENERAL_ERROR	0x06
+#define HAL_HIDHOST_STATUS_OK			0x00
+
+#define HAL_HIDHOST_HS_NOT_READY		0x01
+#define HAL_HIDHOST_HS_INVALID_RAPORT_ID	0x02
+#define HAL_HIDHOST_HS_TRANS_NOT_SUPPORTED	0x03
+#define HAL_HIDHOST_HS_INVALID_PARAM		0x04
+#define HAL_HIDHOST_HS_ERROR			0x05
+
+#define HAL_HIDHOST_GENERAL_ERROR		0x06
+#define HAL_HIDHOST_SDP_ERROR			0x07
+#define HAL_HIDHOST_PROTOCOL_ERROR		0x08
+#define HAL_HIDHOST_DB_ERROR			0x09
+#define HAL_HIDHOST_TOD_UNSUPPORTED_ERROR	0x0a
+#define HAL_HIDHOST_NO_RESOURCES_ERROR		0x0b
+#define HAL_HIDHOST_AUTH_FAILED_ERROR		0x0c
+#define HAL_HIDHOST_HDL_ERROR			0x0d
 
 #define HAL_EV_HIDHOST_INFO			0x82
 struct hal_ev_hidhost_info {
@@ -1394,6 +1408,12 @@ struct hal_ev_hidhost_get_report {
 
 #define HAL_EV_HIDHOST_VIRTUAL_UNPLUG		0x86
 struct hal_ev_hidhost_virtual_unplug {
+	uint8_t  bdaddr[6];
+	uint8_t  status;
+} __attribute__((packed));
+
+#define HAL_EV_HIDHOST_HANDSHAKE		0x87
+struct hal_ev_hidhost_handshake {
 	uint8_t  bdaddr[6];
 	uint8_t  status;
 } __attribute__((packed));
