@@ -252,6 +252,15 @@ struct hal_cmd_le_test_mode {
 	uint8_t  data[0];
 } __attribute__((packed));
 
+#define HAL_OP_GET_CONNECTION_STATE	0x15
+struct hal_cmd_get_connection_state {
+	uint8_t  bdaddr[6];
+} __attribute__((packed));
+
+struct hal_rsp_get_connection_state {
+	int32_t connection_state;
+} __attribute__((packed));
+
 /* Bluetooth Socket HAL api */
 
 #define HAL_SOCK_RFCOMM		0x01

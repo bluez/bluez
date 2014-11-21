@@ -957,11 +957,26 @@ static int config_hci_snoop_log(uint8_t enable)
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 static int get_connection_state(const bt_bdaddr_t *bd_addr)
 {
+	struct hal_cmd_get_connection_state cmd;
+	struct hal_rsp_get_connection_state rsp;
+	size_t rsp_len = sizeof(rsp);
+	bt_status_t status;
+
 	DBG("bdaddr: %s", bdaddr2str(bd_addr));
 
-	/* TODO: implement */
+	if (!interface_ready())
+		return 0;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	status = hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
+			HAL_OP_GET_CONNECTION_STATE, sizeof(cmd), &cmd,
+			&rsp_len, &rsp, NULL);
+
+	if (status != BT_STATUS_SUCCESS)
+		return 0;
+
+	return rsp.connection_state;
 }
 
 static int set_os_callouts(bt_os_callouts_t *callouts)

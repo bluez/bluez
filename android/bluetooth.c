@@ -5134,6 +5134,27 @@ static void handle_le_test_mode_cmd(const void *buf, uint16_t len)
 							HAL_STATUS_FAILED);
 }
 
+static void handle_get_connection_state(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_get_connection_state *cmd = buf;
+	struct hal_rsp_get_connection_state rsp;
+	char address[18];
+	bdaddr_t bdaddr;
+
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+	ba2str(&bdaddr, address);
+
+	DBG("%s", address);
+
+	/* TODO */
+
+	rsp.connection_state = 0;
+
+	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_OP_GET_CONNECTION_STATE, sizeof(rsp), &rsp,
+				-1);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_ENABLE */
 	{ handle_enable_cmd, false, 0 },
@@ -5184,6 +5205,9 @@ static const struct ipc_handler cmd_handlers[] = {
 					sizeof(struct hal_cmd_dut_mode_send) },
 	/* HAL_OP_LE_TEST_MODE */
 	{ handle_le_test_mode_cmd, true, sizeof(struct hal_cmd_le_test_mode) },
+	/* HAL_OP_GET_CONNECTION_STATE */
+	{ handle_get_connection_state, false,
+				sizeof(struct hal_cmd_get_connection_state) },
 };
 
 bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
