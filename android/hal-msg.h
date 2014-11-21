@@ -38,8 +38,9 @@ static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
 #define HAL_SERVICE_ID_HANDSFREE_CLIENT	10
 #define HAL_SERVICE_ID_MAP_CLIENT	11
 #define HAL_SERVICE_ID_AVRCP_CTRL	12
+#define HAL_SERVICE_ID_A2DP_SINK	13
 
-#define HAL_SERVICE_ID_MAX HAL_SERVICE_ID_AVRCP_CTRL
+#define HAL_SERVICE_ID_MAX HAL_SERVICE_ID_A2DP_SINK
 
 /* Core Service */
 
@@ -363,7 +364,7 @@ struct hal_cmd_hidhost_send_data {
 	uint8_t  data[0];
 } __attribute__((packed));
 
-/* a2dp HAL API */
+/* a2dp source and sink HAL API */
 
 #define HAL_OP_A2DP_CONNECT	0x01
 struct hal_cmd_a2dp_connect {
@@ -1500,6 +1501,13 @@ struct hal_ev_a2dp_conn_state {
 struct hal_ev_a2dp_audio_state {
 	uint8_t state;
 	uint8_t bdaddr[6];
+} __attribute__((packed));
+
+#define HAL_EV_A2DP_AUDIO_CONFIG		0x83
+struct hal_ev_a2dp_audio_config {
+	uint8_t  bdaddr[6];
+	uint32_t sample_rate;
+	uint8_t  channel_count;
 } __attribute__((packed));
 
 #define HAL_EV_HANDSFREE_CONN_STATE_DISCONNECTED	0x00

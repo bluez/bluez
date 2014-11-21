@@ -47,6 +47,7 @@ bthl_interface_t *bt_get_health_interface(void);
 btrc_ctrl_interface_t *bt_get_avrcp_ctrl_interface(void);
 bthf_client_interface_t *bt_get_hf_client_interface(void);
 btmce_interface_t *bt_get_map_client_interface(void);
+btav_interface_t *bt_get_a2dp_sink_interface(void);
 #endif
 
 void bt_thread_associate(void);

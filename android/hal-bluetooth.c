@@ -898,6 +898,9 @@ static const void *get_profile_interface(const char *profile_id)
 
 	if (!strcmp(profile_id, BT_PROFILE_MAP_CLIENT_ID))
 		return bt_get_map_client_interface();
+
+	if (!strcmp(profile_id, BT_PROFILE_ADVANCED_AUDIO_SINK_ID))
+		return bt_get_a2dp_sink_interface();
 #endif
 
 	return NULL;
