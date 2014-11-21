@@ -331,7 +331,12 @@ static void le_test_mode_cb(bt_status_t status, uint16_t num_packets)
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 static void energy_info_cb(bt_activity_energy_info *energy_info)
 {
-	haltest_info("%s\n", __func__);
+	haltest_info("%s status=%s, ctrl_state=0x%02X, tx_time=0x%jx,"
+			"rx_time=0x%jx, idle_time=0x%jx, energu_used=0x%jx\n",
+			__func__, bt_status_t2str(energy_info->status),
+			energy_info->ctrl_state, energy_info->tx_time,
+			energy_info->rx_time, energy_info->idle_time,
+			energy_info->energy_used);
 }
 #endif
 
