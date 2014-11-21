@@ -465,7 +465,7 @@ static gboolean ctrl_io_watch_cb(GIOChannel *chan, gpointer data)
 		bt_hid_notify_handshake(dev, buf, bread);
 		break;
 	case HID_MSG_CONTROL:
-		if ((buf[0] & !HID_MSG_TYPE_MASK) == HID_VIRTUAL_CABLE_UNPLUG)
+		if ((buf[0] & ~HID_MSG_TYPE_MASK) == HID_VIRTUAL_CABLE_UNPLUG)
 			bt_hid_notify_virtual_unplug(dev, buf, bread);
 		break;
 	default:
