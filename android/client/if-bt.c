@@ -409,6 +409,20 @@ static void read_energy_info_p(int argc, const char **argv)
 
 	EXEC(if_bluetooth->read_energy_info);
 }
+
+#define get_connection_state_c complete_addr_c
+
+static void get_connection_state_p(int argc, const char **argv)
+{
+	bt_bdaddr_t addr;
+
+	RETURN_IF_NULL(if_bluetooth);
+
+	VERIFY_ADDR_ARG(2, &addr);
+
+	haltest_info("if_bluetooth->get_connection_state : %d\n",
+				if_bluetooth->get_connection_state(&addr));
+}
 #endif
 
 static void disable_p(int argc, const char **argv)
@@ -892,6 +906,7 @@ static struct method methods[] = {
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	STD_METHODCH(create_bond, "<addr> [<transport>]"),
 	STD_METHOD(read_energy_info),
+	STD_METHODCH(get_connection_state, "<addr>"),
 #else
 	STD_METHODCH(create_bond, "<addr>"),
 #endif
