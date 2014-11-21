@@ -397,6 +397,14 @@ static void enable_p(int argc, const char **argv)
 
 	EXEC(if_bluetooth->enable);
 }
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static void read_energy_info_p(int argc, const char **argv)
+{
+	RETURN_IF_NULL(if_bluetooth);
+
+	EXEC(if_bluetooth->read_energy_info);
+}
+#endif
 
 static void disable_p(int argc, const char **argv)
 {
@@ -878,6 +886,7 @@ static struct method methods[] = {
 	STD_METHOD(cancel_discovery),
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	STD_METHODCH(create_bond, "<addr> [<transport>]"),
+	STD_METHOD(read_energy_info),
 #else
 	STD_METHODCH(create_bond, "<addr>"),
 #endif
