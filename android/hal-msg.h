@@ -994,9 +994,8 @@ struct hal_cmd_gatt_server_add_descriptor {
 	int32_t permissions;
 } __attribute__((packed));
 
-#define GATT_SERVER_TRANSPORT_LE		0x00
-#define GATT_SERVER_TRANSPORT_BREDR		0x01
-#define GATT_SERVER_TRANSPORT_LE_BREDR		0x02
+#define GATT_SERVER_TRANSPORT_LE_BIT		0x01
+#define GATT_SERVER_TRANSPORT_BREDR_BIT		0x02
 
 #define HAL_OP_GATT_SERVER_START_SERVICE	0x1f
 struct hal_cmd_gatt_server_start_service {

@@ -5263,9 +5263,14 @@ static void handle_server_start_service(const void *buf, uint16_t len)
 	struct gatt_db_attribute *attrib;
 	uint8_t status;
 
-	DBG("");
+	DBG("transport 0x%02x", cmd->transport);
 
 	memset(&ev, 0, sizeof(ev));
+
+	if (cmd->transport == 0) {
+		status = HAL_STATUS_FAILED;
+		goto failed;
+	}
 
 	server = find_app_by_id(cmd->server_if);
 	if (!server) {
@@ -5273,20 +5278,13 @@ static void handle_server_start_service(const void *buf, uint16_t len)
 		goto failed;
 	}
 
-	switch (cmd->transport) {
-	case GATT_SERVER_TRANSPORT_BREDR:
-	case GATT_SERVER_TRANSPORT_LE_BREDR:
+	if (cmd->transport & GATT_SERVER_TRANSPORT_BREDR_BIT) {
 		if (!add_service_sdp_record(cmd->service_handle)) {
 			status = HAL_STATUS_FAILED;
 			goto failed;
 		}
-		break;
-	case GATT_SERVER_TRANSPORT_LE:
-		break;
-	default:
-		status = HAL_STATUS_FAILED;
-		goto failed;
 	}
+	/* TODO: Handle BREDR only */
 
 	attrib = gatt_db_get_attribute(gatt_db, cmd->service_handle);
 	if (!attrib) {

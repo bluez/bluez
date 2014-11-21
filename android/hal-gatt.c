@@ -1812,7 +1812,7 @@ static bt_status_t add_descriptor(int server_if, int service_handle,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-static bt_status_t start_service(int server_if, int service_handle,
+static bt_status_t start_service_real(int server_if, int service_handle,
 								int transport)
 {
 	struct hal_cmd_gatt_server_start_service cmd;
@@ -1828,6 +1828,36 @@ static bt_status_t start_service(int server_if, int service_handle,
 					HAL_OP_GATT_SERVER_START_SERVICE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static bt_status_t start_service(int server_if, int service_handle,
+								int transport)
+{
+	return start_service_real(server_if, service_handle, transport);
+}
+#else
+static bt_status_t start_service(int server_if, int service_handle,
+								int transport)
+{
+	int transport_mask = 0;
+
+	/* Android 5 changes transport enum to bit mask. */
+	switch (transport) {
+	case 0:
+		transport_mask = GATT_SERVER_TRANSPORT_LE_BIT;
+		break;
+	case 1:
+		transport_mask = GATT_SERVER_TRANSPORT_BREDR_BIT
+		break;
+	case 2:
+		transport_mask = GATT_SERVER_TRANSPORT_LE_BIT |
+						GATT_SERVER_TRANSPORT_BREDR_BIT;
+		break;
+	}
+
+	return start_service_real(server_if, service_handle, transport_mask);
+}
+#endif
 
 static bt_status_t stop_service(int server_if, int service_handle)
 {
