@@ -327,15 +327,12 @@ static void output_written_cb(guint8 status, const guint8 *pdu,
 	}
 }
 
-static void forward_report(struct uhid_event *ev, void *user_data)
+static struct report *find_report(struct hog_device *hogdev, uint8_t type, uint8_t id)
 {
-	struct hog_device *hogdev = user_data;
-	struct report *report, cmp;
+	struct report cmp;
 	GSList *l;
-	uint8_t *data;
-	int size;
 
-	switch (ev->u.output.rtype) {
+	switch (type) {
 	case UHID_FEATURE_REPORT:
 		cmp.type = HOG_REPORT_TYPE_FEATURE;
 		break;
@@ -346,25 +343,36 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 		cmp.type = HOG_REPORT_TYPE_INPUT;
 		break;
 	default:
-		return;
+		return NULL;
 	}
 
-	cmp.id = 0;
+	cmp.id = hogdev->has_report_id ? id : 0;
+
+	l = g_slist_find_custom(hogdev->reports, &cmp, report_cmp);
+
+	return l ? l->data : NULL;
+}
+
+static void forward_report(struct uhid_event *ev, void *user_data)
+{
+	struct hog_device *hogdev = user_data;
+	struct report *report;
+	void *data;
+	int size;
+
+	report = find_report(hogdev, ev->u.output.rtype, ev->u.output.data[0]);
+	if (!report)
+		return;
+
 	data = ev->u.output.data;
 	size = ev->u.output.size;
 	if (hogdev->has_report_id && size > 0) {
-		cmp.id = *data++;
+		data++;
 		--size;
 	}
 
-	l = g_slist_find_custom(hogdev->reports, &cmp, report_cmp);
-	if (!l)
-		return;
-
-	report = l->data;
-
-	DBG("Sending report type %d ID %d to device 0x%04X handle 0x%X",
-		cmp.type, cmp.id, hogdev->id, report->decl->value_handle);
+	DBG("Sending report type %d ID %d to handle 0x%X", report->type,
+				report->id, report->decl->value_handle);
 
 	if (hogdev->attrib == NULL)
 		return;
