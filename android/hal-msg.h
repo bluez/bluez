@@ -261,6 +261,8 @@ struct hal_rsp_get_connection_state {
 	int32_t connection_state;
 } __attribute__((packed));
 
+#define HAL_OP_READ_ENERGY_INFO		0x16
+
 /* Bluetooth Socket HAL api */
 
 #define HAL_SOCK_RFCOMM		0x01
@@ -1346,6 +1348,16 @@ struct hal_ev_dut_mode_receive {
 struct hal_ev_le_test_mode {
 	uint8_t  status;
 	uint16_t num_packets;
+} __attribute__((packed));
+
+#define HAL_EV_ENERGY_INFO		0x8c
+struct hal_ev_energy_info {
+	uint8_t status;
+	uint8_t ctrl_state;
+	uint64_t tx_time;
+	uint64_t rx_time;
+	uint64_t idle_time;
+	uint64_t energy_used;
 } __attribute__((packed));
 
 #define HAL_HIDHOST_STATE_CONNECTED		0x00

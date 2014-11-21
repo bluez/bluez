@@ -5155,6 +5155,16 @@ static void handle_get_connection_state(const void *buf, uint16_t len)
 				-1);
 }
 
+static void handle_read_energy_info(const void *buf, uint16_t len)
+{
+	DBG("");
+
+	/* TODO */
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_BLUETOOTH, HAL_OP_READ_ENERGY_INFO,
+							HAL_STATUS_UNSUPPORTED);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_ENABLE */
 	{ handle_enable_cmd, false, 0 },
@@ -5208,6 +5218,8 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_GET_CONNECTION_STATE */
 	{ handle_get_connection_state, false,
 				sizeof(struct hal_cmd_get_connection_state) },
+	/* HAL_OP_READ_ENERGY_INFO */
+	{ handle_read_energy_info, false, 0 },
 };
 
 bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)

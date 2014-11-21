@@ -349,6 +349,26 @@ static void handle_le_test_mode(void *buf, uint16_t len, int fd)
 		bt_hal_cbacks->le_test_mode_cb(ev->status, ev->num_packets);
 }
 
+static void handle_energy_info(void *buf, uint16_t len, int fd)
+{
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	struct hal_ev_energy_info *ev = buf;
+	bt_activity_energy_info info;
+
+	DBG("");
+
+	info.ctrl_state = ev->ctrl_state;
+	info.energy_used = ev->energy_used;
+	info.idle_time = ev->idle_time;
+	info.rx_time = ev->rx_time;
+	info.status = ev->status;
+	info.tx_time = ev->status;
+
+	if (bt_hal_cbacks->energy_info_cb)
+		bt_hal_cbacks->energy_info_cb(&info);
+#endif
+}
+
 /*
  * handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
@@ -386,6 +406,8 @@ static const struct hal_ipc_handler ev_handlers[] = {
 				sizeof(struct hal_ev_dut_mode_receive) },
 	/* HAL_EV_LE_TEST_MODE */
 	{ handle_le_test_mode, false, sizeof(struct hal_ev_le_test_mode) },
+	/* HAL_EV_ENERGY_INFO */
+	{ handle_energy_info, false, sizeof(struct hal_ev_energy_info) },
 };
 
 static uint8_t get_mode(void)
@@ -992,9 +1014,11 @@ static int read_energy_info(void)
 {
 	DBG("");
 
-	/* TODO: implement */
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_READ_ENERGY_INFO, 0,
+							NULL, NULL, NULL, NULL);
 }
 #endif
 
