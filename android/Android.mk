@@ -46,6 +46,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/ipc.c \
 	bluez/android/avdtp.c \
 	bluez/android/a2dp.c \
+	bluez/android/a2dp-sink.c \
 	bluez/android/avctp.c \
 	bluez/android/avrcp.c \
 	bluez/android/avrcp-lib.c \
