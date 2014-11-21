@@ -1058,9 +1058,11 @@ Notifications:
 
 
 Bluetooth Advanced Audio HAL (ID 6)
-===================================
+Bluetooth Advanced Audio Sink HAL (ID 13)
+=========================================
 
 Android HAL name: "a2dp" (BT_PROFILE_ADVANCED_AUDIO_ID)
+Android HAL name: "a2dp_sink" (BT_PROFILE_ADVANCED_AUDIO__SINK_ID)
 
 Commands and responses:
 
@@ -1101,6 +1103,14 @@ Notifications:
 		                         0x01 = Stopped
 		                         0x02 = Started
 
+	Opcode 0x83 - Audio Configuration notification
+
+		Notification parameters: Remote address (6 octets)
+					 Sample Rate in Hz (4 octets)
+					 Channel Count (1 octet)
+
+		Valid channel count: 0x01 = Mono
+		                     0x02 = Stereo
 
 Bluetooth Health HAL (ID 7)
 ===========================
