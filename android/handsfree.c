@@ -175,6 +175,8 @@ static GIOChannel *hsp_server = NULL;
 
 static GIOChannel *sco_server = NULL;
 
+static unsigned int max_hfp_clients = 0;
+
 static void set_state(struct hf_device *dev, uint8_t state)
 {
 	struct hal_ev_handsfree_conn_state ev;
@@ -304,8 +306,7 @@ static struct hf_device *get_device(const bdaddr_t *bdaddr)
 	if (dev)
 		return dev;
 
-	/* TODO For now allow only 1 remote device */
-	if (!queue_isempty(devices))
+	if (queue_length(devices) == max_hfp_clients)
 		return NULL;
 
 	return device_create(bdaddr);
@@ -2985,9 +2986,12 @@ static bool bt_sco_register(ipc_disconnect_cb disconnect)
 bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode,
 								int max_clients)
 {
-	DBG("mode 0x%x", mode);
+	DBG("mode 0x%x max_clients %d", mode, max_clients);
 
 	bacpy(&adapter_addr, addr);
+
+	if (max_clients < 1)
+		return false;
 
 	devices = queue_new();
 	if (!devices)
@@ -3001,8 +3005,6 @@ bool bt_handsfree_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode,
 
 	if (mode == HAL_MODE_HANDSFREE_HSP_ONLY)
 		goto done;
-
-	/* TODO: Handle max_clients argument */
 
 	hfp_ag_features = HFP_AG_FEATURES;
 
@@ -3029,6 +3031,8 @@ done:
 
 	bt_sco_register(NULL);
 
+	max_hfp_clients = max_clients;
+
 	return true;
 }
 
@@ -3048,4 +3052,6 @@ void bt_handsfree_unregister(void)
 
 	queue_destroy(devices, (queue_destroy_func_t) device_destroy);
 	devices = NULL;
+
+	max_hfp_clients = 0;
 }
