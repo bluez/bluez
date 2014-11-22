@@ -2556,9 +2556,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	{ handle_disconnect_audio, false,
 		sizeof(struct hal_cmd_handsfree_disconnect_audio) },
 	/* define HAL_OP_HANDSFREE_START_VR */
-	{ handle_start_vr, false, 0 },
+	{ handle_start_vr, false, sizeof(struct hal_cmd_handsfree_start_vr) },
 	/* define HAL_OP_HANDSFREE_STOP_VR */
-	{ handle_stop_vr, false, 0 },
+	{ handle_stop_vr, false, sizeof(struct hal_cmd_handsfree_stop_vr) },
 	/* HAL_OP_HANDSFREE_VOLUME_CONTROL */
 	{ handle_volume_control, false,
 		sizeof(struct hal_cmd_handsfree_volume_control) },
