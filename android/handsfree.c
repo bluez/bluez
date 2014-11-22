@@ -275,13 +275,6 @@ static void device_destroy(struct hf_device *dev)
 	free(dev);
 }
 
-static struct hf_device *find_default_device(void)
-{
-	/* TODO should be replaced by find_device() eventually */
-
-	return queue_peek_head(devices);
-}
-
 static bool match_by_bdaddr(const void *data, const void *match_data)
 {
 	const struct hf_device *dev = data;
@@ -293,7 +286,7 @@ static bool match_by_bdaddr(const void *data, const void *match_data)
 static struct hf_device *find_device(const bdaddr_t *bdaddr)
 {
 	if (!bacmp(bdaddr, BDADDR_ANY))
-		return find_default_device();
+		return queue_peek_head(devices);
 
 	return queue_find(devices, match_by_bdaddr, bdaddr);
 }
