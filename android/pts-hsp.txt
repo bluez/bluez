@@ -1,8 +1,8 @@
 PTS test results for HSP
 
 PTS version: 5.3
-Tested: 10-October-2014
-Android version: 4.4.4
+Tested: 24-November-2014
+Android version: 5.0
 
 Results:
 PASS    test passed
@@ -16,8 +16,8 @@ Test Name               Result  Notes
 TC_AG_IAC_BV_01_I	PASS
 TC_AG_IAC_BV_02_I	N/A
 TC_AG_OAC_BV_01_I	PASS
-HSP_TC_AG_ACR_BV_01_I	PASS
-HSP_TC_AG_ACR_BV_02_I	PASS
+TC_AG_ACR_BV_01_I	PASS
+TC_AG_ACR_BV_02_I	PASS
 TC_AG_ACT_BV_01_I	PASS
 TC_AG_ACT_BV_02_I	PASS
 TC_AG_RAV_BV_01_I	PASS
