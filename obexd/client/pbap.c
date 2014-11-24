@@ -73,6 +73,8 @@
 #define FORMAT_TAG		0X07
 #define PHONEBOOKSIZE_TAG	0X08
 #define NEWMISSEDCALLS_TAG	0X09
+#define PRIMARY_COUNTER_TAG	0X0A
+#define SECONDARY_COUNTER_TAG	0X0B
 #define DATABASEID_TAG		0X0D
 
 #define DOWNLOAD_FEATURE	0x00000001
@@ -135,6 +137,8 @@ struct pbap_data {
 	uint16_t version;
 	uint32_t supported_features;
 	uint8_t databaseid[16];
+	uint8_t primary[16];
+	uint8_t secondary[16];
 };
 
 struct pending_request {
@@ -274,6 +278,44 @@ static void pbap_setpath_cb(struct obc_session *session,
 	pending_request_free(request);
 }
 
+static void read_version(struct pbap_data *pbap, GObexApparam *apparam)
+{
+	const guint8 *data;
+	uint8_t value[16];
+	gsize len;
+
+	if (!(pbap->supported_features & FOLDER_VERSION_FEATURE))
+		return;
+
+	if (!g_obex_apparam_get_bytes(apparam, PRIMARY_COUNTER_TAG, &data,
+								&len)) {
+		len = sizeof(value);
+		memset(value, 0, len);
+		data = value;
+	}
+
+	if (memcmp(pbap->primary, data, len)) {
+		memcpy(pbap->primary, data, len);
+		g_dbus_emit_property_changed(conn,
+					obc_session_get_path(pbap->session),
+					PBAP_INTERFACE, "PrimaryCounter");
+	}
+
+	if (!g_obex_apparam_get_bytes(apparam, SECONDARY_COUNTER_TAG, &data,
+								&len)) {
+		len = sizeof(value);
+		memset(value, 0, len);
+		data = value;
+	}
+
+	if (memcmp(pbap->secondary, data, len)) {
+		memcpy(pbap->secondary, data, len);
+		g_dbus_emit_property_changed(conn,
+					obc_session_get_path(pbap->session),
+					PBAP_INTERFACE, "SecondaryCounter");
+	}
+}
+
 static void read_databaseid(struct pbap_data *pbap, GObexApparam *apparam)
 {
 	const guint8 *data;
@@ -316,6 +358,7 @@ static void read_return_apparam(struct obc_transfer *transfer,
 	g_obex_apparam_get_uint8(apparam, NEWMISSEDCALLS_TAG,
 							new_missed_calls);
 
+	read_version(pbap, apparam);
 	read_databaseid(pbap, apparam);
 }
 
@@ -1061,9 +1104,55 @@ static gboolean get_databaseid(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean version_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct pbap_data *pbap = data;
+
+	return pbap->supported_features & FOLDER_VERSION_FEATURE;
+}
+
+static gboolean get_primary(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct pbap_data *pbap = data;
+	char value[33];
+	const char *pvalue = value;
+
+	if (!pbap->primary)
+		return FALSE;
+
+	if (u128_to_string(pbap->primary, value, sizeof(value)) < 0)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &pvalue);
+
+	return TRUE;
+}
+
+static gboolean get_secondary(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct pbap_data *pbap = data;
+	char value[33];
+	const char *pvalue = value;
+
+	if (!pbap->secondary)
+		return FALSE;
+
+	if (u128_to_string(pbap->secondary, value, sizeof(value)) < 0)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &pvalue);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable pbap_properties[] = {
 	{ "Folder", "s", get_folder, NULL, folder_exists },
 	{ "DatabaseIdentifier", "s", get_databaseid, NULL, databaseid_exists },
+	{ "PrimaryCounter", "s", get_primary, NULL, version_exists },
+	{ "SecondaryCounter", "s", get_secondary, NULL, version_exists },
 	{ }
 };
 
