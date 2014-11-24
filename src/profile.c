@@ -1546,6 +1546,7 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	if (!recs || !recs->data) {
 		error("No SDP records found for %s", ext->name);
+		err = -ENOTSUP;
 		goto failed;
 	}
 
@@ -1557,6 +1558,7 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		if (sdp_get_access_protos(rec, &protos) < 0) {
 			error("Unable to get proto list from %s record",
 								ext->name);
+			err = -ENOTSUP;
 			goto failed;
 		}
 
@@ -1585,6 +1587,7 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	if (!conn->chan && !conn->psm) {
 		error("Failed to find L2CAP PSM or RFCOMM channel for %s",
 								ext->name);
+		err = -ENOTSUP;
 		goto failed;
 	}
 
