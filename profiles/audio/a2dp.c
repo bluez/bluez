@@ -379,7 +379,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 static gboolean auto_config(gpointer data)
 {
 	struct a2dp_setup *setup = data;
-	struct btd_device *dev = avdtp_get_device(setup->session);
+	struct btd_device *dev = NULL;
 	struct btd_service *service;
 
 	/* Check if configuration was aborted */
@@ -388,6 +388,8 @@ static gboolean auto_config(gpointer data)
 
 	if (setup->err != NULL)
 		goto done;
+
+	dev = avdtp_get_device(setup->session);
 
 	avdtp_stream_add_cb(setup->session, setup->stream,
 				stream_state_changed, setup->sep);
