@@ -1455,6 +1455,7 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 static void att_disconnect_cb(void *user_data)
 {
 	struct bt_gatt_client *client = user_data;
+	bool in_init = client->in_init;
 
 	client->disc_id = 0;
 
@@ -1464,7 +1465,7 @@ static void att_disconnect_cb(void *user_data)
 	client->in_init = false;
 	client->ready = false;
 
-	if (client->ready_callback)
+	if (in_init && client->ready_callback)
 		client->ready_callback(false, 0, client->ready_data);
 }
 
