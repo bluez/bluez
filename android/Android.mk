@@ -190,6 +190,7 @@ ifeq ($(ANDROID_GE_5_0_0), 1)
 LOCAL_SRC_FILES += \
 	bluez/android/client/if-hf-client.c \
 	bluez/android/client/if-mce.c \
+	bluez/android/client/if-av-sink.c \
 	bluez/android/client/if-rc-ctrl.c
 endif
 

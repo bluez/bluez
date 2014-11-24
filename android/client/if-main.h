@@ -68,6 +68,7 @@ extern const btgatt_client_interface_t *if_gatt_client;
 extern const btrc_ctrl_interface_t *if_rc_ctrl;
 extern const bthf_client_interface_t *if_hf_client;
 extern const btmce_interface_t *if_mce;
+extern const btav_interface_t *if_av_sink;
 #endif
 
 /*
@@ -96,6 +97,7 @@ extern const struct interface hl_if;
 extern const struct interface ctrl_rc_if;
 extern const struct interface hf_client_if;
 extern const struct interface mce_if;
+extern const struct interface av_sink_if;
 #endif
 
 /* Interfaces that will show up in tool (first part of command line) */

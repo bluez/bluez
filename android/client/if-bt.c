@@ -832,6 +832,7 @@ static void get_profile_interface_c(int argc, const char **argv,
 		BT_PROFILE_HANDSFREE_CLIENT_ID,
 		BT_PROFILE_MAP_CLIENT_ID,
 		BT_PROFILE_AV_RC_CTRL_ID,
+		BT_PROFILE_ADVANCED_AUDIO_SINK_ID,
 #endif
 		NULL
 	};
@@ -878,6 +879,8 @@ static void get_profile_interface_p(int argc, const char **argv)
 		pif = (const void **) &if_hf_client;
 	else if (strcmp(BT_PROFILE_MAP_CLIENT_ID, id) == 0)
 		pif = (const void **) &if_mce;
+	else if (strcmp(BT_PROFILE_ADVANCED_AUDIO_SINK_ID, id) == 0)
+		pif = (const void **) &if_av_sink;
 #endif
 	else
 		haltest_error("%s is not correct for get_profile_interface\n",

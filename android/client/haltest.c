@@ -52,6 +52,7 @@ const struct interface *interfaces[] = {
 	&hf_client_if,
 	&mce_if,
 	&ctrl_rc_if,
+	&av_sink_if,
 #endif
 	NULL
 };
@@ -401,6 +402,7 @@ static void init(void)
 		BT_PROFILE_HANDSFREE_CLIENT_ID,
 		BT_PROFILE_MAP_CLIENT_ID,
 		BT_PROFILE_AV_RC_CTRL_ID,
+		BT_PROFILE_ADVANCED_AUDIO_SINK_ID,
 #endif
 	};
 	const struct method *m;
