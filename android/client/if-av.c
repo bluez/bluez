@@ -50,10 +50,22 @@ static void audio_state(btav_audio_state_t state, bt_bdaddr_t *bd_addr)
 					bt_bdaddr_t2str(bd_addr, last_addr));
 }
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static void audio_config(bt_bdaddr_t *bd_addr, uint32_t sample_rate,
+							uint8_t channel_count) {
+	haltest_info("%s: remote_addr=%s\n sample_rate=%d\n channel_count=%d\n",
+				__func__, bt_bdaddr_t2str(bd_addr, last_addr),
+				sample_rate, channel_count);
+}
+#endif
+
 static btav_callbacks_t av_cbacks = {
 	.size = sizeof(av_cbacks),
 	.connection_state_cb = connection_state,
-	.audio_state_cb = audio_state
+	.audio_state_cb = audio_state,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.audio_config_cb = audio_config,
+#endif
 };
 
 /* init */
