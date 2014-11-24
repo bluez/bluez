@@ -159,9 +159,11 @@ static gboolean watch_callback(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct io_watch *watch = user_data;
-	bool result;
+	bool result, destroy;
 
-	if (cond & (G_IO_ERR | G_IO_NVAL))
+	destroy = watch == watch->io->disconnect_watch;
+
+	if (!destroy && (cond & (G_IO_ERR | G_IO_NVAL)))
 		return FALSE;
 
 	if (watch->callback)
