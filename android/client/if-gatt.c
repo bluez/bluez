@@ -1835,6 +1835,28 @@ static void set_adv_data_p(int argc, const char **argv)
 		service_data_len, (char *) service_data, service_uuid_len,
 		(char *) service_uuid);
 }
+
+/* configure mtu */
+static void configure_mtu_c(int argc, const char **argv,
+					enum_func *enum_func, void **user)
+{
+	if (argc == 2) {
+		*user = conn_id_str;
+		*enum_func = enum_one_string;
+	}
+}
+
+static void configure_mtu_p(int argc, const char **argv)
+{
+	int conn_id;
+	int mtu;
+
+	RETURN_IF_NULL(if_gatt);
+	VERIFY_CONN_ID(2, conn_id);
+	VERIFY_MTU(3, mtu);
+
+	EXEC(if_gatt->client->configure_mtu, conn_id, mtu);
+}
 #endif
 
 /* get_device_type */
@@ -1918,6 +1940,7 @@ static struct method client_methods[] = {
 			" [<include_txpower>] <min_interval> <max_interval>"
 			" <appearance> [<manufacturer_data>] [<service_data>]"
 			" [<service_uuid>]"),
+	STD_METHODCH(configure_mtu, "<conn_id> <mtu>"),
 #else
 	STD_METHODCH(scan, "<client_if> [1|0]"),
 	STD_METHODCH(connect, "<client_if> <addr> [<is_direct>]"),
