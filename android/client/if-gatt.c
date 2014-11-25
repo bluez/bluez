@@ -1930,6 +1930,38 @@ static void multi_adv_enable_p(int argc, const char **argv)
 	EXEC(if_gatt->client->multi_adv_enable, client_if, min_interval,
 			max_interval, adv_type, chnl_map, tx_power, timeout_s);
 }
+
+/* update multi advertiser */
+static void multi_adv_update_c(int argc, const char **argv,
+					enum_func *enum_func, void **user)
+{
+	if (argc == 2) {
+		*user = client_if_str;
+		*enum_func = enum_one_string;
+	}
+}
+
+static void multi_adv_update_p(int argc, const char **argv)
+{
+	int client_if;
+	int min_interval, max_interval;
+	int adv_type;
+	int chnl_map;
+	int tx_power;
+	int timeout_s;
+
+	RETURN_IF_NULL(if_gatt);
+	VERIFY_CLIENT_IF(2, client_if);
+	VERIFY_MIN_INTERVAL(3, min_interval);
+	VERIFY_MAX_INTERVAL(4, max_interval);
+	VERIFY_ADV_TYPE(5, adv_type);
+	VERIFY_CHNL_MAP(6, chnl_map);
+	VERIFY_TX_POWER(7, tx_power);
+	VERIFY_TIMEOUT_S(8, timeout_s);
+
+	EXEC(if_gatt->client->multi_adv_update, client_if, min_interval,
+			max_interval, adv_type, chnl_map, tx_power, timeout_s);
+}
 #endif
 
 /* get_device_type */
@@ -2018,6 +2050,9 @@ static struct method client_methods[] = {
 					" <max_interval> <latency> <timeout>"),
 	STD_METHODH(set_scan_parameters, "<scan_inverval> <scan_window>"),
 	STD_METHODCH(multi_adv_enable, "<client_if> <min_interval>"
+			" <max_interval> <adv_type> <chnl_map> <tx_power>"
+			" <timeout_s>"),
+	STD_METHODCH(multi_adv_update, "<client_if> <min_interval>"
 			" <max_interval> <adv_type> <chnl_map> <tx_power>"
 			" <timeout_s>"),
 #else
