@@ -48,9 +48,9 @@
 
 #define TRANS1_ID	1
 
-#define GATT_SERVER_TRANSPORT_LE		0x00
-#define GATT_SERVER_TRANSPORT_BREDR		0x01
-#define GATT_SERVER_TRANSPORT_LE_BREDR		0x02
+#define GATT_SERVER_TRANSPORT_LE		0x01
+#define GATT_SERVER_TRANSPORT_BREDR		0x02
+#define GATT_SERVER_TRANSPORT_LE_BREDR		(0x01 | 0x02)
 
 #define GATT_WRITE_TYPE_NO_RESPONSE	0x01
 #define GATT_WRITE_TYPE_DEFAULT		0x02
@@ -607,7 +607,7 @@ static struct start_srvc_data start_bad_srvc_data_1 = {
 static struct start_srvc_data start_bad_srvc_data_2 = {
 	.app_id = APP1_ID,
 	.srvc_handle = &srvc1_handle,
-	.transport = -1
+	.transport = 0
 };
 
 static struct stop_srvc_data stop_srvc_data_1 = {
