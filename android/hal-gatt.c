@@ -1847,7 +1847,7 @@ static bt_status_t start_service(int server_if, int service_handle,
 		transport_mask = GATT_SERVER_TRANSPORT_LE_BIT;
 		break;
 	case 1:
-		transport_mask = GATT_SERVER_TRANSPORT_BREDR_BIT
+		transport_mask = GATT_SERVER_TRANSPORT_BREDR_BIT;
 		break;
 	case 2:
 		transport_mask = GATT_SERVER_TRANSPORT_LE_BIT |
