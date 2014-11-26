@@ -424,7 +424,7 @@ static void init(void)
 	}
 
 	/* Init what is available to init */
-	for (i = 2; i < NELEM(interfaces) - 1; ++i) {
+	for (i = 3; i < NELEM(interfaces) - 1; ++i) {
 		m = get_interface_method(interfaces[i]->name, "init");
 		if (m != NULL)
 			m->func(2, argv);
