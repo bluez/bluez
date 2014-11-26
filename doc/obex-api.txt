@@ -433,12 +433,12 @@ Methods		void Select(string location, string phonebook)
 			Possible errors: org.bluez.obex.Error.Forbidden
 					 org.bluez.obex.Error.Failed
 
-		uint16, uint16 GetVersion()
+		void UpdateVersion()
 
-			Return the primary and secondary folder version counters
-			for the selected phonebook.
+			Attempt to update PrimaryCounter and SecondaryCounter.
 
-			Possible errors: org.bluez.obex.Error.Forbidden
+			Possible errors: org.bluez.obex.Error.NotSupported
+					 org.bluez.obex.Error.Forbidden
 					 org.bluez.obex.Error.Failed
 
 		array{string} ListFilterFields()

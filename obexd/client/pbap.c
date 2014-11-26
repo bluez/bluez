@@ -383,9 +383,11 @@ static void phonebook_size_callback(struct obc_session *session,
 	read_return_apparam(transfer, request->pbap, &phone_book_size,
 							&new_missed_calls);
 
-	dbus_message_append_args(reply,
-			DBUS_TYPE_UINT16, &phone_book_size,
-			DBUS_TYPE_INVALID);
+	if (dbus_message_is_method_call(request->msg, PBAP_INTERFACE,
+								"GetSize"))
+		dbus_message_append_args(reply,
+					DBUS_TYPE_UINT16, &phone_book_size,
+					DBUS_TYPE_INVALID);
 
 send:
 	g_dbus_send_message(conn, reply);
@@ -1014,6 +1016,19 @@ static DBusMessage *pbap_list_filter_fields(DBusConnection *connection,
 	return reply;
 }
 
+static DBusMessage *pbap_update_version(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct pbap_data *pbap = user_data;
+
+	if (!(pbap->supported_features & FOLDER_VERSION_FEATURE))
+		return g_dbus_create_error(message,
+					ERROR_INTERFACE ".NotSupported",
+					"Operation is not supported");
+
+	return pbap_get_size(connection, message, user_data);
+}
+
 static const GDBusMethodTable pbap_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Select",
 			GDBUS_ARGS({ "location", "s" }, { "phonebook", "s" }),
@@ -1045,6 +1060,8 @@ static const GDBusMethodTable pbap_methods[] = {
 	{ GDBUS_METHOD("ListFilterFields",
 				NULL, GDBUS_ARGS({ "fields", "as" }),
 				pbap_list_filter_fields) },
+	{ GDBUS_ASYNC_METHOD("UpdateVersion", NULL, NULL,
+				pbap_update_version) },
 	{ }
 };
 
