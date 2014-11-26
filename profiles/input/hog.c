@@ -480,7 +480,7 @@ static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
 		goto exit;
 	}
 
-	if (len <= 0) {
+	if (len == 0) {
 		error("Error reading Report, length %d", len);
 		status = EIO;
 		goto exit;
