@@ -83,6 +83,9 @@ GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu)
 	if (!attr->att)
 		goto fail;
 
+	if (!bt_att_set_mtu(attr->att, mtu))
+		goto fail;
+
 	attr->buf = malloc0(mtu);
 	attr->buflen = mtu;
 	if (!attr->buf)
