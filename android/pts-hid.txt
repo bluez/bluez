@@ -1,8 +1,8 @@
 PTS test results for HID
 
 PTS version: 5.3
-Tested: 30-September-2014
-Android version: 4.4.4
+Tested: 26-November-2014
+Android version: 5.0
 
 Results:
 PASS	test passed
