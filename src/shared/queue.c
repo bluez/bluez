@@ -134,6 +134,41 @@ bool queue_push_head(struct queue *queue, void *data)
 	return true;
 }
 
+bool queue_push_after(struct queue *queue, void *entry, void *data)
+{
+	struct queue_entry *qentry, *tmp, *new_entry;
+
+	qentry = NULL;
+
+	if (!queue)
+		return false;
+
+	for (tmp = queue->head; tmp; tmp = tmp->next) {
+		if (tmp->data == entry) {
+			qentry = tmp;
+			break;
+		}
+	}
+
+	if (!qentry)
+		return false;
+
+	new_entry = new0(struct queue_entry, 1);
+	if (!new_entry)
+		return false;
+
+	new_entry->data = data;
+	new_entry->next = qentry->next;
+
+	if (!qentry->next)
+		queue->tail = new_entry;
+
+	qentry->next = new_entry;
+	queue->entries++;
+
+	return true;
+}
+
 void *queue_pop_head(struct queue *queue)
 {
 	struct queue_entry *entry;
