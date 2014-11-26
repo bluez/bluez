@@ -359,6 +359,44 @@ static bt_callbacks_t bt_callbacks = {
 #endif
 };
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+static alarm_cb alarm_cb_p = NULL;
+static void *alarm_cb_p_data = NULL;
+
+static bool set_wake_alarm(uint64_t delay_millis, bool should_wake, alarm_cb cb, void *data)
+{
+	haltest_info("%s: delay %lu  should_wake %u cb %p data %p\n",
+				__func__, delay_millis, should_wake, cb, data);
+
+	/* TODO call alarm callback after specified delay */
+	alarm_cb_p = cb;
+	alarm_cb_p_data = data;
+
+	return true;
+}
+
+static int acquire_wake_lock(const char *lock_name)
+{
+	haltest_info("%s: %s\n", __func__, lock_name);
+
+	return BT_STATUS_SUCCESS;
+}
+
+static int release_wake_lock(const char *lock_name)
+{
+	haltest_info("%s: %s\n", __func__, lock_name);
+
+	return BT_STATUS_SUCCESS;
+}
+
+static bt_os_callouts_t bt_os_callouts = {
+	.size = sizeof(bt_os_callouts),
+	.set_wake_alarm = set_wake_alarm,
+	.acquire_wake_lock = acquire_wake_lock,
+	.release_wake_lock = release_wake_lock,
+};
+#endif
+
 static void init_p(int argc, const char **argv)
 {
 	int err;
@@ -385,6 +423,10 @@ static void init_p(int argc, const char **argv)
 	}
 
 	EXEC(if_bluetooth->init, &bt_callbacks);
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	EXEC(if_bluetooth->set_os_callouts, &bt_os_callouts);
+#endif
 }
 
 static void cleanup_p(int argc, const char **argv)
