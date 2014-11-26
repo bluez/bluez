@@ -35,6 +35,12 @@ struct gatt_db_attribute *gatt_db_add_service(struct gatt_db *db,
 bool gatt_db_remove_service(struct gatt_db *db,
 					struct gatt_db_attribute *attrib);
 
+struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
+							uint16_t handle,
+							const bt_uuid_t *uuid,
+							bool primary,
+							uint16_t num_handles);
+
 typedef void (*gatt_db_read_t) (struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					uint8_t opcode, bdaddr_t *bdaddr,
