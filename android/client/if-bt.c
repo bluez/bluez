@@ -364,7 +364,8 @@ static bt_callbacks_t bt_callbacks = {
 static alarm_cb alarm_cb_p = NULL;
 static void *alarm_cb_p_data = NULL;
 
-static bool set_wake_alarm(uint64_t delay_millis, bool should_wake, alarm_cb cb, void *data)
+static bool set_wake_alarm(uint64_t delay_millis, bool should_wake, alarm_cb cb,
+								void *data)
 {
 	haltest_info("%s: delay %"PRIu64" should_wake %u cb %p data %p\n",
 				__func__, delay_millis, should_wake, cb, data);
