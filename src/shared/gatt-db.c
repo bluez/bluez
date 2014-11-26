@@ -305,6 +305,51 @@ bool gatt_db_remove_service(struct gatt_db *db,
 	return true;
 }
 
+bool gatt_db_clear(struct gatt_db *db)
+{
+	if (!db)
+		return false;
+
+	queue_remove_all(db->services, NULL, NULL, gatt_db_service_destroy);
+
+	db->next_handle = 0;
+
+	return true;
+}
+
+struct clear_range {
+	uint16_t start, end;
+};
+
+static bool match_range(const void *a, const void *b)
+{
+	const struct gatt_db_service *service = a;
+	const struct clear_range *range = b;
+	uint16_t svc_start, svc_end;
+
+	svc_start = service->attributes[0]->handle;
+	svc_end = service->attributes[0]->handle + service->num_handles - 1;
+
+	return svc_start <= range->end && svc_end >= range->start;
+}
+
+bool gatt_db_clear_range(struct gatt_db *db, uint16_t start_handle,
+							uint16_t end_handle)
+{
+	struct clear_range range;
+
+	if (!db || start_handle > end_handle)
+		return false;
+
+	range.start = start_handle;
+	range.end = end_handle;
+
+	queue_remove_all(db->services, match_range, &range,
+						gatt_db_service_destroy);
+
+	return true;
+}
+
 struct insert_loc_data {
 	struct gatt_db_service *cur;
 	uint16_t start, end;

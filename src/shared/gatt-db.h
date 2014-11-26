@@ -34,6 +34,9 @@ struct gatt_db_attribute *gatt_db_add_service(struct gatt_db *db,
 
 bool gatt_db_remove_service(struct gatt_db *db,
 					struct gatt_db_attribute *attrib);
+bool gatt_db_clear(struct gatt_db *db);
+bool gatt_db_clear_range(struct gatt_db *db, uint16_t start_handle,
+							uint16_t end_handle);
 
 struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 							uint16_t handle,
