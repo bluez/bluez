@@ -6212,7 +6212,7 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *dev)
 {
-	uint8_t value[ATT_DEFAULT_LE_MTU];
+	uint8_t value[cmd_len];
 	uint8_t s[ATT_SIGNATURE_LEN];
 	struct gatt_db_attribute *attrib;
 	uint32_t permissions;
