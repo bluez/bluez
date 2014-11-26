@@ -34,6 +34,8 @@
 #include "pollhandler.h"
 #include "history.h"
 
+static void process_line(char *line_buffer);
+
 const struct interface *interfaces[] = {
 	&audio_if,
 	&sco_if,
@@ -173,6 +175,11 @@ static void help_p(int argc, const char **argv)
 /* quit/exit execution */
 static void quit_p(int argc, const char **argv)
 {
+	char cleanup_audio[] = "audio cleanup";
+
+	close_hw_bt_dev();
+	process_line(cleanup_audio);
+
 	exit(0);
 }
 

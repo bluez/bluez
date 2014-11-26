@@ -156,6 +156,7 @@ const char *enum_devices(void *v, int i);
 const char *interface_name(void *v, int i);
 const char *command_name(void *v, int i);
 void add_remote_device(const bt_bdaddr_t *addr);
+bool close_hw_bt_dev(void);
 
 const struct interface *get_interface(const char *name);
 struct method *get_method(struct method *methods, const char *name);

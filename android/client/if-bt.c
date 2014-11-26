@@ -23,6 +23,7 @@
 #include "../hal-msg.h"
 #include "../hal-utils.h"
 
+static hw_device_t *bt_device;
 const bt_interface_t *if_bluetooth;
 
 #define VERIFY_PROP_TYPE_ARG(n, typ) \
@@ -161,6 +162,15 @@ static void add_remote_device_from_props(int num_properties,
 		if (property.type == BT_PROPERTY_BDADDR)
 			add_remote_device((bt_bdaddr_t *) property.val);
 	}
+}
+
+bool close_hw_bt_dev(void)
+{
+	if (!bt_device)
+		return false;
+
+	bt_device->close(bt_device);
+	return true;
 }
 
 static void adapter_state_changed_cb(bt_state_t state)
@@ -403,7 +413,6 @@ static void init_p(int argc, const char **argv)
 {
 	int err;
 	const hw_module_t *module;
-	hw_device_t *device;
 
 	err = hw_get_module(BT_HARDWARE_MODULE_ID, &module);
 	if (err) {
@@ -411,14 +420,14 @@ static void init_p(int argc, const char **argv)
 		return;
 	}
 
-	err = module->methods->open(module, BT_HARDWARE_MODULE_ID, &device);
+	err = module->methods->open(module, BT_HARDWARE_MODULE_ID, &bt_device);
 	if (err) {
 		haltest_error("module->methods->open returned %d\n", err);
 		return;
 	}
 
 	if_bluetooth =
-		    ((bluetooth_device_t *) device)->get_bluetooth_interface();
+		((bluetooth_device_t *) bt_device)->get_bluetooth_interface();
 	if (!if_bluetooth) {
 		haltest_error("get_bluetooth_interface returned NULL\n");
 		return;
