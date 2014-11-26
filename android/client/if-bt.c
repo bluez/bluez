@@ -16,6 +16,7 @@
  */
 
 #include <string.h>
+#include <inttypes.h>
 
 #include "if-main.h"
 #include "terminal.h"
@@ -365,7 +366,7 @@ static void *alarm_cb_p_data = NULL;
 
 static bool set_wake_alarm(uint64_t delay_millis, bool should_wake, alarm_cb cb, void *data)
 {
-	haltest_info("%s: delay %lu  should_wake %u cb %p data %p\n",
+	haltest_info("%s: delay %"PRIu64" should_wake %u cb %p data %p\n",
 				__func__, delay_millis, should_wake, cb, data);
 
 	/* TODO call alarm callback after specified delay */
