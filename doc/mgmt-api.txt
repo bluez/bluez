@@ -2210,30 +2210,6 @@ Start Service Discovery Command
 				Invalid Index
 
 
-Stop Service Discovery Command
-==============================
-
-	Command Code:		0x003b
-	Controller Index:	<controller id>
-	Command Parameters:	Address_Type (1 Octet)
-	Return Parameters:	Address_Type (1 Octet)
-
-	This command is used to stop the service discovery process started
-	using the Start Service Discovery command.
-
-	When the discovery procedure stops the Discovery event will
-	notify this similar to Stop Discovery.
-
-	This command can only be used when the controller is powered.
-
-	This command generates a Command Complete event on success
-	or failure.
-
-	Possible errors:	Rejected
-				Invalid Parameters
-				Invalid Index
-
-
 Command Complete Event
 ======================
 
@@ -2656,8 +2632,7 @@ Discovering Event
 	devices. This discovering state can come and go multiple times
 	between a Start Discovery and a Stop Discovery commands.
 
-	The Start Service Discovery and Stop Service Discovery commands
-	will also trigger this event.
+	The Start Service Discovery command will also trigger this event.
 
 	The valid values for the Discovering parameter are 0x01
 	(enabled) and 0x00 (disabled).
