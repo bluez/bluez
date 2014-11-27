@@ -346,13 +346,9 @@ static void usage(void)
 	printf("options:\n"
 		"\t-i  --ivi              Initialize only IVI interfaces\n"
 		"\t-n, --no-init          Don't initialize any interfaces\n"
-		"\t    --version          Print version\n"
+		"\t-v  --version          Print version\n"
 		"\t-h, --help             Show help options\n");
 }
-
-enum {
-	PRINT_VERSION = 1000
-};
 
 static void print_version(void)
 {
@@ -363,7 +359,7 @@ static const struct option main_options[] = {
 	{ "no-init", no_argument, NULL, 'n' },
 	{ "ivi",     no_argument, NULL, 'i' },
 	{ "help",    no_argument, NULL, 'h' },
-	{ "version", no_argument, NULL, PRINT_VERSION },
+	{ "version", no_argument, NULL, 'v' },
 	{ NULL }
 };
 
@@ -375,7 +371,7 @@ static void parse_command_line(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "inh", main_options, NULL);
+		opt = getopt_long(argc, argv, "inhv", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -389,7 +385,7 @@ static void parse_command_line(int argc, char *argv[])
 		case 'h':
 			usage();
 			exit(0);
-		case PRINT_VERSION:
+		case 'v':
 			print_version();
 			exit(0);
 		default:
