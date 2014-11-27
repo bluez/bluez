@@ -2158,7 +2158,7 @@ Start Service Discovery Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address_Type (1 Octet)
 				RSSI_Threshold (1 Octet)
-				Num_UUID (1 Octet)
+				UUID_Count (1 Octet)
 				UUID[i] (16 Octets)
 	Return Parameters:	Address_Type (1 Octet)
 
@@ -2192,8 +2192,8 @@ Start Service Discovery Command
 	list of UUIDs with Num_UUID set to 0 which means that DeviceFound
 	events are send out for all devices above the RSSI_Threshold.
 
-	In case the RSSI_Threshold is set to 127 and the Num_UUID is 0,
-	then this command behaves exactly the same as Start Discovery.
+	In case RSSI_Threshold is set to 127 and UUID_Count is 0, then
+	this command behaves exactly the same as Start Discovery.
 
 	When the discovery procedure starts the Discovery event will
 	notify this similar to Start Discovery.
