@@ -76,6 +76,7 @@
 #define PRIMARY_COUNTER_TAG	0X0A
 #define SECONDARY_COUNTER_TAG	0X0B
 #define DATABASEID_TAG		0X0D
+#define SUPPORTED_FEATURES_TAG  0x10
 
 #define DOWNLOAD_FEATURE	0x00000001
 #define BROWSE_FEATURE		0x00000002
@@ -1230,6 +1231,40 @@ static void parse_service_record(struct pbap_data *pbap)
 
 }
 
+static void *pbap_supported_features(struct obc_session *session)
+{
+	const void *data;
+	uint16_t version;
+
+	/* Version */
+	data = obc_session_get_attribute(session, SDP_ATTR_PFILE_DESC_LIST);
+	if (!data)
+		return NULL;
+
+	version = GPOINTER_TO_UINT(data);
+
+	if (version < 0x0102)
+		return NULL;
+
+	/* Supported Feature Bits */
+	data = obc_session_get_attribute(session,
+					SDP_ATTR_PBAP_SUPPORTED_FEATURES);
+	if (!data)
+		return NULL;
+
+	return g_obex_apparam_set_uint32(NULL, SUPPORTED_FEATURES_TAG,
+						DOWNLOAD_FEATURE |
+						BROWSE_FEATURE |
+						DATABASEID_FEATURE |
+						FOLDER_VERSION_FEATURE |
+						VCARD_SELECTING_FEATURE |
+						ENHANCED_CALLS_FEATURE |
+						UCI_FEATURE |
+						UID_FEATURE |
+						REFERENCING_FEATURE |
+						DEFAULT_IMAGE_FEATURE);
+}
+
 static int pbap_probe(struct obc_session *session)
 {
 	struct pbap_data *pbap;
@@ -1274,6 +1309,7 @@ static struct obc_driver pbap = {
 	.uuid = PBAP_UUID,
 	.target = OBEX_PBAP_UUID,
 	.target_len = OBEX_PBAP_UUID_LEN,
+	.supported_features = pbap_supported_features,
 	.probe = pbap_probe,
 	.remove = pbap_remove
 };

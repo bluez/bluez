@@ -345,6 +345,7 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 	struct obc_driver *driver = session->driver;
 	struct obc_transport *transport = session->transport;
 	GObex *obex;
+	GObexApparam *apparam;
 	GObexTransportType type;
 	int tx_mtu = -1;
 	int rx_mtu = -1;
@@ -370,7 +371,29 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	if (driver->target != NULL)
+	apparam = NULL;
+
+	if (driver->supported_features)
+		apparam = driver->supported_features(session);
+
+	if (apparam) {
+		uint8_t buf[1024];
+		ssize_t len;
+
+		len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
+		if (driver->target)
+			g_obex_connect(obex, connect_cb, callback, &err,
+					G_OBEX_HDR_TARGET,
+					driver->target, driver->target_len,
+					G_OBEX_HDR_APPARAM,
+					buf, len,
+					G_OBEX_HDR_INVALID);
+		else
+			g_obex_connect(obex, connect_cb, callback, &err,
+					G_OBEX_HDR_APPARAM, buf, len,
+					G_OBEX_HDR_INVALID);
+		g_obex_apparam_free(apparam);
+	} else if (driver->target)
 		g_obex_connect(obex, connect_cb, callback, &err,
 			G_OBEX_HDR_TARGET, driver->target, driver->target_len,
 			G_OBEX_HDR_INVALID);
