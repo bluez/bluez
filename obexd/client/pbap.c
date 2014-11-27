@@ -1148,11 +1148,30 @@ static gboolean get_secondary(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean image_size_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct pbap_data *pbap = data;
+
+	return pbap->supported_features & DEFAULT_IMAGE_FEATURE;
+}
+
+static gboolean get_image_size(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	dbus_bool_t value = TRUE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable pbap_properties[] = {
 	{ "Folder", "s", get_folder, NULL, folder_exists },
 	{ "DatabaseIdentifier", "s", get_databaseid, NULL, databaseid_exists },
 	{ "PrimaryCounter", "s", get_primary, NULL, version_exists },
 	{ "SecondaryCounter", "s", get_secondary, NULL, version_exists },
+	{ "FixedImageSize", "b", get_image_size, NULL, image_size_exists },
 	{ }
 };
 

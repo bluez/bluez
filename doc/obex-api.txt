@@ -519,6 +519,13 @@ Properties	string Folder [readonly]
 			Possible values: 32-character hexadecimal such
 			as A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
 
+		bool FixedImageSize [readonly, optional]
+
+			Indicate support for fixed image size.
+
+			Possible values: True if image is JPEG 300x300 pixels
+			otherwise False.
+
 Synchronization hierarchy
 =========================
 
