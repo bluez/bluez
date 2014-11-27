@@ -1,8 +1,8 @@
 PTS test results for MPS
 
 PTS version: 5.3
-Tested: 20.10.2014
-Android version: 4.4.4
+Tested: 27-November-2014
+Android version: 5.0
 
 Results:
 PASS	test passed
@@ -10,6 +10,10 @@ FAIL	test failed
 INC	test is inconclusive
 N/A	test is disabled due to PICS setup
 NONE	test result is none
+
+Note: Do not use AOSP Music player. Use e.g. MortPlayer or Poweramp.
+For full tests conformance, "Touch sounds" on IUT should be disbaled
+(Settings > Sound&notification > Other sounds)
 
 -------------------------------------------------------------------------------
 Test Name				Result	Notes
@@ -46,8 +50,7 @@ TC_SRC_TG_HFAV_ACT_MD_BV_01_I		PASS
 TC_SRC_TG_HFAV_CLH_MD_BV_01_I		PASS
 TC_SRC_TG_HFAV_CLH_MD_BV_02_I		PASS
 TC_SRC_TG_HFAV_CLH_MD_BV_03_I		PASS
-TC_SRC_TG_HFAV_CLH_MD_BV_04_I		PASS	Do not use AOSP Music player.
-						Use e.g. MortPlayer or Poweramp
+TC_SRC_TG_HFAV_CLH_MD_BV_04_I		PASS
 TC_SRC_TG_HFAV_CLH_MD_BV_05_I		PASS
 TC_SRC_TG_HFAV_CLH_MD_BV_06_I		PASS
 TC_PAIRING_HF_SNK_CT			N/A	Pairing helper for MD tests
