@@ -265,7 +265,7 @@ struct gatt_db_attribute *gatt_db_add_service(struct gatt_db *db,
 {
 	struct gatt_db_service *service;
 
-	if (!db || (num_handles + db->next_handle) > UINT16_MAX)
+	if (!db || (num_handles + db->next_handle - 1) > UINT16_MAX)
 		return NULL;
 
 	service = gatt_db_service_create(uuid, primary, num_handles);
@@ -395,7 +395,7 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 	struct insert_loc_data data;
 	struct gatt_db_service *service;
 
-	if (!db || num_handles < 1 || handle + num_handles > UINT16_MAX)
+	if (!db || num_handles < 1 || (handle + num_handles - 1) > UINT16_MAX)
 		return NULL;
 
 	memset(&data, 0, sizeof(data));
@@ -423,7 +423,7 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 	service->num_handles = num_handles;
 
 	/* Fast-forward next_handle if the new service was added to the end */
-	db->next_handle = MAX(handle + num_handles + 1, db->next_handle);
+	db->next_handle = MAX(handle + num_handles, db->next_handle);
 
 	return service->attributes[0];
 
