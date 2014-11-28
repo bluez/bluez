@@ -1,9 +1,9 @@
 PTS test results for SM
 
 PTS version: 5.3
-Tested: 20-October-2014
-Android version: 4.4.4
-kernel version: 3.17
+Tested: 28-November-2014
+Android version: 5.0
+kernel version: 3.18
 
 Results:
 PASS	test passed
