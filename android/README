@@ -289,7 +289,7 @@ health            bt_hl.h            complete      complete
 pan               bt_pan.h           complete      complete
 avrcp             bt_rc.h            complete      complete
 socket            bt_sock.h          complete      partial
-handsfree_client  bt_hf_client.h     N/A           partial
+handsfree_client  bt_hf_client.h     N/A           complete
 map_client        bt_mce.h           N/A           complete
 a2dp_sink         bt_av.h            N/A           partial
 avrcp_ctrl        bt_rc.h            N/A           partial
