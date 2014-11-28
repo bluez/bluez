@@ -982,6 +982,29 @@ static void gatts_response_confirmation_cb(int status, int handle)
 	haltest_info("%s: status=%d handle=0x%x\n", __func__, status, handle);
 }
 
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+/**
+ * Callback confirming that a notification or indication has been sent
+ * to a remote device.
+ */
+static void gatts_indication_sent_cb(int conn_id, int status)
+{
+	haltest_info("%s: status=%d conn_id=%d", __func__, status, conn_id);
+}
+
+/**
+ * Callback notifying an application that a remote device connection is
+ * currently congested and cannot receive any more data. An application
+ * should avoid sending more data until a further callback is received
+ * indicating the congestion status has been cleared.
+ */
+static void gatts_congestion_cb(int conn_id, bool congested)
+{
+	haltest_info("%s: conn_id=%d congested=%d", __func__, conn_id,
+								congested);
+}
+#endif
+
 static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.register_server_cb = gatts_register_server_cb,
 	.connection_cb = gatts_connection_cb,
@@ -995,7 +1018,11 @@ static const btgatt_server_callbacks_t btgatt_server_callbacks = {
 	.request_read_cb = gatts_request_read_cb,
 	.request_write_cb = gatts_request_write_cb,
 	.request_exec_write_cb = gatts_request_exec_write_cb,
-	.response_confirmation_cb = gatts_response_confirmation_cb
+	.response_confirmation_cb = gatts_response_confirmation_cb,
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	.indication_sent_cb = gatts_indication_sent_cb,
+	.congestion_cb = gatts_congestion_cb,
+#endif
 };
 
 static const btgatt_callbacks_t gatt_cbacks = {
