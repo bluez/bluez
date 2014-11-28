@@ -2009,6 +2009,26 @@ static void multi_adv_set_inst_data_p(int argc, const char **argv)
 		(char *) manufacturer_data, service_data_len,
 		(char *) service_data, service_uuid_len, (char *) service_uuid);
 }
+
+/* multi advertising disable */
+static void multi_adv_disable_c(int argc, const char **argv,
+					enum_func *enum_func, void **user)
+{
+	if (argc == 2) {
+		*user = client_if_str;
+		*enum_func = enum_one_string;
+	}
+}
+
+static void multi_adv_disable_p(int argc, const char **argv)
+{
+	int client_if;
+
+	RETURN_IF_NULL(if_gatt);
+	VERIFY_CLIENT_IF(2, client_if);
+
+	EXEC(if_gatt->client->multi_adv_disable, client_if);
+}
 #endif
 
 /* get_device_type */
@@ -2106,6 +2126,7 @@ static struct method client_methods[] = {
 			" <include_name> [<include_txpower>] <appearance>"
 			" [<manufacturer_data>] [<service_data>]"
 			" [<service_uuid>]"),
+	STD_METHODCH(multi_adv_disable, "<client_if>"),
 #else
 	STD_METHODCH(scan, "<client_if> [1|0]"),
 	STD_METHODCH(connect, "<client_if> <addr> [<is_direct>]"),
