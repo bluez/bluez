@@ -47,6 +47,7 @@
 #include "bluetooth.h"
 #include "hal-msg.h"
 #include "handsfree-client.h"
+#include "sco.h"
 
 #define HFP_HF_CHANNEL 7
 
@@ -138,6 +139,8 @@ static uint32_t hfp_hf_features = 0;
 static uint32_t hfp_hf_record_id = 0;
 static struct queue *devices = NULL;
 static GIOChannel *hfp_hf_server = NULL;
+
+static struct bt_sco *sco = NULL;
 
 static struct device *find_default_device(void)
 {
@@ -1999,6 +2002,11 @@ static void cleanup_hfp_hf(void)
 		bt_adapter_remove_record(hfp_hf_record_id);
 		hfp_hf_record_id = 0;
 	}
+
+	if (sco) {
+		bt_sco_unref(sco);
+		sco = NULL;
+	}
 }
 
 bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)
@@ -2016,6 +2024,12 @@ bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)
 	if (!enable_hf_client())
 		goto failed;
 
+	sco = bt_sco_new(addr);
+	if (!sco) {
+		error("hf-client: Cannot create SCO. HFP AG is in use ?");
+		goto failed;
+	}
+
 	hal_ipc = ipc;
 	ipc_register(hal_ipc, HAL_SERVICE_ID_HANDSFREE_CLIENT, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));
@@ -2023,6 +2037,7 @@ bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)
 	return true;
 
 failed:
+	cleanup_hfp_hf();
 	queue_destroy(devices, free);
 	devices = NULL;
 
