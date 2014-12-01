@@ -454,6 +454,12 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 
 	param = g_new0(struct apparam_field, 1);
 
+	/*
+	 * As per spec when client doesn't include MAXLISTCOUNT_TAG then it
+	 * should be assume as Maximum value in vcardlisting 65535
+	 */
+	param->maxlistcount = UINT16_MAX;
+
 	g_obex_apparam_get_uint8(apparam, ORDER_TAG, &param->order);
 	g_obex_apparam_get_uint8(apparam, SEARCHATTRIB_TAG,
 						&param->searchattrib);
