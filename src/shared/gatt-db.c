@@ -258,35 +258,6 @@ static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
 	return service;
 }
 
-struct gatt_db_attribute *gatt_db_add_service(struct gatt_db *db,
-						const bt_uuid_t *uuid,
-						bool primary,
-						uint16_t num_handles)
-{
-	struct gatt_db_service *service;
-
-	if (!db || (num_handles + db->next_handle - 1) > UINT16_MAX)
-		return NULL;
-
-	service = gatt_db_service_create(uuid, primary, num_handles);
-	if (!service)
-		return NULL;
-
-	if (!queue_push_tail(db->services, service)) {
-		gatt_db_service_destroy(service);
-		return NULL;
-	}
-
-	/* TODO now we get next handle from database. We should first look
-	 * for 'holes' between existing services first, and assign next_handle
-	 * only if enough space was not found.
-	 */
-	service->attributes[0]->handle = db->next_handle;
-	db->next_handle += num_handles;
-	service->num_handles = num_handles;
-
-	return service->attributes[0];
-}
 
 bool gatt_db_remove_service(struct gatt_db *db,
 					struct gatt_db_attribute *attrib)
@@ -443,6 +414,15 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 fail:
 	gatt_db_service_destroy(service);
 	return NULL;
+}
+
+struct gatt_db_attribute *gatt_db_add_service(struct gatt_db *db,
+						const bt_uuid_t *uuid,
+						bool primary,
+						uint16_t num_handles)
+{
+	return gatt_db_insert_service(db, db->next_handle, uuid, primary,
+								num_handles);
 }
 
 static uint16_t get_attribute_index(struct gatt_db_service *service,
