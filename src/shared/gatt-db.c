@@ -405,7 +405,10 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 	struct insert_loc_data data;
 	struct gatt_db_service *service;
 
-	if (!db || num_handles < 1 || (handle + num_handles - 1) > UINT16_MAX)
+	if (!db || handle < 1)
+		return NULL;
+
+	if (num_handles < 1 || (handle + num_handles - 1) > UINT16_MAX)
 		return NULL;
 
 	memset(&data, 0, sizeof(data));
