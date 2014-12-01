@@ -324,11 +324,17 @@ uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
 
 gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu)
 {
-	/* Clients of this expect a buffer to use. */
-	if (mtu > attrib->buflen) {
+	/*
+	 * Clients of this expect a buffer to use.
+	 *
+	 * Pdu encoding in sharred/att verifies if whole buffer fits the mtu,
+	 * thus we should set the buflen also when mtu is reduced. But we
+	 * need to reallocate the buffer only if mtu is larger.
+	 */
+	if (mtu > attrib->buflen)
 		attrib->buf = g_realloc(attrib->buf, mtu);
-		attrib->buflen = mtu;
-	}
+
+	attrib->buflen = mtu;
 
 	return bt_att_set_mtu(attrib->att, mtu);
 }
