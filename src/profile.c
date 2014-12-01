@@ -2002,7 +2002,7 @@ static struct default_settings {
 		.remote_uuid	= OBEX_PSE_UUID,
 		.authorize	= true,
 		.get_record	= get_pce_record,
-		.version	= 0x0101,
+		.version	= 0x0102,
 	}, {
 		.uuid		= OBEX_MAS_UUID,
 		.name		= "Message Access",
