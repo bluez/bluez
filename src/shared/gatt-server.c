@@ -513,6 +513,7 @@ static void put_uuid_le(const bt_uuid_t *src, void *dst)
 		bt_uuid_to_uuid128(src, &uuid);
 		bswap_128(&uuid.value.u128, dst);
 		break;
+	case BT_UUID_UNSPEC:
 	default:
 		break;
 	}

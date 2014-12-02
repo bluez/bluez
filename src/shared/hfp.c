@@ -738,6 +738,15 @@ bool hfp_gw_send_result(struct hfp_gw *hfp, enum hfp_result result)
 	case HFP_RESULT_ERROR:
 		str = "ERROR";
 		break;
+	case HFP_RESULT_RING:
+	case HFP_RESULT_NO_CARRIER:
+	case HFP_RESULT_BUSY:
+	case HFP_RESULT_NO_ANSWER:
+	case HFP_RESULT_DELAYED:
+	case HFP_RESULT_BLACKLISTED:
+	case HFP_RESULT_CME_ERROR:
+	case HFP_RESULT_NO_DIALTONE:
+	case HFP_RESULT_CONNECT:
 	default:
 		return false;
 	}

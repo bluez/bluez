@@ -220,6 +220,9 @@ static bool io_set_handler(struct io *io, GIOCondition cond,
 	case G_IO_HUP:
 		watch = &io->disconnect_watch;
 		break;
+	case G_IO_PRI:
+	case G_IO_ERR:
+	case G_IO_NVAL:
 	default:
 		return false;
 	}

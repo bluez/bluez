@@ -488,6 +488,12 @@ static bool can_write_data(struct io *io, void *user_data)
 	case ATT_OP_TYPE_RSP:
 		/* Set in_req to false to indicate that no request is pending */
 		att->in_req = false;
+
+		/* Fall through to the next case */
+	case ATT_OP_TYPE_CMD:
+	case ATT_OP_TYPE_NOT:
+	case ATT_OP_TYPE_CONF:
+	case ATT_OP_TYPE_UNKNOWN:
 	default:
 		destroy_att_send_op(op);
 		return true;
@@ -784,6 +790,10 @@ static bool can_read_data(struct io *io, void *user_data)
 		att->in_req = true;
 
 		/* Fall through to the next case */
+	case ATT_OP_TYPE_CMD:
+	case ATT_OP_TYPE_NOT:
+	case ATT_OP_TYPE_UNKNOWN:
+	case ATT_OP_TYPE_IND:
 	default:
 		/* For all other opcodes notify the upper layer of the PDU and
 		 * let them act on it.
@@ -1067,6 +1077,11 @@ unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 	case ATT_OP_TYPE_IND:
 		result = queue_push_tail(att->ind_queue, op);
 		break;
+	case ATT_OP_TYPE_CMD:
+	case ATT_OP_TYPE_NOT:
+	case ATT_OP_TYPE_UNKNOWN:
+	case ATT_OP_TYPE_RSP:
+	case ATT_OP_TYPE_CONF:
 	default:
 		result = queue_push_tail(att->write_queue, op);
 		break;
