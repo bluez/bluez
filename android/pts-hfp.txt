@@ -1,8 +1,8 @@
 PTS test results for HFP
 
 PTS version: 5.3
-Tested: 16-October-2014
-Android version: 4.4.4
+Tested: 02-December-2014
+Android version: 5.0
 
 Results:
 PASS	test passed
@@ -55,7 +55,7 @@ TC_AG_OCM_BV_01_I	PASS
 TC_AG_OCM_BV_02_I	PASS
 TC_AG_OCL_BV_01_I	PASS
 TC_AG_OCL_BV_02_I	PASS
-TC_AG_TWC_BV_01_I	PASS
+TC_AG_TWC_BV_01_I	PASS	JIRA #BA-281
 TC_AG_TWC_BV_02_I	PASS
 TC_AG_TWC_BV_03_I	PASS
 TC_AG_TWC_BV_04_I	PASS
