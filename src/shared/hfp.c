@@ -936,7 +936,7 @@ static bool match_handler_event_prefix(const void *a, const void *b)
 	const struct event_handler *handler = a;
 	const char *prefix = b;
 
-	if (memcmp(handler->prefix, prefix, strlen(prefix)))
+	if (strcmp(handler->prefix, prefix) != 0)
 		return false;
 
 	return true;
