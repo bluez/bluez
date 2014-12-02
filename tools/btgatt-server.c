@@ -605,7 +605,7 @@ static struct server *server_create(int fd, uint16_t mtu, bool hr_visible)
 	return server;
 
 fail:
-	gatt_db_destroy(server->db);
+	gatt_db_unref(server->db);
 	free(server->device_name);
 	bt_att_unref(att);
 	free(server);
@@ -617,7 +617,7 @@ static void server_destroy(struct server *server)
 {
 	timeout_remove(server->hr_timeout_id);
 	bt_gatt_server_unref(server->gatt);
-	gatt_db_destroy(server->db);
+	gatt_db_unref(server->db);
 }
 
 static void usage(void)

@@ -25,7 +25,9 @@ struct gatt_db;
 struct gatt_db_attribute;
 
 struct gatt_db *gatt_db_new(void);
-void gatt_db_destroy(struct gatt_db *db);
+
+struct gatt_db *gatt_db_ref(struct gatt_db *db);
+void gatt_db_unref(struct gatt_db *db);
 
 struct gatt_db_attribute *gatt_db_add_service(struct gatt_db *db,
 						const bt_uuid_t *uuid,

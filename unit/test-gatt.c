@@ -562,7 +562,7 @@ static void destroy_context(struct context *context)
 
 	bt_gatt_client_unref(context->client);
 	bt_gatt_server_unref(context->server);
-	gatt_db_destroy(context->db);
+	gatt_db_unref(context->db);
 
 	if (context->att)
 		bt_att_unref(context->att);

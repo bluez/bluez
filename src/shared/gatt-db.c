@@ -48,6 +48,7 @@ static const bt_uuid_t included_service_uuid = { .type = BT_UUID16,
 					.value.u16 = GATT_INCLUDE_UUID };
 
 struct gatt_db {
+	int ref_count;
 	uint16_t next_handle;
 	struct queue *services;
 };
@@ -143,6 +144,16 @@ failed:
 	return NULL;
 }
 
+struct gatt_db *gatt_db_ref(struct gatt_db *db)
+{
+	if (!db)
+		return NULL;
+
+	__sync_fetch_and_add(&db->ref_count, 1);
+
+	return db;
+}
+
 struct gatt_db *gatt_db_new(void)
 {
 	struct gatt_db *db;
@@ -159,7 +170,7 @@ struct gatt_db *gatt_db_new(void)
 
 	db->next_handle = 0x0001;
 
-	return db;
+	return gatt_db_ref(db);
 }
 
 static void gatt_db_service_destroy(void *data)
@@ -174,13 +185,24 @@ static void gatt_db_service_destroy(void *data)
 	free(service);
 }
 
-void gatt_db_destroy(struct gatt_db *db)
+static void gatt_db_destroy(struct gatt_db *db)
 {
 	if (!db)
 		return;
 
 	queue_destroy(db->services, gatt_db_service_destroy);
 	free(db);
+}
+
+void gatt_db_unref(struct gatt_db *db)
+{
+	if (!db)
+		return;
+
+	if (__sync_sub_and_fetch(&db->ref_count, 1))
+		return;
+
+	gatt_db_destroy(db);
 }
 
 static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)

@@ -7040,7 +7040,7 @@ failed:
 	queue_destroy(services_sdp, NULL);
 	services_sdp = NULL;
 
-	gatt_db_destroy(gatt_db);
+	gatt_db_unref(gatt_db);
 	gatt_db = NULL;
 
 	bt_crypto_unref(crypto);
@@ -7081,7 +7081,7 @@ void bt_gatt_unregister(void)
 	queue_destroy(listen_apps, NULL);
 	listen_apps = NULL;
 
-	gatt_db_destroy(gatt_db);
+	gatt_db_unref(gatt_db);
 	gatt_db = NULL;
 
 	g_io_channel_unref(le_io);
