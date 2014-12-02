@@ -1648,9 +1648,9 @@ Set Secure Connections Command
 	enables Secure Connections and the value 0x02 enables Secure
 	Connections Only mode.
 
-	This command is only available for BR/EDR capable controllers
-	supporting the core specification version 4.1 or greater
-	(e.g. not for single-mode LE controllers or pre-4.1 ones).
+	This command is only available for LE capable controllers as
+	well as controllers supporting the core specification version
+	4.1 or greater.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
