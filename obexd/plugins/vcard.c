@@ -574,6 +574,7 @@ static void vcard_printf_email(GString *vcards, uint8_t format,
 		else if (format == FORMAT_VCARD30)
 			category_string = "TYPE=INTERNET;TYPE=WORK";
 		break;
+	case FIELD_TYPE_OTHER:
 	default:
 		if (format == FORMAT_VCARD21)
 			category_string = "INTERNET";
@@ -616,6 +617,7 @@ static void vcard_printf_url(GString *vcards, uint8_t format,
 		else if (format == FORMAT_VCARD30)
 			category_string = "TYPE=INTERNET;TYPE=WORK";
 		break;
+	case FIELD_TYPE_OTHER:
 	default:
 		if (format == FORMAT_VCARD21)
 			category_string = "INTERNET";
