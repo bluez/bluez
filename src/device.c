@@ -4031,6 +4031,7 @@ void btd_device_set_temporary(struct btd_device *device, gboolean temporary)
 	} else {
 		if (device->bredr)
 			adapter_whitelist_add(device->adapter, device);
+		store_device_info(device);
 	}
 
 	device->temporary = temporary;
