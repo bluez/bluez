@@ -118,6 +118,10 @@ static GSList *parse_opts(gatt_option opt1, va_list args)
 		case GATT_OPT_CHR_AUTHORIZATION:
 			info->authorization = va_arg(args, gatt_option);
 			break;
+		case GATT_CHR_VALUE_READ:
+		case GATT_CHR_VALUE_WRITE:
+		case GATT_CHR_VALUE_BOTH:
+		case GATT_OPT_INVALID:
 		default:
 			error("Invalid option: %d", opt);
 		}
