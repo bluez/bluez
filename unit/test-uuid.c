@@ -115,6 +115,7 @@ static void test_uuid(gconstpointer data)
 		 */
 		g_assert(memcmp(&uuid.value.u128, test_data->binary, 16) == 0);
 		break;
+	case BT_UUID_UNSPEC:
 	default:
 		return;
         }
