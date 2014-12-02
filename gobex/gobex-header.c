@@ -241,6 +241,7 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 			header->extdata = TRUE;
 			header->v.extdata = ptr;
 			break;
+		case G_OBEX_DATA_INHERIT:
 		default:
 			g_set_error(err, G_OBEX_ERROR,
 					G_OBEX_ERROR_INVALID_ARGS,
