@@ -395,6 +395,8 @@ const char *btproperty2str(const bt_property_t *property)
 		}
 		break;
 #endif
+	case BT_PROPERTY_REMOTE_VERSION_INFO:
+	case BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP:
 	default:
 		sprintf(p, "%p", property->val);
 	}

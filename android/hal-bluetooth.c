@@ -116,6 +116,21 @@ static void adapter_prop_from_hal(const bt_property_t *property, uint8_t *type,
 	case HAL_PROP_ADAPTER_SCAN_MODE:
 		enum_prop_from_hal(property, len, val, bt_scan_mode_t);
 		break;
+	case BT_PROPERTY_BDNAME:
+	case BT_PROPERTY_BDADDR:
+	case BT_PROPERTY_UUIDS:
+	case BT_PROPERTY_CLASS_OF_DEVICE:
+	case BT_PROPERTY_TYPE_OF_DEVICE:
+	case BT_PROPERTY_SERVICE_RECORD:
+	case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
+	case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
+	case BT_PROPERTY_REMOTE_FRIENDLY_NAME:
+	case BT_PROPERTY_REMOTE_RSSI:
+	case BT_PROPERTY_REMOTE_VERSION_INFO:
+	case BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP:
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	case BT_PROPERTY_LOCAL_LE_FEATURES:
+#endif
 	default:
 		*len = property->len;
 		memcpy(val, property->val, property->len);

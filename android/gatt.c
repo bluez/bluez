@@ -5146,6 +5146,7 @@ static uint32_t add_sdp_record(const bt_uuid_t *uuid, uint16_t start,
 	case BT_UUID128:
 		sdp_uuid128_create(&u, &uuid->value.u128);
 		break;
+	case BT_UUID_UNSPEC:
 	default:
 		return 0;
 	}

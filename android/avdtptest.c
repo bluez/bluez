@@ -141,6 +141,7 @@ static void send_command(void)
 	case CMD_DELAY:
 		avdtp_delay_report(avdtp , avdtp_stream , 250);
 		break;
+	case CMD_NONE:
 	default:
 		break;
 	}

@@ -428,6 +428,9 @@ static void cmd_complete_cb(enum hfp_result result, enum hfp_error cme_err,
 		ev.type = HAL_HF_CLIENT_CMD_COMP_ERR_CME;
 		ev.cme = cme_err;
 		break;
+	case HFP_RESULT_CONNECT:
+	case HFP_RESULT_RING:
+	case HFP_RESULT_NO_DIALTONE:
 	default:
 		error("hf-client: Unknown error code %d", result);
 		ev.type = HAL_HF_CLIENT_CMD_COMP_ERR;

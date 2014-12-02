@@ -1295,6 +1295,30 @@ static inline bool audio_is_valid_format(audio_format_t format)
         case AUDIO_FORMAT_PCM_FLOAT:
         case AUDIO_FORMAT_PCM_24_BIT_PACKED:
             return true;
+        case AUDIO_FORMAT_INVALID:
+        case AUDIO_FORMAT_DEFAULT:
+        case AUDIO_FORMAT_MP3:
+        case AUDIO_FORMAT_AMR_NB:
+        case AUDIO_FORMAT_AMR_WB:
+        case AUDIO_FORMAT_AAC:
+        case AUDIO_FORMAT_HE_AAC_V1:
+        case AUDIO_FORMAT_HE_AAC_V2:
+        case AUDIO_FORMAT_VORBIS:
+        case AUDIO_FORMAT_OPUS:
+        case AUDIO_FORMAT_AC3:
+        case AUDIO_FORMAT_E_AC3:
+        case AUDIO_FORMAT_MAIN_MASK:
+        case AUDIO_FORMAT_SUB_MASK:
+        case AUDIO_FORMAT_AAC_MAIN:
+        case AUDIO_FORMAT_AAC_LC:
+        case AUDIO_FORMAT_AAC_SSR:
+        case AUDIO_FORMAT_AAC_LTP:
+        case AUDIO_FORMAT_AAC_HE_V1:
+        case AUDIO_FORMAT_AAC_SCALABLE:
+        case AUDIO_FORMAT_AAC_ERLC:
+        case AUDIO_FORMAT_AAC_LD:
+        case AUDIO_FORMAT_AAC_HE_V2:
+        case AUDIO_FORMAT_AAC_ELD:
         default:
             return false;
         }
@@ -1341,6 +1365,30 @@ static inline size_t audio_bytes_per_sample(audio_format_t format)
     case AUDIO_FORMAT_PCM_FLOAT:
         size = sizeof(float);
         break;
+    case AUDIO_FORMAT_INVALID:
+    case AUDIO_FORMAT_DEFAULT:
+    case AUDIO_FORMAT_MP3:
+    case AUDIO_FORMAT_AMR_NB:
+    case AUDIO_FORMAT_AMR_WB:
+    case AUDIO_FORMAT_AAC:
+    case AUDIO_FORMAT_HE_AAC_V1:
+    case AUDIO_FORMAT_HE_AAC_V2:
+    case AUDIO_FORMAT_VORBIS:
+    case AUDIO_FORMAT_OPUS:
+    case AUDIO_FORMAT_AC3:
+    case AUDIO_FORMAT_E_AC3:
+    case AUDIO_FORMAT_MAIN_MASK:
+    case AUDIO_FORMAT_SUB_MASK:
+    case AUDIO_FORMAT_AAC_MAIN:
+    case AUDIO_FORMAT_AAC_LC:
+    case AUDIO_FORMAT_AAC_SSR:
+    case AUDIO_FORMAT_AAC_LTP:
+    case AUDIO_FORMAT_AAC_HE_V1:
+    case AUDIO_FORMAT_AAC_SCALABLE:
+    case AUDIO_FORMAT_AAC_ERLC:
+    case AUDIO_FORMAT_AAC_LD:
+    case AUDIO_FORMAT_AAC_HE_V2:
+    case AUDIO_FORMAT_AAC_ELD:
     default:
         break;
     }

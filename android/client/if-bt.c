@@ -299,6 +299,8 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
 
 		terminal_prompt_for(prompt, ssp_request_yes_no_answer);
 		break;
+	case BT_SSP_VARIANT_PASSKEY_ENTRY:
+	case BT_SSP_VARIANT_PASSKEY_NOTIFICATION:
 	default:
 		haltest_info("Not automatically handled\n");
 		break;
@@ -563,6 +565,19 @@ static void set_adapter_property_p(int argc, const char **argv)
 		property.len = sizeof(timeout);
 		break;
 
+	case BT_PROPERTY_BDADDR:
+	case BT_PROPERTY_UUIDS:
+	case BT_PROPERTY_CLASS_OF_DEVICE:
+	case BT_PROPERTY_TYPE_OF_DEVICE:
+	case BT_PROPERTY_SERVICE_RECORD:
+	case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
+	case BT_PROPERTY_REMOTE_FRIENDLY_NAME:
+	case BT_PROPERTY_REMOTE_RSSI:
+	case BT_PROPERTY_REMOTE_VERSION_INFO:
+	case BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP:
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	case BT_PROPERTY_LOCAL_LE_FEATURES:
+#endif
 	default:
 		haltest_error("Invalid property %s\n", argv[3]);
 		return;
@@ -639,6 +654,21 @@ static void set_remote_device_property_p(int argc, const char **argv)
 		property.len = strlen(argv[4]);
 		property.val = (char *) argv[4];
 		break;
+	case BT_PROPERTY_BDNAME:
+	case BT_PROPERTY_BDADDR:
+	case BT_PROPERTY_UUIDS:
+	case BT_PROPERTY_CLASS_OF_DEVICE:
+	case BT_PROPERTY_TYPE_OF_DEVICE:
+	case BT_PROPERTY_SERVICE_RECORD:
+	case BT_PROPERTY_ADAPTER_SCAN_MODE:
+	case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
+	case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
+	case BT_PROPERTY_REMOTE_RSSI:
+	case BT_PROPERTY_REMOTE_VERSION_INFO:
+	case BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP:
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	case BT_PROPERTY_LOCAL_LE_FEATURES:
+#endif
 	default:
 		return;
 	}

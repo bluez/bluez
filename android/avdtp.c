@@ -1765,6 +1765,9 @@ static gboolean avdtp_delayreport_cmd(struct avdtp *session,
 	case AVDTP_STATE_CLOSING:
 		err = AVDTP_BAD_STATE;
 		goto failed;
+	case AVDTP_STATE_CONFIGURED:
+	case AVDTP_STATE_OPEN:
+	case AVDTP_STATE_STREAMING:
 	default:
 		break;
 	}
