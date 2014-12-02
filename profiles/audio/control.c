@@ -96,6 +96,8 @@ static void state_changed(struct btd_device *dev, avctp_state_t old_state,
 		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
 		break;
+	case AVCTP_STATE_BROWSING_CONNECTING:
+	case AVCTP_STATE_BROWSING_CONNECTED:
 	default:
 		return;
 	}

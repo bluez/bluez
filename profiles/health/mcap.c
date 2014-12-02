@@ -952,6 +952,7 @@ static gboolean parse_set_opts(struct mcap_mdl_cb *mdl_cb, GError **err,
 			c->mdl_reconn_req = va_arg(args,
 						mcap_remote_mdl_reconn_req_cb);
 			break;
+		case MCAP_MDL_CB_INVALID:
 		default:
 			g_set_error(err, MCAP_ERROR, MCAP_ERROR_INVALID_ARGS,
 						"Unknown option %d", cb);

@@ -1619,6 +1619,9 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 			}
 		}
 		break;
+	case AVDTP_STATE_CONFIGURED:
+	case AVDTP_STATE_CLOSING:
+	case AVDTP_STATE_ABORTING:
 	default:
 		error("SEP in bad state for requesting a new stream");
 		goto failed;
@@ -1675,6 +1678,8 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 			cb_data->source_id = g_idle_add(finalize_resume,
 								setup);
 		break;
+	case AVDTP_STATE_CLOSING:
+	case AVDTP_STATE_ABORTING:
 	default:
 		error("SEP in bad state for resume");
 		goto failed;
@@ -1719,6 +1724,9 @@ unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 		}
 		sep->suspending = TRUE;
 		break;
+	case AVDTP_STATE_CONFIGURED:
+	case AVDTP_STATE_CLOSING:
+	case AVDTP_STATE_ABORTING:
 	default:
 		error("SEP in bad state for suspend");
 		goto failed;
@@ -1806,6 +1814,10 @@ gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 		if (avdtp_suspend(session, sep->stream) == 0)
 			sep->suspending = TRUE;
 		break;
+	case AVDTP_STATE_IDLE:
+	case AVDTP_STATE_CONFIGURED:
+	case AVDTP_STATE_CLOSING:
+	case AVDTP_STATE_ABORTING:
 	default:
 		break;
 	}

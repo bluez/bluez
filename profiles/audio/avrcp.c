@@ -3610,6 +3610,7 @@ static void state_changed(struct btd_device *device, avctp_state_t old_state,
 		session_init_browsing(session);
 
 		break;
+	case AVCTP_STATE_BROWSING_CONNECTING:
 	default:
 		return;
 	}
