@@ -84,6 +84,7 @@ void bt_uuid_to_uuid128(const bt_uuid_t *src, bt_uuid_t *dst)
 	case BT_UUID16:
 		bt_uuid16_to_uuid128(src, dst);
 		break;
+	case BT_UUID_UNSPEC:
 	default:
 		break;
 	}
@@ -171,6 +172,7 @@ int bt_uuid_to_string(const bt_uuid_t *uuid, char *str, size_t n)
 				ntohl(data4), ntohs(data5));
 		}
 		break;
+	case BT_UUID_UNSPEC:
 	default:
 		snprintf(str, n, "Type of UUID (%x) unknown.", uuid->type);
 		return -EINVAL;	/* Enum type of UUID not set */
