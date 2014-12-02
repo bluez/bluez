@@ -382,6 +382,7 @@ int main(int argc, char *argv[])
 		err = hid_switch_logitech(device);
 		break;
 	}
+	case METHOD_UNDEF:
 	default:
 		break;
 	}
