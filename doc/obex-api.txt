@@ -514,7 +514,7 @@ Properties	string Folder [readonly]
 
 		string SecondaryCounter [readonly, optional]
 
-			128 bits primary version counter.
+			128 bits secondary version counter.
 
 			Possible values: 32-character hexadecimal such
 			as A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
