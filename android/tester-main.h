@@ -414,6 +414,11 @@ struct pdu_set {
 		.callback_result.song_position = cb_position, \
 	}
 
+#define CALLBACK_RC_REG_NOTIF_STATUS_CHANGED(cb, cb_status) { \
+		.callback = cb, \
+		.callback_result.play_status = cb_status, \
+	}
+
 #define CALLBACK_RC_GET_ELEMENT_ATTRIBUTES(cb, cb_num_of_attrs, cb_attrs) { \
 		.callback = cb, \
 		.callback_result.num_of_attrs = cb_num_of_attrs, \
