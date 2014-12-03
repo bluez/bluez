@@ -75,6 +75,9 @@ static char *cr_str[] = {
 #define GET_RPN_RTCI(io)	((io & 0x10) >> 4)
 #define GET_RPN_RTCO(io)	((io & 0x20) >> 5)
 
+/* RLS macro */
+#define GET_ERROR(err)		(err & 0x0f)
+
 struct rfcomm_lhdr {
 	uint8_t address;
 	uint8_t control;
@@ -98,6 +101,11 @@ struct rfcomm_rpn {
 	uint8_t xoff;
 	uint16_t pm;
 } __attribute__ ((packed));
+
+struct rfcomm_rls {
+	uint8_t dlci;
+	uint8_t error;
+} __attribute__((packed));
 
 struct rfcomm_lmcc {
 	uint8_t type;
@@ -209,6 +217,23 @@ done:
 	return true;
 }
 
+static inline bool mcc_rls(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
+{
+	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
+	struct rfcomm_rls rls;
+
+	if (!l2cap_frame_get_u8(frame, &rls.dlci))
+		return false;
+
+	if (!l2cap_frame_get_u8(frame, &rls.error))
+		return false;
+
+	print_field("%*cdlci %d error: %d", indent, ' ',
+			RFCOMM_GET_DLCI(rls.dlci), GET_ERROR(rls.error));
+
+	return true;
+}
+
 struct mcc_data {
 	uint8_t type;
 	const char *str;
@@ -274,6 +299,8 @@ static inline bool mcc_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 		return mcc_msc(rfcomm_frame, indent+2);
 	case RFCOMM_RPN:
 		return mcc_rpn(rfcomm_frame, indent+2);
+	case RFCOMM_RLS:
+		return mcc_rls(rfcomm_frame, indent+2);
 	default:
 		packet_hexdump(frame->data, frame->size);
 	}
