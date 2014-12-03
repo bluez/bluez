@@ -113,6 +113,10 @@ struct rfcomm_rls {
 	uint8_t error;
 } __attribute__((packed));
 
+struct rfcomm_nsc {
+	uint8_t cmd_type;
+} __attribute__((packed));
+
 struct rfcomm_lmcc {
 	uint8_t type;
 	uint16_t length;
@@ -279,6 +283,20 @@ static inline bool mcc_pn(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	return true;
 }
 
+static inline bool mcc_nsc(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
+{
+	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
+	struct rfcomm_nsc nsc;
+
+	if (!l2cap_frame_get_u8(frame, &nsc.cmd_type))
+		return false;
+
+	print_field("%*ccr %d, mcc_cmd_type %x", indent, ' ',
+		GET_CR(nsc.cmd_type), RFCOMM_GET_MCC_TYPE(nsc.cmd_type));
+
+	return true;
+}
+
 struct mcc_data {
 	uint8_t type;
 	const char *str;
@@ -348,6 +366,8 @@ static inline bool mcc_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 		return mcc_rls(rfcomm_frame, indent+2);
 	case RFCOMM_PN:
 		return mcc_pn(rfcomm_frame, indent+2);
+	case RFCOMM_NSC:
+		return mcc_nsc(rfcomm_frame, indent+2);
 	default:
 		packet_hexdump(frame->data, frame->size);
 	}
