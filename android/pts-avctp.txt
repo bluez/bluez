@@ -1,8 +1,8 @@
 PTS test results for AVCTP
 
 PTS version: 5.3
-Tested: 22-October-2014
-Android version: 4.4.4
+Tested: 03-December-2014
+Android version: 5.0
 
 Results:
 PASS	test passed
