@@ -591,9 +591,9 @@ static void cleanup(void)
 
 	hal_ipc_cleanup();
 
-	bt_hal_cbacks = NULL;
-
 	hal_ipc_unregister(HAL_SERVICE_ID_BLUETOOTH);
+
+	bt_hal_cbacks = NULL;
 }
 
 static int get_adapter_properties(void)

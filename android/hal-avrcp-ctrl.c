@@ -122,14 +122,14 @@ static void cleanup(void)
 	if (!interface_ready())
 		return;
 
-	cbs = NULL;
-
 	cmd.service_id = HAL_SERVICE_ID_AVRCP_CTRL;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_AVRCP_CTRL);
+
+	cbs = NULL;
 }
 
 static btrc_ctrl_interface_t iface = {

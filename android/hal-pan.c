@@ -184,14 +184,14 @@ static void pan_cleanup(void)
 	if (!interface_ready())
 		return;
 
-	cbs = NULL;
-
 	cmd.service_id = HAL_SERVICE_ID_PAN;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_PAN);
+
+	cbs = NULL;
 }
 
 static btpan_interface_t pan_if = {

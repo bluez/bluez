@@ -373,14 +373,14 @@ static void cleanup(void)
 	if (!interface_ready())
 		return;
 
-	cbacks = NULL;
-
 	cmd.service_id = HAL_SERVICE_ID_HIDHOST;
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 
 	hal_ipc_unregister(HAL_SERVICE_ID_HIDHOST);
+
+	cbacks = NULL;
 }
 
 static bthh_interface_t hidhost_if = {
