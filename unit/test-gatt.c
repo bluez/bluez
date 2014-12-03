@@ -736,10 +736,10 @@ static void test_server(gconstpointer data)
 
 	len = write(context->fd, pdu.data, pdu.size);
 
+	g_assert_cmpint(len, ==, pdu.size);
+
 	if (g_test_verbose())
 		util_hexdump('<', pdu.data, len, test_debug, "GATT: ");
-
-	g_assert_cmpint(len, ==, pdu.size);
 
 	execute_context(context);
 }
