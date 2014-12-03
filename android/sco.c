@@ -310,18 +310,8 @@ void bt_sco_disconnect(struct bt_sco *sco)
 	if (!sco)
 		return;
 
-	if (sco->watch) {
-		g_source_remove(sco->watch);
-		sco->watch = 0;
-	}
-
-	if (sco->io) {
+	if (sco->io)
 		g_io_channel_shutdown(sco->io, TRUE, NULL);
-		g_io_channel_unref(sco->io);
-		sco->io = NULL;
-	}
-
-	clear_remote_address(sco);
 }
 
 bool bt_sco_get_fd_and_mtu(struct bt_sco *sco, int *fd, uint16_t *mtu)
