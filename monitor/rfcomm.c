@@ -63,6 +63,18 @@ static char *cr_str[] = {
 #define GET_V24_IC(sigs)	((sigs & 0x40) >> 6)
 #define GET_V24_DV(sigs)	((sigs & 0x80) >> 7)
 
+/* RPN macros */
+#define GET_RPN_DB(parity)	(parity & 0x03)
+#define GET_RPN_SB(parity)	((parity & 0x04) >> 2)
+#define GET_RPN_PARITY(parity)	((parity & 0x08) >> 3)
+#define GET_RPN_PTYPE(parity)	((parity & 0x03) >> 3)
+#define GET_RPN_XIN(io)		(io & 0x01)
+#define GET_RPN_XOUT(io)	((io & 0x02) >> 1)
+#define GET_RPN_RTRI(io)	((io & 0x04) >> 2)
+#define GET_RPN_RTRO(io)	((io & 0x08) >> 3)
+#define GET_RPN_RTCI(io)	((io & 0x10) >> 4)
+#define GET_RPN_RTCO(io)	((io & 0x20) >> 5)
+
 struct rfcomm_lhdr {
 	uint8_t address;
 	uint8_t control;
@@ -76,6 +88,16 @@ struct rfcomm_lmsc {
 	uint8_t v24_sig;
 	uint8_t break_sig;
 } __attribute__((packed));
+
+struct rfcomm_rpn {
+	uint8_t dlci;
+	uint8_t bit_rate;
+	uint8_t parity;
+	uint8_t io;
+	uint8_t xon;
+	uint8_t xoff;
+	uint16_t pm;
+} __attribute__ ((packed));
 
 struct rfcomm_lmcc {
 	uint8_t type;
@@ -133,6 +155,55 @@ static inline bool mcc_msc(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	 */
 
 	packet_hexdump(frame->data, frame->size);
+
+done:
+	return true;
+}
+
+static inline bool mcc_rpn(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
+{
+	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
+	struct rfcomm_rpn rpn;
+
+	if (!l2cap_frame_get_u8(frame, &rpn.dlci))
+		return false;
+
+	print_field("%*cdlci %d", indent, ' ', RFCOMM_GET_DLCI(rpn.dlci));
+
+	if (frame->size < 7)
+		goto done;
+
+	/* port value octets (optional) */
+
+	if (!l2cap_frame_get_u8(frame, &rpn.bit_rate))
+		return false;
+
+	if (!l2cap_frame_get_u8(frame, &rpn.parity))
+		return false;
+
+	if (!l2cap_frame_get_u8(frame, &rpn.io))
+		return false;
+
+	print_field("%*cbr %d db %d sb %d p %d pt %d xi %d xo %d", indent, ' ',
+		rpn.bit_rate, GET_RPN_DB(rpn.parity), GET_RPN_SB(rpn.parity),
+		GET_RPN_PARITY(rpn.parity), GET_RPN_PTYPE(rpn.parity),
+		GET_RPN_XIN(rpn.io), GET_RPN_XOUT(rpn.io));
+
+	if (!l2cap_frame_get_u8(frame, &rpn.xon))
+		return false;
+
+	if (!l2cap_frame_get_u8(frame, &rpn.xoff))
+		return false;
+
+	print_field("%*crtri %d rtro %d rtci %d rtco %d xon %d xoff %d",
+		indent, ' ', GET_RPN_RTRI(rpn.io), GET_RPN_RTRO(rpn.io),
+		GET_RPN_RTCI(rpn.io), GET_RPN_RTCO(rpn.io), rpn.xon,
+		rpn.xoff);
+
+	if (!l2cap_frame_get_be16(frame, &rpn.pm))
+		return false;
+
+	print_field("%*cpm 0x%04x", indent, ' ', __bswap_16(rpn.pm));
 
 done:
 	return true;
@@ -201,6 +272,8 @@ static inline bool mcc_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	switch (type) {
 	case RFCOMM_MSC:
 		return mcc_msc(rfcomm_frame, indent+2);
+	case RFCOMM_RPN:
+		return mcc_rpn(rfcomm_frame, indent+2);
 	default:
 		packet_hexdump(frame->data, frame->size);
 	}
