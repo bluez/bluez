@@ -99,6 +99,31 @@ static void ready_cb(bool success, uint8_t att_ecode, void *user_data);
 static void service_changed_cb(uint16_t start_handle, uint16_t end_handle,
 							void *user_data);
 
+static void log_service_event(struct gatt_db_attribute *attr, const char *str)
+{
+	char uuid_str[MAX_LEN_UUID_STR];
+	bt_uuid_t uuid;
+	uint16_t start, end;
+
+	gatt_db_attribute_get_service_uuid(attr, &uuid);
+	bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
+
+	gatt_db_attribute_get_service_handles(attr, &start, &end);
+
+	PRLOG("%s - UUID: %s start: 0x%04x end: 0x%04x\n", str, uuid_str,
+								start, end);
+}
+
+static void service_added_cb(struct gatt_db_attribute *attr, void *user_data)
+{
+	log_service_event(attr, "Service Added");
+}
+
+static void service_removed_cb(struct gatt_db_attribute *attr, void *user_data)
+{
+	log_service_event(attr, "Service Removed");
+}
+
 static struct client *client_create(int fd, uint16_t mtu)
 {
 	struct client *cli;
@@ -149,6 +174,9 @@ static struct client *client_create(int fd, uint16_t mtu)
 		free(cli);
 		return NULL;
 	}
+
+	gatt_db_register(cli->db, service_added_cb, service_removed_cb,
+								NULL, NULL);
 
 	if (verbose) {
 		bt_att_set_debug(att, att_debug_cb, "att: ", NULL);
