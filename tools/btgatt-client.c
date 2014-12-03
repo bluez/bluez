@@ -42,6 +42,8 @@
 #include "monitor/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/att.h"
+#include "src/shared/queue.h"
+#include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
 
 #define ATT_CID 4
@@ -62,6 +64,7 @@ static bool verbose = false;
 
 struct client {
 	int fd;
+	struct gatt_db *db;
 	struct bt_gatt_client *gatt;
 };
 
@@ -130,9 +133,18 @@ static struct client *client_create(int fd, uint16_t mtu)
 	}
 
 	cli->fd = fd;
-	cli->gatt = bt_gatt_client_new(att, mtu);
+	cli->db = gatt_db_new();
+	if (!cli->db) {
+		fprintf(stderr, "Failed to create GATT database\n");
+		bt_att_unref(att);
+		free(cli);
+		return NULL;
+	}
+
+	cli->gatt = bt_gatt_client_new(cli->db, att, mtu);
 	if (!cli->gatt) {
 		fprintf(stderr, "Failed to create GATT client\n");
+		gatt_db_unref(cli->db);
 		bt_att_unref(att);
 		free(cli);
 		return NULL;
@@ -150,6 +162,7 @@ static struct client *client_create(int fd, uint16_t mtu)
 
 	/* bt_gatt_client already holds a reference */
 	bt_att_unref(att);
+	gatt_db_unref(cli->db);
 
 	return cli;
 }

@@ -39,10 +39,10 @@
 #include "src/shared/util.h"
 #include "src/shared/att.h"
 #include "src/shared/gatt-helpers.h"
-#include "src/shared/gatt-client.h"
 #include "src/shared/queue.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-server.h"
+#include "src/shared/gatt-client.h"
 
 struct test_pdu {
 	bool valid;
@@ -77,7 +77,8 @@ struct context {
 	struct bt_gatt_client *client;
 	struct bt_gatt_server *server;
 	struct bt_att *att;
-	struct gatt_db *db;
+	struct gatt_db *client_db;
+	struct gatt_db *server_db;
 	guint source;
 	guint process;
 	int fd;
@@ -433,7 +434,7 @@ static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 
 static void populate_db(struct context *context)
 {
-	struct gatt_db *db = context->db;
+	struct gatt_db *db = context->server_db;
 	struct gatt_db_attribute *attr;
 	bt_uuid_t uuid;
 	uint128_t u128 = {
@@ -495,10 +496,11 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 		bt_gatt_exchange_mtu(context->att, mtu, NULL, NULL, NULL);
 		break;
 	case SERVER:
-		context->db = gatt_db_new();
-		g_assert(context->db);
+		context->server_db = gatt_db_new();
+		g_assert(context->server_db);
 
-		context->server = bt_gatt_server_new(context->db, att, mtu);
+		context->server = bt_gatt_server_new(context->server_db, att,
+									mtu);
 		g_assert(context->server);
 
 		populate_db(context);
@@ -509,7 +511,11 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 		bt_att_unref(att);
 		break;
 	case CLIENT:
-		context->client = bt_gatt_client_new(att, mtu);
+		context->client_db = gatt_db_new();
+		g_assert(context->client_db);
+
+		context->client = bt_gatt_client_new(context->client_db, att,
+									mtu);
 		g_assert(context->client);
 
 		if (g_test_verbose())
@@ -562,7 +568,8 @@ static void destroy_context(struct context *context)
 
 	bt_gatt_client_unref(context->client);
 	bt_gatt_server_unref(context->server);
-	gatt_db_unref(context->db);
+	gatt_db_unref(context->client_db);
+	gatt_db_unref(context->server_db);
 
 	if (context->att)
 		bt_att_unref(context->att);
