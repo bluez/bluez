@@ -49,11 +49,19 @@ static char *cr_str[] = {
 	"CMD"
 };
 
-#define CR_STR(type) cr_str[GET_CR(type)]
-#define GET_LEN8(length) ((length & 0xfe) >> 1)
-#define GET_LEN16(length) ((length & 0xfffe) >> 1)
-#define GET_CR(type)	((type & 0x02) >> 1)
-#define GET_PF(ctr) (((ctr) >> 4) & 0x1)
+/* RFCOMM frame parsing macros */
+#define CR_STR(type)		cr_str[GET_CR(type)]
+#define GET_LEN8(length)	((length & 0xfe) >> 1)
+#define GET_LEN16(length)	((length & 0xfffe) >> 1)
+#define GET_CR(type)		((type & 0x02) >> 1)
+#define GET_PF(ctr)		(((ctr) >> 4) & 0x1)
+
+/* MSC macros */
+#define GET_V24_FC(sigs)	((sigs & 0x02) >> 1)
+#define GET_V24_RTC(sigs)	((sigs & 0x04) >> 2)
+#define GET_V24_RTR(sigs)	((sigs & 0x08) >> 3)
+#define GET_V24_IC(sigs)	((sigs & 0x40) >> 6)
+#define GET_V24_DV(sigs)	((sigs & 0x80) >> 7)
 
 struct rfcomm_lhdr {
 	uint8_t address;
@@ -61,6 +69,12 @@ struct rfcomm_lhdr {
 	uint16_t length;
 	uint8_t fcs;
 	uint8_t credits; /* only for UIH frame */
+} __attribute__((packed));
+
+struct rfcomm_lmsc {
+	uint8_t dlci;
+	uint8_t v24_sig;
+	uint8_t break_sig;
 } __attribute__((packed));
 
 struct rfcomm_lmcc {
@@ -90,6 +104,38 @@ static void print_rfcomm_hdr(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	/* Length and FCS */
 	print_field("%*cLength: %d", indent, ' ', hdr.length);
 	print_field("%*cFCS: 0x%2.2x", indent, ' ', hdr.fcs);
+}
+
+static inline bool mcc_msc(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
+{
+	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
+	struct rfcomm_lmsc msc;
+
+	if (!l2cap_frame_get_u8(frame, &msc.dlci))
+		return false;
+
+	print_field("%*cdlci %d ", indent, ' ', RFCOMM_GET_DLCI(msc.dlci));
+
+	if (!l2cap_frame_get_u8(frame, &msc.v24_sig))
+		return false;
+
+	/* v24 control signals */
+	print_field("%*cfc %d rtc %d rtr %d ic %d dv %d", indent, ' ',
+		GET_V24_FC(msc.v24_sig), GET_V24_RTC(msc.v24_sig),
+		GET_V24_RTR(msc.v24_sig), GET_V24_IC(msc.v24_sig),
+					GET_V24_DV(msc.v24_sig));
+
+	if (frame->size < 2)
+		goto done;
+
+	/*
+	 * TODO: Implement the break signals decoding.
+	 */
+
+	packet_hexdump(frame->data, frame->size);
+
+done:
+	return true;
 }
 
 struct mcc_data {
@@ -151,7 +197,13 @@ static inline bool mcc_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	print_field("%*cLength: %d", indent+2, ' ', mcc.length);
 
 	rfcomm_frame->mcc = mcc;
-	packet_hexdump(frame->data, frame->size);
+
+	switch (type) {
+	case RFCOMM_MSC:
+		return mcc_msc(rfcomm_frame, indent+2);
+	default:
+		packet_hexdump(frame->data, frame->size);
+	}
 
 	return true;
 }
@@ -225,7 +277,7 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 
 	l2cap_frame_pull(&tmp_frame, l2cap_frame, l2cap_frame->size-1);
 
-	if(!l2cap_frame_get_u8(&tmp_frame, &hdr.fcs))
+	if (!l2cap_frame_get_u8(&tmp_frame, &hdr.fcs))
 		goto fail;
 
 	/* Decoding frame type */
