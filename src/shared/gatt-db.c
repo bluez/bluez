@@ -205,6 +205,14 @@ void gatt_db_unref(struct gatt_db *db)
 	gatt_db_destroy(db);
 }
 
+bool gatt_db_isempty(struct gatt_db *db)
+{
+	if (!db)
+		return true;
+
+	return queue_isempty(db->services);
+}
+
 static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)
 {
 	bt_uuid_t uuid128;
