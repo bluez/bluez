@@ -1111,9 +1111,6 @@ static gboolean get_databaseid(const GDBusPropertyTable *property,
 	char value[33];
 	const char *pvalue = value;
 
-	if (!pbap->databaseid)
-		return FALSE;
-
 	if (u128_to_string(pbap->databaseid, value, sizeof(value)) < 0)
 		return FALSE;
 
@@ -1137,9 +1134,6 @@ static gboolean get_primary(const GDBusPropertyTable *property,
 	char value[33];
 	const char *pvalue = value;
 
-	if (!pbap->primary)
-		return FALSE;
-
 	if (u128_to_string(pbap->primary, value, sizeof(value)) < 0)
 		return FALSE;
 
@@ -1154,9 +1148,6 @@ static gboolean get_secondary(const GDBusPropertyTable *property,
 	struct pbap_data *pbap = data;
 	char value[33];
 	const char *pvalue = value;
-
-	if (!pbap->secondary)
-		return FALSE;
 
 	if (u128_to_string(pbap->secondary, value, sizeof(value)) < 0)
 		return FALSE;
