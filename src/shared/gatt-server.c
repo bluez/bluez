@@ -129,6 +129,7 @@ static void bt_gatt_server_free(struct bt_gatt_server *server)
 
 	queue_destroy(server->prep_queue, prep_write_data_destroy);
 
+	gatt_db_unref(server->db);
 	bt_att_unref(server->att);
 	free(server);
 }
@@ -1177,14 +1178,14 @@ struct bt_gatt_server *bt_gatt_server_new(struct gatt_db *db,
 {
 	struct bt_gatt_server *server;
 
-	if (!att)
+	if (!att || !db)
 		return NULL;
 
 	server = new0(struct bt_gatt_server, 1);
 	if (!server)
 		return NULL;
 
-	server->db = db;
+	server->db = gatt_db_ref(db);
 	server->att = bt_att_ref(att);
 	server->mtu = MAX(mtu, BT_ATT_DEFAULT_LE_MTU);
 	server->max_prep_queue_len = DEFAULT_MAX_PREP_QUEUE_LEN;
