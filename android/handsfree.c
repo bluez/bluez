@@ -995,9 +995,8 @@ static bool connect_sco(struct hf_device *dev)
 {
 	uint16_t voice_settings;
 
-	if (!codec_negotiation_supported(dev))
-		voice_settings = 0;
-	else if (dev->negotiated_codec != CODEC_ID_CVSD)
+	if (codec_negotiation_supported(dev) &&
+			dev->negotiated_codec != CODEC_ID_CVSD)
 		voice_settings = BT_VOICE_TRANSPARENT;
 	else
 		voice_settings = BT_VOICE_CVSD_16BIT;
