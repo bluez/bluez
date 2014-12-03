@@ -155,6 +155,13 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C4
 
+- Add service_added and service_removed callbacks to shared/gatt-db which should
+  get triggered via bt_gatt_service_set_active and when services get add or
+  removed.
+
+  Priority: Medium
+  Complexity: C2
+
 - Implement the client portion of doc/gatt-api.txt using shared/gatt-client once
   plugin/profile code uses it.
 
