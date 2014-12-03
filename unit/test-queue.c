@@ -167,6 +167,8 @@ static void test_push_after(void)
 	g_assert(queue_pop_head(queue) == UINT_TO_PTR(0));
 	g_assert(queue_pop_head(queue) == UINT_TO_PTR(1));
 	g_assert(queue_pop_head(queue) == UINT_TO_PTR(1));
+
+	queue_destroy(queue, NULL);
 }
 
 int main(int argc, char *argv[])
