@@ -1586,11 +1586,13 @@ static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 		memcpy(uuid128, uuid, sizeof(*uuid));
 }
 
+#define MAX_UUIDS 4
+
 static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 			     char **argv)
 {
 	struct mgmt_cp_start_service_discovery *cp;
-	uint8_t buf[sizeof(*cp) + 16];
+	uint8_t buf[sizeof(*cp) + 16 * MAX_UUIDS];
 	uuid_t uuid;
 	uint128_t uint128;
 	uuid_t uuid128;
@@ -1628,6 +1630,11 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 			hci_clear_bit(BDADDR_LE_RANDOM, &type);
 			break;
 		case 'u':
+			if (count == MAX_UUIDS) {
+				printf("Max %u UUIDs supported\n", MAX_UUIDS);
+				exit(EXIT_FAILURE);
+			}
+
 			if (bt_string2uuid(&uuid, optarg) < 0) {
 				printf("Invalid UUID: %s\n", optarg);
 				exit(EXIT_FAILURE);
@@ -1636,8 +1643,7 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 			uuid_to_uuid128(&uuid128, &uuid);
 			ntoh128((uint128_t *) uuid128.value.uuid128.data,
 				&uint128);
-			htob128(&uint128, (uint128_t *) cp->uuids);
-			count = 1;
+			htob128(&uint128, (uint128_t *) cp->uuids[count++]);
 			break;
 		case 'r':
 			rssi = atoi(optarg);
