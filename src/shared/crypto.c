@@ -594,6 +594,8 @@ static bool aes_cmac(struct bt_crypto *crypto, uint8_t key[16], uint8_t *msg,
 
 	swap_buf(out, res, 16);
 
+	close(fd);
+
 	return true;
 }
 
