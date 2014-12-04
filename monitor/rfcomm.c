@@ -221,7 +221,7 @@ static inline bool mcc_rpn(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	if (!l2cap_frame_get_be16(frame, &rpn.pm))
 		return false;
 
-	print_field("%*cpm 0x%04x", indent, ' ', __bswap_16(rpn.pm));
+	print_field("%*cpm 0x%04x", indent, ' ', rpn.pm);
 
 done:
 	return true;
@@ -277,8 +277,8 @@ static inline bool mcc_pn(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 		return false;
 
 	print_field("%*cack_timer %d frame_size %d max_retrans %d credits %d",
-			indent, ' ', pn.ack_timer, __bswap_16(pn.mtu),
-			pn.max_retrans, pn.credits);
+			indent, ' ', pn.ack_timer, pn.mtu, pn.max_retrans,
+			pn.credits);
 
 	return true;
 }
