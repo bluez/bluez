@@ -1,8 +1,8 @@
 PTS test results for RFCOMM
 
 PTS version: 5.3
-Tested: 13-October-2014
-Android version: 4.4.4
+Tested: 19-November-2014
+Android version: 5.0
 Kernel version: 3.19
 
 Results:
