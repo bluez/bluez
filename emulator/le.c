@@ -284,9 +284,9 @@ static void cmd_read_local_version(struct bt_le *hci,
 	struct bt_hci_rsp_read_local_version rsp;
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
-	rsp.hci_ver = 0x06;
+	rsp.hci_ver = 0x08;
 	rsp.hci_rev = cpu_to_le16(0x0000);
-	rsp.lmp_ver = 0x06;
+	rsp.lmp_ver = 0x08;
 	rsp.manufacturer = cpu_to_le16(hci->manufacturer);
 	rsp.lmp_subver = cpu_to_le16(0x0000);
 
