@@ -1564,7 +1564,7 @@ static void find_service_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void find_service_usage(void)
 {
-	printf("Usage: btmgmt find-service -u UUID [-r RSSI_Threshold] [-l|-b]>\n");
+	printf("Usage: btmgmt find-service [-u UUID] [-r RSSI_Threshold] [-l|-b]\n");
 }
 
 static struct option find_service_options[] = {
@@ -1591,21 +1591,23 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 {
 	struct mgmt_cp_start_service_discovery *cp;
 	uint8_t buf[sizeof(*cp) + 16];
-	int opt;
-	int total_size = sizeof(*cp) + 16;
 	uuid_t uuid;
 	uint128_t uint128;
 	uuid_t uuid128;
 	uint8_t type;
+	int8_t rssi;
+	uint16_t count;
+	int opt;
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	cp = (void *) buf;
 	type = 0;
 	hci_set_bit(BDADDR_BREDR, &type);
 	hci_set_bit(BDADDR_LE_PUBLIC, &type);
 	hci_set_bit(BDADDR_LE_RANDOM, &type);
+	rssi = 127;
+	count = 0;
 
 	if (argc == 1) {
 		find_service_usage();
@@ -1613,7 +1615,7 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 	}
 
 	while ((opt = getopt_long(argc, argv, "+lbu:r:p:h",
-				  find_service_options, NULL)) != -1) {
+					find_service_options, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
 			hci_clear_bit(BDADDR_BREDR, &type);
@@ -1630,13 +1632,15 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 				printf("Invalid UUID: %s\n", optarg);
 				exit(EXIT_FAILURE);
 			}
+			cp = (void *) buf;
 			uuid_to_uuid128(&uuid128, &uuid);
 			ntoh128((uint128_t *) uuid128.value.uuid128.data,
 				&uint128);
 			htob128(&uint128, (uint128_t *) cp->uuids);
+			count = 1;
 			break;
 		case 'r':
-			cp->rssi = atoi(optarg);
+			rssi = atoi(optarg);
 			break;
 		case 'h':
 			find_service_usage();
@@ -1656,11 +1660,14 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 		exit(EXIT_FAILURE);
 	}
 
+	cp = (void *) buf;
 	cp->type = type;
-	cp->uuid_count = 1;
+	cp->rssi = rssi;
+	cp->uuid_count = count;
 
-	if (mgmt_send(mgmt, MGMT_OP_START_SERVICE_DISCOVERY, index, total_size,
-		      cp, find_service_rsp, NULL, NULL) == 0) {
+	if (mgmt_send(mgmt, MGMT_OP_START_SERVICE_DISCOVERY, index,
+				sizeof(*cp) + count * 16, cp,
+				find_service_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send start_service_discovery cmd\n");
 		exit(EXIT_FAILURE);
 	}
