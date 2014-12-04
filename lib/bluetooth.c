@@ -1087,6 +1087,28 @@ const char *bt_compidtostr(int compid)
 		return "CUBETECH s.r.o.";
 	case 412:
 		return "Cokiya Incorporated";
+	case 413:
+		return "CVS Health";
+	case 414:
+		return "Ceruus";
+	case 415:
+		return "Strainstall Ltd";
+	case 416:
+		return "Channel Enterprises (HK) Ltd.";
+	case 417:
+		return "FIAMM";
+	case 418:
+		return "GIGALANE.CO.,LTD";
+	case 419:
+		return "EROAD";
+	case 420:
+		return "Mine Safety Appliances";
+	case 421:
+		return "Icon Health and Fitness";
+	case 422:
+		return "Asandoo GmbH";
+	case 423:
+		return "ENERGOUS CORPORATION";
 	case 65535:
 		return "internal use";
 	default:
