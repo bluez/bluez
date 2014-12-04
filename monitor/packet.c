@@ -2198,6 +2198,9 @@ void packet_print_version(const char *label, uint8_t version,
 	case 0x07:
 		str = "Bluetooth 4.1";
 		break;
+	case 0x08:
+		str = "Bluetooth 4.2";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -2375,6 +2378,9 @@ static const struct features_data features_le[] = {
 	{  2, "Extended Reject Indication"		},
 	{  3, "Slave-initiated Features Exchange"	},
 	{  4, "LE Ping"					},
+	{  5, "LE Data Packet Length Extension"		},
+	{  6, "LL Privacy"				},
+	{  7, "Extended Scanner Filter Policies"	},
 	{ }
 };
 
@@ -2771,6 +2777,11 @@ static const struct {
 	{  3, "LE Read Remote Used Features"		},
 	{  4, "LE Long Term Key Request"		},
 	{  5, "LE Remote Connection Parameter Request"	},
+	{  6, "LE Data Length Change"			},
+	{  7, "LE Read Local P-256 Public Key Complete"	},
+	{  9, "LE Generate DHKey Complete"		},
+	{ 10, "LE Enhanced Connection Complete"		},
+	{ 11, "LE Direct Advertising Report"		},
 	{ }
 };
 
@@ -6575,6 +6586,20 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2021, 269, "LE Remote Connection Parameter Request Negative Reply",
 				le_conn_param_req_neg_reply_cmd, 3, true,
 				le_conn_param_req_neg_reply_rsp, 3, true },
+	{ 0x2022, 270, "LE Set Data Length" },
+	{ 0x2023, 271, "LE Read Suggested Default Data Length" },
+	{ 0x2024, 272, "LE Write Suggested Default Data Length" },
+	{ 0x2025, 273, "LE Read Local P-256 Public Key" },
+	{ 0x2026, 274, "LE Generate DHKey" },
+	{ 0x2027, 275, "LE Add Device To Resolving List" },
+	{ 0x2028, 276, "LE Remove Device From Resolving List" },
+	{ 0x2029, 277, "LE Clear Resolving List" },
+	{ 0x202a, 278, "LE Read Resolving List Size" },
+	{ 0x202b, 279, "LE Read Peer Resolvable Address" },
+	{ 0x202c, 280, "LE Read Local Resolvable Address" },
+	{ 0x202d, 281, "LE Set Address Resolution Enable" },
+	{ 0x202e, 282, "LE Set Resolvable Private Address Timeout" },
+	{ 0x202f, 283, "LE Read Maximum Data Length" },
 	{ }
 };
 
@@ -7523,6 +7548,11 @@ static const struct subevent_data subevent_table[] = {
 				le_long_term_key_request_evt, 12, true },
 	{ 0x06, "LE Remote Connection Parameter Request",
 				le_conn_param_request_evt, 10, true },
+	{ 0x07, "LE Data Length Change" },
+	{ 0x08, "LE Read Local P-256 Public Key Complete" },
+	{ 0x09, "LE Generate DHKey Complete" },
+	{ 0x0a, "LE Enhanced Connection Complete" },
+	{ 0x0b, "LE Direct Advertising Report" },
 	{ }
 };
 
