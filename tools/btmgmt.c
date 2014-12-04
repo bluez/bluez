@@ -1663,7 +1663,7 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 	cp = (void *) buf;
 	cp->type = type;
 	cp->rssi = rssi;
-	cp->uuid_count = count;
+	cp->uuid_count = cpu_to_le16(count);
 
 	if (mgmt_send(mgmt, MGMT_OP_START_SERVICE_DISCOVERY, index,
 				sizeof(*cp) + count * 16, cp,
