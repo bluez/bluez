@@ -314,6 +314,9 @@ static void event_cb(uint16_t index, uint16_t length, const void *param,
 {
 	struct context *context = user_data;
 
+	if (g_test_verbose())
+		printf("Event received\n");
+
 	context_quit(context);
 }
 
@@ -322,6 +325,22 @@ static void test_event(gconstpointer data)
 	const struct command_test_data *test = data;
 	struct context *context = create_context();
 
+	mgmt_register(context->mgmt_client, test->opcode, test->index,
+						event_cb, context, NULL);
+
+	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
+								test->cmd_size);
+
+	execute_context(context);
+}
+
+static void test_event2(gconstpointer data)
+{
+	const struct command_test_data *test = data;
+	struct context *context = create_context();
+
+	mgmt_register(context->mgmt_client, test->opcode, test->index,
+						event_cb, context, NULL);
 	mgmt_register(context->mgmt_client, test->opcode, test->index,
 						event_cb, context, NULL);
 
@@ -344,6 +363,7 @@ int main(int argc, char *argv[])
 								test_response);
 
 	g_test_add_data_func("/mgmt/event/1", &event_test_1, test_event);
+	g_test_add_data_func("/mgmt/event/2", &event_test_1, test_event2);
 
 	return g_test_run();
 }
