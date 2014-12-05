@@ -54,6 +54,7 @@ struct handler {
 	uint16_t cmd_size;
 	const void *rsp_data;
 	uint16_t rsp_size;
+	uint8_t rsp_status;
 	bool match_prefix;
 	enum action action;
 };
@@ -185,7 +186,8 @@ static void execute_context(struct context *context)
 static void add_action(struct context *context,
 				const void *cmd_data, uint16_t cmd_size,
 				const void *rsp_data, uint16_t rsp_size,
-				bool match_prefix, enum action action)
+				uint8_t rsp_status, bool match_prefix,
+				enum action action)
 {
 	struct handler *handler = g_new0(struct handler, 1);
 
@@ -193,6 +195,7 @@ static void add_action(struct context *context,
 	handler->cmd_size = cmd_size;
 	handler->rsp_data = rsp_data;
 	handler->rsp_size = rsp_size;
+	handler->rsp_status = rsp_status;
 	handler->match_prefix = match_prefix;
 	handler->action = action;
 
@@ -208,6 +211,7 @@ struct command_test_data {
 	uint16_t cmd_size;
 	const void *rsp_data;
 	uint16_t rsp_size;
+	uint8_t rsp_status;
 };
 
 static const unsigned char read_version_command[] =
@@ -223,6 +227,7 @@ static const struct command_test_data command_test_1 = {
 	.cmd_size = sizeof(read_version_command),
 	.rsp_data = read_version_response,
 	.rsp_size = sizeof(read_version_response),
+	.rsp_status = MGMT_STATUS_SUCCESS,
 };
 
 static const unsigned char read_info_command[] =
@@ -235,14 +240,28 @@ static const struct command_test_data command_test_2 = {
 	.cmd_size = sizeof(read_info_command),
 };
 
+static const unsigned char invalid_index_response[] =
+				{ 0x02, 0x00, 0xff, 0xff, 0x03, 0x00,
+				0x01, 0x00, 0x11 };
+
+static const struct command_test_data command_test_3 = {
+	.opcode = MGMT_OP_READ_VERSION,
+	.index = MGMT_INDEX_NONE,
+	.cmd_data = read_version_command,
+	.cmd_size = sizeof(read_version_command),
+	.rsp_data = invalid_index_response,
+	.rsp_size = sizeof(invalid_index_response),
+	.rsp_status = MGMT_STATUS_INVALID_INDEX,
+};
+
 static void test_command(gconstpointer data)
 {
 	const struct command_test_data *test = data;
 	struct context *context = create_context();
 
 	add_action(context, test->cmd_data, test->cmd_size,
-						test->rsp_data, test->rsp_size,
-						false, ACTION_PASSED);
+			test->rsp_data, test->rsp_size, test->rsp_status,
+			false, ACTION_PASSED);
 
 	mgmt_send(context->mgmt_client, test->opcode, test->index,
 					test->length, test->param,
@@ -251,12 +270,13 @@ static void test_command(gconstpointer data)
 	execute_context(context);
 }
 
-static void success_cb(uint8_t status, uint16_t length, const void *param,
+static void response_cb(uint8_t status, uint16_t length, const void *param,
 							void *user_data)
 {
 	struct context *context = user_data;
+	struct handler *handler = context->handler_list->data;
 
-	g_assert_cmpint(status, ==, MGMT_STATUS_SUCCESS);
+	g_assert_cmpint(status, ==, handler->rsp_status);
 
 	context_quit(context);
 }
@@ -267,12 +287,12 @@ static void test_response(gconstpointer data)
 	struct context *context = create_context();
 
 	add_action(context, test->cmd_data, test->cmd_size,
-						test->rsp_data, test->rsp_size,
-						false, ACTION_RESPOND);
+			test->rsp_data, test->rsp_size, test->rsp_status,
+			false, ACTION_RESPOND);
 
 	mgmt_send(context->mgmt_client, test->opcode, test->index,
 					test->length, test->param,
-					success_cb, context, NULL);
+					response_cb, context, NULL);
 
 	execute_context(context);
 }
@@ -285,6 +305,8 @@ int main(int argc, char *argv[])
 	g_test_add_data_func("/mgmt/command/2", &command_test_2, test_command);
 
 	g_test_add_data_func("/mgmt/response/1", &command_test_1,
+								test_response);
+	g_test_add_data_func("/mgmt/response/2", &command_test_3,
 								test_response);
 
 	return g_test_run();
