@@ -2034,6 +2034,34 @@ static void print_num_reports(uint8_t num_reports)
 	print_field("Num reports: %d", num_reports);
 }
 
+static void print_adv_event_type(uint8_t type)
+{
+	const char *str;
+
+	switch (type) {
+	case 0x00:
+		str = "Connectable undirected - ADV_IND";
+		break;
+	case 0x01:
+		str = "Connectable directed - ADV_DIRECT_IND";
+		break;
+	case 0x02:
+		str = "Scannable undirected - ADV_SCAN_IND";
+		break;
+	case 0x03:
+		str = "Non connectable undirected - ADV_NONCONN_IND";
+		break;
+	case 0x04:
+		str = "Scan response - SCAN_RSP";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Event type: %s (0x%2.2x)", str, type);
+}
+
 static void print_rssi(int8_t rssi)
 {
 	if ((uint8_t) rssi == 0x99 || rssi == 127)
@@ -7436,35 +7464,13 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 static void le_adv_report_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_adv_report *evt = data;
-	const char *str;
 	uint8_t evt_len;
 	int8_t *rssi;
 
 	print_num_reports(evt->num_reports);
 
 report:
-	switch (evt->event_type) {
-	case 0x00:
-		str = "Connectable undirected - ADV_IND";
-		break;
-	case 0x01:
-		str = "Connectable directed - ADV_DIRECT_IND";
-		break;
-	case 0x02:
-		str = "Scannable undirected - ADV_SCAN_IND";
-		break;
-	case 0x03:
-		str = "Non connectable undirected - ADV_NONCONN_IND";
-		break;
-	case 0x04:
-		str = "Scan response - SCAN_RSP";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("Event type: %s (0x%2.2x)", str, evt->event_type);
+	print_adv_event_type(evt->event_type);
 	print_addr_type("Address type", evt->addr_type);
 	print_addr("Address", evt->addr, evt->addr_type);
 	print_field("Data length: %d", evt->data_len);
