@@ -698,6 +698,7 @@ static const char *mgmt_op[] = {
 	"Read Controller Configuration Information",
 	"Set External Configuration",
 	"Set Public Address",
+	"Start Service Discovery",
 };
 
 static const char *mgmt_ev[] = {
