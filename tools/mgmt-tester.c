@@ -3591,6 +3591,30 @@ static void setup_class(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
+static void discovering_event(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned int id = (unsigned int) user_data;
+	const struct mgmt_ev_discovering *ev = param;
+
+	mgmt_unregister(data->mgmt, id);
+
+	if (length != sizeof(*ev)) {
+		tester_warn("Incorrect discovering event length");
+		tester_setup_failed();
+		return;
+	}
+
+	if (!ev->discovering) {
+		tester_warn("Unexpected discovery stopped event");
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
 static void setup_discovery_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -3600,7 +3624,6 @@ static void setup_discovery_callback(uint8_t status, uint16_t length,
 	}
 
 	tester_print("Discovery started");
-	tester_setup_complete();
 }
 
 static void setup_start_discovery(const void *test_data)
@@ -3609,6 +3632,10 @@ static void setup_start_discovery(const void *test_data)
 	const struct generic_data *test = data->test_data;
 	const void *send_param = test->setup_send_param;
 	uint16_t send_len = test->setup_send_len;
+	unsigned int id = 0;
+
+	id = mgmt_register(data->mgmt, MGMT_EV_DISCOVERING, data->mgmt_index,
+			   discovering_event, (void *) id, NULL);
 
 	mgmt_send(data->mgmt, test->setup_send_opcode, data->mgmt_index,
 				send_len, send_param, setup_discovery_callback,
