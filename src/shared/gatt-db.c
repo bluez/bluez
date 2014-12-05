@@ -270,6 +270,8 @@ static void gatt_db_destroy(struct gatt_db *db)
 	 * latter from sending service_removed events.
 	 */
 	queue_destroy(db->notify_list, notify_destroy);
+	db->notify_list = NULL;
+
 	queue_destroy(db->services, gatt_db_service_destroy);
 	free(db);
 }
