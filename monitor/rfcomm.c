@@ -218,7 +218,7 @@ static inline bool mcc_rpn(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 		GET_RPN_RTCI(rpn.io), GET_RPN_RTCO(rpn.io), rpn.xon,
 		rpn.xoff);
 
-	if (!l2cap_frame_get_be16(frame, &rpn.pm))
+	if (!l2cap_frame_get_le16(frame, &rpn.pm))
 		return false;
 
 	print_field("%*cpm 0x%04x", indent, ' ', rpn.pm);
@@ -267,7 +267,7 @@ static inline bool mcc_pn(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	if (!l2cap_frame_get_u8(frame, &pn.ack_timer))
 		return false;
 
-	if (!l2cap_frame_get_be16(frame, &pn.mtu))
+	if (!l2cap_frame_get_le16(frame, &pn.mtu))
 		return false;
 
 	if (!l2cap_frame_get_u8(frame, &pn.max_retrans))
