@@ -139,6 +139,20 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->commands[28] |= 0x40;	/* LE Test End */
 	//hci->commands[33] |= 0x10;	/* LE Remote Connection Parameter Request Reply */
 	//hci->commands[33] |= 0x20;	/* LE Remote Connection Parameter Request Negative Reply */
+	//hci->commands[33] |= 0x40;	/* LE Set Data Length */
+	//hci->commands[33] |= 0x80;	/* LE Read Suggested Default Data Length */
+	//hci->commands[34] |= 0x01;	/* LE Write Suggested Default Data Length */
+	hci->commands[34] |= 0x02;	/* LE Read Local P-256 Public Key */
+	hci->commands[34] |= 0x04;	/* LE Generate DHKey */
+	//hci->commands[34] |= 0x08;	/* LE Add Device To Resolving List */
+	//hci->commands[34] |= 0x10;	/* LE Remove Device From Resolving List */
+	//hci->commands[34] |= 0x20;	/* LE Clear Resolving List */
+	//hci->commands[34] |= 0x40;	/* LE Read Resolving List Size */
+	//hci->commands[34] |= 0x80;	/* LE Read Peer Resolvable Address */
+	//hci->commands[35] |= 0x01;	/* LE Read Local Resolvable Address */
+	//hci->commands[35] |= 0x02;	/* LE Set Address Resolution Enable */
+	//hci->commands[35] |= 0x04;	/* LE Set Resolvable Private Address Timeout */
+	//hci->commands[35] |= 0x08;	/* LE Read Maximum Data Length */
 
 	memset(hci->features, 0, sizeof(hci->features));
 	hci->features[4] |= 0x20;	/* BR/EDR Not Supported */
