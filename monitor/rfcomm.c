@@ -67,7 +67,7 @@ static char *cr_str[] = {
 #define GET_RPN_DB(parity)	(parity & 0x03)
 #define GET_RPN_SB(parity)	((parity & 0x04) >> 2)
 #define GET_RPN_PARITY(parity)	((parity & 0x08) >> 3)
-#define GET_RPN_PTYPE(parity)	((parity & 0x03) >> 3)
+#define GET_RPN_PTYPE(parity)	((parity & 0x30) >> 4)
 #define GET_RPN_XIN(io)		(io & 0x01)
 #define GET_RPN_XOUT(io)	((io & 0x02) >> 1)
 #define GET_RPN_RTRI(io)	((io & 0x04) >> 2)
