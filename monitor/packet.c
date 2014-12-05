@@ -2779,9 +2779,9 @@ static const struct {
 	{  5, "LE Remote Connection Parameter Request"	},
 	{  6, "LE Data Length Change"			},
 	{  7, "LE Read Local P-256 Public Key Complete"	},
-	{  9, "LE Generate DHKey Complete"		},
-	{ 10, "LE Enhanced Connection Complete"		},
-	{ 11, "LE Direct Advertising Report"		},
+	{  8, "LE Generate DHKey Complete"		},
+	{  9, "LE Enhanced Connection Complete"		},
+	{ 10, "LE Direct Advertising Report"		},
 	{ }
 };
 
