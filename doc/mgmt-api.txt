@@ -1820,7 +1820,7 @@ Get Connection Information Command
 		2	LE Random
 
 	TX_Power and Max_TX_Power can be set to 127 if values are invalid or
-	unknown.
+	unknown. A value of 127 for RSSI indicates that it is not available.
 
 	This command generates a Command Complete event on success and
 	on failure. In case of failure only Address and Address_Type fields
@@ -2608,6 +2608,10 @@ Device Found Event
 		0	Confirm name
 		1	Legacy Pairing
 		2	Not Connectable
+
+	For the RSSI field a value of 127 indicates that the RSSI is
+	not available. That can happen with Bluetooth 1.1 and earlier
+	controllers or with bad radio conditions.
 
 	The Confirm name flag indicates that the kernel wants to know
 	whether user space knows the name for this device or not. If
