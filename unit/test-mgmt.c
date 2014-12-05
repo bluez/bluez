@@ -350,6 +350,32 @@ static void test_event2(gconstpointer data)
 	execute_context(context);
 }
 
+static void unregister_all_cb(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct context *context = user_data;
+
+	mgmt_unregister_all(context->mgmt_client);
+
+	context_quit(context);
+}
+
+static void test_unregister_all(gconstpointer data)
+{
+	const struct command_test_data *test = data;
+	struct context *context = create_context();
+
+	mgmt_register(context->mgmt_client, test->opcode, test->index,
+					unregister_all_cb, context, NULL);
+	mgmt_register(context->mgmt_client, test->opcode, test->index,
+						event_cb, context, NULL);
+
+	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
+								test->cmd_size);
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -364,6 +390,9 @@ int main(int argc, char *argv[])
 
 	g_test_add_data_func("/mgmt/event/1", &event_test_1, test_event);
 	g_test_add_data_func("/mgmt/event/2", &event_test_1, test_event2);
+
+	g_test_add_data_func("/mgmt/unregister/1", &event_test_1,
+							test_unregister_all);
 
 	return g_test_run();
 }
