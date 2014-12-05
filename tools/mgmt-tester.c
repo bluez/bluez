@@ -3595,7 +3595,7 @@ static void discovering_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
-	unsigned int id = (unsigned int) user_data;
+	unsigned int id = PTR_TO_UINT(user_data);
 	const struct mgmt_ev_discovering *ev = param;
 
 	mgmt_unregister(data->mgmt, id);
@@ -3635,7 +3635,7 @@ static void setup_start_discovery(const void *test_data)
 	unsigned int id = 0;
 
 	id = mgmt_register(data->mgmt, MGMT_EV_DISCOVERING, data->mgmt_index,
-			   discovering_event, (void *) id, NULL);
+			   discovering_event, UINT_TO_PTR(id), NULL);
 
 	mgmt_send(data->mgmt, test->setup_send_opcode, data->mgmt_index,
 				send_len, send_param, setup_discovery_callback,
