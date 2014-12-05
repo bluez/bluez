@@ -2403,6 +2403,17 @@ struct bt_hci_evt_le_conn_param_request {
 	uint16_t supv_timeout;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_DIRECT_ADV_REPORT		0x0b
+struct bt_hci_evt_le_direct_adv_report {
+	uint8_t  num_reports;
+	uint8_t  event_type;
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+	uint8_t  direct_addr_type;
+	uint8_t  direct_addr[6];
+	int8_t   rssi;
+} __attribute__ ((packed));
+
 #define BT_HCI_ERR_SUCCESS			0x00
 #define BT_HCI_ERR_UNKNOWN_COMMAND		0x01
 #define BT_HCI_ERR_UNKNOWN_CONN_ID		0x02

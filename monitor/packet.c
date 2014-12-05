@@ -7533,6 +7533,23 @@ static void le_conn_param_request_evt(const void *data, uint8_t size)
 					le16_to_cpu(evt->supv_timeout));
 }
 
+static void le_direct_adv_report_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_direct_adv_report *evt = data;
+
+	print_num_reports(evt->num_reports);
+
+	print_adv_event_type(evt->event_type);
+	print_addr_type("Address type", evt->addr_type);
+	print_addr("Address", evt->addr, evt->addr_type);
+	print_addr_type("Direct address type", evt->direct_addr_type);
+	print_addr("Direct address", evt->direct_addr, evt->direct_addr_type);
+	print_rssi(evt->rssi);
+
+	if (size > sizeof(*evt))
+		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -7558,7 +7575,8 @@ static const struct subevent_data subevent_table[] = {
 	{ 0x08, "LE Read Local P-256 Public Key Complete" },
 	{ 0x09, "LE Generate DHKey Complete" },
 	{ 0x0a, "LE Enhanced Connection Complete" },
-	{ 0x0b, "LE Direct Advertising Report" },
+	{ 0x0b, "LE Direct Advertising Report",
+				le_direct_adv_report_evt, 1, false },
 	{ }
 };
 
