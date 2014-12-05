@@ -153,6 +153,11 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_event_mask[0] |= 0x08;	/* LE Read Remote Used Features Complete */
 	hci->le_event_mask[0] |= 0x10;	/* LE Long Term Key Request */
 	//hci->le_event_mask[0] |= 0x20;	/* LE Remote Connection Parameter Request */
+	//hci->le_event_mask[0] |= 0x40;	/* LE Data Length Change */
+	//hci->le_event_mask[0] |= 0x80;	/* LE Read Local P-256 Public Key Complete */
+	//hci->le_event_mask[1] |= 0x01;	/* LE Generate DHKey Complete */
+	//hci->le_event_mask[1] |= 0x02;	/* LE Enhanced Connection Complete */
+	//hci->le_event_mask[1] |= 0x04;	/* LE Direct Advertising Report */
 
 	hci->le_mtu = 64;
 	hci->le_max_pkt = 1;
@@ -163,6 +168,9 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->le_features[0] |= 0x04;	/* Extended Reject Indication */
 	//hci->le_features[0] |= 0x08;	/* Slave-initiated Features Exchange */
 	//hci->le_features[0] |= 0x10;	/* LE Ping */
+	//hci->le_features[0] |= 0x20;	/* LE Data Packet Length Extension */
+	//hci->le_features[0] |= 0x40;	/* LL Privacy */
+	hci->le_features[0] |= 0x80;	/* Extended Scanner Filter Policies */
 
 	memset(hci->le_random_addr, 0, sizeof(hci->le_random_addr));
 
