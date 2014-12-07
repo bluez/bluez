@@ -111,6 +111,7 @@ static void reset_defaults(struct bt_le *hci)
 	hci->commands[14] |= 0x80;	/* Read Buffer Size */
 	hci->commands[15] |= 0x02;	/* Read BD ADDR */
 	//hci->commands[15] |= 0x20;	/* Read RSSI */
+	hci->commands[22] |= 0x04;	/* Set Event Mask Page 2 */
 	hci->commands[25] |= 0x01;	/* LE Set Event Mask */
 	hci->commands[25] |= 0x02;	/* LE Read Buffer Size */
 	hci->commands[25] |= 0x04;	/* LE Read Local Supported Features */
@@ -385,6 +386,19 @@ static void cmd_read_bd_addr(struct bt_le *hci, const void *data, uint8_t size)
 	memcpy(rsp.bdaddr, hci->bdaddr, 6);
 
 	cmd_complete(hci, BT_HCI_CMD_READ_BD_ADDR, &rsp, sizeof(rsp));
+}
+
+static void cmd_set_event_mask_page2(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
+	uint8_t status;
+
+	memcpy(hci->event_mask + 8, cmd->mask, 8);
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_SET_EVENT_MASK_PAGE2,
+						&status, sizeof(status));
 }
 
 static void cmd_le_set_event_mask(struct bt_le *hci,
@@ -730,13 +744,14 @@ static const struct {
 	uint8_t size;
 	bool fixed;
 } cmd_table[] = {
-	{ BT_HCI_CMD_SET_EVENT_MASK,       cmd_set_event_mask,      8, true },
-	{ BT_HCI_CMD_RESET,                cmd_reset,               0, true },
-	{ BT_HCI_CMD_READ_LOCAL_VERSION,   cmd_read_local_version,  0, true },
-	{ BT_HCI_CMD_READ_LOCAL_COMMANDS,  cmd_read_local_commands, 0, true },
-	{ BT_HCI_CMD_READ_LOCAL_FEATURES,  cmd_read_local_features, 0, true },
-	{ BT_HCI_CMD_READ_BUFFER_SIZE,     cmd_read_buffer_size,    0, true },
-	{ BT_HCI_CMD_READ_BD_ADDR,         cmd_read_bd_addr,        0, true },
+	{ BT_HCI_CMD_SET_EVENT_MASK,       cmd_set_event_mask,       8, true },
+	{ BT_HCI_CMD_RESET,                cmd_reset,                0, true },
+	{ BT_HCI_CMD_READ_LOCAL_VERSION,   cmd_read_local_version,   0, true },
+	{ BT_HCI_CMD_READ_LOCAL_COMMANDS,  cmd_read_local_commands,  0, true },
+	{ BT_HCI_CMD_READ_LOCAL_FEATURES,  cmd_read_local_features,  0, true },
+	{ BT_HCI_CMD_READ_BUFFER_SIZE,     cmd_read_buffer_size,     0, true },
+	{ BT_HCI_CMD_READ_BD_ADDR,         cmd_read_bd_addr,         0, true },
+	{ BT_HCI_CMD_SET_EVENT_MASK_PAGE2, cmd_set_event_mask_page2, 8, true },
 
 	{ BT_HCI_CMD_LE_SET_EVENT_MASK,
 				cmd_le_set_event_mask, 8, true },
