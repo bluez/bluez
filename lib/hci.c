@@ -900,8 +900,15 @@ static int __same_bdaddr(int dd, int dev_id, long arg)
 
 int hci_get_route(bdaddr_t *bdaddr)
 {
-	return hci_for_each_dev(HCI_UP, __other_bdaddr,
+	int dev_id;
+
+	dev_id = hci_for_each_dev(HCI_UP, __other_bdaddr,
 				(long) (bdaddr ? bdaddr : BDADDR_ANY));
+	if (dev_id < 0)
+		dev_id = hci_for_each_dev(HCI_UP, __same_bdaddr,
+				(long) (bdaddr ? bdaddr : BDADDR_ANY));
+
+	return dev_id;
 }
 
 int hci_devid(const char *str)
