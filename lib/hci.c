@@ -1037,6 +1037,12 @@ int hci_open_dev(int dev_id)
 	struct sockaddr_hci a;
 	int dd, err;
 
+	/* Check for valid device id */
+	if (dev_id < 0) {
+		errno = ENODEV;
+		return -1;
+	}
+
 	/* Create HCI socket */
 	dd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (dd < 0)
