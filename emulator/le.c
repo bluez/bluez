@@ -186,7 +186,7 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->le_features[0] |= 0x02;	/* Connection Parameter Request Procedure */
 	//hci->le_features[0] |= 0x04;	/* Extended Reject Indication */
 	//hci->le_features[0] |= 0x08;	/* Slave-initiated Features Exchange */
-	//hci->le_features[0] |= 0x10;	/* LE Ping */
+	hci->le_features[0] |= 0x10;	/* LE Ping */
 	//hci->le_features[0] |= 0x20;	/* LE Data Packet Length Extension */
 	//hci->le_features[0] |= 0x40;	/* LL Privacy */
 	hci->le_features[0] |= 0x80;	/* Extended Scanner Filter Policies */
