@@ -1753,6 +1753,16 @@ static void print_randomizer_p256(const uint8_t *randomizer)
 	print_key("Randomizer R with P-256", randomizer);
 }
 
+static void print_pk256(const char *label, const uint8_t *key)
+{
+	print_hex_field(label, key, 64);
+}
+
+static void print_dhkey(const uint8_t *dhkey)
+{
+	print_hex_field("Diffie-Hellman key", dhkey, 32);
+}
+
 static void print_passkey(uint32_t passkey)
 {
 	print_field("Passkey: %06d", le32_to_cpu(passkey));
@@ -6015,6 +6025,13 @@ static void le_write_default_data_length_cmd(const void *data, uint8_t size)
 	print_field("TX time: %d", le16_to_cpu(cmd->tx_time));
 }
 
+static void le_generate_dhkey_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_generate_dhkey *cmd = data;
+
+	print_pk256("Remote P-256 public key", cmd->remote_pk256);
+}
+
 static void le_read_max_data_length_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_max_data_length *rsp = data;
@@ -6668,8 +6685,10 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2024, 272, "LE Write Suggested Default Data Length",
 				le_write_default_data_length_cmd, 4, true,
 				status_rsp, 1, true },
-	{ 0x2025, 273, "LE Read Local P-256 Public Key" },
-	{ 0x2026, 274, "LE Generate DHKey" },
+	{ 0x2025, 273, "LE Read Local P-256 Public Key",
+				null_cmd, 0, true },
+	{ 0x2026, 274, "LE Generate DHKey",
+				le_generate_dhkey_cmd, 64, true },
 	{ 0x2027, 275, "LE Add Device To Resolving List" },
 	{ 0x2028, 276, "LE Remove Device From Resolving List" },
 	{ 0x2029, 277, "LE Clear Resolving List" },
@@ -7597,6 +7616,22 @@ static void le_data_length_change_evt(const void *data, uint8_t size)
 	print_field("Max RX time: %d", le16_to_cpu(evt->max_rx_time));
 }
 
+static void le_read_local_pk256_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_read_local_pk256_complete *evt = data;
+
+	print_status(evt->status);
+	print_pk256("Local P-256 public key", evt->local_pk256);
+}
+
+static void le_generate_dhkey_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_generate_dhkey_complete *evt = data;
+
+	print_status(evt->status);
+	print_dhkey(evt->dhkey);
+}
+
 static void le_direct_adv_report_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_direct_adv_report *evt = data;
@@ -7637,8 +7672,10 @@ static const struct subevent_data subevent_table[] = {
 				le_conn_param_request_evt, 10, true },
 	{ 0x07, "LE Data Length Change",
 				le_data_length_change_evt, 10, true },
-	{ 0x08, "LE Read Local P-256 Public Key Complete" },
-	{ 0x09, "LE Generate DHKey Complete" },
+	{ 0x08, "LE Read Local P-256 Public Key Complete",
+				le_read_local_pk256_complete_evt, 65, true },
+	{ 0x09, "LE Generate DHKey Complete",
+				le_generate_dhkey_complete_evt, 33, true },
 	{ 0x0a, "LE Enhanced Connection Complete" },
 	{ 0x0b, "LE Direct Advertising Report",
 				le_direct_adv_report_evt, 1, false },

@@ -1884,6 +1884,13 @@ struct bt_hci_cmd_le_write_default_data_length {
 	uint16_t tx_time;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_READ_LOCAL_PK256		0x2025
+
+#define BT_HCI_CMD_LE_GENERATE_DHKEY		0x2026
+struct bt_hci_cmd_le_generate_dhkey {
+	uint8_t  remote_pk256[64];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_MAX_DATA_LENGTH	0x202f
 struct bt_hci_rsp_le_read_max_data_length {
 	uint8_t  status;
@@ -2443,6 +2450,18 @@ struct bt_hci_evt_le_data_length_change {
 	uint16_t max_tx_time;
 	uint16_t max_rx_len;
 	uint16_t max_rx_time;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE	0x08
+struct bt_hci_evt_le_read_local_pk256_complete {
+	uint8_t  status;
+	uint8_t  local_pk256[64];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE	0x09
+struct bt_hci_evt_le_generate_dhkey_complete {
+	uint8_t  status;
+	uint8_t  dhkey[32];
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_DIRECT_ADV_REPORT		0x0b
