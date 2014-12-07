@@ -5981,6 +5981,51 @@ static void le_conn_param_req_neg_reply_rsp(const void *data, uint8_t size)
 	print_handle(rsp->handle);
 }
 
+static void le_set_data_length_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_data_length *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("TX octets: %d", le16_to_cpu(cmd->tx_len));
+	print_field("TX time: %d", le16_to_cpu(cmd->tx_time));
+}
+
+static void le_set_data_length_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_set_data_length *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
+static void le_read_default_data_length_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_default_data_length *rsp = data;
+
+	print_status(rsp->status);
+	print_field("TX octets: %d", le16_to_cpu(rsp->tx_len));
+	print_field("TX time: %d", le16_to_cpu(rsp->tx_time));
+}
+
+static void le_write_default_data_length_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_write_default_data_length *cmd = data;
+
+	print_field("TX octets: %d", le16_to_cpu(cmd->tx_len));
+	print_field("TX time: %d", le16_to_cpu(cmd->tx_time));
+}
+
+static void le_read_max_data_length_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_max_data_length *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Max TX octets: %d", le16_to_cpu(rsp->max_tx_len));
+	print_field("Max TX time: %d", le16_to_cpu(rsp->max_tx_time));
+	print_field("Max RX octets: %d", le16_to_cpu(rsp->max_rx_len));
+	print_field("Max RX time: %d", le16_to_cpu(rsp->max_rx_time));
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -6614,9 +6659,15 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2021, 269, "LE Remote Connection Parameter Request Negative Reply",
 				le_conn_param_req_neg_reply_cmd, 3, true,
 				le_conn_param_req_neg_reply_rsp, 3, true },
-	{ 0x2022, 270, "LE Set Data Length" },
-	{ 0x2023, 271, "LE Read Suggested Default Data Length" },
-	{ 0x2024, 272, "LE Write Suggested Default Data Length" },
+	{ 0x2022, 270, "LE Set Data Length",
+				le_set_data_length_cmd, 6, true,
+				le_set_data_length_rsp, 3, true },
+	{ 0x2023, 271, "LE Read Suggested Default Data Length",
+				null_cmd, 0, true,
+				le_read_default_data_length_rsp, 5, true },
+	{ 0x2024, 272, "LE Write Suggested Default Data Length",
+				le_write_default_data_length_cmd, 4, true,
+				status_rsp, 1, true },
 	{ 0x2025, 273, "LE Read Local P-256 Public Key" },
 	{ 0x2026, 274, "LE Generate DHKey" },
 	{ 0x2027, 275, "LE Add Device To Resolving List" },
@@ -6627,7 +6678,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x202c, 280, "LE Read Local Resolvable Address" },
 	{ 0x202d, 281, "LE Set Address Resolution Enable" },
 	{ 0x202e, 282, "LE Set Resolvable Private Address Timeout" },
-	{ 0x202f, 283, "LE Read Maximum Data Length" },
+	{ 0x202f, 283, "LE Read Maximum Data Length",
+				null_cmd, 0, true,
+				le_read_max_data_length_rsp, 9, true },
 	{ }
 };
 
@@ -7533,6 +7586,17 @@ static void le_conn_param_request_evt(const void *data, uint8_t size)
 					le16_to_cpu(evt->supv_timeout));
 }
 
+static void le_data_length_change_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_data_length_change *evt = data;
+
+	print_handle(evt->handle);
+	print_field("Max TX octets: %d", le16_to_cpu(evt->max_tx_len));
+	print_field("Max TX time: %d", le16_to_cpu(evt->max_tx_time));
+	print_field("Max RX octets: %d", le16_to_cpu(evt->max_rx_len));
+	print_field("Max RX time: %d", le16_to_cpu(evt->max_rx_time));
+}
+
 static void le_direct_adv_report_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_direct_adv_report *evt = data;
@@ -7571,7 +7635,8 @@ static const struct subevent_data subevent_table[] = {
 				le_long_term_key_request_evt, 12, true },
 	{ 0x06, "LE Remote Connection Parameter Request",
 				le_conn_param_request_evt, 10, true },
-	{ 0x07, "LE Data Length Change" },
+	{ 0x07, "LE Data Length Change",
+				le_data_length_change_evt, 10, true },
 	{ 0x08, "LE Read Local P-256 Public Key Complete" },
 	{ 0x09, "LE Generate DHKey Complete" },
 	{ 0x0a, "LE Enhanced Connection Complete" },

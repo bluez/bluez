@@ -1860,6 +1860,39 @@ struct bt_hci_rsp_le_conn_param_req_neg_reply {
 	uint16_t handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_SET_DATA_LENGTH		0x2022
+struct bt_hci_cmd_le_set_data_length {
+	uint16_t handle;
+	uint16_t tx_len;
+	uint16_t tx_time;
+} __attribute__ ((packed));
+struct bt_hci_rsp_le_set_data_length {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_DEAULT_DATA_LENGTH	0x2023
+struct bt_hci_rsp_le_read_default_data_length {
+	uint8_t  status;
+	uint16_t tx_len;
+	uint16_t tx_time;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_WRITE_DEAULT_DATA_LENGTH	0x2024
+struct bt_hci_cmd_le_write_default_data_length {
+	uint16_t tx_len;
+	uint16_t tx_time;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_MAX_DATA_LENGTH	0x202f
+struct bt_hci_rsp_le_read_max_data_length {
+	uint8_t  status;
+	uint16_t max_tx_len;
+	uint16_t max_tx_time;
+	uint16_t max_rx_len;
+	uint16_t max_rx_time;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
@@ -2401,6 +2434,15 @@ struct bt_hci_evt_le_conn_param_request {
 	uint16_t max_interval;
 	uint16_t latency;
 	uint16_t supv_timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_DATA_LENGTH_CHANGE	0x07
+struct bt_hci_evt_le_data_length_change {
+	uint16_t handle;
+	uint16_t max_tx_len;
+	uint16_t max_tx_time;
+	uint16_t max_rx_len;
+	uint16_t max_rx_time;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_DIRECT_ADV_REPORT		0x0b
