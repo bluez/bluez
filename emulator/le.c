@@ -95,6 +95,7 @@ static void reset_defaults(struct bt_le *hci)
 	hci->event_mask[2] |= 0x04;	/* Number of Completed Packets */
 	hci->event_mask[3] |= 0x02;	/* Data Buffer Overflow */
 	hci->event_mask[5] |= 0x80;	/* Encryption Key Refresh Complete */
+	//hci->event_mask[7] |= 0x20;	/* LE Meta Event */
 
 	hci->manufacturer = 0x003f;	/* Bluetooth SIG (63) */
 
@@ -287,6 +288,9 @@ static void le_meta_event(struct bt_le *hci, uint8_t event,
 						void *data, uint8_t len)
 {
 	void *pkt_data;
+
+	if (!(hci->event_mask[7] & 0x20))
+		return;
 
 	pkt_data = alloca(1 + len);
 	if (!pkt_data)
@@ -699,7 +703,8 @@ static void cmd_le_read_local_pk256(struct bt_le *hci,
 	evt.status = BT_HCI_ERR_SUCCESS;
 	ecc_make_key(evt.local_pk256, hci->le_local_sk256);
 
-	le_meta_event(hci, BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE,
+	if (hci->le_event_mask[0] & 0x80)
+		le_meta_event(hci, BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE,
 							&evt, sizeof(evt));
 }
 
@@ -714,7 +719,8 @@ static void cmd_le_generate_dhkey(struct bt_le *hci,
 	evt.status = BT_HCI_ERR_SUCCESS;
 	ecdh_shared_secret(cmd->remote_pk256, hci->le_local_sk256, evt.dhkey);
 
-	le_meta_event(hci, BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE,
+	if (hci->le_event_mask[1] & 0x01)
+		le_meta_event(hci, BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE,
 							&evt, sizeof(evt));
 }
 
