@@ -38,6 +38,7 @@
 
 #include "src/shared/util.h"
 #include "src/shared/crypto.h"
+#include "src/shared/ecc.h"
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
 
@@ -78,6 +79,8 @@ struct bt_le {
 
 	uint8_t  le_white_list_size;
 	uint8_t  le_states[8];
+
+	uint8_t  le_local_sk256[32];
 };
 
 static void reset_defaults(struct bt_le *hci)
@@ -218,6 +221,8 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_states[0] |= 0x20;	/* Active Scanning */
 	hci->le_states[0] |= 0x40;	/* Initiating */
 	hci->le_states[0] |= 0x80;	/* Connection */
+
+	memset(hci->le_local_sk256, 0, sizeof(hci->le_local_sk256));
 }
 
 static void send_event(struct bt_le *hci, uint8_t event,
@@ -276,6 +281,23 @@ static void cmd_status(struct bt_le *hci, uint8_t status, uint16_t opcode)
 	cs.opcode = cpu_to_le16(opcode);
 
 	send_event(hci, BT_HCI_EVT_CMD_STATUS, &cs, sizeof(cs));
+}
+
+static void le_meta_event(struct bt_le *hci, uint8_t event,
+						void *data, uint8_t len)
+{
+	void *pkt_data;
+
+	pkt_data = alloca(1 + len);
+	if (!pkt_data)
+		return;
+
+	((uint8_t *) pkt_data)[0] = event;
+
+	if (len > 0)
+		memcpy(pkt_data + 1, data, len);
+
+	send_event(hci, BT_HCI_EVT_LE_META_EVENT, pkt_data, 1 + len);
 }
 
 static void cmd_set_event_mask(struct bt_le *hci,
@@ -667,6 +689,35 @@ static void cmd_le_read_supported_states(struct bt_le *hci,
 							&rsp, sizeof(rsp));
 }
 
+static void cmd_le_read_local_pk256(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	struct bt_hci_evt_le_read_local_pk256_complete evt;
+
+	cmd_status(hci, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_READ_LOCAL_PK256);
+
+	evt.status = BT_HCI_ERR_SUCCESS;
+	ecc_make_key(evt.local_pk256, hci->le_local_sk256);
+
+	le_meta_event(hci, BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE,
+							&evt, sizeof(evt));
+}
+
+static void cmd_le_generate_dhkey(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_generate_dhkey *cmd = data;
+	struct bt_hci_evt_le_generate_dhkey_complete evt;
+
+	cmd_status(hci, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_GENERATE_DHKEY);
+
+	evt.status = BT_HCI_ERR_SUCCESS;
+	ecdh_shared_secret(cmd->remote_pk256, hci->le_local_sk256, evt.dhkey);
+
+	le_meta_event(hci, BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE,
+							&evt, sizeof(evt));
+}
+
 static const struct {
 	uint16_t opcode;
 	void (*func) (struct bt_le *hci, const void *data, uint8_t size);
@@ -710,6 +761,11 @@ static const struct {
 
 	{ BT_HCI_CMD_LE_READ_SUPPORTED_STATES,
 				cmd_le_read_supported_states, 0, true },
+
+	{ BT_HCI_CMD_LE_READ_LOCAL_PK256,
+				cmd_le_read_local_pk256, 0, true },
+	{ BT_HCI_CMD_LE_GENERATE_DHKEY,
+				cmd_le_generate_dhkey, 64, true },
 
 	{ }
 };
