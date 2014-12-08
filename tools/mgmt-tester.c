@@ -308,7 +308,7 @@ static void test_condition_complete(struct test_data *data)
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->test_setup = setup; \
 		user->test_data = data; \
-		user->expected_version = 0x06; \
+		user->expected_version = 0x08; \
 		user->expected_manufacturer = 0x003f; \
 		user->expected_supported_settings = 0x00003fff; \
 		user->initial_settings = 0x00000080; \
@@ -346,7 +346,7 @@ static void test_condition_complete(struct test_data *data)
 		user->hciemu_type = HCIEMU_TYPE_LE; \
 		user->test_setup = setup; \
 		user->test_data = data; \
-		user->expected_version = 0x06; \
+		user->expected_version = 0x08; \
 		user->expected_manufacturer = 0x003f; \
 		user->expected_supported_settings = 0x00003e1b; \
 		user->initial_settings = 0x00000200; \
