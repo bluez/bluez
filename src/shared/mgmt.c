@@ -164,6 +164,7 @@ static bool can_write_data(struct io *io, void *user_data)
 	struct mgmt_request *request;
 	struct iovec iov;
 	ssize_t ret;
+	bool can_write;
 
 	request = queue_pop_head(mgmt->reply_queue);
 	if (!request) {
@@ -174,6 +175,11 @@ static bool can_write_data(struct io *io, void *user_data)
 		request = queue_pop_head(mgmt->request_queue);
 		if (!request)
 			return false;
+
+		can_write = false;
+	} else {
+		/* allow multiple replies to jump the queue */
+		can_write = !queue_isempty(mgmt->reply_queue);
 	}
 
 	iov.iov_base = request->buf;
@@ -199,7 +205,7 @@ static bool can_write_data(struct io *io, void *user_data)
 
 	queue_push_tail(mgmt->pending_list, request);
 
-	return false;
+	return can_write;
 }
 
 static void wakeup_writer(struct mgmt *mgmt)
@@ -212,6 +218,8 @@ static void wakeup_writer(struct mgmt *mgmt)
 
 	if (mgmt->writer_active)
 		return;
+
+	mgmt->writer_active = true;
 
 	io_set_write_handler(mgmt->io, can_write_data, mgmt,
 						write_watch_destroy);
