@@ -159,12 +159,41 @@ static void write_watch_destroy(void *user_data)
 	mgmt->writer_active = false;
 }
 
+static bool send_request(struct mgmt *mgmt, struct mgmt_request *request)
+{
+	struct iovec iov;
+	ssize_t ret;
+
+	iov.iov_base = request->buf;
+	iov.iov_len = request->len;
+
+	ret = io_send(mgmt->io, &iov, 1);
+	if (ret < 0) {
+		util_debug(mgmt->debug_callback, mgmt->debug_data,
+				"write failed: %s", strerror(-ret));
+		if (request->callback)
+			request->callback(MGMT_STATUS_FAILED, 0, NULL,
+							request->user_data);
+		destroy_request(request);
+		return false;
+	}
+
+	util_debug(mgmt->debug_callback, mgmt->debug_data,
+				"[0x%04x] command 0x%04x",
+				request->index, request->opcode);
+
+	util_hexdump('<', request->buf, ret, mgmt->debug_callback,
+							mgmt->debug_data);
+
+	queue_push_tail(mgmt->pending_list, request);
+
+	return true;
+}
+
 static bool can_write_data(struct io *io, void *user_data)
 {
 	struct mgmt *mgmt = user_data;
 	struct mgmt_request *request;
-	struct iovec iov;
-	ssize_t ret;
 	bool can_write;
 
 	request = queue_pop_head(mgmt->reply_queue);
@@ -183,28 +212,8 @@ static bool can_write_data(struct io *io, void *user_data)
 		can_write = !queue_isempty(mgmt->reply_queue);
 	}
 
-	iov.iov_base = request->buf;
-	iov.iov_len = request->len;
-
-	ret = io_send(io, &iov, 1);
-	if (ret < 0) {
-		util_debug(mgmt->debug_callback, mgmt->debug_data,
-				"write failed: %s", strerror(-ret));
-		if (request->callback)
-			request->callback(MGMT_STATUS_FAILED, 0, NULL,
-							request->user_data);
-		destroy_request(request);
+	if (!send_request(mgmt, request))
 		return true;
-	}
-
-	util_debug(mgmt->debug_callback, mgmt->debug_data,
-				"[0x%04x] command 0x%04x",
-				request->index, request->opcode);
-
-	util_hexdump('<', request->buf, ret, mgmt->debug_callback,
-							mgmt->debug_data);
-
-	queue_push_tail(mgmt->pending_list, request);
 
 	return can_write;
 }
@@ -659,6 +668,32 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	}
 
 	wakeup_writer(mgmt);
+
+	return request->id;
+}
+
+unsigned int mgmt_send_nowait(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
+				uint16_t length, const void *param,
+				mgmt_request_func_t callback,
+				void *user_data, mgmt_destroy_func_t destroy)
+{
+	struct mgmt_request *request;
+
+	if (!mgmt)
+		return 0;
+
+	request = create_request(opcode, index, length, param,
+					callback, user_data, destroy);
+	if (!request)
+		return 0;
+
+	if (mgmt->next_request_id < 1)
+		mgmt->next_request_id = 1;
+
+	request->id = mgmt->next_request_id++;
+
+	if (!send_request(mgmt, request))
+		return 0;
 
 	return request->id;
 }
