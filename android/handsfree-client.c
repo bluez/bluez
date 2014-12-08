@@ -955,7 +955,7 @@ static void clcc_cb(struct hfp_context *context, void *user_data)
 	ev->index = val;
 
 	if (!hfp_context_get_number(context, &val) ||
-				val > HAL_HF_CLIENT_DIRECTION_INCOMIGN) {
+				val > HAL_HF_CLIENT_DIRECTION_INCOMING) {
 		error("hf-client: Could not get direction");
 		return;
 	}

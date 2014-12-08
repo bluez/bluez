@@ -2223,7 +2223,7 @@ struct hal_ev_hf_client_call_waiting {
 } __attribute__((packed));
 
 #define HAL_HF_CLIENT_DIRECTION_OUTGOING	0x00
-#define HAL_HF_CLIENT_DIRECTION_INCOMIGN	0x01
+#define HAL_HF_CLIENT_DIRECTION_INCOMING	0x01
 
 #define HAL_HF_CLIENT_CALL_STATE_ACTIVE			0x00
 #define HAL_HF_CLIENT_CALL_STATE_HELD			0x01
