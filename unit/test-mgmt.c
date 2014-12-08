@@ -376,6 +376,32 @@ static void test_unregister_all(gconstpointer data)
 	execute_context(context);
 }
 
+static void unregister_index_cb(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct context *context = user_data;
+
+	mgmt_unregister_index(context->mgmt_client, index);
+
+	context_quit(context);
+}
+
+static void test_unregister_index(gconstpointer data)
+{
+	const struct command_test_data *test = data;
+	struct context *context = create_context();
+
+	mgmt_register(context->mgmt_client, test->opcode, test->index,
+					unregister_index_cb, context, NULL);
+	mgmt_register(context->mgmt_client, test->opcode, test->index,
+						event_cb, context, NULL);
+
+	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
+								test->cmd_size);
+
+	execute_context(context);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -393,6 +419,8 @@ int main(int argc, char *argv[])
 
 	g_test_add_data_func("/mgmt/unregister/1", &event_test_1,
 							test_unregister_all);
+	g_test_add_data_func("/mgmt/unregister/2", &event_test_1,
+							test_unregister_index);
 
 	return g_test_run();
 }
