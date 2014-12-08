@@ -6970,6 +6970,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	missing_settings = adapter->current_settings ^
 						adapter->supported_settings;
 
+	if (missing_settings & MGMT_SETTING_SECURE_CONN)
+		set_mode(adapter, MGMT_OP_SET_SECURE_CONN, 0x01);
+
 	switch (main_opts.mode) {
 	case BT_MODE_DUAL:
 		if (missing_settings & MGMT_SETTING_SSP)
