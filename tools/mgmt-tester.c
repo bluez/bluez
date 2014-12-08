@@ -2478,6 +2478,15 @@ static const struct generic_data pair_device_legacy_nonbondable_1 = {
 	.client_pin_len = sizeof(pair_device_pin),
 };
 
+static const struct generic_data pair_device_power_off_test_1 = {
+	.setup_settings = settings_powered_bondable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.force_power_off = true,
+	.expect_status = MGMT_STATUS_DISCONNECTED,
+	.expect_func = pair_device_expect_param_func,
+};
+
 static const void *client_bdaddr_param_func(uint8_t *len)
 {
 	struct test_data *data = tester_get_data();
@@ -4932,6 +4941,9 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Pair Device - Not Powered 1",
 				&pair_device_not_powered_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - Power off 1",
+				&pair_device_power_off_test_1,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Invalid Parameters 1",
 				&pair_device_invalid_param_test_1,
