@@ -120,6 +120,28 @@ static void test_foreach_remove_all(void)
 	queue_destroy(queue, NULL);
 }
 
+static void foreach_remove_backward(void *data, void *user_data)
+{
+	struct queue *queue = user_data;
+
+	queue_remove(queue, UINT_TO_PTR(2));
+	queue_remove(queue, UINT_TO_PTR(1));
+}
+
+static void test_foreach_remove_backward(void)
+{
+	struct queue *queue;
+
+	queue = queue_new();
+	g_assert(queue != NULL);
+
+	queue_push_tail(queue, UINT_TO_PTR(1));
+	queue_push_tail(queue, UINT_TO_PTR(2));
+
+	queue_foreach(queue, foreach_remove_backward, queue);
+	queue_destroy(queue, NULL);
+}
+
 static struct queue *static_queue;
 
 static void destroy_remove(void *user_data)
@@ -200,6 +222,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/queue/foreach_destroy", test_foreach_destroy);
 	g_test_add_func("/queue/foreach_remove", test_foreach_remove);
 	g_test_add_func("/queue/foreach_remove_all", test_foreach_remove_all);
+	g_test_add_func("/queue/foreach_remove_backward",
+						test_foreach_remove_backward);
 	g_test_add_func("/queue/destroy_remove", test_destroy_remove);
 	g_test_add_func("/queue/push_after", test_push_after);
 
