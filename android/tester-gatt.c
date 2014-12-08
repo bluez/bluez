@@ -19,7 +19,6 @@
 
 #include "emulator/bthost.h"
 #include "tester-main.h"
-#include "hal-msg.h"
 #include "src/shared/util.h"
 
 #define ATT_HANDLE_SIZE	2
@@ -47,6 +46,8 @@
 #define CONN2_ID	2
 
 #define TRANS1_ID	1
+
+#define BT_TRANSPORT_UNKNOWN		0x00
 
 #define GATT_SERVER_TRANSPORT_LE		0x01
 #define GATT_SERVER_TRANSPORT_BREDR		0x02
@@ -1172,10 +1173,9 @@ static void gatt_client_connect_action(void)
 	struct step *step = g_new0(struct step, 1);
 
 	step->action_status = data->if_gatt->client->connect(
-							conn_data->app_id,
-							&emu_remote_bdaddr_val,
-							0,
-							BT_TRANSPORT_UNKNOWN);
+						conn_data->app_id,
+						&emu_remote_bdaddr_val, 0,
+						BT_TRANSPORT_UNKNOWN);
 
 	schedule_action_verification(step);
 }
@@ -1405,10 +1405,9 @@ static void gatt_server_connect_action(void)
 	struct step *step = g_new0(struct step, 1);
 
 	step->action_status = data->if_gatt->server->connect(
-							conn_data->app_id,
-							&emu_remote_bdaddr_val,
-							0,
-							BT_TRANSPORT_UNKNOWN);
+						conn_data->app_id,
+						&emu_remote_bdaddr_val, 0,
+						BT_TRANSPORT_UNKNOWN);
 
 	schedule_action_verification(step);
 }

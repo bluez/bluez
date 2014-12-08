@@ -606,6 +606,7 @@ struct bt_action_data {
 
 	/*Connection params*/
 	const uint8_t bearer_type;
+	const uint8_t transport_type;
 };
 
 /* bthost's l2cap server setup parameters */

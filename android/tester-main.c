@@ -19,7 +19,6 @@
 #include "src/shared/util.h"
 #include "emulator/bthost.h"
 #include "tester-main.h"
-#include "hal-msg.h"
 
 #include "monitor/bt.h"
 
@@ -29,6 +28,8 @@ static gint scheduled_cbacks_num;
 
 #define EMULATOR_SIGNAL_TIMEOUT 2 /* in seconds */
 #define EMULATOR_SIGNAL "emulator_started"
+
+#define BT_TRANSPORT_UNKNOWN	0x00
 
 static struct {
 	uint16_t cb_num;
@@ -2916,7 +2917,9 @@ void bt_create_bond_action(void)
 
 	step->action_status =
 			data->if_bluetooth->create_bond(action_data->addr,
-							BT_TRANSPORT_UNKNOWN);
+						action_data->transport_type ?
+						action_data->transport_type :
+						BT_TRANSPORT_UNKNOWN);
 
 	schedule_action_verification(step);
 }
