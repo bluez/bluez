@@ -3026,10 +3026,18 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 			return;
 		sce = data;
 		if (btdev->conn) {
-			encrypt_change(btdev, sce->encr_mode,
-							BT_HCI_ERR_SUCCESS);
-			encrypt_change(btdev->conn, sce->encr_mode,
-							BT_HCI_ERR_SUCCESS);
+			uint8_t mode;
+
+			if (!sce->encr_mode)
+				mode = 0x00;
+			else if (btdev->secure_conn_support &&
+					btdev->conn->secure_conn_support)
+				mode = 0x02;
+			else
+				mode = 0x01;
+
+			encrypt_change(btdev, mode, BT_HCI_ERR_SUCCESS);
+			encrypt_change(btdev->conn, mode, BT_HCI_ERR_SUCCESS);
 		}
 		break;
 
