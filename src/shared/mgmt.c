@@ -45,7 +45,6 @@ struct mgmt {
 	bool close_on_unref;
 	struct io *io;
 	bool writer_active;
-	bool sync_write;
 	struct queue *request_queue;
 	struct queue *reply_queue;
 	struct queue *pending_list;
@@ -220,8 +219,6 @@ static bool can_write_data(struct io *io, void *user_data)
 
 static void wakeup_writer(struct mgmt *mgmt)
 {
-	while (mgmt->sync_write && can_write_data(mgmt->io, mgmt));
-
 	if (!queue_isempty(mgmt->pending_list)) {
 		/* only queued reply commands trigger wakeup */
 		if (queue_isempty(mgmt->reply_queue))
@@ -473,7 +470,6 @@ struct mgmt *mgmt_new(int fd)
 	}
 
 	mgmt->writer_active = false;
-	mgmt->sync_write = false;
 
 	return mgmt_ref(mgmt);
 }
@@ -584,16 +580,6 @@ bool mgmt_set_close_on_unref(struct mgmt *mgmt, bool do_close)
 		return false;
 
 	mgmt->close_on_unref = do_close;
-
-	return true;
-}
-
-bool mgmt_set_sync_write(struct mgmt *mgmt, bool sync_write)
-{
-	if (!mgmt)
-		return false;
-
-	mgmt->sync_write = sync_write;
 
 	return true;
 }
