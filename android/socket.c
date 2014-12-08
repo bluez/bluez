@@ -89,6 +89,8 @@ struct rfcomm_channel {
 
 static bdaddr_t adapter_addr;
 
+static uint8_t hal_mode = HAL_MODE_SOCKET_DEFAULT;
+
 static const uint8_t zero_uuid[16] = { 0 };
 
 /* Simple list of RFCOMM connected sockets */
@@ -313,10 +315,31 @@ static sdp_record_t *create_mas_record(uint8_t chan, const char *svc_name)
 {
 	sdp_list_t *seq;
 	sdp_profile_desc_t profile[1];
-	uint8_t minst = DEFAULT_MAS_INSTANCE;
-	uint8_t mtype = DEFAULT_MAS_MSG_TYPE;
+	uint8_t minst, mtype;
 	sdp_record_t *record;
 	uuid_t uuid;
+	int cnt, ret;
+
+	switch (hal_mode) {
+	case HAL_MODE_SOCKET_DYNAMIC_MAP:
+		/*
+		 * Service name for MAP is passed as XXYYname
+		 * XX - instance
+		 * YY - message type
+		 */
+		ret = sscanf(svc_name, "%02hhx%02hhx%n", &minst, &mtype, &cnt);
+		if (ret != 2 || cnt != 4)
+			return NULL;
+
+		svc_name += 4;
+		break;
+	case HAL_MODE_SOCKET_DEFAULT:
+		minst = DEFAULT_MAS_INSTANCE;
+		mtype = DEFAULT_MAS_MSG_TYPE;
+		break;
+	default:
+		return NULL;
+	}
 
 	sdp_uuid16_create(&uuid, MAP_MSE_SVCLASS_ID);
 
@@ -1146,6 +1169,8 @@ void bt_socket_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 	size_t i;
 
 	DBG("");
+
+	hal_mode = mode;
 
 	/*
 	 * make sure channels assigned for profiles are reserved and not used

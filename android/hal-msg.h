@@ -267,6 +267,9 @@ struct hal_rsp_get_connection_state {
 
 /* Bluetooth Socket HAL api */
 
+#define HAL_MODE_SOCKET_DEFAULT		HAL_MODE_DEFAULT
+#define HAL_MODE_SOCKET_DYNAMIC_MAP	0x01
+
 #define HAL_SOCK_RFCOMM		0x01
 #define HAL_SOCK_SCO		0x02
 #define HAL_SOCK_L2CAP		0x03

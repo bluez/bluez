@@ -554,8 +554,13 @@ static int init(bt_callbacks_t *callbacks)
 	}
 
 	cmd.service_id = HAL_SERVICE_ID_SOCKET;
-	cmd.mode = HAL_MODE_DEFAULT;
 	cmd.max_clients = 1;
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	cmd.mode = HAL_MODE_SOCKET_DYNAMIC_MAP;
+#else
+	cmd.mode = HAL_MODE_DEFAULT;
+#endif
 
 	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
