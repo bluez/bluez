@@ -1240,11 +1240,11 @@ static uint8_t get_link_key_type(struct btdev *btdev)
 		return 0x03;
 
 	if (btdev->secure_conn_support && remote->secure_conn_support) {
-		unauth = 0x04;
-		auth = 0x05;
-	} else {
 		unauth = 0x07;
 		auth = 0x08;
+	} else {
+		unauth = 0x04;
+		auth = 0x05;
 	}
 
 	if (btdev->io_cap == 0x03 || remote->io_cap == 0x03)
