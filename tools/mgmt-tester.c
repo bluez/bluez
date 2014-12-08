@@ -4313,11 +4313,9 @@ static void test_command_generic(const void *test_data)
 		send_param = test->send_func(&send_len);
 
 	if (test->force_power_off) {
-		mgmt_set_sync_write(data->mgmt, true);
-		mgmt_reply(data->mgmt, test->send_opcode, index, send_len,
-					send_param, command_generic_callback,
-					NULL, NULL);
-		mgmt_set_sync_write(data->mgmt, false);
+		mgmt_send_nowait(data->mgmt, test->send_opcode, index,
+					send_len, send_param,
+					command_generic_callback, NULL, NULL);
 		power_off(data->mgmt_index);
 	} else {
 		mgmt_send(data->mgmt, test->send_opcode, index, send_len,
@@ -4392,11 +4390,9 @@ static void connected_event(uint16_t index, uint16_t length, const void *param,
 		send_param = test->send_func(&send_len);
 
 	if (test->force_power_off) {
-		mgmt_set_sync_write(data->mgmt, true);
-		mgmt_reply(data->mgmt, test->send_opcode, index, send_len,
-					send_param, command_generic_callback,
-					NULL, NULL);
-		mgmt_set_sync_write(data->mgmt, false);
+		mgmt_send_nowait(data->mgmt, test->send_opcode, index,
+					send_len, send_param,
+					command_generic_callback, NULL, NULL);
 		power_off(data->mgmt_index);
 	} else {
 		mgmt_send(data->mgmt, test->send_opcode, index, send_len,
