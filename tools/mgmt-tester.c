@@ -27,10 +27,13 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <sys/ioctl.h>
 
 #include <glib.h>
 
 #include "lib/bluetooth.h"
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
 #include "lib/mgmt.h"
 
 #include "monitor/bt.h"
@@ -400,6 +403,7 @@ struct generic_data {
 	bool client_reject_confirm;
 	bool just_works;
 	bool sc;
+	bool force_power_off;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -1736,6 +1740,17 @@ static const struct generic_data start_discovery_valid_param_test_2 = {
 	.expect_alt_ev = MGMT_EV_DISCOVERING,
 	.expect_alt_ev_param = start_discovery_le_evt,
 	.expect_alt_ev_len = sizeof(start_discovery_le_evt),
+};
+
+static const struct generic_data start_discovery_valid_param_power_off_1 = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_START_DISCOVERY,
+	.send_param = start_discovery_bredrle_param,
+	.send_len = sizeof(start_discovery_bredrle_param),
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.force_power_off = true,
+	.expect_param = start_discovery_bredrle_param,
+	.expect_len = sizeof(start_discovery_bredrle_param),
 };
 
 static const char stop_discovery_bredrle_param[] = { 0x07 };
@@ -3284,6 +3299,31 @@ static const struct generic_data get_conn_info_ncon_test = {
 	.expect_func = get_conn_info_error_expect_param_func,
 };
 
+static const void *get_conn_info_expect_param_power_off_func(uint16_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static uint8_t param[10];
+
+	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
+	param[6] = 0x00; /* Address type */
+	param[7] = 127; /* RSSI */
+	param[8] = 127; /* TX power */
+	param[9] = 127; /* max TX power */
+
+	*len = sizeof(param);
+
+	return param;
+}
+
+static const struct generic_data get_conn_info_power_off_test = {
+	.setup_settings = settings_powered_connectable_bondable_ssp,
+	.send_opcode = MGMT_OP_GET_CONN_INFO,
+	.send_func = get_conn_info_send_param_func,
+	.force_power_off = true,
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.expect_func = get_conn_info_expect_param_power_off_func,
+};
+
 static const uint8_t load_conn_param_nval_1[16] = { 0x12, 0x11 };
 static const struct generic_data load_conn_params_fail_1 = {
 	.send_opcode = MGMT_OP_LOAD_CONN_PARAM,
@@ -4200,6 +4240,24 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 	test_condition_complete(data);
 }
 
+static bool power_off(uint16_t index)
+{
+	int sk, err;
+
+	sk = hci_open_dev(index);
+	if (sk < 0)
+		return false;
+
+	err = ioctl(sk, HCIDEVDOWN, index);
+
+	hci_close_dev(sk);
+
+	if (err < 0)
+		return false;
+
+	return true;
+}
+
 static void test_command_generic(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -4245,8 +4303,19 @@ static void test_command_generic(const void *test_data)
 	if (test->send_func)
 		send_param = test->send_func(&send_len);
 
-	mgmt_send(data->mgmt, test->send_opcode, index, send_len, send_param,
-					command_generic_callback, NULL, NULL);
+	if (test->force_power_off) {
+		mgmt_set_sync_write(data->mgmt, true);
+		mgmt_reply(data->mgmt, test->send_opcode, index, send_len,
+					send_param, command_generic_callback,
+					NULL, NULL);
+		mgmt_set_sync_write(data->mgmt, false);
+		power_off(data->mgmt_index);
+	} else {
+		mgmt_send(data->mgmt, test->send_opcode, index, send_len,
+					send_param, command_generic_callback,
+					NULL, NULL);
+	}
+
 	test_add_condition(data);
 }
 
@@ -4313,8 +4382,19 @@ static void connected_event(uint16_t index, uint16_t length, const void *param,
 	if (test->send_func)
 		send_param = test->send_func(&send_len);
 
-	mgmt_send(data->mgmt, test->send_opcode, data->mgmt_index, send_len,
-			send_param, command_generic_callback, NULL, NULL);
+	if (test->force_power_off) {
+		mgmt_set_sync_write(data->mgmt, true);
+		mgmt_reply(data->mgmt, test->send_opcode, index, send_len,
+					send_param, command_generic_callback,
+					NULL, NULL);
+		mgmt_set_sync_write(data->mgmt, false);
+		power_off(data->mgmt_index);
+	} else {
+		mgmt_send(data->mgmt, test->send_opcode, index, send_len,
+					send_param, command_generic_callback,
+					NULL, NULL);
+	}
+
 	test_add_condition(data);
 
 	/* Complete MGMT_EV_DEVICE_CONNECTED *after* adding new one */
@@ -4740,6 +4820,9 @@ int main(int argc, char *argv[])
 	test_le("Start Discovery - Success 2",
 				&start_discovery_valid_param_test_2,
 				NULL, test_command_generic);
+	test_bredrle("Start Discovery - Power Off 1",
+				&start_discovery_valid_param_power_off_1,
+				NULL, test_command_generic);
 
 	test_bredrle("Stop Discovery - Success 1",
 				&stop_discovery_success_test_1,
@@ -5034,6 +5117,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Get Conn Info - Not Connected",
 				&get_conn_info_ncon_test, NULL,
 				test_command_generic);
+	test_bredrle("Get Conn Info - Power off",
+				&get_conn_info_power_off_test, NULL,
+				test_command_generic_connect);
 
 	test_bredrle("Load Connection Parameters - Invalid Params 1",
 				&load_conn_params_fail_1,
