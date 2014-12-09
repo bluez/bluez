@@ -942,7 +942,6 @@ guint gatt_exchange_mtu(GAttrib *attrib, uint16_t mtu, GAttribResultFunc func,
 	return g_attrib_send(attrib, 0, buf, plen, func, user_data, NULL);
 }
 
-
 static void desc_discovered_cb(guint8 status, const guint8 *ipdu,
 					guint16 iplen, gpointer user_data)
 {
