@@ -554,6 +554,8 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	util_debug(att->debug_callback, att->debug_data,
 						"Physical link disconnected");
 
+	bt_att_cancel_all(att);
+
 	bt_att_ref(att);
 	att->in_disconn = true;
 	queue_foreach(att->disconn_list, disconn_handler, NULL);
@@ -565,9 +567,7 @@ static bool disconnect_cb(struct io *io, void *user_data)
 		att->need_disconn_cleanup = false;
 	}
 
-	bt_att_cancel_all(att);
 	bt_att_unregister_all(att);
-
 	bt_att_unref(att);
 
 	return false;
