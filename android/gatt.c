@@ -6179,6 +6179,15 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 	return 0;
 }
 
+static void write_confirm(struct gatt_db_attribute *attrib,
+						int err, void *user_data)
+{
+	if (!err)
+		return;
+
+	error("Error writting attribute %p", attrib);
+}
+
 static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *dev)
 {
@@ -6207,7 +6216,7 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		return;
 
 	gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0], &dev->bdaddr,
-								NULL, NULL);
+							write_confirm, NULL);
 }
 
 static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
@@ -6279,7 +6288,7 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		/* Signature OK, proceed with write */
 		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK, r_sign_cnt);
 		gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
-						&dev->bdaddr, NULL, NULL);
+					&dev->bdaddr, write_confirm, NULL);
 	}
 }
 
@@ -6639,15 +6648,6 @@ static void device_name_read_cb(struct gatt_db_attribute *attrib,
 
 	gatt_db_attribute_read_result(attrib, id, 0, (void *) name,
 								strlen(name));
-}
-
-static void write_confirm(struct gatt_db_attribute *attrib,
-						int err, void *user_data)
-{
-	if (!err)
-		return;
-
-	error("Error writting attribute %p", attrib);
 }
 
 static void register_gap_service(void)
