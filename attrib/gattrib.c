@@ -258,6 +258,9 @@ guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
 	bt_att_response_func_t response_cb = NULL;
 	bt_att_destroy_func_t destroy_cb = NULL;
 
+	if (!attrib)
+		return 0;
+
 	if (!pdu || !len)
 		return 0;
 
@@ -280,11 +283,17 @@ guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
 
 gboolean g_attrib_cancel(GAttrib *attrib, guint id)
 {
+	if (!attrib)
+		return FALSE;
+
 	return bt_att_cancel(attrib->att, id);
 }
 
 gboolean g_attrib_cancel_all(GAttrib *attrib)
 {
+	if (!attrib)
+		return FALSE;
+
 	return bt_att_cancel_all(attrib->att);
 }
 
@@ -293,6 +302,9 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 				GDestroyNotify notify)
 {
 	struct attrib_callbacks *cb = NULL;
+
+	if (!attrib)
+		return 0;
 
 	if (func || notify) {
 		cb = new0(struct attrib_callbacks, 1);
@@ -315,7 +327,7 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 
 uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
 {
-	if (!len)
+	if (!attrib || !len)
 		return NULL;
 
 	*len = attrib->buflen;
@@ -324,6 +336,9 @@ uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
 
 gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu)
 {
+	if (!attrib)
+		return FALSE;
+
 	/*
 	 * Clients of this expect a buffer to use.
 	 *
@@ -341,10 +356,16 @@ gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu)
 
 gboolean g_attrib_unregister(GAttrib *attrib, guint id)
 {
+	if (!attrib)
+		return FALSE;
+
 	return bt_att_unregister(attrib->att, id);
 }
 
 gboolean g_attrib_unregister_all(GAttrib *attrib)
 {
+	if (!attrib)
+		return false;
+
 	return bt_att_unregister_all(attrib->att);
 }
