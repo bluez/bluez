@@ -139,35 +139,37 @@ bool gatt_db_unregister(struct gatt_db *db, unsigned int id);
 struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
 							uint16_t handle);
 
-const bt_uuid_t *gatt_db_attribute_get_type(struct gatt_db_attribute *attrib);
+const bt_uuid_t *gatt_db_attribute_get_type(
+					const struct gatt_db_attribute *attrib);
 
-uint16_t gatt_db_attribute_get_handle(struct gatt_db_attribute *attrib);
+uint16_t gatt_db_attribute_get_handle(const struct gatt_db_attribute *attrib);
 
-bool gatt_db_attribute_get_service_uuid(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_service_uuid(const struct gatt_db_attribute *attrib,
 							bt_uuid_t *uuid);
 
-bool gatt_db_attribute_get_service_handles(struct gatt_db_attribute *attrib,
-						uint16_t *start_handle,
-						uint16_t *end_handle);
+bool gatt_db_attribute_get_service_handles(
+					const struct gatt_db_attribute *attrib,
+					uint16_t *start_handle,
+					uint16_t *end_handle);
 
-bool gatt_db_attribute_get_service_data(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_service_data(const struct gatt_db_attribute *attrib,
 							uint16_t *start_handle,
 							uint16_t *end_handle,
 							bool *primary,
 							bt_uuid_t *uuid);
 
-bool gatt_db_attribute_get_char_data(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 							uint16_t *handle,
 							uint16_t *value_handle,
 							uint8_t *properties,
 							bt_uuid_t *uuid);
 
-bool gatt_db_attribute_get_incl_data(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 							uint16_t *handle,
 							uint16_t *start_handle,
 							uint16_t *end_handle);
 
-bool gatt_db_attribute_get_permissions(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_permissions(const struct gatt_db_attribute *attrib,
 							uint32_t *permissions);
 
 typedef void (*gatt_db_attribute_read_t) (struct gatt_db_attribute *attrib,

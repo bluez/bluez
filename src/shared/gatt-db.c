@@ -1151,7 +1151,8 @@ struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
 	return service->attributes[handle - service_handle];
 }
 
-const bt_uuid_t *gatt_db_attribute_get_type(struct gatt_db_attribute *attrib)
+const bt_uuid_t *gatt_db_attribute_get_type(
+					const struct gatt_db_attribute *attrib)
 {
 	if (!attrib)
 		return NULL;
@@ -1159,7 +1160,7 @@ const bt_uuid_t *gatt_db_attribute_get_type(struct gatt_db_attribute *attrib)
 	return &attrib->uuid;
 }
 
-uint16_t gatt_db_attribute_get_handle(struct gatt_db_attribute *attrib)
+uint16_t gatt_db_attribute_get_handle(const struct gatt_db_attribute *attrib)
 {
 	if (!attrib)
 		return 0;
@@ -1167,7 +1168,7 @@ uint16_t gatt_db_attribute_get_handle(struct gatt_db_attribute *attrib)
 	return attrib->handle;
 }
 
-bool gatt_db_attribute_get_service_uuid(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_service_uuid(const struct gatt_db_attribute *attrib,
 							bt_uuid_t *uuid)
 {
 	struct gatt_db_service *service;
@@ -1198,9 +1199,10 @@ bool gatt_db_attribute_get_service_uuid(struct gatt_db_attribute *attrib,
 	return false;
 }
 
-bool gatt_db_attribute_get_service_handles(struct gatt_db_attribute *attrib,
-							uint16_t *start_handle,
-							uint16_t *end_handle)
+bool gatt_db_attribute_get_service_handles(
+					const struct gatt_db_attribute *attrib,
+					uint16_t *start_handle,
+					uint16_t *end_handle)
 {
 	struct gatt_db_service *service;
 
@@ -1214,7 +1216,7 @@ bool gatt_db_attribute_get_service_handles(struct gatt_db_attribute *attrib,
 	return true;
 }
 
-bool gatt_db_attribute_get_service_data(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_service_data(const struct gatt_db_attribute *attrib,
 							uint16_t *start_handle,
 							uint16_t *end_handle,
 							bool *primary,
@@ -1244,7 +1246,7 @@ bool gatt_db_attribute_get_service_data(struct gatt_db_attribute *attrib,
 	return le_to_uuid(decl->value, decl->value_len, uuid);
 }
 
-bool gatt_db_attribute_get_char_data(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 							uint16_t *handle,
 							uint16_t *value_handle,
 							uint8_t *properties,
@@ -1281,7 +1283,7 @@ bool gatt_db_attribute_get_char_data(struct gatt_db_attribute *attrib,
 	return le_to_uuid(attrib->value + 3, attrib->value_len - 3, uuid);
 }
 
-bool gatt_db_attribute_get_incl_data(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 							uint16_t *handle,
 							uint16_t *start_handle,
 							uint16_t *end_handle)
@@ -1317,7 +1319,7 @@ bool gatt_db_attribute_get_incl_data(struct gatt_db_attribute *attrib,
 	return true;
 }
 
-bool gatt_db_attribute_get_permissions(struct gatt_db_attribute *attrib,
+bool gatt_db_attribute_get_permissions(const struct gatt_db_attribute *attrib,
 							uint32_t *permissions)
 {
 	if (!attrib || !permissions)
