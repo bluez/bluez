@@ -4904,6 +4904,8 @@ static void write_cb(struct gatt_db_attribute *attrib, unsigned int id,
 
 	if (opcode == ATT_OP_WRITE_REQ || opcode == ATT_OP_PREP_WRITE_REQ)
 		ev->need_rsp = 0x01;
+	else
+		gatt_db_attribute_write_result(attrib, id, 0);
 
 	ev->length = len;
 	memcpy(ev->value, value, len);
