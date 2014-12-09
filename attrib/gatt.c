@@ -673,6 +673,8 @@ static void read_long_destroy(gpointer user_data)
 	if (__sync_sub_and_fetch(&long_read->ref, 1) > 0)
 		return;
 
+	g_attrib_unref(long_read->attrib);
+
 	if (long_read->buffer != NULL)
 		g_free(long_read->buffer);
 
@@ -776,7 +778,7 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 	if (long_read == NULL)
 		return 0;
 
-	long_read->attrib = attrib;
+	long_read->attrib = g_attrib_ref(attrib);
 	long_read->func = func;
 	long_read->user_data = user_data;
 	long_read->handle = handle;
@@ -785,9 +787,10 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 	plen = enc_read_req(handle, buf, buflen);
 	id = g_attrib_send(attrib, 0, buf, plen, read_char_helper,
 						long_read, read_long_destroy);
-	if (id == 0)
+	if (id == 0) {
+		g_attrib_unref(long_read->attrib);
 		g_free(long_read);
-	else {
+	} else {
 		__sync_fetch_and_add(&long_read->ref, 1);
 		long_read->id = id;
 	}
