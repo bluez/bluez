@@ -46,9 +46,9 @@ static unsigned char uuid_base_binary[] = {
 			0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb };
 
 static struct uuid_test_data uuid_base = {
-	.str = "00000000-0000-1000-8000-00805f9b34fb",
-	.binary = uuid_base_binary,
-	.type = BT_UUID128,
+	.str = "0000",
+	.val16 = 0x0000,
+	.type = BT_UUID16,
 	.str128 = "00000000-0000-1000-8000-00805f9b34fb",
 	.binary128 = uuid_base_binary,
 };
@@ -91,6 +91,18 @@ static struct uuid_test_data uuid_32_2 = {
 	.type = BT_UUID32,
 	.str128 = "12345678-0000-1000-8000-00805F9B34FB",
 	.binary128 = uuid_32_binary,
+};
+
+static unsigned char uuid_128_binary[] = {
+			0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb };
+
+static struct uuid_test_data uuid_128 = {
+	.str = "F0000000-0000-1000-8000-00805f9b34fb",
+	.binary = uuid_128_binary,
+	.type = BT_UUID128,
+	.str128 = "F0000000-0000-1000-8000-00805f9b34fb",
+	.binary128 = uuid_128_binary,
 };
 
 static void test_uuid(gconstpointer data)
@@ -164,6 +176,26 @@ static void test_cmp(gconstpointer data)
 	g_assert(bt_uuid_cmp(&uuid1, &uuid2) == 0);
 }
 
+static const struct uuid_test_data compress[] = {
+	{
+		.str = "00001234-0000-1000-8000-00805f9b34fb",
+		.type = BT_UUID16,
+		.val16 = 0x1234,
+	}, {
+		.str = "0000FFFF-0000-1000-8000-00805f9b34fb",
+		.type = BT_UUID16,
+		.val16 = 0xFFFF,
+	}, {
+		.str = "0000FFFF-0000-1000-8000-00805F9B34FB",
+		.type = BT_UUID16,
+		.val16 = 0xFFFF,
+	}, {
+		.str = "F0000000-0000-1000-8000-00805f9b34fb",
+		.type = BT_UUID128,
+		.binary = uuid_128_binary,
+	},
+};
+
 static const char *malformed[] = {
 	"0",
 	"01",
@@ -193,7 +225,7 @@ static void test_malformed(gconstpointer data)
 
 int main(int argc, char *argv[])
 {
-	int i;
+	size_t i;
 
 	g_test_init(&argc, &argv, NULL);
 
@@ -217,11 +249,24 @@ int main(int argc, char *argv[])
 	g_test_add_data_func("/uuid/thritytwo2/str", &uuid_32_2, test_str);
 	g_test_add_data_func("/uuid/thirtytwo2/cmp", &uuid_32_2, test_cmp);
 
+	g_test_add_data_func("/uuid/onetwentyeight", &uuid_128, test_uuid);
+	g_test_add_data_func("/uuid/onetwentyeight/str", &uuid_128, test_str);
+	g_test_add_data_func("/uuid/onetwentyeight/cmp", &uuid_128, test_cmp);
+
 	for (i = 0; malformed[i]; i++) {
 		char *testpath;
 
 		testpath = g_strdup_printf("/uuid/malformed/%s", malformed[i]);
 		g_test_add_data_func(testpath, malformed[i], test_malformed);
+		g_free(testpath);
+	}
+
+	for (i = 0; i < (sizeof(compress) / sizeof(compress[0])); i++) {
+		char *testpath;
+
+		testpath = g_strdup_printf("/uuid/compress/%s",
+							compress[i].str);
+		g_test_add_data_func(testpath, compress + i, test_uuid);
 		g_free(testpath);
 	}
 
