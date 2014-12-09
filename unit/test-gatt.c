@@ -414,7 +414,7 @@ static void match_services(struct gatt_db_attribute *client_serv_attr,
 	serv_test_data.match = client_serv_attr;
 	serv_test_data.found = false;
 
-	gatt_db_foreach_service(source_db,
+	gatt_db_foreach_service(source_db, NULL,
 					find_matching_service, &serv_test_data);
 
 	g_assert(serv_test_data.found);
@@ -434,7 +434,7 @@ static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 	g_assert(context->client);
 	g_assert(context->client_db);
 
-	gatt_db_foreach_service(context->client_db, match_services,
+	gatt_db_foreach_service(context->client_db, NULL, match_services,
 						context->data->source_db);
 
 	if (context->data->step) {

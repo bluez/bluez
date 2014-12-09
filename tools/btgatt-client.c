@@ -288,15 +288,14 @@ static void print_services(struct client *cli)
 {
 	printf("\n");
 
-	gatt_db_foreach_service(cli->db, print_service, cli);
+	gatt_db_foreach_service(cli->db, NULL, print_service, cli);
 }
 
 static void print_services_by_uuid(struct client *cli, const bt_uuid_t *uuid)
 {
 	printf("\n");
 
-	/* TODO: Filter by UUID */
-	gatt_db_foreach_service(cli->db, print_service, cli);
+	gatt_db_foreach_service(cli->db, uuid, print_service, cli);
 }
 
 static void print_services_by_handle(struct client *cli, uint16_t handle)
@@ -304,7 +303,7 @@ static void print_services_by_handle(struct client *cli, uint16_t handle)
 	printf("\n");
 
 	/* TODO: Filter by handle */
-	gatt_db_foreach_service(cli->db, print_service, cli);
+	gatt_db_foreach_service(cli->db, NULL, print_service, cli);
 }
 
 static void ready_cb(bool success, uint8_t att_ecode, void *user_data)
@@ -331,7 +330,7 @@ static void service_changed_cb(uint16_t start_handle, uint16_t end_handle,
 	printf("\nService Changed handled - start: 0x%04x end: 0x%04x\n",
 						start_handle, end_handle);
 
-	gatt_db_foreach_service_in_range(cli->db, print_service, cli,
+	gatt_db_foreach_service_in_range(cli->db, NULL, print_service, cli,
 						start_handle, end_handle);
 	print_prompt();
 }

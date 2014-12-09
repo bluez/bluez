@@ -969,7 +969,7 @@ static void print_service(struct gatt_db_attribute *attr, void *user_data)
 
 static void cmd_services(struct server *server, char *cmd_str)
 {
-	gatt_db_foreach_service(server->db, print_service, server);
+	gatt_db_foreach_service(server->db, NULL, print_service, server);
 }
 
 static void cmd_help(struct server *server, char *cmd_str);

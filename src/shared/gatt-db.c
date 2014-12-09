@@ -996,14 +996,17 @@ void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 	queue_foreach(db->services, find_information, &data);
 }
 
-void gatt_db_foreach_service(struct gatt_db *db, gatt_db_attribute_cb_t func,
-							void *user_data)
+void gatt_db_foreach_service(struct gatt_db *db, const bt_uuid_t *uuid,
+						gatt_db_attribute_cb_t func,
+						void *user_data)
 {
-	gatt_db_foreach_service_in_range(db, func, user_data, 0x0001, 0xffff);
+	gatt_db_foreach_service_in_range(db, uuid, func, user_data, 0x0001,
+									0xffff);
 }
 
 struct foreach_data {
 	gatt_db_attribute_cb_t func;
+	const bt_uuid_t *uuid;
 	void *user_data;
 	uint16_t start, end;
 };
@@ -1013,16 +1016,25 @@ static void foreach_service_in_range(void *data, void *user_data)
 	struct gatt_db_service *service = data;
 	struct foreach_data *foreach_data = user_data;
 	uint16_t svc_start;
+	bt_uuid_t uuid;
 
 	svc_start = get_handle_at_index(service, 0);
 
 	if (svc_start > foreach_data->end || svc_start < foreach_data->start)
 		return;
 
+	if (foreach_data->uuid) {
+		gatt_db_attribute_get_service_uuid(service->attributes[0],
+									&uuid);
+		if (bt_uuid_cmp(&uuid, foreach_data->uuid))
+			return;
+	}
+
 	foreach_data->func(service->attributes[0], foreach_data->user_data);
 }
 
 void gatt_db_foreach_service_in_range(struct gatt_db *db,
+						const bt_uuid_t *uuid,
 						gatt_db_attribute_cb_t func,
 						void *user_data,
 						uint16_t start_handle,
@@ -1034,6 +1046,7 @@ void gatt_db_foreach_service_in_range(struct gatt_db *db,
 		return;
 
 	data.func = func;
+	data.uuid = uuid;
 	data.user_data = user_data;
 	data.start = start_handle;
 	data.end = end_handle;
