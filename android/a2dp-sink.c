@@ -29,7 +29,7 @@
 #include <glib.h>
 
 #include "lib/bluetooth.h"
-#include "hal-log.h"
+#include "src/log.h"
 #include "hal-msg.h"
 #include "ipc.h"
 #include "a2dp-sink.h"
