@@ -47,7 +47,7 @@ characters.
 .B -C, --compat
 Provide deprecated command line interfaces.
 .TP
-.B -E, -experimental
+.B -E, --experimental
 Enable experimental interfaces. Those interfaces are not guaranteed to be
 compatible or present in future releases.
 .SH "FILES"
