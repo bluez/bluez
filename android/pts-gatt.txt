@@ -729,12 +729,12 @@ TC_GAW_CL_BI_36_C	PASS	haltest:
 				gattc get_descriptor
 				gattc write_descriptor 2 <long_value>
 				gattc disconnect
-TC_GAW_SR_BV_01_C	FAIL	haltest:
+TC_GAW_SR_BV_01_C	PASS	haltest:
 				gatts add_service
 				gatts add_characteristic:
 						<properties> 4 <permissions> 17
 				gatts start_service
-TC_GAW_SR_BV_02_C	FAIL	haltest:
+TC_GAW_SR_BV_02_C	PASS	haltest:
 				gatts add service
 				gatts add_characteristics:
 					<properties> 66 <permisions> 145
@@ -743,7 +743,7 @@ TC_GAW_SR_BV_02_C	FAIL	haltest:
 				gatts send_response: (twice)
 				NOTE: gatts_request_write_cb shall be called
 								 (verify it)
-TC_GAW_SR_BI_01_C	FAIL	haltest:
+TC_GAW_SR_BI_01_C	PASS	haltest:
 				gatts add_service
 				gatts add_characteristic:
 						<properties> 68
