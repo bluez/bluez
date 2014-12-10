@@ -142,6 +142,7 @@ struct hal_prop_device_info {
 	uint16_t manufacturer;
 } __attribute__((packed));
 
+#define HAL_PROP_ADAPTER_LOCAL_LE_FEAT		0x0d
 #define HAL_PROP_DEVICE_TIMESTAMP		0xFF
 
 #define HAL_ADAPTER_SCAN_MODE_NONE		0x00
