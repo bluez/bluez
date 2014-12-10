@@ -6448,7 +6448,7 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 	data->value = g_memdup(value, vlen);
 	data->length = vlen;
 
-	if (!gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
+	if (!gatt_db_attribute_write(attrib, offset, value, vlen, cmd[0],
 					&dev->bdaddr, attribute_write_cb,
 					data)) {
 		queue_remove(dev->pending_requests, data);
