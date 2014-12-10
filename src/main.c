@@ -69,6 +69,12 @@
 struct main_opts main_opts;
 static GKeyFile *main_conf;
 
+static enum {
+	MPS_OFF,
+	MPS_SINGLE,
+	MPS_MULTIPLE,
+} mps = MPS_OFF;
+
 static const char * const supported_options[] = {
 	"Name",
 	"Class",
@@ -81,6 +87,7 @@ static const char * const supported_options[] = {
 	"NameResolving",
 	"DebugKeys",
 	"ControllerMode",
+	"MultiProfile",
 };
 
 GKeyFile *btd_get_main_conf(void)
@@ -305,6 +312,20 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("ControllerMode=%s", str);
 		main_opts.mode = get_mode(str);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(config, "General", "MultiProfile", &err);
+	if (err) {
+		g_clear_error(&err);
+	} else {
+		DBG("MultiProfile=%s", str);
+
+		if (!strcmp(str, "single"))
+			mps = MPS_SINGLE;
+		else if (!strcmp(str, "multiple"))
+			mps = MPS_MULTIPLE;
+
 		g_free(str);
 	}
 }
@@ -598,6 +619,9 @@ int main(int argc, char *argv[])
 	if (main_opts.did_source > 0)
 		register_device_id(main_opts.did_source, main_opts.did_vendor,
 				main_opts.did_product, main_opts.did_version);
+
+	if (mps != MPS_OFF)
+		register_mps(mps == MPS_MULTIPLE);
 
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
