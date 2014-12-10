@@ -6189,6 +6189,17 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	gatt_db_find_by_type(gatt_db, start, end, &uuid, q);
 
+	if (queue_isempty(q)) {
+		size_t mtu;
+		uint8_t *rsp = g_attrib_get_buffer(device->attrib, &mtu);
+
+		len = enc_error_resp(ATT_OP_FIND_BY_TYPE_REQ, start,
+					ATT_ECODE_ATTR_NOT_FOUND, rsp, mtu);
+		g_attrib_send(device->attrib, 0, rsp, len, NULL, NULL, NULL);
+		queue_destroy(q, NULL);
+		return 0;
+	}
+
 	while (queue_peek_head(q)) {
 		struct gatt_db_attribute *attrib = queue_pop_head(q);
 		struct pending_request *data;
