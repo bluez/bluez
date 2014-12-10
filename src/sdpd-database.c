@@ -29,6 +29,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
