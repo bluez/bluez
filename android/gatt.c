@@ -5544,6 +5544,7 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 		 * gatt_db_attribute_write().
 		 */
 		req = queue_peek_head(conn->device->pending_requests);
+		req->error = err_to_att(cmd->status);
 		req->state = REQUEST_DONE;
 
 		/*
