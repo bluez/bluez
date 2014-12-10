@@ -5556,12 +5556,12 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 	if (transaction->opcode < ATT_OP_WRITE_REQ)
 		gatt_db_attribute_read_result(transaction->attrib,
 						transaction->serial_id,
-						cmd->status,
+						err_to_att(cmd->status),
 						cmd->data, cmd->len);
 	else
 		gatt_db_attribute_write_result(transaction->attrib,
 						transaction->serial_id,
-						cmd->status);
+						err_to_att(cmd->status));
 
 	send_dev_complete_response(conn->device, transaction->opcode);
 
