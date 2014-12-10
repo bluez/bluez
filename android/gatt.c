@@ -5530,11 +5530,21 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 	}
 
 	if (transaction->opcode == ATT_OP_EXEC_WRITE_REQ) {
+		struct pending_request *req;
+
 		conn->wait_execute_write = false;
 
 		/* Check for execute response from all server applications */
 		if (pending_execute_write())
 			goto done;
+
+		/*
+		 * This is usually done through db write callback but for
+		 * execute write we dont have the attribute or handle to call
+		 * gatt_db_attribute_write().
+		 */
+		req = queue_peek_head(conn->device->pending_requests);
+		req->state = REQUEST_DONE;
 
 		/*
 		 * FIXME: Handle situation when not all server applications
