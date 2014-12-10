@@ -12,11 +12,11 @@ test-eir		  14	EIR and AD parsing
 test-lib		  14	SDP library functions
 test-sdp		 133	SDP qualification test cases
 test-uuid		  30	UUID conversion handling
-test-mgmt		   2	Management interface handling
+test-mgmt		   9	Management interface handling
 test-crypto		   4	Cryptographic toolbox helpers
 test-textfile		   4	Old textfile storage format
 test-ringbuf		   3	Ring buffer functionality
-test-queue		   3	Queue handling functionality
+test-queue		   6	Queue handling functionality
 test-uhid		   6	Userspace HID functionality
 test-hfp		  29	HFP Audio Gateway functionality
 test-avdtp		  60	AVDTP qualification test cases
@@ -30,7 +30,7 @@ test-gobex-transfer	  36	OBEX transfer handling
 test-gdbus-client	  13	D-Bus client handling
 test-gatt		  11	GATT qualification test cases
 			-----
-			 576
+			 586
 
 
 Automated end-to-end testing
