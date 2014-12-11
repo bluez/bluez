@@ -882,7 +882,7 @@ const char *bt_compidtostr(int compid)
 	case 309:
 		return "Airewear LLC";
 	case 310:
-		return "ETC sp. z.o.o.";
+		return "Seed Labs, Inc. (formerly ETC sp. z.o.o.)";
 	case 311:
 		return "Prestigio Plaza Ltd.";
 	case 312:
@@ -1109,6 +1109,22 @@ const char *bt_compidtostr(int compid)
 		return "Asandoo GmbH";
 	case 423:
 		return "ENERGOUS CORPORATION";
+	case 424:
+		return "Taobao";
+	case 425:
+		return "Canon Inc.";
+	case 426:
+		return "Geophysical Technology Inc.";
+	case 427:
+		return "Facebook, Inc.";
+	case 428:
+		return "Nipro Diagnostics, Inc.";
+	case 429:
+		return "FlightSafety International";
+	case 430:
+		return "Earlens Corporation";
+	case 431:
+		return "Sunrise Micro Devices, Inc.";
 	case 65535:
 		return "internal use";
 	default:
