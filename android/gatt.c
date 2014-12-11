@@ -7168,11 +7168,15 @@ void bt_gatt_unregister(void)
 	gatt_db_unref(gatt_db);
 	gatt_db = NULL;
 
-	g_io_channel_unref(le_io);
-	le_io = NULL;
+	if (le_io) {
+		g_io_channel_unref(le_io);
+		le_io = NULL;
+	}
 
-	g_io_channel_unref(bredr_io);
-	bredr_io = NULL;
+	if (bredr_io) {
+		g_io_channel_unref(bredr_io);
+		bredr_io = NULL;
+	}
 
 	if (gap_sdp_handle) {
 		bt_adapter_remove_record(gap_sdp_handle);
