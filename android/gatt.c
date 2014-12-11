@@ -1658,15 +1658,14 @@ static void bt_le_discovery_stop_cb(void)
 
 static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 						int rssi, uint16_t eir_len,
-						const void *eir,
-						bool discoverable, bool bonded)
+						const void *eir, bool bonded)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_gatt_client_scan_result *ev = (void *) buf;
 	struct gatt_device *dev;
 	char bda[18];
 
-	if (!scanning || (!discoverable && !bonded))
+	if (!scanning)
 		goto connect;
 
 	ba2str(addr, bda);

@@ -1946,11 +1946,8 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	/* Notify Gatt if its registered for LE events */
 	if (bdaddr_type != BDADDR_BREDR && gatt_device_found_cb) {
-		bool discoverable;
 		bdaddr_t *addr;
 		uint8_t addr_type;
-
-		discoverable = eir.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
 
 		/*
 		 * If RPA is set it means that IRK was received and ID address
@@ -1967,7 +1964,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		}
 
 		gatt_device_found_cb(addr, addr_type, rssi, data_len, data,
-						discoverable, dev->le_bonded);
+								dev->le_bonded);
 	}
 
 	if (!dev->bredr_paired && !dev->le_paired)

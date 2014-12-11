@@ -42,8 +42,7 @@ void bt_adapter_remove_record(uint32_t handle);
 
 typedef void (*bt_le_device_found)(const bdaddr_t *addr, uint8_t addr_type,
 					int rssi, uint16_t eir_len,
-					const void *eir, bool discoverable,
-					bool bonded);
+					const void *eir, bool bonded);
 bool bt_le_register(bt_le_device_found cb);
 void bt_le_unregister(void);
 
