@@ -5554,7 +5554,8 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 		 * gatt_db_attribute_write().
 		 */
 		req = queue_peek_head(conn->device->pending_requests);
-		req->error = err_to_att(cmd->status);
+		/* Cast status to uint8_t, due to (byte) cast in java layer. */
+		req->error = err_to_att((uint8_t) cmd->status);
 		req->state = REQUEST_DONE;
 
 		/*
@@ -5563,15 +5564,16 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 		 */
 	}
 
+	/* Cast status to uint8_t, due to (byte) cast in java layer. */
 	if (transaction->opcode < ATT_OP_WRITE_REQ)
 		gatt_db_attribute_read_result(transaction->attrib,
-						transaction->serial_id,
-						err_to_att(cmd->status),
-						cmd->data, cmd->len);
+					transaction->serial_id,
+					err_to_att((uint8_t) cmd->status),
+					cmd->data, cmd->len);
 	else
 		gatt_db_attribute_write_result(transaction->attrib,
-						transaction->serial_id,
-						err_to_att(cmd->status));
+					transaction->serial_id,
+					err_to_att((uint8_t) cmd->status));
 
 	send_dev_complete_response(conn->device, transaction->opcode);
 
