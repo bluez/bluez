@@ -1060,10 +1060,10 @@ TC_GAI_SR_BV_01_C	PASS	haltest:
 				gatts start_service
 				gatts add_service
 				gatts start_service
-TC_GAS_CL_BV_01_C	FAIL	haltest:
+TC_GAS_CL_BV_01_C	PASS	haltest:
 				gattc connect
 				gattc disconnect
-TC_GAS_SR_BV_01_C	FAIL	haltest:
+TC_GAS_SR_BV_01_C	PASS	haltest:
 				gatts add_service
 				gatts add_chaaracteristic:
 						<properties> 42 <permissions> 17
