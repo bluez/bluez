@@ -2010,7 +2010,7 @@ static void mgmt_device_found_event(uint16_t index, uint16_t length,
 		return;
 	}
 
-	eir_len = btohs(ev->eir_len);
+	eir_len = le16_to_cpu(ev->eir_len);
 	if (length != sizeof(*ev) + eir_len) {
 		error("Device found event size mismatch (%u != %zu)",
 					length, sizeof(*ev) + eir_len);
@@ -2022,7 +2022,7 @@ static void mgmt_device_found_event(uint16_t index, uint16_t length,
 	else
 		eir = ev->eir;
 
-	flags = btohl(ev->flags);
+	flags = le32_to_cpu(ev->flags);
 
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
@@ -2047,7 +2047,7 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 	}
 
 	update_found_device(&ev->addr.bdaddr, ev->addr.type, 0, false,
-					&ev->eir[0], btohs(ev->eir_len));
+					&ev->eir[0], le16_to_cpu(ev->eir_len));
 
 	hal_ev.status = HAL_STATUS_SUCCESS;
 	hal_ev.state = HAL_ACL_STATE_CONNECTED;
@@ -2559,7 +2559,7 @@ static void load_link_keys(GSList *keys, bt_bluetooth_ready cb)
 	 * load an empty list into the kernel. That way it is ensured
 	 * that no old keys from a previous daemon are present.
 	 */
-	cp->key_count = htobs(key_count);
+	cp->key_count = cpu_to_le16(key_count);
 
 	for (key = cp->keys; keys != NULL; keys = g_slist_next(keys), key++)
 		memcpy(key, keys->data, sizeof(*key));
@@ -2604,7 +2604,7 @@ static void load_ltks(GSList *ltks)
 	 * an empty list into the kernel. That way it is ensured that no old
 	 * keys from a previous daemon are present.
 	 */
-	cp->key_count = htobs(ltk_count);
+	cp->key_count = cpu_to_le16(ltk_count);
 
 	for (l = ltks, ltk = cp->keys; l != NULL; l = g_slist_next(l), ltk++)
 		memcpy(ltk, l->data, sizeof(*ltk));
@@ -2640,7 +2640,7 @@ static void load_irks(GSList *irks)
 
 	cp = g_malloc0(cp_size);
 
-	cp->irk_count = htobs(irk_count);
+	cp->irk_count = cpu_to_le16(irk_count);
 
 	for (l = irks, irk = cp->irks; l != NULL; l = g_slist_next(l), irk++)
 		memcpy(irk, irks->data, sizeof(*irk));
@@ -2838,10 +2838,10 @@ static void set_device_id(void)
 	struct mgmt_cp_set_device_id cp;
 
 	memset(&cp, 0, sizeof(cp));
-	cp.source = htobs(bt_config_get_pnp_source());
-	cp.vendor = htobs(bt_config_get_pnp_vendor());
-	cp.product = htobs(bt_config_get_pnp_product());
-	cp.version = htobs(bt_config_get_pnp_version());
+	cp.source = cpu_to_le16(bt_config_get_pnp_source());
+	cp.vendor = cpu_to_le16(bt_config_get_pnp_vendor());
+	cp.product = cpu_to_le16(bt_config_get_pnp_product());
+	cp.version = cpu_to_le16(bt_config_get_pnp_version());
 
 	if (mgmt_send(mgmt_if, MGMT_OP_SET_DEVICE_ID, adapter.index,
 				sizeof(cp), &cp, NULL, NULL, NULL) == 0)
@@ -3423,8 +3423,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	adapter.dev_class = rp->dev_class[0] | (rp->dev_class[1] << 8) |
 						(rp->dev_class[2] << 16);
 
-	adapter.supported_settings = btohs(rp->supported_settings);
-	adapter.current_settings = btohs(rp->current_settings);
+	adapter.supported_settings = le32_to_cpu(rp->supported_settings);
+	adapter.current_settings = le32_to_cpu(rp->current_settings);
 
 	/* TODO: Register all event notification handlers */
 	register_mgmt_handlers();
@@ -3516,7 +3516,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 		goto failed;
 	}
 
-	num = btohs(rp->num_controllers);
+	num = le16_to_cpu(rp->num_controllers);
 
 	DBG("Number of controllers: %u", num);
 
@@ -3529,7 +3529,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 		return;
 
 	for (i = 0; i < num; i++) {
-		uint16_t index = btohs(rp->index[i]);
+		uint16_t index = le16_to_cpu(rp->index[i]);
 
 		if (option_index != MGMT_INDEX_NONE && option_index != index)
 			continue;
@@ -3569,7 +3569,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	}
 
 	mgmt_version = rp->version;
-	mgmt_revision = btohs(rp->revision);
+	mgmt_revision = le16_to_cpu(rp->revision);
 
 	info("Bluetooth management interface %u.%u initialized",
 						mgmt_version, mgmt_revision);
@@ -3671,7 +3671,7 @@ static bool set_discoverable(uint8_t mode, uint16_t timeout)
 
 	memset(&cp, 0, sizeof(cp));
 	cp.val = mode;
-	cp.timeout = htobs(timeout);
+	cp.timeout = cpu_to_le16(timeout);
 
 	DBG("mode %u timeout %u", mode, timeout);
 
@@ -4587,7 +4587,7 @@ static uint8_t user_passkey_reply(const bdaddr_t *bdaddr, uint8_t type,
 		memset(&cp, 0, sizeof(cp));
 		bacpy(&cp.addr.bdaddr, bdaddr);
 		cp.addr.type = type;
-		cp.passkey = htobl(passkey);
+		cp.passkey = cpu_to_le32(passkey);
 
 		id = mgmt_reply(mgmt_if, MGMT_OP_USER_PASSKEY_REPLY,
 						adapter.index, sizeof(cp), &cp,
