@@ -44,7 +44,8 @@
 
 #include "le.h"
 
-#define WHITE_LIST_SIZE  16
+#define WHITE_LIST_SIZE		16
+#define RESOLV_LIST_SIZE	16
 
 struct bt_le {
 	volatile int ref_count;
@@ -81,6 +82,7 @@ struct bt_le {
 	uint8_t  le_states[8];
 
 	uint8_t  le_local_sk256[32];
+	uint8_t  le_resolv_list_size;
 };
 
 static void reset_defaults(struct bt_le *hci)
@@ -127,8 +129,8 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->commands[26] |= 0x20;	/* LE Create Connection Cancel */
 	hci->commands[26] |= 0x40;	/* LE Read White List Size */
 	hci->commands[26] |= 0x80;	/* LE Clear White List */
-	//hci->commands[27] |= 0x01;	/* LE Add Device To White List */
-	//hci->commands[27] |= 0x02;	/* LE Remove Device From White List */
+	hci->commands[27] |= 0x01;	/* LE Add Device To White List */
+	hci->commands[27] |= 0x02;	/* LE Remove Device From White List */
 	//hci->commands[27] |= 0x04;	/* LE Connection Update */
 	//hci->commands[27] |= 0x08;	/* LE Set Host Channel Classification */
 	//hci->commands[27] |= 0x10;	/* LE Read Channel Map */
@@ -149,10 +151,10 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->commands[34] |= 0x01;	/* LE Write Suggested Default Data Length */
 	hci->commands[34] |= 0x02;	/* LE Read Local P-256 Public Key */
 	hci->commands[34] |= 0x04;	/* LE Generate DHKey */
-	//hci->commands[34] |= 0x08;	/* LE Add Device To Resolving List */
-	//hci->commands[34] |= 0x10;	/* LE Remove Device From Resolving List */
-	//hci->commands[34] |= 0x20;	/* LE Clear Resolving List */
-	//hci->commands[34] |= 0x40;	/* LE Read Resolving List Size */
+	hci->commands[34] |= 0x08;	/* LE Add Device To Resolving List */
+	hci->commands[34] |= 0x10;	/* LE Remove Device From Resolving List */
+	hci->commands[34] |= 0x20;	/* LE Clear Resolving List */
+	hci->commands[34] |= 0x40;	/* LE Read Resolving List Size */
 	//hci->commands[34] |= 0x80;	/* LE Read Peer Resolvable Address */
 	//hci->commands[35] |= 0x01;	/* LE Read Local Resolvable Address */
 	//hci->commands[35] |= 0x02;	/* LE Set Address Resolution Enable */
@@ -225,6 +227,8 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_states[0] |= 0x80;	/* Connection */
 
 	memset(hci->le_local_sk256, 0, sizeof(hci->le_local_sk256));
+
+	hci->le_resolv_list_size = RESOLV_LIST_SIZE;
 }
 
 static void send_event(struct bt_le *hci, uint8_t event,
@@ -657,8 +661,50 @@ static void cmd_le_clear_white_list(struct bt_le *hci,
 {
 	uint8_t status;
 
+	/* TODO: Clear white list */
+
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_CLEAR_WHITE_LIST,
+						&status, sizeof(status));
+}
+
+static void cmd_le_add_to_white_list(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_add_to_white_list *cmd = data;
+	uint8_t status;
+
+	/* Valid range for address type is 0x00 to 0x01 */
+	if (cmd->addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_ADD_TO_WHITE_LIST);
+		return;
+	}
+
+	/* TODO: Add entry to white list */
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_ADD_TO_WHITE_LIST,
+						&status, sizeof(status));
+}
+
+static void cmd_le_remove_from_white_list(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_remove_from_white_list *cmd = data;
+	uint8_t status;
+
+	/* Valid range for address type is 0x00 to 0x01 */
+	if (cmd->addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST);
+		return;
+	}
+
+	/* TODO: Remove entry from white list */
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST,
 						&status, sizeof(status));
 }
 
@@ -738,6 +784,70 @@ static void cmd_le_generate_dhkey(struct bt_le *hci,
 							&evt, sizeof(evt));
 }
 
+static void cmd_le_add_to_resolv_list(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_add_to_resolv_list *cmd = data;
+	uint8_t status;
+
+	/* Valid range for address type is 0x00 to 0x01 */
+	if (cmd->addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST);
+		return;
+	}
+
+	/* TODO: Add entry to resolving list */
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
+						&status, sizeof(status));
+}
+
+static void cmd_le_remove_from_resolv_list(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_remove_from_resolv_list *cmd = data;
+	uint8_t status;
+
+	/* Valid range for address type is 0x00 to 0x01 */
+	if (cmd->addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST);
+		return;
+	}
+
+	/* TODO: Remove entry from resolving list */
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
+						&status, sizeof(status));
+}
+
+static void cmd_le_clear_resolv_list(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	uint8_t status;
+
+	/* TODO: Clear resolving list */
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_CLEAR_RESOLV_LIST,
+						&status, sizeof(status));
+}
+
+static void cmd_le_read_resolv_list_size(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	struct bt_hci_rsp_le_read_white_list_size rsp;
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	rsp.size = hci->le_resolv_list_size;
+
+	cmd_complete(hci, BT_HCI_CMD_LE_READ_RESOLV_LIST_SIZE,
+							&rsp, sizeof(rsp));
+}
+
 static const struct {
 	uint16_t opcode;
 	void (*func) (struct bt_le *hci, const void *data, uint8_t size);
@@ -776,6 +886,10 @@ static const struct {
 				cmd_le_read_white_list_size, 0, true },
 	{ BT_HCI_CMD_LE_CLEAR_WHITE_LIST,
 				cmd_le_clear_white_list, 0, true },
+	{ BT_HCI_CMD_LE_ADD_TO_WHITE_LIST,
+				cmd_le_add_to_white_list,  7, true },
+	{ BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST,
+				cmd_le_remove_from_white_list, 7, true },
 
 	{ BT_HCI_CMD_LE_ENCRYPT, cmd_le_encrypt, 32, true },
 	{ BT_HCI_CMD_LE_RAND, cmd_le_rand, 0, true },
@@ -787,6 +901,14 @@ static const struct {
 				cmd_le_read_local_pk256, 0, true },
 	{ BT_HCI_CMD_LE_GENERATE_DHKEY,
 				cmd_le_generate_dhkey, 64, true },
+	{ BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
+				cmd_le_add_to_resolv_list,  39, true },
+	{ BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
+				cmd_le_remove_from_resolv_list, 7, true },
+	{ BT_HCI_CMD_LE_CLEAR_RESOLV_LIST,
+				cmd_le_clear_resolv_list, 0, true },
+	{ BT_HCI_CMD_LE_READ_RESOLV_LIST_SIZE,
+				cmd_le_read_resolv_list_size, 0, true },
 
 	{ }
 };
