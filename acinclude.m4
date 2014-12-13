@@ -52,7 +52,7 @@ AC_DEFUN([MISC_FLAGS], [
 			misc_ldflags="$misc_ldflags -pie"
 		fi
 	])
-	if (test "$USE_MAINTAINER_MODE" = "yes"); then
+	if (test "$enable_coverage" = "yes"); then
 		misc_cflags="$misc_cflags --coverage"
 		misc_ldflags="$misc_ldflags --coverage"
 	fi
