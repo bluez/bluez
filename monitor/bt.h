@@ -1913,6 +1913,16 @@ struct bt_hci_rsp_le_read_resolv_list_size {
 	uint8_t  size;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_SET_RESOLV_ENABLE		0x202d
+struct bt_hci_cmd_le_set_resolv_enable {
+	uint8_t  enable;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_SET_RESOLV_TIMEOUT	0x202e
+struct bt_hci_cmd_le_set_resolv_timeout {
+	uint16_t timeout;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_MAX_DATA_LENGTH	0x202f
 struct bt_hci_rsp_le_read_max_data_length {
 	uint8_t  status;

@@ -6058,6 +6058,33 @@ static void le_read_resolv_list_size_rsp(const void *data, uint8_t size)
 	print_field("Size: %u", rsp->size);
 }
 
+static void le_set_resolv_enable_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_resolv_enable *cmd = data;
+	const char *str;
+
+	switch (cmd->enable) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Address resolution: %s (0x%2.2x)", str, cmd->enable);
+}
+
+static void le_set_resolv_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_resolv_timeout *cmd = data;
+
+	print_field("Timeout: %u seconds", le16_to_cpu(cmd->timeout));
+}
+
 static void le_read_max_data_length_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_max_data_length *rsp = data;
@@ -6729,8 +6756,12 @@ static const struct opcode_data opcode_table[] = {
 				le_read_resolv_list_size_rsp, 2, true },
 	{ 0x202b, 279, "LE Read Peer Resolvable Address" },
 	{ 0x202c, 280, "LE Read Local Resolvable Address" },
-	{ 0x202d, 281, "LE Set Address Resolution Enable" },
-	{ 0x202e, 282, "LE Set Resolvable Private Address Timeout" },
+	{ 0x202d, 281, "LE Set Address Resolution Enable",
+				le_set_resolv_enable_cmd, 1, true,
+				status_rsp, 1, true },
+	{ 0x202e, 282, "LE Set Resolvable Private Address Timeout",
+				le_set_resolv_timeout_cmd, 2, true,
+				status_rsp, 1, true },
 	{ 0x202f, 283, "LE Read Maximum Data Length",
 				null_cmd, 0, true,
 				le_read_max_data_length_rsp, 9, true },
