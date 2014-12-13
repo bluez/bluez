@@ -157,7 +157,7 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->commands[28] |= 0x40;	/* LE Test End */
 	//hci->commands[33] |= 0x10;	/* LE Remote Connection Parameter Request Reply */
 	//hci->commands[33] |= 0x20;	/* LE Remote Connection Parameter Request Negative Reply */
-	//hci->commands[33] |= 0x40;	/* LE Set Data Length */
+	hci->commands[33] |= 0x40;	/* LE Set Data Length */
 	hci->commands[33] |= 0x80;	/* LE Read Suggested Default Data Length */
 	hci->commands[34] |= 0x01;	/* LE Write Suggested Default Data Length */
 	hci->commands[34] |= 0x02;	/* LE Read Local P-256 Public Key */
@@ -200,7 +200,7 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->le_features[0] |= 0x04;	/* Extended Reject Indication */
 	//hci->le_features[0] |= 0x08;	/* Slave-initiated Features Exchange */
 	hci->le_features[0] |= 0x10;	/* LE Ping */
-	//hci->le_features[0] |= 0x20;	/* LE Data Packet Length Extension */
+	hci->le_features[0] |= 0x20;	/* LE Data Packet Length Extension */
 	//hci->le_features[0] |= 0x40;	/* LL Privacy */
 	hci->le_features[0] |= 0x80;	/* Extended Scanner Filter Policies */
 
@@ -769,6 +769,51 @@ static void cmd_le_read_supported_states(struct bt_le *hci,
 							&rsp, sizeof(rsp));
 }
 
+static void cmd_le_set_data_length(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_data_length *cmd = data;
+	struct bt_hci_rsp_le_set_data_length rsp;
+	uint16_t handle, tx_len, tx_time;
+
+	handle = le16_to_cpu(cmd->handle);
+	tx_len = le16_to_cpu(cmd->tx_len);
+	tx_time = le16_to_cpu(cmd->tx_time);
+
+	/* Valid range for connection handle is 0x0000 to 0x0eff */
+	if (handle > 0x0eff) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DATA_LENGTH);
+		return;
+	}
+
+	/* Valid range for suggested max TX octets is 0x001b to 0x00fb */
+	if (tx_len < 0x001b || tx_len > 0x00fb) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DATA_LENGTH);
+		return;
+	}
+
+	/* Valid range for suggested max TX time is 0x0148 to 0x0848 */
+	if (tx_time < 0x0148 || tx_time > 0x0848) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DATA_LENGTH);
+		return;
+	}
+
+	/* Max TX len and time shall be less or equal supported */
+	if (tx_len > MAX_TX_LEN || tx_time > MAX_TX_TIME) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DATA_LENGTH);
+		return;
+	}
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	rsp.handle = cpu_to_le16(handle);
+
+	cmd_complete(hci, BT_HCI_CMD_LE_SET_DATA_LENGTH, &rsp, sizeof(rsp));
+}
+
 static void cmd_le_read_default_data_length(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
@@ -1023,6 +1068,8 @@ static const struct {
 	{ BT_HCI_CMD_LE_READ_SUPPORTED_STATES,
 				cmd_le_read_supported_states, 0, true },
 
+	{ BT_HCI_CMD_LE_SET_DATA_LENGTH,
+				cmd_le_set_data_length, 6, true },
 	{ BT_HCI_CMD_LE_READ_DEFAULT_DATA_LENGTH,
 				cmd_le_read_default_data_length, 0, true },
 	{ BT_HCI_CMD_LE_WRITE_DEFAULT_DATA_LENGTH,
