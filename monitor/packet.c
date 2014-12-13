@@ -6032,6 +6032,32 @@ static void le_generate_dhkey_cmd(const void *data, uint8_t size)
 	print_pk256("Remote P-256 public key", cmd->remote_pk256);
 }
 
+static void le_add_to_resolv_list_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_add_to_resolv_list *cmd = data;
+
+	print_addr_type("Address type", cmd->addr_type);
+	print_addr("Address", cmd->addr, cmd->addr_type);
+	print_key("Peer identity resolving key", cmd->peer_irk);
+	print_key("Local identity resolving key", cmd->local_irk);
+}
+
+static void le_remove_from_resolv_list_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_remove_from_resolv_list *cmd = data;
+
+	print_addr_type("Address type", cmd->addr_type);
+	print_addr("Address", cmd->addr, cmd->addr_type);
+}
+
+static void le_read_resolv_list_size_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_resolv_list_size *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Size: %u", rsp->size);
+}
+
 static void le_read_max_data_length_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_max_data_length *rsp = data;
@@ -6689,10 +6715,18 @@ static const struct opcode_data opcode_table[] = {
 				null_cmd, 0, true },
 	{ 0x2026, 274, "LE Generate DHKey",
 				le_generate_dhkey_cmd, 64, true },
-	{ 0x2027, 275, "LE Add Device To Resolving List" },
-	{ 0x2028, 276, "LE Remove Device From Resolving List" },
-	{ 0x2029, 277, "LE Clear Resolving List" },
-	{ 0x202a, 278, "LE Read Resolving List Size" },
+	{ 0x2027, 275, "LE Add Device To Resolving List",
+				le_add_to_resolv_list_cmd, 39, true,
+				status_rsp, 1, true },
+	{ 0x2028, 276, "LE Remove Device From Resolving List",
+				le_remove_from_resolv_list_cmd, 7, true,
+				status_rsp, 1, true },
+	{ 0x2029, 277, "LE Clear Resolving List",
+				null_cmd, 0, true,
+				status_rsp, 1, true },
+	{ 0x202a, 278, "LE Read Resolving List Size",
+				null_cmd, 0, true,
+				le_read_resolv_list_size_rsp, 2, true },
 	{ 0x202b, 279, "LE Read Peer Resolvable Address" },
 	{ 0x202c, 280, "LE Read Local Resolvable Address" },
 	{ 0x202d, 281, "LE Set Address Resolution Enable" },

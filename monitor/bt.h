@@ -1891,6 +1891,28 @@ struct bt_hci_cmd_le_generate_dhkey {
 	uint8_t  remote_pk256[64];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST	0x2027
+struct bt_hci_cmd_le_add_to_resolv_list {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+	uint8_t  peer_irk[16];
+	uint8_t  local_irk[16];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST	0x2028
+struct bt_hci_cmd_le_remove_from_resolv_list {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_CLEAR_RESOLV_LIST		0x2029
+
+#define BT_HCI_CMD_LE_READ_RESOLV_LIST_SIZE	0x202a
+struct bt_hci_rsp_le_read_resolv_list_size {
+	uint8_t  status;
+	uint8_t  size;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_MAX_DATA_LENGTH	0x202f
 struct bt_hci_rsp_le_read_max_data_length {
 	uint8_t  status;
