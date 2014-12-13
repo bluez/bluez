@@ -2496,6 +2496,21 @@ struct bt_hci_evt_le_generate_dhkey_complete {
 	uint8_t  dhkey[32];
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE	0x0a
+struct bt_hci_evt_le_enhanced_conn_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  role;
+	uint8_t  peer_addr_type;
+	uint8_t  peer_addr[6];
+	uint8_t  local_rpa[6];
+	uint8_t  peer_rpa[6];
+	uint16_t interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+	uint8_t  clock_accuracy;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LE_DIRECT_ADV_REPORT		0x0b
 struct bt_hci_evt_le_direct_adv_report {
 	uint8_t  num_reports;

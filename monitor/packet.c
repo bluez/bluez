@@ -7697,6 +7697,28 @@ static void le_generate_dhkey_complete_evt(const void *data, uint8_t size)
 	print_dhkey(evt->dhkey);
 }
 
+static void le_enhanced_conn_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_enhanced_conn_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_role(evt->role);
+	print_addr_type("Peer address type", evt->peer_addr_type);
+	print_addr("Peer address", evt->peer_addr, evt->peer_addr_type);
+	print_addr("Local resolvable private address", evt->local_rpa, 0x01);
+	print_addr("Peer resolvable private address", evt->peer_rpa, 0x01);
+	print_slot_125("Connection interval", evt->interval);
+	print_slot_125("Connection latency", evt->latency);
+	print_field("Supervision timeout: %d msec (0x%4.4x)",
+					le16_to_cpu(evt->supv_timeout) * 10,
+					le16_to_cpu(evt->supv_timeout));
+	print_field("Master clock accuracy: 0x%2.2x", evt->clock_accuracy);
+
+	if (evt->status == 0x00)
+		assign_handle(le16_to_cpu(evt->handle), 0x01);
+}
+
 static void le_direct_adv_report_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_direct_adv_report *evt = data;
@@ -7741,7 +7763,8 @@ static const struct subevent_data subevent_table[] = {
 				le_read_local_pk256_complete_evt, 65, true },
 	{ 0x09, "LE Generate DHKey Complete",
 				le_generate_dhkey_complete_evt, 33, true },
-	{ 0x0a, "LE Enhanced Connection Complete" },
+	{ 0x0a, "LE Enhanced Connection Complete",
+				le_enhanced_conn_complete_evt, 30, true },
 	{ 0x0b, "LE Direct Advertising Report",
 				le_direct_adv_report_evt, 1, false },
 	{ }
