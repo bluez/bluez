@@ -92,6 +92,8 @@ struct bt_le {
 	uint16_t le_default_tx_time;
 	uint8_t  le_local_sk256[32];
 	uint8_t  le_resolv_list_size;
+	uint8_t  le_resolv_enable;
+	uint16_t le_resolv_timeout;
 };
 
 static void reset_defaults(struct bt_le *hci)
@@ -166,8 +168,8 @@ static void reset_defaults(struct bt_le *hci)
 	hci->commands[34] |= 0x40;	/* LE Read Resolving List Size */
 	//hci->commands[34] |= 0x80;	/* LE Read Peer Resolvable Address */
 	//hci->commands[35] |= 0x01;	/* LE Read Local Resolvable Address */
-	//hci->commands[35] |= 0x02;	/* LE Set Address Resolution Enable */
-	//hci->commands[35] |= 0x04;	/* LE Set Resolvable Private Address Timeout */
+	hci->commands[35] |= 0x02;	/* LE Set Address Resolution Enable */
+	hci->commands[35] |= 0x04;	/* LE Set Resolvable Private Address Timeout */
 	hci->commands[35] |= 0x08;	/* LE Read Maximum Data Length */
 
 	memset(hci->features, 0, sizeof(hci->features));
@@ -241,6 +243,8 @@ static void reset_defaults(struct bt_le *hci)
 	memset(hci->le_local_sk256, 0, sizeof(hci->le_local_sk256));
 
 	hci->le_resolv_list_size = RESOLV_LIST_SIZE;
+	hci->le_resolv_enable = 0x00;
+	hci->le_resolv_timeout = 0x0384;	/* 900 secs of 15 minutes */
 }
 
 static void send_event(struct bt_le *hci, uint8_t event,
@@ -912,6 +916,49 @@ static void cmd_le_read_resolv_list_size(struct bt_le *hci,
 							&rsp, sizeof(rsp));
 }
 
+static void cmd_le_set_resolv_enable(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_resolv_enable *cmd = data;
+	uint8_t status;
+
+	/* Valid range for address resolution enable is 0x00 to 0x01 */
+	if (cmd->enable > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_RESOLV_ENABLE);
+		return;
+	}
+
+	hci->le_resolv_enable = cmd->enable;
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_SET_RESOLV_ENABLE,
+						&status, sizeof(status));
+}
+
+static void cmd_le_set_resolv_timeout(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_resolv_timeout *cmd = data;
+	uint16_t timeout;
+	uint8_t status;
+
+	timeout = le16_to_cpu(cmd->timeout);
+
+	/* Valid range for RPA timeout is 0x0001 to 0xa1b8 */
+	if (timeout < 0x0001 || timeout > 0xa1b8) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_RESOLV_TIMEOUT);
+		return;
+	}
+
+	hci->le_resolv_timeout = timeout;
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_SET_RESOLV_TIMEOUT,
+						&status, sizeof(status));
+}
+
 static void cmd_le_read_max_data_length(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
@@ -993,6 +1040,10 @@ static const struct {
 	{ BT_HCI_CMD_LE_READ_RESOLV_LIST_SIZE,
 				cmd_le_read_resolv_list_size, 0, true },
 
+	{ BT_HCI_CMD_LE_SET_RESOLV_ENABLE,
+				cmd_le_set_resolv_enable, 1, true },
+	{ BT_HCI_CMD_LE_SET_RESOLV_TIMEOUT,
+				cmd_le_set_resolv_timeout, 2, true },
 	{ BT_HCI_CMD_LE_READ_MAX_DATA_LENGTH,
 				cmd_le_read_max_data_length, 0, true },
 
