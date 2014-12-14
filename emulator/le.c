@@ -60,6 +60,7 @@ struct bt_le {
 	int vhci_fd;
 	struct bt_phy *phy;
 	struct bt_crypto *crypto;
+	int adv_timeout_id;
 
 	uint8_t  event_mask[16];
 	uint16_t manufacturer;
@@ -294,6 +295,69 @@ static void send_event(struct bt_le *hci, uint8_t event,
 		fprintf(stderr, "Write to /dev/vhci failed (%m)\n");
 }
 
+static void send_adv_pkt(struct bt_le *hci)
+{
+	struct bt_phy_pkt_adv pkt;
+
+	memset(&pkt, 0, sizeof(pkt));
+	pkt.pdu_type = hci->le_adv_type;
+	pkt.tx_addr_type = hci->le_adv_own_addr_type;
+	if (hci->le_adv_own_addr_type == 0x00)
+		memcpy(pkt.tx_addr, hci->bdaddr, 6);
+	else
+		memcpy(pkt.tx_addr, hci->le_random_addr, 6);
+	pkt.adv_data_len = hci->le_adv_data_len;
+	pkt.scan_rsp_len = hci->le_scan_rsp_data_len;
+
+	bt_phy_send_vector(hci->phy, BT_PHY_PKT_ADV, &pkt, sizeof(pkt),
+				hci->le_adv_data, pkt.adv_data_len,
+				hci->le_scan_rsp_data, pkt.scan_rsp_len);
+}
+
+static void adv_timeout_callback(int id, void *user_data)
+{
+	struct bt_le *hci = user_data;
+	unsigned int min_msec, max_msec;
+
+	send_adv_pkt(hci);
+
+	min_msec = (hci->le_adv_min_interval * 625) / 1000;
+	max_msec = (hci->le_adv_max_interval * 625) / 1000;
+
+	if (mainloop_modify_timeout(id, (min_msec + max_msec) / 2) < 0) {
+		fprintf(stderr, "Setting advertising timeout failed\n");
+		hci->le_adv_enable = 0x00;
+	}
+}
+
+static bool start_adv(struct bt_le *hci)
+{
+	unsigned int msec;
+
+	if (hci->adv_timeout_id >= 0)
+		return false;
+
+	msec = (hci->le_adv_min_interval * 625) / 1000;
+
+	hci->adv_timeout_id = mainloop_add_timeout(msec, adv_timeout_callback,
+								hci, NULL);
+	if (hci->adv_timeout_id < 0)
+		return false;
+
+	return true;
+}
+
+static bool stop_adv(struct bt_le *hci)
+{
+	if (hci->adv_timeout_id < 0)
+		return false;
+
+	mainloop_remove_timeout(hci->adv_timeout_id);
+	hci->adv_timeout_id = -1;
+
+	return true;
+}
+
 static void cmd_complete(struct bt_le *hci, uint16_t opcode,
 						const void *data, uint8_t len)
 {
@@ -361,6 +425,7 @@ static void cmd_reset(struct bt_le *hci, const void *data, uint8_t size)
 {
 	uint8_t status;
 
+	stop_adv(hci);
 	reset_defaults(hci);
 
 	status = BT_HCI_ERR_SUCCESS;
@@ -659,6 +724,7 @@ static void cmd_le_set_adv_enable(struct bt_le *hci,
 {
 	const struct bt_hci_cmd_le_set_adv_enable *cmd = data;
 	uint8_t status;
+	bool result;
 
 	/* Valid range for advertising enable is 0x00 to 0x01 */
 	if (cmd->enable > 0x01) {
@@ -673,25 +739,18 @@ static void cmd_le_set_adv_enable(struct bt_le *hci,
 		return;
 	}
 
-	hci->le_adv_enable = cmd->enable;
+	if (cmd->enable == 0x01)
+		result = start_adv(hci);
+	else
+		result = stop_adv(hci);
 
-	if (hci->le_adv_enable == 0x01) {
-		struct bt_phy_pkt_adv pkt;
-
-		memset(&pkt, 0, sizeof(pkt));
-		pkt.pdu_type = hci->le_adv_type;
-		pkt.tx_addr_type = hci->le_adv_own_addr_type;
-		if (hci->le_adv_own_addr_type == 0x00)
-			memcpy(pkt.tx_addr, hci->bdaddr, 6);
-		else
-			memcpy(pkt.tx_addr, hci->le_random_addr, 6);
-		pkt.adv_data_len = hci->le_adv_data_len;
-		pkt.scan_rsp_len = hci->le_scan_rsp_data_len;
-
-		bt_phy_send_vector(hci->phy, BT_PHY_PKT_ADV, &pkt, sizeof(pkt),
-				hci->le_adv_data, pkt.adv_data_len,
-				hci->le_scan_rsp_data, pkt.scan_rsp_len);
+	if (!result) {
+		cmd_status(hci, BT_HCI_ERR_UNSPECIFIED_ERROR,
+					BT_HCI_CMD_LE_SET_ADV_ENABLE);
+		return;
 	}
+
+	hci->le_adv_enable = cmd->enable;
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_SET_ADV_ENABLE,
@@ -1354,6 +1413,8 @@ struct bt_le *bt_le_new(void)
 	if (!hci)
 		return NULL;
 
+	hci->adv_timeout_id = -1;
+
 	reset_defaults(hci);
 
 	hci->vhci_fd = open("/dev/vhci", O_RDWR);
@@ -1398,6 +1459,8 @@ void bt_le_unref(struct bt_le *hci)
 
 	if (__sync_sub_and_fetch(&hci->ref_count, 1))
 		return;
+
+	stop_adv(hci);
 
 	bt_crypto_unref(hci->crypto);
 	bt_phy_unref(hci->phy);
