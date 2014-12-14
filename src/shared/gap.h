@@ -26,7 +26,6 @@
 
 struct bt_gap;
 
-struct bt_gap *bt_gap_new(void);
 struct bt_gap *bt_gap_new_default(void);
 struct bt_gap *bt_gap_new_index(uint16_t index);
 

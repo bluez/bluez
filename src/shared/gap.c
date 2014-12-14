@@ -131,11 +131,6 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	}
 }
 
-struct bt_gap *bt_gap_new(void)
-{
-	return bt_gap_new_index(0x0000);
-}
-
 struct bt_gap *bt_gap_new_default(void)
 {
 	return bt_gap_new_index(0x0000);
