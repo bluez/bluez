@@ -87,6 +87,14 @@ struct bt_le {
 	uint8_t  le_scan_rsp_data[31];
 	uint8_t  le_adv_enable;
 
+	uint8_t  le_scan_type;
+	uint16_t le_scan_interval;
+	uint16_t le_scan_window;
+	uint8_t  le_scan_own_addr_type;
+	uint8_t  le_scan_filter_policy;
+	uint8_t  le_scan_enable;
+	uint8_t  le_scan_filter_dup;
+
 	uint8_t  le_white_list_size;
 	uint8_t  le_states[8];
 
@@ -136,8 +144,8 @@ static void reset_defaults(struct bt_le *hci)
 	hci->commands[25] |= 0x80;	/* LE Set Advertising Data */
 	hci->commands[26] |= 0x01;	/* LE Set Scan Response Data */
 	hci->commands[26] |= 0x02;	/* LE Set Advertise Enable */
-	//hci->commands[26] |= 0x04;	/* LE Set Scan Parameters */
-	//hci->commands[26] |= 0x08;	/* LE Set Scan Enable */
+	hci->commands[26] |= 0x04;	/* LE Set Scan Parameters */
+	hci->commands[26] |= 0x08;	/* LE Set Scan Enable */
 	//hci->commands[26] |= 0x10;	/* LE Create Connection */
 	//hci->commands[26] |= 0x20;	/* LE Create Connection Cancel */
 	hci->commands[26] |= 0x40;	/* LE Read White List Size */
@@ -226,6 +234,14 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_scan_rsp_data_len = 0;
 
 	hci->le_adv_enable = 0x00;
+
+	hci->le_scan_type = 0x00;		/* Passive Scanning */
+	hci->le_scan_interval = 0x0010;		/* 10 ms */
+	hci->le_scan_window = 0x0010;		/* 10 ms */
+	hci->le_scan_own_addr_type = 0x00;	/* Public Device Address */
+	hci->le_scan_filter_policy = 0x00;
+	hci->le_scan_enable = 0x00;
+	hci->le_scan_filter_dup = 0x00;
 
 	hci->le_white_list_size = WHITE_LIST_SIZE;
 
@@ -662,6 +678,109 @@ static void cmd_le_set_adv_enable(struct bt_le *hci,
 						&status, sizeof(status));
 }
 
+static void cmd_le_set_scan_parameters(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_scan_parameters *cmd = data;
+	uint16_t interval, window;
+	uint8_t status;
+
+	if (hci->le_scan_enable == 0x01) {
+		cmd_status(hci, BT_HCI_ERR_COMMAND_DISALLOWED,
+					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
+		return;
+	}
+
+	interval = le16_to_cpu(cmd->interval);
+	window = le16_to_cpu(cmd->window);
+
+	/* Valid range for scan type is 0x00 to 0x01 */
+	if (cmd->type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
+		return;
+	}
+
+	/* Valid range for scan interval is 0x0004 to 0x4000 */
+	if (interval < 0x0004 || interval > 0x4000) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
+		return;
+	}
+
+	/* Valid range for scan window is 0x0004 to 0x4000 */
+	if (window < 0x0004 || window > 0x4000) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
+		return;
+	}
+
+	/* Scan window shall be less or equal than scan interval */
+	if (window > interval) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
+		return;
+	}
+
+	/* Valid range for own address type is 0x00 to 0x01 */
+	if (cmd->own_addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
+		return;
+	}
+
+	/* Valid range for scanning filter policy is 0x00 to 0x03 */
+	if (cmd->filter_policy > 0x03) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
+		return;
+	}
+
+	hci->le_scan_type = cmd->type;
+	hci->le_scan_interval = interval;
+	hci->le_scan_window = window;
+	hci->le_scan_own_addr_type = cmd->own_addr_type;
+	hci->le_scan_filter_policy = cmd->filter_policy;
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
+						&status, sizeof(status));
+}
+
+static void cmd_le_set_scan_enable(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_scan_enable *cmd = data;
+	uint8_t status;
+
+	/* Valid range for scan enable is 0x00 to 0x01 */
+	if (cmd->enable > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_ENABLE);
+		return;
+	}
+
+	/* Valid range for filter duplicates is 0x00 to 0x01 */
+	if (cmd->filter_dup > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_SCAN_ENABLE);
+		return;
+	}
+
+	if (cmd->enable == hci->le_scan_enable) {
+		cmd_status(hci, BT_HCI_ERR_COMMAND_DISALLOWED,
+					BT_HCI_CMD_LE_SET_SCAN_ENABLE);
+		return;
+	}
+
+	hci->le_scan_enable = cmd->enable;
+	hci->le_scan_filter_dup = cmd->filter_dup;
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+						&status, sizeof(status));
+}
+
 static void cmd_le_read_white_list_size(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
@@ -1054,6 +1173,10 @@ static const struct {
 				cmd_le_set_scan_rsp_data, 32, true },
 	{ BT_HCI_CMD_LE_SET_ADV_ENABLE,
 				cmd_le_set_adv_enable, 1, true },
+	{ BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
+				cmd_le_set_scan_parameters, 7, true },
+	{ BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+				cmd_le_set_scan_enable, 2, true },
 
 	{ BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE,
 				cmd_le_read_white_list_size, 0, true },
