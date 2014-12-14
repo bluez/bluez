@@ -42,6 +42,7 @@
 #include "monitor/mainloop.h"
 #include "monitor/bt.h"
 
+#include "phy.h"
 #include "le.h"
 
 #define WHITE_LIST_SIZE		16
@@ -57,6 +58,7 @@
 struct bt_le {
 	volatile int ref_count;
 	int vhci_fd;
+	struct bt_phy *phy;
 	struct bt_crypto *crypto;
 
 	uint8_t  event_mask[16];
@@ -1181,6 +1183,7 @@ struct bt_le *bt_le_new(void)
 
 	mainloop_add_fd(hci->vhci_fd, EPOLLIN, vhci_read_callback, hci, NULL);
 
+	hci->phy = bt_phy_new();
 	hci->crypto = bt_crypto_new();
 
 	return bt_le_ref(hci);
@@ -1205,6 +1208,7 @@ void bt_le_unref(struct bt_le *hci)
 		return;
 
 	bt_crypto_unref(hci->crypto);
+	bt_phy_unref(hci->phy);
 
 	mainloop_remove_fd(hci->vhci_fd);
 
