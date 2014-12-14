@@ -156,7 +156,7 @@ static void reset_defaults(struct bt_le *hci)
 	hci->manufacturer = 0x003f;	/* Bluetooth SIG (63) */
 
 	memset(hci->commands, 0, sizeof(hci->commands));
-	//hci->commands[0]  |= 0x20;	/* Disconnect */
+	hci->commands[0]  |= 0x20;	/* Disconnect */
 	//hci->commands[2]  |= 0x80;	/* Read Remote Version Information */
 	hci->commands[5]  |= 0x40;	/* Set Event Mask */
 	hci->commands[5]  |= 0x80;	/* Reset */
@@ -472,6 +472,11 @@ static void le_meta_event(struct bt_le *hci, uint8_t event,
 		memcpy(pkt_data + 1, data, len);
 
 	send_event(hci, BT_HCI_EVT_LE_META_EVENT, pkt_data, 1 + len);
+}
+
+static void cmd_disconnect(struct bt_le *hci, const void *data, uint8_t size)
+{
+	cmd_status(hci, BT_HCI_ERR_UNKNOWN_CONN_ID, BT_HCI_CMD_DISCONNECT);
 }
 
 static void cmd_set_event_mask(struct bt_le *hci,
@@ -1434,6 +1439,8 @@ static const struct {
 	uint8_t size;
 	bool fixed;
 } cmd_table[] = {
+	{ BT_HCI_CMD_DISCONNECT,           cmd_disconnect,           3, true },
+
 	{ BT_HCI_CMD_SET_EVENT_MASK,       cmd_set_event_mask,       8, true },
 	{ BT_HCI_CMD_RESET,                cmd_reset,                0, true },
 	{ BT_HCI_CMD_SET_EVENT_MASK_PAGE2, cmd_set_event_mask_page2, 8, true },
