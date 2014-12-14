@@ -110,7 +110,7 @@ struct bt_le {
 	uint16_t le_default_tx_len;
 	uint16_t le_default_tx_time;
 	uint8_t  le_local_sk256[32];
-	uint8_t  le_resolv_list[RESOLV_LIST_SIZE][7];
+	uint8_t  le_resolv_list[RESOLV_LIST_SIZE][39];
 	uint8_t  le_resolv_list_size;
 	uint8_t  le_resolv_enable;
 	uint16_t le_resolv_timeout;
@@ -135,7 +135,7 @@ static void clear_resolv_list(struct bt_le *hci)
 
 	for (i = 0; i < hci->le_resolv_list_size; i++) {
 		hci->le_resolv_list[i][0] = 0xff;
-		memset(&hci->le_resolv_list[i][1], 0, 6);
+		memset(&hci->le_resolv_list[i][1], 0, 38);
 	}
 }
 
@@ -1301,6 +1301,8 @@ static void cmd_le_add_to_resolv_list(struct bt_le *hci,
 
 	hci->le_resolv_list[pos][0] = cmd->addr_type;
 	memcpy(&hci->le_resolv_list[pos][1], cmd->addr, 6);
+	memcpy(&hci->le_resolv_list[pos][7], cmd->peer_irk, 16);
+	memcpy(&hci->le_resolv_list[pos][23], cmd->local_irk, 16);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
@@ -1337,7 +1339,7 @@ static void cmd_le_remove_from_resolv_list(struct bt_le *hci,
 	}
 
 	hci->le_resolv_list[pos][0] = 0xff;
-	memset(&hci->le_resolv_list[pos][1], 0, 6);
+	memset(&hci->le_resolv_list[pos][1], 0, 38);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
