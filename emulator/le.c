@@ -110,6 +110,7 @@ struct bt_le {
 	uint16_t le_default_tx_len;
 	uint16_t le_default_tx_time;
 	uint8_t  le_local_sk256[32];
+	uint8_t  le_resolv_list[RESOLV_LIST_SIZE][7];
 	uint8_t  le_resolv_list_size;
 	uint8_t  le_resolv_enable;
 	uint16_t le_resolv_timeout;
@@ -125,6 +126,16 @@ static void clear_white_list(struct bt_le *hci)
 	for (i = 0; i < hci->le_white_list_size; i++) {
 		hci->le_white_list[i][0] = 0xff;
 		memset(&hci->le_white_list[i][1], 0, 6);
+	}
+}
+
+static void clear_resolv_list(struct bt_le *hci)
+{
+	int i;
+
+	for (i = 0; i < hci->le_resolv_list_size; i++) {
+		hci->le_resolv_list[i][0] = 0xff;
+		memset(&hci->le_resolv_list[i][1], 0, 6);
 	}
 }
 
@@ -288,6 +299,7 @@ static void reset_defaults(struct bt_le *hci)
 	memset(hci->le_local_sk256, 0, sizeof(hci->le_local_sk256));
 
 	hci->le_resolv_list_size = RESOLV_LIST_SIZE;
+	clear_resolv_list(hci);
 	hci->le_resolv_enable = 0x00;
 	hci->le_resolv_timeout = 0x0384;	/* 900 secs or 15 minutes */
 }
@@ -1255,6 +1267,8 @@ static void cmd_le_add_to_resolv_list(struct bt_le *hci,
 {
 	const struct bt_hci_cmd_le_add_to_resolv_list *cmd = data;
 	uint8_t status;
+	bool exists = false;
+	int i, pos = -1;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01) {
@@ -1263,7 +1277,30 @@ static void cmd_le_add_to_resolv_list(struct bt_le *hci,
 		return;
 	}
 
-	/* TODO: Add entry to resolving list */
+	for (i = 0; i < hci->le_resolv_list_size; i++) {
+		if (hci->le_resolv_list[i][0] == cmd->addr_type &&
+				!memcmp(&hci->le_resolv_list[i][1],
+							cmd->addr, 6)) {
+			exists = true;
+			break;
+		} else if (pos < 0 && hci->le_resolv_list[i][0] == 0xff)
+			pos = i;
+	}
+
+	if (exists) {
+		cmd_status(hci, BT_HCI_ERR_UNSPECIFIED_ERROR,
+					BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST);
+		return;
+	}
+
+	if (pos < 0) {
+		cmd_status(hci, BT_HCI_ERR_MEM_CAPACITY_EXCEEDED,
+					BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST);
+		return;
+	}
+
+	hci->le_resolv_list[pos][0] = cmd->addr_type;
+	memcpy(&hci->le_resolv_list[pos][1], cmd->addr, 6);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
@@ -1275,6 +1312,7 @@ static void cmd_le_remove_from_resolv_list(struct bt_le *hci,
 {
 	const struct bt_hci_cmd_le_remove_from_resolv_list *cmd = data;
 	uint8_t status;
+	int i, pos = -1;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01) {
@@ -1283,7 +1321,23 @@ static void cmd_le_remove_from_resolv_list(struct bt_le *hci,
 		return;
 	}
 
-	/* TODO: Remove entry from resolving list */
+	for (i = 0; i < hci->le_resolv_list_size; i++) {
+		if (hci->le_resolv_list[i][0] == cmd->addr_type &&
+				!memcmp(&hci->le_resolv_list[i][1],
+							cmd->addr, 6)) {
+			pos = i;
+			break;
+		}
+	}
+
+	if (pos < 0) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST);
+		return;
+	}
+
+	hci->le_resolv_list[pos][0] = 0xff;
+	memset(&hci->le_resolv_list[pos][1], 0, 6);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
@@ -1295,7 +1349,7 @@ static void cmd_le_clear_resolv_list(struct bt_le *hci,
 {
 	uint8_t status;
 
-	/* TODO: Clear resolving list */
+	clear_resolv_list(hci);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_CLEAR_RESOLV_LIST,
@@ -1305,7 +1359,7 @@ static void cmd_le_clear_resolv_list(struct bt_le *hci,
 static void cmd_le_read_resolv_list_size(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
-	struct bt_hci_rsp_le_read_white_list_size rsp;
+	struct bt_hci_rsp_le_read_resolv_list_size rsp;
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
 	rsp.size = hci->le_resolv_list_size;
