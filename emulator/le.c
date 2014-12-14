@@ -87,7 +87,6 @@ struct bt_le {
 	uint8_t  le_scan_rsp_data_len;
 	uint8_t  le_scan_rsp_data[31];
 	uint8_t  le_adv_enable;
-
 	uint8_t  le_scan_type;
 	uint16_t le_scan_interval;
 	uint16_t le_scan_window;
@@ -95,6 +94,8 @@ struct bt_le {
 	uint8_t  le_scan_filter_policy;
 	uint8_t  le_scan_enable;
 	uint8_t  le_scan_filter_dup;
+
+	uint8_t  le_conn_enable;
 
 	uint8_t  le_white_list_size;
 	uint8_t  le_states[8];
@@ -147,8 +148,8 @@ static void reset_defaults(struct bt_le *hci)
 	hci->commands[26] |= 0x02;	/* LE Set Advertise Enable */
 	hci->commands[26] |= 0x04;	/* LE Set Scan Parameters */
 	hci->commands[26] |= 0x08;	/* LE Set Scan Enable */
-	//hci->commands[26] |= 0x10;	/* LE Create Connection */
-	//hci->commands[26] |= 0x20;	/* LE Create Connection Cancel */
+	hci->commands[26] |= 0x10;	/* LE Create Connection */
+	hci->commands[26] |= 0x20;	/* LE Create Connection Cancel */
 	hci->commands[26] |= 0x40;	/* LE Read White List Size */
 	hci->commands[26] |= 0x80;	/* LE Clear White List */
 	hci->commands[27] |= 0x01;	/* LE Add Device To White List */
@@ -243,6 +244,8 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_scan_filter_policy = 0x00;
 	hci->le_scan_enable = 0x00;
 	hci->le_scan_filter_dup = 0x00;
+
+	hci->le_conn_enable = 0x00;
 
 	hci->le_white_list_size = WHITE_LIST_SIZE;
 
@@ -862,6 +865,62 @@ static void cmd_le_set_scan_enable(struct bt_le *hci,
 						&status, sizeof(status));
 }
 
+static void cmd_le_create_conn(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_create_conn *cmd = data;
+
+	if (hci->le_conn_enable == 0x01) {
+		cmd_status(hci, BT_HCI_ERR_COMMAND_DISALLOWED,
+					BT_HCI_CMD_LE_CREATE_CONN);
+		return;
+	}
+
+	/* Valid range for own address type is 0x00 to 0x01 */
+	if (cmd->own_addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_CREATE_CONN);
+		return;
+	}
+
+	hci->le_conn_enable = 0x01;
+
+	cmd_status(hci, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_CREATE_CONN);
+}
+
+static void cmd_le_create_conn_cancel(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	struct bt_hci_evt_le_conn_complete evt;
+	uint8_t status;
+
+	if (hci->le_conn_enable == 0x00) {
+		cmd_status(hci, BT_HCI_ERR_COMMAND_DISALLOWED,
+					BT_HCI_CMD_LE_CREATE_CONN_CANCEL);
+		return;
+	}
+
+	hci->le_conn_enable = 0x00;
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_LE_CREATE_CONN_CANCEL,
+						&status, sizeof(status));
+
+	evt.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+	evt.handle = cpu_to_le16(0x0000);
+	evt.role = 0x00;
+	evt.peer_addr_type = 0x00;
+	memset(evt.peer_addr, 0, 6);
+	evt.interval = cpu_to_le16(0x0000);
+	evt.latency = cpu_to_le16(0x0000);
+	evt.supv_timeout = cpu_to_le16(0x0000);
+	evt.clock_accuracy = 0x00;
+
+	if (hci->le_event_mask[0] & 0x01)
+		le_meta_event(hci, BT_HCI_EVT_LE_CONN_COMPLETE,
+							&evt, sizeof(evt));
+}
+
 static void cmd_le_read_white_list_size(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
@@ -1258,7 +1317,10 @@ static const struct {
 				cmd_le_set_scan_parameters, 7, true },
 	{ BT_HCI_CMD_LE_SET_SCAN_ENABLE,
 				cmd_le_set_scan_enable, 2, true },
-
+	{ BT_HCI_CMD_LE_CREATE_CONN,
+				cmd_le_create_conn, 25, true },
+	{ BT_HCI_CMD_LE_CREATE_CONN_CANCEL,
+				cmd_le_create_conn_cancel, 0, true },
 	{ BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE,
 				cmd_le_read_white_list_size, 0, true },
 	{ BT_HCI_CMD_LE_CLEAR_WHITE_LIST,
