@@ -1340,7 +1340,7 @@ static void discover_primary_cb(uint8_t status, GSList *services,
 	for (l = services; l; l = l->next) {
 		struct gatt_primary *prim = l->data;
 		uint8_t *new_uuid;
-		bt_uuid_t uuid;
+		bt_uuid_t uuid, u128;
 
 		DBG("uuid: %s", prim->uuid);
 
@@ -1349,7 +1349,8 @@ static void discover_primary_cb(uint8_t status, GSList *services,
 			continue;
 		}
 
-		new_uuid = g_memdup(&uuid.value.u128, sizeof(uuid.value.u128));
+		bt_uuid_to_uuid128(&uuid, &u128);
+		new_uuid = g_memdup(&u128.value.u128, sizeof(u128.value.u128));
 
 		uuids = g_slist_prepend(uuids, new_uuid);
 	}
@@ -7199,10 +7200,11 @@ unsigned int bt_gatt_register_app(const char *uuid, gatt_type_t type,
 							gatt_conn_cb_t func)
 {
 	struct gatt_app *app;
-	bt_uuid_t uuid128;
+	bt_uuid_t u, u128;
 
-	bt_string_to_uuid(&uuid128, uuid);
-	app = register_app((void *) &uuid128.value.u128, type);
+	bt_string_to_uuid(&u, uuid);
+	bt_uuid_to_uuid128(&u, &u128);
+	app = register_app((void *) &u128.value.u128, type);
 	if (!app)
 		return 0;
 
