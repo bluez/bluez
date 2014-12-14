@@ -68,6 +68,9 @@ static bool get_random_bytes(void *buf, size_t num_bytes)
 		return false;
 
 	len = read(fd, buf, num_bytes);
+
+	close(fd);
+
 	if (len < 0)
 		return false;
 
