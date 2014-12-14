@@ -39,6 +39,7 @@
 
 struct bt_gap {
 	int ref_count;
+	uint16_t index;
 	struct mgmt *mgmt;
 
 	uint8_t mgmt_version;
@@ -132,11 +133,26 @@ static void read_version_complete(uint8_t status, uint16_t length,
 
 struct bt_gap *bt_gap_new(void)
 {
+	return bt_gap_new_index(0x0000);
+}
+
+struct bt_gap *bt_gap_new_default(void)
+{
+	return bt_gap_new_index(0x0000);
+}
+
+struct bt_gap *bt_gap_new_index(uint16_t index)
+{
 	struct bt_gap *gap;
+
+	if (index == MGMT_INDEX_NONE)
+		return NULL;
 
 	gap = new0(struct bt_gap, 1);
 	if (!gap)
 		return NULL;
+
+	gap->index = index;
 
 	gap->mgmt = mgmt_new_default();
 	if (!gap->mgmt) {

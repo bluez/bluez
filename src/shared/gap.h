@@ -22,10 +22,13 @@
  */
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct bt_gap;
 
 struct bt_gap *bt_gap_new(void);
+struct bt_gap *bt_gap_new_default(void);
+struct bt_gap *bt_gap_new_index(uint16_t index);
 
 struct bt_gap *bt_gap_ref(struct bt_gap *gap);
 void bt_gap_unref(struct bt_gap *gap);
