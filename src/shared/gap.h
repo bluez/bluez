@@ -24,6 +24,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define BT_GAP_ADDR_TYPE_BREDR		0x00
+#define BT_GAP_ADDR_TYPE_LE_PUBLIC	0x01
+#define BT_GAP_ADDR_TYPE_LE_RANDOM	0x02
+
 struct bt_gap;
 
 struct bt_gap *bt_gap_new_default(void);
@@ -38,3 +42,6 @@ typedef void (*bt_gap_ready_func_t)(bool success, void *user_data);
 bool bt_gap_set_ready_handler(struct bt_gap *gap,
 				bt_gap_ready_func_t handler, void *user_data,
 				bt_gap_destroy_func_t destroy);
+
+bool bt_gap_add_peer_irk(struct bt_gap *gap, uint8_t addr_type,
+					uint8_t addr[6], uint8_t key[16]);

@@ -32,6 +32,7 @@
 #include "lib/mgmt.h"
 
 #include "src/shared/util.h"
+#include "src/shared/queue.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/gap.h"
 
@@ -51,7 +52,22 @@ struct bt_gap {
 	bt_gap_ready_func_t ready_handler;
 	bt_gap_destroy_func_t ready_destroy;
 	void *ready_data;
+
+	struct queue *irk_list;
 };
+
+struct irk_entry {
+	uint8_t addr_type;
+	uint8_t addr[6];
+	uint8_t key[16];
+};
+
+static void irk_entry_free(void *data)
+{
+	struct irk_entry *irk = data;
+
+	free(irk);
+}
 
 static void ready_status(struct bt_gap *gap, bool status)
 {
@@ -155,6 +171,8 @@ struct bt_gap *bt_gap_new_index(uint16_t index)
 		return NULL;
 	}
 
+	gap->irk_list = queue_new();
+
 	gap->mgmt_ready = false;
 
 	if (!mgmt_send(gap->mgmt, MGMT_OP_READ_VERSION,
@@ -193,6 +211,8 @@ void bt_gap_unref(struct bt_gap *gap)
 	if (gap->ready_destroy)
 		gap->ready_destroy(gap->ready_data);
 
+	queue_destroy(gap->irk_list, irk_entry_free);
+
 	mgmt_unref(gap->mgmt);
 
 	free(gap);
@@ -211,6 +231,28 @@ bool bt_gap_set_ready_handler(struct bt_gap *gap,
 	gap->ready_handler = handler;
 	gap->ready_destroy = destroy;
 	gap->ready_data = user_data;
+
+	return true;
+}
+
+bool bt_gap_add_peer_irk(struct bt_gap *gap, uint8_t addr_type,
+					uint8_t addr[6], uint8_t key[16])
+{
+	struct irk_entry *irk;
+
+	if (!gap)
+		return false;
+
+	if (addr_type > BT_GAP_ADDR_TYPE_LE_RANDOM)
+		return false;
+
+	irk = new0(struct irk_entry, 1);
+	if (!irk)
+		return false;
+
+	irk->addr_type = addr_type;
+	memcpy(irk->addr, addr, 6);
+	memcpy(irk->key, key, 16);
 
 	return true;
 }
