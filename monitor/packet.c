@@ -2812,7 +2812,7 @@ static const struct {
 	{  0, "LE Connection Complete"			},
 	{  1, "LE Advertising Report"			},
 	{  2, "LE Connection Update Complete"		},
-	{  3, "LE Read Remote Used Features"		},
+	{  3, "LE Read Remote Used Features Complete"	},
 	{  4, "LE Long Term Key Request"		},
 	{  5, "LE Remote Connection Parameter Request"	},
 	{  6, "LE Data Length Change"			},
