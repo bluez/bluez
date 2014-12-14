@@ -497,6 +497,19 @@ static void cmd_reset(struct bt_le *hci, const void *data, uint8_t size)
 	cmd_complete(hci, BT_HCI_CMD_RESET, &status, sizeof(status));
 }
 
+static void cmd_set_event_mask_page2(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
+	uint8_t status;
+
+	memcpy(hci->event_mask + 8, cmd->mask, 8);
+
+	status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(hci, BT_HCI_CMD_SET_EVENT_MASK_PAGE2,
+						&status, sizeof(status));
+}
+
 static void cmd_read_local_version(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
@@ -556,19 +569,6 @@ static void cmd_read_bd_addr(struct bt_le *hci, const void *data, uint8_t size)
 	memcpy(rsp.bdaddr, hci->bdaddr, 6);
 
 	cmd_complete(hci, BT_HCI_CMD_READ_BD_ADDR, &rsp, sizeof(rsp));
-}
-
-static void cmd_set_event_mask_page2(struct bt_le *hci,
-						const void *data, uint8_t size)
-{
-	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
-	uint8_t status;
-
-	memcpy(hci->event_mask + 8, cmd->mask, 8);
-
-	status = BT_HCI_ERR_SUCCESS;
-	cmd_complete(hci, BT_HCI_CMD_SET_EVENT_MASK_PAGE2,
-						&status, sizeof(status));
 }
 
 static void cmd_le_set_event_mask(struct bt_le *hci,
@@ -1436,12 +1436,13 @@ static const struct {
 } cmd_table[] = {
 	{ BT_HCI_CMD_SET_EVENT_MASK,       cmd_set_event_mask,       8, true },
 	{ BT_HCI_CMD_RESET,                cmd_reset,                0, true },
+	{ BT_HCI_CMD_SET_EVENT_MASK_PAGE2, cmd_set_event_mask_page2, 8, true },
+
 	{ BT_HCI_CMD_READ_LOCAL_VERSION,   cmd_read_local_version,   0, true },
 	{ BT_HCI_CMD_READ_LOCAL_COMMANDS,  cmd_read_local_commands,  0, true },
 	{ BT_HCI_CMD_READ_LOCAL_FEATURES,  cmd_read_local_features,  0, true },
 	{ BT_HCI_CMD_READ_BUFFER_SIZE,     cmd_read_buffer_size,     0, true },
 	{ BT_HCI_CMD_READ_BD_ADDR,         cmd_read_bd_addr,         0, true },
-	{ BT_HCI_CMD_SET_EVENT_MASK_PAGE2, cmd_set_event_mask_page2, 8, true },
 
 	{ BT_HCI_CMD_LE_SET_EVENT_MASK,
 				cmd_le_set_event_mask, 8, true },
