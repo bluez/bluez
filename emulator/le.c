@@ -306,6 +306,8 @@ static void send_adv_pkt(struct bt_le *hci)
 		memcpy(pkt.tx_addr, hci->bdaddr, 6);
 	else
 		memcpy(pkt.tx_addr, hci->le_random_addr, 6);
+	pkt.rx_addr_type = hci->le_adv_direct_addr_type;
+	memcpy(pkt.rx_addr, hci->le_adv_direct_addr, 6);
 	pkt.adv_data_len = hci->le_adv_data_len;
 	pkt.scan_rsp_len = hci->le_scan_rsp_data_len;
 
