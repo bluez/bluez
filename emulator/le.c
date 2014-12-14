@@ -673,6 +673,24 @@ static void cmd_le_set_adv_enable(struct bt_le *hci,
 
 	hci->le_adv_enable = cmd->enable;
 
+	if (hci->le_adv_enable == 0x01) {
+		struct bt_phy_pkt_adv pkt;
+
+		memset(&pkt, 0, sizeof(pkt));
+		pkt.pdu_type = hci->le_adv_type;
+		pkt.tx_addr_type = hci->le_adv_own_addr_type;
+		if (hci->le_adv_own_addr_type == 0x00)
+			memcpy(pkt.tx_addr, hci->bdaddr, 6);
+		else
+			memcpy(pkt.tx_addr, hci->le_random_addr, 6);
+		pkt.adv_data_len = hci->le_adv_data_len;
+		pkt.scan_rsp_len = hci->le_scan_rsp_data_len;
+
+		bt_phy_send_vector(hci->phy, BT_PHY_PKT_ADV, &pkt, sizeof(pkt),
+				hci->le_adv_data, pkt.adv_data_len,
+				hci->le_scan_rsp_data, pkt.scan_rsp_len);
+	}
+
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_SET_ADV_ENABLE,
 						&status, sizeof(status));
@@ -1278,6 +1296,53 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 	}
 }
 
+static void phy_recv_callback(uint16_t type, const void *data,
+						size_t size, void *user_data)
+{
+	struct bt_le *hci = user_data;
+
+	switch (type) {
+	case BT_PHY_PKT_ADV:
+		if (!(hci->le_event_mask[0] & 0x02))
+			return;
+
+		if (hci->le_scan_enable == 0x01) {
+			const struct bt_phy_pkt_adv *pkt = data;
+			uint8_t buf[100];
+			struct bt_hci_evt_le_adv_report *evt = (void *) buf;
+
+			memset(buf, 0, sizeof(buf));
+			evt->num_reports = 0x01;
+			evt->event_type = pkt->pdu_type;
+			evt->addr_type = pkt->tx_addr_type;
+			memcpy(evt->addr, pkt->tx_addr, 6);
+			evt->data_len = pkt->adv_data_len;
+			memcpy(buf + sizeof(*evt), data + sizeof(*pkt),
+							pkt->adv_data_len);
+
+			le_meta_event(hci, BT_HCI_EVT_LE_ADV_REPORT, buf,
+					sizeof(*evt) + pkt->adv_data_len + 1);
+
+			if (hci->le_scan_type == 0x00)
+				break;
+
+			memset(buf, 0, sizeof(buf));
+			evt->num_reports = 0x01;
+			evt->event_type = 0x04;
+			evt->addr_type = pkt->tx_addr_type;
+			memcpy(evt->addr, pkt->tx_addr, 6);
+			evt->data_len = pkt->scan_rsp_len;
+			memcpy(buf + sizeof(*evt), data + sizeof(*pkt) +
+							pkt->adv_data_len,
+							pkt->scan_rsp_len);
+
+			le_meta_event(hci, BT_HCI_EVT_LE_ADV_REPORT, buf,
+					sizeof(*evt) + pkt->scan_rsp_len + 1);
+		}
+		break;
+	}
+}
+
 struct bt_le *bt_le_new(void)
 {
 	unsigned char setup_cmd[2];
@@ -1308,6 +1373,8 @@ struct bt_le *bt_le_new(void)
 
 	hci->phy = bt_phy_new();
 	hci->crypto = bt_crypto_new();
+
+	bt_phy_register(hci->phy, phy_recv_callback, hci);
 
 	return bt_le_ref(hci);
 }
