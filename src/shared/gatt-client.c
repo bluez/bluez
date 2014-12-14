@@ -79,8 +79,6 @@ struct bt_gatt_client {
 	struct queue *notify_chrcs;
 	int next_reg_id;
 	unsigned int disc_id, notify_id, ind_id;
-	bool in_notify;
-	bool need_notify_cleanup;
 
 	/* Handles of the GATT Service and the Service Changed characteristic
 	 * value handle. These will have the value 0 if they are not present on
@@ -215,20 +213,6 @@ static bool match_notify_data_id(const void *a, const void *b)
 	return notify_data->id == id;
 }
 
-static bool match_notify_data_removed(const void *a, const void *b)
-{
-	const struct notify_data *notify_data = a;
-
-	return notify_data->removed;
-}
-
-static bool match_notify_data_invalid(const void *a, const void *b)
-{
-	const struct notify_data *notify_data = a;
-
-	return notify_data->invalid;
-}
-
 struct handle_range {
 	uint16_t start;
 	uint16_t end;
@@ -242,17 +226,6 @@ static bool match_notify_data_handle_range(const void *a, const void *b)
 
 	return chrc->value_handle >= range->start &&
 					chrc->value_handle <= range->end;
-}
-
-static void mark_notify_data_invalid_if_in_range(void *data, void *user_data)
-{
-	struct notify_data *notify_data = data;
-	struct notify_chrc *chrc = notify_data->chrc;
-	struct handle_range *range = user_data;
-
-	if (chrc->value_handle >= range->start &&
-					chrc->value_handle <= range->end)
-		notify_data->invalid = true;
 }
 
 static bool match_notify_chrc_handle_range(const void *a, const void *b)
@@ -272,14 +245,6 @@ static void gatt_client_remove_all_notify_in_range(
 
 	range.start = start_handle;
 	range.end = end_handle;
-
-	if (client->in_notify) {
-		queue_foreach(client->notify_list,
-					mark_notify_data_invalid_if_in_range,
-					&range);
-		client->need_notify_cleanup = true;
-		return;
-	}
 
 	queue_remove_all(client->notify_list, match_notify_data_handle_range,
 						&range, notify_data_unref);
@@ -1431,23 +1396,11 @@ static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
 
 	bt_gatt_client_ref(client);
 
-	client->in_notify = true;
-
 	memset(&pdu_data, 0, sizeof(pdu_data));
 	pdu_data.pdu = pdu;
 	pdu_data.length = length;
 
 	queue_foreach(client->notify_list, notify_handler, &pdu_data);
-
-	client->in_notify = false;
-
-	if (client->need_notify_cleanup) {
-		queue_remove_all(client->notify_list, match_notify_data_invalid,
-						NULL, notify_data_unref);
-		queue_remove_all(client->notify_list, match_notify_data_removed,
-					NULL, complete_unregister_notify);
-		client->need_notify_cleanup = false;
-	}
 
 	if (opcode == BT_ATT_OP_HANDLE_VAL_IND)
 		bt_att_send(client->att, BT_ATT_OP_HANDLE_VAL_CONF, NULL, 0,
@@ -2473,13 +2426,7 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	assert(notify_data->chrc->notify_count > 0);
 	assert(!notify_data->chrc->ccc_write_id);
 
-	if (!client->in_notify) {
-		queue_remove(client->notify_list, notify_data);
-		complete_unregister_notify(notify_data);
-		return true;
-	}
-
-	notify_data->removed = true;
-	client->need_notify_cleanup = true;
+	queue_remove(client->notify_list, notify_data);
+	complete_unregister_notify(notify_data);
 	return true;
 }
