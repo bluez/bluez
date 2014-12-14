@@ -53,6 +53,7 @@ struct bt_gap {
 	bt_gap_destroy_func_t ready_destroy;
 	void *ready_data;
 
+	uint8_t static_addr[6];
 	uint8_t local_irk[16];
 	struct queue *irk_list;
 };
@@ -232,6 +233,16 @@ bool bt_gap_set_ready_handler(struct bt_gap *gap,
 	gap->ready_handler = handler;
 	gap->ready_destroy = destroy;
 	gap->ready_data = user_data;
+
+	return true;
+}
+
+bool bt_gap_set_static_addr(struct bt_gap *gap, uint8_t addr[6])
+{
+	if (!gap)
+		return false;
+
+	memcpy(gap->static_addr, addr, 6);
 
 	return true;
 }
