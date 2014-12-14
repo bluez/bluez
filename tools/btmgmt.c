@@ -3202,7 +3202,10 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	gap = bt_gap_new();
+	if (index == MGMT_INDEX_NONE)
+		gap = bt_gap_new_default();
+	else
+		gap = bt_gap_new_index(index);
 
 	bt_gap_set_ready_handler(gap, gap_ready, NULL, NULL);
 
