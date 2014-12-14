@@ -119,6 +119,20 @@ struct bt_le {
 	uint8_t scan_cache_count;
 };
 
+static bool is_in_white_list(struct bt_le *hci, uint8_t addr_type,
+							const uint8_t addr[6])
+{
+	int i;
+
+	for (i = 0; i < hci->le_white_list_size; i++) {
+		if (hci->le_white_list[i][0] == addr_type &&
+				!memcmp(&hci->le_white_list[i][1], addr, 6))
+			return true;
+	}
+
+	return false;
+}
+
 static void clear_white_list(struct bt_le *hci)
 {
 	int i;
@@ -1591,6 +1605,13 @@ static void phy_recv_callback(uint16_t type, const void *data,
 			const struct bt_phy_pkt_adv *pkt = data;
 			uint8_t buf[100];
 			struct bt_hci_evt_le_adv_report *evt = (void *) buf;
+
+			if (hci->le_scan_filter_policy == 0x01 ||
+					hci->le_scan_filter_policy == 0x03) {
+				if (!is_in_white_list(hci, pkt->tx_addr_type,
+								pkt->tx_addr))
+					break;
+			}
 
 			if (hci->le_scan_filter_dup) {
 				if (!add_to_scan_cache(hci, pkt->tx_addr_type,
