@@ -104,6 +104,7 @@ struct bt_le {
 	uint8_t  le_conn_enable;
 
 	uint8_t  le_white_list_size;
+	uint8_t  le_white_list[WHITE_LIST_SIZE][7];
 	uint8_t  le_states[8];
 
 	uint16_t le_default_tx_len;
@@ -116,6 +117,16 @@ struct bt_le {
 	struct bt_peer scan_cache[SCAN_CACHE_SIZE];
 	uint8_t scan_cache_count;
 };
+
+static void clear_white_list(struct bt_le *hci)
+{
+	int i;
+
+	for (i = 0; i < hci->le_white_list_size; i++) {
+		hci->le_white_list[i][0] = 0xff;
+		memset(&hci->le_white_list[i][1], 0, 6);
+	}
+}
 
 static void reset_defaults(struct bt_le *hci)
 {
@@ -257,6 +268,7 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_conn_enable = 0x00;
 
 	hci->le_white_list_size = WHITE_LIST_SIZE;
+	clear_white_list(hci);
 
 	memset(hci->le_states, 0, sizeof(hci->le_states));
 	hci->le_states[0] |= 0x01;	/* Non-connectable Advertising */
@@ -976,7 +988,7 @@ static void cmd_le_clear_white_list(struct bt_le *hci,
 {
 	uint8_t status;
 
-	/* TODO: Clear white list */
+	clear_white_list(hci);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_CLEAR_WHITE_LIST,
@@ -988,6 +1000,8 @@ static void cmd_le_add_to_white_list(struct bt_le *hci,
 {
 	const struct bt_hci_cmd_le_add_to_white_list *cmd = data;
 	uint8_t status;
+	bool exists = false;
+	int i, pos = -1;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01) {
@@ -996,7 +1010,30 @@ static void cmd_le_add_to_white_list(struct bt_le *hci,
 		return;
 	}
 
-	/* TODO: Add entry to white list */
+	for (i = 0; i < hci->le_white_list_size; i++) {
+		if (hci->le_white_list[i][0] == cmd->addr_type &&
+				!memcmp(&hci->le_white_list[i][1],
+							cmd->addr, 6)) {
+			exists = true;
+			break;
+		} else if (pos < 0 && hci->le_white_list[i][0] == 0xff)
+			pos = i;
+	}
+
+	if (exists) {
+		cmd_status(hci, BT_HCI_ERR_UNSPECIFIED_ERROR,
+					BT_HCI_CMD_LE_ADD_TO_WHITE_LIST);
+		return;
+	}
+
+	if (pos < 0) {
+		cmd_status(hci, BT_HCI_ERR_MEM_CAPACITY_EXCEEDED,
+					BT_HCI_CMD_LE_ADD_TO_WHITE_LIST);
+		return;
+	}
+
+	hci->le_white_list[pos][0] = cmd->addr_type;
+	memcpy(&hci->le_white_list[pos][1], cmd->addr, 6);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_ADD_TO_WHITE_LIST,
@@ -1008,6 +1045,7 @@ static void cmd_le_remove_from_white_list(struct bt_le *hci,
 {
 	const struct bt_hci_cmd_le_remove_from_white_list *cmd = data;
 	uint8_t status;
+	int i, pos = -1;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01) {
@@ -1016,7 +1054,23 @@ static void cmd_le_remove_from_white_list(struct bt_le *hci,
 		return;
 	}
 
-	/* TODO: Remove entry from white list */
+	for (i = 0; i < hci->le_white_list_size; i++) {
+		if (hci->le_white_list[i][0] == cmd->addr_type &&
+				!memcmp(&hci->le_white_list[i][1],
+							cmd->addr, 6)) {
+			pos = i;
+			break;
+		}
+	}
+
+	if (pos < 0) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST);
+		return;
+	}
+
+	hci->le_white_list[pos][0] = 0xff;
+	memset(&hci->le_white_list[pos][1], 0, 6);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST,
