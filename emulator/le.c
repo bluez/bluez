@@ -249,11 +249,13 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_states[0] |= 0x01;	/* Non-connectable Advertising */
 	hci->le_states[0] |= 0x02;	/* Scannable Advertising */
 	hci->le_states[0] |= 0x04;	/* Connectable Advertising */
-	hci->le_states[0] |= 0x08;	/* Directed Advertising */
+	hci->le_states[0] |= 0x08;	/* High Duty Cycle Directed Advertising */
 	hci->le_states[0] |= 0x10;	/* Passive Scanning */
 	hci->le_states[0] |= 0x20;	/* Active Scanning */
-	hci->le_states[0] |= 0x40;	/* Initiating */
-	hci->le_states[0] |= 0x80;	/* Connection */
+	hci->le_states[0] |= 0x40;	/* Initiating + Connection (Master Role) */
+	hci->le_states[0] |= 0x80;	/* Connection (Slave Role) */
+	hci->le_states[1] |= 0x01;	/* Passive Scanning +
+					 * Non-connectable Advertising */
 
 	hci->le_default_tx_len = DEFAULT_TX_LEN;
 	hci->le_default_tx_time = DEFAULT_TX_TIME;
