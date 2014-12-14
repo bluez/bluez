@@ -262,7 +262,7 @@ static void reset_defaults(struct bt_le *hci)
 
 	hci->le_resolv_list_size = RESOLV_LIST_SIZE;
 	hci->le_resolv_enable = 0x00;
-	hci->le_resolv_timeout = 0x0384;	/* 900 secs of 15 minutes */
+	hci->le_resolv_timeout = 0x0384;	/* 900 secs or 15 minutes */
 }
 
 static void send_event(struct bt_le *hci, uint8_t event,
