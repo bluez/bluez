@@ -47,6 +47,7 @@
 
 #define WHITE_LIST_SIZE		16
 #define RESOLV_LIST_SIZE	16
+#define SCAN_CACHE_SIZE		64
 
 #define DEFAULT_TX_LEN		0x001b
 #define DEFAULT_TX_TIME		0x0148
@@ -54,6 +55,11 @@
 #define MAX_TX_TIME		0x0848
 #define MAX_RX_LEN		0x00fb
 #define MAX_RX_TIME		0x0848
+
+struct bt_peer {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+};
 
 struct bt_le {
 	volatile int ref_count;
@@ -106,6 +112,9 @@ struct bt_le {
 	uint8_t  le_resolv_list_size;
 	uint8_t  le_resolv_enable;
 	uint16_t le_resolv_timeout;
+
+	struct bt_peer scan_cache[SCAN_CACHE_SIZE];
+	uint8_t scan_cache_count;
 };
 
 static void reset_defaults(struct bt_le *hci)
@@ -269,6 +278,33 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_resolv_list_size = RESOLV_LIST_SIZE;
 	hci->le_resolv_enable = 0x00;
 	hci->le_resolv_timeout = 0x0384;	/* 900 secs or 15 minutes */
+}
+
+static void clear_scan_cache(struct bt_le *hci)
+{
+	memset(hci->scan_cache, 0, sizeof(hci->scan_cache));
+	hci->scan_cache_count = 0;
+}
+
+static bool add_to_scan_cache(struct bt_le *hci, uint8_t addr_type,
+							const uint8_t addr[6])
+{
+	int i;
+
+	for (i = 0; i < hci->scan_cache_count; i++) {
+		if (hci->scan_cache[i].addr_type == addr_type &&
+				!memcmp(hci->scan_cache[i].addr, addr, 6))
+			return false;
+	}
+
+	if (hci->scan_cache_count >= SCAN_CACHE_SIZE)
+		return true;
+
+	hci->scan_cache[hci->scan_cache_count].addr_type = addr_type;
+	memcpy(hci->scan_cache[hci->scan_cache_count].addr, addr, 6);
+	hci->scan_cache_count++;
+
+	return true;
 }
 
 static void send_event(struct bt_le *hci, uint8_t event,
@@ -857,6 +893,8 @@ static void cmd_le_set_scan_enable(struct bt_le *hci,
 		return;
 	}
 
+	clear_scan_cache(hci);
+
 	hci->le_scan_enable = cmd->enable;
 	hci->le_scan_filter_dup = cmd->filter_dup;
 
@@ -1435,6 +1473,12 @@ static void phy_recv_callback(uint16_t type, const void *data,
 			const struct bt_phy_pkt_adv *pkt = data;
 			uint8_t buf[100];
 			struct bt_hci_evt_le_adv_report *evt = (void *) buf;
+
+			if (hci->le_scan_filter_dup) {
+				if (!add_to_scan_cache(hci, pkt->tx_addr_type,
+								pkt->tx_addr))
+					break;
+			}
 
 			memset(buf, 0, sizeof(buf));
 			evt->num_reports = 0x01;
