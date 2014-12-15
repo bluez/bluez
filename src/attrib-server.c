@@ -1300,7 +1300,7 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 	if (!device)
 		return;
 
-	device_attach_attrib(device, io);
+	device_attach_att(device, io);
 }
 
 static gboolean register_core_services(struct gatt_server *server)

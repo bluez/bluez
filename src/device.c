@@ -3630,7 +3630,7 @@ static void gatt_client_init(struct btd_device *device)
 	}
 }
 
-bool device_attach_attrib(struct btd_device *dev, GIOChannel *io)
+bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 {
 	GError *gerr = NULL;
 	GAttrib *attrib;
@@ -3718,7 +3718,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		goto done;
 	}
 
-	if (!device_attach_attrib(device, io))
+	if (!device_attach_att(device, io))
 		goto done;
 
 	if (attcb->success)
