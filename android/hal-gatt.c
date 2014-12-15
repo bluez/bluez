@@ -470,121 +470,147 @@ static void handle_response_confirmation(void *buf, uint16_t len, int fd)
 		cbs->server->response_confirmation_cb(ev->status, ev->handle);
 }
 
-#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 static void handle_configure_mtu(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_configure_mtu *ev = buf;
 
 	if (cbs->client->configure_mtu_cb)
 		cbs->client->configure_mtu_cb(ev->conn_id, ev->status, ev->mtu);
+#endif
 }
 
 static void handle_filter_config(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_filter_config *ev = buf;
 
 	if (cbs->client->scan_filter_cfg_cb)
 		cbs->client->scan_filter_cfg_cb(ev->action, ev->client_if,
 						ev->status, ev->type,
 						ev->space);
+#endif
 }
 
 static void handle_filter_params(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_filter_params *ev = buf;
 
 	if (cbs->client->scan_filter_param_cb)
 		cbs->client->scan_filter_param_cb(ev->action, ev->client_if,
 							ev->status, ev->space);
+#endif
 }
 
 static void handle_filter_status(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_filter_status *ev = buf;
 
 	if (cbs->client->scan_filter_status_cb)
 		cbs->client->scan_filter_status_cb(ev->enable, ev->client_if,
 								ev->status);
+#endif
 }
 
 static void handle__multi_adv_enable(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_multi_adv_enable *ev = buf;
 
 	if (cbs->client->multi_adv_enable_cb)
 		cbs->client->multi_adv_enable_cb(ev->client_if, ev->status);
+#endif
 }
 
 static void handle_multi_adv_update(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_multi_adv_update *ev = buf;
 
 	if (cbs->client->multi_adv_update_cb)
 		cbs->client->multi_adv_update_cb(ev->client_if, ev->status);
+#endif
 }
 
 static void handle_multi_adv_data(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_multi_adv_data *ev = buf;
 
 	if (cbs->client->multi_adv_data_cb)
 		cbs->client->multi_adv_data_cb(ev->client_if, ev->status);
+#endif
 }
 
 static void handle_multi_adv_disable(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_multi_adv_disable *ev = buf;
 
 	if (cbs->client->multi_adv_disable_cb)
 		cbs->client->multi_adv_disable_cb(ev->client_if, ev->status);
+#endif
 }
 
 static void handle_client_congestion(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_congestion *ev = buf;
 
 	if (cbs->client->congestion_cb)
 		cbs->client->congestion_cb(ev->conn_id, ev->congested);
+#endif
 }
 
 static void handle_config_batchscan(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_config_batchscan *ev = buf;
 
 	if (cbs->client->batchscan_cfg_storage_cb)
 		cbs->client->batchscan_cfg_storage_cb(ev->client_if,
 								ev->status);
+#endif
 }
 
 static void handle_enable_batchscan(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_enable_batchscan *ev = buf;
 
 	if (cbs->client->batchscan_enb_disable_cb)
 		cbs->client->batchscan_enb_disable_cb(ev->action, ev->client_if,
 								ev->status);
+#endif
 }
 
 static void handle_client_batchscan_reports(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_batchscan_reports *ev = buf;
 
 	if (cbs->client->batchscan_reports_cb)
 		cbs->client->batchscan_reports_cb(ev->client_if, ev->status,
 							ev->format, ev->num,
 							ev->data_len, ev->data);
+#endif
 }
 
 static void handle_batchscan_threshold(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_batchscan_threshold *ev = buf;
 
 	if (cbs->client->batchscan_threshold_cb)
 		cbs->client->batchscan_threshold_cb(ev->client_if);
+#endif
 }
 
 static void handle_track_adv(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_client_track_adv *ev = buf;
 
 	if (cbs->client->track_adv_event_cb)
@@ -592,24 +618,28 @@ static void handle_track_adv(void *buf, uint16_t len, int fd)
 						ev->address_type,
 						(bt_bdaddr_t *) ev->address,
 						ev->state);
+#endif
 }
 
 static void handle_indication_send(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_server_indication_sent *ev = buf;
 
 	if (cbs->server->indication_sent_cb)
 		cbs->server->indication_sent_cb(ev->conn_id, ev->status);
+#endif
 }
 
 static void handle_server_congestion(void *buf, uint16_t len, int fd)
 {
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	struct hal_ev_gatt_server_congestion *ev = buf;
 
 	if (cbs->server->congestion_cb)
 		cbs->server->congestion_cb(ev->conn_id, ev->congested);
-}
 #endif
+}
 
 /*
  * handlers will be called from notification thread context,
@@ -706,7 +736,6 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_GATT_SERVER_RSP_CONFIRMATION */
 	{ handle_response_confirmation, false,
 		sizeof(struct hal_ev_gatt_server_rsp_confirmation) },
-#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 	/* HAL_EV_GATT_CLIENT_CONFIGURE_MTU */
 	{ handle_configure_mtu, false,
 		sizeof(struct hal_ev_gatt_client_configure_mtu) },
@@ -755,7 +784,6 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_GATT_SERVER_CONGESTION */
 	{ handle_server_congestion, false,
 		sizeof(struct hal_ev_gatt_server_congestion) },
-#endif
 	};
 
 /* Client API */
