@@ -2420,7 +2420,7 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	if (!client || !id)
 		return false;
 
-	notify_data = queue_find(client->notify_list, match_notify_data_id,
+	notify_data = queue_remove_if(client->notify_list, match_notify_data_id,
 							UINT_TO_PTR(id));
 	if (!notify_data)
 		return false;
@@ -2428,7 +2428,6 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	assert(notify_data->chrc->notify_count > 0);
 	assert(!notify_data->chrc->ccc_write_id);
 
-	queue_remove(client->notify_list, notify_data);
 	complete_unregister_notify(notify_data);
 	return true;
 }
