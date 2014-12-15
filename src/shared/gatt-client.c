@@ -510,8 +510,10 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 
 		desc_start = chrc_data->value_handle + 1;
 
-		if (desc_start > chrc_data->end_handle)
+		if (desc_start > chrc_data->end_handle) {
+			free(chrc_data);
 			continue;
+		}
 
 		if (bt_gatt_discover_descriptors(client->att, desc_start,
 							chrc_data->end_handle,
