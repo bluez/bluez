@@ -223,8 +223,8 @@ static void reset_defaults(struct bt_le *hci)
 	hci->commands[34] |= 0x10;	/* LE Remove Device From Resolving List */
 	hci->commands[34] |= 0x20;	/* LE Clear Resolving List */
 	hci->commands[34] |= 0x40;	/* LE Read Resolving List Size */
-	//hci->commands[34] |= 0x80;	/* LE Read Peer Resolvable Address */
-	//hci->commands[35] |= 0x01;	/* LE Read Local Resolvable Address */
+	hci->commands[34] |= 0x80;	/* LE Read Peer Resolvable Address */
+	hci->commands[35] |= 0x01;	/* LE Read Local Resolvable Address */
 	hci->commands[35] |= 0x02;	/* LE Set Address Resolution Enable */
 	hci->commands[35] |= 0x04;	/* LE Set Resolvable Private Address Timeout */
 	hci->commands[35] |= 0x08;	/* LE Read Maximum Data Length */
@@ -1389,6 +1389,46 @@ static void cmd_le_read_resolv_list_size(struct bt_le *hci,
 							&rsp, sizeof(rsp));
 }
 
+static void cmd_le_read_peer_resolv_addr(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_peer_resolv_addr *cmd = data;
+	struct bt_hci_rsp_le_read_peer_resolv_addr rsp;
+
+	/* Valid range for address type is 0x00 to 0x01 */
+	if (cmd->addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_READ_PEER_RESOLV_ADDR);
+		return;
+	}
+
+	rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+	memset(rsp.addr, 0, 6);
+
+	cmd_complete(hci, BT_HCI_CMD_LE_READ_PEER_RESOLV_ADDR,
+							&rsp, sizeof(rsp));
+}
+
+static void cmd_le_read_local_resolv_addr(struct bt_le *hci,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_local_resolv_addr *cmd = data;
+	struct bt_hci_rsp_le_read_local_resolv_addr rsp;
+
+	/* Valid range for address type is 0x00 to 0x01 */
+	if (cmd->addr_type > 0x01) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_READ_LOCAL_RESOLV_ADDR);
+		return;
+	}
+
+	rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+	memset(rsp.addr, 0, 6);
+
+	cmd_complete(hci, BT_HCI_CMD_LE_READ_LOCAL_RESOLV_ADDR,
+							&rsp, sizeof(rsp));
+}
+
 static void cmd_le_set_resolv_enable(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
@@ -1524,7 +1564,10 @@ static const struct {
 				cmd_le_clear_resolv_list, 0, true },
 	{ BT_HCI_CMD_LE_READ_RESOLV_LIST_SIZE,
 				cmd_le_read_resolv_list_size, 0, true },
-
+	{ BT_HCI_CMD_LE_READ_PEER_RESOLV_ADDR,
+				cmd_le_read_peer_resolv_addr, 7, true },
+	{ BT_HCI_CMD_LE_READ_LOCAL_RESOLV_ADDR,
+				cmd_le_read_local_resolv_addr, 7, true },
 	{ BT_HCI_CMD_LE_SET_RESOLV_ENABLE,
 				cmd_le_set_resolv_enable, 1, true },
 	{ BT_HCI_CMD_LE_SET_RESOLV_TIMEOUT,
