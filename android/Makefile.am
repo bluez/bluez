@@ -11,8 +11,8 @@ android_system_emulator_LDADD = src/libshared-mainloop.la
 
 noinst_PROGRAMS += android/bluetoothd-snoop
 
-android_bluetoothd_snoop_SOURCES = android/bluetoothd-snoop.c
-android_bluetoothd_snoop_LDADD = src/libshared-mainloop.la
+android_bluetoothd_snoop_SOURCES = android/bluetoothd-snoop.c src/log.c
+android_bluetoothd_snoop_LDADD = src/libshared-mainloop.la @GLIB_LIBS@
 
 noinst_PROGRAMS += android/bluetoothd
 

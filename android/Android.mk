@@ -447,6 +447,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/bluetoothd-snoop.c \
 	bluez/monitor/mainloop.c \
 	bluez/src/shared/btsnoop.c \
+	bluez/android/log.c \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \

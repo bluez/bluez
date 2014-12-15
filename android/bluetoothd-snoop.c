@@ -25,7 +25,6 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -39,6 +38,7 @@
 
 #include "monitor/mainloop.h"
 #include "src/shared/btsnoop.h"
+#include "src/log.h"
 
 #define DEFAULT_SNOOP_FILE "/sdcard/btsnoop_hci.log"
 
@@ -218,6 +218,10 @@ int main(int argc, char *argv[])
 	const char *path;
 	sigset_t mask;
 
+	__btd_log_init(NULL, 0);
+
+	DBG("");
+
 	set_capabilities();
 
 	if (argc > 1)
@@ -237,13 +241,19 @@ int main(int argc, char *argv[])
 		rename(DEFAULT_SNOOP_FILE, DEFAULT_SNOOP_FILE ".old");
 
 	if (open_monitor(path) < 0) {
-		printf("Failed to start bluetoothd_snoop\n");
+		error("bluetoothd_snoop: start failed");
 		return EXIT_FAILURE;
 	}
+
+	info("bluetoothd_snoop: started");
 
 	mainloop_run();
 
 	close_monitor();
+
+	info("bluetoothd_snoop: stopped");
+
+	__btd_log_cleanup();
 
 	return EXIT_SUCCESS;
 }
