@@ -169,6 +169,14 @@ GIOChannel *g_attrib_get_channel(GAttrib *attrib)
 	return attrib->io;
 }
 
+struct bt_att *g_attrib_get_att(GAttrib *attrib)
+{
+	if (!attrib)
+		return NULL;
+
+	return attrib->att;
+}
+
 gboolean g_attrib_set_destroy_function(GAttrib *attrib, GDestroyNotify destroy,
 							gpointer user_data)
 {

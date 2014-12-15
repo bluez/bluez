@@ -31,6 +31,7 @@ extern "C" {
 #define GATTRIB_ALL_REQS 0xFE
 #define GATTRIB_ALL_HANDLES 0x0000
 
+struct bt_att;  /* Forward declaration for compatibility */
 struct _GAttrib;
 typedef struct _GAttrib GAttrib;
 
@@ -46,6 +47,8 @@ GAttrib *g_attrib_ref(GAttrib *attrib);
 void g_attrib_unref(GAttrib *attrib);
 
 GIOChannel *g_attrib_get_channel(GAttrib *attrib);
+
+struct bt_att *g_attrib_get_att(GAttrib *attrib);
 
 gboolean g_attrib_set_destroy_function(GAttrib *attrib,
 		GDestroyNotify destroy, gpointer user_data);
