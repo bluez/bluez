@@ -58,7 +58,7 @@ LOCAL_SRC_FILES := \
 	bluez/android/sco.c \
 	bluez/profiles/health/mcap.c \
 	bluez/android/map-client.c \
-	bluez/src/log.c \
+	bluez/android/log.c \
 	bluez/src/shared/mgmt.c \
 	bluez/src/shared/util.c \
 	bluez/src/shared/queue.c \
