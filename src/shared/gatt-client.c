@@ -1436,7 +1436,7 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 	free(client);
 }
 
-static void att_disconnect_cb(void *user_data)
+static void att_disconnect_cb(int err, void *user_data)
 {
 	struct bt_gatt_client *client = user_data;
 	bool in_init = client->in_init;

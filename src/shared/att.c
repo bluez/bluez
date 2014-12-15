@@ -502,28 +502,43 @@ static void wakeup_writer(struct bt_att *att)
 static void disconn_handler(void *data, void *user_data)
 {
 	struct att_disconn *disconn = data;
+	int err = PTR_TO_INT(user_data);
 
 	if (disconn->removed)
 		return;
 
 	if (disconn->callback)
-		disconn->callback(disconn->user_data);
+		disconn->callback(err, disconn->user_data);
 }
 
 static bool disconnect_cb(struct io *io, void *user_data)
 {
 	struct bt_att *att = user_data;
+	int err;
+	socklen_t len;
+
+	len = sizeof(err);
+
+	if (getsockopt(att->fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
+		util_debug(att->debug_callback, att->debug_data,
+					"Failed to obtain disconnect error: %s",
+					strerror(errno));
+		err = 0;
+	}
+
+	util_debug(att->debug_callback, att->debug_data,
+					"Physical link disconnected: %s",
+					strerror(err));
 
 	io_destroy(att->io);
 	att->io = NULL;
 
-	util_debug(att->debug_callback, att->debug_data,
-						"Physical link disconnected");
-
 	bt_att_cancel_all(att);
 
 	bt_att_ref(att);
-	queue_foreach(att->disconn_list, disconn_handler, NULL);
+
+	queue_foreach(att->disconn_list, disconn_handler, INT_TO_PTR(err));
+
 	bt_att_unregister_all(att);
 	bt_att_unref(att);
 

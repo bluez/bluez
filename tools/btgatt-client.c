@@ -74,9 +74,9 @@ static void print_prompt(void)
 	fflush(stdout);
 }
 
-static void att_disconnect_cb(void *user_data)
+static void att_disconnect_cb(int err, void *user_data)
 {
-	printf("Device disconnected\n");
+	printf("Device disconnected: %s\n", strerror(err));
 
 	mainloop_quit();
 }
