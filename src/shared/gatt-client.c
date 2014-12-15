@@ -893,6 +893,8 @@ static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)
 	struct discovery_op *op = user_data;
 	struct bt_gatt_client *client = op->client;
 
+	op->success = success;
+
 	if (!success) {
 		util_debug(client->debug_callback, client->debug_data,
 				"MTU Exchange failed. ATT ECODE: 0x%02x",
@@ -1187,6 +1189,8 @@ static void init_complete(struct discovery_op *op, bool success,
 fail:
 	util_debug(client->debug_callback, client->debug_data,
 			"Failed to initialize gatt-client");
+
+	op->success = false;
 
 done:
 	if (client->ready_callback)
