@@ -32,6 +32,11 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 
+if (test "$USE_MAINTAINER_MODE" = "yes"); then
+	AC_CHECK_PROG(enable_coverage, [lcov], [yes], [no])
+fi
+AM_CONDITIONAL(COVERAGE, test "${enable_coverage}" = "yes")
+
 MISC_FLAGS
 
 AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
@@ -273,10 +278,5 @@ fi
 
 AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
 			[Directory for the Android daemon storage files])
-
-if (test "$USE_MAINTAINER_MODE" = "yes"); then
-	AC_CHECK_PROG(enable_coverage, [lcov], [yes], [no])
-fi
-AM_CONDITIONAL(COVERAGE, test "${enable_coverage}" = "yes")
 
 AC_OUTPUT(Makefile src/bluetoothd.8 lib/bluez.pc)
