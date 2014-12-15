@@ -2379,7 +2379,7 @@ static void print_smp_auth_req(uint8_t auth_req)
 
 static void print_smp_key_dist(const char *label, uint8_t dist)
 {
-	char str[19];
+	char str[27];
 
 	if (!(dist & 0x07)) {
 		strcpy(str, "<none> ");
