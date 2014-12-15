@@ -993,12 +993,11 @@ bool bt_att_unregister_disconnect(struct bt_att *att, unsigned int id)
 	if (!att || !id)
 		return false;
 
-	disconn = queue_find(att->disconn_list, match_disconn_id,
+	disconn = queue_remove_if(att->disconn_list, match_disconn_id,
 							UINT_TO_PTR(id));
 	if (!disconn)
 		return false;
 
-	queue_remove(att->disconn_list, disconn);
 	destroy_att_disconn(disconn);
 	return true;
 }
@@ -1211,12 +1210,11 @@ bool bt_att_unregister(struct bt_att *att, unsigned int id)
 	if (!att || !id)
 		return false;
 
-	notify = queue_find(att->notify_list, match_notify_id,
+	notify = queue_remove_if(att->notify_list, match_notify_id,
 							UINT_TO_PTR(id));
 	if (!notify)
 		return false;
 
-	queue_remove(att->notify_list, notify);
 	destroy_att_notify(notify);
 	return true;
 }
