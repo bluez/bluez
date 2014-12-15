@@ -21,7 +21,7 @@ on property:bluetooth.stop=snoop
     setprop bluetooth.stop none
     stop bluetoothd-snoop
 
-service bluetoothd /system/bin/logwrapper /system/bin/bluetoothd
+service bluetoothd /system/bin/bluetoothd
     class main
     # init does not yet support setting capabilities so run as root,
     # bluetoothd drop uid to bluetooth with the right linux capabilities
@@ -29,7 +29,7 @@ service bluetoothd /system/bin/logwrapper /system/bin/bluetoothd
     disabled
     oneshot
 
-service bluetoothd-snoop /system/bin/logwrapper /system/bin/bluetoothd-snoop
+service bluetoothd-snoop /system/bin/bluetoothd-snoop
     class main
     # init does not yet support setting capabilities so run as root,
     # bluetoothd-snoop drops unneeded linux capabilities
