@@ -6058,6 +6058,38 @@ static void le_read_resolv_list_size_rsp(const void *data, uint8_t size)
 	print_field("Size: %u", rsp->size);
 }
 
+static void le_read_peer_resolv_addr_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_peer_resolv_addr *cmd = data;
+
+	print_addr_type("Address type", cmd->addr_type);
+	print_addr("Address", cmd->addr, cmd->addr_type);
+}
+
+static void le_read_peer_resolv_addr_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_peer_resolv_addr *rsp = data;
+
+	print_status(rsp->status);
+	print_addr("Address", rsp->addr, 0x01);
+}
+
+static void le_read_local_resolv_addr_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_local_resolv_addr *cmd = data;
+
+	print_addr_type("Address type", cmd->addr_type);
+	print_addr("Address", cmd->addr, cmd->addr_type);
+}
+
+static void le_read_local_resolv_addr_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_local_resolv_addr *rsp = data;
+
+	print_status(rsp->status);
+	print_addr("Address", rsp->addr, 0x01);
+}
+
 static void le_set_resolv_enable_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_resolv_enable *cmd = data;
@@ -6754,8 +6786,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x202a, 278, "LE Read Resolving List Size",
 				null_cmd, 0, true,
 				le_read_resolv_list_size_rsp, 2, true },
-	{ 0x202b, 279, "LE Read Peer Resolvable Address" },
-	{ 0x202c, 280, "LE Read Local Resolvable Address" },
+	{ 0x202b, 279, "LE Read Peer Resolvable Address",
+				le_read_peer_resolv_addr_cmd, 7, true,
+				le_read_peer_resolv_addr_rsp, 7, true },
+	{ 0x202c, 280, "LE Read Local Resolvable Address",
+				le_read_local_resolv_addr_cmd, 7, true,
+				le_read_local_resolv_addr_rsp, 7, true },
 	{ 0x202d, 281, "LE Set Address Resolution Enable",
 				le_set_resolv_enable_cmd, 1, true,
 				status_rsp, 1, true },

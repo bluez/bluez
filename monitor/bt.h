@@ -1913,6 +1913,26 @@ struct bt_hci_rsp_le_read_resolv_list_size {
 	uint8_t  size;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_READ_PEER_RESOLV_ADDR	0x202b
+struct bt_hci_cmd_le_read_peer_resolv_addr {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+struct bt_hci_rsp_le_read_peer_resolv_addr {
+	uint8_t  status;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_LOCAL_RESOLV_ADDR	0x202c
+struct bt_hci_cmd_le_read_local_resolv_addr {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+struct bt_hci_rsp_le_read_local_resolv_addr {
+	uint8_t  status;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_SET_RESOLV_ENABLE		0x202d
 struct bt_hci_cmd_le_set_resolv_enable {
 	uint8_t  enable;
