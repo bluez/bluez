@@ -104,7 +104,6 @@ struct notify_chrc {
 
 struct notify_data {
 	struct bt_gatt_client *client;
-	bool removed;
 	bool invalid;
 	unsigned int id;
 	int ref_count;
@@ -1378,9 +1377,6 @@ static void notify_handler(void *data, void *user_data)
 	uint16_t value_handle;
 	const uint8_t *value = NULL;
 
-	if (notify_data->removed)
-		return;
-
 	value_handle = get_le16(pdu_data->pdu);
 
 	if (notify_data->chrc->value_handle != value_handle)
@@ -2426,7 +2422,7 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 
 	notify_data = queue_find(client->notify_list, match_notify_data_id,
 							UINT_TO_PTR(id));
-	if (!notify_data || notify_data->removed)
+	if (!notify_data)
 		return false;
 
 	assert(notify_data->chrc->notify_count > 0);
