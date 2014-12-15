@@ -27,7 +27,8 @@
 #define __packed __attribute__((packed))
 #endif
 
-#define BT_ATT_DEFAULT_LE_MTU 23
+#define BT_ATT_DEFAULT_LE_MTU	23
+#define BT_ATT_MAX_LE_MTU	517
 
 /* ATT protocol opcodes */
 #define BT_ATT_OP_ERROR_RSP	      		0x01
