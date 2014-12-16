@@ -99,44 +99,27 @@ void keys_update_identity_addr(const uint8_t addr[6], uint8_t addr_type)
 	}
 }
 
-struct resolve_data {
-	bool found;
-	uint8_t addr[6];
-	uint8_t ident[6];
-	uint8_t ident_type;
-};
-
-static void try_resolve_irk(void *data, void *user_data)
+static bool match_resolve_irk(const void *data, const void *match_data)
 {
-	struct irk_data *irk = data;
-	struct resolve_data *result = user_data;
+	const struct irk_data *irk = data;
+	const uint8_t *addr = match_data;
 	uint8_t local_hash[3];
 
-	if (result->found)
-		return;
+	bt_crypto_ah(crypto, irk->key, addr + 3, local_hash);
 
-	bt_crypto_ah(crypto, irk->key, result->addr + 3, local_hash);
-
-	if (!memcmp(result->addr, local_hash, 3)) {
-		result->found = true;
-		memcpy(result->ident, irk->addr, 6);
-		result->ident_type = irk->addr_type;
-	}
+	return !memcmp(addr, local_hash, 3);
 }
 
 bool keys_resolve_identity(const uint8_t addr[6], uint8_t ident[6],
 							uint8_t *ident_type)
 {
-	struct resolve_data result;
+	struct irk_data *irk;
 
-	result.found = false;
-	memcpy(result.addr, addr, 6);
+	irk = queue_find(irk_list, match_resolve_irk, addr);
 
-	queue_foreach(irk_list, try_resolve_irk, &result);
-
-	if (result.found) {
-		memcpy(ident, result.ident, 6);
-		*ident_type = result.ident_type;
+	if (irk) {
+		memcpy(ident, irk->addr, 6);
+		*ident_type = irk->addr_type;
 		return true;
 	}
 
