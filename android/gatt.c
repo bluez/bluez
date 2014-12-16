@@ -4413,6 +4413,9 @@ static void send_dev_complete_response(struct gatt_device *device,
 	uint16_t len = 0;
 	uint8_t error = 0;
 
+	if (queue_isempty(device->pending_requests))
+		return;
+
 	if (queue_find(device->pending_requests, match_pending_dev_request,
 									NULL)) {
 		DBG("Still pending requests");
@@ -6512,6 +6515,8 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_UNLIKELY;
 	}
 
+	send_dev_complete_response(dev, cmd[0]);
+
 	return 0;
 }
 
@@ -6571,6 +6576,7 @@ static uint8_t write_execute_request(const uint8_t *cmd, uint16_t cmd_len,
 	}
 
 	queue_foreach(app_connections, send_server_write_execute_notify, &ev);
+	send_dev_complete_response(dev, cmd[0]);
 
 	return 0;
 }
