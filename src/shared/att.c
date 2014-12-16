@@ -860,17 +860,12 @@ void bt_att_unref(struct bt_att *att)
 		destroy_att_send_op(att->pending_ind);
 
 	io_destroy(att->io);
-	att->io = NULL;
 
 	queue_destroy(att->req_queue, NULL);
 	queue_destroy(att->ind_queue, NULL);
 	queue_destroy(att->write_queue, NULL);
 	queue_destroy(att->notify_list, NULL);
 	queue_destroy(att->disconn_list, NULL);
-	att->req_queue = NULL;
-	att->ind_queue = NULL;
-	att->write_queue = NULL;
-	att->notify_list = NULL;
 
 	if (att->timeout_destroy)
 		att->timeout_destroy(att->timeout_data);
@@ -879,7 +874,6 @@ void bt_att_unref(struct bt_att *att)
 		att->debug_destroy(att->debug_data);
 
 	free(att->buf);
-	att->buf = NULL;
 
 	free(att);
 }
