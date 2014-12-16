@@ -675,7 +675,7 @@ static struct {
 	{ 0x0003, "AMP Manager Protocol"	},
 	{ 0x0004, "Attribute Protocol"		},
 	{ 0x0005, "L2CAP Signaling (LE)"	},
-	{ 0x0006, "Security Manager"		},
+	{ 0x0006, "Security Manager (LE)"	},
 	{ 0x0007, "Security Manager (BR/EDR)"	},
 	{ 0x003f, "AMP Test Manager"		},
 	{ }
