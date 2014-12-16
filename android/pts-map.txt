@@ -1,7 +1,7 @@
 PTS test results for MAP
 
-PTS version: 5.3
-Tested: 18-November-2014
+PTS version: 6.0
+Tested: 11-December-2014
 Android version: 5.0
 
 Results:
@@ -65,7 +65,7 @@ TC_MSE_MMB_BV_10_I	PASS
 TC_MSE_MMB_BV_11_I	PASS
 TC_MSE_MMB_BV_20_I	PASS
 TC_MSE_MMB_BV_12_I	N/A
-TC_MSE_MMB_BV_18_I	N/A
+TC_MSE_MMB_BV_18_I	PASS
 TC_MSE_MMB_BV_13_I	PASS
 TC_MSE_MMB_BV_14_I	PASS
 TC_MSE_MMB_BV_15_I	PASS
