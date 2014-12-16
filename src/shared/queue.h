@@ -27,6 +27,12 @@ typedef void (*queue_destroy_func_t)(void *data);
 
 struct queue;
 
+struct queue_entry {
+	int ref_count;
+	void *data;
+	struct queue_entry *next;
+};
+
 struct queue *queue_new(void);
 void queue_destroy(struct queue *queue, queue_destroy_func_t destroy);
 
@@ -52,6 +58,8 @@ void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 							void *user_data);
 unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 				void *user_data, queue_destroy_func_t destroy);
+
+const struct queue_entry *queue_get_entries(struct queue *queue);
 
 unsigned int queue_length(struct queue *queue);
 bool queue_isempty(struct queue *queue);

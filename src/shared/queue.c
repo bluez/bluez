@@ -28,12 +28,6 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 
-struct queue_entry {
-	int ref_count;
-	void *data;
-	struct queue_entry *next;
-};
-
 struct queue {
 	int ref_count;
 	struct queue_entry *head;
@@ -399,6 +393,14 @@ unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 	}
 
 	return count;
+}
+
+const struct queue_entry *queue_get_entries(struct queue *queue)
+{
+	if (!queue)
+		return NULL;
+
+	return queue->head;
 }
 
 unsigned int queue_length(struct queue *queue)
