@@ -48,7 +48,7 @@ typedef void (*queue_foreach_func_t)(void *data, void *user_data);
 void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 							void *user_data);
 
-typedef bool (*queue_match_func_t)(const void *a, const void *b);
+typedef bool (*queue_match_func_t)(const void *data, const void *match_data);
 
 void *queue_find(struct queue *queue, queue_match_func_t function,
 							const void *match_data);
