@@ -856,7 +856,7 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 
 	a = l->data;
 
-	if (a->len <= offset)
+	if (a->len < offset)
 		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle,
 					ATT_ECODE_INVALID_OFFSET, pdu, len);
 
