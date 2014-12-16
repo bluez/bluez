@@ -769,6 +769,33 @@ static bool can_read_data(struct io *io, void *user_data)
 	return true;
 }
 
+static void bt_att_free(struct bt_att *att)
+{
+	if (att->pending_req)
+		destroy_att_send_op(att->pending_req);
+
+	if (att->pending_ind)
+		destroy_att_send_op(att->pending_ind);
+
+	io_destroy(att->io);
+
+	queue_destroy(att->req_queue, NULL);
+	queue_destroy(att->ind_queue, NULL);
+	queue_destroy(att->write_queue, NULL);
+	queue_destroy(att->notify_list, NULL);
+	queue_destroy(att->disconn_list, NULL);
+
+	if (att->timeout_destroy)
+		att->timeout_destroy(att->timeout_data);
+
+	if (att->debug_destroy)
+		att->debug_destroy(att->debug_data);
+
+	free(att->buf);
+
+	free(att);
+}
+
 struct bt_att *bt_att_new(int fd)
 {
 	struct bt_att *att;
@@ -820,14 +847,7 @@ struct bt_att *bt_att_new(int fd)
 	return bt_att_ref(att);
 
 fail:
-	queue_destroy(att->req_queue, NULL);
-	queue_destroy(att->ind_queue, NULL);
-	queue_destroy(att->write_queue, NULL);
-	queue_destroy(att->notify_list, NULL);
-	queue_destroy(att->disconn_list, NULL);
-	io_destroy(att->io);
-	free(att->buf);
-	free(att);
+	bt_att_free(att);
 
 	return NULL;
 }
@@ -853,29 +873,7 @@ void bt_att_unref(struct bt_att *att)
 	bt_att_unregister_all(att);
 	bt_att_cancel_all(att);
 
-	if (att->pending_req)
-		destroy_att_send_op(att->pending_req);
-
-	if (att->pending_ind)
-		destroy_att_send_op(att->pending_ind);
-
-	io_destroy(att->io);
-
-	queue_destroy(att->req_queue, NULL);
-	queue_destroy(att->ind_queue, NULL);
-	queue_destroy(att->write_queue, NULL);
-	queue_destroy(att->notify_list, NULL);
-	queue_destroy(att->disconn_list, NULL);
-
-	if (att->timeout_destroy)
-		att->timeout_destroy(att->timeout_data);
-
-	if (att->debug_destroy)
-		att->debug_destroy(att->debug_data);
-
-	free(att->buf);
-
-	free(att);
+	bt_att_free(att);
 }
 
 bool bt_att_set_close_on_unref(struct bt_att *att, bool do_close)
