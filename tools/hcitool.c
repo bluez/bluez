@@ -2459,6 +2459,7 @@ done:
 
 static struct option lescan_options[] = {
 	{ "help",	0, 0, 'h' },
+	{ "static",	0, 0, 's' },
 	{ "privacy",	0, 0, 'p' },
 	{ "passive",	0, 0, 'P' },
 	{ "whitelist",	0, 0, 'w' },
@@ -2479,18 +2480,21 @@ static const char *lescan_help =
 static void cmd_lescan(int dev_id, int argc, char **argv)
 {
 	int err, opt, dd;
-	uint8_t own_type = 0x00;
+	uint8_t own_type = LE_PUBLIC_ADDRESS;
 	uint8_t scan_type = 0x01;
 	uint8_t filter_type = 0;
 	uint8_t filter_policy = 0x00;
 	uint16_t interval = htobs(0x0010);
 	uint16_t window = htobs(0x0010);
-	uint8_t filter_dup = 1;
+	uint8_t filter_dup = 0x01;
 
 	for_each_opt(opt, lescan_options, NULL) {
 		switch (opt) {
+		case 's':
+			own_type = LE_RANDOM_ADDRESS;
+			break;
 		case 'p':
-			own_type = 0x01; /* Random */
+			own_type = LE_RANDOM_ADDRESS;
 			break;
 		case 'P':
 			scan_type = 0x00; /* Passive */
@@ -2559,32 +2563,36 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 
 static struct option leinfo_options[] = {
 	{ "help",	0, 0, 'h' },
+	{ "static",	0, 0, 's' },
 	{ "random",	0, 0, 'r' },
 	{ 0, 0, 0, 0 }
 };
 
 static const char *leinfo_help =
 	"Usage:\n"
-	"\tleinfo [--random] <bdaddr>\n";
+	"\tleinfo [--static] [--random] <bdaddr>\n";
 
 static void cmd_leinfo(int dev_id, int argc, char **argv)
 {
 	bdaddr_t bdaddr;
-	uint8_t bdaddr_type;
 	uint16_t handle;
 	uint8_t features[8];
 	struct hci_version version;
 	uint16_t interval, latency, max_ce_length, max_interval, min_ce_length;
 	uint16_t min_interval, supervision_timeout, window;
-	uint8_t initiator_filter, own_type;
+	uint8_t initiator_filter, own_bdaddr_type, peer_bdaddr_type;
 	int opt, err, dd;
 
-	bdaddr_type = LE_PUBLIC_ADDRESS;
+	own_bdaddr_type = LE_PUBLIC_ADDRESS;
+	peer_bdaddr_type = LE_PUBLIC_ADDRESS;
 
 	for_each_opt(opt, leinfo_options, NULL) {
 		switch (opt) {
+		case 's':
+			own_bdaddr_type = LE_RANDOM_ADDRESS;
+			break;
 		case 'r':
-			bdaddr_type = LE_RANDOM_ADDRESS;
+			peer_bdaddr_type = LE_RANDOM_ADDRESS;
 			break;
 		default:
 			printf("%s", leinfo_help);
@@ -2609,7 +2617,6 @@ static void cmd_leinfo(int dev_id, int argc, char **argv)
 	interval = htobs(0x0004);
 	window = htobs(0x0004);
 	initiator_filter = 0;
-	own_type = LE_PUBLIC_ADDRESS;
 	min_interval = htobs(0x000F);
 	max_interval = htobs(0x000F);
 	latency = htobs(0x0000);
@@ -2618,7 +2625,7 @@ static void cmd_leinfo(int dev_id, int argc, char **argv)
 	max_ce_length = htobs(0x0000);
 
 	err = hci_le_create_conn(dd, interval, window, initiator_filter,
-			bdaddr_type, bdaddr, own_type, min_interval,
+			peer_bdaddr_type, bdaddr, own_bdaddr_type, min_interval,
 			max_interval, latency, supervision_timeout,
 			min_ce_length, max_ce_length, &handle, 25000);
 	if (err < 0) {
@@ -2657,6 +2664,7 @@ static void cmd_leinfo(int dev_id, int argc, char **argv)
 
 static struct option lecc_options[] = {
 	{ "help",	0, 0, 'h' },
+	{ "static",	0, 0, 's' },
 	{ "random",	0, 0, 'r' },
 	{ "whitelist",	0, 0, 'w' },
 	{ 0, 0, 0, 0 }
@@ -2664,7 +2672,7 @@ static struct option lecc_options[] = {
 
 static const char *lecc_help =
 	"Usage:\n"
-	"\tlecc [--random] <bdaddr>\n"
+	"\tlecc [--static] [--random] <bdaddr>\n"
 	"\tlecc --whitelist\n";
 
 static void cmd_lecc(int dev_id, int argc, char **argv)
@@ -2675,11 +2683,15 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 	uint16_t min_interval, supervision_timeout, window, handle;
 	uint8_t initiator_filter, own_bdaddr_type, peer_bdaddr_type;
 
+	own_bdaddr_type = LE_PUBLIC_ADDRESS;
 	peer_bdaddr_type = LE_PUBLIC_ADDRESS;
 	initiator_filter = 0; /* Use peer address */
 
 	for_each_opt(opt, lecc_options, NULL) {
 		switch (opt) {
+		case 's':
+			own_bdaddr_type = LE_RANDOM_ADDRESS;
+			break;
 		case 'r':
 			peer_bdaddr_type = LE_RANDOM_ADDRESS;
 			break;
@@ -2708,7 +2720,6 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 
 	interval = htobs(0x0004);
 	window = htobs(0x0004);
-	own_bdaddr_type = 0x00;
 	min_interval = htobs(0x000F);
 	max_interval = htobs(0x000F);
 	latency = htobs(0x0000);
