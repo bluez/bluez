@@ -379,10 +379,16 @@ static void send_adv_pkt(struct bt_le *hci)
 	memset(&pkt, 0, sizeof(pkt));
 	pkt.pdu_type = hci->le_adv_type;
 	pkt.tx_addr_type = hci->le_adv_own_addr_type;
-	if (hci->le_adv_own_addr_type == 0x00)
+	switch (hci->le_adv_own_addr_type) {
+	case 0x00:
+	case 0x02:
 		memcpy(pkt.tx_addr, hci->bdaddr, 6);
-	else
+		break;
+	case 0x01:
+	case 0x03:
 		memcpy(pkt.tx_addr, hci->le_random_addr, 6);
+		break;
+	}
 	pkt.rx_addr_type = hci->le_adv_direct_addr_type;
 	memcpy(pkt.rx_addr, hci->le_adv_direct_addr, 6);
 	pkt.adv_data_len = hci->le_adv_data_len;
