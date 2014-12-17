@@ -122,6 +122,9 @@ static struct {
 	DBG_CB(CB_GATTS_REQUEST_EXEC_WRITE),
 	DBG_CB(CB_GATTS_RESPONSE_CONFIRMATION),
 
+	/* Map client */
+	DBG_CB(CB_MAP_CLIENT_REMOTE_MAS_INSTANCES),
+
 	/* Emulator callbacks */
 	DBG_CB(CB_EMU_CONFIRM_SEND_DATA),
 	DBG_CB(CB_EMU_ENCRYPTION_ENABLED),
@@ -495,6 +498,37 @@ static bool match_property(bt_property_t *exp_prop, bt_property_t *rec_prop,
 	return 1;
 }
 
+static bool match_mas_inst(btmce_mas_instance_t *exp_inst,
+				btmce_mas_instance_t *rec_inst, int inst_num)
+{
+	if (exp_inst->id && (exp_inst->id != rec_inst->id)) {
+		tester_debug("MAS inst. [%d] id missmatch %d vs %d", inst_num,
+						rec_inst->id, exp_inst->id);
+		return 0;
+	}
+
+	if (exp_inst->scn && (exp_inst->scn != exp_inst->scn)) {
+		tester_debug("MAS inst. [%d] scn missmatch %d vs %d", inst_num,
+						rec_inst->scn, exp_inst->scn);
+		return 0;
+	}
+
+	if (exp_inst->msg_types &&
+			(exp_inst->msg_types != exp_inst->msg_types)) {
+		tester_debug("Mas inst. [%d] mesg type missmatch %d vs %d",
+					inst_num, rec_inst->scn, exp_inst->scn);
+		return 0;
+	}
+
+	if (exp_inst->p_name && memcmp(exp_inst->p_name, rec_inst->p_name,
+						strlen(exp_inst->p_name))) {
+		tester_debug("Mas inst. [%d] name don't match!", inst_num);
+		return 0;
+	}
+
+	return 1;
+}
+
 static int verify_property(bt_property_t *exp_props, int exp_num_props,
 				bt_property_t *rec_props, int rec_num_props)
 {
@@ -521,6 +555,34 @@ static int verify_property(bt_property_t *exp_props, int exp_num_props,
 	}
 
 	return exp_prop_to_find;
+}
+
+static int verify_mas_inst(btmce_mas_instance_t *exp_inst, int exp_num_inst,
+						btmce_mas_instance_t *rec_inst,
+						int rec_num_inst)
+{
+	int i, j;
+	int exp_inst_to_find = exp_num_inst;
+
+	if (rec_num_inst == 0)
+		return 1;
+
+	if (exp_num_inst == 0) {
+		tester_debug("Wrong number of expected MAS instances given");
+		tester_test_failed();
+		return 1;
+	}
+
+	for (i = 0; i < exp_num_inst; i++) {
+		for (j = 0; j < rec_num_inst; j++) {
+			if (match_mas_inst(&exp_inst[i], &rec_inst[i], i)) {
+				exp_inst_to_find--;
+				break;
+			}
+		}
+	}
+
+	return exp_inst_to_find;
 }
 
 /*
@@ -957,6 +1019,23 @@ static bool match_data(struct step *step)
 		return false;
 	}
 
+	if (exp->callback_result.num_mas_instances !=
+				step->callback_result.num_mas_instances) {
+		tester_debug("Mas instance count mismatch: %d vs %d",
+				exp->callback_result.num_mas_instances,
+				step->callback_result.num_mas_instances);
+		return false;
+	}
+
+	if (exp->callback_result.mas_instances &&
+		verify_mas_inst(exp->callback_result.mas_instances,
+				exp->callback_result.num_mas_instances,
+				step->callback_result.mas_instances,
+				step->callback_result.num_mas_instances)) {
+		tester_debug("Mas instances don't match");
+		return false;
+	}
+
 	if (exp->store_srvc_handle)
 		memcpy(exp->store_srvc_handle,
 					step->callback_result.srvc_handle,
@@ -1042,6 +1121,21 @@ static void free_properties(struct step *step)
 	g_free(properties);
 }
 
+static void free_mas_instances(struct step *step)
+{
+	btmce_mas_instance_t *mas_instances;
+	int num_instances;
+	int i;
+
+	mas_instances = step->callback_result.mas_instances;
+	num_instances = step->callback_result.num_mas_instances;
+
+	for (i = 0; i < num_instances; i++)
+		g_free(mas_instances[i].p_name);
+
+	g_free(mas_instances);
+}
+
 static void destroy_callback_step(void *data)
 {
 	struct step *step = data;
@@ -1090,6 +1184,9 @@ static void destroy_callback_step(void *data)
 
 	if (step->callback_result.value)
 		free(step->callback_result.value);
+
+	if (step->callback_result.mas_instances)
+		free_mas_instances(step);
 
 	g_free(step);
 	g_atomic_int_dec_and_test(&scheduled_cbacks_num);
@@ -2044,6 +2141,48 @@ static btrc_callbacks_t btavrcp_callbacks = {
 	.get_element_attr_cb = avrcp_get_element_attr_cb,
 };
 
+static btmce_mas_instance_t *copy_mas_instances(int num_instances,
+						btmce_mas_instance_t *instances)
+{
+	int i;
+	btmce_mas_instance_t *inst;
+
+	inst = g_new0(btmce_mas_instance_t, num_instances);
+
+	for (i = 0; i < num_instances; i++) {
+		inst[i].id = instances[i].id;
+		inst[i].scn = instances[i].scn;
+		inst[i].msg_types = instances[i].msg_types;
+		inst[i].p_name = g_memdup(instances[i].p_name,
+						strlen(instances[i].p_name));
+	}
+
+	return inst;
+}
+
+static void map_client_get_remote_mas_instances_cb(bt_status_t status,
+							bt_bdaddr_t *bd_addr,
+							int num_instances,
+							btmce_mas_instance_t
+							*instances)
+{
+	struct step *step = g_new0(struct step, 1);
+
+	step->callback_result.status = status;
+	step->callback_result.num_mas_instances = num_instances;
+	step->callback_result.mas_instances = copy_mas_instances(num_instances,
+								instances);
+
+	step->callback = CB_MAP_CLIENT_REMOTE_MAS_INSTANCES;
+
+	schedule_callback_verification(step);
+}
+
+static btmce_callbacks_t btmap_client_callbacks = {
+	.size = sizeof(btmap_client_callbacks),
+	.remote_mas_instances_cb = map_client_get_remote_mas_instances_cb,
+};
+
 static bool setup_base(struct test_data *data)
 {
 	const hw_module_t *module;
@@ -2408,6 +2547,44 @@ static void setup_gatt(const void *test_data)
 	tester_setup_complete();
 }
 
+static void setup_map_client(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	bt_status_t status;
+	const void *map_client;
+
+	if (!setup_base(data)) {
+		tester_setup_failed();
+		return;
+	}
+
+	status = data->if_bluetooth->init(&bt_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_bluetooth = NULL;
+		tester_setup_failed();
+		return;
+	}
+
+	map_client = data->if_bluetooth->get_profile_interface(
+						BT_PROFILE_MAP_CLIENT_ID);
+	if (!map_client) {
+		tester_setup_failed();
+		return;
+	}
+
+	data->if_map_client = map_client;
+
+	status = data->if_map_client->init(&btmap_client_callbacks);
+	if (status != BT_STATUS_SUCCESS) {
+		data->if_map_client = NULL;
+
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
 static void teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2417,6 +2594,9 @@ static void teardown(const void *test_data)
 
 	queue_destroy(data->pdus, NULL);
 	data->pdus = NULL;
+
+	/* no cleanup for map_client */
+	data->if_map_client = NULL;
 
 	if (data->if_gatt) {
 		data->if_gatt->cleanup();
@@ -3115,6 +3295,13 @@ static void add_gatt_tests(void *data, void *user_data)
 	test(tc, setup_gatt, generic_test_function, teardown);
 }
 
+static void add_map_client_tests(void *data, void *user_data)
+{
+	struct test_case *tc = data;
+
+	test(tc, setup_map_client, generic_test_function, teardown);
+}
+
 int main(int argc, char *argv[])
 {
 	snprintf(exec_dir, sizeof(exec_dir), "%s", dirname(argv[0]));
@@ -3129,6 +3316,7 @@ int main(int argc, char *argv[])
 	queue_foreach(get_a2dp_tests(), add_a2dp_tests, NULL);
 	queue_foreach(get_avrcp_tests(), add_avrcp_tests, NULL);
 	queue_foreach(get_gatt_tests(), add_gatt_tests, NULL);
+	queue_foreach(get_map_client_tests(), add_map_client_tests, NULL);
 
 	if (tester_run())
 		return 1;

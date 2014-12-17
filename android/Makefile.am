@@ -154,6 +154,7 @@ android_android_tester_SOURCES = emulator/hciemu.h emulator/hciemu.c \
 				android/tester-a2dp.c \
 				android/tester-avrcp.c \
 				android/tester-gatt.c \
+				android/tester-map-client.c \
 				android/tester-main.h android/tester-main.c
 android_android_tester_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
 				-DPLUGINDIR=\""$(android_plugindir)"\"

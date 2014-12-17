@@ -33,6 +33,7 @@
 #include <hardware/bt_gatt.h>
 
 #include "emulator/hciemu.h"
+#include <hardware/bt_mce.h>
 
 struct pdu_set {
 	struct iovec req;
@@ -335,6 +336,16 @@ struct pdu_set {
 		.callback_result.value = cb_value, \
 	}
 
+#define CALLBACK_MAP_CLIENT_REMOTE_MAS_INSTANCE(cb_status, cb_prop, \
+						cb_num_inst, cb_instances) { \
+		.callback = CB_MAP_CLIENT_REMOTE_MAS_INSTANCES, \
+		.callback_result.properties = cb_prop, \
+		.callback_result.num_properties = 1, \
+		.callback_result.status = cb_status, \
+		.callback_result.num_mas_instances = cb_num_inst, \
+		.callback_result.mas_instances = cb_instances, \
+	}
+
 #define CALLBACK_PAN_CTRL_STATE(cb, cb_res, cb_state, cb_local_role) { \
 		.callback = cb, \
 		.callback_result.status = cb_res, \
@@ -517,6 +528,9 @@ typedef enum {
 	CB_GATTS_REQUEST_EXEC_WRITE,
 	CB_GATTS_RESPONSE_CONFIRMATION,
 
+	/* Map client */
+	CB_MAP_CLIENT_REMOTE_MAS_INSTANCES,
+
 	/* Emulator callbacks */
 	CB_EMU_CONFIRM_SEND_DATA,
 	CB_EMU_ENCRYPTION_ENABLED,
@@ -544,6 +558,7 @@ struct test_data {
 	struct audio_stream_out *if_stream;
 	const btrc_interface_t *if_avrcp;
 	const btgatt_interface_t *if_gatt;
+	const btmce_interface_t *if_map_client;
 
 	const void *test_data;
 	struct queue *steps;
@@ -601,6 +616,14 @@ struct emu_l2cap_cid_data {
 	uint16_t handle;
 	uint16_t cid;
 	bool is_sdp;
+};
+
+struct map_inst_data {
+	int32_t id;
+	int32_t scn;
+	int32_t msg_types;
+	int32_t name_len;
+	uint8_t *name;
 };
 
 /*
@@ -666,6 +689,9 @@ struct bt_callback_data {
 	uint64_t rc_index;
 	uint8_t num_of_attrs;
 	btrc_element_attr_val_t *attrs;
+
+	int num_mas_instances;
+	btmce_mas_instance_t *mas_instances;
 };
 
 /*
@@ -715,6 +741,8 @@ struct queue *get_avrcp_tests(void);
 void remove_avrcp_tests(void);
 struct queue *get_gatt_tests(void);
 void remove_gatt_tests(void);
+struct queue *get_map_client_tests(void);
+void remove_map_client_tests(void);
 
 /* Generic tester API */
 void schedule_action_verification(struct step *step);
