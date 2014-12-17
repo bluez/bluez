@@ -914,7 +914,7 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 	}
 
 	conn->smp_data = smp_conn_add(bthost->smp_data, handle, ia, ra,
-							bthost->conn_init);
+						addr_type, bthost->conn_init);
 
 	if (bthost->new_conn_cb)
 		bthost->new_conn_cb(conn->handle, bthost->new_conn_data);
@@ -2102,6 +2102,9 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 		break;
 	case 0x0006:
 		smp_data(conn->smp_data, l2_data, l2_len);
+		break;
+	case 0x0007:
+		smp_bredr_data(conn->smp_data, l2_data, l2_len);
 		break;
 	default:
 		l2conn = btconn_find_l2cap_conn_by_scid(conn, cid);

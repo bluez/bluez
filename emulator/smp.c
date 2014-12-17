@@ -44,7 +44,8 @@
 #include "monitor/bt.h"
 #include "bthost.h"
 
-#define SMP_CID 0x0006
+#define SMP_CID		0x0006
+#define SMP_BREDR_CID	0x0007
 
 #define SMP_PASSKEY_ENTRY_FAILED	0x01
 #define SMP_OOB_NOT_AVAIL		0x02
@@ -86,6 +87,7 @@ struct smp {
 struct smp_conn {
 	struct smp *smp;
 	uint16_t handle;
+	uint8_t addr_type;
 	bool out;
 	bool sc;
 	bool initiator;
@@ -193,6 +195,7 @@ static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
 								uint8_t len)
 {
 	struct iovec iov[2];
+	uint16_t cid;
 
 	iov[0].iov_base = &smp_cmd;
 	iov[0].iov_len = 1;
@@ -200,7 +203,12 @@ static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
 	iov[1].iov_base = (void *) data;
 	iov[1].iov_len = len;
 
-	bthost_send_cid_v(conn->smp->bthost, conn->handle, SMP_CID, iov, 2);
+	if (conn->addr_type == BDADDR_BREDR)
+		cid = SMP_BREDR_CID;
+	else
+		cid = SMP_CID;
+
+	bthost_send_cid_v(conn->smp->bthost, conn->handle, cid, iov, 2);
 }
 
 static bool send_public_key(struct smp_conn *conn)
@@ -372,6 +380,38 @@ static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
 	return true;
 }
 
+static void distribute_keys(struct smp_conn *conn)
+{
+	uint8_t buf[16];
+
+	if (conn->local_key_dist & DIST_ENC_KEY) {
+		memset(buf, 0, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_ENCRYPT_INFO, buf, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_MASTER_IDENT, buf, 10);
+	}
+
+	if (conn->local_key_dist & DIST_ID_KEY) {
+		memset(buf, 0, sizeof(buf));
+
+		if (conn->out) {
+			buf[0] = conn->ia_type;
+			memcpy(&buf[1], conn->ia, 6);
+		} else {
+			buf[0] = conn->ra_type;
+			memcpy(&buf[1], conn->ra, 6);
+		}
+		smp_send(conn, BT_L2CAP_SMP_IDENT_ADDR_INFO, buf, 7);
+
+		memset(buf, 0, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_IDENT_INFO, buf, sizeof(buf));
+	}
+
+	if (conn->local_key_dist & DIST_SIGN) {
+		memset(buf, 0, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_SIGNING_INFO, buf, sizeof(buf));
+	}
+}
+
 static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	struct bthost *bthost = conn->smp->bthost;
@@ -379,9 +419,16 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 
 	memcpy(conn->preq, data, sizeof(conn->preq));
 
-	rsp.io_capa		= bthost_get_io_capability(bthost);
-	rsp.oob_data		= 0x00;
-	rsp.auth_req		= bthost_get_auth_req(bthost);
+	if (conn->addr_type == BDADDR_BREDR) {
+		rsp.io_capa	= 0x00;
+		rsp.oob_data	= 0x00;
+		rsp.auth_req	= 0x00;
+	} else {
+		rsp.io_capa	= bthost_get_io_capability(bthost);
+		rsp.oob_data	= 0x00;
+		rsp.auth_req	= bthost_get_auth_req(bthost);
+	}
+
 	rsp.max_key_size	= 0x10;
 	rsp.init_key_dist	= conn->preq[5] & KEY_DIST;
 	rsp.resp_key_dist	= conn->preq[6] & KEY_DIST;
@@ -392,13 +439,17 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 	conn->local_key_dist	= rsp.resp_key_dist;
 	conn->remote_key_dist	= rsp.init_key_dist;
 
-	if ((conn->prsp[3] & 0x08) && (conn->preq[3] & 0x08)) {
+	if (((conn->prsp[3] & 0x08) && (conn->preq[3] & 0x08)) ||
+					conn->addr_type == BDADDR_BREDR) {
 		conn->sc = true;
 		conn->local_key_dist &= ~SC_NO_DIST;
 		conn->remote_key_dist &= ~SC_NO_DIST;
 	}
 
 	smp_send(conn, BT_L2CAP_SMP_PAIRING_RESPONSE, &rsp, sizeof(rsp));
+
+	if (conn->addr_type == BDADDR_BREDR)
+		distribute_keys(conn);
 }
 
 static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
@@ -411,11 +462,15 @@ static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 	conn->local_key_dist = conn->prsp[5];
 	conn->remote_key_dist = conn->prsp[6];
 
-	if ((conn->prsp[3] & 0x08) && (conn->preq[3] & 0x08)) {
+	if (((conn->prsp[3] & 0x08) && (conn->preq[3] & 0x08)) ||
+					conn->addr_type == BDADDR_BREDR) {
 		conn->sc = true;
 		conn->local_key_dist &= ~SC_NO_DIST;
 		conn->remote_key_dist &= ~SC_NO_DIST;
-		send_public_key(conn);
+		if (conn->addr_type == BDADDR_BREDR)
+			distribute_keys(conn);
+		else
+			send_public_key(conn);
 		return;
 	}
 
@@ -507,38 +562,6 @@ static void pairing_rnd(struct smp_conn *conn, const void *data, uint16_t len)
 
 	memset(rsp, 0, sizeof(rsp));
 	smp_send(conn, BT_L2CAP_SMP_PAIRING_RANDOM, rsp, sizeof(rsp));
-}
-
-static void distribute_keys(struct smp_conn *conn)
-{
-	uint8_t buf[16];
-
-	if (conn->local_key_dist & DIST_ENC_KEY) {
-		memset(buf, 0, sizeof(buf));
-		smp_send(conn, BT_L2CAP_SMP_ENCRYPT_INFO, buf, sizeof(buf));
-		smp_send(conn, BT_L2CAP_SMP_MASTER_IDENT, buf, 10);
-	}
-
-	if (conn->local_key_dist & DIST_ID_KEY) {
-		memset(buf, 0, sizeof(buf));
-
-		if (conn->out) {
-			buf[0] = conn->ia_type;
-			memcpy(&buf[1], conn->ia, 6);
-		} else {
-			buf[0] = conn->ra_type;
-			memcpy(&buf[1], conn->ra, 6);
-		}
-		smp_send(conn, BT_L2CAP_SMP_IDENT_ADDR_INFO, buf, 7);
-
-		memset(buf, 0, sizeof(buf));
-		smp_send(conn, BT_L2CAP_SMP_IDENT_INFO, buf, sizeof(buf));
-	}
-
-	if (conn->local_key_dist & DIST_SIGN) {
-		memset(buf, 0, sizeof(buf));
-		smp_send(conn, BT_L2CAP_SMP_SIGNING_INFO, buf, sizeof(buf));
-	}
 }
 
 static void encrypt_info(struct smp_conn *conn, const void *data, uint16_t len)
@@ -677,6 +700,11 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 		return;
 	}
 
+	if (conn->addr_type == BDADDR_BREDR) {
+		printf("Received BR/EDR SMP data on LE link\n");
+		return;
+	}
+
 	opcode = *((const uint8_t *) data);
 
 	switch (opcode) {
@@ -718,6 +746,35 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 	}
 }
 
+void smp_bredr_data(void *conn_data, const void *data, uint16_t len)
+{
+	struct smp_conn *conn = conn_data;
+	uint8_t opcode;
+
+	if (len < 1) {
+		printf("Received too small SMP PDU\n");
+		return;
+	}
+
+	if (conn->addr_type != BDADDR_BREDR) {
+		printf("Received LE SMP data on BR/EDR link\n");
+		return;
+	}
+
+	opcode = *((const uint8_t *) data);
+
+	switch (opcode) {
+	case BT_L2CAP_SMP_PAIRING_REQUEST:
+		pairing_req(conn, data, len);
+		break;
+	case BT_L2CAP_SMP_PAIRING_RESPONSE:
+		pairing_rsp(conn, data, len);
+		break;
+	default:
+		break;
+	}
+}
+
 int smp_get_ltk(void *smp_data, uint64_t rand, uint16_t ediv, uint8_t *ltk)
 {
 	struct smp_conn *conn = smp_data;
@@ -745,7 +802,7 @@ void smp_conn_encrypted(void *conn_data, uint8_t encrypt)
 }
 
 void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
-					const uint8_t *ra, bool conn_init)
+			const uint8_t *ra, uint8_t addr_type, bool conn_init)
 {
 	struct smp *smp = smp_data;
 	struct smp_conn *conn;
@@ -758,6 +815,7 @@ void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
 
 	conn->smp = smp;
 	conn->handle = handle;
+	conn->addr_type = addr_type;
 	conn->out = conn_init;
 
 	conn->ia_type = LE_PUBLIC_ADDRESS;
