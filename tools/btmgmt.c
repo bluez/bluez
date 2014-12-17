@@ -56,6 +56,21 @@ static bool resolve_names = true;
 
 static int pending = 0;
 
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
+static size_t convert_hexstr(const char *hexstr, uint8_t *buf, size_t buflen)
+{
+	size_t i, len;
+
+	len = MIN((strlen(hexstr) / 2), buflen);
+	memset(buf, 0, len);
+
+	for (i = 0; i < len; i++)
+		sscanf(hexstr + (i * 2), "%02hhX", &buf[i]);
+
+	return len;
+}
+
 static void controller_error(uint16_t index, uint16_t len,
 				const void *param, void *user_data)
 {
@@ -1336,7 +1351,6 @@ static void cmd_privacy(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
 	struct mgmt_cp_set_privacy cp;
-	int fd;
 
 	if (argc < 2) {
 		printf("Specify \"on\" or \"off\"\n");
@@ -1353,19 +1367,30 @@ static void cmd_privacy(struct mgmt *mgmt, uint16_t index, int argc,
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	fd = open("/dev/urandom", O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "open(/dev/urandom): %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	if (argc > 2) {
+		if (convert_hexstr(argv[2], cp.irk,
+					sizeof(cp.irk)) != sizeof(cp.irk)) {
+			fprintf(stderr, "Invalid key format\n");
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		int fd;
 
-	if (read(fd, cp.irk, sizeof(cp.irk)) != sizeof(cp.irk)) {
-		fprintf(stderr, "Reading from urandom failed\n");
+		fd = open("/dev/urandom", O_RDONLY);
+		if (fd < 0) {
+			fprintf(stderr, "open(/dev/urandom): %s\n",
+							strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+
+		if (read(fd, cp.irk, sizeof(cp.irk)) != sizeof(cp.irk)) {
+			fprintf(stderr, "Reading from urandom failed\n");
+			close(fd);
+			exit(EXIT_FAILURE);
+		}
+
 		close(fd);
-		exit(EXIT_FAILURE);
 	}
-
-	close(fd);
 
 	if (send_cmd(mgmt, MGMT_OP_SET_PRIVACY, index, sizeof(cp), &cp,
 							setting_rsp) == 0) {
@@ -2449,25 +2474,6 @@ static struct option remote_oob_opt[] = {
 	{ 0, 0, 0, 0 }
 };
 
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-
-static int str2buf(const char *str, uint8_t *buf, size_t blen)
-{
-	int i, dlen;
-
-	if (str == NULL)
-		return -EINVAL;
-
-	memset(buf, 0, blen);
-
-	dlen = MIN((strlen(str) / 2), blen);
-
-	for (i = 0; i < dlen; i++)
-		sscanf(str + (i * 2), "%02hhX", &buf[i]);
-
-	return 0;
-}
-
 static void cmd_remote_oob(struct mgmt *mgmt, uint16_t index,
 						int argc, char **argv)
 {
@@ -2484,16 +2490,16 @@ static void cmd_remote_oob(struct mgmt *mgmt, uint16_t index,
 			cp.addr.type = strtol(optarg, NULL, 0);
 			break;
 		case 'r':
-			str2buf(optarg, cp.rand192, 16);
+			convert_hexstr(optarg, cp.rand192, 16);
 			break;
 		case 'h':
-			str2buf(optarg, cp.hash192, 16);
+			convert_hexstr(optarg, cp.hash192, 16);
 			break;
 		case 'R':
-			str2buf(optarg, cp.rand256, 16);
+			convert_hexstr(optarg, cp.rand256, 16);
 			break;
 		case 'H':
-			str2buf(optarg, cp.hash256, 16);
+			convert_hexstr(optarg, cp.hash256, 16);
 			break;
 		default:
 			remote_oob_usage();
