@@ -258,7 +258,7 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->le_features[0] |= 0x08;	/* Slave-initiated Features Exchange */
 	hci->le_features[0] |= 0x10;	/* LE Ping */
 	hci->le_features[0] |= 0x20;	/* LE Data Packet Length Extension */
-	//hci->le_features[0] |= 0x40;	/* LL Privacy */
+	hci->le_features[0] |= 0x40;	/* LL Privacy */
 	hci->le_features[0] |= 0x80;	/* Extended Scanner Filter Policies */
 
 	memset(hci->le_random_addr, 0, sizeof(hci->le_random_addr));
@@ -716,8 +716,8 @@ static void cmd_le_set_adv_parameters(struct bt_le *hci,
 		return;
 	}
 
-	/* Valid range for own address type is 0x00 to 0x01 */
-	if (cmd->own_addr_type > 0x01) {
+	/* Valid range for own address type is 0x00 to 0x03 */
+	if (cmd->own_addr_type > 0x03) {
 		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
 					BT_HCI_CMD_LE_SET_ADV_PARAMETERS);
 		return;
@@ -885,8 +885,8 @@ static void cmd_le_set_scan_parameters(struct bt_le *hci,
 		return;
 	}
 
-	/* Valid range for own address type is 0x00 to 0x01 */
-	if (cmd->own_addr_type > 0x01) {
+	/* Valid range for own address type is 0x00 to 0x03 */
+	if (cmd->own_addr_type > 0x03) {
 		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
 					BT_HCI_CMD_LE_SET_SCAN_PARAMETERS);
 		return;
@@ -957,8 +957,8 @@ static void cmd_le_create_conn(struct bt_le *hci,
 		return;
 	}
 
-	/* Valid range for own address type is 0x00 to 0x01 */
-	if (cmd->own_addr_type > 0x01) {
+	/* Valid range for own address type is 0x00 to 0x03 */
+	if (cmd->own_addr_type > 0x03) {
 		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
 					BT_HCI_CMD_LE_CREATE_CONN);
 		return;
