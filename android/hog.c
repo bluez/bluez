@@ -117,10 +117,75 @@ struct gatt_request {
 	void *user_data;
 };
 
+static struct gatt_request *create_request(struct bt_hog *hog,
+							void *user_data)
+{
+	struct gatt_request *req;
+
+	req = new0(struct gatt_request, 1);
+	if (!req)
+		return NULL;
+
+	req->user_data = user_data;
+	req->hog = bt_hog_ref(hog);
+
+	return req;
+}
+
+static bool set_and_store_gatt_req(struct bt_hog *hog,
+						struct gatt_request *req,
+						unsigned int id)
+{
+	req->id = id;
+	return queue_push_head(hog->gatt_op, req);
+}
+
 static void destroy_gatt_req(struct gatt_request *req)
 {
 	queue_remove(req->hog->gatt_op, req);
 	bt_hog_unref(req->hog);
+	free(req);
+}
+
+static void discover_primary(struct bt_hog *hog, GAttrib *attrib,
+						bt_uuid_t *uuid, gatt_cb_t func,
+						gpointer user_data)
+{
+	struct gatt_request *req;
+	unsigned int id;
+
+	req = create_request(hog, user_data);
+	if (!req)
+		return;
+
+	id = gatt_discover_primary(attrib, uuid, func, req);
+
+	if (set_and_store_gatt_req(hog, req, id))
+		return;
+
+	error("hog: Could not send discover primary");
+	g_attrib_cancel(attrib, id);
+	free(req);
+}
+
+static void find_included(struct bt_hog *hog, GAttrib *attrib,
+					uint16_t start, uint16_t end,
+					gatt_cb_t func, gpointer user_data)
+{
+	struct gatt_request *req;
+	unsigned int id;
+
+	req = create_request(hog, user_data);
+	if (!req)
+		return;
+
+	id = gatt_find_included(attrib, start, end, func, req);
+
+	if (set_and_store_gatt_req(hog, req, id))
+		return;
+
+	error("Could not find included");
+	g_attrib_cancel(attrib, id);
 	free(req);
 }
 
@@ -864,11 +929,14 @@ void bt_hog_unref(struct bt_hog *hog)
 
 static void find_included_cb(uint8_t status, GSList *services, void *user_data)
 {
-	struct bt_hog *hog = user_data;
+	struct gatt_request *req = user_data;
+	struct bt_hog *hog = req->user_data;
 	struct gatt_included *include;
 	GSList *l;
 
 	DBG("");
+
+	destroy_gatt_req(req);
 
 	if (hog->primary)
 		return;
@@ -895,8 +963,10 @@ static void find_included_cb(uint8_t status, GSList *services, void *user_data)
 		for (l = services; l; l = l->next) {
 			include = l->data;
 
-			gatt_find_included(hog->attrib, include->range.start,
-				include->range.end, find_included_cb, hog);
+			find_included(hog, hog->attrib,
+					include->range.start,
+					include->range.end, find_included_cb,
+					hog);
 		}
 		return;
 	}
@@ -981,11 +1051,14 @@ static void hog_attach_hog(struct bt_hog *hog, struct gatt_primary *primary)
 
 static void primary_cb(uint8_t status, GSList *services, void *user_data)
 {
-	struct bt_hog *hog = user_data;
+	struct gatt_request *req = user_data;
+	struct bt_hog *hog = req->user_data;
 	struct gatt_primary *primary;
 	GSList *l;
 
 	DBG("");
+
+	destroy_gatt_req(req);
 
 	if (status) {
 		const char *str = att_ecode2str(status);
@@ -1026,9 +1099,8 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 	for (l = services; l; l = l->next) {
 		primary = l->data;
 
-		gatt_find_included(hog->attrib, primary->range.start,
-				primary->range.end, find_included_cb,
-				hog);
+		find_included(hog, hog->attrib, primary->range.start,
+				primary->range.end, find_included_cb, hog);
 	}
 }
 
@@ -1043,7 +1115,7 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 	hog->attrib = g_attrib_ref(gatt);
 
 	if (!primary) {
-		gatt_discover_primary(hog->attrib, NULL, primary_cb, hog);
+		discover_primary(hog, hog->attrib, NULL, primary_cb, hog);
 		return true;
 	}
 
