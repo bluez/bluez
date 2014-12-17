@@ -1428,6 +1428,146 @@ int hci_le_clear_white_list(int dd, int to)
 	return 0;
 }
 
+int hci_le_add_resolving_list(int dd, const bdaddr_t *bdaddr, uint8_t type,
+				uint8_t *peer_irk, uint8_t *local_irk, int to)
+{
+	struct hci_request rq;
+	le_add_device_to_resolv_list_cp cp;
+	uint8_t status;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.bdaddr_type = type;
+	bacpy(&cp.bdaddr, bdaddr);
+	if (peer_irk)
+		memcpy(cp.peer_irk, peer_irk, 16);
+	if (local_irk)
+		memcpy(cp.local_irk, local_irk, 16);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_ADD_DEVICE_TO_RESOLV_LIST;
+	rq.cparam = &cp;
+	rq.clen = LE_ADD_DEVICE_TO_RESOLV_LIST_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_rm_resolving_list(int dd, const bdaddr_t *bdaddr, uint8_t type, int to)
+{
+	struct hci_request rq;
+	le_remove_device_from_resolv_list_cp cp;
+	uint8_t status;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.bdaddr_type = type;
+	bacpy(&cp.bdaddr, bdaddr);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_REMOVE_DEVICE_FROM_RESOLV_LIST;
+	rq.cparam = &cp;
+	rq.clen = LE_REMOVE_DEVICE_FROM_RESOLV_LIST_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_clear_resolving_list(int dd, int to)
+{
+	struct hci_request rq;
+	uint8_t status;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_CLEAR_RESOLV_LIST;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_read_resolving_list_size(int dd, uint8_t *size, int to)
+{
+	struct hci_request rq;
+	le_read_resolv_list_size_rp rp;
+
+	memset(&rp, 0, sizeof(rp));
+	memset(&rq, 0, sizeof(rq));
+
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_READ_RESOLV_LIST_SIZE;
+	rq.rparam = &rp;
+	rq.rlen = LE_READ_RESOLV_LIST_SIZE_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	if (size)
+		*size = rp.size;
+
+	return 0;
+}
+
+int hci_le_set_address_resolution_enable(int dd, uint8_t enable, int to)
+{
+	struct hci_request rq;
+	le_set_address_resolution_enable_cp cp;
+	uint8_t status;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.enable = enable;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_ADDRESS_RESOLUTION_ENABLE;
+	rq.cparam = &cp;
+	rq.clen = LE_SET_ADDRESS_RESOLUTION_ENABLE_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_read_local_name(int dd, int len, char *name, int to)
 {
 	read_local_name_rp rp;

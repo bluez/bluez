@@ -134,6 +134,12 @@ int hci_le_add_white_list(int dd, const bdaddr_t *bdaddr, uint8_t type, int to);
 int hci_le_rm_white_list(int dd, const bdaddr_t *bdaddr, uint8_t type, int to);
 int hci_le_read_white_list_size(int dd, uint8_t *size, int to);
 int hci_le_clear_white_list(int dd, int to);
+int hci_le_add_resolving_list(int dd, const bdaddr_t *bdaddr, uint8_t type,
+				uint8_t *peer_irk, uint8_t *local_irk, int to);
+int hci_le_rm_resolving_list(int dd, const bdaddr_t *bdaddr, uint8_t type, int to);
+int hci_le_clear_resolving_list(int dd, int to);
+int hci_le_read_resolving_list_size(int dd, uint8_t *size, int to);
+int hci_le_set_address_resolution_enable(int dev_id, uint8_t enable, int to);
 int hci_le_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to);
 
 int hci_for_each_dev(int flag, int(*func)(int dd, int dev_id, long arg), long arg);

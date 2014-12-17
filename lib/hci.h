@@ -1706,6 +1706,37 @@ typedef struct {
 } __attribute__ ((packed)) le_test_end_rp;
 #define LE_TEST_END_RP_SIZE 3
 
+#define OCF_LE_ADD_DEVICE_TO_RESOLV_LIST	0x0027
+typedef struct {
+	uint8_t		bdaddr_type;
+	bdaddr_t	bdaddr;
+	uint8_t		peer_irk[16];
+	uint8_t		local_irk[16];
+} __attribute__ ((packed)) le_add_device_to_resolv_list_cp;
+#define LE_ADD_DEVICE_TO_RESOLV_LIST_CP_SIZE 39
+
+#define OCF_LE_REMOVE_DEVICE_FROM_RESOLV_LIST	0x0028
+typedef struct {
+	uint8_t		bdaddr_type;
+	bdaddr_t	bdaddr;
+} __attribute__ ((packed)) le_remove_device_from_resolv_list_cp;
+#define LE_REMOVE_DEVICE_FROM_RESOLV_LIST_CP_SIZE 7
+
+#define OCF_LE_CLEAR_RESOLV_LIST		0x0029
+
+#define OCF_LE_READ_RESOLV_LIST_SIZE		0x002A
+typedef struct {
+	uint8_t		status;
+	uint8_t		size;
+} __attribute__ ((packed)) le_read_resolv_list_size_rp;
+#define LE_READ_RESOLV_LIST_SIZE_RP_SIZE 2
+
+#define OCF_LE_SET_ADDRESS_RESOLUTION_ENABLE	0x002D
+typedef struct {
+	uint8_t		enable;
+} __attribute__ ((packed)) le_set_address_resolution_enable_cp;
+#define LE_SET_ADDRESS_RESOLUTION_ENABLE_CP_SIZE 1
+
 /* Vendor specific commands */
 #define OGF_VENDOR_CMD		0x3f
 
