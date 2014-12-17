@@ -5278,7 +5278,7 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 
 	unpaired_cb_list = queue_new();
 	if (!unpaired_cb_list) {
-		error("Can not allocate queue for unpaired callbacks");
+		error("Cannot allocate queue for unpaired callbacks");
 		return false;
 	}
 
