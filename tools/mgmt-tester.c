@@ -402,7 +402,8 @@ struct generic_data {
 	bool reject_confirm;
 	bool client_reject_confirm;
 	bool just_works;
-	bool sc;
+	bool client_enable_sc;
+	bool expect_sc_key;
 	bool force_power_off;
 };
 
@@ -2777,12 +2778,12 @@ static bool verify_ltk(const void *param, uint16_t length)
 		return false;
 	}
 
-	if (test->sc && !ltk_is_sc(&ev->key)) {
+	if (test->expect_sc_key && !ltk_is_sc(&ev->key)) {
 		tester_warn("Non-LE SC key for SC pairing");
 		return false;
 	}
 
-	if (!test->sc && ltk_is_sc(&ev->key)) {
+	if (!test->expect_sc_key && ltk_is_sc(&ev->key)) {
 		tester_warn("SC key for Non-SC pairing");
 		return false;
 	}
@@ -2837,7 +2838,8 @@ static const struct generic_data pair_device_le_sc_success_test_1 = {
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.just_works = true,
-	.sc = true,
+	.client_enable_sc = true,
+	.expect_sc_key = true,
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_func = pair_device_expect_param_func,
 	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
@@ -2849,7 +2851,8 @@ static const struct generic_data pair_device_le_sc_success_test_2 = {
 	.setup_settings = settings_powered_sc_bondable,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
-	.sc = true,
+	.client_enable_sc = true,
+	.expect_sc_key = true,
 	.io_cap = 0x02, /* KeyboardOnly */
 	.client_io_cap = 0x02, /* KeyboardOnly */
 	.expect_status = MGMT_STATUS_SUCCESS,
@@ -4034,9 +4037,6 @@ static void test_setup(const void *test_data)
 	if (test->client_io_cap)
 		bthost_set_io_capability(bthost, test->client_io_cap);
 
-	if (test->sc)
-		bthost_set_sc_support(bthost, test->sc);
-
 	if (test->client_auth_req)
 		bthost_set_auth_req(bthost, test->client_auth_req);
 	else if (!test->just_works)
@@ -4044,6 +4044,9 @@ static void test_setup(const void *test_data)
 
 	if (test->client_reject_confirm)
 		bthost_set_reject_user_confirm(bthost, true);
+
+	if (test->client_enable_sc)
+		bthost_set_sc_support(bthost, 0x01);
 
 proceed:
 	if (!test || !test->setup_settings) {
