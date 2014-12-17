@@ -99,11 +99,22 @@ static bool load_identity(uint16_t index, struct mgmt_irk_info *irk)
 		return false;
 
 	str2ba(addr, &irk->addr.bdaddr);
-	irk->addr.type = type;
 	convert_hexstr(key, irk->val, sizeof(irk->val));
 
 	free(addr);
 	free(key);
+
+	switch (type) {
+	case 0:
+		irk->addr.type = BDADDR_LE_PUBLIC;
+		break;
+	case 1:
+		irk->addr.type = BDADDR_LE_RANDOM;
+		break;
+	default:
+		fprintf(stderr, "Invalid address type %u\n", type);
+		return false;
+	}
 
 	return true;
 }
