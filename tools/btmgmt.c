@@ -23,12 +23,13 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -56,7 +57,9 @@ static bool resolve_names = true;
 
 static int pending = 0;
 
+#ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
 
 static size_t convert_hexstr(const char *hexstr, uint8_t *buf, size_t buflen)
 {
@@ -69,6 +72,40 @@ static size_t convert_hexstr(const char *hexstr, uint8_t *buf, size_t buflen)
 		sscanf(hexstr + (i * 2), "%02hhX", &buf[i]);
 
 	return len;
+}
+
+static bool load_identity(uint16_t index, struct mgmt_irk_info *irk)
+{
+	char identity_path[PATH_MAX];
+	char *addr, *key;
+	unsigned int type;
+	int n;
+	FILE *fp;
+
+	snprintf(identity_path, sizeof(identity_path),
+			"/sys/kernel/debug/bluetooth/hci%u/identity", index);
+
+	fp = fopen(identity_path, "r");
+	if (!fp) {
+		perror("Failed to open identity file");
+		return false;
+	}
+
+	n = fscanf(fp, "%m[0-9a-f:] (type %u) %m[0-9a-f]", &addr, &type, &key);
+
+	fclose(fp);
+
+	if (n != 3)
+		return false;
+
+	str2ba(addr, &irk->addr.bdaddr);
+	irk->addr.type = type;
+	convert_hexstr(key, irk->val, sizeof(irk->val));
+
+	free(addr);
+	free(key);
+
+	return true;
 }
 
 static void controller_error(uint16_t index, uint16_t len,
@@ -2153,17 +2190,74 @@ static void irks_rsp(uint8_t status, uint16_t len, const void *param,
 	mainloop_quit();
 }
 
+static void irks_usage(void)
+{
+	printf("Usage: btmgmt irks [--local]\n");
+}
+
+static struct option irks_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "local",	1, 0, 'l' },
+	{ 0, 0, 0, 0 }
+};
+
+#define MAX_IRKS 4
+
 static void cmd_irks(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	struct mgmt_cp_load_irks cp;
+	struct mgmt_cp_load_irks *cp;
+	uint8_t buf[sizeof(*cp) + 23 * MAX_IRKS];
+	uint16_t count, local_index;
+	int opt;
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	memset(&cp, 0, sizeof(cp));
+	cp = (void *) buf;
+	count = 0;
 
-	if (mgmt_send(mgmt, MGMT_OP_LOAD_IRKS, index, sizeof(cp), &cp,
-						irks_rsp, NULL, NULL) == 0) {
+	while ((opt = getopt_long(argc, argv, "+l:h",
+					irks_options, NULL)) != -1) {
+		switch (opt) {
+		case 'l':
+			if (count >= MAX_IRKS) {
+				fprintf(stderr, "Number of IRKs exceeded\n");
+				exit(EXIT_FAILURE);
+			}
+			if (strlen(optarg) > 3 &&
+					strncasecmp(optarg, "hci", 3) == 0)
+				local_index = atoi(optarg + 3);
+			else
+				local_index = atoi(optarg);
+			if (!load_identity(local_index, &cp->irks[count])) {
+				fprintf(stderr, "Unable to load identity\n");
+				exit(EXIT_FAILURE);
+			}
+			count++;
+			break;
+		case 'h':
+			irks_usage();
+			exit(EXIT_SUCCESS);
+		default:
+			irks_usage();
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc > 0) {
+		irks_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	cp->irk_count = cpu_to_le16(count);
+
+	if (mgmt_send(mgmt, MGMT_OP_LOAD_IRKS, index,
+					sizeof(*cp) + count * 23, cp,
+					irks_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send load_irks cmd\n");
 		exit(EXIT_FAILURE);
 	}
@@ -3183,7 +3277,7 @@ int main(int argc, char *argv[])
 		case 'i':
 			if (strlen(optarg) > 3 &&
 					strncasecmp(optarg, "hci", 3) == 0)
-				index = atoi(&optarg[4]);
+				index = atoi(optarg + 3);
 			else
 				index = atoi(optarg);
 			break;
