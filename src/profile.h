@@ -42,6 +42,8 @@ struct btd_profile {
 	int (*connect) (struct btd_service *service);
 	int (*disconnect) (struct btd_service *service);
 
+	int (*accept) (struct btd_service *service);
+
 	int (*adapter_probe) (struct btd_profile *p,
 						struct btd_adapter *adapter);
 	void (*adapter_remove) (struct btd_profile *p,
