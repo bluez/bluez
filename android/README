@@ -283,7 +283,7 @@ a2dp              bt_av.h            complete      complete
 gatt              bt_gatt.h          complete      partial
                   bt_gatt_client.h   complete      partial
                   bt_gatt_server.h   complete      partial
-handsfree         bt_hf.h            complete      partial
+handsfree         bt_hf.h            complete      complete
 hidhost           bt_hh.h            complete      complete
 health            bt_hl.h            complete      complete
 pan               bt_pan.h           complete      complete
