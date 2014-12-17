@@ -823,6 +823,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY:
 		break;
+	case BT_HCI_CMD_USER_CONFIRM_REQUEST_NEG_REPLY:
+		break;
 	case BT_HCI_CMD_LE_LTK_REQ_REPLY:
 		break;
 	case BT_HCI_CMD_LE_LTK_REQ_NEG_REPLY:
