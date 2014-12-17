@@ -722,6 +722,8 @@ static bool can_read_data(struct io *io, void *user_data)
 	pdu = att->buf;
 	opcode = pdu[0];
 
+	bt_att_ref(att);
+
 	/* Act on the received PDU based on the opcode type */
 	switch (get_op_type(opcode)) {
 	case ATT_OP_TYPE_RSP:
@@ -745,6 +747,7 @@ static bool can_read_data(struct io *io, void *user_data)
 					"Received request while another is "
 					"pending: 0x%02x", opcode);
 			io_shutdown(att->io);
+			bt_att_unref(att);
 
 			return false;
 		}
@@ -765,6 +768,8 @@ static bool can_read_data(struct io *io, void *user_data)
 		handle_notify(att, opcode, pdu + 1, bytes_read - 1);
 		break;
 	}
+
+	bt_att_unref(att);
 
 	return true;
 }
