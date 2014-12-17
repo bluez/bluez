@@ -2499,7 +2499,7 @@ static void emu_connectable_complete(uint16_t opcode, uint8_t status,
 		tester_warn("Emulated remote setup failed.");
 		step->action_status = BT_STATUS_FAIL;
 	} else {
-		tester_warn("Emulated remote setup done.");
+		tester_debug("Emulated remote setup done.");
 		step->action_status = BT_STATUS_SUCCESS;
 	}
 
