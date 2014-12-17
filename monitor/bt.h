@@ -2624,6 +2624,7 @@ struct bt_l2cap_pdu_info_req {
 struct bt_l2cap_pdu_info_rsp {
 	uint16_t type;
 	uint16_t result;
+	uint8_t  data[0];
 } __attribute__ ((packed));
 
 #define BT_L2CAP_PDU_CREATE_CHAN_REQ	0x0c
