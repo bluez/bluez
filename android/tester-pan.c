@@ -18,8 +18,11 @@
 #include <stdbool.h>
 
 #include "emulator/bthost.h"
-#include "tester-main.h"
+#include "lib/bluetooth.h"
 #include "android/utils.h"
+#include "src/shared/tester.h"
+#include "src/shared/queue.h"
+#include "tester-main.h"
 
 static struct queue *list; /* List of pan test cases */
 

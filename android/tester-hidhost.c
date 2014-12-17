@@ -18,9 +18,11 @@
 #include <stdbool.h>
 
 #include "emulator/bthost.h"
-#include "tester-main.h"
-
+#include "src/shared/tester.h"
+#include "src/shared/queue.h"
+#include "lib/bluetooth.h"
 #include "android/utils.h"
+#include "tester-main.h"
 
 #define HID_GET_REPORT_PROTOCOL		0x60
 #define HID_GET_BOOT_PROTOCOL		0x61

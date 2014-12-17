@@ -16,9 +16,12 @@
  */
 
 #include <fcntl.h>
+#include <unistd.h>
 #include <stdbool.h>
 
 #include "emulator/bthost.h"
+#include "src/shared/tester.h"
+#include "src/shared/queue.h"
 #include "tester-main.h"
 
 static struct queue *list; /* List of socket test cases */

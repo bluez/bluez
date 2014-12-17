@@ -19,9 +19,11 @@
 
 #include "emulator/bthost.h"
 #include "src/shared/util.h"
-
-#include "tester-main.h"
+#include "src/shared/tester.h"
+#include "src/shared/queue.h"
+#include "lib/bluetooth.h"
 #include "android/utils.h"
+#include "tester-main.h"
 
 static struct queue *list;
 

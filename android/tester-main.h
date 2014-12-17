@@ -21,28 +21,7 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <limits.h>
-
 #include <glib.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/wait.h>
-#include <libgen.h>
-#include <sys/signalfd.h>
-
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
-
-#include "src/shared/tester.h"
-#include "src/shared/mgmt.h"
-#include "src/shared/queue.h"
-#include "emulator/hciemu.h"
-
-#include <hardware/hardware.h>
 #include <hardware/audio.h>
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
@@ -52,8 +31,8 @@
 #include <hardware/bt_av.h>
 #include <hardware/bt_rc.h>
 #include <hardware/bt_gatt.h>
-#include <hardware/bt_gatt_client.h>
-#include <hardware/bt_gatt_server.h>
+
+#include "emulator/hciemu.h"
 
 struct pdu_set {
 	struct iovec req;

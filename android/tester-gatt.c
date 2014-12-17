@@ -18,8 +18,11 @@
 #include <stdbool.h>
 
 #include "emulator/bthost.h"
-#include "tester-main.h"
+#include "lib/bluetooth.h"
 #include "src/shared/util.h"
+#include "src/shared/tester.h"
+#include "src/shared/queue.h"
+#include "tester-main.h"
 
 #define ATT_HANDLE_SIZE	2
 

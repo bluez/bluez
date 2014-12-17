@@ -15,12 +15,22 @@
  *
  */
 #include <stdbool.h>
+#include <unistd.h>
+#include <libgen.h>
 
+#include <sys/un.h>
+#include <sys/wait.h>
+#include <sys/signalfd.h>
+
+#include "lib/bluetooth.h"
+#include "lib/mgmt.h"
 #include "src/shared/util.h"
+#include "src/shared/tester.h"
+#include "src/shared/mgmt.h"
+#include "src/shared/queue.h"
 #include "emulator/bthost.h"
-#include "tester-main.h"
-
 #include "monitor/bt.h"
+#include "tester-main.h"
 
 static char exec_dir[PATH_MAX + 1];
 
