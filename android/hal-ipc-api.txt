@@ -955,6 +955,18 @@ Commands and responses:
 
 		In case of an error, the error response will be returned.
 
+	Opcode 0x0f - Configure WBS command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Config (1 octet)
+		Response parameters: <none>
+
+		Valid config values: 0x00 = None
+		                     0x01 = No
+		                     0x02 = Yes
+
+		In case of an error, the error response will be returned.
+
 Notifications:
 
 	Opcode 0x81 - Connection State notification

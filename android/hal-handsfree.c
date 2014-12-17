@@ -832,11 +832,22 @@ static void cleanup(void)
 #if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
 static bt_status_t configure_wbs(bt_bdaddr_t *bd_addr, bthf_wbs_config_t config)
 {
-	/* TODO: implement */
+	struct hal_cmd_handsfree_configure_wbs cmd;
 
-	DBG("");
+	DBG("%u", config);
 
-	return BT_STATUS_UNSUPPORTED;
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	if (!bd_addr)
+		return BT_STATUS_PARM_INVALID;
+
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+	cmd.config = config;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HANDSFREE,
+					HAL_OP_HANDSFREE_CONFIGURE_WBS,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 #endif
 

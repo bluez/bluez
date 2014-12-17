@@ -917,7 +917,7 @@ int main(int argc, char *argv[])
 	test_opcode_valid("PAN", HAL_SERVICE_ID_PAN, 0x05, 0,
 			HAL_SERVICE_ID_BLUETOOTH, HAL_SERVICE_ID_PAN);
 
-	test_opcode_valid("HANDSFREE", HAL_SERVICE_ID_HANDSFREE, 0x0f, 0,
+	test_opcode_valid("HANDSFREE", HAL_SERVICE_ID_HANDSFREE, 0x10, 0,
 						HAL_SERVICE_ID_BLUETOOTH,
 						HAL_SERVICE_ID_HANDSFREE);
 

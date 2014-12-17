@@ -624,6 +624,16 @@ struct hal_cmd_handsfree_phone_state_change {
 	uint8_t number[0];
 } __attribute__((packed));
 
+#define HAL_HANDSFREE_WBS_NONE			0x00
+#define HAL_HANDSFREE_WBS_NO			0x01
+#define HAL_HANDSFREE_WBS_YES			0x02
+
+#define HAL_OP_HANDSFREE_CONFIGURE_WBS		0x0F
+struct hal_cmd_handsfree_configure_wbs {
+	uint8_t bdaddr[6];
+	uint8_t config;
+} __attribute__((packed));
+
 /* AVRCP TARGET HAL API */
 
 #define HAL_AVRCP_PLAY_STATUS_STOPPED	0x00

@@ -2496,6 +2496,24 @@ failed:
 				HAL_OP_HANDSFREE_PHONE_STATE_CHANGE, status);
 }
 
+static void handle_configure_wbs(const void *buf, uint16_t len)
+{
+	const struct hal_cmd_handsfree_configure_wbs *cmd = buf;
+	uint8_t status;
+
+	switch (cmd->config) {
+	case HAL_HANDSFREE_WBS_NONE:
+	case HAL_HANDSFREE_WBS_NO:
+	case HAL_HANDSFREE_WBS_YES:
+	default:
+		status = HAL_STATUS_FAILED;
+		break;
+	}
+
+	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_OP_HANDSFREE_CONFIGURE_WBS, status);
+}
+
 static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HANDSFREE_CONNECT */
 	{ handle_connect, false,
@@ -2537,6 +2555,9 @@ static const struct ipc_handler cmd_handlers[] = {
 	/* HAL_OP_HANDSFREE_PHONE_STATE_CHANGE */
 	{ handle_phone_state_change, true,
 		sizeof(struct hal_cmd_handsfree_phone_state_change) },
+	/* HAL_OP_HANDSFREE_CONFIGURE_WBS */
+	{ handle_configure_wbs, false,
+		sizeof(struct hal_cmd_handsfree_configure_wbs) },
 };
 
 static sdp_record_t *headset_ag_record(void)
