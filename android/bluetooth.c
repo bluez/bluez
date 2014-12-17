@@ -234,6 +234,7 @@ static struct ipc *hal_ipc = NULL;
 static bool kernel_conn_control = false;
 
 static struct queue *unpaired_cb_list = NULL;
+static struct queue *paired_cb_list = NULL;
 
 static void get_device_android_addr(struct device *dev, uint8_t *addr)
 {
@@ -909,7 +910,14 @@ static void update_bond_state(struct device *dev, uint8_t status,
 						HAL_BOND_STATE_BONDING);
 
 	send_bond_state_change(dev, status, new_bond);
+}
 
+static void send_paired_notification(void *data, void *user_data)
+{
+	bt_paired_device_cb cb = data;
+	struct device *dev = user_data;
+
+	cb(&dev->bdaddr, dev->bdaddr_type);
 }
 
 static void update_device_state(struct device *dev, uint8_t addr_type,
@@ -1755,6 +1763,19 @@ bool bt_unpaired_register(bt_unpaired_device_cb cb)
 void bt_unpaired_unregister(bt_unpaired_device_cb cb)
 {
 	queue_remove(unpaired_cb_list, cb);
+}
+
+bool bt_paired_register(bt_paired_device_cb cb)
+{
+	if (queue_find(paired_cb_list, match_by_value, cb))
+		return false;
+
+	return queue_push_head(paired_cb_list, cb);
+}
+
+void bt_paired_unregister(bt_paired_device_cb cb)
+{
+	queue_remove(paired_cb_list, cb);
 }
 
 static bool rssi_above_threshold(int old, int new)
@@ -4327,6 +4348,9 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	 */
 	update_device_state(dev, rp->addr.type, status_mgmt2hal(status), false,
 								!status, false);
+
+	if (status == MGMT_STATUS_SUCCESS)
+		queue_foreach(paired_cb_list, send_paired_notification, dev);
 }
 
 static uint8_t select_device_bearer(struct device *dev)
@@ -5282,6 +5306,14 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 		return false;
 	}
 
+	paired_cb_list = queue_new();
+	if (!paired_cb_list) {
+		error("Cannot allocate queue for paired callbacks");
+		queue_destroy(unpaired_cb_list, NULL);
+		unpaired_cb_list = NULL;
+		return false;
+	}
+
 	missing_settings = adapter.current_settings ^
 						adapter.supported_settings;
 
@@ -5349,6 +5381,8 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 failed:
 	queue_destroy(unpaired_cb_list, NULL);
 	unpaired_cb_list = NULL;
+	queue_destroy(paired_cb_list, NULL);
+	paired_cb_list = NULL;
 
 	return false;
 }
@@ -5368,4 +5402,7 @@ void bt_bluetooth_unregister(void)
 
 	queue_destroy(unpaired_cb_list, NULL);
 	unpaired_cb_list = NULL;
+
+	queue_destroy(paired_cb_list, NULL);
+	paired_cb_list = NULL;
 }
