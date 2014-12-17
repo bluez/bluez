@@ -2645,7 +2645,8 @@ void emu_add_l2cap_server_action(void)
 
 	if (!l2cap_data) {
 		tester_warn("Invalid l2cap_data params");
-		return;
+		step->action_status = BT_STATUS_FAIL;
+		goto done;
 	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
@@ -2655,6 +2656,7 @@ void emu_add_l2cap_server_action(void)
 
 	step->action_status = BT_STATUS_SUCCESS;
 
+done:
 	schedule_action_verification(step);
 }
 
