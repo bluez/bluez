@@ -47,6 +47,12 @@
 #define acl_handle(h)		(h & 0x0fff)
 #define acl_flags(h)		(h >> 12)
 
+#define L2CAP_FEAT_FIXED_CHAN	0x00000080
+#define L2CAP_FC_SIG_BREDR	0x02
+#define L2CAP_FC_SMP_BREDR	0x80
+#define L2CAP_IT_FEAT_MASK	0x0002
+#define L2CAP_IT_FIXED_CHAN	0x0003
+
 /* RFCOMM setters */
 #define RFCOMM_ADDR(cr, dlci)	(((dlci & 0x3f) << 2) | (cr << 1) | 0x01)
 #define RFCOMM_CTRL(type, pf)	(((type & 0xef) | (pf << 4)))
@@ -1450,16 +1456,41 @@ static bool l2cap_info_req(struct bthost *bthost, struct btconn *conn,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	const struct bt_l2cap_pdu_info_req *req = data;
-	struct bt_l2cap_pdu_info_rsp rsp;
+	uint64_t fixed_chan;
+	uint16_t type;
+	uint8_t buf[12];
+	struct bt_l2cap_pdu_info_rsp *rsp = (void *) buf;
 
 	if (len < sizeof(*req))
 		return false;
 
-	rsp.type = req->type;
-	rsp.result = cpu_to_le16(0x0001); /* Not Supported */
+	memset(buf, 0, sizeof(buf));
+	rsp->type = req->type;
 
-	l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_INFO_RSP, ident, &rsp,
-								sizeof(rsp));
+	type = le16_to_cpu(req->type);
+
+	switch (type) {
+	case L2CAP_IT_FEAT_MASK:
+		rsp->result = 0x0000;
+		put_le32(L2CAP_FEAT_FIXED_CHAN, rsp->data);
+		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_INFO_RSP, ident,
+							rsp, sizeof(*rsp) + 4);
+		break;
+	case L2CAP_IT_FIXED_CHAN:
+		rsp->result = 0x0000;
+		fixed_chan = L2CAP_FC_SIG_BREDR;
+		if (bthost->sc && bthost->le)
+			fixed_chan |= L2CAP_FC_SMP_BREDR;
+		put_le64(fixed_chan, rsp->data);
+		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_INFO_RSP, ident,
+				rsp, sizeof(*rsp) + sizeof(fixed_chan));
+		break;
+	default:
+		rsp->result = cpu_to_le16(0x0001); /* Not Supported */
+		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_INFO_RSP, ident,
+							rsp, sizeof(*rsp));
+		break;
+	}
 
 	return true;
 }
