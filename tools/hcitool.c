@@ -46,6 +46,10 @@
 
 #include "src/oui.h"
 
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 /* Unofficial value, might still change */
 #define LE_LINK		0x80
 
