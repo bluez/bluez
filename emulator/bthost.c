@@ -215,6 +215,7 @@ struct bthost {
 	bool reject_user_confirm;
 	void *smp_data;
 	bool conn_init;
+	bool le;
 	bool sc;
 };
 
@@ -2198,6 +2199,7 @@ void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)
 
 void bthost_write_le_host_supported(struct bthost *bthost, uint8_t mode)
 {
+	bthost->le = mode;
 	send_command(bthost, BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED, &mode, 1);
 }
 
