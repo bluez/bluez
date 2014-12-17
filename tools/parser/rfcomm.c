@@ -69,6 +69,17 @@ static inline void mcc_test(int level, uint8_t *ptr, int len,
 	printf("TEST %s: ", CR_STR(mcc_head));
 	print_rfcomm_hdr(head, ptr, len);
 	print_mcc(mcc_head);
+
+	p_indent(level, 0);
+	printf("%*cTest data: 0x ", level, ' ');
+
+	while (len > 1) {
+		printf("%2.2x ", (uint8_t)*ptr);
+		len--;
+		ptr++;
+	}
+
+	printf("\n");
 }
 static inline void mcc_fcon(int level, uint8_t *ptr, int len,
 				long_frame_head *head, mcc_long_frame_head *mcc_head)
@@ -208,7 +219,6 @@ static inline void mcc_frame(int level, struct frame *frm, long_frame_head *head
 	switch (mcc_head.type.type) {
 	case TEST:
 		mcc_test(level, frm->ptr, frm->len, head, &mcc_head);
-		raw_dump(level, frm); 
 		break;
 	case FCON:
 		mcc_fcon(level, frm->ptr, frm->len, head, &mcc_head);
