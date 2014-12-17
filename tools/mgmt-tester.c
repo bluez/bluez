@@ -402,6 +402,7 @@ struct generic_data {
 	bool reject_confirm;
 	bool client_reject_confirm;
 	bool just_works;
+	bool client_enable_le;
 	bool client_enable_sc;
 	bool expect_sc_key;
 	bool force_power_off;
@@ -4044,6 +4045,9 @@ static void test_setup(const void *test_data)
 
 	if (test->client_reject_confirm)
 		bthost_set_reject_user_confirm(bthost, true);
+
+	if (test->client_enable_le)
+		bthost_write_le_host_supported(bthost, 0x01);
 
 	if (test->client_enable_sc)
 		bthost_set_sc_support(bthost, 0x01);
