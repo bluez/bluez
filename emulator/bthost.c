@@ -815,6 +815,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
 		break;
+	case BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED:
+		break;
 	case BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT:
 		break;
 	case BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY:
@@ -2190,6 +2192,11 @@ void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable, uint8_t flags)
 void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)
 {
 	send_command(bthost, BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE, &mode, 1);
+}
+
+void bthost_write_le_host_supported(struct bthost *bthost, uint8_t mode)
+{
+	send_command(bthost, BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED, &mode, 1);
 }
 
 void bthost_request_auth(struct bthost *bthost, uint16_t handle)
