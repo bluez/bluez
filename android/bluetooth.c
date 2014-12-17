@@ -5348,6 +5348,8 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 
 failed:
 	queue_destroy(unpaired_cb_list, NULL);
+	unpaired_cb_list = NULL;
+
 	return false;
 }
 
