@@ -101,6 +101,9 @@ struct bt_le {
 	uint8_t  le_scan_enable;
 	uint8_t  le_scan_filter_dup;
 
+	uint8_t  le_conn_peer_addr_type;
+	uint8_t  le_conn_peer_addr[6];
+	uint8_t  le_conn_own_addr_type;
 	uint8_t  le_conn_enable;
 
 	uint8_t  le_white_list_size;
@@ -1008,6 +1011,13 @@ static void cmd_le_create_conn(struct bt_le *hci,
 		return;
 	}
 
+	/* Valid range for peer address type is 0x00 to 0x03 */
+	if (cmd->peer_addr_type > 0x03) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_CREATE_CONN);
+		return;
+	}
+
 	/* Valid range for own address type is 0x00 to 0x03 */
 	if (cmd->own_addr_type > 0x03) {
 		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
@@ -1015,6 +1025,9 @@ static void cmd_le_create_conn(struct bt_le *hci,
 		return;
 	}
 
+	hci->le_conn_peer_addr_type = cmd->peer_addr_type;
+	memcpy(hci->le_conn_peer_addr, cmd->peer_addr, 6);
+	hci->le_conn_own_addr_type = cmd->own_addr_type;
 	hci->le_conn_enable = 0x01;
 
 	cmd_status(hci, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_CREATE_CONN);
