@@ -119,8 +119,14 @@ static bt_status_t init(btmce_callbacks_t *callbacks)
 
 	DBG("");
 
-	if (interface_ready())
-		return BT_STATUS_DONE;
+	/*
+	 * Interface ready check was removed because there is no cleanup
+	 * function to unregister and clear callbacks. MAP client testers may
+	 * restart bluetooth, unregister this profile and try to reuse it.
+	 * This situation make service unregistered but callbacks are still
+	 * set - interface is ready. On android devices there is no need to
+	 * re-init MAP client profile while bluetooth is loaded.
+	 */
 
 	cbs = callbacks;
 
