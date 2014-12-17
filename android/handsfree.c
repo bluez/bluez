@@ -2499,17 +2499,51 @@ failed:
 static void handle_configure_wbs(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_handsfree_configure_wbs *cmd = buf;
+	struct hf_device *dev;
+	bdaddr_t bdaddr;
 	uint8_t status;
 
+	if (!(hfp_ag_features & HFP_AG_FEAT_CODEC)) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+
+	dev = find_device(&bdaddr);
+	if (!dev) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
+	if (dev->audio_state != HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED) {
+		status = HAL_STATUS_FAILED;
+		goto done;
+	}
+
 	switch (cmd->config) {
-	case HAL_HANDSFREE_WBS_NONE:
 	case HAL_HANDSFREE_WBS_NO:
+		dev->codecs[MSBC_OFFSET].local_supported = false;
+		break;
 	case HAL_HANDSFREE_WBS_YES:
+		dev->codecs[MSBC_OFFSET].local_supported = true;
+		break;
+	case HAL_HANDSFREE_WBS_NONE:
+		/* TODO */
 	default:
 		status = HAL_STATUS_FAILED;
 		break;
 	}
 
+	/*
+	 * cleanup negotiated codec if WBS support was changed, it will be
+	 * renegotiated on next audio connection based on currently supported
+	 * codecs
+	 */
+	dev->negotiated_codec = 0;
+	status = HAL_STATUS_SUCCESS;
+
+done:
 	ipc_send_rsp(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 					HAL_OP_HANDSFREE_CONFIGURE_WBS, status);
 }
