@@ -2230,8 +2230,14 @@ void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)
 
 void bthost_write_le_host_supported(struct bthost *bthost, uint8_t mode)
 {
+	struct bt_hci_cmd_write_le_host_supported cmd;
+
 	bthost->le = mode;
-	send_command(bthost, BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED, &mode, 1);
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.supported = mode;
+	send_command(bthost, BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
+							&cmd, sizeof(cmd));
 }
 
 void bthost_request_auth(struct bthost *bthost, uint16_t handle)
