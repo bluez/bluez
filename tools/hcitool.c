@@ -71,6 +71,23 @@ static volatile int signal_received = 0;
 
 static void usage(void);
 
+static int str2buf(const char *str, uint8_t *buf, size_t blen)
+{
+	int i, dlen;
+
+	if (str == NULL)
+		return -EINVAL;
+
+	memset(buf, 0, blen);
+
+	dlen = MIN((strlen(str) / 2), blen);
+
+	for (i = 0; i < dlen; i++)
+		sscanf(str + (i * 2), "%02hhX", &buf[i]);
+
+	return 0;
+}
+
 static int dev_info(int s, int dev_id, long arg)
 {
 	struct hci_dev_info di = { .dev_id = dev_id };
@@ -2927,6 +2944,291 @@ static void cmd_lewlclr(int dev_id, int argc, char **argv)
 	}
 }
 
+static struct option lerladd_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "random",	0, 0, 'r' },
+	{ "local",	1, 0, 'l' },
+	{ "peer",	1, 0, 'p' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lerladd_help =
+	"Usage:\n"
+	"\tlerladd [--local irk] [--peer irk] [--random] <bdaddr>\n";
+
+static void cmd_lerladd(int dev_id, int argc, char **argv)
+{
+	int err, opt, dd;
+	bdaddr_t bdaddr;
+	uint8_t bdaddr_type = LE_PUBLIC_ADDRESS;
+	uint8_t local_irk[16], peer_irk[16];
+
+	memset(local_irk, 0, 16);
+	memset(peer_irk, 0, 16);
+
+	for_each_opt(opt, lerladd_options, NULL) {
+		switch (opt) {
+		case 'r':
+			bdaddr_type = LE_RANDOM_ADDRESS;
+			break;
+		case 'l':
+			str2buf(optarg, local_irk, 16);
+			break;
+		case 'p':
+			str2buf(optarg, peer_irk, 16);
+			break;
+		default:
+			printf("%s", lerladd_help);
+			return;
+		}
+	}
+
+	helper_arg(1, 1, &argc, &argv, lerladd_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	err = hci_le_add_resolving_list(dd, &bdaddr, bdaddr_type,
+						peer_irk, local_irk, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = -errno;
+		fprintf(stderr, "Can't add to resolving list: %s(%d)\n",
+							strerror(-err), -err);
+		exit(1);
+	}
+}
+
+static struct option lerlrm_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lerlrm_help =
+	"Usage:\n"
+	"\tlerlrm <bdaddr>\n";
+
+static void cmd_lerlrm(int dev_id, int argc, char **argv)
+{
+	int err, opt, dd;
+	bdaddr_t bdaddr;
+
+	for_each_opt(opt, lerlrm_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lerlrm_help);
+			return;
+		}
+	}
+
+	helper_arg(1, 1, &argc, &argv, lerlrm_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	err = hci_le_rm_resolving_list(dd, &bdaddr, LE_PUBLIC_ADDRESS, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = errno;
+		fprintf(stderr, "Can't remove from resolving list: %s(%d)\n",
+							strerror(err), err);
+		exit(1);
+	}
+}
+
+static struct option lerlclr_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lerlclr_help =
+	"Usage:\n"
+	"\tlerlclr\n";
+
+static void cmd_lerlclr(int dev_id, int argc, char **argv)
+{
+	int err, dd, opt;
+
+	for_each_opt(opt, lerlclr_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lerlclr_help);
+			return;
+		}
+	}
+
+	helper_arg(0, 0, &argc, &argv, lerlclr_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	err = hci_le_clear_resolving_list(dd, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = -errno;
+		fprintf(stderr, "Can't clear resolving list: %s(%d)\n",
+							strerror(-err), -err);
+		exit(1);
+	}
+}
+
+static struct option lerlsz_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lerlsz_help =
+	"Usage:\n"
+	"\tlerlsz\n";
+
+static void cmd_lerlsz(int dev_id, int argc, char **argv)
+{
+	int err, dd, opt;
+	uint8_t size;
+
+	for_each_opt(opt, lerlsz_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lerlsz_help);
+			return;
+		}
+	}
+
+	helper_arg(0, 0, &argc, &argv, lerlsz_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	err = hci_le_read_resolving_list_size(dd, &size, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = -errno;
+		fprintf(stderr, "Can't read resolving list size: %s(%d)\n",
+							strerror(-err), -err);
+		exit(1);
+	}
+
+	printf("Resolving list size: %d\n", size);
+}
+
+static struct option lerlon_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lerlon_help =
+	"Usage:\n"
+	"\tlerlon\n";
+
+static void cmd_lerlon(int dev_id, int argc, char **argv)
+{
+	int err, dd, opt;
+
+	for_each_opt(opt, lerlon_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lerlon_help);
+			return;
+		}
+	}
+
+	helper_arg(0, 0, &argc, &argv, lerlon_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	err = hci_le_set_address_resolution_enable(dd, 0x01, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = -errno;
+		fprintf(stderr, "Can't set address resolution enable: %s(%d)\n",
+							strerror(-err), -err);
+		exit(1);
+	}
+}
+
+static struct option lerloff_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lerloff_help =
+	"Usage:\n"
+	"\tlerloff\n";
+
+static void cmd_lerloff(int dev_id, int argc, char **argv)
+{
+	int err, dd, opt;
+
+	for_each_opt(opt, lerloff_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lerloff_help);
+			return;
+		}
+	}
+
+	helper_arg(0, 0, &argc, &argv, lerloff_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	err = hci_le_set_address_resolution_enable(dd, 0x00, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = -errno;
+		fprintf(stderr, "Can't set address resolution enable: %s(%d)\n",
+							strerror(-err), -err);
+		exit(1);
+	}
+}
+
 static struct option ledc_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -3092,7 +3394,13 @@ static struct {
 	{ "lewladd",  cmd_lewladd, "Add device to LE White List"          },
 	{ "lewlrm",   cmd_lewlrm,  "Remove device from LE White List"     },
 	{ "lewlsz",   cmd_lewlsz,  "Read size of LE White List"           },
-	{ "lewlclr",  cmd_lewlclr, "Clear LE White list"                  },
+	{ "lewlclr",  cmd_lewlclr, "Clear LE White List"                  },
+	{ "lerladd",  cmd_lerladd, "Add device to LE Resolving List"      },
+	{ "lerlrm",   cmd_lerlrm,  "Remove device from LE Resolving List" },
+	{ "lerlclr",  cmd_lerlclr, "Clear LE Resolving List"              },
+	{ "lerlsz",   cmd_lerlsz,  "Read size of LE Resolving List"       },
+	{ "lerlon",   cmd_lerlon,  "Enable LE Address Resolution"         },
+	{ "lerloff",  cmd_lerloff, "Disable LE Address Resolution"        },
 	{ "lecc",     cmd_lecc,    "Create a LE Connection"               },
 	{ "ledc",     cmd_ledc,    "Disconnect a LE Connection"           },
 	{ "lecup",    cmd_lecup,   "LE Connection Update"                 },
