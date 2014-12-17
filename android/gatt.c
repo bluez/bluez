@@ -7046,6 +7046,24 @@ static bool start_listening(void)
 	return true;
 }
 
+static void gatt_paired_cb(const bdaddr_t *addr, uint8_t type)
+{
+	struct gatt_device *dev;
+	char address[18];
+
+	dev = find_device_by_addr(addr);
+	if (!dev)
+		return;
+
+	if (dev->bdaddr_type != type)
+		return;
+
+	ba2str(addr, address);
+	DBG("Paired device %s", address);
+
+	/* Find Service Changed and register for it.*/
+}
+
 static void gatt_unpaired_cb(const bdaddr_t *addr, uint8_t type)
 {
 	struct gatt_device *dev;
@@ -7068,6 +7086,11 @@ static void gatt_unpaired_cb(const bdaddr_t *addr, uint8_t type)
 bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 {
 	DBG("");
+
+	if (!bt_paired_register(gatt_paired_cb)) {
+		error("gatt: Could not register paired callback");
+		return false;
+	}
 
 	if (!bt_unpaired_register(gatt_unpaired_cb)) {
 		error("gatt: Could not register unpaired callback");
@@ -7118,6 +7141,10 @@ bool bt_gatt_register(struct ipc *ipc, const bdaddr_t *addr)
 	return true;
 
 failed:
+
+	bt_paired_unregister(gatt_paired_cb);
+	bt_unpaired_unregister(gatt_unpaired_cb);
+
 	queue_destroy(gatt_apps, NULL);
 	gatt_apps = NULL;
 
