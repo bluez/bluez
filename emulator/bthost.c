@@ -815,6 +815,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
 		break;
+	case BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT:
+		break;
 	case BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY:
 		break;
 	case BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY:
