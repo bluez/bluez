@@ -143,6 +143,51 @@ static void clear_white_list(struct bt_le *hci)
 	}
 }
 
+static void resolve_peer_addr(struct bt_le *hci, uint8_t peer_addr_type,
+					const uint8_t peer_addr[6],
+					uint8_t *addr_type, uint8_t addr[6])
+{
+	int i;
+
+	if (!hci->le_resolv_enable)
+		goto done;
+
+	if (peer_addr_type != 0x01)
+		goto done;
+
+	if ((peer_addr[5] & 0xc0) != 0x40)
+		goto done;
+
+	for (i = 0; i < hci->le_resolv_list_size; i++) {
+		uint8_t local_hash[3];
+
+		if (hci->le_resolv_list[i][0] == 0xff)
+			continue;
+
+		bt_crypto_ah(hci->crypto, &hci->le_resolv_list[i][7],
+						peer_addr + 3, local_hash);
+
+		if (!memcmp(peer_addr, local_hash, 3)) {
+			switch (hci->le_resolv_list[i][0]) {
+			case 0x00:
+				*addr_type = 0x02;
+				break;
+			case 0x01:
+				*addr_type = 0x03;
+				break;
+			default:
+				continue;
+			}
+			memcpy(addr, &hci->le_resolv_list[i][1], 6);
+			return;
+		}
+	}
+
+done:
+	*addr_type = peer_addr_type;
+	memcpy(addr, peer_addr, 6);
+}
+
 static void clear_resolv_list(struct bt_le *hci)
 {
 	int i;
@@ -1654,25 +1699,29 @@ static void phy_recv_callback(uint16_t type, const void *data,
 			const struct bt_phy_pkt_adv *pkt = data;
 			uint8_t buf[100];
 			struct bt_hci_evt_le_adv_report *evt = (void *) buf;
+			uint8_t tx_addr_type, tx_addr[6];
+
+			resolve_peer_addr(hci, pkt->tx_addr_type, pkt->tx_addr,
+							&tx_addr_type, tx_addr);
 
 			if (hci->le_scan_filter_policy == 0x01 ||
 					hci->le_scan_filter_policy == 0x03) {
-				if (!is_in_white_list(hci, pkt->tx_addr_type,
-								pkt->tx_addr))
+				if (!is_in_white_list(hci, tx_addr_type,
+								tx_addr))
 					break;
 			}
 
 			if (hci->le_scan_filter_dup) {
-				if (!add_to_scan_cache(hci, pkt->tx_addr_type,
-								pkt->tx_addr))
+				if (!add_to_scan_cache(hci, tx_addr_type,
+								tx_addr))
 					break;
 			}
 
 			memset(buf, 0, sizeof(buf));
 			evt->num_reports = 0x01;
 			evt->event_type = pkt->pdu_type;
-			evt->addr_type = pkt->tx_addr_type;
-			memcpy(evt->addr, pkt->tx_addr, 6);
+			evt->addr_type = tx_addr_type;
+			memcpy(evt->addr, tx_addr, 6);
 			evt->data_len = pkt->adv_data_len;
 			memcpy(buf + sizeof(*evt), data + sizeof(*pkt),
 							pkt->adv_data_len);
@@ -1686,8 +1735,8 @@ static void phy_recv_callback(uint16_t type, const void *data,
 			memset(buf, 0, sizeof(buf));
 			evt->num_reports = 0x01;
 			evt->event_type = 0x04;
-			evt->addr_type = pkt->tx_addr_type;
-			memcpy(evt->addr, pkt->tx_addr, 6);
+			evt->addr_type = tx_addr_type;
+			memcpy(evt->addr, tx_addr, 6);
 			evt->data_len = pkt->scan_rsp_len;
 			memcpy(buf + sizeof(*evt), data + sizeof(*pkt) +
 							pkt->adv_data_len,
