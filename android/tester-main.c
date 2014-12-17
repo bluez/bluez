@@ -501,6 +501,15 @@ static int verify_property(bt_property_t *exp_props, int exp_num_props,
 	int i, j;
 	int exp_prop_to_find = exp_num_props;
 
+	if (rec_num_props == 0)
+		return 1;
+
+	if (exp_num_props == 0) {
+		tester_debug("Wrong number of expected properties given");
+		tester_test_failed();
+		return 1;
+	}
+
 	/* Get first exp prop to match and search for it */
 	for (i = 0; i < exp_num_props; i++) {
 		for (j = 0; j < rec_num_props; j++) {
@@ -509,14 +518,6 @@ static int verify_property(bt_property_t *exp_props, int exp_num_props,
 				break;
 			}
 		}
-	}
-
-	if ((i == 0) && exp_props) {
-		tester_warn("No property was verified: %s", exp_num_props ?
-				"unknown error!" :
-				"wrong \'.callback_result.num_properties\'?");
-
-		return 1;
 	}
 
 	return exp_prop_to_find;
