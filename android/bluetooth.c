@@ -1778,6 +1778,17 @@ void bt_paired_unregister(bt_paired_device_cb cb)
 	queue_remove(paired_cb_list, cb);
 }
 
+bool bt_is_pairing(const bdaddr_t *addr)
+{
+	struct device *dev;
+
+	dev = find_device(addr);
+	if (!dev)
+		return false;
+
+	return dev->pairing;
+}
+
 static bool rssi_above_threshold(int old, int new)
 {
 	/* only 8 dBm or more */

@@ -94,3 +94,4 @@ void bt_unpaired_unregister(bt_unpaired_device_cb cb);
 typedef void (*bt_paired_device_cb)(const bdaddr_t *addr, uint8_t type);
 bool bt_paired_register(bt_paired_device_cb cb);
 void bt_paired_unregister(bt_paired_device_cb cb);
+bool bt_is_pairing(const bdaddr_t *addr);
