@@ -447,10 +447,14 @@ struct queue *get_socket_tests(void)
 	uint16_t i = 0;
 
 	list = queue_new();
+	if (!list)
+		return NULL;
 
 	for (; i < sizeof(test_cases) / sizeof(test_cases[0]); ++i)
-		if (!queue_push_tail(list, &test_cases[i]))
+		if (!queue_push_tail(list, &test_cases[i])) {
+			queue_destroy(list, NULL);
 			return NULL;
+		}
 
 	return list;
 }
