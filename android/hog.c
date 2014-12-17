@@ -45,6 +45,7 @@
 #include "lib/uuid.h"
 #include "src/shared/util.h"
 #include "src/shared/uhid.h"
+#include "src/shared/queue.h"
 
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
@@ -96,6 +97,7 @@ struct bt_hog {
 	struct bt_dis		*dis;
 	struct bt_bas		*bas;
 	GSList			*instances;
+	struct queue		*gatt_op;
 };
 
 struct report {
@@ -783,6 +785,7 @@ static void hog_free(void *data)
 	g_slist_free_full(hog->reports, report_free);
 	g_free(hog->name);
 	g_free(hog->primary);
+	queue_destroy(hog->gatt_op, NULL);
 	g_free(hog);
 }
 
@@ -795,9 +798,16 @@ struct bt_hog *bt_hog_new(const char *name, uint16_t vendor, uint16_t product,
 	if (!hog)
 		return NULL;
 
+	hog->gatt_op = queue_new();
+	if (!hog->gatt_op) {
+		hog_free(hog);
+		return NULL;
+	}
+
 	hog->uhid = bt_uhid_new_default();
 	if (!hog->uhid) {
 		hog_free(hog);
+		queue_destroy(hog->gatt_op, NULL);
 		return NULL;
 	}
 
