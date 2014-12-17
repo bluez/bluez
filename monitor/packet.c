@@ -423,6 +423,52 @@ static void print_addr_type(const char *label, uint8_t addr_type)
 	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
 }
 
+static void print_own_addr_type(uint8_t addr_type)
+{
+	const char *str;
+
+	switch (addr_type) {
+	case 0x00:
+	case 0x02:
+		str = "Public";
+		break;
+	case 0x01:
+	case 0x03:
+		str = "Random";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Own address type: %s (0x%2.2x)", str, addr_type);
+}
+
+static void print_peer_addr_type(const char *label, uint8_t addr_type)
+{
+	const char *str;
+
+	switch (addr_type) {
+	case 0x00:
+		str = "Public";
+		break;
+	case 0x01:
+		str = "Random";
+		break;
+	case 0x02:
+		str = "Resolved Public";
+		break;
+	case 0x03:
+		str = "Resolved Random";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
+}
+
 static void print_addr_resolve(const char *label, const uint8_t *addr,
 					uint8_t addr_type, bool resolve)
 {
@@ -431,6 +477,7 @@ static void print_addr_resolve(const char *label, const uint8_t *addr,
 
 	switch (addr_type) {
 	case 0x00:
+	case 0x02:
 		if (!hwdb_get_company(addr, &company))
 			company = NULL;
 
@@ -450,6 +497,7 @@ static void print_addr_resolve(const char *label, const uint8_t *addr,
 		}
 		break;
 	case 0x01:
+	case 0x03:
 		switch ((addr[5] & 0xc0) >> 6) {
 		case 0x00:
 			str = "Non-Resolvable";
@@ -5574,7 +5622,7 @@ static void le_set_adv_parameters_cmd(const void *data, uint8_t size)
 
 	print_field("Type: %s (0x%2.2x)", str, cmd->type);
 
-	print_addr_type("Own address type", cmd->own_addr_type);
+	print_own_addr_type(cmd->own_addr_type);
 	print_addr_type("Direct address type", cmd->direct_addr_type);
 	print_addr("Direct address", cmd->direct_addr, cmd->direct_addr_type);
 
@@ -5697,7 +5745,7 @@ static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 
 	print_interval(cmd->interval);
 	print_window(cmd->window);
-	print_addr_type("Own address type", cmd->own_addr_type);
+	print_own_addr_type(cmd->own_addr_type);
 
 	switch (cmd->filter_policy) {
 	case 0x00:
@@ -5770,9 +5818,9 @@ static void le_create_conn_cmd(const void *data, uint8_t size)
 
 	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
 
-	print_addr_type("Peer address type", cmd->peer_addr_type);
+	print_peer_addr_type("Peer address type", cmd->peer_addr_type);
 	print_addr("Peer address", cmd->peer_addr, cmd->peer_addr_type);
-	print_addr_type("Own address type", cmd->own_addr_type);
+	print_own_addr_type(cmd->own_addr_type);
 
 	print_slot_125("Min connection interval", cmd->min_interval);
 	print_slot_125("Max connection interval", cmd->max_interval);
@@ -7621,7 +7669,7 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 	print_status(evt->status);
 	print_handle(evt->handle);
 	print_role(evt->role);
-	print_addr_type("Peer address type", evt->peer_addr_type);
+	print_peer_addr_type("Peer address type", evt->peer_addr_type);
 	print_addr("Peer address", evt->peer_addr, evt->peer_addr_type);
 	print_slot_125("Connection interval", evt->interval);
 	print_slot_125("Connection latency", evt->latency);
@@ -7644,7 +7692,7 @@ static void le_adv_report_evt(const void *data, uint8_t size)
 
 report:
 	print_adv_event_type(evt->event_type);
-	print_addr_type("Address type", evt->addr_type);
+	print_peer_addr_type("Address type", evt->addr_type);
 	print_addr("Address", evt->addr, evt->addr_type);
 	print_field("Data length: %d", evt->data_len);
 	print_eir(evt->data, evt->data_len, true);
@@ -7740,7 +7788,7 @@ static void le_enhanced_conn_complete_evt(const void *data, uint8_t size)
 	print_status(evt->status);
 	print_handle(evt->handle);
 	print_role(evt->role);
-	print_addr_type("Peer address type", evt->peer_addr_type);
+	print_peer_addr_type("Peer address type", evt->peer_addr_type);
 	print_addr("Peer address", evt->peer_addr, evt->peer_addr_type);
 	print_addr("Local resolvable private address", evt->local_rpa, 0x01);
 	print_addr("Peer resolvable private address", evt->peer_rpa, 0x01);
@@ -7762,7 +7810,7 @@ static void le_direct_adv_report_evt(const void *data, uint8_t size)
 	print_num_reports(evt->num_reports);
 
 	print_adv_event_type(evt->event_type);
-	print_addr_type("Address type", evt->addr_type);
+	print_peer_addr_type("Address type", evt->addr_type);
 	print_addr("Address", evt->addr, evt->addr_type);
 	print_addr_type("Direct address type", evt->direct_addr_type);
 	print_addr("Direct address", evt->direct_addr, evt->direct_addr_type);
