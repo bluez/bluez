@@ -3546,7 +3546,6 @@ static const struct generic_data remove_device_success_1 = {
 };
 
 static const struct generic_data remove_device_success_2 = {
-	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_REMOVE_DEVICE,
 	.send_param = remove_device_param_1,
 	.send_len = sizeof(remove_device_param_1),
@@ -3567,7 +3566,6 @@ static const uint8_t remove_device_param_2[] =  {
 };
 static const uint8_t set_le_scan_off[] = { 0x00, 0x00 };
 static const struct generic_data remove_device_success_3 = {
-	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_REMOVE_DEVICE,
 	.send_param = remove_device_param_2,
 	.send_len = sizeof(remove_device_param_2),
