@@ -3560,12 +3560,44 @@ static const struct generic_data remove_device_success_2 = {
 	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
 };
 
+static const struct generic_data remove_device_success_3 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_REMOVE_DEVICE,
+	.send_param = remove_device_param_1,
+	.send_len = sizeof(remove_device_param_1),
+	.expect_param = remove_device_param_1,
+	.expect_len = sizeof(remove_device_param_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
+	.expect_alt_ev_param = remove_device_param_1,
+	.expect_alt_ev_len = sizeof(remove_device_param_1),
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_connectable_off_scan_enable_param,
+	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
+};
+
 static const uint8_t remove_device_param_2[] =  {
 					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
 					0x01,
 };
 static const uint8_t set_le_scan_off[] = { 0x00, 0x00 };
-static const struct generic_data remove_device_success_3 = {
+static const struct generic_data remove_device_success_4 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_REMOVE_DEVICE,
+	.send_param = remove_device_param_2,
+	.send_len = sizeof(remove_device_param_2),
+	.expect_param = remove_device_param_2,
+	.expect_len = sizeof(remove_device_param_2),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
+	.expect_alt_ev_param = remove_device_param_2,
+	.expect_alt_ev_len = sizeof(remove_device_param_2),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+	.expect_hci_param = set_le_scan_off,
+	.expect_hci_len = sizeof(set_le_scan_off),
+};
+
+static const struct generic_data remove_device_success_5 = {
 	.send_opcode = MGMT_OP_REMOVE_DEVICE,
 	.send_param = remove_device_param_2,
 	.send_len = sizeof(remove_device_param_2),
@@ -5206,8 +5238,14 @@ int main(int argc, char *argv[])
 	test_bredrle("Remove Device - Success 2",
 				&remove_device_success_2,
 				setup_add_device, test_command_generic);
-	test_le("Remove Device - Success 3",
+	test_bredrle("Remove Device - Success 3",
 				&remove_device_success_3,
+				setup_add_device, test_command_generic);
+	test_le("Remove Device - Success 4",
+				&remove_device_success_4,
+				setup_add_device, test_command_generic);
+	test_le("Remove Device - Success 5",
+				&remove_device_success_5,
 				setup_add_device, test_command_generic);
 
 	return tester_run();
