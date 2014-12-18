@@ -51,10 +51,12 @@ struct _GAttrib {
 	struct queue *callbacks;
 	uint8_t *buf;
 	int buflen;
+	struct queue *track_ids;
 };
 
 
 struct attrib_callbacks {
+	unsigned int id;
 	GAttribResultFunc result_func;
 	GAttribNotifyFunc notify_func;
 	GDestroyNotify destroy_func;
@@ -62,6 +64,61 @@ struct attrib_callbacks {
 	GAttrib *parent;
 	uint16_t notify_handle;
 };
+
+struct id_pair {
+	unsigned int org_id;
+	unsigned int pend_id;
+};
+
+
+static bool find_with_pend_id(const void *data, const void *user_data)
+{
+	const struct id_pair *p = data;
+	unsigned int pending = PTR_TO_UINT(user_data);
+
+	return (p->pend_id == pending);
+}
+
+static bool find_with_org_id(const void *data, const void *user_data)
+{
+	const struct id_pair *p = data;
+	unsigned int orig_id = PTR_TO_UINT(user_data);
+
+	return (p->org_id == orig_id);
+}
+
+static void remove_stored_ids(GAttrib *attrib, unsigned int pending_id)
+{
+	struct id_pair *p;
+
+	p = queue_remove_if(attrib->track_ids, find_with_pend_id,
+						UINT_TO_PTR(pending_id));
+
+	free(p);
+}
+
+static void store_id(GAttrib *attrib, unsigned int org_id,
+							unsigned int pend_id)
+{
+	struct id_pair *t;
+
+	t = queue_find(attrib->track_ids, find_with_org_id,
+							UINT_TO_PTR(org_id));
+	if (t) {
+		t->pend_id = pend_id;
+		return;
+	}
+
+	t = new0(struct id_pair, 1);
+	if (!t)
+		return;
+
+	t->org_id = org_id;
+	t->pend_id = pend_id;
+
+	if (!queue_push_tail(attrib->track_ids, t))
+		free(t);
+}
 
 GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu)
 {
@@ -93,6 +150,10 @@ GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu)
 
 	attr->callbacks = queue_new();
 	if (!attr->callbacks)
+		goto fail;
+
+	attr->track_ids = queue_new();
+	if (!attr->track_ids)
 		goto fail;
 
 	return g_attrib_ref(attr);
@@ -153,6 +214,7 @@ void g_attrib_unref(GAttrib *attrib)
 	bt_att_unref(attrib->att);
 
 	queue_destroy(attrib->callbacks, attrib_callbacks_destroy);
+	queue_destroy(attrib->track_ids, free);
 
 	free(attrib->buf);
 
@@ -229,6 +291,8 @@ static void attrib_callback_result(uint8_t opcode, const void *pdu,
 	if (cb->result_func)
 		cb->result_func(status, buf, length + 1, cb->user_data);
 
+	remove_stored_ids(cb->parent, cb->id);
+
 	free(buf);
 }
 
@@ -282,24 +346,62 @@ guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
 		queue_push_head(attrib->callbacks, cb);
 		response_cb = attrib_callback_result;
 		destroy_cb = attrib_callbacks_remove;
+
 	}
 
-	return bt_att_send(attrib->att, pdu[0], (void *)pdu + 1, len - 1,
+	cb->id = bt_att_send(attrib->att, pdu[0], (void *) pdu + 1, len - 1,
 						response_cb, cb, destroy_cb);
+
+	if (id == 0)
+		return cb->id;
+
+	/*
+	 * If user what us to use given id, lets keep track on that so we give
+	 * user a possibility to cancel ongoing request.
+	 */
+	store_id(attrib, id, cb->id);
+	return id;
 }
 
 gboolean g_attrib_cancel(GAttrib *attrib, guint id)
 {
+	struct id_pair *p;
+	unsigned int pend_id;
+
 	if (!attrib)
 		return FALSE;
 
-	return bt_att_cancel(attrib->att, id);
+	/*
+	 * Let's try to find actual pending request id on the tracking id queue.
+	 * If there is no such it means it is not tracked id and we can cancel
+	 * it.
+	 *
+	 * FIXME: It can happen that on the queue there is id_pair with
+	 * given id which was provided by the user. In the same time it might
+	 * happen that other attrib user got dynamic allocated req_id with same
+	 * value as the one provided by the other user.
+	 * In such case there are two clients having same request id and in
+	 * this point of time we don't know which one calls cancel. For
+	 * now we cancel request in which id was specified by the user.
+	 */
+	p = queue_remove_if(attrib->track_ids, find_with_org_id,
+							UINT_TO_PTR(id));
+	if (p) {
+		pend_id = p->pend_id;
+		free(p);
+	} else {
+		pend_id = id;
+	}
+
+	return bt_att_cancel(attrib->att, pend_id);
 }
 
 gboolean g_attrib_cancel_all(GAttrib *attrib)
 {
 	if (!attrib)
 		return FALSE;
+
+	queue_remove_all(attrib->track_ids, NULL, NULL, free);
 
 	return bt_att_cancel_all(attrib->att);
 }
