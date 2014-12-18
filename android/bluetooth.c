@@ -1917,6 +1917,7 @@ static bool is_new_device(const struct device *dev, unsigned int flags,
 
 static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, bool confirm,
+					bool connectable,
 					const uint8_t *data, uint8_t data_len)
 {
 	struct eir_data eir;
@@ -1964,7 +1965,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		}
 
 		gatt_device_found_cb(addr, addr_type, rssi, data_len, data,
-								dev->le_bonded);
+						connectable, dev->le_bonded);
 	}
 
 	if (!dev->bredr_paired && !dev->le_paired)
@@ -2000,6 +2001,7 @@ static void mgmt_device_found_event(uint16_t index, uint16_t length,
 	uint16_t eir_len;
 	uint32_t flags;
 	bool confirm_name;
+	bool connectable;
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
@@ -2026,9 +2028,10 @@ static void mgmt_device_found_event(uint16_t index, uint16_t length,
 				index, addr, ev->rssi, flags, eir_len);
 
 	confirm_name = flags & MGMT_DEV_FOUND_CONFIRM_NAME;
+	connectable = !(flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
 
 	update_found_device(&ev->addr.bdaddr, ev->addr.type, ev->rssi,
-						confirm_name, eir, eir_len);
+				confirm_name, connectable, eir, eir_len);
 }
 
 static void mgmt_device_connected_event(uint16_t index, uint16_t length,
@@ -2043,7 +2046,7 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 		return;
 	}
 
-	update_found_device(&ev->addr.bdaddr, ev->addr.type, 0, false,
+	update_found_device(&ev->addr.bdaddr, ev->addr.type, 0, false, false,
 					&ev->eir[0], le16_to_cpu(ev->eir_len));
 
 	hal_ev.status = HAL_STATUS_SUCCESS;

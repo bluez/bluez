@@ -1658,7 +1658,8 @@ static void bt_le_discovery_stop_cb(void)
 
 static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 						int rssi, uint16_t eir_len,
-						const void *eir, bool bonded)
+						const void *eir,
+						bool connectable, bool bonded)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_gatt_client_scan_result *ev = (void *) buf;
@@ -1666,7 +1667,7 @@ static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 	char bda[18];
 
 	if (!scanning)
-		goto connect;
+		goto done;
 
 	ba2str(addr, bda);
 	DBG("LE Device found: %s, rssi: %d, adv_data: %d", bda, rssi, !!eir);
@@ -1681,7 +1682,10 @@ static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
 						HAL_EV_GATT_CLIENT_SCAN_RESULT,
 						sizeof(*ev) + ev->len, ev);
 
-connect:
+done:
+	if (!connectable)
+		return;
+
 	/* We use auto connect feature from kernel if possible */
 	if (bt_kernel_conn_control())
 		return;
