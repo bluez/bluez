@@ -5588,6 +5588,9 @@ static void handle_server_send_response(const void *buf, uint16_t len)
 		 * gatt_db_attribute_write().
 		 */
 		req = queue_peek_head(conn->device->pending_requests);
+		if (!req)
+			goto done;
+
 		/* Cast status to uint8_t, due to (byte) cast in java layer. */
 		req->error = err_to_att((uint8_t) cmd->status);
 		req->state = REQUEST_DONE;
