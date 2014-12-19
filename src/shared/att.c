@@ -692,14 +692,14 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 
 	queue_foreach(att->notify_list, notify_handler, &data);
 
-	bt_att_unref(att);
-
 	/*
 	 * If this was a request and no handler was registered for it, respond
 	 * with "Not Supported"
 	 */
 	if (!data.handler_found && get_op_type(opcode) == ATT_OP_TYPE_REQ)
 		respond_not_supported(att, opcode);
+
+	bt_att_unref(att);
 }
 
 static bool can_read_data(struct io *io, void *user_data)
