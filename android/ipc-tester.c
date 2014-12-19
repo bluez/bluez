@@ -671,8 +671,7 @@ struct bt_set_adapter_prop_data {
 static struct bt_set_adapter_prop_data bt_set_adapter_prop_data_overs = {
 	.hdr.service_id = HAL_SERVICE_ID_BLUETOOTH,
 	.hdr.opcode = HAL_OP_SET_ADAPTER_PROP,
-	.hdr.len = sizeof(struct hal_cmd_set_adapter_prop) +
-						sizeof(set_name),
+	.hdr.len = sizeof(struct hal_cmd_set_adapter_prop) + sizeof(set_name),
 
 	.prop.type = HAL_PROP_ADAPTER_NAME,
 	/* declare wrong descriptor length */
@@ -684,8 +683,7 @@ static struct bt_set_adapter_prop_data bt_set_adapter_prop_data_overs = {
 static struct bt_set_adapter_prop_data bt_set_adapter_prop_data_unders = {
 	.hdr.service_id = HAL_SERVICE_ID_BLUETOOTH,
 	.hdr.opcode = HAL_OP_SET_ADAPTER_PROP,
-	.hdr.len = sizeof(struct hal_cmd_set_adapter_prop) +
-						sizeof(set_name),
+	.hdr.len = sizeof(struct hal_cmd_set_adapter_prop) + sizeof(set_name),
 
 	.prop.type = HAL_PROP_ADAPTER_NAME,
 	/* declare wrong descriptor length */
@@ -707,7 +705,7 @@ static struct bt_set_remote_prop_data bt_set_remote_prop_data_overs = {
 	.hdr.service_id = HAL_SERVICE_ID_BLUETOOTH,
 	.hdr.opcode = HAL_OP_SET_REMOTE_DEVICE_PROP,
 	.hdr.len = sizeof(struct hal_cmd_set_remote_device_prop) +
-						sizeof(set_name),
+							sizeof(set_name),
 
 	.prop.bdaddr = {},
 	.prop.type = HAL_PROP_DEVICE_NAME,
@@ -847,8 +845,7 @@ struct hfp_dial_data {
 static struct hfp_dial_data hfp_dial_overs = {
 	.hdr.service_id = HAL_SERVICE_ID_HANDSFREE_CLIENT,
 	.hdr.opcode = HAL_OP_HF_CLIENT_DIAL,
-	.hdr.len = sizeof(struct hal_cmd_hf_client_dial) +
-							sizeof(hfp_number),
+	.hdr.len = sizeof(struct hal_cmd_hf_client_dial) + sizeof(hfp_number),
 
 	.data.number_len = sizeof(hfp_number) + 1,
 	.buf = hfp_number,
@@ -857,8 +854,7 @@ static struct hfp_dial_data hfp_dial_overs = {
 static struct hfp_dial_data hfp_dial_unders = {
 	.hdr.service_id = HAL_SERVICE_ID_HANDSFREE_CLIENT,
 	.hdr.opcode = HAL_OP_HF_CLIENT_DIAL,
-	.hdr.len = sizeof(struct hal_cmd_hf_client_dial) +
-							sizeof(hfp_number),
+	.hdr.len = sizeof(struct hal_cmd_hf_client_dial) + sizeof(hfp_number),
 
 	.data.number_len = sizeof(hfp_number) - 1,
 	.buf = hfp_number,
