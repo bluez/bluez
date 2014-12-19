@@ -95,6 +95,8 @@ struct bt_hog {
 	uint8_t			flags;
 	unsigned int		getrep_att;
 	uint16_t		getrep_id;
+	unsigned int		setrep_att;
+	uint16_t		setrep_id;
 	struct bt_scpp		*scpp;
 	struct bt_dis		*dis;
 	struct bt_bas		*bas;
@@ -695,6 +697,79 @@ done:
 		error("bt_uhid_send: %s", strerror(-err));
 }
 
+static void set_report_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data)
+{
+	struct bt_hog *hog = user_data;
+	struct uhid_event rsp;
+	int err;
+
+	hog->setrep_att = 0;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.type = UHID_SET_REPORT_REPLY;
+	rsp.u.set_report_reply.id = hog->setrep_id;
+	rsp.u.set_report_reply.err = status;
+
+	if (status != 0)
+		error("Error setting Report value: %s", att_ecode2str(status));
+
+	err = bt_uhid_send(hog->uhid, &rsp);
+	if (err < 0)
+		error("bt_uhid_send: %s", strerror(-err));
+}
+
+static void set_report(struct uhid_event *ev, void *user_data)
+{
+	struct bt_hog *hog = user_data;
+	struct report *report;
+	void *data;
+	int size;
+	int err;
+
+	/* uhid never sends reqs in parallel; if there's a req, it timed out */
+	if (hog->setrep_att) {
+		g_attrib_cancel(hog->attrib, hog->setrep_att);
+		hog->setrep_att = 0;
+	}
+
+	hog->setrep_id = ev->u.set_report.id;
+
+	report = find_report(hog, ev->u.set_report.rtype,
+							ev->u.set_report.rnum);
+	if (!report) {
+		err = ENOTSUP;
+		goto fail;
+	}
+
+	data = ev->u.set_report.data;
+	size = ev->u.set_report.size;
+	if (hog->has_report_id && size > 0) {
+		data++;
+		--size;
+	}
+
+	DBG("Sending report type %d ID %d to handle 0x%X", report->type,
+				report->id, report->decl->value_handle);
+
+	if (hog->attrib == NULL)
+		return;
+
+	hog->setrep_att = gatt_write_char(hog->attrib,
+						report->decl->value_handle,
+						data, size, set_report_cb,
+						hog);
+	if (!hog->setrep_att) {
+		err = ENOMEM;
+		goto fail;
+	}
+
+	return;
+fail:
+	/* cancel the request on failure */
+	set_report_cb(err, NULL, 0, hog);
+}
+
 static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
@@ -920,6 +995,7 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	bt_uhid_register(hog->uhid, UHID_OUTPUT, forward_report, hog);
 	bt_uhid_register(hog->uhid, UHID_FEATURE, get_feature, hog);
 	bt_uhid_register(hog->uhid, UHID_GET_REPORT, get_report, hog);
+	bt_uhid_register(hog->uhid, UHID_SET_REPORT, set_report, hog);
 }
 
 static void info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
