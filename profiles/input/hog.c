@@ -221,7 +221,6 @@ static void discover_descriptor_cb(uint8_t status, GSList *descs,
 		switch (desc->uuid16) {
 		case GATT_CLIENT_CHARAC_CFG_UUID:
 			report = user_data;
-			attrib = report->hogdev->attrib;
 			write_ccc(desc->handle, report);
 			break;
 		case GATT_REPORT_REFERENCE:
