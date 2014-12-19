@@ -457,6 +457,10 @@ static void cmd_read_multiple(struct client *cli, char *cmd_str)
 	}
 
 	value = malloc(sizeof(uint16_t) * argc);
+	if (!value) {
+		printf("Failed to construct value\n");
+		return;
+	}
 
 	for (i = 0; i < argc; i++) {
 		value[i] = strtol(argv[i], &endptr, 0);
