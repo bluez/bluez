@@ -4844,6 +4844,22 @@ GSList *btd_device_get_primaries(struct btd_device *device)
 	return device->primaries;
 }
 
+struct gatt_db *btd_device_get_gatt_db(struct btd_device *device)
+{
+	if (!device)
+		return NULL;
+
+	return device->db;
+}
+
+struct bt_gatt_client *btd_device_get_gatt_client(struct btd_device *device)
+{
+	if (!device)
+		return NULL;
+
+	return device->client;
+}
+
 void btd_device_gatt_set_service_changed(struct btd_device *device,
 						uint16_t start, uint16_t end)
 {
