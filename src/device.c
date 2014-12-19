@@ -59,6 +59,7 @@
 #include "attrib/gattrib.h"
 #include "attio.h"
 #include "device.h"
+#include "gatt-client.h"
 #include "profile.h"
 #include "service.h"
 #include "dbus-common.h"
@@ -222,6 +223,8 @@ struct btd_device {
 	 */
 	struct gatt_db *db;			/* GATT db cache */
 	struct bt_gatt_client *client;		/* GATT client instance */
+
+	struct btd_gatt_client *client_dbus;
 
 	struct bearer_state bredr_state;
 	struct bearer_state le_state;
@@ -573,6 +576,9 @@ static void svc_dev_remove(gpointer user_data)
 static void device_free(gpointer user_data)
 {
 	struct btd_device *device = user_data;
+
+	btd_gatt_client_destroy(device->client_dbus);
+	device->client_dbus = NULL;
 
 	g_slist_free_full(device->uuids, g_free);
 	g_slist_free_full(device->primaries, g_free);
@@ -2695,6 +2701,8 @@ static void gatt_service_added(struct gatt_db_attribute *attr, void *user_data)
 		service_accept(l->data);
 
 	store_services(device);
+
+	btd_gatt_client_service_added(device->client_dbus, attr);
 }
 
 static gint prim_attr_cmp(gconstpointer a, gconstpointer b)
@@ -2765,6 +2773,8 @@ static void gatt_service_removed(struct gatt_db_attribute *attr,
 	g_free(prim);
 
 	store_services(device);
+
+	btd_gatt_client_service_removed(device->client_dbus, attr);
 }
 
 static struct btd_device *device_new(struct btd_adapter *adapter,
@@ -2791,6 +2801,15 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	g_strdelimit(device->path, ":", '_');
 	g_free(address_up);
 
+	str2ba(address, &device->bdaddr);
+
+	device->client_dbus = btd_gatt_client_new(device);
+	if (!device->client_dbus) {
+		error("Failed to create btd_gatt_client");
+		device_free(device);
+		return NULL;
+	}
+
 	DBG("Creating device %s", device->path);
 
 	if (g_dbus_register_interface(dbus_conn,
@@ -2803,7 +2822,6 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 		return NULL;
 	}
 
-	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
 	device->temporary = TRUE;
 
@@ -3841,6 +3859,8 @@ static void att_disconnected_cb(int err, void *user_data)
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
+	btd_gatt_client_disconnected(device->client_dbus);
+
 	if (!device_get_auto_connect(device)) {
 		DBG("Automatic connection disabled");
 		goto done;
@@ -3949,6 +3969,8 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 	device_accept_gatt_profiles(device);
 
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
+
+	btd_gatt_client_ready(device->client_dbus);
 }
 
 static void gatt_client_service_changed(uint16_t start_handle,
