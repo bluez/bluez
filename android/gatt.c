@@ -6156,6 +6156,7 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 	int iterator = 0;
 	uint16_t start, end;
 	uint16_t len, queue_len;
+	uint8_t ret = 0;
 
 	DBG("");
 
@@ -6233,13 +6234,13 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 					ATT_FIND_INFO_RESP_FMT_128BIT, adl, rsp,
 								rsp_size);
 	if (!len)
-		return ATT_ECODE_UNLIKELY;
+		ret = ATT_ECODE_UNLIKELY;
 
 	*length = len;
 	att_data_list_free(adl);
 	queue_destroy(temp, NULL);
 
-	return 0;
+	return ret;
 }
 
 static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
