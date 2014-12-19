@@ -6988,8 +6988,15 @@ static void gatt_srvc_change_write_cb(struct gatt_db_attribute *attrib,
 		return;
 	}
 
+	/* 2 octets are expected as CCC value */
+	if (len != 2) {
+		gatt_db_attribute_write_result(attrib, id,
+						ATT_ECODE_INVAL_ATTR_VALUE_LEN);
+		return;
+	}
+
 	/* Set services changed indication value */
-	bt_store_gatt_ccc(bdaddr, *value);
+	bt_store_gatt_ccc(bdaddr, get_le16(value));
 
 	gatt_db_attribute_write_result(attrib, id, 0);
 }
