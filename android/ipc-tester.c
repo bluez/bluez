@@ -427,6 +427,8 @@ static bool setup_module(int service_id)
 			},
 		.cmd = {
 			.service_id = service_id,
+			.mode = HAL_MODE_DEFAULT,
+			.max_clients = 1,
 			},
 	};
 
