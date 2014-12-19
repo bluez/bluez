@@ -1076,11 +1076,12 @@ static void process_service_changed(struct bt_gatt_client *client,
 		return;
 	}
 
+	discovery_op_free(op);
+
 fail:
 	util_debug(client->debug_callback, client->debug_data,
 					"Failed to initiate service discovery"
 					" after Service Changed");
-	discovery_op_free(op);
 }
 
 static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
