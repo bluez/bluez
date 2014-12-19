@@ -606,6 +606,28 @@ static struct report *find_report(struct bt_hog *hog, uint8_t type, uint8_t id)
 	return l ? l->data : NULL;
 }
 
+static struct report *find_report_by_rtype(struct bt_hog *hog, uint8_t rtype,
+								uint8_t id)
+{
+	uint8_t type;
+
+	switch (rtype) {
+	case UHID_FEATURE_REPORT:
+		type = HOG_REPORT_TYPE_FEATURE;
+		break;
+	case UHID_OUTPUT_REPORT:
+		type = HOG_REPORT_TYPE_OUTPUT;
+		break;
+	case UHID_INPUT_REPORT:
+		type = HOG_REPORT_TYPE_INPUT;
+		break;
+	default:
+		return NULL;
+	}
+
+	return find_report(hog, type, id);
+}
+
 static void output_written_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
@@ -623,25 +645,11 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 {
 	struct bt_hog *hog = user_data;
 	struct report *report;
-	uint8_t type;
 	void *data;
 	int size;
 
-	switch (ev->u.output.rtype) {
-	case UHID_FEATURE_REPORT:
-		type = HOG_REPORT_TYPE_FEATURE;
-		break;
-	case UHID_OUTPUT_REPORT:
-		type = HOG_REPORT_TYPE_OUTPUT;
-		break;
-	case UHID_INPUT_REPORT:
-		type = HOG_REPORT_TYPE_INPUT;
-		break;
-	default:
-		return;
-	}
-
-	report = find_report(hog, type, ev->u.output.data[0]);
+	report = find_report_by_rtype(hog, ev->u.output.rtype,
+							ev->u.output.data[0]);
 	if (!report)
 		return;
 
@@ -677,7 +685,8 @@ static void get_feature(struct uhid_event *ev, void *user_data)
 	rsp.type = UHID_FEATURE_ANSWER;
 	rsp.u.feature_answer.id = ev->u.feature.id;
 
-	report = find_report(hog, ev->u.feature.rtype, ev->u.feature.rnum);
+	report = find_report_by_rtype(hog, ev->u.feature.rtype,
+							ev->u.feature.rnum);
 	if (!report) {
 		rsp.u.feature_answer.err = ENOTSUP;
 		goto done;
@@ -735,7 +744,7 @@ static void set_report(struct uhid_event *ev, void *user_data)
 
 	hog->setrep_id = ev->u.set_report.id;
 
-	report = find_report(hog, ev->u.set_report.rtype,
+	report = find_report_by_rtype(hog, ev->u.set_report.rtype,
 							ev->u.set_report.rnum);
 	if (!report) {
 		err = ENOTSUP;
@@ -831,7 +840,7 @@ static void get_report(struct uhid_event *ev, void *user_data)
 
 	hog->getrep_id = ev->u.get_report.id;
 
-	report = find_report(hog, ev->u.get_report.rtype,
+	report = find_report_by_rtype(hog, ev->u.get_report.rtype,
 							ev->u.get_report.rnum);
 	if (!report) {
 		err = ENOTSUP;
