@@ -72,8 +72,8 @@ builtin_sources += profiles/health/mcap.h profiles/health/mcap.c \
 			profiles/health/hdp_util.h profiles/health/hdp_util.c
 endif
 
-builtin_modules += gatt
-builtin_sources += profiles/gatt/gas.c
+builtin_modules += gap
+builtin_sources += profiles/gap/gas.c
 
 builtin_modules += scanparam
 builtin_sources += profiles/scanparam/scan.c
