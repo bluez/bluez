@@ -3642,9 +3642,6 @@ static void register_gatt_services(struct browse_req *req)
 
 	device_probe_profiles(device, req->profiles_added);
 
-	if (device->attios == NULL && device->attios_offline == NULL)
-		attio_cleanup(device);
-
 	device_svc_resolved(device, device->bdaddr_type, 0);
 
 	store_services(device);
@@ -5068,11 +5065,6 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 	}
 
 	g_free(attio);
-
-	if (device->attios != NULL || device->attios_offline != NULL)
-		return TRUE;
-
-	attio_cleanup(device);
 
 	return TRUE;
 }
