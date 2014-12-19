@@ -276,5 +276,10 @@ bool bt_gap_add_peer_irk(struct bt_gap *gap, uint8_t addr_type,
 	memcpy(irk->addr, addr, 6);
 	memcpy(irk->key, key, 16);
 
+	if (!queue_push_tail(gap->irk_list, irk)) {
+		free(irk);
+		return false;
+	}
+
 	return true;
 }
