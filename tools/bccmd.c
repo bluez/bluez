@@ -279,7 +279,6 @@ static int cmd_keylen(int transport, int argc, char *argv[])
 	if (err < 0)
 		return -1;
 
-	handle = array[0] | (array[1] << 8);
 	keylen = array[2] | (array[3] << 8);
 
 	printf("Crypt key length: %d bit\n", keylen * 8);
