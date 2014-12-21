@@ -55,11 +55,14 @@ static void test_multi(void)
 	uint8_t shared1[32], shared2[32];
 	int i;
 
-	printf("Testing %u random private key pairs\n", PAIR_COUNT);
+	if (g_test_verbose())
+		g_print("Testing %u random private key pairs", PAIR_COUNT);
 
 	for (i = 0; i < PAIR_COUNT; i++) {
-		printf(".");
-		fflush(stdout);
+		if (g_test_verbose()) {
+			printf(".");
+			fflush(stdout);
+		}
 
 		ecc_make_key(public1, private1);
 		ecc_make_key(public2, private2);
@@ -85,7 +88,8 @@ static void test_multi(void)
 		}
 	}
 
-	printf("\n");
+	if (g_test_verbose())
+		printf("\n");
 }
 
 static void print_buf(const char *label, uint8_t *buf, size_t len)
@@ -110,24 +114,28 @@ static int test_sample(uint8_t priv_a[32], uint8_t priv_b[32],
 	ecdh_shared_secret(pub_b, priv_a, dhkey_a);
 	ecdh_shared_secret(pub_a, priv_b, dhkey_b);
 
-	printf("\n");
-
-	print_buf("DHKey  ", dhkey, 32);
-	print_buf("DHKey A", dhkey_a, 32);
-	print_buf("DHKey B", dhkey_b, 32);
+	if (g_test_verbose()) {
+		print_buf("DHKey  ", dhkey, 32);
+		print_buf("DHKey A", dhkey_a, 32);
+		print_buf("DHKey B", dhkey_b, 32);
+	}
 
 	if (memcmp(dhkey_a, dhkey, 32)) {
-		printf("DHKey A doesn't match!\n");
+		if (g_test_verbose())
+			printf("DHKey A doesn't match!\n");
 		fails++;
 	} else {
-		printf("DHKey A matches :)\n");
+		if (g_test_verbose())
+			printf("DHKey A matches :)\n");
 	}
 
 	if (memcmp(dhkey_b, dhkey, 32)) {
-		printf("DHKey B doesn't match!\n");
+		if (g_test_verbose())
+			printf("DHKey B doesn't match!\n");
 		fails++;
 	} else {
-		printf("DHKey B matches :)\n");
+		if (g_test_verbose())
+			printf("DHKey B matches :)\n");
 	}
 
 	return fails;
