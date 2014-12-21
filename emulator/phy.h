@@ -57,3 +57,14 @@ struct bt_phy_pkt_adv {
 	uint8_t  adv_data_len;
 	uint8_t  scan_rsp_len;
 } __attribute__ ((packed));
+
+#define BT_PHY_PKT_CONN		0x0002
+struct bt_phy_pkt_conn {
+	uint8_t  link_type;
+	uint8_t  tx_addr_type;
+	uint8_t  tx_addr[6];
+	uint8_t  rx_addr_type;
+	uint8_t  rx_addr[6];
+	uint8_t  features[8];
+	uint8_t  id;
+} __attribute__ ((packed));
