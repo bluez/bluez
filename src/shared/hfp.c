@@ -1192,10 +1192,6 @@ static void hf_process_input(struct hfp_hf *hfp)
 	if (len == ringbuf_len(hfp->read_buf))
 		goto done;
 
-	/* If we are here second time for some reason, that is wrong */
-	if (free_tmp)
-		goto done;
-
 	str2 = ringbuf_peek(hfp->read_buf, len, &len2);
 	if (!str2)
 		goto done;
