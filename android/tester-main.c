@@ -507,14 +507,14 @@ static bool match_mas_inst(btmce_mas_instance_t *exp_inst,
 		return 0;
 	}
 
-	if (exp_inst->scn && (exp_inst->scn != exp_inst->scn)) {
+	if (exp_inst->scn && (exp_inst->scn != rec_inst->scn)) {
 		tester_debug("MAS inst. [%d] scn missmatch %d vs %d", inst_num,
 						rec_inst->scn, exp_inst->scn);
 		return 0;
 	}
 
 	if (exp_inst->msg_types &&
-			(exp_inst->msg_types != exp_inst->msg_types)) {
+			(exp_inst->msg_types != rec_inst->msg_types)) {
 		tester_debug("Mas inst. [%d] mesg type missmatch %d vs %d",
 					inst_num, rec_inst->scn, exp_inst->scn);
 		return 0;
