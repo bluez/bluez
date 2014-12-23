@@ -658,10 +658,10 @@ Add UUID Command
 				SVC_Hint (1 Octet)
 	Return Parameters:	Class_Of_Device (3 Octets)
 
-	This command is used to add a UUID to be published in EIR
-	and/or AD data. The accompanied SVC_Hint parameter is used to
-	tell the kernel whether the service class bits of the Class of
-	Device value need modifying due to this UUID.
+	This command is used to add a UUID to be published in EIR data.
+	The accompanied SVC_Hint parameter is used to tell the kernel
+	whether the service class bits of the Class of Device value need
+	modifying due to this UUID.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
