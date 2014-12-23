@@ -67,10 +67,13 @@ static void cleanup_p(int argc, const char **argv)
 }
 
 /* send_pass_through_cmd */
-
 static void send_pass_through_cmd_c(int argc, const char **argv,
 					enum_func *enum_func, void **user)
 {
+	if (argc == 3) {
+		*user = NULL;
+		*enum_func = enum_devices;
+	}
 }
 
 static void send_pass_through_cmd_p(int argc, const char **argv)
@@ -81,15 +84,15 @@ static void send_pass_through_cmd_p(int argc, const char **argv)
 	RETURN_IF_NULL(if_rc);
 	VERIFY_ADDR_ARG(2, &addr);
 
-	if (argc <= 4) {
-		haltest_error("No key code specified");
+	if (argc < 4) {
+		haltest_error("No key code specified\n");
 		return;
 	}
 
 	key_code = (uint8_t) atoi(argv[3]);
 
-	if (argc <= 5) {
-		haltest_error("No key state specified");
+	if (argc < 5) {
+		haltest_error("No key state specified\n");
 		return;
 	}
 
@@ -100,8 +103,7 @@ static void send_pass_through_cmd_p(int argc, const char **argv)
 
 static struct method methods[] = {
 	STD_METHOD(init),
-	STD_METHODCH(send_pass_through_cmd,
-					"<bd_addr> <key_code> <key_state>"),
+	STD_METHODCH(send_pass_through_cmd, "<bd_addr> <key_code> <key_state>"),
 	STD_METHOD(cleanup),
 	END_METHOD
 };
