@@ -54,6 +54,27 @@ struct rsp_read_version {
 	uint8_t  fw_patch;
 } __attribute__ ((packed));
 
+#define CMD_READ_BOOT_PARAMS	0xfc0d
+struct rsp_read_boot_params {
+	uint8_t  status;
+	uint8_t  otp_format;
+	uint8_t  otp_content;
+	uint8_t  otp_patch;
+	uint16_t dev_revid;
+	uint8_t  secure_boot;
+	uint8_t  key_from_hdr;
+	uint8_t  key_type;
+	uint8_t  otp_lock;
+	uint8_t  api_lock;
+	uint8_t  debug_lock;
+	uint8_t  otp_bdaddr[6];
+	uint8_t  min_fw_build_nn;
+	uint8_t  min_fw_build_cw;
+	uint8_t  min_fw_build_yy;
+	uint8_t  limited_cce;
+	uint8_t  unlocked_state;
+} __attribute__ ((packed));
+
 #define CMD_MANUFACTURER_MODE	0xfc11
 struct cmd_manufacturer_mode {
 	uint8_t  mode_switch;
@@ -488,6 +509,43 @@ static void request_firmware(const char *path)
 		firmware_offset = 1;
 }
 
+static void read_boot_params_complete(const void *data, uint8_t size,
+							void *user_data)
+{
+	const struct rsp_read_boot_params *rsp = data;
+
+	if (rsp->status) {
+		fprintf(stderr, "Failed to read boot params (0x%02x)\n",
+							rsp->status);
+		mainloop_quit();
+		return;
+	}
+
+	if (size != sizeof(*rsp)) {
+		fprintf(stderr, "Size mismatch for read boot params\n");
+		mainloop_quit();
+		return;
+	}
+
+	printf("Secure Boot Parameters\n");
+	printf("\tOTP Format Version:\t%u\n", rsp->otp_format);
+	printf("\tOTP Content Version:\t%u\n", rsp->otp_content);
+	printf("\tOTP ROM Patch Version:\t%u\n", rsp->otp_patch);
+	printf("\tDevice Revision ID:\t%u\n", le16_to_cpu(rsp->dev_revid));
+	printf("\tSecure Boot Enable:\t%u\n", rsp->secure_boot);
+	printf("\tTake Key From Header:\t%u\n", rsp->key_from_hdr);
+	printf("\tRSA Key Type:\t\t%u\n", rsp->key_type);
+	printf("\tOTP Lock:\t\t%u\n", rsp->otp_lock);
+	printf("\tAPI Lock:\t\t%u\n", rsp->api_lock);
+	printf("\tDebug Lock:\t\t%u\n", rsp->debug_lock);
+	printf("\tMin FW Build Number:\t%u-%u.%u\n", rsp->min_fw_build_nn,
+			rsp->min_fw_build_cw, 2000 + rsp->min_fw_build_yy);
+	printf("\tLimited CCE to ISSC:\t%u\n", rsp->limited_cce);
+	printf("\tUnlocked State:\t\t%u\n", rsp->unlocked_state);
+
+	mainloop_quit();
+}
+
 static const struct {
 	uint8_t val;
 	const char *str;
@@ -497,6 +555,7 @@ static const struct {
 	{ 0x08, "iBT 2.5 (StP)"		},
 	{ 0x09, "iBT 1.5 (AG610)"	},
 	{ 0x0a, "iBT 2.1 (AG620)"	},
+	{ 0x0b, "iBT 3.0 (LnP)"		},
 	{ }
 };
 
@@ -506,6 +565,7 @@ static const struct {
 } fw_variant_table[] = {
 	{ 0x01, "iBT 1.0 - iBT 2.5"	},
 	{ 0x06, "iBT Bootloader"	},
+	{ 0x23, "iBT 3.x Bluetooth FW"	},
 	{ }
 };
 
@@ -519,6 +579,12 @@ static void read_version_complete(const void *data, uint8_t size,
 	if (rsp->status) {
 		fprintf(stderr, "Failed to read version (0x%02x)\n",
 							rsp->status);
+		mainloop_quit();
+		return;
+	}
+
+	if (size != sizeof(*rsp)) {
+		fprintf(stderr, "Size mismatch for read version response\n");
 		mainloop_quit();
 		return;
 	}
@@ -592,6 +658,12 @@ static void read_version_complete(const void *data, uint8_t size,
 	printf("\tFirmware Build Number:\t%u-%u.%u\n", rsp->fw_build_nn,
 				rsp->fw_build_cw, 2000 + rsp->fw_build_yy);
 	printf("\tFirmware Patch Number:\t%u\n", rsp->fw_patch);
+
+	if (rsp->hw_variant == 0x0b && rsp->fw_variant == 0x06) {
+		bt_hci_send(hci_dev, CMD_READ_BOOT_PARAMS, NULL, 0,
+					read_boot_params_complete, NULL, NULL);
+		return;
+	}
 
 	mainloop_quit();
 }
