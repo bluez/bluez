@@ -68,6 +68,7 @@ struct service {
 
 struct characteristic {
 	struct service *service;
+	struct gatt_db_attribute *attr;
 	uint16_t handle;
 	uint16_t value_handle;
 	uint8_t props;
@@ -75,23 +76,18 @@ struct characteristic {
 	char *path;
 
 	bool in_read;
-	bool value_known;
-	uint8_t *value;
-	size_t value_len;
 
 	struct queue *descs;
 };
 
 struct descriptor {
 	struct characteristic *chrc;
+	struct gatt_db_attribute *attr;
 	uint16_t handle;
 	bt_uuid_t uuid;
 	char *path;
 
 	bool in_read;
-	bool value_known;
-	uint8_t *value;
-	size_t value_len;
 };
 
 static gboolean descriptor_get_uuid(const GDBusPropertyTable *property,
@@ -119,89 +115,57 @@ static gboolean descriptor_get_characteristic(
 	return TRUE;
 }
 
+static void read_cb(struct gatt_db_attribute *attrib, int err,
+				const uint8_t *value, size_t length,
+				void *user_data)
+{
+	DBusMessageIter *array = user_data;
+
+	if (err)
+		return;
+
+	dbus_message_iter_append_fixed_array(array, DBUS_TYPE_BYTE, &value,
+								length);
+}
+
 static gboolean descriptor_get_value(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct descriptor *desc = data;
 	DBusMessageIter array;
-	size_t i;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
 
-	if (desc->value_known) {
-		for (i = 0; i < desc->value_len; i++)
-			dbus_message_iter_append_basic(&array, DBUS_TYPE_BYTE,
-							desc->value + i);
-	}
+	gatt_db_attribute_read(desc->attr, 0, 0, NULL, read_cb, &array);
 
 	dbus_message_iter_close_container(iter, &array);
 
 	return TRUE;
 }
 
+static void read_check_cb(struct gatt_db_attribute *attrib, int err,
+				const uint8_t *value, size_t length,
+				void *user_data)
+{
+	gboolean *ret = user_data;
+
+	if (err || length == 0) {
+		*ret = FALSE;
+		return;
+	}
+
+	*ret = TRUE;
+}
+
 static gboolean descriptor_value_exists(const GDBusPropertyTable *property,
 								void *data)
 {
 	struct descriptor *desc = data;
+	gboolean ret;
 
-	return desc->value_known ? TRUE : FALSE;
-}
+	gatt_db_attribute_read(desc->attr, 0, 0, NULL, read_check_cb, &ret);
 
-static bool resize_value_buffer(size_t new_len, uint8_t **value, size_t *len)
-{
-	uint8_t *ptr;
-
-	if (*len == new_len)
-		return true;
-
-	if (!new_len) {
-		free(*value);
-		*value = NULL;
-		*len = 0;
-
-		return true;
-	}
-
-	ptr = realloc(*value, sizeof(uint8_t) * new_len);
-	if (!ptr)
-		return false;
-
-	*value = ptr;
-	*len = new_len;
-
-	return true;
-}
-
-static void update_value_property(const uint8_t *value, size_t len,
-					uint8_t **cur_value, size_t *cur_len,
-					bool *value_known,
-					const char *path, const char *iface)
-{
-	/*
-	 * If the value is the same, then only updated it if wasn't previously
-	 * known.
-	 */
-	if (*value_known && *cur_len == len &&
-			!memcmp(*cur_value, value, sizeof(uint8_t) * len))
-		return;
-
-	if (resize_value_buffer(len, cur_value, cur_len)) {
-		*value_known = true;
-		memcpy(*cur_value, value, sizeof(uint8_t) * len);
-	} else {
-		/*
-		 * Failed to resize the buffer. Since we don't want to show a
-		 * stale value, if the value was previously known then free and
-		 * hide it.
-		 */
-		free(*cur_value);
-		*cur_value = NULL;
-		*cur_len = 0;
-		*value_known = false;
-	}
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), path, iface,
-								"Value");
+	return ret;
 }
 
 struct async_dbus_op {
@@ -259,6 +223,18 @@ static DBusMessage *create_gatt_dbus_error(DBusMessage *msg, uint8_t att_ecode)
 	return NULL;
 }
 
+static void write_descriptor_cb(struct gatt_db_attribute *attr, int err,
+								void *user_data)
+{
+	struct descriptor *desc = user_data;
+
+	if (err)
+		return;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), desc->path,
+					GATT_DESCRIPTOR_IFACE, "Value");
+}
+
 static void desc_read_long_cb(bool success, uint8_t att_ecode,
 					const uint8_t *value, uint16_t length,
 					void *user_data)
@@ -274,9 +250,8 @@ static void desc_read_long_cb(bool success, uint8_t att_ecode,
 		goto done;
 	}
 
-	update_value_property(value, length, &desc->value, &desc->value_len,
-						&desc->value_known, desc->path,
-						GATT_DESCRIPTOR_IFACE);
+	gatt_db_attribute_write(desc->attr, 0, value, length, 0, NULL,
+						write_descriptor_cb, desc);
 
 	reply = g_dbus_create_reply(op->msg, DBUS_TYPE_INVALID);
 	if (!reply) {
@@ -351,7 +326,6 @@ static void descriptor_free(void *data)
 {
 	struct descriptor *desc = data;
 
-	free(desc->value);
 	g_free(desc->path);
 	free(desc);
 }
@@ -366,6 +340,7 @@ static struct descriptor *descriptor_create(struct gatt_db_attribute *attr,
 		return NULL;
 
 	desc->chrc = chrc;
+	desc->attr = attr;
 	desc->handle = gatt_db_attribute_get_handle(attr);
 
 	bt_uuid_to_uuid128(gatt_db_attribute_get_type(attr), &desc->uuid);
@@ -428,15 +403,10 @@ static gboolean characteristic_get_value(const GDBusPropertyTable *property,
 {
 	struct characteristic *chrc = data;
 	DBusMessageIter array;
-	size_t i;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
 
-	if (chrc->value_known) {
-		for (i = 0; i < chrc->value_len; i++)
-			dbus_message_iter_append_basic(&array, DBUS_TYPE_BYTE,
-							chrc->value + i);
-	}
+	gatt_db_attribute_read(chrc->attr, 0, 0, NULL, read_cb, &array);
 
 	dbus_message_iter_close_container(iter, &array);
 
@@ -447,8 +417,11 @@ static gboolean characteristic_value_exists(const GDBusPropertyTable *property,
 								void *data)
 {
 	struct characteristic *chrc = data;
+	gboolean ret;
 
-	return chrc->value_known ? TRUE : FALSE;
+	gatt_db_attribute_read(chrc->attr, 0, 0, NULL, read_check_cb, &ret);
+
+	return TRUE;
 }
 
 static gboolean characteristic_get_notifying(const GDBusPropertyTable *property,
@@ -506,6 +479,18 @@ static gboolean characteristic_get_flags(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static void write_characteristic_cb(struct gatt_db_attribute *attr, int err,
+								void *user_data)
+{
+	struct characteristic *chrc = user_data;
+
+	if (err)
+		return;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), chrc->path,
+					GATT_CHARACTERISTIC_IFACE, "Value");
+}
+
 static void chrc_read_long_cb(bool success, uint8_t att_ecode,
 					const uint8_t *value, uint16_t length,
 					void *user_data)
@@ -521,9 +506,8 @@ static void chrc_read_long_cb(bool success, uint8_t att_ecode,
 		goto done;
 	}
 
-	update_value_property(value, length, &chrc->value, &chrc->value_len,
-						&chrc->value_known, chrc->path,
-						GATT_CHARACTERISTIC_IFACE);
+	gatt_db_attribute_write(chrc->attr, 0, value, length, 0, NULL,
+						write_characteristic_cb, chrc);
 
 	reply = g_dbus_create_reply(op->msg, DBUS_TYPE_INVALID);
 	if (!reply) {
@@ -649,7 +633,6 @@ static void characteristic_free(void *data)
 	struct characteristic *chrc = data;
 
 	queue_destroy(chrc->descs, NULL);  /* List should be empty here */
-	free(chrc->value);
 	g_free(chrc->path);
 	free(chrc);
 }
@@ -676,6 +659,8 @@ static struct characteristic *characteristic_create(
 	gatt_db_attribute_get_char_data(attr, &chrc->handle,
 							&chrc->value_handle,
 							&chrc->props, &uuid);
+	chrc->attr = gatt_db_get_attribute(service->client->db,
+							chrc->value_handle);
 	bt_uuid_to_uuid128(&uuid, &chrc->uuid);
 
 	chrc->path = g_strdup_printf("%s/char%04x", service->path,
