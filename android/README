@@ -57,7 +57,9 @@ Since 5.0 release Android moved to full enforcement of SELinux. This requires
 proper policy to be provided for all BlueZ for Android services (and services
 interacting with BlueZ). Policies should be placed in external/selinux/ path.
 
-Required policy files are provided at <TBD>.
+Required policy files are provided at:
+bluetoothd.te
+bluetoothd_snoop.te
 
 For convenience sepolicy.git with all required policies is available at:
 https://code.google.com/p/aosp-bluez.external-sepolicy/
@@ -175,6 +177,9 @@ complete backtraces in Valgrind output. Otherwise, in many cases backtrace
 will break at e.g. g_free() function without prior callers. It's possible to
 have proper library installed automatically by appropriate entry in Android.mk,
 see https://code.google.com/p/aosp-bluez.glib/ for an example.
+
+When running with valgrind SElinux needs to be set into permissive mode. This
+can be done by executing 'setenforce 0' from root shell.
 
 
 Enabling BlueZ debugs

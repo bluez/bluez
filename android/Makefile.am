@@ -219,6 +219,8 @@ endif
 
 EXTRA_DIST += android/Android.mk android/README \
 				android/bluetoothd-wrapper.c \
+				android/bluetoothd.te \
+				android/bluetoothd_snoop.te \
 				android/init.bluetooth.rc \
 				android/hal-ipc-api.txt \
 				android/audio-ipc-api.txt \
