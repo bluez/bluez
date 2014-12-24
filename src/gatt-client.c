@@ -202,8 +202,10 @@ static bool parse_value_arg(DBusMessage *msg, uint8_t **value,
 typedef bool (*async_dbus_op_complete_t)(void *data);
 
 struct async_dbus_op {
+	int ref_count;
 	DBusMessage *msg;
 	void *data;
+	uint16_t offset;
 	async_dbus_op_complete_t complete;
 };
 
@@ -213,6 +215,23 @@ static void async_dbus_op_free(void *data)
 
 	dbus_message_unref(op->msg);
 	free(op);
+}
+
+static struct async_dbus_op *async_dbus_op_ref(struct async_dbus_op *op)
+{
+	__sync_fetch_and_add(&op->ref_count, 1);
+
+	return op;
+}
+
+static void async_dbus_op_unref(void *data)
+{
+	struct async_dbus_op *op = data;
+
+	if (__sync_sub_and_fetch(&op->ref_count, 1))
+		return;
+
+	async_dbus_op_free(op);
 }
 
 static void message_append_byte_array(DBusMessage *msg, const uint8_t *bytes,
@@ -269,23 +288,17 @@ static void write_descriptor_cb(struct gatt_db_attribute *attr, int err,
 					GATT_DESCRIPTOR_IFACE, "Value");
 }
 
-static void desc_read_long_cb(bool success, uint8_t att_ecode,
-					const uint8_t *value, uint16_t length,
-					void *user_data)
+static void read_op_cb(struct gatt_db_attribute *attrib, int err,
+				const uint8_t *value, size_t length,
+				void *user_data)
 {
 	struct async_dbus_op *op = user_data;
-	struct descriptor *desc = op->data;
 	DBusMessage *reply;
 
-	desc->in_read = false;
-
-	if (!success) {
-		reply = create_gatt_dbus_error(op->msg, att_ecode);
-		goto done;
+	if (err) {
+		error("Failed to read attribute");
+		return;
 	}
-
-	gatt_db_attribute_write(desc->attr, 0, value, length, 0, NULL,
-						write_descriptor_cb, desc);
 
 	reply = g_dbus_create_reply(op->msg, DBUS_TYPE_INVALID);
 	if (!reply) {
@@ -295,8 +308,48 @@ static void desc_read_long_cb(bool success, uint8_t att_ecode,
 
 	message_append_byte_array(reply, value, length);
 
-done:
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
+}
+
+static void desc_read_cb(bool success, uint8_t att_ecode,
+					const uint8_t *value, uint16_t length,
+					void *user_data)
+{
+	struct async_dbus_op *op = user_data;
+	struct descriptor *desc = op->data;
+	struct service *service = desc->chrc->service;
+
+	if (!success) {
+		DBusMessage *reply = create_gatt_dbus_error(op->msg, att_ecode);
+
+		desc->in_read = false;
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		return;
+	}
+
+	gatt_db_attribute_write(desc->attr, 0, value, length, 0, NULL,
+						write_descriptor_cb, desc);
+
+	/*
+	 * If the value length is exactly MTU-1, then we may not have read the
+	 * entire value. Perform a long read to obtain the rest, otherwise,
+	 * we're done.
+	 */
+	if (length == bt_gatt_client_get_mtu(service->client->gatt) - 1) {
+		op->offset += length;
+		if (bt_gatt_client_read_long_value(service->client->gatt,
+							desc->handle,
+							op->offset,
+							desc_read_cb,
+							async_dbus_op_ref(op),
+							async_dbus_op_unref))
+			return;
+	}
+
+	desc->in_read = false;
+
+	/* Read the stored data from db */
+	gatt_db_attribute_read(desc->attr, 0, 0, NULL, read_op_cb, op);
 }
 
 static DBusMessage *descriptor_read_value(DBusConnection *conn,
@@ -316,9 +369,9 @@ static DBusMessage *descriptor_read_value(DBusConnection *conn,
 	op->msg = dbus_message_ref(msg);
 	op->data = desc;
 
-	if (bt_gatt_client_read_long_value(gatt, desc->handle, 0,
-							desc_read_long_cb, op,
-							async_dbus_op_free)) {
+	if (bt_gatt_client_read_value(gatt, desc->handle, desc_read_cb,
+							async_dbus_op_ref(op),
+							async_dbus_op_unref)) {
 		desc->in_read = true;
 		return NULL;
 	}
@@ -667,34 +720,44 @@ static void write_characteristic_cb(struct gatt_db_attribute *attr, int err,
 					GATT_CHARACTERISTIC_IFACE, "Value");
 }
 
-static void chrc_read_long_cb(bool success, uint8_t att_ecode,
-					const uint8_t *value, uint16_t length,
-					void *user_data)
+static void chrc_read_cb(bool success, uint8_t att_ecode, const uint8_t *value,
+					uint16_t length, void *user_data)
 {
 	struct async_dbus_op *op = user_data;
 	struct characteristic *chrc = op->data;
-	DBusMessage *reply;
+	struct service *service = chrc->service;
+
+	if (!success) {
+		DBusMessage *reply = create_gatt_dbus_error(op->msg, att_ecode);
+
+		chrc->in_read = false;
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		return ;
+	}
+
+	gatt_db_attribute_write(chrc->attr, 0, value, length, op->offset, NULL,
+						write_characteristic_cb, chrc);
+
+	/*
+	 * If the value length is exactly MTU-1, then we may not have read the
+	 * entire value. Perform a long read to obtain the rest, otherwise,
+	 * we're done.
+	 */
+	if (length == bt_gatt_client_get_mtu(service->client->gatt) - 1) {
+		op->offset += length;
+		if (bt_gatt_client_read_long_value(service->client->gatt,
+							chrc->value_handle,
+							op->offset,
+							chrc_read_cb,
+							async_dbus_op_ref(op),
+							async_dbus_op_unref))
+			return;
+	}
 
 	chrc->in_read = false;
 
-	if (!success) {
-		reply = create_gatt_dbus_error(op->msg, att_ecode);
-		goto done;
-	}
-
-	gatt_db_attribute_write(chrc->attr, 0, value, length, 0, NULL,
-						write_characteristic_cb, chrc);
-
-	reply = g_dbus_create_reply(op->msg, DBUS_TYPE_INVALID);
-	if (!reply) {
-		error("Failed to allocate D-Bus message reply");
-		return;
-	}
-
-	message_append_byte_array(reply, value, length);
-
-done:
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	/* Read the stored data from db */
+	gatt_db_attribute_read(chrc->attr, 0, 0, NULL, read_op_cb, op);
 }
 
 static DBusMessage *characteristic_read_value(DBusConnection *conn,
@@ -714,9 +777,9 @@ static DBusMessage *characteristic_read_value(DBusConnection *conn,
 	op->msg = dbus_message_ref(msg);
 	op->data = chrc;
 
-	if (bt_gatt_client_read_long_value(gatt, chrc->value_handle, 0,
-							chrc_read_long_cb, op,
-							async_dbus_op_free)) {
+	if (bt_gatt_client_read_value(gatt, chrc->value_handle, chrc_read_cb,
+						async_dbus_op_ref(op),
+						async_dbus_op_unref)) {
 		chrc->in_read = true;
 		return NULL;
 	}
