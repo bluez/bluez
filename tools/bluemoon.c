@@ -685,21 +685,21 @@ static void usage(void)
 	printf("\tbluemoon [options]\n");
 	printf("Options:\n"
 		"\t-A, --bdaddr [addr]    Set Bluetooth address\n"
-		"\t-F, --firwmare [file]  Load firmware\n"
+		"\t-F, --firmware [file]  Load firmware\n"
 		"\t-R, --reset            Reset controller\n"
 		"\t-i, --index <num>      Use specified controller\n"
 		"\t-h, --help             Show help options\n");
 }
 
 static const struct option main_options[] = {
-	{ "bdaddr",  optional_argument, NULL, 'A' },
-	{ "bddata",  no_argument,       NULL, 'D' },
-	{ "firmware",optional_argument, NULL, 'F' },
-	{ "traces",  no_argument,       NULL, 'T' },
-	{ "reset",   no_argument,       NULL, 'R' },
-	{ "index",   required_argument, NULL, 'i' },
-	{ "version", no_argument,       NULL, 'v' },
-	{ "help",    no_argument,       NULL, 'h' },
+	{ "bdaddr",   optional_argument, NULL, 'A' },
+	{ "bddata",   no_argument,       NULL, 'D' },
+	{ "firmware", optional_argument, NULL, 'F' },
+	{ "traces",   no_argument,       NULL, 'T' },
+	{ "reset",    no_argument,       NULL, 'R' },
+	{ "index",    required_argument, NULL, 'i' },
+	{ "version",  no_argument,       NULL, 'v' },
+	{ "help",     no_argument,       NULL, 'h' },
 	{ }
 };
 
