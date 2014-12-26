@@ -40,6 +40,8 @@
 #include "src/shared/util.h"
 #include "src/shared/hci.h"
 
+#define CMD_NO_OPERATION	0xfc02
+
 #define CMD_READ_VERSION	0xfc05
 struct rsp_read_version {
 	uint8_t  status;
@@ -73,6 +75,14 @@ struct rsp_read_boot_params {
 	uint8_t  min_fw_build_yy;
 	uint8_t  limited_cce;
 	uint8_t  unlocked_state;
+} __attribute__ ((packed));
+
+#define CMD_WRITE_BOOT_PARAMS	0xfc0e
+struct cmd_write_boot_params {
+	uint32_t boot_addr;
+	uint8_t  fw_build_nn;
+	uint8_t  fw_build_cw;
+	uint8_t  fw_build_yy;
 } __attribute__ ((packed));
 
 #define CMD_MANUFACTURER_MODE	0xfc11
@@ -131,6 +141,8 @@ static const char *load_firmware_value = NULL;
 static uint8_t *firmware_data = NULL;
 static size_t firmware_size = 0;
 static size_t firmware_offset = 0;
+static bool check_firmware = false;
+static const char *check_firmware_value = NULL;
 uint8_t manufacturer_mode_reset = 0x00;
 static bool use_manufacturer_mode = false;
 static bool set_traces = false;
@@ -668,6 +680,136 @@ static void read_version_complete(const void *data, uint8_t size,
 	mainloop_quit();
 }
 
+struct css_hdr {
+	uint32_t module_type;
+	uint32_t header_len;
+	uint32_t header_version;
+	uint32_t module_id;
+	uint32_t module_vendor;
+	uint32_t date;
+	uint32_t size;
+	uint32_t key_size;
+	uint32_t modulus_size;
+	uint32_t exponent_size;
+	uint8_t  reserved[88];
+} __attribute__ ((packed));
+
+static void analyze_firmware(const char *path)
+{
+	unsigned int cmd_num = 0;
+	struct css_hdr *css;
+	struct stat st;
+	ssize_t len;
+	int fd;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open firmware %s\n", path);
+		return;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		fprintf(stderr, "Failed to get firmware size\n");
+		close(fd);
+		return;
+	}
+
+	firmware_data = malloc(st.st_size);
+	if (!firmware_data) {
+		fprintf(stderr, "Failed to allocate firmware buffer\n");
+		close(fd);
+		return;
+	}
+
+	len = read(fd, firmware_data, st.st_size);
+	if (len < 0) {
+		fprintf(stderr, "Failed to read firmware file\n");
+		close(fd);
+		goto done;
+	}
+
+	close(fd);
+
+	if (len != st.st_size) {
+		fprintf(stderr, "Failed to read complete firmware file\n");
+		goto done;
+		return;
+	}
+
+	if ((size_t) len < sizeof(*css)) {
+		fprintf(stderr, "Firmware file is too short\n");
+		goto done;
+	}
+
+	css = (void *) firmware_data;
+
+	printf("Module type:\t%u\n", le32_to_cpu(css->module_type));
+	printf("Header len:\t%u DWORDs / %u bytes\n",
+				le32_to_cpu(css->header_len),
+				le32_to_cpu(css->header_len) * 4);
+	printf("Header version:\t%u.%u\n",
+				le32_to_cpu(css->header_version) >> 16,
+				le32_to_cpu(css->header_version) & 0xffff);
+	printf("Module ID:\t%u\n", le32_to_cpu(css->module_id));
+	printf("Module vendor:\t%u\n", le32_to_cpu(css->module_vendor));
+	printf("Date:\t\t%u\n", le32_to_cpu(css->date));
+	printf("Size:\t\t%u DWORDs / %u bytes\n", le32_to_cpu(css->size),
+						le32_to_cpu(css->size) * 4);
+	printf("Key size:\t%u DWORDs / %u bytes\n",
+					le32_to_cpu(css->key_size),
+					le32_to_cpu(css->key_size) * 4);
+	printf("Modulus size:\t%u DWORDs / %u bytes\n",
+					le32_to_cpu(css->modulus_size),
+					le32_to_cpu(css->modulus_size) * 4);
+	printf("Exponent size:\t%u DWORDs / %u bytes\n",
+					le32_to_cpu(css->exponent_size),
+					le32_to_cpu(css->exponent_size) * 4);
+	printf("\n");
+
+
+	if (len != le32_to_cpu(css->size) * 4) {
+		fprintf(stderr, "CSS.size does not match file length\n");
+		goto done;
+	}
+
+	if (le32_to_cpu(css->header_len) != (sizeof(*css) / 4) +
+					le32_to_cpu(css->key_size) +
+					le32_to_cpu(css->modulus_size) +
+					le32_to_cpu(css->exponent_size)) {
+		fprintf(stderr, "CSS.headerLen does not match data sizes\n");
+		goto done;
+	}
+
+	firmware_size = le32_to_cpu(css->size) * 4;
+	firmware_offset = le32_to_cpu(css->header_len) * 4;
+
+	while (firmware_offset < firmware_size) {
+		uint16_t opcode;
+		uint8_t dlen;
+
+		opcode = get_le16(firmware_data + firmware_offset);
+		dlen = firmware_data[firmware_offset + 2];
+
+		switch (opcode) {
+		case CMD_NO_OPERATION:
+		case CMD_WRITE_BOOT_PARAMS:
+		case CMD_MEMORY_WRITE:
+			break;
+		default:
+			printf("Unexpected opcode 0x%02x\n", opcode);
+			break;
+		}
+
+		firmware_offset += dlen + 3;
+		cmd_num++;
+	}
+
+	printf("Firmware with %u commands\n", cmd_num);
+
+done:
+	free(firmware_data);
+}
+
 static void signal_callback(int signum, void *user_data)
 {
 	switch (signum) {
@@ -686,6 +828,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t-A, --bdaddr [addr]    Set Bluetooth address\n"
 		"\t-F, --firmware [file]  Load firmware\n"
+		"\t-C, --check <file>     Check firmware image\n"
 		"\t-R, --reset            Reset controller\n"
 		"\t-i, --index <num>      Use specified controller\n"
 		"\t-h, --help             Show help options\n");
@@ -695,6 +838,7 @@ static const struct option main_options[] = {
 	{ "bdaddr",   optional_argument, NULL, 'A' },
 	{ "bddata",   no_argument,       NULL, 'D' },
 	{ "firmware", optional_argument, NULL, 'F' },
+	{ "check",    required_argument, NULL, 'C' },
 	{ "traces",   no_argument,       NULL, 'T' },
 	{ "reset",    no_argument,       NULL, 'R' },
 	{ "index",    required_argument, NULL, 'i' },
@@ -712,7 +856,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "A::DF::TRi:vh",
+		opt = getopt_long(argc, argv, "A::DF::C:TRi:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -732,6 +876,10 @@ int main(int argc, char *argv[])
 			if (optarg)
 				load_firmware_value = optarg;
 			load_firmware = true;
+			break;
+		case 'C':
+			check_firmware_value = optarg;
+			check_firmware = true;
 			break;
 		case 'T':
 			use_manufacturer_mode = true;
@@ -776,6 +924,11 @@ int main(int argc, char *argv[])
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	printf("Bluemoon configuration utility ver %s\n", VERSION);
+
+	if (check_firmware) {
+		analyze_firmware(check_firmware_value);
+		return EXIT_SUCCESS;
+	}
 
 	hci_dev = bt_hci_new_user_channel(hci_index);
 	if (!hci_dev) {
