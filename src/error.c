@@ -40,7 +40,7 @@ DBusMessage *btd_error_invalid_args(DBusMessage *msg)
 DBusMessage *btd_error_invalid_args_str(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-									str);
+					"%s", str);
 }
 
 DBusMessage *btd_error_busy(DBusMessage *msg)
@@ -99,7 +99,8 @@ DBusMessage *btd_error_not_authorized(DBusMessage *msg)
 
 DBusMessage *btd_error_not_permitted(DBusMessage *msg, const char *str)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotPermitted", str);
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotPermitted",
+					"%s", str);
 }
 
 DBusMessage *btd_error_no_such_adapter(DBusMessage *msg)
