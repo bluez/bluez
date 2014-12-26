@@ -1905,9 +1905,9 @@ static gboolean list_attributes_rsp(struct avctp *conn,
 		goto done;
 	}
 
-	number = pdu->params[0];
+	number = rsp->number;
 	if (number > 0)
-		attrs = &pdu->params[1];
+		attrs = rsp->params;
 
 	err = 0;
 
