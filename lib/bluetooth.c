@@ -370,7 +370,7 @@ const char *bt_compidtostr(int compid)
 	case 53:
 		return "Eclipse (HQ Espana) S.L.";
 	case 54:
-		return "Renesas Technology Corp.";
+		return "Renesas Electronics Corporation";
 	case 55:
 		return "Mobilian Corporation";
 	case 56:
@@ -1125,6 +1125,22 @@ const char *bt_compidtostr(int compid)
 		return "Earlens Corporation";
 	case 431:
 		return "Sunrise Micro Devices, Inc.";
+	case 432:
+		return "Star Micronics Co., Ltd.";
+	case 433:
+		return "Netizens Sp. z o.o.";
+	case 434:
+		return "Nymi Inc.";
+	case 435:
+		return "Nytec, Inc.";
+	case 436:
+		return "Trineo Sp. z o.o.";
+	case 437:
+		return "Nest Labs Inc.";
+	case 438:
+		return "LM Technologies Ltd";
+	case 439:
+		return "General Electric Company";
 	case 65535:
 		return "internal use";
 	default:
