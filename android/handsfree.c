@@ -2532,7 +2532,7 @@ static void handle_configure_wbs(const void *buf, uint16_t len)
 		/* TODO */
 	default:
 		status = HAL_STATUS_FAILED;
-		break;
+		goto done;
 	}
 
 	/*
