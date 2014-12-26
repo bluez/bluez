@@ -1,3 +1,9 @@
+ver 5.27:
+	Fix issue with endian handling and management interface.
+	Fix issue with pending GATT operations when disconnecting.
+	Fix issue with 128-bit UUID conversions for HID over GATT.
+	Add support for Android 5.0 SELinux policies.
+
 ver 5.26:
 	Fix issue with handling A2DP XCASE connection state.
 	Fix issue with crash and A2DP configuration failures.
