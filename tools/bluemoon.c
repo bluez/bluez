@@ -40,6 +40,15 @@
 #include "src/shared/util.h"
 #include "src/shared/hci.h"
 
+#define CMD_RESET		0xfc01
+struct cmd_reset {
+	uint8_t  reset_type;
+	uint8_t  patch_enable;
+	uint8_t  otp_ddc_reload;
+	uint8_t  boot_option;
+	uint32_t boot_addr;
+} __attribute__ ((packed));
+
 #define CMD_NO_OPERATION	0xfc02
 
 #define CMD_READ_VERSION	0xfc05
@@ -147,6 +156,7 @@ uint8_t manufacturer_mode_reset = 0x00;
 static bool use_manufacturer_mode = false;
 static bool set_traces = false;
 static bool reset_on_exit = false;
+static bool cold_boot = false;
 
 static void reset_complete(const void *data, uint8_t size, void *user_data)
 {
@@ -155,6 +165,25 @@ static void reset_complete(const void *data, uint8_t size, void *user_data)
 	if (status) {
 		fprintf(stderr, "Failed to reset (0x%02x)\n", status);
 		mainloop_quit();
+		return;
+	}
+
+	mainloop_quit();
+}
+
+static void cold_boot_complete(const void *data, uint8_t size, void *user_data)
+{
+	uint8_t status = *((uint8_t *) data);
+
+	if (status) {
+		fprintf(stderr, "Failed to cold boot (0x%02x)\n", status);
+		mainloop_quit();
+		return;
+	}
+
+	if (reset_on_exit) {
+		bt_hci_send(hci_dev, BT_HCI_CMD_RESET, NULL, 0,
+						reset_complete, NULL, NULL);
 		return;
 	}
 
@@ -601,6 +630,20 @@ static void read_version_complete(const void *data, uint8_t size,
 		return;
 	}
 
+	if (cold_boot) {
+		struct cmd_reset cmd;
+
+		cmd.reset_type = 0x01;
+		cmd.patch_enable = 0x00;
+		cmd.otp_ddc_reload = 0x01;
+		cmd.boot_option = 0x00;
+		cmd.boot_addr = cpu_to_le32(0x00000000);
+
+		bt_hci_send(hci_dev, CMD_RESET, &cmd, sizeof(cmd),
+					cold_boot_complete, NULL, NULL);
+		return;
+	}
+
 	if (load_firmware) {
 		if (load_firmware_value) {
 			printf("Firmware: %s\n", load_firmware_value);
@@ -830,6 +873,7 @@ static void usage(void)
 		"\t-F, --firmware [file]  Load firmware\n"
 		"\t-C, --check <file>     Check firmware image\n"
 		"\t-R, --reset            Reset controller\n"
+		"\t-B, --coldboot         Cold boot controller\n"
 		"\t-i, --index <num>      Use specified controller\n"
 		"\t-h, --help             Show help options\n");
 }
@@ -841,6 +885,7 @@ static const struct option main_options[] = {
 	{ "check",    required_argument, NULL, 'C' },
 	{ "traces",   no_argument,       NULL, 'T' },
 	{ "reset",    no_argument,       NULL, 'R' },
+	{ "coldboot", no_argument,       NULL, 'B' },
 	{ "index",    required_argument, NULL, 'i' },
 	{ "version",  no_argument,       NULL, 'v' },
 	{ "help",     no_argument,       NULL, 'h' },
@@ -856,7 +901,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "A::DF::C:TRi:vh",
+		opt = getopt_long(argc, argv, "A::DF::C:TRBi:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -887,6 +932,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'R':
 			reset_on_exit = true;
+			break;
+		case 'B':
+			cold_boot = true;
 			break;
 		case 'i':
 			if (strlen(optarg) > 3 && !strncmp(optarg, "hci", 3))
