@@ -810,7 +810,7 @@ static void analyze_firmware(const char *path)
 	printf("\n");
 
 
-	if (len != le32_to_cpu(css->size) * 4) {
+	if ((size_t) len != le32_to_cpu(css->size) * 4) {
 		fprintf(stderr, "CSS.size does not match file length\n");
 		goto done;
 	}
