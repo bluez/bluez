@@ -1678,9 +1678,9 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 		index = 0;
 
 	type = 0;
-	hci_set_bit(BDADDR_BREDR, &type);
-	hci_set_bit(BDADDR_LE_PUBLIC, &type);
-	hci_set_bit(BDADDR_LE_RANDOM, &type);
+	type |= (1 << BDADDR_BREDR);
+	type |= (1 << BDADDR_LE_PUBLIC);
+	type |= (1 << BDADDR_LE_RANDOM);
 	rssi = 127;
 	count = 0;
 
@@ -1693,14 +1693,14 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 					find_service_options, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
-			hci_clear_bit(BDADDR_BREDR, &type);
-			hci_set_bit(BDADDR_LE_PUBLIC, &type);
-			hci_set_bit(BDADDR_LE_RANDOM, &type);
+			type &= ~(1 << BDADDR_BREDR);
+			type |= (1 << BDADDR_LE_PUBLIC);
+			type |= (1 << BDADDR_LE_RANDOM);
 			break;
 		case 'b':
-			hci_set_bit(BDADDR_BREDR, &type);
-			hci_clear_bit(BDADDR_LE_PUBLIC, &type);
-			hci_clear_bit(BDADDR_LE_RANDOM, &type);
+			type |= (1 << BDADDR_BREDR);
+			type &= ~(1 << BDADDR_LE_PUBLIC);
+			type &= ~(1 << BDADDR_LE_RANDOM);
 			break;
 		case 'u':
 			if (count == MAX_UUIDS) {
@@ -1789,22 +1789,22 @@ static void cmd_find(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		index = 0;
 
 	type = 0;
-	hci_set_bit(BDADDR_BREDR, &type);
-	hci_set_bit(BDADDR_LE_PUBLIC, &type);
-	hci_set_bit(BDADDR_LE_RANDOM, &type);
+	type |= (1 << BDADDR_BREDR);
+	type |= (1 << BDADDR_LE_PUBLIC);
+	type |= (1 << BDADDR_LE_RANDOM);
 
 	while ((opt = getopt_long(argc, argv, "+lbh", find_options,
 								NULL)) != -1) {
 		switch (opt) {
 		case 'l':
-			hci_clear_bit(BDADDR_BREDR, &type);
-			hci_set_bit(BDADDR_LE_PUBLIC, &type);
-			hci_set_bit(BDADDR_LE_RANDOM, &type);
+			type &= ~(1 << BDADDR_BREDR);
+			type |= (1 << BDADDR_LE_PUBLIC);
+			type |= (1 << BDADDR_LE_RANDOM);
 			break;
 		case 'b':
-			hci_set_bit(BDADDR_BREDR, &type);
-			hci_clear_bit(BDADDR_LE_PUBLIC, &type);
-			hci_clear_bit(BDADDR_LE_RANDOM, &type);
+			type |= (1 << BDADDR_BREDR);
+			type &= ~(1 << BDADDR_LE_PUBLIC);
+			type &= ~(1 << BDADDR_LE_RANDOM);
 			break;
 		case 'h':
 		default:
