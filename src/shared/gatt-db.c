@@ -774,6 +774,14 @@ bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active)
 	return true;
 }
 
+bool gatt_db_service_get_active(struct gatt_db_attribute *attrib)
+{
+	if (!attrib)
+		return false;
+
+	return attrib->service->active;
+}
+
 void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,

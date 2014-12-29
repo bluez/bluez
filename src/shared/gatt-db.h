@@ -81,6 +81,7 @@ gatt_db_service_add_included(struct gatt_db_attribute *attrib,
 					struct gatt_db_attribute *include);
 
 bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active);
+bool gatt_db_service_get_active(struct gatt_db_attribute *attrib);
 
 void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
