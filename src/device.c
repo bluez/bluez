@@ -2483,6 +2483,9 @@ static void dev_probe_gatt(struct btd_profile *p, void *user_data)
 		return;
 	}
 
+	/* Mark service as claimed */
+	gatt_db_service_set_active(data->cur_attr, false);
+
 	data->dev->services = g_slist_append(data->dev->services, service);
 
 	if (data->all_services)
