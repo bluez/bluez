@@ -108,6 +108,7 @@ GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu)
 	if (!attr)
 		return NULL;
 
+	g_io_channel_set_close_on_unref(io, FALSE);
 	g_io_channel_ref(io);
 	attr->io = io;
 
