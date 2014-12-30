@@ -776,7 +776,6 @@ static void analyze_firmware(const char *path)
 	if (len != st.st_size) {
 		fprintf(stderr, "Failed to read complete firmware file\n");
 		goto done;
-		return;
 	}
 
 	if ((size_t) len < sizeof(*css)) {
