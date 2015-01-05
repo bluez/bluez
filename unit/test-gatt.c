@@ -1749,6 +1749,18 @@ int main(int argc, char *argv[])
 				'4', '4', '5', '5', '5', '5', '5', '6', '6',
 				'6', '6', '6', '7', '7'));
 
+	define_test_server("/TP/GAR/SR/BI-02-C/small", test_server,
+			ts_small_db, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x0a, 0x00, 0x00),
+			raw_pdu(0x01, 0x0a, 0x00, 0x00, 0x01));
+
+	define_test_server("/TP/GAR/SR/BI-02-C/large", test_server,
+			ts_large_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x0a, 0x0f, 0xf0),
+			raw_pdu(0x01, 0x0a, 0x0f, 0xf0, 0x01));
+
 	define_test_att("/TP/GAR/CL/BV-03-C-1", test_read_by_type,
 			&uuid_char_16, &test_read_by_type_1,
 			raw_pdu(0x02, 0x00, 0x02),
