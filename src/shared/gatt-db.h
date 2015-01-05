@@ -97,6 +97,14 @@ void gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 						gatt_db_attribute_cb_t func,
 						void *user_data);
 
+void gatt_db_find_by_type_value(struct gatt_db *db, uint16_t start_handle,
+						uint16_t end_handle,
+						const bt_uuid_t *type,
+						const void *value,
+						size_t value_len,
+						gatt_db_attribute_cb_t func,
+						void *user_data);
+
 void gatt_db_read_by_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,
