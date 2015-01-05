@@ -26,3 +26,6 @@ void gatt_remove_service(GDBusProxy *proxy);
 
 void gatt_add_characteristic(GDBusProxy *proxy);
 void gatt_remove_characteristic(GDBusProxy *proxy);
+
+void gatt_add_descriptor(GDBusProxy *proxy);
+void gatt_remove_descriptor(GDBusProxy *proxy);

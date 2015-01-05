@@ -47,6 +47,7 @@
 
 static GList *services;
 static GList *characteristics;
+static GList *descriptors;
 
 static void print_service(GDBusProxy *proxy, const char *description)
 {
@@ -153,4 +154,69 @@ void gatt_remove_characteristic(GDBusProxy *proxy)
 	characteristics = g_list_remove(characteristics, proxy);
 
 	print_characteristic(proxy, COLORED_DEL);
+}
+
+static void print_descriptor(GDBusProxy *proxy, const char *description)
+{
+	DBusMessageIter iter;
+	const char *uuid, *text;
+
+	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &uuid);
+
+	text = uuidstr_to_str(uuid);
+	if (!text)
+		text = uuid;
+
+	rl_printf("%s%s%sDescriptor %s %s\n",
+				description ? "[" : "",
+				description ? : "",
+				description ? "] " : "",
+				g_dbus_proxy_get_path(proxy),
+				text);
+}
+
+static gboolean descriptor_is_child(GDBusProxy *characteristic)
+{
+	GList *l;
+	DBusMessageIter iter;
+	const char *service, *path;
+
+	if (!g_dbus_proxy_get_property(characteristic, "Characteristic", &iter))
+		return FALSE;
+
+	dbus_message_iter_get_basic(&iter, &service);
+
+	for (l = characteristics; l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		path = g_dbus_proxy_get_path(proxy);
+
+		if (!strcmp(path, service))
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+void gatt_add_descriptor(GDBusProxy *proxy)
+{
+	if (!descriptor_is_child(proxy))
+		return;
+
+	descriptors = g_list_append(descriptors, proxy);
+
+	print_descriptor(proxy, COLORED_NEW);
+}
+
+void gatt_remove_descriptor(GDBusProxy *proxy)
+{
+	if (!descriptor_is_child(proxy))
+		return;
+
+	descriptors = g_list_remove(descriptors, proxy);
+
+	print_descriptor(proxy, COLORED_DEL);
 }

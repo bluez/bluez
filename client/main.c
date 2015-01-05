@@ -340,6 +340,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 			gatt_add_service(proxy);
 	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
 		gatt_add_characteristic(proxy);
+	} else if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
+		gatt_add_descriptor(proxy);
 	}
 }
 
@@ -377,6 +379,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 			gatt_remove_service(proxy);
 	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
 		gatt_remove_characteristic(proxy);
+	} else if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
+		gatt_remove_descriptor(proxy);
 	}
 }
 
