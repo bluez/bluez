@@ -41,6 +41,7 @@
 #include "monitor/uuid.h"
 #include "agent.h"
 #include "display.h"
+#include "gatt.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -284,6 +285,29 @@ static gboolean device_is_child(GDBusProxy *device, GDBusProxy *master)
 	return FALSE;
 }
 
+static gboolean service_is_child(GDBusProxy *service)
+{
+	GList *l;
+	DBusMessageIter iter;
+	const char *device, *path;
+
+	if (g_dbus_proxy_get_property(service, "Device", &iter) == FALSE)
+		return FALSE;
+
+	dbus_message_iter_get_basic(&iter, &device);
+
+	for (l = dev_list; l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		path = g_dbus_proxy_get_path(proxy);
+
+		if (!strcmp(path, device))
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -311,6 +335,9 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 				agent_register(dbus_conn, agent_manager,
 							auto_register_agent);
 		}
+	} else if (!strcmp(interface, "org.bluez.GattService1")) {
+		if (service_is_child(proxy))
+			gatt_add_service(proxy);
 	}
 }
 
@@ -343,6 +370,9 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 			if (auto_register_agent)
 				agent_unregister(dbus_conn, NULL);
 		}
+	} else if (!strcmp(interface, "org.bluez.GattService1")) {
+		if (service_is_child(proxy))
+			gatt_remove_service(proxy);
 	}
 }
 
