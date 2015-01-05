@@ -83,15 +83,19 @@ gatt_db_service_add_included(struct gatt_db_attribute *attrib,
 bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active);
 bool gatt_db_service_get_active(struct gatt_db_attribute *attrib);
 
+typedef void (*gatt_db_attribute_cb_t)(struct gatt_db_attribute *attrib,
+							void *user_data);
+
 void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,
 							struct queue *queue);
 
 void gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
-							uint16_t end_handle,
-							const bt_uuid_t *type,
-							struct queue *queue);
+						uint16_t end_handle,
+						const bt_uuid_t *type,
+						gatt_db_attribute_cb_t func,
+						void *user_data);
 
 void gatt_db_read_by_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
@@ -102,9 +106,6 @@ void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							struct queue *queue);
 
-
-typedef void (*gatt_db_attribute_cb_t)(struct gatt_db_attribute *attrib,
-							void *user_data);
 
 void gatt_db_foreach_service(struct gatt_db *db, const bt_uuid_t *uuid,
 						gatt_db_attribute_cb_t func,

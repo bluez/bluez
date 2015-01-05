@@ -973,6 +973,17 @@ static void process_service_changed(struct bt_gatt_client *client,
 static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
 					uint16_t length, void *user_data);
 
+static void get_first_attribute(struct gatt_db_attribute *attrib,
+								void *user_data)
+{
+	struct gatt_db_attribute **stored = user_data;
+
+	if (*stored)
+		return;
+
+	*stored = attrib;
+}
+
 static void service_changed_complete(struct discovery_op *op, bool success,
 							uint8_t att_ecode)
 {
@@ -980,9 +991,8 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 	struct service_changed_op *next_sc_op;
 	uint16_t start_handle = op->start;
 	uint16_t end_handle = op->end;
-	struct gatt_db_attribute *attr;
+	struct gatt_db_attribute *attr = NULL;
 	bt_uuid_t uuid;
-	struct queue *q;
 
 	client->in_svc_chngd = false;
 
@@ -1008,21 +1018,12 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 		return;
 	}
 
-	/* Check if the GATT service was among the changed services */
-	q = queue_new();
-	if (!q)
-		return;
-
 	bt_uuid16_create(&uuid, SVC_CHNGD_UUID);
 
-	gatt_db_find_by_type(client->db, start_handle, end_handle, &uuid, q);
-	if (queue_isempty(q)) {
-		queue_destroy(q, NULL);
+	gatt_db_find_by_type(client->db, start_handle, end_handle, &uuid,
+						get_first_attribute, &attr);
+	if (!attr)
 		return;
-	}
-
-	attr = queue_pop_head(q);
-	queue_destroy(q, NULL);
 
 	/* The GATT service was modified. Re-register the handler for
 	 * indications from the "Service Changed" characteristic.
@@ -1148,30 +1149,22 @@ static void init_complete(struct discovery_op *op, bool success,
 {
 	struct bt_gatt_client *client = op->client;
 	bool registered;
-	struct gatt_db_attribute *attr;
+	struct gatt_db_attribute *attr = NULL;
 	bt_uuid_t uuid;
-	struct queue *q;
 
 	client->in_init = false;
 
 	if (!success)
 		goto fail;
 
-	q = queue_new();
-	if (!q)
-		goto fail;
-
 	bt_uuid16_create(&uuid, SVC_CHNGD_UUID);
 
-	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid, q);
-	if (queue_isempty(q)) {
-		queue_destroy(q, NULL);
+	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid,
+						get_first_attribute, &attr);
+	if (!attr) {
 		client->ready = true;
 		goto done;
 	}
-
-	attr = queue_pop_head(q);
-	queue_destroy(q, NULL);
 
 	/* Register an indication handler for the "Service Changed"
 	 * characteristic and report ready only if the handler is registered

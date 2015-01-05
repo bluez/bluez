@@ -6243,15 +6243,53 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 	return ret;
 }
 
+struct find_by_type_request_data {
+	struct gatt_device *device;
+	uint8_t *search_value;
+	size_t search_vlen;
+	uint8_t error;
+};
+
+static void find_by_type_request_cb(struct gatt_db_attribute *attrib,
+								void *user_data)
+{
+	struct find_by_type_request_data *find_data = user_data;
+	struct pending_request *request_data;
+
+	if (find_data->error)
+		return;
+
+	request_data = new0(struct pending_request, 1);
+	if (!request_data) {
+		find_data->error = ATT_ECODE_INSUFF_RESOURCES;
+		return;
+	}
+
+	request_data->filter_value = malloc0(find_data->search_vlen);
+	if (!request_data->filter_value) {
+		destroy_pending_request(request_data);
+		find_data->error = ATT_ECODE_INSUFF_RESOURCES;
+		return;
+	}
+
+	request_data->state = REQUEST_INIT;
+	request_data->attrib = attrib;
+	request_data->filter_vlen = find_data->search_vlen;
+	memcpy(request_data->filter_value, find_data->search_value,
+							find_data->search_vlen);
+
+	queue_push_tail(find_data->device->pending_requests, request_data);
+}
+
 static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 						struct gatt_device *device)
 {
 	uint8_t search_value[cmd_len];
 	size_t search_vlen;
 	uint16_t start, end;
-	struct queue *q;
 	bt_uuid_t uuid;
 	uint16_t len;
+	struct find_by_type_request_data data;
 
 	DBG("");
 
@@ -6263,53 +6301,28 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (start > end || start == 0)
 		return ATT_ECODE_INVALID_HANDLE;
 
-	q = queue_new();
-	if (!q)
-		return ATT_ECODE_UNLIKELY;
+	data.error = 0;
+	data.search_vlen = search_vlen;
+	data.search_value = search_value;
+	data.device = device;
 
-	gatt_db_find_by_type(gatt_db, start, end, &uuid, q);
+	gatt_db_find_by_type(gatt_db, start, end, &uuid,
+						find_by_type_request_cb, &data);
 
-	if (queue_isempty(q)) {
+	if (data.error == ATT_ECODE_ATTR_NOT_FOUND) {
 		size_t mtu;
 		uint8_t *rsp = g_attrib_get_buffer(device->attrib, &mtu);
 
 		len = enc_error_resp(ATT_OP_FIND_BY_TYPE_REQ, start,
 					ATT_ECODE_ATTR_NOT_FOUND, rsp, mtu);
 		g_attrib_send(device->attrib, 0, rsp, len, NULL, NULL, NULL);
-		queue_destroy(q, NULL);
 		return 0;
 	}
 
-	while (queue_peek_head(q)) {
-		struct gatt_db_attribute *attrib = queue_pop_head(q);
-		struct pending_request *data;
+	if (!data.error)
+		process_dev_pending_requests(device, ATT_OP_FIND_BY_TYPE_REQ);
 
-		data = new0(struct pending_request, 1);
-		if (!data) {
-			queue_destroy(q, NULL);
-			return ATT_ECODE_INSUFF_RESOURCES;
-		}
-
-		data->filter_value = malloc0(search_vlen);
-		if (!data->filter_value) {
-			destroy_pending_request(data);
-			queue_destroy(q, NULL);
-			return ATT_ECODE_INSUFF_RESOURCES;
-		}
-
-		data->state = REQUEST_INIT;
-		data->attrib = attrib;
-		data->filter_vlen = search_vlen;
-		memcpy(data->filter_value, search_value, search_vlen);
-
-		queue_push_tail(device->pending_requests, data);
-	}
-
-	queue_destroy(q, NULL);
-
-	process_dev_pending_requests(device, ATT_OP_FIND_BY_TYPE_REQ);
-
-	return 0;
+	return data.error;
 }
 
 static void write_confirm(struct gatt_db_attribute *attrib,
