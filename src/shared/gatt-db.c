@@ -767,6 +767,10 @@ bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active)
 		return false;
 
 	service = attrib->service;
+
+	if (service->active == active)
+		return true;
+
 	service->active = active;
 
 	notify_service_changed(service->db, service, active);
