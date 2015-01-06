@@ -2768,6 +2768,7 @@ static void gatt_service_removed(struct gatt_db_attribute *attr,
 
 	if (!g_slist_find_custom(device->primaries, prim->uuid,
 							prim_uuid_cmp)) {
+		g_free(l->data);
 		device->uuids = g_slist_delete_link(device->uuids, l);
 		g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "UUIDs");
