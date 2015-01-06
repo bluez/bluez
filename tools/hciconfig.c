@@ -624,6 +624,9 @@ static void cmd_features(int ctl, int hdev, char *opt)
 		exit(1);
 	}
 
+	if (max_page < 1 && (features[6] & LMP_SIMPLE_PAIR))
+		max_page = 1;
+
 	print_dev_hdr(&di);
 	printf("\tFeatures%s: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
 				"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",

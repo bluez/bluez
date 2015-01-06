@@ -967,6 +967,9 @@ static void cmd_info(int dev_id, int argc, char **argv)
 		hci_read_remote_ext_features(dd, handle, 0, &max_page,
 							features, 20000);
 
+	if (max_page < 1 && (features[6] & LMP_SIMPLE_PAIR))
+		max_page = 1;
+
 	printf("\tFeatures%s: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
 				"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
 		(max_page > 0) ? " page 0" : "",
