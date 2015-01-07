@@ -222,6 +222,11 @@ static bool match_int(const void *a, const void *b)
 	return i == j;
 }
 
+static bool match_ptr(const void *a, const void *b)
+{
+	return a == b;
+}
+
 static void test_remove_all(void)
 {
 	struct queue *queue;
@@ -232,6 +237,14 @@ static void test_remove_all(void)
 	g_assert(queue_push_tail(queue, INT_TO_PTR(10)));
 
 	g_assert(queue_remove_all(queue, match_int, INT_TO_PTR(10), NULL) == 1);
+	g_assert(queue_isempty(queue));
+
+	g_assert(queue_push_tail(queue, NULL));
+	g_assert(queue_remove_all(queue, match_ptr, NULL, NULL) == 1);
+	g_assert(queue_isempty(queue));
+
+	g_assert(queue_push_tail(queue, UINT_TO_PTR(0)));
+	g_assert(queue_remove_all(queue, match_int, UINT_TO_PTR(0), NULL) == 1);
 	g_assert(queue_isempty(queue));
 
 	queue_destroy(queue, NULL);
