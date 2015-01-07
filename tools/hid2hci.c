@@ -59,7 +59,7 @@ struct usbfs_ctrltransfer {
 	uint16_t wIndex;
 	uint16_t wLength;
 	uint32_t timeout;	/* in milliseconds */
-	void *data;		/* pointer to data */
+	const void *data;	/* pointer to data */
 };
 
 
@@ -77,7 +77,7 @@ struct usbfs_disconnect{
 
 static int control_message(int fd, int requesttype, int request,
 					int value, int index,
-					char *bytes, int size, int timeout)
+					const uint8_t *bytes, int size, int timeout)
 {
 	struct usbfs_ctrltransfer transfer;
 
@@ -123,7 +123,7 @@ static int usb_switch_csr2(int fd, enum mode mode)
 {
 	int err = 0;
 	struct usbfs_disconnect disconnect;
-	char report[] = {
+	const uint8_t report[] = {
 		0x01, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
 
@@ -226,7 +226,7 @@ out:
 
 static int usb_switch_dell(int fd, enum mode mode)
 {
-	char report[] = { 0x7f, 0x00, 0x00, 0x00 };
+	uint8_t report[] = { 0x7f, 0x00, 0x00, 0x00 };
 	struct usbfs_disconnect disconnect;
 	int err;
 
