@@ -372,8 +372,6 @@ unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 
 			count++;
 		}
-
-		queue->entries -= count;
 	} else {
 		queue->head = NULL;
 		queue->tail = NULL;
