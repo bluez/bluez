@@ -2833,6 +2833,25 @@ static const struct generic_data pair_device_smp_bredr_test_1 = {
 	.client_io_cap = 0x03, /* NoInputNoOutput */
 };
 
+static const struct generic_data pair_device_smp_bredr_test_2 = {
+	.setup_settings = settings_powered_sc_bondable_le_ssp,
+	.client_enable_ssp = true,
+	.client_enable_le = true,
+	.client_enable_sc = true,
+	.expect_sc_key = true,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev =  MGMT_EV_NEW_LONG_TERM_KEY,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_new_long_term_key),
+	.verify_alt_ev_func = verify_ltk,
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x01, /* DisplayYesNo */
+	.client_io_cap = 0x01, /* DisplayYesNo */
+};
+
 static const struct generic_data pair_device_le_reject_test_1 = {
 	.setup_settings = settings_powered_bondable,
 	.io_cap = 0x02, /* KeyboardOnly */
@@ -5060,8 +5079,11 @@ int main(int argc, char *argv[])
 	test_bredrle("Pair Device - SSP Non-bondable 1",
 				&pair_device_ssp_nonbondable_1,
 				NULL, test_command_generic);
-	test_bredrle("Pair Device - SMP over BR/EDR Just-Works Success 1",
+	test_bredrle("Pair Device - SMP over BR/EDR Success 1",
 				&pair_device_smp_bredr_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - SMP over BR/EDR Success 2",
+				&pair_device_smp_bredr_test_2,
 				NULL, test_command_generic);
 	test_le("Pair Device - LE Success 1",
 				&pair_device_le_success_test_1,
