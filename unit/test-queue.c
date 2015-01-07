@@ -214,6 +214,29 @@ static void test_push_after(void)
 	queue_destroy(queue, NULL);
 }
 
+static bool match_int(const void *a, const void *b)
+{
+	int i = PTR_TO_INT(a);
+	int j = PTR_TO_INT(b);
+
+	return i == j;
+}
+
+static void test_remove_all(void)
+{
+	struct queue *queue;
+
+	queue = queue_new();
+	g_assert(queue != NULL);
+
+	g_assert(queue_push_tail(queue, INT_TO_PTR(10)));
+
+	g_assert(queue_remove_all(queue, match_int, INT_TO_PTR(10), NULL) == 1);
+	g_assert(queue_isempty(queue));
+
+	queue_destroy(queue, NULL);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -226,6 +249,7 @@ int main(int argc, char *argv[])
 						test_foreach_remove_backward);
 	g_test_add_func("/queue/destroy_remove", test_destroy_remove);
 	g_test_add_func("/queue/push_after", test_push_after);
+	g_test_add_func("/queue/remove_all", test_remove_all);
 
 	return g_test_run();
 }
