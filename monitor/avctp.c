@@ -1637,11 +1637,95 @@ static bool avrcp_control_packet(struct avctp_frame *avctp_frame)
 	}
 }
 
+static bool avrcp_set_browsed_player(struct avctp_frame *avctp_frame)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint32_t items;
+	uint16_t id, uids, charset;
+	uint8_t status, folders, indent = 2;
+
+	if (avctp_frame->hdr & 0x02)
+		goto response;
+
+	if (!l2cap_frame_get_be16(frame, &id))
+		return false;
+
+	print_field("%*cPlayerID: 0x%04x (%u)", indent, ' ', id, id);
+	return true;
+
+response:
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cStatus: 0x%02x (%s)", indent, ' ', status,
+							error2str(status));
+
+	if (!l2cap_frame_get_be16(frame, &uids))
+		return false;
+
+	print_field("%*cUIDCounter: 0x%04x (%u)", indent, ' ', uids, uids);
+
+	if (!l2cap_frame_get_be32(frame, &items))
+		return false;
+
+	print_field("%*cNumber of Items: 0x%08x (%u)", indent, ' ',
+								items, items);
+
+	if (!l2cap_frame_get_be16(frame, &charset))
+		return false;
+
+	print_field("%*cCharsetID: 0x%04x (%s)", indent, ' ', charset,
+							charset2str(charset));
+
+	if (!l2cap_frame_get_u8(frame, &folders))
+		return false;
+
+	print_field("%*cFolder Depth: 0x%02x (%u)", indent, ' ', folders,
+								folders);
+
+	for (; folders > 0; folders--) {
+		uint8_t len;
+
+		if (!l2cap_frame_get_u8(frame, &len))
+			return false;
+
+		printf("Folder: ");
+		for (; len > 0; len--) {
+			uint8_t c;
+
+			if (!l2cap_frame_get_u8(frame, &c))
+				return false;
+
+			printf("%1c", isprint(c) ? c : '.');
+		}
+		printf("\n");
+	}
+
+	return true;
+}
+
 static bool avrcp_browsing_packet(struct avctp_frame *avctp_frame)
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint16_t len;
+	uint8_t pduid;
 
-	packet_hexdump(frame->data, frame->size);
+	if (!l2cap_frame_get_u8(frame, &pduid))
+		return false;
+
+	if (!l2cap_frame_get_be16(frame, &len))
+		return false;
+
+	print_field("AVRCP: %s: len 0x%04x", pdu2str(pduid), len);
+
+	switch (pduid) {
+	case AVRCP_SET_BROWSED_PLAYER:
+		avrcp_set_browsed_player(avctp_frame);
+		break;
+	default:
+		packet_hexdump(frame->data, frame->size);
+	}
+
 	return true;
 }
 
