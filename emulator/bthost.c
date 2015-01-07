@@ -1522,6 +1522,8 @@ static bool l2cap_info_rsp(struct bthost *bthost, struct btconn *conn,
 		if (len < sizeof(*rsp) + 8)
 			return false;
 		conn->fixed_chan = get_le64(rsp->data);
+		if (conn->smp_data && conn->encr_mode)
+			smp_conn_encrypted(conn->smp_data, conn->encr_mode);
 		break;
 	default:
 		break;
@@ -2316,6 +2318,17 @@ void bthost_le_start_encrypt(struct bthost *bthost, uint16_t handle,
 	memcpy(cmd.ltk, ltk, 16);
 
 	send_command(bthost, BT_HCI_CMD_LE_START_ENCRYPT, &cmd, sizeof(cmd));
+}
+
+uint64_t bthost_conn_get_fixed_chan(struct bthost *bthost, uint16_t handle)
+{
+	struct btconn *conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return 0;
+
+	return conn->fixed_chan;
 }
 
 void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
