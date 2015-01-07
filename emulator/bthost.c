@@ -147,6 +147,7 @@ struct btconn {
 	uint8_t addr_type;
 	uint8_t encr_mode;
 	uint16_t next_cid;
+	uint64_t fixed_chan;
 	struct l2conn *l2conns;
 	struct rcconn *rcconns;
 	struct cid_hook *cid_hooks;
@@ -918,6 +919,13 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 
 	if (bthost->new_conn_cb)
 		bthost->new_conn_cb(conn->handle, bthost->new_conn_data);
+
+	if (addr_type == BDADDR_BREDR) {
+		struct bt_l2cap_pdu_info_req req;
+		req.type = L2CAP_IT_FIXED_CHAN;
+		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_INFO_REQ, 1,
+							&req, sizeof(req));
+	}
 }
 
 static void evt_conn_complete(struct bthost *bthost, const void *data,
@@ -1495,6 +1503,33 @@ static bool l2cap_info_req(struct bthost *bthost, struct btconn *conn,
 	return true;
 }
 
+static bool l2cap_info_rsp(struct bthost *bthost, struct btconn *conn,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_info_rsp *rsp = data;
+	uint16_t type;
+
+	if (len < sizeof(*rsp))
+		return false;
+
+	if (rsp->result)
+		return true;
+
+	type = le16_to_cpu(rsp->type);
+
+	switch (type) {
+	case L2CAP_IT_FIXED_CHAN:
+		if (len < sizeof(*rsp) + 8)
+			return false;
+		conn->fixed_chan = get_le64(rsp->data);
+		break;
+	default:
+		break;
+	}
+
+	return true;
+}
+
 static void handle_pending_l2reqs(struct bthost *bthost, struct btconn *conn,
 						uint8_t ident, uint8_t code,
 						const void *data, uint16_t len)
@@ -1564,6 +1599,11 @@ static void l2cap_sig(struct bthost *bthost, struct btconn *conn,
 
 	case BT_L2CAP_PDU_INFO_REQ:
 		ret = l2cap_info_req(bthost, conn, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_INFO_RSP:
+		ret = l2cap_info_rsp(bthost, conn, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
 		break;
 
