@@ -362,9 +362,10 @@ unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 	if (function) {
 		while (entry) {
 			void *data;
+			unsigned int entries = queue->entries;
 
 			data = queue_remove_if(queue, function, user_data);
-			if (!data)
+			if (entries == queue->entries)
 				break;
 
 			if (destroy)
