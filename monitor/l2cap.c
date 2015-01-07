@@ -421,7 +421,7 @@ static struct {
 };
 
 static void print_config_options(const struct l2cap_frame *frame,
-				uint8_t offset, uint16_t dcid, bool response)
+				uint8_t offset, uint16_t cid, bool response)
 {
 	const uint8_t *data = frame->data + offset;
 	uint16_t size = frame->size - offset;
@@ -496,7 +496,7 @@ static void print_config_options(const struct l2cap_frame *frame,
                         break;
 		case 0x04:
 			if (response)
-				assign_mode(frame, data[consumed + 2], dcid);
+				assign_mode(frame, data[consumed + 2], cid);
 
 			switch (data[consumed + 2]) {
 			case 0x00:
