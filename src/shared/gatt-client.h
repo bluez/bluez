@@ -102,7 +102,7 @@ unsigned int bt_gatt_client_write_value(struct bt_gatt_client *client,
 					bt_gatt_client_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
-bool bt_gatt_client_write_long_value(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_write_long_value(struct bt_gatt_client *client,
 				bool reliable,
 				uint16_t value_handle, uint16_t offset,
 				const uint8_t *value, uint16_t length,
