@@ -651,11 +651,11 @@ struct bt_callback_data {
 	int offset;
 	bool is_long;
 	int connected;
-	int *attr_handle;
-	int *srvc_handle;
-	int *inc_srvc_handle;
-	int *char_handle;
-	int *desc_handle;
+	uint16_t *attr_handle;
+	uint16_t *srvc_handle;
+	uint16_t *inc_srvc_handle;
+	uint16_t *char_handle;
+	uint16_t *desc_handle;
 	btgatt_srvc_id_t *service;
 	btgatt_gatt_id_t *characteristic;
 	btgatt_gatt_id_t *descriptor;
@@ -709,9 +709,9 @@ struct step {
 	void *set_data_to;
 	int set_data_len;
 
-	int *store_srvc_handle;
-	int *store_char_handle;
-	int *store_desc_handle;
+	uint16_t *store_srvc_handle;
+	uint16_t *store_char_handle;
+	uint16_t *store_desc_handle;
 };
 
 struct test_case {

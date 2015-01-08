@@ -81,9 +81,9 @@
 
 static struct queue *list; /* List of gatt test cases */
 
-static int srvc1_handle;
-static int inc_srvc1_handle;
-static int char1_handle;
+static uint16_t srvc1_handle;
+static uint16_t inc_srvc1_handle;
+static uint16_t char1_handle;
 
 struct set_att_data {
 	char *to;
@@ -92,7 +92,7 @@ struct set_att_data {
 };
 
 struct att_write_req_data {
-	int *attr_handle;
+	uint16_t *attr_handle;
 	uint8_t *value;
 };
 
@@ -189,12 +189,12 @@ struct add_service_data {
 
 struct add_included_service_data {
 	int app_id;
-	int *inc_srvc_handle;
-	int *srvc_handle;
+	uint16_t *inc_srvc_handle;
+	uint16_t *srvc_handle;
 };
 struct add_char_data {
 	int app_id;
-	int *srvc_handle;
+	uint16_t *srvc_handle;
 	bt_uuid_t *uuid;
 	int properties;
 	int permissions;
@@ -202,30 +202,30 @@ struct add_char_data {
 
 struct add_desc_data {
 	int app_id;
-	int *srvc_handle;
+	uint16_t *srvc_handle;
 	bt_uuid_t *uuid;
 	int permissions;
 };
 
 struct start_srvc_data {
 	int app_id;
-	int *srvc_handle;
+	uint16_t *srvc_handle;
 	int transport;
 };
 
 struct stop_srvc_data {
 	int app_id;
-	int *srvc_handle;
+	uint16_t *srvc_handle;
 };
 
 struct delete_srvc_data {
 	int app_id;
-	int *srvc_handle;
+	uint16_t *srvc_handle;
 };
 
 struct send_indication_data {
 	int app_id;
-	int *attr_handle;
+	uint16_t *attr_handle;
 	int conn_id;
 	int len;
 	int confirm;
@@ -531,7 +531,7 @@ static struct add_service_data add_sec_service_data_1 = {
 	.num_handles = 1
 };
 
-static int srvc_bad_handle = -1;
+static uint16_t srvc_bad_handle = 0xffff;
 
 static struct add_included_service_data add_inc_service_data_1 = {
 	.app_id = APP1_ID,
@@ -634,7 +634,7 @@ static struct delete_srvc_data delete_bad_srvc_data_1 = {
 	.srvc_handle = &srvc_bad_handle
 };
 
-static int srvc_indication_handle_1 = 0x01;
+static uint16_t srvc_indication_handle_1 = 0x01;
 
 static struct send_indication_data send_indication_data_1 = {
 	.app_id = APP1_ID,
