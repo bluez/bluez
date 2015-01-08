@@ -655,8 +655,8 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 	data_length = ((uint8_t *) pdu)[0];
 	list_length = length - 1;
 
-	if ((list_length % data_length) ||
-				(data_length != 6 && data_length != 20)) {
+	if ((data_length != 6 && data_length != 20) ||
+					(list_length % data_length)) {
 		success = false;
 		goto done;
 	}
@@ -1187,8 +1187,8 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 
 	data_length = ((uint8_t *) pdu)[0];
 
-	if (((length - 1) % data_length) ||
-			(data_length != 7 && data_length != 21)) {
+	if ((data_length != 7 && data_length != 21) ||
+					((length - 1) % data_length)) {
 		success = false;
 		goto done;
 	}
