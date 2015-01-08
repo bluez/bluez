@@ -1079,7 +1079,7 @@ static void gatt_att_pdu_modify(void)
 {
 	struct test_data *data = tester_get_data();
 	struct step *current_data_step = queue_peek_head(data->steps);
-	struct iovec *store_pdu = current_data_step->set_data_to;
+	struct iovec *store_pdu = current_data_step->set_data_2;
 	struct step *step = g_new0(struct step, 1);
 	unsigned char *raw_pdu = store_pdu->iov_base;
 	int set_data_len = current_data_step->set_data_len;

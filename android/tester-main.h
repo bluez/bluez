@@ -68,8 +68,16 @@ struct pdu_set {
 		.action_status = status, \
 		.action = modif_fun, \
 		.set_data = from, \
-		.set_data_to = to, \
+		.set_data_2 = to, \
 		.set_data_len = len, \
+	}
+
+#define PROCESS_DATA(status, proc_fun, data1, data2, data3) { \
+		.action_status = status, \
+		.action = proc_fun, \
+		.set_data = data1, \
+		.set_data_2 = data2, \
+		.set_data_3 = data3, \
 	}
 
 #define ACTION(status, act_fun, data_set) { \
@@ -706,7 +714,8 @@ struct step {
 	struct bt_callback_data callback_result;
 
 	void *set_data;
-	void *set_data_to;
+	void *set_data_2;
+	void *set_data_3;
 	int set_data_len;
 
 	uint16_t *store_srvc_handle;
