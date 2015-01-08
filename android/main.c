@@ -70,7 +70,7 @@
 #define DEFAULT_NAME "BlueZ for Android"
 
 #define STARTUP_GRACE_SECONDS 5
-#define SHUTDOWN_GRACE_SECONDS 10
+#define SHUTDOWN_GRACE_SECONDS 5
 
 static char *config_vendor = NULL;
 static char *config_model = NULL;
