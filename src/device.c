@@ -2703,7 +2703,7 @@ static void gatt_service_added(struct gatt_db_attribute *attr, void *user_data)
 	if (l)
 		service_accept(l->data);
 
-	store_services(device);
+	store_device_info(device);
 
 	btd_gatt_client_service_added(device->client_dbus, attr);
 }
@@ -2776,7 +2776,7 @@ static void gatt_service_removed(struct gatt_db_attribute *attr,
 
 	g_free(prim);
 
-	store_services(device);
+	store_device_info(device);
 
 	btd_gatt_client_service_removed(device->client_dbus, attr);
 }

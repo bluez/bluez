@@ -1224,6 +1224,11 @@ static void unregister_service(void *data)
 
 static void notify_chrcs(struct service *service)
 {
+
+	if (service->chrcs_ready ||
+				!queue_isempty(service->pending_ext_props))
+		return;
+
 	service->chrcs_ready = true;
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), service->path,
@@ -1280,8 +1285,7 @@ static void read_ext_props_cb(bool success, uint8_t att_ecode,
 
 	queue_remove(service->pending_ext_props, chrc);
 
-	if (queue_isempty(service->pending_ext_props))
-		notify_chrcs(service);
+	notify_chrcs(service);
 }
 
 static void read_ext_props(void *data, void *user_data)
@@ -1463,13 +1467,36 @@ void btd_gatt_client_ready(struct btd_gatt_client *client)
 void btd_gatt_client_service_added(struct btd_gatt_client *client,
 					struct gatt_db_attribute *attrib)
 {
-	/* TODO */
+	if (!client)
+		return;
+
+	export_service(attrib, client);
+}
+
+static bool match_service_handle(const void *a, const void *b)
+{
+	const struct service *service = a;
+	uint16_t start_handle = PTR_TO_UINT(b);
+
+	return service->start_handle == start_handle;
 }
 
 void btd_gatt_client_service_removed(struct btd_gatt_client *client,
 					struct gatt_db_attribute *attrib)
 {
-	/* TODO */
+	uint16_t start_handle, end_handle;
+
+	if (!client || !attrib)
+		return;
+
+	gatt_db_attribute_get_service_handles(attrib, &start_handle,
+								&end_handle);
+
+	DBG("GATT Services Removed - start: 0x%04x, end: 0x%04x", start_handle,
+								end_handle);
+	queue_remove_all(client->services, match_service_handle,
+						UINT_TO_PTR(start_handle),
+						unregister_service);
 }
 
 void btd_gatt_client_disconnected(struct btd_gatt_client *client)
