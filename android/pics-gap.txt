@@ -1,6 +1,6 @@
 GAP PICS for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 
@@ -403,7 +403,7 @@ C.3: Optional if TSPC_GAP_5_3 is supported, otherwise Excluded.
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_GAP_23_1	False (*)	Peripheral: Non-Connectable Mode (C.1)
+TSPC_GAP_23_1	True		Peripheral: Non-Connectable Mode (C.1)
 TSPC_GAP_23_2	True		Peripheral: Directed Connectable Mode (O)
 TSPC_GAP_23_3	True		Peripheral: Undirected Connectable Mode (M)
 TSPC_GAP_23_4	True		Peripheral: Connection Parameter Update
@@ -775,9 +775,9 @@ C.1: Optional if ((SUM ICS 31/14 (Core Spec Version 4.1) or SUM ICS 31/15
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
+TSPC_GATT_1_1	True		GATT Client Role (O)
+TSPC_GATT_1_2	True		GATT Server Role (O)
 TSPC_SM_1_1	True		Master Role (Initiator)
 TSPC_SM_1_2	True		Slave Role (Responder)
 TSPC_SM_2_4	True		OOB supported (O)
-TSPC_ALL	False		Turns on all
-TSPC_GATT_1_1	True		GATT Client Role
 -------------------------------------------------------------------------------

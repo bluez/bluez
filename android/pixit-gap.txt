@@ -1,6 +1,6 @@
 GAP PIXIT for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -31,7 +31,7 @@ TSPX_gen_disc_scan_min					10240
 TSPX_database_file					Database-GAP.sig
 TSPX_iut_rx_mtu						23
 TSPX_iut_private_address_interval			10000
-TSPX_iut_privacy_enabled				True (*)
+TSPX_iut_privacy_enabled				False
 TSPX_psm						1001
 TSPX_iut_valid_connection_interval_min			00C8
 TSPX_iut_valid_conneciton_interval_max			0960
@@ -55,4 +55,5 @@ TSPX_iut_mandates_mitm					False
 TSPX_encryption_before_service_request			False
 TSPX_tester_appearance					0000
 TSPX_iut_advertising_data_in_broadcasting_mode		[set to default value]
+TSPX_iut_device_name_in_adv_packet_for_random_address	PTS-66DE
 -------------------------------------------------------------------------------
