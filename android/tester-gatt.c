@@ -264,6 +264,12 @@ static bt_property_t prop_emu_remotes_default_le_set[] = {
 						&emu_remote_ble_device_type },
 };
 
+static struct bt_action_data prop_test_remote_ble_bdaddr_req = {
+	.addr = &emu_remote_bdaddr_val,
+	.prop_type = BT_PROPERTY_BDADDR,
+	.prop = &prop_emu_remotes_default_set[0],
+};
+
 static bt_scan_mode_t setprop_scan_mode_conn_val =
 					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE;
 
@@ -1077,6 +1083,9 @@ static struct iovec send_notification_1[] = {
 /* att commands define raw pdus */
 static struct iovec att_read_req_op_v = raw_pdu(L2CAP_ATT_READ_REQ);
 static struct iovec att_write_req_op_v = raw_pdu(L2CAP_ATT_WRITE_REQ);
+
+static struct iovec svc_change_ccc_handle_v = raw_pdu(0x1a, 0x00);
+static struct iovec svc_change_ccc_value_v = raw_pdu(0x00, 0x01);
 
 static void gatt_client_register_action(void)
 {
@@ -3367,6 +3376,39 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(gatt_server_send_response_action,
 							&send_resp_data_2),
 		CALLBACK(CB_EMU_WRITE_RESPONSE),
+		ACTION_SUCCESS(bluetooth_disable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
+	),
+	/* This tests embeded ccc */
+	TEST_CASE_BREDRLE("Gatt Server - Srvc change write req. success",
+		ACTION_SUCCESS(bluetooth_enable_action, NULL),
+		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_ON),
+		ACTION_SUCCESS(emu_setup_powered_remote_action, NULL),
+		ACTION_SUCCESS(emu_set_ssp_mode_action, NULL),
+		ACTION_SUCCESS(emu_set_connect_cb_action, gatt_conn_cb),
+		ACTION_SUCCESS(gatt_server_register_action, &app1_uuid),
+		CALLBACK_STATUS(CB_GATTS_REGISTER_SERVER, BT_STATUS_SUCCESS),
+		ACTION_SUCCESS(bt_start_discovery_action, NULL),
+		CALLBACK_STATE(CB_BT_DISCOVERY_STATE_CHANGED,
+							BT_DISCOVERY_STARTED),
+		CALLBACK_DEVICE_FOUND(prop_emu_remotes_default_le_set, 2),
+		ACTION_SUCCESS(bt_cancel_discovery_action, NULL),
+		ACTION_SUCCESS(gatt_server_connect_action, &app1_conn_req),
+		CALLBACK_GATTS_CONNECTION(GATT_SERVER_CONNECTED,
+						prop_emu_remotes_default_set,
+						CONN1_ID, APP1_ID),
+		/* For CCC we need to be bonded */
+		ACTION_SUCCESS(bt_create_bond_action,
+					&prop_test_remote_ble_bdaddr_req),
+		CALLBACK_BOND_STATE(BT_BOND_STATE_BONDED,
+					&prop_emu_remotes_default_set[0], 1),
+		/* Write and receive confirmation */
+		PROCESS_DATA(GATT_STATUS_SUCCESS,
+				gatt_remote_send_raw_pdu_action,
+				&att_write_req_op_v, &svc_change_ccc_handle_v,
+				&svc_change_ccc_value_v),
+		CALLBACK(CB_EMU_WRITE_RESPONSE),
+		/* Shutdown */
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
