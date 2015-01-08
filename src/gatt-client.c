@@ -874,6 +874,15 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 	 *     - If value is larger than MTU - 3: long-write
 	 *   * "write-without-response" property set -> write command.
 	 */
+	if ((chrc->ext_props & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE)) {
+		supported = true;
+		chrc->write_id = start_long_write(msg, chrc->value_handle, gatt,
+						true, value, value_len,
+						chrc, chrc_write_complete);
+		if (chrc->write_id)
+			return NULL;
+	}
+
 	if (chrc->props & BT_GATT_CHRC_PROP_WRITE) {
 		uint16_t mtu;
 
