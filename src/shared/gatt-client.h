@@ -72,27 +72,31 @@ bool bt_gatt_client_set_debug(struct bt_gatt_client *client,
 
 uint16_t bt_gatt_client_get_mtu(struct bt_gatt_client *client);
 
-bool bt_gatt_client_read_value(struct bt_gatt_client *client,
+bool bt_gatt_client_cancel(struct bt_gatt_client *client, unsigned int id);
+bool bt_gatt_client_cancel_all(struct bt_gatt_client *client);
+
+unsigned int bt_gatt_client_read_value(struct bt_gatt_client *client,
 					uint16_t value_handle,
 					bt_gatt_client_read_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
-bool bt_gatt_client_read_long_value(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_read_long_value(struct bt_gatt_client *client,
 					uint16_t value_handle, uint16_t offset,
 					bt_gatt_client_read_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
-bool bt_gatt_client_read_multiple(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_read_multiple(struct bt_gatt_client *client,
 					uint16_t *handles, uint8_t num_handles,
 					bt_gatt_client_read_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
 
-bool bt_gatt_client_write_without_response(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_write_without_response(
+					struct bt_gatt_client *client,
 					uint16_t value_handle,
 					bool signed_write,
 					const uint8_t *value, uint16_t length);
-bool bt_gatt_client_write_value(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_write_value(struct bt_gatt_client *client,
 					uint16_t value_handle,
 					const uint8_t *value, uint16_t length,
 					bt_gatt_client_callback_t callback,
