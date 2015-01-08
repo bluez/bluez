@@ -1544,3 +1544,18 @@ bool gatt_db_attribute_write_result(struct gatt_db_attribute *attrib,
 
 	return true;
 }
+
+bool gatt_db_attribute_reset(struct gatt_db_attribute *attrib)
+{
+	if (!attrib)
+		return false;
+
+	if (!attrib->value || !attrib->value_len)
+		return true;
+
+	free(attrib->value);
+	attrib->value = NULL;
+	attrib->value_len = 0;
+
+	return true;
+}
