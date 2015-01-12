@@ -82,7 +82,7 @@
 #endif
 
 static DBusConnection *dbus_conn = NULL;
-unsigned service_state_cb_id;
+static unsigned service_state_cb_id;
 
 struct btd_disconnect_data {
 	guint id;

@@ -705,7 +705,7 @@ struct chrc_prop_data {
 	char *str;
 };
 
-struct chrc_prop_data chrc_props[] = {
+static struct chrc_prop_data chrc_props[] = {
 	/* Default Properties */
 	{ BT_GATT_CHRC_PROP_BROADCAST,		"broadcast" },
 	{ BT_GATT_CHRC_PROP_READ,		"read" },
@@ -717,7 +717,7 @@ struct chrc_prop_data chrc_props[] = {
 	{ BT_GATT_CHRC_PROP_EXT_PROP,		"extended-properties" }
 };
 
-struct chrc_prop_data chrc_ext_props[] = {
+static struct chrc_prop_data chrc_ext_props[] = {
 	/* Extended Properties */
 	{ BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE,	"reliable-write" },
 	{ BT_GATT_CHRC_EXT_PROP_WRITABLE_AUX,	"writable-auxiliaries" }
