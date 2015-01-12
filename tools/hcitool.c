@@ -3307,7 +3307,7 @@ static const char *lecup_help =
 static void cmd_lecup(int dev_id, int argc, char **argv)
 {
 	uint16_t handle = 0, min, max, latency, timeout;
-	int opt, dd, base;
+	int opt, dd;
 	int options = 0;
 
 	/* Aleatory valid values */
@@ -3317,26 +3317,21 @@ static void cmd_lecup(int dev_id, int argc, char **argv)
 	timeout = 0x0C80;
 
 	for_each_opt(opt, lecup_options, NULL) {
-		if (optarg && strncasecmp("0x", optarg, 2) == 0)
-			base = 16;
-		else
-			base = 10;
-
 		switch (opt) {
 		case 'H':
-			handle = strtoul(optarg, NULL, base);
+			handle = strtoul(optarg, NULL, 0);
 			break;
 		case 'm':
-			min = strtoul(optarg, NULL, base);
+			min = strtoul(optarg, NULL, 0);
 			break;
 		case 'M':
-			max = strtoul(optarg, NULL, base);
+			max = strtoul(optarg, NULL, 0);
 			break;
 		case 'l':
-			latency = strtoul(optarg, NULL, base);
+			latency = strtoul(optarg, NULL, 0);
 			break;
 		case 't':
-			timeout = strtoul(optarg, NULL, base);
+			timeout = strtoul(optarg, NULL, 0);
 			break;
 		default:
 			printf("%s", lecup_help);
