@@ -3296,11 +3296,11 @@ static const char *lecup_help =
 	"Usage:\n"
 	"\tlecup <handle> <min> <max> <latency> <timeout>\n"
 	"\tOptions:\n"
-	"\t    -H, --handle <0xXXXX>  LE connection handle\n"
-	"\t    -m, --min <interval>   Range: 0x0006 to 0x0C80\n"
-	"\t    -M, --max <interval>   Range: 0x0006 to 0x0C80\n"
-	"\t    -l, --latency <range>  Slave latency. Range: 0x0000 to 0x03E8\n"
-	"\t    -t, --timeout  <time>  N * 10ms. Range: 0x000A to 0x0C80\n"
+	"\t    --handle=<0xXXXX>  LE connection handle\n"
+	"\t    --min=<interval>   Range: 0x0006 to 0x0C80\n"
+	"\t    --max=<interval>   Range: 0x0006 to 0x0C80\n"
+	"\t    --latency=<range>  Slave latency. Range: 0x0000 to 0x03E8\n"
+	"\t    --timeout=<time>   N * 10ms. Range: 0x000A to 0x0C80\n"
 	"\n\t min/max range: 7.5ms to 4s. Multiply factor: 1.25ms"
 	"\n\t timeout range: 100ms to 32.0s. Larger than max interval\n";
 
