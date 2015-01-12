@@ -3308,6 +3308,7 @@ static void cmd_lecup(int dev_id, int argc, char **argv)
 {
 	uint16_t handle = 0, min, max, latency, timeout;
 	int opt, dd, base;
+	int options = 0;
 
 	/* Aleatory valid values */
 	min = 0x0C8;
@@ -3341,6 +3342,18 @@ static void cmd_lecup(int dev_id, int argc, char **argv)
 			printf("%s", lecup_help);
 			return;
 		}
+
+		options = 1;
+	}
+
+	if (options == 0) {
+		helper_arg(5, 5, &argc, &argv, lecup_help);
+
+		handle = strtoul(argv[0], NULL, 0);
+		min = strtoul(argv[1], NULL, 0);
+		max = strtoul(argv[2], NULL, 0);
+		latency = strtoul(argv[3], NULL, 0);
+		timeout = strtoul(argv[4], NULL, 0);
 	}
 
 	if (handle == 0) {
