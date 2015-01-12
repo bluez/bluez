@@ -1100,7 +1100,7 @@ static void print_voice_setting(uint16_t setting)
 		str = "Linear";
 		break;
 	case 0x01:
-		str ="u-law";
+		str = "u-law";
 		break;
 	case 0x02:
 		str = "A-law";
@@ -1144,7 +1144,7 @@ static void print_voice_setting(uint16_t setting)
 		str = "CVSD";
 		break;
 	case 0x01:
-		str ="u-law";
+		str = "u-law";
 		break;
 	case 0x02:
 		str = "A-law";
@@ -2232,7 +2232,7 @@ static void print_channel_map(const uint8_t *map)
 
 			if (count > 1) {
 				print_field("  Channel %u-%u",
-						start, start + count - 1 );
+						start, start + count - 1);
 				count = 0;
 			} else if (count > 0) {
 				print_field("  Channel %u", start);
@@ -2623,7 +2623,7 @@ static const struct {
 					LE_STATE_MASTER_SLAVE	},
 	{ 39, LE_STATE_CONN_SLAVE | LE_STATE_HIGH_DIRECT_ADV |
 					LE_STATE_SLAVE_SLAVE	},
-	{ 40, LE_STATE_CONN_SLAVE| LE_STATE_LOW_DIRECT_ADV |
+	{ 40, LE_STATE_CONN_SLAVE | LE_STATE_LOW_DIRECT_ADV |
 					LE_STATE_SLAVE_SLAVE	},
 	{ 41, LE_STATE_INITIATING | LE_STATE_CONN_SLAVE |
 					LE_STATE_MASTER_SLAVE	},
@@ -2691,7 +2691,7 @@ static void print_le_channel_map(const uint8_t *map)
 
 			if (count > 1) {
 				print_field("  Channel %u-%u",
-						start, start + count - 1 );
+						start, start + count - 1);
 				count = 0;
 			} else if (count > 0) {
 				print_field("  Channel %u", start);
@@ -3948,7 +3948,7 @@ static void create_logic_link_cmd(const void *data, uint8_t size)
 
 static void accept_logic_link_cmd(const void *data, uint8_t size)
 {
-        const struct bt_hci_cmd_accept_logic_link *cmd = data;
+	const struct bt_hci_cmd_accept_logic_link *cmd = data;
 
 	print_phy_handle(cmd->phy_handle);
 	print_flow_spec("TX", cmd->tx_flow_spec);
@@ -3972,7 +3972,7 @@ static void logic_link_cancel_cmd(const void *data, uint8_t size)
 
 static void logic_link_cancel_rsp(const void *data, uint8_t size)
 {
-        const struct bt_hci_rsp_logic_link_cancel *rsp = data;
+	const struct bt_hci_rsp_logic_link_cancel *rsp = data;
 
 	print_status(rsp->status);
 	print_phy_handle(rsp->phy_handle);
@@ -8211,7 +8211,7 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 	sprintf(extra_str, "(0x%2.2x) plen %d", hdr->evt, hdr->plen);
 
 	print_packet(tv, index, '>', event_color, "HCI Event",
-                                                        event_str, extra_str);
+						event_str, extra_str);
 
 	if (!event_data || !event_data->func) {
 		packet_hexdump(data, size);
