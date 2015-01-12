@@ -203,6 +203,52 @@ The clock can be
 for the local clock or
 .BR 1
 for the piconet clock (which is default).
+.TP
+.BI lescan " [--privacy] [--passive] [--whitelist] [--discovery=g|l] \
+[--duplicates]"
+Start LE scan
+.TP
+.BI leinfo " [--static] [--random] <bdaddr>"
+Get LE remote information
+.TP
+.BI lewladd " [--random] <bdaddr>"
+Add device to LE White List
+.TP
+.BI lewlrm " <bdaddr>"
+Remove device from LE White List
+.TP
+.BI lewlsz
+Read size of LE White List
+.TP
+.BI lewlclr
+Clear LE White List
+.TP
+.BI lerladd " [--local irk] [--peer irk] [--random] <bdaddr>"
+Add device to LE Resolving List
+.TP
+.BI lerlrm " <bdaddr>"
+Remove device from LE Resolving List
+.TP
+.BI lerlclr
+Clear LE Resolving List
+.TP
+.BI lerlsz
+Read size of LE Resolving List
+.TP
+.BI lerlon
+Enable LE Address Resolution
+.TP
+.BI lerloff
+Disable LE Address Resolution
+.TP
+.BI lecc " [--static] [--random] <bdaddr> | [--whitelist]"
+Create a LE Connection
+.TP
+.BI ledc " <handle> [reason]"
+Disconnect a LE Connection
+.TP
+.BI lecup " <handle> <min> <max> <latency> <timeout>"
+LE Connection Update
 .SH AUTHORS
 Written by Maxim Krasnyansky <maxk@qualcomm.com> and Marcel Holtmann <marcel@holtmann.org>
 .PP
