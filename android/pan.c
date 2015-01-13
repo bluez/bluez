@@ -63,11 +63,6 @@
 #define BNEP_PANU_INTERFACE "bt-pan"
 #define BNEP_NAP_INTERFACE "bt-pan%d"
 
-static bdaddr_t adapter_addr;
-static GSList *devices = NULL;
-static uint8_t local_role = HAL_PAN_ROLE_NONE;
-static struct ipc *hal_ipc = NULL;
-
 struct pan_device {
 	char		iface[16];
 	bdaddr_t	dst;
@@ -77,6 +72,11 @@ struct pan_device {
 	struct bnep	*session;
 	guint		watch;
 };
+
+static bdaddr_t adapter_addr;
+static GSList *devices = NULL;
+static uint8_t local_role = HAL_PAN_ROLE_NONE;
+static struct ipc *hal_ipc = NULL;
 
 static struct {
 	uint32_t	record_id;
@@ -463,6 +463,7 @@ static gboolean nap_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 	return FALSE;
 }
+
 static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 							gpointer user_data)
 {
@@ -488,7 +489,7 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 
 	/* Highest known control command id BNEP_FILTER_MULT_ADDR_RSP 0x06 */
 	if (req->type == BNEP_CONTROL &&
-			req->ctrl > BNEP_FILTER_MULT_ADDR_RSP) {
+					req->ctrl > BNEP_FILTER_MULT_ADDR_RSP) {
 		error("cmd not understood");
 		bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_CMD_NOT_UNDERSTOOD,
 								req->ctrl);
