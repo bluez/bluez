@@ -1895,7 +1895,7 @@ unsigned int bt_gatt_client_read_multiple(struct bt_gatt_client *client,
 		return 0;
 
 	req = request_create(client);
-	if (!client) {
+	if (!req) {
 		free(op);
 		return 0;
 	}
