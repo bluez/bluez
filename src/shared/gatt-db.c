@@ -880,6 +880,8 @@ void gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 {
 	struct find_by_type_value_data data;
 
+	memset(&data, 0, sizeof(data));
+
 	data.uuid = *type;
 	data.start_handle = start_handle;
 	data.end_handle = end_handle;
