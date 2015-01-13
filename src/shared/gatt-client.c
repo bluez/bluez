@@ -2172,7 +2172,7 @@ unsigned int bt_gatt_client_write_without_response(
 }
 
 struct write_op {
-	bt_gatt_result_callback_t callback;
+	bt_gatt_client_callback_t callback;
 	void *user_data;
 	bt_gatt_destroy_func_t destroy;
 };
