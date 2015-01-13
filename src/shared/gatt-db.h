@@ -188,8 +188,8 @@ bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 							uint16_t *start_handle,
 							uint16_t *end_handle);
 
-bool gatt_db_attribute_get_permissions(const struct gatt_db_attribute *attrib,
-							uint32_t *permissions);
+uint32_t
+gatt_db_attribute_get_permissions(const struct gatt_db_attribute *attrib);
 
 typedef void (*gatt_db_attribute_read_t) (struct gatt_db_attribute *attrib,
 						int err, const uint8_t *value,

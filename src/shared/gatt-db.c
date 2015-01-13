@@ -1393,15 +1393,13 @@ bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 	return true;
 }
 
-bool gatt_db_attribute_get_permissions(const struct gatt_db_attribute *attrib,
-							uint32_t *permissions)
+uint32_t
+gatt_db_attribute_get_permissions(const struct gatt_db_attribute *attrib)
 {
-	if (!attrib || !permissions)
-		return false;
+	if (!attrib)
+		return 0;
 
-	*permissions = attrib->permissions;
-
-	return true;
+	return attrib->permissions;
 }
 
 static void pending_read_result(struct pending_read *p, int err,

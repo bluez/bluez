@@ -391,10 +391,7 @@ static void process_read_by_type(struct async_read_op *op)
 		return;
 	}
 
-	if (!gatt_db_attribute_get_permissions(attr, &perm)) {
-		ecode = BT_ATT_ERROR_UNLIKELY;
-		goto error;
-	}
+	perm = gatt_db_attribute_get_permissions(attr);
 
 	/*
 	 * Check for the READ access permission. Encryption,
@@ -791,10 +788,7 @@ static void write_cb(uint8_t opcode, const void *pdu,
 				(opcode == BT_ATT_OP_WRITE_REQ) ? "Req" : "Cmd",
 				handle);
 
-	if (!gatt_db_attribute_get_permissions(attr, &perm)) {
-		ecode = BT_ATT_ERROR_INVALID_HANDLE;
-		goto error;
-	}
+	perm = gatt_db_attribute_get_permissions(attr);
 
 	if (!(perm & BT_ATT_PERM_WRITE)) {
 		ecode = BT_ATT_ERROR_WRITE_NOT_PERMITTED;
@@ -907,10 +901,7 @@ static void handle_read_req(struct bt_gatt_server *server, uint8_t opcode,
 			opcode == BT_ATT_OP_READ_BLOB_REQ ? "Blob " : "",
 			handle);
 
-	if (!gatt_db_attribute_get_permissions(attr, &perm)) {
-		ecode = BT_ATT_ERROR_INVALID_HANDLE;
-		goto error;
-	}
+	perm = gatt_db_attribute_get_permissions(attr);
 
 	if (perm && !(perm & BT_ATT_PERM_READ)) {
 		ecode = BT_ATT_ERROR_READ_NOT_PERMITTED;
@@ -1013,10 +1004,7 @@ static void prep_write_cb(uint8_t opcode, const void *pdu,
 	util_debug(server->debug_callback, server->debug_data,
 				"Prep Write Req - handle: 0x%04x", handle);
 
-	if (!gatt_db_attribute_get_permissions(attr, &perm)) {
-		ecode = BT_ATT_ERROR_INVALID_HANDLE;
-		goto error;
-	}
+	perm = gatt_db_attribute_get_permissions(attr);
 
 	/*
 	 * TODO: The "Prepare Write" request requires security permission checks
