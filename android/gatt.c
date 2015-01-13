@@ -6355,8 +6355,7 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!attrib)
 		return;
 
-	if (!gatt_db_attribute_get_permissions(attrib, &permissions))
-		return;
+	gatt_db_attribute_get_permissions(attrib, &permissions);
 
 	if (check_device_permissions(dev, cmd[0], permissions))
 		return;
