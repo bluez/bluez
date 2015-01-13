@@ -686,7 +686,7 @@ gatt_db_service_add_descriptor(struct gatt_db_attribute *attrib,
 	int i;
 
 	if (!attrib)
-		return false;
+		return NULL;
 
 	service = attrib->service;
 
