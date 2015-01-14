@@ -102,6 +102,7 @@ struct gatt_db_attribute {
 struct gatt_db_service {
 	struct gatt_db *db;
 	bool active;
+	bool claimed;
 	uint16_t num_handles;
 	struct gatt_db_attribute **attributes;
 };
@@ -784,6 +785,25 @@ bool gatt_db_service_get_active(struct gatt_db_attribute *attrib)
 		return false;
 
 	return attrib->service->active;
+}
+
+bool gatt_db_service_set_claimed(struct gatt_db_attribute *attrib,
+								bool claimed)
+{
+	if (!attrib)
+		return false;
+
+	attrib->service->claimed = claimed;
+
+	return true;
+}
+
+bool gatt_db_service_get_claimed(struct gatt_db_attribute *attrib)
+{
+	if (!attrib)
+		return false;
+
+	return attrib->service->claimed;
 }
 
 void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,

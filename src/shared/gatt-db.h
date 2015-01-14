@@ -83,6 +83,10 @@ gatt_db_service_add_included(struct gatt_db_attribute *attrib,
 bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active);
 bool gatt_db_service_get_active(struct gatt_db_attribute *attrib);
 
+bool gatt_db_service_set_claimed(struct gatt_db_attribute *attrib,
+								bool claimed);
+bool gatt_db_service_get_claimed(struct gatt_db_attribute *attrib);
+
 typedef void (*gatt_db_attribute_cb_t)(struct gatt_db_attribute *attrib,
 							void *user_data);
 
