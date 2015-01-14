@@ -52,6 +52,7 @@
 
 struct btd_gatt_client {
 	struct btd_device *device;
+	bool ready;
 	char devaddr[18];
 	struct gatt_db *db;
 	struct bt_gatt_client *gatt;
@@ -1373,7 +1374,7 @@ static void export_service(struct gatt_db_attribute *attr, void *user_data)
 	struct btd_gatt_client *client = user_data;
 	struct service *service;
 
-	if (!gatt_db_service_get_active(attr))
+	if (gatt_db_service_get_claimed(attr))
 		return;
 
 	service = service_create(attr, client);
@@ -1461,13 +1462,15 @@ void btd_gatt_client_ready(struct btd_gatt_client *client)
 	bt_gatt_client_unref(client->gatt);
 	client->gatt = bt_gatt_client_ref(gatt);
 
+	client->ready = true;
+
 	create_services(client);
 }
 
 void btd_gatt_client_service_added(struct btd_gatt_client *client,
 					struct gatt_db_attribute *attrib)
 {
-	if (!client)
+	if (!client || !attrib || !client->ready)
 		return;
 
 	export_service(attrib, client);
@@ -1486,7 +1489,7 @@ void btd_gatt_client_service_removed(struct btd_gatt_client *client,
 {
 	uint16_t start_handle, end_handle;
 
-	if (!client || !attrib)
+	if (!client || !attrib || !client->ready)
 		return;
 
 	gatt_db_attribute_get_service_handles(attrib, &start_handle,

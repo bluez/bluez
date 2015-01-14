@@ -2481,7 +2481,7 @@ static void dev_probe_gatt(struct btd_profile *p, void *user_data)
 	}
 
 	/* Mark service as claimed */
-	gatt_db_service_set_active(data->cur_attr, false);
+	gatt_db_service_set_claimed(data->cur_attr, true);
 
 	data->dev->services = g_slist_append(data->dev->services, service);
 }
@@ -2507,8 +2507,11 @@ static void dev_probe_gatt_profile(struct gatt_db_attribute *attr,
 						g_strdup(data->cur_uuid));
 
 	/* Don't probe the profiles if a matching service already exists. */
-	if (find_service_with_uuid(data->dev->services, data->cur_uuid))
+	if (find_service_with_uuid(data->dev->services, data->cur_uuid)) {
+		/* Mark the service as claimed by the existing profile. */
+		gatt_db_service_set_claimed(data->cur_attr, true);
 		return;
+	}
 
 	btd_profile_foreach(dev_probe_gatt, data);
 
