@@ -53,8 +53,6 @@ struct btd_service {
 	void			*user_data;
 	btd_service_state_t	state;
 	int			err;
-	uint16_t		start_handle;
-	uint16_t		end_handle;
 };
 
 struct service_state_callback {
@@ -147,26 +145,6 @@ struct btd_service *service_create(struct btd_device *device,
 	service->device = device; /* Weak ref */
 	service->profile = profile;
 	service->state = BTD_SERVICE_STATE_UNAVAILABLE;
-
-	return service;
-}
-
-struct btd_service *service_create_gatt(struct btd_device *device,
-						struct btd_profile *profile,
-						uint16_t start_handle,
-						uint16_t end_handle)
-{
-	struct btd_service *service;
-
-	if (!start_handle || !end_handle || start_handle > end_handle)
-		return NULL;
-
-	service = service_create(device, profile);
-	if (!service)
-		return NULL;
-
-	service->start_handle = start_handle;
-	service->end_handle = end_handle;
 
 	return service;
 }
@@ -320,22 +298,6 @@ btd_service_state_t btd_service_get_state(const struct btd_service *service)
 int btd_service_get_error(const struct btd_service *service)
 {
 	return service->err;
-}
-
-bool btd_service_get_gatt_handles(const struct btd_service *service,
-							uint16_t *start_handle,
-							uint16_t *end_handle)
-{
-	if (!service || !service->start_handle || !service->end_handle)
-		return false;
-
-	if (start_handle)
-		*start_handle = service->start_handle;
-
-	if (end_handle)
-		*end_handle = service->end_handle;
-
-	return true;
 }
 
 unsigned int btd_service_add_state_cb(btd_service_state_cb cb, void *user_data)
