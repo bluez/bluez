@@ -1179,6 +1179,32 @@ struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
 	return service->attributes[handle - service_handle];
 }
 
+static bool find_service_with_uuid(const void *data, const void *user_data)
+{
+	const struct gatt_db_service *service = data;
+	const bt_uuid_t *uuid = user_data;
+	bt_uuid_t svc_uuid;
+
+	gatt_db_attribute_get_service_uuid(service->attributes[0], &svc_uuid);
+
+	return bt_uuid_cmp(uuid, &svc_uuid) == 0;
+}
+
+struct gatt_db_attribute *gatt_db_get_service_with_uuid(struct gatt_db *db,
+							const bt_uuid_t *uuid)
+{
+	struct gatt_db_service *service;
+
+	if (!db || !uuid)
+		return NULL;
+
+	service = queue_find(db->services, find_service_with_uuid, uuid);
+	if (!service)
+		return NULL;
+
+	return service->attributes[0];
+}
+
 const bt_uuid_t *gatt_db_attribute_get_type(
 					const struct gatt_db_attribute *attrib)
 {

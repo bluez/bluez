@@ -151,6 +151,9 @@ bool gatt_db_unregister(struct gatt_db *db, unsigned int id);
 struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
 							uint16_t handle);
 
+struct gatt_db_attribute *gatt_db_get_service_with_uuid(struct gatt_db *db,
+							const bt_uuid_t *uuid);
+
 const bt_uuid_t *gatt_db_attribute_get_type(
 					const struct gatt_db_attribute *attrib);
 
