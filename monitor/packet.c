@@ -5209,6 +5209,21 @@ static void write_ext_page_timeout_cmd(const void *data, uint8_t size)
 	print_timeout(cmd->timeout);
 }
 
+static void read_ext_inquiry_length_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_ext_inquiry_length *rsp = data;
+
+	print_status(rsp->status);
+	print_interval(rsp->interval);
+}
+
+static void write_ext_inquiry_length_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_ext_inquiry_length *cmd = data;
+
+	print_interval(cmd->interval);
+}
+
 static void read_local_version_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_local_version *rsp = data;
@@ -6690,8 +6705,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c7f, 265, "Write Extended Page Timeout",
 				write_ext_page_timeout_cmd, 2, true,
 				status_rsp, 1, true },
-	{ 0x0c80, 266, "Read Extended Inquiry Length" },
-	{ 0x0c81, 267, "Write Extended Inquiry Length" },
+	{ 0x0c80, 266, "Read Extended Inquiry Length",
+				null_cmd, 0, true,
+				read_ext_inquiry_length_rsp, 3, true },
+	{ 0x0c81, 267, "Write Extended Inquiry Length",
+				write_ext_inquiry_length_cmd, 2, true,
+				status_rsp, 1, true },
 
 	/* OGF 4 - Information Parameter */
 	{ 0x1001, 115, "Read Local Version Information",
