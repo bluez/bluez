@@ -1344,6 +1344,12 @@ struct bt_hci_rsp_read_enhanced_tx_power {
 	int8_t   level_8dpsk;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_SHORT_RANGE_MODE		0x0c6b
+struct bt_hci_cmd_short_range_mode {
+	uint8_t  phy_handle;
+	uint8_t  mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LE_HOST_SUPPORTED	0x0c6c
 struct bt_hci_rsp_read_le_host_supported {
 	uint8_t  status;
