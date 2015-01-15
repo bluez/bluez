@@ -2434,6 +2434,14 @@ struct bt_hci_evt_amp_status_change {
 	uint8_t  amp_status;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_TRIGGERED_CLOCK_CAPTURE	0x4e
+struct bt_hci_evt_triggered_clock_capture {
+	uint16_t handle;
+	uint8_t  type;
+	uint32_t clock;
+	uint16_t clock_offset;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_SYNC_TRAIN_COMPLETE		0x4f
 struct bt_hci_evt_sync_train_complete {
 	uint8_t  status;
