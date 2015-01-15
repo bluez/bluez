@@ -1678,6 +1678,17 @@ struct bt_hci_cmd_set_triggered_clock_capture {
 	uint8_t  num_filter;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LOOPBACK_MODE		0x1801
+struct bt_hci_rsp_read_loopback_mode {
+	uint8_t  status;
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_LOOPBACK_MODE		0x1802
+struct bt_hci_cmd_write_loopback_mode {
+	uint8_t  mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_ENABLE_DUT_MODE		0x1803
 
 #define BT_HCI_CMD_WRITE_SSP_DEBUG_MODE		0x1804
