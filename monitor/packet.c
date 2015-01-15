@@ -4696,6 +4696,18 @@ static void host_buffer_size_cmd(const void *data, uint8_t size)
 					le16_to_cpu(cmd->sco_max_pkt));
 }
 
+static void host_num_completed_packets_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_host_num_completed_packets *cmd = data;
+
+	print_field("Num handles: %d", cmd->num_handles);
+	print_handle(cmd->handle);
+	print_field("Count: %d", le16_to_cpu(cmd->count));
+
+	if (size > sizeof(*cmd))
+		packet_hexdump(data + sizeof(*cmd), size - sizeof(*cmd));
+}
+
 static void read_link_supv_timeout_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_link_supv_timeout *cmd = data;
@@ -6575,7 +6587,8 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c33,  86, "Host Buffer Size",
 				host_buffer_size_cmd, 7, true,
 				status_rsp, 1, true },
-	{ 0x0c35,  87, "Host Number of Completed Packets" },
+	{ 0x0c35,  87, "Host Number of Completed Packets",
+				host_num_completed_packets_cmd, 1, true },
 	{ 0x0c36,  88, "Read Link Supervision Timeout",
 				read_link_supv_timeout_cmd, 2, true,
 				read_link_supv_timeout_rsp, 5, true },
