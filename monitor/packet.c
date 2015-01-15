@@ -1037,9 +1037,10 @@ static void print_power_type(uint8_t type)
 	print_field("Type: %s (0x%2.2x)", str, type);
 }
 
-static void print_power_level(int8_t level)
+static void print_power_level(int8_t level, const char *type)
 {
-	print_field("TX power: %d dBm", level);
+	print_field("TX power%s%s%s: %d dBm",
+			type ? " (" : "", type, type ? ")" : "", level);
 }
 
 static void print_sync_flow_control(uint8_t enable)
@@ -4658,7 +4659,7 @@ static void read_tx_power_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_handle(rsp->handle);
-	print_power_level(rsp->level);
+	print_power_level(rsp->level, NULL);
 }
 
 static void read_sync_flow_control_rsp(const void *data, uint8_t size)
@@ -4908,14 +4909,14 @@ static void read_inquiry_resp_tx_power_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_inquiry_resp_tx_power *rsp = data;
 
 	print_status(rsp->status);
-	print_power_level(rsp->level);
+	print_power_level(rsp->level, NULL);
 }
 
 static void write_inquiry_tx_power_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_write_inquiry_tx_power *cmd = data;
 
-	print_power_level(cmd->level);
+	print_power_level(cmd->level, NULL);
 }
 
 static void read_erroneous_reporting_rsp(const void *data, uint8_t size)
@@ -5032,6 +5033,25 @@ static void write_flow_control_mode_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_write_flow_control_mode *cmd = data;
 
 	print_flow_control_mode(cmd->mode);
+}
+
+static void read_enhanced_tx_power_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_enhanced_tx_power *cmd = data;
+
+	print_handle(cmd->handle);
+	print_power_type(cmd->type);
+}
+
+static void read_enhanced_tx_power_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_enhanced_tx_power *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_power_level(rsp->level_gfsk, "GFSK");
+	print_power_level(rsp->level_dqpsk, "DQPSK");
+	print_power_level(rsp->level_8dpsk, "8DPSK");
 }
 
 static void read_le_host_supported_rsp(const void *data, uint8_t size)
@@ -5750,7 +5770,7 @@ static void le_read_adv_tx_power_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_le_read_adv_tx_power *rsp = data;
 
 	print_status(rsp->status);
-	print_power_level(rsp->level);
+	print_power_level(rsp->level, NULL);
 }
 
 static void le_set_adv_data_cmd(const void *data, uint8_t size)
@@ -6653,7 +6673,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c67, 185, "Write Flow Control Mode",
 				write_flow_control_mode_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c68, 192, "Read Enhanced Transmit Power Level" },
+	{ 0x0c68, 192, "Read Enhanced Transmit Power Level",
+				read_enhanced_tx_power_cmd, 3, true,
+				read_enhanced_tx_power_rsp, 6, true },
 	{ 0x0c69, 194, "Read Best Effort Flush Timeout" },
 	{ 0x0c6a, 195, "Write Best Effort Flush Timeout" },
 	{ 0x0c6b, 196, "Short Range Mode" },
