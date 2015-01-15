@@ -4232,29 +4232,9 @@ static void att_browse_error_cb(const GError *gerr, gpointer user_data)
 	browse_request_free(req);
 }
 
-static void browse_gatt_client(struct browse_req *req)
-{
-	struct btd_device *device = req->device;
-
-	if (!device->client) {
-		DBG("No instance currently attached");
-		return;
-	}
-
-	/*
-	 * If gatt-client is ready, then register all services. Otherwise, this
-	 * will be deferred until client becomes ready.
-	 */
-	if (bt_gatt_client_is_ready(device->client))
-		register_gatt_services(req);
-}
-
 static void att_browse_cb(gpointer user_data)
 {
-	struct att_callbacks *attcb = user_data;
-	struct btd_device *device = attcb->user_data;
-
-	browse_gatt_client(device->browse);
+	DBG("ATT connection successful");
 }
 
 static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
@@ -4272,8 +4252,21 @@ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 	device->browse = req;
 
 	if (device->attrib) {
-		browse_gatt_client(device->browse);
-		goto done;
+		/*
+		 * If discovery has not yet completed, then wait for gatt-client
+		 * to become ready.
+		 */
+		if (!device->le_state.svc_resolved)
+			goto done;
+
+		/*
+		 * Services have already been discovered, so signal this browse
+		 * request as resolved.
+		 */
+		device_svc_resolved(device, device->bdaddr_type, 0);
+		device->browse = NULL;
+		browse_request_free(req);
+		return 0;
 	}
 
 	attcb = g_new0(struct att_callbacks, 1);
