@@ -7687,6 +7687,16 @@ static void amp_status_change_evt(const void *data, uint8_t size)
 	print_amp_status(evt->amp_status);
 }
 
+static void triggered_clock_capture_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_triggered_clock_capture *evt = data;
+
+	print_handle(evt->handle);
+	print_clock_type(evt->type);
+	print_clock(evt->clock);
+	print_clock_offset(evt->clock_offset);
+}
+
 static void sync_train_complete_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_sync_train_complete *evt = data;
@@ -8155,7 +8165,8 @@ static const struct event_data event_table[] = {
 				short_range_mode_change_evt, 3, true },
 	{ 0x4d, "AMP Status Change",
 				amp_status_change_evt, 2, true },
-	{ 0x4e, "Triggered Clock Capture" },
+	{ 0x4e, "Triggered Clock Capture",
+				triggered_clock_capture_evt, 9, true },
 	{ 0x4f, "Synchronization Train Complete",
 				sync_train_complete_evt, 1, true },
 	{ 0x50, "Synchronization Train Received",
