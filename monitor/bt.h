@@ -1444,6 +1444,17 @@ struct bt_hci_cmd_write_ext_page_timeout {
 	uint16_t timeout;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_EXT_INQUIRY_LENGTH	0x0c80
+struct bt_hci_rsp_read_ext_inquiry_length {
+	uint8_t  status;
+	uint16_t interval;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_EXT_INQUIRY_LENGTH	0x0c81
+struct bt_hci_cmd_write_ext_inquiry_length {
+	uint16_t interval;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LOCAL_VERSION		0x1001
 struct bt_hci_rsp_read_local_version {
 	uint8_t  status;
