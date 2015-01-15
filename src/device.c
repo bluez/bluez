@@ -1537,6 +1537,9 @@ static uint8_t select_conn_bearer(struct btd_device *dev)
 			le_last = NVAL_TIME;
 	}
 
+	if (le_last == NVAL_TIME && bredr_last == NVAL_TIME)
+		return dev->bdaddr_type;
+
 	if (dev->bredr && (!dev->le || le_last == NVAL_TIME))
 		return BDADDR_BREDR;
 
