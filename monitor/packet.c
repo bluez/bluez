@@ -5054,6 +5054,14 @@ static void read_enhanced_tx_power_rsp(const void *data, uint8_t size)
 	print_power_level(rsp->level_8dpsk, "8DPSK");
 }
 
+static void short_range_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_short_range_mode *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+	print_short_range_mode(cmd->mode);
+}
+
 static void read_le_host_supported_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_le_host_supported *rsp = data;
@@ -6678,7 +6686,8 @@ static const struct opcode_data opcode_table[] = {
 				read_enhanced_tx_power_rsp, 6, true },
 	{ 0x0c69, 194, "Read Best Effort Flush Timeout" },
 	{ 0x0c6a, 195, "Write Best Effort Flush Timeout" },
-	{ 0x0c6b, 196, "Short Range Mode" },
+	{ 0x0c6b, 196, "Short Range Mode",
+				short_range_mode_cmd, 2, true },
 	{ 0x0c6c, 197, "Read LE Host Supported",
 				null_cmd, 0, true,
 				read_le_host_supported_rsp, 3, true },
