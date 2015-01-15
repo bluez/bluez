@@ -1433,6 +1433,17 @@ struct bt_hci_rsp_read_local_oob_ext_data {
 	uint8_t  randomizer256[16];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_EXT_PAGE_TIMEOUT	0x0c7e
+struct bt_hci_rsp_read_ext_page_timeout {
+	uint8_t  status;
+	uint16_t timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_EXT_PAGE_TIMEOUT	0x0c7f
+struct bt_hci_cmd_write_ext_page_timeout {
+	uint16_t timeout;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LOCAL_VERSION		0x1001
 struct bt_hci_rsp_read_local_version {
 	uint8_t  status;
