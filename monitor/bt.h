@@ -1271,6 +1271,17 @@ struct bt_hci_cmd_write_inquiry_tx_power {
 	int8_t   level;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_ERRONEOUS_REPORTING	0x0c5a
+struct bt_hci_rsp_read_erroneous_reporting {
+	uint8_t  status;
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_ERRONEOUS_REPORTING	0x0c5b
+struct bt_hci_cmd_write_erroneous_reporting {
+	uint8_t  mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_ENHANCED_FLUSH		0x0c5f
 struct bt_hci_cmd_enhanced_flush {
 	uint16_t handle;
