@@ -1369,6 +1369,25 @@ static void print_afh_mode(uint8_t mode)
 	print_field("Mode: %s (0x%2.2x)", str, mode);
 }
 
+static void print_erroneous_reporting(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, mode);
+}
+
 static void print_simple_pairing_mode(uint8_t mode)
 {
 	const char *str;
@@ -4899,6 +4918,21 @@ static void write_inquiry_tx_power_cmd(const void *data, uint8_t size)
 	print_power_level(cmd->level);
 }
 
+static void read_erroneous_reporting_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_erroneous_reporting *rsp = data;
+
+	print_status(rsp->status);
+	print_erroneous_reporting(rsp->mode);
+}
+
+static void write_erroneous_reporting_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_erroneous_reporting *cmd = data;
+
+	print_erroneous_reporting(cmd->mode);
+}
+
 static void enhanced_flush_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_enhanced_flush *cmd = data;
@@ -6561,8 +6595,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c59, 145, "Write Inquiry Transmit Power Level",
 				write_inquiry_tx_power_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c5a, 146, "Read Default Erroneous Reporting" },
-	{ 0x0c5b, 147, "Write Default Erroneous Reporting" },
+	{ 0x0c5a, 146, "Read Default Erroneous Reporting",
+				null_cmd, 0, true,
+				read_erroneous_reporting_rsp, 2, true },
+	{ 0x0c5b, 147, "Write Default Erroneous Reporting",
+				write_erroneous_reporting_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c5f, 158, "Enhanced Flush",
 				enhanced_flush_cmd, 3, true },
 	{ 0x0c60, 162, "Send Keypress Notification",
