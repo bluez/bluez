@@ -1331,6 +1331,19 @@ struct bt_hci_cmd_write_flow_control_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_ENHANCED_TX_POWER	0x0c68
+struct bt_hci_cmd_read_enhanced_tx_power {
+	uint16_t handle;
+	uint8_t  type;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_enhanced_tx_power {
+	uint8_t  status;
+	uint16_t handle;
+	int8_t   level_gfsk;
+	int8_t   level_dqpsk;
+	int8_t   level_8dpsk;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LE_HOST_SUPPORTED	0x0c6c
 struct bt_hci_rsp_read_le_host_supported {
 	uint8_t  status;
