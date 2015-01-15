@@ -1114,6 +1114,13 @@ struct bt_hci_cmd_host_buffer_size {
 	uint16_t sco_max_pkt;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_HOST_NUM_COMPLETED_PACKETS	0x0c35
+struct bt_hci_cmd_host_num_completed_packets {
+	uint8_t  num_handles;
+	uint16_t handle;
+	uint16_t count;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LINK_SUPV_TIMEOUT	0x0c36
 struct bt_hci_cmd_read_link_supv_timeout {
 	uint16_t handle;
