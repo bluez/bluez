@@ -5194,6 +5194,21 @@ static void read_local_oob_ext_data_rsp(const void *data, uint8_t size)
 	print_randomizer_p256(rsp->randomizer256);
 }
 
+static void read_ext_page_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_ext_page_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_timeout(rsp->timeout);
+}
+
+static void write_ext_page_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_ext_page_timeout *cmd = data;
+
+	print_timeout(cmd->timeout);
+}
+
 static void read_local_version_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_local_version *rsp = data;
@@ -6669,8 +6684,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c7d, 262, "Read Local OOB Extended Data",
 				null_cmd, 0, true,
 				read_local_oob_ext_data_rsp, 65, true },
-	{ 0x0c7e, 264, "Read Extended Page Timeout" },
-	{ 0x0c7f, 265, "Write Extended Page Timeout" },
+	{ 0x0c7e, 264, "Read Extended Page Timeout",
+				null_cmd, 0, true,
+				read_ext_page_timeout_rsp, 3, true },
+	{ 0x0c7f, 265, "Write Extended Page Timeout",
+				write_ext_page_timeout_cmd, 2, true,
+				status_rsp, 1, true },
 	{ 0x0c80, 266, "Read Extended Inquiry Length" },
 	{ 0x0c81, 267, "Write Extended Inquiry Length" },
 
