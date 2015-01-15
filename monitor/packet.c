@@ -1389,6 +1389,28 @@ static void print_erroneous_reporting(uint8_t mode)
 	print_field("Mode: %s (0x%2.2x)", str, mode);
 }
 
+static void print_loopback_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "No Loopback";
+		break;
+	case 0x01:
+		str = "Local Loopback";
+		break;
+	case 0x02:
+		str = "Remote Loopback";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, mode);
+}
+
 static void print_simple_pairing_mode(uint8_t mode)
 {
 	const char *str;
@@ -5658,6 +5680,21 @@ static void set_triggered_clock_capture_cmd(const void *data, uint8_t size)
 	print_field("Clock captures to filter: %u", cmd->num_filter);
 }
 
+static void read_loopback_mode_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_loopback_mode *rsp = data;
+
+	print_status(rsp->status);
+	print_loopback_mode(rsp->mode);
+}
+
+static void write_loopback_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_loopback_mode *cmd = data;
+
+	print_loopback_mode(cmd->mode);
+}
+
 static void write_ssp_debug_mode_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_write_ssp_debug_mode *cmd = data;
@@ -6824,8 +6861,12 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 
 	/* OGF 6 - Testing */
-	{ 0x1801, 128, "Read Loopback Mode" },
-	{ 0x1802, 129, "Write Loopback Mode" },
+	{ 0x1801, 128, "Read Loopback Mode",
+				null_cmd, 0, true,
+				read_loopback_mode_rsp, 2, true },
+	{ 0x1802, 129, "Write Loopback Mode",
+				write_loopback_mode_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x1803, 130, "Enable Device Under Test Mode",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
