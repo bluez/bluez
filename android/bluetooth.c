@@ -1864,7 +1864,7 @@ static void update_new_device(struct device *dev, int8_t rssi,
 }
 
 static void update_device(struct device *dev, int8_t rssi,
-				const struct eir_data *eir, uint8_t bdaddr_type)
+						const struct eir_data *eir)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_remote_device_props *ev = (void *) buf;
@@ -1879,13 +1879,6 @@ static void update_device(struct device *dev, int8_t rssi,
 	get_device_android_addr(dev, ev->bdaddr);
 
 	old_type = get_device_android_type(dev);
-
-	if (bdaddr_type == BDADDR_BREDR) {
-		dev->bredr = true;
-	} else {
-		dev->le = true;
-		dev->bdaddr_type = bdaddr_type;
-	}
 
 	new_type = get_device_android_type(dev);
 
@@ -1961,10 +1954,14 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	dev = get_device(bdaddr, bdaddr_type);
 
-	if (bdaddr_type == BDADDR_BREDR)
+	if (bdaddr_type == BDADDR_BREDR) {
+		dev->bredr = true;
 		dev->bredr_seen = time(NULL);
-	else
+	} else {
+		dev->le = true;
+		dev->bdaddr_type = bdaddr_type;
 		dev->le_seen = time(NULL);
+	}
 
 	/*
 	 * Device found event needs to be send also for known device if this is
@@ -1973,7 +1970,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	if (is_new_device(dev, eir.flags, bdaddr_type))
 		update_new_device(dev, rssi, &eir);
 	else
-		update_device(dev, rssi, &eir, bdaddr_type);
+		update_device(dev, rssi, &eir);
 
 	eir_data_free(&eir);
 
