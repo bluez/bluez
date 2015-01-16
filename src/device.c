@@ -2535,33 +2535,6 @@ static void device_probe_gatt_profile(struct btd_device *device,
 	g_slist_free_full(data.uuids, g_free);
 }
 
-static void remove_invalid_services(struct gatt_probe_data *data)
-{
-	struct btd_device *dev = data->dev;
-	struct btd_service *service;
-	struct btd_profile *profile;
-	GSList *l, *tmp;
-
-	for (l = dev->services; l != NULL;) {
-		service = l->data;
-		profile = btd_service_get_profile(service);
-
-		if (g_slist_find_custom(dev->uuids, profile->remote_uuid,
-							bt_uuid_strcmp)) {
-			l = g_slist_next(l);
-			continue;
-		}
-
-		/* Service no longer valid, so remove it */
-		tmp = l->next;
-		dev->services = g_slist_delete_link(dev->services, l);
-		dev->pending = g_slist_remove(dev->pending, service);
-		service_remove(service);
-
-		l = tmp;
-	}
-}
-
 static void device_probe_gatt_profiles(struct btd_device *device)
 {
 	struct gatt_probe_data data;
@@ -2582,20 +2555,8 @@ static void device_probe_gatt_profiles(struct btd_device *device)
 	gatt_db_foreach_service(device->db, NULL, dev_probe_gatt_profile,
 									&data);
 
-	/*
-	 * Clear the UUIDs list
-	 *
-	 * FIXME: The management of UUIDs here iss currently broken, as clearing
-	 * the entire list here will likely remove UUIDs that shouldn't be
-	 * removed (e.g. those obtained via SDP for a dual-mode device).
-	 */
-	g_slist_free_full(device->uuids, g_free);
-	device->uuids = NULL;
-
 	device_add_uuids(device, data.uuids);
 	g_slist_free_full(data.uuids, g_free);
-
-	remove_invalid_services(&data);
 }
 
 static void device_accept_gatt_profiles(struct btd_device *device)
