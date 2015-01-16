@@ -2069,11 +2069,15 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 	const struct mgmt_ev_device_connected *ev = param;
 	struct hal_ev_acl_state_changed hal_ev;
 	struct device *dev;
+	char addr[18];
 
 	if (length < sizeof(*ev)) {
 		error("Too short device connected event (%u bytes)", length);
 		return;
 	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("%s type %u", addr, ev->addr.type);
 
 	update_found_device(&ev->addr.bdaddr, ev->addr.type, 0, false, false,
 					&ev->eir[0], le16_to_cpu(ev->eir_len));
