@@ -547,6 +547,8 @@ static void browse_request_cancel(struct browse_req *req)
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device->adapter;
 
+	DBG("");
+
 	bt_cancel_discovery(btd_adapter_get_address(adapter), &device->bdaddr);
 
 	attio_cleanup(device);
@@ -1136,11 +1138,11 @@ int device_unblock(struct btd_device *device, gboolean silent,
 	return 0;
 }
 
-static void discover_services_req_exit(DBusConnection *conn, void *user_data)
+static void browse_request_exit(DBusConnection *conn, void *user_data)
 {
 	struct browse_req *req = user_data;
 
-	DBG("DiscoverServices requestor exited");
+	DBG("Requestor exited");
 
 	browse_request_cancel(req);
 }
@@ -4161,19 +4163,45 @@ static void att_browse_cb(gpointer user_data)
 	DBG("ATT connection successful");
 }
 
+static struct browse_req *browse_request_new(struct btd_device *device,
+							DBusMessage *msg)
+{
+	struct browse_req *req;
+
+	if (device->browse)
+		return NULL;
+
+	req = g_new0(struct browse_req, 1);
+	req->device = device;
+
+	device->browse = req;
+
+	if (!msg)
+		return req;
+
+	req->msg = dbus_message_ref(msg);
+
+	/*
+	 * Track the request owner to cancel it automatically if the owner
+	 * exits
+	 */
+	req->listener_id = g_dbus_add_disconnect_watch(dbus_conn,
+						dbus_message_get_sender(msg),
+						browse_request_exit,
+						req, NULL);
+
+	return req;
+}
+
 static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct att_callbacks *attcb;
 	struct browse_req *req;
 
-	if (device->browse)
+	req = browse_request_new(device, msg);
+	if (!req)
 		return -EBUSY;
-
-	req = g_new0(struct browse_req, 1);
-	req->device = device;
-
-	device->browse = req;
 
 	if (device->attrib) {
 		/*
@@ -4181,7 +4209,7 @@ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 		 * to become ready.
 		 */
 		if (!device->le_state.svc_resolved)
-			goto done;
+			return 0;
 
 		/*
 		 * Services have already been discovered, so signal this browse
@@ -4214,20 +4242,6 @@ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 		browse_request_free(req);
 		g_free(attcb);
 		return -EIO;
-	}
-
-done:
-
-	if (msg) {
-		const char *sender = dbus_message_get_sender(msg);
-
-		req->msg = dbus_message_ref(msg);
-		/* Track the request owner to cancel it
-		 * automatically if the owner exits */
-		req->listener_id = g_dbus_add_disconnect_watch(dbus_conn,
-						sender,
-						discover_services_req_exit,
-						req, NULL);
 	}
 
 	return 0;
@@ -4265,11 +4279,10 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	uuid_t uuid;
 	int err;
 
-	if (device->browse)
+	req = browse_request_new(device, msg);
+	if (!req)
 		return -EBUSY;
 
-	req = g_new0(struct browse_req, 1);
-	req->device = device;
 	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 
 	req->sdp_flags = get_sdp_flags(device);
@@ -4280,20 +4293,6 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	if (err < 0) {
 		browse_request_free(req);
 		return err;
-	}
-
-	device->browse = req;
-
-	if (msg) {
-		const char *sender = dbus_message_get_sender(msg);
-
-		req->msg = dbus_message_ref(msg);
-		/* Track the request owner to cancel it
-		 * automatically if the owner exits */
-		req->listener_id = g_dbus_add_disconnect_watch(dbus_conn,
-						sender,
-						discover_services_req_exit,
-						req, NULL);
 	}
 
 	return err;
