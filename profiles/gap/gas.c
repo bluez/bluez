@@ -73,7 +73,7 @@ static int cmp_device(gconstpointer a, gconstpointer b)
 	return gas->device == device ? 0 : -1;
 }
 
-static char *name2utf8(const uint8_t *name, uint8_t len)
+static char *name2utf8(const uint8_t *name, uint16_t len)
 {
 	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
 	int i;
