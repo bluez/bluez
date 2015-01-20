@@ -178,7 +178,7 @@ struct avctp_channel {
 };
 
 struct key_pressed {
-	uint8_t op;
+	uint16_t op;
 	guint timer;
 };
 
