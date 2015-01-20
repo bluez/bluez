@@ -394,6 +394,9 @@ static void distribute_keys(struct smp_conn *conn)
 
 	if (conn->local_key_dist & DIST_ID_KEY) {
 		memset(buf, 0, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_IDENT_INFO, buf, sizeof(buf));
+
+		memset(buf, 0, sizeof(buf));
 
 		if (conn->out) {
 			buf[0] = conn->ia_type;
@@ -402,10 +405,8 @@ static void distribute_keys(struct smp_conn *conn)
 			buf[0] = conn->ra_type;
 			memcpy(&buf[1], conn->ra, 6);
 		}
-		smp_send(conn, BT_L2CAP_SMP_IDENT_ADDR_INFO, buf, 7);
 
-		memset(buf, 0, sizeof(buf));
-		smp_send(conn, BT_L2CAP_SMP_IDENT_INFO, buf, sizeof(buf));
+		smp_send(conn, BT_L2CAP_SMP_IDENT_ADDR_INFO, buf, 7);
 	}
 
 	if (conn->local_key_dist & DIST_SIGN) {
