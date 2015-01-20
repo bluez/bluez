@@ -337,15 +337,19 @@ static void handle_press(struct avctp *session, uint16_t op)
 		g_source_remove(session->key.timer);
 
 		/* Only auto release if keys are different */
-		if (session->key.op != op)
-			send_key(session->uinput, session->key.op, 0);
+		if (session->key.op == op)
+			goto done;
+
+		send_key(session->uinput, session->key.op, 0);
 	}
 
 	session->key.op = op;
-	session->key.timer = g_timeout_add_seconds(AVC_PRESS_TIMEOUT,
-							auto_release, session);
 
 	send_key(session->uinput, op, 1);
+
+done:
+	session->key.timer = g_timeout_add_seconds(AVC_PRESS_TIMEOUT,
+							auto_release, session);
 }
 
 static void handle_release(struct avctp *session, uint16_t op)
