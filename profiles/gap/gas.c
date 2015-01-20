@@ -81,6 +81,8 @@ static char *name2utf8(const uint8_t *name, uint8_t len)
 	if (g_utf8_validate((const char *) name, len, NULL))
 		return g_strndup((char *) name, len);
 
+	len = MIN(len, sizeof(utf8_name) - 1);
+
 	memset(utf8_name, 0, sizeof(utf8_name));
 	strncpy(utf8_name, (char *) name, len);
 
