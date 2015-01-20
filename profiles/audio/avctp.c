@@ -331,6 +331,33 @@ static gboolean auto_release(gpointer user_data)
 	return FALSE;
 }
 
+static void handle_press(struct avctp *session, uint16_t op)
+{
+	if (session->key.timer > 0) {
+		g_source_remove(session->key.timer);
+
+		/* Only auto release if keys are different */
+		if (session->key.op != op)
+			send_key(session->uinput, session->key.op, 0);
+	}
+
+	session->key.op = op;
+	session->key.timer = g_timeout_add_seconds(AVC_PRESS_TIMEOUT,
+							auto_release, session);
+
+	send_key(session->uinput, op, 1);
+}
+
+static void handle_release(struct avctp *session, uint16_t op)
+{
+	if (session->key.timer > 0) {
+		g_source_remove(session->key.timer);
+		session->key.timer = 0;
+	}
+
+	send_key(session->uinput, op, 0);
+}
+
 static size_t handle_panel_passthrough(struct avctp *session,
 					uint8_t transaction, uint8_t *code,
 					uint8_t *subunit, uint8_t *operands,
@@ -384,23 +411,11 @@ static size_t handle_panel_passthrough(struct avctp *session,
 			break;
 		}
 
-		if (pressed) {
-			if (session->key.timer > 0) {
-				g_source_remove(session->key.timer);
-				send_key(session->uinput, session->key.op, 0);
-			}
+		if (pressed)
+			handle_press(session, key_map[i].uinput);
+		else
+			handle_release(session, key_map[i].uinput);
 
-			session->key.op = key_map[i].uinput;
-			session->key.timer = g_timeout_add_seconds(
-							AVC_PRESS_TIMEOUT,
-							auto_release,
-							session);
-		} else if (session->key.timer > 0) {
-			g_source_remove(session->key.timer);
-			session->key.timer = 0;
-		}
-
-		send_key(session->uinput, key_map[i].uinput, pressed);
 		break;
 	}
 
