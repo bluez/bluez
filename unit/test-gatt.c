@@ -1938,6 +1938,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0x0C, 0xD3, 0x00, 0x2D, 0x00),
 			raw_pdu(0x0D));
 
+	define_test_server("/TP/GAR/SR/BI-12-C/large-1", test_server,
+			ts_large_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x0C, 0x27, 0x00, 0x00, 0x00),
+			raw_pdu(0x01, 0x0C, 0x27, 0x00, 0x02));
+
 	define_test_client("/TP/GAR/CL/BV-05-C", test_client, service_db_1,
 			&test_multiple_read_1,
 			SERVICE_DATA_1_PDUS,
