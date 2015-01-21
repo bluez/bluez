@@ -2018,5 +2018,11 @@ int main(int argc, char *argv[])
 				'2', '2', '2', '2', '3', '3', '3', '3', '3',
 				'4', '4', '4', '4', '4'));
 
+	define_test_server("/TP/GAR/SR/BI-18-C/large-1", test_server,
+			ts_large_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x0e, 0x44, 0x00, 0x06, 0x00, 0x27, 0x00),
+			raw_pdu(0x01, 0x0e, 0x27, 0x00, 0x02));
+
 	return g_test_run();
 }
