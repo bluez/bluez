@@ -29,6 +29,7 @@
 #include "src/shared/queue.h"
 #include "src/shared/timeout.h"
 #include "src/shared/gatt-db.h"
+#include "src/shared/att-types.h"
 
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -1457,8 +1458,10 @@ bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
 	}
 
 	/* Check boundary if value is stored in the db */
-	if (offset > attrib->value_len)
-		return false;
+	if (offset > attrib->value_len) {
+		func(attrib, BT_ATT_ERROR_INVALID_OFFSET, NULL, 0, user_data);
+		return true;
+	}
 
 	/* Guard against invalid access if offset equals to value length */
 	value = offset == attrib->value_len ? NULL : &attrib->value[offset];
