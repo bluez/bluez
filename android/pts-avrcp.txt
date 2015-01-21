@@ -1,7 +1,7 @@
 PTS test results for AVRCP
 
-PTS version: 5.3
-Tested: 20-November-2014
+PTS version: 6.0
+Tested: 21-January-2015
 Android version: 5.0
 
 Results:
@@ -83,10 +83,11 @@ TC_CT_VLH_BI_03_C	PASS	Send SetAbsolute Volume command by pressing
 TC_CT_VLH_BI_04_C	PASS	adb logcat: check VOLUME_CHANGED value
 TC_CT_VLH_BV_01_C	PASS	Send SetAbsolute Volume command by pressing
 				volume up or down buttons
-TC_CT_VLH_BV_01_I	PASS	adb logcat: check VOLUME_CHANGED value
-TC_CT_VLH_BV_02_I	PASS	Send SetAbsolute Volume command by pressing
+TC_CT_VLH_BV_03_C	PASS	adb logcat: check VOLUME_CHANGED value
+TC_CT_VLH_BV_01_I	PASS	Send SetAbsolute Volume command by pressing
 				volume up or down buttons
-TC_CT_VLH_BV_03_C	PASS
+TC_CT_VLH_BV_02_I	PASS 	Send SetAbsolute Volume command by pressing
+				volume up or down buttons
 -------------------------------------------------------------------------------
 
 
@@ -188,8 +189,10 @@ TC_TG_PTT_BV_02_I	PASS
 TC_TG_PTT_BV_03_I	N/A
 TC_TG_PTT_BV_04_I	N/A
 TC_TG_PTT_BV_05_I	N/A
-TC_TG_RCR_BV_02_C	PASS	One can use: lame --ta/tl for creating metadata
-TC_TG_RCR_BV_04_C	PASS
+TC_TG_RCR_BV_02_C	PASS	Use modified media metadata (artist, title,
+					album etc.) to be larger than 512 byte.
+TC_TG_RCR_BV_04_C	PASS	Use modified media metadata (artist, title,
+					album etc.) to be larger than 512 byte.
 TC_TG_VLH_BI_01_C	N/A
 TC_TG_VLH_BI_02_C	N/A
 TC_TG_VLH_BV_01_I	N/A
