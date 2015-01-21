@@ -2004,5 +2004,19 @@ int main(int argc, char *argv[])
 			raw_pdu(0x0e, 0x03, 0x00, 0x07, 0x00),
 			raw_pdu(0x01, 0x0e, 0x03, 0x00, 0x0c));
 
+	define_test_server("/TP/GAR/SR/BV-05-C/small", test_server,
+			ts_small_db, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x0e, 0x15, 0xF0, 0x03, 0x00),
+			raw_pdu(0x0f, 0x09, 'B', 'l', 'u', 'e', 'Z'));
+
+	define_test_server("/TP/GAR/SR/BV-05-C/large-1", test_server,
+			ts_large_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x0e, 0x44, 0x00, 0x06, 0x00, 0xC4, 0x00),
+			raw_pdu(0x0f, 0x11, 0x0B, '1', '1', '1', '1', '1', '2',
+				'2', '2', '2', '2', '3', '3', '3', '3', '3',
+				'4', '4', '4', '4', '4'));
+
 	return g_test_run();
 }
