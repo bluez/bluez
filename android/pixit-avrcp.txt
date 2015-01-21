@@ -1,6 +1,6 @@
 AVRCP PIXIT for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -18,7 +18,7 @@ TSPX_pin_code			0000
 TSPX_delete_link_key		FALSE
 TSPX_time_guard			300000
 TSPX_avrcp_only			FALSE
-TSPX_search_string		tomorrow
+TSPX_search_string		3
 TSPX_max_avc_fragments		10
 TSPX_establish_avdtp_stream	TRUE
 TSPX_use_implicit_send		TRUE
