@@ -56,6 +56,7 @@ struct test_data {
 	unsigned int mgmt_settings_id;
 	unsigned int mgmt_alt_settings_id;
 	unsigned int mgmt_alt_ev_id;
+	unsigned int mgmt_discov_ev_id;
 	uint8_t mgmt_version;
 	uint16_t mgmt_revision;
 	uint16_t mgmt_index;
@@ -3763,10 +3764,9 @@ static void discovering_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
-	unsigned int id = PTR_TO_UINT(user_data);
 	const struct mgmt_ev_discovering *ev = param;
 
-	mgmt_unregister(data->mgmt, id);
+	mgmt_unregister(data->mgmt, data->mgmt_discov_ev_id);
 
 	if (length != sizeof(*ev)) {
 		tester_warn("Incorrect discovering event length");
@@ -3800,10 +3800,11 @@ static void setup_start_discovery(const void *test_data)
 	const struct generic_data *test = data->test_data;
 	const void *send_param = test->setup_send_param;
 	uint16_t send_len = test->setup_send_len;
-	unsigned int id = 0;
+	unsigned int id;
 
 	id = mgmt_register(data->mgmt, MGMT_EV_DISCOVERING, data->mgmt_index,
-			   discovering_event, UINT_TO_PTR(id), NULL);
+			   discovering_event, NULL, NULL);
+	data->mgmt_discov_ev_id = id;
 
 	mgmt_send(data->mgmt, test->setup_send_opcode, data->mgmt_index,
 				send_len, send_param, setup_discovery_callback,
