@@ -1892,6 +1892,12 @@ int main(int argc, char *argv[])
 				'2', '2', '2', '2', '2', '3', '3', '3', '3',
 				'3', '4', '4', '4', '4'));
 
+	define_test_server("/TP/GAR/SR/BI-06-C/large-1", test_server,
+			ts_large_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x08, 0x01, 0x00, 0xFF, 0xFF, 0x07, 0xB0),
+			raw_pdu(0x01, 0x08, 0x32, 0x00, 0x02));
+
 	define_test_client("/TP/GAR/CL/BV-05-C", test_client, service_db_1,
 			&test_multiple_read_1,
 			SERVICE_DATA_1_PDUS,
