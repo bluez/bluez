@@ -6908,7 +6908,7 @@ static void register_device_info_service(void)
 
 	/* Device Information Service */
 	bt_uuid16_create(&uuid, 0x180a);
-	service = gatt_db_add_service(gatt_db, &uuid, true, 15);
+	service = gatt_db_add_service(gatt_db, &uuid, true, 17);
 
 	/* User data are not const hence (void *) cast is used */
 	data = bt_config_get_name();
