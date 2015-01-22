@@ -230,7 +230,7 @@ next_packet:
 		if (flags & 0x01)
 			opcode = BTSNOOP_OPCODE_SCO_RX_PKT;
 		else
-			opcode = BTSNOOP_OPCODE_ACL_TX_PKT;
+			opcode = BTSNOOP_OPCODE_SCO_TX_PKT;
 		break;
 	case 0x04:
 		opcode = BTSNOOP_OPCODE_EVENT_PKT;
