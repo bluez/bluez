@@ -628,9 +628,9 @@ static void test_read(struct context *context)
 						test_read_cb, context, NULL));
 }
 
-const uint8_t read_data_1[] = {0x01, 0x02, 0x03};
+static const uint8_t read_data_1[] = {0x01, 0x02, 0x03};
 
-const struct test_step test_read_1 = {
+static const struct test_step test_read_1 = {
 	.handle = 0x0003,
 	.func = test_read,
 	.expected_att_ecode = 0,
@@ -638,19 +638,19 @@ const struct test_step test_read_1 = {
 	.length = 0x03
 };
 
-const struct test_step test_read_2 = {
+static const struct test_step test_read_2 = {
 	.handle = 0x0000,
 	.func = test_read,
 	.expected_att_ecode = 0x01,
 };
 
-const struct test_step test_read_3 = {
+static const struct test_step test_read_3 = {
 	.handle = 0x0003,
 	.func = test_read,
 	.expected_att_ecode = 0x02,
 };
 
-const struct test_step test_read_4 = {
+static const struct test_step test_read_4 = {
 	.handle = 0x0003,
 	.func = test_read,
 	.expected_att_ecode = 0x08,
@@ -1281,7 +1281,7 @@ static void test_search_descs(gconstpointer data)
 	execute_context(context);
 }
 
-const struct test_step test_read_by_type_1 = {
+static const struct test_step test_read_by_type_1 = {
 	.handle = 0x0001,
 	.end_handle = 0xffff,
 	.expected_att_ecode = 0x0a,
@@ -1289,31 +1289,31 @@ const struct test_step test_read_by_type_1 = {
 	.length = 0x03
 };
 
-const struct test_step test_read_by_type_2 = {
+static const struct test_step test_read_by_type_2 = {
 	.handle = 0x0001,
 	.end_handle = 0xffff,
 	.expected_att_ecode = 0x02,
 };
 
-const struct test_step test_read_by_type_3 = {
+static const struct test_step test_read_by_type_3 = {
 	.handle = 0x0001,
 	.end_handle = 0xffff,
 	.expected_att_ecode = 0x0a,
 };
 
-const struct test_step test_read_by_type_4 = {
+static const struct test_step test_read_by_type_4 = {
 	.handle = 0x0001,
 	.end_handle = 0xffff,
 	.expected_att_ecode = 0x08,
 };
 
-const struct test_step test_read_by_type_5 = {
+static const struct test_step test_read_by_type_5 = {
 	.handle = 0x0001,
 	.end_handle = 0xffff,
 	.expected_att_ecode = 0x05,
 };
 
-const struct test_step test_read_by_type_6 = {
+static const struct test_step test_read_by_type_6 = {
 	.handle = 0x0001,
 	.end_handle = 0xffff,
 	.expected_att_ecode = 0x0c,
@@ -1349,7 +1349,7 @@ static void test_multiple_read(struct context *context)
 						NULL));
 }
 
-const struct test_step test_multiple_read_1 = {
+static const struct test_step test_multiple_read_1 = {
 	.handle = 0x0003,
 	.end_handle = 0x0007,
 	.func = test_multiple_read,
@@ -1357,35 +1357,35 @@ const struct test_step test_multiple_read_1 = {
 	.length = 0x03
 };
 
-const struct test_step test_multiple_read_2 = {
+static const struct test_step test_multiple_read_2 = {
 	.handle = 0x0003,
 	.end_handle = 0x0007,
 	.func = test_multiple_read,
 	.expected_att_ecode = 0x02
 };
 
-const struct test_step test_multiple_read_3 = {
+static const struct test_step test_multiple_read_3 = {
 	.handle = 0x0003,
 	.end_handle = 0x0007,
 	.func = test_multiple_read,
 	.expected_att_ecode = 0x01
 };
 
-const struct test_step test_multiple_read_4 = {
+static const struct test_step test_multiple_read_4 = {
 	.handle = 0x0003,
 	.end_handle = 0x0007,
 	.func = test_multiple_read,
 	.expected_att_ecode = 0x08
 };
 
-const struct test_step test_multiple_read_5 = {
+static const struct test_step test_multiple_read_5 = {
 	.handle = 0x0003,
 	.end_handle = 0x0007,
 	.func = test_multiple_read,
 	.expected_att_ecode = 0x05
 };
 
-const struct test_step test_multiple_read_6 = {
+static const struct test_step test_multiple_read_6 = {
 	.handle = 0x0003,
 	.end_handle = 0x0007,
 	.func = test_multiple_read,
