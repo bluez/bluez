@@ -1236,6 +1236,10 @@ Read Local Out Of Band Data Command
 	will return P-192 versions of hash and randomizer as well as
 	P-256 versions of both.
 
+	Values returned by this command become invalid when the controller
+	is powered down. After each power-cycle it is required to call
+	this command again to get updated values.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -1282,6 +1286,9 @@ Add Remote Out Of Band Data Command
 	it is valid to leave both P-192 fields as zero values. If
 	Secure Connections is disabled, then of course this is the
 	same as not providing any data at all.
+
+	When providing data for remote LE devices, then the P-192 fields
+	are not used and shall be set to zero value.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
