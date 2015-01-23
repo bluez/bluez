@@ -1040,7 +1040,7 @@ static void print_power_type(uint8_t type)
 static void print_power_level(int8_t level, const char *type)
 {
 	print_field("TX power%s%s%s: %d dBm",
-			type ? " (" : "", type, type ? ")" : "", level);
+		type ? " (" : "", type ? type : "", type ? ")" : "", level);
 }
 
 static void print_sync_flow_control(uint8_t enable)
