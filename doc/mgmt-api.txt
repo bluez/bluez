@@ -2279,14 +2279,15 @@ Read Local Out Of Band Extended Data Command
 		LE Bluetooth Device Address
 		LE Role
 		Security Manager TK Value
-		Simple Pairing Hash C-256 (optional)
-		Simple Pairing Randomizer R-256 (optional)
+		LE Secure Connections Confirmation Value (optional)
+		LE Secure Connections Random Value (optional)
 		Appearance (optional)
 		Local Name (optional)
 		Flags
 
-	The Simple Pairing Hash C-256 and Simple Pairing Randomizer R-256
-	fields are only included when secure connections has been enabled.
+	The LE Secure Connections Confirmation Value and LE Secure Connections
+	Random Value fields are only included when secure connections has been
+	enabled.
 
 	The returned information from BR/EDR controller and LE controller
 	types are not related to each other. Once they have been used
