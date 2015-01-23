@@ -1035,7 +1035,7 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 	}
 
 	util_debug(data->server->debug_callback, data->server->debug_data,
-				"Read Multiple Req - #%lu of %lu: 0x%04x",
+				"Read Multiple Req - #%zu of %zu: 0x%04x",
 				data->cur_handle + 1, data->num_handles,
 				data->handles[data->cur_handle]);
 
@@ -1097,7 +1097,7 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu,
 		data.handles[i] = get_le16(pdu + i * 2);
 
 	util_debug(server->debug_callback, server->debug_data,
-			"Read Multiple Req - %lu handles, 1st: 0x%04x",
+			"Read Multiple Req - %zu handles, 1st: 0x%04x",
 			data.num_handles, data.handles[0]);
 
 	attr = gatt_db_get_attribute(server->db, data.handles[0]);
