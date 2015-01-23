@@ -1223,43 +1223,32 @@ guint attrib_channel_attach(GAttrib *attrib)
 	return channel->id;
 }
 
-static int channel_id_cmp(gconstpointer data, gconstpointer user_data)
+static struct gatt_channel *find_channel(guint id)
 {
-	const struct gatt_channel *channel = data;
-	guint id = GPOINTER_TO_UINT(user_data);
+	GSList *l;
 
-	return channel->id - id;
+	for (l = servers; l; l = g_slist_next(l)) {
+		struct gatt_server *server = l->data;
+		GSList *c;
+
+		for (c = server->clients; c; c = g_slist_next(c)) {
+			struct gatt_channel *channel = c->data;
+
+			if (channel->id == id)
+				return channel;
+		}
+	}
+
+	return NULL;
 }
 
 gboolean attrib_channel_detach(GAttrib *attrib, guint id)
 {
-	struct gatt_server *server;
 	struct gatt_channel *channel;
-	GError *gerr = NULL;
-	GIOChannel *io;
-	bdaddr_t src;
-	GSList *l;
 
-	io = g_attrib_get_channel(attrib);
-
-	bt_io_get(io, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src, BT_IO_OPT_INVALID);
-
-	if (gerr != NULL) {
-		error("bt_io_get: %s", gerr->message);
-		g_error_free(gerr);
+	channel = find_channel(id);
+	if (channel == NULL)
 		return FALSE;
-	}
-
-	server = find_gatt_server(&src);
-	if (server == NULL)
-		return FALSE;
-
-	l = g_slist_find_custom(server->clients, GUINT_TO_POINTER(id),
-								channel_id_cmp);
-	if (!l)
-		return FALSE;
-
-	channel = l->data;
 
 	g_attrib_unregister(channel->attrib, channel->id);
 	channel_remove(channel);

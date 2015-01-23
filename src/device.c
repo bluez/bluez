@@ -512,11 +512,6 @@ static void gatt_client_cleanup(struct btd_device *device)
 
 static void attio_cleanup(struct btd_device *device)
 {
-	if (device->attachid) {
-		attrib_channel_detach(device->attrib, device->attachid);
-		device->attachid = 0;
-	}
-
 	if (device->att_disconn_id)
 		bt_att_unregister_disconnect(device->att,
 							device->att_disconn_id);
@@ -536,7 +531,16 @@ static void attio_cleanup(struct btd_device *device)
 
 	if (device->attrib) {
 		GAttrib *attrib = device->attrib;
+
 		device->attrib = NULL;
+
+		if (device->attachid) {
+			guint attachid = device->attachid;
+
+			device->attachid = 0;
+			attrib_channel_detach(attrib, attachid);
+		}
+
 		g_attrib_cancel_all(attrib);
 		g_attrib_unref(attrib);
 	}
