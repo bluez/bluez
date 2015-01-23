@@ -1376,6 +1376,7 @@ static bool l2cap_conn_rsp(struct bthost *bthost, struct btconn *conn,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	const struct bt_l2cap_pdu_conn_rsp *rsp = data;
+	struct bt_l2cap_pdu_config_req req;
 	struct l2conn *l2conn;
 
 	if (len < sizeof(*rsp))
@@ -1387,18 +1388,14 @@ static bool l2cap_conn_rsp(struct bthost *bthost, struct btconn *conn,
 	else
 		return false;
 
-	if (le16_to_cpu(rsp->result) == 0x0001) {
-		struct bt_l2cap_pdu_config_req req;
+	if (rsp->result)
+		return true;
 
-		memset(&req, 0, sizeof(req));
-		req.dcid = rsp->dcid;
+	memset(&req, 0, sizeof(req));
+	req.dcid = rsp->dcid;
 
-		l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_CONFIG_REQ, 0,
+	l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_CONFIG_REQ, 0,
 							&req, sizeof(req));
-	} else if (l2conn->psm == 0x0003 && !rsp->result && !rsp->status &&
-						bthost->rfcomm_conn_data) {
-		rfcomm_sabm_send(bthost, conn, l2conn, 1, 0);
-	}
 
 	return true;
 }
@@ -1434,9 +1431,17 @@ static bool l2cap_config_rsp(struct bthost *bthost, struct btconn *conn,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	const struct bt_l2cap_pdu_config_rsp *rsp = data;
+	struct l2conn *l2conn;
 
 	if (len < sizeof(*rsp))
 		return false;
+
+	l2conn = btconn_find_l2cap_conn_by_scid(conn, rsp->scid);
+	if (!l2conn)
+		return false;
+
+	if (l2conn->psm == 0x0003 && !rsp->result && bthost->rfcomm_conn_data)
+		rfcomm_sabm_send(bthost, conn, l2conn, 1, 0);
 
 	return true;
 }
