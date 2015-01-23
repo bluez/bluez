@@ -1423,7 +1423,7 @@ static struct app_connection *find_conn_without_app(struct gatt_device *dev)
 static struct app_connection *find_conn(const bdaddr_t *addr, int32_t app_id)
 {
 	struct app_connection conn_match;
-	struct gatt_device *dev = NULL;
+	struct gatt_device *dev;
 	struct gatt_app *app;
 
 	/* Check if app is registered */
