@@ -636,8 +636,7 @@ static void connection_cleanup(struct gatt_device *device)
 			g_attrib_unregister(device->attrib, device->server_id);
 
 		if (device->ind_id > 0)
-			g_attrib_unregister(device->attrib,
-							device->ind_id);
+			g_attrib_unregister(device->attrib, device->ind_id);
 
 		device->attrib = NULL;
 		g_attrib_cancel_all(attrib);
@@ -1366,9 +1365,9 @@ static void discover_primary_cb(uint8_t status, GSList *services,
 
 static guint search_dev_for_srvc(struct app_connection *conn, bt_uuid_t *uuid)
 {
-	struct discover_srvc_data *cb_data =
-					new0(struct discover_srvc_data, 1);
+	struct discover_srvc_data *cb_data;
 
+	cb_data = new0(struct discover_srvc_data, 1);
 	if (!cb_data) {
 		error("gatt: Cannot allocate cb data");
 		return 0;
@@ -1381,7 +1380,6 @@ static guint search_dev_for_srvc(struct app_connection *conn, bt_uuid_t *uuid)
 		return gatt_discover_primary(conn->device->attrib, uuid,
 					discover_srvc_by_uuid_cb, cb_data);
 	}
-
 
 	if (conn->app)
 		return gatt_discover_primary(conn->device->attrib, NULL,
@@ -1464,7 +1462,6 @@ static void ind_handler(const uint8_t *cmd, uint16_t cmd_len,
 	struct gatt_device *dev = user_data;
 	uint16_t resp_length = 0;
 	size_t length;
-
 	uint8_t *opdu = g_attrib_get_buffer(dev->attrib, &length);
 
 	/*
@@ -1640,14 +1637,13 @@ static int connect_le(struct gatt_device *dev)
 	 * pairing finishes
 	 */
 	io = bt_io_connect(connect_cb, device_ref(dev), NULL, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR,
-			&adapter_addr,
-			BT_IO_OPT_SOURCE_TYPE, BDADDR_LE_PUBLIC,
-			BT_IO_OPT_DEST_BDADDR, bdaddr,
-			BT_IO_OPT_DEST_TYPE, bdaddr_type,
-			BT_IO_OPT_CID, ATT_CID,
-			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-			BT_IO_OPT_INVALID);
+					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
+					BT_IO_OPT_SOURCE_TYPE, BDADDR_LE_PUBLIC,
+					BT_IO_OPT_DEST_BDADDR, bdaddr,
+					BT_IO_OPT_DEST_TYPE, bdaddr_type,
+					BT_IO_OPT_CID, ATT_CID,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
 	if (!io) {
 		error("gatt: Failed bt_io_connect(%s): %s", addr,
 							gerr->message);
@@ -1800,8 +1796,9 @@ static void handle_client_register(const void *buf, uint16_t len)
 	if (app) {
 		ev.client_if = app->id;
 		ev.status = GATT_SUCCESS;
-	} else
+	} else {
 		ev.status = GATT_FAILURE;
+	}
 
 	/* We should send notification with given in cmd UUID */
 	memcpy(ev.app_uuid, cmd->uuid, sizeof(ev.app_uuid));
@@ -1855,6 +1852,7 @@ static void handle_client_scan(const void *buf, uint16_t len)
 		status = HAL_STATUS_FAILED;
 		goto reply;
 	}
+
 	scanning = true;
 	status = HAL_STATUS_SUCCESS;
 
@@ -1908,13 +1906,13 @@ static int connect_bredr(struct gatt_device *dev)
 								BT_IO_SEC_LOW;
 
 	io = bt_io_connect(connect_cb, device_ref(dev), NULL, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
-			BT_IO_OPT_SOURCE_TYPE, BDADDR_BREDR,
-			BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
-			BT_IO_OPT_DEST_TYPE, BDADDR_BREDR,
-			BT_IO_OPT_PSM, ATT_PSM,
-			BT_IO_OPT_SEC_LEVEL, sec_level,
-			BT_IO_OPT_INVALID);
+					BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
+					BT_IO_OPT_SOURCE_TYPE, BDADDR_BREDR,
+					BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
+					BT_IO_OPT_DEST_TYPE, BDADDR_BREDR,
+					BT_IO_OPT_PSM, ATT_PSM,
+					BT_IO_OPT_SEC_LEVEL, sec_level,
+					BT_IO_OPT_INVALID);
 	if (!io) {
 		error("gatt: Failed bt_io_connect(%s): %s", addr,
 							gerr->message);
@@ -1992,7 +1990,8 @@ static uint8_t unregister_app(int client_if)
 	 * Make sure that there is no devices in auto connect list for this
 	 * application
 	 */
-	queue_foreach(gatt_devices, clear_autoconnect_devices, INT_TO_PTR(client_if));
+	queue_foreach(gatt_devices, clear_autoconnect_devices,
+							INT_TO_PTR(client_if));
 
 	cl = queue_remove_if(gatt_apps, match_app_by_id, INT_TO_PTR(client_if));
 	if (!cl) {
@@ -2233,8 +2232,7 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		 */
 		if (advertising_cnt > 1) {
 			advertising_cnt--;
-			queue_remove(listen_apps,
-						INT_TO_PTR(cmd->client_if));
+			queue_remove(listen_apps, INT_TO_PTR(cmd->client_if));
 			status = HAL_STATUS_SUCCESS;
 			goto reply;
 		}
@@ -2601,6 +2599,7 @@ static void handle_client_get_included_service(const void *buf, uint16_t len)
 		incl_service = queue_peek_head(prim_service->included);
 	} else {
 		uint8_t inst_id = cmd->incl_srvc_id[0].inst_id;
+
 		incl_service = queue_find(prim_service->included,
 						match_srvc_by_higher_inst_id,
 						INT_TO_PTR(inst_id));
@@ -2646,8 +2645,8 @@ static void send_client_char_notify(const struct hal_gatt_srvc_id *service,
 }
 
 static void convert_send_client_char_notify(const struct characteristic *ch,
-					int32_t conn_id,
-					const struct service *service)
+						int32_t conn_id,
+						const struct service *service)
 {
 	struct hal_gatt_srvc_id srvc;
 	struct hal_gatt_gatt_id charac;
@@ -2698,6 +2697,7 @@ static void cache_all_srvc_chars(struct service *srvc, GSList *characteristics)
 		/* Store end handle to use later for descriptors discovery */
 		if (characteristics->next) {
 			struct gatt_char *next = characteristics->next->data;
+
 			ch->end_handle = next->handle - 1;
 		} else {
 			ch->end_handle = srvc->primary ? srvc->prim.range.end :
@@ -3218,8 +3218,9 @@ failed:
 	 */
 	if (status != HAL_STATUS_SUCCESS)
 		send_client_read_char_notify(GATT_FAILURE, NULL, 0,
-					cmd->conn_id, &srvc_id, &char_id,
-					cmd->srvc_id.is_primary);
+						cmd->conn_id, &srvc_id,
+						&char_id,
+						cmd->srvc_id.is_primary);
 }
 
 static void send_client_write_char_notify(int32_t status, int32_t conn_id,
@@ -4092,7 +4093,7 @@ static void test_command_result(guint8 status, const guint8 *pdu,
 }
 
 static uint8_t test_read_write(bdaddr_t *bdaddr, bt_uuid_t *uuid, uint16_t op,
-						uint16_t u2,uint16_t u3,
+						uint16_t u2, uint16_t u3,
 						uint16_t u4, uint16_t u5)
 {
 	guint16 length = 0;
@@ -4485,8 +4486,8 @@ static void send_dev_complete_response(struct gatt_device *device,
 			val = queue_pop_head(device->pending_requests);
 		}
 
-		adl = att_data_list_alloc(queue_length(temp), sizeof(uint16_t) +
-									length);
+		adl = att_data_list_alloc(queue_length(temp),
+						sizeof(uint16_t) + length);
 
 		if (val)
 			destroy_pending_request(val);
@@ -4838,8 +4839,8 @@ static void read_requested_attributes(void *data, void *user_data)
 	resp_data->state = REQUEST_PENDING;
 
 	gatt_db_attribute_read(attrib, resp_data->offset, process_data->opcode,
-					&process_data->device->bdaddr,
-					attribute_read_cb, resp_data);
+						&process_data->device->bdaddr,
+						attribute_read_cb, resp_data);
 }
 
 static void process_dev_pending_requests(struct gatt_device *device,
@@ -5167,7 +5168,7 @@ static sdp_record_t *get_sdp_record(uuid_t *uuid, uint16_t start, uint16_t end,
 	uint16_t lp = ATT_PSM;
 
 	record = sdp_record_alloc();
-	if (record == NULL)
+	if (!record)
 		return NULL;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
@@ -5506,13 +5507,13 @@ static void handle_server_send_indication(const void *buf, uint16_t len)
 	if (cmd->confirm) {
 		/* TODO: Add data to track confirmation for this request */
 		length = enc_indication(cmd->attribute_handle,
-					(uint8_t *)cmd->value, cmd->len, pdu,
+					(uint8_t *) cmd->value, cmd->len, pdu,
 					mtu);
 		confirmation_cb = ignore_confirmation_cb;
 	} else {
 		length = enc_notification(cmd->attribute_handle,
-						(uint8_t *)cmd->value, cmd->len,
-						pdu, mtu);
+						(uint8_t *) cmd->value,
+						cmd->len, pdu, mtu);
 	}
 
 	if (length == 0) {
@@ -6147,8 +6148,7 @@ static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 }
 
 static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
-						uint8_t *rsp, size_t rsp_size,
-						uint16_t *length)
+				uint8_t *rsp, size_t rsp_size, uint16_t *length)
 {
 	struct gatt_db_attribute *attrib;
 	struct queue *q, *temp;
@@ -6156,6 +6156,7 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 	int iterator = 0;
 	uint16_t start, end;
 	uint16_t len, queue_len;
+	uint8_t format;
 	uint8_t ret = 0;
 
 	DBG("");
@@ -6230,9 +6231,12 @@ static uint8_t find_info_handle(const uint8_t *cmd, uint16_t cmd_len,
 		memcpy(&value[2], &type->value, len);
 	}
 
-	len = enc_find_info_resp(len == 2 ? ATT_FIND_INFO_RESP_FMT_16BIT :
-					ATT_FIND_INFO_RESP_FMT_128BIT, adl, rsp,
-								rsp_size);
+	if (len == 2)
+		format = ATT_FIND_INFO_RESP_FMT_16BIT;
+	else
+		format = ATT_FIND_INFO_RESP_FMT_128BIT;
+
+	len = enc_find_info_resp(format, adl, rsp, rsp_size);
 	if (!len)
 		ret = ATT_ECODE_UNLIKELY;
 
@@ -6587,8 +6591,7 @@ static void send_server_write_execute_notify(void *data, void *user_data)
 	ev->trans_id = transaction->id;
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
-				HAL_EV_GATT_SERVER_REQUEST_EXEC_WRITE,
-				sizeof(*ev), ev);
+			HAL_EV_GATT_SERVER_REQUEST_EXEC_WRITE, sizeof(*ev), ev);
 }
 
 static uint8_t write_execute_request(const uint8_t *cmd, uint16_t cmd_len,
@@ -6830,6 +6833,7 @@ static void register_gap_service(void)
 							NULL, NULL, NULL);
 	if (gap_srvc_data.priv) {
 		uint8_t value;
+
 		/* Store privacy into db */
 		value = PERIPHERAL_PRIVACY_DISABLE;
 		gatt_db_attribute_write(gap_srvc_data.priv, 0,
@@ -7383,8 +7387,7 @@ bool bt_gatt_add_autoconnect(unsigned int id, const bdaddr_t *addr)
 	if (queue_isempty(dev->autoconnect_apps))
 		device_ref(dev);
 
-	if (!queue_find(dev->autoconnect_apps, match_by_value,
-							INT_TO_PTR(id)))
+	if (!queue_find(dev->autoconnect_apps, match_by_value, INT_TO_PTR(id)))
 		return queue_push_head(dev->autoconnect_apps, INT_TO_PTR(id));
 
 	return true;
