@@ -1500,7 +1500,7 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 	if (!server || (length && !value))
 		return false;
 
-	pdu_len = MIN(bt_att_get_mtu(server->att), length + 2);
+	pdu_len = MIN(bt_att_get_mtu(server->att) - 1, length + 2);
 	pdu = malloc(pdu_len);
 	if (!pdu)
 		return false;
@@ -1555,7 +1555,7 @@ bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
 	if (!server || (length && !value))
 		return false;
 
-	pdu_len = MIN(bt_att_get_mtu(server->att), length + 2);
+	pdu_len = MIN(bt_att_get_mtu(server->att) - 1, length + 2);
 	pdu = malloc(pdu_len);
 	if (!pdu)
 		return false;
