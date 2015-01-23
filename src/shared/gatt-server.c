@@ -1506,7 +1506,7 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 		return false;
 
 	put_le16(handle, pdu);
-	memcpy(pdu + 2, value, length);
+	memcpy(pdu + 2, value, pdu_len - 2);
 
 	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_VAL_NOT, pdu,
 						pdu_len, NULL, NULL, NULL);
@@ -1571,7 +1571,7 @@ bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
 	data->user_data = user_data;
 
 	put_le16(handle, pdu);
-	memcpy(pdu + 2, value, length);
+	memcpy(pdu + 2, value, pdu_len - 2);
 
 	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_VAL_IND, pdu,
 							pdu_len, conf_cb,
