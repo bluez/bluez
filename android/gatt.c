@@ -894,11 +894,17 @@ static void disconnect_notify_by_device(void *data, void *user_data)
 	if (dev != conn->device || !conn->app)
 		return;
 
-	if (dev->state == DEVICE_CONNECTED)
+	switch (dev->state) {
+	case DEVICE_CONNECTED:
 		send_app_disconnect_notify(conn, GATT_SUCCESS);
-	else if (dev->state == DEVICE_CONNECT_INIT ||
-					dev->state == DEVICE_CONNECT_READY)
+		break;
+	case DEVICE_CONNECT_INIT:
+	case DEVICE_CONNECT_READY:
 		send_app_connect_notify(conn, GATT_FAILURE);
+		break;
+	case DEVICE_DISCONNECTED:
+		break;
+	}
 }
 
 static void destroy_connection(void *data)
