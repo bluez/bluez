@@ -121,7 +121,7 @@ if TOOLS
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
 			tools/rfcomm tools/rctest tools/l2test tools/l2ping \
 			tools/sdptool tools/ciptool tools/bccmd \
-			tools/bluemoon tools/mpris-proxy
+			tools/bluemoon tools/hex2hcd tools/mpris-proxy
 
 tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_st.c \
@@ -188,6 +188,8 @@ tools_bccmd_LDADD = lib/libbluetooth-internal.la
 tools_bluemoon_SOURCES = tools/bluemoon.c monitor/bt.h
 tools_bluemoon_LDADD = src/libshared-mainloop.la
 
+tools_hex2hcd_SOURCES = tools/hex2hcd.c
+
 tools_mpris_proxy_SOURCES = tools/mpris-proxy.c
 tools_mpris_proxy_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 
@@ -221,7 +223,7 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btmgmt tools/btinfo tools/btattach \
 			tools/btsnoop tools/btproxy \
 			tools/btiotest tools/mcaptest tools/cltest \
-			tools/seq2bseq tools/hex2hcd tools/ibeacon \
+			tools/seq2bseq tools/ibeacon \
 			tools/btgatt-client tools/btgatt-server
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
@@ -267,8 +269,6 @@ tools_cltest_SOURCES = tools/cltest.c
 tools_cltest_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la
 
 tools_seq2bseq_SOURCES = tools/seq2bseq.c
-
-tools_hex2hcd_SOURCES = tools/hex2hcd.c
 
 tools_ibeacon_SOURCES = tools/ibeacon.c monitor/bt.h
 tools_ibeacon_LDADD = src/libshared-mainloop.la
