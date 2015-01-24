@@ -675,6 +675,62 @@ struct bt_hci_cmd_flow_spec_modify {
 	uint8_t  rx_flow_spec[16];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_ENHANCED_SETUP_SYNC_CONN	0x043d
+struct bt_hci_cmd_enhanced_setup_sync_conn {
+	uint16_t handle;
+	uint32_t tx_bandwidth;
+	uint32_t rx_bandwidth;
+	uint8_t  tx_coding_format[5];
+	uint8_t  rx_coding_format[5];
+	uint16_t tx_codec_frame_size;
+	uint16_t rx_codec_frame_size;
+	uint32_t input_bandwidth;
+	uint32_t output_bandwidth;
+	uint8_t  input_coding_format[5];
+	uint8_t  output_coding_format[5];
+	uint16_t input_coded_data_size;
+	uint16_t output_coded_data_size;
+	uint8_t  input_pcm_data_format;
+	uint8_t  output_pcm_data_format;
+	uint8_t  input_pcm_msb_position;
+	uint8_t  output_pcm_msb_position;
+	uint8_t  input_data_path;
+	uint8_t  output_data_path;
+	uint8_t  input_unit_size;
+	uint8_t  output_unit_size;
+	uint16_t max_latency;
+	uint16_t pkt_type;
+	uint8_t  retrans_effort;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_ENHANCED_ACCEPT_SYNC_CONN_REQUEST	0x043e
+struct bt_hci_cmd_enhanced_accept_sync_conn_request {
+	uint8_t  bdaddr[6];
+	uint32_t tx_bandwidth;
+	uint32_t rx_bandwidth;
+	uint8_t  tx_coding_format[5];
+	uint8_t  rx_coding_format[5];
+	uint16_t tx_codec_frame_size;
+	uint16_t rx_codec_frame_size;
+	uint32_t input_bandwidth;
+	uint32_t output_bandwidth;
+	uint8_t  input_coding_format[5];
+	uint8_t  output_coding_format[5];
+	uint16_t input_coded_data_size;
+	uint16_t output_coded_data_size;
+	uint8_t  input_pcm_data_format;
+	uint8_t  output_pcm_data_format;
+	uint8_t  input_pcm_msb_position;
+	uint8_t  output_pcm_msb_position;
+	uint8_t  input_data_path;
+	uint8_t  output_data_path;
+	uint8_t  input_unit_size;
+	uint8_t  output_unit_size;
+	uint16_t max_latency;
+	uint16_t pkt_type;
+	uint8_t  retrans_effort;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_TRUNCATED_PAGE		0x043f
 struct bt_hci_cmd_truncated_page {
 	uint8_t  bdaddr[6];
