@@ -6465,7 +6465,7 @@ static const struct opcode_data opcode_table[] = {
 				status_bdaddr_rsp, 7, true },
 
 	/* OGF 2 - Link Policy */
-	{ 0x0801,  33, "Holde Mode",
+	{ 0x0801,  33, "Hold Mode",
 				hold_mode_cmd, 6, true },
 	{ 0x0803,  34, "Sniff Mode",
 				sniff_mode_cmd, 10, true },
