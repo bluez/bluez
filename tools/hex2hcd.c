@@ -92,7 +92,6 @@ static ssize_t process_record(int fd, const char *line, uint16_t *upper_addr)
 	switch (buf[6]) {
 	case 0x00:
 		addr = (*upper_addr << 16) + (buf[4] << 8) + buf[5];
-		printf("address 0x%08x: %d\n", addr, n);
 
 		buf[0] = 0x4c;
 		buf[1] = 0xfc;
