@@ -4030,6 +4030,36 @@ static void flow_spec_modify_cmd(const void *data, uint8_t size)
 	print_flow_spec("RX", cmd->rx_flow_spec);
 }
 
+static void enhanced_setup_sync_conn_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_enhanced_setup_sync_conn *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("Transmit bandwidth: %d", le32_to_cpu(cmd->tx_bandwidth));
+	print_field("Receive bandwidth: %d", le32_to_cpu(cmd->rx_bandwidth));
+
+	/* TODO */
+
+	print_field("Max latency: %d", le16_to_cpu(cmd->max_latency));
+	print_pkt_type_sco(cmd->pkt_type);
+	print_retransmission_effort(cmd->retrans_effort);
+}
+
+static void enhanced_accept_sync_conn_request_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_enhanced_accept_sync_conn_request *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_field("Transmit bandwidth: %d", le32_to_cpu(cmd->tx_bandwidth));
+	print_field("Receive bandwidth: %d", le32_to_cpu(cmd->rx_bandwidth));
+
+	/* TODO */
+
+	print_field("Max latency: %d", le16_to_cpu(cmd->max_latency));
+	print_pkt_type_sco(cmd->pkt_type);
+	print_retransmission_effort(cmd->retrans_effort);
+}
+
 static void truncated_page_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_truncated_page *cmd = data;
@@ -6443,8 +6473,10 @@ static const struct opcode_data opcode_table[] = {
 				logic_link_cancel_rsp, 3, true },
 	{ 0x043c, 175, "Flow Specifcation Modify",
 				flow_spec_modify_cmd, 34, true },
-	{ 0x043d, 235, "Enhanced Setup Synchronous Connection" },
-	{ 0x043e, 236, "Enhanced Accept Synchronous Connection Request" },
+	{ 0x043d, 235, "Enhanced Setup Synchronous Connection",
+				enhanced_setup_sync_conn_cmd, 59, true },
+	{ 0x043e, 236, "Enhanced Accept Synchronous Connection Request",
+				enhanced_accept_sync_conn_request_cmd, 63, true },
 	{ 0x043f, 246, "Truncated Page",
 				truncated_page_cmd, 9, true },
 	{ 0x0440, 247, "Truncated Page Cancel",
