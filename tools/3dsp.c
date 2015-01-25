@@ -39,7 +39,7 @@
 
 #define LT_ADDR 0x01
 #define PKT_TYPE 0x0008		/* 0x0008 = EDR + DM1, 0xff1e = BR only */
-#define SERVICE_DATA LT_ADDR
+#define SERVICE_DATA 0x00
 
 static struct bt_hci *hci_dev;
 
@@ -76,6 +76,33 @@ static void shutdown_device(void)
 		mainloop_quit();
 }
 
+static void inquiry_started(const void *data, uint8_t size, void *user_data)
+{
+	uint8_t status = *((uint8_t *) data);
+
+	if (status) {
+		printf("Failed to search for 3D display\n");
+		shutdown_device();
+		return;
+	}
+
+	printf("Searching for 3D display\n");
+}
+
+static void start_inquiry(void)
+{
+	struct bt_hci_cmd_inquiry cmd;
+
+	cmd.lap[0] = 0x33;
+	cmd.lap[1] = 0x8b;
+	cmd.lap[2] = 0x9e;
+	cmd.length = 0x08;
+	cmd.num_resp = 0x00;
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_INQUIRY, &cmd, sizeof(cmd),
+						inquiry_started, NULL, NULL);
+}
+
 static void slave_broadcast_receive(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -90,7 +117,7 @@ static void sync_train_received(const void *data, uint8_t size,
 
 	if (evt->status) {
 		printf("Failed to synchronize with 3D display\n");
-		shutdown_device();
+		start_inquiry();
 		return;
 	}
 
@@ -125,8 +152,22 @@ static void truncated_page_complete(const void *data, uint8_t size,
 
 	printf("Attempt to synchronize with 3D display\n");
 
-	bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_RECEIVED,
-					sync_train_received, NULL, NULL);
+	memcpy(cmd.bdaddr, evt->bdaddr, 6);
+	cmd.timeout = cpu_to_le16(0x4000);
+	cmd.window = cpu_to_le16(0x0100);
+	cmd.interval = cpu_to_le16(0x0080);
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_RECEIVE_SYNC_TRAIN, &cmd, sizeof(cmd),
+							NULL, NULL, NULL);
+}
+
+static void slave_broadcast_timeout(const void *data, uint8_t size,
+							void *user_data)
+{
+	const struct bt_hci_evt_slave_broadcast_timeout *evt = data;
+	struct bt_hci_cmd_receive_sync_train cmd;
+
+	printf("Re-synchronizing with 3D display\n");
 
 	memcpy(cmd.bdaddr, evt->bdaddr, 6);
 	cmd.timeout = cpu_to_le16(0x4000);
@@ -153,9 +194,6 @@ static void ext_inquiry_result(const void *data, uint8_t size, void *user_data)
 		bt_hci_send(hci_dev, BT_HCI_CMD_INQUIRY_CANCEL, NULL, 0,
 							NULL, NULL, NULL);
 
-		bt_hci_register(hci_dev, BT_HCI_EVT_TRUNCATED_PAGE_COMPLETE,
-					truncated_page_complete, NULL, NULL);
-
 		memcpy(cmd.bdaddr, evt->bdaddr, 6);
 		cmd.pscan_rep_mode = evt->pscan_rep_mode;
 		cmd.clock_offset = evt->clock_offset;
@@ -169,25 +207,11 @@ static void inquiry_complete(const void *data, uint8_t size, void *user_data)
 {
 	printf("No 3D display found\n");
 
-	shutdown_device();
-}
-
-static void inquiry_started(const void *data, uint8_t size, void *user_data)
-{
-	uint8_t status = *((uint8_t *) data);
-
-	if (status) {
-		printf("Failed to search for 3D display\n");
-		shutdown_device();
-		return;
-	}
-
-	printf("Searching for 3D display\n");
+	start_inquiry();
 }
 
 static void start_glasses(void)
 {
-	struct bt_hci_cmd_inquiry cmd;
 	uint8_t evtmask1[] = { 0x03, 0xe0, 0x00, 0x00, 0x02, 0x40, 0x00, 0x00 };
 	uint8_t evtmask2[] = { 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t inqmode = 0x02;
@@ -209,14 +233,14 @@ static void start_glasses(void)
 	bt_hci_register(hci_dev, BT_HCI_EVT_EXT_INQUIRY_RESULT,
 						ext_inquiry_result, NULL, NULL);
 
-	cmd.lap[0] = 0x33;
-	cmd.lap[1] = 0x8b;
-	cmd.lap[2] = 0x9e;
-	cmd.length = 0x08;
-	cmd.num_resp = 0x00;
+	bt_hci_register(hci_dev, BT_HCI_EVT_TRUNCATED_PAGE_COMPLETE,
+					truncated_page_complete, NULL, NULL);
+	bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_RECEIVED,
+					sync_train_received, NULL, NULL);
+	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_TIMEOUT,
+					slave_broadcast_timeout, NULL, NULL);
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_INQUIRY, &cmd, sizeof(cmd),
-						inquiry_started, NULL, NULL);
+	start_inquiry();
 }
 
 static void conn_request(const void *data, uint8_t size, void *user_data)
@@ -259,9 +283,6 @@ static void slave_page_response_timeout(const void *data, uint8_t size,
 	bt_hci_send(hci_dev, BT_HCI_CMD_WRITE_SYNC_TRAIN_PARAMS,
 					&cmd, sizeof(cmd), NULL, NULL, NULL);
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS, NULL, 0,
-							NULL, NULL, NULL);
-
 	bt_hci_send(hci_dev, BT_HCI_CMD_START_SYNC_TRAIN, NULL, 0,
 							NULL, NULL, NULL);
 
@@ -295,7 +316,7 @@ static void inquiry_resp_tx_power(const void *data, uint8_t size,
 static void start_display(void)
 {
 	struct bt_hci_cmd_set_slave_broadcast cmd;
-	uint8_t bcastdata[20] = { LT_ADDR, 0x03, 0x11, 0x23, 0x42, };
+	uint8_t bcastdata[20] = { LT_ADDR, 0x03, 0x11, };
 	uint8_t evtmask1[] = { 0x1c, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t evtmask2[] = { 0x00, 0xc0, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t sspmode = 0x01;
@@ -328,9 +349,6 @@ static void start_display(void)
 	bt_hci_send(hci_dev, BT_HCI_CMD_READ_INQUIRY_RESP_TX_POWER, NULL, 0,
 					inquiry_resp_tx_power, NULL, NULL);
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_DATA,
-			bcastdata, sizeof(bcastdata), NULL, NULL, NULL);
-
 	cmd.enable = 0x01;
 	cmd.lt_addr = LT_ADDR;
 	cmd.lpo_allowed = 0x01;
@@ -341,6 +359,9 @@ static void start_display(void)
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST, &cmd, sizeof(cmd),
 							NULL, NULL, NULL);
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_DATA,
+			bcastdata, sizeof(bcastdata), NULL, NULL, NULL);
 }
 
 static void signal_callback(int signum, void *user_data)
