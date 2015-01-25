@@ -41,6 +41,17 @@
 #define PKT_TYPE 0x0008		/* 0x0008 = EDR + DM1, 0xff1e = BR only */
 #define SERVICE_DATA 0x00
 
+struct brcm_evt_sync_train_received {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+	uint32_t offset;
+	uint8_t  map[10];
+	uint8_t  service_data;
+	uint8_t  lt_addr;
+	uint32_t instant;
+	uint16_t interval;
+} __attribute__ ((packed));
+
 static struct bt_hci *hci_dev;
 
 static bool reset_on_init = false;
@@ -138,6 +149,35 @@ static void sync_train_received(const void *data, uint8_t size,
 					slave_broadcast_receive, NULL, NULL);
 }
 
+static void brcm_sync_train_received(const void *data, uint8_t size,
+							void *user_data)
+{
+	const struct brcm_evt_sync_train_received *evt = data;
+	struct bt_hci_cmd_set_slave_broadcast_receive cmd;
+
+	if (evt->status) {
+		printf("Failed to synchronize with 3D display\n");
+		start_inquiry();
+		return;
+	}
+
+	cmd.enable = 0x01;
+	memcpy(cmd.bdaddr, evt->bdaddr, 6);
+	cmd.lt_addr = evt->lt_addr;
+	cmd.interval = evt->interval;
+	cmd.offset = evt->offset;
+	cmd.instant = evt->instant;
+	cmd.timeout = cpu_to_le16(0xfffe);
+	cmd.accuracy = 250;
+	cmd.skip = 20;
+	cmd.pkt_type = cpu_to_le16(PKT_TYPE);
+	memcpy(cmd.map, evt->map, 10);
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_RECEIVE,
+					&cmd, sizeof(cmd),
+					slave_broadcast_receive, NULL, NULL);
+}
+
 static void truncated_page_complete(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -210,6 +250,28 @@ static void inquiry_complete(const void *data, uint8_t size, void *user_data)
 	start_inquiry();
 }
 
+static void local_version_complete(const void *data, uint8_t size,
+							void *user_data)
+{
+	const struct bt_hci_rsp_read_local_version *rsp = data;
+
+	if (rsp->status) {
+		printf("Failed to read local version information\n");
+		shutdown_device();
+		return;
+	}
+
+	if (rsp->manufacturer == 15) {
+		printf("Enabling receiver workaround for Broadcom\n");
+
+		bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_RECEIVED,
+					brcm_sync_train_received, NULL, NULL);
+	} else {
+		bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_RECEIVED,
+					sync_train_received, NULL, NULL);
+	}
+}
+
 static void start_glasses(void)
 {
 	uint8_t evtmask1[] = { 0x03, 0xe0, 0x00, 0x00, 0x02, 0x40, 0x00, 0x00 };
@@ -223,6 +285,9 @@ static void start_glasses(void)
 							NULL, NULL, NULL);
 	}
 
+	bt_hci_send(hci_dev, BT_HCI_CMD_READ_LOCAL_VERSION, NULL, 0,
+					local_version_complete, NULL, NULL);
+
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK_PAGE2, evtmask2, 8,
 							NULL, NULL, NULL);
 	bt_hci_send(hci_dev, BT_HCI_CMD_WRITE_INQUIRY_MODE, &inqmode, 1,
@@ -235,8 +300,6 @@ static void start_glasses(void)
 
 	bt_hci_register(hci_dev, BT_HCI_EVT_TRUNCATED_PAGE_COMPLETE,
 					truncated_page_complete, NULL, NULL);
-	bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_RECEIVED,
-					sync_train_received, NULL, NULL);
 	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_TIMEOUT,
 					slave_broadcast_timeout, NULL, NULL);
 
