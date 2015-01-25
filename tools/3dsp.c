@@ -41,6 +41,17 @@
 #define PKT_TYPE 0x0008		/* 0x0008 = EDR + DM1, 0xff1e = BR only */
 #define SERVICE_DATA 0x00
 
+struct broadcast_message {
+	uint32_t frame_sync_instant;
+	uint16_t bluetooth_clock_phase;
+	uint16_t left_open_offset;
+	uint16_t left_close_offset;
+	uint16_t right_open_offset;
+	uint16_t right_close_offset;
+	uint16_t frame_sync_period;
+	uint8_t  frame_sync_period_fraction;
+} __attribute__ ((packed));
+
 struct brcm_evt_sync_train_received {
 	uint8_t  status;
 	uint8_t  bdaddr[6];
@@ -250,8 +261,7 @@ static void inquiry_complete(const void *data, uint8_t size, void *user_data)
 	start_inquiry();
 }
 
-static void local_version_complete(const void *data, uint8_t size,
-							void *user_data)
+static void read_local_version(const void *data, uint8_t size, void *user_data)
 {
 	const struct bt_hci_rsp_read_local_version *rsp = data;
 
@@ -286,7 +296,7 @@ static void start_glasses(void)
 	}
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_READ_LOCAL_VERSION, NULL, 0,
-					local_version_complete, NULL, NULL);
+					read_local_version, NULL, NULL);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_EVENT_MASK_PAGE2, evtmask2, 8,
 							NULL, NULL, NULL);
@@ -306,20 +316,6 @@ static void start_glasses(void)
 	start_inquiry();
 }
 
-static void conn_request(const void *data, uint8_t size, void *user_data)
-{
-	const struct bt_hci_evt_conn_request *evt = data;
-	struct bt_hci_cmd_accept_conn_request cmd;
-
-	printf("Incoming connection from 3D glasses\n");
-
-	memcpy(cmd.bdaddr, evt->bdaddr, 6);
-	cmd.role = 0x00;
-
-	bt_hci_send(hci_dev, BT_HCI_CMD_ACCEPT_CONN_REQUEST, &cmd, sizeof(cmd),
-							NULL, NULL, NULL);
-}
-
 static bool sync_train_active = false;
 
 static void sync_train_complete(const void *data, uint8_t size,
@@ -328,8 +324,7 @@ static void sync_train_complete(const void *data, uint8_t size,
 	sync_train_active = false;
 }
 
-static void slave_page_response_timeout(const void *data, uint8_t size,
-							void *user_data)
+static void start_sync_train(void)
 {
 	struct bt_hci_cmd_write_sync_train_params cmd;
 
@@ -350,6 +345,28 @@ static void slave_page_response_timeout(const void *data, uint8_t size,
 							NULL, NULL, NULL);
 
 	sync_train_active = true;
+}
+
+static void conn_request(const void *data, uint8_t size, void *user_data)
+{
+	const struct bt_hci_evt_conn_request *evt = data;
+	struct bt_hci_cmd_accept_conn_request cmd;
+
+	printf("Incoming connection from 3D glasses\n");
+
+	memcpy(cmd.bdaddr, evt->bdaddr, 6);
+	cmd.role = 0x00;
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_ACCEPT_CONN_REQUEST, &cmd, sizeof(cmd),
+							NULL, NULL, NULL);
+
+	start_sync_train();
+}
+
+static void slave_page_response_timeout(const void *data, uint8_t size,
+							void *user_data)
+{
+	start_sync_train();
 }
 
 static void inquiry_resp_tx_power(const void *data, uint8_t size,
@@ -376,10 +393,53 @@ static void inquiry_resp_tx_power(const void *data, uint8_t size,
 							NULL, NULL, NULL);
 }
 
+static void read_clock(const void *data, uint8_t size, void *user_data)
+{
+	const struct bt_hci_rsp_read_clock *rsp = data;
+	struct broadcast_message msg;
+	uint8_t bcastdata[sizeof(msg) + 3] = { LT_ADDR, 0x03, 0x11, };
+
+	if (rsp->status) {
+		printf("Failed to read local clock information\n");
+		shutdown_device();
+		return;
+	}
+
+	msg.frame_sync_instant = rsp->clock;
+	msg.bluetooth_clock_phase = rsp->accuracy;
+	msg.left_open_offset = cpu_to_le16(50);
+	msg.left_close_offset = cpu_to_le16(300);
+	msg.right_open_offset = cpu_to_le16(350);
+	msg.right_close_offset = cpu_to_le16(600);
+	msg.frame_sync_period = cpu_to_le16(650);
+	msg.frame_sync_period_fraction = 0;
+	memcpy(bcastdata + 3, &msg, sizeof(msg));
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_DATA,
+			bcastdata, sizeof(bcastdata), NULL, NULL, NULL);
+}
+
+static void set_slave_broadcast(const void *data, uint8_t size, void *user_data)
+{
+	const struct bt_hci_rsp_set_slave_broadcast *rsp = data;
+	struct bt_hci_cmd_read_clock cmd;
+
+	if (rsp->status) {
+		printf("Failed to set slave broadcast transmission\n");
+		shutdown_device();
+		return;
+	}
+
+	cmd.handle = cpu_to_le16(0x0000);
+	cmd.type = 0x00;
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_READ_CLOCK, &cmd, sizeof(cmd),
+						read_clock, NULL, NULL);
+}
+
 static void start_display(void)
 {
 	struct bt_hci_cmd_set_slave_broadcast cmd;
-	uint8_t bcastdata[20] = { LT_ADDR, 0x03, 0x11, };
 	uint8_t evtmask1[] = { 0x1c, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t evtmask2[] = { 0x00, 0xc0, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t sspmode = 0x01;
@@ -421,10 +481,7 @@ static void start_display(void)
 	cmd.timeout = cpu_to_le16(0xfffe);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST, &cmd, sizeof(cmd),
-							NULL, NULL, NULL);
-
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_DATA,
-			bcastdata, sizeof(bcastdata), NULL, NULL, NULL);
+					set_slave_broadcast, NULL, NULL);
 }
 
 static void signal_callback(int signum, void *user_data)
