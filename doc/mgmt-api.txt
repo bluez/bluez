@@ -2260,8 +2260,8 @@ Read Local Out Of Band Extended Data Command
 	will contain the following information:
 
 		Class of Device
-		Simple Pairing Hash C-192
-		Simple Pairing Randomizer R-192
+		Simple Pairing Hash C-192 (optional)
+		Simple Pairing Randomizer R-192 (optional)
 		Simple Pairing Hash C-256 (optional)
 		Simple Pairing Randomizer R-256 (optional)
 		Service Class UUID (optional)
@@ -2278,7 +2278,7 @@ Read Local Out Of Band Extended Data Command
 
 		LE Bluetooth Device Address
 		LE Role
-		Security Manager TK Value
+		Security Manager TK Value (optional)
 		LE Secure Connections Confirmation Value (optional)
 		LE Secure Connections Random Value (optional)
 		Appearance (optional)
@@ -2293,6 +2293,11 @@ Read Local Out Of Band Extended Data Command
 	types are not related to each other. Once they have been used
 	over an Out Of Band link, a new set of information shall be
 	requested.
+
+	When Secure Connections Only mode has been enabled, then the fields
+	for Simple Pairing Hash C-192, Simple Pairing Randomizer R-192 and
+	Security Manager TK Value are not returned. Only the fields for
+	the strong secure connections pairing are included.
 
 	This command can only be used when the controller is powered.
 
