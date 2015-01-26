@@ -125,7 +125,7 @@ static void start_inquiry(void)
 						inquiry_started, NULL, NULL);
 }
 
-static void slave_broadcast_receive(const void *data, uint8_t size,
+static void set_slave_broadcast_receive(const void *data, uint8_t size,
 							void *user_data)
 {
 	printf("Slave broadcast receiption enabled\n");
@@ -156,8 +156,8 @@ static void sync_train_received(const void *data, uint8_t size,
 	memcpy(cmd.map, evt->map, 10);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_RECEIVE,
-					&cmd, sizeof(cmd),
-					slave_broadcast_receive, NULL, NULL);
+				&cmd, sizeof(cmd),
+				set_slave_broadcast_receive, NULL, NULL);
 }
 
 static void brcm_sync_train_received(const void *data, uint8_t size,
@@ -185,8 +185,8 @@ static void brcm_sync_train_received(const void *data, uint8_t size,
 	memcpy(cmd.map, evt->map, 10);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_RECEIVE,
-					&cmd, sizeof(cmd),
-					slave_broadcast_receive, NULL, NULL);
+				&cmd, sizeof(cmd),
+				set_slave_broadcast_receive, NULL, NULL);
 }
 
 static void truncated_page_complete(const void *data, uint8_t size,
@@ -226,6 +226,18 @@ static void slave_broadcast_timeout(const void *data, uint8_t size,
 	cmd.interval = cpu_to_le16(0x0080);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_RECEIVE_SYNC_TRAIN, &cmd, sizeof(cmd),
+							NULL, NULL, NULL);
+}
+
+static void slave_broadcast_receive(const void *data, uint8_t size,
+							void *user_data)
+{
+	struct bt_hci_cmd_read_clock cmd;
+
+	cmd.handle = cpu_to_le16(0x0000);
+	cmd.type = 0x00;
+
+	bt_hci_send(hci_dev, BT_HCI_CMD_READ_CLOCK, &cmd, sizeof(cmd),
 							NULL, NULL, NULL);
 }
 
@@ -312,6 +324,8 @@ static void start_glasses(void)
 					truncated_page_complete, NULL, NULL);
 	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_TIMEOUT,
 					slave_broadcast_timeout, NULL, NULL);
+	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_RECEIVE,
+					slave_broadcast_receive, NULL, NULL);
 
 	start_inquiry();
 }
