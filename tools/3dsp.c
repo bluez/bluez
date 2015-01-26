@@ -232,7 +232,14 @@ static void slave_broadcast_timeout(const void *data, uint8_t size,
 static void slave_broadcast_receive(const void *data, uint8_t size,
 							void *user_data)
 {
+	const struct bt_hci_evt_slave_broadcast_receive *evt = data;
 	struct bt_hci_cmd_read_clock cmd;
+
+	if (evt->status != 0x00)
+		return;
+
+	if (le32_to_cpu(evt->clock) != 0x00000000)
+		return;
 
 	cmd.handle = cpu_to_le16(0x0000);
 	cmd.type = 0x00;
