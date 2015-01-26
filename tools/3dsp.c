@@ -143,6 +143,11 @@ static void sync_train_received(const void *data, uint8_t size,
 		return;
 	}
 
+	if (evt->lt_addr != LT_ADDR) {
+		printf("Ignoring synchronization for non 3D display\n");
+		return;
+	}
+
 	cmd.enable = 0x01;
 	memcpy(cmd.bdaddr, evt->bdaddr, 6);
 	cmd.lt_addr = evt->lt_addr;
@@ -169,6 +174,11 @@ static void brcm_sync_train_received(const void *data, uint8_t size,
 	if (evt->status) {
 		printf("Failed to synchronize with 3D display\n");
 		start_inquiry();
+		return;
+	}
+
+	if (evt->lt_addr != LT_ADDR) {
+		printf("Ignoring synchronization for non 3D display\n");
 		return;
 	}
 
