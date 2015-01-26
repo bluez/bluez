@@ -397,6 +397,16 @@ static void conn_request(const void *data, uint8_t size, void *user_data)
 static void slave_page_response_timeout(const void *data, uint8_t size,
 							void *user_data)
 {
+	printf("Incoming truncated page received\n");
+
+	start_sync_train();
+}
+
+static void slave_broadcast_channel_map_change(const void *data, uint8_t size,
+								void *user_data)
+{
+	printf("Broadcast channel map changed\n");
+
 	start_sync_train();
 }
 
@@ -497,6 +507,8 @@ static void start_display(void)
 
 	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_PAGE_RESPONSE_TIMEOUT,
 				slave_page_response_timeout, NULL, NULL);
+	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_CHANNEL_MAP_CHANGE,
+				slave_broadcast_channel_map_change, NULL, NULL);
 	bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_COMPLETE,
 					sync_train_complete, NULL, NULL);
 
