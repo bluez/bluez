@@ -1432,6 +1432,23 @@ static void test_read_by_type(gconstpointer data)
 	execute_context(context);
 }
 
+static void test_long_read(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	g_assert(bt_gatt_client_read_long_value(context->client, step->handle,
+						0, multiple_read_cb, context,
+						NULL));
+}
+
+static const struct test_step test_long_read_1 = {
+	.handle = 0x0003,
+	.func = test_long_read,
+	.expected_att_ecode = 0,
+	.value = read_data_1,
+	.length = 0x03
+};
+
 int main(int argc, char *argv[])
 {
 	struct gatt_db *service_db_1, *ts_small_db, *ts_large_db_1;
@@ -1967,6 +1984,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0x03, 0x00, 0x02),
 			raw_pdu(0x0C, 0xF0, 0x0F, 0x00, 0x00),
 			raw_pdu(0x01, 0x0C, 0xF0, 0x0F, 0x01));
+
+	define_test_client("/TP/GAR/CL/BV-04-C", test_client, service_db_1,
+			&test_long_read_1,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0c, 0x03, 0x00, 0x00, 0x00),
+			raw_pdu(0x0b, 0x01, 0x02, 0x03));
 
 	define_test_client("/TP/GAR/CL/BV-05-C", test_client, service_db_1,
 			&test_multiple_read_1,
