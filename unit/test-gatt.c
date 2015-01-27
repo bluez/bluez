@@ -1326,7 +1326,7 @@ static void multiple_read_cb(bool success, uint8_t att_ecode,
 	struct context *context = user_data;
 	const struct test_step *step = context->data->step;
 
-	g_assert(att_ecode == step->expected_att_ecode);
+	g_assert_cmpint(att_ecode, ==, step->expected_att_ecode);
 
 	if (success) {
 		g_assert_cmpint(length, ==, step->length);
@@ -1458,6 +1458,12 @@ static const struct test_step test_long_read_2 = {
 	.expected_att_ecode = 0,
 	.value = long_data_2,
 	.length = sizeof(long_data_2)
+};
+
+static const struct test_step test_long_read_3 = {
+	.handle = 0x0003,
+	.func = test_long_read,
+	.expected_att_ecode = 0x02
 };
 
 int main(int argc, char *argv[])
@@ -2117,6 +2123,12 @@ int main(int argc, char *argv[])
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x0e, 0x03, 0x00, 0x07, 0x00),
 			raw_pdu(0x0f, 0x01, 0x02, 0x03));
+
+	define_test_client("/TP/GAR/CL/BI-12-C", test_client, service_db_1,
+			&test_long_read_3,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0c, 0x03, 0x00, 0x00, 0x00),
+			raw_pdu(0x01, 0x0c, 0x03, 0x00, 0x02));
 
 	define_test_client("/TP/GAR/CL/BI-18-C", test_client, service_db_1,
 			&test_multiple_read_2,
