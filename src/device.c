@@ -3836,9 +3836,9 @@ done:
 	attio_cleanup(device);
 }
 
-static void register_gatt_services(struct browse_req *req)
+static void register_gatt_services(struct btd_device *device)
 {
-	struct btd_device *device = req->device;
+	struct browse_req *req = device->browse;
 	GSList *services = NULL;
 
 	if (!bt_gatt_client_is_ready(device->client))
@@ -3852,7 +3852,9 @@ static void register_gatt_services(struct browse_req *req)
 
 	btd_device_set_temporary(device, FALSE);
 
-	update_gatt_uuids(req, device->primaries, services);
+	if (req)
+		update_gatt_uuids(req, device->primaries, services);
+
 	g_slist_free_full(device->primaries, g_free);
 	device->primaries = NULL;
 
@@ -3886,8 +3888,7 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 
 	DBG("MTU: %u", device->att_mtu);
 
-	if (device->browse)
-		register_gatt_services(device->browse);
+	register_gatt_services(device);
 
 	device_accept_gatt_profiles(device);
 
