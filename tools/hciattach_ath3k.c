@@ -840,17 +840,8 @@ static int ath_ps_download(int fd)
 		goto download_cmplete;
 	}
 
-	/*
-	 * It is not necessary that Patch file be available,
-	 * continue with PS Operations if patch file is not available.
-	 */
-	if (patch_file[0] == '\0')
-		err = 0;
-
 	stream = fopen(patch_file, "r");
-	if (!stream)
-		err = 0;
-	else {
+	if(stream) {
 		patch_count = ps_patch_download(fd, stream);
 		fclose(stream);
 
