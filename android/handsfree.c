@@ -258,7 +258,9 @@ static void device_destroy(struct hf_device *dev)
 	if (dev->audio_state == HAL_EV_HANDSFREE_AUDIO_STATE_CONNECTED)
 		bt_sco_disconnect(sco);
 
-	g_source_remove(dev->ring);
+	if (dev->ring)
+		g_source_remove(dev->ring);
+
 	g_free(dev->clip);
 
 	set_audio_state(dev, HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED);
