@@ -29,6 +29,7 @@
 
 #define BT_ATT_DEFAULT_LE_MTU	23
 #define BT_ATT_MAX_LE_MTU	517
+#define BT_ATT_MAX_VALUE_LEN	512
 
 /* ATT protocol opcodes */
 #define BT_ATT_OP_ERROR_RSP	      		0x01

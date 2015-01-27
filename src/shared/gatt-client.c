@@ -1927,8 +1927,8 @@ struct read_long_op {
 	struct bt_gatt_client *client;
 	int ref_count;
 	uint16_t value_handle;
-	size_t orig_offset;
-	size_t offset;
+	uint16_t orig_offset;
+	uint16_t offset;
 	struct queue *blobs;
 	bt_gatt_client_read_callback_t callback;
 	void *user_data;
@@ -1949,6 +1949,10 @@ static struct blob *create_blob(const uint8_t *data, uint16_t len,
 	blob = new0(struct blob, 1);
 	if (!blob)
 		return NULL;
+
+	/* Truncate if the data would exceed maximum length */
+	if (offset + len > BT_ATT_MAX_VALUE_LEN)
+		len = BT_ATT_MAX_VALUE_LEN - offset;
 
 	blob->data = malloc(len);
 	if (!blob->data) {
@@ -2050,8 +2054,8 @@ static void read_long_cb(uint8_t opcode, const void *pdu,
 	}
 
 	queue_push_tail(op->blobs, blob);
-	op->offset += length;
-	if (op->offset > UINT16_MAX)
+	op->offset += blob->length;
+	if (op->offset >= BT_ATT_MAX_VALUE_LEN)
 		goto success;
 
 	if (length >= bt_att_get_mtu(op->client->att) - 1) {
