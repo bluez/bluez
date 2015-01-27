@@ -1298,6 +1298,10 @@ Add Remote Out Of Band Data Command
 	is provided the Hash_P192 and Randomizer_P192 fields can be set
 	to zero.
 
+	If Secure Connections Only mode has been enabled, then providing
+	Hash_P192 and Randomizer_P192 is not allowed. They are required
+	to be set to zero values.
+
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
