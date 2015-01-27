@@ -686,7 +686,6 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 							discovery_op_unref))
 			return;
 
-		discovery_op_unref(op);
 		success = false;
 		goto done;
 	}
@@ -708,6 +707,8 @@ success:
 done:
 	if (op->callback)
 		op->callback(success, att_ecode, final_result, op->user_data);
+
+	discovery_op_unref(op);
 }
 
 static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
@@ -766,7 +767,6 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 							discovery_op_unref))
 			return;
 
-		discovery_op_unref(op);
 		success = false;
 		goto done;
 	}
@@ -779,6 +779,8 @@ success:
 done:
 	if (op->callback)
 		op->callback(success, att_ecode, final_result, op->user_data);
+
+	discovery_op_unref(op);
 }
 
 static bool discover_services(struct bt_att *att, bt_uuid_t *uuid,
@@ -977,7 +979,6 @@ static void read_included_cb(uint8_t opcode, const void *pdu,
 				discovery_op_ref(op), discovery_op_unref))
 			return;
 
-		discovery_op_unref(op);
 		success = false;
 		goto done;
 	}
@@ -997,6 +998,8 @@ static void read_included_cb(uint8_t opcode, const void *pdu,
 done:
 	if (op->callback)
 		op->callback(success, att_ecode, final_result, op->user_data);
+
+	discovery_op_unref(op);
 }
 
 static void read_included(struct read_incl_data *data)
@@ -1014,10 +1017,10 @@ static void read_included(struct read_incl_data *data)
 							read_included_unref))
 		return;
 
-	read_included_unref(data);
-
 	if (op->callback)
 		op->callback(false, 0, NULL, data->op->user_data);
+
+	read_included_unref(data);
 }
 
 static void discover_included_cb(uint8_t opcode, const void *pdu,
@@ -1099,7 +1102,6 @@ static void discover_included_cb(uint8_t opcode, const void *pdu,
 							discovery_op_unref))
 			return;
 
-		discovery_op_unref(op);
 		success = false;
 		goto failed;
 	}
@@ -1111,6 +1113,8 @@ done:
 failed:
 	if (op->callback)
 		op->callback(success, att_ecode, final_result, op->user_data);
+
+	discovery_op_unref(op);
 }
 
 bool bt_gatt_discover_included_services(struct bt_att *att,
@@ -1213,7 +1217,6 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 						discovery_op_unref))
 			return;
 
-		discovery_op_unref(op);
 		success = false;
 		goto done;
 	}
@@ -1226,6 +1229,8 @@ done:
 	if (op->callback)
 		op->callback(success, att_ecode, final_result,
 							op->user_data);
+
+	discovery_op_unref(op);
 }
 
 bool bt_gatt_discover_characteristics(struct bt_att *att,
@@ -1321,7 +1326,6 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 						discovery_op_unref))
 			return;
 
-		discovery_op_unref(op);
 		success = false;
 		goto done;
 	}
@@ -1332,6 +1336,8 @@ done:
 	if (op->callback)
 		op->callback(success, att_ecode, success ? op->result_head :
 							NULL, op->user_data);
+
+	discovery_op_unref(op);
 }
 
 bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
@@ -1439,7 +1445,6 @@ static void discover_descs_cb(uint8_t opcode, const void *pdu,
 						discovery_op_unref))
 			return;
 
-		discovery_op_unref(op);
 		success = false;
 		goto done;
 	}
@@ -1451,6 +1456,8 @@ success:
 done:
 	if (op->callback)
 		op->callback(success, att_ecode, final_result, op->user_data);
+
+	discovery_op_unref(op);
 }
 
 bool bt_gatt_discover_descriptors(struct bt_att *att,
