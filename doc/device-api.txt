@@ -62,9 +62,9 @@ Methods		void Connect()
 			as long as the profile is registered this will always
 			succeed.
 
-			Possible errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.Failed
-					 org.bluez.Error.NotConnected
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotSupported
 
 		void Pair()
