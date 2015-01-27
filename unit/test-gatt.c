@@ -1472,6 +1472,12 @@ static const struct test_step test_long_read_4 = {
 	.expected_att_ecode = 0x07
 };
 
+static const struct test_step test_long_read_5 = {
+	.handle = 0x0003,
+	.func = test_long_read,
+	.expected_att_ecode = 0x01
+};
+
 int main(int argc, char *argv[])
 {
 	struct gatt_db *service_db_1, *ts_small_db, *ts_large_db_1;
@@ -2141,6 +2147,12 @@ int main(int argc, char *argv[])
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x0c, 0x03, 0x00, 0x00, 0x00),
 			raw_pdu(0x01, 0x0c, 0x03, 0x00, 0x07));
+
+	define_test_client("/TP/GAR/CL/BI-14-C", test_client, service_db_1,
+			&test_long_read_5,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0c, 0x03, 0x00, 0x00, 0x00),
+			raw_pdu(0x01, 0x0c, 0x03, 0x00, 0x01));
 
 	define_test_client("/TP/GAR/CL/BI-18-C", test_client, service_db_1,
 			&test_multiple_read_2,
