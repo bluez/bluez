@@ -210,6 +210,7 @@ static bool convert_uuid_le(const uint8_t *src, size_t len, uint8_t dst[16])
 
 struct discovery_op {
 	struct bt_att *att;
+	unsigned int id;
 	uint16_t end_handle;
 	int ref_count;
 	bt_uuid_t uuid;
@@ -617,13 +618,23 @@ static void discovery_op_unref(void *data)
 	free(op);
 }
 
+static void discovery_op_complete(struct discovery_op *op, bool success,
+								uint8_t ecode)
+{
+	if (op->callback)
+		op->callback(success, ecode, success ? op->result_head : NULL,
+								op->user_data);
+
+	if (!op->id)
+		discovery_op_unref(op);
+}
+
 static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
 	struct discovery_op *op = user_data;
 	bool success;
 	uint8_t att_ecode = 0;
-	struct bt_gatt_result *final_result = NULL;
 	struct bt_gatt_result *cur_result;
 	size_t data_length;
 	size_t list_length;
@@ -679,11 +690,12 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(op->service_type, pdu + 4);
 
-		if (bt_att_send(op->att, BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
+		op->id = bt_att_send(op->att, BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
 							pdu, sizeof(pdu),
 							read_by_grp_type_cb,
 							discovery_op_ref(op),
-							discovery_op_unref))
+							discovery_op_unref);
+		if (op->id)
 			return;
 
 		success = false;
@@ -700,15 +712,10 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 				cur_result->pdu + length - data_length + 1);
 
 success:
-	/* End of procedure */
-	final_result = op->result_head;
 	success = true;
 
 done:
-	if (op->callback)
-		op->callback(success, att_ecode, final_result, op->user_data);
-
-	discovery_op_unref(op);
+	discovery_op_complete(op, success, att_ecode);
 }
 
 static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
@@ -717,7 +724,6 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 	struct discovery_op *op = user_data;
 	bool success;
 	uint8_t att_ecode = 0;
-	struct bt_gatt_result *final_result = NULL;
 	uint16_t last_end;
 
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
@@ -760,11 +766,12 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->service_type, pdu + 4);
 		put_uuid_le(&op->uuid, pdu + 6);
 
-		if (bt_att_send(op->att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
+		op->id = bt_att_send(op->att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
 							pdu, sizeof(pdu),
 							find_by_type_val_cb,
 							discovery_op_ref(op),
-							discovery_op_unref))
+							discovery_op_unref);
+		if (op->id)
 			return;
 
 		success = false;
@@ -772,15 +779,10 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 	}
 
 success:
-	/* End of procedure */
-	final_result = op->result_head;
 	success = true;
 
 done:
-	if (op->callback)
-		op->callback(success, att_ecode, final_result, op->user_data);
-
-	discovery_op_unref(op);
+	discovery_op_complete(op, success, att_ecode);
 }
 
 static bool discover_services(struct bt_att *att, bt_uuid_t *uuid,
@@ -791,7 +793,6 @@ static bool discover_services(struct bt_att *att, bt_uuid_t *uuid,
 					bool primary)
 {
 	struct discovery_op *op;
-	bool result;
 
 	if (!att)
 		return false;
@@ -816,7 +817,7 @@ static bool discover_services(struct bt_att *att, bt_uuid_t *uuid,
 		put_le16(end, pdu + 2);
 		put_le16(op->service_type, pdu + 4);
 
-		result = bt_att_send(att, BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
+		op->id = bt_att_send(att, BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
 							pdu, sizeof(pdu),
 							read_by_grp_type_cb,
 							discovery_op_ref(op),
@@ -837,17 +838,17 @@ static bool discover_services(struct bt_att *att, bt_uuid_t *uuid,
 		put_le16(op->service_type, pdu + 4);
 		put_uuid_le(&op->uuid, pdu + 6);
 
-		result = bt_att_send(att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
+		op->id = bt_att_send(att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
 							pdu, sizeof(pdu),
 							find_by_type_val_cb,
 							discovery_op_ref(op),
 							discovery_op_unref);
 	}
 
-	if (!result)
+	if (!op->id)
 		free(op);
 
-	return result;
+	return op->id ? true : false;
 }
 
 bool bt_gatt_discover_all_primary_services(struct bt_att *att, bt_uuid_t *uuid,
@@ -927,7 +928,6 @@ static void read_included_cb(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
 	struct read_incl_data *data = user_data;
-	struct bt_gatt_result *final_result = NULL;
 	struct discovery_op *op = data->op;
 	uint8_t att_ecode = 0;
 	uint8_t read_pdu[2];
@@ -965,7 +965,6 @@ static void read_included_cb(uint8_t opcode, const void *pdu,
 		last_handle = get_le16(data->result->pdu + data->pos -
 							data->result->data_len);
 		if (last_handle == op->end_handle) {
-			final_result = op->result_head;
 			success = true;
 			goto done;
 		}
@@ -974,9 +973,12 @@ static void read_included_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(GATT_INCLUDE_UUID, pdu + 4);
 
-		if (bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
-				pdu, sizeof(pdu), discover_included_cb,
-				discovery_op_ref(op), discovery_op_unref))
+		op->id = bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
+						pdu, sizeof(pdu),
+						discover_included_cb,
+						discovery_op_ref(op),
+						discovery_op_unref);
+		if (op->id)
 			return;
 
 		success = false;
@@ -996,10 +998,7 @@ static void read_included_cb(uint8_t opcode, const void *pdu,
 	success = false;
 
 done:
-	if (op->callback)
-		op->callback(success, att_ecode, final_result, op->user_data);
-
-	discovery_op_unref(op);
+	discovery_op_complete(op, success, att_ecode);
 }
 
 static void read_included(struct read_incl_data *data)
@@ -1026,7 +1025,6 @@ static void read_included(struct read_incl_data *data)
 static void discover_included_cb(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
-	struct bt_gatt_result *final_result = NULL;
 	struct discovery_op *op = user_data;
 	struct bt_gatt_result *cur_result;
 	uint8_t att_ecode = 0;
@@ -1095,11 +1093,12 @@ static void discover_included_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(GATT_INCLUDE_UUID, pdu + 4);
 
-		if (bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
+		op->id = bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
 							pdu, sizeof(pdu),
 							discover_included_cb,
 							discovery_op_ref(op),
-							discovery_op_unref))
+							discovery_op_unref);
+		if (op->id)
 			return;
 
 		success = false;
@@ -1108,13 +1107,9 @@ static void discover_included_cb(uint8_t opcode, const void *pdu,
 
 done:
 	success = true;
-	final_result = op->result_head;
 
 failed:
-	if (op->callback)
-		op->callback(success, att_ecode, final_result, op->user_data);
-
-	discovery_op_unref(op);
+	discovery_op_complete(op, success, att_ecode);
 }
 
 bool bt_gatt_discover_included_services(struct bt_att *att,
@@ -1143,16 +1138,14 @@ bool bt_gatt_discover_included_services(struct bt_att *att,
 	put_le16(end, pdu + 2);
 	put_le16(GATT_INCLUDE_UUID, pdu + 4);
 
-	if (!bt_att_send(att, BT_ATT_OP_READ_BY_TYPE_REQ,
-					pdu, sizeof(pdu),
-					discover_included_cb,
-					discovery_op_ref(op),
-					discovery_op_unref)) {
-		free(op);
-		return false;
-	}
+	op->id = bt_att_send(att, BT_ATT_OP_READ_BY_TYPE_REQ, pdu, sizeof(pdu),
+				discover_included_cb, discovery_op_ref(op),
+				discovery_op_unref);
+	if (op->id)
+		return true;
 
-	return true;
+	free(op);
+	return false;
 }
 
 static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
@@ -1161,7 +1154,6 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 	struct discovery_op *op = user_data;
 	bool success;
 	uint8_t att_ecode = 0;
-	struct bt_gatt_result *final_result = NULL;
 	size_t data_length;
 	uint16_t last_handle;
 
@@ -1210,11 +1202,12 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(GATT_CHARAC_UUID, pdu + 4);
 
-		if (bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
+		op->id = bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
 						pdu, sizeof(pdu),
 						discover_chrcs_cb,
 						discovery_op_ref(op),
-						discovery_op_unref))
+						discovery_op_unref);
+		if (op->id)
 			return;
 
 		success = false;
@@ -1222,15 +1215,10 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 	}
 
 success:
-	final_result = op->result_head;
 	success = true;
 
 done:
-	if (op->callback)
-		op->callback(success, att_ecode, final_result,
-							op->user_data);
-
-	discovery_op_unref(op);
+	discovery_op_complete(op, success, att_ecode);
 }
 
 bool bt_gatt_discover_characteristics(struct bt_att *att,
@@ -1259,16 +1247,14 @@ bool bt_gatt_discover_characteristics(struct bt_att *att,
 	put_le16(end, pdu + 2);
 	put_le16(GATT_CHARAC_UUID, pdu + 4);
 
-	if (!bt_att_send(att, BT_ATT_OP_READ_BY_TYPE_REQ,
-					pdu, sizeof(pdu),
-					discover_chrcs_cb,
-					discovery_op_ref(op),
-					discovery_op_unref)) {
-		free(op);
-		return false;
-	}
+	op->id = bt_att_send(att, BT_ATT_OP_READ_BY_TYPE_REQ, pdu, sizeof(pdu),
+				discover_chrcs_cb, discovery_op_ref(op),
+				discovery_op_unref);
+	if (op->id)
+		return true;
 
-	return true;
+	free(op);
+	return false;
 }
 
 static void read_by_type_cb(uint8_t opcode, const void *pdu,
@@ -1319,11 +1305,12 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->end_handle, pdu + 2);
 		put_uuid_le(&op->uuid, pdu + 4);
 
-		if (bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
+		op->id = bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
 						pdu, sizeof(pdu),
 						read_by_type_cb,
 						discovery_op_ref(op),
-						discovery_op_unref))
+						discovery_op_unref);
+		if (op->id)
 			return;
 
 		success = false;
@@ -1333,11 +1320,7 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 	success = true;
 
 done:
-	if (op->callback)
-		op->callback(success, att_ecode, success ? op->result_head :
-							NULL, op->user_data);
-
-	discovery_op_unref(op);
+	discovery_op_complete(op, success, att_ecode);
 }
 
 bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
@@ -1367,14 +1350,14 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 	put_le16(end, pdu + 2);
 	put_uuid_le(uuid, pdu + 4);
 
-	if (!bt_att_send(att, BT_ATT_OP_READ_BY_TYPE_REQ, pdu, sizeof(pdu),
+	op->id = bt_att_send(att, BT_ATT_OP_READ_BY_TYPE_REQ, pdu, sizeof(pdu),
 					read_by_type_cb, discovery_op_ref(op),
-					discovery_op_unref)) {
-		free(op);
-		return false;
-	}
+					discovery_op_unref);
+	if (op->id)
+		return true;
 
-	return true;
+	free(op);
+	return false;
 }
 
 static void discover_descs_cb(uint8_t opcode, const void *pdu,
@@ -1383,7 +1366,6 @@ static void discover_descs_cb(uint8_t opcode, const void *pdu,
 	struct discovery_op *op = user_data;
 	bool success;
 	uint8_t att_ecode = 0;
-	struct bt_gatt_result *final_result = NULL;
 	uint8_t format;
 	uint16_t last_handle;
 	size_t data_length;
@@ -1438,11 +1420,12 @@ static void discover_descs_cb(uint8_t opcode, const void *pdu,
 		put_le16(last_handle + 1, pdu);
 		put_le16(op->end_handle, pdu + 2);
 
-		if (bt_att_send(op->att, BT_ATT_OP_FIND_INFO_REQ,
+		op->id = bt_att_send(op->att, BT_ATT_OP_FIND_INFO_REQ,
 						pdu, sizeof(pdu),
 						discover_descs_cb,
 						discovery_op_ref(op),
-						discovery_op_unref))
+						discovery_op_unref);
+		if (op->id)
 			return;
 
 		success = false;
@@ -1450,14 +1433,10 @@ static void discover_descs_cb(uint8_t opcode, const void *pdu,
 	}
 
 success:
-	final_result = op->result_head;
 	success = true;
 
 done:
-	if (op->callback)
-		op->callback(success, att_ecode, final_result, op->user_data);
-
-	discovery_op_unref(op);
+	discovery_op_complete(op, success, att_ecode);
 }
 
 bool bt_gatt_discover_descriptors(struct bt_att *att,
@@ -1485,13 +1464,13 @@ bool bt_gatt_discover_descriptors(struct bt_att *att,
 	put_le16(start, pdu);
 	put_le16(end, pdu + 2);
 
-	if (!bt_att_send(att, BT_ATT_OP_FIND_INFO_REQ, pdu, sizeof(pdu),
+	op->id = bt_att_send(att, BT_ATT_OP_FIND_INFO_REQ, pdu, sizeof(pdu),
 						discover_descs_cb,
 						discovery_op_ref(op),
-						discovery_op_unref)) {
-		free(op);
-		return false;
-	}
+						discovery_op_unref);
+	if (op->id)
+		return true;
 
-	return true;
+	free(op);
+	return false;
 }
