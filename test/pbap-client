@@ -170,6 +170,6 @@ if  __name__ == '__main__':
 
 		pbap_client.flush_transfers(lambda: test_paths(paths[1:]))
 
-	test_paths(["PB", "ICH", "OCH", "MCH", "CCH"])
+	test_paths(["PB", "ICH", "OCH", "MCH", "CCH", "SPD", "FAV"])
 
 	mainloop.run()
