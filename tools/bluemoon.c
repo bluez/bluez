@@ -886,6 +886,7 @@ static const struct option main_options[] = {
 	{ "reset",    no_argument,       NULL, 'R' },
 	{ "coldboot", no_argument,       NULL, 'B' },
 	{ "index",    required_argument, NULL, 'i' },
+	{ "raw",      no_argument,       NULL, 'r' },
 	{ "version",  no_argument,       NULL, 'v' },
 	{ "help",     no_argument,       NULL, 'h' },
 	{ }
@@ -894,13 +895,14 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	const char *str;
+	bool use_raw = false;
 	sigset_t mask;
 	int exit_status;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "A::DF::C:TRBi:vh",
+		opt = getopt_long(argc, argv, "A::DF::C:TREi:rvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -946,6 +948,9 @@ int main(int argc, char *argv[])
 			}
 			hci_index = atoi(str);
 			break;
+		case 'r':
+			use_raw = true;
+			break;
 		case 'v':
 			printf("%s\n", VERSION);
 			return EXIT_SUCCESS;
@@ -977,10 +982,18 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	hci_dev = bt_hci_new_user_channel(hci_index);
-	if (!hci_dev) {
-		fprintf(stderr, "Failed to open HCI user channel\n");
-		return EXIT_FAILURE;
+	if (use_raw) {
+		hci_dev = bt_hci_new_raw_device(hci_index);
+		if (!hci_dev) {
+			fprintf(stderr, "Failed to open HCI raw device\n");
+			return EXIT_FAILURE;
+		}
+	} else {
+		hci_dev = bt_hci_new_user_channel(hci_index);
+		if (!hci_dev) {
+			fprintf(stderr, "Failed to open HCI user channel\n");
+			return EXIT_FAILURE;
+		}
 	}
 
 	bt_hci_send(hci_dev, CMD_READ_VERSION, NULL, 0,
