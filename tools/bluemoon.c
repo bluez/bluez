@@ -135,6 +135,11 @@ struct cmd_act_deact_traces {
 	uint8_t  rx_trace;
 } __attribute__ ((packed));
 
+#define CMD_TRIGGER_EXCEPTION	0xfc4d
+struct cmd_trigger_exception {
+	uint8_t  type;
+} __attribute__ ((packed));
+
 #define CMD_MEMORY_WRITE	0xfc8e
 
 static struct bt_hci *hci_dev;
@@ -155,6 +160,7 @@ static const char *check_firmware_value = NULL;
 uint8_t manufacturer_mode_reset = 0x00;
 static bool use_manufacturer_mode = false;
 static bool set_traces = false;
+static bool set_exception = false;
 static bool reset_on_exit = false;
 static bool cold_boot = false;
 
@@ -315,6 +321,18 @@ static void act_deact_traces(void)
 					act_deact_traces_complete, NULL, NULL);
 }
 
+static void trigger_exception(void)
+{
+	struct cmd_trigger_exception cmd;
+
+	cmd.type = 0x00;
+
+	bt_hci_send(hci_dev, CMD_TRIGGER_EXCEPTION, &cmd, sizeof(cmd),
+							NULL, NULL, NULL);
+
+	shutdown_device();
+}
+
 static void write_bd_data_complete(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -452,6 +470,11 @@ static void enter_manufacturer_mode_complete(const void *data, uint8_t size,
 
 	if (set_traces) {
 		act_deact_traces();
+		return;
+	}
+
+	if (set_exception) {
+		trigger_exception();
 		return;
 	}
 
@@ -873,6 +896,7 @@ static void usage(void)
 		"\t-C, --check <file>     Check firmware image\n"
 		"\t-R, --reset            Reset controller\n"
 		"\t-B, --coldboot         Cold boot controller\n"
+		"\t-E, --exception        Trigger exception\n"
 		"\t-i, --index <num>      Use specified controller\n"
 		"\t-h, --help             Show help options\n");
 }
@@ -885,6 +909,7 @@ static const struct option main_options[] = {
 	{ "traces",   no_argument,       NULL, 'T' },
 	{ "reset",    no_argument,       NULL, 'R' },
 	{ "coldboot", no_argument,       NULL, 'B' },
+	{ "exception",no_argument,       NULL, 'E' },
 	{ "index",    required_argument, NULL, 'i' },
 	{ "raw",      no_argument,       NULL, 'r' },
 	{ "version",  no_argument,       NULL, 'v' },
@@ -902,7 +927,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "A::DF::C:TREi:rvh",
+		opt = getopt_long(argc, argv, "A::DF::C:TRBEi:rvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -926,6 +951,10 @@ int main(int argc, char *argv[])
 		case 'C':
 			check_firmware_value = optarg;
 			check_firmware = true;
+			break;
+		case 'E':
+			use_manufacturer_mode = true;
+			set_exception = true;
 			break;
 		case 'T':
 			use_manufacturer_mode = true;
