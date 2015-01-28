@@ -845,10 +845,12 @@ static bool discover_services(struct bt_att *att, bt_uuid_t *uuid,
 							discovery_op_unref);
 	}
 
-	if (!op->id)
+	if (!op->id) {
 		free(op);
+		return false;
+	}
 
-	return op->id ? true : false;
+	return true;
 }
 
 bool bt_gatt_discover_all_primary_services(struct bt_att *att, bt_uuid_t *uuid,
