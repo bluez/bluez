@@ -1,7 +1,7 @@
 PTS test results for SPP
 
-PTS version: 5.3
-Tested: 12-November-2014
+PTS version: 6.0
+Tested: 29-January-2015
 Android version: 5.0
 
 Results:
@@ -13,11 +13,12 @@ N/A	test is disabled due to PICS setup
 -------------------------------------------------------------------------------
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
-TC_DevA_APP_BV_01_C	PASS	rctest -n -P <channel> <bdaddr>
-				Note: IUT should sdp query PTS in order to
-				check given channel for COM5
-TC_DevB_APP_BV_02_C	PASS	haltest: socket listen BTSOCK_RFCOMM
-				<srvc_name> <uuid>
+TC_DevA_APP_BV_01_C	PASS	sdptool browse <bdaddr> - check RFCOMM channel
+				rctest -n -P <channel> <bdaddr>
+TC_DevB_APP_BV_02_C	PASS	haltest: socket listen BTSOCK_RFCOMM SerialPort
+					00001101
+				Note: IUT must be in connectable, discoverable
+					mode.
 TC_APP_BV_03_C		N/A	Missing in PTS
 				PTS issue #12388
 				Note: tests BV_03 : BV_6 currently not supported
