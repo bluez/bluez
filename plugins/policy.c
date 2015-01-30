@@ -214,6 +214,11 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 
 	switch (new_state) {
 	case BTD_SERVICE_STATE_UNAVAILABLE:
+		if (data->sink_timer > 0) {
+			g_source_remove(data->sink_timer);
+			data->sink_timer = 0;
+		}
+		break;
 	case BTD_SERVICE_STATE_DISCONNECTED:
 		if (old_state == BTD_SERVICE_STATE_CONNECTING) {
 			int err = btd_service_get_error(service);
@@ -324,6 +329,11 @@ static void source_cb(struct btd_service *service,
 
 	switch (new_state) {
 	case BTD_SERVICE_STATE_UNAVAILABLE:
+		if (data->source_timer > 0) {
+			g_source_remove(data->source_timer);
+			data->source_timer = 0;
+		}
+		break;
 	case BTD_SERVICE_STATE_DISCONNECTED:
 		if (old_state == BTD_SERVICE_STATE_CONNECTING) {
 			int err = btd_service_get_error(service);
@@ -382,6 +392,11 @@ static void controller_cb(struct btd_service *service,
 
 	switch (new_state) {
 	case BTD_SERVICE_STATE_UNAVAILABLE:
+		if (data->ct_timer > 0) {
+			g_source_remove(data->ct_timer);
+			data->ct_timer = 0;
+		}
+		break;
 	case BTD_SERVICE_STATE_DISCONNECTED:
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
@@ -410,6 +425,11 @@ static void target_cb(struct btd_service *service,
 
 	switch (new_state) {
 	case BTD_SERVICE_STATE_UNAVAILABLE:
+		if (data->tg_timer > 0) {
+			g_source_remove(data->tg_timer);
+			data->tg_timer = 0;
+		}
+		break;
 	case BTD_SERVICE_STATE_DISCONNECTED:
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
