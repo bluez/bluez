@@ -170,6 +170,7 @@ int service_probe(struct btd_service *service)
 
 void service_remove(struct btd_service *service)
 {
+	change_state(service, BTD_SERVICE_STATE_DISCONNECTED, -ECONNABORTED);
 	change_state(service, BTD_SERVICE_STATE_UNAVAILABLE, 0);
 	service->profile->device_remove(service);
 	service->device = NULL;
