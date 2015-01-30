@@ -1,6 +1,6 @@
 HID PIXIT for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -27,4 +27,5 @@ TSPX_no_fail_verdicts					False
 TSPX_time_reconnect					30000
 TSPX_secure_simple_pairing_pass_key_confirmation	False
 TSPX_hid_report_id					1
+TSPX_hid_report_data					ff00 (*)
 -------------------------------------------------------------------------------
