@@ -39,6 +39,7 @@ static bool use_bredr = false;
 static bool use_le = false;
 static bool use_sc = false;
 static bool use_sconly = false;
+static bool use_debug = false;
 static bool provide_p192 = false;
 static bool provide_p256 = false;
 
@@ -344,6 +345,12 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		return;
 	}
 
+	if (use_debug && !(supported_settings & MGMT_SETTING_DEBUG_KEYS)) {
+		fprintf(stderr, "Debug keys support missing\n");
+		mainloop_quit();
+		return;
+	}
+
 	mgmt_register(mgmt, MGMT_EV_NEW_LINK_KEY, index,
 						new_link_key_event,
 						UINT_TO_PTR(index), NULL);
@@ -397,6 +404,22 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 	} else {
 		val = 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
+							NULL, NULL, NULL);
+	}
+
+	if (use_debug) {
+		if (index == index1) {
+			val = 0x02;
+			mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
+							NULL, NULL, NULL);
+		} else if (index == index2) {
+			val = 0x01;
+			mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
+							NULL, NULL, NULL);
+		}
+	} else {
+		val = 0x00;
+		mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
 							NULL, NULL, NULL);
 	}
 
@@ -487,6 +510,7 @@ static void usage(void)
 		"\t-L, --le               Use LE transport\n"
 		"\t-S, --sc               Use Secure Connections\n"
 		"\t-O, --sconly           Use Secure Connections Only\n"
+		"\t-D, --debug            Use Pairing debug keys\n"
 		"\t-1, --p192             Provide P-192 OOB data\n"
 		"\t-2, --p256             Provide P-256 OOB data\n"
 		"\t-h, --help             Show help options\n");
@@ -497,6 +521,7 @@ static const struct option main_options[] = {
 	{ "le",      no_argument,       NULL, 'L' },
 	{ "sc",      no_argument,       NULL, 'S' },
 	{ "sconly",  no_argument,       NULL, 'O' },
+	{ "debug",   no_argument,       NULL, 'D' },
 	{ "p192",    no_argument,       NULL, '1' },
 	{ "p256",    no_argument,       NULL, '2' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -512,7 +537,7 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BLSO12vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "BLSOD12vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -528,6 +553,9 @@ int main(int argc ,char *argv[])
 			break;
 		case 'O':
 			use_sconly = true;
+			break;
+		case 'D':
+			use_debug = true;
 			break;
 		case '1':
 			provide_p192 = true;
