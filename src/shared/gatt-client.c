@@ -169,9 +169,10 @@ struct notify_data {
 	struct bt_gatt_client *client;
 	bool invalid;
 	unsigned int id;
+	unsigned int att_id;
 	int ref_count;
 	struct notify_chrc *chrc;
-	bt_gatt_client_notify_id_callback_t callback;
+	bt_gatt_client_register_callback_t callback;
 	bt_gatt_client_notify_callback_t notify;
 	void *user_data;
 	bt_gatt_client_destroy_func_t destroy;
@@ -1012,22 +1013,20 @@ struct service_changed_op {
 	uint16_t end_handle;
 };
 
-static void service_changed_reregister_cb(unsigned int id, uint16_t att_ecode,
-								void *user_data)
+static void service_changed_reregister_cb(uint16_t att_ecode, void *user_data)
 {
 	struct bt_gatt_client *client = user_data;
 
-	if (!id || att_ecode) {
+	if (!att_ecode) {
 		util_debug(client->debug_callback, client->debug_data,
-			"Failed to register handler for \"Service Changed\"");
+			"Re-registered handler for \"Service Changed\" after "
+			"change in GATT service");
 		return;
 	}
 
-	client->svc_chngd_ind_id = id;
-
 	util_debug(client->debug_callback, client->debug_data,
-		"Re-registered handler for \"Service Changed\" after change in "
-		"GATT service");
+		"Failed to register handler for \"Service Changed\"");
+	client->svc_chngd_ind_id = 0;
 }
 
 static void process_service_changed(struct bt_gatt_client *client,
@@ -1091,11 +1090,12 @@ static void service_changed_complete(struct discovery_op *op, bool success,
 	/* The GATT service was modified. Re-register the handler for
 	 * indications from the "Service Changed" characteristic.
 	 */
-	if (bt_gatt_client_register_notify(client,
+	client->svc_chngd_ind_id = bt_gatt_client_register_notify(client,
 					gatt_db_attribute_get_handle(attr),
 					service_changed_reregister_cb,
 					service_changed_cb,
-					client, NULL))
+					client, NULL);
+	if (client->svc_chngd_ind_id)
 		return;
 
 	util_debug(client->debug_callback, client->debug_data,
@@ -1185,24 +1185,24 @@ static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
 	queue_push_tail(client->svc_chngd_queue, op);
 }
 
-static void service_changed_register_cb(unsigned int id, uint16_t att_ecode,
-								void *user_data)
+static void service_changed_register_cb(uint16_t att_ecode, void *user_data)
 {
 	bool success;
 	struct bt_gatt_client *client = user_data;
 
-	if (!id || att_ecode) {
+	if (att_ecode) {
 		util_debug(client->debug_callback, client->debug_data,
 			"Failed to register handler for \"Service Changed\"");
 		success = false;
+		client->svc_chngd_ind_id = 0;
 		goto done;
 	}
 
-	client->svc_chngd_ind_id = id;
 	client->ready = true;
 	success = true;
 	util_debug(client->debug_callback, client->debug_data,
-			"Registered handler for \"Service Changed\": %u", id);
+			"Registered handler for \"Service Changed\": %u",
+			client->svc_chngd_ind_id);
 
 done:
 	notify_client_ready(client, success, att_ecode);
@@ -1212,7 +1212,6 @@ static void init_complete(struct discovery_op *op, bool success,
 							uint8_t att_ecode)
 {
 	struct bt_gatt_client *client = op->client;
-	bool registered;
 	struct gatt_db_attribute *attr = NULL;
 	bt_uuid_t uuid;
 
@@ -1236,14 +1235,14 @@ static void init_complete(struct discovery_op *op, bool success,
 	 * the handler using the existing framework.
 	 */
 	client->ready = true;
-	registered = bt_gatt_client_register_notify(client,
+	client->svc_chngd_ind_id = bt_gatt_client_register_notify(client,
 					gatt_db_attribute_get_handle(attr),
 					service_changed_register_cb,
 					service_changed_cb,
 					client, NULL);
 	client->ready = false;
 
-	if (registered)
+	if (client->svc_chngd_ind_id)
 		return;
 
 	util_debug(client->debug_callback, client->debug_data,
@@ -1302,24 +1301,15 @@ static void complete_notify_request(void *data)
 	/* Increment the per-characteristic ref count of notify handlers */
 	__sync_fetch_and_add(&notify_data->chrc->notify_count, 1);
 
-	/* Add the handler to the bt_gatt_client's general list */
-	queue_push_tail(notify_data->client->notify_list,
-						notify_data_ref(notify_data));
-
-	/* Assign an ID to the handler and notify the caller that it was
-	 * successfully registered.
-	 */
-	if (notify_data->client->next_reg_id < 1)
-		notify_data->client->next_reg_id = 1;
-
-	notify_data->id = notify_data->client->next_reg_id++;
-	notify_data->callback(notify_data->id, 0, notify_data->user_data);
+	notify_data->att_id = 0;
+	notify_data->callback(0, notify_data->user_data);
 }
 
 static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
 						bt_att_response_func_t callback)
 {
 	uint8_t pdu[4];
+	unsigned int att_id;
 
 	assert(notify_data->chrc->ccc_handle);
 	memset(pdu, 0, sizeof(pdu));
@@ -1339,13 +1329,13 @@ static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
 			return false;
 	}
 
-	notify_data->chrc->ccc_write_id = bt_att_send(notify_data->client->att,
-						BT_ATT_OP_WRITE_REQ,
-						pdu, sizeof(pdu),
-						callback,
-						notify_data, notify_data_unref);
+	att_id = bt_att_send(notify_data->client->att, BT_ATT_OP_WRITE_REQ,
+						pdu, sizeof(pdu), callback,
+						notify_data_ref(notify_data),
+						notify_data_unref);
+	notify_data->chrc->ccc_write_id = notify_data->att_id = att_id;
 
-	return !!notify_data->chrc->ccc_write_id;
+	return !!att_id;
 }
 
 static uint8_t process_error(const void *pdu, uint16_t length)
@@ -1378,7 +1368,8 @@ static void enable_ccc_callback(uint8_t opcode, const void *pdu,
 		 * the next one in the queue. If there was an error sending the
 		 * write request, then just move on to the next queued entry.
 		 */
-		notify_data->callback(0, att_ecode, notify_data->user_data);
+		queue_remove(notify_data->client->notify_list, notify_data);
+		notify_data->callback(att_ecode, notify_data->user_data);
 
 		while ((notify_data = queue_pop_head(
 					notify_data->chrc->reg_notify_queue))) {
@@ -1427,6 +1418,16 @@ static void complete_unregister_notify(void *data)
 {
 	struct notify_data *notify_data = data;
 
+	/*
+	 * If a procedure to enable the CCC is still pending, then cancel it and
+	 * return.
+	 */
+	if (notify_data->att_id) {
+		bt_att_cancel(notify_data->client->att, notify_data->att_id);
+		notify_data_unref(notify_data);
+		return;
+	}
+
 	if (__sync_sub_and_fetch(&notify_data->chrc->notify_count, 1)) {
 		notify_data_unref(notify_data);
 		return;
@@ -1450,6 +1451,10 @@ static void notify_handler(void *data, void *user_data)
 	if (pdu_data->length > 2)
 		value = pdu_data->pdu + 2;
 
+	/*
+	 * Even if the notify data has a pending ATT request to write to the
+	 * CCC, there is really no reason not to notify the handlers.
+	 */
 	if (notify_data->notify)
 		notify_data->notify(value_handle, value, pdu_data->length - 2,
 							notify_data->user_data);
@@ -1476,9 +1481,21 @@ static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	bt_gatt_client_unref(client);
 }
 
+static void notify_data_cleanup(void *data)
+{
+	struct notify_data *notify_data = data;
+
+	if (notify_data->att_id)
+		bt_att_cancel(notify_data->client->att, notify_data->att_id);
+
+	notify_data_unref(notify_data);
+}
+
 static void bt_gatt_client_free(struct bt_gatt_client *client)
 {
 	bt_gatt_client_cancel_all(client);
+
+	queue_destroy(client->notify_list, notify_data_cleanup);
 
 	if (client->ready_destroy)
 		client->ready_destroy(client->ready_data);
@@ -1497,7 +1514,6 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 
 	queue_destroy(client->svc_chngd_queue, free);
 	queue_destroy(client->long_write_queue, request_unref);
-	queue_destroy(client->notify_list, notify_data_unref);
 	queue_destroy(client->notify_chrcs, notify_chrc_free);
 	queue_destroy(client->pending_requests, request_unref);
 
@@ -2504,9 +2520,9 @@ static bool match_notify_chrc_value_handle(const void *a, const void *b)
 	return chrc->value_handle == value_handle;
 }
 
-bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 				uint16_t chrc_value_handle,
-				bt_gatt_client_notify_id_callback_t callback,
+				bt_gatt_client_register_callback_t callback,
 				bt_gatt_client_notify_callback_t notify,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy)
@@ -2515,10 +2531,10 @@ bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
 	struct notify_chrc *chrc = NULL;
 
 	if (!client || !client->db || !chrc_value_handle || !callback)
-		return false;
+		return 0;
 
 	if (!bt_gatt_client_is_ready(client) || client->in_svc_chngd)
-		return false;
+		return 0;
 
 	/* Check if a characteristic ref count has been started already */
 	chrc = queue_find(client->notify_chrcs, match_notify_chrc_value_handle,
@@ -2531,17 +2547,16 @@ bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
 		 */
 		chrc = notify_chrc_create(client, chrc_value_handle);
 		if (!chrc)
-			return false;
-
+			return 0;
 	}
 
 	/* Fail if we've hit the maximum allowed notify sessions */
 	if (chrc->notify_count == INT_MAX)
-		return false;
+		return 0;
 
 	notify_data = new0(struct notify_data, 1);
 	if (!notify_data)
-		return false;
+		return 0;
 
 	notify_data->client = client;
 	notify_data->ref_count = 1;
@@ -2551,13 +2566,24 @@ bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
 	notify_data->user_data = user_data;
 	notify_data->destroy = destroy;
 
+	/* Add the handler to the bt_gatt_client's general list */
+	queue_push_tail(client->notify_list, notify_data);
+
+	/* Assign an ID to the handler and notify the caller that it was
+	 * successfully registered.
+	 */
+	if (client->next_reg_id < 1)
+		client->next_reg_id = 1;
+
+	notify_data->id = client->next_reg_id++;
+
 	/*
 	 * If a write to the CCC descriptor is in progress, then queue this
 	 * request.
 	 */
 	if (chrc->ccc_write_id) {
 		queue_push_tail(chrc->reg_notify_queue, notify_data);
-		return true;
+		return notify_data->id;
 	}
 
 	/*
@@ -2565,16 +2591,17 @@ bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
 	 */
 	if (chrc->notify_count > 0) {
 		complete_notify_request(notify_data);
-		return true;
+		return notify_data->id;
 	}
 
 	/* Write to the CCC descriptor */
 	if (!notify_data_write_ccc(notify_data, true, enable_ccc_callback)) {
+		queue_remove(client->notify_list, notify_data);
 		free(notify_data);
-		return false;
+		return 0;
 	}
 
-	return true;
+	return notify_data->id;
 }
 
 bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,

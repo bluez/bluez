@@ -856,16 +856,15 @@ static void notify_cb(uint16_t value_handle, const uint8_t *value,
 	PRLOG("\n");
 }
 
-static void register_notify_cb(unsigned int id, uint16_t att_ecode,
-								void *user_data)
+static void register_notify_cb(uint16_t att_ecode, void *user_data)
 {
-	if (!id) {
+	if (att_ecode) {
 		PRLOG("Failed to register notify handler "
 					"- error code: 0x%02x\n", att_ecode);
 		return;
 	}
 
-	PRLOG("Registered notify handler with id: %u\n", id);
+	PRLOG("Registered notify handler!");
 }
 
 static void cmd_register_notify(struct client *cli, char *cmd_str)
@@ -873,6 +872,7 @@ static void cmd_register_notify(struct client *cli, char *cmd_str)
 	char *argv[2];
 	int argc = 0;
 	uint16_t value_handle;
+	unsigned int id;
 	char *endptr = NULL;
 
 	if (!bt_gatt_client_is_ready(cli->gatt)) {
@@ -891,12 +891,15 @@ static void cmd_register_notify(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	if (!bt_gatt_client_register_notify(cli->gatt, value_handle,
+	id = bt_gatt_client_register_notify(cli->gatt, value_handle,
 							register_notify_cb,
-							notify_cb, NULL, NULL))
+							notify_cb, NULL, NULL);
+	if (!id) {
 		printf("Failed to register notify handler\n");
+		return;
+	}
 
-	printf("\n");
+	PRLOG("Registering notify handler with id: %u\n", id);
 }
 
 static void unregister_notify_usage(void)

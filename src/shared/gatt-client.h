@@ -49,8 +49,7 @@ typedef void (*bt_gatt_client_write_long_callback_t)(bool success,
 typedef void (*bt_gatt_client_notify_callback_t)(uint16_t value_handle,
 					const uint8_t *value, uint16_t length,
 					void *user_data);
-typedef void (*bt_gatt_client_notify_id_callback_t)(unsigned int id,
-							uint16_t att_ecode,
+typedef void (*bt_gatt_client_register_callback_t)(uint16_t att_ecode,
 							void *user_data);
 typedef void (*bt_gatt_client_service_changed_callback_t)(uint16_t start_handle,
 							uint16_t end_handle,
@@ -110,9 +109,9 @@ unsigned int bt_gatt_client_write_long_value(struct bt_gatt_client *client,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy);
 
-bool bt_gatt_client_register_notify(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 				uint16_t chrc_value_handle,
-				bt_gatt_client_notify_id_callback_t callback,
+				bt_gatt_client_register_callback_t callback,
 				bt_gatt_client_notify_callback_t notify,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy);
