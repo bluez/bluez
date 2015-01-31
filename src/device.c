@@ -506,6 +506,11 @@ static void gatt_client_cleanup(struct btd_device *device)
 	bt_gatt_client_unref(device->client);
 	device->client = NULL;
 
+	/*
+	 * TODO: Once GATT over BR/EDR is properly supported, we should check
+	 * the bonding state for the correct bearer based on the transport over
+	 * which GATT is being done.
+	 */
 	if (!device->le_state.bonded)
 		gatt_db_clear(device->db);
 }
