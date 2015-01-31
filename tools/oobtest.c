@@ -37,6 +37,8 @@
 
 static bool use_bredr = false;
 static bool use_le = false;
+static bool use_sc = false;
+static bool use_sconly = false;
 static bool provide_p192 = false;
 static bool provide_p256 = false;
 
@@ -193,6 +195,7 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 		fprintf(stderr, "Reading OOB data for index %u failed: %s\n",
 						index, mgmt_errstr(status));
 		mainloop_quit();
+		return;
 	}
 
 	printf("[Index %u]\n", index);
@@ -296,6 +299,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		fprintf(stderr, "Reading info for index %u failed: %s\n",
 						index, mgmt_errstr(status));
 		mainloop_quit();
+		return;
 	}
 
 	ba2str(&rp->bdaddr, str);
@@ -308,6 +312,38 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 	else if (index == index2)
 		bacpy(&bdaddr2, &rp->bdaddr);
 
+	supported_settings = le32_to_cpu(rp->supported_settings);
+
+	if (use_bredr && !(supported_settings & MGMT_SETTING_BREDR)) {
+		fprintf(stderr, "BR/EDR support missing\n");
+		mainloop_quit();
+		return;
+	}
+
+	if (use_bredr && !(supported_settings & MGMT_SETTING_SSP)) {
+		fprintf(stderr, "Secure Simple Pairing support missing\n");
+		mainloop_quit();
+		return;
+	}
+
+	if (use_le && !(supported_settings & MGMT_SETTING_LE)) {
+		fprintf(stderr, "Low Energy support missing\n");
+		mainloop_quit();
+		return;
+	}
+
+	if (use_sc && !(supported_settings & MGMT_SETTING_SECURE_CONN)) {
+		fprintf(stderr, "Secure Connections support missing\n");
+		mainloop_quit();
+		return;
+	}
+
+	if (use_sconly && !(supported_settings & MGMT_SETTING_SECURE_CONN)) {
+		fprintf(stderr, "Secure Connections Only support missing\n");
+		mainloop_quit();
+		return;
+	}
+
 	mgmt_register(mgmt, MGMT_EV_NEW_LINK_KEY, index,
 						new_link_key_event,
 						UINT_TO_PTR(index), NULL);
@@ -316,12 +352,13 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 						new_long_term_key_event,
 						UINT_TO_PTR(index), NULL);
 
-	supported_settings = le32_to_cpu(rp->supported_settings);
-
-
 	val = 0x00;
 	mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, 1, &val,
 						NULL, NULL, NULL);
+
+	clear_link_keys(index);
+	clear_long_term_keys(index);
+	clear_remote_oob_data(index);
 
 	if (use_bredr) {
 		val = 0x01;
@@ -335,9 +372,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		val = 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_SSP, index, 1, &val,
 							NULL, NULL, NULL);
-
-		clear_link_keys(index);
-	} else {
+	} else if (use_le) {
 		val = 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
 							NULL, NULL, NULL);
@@ -345,12 +380,22 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		val = 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
 							NULL, NULL, NULL);
-
-		clear_long_term_keys(index);
+	} else {
+		fprintf(stderr, "Invalid transport for pairing\n");
+		mainloop_quit();
+		return;
 	}
 
-	if (supported_settings & MGMT_SETTING_SECURE_CONN) {
+	if (use_sc) {
 		val = 0x01;
+		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
+							NULL, NULL, NULL);
+	} else if (use_sconly) {
+		val = 0x02;
+		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
+							NULL, NULL, NULL);
+	} else {
+		val = 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
 							NULL, NULL, NULL);
 	}
@@ -363,9 +408,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 	mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, 1, &val,
 						NULL, NULL, NULL);
 
-	clear_remote_oob_data(index);
-
-	if (use_bredr) {
+	if (use_bredr && (provide_p192 || provide_p256)) {
 		mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
 						read_oob_data_complete,
 						UINT_TO_PTR(index), NULL);
@@ -390,6 +433,7 @@ static void read_index_list(uint8_t status, uint16_t len, const void *param,
 		fprintf(stderr, "Reading index list failed: %s\n",
 						mgmt_errstr(status));
 		mainloop_quit();
+		return;
 	}
 
 	count = le16_to_cpu(rp->num_controllers);
@@ -397,6 +441,7 @@ static void read_index_list(uint8_t status, uint16_t len, const void *param,
 	if (count < 2) {
 		fprintf(stderr, "At least 2 controllers are required\n");
 		mainloop_quit();
+		return;
 	}
 
 	for (i = 0; i < count; i++) {
@@ -440,12 +485,18 @@ static void usage(void)
 	printf("options:\n"
 		"\t-B, --bredr            Use BR/EDR transport\n"
 		"\t-L, --le               Use LE transport\n"
+		"\t-S, --sc               Use Secure Connections\n"
+		"\t-O, --sconly           Use Secure Connections Only\n"
+		"\t-1, --p192             Provide P-192 OOB data\n"
+		"\t-2, --p256             Provide P-256 OOB data\n"
 		"\t-h, --help             Show help options\n");
 }
 
 static const struct option main_options[] = {
 	{ "bredr",   no_argument,       NULL, 'B' },
 	{ "le",      no_argument,       NULL, 'L' },
+	{ "sc",      no_argument,       NULL, 'S' },
+	{ "sconly",  no_argument,       NULL, 'O' },
 	{ "p192",    no_argument,       NULL, '1' },
 	{ "p256",    no_argument,       NULL, '2' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -461,7 +512,7 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BL12vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "BLSO12vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -471,6 +522,12 @@ int main(int argc ,char *argv[])
 			break;
 		case 'L':
 			use_le = true;
+			break;
+		case 'S':
+			use_sc = true;
+			break;
+		case 'O':
+			use_sconly = true;
 			break;
 		case '1':
 			provide_p192 = true;
@@ -494,14 +551,14 @@ int main(int argc ,char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!use_bredr && !use_le) {
-		fprintf(stderr, "Missing transport option\n");
+	if (use_bredr == use_le) {
+		fprintf(stderr, "Specify either --bredr or --le\n");
 		return EXIT_FAILURE;
 	}
 
-	if (!provide_p192 && !provide_p256) {
-		provide_p192 = true;
-		provide_p256 = true;
+	if (use_sc && use_sconly) {
+		fprintf(stderr, "Only --sc or --sconly can be used\n");
+		return EXIT_FAILURE;
 	}
 
 	mainloop_init();
