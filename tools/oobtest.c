@@ -37,6 +37,8 @@
 
 static bool use_bredr = false;
 static bool use_le = false;
+static bool provide_p192 = false;
+static bool provide_p256 = false;
 
 static struct mgmt *mgmt;
 static uint16_t index1 = MGMT_INDEX_NONE;
@@ -155,12 +157,14 @@ static void add_remote_oob_data(uint16_t index, const bdaddr_t *bdaddr,
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
-	if (use_bredr) {
+	if (use_bredr)
 		cp.addr.type = BDADDR_BREDR;
+	else
+		cp.addr.type = BDADDR_LE_PUBLIC;
+	if (hash192 && rand192) {
 		memcpy(cp.hash192, hash192, 16);
 		memcpy(cp.rand192, rand192, 16);
 	} else {
-		cp.addr.type = BDADDR_LE_PUBLIC;
 		memset(cp.hash192, 0, 16);
 		memset(cp.rand192, 0, 16);
 	}
@@ -193,8 +197,13 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 
 	printf("[Index %u]\n", index);
 
-	hash192 = rp->hash192;
-	rand192 = rp->randomizer192;
+	if (provide_p192) {
+		hash192 = rp->hash192;
+		rand192 = rp->randomizer192;
+	} else {
+		hash192 = NULL;
+		rand192 = NULL;
+	}
 
 	printf("  Hash C from P-192: ");
 	for (i = 0; i < 16; i++)
@@ -212,8 +221,13 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 		goto done;
 	}
 
-	hash256 = rp->hash256;
-	rand256 = rp->randomizer256;
+	if (provide_p256) {
+		hash256 = rp->hash256;
+		rand256 = rp->randomizer256;
+	} else {
+		hash256 = NULL;
+		rand256 = NULL;
+	}
 
 	printf("  Hash C from P-256: ");
 	for (i = 0; i < 16; i++)
@@ -432,6 +446,8 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "bredr",   no_argument,       NULL, 'B' },
 	{ "le",      no_argument,       NULL, 'L' },
+	{ "p192",    no_argument,       NULL, '1' },
+	{ "p256",    no_argument,       NULL, '2' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -445,7 +461,7 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BLvh", main_options, NULL);
+		opt = getopt_long(argc, argv, "BL12vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -455,6 +471,12 @@ int main(int argc ,char *argv[])
 			break;
 		case 'L':
 			use_le = true;
+			break;
+		case '1':
+			provide_p192 = true;
+			break;
+		case '2':
+			provide_p256 = true;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
@@ -475,6 +497,11 @@ int main(int argc ,char *argv[])
 	if (!use_bredr && !use_le) {
 		fprintf(stderr, "Missing transport option\n");
 		return EXIT_FAILURE;
+	}
+
+	if (!provide_p192 && !provide_p256) {
+		provide_p192 = true;
+		provide_p256 = true;
 	}
 
 	mainloop_init();
