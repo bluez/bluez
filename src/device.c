@@ -2762,8 +2762,21 @@ static void gatt_service_removed(struct gatt_db_attribute *attr,
 	struct gatt_primary *prim;
 	uint16_t start, end;
 
-	if (!bt_gatt_client_is_ready(device->client))
-		return;
+	/*
+	 * NOTE: shared/gatt-client clears the database in case of failure. This
+	 * triggers the service_removed callback for all affected services.
+	 * Hence, this function will be called in the following cases:
+	 *
+	 *    1. When a GATT service gets removed due to "Service Changed".
+	 *
+	 *    2. When a GATT service gets removed when the database get cleared
+	 *       upon disconnection with a non-bonded device.
+	 *
+	 *    3. When a GATT service gets removed when the database get cleared
+	 *       by shared/gatt-client when its initialization procedure fails,
+	 *       e.g. due to an ATT protocol error or an unexpected disconnect.
+	 *       In this case the gatt-client will not be ready.
+	 */
 
 	gatt_db_attribute_get_service_handles(attr, &start, &end);
 
