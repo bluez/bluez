@@ -252,6 +252,54 @@ done:
 					hash192, rand192, hash256, rand256);
 }
 
+static void set_powered_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+	uint32_t settings;
+	uint8_t val;
+
+	if (status) {
+		fprintf(stderr, "Powering on for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+
+	settings = get_le32(param);
+
+	if (!(settings & MGMT_SETTING_POWERED)) {
+		fprintf(stderr, "Controller is not powered\n");
+		mainloop_quit();
+		return;
+	}
+
+	if (use_debug) {
+		if (index == index1) {
+			val = 0x02;
+			mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
+							NULL, NULL, NULL);
+		} else if (index == index2) {
+			val = 0x01;
+			mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
+							NULL, NULL, NULL);
+		}
+	}
+
+	if (use_bredr && (provide_p192 || provide_p256)) {
+		mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
+						read_oob_data_complete,
+						UINT_TO_PTR(index), NULL);
+	} else {
+		if (index == index1)
+			add_remote_oob_data(index2, &bdaddr1,
+						NULL, NULL, NULL, NULL);
+		else if (index == index2)
+			add_remote_oob_data(index1, &bdaddr2,
+						NULL, NULL, NULL, NULL);
+	}
+}
+
 static void clear_link_keys(uint16_t index)
 {
 	struct mgmt_cp_load_link_keys cp;
@@ -407,21 +455,9 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 							NULL, NULL, NULL);
 	}
 
-	if (use_debug) {
-		if (index == index1) {
-			val = 0x02;
-			mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
-							NULL, NULL, NULL);
-		} else if (index == index2) {
-			val = 0x01;
-			mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
-							NULL, NULL, NULL);
-		}
-	} else {
-		val = 0x00;
-		mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
-							NULL, NULL, NULL);
-	}
+	val = 0x00;
+	mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
+						NULL, NULL, NULL);
 
 	val = 0x01;
 	mgmt_send(mgmt, MGMT_OP_SET_BONDABLE, index, 1, &val,
@@ -429,20 +465,8 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 
 	val = 0x01;
 	mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, 1, &val,
-						NULL, NULL, NULL);
-
-	if (use_bredr && (provide_p192 || provide_p256)) {
-		mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
-						read_oob_data_complete,
+						set_powered_complete,
 						UINT_TO_PTR(index), NULL);
-	} else {
-		if (index == index1)
-			add_remote_oob_data(index2, &bdaddr1,
-						NULL, NULL, NULL, NULL);
-		else if (index == index2)
-			add_remote_oob_data(index1, &bdaddr2,
-						NULL, NULL, NULL, NULL);
-	}
 }
 
 static void read_index_list(uint8_t status, uint16_t len, const void *param,
