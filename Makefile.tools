@@ -223,7 +223,7 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btmgmt tools/btinfo tools/btattach \
 			tools/btsnoop tools/btproxy \
 			tools/btiotest tools/mcaptest tools/cltest \
-			tools/seq2bseq tools/ibeacon \
+			tools/oobtest tools/seq2bseq tools/ibeacon \
 			tools/btgatt-client tools/btgatt-server
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
@@ -267,6 +267,9 @@ tools_mcaptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 tools_cltest_SOURCES = tools/cltest.c
 tools_cltest_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la
+
+tools_oobtest_SOURCES = tools/oobtest.c
+tools_oobtest_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la
 
 tools_seq2bseq_SOURCES = tools/seq2bseq.c
 

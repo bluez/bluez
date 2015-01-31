@@ -60,6 +60,7 @@ tools/cltest
 tools/rctest
 tools/scotest
 tools/amptest
+tools/oobtest
 tools/sdptool
 tools/avtest
 tools/bdaddr
