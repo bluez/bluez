@@ -26,13 +26,17 @@
 #include <config.h>
 #endif
 
-#include <bluetooth/bluetooth.h>
+#include <getopt.h>
 
+#include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 
 #include "monitor/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
+
+static bool use_bredr = false;
+static bool use_le = false;
 
 static struct mgmt *mgmt;
 static uint16_t index1 = MGMT_INDEX_NONE;
@@ -51,6 +55,24 @@ static void new_link_key_event(uint16_t index, uint16_t len,
 
 	printf("[Index %u]\n", index);
 	printf("  New link key: %s\n", str);
+	printf("  Type: %u\n", ev->key.type);
+	printf("  Key: ");
+	for (i = 0; i < 16; i++)
+		printf("%02x", ev->key.val[i]);
+	printf("\n");
+}
+
+static void new_long_term_key_event(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_new_long_term_key *ev = param;
+	char str[18];
+	int i;
+
+	ba2str(&ev->key.addr.bdaddr, str);
+
+	printf("[Index %u]\n", index);
+	printf("  New long term key: %s\n", str);
 	printf("  Type: %u\n", ev->key.type);
 	printf("  Key: ");
 	for (i = 0; i < 16; i++)
@@ -83,7 +105,10 @@ static void pair_device(uint16_t index, const bdaddr_t *bdaddr)
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
-	cp.addr.type = BDADDR_BREDR;
+	if (use_bredr)
+		cp.addr.type = BDADDR_BREDR;
+	else
+		cp.addr.type = BDADDR_LE_PUBLIC;
 	cp.io_cap = 0x03;
 
 	mgmt_send(mgmt, MGMT_OP_PAIR_DEVICE, index, sizeof(cp), &cp,
@@ -108,8 +133,18 @@ static void add_remote_oob_data_complete(uint8_t status, uint16_t len,
 	printf("[Index %u]\n", index);
 	printf("  Remote data added: %s\n", str);
 
-	if (index == index1)
+	if (index == index1) {
+		uint8_t val = 0x01;
+
+		mgmt_send(mgmt, MGMT_OP_SET_CONNECTABLE, index2, 1, &val,
+							NULL, NULL, NULL);
+
+		if (use_le)
+			mgmt_send(mgmt, MGMT_OP_SET_ADVERTISING, index2,
+						1, &val, NULL, NULL, NULL);
+
 		pair_device(index1, &bdaddr2);
+	}
 }
 
 static void add_remote_oob_data(uint16_t index, const bdaddr_t *bdaddr,
@@ -120,9 +155,15 @@ static void add_remote_oob_data(uint16_t index, const bdaddr_t *bdaddr,
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
-	cp.addr.type = BDADDR_BREDR;
-	memcpy(cp.hash192, hash192, 16);
-	memcpy(cp.rand192, rand192, 16);
+	if (use_bredr) {
+		cp.addr.type = BDADDR_BREDR;
+		memcpy(cp.hash192, hash192, 16);
+		memcpy(cp.rand192, rand192, 16);
+	} else {
+		cp.addr.type = BDADDR_LE_PUBLIC;
+		memset(cp.hash192, 0, 16);
+		memset(cp.rand192, 0, 16);
+	}
 	if (hash256 && rand256) {
 		memcpy(cp.hash256, hash256, 16);
 		memcpy(cp.rand256, rand256, 16);
@@ -205,6 +246,17 @@ static void clear_link_keys(uint16_t index)
 					sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
+static void clear_long_term_keys(uint16_t index)
+{
+	struct mgmt_cp_load_long_term_keys cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.key_count = cpu_to_le16(0);
+
+	mgmt_send(mgmt, MGMT_OP_LOAD_LONG_TERM_KEYS, index,
+					sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
 static void clear_remote_oob_data(uint16_t index)
 {
 	struct mgmt_cp_remove_remote_oob_data cp;
@@ -223,7 +275,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 	const struct mgmt_rp_read_info *rp = param;
 	uint16_t index = PTR_TO_UINT(user_data);
 	uint32_t supported_settings;
-	uint8_t val = 0x01;
+	uint8_t val;
 	char str[18];
 
 	if (status) {
@@ -246,28 +298,71 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 						new_link_key_event,
 						UINT_TO_PTR(index), NULL);
 
+	mgmt_register(mgmt, MGMT_EV_NEW_LONG_TERM_KEY, index,
+						new_long_term_key_event,
+						UINT_TO_PTR(index), NULL);
+
 	supported_settings = le32_to_cpu(rp->supported_settings);
 
-	mgmt_send(mgmt, MGMT_OP_SET_SSP, index, 1, &val,
-						NULL, NULL, NULL);
 
-	if (supported_settings & MGMT_SETTING_SECURE_CONN)
-		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
-							NULL, NULL, NULL);
-
-	mgmt_send(mgmt, MGMT_OP_SET_BONDABLE, index, 1, &val,
-						NULL, NULL, NULL);
-	mgmt_send(mgmt, MGMT_OP_SET_CONNECTABLE, index, 1, &val,
-						NULL, NULL, NULL);
+	val = 0x00;
 	mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, 1, &val,
 						NULL, NULL, NULL);
 
-	clear_link_keys(index);
+	if (use_bredr) {
+		val = 0x01;
+		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
+							NULL, NULL, NULL);
+
+		val = 0x00;
+		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
+							NULL, NULL, NULL);
+
+		val = 0x01;
+		mgmt_send(mgmt, MGMT_OP_SET_SSP, index, 1, &val,
+							NULL, NULL, NULL);
+
+		clear_link_keys(index);
+	} else {
+		val = 0x01;
+		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
+							NULL, NULL, NULL);
+
+		val = 0x00;
+		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
+							NULL, NULL, NULL);
+
+		clear_long_term_keys(index);
+	}
+
+	if (supported_settings & MGMT_SETTING_SECURE_CONN) {
+		val = 0x01;
+		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
+							NULL, NULL, NULL);
+	}
+
+	val = 0x01;
+	mgmt_send(mgmt, MGMT_OP_SET_BONDABLE, index, 1, &val,
+						NULL, NULL, NULL);
+
+	val = 0x01;
+	mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, 1, &val,
+						NULL, NULL, NULL);
+
 	clear_remote_oob_data(index);
 
-	mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
+	if (use_bredr) {
+		mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
 						read_oob_data_complete,
 						UINT_TO_PTR(index), NULL);
+	} else {
+		if (index == index1)
+			add_remote_oob_data(index2, &bdaddr1,
+						NULL, NULL, NULL, NULL);
+		else if (index == index2)
+			add_remote_oob_data(index1, &bdaddr2,
+						NULL, NULL, NULL, NULL);
+	}
 }
 
 static void read_index_list(uint8_t status, uint16_t len, const void *param,
@@ -323,10 +418,64 @@ static void signal_callback(int signum, void *user_data)
 	}
 }
 
+static void usage(void)
+{
+	printf("oobtest - Out-of-band pairing testing\n"
+		"Usage:\n");
+	printf("\toobtest [options]\n");
+	printf("options:\n"
+		"\t-B, --bredr            Use BR/EDR transport\n"
+		"\t-L, --le               Use LE transport\n"
+		"\t-h, --help             Show help options\n");
+}
+
+static const struct option main_options[] = {
+	{ "bredr",   no_argument,       NULL, 'B' },
+	{ "le",      no_argument,       NULL, 'L' },
+	{ "version", no_argument,       NULL, 'v' },
+	{ "help",    no_argument,       NULL, 'h' },
+	{ }
+};
+
 int main(int argc ,char *argv[])
 {
 	sigset_t mask;
 	int exit_status;
+
+	for (;;) {
+		int opt;
+
+		opt = getopt_long(argc, argv, "BLvh", main_options, NULL);
+		if (opt < 0)
+			break;
+
+		switch (opt) {
+		case 'B':
+			use_bredr = true;
+			break;
+		case 'L':
+			use_le = true;
+			break;
+		case 'v':
+			printf("%s\n", VERSION);
+			return EXIT_SUCCESS;
+		case 'h':
+			usage();
+			return EXIT_SUCCESS;
+		default:
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (argc - optind > 0) {
+		fprintf(stderr, "Invalid command line parameters\n");
+		return EXIT_FAILURE;
+	}
+
+	if (!use_bredr && !use_le) {
+		fprintf(stderr, "Missing transport option\n");
+		return EXIT_FAILURE;
+	}
 
 	mainloop_init();
 
