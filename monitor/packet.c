@@ -1909,6 +1909,25 @@ static void print_oob_data(uint8_t oob_data)
 	print_field("OOB data: %s (0x%2.2x)", str, oob_data);
 }
 
+static void print_oob_data_response(uint8_t oob_data)
+{
+	const char *str;
+
+	switch (oob_data) {
+	case 0x00:
+		str = "Authentication data not present";
+		break;
+	case 0x01:
+		str = "Authentication data present";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("OOB data: %s (0x%2.2x)", str, oob_data);
+}
+
 static void print_authentication(uint8_t authentication)
 {
 	const char *str;
@@ -7616,7 +7635,7 @@ static void io_capability_response_evt(const void *data, uint8_t size)
 
 	print_bdaddr(evt->bdaddr);
 	print_io_capability(evt->capability);
-	print_oob_data(evt->oob_data);
+	print_oob_data_response(evt->oob_data);
 	print_authentication(evt->authentication);
 }
 
