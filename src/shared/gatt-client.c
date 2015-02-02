@@ -1433,7 +1433,10 @@ static void complete_unregister_notify(void *data)
 		return;
 	}
 
-	notify_data_write_ccc(notify_data, false, disable_ccc_callback);
+	if (notify_data_write_ccc(notify_data, false, disable_ccc_callback))
+		return;
+
+	notify_data_unref(notify_data);
 }
 
 static void notify_handler(void *data, void *user_data)
