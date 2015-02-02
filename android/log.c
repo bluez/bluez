@@ -25,7 +25,10 @@
 #endif
 
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <time.h>
