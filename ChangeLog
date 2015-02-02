@@ -1,3 +1,17 @@
+ver 5.28:
+	Fix issue with GATT device discovery and probing.
+	Fix issue with bearer selection for dual-mode devices.
+	Fix issue with device removal while connected.
+	Fix issue with device name setting from inquiry response.
+	Fix issue with missing termination of name characteristic.
+	Fix issue with UTF-8 length handling for device name.
+	Fix issue with AVCTP key auto release handling.
+	Fix issue with AVCTP key press repetition handling.
+	Fix issue with payload sizes and GATT notifications.
+	Fix issue with memory corruption and GATT notifications.
+	Add support for HID proxy switching and CSR 8510 A10 devices.
+	Add support for Broadcom hex2hcd conversion utility.
+
 ver 5.27:
 	Fix issue with endian handling and management interface.
 	Fix issue with pending GATT operations when disconnecting.
