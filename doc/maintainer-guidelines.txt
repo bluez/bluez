@@ -1,0 +1,66 @@
+Maintainer guidelines
+*********************
+
+This document is intended for the maintainers of the BlueZ project. It
+serves as basic guidelines for handling patch review and commit access.
+
+
+Rule 1: Keep the GIT tree clean and linear
+==========================================
+
+The bluetooth.git, bluetooth-next.git and bluez.git trees are not your
+private playground. The history is meant to be clean and linear.
+
+	- NO merges
+	- NO branches
+	- NO tags
+
+If anyone needs testing or work on a feature, clone the tree and do
+it in your own copy. The master trees are off limits.
+
+One advise to avoid any accidental errors in this area to set proper
+options in global ~/.gitconfig or local .git/config files.
+
+	[merge]
+		ff = only
+
+Violations of this rule are not acceptable. This rule is enforced. If
+in doubt ask one of the seasoned maintainers.
+
+
+Rule 2: Enforce clean commit messages
+=====================================
+
+The commit messages are required to be clean and follow style guidelines
+to be consistent.
+
+Commit messages should adhere to a 72 characters by line limit. That
+makes it easy to read them via git log in a terminal window. Exceptions
+to this rule are logs, trace or other verbatim copied information.
+
+Every commit requires full names and email addresses. No synonyms or
+nicknames are allowed. It is also important that the Outlook style
+names with lastname, firstname are not allowed. It is the maintainers
+job to ensure we get proper firstname lastname <email> authorship.
+
+It is also important that the committer itself uses a valid name and
+email address when committing patches. So ensure that either the
+global ~/.gitconfig or local .git/config provides proper values.
+
+	[user]
+		name = Peter Mustermann
+		email = peter@mustermann.de
+
+Commit messages for bluez.git shall not contain Signed-off-by
+signatures. They are not used in userspace and with that it is the
+maintainers job to ensure they do not get committed to the repository.
+
+For bluetooth.git and bluetooth-next.git The Signed-off-by process is
+used and the signatures are required.
+
+Tags like Change-Id generated from Gerrit are never acceptable. It is
+the maintainers job to ensure that these are not committed into the
+repositories.
+
+Violations of this rule create a mess in the tree that can not be
+reversed. If in doubt ask one of the seasoned maintainers.
