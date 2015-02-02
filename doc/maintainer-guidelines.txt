@@ -65,6 +65,7 @@ repositories.
 Violations of this rule create a mess in the tree that can not be
 reversed. If in doubt ask one of the seasoned maintainers.
 
+
 Rule 3: Enforce correct coding style
 ====================================
 
@@ -87,3 +88,17 @@ do this:
 		--ignore CAMELCASE,NEW_TYPEDEFS,INITIALISED_STATIC -
 
 The above assumes that a kernel tree resides in ~/src/linux/.
+
+
+Rule 4: Pay extra attention to adding new files to the tree
+===========================================================
+
+New files that are added to the tree require several things to be
+verified first:
+
+	- Check that the names are acceptible with other maintainers
+	- Ensure that the file modes are correct
+	- Verify that the license & copyright headers are correct
+	- If the file is supposed to be part of the release taraball,
+	  make sure that it gets picked up by 'make dist' (particularly
+	  important for documentation or other files that are not code)
