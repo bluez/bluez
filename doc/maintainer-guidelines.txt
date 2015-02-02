@@ -64,3 +64,26 @@ repositories.
 
 Violations of this rule create a mess in the tree that can not be
 reversed. If in doubt ask one of the seasoned maintainers.
+
+Rule 3: Enforce correct coding style
+====================================
+
+The coding style follows roughly the kernel coding style with any
+exceptions documented in doc/coding-style.txt.
+
+To ensure trivial white-space errors don't get committed, have the
+following in your .gitconfig:
+
+	[apply]
+		whitespace = error
+
+It can also be helpful to use the checkpatch.pl script coming with the
+Linux kernel to do some automated checking. Adding the following to your
+.git/hooks/pre-commit and .git/hooks/pre-applypatch is a simple way to
+do this:
+
+	exec git diff --cached | ~/src/linux/scripts/checkpatch.pl -q \
+		--no-tree --no-signoff --show-types \
+		--ignore CAMELCASE,NEW_TYPEDEFS,INITIALISED_STATIC -
+
+The above assumes that a kernel tree resides in ~/src/linux/.
