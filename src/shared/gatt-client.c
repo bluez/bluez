@@ -167,7 +167,6 @@ struct notify_chrc {
 
 struct notify_data {
 	struct bt_gatt_client *client;
-	bool invalid;
 	unsigned int id;
 	unsigned int att_id;
 	int ref_count;
