@@ -102,3 +102,13 @@ verified first:
 	- If the file is supposed to be part of the release taraball,
 	  make sure that it gets picked up by 'make dist' (particularly
 	  important for documentation or other files that are not code)
+
+
+Rule 5: Keep the mailing list in sync with the commit process
+=============================================================
+
+When applying patches, be sure to send a response to the mailing list as
+soon as the code has been pushed to the upstream tree. Usually this
+means one email per patch, however patch-sets may only have one response
+covering the entire set. If applying a subset of a patch-set clearly
+state what was applied in your response.
