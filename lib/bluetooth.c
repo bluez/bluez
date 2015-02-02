@@ -1141,6 +1141,38 @@ const char *bt_compidtostr(int compid)
 		return "LM Technologies Ltd";
 	case 439:
 		return "General Electric Company";
+	case 440:
+		return "i+D3 S.L.";
+	case 441:
+		return "HANA Micron";
+	case 442:
+		return "Stages Cycling LLC";
+	case 443:
+		return "Cochlear Bone Anchored Solutions AB";
+	case 444:
+		return "SenionLab AB";
+	case 445:
+		return "Syszone Co., Ltd";
+	case 446:
+		return "Pulsate Mobile Ltd.";
+	case 447:
+		return "Hong Kong HunterSun Electronic Limited";
+	case 448:
+		return "pironex GmbH";
+	case 449:
+		return "BRADATECH Corp.";
+	case 450:
+		return "Transenergooil AG";
+	case 451:
+		return "Bunch";
+	case 452:
+		return "DME Microelectronics";
+	case 453:
+		return "Bitcraze AB";
+	case 454:
+		return "HASWARE Inc.";
+	case 455:
+		return "Abiogenix Inc.";
 	case 65535:
 		return "internal use";
 	default:
