@@ -32,7 +32,7 @@
 #define BT_ATT_MAX_VALUE_LEN	512
 
 /* ATT protocol opcodes */
-#define BT_ATT_OP_ERROR_RSP	      		0x01
+#define BT_ATT_OP_ERROR_RSP			0x01
 #define BT_ATT_OP_MTU_REQ			0x02
 #define BT_ATT_OP_MTU_RSP			0x03
 #define BT_ATT_OP_FIND_INFO_REQ			0x04
