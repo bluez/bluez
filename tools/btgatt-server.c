@@ -631,7 +631,7 @@ static void usage(void)
 		"\t-s, --security-level <sec>\tSet security level (low|"
 								"medium|high)\n"
 		"\t-v, --verbose\t\t\tEnable extra logging\n"
-		"\t-r, --heart-rate\t\tEnable Heart Rate service"
+		"\t-r, --heart-rate\t\tEnable Heart Rate service\n"
 		"\t-h, --help\t\t\tDisplay help\n");
 }
 
