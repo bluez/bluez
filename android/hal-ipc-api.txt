@@ -456,7 +456,7 @@ Commands and responses:
 		Command parameters: Socket type (1 octet)
 		                    Service name (256 octets)
 		                    Service UUID (16 octets)
-		                    Channel (2 octets)
+		                    Channel (4 octets)
 		                    Socket flags (1 octet)
 		Response parameters: File descriptor (inline)
 
@@ -474,7 +474,7 @@ Commands and responses:
 		Command parameters: Remote address (6 octets)
 		                    Socket type (1 octet)
 		                    Service UUID (16 octets)
-		                    Channel (2 octets)
+		                    Channel (4 octets)
 		                    Socket flags (1 octet)
 		Response parameters: File descriptor (inline)
 
