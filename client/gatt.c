@@ -220,3 +220,32 @@ void gatt_remove_descriptor(GDBusProxy *proxy)
 
 	print_descriptor(proxy, COLORED_DEL);
 }
+
+static void list_attributes(const char *path, GList *source)
+{
+	GList *l;
+
+	for (l = source; l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+		const char *proxy_path;
+
+		proxy_path = g_dbus_proxy_get_path(proxy);
+
+		if (!g_str_has_prefix(proxy_path, path))
+			continue;
+
+		if (source == services) {
+			print_service(proxy, NULL);
+			list_attributes(proxy_path, characteristics);
+		} else if (source == characteristics) {
+			print_characteristic(proxy, NULL);
+			list_attributes(proxy_path, descriptors);
+		} else if (source == descriptors)
+			print_descriptor(proxy, NULL);
+	}
+}
+
+void gatt_list_attributes(const char *path)
+{
+	list_attributes(path, services);
+}

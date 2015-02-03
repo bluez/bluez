@@ -1150,6 +1150,17 @@ static void cmd_disconn(const char *arg)
 	rl_printf("Attempting to disconnect from %s\n", arg);
 }
 
+static void cmd_list_attributes(const char *arg)
+{
+	GDBusProxy *proxy;
+
+	proxy = find_device(arg);
+	if (!proxy)
+		return;
+
+	gatt_list_attributes(g_dbus_proxy_get_path(proxy));
+}
+
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -1267,6 +1278,8 @@ static const struct {
 	{ "connect",      "<dev>",    cmd_connect, "Connect device",
 							dev_generator },
 	{ "disconnect",   "[dev]",    cmd_disconn, "Disconnect device",
+							dev_generator },
+	{ "list-attributes", "[dev]", cmd_list_attributes, "List attributes",
 							dev_generator },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },

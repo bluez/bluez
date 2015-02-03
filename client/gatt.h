@@ -29,3 +29,5 @@ void gatt_remove_characteristic(GDBusProxy *proxy);
 
 void gatt_add_descriptor(GDBusProxy *proxy);
 void gatt_remove_descriptor(GDBusProxy *proxy);
+
+void gatt_list_attributes(const char *device);
