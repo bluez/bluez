@@ -1084,7 +1084,7 @@ static struct iovec send_notification_1[] = {
 static struct iovec att_read_req_op_v = raw_pdu(L2CAP_ATT_READ_REQ);
 static struct iovec att_write_req_op_v = raw_pdu(L2CAP_ATT_WRITE_REQ);
 
-static struct iovec svc_change_ccc_handle_v = raw_pdu(0x1a, 0x00);
+static struct iovec svc_change_ccc_handle_v = raw_pdu(0x1c, 0x00);
 static struct iovec svc_change_ccc_value_v = raw_pdu(0x00, 0x01);
 
 static void gatt_client_register_action(void)
