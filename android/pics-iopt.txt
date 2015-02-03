@@ -78,7 +78,7 @@ ExtendedServiceDiscoveryProfile_IP_PAN			SDP. Version: IP-PAN
 TSPC_support_				False		Support for: Extended
 ExtendedServiceDiscoveryProfile_L2CAP			SDP. Version: L2CAP
 
-TSPC_support_FAXProfile_DE		False		Support for: FAX Profile
+TSPC_support_FAXProfile_DT		False		Support for: FAX Profile
 							Role: Data Terminal
 
 TSPC_support_FAXProfile_GW		False		Support for: FAX Profile
@@ -96,7 +96,7 @@ TSPC_support_HealthDeviceProfile_Sink	True (*)	Support for: HDP
 TSPC_support_HealthDeviceProfile_Source	False		Support for: HDP
 							Role: Source
 
-TSPC_support_NewHandsFreeProfile_AG	True		Support for: HFP
+TSPC_support_NewHandsFreeProfile_AG	True (*)	Support for: HFP
 							Role: Audio gateway
 
 TSPC_support_NewHandsFreeProfile_HF	False		Support for: HFP
