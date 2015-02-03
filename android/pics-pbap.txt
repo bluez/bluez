@@ -1,23 +1,12 @@
 PBAP PICS for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 # - not yet implemented/supported
 
 M - mandatory
 O - optional
-
-		Major Profile Version (X.Y)
--------------------------------------------------------------------------------
-Parameter Name	Selected	Description
--------------------------------------------------------------------------------
-TSPC_PBAP_0_1	False		Role: PBAP 1.0 (C.1)
-TSPC_PBAP_0_2	True (*)	Role: PBAP 1.1 (C.1)
-TSPC_PBAP_0_3	False		Role: PBAP 1.2 (C.1)
--------------------------------------------------------------------------------
-C.1: Mandatory to support one and only one major profile version.
--------------------------------------------------------------------------------
 
 
 		Roles
@@ -28,6 +17,28 @@ TSPC_PBAP_1_1	False		Role: PCE (C.1)
 TSPC_PBAP_1_2	True (*)	Role: PSE (C.1)
 -------------------------------------------------------------------------------
 C1: It is mandatory to support at least one of the defined roles.
+-------------------------------------------------------------------------------
+
+
+		Client Major Profile Version (X.Y)
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_PBAP_2a_1	False		PBAP 1.0 (C.1)
+TSPC_PBAP_2a_2	False		PBAP 1.1 (C.1)
+TSPC_PBAP_2a_3	False		PBAP 1.2 (C.1)
+-------------------------------------------------------------------------------
+C.1: Mandatory to support one and only one major profile version.
+-------------------------------------------------------------------------------
+
+
+		Client Minor Profile Version (X.Y)
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_PBAP_2b_1	False		PBAP 1.1.1 (C.1)
+-------------------------------------------------------------------------------
+C.1: Optional if 2a/2 (PBAP 1.1) is supported, otherwise Excluded.
 -------------------------------------------------------------------------------
 
 
@@ -169,7 +180,29 @@ TSPC_PBAP_8_8	False (*)	PCE: Forbidden (M)
 -------------------------------------------------------------------------------
 
 
-		Supported features ( PSE )
+		Server Major Profile Version (X.Y)
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_PBAP_9a_1	False		PBAP 1.0 (C.1)
+TSPC_PBAP_9a_2	True (*)	PBAP 1.1 (C.1)
+TSPC_PBAP_9a_3	False		PBAP 1.2 (C.1)
+-------------------------------------------------------------------------------
+C.1: Mandatory to support one and only one major profile version.
+-------------------------------------------------------------------------------
+
+
+		Server Minor Profile Version (X.Y.Z)
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_PBAP_9b_1	False		PBAP 1.1.1 (C.1)
+-------------------------------------------------------------------------------
+C.1: Optional if 9a/2 (PBAP 1.1) is supported, otherwise Excluded.
+-------------------------------------------------------------------------------
+
+
+		Supported features (PSE)
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
@@ -430,7 +463,7 @@ C.1: Optional to support if TSPC_PBAP_25_4 (OBEX SRM) is supported,
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_PBAP_26_1	False (*)	PSE: GOEP v2.0 or later (M)
+TSPC_PBAP_26_1	False		PSE: GOEP v2.0 or later (M)
 TSPC_PBAP_26_2	False (*)	PSE: GOEP v2 Backwards Compatibility (M)
 TSPC_PBAP_26_3	False		PSE: OBEX over L2CAP (M)
 TSPC_PBAP_26_4	False		PSE: OBEX SRM (M)
