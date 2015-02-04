@@ -326,3 +326,62 @@ char *gatt_attribute_generator(const char *text, int state)
 
 	return attribute_generator(text, state, list);
 }
+
+static void read_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+	DBusMessageIter iter, array;
+	uint8_t *value;
+	int len;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to read: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		rl_printf("Invalid response to read\n");
+		return;
+	}
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &value, &len);
+
+	if (len < 0) {
+		rl_printf("Unable to parse value\n");
+		return;
+	}
+
+	rl_hexdump(value, len);
+}
+
+static void read_attribute(GDBusProxy *proxy)
+{
+	if (g_dbus_proxy_method_call(proxy, "ReadValue", NULL, read_reply,
+							NULL, NULL) == FALSE) {
+		rl_printf("Failed to read\n");
+		return;
+	}
+
+	rl_printf("Attempting to read %s\n", g_dbus_proxy_get_path(proxy));
+}
+
+void gatt_read_attribute(GDBusProxy *proxy)
+{
+	const char *iface;
+
+	iface = g_dbus_proxy_get_interface(proxy);
+	if (!strcmp(iface, "org.bluez.GattCharacteristic1") ||
+				!strcmp(iface, "org.bluez.GattDescriptor1")) {
+		read_attribute(proxy);
+		return;
+	}
+
+	rl_printf("Unable to read attribute %s\n",
+						g_dbus_proxy_get_path(proxy));
+}

@@ -1276,6 +1276,16 @@ static void cmd_attribute_info(const char *arg)
 	}
 }
 
+static void cmd_read(const char *arg)
+{
+	if (!default_attr) {
+		rl_printf("No attribute selected\n");
+		return;
+	}
+
+	gatt_read_attribute(default_attr);
+}
+
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -1405,6 +1415,7 @@ static const struct {
 				"Select attribute", attribute_generator },
 	{ "attribute-info", "[attribute]",  cmd_attribute_info,
 				"Select attribute", attribute_generator },
+	{ "read",         NULL,       cmd_read, "Read attribute value" },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
