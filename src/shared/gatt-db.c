@@ -1170,10 +1170,9 @@ static bool find_service_for_handle(const void *data, const void *user_data)
 	uint16_t handle = PTR_TO_UINT(user_data);
 	uint16_t start, end;
 
-	start = service->attributes[0]->handle;
-	end = start + service->num_handles;
+	gatt_db_service_get_handles(service, &start, &end);
 
-	return (start <= handle) && (handle < end);
+	return (start <= handle) && (handle <= end);
 }
 
 struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
