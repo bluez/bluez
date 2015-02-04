@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <sys/uio.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -383,5 +384,84 @@ void gatt_read_attribute(GDBusProxy *proxy)
 	}
 
 	rl_printf("Unable to read attribute %s\n",
+						g_dbus_proxy_get_path(proxy));
+}
+
+static void write_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to write: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+}
+
+static void write_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct iovec *iov = user_data;
+	DBusMessageIter array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&iov->iov_base, iov->iov_len);
+	dbus_message_iter_close_container(iter, &array);
+}
+
+static void write_attribute(GDBusProxy *proxy, char *arg)
+{
+	struct iovec iov;
+	uint8_t value[512];
+	char *entry;
+	int i;
+
+	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
+		long int val;
+		char *endptr = NULL;
+
+		if (*entry == '\0')
+			continue;
+
+		if (i > 512) {
+			rl_printf("Too much data\n");
+			return;
+		}
+
+		val = strtol(entry, &endptr, 0);
+		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
+			rl_printf("Invalid value at index %d\n", i);
+			return;
+		}
+
+		value[i] = val;
+	}
+
+	iov.iov_base = value;
+	iov.iov_len = i;
+
+	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup,
+					write_reply, &iov, NULL) == FALSE) {
+		rl_printf("Failed to write\n");
+		return;
+	}
+
+	rl_printf("Attempting to write %s\n", g_dbus_proxy_get_path(proxy));
+}
+
+void gatt_write_attribute(GDBusProxy *proxy, const char *arg)
+{
+	const char *iface;
+
+	iface = g_dbus_proxy_get_interface(proxy);
+	if (!strcmp(iface, "org.bluez.GattCharacteristic1") ||
+				!strcmp(iface, "org.bluez.GattDescriptor1")) {
+		write_attribute(proxy, (char *) arg);
+		return;
+	}
+
+	rl_printf("Unable to write attribute %s\n",
 						g_dbus_proxy_get_path(proxy));
 }
