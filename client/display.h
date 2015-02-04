@@ -30,3 +30,4 @@
 #define COLOR_BOLDWHITE	"\x1B[1;37m"
 
 void rl_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void rl_hexdump(const unsigned char *buf, size_t len);
