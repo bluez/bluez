@@ -778,7 +778,14 @@ bool hfp_gw_send_error(struct hfp_gw *hfp, enum hfp_error error)
 
 	wakeup_writer(hfp);
 
-	hfp->result_pending = false;
+	/*
+	 * There might be already something to read in the ring buffer.
+	 * If so, let's read it.
+	 */
+	if (hfp->result_pending) {
+		hfp->result_pending = false;
+		process_input(hfp);
+	}
 
 	return true;
 }
