@@ -183,8 +183,8 @@ static void handle_unknown_at_command(struct hfp_gw *hfp,
 							const char *data)
 {
 	if (hfp->command_callback) {
-		hfp->command_callback(data, hfp->command_data);
 		hfp->result_pending = true;
+		hfp->command_callback(data, hfp->command_data);
 	} else {
 		hfp_gw_send_result(hfp, HFP_RESULT_ERROR);
 	}
@@ -263,6 +263,7 @@ done:
 		return true;
 	}
 
+	hfp->result_pending = true;
 	handler->callback(&context, type, handler->user_data);
 
 	return true;
