@@ -762,7 +762,7 @@ bool hfp_gw_send_result(struct hfp_gw *hfp, enum hfp_result result)
 	 */
 	if (hfp->result_pending) {
 		hfp->result_pending = false;
-		can_read_data(hfp->io, hfp);
+		process_input(hfp);
 	}
 
 	return true;
