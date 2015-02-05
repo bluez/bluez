@@ -610,10 +610,9 @@ struct hfp_gw *hfp_gw_new(int fd)
 		return NULL;
 	}
 
-	if (!io_set_read_handler(hfp->io, can_read_data,
-					hfp, read_watch_destroy)) {
-		queue_destroy(hfp->cmd_handlers,
-						destroy_cmd_handler);
+	if (!io_set_read_handler(hfp->io, can_read_data, hfp,
+							read_watch_destroy)) {
+		queue_destroy(hfp->cmd_handlers, destroy_cmd_handler);
 		io_destroy(hfp->io);
 		ringbuf_free(hfp->write_buf);
 		ringbuf_free(hfp->read_buf);
