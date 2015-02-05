@@ -1301,6 +1301,21 @@ static void cmd_write(const char *arg)
 	gatt_write_attribute(default_attr, arg);
 }
 
+static void cmd_notify(const char *arg)
+{
+	dbus_bool_t enable;
+
+	if (parse_argument_on_off(arg, &enable) == FALSE)
+		return;
+
+	if (!default_attr) {
+		rl_printf("No attribute selected\n");
+		return;
+	}
+
+	gatt_notify_attribute(default_attr, enable ? true : false);
+}
+
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -1433,6 +1448,7 @@ static const struct {
 	{ "read",         NULL,       cmd_read, "Read attribute value" },
 	{ "write",        "<data=[xx xx ...]>", cmd_write,
 						"Write attribute value" },
+	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value" },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },

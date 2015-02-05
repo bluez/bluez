@@ -465,3 +465,50 @@ void gatt_write_attribute(GDBusProxy *proxy, const char *arg)
 	rl_printf("Unable to write attribute %s\n",
 						g_dbus_proxy_get_path(proxy));
 }
+
+static void notify_reply(DBusMessage *message, void *user_data)
+{
+	bool enable = GPOINTER_TO_UINT(user_data);
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to %s notify: %s\n",
+				enable ? "start" : "stop", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Notify %s\n", enable == TRUE ? "started" : "stopped");
+}
+
+static void notify_attribute(GDBusProxy *proxy, bool enable)
+{
+	const char *method;
+
+	if (enable == TRUE)
+		method = "StartNotify";
+	else
+		method = "StopNotify";
+
+	if (g_dbus_proxy_method_call(proxy, method, NULL, notify_reply,
+				GUINT_TO_POINTER(enable), NULL) == FALSE) {
+		rl_printf("Failed to %s notify\n", enable ? "start" : "stop");
+		return;
+	}
+}
+
+void gatt_notify_attribute(GDBusProxy *proxy, bool enable)
+{
+	const char *iface;
+
+	iface = g_dbus_proxy_get_interface(proxy);
+	if (!strcmp(iface, "org.bluez.GattCharacteristic1")) {
+		notify_attribute(proxy, enable);
+		return;
+	}
+
+	rl_printf("Unable to notify attribute %s\n",
+						g_dbus_proxy_get_path(proxy));
+}
