@@ -59,6 +59,7 @@ static char *auto_register_agent = NULL;
 
 static GDBusProxy *default_ctrl;
 static GDBusProxy *default_dev;
+static GDBusProxy *default_attr;
 static GList *ctrl_list;
 static GList *dev_list;
 
@@ -346,25 +347,46 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	}
 }
 
-static void set_default_device(GDBusProxy *proxy)
+static void set_default_device(GDBusProxy *proxy, const char *attribute)
 {
 	char *desc = NULL;
 	DBusMessageIter iter;
+	const char *path;
 
 	default_dev = proxy;
+
+	if (proxy == NULL) {
+		default_attr = NULL;
+		goto done;
+	}
 
 	if (!g_dbus_proxy_get_property(proxy, "Alias", &iter)) {
 		if (!g_dbus_proxy_get_property(proxy, "Address", &iter))
 			goto done;
 	}
 
+	path = g_dbus_proxy_get_path(proxy);
+
 	dbus_message_iter_get_basic(&iter, &desc);
-	desc = g_strdup_printf(COLOR_BLUE "[%s]" COLOR_OFF "# ", desc);
+	desc = g_strdup_printf(COLOR_BLUE "[%s%s%s]" COLOR_OFF "# ", desc,
+				attribute ? ":" : "",
+				attribute ? attribute + strlen(path) : "");
 
 done:
 	rl_set_prompt(desc ? desc : PROMPT_ON);
 	rl_redisplay();
 	g_free(desc);
+}
+
+static void set_default_attribute(GDBusProxy *proxy)
+{
+	const char *path;
+
+	default_attr = proxy;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	set_default_device(default_dev, path);
 }
 
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
@@ -380,7 +402,7 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 			print_device(proxy, COLORED_DEL);
 
 			if (default_dev == proxy)
-				set_default_device(NULL);
+				set_default_device(NULL, NULL);
 		}
 	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_remove(ctrl_list, proxy);
@@ -389,7 +411,7 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 
 		if (default_ctrl == proxy) {
 			default_ctrl = NULL;
-			set_default_device(NULL);
+			set_default_device(NULL, NULL);
 
 			g_list_free(dev_list);
 			dev_list = NULL;
@@ -401,12 +423,22 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 				agent_unregister(dbus_conn, NULL);
 		}
 	} else if (!strcmp(interface, "org.bluez.GattService1")) {
-		if (service_is_child(proxy))
+		if (service_is_child(proxy)) {
 			gatt_remove_service(proxy);
+
+			if (default_attr == proxy)
+				set_default_attribute(NULL);
+		}
 	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
 		gatt_remove_characteristic(proxy);
+
+		if (default_attr == proxy)
+			set_default_attribute(NULL);
 	} else if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
 		gatt_remove_descriptor(proxy);
+
+		if (default_attr == proxy)
+			set_default_attribute(NULL);
 	}
 }
 
@@ -439,9 +471,9 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 				dbus_message_iter_get_basic(iter, &connected);
 
 				if (connected && default_dev == NULL)
-					set_default_device(proxy);
+					set_default_device(proxy, NULL);
 				else if (!connected && default_dev == proxy)
-					set_default_device(NULL);
+					set_default_device(NULL, NULL);
 			}
 
 			print_iter(str, name, iter);
@@ -1085,7 +1117,7 @@ static void connect_reply(DBusMessage *message, void *user_data)
 
 	rl_printf("Connection successful\n");
 
-	set_default_device(proxy);
+	set_default_device(proxy, NULL);
 }
 
 static void cmd_connect(const char *arg)
@@ -1130,7 +1162,7 @@ static void disconn_reply(DBusMessage *message, void *user_data)
 	if (proxy != default_dev)
 		return;
 
-	set_default_device(NULL);
+	set_default_device(NULL, NULL);
 }
 
 static void cmd_disconn(const char *arg)
@@ -1159,6 +1191,25 @@ static void cmd_list_attributes(const char *arg)
 		return;
 
 	gatt_list_attributes(g_dbus_proxy_get_path(proxy));
+}
+
+static void cmd_select_attribute(const char *arg)
+{
+	GDBusProxy *proxy;
+
+	if (!arg || !strlen(arg)) {
+		rl_printf("Missing attribute argument\n");
+		return;
+	}
+
+	if (!default_dev) {
+		rl_printf("No device connected\n");
+		return;
+	}
+
+	proxy = gatt_select_attribute(arg);
+	if (proxy)
+		set_default_attribute(proxy);
 }
 
 static void cmd_version(const char *arg)
@@ -1210,6 +1261,11 @@ static char *ctrl_generator(const char *text, int state)
 static char *dev_generator(const char *text, int state)
 {
 	return generic_generator(text, state, dev_list, "Address");
+}
+
+static char *attribute_generator(const char *text, int state)
+{
+	return gatt_attribute_generator(text, state);
 }
 
 static char *capability_generator(const char *text, int state)
@@ -1281,6 +1337,8 @@ static const struct {
 							dev_generator },
 	{ "list-attributes", "[dev]", cmd_list_attributes, "List attributes",
 							dev_generator },
+	{ "select-attribute", "<attribute>",  cmd_select_attribute,
+				"Select attribute", attribute_generator },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },

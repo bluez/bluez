@@ -31,3 +31,5 @@ void gatt_add_descriptor(GDBusProxy *proxy);
 void gatt_remove_descriptor(GDBusProxy *proxy);
 
 void gatt_list_attributes(const char *device);
+GDBusProxy *gatt_select_attribute(const char *path);
+char *gatt_attribute_generator(const char *text, int state);

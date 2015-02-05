@@ -249,3 +249,80 @@ void gatt_list_attributes(const char *path)
 {
 	list_attributes(path, services);
 }
+
+static GDBusProxy *select_proxy(const char *path, GList *source)
+{
+	GList *l;
+
+	for (l = source; l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
+GDBusProxy *gatt_select_attribute(const char *path)
+{
+	GDBusProxy *proxy;
+
+	proxy = select_proxy(path, services);
+	if (proxy)
+		return proxy;
+
+	proxy = select_proxy(path, characteristics);
+	if (proxy)
+		return proxy;
+
+	return select_proxy(path, descriptors);
+}
+
+static char *attribute_generator(const char *text, int state, GList *source)
+{
+	static int index, len;
+	GList *list;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	for (list = g_list_nth(source, index); list;
+						list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+		const char *path;
+
+		index++;
+
+		path = g_dbus_proxy_get_path(proxy);
+
+		if (!strncmp(path, text, len))
+			return strdup(path);
+        }
+
+	return NULL;
+}
+
+char *gatt_attribute_generator(const char *text, int state)
+{
+	static GList *list = NULL;
+
+	if (!state) {
+		GList *list1;
+
+		if (list) {
+			g_list_free(list);
+			list = NULL;
+		}
+
+		list1 = g_list_copy(characteristics);
+		list1 = g_list_concat(list1, g_list_copy(descriptors));
+
+		list = g_list_copy(services);
+		list = g_list_concat(list, list1);
+	}
+
+	return attribute_generator(text, state, list);
+}
