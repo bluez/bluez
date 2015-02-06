@@ -158,6 +158,7 @@ static void print_iter(const char *label, const char *name,
 	dbus_uint32_t valu32;
 	dbus_uint16_t valu16;
 	dbus_int16_t vals16;
+	unsigned char byte;
 	const char *valstr;
 	DBusMessageIter subiter;
 
@@ -191,6 +192,10 @@ static void print_iter(const char *label, const char *name,
 	case DBUS_TYPE_INT16:
 		dbus_message_iter_get_basic(iter, &vals16);
 		rl_printf("%s%s: %d\n", label, name, vals16);
+		break;
+	case DBUS_TYPE_BYTE:
+		dbus_message_iter_get_basic(iter, &byte);
+		rl_printf("%s%s: 0x%02x\n", label, name, byte);
 		break;
 	case DBUS_TYPE_VARIANT:
 		dbus_message_iter_recurse(iter, &subiter);
@@ -491,6 +496,14 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 						"] Controller %s ", address);
 		} else
 			str = g_strdup("");
+
+		print_iter(str, name, iter);
+		g_free(str);
+	} else if (proxy == default_attr) {
+		char *str;
+
+		str = g_strdup_printf("[" COLORED_CHG "] Attribute %s ",
+						g_dbus_proxy_get_path(proxy));
 
 		print_iter(str, name, iter);
 		g_free(str);
