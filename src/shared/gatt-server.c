@@ -499,27 +499,6 @@ error:
 	queue_destroy(q, NULL);
 }
 
-static void put_uuid_le(const bt_uuid_t *src, void *dst)
-{
-	bt_uuid_t uuid;
-
-	switch (src->type) {
-	case BT_UUID16:
-		put_le16(src->value.u16, dst);
-		break;
-	case BT_UUID128:
-		bswap_128(&src->value.u128, dst);
-		break;
-	case BT_UUID32:
-		bt_uuid_to_uuid128(src, &uuid);
-		bswap_128(&uuid.value.u128, dst);
-		break;
-	case BT_UUID_UNSPEC:
-	default:
-		break;
-	}
-}
-
 static bool encode_find_info_rsp(struct gatt_db *db, struct queue *q,
 						uint16_t mtu,
 						uint8_t *pdu, uint16_t *len)

@@ -567,7 +567,7 @@ bool bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
 	return true;
 }
 
-static void put_uuid_le(const bt_uuid_t *src, void *dst)
+void put_uuid_le(const bt_uuid_t *src, void *dst)
 {
 	bt_uuid_t uuid;
 
