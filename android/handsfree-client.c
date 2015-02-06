@@ -1748,6 +1748,8 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		goto failed;
 	}
 
+	device_set_state(dev, HAL_HF_CLIENT_CONN_STATE_CONNECTED);
+
 	return;
 
 failed:
