@@ -2473,8 +2473,9 @@ Notifications:
 
 		Valid State values: 0x00 = Disconnected
 		                    0x01 = Connecting
-		                    0x02 = SLC Connected
-		                    0x03 = Disconnecting
+		                    0x02 = Connected
+		                    0x03 = SLC Connected
+		                    0x04 = Disconnecting
 
 		Peer Features is a bitmask of the supported features. Currently
 		available bits:
