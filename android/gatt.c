@@ -1490,7 +1490,7 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	uint32_t status;
 	GError *err = NULL;
 	GAttrib *attrib;
-	uint16_t mtu;
+	uint16_t mtu, cid;
 
 	if (dev->state != DEVICE_CONNECT_READY) {
 		error("gatt: Device not in a connecting state!?");
@@ -1510,13 +1510,20 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		goto reply;
 	}
 
-	if (!bt_io_get(io, &err, BT_IO_OPT_IMTU, &mtu, BT_IO_OPT_INVALID)) {
-		error("gatt: Could not get imtu: %s", err->message);
+	if (!bt_io_get(io, &err, BT_IO_OPT_IMTU, &mtu, BT_IO_OPT_CID, &cid,
+							BT_IO_OPT_INVALID)) {
+		error("gatt: Could not get imtu or cid: %s", err->message);
 		device_set_state(dev, DEVICE_DISCONNECTED);
 		status = GATT_FAILURE;
 		g_error_free(err);
 		goto reply;
 	}
+
+	DBG("mtu %u cid %u", mtu, cid);
+
+	/* on LE we always start with default MTU */
+	if (cid == ATT_CID)
+		mtu = ATT_DEFAULT_LE_MTU;
 
 	attrib = g_attrib_new(io, mtu);
 	if (!attrib) {
