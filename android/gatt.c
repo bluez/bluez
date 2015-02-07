@@ -1519,6 +1519,14 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		goto reply;
 	}
 
+	/* on BR/EDR MTU must not be less then minimal allowed MTU */
+	if (cid != ATT_CID && mtu < ATT_DEFAULT_L2CAP_MTU) {
+		error("gatt: MTU too small (%u bytes)", mtu);
+		device_set_state(dev, DEVICE_DISCONNECTED);
+		status = GATT_FAILURE;
+		goto reply;
+	}
+
 	DBG("mtu %u cid %u", mtu, cid);
 
 	/* on LE we always start with default MTU */
