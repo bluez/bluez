@@ -1550,7 +1550,10 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 
 	/* Send exchange mtu request as we assume being client and server */
 	/* TODO: Dont exchange mtu if no client apps */
-	send_exchange_mtu_request(dev);
+
+	/* MTU exchange shall not be used on BR/EDR - Vol 3. Part G. 4.3.1 */
+	if (cid == ATT_CID)
+		send_exchange_mtu_request(dev);
 
 	/*
 	 * Service Changed Characteristic and CCC Descriptor handles
@@ -6120,7 +6123,7 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 							struct gatt_device *dev)
 {
-	uint16_t mtu, imtu, omtu;
+	uint16_t mtu, imtu, omtu, cid;
 	size_t length;
 	GIOChannel *io;
 	GError *gerr = NULL;
@@ -6139,6 +6142,7 @@ static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 	io = g_attrib_get_channel(dev->attrib);
 
 	bt_io_get(io, &gerr,
+			BT_IO_OPT_CID, &cid,
 			BT_IO_OPT_IMTU, &imtu,
 			BT_IO_OPT_OMTU, &omtu,
 			BT_IO_OPT_INVALID);
@@ -6147,6 +6151,10 @@ static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 		g_error_free(gerr);
 		return ATT_ECODE_UNLIKELY;
 	}
+
+	/* MTU exchange shall not be used on BR/EDR - Vol 3. Part G. 4.3.1 */
+	if (cid != ATT_CID)
+		return ATT_ECODE_UNLIKELY;
 
 	rsp = g_attrib_get_buffer(dev->attrib, &length);
 
