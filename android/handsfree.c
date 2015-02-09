@@ -1197,10 +1197,13 @@ static void at_cmd_cmer(struct hfp_context *result, enum hfp_gw_cmd_type type,
 		if (!hfp_context_get_number(result, &val) || val > 1)
 			break;
 
+		dev->indicators_enabled = val;
+
+		/* skip bfr if present */
+		hfp_context_get_number(result, &val);
+
 		if (hfp_context_has_next(result))
 			break;
-
-		dev->indicators_enabled = val;
 
 		hfp_gw_send_result(dev->gw, HFP_RESULT_OK);
 
