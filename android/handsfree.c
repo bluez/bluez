@@ -319,12 +319,13 @@ static void at_cmd_unknown(const char *command, void *user_data)
 
 	/* copy while string including terminating NULL */
 	ev->len = strlen(command) + 1;
-	memcpy(ev->buf, command, ev->len);
 
 	if (ev->len > IPC_MTU - sizeof(*ev)) {
 		hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 		return;
 	}
+
+	memcpy(ev->buf, command, ev->len);
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
 			HAL_EV_HANDSFREE_UNKNOWN_AT, sizeof(*ev) + ev->len, ev);
