@@ -2238,7 +2238,7 @@ int main(int argc, char *argv[])
 			raw_pdu(0x0e, 0x03, 0x00, 0x07, 0x00),
 			raw_pdu(0x01, 0x0e, 0x03, 0x00, 0x05));
 
-	define_test_client("/TP/GAR/CL/BI-21-C", test_client, service_db_1,
+	define_test_client("/TP/GAR/CL/BI-22-C", test_client, service_db_1,
 			&test_multiple_read_6,
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x0e, 0x03, 0x00, 0x07, 0x00),
