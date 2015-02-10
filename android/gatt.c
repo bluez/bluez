@@ -6169,14 +6169,14 @@ static uint8_t mtu_att_handle(const uint8_t *cmd, uint16_t cmd_len,
 	if (!get_local_mtu(dev, &mtu))
 		return ATT_ECODE_UNLIKELY;
 
+	if (!update_mtu(dev, rmtu))
+		return ATT_ECODE_UNLIKELY;
+
 	rsp = g_attrib_get_buffer(dev->attrib, &length);
 
 	/* Respond with our MTU */
 	len = enc_mtu_resp(mtu, rsp, length);
 	if (!len)
-		return ATT_ECODE_UNLIKELY;
-
-	if (!update_mtu(dev, rmtu))
 		return ATT_ECODE_UNLIKELY;
 
 	g_attrib_send(dev->attrib, 0, rsp, len, NULL, NULL, NULL);
