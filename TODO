@@ -102,7 +102,7 @@ ATT/GATT (new shared stack)
 - shared/att currently doesn't handle signed writes. It should be extended to
   support signing outgoing and verify incoming ATT PDUs.
 
-  Priority: Medium
+  Priority: High
   Complexity: C1
 
 - Add complete GATT test coverage in unit/test-gatt following the GATT test
