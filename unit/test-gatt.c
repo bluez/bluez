@@ -265,14 +265,31 @@ static void test_free(gconstpointer user_data)
 	g_free(data->pdu_list);
 }
 
+typedef void (*test_step_t)(struct context *context);
+
+struct test_step {
+	test_step_t func;
+	test_step_t post_func;
+	uint16_t handle;
+	uint16_t end_handle;
+	uint8_t uuid[16];
+	uint8_t expected_att_ecode;
+	const uint8_t *value;
+	uint16_t length;
+};
+
 static gboolean context_quit(gpointer user_data)
 {
 	struct context *context = user_data;
+	const struct test_step *step = context->data->step;
 
 	if (context->process > 0)
 		g_source_remove(context->process);
 
 	g_main_loop_quit(context->main_loop);
+
+	if (step && step->post_func)
+		step->post_func(context);
 
 	return FALSE;
 }
@@ -316,18 +333,6 @@ static void context_process(struct context *context)
 	context->process = g_idle_add(send_pdu, context);
 }
 
-typedef void (*test_step_t)(struct context *context);
-
-struct test_step {
-	test_step_t func;
-	uint16_t handle;
-	uint16_t end_handle;
-	uint8_t uuid[16];
-	uint8_t expected_att_ecode;
-	const uint8_t *value;
-	uint16_t length;
-};
-
 static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -364,7 +369,7 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 
 	if (pdu->valid && (pdu->size == 0)) {
 		context->pdu_offset++;
-		printf("empty client pdu, triggering\r\n");
+		printf("empty client pdu, triggering server action\r\n");
 		g_assert(step && step->func);
 		step->func(context);
 		return TRUE;
