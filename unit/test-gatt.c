@@ -250,6 +250,15 @@ static gboolean send_pdu(gpointer user_data)
 	g_assert_cmpint(len, ==, pdu->size);
 
 	context->process = 0;
+
+	pdu = &context->data->pdu_list[context->pdu_offset];
+	if (pdu->valid && (pdu->size == 0)) {
+		if (g_test_verbose())
+			test_debug("(no action expected)", "GATT: ");
+		context->pdu_offset++;
+		return send_pdu(context);
+	}
+
 	return FALSE;
 }
 
