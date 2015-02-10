@@ -525,6 +525,9 @@ next:
 	if (!gatt_db_attribute_get_service_handles(attr, &start, &end))
 		goto failed;
 
+	if (start == end)
+		goto next;
+
 	if (bt_gatt_discover_included_services(client->att, start, end,
 							discover_incl_cb,
 							discovery_op_ref(op),
@@ -675,6 +678,9 @@ next:
 	if (!gatt_db_attribute_get_service_handles(attr, &start, &end))
 		goto failed;
 
+	if (start == end)
+		goto next;
+
 	/* Move on to the next service */
 	op->cur_svc = attr;
 	if (bt_gatt_discover_characteristics(client->att, start, end,
@@ -775,6 +781,9 @@ next:
 
 	if (!gatt_db_attribute_get_service_handles(attr, &start, &end))
 		goto failed;
+
+	if (start == end)
+		goto next;
 
 	/* Move on to the next service */
 	op->cur_svc = attr;
