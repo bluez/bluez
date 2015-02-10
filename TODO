@@ -113,6 +113,16 @@ ATT/GATT (new shared stack)
   Priority: High
   Complexity: C4
 
+- Write an example using client D-Bus API using C.
+
+  Priority: High
+  Complexity: C2
+
+- Write an example using client D-Bus API using python.
+
+  Priority: High
+  Complexity: C2
+
 - Define packed structs for ATT protocol PDUs in shared/att-types to improve
   readability. We should probably do this once there are extensive unit tests
   for gatt-client/gatt-server so that we don't accidentally break working code.
