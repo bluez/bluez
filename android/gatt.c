@@ -166,7 +166,6 @@ struct gatt_device {
 	guint ind_id;
 
 	int ref;
-	int conn_cnt;
 
 	struct queue *autoconnect_apps;
 
@@ -913,8 +912,8 @@ static void destroy_connection(void *data)
 	if (conn->timeout_id > 0)
 		g_source_remove(conn->timeout_id);
 
-	conn->device->conn_cnt--;
-	if (conn->device->conn_cnt == 0)
+	if (!queue_find(app_connections, match_connection_by_device,
+							conn->device))
 		connection_cleanup(conn->device);
 
 	queue_destroy(conn->transactions, free);
@@ -1115,7 +1114,6 @@ static struct app_connection *create_connection(struct gatt_device *device,
 	}
 
 	new_conn->device = device_ref(device);
-	new_conn->device->conn_cnt++;
 
 	return new_conn;
 }
@@ -1605,7 +1603,7 @@ reply:
 	 */
 	queue_foreach(dev->autoconnect_apps, create_app_connection, dev);
 
-	if (!dev->conn_cnt) {
+	if (!queue_find(app_connections, match_connection_by_device, dev)) {
 		struct app_connection *conn;
 
 		if (!dev->attrib)
