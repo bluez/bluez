@@ -692,7 +692,6 @@ static void destroy_gatt_app(void *data)
 }
 
 enum pend_req_state {
-	REQUEST_INIT,
 	REQUEST_PENDING,
 	REQUEST_DONE,
 };
@@ -4881,8 +4880,6 @@ static void read_requested_attributes(void *data, void *user_data)
 		return;
 	}
 
-	resp_data->state = REQUEST_PENDING;
-
 	gatt_db_attribute_read(attrib, resp_data->offset, process_data->opcode,
 						&process_data->device->bdaddr,
 						attribute_read_cb, resp_data);
@@ -6081,7 +6078,6 @@ static uint8_t read_by_type(const uint8_t *cmd, uint16_t cmd_len,
 			return ATT_ECODE_INSUFF_RESOURCES;
 		}
 
-		data->state = REQUEST_INIT;
 		data->attrib = attrib;
 		if (!queue_push_tail(device->pending_requests, data)) {
 			free(data);
@@ -6134,7 +6130,6 @@ static uint8_t read_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	data->offset = offset;
 	data->attrib = attrib;
-	data->state = REQUEST_INIT;
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
 		return ATT_ECODE_INSUFF_RESOURCES;
@@ -6309,7 +6304,6 @@ static void find_by_type_request_cb(struct gatt_db_attribute *attrib,
 		return;
 	}
 
-	request_data->state = REQUEST_INIT;
 	request_data->attrib = attrib;
 	request_data->filter_vlen = find_data->search_vlen;
 	memcpy(request_data->filter_value, find_data->search_value,
@@ -6522,7 +6516,6 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 		return ATT_ECODE_INSUFF_RESOURCES;
 
 	data->attrib = attrib;
-	data->state = REQUEST_PENDING;
 
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
@@ -6579,7 +6572,6 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	data->attrib = attrib;
 	data->offset = offset;
-	data->state = REQUEST_PENDING;
 
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
@@ -6652,7 +6644,6 @@ static uint8_t write_execute_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (!data)
 		return ATT_ECODE_INSUFF_RESOURCES;
 
-	data->state = REQUEST_PENDING;
 	if (!queue_push_tail(dev->pending_requests, data)) {
 		free(data);
 		return ATT_ECODE_INSUFF_RESOURCES;
