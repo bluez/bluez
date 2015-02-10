@@ -881,7 +881,7 @@ static void notify_app_connect_status(struct app_connection *conn,
 
 	if (conn->app->type == GATT_CLIENT)
 		send_client_connect_status_notify(conn, status);
-	else if (conn->app->type == GATT_SERVER)
+	else
 		send_server_connection_state_notify(conn, !status);
 }
 
