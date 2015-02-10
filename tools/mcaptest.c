@@ -152,7 +152,7 @@ static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 {
 	/* TODO */
-	printf("MCL disconnected\n");
+	printf("%s\n", __func__);
 
 	if (no_close)
 		return;
@@ -163,20 +163,27 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 {
 	/* TODO */
-	printf("MCL uncached unsupported\n");
+	printf("%s\n", __func__);
 }
 
 static void connect_mdl_cb(struct mcap_mdl *mdl, GError *gerr, gpointer data)
 {
 	mdlid = mcap_mdl_get_mdlid(mdl);
 
-	printf("MDL %d connected\n", mdlid);
+	printf("%s\n", __func__);
+
+	if (mdlid == MCAP_MDLID_RESERVED)
+		printf("MCAP mdlid is reserved");
+	else
+		printf("MDL %d connected\n", mdlid);
 }
 
 static void create_mdl_cb(struct mcap_mdl *mcap_mdl, uint8_t type, GError *gerr,
 								gpointer data)
 {
 	GError *err = NULL;
+
+	printf("%s\n", __func__);
 
 	if (gerr) {
 		printf("MDL error: %s\n", gerr->message);
@@ -234,6 +241,7 @@ static void trigger_mdl_action(int mode)
 	}
 
 	if (mode == MODE_CONNECT) {
+		printf("Creating MCAP Data End Point\n");
 		mcap_create_mdl(mcl, 1, 0, create_mdl_cb, NULL, NULL, &gerr);
 		if (gerr) {
 			printf("Could not connect MDL: %s\n", gerr->message);
