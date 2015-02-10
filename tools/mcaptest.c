@@ -286,6 +286,7 @@ static void create_mcl_cb(struct mcap_mcl *mcap_mcl, GError *err, gpointer data)
 	mcl = mcap_mcl_ref(mcap_mcl);
 	trigger_mdl_action(data_mode);
 }
+
 static void usage(void)
 {
 	printf("mcaptest - MCAP testing ver %s\n", VERSION);
@@ -320,6 +321,7 @@ static struct option main_options[] = {
 	{ "data_ch",		1, 0, 'D' },
 	{ 0, 0, 0, 0 }
 };
+
 int main(int argc, char *argv[])
 {
 	GError *err = NULL;
