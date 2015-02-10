@@ -914,14 +914,10 @@ static void destroy_connection(void *data)
 	if (conn->timeout_id > 0)
 		g_source_remove(conn->timeout_id);
 
-	if (!queue_find(gatt_devices, match_by_value, conn->device))
-		goto cleanup;
-
 	conn->device->conn_cnt--;
 	if (conn->device->conn_cnt == 0)
 		connection_cleanup(conn->device);
 
-cleanup:
 	queue_destroy(conn->transactions, free);
 	device_unref(conn->device);
 	free(conn);
