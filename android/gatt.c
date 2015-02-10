@@ -4748,7 +4748,7 @@ static uint8_t check_device_permissions(struct gatt_device *device,
 							BT_IO_OPT_INVALID))
 		return ATT_ECODE_UNLIKELY;
 
-	DBG("opcode %u permissions %u sec_level %u", opcode, permissions,
+	DBG("opcode 0x%02x permissions %u sec_level %u", opcode, permissions,
 								sec_level);
 
 	switch (opcode) {
