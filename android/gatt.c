@@ -974,8 +974,6 @@ static bool get_local_mtu(struct gatt_device *dev, uint16_t *mtu)
 	if (mtu)
 		*mtu = MIN(imtu, omtu);
 
-	DBG("mtu %u", *mtu);
-
 	return true;
 }
 
@@ -983,15 +981,15 @@ static bool update_mtu(struct gatt_device *device, uint16_t rmtu)
 {
 	uint16_t mtu, lmtu;
 
-	DBG("%u", rmtu);
+	if (!get_local_mtu(device, &lmtu))
+		return false;
+
+	DBG("remote_mtu:%d local_mtu:%d", rmtu, lmtu);
 
 	if (rmtu < ATT_DEFAULT_LE_MTU) {
 		error("gatt: remote MTU invalid (%u bytes)", rmtu);
 		return false;
 	}
-
-	if (!get_local_mtu(device, &lmtu))
-		return false;
 
 	mtu = MIN(lmtu, rmtu);
 
@@ -1003,8 +1001,6 @@ static bool update_mtu(struct gatt_device *device, uint16_t rmtu)
 		return false;
 	}
 
-	DBG("remote_mtu:%d local_mtu:%d", rmtu, lmtu);
-
 	return true;
 }
 
@@ -1015,6 +1011,8 @@ static void exchange_mtu_cb(guint8 status, const guint8 *pdu, guint16 plen,
 {
 	struct gatt_device *device = user_data;
 	uint16_t rmtu;
+
+	DBG("");
 
 	if (status) {
 		error("gatt: MTU exchange: %s", att_ecode2str(status));
@@ -1038,6 +1036,8 @@ static void send_exchange_mtu_request(struct gatt_device *device)
 
 	if (!get_local_mtu(device, &mtu))
 		return;
+
+	DBG("mtu %u", mtu);
 
 	if (!gatt_exchange_mtu(device->attrib, mtu, exchange_mtu_cb,
 							device_ref(device)))
