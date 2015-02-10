@@ -1093,6 +1093,8 @@ static int uinput_create(char *name)
 		return err;
 	}
 
+	send_event(fd, EV_REP, REP_DELAY, 300);
+
 	return fd;
 }
 
