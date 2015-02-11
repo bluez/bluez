@@ -1149,6 +1149,12 @@ guint obc_session_setpath(struct obc_session *session, const char *path,
 	data->user_data = user_data;
 	data->remaining = g_strsplit(strlen(path) ? path : "/", "/", 0);
 
+	if (!data->remaining || !data->remaining[0]) {
+		error("obc_session_setpath: invalid path %s", path);
+		g_set_error(err, OBEX_IO_ERROR, -EINVAL, "Invalid argument");
+		return 0;
+	}
+
 	p = pending_request_new(session, session_process_setpath, NULL,
 				setpath_op_complete, data, setpath_data_free);
 	session_queue(p);
