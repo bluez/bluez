@@ -82,6 +82,9 @@ struct l2cap_data {
 	const void *pin;
 	uint8_t client_pin_len;
 	const void *client_pin;
+
+	bool addr_type_avail;
+	uint8_t addr_type;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -439,6 +442,12 @@ static const struct l2cap_data le_client_connect_reject_test_1 = {
 	.send_cmd = cmd_reject_rsp,
 	.send_cmd_len = sizeof(cmd_reject_rsp),
 	.expect_err = ECONNREFUSED,
+};
+
+static const struct l2cap_data le_client_connect_reject_test_2 = {
+	.client_psm = 0x0080,
+	.addr_type_avail = true,
+	.addr_type = BDADDR_LE_PUBLIC,
 };
 
 static const struct l2cap_data le_client_connect_nval_psm_test = {
@@ -943,6 +952,7 @@ failed:
 static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 						uint16_t cid, int sec_level)
 {
+	const struct l2cap_data *l2data = data->test_data;
 	const uint8_t *master_bdaddr;
 	struct sockaddr_l2 addr;
 	int sk, err;
@@ -968,7 +978,10 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 	addr.l2_psm = htobs(psm);
 	addr.l2_cid = htobs(cid);
 	bacpy(&addr.l2_bdaddr, (void *) master_bdaddr);
-	if (data->hciemu_type == HCIEMU_TYPE_LE)
+
+	if (l2data && l2data->addr_type_avail)
+		addr.l2_bdaddr_type = l2data->addr_type;
+	else if (data->hciemu_type == HCIEMU_TYPE_LE)
 		addr.l2_bdaddr_type = BDADDR_LE_PUBLIC;
 	else
 		addr.l2_bdaddr_type = BDADDR_BREDR;
@@ -1003,6 +1016,7 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm,
 								uint16_t cid)
 {
+	const struct l2cap_data *l2data = data->test_data;
 	const uint8_t *client_bdaddr;
 	struct sockaddr_l2 addr;
 	int err;
@@ -1018,7 +1032,10 @@ static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm,
 	bacpy(&addr.l2_bdaddr, (void *) client_bdaddr);
 	addr.l2_psm = htobs(psm);
 	addr.l2_cid = htobs(cid);
-	if (data->hciemu_type == HCIEMU_TYPE_LE)
+
+	if (l2data && l2data->addr_type_avail)
+		addr.l2_bdaddr_type = l2data->addr_type;
+	else if (data->hciemu_type == HCIEMU_TYPE_LE)
 		addr.l2_bdaddr_type = BDADDR_LE_PUBLIC;
 	else
 		addr.l2_bdaddr_type = BDADDR_BREDR;
@@ -1082,6 +1099,27 @@ static void test_connect(const void *test_data)
 	g_io_channel_unref(io);
 
 	tester_print("Connect in progress");
+}
+
+static void test_connect_reject(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	int sk;
+
+	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	if (connect_l2cap_sock(data, sk, l2data->client_psm,
+							l2data->cid) < 0)
+		tester_test_passed();
+	else
+		tester_test_failed();
+
+	close(sk);
 }
 
 static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
@@ -1396,6 +1434,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Client - Command Reject",
 					&le_client_connect_reject_test_1,
 					setup_powered_client, test_connect);
+	test_l2cap_bredr("L2CAP LE Client - Connection Reject",
+				&le_client_connect_reject_test_2,
+				setup_powered_client, test_connect_reject);
 	test_l2cap_le("L2CAP LE Client - Invalid PSM",
 					&le_client_connect_nval_psm_test,
 					setup_powered_client, test_connect);
