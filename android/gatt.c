@@ -4461,6 +4461,17 @@ static void send_dev_complete_response(struct gatt_device *device,
 		return;
 	}
 
+	val = queue_peek_head(device->pending_requests);
+	if (!val) {
+		error = ATT_ECODE_ATTR_NOT_FOUND;
+		goto done;
+	}
+
+	if (val->error) {
+		error = val->error;
+		goto done;
+	}
+
 	switch (opcode) {
 	case ATT_OP_READ_BY_TYPE_REQ: {
 		struct att_data_list *adl;
@@ -4520,25 +4531,11 @@ static void send_dev_complete_response(struct gatt_device *device,
 		break;
 	}
 	case ATT_OP_READ_BLOB_REQ:
-		val = queue_pop_head(device->pending_requests);
-		if (val->error) {
-			error = val->error;
-			goto done;
-		}
-
 		len = enc_read_blob_resp(val->value, val->length, val->offset,
 								rsp, mtu);
-		destroy_pending_request(val);
 		break;
 	case ATT_OP_READ_REQ:
-		val = queue_pop_head(device->pending_requests);
-		if (val->error) {
-			error = val->error;
-			goto done;
-		}
-
 		len = enc_read_resp(val->value, val->length, rsp, mtu);
-		destroy_pending_request(val);
 		break;
 	case ATT_OP_READ_BY_GROUP_REQ: {
 		struct att_data_list *adl;
@@ -4644,39 +4641,17 @@ static void send_dev_complete_response(struct gatt_device *device,
 		break;
 	}
 	case ATT_OP_EXEC_WRITE_REQ:
-		val = queue_pop_head(device->pending_requests);
-		if (val->error) {
-			error = val->error;
-			goto done;
-		}
-
 		len = enc_exec_write_resp(rsp);
-		destroy_pending_request(val);
 		break;
 	case ATT_OP_WRITE_REQ:
-		val = queue_pop_head(device->pending_requests);
-		if (val->error) {
-			error = val->error;
-			goto done;
-		}
-
 		len = enc_write_resp(rsp);
-		destroy_pending_request(val);
 		break;
 	case ATT_OP_PREP_WRITE_REQ: {
 		uint16_t handle;
 
-		val = queue_pop_head(device->pending_requests);
-		if (val->error) {
-			error = val->error;
-			goto done;
-		}
-
 		handle = gatt_db_attribute_get_handle(val->attrib);
-
 		len = enc_prep_write_resp(handle, val->offset, val->value,
 							val->length, rsp, mtu);
-		destroy_pending_request(val);
 		break;
 	}
 	default:
