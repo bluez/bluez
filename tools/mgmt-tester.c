@@ -2511,6 +2511,26 @@ static const void *client_bdaddr_param_func(uint8_t *len)
 	return bdaddr;
 }
 
+static const struct generic_data pair_device_not_supported_test_1 = {
+	.setup_settings = settings_powered_bondable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+	.expect_func = pair_device_expect_param_func,
+	.addr_type_avail = true,
+	.addr_type = BDADDR_BREDR,
+};
+
+static const struct generic_data pair_device_not_supported_test_2 = {
+	.setup_settings = settings_powered_bondable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+	.expect_func = pair_device_expect_param_func,
+	.addr_type_avail = true,
+	.addr_type = BDADDR_LE_PUBLIC,
+};
+
 static uint16_t settings_powered_bondable_le[] = { MGMT_OP_SET_LE,
 							MGMT_OP_SET_BONDABLE,
 							MGMT_OP_SET_POWERED,
@@ -5098,6 +5118,12 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Power off 1",
 				&pair_device_power_off_test_1,
+				NULL, test_command_generic);
+	test_le("Pair Device - Incorrect transport reject 1",
+				&pair_device_not_supported_test_1,
+				NULL, test_command_generic);
+	test_bredr("Pair Device - Incorrect transport reject 2",
+				&pair_device_not_supported_test_2,
 				NULL, test_command_generic);
 	test_bredrle("Pair Device - Reject on not enabled transport 1",
 				&pair_device_reject_transport_not_enabled_1,
