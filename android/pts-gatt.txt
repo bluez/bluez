@@ -992,7 +992,8 @@ TC_GAW_SR_BI_31_C	PASS	haltest:
 				gatts add_descriptor: <permmisions> 17
 				gatts start_service
 				gatts send_response: <status> 12
-TC_GAW_SR_BI_32_C	FAIL	PTS issue #12823 haltest:
+TC_GAW_SR_BI_32_C	FAIL	PTS issue #12823
+				haltest:
 				gatts add_service
 				gatts add_characteristic:
 						<properties> 10 <permissions> 17
