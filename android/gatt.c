@@ -347,11 +347,6 @@ static struct gatt_app *find_app_by_id(int32_t id)
 	return queue_find(gatt_apps, match_app_by_id, INT_TO_PTR(id));
 }
 
-static bool match_by_value(const void *data, const void *user_data)
-{
-	return data == user_data;
-}
-
 static bool match_device_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct gatt_device *dev = data;
@@ -564,7 +559,7 @@ static void unregister_notification(void *data)
 	 * triggered afterwards, but once client unregisters, device stays if
 	 * used by others. Then just unregister single handle.
 	 */
-	if (!queue_find(gatt_devices, match_by_value, dev))
+	if (!queue_find(gatt_devices, NULL, dev))
 		return;
 
 	if (notification->notif_id && dev)
@@ -2076,7 +2071,7 @@ static void handle_client_unregister(const void *buf, uint16_t len)
 
 	DBG("");
 
-	listening_client = queue_find(listen_apps, match_by_value,
+	listening_client = queue_find(listen_apps, NULL,
 						INT_TO_PTR(cmd->client_if));
 
 	if (listening_client) {
@@ -2203,7 +2198,7 @@ static void handle_client_listen(const void *buf, uint16_t len)
 		goto reply;
 	}
 
-	listening_client = queue_find(listen_apps, match_by_value,
+	listening_client = queue_find(listen_apps, NULL,
 						INT_TO_PTR(cmd->client_if));
 	/* Start listening */
 	if (cmd->start) {
@@ -7358,7 +7353,7 @@ bool bt_gatt_add_autoconnect(unsigned int id, const bdaddr_t *addr)
 	if (queue_isempty(dev->autoconnect_apps))
 		device_ref(dev);
 
-	if (!queue_find(dev->autoconnect_apps, match_by_value, INT_TO_PTR(id)))
+	if (!queue_find(dev->autoconnect_apps, NULL, INT_TO_PTR(id)))
 		return queue_push_head(dev->autoconnect_apps, INT_TO_PTR(id));
 
 	return true;
