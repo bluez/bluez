@@ -65,7 +65,7 @@ static bool resolve_names = true;
 static bool interactive = false;
 static int exit_status = EXIT_SUCCESS;
 
-static int pending = 0;
+static int pending_index = 0;
 
 #ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -1030,7 +1030,7 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 	uint16_t index = PTR_TO_UINT(user_data);
 	char addr[18];
 
-	pending--;
+	pending_index--;
 
 	if (status != 0) {
 		error("Reading hci%u info failed with status 0x%02x (%s)",
@@ -1058,7 +1058,7 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 	print("\tname %s", rp->name);
 	print("\tshort name %s", rp->short_name);
 
-	if (pending > 0)
+	if (pending_index > 0)
 		return;
 
 done:
@@ -1108,7 +1108,7 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 
-		pending++;
+		pending_index++;
 	}
 
 	if (!count)
