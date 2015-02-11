@@ -24,6 +24,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -64,6 +65,17 @@ static bool discovery = false;
 static bool resolve_names = true;
 static bool interactive = false;
 static int exit_status = EXIT_SUCCESS;
+
+static char *saved_prompt = NULL;
+static int saved_point = 0;
+
+static struct {
+	uint16_t index;
+	uint16_t req;
+	struct mgmt_addr_info addr;
+} prompt = {
+	.index = MGMT_INDEX_NONE,
+};
 
 static int pending_index = 0;
 
@@ -382,11 +394,37 @@ static void conn_failed(uint16_t index, uint16_t len, const void *param,
 			mgmt_errstr(ev->status));
 }
 
+static void release_prompt(void)
+{
+	if (!interactive)
+		return;
+
+	memset(&prompt, 0, sizeof(prompt));
+	prompt.index = MGMT_INDEX_NONE;
+
+	if (!saved_prompt)
+		return;
+
+	/* This will cause rl_expand_prompt to re-run over the last prompt,
+	 * but our prompt doesn't expand anyway.
+	 */
+	rl_set_prompt(saved_prompt);
+	rl_replace_line("", 0);
+	rl_point = saved_point;
+	rl_redisplay();
+
+	free(saved_prompt);
+	saved_prompt = NULL;
+}
+
 static void auth_failed(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_auth_failed *ev = param;
 	char addr[18];
+
+	if (!memcmp(&ev->addr, &prompt.addr, sizeof(ev->addr)))
+		release_prompt();
 
 	if (len != sizeof(*ev)) {
 		error("Invalid auth_failed event length (%u bytes)", len);
@@ -603,41 +641,6 @@ static int mgmt_pin_neg_reply(struct mgmt *mgmt, uint16_t index,
 				sizeof(cp), &cp, pin_neg_rsp, NULL, NULL);
 }
 
-static void request_pin(uint16_t index, uint16_t len, const void *param,
-							void *user_data)
-{
-	const struct mgmt_ev_pin_code_request *ev = param;
-	struct mgmt *mgmt = user_data;
-	char pin[18], addr[18];
-	size_t pin_len;
-
-	if (len != sizeof(*ev)) {
-		error("Invalid pin_code request length (%u bytes)", len);
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-	print("hci%u %s request PIN", index, addr);
-
-	print("PIN Request (press enter to reject) >> ");
-	fflush(stdout);
-
-	memset(pin, 0, sizeof(pin));
-
-	if (fgets(pin, sizeof(pin), stdin) == NULL || pin[0] == '\n') {
-		mgmt_pin_neg_reply(mgmt, index, &ev->addr);
-		return;
-	}
-
-	pin_len = strlen(pin);
-	if (pin[pin_len - 1] == '\n') {
-		pin[pin_len - 1] = '\0';
-		pin_len--;
-	}
-
-	mgmt_pin_reply(mgmt, index, &ev->addr, pin, pin_len);
-}
-
 static void confirm_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -684,52 +687,6 @@ static int mgmt_confirm_neg_reply(struct mgmt *mgmt, uint16_t index,
 
 	return mgmt_reply(mgmt, MGMT_OP_USER_CONFIRM_NEG_REPLY, index,
 				sizeof(cp), &cp, confirm_neg_rsp, NULL, NULL);
-}
-
-
-static void user_confirm(uint16_t index, uint16_t len, const void *param,
-							void *user_data)
-{
-	const struct mgmt_ev_user_confirm_request *ev = param;
-	struct mgmt *mgmt = user_data;
-	char rsp[5];
-	size_t rsp_len;
-	uint32_t val;
-	char addr[18];
-
-	if (len != sizeof(*ev)) {
-		error("Invalid user_confirm request length (%u)", len);
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-	val = get_le32(&ev->value);
-
-	print("hci%u %s User Confirm %06u hint %u", index, addr,
-							val, ev->confirm_hint);
-
-	if (ev->confirm_hint)
-		print("Accept pairing with %s (yes/no) >> ", addr);
-	else
-		print("Confirm value %06u for %s (yes/no) >> ", val, addr);
-
-	fflush(stdout);
-
-	memset(rsp, 0, sizeof(rsp));
-
-	if (fgets(rsp, sizeof(rsp), stdin) == NULL || rsp[0] == '\n') {
-		mgmt_confirm_neg_reply(mgmt, index, &ev->addr);
-		return;
-	}
-
-	rsp_len = strlen(rsp);
-	if (rsp[rsp_len - 1] == '\n')
-		rsp[rsp_len - 1] = '\0';
-
-	if (rsp[0] == 'y' || rsp[0] == 'Y')
-		mgmt_confirm_reply(mgmt, index, &ev->addr);
-	else
-		mgmt_confirm_neg_reply(mgmt, index, &ev->addr);
 }
 
 static void passkey_rsp(uint8_t status, uint16_t len, const void *param,
@@ -782,13 +739,162 @@ static int mgmt_passkey_neg_reply(struct mgmt *mgmt, uint16_t index,
 				sizeof(cp), &cp, passkey_neg_rsp, NULL, NULL);
 }
 
+static bool prompt_input(const char *input)
+{
+	size_t len;
+
+	if (!prompt.req)
+		return false;
+
+	len = strlen(input);
+
+	switch (prompt.req) {
+	case MGMT_EV_PIN_CODE_REQUEST:
+		if (len)
+			mgmt_pin_reply(mgmt, prompt.index, &prompt.addr,
+								input, len);
+		else
+			mgmt_pin_neg_reply(mgmt, prompt.index, &prompt.addr);
+		break;
+	case MGMT_EV_USER_PASSKEY_REQUEST:
+		if (strlen(input) > 0)
+			mgmt_passkey_reply(mgmt, prompt.index, &prompt.addr,
+								atoi(input));
+		else
+			mgmt_passkey_neg_reply(mgmt, prompt.index,
+								&prompt.addr);
+		break;
+	case MGMT_EV_USER_CONFIRM_REQUEST:
+		if (input[0] == 'y' || input[0] == 'Y')
+			mgmt_confirm_reply(mgmt, prompt.index, &prompt.addr);
+		else
+			mgmt_confirm_neg_reply(mgmt, prompt.index,
+								&prompt.addr);
+		break;
+	}
+
+	release_prompt();
+
+	return true;
+}
+
+static void interactive_prompt(const char *msg)
+{
+	if (saved_prompt)
+		return;
+
+	saved_prompt = strdup(rl_prompt);
+	if (!saved_prompt)
+		return;
+
+	saved_point = rl_point;
+
+	rl_set_prompt("");
+	rl_redisplay();
+
+	rl_set_prompt(msg);
+
+	rl_replace_line("", 0);
+	rl_redisplay();
+}
+
+static size_t get_input(char *buf, size_t buf_len)
+{
+	size_t len;
+
+	if (!fgets(buf, buf_len, stdin))
+		return 0;
+
+	len = strlen(buf);
+
+	/* Remove trailing white-space */
+	while (len && isspace(buf[len - 1]))
+		buf[--len] = '\0';
+
+	return len;
+}
+
+static void ask(uint16_t index, uint16_t req, const struct mgmt_addr_info *addr,
+						const char *fmt, ...)
+{
+	char msg[256], buf[18];
+	va_list ap;
+	int off;
+
+	prompt.index = index;
+	prompt.req = req;
+	memcpy(&prompt.addr, addr, sizeof(*addr));
+
+	va_start(ap, fmt);
+	off = vsnprintf(msg, sizeof(msg), fmt, ap);
+	va_end(ap);
+
+	snprintf(msg + off, sizeof(msg) - off, " %s ",
+					COLOR_BOLDGRAY ">>" COLOR_OFF);
+
+	if (interactive) {
+		interactive_prompt(msg);
+		va_end(ap);
+		return;
+	}
+
+	printf("%s", msg);
+	fflush(stdout);
+
+	memset(buf, 0, sizeof(buf));
+	get_input(buf, sizeof(buf));
+	prompt_input(buf);
+}
+
+static void request_pin(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_pin_code_request *ev = param;
+	char addr[18];
+
+	if (len != sizeof(*ev)) {
+		error("Invalid pin_code request length (%u bytes)", len);
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s request PIN", index, addr);
+
+	ask(index, MGMT_EV_PIN_CODE_REQUEST, &ev->addr,
+				"PIN Request (press enter to reject)");
+}
+
+static void user_confirm(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_user_confirm_request *ev = param;
+	uint32_t val;
+	char addr[18];
+
+	if (len != sizeof(*ev)) {
+		error("Invalid user_confirm request length (%u)", len);
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	val = get_le32(&ev->value);
+
+	print("hci%u %s User Confirm %06u hint %u", index, addr,
+							val, ev->confirm_hint);
+
+	if (ev->confirm_hint)
+		ask(index, MGMT_EV_USER_CONFIRM_REQUEST, &ev->addr,
+				"Accept pairing with %s (yes/no)", addr);
+	else
+		ask(index, MGMT_EV_USER_CONFIRM_REQUEST, &ev->addr,
+			"Confirm value %06u for %s (yes/no)", val, addr);
+}
 
 static void request_passkey(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_user_passkey_request *ev = param;
-	struct mgmt *mgmt = user_data;
-	char passkey[7], addr[18];
+	char addr[18];
 
 	if (len != sizeof(*ev)) {
 		error("Invalid passkey request length (%u bytes)", len);
@@ -798,24 +904,8 @@ static void request_passkey(uint16_t index, uint16_t len, const void *param,
 	ba2str(&ev->addr.bdaddr, addr);
 	print("hci%u %s request passkey", index, addr);
 
-	print("Passkey Request (press enter to reject) >> ");
-	fflush(stdout);
-
-	memset(passkey, 0, sizeof(passkey));
-
-	if (fgets(passkey, sizeof(passkey), stdin) == NULL ||
-							passkey[0] == '\n') {
-		mgmt_passkey_neg_reply(mgmt, index, &ev->addr);
-		return;
-	}
-
-	len = strlen(passkey);
-	if (passkey[len - 1] == '\n') {
-		passkey[len - 1] = '\0';
-		len--;
-	}
-
-	mgmt_passkey_reply(mgmt, index, &ev->addr, atoi(passkey));
+	ask(index, MGMT_EV_USER_PASSKEY_REQUEST, &ev->addr,
+			"Passkey Request (press enter to reject)");
 }
 
 static void passkey_notify(uint16_t index, uint16_t len, const void *param,
@@ -1811,6 +1901,9 @@ static void pair_rsp(uint8_t status, uint16_t len, const void *param,
 {
 	const struct mgmt_rp_pair_device *rp = param;
 	char addr[18];
+
+	if (!memcmp(&rp->addr, &prompt.addr, sizeof(rp->addr)))
+		release_prompt();
 
 	if (len == 0 && status != 0) {
 		error("Pairing failed with status 0x%02x (%s)",
@@ -3240,6 +3333,9 @@ static void rl_handler(char *input)
 	}
 
 	if (!strlen(input))
+		goto done;
+
+	if (prompt_input(input))
 		goto done;
 
 	add_history(input);
