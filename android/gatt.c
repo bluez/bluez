@@ -7284,11 +7284,11 @@ void bt_gatt_unregister(void)
 	ipc_unregister(hal_ipc, HAL_SERVICE_ID_GATT);
 	hal_ipc = NULL;
 
-	queue_destroy(gatt_apps, destroy_gatt_app);
-	gatt_apps = NULL;
-
 	queue_destroy(app_connections, destroy_connection);
 	app_connections = NULL;
+
+	queue_destroy(gatt_apps, destroy_gatt_app);
+	gatt_apps = NULL;
 
 	queue_destroy(gatt_devices, destroy_device);
 	gatt_devices = NULL;
