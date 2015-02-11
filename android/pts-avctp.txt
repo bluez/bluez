@@ -1,7 +1,7 @@
 PTS test results for AVCTP
 
-PTS version: 5.3
-Tested: 03-December-2014
+PTS version: 6.0
+Tested: 11-February-2015
 Android version: 5.0
 
 Results:
@@ -21,6 +21,7 @@ TC_CT_CCM_BV_04_C	N/A
 TC_CT_CCM_BI_01_C	N/A
 TC_CT_NFR_BV_01_C	N/A
 TC_CT_NFR_BV_04_C	PASS	haltest: rc set_volume 5
+				Note: IUT must be connectable and discoverable
 TC_CT_FRA_BV_01_C	N/A
 TC_CT_FRA_BV_04_C	N/A
 -------------------------------------------------------------------------------
