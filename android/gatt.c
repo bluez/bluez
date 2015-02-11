@@ -6642,8 +6642,6 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 		break;
 	case ATT_OP_WRITE_REQ:
 		status = write_req_request(ipdu, len, dev);
-		if (!status)
-			return;
 		break;
 	case ATT_OP_WRITE_CMD:
 		write_cmd_request(ipdu, len, dev);
@@ -6655,22 +6653,18 @@ static void att_handler(const uint8_t *ipdu, uint16_t len, gpointer user_data)
 		return;
 	case ATT_OP_PREP_WRITE_REQ:
 		status = write_prep_request(ipdu, len, dev);
-		if (!status)
-			return;
 		break;
 	case ATT_OP_FIND_BY_TYPE_REQ:
 		status = find_by_type_request(ipdu, len, dev);
 		break;
 	case ATT_OP_EXEC_WRITE_REQ:
 		status = write_execute_request(ipdu, len, dev);
-		if (!status)
-			return;
 		break;
 	case ATT_OP_READ_MULTI_REQ:
 	default:
 		DBG("Unsupported request 0x%02x", ipdu[0]);
 		status = ATT_ECODE_REQ_NOT_SUPP;
-		goto done;
+		break;
 	}
 
 done:
