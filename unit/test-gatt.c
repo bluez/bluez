@@ -250,13 +250,6 @@ static bt_uuid_t uuid_char_128 = {
 			0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
 };
 
-static void test_debug(const char *str, void *user_data)
-{
-	const char *prefix = user_data;
-
-	g_print("%s%s\n", prefix, str);
-}
-
 static void test_free(gconstpointer user_data)
 {
 	const struct test_data *data = user_data;
@@ -292,6 +285,13 @@ static gboolean context_quit(gpointer user_data)
 		step->post_func(context);
 
 	return FALSE;
+}
+
+static void test_debug(const char *str, void *user_data)
+{
+	const char *prefix = user_data;
+
+	g_print("%s%s\n", prefix, str);
 }
 
 static gboolean send_pdu(gpointer user_data)
@@ -369,7 +369,9 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 
 	if (pdu->valid && (pdu->size == 0)) {
 		context->pdu_offset++;
-		printf("empty client pdu, triggering server action\r\n");
+		if (g_test_verbose())
+			test_debug("triggering server action",
+							"Empty client pdu: ");
 		g_assert(step && step->func);
 		step->func(context);
 		return TRUE;
