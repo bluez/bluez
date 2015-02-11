@@ -60,7 +60,6 @@
 static struct mgmt *mgmt = NULL;
 static uint16_t mgmt_index = MGMT_INDEX_NONE;
 
-static bool monitor = false;
 static bool discovery = false;
 static bool resolve_names = true;
 static bool interactive = false;
@@ -165,36 +164,31 @@ static void controller_error(uint16_t index, uint16_t len,
 		return;
 	}
 
-	if (monitor)
-		print("hci%u error 0x%02x", index, ev->error_code);
+	print("hci%u error 0x%02x", index, ev->error_code);
 }
 
 static void index_added(uint16_t index, uint16_t len,
 				const void *param, void *user_data)
 {
-	if (monitor)
-		print("hci%u added", index);
+	print("hci%u added", index);
 }
 
 static void index_removed(uint16_t index, uint16_t len,
 				const void *param, void *user_data)
 {
-	if (monitor)
-		print("hci%u removed", index);
+	print("hci%u removed", index);
 }
 
 static void unconf_index_added(uint16_t index, uint16_t len,
 				const void *param, void *user_data)
 {
-	if (monitor)
-		print("hci%u added (unconfigured)", index);
+	print("hci%u added (unconfigured)", index);
 }
 
 static void unconf_index_removed(uint16_t index, uint16_t len,
 				const void *param, void *user_data)
 {
-	if (monitor)
-		print("hci%u removed (unconfigured)", index);
+	print("hci%u removed (unconfigured)", index);
 }
 
 static const char *options_str[] = {
@@ -230,9 +224,7 @@ static void new_config_options(uint16_t index, uint16_t len,
 		return;
 	}
 
-	if (monitor)
-		print("hci%u new_config_options: %s", index,
-						options2str(get_le32(ev)));
+	print("hci%u new_config_options: %s", index, options2str(get_le32(ev)));
 }
 
 static const char *settings_str[] = {
@@ -281,9 +273,7 @@ static void new_settings(uint16_t index, uint16_t len,
 		return;
 	}
 
-	if (monitor)
-		print("hci%u new_settings: %s", index,
-						settings2str(get_le32(ev)));
+	print("hci%u new_settings: %s", index, settings2str(get_le32(ev)));
 }
 
 static void discovering(uint16_t index, uint16_t len, const void *param,
@@ -307,19 +297,16 @@ static void new_link_key(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_new_link_key *ev = param;
+	char addr[18];
 
 	if (len != sizeof(*ev)) {
 		error("Invalid new_link_key length (%u bytes)", len);
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		ba2str(&ev->key.addr.bdaddr, addr);
-		print("hci%u new_link_key %s type 0x%02x pin_len %d "
-				"store_hint %u", index, addr, ev->key.type,
-				ev->key.pin_len, ev->store_hint);
-	}
+	ba2str(&ev->key.addr.bdaddr, addr);
+	print("hci%u new_link_key %s type 0x%02x pin_len %d store_hint %u",
+		index, addr, ev->key.type, ev->key.pin_len, ev->store_hint);
 }
 
 static const char *typestr(uint8_t type)
@@ -337,6 +324,7 @@ static void connected(uint16_t index, uint16_t len, const void *param,
 {
 	const struct mgmt_ev_device_connected *ev = param;
 	uint16_t eir_len;
+	char addr[18];
 
 	if (len < sizeof(*ev)) {
 		error("Invalid connected event length (%u bytes)", len);
@@ -350,74 +338,64 @@ static void connected(uint16_t index, uint16_t len, const void *param,
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		ba2str(&ev->addr.bdaddr, addr);
-		print("hci%u %s type %s connected eir_len %u", index, addr,
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s type %s connected eir_len %u", index, addr,
 					typestr(ev->addr.type), eir_len);
-	}
 }
 
 static void disconnected(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_device_disconnected *ev = param;
+	char addr[18];
+	uint8_t reason;
 
 	if (len < sizeof(struct mgmt_addr_info)) {
 		error("Invalid disconnected event length (%u bytes)", len);
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		uint8_t reason;
+	if (len < sizeof(*ev))
+		reason = MGMT_DEV_DISCONN_UNKNOWN;
+	else
+		reason = ev->reason;
 
-		if (len < sizeof(*ev))
-			reason = MGMT_DEV_DISCONN_UNKNOWN;
-		else
-			reason = ev->reason;
-
-		ba2str(&ev->addr.bdaddr, addr);
-		print("hci%u %s type %s disconnected with reason %u",
-				index, addr, typestr(ev->addr.type), reason);
-	}
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s type %s disconnected with reason %u",
+			index, addr, typestr(ev->addr.type), reason);
 }
 
 static void conn_failed(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_connect_failed *ev = param;
+	char addr[18];
 
 	if (len != sizeof(*ev)) {
 		error("Invalid connect_failed event length (%u bytes)", len);
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		ba2str(&ev->addr.bdaddr, addr);
-		print("hci%u %s type %s connect failed (status 0x%02x, %s)",
-				index, addr, typestr(ev->addr.type), ev->status,
-				mgmt_errstr(ev->status));
-	}
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s type %s connect failed (status 0x%02x, %s)",
+			index, addr, typestr(ev->addr.type), ev->status,
+			mgmt_errstr(ev->status));
 }
 
 static void auth_failed(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_auth_failed *ev = param;
+	char addr[18];
 
 	if (len != sizeof(*ev)) {
 		error("Invalid auth_failed event length (%u bytes)", len);
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		ba2str(&ev->addr.bdaddr, addr);
-		print("hci%u %s auth failed with status 0x%02x (%s)",
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s auth failed with status 0x%02x (%s)",
 			index, addr, ev->status, mgmt_errstr(ev->status));
-	}
 }
 
 static void local_name_changed(uint16_t index, uint16_t len, const void *param,
@@ -430,8 +408,7 @@ static void local_name_changed(uint16_t index, uint16_t len, const void *param,
 		return;
 	}
 
-	if (monitor)
-		print("hci%u name changed: %s", index, ev->name);
+	print("hci%u name changed: %s", index, ev->name);
 }
 
 static void confirm_name_rsp(uint8_t status, uint16_t len,
@@ -539,7 +516,7 @@ static void device_found(uint16_t index, uint16_t len, const void *param,
 		return;
 	}
 
-	if (monitor || discovery) {
+	if (discovery) {
 		char addr[18], *name;
 
 		ba2str(&ev->addr.bdaddr, addr);
@@ -631,7 +608,7 @@ static void request_pin(uint16_t index, uint16_t len, const void *param,
 {
 	const struct mgmt_ev_pin_code_request *ev = param;
 	struct mgmt *mgmt = user_data;
-	char pin[18];
+	char pin[18], addr[18];
 	size_t pin_len;
 
 	if (len != sizeof(*ev)) {
@@ -639,11 +616,8 @@ static void request_pin(uint16_t index, uint16_t len, const void *param,
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		ba2str(&ev->addr.bdaddr, addr);
-		print("hci%u %s request PIN", index, addr);
-	}
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s request PIN", index, addr);
 
 	print("PIN Request (press enter to reject) >> ");
 	fflush(stdout);
@@ -731,8 +705,7 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 	ba2str(&ev->addr.bdaddr, addr);
 	val = get_le32(&ev->value);
 
-	if (monitor)
-		print("hci%u %s User Confirm %06u hint %u", index, addr,
+	print("hci%u %s User Confirm %06u hint %u", index, addr,
 							val, ev->confirm_hint);
 
 	if (ev->confirm_hint)
@@ -815,18 +788,15 @@ static void request_passkey(uint16_t index, uint16_t len, const void *param,
 {
 	const struct mgmt_ev_user_passkey_request *ev = param;
 	struct mgmt *mgmt = user_data;
-	char passkey[7];
+	char passkey[7], addr[18];
 
 	if (len != sizeof(*ev)) {
 		error("Invalid passkey request length (%u bytes)", len);
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		ba2str(&ev->addr.bdaddr, addr);
-		print("hci%u %s request passkey", index, addr);
-	}
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s request passkey", index, addr);
 
 	print("Passkey Request (press enter to reject) >> ");
 	fflush(stdout);
@@ -852,27 +822,18 @@ static void passkey_notify(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_passkey_notify *ev = param;
+	char addr[18];
 
 	if (len != sizeof(*ev)) {
 		error("Invalid passkey request length (%u bytes)", len);
 		return;
 	}
 
-	if (monitor) {
-		char addr[18];
-		ba2str(&ev->addr.bdaddr, addr);
-		print("hci%u %s request passkey", index, addr);
-	}
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u %s request passkey", index, addr);
 
 	print("Passkey Notify: %06u (entered %u)", get_le32(&ev->passkey),
 								ev->entered);
-}
-
-static void cmd_monitor(struct mgmt *mgmt, uint16_t index, int argc,
-								char **argv)
-{
-	print("Monitoring mgmt events...");
-	monitor = true;
 }
 
 static void version_rsp(uint8_t status, uint16_t len, const void *param,
@@ -1115,12 +1076,12 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 	if (status != 0) {
 		error("Reading index list failed with status 0x%02x (%s)",
 						status, mgmt_errstr(status));
-		goto done;
+		return noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (len < sizeof(*rp)) {
 		error("Too small index list reply (%u bytes)", len);
-		goto done;
+		return noninteractive_quit(EXIT_FAILURE);
 	}
 
 	count = get_le16(&rp->num_controllers);
@@ -1128,18 +1089,10 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 	if (len < sizeof(*rp) + count * sizeof(uint16_t)) {
 		error("Index count (%u) doesn't match reply length (%u)",
 								count, len);
-		goto done;
+		return noninteractive_quit(EXIT_FAILURE);
 	}
 
-	if (monitor)
-		print("Index list with %u item%s",
-						count, count != 1 ? "s" : "");
-
-	if (count == 0)
-		goto done;
-
-	if (monitor && count > 0)
-		print("\t");
+	print("Index list with %u item%s", count, count != 1 ? "s" : "");
 
 	for (i = 0; i < count; i++) {
 		uint16_t index;
@@ -1147,27 +1100,19 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 
 		index = get_le16(&rp->index[i]);
 
-		if (monitor)
-			print("hci%u ", index);
-
 		data = UINT_TO_PTR(index);
 
 		if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
 						info_rsp, data, NULL) == 0) {
 			error("Unable to send read_info cmd");
-			goto done;
+			return noninteractive_quit(EXIT_FAILURE);
 		}
 
 		pending++;
 	}
 
-	if (monitor && count > 0)
-		print("");
-
-	return;
-
-done:
-	noninteractive_quit(EXIT_SUCCESS);
+	if (!count)
+		noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_info(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
@@ -3177,7 +3122,6 @@ static struct {
 	char * (*gen) (const char *text, int state);
 	void (*disp) (char **matches, int num_matches, int max_length);
 } command[] = {
-	{ "monitor",	cmd_monitor,	"Monitor events"		},
 	{ "version",	cmd_version,	"Get the MGMT Version"		},
 	{ "commands",	cmd_commands,	"List supported commands"	},
 	{ "config",	cmd_config,	"Show configuration info"	},
@@ -3401,7 +3345,7 @@ int main(int argc, char *argv[])
 	uint16_t index = MGMT_INDEX_NONE;
 	int status, opt;
 
-	while ((opt = getopt_long(argc, argv, "+hvi:",
+	while ((opt = getopt_long(argc, argv, "+hi:",
 						main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
@@ -3410,9 +3354,6 @@ int main(int argc, char *argv[])
 				index = atoi(optarg + 3);
 			else
 				index = atoi(optarg);
-			break;
-		case 'v':
-			monitor = true;
 			break;
 		case 'h':
 		default:
