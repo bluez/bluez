@@ -1023,7 +1023,14 @@ Pair Device Command
 	This command generates a Command Complete event on success
 	or failure.
 
-	Possible errors:	Connect Failed
+	Reject status is used when requested transport is not enabled.
+
+	Not Supported status is used if controller is not capable with
+	requested transport.
+
+	Possible errors:	Rejected
+				Not Supported
+				Connect Failed
 				Busy
 				Invalid Parameters
 				Not Powered
