@@ -90,6 +90,18 @@ void mainloop_quit(void)
 	epoll_terminate = 1;
 }
 
+void mainloop_exit_success(void)
+{
+	exit_status = EXIT_SUCCESS;
+	epoll_terminate = 1;
+}
+
+void mainloop_exit_failure(void)
+{
+	exit_status = EXIT_FAILURE;
+	epoll_terminate = 1;
+}
+
 static void signal_callback(int fd, uint32_t events, void *user_data)
 {
 	struct signal_data *data = user_data;

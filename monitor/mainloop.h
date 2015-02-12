@@ -33,6 +33,8 @@ typedef void (*mainloop_signal_func) (int signum, void *user_data);
 
 void mainloop_init(void);
 void mainloop_quit(void);
+void mainloop_exit_success(void);
+void mainloop_exit_failure(void);
 int mainloop_run(void);
 
 int mainloop_add_fd(int fd, uint32_t events, mainloop_event_func callback,
