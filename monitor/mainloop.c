@@ -42,6 +42,7 @@
 
 static int epoll_fd;
 static int epoll_terminate;
+static int exit_status;
 
 struct mainloop_data {
 	int fd;
@@ -128,6 +129,8 @@ int mainloop_run(void)
 		}
 	}
 
+	exit_status = EXIT_SUCCESS;
+
 	while (!epoll_terminate) {
 		struct epoll_event events[MAX_EPOLL_EVENTS];
 		int n, nfds;
@@ -170,7 +173,7 @@ int mainloop_run(void)
 	close(epoll_fd);
 	epoll_fd = 0;
 
-	return EXIT_SUCCESS;
+	return exit_status;
 }
 
 int mainloop_add_fd(int fd, uint32_t events, mainloop_event_func callback,
