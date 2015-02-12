@@ -2644,3 +2644,20 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	complete_unregister_notify(notify_data);
 	return true;
 }
+
+bool bt_gatt_client_set_sec_level(struct bt_gatt_client *client,
+								int level)
+{
+	if (!client)
+		return false;
+
+	return bt_att_set_sec_level(client->att, level);
+}
+
+int bt_gatt_client_get_sec_level(struct bt_gatt_client *client)
+{
+	if (!client)
+		return -1;
+
+	return bt_att_get_sec_level(client->att);
+}

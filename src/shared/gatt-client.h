@@ -117,3 +117,6 @@ unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 				bt_gatt_client_destroy_func_t destroy);
 bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 							unsigned int id);
+
+bool bt_gatt_client_set_sec_level(struct bt_gatt_client *client, int level);
+int bt_gatt_client_get_sec_level(struct bt_gatt_client *client);
