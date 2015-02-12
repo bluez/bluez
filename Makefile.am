@@ -167,6 +167,7 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/sdpd-server.c src/sdpd-request.c \
 			src/sdpd-service.c src/sdpd-database.c \
 			src/attrib-server.h src/attrib-server.c \
+			src/gatt-database.h src/gatt-database.c \
 			src/sdp-xml.h src/sdp-xml.c \
 			src/sdp-client.h src/sdp-client.c \
 			src/textfile.h src/textfile.c \

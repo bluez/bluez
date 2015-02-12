@@ -302,6 +302,7 @@ static void dev_class_changed_callback(uint16_t index, uint16_t length,
 	appearance[1] = rp->val[1] & 0x1f;	/* removes service class */
 	appearance[2] = rp->val[2];
 
+	/* TODO: Do this through btd_gatt_database instead */
 	attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, appearance, 2);
 }
 
@@ -4014,6 +4015,7 @@ static void convert_sdp_entry(char *key, char *value, void *user_data)
 	if (record_has_uuid(rec, att_uuid))
 		goto failed;
 
+	/* TODO: Do this through btd_gatt_database */
 	if (!gatt_parse_record(rec, &uuid, &psm, &start, &end))
 		goto failed;
 
@@ -6590,6 +6592,7 @@ static int adapter_register(struct btd_adapter *adapter)
 		agent_unref(agent);
 	}
 
+	/* TODO: Migrate to use btd_gatt_database */
 	btd_adapter_gatt_server_start(adapter);
 
 	load_config(adapter);
