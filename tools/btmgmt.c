@@ -3354,6 +3354,8 @@ static void cmd_select(struct mgmt *mgmt, uint16_t index,
 	if (!strcmp(argv[1], "none") || !strcmp(argv[1], "any") ||
 						!strcmp(argv[1], "all"))
 		mgmt_index = MGMT_INDEX_NONE;
+	else if (!strncmp(argv[1], "hci", 3))
+		mgmt_index = atoi(&argv[1][3]);
 	else
 		mgmt_index = atoi(argv[1]);
 
