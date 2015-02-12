@@ -356,6 +356,29 @@ static void connected(uint16_t index, uint16_t len, const void *param,
 					typestr(ev->addr.type), eir_len);
 }
 
+static void release_prompt(void)
+{
+	if (!interactive)
+		return;
+
+	memset(&prompt, 0, sizeof(prompt));
+	prompt.index = MGMT_INDEX_NONE;
+
+	if (!saved_prompt)
+		return;
+
+	/* This will cause rl_expand_prompt to re-run over the last prompt,
+	 * but our prompt doesn't expand anyway.
+	 */
+	rl_set_prompt(saved_prompt);
+	rl_replace_line("", 0);
+	rl_point = saved_point;
+	rl_redisplay();
+
+	free(saved_prompt);
+	saved_prompt = NULL;
+}
+
 static void disconnected(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -367,6 +390,9 @@ static void disconnected(uint16_t index, uint16_t len, const void *param,
 		error("Invalid disconnected event length (%u bytes)", len);
 		return;
 	}
+
+	if (!memcmp(&ev->addr, &prompt.addr, sizeof(ev->addr)))
+		release_prompt();
 
 	if (len < sizeof(*ev))
 		reason = MGMT_DEV_DISCONN_UNKNOWN;
@@ -395,42 +421,19 @@ static void conn_failed(uint16_t index, uint16_t len, const void *param,
 			mgmt_errstr(ev->status));
 }
 
-static void release_prompt(void)
-{
-	if (!interactive)
-		return;
-
-	memset(&prompt, 0, sizeof(prompt));
-	prompt.index = MGMT_INDEX_NONE;
-
-	if (!saved_prompt)
-		return;
-
-	/* This will cause rl_expand_prompt to re-run over the last prompt,
-	 * but our prompt doesn't expand anyway.
-	 */
-	rl_set_prompt(saved_prompt);
-	rl_replace_line("", 0);
-	rl_point = saved_point;
-	rl_redisplay();
-
-	free(saved_prompt);
-	saved_prompt = NULL;
-}
-
 static void auth_failed(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_auth_failed *ev = param;
 	char addr[18];
 
-	if (!memcmp(&ev->addr, &prompt.addr, sizeof(ev->addr)))
-		release_prompt();
-
 	if (len != sizeof(*ev)) {
 		error("Invalid auth_failed event length (%u bytes)", len);
 		return;
 	}
+
+	if (!memcmp(&ev->addr, &prompt.addr, sizeof(ev->addr)))
+		release_prompt();
 
 	ba2str(&ev->addr.bdaddr, addr);
 	print("hci%u %s auth failed with status 0x%02x (%s)",
@@ -1903,9 +1906,6 @@ static void pair_rsp(uint8_t status, uint16_t len, const void *param,
 	const struct mgmt_rp_pair_device *rp = param;
 	char addr[18];
 
-	if (!memcmp(&rp->addr, &prompt.addr, sizeof(rp->addr)))
-		release_prompt();
-
 	if (len == 0 && status != 0) {
 		error("Pairing failed with status 0x%02x (%s)",
 						status, mgmt_errstr(status));
@@ -1916,6 +1916,9 @@ static void pair_rsp(uint8_t status, uint16_t len, const void *param,
 		error("Unexpected pair_rsp len %u", len);
 		return noninteractive_quit(EXIT_FAILURE);
 	}
+
+	if (!memcmp(&rp->addr, &prompt.addr, sizeof(rp->addr)))
+		release_prompt();
 
 	ba2str(&rp->addr.bdaddr, addr);
 
