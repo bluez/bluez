@@ -1,6 +1,6 @@
 HFP PICS for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -40,7 +40,7 @@ TSPC_HFP_2_1a	True (*)	SLC initiation during active ongoing call (O)
 TSPC_HFP_2_2	True		Phone Status Information (M)
 TSPC_HFP_2_3	True		Audio connection handling (M)
 TSPC_HFP_2_3a	False		Audio connection establishment independent of
-					call processing (O)
+					a call processing (O)
 TSPC_HFP_2_3b	True (*)	eSCO support in Audio Connection (C.10)
 TSPC_HFP_2_3c	True (*)	Codec negotiation (C.7)
 TSPC_HFP_2_4a	False		Accept an incoming voice call
@@ -83,7 +83,7 @@ TSPC_HFP_2_21b	False		Enhanced Call Control (C.3)
 TSPC_HFP_2_21c	True (*)	Enhanced Call Status with limited network
 					notification (C.4)
 TSPC_HFP_2_22	False		Support for automatic link loss recovery (O)
-TSPC_HFP_2_23	True (*)	Individual Indicator Activation (C.9)
+TSPC_HFP_2_23	True		Individual Indicator Activation (C.9)
 TSPC_HFP_2_24	True (*)	Wide Band Speech service (C.8)
 TSPC_HFP_2_25	False		Support roaming function (O)
 TSPC_HFP_2_26	False		HF Indicators (C.11)
@@ -169,7 +169,7 @@ TSPC_HFP_3_22	False		Support for automatic link loss recovery (O)
 TSPC_HFP_3_23	False		Individual Indicator Activation (C.6)
 TSPC_HFP_3_24	False		Wide Band Speech service (C.6)
 TSPC_HFP_3_25	False		HF Indicators (C.8)
-TSPC_HFP_3_36	False		Support CVSD eSCO S4 setting (C.9)
+TSPC_HFP_3_26	False		Support CVSD eSCO S4 setting (C.9)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_HFP_3_12; otherwise excluded
 C.2: Optional if TSPC_HFP_3_12; otherwise excluded

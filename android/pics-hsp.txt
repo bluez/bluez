@@ -1,6 +1,6 @@
 HSP PICS for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -82,8 +82,8 @@ TSPC_HSP_3_11	False		Audio volume setting storage by HS (O)
 TSPC_HSP_3_12	False		Remote microphone gain control (C.2)
 TSPC_HSP_3_13	False		HS informs AG about local changes of microphone
                                         gain (O)
-TSPC_HSP_3_14	False (*)	Microphone gain setting storage by HS (O)
-TSPC_HSP_3_15	False		Connection handling with Detach/Page (M)
+TSPC_HSP_3_14	False		Microphone gain setting storage by HS (O)
+TSPC_HSP_3_15	False (*)	Connection handling with Detach/Page (M)
 TSPC_HSP_3_16	False		Connection handling with Park Mode (C.3)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_HSP_3_10 is supported, otherwise optional
