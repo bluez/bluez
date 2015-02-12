@@ -114,17 +114,17 @@ int mainloop_run(void)
 
 	if (signal_data) {
 		if (sigprocmask(SIG_BLOCK, &signal_data->mask, NULL) < 0)
-			return 1;
+			return EXIT_FAILURE;
 
 		signal_data->fd = signalfd(-1, &signal_data->mask,
 						SFD_NONBLOCK | SFD_CLOEXEC);
 		if (signal_data->fd < 0)
-			return 1;
+			return EXIT_FAILURE;
 
 		if (mainloop_add_fd(signal_data->fd, EPOLLIN,
 				signal_callback, signal_data, NULL) < 0) {
 			close(signal_data->fd);
-			return 1;
+			return EXIT_FAILURE;
 		}
 	}
 
@@ -170,7 +170,7 @@ int mainloop_run(void)
 	close(epoll_fd);
 	epoll_fd = 0;
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 int mainloop_add_fd(int fd, uint32_t events, mainloop_event_func callback,
