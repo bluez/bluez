@@ -917,6 +917,14 @@ bool bt_att_set_close_on_unref(struct bt_att *att, bool do_close)
 	return io_set_close_on_destroy(att->io, do_close);
 }
 
+int bt_att_get_fd(struct bt_att *att)
+{
+	if (!att)
+		return -1;
+
+	return att->fd;
+}
+
 bool bt_att_set_debug(struct bt_att *att, bt_att_debug_func_t callback,
 				void *user_data, bt_att_destroy_func_t destroy)
 {
