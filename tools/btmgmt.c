@@ -3277,7 +3277,73 @@ static void cmd_quit(struct mgmt *mgmt, uint16_t index,
 	mainloop_exit_success();
 }
 
+static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
+{
+	mgmt_register(mgmt, MGMT_EV_CONTROLLER_ERROR, index, controller_error,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_INDEX_ADDED, index, index_added,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, index, index_removed,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_NEW_SETTINGS, index, new_settings,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DISCOVERING, index, discovering,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_NEW_LINK_KEY, index, new_link_key,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DEVICE_CONNECTED, index, connected,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DEVICE_DISCONNECTED, index, disconnected,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_CONNECT_FAILED, index, conn_failed,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_AUTH_FAILED, index, auth_failed,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_LOCAL_NAME_CHANGED, index,
+					local_name_changed, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
+								mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
+								mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
+								mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_USER_PASSKEY_REQUEST, index,
+						request_passkey, mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_PASSKEY_NOTIFY, index,
+						passkey_notify, mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_ADDED, index,
+					unconf_index_added, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_REMOVED, index,
+					unconf_index_removed, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_NEW_CONFIG_OPTIONS, index,
+					new_config_options, NULL, NULL);
+
+}
+
+static void cmd_select(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	if (argc != 2) {
+		error("Usage: select <index>");
+		return;
+	}
+
+	mgmt_cancel_all(mgmt);
+	mgmt_unregister_all(mgmt);
+
+	if (!strcmp(argv[1], "none") || !strcmp(argv[1], "any") ||
+						!strcmp(argv[1], "all"))
+		mgmt_index = MGMT_INDEX_NONE;
+	else
+		mgmt_index = atoi(argv[1]);
+
+	register_mgmt_callbacks(mgmt, mgmt_index);
+
+	print("Selected index %u", mgmt_index);
+}
+
 static struct cmd_info interactive_cmd[] = {
+	{ "select",	cmd_select,	"Select a different index"	},
 	{ "quit",	cmd_quit,	"Exit program"			},
 	{ "exit",	cmd_quit,	"Exit program"			},
 	{ "help",	NULL,		"List supported commands"	},
@@ -3522,44 +3588,7 @@ int main(int argc, char *argv[])
 		c->func(mgmt, index, argc, argv);
 	}
 
-	mgmt_register(mgmt, MGMT_EV_CONTROLLER_ERROR, index, controller_error,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_INDEX_ADDED, index, index_added,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, index, index_removed,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_NEW_SETTINGS, index, new_settings,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_DISCOVERING, index, discovering,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_NEW_LINK_KEY, index, new_link_key,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_DEVICE_CONNECTED, index, connected,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_DEVICE_DISCONNECTED, index, disconnected,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_CONNECT_FAILED, index, conn_failed,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_AUTH_FAILED, index, auth_failed,
-								NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_LOCAL_NAME_CHANGED, index,
-					local_name_changed, NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
-								mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
-								mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
-								mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_USER_PASSKEY_REQUEST, index,
-						request_passkey, mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_PASSKEY_NOTIFY, index,
-						passkey_notify, mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_ADDED, index,
-					unconf_index_added, NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_REMOVED, index,
-					unconf_index_removed, NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_NEW_CONFIG_OPTIONS, index,
-					new_config_options, NULL, NULL);
+	register_mgmt_callbacks(mgmt, index);
 
 	/* Interactive mode */
 	if (!argc)
