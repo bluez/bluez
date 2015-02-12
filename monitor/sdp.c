@@ -31,7 +31,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include <bluetooth/bluetooth.h>
+#include "lib/bluetooth.h"
 
 #include "src/shared/util.h"
 

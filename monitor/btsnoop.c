@@ -35,8 +35,8 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
 
 #include "btsnoop.h"
 
