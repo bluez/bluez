@@ -3375,7 +3375,7 @@ static struct cmd_info interactive_cmd[] = {
 
 static char *cmd_generator(const char *text, int state)
 {
-	static int i, j, len;
+	static size_t i, j, len;
 	const char *cmd;
 
 	if (!state) {
@@ -3384,15 +3384,15 @@ static char *cmd_generator(const char *text, int state)
 		len = strlen(text);
 	}
 
-	while ((cmd = all_cmd[i].cmd)) {
-		i++;
+	while (i < NELEM(all_cmd)) {
+		cmd = all_cmd[i++].cmd;
 
 		if (!strncmp(cmd, text, len))
 			return strdup(cmd);
 	}
 
-	while ((cmd = interactive_cmd[j].cmd)) {
-		j++;
+	while (j++ < NELEM(interactive_cmd)) {
+		cmd = interactive_cmd[j++].cmd;
 
 		if (!strncmp(cmd, text, len))
 			return strdup(cmd);
