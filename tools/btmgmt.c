@@ -83,6 +83,26 @@ static int pending_index = 0;
 
 #define PROMPT_ON	COLOR_BLUE "[mgmt]" COLOR_OFF "# "
 
+static void update_prompt(uint16_t index)
+{
+	char str[32];
+
+	if (index == MGMT_INDEX_NONE)
+		snprintf(str, sizeof(str), "%s# ",
+					COLOR_BLUE "[mgmt]" COLOR_OFF);
+	else
+		snprintf(str, sizeof(str),
+				COLOR_BLUE "[hci%u]" COLOR_OFF "# ", index);
+
+	if (saved_prompt) {
+		free(saved_prompt);
+		saved_prompt = strdup(str);
+		return;
+	}
+
+	rl_set_prompt(str);
+}
+
 static void noninteractive_quit(int status)
 {
 	if (interactive)
@@ -3340,6 +3360,8 @@ static void cmd_select(struct mgmt *mgmt, uint16_t index,
 	register_mgmt_callbacks(mgmt, mgmt_index);
 
 	print("Selected index %u", mgmt_index);
+
+	update_prompt(mgmt_index);
 }
 
 static struct cmd_info interactive_cmd[] = {
@@ -3604,7 +3626,7 @@ int main(int argc, char *argv[])
 		rl_erase_empty_line = 1;
 		rl_callback_handler_install(NULL, rl_handler);
 
-		rl_set_prompt(PROMPT_ON);
+		update_prompt(index);
 		rl_redisplay();
 	}
 
