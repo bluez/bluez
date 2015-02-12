@@ -64,7 +64,6 @@ static uint16_t mgmt_index = MGMT_INDEX_NONE;
 static bool discovery = false;
 static bool resolve_names = true;
 static bool interactive = false;
-static int exit_status = EXIT_SUCCESS;
 
 static char *saved_prompt = NULL;
 static int saved_point = 0;
@@ -90,8 +89,10 @@ static void noninteractive_quit(int status)
 	if (interactive)
 		return;
 
-	exit_status = status;
-	mainloop_quit();
+	if (status == EXIT_SUCCESS)
+		mainloop_exit_success();
+	else
+		mainloop_exit_failure();
 }
 
 #define print(fmt, arg...) do { \
@@ -3555,8 +3556,6 @@ int main(int argc, char *argv[])
 	mgmt_index = index;
 
 	status = mainloop_run();
-	if (status != EXIT_SUCCESS)
-		exit_status = status;
 
 	if (input) {
 		io_destroy(input);
@@ -3571,5 +3570,5 @@ int main(int argc, char *argv[])
 
 	bt_gap_unref(gap);
 
-	return exit_status;
+	return status;
 }
