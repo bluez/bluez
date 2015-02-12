@@ -3347,6 +3347,9 @@ static void rl_handler(char *input)
 	if (wordexp(input, &w, WRDE_NOCMD))
 		goto done;
 
+	if (w.we_wordc == 0)
+		goto free_we;
+
 	cmd = w.we_wordv[0];
 	argv = w.we_wordv;
 	argc = w.we_wordc;
