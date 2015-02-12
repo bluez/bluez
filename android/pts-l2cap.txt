@@ -14,6 +14,8 @@ N/A    test is disabled due to PICS setup
 -------------------------------------------------------------------------------
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
+				For all tests daemon should be stopped then:
+					setprop ctl.start hciattach
 TC_COS_CED_BV_01_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_CED_BV_03_C	PASS	l2test -y -N 1 -P 4113 <bdaddr>
 TC_COS_CED_BV_04_C	PASS	l2test -n -P 4113 <bdaddr>
@@ -151,9 +153,6 @@ TC_ECF_BV_05_C		N/A
 TC_ECF_BV_06_C		N/A
 TC_ECF_BV_07_C		N/A
 TC_ECF_BV_08_C		N/A
-				NOTE: for LE tests daemon should be stopped
-				then:
-				setprop ctl.start hciattach
 TC_LE_CPU_BV_01_C	PASS	l2test -n -V le_public -J 4
 TC_LE_CPU_BV_02_C	PASS	l2test -n -V le_public -J 4 <braddr>
 TC_LE_CPU_BI_01_C	PASS	l2test -n -V le_public -J 4 <braddr>
