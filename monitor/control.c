@@ -42,7 +42,8 @@
 
 #include "src/shared/util.h"
 #include "src/shared/btsnoop.h"
-#include "mainloop.h"
+#include "src/shared/mainloop.h"
+
 #include "display.h"
 #include "packet.h"
 #include "hcidump.h"

@@ -41,7 +41,7 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 
 static bool send_message(const bdaddr_t *src, const bdaddr_t *dst,
 							uint16_t psm)

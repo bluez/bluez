@@ -40,7 +40,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "btdev.h"
 #include "serial.h"
 

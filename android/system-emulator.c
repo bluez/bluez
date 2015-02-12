@@ -40,7 +40,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 
 static char exec_dir[PATH_MAX];
 

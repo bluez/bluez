@@ -39,7 +39,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 
 #define DEFAULT_SERVER		"b1ee.com"
 #define DEFAULT_HOST_PORT	"45550"		/* 0xb1ee */

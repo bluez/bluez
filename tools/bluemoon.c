@@ -35,8 +35,8 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
-#include "monitor/mainloop.h"
 #include "monitor/bt.h"
+#include "src/shared/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/hci.h"
 

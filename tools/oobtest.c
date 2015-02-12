@@ -31,7 +31,7 @@
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
 

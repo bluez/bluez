@@ -37,7 +37,7 @@
 #include <bluetooth/hci.h>
 
 #include "src/shared/util.h"
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "monitor/bt.h"
 
 #include "amp.h"

@@ -39,7 +39,7 @@
 #include "src/shared/util.h"
 #include "src/shared/crypto.h"
 #include "src/shared/ecc.h"
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "monitor/bt.h"
 
 #include "phy.h"

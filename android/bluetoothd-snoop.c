@@ -36,7 +36,7 @@
 #include "lib/hci.h"
 #include "lib/mgmt.h"
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "src/shared/btsnoop.h"
 #include "src/log.h"
 

@@ -29,7 +29,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/io.h"
 

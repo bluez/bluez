@@ -42,8 +42,8 @@
 #include <bluetooth/hci_lib.h>
 
 #include "hciattach.h"
-#include "monitor/mainloop.h"
 #include "monitor/bt.h"
+#include "src/shared/mainloop.h"
 #include "src/shared/timeout.h"
 #include "src/shared/util.h"
 #include "src/shared/hci.h"

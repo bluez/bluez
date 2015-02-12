@@ -51,8 +51,8 @@
 #include "src/uuid-helper.h"
 #include "lib/mgmt.h"
 
-#include "monitor/mainloop.h"
 #include "client/display.h"
+#include "src/shared/mainloop.h"
 #include "src/shared/io.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"

@@ -44,7 +44,7 @@
 #include <arpa/inet.h>
 
 #include "src/shared/util.h"
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "monitor/bt.h"
 
 #define BTPROTO_HCI	1

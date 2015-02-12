@@ -19,8 +19,7 @@
 
 #include <stdlib.h>
 
-#include "monitor/mainloop.h"
-
+#include "mainloop.h"
 #include "util.h"
 #include "timeout.h"
 

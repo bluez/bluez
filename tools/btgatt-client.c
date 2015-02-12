@@ -39,7 +39,7 @@
 #include <bluetooth/l2cap.h>
 #include "lib/uuid.h"
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/att.h"
 #include "src/shared/queue.h"

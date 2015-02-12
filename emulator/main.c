@@ -31,7 +31,7 @@
 #include <stdbool.h>
 #include <getopt.h>
 
-#include "monitor/mainloop.h"
+#include "src/shared/mainloop.h"
 #include "serial.h"
 #include "server.h"
 #include "vhci.h"

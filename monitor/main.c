@@ -32,7 +32,8 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "mainloop.h"
+#include "src/shared/mainloop.h"
+
 #include "packet.h"
 #include "lmp.h"
 #include "keys.h"

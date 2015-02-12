@@ -126,7 +126,7 @@ src_libshared_glib_la_SOURCES = $(shared_sources) \
 src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 				src/shared/io-mainloop.c \
 				src/shared/timeout-mainloop.c \
-				monitor/mainloop.h monitor/mainloop.c
+				src/shared/mainloop.h src/shared/mainloop.c
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
