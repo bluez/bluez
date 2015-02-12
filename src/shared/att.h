@@ -79,3 +79,6 @@ unsigned int bt_att_register_disconnect(struct bt_att *att,
 bool bt_att_unregister_disconnect(struct bt_att *att, unsigned int id);
 
 bool bt_att_unregister_all(struct bt_att *att);
+
+int bt_att_get_sec_level(struct bt_att *att);
+bool bt_att_set_sec_level(struct bt_att *att, int level);
