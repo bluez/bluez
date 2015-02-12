@@ -3406,9 +3406,9 @@ static char **cmd_completion(const char *text, int start, int end)
 	char **matches = NULL;
 
 	if (start > 0) {
-		int i;
+		unsigned int i;
 
-		for (i = 0; all_cmd[i].cmd; i++) {
+		for (i = 0; i < NELEM(all_cmd); i++) {
 			struct cmd_info *c = &all_cmd[i];
 
 			if (strncmp(c->cmd, rl_line_buffer, start - 1))
@@ -3519,7 +3519,7 @@ done:
 
 static void usage(void)
 {
-	int i;
+	unsigned int i;
 
 	printf("btmgmt ver %s\n", VERSION);
 	printf("Usage:\n"
@@ -3531,7 +3531,7 @@ static void usage(void)
 		"\t--help\tDisplay help\n");
 
 	printf("Commands:\n");
-	for (i = 0; all_cmd[i].cmd; i++)
+	for (i = 0; i < NELEM(all_cmd); i++)
 		printf("\t%-15s\t%s\n", all_cmd[i].cmd, all_cmd[i].doc);
 
 	printf("\n"
