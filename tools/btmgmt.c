@@ -56,7 +56,6 @@
 #include "src/shared/io.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
-#include "src/shared/gap.h"
 
 static struct mgmt *mgmt = NULL;
 static uint16_t mgmt_index = MGMT_INDEX_NONE;
@@ -3389,10 +3388,6 @@ done:
 	free(input);
 }
 
-static void gap_ready(bool status, void *user_data)
-{
-}
-
 static void usage(void)
 {
 	int i;
@@ -3443,7 +3438,6 @@ static struct io *setup_stdin(void)
 
 int main(int argc, char *argv[])
 {
-	struct bt_gap *gap;
 	struct io *input;
 	uint16_t index = MGMT_INDEX_NONE;
 	int status, opt;
@@ -3470,13 +3464,6 @@ int main(int argc, char *argv[])
 	optind = 0;
 
 	mainloop_init();
-
-	if (index == MGMT_INDEX_NONE)
-		gap = bt_gap_new_default();
-	else
-		gap = bt_gap_new_index(index);
-
-	bt_gap_set_ready_handler(gap, gap_ready, NULL, NULL);
 
 	mgmt = mgmt_new_default();
 	if (!mgmt) {
@@ -3573,8 +3560,6 @@ int main(int argc, char *argv[])
 	mgmt_cancel_all(mgmt);
 	mgmt_unregister_all(mgmt);
 	mgmt_unref(mgmt);
-
-	bt_gap_unref(gap);
 
 	return status;
 }
