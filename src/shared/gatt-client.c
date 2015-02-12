@@ -1761,10 +1761,11 @@ static void cancel_request(void *data)
 	uint8_t pdu = 0x00;
 
 	req->removed = true;
-	bt_att_cancel(req->client->att, req->att_id);
 
-	if (!req->long_write)
+	if (!req->long_write) {
+		bt_att_cancel(req->client->att, req->att_id);
 		return;
+	}
 
 	if (!req->att_id)
 		queue_remove(req->client->long_write_queue, req);
@@ -1776,6 +1777,8 @@ static void cancel_request(void *data)
 							&pdu, sizeof(pdu),
 							cancel_long_write_cb,
 							NULL, NULL);
+
+	bt_att_cancel(req->client->att, req->att_id);
 }
 
 bool bt_gatt_client_cancel_all(struct bt_gatt_client *client)
