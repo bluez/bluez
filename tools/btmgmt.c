@@ -3211,13 +3211,15 @@ static void cmd_clr_devices(struct mgmt *mgmt, uint16_t index,
 	cmd_del_device(mgmt, index, 2, rm_argv);
 }
 
-static struct {
+struct cmd_info {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
 	char *doc;
 	char * (*gen) (const char *text, int state);
 	void (*disp) (char **matches, int num_matches, int max_length);
-} command[] = {
+};
+
+static struct cmd_info all_cmd[] = {
 	{ "version",	cmd_version,	"Get the MGMT Version"		},
 	{ "commands",	cmd_commands,	"List supported commands"	},
 	{ "config",	cmd_config,	"Show configuration info"	},
@@ -3267,7 +3269,18 @@ static struct {
 	{ "add-device", cmd_add_device, "Add Device"			},
 	{ "del-device", cmd_del_device, "Remove Device"			},
 	{ "clr-devices",cmd_clr_devices,"Clear Devices"			},
-	{ }
+};
+
+static void cmd_quit(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	mainloop_exit_success();
+}
+
+static struct cmd_info interactive_cmd[] = {
+	{ "quit",	cmd_quit,	"Exit program"			},
+	{ "exit",	cmd_quit,	"Exit program"			},
+	{ "help",	NULL,		"List supported commands"	},
 };
 
 static char *cmd_generator(const char *text, int state)
@@ -3280,7 +3293,14 @@ static char *cmd_generator(const char *text, int state)
 		len = strlen(text);
 	}
 
-	while ((cmd = command[index].cmd)) {
+	while ((cmd = all_cmd[index].cmd)) {
+		index++;
+
+		if (!strncmp(cmd, text, len))
+			return strdup(cmd);
+	}
+
+	while ((cmd = interactive_cmd[index].cmd)) {
 		index++;
 
 		if (!strncmp(cmd, text, len))
@@ -3297,16 +3317,17 @@ static char **cmd_completion(const char *text, int start, int end)
 	if (start > 0) {
 		int i;
 
-		for (i = 0; command[i].cmd; i++) {
-			if (strncmp(command[i].cmd,
-					rl_line_buffer, start - 1))
+		for (i = 0; all_cmd[i].cmd; i++) {
+			struct cmd_info *c = &all_cmd[i];
+
+			if (strncmp(c->cmd, rl_line_buffer, start - 1))
 				continue;
 
-			if (!command[i].gen)
+			if (!c->gen)
 				continue;
 
-			rl_completion_display_matches_hook = command[i].disp;
-			matches = rl_completion_matches(text, command[i].gen);
+			rl_completion_display_matches_hook = c->disp;
+			matches = rl_completion_matches(text, c->gen);
 			break;
 		}
 	} else {
@@ -3320,12 +3341,25 @@ static char **cmd_completion(const char *text, int start, int end)
 	return matches;
 }
 
+static struct cmd_info *find_cmd(const char *cmd, struct cmd_info table[],
+							size_t cmd_count)
+{
+	size_t i;
+
+	for (i = 0; i < cmd_count; i++) {
+		if (!strcmp(table[i].cmd, cmd))
+			return &table[i];
+	}
+
+	return NULL;
+}
+
 static void rl_handler(char *input)
 {
+	struct cmd_info *c;
 	wordexp_t w;
 	char *cmd, **argv;
-	size_t argc;
-	int i;
+	size_t argc, i;
 
 	if (!input) {
 		rl_insert_text("quit");
@@ -3353,19 +3387,13 @@ static void rl_handler(char *input)
 	argv = w.we_wordv;
 	argc = w.we_wordc;
 
-	if (!strcmp(cmd, "quit") || !strcmp(cmd, "exit")) {
-		mainloop_quit();
+	c = find_cmd(cmd, all_cmd, NELEM(all_cmd));
+	if (!c && interactive)
+		c = find_cmd(cmd, interactive_cmd, NELEM(interactive_cmd));
+
+	if (c && c->func) {
+		c->func(mgmt, mgmt_index, argc, argv);
 		goto free_we;
-	}
-
-	for (i = 0; command[i].cmd; i++) {
-		if (strcmp(cmd, command[i].cmd))
-			continue;
-
-		if (command[i].func) {
-			command[i].func(mgmt, mgmt_index, argc, argv);
-			goto free_we;
-		}
 	}
 
 	if (strcmp(cmd, "help")) {
@@ -3375,11 +3403,21 @@ static void rl_handler(char *input)
 
 	print("Available commands:");
 
-	for (i = 0; command[i].cmd; i++) {
-		if (command[i].doc)
-			print("  %s %-*s %s", command[i].cmd,
-					(int)(25 - strlen(command[i].cmd)),
-					"", command[i].doc ? : "");
+	for (i = 0; i < NELEM(all_cmd); i++) {
+		c = &all_cmd[i];
+		if (c->doc)
+			print("  %s %-*s %s", c->cmd,
+				(int)(25 - strlen(c->cmd)), "", c->doc ? : "");
+	}
+
+	if (!interactive)
+		goto free_we;
+
+	for (i = 0; i < NELEM(interactive_cmd); i++) {
+		c = &interactive_cmd[i];
+		if (c->doc)
+			print("  %s %-*s %s", c->cmd,
+				(int)(25 - strlen(c->cmd)), "", c->doc ? : "");
 	}
 
 free_we:
@@ -3402,8 +3440,8 @@ static void usage(void)
 		"\t--help\tDisplay help\n");
 
 	printf("Commands:\n");
-	for (i = 0; command[i].cmd; i++)
-		printf("\t%-15s\t%s\n", command[i].cmd, command[i].doc);
+	for (i = 0; all_cmd[i].cmd; i++)
+		printf("\t%-15s\t%s\n", all_cmd[i].cmd, all_cmd[i].doc);
 
 	printf("\n"
 		"For more information on the usage of each command use:\n"
@@ -3472,21 +3510,16 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc > 0) {
-		int i;
+		struct cmd_info *c;
 
-		for (i = 0; command[i].cmd; i++) {
-			if (strcmp(command[i].cmd, argv[0]) != 0)
-				continue;
-
-			command[i].func(mgmt, index, argc, argv);
-			break;
-		}
-
-		if (command[i].cmd == NULL) {
+		c = find_cmd(argv[0], all_cmd, NELEM(all_cmd));
+		if (!c) {
 			fprintf(stderr, "Unknown command: %s\n", argv[0]);
 			mgmt_unref(mgmt);
 			return EXIT_FAILURE;
 		}
+
+		c->func(mgmt, index, argc, argv);
 	}
 
 	mgmt_register(mgmt, MGMT_EV_CONTROLLER_ERROR, index, controller_error,
