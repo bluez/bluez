@@ -125,7 +125,7 @@ static void gatt_debug_cb(const char *str, void *user_data)
 
 static void gap_device_name_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct server *server = user_data;
@@ -152,7 +152,7 @@ done:
 static void gap_device_name_write_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct server *server = user_data;
@@ -196,7 +196,7 @@ done:
 
 static void gap_device_name_ext_prop_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	uint8_t value[2];
@@ -211,7 +211,7 @@ static void gap_device_name_ext_prop_read_cb(struct gatt_db_attribute *attrib,
 
 static void gatt_service_changed_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	PRLOG("Service Changed Read called\n");
@@ -221,7 +221,7 @@ static void gatt_service_changed_cb(struct gatt_db_attribute *attrib,
 
 static void gatt_svc_chngd_ccc_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct server *server = user_data;
@@ -238,7 +238,7 @@ static void gatt_svc_chngd_ccc_read_cb(struct gatt_db_attribute *attrib,
 static void gatt_svc_chngd_ccc_write_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct server *server = user_data;
@@ -272,7 +272,7 @@ done:
 
 static void hr_msrmt_ccc_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct server *server = user_data;
@@ -326,7 +326,7 @@ static void update_hr_msrmt_simulation(struct server *server)
 static void hr_msrmt_ccc_write_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct server *server = user_data;
@@ -366,7 +366,7 @@ done:
 static void hr_control_point_write_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct server *server = user_data;

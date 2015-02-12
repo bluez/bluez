@@ -168,8 +168,9 @@ static void attribute_read_cb(struct gatt_db_attribute *attrib, int err,
 }
 
 static bool encode_read_by_grp_type_rsp(struct gatt_db *db, struct queue *q,
-						uint16_t mtu,
-						uint8_t *pdu, uint16_t *len)
+						struct bt_att *att,
+						uint16_t mtu, uint8_t *pdu,
+						uint16_t *len)
 {
 	int iter = 0;
 	uint16_t start_handle, end_handle;
@@ -190,7 +191,7 @@ static bool encode_read_by_grp_type_rsp(struct gatt_db *db, struct queue *q,
 		 */
 		if (!gatt_db_attribute_read(attrib, 0,
 						BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
-						NULL, attribute_read_cb,
+						att, attribute_read_cb,
 						&value) || !value.iov_len)
 			return false;
 
@@ -291,8 +292,8 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 		goto error;
 	}
 
-	if (!encode_read_by_grp_type_rsp(server->db, q, mtu, rsp_pdu,
-								&rsp_len)) {
+	if (!encode_read_by_grp_type_rsp(server->db, q, server->att, mtu,
+							rsp_pdu, &rsp_len)) {
 		ecode = BT_ATT_ERROR_UNLIKELY;
 		goto error;
 	}
@@ -406,8 +407,8 @@ static void process_read_by_type(struct async_read_op *op)
 		goto error;
 	}
 
-	if (gatt_db_attribute_read(attr, 0, op->opcode, NULL,
-				read_by_type_read_complete_cb, op))
+	if (gatt_db_attribute_read(attr, 0, op->opcode, server->att,
+					read_by_type_read_complete_cb, op))
 		return;
 
 	ecode = BT_ATT_ERROR_UNLIKELY;
@@ -792,7 +793,8 @@ static void write_cb(uint8_t opcode, const void *pdu,
 	server->pending_write_op = op;
 
 	if (gatt_db_attribute_write(attr, 0, pdu + 2, length - 2, opcode,
-						NULL, write_complete_cb, op))
+							server->att,
+							write_complete_cb, op))
 		return;
 
 	if (op)
@@ -904,7 +906,7 @@ static void handle_read_req(struct bt_gatt_server *server, uint8_t opcode,
 	op->server = server;
 	server->pending_read_op = op;
 
-	if (gatt_db_attribute_read(attr, offset, opcode, NULL,
+	if (gatt_db_attribute_read(attr, offset, opcode, server->att,
 							read_complete_cb, op))
 		return;
 
@@ -978,7 +980,6 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 	struct read_multiple_resp_data *data = user_data;
 	struct gatt_db_attribute *next_attr;
 	uint32_t perm;
-
 	uint16_t handle = gatt_db_attribute_get_handle(attr);
 
 	if (err != 0) {
@@ -1030,7 +1031,8 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 		return;
 	}
 
-	if (!gatt_db_attribute_read(next_attr, 0, BT_ATT_OP_READ_MULT_REQ, NULL,
+	if (!gatt_db_attribute_read(next_attr, 0, BT_ATT_OP_READ_MULT_REQ,
+					data->server->att,
 					read_multiple_complete_cb, data)) {
 		bt_att_send_error_rsp(data->server->att,
 						BT_ATT_OP_READ_MULT_REQ,
@@ -1086,7 +1088,7 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu,
 		goto error;
 	}
 
-	if (gatt_db_attribute_read(attr, 0, opcode, NULL,
+	if (gatt_db_attribute_read(attr, 0, opcode, server->att,
 					read_multiple_complete_cb, &data))
 		return;
 
@@ -1213,7 +1215,8 @@ static void exec_next_prep_write(struct bt_gatt_server *server,
 
 	status = gatt_db_attribute_write(attr, next->offset,
 						next->value, next->length,
-						BT_ATT_OP_EXEC_WRITE_REQ, NULL,
+						BT_ATT_OP_EXEC_WRITE_REQ,
+						server->att,
 						exec_write_complete_cb, server);
 
 	prep_write_data_destroy(next);

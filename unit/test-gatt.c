@@ -762,8 +762,8 @@ static struct gatt_db_attribute *add_char_with_value(struct gatt_db *db,
 
 	g_assert(attrib != NULL);
 
-	gatt_db_attribute_write(attrib, 0, value, len, 0x00, NULL, att_write_cb,
-									NULL);
+	gatt_db_attribute_write(attrib, 0, value, len, 0x00, NULL,
+							att_write_cb, NULL);
 
 	return attrib;
 }

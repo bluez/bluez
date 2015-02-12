@@ -44,6 +44,7 @@
 #include "utils.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
+#include "src/shared/att.h"
 #include "src/shared/gatt-db.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
@@ -4783,6 +4784,7 @@ static void read_requested_attributes(void *data, void *user_data)
 {
 	struct pending_request *resp_data = data;
 	struct request_processing_data *process_data = user_data;
+	struct bt_att *att = g_attrib_get_att(process_data->device->attrib);
 	struct gatt_db_attribute *attrib;
 	uint32_t permissions;
 	uint8_t error;
@@ -4813,8 +4815,7 @@ static void read_requested_attributes(void *data, void *user_data)
 	}
 
 	gatt_db_attribute_read(attrib, resp_data->offset, process_data->opcode,
-						&process_data->device->bdaddr,
-						attribute_read_cb, resp_data);
+					att, attribute_read_cb, resp_data);
 }
 
 static void process_dev_pending_requests(struct gatt_device *device,
@@ -4860,8 +4861,29 @@ static struct pending_trans_data *conn_add_transact(struct app_connection *conn,
 	return transaction;
 }
 
+static bool get_dst_addr(struct bt_att *att, bdaddr_t *dst)
+{
+	GIOChannel *io = NULL;
+	GError *gerr = NULL;
+
+	io = g_io_channel_unix_new(bt_att_get_fd(att));
+	if (!io)
+		return false;
+
+	bt_io_get(io, &gerr, BT_IO_OPT_DEST_BDADDR, dst, BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("gatt: bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		g_io_channel_unref(io);
+		return false;
+	}
+
+	g_io_channel_unref(io);
+	return true;
+}
+
 static void read_cb(struct gatt_db_attribute *attrib, unsigned int id,
-			uint16_t offset, uint8_t opcode, bdaddr_t *bdaddr,
+			uint16_t offset, uint8_t opcode, struct bt_att *att,
 			void *user_data)
 {
 	struct pending_trans_data *transaction;
@@ -4869,6 +4891,7 @@ static void read_cb(struct gatt_db_attribute *attrib, unsigned int id,
 	struct gatt_app *app;
 	struct app_connection *conn;
 	int32_t app_id = PTR_TO_INT(user_data);
+	bdaddr_t bdaddr;
 
 	DBG("id %u", id);
 
@@ -4878,7 +4901,12 @@ static void read_cb(struct gatt_db_attribute *attrib, unsigned int id,
 		goto failed;
 	}
 
-	conn = find_conn(bdaddr, app->id);
+	if (!get_dst_addr(att, &bdaddr)) {
+		error("gatt: read_cb, could not obtain dst BDADDR");
+		goto failed;
+	}
+
+	conn = find_conn(&bdaddr, app->id);
 	if (!conn) {
 		error("gatt: read_cb, cound not found connection");
 		goto failed;
@@ -4891,7 +4919,7 @@ static void read_cb(struct gatt_db_attribute *attrib, unsigned int id,
 	if (!transaction)
 		goto failed;
 
-	bdaddr2android(bdaddr, ev.bdaddr);
+	bdaddr2android(&bdaddr, ev.bdaddr);
 	ev.conn_id = conn->id;
 	ev.attr_handle = gatt_db_attribute_get_handle(attrib);
 	ev.offset = offset;
@@ -4910,7 +4938,7 @@ failed:
 
 static void write_cb(struct gatt_db_attribute *attrib, unsigned int id,
 			uint16_t offset, const uint8_t *value, size_t len,
-			uint8_t opcode, bdaddr_t *bdaddr, void *user_data)
+			uint8_t opcode, struct bt_att *att, void *user_data)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_gatt_server_request_write *ev = (void *) buf;
@@ -4918,6 +4946,7 @@ static void write_cb(struct gatt_db_attribute *attrib, unsigned int id,
 	struct gatt_app *app;
 	int32_t app_id = PTR_TO_INT(user_data);
 	struct app_connection *conn;
+	bdaddr_t bdaddr;
 
 	DBG("id %u", id);
 
@@ -4927,7 +4956,12 @@ static void write_cb(struct gatt_db_attribute *attrib, unsigned int id,
 		goto failed;
 	}
 
-	conn = find_conn(bdaddr, app->id);
+	if (!get_dst_addr(att, &bdaddr)) {
+		error("gatt: write_cb, could not obtain dst BDADDR");
+		goto failed;
+	}
+
+	conn = find_conn(&bdaddr, app->id);
 	if (!conn) {
 		error("gatt: write_cb could not found connection");
 		goto failed;
@@ -4947,7 +4981,7 @@ static void write_cb(struct gatt_db_attribute *attrib, unsigned int id,
 
 	memset(ev, 0, sizeof(*ev));
 
-	bdaddr2android(bdaddr, &ev->bdaddr);
+	bdaddr2android(&bdaddr, &ev->bdaddr);
 	ev->attr_handle = gatt_db_attribute_get_handle(attrib);
 	ev->offset = offset;
 
@@ -6339,8 +6373,9 @@ static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 	if (check_device_permissions(dev, cmd[0], permissions))
 		return;
 
-	gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0], &dev->bdaddr,
-							write_confirm, NULL);
+	gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
+						g_attrib_get_att(dev->attrib),
+						write_confirm, NULL);
 }
 
 static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
@@ -6412,7 +6447,8 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		/* Signature OK, proceed with write */
 		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK, r_sign_cnt);
 		gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
-					&dev->bdaddr, write_confirm, NULL);
+						g_attrib_get_att(dev->attrib),
+						write_confirm, NULL);
 	}
 }
 
@@ -6471,8 +6507,8 @@ static uint8_t write_req_request(const uint8_t *cmd, uint16_t cmd_len,
 	}
 
 	if (!gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
-					&dev->bdaddr, attribute_write_cb,
-					data)) {
+						g_attrib_get_att(dev->attrib),
+						attribute_write_cb, data)) {
 		queue_remove(dev->pending_requests, data);
 		free(data);
 		return ATT_ECODE_UNLIKELY;
@@ -6530,8 +6566,8 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 	data->length = vlen;
 
 	if (!gatt_db_attribute_write(attrib, offset, value, vlen, cmd[0],
-					&dev->bdaddr, attribute_write_cb,
-					data)) {
+						g_attrib_get_att(dev->attrib),
+						attribute_write_cb, data)) {
 		queue_remove(dev->pending_requests, data);
 		g_free(data->value);
 		free(data);
@@ -6745,7 +6781,7 @@ static struct gap_srvc_handles gap_srvc_data;
 
 static void device_name_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	const char *name = bt_get_adapter_name();
@@ -6821,7 +6857,7 @@ static void register_gap_service(void)
 
 static void device_info_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	char *buf = user_data;
@@ -6831,7 +6867,7 @@ static void device_info_read_cb(struct gatt_db_attribute *attrib,
 
 static void device_info_read_system_id_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	uint8_t pdu[8];
@@ -6843,7 +6879,7 @@ static void device_info_read_system_id_cb(struct gatt_db_attribute *attrib,
 
 static void device_info_read_pnp_id_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	uint8_t pdu[7];
@@ -6957,18 +6993,24 @@ static void register_device_info_service(void)
 static void gatt_srvc_change_write_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct gatt_device *dev;
+	bdaddr_t bdaddr;
 
-	dev = find_device_by_addr(bdaddr);
+	if (!get_dst_addr(att, &bdaddr)) {
+		error("gatt: srvc_change_write_cb, could not obtain BDADDR");
+		return;
+	}
+
+	dev = find_device_by_addr(&bdaddr);
 	if (!dev) {
 		error("gatt: Could not find device ?!");
 		return;
 	}
 
-	if (!bt_device_is_bonded(bdaddr)) {
+	if (!bt_device_is_bonded(&bdaddr)) {
 		gatt_db_attribute_write_result(attrib, id,
 						ATT_ECODE_AUTHORIZATION);
 		return;
@@ -6982,20 +7024,26 @@ static void gatt_srvc_change_write_cb(struct gatt_db_attribute *attrib,
 	}
 
 	/* Set services changed indication value */
-	bt_store_gatt_ccc(bdaddr, get_le16(value));
+	bt_store_gatt_ccc(&bdaddr, get_le16(value));
 
 	gatt_db_attribute_write_result(attrib, id, 0);
 }
 
 static void gatt_srvc_change_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct gatt_device *dev;
 	uint8_t pdu[2];
+	bdaddr_t bdaddr;
 
-	dev = find_device_by_addr(bdaddr);
+	if (!get_dst_addr(att, &bdaddr)) {
+		error("gatt: srvc_change_read_cb, could not obtain BDADDR");
+		return;
+	}
+
+	dev = find_device_by_addr(&bdaddr);
 	if (!dev) {
 		error("gatt: Could not find device ?!");
 		return;

@@ -50,13 +50,13 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 
 typedef void (*gatt_db_read_t) (struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data);
 
 typedef void (*gatt_db_write_t) (struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					void *user_data);
 
 struct gatt_db_attribute *
@@ -196,7 +196,7 @@ typedef void (*gatt_db_attribute_read_t) (struct gatt_db_attribute *attrib,
 						size_t length, void *user_data);
 
 bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
-				uint8_t opcode, bdaddr_t *bdaddr,
+				uint8_t opcode, struct bt_att *att,
 				gatt_db_attribute_read_t func, void *user_data);
 
 bool gatt_db_attribute_read_result(struct gatt_db_attribute *attrib,
@@ -208,7 +208,7 @@ typedef void (*gatt_db_attribute_write_t) (struct gatt_db_attribute *attrib,
 
 bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					gatt_db_attribute_write_t func,
 					void *user_data);
 

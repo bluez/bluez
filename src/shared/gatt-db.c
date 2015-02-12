@@ -28,8 +28,8 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/timeout.h"
+#include "src/shared/att.h"
 #include "src/shared/gatt-db.h"
-#include "src/shared/att-types.h"
 
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -1427,7 +1427,7 @@ static bool read_timeout(void *user_data)
 }
 
 bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
-				uint8_t opcode, bdaddr_t *bdaddr,
+				uint8_t opcode, struct bt_att *att,
 				gatt_db_attribute_read_t func, void *user_data)
 {
 	uint8_t *value;
@@ -1451,7 +1451,7 @@ bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
 
 		queue_push_tail(attrib->pending_reads, p);
 
-		attrib->read_func(attrib, p->id, offset, opcode, bdaddr,
+		attrib->read_func(attrib, p->id, offset, opcode, att,
 							attrib->user_data);
 		return true;
 	}
@@ -1522,7 +1522,7 @@ static bool write_timeout(void *user_data)
 
 bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 					const uint8_t *value, size_t len,
-					uint8_t opcode, bdaddr_t *bdaddr,
+					uint8_t opcode, struct bt_att *att,
 					gatt_db_attribute_write_t func,
 					void *user_data)
 {
@@ -1546,7 +1546,7 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 		queue_push_tail(attrib->pending_writes, p);
 
 		attrib->write_func(attrib, p->id, offset, value, len, opcode,
-						bdaddr, attrib->user_data);
+							att, attrib->user_data);
 		return true;
 	}
 
