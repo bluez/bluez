@@ -33,7 +33,7 @@
 #include <endian.h>
 #include <stdbool.h>
 
-#include "bluetooth/bluetooth.h"
+#include "lib/bluetooth.h"
 
 #include "src/shared/util.h"
 #include "monitor/bt.h"
