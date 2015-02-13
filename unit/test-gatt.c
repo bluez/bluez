@@ -739,6 +739,13 @@ static const struct test_step test_read_6 = {
 	.expected_att_ecode = 0x0c,
 };
 
+static const struct test_step test_read_7 = {
+	.handle = 0x0004,
+	.func = test_read,
+	.expected_att_ecode = 0x00,
+	.value = read_data_1,
+	.length = 0x03
+};
 static void att_write_cb(struct gatt_db_attribute *att, int err,
 								void *user_data)
 {
@@ -2591,6 +2598,12 @@ int main(int argc, char *argv[])
 			raw_pdu(),
 			raw_pdu(0x1D, 0x03, 0x00, 0x01, 0x02, 0x03),
 			raw_pdu(0x1E));
+
+	define_test_client("/TP/GAR/CL/BV-06-C", test_client, service_db_1,
+			&test_read_7,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0a, 0x04, 0x00),
+			raw_pdu(0x0b, 0x01, 0x02, 0x03));
 
 	return g_test_run();
 }
