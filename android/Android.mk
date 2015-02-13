@@ -493,9 +493,11 @@ LOCAL_SRC_FILES := \
 	bluez/src/shared/util.c \
 	bluez/src/shared/gap.c \
 	bluez/src/uuid-helper.c \
+	bluez/client/display.c \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
+	$(LOCAL_PATH)/bluez/android/compat_includes \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
