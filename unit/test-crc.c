@@ -26,6 +26,7 @@
 #endif
 
 #include "monitor/crc.h"
+#include "src/shared/tester.h"
 
 #include <glib.h>
 
@@ -160,35 +161,33 @@ static void test_crc(gconstpointer data)
 	crc = crc24_calculate(crc_init, test_data->packet + 4,
 						test_data->size - 7);
 
-	if (g_test_verbose())
-		g_print("CRC: 0x%6.6x, Calculated: 0x%6.6x\n",
-						crc_value, crc);
+	tester_debug("CRC: 0x%6.6x, Calculated: 0x%6.6x", crc_value, crc);
 
 	g_assert(crc_value == crc);
 
 	rev = crc24_reverse(crc_value, test_data->packet + 4,
 						test_data->size - 7);
 
-	if (g_test_verbose())
-		g_print("Preset: 0x%6.6x, Calculated: 0x%6.6x\n",
-						crc_init, rev);
+	tester_debug("Preset: 0x%6.6x, Calculated: 0x%6.6x", crc_init, rev);
 
 	g_assert(crc_init == rev);
+
+	tester_test_passed();
 }
 
 int main(int argc, char *argv[])
 {
-	g_test_init(&argc, &argv, NULL);
+	tester_init(&argc, &argv);
 
-	g_test_add_data_func("/crc/1", &crc_1, test_crc);
-	g_test_add_data_func("/crc/2", &crc_2, test_crc);
-	g_test_add_data_func("/crc/3", &crc_3, test_crc);
-	g_test_add_data_func("/crc/4", &crc_4, test_crc);
-	g_test_add_data_func("/crc/5", &crc_5, test_crc);
-	g_test_add_data_func("/crc/6", &crc_6, test_crc);
-	g_test_add_data_func("/crc/7", &crc_7, test_crc);
-	g_test_add_data_func("/crc/8", &crc_8, test_crc);
-	g_test_add_data_func("/crc/9", &crc_9, test_crc);
+	tester_add("/crc/1", &crc_1, NULL, test_crc, NULL);
+	tester_add("/crc/2", &crc_2, NULL, test_crc, NULL);
+	tester_add("/crc/3", &crc_3, NULL, test_crc, NULL);
+	tester_add("/crc/4", &crc_4, NULL, test_crc, NULL);
+	tester_add("/crc/5", &crc_5, NULL, test_crc, NULL);
+	tester_add("/crc/6", &crc_6, NULL, test_crc, NULL);
+	tester_add("/crc/7", &crc_7, NULL, test_crc, NULL);
+	tester_add("/crc/8", &crc_8, NULL, test_crc, NULL);
+	tester_add("/crc/9", &crc_9, NULL, test_crc, NULL);
 
-	return g_test_run();
+	return tester_run();
 }

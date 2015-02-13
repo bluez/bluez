@@ -282,7 +282,7 @@ unit_test_textfile_LDADD = @GLIB_LIBS@
 unit_tests += unit/test-crc
 
 unit_test_crc_SOURCES = unit/test-crc.c monitor/crc.h monitor/crc.c
-unit_test_crc_LDADD = @GLIB_LIBS@
+unit_test_crc_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-crypto
 
