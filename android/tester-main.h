@@ -106,6 +106,11 @@ struct pdu_set {
 		.callback_result.status = cb_res, \
 	}
 
+#define CALLBACK_ERROR(cb, cb_err) { \
+		.callback = cb, \
+		.callback_result.error = cb_err, \
+	}
+
 #define CALLBACK_ADAPTER_PROPS(props, prop_cnt) { \
 		.callback = CB_BT_ADAPTER_PROPERTIES, \
 		.callback_result.properties = props, \
@@ -548,6 +553,7 @@ typedef enum {
 	CB_EMU_VALUE_NOTIFICATION,
 	CB_EMU_READ_RESPONSE,
 	CB_EMU_WRITE_RESPONSE,
+	CB_EMU_ATT_ERROR,
 } expected_bt_callback_t;
 
 struct test_data {
@@ -677,6 +683,7 @@ struct bt_callback_data {
 	uint8_t *value;
 	bool need_rsp;
 	bool is_prep;
+	uint8_t error;
 
 	btpan_control_state_t ctrl_state;
 	btpan_connection_state_t conn_state;

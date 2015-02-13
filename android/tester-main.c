@@ -134,6 +134,7 @@ static struct {
 	DBG_CB(CB_EMU_VALUE_NOTIFICATION),
 	DBG_CB(CB_EMU_READ_RESPONSE),
 	DBG_CB(CB_EMU_WRITE_RESPONSE),
+	DBG_CB(CB_EMU_ATT_ERROR),
 };
 
 static gboolean check_callbacks_called(gpointer user_data)
@@ -1033,6 +1034,13 @@ static bool match_data(struct step *step)
 				step->callback_result.mas_instances,
 				step->callback_result.num_mas_instances)) {
 		tester_debug("Mas instances don't match");
+		return false;
+	}
+
+	if (exp->callback_result.error != step->callback_result.error) {
+		tester_debug("Err mismatch: %d vs %d",
+				exp->callback_result.error,
+				step->callback_result.error);
 		return false;
 	}
 
