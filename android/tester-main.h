@@ -253,6 +253,12 @@ struct pdu_set {
 		.callback_result.gatt_app_id = cb_server_id, \
 	}
 
+#define CALLBACK_GATTS_NOTIF_CONF(cb_conn_id, cb_status) { \
+		.callback = CB_GATTS_INDICATION_SEND, \
+		.callback_result.conn_id = cb_conn_id, \
+		.callback_result.status = cb_status, \
+	}
+
 #define CALLBACK_GATTS_SERVICE_ADDED(cb_res, cb_server_id, cb_service, \
 						cb_srvc_handle, \
 						cb_store_srvc_handle) { \
@@ -540,6 +546,7 @@ typedef enum {
 	CB_GATTS_REQUEST_WRITE,
 	CB_GATTS_REQUEST_EXEC_WRITE,
 	CB_GATTS_RESPONSE_CONFIRMATION,
+	CB_GATTS_INDICATION_SEND,
 
 	/* Map client */
 	CB_MAP_CLIENT_REMOTE_MAS_INSTANCES,

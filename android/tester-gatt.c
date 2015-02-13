@@ -1612,7 +1612,7 @@ static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 		step->callback = CB_EMU_VALUE_INDICATION;
 
 		schedule_callback_verification(step);
-		break;
+		goto respond;
 	case L2CAP_ATT_HANDLE_VALUE_NOTIFY:
 		step = g_new0(struct step, 1);
 
@@ -1649,6 +1649,7 @@ static void gatt_cid_hook_cb(const void *data, uint16_t len, void *user_data)
 			break;
 		}
 
+respond:
 		if (memcmp(gatt_pdu->iov_base, data, len)) {
 			tester_print("Incoming data mismatch");
 			break;
@@ -3258,6 +3259,7 @@ static struct test_case test_cases[] = {
 		ACTION_SUCCESS(gatt_server_send_indication_action,
 						&send_indication_data_1),
 		CALLBACK(CB_EMU_VALUE_INDICATION),
+		CALLBACK_GATTS_NOTIF_CONF(CONN1_ID, GATT_STATUS_SUCCESS),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
 	),
@@ -3281,6 +3283,7 @@ static struct test_case test_cases[] = {
 						CONN1_ID, APP1_ID),
 		ACTION_SUCCESS(gatt_server_send_indication_action,
 						&send_indication_data_2),
+		CALLBACK_GATTS_NOTIF_CONF(CONN1_ID, GATT_STATUS_SUCCESS),
 		CALLBACK(CB_EMU_VALUE_NOTIFICATION),
 		ACTION_SUCCESS(bluetooth_disable_action, NULL),
 		CALLBACK_STATE(CB_BT_ADAPTER_STATE_CHANGED, BT_STATE_OFF),
