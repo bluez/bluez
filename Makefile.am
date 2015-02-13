@@ -267,7 +267,8 @@ AM_CPPFLAGS = -I$(builddir)/lib
 unit_tests += unit/test-eir
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/uuid-helper.c
-unit_test_eir_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+unit_test_eir_LDADD = src/libshared-glib.la lib/libbluetooth-internal.la \
+								@GLIB_LIBS@
 
 unit_tests += unit/test-uuid
 
