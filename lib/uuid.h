@@ -168,6 +168,8 @@ void bt_uuid_to_uuid128(const bt_uuid_t *src, bt_uuid_t *dst);
 int bt_uuid_to_string(const bt_uuid_t *uuid, char *str, size_t n);
 int bt_string_to_uuid(bt_uuid_t *uuid, const char *string);
 
+int bt_uuid_to_le(const bt_uuid_t *uuid, void *dst);
+
 static inline int bt_uuid_len(const bt_uuid_t *uuid)
 {
 	return uuid->type / 8;

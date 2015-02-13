@@ -544,7 +544,7 @@ static bool encode_find_info_rsp(struct gatt_db *db, struct queue *q,
 			break;
 
 		put_le16(handle, pdu + iter);
-		put_uuid_le(type, pdu + iter + 2);
+		bt_uuid_to_le(type, pdu + iter + 2);
 
 		iter += uuid_len + 2;
 	}

@@ -290,3 +290,24 @@ int bt_uuid_strcmp(const void *a, const void *b)
 {
 	return strcasecmp(a, b);
 }
+
+int bt_uuid_to_le(const bt_uuid_t *src, void *dst)
+{
+	bt_uuid_t uuid;
+
+	switch (src->type) {
+	case BT_UUID16:
+		bt_put_le16(src->value.u16, dst);
+		return 0;
+	case BT_UUID32:
+		bt_uuid_to_uuid128(src, &uuid);
+		ntoh128(&uuid.value.u128, dst);
+		return 0;
+	case BT_UUID128:
+		ntoh128(&src->value.u128, dst);
+		return 0;
+	case BT_UUID_UNSPEC:
+	default:
+		return -EINVAL;
+	}
+}

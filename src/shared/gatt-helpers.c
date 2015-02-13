@@ -567,27 +567,6 @@ bool bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
 	return true;
 }
 
-void put_uuid_le(const bt_uuid_t *src, void *dst)
-{
-	bt_uuid_t uuid;
-
-	switch (src->type) {
-	case BT_UUID16:
-		put_le16(src->value.u16, dst);
-		break;
-	case BT_UUID128:
-		bswap_128(&src->value.u128, dst);
-		break;
-	case BT_UUID32:
-		bt_uuid_to_uuid128(src, &uuid);
-		bswap_128(&uuid.value.u128, dst);
-		break;
-	case BT_UUID_UNSPEC:
-	default:
-		break;
-	}
-}
-
 static inline int get_uuid_len(const bt_uuid_t *uuid)
 {
 	if (!uuid)
@@ -764,7 +743,7 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 		put_le16(last_end + 1, pdu);
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(op->service_type, pdu + 4);
-		put_uuid_le(&op->uuid, pdu + 6);
+		bt_uuid_to_le(&op->uuid, pdu + 6);
 
 		op->id = bt_att_send(op->att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
 							pdu, sizeof(pdu),
@@ -836,7 +815,7 @@ static bool discover_services(struct bt_att *att, bt_uuid_t *uuid,
 		put_le16(start, pdu);
 		put_le16(end, pdu + 2);
 		put_le16(op->service_type, pdu + 4);
-		put_uuid_le(&op->uuid, pdu + 6);
+		bt_uuid_to_le(&op->uuid, pdu + 6);
 
 		op->id = bt_att_send(att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
 							pdu, sizeof(pdu),
@@ -1305,7 +1284,7 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 
 		put_le16(last_handle + 1, pdu);
 		put_le16(op->end_handle, pdu + 2);
-		put_uuid_le(&op->uuid, pdu + 4);
+		bt_uuid_to_le(&op->uuid, pdu + 4);
 
 		op->id = bt_att_send(op->att, BT_ATT_OP_READ_BY_TYPE_REQ,
 						pdu, sizeof(pdu),
@@ -1350,7 +1329,7 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 
 	put_le16(start, pdu);
 	put_le16(end, pdu + 2);
-	put_uuid_le(uuid, pdu + 4);
+	bt_uuid_to_le(uuid, pdu + 4);
 
 	op->id = bt_att_send(att, BT_ATT_OP_READ_BY_TYPE_REQ, pdu, sizeof(pdu),
 					read_by_type_cb, discovery_op_ref(op),

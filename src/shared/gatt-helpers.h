@@ -105,5 +105,3 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 					bt_gatt_discovery_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);
-
-void put_uuid_le(const bt_uuid_t *src, void *dst);
