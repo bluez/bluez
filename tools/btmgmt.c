@@ -38,6 +38,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <wordexp.h>
+#include <ctype.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
