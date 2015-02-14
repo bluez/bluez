@@ -137,6 +137,8 @@ struct device {
 
 	bool in_white_list;
 
+	bool connected;
+
 	char *name;
 	char *friendly_name;
 
@@ -2089,6 +2091,8 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 	if (!dev)
 		return;
 
+	dev->connected = true;
+
 	get_device_android_addr(dev, hal_ev.bdaddr);
 
 	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
@@ -2136,6 +2140,8 @@ static void mgmt_device_disconnected_event(uint16_t index, uint16_t length,
 	if (device_is_paired(dev, type) && !device_is_bonded(dev))
 		update_device_state(dev, type, HAL_STATUS_SUCCESS, false,
 								false, false);
+
+	dev->connected = false;
 }
 
 static uint8_t status_mgmt2hal(uint8_t mgmt)
@@ -5222,17 +5228,20 @@ static void handle_get_connection_state(const void *buf, uint16_t len)
 {
 	const struct hal_cmd_get_connection_state *cmd = buf;
 	struct hal_rsp_get_connection_state rsp;
+	struct device *dev;
 	char address[18];
 	bdaddr_t bdaddr;
 
 	android2bdaddr(cmd->bdaddr, &bdaddr);
 	ba2str(&bdaddr, address);
 
-	DBG("%s", address);
+	dev = find_device_android(cmd->bdaddr);
+	if (dev && dev->connected)
+		rsp.connection_state = 1;
+	else
+		rsp.connection_state = 0;
 
-	/* TODO */
-
-	rsp.connection_state = 0;
+	DBG("%s %u", address, rsp.connection_state);
 
 	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_BLUETOOTH,
 				HAL_OP_GET_CONNECTION_STATE, sizeof(rsp), &rsp,
