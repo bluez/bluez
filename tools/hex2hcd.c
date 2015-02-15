@@ -30,9 +30,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <getopt.h>
+#include <dirent.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <getopt.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 
 static ssize_t process_record(int fd, const char *line, uint16_t *upper_addr)
@@ -230,6 +232,149 @@ done:
 	close(fd);
 }
 
+struct ver_data {
+	uint16_t num;
+	char name[20];
+	char major[4];
+	char minor[4];
+	char build[4];
+	struct ver_data *next;
+};
+
+static struct ver_data *ver_list = NULL;
+
+static void ver_parse_file(const char *pathname)
+{
+	struct ver_data *ver, *tmp, *prev;
+	char dummy1[5], dummy2[5];
+
+	if (strlen(pathname) < 7)
+		return;
+
+	if (strncmp(pathname, "BCM", 3))
+		return;
+
+	ver = malloc(sizeof(*ver));
+	if (!ver)
+		return;
+
+	memset(ver, 0, sizeof(*ver));
+
+	if (sscanf(pathname, "%[A-Z0-9]_%3c.%3c.%3c.%4c.%4c.hex",
+					ver->name, ver->major, ver->minor,
+					ver->build, dummy1, dummy2) != 6) {
+		printf("\t/* failed to parse %s */\n", pathname);
+		free(ver);
+		return;
+	}
+
+	ver->num = atoi(ver->build) + (atoi(ver->minor) << 8) +
+						(atoi(ver->major) << 13);
+
+	if (!ver_list) {
+		ver_list = ver;
+		return;
+	}
+
+	for (tmp = ver_list, prev = NULL; tmp; prev = tmp, tmp = tmp->next) {
+		if (ver->num == tmp->num) {
+			free(ver);
+			return;
+		}
+
+		if (ver->num < tmp->num) {
+			if (prev) {
+				prev->next = ver;
+				ver->next = tmp;
+			} else {
+				ver->next = ver_list;
+				ver_list = ver;
+			}
+			return;
+		}
+	}
+
+	prev->next = ver;
+}
+
+static void ver_parse_entry(const char *pathname)
+{
+	struct stat st;
+	int fd;
+
+	fd = open(pathname, O_RDONLY);
+	if (fd < 0) {
+		printf("\t/* failed to open %s */\n", pathname);
+		return;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		printf("\t/* failed to stat %s */\n", pathname);
+		goto done;
+	}
+
+	if (S_ISREG(st.st_mode)) {
+		ver_parse_file(basename(pathname));
+		goto done;
+	}
+
+	if (S_ISDIR(st.st_mode)) {
+		DIR *dir;
+
+		dir = fdopendir(fd);
+		if (!dir)
+			goto done;
+
+		while (1) {
+			struct dirent *d;
+
+			d = readdir(dir);
+			if (!d)
+				break;
+
+			if (d->d_type == DT_REG)
+				ver_parse_file(d->d_name);
+		}
+
+		closedir(dir);
+	}
+
+done:
+	close(fd);
+}
+
+static void ver_print_table(int argc, char *argv[])
+{
+	struct ver_data *ver;
+
+	printf("static const struct {\n");
+	printf("\tuint16_t ver;\n");
+	printf("\tconst char *str\n");
+	printf("} table[] = {\n");
+
+	if (argc > 0) {
+		int i;
+
+		for (i = 0; i < argc; i++)
+			ver_parse_entry(argv[i]);
+	} else
+		ver_parse_entry(".");
+
+	for (ver = ver_list; ver; ) {
+		struct ver_data *tmp = ver;
+
+		printf("\t{ 0x%4.4x, \"%s\"\t},\t/* %s.%s.%s */\n",
+					ver->num, ver->name,
+					ver->major, ver->minor, ver->build);
+
+		ver = ver->next;
+		free(tmp);
+	}
+
+	printf("	{ }\n");
+	printf("};\n");
+}
+
 static void usage(void)
 {
 	printf("Broadcom Bluetooth firmware converter\n"
@@ -241,6 +386,7 @@ static void usage(void)
 }
 
 static const struct option main_options[] = {
+	{ "table",   no_argument,       NULL, 'T' },
 	{ "output",  required_argument, NULL, 'o' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
@@ -250,16 +396,20 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	const char *output_path = NULL;
+	bool print_table = false;
 	int i;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "o:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "To:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'T':
+			print_table = true;
+			break;
 		case 'o':
 			output_path = optarg;
 			break;
@@ -272,6 +422,11 @@ int main(int argc, char *argv[])
 		default:
 			return EXIT_FAILURE;
 		}
+	}
+
+	if (print_table) {
+		ver_print_table(argc - optind, argv + optind);
+		return EXIT_SUCCESS;
 	}
 
 	if (argc - optind < 1) {
