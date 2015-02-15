@@ -497,7 +497,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
-	$(LOCAL_PATH)/bluez/android/compat_includes \
+	$(LOCAL_PATH)/bluez/android/compat \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
