@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <limits.h>
+#include <string.h>
 
 #include "src/shared/util.h"
 
@@ -105,4 +106,32 @@ unsigned char util_get_dt(const char *parent, const char *name)
 		return DT_DIR;
 
 	return DT_UNKNOWN;
+}
+
+/* Helpers for bitfield operations */
+
+/* Find unique id in range from 1 to max but no bigger then
+ * sizeof(int) * 8. ffs() is used since it is POSIX standard
+ */
+uint8_t util_get_uid(unsigned int *bitmap, uint8_t max)
+{
+	uint8_t id;
+
+	id = ffs(~*bitmap);
+
+	if (!id || id > max)
+		return 0;
+
+	*bitmap |= 1 << (id - 1);
+
+	return id;
+}
+
+/* Clear id bit in bitmap */
+void util_clear_uid(unsigned int *bitmap, uint8_t id)
+{
+	if (!id)
+		return;
+
+	*bitmap &= ~(1 << (id - 1));
 }
