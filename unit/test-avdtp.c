@@ -583,6 +583,46 @@ static void test_server_seid(gconstpointer data)
 	lseps = NULL;
 }
 
+static void test_server_seid_duplicate(gconstpointer data)
+{
+	struct context *context = create_context(0x0103, data);
+	struct avdtp_local_sep *sep;
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK,
+						AVDTP_MEDIA_TYPE_AUDIO,
+						0x00, TRUE, &sep_ind, NULL,
+						context);
+		g_assert(sep);
+
+		lseps = g_slist_append(lseps, sep);
+	}
+
+	/* Remove 1st element */
+	sep = g_slist_nth_data(lseps, 0);
+	lseps = g_slist_remove(lseps, sep);
+	avdtp_unregister_sep(sep);
+
+	/* Now register new element */
+	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK,
+						AVDTP_MEDIA_TYPE_AUDIO,
+						0x00, TRUE, &sep_ind, NULL,
+						context);
+	g_assert(sep);
+	lseps = g_slist_append(lseps, sep);
+
+	/* Check SEID ids */
+
+	g_idle_add(send_pdu, context);
+
+	execute_context(context);
+
+	/* Remove all SEPs */
+	g_slist_free_full(lseps, unregister_sep);
+	lseps = NULL;
+}
+
 static gboolean sep_getcap_ind_frg(struct avdtp *session,
 					struct avdtp_local_sep *sep,
 					GSList **caps, uint8_t *err,
@@ -772,6 +812,9 @@ int main(int argc, char *argv[])
 	 */
 	define_test("/TP/SIG/SMG/BV-06-C-SEID-1", test_server_seid,
 			raw_pdu(0x00));
+	define_test("/TP/SIG/SMG/BV-06-C-SEID-2", test_server_seid_duplicate,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x08, 0x08, 0x04, 0x08));
 	define_test("/TP/SIG/SMG/BV-05-C", test_client,
 			raw_pdu(0x00, 0x01));
 	define_test("/TP/SIG/SMG/BV-06-C", test_server,
