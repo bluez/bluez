@@ -968,24 +968,21 @@ static void connect_sco_cb(enum sco_status status, const bdaddr_t *addr)
 		return;
 	}
 
-	if (status != SCO_STATUS_OK) {
-		error("handsfree: audio connect failed");
-
-		set_audio_state(dev, HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED);
-
-		if (!codec_negotiation_supported(dev))
-			return;
-
-		/* If other failed, try connecting with CVSD */
-		if (dev->negotiated_codec != CODEC_ID_CVSD) {
-			info("handsfree: trying fallback with CVSD");
-			select_codec(dev, CODEC_ID_CVSD);
-		}
-
+	if (status == SCO_STATUS_OK) {
+		set_audio_state(dev, HAL_EV_HANDSFREE_AUDIO_STATE_CONNECTED);
 		return;
 	}
 
-	set_audio_state(dev, HAL_EV_HANDSFREE_AUDIO_STATE_CONNECTED);
+	/* Try fallback to CVSD first */
+	if (codec_negotiation_supported(dev) &&
+				dev->negotiated_codec != CODEC_ID_CVSD) {
+		info("handsfree: trying fallback with CVSD");
+		select_codec(dev, CODEC_ID_CVSD);
+		return;
+	}
+
+	error("handsfree: audio connect failed");
+	set_audio_state(dev, HAL_EV_HANDSFREE_AUDIO_STATE_DISCONNECTED);
 }
 
 static bool connect_sco(struct hf_device *dev)
