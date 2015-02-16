@@ -1,6 +1,6 @@
 HOGP PIXIT for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
 & - should be set to IUT Bluetooth address
@@ -25,4 +25,5 @@ TSPX_input_report_data					CDA6F8B3AA
 TSPX_output_report_data					001234567890EF
 TSPX_feature_report_data				872D3F45EA
 TSPX_tester_appearance					03C0
+TSPX_iut_use_resolvable_random_address	FALSE
 -------------------------------------------------------------------------------
