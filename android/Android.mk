@@ -261,6 +261,7 @@ LOCAL_SRC_FILES := \
 	bluez/btio/btio.c \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
+	bluez/src/shared/util.c \
 
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/bluez \
