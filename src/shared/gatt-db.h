@@ -95,13 +95,14 @@ void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
 							const bt_uuid_t type,
 							struct queue *queue);
 
-void gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
+unsigned int gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 						uint16_t end_handle,
 						const bt_uuid_t *type,
 						gatt_db_attribute_cb_t func,
 						void *user_data);
 
-void gatt_db_find_by_type_value(struct gatt_db *db, uint16_t start_handle,
+unsigned int gatt_db_find_by_type_value(struct gatt_db *db,
+						uint16_t start_handle,
 						uint16_t end_handle,
 						const bt_uuid_t *type,
 						const void *value,

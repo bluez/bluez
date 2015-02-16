@@ -894,6 +894,7 @@ struct find_by_type_value_data {
 	void *user_data;
 	const void *value;
 	size_t value_len;
+	unsigned int num_of_res;
 };
 
 static void find_by_type(void *data, void *user_data)
@@ -925,11 +926,12 @@ static void find_by_type(void *data, void *user_data)
 							search_data->value_len))
 			continue;
 
+		search_data->num_of_res++;
 		search_data->func(attribute, search_data->user_data);
 	}
 }
 
-void gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
+unsigned int gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 						uint16_t end_handle,
 						const bt_uuid_t *type,
 						gatt_db_attribute_cb_t func,
@@ -946,9 +948,12 @@ void gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 	data.user_data = user_data;
 
 	queue_foreach(db->services, find_by_type, &data);
+
+	return data.num_of_res;
 }
 
-void gatt_db_find_by_type_value(struct gatt_db *db, uint16_t start_handle,
+unsigned int gatt_db_find_by_type_value(struct gatt_db *db,
+						uint16_t start_handle,
 						uint16_t end_handle,
 						const bt_uuid_t *type,
 						const void *value,
@@ -967,6 +972,8 @@ void gatt_db_find_by_type_value(struct gatt_db *db, uint16_t start_handle,
 	data.value_len = value_len;
 
 	queue_foreach(db->services, find_by_type, &data);
+
+	return data.num_of_res;
 }
 
 struct read_by_type_data {
