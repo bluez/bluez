@@ -578,6 +578,13 @@ static void test_server_seid(gconstpointer data)
 		lseps = g_slist_append(lseps, sep);
 	}
 
+	/* Now add (MAX_SEID + 1) SEP -> it shall fail */
+	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK,
+						AVDTP_MEDIA_TYPE_AUDIO,
+						0x00, TRUE, &sep_ind, NULL,
+						context);
+	g_assert(!sep);
+
 	/* Remove all SEPs */
 	g_slist_free_full(lseps, unregister_sep);
 	lseps = NULL;
