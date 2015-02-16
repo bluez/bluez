@@ -6314,10 +6314,8 @@ static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
 	data.search_value = search_value;
 	data.device = device;
 
-	gatt_db_find_by_type(gatt_db, start, end, &uuid,
-						find_by_type_request_cb, &data);
-
-	if (data.error == ATT_ECODE_ATTR_NOT_FOUND) {
+	if (gatt_db_find_by_type(gatt_db, start, end, &uuid,
+					find_by_type_request_cb, &data) == 0) {
 		size_t mtu;
 		uint8_t *rsp = g_attrib_get_buffer(device->attrib, &mtu);
 
