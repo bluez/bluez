@@ -39,6 +39,10 @@
 #include "src/log.h"
 #include "android/avdtp.h"
 
+#define MAX_SEID 0x3E
+
+GSList *lseps = NULL;
+
 struct test_pdu {
 	bool valid;
 	bool fragmented;
@@ -551,6 +555,34 @@ static void test_server_0_sep(gconstpointer data)
 	execute_context(context);
 }
 
+static void unregister_sep(void *data)
+{
+	struct avdtp_local_sep *sep = data;
+
+	avdtp_unregister_sep(sep);
+}
+
+static void test_server_seid(gconstpointer data)
+{
+	struct context *context = create_context(0x0103, data);
+	struct avdtp_local_sep *sep;
+	unsigned int i;
+
+	for (i = 0; i < sizeof(int) * 8; i++) {
+		sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK,
+						AVDTP_MEDIA_TYPE_AUDIO,
+						0x00, TRUE, &sep_ind, NULL,
+						context);
+		g_assert(sep);
+
+		lseps = g_slist_append(lseps, sep);
+	}
+
+	/* Remove all SEPs */
+	g_slist_free_full(lseps, unregister_sep);
+	lseps = NULL;
+}
+
 static gboolean sep_getcap_ind_frg(struct avdtp *session,
 					struct avdtp_local_sep *sep,
 					GSList **caps, uint8_t *err,
@@ -738,6 +770,8 @@ int main(int argc, char *argv[])
 	 * To verify that the following procedures are implemented according to
 	 * their specification in AVDTP.
 	 */
+	define_test("/TP/SIG/SMG/BV-06-C-SEID-1", test_server_seid,
+			raw_pdu(0x00));
 	define_test("/TP/SIG/SMG/BV-05-C", test_client,
 			raw_pdu(0x00, 0x01));
 	define_test("/TP/SIG/SMG/BV-06-C", test_server,
