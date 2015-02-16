@@ -1,7 +1,7 @@
 PTS test results for HoG
 
-PTS version: 5.3
-Tested: 01-December-2014
+PTS version: 6.0
+Tested: 16-February-2015
 Android version: 5.0
 
 Results:
@@ -13,13 +13,12 @@ N/A	test is disabled due to PICS setup
 -------------------------------------------------------------------------------
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
-TC_HGDS_HH_BV_01_I	PASS	PTS issue #12119
-				This issue affects all PTS test cases
+TC_HGDS_HH_BV_01_I	PASS
 TC_HGDS_HH_BV_02_I	PASS
 TC_HGDS_HH_BV_03_I	PASS
 TC_HGDS_HD_BV_01_I	N/A
 TC_HGDS_HD_BV_02_I	N/A
-TC_HGDR_RH_BV_01_I	PASS
+TC_HGDR_RH_BV_01_I	INC	JIRA #BA-340
 TC_HGDC_RH_BV_01_I	PASS
 TC_HGDC_RH_BV_02_I	PASS
 TC_HGDC_RH_BV_03_I	PASS
