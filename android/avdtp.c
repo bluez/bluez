@@ -3352,6 +3352,10 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 						void *user_data)
 {
 	struct avdtp_local_sep *sep;
+	uint8_t seid = util_get_uid(&seids, MAX_SEID);
+
+	if (!seid)
+		return NULL;
 
 	if (g_slist_length(lseps) > MAX_SEID)
 		return NULL;
@@ -3359,7 +3363,7 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 	sep = g_new0(struct avdtp_local_sep, 1);
 
 	sep->state = AVDTP_STATE_IDLE;
-	sep->info.seid = util_get_uid(&seids, MAX_SEID);
+	sep->info.seid = seid;
 	sep->info.type = type;
 	sep->info.media_type = media_type;
 	sep->codec = codec_type;
