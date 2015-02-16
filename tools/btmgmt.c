@@ -3392,7 +3392,7 @@ static char *cmd_generator(const char *text, int state)
 			return strdup(cmd);
 	}
 
-	while (j++ < NELEM(interactive_cmd)) {
+	while (j < NELEM(interactive_cmd)) {
 		cmd = interactive_cmd[j++].cmd;
 
 		if (!strncmp(cmd, text, len))
