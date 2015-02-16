@@ -809,6 +809,9 @@ static void smp_conn_bredr(struct smp_conn *conn, uint8_t encrypt)
 
 	conn->sc = true;
 
+	if (!conn->out)
+		return;
+
 	fixed_chan = bthost_conn_get_fixed_chan(smp->bthost, conn->handle);
 	if (!(fixed_chan & L2CAP_FC_SMP_BREDR))
 		return;
