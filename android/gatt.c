@@ -6282,7 +6282,11 @@ static void find_by_type_request_cb(struct gatt_db_attribute *attrib,
 	memcpy(request_data->filter_value, find_data->search_value,
 							find_data->search_vlen);
 
-	queue_push_tail(find_data->device->pending_requests, request_data);
+	if (!queue_push_tail(find_data->device->pending_requests,
+							request_data)) {
+		destroy_pending_request(request_data);
+		find_data->error = ATT_ECODE_INSUFF_RESOURCES;
+	}
 }
 
 static uint8_t find_by_type_request(const uint8_t *cmd, uint16_t cmd_len,
