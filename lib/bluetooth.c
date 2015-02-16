@@ -1173,6 +1173,44 @@ const char *bt_compidtostr(int compid)
 		return "HASWARE Inc.";
 	case 455:
 		return "Abiogenix Inc.";
+	case 456:
+		return "Poly-Control ApS";
+	case 457:
+		return "Avi-on";
+	case 458:
+		return "Laerdal Medical AS";
+	case 459:
+		return "Fetch My Pet";
+	case 460:
+		return "Sam Labs Ltd.";
+	case 461:
+		return "Chengdu Synwing Technology Ltd";
+	case 462:
+		return "HOUWA SYSTEM DESIGN, k.k.";
+	case 463:
+		return "BSH";
+	case 464:
+		return "Primus Inter Pares Ltd";
+	case 465:
+		return "August";
+	case 466:
+		return "Gill Electronics";
+	case 467:
+		return "Sky Wave Design";
+	case 468:
+		return "Newlab S.r.l.";
+	case 469:
+		return "ELAD srl";
+	case 470:
+		return "G-wearables inc.";
+	case 471:
+		return "Squadrone Systems Inc.";
+	case 472:
+		return "Code Corporation";
+	case 473:
+		return "Savant Systems LLC";
+	case 474:
+		return "Logitech International SA";
 	case 65535:
 		return "internal use";
 	default:
