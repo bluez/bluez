@@ -270,7 +270,7 @@ void *tester_get_data(void)
 	return test->user_data;
 }
 
-static void tester_summarize(void)
+static int tester_summarize(void)
 {
 	unsigned int not_run = 0, passed = 0, failed = 0;
 	gdouble execution_time;
@@ -321,6 +321,7 @@ static void tester_summarize(void)
 	execution_time = g_timer_elapsed(test_timer, NULL);
 	printf("Overall execution time: %.3g seconds\n", execution_time);
 
+	return failed;
 }
 
 static gboolean teardown_callback(gpointer user_data)
@@ -800,6 +801,7 @@ void tester_init(int *argc, char ***argv)
 int tester_run(void)
 {
 	guint signal;
+	int ret;
 
 	if (!main_loop)
 		return EXIT_FAILURE;
@@ -818,9 +820,9 @@ int tester_run(void)
 
 	g_main_loop_unref(main_loop);
 
-	tester_summarize();
+	ret = tester_summarize();
 
 	g_list_free_full(test_list, test_destroy);
 
-	return EXIT_SUCCESS;
+	return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
