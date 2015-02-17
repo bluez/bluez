@@ -3286,7 +3286,7 @@ static void enable_mps(void)
 {
 	uuid_t uuid, *uuid128;
 
-	sdp_uuid16_create(&uuid, MPS_PROFILE_ID);
+	sdp_uuid16_create(&uuid, MPS_SVCLASS_ID);
 	uuid128 = sdp_uuid_to_uuid128(&uuid);
 	if (!uuid128)
 		return;
