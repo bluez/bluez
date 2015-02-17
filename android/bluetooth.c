@@ -3390,9 +3390,6 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (missing_settings & MGMT_SETTING_SSP)
 		set_mode(MGMT_OP_SET_SSP, 0x01);
 
-	if (missing_settings & MGMT_SETTING_SECURE_CONN)
-		set_mode(MGMT_OP_SET_SECURE_CONN, 0x01);
-
 	if (missing_settings & MGMT_SETTING_BONDABLE)
 		set_mode(MGMT_OP_SET_BONDABLE, 0x01);
 
@@ -5294,6 +5291,10 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 		error("Unknown mode 0x%x", mode);
 		goto failed;
 	}
+
+	/* Requested mode is set now, let's enable secure connection */
+	if (missing_settings & MGMT_SETTING_SECURE_CONN)
+		set_mode(MGMT_OP_SET_SECURE_CONN, 0x01);
 
 	/* Set initial default name */
 	if (!adapter.name) {
