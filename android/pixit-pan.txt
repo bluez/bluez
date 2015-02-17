@@ -1,9 +1,9 @@
 PAN PIXIT for the PTS tool.
 
-PTS version: 5.3
+PTS version: 6.0
 
 * - different than PTS defaults
-& - should be set to IUT or PTS Bluetooth address respectively
+& - should be set to IUT or PTS Bluetooth/MAC address respectively
 
 		Required PIXIT settings
 -------------------------------------------------------------------------------
@@ -27,4 +27,13 @@ TSPX_checksum						E851
 TSPX_secure_simple_pairing_pass_key_confirmation	False
 TSPX_iut_friendly_bt_name				gprs-pc
 TSPX_PTS_role_when_iut_is_PANU				default
+TSPX_auth_password					0000
+TSPX_auth_user_id					PTS
+TSPX_l2cap_psm						000F
+TSPX_rfcomm_channel					8
+TSPX_no_confirmations					FALSE
+TSPX_UUID_dest_address					0000
+TSPX_UUID_source_address				0000
+TSPX_MAC_dest_address					112233445566 (*&)
+TSPX_MAC_source_address					112233445566 (*&)
 -------------------------------------------------------------------------------
