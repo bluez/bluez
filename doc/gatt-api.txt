@@ -205,10 +205,11 @@ Properties	string UUID [read-only]
 			which a PropertiesChanged signal will be emitted.
 
 
-Service Manager hierarchy
-=============================
 
-Service Manager allows external applications to register GATT based
+GATT Manager hierarchy
+======================
+
+GATT Manager allows external applications to register GATT based
 services. Services must follow the API for Service and Characteristic
 described above.
 
@@ -217,9 +218,9 @@ discovered automatically using the D-Bus Object Manager interface.
 
 Service		org.bluez
 Interface	org.bluez.GattManager1 [Experimental]
-Object path	/org/bluez
+Object path	[variable prefix]/{hci0,hci1,...}
 
-Methods		RegisterService(object service, dict options)
+Methods		void RegisterService(object service, dict options)
 
 			Registers remote application service exported under
 			interface GattService1. Characteristic objects must
@@ -234,7 +235,7 @@ Methods		RegisterService(object service, dict options)
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.AlreadyExists
 
-		UnregisterService(object service)
+		void UnregisterService(object service)
 
 			This unregisters the service that has been
 			previously registered. The object path parameter
