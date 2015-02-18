@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "btio/btio.h"
 #include "src/shared/util.h"
