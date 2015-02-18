@@ -1591,7 +1591,7 @@ static const struct test_step test_long_read_4 = {
 };
 
 static const struct test_step test_long_read_5 = {
-	.handle = 0x0003,
+	.handle = 0x0000,
 	.func = test_long_read,
 	.expected_att_ecode = 0x01
 };
@@ -2415,8 +2415,8 @@ int main(int argc, char *argv[])
 	define_test_client("/TP/GAR/CL/BI-14-C", test_client, service_db_1,
 			&test_long_read_5,
 			SERVICE_DATA_1_PDUS,
-			raw_pdu(0x0c, 0x03, 0x00, 0x00, 0x00),
-			raw_pdu(0x01, 0x0c, 0x03, 0x00, 0x01));
+			raw_pdu(0x0c, 0x00, 0x00, 0x00, 0x00),
+			raw_pdu(0x01, 0x0c, 0x00, 0x00, 0x01));
 
 	define_test_client("/TP/GAR/CL/BI-15-C", test_client, service_db_1,
 			&test_long_read_6,
