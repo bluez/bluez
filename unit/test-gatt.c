@@ -1632,6 +1632,12 @@ static const struct test_step test_long_read_10 = {
 	.length = sizeof(long_data_2)
 };
 
+static const struct test_step test_long_read_11 = {
+	.handle = 0x0004,
+	.func = test_long_read,
+	.expected_att_ecode = 0x02
+};
+
 static void notification_cb(uint16_t value_handle, const uint8_t *value,
 					uint16_t length, void *user_data)
 {
@@ -2794,6 +2800,12 @@ int main(int argc, char *argv[])
 				0xff, 0xff, 0xff),
 			raw_pdu(0x0c, 0x04, 0x00, 0xff, 0x01),
 			raw_pdu(0x0d, 0xff));
+
+	define_test_client("/TP/GAR/CL/BI-28-C", test_client, service_db_1,
+			&test_long_read_11,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0c, 0x04, 0x00, 0x00, 0x00),
+			raw_pdu(0x01, 0x0c, 0x04, 0x00, 0x02));
 
 	return g_test_run();
 }
