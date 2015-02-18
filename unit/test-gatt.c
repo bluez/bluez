@@ -1650,6 +1650,12 @@ static const struct test_step test_long_read_13 = {
 	.expected_att_ecode = 0x08
 };
 
+static const struct test_step test_long_read_14 = {
+	.handle = 0x0004,
+	.func = test_long_read,
+	.expected_att_ecode = 0x05
+};
+
 static void notification_cb(uint16_t value_handle, const uint8_t *value,
 					uint16_t length, void *user_data)
 {
@@ -2836,6 +2842,12 @@ int main(int argc, char *argv[])
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x0c, 0x04, 0x00, 0x00, 0x00),
 			raw_pdu(0x01, 0x0c, 0x04, 0x00, 0x08));
+
+	define_test_client("/TP/GAR/CL/BI-32-C", test_client, service_db_1,
+			&test_long_read_14,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0c, 0x04, 0x00, 0x00, 0x00),
+			raw_pdu(0x01, 0x0c, 0x04, 0x00, 0x05));
 
 	return g_test_run();
 }
