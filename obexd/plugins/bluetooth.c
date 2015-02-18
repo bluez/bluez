@@ -36,8 +36,9 @@
 #include <glib.h>
 #include <gdbus/gdbus.h>
 
-#include "btio/btio.h"
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
+#include "btio/btio.h"
 
 #include "obexd.h"
 #include "plugin.h"
