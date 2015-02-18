@@ -35,6 +35,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "src/plugin.h"
 #include "src/dbus-common.h"

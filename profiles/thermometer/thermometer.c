@@ -29,6 +29,7 @@
 
 #include <gdbus/gdbus.h>
 
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "src/plugin.h"
 #include "src/dbus-common.h"

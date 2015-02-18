@@ -31,6 +31,7 @@
 #include <glib.h>
 #include <gdbus/gdbus.h>
 
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "src/adapter.h"
 #include "src/device.h"
