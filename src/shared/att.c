@@ -33,6 +33,7 @@
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 #include "src/shared/timeout.h"
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "src/shared/att.h"
 

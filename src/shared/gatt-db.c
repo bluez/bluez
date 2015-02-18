@@ -24,6 +24,7 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
