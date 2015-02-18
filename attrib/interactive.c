@@ -39,6 +39,7 @@
 #include <readline/history.h>
 
 #include "src/shared/util.h"
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "btio/btio.h"
 #include "att.h"
