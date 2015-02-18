@@ -35,6 +35,7 @@
 
 #include <glib.h>
 
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "src/shared/util.h"
 #include "src/shared/att.h"
