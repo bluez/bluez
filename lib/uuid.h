@@ -30,7 +30,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <bluetooth/bluetooth.h>
 
 #define GENERIC_AUDIO_UUID	"00001203-0000-1000-8000-00805f9b34fb"
 

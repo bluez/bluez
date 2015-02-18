@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "lib/bluetooth.h"
 #include "uuid.h"
 
 static uint128_t bluetooth_base_uuid = {
