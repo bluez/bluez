@@ -79,6 +79,8 @@ bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 bool btd_adapter_get_powered(struct btd_adapter *adapter);
 bool btd_adapter_get_connectable(struct btd_adapter *adapter);
 
+struct btd_gatt_database *btd_adapter_get_database(struct btd_adapter *adapter);
+
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter);
 const char *btd_adapter_get_name(struct btd_adapter *adapter);
 void btd_adapter_remove_device(struct btd_adapter *adapter,
