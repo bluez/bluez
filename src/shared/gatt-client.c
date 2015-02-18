@@ -915,7 +915,7 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 		util_debug(client->debug_callback, client->debug_data,
 					"Primary service discovery failed."
 					" ATT ECODE: 0x%02x", att_ecode);
-		goto done;
+		goto secondary;
 	}
 
 	if (!result || !bt_gatt_iter_init(&iter, result)) {
@@ -948,6 +948,7 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 		queue_push_tail(op->pending_svcs, attr);
 	}
 
+secondary:
 	/* Discover secondary services */
 	if (bt_gatt_discover_secondary_services(client->att, NULL,
 							op->start, op->end,
