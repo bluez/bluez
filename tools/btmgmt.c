@@ -1354,7 +1354,7 @@ static void cmd_discov(struct mgmt *mgmt, uint16_t index, int argc,
 	struct mgmt_cp_set_discoverable cp;
 
 	if (argc < 2) {
-		print("Usage: btmgmt %s <yes/no/limited> [timeout]", argv[0]);
+		print("Usage: %s <yes/no/limited> [timeout]", argv[0]);
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1538,7 +1538,7 @@ static void cmd_class(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	uint8_t class[2];
 
 	if (argc < 3) {
-		print("Usage: btmgmt %s <major> <minor>", argv[0]);
+		print("Usage: %s <major> <minor>", argv[0]);
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1585,7 +1585,7 @@ static void disconnect_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void disconnect_usage(void)
 {
-	print("Usage: btmgmt disconnect [-t type] <remote address>");
+	print("Usage: disconnect [-t type] <remote address>");
 }
 
 static struct option disconnect_options[] = {
@@ -1695,7 +1695,7 @@ static void find_service_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void find_service_usage(void)
 {
-	print("Usage: btmgmt find-service [-u UUID] [-r RSSI_Threshold] [-l|-b]");
+	print("Usage: find-service [-u UUID] [-r RSSI_Threshold] [-l|-b]");
 }
 
 static struct option find_service_options[] = {
@@ -1825,7 +1825,7 @@ static void find_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void find_usage(void)
 {
-	print("Usage: btmgmt find [-l|-b]>");
+	print("Usage: find [-l|-b]>");
 }
 
 static struct option find_options[] = {
@@ -1900,7 +1900,7 @@ static void cmd_name(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	struct mgmt_cp_set_local_name cp;
 
 	if (argc < 2) {
-		print("Usage: btmgmt %s <name> [shortname]", argv[0]);
+		print("Usage: %s <name> [shortname]", argv[0]);
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1954,7 +1954,7 @@ static void pair_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void pair_usage(void)
 {
-	print("Usage: btmgmt pair [-c cap] [-t type] <remote address>");
+	print("Usage: pair [-c cap] [-t type] <remote address>");
 }
 
 static struct option pair_options[] = {
@@ -2048,7 +2048,7 @@ static void cancel_pair_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void cancel_pair_usage(void)
 {
-	print("Usage: btmgmt cancelpair [-t type] <remote address>");
+	print("Usage: cancelpair [-t type] <remote address>");
 }
 
 static struct option cancel_pair_options[] = {
@@ -2132,7 +2132,7 @@ static void unpair_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void unpair_usage(void)
 {
-	print("Usage: btmgmt unpair [-t type] <remote address>");
+	print("Usage: unpair [-t type] <remote address>");
 }
 
 static struct option unpair_options[] = {
@@ -2257,7 +2257,7 @@ static void irks_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void irks_usage(void)
 {
-	print("Usage: btmgmt irks [--local]");
+	print("Usage: irks [--local]");
 }
 
 static struct option irks_options[] = {
@@ -2359,7 +2359,7 @@ static void block_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 
 static void block_usage(void)
 {
-	print("Usage: btmgmt block [-t type] <remote address>");
+	print("Usage: block [-t type] <remote address>");
 }
 
 static struct option block_options[] = {
@@ -2414,7 +2414,7 @@ static void cmd_block(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 
 static void unblock_usage(void)
 {
-	print("Usage: btmgmt unblock [-t type] <remote address>");
+	print("Usage: unblock [-t type] <remote address>");
 }
 
 static void cmd_unblock(struct mgmt *mgmt, uint16_t index, int argc,
@@ -2619,7 +2619,7 @@ static void remote_oob_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void remote_oob_usage(void)
 {
-	print("Usage: btmgmt remote-oob [-t <addr_type>] "
+	print("Usage: remote-oob [-t <addr_type>] "
 		"[-r <rand192>] [-h <hash192>] [-R <rand256>] [-H <hash256>] "
 		"<addr>");
 }
@@ -2701,7 +2701,7 @@ static void did_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void did_usage(void)
 {
-	print("Usage: btmgmt did <source>:<vendor>:<product>:<version>");
+	print("Usage: did <source>:<vendor>:<product>:<version>");
 	print("       possible source values: bluetooth, usb");
 }
 
@@ -2763,7 +2763,7 @@ static void static_addr_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void static_addr_usage(void)
 {
-	print("Usage: btmgmt static-addr <address>");
+	print("Usage: static-addr <address>");
 }
 
 static void cmd_static_addr(struct mgmt *mgmt, uint16_t index,
@@ -2817,7 +2817,7 @@ static void cmd_public_addr(struct mgmt *mgmt, uint16_t index,
 	struct mgmt_cp_set_public_address cp;
 
 	if (argc < 2) {
-		print("Usage: btmgmt public-addr <address>");
+		print("Usage: public-addr <address>");
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -2900,7 +2900,7 @@ static void conn_info_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void conn_info_usage(void)
 {
-	print("Usage: btmgmt conn-info [-t type] <remote address>");
+	print("Usage: conn-info [-t type] <remote address>");
 }
 
 static struct option conn_info_options[] = {
@@ -2968,7 +2968,7 @@ static void io_cap_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void io_cap_usage(void)
 {
-	print("Usage: btmgmt io-cap <cap>");
+	print("Usage: io-cap <cap>");
 }
 
 static void cmd_io_cap(struct mgmt *mgmt, uint16_t index,
@@ -3010,7 +3010,7 @@ static void scan_params_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void scan_params_usage(void)
 {
-	print("Usage: btmgmt scan-params <interval> <window>");
+	print("Usage: scan-params <interval> <window>");
 }
 
 static void cmd_scan_params(struct mgmt *mgmt, uint16_t index,
@@ -3090,7 +3090,7 @@ static void add_device_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void add_device_usage(void)
 {
-	print("Usage: btmgmt add-device [-a action] [-t type] <address>");
+	print("Usage: add-device [-a action] [-t type] <address>");
 }
 
 static struct option add_device_options[] = {
@@ -3165,7 +3165,7 @@ static void remove_device_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void del_device_usage(void)
 {
-	print("Usage: btmgmt del-device [-t type] <address>");
+	print("Usage: del-device [-t type] <address>");
 }
 
 static struct option del_device_options[] = {
