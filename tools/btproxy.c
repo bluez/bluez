@@ -566,6 +566,7 @@ static void usage(void)
 		"\t-u, --unix [path]           Use Unix server\n"
 		"\t-p, --port <port>           Use specified TCP port\n"
 		"\t-i, --index <num>           Use specified controller\n"
+		"\t-a, --amp                   Create AMP controller\n"
 		"\t-d, --debug                 Enable debugging output\n"
 		"\t-h, --help                  Show help options\n");
 }
@@ -576,6 +577,7 @@ static const struct option main_options[] = {
 	{ "unix",    optional_argument, NULL, 'u' },
 	{ "port",    required_argument, NULL, 'p' },
 	{ "index",   required_argument, NULL, 'i' },
+	{ "amp",     no_argument,       NULL, 'a' },
 	{ "debug",   no_argument,       NULL, 'd' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
