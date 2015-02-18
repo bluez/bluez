@@ -32,6 +32,7 @@
 
 #include <glib.h>
 
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 #include "lib/mgmt.h"
 #include "src/log.h"
