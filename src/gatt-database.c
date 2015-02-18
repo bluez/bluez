@@ -497,6 +497,11 @@ struct not_data {
 	bool indicate;
 };
 
+static void conf_cb(void *user_data)
+{
+	DBG("GATT server received confirmation");
+}
+
 static void send_notification_to_device(void *data, void *user_data)
 {
 	struct device_state *device_state = data;
@@ -518,8 +523,24 @@ static void send_notification_to_device(void *data, void *user_data)
 		return;
 
 	/*
-	 * TODO: Notify device via bt_gatt_server
+	 * TODO: If the device is not connected but bonded, send the
+	 * notification/indication when it becomes connected.
 	 */
+	if (!not_data->indicate) {
+		DBG("GATT server sending notification");
+		bt_gatt_server_send_notification(
+					btd_device_get_gatt_server(device),
+					not_data->handle, not_data->value,
+					not_data->len);
+		return;
+	}
+
+	DBG("GATT server sending indication");
+	bt_gatt_server_send_indication(btd_device_get_gatt_server(device),
+							not_data->handle,
+							not_data->value,
+							not_data->len, conf_cb,
+							NULL, NULL);
 }
 
 static void send_notification_to_devices(struct btd_gatt_database *database,
