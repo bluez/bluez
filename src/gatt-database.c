@@ -603,7 +603,7 @@ static void register_core_services(struct btd_gatt_database *database)
 	populate_gatt_service(database);
 }
 
-struct not_data {
+struct notify {
 	struct btd_gatt_database *database;
 	uint16_t handle, ccc_handle;
 	const uint8_t *value;
@@ -619,18 +619,18 @@ static void conf_cb(void *user_data)
 static void send_notification_to_device(void *data, void *user_data)
 {
 	struct device_state *device_state = data;
-	struct not_data *not_data = user_data;
+	struct notify *notify = user_data;
 	struct ccc_state *ccc;
 	struct btd_device *device;
 
-	ccc = find_ccc_state(device_state, not_data->ccc_handle);
+	ccc = find_ccc_state(device_state, notify->ccc_handle);
 	if (!ccc)
 		return;
 
-	if (!ccc->value[0] || (not_data->indicate && !(ccc->value[0] & 0x02)))
+	if (!ccc->value[0] || (notify->indicate && !(ccc->value[0] & 0x02)))
 		return;
 
-	device = btd_adapter_get_device(not_data->database->adapter,
+	device = btd_adapter_get_device(notify->database->adapter,
 						&device_state->bdaddr,
 						device_state->bdaddr_type);
 	if (!device)
@@ -640,20 +640,20 @@ static void send_notification_to_device(void *data, void *user_data)
 	 * TODO: If the device is not connected but bonded, send the
 	 * notification/indication when it becomes connected.
 	 */
-	if (!not_data->indicate) {
+	if (!notify->indicate) {
 		DBG("GATT server sending notification");
 		bt_gatt_server_send_notification(
 					btd_device_get_gatt_server(device),
-					not_data->handle, not_data->value,
-					not_data->len);
+					notify->handle, notify->value,
+					notify->len);
 		return;
 	}
 
 	DBG("GATT server sending indication");
 	bt_gatt_server_send_indication(btd_device_get_gatt_server(device),
-							not_data->handle,
-							not_data->value,
-							not_data->len, conf_cb,
+							notify->handle,
+							notify->value,
+							notify->len, conf_cb,
 							NULL, NULL);
 }
 
@@ -662,19 +662,19 @@ static void send_notification_to_devices(struct btd_gatt_database *database,
 					uint16_t len, uint16_t ccc_handle,
 					bool indicate)
 {
-	struct not_data not_data;
+	struct notify notify;
 
-	memset(&not_data, 0, sizeof(not_data));
+	memset(&notify, 0, sizeof(notify));
 
-	not_data.database = database;
-	not_data.handle = handle;
-	not_data.ccc_handle = ccc_handle;
-	not_data.value = value;
-	not_data.len = len;
-	not_data.indicate = indicate;
+	notify.database = database;
+	notify.handle = handle;
+	notify.ccc_handle = ccc_handle;
+	notify.value = value;
+	notify.len = len;
+	notify.indicate = indicate;
 
 	queue_foreach(database->device_states, send_notification_to_device,
-								&not_data);
+								&notify);
 }
 
 static void send_service_changed(struct btd_gatt_database *database,
