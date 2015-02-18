@@ -232,8 +232,11 @@ static int get_chan_data_index(const struct l2cap_frame *frame)
 					chan_list[i].ctrlid == 0)
 			continue;
 
-		if (chan_list[i].handle != frame->handle &&
+		if (chan_list[i].ctrlid != 0 &&
 					chan_list[i].ctrlid != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
 			continue;
 
 		if (frame->in) {
