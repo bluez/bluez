@@ -51,11 +51,13 @@
 #include "src/shared/queue.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
+#include "src/shared/gatt-server.h"
 #include "btio/btio.h"
 #include "lib/mgmt.h"
 #include "attrib/att.h"
 #include "hcid.h"
 #include "adapter.h"
+#include "gatt-database.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
 #include "device.h"
@@ -210,7 +212,6 @@ struct btd_device {
 	GAttrib		*attrib;
 	GSList		*attios;
 	GSList		*attios_offline;
-	guint		attachid;		/* Attrib server attach */
 
 	struct bt_att *att;			/* The new ATT transport */
 	uint16_t att_mtu;			/* The ATT MTU */
@@ -223,6 +224,7 @@ struct btd_device {
 	 */
 	struct gatt_db *db;			/* GATT db cache */
 	struct bt_gatt_client *client;		/* GATT client instance */
+	struct bt_gatt_server *server;		/* GATT server instance */
 
 	struct btd_gatt_client *client_dbus;
 
@@ -515,6 +517,15 @@ static void gatt_client_cleanup(struct btd_device *device)
 		gatt_db_clear(device->db);
 }
 
+static void gatt_server_cleanup(struct btd_device *device)
+{
+	if (!device->server)
+		return;
+
+	bt_gatt_server_unref(device->server);
+	device->server = NULL;
+}
+
 static void attio_cleanup(struct btd_device *device)
 {
 	if (device->att_disconn_id)
@@ -528,6 +539,7 @@ static void attio_cleanup(struct btd_device *device)
 	}
 
 	gatt_client_cleanup(device);
+	gatt_server_cleanup(device);
 
 	if (device->att) {
 		bt_att_unref(device->att);
@@ -538,14 +550,6 @@ static void attio_cleanup(struct btd_device *device)
 		GAttrib *attrib = device->attrib;
 
 		device->attrib = NULL;
-
-		if (device->attachid) {
-			guint attachid = device->attachid;
-
-			device->attachid = 0;
-			attrib_channel_detach(attrib, attachid);
-		}
-
 		g_attrib_cancel_all(attrib);
 		g_attrib_unref(attrib);
 	}
@@ -3950,6 +3954,20 @@ static void gatt_client_init(struct btd_device *device)
 	}
 }
 
+static void gatt_server_init(struct btd_device *device, struct gatt_db *db)
+{
+	if (!db) {
+		error("No local GATT database exists for this adapter");
+		return;
+	}
+
+	gatt_server_cleanup(device);
+
+	device->server = bt_gatt_server_new(db, device->att, device->att_mtu);
+	if (!device->server)
+		error("Failed to initialize bt_gatt_server");
+}
+
 bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 {
 	GError *gerr = NULL;
@@ -3957,6 +3975,7 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	BtIOSecLevel sec_level;
 	uint16_t mtu;
 	uint16_t cid;
+	struct btd_gatt_database *database;
 
 	bt_io_get(io, &gerr, BT_IO_OPT_SEC_LEVEL, &sec_level,
 						BT_IO_OPT_IMTU, &mtu,
@@ -3989,13 +4008,6 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 		return false;
 	}
 
-	dev->attachid = attrib_channel_attach(attrib);
-	if (dev->attachid == 0) {
-		g_attrib_unref(attrib);
-		error("Attribute server attach failure!");
-		return false;
-	}
-
 	dev->attrib = attrib;
 	dev->att = g_attrib_get_att(attrib);
 
@@ -4005,7 +4017,10 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 						att_disconnected_cb, dev, NULL);
 	bt_att_set_close_on_unref(dev->att, true);
 
+	database = btd_adapter_get_database(dev->adapter);
+
 	gatt_client_init(dev);
+	gatt_server_init(dev, btd_gatt_database_get_db(database));
 
 	/*
 	 * Remove the device from the connect_list and give the passive

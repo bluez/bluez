@@ -235,8 +235,6 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (!device)
 		return;
 
-	/* TODO: create bt_gatt_server instance */
-
 	device_attach_att(device, io);
 }
 
