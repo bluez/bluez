@@ -636,7 +636,7 @@ static int register_nap_server(void)
 		destroy_nap_device();
 		error("%s", gerr->message);
 		g_error_free(gerr);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
