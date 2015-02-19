@@ -495,7 +495,7 @@ static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
-	len -= offset;
+	len = 2 - offset;
 	value = len ? &ccc->value[offset] : NULL;
 
 done:
@@ -517,7 +517,7 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 
 	handle = gatt_db_attribute_get_handle(attrib);
 
-	DBG("CCC read called for handle: 0x%04x", handle);
+	DBG("CCC write called for handle: 0x%04x", handle);
 
 	if (!value || len != 2) {
 		ecode = BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
