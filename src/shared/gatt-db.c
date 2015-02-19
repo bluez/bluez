@@ -1551,6 +1551,10 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 		return true;
 	}
 
+	/* Nothing to write just skip */
+	if (len == 0)
+		goto done;
+
 	/* For values stored in db allocate on demand */
 	if (!attrib->value || offset >= attrib->value_len ||
 				len > (unsigned) (attrib->value_len - offset)) {
@@ -1571,6 +1575,7 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 
 	memcpy(&attrib->value[offset], value, len);
 
+done:
 	func(attrib, 0, user_data);
 
 	return true;
