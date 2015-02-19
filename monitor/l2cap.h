@@ -29,6 +29,7 @@ struct l2cap_frame {
 	uint16_t index;
 	bool in;
 	uint16_t handle;
+	uint8_t ident;
 	uint16_t cid;
 	uint16_t psm;
 	uint16_t chan;
@@ -44,6 +45,7 @@ static inline void l2cap_frame_pull(struct l2cap_frame *frame,
 		frame->index   = source->index;
 		frame->in      = source->in;
 		frame->handle  = source->handle;
+		frame->ident   = source->ident;
 		frame->cid     = source->cid;
 		frame->psm     = source->psm;
 		frame->chan    = source->chan;
