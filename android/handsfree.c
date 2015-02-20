@@ -2304,6 +2304,9 @@ static void phone_state_incoming(struct hf_device *dev, int num_active,
 	if (dev->setup_state == HAL_HANDSFREE_CALL_STATE_INCOMING) {
 		if (dev->num_active != num_active ||
 						dev->num_held != num_held) {
+			if (dev->num_active == num_held &&
+						dev->num_held == num_active)
+				return;
 			/*
 			 * calls changed while waiting call ie. due to
 			 * termination of active call
@@ -2380,7 +2383,7 @@ static void phone_state_idle(struct hf_device *dev, int num_active,
 				connect_audio(dev);
 		}
 
-		if (num_held > dev->num_held)
+		if (num_held >= dev->num_held && num_held != 0)
 			update_indicator(dev, IND_CALLHELD, 1);
 
 		update_indicator(dev, IND_CALLSETUP, 0);
