@@ -2403,6 +2403,10 @@ static void phone_state_idle(struct hf_device *dev, int num_active,
 					num_held ? (num_active ? 1 : 2) : 0);
 
 		update_indicator(dev, IND_CALLSETUP, 0);
+
+		/* disconnect SCO if we hang up while dialing or alerting */
+		if (num_active == 0 && num_held == 0)
+			disconnect_sco(dev);
 		break;
 	case HAL_HANDSFREE_CALL_STATE_IDLE:
 		if (dev->call_hanging_up) {
