@@ -2129,10 +2129,6 @@ unsigned int bt_gatt_client_write_without_response(
 	if (!client)
 		return 0;
 
-	/* TODO: Support this once bt_att_send supports signed writes. */
-	if (signed_write)
-		return 0;
-
 	req = request_create(client);
 	if (!req)
 		return 0;
@@ -2140,9 +2136,10 @@ unsigned int bt_gatt_client_write_without_response(
 	put_le16(value_handle, pdu);
 	memcpy(pdu + 2, value, length);
 
-	req->att_id = bt_att_send(client->att, BT_ATT_OP_WRITE_CMD,
-							pdu, sizeof(pdu),
-							NULL, NULL, NULL);
+	req->att_id = bt_att_send(client->att,
+				signed_write ?  BT_ATT_OP_SIGNED_WRITE_CMD :
+				BT_ATT_OP_WRITE_CMD, pdu, sizeof(pdu),
+				NULL, NULL, NULL);
 	if (!req->att_id) {
 		request_unref(req);
 		return 0;
