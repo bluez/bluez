@@ -3725,7 +3725,7 @@ struct avdtp_local_sep *avdtp_register_sep(struct btd_adapter *adapter,
 	sep->cfm = cfm;
 	sep->user_data = user_data;
 	sep->server = server;
-	sep->delay_reporting = TRUE;
+	sep->delay_reporting = delay_reporting;
 
 	DBG("SEP %p registered: type:%d codec:%d seid:%d", sep,
 			sep->info.type, sep->codec, sep->info.seid);
