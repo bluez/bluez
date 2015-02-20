@@ -44,6 +44,7 @@
 #include "src/service.h"
 #include "src/error.h"
 #include "src/dbus-common.h"
+#include "src/shared/queue.h"
 
 #include "avdtp.h"
 #include "media.h"

@@ -1257,11 +1257,10 @@ static void a2dp_clean_lsep(struct a2dp_sep *sep)
 	struct avdtp_local_sep *lsep = sep->lsep;
 	struct avdtp_server *server = sep->avdtp_server;
 
-	queue_remove(server->seps, lsep);
+	avdtp_unregister_sep(server->seps, lsep);
+
 	if (queue_isempty(server->seps))
 		avdtp_server_destroy(server);
-
-	avdtp_unregister_sep(lsep);
 }
 
 static void a2dp_unregister_sep(struct a2dp_sep *sep)
@@ -1421,7 +1420,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 			return NULL;
 	}
 
-	sep->lsep = avdtp_register_sep(avdtp_server, type,
+	sep->lsep = avdtp_register_sep(avdtp_server->seps, type,
 					AVDTP_MEDIA_TYPE_AUDIO, codec,
 					delay_reporting, &endpoint_ind,
 					&cfm, sep);

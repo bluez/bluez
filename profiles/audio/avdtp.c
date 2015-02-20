@@ -3598,8 +3598,7 @@ void avdtp_accept(struct avdtp *session)
 	session->stream_setup = TRUE;
 }
 
-struct avdtp_local_sep *avdtp_register_sep(struct avdtp_server *server,
-						uint8_t type,
+struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,
 						uint8_t media_type,
 						uint8_t codec_type,
 						gboolean delay_reporting,
@@ -3628,7 +3627,7 @@ struct avdtp_local_sep *avdtp_register_sep(struct avdtp_server *server,
 	DBG("SEP %p registered: type:%d codec:%d seid:%d", sep,
 			sep->info.type, sep->codec, sep->info.seid);
 
-	if (!queue_push_tail(server->seps, sep)) {
+	if (!queue_push_tail(lseps, sep)) {
 		g_free(sep);
 		return NULL;
 	}
@@ -3636,7 +3635,7 @@ struct avdtp_local_sep *avdtp_register_sep(struct avdtp_server *server,
 	return sep;
 }
 
-int avdtp_unregister_sep(struct avdtp_local_sep *sep)
+int avdtp_unregister_sep(struct queue *lseps, struct avdtp_local_sep *sep)
 {
 	if (!sep)
 		return -EINVAL;
@@ -3648,6 +3647,7 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep)
 			sep->info.type, sep->codec, sep->info.seid);
 
 	util_clear_uid(&seids, sep->info.seid);
+	queue_remove(lseps, sep);
 	g_free(sep);
 
 	return 0;
