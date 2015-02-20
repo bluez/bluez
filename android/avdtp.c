@@ -42,6 +42,7 @@
 #include "lib/bluetooth.h"
 #include "src/log.h"
 #include "src/shared/util.h"
+#include "src/shared/queue.h"
 #include "avdtp.h"
 #include "../profiles/audio/a2dp-codecs.h"
 
@@ -383,6 +384,7 @@ struct avdtp {
 	guint io_id;
 
 	GSList *seps; /* Elements of type struct avdtp_remote_sep * */
+	struct queue *lseps; /* Elements of type struct avdtp_local_sep * */
 
 	GSList *streams; /* Elements of type struct avdtp_stream * */
 
@@ -405,8 +407,6 @@ struct avdtp {
 
 	bool shutdown;
 };
-
-static GSList *lseps = NULL;
 
 static int send_request(struct avdtp *session, gboolean priority,
 			struct avdtp_stream *stream, uint8_t signal_id,
@@ -993,6 +993,9 @@ static void avdtp_free(void *data)
 	g_slist_free_full(session->seps, sep_free);
 	g_slist_free_full(session->disconnect, g_free);
 
+	/* Free copy of the SEP list */
+	session->lseps = NULL;
+
 	g_free(session->buf);
 
 	g_free(session);
@@ -1050,18 +1053,18 @@ struct avdtp *avdtp_ref(struct avdtp *session)
 	return session;
 }
 
-static struct avdtp_local_sep *find_local_sep_by_seid(uint8_t seid)
+static bool match_by_seid(const void *data, const void *user_data)
 {
-	GSList *l;
+	const struct avdtp_local_sep *sep = data;
+	uint8_t seid = PTR_TO_UINT(user_data);
 
-	for (l = lseps; l != NULL; l = g_slist_next(l)) {
-		struct avdtp_local_sep *sep = l->data;
+	return sep->info.seid == seid;
+}
 
-		if (sep->info.seid == seid)
-			return sep;
-	}
-
-	return NULL;
+static struct avdtp_local_sep *find_local_sep_by_seid(struct avdtp *session,
+								uint8_t seid)
+{
+	return queue_find(session->lseps, match_by_seid, INT_TO_PTR(seid));
 }
 
 struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
@@ -1161,15 +1164,23 @@ static gboolean avdtp_unknown_cmd(struct avdtp *session, uint8_t transaction,
 							signal_id, NULL, 0);
 }
 
+static void copy_seps(void *data, void *user_data)
+{
+	struct avdtp_local_sep *sep = data;
+	struct seid_info **p = user_data;
+
+	memcpy(*p, &sep->info, sizeof(struct seid_info));
+	*p = *p + 1;
+}
+
 static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 							void *buf, int size)
 {
-	GSList *l;
-	unsigned int rsp_size, sep_count, i;
-	struct seid_info *seps;
+	unsigned int rsp_size, sep_count;
+	struct seid_info *seps, *p;
 	gboolean ret;
 
-	sep_count = g_slist_length(lseps);
+	sep_count = queue_length(session->lseps);
 
 	if (sep_count == 0) {
 		uint8_t err = AVDTP_NOT_SUPPORTED_COMMAND;
@@ -1180,12 +1191,9 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 	rsp_size = sep_count * sizeof(struct seid_info);
 
 	seps = g_new0(struct seid_info, sep_count);
+	p = seps;
 
-	for (l = lseps, i = 0; l != NULL; l = l->next, i++) {
-		struct avdtp_local_sep *sep = l->data;
-
-		memcpy(&seps[i], &sep->info, sizeof(struct seid_info));
-	}
+	queue_foreach(session->lseps, copy_seps, &p);
 
 	ret = avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
 				AVDTP_DISCOVER, seps, rsp_size);
@@ -1211,7 +1219,7 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
 		goto failed;
 	}
 
-	sep = find_local_sep_by_seid(req->acp_seid);
+	sep = find_local_sep_by_seid(session, req->acp_seid);
 	if (!sep) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
@@ -1293,7 +1301,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 		return FALSE;
 	}
 
-	sep = find_local_sep_by_seid(req->acp_seid);
+	sep = find_local_sep_by_seid(session, req->acp_seid);
 	if (!sep) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
@@ -1381,7 +1389,7 @@ static gboolean avdtp_getconf_cmd(struct avdtp *session, uint8_t transaction,
 
 	memset(buf, 0, sizeof(buf));
 
-	sep = find_local_sep_by_seid(req->acp_seid);
+	sep = find_local_sep_by_seid(session, req->acp_seid);
 	if (!sep) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
@@ -1497,7 +1505,7 @@ static gboolean avdtp_open_cmd(struct avdtp *session, uint8_t transaction,
 		return FALSE;
 	}
 
-	sep = find_local_sep_by_seid(req->acp_seid);
+	sep = find_local_sep_by_seid(session, req->acp_seid);
 	if (!sep) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
@@ -1557,7 +1565,7 @@ static gboolean avdtp_start_cmd(struct avdtp *session, uint8_t transaction,
 	for (i = 0; i < seid_count; i++, seid++) {
 		failed_seid = seid->seid;
 
-		sep = find_local_sep_by_seid(req->first_seid.seid);
+		sep = find_local_sep_by_seid(session, req->first_seid.seid);
 		if (!sep || !sep->stream) {
 			err = AVDTP_BAD_ACP_SEID;
 			goto failed;
@@ -1607,7 +1615,7 @@ static gboolean avdtp_close_cmd(struct avdtp *session, uint8_t transaction,
 		return FALSE;
 	}
 
-	sep = find_local_sep_by_seid(req->acp_seid);
+	sep = find_local_sep_by_seid(session, req->acp_seid);
 	if (!sep || !sep->stream) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
@@ -1668,7 +1676,7 @@ static gboolean avdtp_suspend_cmd(struct avdtp *session, uint8_t transaction,
 	for (i = 0; i < seid_count; i++, seid++) {
 		failed_seid = seid->seid;
 
-		sep = find_local_sep_by_seid(req->first_seid.seid);
+		sep = find_local_sep_by_seid(session, req->first_seid.seid);
 		if (!sep || !sep->stream) {
 			err = AVDTP_BAD_ACP_SEID;
 			goto failed;
@@ -1715,7 +1723,7 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, uint8_t transaction,
 		return FALSE;
 	}
 
-	sep = find_local_sep_by_seid(req->acp_seid);
+	sep = find_local_sep_by_seid(session, req->acp_seid);
 	if (!sep || !sep->stream)
 		return TRUE;
 
@@ -1753,7 +1761,7 @@ static gboolean avdtp_delayreport_cmd(struct avdtp *session,
 		return FALSE;
 	}
 
-	sep = find_local_sep_by_seid(req->acp_seid);
+	sep = find_local_sep_by_seid(session, req->acp_seid);
 	if (!sep || !sep->stream) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
@@ -2105,11 +2113,15 @@ static int set_priority(int fd, int priority)
 	return err;
 }
 
-struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
+struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version,
+							struct queue *lseps)
 {
 	struct avdtp *session;
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	int new_fd;
+
+	if (!lseps)
+		return NULL;
 
 	new_fd = dup(fd);
 	if (new_fd < 0) {
@@ -2137,6 +2149,8 @@ struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version)
 	session->io_id = g_io_add_watch_full(session->io, G_PRIORITY_LOW, cond,
 						(GIOFunc) session_cb, session,
 						NULL);
+
+	session->lseps = lseps;
 
 	return avdtp_ref(session);
 }
@@ -3344,7 +3358,8 @@ int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 							&req, sizeof(req));
 }
 
-struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
+struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,
+						uint8_t media_type,
 						uint8_t codec_type,
 						gboolean delay_reporting,
 						struct avdtp_sep_ind *ind,
@@ -3357,7 +3372,7 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 	if (!seid)
 		return NULL;
 
-	if (g_slist_length(lseps) > MAX_SEID)
+	if (queue_length(lseps) > MAX_SEID)
 		return NULL;
 
 	sep = g_new0(struct avdtp_local_sep, 1);
@@ -3374,7 +3389,11 @@ struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 
 	DBG("SEP %p registered: type:%d codec:%d seid:%d", sep,
 			sep->info.type, sep->codec, sep->info.seid);
-	lseps = g_slist_append(lseps, sep);
+
+	if (!queue_push_tail(lseps, sep)) {
+		g_free(sep);
+		return NULL;
+	}
 
 	return sep;
 }
@@ -3386,12 +3405,10 @@ void avdtp_sep_set_vendor_codec(struct avdtp_local_sep *sep, uint32_t vendor_id,
 	sep->vndcodec_codec = codec_id;
 }
 
-int avdtp_unregister_sep(struct avdtp_local_sep *sep)
+int avdtp_unregister_sep(struct queue *lseps, struct avdtp_local_sep *sep)
 {
 	if (!sep)
 		return -EINVAL;
-
-	lseps = g_slist_remove(lseps, sep);
 
 	if (sep->stream)
 		release_stream(sep->stream, sep->stream->session);
@@ -3400,6 +3417,7 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep)
 			sep->info.type, sep->codec, sep->info.seid);
 
 	util_clear_uid(&seids, sep->info.seid);
+	queue_remove(lseps, sep);
 	g_free(sep);
 
 	return 0;

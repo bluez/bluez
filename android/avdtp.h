@@ -205,7 +205,8 @@ typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
 					struct avdtp_error *err, void *user_data);
 typedef void (*avdtp_disconnect_cb_t) (void *user_data);
 
-struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
+struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version,
+							struct queue *lseps);
 
 unsigned int avdtp_add_disconnect_cb(struct avdtp *session,
 						avdtp_disconnect_cb_t cb,
@@ -265,7 +266,8 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 							uint16_t delay);
 
-struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
+struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,
+						uint8_t media_type,
 						uint8_t codec_type,
 						gboolean delay_reporting,
 						struct avdtp_sep_ind *ind,
@@ -278,7 +280,7 @@ void avdtp_sep_set_vendor_codec(struct avdtp_local_sep *sep, uint32_t vendor_id,
 struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
 						struct avdtp_local_sep *lsep);
 
-int avdtp_unregister_sep(struct avdtp_local_sep *sep);
+int avdtp_unregister_sep(struct queue *lseps, struct avdtp_local_sep *sep);
 
 avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep);
 

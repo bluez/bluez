@@ -103,6 +103,7 @@ android_avdtptest_SOURCES = android/avdtptest.c \
 				src/log.h src/log.c \
 				btio/btio.h btio/btio.c \
 				src/shared/util.h src/shared/util.c \
+				src/shared/queue.h src/shared/queue.c \
 				android/avdtp.h android/avdtp.c
 android_avdtptest_CFLAGS = $(AM_CFLAGS)
 android_avdtptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@

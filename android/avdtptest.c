@@ -40,6 +40,7 @@
 
 #include "src/shared/util.h"
 #include "btio/btio.h"
+#include "src/shared/queue.h"
 #include "avdtp.h"
 
 static GMainLoop *mainloop = NULL;
@@ -57,6 +58,7 @@ static uint16_t version = 0x0103;
 static guint media_player = 0;
 static guint media_recorder = 0;
 static guint idle_id = 0;
+static struct queue *lseps = NULL;
 
 static bool fragment = false;
 
@@ -411,7 +413,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		return;
 	}
 
-	avdtp = avdtp_new(fd, imtu, omtu, version);
+	avdtp = avdtp_new(fd, imtu, omtu, version, lseps);
 	if (!avdtp) {
 		printf("Failed to create avdtp instance\n");
 		g_main_loop_quit(mainloop);
@@ -864,12 +866,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	local_sep = avdtp_register_sep(dev_role, AVDTP_MEDIA_TYPE_AUDIO,
+	local_sep = avdtp_register_sep(lseps, dev_role, AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, TRUE, &sep_ind, &sep_cfm, NULL);
 	if (!local_sep) {
 		printf("Failed to register sep\n");
 		exit(0);
 	}
+
+	queue_push_tail(lseps, local_sep);
 
 	if (!bacmp(&dst, BDADDR_ANY)) {
 		printf("Listening...\n");
@@ -888,6 +892,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(mainloop);
 
 	printf("Done\n");
+
+	queue_destroy(lseps, NULL);
 
 	avdtp_unref(avdtp);
 	avdtp = NULL;
