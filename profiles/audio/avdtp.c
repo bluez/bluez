@@ -341,7 +341,6 @@ struct avdtp_local_sep {
 	struct avdtp_sep_ind *ind;
 	struct avdtp_sep_cfm *cfm;
 	void *user_data;
-	struct avdtp_server *server;
 };
 
 struct stream_callback {
@@ -3624,7 +3623,6 @@ struct avdtp_local_sep *avdtp_register_sep(struct avdtp_server *server,
 	sep->ind = ind;
 	sep->cfm = cfm;
 	sep->user_data = user_data;
-	sep->server = server;
 	sep->delay_reporting = delay_reporting;
 
 	DBG("SEP %p registered: type:%d codec:%d seid:%d", sep,
@@ -3713,11 +3711,6 @@ struct btd_adapter *avdtp_get_adapter(struct avdtp *session)
 struct btd_device *avdtp_get_device(struct avdtp *session)
 {
 	return session->device;
-}
-
-struct avdtp_server *avdtp_get_server(struct avdtp_local_sep *lsep)
-{
-	return lsep->server;
 }
 
 gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)

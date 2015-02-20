@@ -65,6 +65,7 @@
 
 struct a2dp_sep {
 	struct a2dp_server *server;
+	struct avdtp_server *avdtp_server;
 	struct a2dp_endpoint *endpoint;
 	uint8_t type;
 	uint8_t codec;
@@ -1251,10 +1252,10 @@ static void avdtp_server_destroy(struct avdtp_server *server)
 	g_free(server);
 }
 
-static void a2dp_clean_lsep(struct avdtp_local_sep *lsep)
+static void a2dp_clean_lsep(struct a2dp_sep *sep)
 {
-	struct avdtp_server *server = avdtp_get_server(lsep);
-
+	struct avdtp_local_sep *lsep = sep->lsep;
+	struct avdtp_server *server = sep->avdtp_server;
 
 	queue_remove(server->seps, lsep);
 	if (queue_isempty(server->seps))
@@ -1270,7 +1271,7 @@ static void a2dp_unregister_sep(struct a2dp_sep *sep)
 		sep->endpoint = NULL;
 	}
 
-	a2dp_clean_lsep(sep->lsep);
+	a2dp_clean_lsep(sep);
 
 	g_free(sep);
 }
@@ -1433,6 +1434,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	}
 
 	sep->server = server;
+	sep->avdtp_server = avdtp_server;
 	sep->endpoint = endpoint;
 	sep->codec = codec;
 	sep->type = type;
@@ -1454,7 +1456,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	record = a2dp_record(type);
 	if (!record) {
 		error("Unable to allocate new service record");
-		a2dp_clean_lsep(sep->lsep);
+		a2dp_clean_lsep(sep);
 		g_free(sep);
 		if (err)
 			*err = -EINVAL;
@@ -1464,7 +1466,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	if (adapter_service_add(server->adapter, record) < 0) {
 		error("Unable to register A2DP service record");
 		sdp_record_free(record);
-		a2dp_clean_lsep(sep->lsep);
+		a2dp_clean_lsep(sep);
 		g_free(sep);
 		if (err)
 			*err = -EINVAL;
