@@ -46,6 +46,7 @@ typedef void (*bt_att_debug_func_t)(const char *str, void *user_data);
 typedef void (*bt_att_timeout_func_t)(unsigned int id, uint8_t opcode,
 							void *user_data);
 typedef void (*bt_att_disconnect_func_t)(int err, void *user_data);
+typedef bool (*bt_att_counter_func_t)(uint32_t *sign_cnt, void *user_data);
 
 bool bt_att_set_debug(struct bt_att *att, bt_att_debug_func_t callback,
 				void *user_data, bt_att_destroy_func_t destroy);
@@ -84,3 +85,6 @@ bool bt_att_unregister_all(struct bt_att *att);
 
 int bt_att_get_sec_level(struct bt_att *att);
 bool bt_att_set_sec_level(struct bt_att *att, int level);
+
+bool bt_att_set_local_key(struct bt_att *att, uint8_t sign_key[16],
+			bt_att_counter_func_t func, void *user_data);
