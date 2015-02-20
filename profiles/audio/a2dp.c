@@ -45,6 +45,7 @@
 #include "src/service.h"
 #include "src/log.h"
 #include "src/sdpd.h"
+#include "src/shared/queue.h"
 
 #include "btio/btio.h"
 
@@ -117,7 +118,7 @@ struct a2dp_server {
 struct avdtp_server {
 	struct btd_adapter *adapter;
 	GIOChannel *io;
-	GSList *seps;
+	struct queue *seps;
 	GSList *sessions;
 };
 
@@ -1239,8 +1240,8 @@ static void a2dp_clean_lsep(struct avdtp_local_sep *lsep)
 	struct avdtp_server *server = avdtp_get_server(lsep);
 
 
-	server->seps = g_slist_remove(server->seps, lsep);
-	if (!server->seps)
+	queue_remove(server->seps, lsep);
+	if (queue_isempty(server->seps))
 		avdtp_server_destroy(server);
 
 	avdtp_unregister_sep(lsep);
