@@ -1029,7 +1029,7 @@ static void cmd_set_sec_level(struct client *cli, char *cmd_str)
 		return;
 	}
 
-	if (bt_gatt_client_set_sec_level(cli->gatt, level) < 0)
+	if (!bt_gatt_client_set_sec_level(cli->gatt, level))
 		printf("Could not set sec level\n");
 	else
 		printf("Setting security level %d success\n", level);
