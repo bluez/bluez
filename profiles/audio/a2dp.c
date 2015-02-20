@@ -1212,6 +1212,22 @@ static struct avdtp_server *find_avdtp_server(GSList *list,
 	return NULL;
 }
 
+struct avdtp *a2dp_avdtp_get(struct btd_device *device)
+{
+	struct avdtp_server *server;
+	struct avdtp *session;
+
+	server = find_avdtp_server(avdtp_servers, device_get_adapter(device));
+	if (server == NULL)
+		return NULL;
+
+	session = avdtp_new(server, server->sessions, NULL, device);
+	if (!session)
+		return NULL;
+
+	return avdtp_ref(session);
+}
+
 static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter)
 {
 	struct a2dp_server *server;

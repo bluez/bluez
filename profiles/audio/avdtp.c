@@ -427,8 +427,6 @@ struct avdtp {
 	gboolean stream_setup;
 };
 
-static GSList *servers = NULL;
-
 static GSList *state_callbacks = NULL;
 
 static int send_request(struct avdtp *session, gboolean priority,
@@ -446,18 +444,6 @@ static int process_queue(struct avdtp *session);
 static void avdtp_sep_set_state(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				avdtp_state_t state);
-
-static struct avdtp_server *find_server(GSList *list, struct btd_adapter *a)
-{
-	for (; list; list = list->next) {
-		struct avdtp_server *server = list->data;
-
-		if (server->adapter == a)
-			return server;
-	}
-
-	return NULL;
-}
 
 static const char *avdtp_statestr(avdtp_state_t state)
 {
@@ -2311,46 +2297,6 @@ static uint16_t get_version(struct avdtp *session)
 	return ver;
 }
 
-static struct avdtp *avdtp_get_internal(struct btd_device *device)
-{
-	struct avdtp_server *server;
-	struct avdtp *session;
-
-	server = find_server(servers, device_get_adapter(device));
-	if (server == NULL)
-		return NULL;
-
-	session = find_session(server->sessions, device);
-	if (session)
-		return session;
-
-	session = g_new0(struct avdtp, 1);
-
-	session->server = server;
-	session->device = btd_device_ref(device);
-	/* We don't use avdtp_set_state() here since this isn't a state change
-	 * but just setting of the initial state */
-	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
-
-	session->version = get_version(session);
-
-	server->sessions = g_slist_append(server->sessions, session);
-
-	return session;
-}
-
-struct avdtp *avdtp_get(struct btd_device *device)
-{
-	struct avdtp *session;
-
-	session = avdtp_get_internal(device);
-
-	if (!session)
-		return NULL;
-
-	return avdtp_ref(session);
-}
-
 static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct avdtp *session = user_data;
@@ -2450,6 +2396,9 @@ struct avdtp *avdtp_new(struct avdtp_server *server, GSList *sessions,
 	session->version = get_version(session);
 
 	sessions = g_slist_append(sessions, session);
+
+	if (!chan)
+		return session;
 
 	/* This state (ie, session is already *connecting*) happens when the
 	 * device initiates a connect (really a config'd L2CAP channel) even
