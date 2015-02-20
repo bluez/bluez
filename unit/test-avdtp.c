@@ -264,10 +264,16 @@ static struct context *create_context(uint16_t version, gconstpointer data)
 	return context_new(version, 672, 672, data);
 }
 
-static void execute_context(struct context *context)
+static void unregister_sep(void *data)
 {
-	g_main_loop_run(context->main_loop);
+	struct avdtp_local_sep *sep = data;
 
+	/* Removed from the queue by caller */
+	avdtp_unregister_sep(NULL, sep);
+}
+
+static void destroy_context(struct context *context)
+{
 	if (context->source > 0)
 		g_source_remove(context->source);
 	avdtp_unref(context->session);
@@ -275,7 +281,16 @@ static void execute_context(struct context *context)
 	g_main_loop_unref(context->main_loop);
 
 	test_free(context->data);
+	queue_destroy(context->lseps, unregister_sep);
+
 	g_free(context);
+}
+
+static void execute_context(struct context *context)
+{
+	g_main_loop_run(context->main_loop);
+
+	destroy_context(context);
 }
 
 static gboolean sep_getcap_ind(struct avdtp *session,
@@ -513,13 +528,11 @@ static void test_server(gconstpointer data)
 					AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, FALSE, &sep_ind, &sep_cfm,
 					context);
+	g_assert(sep);
 
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
-
-	avdtp_unregister_sep(context->lseps, sep);
-	queue_destroy(context->lseps, NULL);
 }
 
 static void test_server_1_3(gconstpointer data)
@@ -530,13 +543,11 @@ static void test_server_1_3(gconstpointer data)
 	sep = avdtp_register_sep(context->lseps, AVDTP_SEP_TYPE_SOURCE,
 					AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, TRUE, &sep_ind, NULL, context);
+	g_assert(sep);
 
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
-
-	avdtp_unregister_sep(context->lseps, sep);
-	queue_destroy(context->lseps, NULL);
 }
 
 static void test_server_1_3_sink(gconstpointer data)
@@ -547,13 +558,11 @@ static void test_server_1_3_sink(gconstpointer data)
 	sep = avdtp_register_sep(context->lseps, AVDTP_SEP_TYPE_SINK,
 					AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, TRUE, &sep_ind, NULL, context);
+	g_assert(sep);
 
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
-
-	avdtp_unregister_sep(context->lseps, sep);
-	queue_destroy(context->lseps, NULL);
 }
 
 static void test_server_0_sep(gconstpointer data)
@@ -563,14 +572,6 @@ static void test_server_0_sep(gconstpointer data)
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
-}
-
-static void unregister_sep(void *data)
-{
-	struct avdtp_local_sep *sep = data;
-
-	/* Removed from the queue by caller */
-	avdtp_unregister_sep(NULL, sep);
 }
 
 static void test_server_seid(gconstpointer data)
@@ -594,8 +595,7 @@ static void test_server_seid(gconstpointer data)
 						context);
 	g_assert(!sep);
 
-	/* Remove all SEPs */
-	queue_destroy(context->lseps, unregister_sep);
+	destroy_context(context);
 }
 
 static void test_server_seid_duplicate(gconstpointer data)
@@ -630,9 +630,6 @@ static void test_server_seid_duplicate(gconstpointer data)
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
-
-	/* Remove all SEPs */
-	queue_destroy(context->lseps, unregister_sep);
 }
 
 static gboolean sep_getcap_ind_frg(struct avdtp *session,
@@ -684,13 +681,11 @@ static void test_server_frg(gconstpointer data)
 						AVDTP_MEDIA_TYPE_AUDIO,
 						0x00, TRUE, &sep_ind_frg,
 						NULL, context);
+	g_assert(sep);
 
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
-
-	avdtp_unregister_sep(context->lseps, sep);
-	queue_destroy(context->lseps, NULL);
 }
 
 static void discover_cb(struct avdtp *session, GSList *seps,
@@ -774,9 +769,6 @@ static void test_client(gconstpointer data)
 	avdtp_discover(context->session, discover_cb, context);
 
 	execute_context(context);
-
-	avdtp_unregister_sep(context->lseps, sep);
-	queue_destroy(context->lseps, NULL);
 }
 
 static void test_client_1_3(gconstpointer data)
@@ -793,9 +785,6 @@ static void test_client_1_3(gconstpointer data)
 	avdtp_discover(context->session, discover_cb, context);
 
 	execute_context(context);
-
-	avdtp_unregister_sep(context->lseps, sep);
-	queue_destroy(context->lseps, NULL);
 }
 
 static void test_client_frg(gconstpointer data)
@@ -812,9 +801,6 @@ static void test_client_frg(gconstpointer data)
 	avdtp_discover(context->session, discover_cb, context);
 
 	execute_context(context);
-
-	avdtp_unregister_sep(context->lseps, sep);
-	queue_destroy(context->lseps, NULL);
 }
 
 int main(int argc, char *argv[])
