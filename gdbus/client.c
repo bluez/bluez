@@ -1107,6 +1107,9 @@ static void get_managed_objects(GDBusClient *client)
 {
 	DBusMessage *msg;
 
+	if (!client->connected)
+		return;
+
 	if (!client->proxy_added && !client->proxy_removed) {
 		refresh_properties(client);
 		return;
@@ -1142,12 +1145,12 @@ static void service_connect(DBusConnection *conn, void *user_data)
 
 	g_dbus_client_ref(client);
 
+	client->connected = TRUE;
+
 	if (client->connect_func)
 		client->connect_func(conn, client->connect_data);
 
 	get_managed_objects(client);
-
-	client->connected = TRUE;
 
 	g_dbus_client_unref(client);
 }
@@ -1156,13 +1159,13 @@ static void service_disconnect(DBusConnection *conn, void *user_data)
 {
 	GDBusClient *client = user_data;
 
+	client->connected = FALSE;
+
 	g_list_free_full(client->proxy_list, proxy_free);
 	client->proxy_list = NULL;
 
-	if (client->disconn_func) {
+	if (client->disconn_func)
 		client->disconn_func(conn, client->disconn_data);
-		client->connected = FALSE;
-	}
 }
 
 static DBusHandlerResult message_filter(DBusConnection *connection,
