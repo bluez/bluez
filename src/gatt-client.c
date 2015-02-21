@@ -292,7 +292,7 @@ static DBusMessage *create_gatt_dbus_error(DBusMessage *msg, uint8_t att_ecode)
 	case 0:
 		return btd_error_failed(msg, "Operation failed");
 	default:
-		return g_dbus_create_error(msg, ERROR_INTERFACE,
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"Operation failed with ATT error: 0x%02x",
 				att_ecode);
 	}
