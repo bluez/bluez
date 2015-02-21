@@ -1573,8 +1573,9 @@ static void read_ext_props_cb(bool success, uint8_t att_ecode,
 	chrc->ext_props = get_le16(value);
 	if (chrc->ext_props)
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-						service->path,
-						GATT_SERVICE_IFACE, "Flags");
+						chrc->path,
+						GATT_CHARACTERISTIC_IFACE,
+						"Flags");
 
 	queue_remove(service->pending_ext_props, chrc);
 
