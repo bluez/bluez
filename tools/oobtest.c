@@ -53,14 +53,48 @@ static void new_link_key_event(uint16_t index, uint16_t len,
 					const void *param, void *user_data)
 {
 	const struct mgmt_ev_new_link_key *ev = param;
+	const char *type;
 	char str[18];
 	int i;
 
 	ba2str(&ev->key.addr.bdaddr, str);
 
+	switch (ev->key.type) {
+	case 0x00:
+		type = "Legacy";
+		break;
+	case 0x01:
+		type = "Local Unit";
+		break;
+	case 0x02:
+		type = "Remote Unit";
+		break;
+	case 0x03:
+		type = "Debug";
+		break;
+	case 0x04:
+		type = "Unauthenticated, P-192";
+		break;
+	case 0x05:
+		type = "Authenticated, P-192";
+		break;
+	case 0x06:
+		type = "Changed";
+		break;
+	case 0x07:
+		type = "Unauthenticated, P-256";
+		break;
+	case 0x08:
+		type = "Authenticated, P-256";
+		break;
+	default:
+		type = "<unknown>";
+		break;
+	}
+
 	printf("[Index %u]\n", index);
 	printf("  New link key: %s\n", str);
-	printf("  Type: %u\n", ev->key.type);
+	printf("  Type: %s (%u)\n", type, ev->key.type);
 	printf("  Key: ");
 	for (i = 0; i < 16; i++)
 		printf("%02x", ev->key.val[i]);
@@ -71,14 +105,42 @@ static void new_long_term_key_event(uint16_t index, uint16_t len,
 					const void *param, void *user_data)
 {
 	const struct mgmt_ev_new_long_term_key *ev = param;
+	const char *type;
 	char str[18];
 	int i;
 
 	ba2str(&ev->key.addr.bdaddr, str);
 
+	switch (ev->key.type) {
+	case 0x00:
+		if (ev->key.master)
+			type = "Unauthenticated, Master";
+		else
+			type = "Unauthenticated, Slave";
+		break;
+	case 0x01:
+		if (ev->key.master)
+			type = "Authenticated, Master";
+		else
+			type = "Authenticated, Slave";
+		break;
+	case 0x02:
+		type = "Unauthenticated, P-256";
+		break;
+	case 0x03:
+		type = "Authenticated, P-256";
+		break;
+	case 0x04:
+		type = "Debug";
+		break;
+	default:
+		type = "<unknown>";
+		break;
+	}
+
 	printf("[Index %u]\n", index);
 	printf("  New long term key: %s\n", str);
-	printf("  Type: %u\n", ev->key.type);
+	printf("  Type: %s (%u)\n", type, ev->key.type);
 	printf("  Key: ");
 	for (i = 0; i < 16; i++)
 		printf("%02x", ev->key.val[i]);
