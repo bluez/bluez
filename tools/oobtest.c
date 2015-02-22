@@ -41,6 +41,7 @@ static bool use_sc = false;
 static bool use_sconly = false;
 static bool use_legacy = false;
 static bool use_debug = false;
+static bool use_cross = false;
 static bool provide_p192 = false;
 static bool provide_p256 = false;
 
@@ -483,6 +484,13 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		return;
 	}
 
+	if (use_cross && (!(supported_settings & MGMT_SETTING_BREDR) ||
+				!(supported_settings & MGMT_SETTING_LE))) {
+		fprintf(stderr, "Dual-mode support is support missing\n");
+		mainloop_quit();
+		return;
+	}
+
 	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index,
 						pin_code_request_event,
 						UINT_TO_PTR(index), NULL);
@@ -508,7 +516,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
 							NULL, NULL, NULL);
 
-		val = 0x00;
+		val = use_cross ? 0x01 : 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
 							NULL, NULL, NULL);
 
@@ -520,7 +528,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
 							NULL, NULL, NULL);
 
-		val = 0x00;
+		val = use_cross ? 0x01 : 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
 							NULL, NULL, NULL);
 	} else {
@@ -624,6 +632,7 @@ static void usage(void)
 		"\t-O, --sconly           Use Secure Connections Only\n"
 		"\t-P, --legacy           Use Legacy Pairing\n"
 		"\t-D, --debug            Use Pairing debug keys\n"
+		"\t-C, --cross            Use cross-transport pairing\n"
 		"\t-1, --p192             Provide P-192 OOB data\n"
 		"\t-2, --p256             Provide P-256 OOB data\n"
 		"\t-h, --help             Show help options\n");
@@ -636,6 +645,8 @@ static const struct option main_options[] = {
 	{ "sconly",  no_argument,       NULL, 'O' },
 	{ "legacy",  no_argument,       NULL, 'P' },
 	{ "debug",   no_argument,       NULL, 'D' },
+	{ "cross",   no_argument,       NULL, 'C' },
+	{ "dual",    no_argument,       NULL, 'C' },
 	{ "p192",    no_argument,       NULL, '1' },
 	{ "p256",    no_argument,       NULL, '2' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -651,7 +662,8 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BLSOPD12vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "BLSOPDC12vh",
+						main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -673,6 +685,9 @@ int main(int argc ,char *argv[])
 			break;
 		case 'D':
 			use_debug = true;
+			break;
+		case 'C':
+			use_cross = true;
 			break;
 		case '1':
 			provide_p192 = true;
