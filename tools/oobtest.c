@@ -39,6 +39,7 @@ static bool use_bredr = false;
 static bool use_le = false;
 static bool use_sc = false;
 static bool use_sconly = false;
+static bool use_legacy = false;
 static bool use_debug = false;
 static bool provide_p192 = false;
 static bool provide_p256 = false;
@@ -48,6 +49,27 @@ static uint16_t index1 = MGMT_INDEX_NONE;
 static uint16_t index2 = MGMT_INDEX_NONE;
 static bdaddr_t bdaddr1;
 static bdaddr_t bdaddr2;
+
+static void pin_code_request_event(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_pin_code_request *ev = param;
+	struct mgmt_cp_pin_code_reply cp;
+	char str[18];
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("[Index %u]\n", index);
+	printf("  Pin code request: %s\n", str);
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
+	cp.pin_len = 4;
+	memset(cp.pin_code, '0', 4);
+
+	mgmt_reply(mgmt, MGMT_OP_PIN_CODE_REPLY, index, sizeof(cp), &cp,
+							NULL, NULL, NULL);
+}
 
 static void new_link_key_event(uint16_t index, uint16_t len,
 					const void *param, void *user_data)
@@ -431,7 +453,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		return;
 	}
 
-	if (use_bredr && !(supported_settings & MGMT_SETTING_SSP)) {
+	if (!use_legacy && !(supported_settings & MGMT_SETTING_SSP)) {
 		fprintf(stderr, "Secure Simple Pairing support missing\n");
 		mainloop_quit();
 		return;
@@ -461,6 +483,10 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		return;
 	}
 
+	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index,
+						pin_code_request_event,
+						UINT_TO_PTR(index), NULL);
+
 	mgmt_register(mgmt, MGMT_EV_NEW_LINK_KEY, index,
 						new_link_key_event,
 						UINT_TO_PTR(index), NULL);
@@ -486,7 +512,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
 							NULL, NULL, NULL);
 
-		val = 0x01;
+		val = use_legacy ? 0x00 : 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_SSP, index, 1, &val,
 							NULL, NULL, NULL);
 	} else if (use_le) {
@@ -596,6 +622,7 @@ static void usage(void)
 		"\t-L, --le               Use LE transport\n"
 		"\t-S, --sc               Use Secure Connections\n"
 		"\t-O, --sconly           Use Secure Connections Only\n"
+		"\t-P, --legacy           Use Legacy Pairing\n"
 		"\t-D, --debug            Use Pairing debug keys\n"
 		"\t-1, --p192             Provide P-192 OOB data\n"
 		"\t-2, --p256             Provide P-256 OOB data\n"
@@ -607,6 +634,7 @@ static const struct option main_options[] = {
 	{ "le",      no_argument,       NULL, 'L' },
 	{ "sc",      no_argument,       NULL, 'S' },
 	{ "sconly",  no_argument,       NULL, 'O' },
+	{ "legacy",  no_argument,       NULL, 'P' },
 	{ "debug",   no_argument,       NULL, 'D' },
 	{ "p192",    no_argument,       NULL, '1' },
 	{ "p256",    no_argument,       NULL, '2' },
@@ -623,7 +651,7 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BLSOD12vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "BLSOPD12vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -639,6 +667,9 @@ int main(int argc ,char *argv[])
 			break;
 		case 'O':
 			use_sconly = true;
+			break;
+		case 'P':
+			use_legacy = true;
 			break;
 		case 'D':
 			use_debug = true;
@@ -667,6 +698,11 @@ int main(int argc ,char *argv[])
 
 	if (use_bredr == use_le) {
 		fprintf(stderr, "Specify either --bredr or --le\n");
+		return EXIT_FAILURE;
+	}
+
+	if (use_legacy && !use_bredr) {
+		fprintf(stderr, "Specify --legacy with --bredr\n");
 		return EXIT_FAILURE;
 	}
 
