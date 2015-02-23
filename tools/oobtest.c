@@ -555,6 +555,13 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 			bacpy(&bdaddr1, &bdaddr);
 		else if (index == index2)
 			bacpy(&bdaddr2, &bdaddr);
+	} else {
+		bdaddr_t bdaddr;
+
+		bacpy(&bdaddr, BDADDR_ANY);
+
+		mgmt_send(mgmt, MGMT_OP_SET_STATIC_ADDRESS, index,
+						6, &bdaddr, NULL, NULL, NULL);
 	}
 
 	if (use_sc) {
