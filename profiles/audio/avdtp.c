@@ -2394,7 +2394,7 @@ struct avdtp *avdtp_new(struct avdtp_server *server, GSList *sessions,
 
 	session->version = get_version(session);
 
-	sessions = g_slist_append(sessions, session);
+	server->sessions = g_slist_append(server->sessions, session);
 
 	if (!chan)
 		return session;
