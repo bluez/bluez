@@ -523,14 +523,15 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 	member = dbus_message_get_member(message);
 	dbus_message_get_args(message, NULL, DBUS_TYPE_STRING, &arg, DBUS_TYPE_INVALID);
 
-	/* Sender is always the owner */
-	if (sender == NULL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	/* If sender != NULL it is always the owner */
 
 	for (current = listeners; current != NULL; current = current->next) {
 		data = current->data;
 
 		if (connection != data->connection)
+			continue;
+
+		if (!sender && data->owner)
 			continue;
 
 		if (data->owner && g_str_equal(sender, data->owner) == FALSE)
