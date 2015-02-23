@@ -284,6 +284,7 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pixit-spp.txt \
 				android/pixit-avdtp.txt \
 				android/pixit-gavdp.txt \
+				android/pixit-sdp.txt \
 				android/pts-rfcomm.txt \
 				android/pts-spp.txt \
 				android/pts-l2cap.txt \
@@ -310,3 +311,4 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pts-dis.txt \
 				android/pts-avdtp.txt \
 				android/pts-gavdp.txt
+				android/pts-sdp.txt

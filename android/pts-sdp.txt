@@ -1,0 +1,19 @@
+PTS test results for SDP
+
+PTS version: 6.0
+Tested: 16-December-2014
+Android version: 5.0
+
+Results:
+PASS	test passed
+FAIL	test failed
+INC	test is inconclusive
+N/A	test is disabled due to PICS setup
+NONE	test result is none
+
+-------------------------------------------------------------------------------
+Test Name				Result	Notes
+-------------------------------------------------------------------------------
+TC_SERVER_BRW_BV_01_C			PASS
+TC_SERVER_BRW_BV_01_C			PASS
+-------------------------------------------------------------------------------
