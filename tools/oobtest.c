@@ -40,6 +40,7 @@ static bool use_le = false;
 static bool use_sc = false;
 static bool use_sconly = false;
 static bool use_legacy = false;
+static bool use_random = false;
 static bool use_debug = false;
 static bool use_cross = false;
 static bool provide_p192 = false;
@@ -197,6 +198,8 @@ static void pair_device(uint16_t index, const bdaddr_t *bdaddr)
 	bacpy(&cp.addr.bdaddr, bdaddr);
 	if (use_bredr)
 		cp.addr.type = BDADDR_BREDR;
+	else if (use_random)
+		cp.addr.type = BDADDR_LE_RANDOM;
 	else
 		cp.addr.type = BDADDR_LE_PUBLIC;
 	cp.io_cap = 0x03;
@@ -247,6 +250,8 @@ static void add_remote_oob_data(uint16_t index, const bdaddr_t *bdaddr,
 	bacpy(&cp.addr.bdaddr, bdaddr);
 	if (use_bredr)
 		cp.addr.type = BDADDR_BREDR;
+	else if (use_random)
+		cp.addr.type = BDADDR_LE_RANDOM;
 	else
 		cp.addr.type = BDADDR_LE_PUBLIC;
 	if (hash192 && rand192) {
@@ -537,6 +542,21 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		return;
 	}
 
+	if (use_random) {
+		bdaddr_t bdaddr;
+
+		str2ba("c0:00:aa:bb:00:00", &bdaddr);
+		bdaddr.b[0] = index;
+
+		mgmt_send(mgmt, MGMT_OP_SET_STATIC_ADDRESS, index,
+						6, &bdaddr, NULL, NULL, NULL);
+
+		if (index == index1)
+			bacpy(&bdaddr1, &bdaddr);
+		else if (index == index2)
+			bacpy(&bdaddr2, &bdaddr);
+	}
+
 	if (use_sc) {
 		val = 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
@@ -631,6 +651,7 @@ static void usage(void)
 		"\t-S, --sc               Use Secure Connections\n"
 		"\t-O, --sconly           Use Secure Connections Only\n"
 		"\t-P, --legacy           Use Legacy Pairing\n"
+		"\t-R, --random           Use Static random address\n"
 		"\t-D, --debug            Use Pairing debug keys\n"
 		"\t-C, --cross            Use cross-transport pairing\n"
 		"\t-1, --p192             Provide P-192 OOB data\n"
@@ -644,6 +665,8 @@ static const struct option main_options[] = {
 	{ "sc",      no_argument,       NULL, 'S' },
 	{ "sconly",  no_argument,       NULL, 'O' },
 	{ "legacy",  no_argument,       NULL, 'P' },
+	{ "random",  no_argument,       NULL, 'R' },
+	{ "static",  no_argument,       NULL, 'R' },
 	{ "debug",   no_argument,       NULL, 'D' },
 	{ "cross",   no_argument,       NULL, 'C' },
 	{ "dual",    no_argument,       NULL, 'C' },
@@ -662,7 +685,7 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BLSOPDC12vh",
+		opt = getopt_long(argc, argv, "BLSOPRDC12vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -682,6 +705,9 @@ int main(int argc ,char *argv[])
 			break;
 		case 'P':
 			use_legacy = true;
+			break;
+		case 'R':
+			use_random = true;
 			break;
 		case 'D':
 			use_debug = true;
@@ -718,6 +744,16 @@ int main(int argc ,char *argv[])
 
 	if (use_legacy && !use_bredr) {
 		fprintf(stderr, "Specify --legacy with --bredr\n");
+		return EXIT_FAILURE;
+	}
+
+	if (use_random && !use_le) {
+		fprintf(stderr, "Specify --random with --le\n");
+		return EXIT_FAILURE;
+	}
+
+	if (use_random && use_cross) {
+		fprintf(stderr, "Only --random or --cross can be used\n");
 		return EXIT_FAILURE;
 	}
 
