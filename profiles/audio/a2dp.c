@@ -1249,6 +1249,7 @@ static void avdtp_server_destroy(struct avdtp_server *server)
 	g_io_channel_shutdown(server->io, TRUE, NULL);
 	g_io_channel_unref(server->io);
 	btd_adapter_unref(server->adapter);
+	queue_destroy(server->seps, NULL);
 	g_free(server);
 }
 
@@ -1373,6 +1374,7 @@ static struct avdtp_server *avdtp_server_init(struct btd_adapter *adapter)
 	}
 
 	server->adapter = btd_adapter_ref(adapter);
+	server->seps = queue_new();
 
 	avdtp_servers = g_slist_append(avdtp_servers, server);
 
