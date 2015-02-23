@@ -1418,7 +1418,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	avdtp_server = find_avdtp_server(avdtp_servers, adapter);
 	if (!avdtp_server) {
 		avdtp_server = avdtp_server_init(adapter);
-		if (!server)
+		if (!avdtp_server)
 			return NULL;
 	}
 
