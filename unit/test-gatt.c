@@ -828,6 +828,24 @@ static const struct test_step test_write_6 = {
 	.length = 0x03
 };
 
+static void test_write_without_response(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	g_assert(bt_gatt_client_write_without_response(context->client,
+							step->handle,
+							false, step->value,
+							step->length));
+}
+
+static const struct test_step test_write_without_response_1 = {
+	.handle = 0x0007,
+	.func = test_write_without_response,
+	.expected_att_ecode = 0,
+	.value = write_data_1,
+	.length = 0x03
+};
+
 static void att_write_cb(struct gatt_db_attribute *att, int err,
 								void *user_data)
 {
@@ -2914,6 +2932,11 @@ int main(int argc, char *argv[])
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x0a, 0x03, 0x00),
 			raw_pdu(0x01, 0x0a, 0x03, 0x00, 0x80));
+
+	define_test_client("/TP/GAW/CL/BV-01-C", test_client, service_db_1,
+			&test_write_without_response_1,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x52, 0x07, 0x00, 0x01, 0x02, 0x03));
 
 	define_test_client("/TP/GAW/CL/BV-03-C", test_client, service_db_1,
 			&test_write_1,
