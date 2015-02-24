@@ -310,5 +310,5 @@ EXTRA_DIST += android/Android.mk android/README \
 				android/pts-scpp.txt \
 				android/pts-dis.txt \
 				android/pts-avdtp.txt \
-				android/pts-gavdp.txt
+				android/pts-gavdp.txt \
 				android/pts-sdp.txt
