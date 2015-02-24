@@ -578,18 +578,15 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 	const struct test_data *test_data = data;
 	GIOChannel *channel;
 	int err, sv[2];
-	struct bt_att *att;
 
 	err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sv);
 	g_assert(err == 0);
 
-	att = bt_att_new(sv[0]);
-	g_assert(att);
+	context->att = bt_att_new(sv[0]);
+	g_assert(context->att);
 
 	switch (test_data->context_type) {
 	case ATT:
-		context->att = att;
-
 		bt_att_set_debug(context->att, print_debug, "bt_att:", NULL);
 
 		bt_gatt_exchange_mtu(context->att, mtu, NULL, NULL, NULL);
@@ -598,20 +595,19 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 		context->server_db = gatt_db_ref(test_data->source_db);
 		g_assert(context->server_db);
 
-		context->server = bt_gatt_server_new(context->server_db, att,
-									mtu);
+		context->server = bt_gatt_server_new(context->server_db,
+							context->att, mtu);
 		g_assert(context->server);
 
 		bt_gatt_server_set_debug(context->server, print_debug,
 						"bt_gatt_server:", NULL);
-		bt_att_unref(att);
 		break;
 	case CLIENT:
 		context->client_db = gatt_db_new();
 		g_assert(context->client_db);
 
-		context->client = bt_gatt_client_new(context->client_db, att,
-									mtu);
+		context->client = bt_gatt_client_new(context->client_db,
+							context->att, mtu);
 		g_assert(context->client);
 
 		bt_gatt_client_set_debug(context->client, print_debug,
@@ -619,8 +615,6 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 
 		bt_gatt_client_set_ready_handler(context->client,
 						client_ready_cb, context, NULL);
-
-		bt_att_unref(att);
 		break;
 	default:
 		break;
@@ -841,6 +835,38 @@ static void test_write_without_response(struct context *context)
 static const struct test_step test_write_without_response_1 = {
 	.handle = 0x0007,
 	.func = test_write_without_response,
+	.expected_att_ecode = 0,
+	.value = write_data_1,
+	.length = 0x03
+};
+
+static bool local_counter(uint32_t *sign_cnt, void *user_data)
+{
+	static uint32_t cnt = 0;
+
+	*sign_cnt = cnt++;
+
+	return true;
+}
+
+static void test_signed_write(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+	uint8_t key[16] = {0xD8, 0x51, 0x59, 0x48, 0x45, 0x1F, 0xEA, 0x32, 0x0D,
+				0xC0, 0x5A, 0x2E, 0x88, 0x30, 0x81, 0x88 };
+
+	g_assert(bt_att_set_local_key(context->att, key, local_counter,
+								context));
+
+	g_assert(bt_gatt_client_write_without_response(context->client,
+							step->handle,
+							true, step->value,
+							step->length));
+}
+
+static const struct test_step test_signed_write_1 = {
+	.handle = 0x0007,
+	.func = test_signed_write,
 	.expected_att_ecode = 0,
 	.value = write_data_1,
 	.length = 0x03
@@ -2937,6 +2963,13 @@ int main(int argc, char *argv[])
 			&test_write_without_response_1,
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x52, 0x07, 0x00, 0x01, 0x02, 0x03));
+
+	define_test_client("/TP/GAW/CL/BV-02-C", test_client, service_db_1,
+			&test_signed_write_1,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0xd2, 0x07, 0x00, 0x01, 0x02, 0x03, 0x00, 0x00,
+				0x00, 0x00, 0x31, 0x1f, 0x0a, 0xcd, 0x1c, 0x3a,
+				0x5b, 0x0a));
 
 	define_test_client("/TP/GAW/CL/BV-03-C", test_client, service_db_1,
 			&test_write_1,
