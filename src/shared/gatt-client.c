@@ -2139,7 +2139,7 @@ unsigned int bt_gatt_client_write_without_response(
 	req->att_id = bt_att_send(client->att,
 				signed_write ?  BT_ATT_OP_SIGNED_WRITE_CMD :
 				BT_ATT_OP_WRITE_CMD, pdu, sizeof(pdu),
-				NULL, NULL, NULL);
+				NULL, req, request_unref);
 	if (!req->att_id) {
 		request_unref(req);
 		return 0;
