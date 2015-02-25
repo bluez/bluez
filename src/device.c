@@ -173,6 +173,11 @@ struct bearer_state {
 	bool svc_resolved;
 };
 
+struct csrk_info {
+	uint8_t key[16];
+	uint32_t counter;
+};
+
 struct btd_device {
 	int ref_count;
 
@@ -230,6 +235,9 @@ struct btd_device {
 
 	struct bearer_state bredr_state;
 	struct bearer_state le_state;
+
+	struct csrk_info *local_csrk;
+	struct csrk_info *remote_csrk;
 
 	sdp_list_t	*tmp_records;
 
@@ -627,6 +635,8 @@ static void device_free(gpointer user_data)
 	if (device->eir_uuids)
 		g_slist_free_full(device->eir_uuids, g_free);
 
+	g_free(device->local_csrk);
+	g_free(device->remote_csrk);
 	g_free(device->path);
 	g_free(device->alias);
 	free(device->modalias);
@@ -2280,6 +2290,40 @@ failed:
 	return str;
 }
 
+static struct csrk_info *load_csrk(GKeyFile *key_file, const char *group)
+{
+	struct csrk_info *csrk;
+	char *str;
+	int i;
+
+	str = g_key_file_get_string(key_file, group, "Key", NULL);
+	if (!str)
+		return NULL;
+
+	csrk = g_new0(struct csrk_info, 1);
+
+	for (i = 0; i < 16; i++) {
+		if (sscanf(str + (i * 2), "%2hhx", &csrk->key[i]) != 1)
+			goto fail;
+	}
+
+	/*
+	 * In case of older storage this will return 0 which is fine since it
+	 * didn't support signing at that point the counter should never have
+	 * been used.
+	 */
+	csrk->counter = g_key_file_get_integer(key_file, group, "Counter",
+									NULL);
+	g_free(str);
+
+	return csrk;
+
+fail:
+	g_free(str);
+	g_free(csrk);
+	return NULL;
+}
+
 static void load_info(struct btd_device *device, const char *local,
 			const char *peer, GKeyFile *key_file)
 {
@@ -2355,6 +2399,9 @@ static void load_info(struct btd_device *device, const char *local,
 			error("Unknown LE device technology");
 
 		g_free(str);
+
+		device->local_csrk = load_csrk(key_file, "LocalSignatureKey");
+		device->remote_csrk = load_csrk(key_file, "RemoteSignatureKey");
 	}
 
 	g_strfreev(techno);
