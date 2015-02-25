@@ -6156,7 +6156,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t bdaddr_type, const unsigned char *key,
-				uint8_t master)
+				uint32_t counter, uint8_t master)
 {
 	const char *group;
 	char adapter_addr[18];
@@ -6190,6 +6190,7 @@ static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
 		sprintf(key_str + (i * 2), "%2.2X", key[i]);
 
 	g_key_file_set_string(key_file, group, "Key", key_str);
+	g_key_file_set_integer(key_file, group, "Counter", counter);
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
@@ -6230,7 +6231,7 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 	if (!ev->store_hint)
 		return;
 
-	store_csrk(bdaddr, &key->addr.bdaddr, key->addr.type, key->val,
+	store_csrk(bdaddr, &key->addr.bdaddr, key->addr.type, key->val, 0,
 								key->master);
 
 	if (device_is_temporary(device))
