@@ -1211,6 +1211,34 @@ const char *bt_compidtostr(int compid)
 		return "Savant Systems LLC";
 	case 474:
 		return "Logitech International SA";
+	case 475:
+		return "Innblue Consulting";
+	case 476:
+		return "iParking Ltd.";
+	case 477:
+		return "Koninklijke Philips Electronics N.V.";
+	case 478:
+		return "Minelab Electronics Pty Limited";
+	case 479:
+		return "Bison Group Ltd.";
+	case 480:
+		return "Widex A/S";
+	case 481:
+		return "Jolla Ltd";
+	case 482:
+		return "Lectronix, Inc.";
+	case 483:
+		return "Caterpillar Inc";
+	case 484:
+		return "Freedom Innovations";
+	case 485:
+		return "Dynamic Devices Ltd";
+	case 486:
+		return "Technology Solutions (UK) Ltd";
+	case 487:
+		return "IPS Group Inc.";
+	case 488:
+		return "STIR";
 	case 65535:
 		return "internal use";
 	default:
