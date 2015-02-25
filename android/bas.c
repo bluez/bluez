@@ -44,6 +44,7 @@
 #include "android/bas.h"
 
 #define ATT_NOTIFICATION_HEADER_SIZE 3
+#define ATT_READ_RESPONSE_HEADER_SIZE 1
 
 struct bt_bas {
 	int ref_count;
@@ -226,9 +227,15 @@ static void discover_desc(struct bt_bas *bas, GAttrib *attrib,
 	free(req);
 }
 
-static void value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
+static void notification_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 {
 	DBG("Battery Level at %u", pdu[ATT_NOTIFICATION_HEADER_SIZE]);
+}
+
+static void read_value_cb(guint8 status, const guint8 *pdu, guint16 len,
+					gpointer user_data)
+{
+	DBG("Battery Level at %u", pdu[ATT_READ_RESPONSE_HEADER_SIZE]);
 }
 
 static void ccc_written_cb(guint8 status, const guint8 *pdu,
@@ -248,7 +255,8 @@ static void ccc_written_cb(guint8 status, const guint8 *pdu,
 	DBG("Battery Level: notification enabled");
 
 	bas->id = g_attrib_register(bas->attrib, ATT_OP_HANDLE_NOTIFY,
-					bas->handle, value_cb, bas, NULL);
+					bas->handle, notification_cb, bas,
+					NULL);
 }
 
 static void write_ccc(struct bt_bas *bas, GAttrib *attrib, uint16_t handle,
@@ -318,6 +326,8 @@ static void bas_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 	bas->handle = chr->value_handle;
 
 	DBG("Battery handle: 0x%04x", bas->handle);
+
+	read_char(bas, bas->attrib, bas->handle, read_value_cb, bas);
 
 	start = chr->value_handle + 1;
 	end = bas->primary->range.end;
