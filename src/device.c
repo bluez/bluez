@@ -345,6 +345,19 @@ static void update_technologies(GKeyFile *file, struct btd_device *dev)
 								list, len);
 }
 
+static void store_csrk(struct csrk_info *csrk, GKeyFile *key_file,
+							const char *group)
+{
+	char key[33];
+	int i;
+
+	for (i = 0; i < 16; i++)
+		sprintf(key + (i * 2), "%2.2X", csrk->key[i]);
+
+	g_key_file_set_string(key_file, group, "Key", key);
+	g_key_file_set_integer(key_file, group, "Counter", csrk->counter);
+}
+
 static gboolean store_device_info_cb(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -422,6 +435,12 @@ static gboolean store_device_info_cb(gpointer user_data)
 	} else {
 		g_key_file_remove_group(key_file, "DeviceID", NULL);
 	}
+
+	if (device->local_csrk)
+		store_csrk(device->local_csrk, key_file, "LocalSignatureKey");
+
+	if (device->remote_csrk)
+		store_csrk(device->remote_csrk, key_file, "RemoteSignatureKey");
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
@@ -4024,6 +4043,8 @@ static bool local_counter(uint32_t *sign_cnt, void *user_data)
 
 	*sign_cnt = dev->local_csrk->counter++;
 
+	store_device_info(dev);
+
 	return true;
 }
 
@@ -4035,6 +4056,8 @@ static bool remote_counter(uint32_t *sign_cnt, void *user_data)
 		return false;
 
 	dev->remote_csrk->counter = *sign_cnt;
+
+	store_device_info(dev);
 
 	return true;
 }
