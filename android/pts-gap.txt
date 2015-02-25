@@ -171,16 +171,13 @@ TC_BOND_NBON_BV_02_C	PASS	haltest: gattc register_client
 				bluetooth create_bond <address>
 TC_BOND_NBON_BV_03_C	PASS	haltest: gattc listen
 TC_BOND_BON_BV_01_C	PASS	PTS issue #12503
-				possible to pass without MITM:
-				btmgmt power on
-				btmgmt le on
-				btmgmt ssp on
-				btmgmt connectable on
-				btmgmt discov on
-				btmgmt advertising on
-				btmgmt pairable on
-				To bond with PTS execute
-				btmgmt pair -t 0x01 -c 0x03 <PTS addr>
+				haltest:
+				bluetooth set_adapter_property
+					BT_PROPERTY_ADAPTER_SCAN_MODE
+					BT_SCAN_MODE_CONNECTABLE
+				gattc register_client
+				gattc listen 1
+				bluetooth create_bond <pts_address>
 TC_BOND_BON_BV_02_C	PASS	gattc regicter_client
 				gattc scan
 				gattc connect
