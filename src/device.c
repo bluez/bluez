@@ -4015,6 +4015,30 @@ static void gatt_server_init(struct btd_device *device, struct gatt_db *db)
 		error("Failed to initialize bt_gatt_server");
 }
 
+static bool local_counter(uint32_t *sign_cnt, void *user_data)
+{
+	struct btd_device *dev = user_data;
+
+	if (!dev->local_csrk)
+		return false;
+
+	*sign_cnt = dev->local_csrk->counter++;
+
+	return true;
+}
+
+static bool remote_counter(uint32_t *sign_cnt, void *user_data)
+{
+	struct btd_device *dev = user_data;
+
+	if (!dev->remote_csrk || *sign_cnt < dev->remote_csrk->counter)
+		return false;
+
+	dev->remote_csrk->counter = *sign_cnt;
+
+	return true;
+}
+
 bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 {
 	GError *gerr = NULL;
@@ -4063,6 +4087,14 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	dev->att_disconn_id = bt_att_register_disconnect(dev->att,
 						att_disconnected_cb, dev, NULL);
 	bt_att_set_close_on_unref(dev->att, true);
+
+	if (dev->local_csrk)
+		bt_att_set_local_key(dev->att, dev->local_csrk->key,
+							local_counter, dev);
+
+	if (dev->remote_csrk)
+		bt_att_set_remote_key(dev->att, dev->remote_csrk->key,
+							remote_counter, dev);
 
 	database = btd_adapter_get_database(dev->adapter);
 
