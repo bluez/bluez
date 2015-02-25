@@ -1004,7 +1004,7 @@ static bool remote_counter(uint32_t *sign_cnt, void *user_data)
 	if (*sign_cnt < cnt)
 		return false;
 
-	cnt++;
+	cnt = *sign_cnt;
 
 	return true;
 }
