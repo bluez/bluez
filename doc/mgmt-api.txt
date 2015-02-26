@@ -2969,7 +2969,7 @@ New Signature Resolving Key Event
 				Key {
 					Address (6 Octets)
 					Address_Type (1 Octet)
-					Master (1 Octet)
+					Type (1 Octet)
 					Value (16 Octets)
 				}
 
@@ -2979,17 +2979,20 @@ New Signature Resolving Key Event
 	The Store_Hint parameter indicates whether the host is expected
 	to store the key persistently or not.
 
-	When the Master parameter is set to 0x01, then the signature
-	resolving key from the remote peer device is provided. It is
-	the key that is used for signature verification.
+	The Type parameter has the following possible values:
 
-	When the Master parameter is set to 0x00, then it is the local
-	signature resolving key that is used to sign data. The remote
-	peer device will be using it for signature verification.
+		0x00	Unauthenticated local CSRK
+		0x01	Unauthenticated remote CSRK
+		0x02	Authenticated local CSRK
+		0x03	Authenticated remote CSRK
+
+	The local keys are used for signing data to be sent to the
+	remote device, whereas the remote keys are used to verify
+	signatures received from the remote device.
 
 	The local signature resolving key will be generated with each
-	pairing request. Only after receiving this event with Master
-	parameter set to 0x00 it is possible to use ATT Signed Write
+	pairing request. Only after receiving this event with the Type
+	indicating a local key is it possible to use ATT Signed Write
 	procedures.
 
 	Possible values for the Address_Type parameter:
