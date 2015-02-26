@@ -1008,11 +1008,16 @@ static void desc_discovered_cb(guint8 status, const guint8 *ipdu,
 {
 	struct discover_desc *dd = user_data;
 	struct att_data_list *list;
-	unsigned int i, err = ATT_ECODE_ATTR_NOT_FOUND;
+	unsigned int i, err = 0;
 	guint8 format;
 	uint16_t last = 0xffff;
 	uint8_t type;
 	gboolean uuid_found = FALSE;
+
+	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
+		err = dd->descriptors ? 0 : status;
+		goto done;
+	}
 
 	if (status) {
 		err = status;
@@ -1086,7 +1091,6 @@ static void desc_discovered_cb(guint8 status, const guint8 *ipdu,
 	}
 
 done:
-	err = (dd->descriptors ? 0 : err);
 	dd->cb(err, dd->descriptors, dd->user_data);
 }
 
