@@ -574,9 +574,15 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 {
 	struct discover_char *dc = user_data;
 	struct att_data_list *list;
-	unsigned int i, err = ATT_ECODE_ATTR_NOT_FOUND;
+	unsigned int i, err = 0;
 	uint16_t last = 0;
 	uint8_t type;
+
+	/* We have all the characteristic now, lets send it up */
+	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
+		err = dc->characteristics ? 0 : status;
+		goto done;
+	}
 
 	if (status) {
 		err = status;
@@ -647,7 +653,6 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	}
 
 done:
-	err = (dc->characteristics ? 0 : err);
 	dc->cb(err, dc->characteristics, dc->user_data);
 }
 
