@@ -2725,12 +2725,20 @@ static void discover_char_cb(uint8_t status, GSList *characteristics,
 	struct discover_char_data *data = user_data;
 	struct service *srvc = data->service;
 
+	if (status) {
+		error("gatt: Failed to get characteristics: %s",
+							att_ecode2str(status));
+		convert_send_client_char_notify(NULL, data->conn_id, srvc);
+		goto done;
+	}
+
 	if (queue_isempty(srvc->chars))
 		cache_all_srvc_chars(srvc, characteristics);
 
 	convert_send_client_char_notify(queue_peek_head(srvc->chars),
 							data->conn_id, srvc);
 
+done:
 	free(data);
 }
 
