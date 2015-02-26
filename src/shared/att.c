@@ -63,6 +63,7 @@ struct bt_att {
 	int fd;
 	struct io *io;
 	bool io_on_l2cap;
+	int io_sec_level;		/* Only used for non-L2CAP */
 
 	struct queue *req_queue;	/* Queued ATT protocol requests */
 	struct att_send_op *pending_req;
@@ -956,6 +957,8 @@ struct bt_att *bt_att_new(int fd)
 		goto fail;
 
 	att->io_on_l2cap = is_io_l2cap_based(att->fd);
+	if (!att->io_on_l2cap)
+		att->io_sec_level = BT_SECURITY_LOW;
 
 	return bt_att_ref(att);
 
@@ -1351,12 +1354,8 @@ int bt_att_get_sec_level(struct bt_att *att)
 	if (!att)
 		return -EINVAL;
 
-	/*
-	 * Let's be nice for unit test.
-	 * TODO: Might be needed to emulate different levels for test purposes
-	 */
 	if (!att->io_on_l2cap)
-		return BT_SECURITY_LOW;
+		return att->io_sec_level;
 
 	memset(&sec, 0, sizeof(sec));
 	len = sizeof(sec);
@@ -1373,9 +1372,10 @@ bool bt_att_set_sec_level(struct bt_att *att, int level)
 	if (!att || level < BT_SECURITY_LOW || level > BT_SECURITY_HIGH)
 		return false;
 
-	/* Let's be nice for unit test.*/
-	if (!att->io_on_l2cap)
+	if (!att->io_on_l2cap) {
+		att->io_sec_level = level;
 		return true;
+	}
 
 	memset(&sec, 0, sizeof(sec));
 	sec.level = level;
