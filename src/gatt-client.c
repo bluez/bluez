@@ -926,9 +926,9 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 
 	supported = true;
 	chrc->write_id = bt_gatt_client_write_without_response(gatt,
-							chrc->value_handle,
-							false, value,
-							value_len);
+					chrc->value_handle,
+					chrc->props & BT_GATT_CHRC_PROP_AUTH,
+					value, value_len);
 	if (chrc->write_id)
 		return dbus_message_new_method_return(msg);
 
