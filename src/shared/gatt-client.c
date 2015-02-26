@@ -2125,6 +2125,8 @@ unsigned int bt_gatt_client_write_without_response(
 					const uint8_t *value, uint16_t length) {
 	uint8_t pdu[2 + length];
 	struct request *req;
+	int security;
+	uint8_t op;
 
 	if (!client)
 		return 0;
@@ -2133,13 +2135,19 @@ unsigned int bt_gatt_client_write_without_response(
 	if (!req)
 		return 0;
 
+	/* Only use signed write if unencrypted */
+	if (signed_write) {
+		security = bt_att_get_sec_level(client->att);
+		op = security > BT_SECURITY_LOW ?  BT_ATT_OP_WRITE_CMD :
+						BT_ATT_OP_SIGNED_WRITE_CMD;
+	} else
+		op = BT_ATT_OP_WRITE_CMD;
+
 	put_le16(value_handle, pdu);
 	memcpy(pdu + 2, value, length);
 
-	req->att_id = bt_att_send(client->att,
-				signed_write ?  BT_ATT_OP_SIGNED_WRITE_CMD :
-				BT_ATT_OP_WRITE_CMD, pdu, sizeof(pdu),
-				NULL, req, request_unref);
+	req->att_id = bt_att_send(client->att, op, pdu, sizeof(pdu), NULL, req,
+								request_unref);
 	if (!req->att_id) {
 		request_unref(req);
 		return 0;
