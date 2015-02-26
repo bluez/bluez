@@ -435,13 +435,7 @@ static void confirm_event(GIOChannel *chan, gpointer user_data)
 	}
 
 	ns = find_server(na->servers, BNEP_SVC_NAP);
-	if (!ns)
-		goto drop;
-
-	if (!ns->record_id)
-		goto drop;
-
-	if (!ns->bridge)
+	if (!ns || !ns->record_id || !ns->bridge)
 		goto drop;
 
 	na->setup = g_new0(struct network_session, 1);
