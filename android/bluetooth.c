@@ -2950,27 +2950,6 @@ static struct device *create_device_from_info(GKeyFile *key_file,
 		dev->bredr = g_key_file_get_boolean(key_file, peer, "BREDR",
 									NULL);
 
-	str = g_key_file_get_string(key_file, peer, "LinkKey", NULL);
-	if (str) {
-		g_free(str);
-		dev->bredr_paired = true;
-		dev->bredr_bonded = true;
-	}
-
-	str = g_key_file_get_string(key_file, peer, "LongTermKey", NULL);
-	if (str) {
-		g_free(str);
-		dev->le_paired = true;
-		dev->le_bonded = true;
-	}
-
-	str = g_key_file_get_string(key_file, peer, "SlaveLongTermKey", NULL);
-	if (str) {
-		g_free(str);
-		dev->le_paired = true;
-		dev->le_bonded = true;
-	}
-
 	str = g_key_file_get_string(key_file, peer, "LocalCSRK", NULL);
 	if (str) {
 		int i;
@@ -3223,19 +3202,30 @@ static void load_devices_info(bt_bluetooth_ready cb)
 		struct mgmt_ltk_info *slave_ltk_info;
 		struct device *dev;
 
+		dev = create_device_from_info(key_file, devs[i]);
+
 		key_info = get_key_info(key_file, devs[i]);
 		irk_info = get_irk_info(key_file, devs[i]);
 		ltk_info = get_ltk_info(key_file, devs[i], true);
 		slave_ltk_info = get_ltk_info(key_file, devs[i], false);
 
-		if (!key_info && !ltk_info && !slave_ltk_info) {
+		/*
+		 * Skip devices that have no permanent keys
+		 * (CSRKs are loaded by create_device_from_info())
+		 */
+		if (!dev->valid_local_csrk && !dev->valid_remote_csrk &&
+						!key_info && !ltk_info &&
+						!slave_ltk_info && !irk_info) {
 			error("Failed to load keys for %s, skipping", devs[i]);
-
+			free_device(dev);
 			continue;
 		}
 
-		if (key_info)
+		if (key_info) {
 			keys = g_slist_prepend(keys, key_info);
+			dev->bredr_paired = true;
+			dev->bredr_bonded = true;
+		}
 
 		if (irk_info)
 			irks = g_slist_prepend(irks, irk_info);
@@ -3246,7 +3236,11 @@ static void load_devices_info(bt_bluetooth_ready cb)
 		if (slave_ltk_info)
 			ltks = g_slist_prepend(ltks, slave_ltk_info);
 
-		dev = create_device_from_info(key_file, devs[i]);
+		if (dev->valid_local_csrk || dev->valid_remote_csrk ||
+				irk_info || ltk_info || slave_ltk_info) {
+			dev->le_paired = true;
+			dev->le_bonded = true;
+		}
 
 		bonded_devices = g_slist_prepend(bonded_devices, dev);
 	}
