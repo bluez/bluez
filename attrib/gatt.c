@@ -55,6 +55,7 @@ struct included_discovery {
 	unsigned int	id;
 	int		refs;
 	int		err;
+	uint16_t	start_handle;
 	uint16_t	end_handle;
 	GSList		*includes;
 	gatt_cb_t	cb;
@@ -549,8 +550,19 @@ static void find_included_cb(uint8_t status, const uint8_t *pdu, uint16_t len,
 
 	att_data_list_free(list);
 
+	/*
+	 * If last handle is lower from previous start handle then it is smth
+	 * wrong. Let's stop search, otherwise we might enter infinite loop.
+	 */
+	if (last_handle < isd->start_handle) {
+		isd->err = ATT_ECODE_UNLIKELY;
+		goto done;
+	}
+
+	isd->start_handle = last_handle + 1;
+
 	if (last_handle < isd->end_handle)
-		find_included(isd, last_handle + 1);
+		find_included(isd, isd->start_handle);
 
 done:
 	if (isd->err == 0)
@@ -564,6 +576,7 @@ unsigned int gatt_find_included(GAttrib *attrib, uint16_t start, uint16_t end,
 
 	isd = g_new0(struct included_discovery, 1);
 	isd->attrib = g_attrib_ref(attrib);
+	isd->start_handle = start;
 	isd->end_handle = end;
 	isd->cb = func;
 	isd->user_data = user_data;
