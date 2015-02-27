@@ -6165,14 +6165,28 @@ static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
 	GKeyFile *key_file;
 	char key_str[33];
 	gsize length = 0;
+	gboolean auth;
 	char *str;
 	int i;
 
-	if (type == 0x00 || type == 0x02)
+	switch (type) {
+	case 0x00:
 		group = "LocalSignatureKey";
-	else if (type == 0x01 || type == 0x03)
+		auth = FALSE;
+		break;
+	case 0x01:
 		group = "RemoteSignatureKey";
-	else {
+		auth = FALSE;
+		break;
+	case 0x02:
+		group = "LocalSignatureKey";
+		auth = TRUE;
+		break;
+	case 0x03:
+		group = "RemoteSignatureKey";
+		auth = TRUE;
+		break;
+	default:
 		warn("Unsupported CSRK type %u", type);
 		return;
 	}
@@ -6191,6 +6205,7 @@ static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
 
 	g_key_file_set_string(key_file, group, "Key", key_str);
 	g_key_file_set_integer(key_file, group, "Counter", counter);
+	g_key_file_set_boolean(key_file, group, "Authenticated", auth);
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
