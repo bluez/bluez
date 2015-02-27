@@ -431,12 +431,14 @@ static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
 }
 
 static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
-		gpointer user_data)
+							gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_client_data *client_data = data->test_data;
 	socklen_t len = sizeof(int);
 	int sk, err, sk_err;
+
+	tester_print("Connected");
 
 	data->io_id = 0;
 
@@ -456,9 +458,16 @@ static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
 	if (client_data->send_data) {
 		ssize_t ret;
 
+		tester_print("Writing %u bytes of data",
+						client_data->data_len);
+
 		ret = write(sk, client_data->send_data, client_data->data_len);
-		if (client_data->data_len != ret)
+		if (client_data->data_len != ret) {
+			tester_warn("Failed to write %u bytes: %s (%d)",
+					client_data->data_len, strerror(errno),
+					errno);
 			tester_test_failed();
+		}
 
 		return false;
 	} else if (client_data->read_data) {
@@ -485,6 +494,8 @@ static void client_hook_func(const void *data, uint16_t len,
 	struct test_data *test_data = tester_get_data();
 	const struct rfcomm_client_data *client_data = test_data->test_data;
 	ssize_t ret;
+
+	tester_print("bthost received %u bytes of data", len);
 
 	if (client_data->data_len != len) {
 		tester_test_failed();
