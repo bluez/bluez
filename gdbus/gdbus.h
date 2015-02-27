@@ -355,6 +355,10 @@ gboolean g_dbus_proxy_set_removed_watch(GDBusProxy *proxy,
 
 GDBusClient *g_dbus_client_new(DBusConnection *connection,
 					const char *service, const char *path);
+GDBusClient *g_dbus_client_new_full(DBusConnection *connection,
+							const char *service,
+							const char *path,
+							const char *root_path);
 
 GDBusClient *g_dbus_client_ref(GDBusClient *client);
 void g_dbus_client_unref(GDBusClient *client);

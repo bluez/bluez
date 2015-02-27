@@ -42,6 +42,7 @@ struct GDBusClient {
 	DBusConnection *dbus_conn;
 	char *service_name;
 	char *base_path;
+	char *root_path;
 	guint watch;
 	guint added_watch;
 	guint removed_watch;
@@ -1118,9 +1119,10 @@ static void get_managed_objects(GDBusClient *client)
 	if (client->get_objects_call != NULL)
 		return;
 
-	msg = dbus_message_new_method_call(client->service_name, "/",
-					DBUS_INTERFACE_DBUS ".ObjectManager",
-							"GetManagedObjects");
+	msg = dbus_message_new_method_call(client->service_name,
+						client->root_path,
+						DBUS_INTERFACE_OBJECT_MANAGER,
+						"GetManagedObjects");
 	if (msg == NULL)
 		return;
 
@@ -1199,10 +1201,18 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 GDBusClient *g_dbus_client_new(DBusConnection *connection,
 					const char *service, const char *path)
 {
+	return g_dbus_client_new_full(connection, service, path, "/");
+}
+
+GDBusClient *g_dbus_client_new_full(DBusConnection *connection,
+							const char *service,
+							const char *path,
+							const char *root_path)
+{
 	GDBusClient *client;
 	unsigned int i;
 
-	if (connection == NULL)
+	if (!connection || !service || !root_path)
 		return NULL;
 
 	client = g_try_new0(GDBusClient, 1);
@@ -1218,6 +1228,7 @@ GDBusClient *g_dbus_client_new(DBusConnection *connection,
 	client->dbus_conn = dbus_connection_ref(connection);
 	client->service_name = g_strdup(service);
 	client->base_path = g_strdup(path);
+	client->root_path = g_strdup(root_path);
 	client->connected = FALSE;
 
 	client->match_rules = g_ptr_array_sized_new(1);
@@ -1228,13 +1239,13 @@ GDBusClient *g_dbus_client_new(DBusConnection *connection,
 						service_disconnect,
 						client, NULL);
 	client->added_watch = g_dbus_add_signal_watch(connection, service,
-						"/",
+						client->root_path,
 						DBUS_INTERFACE_OBJECT_MANAGER,
 						"InterfacesAdded",
 						interfaces_added,
 						client, NULL);
 	client->removed_watch = g_dbus_add_signal_watch(connection, service,
-						"/",
+						client->root_path,
 						DBUS_INTERFACE_OBJECT_MANAGER,
 						"InterfacesRemoved",
 						interfaces_removed,
@@ -1308,6 +1319,7 @@ void g_dbus_client_unref(GDBusClient *client)
 
 	g_free(client->service_name);
 	g_free(client->base_path);
+	g_free(client->root_path);
 
 	g_free(client);
 }
