@@ -54,10 +54,10 @@ Android end-to-end testing
 
 Application		Count	Description
 -------------------------------------------
-android-tester		 190	Android HAL interface testing
+android-tester		 194	Android HAL interface testing
 ipc-tester		 132	Android IPC resistance testing
 			-----
-			 322
+			 326
 
 
 Android automated unit testing
