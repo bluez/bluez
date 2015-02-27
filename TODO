@@ -99,12 +99,6 @@ Low Energy
 ATT/GATT (new shared stack)
 ===========================
 
-- shared/att currently doesn't handle signed writes. It should be extended to
-  support signing outgoing and verify incoming ATT PDUs.
-
-  Priority: High
-  Complexity: C1
-
 - Add complete GATT test coverage in unit/test-gatt following the GATT test
   spec. This could use shared/gatt-client and shared/gatt-server at the same
   time to test both against eachother. We should definitely have tests for
