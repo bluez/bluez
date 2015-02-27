@@ -4691,9 +4691,15 @@ static uint8_t check_device_permissions(struct gatt_device *device,
 		if (!(permissions & GATT_PERM_WRITE_SIGNED))
 				return ATT_ECODE_WRITE_NOT_PERM;
 
-		if ((permissions & GATT_PERM_WRITE_SIGNED_MITM) &&
-						sec_level < BT_SECURITY_HIGH)
+		if (permissions & GATT_PERM_WRITE_SIGNED_MITM) {
+			bool auth;
+
+			if (bt_get_csrk(&device->bdaddr, true, NULL, NULL,
+					&auth) && auth)
+				break;
+
 			return ATT_ECODE_AUTHENTICATION;
+		}
 		break;
 	case ATT_OP_READ_BY_TYPE_REQ:
 	case ATT_OP_READ_REQ:
