@@ -21,11 +21,6 @@
  *
  */
 
-enum bt_csrk_type {
-	LOCAL_CSRK,
-	REMOTE_CSRK,
-};
-
 typedef void (*bt_bluetooth_ready)(int err, const bdaddr_t *addr);
 bool bt_bluetooth_start(int index, bool mgmt_dbg, bt_bluetooth_ready cb);
 
@@ -69,11 +64,10 @@ typedef void (*bt_read_device_rssi_done)(uint8_t status, const bdaddr_t *addr,
 bool bt_read_device_rssi(const bdaddr_t *addr, bt_read_device_rssi_done cb,
 							void *user_data);
 
-bool bt_get_csrk(const bdaddr_t *addr, enum bt_csrk_type type,
-					uint8_t key[16], uint32_t *sign_cnt);
+bool bt_get_csrk(const bdaddr_t *addr, bool local, uint8_t key[16],
+				uint32_t *sign_cnt, bool *authenticated);
 
-void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type,
-								uint32_t val);
+void bt_update_sign_counter(const bdaddr_t *addr, bool local, uint32_t val);
 
 void bt_store_gatt_ccc(const bdaddr_t *addr, uint16_t value);
 

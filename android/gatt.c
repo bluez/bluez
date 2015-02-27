@@ -3271,7 +3271,7 @@ static guint signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 
 	memset(csrk, 0, 16);
 
-	if (!bt_get_csrk(&dev->bdaddr, LOCAL_CSRK, csrk, &sign_cnt)) {
+	if (!bt_get_csrk(&dev->bdaddr, true, csrk, &sign_cnt, NULL)) {
 		error("gatt: Could not get csrk key");
 		return 0;
 	}
@@ -3283,7 +3283,7 @@ static guint signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 		return 0;
 	}
 
-	bt_update_sign_counter(&dev->bdaddr, LOCAL_CSRK, ++sign_cnt);
+	bt_update_sign_counter(&dev->bdaddr, true, ++sign_cnt);
 
 	return res;
 }
@@ -6404,7 +6404,7 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 		return;
 	}
 
-	if (!bt_get_csrk(&dev->bdaddr, REMOTE_CSRK, csrk, &sign_cnt)) {
+	if (!bt_get_csrk(&dev->bdaddr, false, csrk, &sign_cnt, NULL)) {
 		error("gatt: No valid csrk from remote device");
 		return;
 	}
@@ -6446,7 +6446,7 @@ static void write_signed_cmd_request(const uint8_t *cmd, uint16_t cmd_len,
 			return;
 		}
 		/* Signature OK, proceed with write */
-		bt_update_sign_counter(&dev->bdaddr, REMOTE_CSRK, r_sign_cnt);
+		bt_update_sign_counter(&dev->bdaddr, false, r_sign_cnt);
 		gatt_db_attribute_write(attrib, 0, value, vlen, cmd[0],
 						g_attrib_get_att(dev->attrib),
 						write_confirm, NULL);

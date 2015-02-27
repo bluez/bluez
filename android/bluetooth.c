@@ -4098,22 +4098,33 @@ bool bt_read_device_rssi(const bdaddr_t *addr, bt_read_device_rssi_done cb,
 	return true;
 }
 
-bool bt_get_csrk(const bdaddr_t *addr, enum bt_csrk_type type, uint8_t key[16],
-							uint32_t *sign_cnt)
+bool bt_get_csrk(const bdaddr_t *addr, bool local, uint8_t key[16],
+					uint32_t *sign_cnt, bool *authenticated)
 {
 	struct device *dev;
-	bool local = (type == LOCAL_CSRK);
 
 	dev = find_device(addr);
 	if (!dev)
 		return false;
 
 	if (local && dev->valid_local_csrk) {
-		memcpy(key, dev->local_csrk, 16);
-		*sign_cnt = dev->local_sign_cnt;
+		if (key)
+			memcpy(key, dev->local_csrk, 16);
+
+		if (sign_cnt)
+			*sign_cnt = dev->local_sign_cnt;
+
+		if (authenticated)
+			*authenticated = dev->local_csrk_auth;
 	} else if (!local && dev->valid_remote_csrk) {
-		memcpy(key, dev->remote_csrk, 16);
-		*sign_cnt = dev->remote_sign_cnt;
+		if (key)
+			memcpy(key, dev->remote_csrk, 16);
+
+		if (sign_cnt)
+			*sign_cnt = dev->remote_sign_cnt;
+
+		if (authenticated)
+			*authenticated = dev->remote_csrk_auth;
 	} else {
 		return false;
 	}
@@ -4121,12 +4132,11 @@ bool bt_get_csrk(const bdaddr_t *addr, enum bt_csrk_type type, uint8_t key[16],
 	return true;
 }
 
-static void store_sign_counter(struct device *dev, enum bt_csrk_type type)
+static void store_sign_counter(struct device *dev, bool local)
 {
 	const char *sign_cnt_s;
 	uint32_t sign_cnt;
 	GKeyFile *key_file;
-	bool local = (type == LOCAL_CSRK);
 
 	gsize length = 0;
 	char addr[18];
@@ -4152,8 +4162,7 @@ static void store_sign_counter(struct device *dev, enum bt_csrk_type type)
 	g_key_file_free(key_file);
 }
 
-void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type,
-								uint32_t val)
+void bt_update_sign_counter(const bdaddr_t *addr, bool local, uint32_t val)
 {
 	struct device *dev;
 
@@ -4161,12 +4170,12 @@ void bt_update_sign_counter(const bdaddr_t *addr, enum bt_csrk_type type,
 	if (!dev)
 		return;
 
-	if (type == LOCAL_CSRK)
+	if (local)
 		dev->local_sign_cnt = val;
 	else
 		dev->remote_sign_cnt = val;
 
-	store_sign_counter(dev, type);
+	store_sign_counter(dev, local);
 }
 
 static uint8_t set_adapter_scan_mode(const void *buf, uint16_t len)
