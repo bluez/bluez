@@ -29,6 +29,7 @@
 #include "lib/sdp_lib.h"
 #include "lib/uuid.h"
 #include "btio/btio.h"
+#include "gdbus/gdbus.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/att.h"
@@ -38,6 +39,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "gatt-database.h"
+#include "dbus-common.h"
 
 #ifndef ATT_CID
 #define ATT_CID 4
@@ -46,6 +48,8 @@
 #ifndef ATT_PSM
 #define ATT_PSM 31
 #endif
+
+#define GATT_MANAGER_IFACE	"org.bluez.GattManager1"
 
 #define UUID_GAP	0x1800
 #define UUID_GATT	0x1801
@@ -746,6 +750,34 @@ static void gatt_db_service_removed(struct gatt_db_attribute *attrib,
 	queue_foreach(database->device_states, remove_device_ccc, attrib);
 }
 
+static DBusMessage *manager_register_service(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	DBG("RegisterService");
+
+	/* TODO */
+	return NULL;
+}
+
+static DBusMessage *manager_unregister_service(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	DBG("UnregisterService");
+
+	/* TODO */
+	return NULL;
+}
+
+static const GDBusMethodTable manager_methods[] = {
+	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("RegisterService",
+			GDBUS_ARGS({ "service", "o" }, { "options", "a{sv}" }),
+			NULL, manager_register_service) },
+	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("UnregisterService",
+					GDBUS_ARGS({ "service", "o" }),
+					NULL, manager_unregister_service) },
+	{ }
+};
+
 struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 {
 	struct btd_gatt_database *database;
@@ -798,6 +830,18 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 		g_error_free(gerr);
 		goto fail;
 	}
+
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+						adapter_get_path(adapter),
+						GATT_MANAGER_IFACE,
+						manager_methods, NULL, NULL,
+						database, NULL)) {
+		error("Failed to register " GATT_MANAGER_IFACE);
+		goto fail;
+	}
+
+	DBG("GATT Manager registered for adapter: %s",
+						adapter_get_path(adapter));
 
 	register_core_services(database);
 

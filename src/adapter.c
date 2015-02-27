@@ -4593,6 +4593,7 @@ static void adapter_remove(struct btd_adapter *adapter)
 	adapter->db_id = 0;
 
 	btd_gatt_database_destroy(adapter->database);
+	adapter->database = NULL;
 
 	g_slist_free(adapter->pin_callbacks);
 	adapter->pin_callbacks = NULL;
@@ -6660,8 +6661,10 @@ static int adapter_register(struct btd_adapter *adapter)
 	}
 
 	adapter->database = btd_gatt_database_new(adapter);
-	if (!adapter->database)
+	if (!adapter->database) {
 		error("Failed to create GATT database for adapter");
+		return -EINVAL;
+	}
 
 	db = btd_gatt_database_get_db(adapter->database);
 	adapter->db_id = gatt_db_register(db, services_modified,

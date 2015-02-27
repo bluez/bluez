@@ -57,7 +57,6 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "profile.h"
-#include "gatt.h"
 #include "systemd.h"
 
 #define BLUEZ_NAME "org.bluez"
@@ -601,8 +600,6 @@ int main(int argc, char *argv[])
 
 	g_dbus_set_flags(gdbus_flags);
 
-	gatt_init();
-
 	if (adapter_init() < 0) {
 		error("Adapter handling initialization failed");
 		exit(1);
@@ -667,8 +664,6 @@ int main(int argc, char *argv[])
 	btd_device_cleanup();
 
 	adapter_cleanup();
-
-	gatt_cleanup();
 
 	rfkill_exit();
 
