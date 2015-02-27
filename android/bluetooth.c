@@ -2354,19 +2354,21 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 	if (!dev)
 		return;
 
-	switch (ev->key.master) {
+	switch (ev->key.type) {
 	case 0x00:
+	case 0x02:
 		memcpy(dev->local_csrk, ev->key.val, 16);
 		dev->local_sign_cnt = 0;
 		dev->valid_local_csrk = true;
 		break;
 	case 0x01:
+	case 0x03:
 		memcpy(dev->remote_csrk, ev->key.val, 16);
 		dev->remote_sign_cnt = 0;
 		dev->valid_remote_csrk = true;
 		break;
 	default:
-		error("Unknown CSRK key type 02%02x", ev->key.master);
+		error("Unknown CSRK key type 02%02x", ev->key.type);
 		return;
 	}
 

@@ -602,7 +602,7 @@ struct mgmt_ev_new_irk {
 
 struct mgmt_csrk_info {
 	struct mgmt_addr_info addr;
-	uint8_t master;
+	uint8_t type;
 	uint8_t val[16];
 } __packed;
 

@@ -6156,7 +6156,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t bdaddr_type, const unsigned char *key,
-				uint32_t counter, uint8_t master)
+				uint32_t counter, uint8_t type)
 {
 	const char *group;
 	char adapter_addr[18];
@@ -6168,12 +6168,12 @@ static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
 	char *str;
 	int i;
 
-	if (master == 0x00)
+	if (type == 0x00 || type == 0x02)
 		group = "LocalSignatureKey";
-	else if (master == 0x01)
+	else if (type == 0x01 || type == 0x03)
 		group = "RemoteSignatureKey";
 	else {
-		warn("Unsupported CSRK type %u", master);
+		warn("Unsupported CSRK type %u", type);
 		return;
 	}
 
@@ -6219,8 +6219,8 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 
 	ba2str(&addr->bdaddr, dst);
 
-	DBG("hci%u new CSRK for %s master %u", adapter->dev_id, dst,
-								ev->key.master);
+	DBG("hci%u new CSRK for %s type %u", adapter->dev_id, dst,
+								ev->key.type);
 
 	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
@@ -6232,7 +6232,7 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 		return;
 
 	store_csrk(bdaddr, &key->addr.bdaddr, key->addr.type, key->val, 0,
-								key->master);
+								key->type);
 
 	if (device_is_temporary(device))
 		btd_device_set_temporary(device, FALSE);
