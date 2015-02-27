@@ -3279,7 +3279,7 @@ static guint signed_write_cmd(struct gatt_device *dev, uint16_t handle,
 	res = gatt_signed_write_cmd(dev->attrib, handle, value, vlen, crypto,
 						csrk, sign_cnt, NULL, NULL);
 	if (!res) {
-		error("gatt: Could write signed cmd");
+		error("gatt: Signed write command failed");
 		return 0;
 	}
 
