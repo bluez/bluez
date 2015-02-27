@@ -33,8 +33,14 @@
 #include "src/shared/util.h"
 #include "src/shared/crypto.h"
 
-#ifndef PF_ALG
+#ifndef HAVE_LINUX_IF_ALG_H
+#ifndef HAVE_LINUX_TYPES_H
+typedef uint8_t __u8;
+typedef uint16_t __u16;
+typedef uint32_t __u32;
+#else
 #include <linux/types.h>
+#endif
 
 struct sockaddr_alg {
 	__u16   salg_family;
