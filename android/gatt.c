@@ -3366,14 +3366,14 @@ static void handle_client_write_characteristic(const void *buf, uint16_t len)
 			goto failed;
 		}
 
-		if (get_sec_level(conn->device) != BT_SECURITY_LOW) {
-			error("gatt: Cannot write signed on encrypted link");
-			status = HAL_STATUS_FAILED;
-			goto failed;
-		}
-
-		res = signed_write_cmd(conn->device, ch->ch.value_handle,
-							cmd->value, cmd->len);
+		if (get_sec_level(conn->device) > BT_SECURITY_LOW)
+			res = gatt_write_cmd(conn->device->attrib,
+						ch->ch.value_handle, cmd->value,
+						cmd->len, NULL, NULL);
+		else
+			res = signed_write_cmd(conn->device,
+						ch->ch.value_handle, cmd->value,
+						cmd->len);
 		break;
 	default:
 		error("gatt: Write type %d unsupported", cmd->write_type);
