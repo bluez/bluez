@@ -36,6 +36,7 @@
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-server.h"
 #include "log.h"
+#include "error.h"
 #include "adapter.h"
 #include "device.h"
 #include "gatt-database.h"
@@ -50,6 +51,7 @@
 #endif
 
 #define GATT_MANAGER_IFACE	"org.bluez.GattManager1"
+#define GATT_SERVICE_IFACE	"org.bluez.GattService1"
 
 #define UUID_GAP	0x1800
 #define UUID_GATT	0x1801
@@ -65,6 +67,17 @@ struct btd_gatt_database {
 	struct queue *device_states;
 	struct gatt_db_attribute *svc_chngd;
 	struct gatt_db_attribute *svc_chngd_ccc;
+	struct queue *services;
+};
+
+struct external_service {
+	struct btd_gatt_database *database;
+	char *owner;
+	char *path;	/* Path to GattService1 */
+	DBusMessage *reg;
+	GDBusClient *client;
+	GDBusProxy *proxy;
+	struct gatt_db_attribute *attrib;
 };
 
 struct device_state {
@@ -199,6 +212,35 @@ static void device_state_free(void *data)
 	free(state);
 }
 
+static void service_free(void *data)
+{
+	struct external_service *service = data;
+
+	gatt_db_remove_service(service->database->db, service->attrib);
+
+	if (service->client) {
+		g_dbus_client_set_disconnect_watch(service->client, NULL, NULL);
+		g_dbus_client_set_proxy_handlers(service->client, NULL, NULL,
+								NULL, NULL);
+		g_dbus_client_set_ready_watch(service->client, NULL, NULL);
+		g_dbus_client_unref(service->client);
+	}
+
+	if (service->proxy)
+		g_dbus_proxy_unref(service->proxy);
+
+	if (service->reg)
+		dbus_message_unref(service->reg);
+
+	if (service->owner)
+		g_free(service->owner);
+
+	if (service->path)
+		g_free(service->path);
+
+	free(service);
+}
+
 static void gatt_database_free(void *data)
 {
 	struct btd_gatt_database *database = data;
@@ -222,6 +264,7 @@ static void gatt_database_free(void *data)
 
 	/* TODO: Persistently store CCC states before freeing them */
 	queue_destroy(database->device_states, device_state_free);
+	queue_destroy(database->services, service_free);
 	gatt_db_unregister(database->db, database->db_id);
 	gatt_db_unref(database->db);
 	btd_adapter_unref(database->adapter);
@@ -750,12 +793,272 @@ static void gatt_db_service_removed(struct gatt_db_attribute *attrib,
 	queue_foreach(database->device_states, remove_device_ccc, attrib);
 }
 
+static bool match_service_path(const void *a, const void *b)
+{
+	const struct external_service *service = a;
+	const char *path = b;
+
+	return g_strcmp0(service->path, path) == 0;
+}
+
+static gboolean service_free_idle_cb(void *data)
+{
+	service_free(data);
+
+	return FALSE;
+}
+
+static void service_remove_helper(void *data)
+{
+	struct external_service *service = data;
+
+	queue_remove(service->database->services, service);
+
+	/*
+	 * Do not run in the same loop, this may be a disconnect
+	 * watch call and GDBusClient should not be destroyed.
+	 */
+	g_idle_add(service_free_idle_cb, service);
+}
+
+static void client_disconnect_cb(DBusConnection *conn, void *user_data)
+{
+	DBG("Client disconnected");
+
+	service_remove_helper(user_data);
+}
+
+static void service_remove(void *data)
+{
+	struct external_service *service = data;
+
+	/*
+	 * Set callback to NULL to avoid potential race condition
+	 * when calling remove_service and GDBusClient unref.
+	 */
+	g_dbus_client_set_disconnect_watch(service->client, NULL, NULL);
+
+	service_remove_helper(service);
+}
+
+static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
+{
+	struct external_service *service = user_data;
+	const char *iface, *path;
+
+	iface = g_dbus_proxy_get_interface(proxy);
+	path = g_dbus_proxy_get_path(proxy);
+
+	if (!g_str_has_prefix(path, service->path))
+		return;
+
+	/* TODO: Handle characteristic and descriptors here */
+
+	if (g_strcmp0(iface, GATT_SERVICE_IFACE))
+		return;
+
+	DBG("Object added to service - path: %s, iface: %s", path, iface);
+
+	service->proxy = g_dbus_proxy_ref(proxy);
+}
+
+static void proxy_removed_cb(GDBusProxy *proxy, void *user_data)
+{
+	struct external_service *service = user_data;
+	const char *path;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	if (!g_str_has_prefix(path, service->path))
+		return;
+
+	DBG("Proxy removed - removing service: %s", service->path);
+
+	service_remove(service);
+}
+
+static bool parse_uuid(GDBusProxy *proxy, bt_uuid_t *uuid)
+{
+	DBusMessageIter iter;
+	bt_uuid_t tmp;
+	const char *uuidstr;
+
+	if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
+		return false;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return false;
+
+	dbus_message_iter_get_basic(&iter, &uuidstr);
+
+	if (bt_string_to_uuid(uuid, uuidstr) < 0)
+		return false;
+
+	/* GAP & GATT services are created and managed by BlueZ */
+	bt_uuid16_create(&tmp, UUID_GAP);
+	if (!bt_uuid_cmp(&tmp, uuid)) {
+		error("GAP service must be handled by BlueZ");
+		return false;
+	}
+
+	bt_uuid16_create(&tmp, UUID_GATT);
+	if (!bt_uuid_cmp(&tmp, uuid)) {
+		error("GATT service must be handled by BlueZ");
+		return false;
+	}
+
+	return true;
+}
+
+static bool parse_primary(GDBusProxy *proxy, bool *primary)
+{
+	DBusMessageIter iter;
+
+	if (!g_dbus_proxy_get_property(proxy, "Primary", &iter))
+		return false;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_BOOLEAN)
+		return false;
+
+	dbus_message_iter_get_basic(&iter, primary);
+	return true;
+}
+
+static bool create_service_entry(struct external_service *service)
+{
+	bt_uuid_t uuid;
+	bool primary;
+
+	if (!parse_uuid(service->proxy, &uuid)) {
+		error("Failed to read \"UUID\" property of service");
+		return false;
+	}
+
+	if (!parse_primary(service->proxy, &primary)) {
+		error("Failed to read \"Primary\" property of service");
+		return false;
+}
+
+	/* TODO: Determine the correct attribute count */
+	service->attrib = gatt_db_add_service(service->database->db, &uuid,
+								primary, 1);
+	if (!service->attrib)
+		return false;
+
+	gatt_db_service_set_active(service->attrib, true);
+
+	return true;
+}
+
+static void client_ready_cb(GDBusClient *client, void *user_data)
+{
+	struct external_service *service = user_data;
+	DBusMessage *reply;
+	bool fail = false;
+
+	if (!service->proxy) {
+		error("No external GATT objects found");
+		fail = true;
+		reply = btd_error_failed(service->reg,
+						"No service object found");
+		goto reply;
+	}
+
+	if (!create_service_entry(service)) {
+		error("Failed to create GATT service entry in local database");
+		fail = true;
+		reply = btd_error_failed(service->reg,
+					"Failed to create entry in database");
+		goto reply;
+	}
+
+	DBG("GATT service registered: %s", service->path);
+
+	reply = dbus_message_new_method_return(service->reg);
+
+reply:
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(service->reg);
+	service->reg = NULL;
+
+	if (fail)
+		service_remove(service);
+}
+
+static struct external_service *service_create(DBusConnection *conn,
+					DBusMessage *msg, const char *path)
+{
+	struct external_service *service;
+	const char *sender = dbus_message_get_sender(msg);
+
+	if (!path || !g_str_has_prefix(path, "/"))
+		return NULL;
+
+	service = new0(struct external_service, 1);
+	if (!service)
+		return NULL;
+
+	service->client = g_dbus_client_new_full(conn, sender, path, path);
+	if (!service->client)
+		goto fail;
+
+	service->owner = g_strdup(sender);
+	if (!service->owner)
+		goto fail;
+
+	service->path = g_strdup(path);
+	if (!service->path)
+		goto fail;
+
+	service->reg = dbus_message_ref(msg);
+
+	g_dbus_client_set_disconnect_watch(service->client,
+						client_disconnect_cb, service);
+	g_dbus_client_set_proxy_handlers(service->client, proxy_added_cb,
+							proxy_removed_cb, NULL,
+							service);
+	g_dbus_client_set_ready_watch(service->client, client_ready_cb,
+								service);
+
+	return service;
+
+fail:
+	service_free(service);
+	return NULL;
+}
+
 static DBusMessage *manager_register_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	DBG("RegisterService");
+	struct btd_gatt_database *database = user_data;
+	DBusMessageIter args;
+	const char *path;
+	struct external_service *service;
 
-	/* TODO */
+	if (!dbus_message_iter_init(msg, &args))
+		return btd_error_invalid_args(msg);
+
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_OBJECT_PATH)
+		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_get_basic(&args, &path);
+
+	if (queue_find(database->services, match_service_path, path))
+		return btd_error_already_exists(msg);
+
+	dbus_message_iter_next(&args);
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
+		return btd_error_invalid_args(msg);
+
+	service = service_create(conn, msg, path);
+	if (!service)
+		return btd_error_failed(msg, "Failed to register service");
+
+	DBG("Registering service - path: %s", path);
+
+	service->database = database;
+	queue_push_tail(database->services, service);
+
 	return NULL;
 }
 
@@ -798,6 +1101,10 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 
 	database->device_states = queue_new();
 	if (!database->device_states)
+		goto fail;
+
+	database->services = queue_new();
+	if (!database->services)
 		goto fail;
 
 	database->db_id = gatt_db_register(database->db, gatt_db_service_added,
