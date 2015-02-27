@@ -244,3 +244,5 @@ Long term key) related to a remote device.
   Key			String		Key in hexadecimal format
 
   Counter		Integer		Signing counter
+
+  Authenticated		Boolean		True if the key is authenticated
