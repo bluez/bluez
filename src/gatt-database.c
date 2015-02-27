@@ -94,6 +94,7 @@ struct external_chrc {
 	uint8_t ext_props;
 	struct gatt_db_attribute *attrib;
 	struct queue *pending_reads;
+	struct queue *pending_writes;
 };
 
 struct pending_op {
@@ -243,11 +244,20 @@ static void cancel_pending_read(void *data)
 					NULL, 0);
 }
 
+static void cancel_pending_write(void *data)
+{
+	struct pending_op *op = data;
+
+	gatt_db_attribute_write_result(op->chrc->attrib, op->id,
+					BT_ATT_ERROR_REQUEST_NOT_SUPPORTED);
+}
+
 static void chrc_free(void *data)
 {
 	struct external_chrc *chrc = data;
 
 	queue_destroy(chrc->pending_reads, cancel_pending_read);
+	queue_destroy(chrc->pending_writes, cancel_pending_write);
 
 	g_dbus_proxy_unref(chrc->proxy);
 
@@ -1268,10 +1278,140 @@ error:
 	gatt_db_attribute_read_result(attrib, id, ecode, NULL, 0);
 }
 
+static void write_setup_cb(DBusMessageIter *iter, void *user_data)
+{
+	struct pending_op *op = user_data;
+	struct iovec *iov = op->user_data;
+	DBusMessageIter array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&iov->iov_base, iov->iov_len);
+	dbus_message_iter_close_container(iter, &array);
+}
+
+static void write_reply_cb(DBusMessage *message, void *user_data)
+{
+	struct pending_op *op = user_data;
+	DBusError err;
+	DBusMessageIter iter;
+	uint8_t ecode = 0;
+
+	if (!op->chrc) {
+		DBG("Pending write was canceled when object got removed");
+		return;
+	}
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, message) == TRUE) {
+		DBG("Failed to write value: %s: %s", err.name, err.message);
+		ecode = dbus_error_to_att_ecode(err.name);
+		ecode = ecode ? ecode : BT_ATT_ERROR_WRITE_NOT_PERMITTED;
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_message_iter_init(message, &iter);
+	if (dbus_message_iter_has_next(&iter)) {
+		/*
+		 * Return not supported for this, as the external app basically
+		 * doesn't properly support the "WriteValue" API.
+		 */
+		ecode = BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+		error("Invalid return value received for \"WriteValue\"");
+	}
+
+done:
+	gatt_db_attribute_write_result(op->chrc->attrib, op->id, ecode);
+}
+
+static struct pending_op *pending_write_new(struct external_chrc *chrc,
+							unsigned int id,
+							const uint8_t *value,
+							size_t len)
+{
+	struct pending_op *op;
+	struct iovec iov;
+
+	op = new0(struct pending_op, 1);
+	if (!op)
+		return NULL;
+
+	iov.iov_base = (uint8_t *) value;
+	iov.iov_len = len;
+
+	op->chrc = chrc;
+	op->id = id;
+	op->user_data = &iov;
+	queue_push_tail(chrc->pending_writes, op);
+
+	return op;
+}
+
+static void pending_write_free(void *data)
+{
+	struct pending_op *op = data;
+
+	if (op->chrc)
+		queue_remove(op->chrc->pending_writes, op);
+
+	free(op);
+}
+
+static void chrc_write_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct external_chrc *chrc = user_data;
+	struct pending_op *op;
+	uint8_t ecode = BT_ATT_ERROR_UNLIKELY;
+
+	if (chrc->attrib != attrib) {
+		error("Write callback called with incorrect attribute");
+		goto error;
+	}
+
+	op = pending_write_new(chrc, id, value, len);
+	if (!op) {
+		error("Failed to allocate memory for pending read call");
+		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
+		goto error;
+	}
+
+	if (g_dbus_proxy_method_call(chrc->proxy, "WriteValue", write_setup_cb,
+						write_reply_cb, op,
+						pending_write_free) == TRUE)
+		return;
+
+	pending_write_free(op);
+
+error:
+	gatt_db_attribute_write_result(attrib, id, ecode);
+}
+
+static uint32_t permissions_from_props(uint8_t props, uint8_t ext_props)
+{
+	uint32_t perm = 0;
+
+	if (props & BT_GATT_CHRC_PROP_WRITE ||
+			props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP ||
+			ext_props & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE)
+		perm |= BT_ATT_PERM_WRITE;
+
+	if (props & BT_GATT_CHRC_PROP_READ)
+		perm |= BT_ATT_PERM_READ;
+
+	return perm;
+}
+
 static bool database_add_chrc(struct external_service *service,
 						struct external_chrc *chrc)
 {
 	bt_uuid_t uuid;
+	uint32_t perm;
 
 	if (!parse_uuid(chrc->proxy, &uuid)) {
 		error("Failed to read \"UUID\" property of characteristic");
@@ -1280,15 +1420,19 @@ static bool database_add_chrc(struct external_service *service,
 
 	if (!parse_service(chrc->proxy, service)) {
 		error("Invalid service path for characteristic");
-		service->failed = true;
 		return false;
 	}
 
-	/* TODO: Assign permissions and write callback */
+	/*
+	 * TODO: Once shared/gatt-server properly supports permission checks,
+	 * set the permissions based on a D-Bus property of the external
+	 * characteristic.
+	 */
+	perm = permissions_from_props(chrc->props, chrc->ext_props);
 	chrc->attrib = gatt_db_service_add_characteristic(service->attrib,
-							&uuid, 0, chrc->props,
-							chrc_read_cb,
-							NULL, chrc);
+						&uuid, perm,
+						chrc->props, chrc_read_cb,
+						chrc_write_cb, chrc);
 
 	/* TODO: Create descriptor entries */
 
