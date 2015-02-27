@@ -282,10 +282,10 @@ static bool encode_pdu(struct bt_att *att, struct att_send_op *op,
 					const void *pdu, uint16_t length)
 {
 	uint16_t pdu_len = 1;
-	struct sign_info *sign;
+	struct sign_info *sign = att->local_sign;
 	uint32_t sign_cnt;
 
-	if (op->opcode & ATT_OP_SIGNED_MASK)
+	if (sign && (op->opcode & ATT_OP_SIGNED_MASK))
 		pdu_len += BT_ATT_SIGNATURE_LEN;
 
 	if (length && pdu)
@@ -303,12 +303,8 @@ static bool encode_pdu(struct bt_att *att, struct att_send_op *op,
 	if (pdu_len > 1)
 		memcpy(op->pdu + 1, pdu, length);
 
-	if (!(op->opcode & ATT_OP_SIGNED_MASK))
+	if (!sign || !(op->opcode & ATT_OP_SIGNED_MASK))
 		return true;
-
-	sign = att->local_sign;
-	if (!sign)
-		goto fail;
 
 	if (!sign->counter(&sign_cnt, sign->user_data))
 		goto fail;
