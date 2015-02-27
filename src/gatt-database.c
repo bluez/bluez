@@ -57,6 +57,10 @@
 #define UUID_GAP	0x1800
 #define UUID_GATT	0x1801
 
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 struct btd_gatt_database {
 	struct btd_adapter *adapter;
 	struct gatt_db *db;
@@ -89,6 +93,13 @@ struct external_chrc {
 	uint8_t props;
 	uint8_t ext_props;
 	struct gatt_db_attribute *attrib;
+	struct queue *pending_reads;
+};
+
+struct pending_op {
+	struct external_chrc *chrc;
+	unsigned int id;
+	void *user_data;
 };
 
 struct device_state {
@@ -223,9 +234,20 @@ static void device_state_free(void *data)
 	free(state);
 }
 
+static void cancel_pending_read(void *data)
+{
+	struct pending_op *op = data;
+
+	gatt_db_attribute_read_result(op->chrc->attrib, op->id,
+					BT_ATT_ERROR_REQUEST_NOT_SUPPORTED,
+					NULL, 0);
+}
+
 static void chrc_free(void *data)
 {
 	struct external_chrc *chrc = data;
+
+	queue_destroy(chrc->pending_reads, cancel_pending_read);
 
 	g_dbus_proxy_unref(chrc->proxy);
 
@@ -878,6 +900,12 @@ static struct external_chrc *chrc_create(GDBusProxy *proxy)
 	if (!chrc)
 		return NULL;
 
+	chrc->pending_reads = queue_new();
+	if (!chrc->pending_reads) {
+		free(chrc);
+		return NULL;
+	}
+
 	chrc->proxy = g_dbus_proxy_ref(proxy);
 
 	return chrc;
@@ -1107,6 +1135,139 @@ static bool parse_primary(GDBusProxy *proxy, bool *primary)
 	return true;
 }
 
+static uint8_t dbus_error_to_att_ecode(const char *error_name)
+{
+	/* TODO: Parse error ATT ecode from error_message */
+
+	if (strcmp(error_name, "org.bluez.Error.Failed") == 0)
+		return 0x80;  /* For now return this "application error" */
+
+	if (strcmp(error_name, "org.bluez.Error.NotSupported") == 0)
+		return BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+
+	if (strcmp(error_name, "org.bluez.Error.NotAuthorized") == 0)
+		return BT_ATT_ERROR_AUTHORIZATION;
+
+	if (strcmp(error_name, "org.bluez.Error.InvalidValueLength") == 0)
+		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+
+	return 0;
+}
+
+static void read_reply_cb(DBusMessage *message, void *user_data)
+{
+	struct pending_op *op = user_data;
+	DBusError err;
+	DBusMessageIter iter, array;
+	uint8_t ecode = 0;
+	uint8_t *value = NULL;
+	int len = 0;
+
+	if (!op->chrc) {
+		DBG("Pending read was canceled when object got removed");
+		return;
+	}
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, message) == TRUE) {
+		DBG("Failed to read value: %s: %s", err.name, err.message);
+		ecode = dbus_error_to_att_ecode(err.name);
+		ecode = ecode ? ecode : BT_ATT_ERROR_READ_NOT_PERMITTED;
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		/*
+		 * Return not supported for this, as the external app basically
+		 * doesn't properly support reading from this characteristic.
+		 */
+		ecode = BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+		error("Invalid return value received for \"ReadValue\"");
+		goto done;
+	}
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &value, &len);
+
+	if (len < 0) {
+		ecode = BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+		value = NULL;
+		len = 0;
+		goto done;
+	}
+
+	/* Truncate the value if it's too large */
+	len = MIN(BT_ATT_MAX_VALUE_LEN, len);
+	value = len ? value : NULL;
+
+done:
+	gatt_db_attribute_read_result(op->chrc->attrib, op->id, ecode,
+								value, len);
+}
+
+static struct pending_op *pending_read_new(struct external_chrc *chrc,
+							unsigned int id)
+{
+	struct pending_op *op;
+
+	op = new0(struct pending_op, 1);
+	if (!op)
+		return NULL;
+
+	op->chrc = chrc;
+	op->id = id;
+	queue_push_tail(chrc->pending_reads, op);
+
+	return op;
+}
+
+static void pending_read_free(void *data)
+{
+	struct pending_op *op = data;
+
+	if (op->chrc)
+		queue_remove(op->chrc->pending_reads, op);
+
+	free(op);
+}
+
+static void chrc_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct external_chrc *chrc = user_data;
+	struct pending_op *op;
+	uint8_t ecode = BT_ATT_ERROR_UNLIKELY;
+
+	if (chrc->attrib != attrib) {
+		error("Read callback called with incorrect attribute");
+		goto error;
+
+	}
+
+	op = pending_read_new(chrc, id);
+	if (!op) {
+		error("Failed to allocate memory for pending read call");
+		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
+		goto error;
+	}
+
+	if (g_dbus_proxy_method_call(chrc->proxy, "ReadValue", NULL,
+						read_reply_cb, op,
+						pending_read_free) == TRUE)
+		return;
+
+	pending_read_free(op);
+
+error:
+	gatt_db_attribute_read_result(attrib, id, ecode, NULL, 0);
+}
+
 static bool database_add_chrc(struct external_service *service,
 						struct external_chrc *chrc)
 {
@@ -1123,10 +1284,11 @@ static bool database_add_chrc(struct external_service *service,
 		return false;
 	}
 
-	/* TODO: Assign permissions and read/write callbacks */
+	/* TODO: Assign permissions and write callback */
 	chrc->attrib = gatt_db_service_add_characteristic(service->attrib,
 							&uuid, 0, chrc->props,
-							NULL, NULL, NULL);
+							chrc_read_cb,
+							NULL, chrc);
 
 	/* TODO: Create descriptor entries */
 
