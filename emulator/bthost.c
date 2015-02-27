@@ -2038,23 +2038,30 @@ static void rfcomm_mcc_recv(struct bthost *bthost, struct btconn *conn,
 	}
 }
 
+#define GET_LEN8(length)	((length & 0xfe) >> 1)
+#define GET_LEN16(length)	((length & 0xfffe) >> 1)
+
 static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 				struct l2conn *l2conn, const void *data,
 				uint16_t len)
 {
 	const struct rfcomm_hdr *hdr = data;
-	uint16_t hdr_len;
+	uint16_t hdr_len, data_len;
 	const void *p;
 
 	if (len < sizeof(*hdr))
 		return;
 
-	if (RFCOMM_TEST_EA(hdr->length))
+	if (RFCOMM_TEST_EA(hdr->length)) {
+		data_len = (uint16_t) GET_LEN8(hdr->length);
 		hdr_len = sizeof(*hdr);
-	else
+	} else {
+		uint8_t ex_len = *((uint8_t *)(data + sizeof(*hdr)));
+		data_len = ((uint16_t) hdr->length << 8) | ex_len;
 		hdr_len = sizeof(*hdr) + sizeof(uint8_t);
+	}
 
-	if (len < hdr_len)
+	if (len < hdr_len + data_len)
 		return;
 
 	p = data + hdr_len;
@@ -2064,13 +2071,10 @@ static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 
 		hook = find_rfcomm_chan_hook(conn,
 					RFCOMM_GET_CHANNEL(hdr->address));
-		if (!hook)
-			return;
-
-		hook->func(p, len - hdr_len - sizeof(uint8_t),
-							hook->user_data);
+		if (hook && data_len)
+			hook->func(p, data_len, hook->user_data);
 	} else {
-		rfcomm_mcc_recv(bthost, conn, l2conn, p, len - hdr_len);
+		rfcomm_mcc_recv(bthost, conn, l2conn, p, data_len);
 	}
 }
 
