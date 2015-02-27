@@ -227,6 +227,7 @@ Long term key) related to a remote device.
 
   Same as the [LongTermKey] group, except for slave keys.
 
+
 [ConnectionParameters] group contains:
 
   MinInterval		Integer		Minimum Connection Interval
@@ -236,3 +237,10 @@ Long term key) related to a remote device.
   Latency		Integer		Connection Latency
 
   Timeout		Integer		Supervision Timeout
+
+
+[LocalSignatureKey] and [RemoteSignatureKey] groups contain:
+
+  Key			String		Key in hexadecimal format
+
+  Counter		Integer		Signing counter
