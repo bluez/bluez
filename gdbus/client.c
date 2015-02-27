@@ -1374,7 +1374,8 @@ gboolean g_dbus_client_set_proxy_handlers(GDBusClient *client,
 	client->property_changed = property_changed;
 	client->user_data = user_data;
 
-	get_managed_objects(client);
+	if (proxy_added || proxy_removed || property_changed)
+		get_managed_objects(client);
 
 	return TRUE;
 }
