@@ -317,6 +317,9 @@ static bool encode_pdu(struct bt_att *att, struct att_send_op *op,
 				sign_cnt, &((uint8_t *) op->pdu)[1 + length])))
 		return true;
 
+	util_debug(att->debug_callback, att->debug_data,
+					"ATT unable to generate signature");
+
 fail:
 	free(op->pdu);
 	return false;
@@ -926,9 +929,8 @@ struct bt_att *bt_att_new(int fd)
 	if (!att->io)
 		goto fail;
 
+	/* crypto is optional, if not available leave it NULL */
 	att->crypto = bt_crypto_new();
-	if (!att->crypto)
-		goto fail;
 
 	att->req_queue = queue_new();
 	if (!att->req_queue)
