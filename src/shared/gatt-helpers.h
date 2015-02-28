@@ -65,7 +65,7 @@ typedef void (*bt_gatt_discovery_callback_t)(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data);
 
-bool bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
+unsigned int bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
 					bt_gatt_result_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);

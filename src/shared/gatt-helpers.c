@@ -535,13 +535,14 @@ done:
 		op->callback(success, att_ecode, op->user_data);
 }
 
-bool bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
+unsigned int bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
 					bt_gatt_result_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy)
 {
 	struct mtu_op *op;
 	uint8_t pdu[2];
+	unsigned int id;
 
 	if (!att || !client_rx_mtu)
 		return false;
@@ -558,14 +559,12 @@ bool bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
 
 	put_le16(client_rx_mtu, pdu);
 
-	if (!bt_att_send(att, BT_ATT_OP_MTU_REQ, pdu, sizeof(pdu),
-							mtu_cb, op,
-							destroy_mtu_op)) {
+	id = bt_att_send(att, BT_ATT_OP_MTU_REQ, pdu, sizeof(pdu), mtu_cb, op,
+								destroy_mtu_op);
+	if (!id)
 		free(op);
-		return false;
-	}
 
-	return true;
+	return id;
 }
 
 static inline int get_uuid_len(const bt_uuid_t *uuid)
