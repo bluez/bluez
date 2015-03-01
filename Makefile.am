@@ -257,7 +257,7 @@ EXTRA_DIST += tools/magic.btsnoop
 
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
-AM_CPPFLAGS = -I$(builddir)/lib -I$(srcdir)/gdbus
+AM_CPPFLAGS = -I$(builddir)/lib
 
 
 unit_tests += unit/test-eir
