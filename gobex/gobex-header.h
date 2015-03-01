@@ -25,8 +25,8 @@
 
 #include <glib.h>
 
-#include <gobex/gobex-defs.h>
-#include <gobex/gobex-apparam.h>
+#include "gobex/gobex-defs.h"
+#include "gobex/gobex-apparam.h"
 
 /* Header ID's */
 #define G_OBEX_HDR_INVALID	0x00

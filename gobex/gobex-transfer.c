@@ -27,8 +27,8 @@
 #include <string.h>
 #include <errno.h>
 
-#include "gobex.h"
-#include "gobex-debug.h"
+#include "gobex/gobex.h"
+#include "gobex/gobex-debug.h"
 
 #define FIRST_PACKET_TIMEOUT 60
 

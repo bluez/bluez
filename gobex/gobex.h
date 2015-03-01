@@ -26,8 +26,8 @@
 #include <stdarg.h>
 #include <glib.h>
 
-#include <gobex/gobex-defs.h>
-#include <gobex/gobex-packet.h>
+#include "gobex/gobex-defs.h"
+#include "gobex/gobex-packet.h"
 
 typedef enum {
 	G_OBEX_TRANSPORT_STREAM,

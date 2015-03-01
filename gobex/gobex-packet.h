@@ -26,8 +26,8 @@
 #include <stdarg.h>
 #include <glib.h>
 
-#include <gobex/gobex-defs.h>
-#include <gobex/gobex-header.h>
+#include "gobex/gobex-defs.h"
+#include "gobex/gobex-header.h"
 
 /* Request opcodes */
 #define G_OBEX_OP_CONNECT			0x00
