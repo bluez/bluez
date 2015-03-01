@@ -43,11 +43,12 @@
 
 #include <glib.h>
 
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
+
 #include "src/log.h"
 #include "src/sdpd.h"
 #include "src/shared/util.h"
-
-#include "lib/bluetooth.h"
 
 #include "ipc-common.h"
 #include "ipc.h"
