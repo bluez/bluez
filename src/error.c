@@ -27,7 +27,7 @@
 #include <config.h>
 #endif
 
-#include <gdbus/gdbus.h>
+#include "gdbus/gdbus.h"
 
 #include "error.h"
 
