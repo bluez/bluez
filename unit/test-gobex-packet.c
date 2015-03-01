@@ -28,7 +28,8 @@
 #include <string.h>
 #include <errno.h>
 
-#include <gobex/gobex-packet.h>
+#include "gobex/gobex.h"
+#include "gobex/gobex-packet.h"
 
 #include "util.h"
 

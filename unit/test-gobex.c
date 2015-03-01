@@ -32,7 +32,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include <gobex/gobex.h>
+#include "gobex/gobex.h"
 
 #include "util.h"
 

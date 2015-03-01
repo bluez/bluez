@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 
-#include <gobex/gobex.h>
+#include "gobex/gobex.h"
 
 #include "util.h"
 

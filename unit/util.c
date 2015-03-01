@@ -33,6 +33,8 @@
 
 #include <glib.h>
 
+#include "gobex/gobex.h"
+
 #include "util.h"
 
 GQuark test_error_quark(void)

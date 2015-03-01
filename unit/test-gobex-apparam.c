@@ -27,7 +27,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <gobex/gobex-apparam.h>
+#include "gobex/gobex.h"
+#include "gobex/gobex-apparam.h"
 
 #include "util.h"
 
