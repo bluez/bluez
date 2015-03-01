@@ -40,7 +40,8 @@
 #include <inttypes.h>
 
 #include <glib.h>
-#include <gobex/gobex.h>
+
+#include "gobex/gobex.h"
 
 #include "btio/btio.h"
 #include "obexd.h"

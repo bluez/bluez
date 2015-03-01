@@ -32,8 +32,8 @@
 #include <inttypes.h>
 #include <sys/time.h>
 
-#include <gobex/gobex.h>
-#include <gobex/gobex-apparam.h>
+#include "gobex/gobex.h"
+#include "gobex/gobex-apparam.h"
 
 #include "obexd.h"
 #include "plugin.h"
