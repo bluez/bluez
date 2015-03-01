@@ -25,15 +25,17 @@
 #include <stdint.h>
 
 #include <dbus/dbus.h>
-#include <gdbus/gdbus.h>
 
-#include <bluetooth/bluetooth.h>
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
+#include "lib/uuid.h"
+
+#include "gdbus/gdbus.h"
 
 #include "log.h"
 #include "error.h"
 #include "adapter.h"
 #include "device.h"
-#include "lib/uuid.h"
 #include "src/shared/queue.h"
 #include "src/shared/att.h"
 #include "src/shared/gatt-db.h"

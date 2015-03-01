@@ -37,20 +37,22 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
-
 #include <glib.h>
 #include <dbus/dbus.h>
-#include <gdbus/gdbus.h>
+
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/hci_lib.h"
+#include "bluetooth/sdp.h"
+#include "bluetooth/sdp_lib.h"
+#include "lib/uuid.h"
+#include "lib/mgmt.h"
+
+#include "gdbus/gdbus.h"
 
 #include "log.h"
 #include "textfile.h"
 
-#include "lib/uuid.h"
-#include "lib/mgmt.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"

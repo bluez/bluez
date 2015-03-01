@@ -35,9 +35,10 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
-#include <bluetooth/bluetooth.h>
-
 #include <glib.h>
+
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
 
 #include "log.h"
 

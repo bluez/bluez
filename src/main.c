@@ -38,13 +38,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <bluetooth/bluetooth.h>
-
 #include <glib.h>
 
 #include <dbus/dbus.h>
 
-#include <gdbus/gdbus.h>
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
+
+#include "gdbus/gdbus.h"
 
 #include "log.h"
 

@@ -30,14 +30,17 @@
 
 #include <glib.h>
 #include <dbus/dbus.h>
-#include <gdbus/gdbus.h>
+
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
+#include "lib/uuid.h"
+
+#include "gdbus/gdbus.h"
 
 #include "adapter.h"
 #include "device.h"
-#include "lib/uuid.h"
 #include "dbus-common.h"
 #include "log.h"
-
 #include "error.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"

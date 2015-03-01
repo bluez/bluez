@@ -22,13 +22,9 @@
  *
  */
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
+#include <stdbool.h>
 #include <dbus/dbus.h>
 #include <glib.h>
-#include <stdbool.h>
 
 #define MAX_NAME_LENGTH		248
 

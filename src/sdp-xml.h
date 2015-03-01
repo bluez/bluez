@@ -21,15 +21,7 @@
  *
  */
 
-
-#ifndef __SDP_XML_H
-#define __SDP_XML_H
-
-#include <bluetooth/sdp.h>
-
 void convert_sdp_record_to_xml(sdp_record_t *rec,
 		void *user_data, void (*append_func) (void *, const char *));
 
 sdp_record_t *sdp_xml_parse_record(const char *data, int size);
-
-#endif /* __SDP_XML_H */
