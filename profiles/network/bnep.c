@@ -36,15 +36,15 @@
 #include <net/if.h>
 #include <linux/sockios.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
-#include <bluetooth/bnep.h>
-
 #include <glib.h>
+
+#include "lib/bluetooth.h"
+#include "lib/l2cap.h"
+#include "lib/bnep.h"
+#include "lib/uuid.h"
 
 #include "src/log.h"
 #include "src/shared/util.h"
-#include "lib/uuid.h"
 #include "btio/btio.h"
 
 #include "bnep.h"

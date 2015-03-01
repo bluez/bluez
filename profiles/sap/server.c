@@ -30,10 +30,11 @@
 
 #include <errno.h>
 #include <glib.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
+#include "lib/sdp.h"
+#include "lib/sdp_lib.h"
 #include "lib/uuid.h"
+
 #include "btio/btio.h"
 #include "src/adapter.h"
 #include "src/sdpd.h"

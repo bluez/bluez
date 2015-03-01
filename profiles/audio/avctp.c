@@ -39,17 +39,16 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/l2cap.h>
-
 #include <glib.h>
 
-#include "btio/btio.h"
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
+#include "lib/l2cap.h"
 #include "lib/uuid.h"
+
+#include "btio/btio.h"
 #include "src/adapter.h"
 #include "src/device.h"
-
 #include "src/log.h"
 #include "src/error.h"
 #include "src/uinput.h"

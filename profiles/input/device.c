@@ -33,17 +33,16 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hidp.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
+#include "lib/bluetooth.h"
+#include "lib/hidp.h"
+#include "lib/sdp.h"
+#include "lib/sdp_lib.h"
+#include "lib/uuid.h"
 
-#include <gdbus/gdbus.h>
-
-#include "src/log.h"
+#include "gdbus/gdbus.h"
 
 #include "btio/btio.h"
-#include "lib/uuid.h"
+#include "src/log.h"
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/profile.h"

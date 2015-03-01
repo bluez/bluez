@@ -28,17 +28,15 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/bnep.h>
-#include <bluetooth/sdp.h>
-
 #include <glib.h>
-#include <gdbus/gdbus.h>
+
+#include "lib/bluetooth.h"
+#include "lib/bnep.h"
+#include "lib/sdp.h"
+#include "lib/uuid.h"
 
 #include "src/log.h"
 #include "src/plugin.h"
-
-#include "lib/uuid.h"
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/profile.h"

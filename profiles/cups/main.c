@@ -34,13 +34,14 @@
 #include <assert.h>
 #include <signal.h>
 #include <sys/socket.h>
+
 #include <glib.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
+#include "lib/sdp_lib.h"
 
-#include <gdbus/gdbus.h>
+#include "gdbus/gdbus.h"
 
 #include "cups.h"
 
