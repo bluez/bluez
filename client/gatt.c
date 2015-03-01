@@ -35,8 +35,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <glib.h>
-#include <gdbus.h>
 
+#include "gdbus/gdbus.h"
 #include "monitor/uuid.h"
 #include "display.h"
 #include "gatt.h"

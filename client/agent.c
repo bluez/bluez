@@ -28,8 +28,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <readline/readline.h>
-#include <gdbus.h>
 
+#include "gdbus/gdbus.h"
 #include "display.h"
 #include "agent.h"
 
