@@ -30,10 +30,13 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <stdlib.h>
+
 #include <glib.h>
-#include <gdbus/gdbus.h>
-#include <gobex/gobex-apparam.h>
-#include <bluetooth/sdp.h>
+
+#include "lib/sdp.h"
+
+#include "gobex/gobex-apparam.h"
+#include "gdbus/gdbus.h"
 
 #include "dbus.h"
 #include "log.h"

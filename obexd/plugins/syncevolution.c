@@ -34,9 +34,9 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 
-#include <bluetooth/bluetooth.h>
+#include "lib/bluetooth.h"
 
-#include <gdbus/gdbus.h>
+#include "gdbus/gdbus.h"
 
 #include "btio/btio.h"
 #include "plugin.h"

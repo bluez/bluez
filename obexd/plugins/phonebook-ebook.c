@@ -28,10 +28,11 @@
 
 #include <string.h>
 #include <errno.h>
-#include <glib.h>
-#include <bluetooth/bluetooth.h>
 
+#include <glib.h>
 #include <libebook/e-book.h>
+
+#include "lib/bluetooth.h"
 
 #include "log.h"
 #include "obex.h"
