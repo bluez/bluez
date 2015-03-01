@@ -27,8 +27,7 @@
 
 #include <glib.h>
 
-#include <bluetooth/bluetooth.h>
-
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
 
 struct uuid_test_data {

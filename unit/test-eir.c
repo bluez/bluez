@@ -29,9 +29,9 @@
 
 #include <glib.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/sdp.h>
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
+#include "lib/sdp.h"
 
 #include "src/eir.h"
 
