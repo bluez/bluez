@@ -35,6 +35,8 @@
 #include "lib/sdp_lib.h"
 #include "lib/uuid.h"
 
+#include "gdbus/gdbus.h"
+
 #include "btio/btio.h"
 #include "src/adapter.h"
 #include "src/sdpd.h"
@@ -42,6 +44,7 @@
 #include "src/error.h"
 #include "src/dbus-common.h"
 #include "src/shared/util.h"
+
 #include "sap.h"
 #include "server.h"
 

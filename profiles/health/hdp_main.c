@@ -25,10 +25,10 @@
 #endif
 
 #include <errno.h>
-#include <gdbus/gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #include "src/plugin.h"
-
 #include "hdp_manager.h"
 
 static int hdp_init(void)

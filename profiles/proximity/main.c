@@ -29,7 +29,8 @@
 #include <errno.h>
 #include <stdint.h>
 #include <glib.h>
-#include <gdbus/gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #include "src/log.h"
 #include "src/plugin.h"
