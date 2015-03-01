@@ -28,17 +28,20 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <gdbus/gdbus.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+
 #include <glib.h>
 
-#include <bluetooth/bluetooth.h>
-
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
 #include "lib/uuid.h"
+
+#include "gdbus/gdbus.h"
+
 #include "src/dbus-common.h"
 #include "src/adapter.h"
 #include "src/device.h"

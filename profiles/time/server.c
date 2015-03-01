@@ -26,17 +26,21 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <time.h>
 #include <errno.h>
+#include <string.h>
 #include <stdbool.h>
+
+#include <glib.h>
+
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
+#include "lib/uuid.h"
 
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/plugin.h"
-
-#include "lib/uuid.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"

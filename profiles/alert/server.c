@@ -36,7 +36,11 @@
 #include <fcntl.h>
 
 #include "lib/bluetooth.h"
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
+#include "lib/sdp.h"
 #include "lib/uuid.h"
+
 #include "src/plugin.h"
 #include "src/dbus-common.h"
 #include "attrib/att.h"

@@ -31,9 +31,12 @@
 
 #include <glib.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
-#include <gdbus/gdbus.h>
+#include "lib/bluetooth.h"
+#include "lib/l2cap.h"
+#include "lib/sdp.h"
+
+#include "gdbus/gdbus.h"
+
 #include "src/dbus-common.h"
 #include "src/log.h"
 #include "src/error.h"

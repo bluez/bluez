@@ -30,7 +30,11 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/bluetooth.h"
+#include "lib/sdp.h"
 #include "lib/uuid.h"
+
+#include "gdbus/gdbus.h"
+
 #include "src/plugin.h"
 #include "src/adapter.h"
 #include "src/device.h"

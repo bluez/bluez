@@ -27,10 +27,12 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include <gdbus/gdbus.h>
-
 #include "lib/bluetooth.h"
+#include "lib/sdp.h"
 #include "lib/uuid.h"
+
+#include "gdbus/gdbus.h"
+
 #include "src/plugin.h"
 #include "src/dbus-common.h"
 #include "src/adapter.h"
