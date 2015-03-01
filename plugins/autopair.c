@@ -34,6 +34,7 @@
 #include <glib.h>
 
 #include "lib/bluetooth.h"
+#include "lib/sdp.h"
 
 #include "src/plugin.h"
 #include "src/adapter.h"
