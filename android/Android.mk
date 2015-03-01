@@ -15,6 +15,8 @@ pathmap_INCL += glib:external/bluetooth/glib \
 BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
 			-DANDROID_VERSION=$(ANDROID_VERSION) \
 			-DANDROID_STORAGEDIR=\"/data/misc/bluetooth\" \
+			-DHAVE_LINUX_IF_ALG_H \
+			-DHAVE_LINUX_TYPES_H \
 
 # Enable warnings enabled in autotools build
 BLUEZ_COMMON_CFLAGS += -Wall -Wextra \
