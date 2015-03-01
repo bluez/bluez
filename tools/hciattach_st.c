@@ -35,7 +35,7 @@
 #include <dirent.h>
 #include <sys/param.h>
 
-#include <bluetooth/bluetooth.h>
+#include "lib/bluetooth.h"
 
 #include "hciattach.h"
 
