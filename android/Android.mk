@@ -598,6 +598,9 @@ LOCAL_SRC_FILES := \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
 
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/bluez \
+
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
 LOCAL_STATIC_LIBRARIES := \
@@ -621,6 +624,9 @@ LOCAL_SRC_FILES := \
 	bluez/tools/avtest.c \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
+
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/bluez \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
@@ -652,6 +658,9 @@ LOCAL_SRC_FILES := \
 	bluez/tools/hciattach_bcm43xx.c \
 	bluez/lib/bluetooth.c \
 	bluez/lib/hci.c \
+
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/bluez \
 
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
