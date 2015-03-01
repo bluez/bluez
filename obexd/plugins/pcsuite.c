@@ -42,12 +42,12 @@
 
 #include "gdbus/gdbus.h"
 
-#include "obexd.h"
-#include "plugin.h"
-#include "log.h"
-#include "obex.h"
-#include "mimetype.h"
-#include "service.h"
+#include "obexd/src/obexd.h"
+#include "obexd/src/plugin.h"
+#include "obexd/src/log.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/mimetype.h"
+#include "obexd/src/service.h"
 #include "ftp.h"
 
 #define PCSUITE_CHANNEL 24

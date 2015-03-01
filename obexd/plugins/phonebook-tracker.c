@@ -33,10 +33,10 @@
 #include <dbus/dbus.h>
 #include <libtracker-sparql/tracker-sparql.h>
 
-#include "log.h"
-#include "obex.h"
-#include "service.h"
-#include "mimetype.h"
+#include "obexd/src/log.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/service.h"
+#include "obexd/src/mimetype.h"
 #include "phonebook.h"
 #include "vcard.h"
 

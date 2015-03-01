@@ -33,12 +33,12 @@
 
 #include <glib.h>
 
-#include "obexd.h"
-#include "plugin.h"
-#include "obex.h"
-#include "service.h"
-#include "log.h"
-#include "manager.h"
+#include "obexd/src/obexd.h"
+#include "obexd/src/plugin.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/service.h"
+#include "obexd/src/log.h"
+#include "obexd/src/manager.h"
 #include "filesystem.h"
 
 #define VCARD_TYPE "text/x-vcard"

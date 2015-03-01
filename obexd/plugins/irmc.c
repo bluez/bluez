@@ -36,15 +36,15 @@
 #include <fcntl.h>
 #include <inttypes.h>
 
-#include "obexd.h"
-#include "plugin.h"
-#include "log.h"
-#include "obex.h"
-#include "service.h"
+#include "obexd/src/obexd.h"
+#include "obexd/src/plugin.h"
+#include "obexd/src/log.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/service.h"
+#include "obexd/src/manager.h"
+#include "obexd/src/mimetype.h"
 #include "phonebook.h"
-#include "mimetype.h"
 #include "filesystem.h"
-#include "manager.h"
 
 struct aparam_header {
 	uint8_t tag;

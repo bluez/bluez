@@ -32,7 +32,7 @@
 
 #include "gdbus/gdbus.h"
 
-#include "log.h"
+#include "obexd/src/log.h"
 #include "map-event.h"
 
 #include "transfer.h"

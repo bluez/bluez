@@ -40,13 +40,13 @@
 
 #include <glib.h>
 
-#include "obexd.h"
-#include "plugin.h"
-#include "log.h"
-#include "obex.h"
-#include "manager.h"
-#include "mimetype.h"
-#include "service.h"
+#include "obexd/src/obexd.h"
+#include "obexd/src/plugin.h"
+#include "obexd/src/log.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/manager.h"
+#include "obexd/src/mimetype.h"
+#include "obexd/src/service.h"
 #include "ftp.h"
 #include "filesystem.h"
 

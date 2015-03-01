@@ -41,7 +41,7 @@
 #include <libical/vobject.h>
 #include <libical/vcc.h>
 
-#include "log.h"
+#include "obexd/src/log.h"
 #include "phonebook.h"
 
 typedef void (*vcard_func_t) (const char *file, VObject *vo, void *user_data);

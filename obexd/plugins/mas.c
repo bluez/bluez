@@ -35,16 +35,15 @@
 #include "gobex/gobex.h"
 #include "gobex/gobex-apparam.h"
 
-#include "obexd.h"
-#include "plugin.h"
-#include "log.h"
-#include "obex.h"
-#include "service.h"
-#include "mimetype.h"
+#include "obexd/src/obexd.h"
+#include "obexd/src/plugin.h"
+#include "obexd/src/log.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/service.h"
+#include "obexd/src/mimetype.h"
+#include "obexd/src/manager.h"
+#include "obexd/src/map_ap.h"
 #include "filesystem.h"
-#include "manager.h"
-#include "map_ap.h"
-
 #include "messages.h"
 
 #define READ_STATUS_REQ 0

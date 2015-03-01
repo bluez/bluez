@@ -38,9 +38,9 @@
 #include "gobex/gobex-apparam.h"
 #include "gdbus/gdbus.h"
 
+#include "obexd/src/log.h"
+#include "obexd/src/map_ap.h"
 #include "dbus.h"
-#include "log.h"
-#include "map_ap.h"
 #include "map-event.h"
 
 #include "map.h"

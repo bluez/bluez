@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "log.h"
+#include "obexd/src/log.h"
 
 #include "messages.h"
 

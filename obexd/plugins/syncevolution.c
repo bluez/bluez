@@ -39,13 +39,13 @@
 #include "gdbus/gdbus.h"
 
 #include "btio/btio.h"
-#include "plugin.h"
-#include "obex.h"
-#include "service.h"
-#include "mimetype.h"
-#include "log.h"
-#include "manager.h"
-#include "obexd.h"
+#include "obexd/src/plugin.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/service.h"
+#include "obexd/src/mimetype.h"
+#include "obexd/src/log.h"
+#include "obexd/src/manager.h"
+#include "obexd/src/obexd.h"
 #include "filesystem.h"
 
 #define SYNCML_TARGET_SIZE 11

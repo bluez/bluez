@@ -34,9 +34,9 @@
 
 #include "lib/bluetooth.h"
 
-#include "log.h"
-#include "obex.h"
-#include "service.h"
+#include "obexd/src/log.h"
+#include "obexd/src/obex.h"
+#include "obexd/src/service.h"
 #include "phonebook.h"
 
 #define QUERY_FN "(contains \"family_name\" \"%s\")"

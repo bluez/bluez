@@ -30,8 +30,8 @@
 #include <glib.h>
 #include <inttypes.h>
 
+#include "obexd/src/log.h"
 #include "transport.h"
-#include "log.h"
 
 static GSList *transports = NULL;
 

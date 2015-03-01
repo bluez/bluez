@@ -38,7 +38,7 @@
 #include "gobex/gobex-apparam.h"
 #include "gdbus/gdbus.h"
 
-#include "log.h"
+#include "obexd/src/log.h"
 
 #include "transfer.h"
 #include "session.h"

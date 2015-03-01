@@ -39,7 +39,7 @@
 #include "gdbus/gdbus.h"
 #include "btio/btio.h"
 
-#include "log.h"
+#include "obexd/src/log.h"
 #include "transport.h"
 #include "bluetooth.h"
 
