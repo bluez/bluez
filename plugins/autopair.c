@@ -31,8 +31,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <bluetooth/bluetooth.h>
 #include <glib.h>
+
+#include "lib/bluetooth.h"
 
 #include "src/plugin.h"
 #include "src/adapter.h"
