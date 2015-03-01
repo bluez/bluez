@@ -25,7 +25,7 @@
 #include <config.h>
 #endif
 
-#include <gdbus.h>
+#include "gdbus/gdbus.h"
 
 #include "src/shared/tester.h"
 #include "emulator/hciemu.h"

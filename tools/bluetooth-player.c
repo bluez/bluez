@@ -36,9 +36,9 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <glib.h>
-#include <gdbus.h>
 
-#include <client/display.h>
+#include "gdbus/gdbus.h"
+#include "client/display.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
