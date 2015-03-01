@@ -26,7 +26,8 @@
 #endif
 
 #include <glib.h>
-#include <gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #define SERVICE_NAME "org.bluez.unit.test-gdbus-client"
 #define SERVICE_NAME1 "org.bluez.unit.test-gdbus-client1"
