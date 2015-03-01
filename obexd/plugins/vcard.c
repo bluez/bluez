@@ -31,7 +31,8 @@
 #include <errno.h>
 
 #include <glib.h>
-#include <gdbus/gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #include "vcard.h"
 

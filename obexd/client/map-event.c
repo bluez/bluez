@@ -30,10 +30,11 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
+#include "gdbus/gdbus.h"
+
 #include "log.h"
 #include "map-event.h"
 
-#include <gdbus/gdbus.h>
 #include "transfer.h"
 #include "session.h"
 

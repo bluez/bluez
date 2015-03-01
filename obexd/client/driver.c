@@ -28,7 +28,8 @@
 #include <string.h>
 #include <errno.h>
 #include <glib.h>
-#include <gdbus/gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #include "transfer.h"
 #include "session.h"

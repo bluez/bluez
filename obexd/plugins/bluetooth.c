@@ -34,12 +34,13 @@
 #include <sys/socket.h>
 
 #include <glib.h>
-#include <gdbus/gdbus.h>
 
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
-#include "btio/btio.h"
 
+#include "gdbus/gdbus.h"
+
+#include "btio/btio.h"
 #include "obexd.h"
 #include "plugin.h"
 #include "server.h"

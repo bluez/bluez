@@ -35,8 +35,9 @@
 #include <sys/stat.h>
 
 #include <glib.h>
-#include <gdbus/gdbus.h>
-#include <gobex/gobex.h>
+
+#include "gdbus/gdbus.h"
+#include "gobex/gobex.h"
 
 #include "dbus.h"
 #include "log.h"

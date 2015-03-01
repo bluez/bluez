@@ -39,7 +39,8 @@
 #include <inttypes.h>
 
 #include <glib.h>
-#include <gdbus/gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #include "obexd.h"
 #include "plugin.h"

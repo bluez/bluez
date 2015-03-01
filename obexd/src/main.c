@@ -42,7 +42,7 @@
 #include <syslog.h>
 #include <glib.h>
 
-#include <gdbus/gdbus.h>
+#include "gdbus/gdbus.h"
 
 #include "../client/manager.h"
 

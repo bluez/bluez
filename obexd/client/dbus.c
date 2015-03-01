@@ -24,7 +24,8 @@
 #endif
 
 #include <glib.h>
-#include <gdbus/gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #include "log.h"
 #include "dbus.h"

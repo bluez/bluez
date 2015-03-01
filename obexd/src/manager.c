@@ -29,11 +29,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <gdbus/gdbus.h>
 #include <sys/socket.h>
 #include <inttypes.h>
 
-#include <gobex/gobex.h>
+#include "gdbus/gdbus.h"
+#include "gobex/gobex.h"
 
 #include "btio/btio.h"
 #include "obexd.h"

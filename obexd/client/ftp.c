@@ -28,7 +28,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include <gdbus/gdbus.h>
+#include "gdbus/gdbus.h"
 
 #include "dbus.h"
 #include "log.h"

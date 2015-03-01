@@ -30,7 +30,8 @@
 #include <string.h>
 
 #include <glib.h>
-#include <gdbus/gdbus.h>
+
+#include "gdbus/gdbus.h"
 
 #include "log.h"
 
