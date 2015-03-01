@@ -35,7 +35,7 @@
 
 #include <glib.h>
 
-#include <bluetooth/bluetooth.h>
+#include "lib/bluetooth.h"
 
 #include "btio/btio.h"
 
