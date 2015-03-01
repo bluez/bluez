@@ -36,16 +36,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <bluetooth/bluetooth.h>
-
 #include <glib.h>
 
-#include "src/log.h"
-
+#include "lib/bluetooth.h"
+#include "lib/sdp.h"
 #include "lib/uuid.h"
+
 #include "src/shared/util.h"
 #include "src/shared/uhid.h"
 #include "src/shared/queue.h"
+#include "src/log.h"
 
 #include "attrib/att.h"
 #include "attrib/gattrib.h"

@@ -33,7 +33,9 @@
 #include "src/log.h"
 
 #include "lib/bluetooth.h"
+#include "lib/sdp.h"
 #include "lib/uuid.h"
+
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 

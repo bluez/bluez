@@ -32,14 +32,14 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
-
 #include <glib.h>
 
-#include "src/shared/util.h"
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
+
 #include "btio/btio.h"
+#include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "avdtp.h"
 

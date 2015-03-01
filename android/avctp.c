@@ -40,9 +40,9 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 
-#include <bluetooth/sdp.h>
-
 #include <glib.h>
+
+#include "lib/sdp.h"
 
 #include "src/log.h"
 #include "src/uinput.h"
