@@ -27,16 +27,18 @@
 #endif
 
 #include <errno.h>
-#include <glib.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
+#include <glib.h>
+
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
+#include "lib/sdp.h"
+#include "lib/uuid.h"
 
 #include "src/shared/util.h"
-#include "lib/uuid.h"
 #include "att.h"
 #include "btio/btio.h"
 #include "gattrib.h"

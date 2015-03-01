@@ -28,12 +28,14 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+
 #include <glib.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
+
+#include "lib/sdp.h"
+#include "lib/sdp_lib.h"
+#include "lib/uuid.h"
 
 #include "src/shared/util.h"
-#include "lib/uuid.h"
 #include "att.h"
 #include "gattrib.h"
 #include "gatt.h"

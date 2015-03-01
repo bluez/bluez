@@ -30,12 +30,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <bluetooth/bluetooth.h>
-
 #include <glib.h>
 
-#include "src/shared/util.h"
+#include "lib/bluetooth.h"
 #include "lib/uuid.h"
+
+#include "src/shared/util.h"
 #include "att.h"
 
 static inline void put_uuid_le(const bt_uuid_t *src, void *dst)

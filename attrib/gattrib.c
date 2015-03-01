@@ -26,14 +26,14 @@
 #include "config.h"
 #endif
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+
 #include <glib.h>
 
-#include <stdio.h>
-
-#include <bluetooth/bluetooth.h>
+#include "lib/bluetooth.h"
 
 #include "btio/btio.h"
 #include "src/log.h"
