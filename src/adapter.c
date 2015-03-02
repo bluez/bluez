@@ -6663,6 +6663,7 @@ static int adapter_register(struct btd_adapter *adapter)
 	adapter->database = btd_gatt_database_new(adapter);
 	if (!adapter->database) {
 		error("Failed to create GATT database for adapter");
+		adapters = g_slist_remove(adapters, adapter);
 		return -EINVAL;
 	}
 
