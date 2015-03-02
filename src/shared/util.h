@@ -96,16 +96,6 @@ unsigned char util_get_dt(const char *parent, const char *name);
 uint8_t util_get_uid(unsigned int *bitmap, uint8_t max);
 void util_clear_uid(unsigned int *bitmap, uint8_t id);
 
-static inline void bswap_128(const void *src, void *dst)
-{
-	const uint8_t *s = src;
-	uint8_t *d = dst;
-	int i;
-
-	for (i = 0; i < 16; i++)
-		d[15 - i] = s[i];
-}
-
 static inline uint16_t get_le16(const void *ptr)
 {
 	return le16_to_cpu(get_unaligned((const uint16_t *) ptr));

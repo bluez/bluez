@@ -302,10 +302,10 @@ int bt_uuid_to_le(const bt_uuid_t *src, void *dst)
 		return 0;
 	case BT_UUID32:
 		bt_uuid_to_uuid128(src, &uuid);
-		ntoh128(&uuid.value.u128, dst);
-		return 0;
+		/* Fallthrough */
 	case BT_UUID128:
-		ntoh128(&src->value.u128, dst);
+		/* Convert from 128-bit BE to LE */
+		bswap_128(&src->value.u128, dst);
 		return 0;
 	case BT_UUID_UNSPEC:
 	default:
