@@ -916,6 +916,13 @@ static struct external_chrc *chrc_create(GDBusProxy *proxy)
 		return NULL;
 	}
 
+	chrc->pending_writes = queue_new();
+	if (!chrc->pending_writes) {
+		queue_destroy(chrc->pending_reads, NULL);
+		free(chrc);
+		return NULL;
+	}
+
 	chrc->proxy = g_dbus_proxy_ref(proxy);
 
 	return chrc;
