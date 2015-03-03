@@ -497,14 +497,8 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	rsp = bnep_setup_decode(req, &dst_role, &src_role);
-	if (rsp) {
+	if (rsp != BNEP_SUCCESS) {
 		error("bnep_setup_decode failed");
-		goto failed;
-	}
-
-	rsp = bnep_setup_chk(dst_role, src_role);
-	if (rsp) {
-		error("benp_setup_chk failed");
 		goto failed;
 	}
 

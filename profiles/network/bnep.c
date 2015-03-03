@@ -591,26 +591,6 @@ ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl, uint16_t resp)
 	return send(sk, &rsp, sizeof(rsp), 0);
 }
 
-uint16_t bnep_setup_chk(uint16_t dst, uint16_t src)
-{
-	/* Allowed PAN Profile scenarios */
-	switch (dst) {
-	case BNEP_SVC_NAP:
-	case BNEP_SVC_GN:
-		if (src == BNEP_SVC_PANU)
-			return 0;
-		return BNEP_CONN_INVALID_SRC;
-	case BNEP_SVC_PANU:
-		if (src == BNEP_SVC_PANU ||  src == BNEP_SVC_GN ||
-							src == BNEP_SVC_NAP)
-			return 0;
-
-		return BNEP_CONN_INVALID_SRC;
-	}
-
-	return BNEP_CONN_INVALID_DST;
-}
-
 uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req, uint16_t *dst,
 								uint16_t *src)
 {
@@ -655,5 +635,20 @@ uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req, uint16_t *dst,
 		return BNEP_CONN_INVALID_SVC;
 	}
 
-	return BNEP_SUCCESS;
+	/* Allowed PAN Profile scenarios */
+	switch (*dst) {
+	case BNEP_SVC_NAP:
+	case BNEP_SVC_GN:
+		if (*src == BNEP_SVC_PANU)
+			return BNEP_SUCCESS;
+		return BNEP_CONN_INVALID_SRC;
+	case BNEP_SVC_PANU:
+		if (*src == BNEP_SVC_PANU || *src == BNEP_SVC_GN ||
+							*src == BNEP_SVC_NAP)
+			return BNEP_SUCCESS;
+
+		return BNEP_CONN_INVALID_SRC;
+	}
+
+	return BNEP_CONN_INVALID_DST;
 }

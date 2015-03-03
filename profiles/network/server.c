@@ -324,11 +324,7 @@ static gboolean bnep_setup(GIOChannel *chan,
 		return FALSE;
 
 	rsp = bnep_setup_decode(req, &dst_role, &src_role);
-	if (rsp)
-		goto reply;
-
-	rsp = bnep_setup_chk(dst_role, src_role);
-	if (rsp)
+	if (rsp != BNEP_SUCCESS)
 		goto reply;
 
 	rsp = BNEP_CONN_NOT_ALLOWED;
