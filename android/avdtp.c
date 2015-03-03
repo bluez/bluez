@@ -376,8 +376,6 @@ struct avdtp {
 
 	uint16_t version;
 
-	struct avdtp_server *server;
-
 	guint auth_id;
 
 	GIOChannel *io;
