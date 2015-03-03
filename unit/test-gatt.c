@@ -3064,11 +3064,17 @@ int main(int argc, char *argv[])
 			raw_pdu(0x12, 0x82, 0x00, 0x01, 0x02, 0x03),
 			raw_pdu(0x13));
 
-	define_test_server("/TP/GAW/SR/BI-02-C", test_server,
-			service_db_1, NULL,
+	define_test_server("/TP/GAW/SR/BI-02-C/small", test_server,
+			ts_small_db, NULL,
 			raw_pdu(0x03, 0x00, 0x02),
 			raw_pdu(0x12, 0x00, 0x00, 0x01, 0x02, 0x03),
 			raw_pdu(0x01, 0x12, 0x00, 0x00, 0x01));
+
+	define_test_server("/TP/GAW/SR/BI-02-C/large-1", test_server,
+			ts_large_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x12, 0x0f, 0xf0, 0x01, 0x02, 0x03),
+			raw_pdu(0x01, 0x12, 0x0f, 0xf0, 0x01));
 
 	define_test_server("/TP/GAW/SR/BI-03-C", test_server,
 			service_db_1, NULL,
