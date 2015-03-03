@@ -509,7 +509,7 @@ static int bnep_add_to_bridge(const char *devname, const char *bridge)
 		error("bnep: Can't add %s to the bridge %s: %s(%d)",
 					devname, bridge, strerror(-err), -err);
 	} else {
-		info("bridge %s: interface %s added", bridge, devname);
+		info("bnep: bridge %s: interface %s added", bridge, devname);
 	}
 
 	close(sk);
@@ -541,7 +541,7 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 		error("bnep: Can't delete %s from the bridge %s: %s(%d)",
 					devname, bridge, strerror(-err), -err);
 	} else {
-		info("bridge %s: interface %s removed", bridge, devname);
+		info("bnep: bridge %s: interface %s removed", bridge, devname);
 	}
 
 	close(sk);
