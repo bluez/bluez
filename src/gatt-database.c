@@ -1672,16 +1672,12 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 		goto fail;
 	}
 
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+	if (g_dbus_register_interface(btd_get_dbus_connection(),
 						adapter_get_path(adapter),
 						GATT_MANAGER_IFACE,
 						manager_methods, NULL, NULL,
-						database, NULL)) {
-		error("Failed to register " GATT_MANAGER_IFACE);
-		goto fail;
-	}
-
-	DBG("GATT Manager registered for adapter: %s",
+						database, NULL))
+		DBG("GATT Manager registered for adapter: %s",
 						adapter_get_path(adapter));
 
 	register_core_services(database);
