@@ -90,6 +90,7 @@ struct external_service {
 };
 
 struct external_chrc {
+	struct external_service *service;
 	GDBusProxy *proxy;
 	uint8_t props;
 	uint8_t ext_props;
@@ -299,6 +300,7 @@ static void chrc_free(void *data)
 	queue_destroy(chrc->pending_reads, cancel_pending_read);
 	queue_destroy(chrc->pending_writes, cancel_pending_write);
 
+	g_dbus_proxy_set_property_watch(chrc->proxy, NULL, NULL);
 	g_dbus_proxy_unref(chrc->proxy);
 
 	free(chrc);
@@ -997,7 +999,8 @@ static void service_remove(void *data)
 	service_remove_helper(service);
 }
 
-static struct external_chrc *chrc_create(GDBusProxy *proxy)
+static struct external_chrc *chrc_create(struct external_service *service,
+							GDBusProxy *proxy)
 {
 	struct external_chrc *chrc;
 
@@ -1018,6 +1021,7 @@ static struct external_chrc *chrc_create(GDBusProxy *proxy)
 		return NULL;
 	}
 
+	chrc->service = service;
 	chrc->proxy = g_dbus_proxy_ref(proxy);
 
 	return chrc;
@@ -1146,7 +1150,7 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 			return;
 		}
 
-		chrc = chrc_create(proxy);
+		chrc = chrc_create(service, proxy);
 		if (!chrc) {
 			service->failed = true;
 			return;
@@ -1566,6 +1570,41 @@ static uint8_t ccc_write_cb(uint16_t value, void *user_data)
 	return 0;
 }
 
+static void property_changed_cb(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct external_chrc *chrc = user_data;
+	DBusMessageIter array;
+	uint8_t *value = NULL;
+	int len = 0;
+
+	if (strcmp(name, "Value"))
+		return;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
+		DBG("Malformed \"Value\" property received");
+		return;
+	}
+
+	dbus_message_iter_recurse(iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &value, &len);
+
+	if (len < 0) {
+		DBG("Malformed \"Value\" property received");
+		return;
+	}
+
+	/* Truncate the value if it's too large */
+	len = MIN(BT_ATT_MAX_VALUE_LEN, len);
+	value = len ? value : NULL;
+
+	send_notification_to_devices(chrc->service->database,
+				gatt_db_attribute_get_handle(chrc->attrib),
+				value, len,
+				gatt_db_attribute_get_handle(chrc->ccc),
+				chrc->props & BT_GATT_CHRC_PROP_INDICATE);
+}
+
 static bool database_add_ccc(struct external_service *service,
 						struct external_chrc *chrc)
 {
@@ -1573,6 +1612,12 @@ static bool database_add_ccc(struct external_service *service,
 						ccc_write_cb, chrc, NULL);
 	if (!chrc->ccc) {
 		error("Failed to create CCC entry for characteristic");
+		return false;
+	}
+
+	if (g_dbus_proxy_set_property_watch(chrc->proxy, property_changed_cb,
+							chrc) == FALSE) {
+		error("Failed to set up property watch for characteristic");
 		return false;
 	}
 
