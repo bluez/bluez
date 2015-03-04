@@ -2192,10 +2192,9 @@ static gboolean property_get_discovering(const GDBusPropertyTable *property,
 
 static void add_gatt_uuid(struct gatt_db_attribute *attrib, void *user_data)
 {
-	DBusMessageIter *iter = user_data;
+	GHashTable *uuids = user_data;
 	bt_uuid_t uuid, u128;
 	char uuidstr[MAX_LEN_UUID_STR + 1];
-	const char *ptr = uuidstr;
 
 	if (!gatt_db_service_get_active(attrib))
 		return;
@@ -2206,7 +2205,15 @@ static void add_gatt_uuid(struct gatt_db_attribute *attrib, void *user_data)
 	bt_uuid_to_uuid128(&uuid, &u128);
 	bt_uuid_to_string(&u128, uuidstr, sizeof(uuidstr));
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
+	g_hash_table_add(uuids, strdup(uuidstr));
+}
+
+static void iter_append_uuid(gpointer key, gpointer value, gpointer user_data)
+{
+	DBusMessageIter *iter = user_data;
+	const char *uuid = key;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
 }
 
 static gboolean property_get_uuids(const GDBusPropertyTable *property,
@@ -2216,9 +2223,11 @@ static gboolean property_get_uuids(const GDBusPropertyTable *property,
 	DBusMessageIter entry;
 	sdp_list_t *l;
 	struct gatt_db *db;
+	GHashTable *uuids;
 
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &entry);
+	uuids = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
+	if (!uuids)
+		return FALSE;
 
 	/* SDP records */
 	for (l = adapter->services; l != NULL; l = l->next) {
@@ -2229,17 +2238,20 @@ static gboolean property_get_uuids(const GDBusPropertyTable *property,
 		if (uuid == NULL)
 			continue;
 
-		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
-								&uuid);
-		free(uuid);
+		g_hash_table_add(uuids, uuid);
 	}
 
 	/* GATT services */
 	db = btd_gatt_database_get_db(adapter->database);
 	if (db)
-		gatt_db_foreach_service(db, NULL, add_gatt_uuid, &entry);
+		gatt_db_foreach_service(db, NULL, add_gatt_uuid, uuids);
 
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &entry);
+	g_hash_table_foreach(uuids, iter_append_uuid, &entry);
 	dbus_message_iter_close_container(iter, &entry);
+
+	g_hash_table_destroy(uuids);
 
 	return TRUE;
 }
