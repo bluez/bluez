@@ -31,7 +31,7 @@ TSPX_lim_disc_scan_min					10240
 TSPX_gen_disc_scan_min					10240
 TSPX_database_file					Database-GAP.sig
 TSPX_iut_rx_mtu						23
-TSPX_iut_private_address_interval			10000
+TSPX_iut_private_address_interval			30000 (*)
 TSPX_iut_privacy_enabled				False
 TSPX_psm						1001
 TSPX_iut_valid_connection_interval_min			00C8

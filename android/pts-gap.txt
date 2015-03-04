@@ -326,14 +326,14 @@ TC_PRIV_CONN_BV_07_C	N/A
 TC_PRIV_CONN_BV_08_C	N/A
 TC_PRIV_CONN_BV_09_C	N/A
 TC_PRIV_CONN_BV_10_C	PASS	PTS issue #12951
-				btmgmt privacy on
-				Note: currently for this test following PIXITs
-				are required to be be changed:
+				Note: PIXITs required to be changed:
 				TSPX_using_public_device_address: FALSE
 				TSPX_using_random_device_address: TRUE
-				TSPX_bd_addr_iut: <IUT random address>
-				/sys/kernel/debug/bluetooth/hci/random_address
-				holds currently used random address
+				echo 30 > /sys/kernel/debug/bluetooth/hci0/
+								rpa_timeout
+				btmgmt power off
+				btmgmt privacy on
+				btmgmt power on
 TC_PRIV_CONN_BV_11_C	INC	PTS issue #12952
 				JIRA #BA-186
 TC_ADV_BV_01_C		N/A
