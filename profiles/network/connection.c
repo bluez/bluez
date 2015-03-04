@@ -47,6 +47,7 @@
 #include "src/profile.h"
 #include "src/service.h"
 #include "src/error.h"
+#include "lib/uuid.h"
 
 #include "bnep.h"
 #include "connection.h"
@@ -79,9 +80,16 @@ struct network_conn {
 
 static GSList *peers = NULL;
 
-static uint16_t get_service_id(struct btd_service *svc)
+static uint16_t get_pan_srv_id(const char *svc)
 {
-	return bnep_service_id(btd_service_get_profile(svc)->remote_uuid);
+	if (!strcasecmp(svc, "panu") || !strcasecmp(svc, PANU_UUID))
+		return BNEP_SVC_PANU;
+	if (!strcasecmp(svc, "nap") || !strcasecmp(svc, NAP_UUID))
+		return BNEP_SVC_NAP;
+	if (!strcasecmp(svc, "gn") || !strcasecmp(svc, GN_UUID))
+		return BNEP_SVC_GN;
+
+	return 0;
 }
 
 static struct network_peer *find_peer(GSList *list, struct btd_device *device)
@@ -284,7 +292,7 @@ static DBusMessage *local_connect(DBusConnection *conn,
 						DBUS_TYPE_INVALID) == FALSE)
 		return btd_error_invalid_args(msg);
 
-	id = bnep_service_id(svc);
+	id = get_pan_srv_id(svc);
 	uuid = bnep_uuid(id);
 
 	if (uuid == NULL)
@@ -313,7 +321,7 @@ int connection_connect(struct btd_service *svc)
 {
 	struct network_conn *nc = btd_service_get_user_data(svc);
 	struct network_peer *peer = nc->peer;
-	uint16_t id = get_service_id(svc);
+	uint16_t id = get_pan_srv_id(btd_service_get_profile(svc)->remote_uuid);
 	GError *err = NULL;
 	const bdaddr_t *src;
 	const bdaddr_t *dst;
@@ -502,7 +510,7 @@ void connection_unregister(struct btd_service *svc)
 	struct btd_device *device = btd_service_get_device(svc);
 	struct network_conn *conn = btd_service_get_user_data(svc);
 	struct network_peer *peer = conn->peer;
-	uint16_t id = get_service_id(svc);
+	uint16_t id = get_pan_srv_id(btd_service_get_profile(svc)->remote_uuid);
 
 	DBG("%s id %u", device_get_path(device), id);
 
@@ -549,7 +557,7 @@ int connection_register(struct btd_service *svc)
 	struct btd_device *device = btd_service_get_device(svc);
 	struct network_peer *peer;
 	struct network_conn *nc;
-	uint16_t id = get_service_id(svc);
+	uint16_t id = get_pan_srv_id(btd_service_get_profile(svc)->remote_uuid);
 
 	DBG("%s id %u", device_get_path(device), id);
 
