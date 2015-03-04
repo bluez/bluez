@@ -391,14 +391,16 @@ static void gatt_database_free(void *data)
 		adapter_service_remove(database->adapter, database->gap_handle);
 
 	/* TODO: Persistently store CCC states before freeing them */
+	gatt_db_unregister(database->db, database->db_id);
+
 	queue_destroy(database->device_states, device_state_free);
 	queue_destroy(database->services, service_free);
 	queue_destroy(database->ccc_callbacks, ccc_cb_free);
 	database->device_states = NULL;
 	database->ccc_callbacks = NULL;
 
-	gatt_db_unregister(database->db, database->db_id);
 	gatt_db_unref(database->db);
+
 	btd_adapter_unref(database->adapter);
 	free(database);
 }
