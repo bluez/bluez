@@ -1708,10 +1708,8 @@ static bool database_add_ccc(struct external_service *service,
 						struct external_chrc *chrc)
 {
 	if (!(chrc->props & BT_GATT_CHRC_PROP_NOTIFY) &&
-				!(chrc->props & BT_GATT_CHRC_PROP_INDICATE)) {
-		DBG("No need to create CCC entry for characteristic");
+				!(chrc->props & BT_GATT_CHRC_PROP_INDICATE))
 		return true;
-	}
 
 	chrc->ccc = service_add_ccc(service->attrib, service->database,
 						ccc_write_cb, chrc, NULL);
@@ -1725,6 +1723,8 @@ static bool database_add_ccc(struct external_service *service,
 		error("Failed to set up property watch for characteristic");
 		return false;
 	}
+
+	DBG("Created CCC entry for characteristic");
 
 	return true;
 }
@@ -1745,10 +1745,8 @@ static bool database_add_cep(struct external_service *service,
 	bt_uuid_t uuid;
 	uint8_t value[2];
 
-	if (!chrc->ext_props) {
-		DBG("No need to create CEP entry for characteristic");
+	if (!chrc->ext_props)
 		return true;
-	}
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_EXT_PROPER_UUID);
 	cep = gatt_db_service_add_descriptor(service->attrib, &uuid,
@@ -1767,6 +1765,8 @@ static bool database_add_cep(struct external_service *service,
 		DBG("Failed to store CEP value in the database");
 		return false;
 	}
+
+	DBG("Created CEP entry for characteristic");
 
 	return true;
 }
