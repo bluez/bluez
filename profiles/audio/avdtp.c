@@ -388,8 +388,6 @@ struct avdtp {
 
 	avdtp_session_state_t state;
 
-	guint auth_id;
-
 	GIOChannel *io;
 	guint io_id;
 
@@ -1053,25 +1051,6 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 }
 
-static int avdtp_cancel_authorization(struct avdtp *session)
-{
-	int err;
-
-	if (session->state != AVDTP_SESSION_STATE_CONNECTING)
-		return 0;
-
-	if (session->auth_id == 0)
-		return 0;
-
-	err = btd_cancel_authorization(session->auth_id);
-	if (err < 0)
-		return err;
-
-	session->auth_id = 0;
-
-	return 0;
-}
-
 static void sep_free(gpointer data)
 {
 	struct avdtp_remote_sep *sep = data;
@@ -1087,7 +1066,7 @@ static void remove_disconnect_timer(struct avdtp *session)
 	session->stream_setup = FALSE;
 }
 
-void avdtp_free(void *data)
+static void avdtp_free(void *data)
 {
 	struct avdtp *session = data;
 
@@ -1121,15 +1100,12 @@ void avdtp_free(void *data)
 	g_free(session);
 }
 
-void connection_lost(struct avdtp *session, int err)
+static void connection_lost(struct avdtp *session, int err)
 {
 	char address[18];
 
 	ba2str(device_get_address(session->device), address);
 	DBG("Disconnected from %s", address);
-
-	if (err != EACCES)
-		avdtp_cancel_authorization(session);
 
 	g_slist_foreach(session->streams, (GFunc) release_stream, session);
 	session->streams = NULL;
@@ -2389,20 +2365,6 @@ struct avdtp *avdtp_new(GIOChannel *chan, struct btd_device *device,
 	return session;
 }
 
-bool avdtp_request_authorization(struct avdtp *session, const bdaddr_t *src,
-					const bdaddr_t *dst, service_auth_cb cb)
-{
-	session->auth_id = btd_request_authorization(src, dst,
-							ADVANCED_AUDIO_UUID,
-							cb, session);
-	if (session->auth_id == 0) {
-		avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
-		return false;
-	}
-
-	return true;
-}
-
 static GIOChannel *l2cap_connect(struct avdtp *session)
 {
 	GError *err = NULL;
@@ -3550,23 +3512,6 @@ int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 
 	return send_request(session, TRUE, stream, AVDTP_DELAY_REPORT,
 							&req, sizeof(req));
-}
-
-void avdtp_accept(struct avdtp *session)
-{
-	GError *err = NULL;
-
-	if (!bt_io_accept(session->io, avdtp_connect_cb, session, NULL,
-								&err)) {
-		error("bt_io_accept: %s", err->message);
-		connection_lost(session, EACCES);
-		g_error_free(err);
-		return;
-	}
-
-	/* This is so that avdtp_connect_cb will know to do the right thing
-	 * with respect to the disconnect timer */
-	session->stream_setup = TRUE;
 }
 
 struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,

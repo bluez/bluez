@@ -297,9 +297,3 @@ struct avdtp_server *avdtp_get_server(struct avdtp_local_sep *lsep);
 
 struct avdtp *avdtp_new(GIOChannel *chan, struct btd_device *device,
 							struct queue *lseps);
-void avdtp_free(void *data);
-void connection_lost(struct avdtp *session, int err);
-void avdtp_accept(struct avdtp *session);
-bool avdtp_request_authorization(struct avdtp *session, const bdaddr_t *src,
-							const bdaddr_t *dst,
-							service_auth_cb cb);
