@@ -1185,6 +1185,12 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 			return;
 		}
 
+		if (chrc->ext_props && !incr_attr_count(service, 1)) {
+			error("Failed to increment attribute count for CEP");
+			service->failed = true;
+			return;
+		}
+
 		queue_push_tail(service->chrcs, chrc);
 	} else
 		return;
@@ -1608,6 +1614,12 @@ static void property_changed_cb(GDBusProxy *proxy, const char *name,
 static bool database_add_ccc(struct external_service *service,
 						struct external_chrc *chrc)
 {
+	if (!(chrc->props & BT_GATT_CHRC_PROP_NOTIFY) &&
+				!(chrc->props & BT_GATT_CHRC_PROP_INDICATE)) {
+		DBG("No need to create CCC entry for characteristic");
+		return true;
+	}
+
 	chrc->ccc = service_add_ccc(service->attrib, service->database,
 						ccc_write_cb, chrc, NULL);
 	if (!chrc->ccc) {
@@ -1618,6 +1630,48 @@ static bool database_add_ccc(struct external_service *service,
 	if (g_dbus_proxy_set_property_watch(chrc->proxy, property_changed_cb,
 							chrc) == FALSE) {
 		error("Failed to set up property watch for characteristic");
+		return false;
+	}
+
+	return true;
+}
+
+static void cep_write_cb(struct gatt_db_attribute *attrib, int err,
+								void *user_data)
+{
+	if (err)
+		DBG("Failed to store CEP value in the database");
+	else
+		DBG("Stored CEP value in the database");
+}
+
+static bool database_add_cep(struct external_service *service,
+						struct external_chrc *chrc)
+{
+	struct gatt_db_attribute *cep;
+	bt_uuid_t uuid;
+	uint8_t value[2];
+
+	if (!chrc->ext_props) {
+		DBG("No need to create CEP entry for characteristic");
+		return true;
+	}
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_EXT_PROPER_UUID);
+	cep = gatt_db_service_add_descriptor(service->attrib, &uuid,
+							BT_ATT_PERM_READ,
+							NULL, NULL, NULL);
+	if (!cep) {
+		error("Failed to create CEP entry for characteristic");
+		return false;
+	}
+
+	memset(value, 0, sizeof(value));
+	value[0] = chrc->ext_props;
+
+	if (!gatt_db_attribute_write(cep, 0, value, sizeof(value), 0, NULL,
+							cep_write_cb, NULL)) {
+		DBG("Failed to store CEP value in the database");
 		return false;
 	}
 
@@ -1655,9 +1709,11 @@ static bool database_add_chrc(struct external_service *service,
 		return false;
 	}
 
-	if (chrc->props & BT_GATT_CHRC_PROP_NOTIFY ||
-				chrc->props & BT_GATT_CHRC_PROP_INDICATE)
-		return database_add_ccc(service, chrc);
+	if (!database_add_ccc(service, chrc))
+		return false;
+
+	if (!database_add_cep(service, chrc))
+		return false;
 
 	return true;
 }
