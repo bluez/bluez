@@ -751,8 +751,10 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 
 	bt_att_ref(att);
 
-	for (found = false, entry = queue_get_entries(att->notify_list);
-				!queue_isempty(att->notify_list) && entry;) {
+	found = false;
+	entry = queue_get_entries(att->notify_list);
+
+	while (entry) {
 		struct att_notify *notify = entry->data;
 
 		entry = entry->next;
@@ -765,6 +767,10 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 		if (notify->callback)
 			notify->callback(opcode, pdu, pdu_len,
 							notify->user_data);
+
+		/* callback could remove all entries from notify list */
+		if (queue_isempty(att->notify_list))
+			break;
 	}
 
 	/*
