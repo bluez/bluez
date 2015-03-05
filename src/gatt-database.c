@@ -351,20 +351,15 @@ static void service_free(void *data)
 		g_dbus_client_set_proxy_handlers(service->client, NULL, NULL,
 								NULL, NULL);
 		g_dbus_client_set_ready_watch(service->client, NULL, NULL);
+		g_dbus_proxy_unref(service->proxy);
 		g_dbus_client_unref(service->client);
 	}
-
-	if (service->proxy)
-		g_dbus_proxy_unref(service->proxy);
 
 	if (service->reg)
 		dbus_message_unref(service->reg);
 
-	if (service->owner)
-		g_free(service->owner);
-
-	if (service->path)
-		g_free(service->path);
+	g_free(service->owner);
+	g_free(service->path);
 
 	free(service);
 }
