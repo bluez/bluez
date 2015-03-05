@@ -153,7 +153,6 @@ struct notification_data {
 
 struct gatt_device {
 	bdaddr_t bdaddr;
-	uint8_t bdaddr_type;
 
 	gatt_device_state_t state;
 
@@ -584,24 +583,8 @@ static void device_set_state(struct gatt_device *dev, uint32_t state)
 static bool auto_connect_le(struct gatt_device *dev)
 {
 	/*  For LE devices use auto connect feature if possible */
-	if (bt_kernel_conn_control()) {
-		const bdaddr_t *bdaddr;
-
-		/*
-		 * If address type is random it might be that IRK was received
-		 * and random is just for faking Android Framework. ID address
-		 * should be used for connection if present.
-		 */
-		if (dev->bdaddr_type == BDADDR_LE_RANDOM) {
-			bdaddr = bt_get_id_addr(&dev->bdaddr, NULL);
-			if (!bdaddr)
-				return -EINVAL;
-		} else {
-			bdaddr = &dev->bdaddr;
-		}
-
-		return bt_auto_connect_add(bdaddr);
-	}
+	if (bt_kernel_conn_control())
+		return bt_auto_connect_add(bt_get_id_addr(&dev->bdaddr, NULL));
 
 	/* Trigger discovery if not already started */
 	if (!scanning) {
@@ -1642,19 +1625,7 @@ static int connect_le(struct gatt_device *dev)
 
 	DBG("Connection attempt to: %s", addr);
 
-	/*
-	 * If address type is random it might be that IRK was received and
-	 * random is just for faking Android Framework. ID address should be
-	 * used for connection if present.
-	 */
-	if (dev->bdaddr_type == BDADDR_LE_RANDOM) {
-		bdaddr = bt_get_id_addr(&dev->bdaddr, &bdaddr_type);
-		if (!bdaddr)
-			return -EINVAL;
-	} else {
-		bdaddr = &dev->bdaddr;
-		bdaddr_type = dev->bdaddr_type;
-	}
+	bdaddr = bt_get_id_addr(&dev->bdaddr, &bdaddr_type);
 
 	/*
 	 * This connection will help us catch any PDUs that comes before
@@ -1703,10 +1674,9 @@ static void bt_le_discovery_stop_cb(void)
 		bt_le_discovery_start();
 }
 
-static void le_device_found_handler(const bdaddr_t *addr, uint8_t addr_type,
-						int rssi, uint16_t eir_len,
-						const void *eir,
-						bool connectable, bool bonded)
+static void le_device_found_handler(const bdaddr_t *addr, int rssi,
+					uint16_t eir_len, const void *eir,
+					bool connectable, bool bonded)
 {
 	uint8_t buf[IPC_MTU];
 	struct hal_ev_gatt_client_scan_result *ev = (void *) buf;
@@ -1749,7 +1719,6 @@ done:
 		return;
 
 	device_set_state(dev, DEVICE_CONNECT_READY);
-	dev->bdaddr_type = addr_type;
 
 	/*
 	 * We are ok to perform connect now. Stop discovery
@@ -6717,16 +6686,12 @@ done:
 static void connect_confirm(GIOChannel *io, void *user_data)
 {
 	struct gatt_device *dev;
-	uint8_t dst_type;
 	bdaddr_t dst;
 	GError *gerr = NULL;
 
 	DBG("");
 
-	bt_io_get(io, &gerr,
-			BT_IO_OPT_DEST_BDADDR, &dst,
-			BT_IO_OPT_DEST_TYPE, &dst_type,
-			BT_IO_OPT_INVALID);
+	bt_io_get(io, &gerr, BT_IO_OPT_DEST_BDADDR, &dst, BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("gatt: bt_io_get: %s", gerr->message);
 		g_error_free(gerr);
@@ -6753,8 +6718,6 @@ static void connect_confirm(GIOChannel *io, void *user_data)
 			goto drop;
 		}
 	}
-
-	dev->bdaddr_type = dst_type;
 
 	if (!bt_io_accept(io, connect_cb, device_ref(dev), NULL, NULL)) {
 		error("gatt: failed to accept connection");
@@ -7120,7 +7083,7 @@ static bool start_listening(void)
 	return true;
 }
 
-static void gatt_paired_cb(const bdaddr_t *addr, uint8_t type)
+static void gatt_paired_cb(const bdaddr_t *addr)
 {
 	struct gatt_device *dev;
 	char address[18];
@@ -7128,9 +7091,6 @@ static void gatt_paired_cb(const bdaddr_t *addr, uint8_t type)
 
 	dev = find_device_by_addr(addr);
 	if (!dev)
-		return;
-
-	if (dev->bdaddr_type != type)
 		return;
 
 	ba2str(addr, address);
@@ -7149,16 +7109,13 @@ static void gatt_paired_cb(const bdaddr_t *addr, uint8_t type)
 	search_dev_for_srvc(conn, NULL);
 }
 
-static void gatt_unpaired_cb(const bdaddr_t *addr, uint8_t type)
+static void gatt_unpaired_cb(const bdaddr_t *addr)
 {
 	struct gatt_device *dev;
 	char address[18];
 
 	dev = find_device_by_addr(addr);
 	if (!dev)
-		return;
-
-	if (dev->bdaddr_type != type)
 		return;
 
 	ba2str(addr, address);

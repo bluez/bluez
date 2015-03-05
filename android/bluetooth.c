@@ -887,7 +887,7 @@ static void send_paired_notification(void *data, void *user_data)
 	bt_paired_device_cb cb = data;
 	struct device *dev = user_data;
 
-	cb(&dev->bdaddr, dev->bdaddr_type);
+	cb(&dev->bdaddr);
 }
 
 static void update_device_state(struct device *dev, uint8_t addr_type,
@@ -1946,8 +1946,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	/* Notify Gatt if its registered for LE events */
 	if (bdaddr_type != BDADDR_BREDR && gatt_device_found_cb) {
-		bdaddr_t *addr;
-		uint8_t addr_type;
+		const bdaddr_t *addr;
 
 		/*
 		 * If RPA is set it means that IRK was received and ID address
@@ -1955,16 +1954,13 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		 * it needs to be used also in GATT notifications. Also GATT
 		 * HAL implementation is using RPA for devices matching.
 		 */
-		if (bacmp(&dev->rpa, BDADDR_ANY)) {
+		if (bacmp(&dev->rpa, BDADDR_ANY))
 			addr = &dev->rpa;
-			addr_type = dev->rpa_type;
-		} else {
+		else
 			addr = &dev->bdaddr;
-			addr_type = dev->bdaddr_type;
-		}
 
-		gatt_device_found_cb(addr, addr_type, rssi, data_len, data,
-						connectable, dev->le_bonded);
+		gatt_device_found_cb(addr, rssi, data_len, data, connectable,
+								dev->le_bonded);
 	}
 
 	if (!dev->bredr_paired && !dev->le_paired)
@@ -4403,7 +4399,7 @@ static void send_unpaired_notification(void *data, void *user_data)
 	bt_unpaired_device_cb cb = data;
 	struct mgmt_addr_info *addr = user_data;
 
-	cb(&addr->bdaddr, addr->type);
+	cb(&addr->bdaddr);
 }
 
 static void unpair_device_complete(uint8_t status, uint16_t length,
@@ -4425,7 +4421,9 @@ static void unpair_device_complete(uint8_t status, uint16_t length,
 								false, false);
 
 	/* Cast rp->addr to (void *) since queue_foreach don't take const */
-	queue_foreach(unpaired_cb_list, send_unpaired_notification,
+
+	if (!dev->le_paired && !dev->bredr_paired)
+		queue_foreach(unpaired_cb_list, send_unpaired_notification,
 							(void *)&rp->addr);
 }
 

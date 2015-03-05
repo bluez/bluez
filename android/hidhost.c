@@ -1495,7 +1495,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 }
 
-static void hid_unpaired_cb(const bdaddr_t *addr, uint8_t type)
+static void hid_unpaired_cb(const bdaddr_t *addr)
 {
 	GSList *l;
 	struct hid_device *dev;
