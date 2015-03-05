@@ -1233,7 +1233,6 @@ static void list_messages_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
 	DBusMessageIter iter, array;
-	int ctype;
 
 	dbus_error_init(&error);
 
@@ -1250,8 +1249,8 @@ static void list_messages_reply(DBusMessage *message, void *user_data)
 
 	dbus_message_iter_recurse(&iter, &array);
 
-	while ((ctype = dbus_message_iter_get_arg_type(&array)) ==
-							DBUS_TYPE_DICT_ENTRY) {
+	while ((dbus_message_iter_get_arg_type(&array)) ==
+						DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry;
 		const char *obj;
 
