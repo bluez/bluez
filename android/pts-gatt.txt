@@ -18,7 +18,8 @@ TC_GAC_CL_BV_01_C	PASS	haltest:
 				gattc search_service
 				gattc get_characteristic
 				gattc write_characteristic: type 3
-TC_GAC_SR_BV_01_C	FAIL	PTS issue #13073
+TC_GAC_SR_BV_01_C	PASS	PTS issue #13073
+				TSE #6271
 				haltest:
 				gatts add_service
 				gatts add_chaaracteristic:
@@ -992,7 +993,7 @@ TC_GAW_SR_BI_31_C	PASS	haltest:
 				gatts add_descriptor: <permmisions> 17
 				gatts start_service
 				gatts send_response: <status> 12
-TC_GAW_SR_BI_32_C	FAIL	PTS issue #12823
+TC_GAW_SR_BI_32_C	PASS	PTS issue #12823
 				haltest:
 				gatts add_service
 				gatts add_characteristic:
