@@ -751,9 +751,11 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 
 	bt_att_ref(att);
 
-	for (found = false, entry = queue_get_entries(att->notify_list); entry;
-							entry = entry->next) {
+	for (found = false, entry = queue_get_entries(att->notify_list);
+				!queue_isempty(att->notify_list) && entry;) {
 		struct att_notify *notify = entry->data;
+
+		entry = entry->next;
 
 		if (!opcode_match(notify->opcode, opcode))
 			continue;
