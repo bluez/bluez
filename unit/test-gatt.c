@@ -853,6 +853,14 @@ static const struct test_step test_write_9 = {
 	.length = 0x03
 };
 
+static const struct test_step test_write_10 = {
+	.handle = 0x0008,
+	.func = test_write,
+	.expected_att_ecode = 0x08,
+	.value = write_data_1,
+	.length = 0x03
+};
+
 static void test_write_without_response(struct context *context)
 {
 	const struct test_step *step = context->data->step;
@@ -3128,6 +3136,12 @@ int main(int argc, char *argv[])
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x12, 0x08, 0x00, 0x01, 0x02, 0x03),
 			raw_pdu(0x01, 0x12, 0x08, 0x00, 0x03));
+
+	define_test_client("/TP/GAW/CL/BI-22-C", test_client, service_db_1,
+			&test_write_10,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x12, 0x08, 0x00, 0x01, 0x02, 0x03),
+			raw_pdu(0x01, 0x12, 0x08, 0x00, 0x08));
 
 	return tester_run();
 }
