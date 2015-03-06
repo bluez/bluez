@@ -155,6 +155,7 @@ static const char *settings_str[] = {
 	"powered", "connectable", "fast-connectable", "discoverable",
 	"bondable", "link-security", "ssp", "br/edr", "hs", "le",
 	"advertising", "secure-conn", "debug-keys", "privacy",
+	"configuration", "static-addr",
 };
 
 static void mgmt_new_settings(uint16_t len, const void *buf)
