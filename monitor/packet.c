@@ -2402,7 +2402,15 @@ static void print_manufacturer(uint16_t manufacturer)
 static const struct {
 	uint16_t ver;
 	const char *str;
-} broadcom_subversion_table[] = {
+} broadcom_uart_subversion_table[] = {
+	{ 0x410e, "BCM43341B0"	},	/* 002.001.014 */
+	{ }
+};
+
+static const struct {
+	uint16_t ver;
+	const char *str;
+} broadcom_usb_subversion_table[] = {
 	{ 0x210b, "BCM43142A0"	},	/* 001.001.011 */
 	{ 0x2112, "BCM4314A0"	},	/* 001.001.018 */
 	{ 0x2118, "BCM20702A0"	},	/* 001.001.024 */
@@ -2416,44 +2424,44 @@ static const struct {
 	{ }
 };
 
-static void print_manufacturer_subversion(uint16_t manufacturer,
-							uint16_t subversion)
+static void print_manufacturer_broadcom(uint16_t subversion, uint16_t revision)
 {
 	uint16_t ver = le16_to_cpu(subversion);
+	uint16_t rev = le16_to_cpu(revision);
 	const char *str = NULL;
 	int i;
 
-	switch (le16_to_cpu(manufacturer)) {
-	case 15:
-		for (i = 0; broadcom_subversion_table[i].str; i++) {
-			if (broadcom_subversion_table[i].ver == ver) {
-				str = broadcom_subversion_table[i].str;
+	switch ((rev & 0xf000) >> 12) {
+	case 0:
+		for (i = 0; broadcom_uart_subversion_table[i].str; i++) {
+			if (broadcom_uart_subversion_table[i].ver == ver) {
+				str = broadcom_uart_subversion_table[i].str;
 				break;
 			}
 		}
-
-		if (str)
-			print_field("  Firmware: %3.3u.%3.3u.%3.3u (%s)",
-					(ver & 0x7000) >> 13,
-					(ver & 0x1f00) >> 8, ver & 0x00ff, str);
-		else
-			print_field("  Firmware: %3.3u.%3.3u.%3.3u",
-					(ver & 0x7000) >> 13,
-					(ver & 0x1f00) >> 8, ver & 0x00ff);
+		break;
+	case 1:
+	case 2:
+		for (i = 0; broadcom_usb_subversion_table[i].str; i++) {
+			if (broadcom_usb_subversion_table[i].ver == ver) {
+				str = broadcom_usb_subversion_table[i].str;
+				break;
+			}
+		}
 		break;
 	}
-}
 
-static void print_manufacturer_revision(uint16_t manufacturer,
-							uint16_t revision)
-{
-	uint16_t rev = le16_to_cpu(revision);
+	if (str)
+		print_field("  Firmware: %3.3u.%3.3u.%3.3u (%s)",
+				(ver & 0x7000) >> 13,
+				(ver & 0x1f00) >> 8, ver & 0x00ff, str);
+	else
+		print_field("  Firmware: %3.3u.%3.3u.%3.3u",
+				(ver & 0x7000) >> 13,
+				(ver & 0x1f00) >> 8, ver & 0x00ff);
 
-	switch (le16_to_cpu(manufacturer)) {
-	case 15:
+	if (rev != 0xffff)
 		print_field("  Build: %4.4u", rev & 0x0fff);
-		break;
-	}
 }
 
 static const char *get_supported_command(int bit);
@@ -5409,8 +5417,12 @@ static void read_local_version_rsp(const void *data, uint8_t size)
 	}
 
 	print_manufacturer(rsp->manufacturer);
-	print_manufacturer_subversion(rsp->manufacturer, rsp->lmp_subver);
-	print_manufacturer_revision(rsp->manufacturer, rsp->hci_rev);
+
+	switch (le16_to_cpu(rsp->manufacturer)) {
+	case 15:
+		print_manufacturer_broadcom(rsp->lmp_subver, rsp->hci_rev);
+		break;
+	}
 }
 
 static void read_local_commands_rsp(const void *data, uint8_t size)
@@ -7254,7 +7266,12 @@ static void remote_version_complete_evt(const void *data, uint8_t size)
 	print_handle(evt->handle);
 	print_lmp_version(evt->lmp_ver, evt->lmp_subver);
 	print_manufacturer(evt->manufacturer);
-	print_manufacturer_subversion(evt->manufacturer, evt->lmp_subver);
+
+	switch (le16_to_cpu(evt->manufacturer)) {
+	case 15:
+		print_manufacturer_broadcom(evt->lmp_subver, 0xffff);
+		break;
+	}
 }
 
 static void qos_setup_complete_evt(const void *data, uint8_t size)
