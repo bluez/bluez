@@ -2924,7 +2924,6 @@ gboolean avdtp_stream_set_transport(struct avdtp_stream *stream, int fd,
 	g_io_channel_unref(io);
 
 	return TRUE;
-
 }
 
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
