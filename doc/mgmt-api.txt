@@ -246,6 +246,10 @@ Read Controller Information Command
 	then the configured static address will be used as identity
 	address.
 
+	In the case of a dual-mode controller with public address that
+	is configured as Low Energy only device (BR/EDR switched off),
+	the static address is used when set and public address otherwise.
+
 	If no short name is set the Short_Name parameter will be empty
 	(begin with a nul byte).
 
@@ -1622,7 +1626,9 @@ Set Static Address Command
 	to disable the static address.
 
 	When a controller has a public address (which is required for
-	all dual-mode controllers), this address is not used. Only when
+	all dual-mode controllers), this address is not used. If a dual-mode
+	controller is configured as Low Energy only devices (BR/EDR has
+	been switched off), then the static address is used. Only when
 	the controller information reports BDADDR_ANY (00:00:00:00:00:00),
 	it is required to configure a static address first.
 
