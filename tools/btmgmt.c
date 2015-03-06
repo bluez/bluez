@@ -276,6 +276,7 @@ static const char *settings_str[] = {
 				"debug-keys",
 				"privacy",
 				"configuration",
+				"static-addr",
 };
 
 static const char *settings2str(uint32_t settings)
