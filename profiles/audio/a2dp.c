@@ -65,7 +65,6 @@
 
 struct a2dp_sep {
 	struct a2dp_server *server;
-	struct avdtp_server *avdtp_server;
 	struct a2dp_endpoint *endpoint;
 	uint8_t type;
 	uint8_t codec;
@@ -114,17 +113,22 @@ struct a2dp_server {
 	uint32_t sink_record_id;
 	gboolean sink_enabled;
 	gboolean source_enabled;
-};
-
-struct avdtp_server {
-	struct btd_adapter *adapter;
 	GIOChannel *io;
 	struct queue *seps;
-	GSList *sessions;
+	struct queue *channels;
+};
+
+struct a2dp_channel {
+	struct a2dp_server *server;
+	struct btd_device *device;
+	GIOChannel *io;
+	guint io_id;
+	unsigned int state_id;
+	unsigned int auth_id;
+	struct avdtp *session;
 };
 
 static GSList *servers = NULL;
-static GSList *avdtp_servers = NULL;
 static GSList *setups = NULL;
 static unsigned int cb_id = 0;
 
@@ -690,9 +694,11 @@ static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	else
 		DBG("Source %p: Open_Ind", sep);
 
-	setup = find_setup_by_session(session);
+	setup = a2dp_setup_get(session);
 	if (!setup)
-		return TRUE;
+		return FALSE;
+
+	setup->stream = stream;
 
 	if (setup->reconfigure)
 		setup->reconfigure = FALSE;
@@ -1200,112 +1206,226 @@ static struct a2dp_server *find_server(GSList *list, struct btd_adapter *a)
 	return NULL;
 }
 
-static struct avdtp_server *find_avdtp_server(GSList *list,
-							struct btd_adapter *a)
+static void channel_free(void *data)
 {
-	for (; list; list = list->next) {
-		struct avdtp_server *server = list->data;
+	struct a2dp_channel *chan = data;
 
-		if (server->adapter == a)
-			return server;
+	if (chan->auth_id > 0)
+		btd_cancel_authorization(chan->auth_id);
+
+	if (chan->io_id > 0)
+		g_source_remove(chan->io_id);
+
+	if (chan->io) {
+		g_io_channel_shutdown(chan->io, TRUE, NULL);
+		g_io_channel_unref(chan->io);
 	}
 
-	return NULL;
+	avdtp_remove_state_cb(chan->state_id);
+
+	g_free(chan);
+}
+
+static void channel_remove(struct a2dp_channel *chan)
+{
+	struct a2dp_server *server = chan->server;
+
+	DBG("chan %p", chan);
+
+	queue_remove(server->channels, chan);
+
+	channel_free(chan);
+}
+
+static gboolean disconnect_cb(GIOChannel *io, GIOCondition cond, gpointer data)
+{
+	struct a2dp_channel *chan = data;
+
+	DBG("chan %p", chan);
+
+	chan->io_id = 0;
+
+	channel_remove(chan);
+
+	return FALSE;
+}
+
+static void avdtp_state_cb(struct btd_device *dev, struct avdtp *session,
+					avdtp_session_state_t old_state,
+					avdtp_session_state_t new_state,
+					void *user_data)
+{
+	struct a2dp_channel *chan = user_data;
+
+	switch (new_state) {
+	case AVDTP_SESSION_STATE_DISCONNECTED:
+		if (chan->session == session)
+			channel_remove(chan);
+		break;
+	case AVDTP_SESSION_STATE_CONNECTING:
+		break;
+	case AVDTP_SESSION_STATE_CONNECTED:
+		break;
+	}
+}
+
+static struct a2dp_channel *channel_new(struct a2dp_server *server,
+					struct btd_device *device,
+					GIOChannel *io)
+{
+	struct a2dp_channel *chan;
+
+	chan = g_new0(struct a2dp_channel, 1);
+	chan->server = server;
+	chan->device = device;
+	chan->state_id = avdtp_add_state_cb(device, avdtp_state_cb, chan);
+
+	if (!queue_push_tail(server->channels, chan)) {
+		g_free(chan);
+		return NULL;
+	}
+
+	if (!io)
+		return chan;
+
+	chan->io = g_io_channel_ref(io);
+	chan->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					(GIOFunc) disconnect_cb, chan);
+
+	return chan;
+}
+
+static bool match_by_device(const void *data, const void *user_data)
+{
+	const struct a2dp_channel *chan = data;
+	const struct btd_device *device = user_data;
+
+	return chan->device == device;
 }
 
 struct avdtp *a2dp_avdtp_get(struct btd_device *device)
 {
-	struct avdtp_server *server;
-	struct avdtp *session;
+	struct a2dp_server *server;
+	struct a2dp_channel *chan;
 
-	server = find_avdtp_server(avdtp_servers, device_get_adapter(device));
+	server = find_server(servers, device_get_adapter(device));
 	if (server == NULL)
 		return NULL;
 
-	session = avdtp_new(server, server->sessions, NULL, device);
-	if (!session)
-		return NULL;
-
-	return avdtp_ref(session);
-}
-
-static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter)
-{
-	struct a2dp_server *server;
-
-	server = g_new0(struct a2dp_server, 1);
-	server->adapter = btd_adapter_ref(adapter);
-	servers = g_slist_append(servers, server);
-
-	return server;
-}
-
-static void avdtp_server_destroy(struct avdtp_server *server)
-{
-	g_slist_free_full(server->sessions, avdtp_free);
-
-	avdtp_servers = g_slist_remove(avdtp_servers, server);
-
-	g_io_channel_shutdown(server->io, TRUE, NULL);
-	g_io_channel_unref(server->io);
-	btd_adapter_unref(server->adapter);
-	queue_destroy(server->seps, NULL);
-	g_free(server);
-}
-
-static void a2dp_clean_lsep(struct a2dp_sep *sep)
-{
-	struct avdtp_local_sep *lsep = sep->lsep;
-	struct avdtp_server *server = sep->avdtp_server;
-
-	avdtp_unregister_sep(server->seps, lsep);
-
-	if (queue_isempty(server->seps))
-		avdtp_server_destroy(server);
-}
-
-static void a2dp_unregister_sep(struct a2dp_sep *sep)
-{
-	if (sep->destroy) {
-		sep->destroy(sep->user_data);
-		sep->endpoint = NULL;
+	chan = queue_find(server->channels, match_by_device, device);
+	if (!chan) {
+		chan = channel_new(server, device, NULL);
+		if (!chan)
+			return NULL;
 	}
 
-	a2dp_clean_lsep(sep);
+	if (chan->session)
+		return avdtp_ref(chan->session);
 
-	g_free(sep);
+	chan->session = avdtp_new(NULL, device, server->seps);
+	if (!chan->session) {
+		channel_remove(chan);
+		return NULL;
+	}
+
+	return avdtp_ref(chan->session);
 }
 
-static void a2dp_server_unregister(struct a2dp_server *server)
+static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
-	servers = g_slist_remove(servers, server);
-	btd_adapter_unref(server->adapter);
-	g_free(server);
+	struct a2dp_channel *chan = user_data;
+
+	if (err) {
+		error("%s", err->message);
+		goto fail;
+	}
+
+	chan->session = avdtp_new(chan->io, chan->device, chan->server->seps);
+	if (!chan->session) {
+		error("Unable to create AVDTP session");
+		goto fail;
+	}
+
+	g_io_channel_unref(chan->io);
+	chan->io = NULL;
+
+	g_source_remove(chan->io_id);
+	chan->io_id = 0;
+
+	return;
+
+fail:
+	channel_remove(chan);
 }
 
 static void auth_cb(DBusError *derr, void *user_data)
 {
-	struct avdtp *session = user_data;
+	struct a2dp_channel *chan = user_data;
+	GError *err = NULL;
+
+	chan->auth_id = 0;
 
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
-		connection_lost(session, EACCES);
-		return;
+		goto fail;
 	}
 
-	avdtp_accept(session);
+	if (!bt_io_accept(chan->io, connect_cb, chan, NULL, &err)) {
+		error("bt_io_accept: %s", err->message);
+		g_error_free(err);
+		goto fail;
+	}
+
+	return;
+
+fail:
+	channel_remove(chan);
 }
 
-static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
+static void transport_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
-	struct avdtp *session;
+	struct a2dp_setup *setup = user_data;
+	uint16_t omtu, imtu;
+
+	if (err) {
+		error("%s", err->message);
+		goto drop;
+	}
+
+	bt_io_get(io, &err, BT_IO_OPT_OMTU, &omtu, BT_IO_OPT_IMTU, &imtu,
+							BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		goto drop;
+	}
+
+	if (!avdtp_stream_set_transport(setup->stream,
+					g_io_channel_unix_get_fd(io),
+					omtu, imtu))
+		goto drop;
+
+	g_io_channel_set_close_on_unref(io, FALSE);
+
+	setup_unref(setup);
+
+	return;
+
+drop:
+	setup_unref(setup);
+	g_io_channel_shutdown(io, TRUE, NULL);
+
+}
+static void confirm_cb(GIOChannel *io, gpointer data)
+{
+	struct a2dp_server *server = data;
+	struct a2dp_channel *chan;
 	char address[18];
 	bdaddr_t src, dst;
 	GError *err = NULL;
 	struct btd_device *device;
-	struct avdtp_server *avdtp_server;
 
-	bt_io_get(chan, &err,
+	bt_io_get(io, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
@@ -1323,62 +1443,113 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	if (!device)
 		goto drop;
 
-	avdtp_server = find_avdtp_server(avdtp_servers,
-						device_get_adapter(device));
-	if (!avdtp_server)
+	chan = queue_find(server->channels, match_by_device, device);
+	if (chan) {
+		struct a2dp_setup *setup;
+
+		setup = find_setup_by_session(chan->session);
+		if (!setup || !setup->stream)
+			goto drop;
+
+		if (!bt_io_accept(io, transport_cb, setup, NULL, &err)) {
+			error("bt_io_accept: %s", err->message);
+			g_error_free(err);
+			goto drop;
+		}
+
+		return;
+	}
+
+	chan = channel_new(server, device, io);
+	if (!chan)
 		goto drop;
 
-	session = avdtp_new(avdtp_server, avdtp_server->sessions, chan, device);
-	if (!session)
-		goto drop;
-
-	avdtp_request_authorization(session, &src, &dst, auth_cb);
+	chan->auth_id = btd_request_authorization(&src, &dst,
+							ADVANCED_AUDIO_UUID,
+							auth_cb, chan);
+	if (chan->auth_id == 0 && !chan->session)
+		channel_remove(chan);
 
 	return;
 
 drop:
-	g_io_channel_shutdown(chan, TRUE, NULL);
+	g_io_channel_shutdown(io, TRUE, NULL);
 }
 
-static GIOChannel *avdtp_server_socket(const bdaddr_t *src, gboolean master)
+static bool a2dp_server_listen(struct a2dp_server *server)
 {
 	GError *err = NULL;
-	GIOChannel *io;
 
-	io = bt_io_listen(NULL, avdtp_confirm_cb,
-				NULL, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, src,
+	if (server->io)
+		return true;
+
+	server->io = bt_io_listen(NULL, confirm_cb, server, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR,
+				btd_adapter_get_address(server->adapter),
 				BT_IO_OPT_PSM, AVDTP_PSM,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-				BT_IO_OPT_MASTER, master,
+				BT_IO_OPT_MASTER, true,
 				BT_IO_OPT_INVALID);
-	if (!io) {
-		error("%s", err->message);
-		g_error_free(err);
-	}
+	if (server->io)
+		return true;
 
-	return io;
+	error("%s", err->message);
+	g_error_free(err);
+
+	return false;
 }
 
-static struct avdtp_server *avdtp_server_init(struct btd_adapter *adapter)
+static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter)
 {
-	struct avdtp_server *server;
+	struct a2dp_server *server;
 
-	server = g_new0(struct avdtp_server, 1);
-
-	server->io = avdtp_server_socket(btd_adapter_get_address(adapter),
-									TRUE);
-	if (!server->io) {
-		g_free(server);
-		return NULL;
-	}
+	server = g_new0(struct a2dp_server, 1);
 
 	server->adapter = btd_adapter_ref(adapter);
 	server->seps = queue_new();
+	server->channels = queue_new();
 
-	avdtp_servers = g_slist_append(avdtp_servers, server);
+	servers = g_slist_append(servers, server);
 
 	return server;
+}
+
+static void a2dp_unregister_sep(struct a2dp_sep *sep)
+{
+	struct a2dp_server *server = sep->server;
+
+	if (sep->destroy) {
+		sep->destroy(sep->user_data);
+		sep->endpoint = NULL;
+	}
+
+	avdtp_unregister_sep(server->seps, sep->lsep);
+
+	g_free(sep);
+
+	if (!queue_isempty(server->seps))
+		return;
+
+	if (server->io) {
+		g_io_channel_shutdown(server->io, TRUE, NULL);
+		g_io_channel_unref(server->io);
+		server->io = NULL;
+	}
+}
+
+static void a2dp_server_unregister(struct a2dp_server *server)
+{
+	servers = g_slist_remove(servers, server);
+	queue_destroy(server->channels, channel_free);
+	queue_destroy(server->seps, NULL);
+
+	if (server->io) {
+		g_io_channel_shutdown(server->io, TRUE, NULL);
+		g_io_channel_unref(server->io);
+	}
+
+	btd_adapter_unref(server->adapter);
+	g_free(server);
 }
 
 struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
@@ -1388,7 +1559,6 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 				int *err)
 {
 	struct a2dp_server *server;
-	struct avdtp_server *avdtp_server;
 	struct a2dp_sep *sep;
 	GSList **l;
 	uint32_t *record_id;
@@ -1415,14 +1585,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 
 	sep = g_new0(struct a2dp_sep, 1);
 
-	avdtp_server = find_avdtp_server(avdtp_servers, adapter);
-	if (!avdtp_server) {
-		avdtp_server = avdtp_server_init(adapter);
-		if (!avdtp_server)
-			return NULL;
-	}
-
-	sep->lsep = avdtp_register_sep(avdtp_server->seps, type,
+	sep->lsep = avdtp_register_sep(server->seps, type,
 					AVDTP_MEDIA_TYPE_AUDIO, codec,
 					delay_reporting, &endpoint_ind,
 					&cfm, sep);
@@ -1435,7 +1598,6 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	}
 
 	sep->server = server;
-	sep->avdtp_server = avdtp_server;
 	sep->endpoint = endpoint;
 	sep->codec = codec;
 	sep->type = type;
@@ -1457,8 +1619,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	record = a2dp_record(type);
 	if (!record) {
 		error("Unable to allocate new service record");
-		a2dp_clean_lsep(sep);
-		g_free(sep);
+		a2dp_unregister_sep(sep);
 		if (err)
 			*err = -EINVAL;
 		return NULL;
@@ -1467,12 +1628,20 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	if (adapter_service_add(server->adapter, record) < 0) {
 		error("Unable to register A2DP service record");
 		sdp_record_free(record);
-		a2dp_clean_lsep(sep);
-		g_free(sep);
+		a2dp_unregister_sep(sep);
 		if (err)
 			*err = -EINVAL;
 		return NULL;
 	}
+
+	if (!a2dp_server_listen(server)) {
+		sdp_record_free(record);
+		a2dp_unregister_sep(sep);
+		if (err)
+			*err = -EINVAL;
+		return NULL;
+	}
+
 	*record_id = record->handle;
 
 add:

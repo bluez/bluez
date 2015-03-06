@@ -234,6 +234,8 @@ gboolean avdtp_stream_remove_cb(struct avdtp *session,
 				struct avdtp_stream *stream,
 				unsigned int id);
 
+gboolean avdtp_stream_set_transport(struct avdtp_stream *stream, int fd,
+						size_t imtu, size_t omtu);
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *imtu, uint16_t *omtu,
 					GSList **caps);
@@ -293,9 +295,8 @@ struct btd_adapter *avdtp_get_adapter(struct avdtp *session);
 struct btd_device *avdtp_get_device(struct avdtp *session);
 struct avdtp_server *avdtp_get_server(struct avdtp_local_sep *lsep);
 
-struct avdtp *avdtp_new(struct avdtp_server *server, GSList *sessions,
-						GIOChannel *chan,
-						struct btd_device *device);
+struct avdtp *avdtp_new(GIOChannel *chan, struct btd_device *device,
+							struct queue *lseps);
 void avdtp_free(void *data);
 void connection_lost(struct avdtp *session, int err);
 void avdtp_accept(struct avdtp *session);
