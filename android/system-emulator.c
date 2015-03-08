@@ -40,6 +40,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#ifndef WAIT_ANY
+#define WAIT_ANY (-1)
+#endif
+
 #include "src/shared/mainloop.h"
 
 static char exec_dir[PATH_MAX];
