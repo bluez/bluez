@@ -3273,12 +3273,15 @@ static const struct generic_data unblock_device_invalid_param_test_1 = {
 
 static const char set_static_addr_valid_param[] = {
 			0x11, 0x22, 0x33, 0x44, 0x55, 0xc0 };
+static const char set_static_addr_settings[] = { 0x00, 0x82, 0x00, 0x00 };
 
 static const struct generic_data set_static_addr_success_test = {
 	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
 	.send_param = set_static_addr_valid_param,
 	.send_len = sizeof(set_static_addr_valid_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_static_addr_settings,
+	.expect_len = sizeof(set_static_addr_settings),
 };
 
 static const struct generic_data set_static_addr_failure_test = {
@@ -5281,7 +5284,7 @@ int main(int argc, char *argv[])
 				&unblock_device_invalid_param_test_1,
 				NULL, test_command_generic);
 
-	test_bredrle("Set Static Address - Success",
+	test_le("Set Static Address - Success",
 				&set_static_addr_success_test,
 				NULL, test_command_generic);
 	test_bredrle("Set Static Address - Failure",
