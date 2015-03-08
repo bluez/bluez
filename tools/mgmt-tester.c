@@ -3284,12 +3284,31 @@ static const struct generic_data set_static_addr_success_test = {
 	.expect_len = sizeof(set_static_addr_settings),
 };
 
+static const char set_static_addr_settings_dual[] = { 0x80, 0x00, 0x00, 0x00 };
+
+static const struct generic_data set_static_addr_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
+	.send_param = set_static_addr_valid_param,
+	.send_len = sizeof(set_static_addr_valid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_static_addr_settings_dual,
+	.expect_len = sizeof(set_static_addr_settings_dual),
+};
+
 static const struct generic_data set_static_addr_failure_test = {
 	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
 	.send_param = set_static_addr_valid_param,
 	.send_len = sizeof(set_static_addr_valid_param),
 	.expect_status = MGMT_STATUS_REJECTED,
+};
+
+static const struct generic_data set_static_addr_failure_test_2 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
+	.send_param = set_static_addr_valid_param,
+	.send_len = sizeof(set_static_addr_valid_param),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
 };
 
 static const char set_scan_params_valid_param[] = { 0x60, 0x00, 0x30, 0x00 };
@@ -5284,11 +5303,17 @@ int main(int argc, char *argv[])
 				&unblock_device_invalid_param_test_1,
 				NULL, test_command_generic);
 
-	test_le("Set Static Address - Success",
+	test_le("Set Static Address - Success 1",
 				&set_static_addr_success_test,
 				NULL, test_command_generic);
-	test_bredrle("Set Static Address - Failure",
+	test_bredrle("Set Static Address - Success 2",
+				&set_static_addr_success_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Set Static Address - Failure 1",
 				&set_static_addr_failure_test,
+				NULL, test_command_generic);
+	test_bredr("Set Static Address - Failure 2",
+				&set_static_addr_failure_test_2,
 				NULL, test_command_generic);
 
 	test_bredrle("Set Scan Parameters - Success",
