@@ -3282,6 +3282,7 @@ static const struct generic_data set_static_addr_success_test = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_static_addr_settings,
 	.expect_len = sizeof(set_static_addr_settings),
+	.expect_settings_set = MGMT_SETTING_STATIC_ADDRESS,
 };
 
 static const char set_static_addr_settings_dual[] = { 0x80, 0x00, 0x00, 0x00 };
