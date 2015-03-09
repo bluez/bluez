@@ -129,7 +129,7 @@ static void noninteractive_quit(int status)
 		fprintf(stderr, fmt "\n", ## arg); \
 } while (0)
 
-static size_t convert_hexstr(const char *hexstr, uint8_t *buf, size_t buflen)
+static size_t hex2bin(const char *hexstr, uint8_t *buf, size_t buflen)
 {
 	size_t i, len;
 
@@ -167,7 +167,7 @@ static bool load_identity(uint16_t index, struct mgmt_irk_info *irk)
 		return false;
 
 	str2ba(addr, &irk->addr.bdaddr);
-	convert_hexstr(key, irk->val, sizeof(irk->val));
+	hex2bin(key, irk->val, sizeof(irk->val));
 
 	free(addr);
 	free(key);
@@ -1482,7 +1482,7 @@ static void cmd_privacy(struct mgmt *mgmt, uint16_t index, int argc,
 		index = 0;
 
 	if (argc > 2) {
-		if (convert_hexstr(argv[2], cp.irk,
+		if (hex2bin(argv[2], cp.irk,
 					sizeof(cp.irk)) != sizeof(cp.irk)) {
 			error("Invalid key format");
 			return noninteractive_quit(EXIT_FAILURE);
@@ -2647,16 +2647,16 @@ static void cmd_remote_oob(struct mgmt *mgmt, uint16_t index,
 			cp.addr.type = strtol(optarg, NULL, 0);
 			break;
 		case 'r':
-			convert_hexstr(optarg, cp.rand192, 16);
+			hex2bin(optarg, cp.rand192, 16);
 			break;
 		case 'h':
-			convert_hexstr(optarg, cp.hash192, 16);
+			hex2bin(optarg, cp.hash192, 16);
 			break;
 		case 'R':
-			convert_hexstr(optarg, cp.rand256, 16);
+			hex2bin(optarg, cp.rand256, 16);
 			break;
 		case 'H':
-			convert_hexstr(optarg, cp.hash256, 16);
+			hex2bin(optarg, cp.hash256, 16);
 			break;
 		default:
 			remote_oob_usage();
