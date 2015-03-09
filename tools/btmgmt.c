@@ -142,6 +142,17 @@ static size_t hex2bin(const char *hexstr, uint8_t *buf, size_t buflen)
 	return len;
 }
 
+static size_t bin2hex(const uint8_t *buf, size_t buflen, char *str,
+								size_t strlen)
+{
+	size_t i;
+
+	for (i = 0; i < buflen && i < (strlen / 2); i++)
+		sprintf(str + (i * 2), "%02x", buf[i]);
+
+	return i;
+}
+
 static bool load_identity(uint16_t index, struct mgmt_irk_info *irk)
 {
 	char identity_path[PATH_MAX];
@@ -2545,7 +2556,7 @@ static void local_oob_rsp(uint8_t status, uint16_t len, const void *param,
 {
 	const struct mgmt_rp_read_local_oob_data *rp = param;
 	const struct mgmt_rp_read_local_oob_ext_data *rp_ext = param;
-	int i;
+	char str[33];
 
 	if (status != 0) {
 		error("Read Local OOB Data failed with status 0x%02x (%s)",
@@ -2558,28 +2569,20 @@ static void local_oob_rsp(uint8_t status, uint16_t len, const void *param,
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
-	print("Hash C from P-192: ");
-	for (i = 0; i < 16; i++)
-		print("%02x", rp->hash[i]);
-	print("");
+	bin2hex(rp->hash, 16, str, sizeof(str));
+	print("Hash C from P-192: %s", str);
 
-	print("Randomizer R with P-192: ");
-	for (i = 0; i < 16; i++)
-		print("%02x", rp->randomizer[i]);
-	print("");
+	bin2hex(rp->randomizer, 16, str, sizeof(str));
+	print("Randomizer R with P-192: %s", str);
 
 	if (len < sizeof(*rp_ext))
 		return noninteractive_quit(EXIT_SUCCESS);
 
-	print("Hash C from P-256: ");
-	for (i = 0; i < 16; i++)
-		print("%02x", rp_ext->hash256[i]);
-	print("");
+	bin2hex(rp_ext->hash256, 16, str, sizeof(str));
+	print("Hash C from P-256: %s", str);
 
-	print("Randomizer R with P-256: ");
-	for (i = 0; i < 16; i++)
-		print("%02x", rp_ext->randomizer256[i]);
-	print("");
+	bin2hex(rp_ext->randomizer256, 16, str, sizeof(str));
+	print("Randomizer R with P-256: %s", str);
 
 	noninteractive_quit(EXIT_SUCCESS);
 }
