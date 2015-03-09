@@ -517,7 +517,7 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 
 	if (bnep_server_add(sk, dst_role, BNEP_BRIDGE, dev->iface,
 							&dev->dst) < 0) {
-		error("server_connadd failed");
+		error("pan: server_connadd failed");
 		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto failed;
 	}
