@@ -463,7 +463,6 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct pan_device *dev = user_data;
 	uint8_t packet[BNEP_MTU];
-	uint16_t rsp = BNEP_CONN_NOT_ALLOWED;
 	int sk, n, err;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
@@ -486,21 +485,15 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	err = nap_create_bridge();
-	if (err < 0) {
+	if (err < 0)
 		error("pan: Failed to create bridge: %s (%d)", strerror(-err),
 									-err);
-		goto failed;
-	}
 
-	if (bnep_server_add(sk, BNEP_BRIDGE, dev->iface, &dev->dst, packet, n)
-									< 0) {
+	if (bnep_server_add(sk, (err < 0) ? NULL : BNEP_BRIDGE, dev->iface,
+						&dev->dst, packet, n) < 0) {
 		error("pan: server_connadd failed");
-		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto failed;
 	}
-
-	rsp = BNEP_SUCCESS;
-	bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_SETUP_CONN_RSP, rsp);
 
 	dev->watch = g_io_add_watch(chan, G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 							nap_watchdog_cb, dev);
@@ -513,7 +506,6 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 
 failed:
-	bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_SETUP_CONN_RSP, rsp);
 	pan_device_remove(dev);
 
 	return FALSE;

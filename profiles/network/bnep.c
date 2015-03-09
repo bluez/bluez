@@ -524,6 +524,18 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 	return err;
 }
 
+static ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl,
+								uint16_t resp)
+{
+	struct bnep_control_rsp rsp;
+
+	rsp.type = type;
+	rsp.ctrl = ctrl;
+	rsp.resp = htons(resp);
+
+	return send(sk, &rsp, sizeof(rsp), 0);
+}
+
 static uint16_t bnep_setup_decode(int sk, struct bnep_setup_conn_req *req,
 								uint16_t *dst)
 {
@@ -578,7 +590,6 @@ static uint16_t bnep_setup_decode(int sk, struct bnep_setup_conn_req *req,
 	case BNEP_SVC_GN:
 		if (src == BNEP_SVC_PANU)
 			return BNEP_SUCCESS;
-
 		return BNEP_CONN_INVALID_SRC;
 	case BNEP_SVC_PANU:
 		if (src == BNEP_SVC_PANU || src == BNEP_SVC_GN ||
@@ -595,7 +606,7 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 						uint8_t *setup_data, int len)
 {
 	int err;
-	uint16_t dst = NULL;
+	uint16_t rsp, dst = NULL;
 	struct bnep_setup_conn_req *req = (void *) setup_data;
 
 	/* Highest known Control command ID
@@ -614,27 +625,41 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 	}
 
 	/* Processing BNEP_SETUP_CONNECTION_REQUEST_MSG */
-	err = bnep_setup_decode(sk, req, &dst);
-	if (err < 0) {
+	rsp = bnep_setup_decode(sk, req, &dst);
+	if (rsp != BNEP_SUCCESS || !dst) {
+		err = -rsp;
 		error("bnep: error while decoding setup connection request: %d",
-									err);
-		return -EINVAL;
+									rsp);
+		goto reply;
 	}
 
-	if (!bridge || !iface || !addr || !dst)
-		return -EINVAL;
+	if (!dst) {
+		error("bnep: cannot decode proper destination service UUID");
+		rsp = BNEP_CONN_INVALID_DST;
+		goto reply;
+	}
 
 	err = bnep_connadd(sk, dst, iface);
-	if (err < 0)
-		return err;
+	if (err < 0) {
+		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
 
 	err = bnep_add_to_bridge(iface, bridge);
 	if (err < 0) {
 		bnep_conndel(addr);
-		return err;
+		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
 	}
 
-	return bnep_if_up(iface);
+	err = bnep_if_up(iface);
+	if (err < 0)
+		rsp = BNEP_CONN_NOT_ALLOWED;
+
+reply:
+	bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_SETUP_CONN_RSP, rsp);
+
+	return err;
 }
 
 void bnep_server_delete(char *bridge, char *iface, const bdaddr_t *addr)
@@ -645,15 +670,4 @@ void bnep_server_delete(char *bridge, char *iface, const bdaddr_t *addr)
 	bnep_del_from_bridge(iface, bridge);
 	bnep_if_down(iface);
 	bnep_conndel(addr);
-}
-
-ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl, uint16_t resp)
-{
-	struct bnep_control_rsp rsp;
-
-	rsp.type = type;
-	rsp.ctrl = ctrl;
-	rsp.resp = htons(resp);
-
-	return send(sk, &rsp, sizeof(rsp), 0);
 }

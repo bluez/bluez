@@ -288,9 +288,10 @@ static gboolean bnep_setup(GIOChannel *chan,
 	struct network_server *ns;
 	uint8_t packet[BNEP_MTU];
 	struct bnep_setup_conn_req *req = (void *) packet;
-	uint16_t dst_role, rsp = BNEP_CONN_NOT_ALLOWED;
+	uint16_t dst_role = 0;
 	uint32_t val;
 	int n, sk;
+	char *bridge = NULL;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -325,50 +326,35 @@ static gboolean bnep_setup(GIOChannel *chan,
 		break;
 	case 16:
 		if (memcmp(&req->service[4], bt_base, sizeof(bt_base)) != 0)
-			return FALSE;
+			break;
 
 		/* Intentional no-brake */
 
 	case 4:
 		val = get_be32(req->service);
 		if (val > 0xffff)
-			return FALSE;
+			break;
 
 		dst_role = val;
 		break;
 	default:
-		return FALSE;
+		break;
 	}
 
 	ns = find_server(na->servers, dst_role);
-	if (!ns) {
-		error("Server unavailable: (0x%x)", dst_role);
-		goto reply;
-	}
-
-	if (!ns->record_id) {
-		error("Service record not available");
-		goto reply;
-	}
-
-	if (!ns->bridge) {
-		error("Bridge interface not configured");
-		goto reply;
-	}
+	if (!ns || !ns->record_id || !ns->bridge)
+		error("Server error, bridge not initialized: (0x%x)", dst_role);
+	else
+		bridge = ns->bridge;
 
 	strncpy(na->setup->dev, BNEP_INTERFACE, 16);
 	na->setup->dev[15] = '\0';
 
-	if (bnep_server_add(sk, ns->bridge, na->setup->dev,
-						&na->setup->dst, packet, n) < 0)
-		goto reply;
+	if (bnep_server_add(sk, bridge, na->setup->dev, &na->setup->dst,
+							packet, n) < 0)
+		error("BNEP server cannot be added");
 
 	na->setup = NULL;
-
-	rsp = BNEP_SUCCESS;
-
-reply:
-	bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_SETUP_CONN_RSP, rsp);
 
 	return FALSE;
 }
