@@ -12,9 +12,9 @@ O - optional
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_A2DP_0_1	False		A2DP 1.0
-TSPC_A2DP_0_1	False		A2DP 1.2
-TSPC_A2DP_0_1	True (*)	A2DP 1.3
+TSPC_A2DP_0_1	False		A2DP 1.0 (C.1)
+TSPC_A2DP_0_2	False		A2DP 1.2 (C.1)
+TSPC_A2DP_0_3	True (*)	A2DP 1.3 (C.1)
 -------------------------------------------------------------------------------
 C.1: It is mandatory to select one of the profile versions.
 -------------------------------------------------------------------------------
@@ -24,8 +24,8 @@ C.1: It is mandatory to select one of the profile versions.
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_A2DP_1_1	True		Role: Source (C.1)
-TSPC_A2DP_1_2	False (*)	Role: Sink (C.1)
+TSPC_A2DP_1_1	True (*)	Role: Source (C.1)
+TSPC_A2DP_1_2	False		Role: Sink (C.1)
 -------------------------------------------------------------------------------
 C.1: It is mandatory to support at least one of the defined roles.
 -------------------------------------------------------------------------------
@@ -45,16 +45,15 @@ TSPC_A2DP_2_7	True		SRC: Accept connection release (M)
 TSPC_A2DP_2_8	True (*)	SRC: Initiate suspend (O)
 TSPC_A2DP_2_9	True (*)	SRC: Accept suspend (O)
 TSPC_A2DP_2_10	True		SRC: SBC encoder (M)
-TSPC_A2DP_2_10a	False		SRC: Encode Audio Stream (O)
+TSPC_A2DP_2_10a	False		SRC: Encode and Forward Audio Stream (O)
 TSPC_A2DP_2_11	False		SRC: SBC Configurations in 16 KHz sampling (O)
 TSPC_A2DP_2_12	False		SRC: SBC Configurations in 32 KHz sampling (O)
-TSPC_A2DP_2_13	True		SRC: SBC Configurations in 44.1 KHz sampling
+TSPC_A2DP_2_13	True (*)	SRC: SBC Configurations in 44.1 KHz sampling
 					(C.1)
-TSPC_A2DP_2_14	True		SRC: SBC Configurations in 48 KHz sampling
-					(C.1)
+TSPC_A2DP_2_14	True (*)	SRC: SBC Configurations in 48 KHz sampling (C.1)
 TSPC_A2DP_2_15	False		SRC: Delay Reporting (C.2)
-TSPC_A2DP_2_16	False		SRC video playback via Bluetooth VDP (C.3)
-TSPC_A2DP_2_17	False		SRC video playback on a local video
+TSPC_A2DP_2_16	False		SRC: SRC video playback via Bluetooth VDP (C.3)
+TSPC_A2DP_2_17	False		SRC: SRC video playback on a local video
 					display (C.3)
 -------------------------------------------------------------------------------
 C.1: At least one of the values shall be supported.
@@ -117,7 +116,7 @@ TSPC_A2DP_4_7	False (*)	SNK: Accept connection release (M)
 TSPC_A2DP_4_8	False		SNK: Initiate suspend (O)
 TSPC_A2DP_4_9	False		SNK: Accept suspend (O)
 TSPC_A2DP_4_10	False (*)	SNK: SBC decoder (M)
-TSPC_A2DP_4_10a	False (*)	SNK: Decode Audio Stream (O)
+TSPC_A2DP_4_10a	False		SNK: Decode and Forward Audio Stream (O)
 TSPC_A2DP_4_11	False		SNK: SBC Configurations in 16 KHz sampling (O)
 TSPC_A2DP_4_12	False		SNK: SBC Configurations in 32 KHz sampling (O)
 TSPC_A2DP_4_13	False (*)	SNK: SBC Configurations in 44.1 KHz sampling (M)

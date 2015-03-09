@@ -10,7 +10,7 @@ Required PIXIT settings
 -------------------------------------------------------------------------------
 Parameter Name			Value
 -------------------------------------------------------------------------------
-TSPX_security_enabled		TRUE
+TSPX_security_enabled		TRUE (*)
 TSPX_bd_addr_iut		112233445566 (*&)
 TSPX_SRC_class_of_device	080418
 TSPX_SNK_class_of_device	04041C
@@ -20,7 +20,7 @@ TSPX_time_guard			300000
 TSPX_use_implicit_send		TRUE
 TSPX_media_directory		C:\Program Files\Bluetooth SIG\Bluetooth PTS\
 					bin\audio (#)
-TSPX_no_avrcp			FALSE
+TSPX_no_avrcp			FALSE (*)
 TSPX_auth_password		0000
 TSPX_auth_user_id		PTS
 TSPX_rfcomm_channel		8
