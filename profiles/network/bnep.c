@@ -524,12 +524,104 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 	return err;
 }
 
-int bnep_server_add(int sk, uint16_t dst, char *bridge, char *iface,
-						const bdaddr_t *addr)
+static uint16_t bnep_setup_decode(int sk, struct bnep_setup_conn_req *req,
+								uint16_t *dst)
+{
+	const uint8_t bt_base[] = { 0x00, 0x00, 0x10, 0x00, 0x80, 0x00,
+					0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB };
+	uint16_t src;
+	uint8_t *dest, *source;
+	uint32_t val;
+
+	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ)
+		return BNEP_CONN_NOT_ALLOWED;
+
+	dest = req->service;
+	source = req->service + req->uuid_size;
+
+	switch (req->uuid_size) {
+	case 2: /* UUID16 */
+		*dst = get_be16(dest);
+		src = get_be16(source);
+		break;
+	case 16: /* UUID128 */
+		/* Check that the bytes in the UUID, except the service ID
+		 * itself, are correct. The service ID is checked in
+		 * bnep_setup_chk(). */
+		if (memcmp(&dest[4], bt_base, sizeof(bt_base)) != 0)
+			return BNEP_CONN_INVALID_DST;
+		if (memcmp(&source[4], bt_base, sizeof(bt_base)) != 0)
+			return BNEP_CONN_INVALID_SRC;
+
+		/* Intentional no-break */
+
+	case 4: /* UUID32 */
+		val = get_be32(dest);
+		if (val > 0xffff)
+			return BNEP_CONN_INVALID_DST;
+
+		*dst = val;
+
+		val = get_be32(source);
+		if (val > 0xffff)
+			return BNEP_CONN_INVALID_SRC;
+
+		src = val;
+		break;
+	default:
+		return BNEP_CONN_INVALID_SVC;
+	}
+
+	/* Allowed PAN Profile scenarios */
+	switch (*dst) {
+	case BNEP_SVC_NAP:
+	case BNEP_SVC_GN:
+		if (src == BNEP_SVC_PANU)
+			return BNEP_SUCCESS;
+
+		return BNEP_CONN_INVALID_SRC;
+	case BNEP_SVC_PANU:
+		if (src == BNEP_SVC_PANU || src == BNEP_SVC_GN ||
+							src == BNEP_SVC_NAP)
+			return BNEP_SUCCESS;
+
+		return BNEP_CONN_INVALID_SRC;
+	}
+
+	return BNEP_CONN_INVALID_DST;
+}
+
+int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
+						uint8_t *setup_data, int len)
 {
 	int err;
+	uint16_t dst = NULL;
+	struct bnep_setup_conn_req *req = (void *) setup_data;
 
-	if (!bridge || !iface || !addr)
+	/* Highest known Control command ID
+	 * is BNEP_FILTER_MULT_ADDR_RSP = 0x06 */
+	if (req->type == BNEP_CONTROL &&
+				req->ctrl > BNEP_FILTER_MULT_ADDR_RSP) {
+		uint8_t pkt[3];
+
+		pkt[0] = BNEP_CONTROL;
+		pkt[1] = BNEP_CMD_NOT_UNDERSTOOD;
+		pkt[2] = req->ctrl;
+
+		send(sk, pkt, sizeof(pkt), 0);
+
+		return -EINVAL;
+	}
+
+	/* Processing BNEP_SETUP_CONNECTION_REQUEST_MSG */
+	err = bnep_setup_decode(sk, req, &dst);
+	if (err < 0) {
+		error("bnep: error while decoding setup connection request: %d",
+									err);
+		return -EINVAL;
+	}
+
+	if (!bridge || !iface || !addr || !dst)
 		return -EINVAL;
 
 	err = bnep_connadd(sk, dst, iface);
@@ -564,66 +656,4 @@ ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl, uint16_t resp)
 	rsp.resp = htons(resp);
 
 	return send(sk, &rsp, sizeof(rsp), 0);
-}
-
-uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req, uint16_t *dst,
-								uint16_t *src)
-{
-	const uint8_t bt_base[] = { 0x00, 0x00, 0x10, 0x00, 0x80, 0x00,
-					0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB };
-	uint8_t *dest, *source;
-	uint32_t val;
-
-	dest = req->service;
-	source = req->service + req->uuid_size;
-
-	switch (req->uuid_size) {
-	case 2: /* UUID16 */
-		*dst = get_be16(dest);
-		*src = get_be16(source);
-		break;
-	case 16: /* UUID128 */
-		/* Check that the bytes in the UUID, except the service ID
-		 * itself, are correct. The service ID is checked in
-		 * bnep_setup_chk(). */
-		if (memcmp(&dest[4], bt_base, sizeof(bt_base)) != 0)
-			return BNEP_CONN_INVALID_DST;
-		if (memcmp(&source[4], bt_base, sizeof(bt_base)) != 0)
-			return BNEP_CONN_INVALID_SRC;
-
-		/* Intentional no-break */
-
-	case 4: /* UUID32 */
-		val = get_be32(dest);
-		if (val > 0xffff)
-			return BNEP_CONN_INVALID_DST;
-
-		*dst = val;
-
-		val = get_be32(source);
-		if (val > 0xffff)
-			return BNEP_CONN_INVALID_SRC;
-
-		*src = val;
-		break;
-	default:
-		return BNEP_CONN_INVALID_SVC;
-	}
-
-	/* Allowed PAN Profile scenarios */
-	switch (*dst) {
-	case BNEP_SVC_NAP:
-	case BNEP_SVC_GN:
-		if (*src == BNEP_SVC_PANU)
-			return BNEP_SUCCESS;
-		return BNEP_CONN_INVALID_SRC;
-	case BNEP_SVC_PANU:
-		if (*src == BNEP_SVC_PANU || *src == BNEP_SVC_GN ||
-							*src == BNEP_SVC_NAP)
-			return BNEP_SUCCESS;
-
-		return BNEP_CONN_INVALID_SRC;
-	}
-
-	return BNEP_CONN_INVALID_DST;
 }

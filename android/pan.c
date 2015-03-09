@@ -463,8 +463,7 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct pan_device *dev = user_data;
 	uint8_t packet[BNEP_MTU];
-	struct bnep_setup_conn_req *req = (void *) packet;
-	uint16_t src_role, dst_role, rsp = BNEP_CONN_NOT_ALLOWED;
+	uint16_t rsp = BNEP_CONN_NOT_ALLOWED;
 	int sk, n, err;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
@@ -481,24 +480,8 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	/* Highest known control command id BNEP_FILTER_MULT_ADDR_RSP 0x06 */
-	if (req->type == BNEP_CONTROL &&
-					req->ctrl > BNEP_FILTER_MULT_ADDR_RSP) {
-		error("cmd not understood");
-		bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_CMD_NOT_UNDERSTOOD,
-								req->ctrl);
-		goto failed;
-	}
-
-	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ) {
-		error("cmd is not BNEP_SETUP_CONN_REQ %02X %02X", req->type,
-								req->ctrl);
-		goto failed;
-	}
-
-	rsp = bnep_setup_decode(req, &dst_role, &src_role);
-	if (rsp != BNEP_SUCCESS) {
-		error("bnep_setup_decode failed");
+	if (n < 3) {
+		error("pan: to few setup connection request data received");
 		goto failed;
 	}
 
@@ -509,8 +492,8 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	if (bnep_server_add(sk, dst_role, BNEP_BRIDGE, dev->iface,
-							&dev->dst) < 0) {
+	if (bnep_server_add(sk, BNEP_BRIDGE, dev->iface, &dev->dst, packet, n)
+									< 0) {
 		error("pan: server_connadd failed");
 		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto failed;
