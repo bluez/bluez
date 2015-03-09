@@ -34,7 +34,7 @@ struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role,
 void bnep_free(struct bnep *session);
 
 typedef void (*bnep_connect_cb) (char *iface, int err, void *data);
-int bnep_connect(struct bnep *b, bnep_connect_cb conn_cb, void *data);
+int bnep_connect(struct bnep *session, bnep_connect_cb conn_cb, void *data);
 typedef void (*bnep_disconnect_cb) (void *data);
 void bnep_set_disconnect(struct bnep *session, bnep_disconnect_cb disconn_cb,
 								void *data);
