@@ -524,16 +524,40 @@ static int bnep_del_from_bridge(const char *devname, const char *bridge)
 	return err;
 }
 
-static ssize_t bnep_send_ctrl_rsp(int sk, uint8_t type, uint8_t ctrl,
-								uint16_t resp)
+static ssize_t bnep_send_ctrl_rsp(int sk, uint8_t ctrl, uint16_t resp)
 {
-	struct bnep_control_rsp rsp;
+	ssize_t sent;
 
-	rsp.type = type;
-	rsp.ctrl = ctrl;
-	rsp.resp = htons(resp);
+	switch (ctrl) {
+	case BNEP_CMD_NOT_UNDERSTOOD: {
+		struct bnep_ctrl_cmd_not_understood_cmd rsp;
 
-	return send(sk, &rsp, sizeof(rsp), 0);
+		rsp.type = BNEP_CONTROL;
+		rsp.ctrl = ctrl;
+		rsp.unkn_ctrl = (uint8_t) resp;
+
+		sent = send(sk, &rsp, sizeof(rsp), 0);
+		break;
+	}
+	case BNEP_FILTER_MULT_ADDR_RSP:
+	case BNEP_FILTER_NET_TYPE_RSP:
+	case BNEP_SETUP_CONN_RSP: {
+		struct bnep_control_rsp rsp;
+
+		rsp.type = BNEP_CONTROL;
+		rsp.ctrl = ctrl;
+		rsp.resp = htons(resp);
+
+		sent = send(sk, &rsp, sizeof(rsp), 0);
+		break;
+	}
+	default:
+		error("bnep: wrong response type");
+		sent = -1;
+		break;
+	}
+
+	return sent;
 }
 
 static uint16_t bnep_setup_decode(int sk, struct bnep_setup_conn_req *req,
@@ -612,16 +636,15 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 	/* Highest known Control command ID
 	 * is BNEP_FILTER_MULT_ADDR_RSP = 0x06 */
 	if (req->type == BNEP_CONTROL &&
-				req->ctrl > BNEP_FILTER_MULT_ADDR_RSP) {
-		uint8_t pkt[3];
+					req->ctrl > BNEP_FILTER_MULT_ADDR_RSP) {
+		error("bnep: cmd not understood");
+		err = bnep_send_ctrl_rsp(sk, BNEP_CMD_NOT_UNDERSTOOD,
+								req->ctrl);
+		if (err < 0)
+			error("send not understood ctrl rsp error: %s (%d)",
+							strerror(errno), errno);
 
-		pkt[0] = BNEP_CONTROL;
-		pkt[1] = BNEP_CMD_NOT_UNDERSTOOD;
-		pkt[2] = req->ctrl;
-
-		send(sk, pkt, sizeof(pkt), 0);
-
-		return -EINVAL;
+		return err;
 	}
 
 	/* Processing BNEP_SETUP_CONNECTION_REQUEST_MSG */
@@ -657,7 +680,10 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 		rsp = BNEP_CONN_NOT_ALLOWED;
 
 reply:
-	bnep_send_ctrl_rsp(sk, BNEP_CONTROL, BNEP_SETUP_CONN_RSP, rsp);
+	err = bnep_send_ctrl_rsp(sk, BNEP_SETUP_CONN_RSP, rsp);
+	if (err < 0)
+		error("bnep: send ctrl rsp error: %s (%d)", strerror(errno),
+									errno);
 
 	return err;
 }

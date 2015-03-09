@@ -103,6 +103,12 @@ struct bnep_set_filter_req {
 	uint8_t  list[0];
 } __attribute__((packed));
 
+struct bnep_ctrl_cmd_not_understood_cmd {
+	uint8_t type;
+	uint8_t ctrl;
+	uint8_t unkn_ctrl;
+} __attribute__((packed));
+
 struct bnep_control_rsp {
 	uint8_t  type;
 	uint8_t  ctrl;
