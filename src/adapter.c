@@ -7103,6 +7103,10 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (missing_settings & MGMT_SETTING_SECURE_CONN)
 		set_mode(adapter, MGMT_OP_SET_SECURE_CONN, 0x01);
 
+	if (main_opts.fast_conn &&
+			(missing_settings & MGMT_SETTING_FAST_CONNECTABLE))
+		set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, 0x01);
+
 	err = adapter_register(adapter);
 	if (err < 0) {
 		error("Unable to register new adapter");

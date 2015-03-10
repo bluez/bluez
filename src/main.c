@@ -328,6 +328,14 @@ static void parse_config(GKeyFile *config)
 
 		g_free(str);
 	}
+
+	boolean = g_key_file_get_boolean(config, "General",
+						"FastConnectable", &err);
+	if (err)
+		g_clear_error(&err);
+	else
+		main_opts.fast_conn = boolean;
+
 }
 
 static void init_defaults(void)
