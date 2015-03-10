@@ -304,9 +304,12 @@ static gboolean context_quit(gpointer user_data)
 	if (step && step->post_func)
 		step->post_func(context);
 
-	destroy_context(context);
+	if (context->data->pdu_list[context->pdu_offset].valid)
+		tester_test_abort();
+	else
+		tester_test_passed();
 
-	tester_test_passed();
+	destroy_context(context);
 
 	return FALSE;
 }
@@ -909,6 +912,11 @@ static void test_signed_write(struct context *context)
 	const struct test_step *step = context->data->step;
 	uint8_t key[16] = {0xD8, 0x51, 0x59, 0x48, 0x45, 0x1F, 0xEA, 0x32, 0x0D,
 				0xC0, 0x5A, 0x2E, 0x88, 0x30, 0x81, 0x88 };
+
+	if (!bt_att_has_crypto(context->att)) {
+		context_quit(context);
+		return;
+	}
 
 	g_assert(bt_att_set_local_key(context->att, key, local_counter,
 								context));
