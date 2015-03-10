@@ -23,6 +23,7 @@ Linux kernel v3.15	Version 1.5
 Linux kernel v3.16	Version 1.6
 Linux kernel v3.17	Version 1.7
 Linux kernel v3.19	Version 1.8
+Linux kernel v4.1	Version 1.9 (not yet released)
 
 Version 1.1 introduces Set Device ID command.
 
@@ -53,6 +54,9 @@ an extra setting for enabling SSP debug mode.
 
 Version 1.8 introduces Start Service Discovery command. It also adds new
 Long Term Key types for LE Secure Connection feature.
+
+Version 1.9 introduces a new static address setting and allows the usage
+of Set Fast Connectable when controller is powered off.
 
 
 Example
