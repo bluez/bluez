@@ -108,6 +108,18 @@ unsigned int bt_gatt_client_write_long_value(struct bt_gatt_client *client,
 				bt_gatt_client_write_long_callback_t callback,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy);
+unsigned int bt_gatt_client_prepare_write(struct bt_gatt_client *client,
+				unsigned int id,
+				uint16_t value_handle, uint16_t offset,
+				uint8_t *value, uint16_t length,
+				bt_gatt_client_write_long_callback_t callback,
+				void *user_data,
+				bt_gatt_client_destroy_func_t destroy);
+unsigned int bt_gatt_client_write_execute(struct bt_gatt_client *client,
+					unsigned int id,
+					bt_gatt_client_callback_t callback,
+					void *user_data,
+					bt_gatt_client_destroy_func_t destroy);
 
 unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 				uint16_t chrc_value_handle,
