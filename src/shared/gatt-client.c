@@ -110,6 +110,7 @@ struct bt_gatt_client {
 struct request {
 	struct bt_gatt_client *client;
 	bool long_write;
+	bool prep_write;
 	bool removed;
 	int ref_count;
 	unsigned int id;
@@ -2566,7 +2567,7 @@ unsigned int bt_gatt_client_write_long_value(struct bt_gatt_client *client,
 	req->destroy = long_write_op_free;
 	req->long_write = true;
 
-	if (client->in_long_write) {
+	if (client->in_long_write || client->reliable_write_session_id > 0) {
 		queue_push_tail(client->long_write_queue, req);
 		return req->id;
 	}
@@ -2726,6 +2727,7 @@ unsigned int bt_gatt_client_prepare_write(struct bt_gatt_client *client,
 	op->destroy = destroy;
 
 	req->destroy = destroy_prep_write_op;
+	req->prep_write = true;
 
 	put_le16(value_handle, pdu);
 	put_le16(offset, pdu + 2);
