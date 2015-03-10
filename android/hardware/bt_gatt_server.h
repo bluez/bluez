@@ -117,6 +117,9 @@ typedef void (*indication_sent_callback)(int conn_id, int status);
  */
 typedef void (*congestion_callback)(int conn_id, bool congested);
 
+/** Callback invoked when the MTU for a given connection changes */
+typedef void (*mtu_changed_callback)(int conn_id, int mtu);
+
 typedef struct {
     register_server_callback        register_server_cb;
     connection_callback             connection_cb;
@@ -133,6 +136,7 @@ typedef struct {
     response_confirmation_callback  response_confirmation_cb;
     indication_sent_callback        indication_sent_cb;
     congestion_callback             congestion_cb;
+    mtu_changed_callback            mtu_changed_cb;
 } btgatt_server_callbacks_t;
 
 /** Represents the standard BT-GATT server interface. */
