@@ -1766,14 +1766,16 @@ static bool match_req_id(const void *a, const void *b)
 static void cancel_long_write_cb(uint8_t opcode, const void *pdu, uint16_t len,
 								void *user_data)
 {
-	/* Do nothing */
+	struct bt_gatt_client *client = user_data;
+
+	if (queue_isempty(client->long_write_queue))
+		client->in_long_write = false;
 }
 
 static bool cancel_long_write_req(struct bt_gatt_client *client,
 							struct request *req)
 {
 	uint8_t pdu = 0x00;
-	bool ret;
 
 	/*
 	 * att_id == 0 means that request has been queued and no prepare write
@@ -1781,17 +1783,13 @@ static bool cancel_long_write_req(struct bt_gatt_client *client,
 	 * Otherwise execute write needs to be send.
 	 */
 	if (!req->att_id)
-		ret = queue_remove(client->long_write_queue, req);
-	else
-		ret = !!bt_att_send(client->att, BT_ATT_OP_EXEC_WRITE_REQ, &pdu,
+		return queue_remove(client->long_write_queue, req);
+
+	return !!bt_att_send(client->att, BT_ATT_OP_EXEC_WRITE_REQ, &pdu,
 							sizeof(pdu),
 							cancel_long_write_cb,
-							NULL, NULL);
+							client, NULL);
 
-	if (queue_isempty(client->long_write_queue))
-		client->in_long_write = false;
-
-	return ret;
 }
 
 bool bt_gatt_client_cancel(struct bt_gatt_client *client, unsigned int id)
