@@ -415,10 +415,10 @@ Set Fast Connectable Command
 	(e.g. not for single-mode LE ones). It will return Not Supported
 	otherwise.
 
-	This command can only be used when the controller is powered on
-	and will return Not Powered otherwise. The Fast Connectable
-	setting will get unset if the controller gets powered off while
-	it is set.
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	The setting will be remembered during power down/up toggles.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -427,7 +427,6 @@ Set Fast Connectable Command
 				Busy
 				Not Supported
 				Invalid Parameters
-				Not Powered
 				Invalid Index
 
 
