@@ -1135,9 +1135,9 @@ static struct {
 	{ "unregister-notify", cmd_unregister_notify,
 						"Unregister a not/ind session"},
 	{ "set-sec-level", cmd_set_sec_level,
-					"Set security level on le connection"},
+				"\tSet security level on le connection"},
 	{ "get-sec-level", cmd_get_sec_level,
-					"Get security level on le connection"},
+				"\tGet security level on le connection"},
 	{ "set-sign-key", cmd_set_sign_key,
 				"\tSet signing key for signed write command"},
 	{ }
