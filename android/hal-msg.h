@@ -2092,6 +2092,12 @@ struct hal_ev_gatt_server_congestion {
 	uint8_t congested;
 } __attribute__((packed));
 
+#define HAL_EV_GATT_SERVER_MTU_CHANGED		0xb0
+struct hal_ev_gatt_server_mtu_changed {
+	int32_t conn_id;
+	int32_t mtu;
+} __attribute__((packed));
+
 #define HAL_GATT_PERMISSION_READ			0x0001
 #define HAL_GATT_PERMISSION_READ_ENCRYPTED		0x0002
 #define HAL_GATT_PERMISSION_READ_ENCRYPTED_MITM		0x0004

@@ -641,6 +641,16 @@ static void handle_server_congestion(void *buf, uint16_t len, int fd)
 #endif
 }
 
+static void handle_server_mtu_changed(void *buf, uint16_t len, int fd)
+{
+#if ANDROID_VERSION >= PLATFORM_VER(5, 1, 0)
+	struct hal_ev_gatt_server_mtu_changed *ev = buf;
+
+	if (cbs->server->mtu_changed_cb)
+		cbs->server->mtu_changed_cb(ev->conn_id, ev->mtu);
+#endif
+}
+
 /*
  * handlers will be called from notification thread context,
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT'
@@ -784,6 +794,9 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_GATT_SERVER_CONGESTION */
 	{ handle_server_congestion, false,
 		sizeof(struct hal_ev_gatt_server_congestion) },
+	/* HAL_EV_GATT_SERVER_MTU_CHANGED */
+	{ handle_server_mtu_changed, false,
+		sizeof(struct hal_ev_gatt_server_mtu_changed) },
 	};
 
 /* Client API */
