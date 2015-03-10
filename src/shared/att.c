@@ -1426,3 +1426,11 @@ bool bt_att_set_remote_key(struct bt_att *att, uint8_t sign_key[16],
 
 	return sign_set_key(&att->remote_sign, sign_key, func, user_data);
 }
+
+bool bt_att_has_crypto(struct bt_att *att)
+{
+	if (!att)
+		return false;
+
+	return att->crypto ? true : false;
+}
