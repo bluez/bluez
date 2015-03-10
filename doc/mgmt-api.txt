@@ -418,15 +418,11 @@ Set Fast Connectable Command
 	This command can only be used when the controller is powered on
 	and will return Not Powerd otherwise.
 
-	If connectable is not set, then this command will fail with
-	Rejected error.
-
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
 	Possible errors:	Failed
 				Busy
-				Rejected
 				Not Supported
 				Invalid Parameters
 				Not Powered
