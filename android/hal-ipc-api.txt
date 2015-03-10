@@ -2329,6 +2329,11 @@ Notifications:
 		Notification parameters: Connection ID (4 octets)
 		                         Congested (1 octet)
 
+	Opcode 0xb0 - Server MTU Changed notification
+
+		Notification parameters: Connection ID (4 octets)
+		                         MTU (4 octets)
+
 
 Bluetooth Handsfree Client HAL (ID 10)
 ======================================
