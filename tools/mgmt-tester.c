@@ -835,6 +835,8 @@ static const struct generic_data set_connectable_off_le_test_4 = {
 
 static const char set_fast_conn_on_param[] = { 0x01 };
 static const char set_fast_conn_on_settings_1[] = { 0x87, 0x00, 0x00, 0x00 };
+static const char set_fast_conn_on_settings_2[] = { 0x85, 0x00, 0x00, 0x00 };
+static const char set_fast_conn_on_settings_3[] = { 0x84, 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_fast_conn_on_success_test_1 = {
 	.setup_settings = settings_powered_connectable,
@@ -847,12 +849,42 @@ static const struct generic_data set_fast_conn_on_success_test_1 = {
 	.expect_settings_set = MGMT_SETTING_FAST_CONNECTABLE,
 };
 
+static const struct generic_data set_fast_conn_on_success_test_2 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_SET_FAST_CONNECTABLE,
+	.send_param = set_fast_conn_on_param,
+	.send_len = sizeof(set_fast_conn_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_fast_conn_on_settings_2,
+	.expect_len = sizeof(set_fast_conn_on_settings_2),
+	.expect_settings_set = MGMT_SETTING_FAST_CONNECTABLE,
+};
+
+static const struct generic_data set_fast_conn_on_success_test_3 = {
+	.send_opcode = MGMT_OP_SET_FAST_CONNECTABLE,
+	.send_param = set_fast_conn_on_param,
+	.send_len = sizeof(set_fast_conn_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_fast_conn_on_settings_3,
+	.expect_len = sizeof(set_fast_conn_on_settings_3),
+	.expect_settings_set = MGMT_SETTING_FAST_CONNECTABLE,
+};
+
 static const struct generic_data set_fast_conn_on_not_supported_test_1 = {
 	.setup_settings = settings_powered_connectable,
 	.send_opcode = MGMT_OP_SET_FAST_CONNECTABLE,
 	.send_param = set_fast_conn_on_param,
 	.send_len = sizeof(set_fast_conn_on_param),
 	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
+static const char set_fast_conn_nval_param[] = { 0xff };
+
+static const struct generic_data set_fast_conn_nval_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_FAST_CONNECTABLE,
+	.send_param = set_fast_conn_nval_param,
+	.send_len = sizeof(set_fast_conn_nval_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
 static const char set_bondable_on_param[] = { 0x01 };
@@ -4769,6 +4801,15 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set fast connectable on - Success 1",
 				&set_fast_conn_on_success_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Set fast connectable on - Success 2",
+				&set_fast_conn_on_success_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Set fast connectable on - Success 3",
+				&set_fast_conn_on_success_test_3,
+				NULL, test_command_generic);
+	test_bredrle("Set fast connectable on - Invalid Params 1",
+				&set_fast_conn_nval_param_test_1,
 				NULL, test_command_generic);
 	test_le("Set fast connectable on - Not Supported 1",
 				&set_fast_conn_on_not_supported_test_1,
