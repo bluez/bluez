@@ -335,7 +335,6 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	else
 		main_opts.fast_conn = boolean;
-
 }
 
 static void init_defaults(void)
