@@ -1366,6 +1366,7 @@ static bool parse_uuid(GDBusProxy *proxy, bt_uuid_t *uuid)
 static bool parse_primary(GDBusProxy *proxy, bool *primary)
 {
 	DBusMessageIter iter;
+	dbus_bool_t val;
 
 	if (!g_dbus_proxy_get_property(proxy, "Primary", &iter))
 		return false;
@@ -1373,7 +1374,10 @@ static bool parse_primary(GDBusProxy *proxy, bool *primary)
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_BOOLEAN)
 		return false;
 
-	dbus_message_iter_get_basic(&iter, primary);
+	dbus_message_iter_get_basic(&iter, &val);
+
+	*primary = val;
+
 	return true;
 }
 
