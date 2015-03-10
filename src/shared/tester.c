@@ -90,6 +90,7 @@ struct test_case {
 	gdouble end_time;
 	unsigned int timeout;
 	unsigned int timeout_id;
+	unsigned int teardown_id;
 	tester_destroy_func_t destroy;
 	void *user_data;
 };
@@ -112,6 +113,9 @@ static void test_destroy(gpointer data)
 
 	if (test->timeout_id > 0)
 		g_source_remove(test->timeout_id);
+
+	if (test->teardown_id > 0)
+		g_source_remove(test->teardown_id);
 
 	if (test->destroy)
 		test->destroy(test->user_data);
@@ -328,6 +332,7 @@ static gboolean teardown_callback(gpointer user_data)
 {
 	struct test_case *test = user_data;
 
+	test->teardown_id = 0;
 	test->stage = TEST_STAGE_TEARDOWN;
 
 	print_progress(test->name, COLOR_MAGENTA, "teardown");
@@ -528,7 +533,10 @@ static void test_result(enum test_result result)
 		break;
 	}
 
-	g_idle_add(teardown_callback, test);
+	if (test->teardown_id > 0)
+		return;
+
+	test->teardown_id = g_idle_add(teardown_callback, test);
 }
 
 void tester_test_passed(void)
