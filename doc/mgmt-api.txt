@@ -416,7 +416,9 @@ Set Fast Connectable Command
 	otherwise.
 
 	This command can only be used when the controller is powered on
-	and will return Not Powerd otherwise.
+	and will return Not Powered otherwise. The Fast Connectable
+	setting will get unset if the controller gets powered off while
+	it is set.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
