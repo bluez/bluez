@@ -495,7 +495,7 @@ void tester_setup_failed(void)
 	test->post_teardown_func(test->test_data);
 }
 
-void tester_test_passed(void)
+static void test_result(enum test_result result)
 {
 	struct test_case *test;
 
@@ -512,33 +512,38 @@ void tester_test_passed(void)
 		test->timeout_id = 0;
 	}
 
-	test->result = TEST_RESULT_PASSED;
-	print_progress(test->name, COLOR_GREEN, "test passed");
+	test->result = result;
+	switch (result) {
+	case TEST_RESULT_PASSED:
+		print_progress(test->name, COLOR_GREEN, "test passed");
+		break;
+	case TEST_RESULT_FAILED:
+		print_progress(test->name, COLOR_RED, "test failed");
+		break;
+	case TEST_RESULT_NOT_RUN:
+		print_progress(test->name, COLOR_YELLOW, "test not run");
+		break;
+	case TEST_RESULT_TIMED_OUT:
+		print_progress(test->name, COLOR_RED, "test timed out");
+		break;
+	}
 
 	g_idle_add(teardown_callback, test);
 }
 
+void tester_test_passed(void)
+{
+	test_result(TEST_RESULT_PASSED);
+}
+
 void tester_test_failed(void)
 {
-	struct test_case *test;
+	test_result(TEST_RESULT_FAILED);
+}
 
-	if (!test_current)
-		return;
-
-	test = test_current->data;
-
-	if (test->stage != TEST_STAGE_RUN)
-		return;
-
-	if (test->timeout_id > 0) {
-		g_source_remove(test->timeout_id);
-		test->timeout_id = 0;
-	}
-
-	test->result = TEST_RESULT_FAILED;
-	print_progress(test->name, COLOR_RED, "test failed");
-
-	g_idle_add(teardown_callback, test);
+void tester_test_abort(void)
+{
+	test_result(TEST_RESULT_NOT_RUN);
 }
 
 void tester_teardown_complete(void)
