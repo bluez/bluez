@@ -757,6 +757,7 @@ static const char *mgmt_status[] = {
 	"Cancelled",
 	"Invalid Index",
 	"Blocked through rfkill",
+	"Already Paired",
 };
 
 #ifndef NELEM
