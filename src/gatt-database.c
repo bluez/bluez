@@ -118,7 +118,7 @@ struct pending_op {
 	unsigned int id;
 	struct gatt_db_attribute *attrib;
 	struct queue *owner_queue;
-	void *setup_data;
+	struct iovec data;
 };
 
 struct device_state {
@@ -1509,12 +1509,11 @@ error:
 static void write_setup_cb(DBusMessageIter *iter, void *user_data)
 {
 	struct pending_op *op = user_data;
-	struct iovec *iov = op->setup_data;
 	DBusMessageIter array;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
 	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
-						&iov->iov_base, iov->iov_len);
+					&op->data.iov_base, op->data.iov_len);
 	dbus_message_iter_close_container(iter, &array);
 }
 
@@ -1561,19 +1560,17 @@ static struct pending_op *pending_write_new(struct queue *owner_queue,
 					size_t len)
 {
 	struct pending_op *op;
-	struct iovec iov;
 
 	op = new0(struct pending_op, 1);
 	if (!op)
 		return NULL;
 
-	iov.iov_base = (uint8_t *) value;
-	iov.iov_len = len;
+	op->data.iov_base = (uint8_t *) value;
+	op->data.iov_len = len;
 
 	op->owner_queue = owner_queue;
 	op->attrib = attrib;
 	op->id = id;
-	op->setup_data = &iov;
 	queue_push_tail(owner_queue, op);
 
 	return op;
