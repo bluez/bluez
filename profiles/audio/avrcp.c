@@ -3394,8 +3394,7 @@ static void target_init(struct avrcp *session)
 	DBG("%p version 0x%04x", target, target->version);
 
 	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
-	if (service != NULL)
-		btd_service_connecting_complete(service, 0);
+	btd_service_connecting_complete(service, 0);
 
 	player = g_slist_nth_data(server->players, 0);
 	if (player != NULL) {
@@ -3440,8 +3439,7 @@ static void controller_init(struct avrcp *session)
 		session->supported_events |= (1 << AVRCP_EVENT_VOLUME_CHANGED);
 
 	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
-	if (service != NULL)
-		btd_service_connecting_complete(service, 0);
+	btd_service_connecting_complete(service, 0);
 
 	/* Only create player if category 1 is supported */
 	if (!(controller->features & AVRCP_FEATURE_CATEGORY_1))
