@@ -3486,18 +3486,10 @@ static void session_init_control(struct avrcp *session)
 static void controller_destroy(struct avrcp *session)
 {
 	struct avrcp_data *controller = session->controller;
-	struct btd_service *service;
 
 	DBG("%p", controller);
 
 	g_slist_free_full(controller->players, player_destroy);
-
-	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
-
-	if (session->control_id == 0)
-		btd_service_connecting_complete(service, -EIO);
-	else
-		btd_service_disconnecting_complete(service, 0);
 
 	g_free(controller);
 }
@@ -3506,19 +3498,11 @@ static void target_destroy(struct avrcp *session)
 {
 	struct avrcp_data *target = session->target;
 	struct avrcp_player *player = target->player;
-	struct btd_service *service;
 
 	DBG("%p", target);
 
 	if (player != NULL)
 		player->sessions = g_slist_remove(player->sessions, session);
-
-	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
-
-	if (session->control_id == 0)
-		btd_service_connecting_complete(service, -EIO);
-	else
-		btd_service_disconnecting_complete(service, 0);
 
 	g_free(target);
 }
@@ -3526,10 +3510,27 @@ static void target_destroy(struct avrcp *session)
 static void session_destroy(struct avrcp *session)
 {
 	struct avrcp_server *server = session->server;
+	struct btd_service *service;
 
 	server->sessions = g_slist_remove(server->sessions, session);
 
 	session_abort_pending_pdu(session);
+
+	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
+	if (service != NULL) {
+		if (session->control_id == 0)
+			btd_service_connecting_complete(service, -EIO);
+		else
+			btd_service_disconnecting_complete(service, 0);
+	}
+
+	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
+	if (service != NULL) {
+		if (session->control_id == 0)
+			btd_service_connecting_complete(service, -EIO);
+		else
+			btd_service_disconnecting_complete(service, 0);
+	}
 
 	if (session->browsing_timer > 0)
 		g_source_remove(session->browsing_timer);
