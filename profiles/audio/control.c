@@ -71,7 +71,8 @@ struct control {
 };
 
 static void state_changed(struct btd_device *dev, avctp_state_t old_state,
-				avctp_state_t new_state, void *user_data)
+					avctp_state_t new_state, int err,
+					void *user_data)
 {
 	struct control *control = user_data;
 	DBusConnection *conn = btd_get_dbus_connection();

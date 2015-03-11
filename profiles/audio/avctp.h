@@ -122,7 +122,7 @@ typedef enum {
 typedef void (*avctp_state_cb) (struct btd_device *dev,
 				avctp_state_t old_state,
 				avctp_state_t new_state,
-				void *user_data);
+				int err, void *user_data);
 
 typedef bool (*avctp_passthrough_cb) (struct avctp *session,
 					uint8_t op, bool pressed,

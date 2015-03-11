@@ -3568,7 +3568,8 @@ static struct avrcp *session_create(struct avrcp_server *server,
 }
 
 static void state_changed(struct btd_device *device, avctp_state_t old_state,
-				avctp_state_t new_state, void *user_data)
+					avctp_state_t new_state, int err,
+					void *user_data)
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
