@@ -1239,6 +1239,10 @@ const char *bt_compidtostr(int compid)
 		return "IPS Group Inc.";
 	case 488:
 		return "STIR";
+	case 489:
+		return "Sano, Inc";
+	case 490:
+		return "Advanced Application Design, Inc.";
 	case 65535:
 		return "internal use";
 	default:
