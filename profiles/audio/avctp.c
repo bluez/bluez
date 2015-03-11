@@ -1351,6 +1351,13 @@ static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
 	if (session->control != NULL) {
 		error("Control: Refusing unexpected connect");
 		g_io_channel_shutdown(chan, TRUE, NULL);
+
+		/*
+		 * Close AVCTP channel if remote tried connect
+		 * at the same time
+		 * AVRCP SPEC V1.5 4.1.1 Connection Establishment
+		 */
+		avctp_set_state(session, AVCTP_STATE_DISCONNECTED, -EAGAIN);
 		return;
 	}
 
