@@ -2063,6 +2063,10 @@ static DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 		return dbus_message_new_error(msg,
 				ERROR_INTERFACE ".AuthenticationCanceled",
 				"Authentication Canceled");
+	case MGMT_STATUS_ALREADY_PAIRED:
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".AlreadyExists",
+				"Already Paired");
 	default:
 		return dbus_message_new_error(msg,
 				ERROR_INTERFACE ".AuthenticationFailed",
