@@ -956,6 +956,20 @@ static void notify_client_mtu_change(struct app_connection *conn, bool success)
 			HAL_EV_GATT_CLIENT_CONFIGURE_MTU, sizeof(ev), &ev);
 }
 
+static void notify_server_mtu(struct app_connection *conn)
+{
+	struct hal_ev_gatt_server_mtu_changed ev;
+	size_t mtu;
+
+	g_attrib_get_buffer(conn->device->attrib, &mtu);
+
+	ev.conn_id = conn->id;
+	ev.mtu = mtu;
+
+	ipc_send_notif(hal_ipc, HAL_SERVICE_ID_GATT,
+			HAL_EV_GATT_SERVER_MTU_CHANGED, sizeof(ev), &ev);
+}
+
 static void notify_mtu_change(void *data, void *user_data)
 {
 	struct gatt_device *device = user_data;
@@ -969,6 +983,8 @@ static void notify_mtu_change(void *data, void *user_data)
 		notify_client_mtu_change(conn, true);
 		break;
 	case GATT_SERVER:
+		notify_server_mtu(conn);
+		break;
 	default:
 		break;
 	}
