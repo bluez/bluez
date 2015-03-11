@@ -3984,8 +3984,6 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 
 	device_accept_gatt_profiles(device);
 
-	g_slist_foreach(device->attios, attio_connected, device->attrib);
-
 	btd_gatt_client_ready(device->client_dbus);
 }
 
@@ -4006,6 +4004,9 @@ static void gatt_client_init(struct btd_device *device)
 		DBG("Failed to initialize");
 		return;
 	}
+
+	/* Notify attio so it can react to notifications */
+	g_slist_foreach(device->attios, attio_connected, device->attrib);
 
 	if (!bt_gatt_client_set_ready_handler(device->client,
 							gatt_client_ready_cb,
