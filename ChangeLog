@@ -1,3 +1,23 @@
+ver 5.29:
+	Fix issue with AVCTP initial key repeat timeout.
+	Fix issue with Android application disconnect handling.
+	Fix issue with Android support and service notifications.
+	Fix issue with Android support and Exchange MTU Request.
+	Fix issue with Android HFP support and AT+CMER handling.
+	Fix issue with Android HFP support and SLC setup.
+	Fix issue with Android HFP support and call hold status.
+	Fix issue with Android HFP support and indicator handling.
+	Fix issue with Android HFP support and SCO/eSCO disconnection.
+	Fix issue with Android HID over GATT support and battery service.
+	Fix issue with GATT sending Exchange MTU Request for BR/EDR.
+	Fix issue with GATT notification support without CCC.
+	Fix issue with GATT object life-time after disconnects.
+	Fix issue with GATT notification handling API.
+	Add experimental support for GATT client D-Bus API.
+	Add experimental support for GATT server D-Bus API.
+	Add support for Multi Profile Specification.
+	Update Android qualification documentation to PTS 6.0 release.
+
 ver 5.28:
 	Fix issue with GATT device discovery and probing.
 	Fix issue with bearer selection for dual-mode devices.
