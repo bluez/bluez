@@ -650,6 +650,7 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 	/* Processing BNEP_SETUP_CONNECTION_REQUEST_MSG */
 	rsp = bnep_setup_decode(sk, req, &dst);
 	if (rsp != BNEP_SUCCESS) {
+		err = -rsp;
 		error("bnep: error while decoding setup connection request: %d",
 									rsp);
 		goto reply;
@@ -673,10 +674,11 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 		rsp = BNEP_CONN_NOT_ALLOWED;
 
 reply:
-	err = bnep_send_ctrl_rsp(sk, BNEP_SETUP_CONN_RSP, rsp);
-	if (err < 0)
+	if (bnep_send_ctrl_rsp(sk, BNEP_SETUP_CONN_RSP, rsp) < 0) {
+		err = -errno;
 		error("bnep: send ctrl rsp error: %s (%d)", strerror(errno),
 									errno);
+	}
 
 	return err;
 }
