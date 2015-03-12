@@ -324,13 +324,12 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 	if (!dev->session)
 		goto fail;
 
-	perr = bnep_connect(dev->session, bnep_conn_cb, dev);
+	perr = bnep_connect(dev->session, bnep_conn_cb, bnep_disconn_cb, dev,
+									dev);
 	if (perr < 0) {
 		error("bnep connect req failed: %s", strerror(-perr));
 		goto fail;
 	}
-
-	bnep_set_disconnect(dev->session, bnep_disconn_cb, dev);
 
 	if (dev->io) {
 		g_io_channel_unref(dev->io);

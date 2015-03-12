@@ -369,17 +369,21 @@ void bnep_free(struct bnep *session)
 	g_free(session);
 }
 
-int bnep_connect(struct bnep *session, bnep_connect_cb conn_cb, void *data)
+int bnep_connect(struct bnep *session, bnep_connect_cb conn_cb,
+					bnep_disconnect_cb disconn_cb,
+					void *conn_data, void *disconn_data)
 {
 	GError *gerr = NULL;
 	int err;
 
-	if (!session || !conn_cb)
+	if (!session || !conn_cb || !disconn_cb)
 		return -EINVAL;
 
 	session->attempts = 0;
 	session->conn_cb = conn_cb;
-	session->conn_data = data;
+	session->disconn_cb = disconn_cb;
+	session->conn_data = conn_data;
+	session->disconn_data = disconn_data;
 
 	bt_io_get(session->io, &gerr, BT_IO_OPT_DEST_BDADDR, &session->dst_addr,
 							BT_IO_OPT_INVALID);
@@ -415,18 +419,6 @@ void bnep_disconnect(struct bnep *session)
 
 	bnep_if_down(session->iface);
 	bnep_conndel(&session->dst_addr);
-}
-
-void bnep_set_disconnect(struct bnep *session, bnep_disconnect_cb disconn_cb,
-								void *data)
-{
-	if (!session || !disconn_cb)
-		return;
-
-	if (!session->disconn_cb && !session->disconn_data) {
-		session->disconn_cb = disconn_cb;
-		session->disconn_data = data;
-	}
 }
 
 static int bnep_add_to_bridge(const char *devname, const char *bridge)
