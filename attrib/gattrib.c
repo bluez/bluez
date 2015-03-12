@@ -429,9 +429,24 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 
 uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
 {
+	uint16_t mtu;
+
 	if (!attrib || !len)
 		return NULL;
 
+	mtu = bt_att_get_mtu(attrib->att);
+
+	/*
+	 * Clients of this expect a buffer to use.
+	 *
+	 * Pdu encoding in shared/att verifies if whole buffer fits the mtu,
+	 * thus we should set the buflen also when mtu is reduced. But we
+	 * need to reallocate the buffer only if mtu is larger.
+	 */
+	if (mtu > attrib->buflen)
+		attrib->buf = g_realloc(attrib->buf, mtu);
+
+	attrib->buflen = mtu;
 	*len = attrib->buflen;
 	return attrib->buf;
 }
