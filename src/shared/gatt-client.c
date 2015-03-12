@@ -1815,6 +1815,19 @@ static bool cancel_prep_write_session(struct bt_gatt_client *client,
 							req, request_unref);
 }
 
+static bool cancel_request(struct request *req)
+{
+	req->removed = true;
+
+	if (req->long_write)
+		return cancel_long_write_req(req->client, req);
+
+	if (req->prep_write)
+		return cancel_prep_write_session(req->client, req);
+
+	return bt_att_cancel(req->client->att, req->att_id);
+}
+
 bool bt_gatt_client_cancel(struct bt_gatt_client *client, unsigned int id)
 {
 	struct request *req;
@@ -1827,35 +1840,7 @@ bool bt_gatt_client_cancel(struct bt_gatt_client *client, unsigned int id)
 	if (!req)
 		return false;
 
-	req->removed = true;
-
-	if (!bt_att_cancel(client->att, req->att_id) && !req->long_write &&
-							!req->prep_write)
-		return false;
-
-	/* If this was a long-write, we need to abort all prepared writes */
-	if (req->long_write)
-		return cancel_long_write_req(client, req);
-
-	if (req->prep_write)
-		return cancel_prep_write_session(client, req);
-
-	return true;
-}
-
-static void cancel_request(void *data)
-{
-	struct request *req = data;
-
-	req->removed = true;
-
-	bt_att_cancel(req->client->att, req->att_id);
-
-	if (req->long_write)
-		cancel_long_write_req(req->client, req);
-
-	if (req->prep_write)
-		cancel_prep_write_session(req->client, req);
+	return cancel_request(req);
 }
 
 bool bt_gatt_client_cancel_all(struct bt_gatt_client *client)
@@ -1863,7 +1848,8 @@ bool bt_gatt_client_cancel_all(struct bt_gatt_client *client)
 	if (!client || !client->att)
 		return false;
 
-	queue_remove_all(client->pending_requests, NULL, NULL, cancel_request);
+	queue_remove_all(client->pending_requests, NULL, NULL,
+					(queue_destroy_func_t) cancel_request);
 
 	if (client->discovery_req) {
 		bt_gatt_request_cancel(client->discovery_req);
