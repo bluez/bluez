@@ -54,17 +54,6 @@
 
 static int ctl;
 
-static struct {
-	const char	*name;		/* Friendly name */
-	const char	*uuid128;	/* UUID 128 */
-	uint16_t	id;		/* Service class identifier */
-} __svc[] = {
-	{ "panu",	PANU_UUID,	BNEP_SVC_PANU	},
-	{ "gn",		GN_UUID,	BNEP_SVC_GN	},
-	{ "nap",	NAP_UUID,	BNEP_SVC_NAP	},
-	{ NULL }
-};
-
 struct __service_16 {
 	uint16_t dst;
 	uint16_t src;
@@ -84,16 +73,6 @@ struct bnep {
 	bnep_disconnect_cb disconn_cb;
 	void	*disconn_data;
 };
-
-const char *bnep_name(uint16_t id)
-{
-	int i;
-
-	for (i = 0; __svc[i].name; i++)
-		if (__svc[i].id == id)
-			return __svc[i].name;
-	return NULL;
-}
 
 int bnep_init(void)
 {
