@@ -1180,23 +1180,11 @@ struct bt_hog *bt_hog_new(const char *name, uint16_t vendor, uint16_t product,
 		return NULL;
 
 	hog->gatt_op = queue_new();
-	if (!hog->gatt_op) {
-		hog_free(hog);
-		return NULL;
-	}
-
 	hog->bas = queue_new();
-	if (!hog->bas) {
-		queue_destroy(hog->gatt_op, NULL);
-		hog_free(hog);
-		return NULL;
-	}
-
 	hog->uhid = bt_uhid_new_default();
-	if (!hog->uhid) {
+
+	if (!hog->gatt_op || !hog->bas || !hog->uhid) {
 		hog_free(hog);
-		queue_destroy(hog->gatt_op, NULL);
-		queue_destroy(hog->bas, NULL);
 		return NULL;
 	}
 
