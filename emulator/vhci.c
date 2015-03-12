@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/uio.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"

@@ -32,6 +32,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/uio.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
