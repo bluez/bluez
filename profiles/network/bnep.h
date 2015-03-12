@@ -26,7 +26,6 @@ struct bnep;
 int bnep_init(void);
 int bnep_cleanup(void);
 
-const char *bnep_uuid(uint16_t id);
 const char *bnep_name(uint16_t id);
 
 struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role,

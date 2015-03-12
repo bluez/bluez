@@ -85,16 +85,6 @@ struct bnep {
 	void	*disconn_data;
 };
 
-const char *bnep_uuid(uint16_t id)
-{
-	int i;
-
-	for (i = 0; __svc[i].uuid128; i++)
-		if (__svc[i].id == id)
-			return __svc[i].uuid128;
-	return NULL;
-}
-
 const char *bnep_name(uint16_t id)
 {
 	int i;

@@ -114,14 +114,38 @@ static struct network_server *find_server(GSList *list, uint16_t id)
 static struct network_server *find_server_by_uuid(GSList *list,
 							const char *uuid)
 {
-	for (; list; list = list->next) {
-		struct network_server *ns = list->data;
+	bt_uuid_t srv_uuid, bnep_uuid;
 
-		if (strcasecmp(uuid, bnep_uuid(ns->id)) == 0)
-			return ns;
+	if (!bt_string_to_uuid(&srv_uuid, uuid)) {
+		for (; list; list = list->next) {
+			struct network_server *ns = list->data;
 
-		if (strcasecmp(uuid, bnep_name(ns->id)) == 0)
-			return ns;
+			bt_uuid16_create(&bnep_uuid, ns->id);
+
+			/* UUID value compare */
+			if (!bt_uuid_cmp(&srv_uuid, &bnep_uuid))
+				return ns;
+		}
+	} else {
+		for (; list; list = list->next) {
+			struct network_server *ns = list->data;
+
+			/* String value compare */
+			switch (ns->id) {
+			case BNEP_SVC_PANU:
+				if (!strcasecmp(uuid, "panu"))
+					return ns;
+				break;
+			case BNEP_SVC_NAP:
+				if (!strcasecmp(uuid, "nap"))
+					return ns;
+				break;
+			case BNEP_SVC_GN:
+				if (!strcasecmp(uuid, "gn"))
+					return ns;
+				break;
+			}
+		}
 	}
 
 	return NULL;
