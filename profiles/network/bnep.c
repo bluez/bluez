@@ -630,7 +630,7 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 						uint8_t *setup_data, int len)
 {
 	int err;
-	uint16_t rsp, dst = NULL;
+	uint16_t rsp, dst;
 	struct bnep_setup_conn_req *req = (void *) setup_data;
 
 	/* Highest known Control command ID
