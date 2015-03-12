@@ -649,16 +649,9 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 
 	/* Processing BNEP_SETUP_CONNECTION_REQUEST_MSG */
 	rsp = bnep_setup_decode(sk, req, &dst);
-	if (rsp != BNEP_SUCCESS || !dst) {
-		err = -rsp;
+	if (rsp != BNEP_SUCCESS) {
 		error("bnep: error while decoding setup connection request: %d",
 									rsp);
-		goto reply;
-	}
-
-	if (!dst) {
-		error("bnep: cannot decode proper destination service UUID");
-		rsp = BNEP_CONN_INVALID_DST;
 		goto reply;
 	}
 
