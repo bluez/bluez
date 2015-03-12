@@ -36,7 +36,7 @@ void manager_unregister_transfer(struct obex_transfer *transfer);
 void manager_emit_transfer_started(struct obex_transfer *transfer);
 void manager_emit_transfer_progress(struct obex_transfer *transfer);
 void manager_emit_transfer_completed(struct obex_transfer *transfer);
-int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
+int manager_request_authorization(struct obex_transfer *transfer,
 					char **new_folder, char **new_name);
 
 DBusConnection *manager_dbus_get_connection(void);

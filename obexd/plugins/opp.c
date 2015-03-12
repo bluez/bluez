@@ -62,7 +62,6 @@ static void opp_progress(struct obex_session *os, void *user_data)
 static int opp_chkput(struct obex_session *os, void *user_data)
 {
 	char *folder, *name, *path;
-	int32_t time;
 	const char *t;
 	int err;
 
@@ -79,8 +78,7 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 		goto skip_auth;
 	}
 
-	time = 0;
-	err = manager_request_authorization(user_data, time, &folder, &name);
+	err = manager_request_authorization(user_data, &folder, &name);
 	if (err < 0)
 		return -EPERM;
 

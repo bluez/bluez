@@ -671,7 +671,7 @@ static gboolean auth_error(GIOChannel *io, GIOCondition cond, void *user_data)
 	return FALSE;
 }
 
-int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
+int manager_request_authorization(struct obex_transfer *transfer,
 					char **new_folder, char **new_name)
 {
 	struct obex_session *os = transfer->session;
