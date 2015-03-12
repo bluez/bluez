@@ -3975,11 +3975,6 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 		return;
 	}
 
-	device->att_mtu = bt_att_get_mtu(device->att);
-	g_attrib_set_mtu(device->attrib, device->att_mtu);
-
-	DBG("MTU: %u", device->att_mtu);
-
 	register_gatt_services(device);
 
 	device_accept_gatt_profiles(device);
