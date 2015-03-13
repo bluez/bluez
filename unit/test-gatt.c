@@ -2269,6 +2269,10 @@ int main(int argc, char *argv[])
 			raw_pdu(0x05, 0x01, 0x15, 0x00, 0x04, 0x29, 0x16, 0x00,
 					0x05, 0x29));
 
+	define_test_client("/TP/GAD/CL/BV-06-C/client-1", test_client,
+			service_db_1, NULL,
+			SERVICE_DATA_1_PDUS);
+
 	define_test_server("/TP/GAD/SR/BV-06-C/small", test_server,
 			ts_small_db, NULL,
 			raw_pdu(0x03, 0x00, 0x02),
