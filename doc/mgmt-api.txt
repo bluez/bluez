@@ -1583,7 +1583,7 @@ Set Advertising Command
 	have no effect when using Advertising value 0x01 since only the
 	connectable setting is taken into account.
 
-	To utilize undirect connectable advertising without changing the
+	To utilize undirected connectable advertising without changing the
 	connectable setting, the value 0x02 can be utilized. It makes the
 	device connectable via LE without the requirement for being
 	connectable on BR/EDR (and/or LE).
