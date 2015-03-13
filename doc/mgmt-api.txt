@@ -1579,8 +1579,9 @@ Set Advertising Command
 	setting is enabled, then undirected connectable advertising packets
 	and the identity address or resolvable private address are used.
 
-	Devices configured via Add Device command have no affect when using
-	value 0x01 since only the connectable setting is taken into account.
+	LE Devices configured via Add Device command with Action 0x01
+	have no effect when using Advertising value 0x01 since only the
+	connectable setting is taken into account.
 
 	To utilize undirect connectable advertising without changing the
 	connectable setting, the value 0x02 can be utilized. It makes the
