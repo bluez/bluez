@@ -56,7 +56,9 @@ Version 1.8 introduces Start Service Discovery command. It also adds new
 Long Term Key types for LE Secure Connection feature.
 
 Version 1.9 introduces a new static address setting and allows the usage
-of Set Fast Connectable when controller is powered off.
+of Set Fast Connectable when controller is powered off. The existing Set
+Advertising command gained an extra setting for enabling undirected
+connectable advertising.
 
 
 Example
