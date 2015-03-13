@@ -82,6 +82,7 @@ tools/gatt-service
 tools/btgatt-client
 tools/btgatt-server
 tools/mcaptest
+tools/bneptest
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-ringbuf

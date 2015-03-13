@@ -256,6 +256,41 @@ LOCAL_MODULE := mcaptest
 include $(BUILD_EXECUTABLE)
 
 #
+# bneptest
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	bluez/src/log.c \
+	bluez/btio/btio.c \
+	bluez/lib/bluetooth.c \
+	bluez/lib/hci.c \
+	bluez/profiles/network/bnep.c \
+	bluez/tools/bneptest.c \
+
+LOCAL_C_INCLUDES := \
+	$(call include-path-for, glib) \
+	$(call include-path-for, glib)/glib \
+
+LOCAL_C_INCLUDES += \
+	$(LOCAL_PATH)/bluez \
+
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
+
+LOCAL_SHARED_LIBRARIES := \
+	libglib \
+
+LOCAL_STATIC_LIBRARIES := \
+	bluetooth-headers \
+
+LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
+LOCAL_MODULE_TAGS := debug
+LOCAL_MODULE := bneptest
+
+include $(BUILD_EXECUTABLE)
+
+#
 # avdtptest
 #
 
