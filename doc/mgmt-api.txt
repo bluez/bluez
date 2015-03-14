@@ -2437,10 +2437,12 @@ Read Advertising Features Command
 	field in Add Advertising command provided:
 
 		0	Switch into Connectable mode
-		1	Add Flags field to Adv_Data
-		2	Add TX Power field to Adv_Data
-		3	Add Appearance field to Scan_Rsp
-		4	Add Local Name in Scan_Rsp
+		1	Advertise as Discoverable
+		2	Advertise as Limited Discoverable
+		3	Add Flags field to Adv_Data
+		4	Add TX Power field to Adv_Data
+		5	Add Appearance field to Scan_Rsp
+		6	Add Local Name in Scan_Rsp
 
 	The Flags bit 0 indicates support for connectable advertising
 	and for switching to connectable advertising independent of the
@@ -2450,27 +2452,40 @@ Read Advertising Features Command
 	used. It also determines the use of non-resolvable random address
 	versus identity address or resolvable private address.
 
-	The Flags bit 1 indicates support for automatically keeping the
+	The Flags bit 1 indicates support for advertising with discoverable
+	mode enabled. Users of this flag will decrease the Max_Adv_Data_Len
+	by 3 octets. In this case the advertising data flags are managed
+	and added in front of the provided advertising data.
+
+	The Flags bit 2 indicates support for advertising with limited
+	discoverable mode enabled. Users of this flag will decrease the
+	Max_Adv_Data_Len by 3 octets. In this case the advertising data
+	flags are managed and added in front of the provided advertising
+	data.
+
+	The Flags bit 3 indicates support for automatically keeping the
 	Flags field of the advertising data updated. Users of this flag
 	will decrease the Max_Adv_Data_Len by 3 octets and need to keep
 	that in mind. The Flags field will be added in front of the
-	advertising data provided by the user.
+	advertising data provided by the user. Note that with Flags bit 1
+	and Flags bit 2, this one will be implicitly used even if it is
+	not marked as supported.
 
-	The Flags bit 2 indicates support for automatically adding the
+	The Flags bit 4 indicates support for automatically adding the
 	TX Power value to the advertising data. Users of this flag will
 	decrease the Max_Adv_Data_Len by 3 octets. The TX Power field will
 	be added at the end of the user provided advertising data. If the
 	controller does not support TX Power information, then this bit will
 	not be set.
 
-	The Flags bit 3 indicates support for automatically adding the
+	The Flags bit 5 indicates support for automatically adding the
 	Apperance value to the scan response data. Users of this flag
 	will decrease the Max_Scan_Rsp_len by 4 octets. The Appearance
 	field will be added in front of the scan response data provided
 	by the user. If the appearance value is not supported, then this
 	bit will not be set.
 
-	The Flags bit 4 indicates support for automatically adding the
+	The Flags bit 6 indicates support for automatically adding the
 	Local Name value to the scan response data. This flag indicates
 	an opportunistic approach for the Local Name. If enough space
 	in the scan response data is available, it will be added. If the
@@ -2529,10 +2544,12 @@ Add Advertising Command
 	the following flags are defined:
 
 		0	Switch into Connectable mode
-		1	Add Flags field to Adv_Data
-		2	Add TX Power field to Adv_Data
-		3	Add Appearance field to Scan_Rsp
-		4	Add Local Name to Scan_Rsp
+		1	Advertise as Discoverable
+		2	Advertise as Limited Discoverable
+		3	Add Flags field to Adv_Data
+		4	Add TX Power field to Adv_Data
+		5	Add Appearance field to Scan_Rsp
+		6	Add Local Name in Scan_Rsp
 
 	When the connectable flag is set, then the controller will use
 	undirected connectable advertising. The value of the connectable
