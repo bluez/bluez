@@ -1059,53 +1059,12 @@ static void cmd_commands(struct mgmt *mgmt, uint16_t index, int argc,
 	}
 }
 
-static void unconf_index_rsp(uint8_t status, uint16_t len, const void *param,
-							void *user_data)
-{
-	const struct mgmt_rp_read_unconf_index_list *rp = param;
-	uint16_t count;
-	unsigned int i;
-
-	if (status != 0) {
-		error("Reading index list failed with status 0x%02x (%s)",
-						status, mgmt_errstr(status));
-		goto done;
-	}
-
-	if (len < sizeof(*rp)) {
-		error("Too small index list reply (%u bytes)", len);
-		goto done;
-	}
-
-	count = get_le16(&rp->num_controllers);
-
-	if (len < sizeof(*rp) + count * sizeof(uint16_t)) {
-		error("Index count (%u) doesn't match reply length (%u)",
-								count, len);
-		goto done;
-	}
-
-	print("Unconfigured index list with %u item%s",
-						count, count != 1 ? "s" : "");
-
-	for (i = 0; i < count; i++) {
-		uint16_t index;
-
-		index = get_le16(&rp->index[i]);
-
-		print("\thci%u", index);
-
-	}
-
-done:
-	noninteractive_quit(EXIT_SUCCESS);
-}
-
 static void config_info_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_rp_read_config_info *rp = param;
 	uint16_t index = PTR_TO_UINT(user_data);
+	uint32_t supported_options, missing_options;
 
 	if (status != 0) {
 		error("Reading hci%u config failed with status 0x%02x (%s)",
@@ -1118,25 +1077,76 @@ static void config_info_rsp(uint8_t status, uint16_t len, const void *param,
 		goto done;
 	}
 
-	print("hci%u:\tmanufacturer %u", index, get_le16(&rp->manufacturer));
+	print("hci%u:\tUnconfigured controller", index);
 
-	print("\tsupported options: %s",
-			options2str(get_le32(&rp->supported_options)));
-	print("\tmissing options: %s",
-			options2str(get_le32(&rp->missing_options)));
+	print("\tmanufacturer %u", le16_to_cpu(rp->manufacturer));
+
+	supported_options = le32_to_cpu(rp->supported_options);
+	print("\tsupported options: %s", options2str(supported_options));
+
+	missing_options = le32_to_cpu(rp->missing_options);
+	print("\tmissing options: %s", options2str(missing_options));
 
 done:
+	pending_index--;
+
+	if (pending_index > 0)
+		return;
+
 	noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void unconf_index_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_unconf_index_list *rp = param;
+	uint16_t count;
+	unsigned int i;
+
+	if (status != 0) {
+		error("Reading index list failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small index list reply (%u bytes)", len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	count = le16_to_cpu(rp->num_controllers);
+
+	if (len < sizeof(*rp) + count * sizeof(uint16_t)) {
+		error("Index count (%u) doesn't match reply length (%u)",
+								count, len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print("Unconfigured index list with %u item%s",
+					count, count != 1 ? "s" : "");
+
+	for (i = 0; i < count; i++) {
+		uint16_t index = le16_to_cpu(rp->index[i]);
+
+		if (!mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO, index, 0, NULL,
+				config_info_rsp, UINT_TO_PTR(index), NULL)) {
+			error("Unable to send read_config_info cmd");
+			return noninteractive_quit(EXIT_FAILURE);
+		}
+
+		pending_index++;
+	}
+
+	if (!count)
+		noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_config(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	void *data;
-
 	if (index == MGMT_INDEX_NONE) {
-		if (mgmt_send(mgmt, MGMT_OP_READ_UNCONF_INDEX_LIST,
+		if (!mgmt_send(mgmt, MGMT_OP_READ_UNCONF_INDEX_LIST,
 					MGMT_INDEX_NONE, 0, NULL,
-					unconf_index_rsp, mgmt, NULL) == 0) {
+					unconf_index_rsp, mgmt, NULL)) {
 			error("Unable to send unconf_index_list cmd");
 			return noninteractive_quit(EXIT_FAILURE);
 		}
@@ -1144,13 +1154,46 @@ static void cmd_config(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		return;
 	}
 
-	data = UINT_TO_PTR(index);
-
-	if (mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO, index, 0, NULL,
-					config_info_rsp, data, NULL) == 0) {
+	if (!mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO, index, 0, NULL,
+				config_info_rsp, UINT_TO_PTR(index), NULL)) {
 		error("Unable to send read_config_info cmd");
 		return noninteractive_quit(EXIT_FAILURE);
 	}
+}
+
+static void config_options_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_config_info *rp = param;
+	uint16_t index = PTR_TO_UINT(user_data);
+	uint32_t supported_options, missing_options;
+
+	if (status != 0) {
+		error("Reading hci%u config failed with status 0x%02x (%s)",
+					index, status, mgmt_errstr(status));
+		goto done;
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small info reply (%u bytes)", len);
+		goto done;
+	}
+
+	print("hci%u:\tConfiguration options", index);
+
+	supported_options = le32_to_cpu(rp->supported_options);
+	print("\tsupported options: %s", options2str(supported_options));
+
+	missing_options = le32_to_cpu(rp->missing_options);
+	print("\tmissing options: %s", options2str(missing_options));
+
+done:
+	pending_index--;
+
+	if (pending_index > 0)
+		return;
+
+	noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void info_rsp(uint8_t status, uint16_t len, const void *param,
@@ -1158,9 +1201,8 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 {
 	const struct mgmt_rp_read_info *rp = param;
 	uint16_t index = PTR_TO_UINT(user_data);
+	uint32_t supported_settings, current_settings;
 	char addr[18];
-
-	pending_index--;
 
 	if (status != 0) {
 		error("Reading hci%u info failed with status 0x%02x (%s)",
@@ -1173,25 +1215,38 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 		goto done;
 	}
 
+	print("hci%u:\tPrimary controller", index);
+
 	ba2str(&rp->bdaddr, addr);
-	print("hci%u:\taddr %s version %u manufacturer %u"
-			" class 0x%02x%02x%02x", index,
-			addr, rp->version, get_le16(&rp->manufacturer),
+	print("\taddr %s version %u manufacturer %u class 0x%02x%02x%02x",
+			addr, rp->version, le16_to_cpu(rp->manufacturer),
 			rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 
-	print("\tsupported settings: %s",
-			settings2str(get_le32(&rp->supported_settings)));
+	supported_settings = le32_to_cpu(rp->supported_settings);
+	print("\tsupported settings: %s", settings2str(supported_settings));
 
-	print("\tcurrent settings: %s",
-			settings2str(get_le32(&rp->current_settings)));
+	current_settings = le32_to_cpu(rp->current_settings);
+	print("\tcurrent settings: %s", settings2str(current_settings));
 
 	print("\tname %s", rp->name);
 	print("\tshort name %s", rp->short_name);
 
+	if (supported_settings & MGMT_SETTING_CONFIGURATION) {
+		if (!mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO,
+					index, 0, NULL, config_options_rsp,
+					UINT_TO_PTR(index), NULL)) {
+			error("Unable to send read_config cmd");
+			goto done;
+		}
+		return;
+	}
+
+done:
+	pending_index--;
+
 	if (pending_index > 0)
 		return;
 
-done:
 	noninteractive_quit(EXIT_SUCCESS);
 }
 
@@ -1214,7 +1269,7 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
-	count = get_le16(&rp->num_controllers);
+	count = le16_to_cpu(rp->num_controllers);
 
 	if (len < sizeof(*rp) + count * sizeof(uint16_t)) {
 		error("Index count (%u) doesn't match reply length (%u)",
@@ -1225,15 +1280,10 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 	print("Index list with %u item%s", count, count != 1 ? "s" : "");
 
 	for (i = 0; i < count; i++) {
-		uint16_t index;
-		void *data;
+		uint16_t index = le16_to_cpu(rp->index[i]);
 
-		index = get_le16(&rp->index[i]);
-
-		data = UINT_TO_PTR(index);
-
-		if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
-						info_rsp, data, NULL) == 0) {
+		if (!mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+					info_rsp, UINT_TO_PTR(index), NULL)) {
 			error("Unable to send read_info cmd");
 			return noninteractive_quit(EXIT_FAILURE);
 		}
@@ -1247,12 +1297,10 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void cmd_info(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	void *data;
-
 	if (index == MGMT_INDEX_NONE) {
-		if (mgmt_send(mgmt, MGMT_OP_READ_INDEX_LIST,
+		if (!mgmt_send(mgmt, MGMT_OP_READ_INDEX_LIST,
 					MGMT_INDEX_NONE, 0, NULL,
-					index_rsp, mgmt, NULL) == 0) {
+					index_rsp, mgmt, NULL)) {
 			error("Unable to send index_list cmd");
 			return noninteractive_quit(EXIT_FAILURE);
 		}
@@ -1260,11 +1308,87 @@ static void cmd_info(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		return;
 	}
 
-	data = UINT_TO_PTR(index);
-
-	if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL, info_rsp,
-							data, NULL) == 0) {
+	if (!mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL, info_rsp,
+						UINT_TO_PTR(index), NULL)) {
 		error("Unable to send read_info cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_ext_index_list *rp = param;
+	uint16_t count, index_filter = PTR_TO_UINT(user_data);
+	unsigned int i;
+
+	if (status != 0) {
+		error("Reading ext index list failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small ext index list reply (%u bytes)", len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	count = get_le16(&rp->num_controllers);
+
+	if (len < sizeof(*rp) + count * (sizeof(uint16_t) + sizeof(uint8_t))) {
+		error("Index count (%u) doesn't match reply length (%u)",
+								count, len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print("Extended index list with %u item%s",
+					count, count != 1 ? "s" : "");
+
+	for (i = 0; i < count; i++) {
+		uint16_t index = le16_to_cpu(rp->entry[i].index);
+
+		if (index_filter != MGMT_INDEX_NONE && index_filter != index)
+			continue;
+
+		switch (rp->entry[i].type) {
+		case 0x00:
+			if (!mgmt_send(mgmt, MGMT_OP_READ_INFO,
+						index, 0, NULL, info_rsp,
+						UINT_TO_PTR(index), NULL)) {
+				error("Unable to send read_info cmd");
+				return noninteractive_quit(EXIT_FAILURE);
+			}
+			pending_index++;
+			break;
+		case 0x01:
+			if (!mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO,
+						index, 0, NULL, config_info_rsp,
+						UINT_TO_PTR(index), NULL)) {
+				error("Unable to send read_config cmd");
+				return noninteractive_quit(EXIT_FAILURE);
+			}
+			pending_index++;
+			break;
+		case 0x02:
+			print("hci%u:\tAMP controller", index);
+			break;
+		default:
+			print("hci%u:\t0x%02x", index, rp->entry[i].type);
+			break;
+		}
+	}
+
+	if (!count)
+		noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_extinfo(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	if (!mgmt_send(mgmt, MGMT_OP_READ_EXT_INDEX_LIST,
+				MGMT_INDEX_NONE, 0, NULL,
+				ext_index_rsp, UINT_TO_PTR(index), NULL)) {
+		error("Unable to send ext_index_list cmd");
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 }
@@ -3311,6 +3435,7 @@ static struct cmd_info all_cmd[] = {
 	{ "commands",	cmd_commands,	"List supported commands"	},
 	{ "config",	cmd_config,	"Show configuration info"	},
 	{ "info",	cmd_info,	"Show controller info"		},
+	{ "extinfo",	cmd_extinfo,	"Show extended controller info"	},
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
 	{ "connectable",cmd_connectable,"Toggle connectable state"	},
