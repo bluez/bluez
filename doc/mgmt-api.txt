@@ -2376,6 +2376,7 @@ Read Extended Controller Index List Command
 	Return Parameters:	Num_Controllers (2 Octets)
 				Controller_Index[i] (2 Octets)
 				Controller_Type[i] (1 Octet)
+				Controller_Bus[i] (1 Octet)
 
 	This command returns the list of currently known controllers. It
 	includes configured, unconfigured and alternate controllers.
@@ -2409,6 +2410,16 @@ Read Extended Controller Index List Command
 
 	Alternate MAC/PHY controllers will be listed as 0x02. They do not
 	support the difference between configured and unconfigured state.
+
+	The Controller_Bus parameter has these values:
+
+		0x00	Virtual
+		0x01	USB
+		0x02	PCMCIA
+		0x03	UART
+		0x04	RS232
+		0x05	PCI
+		0x06	SDIO
 
 	Controllers marked as RAW only operation are currently not listed
 	by this command.
@@ -3392,13 +3403,14 @@ Extended Index Added Event
 	Event Code:		0x0020
 	Controller Index:	<controller id>
 	Event Parameters:	Controller_Type (1 Octet)
+				Controller_Bus (1 Octet)
 
 	This event indicates that a new controller index has been
 	added to the system.
 
 	This event will only be used after Read Extended Controller Index
 	List has been used at least once. If it has not been used, then
-	Index Added and Unconfigured Index Added are send instead.
+	Index Added and Unconfigured Index Added are sent instead.
 
 
 Extended Index Removed Event
@@ -3407,13 +3419,14 @@ Extended Index Removed Event
 	Event Code:		0x0021
 	Controller Index:	<controller id>
 	Event Parameters:	Controller_Type (1 Octet)
+				Controller_Bus (1 Octet)
 
 	This event indicates that an existing controller index has been
 	removed from the system.
 
 	This event will only be used after Read Extended Controller Index
 	List has been used at least once. If it has not been used, then
-	Index Removed and Unconfigured Index Removed are send instead.
+	Index Removed and Unconfigured Index Removed are sent instead.
 
 
 Advertising Added Event
