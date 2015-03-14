@@ -458,6 +458,15 @@ struct mgmt_cp_start_service_discovery {
 } __packed;
 #define MGMT_START_SERVICE_DISCOVERY_SIZE	4
 
+#define MGMT_OP_READ_EXT_INDEX_LIST	0x003C
+struct mgmt_rp_read_ext_index_list {
+	uint16_t num_controllers;
+	struct {
+		uint16_t index;
+		uint8_t type;
+	} entry[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
