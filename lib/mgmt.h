@@ -650,6 +650,16 @@ struct mgmt_ev_new_conn_param {
 
 #define MGMT_EV_NEW_CONFIG_OPTIONS	0x001f
 
+#define MGMT_EV_EXT_INDEX_ADDED		0x0020
+struct mgmt_ev_ext_index_added {
+	uint8_t type;
+} __packed;
+
+#define MGMT_EV_EXT_INDEX_REMOVED	0x0021
+struct mgmt_ev_ext_index_removed {
+	uint8_t type;
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -710,6 +720,8 @@ static const char *mgmt_op[] = {
 	"Set External Configuration",
 	"Set Public Address",
 	"Start Service Discovery",
+	"Read Local Out Of Band Extended Data",
+	"Read Extended Controller Index List",
 };
 
 static const char *mgmt_ev[] = {
@@ -745,6 +757,8 @@ static const char *mgmt_ev[] = {
 	"Unconfigured Index Added",
 	"Unconfigured Index Removed",
 	"New Configuration Options",
+	"Extended Index Added",
+	"Extended Index Removed",
 };
 
 static const char *mgmt_status[] = {
