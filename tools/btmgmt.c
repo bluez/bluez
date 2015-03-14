@@ -239,6 +239,22 @@ static void unconf_index_removed(uint16_t index, uint16_t len,
 	print("hci%u removed (unconfigured)", index);
 }
 
+static void ext_index_added(uint16_t index, uint16_t len,
+				const void *param, void *user_data)
+{
+	const struct mgmt_ev_ext_index_added *ev = param;
+
+	print("hci%u added (type %u bus %u)", index, ev->type, ev->bus);
+}
+
+static void ext_index_removed(uint16_t index, uint16_t len,
+				const void *param, void *user_data)
+{
+	const struct mgmt_ev_ext_index_removed *ev = param;
+
+	print("hci%u removed (type %u bus %u)", index, ev->type, ev->bus);
+}
+
 static const char *options_str[] = {
 				"external",
 				"public-address",
@@ -1370,10 +1386,12 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 			pending_index++;
 			break;
 		case 0x02:
-			print("hci%u:\tAMP controller", index);
+			print("hci%u:\tAMP controller (%u)", index,
+							rp->entry[i].bus);
 			break;
 		default:
-			print("hci%u:\t0x%02x", index, rp->entry[i].type);
+			print("hci%u:\tType %u controller (%u)", index,
+					rp->entry[i].type, rp->entry[i].bus);
 			break;
 		}
 	}
@@ -3530,7 +3548,10 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 					unconf_index_removed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_NEW_CONFIG_OPTIONS, index,
 					new_config_options, NULL, NULL);
-
+	mgmt_register(mgmt, MGMT_EV_EXT_INDEX_ADDED, index,
+					ext_index_added, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_EXT_INDEX_REMOVED, index,
+					ext_index_removed, NULL, NULL);
 }
 
 static void cmd_select(struct mgmt *mgmt, uint16_t index,
