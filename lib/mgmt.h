@@ -464,6 +464,7 @@ struct mgmt_rp_read_ext_index_list {
 	struct {
 		uint16_t index;
 		uint8_t type;
+		uint8_t bus;
 	} entry[0];
 } __packed;
 
@@ -653,11 +654,13 @@ struct mgmt_ev_new_conn_param {
 #define MGMT_EV_EXT_INDEX_ADDED		0x0020
 struct mgmt_ev_ext_index_added {
 	uint8_t type;
+	uint8_t bus;
 } __packed;
 
 #define MGMT_EV_EXT_INDEX_REMOVED	0x0021
 struct mgmt_ev_ext_index_removed {
 	uint8_t type;
+	uint8_t bus;
 } __packed;
 
 static const char *mgmt_op[] = {
