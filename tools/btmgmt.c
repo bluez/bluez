@@ -602,6 +602,66 @@ static unsigned int eir_get_flags(const uint8_t *eir, uint16_t eir_len)
 	return 0;
 }
 
+static bool eir_get_le_addr(const uint8_t *eir, uint16_t eir_len, uint8_t *addr)
+{
+	uint8_t parsed = 0;
+
+	if (eir_len < 2)
+		return false;
+
+	while (parsed < eir_len - 1) {
+		uint8_t field_len = eir[0];
+
+		if (field_len == 0)
+			break;
+
+		parsed += field_len + 1;
+
+		if (parsed > eir_len)
+			break;
+
+		/* Check for LE address */
+		if (eir[1] == 0x1b) {
+			memcpy(addr, eir + 2, 7);
+			return true;
+		}
+
+		eir += field_len + 1;
+	}
+
+	return false;
+}
+
+static bool eir_get_le_role(const uint8_t *eir, uint16_t eir_len, uint8_t *role)
+{
+	uint8_t parsed = 0;
+
+	if (eir_len < 2)
+		return false;
+
+	while (parsed < eir_len - 1) {
+		uint8_t field_len = eir[0];
+
+		if (field_len == 0)
+			break;
+
+		parsed += field_len + 1;
+
+		if (parsed > eir_len)
+			break;
+
+		/* Check for LE role */
+		if (eir[1] == 0x1c) {
+			*role = eir[2];
+			return true;
+		}
+
+		eir += field_len + 1;
+	}
+
+	return false;
+}
+
 static void device_found(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -3453,6 +3513,93 @@ static void cmd_clr_devices(struct mgmt *mgmt, uint16_t index,
 	cmd_del_device(mgmt, index, 2, rm_argv);
 }
 
+static void local_oob_ext_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_local_oob_ext_data *rp = param;
+	uint16_t eir_len;
+
+	if (status != 0) {
+		error("Read Local OOB Ext Data failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small (%u bytes) read_local_oob_ext rsp", len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	eir_len = le16_to_cpu(rp->eir_len);
+	if (len != sizeof(*rp) + eir_len) {
+		error("local_oob_ext: expected %zu bytes, got %u bytes",
+						sizeof(*rp) + eir_len, len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (eir_len > 0) {
+		uint8_t flags, role, addr[7];
+		char *name, str[18];
+
+		flags = eir_get_flags(rp->eir, eir_len);
+		if (flags)
+			print("Flags: 0x%02x", flags);
+
+		if (eir_get_le_addr(rp->eir, eir_len, addr)) {
+			ba2str((bdaddr_t *) addr, str);
+			print("Address: %s (%s)", str,
+					addr[6] ? "random" : "public");
+		}
+
+		if (eir_get_le_role(rp->eir, eir_len, &role))
+			print("Role: 0x%02x", role);
+
+		name = eir_get_name(rp->eir, eir_len);
+		if (name) {
+			print("Name: %s", name);
+			free(name);
+		}
+	}
+
+	noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_bredr_oob(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	struct mgmt_cp_read_local_oob_ext_data cp;
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	cp.type = SCAN_TYPE_BREDR;
+
+	if (!mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_EXT_DATA,
+					index, sizeof(cp), &cp,
+					local_oob_ext_rsp, NULL, NULL)) {
+		error("Unable to send read_local_oob_ext cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void cmd_le_oob(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	struct mgmt_cp_read_local_oob_ext_data cp;
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	cp.type = SCAN_TYPE_LE;
+
+	if (!mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_EXT_DATA,
+					index, sizeof(cp), &cp,
+					local_oob_ext_rsp, NULL, NULL)) {
+		error("Unable to send read_local_oob_ext cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void adv_features_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -3561,6 +3708,8 @@ static struct cmd_info all_cmd[] = {
 	{ "add-device", cmd_add_device, "Add Device"			},
 	{ "del-device", cmd_del_device, "Remove Device"			},
 	{ "clr-devices",cmd_clr_devices,"Clear Devices"			},
+	{ "bredr-oob",	cmd_bredr_oob,	"Local OOB data (BR/EDR)"	},
+	{ "le-oob",	cmd_le_oob,	"Local OOB data (LE)"		},
 	{ "advinfo",	cmd_advinfo,	"Show advertising features"	},
 };
 
