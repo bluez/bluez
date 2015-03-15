@@ -47,6 +47,8 @@ static bool use_cross = false;
 static bool provide_tk = false;
 static bool provide_p192 = false;
 static bool provide_p256 = false;
+static bool provide_initiator = false;
+static bool provide_acceptor = false;
 
 static struct mgmt *mgmt;
 static uint16_t index1 = MGMT_INDEX_NONE;
@@ -297,12 +299,22 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 
 	printf("[Index %u]\n", index);
 
+	hash192 = NULL;
+	rand192 = NULL;
+	hash256 = NULL;
+	rand256 = NULL;
+
+	if (index == index1 && !provide_initiator) {
+		printf("  Skipping initiator OOB data\n");
+		goto done;
+	} else if (index == index2 && !provide_acceptor) {
+		printf("  Skipping acceptor OOB data\n");
+		goto done;
+	}
+
 	if (provide_p192) {
 		hash192 = rp->hash192;
 		rand192 = rp->rand192;
-	} else {
-		hash192 = NULL;
-		rand192 = NULL;
 	}
 
 	printf("  Hash C from P-192: ");
@@ -315,18 +327,12 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 		printf("%02x", rp->rand192[i]);
 	printf("\n");
 
-	if (len < sizeof(*rp)) {
-		hash256 = NULL;
-		rand256 = NULL;
+	if (len < sizeof(*rp))
 		goto done;
-	}
 
 	if (provide_p256) {
 		hash256 = rp->hash256;
 		rand256 = rp->rand256;
-	} else {
-		hash256 = NULL;
-		rand256 = NULL;
 	}
 
 	printf("  Hash C from P-256: ");
@@ -376,6 +382,14 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 
 	hash256 = NULL;
 	rand256 = NULL;
+
+	if (index == index1 && !provide_initiator) {
+		printf("  Skipping initiator OOB data\n");
+		goto done;
+	} else if (index == index2 && !provide_acceptor) {
+		printf("  Skipping acceptor OOB data\n");
+		goto done;
+	}
 
 	if (eir_len < 2)
 		goto done;
@@ -797,25 +811,29 @@ static void usage(void)
 		"\t-0, --tk               Provide LE legacy OOB data\n"
 		"\t-1, --p192             Provide P-192 OOB data\n"
 		"\t-2, --p256             Provide P-256 OOB data\n"
+		"\t-I, --initiator        Initiator provides OOB data\n"
+		"\t-A, --acceptor         Acceptor provides OOB data\n"
 		"\t-h, --help             Show help options\n");
 }
 
 static const struct option main_options[] = {
-	{ "bredr",   no_argument,       NULL, 'B' },
-	{ "le",      no_argument,       NULL, 'L' },
-	{ "sc",      no_argument,       NULL, 'S' },
-	{ "sconly",  no_argument,       NULL, 'O' },
-	{ "legacy",  no_argument,       NULL, 'P' },
-	{ "random",  no_argument,       NULL, 'R' },
-	{ "static",  no_argument,       NULL, 'R' },
-	{ "debug",   no_argument,       NULL, 'D' },
-	{ "cross",   no_argument,       NULL, 'C' },
-	{ "dual",    no_argument,       NULL, 'C' },
-	{ "tk",      no_argument,       NULL, '0' },
-	{ "p192",    no_argument,       NULL, '1' },
-	{ "p256",    no_argument,       NULL, '2' },
-	{ "version", no_argument,       NULL, 'v' },
-	{ "help",    no_argument,       NULL, 'h' },
+	{ "bredr",     no_argument,       NULL, 'B' },
+	{ "le",        no_argument,       NULL, 'L' },
+	{ "sc",        no_argument,       NULL, 'S' },
+	{ "sconly",    no_argument,       NULL, 'O' },
+	{ "legacy",    no_argument,       NULL, 'P' },
+	{ "random",    no_argument,       NULL, 'R' },
+	{ "static",    no_argument,       NULL, 'R' },
+	{ "debug",     no_argument,       NULL, 'D' },
+	{ "cross",     no_argument,       NULL, 'C' },
+	{ "dual",      no_argument,       NULL, 'C' },
+	{ "tk",        no_argument,       NULL, '0' },
+	{ "p192",      no_argument,       NULL, '1' },
+	{ "p256",      no_argument,       NULL, '2' },
+	{ "initiator", no_argument,       NULL, 'I' },
+	{ "acceptor",  no_argument,       NULL, 'A' },
+	{ "version",   no_argument,       NULL, 'v' },
+	{ "help",      no_argument,       NULL, 'h' },
 	{ }
 };
 
@@ -827,7 +845,7 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BLSOPRDC12vh",
+		opt = getopt_long(argc, argv, "BLSOPRDC012IAvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -865,6 +883,12 @@ int main(int argc ,char *argv[])
 			break;
 		case '2':
 			provide_p256 = true;
+			break;
+		case 'I':
+			provide_initiator = true;
+			break;
+		case 'A':
+			provide_acceptor = true;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
