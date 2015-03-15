@@ -1686,7 +1686,7 @@ static void class_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 	}
 
 	print("%s succeeded. Class 0x%02x%02x%02x", mgmt_opstr(op),
-		rp->class_of_dev[2], rp->class_of_dev[1], rp->class_of_dev[0]);
+		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 
 	noninteractive_quit(EXIT_SUCCESS);
 }

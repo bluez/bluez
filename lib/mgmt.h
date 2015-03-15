@@ -495,7 +495,7 @@ struct mgmt_ev_controller_error {
 
 #define MGMT_EV_CLASS_OF_DEV_CHANGED	0x0007
 struct mgmt_ev_class_of_dev_changed {
-	uint8_t class_of_dev[3];
+	uint8_t dev_class[3];
 } __packed;
 
 #define MGMT_EV_LOCAL_NAME_CHANGED	0x0008

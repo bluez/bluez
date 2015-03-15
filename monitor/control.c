@@ -231,9 +231,9 @@ static void mgmt_class_of_dev_changed(uint16_t len, const void *buf)
 	}
 
 	printf("@ Class of Device Changed: 0x%2.2x%2.2x%2.2x\n",
-						ev->class_of_dev[2],
-						ev->class_of_dev[1],
-						ev->class_of_dev[0]);
+						ev->dev_class[2],
+						ev->dev_class[1],
+						ev->dev_class[0]);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
