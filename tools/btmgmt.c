@@ -2773,7 +2773,6 @@ static void local_oob_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_rp_read_local_oob_data *rp = param;
-	const struct mgmt_rp_read_local_oob_ext_data *rp_ext = param;
 	char str[33];
 
 	if (status != 0) {
@@ -2787,19 +2786,19 @@ static void local_oob_rsp(uint8_t status, uint16_t len, const void *param,
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bin2hex(rp->hash, 16, str, sizeof(str));
+	bin2hex(rp->hash192, 16, str, sizeof(str));
 	print("Hash C from P-192: %s", str);
 
-	bin2hex(rp->randomizer, 16, str, sizeof(str));
+	bin2hex(rp->rand192, 16, str, sizeof(str));
 	print("Randomizer R with P-192: %s", str);
 
-	if (len < sizeof(*rp_ext))
+	if (len < sizeof(*rp))
 		return noninteractive_quit(EXIT_SUCCESS);
 
-	bin2hex(rp_ext->hash256, 16, str, sizeof(str));
+	bin2hex(rp->hash256, 16, str, sizeof(str));
 	print("Hash C from P-256: %s", str);
 
-	bin2hex(rp_ext->randomizer256, 16, str, sizeof(str));
+	bin2hex(rp->rand256, 16, str, sizeof(str));
 	print("Randomizer R with P-256: %s", str);
 
 	noninteractive_quit(EXIT_SUCCESS);

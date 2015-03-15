@@ -277,7 +277,7 @@ static void add_remote_oob_data(uint16_t index, const bdaddr_t *bdaddr,
 static void read_oob_data_complete(uint8_t status, uint16_t len,
 					const void *param, void *user_data)
 {
-	const struct mgmt_rp_read_local_oob_ext_data *rp = param;
+	const struct mgmt_rp_read_local_oob_data *rp = param;
 	uint16_t index = PTR_TO_UINT(user_data);
 	const uint8_t *hash192, *rand192, *hash256, *rand256;
 	int i;
@@ -293,7 +293,7 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 
 	if (provide_p192) {
 		hash192 = rp->hash192;
-		rand192 = rp->randomizer192;
+		rand192 = rp->rand192;
 	} else {
 		hash192 = NULL;
 		rand192 = NULL;
@@ -306,7 +306,7 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 
 	printf("  Randomizer R with P-192: ");
 	for (i = 0; i < 16; i++)
-		printf("%02x", rp->randomizer192[i]);
+		printf("%02x", rp->rand192[i]);
 	printf("\n");
 
 	if (len < sizeof(*rp)) {
@@ -317,7 +317,7 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 
 	if (provide_p256) {
 		hash256 = rp->hash256;
-		rand256 = rp->randomizer256;
+		rand256 = rp->rand256;
 	} else {
 		hash256 = NULL;
 		rand256 = NULL;
@@ -330,7 +330,7 @@ static void read_oob_data_complete(uint8_t status, uint16_t len,
 
 	printf("  Randomizer R with P-256: ");
 	for (i = 0; i < 16; i++)
-		printf("%02x", rp->randomizer256[i]);
+		printf("%02x", rp->rand256[i]);
 	printf("\n");
 
 done:

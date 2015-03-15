@@ -6530,8 +6530,8 @@ static void read_local_oob_data_complete(uint8_t status, uint16_t length,
 		error("Too small read local OOB data response");
 		return;
 	} else {
-		hash = rp->hash;
-		randomizer = rp->randomizer;
+		hash = rp->hash192;
+		randomizer = rp->rand192;
 	}
 
 	if (!adapter->oob_handler || !adapter->oob_handler->read_local_cb)
