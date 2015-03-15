@@ -351,8 +351,9 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 {
 	const struct mgmt_rp_read_local_oob_ext_data *rp = param;
 	uint16_t index = PTR_TO_UINT(user_data);
-	uint16_t eir_len;
-	const uint8_t *tk, *hash256, *rand256;
+	uint16_t eir_len, parsed;
+	const uint8_t *eir, *tk, *hash256, *rand256;
+	int i;
 
 	if (status) {
 		fprintf(stderr, "Reading OOB data for index %u failed: %s\n",
@@ -370,6 +371,65 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 	hash256 = NULL;
 	rand256 = NULL;
 
+	if (eir_len < 2)
+		goto done;
+
+	eir = rp->eir;
+	parsed = 0;
+
+	while (parsed < eir_len - 1) {
+		uint8_t field_len = eir[0];
+
+		if (field_len == 0)
+			break;
+
+		parsed += field_len + 1;
+
+		if (parsed > eir_len)
+			break;
+
+		/* Security Manager TK Value */
+		if (eir[1] == 0x10) {
+			tk = eir + 2;
+
+			printf("  TK Value: ");
+			for (i = 0; i < 16; i++)
+				printf("%02x", tk[i]);
+			printf("\n");
+		}
+
+		/* LE Secure Connections Confirmation Value */
+		if (eir[1] == 0x22) {
+			hash256 = eir + 2;
+
+			printf("  Hash C from P-256: ");
+			for (i = 0; i < 16; i++)
+				printf("%02x", hash256[i]);
+			printf("\n");
+		}
+
+		/* LE Secure Connections Random Value */
+		if (eir[1] == 0x23) {
+			rand256 = eir + 2;
+
+			printf("  Randomizer R with P-256: ");
+			for (i = 0; i < 16; i++)
+				printf("%02x", rand256[i]);
+			printf("\n");
+		}
+
+		eir += field_len + 1;
+	}
+
+	if (!provide_tk)
+		tk = NULL;
+
+	if (!provide_p256) {
+		hash256 = NULL;
+		rand256 = NULL;
+	}
+
+done:
 	if (index == index1)
 		add_remote_oob_data(index2, &bdaddr1,
 					tk, NULL, hash256, rand256);
