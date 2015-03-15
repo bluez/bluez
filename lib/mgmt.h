@@ -47,6 +47,7 @@
 #define MGMT_STATUS_INVALID_INDEX	0x11
 #define MGMT_STATUS_RFKILLED		0x12
 #define MGMT_STATUS_ALREADY_PAIRED	0x13
+#define MGMT_STATUS_PERMISSION_DENIED	0x14
 
 struct mgmt_hdr {
 	uint16_t opcode;
@@ -785,6 +786,7 @@ static const char *mgmt_status[] = {
 	"Invalid Index",
 	"Blocked through rfkill",
 	"Already Paired",
+	"Permission Denied",
 };
 
 #ifndef NELEM
