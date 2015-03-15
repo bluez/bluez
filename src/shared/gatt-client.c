@@ -588,7 +588,8 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 	*discovering = false;
 
 	while ((chrc_data = queue_pop_head(op->pending_chrcs))) {
-		attr = gatt_db_service_add_characteristic(op->cur_svc,
+		attr = gatt_db_service_insert_characteristic(op->cur_svc,
+							chrc_data->value_handle,
 							&chrc_data->uuid, 0,
 							chrc_data->properties,
 							NULL, NULL, NULL);
@@ -679,8 +680,9 @@ static void discover_descs_cb(bool success, uint8_t att_ecode,
 						"handle: 0x%04x, uuid: %s",
 						handle, uuid_str);
 
-		attr = gatt_db_service_add_descriptor(op->cur_svc, &uuid, 0,
-							NULL, NULL, NULL);
+		attr = gatt_db_service_insert_descriptor(op->cur_svc, handle,
+							&uuid, 0, NULL, NULL,
+							NULL);
 		if (!attr)
 			goto failed;
 
