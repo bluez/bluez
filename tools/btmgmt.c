@@ -492,6 +492,20 @@ static void auth_failed(uint16_t index, uint16_t len, const void *param,
 			index, addr, ev->status, mgmt_errstr(ev->status));
 }
 
+static void class_of_dev_changed(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_class_of_dev_changed *ev = param;
+
+	if (len != sizeof(*ev)) {
+		error("Invalid class_of_dev_changed length (%u bytes)", len);
+		return;
+	}
+
+	print("hci%u class of device changed: 0x%02x%02x%02x", index,
+			ev->dev_class[2], ev->dev_class[1], ev->dev_class[0]);
+}
+
 static void local_name_changed(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -3530,6 +3544,8 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_AUTH_FAILED, index, auth_failed,
 								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED, index,
+					class_of_dev_changed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_LOCAL_NAME_CHANGED, index,
 					local_name_changed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
