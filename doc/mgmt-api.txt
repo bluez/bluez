@@ -2331,7 +2331,6 @@ Read Local Out Of Band Extended Data Command
 
 		LE Bluetooth Device Address
 		LE Role
-		Security Manager TK Value (optional)
 		LE Secure Connections Confirmation Value (optional)
 		LE Secure Connections Random Value (optional)
 		Appearance (optional)
@@ -2342,15 +2341,21 @@ Read Local Out Of Band Extended Data Command
 	Random Value fields are only included when secure connections has been
 	enabled.
 
+	The Security Manager TK Value from the Bluetooth specification can
+	not be provided by this command. The Out Of Band information here are
+	for asymmetric exchanges based on Diffie-Hellman key exchange. The
+	Security Manager TK Value is a symmetric random number that has to
+	be acquired and agreed upon differently.
+
 	The returned information from BR/EDR controller and LE controller
 	types are not related to each other. Once they have been used
 	over an Out Of Band link, a new set of information shall be
 	requested.
 
 	When Secure Connections Only mode has been enabled, then the fields
-	for Simple Pairing Hash C-192, Simple Pairing Randomizer R-192 and
-	Security Manager TK Value are not returned. Only the fields for
-	the strong secure connections pairing are included.
+	for Simple Pairing Hash C-192 and Simple Pairing Randomizer R-192
+	are not returned. Only the fields for the strong secure connections
+	pairing are included.
 
 	This command can only be used when the controller is powered.
 
