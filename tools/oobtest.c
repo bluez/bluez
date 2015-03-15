@@ -43,6 +43,7 @@ static bool use_legacy = false;
 static bool use_random = false;
 static bool use_debug = false;
 static bool use_cross = false;
+static bool provide_tk = false;
 static bool provide_p192 = false;
 static bool provide_p256 = false;
 
@@ -254,9 +255,12 @@ static void add_remote_oob_data(uint16_t index, const bdaddr_t *bdaddr,
 		cp.addr.type = BDADDR_LE_RANDOM;
 	else
 		cp.addr.type = BDADDR_LE_PUBLIC;
-	if (hash192 && rand192) {
+	if (hash192) {
 		memcpy(cp.hash192, hash192, 16);
-		memcpy(cp.rand192, rand192, 16);
+		if (rand192)
+			memcpy(cp.rand192, rand192, 16);
+		else
+			memset(cp.rand192, 0, 16);
 	} else {
 		memset(cp.hash192, 0, 16);
 		memset(cp.rand192, 0, 16);
@@ -342,6 +346,38 @@ done:
 					hash192, rand192, hash256, rand256);
 }
 
+static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_local_oob_ext_data *rp = param;
+	uint16_t index = PTR_TO_UINT(user_data);
+	uint16_t eir_len;
+	const uint8_t *tk, *hash256, *rand256;
+
+	if (status) {
+		fprintf(stderr, "Reading OOB data for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+
+	printf("[Index %u]\n", index);
+
+	eir_len = le16_to_cpu(rp->eir_len);
+	printf("  OOB data len: %u\n", eir_len);
+
+	tk = NULL;
+	hash256 = NULL;
+	rand256 = NULL;
+
+	if (index == index1)
+		add_remote_oob_data(index2, &bdaddr1,
+					tk, NULL, hash256, rand256);
+	else if (index == index2)
+		add_remote_oob_data(index1, &bdaddr2,
+					tk, NULL, hash256, rand256);
+}
+
 static void set_powered_complete(uint8_t status, uint16_t len,
 					const void *param, void *user_data)
 {
@@ -379,6 +415,14 @@ static void set_powered_complete(uint8_t status, uint16_t len,
 	if (use_bredr && (provide_p192 || provide_p256)) {
 		mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
 						read_oob_data_complete,
+						UINT_TO_PTR(index), NULL);
+	} else if (use_le && (provide_tk || provide_p256)) {
+		uint8_t type = (1 << BDADDR_LE_PUBLIC) |
+						(1 << BDADDR_LE_RANDOM);
+
+		mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_EXT_DATA, index,
+						sizeof(type), &type,
+						read_oob_ext_data_complete,
 						UINT_TO_PTR(index), NULL);
 	} else {
 		if (index == index1)
@@ -673,6 +717,7 @@ static void usage(void)
 		"\t-R, --random           Use Static random address\n"
 		"\t-D, --debug            Use Pairing debug keys\n"
 		"\t-C, --cross            Use cross-transport pairing\n"
+		"\t-0, --tk               Provide LE legacy OOB data\n"
 		"\t-1, --p192             Provide P-192 OOB data\n"
 		"\t-2, --p256             Provide P-256 OOB data\n"
 		"\t-h, --help             Show help options\n");
@@ -689,6 +734,7 @@ static const struct option main_options[] = {
 	{ "debug",   no_argument,       NULL, 'D' },
 	{ "cross",   no_argument,       NULL, 'C' },
 	{ "dual",    no_argument,       NULL, 'C' },
+	{ "tk",      no_argument,       NULL, '0' },
 	{ "p192",    no_argument,       NULL, '1' },
 	{ "p256",    no_argument,       NULL, '2' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -733,6 +779,9 @@ int main(int argc ,char *argv[])
 			break;
 		case 'C':
 			use_cross = true;
+			break;
+		case '0':
+			provide_tk = true;
 			break;
 		case '1':
 			provide_p192 = true;
