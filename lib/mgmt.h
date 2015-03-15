@@ -453,7 +453,16 @@ struct mgmt_cp_start_service_discovery {
 	uint16_t uuid_count;
 	uint8_t uuids[0][16];
 } __packed;
-#define MGMT_START_SERVICE_DISCOVERY_SIZE	4
+
+#define MGMT_OP_READ_LOCAL_OOB_EXT_DATA	0x003B
+struct mgmt_cp_read_local_oob_ext_data {
+	uint8_t  type;
+} __packed;
+struct mgmt_rp_read_local_oob_ext_data {
+	uint8_t  type;
+	uint16_t eir_len;
+	uint8_t  eir[0];
+} __packed;
 
 #define MGMT_OP_READ_EXT_INDEX_LIST	0x003C
 struct mgmt_rp_read_ext_index_list {
