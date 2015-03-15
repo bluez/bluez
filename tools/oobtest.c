@@ -413,6 +413,17 @@ static void clear_long_term_keys(uint16_t index)
 					sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
+static void clear_identity_resolving_keys(uint16_t index)
+{
+	struct mgmt_cp_load_irks cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.irk_count = cpu_to_le16(0);
+
+	mgmt_send(mgmt, MGMT_OP_LOAD_IRKS, index,
+					sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
 static void clear_remote_oob_data(uint16_t index)
 {
 	struct mgmt_cp_remove_remote_oob_data cp;
@@ -514,6 +525,7 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 
 	clear_link_keys(index);
 	clear_long_term_keys(index);
+	clear_identity_resolving_keys(index);
 	clear_remote_oob_data(index);
 
 	if (use_bredr) {
