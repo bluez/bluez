@@ -469,6 +469,16 @@ struct mgmt_rp_read_ext_index_list {
 	} entry[0];
 } __packed;
 
+#define MGMT_OP_READ_ADV_FEATURES	0x003D
+struct mgmt_rp_read_adv_features {
+	uint32_t supported_flags;
+	uint8_t  max_adv_data_len;
+	uint8_t  max_scan_rsp_len;
+	uint8_t  max_instances;
+	uint8_t  num_instances;
+	uint8_t  instance[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -726,6 +736,7 @@ static const char *mgmt_op[] = {
 	"Start Service Discovery",
 	"Read Local Out Of Band Extended Data",
 	"Read Extended Controller Index List",
+	"Read Advertising Features",
 };
 
 static const char *mgmt_ev[] = {
