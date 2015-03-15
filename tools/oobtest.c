@@ -34,6 +34,7 @@
 #include "src/shared/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/mgmt.h"
+#include "src/shared/crypto.h"
 
 static bool use_bredr = false;
 static bool use_le = false;
@@ -52,6 +53,7 @@ static uint16_t index1 = MGMT_INDEX_NONE;
 static uint16_t index2 = MGMT_INDEX_NONE;
 static bdaddr_t bdaddr1;
 static bdaddr_t bdaddr2;
+static uint8_t oob_tk[16];
 
 static void pin_code_request_event(uint16_t index, uint16_t len,
 					const void *param, void *user_data)
@@ -367,7 +369,11 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 	eir_len = le16_to_cpu(rp->eir_len);
 	printf("  OOB data len: %u\n", eir_len);
 
-	tk = NULL;
+	if (provide_tk)
+		tk = oob_tk;
+	else
+		tk = NULL;
+
 	hash256 = NULL;
 	rand256 = NULL;
 
@@ -387,16 +393,6 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 
 		if (parsed > eir_len)
 			break;
-
-		/* Security Manager TK Value */
-		if (eir[1] == 0x10) {
-			tk = eir + 2;
-
-			printf("  TK Value: ");
-			for (i = 0; i < 16; i++)
-				printf("%02x", tk[i]);
-			printf("\n");
-		}
 
 		/* LE Secure Connections Confirmation Value */
 		if (eir[1] == 0x22) {
@@ -419,14 +415,6 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 		}
 
 		eir += field_len + 1;
-	}
-
-	if (!provide_tk)
-		tk = NULL;
-
-	if (!provide_p256) {
-		hash256 = NULL;
-		rand256 = NULL;
 	}
 
 done:
@@ -476,7 +464,7 @@ static void set_powered_complete(uint8_t status, uint16_t len,
 		mgmt_send(mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, index, 0, NULL,
 						read_oob_data_complete,
 						UINT_TO_PTR(index), NULL);
-	} else if (use_le && (provide_tk || provide_p256)) {
+	} else if (use_le && provide_p256) {
 		uint8_t type = (1 << BDADDR_LE_PUBLIC) |
 						(1 << BDADDR_LE_RANDOM);
 
@@ -484,6 +472,15 @@ static void set_powered_complete(uint8_t status, uint16_t len,
 						sizeof(type), &type,
 						read_oob_ext_data_complete,
 						UINT_TO_PTR(index), NULL);
+	} else if (use_le && provide_tk) {
+		const uint8_t *tk = oob_tk;
+
+		if (index == index1)
+			add_remote_oob_data(index2, &bdaddr1,
+						tk, NULL, NULL, NULL);
+		else if (index == index2)
+			add_remote_oob_data(index1, &bdaddr2,
+						tk, NULL, NULL, NULL);
 	} else {
 		if (index == index1)
 			add_remote_oob_data(index2, &bdaddr1,
@@ -609,6 +606,16 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		fprintf(stderr, "Dual-mode support is support missing\n");
 		mainloop_quit();
 		return;
+	}
+
+	if (provide_tk) {
+		const uint8_t *tk = oob_tk;
+		int i;
+
+		printf("  TK Value: ");
+		for (i = 0; i < 16; i++)
+			printf("%02x", tk[i]);
+		printf("\n");
 	}
 
 	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index,
@@ -746,6 +753,16 @@ static void read_index_list(uint8_t status, uint16_t len, const void *param,
 
 	printf("Selecting index %u for initiator\n", index1);
 	printf("Selecting index %u for acceptor\n", index2);
+
+	if (provide_tk) {
+		struct bt_crypto *crypto;
+
+		printf("Generating Security Manager TK Value\n");
+
+		crypto = bt_crypto_new();
+		bt_crypto_random_bytes(crypto, oob_tk, 16);
+		bt_crypto_unref(crypto);
+	}
 
 	mgmt_send(mgmt, MGMT_OP_READ_INFO, index1, 0, NULL,
 				read_info, UINT_TO_PTR(index1), NULL);
