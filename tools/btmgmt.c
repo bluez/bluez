@@ -3454,6 +3454,54 @@ static void cmd_clr_devices(struct mgmt *mgmt, uint16_t index,
 	cmd_del_device(mgmt, index, 2, rm_argv);
 }
 
+static void adv_features_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_adv_features *rp = param;
+	uint32_t supported_flags;
+
+	if (status != 0) {
+		error("Reading adv features failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small adv features reply (%u bytes)", len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp) + rp->num_instances * sizeof(uint8_t)) {
+		error("Instances count (%u) doesn't match reply length (%u)",
+							rp->num_instances, len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	supported_flags = le32_to_cpu(rp->supported_flags);
+	print("Supported flags: 0x%04x", supported_flags);
+	print("Max advertising data len: %u", rp->max_adv_data_len);
+	print("Max scan response data len: %u", rp->max_scan_rsp_len);
+	print("Max instances: %u", rp->max_instances);
+
+	print("Instances list with %u item%s", rp->num_instances,
+					rp->num_instances != 1 ? "s" : "");
+
+	return noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_advinfo(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (!mgmt_send(mgmt, MGMT_OP_READ_ADV_FEATURES, index, 0, NULL,
+					adv_features_rsp, NULL, NULL)) {
+		error("Unable to send advertising features command");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 struct cmd_info {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
@@ -3514,6 +3562,7 @@ static struct cmd_info all_cmd[] = {
 	{ "add-device", cmd_add_device, "Add Device"			},
 	{ "del-device", cmd_del_device, "Remove Device"			},
 	{ "clr-devices",cmd_clr_devices,"Clear Devices"			},
+	{ "advinfo",	cmd_advinfo,	"Show advertising features"	},
 };
 
 static void cmd_quit(struct mgmt *mgmt, uint16_t index,
