@@ -3433,10 +3433,45 @@ Extended Index Removed Event
 	Index Removed and Unconfigured Index Removed are sent instead.
 
 
+Local Out Of Band Extended Data Updated Event
+=============================================
+
+	Event Code:		0x0022
+	Controller Index:	<controller id>
+	Event Parameters:	Address_Type (1 Octet)
+				EIR_Data_Length (2 Octets)
+				EIR_Data (0-65535 Octets)
+
+	This event is used when the Read Local Out Of Band Extended Data
+	command has been used and some other user requested a new set
+	of local out-of-band data. This allows for the original caller
+	to adjust the data.
+
+	Possible values for the Address_Type parameter are a bit-wise or
+	of the following bits:
+
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	By combining these e.g. the following values are possible:
+
+		1	BR/EDR
+		6	LE (public & random)
+		7	Reserved (not in use)
+
+	The value for EIR_Data_Length and content for EIR_Data is the
+	same as described in Read Local Out Of Band Extended Data command.
+
+	The event will only be sent to management sockets other than the
+	one through which the command was sent. It will additionally also
+	only be sent to sockets that have used the command at least once.
+
+
 Advertising Added Event
 =======================
 
-	Event Code:		0x0022
+	Event Code:		0x0023
 	Controller Index:	<controller id>
 	Event Parameters:	Instance (1 Octet)
 
@@ -3450,7 +3485,7 @@ Advertising Added Event
 Advertising Removed Event
 =========================
 
-	Event Code:		0x0023
+	Event Code:		0x0024
 	Controller Index:	<controller id>
 	Event Parameters:	Instance (1 Octet)
 
