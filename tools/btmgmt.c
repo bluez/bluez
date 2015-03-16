@@ -1056,6 +1056,28 @@ static void passkey_notify(uint16_t index, uint16_t len, const void *param,
 								ev->entered);
 }
 
+static void local_oob_data_updated(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_local_oob_data_updated *ev = param;
+	uint16_t eir_len;
+
+	if (len < sizeof(*ev)) {
+		error("Too small (%u bytes) local_oob_updated event", len);
+		return;
+	}
+
+	eir_len = le16_to_cpu(ev->eir_len);
+	if (len != sizeof(*ev) + eir_len) {
+		error("local_oob_updated: expected %zu bytes, got %u bytes",
+						sizeof(*ev) + eir_len, len);
+		return;
+	}
+
+	print("hci%u oob data updated: type %u len %u", index,
+						ev->type, eir_len);
+}
+
 static void version_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -3765,6 +3787,8 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 					ext_index_added, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_EXT_INDEX_REMOVED, index,
 					ext_index_removed, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_LOCAL_OOB_DATA_UPDATED, index,
+					local_oob_data_updated, NULL, NULL);
 }
 
 static void cmd_select(struct mgmt *mgmt, uint16_t index,
