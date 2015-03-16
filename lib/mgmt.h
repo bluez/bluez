@@ -679,6 +679,13 @@ struct mgmt_ev_ext_index_removed {
 	uint8_t bus;
 } __packed;
 
+#define MGMT_EV_LOCAL_OOB_DATA_UPDATED	0x0022
+struct mgmt_ev_local_oob_data_updated {
+	uint8_t  type;
+	uint16_t eir_len;
+	uint8_t  eir[0];
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -781,6 +788,7 @@ static const char *mgmt_ev[] = {
 	"New Configuration Options",
 	"Extended Index Added",
 	"Extended Index Removed",
+	"Local Out Of Band Extended Data Updated",
 };
 
 static const char *mgmt_status[] = {
