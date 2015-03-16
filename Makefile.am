@@ -383,6 +383,21 @@ unit_test_gatt_SOURCES = unit/test-gatt.c
 unit_test_gatt_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la @GLIB_LIBS@
 
+unit_tests += unit/test-hog
+
+unit_test_hog_SOURCES = unit/test-hog.c \
+			$(btio_sources) \
+			android/hog.h android/hog.c \
+			android/scpp.h android/scpp.c \
+			android/bas.h android/bas.c \
+			android/dis.h android/dis.c \
+			src/log.h src/log.c \
+			attrib/att.h attrib/att.c \
+			attrib/gatt.h attrib/gatt.c \
+			attrib/gattrib.h attrib/gattrib.c
+unit_test_hog_LDADD = src/libshared-glib.la \
+				lib/libbluetooth-internal.la @GLIB_LIBS@
+
 unit_tests += unit/test-gattrib
 
 unit_test_gattrib_SOURCES = unit/test-gattrib.c attrib/gattrib.c $(btio_sources) src/log.h src/log.c
