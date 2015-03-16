@@ -1306,16 +1306,14 @@ Add Remote Out Of Band Data Command
 	Secure Connections is disabled, then of course this is the
 	same as not providing any data at all.
 
-	When providing data for remote LE devices, then the Hash_192 field
-	is used to provide the Security Manager TK Value. The Randomizer_192
-	field is not used and shall be set to zero. The Hash_192 value can
-	also be set to zero and that means that no Out Of Band data for
-	LE legacy pairing is provided.
+	When providing data for remote LE devices, then the Hash_192 and
+	and Randomizer_192 fields are not used and shell be set to zero.
 
 	The Hash_256 and Randomizer_256 fields can be used for LE secure
 	connections Out Of Band data. If only LE secure connections data
 	is provided the Hash_P192 and Randomizer_P192 fields can be set
-	to zero.
+	to zero. Currently there is no support for providing the Security
+	Manager TK Value for LE legacy pairing.
 
 	If Secure Connections Only mode has been enabled, then providing
 	Hash_P192 and Randomizer_P192 is not allowed. They are required
