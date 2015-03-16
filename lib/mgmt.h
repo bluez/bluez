@@ -688,7 +688,7 @@ static const char *mgmt_op[] = {
 	"Set Powered",
 	"Set Discoverable",
 	"Set Connectable",
-	"Set Fast Connectable",		/* 0x0008 */
+	"Set Fast Connectable",			/* 0x0008 */
 	"Set Bondable",
 	"Set Link Security",
 	"Set Secure Simple Pairing",
@@ -696,7 +696,7 @@ static const char *mgmt_op[] = {
 	"Set Low Energy",
 	"Set Dev Class",
 	"Set Local Name",
-	"Add UUID",			/* 0x0010 */
+	"Add UUID",					/* 0x0010 */
 	"Remove UUID",
 	"Load Link Keys",
 	"Load Long Term Keys",
@@ -704,7 +704,7 @@ static const char *mgmt_op[] = {
 	"Get Connections",
 	"PIN Code Reply",
 	"PIN Code Neg Reply",
-	"Set IO Capability",		/* 0x0018 */
+	"Set IO Capability",				/* 0x0018 */
 	"Pair Device",
 	"Cancel Pair Device",
 	"Unpair Device",
@@ -712,7 +712,7 @@ static const char *mgmt_op[] = {
 	"User Confirm Neg Reply",
 	"User Passkey Reply",
 	"User Passkey Neg Reply",
-	"Read Local OOB Data",		/* 0x0020 */
+	"Read Local OOB Data",				/* 0x0020 */
 	"Add Remote OOB Data",
 	"Remove Remove OOB Data",
 	"Start Discovery",
@@ -720,7 +720,7 @@ static const char *mgmt_op[] = {
 	"Confirm Name",
 	"Block Device",
 	"Unblock Device",
-	"Set Device ID",
+	"Set Device ID",				/* 0x0028 */
 	"Set Advertising",
 	"Set BR/EDR",
 	"Set Static Address",
@@ -728,7 +728,7 @@ static const char *mgmt_op[] = {
 	"Set Secure Connections",
 	"Set Debug Keys",
 	"Set Privacy",
-	"Load Identity Resolving Keys",
+	"Load Identity Resolving Keys",			/* 0x0030 */
 	"Get Connection Information",
 	"Get Clock Information",
 	"Add Device",
@@ -736,12 +736,14 @@ static const char *mgmt_op[] = {
 	"Load Connection Parameters",
 	"Read Unconfigured Index List",
 	"Read Controller Configuration Information",
-	"Set External Configuration",
+	"Set External Configuration",			/* 0x0038 */
 	"Set Public Address",
 	"Start Service Discovery",
 	"Read Local Out Of Band Extended Data",
 	"Read Extended Controller Index List",
 	"Read Advertising Features",
+	"Add Advertising",
+	"Remove Advertising",
 };
 
 static const char *mgmt_ev[] = {
