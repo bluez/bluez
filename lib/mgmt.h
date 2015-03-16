@@ -789,6 +789,8 @@ static const char *mgmt_ev[] = {
 	"Extended Index Added",
 	"Extended Index Removed",
 	"Local Out Of Band Extended Data Updated",
+	"Advertising Added",
+	"Advertising Removed",
 };
 
 static const char *mgmt_status[] = {
