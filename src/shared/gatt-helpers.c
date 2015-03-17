@@ -625,6 +625,10 @@ static void async_req_unref(void *data)
 static void discovery_op_complete(struct bt_gatt_request *op, bool success,
 								uint8_t ecode)
 {
+	/* Reset success if there is some result to report */
+	if (ecode == BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND && op->result_head)
+		success = true;
+
 	if (op->callback)
 		op->callback(success, ecode, success ? op->result_head : NULL,
 								op->user_data);
@@ -650,11 +654,6 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
-
-		if (att_ecode == BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND &&
-								op->result_head)
-			goto success;
-
 		goto done;
 	}
 
@@ -718,7 +717,6 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->end_handle,
 				cur_result->pdu + length - data_length + 1);
 
-success:
 	success = true;
 
 done:
@@ -736,11 +734,6 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
-
-		if (att_ecode == BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND &&
-								op->result_head)
-			goto success;
-
 		goto done;
 	}
 
@@ -785,8 +778,7 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 		goto done;
 	}
 
-success:
-	success = true;
+	success = false;
 
 done:
 	discovery_op_complete(op, success, att_ecode);
@@ -1047,11 +1039,6 @@ static void discover_included_cb(uint8_t opcode, const void *pdu,
 
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		att_ecode = process_error(pdu, length);
-
-		if (att_ecode == BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND &&
-							op->result_head)
-			goto done;
-
 		success = false;
 		goto failed;
 	}
@@ -1118,7 +1105,6 @@ static void discover_included_cb(uint8_t opcode, const void *pdu,
 		goto failed;
 	}
 
-done:
 	success = true;
 
 failed:
@@ -1174,11 +1160,6 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
-
-		if (att_ecode == BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND &&
-							op->result_head)
-			goto success;
-
 		goto done;
 	}
 
@@ -1227,9 +1208,6 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 		success = false;
 		goto done;
 	}
-
-success:
-	success = true;
 
 done:
 	discovery_op_complete(op, success, att_ecode);
@@ -1283,13 +1261,7 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		att_ecode = process_error(pdu, length);
-
-		if (att_ecode == BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND &&
-							op->result_head)
-			success = true;
-		else
-			success = false;
-
+		success = false;
 		goto done;
 	}
 
@@ -1389,11 +1361,6 @@ static void discover_descs_cb(uint8_t opcode, const void *pdu,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
-
-		if (att_ecode == BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND &&
-								op->result_head)
-			goto success;
-
 		goto done;
 	}
 
@@ -1445,10 +1412,8 @@ static void discover_descs_cb(uint8_t opcode, const void *pdu,
 			return;
 
 		success = false;
-		goto done;
 	}
 
-success:
 	success = true;
 
 done:
