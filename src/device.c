@@ -4518,6 +4518,8 @@ void device_set_bonded(struct btd_device *device, uint8_t bdaddr_type)
 		device->bredr_state.bonded = true;
 	else
 		device->le_state.bonded = true;
+
+	btd_device_set_temporary(device, false);
 }
 
 void device_set_legacy(struct btd_device *device, bool legacy)

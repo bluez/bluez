@@ -6043,8 +6043,6 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 								key->pin_len);
 
 		device_set_bonded(device, BDADDR_BREDR);
-
-		btd_device_set_temporary(device, false);
 	}
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
@@ -6160,8 +6158,6 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 					key->type, key->enc_size, ediv, rand);
 
 		device_set_bonded(device, addr->type);
-
-		btd_device_set_temporary(device, false);
 	}
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
