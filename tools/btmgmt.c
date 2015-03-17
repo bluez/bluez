@@ -157,6 +157,56 @@ static size_t bin2hex(const uint8_t *buf, size_t buflen, char *str,
 	return i;
 }
 
+static void print_eir(const uint8_t *eir, uint16_t eir_len)
+{
+	uint16_t parsed = 0;
+	char str[33];
+
+	while (parsed < eir_len - 1) {
+		uint8_t field_len = eir[0];
+
+		if (field_len == 0)
+			break;
+
+		parsed += field_len + 1;
+
+		if (parsed > eir_len)
+			break;
+
+		switch (eir[1]) {
+		case 0x01:
+			print("Flags: 0x%02x", eir[2]);
+			break;
+		case 0x0d:
+			print("Class of Device: 0x%02x%02x%02x",
+						eir[4], eir[3], eir[2]);
+			break;
+		case 0x1b:
+			ba2str((bdaddr_t *) (eir + 2), str);
+			print("LE Device Address: %s (%s)", str,
+					eir[8] ? "random" : "public");
+			break;
+		case 0x1c:
+			print("LE Role: 0x%02x", eir[2]);
+			break;
+		case 0x22:
+			bin2hex(eir + 2, 16, str, sizeof(str));
+			print("LE SC Confirmation Value: %s", str);
+			break;
+		case 0x23:
+			bin2hex(eir + 2, 16, str, sizeof(str));
+			print("LE SC Random Value: %s", str);
+			break;
+		default:
+			print("Type %u: %u byte%s", eir[1], field_len - 1,
+					(field_len - 1) == 1 ? "" : "s");
+			break;
+		}
+
+		eir += field_len + 1;
+	}
+}
+
 static bool load_identity(uint16_t index, struct mgmt_irk_info *irk)
 {
 	char identity_path[PATH_MAX];
@@ -600,66 +650,6 @@ static unsigned int eir_get_flags(const uint8_t *eir, uint16_t eir_len)
 	}
 
 	return 0;
-}
-
-static bool eir_get_le_addr(const uint8_t *eir, uint16_t eir_len, uint8_t *addr)
-{
-	uint8_t parsed = 0;
-
-	if (eir_len < 2)
-		return false;
-
-	while (parsed < eir_len - 1) {
-		uint8_t field_len = eir[0];
-
-		if (field_len == 0)
-			break;
-
-		parsed += field_len + 1;
-
-		if (parsed > eir_len)
-			break;
-
-		/* Check for LE address */
-		if (eir[1] == 0x1b) {
-			memcpy(addr, eir + 2, 7);
-			return true;
-		}
-
-		eir += field_len + 1;
-	}
-
-	return false;
-}
-
-static bool eir_get_le_role(const uint8_t *eir, uint16_t eir_len, uint8_t *role)
-{
-	uint8_t parsed = 0;
-
-	if (eir_len < 2)
-		return false;
-
-	while (parsed < eir_len - 1) {
-		uint8_t field_len = eir[0];
-
-		if (field_len == 0)
-			break;
-
-		parsed += field_len + 1;
-
-		if (parsed > eir_len)
-			break;
-
-		/* Check for LE role */
-		if (eir[1] == 0x1c) {
-			*role = eir[2];
-			return true;
-		}
-
-		eir += field_len + 1;
-	}
-
-	return false;
 }
 
 static void device_found(uint16_t index, uint16_t len, const void *param,
@@ -3559,29 +3549,7 @@ static void local_oob_ext_rsp(uint8_t status, uint16_t len, const void *param,
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
-	if (eir_len > 0) {
-		uint8_t flags, role, addr[7];
-		char *name, str[18];
-
-		flags = eir_get_flags(rp->eir, eir_len);
-		if (flags)
-			print("Flags: 0x%02x", flags);
-
-		if (eir_get_le_addr(rp->eir, eir_len, addr)) {
-			ba2str((bdaddr_t *) addr, str);
-			print("Address: %s (%s)", str,
-					addr[6] ? "random" : "public");
-		}
-
-		if (eir_get_le_role(rp->eir, eir_len, &role))
-			print("Role: 0x%02x", role);
-
-		name = eir_get_name(rp->eir, eir_len);
-		if (name) {
-			print("Name: %s", name);
-			free(name);
-		}
-	}
+	print_eir(rp->eir, eir_len);
 
 	noninteractive_quit(EXIT_SUCCESS);
 }
