@@ -417,13 +417,11 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 			char str[18];
 
 			ba2str((bdaddr_t *) (eir + 2), str);
-
-			printf("  Device address: %s\n", str);
-			printf("  Device type: %s\n",
-					eir[8] ? "random" : "public");
+			printf("  Device address: %s (%s)\n", str,
+						eir[8] ? "random" : "public");
 		}
 
-		/* LE Bluetooth Device Address */
+		/* LE Role */
 		if (eir[1] == 0x1c)
 			printf("  Role: 0x%02x\n", eir[2]);
 
