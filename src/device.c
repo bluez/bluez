@@ -3989,6 +3989,11 @@ static void gatt_client_service_changed(uint16_t start_handle,
 	DBG("start 0x%04x, end: 0x%04x", start_handle, end_handle);
 }
 
+static void gatt_debug(const char *str, void *user_data)
+{
+	DBG("%s", str);
+}
+
 static void gatt_client_init(struct btd_device *device)
 {
 	gatt_client_cleanup(device);
@@ -3999,6 +4004,8 @@ static void gatt_client_init(struct btd_device *device)
 		DBG("Failed to initialize");
 		return;
 	}
+
+	bt_gatt_client_set_debug(device->client, gatt_debug, NULL, NULL);
 
 	/* Notify attio so it can react to notifications */
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
