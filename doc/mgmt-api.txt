@@ -3463,6 +3463,11 @@ Local Out Of Band Extended Data Updated Event
 	The value for EIR_Data_Length and content for EIR_Data is the
 	same as described in Read Local Out Of Band Extended Data command.
 
+	When LE Privacy is used and LE Secure Connections out-of-band
+	data has been requested, then this event will be emitted every
+	time the Resolvable Private Address (RPA) gets changed. The new
+	RPA will be included in the EIR_Data.
+
 	The event will only be sent to management sockets other than the
 	one through which the command was sent. It will additionally also
 	only be sent to sockets that have used the command at least once.
