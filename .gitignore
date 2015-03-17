@@ -99,6 +99,7 @@ unit/test-uhid
 unit/test-hfp
 unit/test-crypto
 unit/test-ecc
+unit/test-hog
 tools/mgmt-tester
 tools/smp-tester
 tools/gap-tester
