@@ -36,12 +36,16 @@
 #include "src/shared/mgmt.h"
 #include "src/shared/crypto.h"
 
+#define REMOTE_IRK	"\x69\x30\xde\xc3\x8f\x84\x74\x14" \
+			"\xe1\x23\x99\xc1\xca\x9a\xc3\x31"
+
 static bool use_bredr = false;
 static bool use_le = false;
 static bool use_sc = false;
 static bool use_sconly = false;
 static bool use_legacy = false;
 static bool use_random = false;
+static bool use_privacy = false;
 static bool use_debug = false;
 static bool use_cross = false;
 static bool provide_tk = false;
@@ -408,6 +412,21 @@ static void read_oob_ext_data_complete(uint8_t status, uint16_t len,
 		if (parsed > eir_len)
 			break;
 
+		/* LE Bluetooth Device Address */
+		if (eir[1] == 0x1b) {
+			char str[18];
+
+			ba2str((bdaddr_t *) (eir + 2), str);
+
+			printf("  Device address: %s\n", str);
+			printf("  Device type: %s\n",
+					eir[8] ? "random" : "public");
+		}
+
+		/* LE Bluetooth Device Address */
+		if (eir[1] == 0x1c)
+			printf("  Role: 0x%02x\n", eir[2]);
+
 		/* LE Secure Connections Confirmation Value */
 		if (eir[1] == 0x22) {
 			hash256 = eir + 2;
@@ -609,6 +628,12 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		return;
 	}
 
+	if (use_privacy && !(supported_settings & MGMT_SETTING_PRIVACY)) {
+		fprintf(stderr, "Privacy support missing\n");
+		mainloop_quit();
+		return;
+	}
+
 	if (use_debug && !(supported_settings & MGMT_SETTING_DEBUG_KEYS)) {
 		fprintf(stderr, "Debug keys support missing\n");
 		mainloop_quit();
@@ -715,6 +740,29 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 							NULL, NULL, NULL);
 	}
 
+	if (use_privacy) {
+		struct mgmt_cp_set_privacy cp;
+
+		if (index == index2) {
+			cp.privacy = 0x01;
+			memcpy(cp.irk, REMOTE_IRK, sizeof(cp.irk));
+		} else {
+			cp.privacy = 0x00;
+			memset(cp.irk, 0, sizeof(cp.irk));
+		}
+
+		mgmt_send(mgmt, MGMT_OP_SET_PRIVACY, index, sizeof(cp), &cp,
+							NULL, NULL, NULL);
+	} else {
+		struct mgmt_cp_set_privacy cp;
+
+		cp.privacy = 0x00;
+		memset(cp.irk, 0, sizeof(cp.irk));
+
+		mgmt_send(mgmt, MGMT_OP_SET_PRIVACY, index, sizeof(cp), &cp,
+							NULL, NULL, NULL);
+	}
+
 	val = 0x00;
 	mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
 						NULL, NULL, NULL);
@@ -806,6 +854,7 @@ static void usage(void)
 		"\t-O, --sconly           Use Secure Connections Only\n"
 		"\t-P, --legacy           Use Legacy Pairing\n"
 		"\t-R, --random           Use Static random address\n"
+		"\t-Y, --privacy          Use LE privacy feature\n"
 		"\t-D, --debug            Use Pairing debug keys\n"
 		"\t-C, --cross            Use cross-transport pairing\n"
 		"\t-0, --tk               Provide LE legacy OOB data\n"
@@ -824,6 +873,7 @@ static const struct option main_options[] = {
 	{ "legacy",    no_argument,       NULL, 'P' },
 	{ "random",    no_argument,       NULL, 'R' },
 	{ "static",    no_argument,       NULL, 'R' },
+	{ "privacy",   no_argument,       NULL, 'Y' },
 	{ "debug",     no_argument,       NULL, 'D' },
 	{ "cross",     no_argument,       NULL, 'C' },
 	{ "dual",      no_argument,       NULL, 'C' },
@@ -845,7 +895,7 @@ int main(int argc ,char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "BLSOPRDC012IAvh",
+		opt = getopt_long(argc, argv, "BLSOPRYDC012IAvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -868,6 +918,9 @@ int main(int argc ,char *argv[])
 			break;
 		case 'R':
 			use_random = true;
+			break;
+		case 'Y':
+			use_privacy = true;
 			break;
 		case 'D':
 			use_debug = true;
@@ -913,6 +966,11 @@ int main(int argc ,char *argv[])
 
 	if (use_legacy && !use_bredr) {
 		fprintf(stderr, "Specify --legacy with --bredr\n");
+		return EXIT_FAILURE;
+	}
+
+	if (use_privacy && !use_le && !use_cross ) {
+		fprintf(stderr, "Specify --privacy with --le or --cross\n");
 		return EXIT_FAILURE;
 	}
 
