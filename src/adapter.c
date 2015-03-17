@@ -6044,8 +6044,7 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 
 		device_set_bonded(device, BDADDR_BREDR);
 
-		if (device_is_temporary(device))
-			btd_device_set_temporary(device, false);
+		btd_device_set_temporary(device, false);
 	}
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
@@ -6162,8 +6161,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 		device_set_bonded(device, addr->type);
 
-		if (device_is_temporary(device))
-			btd_device_set_temporary(device, false);
+		btd_device_set_temporary(device, false);
 	}
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
@@ -6264,8 +6262,7 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 	store_csrk(bdaddr, &key->addr.bdaddr, key->addr.type, key->val, 0,
 								key->type);
 
-	if (device_is_temporary(device))
-		btd_device_set_temporary(device, false);
+	btd_device_set_temporary(device, false);
 }
 
 static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
@@ -6352,8 +6349,7 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 
 	store_irk(adapter, &addr->bdaddr, addr->type, irk->val);
 
-	if (device_is_temporary(device))
-		btd_device_set_temporary(device, false);
+	btd_device_set_temporary(device, false);
 }
 
 static void store_conn_param(struct btd_adapter *adapter, const bdaddr_t *peer,
