@@ -205,7 +205,7 @@ struct btd_device {
 	GSList		*services;		/* List of btd_service */
 	GSList		*pending;		/* Pending services */
 	GSList		*watches;		/* List of disconnect_data */
-	gboolean	temporary;
+	bool		temporary;
 	guint		disconn_timer;
 	guint		discov_timer;
 	struct browse_req *browse;		/* service discover request */
@@ -1137,7 +1137,7 @@ int device_block(struct btd_device *device, gboolean update_only)
 
 	store_device_info(device);
 
-	btd_device_set_temporary(device, FALSE);
+	btd_device_set_temporary(device, false);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Blocked");
@@ -1336,7 +1336,7 @@ static void device_profile_connected(struct btd_device *dev,
 	DBG("%s %s (%d)", profile->name, strerror(-err), -err);
 
 	if (!err)
-		btd_device_set_temporary(dev, FALSE);
+		btd_device_set_temporary(dev, false);
 
 	if (dev->pending == NULL)
 		return;
@@ -1516,7 +1516,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 	if (!btd_adapter_get_powered(dev->adapter))
 		return btd_error_not_ready(msg);
 
-	btd_device_set_temporary(dev, FALSE);
+	btd_device_set_temporary(dev, false);
 
 	if (!state->svc_resolved)
 		goto resolve_services;
@@ -1609,7 +1609,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 		if (dev->le_state.connected)
 			return dbus_message_new_method_return(msg);
 
-		btd_device_set_temporary(dev, FALSE);
+		btd_device_set_temporary(dev, false);
 
 		if (dev->disable_auto_connect) {
 			dev->disable_auto_connect = FALSE;
@@ -1975,7 +1975,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	uint8_t io_cap;
 	int err;
 
-	btd_device_set_temporary(device, FALSE);
+	btd_device_set_temporary(device, false);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
@@ -2947,7 +2947,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	}
 
 	device->adapter = adapter;
-	device->temporary = TRUE;
+	device->temporary = true;
 
 	gatt_db_register(device->db, gatt_service_added, gatt_service_removed,
 								device, NULL);
@@ -3942,7 +3942,7 @@ static void register_gatt_services(struct btd_device *device)
 	 */
 	gatt_db_foreach_service(device->db, NULL, add_primary, &services);
 
-	btd_device_set_temporary(device, FALSE);
+	btd_device_set_temporary(device, false);
 
 	if (req)
 		update_gatt_uuids(req, device->primaries, services);
@@ -4464,7 +4464,7 @@ gboolean device_is_temporary(struct btd_device *device)
 	return device->temporary;
 }
 
-void btd_device_set_temporary(struct btd_device *device, gboolean temporary)
+void btd_device_set_temporary(struct btd_device *device, bool temporary)
 {
 	if (!device)
 		return;
@@ -4631,7 +4631,7 @@ void device_set_unpaired(struct btd_device *dev, uint8_t bdaddr_type)
 	g_dbus_emit_property_changed(dbus_conn, dev->path,
 						DEVICE_INTERFACE, "Paired");
 
-	btd_device_set_temporary(dev, TRUE);
+	btd_device_set_temporary(dev, true);
 
 	if (btd_device_is_connected(dev))
 		device_request_disconnect(dev, NULL);
