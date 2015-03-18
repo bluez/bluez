@@ -319,7 +319,8 @@ static int tester_summarize(void)
 		COLOR_RED "Failed: %d" COLOR_OFF ", "
 		COLOR_YELLOW "Not Run: %d" COLOR_OFF "\n",
 			not_run + passed + failed, passed,
-			(float) passed * 100 / (not_run + passed + failed),
+			(not_run + passed + failed) ?
+			(float) passed * 100 / (not_run + passed + failed) : 0,
 			failed, not_run);
 
 	execution_time = g_timer_elapsed(test_timer, NULL);
