@@ -3252,11 +3252,17 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 		case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		case AVRCP_EVENT_UIDS_CHANGED:
 		case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
+			/* These events above are controller specific */
+			if (!session->controller)
+				break;
 		case AVRCP_EVENT_VOLUME_CHANGED:
 			avrcp_register_notification(session, event);
 			break;
 		}
 	}
+
+	if (!session->controller)
+		return FALSE;
 
 	if (!(events & (1 << AVRCP_EVENT_SETTINGS_CHANGED)))
 		avrcp_list_player_attributes(session);
