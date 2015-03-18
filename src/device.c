@@ -4039,6 +4039,8 @@ static void gatt_server_init(struct btd_device *device, struct gatt_db *db)
 	device->server = bt_gatt_server_new(db, device->att, device->att_mtu);
 	if (!device->server)
 		error("Failed to initialize bt_gatt_server");
+
+	bt_gatt_server_set_debug(device->server, gatt_debug, NULL, NULL);
 }
 
 static bool local_counter(uint32_t *sign_cnt, void *user_data)
