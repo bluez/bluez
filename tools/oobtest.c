@@ -819,6 +819,13 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
 						set_bredr_complete,
 						UINT_TO_PTR(index), NULL);
+
+		if (use_cross) {
+			val = use_legacy ? 0x00 : 0x01;
+			mgmt_send(mgmt, MGMT_OP_SET_SSP, index, 1, &val,
+						set_ssp_complete,
+						UINT_TO_PTR(index), NULL);
+		}
 	} else {
 		fprintf(stderr, "Invalid transport for pairing\n");
 		mainloop_quit();
