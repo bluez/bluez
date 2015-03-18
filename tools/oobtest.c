@@ -568,6 +568,123 @@ static void clear_remote_oob_data(uint16_t index)
 					sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
+static void set_powered_down_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Power down for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_bredr_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Setting BR/EDR for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_le_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Setting LE for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_ssp_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Simple Pairing for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_static_address_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Static address for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_secure_conn_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Secure connections for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_privacy_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Setting privacy for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_debug_keys_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Setting debug keys for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
+static void set_bondable_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	if (status) {
+		fprintf(stderr, "Setting bondable for index %u failed: %s\n",
+						index, mgmt_errstr(status));
+		mainloop_quit();
+		return;
+	}
+}
+
 static void read_info(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -669,7 +786,8 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 
 	val = 0x00;
 	mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, 1, &val,
-						NULL, NULL, NULL);
+						set_powered_down_complete,
+						UINT_TO_PTR(index), NULL);
 
 	clear_link_keys(index);
 	clear_long_term_keys(index);
@@ -679,23 +797,28 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 	if (use_bredr) {
 		val = 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
-							NULL, NULL, NULL);
+						set_bredr_complete,
+						UINT_TO_PTR(index), NULL);
 
 		val = use_cross ? 0x01 : 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
-							NULL, NULL, NULL);
+						set_le_complete,
+						UINT_TO_PTR(index), NULL);
 
 		val = use_legacy ? 0x00 : 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_SSP, index, 1, &val,
-							NULL, NULL, NULL);
+						set_ssp_complete,
+						UINT_TO_PTR(index), NULL);
 	} else if (use_le) {
 		val = 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_LE, index, 1, &val,
-							NULL, NULL, NULL);
+						set_le_complete,
+						UINT_TO_PTR(index), NULL);
 
 		val = use_cross ? 0x01 : 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, 1, &val,
-							NULL, NULL, NULL);
+						set_bredr_complete,
+						UINT_TO_PTR(index), NULL);
 	} else {
 		fprintf(stderr, "Invalid transport for pairing\n");
 		mainloop_quit();
@@ -708,8 +831,9 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		str2ba("c0:00:aa:bb:00:00", &bdaddr);
 		bdaddr.b[0] = index;
 
-		mgmt_send(mgmt, MGMT_OP_SET_STATIC_ADDRESS, index,
-						6, &bdaddr, NULL, NULL, NULL);
+		mgmt_send(mgmt, MGMT_OP_SET_STATIC_ADDRESS, index, 6, &bdaddr,
+						set_static_address_complete,
+						UINT_TO_PTR(index), NULL);
 
 		if (index == index1)
 			bacpy(&bdaddr1, &bdaddr);
@@ -720,22 +844,26 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 
 		bacpy(&bdaddr, BDADDR_ANY);
 
-		mgmt_send(mgmt, MGMT_OP_SET_STATIC_ADDRESS, index,
-						6, &bdaddr, NULL, NULL, NULL);
+		mgmt_send(mgmt, MGMT_OP_SET_STATIC_ADDRESS, index, 6, &bdaddr,
+						set_static_address_complete,
+						UINT_TO_PTR(index), NULL);
 	}
 
 	if (use_sc) {
 		val = 0x01;
 		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
-							NULL, NULL, NULL);
+						set_secure_conn_complete,
+						UINT_TO_PTR(index), NULL);
 	} else if (use_sconly) {
 		val = 0x02;
 		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
-							NULL, NULL, NULL);
+						set_secure_conn_complete,
+						UINT_TO_PTR(index), NULL);
 	} else {
 		val = 0x00;
 		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index, 1, &val,
-							NULL, NULL, NULL);
+						set_secure_conn_complete,
+						UINT_TO_PTR(index), NULL);
 	}
 
 	if (use_privacy) {
@@ -750,7 +878,8 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		}
 
 		mgmt_send(mgmt, MGMT_OP_SET_PRIVACY, index, sizeof(cp), &cp,
-							NULL, NULL, NULL);
+						set_privacy_complete,
+						UINT_TO_PTR(index), NULL);
 	} else {
 		struct mgmt_cp_set_privacy cp;
 
@@ -758,16 +887,19 @@ static void read_info(uint8_t status, uint16_t len, const void *param,
 		memset(cp.irk, 0, sizeof(cp.irk));
 
 		mgmt_send(mgmt, MGMT_OP_SET_PRIVACY, index, sizeof(cp), &cp,
-							NULL, NULL, NULL);
+						set_privacy_complete,
+						UINT_TO_PTR(index), NULL);
 	}
 
 	val = 0x00;
 	mgmt_send(mgmt, MGMT_OP_SET_DEBUG_KEYS, index, 1, &val,
-						NULL, NULL, NULL);
+						set_debug_keys_complete,
+						UINT_TO_PTR(index), NULL);
 
 	val = 0x01;
 	mgmt_send(mgmt, MGMT_OP_SET_BONDABLE, index, 1, &val,
-						NULL, NULL, NULL);
+						set_bondable_complete,
+						UINT_TO_PTR(index), NULL);
 
 	val = 0x01;
 	mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, 1, &val,
