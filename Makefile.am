@@ -243,11 +243,13 @@ EXTRA_DIST += doc/mgmt-api.txt \
 		doc/adapter-api.txt doc/device-api.txt \
 		doc/agent-api.txt doc/profile-api.txt \
 		doc/network-api.txt doc/media-api.txt \
-		doc/health-api.txt doc/sap-api.txt
+		doc/health-api.txt doc/sap-api.txt \
+		doc/input-api.txt
 
 EXTRA_DIST += doc/alert-api.txt \
 		doc/proximity-api.txt doc/heartrate-api.txt \
-		doc/thermometer-api.txt doc/cyclingspeed-api.txt
+		doc/thermometer-api.txt doc/cyclingspeed-api.txt \
+		doc/gatt-api.txt
 
 EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
 
