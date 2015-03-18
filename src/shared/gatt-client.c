@@ -690,13 +690,13 @@ static void discover_descs_cb(bool success, uint8_t att_ecode,
 			goto failed;
 	}
 
+next:
 	if (!discover_descs(op, &discovering))
 		goto failed;
 
 	if (discovering)
 		return;
 
-next:
 	/* Done with the current service */
 	gatt_db_service_set_active(op->cur_svc, true);
 
