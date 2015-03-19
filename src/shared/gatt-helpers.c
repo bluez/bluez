@@ -212,6 +212,7 @@ static bool convert_uuid_le(const uint8_t *src, size_t len, uint8_t dst[16])
 struct bt_gatt_request {
 	struct bt_att *att;
 	unsigned int id;
+	uint16_t start_handle;
 	uint16_t end_handle;
 	int ref_count;
 	bt_uuid_t uuid;
@@ -689,10 +690,22 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 	}
 
 	last_end = get_le16(pdu + length - data_length + 2);
+
+	/*
+	 * If last handle is lower from previous start handle then it is smth
+	 * wrong. Let's stop search, otherwise we might enter infinite loop.
+	 */
+	if (last_end < op->start_handle) {
+		success = false;
+		goto done;
+	}
+
+	op->start_handle = last_end + 1;
+
 	if (last_end < op->end_handle) {
 		uint8_t pdu[6];
 
-		put_le16(last_end + 1, pdu);
+		put_le16(op->start_handle, pdu);
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(op->service_type, pdu + 4);
 
@@ -758,10 +771,22 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 	 * last_end is end handle of last data set
 	 */
 	last_end = get_le16(pdu + length - 2);
+
+	/*
+	* If last handle is lower from previous start handle then it is smth
+	* wrong. Let's stop search, otherwise we might enter infinite loop.
+	*/
+	if (last_end < op->start_handle) {
+		success = false;
+		goto done;
+	}
+
+	op->start_handle = last_end + 1;
+
 	if (last_end < op->end_handle) {
 		uint8_t pdu[6 + get_uuid_len(&op->uuid)];
 
-		put_le16(last_end + 1, pdu);
+		put_le16(op->start_handle, pdu);
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(op->service_type, pdu + 4);
 		bt_uuid_to_le(&op->uuid, pdu + 6);
@@ -802,6 +827,7 @@ static struct bt_gatt_request *discover_services(struct bt_att *att,
 		return NULL;
 
 	op->att = att;
+	op->start_handle = start;
 	op->end_handle = end;
 	op->callback = callback;
 	op->user_data = user_data;
