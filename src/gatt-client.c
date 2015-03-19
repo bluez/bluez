@@ -1339,8 +1339,15 @@ static struct characteristic *characteristic_create(
 	gatt_db_attribute_get_char_data(attr, &chrc->handle,
 							&chrc->value_handle,
 							&chrc->props, &uuid);
+
 	chrc->attr = gatt_db_get_attribute(service->client->db,
 							chrc->value_handle);
+	if (!chrc->attr) {
+		error("Attribute 0x%04x not found", chrc->value_handle);
+		characteristic_free(chrc);
+		return NULL;
+	}
+
 	bt_uuid_to_uuid128(&uuid, &chrc->uuid);
 
 	chrc->path = g_strdup_printf("%s/char%04x", service->path,
