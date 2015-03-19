@@ -1112,10 +1112,21 @@ static void discover_included_cb(uint8_t opcode, const void *pdu,
 	}
 
 	last_handle = get_le16(pdu + length - data_length);
+
+	/*
+	 * If last handle is lower from previous start handle then it is smth
+	 * wrong. Let's stop search, otherwise we might enter infinite loop.
+	 */
+	if (last_handle < op->start_handle) {
+		success = false;
+		goto failed;
+	}
+
+	op->start_handle = last_handle + 1;
 	if (last_handle != op->end_handle) {
 		uint8_t pdu[6];
 
-		put_le16(last_handle + 1, pdu);
+		put_le16(op->start_handle, pdu);
 		put_le16(op->end_handle, pdu + 2);
 		put_le16(GATT_INCLUDE_UUID, pdu + 4);
 
@@ -1157,6 +1168,7 @@ struct bt_gatt_request *bt_gatt_discover_included_services(struct bt_att *att,
 	op->callback = callback;
 	op->user_data = user_data;
 	op->destroy = destroy;
+	op->start_handle = start;
 	op->end_handle = end;
 
 	put_le16(start, pdu);
