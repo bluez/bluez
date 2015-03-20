@@ -728,15 +728,15 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 	int ret;
 	void *request;
 
+	if (name == NULL) {
+		ret = -EBADR;
+		goto fail;
+	}
+
 	DBG("name %s context %p valid %d", name, context, pbap->cache.valid);
 
 	if (oflag != O_RDONLY) {
 		ret = -EPERM;
-		goto fail;
-	}
-
-	if (name == NULL) {
-		ret = -EBADR;
 		goto fail;
 	}
 
