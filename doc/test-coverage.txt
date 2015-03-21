@@ -40,7 +40,7 @@ Automated end-to-end testing
 
 Application		Count	Description
 -------------------------------------------
-mgmt-tester		 246	Kernel management interface testing
+mgmt-tester		 269	Kernel management interface testing
 l2cap-tester		  27	Kernel L2CAP implementation testing
 rfcomm-tester		   9	Kernel RFCOMM implementation testing
 smp-tester		   5	Kernel SMP implementation testing
