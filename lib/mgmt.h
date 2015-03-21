@@ -484,6 +484,29 @@ struct mgmt_rp_read_adv_features {
 	uint8_t  instance[0];
 } __packed;
 
+#define MGMT_OP_ADD_ADVERTISING		0x003E
+struct mgmt_cp_add_advertising {
+	uint8_t  instance;
+	uint32_t flags;
+	uint16_t duration;
+	uint16_t timeout;
+	uint8_t  adv_data_len;
+	uint8_t  scan_rsp_len;
+	uint8_t  data[0];
+} __packed;
+struct mgmt_rp_add_advertising {
+	uint8_t instance;
+} __packed;
+
+#define MGMT_OP_REMOVE_ADVERTISING	0x003F
+struct mgmt_cp_remove_advertising {
+	uint8_t instance;
+} __packed;
+#define MGMT_REMOVE_ADVERTISING_SIZE	1
+struct mgmt_rp_remove_advertising {
+	uint8_t instance;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -684,6 +707,16 @@ struct mgmt_ev_local_oob_data_updated {
 	uint8_t  type;
 	uint16_t eir_len;
 	uint8_t  eir[0];
+} __packed;
+
+#define MGMT_EV_ADVERTISING_ADDED	0x0023
+struct mgmt_ev_advertising_added {
+	uint8_t instance;
+} __packed;
+
+#define MGMT_EV_ADVERTISING_REMOVED	0x0024
+struct mgmt_ev_advertising_removed {
+	uint8_t instance;
 } __packed;
 
 static const char *mgmt_op[] = {
