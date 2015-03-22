@@ -249,7 +249,7 @@ EXTRA_DIST += doc/mgmt-api.txt \
 EXTRA_DIST += doc/alert-api.txt \
 		doc/proximity-api.txt doc/heartrate-api.txt \
 		doc/thermometer-api.txt doc/cyclingspeed-api.txt \
-		doc/gatt-api.txt
+		doc/gatt-api.txt doc/advertising-api.txt
 
 EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
 
