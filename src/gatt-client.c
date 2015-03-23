@@ -1370,6 +1370,16 @@ static struct characteristic *characteristic_create(
 	return chrc;
 }
 
+static void remove_client(void *data)
+{
+	struct notify_client *ntfy_client = data;
+	struct btd_gatt_client *client = ntfy_client->chrc->service->client;
+
+	queue_remove(client->all_notify_clients, ntfy_client);
+
+	notify_client_unref(ntfy_client);
+}
+
 static void unregister_characteristic(void *data)
 {
 	struct characteristic *chrc = data;
@@ -1383,7 +1393,7 @@ static void unregister_characteristic(void *data)
 	if (chrc->write_id)
 		bt_gatt_client_cancel(gatt, chrc->write_id);
 
-	queue_remove_all(chrc->notify_clients, NULL, NULL, notify_client_unref);
+	queue_remove_all(chrc->notify_clients, NULL, NULL, remove_client);
 	queue_remove_all(chrc->descs, NULL, NULL, unregister_descriptor);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(), chrc->path,
