@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/uio.h>
+#include <wordexp.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -41,6 +42,9 @@
 #include "display.h"
 #include "gatt.h"
 
+#define PROFILE_PATH "/org/bluez/profile"
+#define PROFILE_INTERFACE "org.bluez.GattProfile1"
+
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
@@ -49,6 +53,7 @@
 static GList *services;
 static GList *characteristics;
 static GList *descriptors;
+static GList *managers;
 
 static void print_service(GDBusProxy *proxy, const char *description)
 {
@@ -511,4 +516,103 @@ void gatt_notify_attribute(GDBusProxy *proxy, bool enable)
 
 	rl_printf("Unable to notify attribute %s\n",
 						g_dbus_proxy_get_path(proxy));
+}
+
+static void register_profile_setup(DBusMessageIter *iter, void *user_data)
+{
+	wordexp_t *w = user_data;
+	DBusMessageIter uuids, opt;
+	const char *path = PROFILE_PATH;
+	size_t i;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "s", &uuids);
+	for (i = 0; i < w->we_wordc; i++)
+		dbus_message_iter_append_basic(&uuids, DBUS_TYPE_STRING,
+							&w->we_wordv[i]);
+	dbus_message_iter_close_container(iter, &uuids);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&opt);
+	dbus_message_iter_close_container(iter, &opt);
+
+}
+
+static void register_profile_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to register profile: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Profile registered\n");
+}
+
+void gatt_add_manager(GDBusProxy *proxy)
+{
+	managers = g_list_append(managers, proxy);
+}
+
+void gatt_remove_manager(GDBusProxy *proxy)
+{
+	managers = g_list_remove(managers, proxy);
+}
+
+static int match_proxy(const void *a, const void *b)
+{
+	GDBusProxy *proxy1 = (void *) a;
+	GDBusProxy *proxy2 = (void *) b;
+
+	return strcmp(g_dbus_proxy_get_path(proxy1),
+						g_dbus_proxy_get_path(proxy2));
+}
+
+static DBusMessage *release_profile(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	g_dbus_unregister_interface(conn, PROFILE_PATH, PROFILE_INTERFACE);
+
+	return dbus_message_new_method_return(msg);
+}
+
+static const GDBusMethodTable methods[] = {
+	{ GDBUS_METHOD("Release", NULL, NULL, release_profile) },
+	{ }
+};
+
+void gatt_register_profile(DBusConnection *conn, GDBusProxy *proxy,
+								wordexp_t *w)
+{
+	GList *l;
+
+	l = g_list_find_custom(managers, proxy, match_proxy);
+	if (!l) {
+		rl_printf("Unable to find GattManager proxy\n");
+		return;
+	}
+
+	if (g_dbus_register_interface(conn, PROFILE_PATH,
+					PROFILE_INTERFACE, methods,
+					NULL, NULL, NULL, NULL) == FALSE) {
+		rl_printf("Failed to register profile object\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(l->data, "RegisterProfile",
+						register_profile_setup,
+						register_profile_reply, w,
+						NULL) == FALSE) {
+		rl_printf("Failed register profile\n");
+		return;
+	}
 }

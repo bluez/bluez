@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <sys/signalfd.h>
+#include <wordexp.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -348,6 +349,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		gatt_add_characteristic(proxy);
 	} else if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
 		gatt_add_descriptor(proxy);
+	} else if (!strcmp(interface, "org.bluez.GattManager1")) {
+		gatt_add_manager(proxy);
 	}
 }
 
@@ -443,6 +446,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 
 		if (default_attr == proxy)
 			set_default_attribute(NULL);
+	} else if (!strcmp(interface, "org.bluez.GattManager1")) {
+		gatt_remove_manager(proxy);
 	}
 }
 
@@ -1329,6 +1334,28 @@ static void cmd_notify(const char *arg)
 	gatt_notify_attribute(default_attr, enable ? true : false);
 }
 
+static void cmd_register_profile(const char *arg)
+{
+	wordexp_t w;
+
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	if (wordexp(arg, &w, WRDE_NOCMD)) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	if (w.we_wordc == 0) {
+		rl_printf("Missing argument\n");
+		return;
+	}
+
+	gatt_register_profile(dbus_conn, default_ctrl, &w);
+
+	wordfree(&w);
+}
+
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -1462,6 +1489,8 @@ static const struct {
 	{ "write",        "<data=[xx xx ...]>", cmd_write,
 						"Write attribute value" },
 	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value" },
+	{ "register-profile", "<UUID ...>", cmd_register_profile,
+						"Register profile to connect" },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
