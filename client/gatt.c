@@ -616,3 +616,47 @@ void gatt_register_profile(DBusConnection *conn, GDBusProxy *proxy,
 		return;
 	}
 }
+
+static void unregister_profile_reply(DBusMessage *message, void *user_data)
+{
+	DBusConnection *conn = user_data;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to unregister profile: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Profile unregistered\n");
+
+	g_dbus_unregister_interface(conn, PROFILE_PATH, PROFILE_INTERFACE);
+}
+
+static void unregister_profile_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = PROFILE_PATH;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+void gatt_unregister_profile(DBusConnection *conn, GDBusProxy *proxy)
+{
+	GList *l;
+
+	l = g_list_find_custom(managers, proxy, match_proxy);
+	if (!l) {
+		rl_printf("Unable to find GattManager proxy\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(l->data, "UnregisterProfile",
+						unregister_profile_setup,
+						unregister_profile_reply, conn,
+						NULL) == FALSE) {
+		rl_printf("Failed unregister profile\n");
+		return;
+	}
+}

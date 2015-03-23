@@ -1356,6 +1356,14 @@ static void cmd_register_profile(const char *arg)
 	wordfree(&w);
 }
 
+static void cmd_unregister_profile(const char *arg)
+{
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	gatt_unregister_profile(dbus_conn, default_ctrl);
+}
+
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -1491,6 +1499,8 @@ static const struct {
 	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value" },
 	{ "register-profile", "<UUID ...>", cmd_register_profile,
 						"Register profile to connect" },
+	{ "unregister-profile", NULL, cmd_unregister_profile,
+						"Unregister profile" },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
