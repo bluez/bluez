@@ -1068,6 +1068,32 @@ static void local_oob_data_updated(uint16_t index, uint16_t len,
 						ev->type, eir_len);
 }
 
+static void advertising_added(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_advertising_added *ev = param;
+
+	if (len < sizeof(*ev)) {
+		error("Too small (%u bytes) advertising_added event", len);
+		return;
+	}
+
+	print("hci%u advertising_added: instance %u", index, ev->instance);
+}
+
+static void advertising_removed(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_advertising_removed *ev = param;
+
+	if (len < sizeof(*ev)) {
+		error("Too small (%u bytes) advertising_removed event", len);
+		return;
+	}
+
+	print("hci%u advertising_removed: instance %u", index, ev->instance);
+}
+
 static void version_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -3757,6 +3783,10 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 					ext_index_removed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_LOCAL_OOB_DATA_UPDATED, index,
 					local_oob_data_updated, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_ADVERTISING_ADDED, index,
+						advertising_added, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_ADVERTISING_REMOVED, index,
+					advertising_removed, NULL, NULL);
 }
 
 static void cmd_select(struct mgmt *mgmt, uint16_t index,
