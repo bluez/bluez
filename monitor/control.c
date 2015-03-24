@@ -738,6 +738,40 @@ static void mgmt_new_conn_param(uint16_t len, const void *buf)
 	packet_hexdump(buf, len);
 }
 
+static void mgmt_advertising_added(uint16_t len, const void *buf)
+{
+	const struct mgmt_ev_advertising_added *ev = buf;
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Advertising Added control\n");
+		return;
+	}
+
+	printf("@ Advertising Added: %u\n", ev->instance);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	packet_hexdump(buf, len);
+}
+
+static void mgmt_advertising_removed(uint16_t len, const void *buf)
+{
+	const struct mgmt_ev_advertising_removed *ev = buf;
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Advertising Removed control\n");
+		return;
+	}
+
+	printf("@ Advertising Removed: %u\n", ev->instance);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	packet_hexdump(buf, len);
+}
+
 void control_message(uint16_t opcode, const void *data, uint16_t size)
 {
 	switch (opcode) {
@@ -833,6 +867,12 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		break;
 	case MGMT_EV_EXT_INDEX_REMOVED:
 		mgmt_ext_index_removed(size, data);
+		break;
+	case MGMT_EV_ADVERTISING_ADDED:
+		mgmt_advertising_added(size, data);
+		break;
+	case MGMT_EV_ADVERTISING_REMOVED:
+		mgmt_advertising_removed(size, data);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, size);
