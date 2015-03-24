@@ -1111,7 +1111,8 @@ static void get_managed_objects(GDBusClient *client)
 	if (!client->connected)
 		return;
 
-	if (!client->proxy_added && !client->proxy_removed) {
+	if ((!client->proxy_added && !client->proxy_removed) ||
+							!client->root_path) {
 		refresh_properties(client);
 		return;
 	}
@@ -1212,7 +1213,7 @@ GDBusClient *g_dbus_client_new_full(DBusConnection *connection,
 	GDBusClient *client;
 	unsigned int i;
 
-	if (!connection || !service || !root_path)
+	if (!connection || !service)
 		return NULL;
 
 	client = g_try_new0(GDBusClient, 1);
@@ -1238,6 +1239,10 @@ GDBusClient *g_dbus_client_new_full(DBusConnection *connection,
 						service_connect,
 						service_disconnect,
 						client, NULL);
+
+	if (!root_path)
+		return g_dbus_client_ref(client);
+
 	client->added_watch = g_dbus_add_signal_watch(connection, service,
 						client->root_path,
 						DBUS_INTERFACE_OBJECT_MANAGER,
