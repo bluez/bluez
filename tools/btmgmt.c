@@ -3688,7 +3688,7 @@ static void add_adv_rsp(uint8_t status, uint16_t len, const void *param,
 static void add_adv_usage(void)
 {
 	print("Usage: add-adv [-u uuid] [-d adv_data] [-s scan_rsp] "
-				"[-t timeout] [-c] [-d] [-e] <instance_id>");
+			"[-t timeout] [-c] [-d] [-e] [-l] <instance_id>");
 }
 
 static struct option add_adv_options[] = {
@@ -3699,6 +3699,7 @@ static struct option add_adv_options[] = {
 	{ "timeout",		1, 0, 't' },
 	{ "connectable",	0, 0, 'c' },
 	{ "discoverable",	0, 0, 'e' },
+	{ "limited-discov",	0, 0, 'l' },
 	{ 0, 0, 0, 0}
 };
 
@@ -3762,7 +3763,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 	bool quit = true;
 	uint32_t flags = 0;
 
-	while ((opt = getopt_long(argc, argv, "+u:d:s:t:ceh",
+	while ((opt = getopt_long(argc, argv, "+u:d:s:t:celh",
 						add_adv_options, NULL)) != -1) {
 		switch (opt) {
 		case 'u':
@@ -3828,6 +3829,9 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'e':
 			flags |= MGMT_ADV_FLAG_DISCOV;
+			break;
+		case 'l':
+			flags |= MGMT_ADV_FLAG_LIMITED_DISCOV;
 			break;
 		case 'h':
 			success = true;
