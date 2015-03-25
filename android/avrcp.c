@@ -49,11 +49,6 @@
 
 #define L2CAP_PSM_AVCTP 0x17
 
-#define AVRCP_FEATURE_CATEGORY_1	0x0001
-#define AVRCP_FEATURE_CATEGORY_2	0x0002
-#define AVRCP_FEATURE_CATEGORY_3	0x0004
-#define AVRCP_FEATURE_CATEGORY_4	0x0008
-
 static bdaddr_t adapter_addr;
 static uint32_t record_tg_id = 0;
 static uint32_t record_ct_id = 0;
