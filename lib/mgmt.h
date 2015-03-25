@@ -498,6 +498,14 @@ struct mgmt_rp_add_advertising {
 	uint8_t instance;
 } __packed;
 
+#define MGMT_ADV_FLAG_CONNECTABLE	(1 << 0)
+#define MGMT_ADV_FLAG_DISCOV		(1 << 1)
+#define MGMT_ADV_FLAG_LIMITED_DISCOV	(1 << 2)
+#define MGMT_ADV_FLAG_MANAGED_FLAGS	(1 << 3)
+#define MGMT_ADV_FLAG_TX_POWER		(1 << 4)
+#define MGMT_ADV_FLAG_APPEARANCE	(1 << 5)
+#define MGMT_ADV_FLAG_LOCAL_NAME	(1 << 6)
+
 #define MGMT_OP_REMOVE_ADVERTISING	0x003F
 struct mgmt_cp_remove_advertising {
 	uint8_t instance;
