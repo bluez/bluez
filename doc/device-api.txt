@@ -195,3 +195,14 @@ Properties	string Address [readonly]
 
 			Received Signal Strength Indicator of the remote
 			device (inquiry or advertising).
+
+		dict ManufacturerData [readonly, optional]
+
+			Manufacturer specific advertisement data. Keys are
+			16 bits Manufacturer ID followed by its byte array
+			value.
+
+		dict ServiceData [readonly, optional]
+
+			Service advertisement data. Keys are the UUIDs in
+			string format followed by its byte array value.
