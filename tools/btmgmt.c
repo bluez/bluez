@@ -3688,7 +3688,7 @@ static void add_adv_rsp(uint8_t status, uint16_t len, const void *param,
 static void add_adv_usage(void)
 {
 	print("Usage: add-adv [-u uuid] [-d adv_data] [-s scan_rsp] "
-			"[-t timeout] [-c] [-d] [-e] [-l] <instance_id>");
+			"[-t timeout] [-c] [-d] [-e] [-l] [-m] <instance_id>");
 }
 
 static struct option add_adv_options[] = {
@@ -3700,6 +3700,7 @@ static struct option add_adv_options[] = {
 	{ "connectable",	0, 0, 'c' },
 	{ "discoverable",	0, 0, 'e' },
 	{ "limited-discov",	0, 0, 'l' },
+	{ "managed-flags",	0, 0, 'm' },
 	{ 0, 0, 0, 0}
 };
 
@@ -3763,7 +3764,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 	bool quit = true;
 	uint32_t flags = 0;
 
-	while ((opt = getopt_long(argc, argv, "+u:d:s:t:celh",
+	while ((opt = getopt_long(argc, argv, "+u:d:s:t:celmh",
 						add_adv_options, NULL)) != -1) {
 		switch (opt) {
 		case 'u':
@@ -3832,6 +3833,9 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'l':
 			flags |= MGMT_ADV_FLAG_LIMITED_DISCOV;
+			break;
+		case 'm':
+			flags |= MGMT_ADV_FLAG_MANAGED_FLAGS;
 			break;
 		case 'h':
 			success = true;
