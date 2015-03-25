@@ -3955,6 +3955,14 @@ static void cmd_rm_adv(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void cmd_clr_adv(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
+{
+	char *all_instances = "0";
+	char *rm_argv[] = { "rm-adv", all_instances, NULL };
+
+	cmd_rm_adv(mgmt, index, 2, rm_argv);
+}
+
 struct cmd_info {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
@@ -4018,8 +4026,9 @@ static struct cmd_info all_cmd[] = {
 	{ "bredr-oob",	cmd_bredr_oob,	"Local OOB data (BR/EDR)"	},
 	{ "le-oob",	cmd_le_oob,	"Local OOB data (LE)"		},
 	{ "advinfo",	cmd_advinfo,	"Show advertising features"	},
-	{ "add-adv",	cmd_add_adv,	"Add Advertising Data"		},
-	{ "rm-adv",	cmd_rm_adv,	"Remove Advertising Data"	},
+	{ "add-adv",	cmd_add_adv,	"Add advertising instance"	},
+	{ "rm-adv",	cmd_rm_adv,	"Remove advertising instance"	},
+	{ "clr-adv",	cmd_clr_adv,	"Clear advertising instances"	},
 };
 
 static void cmd_quit(struct mgmt *mgmt, uint16_t index,
