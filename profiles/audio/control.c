@@ -338,13 +338,3 @@ int control_init_remote(struct btd_service *service)
 
 	return 0;
 }
-
-gboolean control_is_active(struct btd_service *service)
-{
-	struct control *control = btd_service_get_user_data(service);
-
-	if (control && control->session)
-		return TRUE;
-
-	return FALSE;
-}

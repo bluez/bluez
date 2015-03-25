@@ -29,7 +29,6 @@ struct btd_service;
 int control_init_target(struct btd_service *service);
 int control_init_remote(struct btd_service *service);
 void control_unregister(struct btd_service *service);
-gboolean control_is_active(struct btd_service *service);
 
 int control_connect(struct btd_service *service);
 int control_disconnect(struct btd_service *service);
