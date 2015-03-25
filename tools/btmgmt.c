@@ -3687,16 +3687,17 @@ static void add_adv_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void add_adv_usage(void)
 {
-	print("Usage: add-adv [-d adv_data] [-s scan_rsp] "
-						"[-t timeout] <instance_id>");
+	print("Usage: add-adv [-u uuid] [-d adv_data] [-s scan_rsp] "
+					"[-t timeout] [-c] <instance_id>");
 }
 
 static struct option add_adv_options[] = {
-	{ "help",	0, 0, 'h' },
-	{ "uuid",	1, 0, 'u' },
-	{ "adv-data",	1, 0, 'd' },
-	{ "scan-rsp",	1, 0, 's' },
-	{ "timeout",	1, 0, 't' },
+	{ "help",		0, 0, 'h' },
+	{ "uuid",		1, 0, 'u' },
+	{ "adv-data",		1, 0, 'd' },
+	{ "scan-rsp",		1, 0, 's' },
+	{ "timeout",		1, 0, 't' },
+	{ "connectable",	0, 0, 'c' },
 	{ 0, 0, 0, 0}
 };
 
@@ -3758,8 +3759,9 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 	uuid_t uuid;
 	bool success = false;
 	bool quit = true;
+	uint32_t flags = 0;
 
-	while ((opt = getopt_long(argc, argv, "+u:d:s:t:h",
+	while ((opt = getopt_long(argc, argv, "+u:d:s:t:ch",
 						add_adv_options, NULL)) != -1) {
 		switch (opt) {
 		case 'u':
@@ -3820,6 +3822,9 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 		case 't':
 			timeout = strtol(optarg, NULL, 0);
 			break;
+		case 'c':
+			flags |= MGMT_ADV_FLAG_CONNECTABLE;
+			break;
 		case 'h':
 			success = true;
 		default:
@@ -3851,6 +3856,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 		goto done;
 
 	cp->instance = instance;
+	put_le32(flags, &cp->flags);
 	put_le16(timeout, &cp->timeout);
 	cp->adv_data_len = adv_len + uuid_bytes;
 	cp->scan_rsp_len = scan_rsp_len;
