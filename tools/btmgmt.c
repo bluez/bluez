@@ -3698,7 +3698,7 @@ static struct option add_adv_options[] = {
 	{ "scan-rsp",		1, 0, 's' },
 	{ "timeout",		1, 0, 't' },
 	{ "connectable",	0, 0, 'c' },
-	{ "discoverable",	0, 0, 'e' },
+	{ "general-discov",	0, 0, 'g' },
 	{ "limited-discov",	0, 0, 'l' },
 	{ "managed-flags",	0, 0, 'm' },
 	{ "tx-power",		0, 0, 'p' },
@@ -3765,7 +3765,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 	bool quit = true;
 	uint32_t flags = 0;
 
-	while ((opt = getopt_long(argc, argv, "+u:d:s:t:celmph",
+	while ((opt = getopt_long(argc, argv, "+u:d:s:t:cglmph",
 						add_adv_options, NULL)) != -1) {
 		switch (opt) {
 		case 'u':
@@ -3829,7 +3829,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 		case 'c':
 			flags |= MGMT_ADV_FLAG_CONNECTABLE;
 			break;
-		case 'e':
+		case 'g':
 			flags |= MGMT_ADV_FLAG_DISCOV;
 			break;
 		case 'l':
