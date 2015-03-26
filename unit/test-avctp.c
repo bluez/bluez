@@ -220,9 +220,6 @@ static ssize_t handler(struct avctp *session,
 					uint8_t *subunit, uint8_t *operands,
 					size_t operand_count, void *user_data)
 {
-	DBG("transaction %d code %d subunit %d operand_count %zu",
-		transaction, *code, *subunit, operand_count);
-
 	g_assert_cmpint(transaction, ==, 0);
 	g_assert_cmpint(*code, ==, 0);
 	g_assert_cmpint(*subunit, ==, 0);
@@ -237,9 +234,6 @@ static gboolean handler_response(struct avctp *session,
 					void *user_data)
 {
 	struct context *context = user_data;
-
-	DBG("code 0x%02x subunit %d operand_count %zu", code, subunit,
-								operand_count);
 
 	g_assert_cmpint(code, ==, 0x0a);
 	g_assert_cmpint(subunit, ==, 0);
@@ -265,7 +259,6 @@ static void test_server(gconstpointer data)
 
 		ret = avctp_register_pdu_handler(context->session,
 					AVC_OP_VENDORDEP, handler, NULL);
-		DBG("ret %d", ret);
 		g_assert_cmpint(ret, !=, 0);
 	}
 
