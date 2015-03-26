@@ -3687,8 +3687,18 @@ static void add_adv_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void add_adv_usage(void)
 {
-	print("Usage: add-adv [-u uuid] [-d adv_data] [-s scan_rsp] "
-		"[-t timeout] [-c] [-d] [-e] [-l] [-m] [-p] <instance_id>");
+	print("Usage: add-adv [options] <instance_id>\nOptions:\n"
+		"\t -u, --uuid <uuid>        Service UUID\n"
+		"\t -d, --adv-data <data>    Advertising Data bytes\n"
+		"\t -s, --scan-rsp <data>    Scan Response Data bytes\n"
+		"\t -t, --timeout <timeout>  Timeout in seconds\n"
+		"\t -c, --connectable        \"connectable\" flag\n"
+		"\t -g, --general-discov     \"general-discoverable\" flag\n"
+		"\t -l, --limited-discov     \"limited-discoverable\" flag\n"
+		"\t -m, --managed-flags      \"managed-flags\" flag\n"
+		"\t -p, --tx-power           \"tx-power\" flag\n"
+		"e.g.:\n"
+		"\tadd-adv -u 180d -u 180f -d 080954657374204C45 1");
 }
 
 static struct option add_adv_options[] = {
