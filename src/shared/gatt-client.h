@@ -111,7 +111,7 @@ unsigned int bt_gatt_client_write_long_value(struct bt_gatt_client *client,
 unsigned int bt_gatt_client_prepare_write(struct bt_gatt_client *client,
 				unsigned int id,
 				uint16_t value_handle, uint16_t offset,
-				uint8_t *value, uint16_t length,
+				const uint8_t *value, uint16_t length,
 				bt_gatt_client_write_long_callback_t callback,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy);
