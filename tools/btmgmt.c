@@ -1879,9 +1879,11 @@ static void cmd_disconnect(struct mgmt *mgmt, uint16_t index, int argc,
 			break;
 		case 'h':
 			disconnect_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			disconnect_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2027,11 +2029,13 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 		case 'u':
 			if (count == MAX_UUIDS) {
 				print("Max %u UUIDs supported", MAX_UUIDS);
+				optind = 0;
 				return noninteractive_quit(EXIT_FAILURE);
 			}
 
 			if (bt_string2uuid(&uuid, optarg) < 0) {
 				print("Invalid UUID: %s", optarg);
+				optind = 0;
 				return noninteractive_quit(EXIT_FAILURE);
 			}
 			cp = (void *) buf;
@@ -2045,9 +2049,11 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 			break;
 		case 'h':
 			find_service_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			find_service_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2121,9 +2127,11 @@ static void cmd_find(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 			break;
 		case 'h':
 			find_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			find_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2195,6 +2203,7 @@ static void cmd_stop_find(struct mgmt *mgmt, uint16_t index, int argc,
 		case 'h':
 		default:
 			stop_find_usage();
+			optind = 0;
 			exit(EXIT_SUCCESS);
 		}
 	}
@@ -2311,9 +2320,11 @@ static void cmd_pair(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 			break;
 		case 'h':
 			pair_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			pair_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2400,9 +2411,11 @@ static void cmd_cancel_pair(struct mgmt *mgmt, uint16_t index, int argc,
 			break;
 		case 'h':
 			cancel_pair_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			cancel_pair_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2484,9 +2497,11 @@ static void cmd_unpair(struct mgmt *mgmt, uint16_t index, int argc,
 			break;
 		case 'h':
 			unpair_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			unpair_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2615,6 +2630,7 @@ static void cmd_irks(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		case 'l':
 			if (count >= MAX_IRKS) {
 				error("Number of IRKs exceeded");
+				optind = 0;
 				return noninteractive_quit(EXIT_FAILURE);
 			}
 			if (strlen(optarg) > 3 &&
@@ -2624,15 +2640,18 @@ static void cmd_irks(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 				local_index = atoi(optarg);
 			if (!load_identity(local_index, &cp->irks[count])) {
 				error("Unable to load identity");
+				optind = 0;
 				return noninteractive_quit(EXIT_FAILURE);
 			}
 			count++;
 			break;
 		case 'h':
 			irks_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			irks_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2710,9 +2729,11 @@ static void cmd_block(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 			break;
 		case 'h':
 			block_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			block_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -2760,9 +2781,11 @@ static void cmd_unblock(struct mgmt *mgmt, uint16_t index, int argc,
 			break;
 		case 'h':
 			unblock_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			unblock_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
