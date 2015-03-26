@@ -367,6 +367,10 @@ void avrcp_shutdown(struct avrcp *session)
 			avctp_unregister_passthrough_handler(session->conn,
 						session->passthrough_id);
 
+		if (session->browsing_id > 0)
+			avctp_unregister_browsing_pdu_handler(session->conn,
+							session->browsing_id);
+
 		/* clear destroy callback that would call shutdown again */
 		avctp_set_destroy_cb(session->conn, NULL, NULL);
 		avctp_shutdown(session->conn);
