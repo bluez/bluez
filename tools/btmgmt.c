@@ -3746,7 +3746,7 @@ static bool parse_bytes(char *optarg, uint8_t **bytes, size_t *len)
 	for (i = 0; i < *len; i++) {
 		if (sscanf(optarg + (i * 2), "%2hhx", *bytes + i) != 1) {
 			error("Invalid data");
-			free(bytes);
+			free(*bytes);
 			*bytes = NULL;
 			return false;
 		}
