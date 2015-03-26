@@ -2808,9 +2808,9 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 		error("START request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
 		if (sep && sep->cfm && sep->cfm->start) {
+			stream->starting = FALSE;
 			sep->cfm->start(session, sep, stream, &err,
 					sep->user_data);
-			stream->starting = FALSE;
 		}
 		return TRUE;
 	case AVDTP_SUSPEND:
