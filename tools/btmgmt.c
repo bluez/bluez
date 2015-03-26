@@ -3616,6 +3616,34 @@ static void cmd_le_oob(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static const char *adv_flags_str[] = {
+				"connectable",
+				"general-discoverable",
+				"limited-discoverable",
+				"managed-flags",
+				"tx-power",
+				"scan-rsp-appearance",
+				"scan-rsp-local-name",
+};
+
+static const char *adv_flags2str(uint32_t flags)
+{
+	static char str[256];
+	unsigned i;
+	int off;
+
+	off = 0;
+	str[0] = '\0';
+
+	for (i = 0; i < NELEM(adv_flags_str); i++) {
+		if ((flags & (1 << i)) != 0)
+			off += snprintf(str + off, sizeof(str) - off, "%s ",
+							adv_flags_str[i]);
+	}
+
+	return str;
+}
+
 static void adv_features_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -3640,7 +3668,7 @@ static void adv_features_rsp(uint8_t status, uint16_t len, const void *param,
 	}
 
 	supported_flags = le32_to_cpu(rp->supported_flags);
-	print("Supported flags: 0x%04x", supported_flags);
+	print("Supported flags: %s", adv_flags2str(supported_flags));
 	print("Max advertising data len: %u", rp->max_adv_data_len);
 	print("Max scan response data len: %u", rp->max_scan_rsp_len);
 	print("Max instances: %u", rp->max_instances);
