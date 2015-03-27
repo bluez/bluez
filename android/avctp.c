@@ -775,6 +775,8 @@ static void control_response(struct avctp_channel *control,
 								control);
 	}
 
+	avctp_ref(control->session);
+
 	for (l = control->processed; l; l = l->next) {
 		p = l->data;
 		req = p->data;
@@ -782,21 +784,19 @@ static void control_response(struct avctp_channel *control,
 		if (p->transaction != avctp->transaction)
 			continue;
 
-		avctp_ref(control->session);
-
 		if (req->func && req->func(control->session, avc->code,
 						avc->subunit_type,
 						operands, operand_count,
 						req->user_data))
-			return;
+			break;
 
 		control->processed = g_slist_remove(control->processed, p);
 		pending_destroy(p, NULL);
 
-		avctp_unref(control->session);
-
-		return;
+		break;
 	}
+
+	avctp_unref(control->session);
 }
 
 static void browsing_response(struct avctp_channel *browsing,
@@ -823,6 +823,8 @@ static void browsing_response(struct avctp_channel *browsing,
 								browsing);
 	}
 
+	avctp_ref(browsing->session);
+
 	for (l = browsing->processed; l; l = l->next) {
 		p = l->data;
 		req = p->data;
@@ -830,17 +832,17 @@ static void browsing_response(struct avctp_channel *browsing,
 		if (p->transaction != avctp->transaction)
 			continue;
 
-		avctp_ref(browsing->session);
-
 		if (req->func && req->func(browsing->session, operands,
 						operand_count, req->user_data))
-			return;
+			break;
 
 		browsing->processed = g_slist_remove(browsing->processed, p);
 		pending_destroy(p, NULL);
 
-		return;
+		break;
 	}
+
+	avctp_unref(browsing->session);
 }
 
 static gboolean session_browsing_cb(GIOChannel *chan, GIOCondition cond,
