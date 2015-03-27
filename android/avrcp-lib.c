@@ -2449,6 +2449,8 @@ static int parse_attribute_list(uint8_t *params, uint16_t params_len,
 			text[i] = g_strndup(item->data, item->len);
 			params_len -= item->len;
 			params += item->len;
+		} else {
+			text[i] = NULL;
 		}
 	}
 
