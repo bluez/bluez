@@ -345,8 +345,8 @@ typedef struct {
 
 static inline void bswap_128(const void *src, void *dst)
 {
-	const uint8_t *s = src;
-	uint8_t *d = dst;
+	const uint8_t *s = (const uint8_t *) src;
+	uint8_t *d = (uint8_t *) dst;
 	int i;
 
 	for (i = 0; i < 16; i++)
