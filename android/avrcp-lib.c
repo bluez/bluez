@@ -2461,6 +2461,12 @@ fail:
 	return -EPROTO;
 }
 
+static void free_attribute_list(uint8_t number, char **text)
+{
+	while(number--)
+		g_free(text[number]);
+}
+
 static int parse_elements(struct avrcp_header *pdu, uint8_t *number,
 						uint32_t *attrs, char **text)
 {
@@ -2534,6 +2540,9 @@ static gboolean get_element_attributes_rsp(struct avctp *conn,
 done:
 	player->cfm->get_element_attributes(session, err, number, attrs, text,
 							player->user_data);
+
+	if (err == 0)
+		free_attribute_list(number, text);
 
 	return FALSE;
 }
@@ -2858,6 +2867,9 @@ static gboolean get_item_attributes_rsp(struct avctp *conn, uint8_t *operands,
 done:
 	player->cfm->get_item_attributes(session, err, number, attrs, text,
 							player->user_data);
+
+	if (err == 0)
+		free_attribute_list(number, text);
 
 	return FALSE;
 }
