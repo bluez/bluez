@@ -77,8 +77,7 @@ struct test_data {
 		};							\
 		static struct test_data data;				\
 		data.mtu = _mtu;					\
-		data.pdu_list = g_malloc(sizeof(pdus));			\
-		memcpy(data.pdu_list, pdus, sizeof(pdus));		\
+		data.pdu_list = g_memdup(pdus, sizeof(pdus));		\
 		g_test_add_data_func(name, &data, test_sdp);		\
 	} while (0)
 
