@@ -6679,13 +6679,11 @@ static int adapter_register(struct btd_adapter *adapter)
 	/* Don't start advertising managers on non-LE controllers. */
 	if (adapter->supported_settings & MGMT_SETTING_LE) {
 		adapter->adv_manager = btd_advertising_manager_new(adapter);
-		if (!adapter->adv_manager) {
+
+		/* LEAdvertisingManager1 is experimental so optional */
+		if (!adapter->adv_manager)
 			error("Failed to register LEAdvertisingManager1 "
 						"interface for adapter");
-			btd_gatt_database_destroy(adapter->database);
-			adapter->database = NULL;
-			return -EINVAL;
-		}
 	} else {
 		info("Not starting LEAdvertisingManager, LE not supported");
 	}
