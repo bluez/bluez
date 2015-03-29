@@ -397,6 +397,7 @@ struct generic_data {
 	uint16_t send_len;
 	const void * (*send_func)(uint16_t *len);
 	uint8_t expect_status;
+	bool expect_ignore_param;
 	const void *expect_param;
 	uint16_t expect_len;
 	const void * (*expect_func)(uint16_t *len);
@@ -1380,6 +1381,10 @@ static const struct generic_data set_ssp_on_invalid_index_test = {
 };
 
 static uint16_t settings_powered_ssp[] = { MGMT_OP_SET_SSP,
+						MGMT_OP_SET_POWERED, 0 };
+
+static uint16_t settings_powered_sc[] = { MGMT_OP_SET_SSP,
+						MGMT_OP_SET_SECURE_CONN,
 						MGMT_OP_SET_POWERED, 0 };
 
 static const char set_sc_on_param[] = { 0x01 };
@@ -4472,6 +4477,22 @@ static const struct generic_data read_local_oob_legacy_pairing_test = {
 	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
 };
 
+static const struct generic_data read_local_oob_success_ssp_test = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_DATA,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_ignore_param = true,
+	.expect_hci_command = BT_HCI_CMD_READ_LOCAL_OOB_DATA,
+};
+
+static const struct generic_data read_local_oob_success_sc_test = {
+	.setup_settings = settings_powered_sc,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_DATA,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_ignore_param = true,
+	.expect_hci_command = BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -5319,18 +5340,20 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (test->expect_func)
-		expect_param = test->expect_func(&expect_len);
+	if (!test->expect_ignore_param) {
+		if (test->expect_func)
+			expect_param = test->expect_func(&expect_len);
 
-	if (length != expect_len) {
-		tester_test_failed();
-		return;
-	}
+		if (length != expect_len) {
+			tester_test_failed();
+			return;
+		}
 
-	if (expect_param && expect_len > 0 &&
-				memcmp(param, expect_param, length)) {
-		tester_test_failed();
-		return;
+		if (expect_param && expect_len > 0 &&
+					memcmp(param, expect_param, length)) {
+			tester_test_failed();
+			return;
+		}
 	}
 
 	test_condition_complete(data);
@@ -6483,6 +6506,12 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredr20("Read Local OOB Data - Legacy pairing",
 				&read_local_oob_legacy_pairing_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Local OOB Data - Success SSP",
+				&read_local_oob_success_ssp_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Local OOB Data - Success SC",
+				&read_local_oob_success_sc_test,
 				NULL, test_command_generic);
 
 	return tester_run();
