@@ -477,6 +477,45 @@ static const struct generic_data read_info_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const struct generic_data read_unconf_index_list_invalid_param_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_UNCONF_INDEX_LIST,
+	.send_param = dummy_data,
+	.send_len = sizeof(dummy_data),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data read_unconf_index_list_invalid_index_test = {
+	.send_opcode = MGMT_OP_READ_UNCONF_INDEX_LIST,
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const struct generic_data read_config_info_invalid_param_test = {
+	.send_opcode = MGMT_OP_READ_CONFIG_INFO,
+	.send_param = dummy_data,
+	.send_len = sizeof(dummy_data),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data read_config_info_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_CONFIG_INFO,
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const struct generic_data read_ext_index_list_invalid_param_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_EXT_INDEX_LIST,
+	.send_param = dummy_data,
+	.send_len = sizeof(dummy_data),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data read_ext_index_list_invalid_index_test = {
+	.send_opcode = MGMT_OP_READ_EXT_INDEX_LIST,
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
 static const char set_powered_on_param[] = { 0x01 };
 static const char set_powered_invalid_param[] = { 0x02 };
 static const char set_powered_garbage_param[] = { 0x01, 0x00 };
@@ -3786,6 +3825,19 @@ static const struct generic_data remove_device_success_5 = {
 	.expect_hci_len = sizeof(set_le_scan_off),
 };
 
+static const struct generic_data read_adv_features_invalid_param_test = {
+	.send_opcode = MGMT_OP_READ_ADV_FEATURES,
+	.send_param = dummy_data,
+	.send_len = sizeof(dummy_data),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data read_adv_features_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_ADV_FEATURES,
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
 static const uint8_t add_advertising_param_1[] = {
 	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00,
 	0x03, 0x02, 0x0d, 0x18,
@@ -5501,6 +5553,24 @@ int main(int argc, char *argv[])
 	test_bredrle("Read info - Invalid index",
 				&read_info_invalid_index_test,
 				NULL, test_command_generic);
+	test_bredrle("Read unconfigured index list - Invalid parameters",
+				&read_unconf_index_list_invalid_param_test,
+				NULL, test_command_generic);
+	test_bredrle("Read unconfigured index list - Invalid index",
+				&read_unconf_index_list_invalid_index_test,
+				NULL, test_command_generic);
+	test_bredrle("Read configuration info - Invalid parameters",
+				&read_config_info_invalid_param_test,
+				NULL, test_command_generic);
+	test_bredrle("Read configuration info - Invalid index",
+				&read_config_info_invalid_index_test,
+				NULL, test_command_generic);
+	test_bredrle("Read extended index list - Invalid parameters",
+				&read_ext_index_list_invalid_param_test,
+				NULL, test_command_generic);
+	test_bredrle("Read extended index list - Invalid index",
+				&read_ext_index_list_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set powered on - Success",
 				&set_powered_on_success_test,
@@ -6242,6 +6312,12 @@ int main(int argc, char *argv[])
 				&remove_device_success_5,
 				setup_add_device, test_command_generic);
 
+	test_bredrle("Read Advertising Features - Invalid parameters",
+				&read_adv_features_invalid_param_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Advertising Features - Invalid index",
+				&read_adv_features_invalid_index_test,
+				NULL, test_command_generic);
 	test_bredrle("Add Advertising - Failure: LE off",
 					&add_advertising_fail_1,
 					NULL, test_command_generic);
