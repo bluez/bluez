@@ -314,11 +314,8 @@ static void set_common_commands_bredrle(struct btdev *btdev)
 	btdev->commands[15] |= 0x02;	/* Read BD ADDR */
 }
 
-static void set_bredr_commands(struct btdev *btdev)
+static void set_common_commands_bredr20(struct btdev *btdev)
 {
-	set_common_commands_all(btdev);
-	set_common_commands_bredrle(btdev);
-
 	btdev->commands[0]  |= 0x01;	/* Inquiry */
 	btdev->commands[0]  |= 0x02;	/* Inquiry Cancel */
 	btdev->commands[0]  |= 0x10;	/* Create Connection */
@@ -371,6 +368,14 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[14] |= 0x40;	/* Read Local Extended Features */
 	btdev->commands[15] |= 0x01;	/* Read Country Code */
 	btdev->commands[16] |= 0x04;	/* Enable Device Under Test Mode */
+}
+
+static void set_bredr_commands(struct btdev *btdev)
+{
+	set_common_commands_all(btdev);
+	set_common_commands_bredrle(btdev);
+	set_common_commands_bredr20(btdev);
+
 	btdev->commands[16] |= 0x08;	/* Setup Synchronous Connection */
 	btdev->commands[17] |= 0x01;	/* Read Extended Inquiry Response */
 	btdev->commands[17] |= 0x02;	/* Write Extended Inquiry Response */
@@ -383,6 +388,13 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
 	btdev->commands[29] |= 0x20;	/* Read Local Supported Codecs */
 	btdev->commands[30] |= 0x08;	/* Get MWS Transport Layer Config */
+}
+
+static void set_bredr20_commands(struct btdev *btdev)
+{
+	set_common_commands_all(btdev);
+	set_common_commands_bredrle(btdev);
+	set_common_commands_bredr20(btdev);
 }
 
 static void set_le_commands(struct btdev *btdev)
@@ -496,6 +508,25 @@ static void set_bredr_features(struct btdev *btdev)
 	btdev->max_page = 1;
 }
 
+static void set_bredr20_features(struct btdev *btdev)
+{
+	btdev->features[0] |= 0x04;	/* Encryption */
+	btdev->features[0] |= 0x20;	/* Role switch */
+	btdev->features[0] |= 0x80;	/* Sniff mode */
+	btdev->features[1] |= 0x08;	/* SCO link */
+	btdev->features[3] |= 0x40;	/* RSSI with inquiry results */
+	btdev->features[3] |= 0x80;	/* Extended SCO link */
+	btdev->features[4] |= 0x08;	/* AFH capable slave */
+	btdev->features[4] |= 0x10;	/* AFH classification slave */
+	btdev->features[5] |= 0x02;	/* Sniff subrating */
+	btdev->features[5] |= 0x04;	/* Pause encryption */
+	btdev->features[5] |= 0x08;	/* AFH capable master */
+	btdev->features[5] |= 0x10;	/* AFH classification master */
+	btdev->features[7] |= 0x80;	/* Extended features */
+
+	btdev->max_page = 1;
+}
+
 static void set_le_features(struct btdev *btdev)
 {
 	btdev->features[4] |= 0x20;	/* BR/EDR Not Supported */
@@ -521,30 +552,33 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->type = type;
 
 	btdev->manufacturer = 63;
-
-	if (type == BTDEV_TYPE_BREDR)
-		btdev->version = 0x05;
-	else
-		btdev->version = 0x08;
-
 	btdev->revision = 0x0000;
 
 	switch (btdev->type) {
 	case BTDEV_TYPE_BREDRLE:
+		btdev->version = 0x08;
 		set_bredrle_features(btdev);
 		set_bredrle_commands(btdev);
 		break;
 	case BTDEV_TYPE_BREDR:
+		btdev->version = 0x05;
 		set_bredr_features(btdev);
 		set_bredr_commands(btdev);
 		break;
 	case BTDEV_TYPE_LE:
+		btdev->version = 0x08;
 		set_le_features(btdev);
 		set_le_commands(btdev);
 		break;
 	case BTDEV_TYPE_AMP:
+		btdev->version = 0x01;
 		set_amp_features(btdev);
 		set_amp_commands(btdev);
+		break;
+	case BTDEV_TYPE_BREDR20:
+		btdev->version = 0x04;
+		set_bredr20_features(btdev);
+		set_bredr20_commands(btdev);
 		break;
 	}
 
