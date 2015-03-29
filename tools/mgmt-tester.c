@@ -319,6 +319,25 @@ static void test_condition_complete(struct test_data *data)
 				test_post_teardown, 2, user, free); \
 	} while (0)
 
+#define test_bredr20(name, data, setup, func) \
+	do { \
+		struct test_data *user; \
+		user = malloc(sizeof(struct test_data)); \
+		if (!user) \
+			break; \
+		user->hciemu_type = HCIEMU_TYPE_LEGACY; \
+		user->test_setup = setup; \
+		user->test_data = data; \
+		user->expected_version = 0x04; \
+		user->expected_manufacturer = 0x003f; \
+		user->expected_supported_settings = 0x000010bf; \
+		user->initial_settings = 0x00000080; \
+		user->unmet_conditions = 0; \
+		tester_add_full(name, data, \
+				test_pre_setup, test_setup, func, NULL, \
+				test_post_teardown, 2, user, free); \
+	} while (0)
+
 #define test_bredr(name, data, setup, func) \
 	do { \
 		struct test_data *user; \
@@ -4429,6 +4448,30 @@ static const struct generic_data remove_advertising_success_2 = {
 	.expect_hci_len = sizeof(set_adv_off_param),
 };
 
+static const struct generic_data read_local_oob_not_powered_test = {
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_DATA,
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+};
+
+static const struct generic_data read_local_oob_invalid_param_test = {
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_DATA,
+	.send_param = dummy_data,
+	.send_len = sizeof(dummy_data),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data read_local_oob_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_DATA,
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const struct generic_data read_local_oob_legacy_pairing_test = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_DATA,
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -6318,6 +6361,7 @@ int main(int argc, char *argv[])
 	test_bredrle("Read Advertising Features - Invalid index",
 				&read_adv_features_invalid_index_test,
 				NULL, test_command_generic);
+
 	test_bredrle("Add Advertising - Failure: LE off",
 					&add_advertising_fail_1,
 					NULL, test_command_generic);
@@ -6427,6 +6471,19 @@ int main(int argc, char *argv[])
 						&remove_advertising_success_2,
 						setup_add_advertising,
 						test_command_generic);
+
+	test_bredrle("Read Local OOB Data - Not powered",
+				&read_local_oob_not_powered_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Local OOB Data - Invalid parameters",
+				&read_local_oob_invalid_param_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Local OOB Data - Invalid index",
+				&read_local_oob_invalid_index_test,
+				NULL, test_command_generic);
+	test_bredr20("Read Local OOB Data - Legacy pairing",
+				&read_local_oob_legacy_pairing_test,
+				NULL, test_command_generic);
 
 	return tester_run();
 }
