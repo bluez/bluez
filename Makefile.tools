@@ -368,4 +368,4 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/service-ftp.xml test/simple-player test/test-nap \
 		test/test-heartrate test/test-alert test/test-hfp \
 		test/test-cyclingspeed test/opp-client test/ftp-client \
-		test/pbap-client test/map-client
+		test/pbap-client test/map-client test/advertisement-example
