@@ -301,7 +301,8 @@ int bt_uuid_to_le(const bt_uuid_t *src, void *dst)
 		bt_put_le16(src->value.u16, dst);
 		return 0;
 	case BT_UUID32:
-		bt_uuid_to_uuid128(src, &uuid);
+		bt_uuid32_to_uuid128(src, &uuid);
+		src = &uuid;
 		/* Fallthrough */
 	case BT_UUID128:
 		/* Convert from 128-bit BE to LE */
