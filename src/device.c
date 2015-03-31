@@ -83,6 +83,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+#define RSSI_THRESHOLD		8
+
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
 
@@ -4547,7 +4549,8 @@ void device_set_legacy(struct btd_device *device, bool legacy)
 					DEVICE_INTERFACE, "LegacyPairing");
 }
 
-void device_set_rssi(struct btd_device *device, int8_t rssi)
+void device_set_rssi_with_delta(struct btd_device *device, int8_t rssi,
+							int8_t delta_threshold)
 {
 	if (!device)
 		return;
@@ -4567,8 +4570,8 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 		else
 			delta = rssi - device->rssi;
 
-		/* only report changes of 8 dBm or more */
-		if (delta < 8)
+		/* only report changes of delta_threshold dBm or more */
+		if (delta < delta_threshold)
 			return;
 
 		DBG("rssi %d delta %d", rssi, delta);
@@ -4578,6 +4581,11 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "RSSI");
+}
+
+void device_set_rssi(struct btd_device *device, int8_t rssi)
+{
+	device_set_rssi_with_delta(device, rssi, RSSI_THRESHOLD);
 }
 
 static gboolean start_discovery(gpointer user_data)

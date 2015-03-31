@@ -90,6 +90,8 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary);
 void btd_device_set_trusted(struct btd_device *device, gboolean trusted);
 void device_set_bonded(struct btd_device *device, uint8_t bdaddr_type);
 void device_set_legacy(struct btd_device *device, bool legacy);
+void device_set_rssi_with_delta(struct btd_device *device, int8_t rssi,
+							int8_t delta_threshold);
 void device_set_rssi(struct btd_device *device, int8_t rssi);
 bool btd_device_is_connected(struct btd_device *dev);
 uint8_t btd_device_get_bdaddr_type(struct btd_device *dev);
