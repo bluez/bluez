@@ -1,3 +1,13 @@
+ver 5.30:
+	Fix compilation error in C++ due to inline function.
+	Fix issue with missing storage of device information.
+	Fix issue with GATT client and gaps in service handles.
+	Fix issue with AVDTP discovery callback crashing.
+	Fix issue with AVCTP channel handling in case of conflicts.
+	Fix issue with AVRCP target and get capabilities command.
+	Add experimental support for LE advertising manager API.
+	Add support for Android 5.1 GATT MTU exchange API.
+
 ver 5.29:
 	Fix issue with AVCTP initial key repeat timeout.
 	Fix issue with Android application disconnect handling.
