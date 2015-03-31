@@ -1243,6 +1243,26 @@ const char *bt_compidtostr(int compid)
 		return "Sano, Inc";
 	case 490:
 		return "Advanced Application Design, Inc.";
+	case 491:
+		return "AutoMap LLC";
+	case 492:
+		return "Spreadtrum Communications Shanghai Ltd";
+	case 493:
+		return "CuteCircuit LTD";
+	case 494:
+		return "Valeo Service";
+	case 495:
+		return "Fullpower Technologies, Inc.";
+	case 496:
+		return "KloudNation";
+	case 497:
+		return "Zebra Technologies Corporation";
+	case 498:
+		return "Itron, Inc.";
+	case 499:
+		return "The University of Tokyo";
+	case 500:
+		return "UTC Fire and Security";
 	case 65535:
 		return "internal use";
 	default:
