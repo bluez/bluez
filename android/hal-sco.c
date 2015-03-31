@@ -1054,16 +1054,22 @@ static ssize_t in_read(struct audio_stream_in *stream, void *buffer,
 								size_t bytes)
 {
 	struct sco_stream_in *in = (struct sco_stream_in *) stream;
-#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
-	size_t frame_size = audio_stream_in_frame_size(&in->stream);
-#else
-	size_t frame_size = audio_stream_frame_size(&stream->common);
-#endif
-	size_t frame_num = bytes / frame_size;
-	size_t input_frame_num = frame_num;
+	size_t frame_size, frame_num, input_frame_num;
 	void *read_buf = buffer;
 	size_t total = bytes;
 	int ret;
+
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	frame_size = audio_stream_in_frame_size(&in->stream);
+#else
+	frame_size = audio_stream_frame_size(&stream->common);
+#endif
+
+	if (!frame_size)
+		return -1;
+
+	frame_num = bytes / frame_size;
+	input_frame_num = frame_num;
 
 	DBG("Read from fd %d bytes %zu", sco_fd, bytes);
 
