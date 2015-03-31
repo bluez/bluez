@@ -5315,6 +5315,60 @@ static void adapter_msd_notify(struct btd_adapter *adapter,
 	}
 }
 
+static bool is_filter_match(GSList *discovery_filter, struct eir_data *eir_data,
+								int8_t rssi)
+{
+	GSList *l, *m;
+	bool got_match = false;
+
+	for (l = discovery_filter; l != NULL && got_match != true;
+							l = g_slist_next(l)) {
+		struct watch_client *client = l->data;
+		struct discovery_filter *item = client->discovery_filter;
+
+		/*
+		 * If one of currently running scans is regular scan, then
+		 * return all devices as matches
+		 */
+		if (!item) {
+			got_match = true;
+			continue;
+		}
+
+		/* if someone started discovery with empty uuids, he wants all
+		 * devices in given proximity.
+		 */
+		if (!item->uuids)
+			got_match = true;
+		else {
+			for (m = item->uuids; m != NULL && got_match != true;
+							m = g_slist_next(m)) {
+				/* m->data contains string representation of
+				 * uuid.
+				 */
+				if (g_slist_find_custom(eir_data->services,
+							m->data,
+							g_strcmp) != NULL)
+					got_match = true;
+			}
+		}
+
+		if (got_match) {
+			/* we have service match, check proximity */
+			if (item->rssi == DISTANCE_VAL_INVALID ||
+			    item->rssi <= rssi ||
+			    item->pathloss == DISTANCE_VAL_INVALID ||
+			    (eir_data->tx_power != 127 &&
+			     eir_data->tx_power - rssi <= item->pathloss))
+				return true;
+
+			got_match = false;
+		}
+	}
+
+	return got_match;
+}
+
 static void update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
@@ -5381,8 +5435,18 @@ static void update_found_devices(struct btd_adapter *adapter,
 		return;
 	}
 
+	if (adapter->filtered_discovery &&
+	    !is_filter_match(adapter->discovery_list, &eir_data, rssi)) {
+		eir_data_free(&eir_data);
+		return;
+	}
+
 	device_set_legacy(dev, legacy);
-	device_set_rssi(dev, rssi);
+
+	if (adapter->filtered_discovery)
+		device_set_rssi_with_delta(dev, rssi, 0);
+	else
+		device_set_rssi(dev, rssi);
 
 	if (eir_data.appearance != 0)
 		device_set_appearance(dev, eir_data.appearance);
