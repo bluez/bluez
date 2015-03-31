@@ -630,6 +630,7 @@ static void usage(void)
 		"\t-m, --mtu <mtu>\t\t\tThe ATT MTU to use\n"
 		"\t-s, --security-level <sec>\tSet security level (low|"
 								"medium|high)\n"
+		"\t-t, --type [random|public] \t The source address type\n"
 		"\t-v, --verbose\t\t\tEnable extra logging\n"
 		"\t-r, --heart-rate\t\tEnable Heart Rate service\n"
 		"\t-h, --help\t\t\tDisplay help\n");
@@ -639,13 +640,15 @@ static struct option main_options[] = {
 	{ "index",		1, 0, 'i' },
 	{ "mtu",		1, 0, 'm' },
 	{ "security-level",	1, 0, 's' },
+	{ "type",		1, 0, 't' },
 	{ "verbose",		0, 0, 'v' },
 	{ "heart-rate",		0, 0, 'r' },
 	{ "help",		0, 0, 'h' },
 	{ }
 };
 
-static int l2cap_le_att_listen_and_accept(bdaddr_t *src, int sec)
+static int l2cap_le_att_listen_and_accept(bdaddr_t *src, int sec,
+							uint8_t src_type)
 {
 	int sk, nsk;
 	struct sockaddr_l2 srcaddr, addr;
@@ -663,7 +666,7 @@ static int l2cap_le_att_listen_and_accept(bdaddr_t *src, int sec)
 	memset(&srcaddr, 0, sizeof(srcaddr));
 	srcaddr.l2_family = AF_BLUETOOTH;
 	srcaddr.l2_cid = htobs(ATT_CID);
-	srcaddr.l2_bdaddr_type = 0;
+	srcaddr.l2_bdaddr_type = src_type;
 	bacpy(&srcaddr.l2_bdaddr, src);
 
 	if (bind(sk, (struct sockaddr *) &srcaddr, sizeof(srcaddr)) < 0) {
@@ -1131,12 +1134,13 @@ int main(int argc, char *argv[])
 	int dev_id = -1;
 	int fd;
 	int sec = BT_SECURITY_LOW;
+	uint8_t src_type = BDADDR_LE_PUBLIC;
 	uint16_t mtu = 0;
 	sigset_t mask;
 	bool hr_visible = false;
 	struct server *server;
 
-	while ((opt = getopt_long(argc, argv, "+hvrs:m:i:",
+	while ((opt = getopt_long(argc, argv, "+hvrs:t:m:i:",
 						main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
@@ -1157,6 +1161,17 @@ int main(int argc, char *argv[])
 				sec = BT_SECURITY_HIGH;
 			else {
 				fprintf(stderr, "Invalid security level\n");
+				return EXIT_FAILURE;
+			}
+			break;
+		case 't':
+			if (strcmp(optarg, "random") == 0)
+				src_type = BDADDR_LE_RANDOM;
+			else if (strcmp(optarg, "public") == 0)
+				src_type = BDADDR_LE_PUBLIC;
+			else {
+				fprintf(stderr,
+					"Allowed types: random, public\n");
 				return EXIT_FAILURE;
 			}
 			break;
@@ -1207,7 +1222,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	fd = l2cap_le_att_listen_and_accept(&src_addr, sec);
+	fd = l2cap_le_att_listen_and_accept(&src_addr, sec, src_type);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to accept L2CAP ATT connection\n");
 		return EXIT_FAILURE;
