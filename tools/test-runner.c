@@ -57,6 +57,8 @@ static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
 
 static const char *qemu_table[] = {
+	"qemu-system-x86_64",
+	"qemu-system-i386",
 	"/usr/bin/qemu-system-x86_64",
 	"/usr/bin/qemu-system-i386",
 	NULL
