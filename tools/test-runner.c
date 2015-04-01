@@ -287,8 +287,9 @@ static void create_dbus_system_conf(void)
 
 static pid_t start_dbus_daemon(void)
 {
-	char *argv[9], *envp[1];
+	char *argv[3], *envp[1];
 	pid_t pid;
+	int i;
 
 	argv[0] = "/usr/bin/dbus-daemon";
 	argv[1] = "--system";
@@ -311,6 +312,77 @@ static pid_t start_dbus_daemon(void)
 
 	printf("D-Bus daemon process %d created\n", pid);
 
+	for (i = 0; i < 20; i++) {
+		struct stat st;
+
+		if (!stat("/run/dbus/system_bus_socket", &st)) {
+			printf("Found D-Bus daemon socket\n");
+			break;
+		}
+
+		usleep(25 * 1000);
+	}
+
+	return pid;
+}
+
+static const char *daemon_table[] = {
+	"bluetoothd",
+	"src/bluetoothd",
+	"/usr/sbin/bluetoothd",
+	"/usr/libexec/bluetooth/bluetoothd",
+	NULL
+};
+
+static pid_t start_bluetooth_daemon(const char *home)
+{
+	const char *daemon = NULL;
+	char *argv[3], *envp[1];
+	pid_t pid;
+	int i;
+
+	if (chdir(home + 5) < 0) {
+		perror("Failed to change home directory for daemon");
+		return -1;
+	}
+
+	for (i = 0; daemon_table[i]; i++) {
+		struct stat st;
+
+		if (!stat(daemon_table[i], &st)) {
+			daemon = daemon_table[i];
+			break;
+		}
+	}
+
+	if (!daemon) {
+		fprintf(stderr, "Failed to locate Bluetooth daemon binary\n");
+		return -1;
+	}
+
+	printf("Using Bluetooth daemon %s\n", daemon);
+
+	argv[0] = (char *) daemon;
+	argv[1] = "--nodetach";
+	argv[2] = NULL;
+
+	envp[0] = NULL;
+
+	printf("Starting Bluetooth daemon\n");
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		return -1;
+	}
+
+	if (pid == 0) {
+		execve(argv[0], argv, envp);
+		exit(EXIT_SUCCESS);
+	}
+
+	printf("Bluetooth daemon process %d created\n", pid);
+
 	return pid;
 }
 
@@ -318,13 +390,16 @@ static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
 	int pos = 0;
-	pid_t pid, dbus_pid;
+	pid_t pid, dbus_pid, daemon_pid;
 
 	if (start_dbus) {
 		create_dbus_system_conf();
 		dbus_pid = start_dbus_daemon();
-	} else
+		daemon_pid = start_bluetooth_daemon(home);
+	} else {
 		dbus_pid = -1;
+		daemon_pid = -1;
+	}
 
 	while (1) {
 		char *ptr;
@@ -388,7 +463,14 @@ static void run_command(char *cmdname, char *home)
 			dbus_pid = -1;
 		}
 
+		if (corpse == daemon_pid) {
+			printf("Bluetooth daemon terminated\n");
+			daemon_pid = -1;
+		}
+
 		if (corpse == pid) {
+			if (daemon_pid > 0)
+				kill(daemon_pid, SIGTERM);
 			if (dbus_pid > 0)
 				kill(dbus_pid, SIGTERM);
 			break;
