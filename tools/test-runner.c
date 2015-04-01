@@ -51,6 +51,7 @@ static const char *own_binary;
 static char **test_argv;
 static int test_argc;
 
+static bool run_auto = false;
 static bool start_dbus = false;
 static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
@@ -234,8 +235,9 @@ static void start_qemu(void)
 				"rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.L "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
-				"TESTHOME=%s TESTDBUS=%u TESTARGS=\'%s\'",
-					initcmd, cwd, start_dbus, testargs);
+				"TESTHOME=%s TESTDBUS=%u TESTAUTO=%u "
+				"TESTARGS=\'%s\'",
+				initcmd, cwd, start_dbus, run_auto, testargs);
 
 	argv = alloca(sizeof(qemu_argv));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
@@ -386,10 +388,26 @@ static pid_t start_bluetooth_daemon(const char *home)
 	return pid;
 }
 
+static const char *test_table[] = {
+	"mgmt-tester",
+	"smp-tester",
+	"l2cap-tester",
+	"rfcomm-tester",
+	"sco-tester",
+	"check-selftest",
+	"tools/mgmt-tester",
+	"tools/smp-tester",
+	"tools/l2cap-tester",
+	"tools/rfcomm-tester",
+	"tools/sco-tester",
+	"tools/check-selftest",
+	NULL
+};
+
 static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
-	int pos = 0;
+	int pos = 0, idx = 0;
 	pid_t pid, dbus_pid, daemon_pid;
 
 	if (start_dbus) {
@@ -401,24 +419,48 @@ static void run_command(char *cmdname, char *home)
 		daemon_pid = -1;
 	}
 
-	while (1) {
-		char *ptr;
-
-		ptr = strchr(cmdname, ' ');
-		if (!ptr) {
-			argv[pos++] = cmdname;
-			break;
+start_next:
+	if (run_auto) {
+		if (chdir(home + 5) < 0) {
+			perror("Failed to change home test directory");
+			return;
 		}
 
-		*ptr = '\0';
-		argv[pos++] = cmdname;
-		if (pos > 8)
-			break;
+		while (1) {
+			struct stat st;
 
-		cmdname = ptr + 1;
+			if (!test_table[idx])
+				return;
+
+			if (!stat(test_table[idx], &st))
+				break;
+
+			idx++;
+		}
+
+		argv[0] = (char *) test_table[idx];
+		argv[1] = "-q";
+		argv[2] = NULL;
+	} else {
+		while (1) {
+			char *ptr;
+
+			ptr = strchr(cmdname, ' ');
+			if (!ptr) {
+				argv[pos++] = cmdname;
+				break;
+			}
+
+			*ptr = '\0';
+			argv[pos++] = cmdname;
+			if (pos > 8)
+				break;
+
+			cmdname = ptr + 1;
+		}
+
+		argv[pos] = NULL;
 	}
-
-	argv[pos] = NULL;
 
 	pos = 0;
 	envp[pos++] = "TERM=linux";
@@ -469,12 +511,19 @@ static void run_command(char *cmdname, char *home)
 		}
 
 		if (corpse == pid) {
-			if (daemon_pid > 0)
-				kill(daemon_pid, SIGTERM);
-			if (dbus_pid > 0)
-				kill(dbus_pid, SIGTERM);
+			if (!run_auto) {
+				if (daemon_pid > 0)
+					kill(daemon_pid, SIGTERM);
+				if (dbus_pid > 0)
+					kill(dbus_pid, SIGTERM);
+			}
 			break;
 		}
+	}
+
+	if (run_auto) {
+		idx++;
+		goto start_next;
 	}
 }
 
@@ -512,6 +561,12 @@ static void run_tests(void)
 
 	*ptr = '\0';
 
+	ptr = strstr(cmdline, "TESTAUTO=1");
+	if (ptr) {
+		printf("Automatic test execution requested\n");
+		run_auto= true;
+	}
+
 	ptr = strstr(cmdline, "TESTDBUS=1");
 	if (ptr) {
 		printf("D-Bus daemon requested\n");
@@ -535,6 +590,7 @@ static void usage(void)
 		"Usage:\n");
 	printf("\ttest-runner [options] [--] <command> [args]\n");
 	printf("Options:\n"
+		"\t-a, --auto             Find tests and run them\n"
 		"\t-d, --dbus             Start D-Bus daemon\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
@@ -542,6 +598,8 @@ static void usage(void)
 }
 
 static const struct option main_options[] = {
+	{ "all",     no_argument,       NULL, 'a' },
+	{ "auto",    no_argument,       NULL, 'a' },
 	{ "dbus",    no_argument,       NULL, 'd' },
 	{ "qemu",    required_argument, NULL, 'q' },
 	{ "kernel",  required_argument, NULL, 'k' },
@@ -564,11 +622,14 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "dq:k:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "adq:k:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'a':
+			run_auto = true;
+			break;
 		case 'd':
 			start_dbus = true;
 			break;
@@ -589,9 +650,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc - optind < 1) {
-		fprintf(stderr, "Failed to specify test command\n");
-		return EXIT_FAILURE;
+	if (run_auto) {
+		if (argc - optind > 0) {
+			fprintf(stderr, "Invalid command line parameters\n");
+			return EXIT_FAILURE;
+		}
+	} else {
+		if (argc - optind < 1) {
+			fprintf(stderr, "Failed to specify test command\n");
+			return EXIT_FAILURE;
+		}
 	}
 
 	own_binary = argv[0];
