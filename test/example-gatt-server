@@ -86,7 +86,7 @@ class Service(dbus.service.Object):
     @dbus.service.method(DBUS_OM_IFACE, out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
         response = {}
-        print 'GetManagedObjects'
+        print('GetManagedObjects')
 
         response[self.get_path()] = self.get_properties()
         chrcs = self.get_characteristics()
@@ -147,22 +147,22 @@ class Characteristic(dbus.service.Object):
 
     @dbus.service.method(GATT_CHRC_IFACE, out_signature='ay')
     def ReadValue(self):
-        print 'Default ReadValue called, returning error'
+        print('Default ReadValue called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_CHRC_IFACE, in_signature='ay')
     def WriteValue(self, value):
-        print 'Default WriteValue called, returning error'
+        print('Default WriteValue called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_CHRC_IFACE)
     def StartNotify(self):
-        print 'Default StartNotify called, returning error'
+        print('Default StartNotify called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_CHRC_IFACE)
     def StopNotify(self):
-        print 'Default StopNotify called, returning error'
+        print('Default StopNotify called, returning error')
         raise NotSupportedException()
 
     @dbus.service.signal(DBUS_PROP_IFACE,
@@ -201,12 +201,12 @@ class Descriptor(dbus.service.Object):
 
     @dbus.service.method(GATT_DESC_IFACE, out_signature='ay')
     def ReadValue(self):
-        print 'Default ReadValue called, returning error'
+        print ('Default ReadValue called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_DESC_IFACE, in_signature='ay')
     def WriteValue(self, value):
-        print 'Default WriteValue called, returning error'
+        print('Default WriteValue called, returning error')
         raise NotSupportedException()
 
 
@@ -253,14 +253,14 @@ class HeartRateMeasurementChrc(Characteristic):
                 min(0xffff, self.service.energy_expended + 1)
         self.hr_ee_count += 1
 
-        print 'Updating value: ' + repr(value)
+        print('Updating value: ' + repr(value))
 
         self.PropertiesChanged(GATT_CHRC_IFACE, { 'Value': value }, [])
 
         return self.notifying
 
     def _update_hr_msrmt_simulation(self):
-        print 'Update HR Measurement Simulation'
+        print('Update HR Measurement Simulation')
 
         if not self.notifying:
             return
@@ -269,7 +269,7 @@ class HeartRateMeasurementChrc(Characteristic):
 
     def StartNotify(self):
         if self.notifying:
-            print 'Already notifying, nothing to do'
+            print('Already notifying, nothing to do')
             return
 
         self.notifying = True
@@ -277,7 +277,7 @@ class HeartRateMeasurementChrc(Characteristic):
 
     def StopNotify(self):
         if not self.notifying:
-            print 'Not notifying, nothing to do'
+            print('Not notifying, nothing to do')
             return
 
         self.notifying = False
@@ -309,18 +309,18 @@ class HeartRateControlPointChrc(Characteristic):
                 service)
 
     def WriteValue(self, value):
-        print 'Heart Rate Control Point WriteValue called'
+        print('Heart Rate Control Point WriteValue called')
 
         if len(value) != 1:
             raise InvalidValueLengthException()
 
         byte = value[0]
-        print 'Control Point value: ' + repr(byte)
+        print('Control Point value: ' + repr(byte))
 
         if byte != 1:
             raise FailedException("0x80")
 
-        print 'Energy Expended field reset!'
+        print('Energy Expended field reset!')
         self.service.energy_expended = 0
 
 
@@ -366,17 +366,17 @@ class BatteryLevelCharacteristic(Characteristic):
             self.battery_lvl -= 2
             if self.battery_lvl < 0:
                 self.battery_lvl = 0
-        print 'Battery Level drained: ' + repr(self.battery_lvl)
+        print('Battery Level drained: ' + repr(self.battery_lvl))
         self.notify_battery_level()
         return True
 
     def ReadValue(self):
-        print 'Battery Level read: ' + repr(self.battery_lvl)
+        print('Battery Level read: ' + repr(self.battery_lvl))
         return [dbus.Byte(self.battery_lvl)]
 
     def StartNotify(self):
         if self.notifying:
-            print 'Already notifying, nothing to do'
+            print('Already notifying, nothing to do')
             return
 
         self.notifying = True
@@ -384,7 +384,7 @@ class BatteryLevelCharacteristic(Characteristic):
 
     def StopNotify(self):
         if not self.notifying:
-            print 'Not notifying, nothing to do'
+            print('Not notifying, nothing to do')
             return
 
         self.notifying = False
@@ -423,11 +423,11 @@ class TestCharacteristic(Characteristic):
                 CharacteristicUserDescriptionDescriptor(bus, 1, self))
 
     def ReadValue(self):
-        print 'TestCharacteristic Read: ' + repr(self.value)
+        print('TestCharacteristic Read: ' + repr(self.value))
         return self.value
 
     def WriteValue(self, value):
-        print 'TestCharacteristic Write: ' + repr(value)
+        print('TestCharacteristic Write: ' + repr(value))
         self.value = value
 
 
@@ -476,11 +476,11 @@ class CharacteristicUserDescriptionDescriptor(Descriptor):
 
 
 def register_service_cb():
-    print 'GATT service registered'
+    print('GATT service registered')
 
 
 def register_service_error_cb(error):
-    print 'Failed to register service: ' + str(error)
+    print('Failed to register service: ' + str(error))
     mainloop.quit()
 
 
@@ -504,7 +504,7 @@ def main():
 
     adapter = find_adapter(bus)
     if not adapter:
-        print 'GattManager1 interface not found'
+        print('GattManager1 interface not found')
         return
 
     service_manager = dbus.Interface(
