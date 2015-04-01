@@ -2422,11 +2422,15 @@ static void execute_write_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	} else if (opcode != BT_ATT_OP_EXEC_WRITE_RSP || pdu || length)
 		success = false;
 
+	bt_gatt_client_ref(op->client);
+
 	if (op->callback)
 		op->callback(success, op->reliable_error, att_ecode,
 								op->user_data);
 
 	start_next_long_write(op->client);
+
+	bt_gatt_client_unref(op->client);
 }
 
 static void complete_write_long_op(struct request *req, bool success,
