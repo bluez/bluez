@@ -117,7 +117,15 @@ static const struct {
 	{ "devpts",   "/dev/pts", "mode=620",  MS_NOSUID|MS_NOEXEC },
 	{ "tmpfs",    "/dev/shm", "mode=1777", MS_NOSUID|MS_NODEV|MS_STRICTATIME },
 	{ "tmpfs",    "/run",     "mode=755",  MS_NOSUID|MS_NODEV|MS_STRICTATIME },
+	{ "debugfs",  "/sys/kernel/debug", NULL, 0 },
 	{ }
+};
+
+static const char *config_table[] = {
+	"/var/lib/bluetooth",
+	"/etc/bluetooth",
+	"/etc/dbus-1",
+	NULL
 };
 
 static void prepare_sandbox(void)
@@ -138,7 +146,8 @@ static void prepare_sandbox(void)
 		if (mount(mount_table[i].fstype,
 				mount_table[i].target,
 				mount_table[i].fstype,
-				mount_table[i].flags, NULL) < 0)
+				mount_table[i].flags,
+				mount_table[i].options) < 0)
 			perror("Failed to mount filesystem");
 	}
 
@@ -155,6 +164,15 @@ static void prepare_sandbox(void)
 
 	printf("Setting controlling terminal\n");
 	ioctl(STDIN_FILENO, TIOCSCTTY, 1);
+
+	for (i = 0; config_table[i]; i++) {
+		printf("Creating %s\n", config_table[i]);
+
+		if (mount("tmpfs", config_table[i], "tmpfs",
+				MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_STRICTATIME,
+				"mode=0755") < 0)
+			perror("Failed to create filesystem");
+	}
 }
 
 static char *const qemu_argv[] = {
