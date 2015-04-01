@@ -51,6 +51,7 @@ static const char *own_binary;
 static char **test_argv;
 static int test_argc;
 
+static bool start_dbus = false;
 static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
 
@@ -113,10 +114,11 @@ static const struct {
 } mount_table[] = {
 	{ "sysfs",    "/sys",     NULL,        MS_NOSUID|MS_NOEXEC|MS_NODEV },
 	{ "proc",     "/proc",    NULL,        MS_NOSUID|MS_NOEXEC|MS_NODEV },
-	{ "devtmpfs", "/dev",     "mode=755",  MS_NOSUID|MS_STRICTATIME },
-	{ "devpts",   "/dev/pts", "mode=620",  MS_NOSUID|MS_NOEXEC },
+	{ "devtmpfs", "/dev",     "mode=0755", MS_NOSUID|MS_STRICTATIME },
+	{ "devpts",   "/dev/pts", "mode=0620", MS_NOSUID|MS_NOEXEC },
 	{ "tmpfs",    "/dev/shm", "mode=1777", MS_NOSUID|MS_NODEV|MS_STRICTATIME },
-	{ "tmpfs",    "/run",     "mode=755",  MS_NOSUID|MS_NODEV|MS_STRICTATIME },
+	{ "tmpfs",    "/run",     "mode=0755", MS_NOSUID|MS_NODEV|MS_STRICTATIME },
+	{ "tmpfs",    "/tmp",              NULL, 0 },
 	{ "debugfs",  "/sys/kernel/debug", NULL, 0 },
 	{ }
 };
@@ -125,6 +127,7 @@ static const char *config_table[] = {
 	"/var/lib/bluetooth",
 	"/etc/bluetooth",
 	"/etc/dbus-1",
+	"/usr/share/dbus-1",
 	NULL
 };
 
@@ -231,8 +234,8 @@ static void start_qemu(void)
 				"rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.L "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
-				"TESTHOME=%s TESTARGS=\'%s\'",
-						initcmd, cwd, testargs);
+				"TESTHOME=%s TESTDBUS=%u TESTARGS=\'%s\'",
+					initcmd, cwd, start_dbus, testargs);
 
 	argv = alloca(sizeof(qemu_argv));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
@@ -249,11 +252,79 @@ static void start_qemu(void)
 	execve(argv[0], argv, qemu_envp);
 }
 
+static void create_dbus_system_conf(void)
+{
+	FILE *fp;
+
+	fp = fopen("/etc/dbus-1/system.conf", "we");
+	if (!fp)
+		return;
+
+	fputs("<!DOCTYPE busconfig PUBLIC "
+		"\"-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN\" "
+		"\"http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd\">\n", fp);
+	fputs("<busconfig>\n", fp);
+	fputs("<type>system</type>\n", fp);
+	fputs("<listen>unix:path=/run/dbus/system_bus_socket</listen>\n", fp);
+	fputs("<policy context=\"default\">\n", fp);
+	fputs("<allow user=\"*\"/>\n", fp);
+	fputs("<allow own=\"*\"/>\n", fp);
+	fputs("<allow send_type=\"method_call\"/>\n",fp);
+	fputs("<allow send_type=\"signal\"/>\n", fp);
+	fputs("<allow send_type=\"method_return\"/>\n", fp);
+	fputs("<allow send_type=\"error\"/>\n", fp);
+	fputs("<allow receive_type=\"method_call\"/>\n",fp);
+	fputs("<allow receive_type=\"signal\"/>\n", fp);
+	fputs("<allow receive_type=\"method_return\"/>\n", fp);
+	fputs("<allow receive_type=\"error\"/>\n", fp);
+	fputs("</policy>\n", fp);
+	fputs("</busconfig>\n", fp);
+
+	fclose(fp);
+
+	mkdir("/run/dbus", 0755);
+}
+
+static pid_t start_dbus_daemon(void)
+{
+	char *argv[9], *envp[1];
+	pid_t pid;
+
+	argv[0] = "/usr/bin/dbus-daemon";
+	argv[1] = "--system";
+	argv[2] = NULL;
+
+	envp[0] = NULL;
+
+	printf("Starting D-Bus daemon\n");
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		return -1;
+	}
+
+	if (pid == 0) {
+		execve(argv[0], argv, envp);
+		exit(EXIT_SUCCESS);
+	}
+
+	printf("D-Bus daemon process %d created\n", pid);
+
+	return pid;
+}
+
 static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
 	int pos = 0;
-	pid_t pid;
+	pid_t pid, dbus_pid;
+
+	if (start_dbus) {
+		create_dbus_system_conf();
+		dbus_pid = start_dbus_daemon();
+	} else
+		dbus_pid = -1;
 
 	while (1) {
 		char *ptr;
@@ -312,8 +383,16 @@ static void run_command(char *cmdname, char *home)
 		printf("Process %d terminated with status=%d\n",
 							corpse, status);
 
-		if (corpse == pid)
+		if (corpse == dbus_pid) {
+			printf("D-Bus daemon terminated\n");
+			dbus_pid = -1;
+		}
+
+		if (corpse == pid) {
+			if (dbus_pid > 0)
+				kill(dbus_pid, SIGTERM);
 			break;
+		}
 	}
 }
 
@@ -351,6 +430,12 @@ static void run_tests(void)
 
 	*ptr = '\0';
 
+	ptr = strstr(cmdline, "TESTDBUS=1");
+	if (ptr) {
+		printf("D-Bus daemon requested\n");
+		start_dbus = true;
+	}
+
 	ptr = strstr(cmdline, "TESTHOME=");
 	if (ptr) {
 		home = ptr + 4;
@@ -368,12 +453,14 @@ static void usage(void)
 		"Usage:\n");
 	printf("\ttest-runner [options] [--] <command> [args]\n");
 	printf("Options:\n"
-		"\t-q, --qemu             QEMU binary\n"
-		"\t-k, --kernel           Kernel image (bzImage)\n"
+		"\t-d, --dbus             Start D-Bus daemon\n"
+		"\t-q, --qemu <path>      QEMU binary\n"
+		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
 		"\t-h, --help             Show help options\n");
 }
 
 static const struct option main_options[] = {
+	{ "dbus",    no_argument,       NULL, 'd' },
 	{ "qemu",    required_argument, NULL, 'q' },
 	{ "kernel",  required_argument, NULL, 'k' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -395,11 +482,14 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "q:k:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "dq:k:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'd':
+			start_dbus = true;
+			break;
 		case 'q':
 			qemu_binary = optarg;
 			break;
