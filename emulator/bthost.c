@@ -1161,6 +1161,18 @@ static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 	init_conn(bthost, le16_to_cpu(ev->handle), ev->peer_addr, addr_type);
 }
 
+static void evt_le_conn_update_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_le_conn_update_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (ev->status)
+		return;
+}
+
 static void evt_le_ltk_request(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -1206,6 +1218,9 @@ static void evt_le_meta_event(struct bthost *bthost, const void *data,
 	switch (*event) {
 	case BT_HCI_EVT_LE_CONN_COMPLETE:
 		evt_le_conn_complete(bthost, evt_data, len - 1);
+		break;
+	case BT_HCI_EVT_LE_CONN_UPDATE_COMPLETE:
+		evt_le_conn_update_complete(bthost, evt_data, len - 1);
 		break;
 	case BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST:
 		evt_le_ltk_request(bthost, evt_data, len - 1);
