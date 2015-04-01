@@ -215,7 +215,8 @@ static void start_qemu(void)
 	char **argv;
 	int i, pos;
 
-	getcwd(cwd, sizeof(cwd));
+	if (!getcwd(cwd, sizeof(cwd)))
+		strcat(cwd, "/");
 
 	if (own_binary[0] == '/')
 		snprintf(initcmd, sizeof(initcmd), "%s", own_binary);
