@@ -413,6 +413,7 @@ noinst_PROGRAMS += $(unit_tests)
 endif
 
 TESTS = $(unit_tests)
+AM_TESTS_ENVIRONMENT = MALLOC_CHECK_=3 MALLOC_PERTURB_=69
 
 pkgconfigdir = $(libdir)/pkgconfig
 
