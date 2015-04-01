@@ -226,7 +226,7 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btiotest tools/bneptest tools/mcaptest \
 			tools/cltest tools/oobtest tools/seq2bseq \
 			tools/ibeacon tools/btgatt-client tools/btgatt-server \
-			tools/test-runner
+			tools/test-runner tools/check-selftest
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
 tools_bdaddr_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@

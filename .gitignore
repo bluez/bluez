@@ -82,6 +82,7 @@ tools/gatt-service
 tools/btgatt-client
 tools/btgatt-server
 tools/test-runner
+tools/check-selftest
 tools/mcaptest
 tools/bneptest
 test/sap_client.pyc
