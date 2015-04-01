@@ -2456,14 +2456,17 @@ static void complete_write_long_op(struct request *req, bool success,
 	if (req->att_id)
 		return;
 
-
 	request_unref(req);
 	success = false;
+
+	bt_gatt_client_ref(op->client);
 
 	if (op->callback)
 		op->callback(success, reliable_error, att_ecode, op->user_data);
 
 	start_next_long_write(op->client);
+
+	bt_gatt_client_unref(op->client);
 }
 
 static void prepare_write_cb(uint8_t opcode, const void *pdu, uint16_t length,
