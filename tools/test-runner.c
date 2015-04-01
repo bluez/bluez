@@ -219,11 +219,7 @@ static void start_qemu(void)
 	else
 		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
 
-	if (test_argv[0][0] == '/')
-		pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
-	else
-		pos = snprintf(testargs, sizeof(testargs), "%s/%s",
-							cwd, test_argv[0]);
+	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
 
 	for (i = 1; i < test_argc; i++) {
 		int len = sizeof(testargs) - pos;
@@ -293,6 +289,12 @@ static void run_command(char *cmdname, char *home)
 	}
 
 	if (pid == 0) {
+		if (home) {
+			printf("Changing into directory %s\n", home + 5);
+			if (chdir(home + 5) < 0)
+				perror("Failed to change directory");
+		}
+
 		execve(argv[0], argv, envp);
 		exit(EXIT_SUCCESS);
 	}
