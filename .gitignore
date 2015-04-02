@@ -81,6 +81,7 @@ tools/obexctl
 tools/gatt-service
 tools/btgatt-client
 tools/btgatt-server
+tools/create-image
 tools/test-runner
 tools/check-selftest
 tools/mcaptest
