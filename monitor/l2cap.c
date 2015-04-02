@@ -43,6 +43,7 @@
 #include "sdp.h"
 #include "avctp.h"
 #include "rfcomm.h"
+#include "bnep.h"
 
 /* L2CAP Control Field bit masks */
 #define L2CAP_CTRL_SAR_MASK		0xC000
@@ -2950,6 +2951,9 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 			break;
 		case 0x0003:
 			rfcomm_packet(&frame);
+			break;
+		case 0x000f:
+			bnep_packet(&frame);
 			break;
 		case 0x001f:
 			att_packet(index, in, handle, cid, data, size);

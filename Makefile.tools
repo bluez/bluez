@@ -28,6 +28,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				monitor/sdp.h monitor/sdp.c \
 				monitor/avctp.h monitor/avctp.c \
 				monitor/rfcomm.h monitor/rfcomm.c \
+				monitor/bnep.h monitor/bnep.c \
 				monitor/uuid.h monitor/uuid.c \
 				monitor/hwdb.h monitor/hwdb.c \
 				monitor/keys.h monitor/keys.c \
