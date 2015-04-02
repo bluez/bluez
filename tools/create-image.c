@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/param.h>
+#include <inttypes.h>
 
 /*
  * The "new" ASCII format uses 8-byte hexadecimal fields for all numbers and
@@ -58,7 +59,7 @@
  *
  */
 
-#define HDR_FMT "%s%08X%08X%08X%08X%08X%08X%08zX%08X%08X%08X%08X%08X%08X%s"
+#define HDR_FMT "%s%08X%08X%08X%08X%08X%08X%08jX%08X%08X%08X%08X%08X%08X%s"
 
 #define HDR_MAGIC "070701"
 
@@ -117,7 +118,7 @@ static void write_block(FILE *fp, const char *pathname, unsigned int ino,
 
 done:
 	fprintf(fp, HDR_FMT, HDR_MAGIC, ino, mode, 0, 0, 1, 0,
-				st.st_size, 0, 0, 0, 0, namelen + 1, 0, name);
+		(uintmax_t) st.st_size, 0, 0, 0, 0, namelen + 1, 0, name);
 
 	pad = 4 - ((110 + namelen) % 4);
 	for (i = 0; i < pad; i++)
