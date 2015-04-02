@@ -92,6 +92,16 @@ struct bt_att_pdu_error_rsp {
 #define BT_ATT_ERROR_INSUFFICIENT_RESOURCES		0x11
 
 /*
+ * Common Profile and Service Error Code descriptions (see Supplement to the
+ * Bluetooth Core Specification, sections 1.2 and 2). The error codes within
+ * 0xE0-0xFC are reserved for future use. The remaining 3 are defined as the
+ * following:
+ */
+#define BT_ERROR_CCC_IMPROPERLY_CONFIGURED      0xfd
+#define BT_ERROR_ALREADY_IN_PROGRESS            0xfe
+#define BT_ERROR_OUT_OF_RANGE                   0xff
+
+/*
  * ATT attribute permission bitfield values. Permissions are grouped as
  * "Access", "Encryption", "Authentication", and "Authorization". A bitmask of
  * permissions is a byte that encodes a combination of these.

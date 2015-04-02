@@ -43,16 +43,6 @@
 #define ATT_OP_SIGNED_MASK		0x80
 #define ATT_TIMEOUT_INTERVAL		30000  /* 30000 ms */
 
-/*
- * Common Profile and Service Error Code descriptions (see Supplement to the
- * Bluetooth Core Specification, sections 1.2 and 2). The error codes within
- * 0xE0-0xFC are reserved for future use. The remaining 3 are defined as the
- * following:
- */
-#define BT_ERROR_CCC_IMPROPERLY_CONFIGURED	0xfd
-#define BT_ERROR_ALREADY_IN_PROGRESS		0xfe
-#define BT_ERROR_OUT_OF_RANGE			0xff
-
 /* Length of signature in write signed packet */
 #define BT_ATT_SIGNATURE_LEN		12
 
