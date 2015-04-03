@@ -1474,12 +1474,14 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 
 	for (i = 0; i < count; i++) {
 		uint16_t index = le16_to_cpu(rp->entry[i].index);
+		char *busstr = hci_bustostr(rp->entry[i].bus);
 
 		if (index_filter != MGMT_INDEX_NONE && index_filter != index)
 			continue;
 
 		switch (rp->entry[i].type) {
 		case 0x00:
+			print("Primary controller (hci%u,%s)", index, busstr);
 			if (!mgmt_send(mgmt, MGMT_OP_READ_INFO,
 						index, 0, NULL, info_rsp,
 						UINT_TO_PTR(index), NULL)) {
@@ -1489,6 +1491,8 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 			pending_index++;
 			break;
 		case 0x01:
+			print("Unconfigured controller (hci%u,%s)",
+								index, busstr);
 			if (!mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO,
 						index, 0, NULL, config_info_rsp,
 						UINT_TO_PTR(index), NULL)) {
@@ -1498,15 +1502,16 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 			pending_index++;
 			break;
 		case 0x02:
-			print("hci%u:\tAMP controller (%u)", index,
-							rp->entry[i].bus);
+			print("AMP controller (hci%u,%s)", index, busstr);
 			break;
 		default:
-			print("hci%u:\tType %u controller (%u)", index,
-					rp->entry[i].type, rp->entry[i].bus);
+			print("Type %u controller (hci%u,%s)",
+					rp->entry[i].type, index, busstr);
 			break;
 		}
 	}
+
+	print("");
 
 	if (!count)
 		noninteractive_quit(EXIT_SUCCESS);
