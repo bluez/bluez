@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -41,6 +42,11 @@
 #include <sys/param.h>
 #include <sys/reboot.h>
 
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
+#include "tools/hciattach.h"
+
 #ifndef WAIT_ANY
 #define WAIT_ANY (-1)
 #endif
@@ -53,6 +59,7 @@ static int test_argc;
 
 static bool run_auto = false;
 static bool start_dbus = false;
+static int num_devs = 0;
 static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
 
@@ -201,8 +208,6 @@ static char *const qemu_argv[] = {
 	"-device", "virtio-9p-pci,fsdev=fsdev-root,mount_tag=/dev/root",
 	"-chardev", "stdio,id=chardev-serial0,signal=off",
 	"-device", "pci-serial,chardev=chardev-serial0",
-	"-kernel", "",
-	"-append", "",
 	NULL
 };
 
@@ -237,23 +242,124 @@ static void start_qemu(void)
 				"rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.L "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
-				"TESTHOME=%s TESTDBUS=%u TESTAUTO=%u "
-				"TESTARGS=\'%s\'",
-				initcmd, cwd, start_dbus, run_auto, testargs);
+				"TESTHOME=%s TESTDBUS=%u TESTDEVS=%d "
+				"TESTAUTO=%u TESTARGS=\'%s\'", initcmd, cwd,
+				start_dbus, num_devs, run_auto, testargs);
 
-	argv = alloca(sizeof(qemu_argv));
+	argv = alloca(sizeof(qemu_argv) +
+				(sizeof(char *) * (4 + (num_devs * 4))));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
+
+	pos = (sizeof(qemu_argv) / sizeof(char *)) - 1;
 
 	argv[0] = (char *) qemu_binary;
 
-	for (i = 1; argv[i]; i++) {
-		if (!strcmp(argv[i], "-kernel"))
-			argv[i + 1] = (char *) kernel_image;
-		else if (!strcmp(argv[i], "-append"))
-			argv[i + 1] = (char *) cmdline;
+	argv[pos++] = "-kernel";
+	argv[pos++] = (char *) kernel_image;
+	argv[pos++] = "-append";
+	argv[pos++] = (char *) cmdline;
+
+	for (i = 0; i < num_devs; i++) {
+		const char *path = "/tmp/bt-server-bredr";
+		char *chrdev, *serdev;
+
+		chrdev = alloca(32 + strlen(path));
+		sprintf(chrdev, "socket,path=%s,id=bt%d", path, i);
+
+		serdev = alloca(32);
+		sprintf(serdev, "pci-serial,chardev=bt%d", i);
+
+		argv[pos++] = "-chardev";
+		argv[pos++] = chrdev;
+		argv[pos++] = "-device";
+		argv[pos++] = serdev;
 	}
 
+	argv[pos] = NULL;
+
 	execve(argv[0], argv, qemu_envp);
+}
+
+static int open_serial(const char *path)
+{
+	struct termios ti;
+	int fd, saved_ldisc, ldisc = N_HCI;
+
+	fd = open(path, O_RDWR | O_NOCTTY);
+	if (fd < 0) {
+		perror("Failed to open serial port");
+		return -1;
+	}
+
+	if (tcflush(fd, TCIOFLUSH) < 0) {
+		perror("Failed to flush serial port");
+		close(fd);
+		return -1;
+	}
+
+	if (ioctl(fd, TIOCGETD, &saved_ldisc) < 0) {
+		perror("Failed get serial line discipline");
+		close(fd);
+		return -1;
+	}
+
+	/* Switch TTY to raw mode */
+	memset(&ti, 0, sizeof(ti));
+	cfmakeraw(&ti);
+
+	ti.c_cflag |= (B115200 | CLOCAL | CREAD);
+
+	/* Set flow control */
+	ti.c_cflag |= CRTSCTS;
+
+	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
+		perror("Failed to set serial port settings");
+		close(fd);
+		return -1;
+	}
+
+	if (ioctl(fd, TIOCSETD, &ldisc) < 0) {
+		perror("Failed set serial line discipline");
+		close(fd);
+		return -1;
+	}
+
+	printf("Switched line discipline from %d to %d\n", saved_ldisc, ldisc);
+
+	return fd;
+}
+
+static int attach_proto(const char *path, unsigned int proto,
+						unsigned int flags)
+{
+	int fd, dev_id;
+
+	fd = open_serial(path);
+	if (fd < 0)
+		return -1;
+
+	if (ioctl(fd, HCIUARTSETFLAGS, flags) < 0) {
+		perror("Failed to set flags");
+		close(fd);
+		return -1;
+	}
+
+	if (ioctl(fd, HCIUARTSETPROTO, proto) < 0) {
+		perror("Failed to set protocol");
+		close(fd);
+		return -1;
+	}
+
+	dev_id = ioctl(fd, HCIUARTGETDEVICE);
+	if (dev_id < 0) {
+		perror("Failed to get device id");
+		close(fd);
+		return -1;
+	}
+
+	printf("Device index %d attached\n", dev_id);
+
+	return fd;
 }
 
 static void create_dbus_system_conf(void)
@@ -410,7 +516,20 @@ static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
 	int pos = 0, idx = 0;
+	int serial_fd;
 	pid_t pid, dbus_pid, daemon_pid;
+
+	if (num_devs) {
+		const char *node = "/dev/ttyS1";
+		unsigned long flags;
+
+		printf("Attaching BR/EDR controller to %s\n", node);
+
+		flags = (1 << HCI_UART_RESET_ON_INIT);
+
+		serial_fd = attach_proto(node, HCI_UART_H4, flags);
+	} else
+		serial_fd = -1;
 
 	if (start_dbus) {
 		create_dbus_system_conf();
@@ -536,6 +655,11 @@ start_next:
 		idx++;
 		goto start_next;
 	}
+
+	if (serial_fd >= 0) {
+		close(serial_fd);
+		serial_fd = -1;
+	}
 }
 
 static void run_tests(void)
@@ -578,6 +702,12 @@ static void run_tests(void)
 		run_auto= true;
 	}
 
+	ptr = strstr(cmdline, "TESTDEVS=1");
+	if (ptr) {
+		printf("Attachment of devices requested\n");
+		num_devs = 1;
+	}
+
 	ptr = strstr(cmdline, "TESTDBUS=1");
 	if (ptr) {
 		printf("D-Bus daemon requested\n");
@@ -603,6 +733,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t-a, --auto             Find tests and run them\n"
 		"\t-d, --dbus             Start D-Bus daemon\n"
+		"\t-u, --unix [path]      Provide serial device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
 		"\t-h, --help             Show help options\n");
@@ -611,6 +742,7 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "all",     no_argument,       NULL, 'a' },
 	{ "auto",    no_argument,       NULL, 'a' },
+	{ "unix",    no_argument,       NULL, 'u' },
 	{ "dbus",    no_argument,       NULL, 'd' },
 	{ "qemu",    required_argument, NULL, 'q' },
 	{ "kernel",  required_argument, NULL, 'k' },
@@ -633,13 +765,16 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "adq:k:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "audq:k:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
 		case 'a':
 			run_auto = true;
+			break;
+		case 'u':
+			num_devs = 1;
 			break;
 		case 'd':
 			start_dbus = true;
