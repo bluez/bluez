@@ -1760,6 +1760,14 @@ uint16_t bt_gatt_client_get_mtu(struct bt_gatt_client *client)
 	return bt_att_get_mtu(client->att);
 }
 
+struct gatt_db *bt_gatt_client_get_db(struct bt_gatt_client *client)
+{
+	if (!client || !client->db)
+		return NULL;
+
+	return client->db;
+}
+
 static bool match_req_id(const void *a, const void *b)
 {
 	const struct request *req = a;

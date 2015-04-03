@@ -70,6 +70,7 @@ bool bt_gatt_client_set_debug(struct bt_gatt_client *client,
 					bt_gatt_client_destroy_func_t destroy);
 
 uint16_t bt_gatt_client_get_mtu(struct bt_gatt_client *client);
+struct gatt_db *bt_gatt_client_get_db(struct bt_gatt_client *client);
 
 bool bt_gatt_client_cancel(struct bt_gatt_client *client, unsigned int id);
 bool bt_gatt_client_cancel_all(struct bt_gatt_client *client);
