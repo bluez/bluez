@@ -19,6 +19,7 @@
 
 #include "src/shared/ad.h"
 
+#include "src/eir.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 
@@ -141,10 +142,235 @@ void bt_ad_unref(struct bt_ad *ad)
 	free(ad);
 }
 
+static size_t uuid_list_length(struct queue *uuid_queue)
+{
+	bool uuid16_included = false;
+	bool uuid32_included = false;
+	bool uuid128_included = false;
+	size_t length = 0;
+	const struct queue_entry *entry;
+
+	entry = queue_get_entries(uuid_queue);
+
+	while (entry) {
+		bt_uuid_t *uuid = entry->data;
+
+		length += bt_uuid_len(uuid);
+
+		if (uuid->type == BT_UUID16)
+			uuid16_included = true;
+		else if (uuid->type == BT_UUID32)
+			uuid32_included = true;
+		else
+			uuid128_included = true;
+
+		entry = entry->next;
+	}
+
+	if (uuid16_included)
+		length += 2;
+
+	if (uuid32_included)
+		length += 2;
+
+	if (uuid128_included)
+		length += 2;
+
+	return length;
+}
+
+static size_t mfg_data_length(struct queue *manuf_data)
+{
+	size_t length = 0;
+	const struct queue_entry *entry;
+
+	entry = queue_get_entries(manuf_data);
+
+	while (entry) {
+		struct manufacturer_data *data = entry->data;
+
+		length += 2 + sizeof(uint16_t) + data->len;
+
+		entry = entry->next;
+	}
+
+	return length;
+}
+
+static size_t uuid_data_length(struct queue *uuid_data)
+{
+	size_t length = 0;
+	const struct queue_entry *entry;
+
+	entry = queue_get_entries(uuid_data);
+
+	while (entry) {
+		struct uuid_data *data = entry->data;
+
+		length += 2 + bt_uuid_len(&data->uuid) + data->len;
+
+		entry = entry->next;
+	}
+
+	return length;
+}
+
+static size_t calculate_length(struct bt_ad *ad)
+{
+	size_t length = 0;
+
+	length += uuid_list_length(ad->service_uuids);
+
+	length += uuid_list_length(ad->solicit_uuids);
+
+	length += mfg_data_length(ad->manufacturer_data);
+
+	length += uuid_data_length(ad->service_data);
+
+	return length;
+}
+
+static void serialize_uuids(struct queue *uuids, uint8_t uuid_type,
+						uint8_t ad_type, uint8_t *buf,
+						uint8_t *pos)
+{
+	const struct queue_entry *entry = queue_get_entries(uuids);
+	bool added = false;
+	uint8_t length_pos = 0;
+
+	while (entry) {
+		bt_uuid_t *uuid = entry->data;
+
+		if (uuid->type == uuid_type) {
+			if (!added) {
+				length_pos = (*pos)++;
+				buf[(*pos)++] = ad_type;
+				added = true;
+			}
+
+			if (uuid_type != BT_UUID32)
+				bt_uuid_to_le(uuid, buf + *pos);
+			else
+				bt_put_le32(uuid->value.u32, buf + *pos);
+
+			*pos += bt_uuid_len(uuid);
+		}
+
+		entry = entry->next;
+	}
+
+	if (added)
+		buf[length_pos] = *pos - length_pos - 1;
+}
+
+static void serialize_service_uuids(struct queue *uuids, uint8_t *buf,
+								uint8_t *pos)
+{
+	serialize_uuids(uuids, BT_UUID16, EIR_UUID16_ALL, buf, pos);
+
+	serialize_uuids(uuids, BT_UUID32, EIR_UUID32_ALL, buf, pos);
+
+	serialize_uuids(uuids, BT_UUID128, EIR_UUID128_ALL, buf, pos);
+}
+
+static void serialize_solicit_uuids(struct queue *uuids, uint8_t *buf,
+								uint8_t *pos)
+{
+	serialize_uuids(uuids, BT_UUID16, EIR_SOLICIT16, buf, pos);
+
+	serialize_uuids(uuids, BT_UUID32, EIR_SOLICIT32, buf, pos);
+
+	serialize_uuids(uuids, BT_UUID128, EIR_SOLICIT128, buf, pos);
+}
+
+static void serialize_manuf_data(struct queue *manuf_data, uint8_t *buf,
+								uint8_t *pos)
+{
+	const struct queue_entry *entry = queue_get_entries(manuf_data);
+
+	while (entry) {
+		struct manufacturer_data *data = entry->data;
+
+		buf[(*pos)++] = data->len + 2 + 1;
+
+		buf[(*pos)++] = EIR_MANUFACTURER_DATA;
+
+		bt_put_le16(data->manufacturer_id, buf + (*pos));
+
+		*pos += 2;
+
+		memcpy(buf + *pos, data->data, data->len);
+
+		*pos += data->len;
+
+		entry = entry->next;
+	}
+}
+
+static void serialize_service_data(struct queue *service_data, uint8_t *buf,
+								uint8_t *pos)
+{
+	const struct queue_entry *entry = queue_get_entries(service_data);
+
+	while (entry) {
+		struct uuid_data *data = entry->data;
+		int uuid_len = bt_uuid_len(&data->uuid);
+
+		buf[(*pos)++] =  uuid_len + data->len + 1;
+
+		switch (uuid_len) {
+		case 2:
+			buf[(*pos)++] = EIR_SVC_DATA16;
+			break;
+		case 4:
+			buf[(*pos)++] = EIR_SVC_DATA32;
+			break;
+		case 16:
+			buf[(*pos)++] = EIR_SVC_DATA128;
+			break;
+		}
+
+		if (uuid_len != 4)
+			bt_uuid_to_le(&data->uuid, buf + *pos);
+		else
+			bt_put_le32(data->uuid.value.u32, buf + *pos);
+
+		*pos += uuid_len;
+
+		memcpy(buf + *pos, data->data, data->len);
+
+		*pos += data->len;
+
+		entry = entry->next;
+	}
+}
+
 uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 {
-	/* TODO: implement */
-	return NULL;
+	uint8_t *adv_data;
+	uint8_t pos = 0;
+
+	if (!ad)
+		return NULL;
+
+	*length = calculate_length(ad);
+
+	if (*length > MAX_ADV_DATA_LEN)
+		return NULL;
+
+	adv_data = malloc0(*length);
+	if (!adv_data)
+		return NULL;
+
+	serialize_service_uuids(ad->service_uuids, adv_data, &pos);
+
+	serialize_solicit_uuids(ad->solicit_uuids, adv_data, &pos);
+
+	serialize_manuf_data(ad->manufacturer_data, adv_data, &pos);
+
+	serialize_service_data(ad->service_data, adv_data, &pos);
+
+	return adv_data;
 }
 
 static bool queue_add_uuid(struct queue *queue, const bt_uuid_t *uuid)
@@ -158,7 +384,7 @@ static bool queue_add_uuid(struct queue *queue, const bt_uuid_t *uuid)
 	if (!new_uuid)
 		return false;
 
-	bt_uuid_to_uuid128(uuid, new_uuid);
+	*new_uuid = *uuid;
 
 	if (queue_push_tail(queue, new_uuid))
 		return true;
@@ -317,7 +543,7 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 	if (!new_data)
 		return false;
 
-	bt_uuid_to_uuid128(uuid, &new_data->uuid);
+	new_data->uuid = *uuid;
 
 	new_data->data = malloc(len);
 	if (!new_data->data) {

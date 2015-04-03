@@ -22,6 +22,10 @@
  *
  */
 
+#include <glib.h>
+
+#include "lib/sdp.h"
+
 #define EIR_FLAGS                   0x01  /* flags */
 #define EIR_UUID16_SOME             0x02  /* 16-bit UUID, more available */
 #define EIR_UUID16_ALL              0x03  /* 16-bit UUID, all listed */
@@ -36,7 +40,15 @@
 #define EIR_SSP_HASH                0x0E  /* SSP Hash */
 #define EIR_SSP_RANDOMIZER          0x0F  /* SSP Randomizer */
 #define EIR_DEVICE_ID               0x10  /* device ID */
+#define EIR_SOLICIT16               0x14  /* LE: Solicit UUIDs, 16-bit */
+#define EIR_SOLICIT128              0x15  /* LE: Solicit UUIDs, 128-bit */
+#define EIR_SVC_DATA16              0x16  /* LE: Service data, 16-bit UUID */
+#define EIR_PUB_TRGT_ADDR           0x17  /* LE: Public Target Address */
+#define EIR_RND_TRGT_ADDR           0x18  /* LE: Random Target Address */
 #define EIR_GAP_APPEARANCE          0x19  /* GAP appearance */
+#define EIR_SOLICIT32               0x1F  /* LE: Solicit UUIDs, 32-bit */
+#define EIR_SVC_DATA32              0x20  /* LE: Service data, 32-bit UUID */
+#define EIR_SVC_DATA128             0x21  /* LE: Service data, 128-bit UUID */
 #define EIR_MANUFACTURER_DATA       0xFF  /* Manufacturer Specific Data */
 
 /* Flags Descriptions */
