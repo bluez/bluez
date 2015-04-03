@@ -111,6 +111,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/uhid.h src/shared/uhid.c \
 			src/shared/pcap.h src/shared/pcap.c \
 			src/shared/btsnoop.h src/shared/btsnoop.c \
+			src/shared/ad.h src/shared/ad.c \
 			src/shared/att-types.h \
 			src/shared/att.h src/shared/att.c \
 			src/shared/gatt-helpers.h src/shared/gatt-helpers.c \
