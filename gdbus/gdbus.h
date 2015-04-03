@@ -216,6 +216,7 @@ struct GDBusSecurityTable {
 	.flags = G_DBUS_SIGNAL_FLAG_EXPERIMENTAL
 
 void g_dbus_set_flags(int flags);
+int g_dbus_get_flags(void);
 
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,

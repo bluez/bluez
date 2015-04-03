@@ -1816,3 +1816,8 @@ void g_dbus_set_flags(int flags)
 {
 	global_flags = flags;
 }
+
+int g_dbus_get_flags(void)
+{
+	return global_flags;
+}
