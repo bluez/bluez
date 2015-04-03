@@ -199,7 +199,7 @@ static char *const qemu_argv[] = {
 	"-no-reboot",
 	"-fsdev", "local,id=fsdev-root,path=/,readonly,security_model=none",
 	"-device", "virtio-9p-pci,fsdev=fsdev-root,mount_tag=/dev/root",
-	"-chardev", "stdio,id=chardev-serial0",
+	"-chardev", "stdio,id=chardev-serial0,signal=off",
 	"-device", "pci-serial,chardev=chardev-serial0",
 	"-kernel", "",
 	"-append", "",
@@ -499,8 +499,17 @@ start_next:
 		if (corpse < 0 || corpse == 0)
 			continue;
 
-		printf("Process %d terminated with status=%d\n",
-							corpse, status);
+		if (WIFEXITED(status))
+			printf("Process %d exited with status %d\n",
+						corpse, WEXITSTATUS(status));
+		else if (WIFSIGNALED(status))
+			printf("Process %d terminated with signal %d\n",
+						corpse, WTERMSIG(status));
+		else if (WIFSTOPPED(status))
+			printf("Process %d stopped with signal %d\n",
+						corpse, WSTOPSIG(status));
+		else if (WIFCONTINUED(status))
+			printf("Process %d continued\n", corpse);
 
 		if (corpse == dbus_pid) {
 			printf("D-Bus daemon terminated\n");
