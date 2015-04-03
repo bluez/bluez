@@ -244,6 +244,58 @@ fail:
 	return false;
 }
 
+static bool parse_advertising_manufacturer_data(GDBusProxy *proxy,
+							struct bt_ad *data)
+{
+	DBusMessageIter iter, entries;
+
+	if (!g_dbus_proxy_get_property(proxy, "ManufacturerData", &iter))
+		return true;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return false;
+
+	dbus_message_iter_recurse(&iter, &entries);
+
+	bt_ad_clear_manufacturer_data(data);
+
+	while (dbus_message_iter_get_arg_type(&entries)
+						== DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter value, entry;
+		uint16_t manuf_id;
+		uint8_t *manuf_data;
+		int len;
+
+		dbus_message_iter_recurse(&entries, &entry);
+		dbus_message_iter_get_basic(&entry, &manuf_id);
+
+		dbus_message_iter_next(&entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_ARRAY)
+			goto fail;
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_BYTE)
+			goto fail;
+
+		dbus_message_iter_get_fixed_array(&value, &manuf_data, &len);
+
+		DBG("Adding ManufacturerData for %04x", manuf_id);
+
+		if (!bt_ad_add_manufacturer_data(data, manuf_id, manuf_data,
+									len))
+			goto fail;
+
+		dbus_message_iter_next(&entries);
+	}
+
+	return true;
+
+fail:
+	bt_ad_clear_manufacturer_data(data);
+	return false;
+}
+
 static void refresh_advertisement(struct advertisement *ad)
 {
 	DBG("Refreshing advertisement: %s", ad->path);
@@ -263,6 +315,11 @@ static bool parse_advertisement(struct advertisement *ad)
 
 	if (!parse_advertising_solicit_uuids(ad->proxy, ad->data)) {
 		error("Property \"SolicitUUIDs\" failed to parse");
+		return false;
+	}
+
+	if (!parse_advertising_manufacturer_data(ad->proxy, ad->data)) {
+		error("Property \"ManufacturerData\" failed to parse");
 		return false;
 	}
 
