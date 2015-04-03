@@ -376,7 +376,7 @@ static gboolean quit_eventloop(gpointer user_data)
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
-	static unsigned int __terminated = 0;
+	static bool terminated = false;
 	struct signalfd_siginfo si;
 	ssize_t result;
 	int fd;
@@ -393,7 +393,7 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 	switch (si.ssi_signo) {
 	case SIGINT:
 	case SIGTERM:
-		if (__terminated == 0) {
+		if (!terminated) {
 			info("Terminating");
 			g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS,
 							quit_eventloop, NULL);
@@ -402,7 +402,7 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 			adapter_shutdown();
 		}
 
-		__terminated = 1;
+		terminated = true;
 		break;
 	case SIGUSR2:
 		__btd_toggle_debug();
