@@ -692,7 +692,7 @@ void tester_wait(unsigned int seconds, tester_wait_func_t func,
 static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
-	static unsigned int __terminated = 0;
+	static bool terminated = false;
 	struct signalfd_siginfo si;
 	ssize_t result;
 	int fd;
@@ -711,10 +711,10 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
 	switch (si.ssi_signo) {
 	case SIGINT:
 	case SIGTERM:
-		if (__terminated == 0)
+		if (!terminated)
 			g_main_loop_quit(main_loop);
 
-		__terminated = 1;
+		terminated = true;
 		break;
 	}
 
