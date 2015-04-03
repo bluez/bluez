@@ -26,6 +26,7 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/bluetooth.h"
+#include "lib/mgmt.h"
 #include "lib/sdp.h"
 
 #include "adapter.h"
@@ -33,6 +34,7 @@
 #include "error.h"
 #include "log.h"
 #include "src/shared/ad.h"
+#include "src/shared/mgmt.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 
@@ -42,6 +44,8 @@
 struct btd_advertising {
 	struct btd_adapter *adapter;
 	struct queue *ads;
+	struct mgmt *mgmt;
+	uint16_t mgmt_index;
 };
 
 #define AD_TYPE_BROADCAST 0
@@ -56,6 +60,7 @@ struct advertisement {
 	DBusMessage *reg;
 	uint8_t type; /* Advertising type */
 	struct bt_ad *data;
+	uint8_t instance;
 };
 
 static bool match_advertisement_path(const void *a, const void *b)
@@ -123,10 +128,15 @@ static void advertisement_destroy(void *data)
 static void advertisement_remove(void *data)
 {
 	struct advertisement *ad = data;
+	struct mgmt_cp_remove_advertising cp;
 
 	g_dbus_client_set_disconnect_watch(ad->client, NULL, NULL);
 
-	/* TODO: mgmt API call to remove advert */
+	cp.instance = ad->instance;
+
+	mgmt_send(ad->manager->mgmt, MGMT_OP_REMOVE_ADVERTISING,
+			ad->manager->mgmt_index, sizeof(cp), &cp, NULL, NULL,
+			NULL);
 
 	queue_remove(ad->manager->ads, ad);
 
@@ -351,43 +361,106 @@ fail:
 	return false;
 }
 
-static void refresh_advertisement(struct advertisement *ad)
+static void add_advertising_callback(uint8_t status, uint16_t length,
+					  const void *param, void *user_data)
 {
-	DBG("Refreshing advertisement: %s", ad->path);
+	struct advertisement *ad = user_data;
+	const struct mgmt_rp_add_advertising *rp = param;
+
+	if (status || !param) {
+		error("Failed to add advertising MGMT");
+		return;
+	}
+
+	ad->instance = rp->instance;
 }
 
-static bool parse_advertisement(struct advertisement *ad)
+static DBusMessage *refresh_advertisement(struct advertisement *ad)
+{
+	struct mgmt_cp_add_advertising *cp;
+	uint8_t param_len;
+	uint8_t *adv_data;
+	size_t adv_data_len;
+
+	DBG("Refreshing advertisement: %s", ad->path);
+
+	adv_data = bt_ad_generate(ad->data, &adv_data_len);
+
+	if (!adv_data) {
+		error("Advertising data couldn't be generated.");
+
+		return g_dbus_create_error(ad->reg, ERROR_INTERFACE
+						".InvalidLength",
+						"Advertising data too long.");
+	}
+
+	param_len = sizeof(struct mgmt_cp_add_advertising) + adv_data_len;
+
+	cp = malloc0(param_len);
+
+	if (!cp) {
+		error("Couldn't allocate for MGMT!");
+
+		free(adv_data);
+
+		return btd_error_failed(ad->reg, "Failed");
+	}
+
+	if (ad->type == AD_TYPE_PERIPHERAL)
+		cp->flags = MGMT_ADV_FLAG_CONNECTABLE | MGMT_ADV_FLAG_DISCOV;
+
+	cp->instance = ad->instance;
+	cp->adv_data_len = adv_data_len;
+	memcpy(cp->data, adv_data, adv_data_len);
+
+	free(adv_data);
+
+	if (!mgmt_send(ad->manager->mgmt, MGMT_OP_ADD_ADVERTISING,
+					ad->manager->mgmt_index, param_len, cp,
+					add_advertising_callback, ad, NULL)) {
+		error("Failed to add Advertising Data");
+
+		free(cp);
+
+		return btd_error_failed(ad->reg, "Failed");
+	}
+
+	free(cp);
+
+	return NULL;
+}
+
+static DBusMessage *parse_advertisement(struct advertisement *ad)
 {
 	if (!parse_advertising_type(ad->proxy, &ad->type)) {
 		error("Failed to read \"Type\" property of advertisement");
-		return false;
+		goto fail;
 	}
 
 	if (!parse_advertising_service_uuids(ad->proxy, ad->data)) {
 		error("Property \"ServiceUUIDs\" failed to parse");
-		return false;
+		goto fail;
 	}
 
 	if (!parse_advertising_solicit_uuids(ad->proxy, ad->data)) {
 		error("Property \"SolicitUUIDs\" failed to parse");
-		return false;
+		goto fail;
 	}
 
 	if (!parse_advertising_manufacturer_data(ad->proxy, ad->data)) {
 		error("Property \"ManufacturerData\" failed to parse");
-		return false;
+		goto fail;
 	}
 
 	if (!parse_advertising_service_data(ad->proxy, ad->data)) {
 		error("Property \"ServiceData\" failed to parse");
-		return false;
+		goto fail;
 	}
 
-	/* TODO: parse the rest of the properties */
+	return refresh_advertisement(ad);
 
-	refresh_advertisement(ad);
-
-	return true;
+fail:
+	return btd_error_failed(ad->reg, "Failed to parse advertisement.");
 }
 
 static void advertisement_proxy_added(GDBusProxy *proxy, void *data)
@@ -395,11 +468,14 @@ static void advertisement_proxy_added(GDBusProxy *proxy, void *data)
 	struct advertisement *ad = data;
 	DBusMessage *reply;
 
-	if (!parse_advertisement(ad)) {
-		error("Failed to parse advertisement");
+	reply = parse_advertisement(ad);
 
-		reply = btd_error_failed(ad->reg,
-					"Failed to register advertisement");
+	if (reply) {
+		/* Failed to publish for some reason, remove. */
+		queue_remove(ad->manager->ads, ad);
+
+		g_idle_add(advertisement_free_idle_cb, ad);
+
 		goto done;
 	}
 
@@ -429,6 +505,8 @@ static struct advertisement *advertisement_create(DBusConnection *conn,
 	ad = new0(struct advertisement, 1);
 	if (!ad)
 		return NULL;
+
+	ad->instance = 1;
 
 	ad->client = g_dbus_client_new_full(conn, sender, path, path);
 	if (!ad->client)
@@ -553,6 +631,8 @@ static void advertising_manager_destroy(void *user_data)
 
 	queue_destroy(manager->ads, advertisement_destroy);
 
+	mgmt_unref(manager->mgmt);
+
 	free(manager);
 }
 
@@ -566,6 +646,16 @@ advertising_manager_create(struct btd_adapter *adapter)
 		return NULL;
 
 	manager->adapter = adapter;
+
+	manager->mgmt = mgmt_new_default();
+
+	if (!manager->mgmt) {
+		error("Failed to access management interface");
+		free(manager);
+		return NULL;
+	}
+
+	manager->mgmt_index = btd_adapter_get_index(adapter);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 						adapter_get_path(adapter),
