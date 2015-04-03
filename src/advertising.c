@@ -32,6 +32,7 @@
 #include "dbus-common.h"
 #include "error.h"
 #include "log.h"
+#include "src/shared/ad.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 
@@ -54,6 +55,7 @@ struct advertisement {
 	GDBusProxy *proxy;
 	DBusMessage *reg;
 	uint8_t type; /* Advertising type */
+	struct bt_ad *data;
 };
 
 static bool match_advertisement_path(const void *a, const void *b)
@@ -73,8 +75,9 @@ static void advertisement_free(void *data)
 		g_dbus_client_unref(ad->client);
 	}
 
-	if (ad->proxy)
-		g_dbus_proxy_unref(ad->proxy);
+	bt_ad_unref(ad->data);
+
+	g_dbus_proxy_unref(ad->proxy);
 
 	if (ad->owner)
 		g_free(ad->owner);
@@ -243,6 +246,10 @@ static struct advertisement *advertisement_create(DBusConnection *conn,
 								NULL, NULL, ad);
 
 	ad->reg = dbus_message_ref(msg);
+
+	ad->data = bt_ad_new();
+	if (!ad->data)
+		goto fail;
 
 	return ad;
 
