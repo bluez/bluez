@@ -1658,7 +1658,7 @@ static guint setup_standard_input(void)
 static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
-	static unsigned int __terminated = 0;
+	static bool terminated = false;
 	struct signalfd_siginfo si;
 	ssize_t result;
 	int fd;
@@ -1691,13 +1691,13 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
 		 * exit and fall through.
 		 */
 	case SIGTERM:
-		if (__terminated == 0) {
+		if (!terminated) {
 			rl_replace_line("", 0);
 			rl_crlf();
 			g_main_loop_quit(main_loop);
 		}
 
-		__terminated = 1;
+		terminated = true;
 		break;
 	}
 
