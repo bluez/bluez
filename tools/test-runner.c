@@ -457,7 +457,7 @@ static const char *daemon_table[] = {
 static pid_t start_bluetooth_daemon(const char *home)
 {
 	const char *daemon = NULL;
-	char *argv[3], *envp[1];
+	char *argv[3], *envp[2];
 	pid_t pid;
 	int i;
 
@@ -486,7 +486,8 @@ static pid_t start_bluetooth_daemon(const char *home)
 	argv[1] = "--nodetach";
 	argv[2] = NULL;
 
-	envp[0] = NULL;
+	envp[0] = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket";
+	envp[1] = NULL;
 
 	printf("Starting Bluetooth daemon\n");
 
