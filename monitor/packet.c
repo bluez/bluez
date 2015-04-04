@@ -7443,11 +7443,15 @@ static void mode_change_evt(const void *data, uint8_t size)
 
 static void return_link_keys_evt(const void *data, uint8_t size)
 {
-	uint8_t num_keys = *((uint8_t *) data);
+	const struct bt_hci_evt_return_link_keys *evt = data;
+	uint8_t i;
 
-	print_field("Num keys: %d", num_keys);
+	print_field("Num keys: %d", evt->num_keys);
 
-	packet_hexdump(data + 1, size - 1);
+	for (i = 0; i < evt->num_keys; i++) {
+		print_bdaddr(evt->keys + (i * 22));
+		print_link_key(evt->keys + (i * 22) + 6);
+	}
 }
 
 static void pin_code_request_evt(const void *data, uint8_t size)

@@ -2224,6 +2224,10 @@ struct bt_hci_evt_mode_change {
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_RETURN_LINK_KEYS		0x15
+struct bt_hci_evt_return_link_keys {
+	uint8_t  num_keys;
+	uint8_t  keys[0];
+} __attribute__ ((packed));
 
 #define BT_HCI_EVT_PIN_CODE_REQUEST		0x16
 struct bt_hci_evt_pin_code_request {
