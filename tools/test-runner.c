@@ -330,8 +330,10 @@ static int open_serial(const char *path)
 }
 
 static int attach_proto(const char *path, unsigned int proto,
-						unsigned int flags)
+					unsigned int mandatory_flags,
+					unsigned int optional_flags)
 {
+	unsigned int flags = mandatory_flags | optional_flags;
 	int fd, dev_id;
 
 	fd = open_serial(path);
@@ -339,9 +341,17 @@ static int attach_proto(const char *path, unsigned int proto,
 		return -1;
 
 	if (ioctl(fd, HCIUARTSETFLAGS, flags) < 0) {
-		perror("Failed to set flags");
-		close(fd);
-		return -1;
+		if (errno == EINVAL) {
+			if (ioctl(fd, HCIUARTSETFLAGS, mandatory_flags) < 0) {
+				perror("Failed to set mandatory flags");
+				close(fd);
+				return -1;
+			}
+		} else {
+			perror("Failed to set flags");
+			close(fd);
+			return -1;
+		}
 	}
 
 	if (ioctl(fd, HCIUARTSETPROTO, proto) < 0) {
@@ -523,13 +533,15 @@ static void run_command(char *cmdname, char *home)
 
 	if (num_devs) {
 		const char *node = "/dev/ttyS1";
-		unsigned long flags;
+		unsigned int basic_flags, extra_flags;
 
 		printf("Attaching BR/EDR controller to %s\n", node);
 
-		flags = (1 << HCI_UART_RESET_ON_INIT);
+		basic_flags = (1 << HCI_UART_RESET_ON_INIT);
+		extra_flags = (1 << HCI_UART_VND_DETECT);
 
-		serial_fd = attach_proto(node, HCI_UART_H4, flags);
+		serial_fd = attach_proto(node, HCI_UART_H4, basic_flags,
+								extra_flags);
 	} else
 		serial_fd = -1;
 
