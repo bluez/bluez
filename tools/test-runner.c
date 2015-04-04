@@ -502,12 +502,14 @@ static const char *test_table[] = {
 	"l2cap-tester",
 	"rfcomm-tester",
 	"sco-tester",
+	"bnep-tester",
 	"check-selftest",
 	"tools/mgmt-tester",
 	"tools/smp-tester",
 	"tools/l2cap-tester",
 	"tools/rfcomm-tester",
 	"tools/sco-tester",
+	"tools/bnep-tester",
 	"tools/check-selftest",
 	NULL
 };
