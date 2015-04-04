@@ -41,7 +41,7 @@ noinst_PROGRAMS += emulator/btvirt emulator/b1ee emulator/hfp tools/3dsp \
 					tools/mgmt-tester tools/gap-tester \
 					tools/l2cap-tester tools/sco-tester \
 					tools/smp-tester tools/hci-tester \
-					tools/rfcomm-tester
+					tools/rfcomm-tester tools/bnep-tester
 
 emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 				emulator/serial.h emulator/serial.c \
@@ -86,6 +86,14 @@ tools_rfcomm_tester_SOURCES = tools/rfcomm-tester.c monitor/bt.h \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c
 tools_rfcomm_tester_LDADD = lib/libbluetooth-internal.la \
+				src/libshared-glib.la @GLIB_LIBS@
+
+tools_bnep_tester_SOURCES = tools/bnep-tester.c monitor/bt.h \
+				emulator/hciemu.h emulator/hciemu.c \
+				emulator/btdev.h emulator/btdev.c \
+				emulator/bthost.h emulator/bthost.c \
+				emulator/smp.c
+tools_bnep_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la @GLIB_LIBS@
 
 tools_smp_tester_SOURCES = tools/smp-tester.c monitor/bt.h \

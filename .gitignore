@@ -107,6 +107,7 @@ tools/mgmt-tester
 tools/smp-tester
 tools/gap-tester
 tools/rfcomm-tester
+tools/bnep-tester
 tools/btattach
 tools/btmgmt
 tools/btsnoop
