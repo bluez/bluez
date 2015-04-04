@@ -1,4 +1,3 @@
-
 BlueZ test coverage
 *******************
 
