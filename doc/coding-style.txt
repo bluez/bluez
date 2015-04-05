@@ -61,7 +61,7 @@ if (err || !S_ISDIR(st.st_mode))
 M2: Multiple line comment
 =========================
 
-If your comments have more then one line, please start it from the second line.
+If your comment has more than one line, please start it from the second line.
 
 Example:
 /*

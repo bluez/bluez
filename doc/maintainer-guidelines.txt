@@ -99,7 +99,7 @@ verified first:
 	- Check that the names are acceptible with other maintainers
 	- Ensure that the file modes are correct
 	- Verify that the license & copyright headers are correct
-	- If the file is supposed to be part of the release taraball,
+	- If the file is supposed to be part of the release tarball,
 	  make sure that it gets picked up by 'make dist' (particularly
 	  important for documentation or other files that are not code)
 
