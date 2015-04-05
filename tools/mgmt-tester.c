@@ -4894,7 +4894,7 @@ static void setup_add_advertising(const void *test_data)
 	unsigned char adv_param[sizeof(*cp) + 6];
 	unsigned char param[] = { 0x01 };
 
-	tester_print("Adding advertising instance while unpowered");
+	tester_print("Adding advertising instance while powered");
 
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	memset(cp, 0, sizeof(*cp));
@@ -4929,7 +4929,7 @@ static void setup_add_advertising_connectable(const void *test_data)
 	unsigned char adv_param[sizeof(*cp) + 6];
 	unsigned char param[] = { 0x01 };
 
-	tester_print("Adding advertising instance while unpowered");
+	tester_print("Adding advertising instance while connectable");
 
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	memset(cp, 0, sizeof(*cp));
@@ -4968,7 +4968,7 @@ static void setup_add_advertising_timeout(const void *test_data)
 	unsigned char adv_param[sizeof(*cp) + 6];
 	unsigned char param[] = { 0x01 };
 
-	tester_print("Adding advertising instance while unpowered");
+	tester_print("Adding advertising instance with timeout");
 
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	memset(cp, 0, sizeof(*cp));
@@ -5004,7 +5004,7 @@ static void setup_set_and_add_advertising(const void *test_data)
 	unsigned char adv_param[sizeof(*cp) + 6];
 	unsigned char param[] = { 0x01 };
 
-	tester_print("Adding advertising instance while unpowered");
+	tester_print("Set and add advertising instance");
 
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	memset(cp, 0, sizeof(*cp));
