@@ -1530,11 +1530,8 @@ gboolean g_dbus_send_error_valist(DBusConnection *connection,
 					const char *format, va_list args)
 {
 	DBusMessage *error;
-	char str[1024];
 
-	vsnprintf(str, sizeof(str), format, args);
-
-	error = dbus_message_new_error(message, name, str);
+	error = g_dbus_create_error_valist(message, name, format, args);
 	if (error == NULL)
 		return FALSE;
 
