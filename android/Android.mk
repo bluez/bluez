@@ -539,6 +539,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
 	bluez/tools/btmgmt.c \
 	bluez/lib/bluetooth.c \
+	bluez/lib/hci.c \
 	bluez/lib/sdp.c \
 	bluez/src/shared/mainloop.c \
 	bluez/src/shared/io-mainloop.c \
