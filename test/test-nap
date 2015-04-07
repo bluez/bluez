@@ -7,6 +7,11 @@ import sys
 import time
 import dbus
 import bluezutils
+import dbus.mainloop.glib
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 
 bus = dbus.SystemBus()
 
@@ -29,16 +34,14 @@ if (len(args) < 1):
 else:
 	bridge = args[0]
 
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+mainloop = GObject.MainLoop()
+
 server.Register(service, bridge)
 
 print("Server for %s registered for %s" % (service, bridge))
 
 print("Press CTRL-C to disconnect")
 
-try:
-	time.sleep(1000)
-	print("Terminating connection")
-except:
-	pass
-
-server.Unregister(service)
+mainloop.run()
