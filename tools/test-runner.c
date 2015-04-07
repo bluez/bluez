@@ -195,7 +195,7 @@ static char *const qemu_argv[] = {
 	"-no-user-config",
 	"-monitor", "none",
 	"-display", "none",
-	"-machine", "type=q35,accel=kvm",
+	"-machine", "type=q35,accel=kvm:tcg",
 	"-m", "192M",
 	"-nographic",
 	"-vga", "none",
@@ -215,12 +215,24 @@ static char *const qemu_envp[] = {
 	NULL
 };
 
+static void check_virtualization(void)
+{
+	uint32_t ecx;
+
+	__asm__ __volatile__("cpuid" : "=c" (ecx) : "a" (1) : "memory");
+
+	if (!!(ecx & (1 << 5)))
+		printf("Found support for Virtual Machine eXtensions\n");
+}
+
 static void start_qemu(void)
 {
 	char cwd[PATH_MAX], initcmd[PATH_MAX], testargs[PATH_MAX];
 	char cmdline[CMDLINE_MAX];
 	char **argv;
 	int i, pos;
+
+	check_virtualization();
 
 	if (!getcwd(cwd, sizeof(cwd)))
 		strcat(cwd, "/");
