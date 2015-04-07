@@ -1412,7 +1412,10 @@ DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
 {
 	char str[1024];
 
-	vsnprintf(str, sizeof(str), format, args);
+	if (format)
+		vsnprintf(str, sizeof(str), format, args);
+	else
+		str[0] = '\0';
 
 	return dbus_message_new_error(message, name, str);
 }
