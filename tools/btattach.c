@@ -187,28 +187,45 @@ static void usage(void)
 	printf("options:\n"
 		"\t-B, --bredr <device>   Attach BR/EDR controller\n"
 		"\t-A, --amp <device>     Attach AMP controller\n"
+		"\t-P, --protocol <proto> Specify protocol type\n"
 		"\t-h, --help             Show help options\n");
 }
 
 static const struct option main_options[] = {
-	{ "bredr",   required_argument, NULL, 'B' },
-	{ "amp",     required_argument, NULL, 'A' },
-	{ "version", no_argument,       NULL, 'v' },
-	{ "help",    no_argument,       NULL, 'h' },
+	{ "bredr",    required_argument, NULL, 'B' },
+	{ "amp",      required_argument, NULL, 'A' },
+	{ "protocol", required_argument, NULL, 'P' },
+	{ "version",  no_argument,       NULL, 'v' },
+	{ "help",     no_argument,       NULL, 'h' },
+	{ }
+};
+
+static const struct {
+	const char *name;
+	unsigned int id;
+} proto_table[] = {
+	{ "h4",    HCI_UART_H4    },
+	{ "bcsp",  HCI_UART_BCSP  },
+	{ "3wire", HCI_UART_3WIRE },
+	{ "h4ds",  HCI_UART_H4DS  },
+	{ "ll",    HCI_UART_LL    },
+	{ "ath3k", HCI_UART_ATH3K },
+	{ "intel", HCI_UART_INTEL },
+	{ "bcm",   HCI_UART_BCM   },
 	{ }
 };
 
 int main(int argc, char *argv[])
 {
-	const char *bredr_path = NULL, *amp_path = NULL;
+	const char *bredr_path = NULL, *amp_path = NULL, *proto = NULL;
 	bool raw_device = false;
 	sigset_t mask;
-	int exit_status, count = 0;
+	int exit_status, count = 0, proto_id = HCI_UART_H4;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "B:A:Rvh",
+		opt = getopt_long(argc, argv, "B:A:P:Rvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -219,6 +236,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'A':
 			amp_path = optarg;
+			break;
+		case 'P':
+			proto = optarg;
 			break;
 		case 'R':
 			raw_device = true;
@@ -247,6 +267,22 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
+	if (proto) {
+		unsigned int i;
+
+		for (i = 0; proto_table[i].name; i++) {
+			if (!strcmp(proto_table[i].name, proto)) {
+				proto_id = proto_table[i].id;
+				break;
+			}
+		}
+
+		if (!proto_table[i].name) {
+			fprintf(stderr, "Invalid protocol\n");
+			return EXIT_FAILURE;
+		}
+	}
+
 	if (bredr_path) {
 		unsigned long flags;
 		int fd;
@@ -258,7 +294,7 @@ int main(int argc, char *argv[])
 		if (raw_device)
 			flags = (1 << HCI_UART_RAW_DEVICE);
 
-		fd = attach_proto(bredr_path, HCI_UART_H4, flags);
+		fd = attach_proto(bredr_path, proto_id, flags);
 		if (fd >= 0) {
 			mainloop_add_fd(fd, 0, uart_callback, NULL, NULL);
 			count++;
@@ -277,7 +313,7 @@ int main(int argc, char *argv[])
 		if (raw_device)
 			flags = (1 << HCI_UART_RAW_DEVICE);
 
-		fd = attach_proto(amp_path, HCI_UART_H4, flags);
+		fd = attach_proto(amp_path, proto_id, flags);
 		if (fd >= 0) {
 			mainloop_add_fd(fd, 0, uart_callback, NULL, NULL);
 			count++;
