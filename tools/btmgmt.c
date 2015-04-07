@@ -181,6 +181,14 @@ static void print_eir(const uint8_t *eir, uint16_t eir_len)
 			print("Class of Device: 0x%02x%02x%02x",
 						eir[4], eir[3], eir[2]);
 			break;
+		case 0x0e:
+			bin2hex(eir + 2, 16, str, sizeof(str));
+			print("SSP Hash C-192: %s", str);
+			break;
+		case 0x0f:
+			bin2hex(eir + 2, 16, str, sizeof(str));
+			print("SSP Rand R-192: %s", str);
+			break;
 		case 0x1b:
 			ba2str((bdaddr_t *) (eir + 2), str);
 			print("LE Device Address: %s (%s)", str,
@@ -188,6 +196,14 @@ static void print_eir(const uint8_t *eir, uint16_t eir_len)
 			break;
 		case 0x1c:
 			print("LE Role: 0x%02x", eir[2]);
+			break;
+		case 0x1d:
+			bin2hex(eir + 2, 16, str, sizeof(str));
+			print("SSP Hash C-256: %s", str);
+			break;
+		case 0x1e:
+			bin2hex(eir + 2, 16, str, sizeof(str));
+			print("SSP Rand R-256: %s", str);
 			break;
 		case 0x22:
 			bin2hex(eir + 2, 16, str, sizeof(str));
