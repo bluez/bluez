@@ -533,6 +533,8 @@ static void set_le_features(struct btdev *btdev)
 	btdev->features[4] |= 0x40;	/* LE Supported */
 
 	btdev->max_page = 1;
+
+	btdev->le_features[0] |= 0x01;	/* LE Encryption */
 }
 
 static void set_amp_features(struct btdev *btdev)
@@ -1764,6 +1766,30 @@ static void le_set_scan_enable_complete(struct btdev *btdev)
 	}
 }
 
+static void le_read_remote_features_complete(struct btdev *btdev)
+{
+	char buf[1 + sizeof(struct bt_hci_evt_le_remote_features_complete)];
+	struct bt_hci_evt_le_remote_features_complete *ev = (void *) &buf[1];
+	struct btdev *remote = btdev->conn;
+
+	if (!remote) {
+		cmd_status(btdev, BT_HCI_ERR_UNKNOWN_CONN_ID,
+					BT_HCI_CMD_LE_READ_REMOTE_FEATURES);
+		return;
+	}
+
+	cmd_status(btdev, BT_HCI_ERR_SUCCESS,
+				BT_HCI_CMD_LE_READ_REMOTE_FEATURES);
+
+	memset(buf, 0, sizeof(buf));
+	buf[0] = BT_HCI_EVT_LE_REMOTE_FEATURES_COMPLETE;
+	ev->status = BT_HCI_ERR_SUCCESS;
+	ev->handle = cpu_to_le16(42);
+	memcpy(ev->features, remote->le_features, 8);
+
+	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
+}
+
 static void le_start_encrypt_complete(struct btdev *btdev)
 {
 	char buf[1 + sizeof(struct bt_hci_evt_le_long_term_key_request)];
@@ -2868,6 +2894,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lr.status = BT_HCI_ERR_SUCCESS;
 		lr.number = rand();
 		cmd_complete(btdev, opcode, &lr, sizeof(lr));
+		break;
+
+	case BT_HCI_CMD_LE_READ_REMOTE_FEATURES:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		le_read_remote_features_complete(btdev);
 		break;
 
 	case BT_HCI_CMD_LE_START_ENCRYPT:
