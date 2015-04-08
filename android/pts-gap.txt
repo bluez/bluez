@@ -154,10 +154,12 @@ TC_CONN_TERM_BV_01_C	PASS	gattc register_client
 TC_CONN_PRDA_BV_01_C	PASS	gattc register_client
 				gattc listen
 				gattc disconnect
-TC_CONN_PRDA_BV_02_C	INC	PTS issue #12950
+TC_CONN_PRDA_BV_02_C	PASS	PTS issue #12950
 				gattc register_client
-				bluetooth create_bond
-				gattc connect
+				gattc connect <pts_bdaddr>
+				bluetooth create_bond <pts_bdaddr>
+				gattc connect <pts_bdaddr>
+				gattc test_command 226 <pts_bdaddr> 0 2
 TC_BOND_NBON_BV_01_C	PASS	haltest:
 				gattc register_client
 				gattc connect
