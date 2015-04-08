@@ -1496,8 +1496,7 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services)
 	for (l = services; l; l = g_slist_next(l)) {
 		struct btd_service *service = l->data;
 
-		dev->pending = g_slist_append(dev->pending,
-						btd_service_ref(service));
+		dev->pending = g_slist_append(dev->pending, service);
 	}
 
 	return connect_next(dev);
