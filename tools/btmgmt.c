@@ -1544,6 +1544,137 @@ static void cmd_extinfo(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static void auto_power_enable_rsp(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index = PTR_TO_UINT(user_data);
+
+	print("Successfully enabled controller with index %u", index);
+
+	noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void auto_power_info_rsp(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_info *rp = param;
+	uint16_t index = PTR_TO_UINT(user_data);
+	uint32_t supported_settings, current_settings, missing_settings;
+	uint8_t val = 0x01;
+
+	if (status) {
+		error("Reading info failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	supported_settings = le32_to_cpu(rp->supported_settings);
+	current_settings = le32_to_cpu(rp->current_settings);
+	missing_settings = current_settings ^ supported_settings;
+
+	if (missing_settings & MGMT_SETTING_BREDR)
+		mgmt_send(mgmt, MGMT_OP_SET_BREDR, index, sizeof(val), &val,
+							NULL, NULL, NULL);
+
+	if (missing_settings & MGMT_SETTING_SSP)
+		mgmt_send(mgmt, MGMT_OP_SET_SSP, index, sizeof(val), &val,
+							NULL, NULL, NULL);
+
+	if (missing_settings & MGMT_SETTING_LE)
+		mgmt_send(mgmt, MGMT_OP_SET_LE, index, sizeof(val), &val,
+							NULL, NULL, NULL);
+
+	if (missing_settings & MGMT_SETTING_SECURE_CONN)
+		mgmt_send(mgmt, MGMT_OP_SET_SECURE_CONN, index,
+							sizeof(val), &val,
+							NULL, NULL, NULL);
+
+	if (missing_settings & MGMT_SETTING_BONDABLE)
+		mgmt_send(mgmt, MGMT_OP_SET_BONDABLE, index, sizeof(val), &val,
+							NULL, NULL, NULL);
+
+	if (current_settings & MGMT_SETTING_POWERED)
+		return noninteractive_quit(EXIT_SUCCESS);
+
+	if (!mgmt_send(mgmt, MGMT_OP_SET_POWERED, index, sizeof(val), &val,
+						auto_power_enable_rsp,
+						UINT_TO_PTR(index), NULL)) {
+		error("Unable to send set powerd cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void auto_power_index_evt(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	uint16_t index_filter = PTR_TO_UINT(user_data);
+
+	if (index != index_filter)
+		return;
+
+	print("New controller with index %u", index);
+
+	if (!mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+						auto_power_info_rsp,
+						UINT_TO_PTR(index), NULL)) {
+		error("Unable to send read info cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void auto_power_index_rsp(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_index_list *rp = param;
+	uint16_t index = PTR_TO_UINT(user_data);
+	uint16_t i, count;
+	bool found = false;
+
+	if (status) {
+		error("Reading index list failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	count = le16_to_cpu(rp->num_controllers);
+	for (i = 0; i < count; i++) {
+		if (le16_to_cpu(rp->index[i]) == index)
+			found = true;
+	}
+
+	if (!found) {
+		print("Waiting for index %u to appear", index);
+
+		mgmt_register(mgmt, MGMT_EV_INDEX_ADDED, index,
+						auto_power_index_evt,
+						UINT_TO_PTR(index), NULL);
+		return;
+	}
+
+	print("Found controller with index %u", index);
+
+	if (!mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+						auto_power_info_rsp,
+						UINT_TO_PTR(index), NULL)) {
+		error("Unable to send read info cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void cmd_auto_power(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (!mgmt_send(mgmt, MGMT_OP_READ_INDEX_LIST, MGMT_INDEX_NONE, 0, NULL,
+						auto_power_index_rsp,
+						UINT_TO_PTR(index), NULL)) {
+		error("Unable to send read index list cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 /* Wrapper to get the index and opcode to the response callback */
 struct command_data {
 	uint16_t id;
@@ -4059,6 +4190,7 @@ static struct cmd_info all_cmd[] = {
 	{ "config",	cmd_config,	"Show configuration info"	},
 	{ "info",	cmd_info,	"Show controller info"		},
 	{ "extinfo",	cmd_extinfo,	"Show extended controller info"	},
+	{ "auto-power",	cmd_auto_power,	"Power all available features"	},
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
 	{ "connectable",cmd_connectable,"Toggle connectable state"	},
