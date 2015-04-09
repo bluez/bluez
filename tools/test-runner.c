@@ -88,6 +88,8 @@ static const char *find_qemu(void)
 static const char *kernel_table[] = {
 	"bzImage",
 	"arch/x86/boot/bzImage",
+	"vmlinux",
+	"arch/x86/boot/vmlinux",
 	NULL
 };
 
