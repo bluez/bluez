@@ -440,6 +440,7 @@ static gboolean network_property_get_uuid(const GDBusPropertyTable *property,
 	struct network_peer *peer = data;
 	struct network_conn *nc;
 	char uuid_str[MAX_LEN_UUID_STR];
+	const char *uuid = uuid_str;
 	bt_uuid_t uuid16, uuid128;
 
 	nc = find_connection_by_state(peer->connections, CONNECTED);
@@ -450,7 +451,7 @@ static gboolean network_property_get_uuid(const GDBusPropertyTable *property,
 	bt_uuid_to_uuid128(&uuid16, &uuid128);
 	bt_uuid_to_string(&uuid128, uuid_str, MAX_LEN_UUID_STR);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid_str);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
 
 	return TRUE;
 }
