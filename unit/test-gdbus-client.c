@@ -857,6 +857,7 @@ static void proxy_force_disconnect(GDBusProxy *proxy, void *user_data)
 
 	dbus_connection_flush(conn);
 	dbus_connection_close(conn);
+	dbus_connection_unref(conn);
 	context->data = NULL;
 }
 
