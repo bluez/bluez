@@ -322,6 +322,7 @@ DBusConnection *g_dbus_setup_private(DBusBusType type, const char *name,
 		return NULL;
 
 	if (setup_bus(conn, name, error) == FALSE) {
+		dbus_connection_close(conn);
 		dbus_connection_unref(conn);
 		return NULL;
 	}
