@@ -322,6 +322,11 @@ static void proxy_get_string(GDBusProxy *proxy, void *user_data)
 	g_assert(g_dbus_proxy_get_property(proxy, "String", &iter));
 	g_assert(dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING);
 
+	if (context->proxy) {
+		g_assert(context->proxy == proxy);
+		g_dbus_proxy_unref(context->proxy);
+	}
+
 	dbus_message_iter_get_basic(&iter, &string);
 	g_assert_cmpstr(string, ==, "value");
 
