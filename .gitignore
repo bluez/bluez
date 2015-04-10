@@ -67,6 +67,7 @@ tools/bdaddr
 tools/bluemoon
 tools/seq2bseq
 tools/hex2hcd
+tools/nokfw
 tools/btiotest
 tools/mpris-proxy
 tools/bluetooth-player
