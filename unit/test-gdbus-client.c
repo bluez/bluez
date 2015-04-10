@@ -811,7 +811,6 @@ static void client_proxy_removed(const void *data)
 static void client_no_object_manager(const void *data)
 {
 	struct context *context = create_context();
-	DBusConnection *conn;
 	DBusMessageIter iter;
 	static const GDBusPropertyTable string_properties[] = {
 		{ "String", "s", get_string, set_string, string_exists },
@@ -821,25 +820,22 @@ static void client_no_object_manager(const void *data)
 	if (context == NULL)
 		return;
 
-	conn = g_dbus_setup_private(DBUS_BUS_SESSION, SERVICE_NAME1, NULL);
-	g_assert(conn != NULL);
-
 	context->data = g_strdup("value");
 
-	g_dbus_register_interface(conn,
-				SERVICE_PATH, SERVICE_NAME1,
+	g_dbus_register_interface(context->dbus_conn,
+				SERVICE_PATH, SERVICE_NAME,
 				methods, signals, string_properties,
 				context, NULL);
 
 	context->dbus_client = g_dbus_client_new_full(context->dbus_conn,
-						SERVICE_NAME1, SERVICE_PATH,
+						SERVICE_NAME, SERVICE_PATH,
 						NULL);
 
 	g_dbus_client_set_disconnect_watch(context->dbus_client,
 						disconnect_handler, context);
 
 	context->proxy = g_dbus_proxy_new(context->dbus_client, SERVICE_PATH,
-								SERVICE_NAME1);
+								SERVICE_NAME);
 
 	g_dbus_client_set_proxy_handlers(context->dbus_client, proxy_get_string,
 						NULL, NULL, context);
