@@ -1259,6 +1259,8 @@ static void discover_chrcs_cb(uint8_t opcode, const void *pdu,
 		goto done;
 	}
 
+	success = true;
+
 done:
 	discovery_op_complete(op, success, att_ecode);
 }
