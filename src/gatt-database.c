@@ -1959,21 +1959,18 @@ static bool database_add_chrc(struct external_service *service,
 		return false;
 
 	/* Handle the descriptors that belong to this characteristic. */
-	entry = queue_get_entries(service->descs);
-	while (entry) {
+	for (entry = queue_get_entries(service->descs); entry;
+							entry = entry->next) {
 		struct external_desc *desc = entry->data;
 
 		if (desc->handled || g_strcmp0(desc->chrc_path, chrc->path))
-			goto next;
+			continue;
 
 		if (!database_add_desc(service, desc)) {
 			chrc->attrib = NULL;
 			error("Failed to create descriptor entry");
 			return false;
 		}
-
-next:
-		entry = entry->next;
 	}
 
 	return true;
