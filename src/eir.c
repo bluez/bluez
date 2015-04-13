@@ -43,6 +43,14 @@
 
 #define EIR_OOB_MIN (2 + 6)
 
+static void sd_free(void *data)
+{
+	struct eir_sd *sd = data;
+
+	free(sd->uuid);
+	g_free(sd);
+}
+
 void eir_data_free(struct eir_data *eir)
 {
 	g_slist_free_full(eir->services, free);
@@ -55,6 +63,8 @@ void eir_data_free(struct eir_data *eir)
 	eir->randomizer = NULL;
 	g_slist_free_full(eir->msd_list, g_free);
 	eir->msd_list = NULL;
+	g_slist_free_full(eir->sd_list, sd_free);
+	eir->sd_list = NULL;
 }
 
 static void eir_parse_uuid16(struct eir_data *eir, const void *data,
@@ -153,6 +163,63 @@ static void eir_parse_msd(struct eir_data *eir, const uint8_t *data,
 	memcpy(&msd->data, data + 2, msd->data_len);
 
 	eir->msd_list = g_slist_append(eir->msd_list, msd);
+}
+
+static void eir_parse_sd(struct eir_data *eir, uuid_t *service,
+					const uint8_t *data, uint8_t len)
+{
+	struct eir_sd *sd;
+	char *uuid;
+
+	uuid = bt_uuid2string(service);
+	if (!uuid)
+		return;
+
+	sd = g_malloc(sizeof(*sd));
+	sd->uuid = uuid;
+	sd->data_len = len;
+	memcpy(&sd->data, data, sd->data_len);
+
+	eir->sd_list = g_slist_append(eir->sd_list, sd);
+}
+
+static void eir_parse_uuid16_data(struct eir_data *eir, const uint8_t *data,
+								uint8_t len)
+{
+	uuid_t service;
+
+	if (len < 2 || len > EIR_SD_MAX_LEN)
+		return;
+
+	service.value.uuid16 = get_le16(data);
+	eir_parse_sd(eir, &service, data + 2, len - 2);
+}
+
+static void eir_parse_uuid32_data(struct eir_data *eir, const uint8_t *data,
+								uint8_t len)
+{
+	uuid_t service;
+
+	if (len < 4 || len > EIR_SD_MAX_LEN)
+		return;
+
+	service.value.uuid32 = get_le32(data);
+	eir_parse_sd(eir, &service, data + 4, len - 4);
+}
+
+static void eir_parse_uuid128_data(struct eir_data *eir, const uint8_t *data,
+								uint8_t len)
+{
+	uuid_t service;
+	int k;
+
+	if (len < 16 || len > EIR_SD_MAX_LEN)
+		return;
+
+	for (k = 0; k < 16; k++)
+		service.value.uuid128.data[k] = data[16 - k - 1];
+
+	eir_parse_sd(eir, &service, data + 16, len - 16);
 }
 
 void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
@@ -259,9 +326,22 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 			eir->did_version = data[6] | (data[7] << 8);
 			break;
 
+		case EIR_SVC_DATA16:
+			eir_parse_uuid16_data(eir, data, data_len);
+			break;
+
+		case EIR_SVC_DATA32:
+			eir_parse_uuid32_data(eir, data, data_len);
+			break;
+
+		case EIR_SVC_DATA128:
+			eir_parse_uuid128_data(eir, data, data_len);
+			break;
+
 		case EIR_MANUFACTURER_DATA:
 			eir_parse_msd(eir, data, data_len);
 			break;
+
 		}
 
 		eir_data += field_len + 1;
