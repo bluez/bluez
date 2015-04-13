@@ -1,7 +1,7 @@
 PTS test results for BNEP
 
 PTS version: 6.0
-Tested: 12-March-2015
+Tested: 09-April-2015
 Android version: 5.0
 Kernel version: 3.20
 
@@ -33,8 +33,7 @@ TC_CTRL_BV_09_C		PASS	bneptest -c <PTS addr> -b <bridge> -n <iface>
 					-j ff:ff:ff:ff:ff:ff -y 1
 TC_CTRL_BV_10_C		PASS	PTS issue #13169
 				bneptest -s -b <bridge> -n <iface>
-TC_CTRL_BV_19_C		INC	JIRA #BA-343
-				bneptest -s -b <bridge> -n <iface>
+TC_CTRL_BV_19_C		PASS	bneptest -s -b <bridge> -n <iface>
 TC_RX_TYPE_0_BV_11_C	PASS	bneptest -s -b <bridge> -n <iface>
 TC_RX_C_BV_12_C		PASS	bneptest -s -b <bridge> -n <iface>
 TC_RX_C_S_BV_13_C	PASS	bneptest -s -b <bridge> -n <iface>
