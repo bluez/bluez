@@ -83,8 +83,8 @@ static void append_array_variant(DBusMessageIter *iter, int type, void *val,
 	dbus_message_iter_close_container(iter, &variant);
 }
 
-void dict_append_entry(DBusMessageIter *dict,
-			const char *key, int type, void *val)
+void dict_append_basic(DBusMessageIter *dict, int key_type, const void *key,
+						int type, void *val)
 {
 	DBusMessageIter entry;
 
@@ -97,9 +97,32 @@ void dict_append_entry(DBusMessageIter *dict,
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 							NULL, &entry);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_append_basic(&entry, key_type, key);
 
 	append_variant(&entry, type, val);
+
+	dbus_message_iter_close_container(dict, &entry);
+
+}
+
+void dict_append_entry(DBusMessageIter *dict,
+			const char *key, int type, void *val)
+{
+	dict_append_basic(dict, DBUS_TYPE_STRING, &key, type, val);
+}
+
+void dict_append_basic_array(DBusMessageIter *dict, int key_type,
+					const void *key, int type, void *val,
+					int n_elements)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, key_type, key);
+
+	append_array_variant(&entry, type, val, n_elements);
 
 	dbus_message_iter_close_container(dict, &entry);
 }
@@ -107,16 +130,8 @@ void dict_append_entry(DBusMessageIter *dict,
 void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 			void *val, int n_elements)
 {
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-						NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	append_array_variant(&entry, type, val, n_elements);
-
-	dbus_message_iter_close_container(dict, &entry);
+	dict_append_basic_array(dict, DBUS_TYPE_STRING, &key, type, val,
+								n_elements);
 }
 
 void set_dbus_connection(DBusConnection *conn)

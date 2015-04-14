@@ -21,9 +21,14 @@
  *
  */
 
+void dict_append_basic(DBusMessageIter *dict, int key_type, const void *key,
+						int type, void *val);
 void dict_append_entry(DBusMessageIter *dict,
 			const char *key, int type, void *val);
 
+void dict_append_basic_array(DBusMessageIter *dict, int key_type,
+					const void *key, int type, void *val,
+					int n_elements);
 void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 			void *val, int n_elements);
 
