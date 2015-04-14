@@ -114,6 +114,12 @@ static const char *ecode_to_string(uint8_t ecode)
 		return "Group type Not Supported";
 	case BT_ATT_ERROR_INSUFFICIENT_RESOURCES:
 		return "Insufficient Resources";
+	case BT_ERROR_CCC_IMPROPERLY_CONFIGURED:
+		return "CCC Improperly Configured";
+	case BT_ERROR_ALREADY_IN_PROGRESS:
+		return "Procedure Already in Progress";
+	case BT_ERROR_OUT_OF_RANGE:
+		return "Out of Range";
 	default:
 		return "Unknown error type";
 	}

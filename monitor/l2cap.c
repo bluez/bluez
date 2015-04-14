@@ -2046,6 +2046,15 @@ static void att_error_response(const struct l2cap_frame *frame)
 	case 0x11:
 		str = "Insufficient Resources";
 		break;
+	case 0xfd:
+		str = "CCC Improperly Configured";
+		break;
+	case 0xfe:
+		str = "Procedure Already in Progress";
+		break;
+	case 0xff:
+		str = "Out of Range";
+		break;
 	default:
 		str = "Reserved";
 		break;
