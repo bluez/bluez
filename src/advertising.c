@@ -402,7 +402,13 @@ static void add_advertising_callback(uint8_t status, uint16_t length,
 	const struct mgmt_rp_add_advertising *rp = param;
 
 	if (status || !param) {
-		error("Failed to add advertising MGMT");
+		error("Failed to add advertisement: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of add advertising response");
 		return;
 	}
 
