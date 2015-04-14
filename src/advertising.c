@@ -63,12 +63,23 @@ struct advertisement {
 	uint8_t instance;
 };
 
-static bool match_advertisement_path(const void *a, const void *b)
+struct dbus_obj_match {
+	const char *owner;
+	const char *path;
+};
+
+static bool match_advertisement(const void *a, const void *b)
 {
 	const struct advertisement *ad = a;
-	const char *path = b;
+	const struct dbus_obj_match *match = b;
 
-	return g_strcmp0(ad->path, path);
+	if (match->owner && !g_strcmp0(ad->owner, match->owner))
+		return false;
+
+	if (match->path && !g_strcmp0(ad->path, match->path))
+		return false;
+
+	return true;
 }
 
 static void advertisement_free(void *data)
@@ -547,8 +558,8 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 {
 	struct btd_advertising *manager = user_data;
 	DBusMessageIter args;
-	const char *path;
 	struct advertisement *ad;
+	struct dbus_obj_match match;
 
 	DBG("RegisterAdvertisement");
 
@@ -558,9 +569,11 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_OBJECT_PATH)
 		return btd_error_invalid_args(msg);
 
-	dbus_message_iter_get_basic(&args, &path);
+	dbus_message_iter_get_basic(&args, &match.path);
 
-	if (queue_find(manager->ads, match_advertisement_path, path))
+	match.owner = dbus_message_get_sender(msg);
+
+	if (queue_find(manager->ads, match_advertisement, &match))
 		return btd_error_already_exists(msg);
 
 	/* TODO: support more than one advertisement */
@@ -572,12 +585,12 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
 		return btd_error_invalid_args(msg);
 
-	ad = advertisement_create(conn, msg, path);
+	ad = advertisement_create(conn, msg, match.path);
 	if (!ad)
 		return btd_error_failed(msg,
 					"Failed to register advertisement");
 
-	DBG("Registered advertisement at path %s", path);
+	DBG("Registered advertisement at path %s", match.path);
 
 	ad->manager = manager;
 	queue_push_tail(manager->ads, ad);
@@ -591,8 +604,8 @@ static DBusMessage *unregister_advertisement(DBusConnection *conn,
 {
 	struct btd_advertising *manager = user_data;
 	DBusMessageIter args;
-	const char *path;
 	struct advertisement *ad;
+	struct dbus_obj_match match;
 
 	DBG("UnregisterAdvertisement");
 
@@ -602,9 +615,11 @@ static DBusMessage *unregister_advertisement(DBusConnection *conn,
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_OBJECT_PATH)
 		return btd_error_invalid_args(msg);
 
-	dbus_message_iter_get_basic(&args, &path);
+	dbus_message_iter_get_basic(&args, &match.path);
 
-	ad = queue_find(manager->ads, match_advertisement_path, path);
+	match.owner = dbus_message_get_sender(msg);
+
+	ad = queue_find(manager->ads, match_advertisement, &match);
 	if (!ad)
 		return btd_error_does_not_exist(msg);
 
