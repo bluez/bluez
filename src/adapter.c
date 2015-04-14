@@ -5470,8 +5470,10 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	device_add_eir_uuids(dev, eir_data.services);
 
-	if (eir_data.msd_list)
+	if (eir_data.msd_list) {
+		device_set_manufacturer_data(dev, eir_data.msd_list);
 		adapter_msd_notify(adapter, dev, eir_data.msd_list);
+	}
 
 	eir_data_free(&eir_data);
 
