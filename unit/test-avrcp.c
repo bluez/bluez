@@ -826,22 +826,23 @@ static void set_volume_rsp(struct avrcp *session, int err, uint8_t volume,
 
 static bool register_notification_rsp(struct avrcp *session, int err,
 					uint8_t code, uint8_t event,
-					uint8_t *params, void *user_data)
+					void *params, void *user_data)
 {
 	struct context *context = user_data;
+	uint8_t *p = params;
 
 	g_assert_cmpint(err, ==, 0);
 
 	switch (event) {
 	case AVRCP_EVENT_VOLUME_CHANGED:
 		if (g_str_equal(context->data->test_name, "/TP/VLH/BV-03-C")) {
-			g_assert_cmpint(params[0], ==, 0);
+			g_assert_cmpint(p[0], ==, 0);
 			break;
 		} else if (code == AVC_CTYPE_INTERIM) {
-			g_assert_cmpint(params[0], ==, 0);
+			g_assert_cmpint(p[0], ==, 0);
 			return true;
 		}
-		g_assert_cmpint(params[0], ==, 1);
+		g_assert_cmpint(p[0], ==, 1);
 		break;
 	}
 

@@ -224,7 +224,7 @@ struct avrcp_control_cfm {
 					char **text, void *user_data);
 	bool (*register_notification) (struct avrcp *session, int err,
 					uint8_t code, uint8_t event,
-					uint8_t *params, void *user_data);
+					void *params, void *user_data);
 	void (*set_volume) (struct avrcp *session, int err, uint8_t volume,
 					void *user_data);
 	void (*set_addressed) (struct avrcp *session, int err,
