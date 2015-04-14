@@ -162,6 +162,7 @@ static void print_iter(const char *label, const char *name,
 	unsigned char byte;
 	const char *valstr;
 	DBusMessageIter subiter;
+	char *entry;
 
 	if (iter == NULL) {
 		rl_printf("%s%s is nil\n", label, name);
@@ -212,9 +213,14 @@ static void print_iter(const char *label, const char *name,
 		break;
 	case DBUS_TYPE_DICT_ENTRY:
 		dbus_message_iter_recurse(iter, &subiter);
-		dbus_message_iter_get_basic(&subiter, &valstr);
+		entry = g_strconcat(name, " Key", NULL);
+		print_iter(label, entry, &subiter);
+		g_free(entry);
+
+		entry = g_strconcat(name, " Value", NULL);
 		dbus_message_iter_next(&subiter);
-		print_iter(label, valstr, &subiter);
+		print_iter(label, entry, &subiter);
+		g_free(entry);
 		break;
 	default:
 		rl_printf("%s%s has unsupported type\n", label, name);
