@@ -464,12 +464,43 @@ bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t manufacturer_id,
 
 	new_data->len = len;
 
+	if (bt_ad_has_manufacturer_data(ad, new_data)) {
+		manuf_destroy(new_data);
+		return false;
+	}
+
 	if (queue_push_tail(ad->manufacturer_data, new_data))
 		return true;
 
 	manuf_destroy(new_data);
 
 	return false;
+}
+
+static bool manufacturer_data_match(const void *data, const void *user_data)
+{
+	const struct bt_ad_manufacturer_data *m1 = data;
+	const struct bt_ad_manufacturer_data *m2 = data;
+
+	if (m1->manufacturer_id != m2->manufacturer_id)
+		return false;
+
+	if (m1->len != m2->len)
+		return false;
+
+	return !memcmp(m1->data, m2->data, m1->len);
+}
+
+bool bt_ad_has_manufacturer_data(struct bt_ad *ad,
+				const struct bt_ad_manufacturer_data *data)
+{
+	if (!ad)
+		return false;
+
+	if (!data)
+		return !queue_isempty(ad->manufacturer_data);
+
+	return queue_find(ad->manufacturer_data, manufacturer_data_match, data);
 }
 
 void bt_ad_foreach_manufacturer_data(struct bt_ad *ad, bt_ad_func_t func,
