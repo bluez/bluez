@@ -61,6 +61,11 @@ Properties	string Type
 			Service Data elements to include. The keys are the
 			UUID to associate with the data.
 
+		bool IncludeTXPower
+
+			Includes the TX Power in the advertising packet.
+			If missing, the TX Power is not included.
+
 
 LE Advertising Manager hierarchy
 ================================
