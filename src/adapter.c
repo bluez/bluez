@@ -5475,6 +5475,9 @@ static void update_found_devices(struct btd_adapter *adapter,
 		adapter_msd_notify(adapter, dev, eir_data.msd_list);
 	}
 
+	if (eir_data.sd_list)
+		device_set_service_data(dev, eir_data.sd_list);
+
 	eir_data_free(&eir_data);
 
 	/*
