@@ -75,6 +75,9 @@ void bt_ad_clear_solicit_uuid(struct bt_ad *ad);
 bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 								size_t len);
 
+bool bt_ad_has_service_data(struct bt_ad *ad,
+					const struct bt_ad_service_data *data);
+
 void bt_ad_foreach_service_data(struct bt_ad *ad, bt_ad_func_t func,
 							void *user_data);
 

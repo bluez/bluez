@@ -583,12 +583,43 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 
 	new_data->len = len;
 
+	if (bt_ad_has_service_data(ad, new_data)) {
+		uuid_destroy(new_data);
+		return false;
+	}
+
 	if (queue_push_tail(ad->service_data, new_data))
 		return true;
 
 	uuid_destroy(new_data);
 
 	return false;
+}
+
+static bool service_data_match(const void *data, const void *user_data)
+{
+	const struct bt_ad_service_data *s1 = data;
+	const struct bt_ad_service_data *s2 = data;
+
+	if (bt_uuid_cmp(&s1->uuid, &s2->uuid))
+		return false;
+
+	if (s1->len != s2->len)
+		return false;
+
+	return !memcmp(s1->data, s2->data, s1->len);
+}
+
+bool bt_ad_has_service_data(struct bt_ad *ad,
+					const struct bt_ad_service_data *data)
+{
+	if (!ad)
+		return false;
+
+	if (!data)
+		return !queue_isempty(ad->service_data);
+
+	return queue_find(ad->service_data, service_data_match, data);
 }
 
 void bt_ad_foreach_service_data(struct bt_ad *ad, bt_ad_func_t func,
