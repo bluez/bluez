@@ -950,6 +950,7 @@ static void cmd_info(const char *arg)
 	print_property(proxy, "LegacyPairing");
 	print_uuids(proxy);
 	print_property(proxy, "Modalias");
+	print_property(proxy, "ManufacturerData");
 }
 
 static void pair_reply(DBusMessage *message, void *user_data)
