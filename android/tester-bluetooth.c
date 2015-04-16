@@ -32,14 +32,14 @@ static bt_property_t prop_emu_bdaddr = {
 	.len = sizeof(emu_bdaddr_val),
 };
 
-static const char emu_bdname_val[] = "BlueZ for Android";
+static char emu_bdname_val[] = "BlueZ for Android";
 static bt_property_t prop_emu_bdname = {
 	.type = BT_PROPERTY_BDNAME,
 	.val = &emu_bdname_val,
 	.len = sizeof(emu_bdname_val) - 1,
 };
 
-static const char emu_uuids_val[] = {
+static char emu_uuids_val[] = {
 	/* Multi profile UUID */
 	0x00, 0x00, 0x11, 0x3b, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00,
 					0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB,
@@ -126,7 +126,7 @@ static struct bt_action_data prop_emu_remote_ble_rssi_req = {
 	.prop_type = BT_PROPERTY_REMOTE_RSSI,
 };
 
-static const char emu_remote_bdname_val[] = "00:AA:01:01:00:00";
+static char emu_remote_bdname_val[] = "00:AA:01:01:00:00";
 static bt_property_t prop_emu_remote_ble_bdname_prop = {
 	.type = BT_PROPERTY_BDNAME,
 	.val = &emu_remote_bdname_val,
@@ -188,7 +188,7 @@ static struct bt_action_data prop_emu_remote_ble_verinfo_req = {
 	.prop_type = BT_PROPERTY_REMOTE_VERSION_INFO,
 };
 
-static const char prop_test_fname_val[] = "FriendlyTestName";
+static char prop_test_fname_val[] = "FriendlyTestName";
 static bt_property_t prop_emu_remote_ble_fname_prop = {
 	.type = BT_PROPERTY_REMOTE_FRIENDLY_NAME,
 	.val = &prop_test_fname_val,
