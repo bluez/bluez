@@ -191,6 +191,7 @@ static void eir_parse_uuid16_data(struct eir_data *eir, const uint8_t *data,
 	if (len < 2 || len > EIR_SD_MAX_LEN)
 		return;
 
+	service.type = SDP_UUID16;
 	service.value.uuid16 = get_le16(data);
 	eir_parse_sd(eir, &service, data + 2, len - 2);
 }
@@ -203,6 +204,7 @@ static void eir_parse_uuid32_data(struct eir_data *eir, const uint8_t *data,
 	if (len < 4 || len > EIR_SD_MAX_LEN)
 		return;
 
+	service.type = SDP_UUID32;
 	service.value.uuid32 = get_le32(data);
 	eir_parse_sd(eir, &service, data + 4, len - 4);
 }
@@ -215,6 +217,8 @@ static void eir_parse_uuid128_data(struct eir_data *eir, const uint8_t *data,
 
 	if (len < 16 || len > EIR_SD_MAX_LEN)
 		return;
+
+	service.type = SDP_UUID128;
 
 	for (k = 0; k < 16; k++)
 		service.value.uuid128.data[k] = data[16 - k - 1];
