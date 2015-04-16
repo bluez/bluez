@@ -1201,6 +1201,14 @@ static const struct test_step test_reliable_write_5 = {
 	.length = 0x03
 };
 
+static const struct test_step test_reliable_write_6 = {
+	.handle = 0x0007,
+	.func = test_reliable_write,
+	.expected_att_ecode = 0x0c,
+	.value = write_data_1,
+	.length = 0x03
+};
+
 static void att_write_cb(struct gatt_db_attribute *att, int err,
 								void *user_data)
 {
@@ -3880,6 +3888,14 @@ int main(int argc, char *argv[])
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x16, 0x07, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03),
 			raw_pdu(0x01, 0x16, 0x07, 0x00, 0x05),
+			raw_pdu(0x18, 0x00),
+			raw_pdu(0x19));
+
+	define_test_client("/TP/GAW/CL/BI-19-C", test_client, service_db_1,
+			&test_reliable_write_6,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x16, 0x07, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03),
+			raw_pdu(0x01, 0x16, 0x07, 0x00, 0x0c),
 			raw_pdu(0x18, 0x00),
 			raw_pdu(0x19));
 
