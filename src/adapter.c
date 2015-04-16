@@ -5373,6 +5373,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm, bool legacy,
+					bool not_connectable,
 					const uint8_t *data, uint8_t data_len)
 {
 	struct btd_device *dev;
@@ -5501,6 +5502,10 @@ static void update_found_devices(struct btd_adapter *adapter,
 	return;
 
 connect_le:
+	/* Ignore non-connectable events */
+	if (not_connectable)
+		return;
+
 	/*
 	 * If we're in the process of stopping passive scanning and
 	 * connecting another (or maybe even the same) LE device just
@@ -5563,15 +5568,12 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
 			index, addr, ev->rssi, flags, eir_len);
 
-	/* Ignore non-connectable events for now */
-	if (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE)
-		return;
-
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
 
 	update_found_devices(adapter, &ev->addr.bdaddr, ev->addr.type,
 					ev->rssi, confirm_name, legacy,
+					flags & MGMT_DEV_FOUND_NOT_CONNECTABLE,
 					eir, eir_len);
 }
 
