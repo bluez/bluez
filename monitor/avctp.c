@@ -696,6 +696,58 @@ static const char *type2str(uint8_t type)
 	}
 }
 
+static const char *playertype2str(uint8_t type)
+{
+	switch (type & 0x0F) {
+	case 0x01:
+		return "Audio";
+	case 0x02:
+		return "Video";
+	case 0x03:
+		return "Audio, Video";
+	case 0x04:
+		return "Audio Broadcasting";
+	case 0x05:
+		return "Audio, Audio Broadcasting";
+	case 0x06:
+		return "Video, Audio Broadcasting";
+	case 0x07:
+		return "Audio, Video, Audio Broadcasting";
+	case 0x08:
+		return "Video Broadcasting";
+	case 0x09:
+		return "Audio, Video Broadcasting";
+	case 0x0A:
+		return "Video, Video Broadcasting";
+	case 0x0B:
+		return "Audio, Video, Video Broadcasting";
+	case 0x0C:
+		return "Audio Broadcasting, Video Broadcasting";
+	case 0x0D:
+		return "Audio, Audio Broadcasting, Video Broadcasting";
+	case 0x0E:
+		return "Video, Audio Broadcasting, Video Broadcasting";
+	case 0x0F:
+		return "Audio, Video, Audio Broadcasting, Video Broadcasting";
+	}
+
+	return "None";
+}
+
+static const char *playersubtype2str(uint32_t subtype)
+{
+	switch (subtype & 0x03) {
+	case 0x01:
+		return "Audio Book";
+	case 0x02:
+		return "Podcast";
+	case 0x03:
+		return "Audio Book, Podcast";
+	}
+
+	return "None";
+}
+
 static bool avrcp_passthrough_packet(struct avctp_frame *avctp_frame,
 								uint8_t indent)
 {
@@ -1656,6 +1708,68 @@ static bool avrcp_control_packet(struct avctp_frame *avctp_frame)
 	}
 }
 
+static bool avrcp_media_player_item(struct avctp_frame *avctp_frame,
+							uint8_t indent)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint16_t id, charset, namelen;
+	uint8_t type, status;
+	uint32_t subtype;
+	uint64_t features[2];
+
+	if (!l2cap_frame_get_be16(frame, &id))
+		return false;
+
+	print_field("%*cPlayerID: 0x%04x (%u)", indent, ' ', id, id);
+
+	if (!l2cap_frame_get_u8(frame, &type))
+		return false;
+
+	print_field("%*cPlayerID: 0x%04x (%s)", indent, ' ',
+						type, playertype2str(type));
+
+	if (!l2cap_frame_get_be32(frame, &subtype))
+		return false;
+
+	print_field("%*cPlayerID: 0x%08x (%s)", indent, ' ',
+					subtype, playersubtype2str(subtype));
+
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cPlayerID: 0x%02x (%s)", indent, ' ',
+						status, playstatus2str(status));
+
+	if (!l2cap_frame_get_be128(frame, &features[0], &features[1]))
+		return false;
+
+	print_field("%*cFeatures: 0x%16" PRIx64 "%16" PRIx64, indent, ' ',
+						features[1], features[0]);
+
+	if (!l2cap_frame_get_be16(frame, &charset))
+		return false;
+
+	print_field("%*cCharsetID: 0x%04x (%s)", indent, ' ',
+						charset, charset2str(charset));
+
+	if (!l2cap_frame_get_be16(frame, &namelen))
+		return false;
+
+	print_field("%*cNameLength: 0x%04x (%u)", indent, ' ',
+						namelen, namelen);
+
+	printf("%*cName: ", indent, ' ');
+	for (; namelen > 0; namelen--) {
+		uint8_t c;
+
+		if (!l2cap_frame_get_u8(frame, &c))
+			return false;
+		printf("%1c", isprint(c) ? c : '.');
+	}
+
+	return true;
+}
+
 static bool avrcp_get_folder_items(struct avctp_frame *avctp_frame)
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
@@ -1733,6 +1847,8 @@ response:
 
 		switch (type) {
 		case AVRCP_MEDIA_PLAYER_ITEM_TYPE:
+			avrcp_media_player_item(avctp_frame, indent);
+			break;
 		case AVRCP_FOLDER_ITEM_TYPE:
 		case AVRCP_MEDIA_ELEMENT_ITEM_TYPE:
 			packet_hexdump(frame->data, frame->size);
