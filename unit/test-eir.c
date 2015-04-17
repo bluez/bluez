@@ -572,7 +572,7 @@ static void test_parsing(gconstpointer data)
 		tester_debug("UUID: %s", uuid_str);
 	}
 
-	g_assert(eir.flags == test->flags);
+	g_assert_cmpint(eir.flags, ==, test->flags);
 
 	if (test->name) {
 		g_assert_cmpstr(eir.name, ==, test->name);
@@ -604,6 +604,14 @@ static void test_parsing(gconstpointer data)
 							"Manufacturer Data:");
 	}
 
+	for (list = eir.sd_list; list; list = list->next) {
+		struct eir_sd *sd = list->data;
+
+		tester_debug("Service UUID: %s", sd->uuid);
+		util_hexdump(' ', sd->data, sd->data_len, print_debug,
+							"Service Data:");
+	}
+
 	eir_data_free(&eir);
 
 	tester_test_passed();
@@ -627,6 +635,23 @@ static const struct test_data gigaset_gtag_test = {
 	.flags = 0x06,
 	.tx_power = 127,
 	.uuid = gigaset_gtag_uuid,
+};
+
+static const char *uri_beacon_uuid[] = {
+		"0000fed8-0000-1000-8000-00805f9b34fb",
+		NULL
+};
+
+static const unsigned char uri_beacon_data[] = {
+		0x03, 0x03, 0xd8, 0xfe, 0x0c, 0x16, 0xd8, 0xfe, 0x00,
+		0x20, 0x00, 'b', 'l', 'u', 'e', 'z', 0x08
+};
+
+static const struct test_data uri_beacon_test = {
+	.eir_data = uri_beacon_data,
+	.eir_size = sizeof(uri_beacon_data),
+	.tx_power = 127,
+	.uuid = uri_beacon_uuid,
 };
 
 int main(int argc, char *argv[])
@@ -653,6 +678,7 @@ int main(int argc, char *argv[])
 	tester_add("/ad/citizen2", &citizen_scan_test, NULL, test_parsing,
 									NULL);
 	tester_add("ad/g-tag", &gigaset_gtag_test, NULL, test_parsing, NULL);
+	tester_add("ad/uri-beacon", &uri_beacon_test, NULL, test_parsing, NULL);
 
 	return tester_run();
 }
