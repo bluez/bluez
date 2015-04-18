@@ -196,6 +196,11 @@ Properties	string Address [readonly]
 			Received Signal Strength Indicator of the remote
 			device (inquiry or advertising).
 
+		int16 TxPower [readonly, optional, experimental]
+
+			Advertised transmitted power level (inquiry or
+			advertising).
+
 		dict ManufacturerData [readonly, optional]
 
 			Manufacturer specific advertisement data. Keys are
