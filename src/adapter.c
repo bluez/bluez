@@ -1680,16 +1680,18 @@ static int compare_sender(gconstpointer a, gconstpointer b)
 	return g_strcmp0(client->owner, sender);
 }
 
-static void invalidate_rssi(gpointer a)
+static void invalidate_rssi_and_tx_power(gpointer a)
 {
 	struct btd_device *dev = a;
 
 	device_set_rssi(dev, 0);
+	device_set_tx_power(dev, 127);
 }
 
 static void discovery_cleanup(struct btd_adapter *adapter)
 {
-	g_slist_free_full(adapter->discovery_found, invalidate_rssi);
+	g_slist_free_full(adapter->discovery_found,
+						invalidate_rssi_and_tx_power);
 	adapter->discovery_found = NULL;
 }
 
@@ -5448,6 +5450,9 @@ static void update_found_devices(struct btd_adapter *adapter,
 		device_set_rssi_with_delta(dev, rssi, 0);
 	else
 		device_set_rssi(dev, rssi);
+
+	if (eir_data.tx_power != 127)
+		device_set_tx_power(dev, eir_data.tx_power);
 
 	if (eir_data.appearance != 0)
 		device_set_appearance(dev, eir_data.appearance);

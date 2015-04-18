@@ -257,6 +257,7 @@ struct btd_device {
 
 	bool		legacy;
 	int8_t		rssi;
+	int8_t		tx_power;
 
 	GIOChannel	*att_io;
 	guint		store_id;
@@ -920,6 +921,28 @@ static gboolean dev_property_exists_rssi(const GDBusPropertyTable *property,
 	struct btd_device *dev = data;
 
 	if (dev->rssi == 0)
+		return FALSE;
+
+	return TRUE;
+}
+
+static gboolean dev_property_get_tx_power(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *dev = data;
+	dbus_int16_t val = dev->tx_power;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_INT16, &val);
+
+	return TRUE;
+}
+
+static gboolean dev_property_exists_tx_power(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_device *dev = data;
+
+	if (dev->tx_power == 127)
 		return FALSE;
 
 	return TRUE;
@@ -2305,6 +2328,10 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "ServiceData", "a{sv}", dev_property_get_service_data,
 				NULL, dev_property_service_data_exist,
 				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "TxPower", "n", dev_property_get_tx_power, NULL,
+					dev_property_exists_tx_power,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+
 	{ }
 };
 
@@ -3045,6 +3072,8 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
 		return NULL;
+
+	device->tx_power = 127;
 
 	device->db = gatt_db_new();
 	if (!device->db) {
@@ -4722,6 +4751,22 @@ void device_set_rssi_with_delta(struct btd_device *device, int8_t rssi,
 void device_set_rssi(struct btd_device *device, int8_t rssi)
 {
 	device_set_rssi_with_delta(device, rssi, RSSI_THRESHOLD);
+}
+
+void device_set_tx_power(struct btd_device *device, int8_t tx_power)
+{
+	if (!device)
+		return;
+
+	if (device->tx_power == tx_power)
+		return;
+
+	DBG("tx_power %d", tx_power);
+
+	device->tx_power = tx_power;
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "TxPower");
 }
 
 static gboolean start_discovery(gpointer user_data)
