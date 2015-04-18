@@ -952,6 +952,8 @@ static void cmd_info(const char *arg)
 	print_property(proxy, "Modalias");
 	print_property(proxy, "ManufacturerData");
 	print_property(proxy, "ServiceData");
+	print_property(proxy, "RSSI");
+	print_property(proxy, "TxPower");
 }
 
 static void pair_reply(DBusMessage *message, void *user_data)
