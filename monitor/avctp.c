@@ -1742,6 +1742,74 @@ static bool avrcp_control_packet(struct avctp_frame *avctp_frame)
 	}
 }
 
+static const char *dir2str(uint8_t dir)
+{
+	switch (dir) {
+	case 0x00:
+		return "Folder Up";
+	case 0x01:
+		return "Folder Down";
+	}
+
+	return "Reserved";
+}
+
+static bool avrcp_change_path(struct avctp_frame *avctp_frame)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint64_t uid;
+	uint32_t items;
+	uint16_t uidcounter;
+	uint8_t dir, status, indent = 2;
+
+	if (avctp_frame->hdr & 0x02)
+		goto response;
+
+	if (frame->size < 11) {
+		print_field("%*cPDU Malformed", indent, ' ');
+		packet_hexdump(frame->data, frame->size);
+		return false;
+	}
+
+	if (!l2cap_frame_get_be16(frame, &uidcounter))
+		return false;
+
+	print_field("%*cUIDCounter: 0x%04x (%u)", indent, ' ',
+					uidcounter, uidcounter);
+
+	if (!l2cap_frame_get_u8(frame, &dir))
+		return false;
+
+	print_field("%*cDirection: 0x%02x (%s)", indent, ' ',
+					dir, dir2str(dir));
+
+	if (!l2cap_frame_get_be64(frame, &uid))
+		return false;
+
+	print_field("%*cFolderUID: 0x%16" PRIx64 " (%" PRIu64 ")", indent, ' ',
+					uid, uid);
+
+	return true;
+
+response:
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cStatus: 0x%02x (%s)", indent, ' ',
+					status, error2str(status));
+
+	if (frame->size == 1)
+		return false;
+
+	if (!l2cap_frame_get_be32(frame, &items))
+		return false;
+
+	print_field("%*cNumber of Items: 0x%04x (%u)", indent, ' ',
+					items, items);
+
+	return true;
+}
+
 static bool avrcp_media_player_item(struct avctp_frame *avctp_frame,
 							uint8_t indent)
 {
@@ -2135,6 +2203,9 @@ static bool avrcp_browsing_packet(struct avctp_frame *avctp_frame)
 		break;
 	case AVRCP_GET_FOLDER_ITEMS:
 		avrcp_get_folder_items(avctp_frame);
+		break;
+	case AVRCP_CHANGE_PATH:
+		avrcp_change_path(avctp_frame);
 		break;
 	default:
 		packet_hexdump(frame->data, frame->size);
