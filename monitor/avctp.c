@@ -2022,6 +2022,30 @@ static bool avrcp_media_element_item(struct avctp_frame *avctp_frame,
 	return true;
 }
 
+static bool avrcp_general_reject(struct avctp_frame *avctp_frame)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint8_t status, indent = 2;
+
+	if (avctp_frame->hdr & 0x02)
+		goto response;
+
+	print_field("%*cPDU Malformed", indent, ' ');
+	packet_hexdump(frame->data, frame->size);
+
+	return true;
+
+response:
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cStatus: 0x%02x (%s)", indent, ' ',
+				status, error2str(status));
+
+	return true;
+}
+
+
 static bool avrcp_search_item(struct avctp_frame *avctp_frame)
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
@@ -2352,6 +2376,9 @@ static bool avrcp_browsing_packet(struct avctp_frame *avctp_frame)
 		break;
 	case AVRCP_SEARCH:
 		avrcp_search_item(avctp_frame);
+		break;
+	case AVRCP_GENERAL_REJECT:
+		avrcp_general_reject(avctp_frame);
 		break;
 	default:
 		packet_hexdump(frame->data, frame->size);
