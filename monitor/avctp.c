@@ -2022,6 +2022,80 @@ static bool avrcp_media_element_item(struct avctp_frame *avctp_frame,
 	return true;
 }
 
+static bool avrcp_get_item_attributes(struct avctp_frame *avctp_frame)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint64_t uid;
+	uint16_t uidcounter;
+	uint8_t scope, count, status, indent = 2;
+
+	if (avctp_frame->hdr & 0x02)
+		goto response;
+
+	if (frame->size < 12) {
+		print_field("%*cPDU Malformed", indent, ' ');
+		packet_hexdump(frame->data, frame->size);
+		return false;
+	}
+
+	if (!l2cap_frame_get_u8(frame, &scope))
+		return false;
+
+	print_field("%*cScope: 0x%02x (%s)", indent, ' ',
+					scope, scope2str(scope));
+
+	if (!l2cap_frame_get_be64(frame, &uid))
+		return false;
+
+	print_field("%*cUID: 0x%016" PRIx64 " (%" PRIu64 ")", indent,
+					' ', uid, uid);
+
+	if (!l2cap_frame_get_be16(frame, &uidcounter))
+		return false;
+
+	print_field("%*cUIDCounter: 0x%04x (%u)", indent, ' ',
+					uidcounter, uidcounter);
+
+	if (!l2cap_frame_get_u8(frame, &count))
+		return false;
+
+	print_field("%*cAttributeCount: 0x%02x (%u)", indent, ' ',
+					count, count);
+
+	for (; count > 0; count--) {
+		uint32_t attr;
+
+		if (!l2cap_frame_get_be32(frame, &attr))
+			return false;
+
+		print_field("%*cAttributeID: 0x%08x (%s)", indent, ' ',
+					attr, mediattr2str(attr));
+	}
+
+	return true;
+
+response:
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cStatus: 0x%02x (%s)", indent, ' ',
+					status, error2str(status));
+
+	if (frame->size == 1)
+		return false;
+
+	if (!l2cap_frame_get_u8(frame, &count))
+		return false;
+
+	print_field("%*cAttributeCount: 0x%02x (%u)", indent, ' ',
+					count, count);
+
+	if (!avrcp_attribute_entry_list(avctp_frame, indent, count))
+		return false;
+
+	return true;
+}
+
 static bool avrcp_get_folder_items(struct avctp_frame *avctp_frame)
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
@@ -2206,6 +2280,9 @@ static bool avrcp_browsing_packet(struct avctp_frame *avctp_frame)
 		break;
 	case AVRCP_CHANGE_PATH:
 		avrcp_change_path(avctp_frame);
+		break;
+	case AVRCP_GET_ITEM_ATTRIBUTES:
+		avrcp_get_item_attributes(avctp_frame);
 		break;
 	default:
 		packet_hexdump(frame->data, frame->size);
