@@ -2022,6 +2022,72 @@ static bool avrcp_media_element_item(struct avctp_frame *avctp_frame,
 	return true;
 }
 
+static bool avrcp_search_item(struct avctp_frame *avctp_frame)
+{
+	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
+	uint32_t items;
+	uint16_t charset, namelen, uidcounter;
+	uint8_t status, indent = 2;
+
+	if (avctp_frame->hdr & 0x02)
+		goto response;
+
+	if (frame->size < 4) {
+		printf("PDU Malformed\n");
+		packet_hexdump(frame->data, frame->size);
+		return false;
+	}
+
+	if (!l2cap_frame_get_be16(frame, &charset))
+		return false;
+
+	print_field("%*cCharsetID: 0x%04x (%s)", indent, ' ',
+				charset, charset2str(charset));
+
+	if (!l2cap_frame_get_be16(frame, &namelen))
+		return false;
+
+	print_field("%*cLength: 0x%04x (%u)", indent, ' ', namelen, namelen);
+
+	printf("%*cString: ", indent+8, ' ');
+	for (; namelen > 0; namelen--) {
+		uint8_t c;
+
+		if (!l2cap_frame_get_u8(frame, &c))
+			return false;
+
+		printf("%1c", isprint(c) ? c : '.');
+	}
+
+	printf("\n");
+
+	return true;
+
+response:
+	if (!l2cap_frame_get_u8(frame, &status))
+		return false;
+
+	print_field("%*cStatus: 0x%02x (%s)", indent, ' ',
+				status, error2str(status));
+
+	if (frame->size == 1)
+		return false;
+
+	if (!l2cap_frame_get_be16(frame, &uidcounter))
+		return false;
+
+	print_field("%*cUIDCounter: 0x%04x (%u)", indent, ' ',
+				uidcounter, uidcounter);
+
+	if (!l2cap_frame_get_be32(frame, &items))
+		return false;
+
+	print_field("%*cNumber of Items: 0x%04x (%u)", indent, ' ',
+				items, items);
+
+	return true;
+}
+
 static bool avrcp_get_item_attributes(struct avctp_frame *avctp_frame)
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
@@ -2283,6 +2349,9 @@ static bool avrcp_browsing_packet(struct avctp_frame *avctp_frame)
 		break;
 	case AVRCP_GET_ITEM_ATTRIBUTES:
 		avrcp_get_item_attributes(avctp_frame);
+		break;
+	case AVRCP_SEARCH:
+		avrcp_search_item(avctp_frame);
 		break;
 	default:
 		packet_hexdump(frame->data, frame->size);
