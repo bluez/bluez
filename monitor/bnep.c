@@ -142,6 +142,20 @@ static bool bnep_control(struct bnep_frame *bnep_frame,
 	return true;
 }
 
+static bool bnep_compressed(struct bnep_frame *bnep_frame,
+					uint8_t indent,	int hdr_len)
+{
+
+	struct l2cap_frame *frame = &bnep_frame->l2cap_frame;
+
+	if (!l2cap_frame_get_be16(frame, &proto))
+		return false;
+
+	print_field("%*c[proto 0x%04x] ", indent, ' ', proto);
+
+	return true;
+}
+
 struct bnep_data {
 	uint8_t type;
 	const char *str;
@@ -151,7 +165,7 @@ struct bnep_data {
 static const struct bnep_data bnep_table[] = {
 	{ 0x00, "General Ethernet",		bnep_general	},
 	{ 0x01, "Control",			bnep_control	},
-	{ 0x02, "Compressed Ethernet",				},
+	{ 0x02, "Compressed Ethernet",		bnep_compressed	},
 	{ 0x03, "Compressed Ethernet SrcOnly",			},
 	{ 0x04, "Compressed Ethernet DestOnly",			},
 	{ }
