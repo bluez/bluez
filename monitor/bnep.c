@@ -177,6 +177,27 @@ static bool bnep_src_only(struct bnep_frame *bnep_frame,
 	return true;
 }
 
+static bool bnep_dst_only(struct bnep_frame *bnep_frame,
+					uint8_t indent,	int hdr_len)
+{
+
+	struct l2cap_frame *frame;
+	char dest_addr[20];
+
+	if (!get_macaddr(bnep_frame, dest_addr))
+		return false;
+
+	frame = &bnep_frame->l2cap_frame;
+
+	if (!l2cap_frame_get_be16(frame, &proto))
+		return false;
+
+	print_field("%*cdst %s [proto 0x%04x] ", indent,
+					' ', dest_addr, proto);
+
+	return true;
+}
+
 struct bnep_data {
 	uint8_t type;
 	const char *str;
@@ -188,7 +209,7 @@ static const struct bnep_data bnep_table[] = {
 	{ 0x01, "Control",			bnep_control	},
 	{ 0x02, "Compressed Ethernet",		bnep_compressed	},
 	{ 0x03, "Compressed Ethernet SrcOnly",	bnep_src_only	},
-	{ 0x04, "Compressed Ethernet DestOnly",			},
+	{ 0x04, "Compressed Ethernet DestOnly",	bnep_dst_only	},
 	{ }
 };
 
