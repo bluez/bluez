@@ -649,7 +649,7 @@ static void service_cb(struct btd_service *service,
 	 */
 	reconnect = reconnect_add(service);
 
-	reconnect_reset(reconnect);
+	reconnect->active = false;
 
 	/*
 	 * Should this device be reconnected? A matching UUID might not
