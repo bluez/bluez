@@ -1002,7 +1002,7 @@ static void test_signed_write_seclevel(struct context *context)
 	g_assert(bt_att_set_local_key(context->att, key, local_counter,
 								context));
 
-	g_assert(bt_att_set_sec_level(context->att, BT_SECURITY_MEDIUM));
+	g_assert(bt_att_set_sec_level(context->att, BT_ATT_SECURITY_MEDIUM));
 
 	g_assert(bt_gatt_client_write_without_response(context->client,
 							step->handle,

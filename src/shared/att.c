@@ -1364,7 +1364,7 @@ bool bt_att_set_sec_level(struct bt_att *att, int level)
 {
 	struct bt_security sec;
 
-	if (!att || level < BT_SECURITY_LOW || level > BT_SECURITY_HIGH)
+	if (!att || level < BT_ATT_SECURITY_LOW || level > BT_ATT_SECURITY_HIGH)
 		return false;
 
 	if (!att->io_on_l2cap) {

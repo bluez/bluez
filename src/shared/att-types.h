@@ -27,6 +27,11 @@
 #define __packed __attribute__((packed))
 #endif
 
+#define BT_ATT_SECURITY_NONE	0
+#define BT_ATT_SECURITY_LOW	1
+#define BT_ATT_SECURITY_MEDIUM	2
+#define BT_ATT_SECURITY_HIGH	3
+
 #define BT_ATT_DEFAULT_LE_MTU	23
 #define BT_ATT_MAX_LE_MTU	517
 #define BT_ATT_MAX_VALUE_LEN	512
