@@ -1241,7 +1241,19 @@ static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props)
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE;
 		else if (!strcmp("writable-auxiliaries", flag))
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_WRITABLE_AUX;
-		else {
+		else if (!strcmp("encrypt-read", flag)) {
+			*props |= BT_GATT_CHRC_PROP_READ;
+			*ext_props |= BT_GATT_CHRC_EXT_PROP_ENC_READ;
+		} else if (!strcmp("encrypt-write", flag)) {
+			*props |= BT_GATT_CHRC_PROP_WRITE;
+			*ext_props |= BT_GATT_CHRC_EXT_PROP_ENC_WRITE;
+		} else if (!strcmp("encrypt-authenticated-read", flag)) {
+			*props |= BT_GATT_CHRC_PROP_READ;
+			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_READ;
+		} else if (!strcmp("encrypt-authenticated-write", flag)) {
+			*props |= BT_GATT_CHRC_PROP_WRITE;
+			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_WRITE;
+		} else {
 			error("Invalid characteristic flag: %s", flag);
 			return false;
 		}
@@ -1668,11 +1680,27 @@ static uint32_t permissions_from_props(uint8_t props, uint8_t ext_props)
 
 	if (props & BT_GATT_CHRC_PROP_WRITE ||
 			props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP ||
-			ext_props & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE)
+			ext_props & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE ||
+			ext_props & BT_GATT_CHRC_EXT_PROP_ENC_WRITE ||
+			ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_WRITE)
 		perm |= BT_ATT_PERM_WRITE;
 
-	if (props & BT_GATT_CHRC_PROP_READ)
+	if (props & BT_GATT_CHRC_PROP_READ ||
+			ext_props & BT_GATT_CHRC_EXT_PROP_ENC_READ ||
+			ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_READ)
 		perm |= BT_ATT_PERM_READ;
+
+	if (ext_props & BT_GATT_CHRC_EXT_PROP_ENC_READ)
+		perm |= BT_ATT_PERM_READ_ENCRYPT;
+
+	if (ext_props & BT_GATT_CHRC_EXT_PROP_ENC_WRITE)
+		perm |= BT_ATT_PERM_WRITE_ENCRYPT;
+
+	if (ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_READ)
+		perm |= BT_ATT_PERM_READ_AUTHEN;
+
+	if (ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_WRITE)
+		perm |= BT_ATT_PERM_WRITE_AUTHEN;
 
 	return perm;
 }
