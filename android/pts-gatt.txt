@@ -1403,7 +1403,8 @@ TC_GPA_SR_BV_08_C	PASS	haltest:
 				gatts add_descriptor <UUID> 2903
 				gatts start_service
 				gatts send_response
-TC_GPA_SR_BV_11_C	PASS	haltest:
+TC_GPA_SR_BV_11_C	INC	PTS issue #13392
+				haltest:
 				gatts add_service
 				gatts add_chaaracteristic:
 						<properties> 138 <permissions> 17
