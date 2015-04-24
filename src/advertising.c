@@ -382,7 +382,7 @@ static bool parse_advertising_include_tx_power(GDBusProxy *proxy,
 	DBusMessageIter iter;
 	dbus_bool_t b;
 
-	if (!g_dbus_proxy_get_property(proxy, "IncludeTXPower", &iter))
+	if (!g_dbus_proxy_get_property(proxy, "IncludeTxPower", &iter))
 		return true;
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_BOOLEAN)
@@ -525,7 +525,7 @@ static DBusMessage *parse_advertisement(struct advertisement *ad)
 
 	if (!parse_advertising_include_tx_power(ad->proxy,
 						&ad->include_tx_power)) {
-		error("Property \"IncludeTXPower\" failed to parse");
+		error("Property \"IncludeTxPower\" failed to parse");
 		goto fail;
 	}
 
