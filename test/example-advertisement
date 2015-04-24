@@ -70,7 +70,7 @@ class Advertisement(dbus.service.Object):
             properties['ServiceData'] = dbus.Dictionary(self.service_data,
                                                         signature='say')
         if self.include_tx_power is not None:
-            properties['IncludeTXPower'] = dbus.Boolean(self.include_tx_power)
+            properties['IncludeTxPower'] = dbus.Boolean(self.include_tx_power)
         return {LE_ADVERTISEMENT_IFACE: properties}
 
     def get_path(self):
