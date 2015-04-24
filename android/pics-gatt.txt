@@ -1,6 +1,6 @@
 GATT PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 
@@ -13,8 +13,8 @@ Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_GATT_1_1	True		Generic Attribute Profile Client (C.1)
 TSPC_GATT_1_2	True		Generic Attribute Profile Server (C.2)
-TSPC_GATT_1_3	True		Complete GATT client (C.3)
-TSPC_GATT_1_4	True		Complete GATT server (C.4)
+TSPC_GATT_1A_1	True		Complete GATT client (C.3)
+TSPC_GATT_1A_2	True		Complete GATT server (C.4)
 -------------------------------------------------------------------------------
 C.1: Optional to support IF TSPC_GATT_2_2; else IF TSPC_GATT_2_1 it is mandatory
 	to support at least one of TSPC_GATT_1_1 OR TSPC_GATT_1_2
@@ -245,15 +245,6 @@ TSPC_GATT_7_7	True		LE Authorization Procedure (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory IF TSPC_GATT_2_1 is supported, otherwise Excluded
 C.2: Optional IF TSPC_GATT_2_2 is supported, otherwise Excluded
--------------------------------------------------------------------------------
-
-
-                Attribute Protocol Client Messages
--------------------------------------------------------------------------------
-Parameter Name  Selected        Description
--------------------------------------------------------------------------------
-TSPC_GATT_8_1    True            Support for Multiple ATT bearers from same
-	device (O)
 -------------------------------------------------------------------------------
 
 
