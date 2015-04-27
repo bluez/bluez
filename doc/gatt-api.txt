@@ -210,6 +210,18 @@ Properties	string UUID [read-only]
 			gets updated only after a successful read request, upon
 			which a PropertiesChanged signal will be emitted.
 
+		array{string} Flags [read-only]
+
+			Defines how the descriptor value can be used.
+
+			Possible values:
+
+				"read"
+				"write"
+				"encrypt-read"
+				"encrypt-write"
+				"encrypt-authenticated-read"
+				"encrypt-authenticated-write"
 
 Profile hierarcy
 ================
