@@ -119,6 +119,7 @@ struct external_desc {
 	struct external_service *service;
 	char *chrc_path;
 	GDBusProxy *proxy;
+	uint32_t perm;
 	struct gatt_db_attribute *attrib;
 	bool handled;
 	struct queue *pending_reads;
@@ -1202,26 +1203,18 @@ static bool check_service_path(GDBusProxy *proxy,
 	return g_strcmp0(service_path, service->path) == 0;
 }
 
-static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props)
+static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
+							uint8_t *ext_props)
 {
-	DBusMessageIter iter, array;
 	const char *flag;
 
 	*props = *ext_props = 0;
 
-	if (!g_dbus_proxy_get_property(proxy, "Flags", &iter))
-		return false;
-
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
-		return false;
-
-	dbus_message_iter_recurse(&iter, &array);
-
 	do {
-		if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_STRING)
+		if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_STRING)
 			return false;
 
-		dbus_message_iter_get_basic(&array, &flag);
+		dbus_message_iter_get_basic(array, &flag);
 
 		if (!strcmp("broadcast", flag))
 			*props |= BT_GATT_CHRC_PROP_BROADCAST;
@@ -1257,12 +1250,64 @@ static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props)
 			error("Invalid characteristic flag: %s", flag);
 			return false;
 		}
-	} while (dbus_message_iter_next(&array));
+	} while (dbus_message_iter_next(array));
 
 	if (*ext_props)
 		*props |= BT_GATT_CHRC_PROP_EXT_PROP;
 
 	return true;
+}
+
+static bool parse_desc_flags(DBusMessageIter *array, uint32_t *perm)
+{
+	const char *flag;
+
+	*perm = 0;
+
+	do {
+		if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_STRING)
+			return false;
+
+		dbus_message_iter_get_basic(array, &flag);
+
+		if (!strcmp("read", flag))
+			*perm |= BT_ATT_PERM_READ;
+		else if (!strcmp("write", flag))
+			*perm |= BT_ATT_PERM_WRITE;
+		else if (!strcmp("encrypt-read", flag))
+			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_ENCRYPT;
+		else if (!strcmp("encrypt-write", flag))
+			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_ENCRYPT;
+		else if (!strcmp("encrypt-authenticated-read", flag))
+			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_AUTHEN;
+		else if (!strcmp("encrypt-authenticated-write", flag))
+			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_AUTHEN;
+		else {
+			error("Invalid descriptor flag: %s", flag);
+			return false;
+		}
+	} while (dbus_message_iter_next(array));
+
+	return true;
+}
+
+static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props,
+								uint32_t *perm)
+{
+	DBusMessageIter iter, array;
+
+	if (!g_dbus_proxy_get_property(proxy, "Flags", &iter))
+		return false;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return false;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	if (perm)
+		return parse_desc_flags(&array, perm);
+
+	return parse_chrc_flags(&array, props, ext_props);
 }
 
 static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
@@ -1331,7 +1376,7 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 		 * are used to determine if any special descriptors should be
 		 * created.
 		 */
-		if (!parse_flags(proxy, &chrc->props, &chrc->ext_props)) {
+		if (!parse_flags(proxy, &chrc->props, &chrc->ext_props, NULL)) {
 			error("Failed to parse characteristic properties");
 			service->failed = true;
 			return;
@@ -1372,6 +1417,16 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 		/* Add 1 for the descriptor attribute */
 		if (!incr_attr_count(service, 1)) {
 			error("Failed to increment attribute count");
+			service->failed = true;
+			return;
+		}
+
+		/*
+		 * Parse descriptors flags here since they are used to
+		 * determine the permission the descriptor should have
+		 */
+		if (!parse_flags(proxy, NULL, NULL, &desc->perm)) {
+			error("Failed to parse characteristic properties");
 			service->failed = true;
 			return;
 		}
@@ -1902,13 +1957,10 @@ static bool database_add_desc(struct external_service *service,
 		return false;
 	}
 
-	/*
-	 * TODO: Set permissions based on a D-Bus property of the external
-	 * descriptor.
-	 */
 	desc->attrib = gatt_db_service_add_descriptor(service->attrib, &uuid,
-					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE,
-					desc_read_cb, desc_write_cb, desc);
+							desc->perm,
+							desc_read_cb,
+							desc_write_cb, desc);
 	if (!desc->attrib) {
 		error("Failed to create descriptor entry in database");
 		return false;
