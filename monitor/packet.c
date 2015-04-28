@@ -6747,7 +6747,7 @@ static const struct opcode_data opcode_table[] = {
 				host_buffer_size_cmd, 7, true,
 				status_rsp, 1, true },
 	{ 0x0c35,  87, "Host Number of Completed Packets",
-				host_num_completed_packets_cmd, 1, true },
+				host_num_completed_packets_cmd, 5, false },
 	{ 0x0c36,  88, "Read Link Supervision Timeout",
 				read_link_supv_timeout_cmd, 2, true,
 				read_link_supv_timeout_rsp, 5, true },
