@@ -112,6 +112,7 @@ tools/bnep-tester
 tools/btattach
 tools/btmgmt
 tools/btsnoop
+peripheral/btsensor
 monitor/btmon
 emulator/btvirt
 emulator/b1ee

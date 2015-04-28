@@ -38,7 +38,8 @@ monitor_btmon_LDADD = lib/libbluetooth-internal.la \
 endif
 
 if EXPERIMENTAL
-noinst_PROGRAMS += emulator/btvirt emulator/b1ee emulator/hfp tools/3dsp \
+noinst_PROGRAMS += emulator/btvirt emulator/b1ee emulator/hfp \
+					peripheral/btsensor tools/3dsp \
 					tools/mgmt-tester tools/gap-tester \
 					tools/l2cap-tester tools/sco-tester \
 					tools/smp-tester tools/hci-tester \
@@ -61,6 +62,15 @@ emulator_b1ee_LDADD = src/libshared-mainloop.la
 
 emulator_hfp_SOURCES = emulator/hfp.c
 emulator_hfp_LDADD = src/libshared-mainloop.la
+
+peripheral_btsensor_SOURCES = peripheral/main.c \
+				peripheral/efivars.h peripheral/efivars.c \
+				peripheral/attach.h peripheral/attach.c \
+				peripheral/log.h peripheral/log.c \
+				peripheral/gap.h peripheral/gap.c \
+				peripheral/gatt.h peripheral/gatt.c
+peripheral_btsensor_LDADD = src/libshared-mainloop.la \
+				lib/libbluetooth-internal.la
 
 tools_3dsp_SOURCES = tools/3dsp.c monitor/bt.h
 tools_3dsp_LDADD = src/libshared-mainloop.la
