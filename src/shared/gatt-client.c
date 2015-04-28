@@ -2998,8 +2998,7 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	return true;
 }
 
-bool bt_gatt_client_set_sec_level(struct bt_gatt_client *client,
-								int level)
+bool bt_gatt_client_set_security(struct bt_gatt_client *client, int level)
 {
 	if (!client)
 		return false;
@@ -3007,7 +3006,7 @@ bool bt_gatt_client_set_sec_level(struct bt_gatt_client *client,
 	return bt_att_set_security(client->att, level);
 }
 
-int bt_gatt_client_get_sec_level(struct bt_gatt_client *client)
+int bt_gatt_client_get_security(struct bt_gatt_client *client)
 {
 	if (!client)
 		return -1;
