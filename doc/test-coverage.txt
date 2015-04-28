@@ -47,8 +47,9 @@ smp-tester		   8	Kernel SMP implementation testing
 sco-tester		   8	Kernel SCO implementation testing
 gap-tester		   1	Daemon D-Bus API testing
 hci-tester		  14	Controller hardware testing
+userchan-tester		   3	Kernel HCI User Channel testting
 			-----
-			 362
+			 365
 
 
 Android end-to-end testing
