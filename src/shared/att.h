@@ -83,8 +83,8 @@ bool bt_att_unregister_disconnect(struct bt_att *att, unsigned int id);
 
 bool bt_att_unregister_all(struct bt_att *att);
 
-int bt_att_get_sec_level(struct bt_att *att);
-bool bt_att_set_sec_level(struct bt_att *att, int level);
+int bt_att_get_security(struct bt_att *att);
+bool bt_att_set_security(struct bt_att *att, int level);
 
 bool bt_att_set_local_key(struct bt_att *att, uint8_t sign_key[16],
 			bt_att_counter_func_t func, void *user_data);

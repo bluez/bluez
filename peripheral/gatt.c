@@ -126,7 +126,7 @@ static struct gatt_conn *gatt_conn_new(int fd)
 	bt_att_set_close_on_unref(conn->att, true);
 	bt_att_register_disconnect(conn->att, gatt_conn_disconnect, conn, NULL);
 
-	bt_att_set_sec_level(conn->att, BT_SECURITY_MEDIUM);
+	bt_att_set_security(conn->att, BT_SECURITY_MEDIUM);
 
 	conn->gatt = bt_gatt_server_new(gatt_db, conn->att, mtu);
 	if (!conn->gatt) {
