@@ -1642,7 +1642,6 @@ reply:
 			/*
 			 * There is no ongoing bonding, lets search for primary
 			 * services
-			 *
 			 */
 			search_dev_for_srvc(conn, NULL);
 	}
