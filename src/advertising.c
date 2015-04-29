@@ -730,6 +730,16 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 
 	manager->max_adv_len = feat->max_adv_data_len;
 	manager->max_ads = feat->max_instances;
+
+	if (manager->max_ads == 0)
+		return;
+
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					adapter_get_path(manager->adapter),
+					LE_ADVERTISING_MGR_IFACE,
+					methods, NULL, NULL, manager,
+					advertising_manager_destroy))
+		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
 }
 
 static struct btd_advertising *
@@ -758,16 +768,6 @@ advertising_manager_create(struct btd_adapter *adapter)
 				read_adv_features_callback, manager, NULL)) {
 		error("Failed to read advertising features");
 		advertising_manager_destroy(manager);
-		return NULL;
-	}
-
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-						adapter_get_path(adapter),
-						LE_ADVERTISING_MGR_IFACE,
-						methods, NULL, NULL, manager,
-						advertising_manager_destroy)) {
-		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
-		free(manager);
 		return NULL;
 	}
 
