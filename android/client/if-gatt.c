@@ -679,7 +679,7 @@ static void gattc_listen_cb(int status, int client_if)
 /* Callback invoked when the MTU for a given connection changes */
 static void gattc_configure_mtu_cb(int conn_id, int status, int mtu)
 {
-	haltest_info("%s: conn_id=%d, status=%d, mtu=%d", __func__, conn_id,
+	haltest_info("%s: conn_id=%d, status=%d, mtu=%d\n", __func__, conn_id,
 								status, mtu);
 }
 
