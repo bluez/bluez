@@ -978,6 +978,11 @@ static void notify_mtu_change(void *data, void *user_data)
 	if (conn->device != device)
 		return;
 
+	if (!conn->app) {
+		error("gatt: can't notify mtu - no app registered for conn");
+		return;
+	}
+
 	switch (conn->app->type) {
 	case GATT_CLIENT:
 		notify_client_mtu_change(conn, true);
