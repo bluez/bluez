@@ -1652,7 +1652,7 @@ reply:
 									&data);
 
 	/* For BR/EDR notify about MTU since it is not negotiable*/
-	if (cid != ATT_CID)
+	if (cid != ATT_CID && status == GATT_SUCCESS)
 		queue_foreach(app_connections, notify_mtu_change, dev);
 
 	device_unref(dev);
