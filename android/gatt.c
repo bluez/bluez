@@ -1972,6 +1972,7 @@ static bool trigger_connection(struct app_connection *conn, bool direct)
 		if (direct)
 			return connect_le(conn->device) == 0;
 
+		bt_gatt_add_autoconnect(conn->app->id, &conn->device->bdaddr);
 		return auto_connect_le(conn->device);
 	case DEVICE_CONNECTED:
 		notify_app_connect_status(conn, GATT_SUCCESS);
