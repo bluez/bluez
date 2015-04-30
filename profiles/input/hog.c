@@ -83,6 +83,7 @@ struct hog_device {
 	struct gatt_primary	*hog_primary;
 	GSList			*reports;
 	struct bt_uhid		*uhid;
+	gboolean		uhid_created;
 	gboolean		has_report_id;
 	uint16_t		bcdhid;
 	uint8_t			bcountrycode;
@@ -167,6 +168,9 @@ static void enable_report_notifications(struct report *report,
 {
 	struct hog_device *hogdev = report->hogdev;
 	uint8_t value[2];
+
+	if (!hogdev->uhid_created)
+		return;
 
 	if (!report->ccc_handle)
 		return;
@@ -627,6 +631,7 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	ssize_t vlen;
 	char itemstr[20]; /* 5x3 (data) + 4 (continuation) + 1 (null) */
 	int i, err;
+	GSList *l;
 
 	if (status != 0) {
 		error("Report Map read failed: %s", att_ecode2str(status));
@@ -696,6 +701,14 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	bt_uhid_register(hogdev->uhid, UHID_OUTPUT, forward_report, hogdev);
 	bt_uhid_register(hogdev->uhid, UHID_SET_REPORT, set_report, hogdev);
 	bt_uhid_register(hogdev->uhid, UHID_GET_REPORT, get_report, hogdev);
+
+	hogdev->uhid_created = TRUE;
+
+	for (l = hogdev->reports; l; l = l->next) {
+		struct report *r = l->data;
+
+		enable_report_notifications(r, true);
+	}
 }
 
 static void info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
