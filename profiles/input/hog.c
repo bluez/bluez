@@ -98,6 +98,7 @@ struct hog_device {
 struct report {
 	uint8_t			id;
 	uint8_t			type;
+	uint16_t		ccc_handle;
 	guint			notifyid;
 	struct gatt_char	*decl;
 	struct hog_device	*hogdev;
@@ -150,30 +151,39 @@ static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
 	struct report *report = user_data;
-	struct hog_device *hogdev = report->hogdev;
 
 	if (status != 0) {
-		error("Write report characteristic descriptor failed: %s",
-							att_ecode2str(status));
+		error("Report 0x%04x CCC write failed: %s",
+				report->decl->handle, att_ecode2str(status));
 		return;
 	}
 
+	DBG("Report 0x%04x CCC written: notifications enabled",
+							report->decl->handle);
+}
+
+static void enable_report_notifications(struct report *report,
+							bool enable_on_device)
+{
+	struct hog_device *hogdev = report->hogdev;
+	uint8_t value[2];
+
+	if (!report->ccc_handle)
+		return;
+
+	/* Register callback for HoG report notifications */
 	report->notifyid = g_attrib_register(hogdev->attrib,
 					ATT_OP_HANDLE_NOTIFY,
 					report->decl->value_handle,
 					report_value_cb, report, NULL);
 
-	DBG("Report characteristic descriptor written: notifications enabled");
-}
+	if (!enable_on_device)
+		return;
 
-static void write_ccc(uint16_t handle, gpointer user_data)
-{
-	struct report *report = user_data;
-	struct hog_device *hogdev = report->hogdev;
-	uint8_t value[] = { 0x01, 0x00 };
-
-	gatt_write_char(hogdev->attrib, handle, value, sizeof(value),
-					report_ccc_written_cb, report);
+	/* Enable HoG report notifications on the HoG device */
+	put_le16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+	gatt_write_char(hogdev->attrib, report->ccc_handle, value,
+				sizeof(value), report_ccc_written_cb, report);
 }
 
 static void report_reference_cb(guint8 status, const guint8 *pdu,
@@ -220,7 +230,8 @@ static void discover_descriptor_cb(uint8_t status, GSList *descs,
 		switch (desc->uuid16) {
 		case GATT_CLIENT_CHARAC_CFG_UUID:
 			report = user_data;
-			write_ccc(desc->handle, report);
+			report->ccc_handle = desc->handle;
+			enable_report_notifications(report, true);
 			break;
 		case GATT_REPORT_REFERENCE:
 			report = user_data;
