@@ -858,10 +858,7 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	for (l = hogdev->reports; l; l = l->next) {
 		struct report *r = l->data;
 
-		r->notifyid = g_attrib_register(hogdev->attrib,
-					ATT_OP_HANDLE_NOTIFY,
-					r->decl->value_handle,
-					report_value_cb, r, NULL);
+		enable_report_notifications(r, false);
 	}
 }
 
