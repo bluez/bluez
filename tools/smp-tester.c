@@ -326,13 +326,6 @@ static const struct smp_data smp_server_nval_req_3_test = {
 	.req_count = G_N_ELEMENTS(srv_nval_req_2),
 };
 
-static const uint8_t smp_nval_req_4[] = { 0xff, 0xff };
-static const uint8_t smp_nval_req_4_rsp[] = { 0x05, 0x07 };
-
-static const struct smp_req_rsp srv_nval_req_3[] = {
-	{ smp_nval_req_4, sizeof(smp_nval_req_4), NULL, 0 },
-};
-
 static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
 						0x03,	/* NoInputNoOutput */
 						0x00,	/* OOB Flag */
@@ -454,8 +447,6 @@ static const uint8_t smp_sc_rsp_1[] = {	0x02,	/* Pairing Response */
 };
 
 static const uint8_t smp_sc_pk[65] = { 0x0c };
-
-static const uint8_t smp_sc_failed_rsp_1[] = { 0x05, 0x08 };
 
 static const struct smp_req_rsp cli_sc_req_2[] = {
 	{ NULL, 0, smp_sc_req_1, sizeof(smp_sc_req_1) },
