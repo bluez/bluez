@@ -74,9 +74,7 @@ struct descriptor {
  * properties are defined at doc/gatt-api.txt. See "Flags"
  * property of the GattCharacteristic1.
  */
-static const char const *ias_alert_level_props[] = {
-						"write-without-response",
-						NULL };
+static const char *ias_alert_level_props[] = { "write-without-response", NULL };
 
 static gboolean desc_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
