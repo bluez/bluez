@@ -61,19 +61,19 @@ struct reconnect_data {
 	GSList *services;
 	guint timer;
 	bool active;
-	int attempt;
+	unsigned int attempt;
 };
 
 static const char *default_reconnect[] = {
 			HSP_AG_UUID, HFP_AG_UUID, A2DP_SOURCE_UUID, NULL };
 static char **reconnect_uuids = NULL;
 
-static const int default_attempts = 7;
-static int reconnect_attempts = 0;
+static const size_t default_attempts = 7;
+static size_t reconnect_attempts = 0;
 
 static const int default_intervals[] = { 1, 2, 4, 8, 16, 32, 64 };
 static int *reconnect_intervals = NULL;
-static int reconnect_intervals_len = 0;
+static size_t reconnect_intervals_len = 0;
 
 static GSList *reconnects = NULL;
 
