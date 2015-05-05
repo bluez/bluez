@@ -34,8 +34,10 @@ AC_PROG_LIBTOOL
 
 if (test "$USE_MAINTAINER_MODE" = "yes"); then
 	AC_CHECK_PROG(enable_coverage, [lcov], [yes], [no])
+	AC_CHECK_PROG(enable_dbus_run_session, [dbus-run-session], [yes])
 fi
 AM_CONDITIONAL(COVERAGE, test "${enable_coverage}" = "yes")
+AM_CONDITIONAL(DBUS_RUN_SESSION, test "${enable_dbus_run_session}" = "yes")
 
 MISC_FLAGS
 

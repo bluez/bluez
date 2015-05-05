@@ -419,6 +419,10 @@ endif
 TESTS = $(unit_tests)
 AM_TESTS_ENVIRONMENT = MALLOC_CHECK_=3 MALLOC_PERTURB_=69
 
+if DBUS_RUN_SESSION
+AM_TESTS_ENVIRONMENT += dbus-run-session --
+endif
+
 pkgconfigdir = $(libdir)/pkgconfig
 
 if LIBRARY
