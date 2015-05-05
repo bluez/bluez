@@ -1961,3 +1961,31 @@ void btd_gatt_client_disconnected(struct btd_gatt_client *client)
 	bt_gatt_client_unref(client->gatt);
 	client->gatt = NULL;
 }
+
+struct foreach_service_data {
+	btd_gatt_client_service_path_t func;
+	void *user_data;
+};
+
+static void client_service_foreach(void *data, void *user_data)
+{
+	struct service *service = data;
+	struct foreach_service_data *foreach_data = user_data;
+
+	foreach_data->func(service->path, foreach_data->user_data);
+}
+
+void btd_gatt_client_foreach_service(struct btd_gatt_client *client,
+					btd_gatt_client_service_path_t func,
+					void *user_data)
+{
+	struct foreach_service_data data;
+
+	if (!client)
+		return;
+
+	data.func = func;
+	data.user_data = user_data;
+
+	queue_foreach(client->services, client_service_foreach, &data);
+}
