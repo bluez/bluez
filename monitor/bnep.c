@@ -158,6 +158,32 @@ static bool setup_conn_req(struct bnep_frame *bnep_frame, uint8_t indent)
 	return true;
 }
 
+static bool filter_nettype_req(struct bnep_frame *bnep_frame, uint8_t indent)
+{
+	struct l2cap_frame *frame = &bnep_frame->l2cap_frame;
+	uint16_t length, start_range, end_range;
+	int i;
+
+	if (!l2cap_frame_get_be16(frame, &length))
+		return false;
+
+	print_field("%*cLength: 0x%04x", indent, ' ', length);
+
+	for (i = 0; i < length / 4; i++) {
+
+		if (!l2cap_frame_get_be16(frame, &start_range))
+			return false;
+
+		if (!l2cap_frame_get_be16(frame, &end_range))
+			return false;
+
+		print_field("%*c0x%04x - 0x%04x", indent, ' ',
+						start_range, end_range);
+	}
+
+	return true;
+}
+
 struct bnep_control_data {
 	uint8_t type;
 	const char *str;
@@ -168,7 +194,7 @@ static const struct bnep_control_data bnep_control_table[] = {
 	{ 0x00, "Command Not Understood",	cmd_nt_understood	},
 	{ 0x01, "Setup Conn Req",		setup_conn_req		},
 	{ 0x02, "Setup Conn Rsp",		},
-	{ 0x03, "Filter NetType Set",		},
+	{ 0x03, "Filter NetType Set",		filter_nettype_req	},
 	{ 0x04, "Filter NetType Rsp",		},
 	{ 0x05, "Filter MultAddr Set",		},
 	{ 0x06, "Filter MultAddr Rsp",		},
