@@ -95,13 +95,27 @@ static bool bnep_general(struct bnep_frame *bnep_frame,
 
 }
 
+static bool cmd_nt_understood(struct bnep_frame *bnep_frame, uint8_t indent)
+{
+	struct l2cap_frame *frame = &bnep_frame->l2cap_frame;
+	uint8_t ptype;
+
+	if (!l2cap_frame_get_u8(frame, &ptype))
+		return false;
+
+	print_field("%*cType: 0x%02x ", indent, ' ', ptype);
+
+	return true;
+}
+
 struct bnep_control_data {
 	uint8_t type;
 	const char *str;
+	bool (*func) (struct bnep_frame *frame, uint8_t indent);
 };
 
 static const struct bnep_control_data bnep_control_table[] = {
-	{ 0x00, "Command Not Understood",	},
+	{ 0x00, "Command Not Understood",	cmd_nt_understood	},
 	{ 0x01, "Setup Conn Req",		},
 	{ 0x02, "Setup Conn Rsp",		},
 	{ 0x03, "Filter NetType Set",		},
@@ -137,8 +151,16 @@ static bool bnep_control(struct bnep_frame *bnep_frame,
 
 	print_field("%*c%s (0x%02x) ", indent, ' ', type_str, ctype);
 
-	/* TODO: Handle BNEP control types */
+	if (!bnep_control_data || !bnep_control_data->func) {
+		packet_hexdump(frame->data, hdr_len - 1);
+		l2cap_frame_pull(frame, frame, hdr_len - 1);
+		goto done;
+	}
 
+	if (!bnep_control_data->func(bnep_frame, indent+2))
+		return false;
+
+done:
 	return true;
 }
 
