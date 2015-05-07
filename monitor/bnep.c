@@ -108,6 +108,56 @@ static bool cmd_nt_understood(struct bnep_frame *bnep_frame, uint8_t indent)
 	return true;
 }
 
+static bool setup_conn_req(struct bnep_frame *bnep_frame, uint8_t indent)
+{
+
+	struct l2cap_frame *frame = &bnep_frame->l2cap_frame;
+	uint8_t uuid_size;
+	uint32_t src_uuid = 0, dst_uuid = 0;
+
+	if (!l2cap_frame_get_u8(frame, &uuid_size))
+		return false;
+
+	print_field("%*cSize: 0x%02x ", indent, ' ', uuid_size);
+
+	switch (uuid_size) {
+	case 2:
+		if (!l2cap_frame_get_be16(frame, (uint16_t *) &dst_uuid))
+			return false;
+
+		if (!l2cap_frame_get_be16(frame, (uint16_t *) &src_uuid))
+			return false;
+		break;
+	case 4:
+		if (!l2cap_frame_get_be32(frame, &dst_uuid))
+			return false;
+
+		if (!l2cap_frame_get_be32(frame, &src_uuid))
+			return false;
+		break;
+	case 16:
+		if (!l2cap_frame_get_be32(frame, &dst_uuid))
+			return false;
+
+		l2cap_frame_pull(frame, frame, 12);
+
+		if (!l2cap_frame_get_be32(frame, &src_uuid))
+			return false;
+
+		l2cap_frame_pull(frame, frame, 12);
+		break;
+	default:
+		l2cap_frame_pull(frame, frame, (uuid_size * 2));
+		return true;
+	}
+
+	print_field("%*cDst: 0x%x(%s)", indent, ' ', dst_uuid,
+						uuid32_to_str(dst_uuid));
+	print_field("%*cSrc: 0x%x(%s)", indent, ' ', src_uuid,
+						uuid32_to_str(src_uuid));
+	return true;
+}
+
 struct bnep_control_data {
 	uint8_t type;
 	const char *str;
@@ -116,7 +166,7 @@ struct bnep_control_data {
 
 static const struct bnep_control_data bnep_control_table[] = {
 	{ 0x00, "Command Not Understood",	cmd_nt_understood	},
-	{ 0x01, "Setup Conn Req",		},
+	{ 0x01, "Setup Conn Req",		setup_conn_req		},
 	{ 0x02, "Setup Conn Rsp",		},
 	{ 0x03, "Filter NetType Set",		},
 	{ 0x04, "Filter NetType Rsp",		},
