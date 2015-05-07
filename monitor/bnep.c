@@ -47,6 +47,11 @@
 #define GET_PKT_TYPE(type) (type & 0x7f)
 #define GET_EXTENSION(type) (type & 0x80)
 
+/* BNEP Extension Type */
+#define BNEP_EXTENSION_CONTROL		0x00
+
+#define BNEP_CONTROL			0x01
+
 uint16_t proto = 0x0000;
 
 struct bnep_frame {
@@ -354,6 +359,43 @@ static bool bnep_dst_only(struct bnep_frame *bnep_frame,
 	return true;
 }
 
+static bool bnep_eval_extension(struct bnep_frame *bnep_frame, uint8_t indent)
+{
+	struct l2cap_frame *frame = &bnep_frame->l2cap_frame;
+	uint8_t type, length;
+	int extension;
+
+	if (!l2cap_frame_get_u8(frame, &type))
+		return false;
+
+	if (!l2cap_frame_get_u8(frame, &length))
+		return false;
+
+	extension = GET_EXTENSION(type);
+	type = GET_PKT_TYPE(type);
+
+	switch (type) {
+	case BNEP_EXTENSION_CONTROL:
+		print_field("%*cExt Control(0x%02x|%s) len 0x%02x", indent,
+				' ', type, extension ? "1" : "0", length);
+		if (!bnep_control(bnep_frame, indent+2, length))
+			return false;
+		break;
+
+	default:
+		print_field("%*cExt Unknown(0x%02x|%s) len 0x%02x", indent,
+				' ', type, extension ? "1" : "0", length);
+		packet_hexdump(frame->data, length);
+		l2cap_frame_pull(frame, frame, length);
+	}
+
+	if (extension)
+		if (!bnep_eval_extension(bnep_frame, indent))
+			return false;
+
+	return true;
+}
+
 struct bnep_data {
 	uint8_t type;
 	const char *str;
@@ -420,7 +462,16 @@ void bnep_packet(const struct l2cap_frame *frame)
 	if (!bnep_data->func(&bnep_frame, indent, -1))
 		goto fail;
 
-	/* TODO: Handle BNEP packet with Extension Header */
+	/* Extension info */
+	if (bnep_frame.extension)
+		if (!bnep_eval_extension(&bnep_frame, indent+2))
+			goto fail;
+
+	/* Control packet => No payload info */
+	if (bnep_frame.type == BNEP_CONTROL)
+		return;
+
+	/* TODO: Handle BNEP IP packet */
 	packet_hexdump(l2cap_frame->data, l2cap_frame->size);
 
 	return;
