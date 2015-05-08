@@ -3228,7 +3228,7 @@ static void avrcp_register_notification(struct avrcp *session, uint8_t event)
 	 * use it to resync.
 	 */
 	if (event == AVRCP_EVENT_PLAYBACK_POS_CHANGED)
-		bt_put_be32(UINT32_MAX, &pdu->params[1]);
+		bt_put_be32(UINT32_MAX / 1000, &pdu->params[1]);
 
 	pdu->params_len = htons(AVRCP_REGISTER_NOTIFICATION_PARAM_LENGTH);
 
