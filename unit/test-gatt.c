@@ -647,7 +647,7 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 	err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sv);
 	g_assert(err == 0);
 
-	context->att = bt_att_new(sv[0]);
+	context->att = bt_att_new(sv[0], false);
 	g_assert(context->att);
 
 	switch (test_data->context_type) {

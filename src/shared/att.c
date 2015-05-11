@@ -82,6 +82,7 @@ struct bt_att {
 	void *debug_data;
 
 	struct bt_crypto *crypto;
+	bool ext_signed;
 
 	struct sign_info *local_sign;
 	struct sign_info *remote_sign;
@@ -732,7 +733,7 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 	const struct queue_entry *entry;
 	bool found;
 
-	if (opcode & ATT_OP_SIGNED_MASK) {
+	if (opcode & ATT_OP_SIGNED_MASK & !att->ext_signed) {
 		if (!handle_signed(att, opcode, pdu, pdu_len))
 			return;
 		pdu_len -= BT_ATT_SIGNATURE_LEN;
@@ -900,7 +901,7 @@ static void bt_att_free(struct bt_att *att)
 	free(att);
 }
 
-struct bt_att *bt_att_new(int fd)
+struct bt_att *bt_att_new(int fd, bool ext_signed)
 {
 	struct bt_att *att;
 
@@ -912,7 +913,7 @@ struct bt_att *bt_att_new(int fd)
 		return NULL;
 
 	att->fd = fd;
-
+	att->ext_signed = ext_signed;
 	att->mtu = BT_ATT_DEFAULT_LE_MTU;
 	att->buf = malloc(att->mtu);
 	if (!att->buf)
@@ -923,7 +924,8 @@ struct bt_att *bt_att_new(int fd)
 		goto fail;
 
 	/* crypto is optional, if not available leave it NULL */
-	att->crypto = bt_crypto_new();
+	if (!ext_signed)
+		att->crypto = bt_crypto_new();
 
 	att->req_queue = queue_new();
 	if (!att->req_queue)

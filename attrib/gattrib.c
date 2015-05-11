@@ -95,7 +95,7 @@ static struct id_pair *store_id(GAttrib *attrib, unsigned int org_id,
 	return NULL;
 }
 
-GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu)
+GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu, bool ext_signed)
 {
 	gint fd;
 	GAttrib *attr;
@@ -111,7 +111,7 @@ GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu)
 	g_io_channel_ref(io);
 	attr->io = io;
 
-	attr->att = bt_att_new(fd);
+	attr->att = bt_att_new(fd, ext_signed);
 	if (!attr->att)
 		goto fail;
 

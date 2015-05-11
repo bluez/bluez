@@ -1569,7 +1569,7 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (cid == ATT_CID)
 		mtu = ATT_DEFAULT_LE_MTU;
 
-	attrib = g_attrib_new(io, mtu);
+	attrib = g_attrib_new(io, mtu, true);
 	if (!attrib) {
 		error("gatt: unable to create new GAttrib instance");
 		device_set_state(dev, DEVICE_DISCONNECTED);

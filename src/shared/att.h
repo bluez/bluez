@@ -28,7 +28,7 @@
 
 struct bt_att;
 
-struct bt_att *bt_att_new(int fd);
+struct bt_att *bt_att_new(int fd, bool ext_signed);
 
 struct bt_att *bt_att_ref(struct bt_att *att);
 void bt_att_unref(struct bt_att *att);

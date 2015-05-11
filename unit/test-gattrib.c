@@ -92,7 +92,7 @@ static void setup_context(struct context *cxt, gconstpointer data)
 	g_io_channel_set_encoding(cxt->server_io, NULL, NULL);
 	g_io_channel_set_buffered(cxt->server_io, FALSE);
 
-	cxt->att = g_attrib_new(cxt->att_io, DEFAULT_MTU);
+	cxt->att = g_attrib_new(cxt->att_io, DEFAULT_MTU, false);
 	g_assert(cxt->att != NULL);
 }
 

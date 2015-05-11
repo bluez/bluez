@@ -185,7 +185,7 @@ static struct client *client_create(int fd, uint16_t mtu)
 		return NULL;
 	}
 
-	cli->att = bt_att_new(fd);
+	cli->att = bt_att_new(fd, false);
 	if (!cli->att) {
 		fprintf(stderr, "Failed to initialze ATT transport layer\n");
 		bt_att_unref(cli->att);

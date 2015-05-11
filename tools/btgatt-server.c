@@ -548,7 +548,7 @@ static struct server *server_create(int fd, uint16_t mtu, bool hr_visible)
 		return NULL;
 	}
 
-	server->att = bt_att_new(fd);
+	server->att = bt_att_new(fd, false);
 	if (!server->att) {
 		fprintf(stderr, "Failed to initialze ATT transport layer\n");
 		goto fail;

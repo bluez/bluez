@@ -187,7 +187,7 @@ static struct context *create_context(gconstpointer data)
 
 	g_io_channel_set_close_on_unref(att_io, TRUE);
 
-	context->attrib = g_attrib_new(att_io, 23);
+	context->attrib = g_attrib_new(att_io, 23, false);
 	g_assert(context->attrib);
 
 	g_io_channel_unref(att_io);

@@ -148,7 +148,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	if (cid == ATT_CID)
 		mtu = ATT_DEFAULT_LE_MTU;
 
-	attrib = g_attrib_new(io, mtu);
+	attrib = g_attrib_new(io, mtu, false);
 
 	if (opt_listen)
 		g_idle_add(listen_start, attrib);
