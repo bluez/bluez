@@ -63,11 +63,16 @@ TSPC_GAP_1_4	True		Non-connectable mode (O)
 TSPC_GAP_1_5	True		Connectable mode (M)
 TSPC_GAP_1_6	True		Non-bondable mode (O)
 TSPC_GAP_1_7	True		Bondable mode (C.2)
-TSPC_GAP_1_8	False (*)	Non-Synchronizable Mode (O)
-TSPC_GAP_1_9	False (*)	Synchronizable Mode (O)
+TSPC_GAP_1_8	False (*)	Non-Synchronizable Mode (C.3)
+TSPC_GAP_1_9	False (*)	Synchronizable Mode (C.4)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_GAP_0_2 is supported, otherwise Optional.
 C.2: Mandatory if TSPC_GAP_3_5 is supported, otherwise Optional.
+C.3: Mandatory if TSPC_GAP_0A_2 or TSPC_GAP_0A_3 and is supported, otherwise
+	Excluded.
+C.4: Optional if TSPC_GAP_0A_2 or later is supported; Mandatory if TSPC_GAP_0A_2
+	or later and BB 3a/1 (Connectionless Slave Broadcast Transmitter) are
+	supported, otherwise Excluded.
 -------------------------------------------------------------------------------
 
 

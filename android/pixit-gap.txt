@@ -11,7 +11,7 @@ PTS version: 6.0
 Parameter Name						Value
 -------------------------------------------------------------------------------
 TSPX_bd_addr_iut					112233445566 (*&)
-TSPX_bd_addr_PTS					000000000000
+TSPX_bd_addr_PTS					C000DEADBEEF
 TSPX_broadcaster_class_of_device			100104
 TSPX_observer_class_of_device				100104
 TSPX_peripheral_class_of_device				100104
@@ -36,8 +36,8 @@ TSPX_iut_privacy_enabled				False
 TSPX_psm						1001
 TSPX_iut_valid_connection_interval_min			00C8
 TSPX_iut_valid_conneciton_interval_max			0960
-TSPX_iut_valid_connection_latency			0007
-TSPX_iut_valid_timeout_multiplier			0960
+TSPX_iut_valid_connection_latency			0006
+TSPX_iut_valid_timeout_multiplier			0962
 TSPX_iut_connection_parameter_timeout			30000
 TSPX_iut_invalid_connection_interval_min		0000
 TSPX_iut_invalid_conneciton_interval_max		0000

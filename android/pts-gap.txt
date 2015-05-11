@@ -1,9 +1,9 @@
 PTS test results for GAP
 
-PTS version: 6.0
-Tested: 19-January-2015
-Android version: 5.0
-Kernel version: 3.18
+PTS version: 6.1
+Tested: 11-May-2015
+Android version: 5.1
+Kernel version: 4.1
 
 Results:
 PASS	test passed
@@ -265,13 +265,13 @@ TC_SEC_AUT_BV_23_C	PASS	haltest: gattc register_client
 				gatts send_response 3 1 0 1d 0 0x1234
 TC_SEC_AUT_BV_24_C	PASS	haltest: gatts register_server
 				gatts add_service 1 <uuid> 3
-				gatts add_characteristic 1 1b <uuid> 10 34
-				gatts start_service 1 1b 1
+				gatts add_characteristic 1 1d <uuid> 10 34
+				gatts start_service 1 1d 1
 				gatts connect
 				gatts disconnect
 				gatts connect
 				PTS asks for handle with insufficient encryption
-				gatts send_response 2 1 0 1d 0 0x1234
+				gatts send_response 2 1 0 1f 0 0x1234
 TC_SEC_CSIGN_BV_01_C	PASS	haltest:
 				gattc connect
 				bluetooth create_bond
@@ -281,15 +281,15 @@ TC_SEC_CSIGN_BV_01_C	PASS	haltest:
 TC_SEC_CSIGN_BV_02_C	PASS	haltest: gattc register_client
 				gatts register_server
 				gatts add_service 2 <uuid> 3
-				gatts add_characteristic 2 1b <uuid> 66 129
-				gatts start_service 2 1b 1
+				gatts add_characteristic 2 1d <uuid> 66 129
+				gatts start_service 2 1d 1
 				gattc listen 1
 				gatts disconnect
 TC_SEC_CSIGN_BI_01_C	PASS	gattc register_client
 				gatts register_server
 				gatts add_service 2 <uuid> 3
-				gatts add_characteristic 2 1b <uuid> 66 129
-				gatts start_service 2 1b 1
+				gatts add_characteristic 2 1d <uuid> 66 129
+				gatts start_service 2 1d 1
 				gattc listen 1
 				gatts disconnect
 				gattc disconnect
@@ -377,15 +377,15 @@ TC_DM_CON_BV_01_C	PASS	bluetooth set_adapter_property
 					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE
 				gattc register_client
 				gattc listen 1
-TC_DM_NBON_BV_01_C	PASS	btmgmt bondable off
-TC_DM_BON_BV_01_C	PASS	haltest:
-				create_bond and remove_bond when requested
+TC_DM_NBON_BV_01_C	PASS	btmgmt pairable off
+				btmgmt pair -c 0x04 -t 0x01 <addr>
+TC_DM_BON_BV_01_C	PASS	btmgmt pairable on
+				btmgmt pair -c 0x04 -t 0x01 <addr>
 TC_DM_GIN_BV_01_C	PASS
 TC_DM_LIN_BV_01_C	PASS
-TC_DM_NAD_BV_01_C	PASS	Start discovery from IUT
+TC_DM_NAD_BV_01_C	PASS	btmgmt find
 TC_DM_NAD_BV_02_C	PASS
-TC_DM_LEP_BV_01_C	PASS	PTS issue #12949
-				bluetooth set_adapter_property
+TC_DM_LEP_BV_01_C	PASS	bluetooth set_adapter_property
 					BT_PROPERTY_ADAPTER_SCAN_MODE
 					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE
 				gattc register_client
@@ -393,18 +393,18 @@ TC_DM_LEP_BV_01_C	PASS	PTS issue #12949
 TC_DM_LEP_BV_02_C	PASS	Use basic rate PTS dongle
 				haltest:
 				bluetooth set_adapter_property
-TC_DM_LEP_BV_04_C	PASS	l2test -n <PTS bdaddr>
-TC_DM_LEP_BV_05_C	PASS	btmgmt find -b
+TC_DM_LEP_BV_04_C	PASS	haltest:
+				gattc connect <PTS bdaddr>
+TC_DM_LEP_BV_05_C	PASS	Use basic rate PTS dongle
+				btmgmt find -b
 				l2test -n <PTS bdaddr>
 TC_DM_LEP_BV_06_C	PASS	gattc connect
-TC_DM_LEP_BV_07_C	PASS	PTS issue #12949
-				bluetooth set_adapter_property
+TC_DM_LEP_BV_07_C	PASS	bluetooth set_adapter_property
 					BT_PROPERTY_ADAPTER_SCAN_MODE
 					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE
 				gattc register_client
 				gattc listen 1 1
-TC_DM_LEP_BV_08_C	PASS	PTS issue #12949
-				bluetooth set_adapter_property
+TC_DM_LEP_BV_08_C	PASS	bluetooth set_adapter_property
 					BT_PROPERTY_ADAPTER_SCAN_MODE
 					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE
 				gattc register_client
@@ -415,19 +415,11 @@ TC_DM_LEP_BV_09_C	PASS	haltest:
 					BT_PROPERTY_ADAPTER_SCAN_MODE
 					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE
 				gattc register_client
-				bluetooth start_discovery
-				gattc connect
+				gattc scan 1
+				gattc connect <PTS addr>
 				l2test -n -P 31 <PTS addr>
 				disconnect
-TC_DM_LEP_BV_10_C	PASS	PTS issue #12949
-				haltest:
-				bluetooth enable
-				bluetooth set_adapter_property
-					BT_PROPERTY_ADAPTER_SCAN_MODE
-					BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE
-				gattc register_client
-				gattc listen
-				bluetooth start_discovery
+TC_DM_LEP_BV_10_C	PASS	btmgmt find
 				l2test -n -P 31 <PTS addr>
 TC_DM_LEP_BV_11_C	PASS	haltest:
 				bluetooth enable
