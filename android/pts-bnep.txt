@@ -1,9 +1,9 @@
 PTS test results for BNEP
 
-PTS version: 6.0
-Tested: 09-April-2015
-Android version: 5.0
-Kernel version: 3.20
+PTS version: 6.1
+Tested: 11-May-2015
+Android version: 5.1
+Kernel version: 4.1
 
 Results:
 PASS	test passed
@@ -34,10 +34,14 @@ TC_CTRL_BV_09_C		PASS	bneptest -c <PTS addr> -b <bridge> -n <iface>
 TC_CTRL_BV_10_C		PASS	PTS issue #13169
 				bneptest -s -b <bridge> -n <iface>
 TC_CTRL_BV_19_C		PASS	bneptest -s -b <bridge> -n <iface>
-TC_RX_TYPE_0_BV_11_C	PASS	bneptest -s -b <bridge> -n <iface>
-TC_RX_C_BV_12_C		PASS	bneptest -s -b <bridge> -n <iface>
-TC_RX_C_S_BV_13_C	PASS	bneptest -s -b <bridge> -n <iface>
-TC_RX_C_S_BV_14_C	PASS	bneptest -s -b <bridge> -n <iface>
+TC_RX_TYPE_0_BV_11_C	PASS	PTS issue #13171
+				bneptest -s -b <bridge> -n <iface>
+TC_RX_C_BV_12_C		PASS	PTS issue #13171
+				bneptest -s -b <bridge> -n <iface>
+TC_RX_C_S_BV_13_C	PASS	PTS issue #13171
+				bneptest -s -b <bridge> -n <iface>
+TC_RX_C_S_BV_14_C	PASS	PTS issue #13171
+				bneptest -s -b <bridge> -n <iface>
 TC_RX_TYPE_0_BV_15_C	PASS	PTS issue #13169
 				bneptest -s -b <bridge> -n <iface>
 TC_RX_TYPE_0_BV_16_C	PASS	PTS issue #13171
