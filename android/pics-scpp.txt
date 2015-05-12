@@ -1,6 +1,6 @@
 ScPP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 
@@ -14,7 +14,7 @@ Parameter Name	Selected	Description
 TSPC_ScPP_1_1	False (*)	Scan Server (C.1)
 TSPC_ScPP_1_2	True		Scan Client (C.1)
 -------------------------------------------------------------------------------
-Note: C.1 is not explained in the spec for ScPP.
+Note: Mandatory to support at least one of TSPC_ScPP_1_1 or TSPC_ScPP_1_2.
 -------------------------------------------------------------------------------
 
 
