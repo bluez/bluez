@@ -1,6 +1,6 @@
 RFCOMM PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -25,7 +25,7 @@ Parameter Name		Selected	Description
 -------------------------------------------------------------------------------
 TSPC_RFCOMM_1_1		True (*)	Initialize RFCOMM Session (C.2)
 TSPC_RFCOMM_1_2		True (*)	Respond to Initialization of an RFCOMM
-					Session (C.2)
+					Session (C.1)
 TSPC_RFCOMM_1_3		True		Shutdown RFCOMM Session (M)
 TSPC_RFCOMM_1_4		True		Respond to a Shutdown of an RFCOMM
 					Session (M)
@@ -49,13 +49,11 @@ TSPC_RFCOMM_1_20	True (*)	Send RPN Command (O)
 TSPC_RFCOMM_1_21	True (*)	Closing Multiplexer by First Sending
 					a DISC Command (O)
 TSPC_RFCOMM_1_22	True		Support of Credit Based Flow Control (M)
-TSPC_RFCOMM_1_23	True (*)	IUT Responds to Establishment of
-					a DLC (C.1)
 -------------------------------------------------------------------------------
 C.1: Mandatory if SPP 1/2 (Device B) is supported, otherwise Excluded.
 C.2: Mandatory if SPP 1/1 (Device A) is supported, otherwise Excluded.
 C.3: Mandatory if SPP 1/1 (Device A) is supported, otherwise Optional.
-C.4: Mandatory to support if 0/2 (RFCOMM 1.2) is supported, otherwise Optional.
+C.4: Mandatory to support if TSPC_RFCOMM_0_2 is supported, otherwise Optional.
 -------------------------------------------------------------------------------
 
 
