@@ -1229,7 +1229,7 @@ static void print_link_policy(uint16_t link_policy)
 	if (policy & 0x0004)
 		print_field("  Enable Sniff Mode");
 	if (policy & 0x0008)
-		print_field("  Enabled Park State");
+		print_field("  Enable Park State");
 }
 
 static void print_air_mode(uint8_t mode)
