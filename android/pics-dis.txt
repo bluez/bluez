@@ -1,6 +1,6 @@
 DIS PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 
@@ -14,7 +14,7 @@ Parameter Name	Selected	Description
 TSPC_DIS_1_1	True		Service supported over BR/EDR (C.1)
 TSPC_DIS_1_2	True		Service supported over LE (C.1)
 -------------------------------------------------------------------------------
-C.1: Mandatory to support at least one of 1/1 or 1/2.
+C.1: Mandatory to support at least one of TSPC_DIS_1_1 or TSPC_DIS_1_2.
 -------------------------------------------------------------------------------
 
 
@@ -35,7 +35,7 @@ TSPC_DIS_2_9	False (*)	IEEE 11073-20601 Regulatory Certification
 TSPC_DIS_2_10	True		SDP Interoperability (C.1)
 TSPC_DIS_2_11	True		PnP ID (O)
 -------------------------------------------------------------------------------
-C.1: Mandatory if 1/1 (BR/EDR) is supported, otherwise excluded.
+C.1: Mandatory if TSPC_DIS_1_1 (BR/EDR) is supported, otherwise excluded.
 -------------------------------------------------------------------------------
 
 
