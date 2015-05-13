@@ -1,6 +1,6 @@
 SDP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -41,8 +41,8 @@ TSPC_SDP_2_2	True (*)	Support for respond on search of Service,
 TSPC_SDP_2_3	True (*)	Search for services using the continuation
 				state (C.1)
 -------------------------------------------------------------------------------
-C.1 Mandatory to support if the client role is supported (1b/2)
-C.2 Mandatory to support if the server role is supported (1b/1)
+C.1 Mandatory to support if the client role is supported TSPC_SDP_1b_2
+C.2 Mandatory to support if the server role is supported TSPC_SDP_1b_1
 -------------------------------------------------------------------------------
 
 
@@ -136,5 +136,5 @@ TSPC_SDP_9_17	True (*)	AdditionalProtocolDescriptorList (C.1)
 TSPC_SDP_9_18	True		ServiceRecordHandle (M)
 TSPC_SDP_9_19	True		ServiceClassIDList (M)
 -------------------------------------------------------------------------------
-C.1: Optional if 9/2 is supported, otherwise excluded
+C.1: Optional if TSPC_SDP_9_2 is supported, otherwise excluded
 -------------------------------------------------------------------------------

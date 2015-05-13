@@ -1,8 +1,8 @@
 PTS test results for SDP
 
-PTS version: 6.0
-Tested: 23-February-2015
-Android version: 5.0
+PTS version: 6.1
+Tested: 13-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -48,7 +48,7 @@ TC_SERVER_SA_BV_21_C		PASS
 TC_SERVER_SS_BI_01_C		PASS
 TC_SERVER_SS_BI_02_C		PASS
 TC_SERVER_SS_BV_01_C		PASS
-TC_SERVER_SS_BV_03_C		PASS	PTS issue #12840
+TC_SERVER_SS_BV_03_C		PASS
 TC_SERVER_SS_BV_04_C		PASS
 TC_SERVER_SSA_BI_01_C		PASS
 TC_SERVER_SSA_BI_02_C		PASS
