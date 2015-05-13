@@ -826,13 +826,13 @@ int main(int argc, char *argv[])
 				dev_role = AVDTP_SEP_TYPE_SINK;
 			} else {
 				usage();
-				exit(0);
+				exit(1);
 			}
 			break;
 		case 'c':
 			if (str2ba(optarg, &dst) < 0) {
 				usage();
-				exit(0);
+				exit(1);
 			}
 			break;
 		case 'l':
@@ -855,28 +855,30 @@ int main(int argc, char *argv[])
 			if (version != 0x0100 && version != 0x0102 &&
 							version != 0x0103) {
 				printf("invalid version\n");
-				exit(0);
+				exit(1);
 			}
 
 			break;
 		case 'h':
-		default:
 			usage();
 			exit(0);
+		default:
+			usage();
+			exit(1);
 		}
 	}
 
 	lseps = queue_new();
 	if (!lseps) {
 		printf("Failed to allocate memory\n");
-		exit(0);
+		exit(1);
 	}
 
 	local_sep = avdtp_register_sep(lseps, dev_role, AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, TRUE, &sep_ind, &sep_cfm, NULL);
 	if (!local_sep) {
 		printf("Failed to register sep\n");
-		exit(0);
+		exit(1);
 	}
 
 	queue_push_tail(lseps, local_sep);
@@ -892,7 +894,7 @@ int main(int argc, char *argv[])
 	if (!io) {
 		printf("Failed: %s\n", err->message);
 		g_error_free(err);
-		exit(0);
+		exit(1);
 	}
 
 	g_main_loop_run(mainloop);
