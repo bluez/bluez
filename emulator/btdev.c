@@ -32,6 +32,10 @@
 #include <string.h>
 #include <alloca.h>
 #include <sys/uio.h>
+#include <stdint.h>
+
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
 
 #include "src/shared/util.h"
 #include "src/shared/timeout.h"
@@ -3252,10 +3256,34 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	}
 }
 
+static void send_acl(struct btdev *conn, const void *data, uint16_t len)
+{
+	struct bt_hci_acl_hdr hdr;
+	struct iovec iov[3];
+
+	/* Packet type */
+	iov[0].iov_base = (void *) data;
+	iov[0].iov_len = 1;
+
+	/* ACL_START_NO_FLUSH is only allowed from host to controller.
+	 * From controller to host this should be converted to ACL_START.
+	 */
+	memcpy(&hdr, data + 1, sizeof(hdr));
+	if (acl_flags(hdr.handle) == ACL_START_NO_FLUSH)
+		hdr.handle = acl_handle_pack(acl_handle(hdr.handle), ACL_START);
+
+	iov[1].iov_base = &hdr;
+	iov[1].iov_len = sizeof(hdr);
+
+	iov[2].iov_base = (void *) (data + 1 + sizeof(hdr));
+	iov[2].iov_len = len - 1 - sizeof(hdr);
+
+	send_packet(conn, iov, 3);
+}
+
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 {
 	uint8_t pkt_type;
-	struct iovec iov;
 
 	if (!btdev)
 		return;
@@ -3270,11 +3298,8 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 		process_cmd(btdev, data + 1, len - 1);
 		break;
 	case BT_H4_ACL_PKT:
-		if (btdev->conn) {
-			iov.iov_base = (void *) data;
-			iov.iov_len = len;
-			send_packet(btdev->conn, &iov, 1);
-		}
+		if (btdev->conn)
+			send_acl(btdev->conn, data, len);
 		num_completed_packets(btdev);
 		break;
 	default:
