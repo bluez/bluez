@@ -124,6 +124,7 @@ static int bnep_connadd(int sk, uint16_t role, char *dev)
 
 	req.sock = sk;
 	req.role = role;
+	req.flags = (1 << BNEP_SETUP_RESPONSE);
 	if (ioctl(ctl, BNEPCONNADD, &req) < 0) {
 		int err = -errno;
 		error("bnep: Failed to add device %s: %s(%d)",
@@ -133,6 +134,18 @@ static int bnep_connadd(int sk, uint16_t role, char *dev)
 
 	strncpy(dev, req.device, 16);
 	return 0;
+}
+
+static uint32_t bnep_getsuppfeat(void)
+{
+	uint32_t feat;
+
+	if (ioctl(ctl, BNEPGETSUPPFEAT, &feat) < 0)
+		feat = 0;
+
+	DBG("supported features: 0x%x", feat);
+
+	return feat;
 }
 
 static int bnep_if_up(const char *devname)
@@ -530,7 +543,9 @@ static uint16_t bnep_setup_decode(int sk, struct bnep_setup_conn_req *req,
 	uint8_t *dest, *source;
 	uint32_t val;
 
-	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ)
+	if (((req->type != BNEP_CONTROL) &&
+		(req->type != (BNEP_CONTROL | BNEP_EXT_HEADER)))  ||
+					req->ctrl != BNEP_SETUP_CONN_REQ)
 		return BNEP_CONN_NOT_ALLOWED;
 
 	dest = req->service;
@@ -587,10 +602,55 @@ static uint16_t bnep_setup_decode(int sk, struct bnep_setup_conn_req *req,
 	return BNEP_CONN_INVALID_DST;
 }
 
+static int bnep_server_add_legacy(int sk, uint16_t dst, char *bridge,
+					char *iface, const bdaddr_t *addr,
+					uint8_t *setup_data, int len)
+{
+	int err, n;
+	uint16_t rsp;
+
+	n = read(sk, setup_data, len);
+	if (n != len) {
+		err = -EIO;
+		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
+
+	err = bnep_connadd(sk, dst, iface);
+	if (err < 0) {
+		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
+
+	err = bnep_add_to_bridge(iface, bridge);
+	if (err < 0) {
+		bnep_conndel(addr);
+		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
+
+	err = bnep_if_up(iface);
+	if (err < 0) {
+		bnep_del_from_bridge(iface, bridge);
+		bnep_conndel(addr);
+		rsp = BNEP_CONN_NOT_ALLOWED;
+	}
+
+reply:
+	if (bnep_send_ctrl_rsp(sk, BNEP_SETUP_CONN_RSP, rsp) < 0) {
+		err = -errno;
+		error("bnep: send ctrl rsp error: %s (%d)", strerror(-err),
+									-err);
+	}
+
+	return err;
+}
+
 int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 						uint8_t *setup_data, int len)
 {
 	int err;
+	uint32_t feat;
 	uint16_t rsp, dst;
 	struct bnep_setup_conn_req *req = (void *) setup_data;
 
@@ -614,31 +674,49 @@ int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 		err = -rsp;
 		error("bnep: error while decoding setup connection request: %d",
 									rsp);
-		goto reply;
+		goto failed;
 	}
+
+	feat = bnep_getsuppfeat();
+
+	/*
+	 * Take out setup data if kernel doesn't support handling it, especially
+	 * setup request. If kernel would have set session flags, they should
+	 * be checked and handled respectively.
+	 */
+	if (!feat || !(feat & (1 << BNEP_SETUP_RESPONSE)))
+		return bnep_server_add_legacy(sk, dst, bridge, iface, addr,
+							setup_data, len);
 
 	err = bnep_connadd(sk, dst, iface);
 	if (err < 0) {
 		rsp = BNEP_CONN_NOT_ALLOWED;
-		goto reply;
+		goto failed;
 	}
 
 	err = bnep_add_to_bridge(iface, bridge);
-	if (err < 0) {
-		bnep_conndel(addr);
-		rsp = BNEP_CONN_NOT_ALLOWED;
-		goto reply;
-	}
+	if (err < 0)
+		goto failed_conn;
 
 	err = bnep_if_up(iface);
 	if (err < 0)
-		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto failed_bridge;
 
-reply:
+	return 0;
+
+failed_bridge:
+	bnep_del_from_bridge(iface, bridge);
+
+failed_conn:
+	bnep_conndel(addr);
+
+	return err;
+
+failed:
 	if (bnep_send_ctrl_rsp(sk, BNEP_SETUP_CONN_RSP, rsp) < 0) {
 		err = -errno;
-		error("bnep: send ctrl rsp error: %s (%d)", strerror(errno),
-									errno);
+		error("bnep: send ctrl rsp error: %s (%d)", strerror(-err),
+									-err);
 	}
 
 	return err;

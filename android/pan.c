@@ -471,8 +471,11 @@ static gboolean nap_setup_cb(GIOChannel *chan, GIOCondition cond,
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	/* Reading BNEP_SETUP_CONNECTION_REQUEST_MSG */
-	n = read(sk, packet, sizeof(packet));
+	/*
+	 * BNEP_SETUP_CONNECTION_REQUEST_MSG should be read and left in case
+	 * of kernel setup connection msg handling.
+	 */
+	n = recv(sk, packet, sizeof(packet), MSG_PEEK);
 	if (n  < 0) {
 		error("read(): %s(%d)", strerror(errno), errno);
 		goto failed;
