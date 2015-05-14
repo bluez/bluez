@@ -2279,30 +2279,29 @@ void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
 	send_command(bthost, BT_HCI_CMD_WRITE_SCAN_ENABLE, &scan, 1);
 }
 
-void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable, uint8_t flags)
+void bthost_set_adv_data(struct bthost *bthost, const uint8_t *data,
+								uint8_t len)
+{
+	struct bt_hci_cmd_le_set_adv_data adv_cp;
+
+	memset(adv_cp.data, 0, 31);
+
+	if (len) {
+		adv_cp.len = len;
+		memcpy(adv_cp.data, data, len);
+	}
+
+	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_DATA, &adv_cp,
+							sizeof(adv_cp));
+}
+
+void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable)
 {
 	struct bt_hci_cmd_le_set_adv_parameters cp;
 
 	memset(&cp, 0, sizeof(cp));
 	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
 							&cp, sizeof(cp));
-
-	if (flags) {
-		struct bt_hci_cmd_le_set_adv_data adv_cp;
-
-		memset(adv_cp.data, 0, 31);
-
-		adv_cp.data[0] = 0x02;	/* Field length */
-		adv_cp.data[1] = 0x01;	/* Flags */
-		adv_cp.data[2] = flags;
-
-		adv_cp.data[3] = 0x00;	/* Field terminator */
-
-		adv_cp.len = 1 + adv_cp.data[0];
-
-		send_command(bthost, BT_HCI_CMD_LE_SET_ADV_DATA, &adv_cp,
-								sizeof(adv_cp));
-	}
 
 	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_ENABLE, &enable, 1);
 }
