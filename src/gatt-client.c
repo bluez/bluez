@@ -707,7 +707,7 @@ static gboolean characteristic_value_exists(const GDBusPropertyTable *property,
 
 	gatt_db_attribute_read(chrc->attr, 0, 0, NULL, read_check_cb, &ret);
 
-	return TRUE;
+	return ret;
 }
 
 static gboolean characteristic_get_notifying(const GDBusPropertyTable *property,
