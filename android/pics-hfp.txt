@@ -1,6 +1,6 @@
 HFP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -195,7 +195,7 @@ TSPC_HFP_4_2	True (*)	CVSD audio coding over eSCO (Accepting) (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory if Wide band speech service is supported TSPC_HFP_2_24 or
 	TSPC_HFP_3_24, otherwise excluded
-C.2: Mandatory IF TPSC_HFP_2_3b OR TSPC_HFP_3_3b; otherwise	Excluded.
+C.2: Mandatory IF TPSC_HFP_2_3b OR TSPC_HFP_3_3b; otherwise Excluded.
 -------------------------------------------------------------------------------
 
 
