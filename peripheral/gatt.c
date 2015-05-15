@@ -178,6 +178,7 @@ static void att_conn_callback(int fd, uint32_t events, void *user_data)
 	if (!conn) {
 		fprintf(stderr, "Failed to create GATT connection\n");
 		close(new_fd);
+		return;
 	}
 
 	if (!queue_push_tail(conn_list, conn)) {
