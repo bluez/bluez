@@ -1950,6 +1950,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_le_start_encrypt *lse;
 	const struct bt_hci_cmd_le_ltk_req_reply *llrr;
 	const struct bt_hci_cmd_le_encrypt *lenc_cmd;
+	const struct bt_hci_cmd_le_generate_dhkey *dh;
 	const struct bt_hci_cmd_read_local_amp_assoc *rlaa_cmd;
 	const struct bt_hci_cmd_read_rssi *rrssi;
 	const struct bt_hci_cmd_read_tx_power *rtxp;
@@ -2009,6 +2010,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_rssi rrssi_rsp;
 	struct bt_hci_rsp_read_tx_power rtxp_rsp;
 	struct bt_hci_evt_le_read_local_pk256_complete pk_evt;
+	struct bt_hci_evt_le_generate_dhkey_complete dh_evt;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -2942,6 +2944,22 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		pk_evt.status = BT_HCI_ERR_SUCCESS;
 		le_meta_event(btdev, BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE,
 						&pk_evt, sizeof(pk_evt));
+		break;
+
+	case BT_HCI_CMD_LE_GENERATE_DHKEY:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		dh = data;
+		if (!ecdh_shared_secret(dh->remote_pk256, btdev->le_local_sk256,
+								dh_evt.dhkey)) {
+			cmd_status(btdev, BT_HCI_ERR_COMMAND_DISALLOWED,
+									opcode);
+			break;
+		}
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS,
+						BT_HCI_CMD_LE_GENERATE_DHKEY);
+		le_meta_event(btdev, BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE,
+						&dh_evt, sizeof(dh_evt));
 		break;
 
 	case BT_HCI_CMD_LE_READ_SUPPORTED_STATES:
