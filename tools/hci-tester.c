@@ -406,6 +406,11 @@ static void test_le_encrypt(const void *test_data)
 
 }
 
+static void test_le_rand(const void *test_data)
+{
+	test_command(BT_HCI_CMD_LE_RAND);
+}
+
 static void test_inquiry_complete(const void *data, uint8_t size,
 							void *user_data)
 {
@@ -726,6 +731,8 @@ int main(int argc, char *argv[])
 				test_le_clear_white_list);
 	test_hci_local("LE Encrypt", NULL, NULL,
 				test_le_encrypt);
+	test_hci_local("LE Rand", NULL, NULL,
+				test_le_rand);
 
 	test_hci_local("Inquiry (LIAC)", NULL, NULL, test_inquiry_liac);
 
