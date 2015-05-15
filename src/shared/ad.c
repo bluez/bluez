@@ -474,7 +474,7 @@ bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t manufacturer_id,
 static bool manufacturer_data_match(const void *data, const void *user_data)
 {
 	const struct bt_ad_manufacturer_data *m1 = data;
-	const struct bt_ad_manufacturer_data *m2 = data;
+	const struct bt_ad_manufacturer_data *m2 = user_data;
 
 	if (m1->manufacturer_id != m2->manufacturer_id)
 		return false;
@@ -599,7 +599,7 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 static bool service_data_match(const void *data, const void *user_data)
 {
 	const struct bt_ad_service_data *s1 = data;
-	const struct bt_ad_service_data *s2 = data;
+	const struct bt_ad_service_data *s2 = user_data;
 
 	if (bt_uuid_cmp(&s1->uuid, &s2->uuid))
 		return false;
