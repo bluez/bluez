@@ -2895,6 +2895,19 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &lenc, sizeof(lenc));
 		break;
 
+	case BT_HCI_CMD_LE_RAND:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		if (!bt_crypto_random_bytes(btdev->crypto,
+					    (uint8_t *)&lr.number, 8)) {
+			cmd_status(btdev, BT_HCI_ERR_COMMAND_DISALLOWED,
+				   opcode);
+			break;
+		}
+		lr.status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &lr, sizeof(lr));
+		break;
+
 	case BT_HCI_CMD_LE_READ_SUPPORTED_STATES:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
@@ -2921,14 +2934,6 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		memcpy(btdev->le_scan_data, lssrd->data, 31);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
-		break;
-
-	case BT_HCI_CMD_LE_RAND:
-		if (btdev->type == BTDEV_TYPE_BREDR)
-			goto unsupported;
-		lr.status = BT_HCI_ERR_SUCCESS;
-		lr.number = rand();
-		cmd_complete(btdev, opcode, &lr, sizeof(lr));
 		break;
 
 	case BT_HCI_CMD_LE_READ_REMOTE_FEATURES:
