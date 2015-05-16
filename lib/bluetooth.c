@@ -1082,7 +1082,7 @@ const char *bt_compidtostr(int compid)
 	case 409:
 		return "SALTO SYSTEMS S.L.";
 	case 410:
-		return "T-Engine Forum";
+		return "TRON Forum (formerly T-Engine Forum)";
 	case 411:
 		return "CUBETECH s.r.o.";
 	case 412:
@@ -1263,6 +1263,94 @@ const char *bt_compidtostr(int compid)
 		return "The University of Tokyo";
 	case 500:
 		return "UTC Fire and Security";
+	case 501:
+		return "Cool Webthings Limited";
+	case 502:
+		return "DJO Global";
+	case 503:
+		return "Gelliner Limited";
+	case 504:
+		return "Anyka (Guangzhou) Microelectronics Technology Co, LTD";
+	case 505:
+		return "Medtronic, Inc.";
+	case 506:
+		return "Gozio, Inc.";
+	case 507:
+		return "Form Lifting, LLC";
+	case 508:
+		return "Wahoo Fitness, LLC";
+	case 509:
+		return "Kontakt Micro-Location Sp. z o.o.";
+	case 510:
+		return "Radio System Corporation";
+	case 511:
+		return "Freescale Semiconductor, Inc.";
+	case 512:
+		return "Verifone Systems PTe Ltd. Taiwan Branch";
+	case 513:
+		return "AR Timing";
+	case 514:
+		return "Rigado LLC";
+	case 515:
+		return "Kemppi Oy";
+	case 516:
+		return "Tapcentive Inc.";
+	case 517:
+		return "Smartbotics Inc.";
+	case 518:
+		return "Otter Products, LLC";
+	case 519:
+		return "STEMP Inc.";
+	case 520:
+		return "LumiGeek LLC";
+	case 521:
+		return "InvisionHeart Inc.";
+	case 522:
+		return "Macnica Inc.";
+	case 523:
+		return "Jaguar Land Rover Limited";
+	case 524:
+		return "CoroWare Technologies, Inc";
+	case 525:
+		return "Simplo Technology Co., LTD";
+	case 526:
+		return "Omron Healthcare Co., LTD";
+	case 527:
+		return "Comodule GMBH";
+	case 528:
+		return "ikeGPS";
+	case 529:
+		return "Telink Semiconductor Co. Ltd";
+	case 530:
+		return "Interplan Co., Ltd";
+	case 531:
+		return "Wyler AG";
+	case 532:
+		return "IK Multimedia Production srl";
+	case 533:
+		return "Lukoton Experience Oy";
+	case 534:
+		return "MTI Ltd";
+	case 535:
+		return "Tech4home, Lda";
+	case 536:
+		return "Hiotech AB";
+	case 537:
+		return "DOTT Limited";
+	case 538:
+		return "Blue Speck Labs, LLC";
+	case 539:
+		return "Cisco Systems Inc";
+	case 540:
+		return "Mobicomm Inc";
+	case 541:
+		return "Edamic";
+	case 542:
+		return "Goodnet Ltd";
+	case 543:
+		return "Luster Leaf Products Inc";
+	case 544:
+		return "Manus Machina BV";
 	case 65535:
 		return "internal use";
 	default:
