@@ -219,12 +219,14 @@ static char *const qemu_envp[] = {
 
 static void check_virtualization(void)
 {
+#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
 	uint32_t ecx;
 
 	__asm__ __volatile__("cpuid" : "=c" (ecx) : "a" (1) : "memory");
 
 	if (!!(ecx & (1 << 5)))
 		printf("Found support for Virtual Machine eXtensions\n");
+#endif
 }
 
 static void start_qemu(void)
