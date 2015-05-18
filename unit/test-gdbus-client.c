@@ -72,7 +72,7 @@ static struct context *create_context(void)
 		}
 
 		g_free(context);
-		tester_test_failed();
+		tester_test_abort();
 		return NULL;
 	}
 
