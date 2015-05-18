@@ -2220,7 +2220,7 @@ static bool parse_discovery_filter_dict(struct discovery_filter **filter,
 	dbus_message_iter_init(msg, &iter);
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY ||
 	    dbus_message_iter_get_element_type(&iter) != DBUS_TYPE_DICT_ENTRY)
-		return false;
+		goto invalid_args;
 
 	dbus_message_iter_recurse(&iter, &subiter);
 	do {
