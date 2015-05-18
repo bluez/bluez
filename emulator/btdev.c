@@ -432,6 +432,10 @@ static void set_le_commands(struct btdev *btdev)
 	btdev->commands[28] |= 0x10;	/* LE Receiver Test */
 	btdev->commands[28] |= 0x20;	/* LE Transmitter Test */
 	btdev->commands[28] |= 0x40;	/* LE Test End */
+
+	/* Extra LE commands for >= 4.2 adapters */
+	btdev->commands[34] |= 0x02;	/* LE Read Local P-256 Public Key */
+	btdev->commands[34] |= 0x04;	/* LE Generate DHKey */
 }
 
 static void set_bredrle_commands(struct btdev *btdev)
