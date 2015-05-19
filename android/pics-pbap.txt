@@ -1,6 +1,6 @@
 PBAP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -158,10 +158,10 @@ TSPC_PBAP_7_11	False		PCE: Single Response Mode (C.1)
 TSPC_PBAP_7_12	False		PCE: Single Response Mode Parameter
 					(ability to parse) (C.1)
 TSPC_PBAP_7_13	False		PCE: Single Response Mode Parameter
-					(ability to send) (C.1)
+					(ability to send) (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_PBAP_0_3 (PBAP 1.2) is supported, otherwise Excluded.
-C.2: Optional if TSPC_PBAP_0_3 (PBAP 1.2) is supported, otherwise Excluded.
+C.2: Optional if TSPC_PBAP_2a_3 (PBAP 1.2) is supported, otherwise Excluded.
 -------------------------------------------------------------------------------
 
 
@@ -322,7 +322,7 @@ TSPC_PBAP_14_13	False		PSE: Single Response Mode Parameter
 					(ability to send) (C.2)
 -------------------------------------------------------------------------------
 C.1: Mandatory if TSPC_PBAP_0_3 (PBAP 1.2) is supported, otherwise Excluded.
-C.2: Optional if TSPC_PBAP_0_3 (PBAP 1.2) is supported, otherwise Excluded.
+C.2: Optional if TSPC_PBAP_9a_3 (PBAP 1.2) is supported, otherwise Excluded.
 -------------------------------------------------------------------------------
 
 
