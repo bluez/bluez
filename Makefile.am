@@ -278,7 +278,7 @@ unit_test_uuid_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 unit_tests += unit/test-textfile
 
 unit_test_textfile_SOURCES = unit/test-textfile.c src/textfile.h src/textfile.c
-unit_test_textfile_LDADD = @GLIB_LIBS@
+unit_test_textfile_LDADD = src/libshared-glib.la @GLIB_LIBS@
 
 unit_tests += unit/test-crc
 
