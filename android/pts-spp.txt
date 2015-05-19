@@ -19,10 +19,4 @@ TC_DevB_APP_BV_02_C	PASS	haltest: socket listen BTSOCK_RFCOMM SerialPort
 					00001101
 				Note: IUT must be in connectable, discoverable
 					mode.
-TC_APP_BV_03_C		N/A	Missing in PTS
-				PTS issue #12388
-				Note: tests BV_03 : BV_6 currently not supported
-TC_APP_BV_04_C		N/A	Missing in PTS
-TC_APP_BV_05_C		N/A	Missing in PTS
-TC_APP_BV_06_C		N/A	Missing in PTS
 -------------------------------------------------------------------------------
