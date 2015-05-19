@@ -2404,6 +2404,7 @@ static const struct {
 	const char *str;
 } broadcom_uart_subversion_table[] = {
 	{ 0x410e, "BCM43341B0"	},	/* 002.001.014 */
+	{ 0x4406, "BCM4324B3"	},	/* 002.004.006 */
 	{ }
 };
 
@@ -2433,6 +2434,7 @@ static void print_manufacturer_broadcom(uint16_t subversion, uint16_t revision)
 
 	switch ((rev & 0xf000) >> 12) {
 	case 0:
+	case 3:
 		for (i = 0; broadcom_uart_subversion_table[i].str; i++) {
 			if (broadcom_uart_subversion_table[i].ver == ver) {
 				str = broadcom_uart_subversion_table[i].str;
