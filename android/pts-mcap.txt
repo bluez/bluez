@@ -1,8 +1,8 @@
 PTS test results for MCAP
 
-PTS version: 6.0
-Tested: 10-February-2015
-Android version: 5.0
+PTS version: 6.1
+Tested: 19-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed

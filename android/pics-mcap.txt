@@ -1,6 +1,6 @@
 MCAP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -52,7 +52,7 @@ TSPC_MCAP_2_4	False		Can support multiple simultaneous MCLs with
 -------------------------------------------------------------------------------
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
-TSPC_MCAP_3_1			This row inentionally left blank
+TSPC_MCAP_3_1			This row intentionally left blank
 TSPC_MCAP_3_2	True (*)	Initiate creation of Control and Data Channels
 				(C.1)
 TSPC_MCAP_3_3	True (*)	Accept creation of Control and Data Channels
