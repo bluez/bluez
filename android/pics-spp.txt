@@ -1,6 +1,6 @@
 SPP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -80,11 +80,11 @@ TSPC_SPP_4_5	True (*)	Displayable text name (C.2)
 TSPC_SPP_4_6	True (*)	BluetoothProfileDescriptorList (C.3)
 -------------------------------------------------------------------------------
 C.1: Mandatory for role B, if capability 'Support of Serial Profile Service'
-	(SPP 2/1) supported. Irrelevant for role A.
-C.2: Mandatory to support if 2/1 (Support of Serial Profile Service) AND 0/1
-	(SPP v1.1) are supported, otherwise Optional.
-C.3: Mandatory to support if 2/1 (Support of Serial Profile Service) AND 0/2
-	(SPP v1.2) are supported, otherwise Optional.
+	(TSPC_SPP_2_1) supported. Irrelevant for role A.
+C.2: Mandatory to support if TSPC_SPP_2_1 AND TSPC_SPP_0_1 are supported,
+	otherwise Optional.
+C.3: Mandatory to support if TSPC_SPP_2_1 AND TSPC_SPP_0_2 are supported,
+	otherwise Optional.
 -------------------------------------------------------------------------------
 
 
