@@ -214,6 +214,7 @@ static char *const qemu_argv[] = {
 };
 
 static char *const qemu_envp[] = {
+	"HOME=/",
 	NULL
 };
 
