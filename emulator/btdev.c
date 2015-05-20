@@ -2386,11 +2386,6 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
-	case BT_HCI_CMD_HOST_BUFFER_SIZE:
-		status = BT_HCI_ERR_SUCCESS;
-		cmd_complete(btdev, opcode, &status, sizeof(status));
-		break;
-
 	case BT_HCI_CMD_SET_HOST_FLOW_CONTROL:
 		shfc = data;
 		if (shfc->enable > 0x03) {
@@ -2399,6 +2394,11 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			btdev->host_flow_control = shfc->enable;
 			status = BT_HCI_ERR_SUCCESS;
 		}
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_HOST_BUFFER_SIZE:
+		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
