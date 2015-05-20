@@ -2402,6 +2402,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
+	case BT_HCI_CMD_HOST_NUM_COMPLETED_PACKETS:
+		/* This command is special in the sense that no event is
+		 * normally generated after the command has completed.
+		 */
+		break;
+
 	case BT_HCI_CMD_READ_NUM_SUPPORTED_IAC:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
