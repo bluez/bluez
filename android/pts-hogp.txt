@@ -1,8 +1,8 @@
 PTS test results for HoG
 
-PTS version: 6.0
-Tested: 24-February-2015
-Android version: 5.0
+PTS version: 6.1
+Tested: 20-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -93,7 +93,7 @@ TC_HGCF_BH_BV_03_I	N/A
 TC_HGCF_BH_BV_04_I	N/A
 TC_HGCF_BH_BV_05_I	N/A
 TC_HGCF_BH_BV_06_I	N/A
-TC_HGNF_RH_BV_01_I	PASS	PTS issue #12878
+TC_HGNF_RH_BV_01_I	PASS
 TC_HGNF_RH_BI_01_I	PASS
 TC_HGNF_RH_BI_01_I	PASS
 TC_HGNF_BH_BV_02_I	N/A
