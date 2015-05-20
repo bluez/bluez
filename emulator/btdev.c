@@ -1913,6 +1913,16 @@ static void ltk_neg_reply_complete(struct btdev *btdev)
 	send_event(remote, BT_HCI_EVT_ENCRYPT_CHANGE, &ev, sizeof(ev));
 }
 
+static void btdev_reset(struct btdev *btdev)
+{
+	/* FIXME: include here clearing of all states that should be
+	 * cleared upon HCI_Reset
+	 */
+
+	btdev->le_scan_enable		= 0x00;
+	btdev->le_adv_enable		= 0x00;
+}
+
 static void default_cmd(struct btdev *btdev, uint16_t opcode,
 						const void *data, uint8_t len)
 {
@@ -2163,6 +2173,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_RESET:
+		btdev_reset(btdev);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
