@@ -2393,8 +2393,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_SET_HOST_FLOW_CONTROL:
 		shfc = data;
-		btdev->host_flow_control = shfc->enable;
-		status = BT_HCI_ERR_SUCCESS;
+		if (shfc->enable > 0x03) {
+			status = BT_HCI_ERR_INVALID_PARAMETERS;
+		} else {
+			btdev->host_flow_control = shfc->enable;
+			status = BT_HCI_ERR_SUCCESS;
+		}
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
