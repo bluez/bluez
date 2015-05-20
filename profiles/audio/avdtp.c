@@ -1226,6 +1226,11 @@ struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
 		if (codec_data->media_codec_type != lsep->codec)
 			continue;
 
+		if (lsep->ind && lsep->ind->match_codec)
+			if (!lsep->ind->match_codec(session, codec_data,
+							lsep->user_data))
+				continue;
+
 		if (sep->stream == NULL)
 			return sep;
 	}

@@ -447,6 +447,41 @@ static void endpoint_setconf_cb(struct a2dp_setup *setup, gboolean ret)
 	auto_config(setup);
 }
 
+static gboolean endpoint_match_codec_ind(struct avdtp *session,
+				struct avdtp_media_codec_capability *codec,
+				void *user_data)
+{
+	struct a2dp_sep *sep = user_data;
+	a2dp_vendor_codec_t *remote_codec;
+	a2dp_vendor_codec_t *local_codec;
+	uint8_t *capabilities;
+	size_t length;
+
+	if (codec->media_codec_type != A2DP_CODEC_VENDOR)
+		return TRUE;
+
+	if (sep->endpoint == NULL)
+		return FALSE;
+
+	length = sep->endpoint->get_capabilities(sep, &capabilities,
+							sep->user_data);
+	if (length < sizeof(a2dp_vendor_codec_t))
+		return FALSE;
+
+	local_codec = (a2dp_vendor_codec_t *) capabilities;
+	remote_codec = (a2dp_vendor_codec_t *) codec->data;
+
+	if (remote_codec->vendor_id != local_codec->vendor_id)
+		return FALSE;
+
+	if (remote_codec->codec_id != local_codec->codec_id)
+		return FALSE;
+
+	DBG("vendor 0x%08x codec 0x%04x", btohl(remote_codec->vendor_id),
+						btohs(remote_codec->codec_id));
+	return TRUE;
+}
+
 static gboolean endpoint_setconf_ind(struct avdtp *session,
 						struct avdtp_local_sep *sep,
 						struct avdtp_stream *stream,
@@ -1114,6 +1149,7 @@ static struct avdtp_sep_cfm cfm = {
 };
 
 static struct avdtp_sep_ind endpoint_ind = {
+	.match_codec		= endpoint_match_codec_ind,
 	.get_capability		= endpoint_getcap_ind,
 	.set_configuration	= endpoint_setconf_ind,
 	.get_configuration	= getconf_ind,

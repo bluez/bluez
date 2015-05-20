@@ -172,6 +172,9 @@ struct avdtp_sep_cfm {
 /* Callbacks for indicating when we received a new command. The return value
  * indicates whether the command should be rejected or accepted */
 struct avdtp_sep_ind {
+	gboolean (*match_codec) (struct avdtp *session,
+				struct avdtp_media_codec_capability *codec,
+				void *user_data);
 	gboolean (*get_capability) (struct avdtp *session,
 					struct avdtp_local_sep *sep,
 					gboolean get_all,
