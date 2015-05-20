@@ -1,8 +1,8 @@
 PTS test results for OPP
 
-PTS version: 6.0
-Tested: 30-January-2015
-Android version: 5.0
+PTS version: 6.1
+Tested: 20-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -46,10 +46,10 @@ TC_CLIENT_OPH_BV_15_I	N/A
 TC_CLIENT_OPH_BV_16_I	N/A
 TC_CLIENT_OPH_BV_17_I	N/A
 TC_CLIENT_OPH_BV_18_I	N/A
-TC_CLIENT_OPH_BV_19_I	PASS
+TC_CLIENT_OPH_BV_19_I	PASS	Send file other than vCard
 TC_CLIENT_OPH_BV_20_I	PASS
-TC_CLIENT_OPH_BV_22_I	PASS
-TC_CLIENT_OPH_BV_23_I	PASS
+TC_CLIENT_OPH_BV_22_I	PASS	Send file greater than 2 MB
+TC_CLIENT_OPH_BV_23_I	PASS	Send two vCards in a single operation
 TC_CLIENT_OPH_BV_24_I	N/A
 TC_CLIENT_OPH_BV_25_I	N/A
 TC_CLIENT_OPH_BV_26_I	N/A
