@@ -1,6 +1,6 @@
 A2DP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -76,8 +76,8 @@ TSPC_A2DP_3_6	False		SRC: MPEG-2,4 AAC encoder (C.1)
 TSPC_A2DP_3_7	False		SRC: ATRAC family decoder (C.1)
 TSPC_A2DP_3_8	False		SRC: ATRAC family encoder (C.1)
 -------------------------------------------------------------------------------
-C.1: At least one of the implementations shall be supported if 12/2 (Optional
-	codec) is supported, else excluded.
+C.1: At least one of the implementations shall be supported if 3/2
+	is supported, else excluded.
 -------------------------------------------------------------------------------
 
 
@@ -138,8 +138,8 @@ TSPC_A2DP_5_3	False		SNK: MPEG-1,2 Audio (C.1)
 TSPC_A2DP_5_4	False		SNK: MPEG-2,4 AAC (C.1)
 TSPC_A2DP_5_5	False		SNK: ATRAC family (C.1)
 -------------------------------------------------------------------------------
-C.1: At least one codec shall be supported if Table 13/2 (Optional codec
-	decoder) is supported, otherwise excluded.
+C.1: At least one codec shall be supported if Table 5/2 is supported, otherwise
+	excluded.
 -------------------------------------------------------------------------------
 
 

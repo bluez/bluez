@@ -1,8 +1,8 @@
 PTS test results for A2DP
 
-PTS version: 6.0
-Tested: 14-January-2015
-Android version: 5.0
+PTS version: 6.1
+Tested 21-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -15,24 +15,29 @@ N/A	test is disabled due to PICS setup
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
 TC_SRC_CC_BV_09_I	PASS	Start streaming
-TC_SRC_CC_BV_10_I	PASS
-TC_SRC_REL_BV_01_I	PASS	Connect to PTS from IUT. When requested
-				disconnect from IUT
-TC_SRC_REL_BV_02_I	PASS
-TC_SRC_SET_BV_01_I	PASS	Connect to PTS (open a2dp)
+TC_SRC_CC_BV_10_I	PASS	Start streaming
+TC_SRC_REL_BV_01_I	PASS	When requested disconnect from IUT
+TC_SRC_REL_BV_02_I	PASS	Start streaming
+TC_SRC_SET_BV_01_I	PASS
 TC_SRC_SET_BV_02_I	PASS
 TC_SRC_SET_BV_03_I	PASS	Start streaming
 TC_SRC_SET_BV_04_I	PASS	Start streaming
-TC_SRC_SET_BV_05_I	PASS	IUT must be moved out of range
-				JIRA issue BA-314
+TC_SRC_SET_BV_05_I	PASS	Start streaming
+				IUT must be moved out of range
+				Initiate connection
 TC_SRC_SET_BV_06_I	PASS	IUT must be moved out of range
-TC_SRC_SUS_BV_01_I	PASS	Stop streaming
-TC_SRC_SUS_BV_02_I	PASS
+				PTS issue#13469
+				To pass set TSPX_no_avrcp to TRUE
+TC_SRC_SUS_BV_01_I	PASS	Start streaming
+				Stop streaming
+				Start streaming
+TC_SRC_SUS_BV_02_I	PASS	Start streaming
 TC_SRC_SDP_BV_01_I	PASS
 TC_SRC_AS_BV_01_I	PASS	Requires checking if the output on the IUT is
 				correct
 TC_SRC_AS_BV_02_I	N/A
 TC_SRC_AS_BV_03_I	N/A
+TC_SRC_SYN_BV_02_I	N/A
 -------------------------------------------------------------------------------
 
 
@@ -60,4 +65,6 @@ TC_SNK_SUS_BV_01_I	N/A
 TC_SNK_SUS_BV_02_I	N/A
 TC_SNK_SDP_BV_02_I	N/A
 TC_SNK_AS_BV_01_I	N/A
+TC_SNK_AS_BV_02_I	N/A
+TC_SNK_SYN_BV_01_I	N/A
 -------------------------------------------------------------------------------
