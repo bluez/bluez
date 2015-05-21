@@ -616,11 +616,6 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 
 	new_data->len = len;
 
-	if (bt_ad_has_service_data(ad, new_data)) {
-		uuid_destroy(new_data);
-		return false;
-	}
-
 	if (queue_push_tail(ad->service_data, new_data))
 		return true;
 
