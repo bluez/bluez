@@ -1,6 +1,6 @@
 AVRCP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -12,7 +12,7 @@ O - optional
 -------------------------------------------------------------------------------
 Parameter Name    Selected	Description
 -------------------------------------------------------------------------------
-SPC_AVRCP_1_1     True (*)	Role: Controller (CT) (C.1)
+TSPC_AVRCP_1_1    True (*)	Role: Controller (CT) (C.1)
 TSPC_AVRCP_1_2    True (*)	Role: Target (TG) (C.1)
 -------------------------------------------------------------------------------
 C.1: Mandatory to support at least one of the defined roles.
