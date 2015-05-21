@@ -576,7 +576,7 @@ static bool service_uuid_match(const void *data, const void *user_data)
 	const struct bt_ad_service_data *s = data;
 	const bt_uuid_t *uuid = user_data;
 
-	return bt_uuid_cmp(&s->uuid, uuid);
+	return !bt_uuid_cmp(&s->uuid, uuid);
 }
 
 bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
