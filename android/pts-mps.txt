@@ -1,8 +1,8 @@
 PTS test results for MPS
 
-PTS version: 6.0
-Tested: 11-December-2014
-Android version: 5.0
+PTS version: 6.1
+Tested: 20-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -19,7 +19,7 @@ For full tests conformance, "Touch sounds" on IUT should be disabled
 Test Name				Result	Notes
 -------------------------------------------------------------------------------
 TC_AG_PSE_HFPB_CTH_SD_BV_01_I		PASS
-TC_AG_SRC_HFAV_ACT_SD_BV_01_I		PASS	PTS issue #13138
+TC_AG_SRC_HFAV_ACT_SD_BV_01_I		PASS
 TC_AG_SRC_HFAV_ACT_SD_BV_02_I		PASS
 TC_AG_SRC_HFAV_ACT_SD_BV_03_I		PASS
 TC_AG_SRC_HFAV_CLH_SD_BV_01_I		PASS
@@ -27,7 +27,7 @@ TC_AG_SRC_HFAV_CLH_SD_BV_02_I		N/A
 TC_AG_SRC_HFAV_CLH_SD_BV_03_I		PASS
 TC_AG_SRC_HFAV_CLH_SD_BV_04_I		PASS
 TC_AG_SRC_HFAV_CLH_SD_BV_05_I		PASS
-TC_AG_SRC_HFAV_CLH_SD_BV_06_I		PASS	PTS issue #13138
+TC_AG_SRC_HFAV_CLH_SD_BV_06_I		PASS	PTS issue #13466
 TC_AVP_CTH_SD_BI_01_I			PASS
 TC_AVP_CTH_SD_BI_02_I			PASS
 TC_HF_SNK_HFAV_ACT_SD_BV_01_I		N/A

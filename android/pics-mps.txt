@@ -1,6 +1,6 @@
 MPS PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -219,36 +219,34 @@ TSPC_MPS_6_37	True (*)	A2DP-SRC_PBAP-Server Implementation Phonebook
 TSPC_MPS_6_38	False		A2DP-SNK and PBAP-Client Implementation
 				Phonebook Download during Audio Streaming (C.12)
 TSPC_MPS_6_39	True (*)	HFP-AG and PBAP-Server Implementation PBAP and
-				HFP Connection Behavior (C.13)
+				HFP Connection Behaviour (C.13)
 -------------------------------------------------------------------------------
-C.1: Mandatory if 2/1 (A2DP Source role), 2/4 (AVRCP Target role) and 2/7
-	(HFP Audio Gateway role) are supported, otherwise Excluded.
-C.2: Mandatory if 2/2 (A2DP Sink role), 2/3 (AVRCP Controller role) and 2/8
-	(HFP Hands-Free role) are supported, otherwise Excluded.
-C.3: Mandatory if 2/5 (DUN Gateway role) and 2/7 (HFP Audio Gateway role)
-	are supported and 3/9 ( Ability to support parallel data and call
-	operation), otherwise Excluded.
-C.4: Mandatory if 2/6 (DUN Data Terminal role) and 2/8 (HFP Hands-Free role)
-	are supported, otherwise Excluded.
-C.5: Mandatory if 2/1 (A2DP Source role) and 2/5 (DUN Gateway role) are
-	supported, otherwise Excluded.
-C.6: Mandatory if 2/2 (A2DP Sink role) and 2/6 (DUN Data Terminal role) are
-	supported, otherwise Excluded.
-C.7: Mandatory if 2/7 (HFP Audio Gateway role) and 2/9 (PAN Network Access Point
-	role) and 3/11 (Ability to support parallel data and call operation) are
-	supported, otherwise Excluded.
-C.8: Mandatory if 2/8 (HFP Hands-Free role) and 2/11 (PAN User role) are
-	supported and 3/11, otherwise Excluded.
-C.9: Mandatory if 2/1 (A2DP Source role) and 2/9 (PAN Network Access Point role)
-	are supported, otherwise Excluded.
-C.10: Mandatory if 2/2 (A2DP Sink role) and 2/11 (PAN User role) are supported,
+C.1: Mandatory if TSPC_MPS_2_1, TSPC_MPS_2_4 and TSPC_MPS_2_7 are supported,
 	otherwise Excluded.
-C.11: Mandatory if 2/1 (A2DP Source role) and 2/13 (PBAP PSE role) are
-	supported, otherwise Excluded.
-C.12: Mandatory if 2/2 (A2DP Sink role) and 2/12 (PBAP PCE role) are supported,
+C.2: Mandatory if TSPC_MPS_2_2, TSPC_MPS_2_3 and TSPC_MPS_2_8 are supported,
 	otherwise Excluded.
-C.13: Mandatory if 2/7 (HFP Audio Gateway role) and 2/13 (PBAP PSE role) are
+C.3: Mandatory if TSPC_MPS_2_5 and TSPC_MPS_2_7 are supported and TSPC_MPS_3_9,
+	otherwise Excluded.
+C.4: Mandatory if TSPC_MPS_2_6 and TSPC_MPS_2_8 are supported, otherwise
+	Excluded.
+C.5: Mandatory if TSPC_MPS_2_1 and TSPC_MPS_2_5 are supported, otherwise
+	Excluded.
+C.6: Mandatory if TSPC_MPS_2_2 and TSPC_MPS_2_6 are supported, otherwise
+	Excluded.
+C.7: Mandatory if TSPC_MPS_2_7 and TSPC_MPS_2_9 and TSPC_MPS_3_11 are
 	supported, otherwise Excluded.
+C.8: Mandatory if TSPC_MPS_2_8 and TSPC_MPS_2_11 are supported and
+	TSPC_MPS_3_11, otherwise Excluded.
+C.9: Mandatory if TSPC_MPS_2_1 and TSPC_MPS_2_9 are supported, otherwise
+	Excluded.
+C.10: Mandatory if TSPC_MPS_2_2 and TSPC_MPS_2_11 are supported, otherwise
+	Excluded.
+C.11: Mandatory if TSPC_MPS_2_1 and TSPC_MPS_2_13 are supported, otherwise
+	Excluded.
+C.12: Mandatory if TSPC_MPS_2_2 and TSPC_MPS_2_12 are supported, otherwise
+	Excluded.
+C.13: Mandatory if TSPC_MPS_2_7 and TSPC_MPS_2_13 are supported, otherwise
+	Excluded.
 -------------------------------------------------------------------------------
 
 
@@ -293,12 +291,12 @@ TSPC_MPS_7_14	False		A2DP-SNK and AVRCP-CT and DUN-DT Implementation
 				Start Packet Data Communication during Audio
 				Streaming (C.3)
 -------------------------------------------------------------------------------
-C.1: Mandatory if 2/2 (A2DP Sink role), 2/3 (AVRCP Controller role) and 2/8
-	(HFP Hands-Free role) are supported, otherwise Excluded.
-C.2: Mandatory if 2/1 (A2DP Source role) and 2/4 (AVRCP Target role) are
-	supported, otherwise Excluded.
-C.3: Mandatory if 2/2 (A2DP Sink role), 2/3 (AVRCP Controller role) and 2/6
-	(DUN Data Terminal role) supported, otherwise Excluded.
+C.1: Mandatory if TSPC_MPS_2_2, TSPC_MPS_2_3 and TSPC_MPS_2_8 are supported,
+	otherwise Excluded.
+C.2: Mandatory if TSPC_MPS_2_1 and TSPC_MPS_2_4 are supported, otherwise
+	Excluded.
+C.3: Mandatory if TSPC_MPS_2_2, TSPC_MPS_2_3 and 2/6TSPC_MPS_2_6 supported,
+	otherwise Excluded.
 -------------------------------------------------------------------------------
 
 
@@ -307,12 +305,12 @@ C.3: Mandatory if 2/2 (A2DP Sink role), 2/3 (AVRCP Controller role) and 2/6
 Parameter Name	Selected	Description
 -------------------------------------------------------------------------------
 TSPC_MPS_8_1	True (*)	AVP Suspension (C.1)
-TSPC_MPS_8_2	True (*)	Profile (Dis-)Connection behavior (C.2)
+TSPC_MPS_8_2	True (*)	Profile (Dis-)Connection behaviour (C.2)
 -------------------------------------------------------------------------------
-C.1: Mandatory if 1/1 (A2DP 1.2 or later) and 1/2 (AVRCP 1.3 or later) are
-	supported, otherwise Excluded.
-C.2: Mandatory if 1/1 (A2DP 1.2 or later), 1/2 (AVRCP 1.3 or later) and 1/4 (HFP
-	1.5 or later) are supported, otherwise Excluded.
+C.1: Mandatory if TSPC_MPS_1_1 and TSPC_MPS_1_2 are supported, otherwise
+	Excluded.
+C.2: Mandatory if TSPC_MPS_1_1, TSPC_MPS_1_2 and TSPC_MPS_1_4 are supported,
+	otherwise Excluded.
 -------------------------------------------------------------------------------
 
 
@@ -333,7 +331,7 @@ TSPC_MPS_10_1	True		SDP Record (M)
 TSPC_MPS_10_2	True (*)	Media Stream Suspension (C.1)
 TSPC_MPS_10_3	True (*)	Sniff Mode during Streaming (C.2)
 -------------------------------------------------------------------------------
-C.1: Mandatory if 1/1 (A2DP1.2 or later) and 1/4 (HFP 1.5 or later) are
-	supported, otherwise Excluded.
-C.2: Mandatory if 1/1 (A2DP 1.2 or later) is supported, otherwise Excluded.
+C.1: Mandatory if TSPC_MPS_1_1 and TSPC_MPS_1_4 are supported, otherwise
+	Excluded.
+C.2: Mandatory if TSPC_MPS_1_1 is supported, otherwise Excluded.
 -------------------------------------------------------------------------------
