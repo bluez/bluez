@@ -1831,7 +1831,8 @@ static void le_read_remote_features_complete(struct btdev *btdev)
 	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
 }
 
-static void le_start_encrypt_complete(struct btdev *btdev)
+static void le_start_encrypt_complete(struct btdev *btdev, uint16_t ediv,
+								uint64_t rand)
 {
 	char buf[1 + sizeof(struct bt_hci_evt_le_long_term_key_request)];
 	struct bt_hci_evt_le_long_term_key_request *ev = (void *) &buf[1];
@@ -1848,6 +1849,8 @@ static void le_start_encrypt_complete(struct btdev *btdev)
 	memset(buf, 0, sizeof(buf));
 	buf[0] = BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST;
 	ev->handle = cpu_to_le16(42);
+	ev->ediv = ediv;
+	ev->rand = rand;
 
 	send_event(remote, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
 }
@@ -3032,7 +3035,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			goto unsupported;
 		lse = data;
 		memcpy(btdev->le_ltk, lse->ltk, 16);
-		le_start_encrypt_complete(btdev);
+		le_start_encrypt_complete(btdev, lse->ediv, lse->rand);
 		break;
 
 	case BT_HCI_CMD_LE_LTK_REQ_REPLY:
