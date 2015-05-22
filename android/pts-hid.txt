@@ -1,8 +1,8 @@
 PTS test results for HID
 
-PTS version: 6.0
-Tested: 30-January-2015
-Android version: 5.0
+PTS version: 6.1
+Tested: 19-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -14,7 +14,6 @@ N/A	test is disabled due to PICS setup
 Test Name		Result	Notes
 -------------------------------------------------------------------------------
 TC_HOS_HCE_BV_01_I	PASS
-TC_HOS_HCE_BV_02_I	PASS
 TC_HOS_HCE_BV_03_I	PASS
 TC_HOS_HCE_BV_04_I	PASS
 TC_HOS_HCR_BV_01_I	PASS
