@@ -1,8 +1,8 @@
 PTS test results for IOPT
 
-PTS version: 6.0
-Tested: 03-February-2015
-Android version: 5.0
+PTS version: 6.1
+Tested: 21-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -14,7 +14,7 @@ N/A	test is disabled due to PICS setup
 Test Name	Result	Notes
 -------------------------------------------------------------------------------
 TC_COD_BV_01_I	PASS	IUT must be discoverable
-TC_COD_BV_02_I	N/A
+TC_COD_BV_02_I	N/A	PTS issue#13473
 TC_SDSS_BV_02_I	PASS	Note: HDP sink record should be registered before test
 				run, e.g. register health app via HDPSample.apk
 TC_SDAS_BV_03_I	PASS	Note: HDP sink record should be registered before test
