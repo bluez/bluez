@@ -1,6 +1,6 @@
 AVDTP PICS for the PTS tool.
 
-PTS version: 6.0
+PTS version: 6.1
 
 * - different than PTS defaults
 # - not yet implemented/supported
@@ -27,7 +27,7 @@ Parameter Name	Selected	Description
 TSPC_AVDTP_1_1	True (*)	Source (C.1)
 TSPC_AVDTP_1_2	True (*)	Sink (C.1)
 TSPC_AVDTP_1_3	True (*)	Initiator (C.2)
-TSPC_AVDTP_1_4	True (*)	Aceptor (C.2)
+TSPC_AVDTP_1_4	True (*)	Acceptor (C.2)
 -------------------------------------------------------------------------------
 C.1: It is mandatory to support at least one of the defined roles.
 C.2: It is within the scope of profiles using the AVDTP specification to
@@ -67,7 +67,8 @@ TSPC_AVDTP_4_4	True (*)	Get configuration command (O)
 TSPC_AVDTP_4_5	False		Reconfigure command (O)
 TSPC_AVDTP_4_6	True (*)	Stream get all capabilities command (C.1)
 -------------------------------------------------------------------------------
-C.1: It is optional to support if AVDTP 1.3 is supported, otherwise excluded.
+C.1: It is optional to support if TSPC_AVDTP_0_3 is supported, otherwise
+	excluded.
 C.2: Mandatory to support if TSPC_AVDTP_4_6 is supported, otherwise Optional.
 -------------------------------------------------------------------------------
 
@@ -131,7 +132,8 @@ TSPC_AVDTP_10_4	True (*)	Get configuration response (O)
 TSPC_AVDTP_10_5 False		Reconfigure response (O)
 TSPC_AVDTP_10_6	True (*)	Stream get all capabilities response (C.1)
 -------------------------------------------------------------------------------
-C.1: It is optional to support if AVDTP 1.3 is supported, otherwise excluded.
+C.1: It is optional to support if TSPC_AVDTP_0_3 is supported, otherwise
+	excluded.
 C.2: It is Mandatory to support if TSPC_AVDTP_10_6 is supported, otherwise
 	Optional.
 -------------------------------------------------------------------------------
@@ -177,7 +179,7 @@ TSPC_AVDTP_14_4	False		Multiplexing service support (O)
 TSPC_AVDTP_14_5	False		Robust header compression service support (O)
 TSPC_AVDTP_14_6	True (*)	Delay Reporting (C.1)
 -------------------------------------------------------------------------------
-C.1: It is optional to support if AVDTP 1.3 is supported, else excluded.
+C.1: It is optional to support if TSPC_AVDTP_0_3 is supported, else excluded.
 -------------------------------------------------------------------------------
 
 
@@ -192,7 +194,7 @@ TSPC_AVDTP_15_4	False		Multiplexing service support (O)
 TSPC_AVDTP_15_5	False		Robust header compression service support (O)
 TSPC_AVDTP_15_6	True (*)	Delay Reporting (C.1)
 -------------------------------------------------------------------------------
-C.1: It is optional to support if AVDTP 1.3 is supported, else excluded.
+C.1: It is optional to support if TSPC_AVDTP_0_3 is supported, else excluded.
 -------------------------------------------------------------------------------
 
 

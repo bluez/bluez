@@ -1,8 +1,8 @@
 PTS test results for AVDTP
 
-PTS version: 6.0
-Tested: 16-January-2015
-Android version: 5.0
+PTS version: 6.1
+Tested: 22-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -90,7 +90,7 @@ TC_ACP_SRC_SIG_SMG_BV_24_C		PASS	avdtptest -d SRC -l
 TC_ACP_SRC_SIG_SMG_BV_26_C		PASS	avdtptest -d SRC -l
 TC_ACP_SRC_SIG_SMG_BV_27_C		PASS	avdtptest -d SRC -l
 TC_ACP_SRC_SIG_SMG_ESR05_BV_14_C	N/A
-TC_ACP_SRC_SIG_SMG_BI_02_C		N/A
+TC_ACP_SRC_SIG_SMG_BI_02_C		PASS	avdtptest -d SRC -l
 TC_ACP_SRC_SIG_SMG_BI_03_C		N/A
 TC_ACP_SRC_SIG_SMG_BI_05_C		PASS	avdtptest -d SRC -l
 TC_ACP_SRC_SIG_SMG_BI_06_C		N/A
