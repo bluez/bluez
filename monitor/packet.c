@@ -2403,6 +2403,7 @@ static const struct {
 	uint16_t ver;
 	const char *str;
 } broadcom_uart_subversion_table[] = {
+	{ 0x210b, "BCM43142A0"	},	/* 001.001.011 */
 	{ 0x410e, "BCM43341B0"	},	/* 002.001.014 */
 	{ 0x4406, "BCM4324B3"	},	/* 002.004.006 */
 	{ }
