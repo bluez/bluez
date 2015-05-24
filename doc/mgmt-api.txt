@@ -2655,6 +2655,51 @@ Remove Advertising Command
 				Invalid Index
 
 
+Start Limited Discovery Command
+===============================
+
+	Command Code:		0x0040
+	Controller Index:	<controller id>
+	Command Parameters:	Address_Type (1 Octet)
+	Return Parameters:	Address_Type (1 Octet)
+
+	This command is used to start the process of discovering remote
+	devices using the limited discovery procedure. A Device Found event
+	will be sent for each discovered device.
+
+	Possible values for the Address_Type parameter are a bit-wise or
+	of the following bits:
+
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	By combining these e.g. the following values are possible:
+
+		1	BR/EDR
+		6	LE (public & random)
+		7	BR/EDR/LE (interleaved discovery)
+
+	The limited discovery uses active scanning for Low Energy scanning
+	and will search for devices with the limited discoverabilty flag
+	configured. On BR/EDR it uses LIAC and filters on the limited
+	discoverabilty flag of the class of device.
+
+	When the discovery procedure starts the Discovery event will
+	notify this similar to Start Discovery.
+
+	This command can only be used when the controller is powered.
+
+	This command generates a Command Complete event on success
+	or failure.
+
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
+				Not Powered
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
