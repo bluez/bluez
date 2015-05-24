@@ -2217,12 +2217,35 @@ static void att_read_group_type_req(const struct l2cap_frame *frame)
 	print_uuid("Attribute group type", frame->data + 4, frame->size - 4);
 }
 
+static void print_group_list(const char *label, uint8_t length,
+					const void *data, uint16_t size)
+{
+	uint8_t count;
+
+	if (length == 0)
+		return;
+
+	count = size / length;
+
+	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
+
+	while (size >= length) {
+		print_handle_range("Handle range", data);
+		print_uuid("UUID", data + 4, length - 4);
+
+		data += length;
+		size -= length;
+	}
+
+	packet_hexdump(data, size);
+}
+
 static void att_read_group_type_rsp(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_read_group_type_rsp *pdu = frame->data;
 
 	print_field("Attribute data length: %d", pdu->length);
-	print_data_list("Attribute data list", pdu->length,
+	print_group_list("Attribute group list", pdu->length,
 					frame->data + 1, frame->size - 1);
 }
 
