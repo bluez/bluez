@@ -3560,6 +3560,53 @@ void packet_print_ad(const void *data, uint8_t size)
 	print_eir(data, size, true);
 }
 
+struct broadcast_message {
+	uint32_t frame_sync_instant;
+	uint16_t bluetooth_clock_phase;
+	uint16_t left_open_offset;
+	uint16_t left_close_offset;
+	uint16_t right_open_offset;
+	uint16_t right_close_offset;
+	uint16_t frame_sync_period;
+	uint8_t  frame_sync_period_fraction;
+} __attribute__ ((packed));
+
+static void print_3d_broadcast(const void *data, uint8_t size)
+{
+	const struct broadcast_message *msg = data;
+	uint32_t instant;
+	uint16_t left_open, left_close, right_open, right_close;
+	uint16_t phase, period;
+	uint8_t period_frac;
+	bool mode;
+
+	instant = le32_to_cpu(msg->frame_sync_instant);
+	mode = !!(instant & 0x40000000);
+	phase = le16_to_cpu(msg->bluetooth_clock_phase);
+	left_open = le16_to_cpu(msg->left_open_offset);
+	left_close = le16_to_cpu(msg->left_close_offset);
+	right_open = le16_to_cpu(msg->right_open_offset);
+	right_close = le16_to_cpu(msg->right_close_offset);
+	period = le16_to_cpu(msg->frame_sync_period);
+	period_frac = msg->frame_sync_period_fraction;
+
+	print_field("  Frame sync instant: 0x%8.8x", instant & 0x7fffffff);
+	print_field("  Video mode: %s (%d)", mode ? "Dual View" : "3D", mode);
+	print_field("  Bluetooth clock phase: %d usec (0x%4.4x)",
+						phase, phase);
+	print_field("  Left lense shutter open offset: %d usec (0x%4.4x)",
+						left_open, left_open);
+	print_field("  Left lense shutter close offset: %d usec (0x%4.4x)",
+						left_close, left_close);
+	print_field("  Right lense shutter open offset: %d usec (0x%4.4x)",
+						right_open, right_open);
+	print_field("  Right lense shutter close offset: %d usec (0x%4.4x)",
+						right_close, right_close);
+	print_field("  Frame sync period: %d.%d usec (0x%4.4x 0x%2.2x)",
+						period, period_frac * 256,
+						period, period_frac);
+}
+
 void packet_hexdump(const unsigned char *buf, uint16_t len)
 {
 	static const char hexdigits[] = "0123456789abcdef";
@@ -7924,7 +7971,10 @@ static void slave_broadcast_receive_evt(const void *data, uint8_t size)
 		print_text(COLOR_ERROR, "invalid data size (%d != %d)",
 						size - 18, evt->length);
 
-	packet_hexdump(data + 18, size - 18);
+	if (evt->lt_addr == 0x01 && evt->length == 17)
+		print_3d_broadcast(data + 18, size - 18);
+	else
+		packet_hexdump(data + 18, size - 18);
 }
 
 static void slave_broadcast_timeout_evt(const void *data, uint8_t size)
