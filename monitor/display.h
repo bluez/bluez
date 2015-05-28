@@ -35,7 +35,7 @@ bool use_color(void);
 #define COLOR_MAGENTA	"\x1B[0;35m"
 #define COLOR_CYAN	"\x1B[0;36m"
 #define COLOR_WHITE	"\x1B[0;37m"
-#define COLOR_WHITE_BG	"\x1B[0;47m"
+#define COLOR_WHITE_BG	"\x1B[0;47;30m"
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
 #define COLOR_ERROR	"\x1B[1;31m"
