@@ -2319,6 +2319,13 @@ static void att_write_command(const struct l2cap_frame *frame)
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
+static void att_signed_write_command(const struct l2cap_frame *frame)
+{
+	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_hex_field("  Data", frame->data + 2, frame->size - 2 - 12);
+	print_hex_field("  Signature", frame->data + frame->size - 12, 12);
+}
+
 struct att_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -2380,7 +2387,7 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_handle_value_conf, 0, true },
 	{ 0x52, "Write Command",
 			att_write_command, 2, false },
-	{ 0xd2, "Signed Write Command"		},
+	{ 0xd2, "Signed Write Command", att_signed_write_command, 14, false },
 	{ }
 };
 
