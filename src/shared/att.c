@@ -733,7 +733,7 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 	const struct queue_entry *entry;
 	bool found;
 
-	if (opcode & ATT_OP_SIGNED_MASK & !att->ext_signed) {
+	if ((opcode & ATT_OP_SIGNED_MASK) && !att->ext_signed) {
 		if (!handle_signed(att, opcode, pdu, pdu_len))
 			return;
 		pdu_len -= BT_ATT_SIGNATURE_LEN;
