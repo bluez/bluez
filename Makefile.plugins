@@ -60,7 +60,9 @@ builtin_sources += profiles/input/manager.c \
 
 builtin_modules += hog
 builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
-			profiles/input/suspend.h profiles/input/suspend-dummy.c
+			profiles/input/suspend.h profiles/input/suspend-none.c
+
+EXTRA_DIST += profiles/input/suspend-dummy.c
 
 if EXPERIMENTAL
 builtin_modules += health
