@@ -634,7 +634,10 @@ static int bnep_server_add_legacy(int sk, uint16_t dst, char *bridge,
 		bnep_del_from_bridge(iface, bridge);
 		bnep_conndel(addr);
 		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
 	}
+
+	rsp = BNEP_SUCCESS;
 
 reply:
 	if (bnep_send_ctrl_rsp(sk, BNEP_SETUP_CONN_RSP, rsp) < 0) {
