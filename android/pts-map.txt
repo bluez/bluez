@@ -1,8 +1,8 @@
 PTS test results for MAP
 
-PTS version: 6.0
-Tested: 11-December-2014
-Android version: 5.0
+PTS version: 6.1
+Tested: 29-May-2015
+Android version: 5.1
 
 Results:
 PASS	test passed
@@ -71,9 +71,9 @@ TC_MSE_MMB_BV_14_I	PASS
 TC_MSE_MMB_BV_15_I	PASS
 TC_MSE_MMB_BV_16_I	PASS
 TC_MSE_MMD_BV_02_I	PASS
-TC_MSE_MMU_BV_02_I	PASS	At least one SMS must be present in inbox
+TC_MSE_MMU_BV_02_I	PASS
 TC_MSE_MMU_BV_03_I	PASS
-TC_MSE_MMN_BV_02_I	PASS
+TC_MSE_MMN_BV_02_I	INC	JIRA #BA-380
 TC_MSE_MMN_BV_04_I	N/A
 TC_MSE_MMI_BV_02_I	N/A
 TC_MSE_MFB_BV_02_I	N/A
@@ -83,6 +83,7 @@ TC_MSE_BC_BV_03_I	N/A
 TC_MSE_CON_BV_01_I	N/A
 TC_MSE_CON_BV_02_I	N/A
 TC_MSE_ROB_BV_01_I	N/A
+TC_MSE_ROB_BV_02_I	N/A
 TC_MSE_SRM_BI_02_I	N/A
 TC_MSE_SRM_BI_03_I	N/A
 TC_MSE_SRM_BI_05_I	N/A
