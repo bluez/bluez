@@ -1,9 +1,9 @@
 PTS test results for L2CAP
 
-PTS version: 6.0
-Tested: 18-December-2014
-Android version: 5.0
-Kernel version: 3.18
+PTS version: 6.1
+Tested: 28-May-2015
+Android version: 5.1
+Kernel version: 4.1
 
 Results:
 PASS   test passed
@@ -19,18 +19,14 @@ Test Name		Result	Notes
 TC_COS_CED_BV_01_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_CED_BV_03_C	PASS	l2test -y -N 1 -P 4113 <bdaddr>
 TC_COS_CED_BV_04_C	PASS	l2test -n -P 4113 <bdaddr>
-TC_COS_CED_BV_05_C	PASS	PTS issue #12351
-				btmgmt ssp off
-				l2test -r -P 4113
+TC_COS_CED_BV_05_C	PASS	l2test -r -P 4113
 TC_COS_CED_BV_07_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_CED_BV_08_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_CED_BV_09_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_CED_BV_10_C	N/A
 TC_COS_CED_BV_11_C	PASS	l2test -u -P 4113 <bdaddr>
 TC_COS_CED_BI_01_C	PASS
-TC_COS_CFD_BV_01_C	PASS	PTS issue #12351
-				btmgmt ssp off
-				l2test -r -P 4113
+TC_COS_CFD_BV_01_C	PASS	l2test -r -P 4113
 TC_COS_CFD_BV_02_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_CFD_BV_03_C	PASS	l2test -n -P 4113 <bdaddr>
 TC_COS_CFD_BV_08_C	PASS	l2test -n -P 4113 <bdaddr>
@@ -153,32 +149,43 @@ TC_ECF_BV_05_C		N/A
 TC_ECF_BV_06_C		N/A
 TC_ECF_BV_07_C		N/A
 TC_ECF_BV_08_C		N/A
-TC_LE_CPU_BV_01_C	PASS	l2test -n -V le_public -J 4
+TC_LE_CPU_BV_01_C	PASS	btmgmt advertising on
+				l2test -r -V le_public -J 4
 TC_LE_CPU_BV_02_C	PASS	l2test -n -V le_public -J 4 <braddr>
 TC_LE_CPU_BI_01_C	PASS	l2test -n -V le_public -J 4 <braddr>
-TC_LE_CPU_BI_02_C	PASS	l2test -r -V le_public -J 4
+TC_LE_CPU_BI_02_C	PASS	btmgmt advertising on
+				l2test -r -V le_public -J 4
 TC_LE_REJ_BI_01_C	PASS	l2test -n -V le_public -J 4 <braddr>
 TC_LE_REJ_BI_02_C	PASS	l2test -n -V le_public -J 4 <braddr>
 TC_LE_CFC_BV_01_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_02_C	PASS	l2test -n -V le_public -P 37 <braddr>
-TC_LE_CFC_BV_03_C	PASS	l2test -x -N 1 -V le_public <braddr>
-				Note: PIXIT TSPX_iut_role_initiator=FALSE
+TC_LE_CFC_BV_03_C	PASS	l2test -x -N 1 -V le_public
+				hcitool lecc <braddr>
+				hcitool ledc <handle>
 TC_LE_CFC_BV_04_C	PASS	l2test -n -V le_public -P 241 <braddr>
 TC_LE_CFC_BV_05_C	PASS	l2test -r -V le_public -J 4
-				Note: PIXIT TSPX_iut_role_initiator=FALSE
-TC_LE_CFC_BV_06_C	PASS	PTS issue #12853
-				Note: PIXIT TSPX_iut_role_initiator=FALSE
-				l2test -x -b 1 -V le_public <braddr>
+				hcitool lecc <braddr>
+				hcitool ledc <handle>
+TC_LE_CFC_BV_06_C	PASS	l2test -s -N 10 -V le_public <braddr>
 TC_LE_CFC_BV_07_C	PASS	l2test -u -V le_public <braddr>
 TC_LE_CFC_BI_01_C	PASS	l2test -u -V le_public <bdaddr>
 TC_LE_CFC_BV_08_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_09_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_16_C	PASS	l2test -n -V le_public -P 37 <braddr>
 TC_LE_CFC_BV_17_C	N/A
-TC_LE_CID_BV_01_C	INC	PTS issue #12730
-				l2test -s -N 1 <bdaddr>
-				l2test -s -N 1 -V le_public <bdaddr>
-TC_LE_CID_BV_02_I	INC	PTS issue #12730
-				Note: PIXIT TSPX_iut_role_initiator=FALSE
-				l2test -w -N 1
-				l2test -w -N 1 -V le_public
+TC_LE_CID_BV_01_C	PASS	PTS issue #12730
+				l2test -r -J 2
+				l2test -r -J 4 -V le_public
+				hcitool cc <braddr>
+				hcitool lecc --static <braddr>
+				l2test -s -N 1 -C 0 -e 5 -D 10000 <braddr>
+				l2test -s -N 1 -C 0 -D 10000 -g 10000
+					-V le_public <braddr>
+TC_LE_CID_BV_02_I	PASS	PTS issue #12730
+				l2test -r -J 2
+				l2test -r -J 4 -V le_public
+				l2test -w -N 1 -C 0 -D 5000 -g 10000
+				l2test -w -N 1 -C 0 -D 5000 -e 5 -g 10000
+					-V le_public
+				hcitool cc <braddr>
+				hcitool lecc --static <braddr>
