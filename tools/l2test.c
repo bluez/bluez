@@ -108,6 +108,9 @@ static unsigned long send_delay = 0;
 /* Default delay before receiving */
 static unsigned long recv_delay = 0;
 
+/* Default delay before disconnecting */
+static unsigned long disc_delay = 0;
+
 /* Initial sequence value when sending frames */
 static int seq_start = 0;
 
@@ -1013,6 +1016,9 @@ static void send_mode(int sk)
 {
 	do_send(sk);
 
+	if (disc_delay)
+		usleep(disc_delay);
+
 	syslog(LOG_INFO, "Closing channel ...");
 	if (shutdown(sk, SHUT_RDWR) < 0)
 		syslog(LOG_INFO, "Close failed: %m");
@@ -1317,6 +1323,7 @@ static void usage(void)
 		"\t[-C num] send num frames before delay (default = 1)\n"
 		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
 		"\t[-K milliseconds] delay before receiving (default = 0)\n"
+		"\t[-g milliseconds] delay before disconnecting (default = 0)\n"
 		"\t[-X mode] l2cap mode (help for list, default = basic)\n"
 		"\t[-a policy] chan policy (help for list, default = bredr)\n"
 		"\t[-F fcs] use CRC16 check (default = 1)\n"
@@ -1343,7 +1350,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt(argc, argv, "a:b:cde:i:mnpqrstuwxyz"
+	while ((opt = getopt(argc, argv, "a:b:cde:g:i:mnpqrstuwxyz"
 		"AB:C:D:EF:GH:I:J:K:L:MN:O:P:Q:RSTUV:W:X:Y:Z:")) != EOF) {
 		switch (opt) {
 		case 'r':
@@ -1552,6 +1559,10 @@ int main(int argc, char *argv[])
 
 		case 'e':
 			seq_start = atoi(optarg);
+			break;
+
+		case 'g':
+			disc_delay = atoi(optarg) * 1000;
 			break;
 
 		default:
