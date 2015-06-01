@@ -108,6 +108,9 @@ static unsigned long send_delay = 0;
 /* Default delay before receiving */
 static unsigned long recv_delay = 0;
 
+/* Initial sequence value when sending frames */
+static int seq_start = 0;
+
 static char *filename = NULL;
 
 static int rfcmode = 0;
@@ -974,7 +977,7 @@ static void do_send(int sk)
 			buf[i] = 0x7f;
 	}
 
-	seq = 0;
+	seq = seq_start;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
 		put_le32(seq, buf);
 		put_le16(data_size, buf + 4);
@@ -997,7 +1000,8 @@ static void do_send(int sk)
 			size -= len;
 		}
 
-		if (num_frames && send_delay && count && !(seq % count))
+		if (num_frames && send_delay && count &&
+						!(seq % (count + seq_start)))
 			usleep(send_delay);
 	}
 }
@@ -1325,7 +1329,8 @@ static void usage(void)
 		"\t[-S] secure connection\n"
 		"\t[-M] become master\n"
 		"\t[-T] enable timestamps\n"
-		"\t[-V type] address type (help for list, default = bredr)\n");
+		"\t[-V type] address type (help for list, default = bredr)\n"
+		"\t[-e seq] initial sequence value (default = 0)\n");
 }
 
 int main(int argc, char *argv[])
@@ -1336,7 +1341,7 @@ int main(int argc, char *argv[])
 	bacpy(&bdaddr, BDADDR_ANY);
 
 	while ((opt = getopt(argc, argv, "rdscuwmntqxyzpb:a:"
-		"i:P:I:O:J:B:N:L:W:C:D:X:F:Q:Z:Y:H:K:V:RUGAESMT")) != EOF) {
+		"i:P:I:O:J:B:N:L:W:C:D:X:F:Q:Z:Y:H:K:V:RUGAESMTe:")) != EOF) {
 		switch (opt) {
 		case 'r':
 			mode = RECV;
@@ -1540,6 +1545,10 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 
+			break;
+
+		case 'e':
+			seq_start = atoi(optarg);
 			break;
 
 		default:
