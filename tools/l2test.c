@@ -977,6 +977,9 @@ static void do_send(int sk)
 			buf[i] = 0x7f;
 	}
 
+	if (!count && send_delay)
+		usleep(send_delay);
+
 	seq = seq_start;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
 		put_le32(seq, buf);
