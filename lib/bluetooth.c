@@ -1351,6 +1351,24 @@ const char *bt_compidtostr(int compid)
 		return "Luster Leaf Products Inc";
 	case 544:
 		return "Manus Machina BV";
+	case 545:
+		return "Mobiquity Networks Inc";
+	case 546:
+		return "Praxis Dynamics";
+	case 547:
+		return "Philip Morris Products S.A.";
+	case 548:
+		return "Comarch SA";
+	case 549:
+		return "Nestl Nespresso S.A.";
+	case 550:
+		return "Merlinia A/S";
+	case 551:
+		return "LifeBEAM Technologies";
+	case 552:
+		return "Twocanoes Labs, LLC";
+	case 553:
+		return "Muoverti Limited";
 	case 65535:
 		return "internal use";
 	default:
