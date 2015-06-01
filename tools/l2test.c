@@ -1343,8 +1343,8 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt(argc, argv, "rdscuwmntqxyzpb:a:"
-		"i:P:I:O:J:B:N:L:W:C:D:X:F:Q:Z:Y:H:K:V:RUGAESMTe:")) != EOF) {
+	while ((opt = getopt(argc, argv, "a:b:cde:i:mnpqrstuwxyz"
+		"AB:C:D:EF:GH:I:J:K:L:MN:O:P:Q:RSTUV:W:X:Y:Z:")) != EOF) {
 		switch (opt) {
 		case 'r':
 			mode = RECV;
