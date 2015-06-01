@@ -25,8 +25,8 @@ TC_SRC_SET_BV_04_I	PASS	Start streaming
 TC_SRC_SET_BV_05_I	PASS	Start streaming
 				IUT must be moved out of range
 				Initiate connection
-TC_SRC_SET_BV_06_I	PASS	IUT must be moved out of range
-				PTS issue#13469
+TC_SRC_SET_BV_06_I	PASS	PTS issue#13469
+				IUT must be moved out of range
 				To pass set TSPX_no_avrcp to TRUE
 TC_SRC_SUS_BV_01_I	PASS	Start streaming
 				Stop streaming
