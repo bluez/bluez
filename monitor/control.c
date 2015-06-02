@@ -261,16 +261,34 @@ static void mgmt_local_name_changed(uint16_t len, const void *buf)
 static void mgmt_new_link_key(uint16_t len, const void *buf)
 {
 	const struct mgmt_ev_new_link_key *ev = buf;
+	const char *type;
 	char str[18];
+	static const char *types[] = {
+		"Combination key",
+		"Local Unit key",
+		"Remote Unit key",
+		"Debug Combination key",
+		"Unauthenticated Combination key from P-192",
+		"Authenticated Combination key from P-192",
+		"Changed Combination key",
+		"Unauthenticated Combination key from P-256",
+		"Authenticated Combination key from P-256",
+	};
 
 	if (len < sizeof(*ev)) {
 		printf("* Malformed New Link Key control\n");
 		return;
 	}
 
+	if (ev->key.type < NELEM(types))
+		type = types[ev->key.type];
+	else
+		type = "Reserved";
+
 	ba2str(&ev->key.addr.bdaddr, str);
 
-	printf("@ New Link Key: %s (%d)\n", str, ev->key.addr.type);
+	printf("@ New Link Key: %s (%d) %s (%u)\n", str,
+				ev->key.addr.type, type, ev->key.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
