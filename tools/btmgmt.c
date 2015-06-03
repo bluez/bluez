@@ -2309,8 +2309,7 @@ static void stop_find_rsp(uint8_t status, uint16_t len, const void *param,
 		fprintf(stderr,
 			"Stop Discovery failed: status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		mainloop_quit();
-		return;
+		return noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	printf("Discovery stopped\n");
