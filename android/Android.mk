@@ -385,6 +385,7 @@ LOCAL_SRC_FILES := \
 	bluez/tools/btproxy.c \
 	bluez/src/shared/mainloop.c \
 	bluez/src/shared/util.c \
+	bluez/src/shared/ecc.c \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/bluez \
