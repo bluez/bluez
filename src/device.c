@@ -541,17 +541,6 @@ static void gatt_client_cleanup(struct btd_device *device)
 	bt_gatt_client_set_ready_handler(device->client, NULL, NULL, NULL);
 	bt_gatt_client_unref(device->client);
 	device->client = NULL;
-
-	/*
-	 * TODO: Once GATT over BR/EDR is properly supported, we should check
-	 * the bonding state for the correct bearer based on the transport over
-	 * which GATT is being done.
-	 */
-	if (device->le_state.bonded)
-		return;
-
-	gatt_db_clear(device->db);
-	device->gatt_cache_used = false;
 }
 
 static void gatt_server_cleanup(struct btd_device *device)
@@ -2862,6 +2851,9 @@ static void dev_probe_gatt(struct btd_profile *p, void *user_data)
 		return;
 	}
 
+	/* Mark service as active to skip discovering it again */
+	gatt_db_service_set_active(data->cur_attr, true);
+
 	/* Mark service as claimed */
 	gatt_db_service_set_claimed(data->cur_attr, true);
 
@@ -2890,6 +2882,8 @@ static void dev_probe_gatt_profile(struct gatt_db_attribute *attr,
 
 	/* Don't probe the profiles if a matching service already exists. */
 	if (find_service_with_uuid(data->dev->services, data->cur_uuid)) {
+		/* Mark service as active to skip discovering it again */
+		gatt_db_service_set_active(data->cur_attr, true);
 		/* Mark the service as claimed by the existing profile. */
 		gatt_db_service_set_claimed(data->cur_attr, true);
 		return;
@@ -4180,6 +4174,8 @@ static void register_gatt_services(struct btd_device *device)
 
 	device_svc_resolved(device, device->bdaddr_type, 0);
 }
+
+static void gatt_client_init(struct btd_device *device);
 
 static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 								void *user_data)

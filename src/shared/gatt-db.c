@@ -486,7 +486,8 @@ bool gatt_db_clear_range(struct gatt_db *db, uint16_t start_handle,
 	return true;
 }
 
-static bool find_insert_loc(struct gatt_db *db, uint16_t start, uint16_t end,
+static struct gatt_db_service *find_insert_loc(struct gatt_db *db,
+						uint16_t start, uint16_t end,
 						struct gatt_db_service **after)
 {
 	const struct queue_entry *services_entry;
@@ -503,19 +504,19 @@ static bool find_insert_loc(struct gatt_db *db, uint16_t start, uint16_t end,
 		gatt_db_service_get_handles(service, &cur_start, &cur_end);
 
 		if (start >= cur_start && start <= cur_end)
-			return false;
+			return service;
 
 		if (end >= cur_start && end <= cur_end)
-			return false;
+			return service;
 
 		if (end < cur_start)
-			return true;
+			return NULL;
 
 		*after = service;
 		services_entry = services_entry->next;
 	}
 
-	return true;
+	return NULL;
 }
 
 struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
@@ -534,8 +535,28 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 	if (num_handles < 1 || (handle + num_handles - 1) > UINT16_MAX)
 		return NULL;
 
-	if (!find_insert_loc(db, handle, handle + num_handles - 1, &after))
+	service = find_insert_loc(db, handle, handle + num_handles - 1, &after);
+	if (service) {
+		const bt_uuid_t *type;
+		bt_uuid_t value;
+
+		if (primary)
+			type = &primary_service_uuid;
+		else
+			type = &secondary_service_uuid;
+
+		gatt_db_attribute_get_service_uuid(service->attributes[0],
+									&value);
+
+		/* Check if service match */
+		if (!bt_uuid_cmp(&service->attributes[0]->uuid, type) &&
+				!bt_uuid_cmp(&value, uuid) &&
+				service->num_handles == num_handles &&
+				service->attributes[0]->handle == handle)
+			return service->attributes[0];
+
 		return NULL;
+	}
 
 	service = gatt_db_service_create(uuid, handle, primary, num_handles);
 

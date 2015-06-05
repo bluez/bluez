@@ -892,13 +892,21 @@ static void discover_secondary_cb(bool success, uint8_t att_ecode,
 		attr = gatt_db_insert_service(client->db, start, &uuid, false,
 							end - start + 1);
 		if (!attr) {
-			util_debug(client->debug_callback, client->debug_data,
-						"Failed to create service");
-			success = false;
-			goto done;
+			gatt_db_clear_range(client->db, start, end);
+			attr = gatt_db_insert_service(client->db, start, &uuid,
+							false, end - start + 1);
+			if (!attr) {
+				util_debug(client->debug_callback,
+						client->debug_data,
+						"Failed to store service");
+				success = false;
+				goto done;
+			}
 		}
 
-		queue_push_tail(op->pending_svcs, attr);
+		/* Skip if service already active */
+		if (!gatt_db_service_get_active(attr))
+			queue_push_tail(op->pending_svcs, attr);
 	}
 
 next:
@@ -906,8 +914,10 @@ next:
 	attr = queue_pop_head(op->pending_svcs);
 
 	/* Complete with success if queue is empty */
-	if (!attr)
+	if (!attr) {
+		success = true;
 		goto done;
+	}
 
 	/*
 	 * Store the service in the tmp queue to be reused during
@@ -981,13 +991,21 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 		attr = gatt_db_insert_service(client->db, start, &uuid, true,
 							end - start + 1);
 		if (!attr) {
-			util_debug(client->debug_callback, client->debug_data,
+			gatt_db_clear_range(client->db, start, end);
+			attr = gatt_db_insert_service(client->db, start, &uuid,
+							true, end - start + 1);
+			if (!attr) {
+				util_debug(client->debug_callback,
+						client->debug_data,
 						"Failed to store service");
-			success = false;
-			goto done;
+				success = false;
+				goto done;
+			}
 		}
 
-		queue_push_tail(op->pending_svcs, attr);
+		/* Skip if service already active */
+		if (!gatt_db_service_get_active(attr))
+			queue_push_tail(op->pending_svcs, attr);
 	}
 
 secondary:
@@ -1043,12 +1061,6 @@ static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)
 	util_debug(client->debug_callback, client->debug_data,
 					"MTU exchange complete, with MTU: %u",
 					bt_att_get_mtu(client->att));
-
-	/* Don't do discovery if the database was pre-populated */
-	if (!gatt_db_isempty(client->db)) {
-		op->complete_func(op, true, 0);
-		return;
-	}
 
 	client->discovery_req = bt_gatt_discover_all_primary_services(
 							client->att, NULL,
