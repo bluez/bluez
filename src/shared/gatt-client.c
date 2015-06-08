@@ -1009,6 +1009,15 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 	}
 
 secondary:
+	/*
+	 * Version 4.2 [Vol 1, Part A] page 101:
+	 * A secondary service is a service that provides auxiliary
+	 * functionality of a device and is referenced from at least one
+	 * primary service on the device.
+	 */
+	if (queue_isempty(op->pending_svcs))
+		goto done;
+
 	/* Discover secondary services */
 	client->discovery_req = bt_gatt_discover_secondary_services(client->att,
 						NULL, op->start, op->end,
