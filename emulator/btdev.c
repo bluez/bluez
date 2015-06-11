@@ -397,6 +397,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[18] |= 0x01;	/* Read Inquiry Response TX Power */
 	btdev->commands[18] |= 0x02;	/* Write Inquiry Response TX Power */
 	btdev->commands[18] |= 0x80;	/* IO Capability Request Reply */
+	btdev->commands[20] |= 0x10;	/* Read Encryption Key Size */
 	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
 	btdev->commands[29] |= 0x20;	/* Read Local Supported Codecs */
 	btdev->commands[30] |= 0x08;	/* Get MWS Transport Layer Config */
@@ -1594,6 +1595,24 @@ static void remote_clock_offset_complete(struct btdev *btdev, uint16_t handle)
 							&coc, sizeof(coc));
 }
 
+static void read_enc_key_size_complete(struct btdev *btdev, uint16_t handle)
+{
+	struct bt_hci_rsp_read_encrypt_key_size rsp;
+
+	rsp.handle = cpu_to_le16(handle);
+
+	if (btdev->conn) {
+		rsp.status = BT_HCI_ERR_SUCCESS;
+		rsp.key_size = 16;
+	} else {
+		rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		rsp.key_size = 0;
+	}
+
+	cmd_complete(btdev, BT_HCI_CMD_READ_ENCRYPT_KEY_SIZE,
+							&rsp, sizeof(rsp));
+}
+
 static void io_cap_req_reply_complete(struct btdev *btdev,
 					const uint8_t *bdaddr,
 					uint8_t capability, uint8_t oob_data,
@@ -1954,6 +1973,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
 	const struct bt_hci_cmd_io_capability_request_reply *icrr;
 	const struct bt_hci_cmd_io_capability_request_reply *icrnr;
+	const struct bt_hci_cmd_read_encrypt_key_size *reks;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
 	const struct bt_hci_cmd_write_secure_conn_support *wscs;
 	const struct bt_hci_cmd_set_event_mask_page2 *semp2;
@@ -2754,6 +2774,14 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 		rtxp_rsp.handle = rtxp->handle;
 		cmd_complete(btdev, opcode, &rtxp_rsp, sizeof(rtxp_rsp));
+		break;
+
+	case BT_HCI_CMD_READ_ENCRYPT_KEY_SIZE:
+		if (btdev->type != BTDEV_TYPE_BREDRLE &&
+					btdev->type != BTDEV_TYPE_BREDR)
+			goto unsupported;
+		reks = data;
+		read_enc_key_size_complete(btdev, le16_to_cpu(reks->handle));
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_AMP_INFO:
