@@ -706,6 +706,18 @@ service_insert_characteristic(struct gatt_db_service *service,
 	if (handle && handle <= service->attributes[0]->handle)
 		return NULL;
 
+	/*
+	 * It is not possible to allocate last handle for a Characteristic
+	 * since it would not have space for its value:
+	 * 3.3.2 Characteristic Value Declaration
+	 * The Characteristic Value declaration contains the value of the
+	 * characteristic. It is the first Attribute after the characteristic
+	 * declaration. All characteristic definitions shall have a
+	 * Characteristic Value declaration.
+	 */
+	if (handle == UINT16_MAX)
+		return NULL;
+
 	i = get_attribute_index(service, 1);
 	if (!i)
 		return NULL;
