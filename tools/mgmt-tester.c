@@ -328,7 +328,7 @@ static void test_condition_complete(struct test_data *data)
 		user->hciemu_type = HCIEMU_TYPE_LEGACY; \
 		user->test_setup = setup; \
 		user->test_data = data; \
-		user->expected_version = 0x04; \
+		user->expected_version = 0x03; \
 		user->expected_manufacturer = 0x003f; \
 		user->expected_supported_settings = 0x000010bf; \
 		user->initial_settings = 0x00000080; \
