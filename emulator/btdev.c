@@ -604,7 +604,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 		set_amp_commands(btdev);
 		break;
 	case BTDEV_TYPE_BREDR20:
-		btdev->version = 0x04;
+		btdev->version = 0x03;
 		set_bredr20_features(btdev);
 		set_bredr20_commands(btdev);
 		break;
