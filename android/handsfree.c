@@ -2924,7 +2924,7 @@ failed:
 
 static const struct ipc_handler sco_handlers[] = {
 	/* SCO_OP_GET_FD */
-	{ bt_sco_get_fd, false, 0 }
+	{ bt_sco_get_fd, false, sizeof(struct sco_cmd_get_fd) }
 };
 
 static void bt_sco_unregister(void)
