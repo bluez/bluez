@@ -601,12 +601,16 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 							chrc_data->value_handle)
 			goto failed;
 
-		desc_start = chrc_data->value_handle + 1;
-
-		if (desc_start > chrc_data->end_handle) {
+		/*
+		 * check for descriptors presence, before initializing the
+		 * desc_handle and avoid integer overflow during desc_handle
+		 * intialization.
+		 */
+		if (chrc_data->value_handle >= chrc_data->end_handle) {
 			free(chrc_data);
 			continue;
 		}
+		desc_start = chrc_data->value_handle + 1;
 
 		client->discovery_req = bt_gatt_discover_descriptors(
 							client->att, desc_start,
