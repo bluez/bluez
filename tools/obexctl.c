@@ -758,7 +758,7 @@ static void send_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to send: %s\n", error.name);
+		rl_printf("Failed to send/pull: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
@@ -789,6 +789,23 @@ static void opp_send(GDBusProxy *proxy, int argc, char *argv[])
 	}
 
 	rl_printf("Attempting to send %s to %s\n", argv[1],
+						g_dbus_proxy_get_path(proxy));
+}
+
+static void opp_pull(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc < 2) {
+		rl_printf("Missing file argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "PullBusinessCard", send_setup,
+			send_reply, g_strdup(argv[1]), g_free) == FALSE) {
+		rl_printf("Failed to pull\n");
+		return;
+	}
+
+	rl_printf("Attempting to pull %s from %s\n", argv[1],
 						g_dbus_proxy_get_path(proxy));
 }
 
@@ -863,6 +880,22 @@ static void cmd_send(int argc, char *argv[])
 	proxy = find_map(g_dbus_proxy_get_path(default_session));
 	if (proxy) {
 		map_send(proxy, argc, argv);
+		return;
+	}
+
+	rl_printf("Command not supported\n");
+}
+
+static void cmd_pull(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_opp(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		opp_pull(proxy, argc, argv);
 		return;
 	}
 
@@ -1979,6 +2012,8 @@ static const struct {
 	{ "suspend",      "<transfer>", cmd_suspend, "Suspend transfer" },
 	{ "resume",       "<transfer>", cmd_resume, "Resume transfer" },
 	{ "send",         "<file>",   cmd_send, "Send file" },
+	{ "pull",	  "<file>",   cmd_pull,
+					"Pull Vobject & stores in file" },
 	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
 	{ "ls",           "<options>", cmd_ls, "List current folder" },
 	{ "cp",          "<source file> <destination file>",   cmd_cp,
