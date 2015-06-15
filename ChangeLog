@@ -1,3 +1,21 @@
+ver 5.31:
+	Fix issue with crash in networking interface.
+	Fix issue with crash when creating endless GATT loops.
+	Fix issue with memory leak when connecting services.
+	Fix issue with memory leak creating new D-Bus proxy.
+	Fix issue with profile connections from remote devices.
+	Fix issue with GATT over BR/EDR and MTU notification.
+	Fix issue with HID and dual mode remote devices.
+	Fix issue with handling A2DP vendor codec setup.
+	Fix issue with AVRCP and syncing player state.
+	Fix issue with GATT secondary discovery handling.
+	Fix issue with wrong characteristic allocation.
+	Add support for handling BNEP setup response.
+	Add support for setting GATT database security flags.
+	Add support for setting discovery filters interface.
+	Add support for user controlled advertising interface.
+	Update Android qualification documentation to PTS 6.1 release.
+
 ver 5.30:
 	Fix compilation error in C++ due to inline function.
 	Fix issue with missing storage of device information.
