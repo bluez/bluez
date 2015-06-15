@@ -1369,6 +1369,32 @@ const char *bt_compidtostr(int compid)
 		return "Twocanoes Labs, LLC";
 	case 553:
 		return "Muoverti Limited";
+	case 554:
+		return "Stamer Musikanlagen GMBH";
+	case 555:
+		return "Tesla Motors";
+	case 556:
+		return "Pharynks Corporation";
+	case 557:
+		return "Lupine";
+	case 558:
+		return "Siemens AG";
+	case 559:
+		return "Huami (Shanghai) Culture Communication CO., LTD";
+	case 560:
+		return "Foster Electric Company, Ltd";
+	case 561:
+		return "ETA SA";
+	case 562:
+		return "x-Senso Solutions Kft";
+	case 563:
+		return "Shenzhen SuLong Communication Ltd";
+	case 564:
+		return "FengFan (BeiJing) Technology Co, Ltd";
+	case 565:
+		return "Qrio Inc";
+	case 566:
+		return "Pitpatpet Ltd";
 	case 65535:
 		return "internal use";
 	default:
