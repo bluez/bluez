@@ -39,6 +39,7 @@
 #define CSR_VARID_BT_CLOCK			0x2c00	/* uint32 */
 #define CSR_VARID_PS_NEXT			0x3005	/* complex */
 #define CSR_VARID_PS_SIZE			0x3006	/* complex */
+#define CSR_VARID_ADC_RES			0x3007	/* complex */
 #define CSR_VARID_CRYPT_KEY_LENGTH		0x3008	/* complex */
 #define CSR_VARID_PICONET_INSTANCE		0x3009	/* complex */
 #define CSR_VARID_GET_CLR_EVT			0x300a	/* complex */
@@ -62,6 +63,7 @@
 #define CSR_VARID_CANCEL_PAGE			0x4012	/* valueless */
 #define CSR_VARID_PS_CLR			0x4818	/* uint16 */
 #define CSR_VARID_MAP_SCO_PCM			0x481c	/* uint16 */
+#define CSR_VARID_ADC				0x4829	/* uint16 */
 #define CSR_VARID_SINGLE_CHAN			0x482e	/* uint16 */
 #define CSR_VARID_RADIOTEST			0x5004	/* complex */
 #define CSR_VARID_PS_CLR_STORES			0x500c	/* complex */

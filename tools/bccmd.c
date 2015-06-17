@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -1040,6 +1041,47 @@ static int cmd_pscheck(int transport, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_adc(int transport, int argc, char *argv[])
+{
+	uint8_t array[8];
+	uint16_t mux, value;
+	int err;
+
+	OPT_HELP(1, NULL);
+
+	if (!strncasecmp(argv[0], "0x", 2))
+		mux = strtol(argv[0], NULL, 16);
+	else
+		mux = atoi(argv[0]);
+
+	/* Request an ADC read from a particular mux'ed input */
+	memset(array, 0, sizeof(array));
+	array[0] = mux & 0xff;
+	array[1] = mux >> 8;
+
+	err = transport_write(transport, CSR_VARID_ADC, array, 2);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	/* have to wait a short while, then read result */
+	usleep(50000);
+	err = transport_read(transport, CSR_VARID_ADC_RES, array, 8);
+	if (err < 0) {
+		errno = -err;
+		return -1;
+	}
+
+	mux = array[0] | (array[1] << 8);
+	value = array[4] | (array[5] << 8);
+
+	printf("ADC value from Mux 0x%02x : 0x%04x (%s)\n", mux, value,
+					array[2] == 1 ? "valid" : "invalid");
+
+	return 0;
+}
+
 static struct {
 	char *str;
 	int (*func)(int transport, int argc, char *argv[]);
@@ -1070,6 +1112,7 @@ static struct {
 	{ "psread",    cmd_psread,    NULL,                  "Read all PS keys"               },
 	{ "psload",    cmd_psload,    "<file>",              "Load all PS keys from PSR file" },
 	{ "pscheck",   cmd_pscheck,   "<file>",              "Check PSR file"                 },
+	{ "adc",       cmd_adc,       "<mux>",               "Read ADC value of <mux> input"  },
 	{ NULL }
 };
 
