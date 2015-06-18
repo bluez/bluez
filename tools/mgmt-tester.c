@@ -1550,6 +1550,7 @@ static const struct generic_data set_hs_on_invalid_index_test = {
 static uint16_t settings_le[] = { MGMT_OP_SET_LE, 0 };
 
 static const char set_le_on_param[] = { 0x01 };
+static const char set_le_off_param[] = { 0x00 };
 static const char set_le_invalid_param[] = { 0x02 };
 static const char set_le_garbage_param[] = { 0x01, 0x00 };
 static const char set_le_settings_param_1[] = { 0x80, 0x02, 0x00, 0x00 };
@@ -4513,6 +4514,20 @@ static const struct generic_data add_advertising_power_off = {
 	.expect_alt_ev_len = sizeof(advertising_instance1_param),
 };
 
+static const char set_le_settings_param_off[] = { 0x81, 0x00, 0x00, 0x00 };
+
+static const struct generic_data add_advertising_le_off = {
+	.send_opcode = MGMT_OP_SET_LE,
+	.send_param = set_le_off_param,
+	.send_len = sizeof(set_le_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_le_settings_param_off,
+	.expect_len = sizeof(set_le_settings_param_off),
+	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
+	.expect_alt_ev_param = advertising_instance1_param,
+	.expect_alt_ev_len = sizeof(advertising_instance1_param),
+};
+
 static const struct generic_data add_advertising_success_18 = {
 	.send_opcode = MGMT_OP_ADD_ADVERTISING,
 	.send_param = add_advertising_param_uuid,
@@ -6747,6 +6762,12 @@ int main(int argc, char *argv[])
 					&add_advertising_timeout_expired,
 					setup_add_advertising_timeout,
 					test_command_generic, 3);
+	/* LE off will clear (remove) all instances. */
+	test_bredrle("Add Advertising - Success 22 (LE -> off, Remove)",
+					&add_advertising_le_off,
+					setup_add_advertising,
+					test_command_generic);
+
 
 	test_bredrle("Remove Advertising - Invalid Params 1",
 					&remove_advertising_fail_1,
