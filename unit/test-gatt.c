@@ -2881,7 +2881,7 @@ int main(int argc, char *argv[])
 			&test_long_read_1,
 			SERVICE_DATA_1_PDUS,
 			raw_pdu(0x0c, 0x03, 0x00, 0x00, 0x00),
-			raw_pdu(0x0b, 0x01, 0x02, 0x03));
+			raw_pdu(0x0d, 0x01, 0x02, 0x03));
 
 	define_test_client("/TP/GAR/CL/BV-04-C/512B", test_client, service_db_1,
 			&test_long_read_2,
