@@ -4507,6 +4507,18 @@ static const struct generic_data add_advertising_power_off = {
 	.expect_alt_ev_len = sizeof(advertising_instance1_param),
 };
 
+static const struct generic_data add_advertising_success_18 = {
+	.send_opcode = MGMT_OP_ADD_ADVERTISING,
+	.send_param = add_advertising_param_uuid,
+	.send_len = sizeof(add_advertising_param_uuid),
+	.expect_param = advertising_instance1_param,
+	.expect_len = sizeof(advertising_instance1_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_DATA,
+	.expect_hci_param = set_adv_data_uuid,
+	.expect_hci_len = sizeof(set_adv_data_uuid),
+};
+
 static const uint8_t remove_advertising_param_1[] = {
 	0x01,
 };
@@ -6698,6 +6710,14 @@ int main(int argc, char *argv[])
 	test_bredrle("Add Advertising - Success 19 (Power -> off, Keep)",
 					&add_advertising_success_pwron_data,
 					setup_add_advertising_power_cycle,
+					test_command_generic);
+	/* Changing an advertising instance while it is still being
+	 * advertised will immediately update the advertised data if
+	 * there is no other instance to switch to.
+	 */
+	test_bredrle("Add Advertising - Success 20 (Add Adv override)",
+					&add_advertising_success_18,
+					setup_add_advertising,
 					test_command_generic);
 
 	test_bredrle("Remove Advertising - Invalid Params 1",
