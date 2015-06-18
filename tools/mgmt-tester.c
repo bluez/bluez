@@ -5389,12 +5389,14 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 			expect_param = test->expect_func(&expect_len);
 
 		if (length != expect_len) {
+			tester_warn("Invalid cmd response parameter size");
 			tester_test_failed();
 			return;
 		}
 
 		if (expect_param && expect_len > 0 &&
 					memcmp(param, expect_param, length)) {
+			tester_warn("Unexpected cmd response parameter value");
 			tester_test_failed();
 			return;
 		}
