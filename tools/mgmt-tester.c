@@ -3868,7 +3868,7 @@ static const uint8_t read_adv_features_rsp_1[] =  {
 	0x1f, 0x00, 0x00, 0x00,	/* supported flags */
 	0x1f,			/* max_adv_data_len */
 	0x1f,			/* max_scan_rsp_len */
-	0x01,			/* max_instances */
+	0x05,			/* max_instances */
 	0x00,			/* num_instances */
 };
 
@@ -3883,7 +3883,7 @@ static const uint8_t read_adv_features_rsp_2[] =  {
 	0x1f, 0x00, 0x00, 0x00,	/* supported flags */
 	0x1f,			/* max_adv_data_len */
 	0x1f,			/* max_scan_rsp_len */
-	0x01,			/* max_instances */
+	0x05,			/* max_instances */
 	0x01,			/* num_instances */
 	0x01,			/* instance identifiers */
 };
