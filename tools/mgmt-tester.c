@@ -300,7 +300,7 @@ static void test_condition_complete(struct test_data *data)
 	tester_test_passed();
 }
 
-#define test_bredrle(name, data, setup, func) \
+#define test_bredrle_full(name, data, setup, func, timeout) \
 	do { \
 		struct test_data *user; \
 		user = malloc(sizeof(struct test_data)); \
@@ -316,8 +316,11 @@ static void test_condition_complete(struct test_data *data)
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
 				test_pre_setup, test_setup, func, NULL, \
-				test_post_teardown, 2, user, free); \
+				test_post_teardown, timeout, user, free); \
 	} while (0)
+
+#define test_bredrle(name, data, setup, func) \
+	test_bredrle_full(name, data, setup, func, 2)
 
 #define test_bredr20(name, data, setup, func) \
 	do { \
