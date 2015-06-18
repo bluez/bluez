@@ -437,6 +437,8 @@ struct generic_data {
 	uint8_t adv_data_len;
 };
 
+# define TESTER_NOOP_OPCODE 0x0000
+
 static const char dummy_data[] = { 0x00 };
 
 static const struct generic_data invalid_command_test = {
@@ -5642,6 +5644,11 @@ static void test_command_generic(const void *test_data)
 		hciemu_add_master_post_command_hook(data->hciemu,
 						command_hci_callback, data);
 		test_add_condition(data);
+	}
+
+	if (test->send_opcode == 0x0000) {
+		tester_print("Executing no-op test");
+		return;
 	}
 
 	tester_print("Sending command 0x%04x", test->send_opcode);
