@@ -42,7 +42,6 @@
 #include "filesystem.h"
 
 #define VCARD_TYPE "text/x-vcard"
-#define VCARD_FILE CONFIGDIR "/vcard.vcf"
 
 static void *opp_connect(struct obex_session *os, int *err)
 {
@@ -132,6 +131,8 @@ static int opp_put(struct obex_session *os, void *user_data)
 static int opp_get(struct obex_session *os, void *user_data)
 {
 	const char *type;
+	char *folder, *path;
+	int err = 0;
 
 	if (obex_get_name(os))
 		return -EPERM;
@@ -141,14 +142,19 @@ static int opp_get(struct obex_session *os, void *user_data)
 	if (type == NULL)
 		return -EPERM;
 
+	folder = g_strdup(obex_option_root_folder());
+	path = g_build_filename(folder, "/vcard.vcf", NULL);
+
 	if (g_ascii_strcasecmp(type, VCARD_TYPE) == 0) {
-		if (obex_get_stream_start(os, VCARD_FILE) < 0)
-			return -ENOENT;
+		if (obex_get_stream_start(os, path) < 0)
+			err = -ENOENT;
 
 	} else
-		return -EPERM;
+		err = -EPERM;
 
-	return 0;
+	g_free(folder);
+	g_free(path);
+	return err;
 }
 
 static void opp_disconnect(struct obex_session *os, void *user_data)
