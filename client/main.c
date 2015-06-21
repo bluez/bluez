@@ -1421,7 +1421,12 @@ static void cmd_disconn(const char *arg)
 		rl_printf("Failed to disconnect\n");
 		return;
 	}
+	if (strlen(arg) == 0) {
+		DBusMessageIter iter;
 
+		if (g_dbus_proxy_get_property(proxy, "Address", &iter) == TRUE)
+			dbus_message_iter_get_basic(&iter, &arg);
+	}
 	rl_printf("Attempting to disconnect from %s\n", arg);
 }
 
