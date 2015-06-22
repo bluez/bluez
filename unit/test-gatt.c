@@ -630,6 +630,10 @@ static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 	if (context->data->step) {
 		const struct test_step *step = context->data->step;
 
+		/* Auto elevate security for test that don't expect error */
+		if (!step->expected_att_ecode)
+			bt_att_set_security(context->att, BT_ATT_SECURITY_AUTO);
+
 		step->func(context);
 		return;
 	}
