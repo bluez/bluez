@@ -614,7 +614,8 @@ static void print_config_options(const struct l2cap_frame *frame,
 
 	while (consumed < size - 2) {
 		const char *str = "Unknown";
-		uint8_t type = data[consumed];
+		uint8_t type = data[consumed] & 0x7f;
+		uint8_t hint = data[consumed] & 0x80;
 		uint8_t len = data[consumed + 1];
 		uint8_t expect_len = 0;
 		int i;
@@ -627,7 +628,8 @@ static void print_config_options(const struct l2cap_frame *frame,
 			}
 		}
 
-		print_field("Option: %s (0x%2.2x)", str, type);
+		print_field("Option: %s (0x%2.2x) [%s]", str, type,
+						hint ? "hint" : "mandatory");
 
 		if (expect_len == 0) {
 			consumed += 2;
