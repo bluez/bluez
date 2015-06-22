@@ -581,6 +581,9 @@ static bool change_security(struct bt_att *att, uint8_t ecode)
 	int security;
 
 	security = bt_att_get_security(att);
+	if (security != BT_ATT_SECURITY_AUTO)
+		return false;
+
 	if (ecode == BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION &&
 					security < BT_ATT_SECURITY_MEDIUM)
 		security = BT_ATT_SECURITY_MEDIUM;
@@ -607,10 +610,6 @@ static bool handle_error_rsp(struct bt_att *att, uint8_t *pdu,
 	rsp = (void *) pdu;
 
 	*opcode = rsp->opcode;
-
-	/* Only try to change security on L2CAP */
-	if (!att->io_on_l2cap)
-		return false;
 
 	/* Attempt to change security */
 	if (!change_security(att, rsp->ecode))
@@ -1416,7 +1415,8 @@ bool bt_att_set_security(struct bt_att *att, int level)
 {
 	struct bt_security sec;
 
-	if (!att || level < BT_ATT_SECURITY_LOW || level > BT_ATT_SECURITY_HIGH)
+	if (!att || level < BT_ATT_SECURITY_AUTO ||
+						level > BT_ATT_SECURITY_HIGH)
 		return false;
 
 	if (!att->io_on_l2cap) {
