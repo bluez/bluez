@@ -818,4 +818,6 @@ void btd_advertising_manager_destroy(struct btd_advertising *manager)
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 					adapter_get_path(manager->adapter),
 					LE_ADVERTISING_MGR_IFACE);
+
+	advertising_manager_destroy(manager);
 }
