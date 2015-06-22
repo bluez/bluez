@@ -2691,6 +2691,14 @@ int main(int argc, char *argv[])
 			raw_pdu(0x0a, 0x03, 0x00),
 			raw_pdu(0x01, 0x0a, 0x03, 0x00, 0x05));
 
+	define_test_client("/TP/GAR/CL/BI-04-C/auto", test_client, service_db_1,
+			&test_read_1,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0a, 0x03, 0x00),
+			raw_pdu(0x01, 0x0a, 0x03, 0x00, 0x05),
+			raw_pdu(0x0a, 0x03, 0x00),
+			raw_pdu(0x0b, 0x01, 0x02, 0x03));
+
 	define_test_client("/TP/GAR/CL/BI-05-C", test_client, service_db_1,
 			&test_read_6,
 			SERVICE_DATA_1_PDUS,
