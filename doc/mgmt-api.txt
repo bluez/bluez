@@ -64,6 +64,9 @@ extra setting for enabling undirected connectable advertising. It provides
 support for a new static address setting and allows the usage of Set Fast
 Connectable when controller is powered off.
 
+Version 1.10 does not introduce any new command or event. It extends the
+advertising feature to support 5 parallel advertising instances.
+
 
 Example
 =======
