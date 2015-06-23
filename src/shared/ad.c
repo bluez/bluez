@@ -590,7 +590,7 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 	if (len > (MAX_ADV_DATA_LEN - 2 - (size_t)bt_uuid_len(uuid)))
 		return false;
 
-	new_data = queue_find(ad->service_uuids, service_uuid_match, uuid);
+	new_data = queue_find(ad->service_data, service_uuid_match, uuid);
 	if (new_data) {
 		if (new_data->len == len && !memcmp(new_data->data, data, len))
 			return false;
