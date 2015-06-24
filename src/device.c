@@ -1397,6 +1397,11 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 							device);
 }
 
+bool device_is_disconnecting(struct btd_device *device)
+{
+	return device->disconn_timer > 0;
+}
+
 static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 {
 	char addr[18];

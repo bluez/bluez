@@ -5825,6 +5825,11 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 	if (!device)
 		return 0;
 
+	if (device_is_disconnecting(device)) {
+		DBG("Authorization request while disconnecting");
+		return 0;
+	}
+
 	/* Device connected? */
 	if (!g_slist_find(adapter->connections, device))
 		error("Authorization request for non-connected device!?");

@@ -121,6 +121,7 @@ gboolean device_is_authenticating(struct btd_device *device);
 void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type);
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type);
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
+bool device_is_disconnecting(struct btd_device *device);
 
 typedef void (*disconnect_watch) (struct btd_device *device, gboolean removal,
 					void *user_data);
