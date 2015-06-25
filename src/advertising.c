@@ -751,8 +751,7 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					adapter_get_path(manager->adapter),
 					LE_ADVERTISING_MGR_IFACE,
-					methods, NULL, NULL, manager,
-					advertising_manager_destroy))
+					methods, NULL, NULL, manager, NULL))
 		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
 }
 
