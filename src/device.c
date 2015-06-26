@@ -5545,21 +5545,12 @@ static sdp_list_t *read_device_records(struct btd_device *device)
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 							const char *uuid)
 {
-	if (device->tmp_records) {
-		const sdp_record_t *record;
-
-		record = find_record_in_list(device->tmp_records, uuid);
-		if (record != NULL)
-			return record;
-
-		sdp_list_free(device->tmp_records,
-					(sdp_free_func_t) sdp_record_free);
-		device->tmp_records = NULL;
+	/* Load records from storage if there is nothing in cache */
+	if (!device->tmp_records) {
+		device->tmp_records = read_device_records(device);
+		if (!device->tmp_records)
+			return NULL;
 	}
-
-	device->tmp_records = read_device_records(device);
-	if (!device->tmp_records)
-		return NULL;
 
 	return find_record_in_list(device->tmp_records, uuid);
 }
