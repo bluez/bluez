@@ -6696,8 +6696,9 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 
 	ba2str(&addr->bdaddr, dst);
 
-	DBG("hci%u new key for %s type %u pin_len %u", adapter->dev_id,
-					dst, ev->key.type, ev->key.pin_len);
+	DBG("hci%u new key for %s type %u pin_len %u store_hint %u",
+		adapter->dev_id, dst, ev->key.type, ev->key.pin_len,
+		ev->store_hint);
 
 	if (ev->key.pin_len > 16) {
 		error("Invalid PIN length (%u) in new_key event",
