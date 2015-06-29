@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <errno.h>
 
 #include <cutils/properties.h>
 
@@ -1102,6 +1103,11 @@ static int open_bluetooth(const struct hw_module_t *module, char const *name,
 	bluetooth_device_t *dev = malloc(sizeof(bluetooth_device_t));
 
 	DBG("");
+
+	if (!dev) {
+		error("Failed to allocate memory for device");
+		return -ENOMEM;
+	}
 
 	memset(dev, 0, sizeof(bluetooth_device_t));
 	dev->common.tag = HARDWARE_DEVICE_TAG;
