@@ -1395,6 +1395,50 @@ const char *bt_compidtostr(int compid)
 		return "Qrio Inc";
 	case 566:
 		return "Pitpatpet Ltd";
+	case 567:
+		return "MSHeli s.r.l.";
+	case 568:
+		return "Trakm8 Ltd";
+	case 569:
+		return "JIN CO, Ltd";
+	case 570:
+		return "Alatech Technology";
+	case 571:
+		return "Beijing CarePulse Electronic Technology Co, Ltd";
+	case 572:
+		return "Awarepoint";
+	case 573:
+		return "ViCentra B.V.";
+	case 574:
+		return "Raven Industries";
+	case 575:
+		return "WaveWare Technologies";
+	case 576:
+		return "Argenox Technologies";
+	case 577:
+		return "Bragi GmbH";
+	case 578:
+		return "16Lab Inc";
+	case 579:
+		return "Masimo Corp";
+	case 580:
+		return "Iotera Inc.";
+	case 581:
+		return "Endress+Hauser";
+	case 582:
+		return "ACKme Networks, Inc.";
+	case 583:
+		return "FiftyThree Inc.";
+	case 584:
+		return "Parker Hannifin Corp";
+	case 585:
+		return "Transcranial Ltd";
+	case 586:
+		return "Uwatec AG";
+	case 587:
+		return "Orlan LLC";
+	case 588:
+		return "Blue Clover Devices";
 	case 65535:
 		return "internal use";
 	default:
