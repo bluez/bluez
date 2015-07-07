@@ -1,3 +1,11 @@
+ver 5.32:
+	Fix issue with OPP GET request path handling.
+	Fix issue with ATT information request errors.
+	Fix issue with advertising instance numbers.
+	Fix issue with overwriting SDP record cache.
+	Fix issue with new connections during disconnect.
+	Add support for GATT security auto-elevation.
+
 ver 5.31:
 	Fix issue with crash in networking interface.
 	Fix issue with crash when creating endless GATT loops.
