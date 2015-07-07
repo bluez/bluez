@@ -421,7 +421,7 @@ static void write_attribute(GDBusProxy *proxy, char *arg)
 	struct iovec iov;
 	uint8_t value[512];
 	char *entry;
-	int i;
+	unsigned int i;
 
 	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
 		long int val;
@@ -430,7 +430,7 @@ static void write_attribute(GDBusProxy *proxy, char *arg)
 		if (*entry == '\0')
 			continue;
 
-		if (i > 512) {
+		if (i >= G_N_ELEMENTS(value)) {
 			rl_printf("Too much data\n");
 			return;
 		}
