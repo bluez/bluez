@@ -2303,7 +2303,7 @@ static int profile_add(struct external_profile *profile, const char *uuid)
 	p->remote_uuid = (const void *) g_strdup(uuid);
 	if (!p->remote_uuid) {
 		g_free((void *) p->name);
-		free((void *) p);
+		free(p);
 		return -ENOMEM;
 	}
 
