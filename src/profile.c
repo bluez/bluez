@@ -797,8 +797,13 @@ static gboolean ext_io_disconnected(GIOChannel *io, GIOCondition cond,
 
 	DBG("%s disconnected from %s", ext->name, addr);
 drop:
-	if (conn->service)
-		btd_service_disconnecting_complete(conn->service, 0);
+	if (conn->service) {
+		if (btd_service_get_state(conn->service) ==
+						BTD_SERVICE_STATE_CONNECTING)
+			btd_service_connecting_complete(conn->service, -EIO);
+		else
+			btd_service_disconnecting_complete(conn->service, 0);
+	}
 
 	ext->conns = g_slist_remove(ext->conns, conn);
 	ext_io_destroy(conn);
