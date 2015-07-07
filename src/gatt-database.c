@@ -2295,8 +2295,10 @@ static int profile_add(struct external_profile *profile, const char *uuid)
 	/* Assign directly to avoid having extra fields */
 	p->name = (const void *) g_strdup_printf("%s%s/%s", profile->owner,
 							profile->path, uuid);
-	if (!p->name)
+	if (!p->name) {
+		free(p);
 		return -ENOMEM;
+	}
 
 	p->remote_uuid = (const void *) g_strdup(uuid);
 	if (!p->remote_uuid) {
