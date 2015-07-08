@@ -82,6 +82,7 @@ struct a2dp_sep {
 
 struct a2dp_setup_cb {
 	struct a2dp_setup *setup;
+	a2dp_discover_cb_t discover_cb;
 	a2dp_select_cb_t select_cb;
 	a2dp_config_cb_t config_cb;
 	a2dp_stream_cb_t resume_cb;
@@ -98,6 +99,7 @@ struct a2dp_setup {
 	struct avdtp_stream *stream;
 	struct avdtp_error *err;
 	avdtp_set_configuration_cb setconf_cb;
+	GSList *seps;
 	GSList *caps;
 	gboolean reconfigure;
 	gboolean start;
@@ -298,6 +300,23 @@ static void finalize_select(struct a2dp_setup *s)
 			continue;
 
 		cb->select_cb(s->session, s->sep, s->caps, cb->user_data);
+		setup_cb_free(cb);
+	}
+}
+
+static void finalize_discover(struct a2dp_setup *s)
+{
+	GSList *l;
+
+	for (l = s->cb; l != NULL; ) {
+		struct a2dp_setup_cb *cb = l->data;
+
+		l = l->next;
+
+		if (!cb->discover_cb)
+			continue;
+
+		cb->discover_cb(s->session, s->seps, s->err, cb->user_data);
 		setup_cb_free(cb);
 	}
 }
@@ -1797,6 +1816,40 @@ static struct a2dp_sep *a2dp_select_sep(struct avdtp *session, uint8_t type,
 	return a2dp_find_sep(session, l, NULL);
 }
 
+static void discover_cb(struct avdtp *session, GSList *seps,
+				struct avdtp_error *err, void *user_data)
+{
+	struct a2dp_setup *setup = user_data;
+
+	DBG("err %p", err);
+
+	setup->seps = seps;
+	setup->err = err;
+
+	finalize_discover(setup);
+}
+
+unsigned int a2dp_discover(struct avdtp *session, a2dp_discover_cb_t cb,
+							void *user_data)
+{
+	struct a2dp_setup *setup;
+	struct a2dp_setup_cb *cb_data;
+
+	setup = a2dp_setup_get(session);
+	if (!setup)
+		return 0;
+
+	cb_data = setup_cb_new(setup);
+	cb_data->discover_cb = cb;
+	cb_data->user_data = user_data;
+
+	if (avdtp_discover(session, discover_cb, setup) == 0)
+		return cb_data->id;
+
+	setup_cb_free(cb_data);
+	return 0;
+}
+
 unsigned int a2dp_select_capabilities(struct avdtp *session,
 					uint8_t type, const char *sender,
 					a2dp_select_cb_t cb,
@@ -2090,8 +2143,8 @@ gboolean a2dp_cancel(unsigned int id)
 
 			if (!setup->cb) {
 				DBG("aborting setup %p", setup);
-				avdtp_abort(setup->session, setup->stream);
-				return TRUE;
+				if (!avdtp_abort(setup->session, setup->stream))
+					return TRUE;
 			}
 
 			setup_unref(setup);
