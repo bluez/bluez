@@ -39,3 +39,16 @@ followed by this command.
 
 After that a default kernel with the required options can be built. More
 option (like the Bluetooth subsystem) can be enabled on top of this.
+
+Lock debuging
+-------------
+
+To catch locking related issues the following set of kernel config
+options may be useful:
+
+	CONFIG_LOCKDEP_SUPPORT=y
+	CONFIG_DEBUG_SPINLOCK=y
+	CONFIG_DEBUG_LOCK_ALLOC=y
+	CONFIG_PROVE_LOCKING=y
+	CONFIG_LOCKDEP=y
+	CONFIG_DEBUG_MUTEXES=y
