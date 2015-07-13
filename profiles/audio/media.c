@@ -532,8 +532,9 @@ static void config_cb(struct media_endpoint *endpoint, void *ret, int size,
 							void *user_data)
 {
 	struct a2dp_config_data *data = user_data;
+	gboolean *ret_value = ret;
 
-	data->cb(data->setup, ret ? TRUE : FALSE);
+	data->cb(data->setup, *ret_value ? TRUE : FALSE);
 }
 
 static int set_config(struct a2dp_sep *sep, uint8_t *configuration,
