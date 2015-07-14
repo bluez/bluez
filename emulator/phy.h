@@ -49,6 +49,7 @@ bool bt_phy_register(struct bt_phy *phy, bt_phy_callback_func_t callback,
 
 #define BT_PHY_PKT_ADV		0x0001
 struct bt_phy_pkt_adv {
+	uint8_t  chan_idx;
 	uint8_t  pdu_type;
 	uint8_t  tx_addr_type;
 	uint8_t  tx_addr[6];
@@ -60,6 +61,7 @@ struct bt_phy_pkt_adv {
 
 #define BT_PHY_PKT_CONN		0x0002
 struct bt_phy_pkt_conn {
+	uint8_t  chan_idx;
 	uint8_t  link_type;
 	uint8_t  tx_addr_type;
 	uint8_t  tx_addr[6];

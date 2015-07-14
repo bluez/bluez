@@ -71,6 +71,7 @@ struct bt_le {
 	int adv_timeout_id;
 	int scan_timeout_id;
 	bool scan_window_active;
+	uint8_t scan_chan_idx;
 
 	uint8_t  event_mask[16];
 	uint16_t manufacturer;
@@ -424,11 +425,12 @@ static void send_event(struct bt_le *hci, uint8_t event,
 		fprintf(stderr, "Write to /dev/vhci failed (%m)\n");
 }
 
-static void send_adv_pkt(struct bt_le *hci)
+static void send_adv_pkt(struct bt_le *hci, uint8_t channel)
 {
 	struct bt_phy_pkt_adv pkt;
 
 	memset(&pkt, 0, sizeof(pkt));
+	pkt.chan_idx = channel;
 	pkt.pdu_type = hci->le_adv_type;
 	pkt.tx_addr_type = hci->le_adv_own_addr_type;
 	switch (hci->le_adv_own_addr_type) {
@@ -465,7 +467,12 @@ static void adv_timeout_callback(int id, void *user_data)
 	struct bt_le *hci = user_data;
 	unsigned int msec, min_msec, max_msec;
 
-	send_adv_pkt(hci);
+	if (hci->le_adv_channel_map & 0x01)
+		send_adv_pkt(hci, 37);
+	if (hci->le_adv_channel_map & 0x02)
+		send_adv_pkt(hci, 38);
+	if (hci->le_adv_channel_map & 0x04)
+		send_adv_pkt(hci, 39);
 
 	min_msec = (hci->le_adv_min_interval * 625) / 1000;
 	max_msec = (hci->le_adv_max_interval * 625) / 1000;
@@ -515,6 +522,10 @@ static void scan_timeout_callback(int id, void *user_data)
 						!hci->scan_window_active) {
 		msec = (hci->le_scan_window * 625) / 1000;
 		hci->scan_window_active = true;
+
+		hci->scan_chan_idx++;
+		if (hci->scan_chan_idx > 39)
+			hci->scan_chan_idx = 37;
 	} else {
 		msec = ((hci->le_scan_interval -
 					hci->le_scan_window) * 625) / 1000;
@@ -543,6 +554,7 @@ static bool start_scan(struct bt_le *hci)
 		return false;
 
 	hci->scan_window_active = true;
+	hci->scan_chan_idx = 37;
 
 	return true;
 }
@@ -1795,6 +1807,9 @@ static void phy_recv_callback(uint16_t type, const void *data,
 			uint8_t buf[100];
 			struct bt_hci_evt_le_adv_report *evt = (void *) buf;
 			uint8_t tx_addr_type, tx_addr[6];
+
+			if (hci->scan_chan_idx != pkt->chan_idx)
+				break;
 
 			resolve_peer_addr(hci, pkt->tx_addr_type, pkt->tx_addr,
 							&tx_addr_type, tx_addr);
