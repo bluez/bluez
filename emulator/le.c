@@ -33,6 +33,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/uio.h>
+#include <time.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -448,17 +449,28 @@ static void send_adv_pkt(struct bt_le *hci)
 				hci->le_scan_rsp_data, pkt.scan_rsp_len);
 }
 
+static unsigned int get_adv_delay(void)
+{
+	/* The advertising delay is a pseudo-random value with a range
+	 * of 0 ms to 10 ms generated for each advertising event.
+	 */
+	srand(time(NULL));
+	return (rand() % 11);
+}
+
 static void adv_timeout_callback(int id, void *user_data)
 {
 	struct bt_le *hci = user_data;
-	unsigned int min_msec, max_msec;
+	unsigned int msec, min_msec, max_msec;
 
 	send_adv_pkt(hci);
 
 	min_msec = (hci->le_adv_min_interval * 625) / 1000;
 	max_msec = (hci->le_adv_max_interval * 625) / 1000;
 
-	if (mainloop_modify_timeout(id, (min_msec + max_msec) / 2) < 0) {
+	msec = ((min_msec + max_msec) / 2) + get_adv_delay();
+
+	if (mainloop_modify_timeout(id, msec) < 0) {
 		fprintf(stderr, "Setting advertising timeout failed\n");
 		hci->le_adv_enable = 0x00;
 	}
@@ -471,7 +483,7 @@ static bool start_adv(struct bt_le *hci)
 	if (hci->adv_timeout_id >= 0)
 		return false;
 
-	msec = (hci->le_adv_min_interval * 625) / 1000;
+	msec = ((hci->le_adv_min_interval * 625) / 1000) + get_adv_delay();
 
 	hci->adv_timeout_id = mainloop_add_timeout(msec, adv_timeout_callback,
 								hci, NULL);
