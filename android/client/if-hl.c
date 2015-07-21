@@ -201,6 +201,10 @@ static void register_application_p(int argc, const char **argv)
 	reg.number_of_mdeps = atoi(argv[6]);
 
 	reg.mdep_cfg = malloc(reg.number_of_mdeps * sizeof(bthl_mdep_cfg_t));
+	if (!reg.mdep_cfg) {
+		haltest_error("malloc failed\n");
+		return;
+	}
 	mdep_argc_init = 7;
 
 	for (i = 0; i < reg.number_of_mdeps; i++) {
