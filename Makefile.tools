@@ -253,7 +253,8 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btsnoop tools/btproxy \
 			tools/btiotest tools/bneptest tools/mcaptest \
 			tools/cltest tools/oobtest tools/seq2bseq \
-			tools/nokfw tools/create-image tools/ibeacon \
+			tools/nokfw tools/create-image \
+			tools/eddystone tools/ibeacon \
 			tools/btgatt-client tools/btgatt-server \
 			tools/test-runner tools/check-selftest
 
@@ -314,6 +315,9 @@ tools_seq2bseq_SOURCES = tools/seq2bseq.c
 tools_nokfw_SOURCES = tools/nokfw.c
 
 tools_create_image_SOURCES = tools/create-image.c
+
+tools_eddystone_SOURCES = tools/eddystone.c monitor/bt.h
+tools_eddystone_LDADD = src/libshared-mainloop.la
 
 tools_ibeacon_SOURCES = tools/ibeacon.c monitor/bt.h
 tools_ibeacon_LDADD = src/libshared-mainloop.la
