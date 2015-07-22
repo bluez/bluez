@@ -500,7 +500,7 @@ static DBusMessage *refresh_advertisement(struct advertisement *ad)
 		return btd_error_failed(ad->reg, "Failed");
 	}
 
-	cp->flags = flags;
+	cp->flags = htobl(flags);
 	cp->instance = ad->instance;
 	cp->adv_data_len = adv_data_len;
 	memcpy(cp->data, adv_data, adv_data_len);
