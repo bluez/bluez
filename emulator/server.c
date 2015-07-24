@@ -130,6 +130,7 @@ again:
 
 	while (count > 0) {
 		hci_command_hdr *cmd_hdr;
+		hci_acl_hdr *acl_hdr;
 
 		if (!client->pkt_data) {
 			client->pkt_type = ptr[0];
@@ -143,6 +144,12 @@ again:
 				cmd_hdr = (hci_command_hdr *) (ptr + 1);
 				client->pkt_expect = HCI_COMMAND_HDR_SIZE +
 							cmd_hdr->plen + 1;
+				client->pkt_data = malloc(client->pkt_expect);
+				client->pkt_len = 0;
+				break;
+			case HCI_ACLDATA_PKT:
+				acl_hdr = (hci_acl_hdr*)(ptr + 1);
+				client->pkt_expect = HCI_ACL_HDR_SIZE + acl_hdr->dlen + 1;
 				client->pkt_data = malloc(client->pkt_expect);
 				client->pkt_len = 0;
 				break;
