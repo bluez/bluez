@@ -673,6 +673,9 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id,
 		pdu->params[size++] = attr;
 		pdu->params[size++] = val;
 		break;
+	case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
+		size = 1;
+		break;
 	default:
 		error("Unknown event %u", id);
 		return;
@@ -1489,6 +1492,9 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 			pdu->params[len++] = val;
 		}
 
+		break;
+	case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
+		len = 1;
 		break;
 	case AVRCP_EVENT_VOLUME_CHANGED:
 		pdu->params[1] = media_transport_get_device_volume(dev);
@@ -3440,6 +3446,9 @@ static void target_init(struct avrcp *session)
 	if (target->version < 0x0104)
 		return;
 
+	session->supported_events |=
+				(1 << AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED);
+
 	/* Only check capabilities if controller is not supported */
 	if (session->controller == NULL)
 		avrcp_get_capabilities(session);
@@ -3719,6 +3728,9 @@ struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
 		}
 	}
 
+	avrcp_player_event(player,
+				AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED, NULL);
+
 	return player;
 }
 
@@ -3742,6 +3754,8 @@ void avrcp_unregister_player(struct avrcp_player *player)
 	}
 
 	player_destroy(player);
+	avrcp_player_event(player,
+				AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED, NULL);
 }
 
 static gboolean avrcp_handle_set_volume(struct avctp *conn,
