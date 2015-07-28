@@ -921,9 +921,9 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 	}
 
 	/* Create arrays */
-	dtdArray = (void **)malloc(argc * sizeof(void *));
-	valueArray = (void **)malloc(argc * sizeof(void *));
-	allocArray = (void **)malloc(argc * sizeof(void *));
+	dtdArray = malloc(argc * sizeof(void *));
+	valueArray = malloc(argc * sizeof(void *));
+	allocArray = malloc(argc * sizeof(void *));
 
 	if (!dtdArray || !valueArray || !allocArray) {
 		ret = -ENOMEM;
@@ -936,7 +936,7 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 		if (!strncasecmp(argv[i], "u0x", 3)) {
 			/* UUID16 */
 			uint16_t value_int = strtoul((argv[i]) + 3, NULL, 16);
-			uuid_t *value_uuid = (uuid_t *) malloc(sizeof(uuid_t));
+			uuid_t *value_uuid = malloc(sizeof(uuid_t));
 			if (!value_uuid) {
 				ret = -ENOMEM;
 				goto cleanup;
@@ -950,7 +950,7 @@ static int set_attribseq(sdp_session_t *session, uint32_t handle, uint16_t attri
 			valueArray[i] = &value_uuid->value.uuid16;
 		} else if (!strncasecmp(argv[i], "0x", 2)) {
 			/* Int */
-			uint32_t *value_int = (uint32_t *) malloc(sizeof(int));
+			uint32_t *value_int = malloc(sizeof(int));
 			if (!value_int) {
 				ret = -ENOMEM;
 				goto cleanup;
