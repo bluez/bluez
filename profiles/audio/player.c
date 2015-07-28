@@ -702,6 +702,23 @@ done:
 	folder->msg = NULL;
 }
 
+void media_player_total_items_complete(struct media_player *mp,
+							uint32_t num_of_items)
+{
+	struct media_folder *folder = mp->scope;
+
+	if (folder == NULL || folder->msg == NULL)
+		return;
+
+	if (folder->number_of_items != num_of_items) {
+		folder->number_of_items = num_of_items;
+
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				mp->path, MEDIA_FOLDER_INTERFACE,
+				"NumberOfItems");
+	}
+}
+
 static const GDBusMethodTable media_player_methods[] = {
 	{ GDBUS_METHOD("Play", NULL, NULL, media_player_play) },
 	{ GDBUS_METHOD("Pause", NULL, NULL, media_player_pause) },
@@ -891,6 +908,9 @@ static void media_folder_destroy(void *data)
 static void media_player_change_scope(struct media_player *mp,
 						struct media_folder *folder)
 {
+	struct player_callback *cb = mp->cb;
+	int err;
+
 	if (mp->scope == folder)
 		return;
 
@@ -920,10 +940,19 @@ cleanup:
 done:
 	mp->scope = folder;
 
+	if (cb->cbs->total_items) {
+		err = cb->cbs->total_items(mp, folder->item->name,
+							cb->user_data);
+		if (err < 0)
+			DBG("Failed to get total num of items");
+	} else {
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				mp->path, MEDIA_FOLDER_INTERFACE,
+				"NumberOfItems");
+	}
+
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), mp->path,
 				MEDIA_FOLDER_INTERFACE, "Name");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), mp->path,
-				MEDIA_FOLDER_INTERFACE, "NumberOfItems");
 }
 
 static struct media_folder *find_folder(GSList *folders, const char *pattern)

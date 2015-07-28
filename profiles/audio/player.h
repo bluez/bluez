@@ -64,6 +64,8 @@ struct media_player_callback {
 					uint64_t uid, void *user_data);
 	int (*add_to_nowplaying) (struct media_player *mp, const char *name,
 					uint64_t uid, void *user_data);
+	int (*total_items) (struct media_player *mp, const char *name,
+						void *user_data);
 };
 
 struct media_player *media_player_controller_create(const char *path,
@@ -104,6 +106,8 @@ void media_player_list_complete(struct media_player *mp, GSList *items,
 void media_player_change_folder_complete(struct media_player *player,
 						const char *path, int ret);
 void media_player_search_complete(struct media_player *mp, int ret);
+void media_player_total_items_complete(struct media_player *mp,
+						uint32_t num_of_items);
 
 void media_player_set_callbacks(struct media_player *mp,
 				const struct media_player_callback *cbs,
