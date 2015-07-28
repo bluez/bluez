@@ -118,10 +118,19 @@ void add_remote_device(const bt_bdaddr_t *addr)
 
 	/* Realloc space if needed */
 	if (remote_devices_cnt >= remote_devices_capacity) {
+		bt_bdaddr_t *tmp;
+
 		remote_devices_capacity *= 2;
+		/*
+		 * Save reference to previously allocated memory block so that
+		 * it can be freed in case realloc fails.
+		 */
+		tmp = remote_devices;
+
 		remote_devices = realloc(remote_devices, sizeof(bt_bdaddr_t) *
 						remote_devices_capacity);
 		if (remote_devices == NULL) {
+			free(tmp);
 			remote_devices_capacity = 0;
 			remote_devices_cnt = 0;
 			return;
