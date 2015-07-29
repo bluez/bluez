@@ -88,7 +88,7 @@ static int set_forward_delay(int sk)
 	struct ifreq ifr;
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, BNEP_BRIDGE, IFNAMSIZ);
+	strncpy(ifr.ifr_name, BNEP_BRIDGE, IFNAMSIZ - 1);
 	ifr.ifr_data = (char *) args;
 
 	if (ioctl(sk, SIOCDEVPRIVATE, &ifr) < 0) {
