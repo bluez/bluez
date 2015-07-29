@@ -4188,13 +4188,7 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 	DBG("status: %s, error: %u", success ? "success" : "failed", att_ecode);
 
 	if (!success) {
-		if (device->browse) {
-			struct browse_req *req = device->browse;
-
-			device->browse = NULL;
-			browse_request_complete(req, device->bdaddr_type, -EIO);
-		}
-
+		device_svc_resolved(device, device->bdaddr_type, -EIO);
 		return;
 	}
 
