@@ -971,6 +971,11 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 		util_debug(client->debug_callback, client->debug_data,
 					"Primary service discovery failed."
 					" ATT ECODE: 0x%02x", att_ecode);
+		/* Reset error in case of not found */
+		if (BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND) {
+			success = true;
+			att_ecode = 0;
+		}
 		goto secondary;
 	}
 
