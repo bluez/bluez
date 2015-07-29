@@ -114,7 +114,7 @@ static unsigned long disc_delay = 0;
 /* Initial sequence value when sending frames */
 static int seq_start = 0;
 
-static char *filename = NULL;
+static const char *filename = NULL;
 
 static int rfcmode = 0;
 static int master = 0;
@@ -974,6 +974,8 @@ static void do_send(int sk)
 			sent += len;
 			size -= len;
 		}
+
+		close(fd);
 		return;
 	} else {
 		for (i = 6; i < data_size; i++)
@@ -1449,7 +1451,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'B':
-			filename = strdup(optarg);
+			filename = optarg;
 			break;
 
 		case 'N':
