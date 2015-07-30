@@ -559,6 +559,7 @@ static void do_send(int sk)
 		}
 		len = read(fd, buf, data_size);
 		send(sk, buf, len, 0);
+		close(fd);
 		return;
 	} else {
 		for (i = 6; i < data_size; i++)
