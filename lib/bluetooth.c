@@ -1439,6 +1439,56 @@ const char *bt_compidtostr(int compid)
 		return "Orlan LLC";
 	case 588:
 		return "Blue Clover Devices";
+	case 589:
+		return "M-Way Solutions GmbH";
+	case 590:
+		return "Microtronics Engineering GmbH";
+	case 591:
+		return "Schneider Schreibgerte GmbH";
+	case 592:
+		return "Sapphire Circuits LLC";
+	case 593:
+		return "Lumo Bodytech Inc.";
+	case 594:
+		return "UKC Technosolution";
+	case 595:
+		return "Xicato Inc.";
+	case 596:
+		return "Playbrush";
+	case 597:
+		return "Dai Nippon Printing Co., Ltd.";
+	case 598:
+		return "G24 Power Limited";
+	case 599:
+		return "AdBabble Local Commerce Inc.";
+	case 600:
+		return "Devialet SA";
+	case 601:
+		return "ALTYOR";
+	case 602:
+		return "University of Applied Sciences Valais/Haute Ecole Valaisanne";
+	case 603:
+		return "Five Interactive, LLC dba Zendo";
+	case 604:
+		return "NetEase (Hangzhou) Network co.Ltd.";
+	case 605:
+		return "Lexmark International Inc.";
+	case 606:
+		return "Fluke Corporation";
+	case 607:
+		return "Yardarm Technologies";
+	case 608:
+		return "SensaRx";
+	case 609:
+		return "SECVRE GmbH";
+	case 610:
+		return "Glacial Ridge Technologies";
+	case 611:
+		return "Identiv, Inc.";
+	case 612:
+		return "DDS, Inc.";
+	case 613:
+		return "SMK Corporation";
 	case 65535:
 		return "internal use";
 	default:
