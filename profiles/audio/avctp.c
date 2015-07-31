@@ -293,8 +293,9 @@ static GSList *servers = NULL;
 static void auth_cb(DBusError *derr, void *user_data);
 static gboolean process_queue(gpointer user_data);
 static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
-					uint8_t subunit, uint8_t *operands,
-					size_t operand_count, void *user_data);
+					uint8_t subunit, uint8_t transaction,
+					uint8_t *operands, size_t operand_count,
+					void *user_data);
 
 static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
@@ -706,8 +707,8 @@ static void control_req_destroy(void *data)
 	if (p->err == 0 || req->func == NULL)
 		goto done;
 
-	req->func(session, AVC_CTYPE_REJECTED, req->subunit, NULL, 0,
-							req->user_data);
+	req->func(session, AVC_CTYPE_REJECTED, req->subunit, p->transaction,
+						NULL, 0, req->user_data);
 
 done:
 	g_free(req->operands);
@@ -829,9 +830,9 @@ static void control_response(struct avctp_channel *control,
 			continue;
 
 		if (req->func && req->func(control->session, avc->code,
-						avc->subunit_type,
-						operands, operand_count,
-						req->user_data))
+					avc->subunit_type, p->transaction,
+					operands, operand_count,
+					req->user_data))
 			return;
 
 		control->processed = g_slist_remove(control->processed, p);
@@ -1724,8 +1725,9 @@ static bool set_pressed(struct avctp *session, uint8_t op)
 }
 
 static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
-					uint8_t subunit, uint8_t *operands,
-					size_t operand_count, void *user_data)
+					uint8_t subunit, uint8_t transaction,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
 {
 	if (code != AVC_CTYPE_ACCEPTED)
 		return FALSE;

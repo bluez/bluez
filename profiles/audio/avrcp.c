@@ -2076,8 +2076,8 @@ static const char *status_to_string(uint8_t status)
 	}
 }
 
-static gboolean avrcp_get_play_status_rsp(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
+static gboolean avrcp_get_play_status_rsp(struct avctp *conn, uint8_t code,
+					uint8_t subunit, uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
@@ -2140,8 +2140,8 @@ static const char *status_to_str(uint8_t status)
 	}
 }
 
-static gboolean avrcp_player_value_rsp(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
+static gboolean avrcp_player_value_rsp(struct avctp *conn, uint8_t code,
+					uint8_t subunit, uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
@@ -2210,8 +2210,8 @@ static void avrcp_get_current_player_value(struct avrcp *session,
 
 static gboolean avrcp_list_player_attributes_rsp(struct avctp *conn,
 					uint8_t code, uint8_t subunit,
-					uint8_t *operands, size_t operand_count,
-					void *user_data)
+					uint8_t transaction, uint8_t *operands,
+					size_t operand_count, void *user_data)
 {
 	uint8_t attrs[AVRCP_ATTRIBUTE_LAST];
 	struct avrcp *session = user_data;
@@ -2297,6 +2297,7 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 
 static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 						uint8_t code, uint8_t subunit,
+						uint8_t transaction,
 						uint8_t *operands,
 						size_t operand_count,
 						void *user_data)
@@ -3529,8 +3530,8 @@ static void avrcp_uids_changed(struct avrcp *session, struct avrcp_header *pdu)
 	player->uid_counter = get_be16(&pdu->params[1]);
 }
 
-static gboolean avrcp_handle_event(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
+static gboolean avrcp_handle_event(struct avctp *conn, uint8_t code,
+					uint8_t subunit, uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
@@ -3538,16 +3539,30 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t event;
 
-	if ((code != AVC_CTYPE_INTERIM && code != AVC_CTYPE_CHANGED) ||
-								pdu == NULL)
+	if (!pdu)
 		return FALSE;
+
+	if ((code != AVC_CTYPE_INTERIM && code != AVC_CTYPE_CHANGED)) {
+		if (pdu->params[0] == AVRCP_STATUS_ADDRESSED_PLAYER_CHANGED &&
+				code == AVC_CTYPE_REJECTED) {
+			int i;
+
+			/* Lookup event by transaction */
+			for (i = 0; i <= AVRCP_EVENT_LAST; i++) {
+				if (session->transaction_events[i] ==
+								transaction) {
+					event = i;
+					goto changed;
+				}
+			}
+		}
+		return FALSE;
+	}
 
 	event = pdu->params[0];
 
 	if (code == AVC_CTYPE_CHANGED) {
-		session->registered_events ^= (1 << event);
-		avrcp_register_notification(session, event);
-		return FALSE;
+		goto changed;
 	}
 
 	switch (event) {
@@ -3578,8 +3593,15 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 	}
 
 	session->registered_events |= (1 << event);
+	session->transaction_events[event] = transaction;
 
 	return TRUE;
+
+changed:
+	session->registered_events ^= (1 << event);
+	session->transaction_events[event] = 0;
+	avrcp_register_notification(session, event);
+	return FALSE;
 }
 
 static void avrcp_register_notification(struct avrcp *session, uint8_t event)
@@ -3611,8 +3633,8 @@ static void avrcp_register_notification(struct avrcp *session, uint8_t event)
 					avrcp_handle_event, session);
 }
 
-static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
+static gboolean avrcp_get_capabilities_resp(struct avctp *conn, uint8_t code,
+					uint8_t subunit, uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
@@ -4126,8 +4148,8 @@ void avrcp_unregister_player(struct avrcp_player *player)
 	player_destroy(player);
 }
 
-static gboolean avrcp_handle_set_volume(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
+static gboolean avrcp_handle_set_volume(struct avctp *conn, uint8_t code,
+					uint8_t subunit, uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
