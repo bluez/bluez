@@ -257,6 +257,9 @@ EXTRA_DIST += doc/alert-api.txt \
 
 EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
 
+EXTRA_DIST += doc/pics-opp.txt doc/pixit-opp.txt \
+		doc/pts-opp.txt
+
 EXTRA_DIST += tools/magic.btsnoop
 
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
