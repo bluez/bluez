@@ -212,6 +212,7 @@ static const struct {
 	{ "ath3k", HCI_UART_ATH3K },
 	{ "intel", HCI_UART_INTEL },
 	{ "bcm",   HCI_UART_BCM   },
+	{ "qca",   HCI_UART_QCA   },
 	{ }
 };
 
