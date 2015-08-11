@@ -1783,22 +1783,16 @@ static uint8_t ccc_write_cb(uint16_t value, void *user_data)
 		return 0;
 	}
 
-	/*
-	 * TODO: All of the errors below should fall into the so called
-	 * "Application Error" range. Since there is no well defined error for
-	 * these, we return a generic ATT protocol error for now.
-	 */
-
 	if (chrc->ntfy_cnt == UINT_MAX) {
 		/* Maximum number of per-device CCC descriptors configured */
-		return BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+		return BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
 	}
 
 	/* Don't support undefined CCC values yet */
 	if (value > 2 ||
 		(value == 1 && !(chrc->props & BT_GATT_CHRC_PROP_NOTIFY)) ||
 		(value == 2 && !(chrc->props & BT_GATT_CHRC_PROP_INDICATE)))
-		return BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+		return BT_ERROR_CCC_IMPROPERLY_CONFIGURED;
 
 	/*
 	 * Always call StartNotify for an incoming enable and ignore the return
@@ -1807,7 +1801,7 @@ static uint8_t ccc_write_cb(uint16_t value, void *user_data)
 	if (g_dbus_proxy_method_call(chrc->proxy,
 						"StartNotify", NULL, NULL,
 						NULL, NULL) == FALSE)
-		return BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+		return BT_ATT_ERROR_UNLIKELY;
 
 	__sync_fetch_and_add(&chrc->ntfy_cnt, 1);
 
