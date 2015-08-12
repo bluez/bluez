@@ -4906,6 +4906,7 @@ int sdp_get_supp_feat(const sdp_record_t *rec, sdp_list_t **seqp)
 				length = 0;
 				break;
 			default:
+				sdp_list_free(subseq, free);
 				goto fail;
 			}
 

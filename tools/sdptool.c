@@ -3327,7 +3327,6 @@ static int add_palmos(sdp_session_t *session, svc_info_t *si)
 
 	err = sdp_device_record_register(session, &interface, &record,
 							SDP_RECORD_PERSIST);
-
 	sdp_list_free(root, NULL);
 	sdp_list_free(svclass, NULL);
 
