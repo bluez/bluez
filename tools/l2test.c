@@ -592,6 +592,7 @@ static void do_listen(void (*handler)(int sk))
 
 	if (socktype == SOCK_DGRAM) {
 		handler(sk);
+		close(sk);
 		return;
 	}
 
