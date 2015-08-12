@@ -3312,6 +3312,7 @@ static int add_palmos(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	sdp_list_t *root, *svclass;
 	uuid_t root_uuid, svclass_uuid;
+	int err;
 
 	memset(&record, 0, sizeof(record));
 	record.handle = si->handle;
@@ -3324,7 +3325,13 @@ static int add_palmos(sdp_session_t *session, svc_info_t *si)
 	svclass = sdp_list_append(NULL, &svclass_uuid);
 	sdp_set_service_classes(&record, svclass);
 
-	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
+	err = sdp_device_record_register(session, &interface, &record,
+							SDP_RECORD_PERSIST);
+
+	sdp_list_free(root, NULL);
+	sdp_list_free(svclass, NULL);
+
+	if (err < 0) {
 		printf("Service Record registration failed\n");
 		return -1;
 	}
