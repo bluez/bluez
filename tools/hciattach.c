@@ -1358,6 +1358,12 @@ int main(int argc, char *argv[])
 			dev[0] = 0;
 			if (!strchr(opt, '/'))
 				strcpy(dev, "/dev/");
+
+			if (strlen(opt) > PATH_MAX - (strlen(dev) + 1)) {
+				fprintf(stderr, "Invalid serial device\n");
+				exit(1);
+			}
+
 			strcat(dev, opt);
 			break;
 
