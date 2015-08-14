@@ -227,6 +227,8 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	struct source *source = user_data;
 	int id, perr;
 
+	source->connect_id = 0;
+
 	if (err) {
 		avdtp_unref(source->session);
 		source->session = NULL;

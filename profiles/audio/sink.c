@@ -227,6 +227,8 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	struct sink *sink = user_data;
 	int id, perr;
 
+	sink->connect_id = 0;
+
 	if (err) {
 		avdtp_unref(sink->session);
 		sink->session = NULL;
