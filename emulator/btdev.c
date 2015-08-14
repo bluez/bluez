@@ -1195,7 +1195,7 @@ static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 }
 
 static void le_conn_update(struct btdev *btdev, uint16_t handle,
-				uint16_t max_interval, uint16_t min_interval,
+				uint16_t min_interval, uint16_t max_interval,
 				uint16_t latency, uint16_t supv_timeout,
 				uint16_t min_length, uint16_t max_length)
 {
