@@ -861,6 +861,10 @@ static void proxy_force_disconnect(GDBusProxy *proxy, void *user_data)
 	context->timeout_source = g_timeout_add_seconds(2, timeout_test,
 								context);
 
+	g_dbus_detach_object_manager(conn);
+
+	g_dbus_unregister_interface(conn, SERVICE_PATH, SERVICE_NAME1);
+
 	dbus_connection_flush(conn);
 	dbus_connection_close(conn);
 	dbus_connection_unref(conn);
