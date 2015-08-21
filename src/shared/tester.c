@@ -35,6 +35,10 @@
 
 #include <glib.h>
 
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+#include <valgrind/memcheck.h>
+#endif
+
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
 
@@ -338,6 +342,10 @@ static gboolean teardown_callback(gpointer user_data)
 
 	print_progress(test->name, COLOR_MAGENTA, "teardown");
 	test->teardown_func(test->test_data);
+
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+	VALGRIND_DO_ADDED_LEAK_CHECK;
+#endif
 
 	return FALSE;
 }
