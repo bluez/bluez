@@ -1,0 +1,14 @@
+{
+   ecb_bind
+   Memcheck:Param
+   socketcall.bind(my_addr.sa_data)
+   fun:bind
+   fun:ecb_aes_setup
+}
+{
+   cmac_bind
+   Memcheck:Param
+   socketcall.bind(my_addr.sa_data)
+   fun:bind
+   fun:cmac_aes_setup
+}

@@ -35,9 +35,12 @@ AC_PROG_LIBTOOL
 if (test "$USE_MAINTAINER_MODE" = "yes"); then
 	AC_CHECK_PROG(enable_coverage, [lcov], [yes], [no])
 	AC_CHECK_PROG(enable_dbus_run_session, [dbus-run-session], [yes])
+	AC_CHECK_PROG(enable_valgrind, [valgrind], [yes])
+	AC_CHECK_HEADERS(valgrind/memcheck.h)
 fi
 AM_CONDITIONAL(COVERAGE, test "${enable_coverage}" = "yes")
 AM_CONDITIONAL(DBUS_RUN_SESSION, test "${enable_dbus_run_session}" = "yes")
+AM_CONDITIONAL(VALGRIND, test "${enable_valgrind}" = "yes")
 
 MISC_FLAGS
 

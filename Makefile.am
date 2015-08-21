@@ -428,6 +428,12 @@ if DBUS_RUN_SESSION
 AM_TESTS_ENVIRONMENT += dbus-run-session --
 endif
 
+if VALGRIND
+LOG_COMPILER = valgrind --error-exitcode=1 --num-callers=30
+LOG_FLAGS = --trace-children=yes --leak-check=full --show-reachable=no \
+		--suppressions=$(srcdir)/valgrind.supp --quiet
+endif
+
 pkgconfigdir = $(libdir)/pkgconfig
 
 if LIBRARY
