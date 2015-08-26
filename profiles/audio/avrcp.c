@@ -4058,12 +4058,14 @@ struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
 	struct avrcp_server *server;
 	struct avrcp_player *player;
 	GSList *l;
+	static uint16_t id = 0;
 
 	server = find_server(servers, adapter);
 	if (!server)
 		return NULL;
 
 	player = g_new0(struct avrcp_player, 1);
+	player->id = ++id;
 	player->server = server;
 	player->cb = cb;
 	player->user_data = user_data;
