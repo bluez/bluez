@@ -1068,6 +1068,14 @@ Notifications:
 
 		Notification parameters: Remote address (6 octets)
 
+	Opcode 0x91 - WBS Command notification
+
+		Notification parameters: WBS types (1 octet)
+		                         Remote address (6 octets)
+
+		Valid WBS types: 0x00 = None
+		                 0x01 = No
+		                 0x02 = Yes
 
 Bluetooth Advanced Audio HAL (ID 6)
 Bluetooth Advanced Audio Sink HAL (ID 13)
