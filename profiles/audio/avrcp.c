@@ -1531,6 +1531,8 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 			pdu->params[len++] = val;
 		}
 
+		g_list_free(settings);
+
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		len = 5;
