@@ -1536,10 +1536,8 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		len = 5;
-		memset(&pdu->params[1], player_get_id(player),
-							sizeof(uint16_t));
-		memset(&pdu->params[3], player_get_uid_counter(player),
-							sizeof(uint16_t));
+		bt_put_be16(player_get_id(player), &pdu->params[1]);
+		bt_put_be16(player_get_uid_counter(player), &pdu->params[3]);
 		break;
 	case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
 		len = 1;
