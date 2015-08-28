@@ -1638,6 +1638,12 @@ struct hal_ev_handsfree_hsp_key_press {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_EV_HANDSFREE_WBS		0x91
+struct hal_ev_handsfree_wbs {
+	uint8_t wbs;
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 #define HAL_AVRCP_FEATURE_NONE			0x00
 #define HAL_AVRCP_FEATURE_METADATA		0x01
 #define HAL_AVRCP_FEATURE_ABSOLUTE_VOLUME	0x02

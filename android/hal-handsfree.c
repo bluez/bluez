@@ -153,6 +153,16 @@ static void handle_nrec(void *buf, uint16_t len, int fd)
 #endif
 }
 
+static void handle_wbs(void *buf, uint16_t len, int fd)
+{
+#if ANDROID_VERSION >= PLATFORM_VER(5, 0, 0)
+	struct hal_ev_handsfree_wbs *ev = buf;
+
+	if (cbs->wbs_cb)
+		cbs->wbs_cb(ev->wbs, (bt_bdaddr_t *) (ev->bdaddr));
+#endif
+}
+
 static void handle_chld(void *buf, uint16_t len, int fd)
 {
 	struct hal_ev_handsfree_chld *ev = buf;
@@ -289,6 +299,8 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	/* HAL_EV_HANDSFREE_HSP_KEY_PRESS */
 	{ handle_hsp_key_press, false,
 				sizeof(struct hal_ev_handsfree_hsp_key_press) },
+	/* HAL_EV_HANDSFREE_WBS */
+	{ handle_wbs, false, sizeof(struct hal_ev_handsfree_wbs) },
 };
 
 static uint8_t get_mode(void)
