@@ -1067,6 +1067,7 @@ static void at_cmd_bcs(struct hfp_context *result, enum hfp_gw_cmd_type type,
 								void *user_data)
 {
 	struct hf_device *dev = user_data;
+	struct hal_ev_handsfree_wbs ev;
 	unsigned int val;
 
 	DBG("");
@@ -1084,6 +1085,12 @@ static void at_cmd_bcs(struct hfp_context *result, enum hfp_gw_cmd_type type,
 			dev->proposed_codec = 0;
 			break;
 		}
+
+		ev.wbs = val;
+		bdaddr2android(&dev->bdaddr, ev.bdaddr);
+
+		ipc_send_notif(hal_ipc, HAL_SERVICE_ID_HANDSFREE,
+					HAL_EV_HANDSFREE_WBS, sizeof(ev), &ev);
 
 		dev->proposed_codec = 0;
 		dev->negotiated_codec = val;
