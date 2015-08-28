@@ -112,6 +112,7 @@ struct media_player {
 	bool			next;
 	bool			previous;
 	bool			control;
+	char			*name;
 };
 
 static GSList *adapters = NULL;
@@ -964,6 +965,7 @@ static void media_player_free(gpointer data)
 	g_free(mp->sender);
 	g_free(mp->path);
 	g_free(mp->status);
+	g_free(mp->name);
 	g_free(mp);
 }
 
@@ -1607,6 +1609,25 @@ static gboolean set_flag(struct media_player *mp, DBusMessageIter *iter,
 	return TRUE;
 }
 
+static gboolean set_name(struct media_player *mp, DBusMessageIter *iter)
+{
+	const char *value;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
+		return FALSE;
+
+	dbus_message_iter_get_basic(iter, &value);
+
+	if (g_strcmp0(mp->name, value) == 0)
+		return TRUE;
+
+	g_free(mp->name);
+
+	mp->name = g_strdup(value);
+
+	return TRUE;
+}
+
 static gboolean set_player_property(struct media_player *mp, const char *key,
 							DBusMessageIter *entry)
 {
@@ -1646,6 +1667,9 @@ static gboolean set_player_property(struct media_player *mp, const char *key,
 
 	if (strcasecmp(key, "CanControl") == 0)
 		return set_flag(mp, &var, &mp->control);
+
+	if (strcasecmp(key, "Identity") == 0)
+		return set_name(mp, &var);
 
 	DBG("%s not supported, ignoring", key);
 

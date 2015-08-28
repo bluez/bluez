@@ -43,6 +43,7 @@ class Player(dbus.service.Object):
 
 			self.properties = dbus.Dictionary({
 					"PlaybackStatus" : "playing",
+					"Identity" : "SimplePlayer",
 					"LoopStatus" : "None",
 					"Rate" : dbus.Double(1.0),
 					"Shuffle" : dbus.Boolean(False),
