@@ -61,6 +61,12 @@ General
   Priority: Low
   Complexity: C2
 
+- Add queueing support for src/agent.c, currently if there is any request
+  pending the code fail with error EBUSY which is very inconvenient.
+
+  Priority: Low
+  Complexity: C2
+
 Low Energy
 ==========
 
