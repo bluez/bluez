@@ -3247,6 +3247,8 @@ static void avrcp_get_media_player_list(struct avrcp *session)
 	memset(buf, 0, sizeof(buf));
 
 	pdu->pdu_id = AVRCP_GET_FOLDER_ITEMS;
+	put_be32(0, &pdu->params[1]);
+	put_be32(UINT32_MAX, &pdu->params[5]);
 	pdu->param_len = htons(10);
 
 	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
