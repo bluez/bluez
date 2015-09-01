@@ -383,6 +383,7 @@ static void profile_remove(void *data)
 	DBG("Removed \"%s\"", p->name);
 
 	adapter_foreach(adapter_remove_profile, p);
+	btd_profile_unregister(p);
 
 	g_free((void *) p->name);
 	g_free((void *) p->remote_uuid);
@@ -2314,6 +2315,7 @@ static void add_profile(void *data, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
+	btd_profile_register(data);
 	adapter_add_profile(adapter, data);
 }
 

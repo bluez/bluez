@@ -2841,10 +2841,20 @@ static void dev_probe_gatt(struct btd_profile *p, void *user_data)
 	struct gatt_probe_data *data = user_data;
 	struct btd_service *service;
 
-	if (p->device_probe == NULL)
+	if (!p->remote_uuid || bt_uuid_strcmp(p->remote_uuid, data->cur_uuid))
 		return;
 
-	if (!p->remote_uuid || bt_uuid_strcmp(p->remote_uuid, data->cur_uuid))
+	/*
+	 * Add device to auto connect list in case the driver has the auto
+	 * connect flag set.
+	 * NOTE: This should work regardless if a service is created and
+	 * probed since external drivers don't need to maintain any
+	 * states they don't implement device_probe callback.
+	 */
+	if (p->auto_connect)
+		device_set_auto_connect(data->dev, TRUE);
+
+	if (p->device_probe == NULL)
 		return;
 
 	service = service_create(data->dev, p);
