@@ -1014,6 +1014,13 @@ static const char *get_setting(const char *key, void *user_data)
 	return g_hash_table_lookup(mp->settings, key);
 }
 
+static const char *get_player_name(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	return mp->name;
+}
+
 static void set_shuffle_setting(DBusMessageIter *iter, const char *value)
 {
 	const char *key = "Shuffle";
@@ -1274,6 +1281,7 @@ static struct avrcp_player_cb player_cb = {
 	.get_position = get_position,
 	.get_duration = get_duration,
 	.get_status = get_status,
+	.get_name = get_player_name,
 	.set_volume = set_volume,
 	.play = play,
 	.stop = stop,

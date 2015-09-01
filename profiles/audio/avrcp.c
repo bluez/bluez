@@ -140,6 +140,11 @@
 #define AVRCP_CT_VERSION		0x0106
 #define AVRCP_TG_VERSION		0x0105
 
+#define AVRCP_SCOPE_MEDIA_PLAYER_LIST			0x00
+#define AVRCP_SCOPE_MEDIA_PLAYER_VFS			0x01
+#define AVRCP_SCOPE_SEARCH				0x02
+#define AVRCP_SCOPE_NOW_PLAYING			0x03
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct avrcp_header {
@@ -177,6 +182,30 @@ struct avrcp_browsing_header {
 	uint8_t params[0];
 } __attribute__ ((packed));
 #define AVRCP_BROWSING_HEADER_LENGTH 3
+
+struct get_folder_items_rsp {
+	uint8_t status;
+	uint16_t uid_counter;
+	uint16_t num_items;
+	uint8_t data[0];
+} __attribute__ ((packed));
+
+struct folder_item {
+	uint8_t type;
+	uint16_t len;
+	uint8_t data[0];
+} __attribute__ ((packed));
+
+struct player_item {
+	uint16_t player_id;
+	uint8_t type;
+	uint32_t subtype;
+	uint8_t status;
+	uint8_t features[16];
+	uint16_t charset;
+	uint16_t namelen;
+	char name[0];
+} __attribute__ ((packed));
 
 struct avrcp_server {
 	struct btd_adapter *adapter;
@@ -262,6 +291,13 @@ struct control_pdu_handler {
 
 static GSList *servers = NULL;
 static unsigned int avctp_id = 0;
+
+/* Default feature bit mask for media player as per avctp.c:key_map */
+static const uint8_t features[16] = {
+				0xF8, 0xBF, 0xFF, 0xBF, 0x1F,
+				0xFB, 0x3F, 0x60, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00 };
 
 /* Company IDs supported by this device */
 static uint32_t company_ids[] = {
@@ -1841,11 +1877,122 @@ err_metadata:
 	return AVRCP_HEADER_LENGTH + 1;
 }
 
+static void avrcp_handle_media_player_list(struct avrcp *session,
+				struct avrcp_browsing_header *pdu,
+				uint32_t start_item, uint32_t end_item)
+{
+	struct avrcp_player *player = session->target->player;
+	struct get_folder_items_rsp *rsp;
+	const char *name = NULL;
+	GSList *l;
+
+	rsp = (void *)pdu->params;
+	rsp->status = AVRCP_STATUS_SUCCESS;
+	rsp->uid_counter = htons(player_get_uid_counter(player));
+	rsp->num_items = 0;
+	pdu->param_len = sizeof(*rsp);
+
+	for (l = g_slist_nth(session->server->players, start_item);
+					l; l = g_slist_next(l)) {
+		struct avrcp_player *player = l->data;
+		struct folder_item *folder;
+		struct player_item *item;
+		uint16_t namelen;
+
+		if (rsp->num_items == (end_item - start_item) + 1)
+			break;
+
+		folder = (void *)&pdu->params[pdu->param_len];
+		folder->type = 0x01; /* Media Player */
+
+		pdu->param_len += sizeof(*folder);
+
+		item = (void *)folder->data;
+		item->player_id = htons(player->id);
+		item->type = 0x01; /* Audio */
+		item->subtype = htonl(0x01); /* Audio Book */
+		item->status = player_get_status(player);
+		/* Assign Default Feature Bit Mask */
+		memcpy(&item->features, &features, sizeof(features));
+
+		item->charset = htons(AVRCP_CHARSET_UTF8);
+
+		name = player->cb->get_name(player->user_data);
+		namelen = strlen(name);
+		item->namelen = htons(namelen);
+		memcpy(item->name, name, namelen);
+
+		folder->len = htons(sizeof(*item) + namelen);
+		pdu->param_len += sizeof(*item) + namelen;
+		rsp->num_items++;
+	}
+
+	/* If no player could be found respond with an error */
+	if (!rsp->num_items)
+		goto failed;
+
+	rsp->num_items = htons(rsp->num_items);
+	pdu->param_len = htons(pdu->param_len);
+
+	return;
+
+failed:
+	pdu->params[0] = AVRCP_STATUS_OUT_OF_BOUNDS;
+	pdu->param_len = htons(1);
+}
+
+static void avrcp_handle_get_folder_items(struct avrcp *session,
+				struct avrcp_browsing_header *pdu,
+				uint8_t transaction)
+{
+	uint32_t start_item = 0;
+	uint32_t end_item = 0;
+	uint8_t scope;
+	uint8_t status = AVRCP_STATUS_SUCCESS;
+
+	if (!pdu || ntohs(pdu->param_len) < 10) {
+		status = AVRCP_STATUS_INVALID_PARAM;
+		goto failed;
+	}
+
+	scope = pdu->params[0];
+	start_item = bt_get_be32(&pdu->params[1]);
+	end_item = bt_get_be32(&pdu->params[5]);
+
+	DBG("scope 0x%02x start_item 0x%08x end_item 0x%08x", scope,
+				start_item, end_item);
+
+	if (end_item < start_item) {
+		status = AVRCP_STATUS_INVALID_PARAM;
+		goto failed;
+	}
+
+	switch (scope) {
+	case AVRCP_SCOPE_MEDIA_PLAYER_LIST:
+		avrcp_handle_media_player_list(session, pdu,
+						start_item, end_item);
+		break;
+	case AVRCP_SCOPE_MEDIA_PLAYER_VFS:
+	case AVRCP_SCOPE_SEARCH:
+	case AVRCP_SCOPE_NOW_PLAYING:
+	default:
+		status = AVRCP_STATUS_INVALID_PARAM;
+		goto failed;
+	}
+
+	return;
+
+failed:
+	pdu->params[0] = status;
+	pdu->param_len = htons(1);
+}
+
 static struct browsing_pdu_handler {
 	uint8_t pdu_id;
 	void (*func) (struct avrcp *session, struct avrcp_browsing_header *pdu,
 							uint8_t transaction);
 } browsing_handlers[] = {
+		{ AVRCP_GET_FOLDER_ITEMS, avrcp_handle_get_folder_items },
 		{ },
 };
 
