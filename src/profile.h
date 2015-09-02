@@ -35,6 +35,7 @@ struct btd_profile {
 	const char *remote_uuid;
 
 	bool auto_connect;
+	bool external;
 
 	int (*device_probe) (struct btd_service *service);
 	void (*device_remove) (struct btd_service *service);

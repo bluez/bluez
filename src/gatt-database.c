@@ -43,6 +43,7 @@
 #include "gatt-database.h"
 #include "dbus-common.h"
 #include "profile.h"
+#include "service.h"
 
 #ifndef ATT_CID
 #define ATT_CID 4
@@ -1074,7 +1075,7 @@ static void client_disconnect_cb(DBusConnection *conn, void *user_data)
 	service_remove_helper(user_data);
 }
 
-static void service_remove(void *data)
+static void remove_service(void *data)
 {
 	struct external_service *service = data;
 
@@ -1453,7 +1454,7 @@ static void proxy_removed_cb(GDBusProxy *proxy, void *user_data)
 
 	DBG("Proxy removed - removing service: %s", service->path);
 
-	service_remove(service);
+	remove_service(service);
 }
 
 static bool parse_uuid(GDBusProxy *proxy, bt_uuid_t *uuid)
@@ -2142,10 +2143,10 @@ reply:
 	service->reg = NULL;
 
 	if (fail)
-		service_remove(service);
+		remove_service(service);
 }
 
-static struct external_service *service_create(DBusConnection *conn,
+static struct external_service *create_service(DBusConnection *conn,
 					DBusMessage *msg, const char *path)
 {
 	struct external_service *service;
@@ -2223,7 +2224,7 @@ static DBusMessage *manager_register_service(DBusConnection *conn,
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
 		return btd_error_invalid_args(msg);
 
-	service = service_create(conn, msg, path);
+	service = create_service(conn, msg, path);
 	if (!service)
 		return btd_error_failed(msg, "Failed to register service");
 
@@ -2279,6 +2280,22 @@ static void profile_exited(DBusConnection *conn, void *user_data)
 	profile_free(profile);
 }
 
+static int profile_device_probe(struct btd_service *service)
+{
+	struct btd_profile *p = btd_service_get_profile(service);
+
+	DBG("%s probed", p->name);
+
+	return 0;
+}
+
+static void profile_device_remove(struct btd_service *service)
+{
+	struct btd_profile *p = btd_service_get_profile(service);
+
+	DBG("%s removed", p->name);
+}
+
 static int profile_add(struct external_profile *profile, const char *uuid)
 {
 	struct btd_profile *p;
@@ -2302,7 +2319,10 @@ static int profile_add(struct external_profile *profile, const char *uuid)
 		return -ENOMEM;
 	}
 
+	p->device_probe = profile_device_probe;
+	p->device_remove = profile_device_remove;
 	p->auto_connect = true;
+	p->external = true;
 
 	queue_push_tail(profile->profiles, p);
 

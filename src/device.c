@@ -2814,14 +2814,6 @@ static void device_add_uuids(struct btd_device *device, GSList *uuids)
 						DEVICE_INTERFACE, "UUIDs");
 }
 
-struct gatt_probe_data {
-	struct btd_device *dev;
-	bool all_services;
-	GSList *uuids;
-	struct gatt_db_attribute *cur_attr;
-	char cur_uuid[MAX_LEN_UUID_STR];
-};
-
 static bool device_match_profile(struct btd_device *device,
 					struct btd_profile *profile,
 					GSList *uuids)
@@ -2836,99 +2828,42 @@ static bool device_match_profile(struct btd_device *device,
 	return true;
 }
 
-static void dev_probe_gatt(struct btd_profile *p, void *user_data)
+static void probe_gatt_profile(struct gatt_db_attribute *attr, void *user_data)
 {
-	struct gatt_probe_data *data = user_data;
+	struct btd_device *device = user_data;
 	struct btd_service *service;
-
-	if (!p->remote_uuid || bt_uuid_strcmp(p->remote_uuid, data->cur_uuid))
-		return;
-
-	/*
-	 * Add device to auto connect list in case the driver has the auto
-	 * connect flag set.
-	 * NOTE: This should work regardless if a service is created and
-	 * probed since external drivers don't need to maintain any
-	 * states they don't implement device_probe callback.
-	 */
-	if (p->auto_connect)
-		device_set_auto_connect(data->dev, TRUE);
-
-	if (p->device_probe == NULL)
-		return;
-
-	service = service_create(data->dev, p);
-	if (!service)
-		return;
-
-	if (service_probe(service) < 0) {
-		btd_service_unref(service);
-		return;
-	}
-
-	/* Mark service as active to skip discovering it again */
-	gatt_db_service_set_active(data->cur_attr, true);
-
-	/* Mark service as claimed */
-	gatt_db_service_set_claimed(data->cur_attr, true);
-
-	data->dev->services = g_slist_append(data->dev->services, service);
-}
-
-static void dev_probe_gatt_profile(struct gatt_db_attribute *attr,
-							void *user_data)
-{
-	struct gatt_probe_data *data = user_data;
+	struct btd_profile *profile;
 	bt_uuid_t uuid;
-	GSList *l = NULL;
+	char uuid_str[MAX_LEN_UUID_STR];
+	GSList *l;
 
 	gatt_db_attribute_get_service_uuid(attr, &uuid);
-	bt_uuid_to_string(&uuid, data->cur_uuid, sizeof(data->cur_uuid));
+	bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
 
-	data->cur_attr = attr;
+	/* Add UUID and probe service */
+	btd_device_add_uuid(device, uuid_str);
 
-	/*
-	 * If we're probing for all services, store the UUID since device->uuids
-	 * was cleared.
-	 */
-	if (data->all_services)
-		data->uuids = g_slist_append(data->uuids,
-						g_strdup(data->cur_uuid));
-
-	/* Don't probe the profiles if a matching service already exists. */
-	if (find_service_with_uuid(data->dev->services, data->cur_uuid)) {
-		/* Mark service as active to skip discovering it again */
-		gatt_db_service_set_active(data->cur_attr, true);
-		/* Mark the service as claimed by the existing profile. */
-		gatt_db_service_set_claimed(data->cur_attr, true);
-		return;
-	}
-
-	btd_profile_foreach(dev_probe_gatt, data);
-
-	if (data->all_services)
+	/* Check if service was probed */
+	l = find_service_with_uuid(device->services, uuid_str);
+	if (!l)
 		return;
 
-	l = g_slist_append(l, g_strdup(data->cur_uuid));
-	device_add_uuids(data->dev, l);
-}
+	/* Mark service as active to skip discovering it again */
+	gatt_db_service_set_active(attr, true);
 
-static void device_probe_gatt_profile(struct btd_device *device,
-						struct gatt_db_attribute *attr)
-{
-	struct gatt_probe_data data;
+	service = l->data;
+	profile = btd_service_get_profile(service);
 
-	memset(&data, 0, sizeof(data));
+	/* Don't claim attributes of external profiles */
+	if (profile->external)
+		return;
 
-	data.dev = device;
-
-	dev_probe_gatt_profile(attr, &data);
-	g_slist_free_full(data.uuids, g_free);
+	/* Mark the service as claimed by the existing profile. */
+	gatt_db_service_set_claimed(attr, true);
 }
 
 static void device_probe_gatt_profiles(struct btd_device *device)
 {
-	struct gatt_probe_data data;
 	char addr[18];
 
 	ba2str(&device->bdaddr, addr);
@@ -2938,16 +2873,7 @@ static void device_probe_gatt_profiles(struct btd_device *device)
 		return;
 	}
 
-	memset(&data, 0, sizeof(data));
-
-	data.dev = device;
-	data.all_services = true;
-
-	gatt_db_foreach_service(device->db, NULL, dev_probe_gatt_profile,
-									&data);
-
-	device_add_uuids(device, data.uuids);
-	g_slist_free_full(data.uuids, g_free);
+	gatt_db_foreach_service(device->db, NULL, probe_gatt_profile, device);
 }
 
 static void device_accept_gatt_profiles(struct btd_device *device)
@@ -3028,9 +2954,7 @@ static void gatt_service_added(struct gatt_db_attribute *attr, void *user_data)
 			service_accept(l->data);
 	}
 
-	device_probe_gatt_profile(device, attr);
-
-	store_device_info(device);
+	btd_device_add_uuid(device, uuid_str);
 
 	btd_gatt_client_service_added(device->client_dbus, attr);
 
@@ -3645,23 +3569,39 @@ struct probe_data {
 	GSList *uuids;
 };
 
+static struct btd_service *probe_service(struct btd_device *device,
+						struct btd_profile *profile,
+						GSList *uuids)
+{
+	struct btd_service *service;
+
+	if (profile->device_probe == NULL)
+		return NULL;
+
+	if (!device_match_profile(device, profile, uuids))
+		return NULL;
+
+	service = service_create(device, profile);
+
+	if (service_probe(service)) {
+		btd_service_unref(service);
+		return NULL;
+	}
+
+	if (profile->auto_connect)
+		device_set_auto_connect(device, TRUE);
+
+	return service;
+}
+
 static void dev_probe(struct btd_profile *p, void *user_data)
 {
 	struct probe_data *d = user_data;
 	struct btd_service *service;
 
-	if (p->device_probe == NULL)
+	service = probe_service(d->dev, p, d->uuids);
+	if (!service)
 		return;
-
-	if (!device_match_profile(d->dev, p, d->uuids))
-		return;
-
-	service = service_create(d->dev, p);
-
-	if (service_probe(service) < 0) {
-		btd_service_unref(service);
-		return;
-	}
 
 	d->dev->services = g_slist_append(d->dev->services, service);
 }
@@ -3672,18 +3612,9 @@ void device_probe_profile(gpointer a, gpointer b)
 	struct btd_profile *profile = b;
 	struct btd_service *service;
 
-	if (profile->device_probe == NULL)
+	service = probe_service(device, profile, device->uuids);
+	if (!service)
 		return;
-
-	if (!device_match_profile(device, profile, device->uuids))
-		return;
-
-	service = service_create(device, profile);
-
-	if (service_probe(service) < 0) {
-		btd_service_unref(service);
-		return;
-	}
 
 	device->services = g_slist_append(device->services, service);
 

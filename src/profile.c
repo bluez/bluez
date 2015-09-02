@@ -719,13 +719,19 @@ void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
 
 int btd_profile_register(struct btd_profile *profile)
 {
-	profiles = g_slist_append(profiles, profile);
+	if (profile->external)
+		ext_profiles = g_slist_append(ext_profiles, profile);
+	else
+		profiles = g_slist_append(profiles, profile);
 	return 0;
 }
 
 void btd_profile_unregister(struct btd_profile *profile)
 {
-	profiles = g_slist_remove(profiles, profile);
+	if (profile->external)
+		ext_profiles = g_slist_remove(ext_profiles, profile);
+	else
+		profiles = g_slist_remove(profiles, profile);
 }
 
 static struct ext_profile *find_ext_profile(const char *owner,
@@ -2291,6 +2297,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p->name = ext->name;
 	p->local_uuid = ext->service ? ext->service : ext->uuid;
 	p->remote_uuid = ext->remote_uuid;
+	p->external = true;
 
 	if (ext->enable_server) {
 		p->adapter_probe = ext_adapter_probe;
