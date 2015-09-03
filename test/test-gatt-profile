@@ -1,0 +1,60 @@
+#!/usr/bin/python
+
+from __future__ import absolute_import, print_function, unicode_literals
+
+from optparse import OptionParser, make_option
+import os
+import sys
+import uuid
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
+import bluezutils
+
+class GattProfile(dbus.service.Object):
+	@dbus.service.method("org.bluez.GattProfile1",
+					in_signature="", out_signature="")
+	def Release(self):
+		print("Release")
+		mainloop.quit()
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	path = bluezutils.find_adapter().object_path
+
+	manager = dbus.Interface(bus.get_object("org.bluez", path),
+				"org.bluez.GattManager1")
+
+	option_list = [
+			make_option("-u", "--uuid", action="store",
+					type="string", dest="uuid",
+					default=None),
+			make_option("-p", "--path", action="store",
+					type="string", dest="path",
+					default="/foo/bar/profile"),
+			]
+
+	opts = dbus.Dictionary({ }, signature='sv')
+
+	parser = OptionParser(option_list=option_list)
+
+	(options, args) = parser.parse_args()
+
+	profile = GattProfile(bus, options.path)
+
+	mainloop = GObject.MainLoop()
+
+	if not options.uuid:
+		options.uuid = str(uuid.uuid4())
+
+	uuids = { options.uuid }
+	manager.RegisterProfile(options.path, uuids, opts)
+
+	mainloop.run()

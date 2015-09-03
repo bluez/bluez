@@ -407,4 +407,5 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/test-heartrate test/test-alert test/test-hfp \
 		test/test-cyclingspeed test/opp-client test/ftp-client \
 		test/pbap-client test/map-client test/example-advertisement \
-		test/example-gatt-server test/example-gatt-client
+		test/example-gatt-server test/example-gatt-client \
+		test/test-gatt-profile
