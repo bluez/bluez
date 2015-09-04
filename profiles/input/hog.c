@@ -844,6 +844,18 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 									hogdev);
 }
 
+static void report_free(void *data)
+{
+	struct report *report = data;
+	struct hog_device *hogdev = report->hogdev;
+
+	if (hogdev->attrib)
+		g_attrib_unregister(hogdev->attrib, report->notifyid);
+
+	g_free(report->decl);
+	g_free(report);
+}
+
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
@@ -851,6 +863,12 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	GSList *l;
 
 	DBG("HoG connected");
+
+	if (!hogdev->uhid_created && hogdev->reports) {
+		DBG("HoG init failed previously, preparing for re-init");
+		g_slist_free_full(hogdev->reports, report_free);
+		hogdev->reports = NULL;
+	}
 
 	hogdev->attrib = g_attrib_ref(attrib);
 
@@ -899,18 +917,6 @@ static struct hog_device *hog_new_device(struct btd_device *device,
 	hogdev->device = btd_device_ref(device);
 
 	return hogdev;
-}
-
-static void report_free(void *data)
-{
-	struct report *report = data;
-	struct hog_device *hogdev = report->hogdev;
-
-	if (hogdev->attrib)
-		g_attrib_unregister(hogdev->attrib, report->notifyid);
-
-	g_free(report->decl);
-	g_free(report);
 }
 
 static void hog_free_device(struct hog_device *hogdev)
