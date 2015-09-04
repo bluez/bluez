@@ -1,3 +1,12 @@
+ver 5.34:
+	Fix issue with GATT profiles and auto-connect.
+	Fix issue with missing GoepL2CapPsm SDP data.
+	Fix issue with suspending AVDTP endpoints.
+	Fix issue with audio service state on disconnect.
+	Add support for AVRCP Set Addressed Player feature.
+	Add support for AVRCP Get Folder Items feature.
+	Add support for Android 5.1 HFP WBS callbacks.
+
 ver 5.33:
 	Fix issue with memory leak in GATT database.
 	Fix issue with AVDTP set configuration handling.
