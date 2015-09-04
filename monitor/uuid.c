@@ -453,7 +453,11 @@ static struct {
 	{ 0xfe8c, "TRON Forum"					},
 	{ 0xfe8b, "Apple, Inc."					},
 	{ 0xfe8a, "Apple, Inc."					},
-	{ 0xfe89, "Bang & Olufsen"				},
+	{ 0xfe89, "B&O Play A/S"				},
+	{ 0xfe88, "SALTO SYSTEMS S.L."				},
+	/* SDO defined */
+	{ 0xfffe, "Alliance for Wireless Power (A4WP)"		},
+	{ 0xfffd, "Fast IDentity Online Alliance (FIDO)"	},
 	{ }
 };
 
