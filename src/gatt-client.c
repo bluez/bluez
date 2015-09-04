@@ -1538,6 +1538,9 @@ static struct service *service_create(struct gatt_db_attribute *attr,
 	/* Set service active so we can skip discovering next time */
 	gatt_db_service_set_active(attr, true);
 
+	/* Mark the service as claimed since it going to be exported */
+	gatt_db_service_set_claimed(attr, true);
+
 	return service;
 }
 
@@ -1840,11 +1843,7 @@ void btd_gatt_client_ready(struct btd_gatt_client *client)
 
 	DBG("GATT client ready");
 
-	if (queue_isempty(client->services)) {
-		DBG("Exporting services");
-		create_services(client);
-		return;
-	}
+	create_services(client);
 
 	/*
 	 * Services have already been created before. Re-enable notifications
