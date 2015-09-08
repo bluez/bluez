@@ -1825,19 +1825,13 @@ fail:
 
 void btd_gatt_client_ready(struct btd_gatt_client *client)
 {
-	struct bt_gatt_client *gatt;
-
 	if (!client)
 		return;
 
-	gatt = btd_device_get_gatt_client(client->device);
-	if (!gatt) {
+	if (!client->gatt) {
 		error("GATT client not initialized");
 		return;
 	}
-
-	bt_gatt_client_unref(client->gatt);
-	client->gatt = bt_gatt_client_ref(gatt);
 
 	client->ready = true;
 
@@ -1850,6 +1844,22 @@ void btd_gatt_client_ready(struct btd_gatt_client *client)
 	 * for any pre-registered notification sessions.
 	 */
 	queue_foreach(client->all_notify_clients, register_notify, client);
+}
+
+void btd_gatt_client_connected(struct btd_gatt_client *client)
+{
+	struct bt_gatt_client *gatt;
+
+	gatt = btd_device_get_gatt_client(client->device);
+	if (!gatt) {
+		error("GATT client not initialized");
+		return;
+	}
+
+	DBG("Device connected.");
+
+	bt_gatt_client_unref(client->gatt);
+	client->gatt = bt_gatt_client_ref(gatt);
 }
 
 void btd_gatt_client_service_added(struct btd_gatt_client *client,

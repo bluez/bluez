@@ -23,6 +23,7 @@ struct btd_gatt_client *btd_gatt_client_new(struct btd_device *device);
 void btd_gatt_client_destroy(struct btd_gatt_client *client);
 
 void btd_gatt_client_ready(struct btd_gatt_client *client);
+void btd_gatt_client_connected(struct btd_gatt_client *client);
 void btd_gatt_client_service_added(struct btd_gatt_client *client,
 					struct gatt_db_attribute *attrib);
 void btd_gatt_client_service_removed(struct btd_gatt_client *client,
