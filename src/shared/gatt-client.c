@@ -1596,8 +1596,7 @@ static void complete_unregister_notify(void *data)
 						!notify_data->chrc->ccc_handle)
 		goto done;
 
-	if (notify_data_write_ccc(notify_data, false, disable_ccc_callback))
-		return;
+	notify_data_write_ccc(notify_data, false, disable_ccc_callback);
 
 done:
 	notify_data_unref(notify_data);
