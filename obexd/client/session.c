@@ -112,6 +112,7 @@ struct obc_session {
 	GQueue *queue;
 	guint process_id;
 	char *folder;
+	struct callback_data *callback;
 };
 
 static GSList *sessions = NULL;
@@ -303,6 +304,16 @@ disconnect:
 	session_free(session);
 }
 
+static void callback_destroy(struct callback_data *callback, GError *err)
+{
+	struct obc_session *session = callback->session;
+
+	callback->func(session, NULL, err, callback->data);
+	g_free(callback);
+	session->callback = NULL;
+	obc_session_unref(session);
+}
+
 static void connect_cb(GObex *obex, GError *err, GObexPacket *rsp,
 							gpointer user_data)
 {
@@ -322,11 +333,9 @@ static void connect_cb(GObex *obex, GError *err, GObexPacket *rsp,
 				"OBEX Connect failed with 0x%02x", rsp_code);
 
 done:
-	callback->func(callback->session, NULL, gerr, callback->data);
+	callback_destroy(callback, gerr);
 	if (gerr != NULL)
 		g_error_free(gerr);
-	obc_session_unref(callback->session);
-	g_free(callback);
 }
 
 static void session_disconnected(GObex *obex, GError *err, gpointer user_data)
@@ -415,16 +424,27 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 
 	return;
 done:
-	callback->func(callback->session, NULL, err, callback->data);
-	obc_session_unref(callback->session);
-	g_free(callback);
+	callback_destroy(callback, err);
 }
 
 static void owner_disconnected(DBusConnection *connection, void *user_data)
 {
 	struct obc_session *session = user_data;
+	GError *err;
 
 	DBG("");
+
+	/*
+	 * If connection still connecting notify the callback to destroy the
+	 * session.
+	 */
+	if (session->callback) {
+		err = g_error_new(OBEX_IO_ERROR, OBEX_IO_DISCONNECTED,
+						"Session closed by user");
+		callback_destroy(session->callback, err);
+		g_error_free(err);
+		return;
+	}
 
 	obc_session_shutdown(session);
 }
@@ -530,6 +550,8 @@ static int session_connect(struct obc_session *session,
 		g_free(callback);
 		return -EINVAL;
 	}
+
+	session->callback = callback;
 
 	return 0;
 }
