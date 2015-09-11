@@ -1676,14 +1676,10 @@ static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
-	struct avrcp_player *player = session->controller->player;
 	uint16_t len = ntohs(pdu->params_len);
 	uint8_t volume;
 
 	if (len != 1)
-		goto err;
-
-	if (!player)
 		goto err;
 
 	volume = pdu->params[0] & 0x7F;
