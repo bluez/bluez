@@ -827,7 +827,6 @@ static int media_transport_init_sink(struct media_transport *transport)
 	transport->destroy = destroy_a2dp;
 
 	a2dp->volume = 127;
-	avrcp_set_volume(transport->device, a2dp->volume, true);
 	transport->source_watch = source_add_state_cb(service,
 							source_state_changed,
 							transport);
