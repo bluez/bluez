@@ -1838,12 +1838,6 @@ void btd_gatt_client_ready(struct btd_gatt_client *client)
 	DBG("GATT client ready");
 
 	create_services(client);
-
-	/*
-	 * Services have already been created before. Re-enable notifications
-	 * for any pre-registered notification sessions.
-	 */
-	queue_foreach(client->all_notify_clients, register_notify, client);
 }
 
 void btd_gatt_client_connected(struct btd_gatt_client *client)
@@ -1860,6 +1854,12 @@ void btd_gatt_client_connected(struct btd_gatt_client *client)
 
 	bt_gatt_client_unref(client->gatt);
 	client->gatt = bt_gatt_client_ref(gatt);
+
+	/*
+	 * Services have already been created before. Re-enable notifications
+	 * for any pre-registered notification sessions.
+	 */
+	queue_foreach(client->all_notify_clients, register_notify, client);
 }
 
 void btd_gatt_client_service_added(struct btd_gatt_client *client,

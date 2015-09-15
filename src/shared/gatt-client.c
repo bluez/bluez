@@ -2989,7 +2989,7 @@ unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 	if (!client || !client->db || !chrc_value_handle || !callback)
 		return 0;
 
-	if (!bt_gatt_client_is_ready(client) || client->in_svc_chngd)
+	if (client->in_svc_chngd)
 		return 0;
 
 	return register_notify(client, chrc_value_handle, callback, notify,
