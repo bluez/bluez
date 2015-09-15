@@ -1709,7 +1709,7 @@ static gboolean remove_temp_devices(gpointer user_data)
 
 		next = g_slist_next(l);
 
-		if (device_is_temporary(dev))
+		if (device_is_temporary(dev) && !btd_device_is_connected(dev))
 			btd_adapter_remove_device(adapter, dev);
 	}
 
