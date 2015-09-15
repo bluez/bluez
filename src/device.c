@@ -2202,10 +2202,8 @@ static void device_svc_resolved(struct btd_device *dev, uint8_t bdaddr_type,
 	if (!dev->temporary)
 		store_device_info(dev);
 
-	if (bdaddr_type != BDADDR_BREDR && err == 0) {
+	if (bdaddr_type != BDADDR_BREDR && err == 0)
 		store_services(dev);
-		store_gatt_db(dev);
-	}
 
 	if (!req)
 		return;
@@ -3312,6 +3310,8 @@ static void device_remove_gatt_profile(struct btd_device *device,
 static gboolean gatt_services_changed(gpointer user_data)
 {
 	struct btd_device *device = user_data;
+
+	store_gatt_db(device);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path, DEVICE_INTERFACE,
 								"GattServices");
@@ -5315,6 +5315,10 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	 * request
 	 */
 	if (state->svc_resolved && bonding) {
+		/* Attept to store services for this device failed because it
+		 * was not paired. Now that we're paired retry. */
+		store_gatt_db(device);
+
 		g_dbus_send_reply(dbus_conn, bonding->msg, DBUS_TYPE_INVALID);
 		bonding_request_free(bonding);
 		return;
