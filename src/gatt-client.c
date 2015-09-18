@@ -778,8 +778,10 @@ static void write_characteristic_cb(struct gatt_db_attribute *attr, int err,
 	if (err)
 		return;
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), chrc->path,
-					GATT_CHARACTERISTIC_IFACE, "Value");
+	g_dbus_emit_property_changed_full(btd_get_dbus_connection(),
+				chrc->path, GATT_CHARACTERISTIC_IFACE,
+				"Value", G_DBUS_PROPERTY_CHANGED_FLAG_FLUSH);
+
 }
 
 static void chrc_read_cb(bool success, uint8_t att_ecode, const uint8_t *value,
