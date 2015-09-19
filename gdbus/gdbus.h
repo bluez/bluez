@@ -120,7 +120,6 @@ enum GDbusPropertyChangedFlags {
 	G_DBUS_PROPERTY_CHANGED_FLAG_FLUSH = (1 << 0),
 };
 
-
 struct GDBusArgInfo {
 	const char *name;
 	const char *signature;
