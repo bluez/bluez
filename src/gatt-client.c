@@ -520,7 +520,7 @@ static bool desc_write_complete(void *data)
 {
 	struct descriptor *desc = data;
 
-	desc->write_id = false;
+	desc->write_id = 0;
 
 	/*
 	 * The descriptor might have been unregistered during the read. Return
@@ -874,7 +874,7 @@ static bool chrc_write_complete(void *data)
 {
 	struct characteristic *chrc = data;
 
-	chrc->write_id = false;
+	chrc->write_id = 0;
 
 	/*
 	 * The characteristic might have been unregistered during the read.
