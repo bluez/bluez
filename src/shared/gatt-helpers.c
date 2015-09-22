@@ -1490,6 +1490,7 @@ static void discover_descs_cb(uint8_t opcode, const void *pdu,
 			return;
 
 		success = false;
+		goto done;
 	}
 
 	success = true;
