@@ -80,6 +80,8 @@ static GSList *reconnects = NULL;
 static unsigned int service_id = 0;
 static GSList *devices = NULL;
 
+static bool auto_enable = false;
+
 struct policy_data {
 	struct btd_device *dev;
 
@@ -743,6 +745,20 @@ static void conn_fail_cb(struct btd_device *dev, uint8_t status)
 	reconnect_set_timer(reconnect);
 }
 
+static int policy_adapter_probe(struct btd_adapter *adapter)
+{
+	DBG("");
+
+	btd_adapter_restore_powered(adapter);
+
+	return 0;
+}
+
+static struct btd_adapter_driver policy_driver = {
+	.name	= "policy",
+	.probe	= policy_adapter_probe,
+};
+
 static int policy_init(void)
 {
 	GError *gerr = NULL;
@@ -758,7 +774,7 @@ static int policy_init(void)
 						sizeof(*reconnect_intervals);
 		reconnect_intervals = g_memdup(default_intervals,
 						reconnect_intervals_len);
-		goto add_cb;
+		goto done;
 	}
 
 	reconnect_uuids = g_key_file_get_string_list(conf, "Policy",
@@ -788,11 +804,17 @@ static int policy_init(void)
 						reconnect_intervals_len);
 	}
 
-add_cb:
+	auto_enable = g_key_file_get_boolean(conf, "Policy", "AutoEnable",
+									NULL);
+
+done:
 	if (reconnect_uuids && reconnect_uuids[0] && reconnect_attempts) {
 		btd_add_disconnect_cb(disconnect_cb);
 		btd_add_conn_fail_cb(conn_fail_cb);
 	}
+
+	if (auto_enable)
+		btd_register_adapter_driver(&policy_driver);
 
 	return 0;
 }
@@ -812,6 +834,9 @@ static void policy_exit(void)
 	g_slist_free_full(devices, policy_remove);
 
 	btd_service_remove_state_cb(service_id);
+
+	if (auto_enable)
+		btd_unregister_adapter_driver(&policy_driver);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(policy, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
