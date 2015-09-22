@@ -1946,7 +1946,7 @@ static void avrcp_handle_get_folder_items(struct avrcp *session,
 	uint8_t scope;
 	uint8_t status = AVRCP_STATUS_SUCCESS;
 
-	if (!pdu || ntohs(pdu->param_len) < 10) {
+	if (ntohs(pdu->param_len) < 10) {
 		status = AVRCP_STATUS_INVALID_PARAM;
 		goto failed;
 	}
