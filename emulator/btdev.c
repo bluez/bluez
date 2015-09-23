@@ -1130,8 +1130,6 @@ static void le_conn_complete(struct btdev *btdev,
 		cc->supv_timeout = lecc->supv_timeout;
 
 		send_event(remote, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
-
-		cc->handle = cpu_to_le16(42);
 	}
 
 	cc->status = status;
