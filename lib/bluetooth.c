@@ -810,7 +810,7 @@ const char *bt_compidtostr(int compid)
 	case 273:
 		return "Steelseries ApS";
 	case 274:
-		return "vyzybl Inc.";
+		return "Visybl Inc.";
 	case 275:
 		return "Openbrain Technologies, Co., Ltd.";
 	case 276:
@@ -1545,6 +1545,40 @@ const char *bt_compidtostr(int compid)
 		return "ITEC corporation";
 	case 641:
 		return "StoneL";
+	case 642:
+		return "Sonova AG";
+	case 643:
+		return "Maven Machines, Inc.";
+	case 644:
+		return "Synapse Electronics";
+	case 645:
+		return "Standard Innovation Inc.";
+	case 646:
+		return "RF Code, Inc.";
+	case 647:
+		return "Wally Ventures S.L.";
+	case 648:
+		return "Willowbank Electronics Ltd";
+	case 649:
+		return "SK Telecom";
+	case 650:
+		return "Jetro AS";
+	case 651:
+		return "Code Gears LTD";
+	case 652:
+		return "NANOLINK APS";
+	case 653:
+		return "IF, LLC";
+	case 654:
+		return "RF Digital Corp";
+	case 655:
+		return "Church & Dwight Co., Inc";
+	case 656:
+		return "Multibit Oy";
+	case 657:
+		return "CliniCloud Inc";
+	case 658:
+		return "SwiftSensors";
 	case 65535:
 		return "internal use";
 	default:
