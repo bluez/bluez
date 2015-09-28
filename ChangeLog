@@ -1,3 +1,14 @@
+ver 5.35:
+	Fix issue with connected devices after discovery.
+	Fix issue with profile support and LTK loading.
+	Fix issue with AVRCP events for volume control.
+	Fix issue with OBEX session owner handling.
+	Fix issue with HID over GATT setup failures.
+	Fix issue with GATT notification registration.
+	Fix issue with GATT cache validation feature.
+	Add support for persistent GATT database.
+	Add support for controller enabling option.
+
 ver 5.34:
 	Fix issue with GATT profiles and auto-connect.
 	Fix issue with missing GoepL2CapPsm SDP data.
