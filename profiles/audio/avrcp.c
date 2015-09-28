@@ -3320,10 +3320,15 @@ static void player_remove(gpointer data)
 
 	for (l = player->sessions; l; l = l->next) {
 		struct avrcp *session = l->data;
+		struct avrcp_data *controller = session->controller;
 
-		session->controller->players = g_slist_remove(
-						session->controller->players,
-						player);
+		controller->players = g_slist_remove(controller->players,
+								player);
+
+		/* Check if current player is being removed */
+		if (controller->player == player)
+			controller->player = g_slist_nth_data(
+							controller->players, 0);
 	}
 
 	player_destroy(player);
@@ -3373,9 +3378,6 @@ static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
 
 		i += len;
 	}
-
-	if (g_slist_find(removed, session->controller->player))
-		session->controller->player = NULL;
 
 	g_slist_free_full(removed, player_remove);
 
