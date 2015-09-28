@@ -216,15 +216,17 @@ static gboolean control_property_get_connected(
 }
 
 static const GDBusMethodTable control_methods[] = {
-	{ GDBUS_METHOD("Play", NULL, NULL, control_play) },
-	{ GDBUS_METHOD("Pause", NULL, NULL, control_pause) },
-	{ GDBUS_METHOD("Stop", NULL, NULL, control_stop) },
-	{ GDBUS_METHOD("Next", NULL, NULL, control_next) },
-	{ GDBUS_METHOD("Previous", NULL, NULL, control_previous) },
-	{ GDBUS_METHOD("VolumeUp", NULL, NULL, control_volume_up) },
-	{ GDBUS_METHOD("VolumeDown", NULL, NULL, control_volume_down) },
-	{ GDBUS_METHOD("FastForward", NULL, NULL, control_fast_forward) },
-	{ GDBUS_METHOD("Rewind", NULL, NULL, control_rewind) },
+	{ GDBUS_DEPRECATED_METHOD("Play", NULL, NULL, control_play) },
+	{ GDBUS_DEPRECATED_METHOD("Pause", NULL, NULL, control_pause) },
+	{ GDBUS_DEPRECATED_METHOD("Stop", NULL, NULL, control_stop) },
+	{ GDBUS_DEPRECATED_METHOD("Next", NULL, NULL, control_next) },
+	{ GDBUS_DEPRECATED_METHOD("Previous", NULL, NULL, control_previous) },
+	{ GDBUS_DEPRECATED_METHOD("VolumeUp", NULL, NULL, control_volume_up) },
+	{ GDBUS_DEPRECATED_METHOD("VolumeDown", NULL, NULL,
+							control_volume_down) },
+	{ GDBUS_DEPRECATED_METHOD("FastForward", NULL, NULL,
+							control_fast_forward) },
+	{ GDBUS_DEPRECATED_METHOD("Rewind", NULL, NULL, control_rewind) },
 	{ }
 };
 
