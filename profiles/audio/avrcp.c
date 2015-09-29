@@ -3191,6 +3191,15 @@ static const struct media_player_callback ct_cbs = {
 	.total_items = ct_get_total_numberofitems,
 };
 
+static void set_ct_player(struct avrcp *session, struct avrcp_player *player)
+{
+	struct btd_service *service;
+
+	session->controller->player = player;
+	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
+	control_set_player(service, media_player_get_path(player->user_data));
+}
+
 static struct avrcp_player *create_ct_player(struct avrcp *session,
 								uint16_t id)
 {
@@ -3212,7 +3221,7 @@ static struct avrcp_player *create_ct_player(struct avrcp *session,
 	player->destroy = (GDestroyNotify) media_player_destroy;
 
 	if (session->controller->player == NULL)
-		session->controller->player = player;
+		set_ct_player(session, player);
 
 	session->controller->players = g_slist_prepend(
 						session->controller->players,
@@ -3327,8 +3336,8 @@ static void player_remove(gpointer data)
 
 		/* Check if current player is being removed */
 		if (controller->player == player)
-			controller->player = g_slist_nth_data(
-							controller->players, 0);
+			set_ct_player(session, g_slist_nth_data(
+						controller->players, 0));
 	}
 
 	player_destroy(player);
@@ -3503,7 +3512,7 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 	}
 
 	player->uid_counter = get_be16(&pdu->params[3]);
-	session->controller->player = player;
+	set_ct_player(session, player);
 
 	if (player->features != NULL)
 		return;

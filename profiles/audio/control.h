@@ -32,3 +32,5 @@ void control_unregister(struct btd_service *service);
 
 int control_connect(struct btd_service *service);
 int control_disconnect(struct btd_service *service);
+
+int control_set_player(struct btd_service *service, const char *path);
