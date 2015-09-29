@@ -71,43 +71,43 @@ Media Control hierarchy
 =======================
 
 Service		org.bluez
-Interface	org.bluez.MediaControl1 [Deprecated]
+Interface	org.bluez.MediaControl1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		void Play()
+Methods		void Play() [Deprecated]
 
 			Resume playback.
 
-		void Pause()
+		void Pause() [Deprecated]
 
 			Pause playback.
 
-		void Stop()
+		void Stop() [Deprecated]
 
 			Stop playback.
 
-		void Next()
+		void Next() [Deprecated]
 
 			Next item.
 
-		void Previous()
+		void Previous() [Deprecated]
 
 			Previous item.
 
-		void VolumeUp()
+		void VolumeUp() [Deprecated]
 
 			Adjust remote volume one step up
 
-		void VolumeDown()
+		void VolumeDown() [Deprecated]
 
 			Adjust remote volume one step down
 
-		void FastForward()
+		void FastForward() [Deprecated]
 
 			Fast forward playback, this action is only stopped
 			when another method in this interface is called.
 
-		void Rewind()
+		void Rewind() [Deprecated]
 
 			Rewind playback, this action is only stopped
 			when another method in this interface is called.
@@ -115,6 +115,10 @@ Methods		void Play()
 Properties
 
 		boolean Connected [readonly]
+
+		object Player [readonly, optional]
+
+			Addressed Player object path.
 
 
 MediaPlayer1 hierarchy
