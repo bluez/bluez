@@ -1355,6 +1355,12 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	if (device->browse)
 		browse_request_cancel(device->browse);
 
+	if (device->att_io) {
+		g_io_channel_shutdown(device->att_io, FALSE, NULL);
+		g_io_channel_unref(device->att_io);
+		device->att_io = NULL;
+	}
+
 	if (device->connect) {
 		DBusMessage *reply = btd_error_failed(device->connect,
 								"Cancelled");
