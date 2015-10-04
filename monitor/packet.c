@@ -59,6 +59,8 @@
 
 #define COLOR_NEW_INDEX			COLOR_GREEN
 #define COLOR_DEL_INDEX			COLOR_RED
+#define COLOR_OPEN_INDEX		COLOR_GREEN
+#define COLOR_CLOSE_INDEX		COLOR_RED
 
 #define COLOR_HCI_COMMAND		COLOR_BLUE
 #define COLOR_HCI_COMMAND_UNKNOWN	COLOR_WHITE_BG
@@ -3721,6 +3723,22 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		break;
 	case BTSNOOP_OPCODE_SCO_RX_PKT:
 		packet_hci_scodata(tv, index, true, data, size);
+		break;
+	case BTSNOOP_OPCODE_OPEN_INDEX:
+		if (index < MAX_INDEX)
+			addr2str(index_list[index].bdaddr, str);
+		else
+			sprintf(str, "00:00:00:00:00:00");
+
+		packet_open_index(tv, index, str);
+		break;
+	case BTSNOOP_OPCODE_CLOSE_INDEX:
+		if (index < MAX_INDEX)
+			addr2str(index_list[index].bdaddr, str);
+		else
+			sprintf(str, "00:00:00:00:00:00");
+
+		packet_close_index(tv, index, str);
 		break;
 	default:
 		sprintf(extra_str, "(code %d len %d)", opcode, size);
@@ -8444,6 +8462,18 @@ void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 void packet_del_index(struct timeval *tv, uint16_t index, const char *label)
 {
 	print_packet(tv, index, '=', COLOR_DEL_INDEX, "Delete Index",
+							label, NULL);
+}
+
+void packet_open_index(struct timeval *tv, uint16_t index, const char *label)
+{
+	print_packet(tv, index, '=', COLOR_OPEN_INDEX, "Open Index",
+							label, NULL);
+}
+
+void packet_close_index(struct timeval *tv, uint16_t index, const char *label)
+{
+	print_packet(tv, index, '=', COLOR_CLOSE_INDEX, "Close Index",
 							label, NULL);
 }
 

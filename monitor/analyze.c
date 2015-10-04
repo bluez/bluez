@@ -309,6 +309,9 @@ void analyze_trace(const char *path)
 		case BTSNOOP_OPCODE_SCO_RX_PKT:
 			sco_pkt(&tv, index, buf, pktlen);
 			break;
+		case BTSNOOP_OPCODE_OPEN_INDEX:
+		case BTSNOOP_OPCODE_CLOSE_INDEX:
+			break;
 		default:
 			fprintf(stderr, "Wrong opcode %u\n", opcode);
 			goto done;

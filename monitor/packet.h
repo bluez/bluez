@@ -63,6 +63,8 @@ void packet_simulator(struct timeval *tv, uint16_t frequency,
 void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 				uint8_t type, uint8_t bus, const char *name);
 void packet_del_index(struct timeval *tv, uint16_t index, const char *label);
+void packet_open_index(struct timeval *tv, uint16_t index, const char *label);
+void packet_close_index(struct timeval *tv, uint16_t index, const char *label);
 
 void packet_hci_command(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size);
