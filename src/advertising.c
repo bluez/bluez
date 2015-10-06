@@ -77,10 +77,10 @@ static bool match_advertisement(const void *a, const void *b)
 	const struct advertisement *ad = a;
 	const struct dbus_obj_match *match = b;
 
-	if (match->owner && !g_strcmp0(ad->owner, match->owner))
+	if (match->owner && g_strcmp0(ad->owner, match->owner))
 		return false;
 
-	if (match->path && !g_strcmp0(ad->path, match->path))
+	if (match->path && g_strcmp0(ad->path, match->path))
 		return false;
 
 	return true;
