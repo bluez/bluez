@@ -61,6 +61,7 @@
 #define COLOR_DEL_INDEX			COLOR_RED
 #define COLOR_OPEN_INDEX		COLOR_GREEN
 #define COLOR_CLOSE_INDEX		COLOR_RED
+#define COLOR_INDEX_INFO		COLOR_GREEN
 
 #define COLOR_HCI_COMMAND		COLOR_BLUE
 #define COLOR_HCI_COMMAND_UNKNOWN	COLOR_WHITE_BG
@@ -3666,8 +3667,9 @@ static int addr2str(const uint8_t *addr, char *str)
 #define MAX_INDEX 16
 
 struct index_data {
-	uint8_t type;
-	uint8_t bdaddr[6];
+	uint8_t  type;
+	uint8_t  bdaddr[6];
+	uint16_t manufacturer;
 };
 
 static struct index_data index_list[MAX_INDEX];
@@ -3676,7 +3678,9 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
 	const struct btsnoop_opcode_new_index *ni;
+	const struct btsnoop_opcode_index_info *ii;
 	char str[18], extra_str[24];
+	uint16_t manufacturer;
 
 	if (index_filter && index_number != index)
 		return;
@@ -3739,6 +3743,18 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 			sprintf(str, "00:00:00:00:00:00");
 
 		packet_close_index(tv, index, str);
+		break;
+	case BTSNOOP_OPCODE_INDEX_INFO:
+		ii = data;
+		manufacturer = le16_to_cpu(ii->manufacturer);
+
+		if (index < MAX_INDEX) {
+			memcpy(index_list[index].bdaddr, ii->bdaddr, 6);
+			index_list[index].manufacturer = manufacturer;
+		}
+
+		addr2str(ii->bdaddr, str);
+		packet_index_info(tv, index, str, manufacturer);
 		break;
 	default:
 		sprintf(extra_str, "(code %d len %d)", opcode, size);
@@ -8475,6 +8491,17 @@ void packet_close_index(struct timeval *tv, uint16_t index, const char *label)
 {
 	print_packet(tv, index, '=', COLOR_CLOSE_INDEX, "Close Index",
 							label, NULL);
+}
+
+void packet_index_info(struct timeval *tv, uint16_t index, const char *label,
+							uint16_t manufacturer)
+{
+	char details[128];
+
+	sprintf(details, "(%s)", bt_compidtostr(manufacturer));
+
+	print_packet(tv, index, '=', COLOR_INDEX_INFO, "Index Info",
+							label, details);
 }
 
 void packet_hci_command(struct timeval *tv, uint16_t index,
