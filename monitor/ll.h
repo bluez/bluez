@@ -24,5 +24,5 @@
 
 #include <stdint.h>
 
-void ll_packet(uint16_t frequency, const void *data, uint8_t size);
-void llcp_packet(const void *data, uint8_t size);
+void ll_packet(uint16_t frequency, const void *data, uint8_t size, bool padded);
+void llcp_packet(const void *data, uint8_t size, bool padded);

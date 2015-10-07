@@ -3790,7 +3790,7 @@ void packet_simulator(struct timeval *tv, uint16_t frequency,
 	print_packet(tv, 0, '*', COLOR_PHY_PACKET,
 					"Physical packet:", NULL, str);
 
-	ll_packet(frequency, data, size);
+	ll_packet(frequency, data, size, false);
 }
 
 static void null_cmd(const void *data, uint8_t size)

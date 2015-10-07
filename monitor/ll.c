@@ -245,7 +245,7 @@ static void advertising_packet(const void *data, uint8_t size)
 	}
 }
 
-static void data_packet(const void *data, uint8_t size)
+static void data_packet(const void *data, uint8_t size, bool padded)
 {
 	const uint8_t *ptr = data;
 	uint8_t llid, length;
@@ -290,7 +290,7 @@ static void data_packet(const void *data, uint8_t size)
 
 	switch (llid) {
 	case 0x03:
-		llcp_packet(data + 2, size - 2);
+		llcp_packet(data + 2, size - 2, padded);
 		break;
 
 	default:
@@ -299,7 +299,7 @@ static void data_packet(const void *data, uint8_t size)
 	}
 }
 
-void ll_packet(uint16_t frequency, const void *data, uint8_t size)
+void ll_packet(uint16_t frequency, const void *data, uint8_t size, bool padded)
 {
 	const struct bt_ll_hdr *hdr = data;
 	uint8_t channel = (frequency - 2402) / 2;
@@ -368,7 +368,7 @@ void ll_packet(uint16_t frequency, const void *data, uint8_t size)
 	if (access_addr == 0x8e89bed6)
 		advertising_packet(pdu_data, pdu_len);
 	else
-		data_packet(pdu_data, pdu_len);
+		data_packet(pdu_data, pdu_len, padded);
 }
 
 static void null_pdu(const void *data, uint8_t size)
@@ -500,7 +500,7 @@ static const char *opcode_to_string(uint8_t opcode)
 	return "Unknown";
 }
 
-void llcp_packet(const void *data, uint8_t size)
+void llcp_packet(const void *data, uint8_t size, bool padded)
 {
 	uint8_t opcode = ((const uint8_t *) data)[0];
 	const struct llcp_data *llcp_data = NULL;
@@ -533,7 +533,7 @@ void llcp_packet(const void *data, uint8_t size)
 		return;
 	}
 
-	if (llcp_data->fixed) {
+	if (llcp_data->fixed && !padded) {
 		if (size - 1 != llcp_data->size) {
 			print_text(COLOR_ERROR, "invalid packet size");
 			packet_hexdump(data + 1, size - 1);
