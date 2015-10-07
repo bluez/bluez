@@ -67,6 +67,9 @@ void packet_open_index(struct timeval *tv, uint16_t index, const char *label);
 void packet_close_index(struct timeval *tv, uint16_t index, const char *label);
 void packet_index_info(struct timeval *tv, uint16_t index, const char *label,
 							uint16_t manufacturer);
+void packet_vendor_diag(struct timeval *tv, uint16_t index,
+					uint16_t manufacturer,
+					const void *data, uint16_t size);
 
 void packet_hci_command(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size);

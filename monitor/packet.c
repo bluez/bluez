@@ -62,6 +62,7 @@
 #define COLOR_OPEN_INDEX		COLOR_GREEN
 #define COLOR_CLOSE_INDEX		COLOR_RED
 #define COLOR_INDEX_INFO		COLOR_GREEN
+#define COLOR_VENDOR_DIAG		COLOR_YELLOW
 
 #define COLOR_HCI_COMMAND		COLOR_BLUE
 #define COLOR_HCI_COMMAND_UNKNOWN	COLOR_WHITE_BG
@@ -3697,6 +3698,7 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		if (index < MAX_INDEX) {
 			index_list[index].type = ni->type;
 			memcpy(index_list[index].bdaddr, ni->bdaddr, 6);
+			index_list[index].manufacturer = 0xffff;
 		}
 
 		addr2str(ni->bdaddr, str);
@@ -3755,6 +3757,14 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 
 		addr2str(ii->bdaddr, str);
 		packet_index_info(tv, index, str, manufacturer);
+		break;
+	case BTSNOOP_OPCODE_VENDOR_DIAG:
+		if (index < MAX_INDEX)
+			manufacturer = index_list[index].manufacturer;
+		else
+			manufacturer = 0xffff;
+
+		packet_vendor_diag(tv, index, manufacturer, data, size);
 		break;
 	default:
 		sprintf(extra_str, "(code %d len %d)", opcode, size);
@@ -8502,6 +8512,19 @@ void packet_index_info(struct timeval *tv, uint16_t index, const char *label,
 
 	print_packet(tv, index, '=', COLOR_INDEX_INFO, "Index Info",
 							label, details);
+}
+
+void packet_vendor_diag(struct timeval *tv, uint16_t index,
+					uint16_t manufacturer,
+					const void *data, uint16_t size)
+{
+	char extra_str[16];
+
+	sprintf(extra_str, "(len %d)", size);
+
+	print_packet(tv, index, '=', COLOR_VENDOR_DIAG, "Vendor Diagnostic",
+							NULL, extra_str);
+	packet_hexdump(data, size);
 }
 
 void packet_hci_command(struct timeval *tv, uint16_t index,
