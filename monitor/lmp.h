@@ -24,6 +24,6 @@
 
 #include <stdint.h>
 
-void lmp_packet(const void *data, uint8_t size);
+void lmp_packet(const void *data, uint8_t size, bool padded);
 
 void lmp_todo(void);

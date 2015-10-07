@@ -732,7 +732,7 @@ static const char *get_opcode_str(uint16_t opcode)
 	return NULL;
 }
 
-void lmp_packet(const void *data, uint8_t size)
+void lmp_packet(const void *data, uint8_t size, bool padded)
 {
 	const struct lmp_data *lmp_data = NULL;
 	const char *opcode_color, *opcode_str;
@@ -787,7 +787,7 @@ void lmp_packet(const void *data, uint8_t size)
 		return;
 	}
 
-	if (lmp_data->fixed) {
+	if (lmp_data->fixed && !padded) {
 		if (size - off != lmp_data->size) {
 			print_text(COLOR_ERROR, "invalid packet size");
 			packet_hexdump(data + off, size - off);
