@@ -27,6 +27,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 
 #include "src/shared/util.h"
 #include "display.h"
@@ -52,6 +53,26 @@ static void print_opcode(uint16_t opcode)
 						opcode >> 8, opcode & 0xff);
 	else
 		print_field("Operation: %s (%u)", str, opcode);
+}
+
+static void name_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_name_req *pdu = data;
+
+	print_field("Offset: %u", pdu->offset);
+}
+
+static void name_rsp(const void *data, uint8_t size)
+{
+	const struct bt_lmp_name_rsp *pdu = data;
+	char str[15];
+
+	memcpy(str, pdu->fragment, 14);
+	str[14] = '\0';
+
+	print_field("Offset: %u", pdu->offset);
+	print_field("Length: %u", pdu->length);
+	print_field("Fragment: %s", str);
 }
 
 static void accepted(const void *data, uint8_t size)
@@ -625,8 +646,8 @@ struct lmp_data {
 };
 
 static const struct lmp_data lmp_table[] = {
-	{  1, "LMP_name_req" },
-	{  2, "LMP_name_res" },
+	{  1, "LMP_name_req", name_req, 1, true },
+	{  2, "LMP_name_res", name_rsp, 16, true },
 	{  3, "LMP_accepted", accepted, 1, true },
 	{  4, "LMP_not_accepted", not_accepted, 2, true },
 	{  5, "LMP_clkoffset_req", clkoffset_req, 0, true },

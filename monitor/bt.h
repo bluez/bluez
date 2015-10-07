@@ -101,6 +101,18 @@ struct bt_ll_reject_ind {
 
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
+#define BT_LMP_NAME_REQ			1
+struct bt_lmp_name_req {
+	uint8_t  offset;
+} __attribute__ ((packed));
+
+#define BT_LMP_NAME_RSP			2
+struct bt_lmp_name_rsp {
+	uint8_t  offset;
+	uint8_t  length;
+	uint8_t  fragment[14];
+} __attribute__ ((packed));
+
 #define BT_LMP_ACCEPTED			3
 struct bt_lmp_accepted {
 	uint8_t  opcode;
