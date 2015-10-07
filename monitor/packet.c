@@ -5501,13 +5501,15 @@ static void read_local_version_rsp(const void *data, uint8_t size)
 	print_status(rsp->status);
 	print_hci_version(rsp->hci_ver, rsp->hci_rev);
 
-	switch (index_list[index_current].type) {
-	case HCI_BREDR:
-		print_lmp_version(rsp->lmp_ver, rsp->lmp_subver);
-		break;
-	case HCI_AMP:
-		print_pal_version(rsp->lmp_ver, rsp->lmp_subver);
-		break;
+	if (index_current < MAX_INDEX) {
+		switch (index_list[index_current].type) {
+		case HCI_BREDR:
+			print_lmp_version(rsp->lmp_ver, rsp->lmp_subver);
+			break;
+		case HCI_AMP:
+			print_pal_version(rsp->lmp_ver, rsp->lmp_subver);
+			break;
+		}
 	}
 
 	print_manufacturer(rsp->manufacturer);
