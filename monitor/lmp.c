@@ -446,7 +446,7 @@ static void channel_classification(const void *data, uint8_t size)
 	for (i = 0; i < 10; i++)
 		sprintf(str + (i * 2), "%2.2x", pdu->classification[i]);
 
-	print_field("Features: 0x%s", str);
+	print_field("Classification: 0x%s", str);
 }
 
 static void pause_encryption_req(const void *data, uint8_t size)
