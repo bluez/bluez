@@ -172,6 +172,67 @@ static void auto_rate(const void *data, uint8_t size)
 {
 }
 
+static void preferred_rate(const void *data, uint8_t size)
+{
+	const struct bt_lmp_preferred_rate *pdu = data;
+	const char *str;
+
+	str = (pdu->rate & 0x01) ? "do not use FEC" : "use FEC";
+
+	print_field("Basic data rate: %s (0x%02x)", str, pdu->rate & 0x01);
+
+	switch ((pdu->rate & 0x06) >> 1) {
+	case 0:
+		str = "No packet-size preference available";
+		break;
+	case 1:
+		str = "use 1-slot packets";
+		break;
+	case 2:
+		str = "use 3-slot packets";
+		break;
+	case 3:
+		str = "use 5-slot packets";
+		break;
+	}
+
+	print_field("Basic data rate: %s (0x%02x)", str, pdu->rate & 0x06);
+
+	switch ((pdu->rate & 0x11) >> 3) {
+	case 0:
+		str = "use DM1 packets";
+		break;
+	case 1:
+		str = "use 2 Mb/s packets";
+		break;
+	case 2:
+		str = "use 3 MB/s packets";
+		break;
+	case 3:
+		str = "reserved";
+		break;
+	}
+
+	print_field("Enhanced data rate: %s (0x%2.2x)", str, pdu->rate & 0x11);
+
+	switch ((pdu->rate & 0x60) >> 5) {
+	case 0:
+		str = "No packet-size preference available";
+		break;
+	case 1:
+		str = "use 1-slot packets";
+		break;
+	case 2:
+		str = "use 3-slot packets";
+		break;
+	case 3:
+		str = "use 5-slot packets";
+		break;
+	}
+
+	print_field("Enhanced data rate: %s (0x%2.2x)", str, pdu->rate & 0x60);
+}
+
 static void version_req(const void *data, uint8_t size)
 {
 	const struct bt_lmp_version_req *pdu = data;
@@ -681,7 +742,7 @@ static const struct lmp_data lmp_table[] = {
 	{ 33, "LMP_max_power", max_power, 0, true },
 	{ 34, "LMP_min_power", min_power, 0, true },
 	{ 35, "LMP_auto_rate", auto_rate, 0, true },
-	{ 36, "LMP_preferred_rate" },
+	{ 36, "LMP_preferred_rate", preferred_rate, 1, true },
 	{ 37, "LMP_version_req", version_req, 5, true },
 	{ 38, "LMP_version_res", version_res, 5, true },
 	{ 39, "LMP_features_req", features_req, 8, true },

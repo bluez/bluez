@@ -166,6 +166,11 @@ struct bt_lmp_start_encryption_req {
 
 #define BT_LMP_AUTO_RATE		35
 
+#define BT_LMP_PREFERRED_RATE		36
+struct bt_lmp_preferred_rate {
+	uint8_t  rate;
+} __attribute__ ((packed));
+
 #define BT_LMP_VERSION_REQ		37
 struct bt_lmp_version_req {
 	uint8_t  version;
