@@ -52,6 +52,7 @@
 #include "l2cap.h"
 #include "control.h"
 #include "vendor.h"
+#include "broadcom.h"
 #include "packet.h"
 
 #define COLOR_INDEX_LABEL		COLOR_WHITE
@@ -8535,7 +8536,15 @@ void packet_vendor_diag(struct timeval *tv, uint16_t index,
 
 	print_packet(tv, index, '=', COLOR_VENDOR_DIAG, "Vendor Diagnostic",
 							NULL, extra_str);
-	packet_hexdump(data, size);
+
+	switch (manufacturer) {
+	case 15:
+		broadcom_lm_diag(data, size);
+		break;
+	default:
+		packet_hexdump(data, size);
+		break;
+	}
 }
 
 void packet_hci_command(struct timeval *tv, uint16_t index,

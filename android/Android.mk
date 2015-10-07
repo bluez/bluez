@@ -351,6 +351,7 @@ LOCAL_SRC_FILES := \
 	bluez/monitor/keys.c \
 	bluez/monitor/ellisys.c \
 	bluez/monitor/analyze.c \
+	bluez/monitor/broadcom.c \
 	bluez/src/shared/util.c \
 	bluez/src/shared/queue.c \
 	bluez/src/shared/crypto.c \
