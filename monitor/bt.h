@@ -219,6 +219,12 @@ struct bt_lmp_timing_accuracy_res {
 
 #define BT_LMP_HOST_CONNECTION_REQ	51
 
+#define BT_LMP_SLOT_OFFSET		52
+struct bt_lmp_slot_offset {
+	uint16_t offset;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
 #define BT_LMP_PAGE_SCAN_MODE_REQ	54
 struct bt_lmp_page_scan_mode_req {
 	uint8_t  scheme;

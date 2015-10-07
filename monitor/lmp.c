@@ -303,6 +303,14 @@ static void host_connection_req(const void *data, uint8_t size)
 {
 }
 
+static void slot_offset(const void *data, uint8_t size)
+{
+	const struct bt_lmp_slot_offset *pdu = data;
+
+	print_field("Offset: %u usec", le16_to_cpu(pdu->offset));
+	packet_print_addr("Address", pdu->bdaddr, false);
+}
+
 static void page_scan_mode_req(const void *data, uint8_t size)
 {
 	const struct bt_lmp_page_scan_mode_req *pdu = data;
@@ -758,7 +766,7 @@ static const struct lmp_data lmp_table[] = {
 	{ 49, "LMP_setup_complete", setup_complete, 0, true },
 	{ 50, "LMP_use_semi_permanent_key", use_semi_permanent_key, 0, true },
 	{ 51, "LMP_host_connection_req", host_connection_req, 0, true },
-	{ 52, "LMP_slot_offset" },
+	{ 52, "LMP_slot_offset", slot_offset, 8, true },
 	{ 53, "LMP_page_mode_req" },
 	{ 54, "LMP_page_scan_mode_req", page_scan_mode_req, 2, true },
 	{ 55, "LMP_supervision_timeout" },
