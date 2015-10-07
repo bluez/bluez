@@ -191,6 +191,7 @@ static int deviceinfo_driver_probe(struct btd_service *service)
 static struct btd_profile deviceinfo_profile = {
 	.name		= "deviceinfo",
 	.remote_uuid	= DEVICE_INFORMATION_UUID,
+	.external	= true,
 	.device_probe	= deviceinfo_driver_probe,
 	.device_remove	= deviceinfo_driver_remove
 };
