@@ -158,6 +158,11 @@ struct bt_lmp_start_encryption_req {
 
 #define BT_LMP_STOP_ENCRYPTION_REQ	18
 
+#define BT_LMP_SWITCH_REQ		19
+struct bt_lmp_switch_req {
+	uint32_t instant;
+} __attribute__ ((packed));
+
 #define BT_LMP_UNSNIFF_REQ		24
 
 #define BT_LMP_MAX_POWER		33

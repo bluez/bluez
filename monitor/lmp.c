@@ -156,6 +156,13 @@ static void stop_encryption_req(const void *data, uint8_t size)
 {
 }
 
+static void switch_req(const void *data, uint8_t size)
+{
+	const struct bt_lmp_switch_req *pdu = data;
+
+	print_field("Instant: 0x%8.8x", le32_to_cpu(pdu->instant));
+}
+
 static void unsniff_req(const void *data, uint8_t size)
 {
 }
@@ -733,7 +740,7 @@ static const struct lmp_data lmp_table[] = {
 	{ 16, "LMP_encryption_key_size_req", encryption_key_size_req, 1, true },
 	{ 17, "LMP_start_encryption_req", start_encryption_req, 16, true },
 	{ 18, "LMP_stop_encryption_req", stop_encryption_req, 0, true },
-	{ 19, "LMP_switch_req" },
+	{ 19, "LMP_switch_req", switch_req, 4, true },
 	{ 20, "LMP_hold" },
 	{ 21, "LMP_hold_req" },
 	{ 22, "LMP_sniff" },
