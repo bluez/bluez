@@ -738,10 +738,13 @@ void lmp_packet(const void *data, uint8_t size, bool padded)
 	const char *opcode_color, *opcode_str;
 	uint16_t opcode;
 	uint8_t tid, off;
+	const char *tid_str;
 	int i;
 
 	tid = ((const uint8_t *) data)[0] & 0x01;
 	opcode = (((const uint8_t *) data)[0] & 0xfe) >> 1;
+
+	tid_str = tid == 0x00 ? "Master" : "Slave";
 
 	switch (opcode) {
 	case 127:
@@ -777,10 +780,12 @@ void lmp_packet(const void *data, uint8_t size, bool padded)
 
 	if (opcode & 0xff00)
 		print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
-			" (%u/%u) TID %u", opcode >> 8, opcode & 0xff, tid);
+				" (%u/%u) %s transaction (%u)",
+				opcode >> 8, opcode & 0xff, tid_str, tid);
 	else
 		print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
-					" (%u) TID %d", opcode, tid);
+				" (%u) %s transaction (%d)",
+				opcode, tid_str, tid);
 
 	if (!lmp_data || !lmp_data->func) {
 		packet_hexdump(data + off, size - off);
