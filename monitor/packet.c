@@ -89,6 +89,8 @@ static bool index_filter = false;
 static uint16_t index_number = 0;
 static uint16_t index_current = 0;
 
+#define UNKNOWN_MANUFACTURER 0xffff
+
 #define MAX_CONN 16
 
 struct conn_data {
@@ -3698,7 +3700,7 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		if (index < MAX_INDEX) {
 			index_list[index].type = ni->type;
 			memcpy(index_list[index].bdaddr, ni->bdaddr, 6);
-			index_list[index].manufacturer = 0xffff;
+			index_list[index].manufacturer = UNKNOWN_MANUFACTURER;
 		}
 
 		addr2str(ni->bdaddr, str);
@@ -3762,7 +3764,7 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		if (index < MAX_INDEX)
 			manufacturer = index_list[index].manufacturer;
 		else
-			manufacturer = 0xffff;
+			manufacturer = UNKNOWN_MANUFACTURER;
 
 		packet_vendor_diag(tv, index, manufacturer, data, size);
 		break;
@@ -8309,7 +8311,14 @@ static void le_meta_event_evt(const void *data, uint8_t size)
 
 static void vendor_evt(const void *data, uint8_t size)
 {
-	vendor_event(0xffff, data, size);
+	uint16_t manufacturer;
+
+	if (index_current < MAX_INDEX)
+		manufacturer = index_list[index_current].manufacturer;
+	else
+		manufacturer = UNKNOWN_MANUFACTURER;
+
+	vendor_event(manufacturer, data, size);
 }
 
 struct event_data {
