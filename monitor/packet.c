@@ -5500,9 +5500,12 @@ static void write_ext_inquiry_length_cmd(const void *data, uint8_t size)
 static void read_local_version_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_local_version *rsp = data;
+	uint16_t manufacturer;
 
 	print_status(rsp->status);
 	print_hci_version(rsp->hci_ver, rsp->hci_rev);
+
+	manufacturer = le16_to_cpu(rsp->manufacturer);
 
 	if (index_current < MAX_INDEX) {
 		switch (index_list[index_current].type) {
@@ -5513,11 +5516,13 @@ static void read_local_version_rsp(const void *data, uint8_t size)
 			print_pal_version(rsp->lmp_ver, rsp->lmp_subver);
 			break;
 		}
+
+		index_list[index_current].manufacturer = manufacturer;
 	}
 
 	print_manufacturer(rsp->manufacturer);
 
-	switch (le16_to_cpu(rsp->manufacturer)) {
+	switch (manufacturer) {
 	case 15:
 		print_manufacturer_broadcom(rsp->lmp_subver, rsp->hci_rev);
 		break;
