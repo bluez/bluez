@@ -94,6 +94,13 @@ static void clkoffset_req(const void *data, uint8_t size)
 {
 }
 
+static void clkoffset_rsp(const void *data, uint8_t size)
+{
+	const struct bt_lmp_clkoffset_rsp *pdu = data;
+
+	print_field("Clock offset: 0x%4.4x", le16_to_cpu(pdu->offset));
+}
+
 static void detach(const void *data, uint8_t size)
 {
 	const struct bt_lmp_detach *pdu = data;
@@ -727,7 +734,7 @@ static const struct lmp_data lmp_table[] = {
 	{  3, "LMP_accepted", accepted, 1, true },
 	{  4, "LMP_not_accepted", not_accepted, 2, true },
 	{  5, "LMP_clkoffset_req", clkoffset_req, 0, true },
-	{  6, "LMP_clkoffset_res" },
+	{  6, "LMP_clkoffset_res", clkoffset_rsp, 2, true },
 	{  7, "LMP_detach", detach, 1, true },
 	{  8, "LMP_in_rand" },
 	{  9, "LMP_comb_key" },

@@ -126,6 +126,11 @@ struct bt_lmp_not_accepted {
 
 #define BT_LMP_CLKOFFSET_REQ		5
 
+#define BT_LMP_CLKOFFSET_RSP		6
+struct bt_lmp_clkoffset_rsp {
+	uint16_t offset;
+} __attribute__ ((packed));
+
 #define BT_LMP_DETACH			7
 struct bt_lmp_detach {
 	uint8_t  error;
