@@ -52,6 +52,7 @@
 #include "l2cap.h"
 #include "control.h"
 #include "vendor.h"
+#include "intel.h"
 #include "broadcom.h"
 #include "packet.h"
 
@@ -8324,7 +8325,14 @@ static void vendor_evt(const void *data, uint8_t size)
 	else
 		manufacturer = UNKNOWN_MANUFACTURER;
 
-	vendor_event(manufacturer, data, size);
+	switch (manufacturer) {
+	case 2:
+		intel_vendor_event(data, size);
+		break;
+	default:
+		vendor_event(manufacturer, data, size);
+		break;
+	}
 }
 
 struct event_data {
