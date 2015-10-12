@@ -3030,7 +3030,7 @@ static void avrcp_play_item(struct avrcp *session, uint64_t uid)
 
 	length = AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
 
-	avctp_send_vendordep_req(session->conn, AVC_CTYPE_STATUS,
+	avctp_send_vendordep_req(session->conn, AVC_CTYPE_CONTROL,
 					AVC_SUBUNIT_PANEL, buf, length,
 					NULL, session);
 }
@@ -3076,7 +3076,7 @@ static void avrcp_add_to_nowplaying(struct avrcp *session, uint64_t uid)
 
 	length = AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
 
-	avctp_send_vendordep_req(session->conn, AVC_CTYPE_STATUS,
+	avctp_send_vendordep_req(session->conn, AVC_CTYPE_CONTROL,
 					AVC_SUBUNIT_PANEL, buf, length,
 					NULL, session);
 }
