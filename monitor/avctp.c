@@ -1813,6 +1813,45 @@ response:
 	return true;
 }
 
+
+static struct {
+	const char *str;
+	bool reserved;
+} features_table[] = {
+	/* Ignore passthrough bits */
+	[58] = { "Advanced Control Player" },
+	[59] = { "Browsing" },
+	[60] = { "Searching" },
+	[61] = { "AddToNowPlaying" },
+	[62] = { "Unique UIDs" },
+	[63] = { "OnlyBrowsableWhenAddressed" },
+	[64] = { "OnlySearchableWhenAddressed" },
+	[65] = { "NowPlaying" },
+	[66] = { "UIDPersistency" },
+	/* 67-127 reserved */
+	[67 ... 127] = { .reserved = true },
+};
+
+static void print_features(uint8_t features[16], uint8_t indent)
+{
+	int i;
+
+	for (i = 0; i < 127; i++) {
+		if (!(features[i / 8] & (1 << (i % 8))))
+			continue;
+
+		if (features_table[i].reserved) {
+			print_text(COLOR_WHITE_BG, "Unknown bit %u", i);
+			continue;
+		}
+
+		if (!features_table[i].str)
+			continue;
+
+		print_field("%*c%s", indent, ' ', features_table[i].str);
+	}
+}
+
 static bool avrcp_media_player_item(struct avctp_frame *avctp_frame,
 							uint8_t indent)
 {
@@ -1855,6 +1894,8 @@ static bool avrcp_media_player_item(struct avctp_frame *avctp_frame,
 	}
 
 	printf("\n");
+
+	print_features(features, indent + 2);
 
 	if (!l2cap_frame_get_be16(frame, &charset))
 		return false;
