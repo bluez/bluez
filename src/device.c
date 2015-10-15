@@ -626,6 +626,9 @@ static void device_free(gpointer user_data)
 	g_slist_free_full(device->attios_offline, g_free);
 	g_slist_free_full(device->svc_callbacks, svc_dev_remove);
 
+	/* Reset callbacks since the device is going to be freed */
+	gatt_db_register(device->db, NULL, NULL, NULL, NULL);
+
 	attio_cleanup(device);
 
 	gatt_db_unref(device->db);
