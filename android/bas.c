@@ -77,22 +77,15 @@ static void bas_free(struct bt_bas *bas)
 
 	g_free(bas->primary);
 	queue_destroy(bas->gatt_op, (void *) destroy_gatt_req);
-	g_free(bas);
+	free(bas);
 }
 
 struct bt_bas *bt_bas_new(void *primary)
 {
 	struct bt_bas *bas;
 
-	bas = g_try_new0(struct bt_bas, 1);
-	if (!bas)
-		return NULL;
-
+	bas = new0(struct bt_bas, 1);
 	bas->gatt_op = queue_new();
-	if (!bas->gatt_op) {
-		bas_free(bas);
-		return NULL;
-	}
 
 	if (primary)
 		bas->primary = g_memdup(primary, sizeof(*bas->primary));
@@ -127,21 +120,18 @@ static struct gatt_request *create_request(struct bt_bas *bas,
 	struct gatt_request *req;
 
 	req = new0(struct gatt_request, 1);
-	if (!req)
-		return NULL;
-
 	req->user_data = user_data;
 	req->bas = bt_bas_ref(bas);
 
 	return req;
 }
 
-static bool set_and_store_gatt_req(struct bt_bas *bas,
+static void set_and_store_gatt_req(struct bt_bas *bas,
 						struct gatt_request *req,
 						unsigned int id)
 {
 	req->id = id;
-	return queue_push_head(bas->gatt_op, req);
+	queue_push_head(bas->gatt_op, req);
 }
 
 static void write_char(struct bt_bas *bas, GAttrib *attrib, uint16_t handle,
@@ -153,18 +143,10 @@ static void write_char(struct bt_bas *bas, GAttrib *attrib, uint16_t handle,
 	unsigned int id;
 
 	req = create_request(bas, user_data);
-	if (!req)
-		return;
 
 	id = gatt_write_char(attrib, handle, value, vlen, func, req);
 
-	if (set_and_store_gatt_req(bas, req, id))
-		return;
-
-	error("bas: Could not write characteristic");
-	g_attrib_cancel(attrib, id);
-	free(req);
-
+	set_and_store_gatt_req(bas, req, id);
 }
 
 static void read_char(struct bt_bas *bas, GAttrib *attrib, uint16_t handle,
@@ -174,17 +156,10 @@ static void read_char(struct bt_bas *bas, GAttrib *attrib, uint16_t handle,
 	unsigned int id;
 
 	req = create_request(bas, user_data);
-	if (!req)
-		return;
 
 	id = gatt_read_char(attrib, handle, func, req);
 
-	if (set_and_store_gatt_req(bas, req, id))
-		return;
-
-	error("bas: Could not read characteristic");
-	g_attrib_cancel(attrib, id);
-	free(req);
+	set_and_store_gatt_req(bas, req, id);
 }
 
 static void discover_char(struct bt_bas *bas, GAttrib *attrib,
@@ -196,17 +171,10 @@ static void discover_char(struct bt_bas *bas, GAttrib *attrib,
 	unsigned int id;
 
 	req = create_request(bas, user_data);
-	if (!req)
-		return;
 
 	id = gatt_discover_char(attrib, start, end, uuid, func, req);
 
-	if (set_and_store_gatt_req(bas, req, id))
-		return;
-
-	error("bas: Could not discover characteristic");
-	g_attrib_cancel(attrib, id);
-	free(req);
+	set_and_store_gatt_req(bas, req, id);
 }
 
 static void discover_desc(struct bt_bas *bas, GAttrib *attrib,
@@ -217,16 +185,9 @@ static void discover_desc(struct bt_bas *bas, GAttrib *attrib,
 	unsigned int id;
 
 	req = create_request(bas, user_data);
-	if (!req)
-		return;
 
 	id = gatt_discover_desc(attrib, start, end, uuid, func, req);
-	if (set_and_store_gatt_req(bas, req, id))
-		return;
-
-	error("bas: Could not discover descriptor");
-	g_attrib_cancel(attrib, id);
-	free(req);
+	set_and_store_gatt_req(bas, req, id);
 }
 
 static void notification_cb(const guint8 *pdu, guint16 len, gpointer user_data)

@@ -3398,10 +3398,7 @@ struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,
 	DBG("SEP %p registered: type:%d codec:%d seid:%d", sep,
 			sep->info.type, sep->codec, sep->info.seid);
 
-	if (!queue_push_tail(lseps, sep)) {
-		g_free(sep);
-		return NULL;
-	}
+	queue_push_tail(lseps, sep);
 
 	return sep;
 }

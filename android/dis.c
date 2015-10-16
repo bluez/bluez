@@ -96,10 +96,6 @@ struct bt_dis *bt_dis_new(void *primary)
 		return NULL;
 
 	dis->gatt_op = queue_new();
-	if (!dis->gatt_op) {
-		dis_free(dis);
-		return NULL;
-	}
 
 	if (primary)
 		dis->primary = g_memdup(primary, sizeof(*dis->primary));
@@ -134,9 +130,6 @@ static struct gatt_request *create_request(struct bt_dis *dis,
 	struct gatt_request *req;
 
 	req = new0(struct gatt_request, 1);
-	if (!req)
-		return NULL;
-
 	req->user_data = user_data;
 	req->dis = bt_dis_ref(dis);
 
@@ -197,8 +190,6 @@ static void read_char(struct bt_dis *dis, GAttrib *attrib, uint16_t handle,
 	unsigned int id;
 
 	req = create_request(dis, user_data);
-	if (!req)
-		return;
 
 	id = gatt_read_char(attrib, handle, func, req);
 
@@ -219,8 +210,6 @@ static void discover_char(struct bt_dis *dis, GAttrib *attrib,
 	unsigned int id;
 
 	req = create_request(dis, user_data);
-	if (!req)
-		return;
 
 	id = gatt_discover_char(attrib, start, end, uuid, func, req);
 

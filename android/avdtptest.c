@@ -869,10 +869,6 @@ int main(int argc, char *argv[])
 	}
 
 	lseps = queue_new();
-	if (!lseps) {
-		printf("Failed to allocate memory\n");
-		exit(1);
-	}
 
 	local_sep = avdtp_register_sep(lseps, dev_role, AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, TRUE, &sep_ind, &sep_cfm, NULL);

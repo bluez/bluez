@@ -1299,8 +1299,6 @@ static void hog_attach_bas(struct bt_hog *hog, struct gatt_primary *primary)
 	struct bt_bas *instance;
 
 	instance = bt_bas_new(primary);
-	if (!instance)
-		return;
 
 	bt_bas_attach(instance, hog->attrib);
 	queue_push_head(hog->bas, instance);

@@ -74,11 +74,7 @@ static void discover_char(struct bt_scpp *scpp, GAttrib *attrib,
 
 	id = gatt_discover_char(attrib, start, end, uuid, func, user_data);
 
-	if (queue_push_head(scpp->gatt_op, UINT_TO_PTR(id)))
-		return;
-
-	error("scpp: Could not discover characteristic");
-	g_attrib_cancel(attrib, id);
+	queue_push_head(scpp->gatt_op, UINT_TO_PTR(id));
 }
 
 static void discover_desc(struct bt_scpp *scpp, GAttrib *attrib,
@@ -89,11 +85,7 @@ static void discover_desc(struct bt_scpp *scpp, GAttrib *attrib,
 
 	id = gatt_discover_desc(attrib, start, end, uuid, func, user_data);
 
-	if (queue_push_head(scpp->gatt_op, UINT_TO_PTR(id)))
-		return;
-
-	error("scpp: Could not discover descriptor");
-	g_attrib_cancel(attrib, id);
+	queue_push_head(scpp->gatt_op, UINT_TO_PTR(id));
 }
 
 static void write_char(struct bt_scpp *scan, GAttrib *attrib, uint16_t handle,
@@ -105,11 +97,7 @@ static void write_char(struct bt_scpp *scan, GAttrib *attrib, uint16_t handle,
 
 	id = gatt_write_char(attrib, handle, value, vlen, func, user_data);
 
-	if (queue_push_head(scan->gatt_op, UINT_TO_PTR(id)))
-		return;
-
-	error("scpp: Could not read char");
-	g_attrib_cancel(attrib, id);
+	queue_push_head(scan->gatt_op, UINT_TO_PTR(id));
 }
 
 static void scpp_free(struct bt_scpp *scan)
@@ -133,10 +121,6 @@ struct bt_scpp *bt_scpp_new(void *primary)
 	scan->window = SCAN_WINDOW;
 
 	scan->gatt_op = queue_new();
-	if (!scan->gatt_op) {
-		scpp_free(scan);
-		return NULL;
-	}
 
 	if (primary)
 		scan->primary = g_memdup(primary, sizeof(*scan->primary));

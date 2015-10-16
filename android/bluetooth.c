@@ -3961,9 +3961,6 @@ bool bt_le_set_advertising(bool advertising, bt_le_set_advertising_done cb,
 	uint8_t adv = advertising ? 0x01 : 0x00;
 
 	data = new0(struct adv_user_data, 1);
-	if (!data)
-		return false;
-
 	data->cb = cb;
 	data->user_data = user_data;
 
@@ -4078,9 +4075,6 @@ bool bt_read_device_rssi(const bdaddr_t *addr, bt_read_device_rssi_done cb,
 	cp.addr.type = dev->bredr ? BDADDR_BREDR : dev->bdaddr_type;
 
 	data = new0(struct read_rssi_user_data, 1);
-	if (!data)
-		return false;
-
 	data->cb = cb;
 	data->user_data = user_data;
 
@@ -5249,18 +5243,7 @@ bool bt_bluetooth_register(struct ipc *ipc, uint8_t mode)
 	DBG("mode 0x%x", mode);
 
 	unpaired_cb_list = queue_new();
-	if (!unpaired_cb_list) {
-		error("Cannot allocate queue for unpaired callbacks");
-		return false;
-	}
-
 	paired_cb_list = queue_new();
-	if (!paired_cb_list) {
-		error("Cannot allocate queue for paired callbacks");
-		queue_destroy(unpaired_cb_list, NULL);
-		unpaired_cb_list = NULL;
-		return false;
-	}
 
 	missing_settings = adapter.current_settings ^
 						adapter.supported_settings;

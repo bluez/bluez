@@ -822,9 +822,6 @@ static struct health_app *create_health_app(const char *app_name,
 	DBG("");
 
 	app = new0(struct health_app, 1);
-	if (!app)
-		return NULL;
-
 	app->id = app_id++;
 	app->num_of_mdep = mdeps;
 	app->app_name = strdup(app_name);
@@ -848,12 +845,7 @@ static struct health_app *create_health_app(const char *app_name,
 	}
 
 	app->mdeps = queue_new();
-	if (!app->mdeps)
-		goto fail;
-
 	app->devices = queue_new();
-	if (!app->devices)
-		goto fail;
 
 	return app;
 
@@ -906,8 +898,7 @@ static void bt_health_register_app(const void *buf, uint16_t len)
 	if (!app)
 		goto fail;
 
-	if (!queue_push_tail(apps, app))
-		goto fail;
+	queue_push_tail(apps, app);
 
 	rsp.app_id = app->id;
 	ipc_send_rsp_full(hal_ipc, HAL_SERVICE_ID_HEALTH, HAL_OP_HEALTH_REG_APP,
@@ -948,11 +939,6 @@ static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
 	}
 
 	mdep = new0(struct mdep_cfg, 1);
-	if (!mdep) {
-		status = HAL_STATUS_INVALID;
-		goto fail;
-	}
-
 	mdep->role = cmd->role;
 	mdep->data_type = cmd->data_type;
 	mdep->channel_type = android2channel_type(cmd->channel_type);
@@ -963,10 +949,7 @@ static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
 		memcpy(mdep->descr, cmd->descr, cmd->descr_len);
 	}
 
-	if (!queue_push_tail(app->mdeps, mdep)) {
-		status = HAL_STATUS_FAILED;
-		goto fail;
-	}
+	queue_push_tail(app->mdeps, mdep);
 
 	if (app->num_of_mdep != queue_length(app->mdeps))
 		goto send_rsp;
@@ -1258,27 +1241,14 @@ static struct health_device *create_device(struct health_app *app,
 {
 	struct health_device *dev;
 
-	if (!app)
-		return NULL;
-
 	/* create device and push it to devices queue */
 	dev = new0(struct health_device, 1);
-	if (!dev)
-		return NULL;
 
 	android2bdaddr(addr, &dev->dst);
 	dev->channels = queue_new();
-	if (!dev->channels) {
-		free_health_device(dev);
-		return NULL;
-	}
-
-	if (!queue_push_tail(app->devices, dev)) {
-		free_health_device(dev);
-		return NULL;
-	}
-
 	dev->app_id = app->id;
+
+	queue_push_tail(app->devices, dev);
 
 	return dev;
 }
@@ -1314,34 +1284,24 @@ static struct health_channel *create_channel(struct health_app *app,
 	if (!mdep) {
 		if (mdep_index == MDEP_ECHO) {
 			mdep = new0(struct mdep_cfg, 1);
-			if (!mdep)
-				return NULL;
 
 			/* Leave other configuration zeroes */
 			mdep->id = MDEP_ECHO;
 
-			if (!queue_push_tail(app->mdeps, mdep)) {
-				free_mdep_cfg(mdep);
-				return NULL;
-			}
-		} else
+			queue_push_tail(app->mdeps, mdep);
+		} else {
 			return NULL;
+		}
 	}
 
 	/* create channel and push it to device */
 	channel = new0(struct health_channel, 1);
-	if (!channel)
-		return NULL;
-
 	channel->mdep_id = mdep->id;
 	channel->type = mdep->channel_type;
 	channel->id = channel_id++;
 	channel->dev = dev;
 
-	if (!queue_push_tail(dev->channels, channel)) {
-		free_health_channel(channel);
-		return NULL;
-	}
+	queue_push_tail(dev->channels, channel);
 
 	return channel;
 }
@@ -1351,7 +1311,6 @@ static struct health_channel *connect_channel(struct health_app *app,
 							uint8_t mdepid)
 {
 	struct health_device *device;
-	struct health_channel *channel = NULL;
 	bdaddr_t addr;
 
 	DBG("app %p mdepid %u", app, mdepid);
@@ -1364,12 +1323,8 @@ static struct health_channel *connect_channel(struct health_app *app,
 	}
 
 	device = get_device(app, (uint8_t *) &addr);
-	if (!device)
-		return NULL;
 
-	channel = create_channel(app, mdepid, device);
-
-	return channel;
+	return create_channel(app, mdepid, device);
 }
 
 static uint8_t conf_to_l2cap(uint8_t conf)
@@ -1899,8 +1854,6 @@ static void bt_health_connect_channel(const void *buf, uint16_t len)
 		goto send_rsp;
 
 	dev = get_device(app, cmd->bdaddr);
-	if (!dev)
-		goto send_rsp;
 
 	channel = get_channel(app, cmd->mdep_index, dev);
 	if (!channel)
@@ -2076,8 +2029,6 @@ bool bt_health_register(struct ipc *ipc, const bdaddr_t *addr, uint8_t mode)
 
 	hal_ipc = ipc;
 	apps = queue_new();
-	if (!apps)
-		return false;
 
 	ipc_register(hal_ipc, HAL_SERVICE_ID_HEALTH, cmd_handlers,
 						G_N_ELEMENTS(cmd_handlers));

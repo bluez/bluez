@@ -177,20 +177,14 @@ static struct device *device_create(const bdaddr_t *bdaddr)
 	struct device *dev;
 
 	dev = new0(struct device, 1);
-	if (!dev)
-		return NULL;
-
-	if (!queue_push_tail(devices, dev)) {
-		error("hf-client: Could not push dev on the list");
-		free(dev);
-		return NULL;
-	}
 
 	bacpy(&dev->bdaddr, bdaddr);
 	dev->state = HAL_HF_CLIENT_CONN_STATE_DISCONNECTED;
 	dev->audio_state = HAL_HF_CLIENT_AUDIO_STATE_DISCONNECTED;
 
 	init_codecs(dev);
+
+	queue_push_tail(devices, dev);
 
 	return dev;
 }
@@ -2166,10 +2160,6 @@ bool bt_hf_client_register(struct ipc *ipc, const bdaddr_t *addr)
 	DBG("");
 
 	devices = queue_new();
-	if (!devices) {
-		error("hf-client: Could not create devices list");
-		goto failed;
-	}
 
 	bacpy(&adapter_addr, addr);
 
