@@ -407,9 +407,6 @@ static DBusMessage *descriptor_read_value(DBusConnection *conn,
 		return btd_error_in_progress(msg);
 
 	op = new0(struct async_dbus_op, 1);
-	if (!op)
-		return btd_error_failed(msg, "Failed to initialize request");
-
 	op->msg = dbus_message_ref(msg);
 	op->data = desc;
 
@@ -472,9 +469,6 @@ static unsigned int start_long_write(DBusMessage *msg, uint16_t handle,
 	unsigned int id;
 
 	op = new0(struct async_dbus_op, 1);
-	if (!op)
-		return false;
-
 	op->msg = dbus_message_ref(msg);
 	op->data = data;
 	op->complete = complete;
@@ -500,9 +494,6 @@ static unsigned int start_write_request(DBusMessage *msg, uint16_t handle,
 	unsigned int id;
 
 	op = new0(struct async_dbus_op, 1);
-	if (!op)
-		return false;
-
 	op->msg = dbus_message_ref(msg);
 	op->data = data;
 	op->complete = complete;
@@ -610,9 +601,6 @@ static struct descriptor *descriptor_create(struct gatt_db_attribute *attr,
 	struct descriptor *desc;
 
 	desc = new0(struct descriptor, 1);
-	if (!desc)
-		return NULL;
-
 	desc->chrc = chrc;
 	desc->attr = attr;
 	desc->handle = gatt_db_attribute_get_handle(attr);
@@ -852,9 +840,6 @@ static DBusMessage *characteristic_read_value(DBusConnection *conn,
 		return btd_error_in_progress(msg);
 
 	op = new0(struct async_dbus_op, 1);
-	if (!op)
-		return btd_error_failed(msg, "Failed to initialize request");
-
 	op->msg = dbus_message_ref(msg);
 	op->data = chrc;
 
@@ -1045,9 +1030,6 @@ static struct notify_client *notify_client_create(struct characteristic *chrc,
 	struct notify_client *client;
 
 	client = new0(struct notify_client, 1);
-	if (!client)
-		return NULL;
-
 	client->chrc = chrc;
 	client->owner = strdup(owner);
 	if (!client->owner) {
@@ -1193,9 +1175,6 @@ static DBusMessage *characteristic_start_notify(DBusConnection *conn,
 	}
 
 	op = new0(struct async_dbus_op, 1);
-	if (!op)
-		goto fail;
-
 	op->data = client;
 	op->msg = dbus_message_ref(msg);
 
@@ -1320,22 +1299,8 @@ static struct characteristic *characteristic_create(
 	bt_uuid_t uuid;
 
 	chrc = new0(struct characteristic, 1);
-	if (!chrc)
-		return NULL;
-
 	chrc->descs = queue_new();
-	if (!chrc->descs) {
-		free(chrc);
-		return NULL;
-	}
-
 	chrc->notify_clients = queue_new();
-	if (!chrc->notify_clients) {
-		queue_destroy(chrc->descs, NULL);
-		free(chrc);
-		return NULL;
-	}
-
 	chrc->service = service;
 
 	gatt_db_attribute_get_char_data(attr, &chrc->handle,
@@ -1494,22 +1459,8 @@ static struct service *service_create(struct gatt_db_attribute *attr,
 	bt_uuid_t uuid;
 
 	service = new0(struct service, 1);
-	if (!service)
-		return NULL;
-
 	service->chrcs = queue_new();
-	if (!service->chrcs) {
-		free(service);
-		return NULL;
-	}
-
 	service->pending_ext_props = queue_new();
-	if (!service->pending_ext_props) {
-		queue_destroy(service->chrcs, NULL);
-		free(service);
-		return NULL;
-	}
-
 	service->client = client;
 
 	gatt_db_attribute_get_service_data(attr, &service->start_handle,
@@ -1757,22 +1708,8 @@ struct btd_gatt_client *btd_gatt_client_new(struct btd_device *device)
 		return NULL;
 
 	client = new0(struct btd_gatt_client, 1);
-	if (!client)
-		return NULL;
-
 	client->services = queue_new();
-	if (!client->services) {
-		free(client);
-		return NULL;
-	}
-
 	client->all_notify_clients = queue_new();
-	if (!client->all_notify_clients) {
-		queue_destroy(client->services, NULL);
-		free(client);
-		return NULL;
-	}
-
 	client->device = device;
 	ba2str(device_get_address(device), client->devaddr);
 
@@ -1802,9 +1739,6 @@ static void register_notify(void *data, void *user_data)
 	DBG("Re-register subscribed notification client");
 
 	op = new0(struct async_dbus_op, 1);
-	if (!op)
-		goto fail;
-
 	op->data = notify_client;
 
 	notify_client->notify_id = bt_gatt_client_register_notify(client->gatt,
@@ -1816,7 +1750,6 @@ static void register_notify(void *data, void *user_data)
 
 	async_dbus_op_free(op);
 
-fail:
 	DBG("Failed to re-register notification client");
 
 	queue_remove(notify_client->chrc->notify_clients, client);
