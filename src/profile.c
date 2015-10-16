@@ -742,10 +742,14 @@ static struct ext_profile *find_ext_profile(const char *owner,
 	for (l = ext_profiles; l != NULL; l = g_slist_next(l)) {
 		struct ext_profile *ext = l->data;
 
-		if (!g_str_equal(ext->owner, owner))
+		/*
+		 * Owner and path can be NULL if profile was registered by a
+		 * plugin using external flag.
+		 */
+		if (g_strcmp0(ext->owner, owner))
 			continue;
 
-		if (g_str_equal(ext->path, path))
+		if (!g_strcmp0(ext->path, path))
 			return ext;
 	}
 
