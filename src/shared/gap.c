@@ -162,9 +162,6 @@ struct bt_gap *bt_gap_new_index(uint16_t index)
 		return NULL;
 
 	gap = new0(struct bt_gap, 1);
-	if (!gap)
-		return NULL;
-
 	gap->index = index;
 
 	gap->mgmt = mgmt_new_default();
@@ -174,7 +171,6 @@ struct bt_gap *bt_gap_new_index(uint16_t index)
 	}
 
 	gap->irk_list = queue_new();
-
 	gap->mgmt_ready = false;
 
 	if (!mgmt_send(gap->mgmt, MGMT_OP_READ_VERSION,
@@ -269,9 +265,6 @@ bool bt_gap_add_peer_irk(struct bt_gap *gap, uint8_t addr_type,
 		return false;
 
 	irk = new0(struct irk_entry, 1);
-	if (!irk)
-		return false;
-
 	irk->addr_type = addr_type;
 	memcpy(irk->addr, addr, 6);
 	memcpy(irk->key, key, 16);

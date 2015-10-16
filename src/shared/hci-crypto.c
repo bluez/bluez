@@ -66,9 +66,6 @@ static bool le_encrypt(struct bt_hci *hci, uint8_t size,
 	memcpy(cmd.plaintext, plaintext, 16);
 
 	data = new0(struct crypto_data, 1);
-	if (!data)
-		return false;
-
 	data->size = size;
 	data->callback = callback;
 	data->user_data = user_data;
@@ -110,9 +107,6 @@ bool bt_hci_crypto_prand(struct bt_hci *hci,
 		return false;
 
 	data = new0(struct crypto_data, 1);
-	if (!data)
-		return false;
-
 	data->callback = callback;
 	data->user_data = user_data;
 

@@ -142,8 +142,6 @@ struct bt_crypto *bt_crypto_new(void)
 	struct bt_crypto *crypto;
 
 	crypto = new0(struct bt_crypto, 1);
-	if (!crypto)
-		return NULL;
 
 	crypto->ecb_aes = ecb_aes_setup();
 	if (crypto->ecb_aes < 0) {

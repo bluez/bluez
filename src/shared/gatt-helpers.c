@@ -56,9 +56,6 @@ static struct bt_gatt_result *result_create(uint8_t opcode, const void *pdu,
 	struct bt_gatt_result *result;
 
 	result = new0(struct bt_gatt_result, 1);
-	if (!result)
-		return NULL;
-
 	result->pdu = malloc(pdu_len);
 	if (!result->pdu) {
 		free(result);
@@ -549,9 +546,6 @@ unsigned int bt_gatt_exchange_mtu(struct bt_att *att, uint16_t client_rx_mtu,
 		return false;
 
 	op = new0(struct mtu_op, 1);
-	if (!op)
-		return false;
-
 	op->att = att;
 	op->client_rx_mtu = client_rx_mtu;
 	op->callback = callback;
@@ -823,9 +817,6 @@ static struct bt_gatt_request *discover_services(struct bt_att *att,
 		return NULL;
 
 	op = new0(struct bt_gatt_request, 1);
-	if (!op)
-		return NULL;
-
 	op->att = att;
 	op->start_handle = start;
 	op->end_handle = end;
@@ -924,9 +915,6 @@ static struct read_incl_data *new_read_included(struct bt_gatt_result *res)
 	struct read_incl_data *data;
 
 	data = new0(struct read_incl_data, 1);
-	if (!data)
-		return NULL;
-
 	data->op = bt_gatt_request_ref(res->op);
 	data->result = res;
 
@@ -1161,9 +1149,6 @@ struct bt_gatt_request *bt_gatt_discover_included_services(struct bt_att *att,
 		return false;
 
 	op = new0(struct bt_gatt_request, 1);
-	if (!op)
-		return false;
-
 	op->att = att;
 	op->callback = callback;
 	op->user_data = user_data;
@@ -1278,9 +1263,6 @@ struct bt_gatt_request *bt_gatt_discover_characteristics(struct bt_att *att,
 		return false;
 
 	op = new0(struct bt_gatt_request, 1);
-	if (!op)
-		return false;
-
 	op->att = att;
 	op->callback = callback;
 	op->user_data = user_data;
@@ -1388,9 +1370,6 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 		return false;
 
 	op = new0(struct bt_gatt_request, 1);
-	if (!op)
-		return false;
-
 	op->att = att;
 	op->callback = callback;
 	op->user_data = user_data;
@@ -1512,9 +1491,6 @@ struct bt_gatt_request *bt_gatt_discover_descriptors(struct bt_att *att,
 		return false;
 
 	op = new0(struct bt_gatt_request, 1);
-	if (!op)
-		return false;
-
 	op->att = att;
 	op->callback = callback;
 	op->user_data = user_data;

@@ -72,9 +72,6 @@ struct ringbuf *ringbuf_new(size_t size)
 	real_size = align_power2(size);
 
 	ringbuf = new0(struct ringbuf, 1);
-	if (!ringbuf)
-		return NULL;
-
 	ringbuf->buffer = malloc(real_size);
 	if (!ringbuf->buffer) {
 		free(ringbuf);

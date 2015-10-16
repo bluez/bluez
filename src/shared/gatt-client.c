@@ -131,8 +131,6 @@ static struct request *request_create(struct bt_gatt_client *client)
 	struct request *req;
 
 	req = new0(struct request, 1);
-	if (!req)
-		return NULL;
 
 	if (client->next_request_id < 1)
 		client->next_request_id = 1;
@@ -243,8 +241,6 @@ static struct notify_chrc *notify_chrc_create(struct bt_gatt_client *client,
 			return NULL;
 
 	chrc = new0(struct notify_chrc, 1);
-	if (!chrc)
-		return NULL;
 
 	chrc->reg_notify_queue = queue_new();
 	if (!chrc->reg_notify_queue) {
@@ -373,21 +369,9 @@ static struct discovery_op *discovery_op_create(struct bt_gatt_client *client,
 	struct discovery_op *op;
 
 	op = new0(struct discovery_op, 1);
-	if (!op)
-		return NULL;
-
 	op->pending_svcs = queue_new();
-	if (!op->pending_svcs)
-		goto fail;
-
 	op->pending_chrcs = queue_new();
-	if (!op->pending_chrcs)
-		goto fail;
-
 	op->tmp_queue = queue_new();
-	if (!op->tmp_queue)
-		goto fail;
-
 	op->client = client;
 	op->complete_func = complete_func;
 	op->failure_func = failure_func;
@@ -395,10 +379,6 @@ static struct discovery_op *discovery_op_create(struct bt_gatt_client *client,
 	op->end = end;
 
 	return op;
-
-fail:
-	discovery_op_free(op);
-	return NULL;
 }
 
 static struct discovery_op *discovery_op_ref(struct discovery_op *op)
@@ -787,8 +767,6 @@ static void discover_chrcs_cb(bool success, uint8_t att_ecode,
 				start, end, value, properties, uuid_str);
 
 		chrc_data = new0(struct chrc, 1);
-		if (!chrc_data)
-			goto failed;
 
 		chrc_data->start_handle = start;
 		chrc_data->end_handle = end;
@@ -1255,9 +1233,6 @@ static unsigned int register_notify(struct bt_gatt_client *client,
 		return 0;
 
 	notify_data = new0(struct notify_data, 1);
-	if (!notify_data)
-		return 0;
-
 	notify_data->client = client;
 	notify_data->ref_count = 1;
 	notify_data->chrc = chrc;
@@ -1481,8 +1456,6 @@ static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
 	}
 
 	op = new0(struct service_changed_op, 1);
-	if (!op)
-		return;
 
 	op->start_handle = start;
 	op->end_handle = end;
@@ -1713,33 +1686,16 @@ struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 		return NULL;
 
 	client = new0(struct bt_gatt_client, 1);
-	if (!client)
-		return NULL;
-
 	client->disc_id = bt_att_register_disconnect(att, att_disconnect_cb,
 								client, NULL);
 	if (!client->disc_id)
 		goto fail;
 
 	client->long_write_queue = queue_new();
-	if (!client->long_write_queue)
-		goto fail;
-
 	client->svc_chngd_queue = queue_new();
-	if (!client->svc_chngd_queue)
-		goto fail;
-
 	client->notify_list = queue_new();
-	if (!client->notify_list)
-		goto fail;
-
 	client->notify_chrcs = queue_new();
-	if (!client->notify_chrcs)
-		goto fail;
-
 	client->pending_requests = queue_new();
-	if (!client->pending_requests)
-		goto fail;
 
 	client->notify_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_NOT,
 						notify_cb, client, NULL);
@@ -2025,8 +1981,6 @@ unsigned int bt_gatt_client_read_value(struct bt_gatt_client *client,
 		return 0;
 
 	op = new0(struct read_op, 1);
-	if (!op)
-		return 0;
 
 	req = request_create(client);
 	if (!req) {
@@ -2104,8 +2058,6 @@ unsigned int bt_gatt_client_read_multiple(struct bt_gatt_client *client,
 		return 0;
 
 	op = new0(struct read_op, 1);
-	if (!op)
-		return 0;
 
 	req = request_create(client);
 	if (!req) {
@@ -2254,8 +2206,6 @@ unsigned int bt_gatt_client_read_long_value(struct bt_gatt_client *client,
 		return 0;
 
 	op = new0(struct read_long_op, 1);
-	if (!op)
-		return 0;
 
 	req = request_create(client);
 	if (!req) {
@@ -2381,8 +2331,6 @@ unsigned int bt_gatt_client_write_value(struct bt_gatt_client *client,
 		return 0;
 
 	op = new0(struct write_op, 1);
-	if (!op)
-		return 0;
 
 	req = request_create(client);
 	if (!req) {
@@ -2656,9 +2604,6 @@ unsigned int bt_gatt_client_write_long_value(struct bt_gatt_client *client,
 		return 0;
 
 	op = new0(struct long_write_op, 1);
-	if (!op)
-		return 0;
-
 	op->value = malloc(length);
 	if (!op->value) {
 		free(op);
@@ -2787,8 +2732,6 @@ static struct request *get_reliable_request(struct bt_gatt_client *client,
 	struct prep_write_op *op;
 
 	op = new0(struct prep_write_op, 1);
-	if (!op)
-		return NULL;
 
 	/* Following prepare writes */
 	if (id != 0)
@@ -2947,8 +2890,6 @@ unsigned int bt_gatt_client_write_execute(struct bt_gatt_client *client,
 		return 0;
 
 	op = new0(struct write_op, 1);
-	if (!op)
-		return 0;
 
 	req = queue_find(client->pending_requests, match_req_id,
 							UINT_TO_PTR(id));

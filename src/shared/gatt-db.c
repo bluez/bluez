@@ -166,8 +166,6 @@ static struct gatt_db_attribute *new_attribute(struct gatt_db_service *service,
 	struct gatt_db_attribute *attribute;
 
 	attribute = new0(struct gatt_db_attribute, 1);
-	if (!attribute)
-		return NULL;
 
 	attribute->service = service;
 	attribute->handle = handle;
@@ -182,12 +180,7 @@ static struct gatt_db_attribute *new_attribute(struct gatt_db_service *service,
 	}
 
 	attribute->pending_reads = queue_new();
-	if (!attribute->pending_reads)
-		goto failed;
-
 	attribute->pending_writes = queue_new();
-	if (!attribute->pending_reads)
-		goto failed;
 
 	return attribute;
 
@@ -211,22 +204,8 @@ struct gatt_db *gatt_db_new(void)
 	struct gatt_db *db;
 
 	db = new0(struct gatt_db, 1);
-	if (!db)
-		return NULL;
-
 	db->services = queue_new();
-	if (!db->services) {
-		free(db);
-		return NULL;
-	}
-
 	db->notify_list = queue_new();
-	if (!db->notify_list) {
-		queue_destroy(db->services, NULL);
-		free(db);
-		return NULL;
-	}
-
 	db->next_handle = 0x0001;
 
 	return gatt_db_ref(db);
@@ -386,14 +365,7 @@ static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
 		return NULL;
 
 	service = new0(struct gatt_db_service, 1);
-	if (!service)
-		return NULL;
-
 	service->attributes = new0(struct gatt_db_attribute *, num_handles);
-	if (!service->attributes) {
-		free(service);
-		return NULL;
-	}
 
 	if (primary)
 		type = &primary_service_uuid;
@@ -605,9 +577,6 @@ unsigned int gatt_db_register(struct gatt_db *db,
 		return 0;
 
 	notify = new0(struct notify, 1);
-	if (!notify)
-		return 0;
-
 	notify->service_added = service_added;
 	notify->service_removed = service_removed;
 	notify->destroy = destroy;
@@ -1591,9 +1560,6 @@ bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
 		struct pending_read *p;
 
 		p = new0(struct pending_read, 1);
-		if (!p)
-			return false;
-
 		p->attrib = attrib;
 		p->id = ++attrib->read_id;
 		p->timeout_id = timeout_add(ATTRIBUTE_TIMEOUT, read_timeout,
@@ -1675,9 +1641,6 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 		struct pending_write *p;
 
 		p = new0(struct pending_write, 1);
-		if (!p)
-			return false;
-
 		p->attrib = attrib;
 		p->id = ++attrib->write_id;
 		p->timeout_id = timeout_add(ATTRIBUTE_TIMEOUT, write_timeout,

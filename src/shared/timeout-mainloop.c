@@ -58,9 +58,6 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 	struct timeout_data *data;
 
 	data = new0(struct timeout_data, 1);
-	if (!data)
-		return 0;
-
 	data->func = func;
 	data->user_data = user_data;
 	data->timeout = timeout;

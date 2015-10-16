@@ -248,10 +248,6 @@ static void read_by_grp_type_cb(uint8_t opcode, const void *pdu,
 	}
 
 	q = queue_new();
-	if (!q) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
 
 	start = get_le16(pdu);
 	end = get_le16(pdu + 2);
@@ -457,10 +453,6 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 	}
 
 	q = queue_new();
-	if (!q) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
 
 	start = get_le16(pdu);
 	end = get_le16(pdu + 2);
@@ -495,11 +487,6 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 	}
 
 	op = new0(struct async_read_op, 1);
-	if (!op) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
-
 	op->pdu = malloc(bt_att_get_mtu(server->att));
 	if (!op->pdu) {
 		free(op);
@@ -593,10 +580,6 @@ static void find_info_cb(uint8_t opcode, const void *pdu,
 	}
 
 	q = queue_new();
-	if (!q) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
 
 	start = get_le16(pdu);
 	end = get_le16(pdu + 2);
@@ -802,11 +785,6 @@ static void write_cb(uint8_t opcode, const void *pdu,
 	}
 
 	op = new0(struct async_write_op, 1);
-	if (!op) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
-
 	op->server = server;
 	op->opcode = opcode;
 	server->pending_write_op = op;
@@ -914,11 +892,6 @@ static void handle_read_req(struct bt_gatt_server *server, uint8_t opcode,
 	}
 
 	op = new0(struct async_read_op, 1);
-	if (!op) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
-
 	op->opcode = opcode;
 	op->server = server;
 	server->pending_read_op = op;
@@ -1088,9 +1061,6 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu,
 
 	data.handles = new0(uint16_t, data.num_handles);
 
-	if (!data.handles)
-		goto error;
-
 	for (i = 0; i < data.num_handles; i++)
 		data.handles[i] = get_le16(pdu + i * 2);
 
@@ -1153,11 +1123,6 @@ static void prep_write_cb(uint8_t opcode, const void *pdu,
 		goto error;
 
 	prep_data = new0(struct prep_write_data, 1);
-	if (!prep_data) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
-
 	prep_data->length = length - 4;
 	if (prep_data->length) {
 		prep_data->value = malloc(prep_data->length);
@@ -1418,19 +1383,11 @@ struct bt_gatt_server *bt_gatt_server_new(struct gatt_db *db,
 		return NULL;
 
 	server = new0(struct bt_gatt_server, 1);
-	if (!server)
-		return NULL;
-
 	server->db = gatt_db_ref(db);
 	server->att = bt_att_ref(att);
 	server->mtu = MAX(mtu, BT_ATT_DEFAULT_LE_MTU);
 	server->max_prep_queue_len = DEFAULT_MAX_PREP_QUEUE_LEN;
-
 	server->prep_queue = queue_new();
-	if (!server->prep_queue) {
-		bt_gatt_server_free(server);
-		return NULL;
-	}
 
 	if (!gatt_server_register_att_handlers(server)) {
 		bt_gatt_server_free(server);
@@ -1551,10 +1508,6 @@ bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
 		return false;
 
 	data = new0(struct ind_data, 1);
-	if (!data) {
-		free(pdu);
-		return false;
-	}
 
 	data->callback = callback;
 	data->destroy = destroy;

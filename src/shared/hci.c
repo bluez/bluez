@@ -290,9 +290,6 @@ static struct bt_hci *create_hci(int fd)
 		return NULL;
 
 	hci = new0(struct bt_hci, 1);
-	if (!hci)
-		return NULL;
-
 	hci->io = io_new(fd);
 	if (!hci->io) {
 		free(hci);
@@ -306,28 +303,8 @@ static struct bt_hci *create_hci(int fd)
 	hci->next_evt_id = 1;
 
 	hci->cmd_queue = queue_new();
-	if (!hci->cmd_queue) {
-		io_destroy(hci->io);
-		free(hci);
-		return NULL;
-	}
-
 	hci->rsp_queue = queue_new();
-	if (!hci->rsp_queue) {
-		queue_destroy(hci->cmd_queue, NULL);
-		io_destroy(hci->io);
-		free(hci);
-		return NULL;
-	}
-
 	hci->evt_list = queue_new();
-	if (!hci->evt_list) {
-		queue_destroy(hci->rsp_queue, NULL);
-		queue_destroy(hci->cmd_queue, NULL);
-		io_destroy(hci->io);
-		free(hci);
-		return NULL;
-	}
 
 	if (!io_set_read_handler(hci->io, io_read_callback, hci, NULL)) {
 		queue_destroy(hci->evt_list, NULL);
@@ -476,9 +453,6 @@ unsigned int bt_hci_send(struct bt_hci *hci, uint16_t opcode,
 		return 0;
 
 	cmd = new0(struct cmd, 1);
-	if (!cmd)
-		return 0;
-
 	cmd->opcode = opcode;
 	cmd->size = size;
 
@@ -568,9 +542,6 @@ unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 		return 0;
 
 	evt = new0(struct evt, 1);
-	if (!evt)
-		return 0;
-
 	evt->event = event;
 
 	if (hci->next_evt_id < 1)

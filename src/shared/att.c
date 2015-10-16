@@ -343,9 +343,6 @@ static struct att_send_op *create_att_send_op(struct bt_att *att,
 		return NULL;
 
 	op = new0(struct att_send_op, 1);
-	if (!op)
-		return NULL;
-
 	op->type = op_type;
 	op->opcode = opcode;
 	op->callback = callback;
@@ -496,9 +493,6 @@ static bool can_write_data(struct io *io, void *user_data)
 	}
 
 	timeout = new0(struct timeout_data, 1);
-	if (!timeout)
-		return true;
-
 	timeout->att = att;
 	timeout->id = op->id;
 	op->timeout_id = timeout_add(ATT_TIMEOUT_INTERVAL, timeout_cb,
@@ -957,9 +951,6 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 		return NULL;
 
 	att = new0(struct bt_att, 1);
-	if (!att)
-		return NULL;
-
 	att->fd = fd;
 	att->mtu = BT_ATT_DEFAULT_LE_MTU;
 	att->buf = malloc(att->mtu);
@@ -975,24 +966,10 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 		att->crypto = bt_crypto_new();
 
 	att->req_queue = queue_new();
-	if (!att->req_queue)
-		goto fail;
-
 	att->ind_queue = queue_new();
-	if (!att->ind_queue)
-		goto fail;
-
 	att->write_queue = queue_new();
-	if (!att->write_queue)
-		goto fail;
-
 	att->notify_list = queue_new();
-	if (!att->notify_list)
-		goto fail;
-
 	att->disconn_list = queue_new();
-	if (!att->disconn_list)
-		goto fail;
 
 	if (!io_set_read_handler(att->io, can_read_data, att, NULL))
 		goto fail;
@@ -1126,9 +1103,6 @@ unsigned int bt_att_register_disconnect(struct bt_att *att,
 		return 0;
 
 	disconn = new0(struct att_disconn, 1);
-	if (!disconn)
-		return 0;
-
 	disconn->callback = callback;
 	disconn->destroy = destroy;
 	disconn->user_data = user_data;
@@ -1342,9 +1316,6 @@ unsigned int bt_att_register(struct bt_att *att, uint8_t opcode,
 		return 0;
 
 	notify = new0(struct att_notify, 1);
-	if (!notify)
-		return 0;
-
 	notify->opcode = opcode;
 	notify->callback = callback;
 	notify->destroy = destroy;
@@ -1435,11 +1406,8 @@ bool bt_att_set_security(struct bt_att *att, int level)
 static bool sign_set_key(struct sign_info **sign, uint8_t key[16],
 				bt_att_counter_func_t func, void *user_data)
 {
-	if (!(*sign)) {
+	if (!(*sign))
 		*sign = new0(struct sign_info, 1);
-		if (!(*sign))
-			return false;
-	}
 
 	(*sign)->counter = func;
 	(*sign)->user_data = user_data;

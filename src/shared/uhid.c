@@ -125,16 +125,11 @@ struct bt_uhid *bt_uhid_new(int fd)
 	struct bt_uhid *uhid;
 
 	uhid = new0(struct bt_uhid, 1);
-	if (!uhid)
-		return NULL;
-
 	uhid->io = io_new(fd);
 	if (!uhid->io)
 		goto failed;
 
 	uhid->notify_list = queue_new();
-	if (!uhid->notify_list)
-		goto failed;
 
 	if (!io_set_read_handler(uhid->io, uhid_read_handler, uhid, NULL))
 		goto failed;
@@ -186,9 +181,6 @@ unsigned int bt_uhid_register(struct bt_uhid *uhid, uint32_t event,
 		return 0;
 
 	notify = new0(struct uhid_notify, 1);
-	if (!notify)
-		return 0;
-
 	notify->id = uhid->notify_id++;
 	notify->event = event;
 	notify->func = func;

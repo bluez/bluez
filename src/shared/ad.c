@@ -42,36 +42,12 @@ struct bt_ad *bt_ad_new(void)
 	struct bt_ad *ad;
 
 	ad = new0(struct bt_ad, 1);
-	if (!ad)
-		return NULL;
-
 	ad->service_uuids = queue_new();
-	if (!ad->service_uuids)
-		goto fail;
-
 	ad->manufacturer_data = queue_new();
-	if (!ad->manufacturer_data)
-		goto fail;
-
 	ad->solicit_uuids = queue_new();
-	if (!ad->solicit_uuids)
-		goto fail;
-
 	ad->service_data = queue_new();
-	if (!ad->service_data)
-		goto fail;
 
 	return bt_ad_ref(ad);
-
-fail:
-	queue_destroy(ad->service_uuids, NULL);
-	queue_destroy(ad->manufacturer_data, NULL);
-	queue_destroy(ad->solicit_uuids, NULL);
-	queue_destroy(ad->service_data, NULL);
-
-	free(ad);
-
-	return NULL;
 }
 
 struct bt_ad *bt_ad_ref(struct bt_ad *ad)
@@ -373,8 +349,6 @@ static bool queue_add_uuid(struct queue *queue, const bt_uuid_t *uuid)
 		return false;
 
 	new_uuid = new0(bt_uuid_t, 1);
-	if (!new_uuid)
-		return false;
 
 	*new_uuid = *uuid;
 
@@ -466,9 +440,6 @@ bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t manufacturer_id,
 	}
 
 	new_data = new0(struct bt_ad_manufacturer_data, 1);
-	if (!new_data)
-		return false;
-
 	new_data->manufacturer_id = manufacturer_id;
 
 	new_data->data = malloc(len);
@@ -605,8 +576,6 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 	}
 
 	new_data = new0(struct bt_ad_service_data, 1);
-	if (!new_data)
-		return false;
 
 	new_data->uuid = *uuid;
 

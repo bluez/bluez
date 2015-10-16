@@ -160,9 +160,6 @@ struct io *io_new(int fd)
 		return NULL;
 
 	io = new0(struct io, 1);
-	if (!io)
-		return NULL;
-
 	io->fd = fd;
 	io->events = 0;
 	io->close_on_destroy = false;

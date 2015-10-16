@@ -353,9 +353,6 @@ struct mgmt *mgmt_new(int fd)
 		return NULL;
 
 	mgmt = new0(struct mgmt, 1);
-	if (!mgmt)
-		return NULL;
-
 	mgmt->fd = fd;
 	mgmt->close_on_unref = false;
 
@@ -374,42 +371,9 @@ struct mgmt *mgmt_new(int fd)
 	}
 
 	mgmt->request_queue = queue_new();
-	if (!mgmt->request_queue) {
-		io_destroy(mgmt->io);
-		free(mgmt->buf);
-		free(mgmt);
-		return NULL;
-	}
-
 	mgmt->reply_queue = queue_new();
-	if (!mgmt->reply_queue) {
-		queue_destroy(mgmt->request_queue, NULL);
-		io_destroy(mgmt->io);
-		free(mgmt->buf);
-		free(mgmt);
-		return NULL;
-	}
-
 	mgmt->pending_list = queue_new();
-	if (!mgmt->pending_list) {
-		queue_destroy(mgmt->reply_queue, NULL);
-		queue_destroy(mgmt->request_queue, NULL);
-		io_destroy(mgmt->io);
-		free(mgmt->buf);
-		free(mgmt);
-		return NULL;
-	}
-
 	mgmt->notify_list = queue_new();
-	if (!mgmt->notify_list) {
-		queue_destroy(mgmt->pending_list, NULL);
-		queue_destroy(mgmt->reply_queue, NULL);
-		queue_destroy(mgmt->request_queue, NULL);
-		io_destroy(mgmt->io);
-		free(mgmt->buf);
-		free(mgmt);
-		return NULL;
-	}
 
 	if (!io_set_read_handler(mgmt->io, can_read_data, mgmt, NULL)) {
 		queue_destroy(mgmt->notify_list, NULL);
@@ -549,9 +513,6 @@ static struct mgmt_request *create_request(uint16_t opcode, uint16_t index,
 		return NULL;
 
 	request = new0(struct mgmt_request, 1);
-	if (!request)
-		return NULL;
-
 	request->len = length + MGMT_HDR_SIZE;
 	request->buf = malloc(request->len);
 	if (!request->buf) {
@@ -732,9 +693,6 @@ unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 		return 0;
 
 	notify = new0(struct mgmt_notify, 1);
-	if (!notify)
-		return 0;
-
 	notify->event = event;
 	notify->index = index;
 

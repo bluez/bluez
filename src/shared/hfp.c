@@ -575,9 +575,6 @@ struct hfp_gw *hfp_gw_new(int fd)
 		return NULL;
 
 	hfp = new0(struct hfp_gw, 1);
-	if (!hfp)
-		return NULL;
-
 	hfp->fd = fd;
 	hfp->close_on_unref = false;
 
@@ -603,13 +600,6 @@ struct hfp_gw *hfp_gw_new(int fd)
 	}
 
 	hfp->cmd_handlers = queue_new();
-	if (!hfp->cmd_handlers) {
-		io_destroy(hfp->io);
-		ringbuf_free(hfp->write_buf);
-		ringbuf_free(hfp->read_buf);
-		free(hfp);
-		return NULL;
-	}
 
 	if (!io_set_read_handler(hfp->io, can_read_data, hfp,
 							read_watch_destroy)) {
@@ -844,9 +834,6 @@ bool hfp_gw_register(struct hfp_gw *hfp, hfp_result_func_t callback,
 	struct cmd_handler *handler;
 
 	handler = new0(struct cmd_handler, 1);
-	if (!handler)
-		return false;
-
 	handler->callback = callback;
 	handler->user_data = user_data;
 
@@ -1262,9 +1249,6 @@ struct hfp_hf *hfp_hf_new(int fd)
 		return NULL;
 
 	hfp = new0(struct hfp_hf, 1);
-	if (!hfp)
-		return NULL;
-
 	hfp->fd = fd;
 	hfp->close_on_unref = false;
 
@@ -1290,24 +1274,7 @@ struct hfp_hf *hfp_hf_new(int fd)
 	}
 
 	hfp->event_handlers = queue_new();
-	if (!hfp->event_handlers) {
-		io_destroy(hfp->io);
-		ringbuf_free(hfp->write_buf);
-		ringbuf_free(hfp->read_buf);
-		free(hfp);
-		return NULL;
-	}
-
 	hfp->cmd_queue = queue_new();
-	if (!hfp->cmd_queue) {
-		io_destroy(hfp->io);
-		ringbuf_free(hfp->write_buf);
-		ringbuf_free(hfp->read_buf);
-		queue_destroy(hfp->event_handlers, NULL);
-		free(hfp);
-		return NULL;
-	}
-
 	hfp->writer_active = false;
 
 	if (!io_set_read_handler(hfp->io, hf_can_read_data, hfp,
@@ -1440,10 +1407,6 @@ bool hfp_hf_send_command(struct hfp_hf *hfp, hfp_response_func_t resp_cb,
 		return false;
 
 	cmd = new0(struct cmd_response, 1);
-	if (!cmd) {
-		free(fmt);
-		return false;
-	}
 
 	va_start(ap, format);
 	len = ringbuf_vprintf(hfp->write_buf, fmt, ap);
@@ -1481,9 +1444,6 @@ bool hfp_hf_register(struct hfp_hf *hfp, hfp_hf_result_func_t callback,
 		return false;
 
 	handler = new0(struct event_handler, 1);
-	if (!handler)
-		return false;
-
 	handler->callback = callback;
 	handler->user_data = user_data;
 

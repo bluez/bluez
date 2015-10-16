@@ -58,9 +58,6 @@ struct queue *queue_new(void)
 	struct queue *queue;
 
 	queue = new0(struct queue, 1);
-	if (!queue)
-		return NULL;
-
 	queue->head = NULL;
 	queue->tail = NULL;
 	queue->entries = 0;
@@ -101,9 +98,6 @@ static struct queue_entry *queue_entry_new(void *data)
 	struct queue_entry *entry;
 
 	entry = new0(struct queue_entry, 1);
-	if (!entry)
-		return NULL;
-
 	entry->data = data;
 
 	return queue_entry_ref(entry);
@@ -117,8 +111,6 @@ bool queue_push_tail(struct queue *queue, void *data)
 		return false;
 
 	entry = queue_entry_new(data);
-	if (!entry)
-		return false;
 
 	if (queue->tail)
 		queue->tail->next = entry;
@@ -141,8 +133,6 @@ bool queue_push_head(struct queue *queue, void *data)
 		return false;
 
 	entry = queue_entry_new(data);
-	if (!entry)
-		return false;
 
 	entry->next = queue->head;
 
@@ -176,8 +166,6 @@ bool queue_push_after(struct queue *queue, void *entry, void *data)
 		return false;
 
 	new_entry = queue_entry_new(data);
-	if (!new_entry)
-		return false;
 
 	new_entry->next = qentry->next;
 

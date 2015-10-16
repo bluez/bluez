@@ -215,12 +215,6 @@ void tester_add_full(const char *name, const void *test_data,
 	}
 
 	test = new0(struct test_case, 1);
-	if (!test) {
-		if (destroy)
-			destroy(user_data);
-		return;
-	}
-
 	test->name = strdup(name);
 	test->result = TEST_RESULT_NOT_RUN;
 	test->stage = TEST_STAGE_INVALID;
@@ -684,9 +678,6 @@ void tester_wait(unsigned int seconds, tester_wait_func_t func,
 	test = test_current->data;
 
 	wait = new0(struct wait_data, 1);
-	if (!wait)
-		return;
-
 	wait->seconds = seconds;
 	wait->test = test;
 	wait->func = func;
