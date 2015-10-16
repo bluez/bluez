@@ -72,6 +72,7 @@ struct btsnoop {
 	uint16_t index;
 	bool aborted;
 	bool pklg_format;
+	bool pklg_v2;
 };
 
 struct btsnoop *btsnoop_open(const char *path, unsigned long flags)
@@ -108,12 +109,14 @@ struct btsnoop *btsnoop_open(const char *path, unsigned long flags)
 			goto failed;
 
 		/* Check for Apple Packet Logger format */
-		if (hdr.id[0] != 0x00 || hdr.id[1] != 0x00)
+		if (hdr.id[0] != 0x00 ||
+				(hdr.id[1] != 0x00 && hdr.id[1] != 0x01))
 			goto failed;
 
 		btsnoop->type = BTSNOOP_TYPE_MONITOR;
 		btsnoop->index = 0xffff;
 		btsnoop->pklg_format = true;
+		btsnoop->pklg_v2 = (hdr.id[1] == 0x01);
 
 		/* Apple Packet Logger format has no header */
 		lseek(btsnoop->fd, 0, SEEK_SET);
@@ -337,9 +340,14 @@ static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
 		return false;
 	}
 
-	toread = be32toh(pkt.len) - 9;
+	if (btsnoop->pklg_v2) {
+		toread = le32toh(pkt.len) - (PKLG_PKT_SIZE - 4);
+		ts = le64toh(pkt.ts);
+	} else {
+		toread = be32toh(pkt.len) - (PKLG_PKT_SIZE - 4);
+		ts = be64toh(pkt.ts);
+	}
 
-	ts = be64toh(pkt.ts);
 	tv->tv_sec = ts >> 32;
 	tv->tv_usec = ts & 0xffffffff;
 
