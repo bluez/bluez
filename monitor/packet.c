@@ -5603,6 +5603,9 @@ static void read_bd_addr_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_bdaddr(rsp->bdaddr);
+
+	if (index_current < MAX_INDEX)
+		memcpy(index_list[index_current].bdaddr, rsp->bdaddr, 6);
 }
 
 static void read_data_block_size_rsp(const void *data, uint8_t size)
