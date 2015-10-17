@@ -99,6 +99,29 @@ struct bt_ll_reject_ind {
 	uint8_t  error;
 } __attribute__ ((packed));
 
+#define BT_LL_SLAVE_FEATURE_REQ	0x0e
+struct bt_ll_slave_feature_req {
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LL_CONN_PARAM_REQ	0x0f
+
+#define BT_LL_CONN_PARAM_RSP	0x10
+
+#define BT_LL_REJECT_IND_EXT	0x11
+struct bt_ll_reject_ind_ext {
+	uint8_t  opcode;
+	uint8_t  error;
+} __attribute__ ((packed));
+
+#define BT_LL_PING_REQ		0x12
+
+#define BT_LL_PING_RSP		0x13
+
+#define BT_LL_LENGTH_REQ	0x14
+
+#define BT_LL_LENGTH_RSP	0x15
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1

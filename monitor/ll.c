@@ -460,6 +460,21 @@ static void reject_ind(const void *data, uint8_t size)
 	packet_print_error("Error code", pdu->error);
 }
 
+static void slave_feature_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_slave_feature_req *pdu = data;
+
+	packet_print_features_ll(pdu->features);
+}
+
+static void reject_ind_ext(const void *data, uint8_t size)
+{
+	const struct bt_ll_reject_ind_ext *pdu = data;
+
+	print_field("Reject opcode: %u (0x%2.2x)", pdu->opcode, pdu->opcode);
+	packet_print_error("Error code", pdu->error);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -469,22 +484,28 @@ struct llcp_data {
 };
 
 static const struct llcp_data llcp_table[] = {
-	{ 0x00, "LL_CONNECTION_UPDATE_REQ", conn_update_req, 11, true },
-	{ 0x01, "LL_CHANNEL_MAP_REQ",       channel_map_req,  7, true },
-	{ 0x02, "LL_TERMINATE_IND",         terminate_ind,    1, true },
-	{ 0x03, "LL_ENC_REQ",               enc_req,         22, true },
-	{ 0x04, "LL_ENC_RSP",               enc_rsp,         12, true },
-	{ 0x05, "LL_START_ENC_REQ",         null_pdu,         0, true },
-	{ 0x06, "LL_START_ENC_RSP",         null_pdu,         0, true },
-	{ 0x07, "LL_UNKNOWN_RSP",           unknown_rsp,      1, true },
-	{ 0x08, "LL_FEATURE_REQ",           feature_req,      8, true },
-	{ 0x09, "LL_FEATURE_RSP",           feature_rsp,      8, true },
-	{ 0x0a, "LL_PAUSE_ENC_REQ",         null_pdu,         0, true },
-	{ 0x0b, "LL_PAUSE_ENC_RSP",         null_pdu,         0, true },
-	{ 0x0c, "LL_VERSION_IND",           version_ind,      5, true },
-	{ 0x0d, "LL_REJECT_IND",            reject_ind,       1, true },
-	{ 0x12, "LL_PING_REQ",              null_pdu,         0, true },
-	{ 0x13, "LL_PING_RSP",              null_pdu,         0, true },
+	{ 0x00, "LL_CONNECTION_UPDATE_REQ", conn_update_req,   11, true },
+	{ 0x01, "LL_CHANNEL_MAP_REQ",       channel_map_req,    7, true },
+	{ 0x02, "LL_TERMINATE_IND",         terminate_ind,      1, true },
+	{ 0x03, "LL_ENC_REQ",               enc_req,           22, true },
+	{ 0x04, "LL_ENC_RSP",               enc_rsp,           12, true },
+	{ 0x05, "LL_START_ENC_REQ",         null_pdu,           0, true },
+	{ 0x06, "LL_START_ENC_RSP",         null_pdu,           0, true },
+	{ 0x07, "LL_UNKNOWN_RSP",           unknown_rsp,        1, true },
+	{ 0x08, "LL_FEATURE_REQ",           feature_req,        8, true },
+	{ 0x09, "LL_FEATURE_RSP",           feature_rsp,        8, true },
+	{ 0x0a, "LL_PAUSE_ENC_REQ",         null_pdu,           0, true },
+	{ 0x0b, "LL_PAUSE_ENC_RSP",         null_pdu,           0, true },
+	{ 0x0c, "LL_VERSION_IND",           version_ind,        5, true },
+	{ 0x0d, "LL_REJECT_IND",            reject_ind,         1, true },
+	{ 0x0e, "LL_SLAVE_FEATURE_REQ",     slave_feature_req,  8, true },
+	{ 0x0f, "LL_CONNECTION_PARAM_REQ",  NULL,              23, true },
+	{ 0x10, "LL_CONNECTION_PARAM_RSP",  NULL,              23, true },
+	{ 0x11, "LL_REJECT_IND_EXT",        reject_ind_ext,     2, true },
+	{ 0x12, "LL_PING_REQ",              null_pdu,           0, true },
+	{ 0x13, "LL_PING_RSP",              null_pdu,           0, true },
+	{ 0x14, "LL_LENGTH_REQ",            NULL,               8, true },
+	{ 0x15, "LL_LENGTH_RSP",            NULL,               8, true },
 	{ }
 };
 
