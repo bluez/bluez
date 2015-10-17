@@ -24,4 +24,7 @@
 
 #include <stdint.h>
 
+struct vendor_ocf;
+
+const struct vendor_ocf *broadcom_vendor_ocf(uint16_t ocf);
 void broadcom_lm_diag(const void *data, uint8_t size);

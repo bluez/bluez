@@ -33,7 +33,34 @@
 #include "packet.h"
 #include "lmp.h"
 #include "ll.h"
+#include "vendor.h"
 #include "broadcom.h"
+
+static const struct vendor_ocf vendor_ocf_table[] = {
+	{ 0x001, "Write BD ADDR"			},
+	{ 0x018, "Update UART Baud Rate"		},
+	{ 0x027, "Set Sleepmode Param"			},
+	{ 0x02e, "Download Minidriver"			},
+	{ 0x03b, "Enable USB HID Emulation"		},
+	{ 0x045, "Write UART Clock Setting"		},
+	{ 0x04c, "Write RAM"				},
+	{ 0x04e, "Launch RAM"				},
+	{ 0x05a, "Read VID PID"				},
+	{ 0x079, "Read Verbose Config Version Info"	},
+	{ }
+};
+
+const struct vendor_ocf *broadcom_vendor_ocf(uint16_t ocf)
+{
+	int i;
+
+	for (i = 0; vendor_ocf_table[i].str; i++) {
+		if (vendor_ocf_table[i].ocf == ocf)
+			return &vendor_ocf_table[i];
+	}
+
+	return NULL;
+}
 
 void broadcom_lm_diag(const void *data, uint8_t size)
 {

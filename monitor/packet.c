@@ -7256,6 +7256,23 @@ static const char *get_supported_command(int bit)
 	return NULL;
 }
 
+static const struct vendor_ocf *current_vendor_ocf(uint16_t ocf)
+{
+	uint16_t manufacturer;
+
+	if (index_current < MAX_INDEX)
+		manufacturer = index_list[index_current].manufacturer;
+	else
+		manufacturer = UNKNOWN_MANUFACTURER;
+
+	switch (manufacturer) {
+	case 15:
+		return broadcom_vendor_ocf(ocf);
+	}
+
+	return NULL;
+}
+
 static void inquiry_complete_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_inquiry_complete *evt = data;
@@ -7404,6 +7421,7 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 	uint16_t opcode = le16_to_cpu(evt->opcode);
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
+	struct opcode_data vendor_data;
 	const struct opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
 	int i;
@@ -7423,8 +7441,20 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 		opcode_str = opcode_data->str;
 	} else {
 		if (ogf == 0x3f) {
-			opcode_color = COLOR_HCI_COMMAND;
-			opcode_str = "Vendor";
+			const struct vendor_ocf *vnd = current_vendor_ocf(ocf);
+
+			if (vnd) {
+				vendor_data.str = vnd->str;
+				vendor_data.rsp_func = NULL;
+
+				opcode_data = &vendor_data;
+
+				opcode_color = COLOR_HCI_COMMAND;
+				opcode_str = opcode_data->str;
+			} else {
+				opcode_color = COLOR_HCI_COMMAND;
+				opcode_str = "Vendor";
+			}
 		} else {
 			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
 			opcode_str = "Unknown";
@@ -8570,6 +8600,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	uint16_t opcode = le16_to_cpu(hdr->opcode);
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
+	struct opcode_data vendor_data;
 	const struct opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
 	char extra_str[25];
@@ -8601,8 +8632,20 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 		opcode_str = opcode_data->str;
 	} else {
 		if (ogf == 0x3f) {
-			opcode_color = COLOR_HCI_COMMAND;
-			opcode_str = "Vendor";
+			const struct vendor_ocf *vnd = current_vendor_ocf(ocf);
+
+			if (vnd) {
+				vendor_data.str = vnd->str;
+				vendor_data.cmd_func = NULL;
+
+				opcode_data = &vendor_data;
+
+				opcode_color = COLOR_HCI_COMMAND;
+				opcode_str = opcode_data->str;
+			} else {
+				opcode_color = COLOR_HCI_COMMAND;
+				opcode_str = "Vendor";
+			}
 		} else {
 			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
 			opcode_str = "Unknown";

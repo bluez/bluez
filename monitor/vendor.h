@@ -24,4 +24,15 @@
 
 #include <stdint.h>
 
+struct vendor_ocf {
+	uint16_t ocf;
+	const char *str;
+	void (*cmd_func) (const void *data, uint8_t size);
+	uint8_t cmd_size;
+	bool cmd_fixed;
+	void (*rsp_func) (const void *data, uint8_t size);
+	uint8_t rsp_size;
+	bool rsp_fixed;
+};
+
 void vendor_event(uint16_t manufacturer, const void *data, uint8_t size);
