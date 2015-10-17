@@ -342,14 +342,17 @@ static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
 
 	if (btsnoop->pklg_v2) {
 		toread = le32toh(pkt.len) - (PKLG_PKT_SIZE - 4);
+
 		ts = le64toh(pkt.ts);
+		tv->tv_sec = ts & 0xffffffff;
+		tv->tv_usec = ts >> 32;
 	} else {
 		toread = be32toh(pkt.len) - (PKLG_PKT_SIZE - 4);
-		ts = be64toh(pkt.ts);
-	}
 
-	tv->tv_sec = ts >> 32;
-	tv->tv_usec = ts & 0xffffffff;
+		ts = be64toh(pkt.ts);
+		tv->tv_sec = ts >> 32;
+		tv->tv_usec = ts & 0xffffffff;
+	}
 
 	*index = 0;
 	*opcode = get_opcode_from_pklg(pkt.type);
