@@ -7257,6 +7257,25 @@ static const char *get_supported_command(int bit)
 	return NULL;
 }
 
+static const char *current_vendor_str(void)
+{
+	uint16_t manufacturer;
+
+	if (index_current < MAX_INDEX)
+		manufacturer = index_list[index_current].manufacturer;
+	else
+		manufacturer = UNKNOWN_MANUFACTURER;
+
+	switch (manufacturer) {
+	case 2:
+		return "Intel";
+	case 15:
+		return "Broadcom";
+	}
+
+	return NULL;
+}
+
 static const struct vendor_ocf *current_vendor_ocf(uint16_t ocf)
 {
 	uint16_t manufacturer;
@@ -7444,6 +7463,7 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 	struct opcode_data vendor_data;
 	const struct opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
+	char vendor_str[150];
 	int i;
 
 	for (i = 0; opcode_table[i].str; i++) {
@@ -7464,7 +7484,14 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 			const struct vendor_ocf *vnd = current_vendor_ocf(ocf);
 
 			if (vnd) {
-				vendor_data.str = vnd->str;
+				const char *str = current_vendor_str();
+
+				if (str) {
+					snprintf(vendor_str, sizeof(vendor_str),
+							"%s %s", str, vnd->str);
+					vendor_data.str = vendor_str;
+				} else
+					vendor_data.str = vnd->str;
 				vendor_data.rsp_func = vnd->rsp_func;
 				vendor_data.rsp_size = vnd->rsp_size;
 				vendor_data.rsp_fixed = vnd->rsp_fixed;
@@ -7531,6 +7558,7 @@ static void cmd_status_evt(const void *data, uint8_t size)
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 	const struct opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
+	char vendor_str[150];
 	int i;
 
 	for (i = 0; opcode_table[i].str; i++) {
@@ -7545,8 +7573,23 @@ static void cmd_status_evt(const void *data, uint8_t size)
 		opcode_str = opcode_data->str;
 	} else {
 		if (ogf == 0x3f) {
-			opcode_color = COLOR_HCI_COMMAND;
-			opcode_str = "Vendor";
+			const struct vendor_ocf *vnd = current_vendor_ocf(ocf);
+
+			if (vnd) {
+				const char *str = current_vendor_str();
+
+				if (str) {
+					snprintf(vendor_str, sizeof(vendor_str),
+							"%s %s", str, vnd->str);
+					opcode_str = vendor_str;
+				} else
+					opcode_str = vnd->str;
+
+				opcode_color = COLOR_HCI_COMMAND;
+			} else {
+				opcode_color = COLOR_HCI_COMMAND;
+				opcode_str = "Vendor";
+			}
 		} else {
 			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
 			opcode_str = "Unknown";
@@ -8641,7 +8684,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	struct opcode_data vendor_data;
 	const struct opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
-	char extra_str[25];
+	char extra_str[25], vendor_str[150];
 	int i;
 
 	if (size < HCI_COMMAND_HDR_SIZE) {
@@ -8673,7 +8716,14 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 			const struct vendor_ocf *vnd = current_vendor_ocf(ocf);
 
 			if (vnd) {
-				vendor_data.str = vnd->str;
+				const char *str = current_vendor_str();
+
+				if (str) {
+					snprintf(vendor_str, sizeof(vendor_str),
+							"%s %s", str, vnd->str);
+					vendor_data.str = vendor_str;
+				} else
+					vendor_data.str = vnd->str;
 				vendor_data.cmd_func = vnd->cmd_func;
 				vendor_data.cmd_size = vnd->cmd_size;
 				vendor_data.cmd_fixed = vnd->cmd_fixed;

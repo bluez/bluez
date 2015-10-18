@@ -38,6 +38,7 @@ bool use_color(void);
 #define COLOR_WHITE_BG	"\x1B[0;47;30m"
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
+#define COLOR_WARN	"\x1B[1;30m"
 #define COLOR_ERROR	"\x1B[1;31m"
 
 #define FALLBACK_TERMINAL_WIDTH 80
