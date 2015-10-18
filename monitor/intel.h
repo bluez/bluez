@@ -24,4 +24,8 @@
 
 #include <stdint.h>
 
-void intel_vendor_event(const void *data, uint8_t size);
+struct vendor_ocf;
+struct vendor_evt;
+
+const struct vendor_ocf *intel_vendor_ocf(uint16_t ocf);
+const struct vendor_evt *intel_vendor_evt(uint8_t evt);

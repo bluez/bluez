@@ -7266,8 +7266,27 @@ static const struct vendor_ocf *current_vendor_ocf(uint16_t ocf)
 		manufacturer = UNKNOWN_MANUFACTURER;
 
 	switch (manufacturer) {
+	case 2:
+		return intel_vendor_ocf(ocf);
 	case 15:
 		return broadcom_vendor_ocf(ocf);
+	}
+
+	return NULL;
+}
+
+static const struct vendor_evt *current_vendor_evt(uint8_t evt)
+{
+	uint16_t manufacturer;
+
+	if (index_current < MAX_INDEX)
+		manufacturer = index_list[index_current].manufacturer;
+	else
+		manufacturer = UNKNOWN_MANUFACTURER;
+
+	switch (manufacturer) {
+	case 2:
+		return intel_vendor_evt(evt);
 	}
 
 	return NULL;
@@ -7445,11 +7464,16 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 
 			if (vnd) {
 				vendor_data.str = vnd->str;
-				vendor_data.rsp_func = NULL;
+				vendor_data.rsp_func = vnd->rsp_func;
+				vendor_data.rsp_size = vnd->rsp_size;
+				vendor_data.rsp_fixed = vnd->rsp_fixed;
 
 				opcode_data = &vendor_data;
 
-				opcode_color = COLOR_HCI_COMMAND;
+				if (opcode_data->rsp_func)
+					opcode_color = COLOR_HCI_COMMAND;
+				else
+					opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
 				opcode_str = opcode_data->str;
 			} else {
 				opcode_color = COLOR_HCI_COMMAND;
@@ -8273,7 +8297,48 @@ struct subevent_data {
 	bool fixed;
 };
 
-static const struct subevent_data subevent_table[] = {
+static void print_subevent(const struct subevent_data *subevent_data,
+					const void *data, uint8_t size)
+{
+	const char *subevent_color, *subevent_str;
+
+	if (subevent_data) {
+		if (subevent_data->func)
+			subevent_color = COLOR_HCI_EVENT;
+		else
+			subevent_color = COLOR_HCI_EVENT_UNKNOWN;
+		subevent_str = subevent_data->str;
+	} else {
+		subevent_color = COLOR_HCI_EVENT_UNKNOWN;
+		subevent_str = "Unknown";
+	}
+
+	print_indent(6, subevent_color, "", subevent_str, COLOR_OFF,
+					" (0x%2.2x)", subevent_data->subevent);
+
+	if (!subevent_data || !subevent_data->func) {
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (subevent_data->fixed) {
+		if (size != subevent_data->size) {
+			print_text(COLOR_ERROR, "invalid packet size");
+			packet_hexdump(data, size);
+			return;
+		}
+	} else {
+		if (size < subevent_data->size) {
+			print_text(COLOR_ERROR, "too short packet");
+			packet_hexdump(data, size);
+			return;
+		}
+	}
+
+	subevent_data->func(data, size);
+}
+
+static const struct subevent_data le_meta_event_table[] = {
 	{ 0x01, "LE Connection Complete",
 				le_conn_complete_evt, 18, true },
 	{ 0x02, "LE Advertising Report",
@@ -8303,68 +8368,40 @@ static void le_meta_event_evt(const void *data, uint8_t size)
 {
 	uint8_t subevent = *((const uint8_t *) data);
 	const struct subevent_data *subevent_data = NULL;
-	const char *subevent_color, *subevent_str;
 	int i;
 
-	for (i = 0; subevent_table[i].str; i++) {
-		if (subevent_table[i].subevent == subevent) {
-			subevent_data = &subevent_table[i];
+	for (i = 0; le_meta_event_table[i].str; i++) {
+		if (le_meta_event_table[i].subevent == subevent) {
+			subevent_data = &le_meta_event_table[i];
 			break;
 		}
 	}
 
-	if (subevent_data) {
-		if (subevent_data->func)
-			subevent_color = COLOR_HCI_EVENT;
-		else
-			subevent_color = COLOR_HCI_EVENT_UNKNOWN;
-		subevent_str = subevent_data->str;
-	} else {
-		subevent_color = COLOR_HCI_EVENT_UNKNOWN;
-		subevent_str = "Unknown";
-	}
-
-	print_indent(6, subevent_color, "", subevent_str, COLOR_OFF,
-						" (0x%2.2x)", subevent);
-
-	if (!subevent_data || !subevent_data->func) {
-		packet_hexdump(data + 1, size - 1);
-		return;
-	}
-
-	if (subevent_data->fixed) {
-		if (size - 1 != subevent_data->size) {
-			print_text(COLOR_ERROR, "invalid packet size");
-			packet_hexdump(data + 1, size - 1);
-			return;
-		}
-	} else {
-		if (size - 1 < subevent_data->size) {
-			print_text(COLOR_ERROR, "too short packet");
-			packet_hexdump(data + 1, size - 1);
-			return;
-		}
-	}
-
-	subevent_data->func(data + 1, size - 1);
+	print_subevent(subevent_data, data + 1, size - 1);
 }
 
 static void vendor_evt(const void *data, uint8_t size)
 {
-	uint16_t manufacturer;
+	uint8_t subevent = *((const uint8_t *) data);
+	struct subevent_data vendor_data;
+	const struct vendor_evt *vnd = current_vendor_evt(subevent);
 
-	if (index_current < MAX_INDEX)
-		manufacturer = index_list[index_current].manufacturer;
-	else
-		manufacturer = UNKNOWN_MANUFACTURER;
+	if (vnd) {
+		vendor_data.str = vnd->str;
+		vendor_data.func = vnd->evt_func;
+		vendor_data.size = vnd->evt_size;
+		vendor_data.fixed = vnd->evt_fixed;
 
-	switch (manufacturer) {
-	case 2:
-		intel_vendor_event(data, size);
-		break;
-	default:
+		print_subevent(&vendor_data, data + 1, size - 1);
+	} else {
+		uint16_t manufacturer;
+
+		if (index_current < MAX_INDEX)
+			manufacturer = index_list[index_current].manufacturer;
+		else
+			manufacturer = UNKNOWN_MANUFACTURER;
+
 		vendor_event(manufacturer, data, size);
-		break;
 	}
 }
 
@@ -8636,11 +8673,16 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 
 			if (vnd) {
 				vendor_data.str = vnd->str;
-				vendor_data.cmd_func = NULL;
+				vendor_data.cmd_func = vnd->cmd_func;
+				vendor_data.cmd_size = vnd->cmd_size;
+				vendor_data.cmd_fixed = vnd->cmd_fixed;
 
 				opcode_data = &vendor_data;
 
-				opcode_color = COLOR_HCI_COMMAND;
+				if (opcode_data->cmd_func)
+					opcode_color = COLOR_HCI_COMMAND;
+				else
+					opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
 				opcode_str = opcode_data->str;
 			} else {
 				opcode_color = COLOR_HCI_COMMAND;
@@ -8866,10 +8908,10 @@ void packet_todo(void)
 		printf("\t%s\n", event_table[i].str);
 	}
 
-	for (i = 0; subevent_table[i].str; i++) {
-		if (subevent_table[i].func)
+	for (i = 0; le_meta_event_table[i].str; i++) {
+		if (le_meta_event_table[i].func)
 			continue;
 
-		printf("\t%s\n", subevent_table[i].str);
+		printf("\t%s\n", le_meta_event_table[i].str);
 	}
 }
