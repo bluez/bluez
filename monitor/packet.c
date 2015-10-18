@@ -2465,11 +2465,11 @@ static void print_manufacturer_broadcom(uint16_t subversion, uint16_t revision)
 
 	if (str)
 		print_field("  Firmware: %3.3u.%3.3u.%3.3u (%s)",
-				(ver & 0x7000) >> 13,
+				(ver & 0xe000) >> 13,
 				(ver & 0x1f00) >> 8, ver & 0x00ff, str);
 	else
 		print_field("  Firmware: %3.3u.%3.3u.%3.3u",
-				(ver & 0x7000) >> 13,
+				(ver & 0xe000) >> 13,
 				(ver & 0x1f00) >> 8, ver & 0x00ff);
 
 	if (rev != 0xffff)
