@@ -34,9 +34,9 @@
 
 #include "parser.h"
 
-#define CAPI_U8(frm)  (get_u8(frm))
-#define CAPI_U16(frm) (btohs(htons(get_u16(frm))))
-#define CAPI_U32(frm) (btohl(htonl(get_u32(frm))))
+#define CAPI_U8(frm)  (p_get_u8(frm))
+#define CAPI_U16(frm) (btohs(htons(p_get_u16(frm))))
+#define CAPI_U32(frm) (btohl(htonl(p_get_u32(frm))))
 
 static char *cmd2str(uint8_t cmd)
 {
@@ -718,7 +718,7 @@ static void cmd_data_b3(int level, uint8_t subcmd, struct frame *frm)
 		printf("Flags: 0x%04x\n", flags);
 
 		if (data == 0)
-			(void) get_u64(frm);
+			(void) p_get_u64(frm);
 
 		raw_dump(level, frm);
 	}

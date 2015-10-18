@@ -57,8 +57,8 @@ void avctp_dump(int level, struct frame *frm, uint16_t psm)
 
 	p_indent(level, frm);
 
-	hdr = get_u8(frm);
-	pid = get_u16(frm);
+	hdr = p_get_u8(frm);
+	pid = p_get_u16(frm);
 
 	printf("AVCTP %s: %s %s: pt 0x%02x transaction %d pid 0x%04x\n",
 				psm == 23 ? "Control" : "Browsing",

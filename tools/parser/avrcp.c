@@ -422,7 +422,7 @@ static void avrcp_rejected_dump(int level, struct frame *frm, uint16_t len)
 		return;
 	}
 
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Error: 0x%02x (%s)\n", status, error2str(status));
 }
 
@@ -439,7 +439,7 @@ static void avrcp_get_capabilities_dump(int level, struct frame *frm, uint16_t l
 		return;
 	}
 
-	cap = get_u8(frm);
+	cap = p_get_u8(frm);
 	printf("CapabilityID: 0x%02x (%s)\n", cap, cap2str(cap));
 
 	if (len == 1)
@@ -447,7 +447,7 @@ static void avrcp_get_capabilities_dump(int level, struct frame *frm, uint16_t l
 
 	p_indent(level, frm);
 
-	count = get_u8(frm);
+	count = p_get_u8(frm);
 	printf("CapabilityCount: 0x%02x\n", count);
 
 	switch (cap) {
@@ -459,7 +459,7 @@ static void avrcp_get_capabilities_dump(int level, struct frame *frm, uint16_t l
 
 			printf("%s: 0x", cap2str(cap));
 			for (i = 0; i < 3; i++)
-				printf("%02x", get_u8(frm));
+				printf("%02x", p_get_u8(frm));
 			printf("\n");
 		}
 		break;
@@ -469,7 +469,7 @@ static void avrcp_get_capabilities_dump(int level, struct frame *frm, uint16_t l
 
 			p_indent(level, frm);
 
-			event = get_u8(frm);
+			event = p_get_u8(frm);
 			printf("%s: 0x%02x (%s)\n", cap2str(cap), event,
 							event2str(event));
 		}
@@ -507,7 +507,7 @@ static void avrcp_list_player_attributes_dump(int level, struct frame *frm,
 
 	p_indent(level, frm);
 
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -515,7 +515,7 @@ static void avrcp_list_player_attributes_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u8(frm);
+		attr = p_get_u8(frm);
 		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 	}
 }
@@ -591,13 +591,13 @@ static void avrcp_list_player_values_dump(int level, struct frame *frm,
 	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
 		goto response;
 
-	attr = get_u8(frm);
+	attr = p_get_u8(frm);
 	printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 
 	return;
 
 response:
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("ValueCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -605,7 +605,7 @@ response:
 
 		p_indent(level, frm);
 
-		value = get_u8(frm);
+		value = p_get_u8(frm);
 		printf("ValueID: 0x%02x (%s)\n", value,
 						value2str(attr, value));
 	}
@@ -627,7 +627,7 @@ static void avrcp_get_current_player_value_dump(int level, struct frame *frm,
 	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
 		goto response;
 
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -635,14 +635,14 @@ static void avrcp_get_current_player_value_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u8(frm);
+		attr = p_get_u8(frm);
 		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 	}
 
 	return;
 
 response:
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("ValueCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -650,12 +650,12 @@ response:
 
 		p_indent(level, frm);
 
-		attr = get_u8(frm);
+		attr = p_get_u8(frm);
 		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 
 		p_indent(level, frm);
 
-		value = get_u8(frm);
+		value = p_get_u8(frm);
 		printf("ValueID: 0x%02x (%s)\n", value,
 						value2str(attr, value));
 	}
@@ -677,7 +677,7 @@ static void avrcp_set_player_value_dump(int level, struct frame *frm,
 		return;
 	}
 
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -685,12 +685,12 @@ static void avrcp_set_player_value_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u8(frm);
+		attr = p_get_u8(frm);
 		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 
 		p_indent(level, frm);
 
-		value = get_u8(frm);
+		value = p_get_u8(frm);
 		printf("ValueID: 0x%02x (%s)\n", value,
 						value2str(attr, value));
 	}
@@ -742,7 +742,7 @@ static void avrcp_get_player_attribute_text_dump(int level, struct frame *frm,
 		return;
 	}
 
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x\n", num);
 
 	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
@@ -753,7 +753,7 @@ static void avrcp_get_player_attribute_text_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u8(frm);
+		attr = p_get_u8(frm);
 		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 	}
 
@@ -766,25 +766,25 @@ response:
 
 		p_indent(level, frm);
 
-		attr = get_u8(frm);
+		attr = p_get_u8(frm);
 		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 
 		p_indent(level, frm);
 
-		charset = get_u16(frm);
+		charset = p_get_u16(frm);
 		printf("CharsetID: 0x%04x (%s)\n", charset,
 							charset2str(charset));
 
 		p_indent(level, frm);
 
-		len = get_u8(frm);
+		len = p_get_u8(frm);
 		printf("StringLength: 0x%02x\n", len);
 
 		p_indent(level, frm);
 
 		printf("String: ");
 		for (; len > 0; len--) {
-			uint8_t c = get_u8(frm);
+			uint8_t c = p_get_u8(frm);
 			printf("%1c", isprint(c) ? c : '.');
 		}
 		printf("\n");
@@ -808,12 +808,12 @@ static void avrcp_get_player_value_text_dump(int level, struct frame *frm,
 	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
 		goto response;
 
-	attr = get_u8(frm);
+	attr = p_get_u8(frm);
 	printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
 
 	p_indent(level, frm);
 
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("ValueCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -821,7 +821,7 @@ static void avrcp_get_player_value_text_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		value = get_u8(frm);
+		value = p_get_u8(frm);
 		printf("ValueID: 0x%02x (%s)\n", value,
 						value2str(attr, value));
 	}
@@ -829,7 +829,7 @@ static void avrcp_get_player_value_text_dump(int level, struct frame *frm,
 	return;
 
 response:
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("ValueCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -838,26 +838,26 @@ response:
 
 		p_indent(level, frm);
 
-		value = get_u8(frm);
+		value = p_get_u8(frm);
 		printf("ValueID: 0x%02x (%s)\n", value,
 						value2str(attr, value));
 
 		p_indent(level, frm);
 
-		charset = get_u16(frm);
+		charset = p_get_u16(frm);
 		printf("CharsetID: 0x%04x (%s)\n", charset,
 							charset2str(charset));
 
 		p_indent(level, frm);
 
-		len = get_u8(frm);
+		len = p_get_u8(frm);
 		printf("StringLength: 0x%02x\n", len);
 
 		p_indent(level, frm);
 
 		printf("String: ");
 		for (; len > 0; len--) {
-			uint8_t c = get_u8(frm);
+			uint8_t c = p_get_u8(frm);
 			printf("%1c", isprint(c) ? c : '.');
 		}
 		printf("\n");
@@ -880,7 +880,7 @@ static void avrcp_displayable_charset(int level, struct frame *frm,
 		return;
 	}
 
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("CharsetCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -888,7 +888,7 @@ static void avrcp_displayable_charset(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		charset = get_u16(frm);
+		charset = p_get_u16(frm);
 		printf("CharsetID: 0x%04x (%s)\n", charset,
 							charset2str(charset));
 	}
@@ -922,7 +922,7 @@ static void avrcp_ct_battery_status_dump(int level, struct frame *frm,
 
 	p_indent(level, frm);
 
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("BatteryStatus: 0x%02x (%s)\n", status, status2str(status));
 }
 
@@ -968,12 +968,12 @@ static void avrcp_get_element_attributes_dump(int level, struct frame *frm,
 		return;
 	}
 
-	id = get_u64(frm);
+	id = p_get_u64(frm);
 	printf("Identifier: 0x%jx (%s)\n", id, id ? "Reserved" : "PLAYING");
 
 	p_indent(level, frm);
 
-	num = get_u8(frm);
+	num = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
@@ -981,7 +981,7 @@ static void avrcp_get_element_attributes_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u32(frm);
+		attr = p_get_u32(frm);
 		printf("Attribute: 0x%08x (%s)\n", attr, mediattr2str(attr));
 	}
 
@@ -995,7 +995,7 @@ response:
 			return;
 		}
 
-		num = get_u8(frm);
+		num = p_get_u8(frm);
 		avrcp_continuing.num = num;
 		printf("AttributeCount: 0x%02x\n", num);
 		len--;
@@ -1015,7 +1015,7 @@ response:
 
 			printf("ContinuingAttributeValue: ");
 			for (; size > 0; size--) {
-				uint8_t c = get_u8(frm);
+				uint8_t c = p_get_u8(frm);
 				printf("%1c", isprint(c) ? c : '.');
 			}
 			printf("\n");
@@ -1030,17 +1030,17 @@ response:
 
 		p_indent(level, frm);
 
-		attr = get_u32(frm);
+		attr = p_get_u32(frm);
 		printf("Attribute: 0x%08x (%s)\n", attr, mediattr2str(attr));
 
 		p_indent(level, frm);
 
-		charset = get_u16(frm);
+		charset = p_get_u16(frm);
 		printf("CharsetID: 0x%04x (%s)\n", charset,
 							charset2str(charset));
 
 		p_indent(level, frm);
-		attrlen = get_u16(frm);
+		attrlen = p_get_u16(frm);
 		printf("AttributeValueLength: 0x%04x\n", attrlen);
 
 		len -= sizeof(attr) + sizeof(charset) + sizeof(attrlen);
@@ -1050,7 +1050,7 @@ response:
 
 		printf("AttributeValue: ");
 		for (; attrlen > 0 && len > 0; attrlen--, len--) {
-			uint8_t c = get_u8(frm);
+			uint8_t c = p_get_u8(frm);
 			printf("%1c", isprint(c) ? c : '.');
 		}
 		printf("\n");
@@ -1099,17 +1099,17 @@ static void avrcp_get_play_status_dump(int level, struct frame *frm,
 		return;
 	}
 
-	interval = get_u32(frm);
+	interval = p_get_u32(frm);
 	printf("SongLength: 0x%08x (%u miliseconds)\n", interval, interval);
 
 	p_indent(level, frm);
 
-	interval = get_u32(frm);
+	interval = p_get_u32(frm);
 	printf("SongPosition: 0x%08x (%u miliconds)\n", interval, interval);
 
 	p_indent(level, frm);
 
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("PlayStatus: 0x%02x (%s)\n", status, playstatus2str(status));
 }
 
@@ -1132,12 +1132,12 @@ static void avrcp_register_notification_dump(int level, struct frame *frm,
 		return;
 	}
 
-	event = get_u8(frm);
+	event = p_get_u8(frm);
 	printf("EventID: 0x%02x (%s)\n", event, event2str(event));
 
 	p_indent(level, frm);
 
-	interval = get_u32(frm);
+	interval = p_get_u32(frm);
 	printf("Interval: 0x%08x (%u seconds)\n", interval, interval);
 
 	return;
@@ -1149,33 +1149,33 @@ response:
 		return;
 	}
 
-	event = get_u8(frm);
+	event = p_get_u8(frm);
 	printf("EventID: 0x%02x (%s)\n", event, event2str(event));
 
 	p_indent(level, frm);
 
 	switch (event) {
 	case AVRCP_EVENT_PLAYBACK_STATUS_CHANGED:
-		status = get_u8(frm);
+		status = p_get_u8(frm);
 		printf("PlayStatus: 0x%02x (%s)\n", status,
 						playstatus2str(status));
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
-		id = get_u64(frm);
+		id = p_get_u64(frm);
 		printf("Identifier: 0x%16" PRIx64 " (%" PRIu64 ")\n", id, id);
 		break;
 	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
-		interval = get_u32(frm);
+		interval = p_get_u32(frm);
 		printf("Position: 0x%08x (%u miliseconds)\n", interval,
 								interval);
 		break;
 	case AVRCP_EVENT_BATT_STATUS_CHANGED:
-		status = get_u8(frm);
+		status = p_get_u8(frm);
 		printf("BatteryStatus: 0x%02x (%s)\n", status,
 							status2str(status));
 		break;
 	case AVRCP_EVENT_SYSTEM_STATUS_CHANGED:
-		status = get_u8(frm);
+		status = p_get_u8(frm);
 		printf("SystemStatus: 0x%02x ", status);
 		switch (status) {
 		case 0x00:
@@ -1193,7 +1193,7 @@ response:
 		}
 		break;
 	case AVRCP_EVENT_PLAYER_APPLICATION_SETTING_CHANGED:
-		status = get_u8(frm);
+		status = p_get_u8(frm);
 		printf("AttributeCount: 0x%02x\n", status);
 
 		for (; status > 0; status--) {
@@ -1201,33 +1201,33 @@ response:
 
 			p_indent(level, frm);
 
-			attr = get_u8(frm);
+			attr = p_get_u8(frm);
 			printf("AttributeID: 0x%02x (%s)\n", attr,
 							attr2str(attr));
 
 			p_indent(level, frm);
 
-			value = get_u8(frm);
+			value = p_get_u8(frm);
 			printf("ValueID: 0x%02x (%s)\n", value,
 						value2str(attr, value));
 		}
 		break;
 	case AVRCP_EVENT_VOLUME_CHANGED:
-		status = get_u8(frm) & 0x7F;
+		status = p_get_u8(frm) & 0x7F;
 		printf("Volume: %.2f%% (%d/127)\n", status/1.27, status);
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
-		uid = get_u16(frm);
+		uid = p_get_u16(frm);
 		printf("PlayerID: 0x%04x (%u)\n", uid, uid);
 
 
 		p_indent(level, frm);
 
-		uid = get_u16(frm);
+		uid = p_get_u16(frm);
 		printf("UIDCounter: 0x%04x (%u)\n", uid, uid);
 		break;
 	case AVRCP_EVENT_UIDS_CHANGED:
-		uid = get_u16(frm);
+		uid = p_get_u16(frm);
 		printf("UIDCounter: 0x%04x (%u)\n", uid, uid);
 		break;
 	}
@@ -1246,7 +1246,7 @@ static void avrcp_set_absolute_volume_dump(int level, struct frame *frm,
 		return;
 	}
 
-	value = get_u8(frm) & 0x7F;
+	value = p_get_u8(frm) & 0x7F;
 	printf("Volume: %.2f%% (%d/127)\n", value/1.27, value);
 }
 
@@ -1267,7 +1267,7 @@ static void avrcp_set_addressed_player(int level, struct frame *frm,
 		return;
 	}
 
-	id = get_u16(frm);
+	id = p_get_u16(frm);
 	printf("PlayerID: 0x%04x (%u)\n", id, id);
 	return;
 
@@ -1278,7 +1278,7 @@ response:
 		return;
 	}
 
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 }
 
@@ -1300,7 +1300,7 @@ static void avrcp_set_browsed_player_dump(int level, struct frame *frm,
 		return;
 	}
 
-	id = get_u16(frm);
+	id = p_get_u16(frm);
 	printf("PlayerID: 0x%04x (%u)\n", id, id);
 	return;
 
@@ -1311,7 +1311,7 @@ response:
 		return;
 	}
 
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 
 	if (len == 1)
@@ -1319,22 +1319,22 @@ response:
 
 	p_indent(level, frm);
 
-	uids = get_u16(frm);
+	uids = p_get_u16(frm);
 	printf("UIDCounter: 0x%04x (%u)\n", uids, uids);
 
 	p_indent(level, frm);
 
-	items = get_u32(frm);
+	items = p_get_u32(frm);
 	printf("Number of Items: 0x%08x (%u)\n", items, items);
 
 	p_indent(level, frm);
 
-	charset = get_u16(frm);
+	charset = p_get_u16(frm);
 	printf("CharsetID: 0x%04x (%s)\n", charset, charset2str(charset));
 
 	p_indent(level, frm);
 
-	folders = get_u8(frm);
+	folders = p_get_u8(frm);
 	printf("Folder Depth: 0x%02x (%u)\n", folders, folders);
 
 	for (; folders > 0; folders--) {
@@ -1342,10 +1342,10 @@ response:
 
 		p_indent(level, frm);
 
-		len = get_u8(frm);
+		len = p_get_u8(frm);
 		printf("Folder: ");
 		for (; len > 0; len--) {
-			uint8_t c = get_u8(frm);
+			uint8_t c = p_get_u8(frm);
 			printf("%1c", isprint(c) ? c : '.');
 		}
 		printf("\n");
@@ -1386,23 +1386,23 @@ static void avrcp_play_item_dump(int level, struct frame *frm,
 		return;
 	}
 
-	scope = get_u8(frm);
+	scope = p_get_u8(frm);
 	printf("Scope: 0x%02x (%s)\n", scope, scope2str(scope));
 
 	p_indent(level, frm);
 
-	uid = get_u64(frm);
+	uid = p_get_u64(frm);
 	printf("UID: 0x%16" PRIx64 " (%" PRIu64 ")\n", uid, uid);
 
 	p_indent(level, frm);
 
-	uidcounter = get_u16(frm);
+	uidcounter = p_get_u16(frm);
 	printf("UIDCounter: 0x%04x (%u)\n", uidcounter, uidcounter);
 
 	return;
 
 response:
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 }
 
@@ -1424,23 +1424,23 @@ static void avrcp_add_to_now_playing_dump(int level, struct frame *frm,
 		return;
 	}
 
-	scope = get_u8(frm);
+	scope = p_get_u8(frm);
 	printf("Scope: 0x%02x (%s)\n", scope, scope2str(scope));
 
 	p_indent(level, frm);
 
-	uid = get_u64(frm);
+	uid = p_get_u64(frm);
 	printf("UID: 0x%16" PRIx64 " (%" PRIu64 ")\n", uid, uid);
 
 	p_indent(level, frm);
 
-	uidcounter = get_u16(frm);
+	uidcounter = p_get_u16(frm);
 	printf("UIDCounter: 0x%04x (%u)\n", uidcounter, uidcounter);
 
 	return;
 
 response:
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 }
 
@@ -1451,9 +1451,9 @@ static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 
 	p_indent(level, frm);
 
-	pduid = get_u8(frm);
-	pt = get_u8(frm);
-	len = get_u16(frm);
+	pduid = p_get_u8(frm);
+	pt = p_get_u8(frm);
+	len = p_get_u16(frm);
 
 	printf("AVRCP: %s: pt %s len 0x%04x\n", pdu2str(pduid),
 							pt2str(pt), len);
@@ -1566,13 +1566,13 @@ static void avrcp_passthrough_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 
-	op = get_u8(frm);
+	op = p_get_u8(frm);
 	printf("Operation: 0x%02x (%s %s)\n", op, op2str(op),
 					op & 0x80 ? "Released" : "Pressed");
 
 	p_indent(level, frm);
 
-	len = get_u8(frm);
+	len = p_get_u8(frm);
 
 	printf("Lenght: 0x%02x\n", len);
 
@@ -1683,46 +1683,46 @@ static void avrcp_media_player_item_dump(int level, struct frame *frm,
 		return;
 	}
 
-	id = get_u16(frm);
+	id = p_get_u16(frm);
 	printf("PlayerID: 0x%04x (%u)\n", id, id);
 
 	p_indent(level, frm);
 
-	type = get_u8(frm);
+	type = p_get_u8(frm);
 	printf("PlayerType: 0x%04x (%s)\n", type, playertype2str(type));
 
 	p_indent(level, frm);
 
-	subtype = get_u32(frm);
+	subtype = p_get_u32(frm);
 	printf("PlayerSubtype: 0x%08x (%s)\n", subtype,
 						playersubtype2str(subtype));
 
 	p_indent(level, frm);
 
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("PlayStatus: 0x%02x (%s)\n", status, playstatus2str(status));
 
 	p_indent(level, frm);
 
-	get_u128(frm, &features[0], &features[1]);
+	p_get_u128(frm, &features[0], &features[1]);
 	printf("Features: 0x%16" PRIx64 "%16" PRIx64 "\n", features[1],
 								features[0]);
 
 	p_indent(level, frm);
 
-	charset = get_u16(frm);
+	charset = p_get_u16(frm);
 	printf("CharsetID: 0x%04x (%s)\n", charset, charset2str(charset));
 
 	p_indent(level, frm);
 
-	namelen = get_u16(frm);
+	namelen = p_get_u16(frm);
 	printf("NameLength: 0x%04x (%u)\n", namelen, namelen);
 
 	p_indent(level, frm);
 
 	printf("Name: ");
 	for (; namelen > 0; namelen--) {
-		uint8_t c = get_u8(frm);
+		uint8_t c = p_get_u8(frm);
 		printf("%1c", isprint(c) ? c : '.');
 	}
 	printf("\n");
@@ -1764,35 +1764,35 @@ static void avrcp_folder_item_dump(int level, struct frame *frm, uint16_t len)
 		return;
 	}
 
-	uid = get_u64(frm);
+	uid = p_get_u64(frm);
 	printf("FolderUID: 0x%16" PRIx64 " (%" PRIu64 ")\n", uid, uid);
 
 	p_indent(level, frm);
 
-	type = get_u8(frm);
+	type = p_get_u8(frm);
 	printf("FolderType: 0x%02x (%s)\n", type, foldertype2str(type));
 
 	p_indent(level, frm);
 
-	playable = get_u8(frm);
+	playable = p_get_u8(frm);
 	printf("IsPlayable: 0x%02x (%s)\n", playable,
 					playable & 0x01 ? "True" : "False");
 
 	p_indent(level, frm);
 
-	charset = get_u16(frm);
+	charset = p_get_u16(frm);
 	printf("CharsetID: 0x%04x (%s)\n", charset, charset2str(charset));
 
 	p_indent(level, frm);
 
-	namelen = get_u16(frm);
+	namelen = p_get_u16(frm);
 	printf("NameLength: 0x%04x (%u)\n", namelen, namelen);
 
 	p_indent(level, frm);
 
 	printf("Name: ");
 	for (; namelen > 0; namelen--) {
-		uint8_t c = get_u8(frm);
+		uint8_t c = p_get_u8(frm);
 		printf("%1c", isprint(c) ? c : '.');
 	}
 	printf("\n");
@@ -1820,25 +1820,25 @@ static void avrcp_attribute_entry_list_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u32(frm);
+		attr = p_get_u32(frm);
 		printf("AttributeID: 0x%08x (%s)\n", attr, mediattr2str(attr));
 
 		p_indent(level, frm);
 
-		charset = get_u16(frm);
+		charset = p_get_u16(frm);
 		printf("CharsetID: 0x%04x (%s)\n", charset,
 							charset2str(charset));
 
 		p_indent(level, frm);
 
-		len = get_u16(frm);
+		len = p_get_u16(frm);
 		printf("AttributeLength: 0x%04x (%u)\n", len, len);
 
 		p_indent(level, frm);
 
 		printf("AttributeValue: ");
 		for (; len > 0; len--) {
-			uint8_t c = get_u8(frm);
+			uint8_t c = p_get_u8(frm);
 			printf("%1c", isprint(c) ? c : '.');
 		}
 		printf("\n");
@@ -1860,36 +1860,36 @@ static void avrcp_media_element_item_dump(int level, struct frame *frm,
 		return;
 	}
 
-	uid = get_u64(frm);
+	uid = p_get_u64(frm);
 	printf("ElementUID: 0x%16" PRIx64 " (%" PRIu64 ")\n", uid, uid);
 
 	p_indent(level, frm);
 
-	type = get_u8(frm);
+	type = p_get_u8(frm);
 	printf("ElementType: 0x%02x (%s)\n", type, elementtype2str(type));
 
 	p_indent(level, frm);
 
-	charset = get_u16(frm);
+	charset = p_get_u16(frm);
 	printf("CharsetID: 0x%04x (%s)\n", charset, charset2str(charset));
 
 	p_indent(level, frm);
 
-	namelen = get_u16(frm);
+	namelen = p_get_u16(frm);
 	printf("NameLength: 0x%04x (%u)\n", namelen, namelen);
 
 	p_indent(level, frm);
 
 	printf("Name: ");
 	for (; namelen > 0; namelen--) {
-		uint8_t c = get_u8(frm);
+		uint8_t c = p_get_u8(frm);
 		printf("%1c", isprint(c) ? c : '.');
 	}
 	printf("\n");
 
 	p_indent(level, frm);
 
-	count = get_u8(frm);
+	count = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x (%u)\n", count, count);
 
 	avrcp_attribute_entry_list_dump(level, frm, count);
@@ -1913,22 +1913,22 @@ static void avrcp_get_folder_items_dump(int level, struct frame *frm,
 		return;
 	}
 
-	scope = get_u8(frm);
+	scope = p_get_u8(frm);
 	printf("Scope: 0x%02x (%s)\n", scope, scope2str(scope));
 
 	p_indent(level, frm);
 
-	start = get_u32(frm);
+	start = p_get_u32(frm);
 	printf("StartItem: 0x%08x (%u)\n", start, start);
 
 	p_indent(level, frm);
 
-	end = get_u32(frm);
+	end = p_get_u32(frm);
 	printf("EndItem: 0x%08x (%u)\n", end, end);
 
 	p_indent(level, frm);
 
-	count = get_u8(frm);
+	count = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x (%u)\n", count, count);
 
 	for (; count > 0; count--) {
@@ -1936,14 +1936,14 @@ static void avrcp_get_folder_items_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u32(frm);
+		attr = p_get_u32(frm);
 		printf("AttributeID: 0x%08x (%s)\n", attr, mediattr2str(attr));
 	}
 
 	return;
 
 response:
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 
 	if (len == 1)
@@ -1951,12 +1951,12 @@ response:
 
 	p_indent(level, frm);
 
-	uid = get_u16(frm);
+	uid = p_get_u16(frm);
 	printf("UIDCounter: 0x%04x (%u)\n", uid, uid);
 
 	p_indent(level, frm);
 
-	num = get_u16(frm);
+	num = p_get_u16(frm);
 	printf("Number of Items: 0x%04x (%u)\n", num, num);
 
 	for (; num > 0; num--) {
@@ -1965,8 +1965,8 @@ response:
 
 		p_indent(level, frm);
 
-		type = get_u8(frm);
-		len = get_u16(frm);
+		type = p_get_u8(frm);
+		len = p_get_u16(frm);
 		switch (type) {
 		case 0x01:
 			printf("Item: 0x01 (Media Player)) ");
@@ -2018,23 +2018,23 @@ static void avrcp_change_path_dump(int level, struct frame *frm, uint8_t hdr,
 		return;
 	}
 
-	uidcounter = get_u16(frm);
+	uidcounter = p_get_u16(frm);
 	printf("UIDCounter: 0x%04x (%u)\n", uidcounter, uidcounter);
 
 	p_indent(level, frm);
 
-	dir = get_u8(frm);
+	dir = p_get_u8(frm);
 	printf("Direction: 0x%02x (%s)\n", dir, dir2str(dir));
 
 	p_indent(level, frm);
 
-	uid = get_u64(frm);
+	uid = p_get_u64(frm);
 	printf("FolderUID: 0x%16" PRIx64 " (%" PRIu64 ")\n", uid, uid);
 
 	return;
 
 response:
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 
 	if (len == 1)
@@ -2042,7 +2042,7 @@ response:
 
 	p_indent(level, frm);
 
-	items = get_u32(frm);
+	items = p_get_u32(frm);
 	printf("Number of Items: 0x%04x (%u)", items, items);
 }
 
@@ -2064,22 +2064,22 @@ static void avrcp_get_item_attributes_dump(int level, struct frame *frm,
 		return;
 	}
 
-	scope = get_u8(frm);
+	scope = p_get_u8(frm);
 	printf("Scope: 0x%02x (%s)\n", scope, scope2str(scope));
 
 	p_indent(level, frm);
 
-	uid = get_u64(frm);
+	uid = p_get_u64(frm);
 	printf("UID: 0x%16" PRIx64 " (%" PRIu64 ")\n", uid, uid);
 
 	p_indent(level, frm);
 
-	uidcounter = get_u16(frm);
+	uidcounter = p_get_u16(frm);
 	printf("UIDCounter: 0x%04x (%u)\n", uidcounter, uidcounter);
 
 	p_indent(level, frm);
 
-	count = get_u8(frm);
+	count = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x (%u)\n", count, count);
 
 	for (; count > 0; count--) {
@@ -2087,14 +2087,14 @@ static void avrcp_get_item_attributes_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		attr = get_u32(frm);
+		attr = p_get_u32(frm);
 		printf("AttributeID: 0x%08x (%s)\n", attr, mediattr2str(attr));
 	}
 
 	return;
 
 response:
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 
 	if (len == 1)
@@ -2102,7 +2102,7 @@ response:
 
 	p_indent(level, frm);
 
-	count = get_u8(frm);
+	count = p_get_u8(frm);
 	printf("AttributeCount: 0x%02x (%u)\n", count, count);
 
 	avrcp_attribute_entry_list_dump(level, frm, count);
@@ -2126,19 +2126,19 @@ static void avrcp_search_dump(int level, struct frame *frm, uint8_t hdr,
 		return;
 	}
 
-	charset = get_u16(frm);
+	charset = p_get_u16(frm);
 	printf("CharsetID: 0x%04x (%s)\n", charset, charset2str(charset));
 
 	p_indent(level, frm);
 
-	namelen = get_u16(frm);
+	namelen = p_get_u16(frm);
 	printf("Length: 0x%04x (%u)\n", namelen, namelen);
 
 	p_indent(level, frm);
 
 	printf("String: ");
 	for (; namelen > 0; namelen--) {
-		uint8_t c = get_u8(frm);
+		uint8_t c = p_get_u8(frm);
 		printf("%1c", isprint(c) ? c : '.');
 	}
 	printf("\n");
@@ -2146,7 +2146,7 @@ static void avrcp_search_dump(int level, struct frame *frm, uint8_t hdr,
 	return;
 
 response:
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 
 	if (len == 1)
@@ -2154,12 +2154,12 @@ response:
 
 	p_indent(level, frm);
 
-	uidcounter = get_u16(frm);
+	uidcounter = p_get_u16(frm);
 	printf("UIDCounter: 0x%04x (%u)\n", uidcounter, uidcounter);
 
 	p_indent(level, frm);
 
-	items = get_u32(frm);
+	items = p_get_u32(frm);
 	printf("Number of Items: 0x%04x (%u)", items, items);
 }
 
@@ -2178,7 +2178,7 @@ static void avrcp_general_reject_dump(int level, struct frame *frm,
 	return;
 
 response:
-	status = get_u8(frm);
+	status = p_get_u8(frm);
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 }
 
@@ -2187,8 +2187,8 @@ static void avrcp_browsing_dump(int level, struct frame *frm, uint8_t hdr)
 	uint8_t pduid;
 	uint16_t len;
 
-	pduid = get_u8(frm);
-	len = get_u16(frm);
+	pduid = p_get_u8(frm);
+	len = p_get_u16(frm);
 
 	printf("AVRCP: %s: len 0x%04x\n", pdu2str(pduid), len);
 
@@ -2228,9 +2228,9 @@ static void avrcp_control_dump(int level, struct frame *frm)
 	uint8_t ctype, address, subunit, opcode, company[3];
 	int i;
 
-	ctype = get_u8(frm);
-	address = get_u8(frm);
-	opcode = get_u8(frm);
+	ctype = p_get_u8(frm);
+	address = p_get_u8(frm);
+	opcode = p_get_u8(frm);
 
 	printf("AV/C: %s: address 0x%02x opcode 0x%02x\n", ctype2str(ctype),
 							address, opcode);
@@ -2265,7 +2265,7 @@ static void avrcp_control_dump(int level, struct frame *frm)
 
 		printf("Company ID: 0x");
 		for (i = 0; i < 3; i++) {
-			company[i] = get_u8(frm);
+			company[i] = p_get_u8(frm);
 			printf("%02x", company[i]);
 		}
 		printf("\n");

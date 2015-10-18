@@ -34,9 +34,9 @@
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
 
-#define LMP_U8(frm)  (get_u8(frm))
-#define LMP_U16(frm) (btohs(htons(get_u16(frm))))
-#define LMP_U32(frm) (btohl(htonl(get_u32(frm))))
+#define LMP_U8(frm)  (p_get_u8(frm))
+#define LMP_U16(frm) (btohs(htons(p_get_u16(frm))))
+#define LMP_U32(frm) (btohl(htonl(p_get_u32(frm))))
 
 static enum {
 	IN_RAND,

@@ -32,7 +32,7 @@
 
 void ericsson_dump(int level, struct frame *frm)
 {
-	uint8_t event = get_u8(frm);
+	uint8_t event = p_get_u8(frm);
 	uint8_t *buf = (uint8_t *) frm->ptr;
 
 	if (event != 0x10) {

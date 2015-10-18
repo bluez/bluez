@@ -82,9 +82,9 @@ void hcrp_dump(int level, struct frame *frm)
 	uint16_t pid, tid, plen, status;
 	uint32_t credits;
 
-	pid = get_u16(frm);
-	tid = get_u16(frm);
-	plen = get_u16(frm);
+	pid = p_get_u16(frm);
+	tid = p_get_u16(frm);
+	plen = p_get_u16(frm);
 
 	p_indent(level, frm);
 
@@ -92,19 +92,19 @@ void hcrp_dump(int level, struct frame *frm)
 			pid2str(pid), frm->in ? "rsp" : "cmd",  tid, plen);
 
 	if (frm->in) {
-		status = get_u16(frm);
+		status = p_get_u16(frm);
 		printf(" status %d (%s)\n", status, status2str(status));
 	} else
 		printf("\n");
 
 	if (pid == 0x0001 && !frm->in) {
-		credits = get_u32(frm);
+		credits = p_get_u32(frm);
 		p_indent(level + 1, frm);
 		printf("credits %d\n", credits);
 	}
 
 	if (pid == 0x0002 && frm->in) {
-		credits = get_u32(frm);
+		credits = p_get_u32(frm);
 		p_indent(level + 1, frm);
 		printf("credits %d\n", credits);
 	}

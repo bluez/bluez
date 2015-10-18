@@ -136,7 +136,7 @@ void hidp_dump(int level, struct frame *frm)
 	uint8_t hdr;
 	char *param;
 
-	hdr = get_u8(frm);
+	hdr = p_get_u8(frm);
 
 	switch (hdr & 0xf0) {
 	case 0x00:

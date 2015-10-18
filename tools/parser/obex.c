@@ -200,7 +200,7 @@ static void parse_headers(int level, struct frame *frm)
 	uint32_t hv32;
 
 	while (frm->len > 0) {
-		hi = get_u8(frm);
+		hi = p_get_u8(frm);
 
 		p_indent(level, frm);
 
@@ -212,7 +212,7 @@ static void parse_headers(int level, struct frame *frm)
 				return;
 			}
 
-			len = get_u16(frm) - 3;
+			len = p_get_u16(frm) - 3;
 			printf(" = Unicode length %d\n", len);
 
 			if (frm->len < len)
@@ -229,7 +229,7 @@ static void parse_headers(int level, struct frame *frm)
 				return;
 			}
 
-			len = get_u16(frm) - 3;
+			len = p_get_u16(frm) - 3;
 			printf(" = Sequence length %d\n", len);
 
 			if (frm->len < len)
@@ -246,7 +246,7 @@ static void parse_headers(int level, struct frame *frm)
 				return;
 			}
 
-			hv8 = get_u8(frm);
+			hv8 = p_get_u8(frm);
 			printf(" = %d\n", hv8);
 			break;
 
@@ -256,7 +256,7 @@ static void parse_headers(int level, struct frame *frm)
 				return;
 			}
 
-			hv32 = get_u32(frm);
+			hv32 = p_get_u32(frm);
 			printf(" = %u\n", hv32);
 			break;
 		}
@@ -272,8 +272,8 @@ void obex_dump(int level, struct frame *frm)
 	frm = add_frame(frm);
 
 	while (frm->len > 2) {
-		opcode = get_u8(frm);
-		length = get_u16(frm);
+		opcode = p_get_u8(frm);
+		length = p_get_u16(frm);
 		status = opcode & 0x7f;
 
 		if ((int) frm->len < length - 3) {
@@ -316,9 +316,9 @@ void obex_dump(int level, struct frame *frm)
 				return;
 			}
 
-			version = get_u8(frm);
-			flags   = get_u8(frm);
-			pktlen  = get_u16(frm);
+			version = p_get_u8(frm);
+			flags   = p_get_u8(frm);
+			pktlen  = p_get_u16(frm);
 			printf(" version %d.%d flags %d mtu %d\n",
 				version >> 4, version & 0xf, flags, pktlen);
 			break;
@@ -329,8 +329,8 @@ void obex_dump(int level, struct frame *frm)
 				return;
 			}
 
-			flags     = get_u8(frm);
-			constants = get_u8(frm);
+			flags     = p_get_u8(frm);
+			constants = p_get_u8(frm);
 			printf(" flags %d constants %d\n", flags, constants);
 			break;
 

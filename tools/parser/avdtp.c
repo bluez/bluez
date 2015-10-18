@@ -186,7 +186,7 @@ static void errorcode(int level, struct frame *frm)
 	uint8_t code;
 
 	p_indent(level, frm);
-	code = get_u8(frm);
+	code = p_get_u8(frm);
 	printf("Error code %d\n", code);
 }
 
@@ -195,7 +195,7 @@ static void acp_seid(int level, struct frame *frm)
 	uint8_t seid;
 
 	p_indent(level, frm);
-	seid = get_u8(frm);
+	seid = p_get_u8(frm);
 	printf("ACP SEID %d\n", seid >> 2);
 }
 
@@ -204,8 +204,8 @@ static void acp_int_seid(int level, struct frame *frm)
 	uint8_t acp_seid, int_seid;
 
 	p_indent(level, frm);
-	acp_seid = get_u8(frm);
-	int_seid = get_u8(frm);
+	acp_seid = p_get_u8(frm);
+	int_seid = p_get_u8(frm);
 	printf("ACP SEID %d - INT SEID %d\n", acp_seid >> 2, int_seid >> 2);
 }
 
@@ -215,8 +215,8 @@ static void capabilities(int level, struct frame *frm)
 
 	while (frm->len > 1) {
 		p_indent(level, frm);
-		cat = get_u8(frm);
-		len = get_u8(frm);
+		cat = p_get_u8(frm);
+		len = p_get_u8(frm);
 
 		if (cat == 7) {
 			uint8_t type, codec;
@@ -224,12 +224,12 @@ static void capabilities(int level, struct frame *frm)
 			uint32_t bitrate, vendor = 0;
 			int i;
 
-			type  = get_u8(frm);
-			codec = get_u8(frm);
+			type  = p_get_u8(frm);
+			codec = p_get_u8(frm);
 
 			if (codec == 255) {
-				vendor = btohl(htonl(get_u32(frm)));
-				vndcodec = btohs(htons(get_u16(frm)));
+				vendor = btohl(htonl(p_get_u32(frm)));
+				vndcodec = btohs(htons(p_get_u16(frm)));
 
 				printf("%s - %s (%s)\n", cat2str(cat),
 						codec2str(type, codec),
@@ -241,7 +241,7 @@ static void capabilities(int level, struct frame *frm)
 
 			switch (codec) {
 			case 0:
-				tmp = get_u8(frm);
+				tmp = p_get_u8(frm);
 				p_indent(level + 1, frm);
 				if (tmp & 0x80)
 					printf("16kHz ");
@@ -262,7 +262,7 @@ static void capabilities(int level, struct frame *frm)
 				if (tmp & 0x01)
 					printf("JointStereo ");
 				printf("\n");
-				tmp = get_u8(frm);
+				tmp = p_get_u8(frm);
 				p_indent(level + 1, frm);
 				if (tmp & 0x80)
 					printf("4 ");
@@ -285,12 +285,12 @@ static void capabilities(int level, struct frame *frm)
 				if (tmp & 0x01)
 					printf("Loudness ");
 				printf("\n");
-				tmp = get_u8(frm);
+				tmp = p_get_u8(frm);
 				p_indent(level + 1, frm);
-				printf("Bitpool Range %d-%d\n", tmp, get_u8(frm));
+				printf("Bitpool Range %d-%d\n", tmp, p_get_u8(frm));
 				break;
 			case 1:
-				tmp = get_u8(frm);
+				tmp = p_get_u8(frm);
 				p_indent(level + 1, frm);
 				printf("Layers: ");
 				if (tmp & 0x80)
@@ -313,7 +313,7 @@ static void capabilities(int level, struct frame *frm)
 				if (tmp & 0x01)
 					printf("JointStereo ");
 				printf("\n");
-				tmp = get_u8(frm);
+				tmp = p_get_u8(frm);
 				p_indent(level + 1, frm);
 				printf("Media Payload Format: RFC-2250 %s\n",
 						tmp & 0x40 ? "RFC-3119" : "");
@@ -331,7 +331,7 @@ static void capabilities(int level, struct frame *frm)
 				if (tmp & 0x01)
 					printf("48kHz ");
 				printf("\n");
-				tmp = get_u16(frm);
+				tmp = p_get_u16(frm);
 				p_indent(level + 1, frm);
 				printf("VBR: %s\n",
 						tmp & 0x8000 ? "Yes" : "No");
@@ -347,7 +347,7 @@ static void capabilities(int level, struct frame *frm)
 				printf("\n");
 				break;
 			case 2:
-				tmp = get_u8(frm);
+				tmp = p_get_u8(frm);
 				p_indent(level + 1, frm);
 				if (tmp & 0x80)
 					printf("MPEG-2 AAC LC ");
@@ -358,7 +358,7 @@ static void capabilities(int level, struct frame *frm)
 				if (tmp & 0x10)
 					printf("MPEG-4 AAC scalable ");
 				printf("\n");
-				tmp = get_u16(frm);
+				tmp = p_get_u16(frm);
 				freq = tmp >> 4;
 				p_indent(level + 1, frm);
 				if (freq & 0x0800)
@@ -393,8 +393,8 @@ static void capabilities(int level, struct frame *frm)
 				if (tmp & 0x01)
 					printf("2 ");
 				printf("Channels\n");
-				tmp = get_u8(frm);
-				bitrate = ((tmp & 0x7f) << 16) | get_u16(frm);
+				tmp = p_get_u8(frm);
+				bitrate = ((tmp & 0x7f) << 16) | p_get_u16(frm);
 				p_indent(level + 1, frm);
 				printf("%ubps ", bitrate);
 				printf("%s\n", tmp & 0x80 ? "VBR" : "");
@@ -402,7 +402,7 @@ static void capabilities(int level, struct frame *frm)
 			case 255:
 				if (vendor == 0x0000004f &&
 							vndcodec == 0x0001) {
-					tmp = get_u8(frm);
+					tmp = p_get_u8(frm);
 					p_indent(level + 1, frm);
 					if (tmp & 0x80)
 						printf("16kHz ");
@@ -450,8 +450,8 @@ static inline void discover(int level, uint8_t hdr, struct frame *frm)
 	case 0x02:
 		while (frm->len > 1) {
 			p_indent(level, frm);
-			seid = get_u8(frm);
-			type = get_u8(frm);
+			seid = p_get_u8(frm);
+			type = p_get_u8(frm);
 			printf("ACP SEID %d - %s %s%s\n",
 				seid >> 2, media2str(type >> 4),
 				type & 0x08 ? "Sink" : "Source",
@@ -490,7 +490,7 @@ static inline void set_configuration(int level, uint8_t hdr, struct frame *frm)
 		break;
 	case 0x03:
 		p_indent(level, frm);
-		cat = get_u8(frm);
+		cat = p_get_u8(frm);
 		printf("%s\n", cat2str(cat));
 		errorcode(level, frm);
 		break;
@@ -522,7 +522,7 @@ static inline void reconfigure(int level, uint8_t hdr, struct frame *frm)
 		break;
 	case 0x03:
 		p_indent(level, frm);
-		cat = get_u8(frm);
+		cat = p_get_u8(frm);
 		printf("%s\n", cat2str(cat));
 		errorcode(level, frm);
 		break;
@@ -588,8 +588,8 @@ static inline void delay_report(int level, uint8_t hdr, struct frame *frm)
 	switch (hdr & 0x03) {
 	case 0x00:
 		p_indent(level, frm);
-		seid = get_u8(frm);
-		delay = get_u16(frm);
+		seid = p_get_u8(frm);
+		delay = p_get_u16(frm);
 		printf("ACP SEID %d delay %u.%ums\n", seid >> 2,
 						delay / 10, delay % 10);
 		break;
@@ -608,10 +608,10 @@ void avdtp_dump(int level, struct frame *frm)
 	switch (frm->num) {
 	case 1:
 		p_indent(level, frm);
-		hdr = get_u8(frm);
+		hdr = p_get_u8(frm);
 
-		nsp = (hdr & 0x0c) == 0x04 ? get_u8(frm) : 0;
-		sid = hdr & 0x08 ? 0x00 : get_u8(frm);
+		nsp = (hdr & 0x0c) == 0x04 ? p_get_u8(frm) : 0;
+		sid = hdr & 0x08 ? 0x00 : p_get_u8(frm);
 
 		printf("AVDTP(s): %s %s: transaction %d nsp 0x%02x\n",
 			hdr & 0x08 ? pt2str(hdr) : si2str(sid),
@@ -661,11 +661,11 @@ void avdtp_dump(int level, struct frame *frm)
 
 	case 2:
 		p_indent(level, frm);
-		hdr  = get_u8(frm);
-		type = get_u8(frm);
-		seqn = get_u16(frm);
-		time = get_u32(frm);
-		ssrc = get_u32(frm);
+		hdr  = p_get_u8(frm);
+		type = p_get_u8(frm);
+		seqn = p_get_u16(frm);
+		time = p_get_u32(frm);
+		ssrc = p_get_u32(frm);
 
 		printf("AVDTP(m): ver %d %s%scc %d %spt %d seqn %d time %d ssrc %d\n",
 			hdr >> 6, hdr & 0x20 ? "pad " : "", hdr & 0x10 ? "ext " : "",

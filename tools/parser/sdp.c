@@ -240,7 +240,7 @@ static inline char* get_attr_id_name(int attr_id)
 
 static inline uint8_t parse_de_hdr(struct frame *frm, int *n)
 {
-	uint8_t de_hdr = get_u8(frm);
+	uint8_t de_hdr = p_get_u8(frm);
 	uint8_t de_type = de_hdr >> 3;
 	uint8_t siz_idx = de_hdr & 0x07;
 
@@ -248,13 +248,13 @@ static inline uint8_t parse_de_hdr(struct frame *frm, int *n)
 	if (sdp_siz_idx_lookup_table[siz_idx].addl_bits) {
 		switch(sdp_siz_idx_lookup_table[siz_idx].num_bytes) {
 		case 1:
-			*n = get_u8(frm); break;
+			*n = p_get_u8(frm); break;
 		case 2:
-			*n = get_u16(frm); break;
+			*n = p_get_u16(frm); break;
 		case 4:
-			*n = get_u32(frm); break;
+			*n = p_get_u32(frm); break;
 		case 8:
-			*n = get_u64(frm); break;
+			*n = p_get_u64(frm); break;
 		}
 	} else
 		*n = sdp_siz_idx_lookup_table[siz_idx].num_bytes;
@@ -280,25 +280,25 @@ static inline void print_int(uint8_t de_type, int level, int n, struct frame *fr
 
 	switch(n) {
 	case 1: /* 8-bit */
-		val = get_u8(frm);
+		val = p_get_u8(frm);
 		if (channel && de_type == SDP_DE_UINT)
 			if (*channel == 0)
 				*channel = val;
 		break;
 	case 2: /* 16-bit */
-		val = get_u16(frm);
+		val = p_get_u16(frm);
 		if (psm && de_type == SDP_DE_UINT)
 			if (*psm == 0)
 				*psm = val;
 		break;
 	case 4: /* 32-bit */
-		val = get_u32(frm);
+		val = p_get_u32(frm);
 		break;
 	case 8: /* 64-bit */
-		val = get_u64(frm);
+		val = p_get_u64(frm);
 		break;
 	case 16:/* 128-bit */
-		get_u128(frm, &val, &val2);
+		p_get_u128(frm, &val, &val2);
 		printf(" 0x%jx", val2);
 		if (val < 0x1000000000000000LL)
 			printf("0");
@@ -322,11 +322,11 @@ static inline void print_uuid(int n, struct frame *frm, uint16_t *psm, uint8_t *
 
 	switch(n) {
 	case 2: /* 16-bit UUID */
-		uuid = get_u16(frm);
+		uuid = p_get_u16(frm);
 		s = "uuid-16";
 		break;
 	case 4: /* 32_bit UUID */
-		uuid = get_u32(frm);
+		uuid = p_get_u32(frm);
 		s = "uuid-32";
 		break;
 	case 16: /* 128-bit UUID */
@@ -483,14 +483,14 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 				char *name;
 				switch(n2) {
 				case 2:
-					attr_id = get_u16(frm);
+					attr_id = p_get_u16(frm);
 					name = get_attr_id_name(attr_id);
 					if (!name)
 						name = "unknown";
 					printf(" 0x%04x (%s)", attr_id, name);
 					break;
 				case 4:
-					attr_id_range = get_u32(frm);
+					attr_id_range = p_get_u32(frm);
 					printf(" 0x%04x - 0x%04x",
 							(attr_id_range >> 16),
 							(attr_id_range & 0xFFFF));
@@ -520,7 +520,7 @@ static inline void print_attr_list(int level, struct frame *frm)
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT && n2 == sizeof(attr_id)) {
 				char *name;
-				attr_id = get_u16(frm);
+				attr_id = p_get_u16(frm);
 				p_indent(level, 0);
 				name = get_attr_id_name(attr_id);
 				if (!name)
@@ -685,7 +685,7 @@ void sdp_dump(int level, struct frame *frm)
 	switch (hdr->pid) {
 	case SDP_ERROR_RSP:
 		p_indent(level + 1, frm);
-		printf("code 0x%x info ", get_u16(frm));
+		printf("code 0x%x info ", p_get_u16(frm));
 		if (frm->len > 0)
 			hex_dump(0, frm, frm->len);
 		else
@@ -698,7 +698,7 @@ void sdp_dump(int level, struct frame *frm)
 
 		/* Parse MaximumServiceRecordCount */
 		p_indent(level + 1, frm);
-		printf("max %d\n", get_u16(frm));
+		printf("max %d\n", p_get_u16(frm));
 
 		/* Parse ContinuationState */
 		print_cont_state(level + 1, frm->ptr);
@@ -706,10 +706,10 @@ void sdp_dump(int level, struct frame *frm)
 
 	case SDP_SERVICE_SEARCH_RSP:
 		/* Parse TotalServiceRecordCount */
-		total = get_u16(frm);
+		total = p_get_u16(frm);
 
 		/* Parse CurrentServiceRecordCount */
-		count = get_u16(frm);
+		count = p_get_u16(frm);
 		p_indent(level + 1, frm);
 		if (count < total)
 			printf("count %d of %d\n", count, total);
@@ -722,7 +722,7 @@ void sdp_dump(int level, struct frame *frm)
 			p_indent(level + 1, frm);
 			printf("handle%s", count > 1 ? "s" : "");
 			for (i = 0; i < count; i++)
-				printf(" 0x%x", get_u32(frm));
+				printf(" 0x%x", p_get_u32(frm));
 			printf("\n");
 		}
 
@@ -733,11 +733,11 @@ void sdp_dump(int level, struct frame *frm)
 	case SDP_SERVICE_ATTR_REQ:
 		/* Parse ServiceRecordHandle */
 		p_indent(level + 1, frm);
-		printf("handle 0x%x\n", get_u32(frm));
+		printf("handle 0x%x\n", p_get_u32(frm));
 
 		/* Parse MaximumAttributeByteCount */
 		p_indent(level + 1, frm);
-		printf("max %d\n", get_u16(frm));
+		printf("max %d\n", p_get_u16(frm));
 
 		/* Parse ServiceSearchPattern */
 		print_attr_id_list(level + 1, frm);
@@ -748,7 +748,7 @@ void sdp_dump(int level, struct frame *frm)
 
 	case SDP_SERVICE_ATTR_RSP:
 		/* Parse AttributeByteCount */
-		count = get_u16(frm);
+		count = p_get_u16(frm);
 		p_indent(level + 1, frm);
 		printf("count %d\n", count);
 
@@ -770,7 +770,7 @@ void sdp_dump(int level, struct frame *frm)
 
 		/* Parse MaximumAttributeByteCount */
 		p_indent(level + 1, frm);
-		printf("max %d\n", get_u16(frm));
+		printf("max %d\n", p_get_u16(frm));
 
 		/* Parse AttributeList */
 		print_attr_id_list(level + 1, frm);
@@ -781,7 +781,7 @@ void sdp_dump(int level, struct frame *frm)
 
 	case SDP_SERVICE_SEARCH_ATTR_RSP:
 		/* Parse AttributeByteCount */
-		count = get_u16(frm);
+		count = p_get_u16(frm);
 		p_indent(level + 1, frm);
 		printf("count %d\n", count);
 

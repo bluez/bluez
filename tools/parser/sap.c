@@ -273,35 +273,35 @@ static void parse_parameters(int level, struct frame *frm)
 	while (frm->len > 3) {
 		p_indent(level, frm);
 
-		param = get_u8(frm);
-		get_u8(frm);
-		len = get_u16(frm);
+		param = p_get_u8(frm);
+		p_get_u8(frm);
+		len = p_get_u16(frm);
 
 		printf("%s (0x%02x) len %d = ", param2str(param), param, len);
 
 		switch (param) {
 		case SAP_PARAM_ID_MAX_MSG_SIZE:
-			printf("%d\n", get_u16(frm));
+			printf("%d\n", p_get_u16(frm));
 			break;
 		case SAP_PARAM_ID_CONN_STATUS:
-			pv8 = get_u8(frm);
+			pv8 = p_get_u8(frm);
 			printf("0x%02x (%s)\n", pv8, status2str(pv8));
 			break;
 		case SAP_PARAM_ID_RESULT_CODE:
 		case SAP_PARAM_ID_CARD_READER_STATUS:
-			pv8 = get_u8(frm);
+			pv8 = p_get_u8(frm);
 			printf("0x%02x (%s)\n", pv8, result2str(pv8));
 			break;
 		case SAP_PARAM_ID_DISCONNECT_IND:
-			pv8 = get_u8(frm);
+			pv8 = p_get_u8(frm);
 			printf("0x%02x (%s)\n", pv8, disctype2str(pv8));
 			break;
 		case SAP_PARAM_ID_STATUS_CHANGE:
-			pv8 = get_u8(frm);
+			pv8 = p_get_u8(frm);
 			printf("0x%02x (%s)\n", pv8, statuschg2str(pv8));
 			break;
 		case SAP_PARAM_ID_TRANSPORT_PROTOCOL:
-			pv8 = get_u8(frm);
+			pv8 = p_get_u8(frm);
 			printf("0x%02x (%s)\n", pv8, prot2str(pv8));
 			break;
 		default:
@@ -321,11 +321,11 @@ void sap_dump(int level, struct frame *frm)
 {
 	uint8_t msg, params;
 
-	msg = get_u8(frm);
-	params = get_u8(frm);
+	msg = p_get_u8(frm);
+	params = p_get_u8(frm);
 
 	/* Skip reserved field */
-	get_u16(frm);
+	p_get_u16(frm);
 
 	p_indent(level, frm);
 

@@ -99,8 +99,8 @@ static inline char *proto2str(uint16_t proto)
 
 static void hdlc_dump(int level, struct frame *frm)
 {
-	uint8_t addr = get_u8(frm);
-	uint8_t ctrl = get_u8(frm);
+	uint8_t addr = p_get_u8(frm);
+	uint8_t ctrl = p_get_u8(frm);
 	uint16_t fcs, proto;
 
 	fcs = get_unaligned((uint16_t *) (frm->ptr + frm->len - 2));
@@ -118,9 +118,9 @@ static void hdlc_dump(int level, struct frame *frm)
 				dir2str(frm->in), addr, ctrl, frm->len, fcs);
 
 	if (*((uint8_t *) frm->ptr) & 0x80)
-		proto = get_u16(frm);
+		proto = p_get_u16(frm);
 	else
-		proto = get_u8(frm);
+		proto = p_get_u8(frm);
 
 	p_indent(level + 1, frm);
 	printf("PPP: %s (0x%04x): len %d\n", proto2str(proto), proto, frm->len);

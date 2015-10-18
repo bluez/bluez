@@ -161,15 +161,15 @@ void cmtp_dump(int level, struct frame *frm)
 
 	while (frm->len > 0) {
 
-		hdr = get_u8(frm);
+		hdr = p_get_u8(frm);
 		bid = (hdr & 0x3c) >> 2;
 
 		switch ((hdr & 0xc0) >> 6) {
 		case 0x01:
-			len = get_u8(frm);
+			len = p_get_u8(frm);
 			break;
 		case 0x02:
-			len = htons(get_u16(frm));
+			len = htons(p_get_u16(frm));
 			break;
 		default:
 			len = 0;

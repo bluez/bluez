@@ -256,9 +256,9 @@ static const char *uuid2str(uint16_t uuid)
 
 static void att_error_dump(int level, struct frame *frm)
 {
-	uint8_t op = get_u8(frm);
-	uint16_t handle = btohs(htons(get_u16(frm)));
-	uint8_t err = get_u8(frm);
+	uint8_t op = p_get_u8(frm);
+	uint16_t handle = btohs(htons(p_get_u16(frm)));
+	uint8_t err = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("Error: %s (%d)\n", atterror2str(err), err);
@@ -269,7 +269,7 @@ static void att_error_dump(int level, struct frame *frm)
 
 static void att_mtu_req_dump(int level, struct frame *frm)
 {
-	uint16_t client_rx_mtu = btohs(htons(get_u16(frm)));
+	uint16_t client_rx_mtu = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("client rx mtu %d\n", client_rx_mtu);
@@ -277,7 +277,7 @@ static void att_mtu_req_dump(int level, struct frame *frm)
 
 static void att_mtu_resp_dump(int level, struct frame *frm)
 {
-	uint16_t server_rx_mtu = btohs(htons(get_u16(frm)));
+	uint16_t server_rx_mtu = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("server rx mtu %d\n", server_rx_mtu);
@@ -285,8 +285,8 @@ static void att_mtu_resp_dump(int level, struct frame *frm)
 
 static void att_find_info_req_dump(int level, struct frame *frm)
 {
-	uint16_t start = btohs(htons(get_u16(frm)));
-	uint16_t end = btohs(htons(get_u16(frm)));
+	uint16_t start = btohs(htons(p_get_u16(frm)));
+	uint16_t end = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("start 0x%4.4x, end 0x%4.4x\n", start, end);
@@ -298,7 +298,7 @@ static void print_uuid128(struct frame *frm)
 	int i;
 
 	for (i = 0; i < 16; i++)
-		uuid[15 - i] = get_u8(frm);
+		uuid[15 - i] = p_get_u8(frm);
 
 	for (i = 0; i < 16; i++) {
 		printf("%02x", uuid[i]);
@@ -309,7 +309,7 @@ static void print_uuid128(struct frame *frm)
 
 static void att_find_info_resp_dump(int level, struct frame *frm)
 {
-	uint8_t fmt = get_u8(frm);
+	uint8_t fmt = p_get_u8(frm);
 
 	p_indent(level, frm);
 
@@ -317,8 +317,8 @@ static void att_find_info_resp_dump(int level, struct frame *frm)
 		printf("format: uuid-16\n");
 
 		while (frm->len > 0) {
-			uint16_t handle = btohs(htons(get_u16(frm)));
-			uint16_t uuid = btohs(htons(get_u16(frm)));
+			uint16_t handle = btohs(htons(p_get_u16(frm)));
+			uint16_t uuid = btohs(htons(p_get_u16(frm)));
 			p_indent(level + 1, frm);
 			printf("handle 0x%4.4x, uuid 0x%4.4x (%s)\n", handle, uuid,
 					uuid2str(uuid));
@@ -327,7 +327,7 @@ static void att_find_info_resp_dump(int level, struct frame *frm)
 		printf("format: uuid-128\n");
 
 		while (frm->len > 0) {
-			uint16_t handle = btohs(htons(get_u16(frm)));
+			uint16_t handle = btohs(htons(p_get_u16(frm)));
 
 			p_indent(level + 1, frm);
 			printf("handle 0x%4.4x, uuid ", handle);
@@ -339,9 +339,9 @@ static void att_find_info_resp_dump(int level, struct frame *frm)
 
 static void att_find_by_type_req_dump(int level, struct frame *frm)
 {
-	uint16_t start = btohs(htons(get_u16(frm)));
-	uint16_t end = btohs(htons(get_u16(frm)));
-	uint16_t uuid = btohs(htons(get_u16(frm)));
+	uint16_t start = btohs(htons(p_get_u16(frm)));
+	uint16_t end = btohs(htons(p_get_u16(frm)));
+	uint16_t uuid = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("start 0x%4.4x, end 0x%4.4x, uuid 0x%4.4x\n", start, end, uuid);
@@ -349,15 +349,15 @@ static void att_find_by_type_req_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("value");
 	while (frm->len > 0)
-		printf(" 0x%2.2x", get_u8(frm));
+		printf(" 0x%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void att_find_by_type_resp_dump(int level, struct frame *frm)
 {
 	while (frm->len > 0) {
-		uint16_t uuid = btohs(htons(get_u16(frm)));
-		uint16_t end = btohs(htons(get_u16(frm)));
+		uint16_t uuid = btohs(htons(p_get_u16(frm)));
+		uint16_t end = btohs(htons(p_get_u16(frm)));
 
 		p_indent(level, frm);
 		printf("Found attr 0x%4.4x, group end handle 0x%4.4x\n",
@@ -367,15 +367,15 @@ static void att_find_by_type_resp_dump(int level, struct frame *frm)
 
 static void att_read_by_type_req_dump(int level, struct frame *frm)
 {
-	uint16_t start = btohs(htons(get_u16(frm)));
-	uint16_t end = btohs(htons(get_u16(frm)));
+	uint16_t start = btohs(htons(p_get_u16(frm)));
+	uint16_t end = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("start 0x%4.4x, end 0x%4.4x\n", start, end);
 
 	p_indent(level, frm);
 	if (frm->len == 2) {
-		printf("type-uuid 0x%4.4x\n", btohs(htons(get_u16(frm))));
+		printf("type-uuid 0x%4.4x\n", btohs(htons(p_get_u16(frm))));
 	} else if (frm->len == 16) {
 		printf("type-uuid ");
 		print_uuid128(frm);
@@ -389,20 +389,20 @@ static void att_read_by_type_req_dump(int level, struct frame *frm)
 
 static void att_read_by_type_resp_dump(int level, struct frame *frm)
 {
-	uint8_t length = get_u8(frm);
+	uint8_t length = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("length: %d\n", length);
 
 	while (frm->len > 0) {
-		uint16_t handle = btohs(htons(get_u16(frm)));
+		uint16_t handle = btohs(htons(p_get_u16(frm)));
 		int val_len = length - 2;
 		int i;
 
 		p_indent(level + 1, frm);
 		printf("handle 0x%4.4x, value ", handle);
 		for (i = 0; i < val_len; i++) {
-			printf("0x%.2x ", get_u8(frm));
+			printf("0x%.2x ", p_get_u8(frm));
 		}
 		printf("\n");
 	}
@@ -410,7 +410,7 @@ static void att_read_by_type_resp_dump(int level, struct frame *frm)
 
 static void att_read_req_dump(int level, struct frame *frm)
 {
-	uint16_t handle = btohs(htons(get_u16(frm)));
+	uint16_t handle = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("handle 0x%4.4x\n", handle);
@@ -418,8 +418,8 @@ static void att_read_req_dump(int level, struct frame *frm)
 
 static void att_read_blob_req_dump(int level, struct frame *frm)
 {
-	uint16_t handle = btohs(htons(get_u16(frm)));
-	uint16_t offset = btohs(htons(get_u16(frm)));
+	uint16_t handle = btohs(htons(p_get_u16(frm)));
+	uint16_t offset = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("handle 0x%4.4x offset 0x%4.4x\n", handle, offset);
@@ -431,7 +431,7 @@ static void att_read_blob_resp_dump(int level, struct frame *frm)
 	printf("value");
 
 	while (frm->len > 0)
-		printf(" 0x%2.2x", get_u8(frm));
+		printf(" 0x%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
@@ -442,7 +442,7 @@ static void att_read_multi_req_dump(int level, struct frame *frm)
 
 	while (frm->len > 0) {
 		p_indent(level, frm);
-		printf("handle 0x%4.4x\n", btohs(htons(get_u16(frm))));
+		printf("handle 0x%4.4x\n", btohs(htons(p_get_u16(frm))));
 	}
 }
 
@@ -452,17 +452,17 @@ static void att_read_multi_resp_dump(int level, struct frame *frm)
 	printf("values");
 
 	while (frm->len > 0)
-		printf(" 0x%2.2x", get_u8(frm));
+		printf(" 0x%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void att_read_by_group_resp_dump(int level, struct frame *frm)
 {
-	uint8_t length = get_u8(frm);
+	uint8_t length = p_get_u8(frm);
 
 	while (frm->len > 0) {
-		uint16_t attr_handle = btohs(htons(get_u16(frm)));
-		uint16_t end_grp_handle = btohs(htons(get_u16(frm)));
+		uint16_t attr_handle = btohs(htons(p_get_u16(frm)));
+		uint16_t end_grp_handle = btohs(htons(p_get_u16(frm)));
 		uint8_t remaining = length - 4;
 
 		p_indent(level, frm);
@@ -472,7 +472,7 @@ static void att_read_by_group_resp_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("value");
 		while (remaining > 0) {
-			printf(" 0x%2.2x", get_u8(frm));
+			printf(" 0x%2.2x", p_get_u8(frm));
 			remaining--;
 		}
 		printf("\n");
@@ -481,39 +481,39 @@ static void att_read_by_group_resp_dump(int level, struct frame *frm)
 
 static void att_write_req_dump(int level, struct frame *frm)
 {
-	uint16_t handle = btohs(htons(get_u16(frm)));
+	uint16_t handle = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("handle 0x%4.4x value ", handle);
 
 	while (frm->len > 0)
-		printf(" 0x%2.2x", get_u8(frm));
+		printf(" 0x%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void att_signed_write_dump(int level, struct frame *frm)
 {
-	uint16_t handle = btohs(htons(get_u16(frm)));
+	uint16_t handle = btohs(htons(p_get_u16(frm)));
 	int value_len = frm->len - 12; /* handle:2 already accounted, sig: 12 */
 
 	p_indent(level, frm);
 	printf("handle 0x%4.4x value ", handle);
 
 	while (value_len--)
-		printf(" 0x%2.2x", get_u8(frm));
+		printf(" 0x%2.2x", p_get_u8(frm));
 	printf("\n");
 
 	p_indent(level, frm);
 	printf("auth signature ");
 	while (frm->len > 0)
-		printf(" 0x%2.2x", get_u8(frm));
+		printf(" 0x%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void att_prep_write_dump(int level, struct frame *frm)
 {
-	uint16_t handle = btohs(htons(get_u16(frm)));
-	uint16_t val_offset = btohs(htons(get_u16(frm)));
+	uint16_t handle = btohs(htons(p_get_u16(frm)));
+	uint16_t val_offset = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("attr handle 0x%4.4x, value offset 0x%4.4x\n", handle,
@@ -522,13 +522,13 @@ static void att_prep_write_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("part attr value ");
 	while (frm->len > 0)
-		printf(" 0x%2.2x", get_u8(frm));
+		printf(" 0x%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void att_exec_write_req_dump(int level, struct frame *frm)
 {
-	uint8_t flags = get_u8(frm);
+	uint8_t flags = p_get_u8(frm);
 
 	p_indent(level, frm);
 	if (flags == 0x00)
@@ -541,7 +541,7 @@ static void att_exec_write_req_dump(int level, struct frame *frm)
 
 static void att_handle_notify_dump(int level, struct frame *frm)
 {
-	uint16_t handle = btohs(htons(get_u16(frm)));
+	uint16_t handle = btohs(htons(p_get_u16(frm)));
 
 	p_indent(level, frm);
 	printf("handle 0x%4.4x\n", handle);
@@ -549,7 +549,7 @@ static void att_handle_notify_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("value ");
 	while (frm->len > 0)
-		printf("0x%.2x ", get_u8(frm));
+		printf("0x%.2x ", p_get_u8(frm));
 	printf("\n");
 }
 
@@ -557,7 +557,7 @@ void att_dump(int level, struct frame *frm)
 {
 	uint8_t op;
 
-	op = get_u8(frm);
+	op = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("ATT: %s (0x%.2x)\n", attop2str(op), op);

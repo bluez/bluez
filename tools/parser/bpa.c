@@ -33,9 +33,9 @@
 
 #include "parser.h"
 
-#define BPA_U8(frm)  (get_u8(frm))
-#define BPA_U16(frm) (btohs(htons(get_u16(frm))))
-#define BPA_U32(frm) (btohl(htonl(get_u32(frm))))
+#define BPA_U8(frm)  (p_get_u8(frm))
+#define BPA_U16(frm) (btohs(htons(p_get_u16(frm))))
+#define BPA_U32(frm) (btohl(htonl(p_get_u32(frm))))
 
 void bpa_dump(int level, struct frame *frm)
 {
@@ -43,13 +43,13 @@ void bpa_dump(int level, struct frame *frm)
 	uint16_t num, len;
 	uint32_t time;
 
-	id = get_u8(frm);
-	num = get_u16(frm);
+	id = p_get_u8(frm);
+	num = p_get_u16(frm);
 	len = BPA_U16(frm);
 
-	status  = get_u8(frm);
-	time    = get_u32(frm);
-	channel = get_u8(frm);
+	status  = p_get_u8(frm);
+	time    = p_get_u32(frm);
+	channel = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("BPA: id %d num %d len %u status 0x%02x time %d channel %d\n",

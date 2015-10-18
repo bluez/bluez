@@ -151,12 +151,12 @@ static const char *smpreason2str(uint8_t reason)
 
 static void smp_cmd_pairing_dump(int level, struct frame *frm)
 {
-	uint8_t cap = get_u8(frm);
-	uint8_t oob = get_u8(frm);
-	uint8_t auth = get_u8(frm);
-	uint8_t key_size = get_u8(frm);
-	uint8_t int_dist = get_u8(frm);
-	uint8_t resp_dist = get_u8(frm);
+	uint8_t cap = p_get_u8(frm);
+	uint8_t oob = p_get_u8(frm);
+	uint8_t auth = p_get_u8(frm);
+	uint8_t key_size = p_get_u8(frm);
+	uint8_t int_dist = p_get_u8(frm);
+	uint8_t resp_dist = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("capability 0x%2.2x oob 0x%2.2x auth req 0x%2.2x\n", cap, oob,
@@ -196,7 +196,7 @@ static void smp_cmd_pairing_confirm_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("key ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", get_u8(frm));
+		printf("%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
@@ -207,13 +207,13 @@ static void smp_cmd_pairing_random_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("random ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", get_u8(frm));
+		printf("%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void smp_cmd_pairing_failed_dump(int level, struct frame *frm)
 {
-	uint8_t reason = get_u8(frm);
+	uint8_t reason = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("reason 0x%2.2x\n", reason);
@@ -229,13 +229,13 @@ static void smp_cmd_encrypt_info_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("LTK ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", get_u8(frm));
+		printf("%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void smp_cmd_master_ident_dump(int level, struct frame *frm)
 {
-	uint16_t ediv = btohs(htons(get_u16(frm)));
+	uint16_t ediv = btohs(htons(p_get_u16(frm)));
 	int i;
 
 	p_indent(level, frm);
@@ -243,7 +243,7 @@ static void smp_cmd_master_ident_dump(int level, struct frame *frm)
 
 	printf("Rand 0x");
 	for (i = 0; i < 8; i++)
-		printf("%2.2x", get_u8(frm));
+		printf("%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
@@ -254,13 +254,13 @@ static void smp_cmd_ident_info_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("IRK ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", get_u8(frm));
+		printf("%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void smp_cmd_ident_addr_info_dump(int level, struct frame *frm)
 {
-	uint8_t type = get_u8(frm);
+	uint8_t type = p_get_u8(frm);
 	char addr[18];
 
 	p_indent(level, frm);
@@ -275,13 +275,13 @@ static void smp_cmd_sign_info_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("CSRK ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", get_u8(frm));
+		printf("%2.2x", p_get_u8(frm));
 	printf("\n");
 }
 
 static void smp_cmd_security_req_dump(int level, struct frame *frm)
 {
-	uint8_t auth = get_u8(frm);
+	uint8_t auth = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("auth req 0x%2.2x\n", auth);
@@ -291,7 +291,7 @@ void smp_dump(int level, struct frame *frm)
 {
 	uint8_t cmd;
 
-	cmd = get_u8(frm);
+	cmd = p_get_u8(frm);
 
 	p_indent(level, frm);
 	printf("SMP: %s (0x%.2x)\n", smpcmd2str(cmd), cmd);

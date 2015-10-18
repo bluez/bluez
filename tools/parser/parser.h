@@ -161,7 +161,7 @@ static inline void p_ba2str(const bdaddr_t *ba, char *str)
 
 /* get_uXX functions do byte swaping */
 
-static inline uint8_t get_u8(struct frame *frm)
+static inline uint8_t p_get_u8(struct frame *frm)
 {
 	uint8_t *u8_ptr = frm->ptr;
 	frm->ptr += 1;
@@ -169,7 +169,7 @@ static inline uint8_t get_u8(struct frame *frm)
 	return *u8_ptr;
 }
 
-static inline uint16_t get_u16(struct frame *frm)
+static inline uint16_t p_get_u16(struct frame *frm)
 {
 	uint16_t *u16_ptr = frm->ptr;
 	frm->ptr += 2;
@@ -177,7 +177,7 @@ static inline uint16_t get_u16(struct frame *frm)
 	return get_be16(u16_ptr);
 }
 
-static inline uint32_t get_u32(struct frame *frm)
+static inline uint32_t p_get_u32(struct frame *frm)
 {
 	uint32_t *u32_ptr = frm->ptr;
 	frm->ptr += 4;
@@ -185,7 +185,7 @@ static inline uint32_t get_u32(struct frame *frm)
 	return get_be32(u32_ptr);
 }
 
-static inline uint64_t get_u64(struct frame *frm)
+static inline uint64_t p_get_u64(struct frame *frm)
 {
 	uint64_t *u64_ptr = frm->ptr;
 	uint64_t u64 = get_unaligned(u64_ptr), tmp;
@@ -196,10 +196,10 @@ static inline uint64_t get_u64(struct frame *frm)
 	return u64;
 }
 
-static inline void get_u128(struct frame *frm, uint64_t *l, uint64_t *h)
+static inline void p_get_u128(struct frame *frm, uint64_t *l, uint64_t *h)
 {
-	*h = get_u64(frm);
-	*l = get_u64(frm);
+	*h = p_get_u64(frm);
+	*l = p_get_u64(frm);
 }
 
 char *get_uuid_name(int uuid);

@@ -79,48 +79,48 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 	int i, length;
 	char *s;
 	uint32_t uuid = 0;
-	uint8_t type = get_u8(frm);
+	uint8_t type = p_get_u8(frm);
 
 	p_indent(++level, frm);
 	switch (type) {
 	case BNEP_CONTROL_COMMAND_NOT_UNDERSTOOD:
-		printf("Not Understood(0x%02x) type 0x%02x\n", type, get_u8(frm));
+		printf("Not Understood(0x%02x) type 0x%02x\n", type, p_get_u8(frm));
 		break;
 
 	case BNEP_SETUP_CONNECTION_REQUEST_MSG:
-		uuid_size = get_u8(frm);
+		uuid_size = p_get_u8(frm);
 		printf("Setup Req(0x%02x) size 0x%02x ", type, uuid_size);
 		switch (uuid_size) {
 		case 2:
-			uuid = get_u16(frm);
+			uuid = p_get_u16(frm);
 			printf("dst 0x%x", uuid);
 			if ((s = get_uuid_name(uuid)) != 0)
 				printf("(%s)", s);
-			uuid = get_u16(frm);
+			uuid = p_get_u16(frm);
 			printf(" src 0x%x", uuid);
 			if ((s = get_uuid_name(uuid)) != 0)
 				printf("(%s)", s);
 			printf("\n");
 			break;
 		case 4:
-			uuid = get_u32(frm);
+			uuid = p_get_u32(frm);
 			printf("dst 0x%x", uuid);
 			if ((s = get_uuid_name(uuid)) != 0)
 				printf("(%s)", s);
-			uuid = get_u32(frm);
+			uuid = p_get_u32(frm);
 			printf(" src 0x%x", uuid);
 			if ((s = get_uuid_name(uuid)) != 0)
 				printf("(%s)", s);
 			printf("\n");
 			break;
 		case 16:
-			uuid = get_u32(frm);
+			uuid = p_get_u32(frm);
 			printf("dst 0x%x", uuid);
 			if ((s = get_uuid_name(uuid)) != 0)
 				printf("(%s)", s);
 			frm->ptr += 12;
 			frm->len -= 12;
-			uuid = get_u32(frm);
+			uuid = p_get_u32(frm);
 			printf(" src 0x%x", uuid);
 			if ((s = get_uuid_name(uuid)) != 0)
 				printf("(%s)", s);
@@ -137,27 +137,27 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 
 	case BNEP_SETUP_CONNECTION_RESPONSE_MSG:
 		printf("Setup Rsp(0x%02x) res 0x%04x\n",
-						type, get_u16(frm));
+						type, p_get_u16(frm));
 		break;
 
 	case BNEP_FILTER_NET_TYPE_SET_MSG:
-		length = get_u16(frm);
+		length = p_get_u16(frm);
 		printf("Filter NetType Set(0x%02x) len 0x%04x\n",
 							type, length);
 		for (i = 0; i < length / 4; i++) {
 			p_indent(level + 1, frm);
-			printf("0x%04x - ", get_u16(frm));
-			printf("0x%04x\n", get_u16(frm));
+			printf("0x%04x - ", p_get_u16(frm));
+			printf("0x%04x\n", p_get_u16(frm));
 		}
 		break;
 
 	case BNEP_FILTER_NET_TYPE_RESPONSE_MSG:
 		printf("Filter NetType Rsp(0x%02x) res 0x%04x\n",
-							type, get_u16(frm));
+							type, p_get_u16(frm));
 		break;
 
 	case BNEP_FILTER_MULT_ADDR_SET_MSG:
-		length = get_u16(frm);
+		length = p_get_u16(frm);
 		printf("Filter MultAddr Set(0x%02x) len 0x%04x\n",
 							type, length);
 		for (i = 0; i < length / 12; i++) {
@@ -169,7 +169,7 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 
 	case BNEP_FILTER_MULT_ADDR_RESPONSE_MSG:
 		printf("Filter MultAddr Rsp(0x%02x) res 0x%04x\n",
-							type, get_u16(frm));
+							type, p_get_u16(frm));
 		break;
 
 	default:
@@ -183,8 +183,8 @@ static void bnep_control(int level, struct frame *frm, int header_length)
 
 static void bnep_eval_extension(int level, struct frame *frm)
 {
-	uint8_t type = get_u8(frm);
-	uint8_t length = get_u8(frm);
+	uint8_t type = p_get_u8(frm);
+	uint8_t length = p_get_u8(frm);
 	int extension = type & 0x80;
 
 	p_indent(level, frm);
@@ -210,7 +210,7 @@ static void bnep_eval_extension(int level, struct frame *frm)
 
 void bnep_dump(int level, struct frame *frm)
 {
-	uint8_t type = get_u8(frm);
+	uint8_t type = p_get_u8(frm);
 	uint16_t proto = 0x0000;
 	int extension = type & 0x80;
 
@@ -227,7 +227,7 @@ void bnep_dump(int level, struct frame *frm)
 		printf("BNEP: Compressed(0x%02x|%s)\n",
 					type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
-		proto = get_u16(frm);
+		proto = p_get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
 
@@ -237,7 +237,7 @@ void bnep_dump(int level, struct frame *frm)
 		p_indent(++level, frm);
 		printf("dst %s ", get_macaddr(frm));
 		printf("src %s ", get_macaddr(frm));
-		proto = get_u16(frm);
+		proto = p_get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
 
@@ -246,7 +246,7 @@ void bnep_dump(int level, struct frame *frm)
 					type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
 		printf("dst %s ", get_macaddr(frm));
-		proto = get_u16(frm);
+		proto = p_get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
 
@@ -255,7 +255,7 @@ void bnep_dump(int level, struct frame *frm)
 					type & 0x7f, extension ? "1" : "0");
 		p_indent(++level, frm);
 		printf("src %s ", get_macaddr(frm));
-		proto = get_u16(frm);
+		proto = p_get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 		break;
 
@@ -275,8 +275,8 @@ void bnep_dump(int level, struct frame *frm)
 	/* 802.1p header */
 	if (proto == 0x8100) {
 		p_indent(level, frm);
-		printf("802.1p Header: 0x%04x ", get_u16(frm));
-		proto = get_u16(frm);
+		printf("802.1p Header: 0x%04x ", p_get_u16(frm));
+		proto = p_get_u16(frm);
 		printf("[proto 0x%04x]\n", proto);
 	}
 
