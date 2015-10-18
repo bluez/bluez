@@ -36,10 +36,15 @@
 #include "vendor.h"
 #include "intel.h"
 
+static void null_cmd(const void *data, uint8_t size)
+{
+}
+
 static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x001, "Reset"				},
 	{ 0x002, "No Operation"				},
-	{ 0x005, "Read Version"				},
+	{ 0x005, "Read Version",
+			null_cmd, 0, true },
 	{ 0x006, "Set UART Baudrate"			},
 	{ 0x007, "Enable LPM"				},
 	{ 0x008, "PCM Write Configuration"		},
@@ -87,7 +92,7 @@ const struct vendor_ocf *intel_vendor_ocf(uint16_t ocf)
 
 static void act_deact_traces_complete_evt(const void *data, uint8_t size)
 {
-	uint8_t status = *((const uint8_t *) data);
+	uint8_t status = get_u8(data);
 
 	packet_print_error("Status", status);
 }
@@ -99,8 +104,8 @@ static void lmp_pdu_trace_evt(const void *data, uint8_t size)
 	uint32_t clock;
 	const char *str;
 
-	type = *((uint8_t *) data);
-	handle = get_le16(data + 2);
+	type = get_u8(data);
+	handle = get_le16(data + 1);
 
 	switch (type) {
 	case 0x00:
@@ -141,7 +146,7 @@ static void lmp_pdu_trace_evt(const void *data, uint8_t size)
 	case 0x01:
 		len = size - 9;
 		clock = get_le32(data + 4 + len);
-		id = *((uint8_t *) (data + 4 + len + 4));
+		id = get_u8(data + 4 + len + 4);
 
 		packet_hexdump(data + 3, 1);
 		lmp_packet(data + 4, len, false);
@@ -150,7 +155,7 @@ static void lmp_pdu_trace_evt(const void *data, uint8_t size)
 		break;
 	case 0x02:
 		clock = get_le32(data + 3);
-		id = *((uint8_t *) (data + 3 + 4));
+		id = get_u8(data + 3 + 4);
 
 		print_field("Clock: 0x%8.8x", clock);
 		print_field("ID: 0x%2.2x", id);
@@ -166,7 +171,7 @@ static void lmp_pdu_trace_evt(const void *data, uint8_t size)
 	case 0x04:
 		len = size - 8;
 		count = get_le16(data + 3);
-		id = *((uint8_t *) (data + 3 + 2));
+		id = get_u8(data + 3 + 2);
 
 		print_field("Count: 0x%4.4x", count);
 		print_field("ID: 0x%2.2x", id);
@@ -175,7 +180,7 @@ static void lmp_pdu_trace_evt(const void *data, uint8_t size)
 		break;
 	case 0x05:
 		count = get_le16(data + 3);
-		id = *((uint8_t *) (data + 3 + 2));
+		id = get_u8(data + 3 + 2);
 
 		print_field("Count: 0x%4.4x", count);
 		print_field("ID: 0x%2.2x", id);

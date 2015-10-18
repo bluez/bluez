@@ -7307,6 +7307,8 @@ static const struct vendor_evt *current_vendor_evt(uint8_t evt)
 	switch (manufacturer) {
 	case 2:
 		return intel_vendor_evt(evt);
+	case 15:
+		return broadcom_vendor_evt(evt);
 	}
 
 	return NULL;
