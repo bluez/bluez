@@ -1527,7 +1527,7 @@ static struct service *service_create(struct gatt_db_attribute *attr,
 						service_properties,
 						service, service_free)) {
 		error("Unable to register GATT service with handle 0x%04x for "
-							"device %s:",
+							"device %s",
 							service->start_handle,
 							client->devaddr);
 		service_free(service);
