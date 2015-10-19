@@ -193,6 +193,8 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	pbap->obj->apparam = g_obex_apparam_set_uint16(NULL, PHONEBOOKSIZE_TAG,
 								phonebooksize);
 
+	pbap->obj->firstpacket = TRUE;
+
 	if (missed > 0)	{
 		DBG("missed %d", missed);
 
@@ -826,14 +828,13 @@ static ssize_t vobject_pull_get_next_header(void *object, void *buf, size_t mtu,
 								uint8_t *hi)
 {
 	struct pbap_object *obj = object;
-	struct pbap_session *pbap = obj->session;
 
 	if (!obj->buffer && !obj->apparam)
 		return -EAGAIN;
 
 	*hi = G_OBEX_HDR_APPARAM;
 
-	if (pbap->params->maxlistcount == 0 || obj->firstpacket) {
+	if (obj->firstpacket) {
 		obj->firstpacket = FALSE;
 
 		return g_obex_apparam_encode(obj->apparam, buf, mtu);
