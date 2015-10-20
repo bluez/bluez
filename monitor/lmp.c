@@ -852,6 +852,11 @@ void lmp_packet(const void *data, uint8_t size, bool padded)
 
 	switch (opcode) {
 	case 127:
+		if (size < 2) {
+			print_text(COLOR_ERROR, "extended opcode too short");
+			packet_hexdump(data, size);
+			return;
+		}
 		opcode = LMP_ESC4(((const uint8_t *) data)[1]);
 		off = 2;
 		break;
