@@ -9,7 +9,7 @@ replacement to Android provided Bluetooth stack.
 More details about BlueZ for Android architecture and components can be found
 in android/hal-ipc-api.txt file.
 
-Supported Android version: 4.4 KitKat and 5.0 Lollipop
+Supported Android version: 4.4 KitKat and 5.0, 5.1 Lollipop
 
 
 Building and running on Android
@@ -402,12 +402,16 @@ affect qualification or user experience. This section provides list of
 recommended Android fixes that are not part of latest AOSP release supported by
 BlueZ.
 
+For Android 5.1 Lollipop:
+https://android-review.googlesource.com/177314
+
 For Android 5.0 Lollipop:
 https://android-review.googlesource.com/99761
 https://android-review.googlesource.com/100297
 https://android-review.googlesource.com/102882
 https://android-review.googlesource.com/132733
 https://android-review.googlesource.com/132763
+https://android-review.googlesource.com/177314
 
 For Android 4.4 KitKat:
 https://android-review.googlesource.com/82757
@@ -417,6 +421,7 @@ https://android-review.googlesource.com/99761
 https://android-review.googlesource.com/99850
 https://android-review.googlesource.com/100297
 https://android-review.googlesource.com/102882
+https://android-review.googlesource.com/177314
 
 Unimplemented Bluetooth features
 ================================
