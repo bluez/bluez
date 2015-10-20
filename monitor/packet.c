@@ -8430,10 +8430,18 @@ static void vendor_evt(const void *data, uint8_t size)
 {
 	uint8_t subevent = *((const uint8_t *) data);
 	struct subevent_data vendor_data;
+	char vendor_str[150];
 	const struct vendor_evt *vnd = current_vendor_evt(subevent);
 
 	if (vnd) {
-		vendor_data.str = vnd->str;
+		const char *str = current_vendor_str();
+
+		if (str) {
+			snprintf(vendor_str, sizeof(vendor_str),
+						"%s %s", str, vnd->str);
+			vendor_data.str = vendor_str;
+		} else
+			vendor_data.str = vnd->str;
 		vendor_data.func = vnd->evt_func;
 		vendor_data.size = vnd->evt_size;
 		vendor_data.fixed = vnd->evt_fixed;
