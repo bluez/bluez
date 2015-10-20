@@ -41,10 +41,60 @@
 #include "intel.h"
 
 #define COLOR_UNKNOWN_EVENT_MASK	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_SCAN_STATUS	COLOR_WHITE_BG
 
 static void print_status(uint8_t status)
 {
 	packet_print_error("Status", status);
+}
+
+static void print_module(uint8_t module)
+{
+	const char *str;
+
+	switch (module) {
+	case 0x01:
+		str = "BC";
+		break;
+	case 0x02:
+		str = "HCI";
+		break;
+	case 0x03:
+		str = "LLC";
+		break;
+	case 0x04:
+		str = "OS";
+		break;
+	case 0x05:
+		str = "LM";
+		break;
+	case 0x06:
+		str = "SC";
+		break;
+	case 0x07:
+		str = "SP";
+		break;
+	case 0x08:
+		str = "OSAL";
+		break;
+	case 0x09:
+		str = "LC";
+		break;
+	case 0x0a:
+		str = "APP";
+		break;
+	case 0x0b:
+		str = "TLD";
+		break;
+	case 0xf0:
+		str = "Debug";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Module: %s (0x%2.2x)", str, module);
 }
 
 static void null_cmd(const void *data, uint8_t size)
@@ -249,6 +299,26 @@ static void act_deact_traces_cmd(const void *data, uint8_t size)
 	print_field("Receive traces: 0x%2.2x", rx);
 }
 
+static void stimulate_exception_cmd(const void *data, uint8_t size)
+{
+	uint8_t type = get_u8(data);
+	const char *str;
+
+	switch (type) {
+	case 0x00:
+		str = "Fatal Exception";
+		break;
+	case 0x01:
+		str = "Debug Exception";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, type);
+}
+
 static const struct {
 	uint8_t bit;
 	const char *str;
@@ -355,6 +425,9 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 			status_rsp, 1, true },
 	{ 0x043, "Activate Deactivate Traces",
 			act_deact_traces_cmd, 3, true },
+	{ 0x04d, "Stimulate Exception",
+			stimulate_exception_cmd, 1, true,
+			status_rsp, 1, true },
 	{ 0x050, "Read HW Version" },
 	{ 0x052, "Set Event Mask",
 			set_event_mask_cmd, 8, true,
@@ -381,6 +454,17 @@ const struct vendor_ocf *intel_vendor_ocf(uint16_t ocf)
 	}
 
 	return NULL;
+}
+
+static void fatal_exception_evt(const void *data, uint8_t size)
+{
+	uint16_t line = get_le16(data);
+	uint8_t module = get_u8(data + 2);
+	uint8_t reason = get_u8(data + 3);
+
+	print_field("Line: %u", line);
+	print_module(module);
+	print_field("Reason: 0x%2.2x", reason);
 }
 
 static void bootup_evt(const void *data, uint8_t size)
@@ -530,6 +614,46 @@ static void secure_send_commands_result_evt(const void *data, uint8_t size)
 	print_status(status);
 }
 
+static void debug_exception_evt(const void *data, uint8_t size)
+{
+	uint16_t line = get_le16(data);
+	uint8_t module = get_u8(data + 2);
+	uint8_t reason = get_u8(data + 3);
+
+	print_field("Line: %u", line);
+	print_module(module);
+	print_field("Reason: 0x%2.2x", reason);
+}
+
+static void le_link_established_evt(const void *data, uint8_t size)
+{
+	uint16_t handle = get_le16(data);
+	uint32_t access_addr = get_le32(data + 10);
+
+	print_field("Handle: %u", handle);
+
+	packet_hexdump(data + 2, 8);
+
+	print_field("Access address: 0x%8.8x", access_addr);
+
+	packet_hexdump(data + 14, size - 14);
+}
+
+static void scan_status_evt(const void *data, uint8_t size)
+{
+	uint8_t enable = get_u8(data);
+
+	print_field("Inquiry scan: %s",
+				(enable & 0x01) ? "Enabled" : "Disabled");
+	print_field("Page scan: %s",
+				(enable & 0x02) ? "Enabled" : "Disabled");
+
+	if (enable & 0xfc)
+		print_text(COLOR_UNKNOWN_SCAN_STATUS,
+				"  Unknown status (0x%2.2x)", enable & 0xfc);
+
+}
+
 static void act_deact_traces_complete_evt(const void *data, uint8_t size)
 {
 	uint8_t status = get_u8(data);
@@ -638,24 +762,92 @@ static void write_bd_data_complete_evt(const void *data, uint8_t size)
 	print_status(status);
 }
 
+static void sco_rejected_via_lmp_evt(const void *data, uint8_t size)
+{
+	uint8_t reason = get_u8(data + 6);
+
+	packet_print_addr("Address", data, false);
+	packet_print_error("Reason", reason);
+}
+
+static void ptt_switch_notification_evt(const void *data, uint8_t size)
+{
+	uint16_t handle = get_le16(data);
+	uint8_t table = get_u8(data + 2);
+	const char *str;
+
+	print_field("Handle: %u", handle);
+
+	switch (table) {
+	case 0x00:
+		str = "Basic rate";
+		break;
+	case 0x01:
+		str = "Enhanced data rate";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Packet type table: %s (0x%2.2x)", str, table);
+}
+
+static void system_exception_evt(const void *data, uint8_t size)
+{
+	uint8_t type = get_u8(data);
+	const char *str;
+
+	switch (type) {
+	case 0x00:
+		str = "No Exception";
+		break;
+	case 0x01:
+		str = "Undefined Instruction";
+		break;
+	case 0x02:
+		str = "Prefetch abort";
+		break;
+	case 0x03:
+		str = "Data abort";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, type);
+
+	packet_hexdump(data + 1, size - 1);
+}
+
 static const struct vendor_evt vendor_evt_table[] = {
-	{ 0x01, "Fatal Exception" },
+	{ 0x01, "Fatal Exception",
+			fatal_exception_evt, 4, true },
 	{ 0x02, "Bootup",
 			bootup_evt, 6, true },
 	{ 0x06, "Secure Send Commands Result",
 			secure_send_commands_result_evt, 4, true },
-	{ 0x08, "Debug Exception" },
-	{ 0x0f, "LE Link Established" },
-	{ 0x11, "Scan Status" },
+	{ 0x08, "Debug Exception",
+			debug_exception_evt, 4, true },
+	{ 0x0f, "LE Link Established",
+			le_link_established_evt, 26, true },
+	{ 0x11, "Scan Status",
+			scan_status_evt, 1, true },
 	{ 0x16, "Activate Deactivate Traces Complete",
 			act_deact_traces_complete_evt, 1, true },
 	{ 0x17, "LMP PDU Trace",
 			lmp_pdu_trace_evt, 3, false },
 	{ 0x19, "Write BD Data Complete",
 			write_bd_data_complete_evt, 1, true },
-	{ 0x25, "SCO Rejected via LMP" },
-	{ 0x26, "PTT Switch Notification" },
-	{ 0x29, "System Exception" },
+	{ 0x25, "SCO Rejected via LMP",
+			sco_rejected_via_lmp_evt, 7, true },
+	{ 0x26, "PTT Switch Notification",
+			ptt_switch_notification_evt, 3, true },
+	{ 0x29, "System Exception",
+			system_exception_evt, 133, true },
+	{ 0x2c, "FW Trace String" },
+	{ 0x2e, "FW Trace Binary" },
 	{ }
 };
 
