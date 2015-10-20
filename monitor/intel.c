@@ -270,8 +270,19 @@ static void manufacturer_mode_cmd(const void *data, uint8_t size)
 
 static void write_bd_data_cmd(const void *data, uint8_t size)
 {
+	uint8_t features[8];
+
 	packet_print_addr("Address", data, false);
-	packet_hexdump(data + 6, size - 6);
+	packet_hexdump(data + 6, 6);
+
+	memcpy(features, data + 12, 8);
+	packet_print_features_lmp(features, 0);
+
+	memcpy(features, data + 20, 1);
+	memset(features + 1, 0, 7);
+	packet_print_features_ll(features);
+
+	packet_hexdump(data + 21, size - 21);
 }
 
 static void read_bd_data_rsp(const void *data, uint8_t size)
@@ -383,6 +394,36 @@ static void ddc_config_write_rsp(const void *data, uint8_t size)
 	print_field("Identifier: 0x%4.4x", param_id);
 }
 
+static void memory_write_cmd(const void *data, uint8_t size)
+{
+	uint32_t addr = get_le32(data);
+	uint8_t mode = get_u8(data + 4);
+	uint8_t length = get_u8(data + 5);
+	const char *str;
+
+	print_field("Address: 0x%8.8x", addr);
+
+	switch (mode) {
+	case 0x00:
+		str = "Byte access";
+		break;
+	case 0x01:
+		str = "Half word access";
+		break;
+	case 0x02:
+		str = "Word access";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, mode);
+	print_field("Length: %u", length);
+
+	packet_hexdump(data + 6, size - 6);
+}
+
 static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x001, "Reset",
 			reset_cmd, 8, true,
@@ -395,7 +436,7 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x007, "Enable LPM" },
 	{ 0x008, "PCM Write Configuration" },
 	{ 0x009, "Secure Send",
-			secure_send_cmd, 0, false,
+			secure_send_cmd, 1, false,
 			status_rsp, 1, true },
 	{ 0x00d, "Read Secure Boot Params",
 			null_cmd, 0, true },
@@ -440,7 +481,9 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 			ddc_config_write_rsp, 3, true },
 	{ 0x08c, "DDC Config Read" },
 	{ 0x08d, "Memory Read" },
-	{ 0x08e, "Memory Write" },
+	{ 0x08e, "Memory Write",
+			memory_write_cmd, 6, false,
+			status_rsp, 1, true },
 	{ }
 };
 
@@ -568,6 +611,23 @@ static void bootup_evt(const void *data, uint8_t size)
 	}
 
 	print_field("DDC status: %s (0x%2.2x)", str, ddc_status);
+}
+
+static void default_bd_data_evt(const void *data, uint8_t size)
+{
+	uint8_t mem_status = get_u8(data);
+	const char *str;
+
+	switch (mem_status) {
+	case 0x02:
+		str = "Invalid manufacturing data";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Memory status: %s (0x%2.2x)", str, mem_status);
 }
 
 static void secure_send_commands_result_evt(const void *data, uint8_t size)
@@ -826,6 +886,8 @@ static const struct vendor_evt vendor_evt_table[] = {
 			fatal_exception_evt, 4, true },
 	{ 0x02, "Bootup",
 			bootup_evt, 6, true },
+	{ 0x05, "Default BD Data",
+			default_bd_data_evt, 1, true },
 	{ 0x06, "Secure Send Commands Result",
 			secure_send_commands_result_evt, 4, true },
 	{ 0x08, "Debug Exception",
