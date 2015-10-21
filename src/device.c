@@ -4788,7 +4788,7 @@ done:
 	}
 
 	if (device->connect) {
-		if (!device->le_state.svc_resolved)
+		if (!device->le_state.svc_resolved && !err)
 			device_browse_gatt(device, NULL);
 
 		if (err < 0)
