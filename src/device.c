@@ -3302,7 +3302,7 @@ static void device_accept_gatt_profiles(struct btd_device *device)
 		service_accept(l->data);
 }
 
-static void device_remove_gatt_profile(struct btd_device *device,
+static void device_remove_gatt_service(struct btd_device *device,
 						struct gatt_db_attribute *attr)
 {
 	struct btd_service *service;
@@ -3437,7 +3437,7 @@ static void gatt_service_removed(struct gatt_db_attribute *attr,
 		 * remove it anyway.
 		 */
 		if (device->client || device->temporary == TRUE)
-			device_remove_gatt_profile(device, attr);
+			device_remove_gatt_service(device, attr);
 
 		g_free(l->data);
 		device->uuids = g_slist_delete_link(device->uuids, l);
