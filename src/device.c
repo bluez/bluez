@@ -2015,7 +2015,7 @@ static void store_chrc(struct gatt_db_attribute *attr, void *user_data)
 
 	sprintf(handle, "%04hx", handle_num);
 	bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
-	sprintf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%s", value_handle,
+	sprintf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hhx:%s", value_handle,
 							properties, uuid_str);
 	g_key_file_set_string(key_file, "Attributes", handle, value);
 
