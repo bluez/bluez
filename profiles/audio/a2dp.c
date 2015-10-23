@@ -1457,7 +1457,7 @@ static void transport_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	if (!avdtp_stream_set_transport(setup->stream,
 					g_io_channel_unix_get_fd(io),
-					omtu, imtu))
+					imtu, omtu))
 		goto drop;
 
 	g_io_channel_set_close_on_unref(io, FALSE);
