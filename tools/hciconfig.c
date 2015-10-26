@@ -964,7 +964,7 @@ static void cmd_class(int ctl, int hdev, char *opt)
 				get_minor_device_name(cls[1] & 0x1f, cls[0] >> 2));
 	}
 
-	hci_close_dev(hdev);
+	hci_close_dev(s);
 }
 
 static void cmd_voice(int ctl, int hdev, char *opt)
