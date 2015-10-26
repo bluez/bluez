@@ -3254,7 +3254,7 @@ static void add_gatt_service(struct gatt_db_attribute *attr, void *user_data)
 	/* Check if service was already probed */
 	l = find_service_with_uuid(device->services, uuid_str);
 	if (l)
-		return;
+		goto done;
 
 	/* Add UUID and probe service */
 	btd_device_add_uuid(device, uuid_str);
@@ -3264,6 +3264,7 @@ static void add_gatt_service(struct gatt_db_attribute *attr, void *user_data)
 	if (!l)
 		return;
 
+done:
 	/* Mark service as active to skip discovering it again */
 	gatt_db_service_set_active(attr, true);
 
