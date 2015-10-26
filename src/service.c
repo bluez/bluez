@@ -184,6 +184,18 @@ int service_accept(struct btd_service *service)
 	char addr[18];
 	int err;
 
+	switch (service->state) {
+	case BTD_SERVICE_STATE_UNAVAILABLE:
+		return -EINVAL;
+	case BTD_SERVICE_STATE_DISCONNECTED:
+		break;
+	case BTD_SERVICE_STATE_CONNECTING:
+	case BTD_SERVICE_STATE_CONNECTED:
+		return -EALREADY;
+	case BTD_SERVICE_STATE_DISCONNECTING:
+		return -EBUSY;
+	}
+
 	if (!service->profile->accept)
 		goto done;
 
