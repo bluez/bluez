@@ -902,7 +902,7 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 static void data_callback(int fd, uint32_t events, void *user_data)
 {
 	struct control_data *data = user_data;
-	unsigned char control[32];
+	unsigned char control[64];
 	struct mgmt_hdr hdr;
 	struct msghdr msg;
 	struct iovec iov[2];
@@ -927,6 +927,8 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 		struct cmsghdr *cmsg;
 		struct timeval *tv = NULL;
 		struct timeval ctv;
+		struct ucred *cred = NULL;
+		struct ucred ccred;
 		uint16_t opcode, index, pktlen;
 		ssize_t len;
 
@@ -946,6 +948,11 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 				memcpy(&ctv, CMSG_DATA(cmsg), sizeof(ctv));
 				tv = &ctv;
 			}
+
+			if (cmsg->cmsg_type == SCM_CREDENTIALS) {
+				memcpy(&ccred, CMSG_DATA(cmsg), sizeof(ccred));
+				cred = &ccred;
+			}
 		}
 
 		opcode = le16_to_cpu(hdr.opcode);
@@ -954,14 +961,16 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 
 		switch (data->channel) {
 		case HCI_CHANNEL_CONTROL:
-			packet_control(tv, index, opcode, data->buf, pktlen);
+			packet_control(tv, cred, index, opcode,
+							data->buf, pktlen);
 			break;
 		case HCI_CHANNEL_MONITOR:
 			btsnoop_write_hci(btsnoop_file, tv, index, opcode,
 							data->buf, pktlen);
 			ellisys_inject_hci(tv, index, opcode,
 							data->buf, pktlen);
-			packet_monitor(tv, index, opcode, data->buf, pktlen);
+			packet_monitor(tv, cred, index, opcode,
+							data->buf, pktlen);
 			break;
 		}
 	}
@@ -997,6 +1006,12 @@ static int open_socket(uint16_t channel)
 
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMP, &opt, sizeof(opt)) < 0) {
 		perror("Failed to enable timestamps");
+		close(fd);
+		return -1;
+	}
+
+	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &opt, sizeof(opt)) < 0) {
+		perror("Failed to enable credentials");
 		close(fd);
 		return -1;
 	}
@@ -1051,7 +1066,7 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 			uint16_t opcode = le16_to_cpu(hdr->opcode);
 			uint16_t index = le16_to_cpu(hdr->index);
 
-			packet_monitor(NULL, index, opcode,
+			packet_monitor(NULL, NULL, index, opcode,
 					data->buf + MGMT_HDR_SIZE, pktlen);
 
 			data->offset -= pktlen + MGMT_HDR_SIZE;
@@ -1190,7 +1205,7 @@ void control_reader(const char *path)
 			if (opcode == 0xffff)
 				continue;
 
-			packet_monitor(&tv, index, opcode, buf, pktlen);
+			packet_monitor(&tv, NULL, index, opcode, buf, pktlen);
 			ellisys_inject_hci(&tv, index, opcode, buf, pktlen);
 		}
 		break;

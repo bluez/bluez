@@ -36,6 +36,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -168,7 +169,8 @@ void packet_select_index(uint16_t index)
 
 #define print_space(x) printf("%*c", (x), ' ');
 
-static void print_packet(struct timeval *tv, uint16_t index, char ident,
+static void print_packet(struct timeval *tv, struct ucred *cred,
+					uint16_t index, char ident,
 					const char *color, const char *label,
 					const char *text, const char *extra)
 {
@@ -3655,7 +3657,8 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 	}
 }
 
-void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
+void packet_control(struct timeval *tv, struct ucred *cred,
+					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
 	if (index_filter && index_number != index)
@@ -3680,7 +3683,8 @@ struct index_data {
 
 static struct index_data index_list[MAX_INDEX];
 
-void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
+void packet_monitor(struct timeval *tv, struct ucred *cred,
+					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
 	const struct btsnoop_opcode_new_index *ni;
@@ -3718,22 +3722,22 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		packet_del_index(tv, index, str);
 		break;
 	case BTSNOOP_OPCODE_COMMAND_PKT:
-		packet_hci_command(tv, index, data, size);
+		packet_hci_command(tv, cred, index, data, size);
 		break;
 	case BTSNOOP_OPCODE_EVENT_PKT:
-		packet_hci_event(tv, index, data, size);
+		packet_hci_event(tv, cred, index, data, size);
 		break;
 	case BTSNOOP_OPCODE_ACL_TX_PKT:
-		packet_hci_acldata(tv, index, false, data, size);
+		packet_hci_acldata(tv, cred, index, false, data, size);
 		break;
 	case BTSNOOP_OPCODE_ACL_RX_PKT:
-		packet_hci_acldata(tv, index, true, data, size);
+		packet_hci_acldata(tv, cred, index, true, data, size);
 		break;
 	case BTSNOOP_OPCODE_SCO_TX_PKT:
-		packet_hci_scodata(tv, index, false, data, size);
+		packet_hci_scodata(tv, cred, index, false, data, size);
 		break;
 	case BTSNOOP_OPCODE_SCO_RX_PKT:
-		packet_hci_scodata(tv, index, true, data, size);
+		packet_hci_scodata(tv, cred, index, true, data, size);
 		break;
 	case BTSNOOP_OPCODE_OPEN_INDEX:
 		if (index < MAX_INDEX)
@@ -3773,7 +3777,7 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		break;
 	default:
 		sprintf(extra_str, "(code %d len %d)", opcode, size);
-		print_packet(tv, index, '*', COLOR_ERROR,
+		print_packet(tv, cred, index, '*', COLOR_ERROR,
 					"Unknown packet", NULL, extra_str);
 		packet_hexdump(data, size);
 		break;
@@ -3790,7 +3794,7 @@ void packet_simulator(struct timeval *tv, uint16_t frequency,
 
 	sprintf(str, "%u MHz", frequency);
 
-	print_packet(tv, 0, '*', COLOR_PHY_PACKET,
+	print_packet(tv, NULL, 0, '*', COLOR_PHY_PACKET,
 					"Physical packet:", NULL, str);
 
 	ll_packet(frequency, data, size, false);
@@ -8630,25 +8634,25 @@ void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 	sprintf(details, "(%s,%s,%s)", hci_typetostr(type),
 					hci_bustostr(bus), name);
 
-	print_packet(tv, index, '=', COLOR_NEW_INDEX, "New Index",
+	print_packet(tv, NULL, index, '=', COLOR_NEW_INDEX, "New Index",
 							label, details);
 }
 
 void packet_del_index(struct timeval *tv, uint16_t index, const char *label)
 {
-	print_packet(tv, index, '=', COLOR_DEL_INDEX, "Delete Index",
+	print_packet(tv, NULL, index, '=', COLOR_DEL_INDEX, "Delete Index",
 							label, NULL);
 }
 
 void packet_open_index(struct timeval *tv, uint16_t index, const char *label)
 {
-	print_packet(tv, index, '=', COLOR_OPEN_INDEX, "Open Index",
+	print_packet(tv, NULL, index, '=', COLOR_OPEN_INDEX, "Open Index",
 							label, NULL);
 }
 
 void packet_close_index(struct timeval *tv, uint16_t index, const char *label)
 {
-	print_packet(tv, index, '=', COLOR_CLOSE_INDEX, "Close Index",
+	print_packet(tv, NULL, index, '=', COLOR_CLOSE_INDEX, "Close Index",
 							label, NULL);
 }
 
@@ -8659,7 +8663,7 @@ void packet_index_info(struct timeval *tv, uint16_t index, const char *label,
 
 	sprintf(details, "(%s)", bt_compidtostr(manufacturer));
 
-	print_packet(tv, index, '=', COLOR_INDEX_INFO, "Index Info",
+	print_packet(tv, NULL, index, '=', COLOR_INDEX_INFO, "Index Info",
 							label, details);
 }
 
@@ -8671,8 +8675,8 @@ void packet_vendor_diag(struct timeval *tv, uint16_t index,
 
 	sprintf(extra_str, "(len %d)", size);
 
-	print_packet(tv, index, '=', COLOR_VENDOR_DIAG, "Vendor Diagnostic",
-							NULL, extra_str);
+	print_packet(tv, NULL, index, '=', COLOR_VENDOR_DIAG,
+					"Vendor Diagnostic", NULL, extra_str);
 
 	switch (manufacturer) {
 	case 15:
@@ -8684,7 +8688,7 @@ void packet_vendor_diag(struct timeval *tv, uint16_t index,
 	}
 }
 
-void packet_hci_command(struct timeval *tv, uint16_t index,
+void packet_hci_command(struct timeval *tv, struct ucred *cred, uint16_t index,
 					const void *data, uint16_t size)
 {
 	const hci_command_hdr *hdr = data;
@@ -8699,7 +8703,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 
 	if (size < HCI_COMMAND_HDR_SIZE) {
 		sprintf(extra_str, "(len %d)", size);
-		print_packet(tv, index, '*', COLOR_ERROR,
+		print_packet(tv, cred, index, '*', COLOR_ERROR,
 			"Malformed HCI Command packet", NULL, extra_str);
 		packet_hexdump(data, size);
 		return;
@@ -8757,7 +8761,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 
 	sprintf(extra_str, "(0x%2.2x|0x%4.4x) plen %d", ogf, ocf, hdr->plen);
 
-	print_packet(tv, index, '<', opcode_color, "HCI Command",
+	print_packet(tv, cred, index, '<', opcode_color, "HCI Command",
 							opcode_str, extra_str);
 
 	if (!opcode_data || !opcode_data->cmd_func) {
@@ -8789,7 +8793,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	opcode_data->cmd_func(data, hdr->plen);
 }
 
-void packet_hci_event(struct timeval *tv, uint16_t index,
+void packet_hci_event(struct timeval *tv, struct ucred *cred, uint16_t index,
 					const void *data, uint16_t size)
 {
 	const hci_event_hdr *hdr = data;
@@ -8800,7 +8804,7 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 
 	if (size < HCI_EVENT_HDR_SIZE) {
 		sprintf(extra_str, "(len %d)", size);
-		print_packet(tv, index, '*', COLOR_ERROR,
+		print_packet(tv, cred, index, '*', COLOR_ERROR,
 			"Malformed HCI Event packet", NULL, extra_str);
 		packet_hexdump(data, size);
 		return;
@@ -8829,7 +8833,7 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 
 	sprintf(extra_str, "(0x%2.2x) plen %d", hdr->evt, hdr->plen);
 
-	print_packet(tv, index, '>', event_color, "HCI Event",
+	print_packet(tv, cred, index, '>', event_color, "HCI Event",
 						event_str, extra_str);
 
 	if (!event_data || !event_data->func) {
@@ -8861,8 +8865,8 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 	event_data->func(data, hdr->plen);
 }
 
-void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
-					const void *data, uint16_t size)
+void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size)
 {
 	const struct bt_hci_acl_hdr *hdr = data;
 	uint16_t handle = le16_to_cpu(hdr->handle);
@@ -8872,10 +8876,10 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 
 	if (size < sizeof(*hdr)) {
 		if (in)
-			print_packet(tv, index, '*', COLOR_ERROR,
+			print_packet(tv, cred, index, '*', COLOR_ERROR,
 				"Malformed ACL Data RX packet", NULL, NULL);
 		else
-			print_packet(tv, index, '*', COLOR_ERROR,
+			print_packet(tv, cred, index, '*', COLOR_ERROR,
 				"Malformed ACL Data TX packet", NULL, NULL);
 		packet_hexdump(data, size);
 		return;
@@ -8887,7 +8891,7 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 	sprintf(handle_str, "Handle %d", acl_handle(handle));
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, dlen);
 
-	print_packet(tv, index, in ? '>' : '<', COLOR_HCI_ACLDATA,
+	print_packet(tv, cred, index, in ? '>' : '<', COLOR_HCI_ACLDATA,
 				in ? "ACL Data RX" : "ACL Data TX",
 						handle_str, extra_str);
 
@@ -8904,8 +8908,8 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 	l2cap_packet(index, in, acl_handle(handle), flags, data, size);
 }
 
-void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
-					const void *data, uint16_t size)
+void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size)
 {
 	const hci_sco_hdr *hdr = data;
 	uint16_t handle = le16_to_cpu(hdr->handle);
@@ -8914,10 +8918,10 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 
 	if (size < HCI_SCO_HDR_SIZE) {
 		if (in)
-			print_packet(tv, index, '*', COLOR_ERROR,
+			print_packet(tv, cred, index, '*', COLOR_ERROR,
 				"Malformed SCO Data RX packet", NULL, NULL);
 		else
-			print_packet(tv, index, '*', COLOR_ERROR,
+			print_packet(tv, cred, index, '*', COLOR_ERROR,
 				"Malformed SCO Data TX packet", NULL, NULL);
 		packet_hexdump(data, size);
 		return;
@@ -8929,7 +8933,7 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 	sprintf(handle_str, "Handle %d", acl_handle(handle));
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
 
-	print_packet(tv, index, in ? '>' : '<', COLOR_HCI_SCODATA,
+	print_packet(tv, cred, index, in ? '>' : '<', COLOR_HCI_SCODATA,
 				in ? "SCO Data RX" : "SCO Data TX",
 						handle_str, extra_str);
 

@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 
 #define PACKET_FILTER_SHOW_INDEX	(1 << 0)
 #define PACKET_FILTER_SHOW_DATE		(1 << 1)
@@ -53,9 +54,11 @@ void packet_print_channel_map_ll(const uint8_t *map);
 void packet_print_io_capability(uint8_t capability);
 void packet_print_io_authentication(uint8_t authentication);
 
-void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
+void packet_control(struct timeval *tv, struct ucred *cred,
+					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
-void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
+void packet_monitor(struct timeval *tv, struct ucred *cred,
+					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
 void packet_simulator(struct timeval *tv, uint16_t frequency,
 					const void *data, uint16_t size);
@@ -71,13 +74,13 @@ void packet_vendor_diag(struct timeval *tv, uint16_t index,
 					uint16_t manufacturer,
 					const void *data, uint16_t size);
 
-void packet_hci_command(struct timeval *tv, uint16_t index,
+void packet_hci_command(struct timeval *tv, struct ucred *cred, uint16_t index,
 					const void *data, uint16_t size);
-void packet_hci_event(struct timeval *tv, uint16_t index,
+void packet_hci_event(struct timeval *tv, struct ucred *cred, uint16_t index,
 					const void *data, uint16_t size);
-void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
-					const void *data, uint16_t size);
-void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
-					const void *data, uint16_t size);
+void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size);
+void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size);
 
 void packet_todo(void);

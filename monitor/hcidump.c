@@ -160,17 +160,19 @@ static void device_callback(int fd, uint32_t events, void *user_data)
 
 		switch (buf[0]) {
 		case HCI_COMMAND_PKT:
-			packet_hci_command(tv, data->index, buf + 1, len - 1);
+			packet_hci_command(tv, NULL, data->index,
+							buf + 1, len - 1);
 			break;
 		case HCI_EVENT_PKT:
-			packet_hci_event(tv, data->index, buf + 1, len - 1);
+			packet_hci_event(tv, NULL, data->index,
+							buf + 1, len - 1);
 			break;
 		case HCI_ACLDATA_PKT:
-			packet_hci_acldata(tv, data->index, !!dir,
+			packet_hci_acldata(tv, NULL, data->index, !!dir,
 							buf + 1, len - 1);
 			break;
 		case HCI_SCODATA_PKT:
-			packet_hci_scodata(tv, data->index, !!dir,
+			packet_hci_scodata(tv, NULL, data->index, !!dir,
 							buf + 1, len - 1);
 			break;
 		}
