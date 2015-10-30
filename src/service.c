@@ -191,7 +191,7 @@ int service_accept(struct btd_service *service)
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
 	case BTD_SERVICE_STATE_CONNECTED:
-		return -EALREADY;
+		return 0;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		return -EBUSY;
 	}
