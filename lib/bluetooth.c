@@ -1579,6 +1579,62 @@ const char *bt_compidtostr(int compid)
 		return "CliniCloud Inc";
 	case 658:
 		return "SwiftSensors";
+	case 659:
+		return "Blue Bite";
+	case 660:
+		return "ELIAS GmbH";
+	case 661:
+		return "Sivantos GmbH";
+	case 662:
+		return "Petzl";
+	case 663:
+		return "storm power ltd";
+	case 664:
+		return "EISST Ltd";
+	case 665:
+		return "Inexess Technology Simma KG";
+	case 666:
+		return "Currant, Inc.";
+	case 667:
+		return "C2 Development, Inc.";
+	case 668:
+		return "Blue Sky Scientific, LLC";
+	case 669:
+		return "ALOTTAZS LABS, LLC";
+	case 670:
+		return "Kupson spol. s r.o.";
+	case 671:
+		return "Areus Engineering GmbH";
+	case 672:
+		return "Impossible Camera GmbH";
+	case 673:
+		return "InventureTrack Systems";
+	case 674:
+		return "LockedUp";
+	case 675:
+		return "Itude";
+	case 676:
+		return "Pacific Lock Company";
+	case 677:
+		return "Tendyron Corporation ( )";
+	case 678:
+		return "Robert Bosch GmbH";
+	case 679:
+		return "Illuxtron international B.V.";
+	case 680:
+		return "miSport Ltd.";
+	case 681:
+		return "Chargelib";
+	case 682:
+		return "Doppler Lab";
+	case 683:
+		return "BBPOS Limited";
+	case 684:
+		return "RTB Elektronik GmbH & Co. KG";
+	case 685:
+		return "Rx Networks, Inc.";
+	case 686:
+		return "WeatherFlow, Inc.";
 	case 65535:
 		return "internal use";
 	default:
