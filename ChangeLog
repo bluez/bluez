@@ -1,3 +1,11 @@
+ver 5.36:
+	Fix issue with PBAP headers for size query.
+	Fix issue with AVRCP current player handling.
+	Fix issue with device information handling.
+	Fix issue with device disconnect handling.
+	Fix issue with duplicate connect handling.
+	Fix issue with attribute claiming for drivers.
+
 ver 5.35:
 	Fix issue with connected devices after discovery.
 	Fix issue with profile support and LTK loading.
