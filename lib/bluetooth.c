@@ -1616,7 +1616,7 @@ const char *bt_compidtostr(int compid)
 	case 676:
 		return "Pacific Lock Company";
 	case 677:
-		return "Tendyron Corporation ( )";
+		return "Tendyron Corporation ( 天地融科技股份有限公司 )";
 	case 678:
 		return "Robert Bosch GmbH";
 	case 679:
