@@ -462,12 +462,45 @@ static const uint8_t le_connect_req[] = {	0x80, 0x00, /* PSM */
 						0x05, 0x00, /* Credits */
 };
 
+static const uint8_t le_connect_rsp[] = {	0x41, 0x00, /* DCID */
+						0x20, 0x00, /* MTU */
+						0x20, 0x00, /* MPS */
+						0x05, 0x00, /* Credits */
+						0x00, 0x00, /* Result */
+};
+
 static const struct l2cap_data le_server_success_test = {
 	.server_psm = 0x0080,
 	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
 	.send_cmd = le_connect_req,
 	.send_cmd_len = sizeof(le_connect_req),
 	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+};
+
+static const uint8_t nval_le_connect_req[] = {	0x80, 0x00, /* PSM */
+						0x01, 0x00, /* SCID */
+						0x20, 0x00, /* MTU */
+						0x20, 0x00, /* MPS */
+						0x05, 0x00, /* Credits */
+};
+
+static const uint8_t nval_le_connect_rsp[] = {	0x00, 0x00, /* DCID */
+						0x00, 0x00, /* MTU */
+						0x00, 0x00, /* MPS */
+						0x00, 0x00, /* Credits */
+						0x09, 0x00, /* Result */
+};
+
+static const struct l2cap_data le_server_nval_scid_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = nval_le_connect_req,
+	.send_cmd_len = sizeof(nval_le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = nval_le_connect_rsp,
+	.expect_cmd_len = sizeof(nval_le_connect_rsp),
 };
 
 static const struct l2cap_data le_att_client_connect_success_test_1 = {
@@ -1441,6 +1474,8 @@ int main(int argc, char *argv[])
 					&le_client_connect_nval_psm_test,
 					setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Server - Success", &le_server_success_test,
+					setup_powered_server, test_server);
+	test_l2cap_le("L2CAP LE Server - Nval SCID", &le_server_nval_scid_test,
 					setup_powered_server, test_server);
 
 
