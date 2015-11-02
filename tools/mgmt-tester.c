@@ -437,8 +437,6 @@ struct generic_data {
 	uint8_t adv_data_len;
 };
 
-# define TESTER_NOOP_OPCODE 0x0000
-
 static const char dummy_data[] = { 0x00 };
 
 static const struct generic_data invalid_command_test = {
@@ -4601,7 +4599,6 @@ static const struct generic_data add_advertising_success_18 = {
 };
 
 static const struct generic_data add_advertising_timeout_expired = {
-	.send_opcode = TESTER_NOOP_OPCODE,
 	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
 	.expect_alt_ev_param = advertising_instance1_param,
 	.expect_alt_ev_len = sizeof(advertising_instance1_param),
@@ -4656,7 +4653,6 @@ static const struct generic_data remove_advertising_success_2 = {
 };
 
 static const struct generic_data multi_advertising_switch = {
-	.send_opcode = TESTER_NOOP_OPCODE,
 	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
 	.expect_alt_ev_param = advertising_instance1_param,
 	.expect_alt_ev_len = sizeof(advertising_instance1_param),
