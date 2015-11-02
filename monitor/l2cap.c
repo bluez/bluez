@@ -511,11 +511,88 @@ static void print_conn_result(uint16_t result)
 	case 0x0004:
 		str = "Connection refused - no resources available";
 		break;
+	case 0x0006:
+		str = "Connection refused - Invalid Source CID";
+		break;
+	case 0x0007:
+		str = "Connection refused - Source CID already allocated";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
+}
+
+static void print_le_conn_result(uint16_t result)
+{
+	const char *str;
+
+	switch (le16_to_cpu(result)) {
+	case 0x0000:
+		str = "Connection successful";
+		break;
+	case 0x0002:
+		str = "Connection refused - PSM not supported";
+		break;
+	case 0x0004:
+		str = "Connection refused - no resources available";
+		break;
 	case 0x0005:
-		str = "Insufficient Authentication";
+		str = "Connection refused - insufficient authentication";
 		break;
 	case 0x0006:
-		str = "Insufficient Authorization";
+		str = "Connection refused - insufficient authorization";
+		break;
+	case 0x0007:
+		str = "Connection refused - insufficient encryption key size";
+		break;
+	case 0x0008:
+		str = "Connection refused - insufficient encryption";
+		break;
+	case 0x0009:
+		str = "Connection refused - Invalid Source CID";
+		break;
+	case 0x0010:
+		str = "Connection refused - Source CID already allocated";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
+}
+
+static void print_create_chan_result(uint16_t result)
+{
+	const char *str;
+
+	switch (le16_to_cpu(result)) {
+	case 0x0000:
+		str = "Connection successful";
+		break;
+	case 0x0001:
+		str = "Connection pending";
+		break;
+	case 0x0002:
+		str = "Connection refused - PSM not supported";
+		break;
+	case 0x0003:
+		str = "Connection refused - security block";
+		break;
+	case 0x0004:
+		str = "Connection refused - no resources available";
+		break;
+	case 0x0005:
+		str = "Connection refused - Controller ID not supported";
+		break;
+	case 0x0006:
+		str = "Connection refused - Invalid Source CID";
+		break;
+	case 0x0007:
+		str = "Connection refused - Source CID already allocated";
 		break;
 	default:
 		str = "Reserved";
@@ -1149,7 +1226,7 @@ static void sig_create_chan_rsp(const struct l2cap_frame *frame)
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
-	print_conn_result(pdu->result);
+	print_create_chan_result(pdu->result);
 	print_conn_status(pdu->status);
 
 	assign_dcid(frame, le16_to_cpu(pdu->dcid), le16_to_cpu(pdu->scid));
@@ -1224,7 +1301,7 @@ static void sig_le_conn_rsp(const struct l2cap_frame *frame)
 	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
 	print_field("MPS: %u", le16_to_cpu(pdu->mps));
 	print_field("Credits: %u", le16_to_cpu(pdu->credits));
-	print_conn_result(pdu->result);
+	print_le_conn_result(pdu->result);
 
 	assign_dcid(frame, le16_to_cpu(pdu->dcid), 0);
 }
