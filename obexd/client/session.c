@@ -62,6 +62,7 @@ static guint64 counter = 0;
 
 struct callback_data {
 	struct obc_session *session;
+	guint id;
 	session_callback_t func;
 	void *data;
 };
@@ -308,6 +309,9 @@ static void callback_destroy(struct callback_data *callback, GError *err)
 {
 	struct obc_session *session = callback->session;
 
+	if (callback->id > 0)
+		g_obex_cancel_req(session->obex, callback->id, TRUE);
+
 	callback->func(session, NULL, err, callback->data);
 	g_free(callback);
 	session->callback = NULL;
@@ -320,6 +324,8 @@ static void connect_cb(GObex *obex, GError *err, GObexPacket *rsp,
 	struct callback_data *callback = user_data;
 	GError *gerr = NULL;
 	uint8_t rsp_code;
+
+	callback->id = 0;
 
 	if (err != NULL) {
 		error("connect_cb: %s", err->message);
@@ -392,24 +398,26 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 
 		len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
 		if (driver->target)
-			g_obex_connect(obex, connect_cb, callback, &err,
+			callback->id = g_obex_connect(obex, connect_cb,
+					callback, &err,
 					G_OBEX_HDR_TARGET,
 					driver->target, driver->target_len,
 					G_OBEX_HDR_APPARAM,
 					buf, len,
 					G_OBEX_HDR_INVALID);
 		else
-			g_obex_connect(obex, connect_cb, callback, &err,
+			callback->id = g_obex_connect(obex, connect_cb,
+					callback, &err,
 					G_OBEX_HDR_APPARAM, buf, len,
 					G_OBEX_HDR_INVALID);
 		g_obex_apparam_free(apparam);
 	} else if (driver->target)
-		g_obex_connect(obex, connect_cb, callback, &err,
+		callback->id = g_obex_connect(obex, connect_cb, callback, &err,
 			G_OBEX_HDR_TARGET, driver->target, driver->target_len,
 			G_OBEX_HDR_INVALID);
 	else
-		g_obex_connect(obex, connect_cb, callback, &err,
-							G_OBEX_HDR_INVALID);
+		callback->id = g_obex_connect(obex, connect_cb, callback,
+						&err, G_OBEX_HDR_INVALID);
 
 	if (err != NULL) {
 		error("%s", err->message);
