@@ -75,24 +75,6 @@ void queue_destroy(struct queue *queue, queue_destroy_func_t destroy)
 	queue_unref(queue);
 }
 
-static struct queue_entry *queue_entry_ref(struct queue_entry *entry)
-{
-	if (!entry)
-		return NULL;
-
-	__sync_fetch_and_add(&entry->ref_count, 1);
-
-	return entry;
-}
-
-static void queue_entry_unref(struct queue_entry *entry)
-{
-	if (__sync_sub_and_fetch(&entry->ref_count, 1))
-		return;
-
-	free(entry);
-}
-
 static struct queue_entry *queue_entry_new(void *data)
 {
 	struct queue_entry *entry;
@@ -100,7 +82,7 @@ static struct queue_entry *queue_entry_new(void *data)
 	entry = new0(struct queue_entry, 1);
 	entry->data = data;
 
-	return queue_entry_ref(entry);
+	return entry;
 }
 
 bool queue_push_tail(struct queue *queue, void *data)
@@ -196,7 +178,7 @@ void *queue_pop_head(struct queue *queue)
 
 	data = entry->data;
 
-	queue_entry_unref(entry);
+	free(entry);
 	queue->entries--;
 
 	return data;
@@ -234,14 +216,8 @@ void queue_foreach(struct queue *queue, queue_foreach_func_t function,
 	while (entry && queue->head && queue->ref_count > 1) {
 		struct queue_entry *next;
 
-		queue_entry_ref(entry);
-
-		function(entry->data, user_data);
-
 		next = entry->next;
-
-		queue_entry_unref(entry);
-
+		function(entry->data, user_data);
 		entry = next;
 	}
 	queue_unref(queue);
@@ -290,7 +266,7 @@ bool queue_remove(struct queue *queue, void *data)
 		if (!entry->next)
 			queue->tail = prev;
 
-		queue_entry_unref(entry);
+		free(entry);
 		queue->entries--;
 
 		return true;
@@ -323,7 +299,7 @@ void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 
 			data = entry->data;
 
-			queue_entry_unref(entry);
+			free(entry);
 			queue->entries--;
 
 			return data;
@@ -374,7 +350,7 @@ unsigned int queue_remove_all(struct queue *queue, queue_match_func_t function,
 			if (destroy)
 				destroy(tmp->data);
 
-			queue_entry_unref(tmp);
+			free(tmp);
 			count++;
 		}
 	}
