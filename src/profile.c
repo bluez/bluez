@@ -719,19 +719,13 @@ void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
 
 int btd_profile_register(struct btd_profile *profile)
 {
-	if (profile->external)
-		ext_profiles = g_slist_append(ext_profiles, profile);
-	else
-		profiles = g_slist_append(profiles, profile);
+	profiles = g_slist_append(profiles, profile);
 	return 0;
 }
 
 void btd_profile_unregister(struct btd_profile *profile)
 {
-	if (profile->external)
-		ext_profiles = g_slist_remove(ext_profiles, profile);
-	else
-		profiles = g_slist_remove(profiles, profile);
+	profiles = g_slist_remove(profiles, profile);
 }
 
 static struct ext_profile *find_ext_profile(const char *owner,
@@ -742,10 +736,6 @@ static struct ext_profile *find_ext_profile(const char *owner,
 	for (l = ext_profiles; l != NULL; l = g_slist_next(l)) {
 		struct ext_profile *ext = l->data;
 
-		/*
-		 * Owner and path can be NULL if profile was registered by a
-		 * plugin using external flag.
-		 */
 		if (g_strcmp0(ext->owner, owner))
 			continue;
 
