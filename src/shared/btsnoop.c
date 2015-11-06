@@ -317,6 +317,8 @@ static uint16_t get_opcode_from_pklg(uint8_t type)
 		return BTSNOOP_OPCODE_ACL_TX_PKT;
 	case 0x03:
 		return BTSNOOP_OPCODE_ACL_RX_PKT;
+	case 0x0b:
+		return BTSNOOP_OPCODE_VENDOR_DIAG;
 	}
 
 	return 0xffff;
