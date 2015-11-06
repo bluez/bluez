@@ -306,6 +306,16 @@ static bool match_notify_chrc_handle_range(const void *a, const void *b)
 					chrc->value_handle <= range->end;
 }
 
+static void notify_data_cleanup(void *data)
+{
+	struct notify_data *notify_data = data;
+
+	if (notify_data->att_id)
+		bt_att_cancel(notify_data->client->att, notify_data->att_id);
+
+	notify_data_unref(notify_data);
+}
+
 static void gatt_client_remove_all_notify_in_range(
 				struct bt_gatt_client *client,
 				uint16_t start_handle, uint16_t end_handle)
@@ -316,7 +326,7 @@ static void gatt_client_remove_all_notify_in_range(
 	range.end = end_handle;
 
 	queue_remove_all(client->notify_list, match_notify_data_handle_range,
-						&range, notify_data_unref);
+						&range, notify_data_cleanup);
 }
 
 static void gatt_client_remove_notify_chrcs_in_range(
@@ -1618,16 +1628,6 @@ static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
 							NULL, NULL, NULL);
 
 	bt_gatt_client_unref(client);
-}
-
-static void notify_data_cleanup(void *data)
-{
-	struct notify_data *notify_data = data;
-
-	if (notify_data->att_id)
-		bt_att_cancel(notify_data->client->att, notify_data->att_id);
-
-	notify_data_unref(notify_data);
 }
 
 static void bt_gatt_client_free(struct bt_gatt_client *client)
