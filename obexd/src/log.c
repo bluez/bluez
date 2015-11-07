@@ -125,7 +125,7 @@ void __obex_log_init(const char *debug, int detach)
 
 	openlog("obexd", option, LOG_DAEMON);
 
-	syslog(LOG_INFO, "OBEX daemon %s", VERSION);
+	info("OBEX daemon %s", VERSION);
 }
 
 void __obex_log_cleanup(void)
