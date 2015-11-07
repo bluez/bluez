@@ -3691,6 +3691,61 @@ static void packet_system_note(struct timeval *tv, struct ucred *cred,
 						"Note", data, NULL);
 }
 
+static void packet_user_logging(struct timeval *tv, struct ucred *cred,
+				uint16_t index, const void *data, uint16_t size)
+{
+	char pid_str[128];
+	uint8_t priority;
+	const char *color;
+
+	if (size < 1)
+		return;
+
+	priority = *((uint8_t *) data);
+
+	switch (priority) {
+	case 0x03:
+		color = COLOR_ERROR;
+		break;
+	case 0x04:
+		color = COLOR_WARN;
+		break;
+	case 0x06:
+		color = COLOR_INFO;
+		break;
+	case 0x07:
+		color = COLOR_DEBUG;
+		break;
+	default:
+		color = COLOR_WHITE_BG;
+		break;
+	}
+
+	if (cred) {
+		char *path = alloca(24);
+		char line[128];
+		FILE *fp;
+
+		snprintf(path, 23, "/proc/%u/comm", cred->pid);
+
+		fp = fopen(path, "re");
+		if (fp) {
+			if (fgets(line, sizeof(line), fp)) {
+				line[strcspn(line, "\r\n")] = '\0';
+				snprintf(pid_str, sizeof(pid_str), "%s[%u]",
+							line, cred->pid);
+			} else
+				snprintf(pid_str, sizeof(pid_str), "%u",
+								cred->pid);
+			fclose(fp);
+		} else
+			snprintf(pid_str, sizeof(pid_str), "%u", cred->pid);
+        } else
+		strcpy(pid_str, "Message");
+
+	print_packet(tv, cred, index, '=', color, pid_str, data + 1, NULL);
+}
+
 void packet_monitor(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
@@ -3785,6 +3840,9 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		break;
 	case BTSNOOP_OPCODE_SYSTEM_NOTE:
 		packet_system_note(tv, cred, index, data, size);
+		break;
+	case BTSNOOP_OPCODE_USER_LOGGING:
+		packet_user_logging(tv, cred, index, data, size);
 		break;
 	default:
 		sprintf(extra_str, "(code %d len %d)", opcode, size);
