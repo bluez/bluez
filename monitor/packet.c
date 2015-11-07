@@ -66,6 +66,7 @@
 #define COLOR_CLOSE_INDEX		COLOR_RED
 #define COLOR_INDEX_INFO		COLOR_GREEN
 #define COLOR_VENDOR_DIAG		COLOR_YELLOW
+#define COLOR_SYSTEM_NOTE		COLOR_BLACK
 
 #define COLOR_HCI_COMMAND		COLOR_BLUE
 #define COLOR_HCI_COMMAND_UNKNOWN	COLOR_WHITE_BG
@@ -3683,6 +3684,13 @@ struct index_data {
 
 static struct index_data index_list[MAX_INDEX];
 
+static void packet_system_note(struct timeval *tv, struct ucred *cred,
+				uint16_t index, const void *data, uint16_t size)
+{
+	print_packet(tv, cred, index, '=', COLOR_SYSTEM_NOTE,
+						"Note", data, NULL);
+}
+
 void packet_monitor(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
@@ -3774,6 +3782,9 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 			manufacturer = UNKNOWN_MANUFACTURER;
 
 		packet_vendor_diag(tv, index, manufacturer, data, size);
+		break;
+	case BTSNOOP_OPCODE_SYSTEM_NOTE:
+		packet_system_note(tv, cred, index, data, size);
 		break;
 	default:
 		sprintf(extra_str, "(code %d len %d)", opcode, size);

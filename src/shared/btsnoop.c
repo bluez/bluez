@@ -306,24 +306,6 @@ bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
 	return btsnoop_write(btsnoop, tv, flags, data, size);
 }
 
-static uint16_t get_opcode_from_pklg(uint8_t type)
-{
-	switch (type) {
-	case 0x00:
-		return BTSNOOP_OPCODE_COMMAND_PKT;
-	case 0x01:
-		return BTSNOOP_OPCODE_EVENT_PKT;
-	case 0x02:
-		return BTSNOOP_OPCODE_ACL_TX_PKT;
-	case 0x03:
-		return BTSNOOP_OPCODE_ACL_RX_PKT;
-	case 0x0b:
-		return BTSNOOP_OPCODE_VENDOR_DIAG;
-	}
-
-	return 0xffff;
-}
-
 static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
 					uint16_t *index, uint16_t *opcode,
 					void *data, uint16_t *size)
@@ -356,8 +338,36 @@ static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
 		tv->tv_usec = ts & 0xffffffff;
 	}
 
-	*index = 0;
-	*opcode = get_opcode_from_pklg(pkt.type);
+	switch (pkt.type) {
+	case 0x00:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_COMMAND_PKT;
+		break;
+	case 0x01:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_EVENT_PKT;
+		break;
+	case 0x02:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_ACL_TX_PKT;
+		break;
+	case 0x03:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_ACL_RX_PKT;
+		break;
+	case 0x0b:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_VENDOR_DIAG;
+		break;
+	case 0xfc:
+		*index = 0xffff;
+		*opcode = BTSNOOP_OPCODE_SYSTEM_NOTE;
+		break;
+	default:
+		*index = 0xffff;
+		*opcode = 0xffff;
+		break;
+	}
 
 	len = read(btsnoop->fd, data, toread);
 	if (len < 0) {
