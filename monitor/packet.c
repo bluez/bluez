@@ -88,7 +88,7 @@
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
 static time_t time_offset = ((time_t) -1);
-static int priority_level = 6;
+static int priority_level = BTSNOOP_PRIORITY_INFO;
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
 static uint16_t index_number = 0;
@@ -167,7 +167,7 @@ void packet_set_priority(const char *priority)
 		return;
 
 	if (!strcasecmp(priority, "debug"))
-		priority_level = 7;
+		priority_level = BTSNOOP_PRIORITY_DEBUG;
 	else
 		priority_level = atoi(priority);
 }
@@ -8733,16 +8733,16 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 		return;
 
 	switch (priority) {
-	case 0x03:
+	case BTSNOOP_PRIORITY_ERR:
 		color = COLOR_ERROR;
 		break;
-	case 0x04:
+	case BTSNOOP_PRIORITY_WARNING:
 		color = COLOR_WARN;
 		break;
-	case 0x06:
+	case BTSNOOP_PRIORITY_INFO:
 		color = COLOR_INFO;
 		break;
-	case 0x07:
+	case BTSNOOP_PRIORITY_DEBUG:
 		color = COLOR_DEBUG;
 		break;
 	default:
