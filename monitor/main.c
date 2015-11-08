@@ -75,6 +75,7 @@ static const struct option main_options[] = {
 	{ "write",   required_argument, NULL, 'w' },
 	{ "analyze", required_argument, NULL, 'a' },
 	{ "server",  required_argument, NULL, 's' },
+	{ "priority",required_argument, NULL, 'p' },
 	{ "index",   required_argument, NULL, 'i' },
 	{ "time",    no_argument,       NULL, 't' },
 	{ "date",    no_argument,       NULL, 'T' },
