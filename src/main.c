@@ -616,14 +616,18 @@ int main(int argc, char *argv[])
 	btd_agent_init();
 	btd_profile_init();
 
-	if (option_compat == TRUE)
-		sdp_flags |= SDP_SERVER_COMPAT;
+	if (main_opts.mode != BT_MODE_LE) {
+		if (option_compat == TRUE)
+			sdp_flags |= SDP_SERVER_COMPAT;
 
-	start_sdp_server(sdp_mtu, sdp_flags);
+		start_sdp_server(sdp_mtu, sdp_flags);
 
-	if (main_opts.did_source > 0)
-		register_device_id(main_opts.did_source, main_opts.did_vendor,
-				main_opts.did_product, main_opts.did_version);
+		if (main_opts.did_source > 0)
+			register_device_id(main_opts.did_source,
+						main_opts.did_vendor,
+						main_opts.did_product,
+						main_opts.did_version);
+	}
 
 	if (mps != MPS_OFF)
 		register_mps(mps == MPS_MULTIPLE);
@@ -674,7 +678,8 @@ int main(int argc, char *argv[])
 
 	rfkill_exit();
 
-	stop_sdp_server();
+	if (main_opts.mode != BT_MODE_LE)
+		stop_sdp_server();
 
 	g_main_loop_unref(event_loop);
 

@@ -46,8 +46,7 @@
 #include "sdpd.h"
 
 static guint l2cap_id = 0, unix_id = 0;
-
-static int l2cap_sock, unix_sock;
+static int l2cap_sock = -1, unix_sock = -1;
 
 /*
  * SDP server initialization on startup includes creating the
