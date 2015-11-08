@@ -163,7 +163,13 @@ void packet_del_filter(unsigned long filter)
 
 void packet_set_priority(const char *priority)
 {
-	priority_level = atoi(priority);
+	if (!priority)
+		return;
+
+	if (!strcasecmp(priority, "debug"))
+		priority_level = 7;
+	else
+		priority_level = atoi(priority);
 }
 
 void packet_select_index(uint16_t index)
