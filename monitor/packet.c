@@ -66,7 +66,6 @@
 #define COLOR_CLOSE_INDEX		COLOR_RED
 #define COLOR_INDEX_INFO		COLOR_GREEN
 #define COLOR_VENDOR_DIAG		COLOR_YELLOW
-#define COLOR_SYSTEM_NOTE		COLOR_BLACK
 
 #define COLOR_HCI_COMMAND		COLOR_BLUE
 #define COLOR_HCI_COMMAND_UNKNOWN	COLOR_WHITE_BG
@@ -8717,8 +8716,7 @@ void packet_vendor_diag(struct timeval *tv, uint16_t index,
 void packet_system_note(struct timeval *tv, struct ucred *cred,
 					uint16_t index, const void *message)
 {
-	print_packet(tv, cred, index, '=', COLOR_SYSTEM_NOTE,
-						"Note", message, NULL);
+	print_packet(tv, cred, index, '=', COLOR_INFO, "Note", message, NULL);
 }
 
 void packet_user_logging(struct timeval *tv, struct ucred *cred,
