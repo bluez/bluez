@@ -43,6 +43,9 @@
 #include "src/shared/util.h"
 #include "log.h"
 
+#define LOG_IDENT "bluetoothd"
+#define LOG_IDENT_LEN sizeof(LOG_IDENT)
+
 struct log_hdr {
 	uint16_t opcode;
 	uint16_t index;
@@ -89,8 +92,6 @@ static void logging_close(void)
 static void logging_log(uint16_t index, int priority,
 					const char *format, va_list ap)
 {
-	char *ident = "bluetoothd";
-	uint8_t ident_len = strlen(ident) + 1;
 	struct log_hdr hdr;
 	struct msghdr msg;
 	struct iovec iov[3];
@@ -104,15 +105,15 @@ static void logging_log(uint16_t index, int priority,
 
 	hdr.opcode = cpu_to_le16(0x0000);
 	hdr.index = cpu_to_le16(index);
-	hdr.len = cpu_to_le16(2 + ident_len + len);
+	hdr.len = cpu_to_le16(2 + LOG_IDENT_LEN + len);
 	hdr.priority = priority;
-	hdr.ident_len = ident_len;
+	hdr.ident_len = LOG_IDENT_LEN;
 
 	iov[0].iov_base = &hdr;
 	iov[0].iov_len = sizeof(hdr);
 
-	iov[1].iov_base = ident;
-	iov[1].iov_len = ident_len;
+	iov[1].iov_base = LOG_IDENT;
+	iov[1].iov_len = LOG_IDENT_LEN;
 
 	iov[2].iov_base = str;
 	iov[2].iov_len = len;
@@ -299,7 +300,7 @@ void __btd_log_init(const char *debug, int detach)
 	if (!detach)
 		option |= LOG_PERROR;
 
-	openlog("bluetoothd", option, LOG_DAEMON);
+	openlog(LOG_IDENT, option, LOG_DAEMON);
 
 	info("Bluetooth daemon %s", VERSION);
 }
