@@ -12,6 +12,7 @@ fi
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--enable-manpages \
+		--enable-backtrace \
 		--enable-experimental \
 		--enable-android \
 		--enable-sixaxis \
