@@ -246,7 +246,7 @@ static void print_packet(struct timeval *tv, struct ucred *cred,
 			pos += n;
 	}
 
-	n = sprintf(line + pos, "%c %s", ident, label);
+	n = sprintf(line + pos, "%c %s", ident, label ? label : "");
 	if (n > 0) {
 		pos += n;
 		len += n;
@@ -256,7 +256,8 @@ static void print_packet(struct timeval *tv, struct ucred *cred,
 		int extra_len = extra ? strlen(extra) : 0;
 		int max_len = col - len - extra_len - ts_len - 3;
 
-		n = snprintf(line + pos, max_len + 1, ": %s", text);
+		n = snprintf(line + pos, max_len + 1, "%s%s",
+						label ? ": " : "", text);
 		if (n > max_len) {
 			line[pos + max_len - 1] = '.';
 			line[pos + max_len - 2] = '.';
