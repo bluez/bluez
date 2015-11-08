@@ -64,6 +64,11 @@ struct btsnoop_opcode_index_info {
 	uint16_t manufacturer;
 } __attribute__((packed));
 
+struct btsnoop_opcode_user_logging {
+	uint8_t  priority;
+	uint8_t  ident_len;
+} __attribute__((packed));
+
 struct btsnoop;
 
 struct btsnoop *btsnoop_open(const char *path, unsigned long flags);

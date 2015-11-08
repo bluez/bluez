@@ -3685,86 +3685,16 @@ struct index_data {
 
 static struct index_data index_list[MAX_INDEX];
 
-static void packet_system_note(struct timeval *tv, struct ucred *cred,
-				uint16_t index, const void *data, uint16_t size)
-{
-	print_packet(tv, cred, index, '=', COLOR_SYSTEM_NOTE,
-						"Note", data, NULL);
-}
-
-static void packet_user_logging(struct timeval *tv, struct ucred *cred,
-				uint16_t index, const void *data, uint16_t size)
-{
-	char pid_str[128];
-	const char *label;
-	uint8_t priority;
-	uint8_t ident_len;
-	const char *color;
-
-	if (size < 2)
-		return;
-
-	priority = *((uint8_t *) data);
-	ident_len = *((uint8_t *) (data + 1));
-
-	switch (priority) {
-	case 0x03:
-		color = COLOR_ERROR;
-		break;
-	case 0x04:
-		color = COLOR_WARN;
-		break;
-	case 0x06:
-		color = COLOR_INFO;
-		break;
-	case 0x07:
-		color = COLOR_DEBUG;
-		break;
-	default:
-		color = COLOR_WHITE_BG;
-		break;
-	}
-
-	if (cred) {
-		char *path = alloca(24);
-		char line[128];
-		FILE *fp;
-
-		snprintf(path, 23, "/proc/%u/comm", cred->pid);
-
-		fp = fopen(path, "re");
-		if (fp) {
-			if (fgets(line, sizeof(line), fp)) {
-				line[strcspn(line, "\r\n")] = '\0';
-				snprintf(pid_str, sizeof(pid_str), "%s[%u]",
-							line, cred->pid);
-			} else
-				snprintf(pid_str, sizeof(pid_str), "%u",
-								cred->pid);
-			fclose(fp);
-		} else
-			snprintf(pid_str, sizeof(pid_str), "%u", cred->pid);
-
-		label = pid_str;
-        } else {
-		if (ident_len)
-			label = data + 2;
-		else
-			label = "Message";
-	}
-
-	print_packet(tv, cred, index, '=', color, label,
-					data + 2 + ident_len, NULL);
-}
-
 void packet_monitor(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
 	const struct btsnoop_opcode_new_index *ni;
 	const struct btsnoop_opcode_index_info *ii;
+	const struct btsnoop_opcode_user_logging *ul;
 	char str[18], extra_str[24];
 	uint16_t manufacturer;
+	const char *ident;
 
 	if (index_filter && index_number != index)
 		return;
@@ -3850,10 +3780,14 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		packet_vendor_diag(tv, index, manufacturer, data, size);
 		break;
 	case BTSNOOP_OPCODE_SYSTEM_NOTE:
-		packet_system_note(tv, cred, index, data, size);
+		packet_system_note(tv, cred, index, data);
 		break;
 	case BTSNOOP_OPCODE_USER_LOGGING:
-		packet_user_logging(tv, cred, index, data, size);
+		ul = data;
+		ident = ul->ident_len ? data + sizeof(*ul) : NULL;
+
+		packet_user_logging(tv, cred, index, ul->priority, ident,
+					data + sizeof(*ul) + ul->ident_len);
 		break;
 	default:
 		sprintf(extra_str, "(code %d len %d)", opcode, size);
@@ -8766,6 +8700,70 @@ void packet_vendor_diag(struct timeval *tv, uint16_t index,
 		packet_hexdump(data, size);
 		break;
 	}
+}
+
+void packet_system_note(struct timeval *tv, struct ucred *cred,
+					uint16_t index, const void *message)
+{
+	print_packet(tv, cred, index, '=', COLOR_SYSTEM_NOTE,
+						"Note", message, NULL);
+}
+
+void packet_user_logging(struct timeval *tv, struct ucred *cred,
+					uint16_t index, uint8_t priority,
+					const char *ident, const char *message)
+{
+	char pid_str[128];
+	const char *label;
+	const char *color;
+
+	switch (priority) {
+	case 0x03:
+		color = COLOR_ERROR;
+		break;
+	case 0x04:
+		color = COLOR_WARN;
+		break;
+	case 0x06:
+		color = COLOR_INFO;
+		break;
+	case 0x07:
+		color = COLOR_DEBUG;
+		break;
+	default:
+		color = COLOR_WHITE_BG;
+		break;
+	}
+
+	if (cred) {
+		char *path = alloca(24);
+		char line[128];
+		FILE *fp;
+
+		snprintf(path, 23, "/proc/%u/comm", cred->pid);
+
+		fp = fopen(path, "re");
+		if (fp) {
+			if (fgets(line, sizeof(line), fp)) {
+				line[strcspn(line, "\r\n")] = '\0';
+				snprintf(pid_str, sizeof(pid_str), "%s[%u]",
+							line, cred->pid);
+			} else
+				snprintf(pid_str, sizeof(pid_str), "%u",
+								cred->pid);
+			fclose(fp);
+		} else
+			snprintf(pid_str, sizeof(pid_str), "%u", cred->pid);
+
+		label = pid_str;
+        } else {
+		if (ident)
+			label = ident;
+		else
+			label = "Message";
+	}
+
+	print_packet(tv, cred, index, '=', color, label, message, NULL);
 }
 
 void packet_hci_command(struct timeval *tv, struct ucred *cred, uint16_t index,
