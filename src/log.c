@@ -26,8 +26,9 @@
 #endif
 
 #include <stdio.h>
-#include <stdarg.h>
+#include <errno.h>
 #include <syslog.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -121,8 +122,10 @@ static void logging_log(uint16_t index, int priority,
 	msg.msg_iovlen = 3;
 
 	if (sendmsg(logging_fd, &msg, 0) < 0) {
-		close(logging_fd);
-		logging_fd = -1;
+		if (errno != ENODEV) {
+			close(logging_fd);
+			logging_fd = -1;
+		}
 	}
 
 	free(str);
