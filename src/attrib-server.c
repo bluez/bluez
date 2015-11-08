@@ -41,6 +41,7 @@
 
 #include "btio/btio.h"
 #include "log.h"
+#include "backtrace.h"
 #include "adapter.h"
 #include "device.h"
 #include "src/shared/util.h"
@@ -1521,7 +1522,7 @@ static uint16_t find_uuid128_avail(struct btd_adapter *adapter, uint16_t nitems)
 uint16_t attrib_db_find_avail(struct btd_adapter *adapter, bt_uuid_t *svc_uuid,
 								uint16_t nitems)
 {
-	g_assert(nitems > 0);
+	btd_assert(nitems > 0);
 
 	if (svc_uuid->type == BT_UUID16)
 		return find_uuid16_avail(adapter, nitems);

@@ -27,7 +27,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -41,6 +40,7 @@
 #include "lib/sdp.h"
 
 #include "log.h"
+#include "backtrace.h"
 
 #include "adapter.h"
 #include "device.h"
@@ -92,8 +92,8 @@ static void change_state(struct btd_service *service, btd_service_state_t state,
 	if (state == old)
 		return;
 
-	assert(service->device != NULL);
-	assert(service->profile != NULL);
+	btd_assert(service->device != NULL);
+	btd_assert(service->profile != NULL);
 
 	service->state = state;
 	service->err = err;
@@ -155,7 +155,7 @@ int service_probe(struct btd_service *service)
 	char addr[18];
 	int err;
 
-	assert(service->state == BTD_SERVICE_STATE_UNAVAILABLE);
+	btd_assert(service->state == BTD_SERVICE_STATE_UNAVAILABLE);
 
 	err = service->profile->device_probe(service);
 	if (err == 0) {
@@ -299,7 +299,7 @@ struct btd_profile *btd_service_get_profile(const struct btd_service *service)
 
 void btd_service_set_user_data(struct btd_service *service, void *user_data)
 {
-	assert(service->state == BTD_SERVICE_STATE_UNAVAILABLE);
+	btd_assert(service->state == BTD_SERVICE_STATE_UNAVAILABLE);
 	service->user_data = user_data;
 }
 
