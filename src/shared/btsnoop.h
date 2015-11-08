@@ -25,13 +25,13 @@
 #include <stdbool.h>
 #include <sys/time.h>
 
-#define BTSNOOP_TYPE_INVALID		0
-#define BTSNOOP_TYPE_HCI		1001
-#define BTSNOOP_TYPE_UART		1002
-#define BTSNOOP_TYPE_BCSP		1003
-#define BTSNOOP_TYPE_3WIRE		1004
-#define BTSNOOP_TYPE_MONITOR		2001
-#define BTSNOOP_TYPE_SIMULATOR		2002
+#define BTSNOOP_FORMAT_INVALID		0
+#define BTSNOOP_FORMAT_HCI		1001
+#define BTSNOOP_FORMAT_UART		1002
+#define BTSNOOP_FORMAT_BCSP		1003
+#define BTSNOOP_FORMAT_3WIRE		1004
+#define BTSNOOP_FORMAT_MONITOR		2001
+#define BTSNOOP_FORMAT_SIMULATOR	2002
 
 #define BTSNOOP_FLAG_PKLG_SUPPORT	(1 << 0)
 
@@ -72,12 +72,12 @@ struct btsnoop_opcode_user_logging {
 struct btsnoop;
 
 struct btsnoop *btsnoop_open(const char *path, unsigned long flags);
-struct btsnoop *btsnoop_create(const char *path, uint32_t type);
+struct btsnoop *btsnoop_create(const char *path, uint32_t format);
 
 struct btsnoop *btsnoop_ref(struct btsnoop *btsnoop);
 void btsnoop_unref(struct btsnoop *btsnoop);
 
-uint32_t btsnoop_get_type(struct btsnoop *btsnoop);
+uint32_t btsnoop_get_format(struct btsnoop *btsnoop);
 
 bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 			uint32_t flags, const void *data, uint16_t size);

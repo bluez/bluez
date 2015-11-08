@@ -1159,7 +1159,7 @@ void control_server(const char *path)
 
 bool control_writer(const char *path)
 {
-	btsnoop_file = btsnoop_create(path, BTSNOOP_TYPE_MONITOR);
+	btsnoop_file = btsnoop_create(path, BTSNOOP_FORMAT_MONITOR);
 
 	return !!btsnoop_file;
 }
@@ -1168,33 +1168,33 @@ void control_reader(const char *path)
 {
 	unsigned char buf[BTSNOOP_MAX_PACKET_SIZE];
 	uint16_t pktlen;
-	uint32_t type;
+	uint32_t format;
 	struct timeval tv;
 
 	btsnoop_file = btsnoop_open(path, BTSNOOP_FLAG_PKLG_SUPPORT);
 	if (!btsnoop_file)
 		return;
 
-	type = btsnoop_get_type(btsnoop_file);
+	format = btsnoop_get_format(btsnoop_file);
 
-	switch (type) {
-	case BTSNOOP_TYPE_HCI:
-	case BTSNOOP_TYPE_UART:
-	case BTSNOOP_TYPE_SIMULATOR:
+	switch (format) {
+	case BTSNOOP_FORMAT_HCI:
+	case BTSNOOP_FORMAT_UART:
+	case BTSNOOP_FORMAT_SIMULATOR:
 		packet_del_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 
-	case BTSNOOP_TYPE_MONITOR:
+	case BTSNOOP_FORMAT_MONITOR:
 		packet_add_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 	}
 
 	open_pager();
 
-	switch (type) {
-	case BTSNOOP_TYPE_HCI:
-	case BTSNOOP_TYPE_UART:
-	case BTSNOOP_TYPE_MONITOR:
+	switch (format) {
+	case BTSNOOP_FORMAT_HCI:
+	case BTSNOOP_FORMAT_UART:
+	case BTSNOOP_FORMAT_MONITOR:
 		while (1) {
 			uint16_t index, opcode;
 
@@ -1210,7 +1210,7 @@ void control_reader(const char *path)
 		}
 		break;
 
-	case BTSNOOP_TYPE_SIMULATOR:
+	case BTSNOOP_FORMAT_SIMULATOR:
 		while (1) {
 			uint16_t frequency;
 
