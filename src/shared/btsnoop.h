@@ -52,6 +52,17 @@
 
 #define BTSNOOP_MAX_PACKET_SIZE		(1486 + 4)
 
+#define BTSNOOP_TYPE_PRIMARY	0
+#define BTSNOOP_TYPE_AMP	1
+
+#define BTSNOOP_BUS_VIRTUAL	0
+#define BTSNOOP_BUS_USB		1
+#define BTSNOOP_BUS_PCCARD	2
+#define BTSNOOP_BUS_UART	3
+#define BTSNOOP_BUS_RS232	4
+#define BTSNOOP_BUS_PCI		5
+#define BTSNOOP_BUS_SDIO	6
+
 struct btsnoop_opcode_new_index {
 	uint8_t  type;
 	uint8_t  bus;
@@ -63,6 +74,15 @@ struct btsnoop_opcode_index_info {
 	uint8_t  bdaddr[6];
 	uint16_t manufacturer;
 } __attribute__((packed));
+
+#define BTSNOOP_PRIORITY_EMERG		0
+#define BTSNOOP_PRIORITY_ALERT		1
+#define BTSNOOP_PRIORITY_CRIT		2
+#define BTSNOOP_PRIORITY_ERR		3
+#define BTSNOOP_PRIORITY_WARNING	4
+#define BTSNOOP_PRIORITY_NOTICE		5
+#define BTSNOOP_PRIORITY_INFO		6
+#define BTSNOOP_PRIORITY_DEBUG		7
 
 struct btsnoop_opcode_user_logging {
 	uint8_t  priority;
