@@ -85,7 +85,8 @@ static void logging_close(void)
 	}
 }
 
-static void logging_log(int priority, const char *format, va_list ap)
+static void logging_log(uint16_t index, int priority,
+					const char *format, va_list ap)
 {
 	char *ident = "bluetoothd";
 	uint8_t ident_len = strlen(ident) + 1;
@@ -101,7 +102,7 @@ static void logging_log(int priority, const char *format, va_list ap)
 	len = strlen(str) + 1;
 
 	hdr.opcode = cpu_to_le16(0x0000);
-	hdr.index = cpu_to_le16(0xffff);
+	hdr.index = cpu_to_le16(index);
 	hdr.len = cpu_to_le16(2 + ident_len + len);
 	hdr.priority = priority;
 	hdr.ident_len = ident_len;
@@ -127,19 +128,19 @@ static void logging_log(int priority, const char *format, va_list ap)
 	free(str);
 }
 
-void info(const char *format, ...)
+void error(const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
-	vsyslog(LOG_INFO, format, ap);
+	vsyslog(LOG_ERR, format, ap);
 	va_end(ap);
 
 	if (logging_fd < 0)
 		return;
 
 	va_start(ap, format);
-	logging_log(LOG_INFO, format, ap);
+	logging_log(HCI_DEV_NONE, LOG_ERR, format, ap);
 	va_end(ap);
 }
 
@@ -155,11 +156,27 @@ void warn(const char *format, ...)
 		return;
 
 	va_start(ap, format);
-	logging_log(LOG_WARNING, format, ap);
+	logging_log(HCI_DEV_NONE, LOG_WARNING, format, ap);
 	va_end(ap);
 }
 
-void error(const char *format, ...)
+void info(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsyslog(LOG_INFO, format, ap);
+	va_end(ap);
+
+	if (logging_fd < 0)
+		return;
+
+	va_start(ap, format);
+	logging_log(HCI_DEV_NONE, LOG_INFO, format, ap);
+	va_end(ap);
+}
+
+void btd_error(uint16_t index, const char *format, ...)
 {
 	va_list ap;
 
@@ -171,11 +188,43 @@ void error(const char *format, ...)
 		return;
 
 	va_start(ap, format);
-	logging_log(LOG_ERR, format, ap);
+	logging_log(index, LOG_ERR, format, ap);
 	va_end(ap);
 }
 
-void btd_debug(const char *format, ...)
+void btd_warn(uint16_t index, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsyslog(LOG_WARNING, format, ap);
+	va_end(ap);
+
+	if (logging_fd < 0)
+		return;
+
+	va_start(ap, format);
+	logging_log(index, LOG_WARNING, format, ap);
+	va_end(ap);
+}
+
+void btd_info(uint16_t index, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsyslog(LOG_INFO, format, ap);
+	va_end(ap);
+
+	if (logging_fd < 0)
+		return;
+
+	va_start(ap, format);
+	logging_log(index, LOG_INFO, format, ap);
+	va_end(ap);
+}
+
+void btd_debug(uint16_t index, const char *format, ...)
 {
 	va_list ap;
 
@@ -187,7 +236,7 @@ void btd_debug(const char *format, ...)
 		return;
 
 	va_start(ap, format);
-	logging_log(LOG_DEBUG, format, ap);
+	logging_log(index, LOG_DEBUG, format, ap);
 	va_end(ap);
 }
 
