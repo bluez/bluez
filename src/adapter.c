@@ -318,7 +318,8 @@ static void dev_class_changed_callback(uint16_t index, uint16_t length,
 	uint32_t dev_class;
 
 	if (length < sizeof(*rp)) {
-		error("Wrong size of class of device changed parameters");
+		btd_error(adapter->dev_id,
+			"Wrong size of class of device changed parameters");
 		return;
 	}
 
@@ -341,7 +342,8 @@ static void set_dev_class_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to set device class: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to set device class: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
@@ -390,7 +392,8 @@ static void set_dev_class(struct btd_adapter *adapter)
 				set_dev_class_complete, adapter, NULL) > 0)
 		return;
 
-	error("Failed to set class of device for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id,
+		"Failed to set class of device for index %u", adapter->dev_id);
 }
 
 void btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
@@ -530,7 +533,8 @@ static void new_settings_callback(uint16_t index, uint16_t length,
 	uint32_t settings;
 
 	if (length < sizeof(settings)) {
-		error("Wrong size of new settings parameters");
+		btd_error(adapter->dev_id,
+				"Wrong size of new settings parameters");
 		return;
 	}
 
@@ -550,7 +554,7 @@ static void set_mode_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to set mode: %s (0x%02x)",
+		btd_error(adapter->dev_id, "Failed to set mode: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
@@ -578,7 +582,8 @@ static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
 				set_mode_complete, adapter, NULL) > 0)
 		return true;
 
-	error("Failed to set mode for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to set mode for index %u",
+							adapter->dev_id);
 
 	return false;
 }
@@ -608,7 +613,8 @@ static bool set_discoverable(struct btd_adapter *adapter, uint8_t mode,
 				set_mode_complete, adapter, NULL) > 0)
 		return true;
 
-	error("Failed to set mode for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to set mode for index %u",
+							adapter->dev_id);
 
 	return false;
 }
@@ -646,7 +652,8 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 	const struct mgmt_cp_set_local_name *rp = param;
 
 	if (length < sizeof(*rp)) {
-		error("Wrong size of local name changed parameters");
+		btd_error(adapter->dev_id,
+				"Wrong size of local name changed parameters");
 		return;
 	}
 
@@ -700,7 +707,8 @@ static void set_local_name_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to set local name: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to set local name: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
@@ -722,7 +730,8 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 	strncpy(maxname, name, MAX_NAME_LENGTH);
 
 	if (!g_utf8_validate(maxname, -1, NULL)) {
-		error("Name change failed: supplied name isn't valid UTF-8");
+		btd_error(adapter->dev_id,
+			"Name change failed: supplied name isn't valid UTF-8");
 		return -EINVAL;
 	}
 
@@ -736,7 +745,8 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 				set_local_name_complete, adapter, NULL) > 0)
 		return 0;
 
-	error("Failed to set local name for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to set local name for index %u",
+							adapter->dev_id);
 
 	return -EIO;
 }
@@ -835,7 +845,7 @@ static void add_uuid_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to add UUID: %s (0x%02x)",
+		btd_error(adapter->dev_id, "Failed to add UUID: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
@@ -859,7 +869,8 @@ static int add_uuid(struct btd_adapter *adapter, uuid_t *uuid, uint8_t svc_hint)
 	uint128_t uint128;
 
 	if (!is_supported_uuid(uuid)) {
-		warn("Ignoring unsupported UUID for addition");
+		btd_warn(adapter->dev_id,
+				"Ignoring unsupported UUID for addition");
 		return 0;
 	}
 
@@ -876,7 +887,8 @@ static int add_uuid(struct btd_adapter *adapter, uuid_t *uuid, uint8_t svc_hint)
 				add_uuid_complete, adapter, NULL) > 0)
 		return 0;
 
-	error("Failed to add UUID for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to add UUID for index %u",
+							adapter->dev_id);
 
 	return -EIO;
 }
@@ -887,7 +899,7 @@ static void remove_uuid_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to remove UUID: %s (0x%02x)",
+		btd_error(adapter->dev_id, "Failed to remove UUID: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
@@ -911,7 +923,8 @@ static int remove_uuid(struct btd_adapter *adapter, uuid_t *uuid)
 	uint128_t uint128;
 
 	if (!is_supported_uuid(uuid)) {
-		warn("Ignoring unsupported UUID for removal");
+		btd_warn(adapter->dev_id,
+				"Ignoring unsupported UUID for removal");
 		return 0;
 	}
 
@@ -927,7 +940,8 @@ static int remove_uuid(struct btd_adapter *adapter, uuid_t *uuid)
 				remove_uuid_complete, adapter, NULL) > 0)
 		return 0;
 
-	error("Failed to remove UUID for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to remove UUID for index %u",
+							adapter->dev_id);
 
 	return -EIO;
 }
@@ -938,7 +952,7 @@ static void clear_uuids_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to clear UUIDs: %s (0x%02x)",
+		btd_error(adapter->dev_id, "Failed to clear UUIDs: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
@@ -964,7 +978,8 @@ static int clear_uuids(struct btd_adapter *adapter)
 				clear_uuids_complete, adapter, NULL) > 0)
 		return 0;
 
-	error("Failed to clear UUIDs for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to clear UUIDs for index %u",
+							adapter->dev_id);
 
 	return -EIO;
 }
@@ -1195,7 +1210,8 @@ static void passive_scanning_complete(uint8_t status, uint16_t length,
 	DBG("status 0x%02x", status);
 
 	if (length < sizeof(*rp)) {
-		error("Wrong size of start scanning return parameters");
+		btd_error(adapter->dev_id,
+			"Wrong size of start scanning return parameters");
 		return;
 	}
 
@@ -1298,7 +1314,7 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 	 * around the time we called stop_passive_scanning().
 	 */
 	if (status != MGMT_STATUS_SUCCESS && status != MGMT_STATUS_REJECTED) {
-		error("Stopping passive scanning failed: %s",
+		btd_error(adapter->dev_id, "Stopping passive scanning failed: %s",
 							mgmt_errstr(status));
 		return;
 	}
@@ -1314,8 +1330,8 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 
 	err = device_connect_le(dev);
 	if (err < 0) {
-		error("LE auto connection failed: %s (%d)",
-						strerror(-err), -err);
+		btd_error(adapter->dev_id, "LE auto connection failed: %s (%d)",
+							strerror(-err), -err);
 		trigger_passive_scanning(adapter);
 	}
 }
@@ -1389,7 +1405,8 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 	DBG("status 0x%02x", status);
 
 	if (length < sizeof(*rp)) {
-		error("Wrong size of start discovery return parameters");
+		btd_error(adapter->dev_id,
+			"Wrong size of start discovery return parameters");
 		return;
 	}
 
@@ -1605,7 +1622,7 @@ static void discovering_callback(uint16_t index, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (length < sizeof(*ev)) {
-		error("Too small discovering event");
+		btd_error(adapter->dev_id, "Too small discovering event");
 		return;
 	}
 
@@ -1902,7 +1919,8 @@ static void update_discovery_filter(struct btd_adapter *adapter)
 	DBG("");
 
 	if (discovery_filter_to_mgmt_cp(adapter, &sd_cp)) {
-		error("discovery_filter_to_mgmt_cp returned error");
+		btd_error(adapter->dev_id,
+				"discovery_filter_to_mgmt_cp returned error");
 		return;
 	}
 
@@ -2517,7 +2535,7 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 	if (status != MGMT_STATUS_SUCCESS) {
 		const char *dbus_err;
 
-		error("Failed to set mode: %s (0x%02x)",
+		btd_error(adapter->dev_id, "Failed to set mode: %s (0x%02x)",
 						mgmt_errstr(status), status);
 
 		if (status == MGMT_STATUS_RFKILLED)
@@ -2619,7 +2637,8 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 	g_free(data);
 
 failed:
-	error("Failed to set mode for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to set mode for index %u",
+							adapter->dev_id);
 
 	g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed", NULL);
 }
@@ -3125,7 +3144,8 @@ static void load_link_keys_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to load link keys for hci%u: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+			"Failed to load link keys for hci%u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
 		return;
 	}
@@ -3161,7 +3181,8 @@ static void load_link_keys(struct btd_adapter *adapter, GSList *keys,
 
 	cp = g_try_malloc0(cp_size);
 	if (cp == NULL) {
-		error("No memory for link keys for hci%u", adapter->dev_id);
+		btd_error(adapter->dev_id, "No memory for link keys for hci%u",
+							adapter->dev_id);
 		return;
 	}
 
@@ -3193,14 +3214,16 @@ static void load_link_keys(struct btd_adapter *adapter, GSList *keys,
 	g_free(cp);
 
 	if (id == 0)
-		error("Failed to load link keys for hci%u", adapter->dev_id);
+		btd_error(adapter->dev_id, "Failed to load link keys for hci%u",
+							adapter->dev_id);
 }
 
 static gboolean load_ltks_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
-	error("Loading LTKs timed out for hci%u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Loading LTKs timed out for hci%u",
+							adapter->dev_id);
 
 	adapter->load_ltks_timeout = 0;
 
@@ -3216,7 +3239,8 @@ static void load_ltks_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to load LTKs for hci%u: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to load LTKs for hci%u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
 	}
 
@@ -3256,7 +3280,8 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 
 	cp = g_try_malloc0(cp_size);
 	if (cp == NULL) {
-		error("No memory for LTKs for hci%u", adapter->dev_id);
+		btd_error(adapter->dev_id, "No memory for LTKs for hci%u",
+							adapter->dev_id);
 		return;
 	}
 
@@ -3288,7 +3313,8 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 	g_free(cp);
 
 	if (adapter->load_ltks_id == 0) {
-		error("Failed to load LTKs for hci%u", adapter->dev_id);
+		btd_error(adapter->dev_id, "Failed to load LTKs for hci%u",
+							adapter->dev_id);
 		return;
 	}
 
@@ -3307,12 +3333,14 @@ static void load_irks_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status == MGMT_STATUS_UNKNOWN_COMMAND) {
-		info("Load IRKs failed: Kernel doesn't support LE Privacy");
+		btd_info(adapter->dev_id,
+			"Load IRKs failed: Kernel doesn't support LE Privacy");
 		return;
 	}
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to load IRKs for hci%u: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to load IRKs for hci%u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
 		return;
 	}
@@ -3344,7 +3372,8 @@ static void load_irks(struct btd_adapter *adapter, GSList *irks)
 
 	cp = g_try_malloc0(cp_size);
 	if (cp == NULL) {
-		error("No memory for IRKs for hci%u", adapter->dev_id);
+		btd_error(adapter->dev_id, "No memory for IRKs for hci%u",
+							adapter->dev_id);
 		return;
 	}
 
@@ -3369,7 +3398,8 @@ static void load_irks(struct btd_adapter *adapter, GSList *irks)
 	g_free(cp);
 
 	if (id == 0)
-		error("Failed to IRKs for hci%u", adapter->dev_id);
+		btd_error(adapter->dev_id, "Failed to IRKs for hci%u",
+							adapter->dev_id);
 }
 
 static void load_conn_params_complete(uint8_t status, uint16_t length,
@@ -3378,7 +3408,8 @@ static void load_conn_params_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("hci%u Load Connection Parameters failed: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+			"hci%u Load Connection Parameters failed: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
 		return;
 	}
@@ -3410,7 +3441,8 @@ static void load_conn_params(struct btd_adapter *adapter, GSList *params)
 
 	cp = g_try_malloc0(cp_size);
 	if (cp == NULL) {
-		error("Failed to allocate memory for connection parameters");
+		btd_error(adapter->dev_id,
+			"Failed to allocate memory for connection parameters");
 		return;
 	}
 
@@ -3433,7 +3465,7 @@ static void load_conn_params(struct btd_adapter *adapter, GSList *params)
 	g_free(cp);
 
 	if (id == 0)
-		error("Load connection parameters failed");
+		btd_error(adapter->dev_id, "Load connection parameters failed");
 }
 
 static uint8_t get_le_addr_type(GKeyFile *keyfile)
@@ -3482,7 +3514,9 @@ static void load_devices(struct btd_adapter *adapter)
 
 	dir = opendir(dirname);
 	if (!dir) {
-		error("Unable to open adapter storage directory: %s", dirname);
+		btd_error(adapter->dev_id,
+				"Unable to open adapter storage directory: %s",
+								dirname);
 		return;
 	}
 
@@ -3631,7 +3665,8 @@ static void probe_driver(struct btd_adapter *adapter, gpointer user_data)
 
 	err = driver->probe(adapter);
 	if (err < 0) {
-		error("%s: %s (%d)", driver->name, strerror(-err), -err);
+		btd_error(adapter->dev_id, "%s: %s (%d)", driver->name,
+							strerror(-err), -err);
 		return;
 	}
 
@@ -3656,7 +3691,8 @@ static void probe_profile(struct btd_profile *profile, void *data)
 
 	err = profile->adapter_probe(profile, adapter);
 	if (err < 0) {
-		error("%s: %s (%d)", profile->name, strerror(-err), -err);
+		btd_error(adapter->dev_id, "%s: %s (%d)", profile->name,
+							strerror(-err), -err);
 		return;
 	}
 
@@ -3698,7 +3734,8 @@ static void adapter_add_connection(struct btd_adapter *adapter,
 	device_add_connection(device, bdaddr_type);
 
 	if (g_slist_find(adapter->connections, device)) {
-		error("Device is already marked as connected");
+		btd_error(adapter->dev_id,
+				"Device is already marked as connected");
 		return;
 	}
 
@@ -3713,13 +3750,15 @@ static void get_connections_complete(uint8_t status, uint16_t length,
 	uint16_t i, conn_count;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to get connections: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to get connections: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
 
 	if (length < sizeof(*rp)) {
-		error("Wrong size of get connections response");
+		btd_error(adapter->dev_id,
+				"Wrong size of get connections response");
 		return;
 	}
 
@@ -3729,7 +3768,8 @@ static void get_connections_complete(uint8_t status, uint16_t length,
 
 	if (conn_count * sizeof(struct mgmt_addr_info) +
 						sizeof(*rp) != length) {
-		error("Incorrect packet size for get connections response");
+		btd_error(adapter->dev_id,
+			"Incorrect packet size for get connections response");
 		return;
 	}
 
@@ -3757,7 +3797,8 @@ static void load_connections(struct btd_adapter *adapter)
 				get_connections_complete, adapter, NULL) > 0)
 		return;
 
-	error("Failed to get connections for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to get connections for index %u",
+							adapter->dev_id);
 }
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter)
@@ -3834,7 +3875,8 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	}
 
 	if (!(adapter->supported_settings & MGMT_SETTING_LE)) {
-		error("Can't add %s to non-LE capable adapter connect list",
+		btd_error(adapter->dev_id,
+			"Can't add %s to non-LE capable adapter connect list",
 						device_get_path(device));
 		return -ENOTSUP;
 	}
@@ -3896,7 +3938,8 @@ static void add_whitelist_complete(uint8_t status, uint16_t length,
 	char addr[18];
 
 	if (length < sizeof(*rp)) {
-		error("Too small Add Device complete event");
+		btd_error(adapter->dev_id,
+				"Too small Add Device complete event");
 		return;
 	}
 
@@ -3905,12 +3948,14 @@ static void add_whitelist_complete(uint8_t status, uint16_t length,
 	dev = btd_adapter_find_device(adapter, &rp->addr.bdaddr,
 							rp->addr.type);
 	if (!dev) {
-		error("Add Device complete for unknown device %s", addr);
+		btd_error(adapter->dev_id,
+			"Add Device complete for unknown device %s", addr);
 		return;
 	}
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to add device %s: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+					"Failed to add device %s: %s (0x%02x)",
 					addr, mgmt_errstr(status), status);
 		return;
 	}
@@ -3982,7 +4027,8 @@ static void add_device_complete(uint8_t status, uint16_t length,
 	char addr[18];
 
 	if (length < sizeof(*rp)) {
-		error("Too small Add Device complete event");
+		btd_error(adapter->dev_id,
+				"Too small Add Device complete event");
 		return;
 	}
 
@@ -3991,12 +4037,14 @@ static void add_device_complete(uint8_t status, uint16_t length,
 	dev = btd_adapter_find_device(adapter, &rp->addr.bdaddr,
 							rp->addr.type);
 	if (!dev) {
-		error("Add Device complete for unknown device %s", addr);
+		btd_error(adapter->dev_id,
+			"Add Device complete for unknown device %s", addr);
 		return;
 	}
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to add device %s (%u): %s (0x%02x)",
+		btd_error(adapter->dev_id,
+			"Failed to add device %s (%u): %s (0x%02x)",
 			addr, rp->addr.type, mgmt_errstr(status), status);
 		adapter->connect_list = g_slist_remove(adapter->connect_list,
 									dev);
@@ -5223,7 +5271,8 @@ static gboolean confirm_name_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
-	error("Confirm name timed out for hci%u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Confirm name timed out for hci%u",
+							adapter->dev_id);
 
 	adapter->confirm_name_timeout = 0;
 
@@ -5239,7 +5288,8 @@ static void confirm_name_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to confirm name for hci%u: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to confirm name for hci%u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
 	}
 
@@ -5269,7 +5319,9 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	 * cancel it to be safe here.
 	 */
 	if (adapter->confirm_name_id > 0) {
-		warn("Found pending confirm name for hci%u", adapter->dev_id);
+		btd_warn(adapter->dev_id,
+				"Found pending confirm name for hci%u",
+							adapter->dev_id);
 		mgmt_cancel(adapter->mgmt, adapter->confirm_name_id);
 	}
 
@@ -5289,7 +5341,8 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					confirm_name_complete, adapter, NULL);
 
 	if (adapter->confirm_name_id == 0) {
-		error("Failed to confirm name for hci%u", adapter->dev_id);
+		btd_error(adapter->dev_id, "Failed to confirm name for hci%u",
+							adapter->dev_id);
 		return;
 	}
 
@@ -5417,7 +5470,8 @@ static void update_found_devices(struct btd_adapter *adapter,
 	}
 
 	if (!dev) {
-		error("Unable to create object for found device %s", addr);
+		btd_error(adapter->dev_id,
+			"Unable to create object for found device %s", addr);
 		eir_data_free(&eir_data);
 		return;
 	}
@@ -5559,13 +5613,15 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too short device found event (%u bytes)", length);
+		btd_error(adapter->dev_id,
+			"Too short device found event (%u bytes)", length);
 		return;
 	}
 
 	eir_len = btohs(ev->eir_len);
 	if (length != sizeof(*ev) + eir_len) {
-		error("Device found event size mismatch (%u != %zu)",
+		btd_error(adapter->dev_id,
+				"Device found event size mismatch (%u != %zu)",
 					length, sizeof(*ev) + eir_len);
 		return;
 	}
@@ -5602,7 +5658,7 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 	DBG("");
 
 	if (!g_slist_find(adapter->connections, device)) {
-		error("No matching connection for device");
+		btd_error(adapter->dev_id, "No matching connection for device");
 		return;
 	}
 
@@ -5779,7 +5835,8 @@ static gboolean process_auth_queue(gpointer user_data)
 
 		auth->agent = agent_get(NULL);
 		if (auth->agent == NULL) {
-			warn("Authentication attempt without agent");
+			btd_warn(adapter->dev_id,
+					"Authentication attempt without agent");
 			auth->cb(&err, auth->user_data);
 			goto next;
 		}
@@ -5840,7 +5897,8 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 
 	/* Device connected? */
 	if (!g_slist_find(adapter->connections, device))
-		error("Authorization request for non-connected device!?");
+		btd_error(adapter->dev_id,
+			"Authorization request for non-connected device!?");
 
 	auth = g_try_new0(struct service_auth, 1);
 	if (!auth)
@@ -6100,7 +6158,8 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	int err;
 
 	if (length < sizeof(*ev)) {
-		error("Too small user confirm request event");
+		btd_error(adapter->dev_id,
+				"Too small user confirm request event");
 		return;
 	}
 
@@ -6110,14 +6169,16 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (!device) {
-		error("Unable to get device object for %s", addr);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", addr);
 		return;
 	}
 
 	err = device_confirm_passkey(device, btohl(ev->value),
 							ev->confirm_hint);
 	if (err < 0) {
-		error("device_confirm_passkey: %s", strerror(-err));
+		btd_error(adapter->dev_id,
+				"device_confirm_passkey: %s", strerror(-err));
 		btd_adapter_confirm_reply(adapter, &ev->addr.bdaddr,
 							ev->addr.type, FALSE);
 	}
@@ -6172,7 +6233,7 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	int err;
 
 	if (length < sizeof(*ev)) {
-		error("Too small passkey request event");
+		btd_error(adapter->dev_id, "Too small passkey request event");
 		return;
 	}
 
@@ -6182,13 +6243,15 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (!device) {
-		error("Unable to get device object for %s", addr);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", addr);
 		return;
 	}
 
 	err = device_request_passkey(device);
 	if (err < 0) {
-		error("device_request_passkey: %s", strerror(-err));
+		btd_error(adapter->dev_id,
+				"device_request_passkey: %s", strerror(-err));
 		btd_adapter_passkey_reply(adapter, &ev->addr.bdaddr,
 					ev->addr.type, INVALID_PASSKEY);
 	}
@@ -6205,7 +6268,7 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 	int err;
 
 	if (length < sizeof(*ev)) {
-		error("Too small passkey notify event");
+		btd_error(adapter->dev_id, "Too small passkey notify event");
 		return;
 	}
 
@@ -6215,7 +6278,8 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (!device) {
-		error("Unable to get device object for %s", addr);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", addr);
 		return;
 	}
 
@@ -6225,7 +6289,8 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 
 	err = device_notify_passkey(device, passkey, ev->entered);
 	if (err < 0)
-		error("device_notify_passkey: %s", strerror(-err));
+		btd_error(adapter->dev_id,
+				"device_notify_passkey: %s", strerror(-err));
 }
 
 struct btd_adapter_pin_cb_iter *btd_adapter_pin_cb_iter_new(
@@ -6287,7 +6352,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	struct btd_adapter_pin_cb_iter *iter;
 
 	if (length < sizeof(*ev)) {
-		error("Too small PIN code request event");
+		btd_error(adapter->dev_id, "Too small PIN code request event");
 		return;
 	}
 
@@ -6298,7 +6363,8 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (!device) {
-		error("Unable to get device object for %s", addr);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", addr);
 		return;
 	}
 
@@ -6318,7 +6384,9 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 		if (display && device_is_bonding(device, NULL)) {
 			err = device_notify_pincode(device, ev->secure, pin);
 			if (err < 0) {
-				error("device_notify_pin: %s", strerror(-err));
+				btd_error(adapter->dev_id,
+						"device_notify_pin: %s",
+							strerror(-err));
 				btd_adapter_pincode_reply(adapter,
 							&ev->addr.bdaddr,
 							NULL, 0);
@@ -6332,7 +6400,8 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 
 	err = device_request_pincode(device, ev->secure);
 	if (err < 0) {
-		error("device_request_pin: %s", strerror(-err));
+		btd_error(adapter->dev_id, "device_request_pin: %s",
+							strerror(-err));
 		btd_adapter_pincode_reply(adapter, &ev->addr.bdaddr, NULL, 0);
 	}
 }
@@ -6447,7 +6516,8 @@ static gboolean pair_device_timeout(gpointer user_data)
 	struct pair_device_data *data = user_data;
 	struct btd_adapter *adapter = data->adapter;
 
-	error("Pair device timed out for hci%u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Pair device timed out for hci%u",
+							adapter->dev_id);
 
 	adapter->pair_device_timeout = 0;
 
@@ -6479,7 +6549,7 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	 * powered.
 	 */
 	if (status != MGMT_STATUS_SUCCESS && length < sizeof(*rp)) {
-		error("Pair device failed: %s (0x%02x)",
+		btd_error(adapter->dev_id, "Pair device failed: %s (0x%02x)",
 						mgmt_errstr(status), status);
 
 		bonding_attempt_complete(adapter, &data->bdaddr,
@@ -6488,7 +6558,7 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	}
 
 	if (length < sizeof(*rp)) {
-		error("Too small pair device response");
+		btd_error(adapter->dev_id, "Too small pair device response");
 		return;
 	}
 
@@ -6500,7 +6570,8 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t io_cap)
 {
 	if (adapter->pair_device_id > 0) {
-		error("Unable pair since another pairing is in progress");
+		btd_error(adapter->dev_id,
+			"Unable pair since another pairing is in progress");
 		return -EBUSY;
 	}
 
@@ -6541,7 +6612,8 @@ int adapter_bonding_attempt(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 				free_pair_device_data);
 
 	if (id == 0) {
-		error("Failed to pair %s for hci%u", addr, adapter->dev_id);
+		btd_error(adapter->dev_id, "Failed to pair %s for hci%u",
+							addr, adapter->dev_id);
 		free_pair_device_data(data);
 		return -EIO;
 	}
@@ -6606,15 +6678,18 @@ static void disconnect_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (status == MGMT_STATUS_NOT_CONNECTED) {
-		warn("Disconnecting failed: already disconnected");
+		btd_warn(adapter->dev_id,
+				"Disconnecting failed: already disconnected");
 	} else if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to disconnect device: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to disconnect device: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
 
 	if (length < sizeof(*rp)) {
-		error("Too small device disconnect response");
+		btd_error(adapter->dev_id,
+				"Too small device disconnect response");
 		return;
 	}
 
@@ -6647,7 +6722,7 @@ static void auth_failed_callback(uint16_t index, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 
 	if (length < sizeof(*ev)) {
-		error("Too small auth failed mgmt event");
+		btd_error(adapter->dev_id, "Too small auth failed mgmt event");
 		return;
 	}
 
@@ -6703,7 +6778,7 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 	char dst[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small new link key event");
+		btd_error(adapter->dev_id, "Too small new link key event");
 		return;
 	}
 
@@ -6714,14 +6789,16 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 		ev->store_hint);
 
 	if (ev->key.pin_len > 16) {
-		error("Invalid PIN length (%u) in new_key event",
+		btd_error(adapter->dev_id,
+				"Invalid PIN length (%u) in new_key event",
 							ev->key.pin_len);
 		return;
 	}
 
 	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
-		error("Unable to get device object for %s", dst);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", dst);
 		return;
 	}
 
@@ -6801,7 +6878,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 	char dst[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small long term key event");
+		btd_error(adapter->dev_id, "Too small long term key event");
 		return;
 	}
 
@@ -6812,7 +6889,8 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
-		error("Unable to get device object for %s", dst);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", dst);
 		return;
 	}
 
@@ -6926,7 +7004,7 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 	char dst[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small CSRK event");
+		btd_error(adapter->dev_id, "Too small CSRK event");
 		return;
 	}
 
@@ -6937,7 +7015,8 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 
 	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
-		error("Unable to get device object for %s", dst);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", dst);
 		return;
 	}
 
@@ -6996,7 +7075,7 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 	char dst[18], rpa[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small New IRK event");
+		btd_error(adapter->dev_id, "Too small New IRK event");
 		return;
 	}
 
@@ -7019,7 +7098,8 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 	}
 
 	if (!device) {
-		error("Unable to get device object for %s", dst);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", dst);
 		return;
 	}
 
@@ -7088,7 +7168,8 @@ static void new_conn_param(uint16_t index, uint16_t length,
 
 
 	if (length < sizeof(*ev)) {
-		error("Too small New Connection Parameter event");
+		btd_error(adapter->dev_id,
+				"Too small New Connection Parameter event");
 		return;
 	}
 
@@ -7104,7 +7185,8 @@ static void new_conn_param(uint16_t index, uint16_t length,
 
 	dev = btd_adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
 	if (!dev) {
-		error("Unable to get device object for %s", dst);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", dst);
 		return;
 	}
 
@@ -7203,12 +7285,14 @@ static void read_local_oob_data_complete(uint8_t status, uint16_t length,
 	const uint8_t *hash, *randomizer;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Read local OOB data failed: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Read local OOB data failed: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		hash = NULL;
 		randomizer = NULL;
 	} else if (length < sizeof(*rp)) {
-		error("Too small read local OOB data response");
+		btd_error(adapter->dev_id,
+				"Too small read local OOB data response");
 		return;
 	} else {
 		hash = rp->hash192;
@@ -7334,7 +7418,8 @@ static int adapter_register(struct btd_adapter *adapter)
 					adapter_methods, NULL,
 					adapter_properties, adapter,
 					adapter_free)) {
-		error("Adapter interface init failed on path %s",
+		btd_error(adapter->dev_id,
+				"Adapter interface init failed on path %s",
 							adapter->path);
 		g_free(adapter->path);
 		adapter->path = NULL;
@@ -7355,7 +7440,8 @@ static int adapter_register(struct btd_adapter *adapter)
 
 	adapter->database = btd_gatt_database_new(adapter);
 	if (!adapter->database) {
-		error("Failed to create GATT database for adapter");
+		btd_error(adapter->dev_id,
+				"Failed to create GATT database for adapter");
 		adapters = g_slist_remove(adapters, adapter);
 		return -EINVAL;
 	}
@@ -7366,7 +7452,8 @@ static int adapter_register(struct btd_adapter *adapter)
 			adapter->adv_manager =
 					btd_advertising_manager_new(adapter);
 		} else {
-			info("LEAdvertisingManager skipped, LE unavailable");
+			btd_info(adapter->dev_id,
+				"LEAdvertisingManager skipped, LE unavailable");
 		}
 	}
 
@@ -7434,7 +7521,8 @@ static void disconnected_callback(uint16_t index, uint16_t length,
 	uint8_t reason;
 
 	if (length < sizeof(struct mgmt_addr_info)) {
-		error("Too small device disconnected event");
+		btd_error(adapter->dev_id,
+				"Too small device disconnected event");
 		return;
 	}
 
@@ -7458,13 +7546,13 @@ static void connected_callback(uint16_t index, uint16_t length,
 	bool name_known;
 
 	if (length < sizeof(*ev)) {
-		error("Too small device connected event");
+		btd_error(adapter->dev_id, "Too small device connected event");
 		return;
 	}
 
 	eir_len = btohs(ev->eir_len);
 	if (length < sizeof(*ev) + eir_len) {
-		error("Too small device connected event");
+		btd_error(adapter->dev_id, "Too small device connected event");
 		return;
 	}
 
@@ -7475,7 +7563,8 @@ static void connected_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (!device) {
-		error("Unable to get device object for %s", addr);
+		btd_error(adapter->dev_id,
+				"Unable to get device object for %s", addr);
 		return;
 	}
 
@@ -7510,7 +7599,7 @@ static void device_blocked_callback(uint16_t index, uint16_t length,
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small device blocked event");
+		btd_error(adapter->dev_id, "Too small device blocked event");
 		return;
 	}
 
@@ -7532,7 +7621,7 @@ static void device_unblocked_callback(uint16_t index, uint16_t length,
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small device unblocked event");
+		btd_error(adapter->dev_id, "Too small device unblocked event");
 		return;
 	}
 
@@ -7574,7 +7663,7 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small connect failed event");
+		btd_error(adapter->dev_id, "Too small connect failed event");
 		return;
 	}
 
@@ -7657,7 +7746,7 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
-		error("Too small device unpaired event");
+		btd_error(adapter->dev_id, "Too small device unpaired event");
 		return;
 	}
 
@@ -7668,7 +7757,8 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (!device) {
-		warn("No device object for unpaired device %s", addr);
+		btd_warn(adapter->dev_id,
+			"No device object for unpaired device %s", addr);
 		return;
 	}
 
@@ -7702,7 +7792,8 @@ static int clear_devices(struct btd_adapter *adapter)
 				clear_devices_complete, adapter, NULL) > 0)
 		return 0;
 
-	error("Failed to clear devices for index %u", adapter->dev_id);
+	btd_error(adapter->dev_id, "Failed to clear devices for index %u",
+							adapter->dev_id);
 
 	return -EIO;
 }
@@ -7718,18 +7809,21 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	DBG("index %u status 0x%02x", adapter->dev_id, status);
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to read info for index %u: %s (0x%02x)",
+		btd_error(adapter->dev_id,
+				"Failed to read info for index %u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
 		goto failed;
 	}
 
 	if (length < sizeof(*rp)) {
-		error("Too small read info complete response");
+		btd_error(adapter->dev_id,
+				"Too small read info complete response");
 		goto failed;
 	}
 
 	if (bacmp(&rp->bdaddr, BDADDR_ANY) == 0) {
-		error("No Bluetooth address for index %u", adapter->dev_id);
+		btd_error(adapter->dev_id, "No Bluetooth address for index %u",
+							adapter->dev_id);
 		goto failed;
 	}
 
@@ -7767,7 +7861,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		break;
 	case BT_MODE_BREDR:
 		if (!(adapter->supported_settings & MGMT_SETTING_BREDR)) {
-			error("Ignoring adapter withouth BR/EDR support");
+			btd_error(adapter->dev_id,
+				"Ignoring adapter withouth BR/EDR support");
 			goto failed;
 		}
 
@@ -7780,7 +7875,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		break;
 	case BT_MODE_LE:
 		if (!(adapter->supported_settings & MGMT_SETTING_LE)) {
-			error("Ignoring adapter withouth LE support");
+			btd_error(adapter->dev_id,
+				"Ignoring adapter withouth LE support");
 			goto failed;
 		}
 
@@ -7800,7 +7896,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	err = adapter_register(adapter);
 	if (err < 0) {
-		error("Unable to register new adapter");
+		btd_error(adapter->dev_id, "Unable to register new adapter");
 		goto failed;
 	}
 
@@ -7956,13 +8052,15 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 
 	adapter = btd_adapter_lookup(index);
 	if (adapter) {
-		warn("Ignoring index added for an already existing adapter");
+		btd_warn(adapter->dev_id,
+			"Ignoring index added for an already existing adapter");
 		return;
 	}
 
 	adapter = btd_adapter_new(index);
 	if (!adapter) {
-		error("Unable to create new adapter for index %u", index);
+		btd_error(adapter->dev_id,
+			"Unable to create new adapter for index %u", index);
 		return;
 	}
 
@@ -7985,7 +8083,8 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 					read_info_complete, adapter, NULL) > 0)
 		return;
 
-	error("Failed to read controller info for index %u", index);
+	btd_error(adapter->dev_id,
+			"Failed to read controller info for index %u", index);
 
 	adapter_list = g_list_remove(adapter_list, adapter);
 
