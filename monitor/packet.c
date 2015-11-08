@@ -88,6 +88,7 @@
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
 static time_t time_offset = ((time_t) -1);
+static int priority_level = 6;
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
 static uint16_t index_number = 0;
@@ -158,6 +159,11 @@ void packet_add_filter(unsigned long filter)
 void packet_del_filter(unsigned long filter)
 {
 	filter_mask &= ~filter;
+}
+
+void packet_set_priority(const char *priority)
+{
+	priority_level = atoi(priority);
 }
 
 void packet_select_index(uint16_t index)
@@ -8716,6 +8722,9 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 	char pid_str[128];
 	const char *label;
 	const char *color;
+
+	if (priority > priority_level)
+		return;
 
 	switch (priority) {
 	case 0x03:

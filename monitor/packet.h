@@ -38,6 +38,7 @@ void packet_set_filter(unsigned long filter);
 void packet_add_filter(unsigned long filter);
 void packet_del_filter(unsigned long filter);
 
+void packet_set_priority(const char *priority);
 void packet_select_index(uint16_t index);
 
 void packet_hexdump(const unsigned char *buf, uint16_t len);

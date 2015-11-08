@@ -61,6 +61,7 @@ static void usage(void)
 		"\t-w, --write <file>     Save traces in btsnoop format\n"
 		"\t-a, --analyze <file>   Analyze traces in btsnoop format\n"
 		"\t-s, --server <socket>  Start monitor server socket\n"
+		"\t-p, --priority <level> Show only priority or lower\n"
 		"\t-i, --index <num>      Show only specified controller\n"
 		"\t-t, --time             Show time instead of time offset\n"
 		"\t-T, --date             Show time and date information\n"
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "r:w:a:s:i:tTSE:vh",
+		opt = getopt_long(argc, argv, "r:w:a:s:p:i:tTSE:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -121,6 +122,9 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			control_server(optarg);
+			break;
+		case 'p':
+			packet_set_priority(optarg);
 			break;
 		case 'i':
 			if (strlen(optarg) > 3 && !strncmp(optarg, "hci", 3))
