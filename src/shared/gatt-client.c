@@ -21,6 +21,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "src/shared/att.h"
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
