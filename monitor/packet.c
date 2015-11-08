@@ -3696,13 +3696,16 @@ static void packet_user_logging(struct timeval *tv, struct ucred *cred,
 				uint16_t index, const void *data, uint16_t size)
 {
 	char pid_str[128];
+	const char *label;
 	uint8_t priority;
+	uint8_t ident_len;
 	const char *color;
 
-	if (size < 1)
+	if (size < 2)
 		return;
 
 	priority = *((uint8_t *) data);
+	ident_len = *((uint8_t *) (data + 1));
 
 	switch (priority) {
 	case 0x03:
@@ -3741,10 +3744,17 @@ static void packet_user_logging(struct timeval *tv, struct ucred *cred,
 			fclose(fp);
 		} else
 			snprintf(pid_str, sizeof(pid_str), "%u", cred->pid);
-        } else
-		strcpy(pid_str, "Message");
 
-	print_packet(tv, cred, index, '=', color, pid_str, data + 1, NULL);
+		label = pid_str;
+        } else {
+		if (ident_len)
+			label = data + 2;
+		else
+			label = "Message";
+	}
+
+	print_packet(tv, cred, index, '=', color, label,
+					data + 2 + ident_len, NULL);
 }
 
 void packet_monitor(struct timeval *tv, struct ucred *cred,
