@@ -107,7 +107,7 @@ unsigned int bt_gatt_result_service_count(struct bt_gatt_result *result)
 		return 0;
 
 	if (result->opcode != BT_ATT_OP_READ_BY_GRP_TYPE_RSP &&
-			result->opcode != BT_ATT_OP_FIND_BY_TYPE_VAL_RSP)
+			result->opcode != BT_ATT_OP_FIND_BY_TYPE_RSP)
 		return 0;
 
 	return result_element_count(result);
@@ -342,7 +342,7 @@ bool bt_gatt_iter_next_service(struct bt_gatt_iter *iter,
 		*end_handle = get_le16(pdu_ptr + 2);
 		convert_uuid_le(pdu_ptr + 4, iter->result->data_len - 4, uuid);
 		break;
-	case BT_ATT_OP_FIND_BY_TYPE_VAL_RSP:
+	case BT_ATT_OP_FIND_BY_TYPE_RSP:
 		*start_handle = get_le16(pdu_ptr);
 		*end_handle = get_le16(pdu_ptr + 2);
 
@@ -747,7 +747,7 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 	/* PDU must contain 4 bytes and it must be a multiple of 4, where each
 	 * 4 bytes contain the 16-bit attribute and group end handles.
 	 */
-	if (opcode != BT_ATT_OP_FIND_BY_TYPE_VAL_RSP || !pdu || !length ||
+	if (opcode != BT_ATT_OP_FIND_BY_TYPE_RSP || !pdu || !length ||
 								length % 4) {
 		success = false;
 		goto done;
@@ -785,7 +785,7 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 		put_le16(op->service_type, pdu + 4);
 		bt_uuid_to_le(&op->uuid, pdu + 6);
 
-		op->id = bt_att_send(op->att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
+		op->id = bt_att_send(op->att, BT_ATT_OP_FIND_BY_TYPE_REQ,
 						pdu, sizeof(pdu),
 						find_by_type_val_cb,
 						bt_gatt_request_ref(op),
@@ -855,7 +855,7 @@ static struct bt_gatt_request *discover_services(struct bt_att *att,
 		put_le16(op->service_type, pdu + 4);
 		bt_uuid_to_le(&op->uuid, pdu + 6);
 
-		op->id = bt_att_send(att, BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
+		op->id = bt_att_send(att, BT_ATT_OP_FIND_BY_TYPE_REQ,
 						pdu, sizeof(pdu),
 						find_by_type_val_cb,
 						bt_gatt_request_ref(op),

@@ -711,7 +711,7 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 	if (data.ecode)
 		goto error;
 
-	bt_att_send(server->att, BT_ATT_OP_FIND_BY_TYPE_VAL_RSP, data.pdu,
+	bt_att_send(server->att, BT_ATT_OP_FIND_BY_TYPE_RSP, data.pdu,
 						data.len, NULL, NULL, NULL);
 
 	return;
@@ -1316,7 +1316,7 @@ static bool gatt_server_register_att_handlers(struct bt_gatt_server *server)
 
 	/* Find By Type Value */
 	server->find_by_type_value_id = bt_att_register(server->att,
-						BT_ATT_OP_FIND_BY_TYPE_VAL_REQ,
+						BT_ATT_OP_FIND_BY_TYPE_REQ,
 						find_by_type_val_cb,
 						server, NULL);
 
