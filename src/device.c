@@ -1498,7 +1498,7 @@ static void device_profile_connected(struct btd_device *dev,
 		btd_device_set_temporary(dev, false);
 
 	if (dev->pending == NULL)
-		return;
+		goto done;
 
 	if (!btd_device_is_connected(dev)) {
 		switch (-err) {
