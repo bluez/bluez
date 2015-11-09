@@ -320,30 +320,30 @@ static struct att_send_op *create_att_send_op(struct bt_att *att,
 						bt_att_destroy_func_t destroy)
 {
 	struct att_send_op *op;
-	enum att_op_type op_type;
+	enum att_op_type type;
 
 	if (length && !pdu)
 		return NULL;
 
-	op_type = get_op_type(opcode);
-	if (op_type == ATT_OP_TYPE_UNKNOWN)
+	type = get_op_type(opcode);
+	if (type == ATT_OP_TYPE_UNKNOWN)
 		return NULL;
 
 	/* If the opcode corresponds to an operation type that does not elicit a
 	 * response from the remote end, then no callback should have been
 	 * provided, since it will never be called.
 	 */
-	if (callback && op_type != ATT_OP_TYPE_REQ && op_type != ATT_OP_TYPE_IND)
+	if (callback && type != ATT_OP_TYPE_REQ && type != ATT_OP_TYPE_IND)
 		return NULL;
 
 	/* Similarly, if the operation does elicit a response then a callback
 	 * must be provided.
 	 */
-	if (!callback && (op_type == ATT_OP_TYPE_REQ || op_type == ATT_OP_TYPE_IND))
+	if (!callback && (type == ATT_OP_TYPE_REQ || type == ATT_OP_TYPE_IND))
 		return NULL;
 
 	op = new0(struct att_send_op, 1);
-	op->type = op_type;
+	op->type = type;
 	op->opcode = opcode;
 	op->callback = callback;
 	op->destroy = destroy;
