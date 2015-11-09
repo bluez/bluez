@@ -48,6 +48,7 @@
 #include "gdbus/gdbus.h"
 
 #include "log.h"
+#include "backtrace.h"
 
 #include "lib/uuid.h"
 #include "hcid.h"
@@ -584,6 +585,8 @@ int main(int argc, char *argv[])
 	}
 
 	umask(0077);
+
+	btd_backtrace_init();
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 

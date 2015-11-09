@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+void btd_backtrace_init(void);
 void btd_backtrace(uint16_t index);
 
 void btd_assertion_message_expr(const char *file, int line,

@@ -28,15 +28,30 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include "src/log.h"
-#include "src/backtrace.h"
-
 #ifdef HAVE_BACKTRACE_SUPPORT
 #include <execinfo.h>
 #include <elfutils/libdwfl.h>
+#endif
+
+#include "src/log.h"
+#include "src/backtrace.h"
+
+void btd_backtrace_init(void)
+{
+#ifdef HAVE_BACKTRACE_SUPPORT
+	void *frames[1];
+
+	/*
+	 * initialize the backtracer, since the ctor calls dlopen(), which
+	 * calls malloc(), which isn't signal-safe.
+	 */
+	backtrace(frames, 1);
+#endif
+}
 
 void btd_backtrace(uint16_t index)
 {
+#ifdef HAVE_BACKTRACE_SUPPORT
 	char *debuginfo_path = NULL;
 	const Dwfl_Callbacks callbacks = {
 		.find_debuginfo = dwfl_standard_find_debuginfo,
