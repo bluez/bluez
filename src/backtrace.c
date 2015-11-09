@@ -123,12 +123,8 @@ void btd_backtrace(uint16_t index)
 
 done:
 	dwfl_end(dwfl);
-}
-#else
-void btd_backtrace(uint16_t index)
-{
-}
 #endif
+}
 
 void btd_assertion_message_expr(const char *file, int line,
 					const char *func, const char *expr)
