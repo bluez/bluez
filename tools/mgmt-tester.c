@@ -1857,7 +1857,7 @@ static const struct generic_data start_discovery_valid_param_test_2 = {
 };
 
 static const struct generic_data start_discovery_valid_param_power_off_1 = {
-	.setup_settings = settings_powered_le,
+	.setup_settings = settings_le,
 	.send_opcode = MGMT_OP_START_DISCOVERY,
 	.send_param = start_discovery_bredrle_param,
 	.send_len = sizeof(start_discovery_bredrle_param),
