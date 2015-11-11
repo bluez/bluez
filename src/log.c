@@ -180,6 +180,22 @@ void info(const char *format, ...)
 	va_end(ap);
 }
 
+void btd_log(uint16_t index, int priority, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsyslog(priority, format, ap);
+	va_end(ap);
+
+	if (logging_fd < 0)
+		return;
+
+	va_start(ap, format);
+	logging_log(index, priority, format, ap);
+	va_end(ap);
+}
+
 void btd_error(uint16_t index, const char *format, ...)
 {
 	va_list ap;
