@@ -1654,6 +1654,7 @@ static gboolean set_chrcs_ready(gpointer user_data)
 {
 	struct service *service = user_data;
 
+	service->idle_id = 0;
 	notify_chrcs(service);
 
 	return FALSE;
