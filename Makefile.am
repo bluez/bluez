@@ -403,7 +403,7 @@ unit_test_hog_SOURCES = unit/test-hog.c \
 			android/hog.h android/hog.c \
 			profiles/scanparam/scpp.h profiles/scanparam/scpp.c \
 			profiles/battery/bas.h profiles/battery/bas.c \
-			android/dis.h android/dis.c \
+			profiles/deviceinfo/dis.h profiles/deviceinfo/dis.c \
 			src/log.h src/log.c \
 			attrib/att.h attrib/att.c \
 			attrib/gatt.h attrib/gatt.c \

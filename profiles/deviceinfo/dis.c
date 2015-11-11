@@ -42,7 +42,7 @@
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 
-#include "android/dis.h"
+#include "profiles/deviceinfo/dis.h"
 
 #define PNP_ID_SIZE	7
 
