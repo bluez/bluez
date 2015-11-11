@@ -1602,7 +1602,7 @@ static void client_l2cap_rsp(uint8_t code, const void *data, uint16_t len,
 	if (code != l2data->expect_cmd_code) {
 		tester_warn("Unexpected L2CAP response code (expected 0x%02x)",
 						l2data->expect_cmd_code);
-		goto failed;
+		return;
 	}
 
 	if (code == BT_L2CAP_PDU_CONN_RSP) {
