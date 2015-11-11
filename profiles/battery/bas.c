@@ -43,7 +43,7 @@
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 
-#include "android/bas.h"
+#include "profiles/battery/bas.h"
 
 #define ATT_NOTIFICATION_HEADER_SIZE 3
 #define ATT_READ_RESPONSE_HEADER_SIZE 1
