@@ -54,6 +54,7 @@ struct test_data {
 	uint16_t scid;
 	uint16_t dcid;
 	int sk;
+	int sk2;
 };
 
 struct l2cap_data {
@@ -462,6 +463,12 @@ static const struct l2cap_data le_client_close_socket_test_1 = {
 
 static const struct l2cap_data le_client_close_socket_test_2 = {
 	.client_psm = 0x0080,
+	.server_not_advertising = true,
+};
+
+static const struct l2cap_data le_client_two_sockets_same_client = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
 	.server_not_advertising = true,
 };
 
@@ -1398,6 +1405,96 @@ static void test_close_socket(const void *test_data)
 	connect_socket(client_bdaddr, &data->sk, NULL);
 }
 
+static uint8_t test_two_sockets_connect_cb_cnt;
+static gboolean test_two_sockets_connect_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int err, sk_err, sk;
+	socklen_t len = sizeof(sk_err);
+
+	data->io_id = 0;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+		err = -errno;
+	else
+		err = -sk_err;
+
+	if (err < 0) {
+		tester_warn("Connect failed: %s (%d)", strerror(-err), -err);
+		tester_test_failed();
+		return FALSE;
+	}
+
+	tester_print("Successfully connected");
+	test_two_sockets_connect_cb_cnt++;
+
+	if (test_two_sockets_connect_cb_cnt == 2) {
+		close(data->sk);
+		close(data->sk2);
+		tester_test_passed();
+	}
+
+	return FALSE;
+}
+
+static gboolean enable_advertising(gpointer args)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+
+	bthost_set_adv_enable(bthost, 0x01);
+	return FALSE;
+}
+
+static void test_connect_two_sockets_part_2(void)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *client_bdaddr;
+
+	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+	connect_socket(client_bdaddr, &data->sk2, test_two_sockets_connect_cb);
+
+	g_idle_add(enable_advertising, NULL);
+}
+
+static void test_connect_two_sockets_router(uint16_t opcode, const void *param,
+					uint8_t length, void *user_data)
+{
+	const struct bt_hci_cmd_le_set_scan_enable *scan_params = param;
+
+	tester_print("HCI Command 0x%04x length %u", opcode, length);
+	if (opcode == BT_HCI_CMD_LE_SET_SCAN_ENABLE &&
+						scan_params->enable == true) {
+		test_connect_two_sockets_part_2();
+	}
+}
+
+static void test_connect_two_sockets(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	const uint8_t *client_bdaddr;
+
+	test_two_sockets_connect_cb_cnt = 0;
+
+	hciemu_add_master_post_command_hook(data->hciemu,
+				test_connect_two_sockets_router, data);
+
+	if (l2data->server_psm) {
+		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+
+		if (!l2data->data_len)
+			bthost_add_l2cap_server(bthost, l2data->server_psm,
+						NULL, NULL);
+	}
+
+	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+	connect_socket(client_bdaddr, &data->sk, test_two_sockets_connect_cb);
+}
+
 static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1723,6 +1820,11 @@ int main(int argc, char *argv[])
 				&le_client_close_socket_test_2,
 				setup_powered_client,
 				test_close_socket);
+
+	test_l2cap_le("L2CAP LE Client - Open two sockets",
+				&le_client_two_sockets_same_client,
+				setup_powered_client,
+				test_connect_two_sockets);
 
 	test_l2cap_le("L2CAP LE Client - Invalid PSM",
 					&le_client_connect_nval_psm_test,
