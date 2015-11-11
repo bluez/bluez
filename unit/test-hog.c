@@ -37,7 +37,7 @@
 
 #include "attrib/gattrib.h"
 
-#include "android/hog.h"
+#include "profiles/input/hog-lib.h"
 
 struct test_pdu {
 	bool valid;

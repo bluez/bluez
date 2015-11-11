@@ -33,7 +33,8 @@ android_bluetoothd_SOURCES = android/main.c \
 				profiles/deviceinfo/dis.h \
 				profiles/deviceinfo/dis.c \
 				profiles/battery/bas.h profiles/battery/bas.c \
-				android/hog.h android/hog.c \
+				profiles/input/hog-lib.h \
+				profiles/input/hog-lib.c \
 				android/ipc-common.h \
 				android/ipc.h android/ipc.c \
 				android/avdtp.h android/avdtp.c \

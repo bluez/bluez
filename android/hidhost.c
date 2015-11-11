@@ -44,13 +44,13 @@
 #include "src/sdp-client.h"
 #include "src/uuid-helper.h"
 #include "src/log.h"
+#include "profiles/input/hog-lib.h"
 
 #include "hal-msg.h"
 #include "ipc-common.h"
 #include "ipc.h"
 #include "bluetooth.h"
 #include "gatt.h"
-#include "hog.h"
 #include "hidhost.h"
 #include "utils.h"
 
