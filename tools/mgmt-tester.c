@@ -3855,7 +3855,6 @@ static const uint8_t remove_device_param_2[] =  {
 					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
 					0x01,
 };
-static const uint8_t set_le_scan_off[] = { 0x00, 0x00 };
 static const struct generic_data remove_device_success_4 = {
 	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_REMOVE_DEVICE,
@@ -3867,9 +3866,6 @@ static const struct generic_data remove_device_success_4 = {
 	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
 	.expect_alt_ev_param = remove_device_param_2,
 	.expect_alt_ev_len = sizeof(remove_device_param_2),
-	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_ENABLE,
-	.expect_hci_param = set_le_scan_off,
-	.expect_hci_len = sizeof(set_le_scan_off),
 };
 
 static const struct generic_data remove_device_success_5 = {
@@ -3882,9 +3878,6 @@ static const struct generic_data remove_device_success_5 = {
 	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
 	.expect_alt_ev_param = remove_device_param_2,
 	.expect_alt_ev_len = sizeof(remove_device_param_2),
-	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_ENABLE,
-	.expect_hci_param = set_le_scan_off,
-	.expect_hci_len = sizeof(set_le_scan_off),
 };
 
 static const struct generic_data read_adv_features_invalid_param_test = {
@@ -5851,6 +5844,28 @@ static void test_command_generic(const void *test_data)
 	test_add_condition(data);
 }
 
+static void check_scan(void *user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	if (hciemu_is_master_le_scan_enabled(data->hciemu)) {
+		tester_warn("LE scan still enabled");
+		tester_test_failed();
+		return;
+	}
+
+	test_condition_complete(data);
+}
+
+static void test_remove_device(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	test_command_generic(test_data);
+	tester_wait(1, check_scan, NULL);
+	test_add_condition(data);
+}
+
 static void test_device_found(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -6786,10 +6801,10 @@ int main(int argc, char *argv[])
 				setup_add_device, test_command_generic);
 	test_le("Remove Device - Success 4",
 				&remove_device_success_4,
-				setup_add_device, test_command_generic);
+				setup_add_device, test_remove_device);
 	test_le("Remove Device - Success 5",
 				&remove_device_success_5,
-				setup_add_device, test_command_generic);
+				setup_add_device, test_remove_device);
 
 	test_bredrle("Read Advertising Features - Invalid parameters",
 				&read_adv_features_invalid_param_test,
