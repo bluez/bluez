@@ -139,7 +139,7 @@ void error(const char *format, ...)
 	va_end(ap);
 }
 
-void btd_debug(const char *format, ...)
+void btd_debug(uint16_t index, const char *format, ...)
 {
 	va_list ap;
 
