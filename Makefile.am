@@ -401,7 +401,7 @@ unit_tests += unit/test-hog
 unit_test_hog_SOURCES = unit/test-hog.c \
 			$(btio_sources) \
 			android/hog.h android/hog.c \
-			android/scpp.h android/scpp.c \
+			profiles/scanparam/scpp.h profiles/scanparam/scpp.c \
 			profiles/battery/bas.h profiles/battery/bas.c \
 			android/dis.h android/dis.c \
 			src/log.h src/log.c \

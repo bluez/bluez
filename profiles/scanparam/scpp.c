@@ -44,7 +44,7 @@
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
 
-#include "android/scpp.h"
+#include "profiles/scanparam/scpp.h"
 
 #define SCAN_INTERVAL_WIN_UUID		0x2A4F
 #define SCAN_REFRESH_UUID		0x2A31

@@ -53,7 +53,7 @@
 
 #include "btio/btio.h"
 
-#include "android/scpp.h"
+#include "profiles/scanparam/scpp.h"
 #include "android/dis.h"
 #include "profiles/battery/bas.h"
 #include "android/hog.h"
