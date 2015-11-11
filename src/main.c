@@ -361,6 +361,21 @@ static void init_defaults(void)
 	main_opts.did_version = (major << 8 | minor);
 }
 
+static void log_handler(const gchar *log_domain, GLogLevelFlags log_level,
+				const gchar *message, gpointer user_data)
+{
+	int priority;
+
+	if (log_level & (G_LOG_LEVEL_ERROR |
+				G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_WARNING))
+		priority = 0x03;
+	else
+		priority = 0x06;
+
+	btd_log(0xffff, priority, "GLib: %s", message);
+	btd_backtrace(0xffff);
+}
+
 static GMainLoop *event_loop;
 
 void btd_exit(void)
@@ -593,6 +608,10 @@ int main(int argc, char *argv[])
 	signal = setup_signalfd();
 
 	__btd_log_init(option_debug, option_detach);
+
+	g_log_set_handler("GLib", G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL |
+							G_LOG_FLAG_RECURSION,
+							log_handler, NULL);
 
 	sd_notify(0, "STATUS=Starting up");
 
