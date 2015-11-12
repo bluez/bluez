@@ -90,6 +90,7 @@ struct l2cap_data {
 
 	uint8_t *client_bdaddr;
 	bool server_not_advertising;
+	bool direct_advertising;
 	bool close_one_socket;
 };
 
@@ -433,6 +434,12 @@ static const struct l2cap_data l2cap_server_nval_cid_test2 = {
 static const struct l2cap_data le_client_connect_success_test_1 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
+};
+
+static const struct l2cap_data le_client_connect_adv_success_test_1 = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.direct_advertising = true,
 };
 
 static const struct l2cap_data le_client_connect_success_test_2 = {
@@ -786,6 +793,11 @@ static void setup_powered_client(const void *test_data)
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 		bthost_set_connect_cb(bthost, send_rsp_new_conn, data);
 	}
+
+	if (test->direct_advertising)
+		mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING,
+				data->mgmt_index, sizeof(param), param,
+				NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_client_callback,
@@ -1147,6 +1159,38 @@ static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
 	data->handle = handle;
 }
 
+static void direct_adv_cmd_complete(uint16_t opcode, const void *param,
+						uint8_t len, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct bt_hci_cmd_le_set_adv_parameters *cp;
+	const uint8_t *expect_bdaddr;
+
+	if (opcode != BT_HCI_CMD_LE_SET_ADV_PARAMETERS)
+		return;
+
+	tester_print("Received advertising parameters HCI command");
+
+	cp = param;
+
+	/* Advertising as client should be direct advertising */
+	if (cp->type != 0x01) {
+		tester_warn("Invalid advertising type");
+		tester_test_failed();
+		return;
+	}
+
+	expect_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+	if (memcmp(expect_bdaddr, cp->direct_addr, 6)) {
+		tester_warn("Invalid direct address in adv params");
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
+
+}
+
 static void test_connect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1164,6 +1208,10 @@ static void test_connect(const void *test_data)
 			bthost_add_l2cap_server(bthost, l2data->server_psm,
 						client_l2cap_connect_cb, data);
 	}
+
+	if (l2data->direct_advertising)
+		hciemu_add_master_post_command_hook(data->hciemu,
+						direct_adv_cmd_complete, NULL);
 
 	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level);
 	if (sk < 0) {
@@ -1830,6 +1878,9 @@ int main(int argc, char *argv[])
 
 	test_l2cap_le("L2CAP LE Client - Success",
 				&le_client_connect_success_test_1,
+				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client, Direct Advertising - Success",
+				&le_client_connect_adv_success_test_1,
 				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client SMP - Success",
 				&le_client_connect_success_test_2,
