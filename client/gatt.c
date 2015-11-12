@@ -75,12 +75,13 @@ static void print_service(GDBusProxy *proxy, const char *description)
 	if (!text)
 		text = uuid;
 
-	rl_printf("%s%s%sService %s %s %s\n",
+	rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n",
 				description ? "[" : "",
 				description ? : "",
 				description ? "] " : "",
+				primary ? "Primary" : "Secondary",
 				g_dbus_proxy_get_path(proxy),
-				text, primary ? "(Primary)" : "(Secondary)");
+				text);
 }
 
 void gatt_add_service(GDBusProxy *proxy)
@@ -111,7 +112,7 @@ static void print_characteristic(GDBusProxy *proxy, const char *description)
 	if (!text)
 		text = uuid;
 
-	rl_printf("%s%s%sCharacteristic %s %s\n",
+	rl_printf("%s%s%sCharacteristic\n\t%s\n\t%s\n",
 				description ? "[" : "",
 				description ? : "",
 				description ? "] " : "",
@@ -176,7 +177,7 @@ static void print_descriptor(GDBusProxy *proxy, const char *description)
 	if (!text)
 		text = uuid;
 
-	rl_printf("%s%s%sDescriptor %s %s\n",
+	rl_printf("%s%s%sDescriptor\n\t%s\n\t%s\n",
 				description ? "[" : "",
 				description ? : "",
 				description ? "] " : "",
