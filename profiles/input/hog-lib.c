@@ -369,6 +369,20 @@ static void ccc_read_cb(guint8 status, const guint8 *pdu, guint16 len,
 	write_ccc(report->hog, report->hog->attrib, report->ccc_handle, report);
 }
 
+static const char *type_to_string(uint8_t type)
+{
+	switch (type) {
+	case HOG_REPORT_TYPE_INPUT:
+		return "input";
+	case HOG_REPORT_TYPE_OUTPUT:
+		return "output";
+	case HOG_REPORT_TYPE_FEATURE:
+		return "feature";
+	}
+
+	return NULL;
+}
+
 static void report_reference_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
@@ -390,7 +404,9 @@ static void report_reference_cb(guint8 status, const guint8 *pdu,
 
 	report->id = pdu[1];
 	report->type = pdu[2];
-	DBG("Report ID: 0x%02x Report type: 0x%02x", pdu[1], pdu[2]);
+
+	DBG("Report 0x%04x: id 0x%02x type %s", report->decl->value_handle,
+				report->id, type_to_string(report->type));
 
 	/* Enable notifications only for Input Reports */
 	if (report->type == HOG_REPORT_TYPE_INPUT)
