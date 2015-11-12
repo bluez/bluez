@@ -2258,6 +2258,12 @@ void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr,
 		if (addr_type == BDADDR_LE_RANDOM)
 			cc.peer_addr_type = 0x01;
 
+		cc.scan_interval = cpu_to_le16(0x0060);
+		cc.scan_window = cpu_to_le16(0x0030);
+		cc.min_interval = cpu_to_le16(0x0028);
+		cc.max_interval = cpu_to_le16(0x0038);
+		cc.supv_timeout = cpu_to_le16(0x002a);
+
 		send_command(bthost, BT_HCI_CMD_LE_CREATE_CONN,
 							&cc, sizeof(cc));
 	}
