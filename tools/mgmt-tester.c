@@ -584,6 +584,22 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static uint16_t settings_powered_advertising_privacy[] = {
+						MGMT_OP_SET_PRIVACY,
+						MGMT_OP_SET_ADVERTISING,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const char set_adv_off_param[] = { 0x00 };
+
+static const struct generic_data set_powered_on_privacy_adv_test = {
+	.setup_settings = settings_powered_advertising_privacy,
+	.send_opcode = MGMT_OP_SET_ADVERTISING,
+	.send_param = set_adv_off_param,
+	.send_len = sizeof(set_adv_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_ignore_param = true,
+};
+
 static const uint16_t settings_powered[] = { MGMT_OP_SET_POWERED, 0 };
 
 static const char set_powered_off_param[] = { 0x00 };
@@ -4353,8 +4369,6 @@ static const struct generic_data add_advertising_success_4 = {
 	.expect_hci_len = sizeof(set_adv_data_txpwr),
 };
 
-static const char set_adv_off_param[] = { 0x00 };
-
 static const struct generic_data add_advertising_success_5 = {
 	.send_opcode = MGMT_OP_SET_ADVERTISING,
 	.send_param = set_adv_off_param,
@@ -5565,6 +5579,9 @@ proceed:
 	for (cmd = test->setup_settings; *cmd; cmd++) {
 		unsigned char simple_param[] = { 0x01 };
 		unsigned char discov_param[] = { 0x01, 0x00, 0x00 };
+		unsigned char privacy_param[] = { 0x01,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
 		unsigned char *param = simple_param;
 		size_t param_size = sizeof(simple_param);
 		mgmt_request_func_t func = NULL;
@@ -5581,6 +5598,11 @@ proceed:
 			}
 			param_size = sizeof(discov_param);
 			param = discov_param;
+		}
+
+		if (*cmd == MGMT_OP_SET_PRIVACY) {
+			param_size = sizeof(privacy_param);
+			param = privacy_param;
 		}
 
 		if (*cmd == MGMT_OP_SET_LE && test->setup_nobredr) {
@@ -6081,6 +6103,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set powered on - Invalid index",
 				&set_powered_on_invalid_index_test,
+				NULL, test_command_generic);
+	test_le("Set powered on - Privacy and Advertising",
+				&set_powered_on_privacy_adv_test,
 				NULL, test_command_generic);
 
 	test_bredrle("Set powered off - Success",
