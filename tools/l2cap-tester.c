@@ -794,7 +794,7 @@ static void setup_powered_client(const void *test_data)
 		bthost_set_connect_cb(bthost, send_rsp_new_conn, data);
 	}
 
-	if (test->direct_advertising)
+	if (test && test->direct_advertising)
 		mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING,
 				data->mgmt_index, sizeof(param), param,
 				NULL, NULL, NULL);
