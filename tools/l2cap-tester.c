@@ -1188,7 +1188,6 @@ static void direct_adv_cmd_complete(uint16_t opcode, const void *param,
 	}
 
 	tester_test_passed();
-
 }
 
 static void test_connect(const void *test_data)
