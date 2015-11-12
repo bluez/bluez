@@ -93,7 +93,13 @@ void gatt_add_service(GDBusProxy *proxy)
 
 void gatt_remove_service(GDBusProxy *proxy)
 {
-	services = g_list_remove(services, proxy);
+	GList *l;
+
+	l = g_list_find(services, proxy);
+	if (!l)
+		return;
+
+	services = g_list_delete_link(services, l);
 
 	print_service(proxy, COLORED_DEL);
 }
@@ -155,10 +161,13 @@ void gatt_add_characteristic(GDBusProxy *proxy)
 
 void gatt_remove_characteristic(GDBusProxy *proxy)
 {
-	if (!characteristic_is_child(proxy))
+	GList *l;
+
+	l = g_list_find(characteristics, proxy);
+	if (!l)
 		return;
 
-	characteristics = g_list_remove(characteristics, proxy);
+	characteristics = g_list_delete_link(characteristics, l);
 
 	print_characteristic(proxy, COLORED_DEL);
 }
@@ -220,10 +229,13 @@ void gatt_add_descriptor(GDBusProxy *proxy)
 
 void gatt_remove_descriptor(GDBusProxy *proxy)
 {
-	if (!descriptor_is_child(proxy))
+	GList *l;
+
+	l = g_list_find(descriptors, proxy);
+	if (!l)
 		return;
 
-	descriptors = g_list_remove(descriptors, proxy);
+	descriptors = g_list_delete_link(descriptors, l);
 
 	print_descriptor(proxy, COLORED_DEL);
 }

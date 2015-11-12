@@ -436,12 +436,10 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 				agent_unregister(dbus_conn, NULL);
 		}
 	} else if (!strcmp(interface, "org.bluez.GattService1")) {
-		if (service_is_child(proxy)) {
-			gatt_remove_service(proxy);
+		gatt_remove_service(proxy);
 
-			if (default_attr == proxy)
-				set_default_attribute(NULL);
-		}
+		if (default_attr == proxy)
+			set_default_attribute(NULL);
 	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
 		gatt_remove_characteristic(proxy);
 
