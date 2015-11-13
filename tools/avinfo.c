@@ -181,6 +181,16 @@ static void print_aptx(a2dp_aptx_t *aptx)
 	printf("\n");
 }
 
+static void print_ldac(a2dp_ldac_t *ldac)
+{
+	printf("\t\tVendor Specific Value (LDAC)");
+
+	printf("\n\t\t\tUnknown: %02x %02x", ldac->unknown[0],
+							ldac->unknown[1]);
+
+	printf("\n");
+}
+
 static void print_vendor(a2dp_vendor_codec_t *vendor)
 {
 	uint32_t vendor_id = btohl(vendor->vendor_id);
@@ -194,6 +204,8 @@ static void print_vendor(a2dp_vendor_codec_t *vendor)
 
 	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
 		print_aptx((void *) vendor);
+	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
+		print_ldac((void *) vendor);
 }
 
 static void print_mpeg24(a2dp_aac_t *aac)

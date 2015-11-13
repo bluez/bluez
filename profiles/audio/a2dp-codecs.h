@@ -141,6 +141,9 @@
 #define APTX_SAMPLING_FREQ_44100	0x02
 #define APTX_SAMPLING_FREQ_48000	0x01
 
+#define LDAC_VENDOR_ID			0x0000012d
+#define LDAC_CODEC_ID			0x00aa
+
 typedef struct {
 	uint32_t vendor_id;
 	uint16_t codec_id;
@@ -185,6 +188,11 @@ typedef struct {
 	uint8_t channel_mode:4;
 	uint8_t frequency:4;
 } __attribute__ ((packed)) a2dp_aptx_t;
+
+typedef struct {
+	a2dp_vendor_codec_t info;
+	uint8_t unknown[2];
+} __attribute__ ((packed)) a2dp_ldac_t;
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
