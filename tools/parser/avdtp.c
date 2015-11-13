@@ -154,6 +154,8 @@ static char *vndcodec2str(uint32_t vendor, uint16_t vndcodec)
 {
 	if (vendor == 0x0000004f && vndcodec == 0x0001)
 		return "aptX";
+	else if (vendor == 0x0000012d && vndcodec == 0x00aa)
+		return "LDAC";
 	return "Unknown";
 }
 
