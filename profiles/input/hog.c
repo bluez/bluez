@@ -132,8 +132,10 @@ static void hog_device_free(void *data)
 	struct hog_device *dev = data;
 
 	queue_remove(devices, dev);
-	if (queue_isempty(devices))
+	if (queue_isempty(devices)) {
 		queue_destroy(devices, NULL);
+		devices = NULL;
+	}
 
 	btd_device_remove_attio_callback(dev->device, dev->attioid);
 	btd_device_unref(dev->device);
