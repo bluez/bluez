@@ -430,7 +430,7 @@ const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu)
 uint8_t hciemu_get_master_scan_enable(struct hciemu *hciemu)
 {
 	if (!hciemu || !hciemu->master_dev)
-		return NULL;
+		return 0;
 
 	return btdev_get_scan_enable(hciemu->master_dev);
 }
@@ -438,7 +438,7 @@ uint8_t hciemu_get_master_scan_enable(struct hciemu *hciemu)
 uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu)
 {
 	if (!hciemu || !hciemu->master_dev)
-		return NULL;
+		return 0;
 
 	return btdev_get_le_scan_enable(hciemu->master_dev);
 }
