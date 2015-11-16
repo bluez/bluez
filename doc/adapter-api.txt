@@ -167,7 +167,7 @@ Properties	string Address [readonly]
 			value will fail.
 
 			When changing the Powered property the new state of
-			this property will be updated via a PropertyChanged
+			this property will be updated via a PropertiesChanged
 			signal.
 
 			For any new adapter this settings defaults to false.
