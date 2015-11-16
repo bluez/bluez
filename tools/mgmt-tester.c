@@ -3846,9 +3846,6 @@ static const struct generic_data remove_device_success_3 = {
 	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
 	.expect_alt_ev_param = remove_device_param_1,
 	.expect_alt_ev_len = sizeof(remove_device_param_1),
-	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
-	.expect_hci_param = set_connectable_off_scan_enable_param,
-	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
 };
 
 static const uint8_t remove_device_param_2[] =  {
@@ -5854,6 +5851,12 @@ static void check_scan(void *user_data)
 		return;
 	}
 
+	if (hciemu_get_master_scan_enable(data->hciemu)) {
+		tester_warn("BR/EDR scan still enabled");
+		tester_test_failed();
+		return;
+	}
+
 	test_condition_complete(data);
 }
 
@@ -6798,7 +6801,7 @@ int main(int argc, char *argv[])
 				setup_add_device, test_command_generic);
 	test_bredrle("Remove Device - Success 3",
 				&remove_device_success_3,
-				setup_add_device, test_command_generic);
+				setup_add_device, test_remove_device);
 	test_le("Remove Device - Success 4",
 				&remove_device_success_4,
 				setup_add_device, test_remove_device);
