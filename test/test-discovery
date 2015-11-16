@@ -107,10 +107,6 @@ def properties_changed(interface, changed, invalidated, path):
 	else:
 		print_normal(address, devices[path])
 
-def property_changed(name, value):
-	if (name == "Discovering" and not value):
-		mainloop.quit()
-
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -140,10 +136,6 @@ if __name__ == '__main__':
 			signal_name = "PropertiesChanged",
 			arg0 = "org.bluez.Device1",
 			path_keyword = "path")
-
-	bus.add_signal_receiver(property_changed,
-					dbus_interface = "org.bluez.Adapter1",
-					signal_name = "PropertyChanged")
 
 	om = dbus.Interface(bus.get_object("org.bluez", "/"),
 				"org.freedesktop.DBus.ObjectManager")
