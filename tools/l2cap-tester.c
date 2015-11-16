@@ -1322,9 +1322,9 @@ static gboolean test_close_socket_1_part_2(gpointer args)
 
 	tester_print("Will close socket during scan phase...");
 
-	/* We tried to conect to LE device that is not advertising. It was added
-	 * to kernel whitelist, and scan was started. We should be still
-	 * scanning.
+	/* We tried to conect to LE device that is not advertising. It
+	 * was added to kernel whitelist, and scan was started. We
+	 * should be still scanning.
 	 */
 	if (!hciemu_is_master_le_scan_enabled(data->hciemu)) {
 		tester_print("Error - should be still scanning");
