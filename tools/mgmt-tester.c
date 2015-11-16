@@ -5848,7 +5848,7 @@ static void check_scan(void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
-	if (hciemu_is_master_le_scan_enabled(data->hciemu)) {
+	if (hciemu_get_master_le_scan_enable(data->hciemu)) {
 		tester_warn("LE scan still enabled");
 		tester_test_failed();
 		return;

@@ -53,7 +53,7 @@ uint8_t *hciemu_get_features(struct hciemu *hciemu);
 const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu);
 const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu);
 
-bool hciemu_is_master_le_scan_enabled(struct hciemu *hciemu);
+uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu);
 
 typedef void (*hciemu_command_func_t)(uint16_t opcode, const void *data,
 						uint8_t len, void *user_data);

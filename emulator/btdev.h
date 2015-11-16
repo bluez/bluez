@@ -80,7 +80,7 @@ void btdev_destroy(struct btdev *btdev);
 const uint8_t *btdev_get_bdaddr(struct btdev *btdev);
 uint8_t *btdev_get_features(struct btdev *btdev);
 
-bool btdev_is_le_scan_enabled(struct btdev *btdev);
+uint8_t btdev_get_le_scan_enable(struct btdev *btdev);
 
 void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
 							void *user_data);

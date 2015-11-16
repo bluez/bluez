@@ -1305,7 +1305,7 @@ static gboolean test_close_socket_1_part_3(gpointer arg)
 		return FALSE;
 	}
 
-	if (hciemu_is_master_le_scan_enabled(data->hciemu)) {
+	if (hciemu_get_master_le_scan_enable(data->hciemu)) {
 		tester_print("Delayed check whether scann is off failed");
 		tester_test_failed();
 		return FALSE;
@@ -1326,7 +1326,7 @@ static gboolean test_close_socket_1_part_2(gpointer args)
 	 * was added to kernel whitelist, and scan was started. We
 	 * should be still scanning.
 	 */
-	if (!hciemu_is_master_le_scan_enabled(data->hciemu)) {
+	if (!hciemu_get_master_le_scan_enable(data->hciemu)) {
 		tester_print("Error - should be still scanning");
 		tester_test_failed();
 		return FALSE;
@@ -1353,7 +1353,7 @@ static gboolean test_close_socket_2_part_3(gpointer arg)
 	int err;
 
 	/* Scan should be already over, we're trying to create connection */
-	if (hciemu_is_master_le_scan_enabled(data->hciemu)) {
+	if (hciemu_get_master_le_scan_enable(data->hciemu)) {
 		tester_print("Error - should no longer scan");
 		tester_test_failed();
 		return FALSE;

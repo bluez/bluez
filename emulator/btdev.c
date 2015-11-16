@@ -675,7 +675,7 @@ uint8_t *btdev_get_features(struct btdev *btdev)
 	return btdev->features;
 }
 
-bool btdev_is_le_scan_enabled(struct btdev *btdev)
+uint8_t btdev_get_le_scan_enable(struct btdev *btdev)
 {
 	return btdev->le_scan_enable;
 }
