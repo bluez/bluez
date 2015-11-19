@@ -2712,10 +2712,49 @@ Remove Advertising Command
 				Invalid Index
 
 
+Get Advertising Size Information Command
+========================================
+
+	Command Code:		0x0040
+	Controller Index:	<controller id>
+	Command Parameters:	Instance (1 Octet)
+				Flags (4 Octets)
+	Return Parameters:	Instance (1 Octet)
+				Max_Adv_Data_Len (1 Octet)
+				Max_Scan_Rsp_Len (1 Octet)
+
+	The Read Advertising Features command returns the overall maximum
+	size of advertising data and scan respone data fields. That size is
+	valid when no Flags are used. However when certain Flags are used,
+	then the size might decrease. This command can be used to request
+	detailed information about the maximum available size.
+
+	The following Flags values are defined:
+
+		0	Switch into Connectable mode
+		1	Advertise as Discoverable
+		2	Advertise as Limited Discoverable
+		3	Add Flags field to Adv_Data
+		4	Add TX Power field to Adv_Data
+		5	Add Appearance field to Scan_Rsp
+		6	Add Local Name in Scan_Rsp
+
+	To get accurate information about the available size, the same Flags
+	values should be used with the Add Advertising command.
+
+	The Max_Adv_Data_Len and Max_Scan_Rsp_Len fields provide information
+	about the maximum length of the data fields for the given Flags
+	values. When the Flags field is zero, then these fields would contain
+	the same values as Read Advertising Features.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
 Start Limited Discovery Command
 ===============================
 
-	Command Code:		0x0040
+	Command Code:		0x0041
 	Controller Index:	<controller id>
 	Command Parameters:	Address_Type (1 Octet)
 	Return Parameters:	Address_Type (1 Octet)
