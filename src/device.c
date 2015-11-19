@@ -1477,7 +1477,8 @@ static int connect_next(struct btd_device *dev)
 	while (dev->pending) {
 		service = dev->pending->data;
 
-		if (btd_service_connect(service) == 0)
+		err = btd_service_connect(service);
+		if (!err)
 			return 0;
 
 		dev->pending = g_slist_delete_link(dev->pending, dev->pending);
@@ -1732,8 +1733,11 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 	}
 
 	err = connect_next(dev);
-	if (err < 0)
+	if (err < 0) {
+		if (err == -EALREADY)
+			return dbus_message_new_method_return(msg);
 		return btd_error_failed(msg, strerror(-err));
+	}
 
 	dev->connect = dbus_message_ref(msg);
 
