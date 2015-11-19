@@ -499,6 +499,10 @@ const struct vendor_ocf *intel_vendor_ocf(uint16_t ocf)
 	return NULL;
 }
 
+static void startup_evt(const void *data, uint8_t size)
+{
+}
+
 static void fatal_exception_evt(const void *data, uint8_t size)
 {
 	uint16_t line = get_le16(data);
@@ -882,6 +886,8 @@ static void system_exception_evt(const void *data, uint8_t size)
 }
 
 static const struct vendor_evt vendor_evt_table[] = {
+	{ 0x00, "Startup",
+			startup_evt, 0, true },
 	{ 0x01, "Fatal Exception",
 			fatal_exception_evt, 4, true },
 	{ 0x02, "Bootup",
