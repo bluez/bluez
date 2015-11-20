@@ -2720,6 +2720,7 @@ Get Advertising Size Information Command
 	Command Parameters:	Instance (1 Octet)
 				Flags (4 Octets)
 	Return Parameters:	Instance (1 Octet)
+				Flags (4 Octets)
 				Max_Adv_Data_Len (1 Octet)
 				Max_Scan_Rsp_Len (1 Octet)
 
