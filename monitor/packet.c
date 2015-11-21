@@ -8375,23 +8375,17 @@ struct subevent_data {
 static void print_subevent(const struct subevent_data *subevent_data,
 					const void *data, uint8_t size)
 {
-	const char *subevent_color, *subevent_str;
+	const char *subevent_color;
 
-	if (subevent_data) {
-		if (subevent_data->func)
-			subevent_color = COLOR_HCI_EVENT;
-		else
-			subevent_color = COLOR_HCI_EVENT_UNKNOWN;
-		subevent_str = subevent_data->str;
-	} else {
+	if (subevent_data->func)
+		subevent_color = COLOR_HCI_EVENT;
+	else
 		subevent_color = COLOR_HCI_EVENT_UNKNOWN;
-		subevent_str = "Unknown";
-	}
 
-	print_indent(6, subevent_color, "", subevent_str, COLOR_OFF,
+	print_indent(6, subevent_color, "", subevent_data->str, COLOR_OFF,
 					" (0x%2.2x)", subevent_data->subevent);
 
-	if (!subevent_data || !subevent_data->func) {
+	if (!subevent_data->func) {
 		packet_hexdump(data, size);
 		return;
 	}
@@ -8442,8 +8436,15 @@ static const struct subevent_data le_meta_event_table[] = {
 static void le_meta_event_evt(const void *data, uint8_t size)
 {
 	uint8_t subevent = *((const uint8_t *) data);
-	const struct subevent_data *subevent_data = NULL;
+	struct subevent_data unknown;
+	const struct subevent_data *subevent_data = &unknown;
 	int i;
+
+	unknown.subevent = subevent;
+	unknown.str = "Unknown";
+	unknown.func = NULL;
+	unknown.size = 0;
+	unknown.fixed = true;
 
 	for (i = 0; le_meta_event_table[i].str; i++) {
 		if (le_meta_event_table[i].subevent == subevent) {
