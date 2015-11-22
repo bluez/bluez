@@ -602,6 +602,7 @@ static bool avdtp_signalling_packet(struct avdtp_frame *avdtp_frame)
 	case AVDTP_DISCOVER:
 		return avdtp_discover(avdtp_frame);
 	case AVDTP_GET_CAPABILITIES:
+	case AVDTP_GET_ALL_CAPABILITIES:
 		return avdtp_get_capabilities(avdtp_frame);
 	case AVDTP_SET_CONFIGURATION:
 		return avdtp_set_configuration(avdtp_frame);
