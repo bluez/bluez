@@ -50,6 +50,8 @@
 /* Vendor Specific A2DP Codecs */
 #define APTX_VENDOR_ID		0x0000004f
 #define APTX_CODEC_ID		0x0001
+#define LDAC_VENDOR_ID		0x0000012d
+#define LDAC_CODEC_ID		0x00aa
 
 struct bit_desc {
 	uint8_t bit_num;
@@ -212,6 +214,8 @@ static const char *vndcodec2str(uint32_t vendor_id, uint16_t codec_id)
 {
 	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
 		return "aptX";
+	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
+		return "LDAC";
 
 	return "Unknown";
 }
@@ -503,6 +507,20 @@ static bool codec_vendor_aptx_cap(uint8_t losc, struct l2cap_frame *frame)
 	return true;
 }
 
+static bool codec_vendor_ldac(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint16_t cap = 0;
+
+	if (losc != 2)
+		return false;
+
+	l2cap_frame_get_le16(frame, &cap);
+
+	print_field("%*cUnknown: 0x%04x", BASE_INDENT + 2, ' ', cap);
+
+	return true;
+}
+
 static bool codec_vendor_cap(uint8_t losc, struct l2cap_frame *frame)
 {
 	uint32_t vendor_id = 0;
@@ -524,8 +542,9 @@ static bool codec_vendor_cap(uint8_t losc, struct l2cap_frame *frame)
 
 	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
 		return codec_vendor_aptx_cap(losc, frame);
+	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
+		return codec_vendor_ldac(losc, frame);
 
-	/* TODO: decode other codecs */
 	packet_hexdump(frame->data, losc);
 	l2cap_frame_pull(frame, frame, losc);
 
@@ -573,8 +592,9 @@ static bool codec_vendor_cfg(uint8_t losc, struct l2cap_frame *frame)
 
 	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
 		return codec_vendor_aptx_cfg(losc, frame);
+	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
+		return codec_vendor_ldac(losc, frame);
 
-	/* TODO: decode other codecs */
 	packet_hexdump(frame->data, losc);
 	l2cap_frame_pull(frame, frame, losc);
 
