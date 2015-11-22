@@ -42,6 +42,7 @@
 #include "keys.h"
 #include "sdp.h"
 #include "avctp.h"
+#include "avdtp.h"
 #include "rfcomm.h"
 #include "bnep.h"
 
@@ -3098,6 +3099,9 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		case 0x0017:
 		case 0x001B:
 			avctp_packet(&frame);
+			break;
+		case 0x0019:
+			avdtp_packet(&frame);
 			break;
 		default:
 			packet_hexdump(data, size);
