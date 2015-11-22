@@ -34,6 +34,7 @@ struct l2cap_frame {
 	uint16_t psm;
 	uint16_t chan;
 	uint8_t mode;
+	uint8_t seq_num;
 	const void *data;
 	uint16_t size;
 };
