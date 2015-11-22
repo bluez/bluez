@@ -199,6 +199,18 @@ static const char *mediacodec2str(uint8_t codec)
 	}
 }
 
+static const char *cptype2str(uint8_t cp)
+{
+	switch (cp) {
+	case 0x0001:
+		return "DTCP";
+	case 0x0002:
+		return "SCMS-T";
+	default:
+		return "Reserved";
+	}
+}
+
 static const char *servicecat2str(uint8_t service_cat)
 {
 	switch (service_cat) {
@@ -232,6 +244,31 @@ static bool avdtp_reject_common(struct avdtp_frame *avdtp_frame)
 		return false;
 
 	print_field("Error code: %s (0x%02x)", error2str(error), error);
+
+	return true;
+}
+
+static bool service_content_protection(struct avdtp_frame *avdtp_frame,
+								uint8_t losc)
+{
+	struct l2cap_frame *frame = &avdtp_frame->l2cap_frame;
+	uint16_t type = 0;
+
+	if (losc < 2)
+		return false;
+
+	if (!l2cap_frame_get_le16(frame, &type))
+		return false;
+
+	losc -= 2;
+
+	print_field("%*cContent Protection Type: %s (0x%04x)", 2, ' ',
+							cptype2str(type), type);
+
+	/* TODO: decode protection specific information */
+	packet_hexdump(frame->data, losc);
+
+	l2cap_frame_pull(frame, frame, losc);
 
 	return true;
 }
@@ -281,6 +318,10 @@ static bool decode_capabilities(struct avdtp_frame *avdtp_frame)
 			return false;
 
 		switch (service_cat) {
+		case AVDTP_CONTENT_PROTECTION:
+			if (!service_content_protection(avdtp_frame, losc))
+				return false;
+			break;
 		case AVDTP_MEDIA_CODEC:
 			if (!service_media_codec(avdtp_frame, losc))
 				return false;
@@ -288,7 +329,6 @@ static bool decode_capabilities(struct avdtp_frame *avdtp_frame)
 		case AVDTP_MEDIA_TRANSPORT:
 		case AVDTP_REPORTING:
 		case AVDTP_RECOVERY:
-		case AVDTP_CONTENT_PROTECTION:
 		case AVDTP_HEADER_COMPRESSION:
 		case AVDTP_MULTIPLEXING:
 		case AVDTP_DELAY_REPORTING:
