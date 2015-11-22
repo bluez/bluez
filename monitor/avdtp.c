@@ -37,6 +37,7 @@
 #include "display.h"
 #include "l2cap.h"
 #include "avdtp.h"
+#include "a2dp.h"
 
 /* Message Types */
 #define AVDTP_MSG_TYPE_COMMAND		0x00
@@ -74,6 +75,13 @@ struct avdtp_frame {
 	uint8_t sig_id;
 	struct l2cap_frame l2cap_frame;
 };
+
+static inline bool is_configuration_sig_id(uint8_t sig_id)
+{
+	return (sig_id == AVDTP_SET_CONFIGURATION) ||
+			(sig_id == AVDTP_GET_CONFIGURATION) ||
+			(sig_id == AVDTP_RECONFIGURE);
+}
 
 static const char *msgtype2str(uint8_t msgtype)
 {
@@ -293,12 +301,10 @@ static bool service_media_codec(struct avdtp_frame *avdtp_frame, uint8_t losc)
 	print_field("%*cMedia Codec: %s (0x%02x)", 2, ' ',
 					mediacodec2str(codec), codec);
 
-	/* TODO: decode codec specific information */
-
-	packet_hexdump(frame->data, losc);
-	l2cap_frame_pull(frame, frame, losc);
-
-	return true;
+	if (is_configuration_sig_id(avdtp_frame->sig_id))
+		return a2dp_codec_cfg(codec, losc, frame);
+	else
+		return a2dp_codec_cap(codec, losc, frame);
 }
 
 static bool decode_capabilities(struct avdtp_frame *avdtp_frame)
