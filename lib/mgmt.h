@@ -792,6 +792,8 @@ static const char *mgmt_op[] = {
 	"Read Advertising Features",
 	"Add Advertising",
 	"Remove Advertising",
+	"Get Advertising Size Information",		/* 0x0040 */
+	"Start Limited Discovery",
 };
 
 static const char *mgmt_ev[] = {
@@ -803,7 +805,7 @@ static const char *mgmt_ev[] = {
 	"Index Removed",
 	"New Settings",
 	"Class of Device Changed",
-	"Local Name Changed",		/* 0x0008 */
+	"Local Name Changed",				/* 0x0008 */
 	"New Link Key",
 	"New Long Term Key",
 	"Device Connected",
@@ -811,7 +813,7 @@ static const char *mgmt_ev[] = {
 	"Connect Failed",
 	"PIN Code Request",
 	"User Confirm Request",
-	"User Passkey Request",		/* 0x0010 */
+	"User Passkey Request",				/* 0x0010 */
 	"Authentication Failed",
 	"Device Found",
 	"Discovering",
@@ -819,7 +821,7 @@ static const char *mgmt_ev[] = {
 	"Device Unblocked",
 	"Device Unpaired",
 	"Passkey Notify",
-	"New Identity Resolving Key",
+	"New Identity Resolving Key",			/* 0x0018 */
 	"New Signature Resolving Key",
 	"Device Added",
 	"Device Removed",
@@ -827,7 +829,7 @@ static const char *mgmt_ev[] = {
 	"Unconfigured Index Added",
 	"Unconfigured Index Removed",
 	"New Configuration Options",
-	"Extended Index Added",
+	"Extended Index Added",				/* 0x0020 */
 	"Extended Index Removed",
 	"Local Out Of Band Extended Data Updated",
 	"Advertising Added",
