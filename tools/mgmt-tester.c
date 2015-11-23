@@ -5091,7 +5091,7 @@ static void setup_add_device(const void *test_data)
 	const unsigned char *add_param;
 	size_t add_param_len;
 
-	tester_print("Powering on controller (with added device))");
+	tester_print("Powering on controller (with added device)");
 
 	if (data->hciemu_type == HCIEMU_TYPE_LE) {
 		add_param = add_device_success_param_2;
