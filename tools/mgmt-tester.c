@@ -79,7 +79,7 @@ static void read_version_callback(uint8_t status, uint16_t length,
 	const struct mgmt_rp_read_version *rp = param;
 
 	tester_print("Read Version callback");
-	tester_print("  Status: 0x%02x", status);
+	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
 		tester_pre_setup_failed();
@@ -97,7 +97,7 @@ static void read_commands_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	tester_print("Read Commands callback");
-	tester_print("  Status: 0x%02x", status);
+	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
 		tester_pre_setup_failed();
@@ -116,7 +116,7 @@ static void read_info_callback(uint8_t status, uint16_t length,
 	struct bthost *bthost;
 
 	tester_print("Read Info callback");
-	tester_print("  Status: 0x%02x", status);
+	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
 		tester_pre_setup_failed();
@@ -216,7 +216,7 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	struct test_data *data = tester_get_data();
 
 	tester_print("Read Index List callback");
-	tester_print("  Status: 0x%02x", status);
+	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
 		tester_pre_setup_failed();
@@ -4770,14 +4770,16 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 	switch (opcode) {
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
-		tester_print("Client set connectable status 0x%02x", status);
+		tester_print("Client set connectable: %s (0x%02x)",
+						mgmt_errstr(status), status);
 		if (!status && test->client_enable_ssp) {
 			bthost_write_ssp_mode(bthost, 0x01);
 			return;
 		}
 		break;
 	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
-		tester_print("Client enable SSP status 0x%02x", status);
+		tester_print("Client enable SSP: %s (0x%02x)",
+						mgmt_errstr(status), status);
 		break;
 	default:
 		return;
@@ -5699,8 +5701,9 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 	const void *expect_param = test->expect_param;
 	uint16_t expect_len = test->expect_len;
 
-	tester_print("Command 0x%04x finished with status 0x%02x",
-						test->send_opcode, status);
+	tester_print("%s (0x%04x) finished with status \"%s\" (0x%02x)",
+			mgmt_opstr(test->send_opcode), test->send_opcode,
+			mgmt_errstr(status), status);
 
 	if (status != test->expect_status) {
 		tester_test_failed();
@@ -5822,7 +5825,8 @@ static void test_command_generic(const void *test_data)
 		return;
 	}
 
-	tester_print("Sending command 0x%04x", test->send_opcode);
+	tester_print("Sending %s (0x%04x)", mgmt_opstr(test->send_opcode),
+							test->send_opcode);
 
 	if (test->send_func)
 		send_param = test->send_func(&send_len);
@@ -5950,7 +5954,8 @@ static void connected_event(uint16_t index, uint16_t length, const void *param,
 	const void *send_param = test->send_param;
 	uint16_t send_len = test->send_len;
 
-	tester_print("Sending command 0x%04x", test->send_opcode);
+	tester_print("Sending %s 0x%04x", mgmt_opstr(test->send_opcode),
+							test->send_opcode);
 
 	if (test->send_func)
 		send_param = test->send_func(&send_len);
