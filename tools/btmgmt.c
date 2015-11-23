@@ -3866,6 +3866,110 @@ static void cmd_advinfo(struct mgmt *mgmt, uint16_t index,
 	}
 }
 
+static void adv_size_info_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_get_adv_size_info *rp = param;
+	uint32_t flags;
+
+	if (status != 0) {
+		error("Reading adv size info failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small adv size info reply (%u bytes)", len);
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	flags = le32_to_cpu(rp->flags);
+	print("Instance: %u", rp->instance);
+	print("Flags: %s", adv_flags2str(flags));
+	print("Max advertising data len: %u", rp->max_adv_data_len);
+	print("Max scan response data len: %u", rp->max_scan_rsp_len);
+
+	return noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void advsize_usage(void)
+{
+	print("Usage: advsize [options] <instance_id>\nOptions:\n"
+		"\t -c, --connectable         \"connectable\" flag\n"
+		"\t -g, --general-discov      \"general-discoverable\" flag\n"
+		"\t -l, --limited-discov      \"limited-discoverable\" flag\n"
+		"\t -m, --managed-flags       \"managed-flags\" flag\n"
+		"\t -p, --tx-power            \"tx-power\" flag");
+}
+
+static struct option advsize_options[] = {
+	{ "help",		0, 0, 'h' },
+	{ "connectable",	0, 0, 'c' },
+	{ "general-discov",	0, 0, 'g' },
+	{ "limited-discov",	0, 0, 'l' },
+	{ "managed-flags",	0, 0, 'm' },
+	{ "tx-power",		0, 0, 'p' },
+	{ 0, 0, 0, 0}
+};
+
+static void cmd_advsize(struct mgmt *mgmt, uint16_t index,
+						int argc, char **argv)
+{
+	struct mgmt_cp_get_adv_size_info cp;
+	uint8_t instance;
+	uint32_t flags = 0;
+	int opt;
+
+	while ((opt = getopt_long(argc, argv, "+cglmph",
+						advsize_options, NULL)) != -1) {
+		switch (opt) {
+		case 'c':
+			flags |= MGMT_ADV_FLAG_CONNECTABLE;
+			break;
+		case 'g':
+			flags |= MGMT_ADV_FLAG_DISCOV;
+			break;
+		case 'l':
+			flags |= MGMT_ADV_FLAG_LIMITED_DISCOV;
+			break;
+		case 'm':
+			flags |= MGMT_ADV_FLAG_MANAGED_FLAGS;
+			break;
+		case 'p':
+			flags |= MGMT_ADV_FLAG_TX_POWER;
+			break;
+		default:
+			advsize_usage();
+			return noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc != 1) {
+		advsize_usage();
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	instance = strtol(argv[0], NULL, 0);
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+
+	cp.instance = instance;
+	cp.flags = cpu_to_le32(flags);
+
+	if (!mgmt_send(mgmt, MGMT_OP_GET_ADV_SIZE_INFO, index, sizeof(cp), &cp,
+					adv_size_info_rsp, NULL, NULL)) {
+		error("Unable to send advertising size info command");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void add_adv_rsp(uint8_t status, uint16_t len, const void *param,
 								void *user_data)
 {
@@ -4245,6 +4349,7 @@ static struct cmd_info all_cmd[] = {
 	{ "bredr-oob",	cmd_bredr_oob,	"Local OOB data (BR/EDR)"	},
 	{ "le-oob",	cmd_le_oob,	"Local OOB data (LE)"		},
 	{ "advinfo",	cmd_advinfo,	"Show advertising features"	},
+	{ "advsize",	cmd_advsize,	"Show advertising size info"	},
 	{ "add-adv",	cmd_add_adv,	"Add advertising instance"	},
 	{ "rm-adv",	cmd_rm_adv,	"Remove advertising instance"	},
 	{ "clr-adv",	cmd_clr_adv,	"Clear advertising instances"	},
