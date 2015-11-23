@@ -25,6 +25,7 @@ Linux kernel v3.17	Version 1.7
 Linux kernel v3.19	Version 1.8
 Linux kernel v4.1	Version 1.9
 Linux kernel v4.2	Version 1.10
+Linux kernel v4.5	Version 1.11 (not yet released)
 
 Version 1.1 introduces Set Device ID command.
 
@@ -67,6 +68,8 @@ Connectable when controller is powered off.
 
 Version 1.10 does not introduce any new command or event. It extends the
 advertising feature to support 5 parallel advertising instances.
+
+Version 1.11 introduces Get Advertising Size Information command.
 
 
 Example
