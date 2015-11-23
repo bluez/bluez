@@ -89,8 +89,9 @@ automatically includes this option.
     # sudo ./src/bluetoothd -n -d
 
   Run daemon with valgrind
-   # sudo valgrind --trace-children=yes --track-origins=yes --track-fds=yes
-   --show-possibly-lost=no --leak-check=full ./src/bluetoothd -n -d
+   # sudo valgrind --trace-children=yes --track-origins=yes --track-fds=yes \
+   --show-possibly-lost=no --leak-check=full --suppressions=./tools/valgrind.supp \
+   ./src/bluetoothd -n -d
 
 For production installations or distribution packaging it is important that
 the "--enable-maintainer-mode" option is NOT used.
