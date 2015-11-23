@@ -515,6 +515,19 @@ struct mgmt_rp_remove_advertising {
 	uint8_t instance;
 } __packed;
 
+#define MGMT_OP_GET_ADV_SIZE_INFO	0x0040
+struct mgmt_cp_get_adv_size_info {
+	uint8_t  instance;
+	uint32_t flags;
+} __packed;
+#define MGMT_GET_ADV_SIZE_INFO_SIZE	5
+struct mgmt_rp_get_adv_size_info {
+	uint8_t  instance;
+	uint32_t flags;
+	uint8_t  max_adv_data_len;
+	uint8_t  max_scan_rsp_len;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
