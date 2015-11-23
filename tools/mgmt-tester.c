@@ -5701,9 +5701,8 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 	const void *expect_param = test->expect_param;
 	uint16_t expect_len = test->expect_len;
 
-	tester_print("%s (0x%04x) finished with status \"%s\" (0x%02x)",
-			mgmt_opstr(test->send_opcode), test->send_opcode,
-			mgmt_errstr(status), status);
+	tester_print("%s (0x%04x): %s (0x%02x)", mgmt_opstr(test->send_opcode),
+			test->send_opcode, mgmt_errstr(status), status);
 
 	if (status != test->expect_status) {
 		tester_test_failed();
