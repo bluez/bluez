@@ -924,7 +924,7 @@ static void agent_destroy(gpointer data)
 static uint8_t parse_io_capability(const char *capability)
 {
 	if (g_str_equal(capability, ""))
-		return IO_CAPABILITY_DISPLAYYESNO;
+		return IO_CAPABILITY_KEYBOARDDISPLAY;
 	if (g_str_equal(capability, "DisplayOnly"))
 		return IO_CAPABILITY_DISPLAYONLY;
 	if (g_str_equal(capability, "DisplayYesNo"))

@@ -37,7 +37,7 @@ Object path	/org/bluez
 			agent.
 
 			If an empty string is used it will fallback to
-			"DisplayYesNo".
+			"KeyboardDisplay".
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.AlreadyExists
