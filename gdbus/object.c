@@ -258,7 +258,8 @@ static DBusHandlerResult process_message(DBusConnection *connection,
 
 	reply = method->function(connection, message, iface_user_data);
 
-	if (method->flags & G_DBUS_METHOD_FLAG_NOREPLY) {
+	if (method->flags & G_DBUS_METHOD_FLAG_NOREPLY ||
+					dbus_message_get_no_reply(message)) {
 		if (reply != NULL)
 			dbus_message_unref(reply);
 		return DBUS_HANDLER_RESULT_HANDLED;
