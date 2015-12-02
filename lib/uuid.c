@@ -138,46 +138,35 @@ int bt_uuid_cmp(const bt_uuid_t *uuid1, const bt_uuid_t *uuid2)
  */
 int bt_uuid_to_string(const bt_uuid_t *uuid, char *str, size_t n)
 {
-	if (!uuid) {
+	bt_uuid_t tmp;
+	unsigned int   data0;
+	unsigned short data1;
+	unsigned short data2;
+	unsigned short data3;
+	unsigned int   data4;
+	unsigned short data5;
+	const uint8_t *data;
+
+	if (!uuid || uuid->type == BT_UUID_UNSPEC) {
 		snprintf(str, n, "NULL");
 		return -EINVAL;
 	}
 
-	switch (uuid->type) {
-	case BT_UUID16:
-		snprintf(str, n, "%.4x", uuid->value.u16);
-		break;
-	case BT_UUID32:
-		snprintf(str, n, "%.8x", uuid->value.u32);
-		break;
-	case BT_UUID128: {
-		unsigned int   data0;
-		unsigned short data1;
-		unsigned short data2;
-		unsigned short data3;
-		unsigned int   data4;
-		unsigned short data5;
+	/* Convert to 128 Bit format */
+	bt_uuid_to_uuid128(uuid, &tmp);
+	data = (uint8_t *) &tmp.value.u128;
 
-		const uint8_t *data = (uint8_t *) &uuid->value.u128;
+	memcpy(&data0, &data[0], 4);
+	memcpy(&data1, &data[4], 2);
+	memcpy(&data2, &data[6], 2);
+	memcpy(&data3, &data[8], 2);
+	memcpy(&data4, &data[10], 4);
+	memcpy(&data5, &data[14], 2);
 
-		memcpy(&data0, &data[0], 4);
-		memcpy(&data1, &data[4], 2);
-		memcpy(&data2, &data[6], 2);
-		memcpy(&data3, &data[8], 2);
-		memcpy(&data4, &data[10], 4);
-		memcpy(&data5, &data[14], 2);
-
-		snprintf(str, n, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
+	snprintf(str, n, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
 				ntohl(data0), ntohs(data1),
 				ntohs(data2), ntohs(data3),
 				ntohl(data4), ntohs(data5));
-		}
-		break;
-	case BT_UUID_UNSPEC:
-	default:
-		snprintf(str, n, "Type of UUID (%x) unknown.", uuid->type);
-		return -EINVAL;	/* Enum type of UUID not set */
-	}
 
 	return 0;
 }
