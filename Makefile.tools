@@ -250,10 +250,12 @@ EXTRA_DIST += tools/hid2hci.1
 endif
 
 if EXPERIMENTAL
+bin_PROGRAMS += tools/btattach
+
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/scotest tools/amptest tools/hwdb \
 			tools/hcieventmask tools/hcisecfilter \
-			tools/btinfo tools/btattach \
+			tools/btinfo \
 			tools/btsnoop tools/btproxy \
 			tools/btiotest tools/bneptest tools/mcaptest \
 			tools/cltest tools/oobtest tools/seq2bseq \
@@ -330,7 +332,11 @@ tools_btgatt_server_SOURCES = tools/btgatt-server.c src/uuid-helper.c
 tools_btgatt_server_LDADD = src/libshared-mainloop.la \
 						lib/libbluetooth-internal.la
 
+dist_man_MANS += tools/btattach.1
+
 EXTRA_DIST += tools/bdaddr.1
+else
+EXTRA_DIST += tools/btattach.1
 endif
 
 if READLINE
