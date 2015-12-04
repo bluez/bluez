@@ -151,7 +151,7 @@ static void test_str(gconstpointer data)
 	g_assert(bt_string_to_uuid(&uuid, test_data->str) == 0);
 
 	bt_uuid_to_string(&uuid, buf, sizeof(buf));
-	g_assert(strcasecmp(buf, str) == 0);
+	g_assert(bt_uuid_strcmp(buf, str) == 0);
 
 	switch (test_data->type) {
 	case BT_UUID16:
@@ -166,7 +166,7 @@ static void test_str(gconstpointer data)
 	}
 
 	bt_uuid_to_string(&uuid, buf, sizeof(buf));
-	g_assert(strcasecmp(buf, str) == 0);
+	g_assert(bt_uuid_strcmp(buf, str) == 0);
 	tester_test_passed();
 }
 
