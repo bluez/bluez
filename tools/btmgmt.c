@@ -4640,6 +4640,13 @@ static struct io *setup_stdin(void)
 	return io;
 }
 
+static void mgmt_debug(const char *str, void *user_data)
+{
+	const char *prefix = user_data;
+
+	print("%s%s", prefix, str);
+}
+
 int main(int argc, char *argv[])
 {
 	struct io *input;
@@ -4674,6 +4681,9 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Unable to open mgmt_socket\n");
 		return EXIT_FAILURE;
 	}
+
+	if (getenv("MGMT_DEBUG"))
+		mgmt_set_debug(mgmt, mgmt_debug, "mgmt: ", NULL);
 
 	if (argc > 0) {
 		struct cmd_info *c;
