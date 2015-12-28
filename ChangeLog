@@ -1,3 +1,12 @@
+ver 5.37:
+	Fix issue with registering external profiles.
+	Fix issue with connecting external profiles.
+	Fix issue with GATT service changed handling.
+	Fix issue with not emitting GattServices update.
+	Convert to unified HID over GATT profile support.
+	Convert to KeyboardDisplay as default IO capability.
+	Install btattach utility by default.
+
 ver 5.36:
 	Fix issue with PBAP headers for size query.
 	Fix issue with AVRCP current player handling.
