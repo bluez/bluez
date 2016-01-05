@@ -1073,9 +1073,6 @@ static void parse_managed_objects(GDBusClient *client, DBusMessage *msg)
 
 		dbus_message_iter_next(&dict);
 	}
-
-	if (client->ready)
-		client->ready(client, client->ready_data);
 }
 
 static void get_managed_objects_reply(DBusPendingCall *call, void *user_data)
@@ -1096,6 +1093,9 @@ static void get_managed_objects_reply(DBusPendingCall *call, void *user_data)
 	parse_managed_objects(client, reply);
 
 done:
+	if (client->ready)
+		client->ready(client, client->ready_data);
+
 	dbus_message_unref(reply);
 
 	dbus_pending_call_unref(client->get_objects_call);
