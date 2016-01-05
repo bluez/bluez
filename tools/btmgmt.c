@@ -2254,19 +2254,21 @@ static struct option find_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "le-only",	1, 0, 'l' },
 	{ "bredr-only",	1, 0, 'b' },
+	{ "limited",	1, 0, 'L' },
 	{ 0, 0, 0, 0 }
 };
 
 static void cmd_find(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_start_discovery cp;
+	uint8_t op = MGMT_OP_START_DISCOVERY;
 	uint8_t type = SCAN_TYPE_DUAL;
 	int opt;
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	while ((opt = getopt_long(argc, argv, "+lbh", find_options,
+	while ((opt = getopt_long(argc, argv, "+lbLh", find_options,
 								NULL)) != -1) {
 		switch (opt) {
 		case 'l':
@@ -2276,6 +2278,9 @@ static void cmd_find(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		case 'b':
 			type |= SCAN_TYPE_BREDR;
 			type &= ~SCAN_TYPE_LE;
+			break;
+		case 'L':
+			op = MGMT_OP_START_LIMITED_DISCOVERY;
 			break;
 		case 'h':
 			find_usage();
@@ -2295,8 +2300,8 @@ static void cmd_find(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	memset(&cp, 0, sizeof(cp));
 	cp.type = type;
 
-	if (mgmt_send(mgmt, MGMT_OP_START_DISCOVERY, index, sizeof(cp), &cp,
-						find_rsp, NULL, NULL) == 0) {
+	if (mgmt_send(mgmt, op, index, sizeof(cp), &cp, find_rsp,
+							NULL, NULL) == 0) {
 		error("Unable to send start_discovery cmd");
 		return noninteractive_quit(EXIT_FAILURE);
 	}
