@@ -1109,97 +1109,6 @@ static bool parse_path(GDBusProxy *proxy, const char *name, const char **path)
 	return true;
 }
 
-static struct external_chrc *chrc_create(struct gatt_app *app,
-							GDBusProxy *proxy,
-							const char *path)
-{
-	struct external_service *service;
-	struct external_chrc *chrc;
-	const char *service_path;
-
-	if (!parse_path(proxy, "Service", &service_path)) {
-		error("Failed to obtain service path for characteristic");
-		return NULL;
-	}
-
-	service = queue_find(app->services, match_service_by_path,
-								service_path);
-	if (!service) {
-		error("Unable to find service for characteristic: %s", path);
-		return NULL;
-	}
-
-	chrc = new0(struct external_chrc, 1);
-	chrc->pending_reads = queue_new();
-	chrc->pending_writes = queue_new();
-
-	chrc->path = g_strdup(path);
-	if (!chrc->path) {
-		queue_destroy(chrc->pending_reads, NULL);
-		queue_destroy(chrc->pending_writes, NULL);
-		free(chrc);
-		return NULL;
-	}
-
-	chrc->service = service;
-	chrc->proxy = g_dbus_proxy_ref(proxy);
-
-	return chrc;
-}
-
-static bool match_chrc(const void *a, const void *b)
-{
-	const struct external_chrc *chrc = a;
-	const char *path = b;
-
-	return strcmp(chrc->path, path) == 0;
-}
-
-static bool match_service_by_chrc(const void *a, const void *b)
-{
-	const struct external_service *service = a;
-	const char *path = b;
-
-	return queue_find(service->chrcs, match_chrc, path);
-}
-
-static struct external_desc *desc_create(struct gatt_app *app,
-							GDBusProxy *proxy)
-{
-	struct external_service *service;
-	struct external_desc *desc;
-	const char *chrc_path;
-
-	if (!parse_path(proxy, "Characteristic", &chrc_path)) {
-		error("Failed to obtain characteristic path for descriptor");
-		return NULL;
-	}
-
-	service = queue_find(app->services, match_service_by_chrc, chrc_path);
-	if (!service) {
-		error("Unable to find service for characteristic: %s",
-								chrc_path);
-		return NULL;
-	}
-
-	desc = new0(struct external_desc, 1);
-	desc->pending_reads = queue_new();
-	desc->pending_writes = queue_new();
-
-	desc->chrc_path = g_strdup(chrc_path);
-	if (!desc->chrc_path) {
-		queue_destroy(desc->pending_reads, NULL);
-		queue_destroy(desc->pending_writes, NULL);
-		free(desc);
-		return NULL;
-	}
-
-	desc->service = service;
-	desc->proxy = g_dbus_proxy_ref(proxy);
-
-	return desc;
-}
-
 static bool incr_attr_count(struct external_service *service, uint16_t incr)
 {
 	if (service->attr_cnt > UINT16_MAX - incr)
@@ -1208,17 +1117,6 @@ static bool incr_attr_count(struct external_service *service, uint16_t incr)
 	service->attr_cnt += incr;
 
 	return true;
-}
-
-static bool check_service_path(GDBusProxy *proxy,
-					struct external_service *service)
-{
-	const char *service_path;
-
-	if (!parse_path(proxy, "Service", &service_path))
-		return false;
-
-	return g_strcmp0(service_path, service->path) == 0;
 }
 
 static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
@@ -1328,6 +1226,158 @@ static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props,
 	return parse_chrc_flags(&array, props, ext_props);
 }
 
+static struct external_chrc *chrc_create(struct gatt_app *app,
+							GDBusProxy *proxy,
+							const char *path)
+{
+	struct external_service *service;
+	struct external_chrc *chrc;
+	const char *service_path;
+
+	if (!parse_path(proxy, "Service", &service_path)) {
+		error("Failed to obtain service path for characteristic");
+		return NULL;
+	}
+
+	service = queue_find(app->services, match_service_by_path,
+								service_path);
+	if (!service) {
+		error("Unable to find service for characteristic: %s", path);
+		return NULL;
+	}
+
+	chrc = new0(struct external_chrc, 1);
+	chrc->pending_reads = queue_new();
+	chrc->pending_writes = queue_new();
+
+	chrc->path = g_strdup(path);
+	if (!chrc->path)
+		goto fail;
+
+	chrc->service = service;
+	chrc->proxy = g_dbus_proxy_ref(proxy);
+
+	/*
+	 * Add 2 for the characteristic declaration and the value
+	 * attribute.
+	 */
+	if (!incr_attr_count(chrc->service, 2)) {
+		error("Failed to increment attribute count");
+		goto fail;
+	}
+
+	/*
+	 * Parse characteristic flags (i.e. properties) here since they
+	 * are used to determine if any special descriptors should be
+	 * created.
+	 */
+	if (!parse_flags(proxy, &chrc->props, &chrc->ext_props, NULL)) {
+		error("Failed to parse characteristic properties");
+		goto fail;
+	}
+
+	if ((chrc->props & BT_GATT_CHRC_PROP_NOTIFY ||
+				chrc->props & BT_GATT_CHRC_PROP_INDICATE) &&
+				!incr_attr_count(chrc->service, 1)) {
+		error("Failed to increment attribute count for CCC");
+		goto fail;
+	}
+
+	if (chrc->ext_props && !incr_attr_count(chrc->service, 1)) {
+		error("Failed to increment attribute count for CEP");
+		goto fail;
+	}
+
+	queue_push_tail(chrc->service->chrcs, chrc);
+
+	return chrc;
+
+fail:
+	chrc_free(chrc);
+	return NULL;
+}
+
+static bool match_chrc(const void *a, const void *b)
+{
+	const struct external_chrc *chrc = a;
+	const char *path = b;
+
+	return strcmp(chrc->path, path) == 0;
+}
+
+static bool match_service_by_chrc(const void *a, const void *b)
+{
+	const struct external_service *service = a;
+	const char *path = b;
+
+	return queue_find(service->chrcs, match_chrc, path);
+}
+
+static struct external_desc *desc_create(struct gatt_app *app,
+							GDBusProxy *proxy)
+{
+	struct external_service *service;
+	struct external_desc *desc;
+	const char *chrc_path;
+
+	if (!parse_path(proxy, "Characteristic", &chrc_path)) {
+		error("Failed to obtain characteristic path for descriptor");
+		return NULL;
+	}
+
+	service = queue_find(app->services, match_service_by_chrc, chrc_path);
+	if (!service) {
+		error("Unable to find service for characteristic: %s",
+								chrc_path);
+		return NULL;
+	}
+
+	desc = new0(struct external_desc, 1);
+	desc->pending_reads = queue_new();
+	desc->pending_writes = queue_new();
+
+	desc->chrc_path = g_strdup(chrc_path);
+	if (!desc->chrc_path)
+		goto fail;
+
+	desc->service = service;
+	desc->proxy = g_dbus_proxy_ref(proxy);
+
+	/* Add 1 for the descriptor attribute */
+	if (!incr_attr_count(desc->service, 1)) {
+		error("Failed to increment attribute count");
+		goto fail;
+	}
+
+	/*
+	 * Parse descriptors flags here since they are used to
+	 * determine the permission the descriptor should have
+	 */
+	if (!parse_flags(proxy, NULL, NULL, &desc->perm)) {
+		error("Failed to parse characteristic properties");
+		goto fail;
+	}
+
+	queue_push_tail(desc->service->descs, desc);
+
+	return desc;
+
+fail:
+	desc_free(desc);
+	return NULL;
+}
+
+static bool check_service_path(GDBusProxy *proxy,
+					struct external_service *service)
+{
+	const char *service_path;
+
+	if (!parse_path(proxy, "Service", &service_path))
+		return false;
+
+	return g_strcmp0(service_path, service->path) == 0;
+}
+
 static struct external_service *create_service(struct gatt_app *app,
 						GDBusProxy *proxy,
 						const char *path)
@@ -1355,6 +1405,14 @@ static struct external_service *create_service(struct gatt_app *app,
 	service->chrcs = queue_new();
 	service->descs = queue_new();
 
+	/* Add 1 for the service declaration */
+	if (!incr_attr_count(service, 1)) {
+		error("Failed to increment attribute count");
+		goto fail;
+	}
+
+	queue_push_tail(app->services, service);
+
 	return service;
 
 fail:
@@ -1381,15 +1439,6 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 			app->failed = true;
 			return;
 		}
-
-		/* Add 1 for the service declaration */
-		if (!incr_attr_count(service, 1)) {
-			error("Failed to increment attribute count");
-			app->failed = true;
-			return;
-		}
-
-		queue_push_tail(app->services, service);
 	} else if (g_strcmp0(iface, GATT_CHRC_IFACE) == 0) {
 		struct external_chrc *chrc;
 
@@ -1398,43 +1447,6 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 			app->failed = true;
 			return;
 		}
-
-		/*
-		 * Add 2 for the characteristic declaration and the value
-		 * attribute.
-		 */
-		if (!incr_attr_count(chrc->service, 2)) {
-			error("Failed to increment attribute count");
-			app->failed = true;
-			return;
-		}
-
-		/*
-		 * Parse characteristic flags (i.e. properties) here since they
-		 * are used to determine if any special descriptors should be
-		 * created.
-		 */
-		if (!parse_flags(proxy, &chrc->props, &chrc->ext_props, NULL)) {
-			error("Failed to parse characteristic properties");
-			app->failed = true;
-			return;
-		}
-
-		if ((chrc->props & BT_GATT_CHRC_PROP_NOTIFY ||
-				chrc->props & BT_GATT_CHRC_PROP_INDICATE) &&
-				!incr_attr_count(chrc->service, 1)) {
-			error("Failed to increment attribute count for CCC");
-			app->failed = true;
-			return;
-		}
-
-		if (chrc->ext_props && !incr_attr_count(chrc->service, 1)) {
-			error("Failed to increment attribute count for CEP");
-			app->failed = true;
-			return;
-		}
-
-		queue_push_tail(chrc->service->chrcs, chrc);
 	} else if (g_strcmp0(iface, GATT_DESC_IFACE) == 0) {
 		struct external_desc *desc;
 
@@ -1443,25 +1455,6 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 			app->failed = true;
 			return;
 		}
-
-		/* Add 1 for the descriptor attribute */
-		if (!incr_attr_count(desc->service, 1)) {
-			error("Failed to increment attribute count");
-			app->failed = true;
-			return;
-		}
-
-		/*
-		 * Parse descriptors flags here since they are used to
-		 * determine the permission the descriptor should have
-		 */
-		if (!parse_flags(proxy, NULL, NULL, &desc->perm)) {
-			error("Failed to parse characteristic properties");
-			app->failed = true;
-			return;
-		}
-
-		queue_push_tail(desc->service->descs, desc);
 	} else {
 		DBG("Ignoring unrelated interface: %s", iface);
 		return;
