@@ -2304,6 +2304,9 @@ static DBusMessage *set_discovery_filter(DBusConnection *conn,
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return btd_error_not_ready(msg);
 
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 8))
+		return btd_error_not_supported(msg);
+
 	/* parse parameters */
 	if (!parse_discovery_filter_dict(&discovery_filter, msg))
 		return btd_error_invalid_args(msg);
