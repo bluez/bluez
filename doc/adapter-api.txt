@@ -102,6 +102,7 @@ Methods		void StartDiscovery()
 			right after call to StartDiscovery.
 
 			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.NotSupported
 					 org.bluez.Error.Failed
 
 Properties	string Address [readonly]
