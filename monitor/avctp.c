@@ -2430,7 +2430,12 @@ response:
 		if (!l2cap_frame_get_u8(frame, &len))
 			return false;
 
-		printf("Folder: ");
+		if (!len) {
+			print_field("%*cFolder: <empty>", indent, ' ');
+			continue;
+		}
+
+		printf("%*cFolder: ", indent+8, ' ');
 		for (; len > 0; len--) {
 			uint8_t c;
 
