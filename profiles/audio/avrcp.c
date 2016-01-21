@@ -3843,12 +3843,11 @@ static void controller_init(struct avrcp *session)
 	btd_service_connecting_complete(service, 0);
 
 	/* Only create player if category 1 is supported */
-	if (!(controller->features & AVRCP_FEATURE_CATEGORY_1))
-		return;
-
-	player = create_ct_player(session, 0);
-	if (player == NULL)
-		return;
+	if (controller->features & AVRCP_FEATURE_CATEGORY_1) {
+		player = create_ct_player(session, 0);
+		if (player == NULL)
+			return;
+	}
 
 	if (controller->version < 0x0103)
 		return;
