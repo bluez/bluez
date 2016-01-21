@@ -2655,8 +2655,10 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 		uint8_t len;
 
 		len = pdu->params[i++];
+		if (!len)
+			continue;
 
-		if (i + len > operand_count || len == 0) {
+		if (i + len > operand_count) {
 			error("Invalid folder length");
 			break;
 		}
