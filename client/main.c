@@ -1327,6 +1327,17 @@ static void cmd_remove(const char *arg)
 	if (check_default_ctrl() == FALSE)
 		return;
 
+	if (strcmp(arg, "*") == 0) {
+		GList *list;
+
+		for (list = g_list_first(dev_list); list; list = g_list_next(list)) {
+			GDBusProxy *proxy = list->data;
+			cmd_remove(g_dbus_proxy_get_path(proxy));
+		}
+
+		return;
+	}
+
 	proxy = find_proxy_by_address(dev_list, arg);
 	if (!proxy) {
 		rl_printf("Device %s not available\n", arg);
