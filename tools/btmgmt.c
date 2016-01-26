@@ -2592,7 +2592,7 @@ static void cmd_cancel_pair(struct mgmt *mgmt, uint16_t index, int argc,
 	str2ba(argv[0], &cp.bdaddr);
 	cp.type = type;
 
-	if (mgmt_send(mgmt, MGMT_OP_CANCEL_PAIR_DEVICE, index, sizeof(cp), &cp,
+	if (mgmt_reply(mgmt, MGMT_OP_CANCEL_PAIR_DEVICE, index, sizeof(cp), &cp,
 					cancel_pair_rsp, NULL, NULL) == 0) {
 		error("Unable to send cancel_pair_device cmd");
 		return noninteractive_quit(EXIT_FAILURE);
