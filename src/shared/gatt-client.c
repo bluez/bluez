@@ -2982,6 +2982,9 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	if (!notify_data)
 		return false;
 
+	/* Remove data if it has been queued */
+	queue_remove(notify_data->chrc->reg_notify_queue, notify_data);
+
 	complete_unregister_notify(notify_data);
 	return true;
 }
