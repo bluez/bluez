@@ -2156,7 +2156,9 @@ static void read_long_cb(uint8_t opcode, const void *pdu,
 		goto done;
 	}
 
-	if (opcode != BT_ATT_OP_READ_BLOB_RSP || (!pdu && length)) {
+	if ((!op->offset && opcode != BT_ATT_OP_READ_RSP)
+			|| (op->offset && opcode != BT_ATT_OP_READ_BLOB_RSP)
+			|| (!pdu && length)) {
 		success = false;
 		goto done;
 	}
@@ -2209,7 +2211,9 @@ unsigned int bt_gatt_client_read_long_value(struct bt_gatt_client *client,
 {
 	struct request *req;
 	struct read_long_op *op;
+	uint8_t att_op;
 	uint8_t pdu[4];
+	uint16_t pdu_len;
 
 	if (!client)
 		return 0;
@@ -2233,12 +2237,32 @@ unsigned int bt_gatt_client_read_long_value(struct bt_gatt_client *client,
 	req->destroy = destroy_read_long_op;
 
 	put_le16(value_handle, pdu);
-	put_le16(offset, pdu + 2);
+	pdu_len = sizeof(value_handle);
 
-	req->att_id = bt_att_send(client->att, BT_ATT_OP_READ_BLOB_REQ,
-							pdu, sizeof(pdu),
-							read_long_cb, req,
-							request_unref);
+	/*
+	 * Core v4.2, part F, section 1.3.4.4.5:
+	 * If the attribute value has a fixed length that is less than or equal
+	 * to (ATT_MTU - 3) octets in length, then an Error Response can be sent
+	 * with the error code «Attribute Not Long».
+	 *
+	 * To remove need for caller to handle "Attribute Not Long" error when
+	 * reading characteristics with short values, use Read Request for
+	 * reading first part of characteristics value instead of Read Blob
+	 * Request. Both are allowed in this case.
+	 */
+
+	if (op->offset) {
+		att_op = BT_ATT_OP_READ_BLOB_REQ;
+		pdu_len += sizeof(op->offset);
+
+		put_le16(op->offset, pdu + 2);
+	} else {
+		att_op = BT_ATT_OP_READ_REQ;
+	}
+
+	req->att_id = bt_att_send(client->att, att_op, pdu, pdu_len,
+					read_long_cb, req, request_unref);
+
 	if (!req->att_id) {
 		op->destroy = NULL;
 		request_unref(req);
