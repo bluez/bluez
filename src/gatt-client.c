@@ -1205,9 +1205,6 @@ static DBusMessage *characteristic_stop_notify(DBusConnection *conn,
 	const char *sender = dbus_message_get_sender(msg);
 	struct notify_client *client;
 
-	if (!chrc->notifying)
-		return btd_error_failed(msg, "Not notifying");
-
 	client = queue_remove_if(chrc->notify_clients, match_notify_sender,
 							(void *) sender);
 	if (!client)
