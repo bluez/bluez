@@ -1581,6 +1581,7 @@ static void complete_unregister_notify(void *data)
 	 */
 	if (notify_data->att_id) {
 		bt_att_cancel(notify_data->client->att, notify_data->att_id);
+		notify_data->att_id = 0;
 		goto done;
 	}
 
