@@ -1179,6 +1179,7 @@ guint obc_session_setpath(struct obc_session *session, const char *path,
 	if (!data->remaining || !data->remaining[0]) {
 		error("obc_session_setpath: invalid path %s", path);
 		g_set_error(err, OBEX_IO_ERROR, -EINVAL, "Invalid argument");
+		setpath_data_free(data);
 		return 0;
 	}
 
