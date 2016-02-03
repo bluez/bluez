@@ -3091,12 +3091,12 @@ static GSList *get_ltk_info(GKeyFile *key_file, const char *peer,
 static struct irk_info *get_irk_info(GKeyFile *key_file, const char *peer,
 							uint8_t bdaddr_type)
 {
-	struct irk_info *irk;
+	struct irk_info *irk = NULL;
 	char *str;
 
 	str = g_key_file_get_string(key_file, "IdentityResolvingKey", "Key", NULL);
 	if (!str || strlen(str) < 32)
-		return NULL;
+		goto failed;
 
 	irk = g_new0(struct irk_info, 1);
 
@@ -3108,6 +3108,7 @@ static struct irk_info *get_irk_info(GKeyFile *key_file, const char *peer,
 	else
 		str2buf(&str[0], irk->val, sizeof(irk->val));
 
+failed:
 	g_free(str);
 
 	return irk;
