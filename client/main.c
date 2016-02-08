@@ -321,45 +321,6 @@ static gboolean service_is_child(GDBusProxy *service)
 	return FALSE;
 }
 
-static void proxy_added(GDBusProxy *proxy, void *user_data)
-{
-	const char *interface;
-
-	interface = g_dbus_proxy_get_interface(proxy);
-
-	if (!strcmp(interface, "org.bluez.Device1")) {
-		if (device_is_child(proxy, default_ctrl) == TRUE) {
-			dev_list = g_list_append(dev_list, proxy);
-
-			print_device(proxy, COLORED_NEW);
-		}
-	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
-		ctrl_list = g_list_append(ctrl_list, proxy);
-
-		if (!default_ctrl)
-			default_ctrl = proxy;
-
-		print_adapter(proxy, COLORED_NEW);
-	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
-		if (!agent_manager) {
-			agent_manager = proxy;
-
-			if (auto_register_agent)
-				agent_register(dbus_conn, agent_manager,
-							auto_register_agent);
-		}
-	} else if (!strcmp(interface, "org.bluez.GattService1")) {
-		if (service_is_child(proxy))
-			gatt_add_service(proxy);
-	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
-		gatt_add_characteristic(proxy);
-	} else if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
-		gatt_add_descriptor(proxy);
-	} else if (!strcmp(interface, "org.bluez.GattManager1")) {
-		gatt_add_manager(proxy);
-	}
-}
-
 static void set_default_device(GDBusProxy *proxy, const char *attribute)
 {
 	char *desc = NULL;
@@ -391,6 +352,64 @@ done:
 	rl_on_new_line();
 	rl_redisplay();
 	g_free(desc);
+}
+
+static void device_added(GDBusProxy *proxy)
+{
+	DBusMessageIter iter;
+
+	dev_list = g_list_append(dev_list, proxy);
+
+	print_device(proxy, COLORED_NEW);
+
+	if (default_dev)
+		return;
+
+	if (g_dbus_proxy_get_property(proxy, "Connected", &iter)) {
+		dbus_bool_t connected;
+
+		dbus_message_iter_get_basic(&iter, &connected);
+
+		if (connected)
+			set_default_device(proxy, NULL);
+	}
+}
+
+static void proxy_added(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.Device1")) {
+		if (device_is_child(proxy, default_ctrl) == TRUE)
+			device_added(proxy);
+
+	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
+		ctrl_list = g_list_append(ctrl_list, proxy);
+
+		if (!default_ctrl)
+			default_ctrl = proxy;
+
+		print_adapter(proxy, COLORED_NEW);
+	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
+		if (!agent_manager) {
+			agent_manager = proxy;
+
+			if (auto_register_agent)
+				agent_register(dbus_conn, agent_manager,
+							auto_register_agent);
+		}
+	} else if (!strcmp(interface, "org.bluez.GattService1")) {
+		if (service_is_child(proxy))
+			gatt_add_service(proxy);
+	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
+		gatt_add_characteristic(proxy);
+	} else if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
+		gatt_add_descriptor(proxy);
+	} else if (!strcmp(interface, "org.bluez.GattManager1")) {
+		gatt_add_manager(proxy);
+	}
 }
 
 static void set_default_attribute(GDBusProxy *proxy)
