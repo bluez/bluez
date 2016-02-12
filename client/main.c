@@ -1333,10 +1333,24 @@ static void remove_device_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
 
+static void remove_device(GDBusProxy *proxy)
+{
+	char *path;
+
+	path = g_strdup(g_dbus_proxy_get_path(proxy));
+
+	if (g_dbus_proxy_method_call(default_ctrl, "RemoveDevice",
+						remove_device_setup,
+						remove_device_reply,
+						path, g_free) == FALSE) {
+		rl_printf("Failed to remove device\n");
+		g_free(path);
+	}
+}
+
 static void cmd_remove(const char *arg)
 {
 	GDBusProxy *proxy;
-	char *path;
 
 	if (!arg || !strlen(arg)) {
 		rl_printf("Missing device address argument\n");
@@ -1351,7 +1365,8 @@ static void cmd_remove(const char *arg)
 
 		for (list = g_list_first(dev_list); list; list = g_list_next(list)) {
 			GDBusProxy *proxy = list->data;
-			cmd_remove(g_dbus_proxy_get_path(proxy));
+
+			remove_device(proxy);
 		}
 
 		return;
@@ -1363,16 +1378,7 @@ static void cmd_remove(const char *arg)
 		return;
 	}
 
-	path = g_strdup(g_dbus_proxy_get_path(proxy));
-
-	if (g_dbus_proxy_method_call(default_ctrl, "RemoveDevice",
-						remove_device_setup,
-						remove_device_reply,
-						path, g_free) == FALSE) {
-		rl_printf("Failed to remove device\n");
-		g_free(path);
-		return;
-	}
+	remove_device(proxy);
 }
 
 static void connect_reply(DBusMessage *message, void *user_data)
