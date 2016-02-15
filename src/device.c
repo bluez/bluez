@@ -3012,7 +3012,7 @@ static int load_chrc(char *handle, char *value,
 							&uuid, 0, properties,
 							NULL, NULL, NULL);
 	if (!att || gatt_db_attribute_get_handle(att) != value_handle) {
-		warn("saving characteristic to db failed");
+		warn("loading characteristic to db failed");
 		return -EIO;
 	}
 
@@ -3039,13 +3039,13 @@ static int load_incl(struct gatt_db *db, char *handle, char *value,
 
 	att = gatt_db_get_attribute(db, start);
 	if (!att) {
-		warn("saving included service to db failed - no such service");
+		warn("loading included service to db failed - no such service");
 		return -EIO;
 	}
 
 	att = gatt_db_service_add_included(service, att);
 	if (!att) {
-		warn("saving included service to db failed");
+		warn("loading included service to db failed");
 		return -EIO;
 	}
 
@@ -3082,7 +3082,7 @@ static int load_service(struct gatt_db *db, char *handle, char *value)
 	att = gatt_db_insert_service(db, start, &uuid, primary,
 							end - start + 1);
 	if (!att) {
-		DBG("ERROR saving service to db!");
+		error("Unable load service into db.");
 		return -EIO;
 	}
 
