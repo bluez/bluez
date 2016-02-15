@@ -2114,6 +2114,9 @@ static void store_gatt_db(struct btd_device *device)
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
+	/* Remove current attributes since it might have changed */
+	g_key_file_remove_group(key_file, "Attributes", NULL);
+
 	saver.key_file = key_file;
 	saver.device = device;
 
@@ -3082,7 +3085,7 @@ static int load_service(struct gatt_db *db, char *handle, char *value)
 	att = gatt_db_insert_service(db, start, &uuid, primary,
 							end - start + 1);
 	if (!att) {
-		error("Unable load service into db.");
+		error("Unable load service into db!");
 		return -EIO;
 	}
 
