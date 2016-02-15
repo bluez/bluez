@@ -3165,8 +3165,10 @@ static int load_gatt_db_impl(GKeyFile *key_file, char **keys,
 		}
 
 		g_free(value);
-		if (ret)
+		if (ret) {
+			gatt_db_clear(db);
 			return ret;
+		}
 	}
 
 	if (current_service)
