@@ -357,7 +357,7 @@ struct discovery_op {
 	struct bt_gatt_client *client;
 	struct queue *pending_svcs;
 	struct queue *pending_chrcs;
-	struct queue *tmp_queue;
+	struct queue *svcs;
 	struct gatt_db_attribute *cur_svc;
 	bool success;
 	uint16_t start;
@@ -371,7 +371,7 @@ static void discovery_op_free(struct discovery_op *op)
 {
 	queue_destroy(op->pending_svcs, NULL);
 	queue_destroy(op->pending_chrcs, free);
-	queue_destroy(op->tmp_queue, NULL);
+	queue_destroy(op->svcs, NULL);
 	free(op);
 }
 
@@ -385,7 +385,7 @@ static struct discovery_op *discovery_op_create(struct bt_gatt_client *client,
 	op = new0(struct discovery_op, 1);
 	op->pending_svcs = queue_new();
 	op->pending_chrcs = queue_new();
-	op->tmp_queue = queue_new();
+	op->svcs = queue_new();
 	op->client = client;
 	op->complete_func = complete_func;
 	op->failure_func = failure_func;
@@ -501,17 +501,11 @@ next:
 	/* Move on to the next service */
 	attr = queue_pop_head(op->pending_svcs);
 	if (!attr) {
-		struct queue *tmp_queue;
-
-		tmp_queue = op->pending_svcs;
-		op->pending_svcs = op->tmp_queue;
-		op->tmp_queue = tmp_queue;
-
 		/*
 		 * We have processed all include definitions. Move on to
 		 * characteristics.
 		 */
-		attr = queue_pop_head(op->pending_svcs);
+		attr = queue_pop_head(op->svcs);
 		if (!attr)
 			goto failed;
 
@@ -535,7 +529,7 @@ next:
 		goto failed;
 	}
 
-	queue_push_tail(op->tmp_queue, attr);
+	queue_push_tail(op->svcs, attr);
 	op->cur_svc = attr;
 	if (!gatt_db_attribute_get_service_handles(attr, &start, &end))
 		goto failed;
@@ -920,10 +914,10 @@ next:
 	}
 
 	/*
-	 * Store the service in the tmp queue to be reused during
+	 * Store the service in the svcs queue to be reused during
 	 * characteristics discovery later.
 	 */
-	queue_push_tail(op->tmp_queue, attr);
+	queue_push_tail(op->svcs, attr);
 	op->cur_svc = attr;
 
 	if (!gatt_db_attribute_get_service_handles(attr, &start, &end)) {
