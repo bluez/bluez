@@ -588,8 +588,12 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 							chrc_data->properties,
 							NULL, NULL, NULL);
 
-		if (!attr)
+		if (!attr) {
+			util_debug(client->debug_callback, client->debug_data,
+				"Failed to insert characteristic at 0x%04x",
+				chrc_data->value_handle);
 			goto failed;
+		}
 
 		if (gatt_db_attribute_get_handle(attr) !=
 							chrc_data->value_handle)
