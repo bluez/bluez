@@ -696,7 +696,7 @@ next:
 	/* Done with the current service */
 	gatt_db_service_set_active(op->cur_svc, true);
 
-	attr = queue_pop_head(op->pending_svcs);
+	attr = queue_pop_head(op->svcs);
 	if (!attr)
 		goto done;
 
@@ -803,7 +803,7 @@ next:
 	/* Done with the current service */
 	gatt_db_service_set_active(op->cur_svc, true);
 
-	attr = queue_pop_head(op->pending_svcs);
+	attr = queue_pop_head(op->svcs);
 	if (!attr)
 		goto done;
 
