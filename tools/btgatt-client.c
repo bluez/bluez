@@ -658,7 +658,7 @@ static void write_cb(bool success, uint8_t att_ecode, void *user_data)
 
 static void cmd_write_value(struct client *cli, char *cmd_str)
 {
-	int opt, i;
+	int opt, i, val;
 	char *argvbuf[516];
 	char **argv = argvbuf;
 	int argc = 1;
@@ -726,19 +726,14 @@ static void cmd_write_value(struct client *cli, char *cmd_str)
 		}
 
 		for (i = 1; i < argc; i++) {
-			if (strlen(argv[i]) != 2) {
-				printf("Invalid value byte: %s\n",
-								argv[i]);
-				goto done;
-			}
-
-			value[i-1] = strtol(argv[i], &endptr, 0);
+			val = strtol(argv[i], &endptr, 0);
 			if (endptr == argv[i] || *endptr != '\0'
-							|| errno == ERANGE) {
+				|| errno == ERANGE || val < 0 || val > 255) {
 				printf("Invalid value byte: %s\n",
 								argv[i]);
 				goto done;
 			}
+			value[i-1] = val;
 		}
 	}
 
@@ -793,7 +788,7 @@ static void write_long_cb(bool success, bool reliable_error, uint8_t att_ecode,
 
 static void cmd_write_long_value(struct client *cli, char *cmd_str)
 {
-	int opt, i;
+	int opt, i, val;
 	char *argvbuf[516];
 	char **argv = argvbuf;
 	int argc = 1;
@@ -865,21 +860,15 @@ static void cmd_write_long_value(struct client *cli, char *cmd_str)
 		}
 
 		for (i = 2; i < argc; i++) {
-			if (strlen(argv[i]) != 2) {
-				printf("Invalid value byte: %s\n",
-								argv[i]);
-				free(value);
-				return;
-			}
-
-			value[i-2] = strtol(argv[i], &endptr, 0);
+			val = strtol(argv[i], &endptr, 0);
 			if (endptr == argv[i] || *endptr != '\0'
-							|| errno == ERANGE) {
+				|| errno == ERANGE || val < 0 || val > 255) {
 				printf("Invalid value byte: %s\n",
 								argv[i]);
 				free(value);
 				return;
 			}
+			value[i-2] = val;
 		}
 	}
 
@@ -909,7 +898,7 @@ static struct option write_prepare_options[] = {
 
 static void cmd_write_prepare(struct client *cli, char *cmd_str)
 {
-	int opt, i;
+	int opt, i, val;
 	char *argvbuf[516];
 	char **argv = argvbuf;
 	int argc = 0;
@@ -1002,18 +991,14 @@ static void cmd_write_prepare(struct client *cli, char *cmd_str)
 	}
 
 	for (i = 2; i < argc; i++) {
-		if (strlen(argv[i]) != 2) {
+		val = strtol(argv[i], &endptr, 0);
+		if (endptr == argv[i] || *endptr != '\0' || errno == ERANGE
+						|| val < 0 || val > 255) {
 			printf("Invalid value byte: %s\n", argv[i]);
 			free(value);
 			return;
 		}
-
-		value[i-2] = strtol(argv[i], &endptr, 0);
-		if (endptr == argv[i] || *endptr != '\0' || errno == ERANGE) {
-			printf("Invalid value byte: %s\n", argv[i]);
-			free(value);
-			return;
-		}
+		value[i-2] = val;
 	}
 
 done:
