@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import dbus
 import dbus.exceptions
@@ -6,7 +6,11 @@ import dbus.mainloop.glib
 import dbus.service
 
 import array
-import gobject
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
+import sys
 
 from random import randint
 from collections import OrderedDict
@@ -285,7 +289,7 @@ class HeartRateMeasurementChrc(Characteristic):
         if not self.notifying:
             return
 
-        gobject.timeout_add(1000, self.hr_msrmt_cb)
+        GObject.timeout_add(1000, self.hr_msrmt_cb)
 
     def StartNotify(self):
         if self.notifying:
@@ -372,7 +376,7 @@ class BatteryLevelCharacteristic(Characteristic):
                 service)
         self.notifying = False
         self.battery_lvl = 100
-        gobject.timeout_add(5000, self.drain_battery)
+        GObject.timeout_add(5000, self.drain_battery)
 
     def notify_battery_level(self):
         if not self.notifying:
@@ -480,7 +484,7 @@ class CharacteristicUserDescriptionDescriptor(Descriptor):
 
     def __init__(self, bus, index, characteristic):
         self.writable = 'writable-auxiliaries' in characteristic.flags
-        self.value = array.array('B', 'This is a characteristic for testing')
+        self.value = array.array('B', b'This is a characteristic for testing')
         self.value = self.value.tolist()
         Descriptor.__init__(
                 self, bus, index,
@@ -555,8 +559,8 @@ def find_adapter(bus):
                                DBUS_OM_IFACE)
     objects = remote_om.GetManagedObjects()
 
-    for o, props in objects.iteritems():
-        if props.has_key(GATT_MANAGER_IFACE):
+    for o, props in objects.items():
+        if GATT_MANAGER_IFACE in props.keys():
             return o
 
     return None
@@ -579,7 +583,7 @@ def main():
 
     app = Application(bus)
 
-    mainloop = gobject.MainLoop()
+    mainloop = GObject.MainLoop()
 
     service_manager.RegisterApplication(app.get_path(), {},
                                     reply_handler=register_app_cb,

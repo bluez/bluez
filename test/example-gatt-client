@@ -1,8 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import argparse
 import dbus
-import gobject
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
 import sys
 
 from dbus.mainloop.glib import DBusGMainLoop
@@ -195,7 +198,7 @@ def main():
     global bus
     bus = dbus.SystemBus()
     global mainloop
-    mainloop = gobject.MainLoop()
+    mainloop = GObject.MainLoop()
 
     om = dbus.Interface(bus.get_object(BLUEZ_SERVICE_NAME, '/'), DBUS_OM_IFACE)
     om.connect_to_signal('InterfacesRemoved', interfaces_removed_cb)
@@ -204,10 +207,10 @@ def main():
         if not process_hr_service(service_path):
             sys.exit(1)
     except dbus.DBusException as e:
-        print e.message
+        print(e)
         sys.exit(1)
 
-    print 'Heart Rate Service ready'
+    print('Heart Rate Service ready')
 
     start_client()
 
