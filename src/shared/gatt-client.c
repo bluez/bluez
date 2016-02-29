@@ -1720,14 +1720,10 @@ static void att_disconnect_cb(int err, void *user_data)
 		notify_client_ready(client, false, 0);
 }
 
-struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
-							struct bt_att *att,
-							uint16_t mtu)
+static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
+							struct bt_att *att)
 {
 	struct bt_gatt_client *client;
-
-	if (!att || !db)
-		return NULL;
 
 	client = new0(struct bt_gatt_client, 1);
 	client->disc_id = bt_att_register_disconnect(att, att_disconnect_cb,
@@ -1754,14 +1750,49 @@ struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 	client->att = bt_att_ref(att);
 	client->db = gatt_db_ref(db);
 
-	if (!gatt_client_init(client, mtu))
-		goto fail;
-
-	return bt_gatt_client_ref(client);
+	return client;
 
 fail:
 	bt_gatt_client_free(client);
 	return NULL;
+
+}
+
+struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
+							struct bt_att *att,
+							uint16_t mtu)
+{
+	struct bt_gatt_client *client;
+
+	if (!att || !db)
+		return NULL;
+
+	client = gatt_client_new(db, att);
+	if (!client)
+		return NULL;
+
+	if (!gatt_client_init(client, mtu)) {
+		bt_gatt_client_free(client);
+		return NULL;
+	}
+
+	return bt_gatt_client_ref(client);
+}
+
+struct bt_gatt_client *bt_gatt_client_clone(struct bt_gatt_client *client)
+{
+	struct bt_gatt_client *clone;
+
+	if (!client || !client->ready)
+		return NULL;
+
+	clone = gatt_client_new(client->db, client->att);
+	if (!clone)
+		return NULL;
+
+	clone->ready = client->ready;
+
+	return bt_gatt_client_ref(clone);
 }
 
 struct bt_gatt_client *bt_gatt_client_ref(struct bt_gatt_client *client)
