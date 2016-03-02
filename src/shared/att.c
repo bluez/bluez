@@ -573,9 +573,10 @@ static bool change_security(struct bt_att *att, uint8_t ecode)
 {
 	int security;
 
-	security = bt_att_get_security(att);
-	if (security != BT_ATT_SECURITY_AUTO)
+	if (att->io_sec_level != BT_ATT_SECURITY_AUTO)
 		return false;
+
+	security = bt_att_get_security(att);
 
 	if (ecode == BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION &&
 					security < BT_ATT_SECURITY_MEDIUM)
@@ -979,7 +980,7 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 
 	att->io_on_l2cap = is_io_l2cap_based(att->fd);
 	if (!att->io_on_l2cap)
-		att->io_sec_level = BT_SECURITY_LOW;
+		att->io_sec_level = BT_ATT_SECURITY_LOW;
 
 	return bt_att_ref(att);
 
