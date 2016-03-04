@@ -1544,6 +1544,11 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 	if (!op)
 		return false;
 
+	/* Check if MTU needs to be send */
+	mtu = MAX(BT_ATT_DEFAULT_LE_MTU, mtu);
+	if (mtu == BT_ATT_DEFAULT_LE_MTU)
+		goto discover;
+
 	/* Configure the MTU */
 	client->mtu_req_id = bt_gatt_exchange_mtu(client->att,
 						MAX(BT_ATT_DEFAULT_LE_MTU, mtu),
@@ -1557,6 +1562,20 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 
 	client->in_init = true;
 
+	return true;
+
+discover:
+	client->discovery_req = bt_gatt_discover_all_primary_services(
+							client->att, NULL,
+							discover_primary_cb,
+							discovery_op_ref(op),
+							discovery_op_unref);
+	if (!client->discovery_req) {
+		discovery_op_free(op);
+		return false;
+	}
+
+	client->in_init = true;
 	return true;
 }
 
