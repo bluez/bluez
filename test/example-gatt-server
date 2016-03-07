@@ -13,7 +13,6 @@ except ImportError:
 import sys
 
 from random import randint
-from collections import OrderedDict
 
 mainloop = None
 
@@ -59,7 +58,7 @@ class Application(dbus.service.Object):
 
     @dbus.service.method(DBUS_OM_IFACE, out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
-        response = OrderedDict()
+        response = {}
         print('GetManagedObjects')
 
         for service in self.services:
