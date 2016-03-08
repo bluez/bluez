@@ -1965,6 +1965,36 @@ static void chrc_read_cb(struct gatt_db_attribute *attrib,
 	send_read(attrib, chrc->proxy, chrc->pending_reads, id);
 }
 
+static void write_without_response_setup_cb(DBusMessageIter *iter,
+							void *user_data)
+{
+	struct iovec *iov = user_data;
+	DBusMessageIter array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&iov->iov_base, iov->iov_len);
+	dbus_message_iter_close_container(iter, &array);
+}
+
+static void send_write_without_response(struct gatt_db_attribute *attrib,
+					GDBusProxy *proxy, unsigned int id,
+					const uint8_t *value, size_t len)
+{
+	struct iovec iov;
+	uint8_t ecode = 0;
+
+	iov.iov_base = (uint8_t *) value;
+	iov.iov_len = len;
+
+	if (!g_dbus_proxy_method_call(proxy, "WriteValue",
+					write_without_response_setup_cb,
+					NULL, &iov, NULL))
+		ecode = BT_ATT_ERROR_UNLIKELY;
+
+	gatt_db_attribute_write_result(attrib, id, ecode);
+}
+
 static void chrc_write_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
@@ -1975,6 +2005,12 @@ static void chrc_write_cb(struct gatt_db_attribute *attrib,
 
 	if (chrc->attrib != attrib) {
 		error("Write callback called with incorrect attribute");
+		return;
+	}
+
+	if (chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP) {
+		send_write_without_response(attrib, chrc->proxy, id, value,
+									len);
 		return;
 	}
 
