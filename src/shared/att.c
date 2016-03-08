@@ -535,6 +535,16 @@ static void disconn_handler(void *data, void *user_data)
 		disconn->callback(err, disconn->user_data);
 }
 
+static void disc_att_send_op(void *data)
+{
+	struct att_send_op *op = data;
+
+	if (op->callback)
+		op->callback(BT_ATT_OP_ERROR_RSP, NULL, 0, op->user_data);
+
+	destroy_att_send_op(op);
+}
+
 static bool disconnect_cb(struct io *io, void *user_data)
 {
 	struct bt_att *att = user_data;
@@ -557,7 +567,20 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	io_destroy(att->io);
 	att->io = NULL;
 
-	bt_att_cancel_all(att);
+	/* Notify request callbacks */
+	queue_remove_all(att->req_queue, NULL, NULL, disc_att_send_op);
+	queue_remove_all(att->ind_queue, NULL, NULL, disc_att_send_op);
+	queue_remove_all(att->write_queue, NULL, NULL, disc_att_send_op);
+
+	if (att->pending_req) {
+		disc_att_send_op(att->pending_req);
+		att->pending_req = NULL;
+	}
+
+	if (att->pending_ind) {
+		disc_att_send_op(att->pending_ind);
+		att->pending_ind = NULL;
+	}
 
 	bt_att_ref(att);
 
