@@ -853,6 +853,21 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 	if (client == NULL)
 		return FALSE;
 
+	msg = dbus_message_new_method_call(client->service_name,
+				proxy->obj_path, proxy->interface, method);
+	if (msg == NULL)
+		return FALSE;
+
+	if (setup) {
+		DBusMessageIter iter;
+
+		dbus_message_iter_init_append(msg, &iter);
+		setup(&iter, user_data);
+	}
+
+	if (!function)
+		return g_dbus_send_message(client->dbus_conn, msg);
+
 	data = g_try_new0(struct method_call_data, 1);
 	if (data == NULL)
 		return FALSE;
@@ -861,19 +876,6 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 	data->user_data = user_data;
 	data->destroy = destroy;
 
-	msg = dbus_message_new_method_call(client->service_name,
-				proxy->obj_path, proxy->interface, method);
-	if (msg == NULL) {
-		g_free(data);
-		return FALSE;
-	}
-
-	if (setup) {
-		DBusMessageIter iter;
-
-		dbus_message_iter_init_append(msg, &iter);
-		setup(&iter, data->user_data);
-	}
 
 	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
 					&call, METHOD_CALL_TIMEOUT) == FALSE) {
