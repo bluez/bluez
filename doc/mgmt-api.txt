@@ -1821,11 +1821,9 @@ Set Privacy Command
 	means resolvable private address is used when the controller is
 	discoverable and also when pairing is initiated.
 
-	With value 0x02 the kernel will use privacy mode with resolvable
-	private address. In case the controller is bondable and
-	discoverable the identity address is used. Also when pairing is
-	initiated, the connection will be established with the identity
-	address.
+	With value 0x02 the kernel will use a limited privacy mode with a
+	resolvable private address except when the controller is bondable
+	and discoverable, in which case the identity address is used.
 
 	Exposing the identity address when bondable and discoverable or
 	during initiated pairing can be a privacy issue. For dual-mode
