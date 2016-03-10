@@ -212,10 +212,7 @@ Properties	string Address [readonly]
 			Service advertisement data. Keys are the UUIDs in
 			string format followed by its byte array value.
 
-		array{object} GattServices [readonly, optional]
+		bool ServicesResolved [readonly, experimental]
 
-			List of GATT service object paths. Each referenced
-			object exports the org.bluez.GattService1 interface and
-			represents a remote GATT service. This property will be
-			updated once all remote GATT services of this device
-			have been discovered and exported over D-Bus.
+			Indicate whether or not service discovery has been
+			resolved.
