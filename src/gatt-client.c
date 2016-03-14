@@ -1675,8 +1675,14 @@ void btd_gatt_client_ready(struct btd_gatt_client *client)
 		return;
 
 	if (!client->gatt) {
-		error("GATT client not initialized");
-		return;
+		struct bt_gatt_client *gatt;
+
+		gatt = btd_device_get_gatt_client(client->device);
+		client->gatt = bt_gatt_client_clone(gatt);
+		if (!client->gatt) {
+			error("GATT client not initialized");
+			return;
+		}
 	}
 
 	client->ready = true;
@@ -1699,7 +1705,7 @@ void btd_gatt_client_connected(struct btd_gatt_client *client)
 	DBG("Device connected.");
 
 	bt_gatt_client_unref(client->gatt);
-	client->gatt = bt_gatt_client_ref(gatt);
+	client->gatt = bt_gatt_client_clone(gatt);
 
 	/*
 	 * Services have already been created before. Re-enable notifications
@@ -1750,47 +1756,6 @@ static void clear_notify_id(void *data, void *user_data)
 	client->notify_id = 0;
 }
 
-static void cancel_desc_ops(void *data, void *user_data)
-{
-	struct descriptor *desc = data;
-	struct bt_gatt_client *gatt = user_data;
-
-	if (desc->read_id) {
-		bt_gatt_client_cancel(gatt, desc->read_id);
-		desc->read_id = 0;
-	}
-
-	if (desc->write_id) {
-		bt_gatt_client_cancel(gatt, desc->write_id);
-		desc->write_id = 0;
-	}
-}
-
-static void cancel_chrc_ops(void *data, void *user_data)
-{
-	struct characteristic *chrc = data;
-	struct bt_gatt_client *gatt = user_data;
-
-	if (chrc->read_id) {
-		bt_gatt_client_cancel(gatt, chrc->read_id);
-		chrc->read_id = 0;
-	}
-
-	if (chrc->write_id) {
-		bt_gatt_client_cancel(gatt, chrc->write_id);
-		chrc->write_id = 0;
-	}
-
-	queue_foreach(chrc->descs, cancel_desc_ops, user_data);
-}
-
-static void cancel_ops(void *data, void *user_data)
-{
-	struct service *service = data;
-
-	queue_foreach(service->chrcs, cancel_chrc_ops, user_data);
-}
-
 void btd_gatt_client_disconnected(struct btd_gatt_client *client)
 {
 	if (!client || !client->gatt)
@@ -1804,7 +1769,6 @@ void btd_gatt_client_disconnected(struct btd_gatt_client *client)
 	 * done.
 	 */
 	queue_foreach(client->all_notify_clients, clear_notify_id, NULL);
-	queue_foreach(client->services, cancel_ops, client->gatt);
 
 	bt_gatt_client_unref(client->gatt);
 	client->gatt = NULL;
