@@ -136,11 +136,6 @@ ATT/GATT (new shared stack)
   Priority: Medium
   Complexity: C1
 
-- Persist client attribute cache across reboots.
-
-  Priority: Medium
-  Complexity: C4
-
 - Move all daemon plugins and profiles that are GATT based to use
   shared/gatt-client instead of attrib/*. This is a complicated task that
   potentially needs a new plugin/profile probing interface and a lot of
@@ -161,12 +156,6 @@ ATT/GATT (new shared stack)
 
   Priority: Low
   Complexity: C1
-
-- Implement the server portion of doc/gatt-api.txt using shared/gatt-server once
-  it exists.
-
-  Priority: Medium
-  Complexity: C4
 
 - Send out indications from the "Service Changed" characteristic upon
   reconnection if a bonded device is not connected when the local database is
@@ -194,95 +183,6 @@ ATT/GATT (new shared stack)
 
   Priority: Medium
   Complexity: C1
-
-- The recently added support for ATT signed writes requires the following kernel
-  modules to be enabled:
-
-     CONFIG_CRYPTO_USER_API
-     CONFIG_CRYPTO_USER_API_HASH
-     CONFIG_CRYPTO_USER_API_SKCIPHER
-
-  Currently, if these are not enabled, bt_att_new silently returns NULL. We
-  should handle this more gracefully by not supporting signed writes if we can't
-  initialize bt_crypto while succeeding bt_att initialization regardless.
-
-  This behavior should be documented in the README.
-
-  Priority: High
-  Complexity: C1
-
-
-ATT/GATT (old/outdated)
-=======================
-
-- At the moment authentication and authorization is not supported at the
-  same time, read/write requirements in the attribute server needs to
-  be extended. According to Bluetooth Specification a server shall check
-  authentication and authorization requirements before any other check is
-  performed.
-
-  Priority: Medium
-  Complexity: C1
-
-- Implement ATT PDU validation. Malformed PDUs can cause division by zero
-  when decoding PDUs. A proper error PDU should be returned for this case.
-  See decoding function in att.c file.
-
-  Priority: Medium
-  Complexity: C1
-
-- Refactor read_by_group() and read_by_type() in src/attrib-server.c
-  (they've grown simply too big). First step could be to move out the
-  long for-loops to new functions called e.g. get_groups() and get_types().
-
-  Priority: Low
-  Complexity: C1
-
-- Agent for characteristics: Agent interface should be extended to support
-  authorization per characteristic if the remote is not in the trusted list.
-
-  Priority: Low
-  Complexity: C1
-
-- gatttool should have the ability to wait for req responses before
-  quitting (some servers require a small sleep even with cmd's). Maybe a
-  --delay-exit or --timeout command line switch.
-
-  Priority: Low
-  Complexity: C1
-
-- Client needs to export a property in the Device Characteristic hierarchy
-  to manage characteristic value changes reports in the remote device.
-  Currently, Client Characteristic Configuration attribute is not exposed
-  as an object. The user needs to use gatttool to change the value of the
-  this attribute to receive notification/indications. Export this attribute
-  as a property is a proposal that needs further discussion.
-
-  Priority: Low
-  Complexity: C1
-
-- Attribute server should process queued GATT/ATT commands if the
-  client disconnects. The client can simply send a command and quit,
-  without wait for a response(ex: Write Command). For this scenario
-  that the client disconnects the link quickly the queued received
-  command is ignored.
-
-  Priority: Low
-  Complecity: C1
-
-- Implement Server characteristic Configuration support in the attribute
-  server to manage characteristic value broadcasting. There is a single
-  instance of the Server Characteristic Configuration for all clients.
-  See Volume 3, Part G, section 3.3.3.4 for more information.
-
-  Priority: Low
-  Complexity: C1
-
-- Long write is not implemented. Attribute server, client and command line
-  tool shall be changed to support this feature.
-
-  Priority: Low
-  Complexity: C2
 
 Management Interface
 ====================
