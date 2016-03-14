@@ -25,7 +25,7 @@ Linux kernel v3.17	Version 1.7
 Linux kernel v3.19	Version 1.8
 Linux kernel v4.1	Version 1.9
 Linux kernel v4.2	Version 1.10
-Linux kernel v4.5	Version 1.11 (not yet released)
+Linux kernel v4.5	Version 1.11
 Linux kernel v4.6	Version 1.12 (not yet released)
 
 Version 1.1 introduces Set Device ID command.
