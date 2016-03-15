@@ -4515,8 +4515,6 @@ static void register_gatt_services(struct btd_device *device)
 	device_register_primaries(device, services, -1);
 
 	device_add_gatt_services(device);
-
-	device_svc_resolved(device, device->bdaddr_type, 0);
 }
 
 static void gatt_client_init(struct btd_device *device);
@@ -4536,6 +4534,8 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 	register_gatt_services(device);
 
 	btd_gatt_client_ready(device->client_dbus);
+
+	device_svc_resolved(device, device->bdaddr_type, 0);
 }
 
 static void gatt_client_service_changed(uint16_t start_handle,
