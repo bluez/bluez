@@ -71,9 +71,7 @@ struct service {
 	bt_uuid_t uuid;
 	char *path;
 	struct queue *chrcs;
-	bool chrcs_ready;
 	struct queue *pending_ext_props;
-	guint idle_id;
 };
 
 struct characteristic {
@@ -1219,31 +1217,6 @@ static DBusMessage *characteristic_stop_notify(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static void append_desc_path(void *data, void *user_data)
-{
-	struct descriptor *desc = data;
-	DBusMessageIter *array = user_data;
-
-	dbus_message_iter_append_basic(array, DBUS_TYPE_OBJECT_PATH,
-								&desc->path);
-}
-
-static gboolean characteristic_get_descriptors(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct characteristic *chrc = data;
-	DBusMessageIter array;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "o", &array);
-
-	queue_foreach(chrc->descs, append_desc_path, &array);
-
-	dbus_message_iter_close_container(iter, &array);
-
-	return TRUE;
-}
-
 static const GDBusPropertyTable characteristic_properties[] = {
 	{ "UUID", "s", characteristic_get_uuid, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
@@ -1255,8 +1228,6 @@ static const GDBusPropertyTable characteristic_properties[] = {
 	{ "Notifying", "b", characteristic_get_notifying, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Flags", "as", characteristic_get_flags, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Descriptors", "ao", characteristic_get_descriptors, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
@@ -1401,39 +1372,12 @@ static gboolean service_get_primary(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static void append_chrc_path(void *data, void *user_data)
-{
-	struct characteristic *chrc = data;
-	DBusMessageIter *array = user_data;
-
-	dbus_message_iter_append_basic(array, DBUS_TYPE_OBJECT_PATH,
-								&chrc->path);
-}
-
-static gboolean service_get_characteristics(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct service *service = data;
-	DBusMessageIter array;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "o", &array);
-
-	if (service->chrcs_ready)
-		queue_foreach(service->chrcs, append_chrc_path, &array);
-
-	dbus_message_iter_close_container(iter, &array);
-
-	return TRUE;
-}
-
 static const GDBusPropertyTable service_properties[] = {
 	{ "UUID", "s", service_get_uuid, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Device", "o", service_get_device, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Primary", "b", service_get_primary, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Characteristics", "ao", service_get_characteristics, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
@@ -1500,27 +1444,10 @@ static void unregister_service(void *data)
 
 	DBG("Removing GATT service: %s", service->path);
 
-	if (service->idle_id)
-		g_source_remove(service->idle_id);
-
 	queue_remove_all(service->chrcs, NULL, NULL, unregister_characteristic);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(), service->path,
 							GATT_SERVICE_IFACE);
-}
-
-static void notify_chrcs(struct service *service)
-{
-
-	if (service->chrcs_ready ||
-				!queue_isempty(service->pending_ext_props))
-		return;
-
-	service->chrcs_ready = true;
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), service->path,
-							GATT_SERVICE_IFACE,
-							"Characteristics");
 }
 
 struct export_data {
@@ -1572,8 +1499,6 @@ static void read_ext_props_cb(bool success, uint8_t att_ecode,
 						"Flags");
 
 	queue_remove(service->pending_ext_props, chrc);
-
-	notify_chrcs(service);
 }
 
 static void read_ext_props(void *data, void *user_data)
@@ -1647,16 +1572,6 @@ static bool create_characteristics(struct gatt_db_attribute *attr,
 	return true;
 }
 
-static gboolean set_chrcs_ready(gpointer user_data)
-{
-	struct service *service = user_data;
-
-	service->idle_id = 0;
-	notify_chrcs(service);
-
-	return FALSE;
-}
-
 static void export_service(struct gatt_db_attribute *attr, void *user_data)
 {
 	struct btd_gatt_client *client = user_data;
@@ -1676,14 +1591,6 @@ static void export_service(struct gatt_db_attribute *attr, void *user_data)
 	}
 
 	queue_push_tail(client->services, service);
-
-	/*
-	 * Asynchronously update the "Characteristics" property of the service.
-	 * If there are any pending reads to obtain the value of the "Extended
-	 * Properties" descriptor then wait until they are complete.
-	 */
-	if (!service->chrcs_ready && queue_isempty(service->pending_ext_props))
-		service->idle_id = g_idle_add(set_chrcs_ready, service);
 }
 
 static void create_services(struct btd_gatt_client *client)
