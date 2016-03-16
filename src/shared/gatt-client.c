@@ -1377,16 +1377,6 @@ static void process_service_changed(struct bt_gatt_client *client,
 {
 	struct discovery_op *op;
 
-	/* On full database reset just re-run attribute discovery */
-	if (start_handle == 0x0001 && end_handle == 0xffff)
-		goto discover;
-
-	/* Remove all services that overlap the modified range since we'll
-	 * rediscover them
-	 */
-	gatt_db_clear_range(client->db, start_handle, end_handle);
-
-discover:
 	op = discovery_op_create(client, start_handle, end_handle,
 						service_changed_complete,
 						service_changed_failure);
