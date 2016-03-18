@@ -1,3 +1,13 @@
+ver 5.38:
+	Fix issue with stack overflow and UUID handling.
+	Fix issue with ObjectManager interface and GATT.
+	Fix issue with GATT database and error handling.
+	Fix issue with GATT client notifications.
+	Fix issue with GATT object ordering.
+	Fix issue with GATT default MTU exchange.
+	Fix issue with device attribute clearing.
+	Fix issue with AVRCP capabilities request.
+
 ver 5.37:
 	Fix issue with registering external profiles.
 	Fix issue with connecting external profiles.
