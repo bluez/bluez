@@ -1204,6 +1204,9 @@ static void exec_next_prep_write(struct bt_gatt_server *server,
 	err = BT_ATT_ERROR_UNLIKELY;
 
 error:
+	queue_remove_all(server->prep_queue, NULL, NULL,
+						prep_write_data_destroy);
+
 	bt_att_send_error_rsp(server->att, BT_ATT_OP_EXEC_WRITE_REQ,
 								ehandle, err);
 }
@@ -1248,6 +1251,8 @@ static void exec_write_cb(uint8_t opcode, const void *pdu,
 	return;
 
 error:
+	queue_remove_all(server->prep_queue, NULL, NULL,
+						prep_write_data_destroy);
 	bt_att_send_error_rsp(server->att, opcode, 0, ecode);
 }
 
