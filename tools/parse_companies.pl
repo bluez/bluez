@@ -45,7 +45,7 @@ while (<>) {
         $next_is_name = 1;
 
     # next <td> should be company name
-    } elsif ($next_is_name && m|\<td.*\>(.*)\</td\>|) {
+    } elsif ($next_is_name && m|\<td.*\>(.*)\<|) {
         my $name = uri_decode($1);
         $name =~ s/^\s+//g; # kill leading
         $name =~ s/\s+$//g; # and trailing space
