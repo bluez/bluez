@@ -1722,7 +1722,7 @@ struct bt_gatt_client *bt_gatt_client_clone(struct bt_gatt_client *client)
 {
 	struct bt_gatt_client *clone;
 
-	if (!client || !client->ready)
+	if (!client)
 		return NULL;
 
 	clone = gatt_client_new(client->db, client->att);
