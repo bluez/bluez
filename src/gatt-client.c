@@ -1663,8 +1663,8 @@ static void register_notify(void *data, void *user_data)
 
 	DBG("Failed to re-register notification client");
 
-	queue_remove(notify_client->chrc->notify_clients, client);
-	queue_remove(client->all_notify_clients, client);
+	queue_remove(notify_client->chrc->notify_clients, notify_client);
+	queue_remove(client->all_notify_clients, notify_client);
 
 	notify_client_free(notify_client);
 }
