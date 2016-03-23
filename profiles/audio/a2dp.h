@@ -53,17 +53,14 @@ struct a2dp_endpoint {
 };
 
 typedef void (*a2dp_discover_cb_t) (struct avdtp *session, GSList *seps,
-					struct avdtp_error *err,
-					void *user_data);
+						int err, void *user_data);
 typedef void (*a2dp_select_cb_t) (struct avdtp *session,
 					struct a2dp_sep *sep, GSList *caps,
 					void *user_data);
 typedef void (*a2dp_config_cb_t) (struct avdtp *session, struct a2dp_sep *sep,
-					struct avdtp_stream *stream,
-					struct avdtp_error *err,
+					struct avdtp_stream *stream, int err,
 					void *user_data);
-typedef void (*a2dp_stream_cb_t) (struct avdtp *session,
-					struct avdtp_error *err,
+typedef void (*a2dp_stream_cb_t) (struct avdtp *session, int err,
 					void *user_data);
 
 struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,

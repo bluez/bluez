@@ -177,8 +177,8 @@ static void stream_state_changed(struct avdtp_stream *stream,
 }
 
 static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
-					struct avdtp_stream *stream,
-					struct avdtp_error *err, void *user_data)
+					struct avdtp_stream *stream, int err,
+					void *user_data)
 {
 	struct source *source = user_data;
 
@@ -189,11 +189,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 	avdtp_unref(source->session);
 	source->session = NULL;
-	if (avdtp_error_category(err) == AVDTP_ERRNO
-				&& avdtp_error_posix_errno(err) != EHOSTDOWN)
-		btd_service_connecting_complete(source->service, -EAGAIN);
-	else
-		btd_service_connecting_complete(source->service, -EIO);
+	btd_service_connecting_complete(source->service, err);
 }
 
 static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
@@ -221,34 +217,26 @@ failed:
 	source->session = NULL;
 }
 
-static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp_error *err,
-				void *user_data)
+static void discovery_complete(struct avdtp *session, GSList *seps, int err,
+							void *user_data)
 {
 	struct source *source = user_data;
-	int id, perr;
+	int id;
 
 	source->connect_id = 0;
 
 	if (err) {
 		avdtp_unref(source->session);
 		source->session = NULL;
-
-		perr = -avdtp_error_posix_errno(err);
-		if (perr != -EHOSTDOWN) {
-			if (avdtp_error_category(err) == AVDTP_ERRNO)
-				perr = -EAGAIN;
-			else
-				perr = -EIO;
-		}
 		goto failed;
 	}
 
 	DBG("Discovery complete");
 
-	id = a2dp_select_capabilities(source->session, AVDTP_SEP_TYPE_SOURCE, NULL,
-						select_complete, source);
+	id = a2dp_select_capabilities(source->session, AVDTP_SEP_TYPE_SOURCE,
+					NULL, select_complete, source);
 	if (id == 0) {
-		perr = -EIO;
+		err = -EIO;
 		goto failed;
 	}
 
@@ -256,7 +244,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	return;
 
 failed:
-	btd_service_connecting_complete(source->service, perr);
+	btd_service_connecting_complete(source->service, err);
 	avdtp_unref(source->session);
 	source->session = NULL;
 }

@@ -180,8 +180,8 @@ static void stream_state_changed(struct avdtp_stream *stream,
 }
 
 static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
-					struct avdtp_stream *stream,
-					struct avdtp_error *err, void *user_data)
+					struct avdtp_stream *stream, int err,
+					void *user_data)
 {
 	struct sink *sink = user_data;
 
@@ -192,11 +192,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 	avdtp_unref(sink->session);
 	sink->session = NULL;
-	if (avdtp_error_category(err) == AVDTP_ERRNO
-				&& avdtp_error_posix_errno(err) != EHOSTDOWN)
-		btd_service_connecting_complete(sink->service, -EAGAIN);
-	else
-		btd_service_connecting_complete(sink->service, -EIO);
+	btd_service_connecting_complete(sink->service, err);
 }
 
 static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
@@ -221,25 +217,17 @@ failed:
 	sink->session = NULL;
 }
 
-static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp_error *err,
-				void *user_data)
+static void discovery_complete(struct avdtp *session, GSList *seps, int err,
+							void *user_data)
 {
 	struct sink *sink = user_data;
-	int id, perr;
+	int id;
 
 	sink->connect_id = 0;
 
 	if (err) {
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-
-		perr = -avdtp_error_posix_errno(err);
-		if (perr != -EHOSTDOWN) {
-			if (avdtp_error_category(err) == AVDTP_ERRNO)
-				perr = -EAGAIN;
-			else
-				perr = -EIO;
-		}
 		goto failed;
 	}
 
@@ -248,7 +236,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	id = a2dp_select_capabilities(sink->session, AVDTP_SEP_TYPE_SINK, NULL,
 						select_complete, sink);
 	if (id == 0) {
-		perr = -EIO;
+		err = -EIO;
 		goto failed;
 	}
 
@@ -256,7 +244,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	return;
 
 failed:
-	btd_service_connecting_complete(sink->service, perr);
+	btd_service_connecting_complete(sink->service, err);
 	avdtp_unref(sink->session);
 	sink->session = NULL;
 }

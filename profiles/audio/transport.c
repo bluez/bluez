@@ -283,8 +283,8 @@ static gboolean media_transport_set_fd(struct media_transport *transport,
 	return TRUE;
 }
 
-static void a2dp_resume_complete(struct avdtp *session,
-				struct avdtp_error *err, void *user_data)
+static void a2dp_resume_complete(struct avdtp *session, int err,
+							void *user_data)
 {
 	struct media_owner *owner = user_data;
 	struct media_request *req = owner->pending;
@@ -362,8 +362,8 @@ static guint resume_a2dp(struct media_transport *transport,
 	return id;
 }
 
-static void a2dp_suspend_complete(struct avdtp *session,
-				struct avdtp_error *err, void *user_data)
+static void a2dp_suspend_complete(struct avdtp *session, int err,
+							void *user_data)
 {
 	struct media_owner *owner = user_data;
 	struct media_transport *transport = owner->transport;

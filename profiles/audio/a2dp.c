@@ -225,6 +225,29 @@ static void finalize_setup_errno(struct a2dp_setup *s, int err,
 	va_end(args);
 }
 
+static int error_to_errno(struct avdtp_error *err)
+{
+	int perr;
+
+	if (!err)
+		return 0;
+
+	if (avdtp_error_category(err) != AVDTP_ERRNO)
+		return -EIO;
+
+	perr = -avdtp_error_posix_errno(err);
+	switch (-perr) {
+	case -EHOSTDOWN:
+	case -ECONNABORTED:
+		return perr;
+	default:
+		/*
+		 * An unexpect error has occurred setup may be attempted again.
+		 */
+		return -EAGAIN;
+	}
+}
+
 static gboolean finalize_config(gpointer data)
 {
 	struct a2dp_setup *s = data;
@@ -239,8 +262,8 @@ static gboolean finalize_config(gpointer data)
 		if (!cb->config_cb)
 			continue;
 
-		cb->config_cb(s->session, s->sep, stream, s->err,
-							cb->user_data);
+		cb->config_cb(s->session, s->sep, stream,
+				error_to_errno(s->err), cb->user_data);
 		setup_cb_free(cb);
 	}
 
@@ -260,7 +283,8 @@ static gboolean finalize_resume(gpointer data)
 		if (!cb->resume_cb)
 			continue;
 
-		cb->resume_cb(s->session, s->err, cb->user_data);
+		cb->resume_cb(s->session, error_to_errno(s->err),
+							cb->user_data);
 		setup_cb_free(cb);
 	}
 
@@ -280,7 +304,8 @@ static gboolean finalize_suspend(gpointer data)
 		if (!cb->suspend_cb)
 			continue;
 
-		cb->suspend_cb(s->session, s->err, cb->user_data);
+		cb->suspend_cb(s->session, error_to_errno(s->err),
+							cb->user_data);
 		setup_cb_free(cb);
 	}
 
@@ -316,7 +341,8 @@ static void finalize_discover(struct a2dp_setup *s)
 		if (!cb->discover_cb)
 			continue;
 
-		cb->discover_cb(s->session, s->seps, s->err, cb->user_data);
+		cb->discover_cb(s->session, s->seps, error_to_errno(s->err),
+								cb->user_data);
 		setup_cb_free(cb);
 	}
 }
