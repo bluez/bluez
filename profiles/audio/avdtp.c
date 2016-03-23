@@ -1171,7 +1171,12 @@ void avdtp_unref(struct avdtp *session)
 	if (session->ref > 0)
 		return;
 
-	set_disconnect_timer(session);
+	if (session->state == AVDTP_SESSION_STATE_CONNECTED) {
+		set_disconnect_timer(session);
+		return;
+	}
+
+	connection_lost(session, ECONNABORTED);
 }
 
 struct avdtp *avdtp_ref(struct avdtp *session)
