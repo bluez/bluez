@@ -3481,7 +3481,7 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 	if (!stream && session->discover) {
 		/* Don't call cb since it being aborted */
 		session->discover->cb = NULL;
-		finalize_discovery(session, -ECANCELED);
+		finalize_discovery(session, ECANCELED);
 		return -EALREADY;
 	}
 
