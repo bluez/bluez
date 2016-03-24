@@ -247,6 +247,11 @@ AC_ARG_ENABLE(experimental, AC_HELP_STRING([--enable-experimental],
 					[enable_experimental=${enableval}])
 AM_CONDITIONAL(EXPERIMENTAL, test "${enable_experimental}" = "yes")
 
+AC_ARG_ENABLE(deprecated, AC_HELP_STRING([--enable-deprecated],
+			[enable deprecated plugins (BLE services, ...)]),
+					[enable_deprecated=${enableval}])
+AM_CONDITIONAL(DEPRECATED, test "${enable_deprecated}" = "yes")
+
 AC_ARG_ENABLE(sixaxis, AC_HELP_STRING([--enable-sixaxis],
 		[enable sixaxis plugin]), [enable_sixaxis=${enableval}])
 AM_CONDITIONAL(SIXAXIS, test "${enable_sixaxis}" = "yes" &&

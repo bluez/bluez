@@ -87,7 +87,7 @@ builtin_sources += profiles/scanparam/scan.c
 builtin_modules += deviceinfo
 builtin_sources += profiles/deviceinfo/deviceinfo.c
 
-if EXPERIMENTAL
+if DEPRECATED
 builtin_modules += alert
 builtin_sources += profiles/alert/server.c
 
