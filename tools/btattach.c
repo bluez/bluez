@@ -48,7 +48,7 @@
 #include "src/shared/util.h"
 #include "src/shared/hci.h"
 
-static int open_serial(const char *path)
+static int open_serial(const char *path, unsigned int speed)
 {
 	struct termios ti;
 	int fd, saved_ldisc, ldisc = N_HCI;
@@ -75,7 +75,7 @@ static int open_serial(const char *path)
 	memset(&ti, 0, sizeof(ti));
 	cfmakeraw(&ti);
 
-	ti.c_cflag |= (B115200 | CLOCAL | CREAD);
+	ti.c_cflag |= (speed | CLOCAL | CREAD);
 
 	/* Set flow control */
 	ti.c_cflag |= CRTSCTS;
@@ -106,11 +106,11 @@ static void local_version_callback(const void *data, uint8_t size,
 }
 
 static int attach_proto(const char *path, unsigned int proto,
-						unsigned int flags)
+				unsigned int speed, unsigned int flags)
 {
 	int fd, dev_id;
 
-	fd = open_serial(path);
+	fd = open_serial(path, speed);
 	if (fd < 0)
 		return -1;
 
@@ -189,6 +189,7 @@ static void usage(void)
 		"\t-B, --bredr <device>   Attach BR/EDR controller\n"
 		"\t-A, --amp <device>     Attach AMP controller\n"
 		"\t-P, --protocol <proto> Specify protocol type\n"
+		"\t-S, --speed <baudrate> Specify which baudrate to use\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -196,6 +197,7 @@ static const struct option main_options[] = {
 	{ "bredr",    required_argument, NULL, 'B' },
 	{ "amp",      required_argument, NULL, 'A' },
 	{ "protocol", required_argument, NULL, 'P' },
+	{ "speed",    required_argument, NULL, 'S' },
 	{ "version",  no_argument,       NULL, 'v' },
 	{ "help",     no_argument,       NULL, 'h' },
 	{ }
@@ -217,17 +219,68 @@ static const struct {
 	{ }
 };
 
+static unsigned int get_speed(const char *str)
+{
+	switch (atoi(str)) {
+	case 57600:
+		return B57600;
+	case 115200:
+		return B115200;
+	case 230400:
+		return B230400;
+	case 460800:
+		return B460800;
+	case 500000:
+		return B500000;
+	case 576000:
+		return B576000;
+	case 921600:
+		return B921600;
+	case 1000000:
+		return B1000000;
+	case 1152000:
+		return B1152000;
+	case 1500000:
+		return B1500000;
+	case 2000000:
+		return B2000000;
+#ifdef B2500000
+	case 2500000:
+		return B2500000;
+#endif
+#ifdef B3000000
+	case 3000000:
+		return B3000000;
+#endif
+#ifdef B3500000
+	case 3500000:
+		return B3500000;
+#endif
+#ifdef B3710000
+	case 3710000:
+		return B3710000;
+#endif
+#ifdef B4000000
+	case 4000000:
+		return B4000000;
+#endif
+	}
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	const char *bredr_path = NULL, *amp_path = NULL, *proto = NULL;
 	bool raw_device = false;
 	sigset_t mask;
 	int exit_status, count = 0, proto_id = HCI_UART_H4;
+	unsigned int speed = B115200;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "B:A:P:Rvh",
+		opt = getopt_long(argc, argv, "B:A:P:S:Rvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -241,6 +294,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'P':
 			proto = optarg;
+			break;
+		case 'S':
+			speed = get_speed(optarg);
+			if (!speed) {
+				fprintf(stderr, "Invalid speed: %s\n", optarg);
+				return EXIT_FAILURE;
+			}
 			break;
 		case 'R':
 			raw_device = true;
@@ -296,7 +356,7 @@ int main(int argc, char *argv[])
 		if (raw_device)
 			flags = (1 << HCI_UART_RAW_DEVICE);
 
-		fd = attach_proto(bredr_path, proto_id, flags);
+		fd = attach_proto(bredr_path, proto_id, speed, flags);
 		if (fd >= 0) {
 			mainloop_add_fd(fd, 0, uart_callback, NULL, NULL);
 			count++;
@@ -315,7 +375,7 @@ int main(int argc, char *argv[])
 		if (raw_device)
 			flags = (1 << HCI_UART_RAW_DEVICE);
 
-		fd = attach_proto(amp_path, proto_id, flags);
+		fd = attach_proto(amp_path, proto_id, speed, flags);
 		if (fd >= 0) {
 			mainloop_add_fd(fd, 0, uart_callback, NULL, NULL);
 			count++;
