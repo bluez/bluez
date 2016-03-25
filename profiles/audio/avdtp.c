@@ -1105,6 +1105,8 @@ static void connection_lost(struct avdtp *session, int err)
 {
 	char address[18];
 
+	session = avdtp_ref(session);
+
 	ba2str(device_get_address(session->device), address);
 	DBG("Disconnected from %s", address);
 
@@ -1115,10 +1117,7 @@ static void connection_lost(struct avdtp *session, int err)
 
 	avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
 
-	if (session->ref > 0)
-		return;
-
-	avdtp_free(session);
+	avdtp_unref(session);
 }
 
 static gboolean disconnect_timeout(gpointer user_data)
@@ -1171,12 +1170,18 @@ void avdtp_unref(struct avdtp *session)
 	if (session->ref > 0)
 		return;
 
-	if (session->state == AVDTP_SESSION_STATE_CONNECTED) {
+	switch(session->state) {
+	case AVDTP_SESSION_STATE_CONNECTED:
 		set_disconnect_timer(session);
-		return;
+		break;
+	case AVDTP_SESSION_STATE_CONNECTING:
+		connection_lost(session, ECONNABORTED);
+		break;
+	case AVDTP_SESSION_STATE_DISCONNECTED:
+	default:
+		avdtp_free(session);
+		break;
 	}
-
-	connection_lost(session, ECONNABORTED);
 }
 
 struct avdtp *avdtp_ref(struct avdtp *session)
