@@ -396,12 +396,12 @@ int sink_disconnect(struct btd_service *service)
 
 	/* cancel pending connect */
 	if (sink->connect_id > 0) {
+		avdtp_unref(sink->session);
+		sink->session = NULL;
+
 		a2dp_cancel(sink->connect_id);
 		sink->connect_id = 0;
 		btd_service_disconnecting_complete(sink->service, 0);
-
-		avdtp_unref(sink->session);
-		sink->session = NULL;
 
 		return 0;
 	}

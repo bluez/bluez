@@ -388,12 +388,12 @@ int source_disconnect(struct btd_service *service)
 
 	/* cancel pending connect */
 	if (source->connect_id > 0) {
+		avdtp_unref(source->session);
+		source->session = NULL;
+
 		a2dp_cancel(source->connect_id);
 		source->connect_id = 0;
 		btd_service_disconnecting_complete(source->service, 0);
-
-		avdtp_unref(source->session);
-		source->session = NULL;
 
 		return 0;
 	}
