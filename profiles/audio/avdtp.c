@@ -1170,7 +1170,7 @@ void avdtp_unref(struct avdtp *session)
 	if (session->ref > 0)
 		return;
 
-	switch(session->state) {
+	switch (session->state) {
 	case AVDTP_SESSION_STATE_CONNECTED:
 		set_disconnect_timer(session);
 		break;

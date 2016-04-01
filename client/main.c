@@ -2077,6 +2077,7 @@ int main(int argc, char *argv[])
 	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 
+	setlinebuf(stdout);
 	rl_attempted_completion_function = cmd_completion;
 
 	rl_erase_empty_line = 1;
