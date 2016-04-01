@@ -107,8 +107,13 @@ static struct hog_device *hog_device_new(struct btd_device *device,
 							product, version);
 
 	dev = new0(struct hog_device, 1);
-	dev->device = btd_device_ref(device);
 	dev->hog = bt_hog_new_default(name, vendor, product, version, prim);
+	if (!dev->hog) {
+		free(dev);
+		return NULL;
+	}
+
+	dev->device = btd_device_ref(device);
 
 	/*
 	 * TODO: Remove attio callback and use .accept once using
@@ -189,6 +194,9 @@ static int hog_probe(struct btd_service *service)
 			continue;
 
 		dev = hog_device_new(device, prim);
+		if (!dev)
+			break;
+
 		btd_service_set_user_data(service, dev);
 		return 0;
 	}
