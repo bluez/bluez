@@ -964,17 +964,16 @@ struct set_discovery_filter_args {
 	GSList *uuids;
 };
 
-static void set_discovery_filter_setup(DBusMessageIter *iter,
-					   void *user_data)
+static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 {
 	struct set_discovery_filter_args *args = user_data;
 	DBusMessageIter dict;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-			    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			    DBUS_TYPE_STRING_AS_STRING
-			    DBUS_TYPE_VARIANT_AS_STRING
-			    DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+				DBUS_TYPE_STRING_AS_STRING
+				DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	if (args->uuids != NULL) {
 		DBusMessageIter entry, value, arrayIter;
@@ -982,22 +981,22 @@ static void set_discovery_filter_setup(DBusMessageIter *iter,
 		GSList *l;
 
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
-						 NULL, &entry);
+							NULL, &entry);
 		/* dict key */
 		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
-					       &uuids);
+							&uuids);
 
 		dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-						 "as", &value);
+							"as", &value);
 
 		dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY, "s",
-						 &arrayIter);
+							&arrayIter);
 
 		for (l = args->uuids; l != NULL; l = g_slist_next(l))
 			/* list->data contains string representation of uuid */
 			dbus_message_iter_append_basic(&arrayIter,
-						       DBUS_TYPE_STRING,
-						       &l->data);
+							DBUS_TYPE_STRING,
+							&l->data);
 
 		dbus_message_iter_close_container(&value, &arrayIter);
 
@@ -1010,21 +1009,20 @@ static void set_discovery_filter_setup(DBusMessageIter *iter,
 
 	if (args->pathloss != DISTANCE_VAL_INVALID)
 		dict_append_entry(&dict, "Pathloss", DBUS_TYPE_UINT16,
-				  &args->pathloss);
+						&args->pathloss);
 
 	if (args->rssi != DISTANCE_VAL_INVALID)
 		dict_append_entry(&dict, "RSSI", DBUS_TYPE_INT16, &args->rssi);
 
 	if (args->transport != NULL)
 		dict_append_entry(&dict, "Transport", DBUS_TYPE_STRING,
-				  &args->transport);
+						&args->transport);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
 
 
-static void set_discovery_filter_reply(DBusMessage *message,
-				       void *user_data)
+static void set_discovery_filter_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
 
@@ -1079,7 +1077,7 @@ static void cmd_set_scan_filter_uuids(const char *arg)
 		uuid_str = strtok_r(uuidstmp, " \t", &saveptr);
 		if (uuid_str == NULL)
 			break;
-	    filtered_scan_uuids = g_slist_append(filtered_scan_uuids,
+		filtered_scan_uuids = g_slist_append(filtered_scan_uuids,
 							strdup(uuid_str));
 	}
 
