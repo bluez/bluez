@@ -1903,6 +1903,56 @@ const char *bt_compidtostr(int compid)
 		return "Mul-T-Lock";
 	case 820:
 		return "Corentium AS";
+	case 821:
+		return "Enlighted Inc";
+	case 822:
+		return "GISTIC";
+	case 823:
+		return "AJP2 Holdings, LLC";
+	case 824:
+		return "COBI GmbH";
+	case 825:
+		return "Blue Sky Scientific, LLC";
+	case 826:
+		return "Appception, Inc.";
+	case 827:
+		return "Courtney Thorne Limited";
+	case 828:
+		return "Virtuosys";
+	case 829:
+		return "TPV Technology Limited";
+	case 830:
+		return "Monitra SA";
+	case 831:
+		return "Automation Components, Inc.";
+	case 832:
+		return "Letsense s.r.l.";
+	case 833:
+		return "Etesian Technologies LLC";
+	case 834:
+		return "GERTEC BRASIL LTDA.";
+	case 835:
+		return "Drekker Development Pty. Ltd.";
+	case 836:
+		return "Whirl Inc";
+	case 837:
+		return "Locus Positioning";
+	case 838:
+		return "Acuity Brands Lighting, Inc";
+	case 839:
+		return "Prevent Biometrics";
+	case 840:
+		return "Arioneo";
+	case 841:
+		return "VersaMe";
+	case 842:
+		return "Vaddio";
+	case 843:
+		return "Libratone A/S";
+	case 844:
+		return "HM Electronics, Inc.";
+	case 845:
+		return "TASER International, Inc.";
 	case 65535:
 		return "internal use";
 	default:
