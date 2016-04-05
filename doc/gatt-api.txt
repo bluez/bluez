@@ -119,7 +119,7 @@ Properties	string UUID [read-only]
 			when a notification or indication is received, upon
 			which a PropertiesChanged signal will be emitted.
 
-		boolean Notifying [read-only]
+		boolean Notifying [read-only, optional]
 
 			True, if notifications or indications on this
 			characteristic are currently enabled.

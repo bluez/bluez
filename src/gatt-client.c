@@ -707,6 +707,15 @@ static gboolean characteristic_get_notifying(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean
+characteristic_notifying_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct characteristic *chrc = data;
+
+	return (chrc->props & BT_GATT_CHRC_PROP_NOTIFY ||
+				chrc->props & BT_GATT_CHRC_PROP_INDICATE);
+}
+
 struct chrc_prop_data {
 	uint8_t prop;
 	char *str;
@@ -1225,7 +1234,8 @@ static const GDBusPropertyTable characteristic_properties[] = {
 	{ "Value", "ay", characteristic_get_value, NULL,
 					characteristic_value_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Notifying", "b", characteristic_get_notifying, NULL, NULL,
+	{ "Notifying", "b", characteristic_get_notifying, NULL,
+					characteristic_notifying_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Flags", "as", characteristic_get_flags, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
