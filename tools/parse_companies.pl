@@ -10,6 +10,8 @@ my %known_entities = (
     'nbsp' => ' ',
     'eacute' => 'é',
     'auml' => 'ä',
+    'uuml' => 'ü',
+    'Uuml' => 'Ü',
 );
 
 # better to use URI::Encode if you have it
