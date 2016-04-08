@@ -12,6 +12,8 @@ NotifyAccess=main
 #Restart=on-failure
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 LimitNPROC=1
+ProtectHome=true
+ProtectSystem=full
 
 [Install]
 WantedBy=bluetooth.target
