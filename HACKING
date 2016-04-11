@@ -108,6 +108,19 @@ If you fixed a bug or you want to add support for something, patches are
 welcome! In order to ease the inclusion of your patch, it's important to follow
 some rules, otherwise it will likely be rejected by maintainers.
 
+Make sure the author name and email are set properly:
+
+  # git config --global user.name <name>
+  # git config --global user.email <email>
+
+The preferred way to send patches is by email, using git send-email:
+
+  # git config --global sendemail.smtpencryption <tls>
+  # git config --global sendemail.smtpserver <smtp.gmail.com>
+  # git config --global sendemail.smtpuser <yourname@gmail.com>
+  # git config --global sendemail.smtpserverport <587>
+  # git config sendemail.to linux-bluetooth@vger.kernel.org
+
 BlueZ rules for submitting patches follow most of the rules used by Linux kernel
 (https://www.kernel.org/doc/Documentation/SubmittingPatches) with some remarks:
 
@@ -128,3 +141,17 @@ break compilation.
 should be limited to 50 characters and the description should be wrapped at 72
 characters except if it contains quoted information from debug tools like
 backtraces, compiler errors, etc.
+
+6) Prefix the email subject with [PATCH BlueZ]:
+
+  # git config format.subjectprefix "PATCH BlueZ"
+
+6) Add a cover letter when introducing a new feature explaning what problem
+you're trying to solve:
+
+  # git format-patch --cover-letter -M origin/master -o outgoing/
+  # edit outgoing/0000-*
+
+7) Submit:
+
+  # git send-email outgoing/*
