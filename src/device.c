@@ -2697,6 +2697,61 @@ fail:
 	return NULL;
 }
 
+static void load_services(struct btd_device *device, char **uuids)
+{
+	char **uuid;
+
+	for (uuid = uuids; *uuid; uuid++) {
+		if (g_slist_find_custom(device->uuids, *uuid, bt_uuid_strcmp))
+			continue;
+
+		device->uuids = g_slist_insert_sorted(device->uuids,
+							g_strdup(*uuid),
+							bt_uuid_strcmp);
+	}
+
+	g_strfreev(uuids);
+}
+
+static void convert_info(struct btd_device *device, GKeyFile *key_file)
+{
+	char filename[PATH_MAX];
+	char adapter_addr[18];
+	char device_addr[18];
+	char **uuids;
+	char *str;
+	gsize length = 0;
+
+	/* Load device profile list from legacy properties */
+	uuids = g_key_file_get_string_list(key_file, "General", "SDPServices",
+								NULL, NULL);
+	if (uuids)
+		load_services(device, uuids);
+
+	uuids = g_key_file_get_string_list(key_file, "General", "GATTServices",
+								NULL, NULL);
+	if (uuids)
+		load_services(device, uuids);
+
+	if (!device->uuids)
+		return;
+
+	/* Remove old entries so they are not loaded again */
+	g_key_file_remove_key(key_file, "General", "SDPServices", NULL);
+	g_key_file_remove_key(key_file, "General", "GATTServices", NULL);
+
+	ba2str(btd_adapter_get_address(device->adapter), adapter_addr);
+	ba2str(&device->bdaddr, device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+			device_addr);
+
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+
+	store_device_info(device);
+}
+
 static void load_info(struct btd_device *device, const char *local,
 			const char *peer, GKeyFile *key_file)
 {
@@ -2793,21 +2848,7 @@ next:
 	uuids = g_key_file_get_string_list(key_file, "General", "Services",
 						NULL, NULL);
 	if (uuids) {
-		char **uuid;
-
-		for (uuid = uuids; *uuid; uuid++) {
-			GSList *match;
-
-			match = g_slist_find_custom(device->uuids, *uuid,
-							bt_uuid_strcmp);
-			if (match)
-				continue;
-
-			device->uuids = g_slist_insert_sorted(device->uuids,
-								g_strdup(*uuid),
-								bt_uuid_strcmp);
-		}
-		g_strfreev(uuids);
+		load_services(device, uuids);
 
 		/* Discovered services restored from storage */
 		device->bredr_state.svc_resolved = true;
@@ -3527,6 +3568,8 @@ struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
 
 	src = btd_adapter_get_address(adapter);
 	ba2str(src, srcaddr);
+
+	convert_info(device, key_file);
 
 	load_info(device, srcaddr, address, key_file);
 	load_att_info(device, srcaddr, address);
