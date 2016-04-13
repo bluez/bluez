@@ -52,6 +52,8 @@ static const bt_uuid_t characteristic_uuid = { .type = BT_UUID16,
 					.value.u16 = GATT_CHARAC_UUID };
 static const bt_uuid_t included_service_uuid = { .type = BT_UUID16,
 					.value.u16 = GATT_INCLUDE_UUID };
+static const bt_uuid_t ext_desc_uuid = { .type = BT_UUID16,
+				.value.u16 = GATT_CHARAC_EXT_PROPER_UUID };
 
 struct gatt_db {
 	int ref_count;
@@ -1456,10 +1458,68 @@ bool gatt_db_attribute_get_service_data(const struct gatt_db_attribute *attrib,
 	return le_to_uuid(decl->value, decl->value_len, uuid);
 }
 
+static void read_ext_prop_value(struct gatt_db_attribute *attrib,
+						int err, const uint8_t *value,
+						size_t length, void *user_data)
+{
+	uint16_t *ext_prop = user_data;
+
+	if (err || (length != sizeof(uint16_t)))
+		return;
+
+	*ext_prop = (uint16_t) value[0];
+}
+
+static void read_ext_prop(struct gatt_db_attribute *attrib,
+							void *user_data)
+{
+	uint16_t *ext_prop = user_data;
+
+	/*
+	 * If ext_prop is set that means extended properties descriptor
+	 * has been already found
+	 */
+	if (*ext_prop != 0)
+		return;
+
+	if (bt_uuid_cmp(&ext_desc_uuid, &attrib->uuid))
+		return;
+
+	gatt_db_attribute_read(attrib, 0, BT_ATT_OP_READ_REQ, NULL,
+						read_ext_prop_value, ext_prop);
+}
+
+static uint8_t get_char_extended_prop(const struct gatt_db_attribute *attrib)
+{
+	uint16_t ext_prop;
+
+	if (!attrib)
+		return 0;
+
+	if (bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
+		return 0;
+
+	/* Check properties first */
+	if (!(attrib->value[0] & BT_GATT_CHRC_PROP_EXT_PROP))
+		return 0;
+
+	ext_prop = 0;
+
+	/*
+	 * Cast needed for foreach function. We do not change attrib during
+	 * this call
+	 */
+	gatt_db_service_foreach_desc((struct gatt_db_attribute *) attrib,
+						read_ext_prop, &ext_prop);
+
+	return ext_prop;
+}
+
 bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 							uint16_t *handle,
 							uint16_t *value_handle,
 							uint8_t *properties,
+							uint16_t *ext_prop,
 							bt_uuid_t *uuid)
 {
 	if (!attrib)
@@ -1483,6 +1543,9 @@ bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 
 	if (properties)
 		*properties = attrib->value[0];
+
+	if (ext_prop)
+		*ext_prop = get_char_extended_prop(attrib);
 
 	if (value_handle)
 		*value_handle = get_le16(attrib->value + 1);

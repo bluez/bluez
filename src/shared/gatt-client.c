@@ -243,9 +243,9 @@ static struct notify_chrc *notify_chrc_create(struct bt_gatt_client *client,
 	if (bt_uuid_cmp(&uuid, gatt_db_attribute_get_type(attr)))
 		return NULL;
 
-	if (!gatt_db_attribute_get_char_data(attr, NULL, NULL,
-							&properties, NULL))
-			return NULL;
+	if (!gatt_db_attribute_get_char_data(attr, NULL, NULL, &properties,
+								NULL, NULL))
+		return NULL;
 
 	chrc = new0(struct notify_chrc, 1);
 

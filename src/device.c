@@ -1987,7 +1987,7 @@ static void store_chrc(struct gatt_db_attribute *attr, void *user_data)
 	bt_uuid_t uuid;
 
 	if (!gatt_db_attribute_get_char_data(attr, &handle_num, &value_handle,
-							&properties, &uuid)) {
+						&properties, NULL, &uuid)) {
 		warn("Error storing characteristic - can't get data");
 		return;
 	}

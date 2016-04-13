@@ -297,18 +297,20 @@ static void print_chrc(struct gatt_db_attribute *attr, void *user_data)
 {
 	uint16_t handle, value_handle;
 	uint8_t properties;
+	uint16_t ext_prop;
 	bt_uuid_t uuid;
 
 	if (!gatt_db_attribute_get_char_data(attr, &handle,
 								&value_handle,
 								&properties,
+								&ext_prop,
 								&uuid))
 		return;
 
 	printf("\t  " COLOR_YELLOW "charac" COLOR_OFF
-					" - start: 0x%04x, value: 0x%04x, "
-					"props: 0x%02x, uuid: ",
-					handle, value_handle, properties);
+				" - start: 0x%04x, value: 0x%04x, "
+				"props: 0x%02x, ext_props: 0x%04x, uuid: ",
+				handle, value_handle, properties, ext_prop);
 	print_uuid(&uuid);
 
 	gatt_db_service_foreach_desc(attr, print_desc, NULL);

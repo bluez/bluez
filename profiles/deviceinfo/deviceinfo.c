@@ -88,7 +88,7 @@ static void handle_characteristic(struct gatt_db_attribute *attr,
 	bt_string_to_uuid(&pnpid_uuid, PNPID_UUID);
 
 	if (!gatt_db_attribute_get_char_data(attr, NULL, &value_handle, NULL,
-								&uuid)) {
+								NULL, &uuid)) {
 		error("Failed to obtain characteristic data");
 		return;
 	}

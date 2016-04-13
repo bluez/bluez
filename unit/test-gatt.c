@@ -526,9 +526,9 @@ static bool matching_char_data(struct gatt_db_attribute *a,
 	bt_uuid_t a_uuid, b_uuid;
 
 	gatt_db_attribute_get_char_data(a, &a_handle, &a_value_handle,
-							&a_properties, &a_uuid);
+						&a_properties, NULL, &a_uuid);
 	gatt_db_attribute_get_char_data(b, &b_handle, &b_value_handle,
-							&b_properties, &b_uuid);
+						&b_properties, NULL, &b_uuid);
 
 	return a_handle == b_handle && a_value_handle == b_value_handle &&
 						a_properties == b_properties &&

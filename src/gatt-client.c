@@ -1283,7 +1283,8 @@ static struct characteristic *characteristic_create(
 
 	gatt_db_attribute_get_char_data(attr, &chrc->handle,
 							&chrc->value_handle,
-							&chrc->props, &uuid);
+							&chrc->props, NULL,
+							&uuid);
 
 	chrc->attr = gatt_db_get_attribute(service->client->db,
 							chrc->value_handle);

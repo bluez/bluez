@@ -199,6 +199,7 @@ bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 							uint16_t *handle,
 							uint16_t *value_handle,
 							uint8_t *properties,
+							uint16_t *ext_prop,
 							bt_uuid_t *uuid);
 
 bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
