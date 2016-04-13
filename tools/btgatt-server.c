@@ -419,7 +419,8 @@ static void populate_gap_service(struct server *server)
 	bt_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
 	gatt_db_service_add_characteristic(service, &uuid,
 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE,
-					BT_GATT_CHRC_PROP_READ,
+					BT_GATT_CHRC_PROP_READ |
+					BT_GATT_CHRC_PROP_EXT_PROP,
 					gap_device_name_read_cb,
 					gap_device_name_write_cb,
 					server);
