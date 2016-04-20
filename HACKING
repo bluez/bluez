@@ -146,12 +146,12 @@ backtraces, compiler errors, etc.
 
   # git config format.subjectprefix "PATCH BlueZ"
 
-6) Add a cover letter when introducing a new feature explaning what problem
+7) Add a cover letter when introducing a new feature explaning what problem
 you're trying to solve:
 
   # git format-patch --cover-letter -M origin/master -o outgoing/
   # edit outgoing/0000-*
 
-7) Submit:
+8) Submit:
 
   # git send-email outgoing/*
