@@ -35,6 +35,10 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <termios.h>
+#include <fcntl.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -1155,6 +1159,91 @@ void control_server(const char *path)
 	}
 
 	server_fd = fd;
+}
+
+static void tty_callback(int fd, uint32_t events, void *user_data)
+{
+	struct control_data *data = user_data;
+	ssize_t len;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(data->fd);
+		return;
+	}
+
+	len = read(data->fd, data->buf + data->offset,
+					sizeof(data->buf) - data->offset);
+	if (len < 0)
+		return;
+
+	data->offset += len;
+
+	if (data->offset > MGMT_HDR_SIZE) {
+		struct mgmt_hdr *hdr = (struct mgmt_hdr *) data->buf;
+		uint16_t pktlen = le16_to_cpu(hdr->len);
+
+		if (data->offset > pktlen + MGMT_HDR_SIZE) {
+			uint16_t opcode = le16_to_cpu(hdr->opcode);
+			uint16_t index = le16_to_cpu(hdr->index);
+
+			packet_monitor(NULL, NULL, index, opcode,
+					data->buf + MGMT_HDR_SIZE, pktlen);
+
+			data->offset -= pktlen + MGMT_HDR_SIZE;
+
+			if (data->offset > 0)
+				memmove(data->buf, data->buf +
+					 MGMT_HDR_SIZE + pktlen, data->offset);
+		}
+	}
+}
+
+void control_tty(const char *path)
+{
+	struct control_data *data;
+	struct termios ti;
+	int fd;
+
+	fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	if (fd < 0) {
+		perror("Failed to open serial port");
+		return;
+	}
+
+	if (tcflush(fd, TCIOFLUSH) < 0) {
+		perror("Failed to flush serial port");
+		close(fd);
+		return;
+	}
+
+	memset(&ti, 0, sizeof(ti));
+	/* Switch TTY to raw mode */
+	cfmakeraw(&ti);
+
+	ti.c_cflag |= (CLOCAL | CREAD);
+	ti.c_cflag &= ~CRTSCTS;
+
+	cfsetspeed(&ti, B115200);
+
+	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
+		perror("Failed to set serial port settings");
+		close(fd);
+		return;
+	}
+
+	printf("--- %s opened ---\n", path);
+
+	data = malloc(sizeof(*data));
+	if (!data) {
+		close(fd);
+		return;
+	}
+
+	memset(data, 0, sizeof(*data));
+	data->channel = HCI_CHANNEL_MONITOR;
+	data->fd = fd;
+
+	mainloop_add_fd(data->fd, EPOLLIN, tty_callback, data, free_data);
 }
 
 bool control_writer(const char *path)

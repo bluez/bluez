@@ -71,6 +71,7 @@ static void usage(void)
 }
 
 static const struct option main_options[] = {
+	{ "tty",     required_argument, NULL, 'd' },
 	{ "read",    required_argument, NULL, 'r' },
 	{ "write",   required_argument, NULL, 'w' },
 	{ "analyze", required_argument, NULL, 'a' },
@@ -106,12 +107,15 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "r:w:a:s:p:i:tTSE:vh",
+		opt = getopt_long(argc, argv, "d:r:w:a:s:p:i:tTSE:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'd':
+			control_tty(optarg);
+			break;
 		case 'r':
 			reader_path = optarg;
 			break;
