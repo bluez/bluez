@@ -3112,7 +3112,7 @@ static gboolean avrcp_get_total_numberofitems_rsp(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->controller->player;
 	struct media_player *mp = player->user_data;
-	uint32_t num_of_items;
+	uint32_t num_of_items = 0;
 
 	if (pdu == NULL)
 		return -ETIMEDOUT;
