@@ -3366,9 +3366,6 @@ static gboolean gatt_services_changed(gpointer user_data)
 
 	store_gatt_db(device);
 
-	g_dbus_emit_property_changed(dbus_conn, device->path, DEVICE_INTERFACE,
-								"GattServices");
-
 	return FALSE;
 }
 
