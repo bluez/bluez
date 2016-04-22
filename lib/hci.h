@@ -55,6 +55,8 @@ extern "C" {
 #define HCI_RS232	4
 #define HCI_PCI		5
 #define HCI_SDIO	6
+#define HCI_SPI		7
+#define HCI_I2C		8
 
 /* HCI controller types */
 #define HCI_BREDR	0x00

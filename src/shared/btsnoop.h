@@ -62,6 +62,8 @@
 #define BTSNOOP_BUS_RS232	4
 #define BTSNOOP_BUS_PCI		5
 #define BTSNOOP_BUS_SDIO	6
+#define BTSNOOP_BUS_SPI		7
+#define BTSNOOP_BUS_I2C		8
 
 struct btsnoop_opcode_new_index {
 	uint8_t  type;
