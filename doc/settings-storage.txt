@@ -175,6 +175,7 @@ how to interpret rest of value:
     2803:value_handle:properties:uuid
 
   Descriptor:
+    value:uuid
     uuid
 
 Sample Attributes section:
