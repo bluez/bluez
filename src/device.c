@@ -4576,6 +4576,8 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 	btd_gatt_client_ready(device->client_dbus);
 
 	device_svc_resolved(device, device->bdaddr_type, 0);
+
+	store_gatt_db(device);
 }
 
 static void gatt_client_service_changed(uint16_t start_handle,
