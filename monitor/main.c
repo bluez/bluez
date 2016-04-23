@@ -224,10 +224,13 @@ int main(int argc, char *argv[])
 	if (ellisys_server)
 		ellisys_enable(ellisys_server, ellisys_port);
 
-	if (tty)
-		control_tty(tty, tty_speed);
+	if (tty && control_tty(tty, tty_speed) < 0)
+		return EXIT_FAILURE;
 
-	if (control_tracing() < 0)
+	/* Accept error here if we have a successfully opened TTY
+	 * (could happen if btmon is run as a normal user).
+	 */
+	if (control_tracing() < 0 && !tty)
 		return EXIT_FAILURE;
 
 	exit_status = mainloop_run();
