@@ -135,6 +135,7 @@ struct external_desc {
 };
 
 struct pending_op {
+	struct btd_device *device;
 	unsigned int id;
 	struct gatt_db_attribute *attrib;
 	struct queue *owner_queue;
@@ -1592,7 +1593,8 @@ static void pending_op_free(void *data)
 	free(op);
 }
 
-static struct pending_op *pending_read_new(struct queue *owner_queue,
+static struct pending_op *pending_read_new(struct btd_device *device,
+					struct queue *owner_queue,
 					struct gatt_db_attribute *attrib,
 					unsigned int id)
 {
@@ -1601,6 +1603,7 @@ static struct pending_op *pending_read_new(struct queue *owner_queue,
 	op = new0(struct pending_op, 1);
 
 	op->owner_queue = owner_queue;
+	op->device = device;
 	op->attrib = attrib;
 	op->id = id;
 	queue_push_tail(owner_queue, op);
@@ -1608,33 +1611,75 @@ static struct pending_op *pending_read_new(struct queue *owner_queue,
 	return op;
 }
 
-static void send_read(struct gatt_db_attribute *attrib, GDBusProxy *proxy,
-						struct queue *owner_queue,
-						unsigned int id)
+static void append_options(DBusMessageIter *iter, void *user_data)
+{
+	struct pending_op *op = user_data;
+	const char *path = device_get_path(op->device);
+
+	dict_append_entry(iter, "device", DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static void read_setup_cb(DBusMessageIter *iter, void *user_data)
+{
+	struct pending_op *op = user_data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	append_options(&dict, op);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static struct pending_op *send_read(struct btd_device *device,
+					struct gatt_db_attribute *attrib,
+					GDBusProxy *proxy,
+					struct queue *owner_queue,
+					unsigned int id)
 {
 	struct pending_op *op;
-	uint8_t ecode = BT_ATT_ERROR_UNLIKELY;
 
-	op = pending_read_new(owner_queue, attrib, id);
+	op = pending_read_new(device, owner_queue, attrib, id);
 
-	if (g_dbus_proxy_method_call(proxy, "ReadValue", NULL, read_reply_cb,
-						op, pending_op_free) == TRUE)
-		return;
+	if (g_dbus_proxy_method_call(proxy, "ReadValue", read_setup_cb,
+				read_reply_cb, op, pending_op_free) == TRUE)
+		return op;
 
 	pending_op_free(op);
 
-	gatt_db_attribute_read_result(attrib, id, ecode, NULL, 0);
+	return NULL;
 }
 
 static void write_setup_cb(DBusMessageIter *iter, void *user_data)
 {
 	struct pending_op *op = user_data;
-	DBusMessageIter array;
+	DBusMessageIter array, dict;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
 	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
 					&op->data.iov_base, op->data.iov_len);
 	dbus_message_iter_close_container(iter, &array);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	append_options(&dict, op);
+
+	dbus_message_iter_close_container(iter, &dict);
+
+	if (!op->owner_queue) {
+		gatt_db_attribute_write_result(op->attrib, op->id, 0);
+		pending_op_free(op);
+	}
 }
 
 static void write_reply_cb(DBusMessage *message, void *user_data)
@@ -1673,7 +1718,8 @@ done:
 	gatt_db_attribute_write_result(op->attrib, op->id, ecode);
 }
 
-static struct pending_op *pending_write_new(struct queue *owner_queue,
+static struct pending_op *pending_write_new(struct btd_device *device,
+					struct queue *owner_queue,
 					struct gatt_db_attribute *attrib,
 					unsigned int id,
 					const uint8_t *value,
@@ -1686,6 +1732,7 @@ static struct pending_op *pending_write_new(struct queue *owner_queue,
 	op->data.iov_base = (uint8_t *) value;
 	op->data.iov_len = len;
 
+	op->device = device;
 	op->owner_queue = owner_queue;
 	op->attrib = attrib;
 	op->id = id;
@@ -1694,24 +1741,25 @@ static struct pending_op *pending_write_new(struct queue *owner_queue,
 	return op;
 }
 
-static void send_write(struct gatt_db_attribute *attrib, GDBusProxy *proxy,
+static struct pending_op *send_write(struct btd_device *device,
+					struct gatt_db_attribute *attrib,
+					GDBusProxy *proxy,
 					struct queue *owner_queue,
 					unsigned int id,
 					const uint8_t *value, size_t len)
 {
 	struct pending_op *op;
-	uint8_t ecode = BT_ATT_ERROR_UNLIKELY;
 
-	op = pending_write_new(owner_queue, attrib, id, value, len);
+	op = pending_write_new(device, owner_queue, attrib, id, value, len);
 
 	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup_cb,
-						write_reply_cb, op,
-						pending_op_free) == TRUE)
-		return;
+					owner_queue ? write_reply_cb : NULL,
+					op, pending_op_free) == TRUE)
+		return op;
 
 	pending_op_free(op);
 
-	gatt_db_attribute_write_result(attrib, id, ecode);
+	return NULL;
 }
 
 static uint32_t permissions_from_props(uint8_t props, uint8_t ext_props)
@@ -1895,19 +1943,65 @@ static bool database_add_cep(struct external_service *service,
 	return true;
 }
 
+static struct btd_device *att_get_device(struct bt_att *att)
+{
+	GIOChannel *io = NULL;
+	GError *gerr = NULL;
+	bdaddr_t src, dst;
+	uint8_t dst_type;
+	struct btd_adapter *adapter;
+
+	io = g_io_channel_unix_new(bt_att_get_fd(att));
+	if (!io)
+		return NULL;
+
+	bt_io_get(io, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src,
+					BT_IO_OPT_DEST_BDADDR, &dst,
+					BT_IO_OPT_DEST_TYPE, &dst_type,
+					BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		g_io_channel_unref(io);
+		return NULL;
+	}
+
+	g_io_channel_unref(io);
+
+	adapter = adapter_find(&src);
+	if (!adapter) {
+		error("Unable to find adapter object");
+		return NULL;
+	}
+
+	return btd_adapter_find_device(adapter, &dst, dst_type);
+}
+
 static void desc_read_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
 	struct external_desc *desc = user_data;
+	struct btd_device *device;
 
 	if (desc->attrib != attrib) {
 		error("Read callback called with incorrect attribute");
-		return;
+		goto fail;
 	}
 
-	send_read(attrib, desc->proxy, desc->pending_reads, id);
+	device = att_get_device(att);
+	if (!device) {
+		error("Unable to find device object");
+		goto fail;
+	}
+
+	if (send_read(device, attrib, desc->proxy, desc->pending_reads, id))
+		return;
+
+fail:
+	gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
+								NULL, 0);
 }
 
 static void desc_write_cb(struct gatt_db_attribute *attrib,
@@ -1917,13 +2011,26 @@ static void desc_write_cb(struct gatt_db_attribute *attrib,
 					void *user_data)
 {
 	struct external_desc *desc = user_data;
+	struct btd_device *device;
 
 	if (desc->attrib != attrib) {
 		error("Read callback called with incorrect attribute");
-		return;
+		goto fail;
 	}
 
-	send_write(attrib, desc->proxy, desc->pending_writes, id, value, len);
+	device = att_get_device(att);
+	if (!device) {
+		error("Unable to find device object");
+		goto fail;
+	}
+
+	if (send_write(device, attrib, desc->proxy, desc->pending_writes, id,
+							value, len))
+		return;
+
+fail:
+	gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
+								NULL, 0);
 }
 
 static bool database_add_desc(struct external_service *service,
@@ -1956,43 +2063,25 @@ static void chrc_read_cb(struct gatt_db_attribute *attrib,
 					void *user_data)
 {
 	struct external_chrc *chrc = user_data;
+	struct btd_device *device;
 
 	if (chrc->attrib != attrib) {
 		error("Read callback called with incorrect attribute");
-		return;
+		goto fail;
 	}
 
-	send_read(attrib, chrc->proxy, chrc->pending_reads, id);
-}
+	device = att_get_device(att);
+	if (!device) {
+		error("Unable to find device object");
+		goto fail;
+	}
 
-static void write_without_response_setup_cb(DBusMessageIter *iter,
-							void *user_data)
-{
-	struct iovec *iov = user_data;
-	DBusMessageIter array;
+	if (send_read(device, attrib, chrc->proxy, chrc->pending_reads, id))
+		return;
 
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
-	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
-						&iov->iov_base, iov->iov_len);
-	dbus_message_iter_close_container(iter, &array);
-}
-
-static void send_write_without_response(struct gatt_db_attribute *attrib,
-					GDBusProxy *proxy, unsigned int id,
-					const uint8_t *value, size_t len)
-{
-	struct iovec iov;
-	uint8_t ecode = 0;
-
-	iov.iov_base = (uint8_t *) value;
-	iov.iov_len = len;
-
-	if (!g_dbus_proxy_method_call(proxy, "WriteValue",
-					write_without_response_setup_cb,
-					NULL, &iov, NULL))
-		ecode = BT_ATT_ERROR_UNLIKELY;
-
-	gatt_db_attribute_write_result(attrib, id, ecode);
+fail:
+	gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
+								NULL, 0);
 }
 
 static void chrc_write_cb(struct gatt_db_attribute *attrib,
@@ -2002,19 +2091,31 @@ static void chrc_write_cb(struct gatt_db_attribute *attrib,
 					void *user_data)
 {
 	struct external_chrc *chrc = user_data;
+	struct btd_device *device;
+	struct queue *queue;
 
 	if (chrc->attrib != attrib) {
 		error("Write callback called with incorrect attribute");
-		return;
+		goto fail;
 	}
 
-	if (chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP) {
-		send_write_without_response(attrib, chrc->proxy, id, value,
-									len);
-		return;
+	device = att_get_device(att);
+	if (!device) {
+		error("Unable to find device object");
+		goto fail;
 	}
 
-	send_write(attrib, chrc->proxy, chrc->pending_writes, id, value, len);
+	if (!(chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP))
+		queue = chrc->pending_writes;
+	else
+		queue = NULL;
+
+	if (send_write(device, attrib, chrc->proxy, queue, id, value, len))
+		return;
+
+fail:
+	gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
+								NULL, 0);
 }
 
 static bool database_add_chrc(struct external_service *service,

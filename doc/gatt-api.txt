@@ -61,11 +61,14 @@ Service		org.bluez
 Interface	org.bluez.GattCharacteristic1 [Experimental]
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY
 
-Methods		array{byte} ReadValue()
+Methods		array{byte} ReadValue(dict options)
 
 			Issues a request to read the value of the
 			characteristic and returns the value if the
 			operation was successful.
+
+			Possible options: "offset": uint16 offset
+					  "device": Object Device (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
@@ -73,10 +76,13 @@ Methods		array{byte} ReadValue()
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NotSupported
 
-		void WriteValue(array{byte} value)
+		void WriteValue(array{byte} value, dict options)
 
 			Issues a request to write the value of the
 			characteristic.
+
+			Possible options: "offset": Start offset
+					  "device": Device path (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
@@ -154,11 +160,14 @@ Service		org.bluez
 Interface	org.bluez.GattDescriptor1 [Experimental]
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY/descriptorZZZ
 
-Methods		array{byte} ReadValue()
+Methods		array{byte} ReadValue(dict flags)
 
 			Issues a request to read the value of the
 			characteristic and returns the value if the
 			operation was successful.
+
+			Possible options: "offset": Start offset
+					  "device": Device path (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
@@ -166,10 +175,13 @@ Methods		array{byte} ReadValue()
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NotSupported
 
-		void WriteValue(array{byte} value)
+		void WriteValue(array{byte} value, dict flags)
 
 			Issues a request to write the value of the
 			characteristic.
+
+			Possible options: "offset": Start offset
+					  "device": Device path (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
