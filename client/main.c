@@ -350,7 +350,6 @@ done:
 	rl_set_prompt(desc ? desc : PROMPT_ON);
 	printf("\r");
 	rl_on_new_line();
-	rl_redisplay();
 	g_free(desc);
 }
 
