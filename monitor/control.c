@@ -1163,6 +1163,13 @@ void control_server(const char *path)
 	server_fd = fd;
 }
 
+struct tty_hdr {
+	uint16_t data_len;
+	uint16_t opcode;
+	uint8_t  flags;
+	uint8_t  hdr_len;
+} __attribute__ ((packed));
+
 static void tty_callback(int fd, uint32_t events, void *user_data)
 {
 	struct control_data *data = user_data;
@@ -1180,23 +1187,34 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 
 	data->offset += len;
 
-	if (data->offset > MGMT_HDR_SIZE) {
-		struct mgmt_hdr *hdr = (struct mgmt_hdr *) data->buf;
-		uint16_t pktlen = le16_to_cpu(hdr->len);
+	while (data->offset >= sizeof(struct tty_hdr)) {
+		struct tty_hdr *hdr = (struct tty_hdr *) data->buf;
+		uint16_t pktlen, opcode, data_len;
 
-		if (data->offset > pktlen + MGMT_HDR_SIZE) {
-			uint16_t opcode = le16_to_cpu(hdr->opcode);
-			uint16_t index = le16_to_cpu(hdr->index);
+		data_len = le16_to_cpu(hdr->data_len);
 
-			packet_monitor(NULL, NULL, index, opcode,
-					data->buf + MGMT_HDR_SIZE, pktlen);
+		if (data->offset < 2 + data_len)
+			return;
 
-			data->offset -= pktlen + MGMT_HDR_SIZE;
-
-			if (data->offset > 0)
-				memmove(data->buf, data->buf +
-					 MGMT_HDR_SIZE + pktlen, data->offset);
+		if (data->offset < sizeof(*hdr) + hdr->hdr_len) {
+			fprintf(stderr, "Received corrupted data from TTY\n");
+			memmove(data->buf, data->buf + 2 + data_len,
+								data->offset);
+			return;
 		}
+
+		opcode = le16_to_cpu(hdr->opcode);
+		pktlen = data_len - 4 - hdr->hdr_len;
+
+		packet_monitor(NULL, NULL, 0, opcode,
+				data->buf + sizeof(*hdr) + hdr->hdr_len,
+				pktlen);
+
+		data->offset -= 2 + data_len;
+
+		if (data->offset > 0)
+			memmove(data->buf, data->buf + 2 + data_len,
+								data->offset);
 	}
 }
 
