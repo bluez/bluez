@@ -33,6 +33,7 @@
 #include <getopt.h>
 
 #include "src/shared/mainloop.h"
+#include "src/shared/tty.h"
 
 #include "packet.h"
 #include "lmp.h"
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
 	const char *analyze_path = NULL;
 	const char *ellisys_server = NULL;
 	const char *tty = NULL;
-	unsigned int tty_speed = 115200;
+	unsigned int tty_speed = B115200;
 	unsigned short ellisys_port = 0;
 	const char *str;
 	int exit_status;
@@ -122,7 +123,11 @@ int main(int argc, char *argv[])
 			tty= optarg;
 			break;
 		case 'B':
-			tty_speed = atoi(optarg);
+			tty_speed = tty_get_speed(atoi(optarg));
+			if (!tty_speed) {
+				fprintf(stderr, "Unknown speed: %s\n", optarg);
+				return EXIT_FAILURE;
+			}
 			break;
 		case 'r':
 			reader_path = optarg;

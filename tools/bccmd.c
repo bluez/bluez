@@ -36,6 +36,8 @@
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
 
+#include "src/shared/tty.h"
+
 #include "csr.h"
 
 #define CSR_TRANSPORT_UNKNOWN	0
@@ -1193,34 +1195,8 @@ int main(int argc, char *argv[])
 			device = strdup(optarg);
 			break;
 		case 'b':
-			switch (atoi(optarg)) {
-			case 9600: bcsp_rate = B9600; break;
-			case 19200: bcsp_rate = B19200; break;
-			case 38400: bcsp_rate = B38400; break;
-			case 57600: bcsp_rate = B57600; break;
-			case 115200: bcsp_rate = B115200; break;
-			case 230400: bcsp_rate = B230400; break;
-			case 460800: bcsp_rate = B460800; break;
-			case 500000: bcsp_rate = B500000; break;
-			case 576000: bcsp_rate = B576000; break;
-			case 921600: bcsp_rate = B921600; break;
-			case 1000000: bcsp_rate = B1000000; break;
-			case 1152000: bcsp_rate = B1152000; break;
-			case 1500000: bcsp_rate = B1500000; break;
-			case 2000000: bcsp_rate = B2000000; break;
-#ifdef B2500000
-			case 2500000: bcsp_rate = B2500000; break;
-#endif
-#ifdef B3000000
-			case 3000000: bcsp_rate = B3000000; break;
-#endif
-#ifdef B3500000
-			case 3500000: bcsp_rate = B3500000; break;
-#endif
-#ifdef B4000000
-			case 4000000: bcsp_rate = B4000000; break;
-#endif
-			default:
+			bcsp_rate = tty_get_speed(atoi(optarg));
+			if (!bcsp_rate) {
 				printf("Unknown BCSP baud rate specified, defaulting to 38400bps\n");
 				bcsp_rate = B38400;
 			}

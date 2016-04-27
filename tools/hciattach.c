@@ -46,6 +46,8 @@
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
 
+#include "src/shared/tty.h"
+
 #include "hciattach.h"
 
 struct uart_t {
@@ -84,68 +86,12 @@ static void sig_alarm(int sig)
 	exit(1);
 }
 
-int uart_speed(int s)
-{
-	switch (s) {
-	case 9600:
-		return B9600;
-	case 19200:
-		return B19200;
-	case 38400:
-		return B38400;
-	case 57600:
-		return B57600;
-	case 115200:
-		return B115200;
-	case 230400:
-		return B230400;
-	case 460800:
-		return B460800;
-	case 500000:
-		return B500000;
-	case 576000:
-		return B576000;
-	case 921600:
-		return B921600;
-	case 1000000:
-		return B1000000;
-	case 1152000:
-		return B1152000;
-	case 1500000:
-		return B1500000;
-	case 2000000:
-		return B2000000;
-#ifdef B2500000
-	case 2500000:
-		return B2500000;
-#endif
-#ifdef B3000000
-	case 3000000:
-		return B3000000;
-#endif
-#ifdef B3500000
-	case 3500000:
-		return B3500000;
-#endif
-#ifdef B3710000
-	case 3710000:
-		return B3710000;
-#endif
-#ifdef B4000000
-	case 4000000:
-		return B4000000;
-#endif
-	default:
-		return B57600;
-	}
-}
-
 int set_speed(int fd, struct termios *ti, int speed)
 {
-	if (cfsetospeed(ti, uart_speed(speed)) < 0)
+	if (cfsetospeed(ti, tty_get_speed(speed)) < 0)
 		return -errno;
 
-	if (cfsetispeed(ti, uart_speed(speed)) < 0)
+	if (cfsetispeed(ti, tty_get_speed(speed)) < 0)
 		return -errno;
 
 	if (tcsetattr(fd, TCSANOW, ti) < 0)
@@ -646,7 +592,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 		fprintf(stderr, "Speed %d too high. Remaining at %d baud\n",
 			u->speed, u->init_speed);
 		u->speed = u->init_speed;
-	} else if (u->speed != 57600 && uart_speed(u->speed) == B57600) {
+	} else if (!tty_get_speed(u->speed)) {
 		/* Unknown speed. Why oh why can't we just pass an int to the kernel? */
 		fprintf(stderr, "Speed %d unrecognised. Remaining at %d baud\n",
 			u->speed, u->init_speed);
