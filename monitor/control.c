@@ -1062,23 +1062,25 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 
 	data->offset += len;
 
-	if (data->offset >= MGMT_HDR_SIZE) {
+	while (data->offset >= MGMT_HDR_SIZE) {
 		struct mgmt_hdr *hdr = (struct mgmt_hdr *) data->buf;
 		uint16_t pktlen = le16_to_cpu(hdr->len);
+		uint16_t opcode, index;
 
-		if (data->offset >= pktlen + MGMT_HDR_SIZE) {
-			uint16_t opcode = le16_to_cpu(hdr->opcode);
-			uint16_t index = le16_to_cpu(hdr->index);
+		if (data->offset < pktlen + MGMT_HDR_SIZE)
+			return;
 
-			packet_monitor(NULL, NULL, index, opcode,
+		opcode = le16_to_cpu(hdr->opcode);
+		index = le16_to_cpu(hdr->index);
+
+		packet_monitor(NULL, NULL, index, opcode,
 					data->buf + MGMT_HDR_SIZE, pktlen);
 
-			data->offset -= pktlen + MGMT_HDR_SIZE;
+		data->offset -= pktlen + MGMT_HDR_SIZE;
 
-			if (data->offset > 0)
-				memmove(data->buf, data->buf +
-					 MGMT_HDR_SIZE + pktlen, data->offset);
-		}
+		if (data->offset > 0)
+			memmove(data->buf, data->buf + MGMT_HDR_SIZE + pktlen,
+								data->offset);
 	}
 }
 
