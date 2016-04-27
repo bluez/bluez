@@ -1253,22 +1253,24 @@ static unsigned int get_speed(unsigned int speed)
 	return 0;
 }
 
-void control_tty(const char *path, unsigned int speed)
+int control_tty(const char *path, unsigned int speed)
 {
 	struct control_data *data;
 	struct termios ti;
-	int fd;
+	int fd, err;
 
 	fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if (fd < 0) {
+		err = -errno;
 		perror("Failed to open serial port");
-		return;
+		return err;
 	}
 
 	if (tcflush(fd, TCIOFLUSH) < 0) {
+		err = -errno;
 		perror("Failed to flush serial port");
 		close(fd);
-		return;
+		return err;
 	}
 
 	memset(&ti, 0, sizeof(ti));
@@ -1281,9 +1283,10 @@ void control_tty(const char *path, unsigned int speed)
 	cfsetspeed(&ti, get_speed(speed));
 
 	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
+		err = -errno;
 		perror("Failed to set serial port settings");
 		close(fd);
-		return;
+		return err;
 	}
 
 	printf("--- %s opened ---\n", path);
@@ -1291,7 +1294,7 @@ void control_tty(const char *path, unsigned int speed)
 	data = malloc(sizeof(*data));
 	if (!data) {
 		close(fd);
-		return;
+		return -ENOMEM;
 	}
 
 	memset(data, 0, sizeof(*data));
@@ -1299,6 +1302,8 @@ void control_tty(const char *path, unsigned int speed)
 	data->fd = fd;
 
 	mainloop_add_fd(data->fd, EPOLLIN, tty_callback, data, free_data);
+
+	return 0;
 }
 
 bool control_writer(const char *path)
