@@ -398,6 +398,9 @@ static uint8_t check_permissions(struct bt_gatt_server *server,
 		return 0;
 
 	security = bt_att_get_security(server->att);
+	if (perm & BT_ATT_PERM_SECURE && security < BT_ATT_SECURITY_FIPS)
+		return BT_ATT_ERROR_AUTHENTICATION;
+
 	if (perm & BT_ATT_PERM_AUTHEN && security < BT_ATT_SECURITY_HIGH)
 		return BT_ATT_ERROR_AUTHENTICATION;
 

@@ -150,6 +150,8 @@ Properties	string UUID [read-only]
 				"encrypt-write"
 				"encrypt-authenticated-read"
 				"encrypt-authenticated-write"
+				"secure-read" (Server only)
+				"secure-write" (Server only)
 
 Characteristic Descriptors hierarchy
 ====================================
@@ -217,6 +219,8 @@ Properties	string UUID [read-only]
 				"encrypt-write"
 				"encrypt-authenticated-read"
 				"encrypt-authenticated-write"
+				"secure-read" (Server Only)
+				"secure-write" (Server Only)
 
 GATT Profile hierarcy
 =====================

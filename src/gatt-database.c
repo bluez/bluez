@@ -116,6 +116,7 @@ struct external_chrc {
 	GDBusProxy *proxy;
 	uint8_t props;
 	uint8_t ext_props;
+	uint32_t perm;
 	struct gatt_db_attribute *attrib;
 	struct gatt_db_attribute *ccc;
 	struct queue *pending_reads;
@@ -1113,7 +1114,7 @@ static bool incr_attr_count(struct external_service *service, uint16_t incr)
 }
 
 static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
-							uint8_t *ext_props)
+					uint8_t *ext_props, uint32_t *perm)
 {
 	const char *flag;
 
@@ -1127,34 +1128,51 @@ static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
 
 		if (!strcmp("broadcast", flag))
 			*props |= BT_GATT_CHRC_PROP_BROADCAST;
-		else if (!strcmp("read", flag))
+		else if (!strcmp("read", flag)) {
 			*props |= BT_GATT_CHRC_PROP_READ;
-		else if (!strcmp("write-without-response", flag))
+			*perm |= BT_ATT_PERM_READ;
+		} else if (!strcmp("write-without-response", flag)) {
 			*props |= BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP;
-		else if (!strcmp("write", flag))
+			*perm |= BT_ATT_PERM_WRITE;
+		} else if (!strcmp("write", flag)) {
 			*props |= BT_GATT_CHRC_PROP_WRITE;
-		else if (!strcmp("notify", flag))
+			*perm |= BT_ATT_PERM_WRITE;
+		} else if (!strcmp("notify", flag)) {
 			*props |= BT_GATT_CHRC_PROP_NOTIFY;
-		else if (!strcmp("indicate", flag))
+		} else if (!strcmp("indicate", flag)) {
 			*props |= BT_GATT_CHRC_PROP_INDICATE;
-		else if (!strcmp("authenticated-signed-writes", flag))
+		} else if (!strcmp("authenticated-signed-writes", flag)) {
 			*props |= BT_GATT_CHRC_PROP_AUTH;
-		else if (!strcmp("reliable-write", flag))
+			*perm |= BT_ATT_PERM_WRITE;
+		} else if (!strcmp("reliable-write", flag)) {
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE;
-		else if (!strcmp("writable-auxiliaries", flag))
+			*perm |= BT_ATT_PERM_WRITE;
+		} else if (!strcmp("writable-auxiliaries", flag)) {
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_WRITABLE_AUX;
-		else if (!strcmp("encrypt-read", flag)) {
+		} else if (!strcmp("encrypt-read", flag)) {
 			*props |= BT_GATT_CHRC_PROP_READ;
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_ENC_READ;
+			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_ENCRYPT;
 		} else if (!strcmp("encrypt-write", flag)) {
 			*props |= BT_GATT_CHRC_PROP_WRITE;
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_ENC_WRITE;
+			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_ENCRYPT;
 		} else if (!strcmp("encrypt-authenticated-read", flag)) {
 			*props |= BT_GATT_CHRC_PROP_READ;
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_READ;
+			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_AUTHEN;
 		} else if (!strcmp("encrypt-authenticated-write", flag)) {
 			*props |= BT_GATT_CHRC_PROP_WRITE;
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_WRITE;
+			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_AUTHEN;
+		} else if (!strcmp("secure-read", flag)) {
+			*props |= BT_GATT_CHRC_PROP_READ;
+			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_READ;
+			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_READ_SECURE;
+		} else if (!strcmp("secure-write", flag)) {
+			*props |= BT_GATT_CHRC_PROP_WRITE;
+			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_WRITE;
+			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_SECURE;
 		} else {
 			error("Invalid characteristic flag: %s", flag);
 			return false;
@@ -1191,6 +1209,10 @@ static bool parse_desc_flags(DBusMessageIter *array, uint32_t *perm)
 			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_AUTHEN;
 		else if (!strcmp("encrypt-authenticated-write", flag))
 			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_AUTHEN;
+		else if (!strcmp("secure-read", flag))
+			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_AUTHEN;
+		else if (!strcmp("secure-write", flag))
+			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_AUTHEN;
 		else {
 			error("Invalid descriptor flag: %s", flag);
 			return false;
@@ -1204,6 +1226,7 @@ static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props,
 								uint32_t *perm)
 {
 	DBusMessageIter iter, array;
+	const char *iface;
 
 	if (!g_dbus_proxy_get_property(proxy, "Flags", &iter))
 		return false;
@@ -1213,10 +1236,11 @@ static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props,
 
 	dbus_message_iter_recurse(&iter, &array);
 
-	if (perm)
+	iface = g_dbus_proxy_get_interface(proxy);
+	if (!strcmp(iface, GATT_DESC_IFACE))
 		return parse_desc_flags(&array, perm);
 
-	return parse_chrc_flags(&array, props, ext_props);
+	return parse_chrc_flags(&array, props, ext_props, perm);
 }
 
 static struct external_chrc *chrc_create(struct gatt_app *app,
@@ -1264,7 +1288,7 @@ static struct external_chrc *chrc_create(struct gatt_app *app,
 	 * are used to determine if any special descriptors should be
 	 * created.
 	 */
-	if (!parse_flags(proxy, &chrc->props, &chrc->ext_props, NULL)) {
+	if (!parse_flags(proxy, &chrc->props, &chrc->ext_props, &chrc->perm)) {
 		error("Failed to parse characteristic properties");
 		goto fail;
 	}
@@ -1752,37 +1776,6 @@ static struct pending_op *send_write(struct btd_device *device,
 	return NULL;
 }
 
-static uint32_t permissions_from_props(uint8_t props, uint8_t ext_props)
-{
-	uint32_t perm = 0;
-
-	if (props & BT_GATT_CHRC_PROP_WRITE ||
-			props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP ||
-			ext_props & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE ||
-			ext_props & BT_GATT_CHRC_EXT_PROP_ENC_WRITE ||
-			ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_WRITE)
-		perm |= BT_ATT_PERM_WRITE;
-
-	if (props & BT_GATT_CHRC_PROP_READ ||
-			ext_props & BT_GATT_CHRC_EXT_PROP_ENC_READ ||
-			ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_READ)
-		perm |= BT_ATT_PERM_READ;
-
-	if (ext_props & BT_GATT_CHRC_EXT_PROP_ENC_READ)
-		perm |= BT_ATT_PERM_READ_ENCRYPT;
-
-	if (ext_props & BT_GATT_CHRC_EXT_PROP_ENC_WRITE)
-		perm |= BT_ATT_PERM_WRITE_ENCRYPT;
-
-	if (ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_READ)
-		perm |= BT_ATT_PERM_READ_AUTHEN;
-
-	if (ext_props & BT_GATT_CHRC_EXT_PROP_AUTH_WRITE)
-		perm |= BT_ATT_PERM_WRITE_AUTHEN;
-
-	return perm;
-}
-
 static uint8_t ccc_write_cb(uint16_t value, void *user_data)
 {
 	struct external_chrc *chrc = user_data;
@@ -2112,7 +2105,6 @@ static bool database_add_chrc(struct external_service *service,
 						struct external_chrc *chrc)
 {
 	bt_uuid_t uuid;
-	uint32_t perm;
 	const struct queue_entry *entry;
 
 	if (!parse_uuid(chrc->proxy, &uuid)) {
@@ -2125,14 +2117,8 @@ static bool database_add_chrc(struct external_service *service,
 		return false;
 	}
 
-	/*
-	 * TODO: Once shared/gatt-server properly supports permission checks,
-	 * set the permissions based on a D-Bus property of the external
-	 * characteristic.
-	 */
-	perm = permissions_from_props(chrc->props, chrc->ext_props);
 	chrc->attrib = gatt_db_service_add_characteristic(service->attrib,
-						&uuid, perm,
+						&uuid, chrc->perm,
 						chrc->props, chrc_read_cb,
 						chrc_write_cb, chrc);
 	if (!chrc->attrib) {
