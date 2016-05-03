@@ -302,6 +302,15 @@ void g_dbus_pending_property_error_valist(GDBusPendingReply id,
 			const char *name, const char *format, va_list args);
 void g_dbus_pending_property_error(GDBusPendingReply id, const char *name,
 						const char *format, ...);
+
+/*
+ * Note that when multiple properties for a given object path are changed
+ * in the same mainloop iteration, they will be grouped with the last
+ * property changed. If this behaviour is undesired, use
+ * g_dbus_emit_property_changed_full() with the
+ * G_DBUS_PROPERTY_CHANGED_FLAG_FLUSH flag, causing the signal to ignore
+ * any grouping.
+ */
 void g_dbus_emit_property_changed(DBusConnection *connection,
 				const char *path, const char *interface,
 				const char *name);
