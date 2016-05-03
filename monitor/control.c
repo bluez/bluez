@@ -52,6 +52,7 @@
 #include "packet.h"
 #include "hcidump.h"
 #include "ellisys.h"
+#include "tty.h"
 #include "control.h"
 
 static struct btsnoop *btsnoop_file = NULL;
@@ -1163,12 +1164,90 @@ void control_server(const char *path)
 	server_fd = fd;
 }
 
-struct tty_hdr {
-	uint16_t data_len;
-	uint16_t opcode;
-	uint8_t  flags;
-	uint8_t  hdr_len;
-} __attribute__ ((packed));
+static bool parse_drops(uint8_t **data, uint8_t *len, uint8_t *drops,
+							uint32_t *total)
+{
+	if (*len < 1)
+		return false;
+
+	*drops = **data;
+	*total += *drops;
+	(*data)++;
+	(*len)--;
+
+	return true;
+}
+
+static bool tty_parse_header(uint8_t *hdr, uint8_t len, struct timeval **tv,
+							struct timeval *ctv)
+{
+	uint8_t cmd = 0;
+	uint8_t evt = 0;
+	uint8_t acl_tx = 0;
+	uint8_t acl_rx = 0;
+	uint8_t sco_tx = 0;
+	uint8_t sco_rx = 0;
+	uint8_t other = 0;
+	uint32_t total = 0;
+	uint32_t ts32;
+
+	while (len) {
+		uint8_t type = hdr[0];
+
+		hdr++; len--;
+
+		switch (type) {
+		case TTY_EXTHDR_COMMAND_DROPS:
+			if (!parse_drops(&hdr, &len, &cmd, &total))
+				return false;
+			break;
+		case TTY_EXTHDR_EVENT_DROPS:
+			if (!parse_drops(&hdr, &len, &evt, &total))
+				return false;
+			break;
+		case TTY_EXTHDR_ACL_TX_DROPS:
+			if (!parse_drops(&hdr, &len, &acl_tx, &total))
+				return false;
+			break;
+		case TTY_EXTHDR_ACL_RX_DROPS:
+			if (!parse_drops(&hdr, &len, &acl_rx, &total))
+				return false;
+			break;
+		case TTY_EXTHDR_SCO_TX_DROPS:
+			if (!parse_drops(&hdr, &len, &sco_tx, &total))
+				return false;
+			break;
+		case TTY_EXTHDR_SCO_RX_DROPS:
+			if (!parse_drops(&hdr, &len, &sco_rx, &total))
+				return false;
+			break;
+		case TTY_EXTHDR_OTHER_DROPS:
+			if (!parse_drops(&hdr, &len, &other, &total))
+				return false;
+			break;
+		case TTY_EXTHDR_TS32:
+			if (len < sizeof(ts32))
+				return false;
+			ts32 = get_le32(hdr);
+			hdr += sizeof(ts32); len -= sizeof(ts32);
+			/* ts32 is in units of 1/10th of a millisecond */
+			ctv->tv_sec = ts32 / 10000;
+			ctv->tv_usec = (ts32 % 10000) * 100;
+			*tv = ctv;
+			break;
+		default:
+			printf("Unknown extended header type %u\n", type);
+			return false;
+		}
+	}
+
+	if (total)
+		printf("* Drops: cmd %u evt %u acl_tx %u acl_rx %u sco_tx %u "
+			"sco_rx %u other %u\n", cmd, evt, acl_tx, acl_rx,
+			sco_tx, sco_rx, other);
+
+	return true;
+}
 
 static void tty_callback(int fd, uint32_t events, void *user_data)
 {
@@ -1190,6 +1269,8 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 	while (data->offset >= sizeof(struct tty_hdr)) {
 		struct tty_hdr *hdr = (struct tty_hdr *) data->buf;
 		uint16_t pktlen, opcode, data_len;
+		struct timeval *tv = NULL;
+		struct timeval ctv;
 
 		data_len = le16_to_cpu(hdr->data_len);
 
@@ -1203,12 +1284,14 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 			return;
 		}
 
+		if (!tty_parse_header(hdr->ext_hdr, hdr->hdr_len, &tv, &ctv))
+			fprintf(stderr, "Unable to parse extended header\n");
+
 		opcode = le16_to_cpu(hdr->opcode);
 		pktlen = data_len - 4 - hdr->hdr_len;
 
-		packet_monitor(NULL, NULL, 0, opcode,
-				data->buf + sizeof(*hdr) + hdr->hdr_len,
-				pktlen);
+		packet_monitor(tv, NULL, 0, opcode,
+				hdr->ext_hdr + hdr->hdr_len, pktlen);
 
 		data->offset -= 2 + data_len;
 
