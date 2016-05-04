@@ -1179,7 +1179,7 @@ static bool parse_drops(uint8_t **data, uint8_t *len, uint8_t *drops,
 }
 
 static bool tty_parse_header(uint8_t *hdr, uint8_t len, struct timeval **tv,
-							struct timeval *ctv)
+				struct timeval *ctv, uint32_t *drops)
 {
 	uint8_t cmd = 0;
 	uint8_t evt = 0;
@@ -1241,10 +1241,12 @@ static bool tty_parse_header(uint8_t *hdr, uint8_t len, struct timeval **tv,
 		}
 	}
 
-	if (total)
+	if (total) {
+		*drops += total;
 		printf("* Drops: cmd %u evt %u acl_tx %u acl_rx %u sco_tx %u "
 			"sco_rx %u other %u\n", cmd, evt, acl_tx, acl_rx,
 			sco_tx, sco_rx, other);
+	}
 
 	return true;
 }
@@ -1271,6 +1273,7 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 		uint16_t pktlen, opcode, data_len;
 		struct timeval *tv = NULL;
 		struct timeval ctv;
+		uint32_t drops = 0;
 
 		data_len = le16_to_cpu(hdr->data_len);
 
@@ -1284,13 +1287,14 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 			return;
 		}
 
-		if (!tty_parse_header(hdr->ext_hdr, hdr->hdr_len, &tv, &ctv))
+		if (!tty_parse_header(hdr->ext_hdr, hdr->hdr_len,
+							&tv, &ctv, &drops))
 			fprintf(stderr, "Unable to parse extended header\n");
 
 		opcode = le16_to_cpu(hdr->opcode);
 		pktlen = data_len - 4 - hdr->hdr_len;
 
-		btsnoop_write_hci(btsnoop_file, tv, 0, opcode, 0,
+		btsnoop_write_hci(btsnoop_file, tv, 0, opcode, drops,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
 		packet_monitor(tv, NULL, 0, opcode,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
