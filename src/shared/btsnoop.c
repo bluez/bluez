@@ -198,7 +198,8 @@ uint32_t btsnoop_get_format(struct btsnoop *btsnoop)
 }
 
 bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
-			uint32_t flags, const void *data, uint16_t size)
+			uint32_t flags, uint32_t drops, const void *data,
+			uint16_t size)
 {
 	struct btsnoop_pkt pkt;
 	uint64_t ts;
@@ -212,7 +213,7 @@ bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 	pkt.size  = htobe32(size);
 	pkt.len   = htobe32(size);
 	pkt.flags = htobe32(flags);
-	pkt.drops = htobe32(0);
+	pkt.drops = htobe32(drops);
 	pkt.ts    = htobe64(ts + 0x00E03AB44A676000ll);
 
 	written = write(btsnoop->fd, &pkt, BTSNOOP_PKT_SIZE);
@@ -254,8 +255,8 @@ static uint32_t get_flags_from_opcode(uint16_t opcode)
 }
 
 bool btsnoop_write_hci(struct btsnoop *btsnoop, struct timeval *tv,
-					uint16_t index, uint16_t opcode,
-					const void *data, uint16_t size)
+			uint16_t index, uint16_t opcode, uint32_t drops,
+			const void *data, uint16_t size)
 {
 	uint32_t flags;
 
@@ -283,7 +284,7 @@ bool btsnoop_write_hci(struct btsnoop *btsnoop, struct timeval *tv,
 		return false;
 	}
 
-	return btsnoop_write(btsnoop, tv, flags, data, size);
+	return btsnoop_write(btsnoop, tv, flags, drops, data, size);
 }
 
 bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
@@ -303,7 +304,7 @@ bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
 		return false;
 	}
 
-	return btsnoop_write(btsnoop, tv, flags, data, size);
+	return btsnoop_write(btsnoop, tv, flags, 0, data, size);
 }
 
 static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,

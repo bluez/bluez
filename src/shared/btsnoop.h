@@ -101,11 +101,11 @@ void btsnoop_unref(struct btsnoop *btsnoop);
 
 uint32_t btsnoop_get_format(struct btsnoop *btsnoop);
 
-bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
-			uint32_t flags, const void *data, uint16_t size);
+bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv, uint32_t flags,
+			uint32_t drops, const void *data, uint16_t size);
 bool btsnoop_write_hci(struct btsnoop *btsnoop, struct timeval *tv,
-					uint16_t index, uint16_t opcode,
-					const void *data, uint16_t size);
+			uint16_t index, uint16_t opcode, uint32_t drops,
+			const void *data, uint16_t size);
 bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
 			uint16_t frequency, const void *data, uint16_t size);
 

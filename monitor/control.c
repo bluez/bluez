@@ -970,7 +970,7 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 							data->buf, pktlen);
 			break;
 		case HCI_CHANNEL_MONITOR:
-			btsnoop_write_hci(btsnoop_file, tv, index, opcode,
+			btsnoop_write_hci(btsnoop_file, tv, index, opcode, 0,
 							data->buf, pktlen);
 			ellisys_inject_hci(tv, index, opcode,
 							data->buf, pktlen);
@@ -1290,7 +1290,7 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 		opcode = le16_to_cpu(hdr->opcode);
 		pktlen = data_len - 4 - hdr->hdr_len;
 
-		btsnoop_write_hci(btsnoop_file, tv, 0, opcode,
+		btsnoop_write_hci(btsnoop_file, tv, 0, opcode, 0,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
 		packet_monitor(tv, NULL, 0, opcode,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);

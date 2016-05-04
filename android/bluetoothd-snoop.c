@@ -139,7 +139,7 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 
 		flags = get_flags_from_opcode(opcode);
 		if (flags != 0xff)
-			btsnoop_write(snoop, tv, flags, monitor_buf, pktlen);
+			btsnoop_write(snoop, tv, flags, 0, monitor_buf, pktlen);
 	}
 }
 
