@@ -620,6 +620,7 @@ static const struct {
 	{ 0x09, "iBT 1.5 (AG610)"	},
 	{ 0x0a, "iBT 2.1 (AG620)"	},
 	{ 0x0b, "iBT 3.0 (LnP)"		},
+	{ 0x0c, "iBT 3.0 (WsP)"		},
 	{ }
 };
 
