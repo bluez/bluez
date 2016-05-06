@@ -166,13 +166,15 @@ class Characteristic(dbus.service.Object):
 
         return self.get_properties[GATT_CHRC_IFACE]
 
-    @dbus.service.method(GATT_CHRC_IFACE, out_signature='ay')
-    def ReadValue(self):
+    @dbus.service.method(GATT_CHRC_IFACE,
+                        in_signature='a{sv}',
+                        out_signature='ay')
+    def ReadValue(self, options):
         print('Default ReadValue called, returning error')
         raise NotSupportedException()
 
-    @dbus.service.method(GATT_CHRC_IFACE, in_signature='ay')
-    def WriteValue(self, value):
+    @dbus.service.method(GATT_CHRC_IFACE, in_signature='aya{sv}')
+    def WriteValue(self, value, options):
         print('Default WriteValue called, returning error')
         raise NotSupportedException()
 
@@ -222,13 +224,15 @@ class Descriptor(dbus.service.Object):
 
         return self.get_properties[GATT_CHRC_IFACE]
 
-    @dbus.service.method(GATT_DESC_IFACE, out_signature='ay')
-    def ReadValue(self):
+    @dbus.service.method(GATT_DESC_IFACE,
+                        in_signature='a{sv}',
+                        out_signature='ay')
+    def ReadValue(self, options):
         print ('Default ReadValue called, returning error')
         raise NotSupportedException()
 
-    @dbus.service.method(GATT_DESC_IFACE, in_signature='ay')
-    def WriteValue(self, value):
+    @dbus.service.method(GATT_DESC_IFACE, in_signature='aya{sv}')
+    def WriteValue(self, value, options):
         print('Default WriteValue called, returning error')
         raise NotSupportedException()
 
@@ -317,7 +321,7 @@ class BodySensorLocationChrc(Characteristic):
                 ['read'],
                 service)
 
-    def ReadValue(self):
+    def ReadValue(self, options):
         # Return 'Chest' as the sensor location.
         return [ 0x01 ]
 
@@ -331,7 +335,7 @@ class HeartRateControlPointChrc(Characteristic):
                 ['write'],
                 service)
 
-    def WriteValue(self, value):
+    def WriteValue(self, value, options):
         print('Heart Rate Control Point WriteValue called')
 
         if len(value) != 1:
@@ -393,7 +397,7 @@ class BatteryLevelCharacteristic(Characteristic):
         self.notify_battery_level()
         return True
 
-    def ReadValue(self):
+    def ReadValue(self, options):
         print('Battery Level read: ' + repr(self.battery_lvl))
         return [dbus.Byte(self.battery_lvl)]
 
@@ -425,6 +429,7 @@ class TestService(Service):
         Service.__init__(self, bus, index, self.TEST_SVC_UUID, False)
         self.add_characteristic(TestCharacteristic(bus, 0, self))
         self.add_characteristic(TestEncryptCharacteristic(bus, 1, self))
+        self.add_characteristic(TestSecureCharacteristic(bus, 2, self))
 
 class TestCharacteristic(Characteristic):
     """
@@ -445,11 +450,11 @@ class TestCharacteristic(Characteristic):
         self.add_descriptor(
                 CharacteristicUserDescriptionDescriptor(bus, 1, self))
 
-    def ReadValue(self):
+    def ReadValue(self, options):
         print('TestCharacteristic Read: ' + repr(self.value))
         return self.value
 
-    def WriteValue(self, value):
+    def WriteValue(self, value, options):
         print('TestCharacteristic Write: ' + repr(value))
         self.value = value
 
@@ -468,7 +473,7 @@ class TestDescriptor(Descriptor):
                 ['read', 'write'],
                 characteristic)
 
-    def ReadValue(self):
+    def ReadValue(self, options):
         return [
                 dbus.Byte('T'), dbus.Byte('e'), dbus.Byte('s'), dbus.Byte('t')
         ]
@@ -491,10 +496,10 @@ class CharacteristicUserDescriptionDescriptor(Descriptor):
                 ['read', 'write'],
                 characteristic)
 
-    def ReadValue(self):
+    def ReadValue(self, options):
         return self.value
 
-    def WriteValue(self, value):
+    def WriteValue(self, value, options):
         if not self.writable:
             raise NotPermittedException()
         self.value = value
@@ -517,11 +522,11 @@ class TestEncryptCharacteristic(Characteristic):
         self.add_descriptor(
                 CharacteristicUserDescriptionDescriptor(bus, 3, self))
 
-    def ReadValue(self):
+    def ReadValue(self, options):
         print('TestCharacteristic Read: ' + repr(self.value))
         return self.value
 
-    def WriteValue(self, value):
+    def WriteValue(self, value, options):
         print('TestCharacteristic Write: ' + repr(value))
         self.value = value
 
@@ -539,7 +544,54 @@ class TestEncryptDescriptor(Descriptor):
                 ['encrypt-read', 'encrypt-write'],
                 characteristic)
 
-    def ReadValue(self):
+    def ReadValue(self, options):
+        return [
+                dbus.Byte('T'), dbus.Byte('e'), dbus.Byte('s'), dbus.Byte('t')
+        ]
+
+
+class TestSecureCharacteristic(Characteristic):
+    """
+    Dummy test characteristic requiring secure connection.
+
+    """
+    TEST_CHRC_UUID = '12345678-1234-5678-1234-56789abcdef5'
+
+    def __init__(self, bus, index, service):
+        Characteristic.__init__(
+                self, bus, index,
+                self.TEST_CHRC_UUID,
+                ['secure-read', 'secure-write'],
+                service)
+        self.value = []
+        self.add_descriptor(TestEncryptDescriptor(bus, 2, self))
+        self.add_descriptor(
+                CharacteristicUserDescriptionDescriptor(bus, 3, self))
+
+    def ReadValue(self, options):
+        print('TestCharacteristic Read: ' + repr(self.value))
+        return self.value
+
+    def WriteValue(self, value, options):
+        print('TestCharacteristic Write: ' + repr(value))
+        self.value = value
+
+
+class TestSecureDescriptor(Descriptor):
+    """
+    Dummy test descriptor requiring secure connection. Returns a static value.
+
+    """
+    TEST_DESC_UUID = '12345678-1234-5678-1234-56789abcdef6'
+
+    def __init__(self, bus, index, characteristic):
+        Descriptor.__init__(
+                self, bus, index,
+                self.TEST_DESC_UUID,
+                ['secure-read', 'secure-write'],
+                characteristic)
+
+    def ReadValue(self, options):
         return [
                 dbus.Byte('T'), dbus.Byte('e'), dbus.Byte('s'), dbus.Byte('t')
         ]
