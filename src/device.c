@@ -1233,6 +1233,9 @@ int device_block(struct btd_device *device, gboolean update_only)
 	if (device->blocked)
 		return 0;
 
+	if (device->disconn_timer > 0)
+		g_source_remove(device->disconn_timer);
+
 	disconnect_all(device);
 
 	while (device->services != NULL) {
@@ -3934,8 +3937,10 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	g_slist_free(device->pending);
 	device->pending = NULL;
 
-	if (btd_device_is_connected(device))
+	if (btd_device_is_connected(device)) {
+		g_source_remove(device->disconn_timer);
 		disconnect_all(device);
+	}
 
 	if (device->store_id > 0) {
 		g_source_remove(device->store_id);
