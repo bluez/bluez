@@ -1745,7 +1745,7 @@ static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
 
 	queue_foreach(client->notify_list, notify_handler, &pdu_data);
 
-	if (opcode == BT_ATT_OP_HANDLE_VAL_IND)
+	if (opcode == BT_ATT_OP_HANDLE_VAL_IND && !client->parent)
 		bt_att_send(client->att, BT_ATT_OP_HANDLE_VAL_CONF, NULL, 0,
 							NULL, NULL, NULL);
 
