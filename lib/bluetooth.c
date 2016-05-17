@@ -548,7 +548,7 @@ const char *bt_compidtostr(int compid)
 	case 142:
 		return "Quintic Corp.";
 	case 143:
-		return "Stollman E+V GmbH";
+		return "Telit Wireless Solutions GmbH (Formerly Stollman E+V GmbH)";
 	case 144:
 		return "Funai Electric Co., Ltd.";
 	case 145:
@@ -1953,6 +1953,76 @@ const char *bt_compidtostr(int compid)
 		return "HM Electronics, Inc.";
 	case 845:
 		return "TASER International, Inc.";
+	case 846:
+		return "Safe Trust Inc.";
+	case 847:
+		return "Heartland Payment Systems";
+	case 848:
+		return "Bitstrata Systems Inc.";
+	case 849:
+		return "Pieps GmbH";
+	case 850:
+		return "iRiding(Xiamen)Technology Co.,Ltd.";
+	case 851:
+		return "Alpha Audiotronics, Inc.";
+	case 852:
+		return "TOPPAN FORMS CO.,LTD.";
+	case 853:
+		return "Sigma Designs, Inc.";
+	case 854:
+		return "Spectrum Brands, Inc.";
+	case 855:
+		return "Polymap Wireless";
+	case 856:
+		return "MagniWare Ltd.";
+	case 857:
+		return "Novotec Medical GmbH";
+	case 858:
+		return "Medicom Innovation Partner a/s";
+	case 859:
+		return "Matrix Inc.";
+	case 860:
+		return "Eaton Corporation";
+	case 861:
+		return "KYS";
+	case 862:
+		return "Naya Health, Inc.";
+	case 863:
+		return "Acromag";
+	case 864:
+		return "Insulet Corporation";
+	case 865:
+		return "Wellinks Inc.";
+	case 866:
+		return "ON Semiconductor";
+	case 867:
+		return "FREELAP SA";
+	case 868:
+		return "Favero Electronics Srl";
+	case 869:
+		return "BioMech Sensor LLC";
+	case 870:
+		return "BOLTT Sports technologies Private limited";
+	case 871:
+		return "Saphe International";
+	case 872:
+		return "Metormote AB";
+	case 873:
+		return "littleBits";
+	case 874:
+		return "SetPoint Medical";
+	case 875:
+		return "BRControls Products BV";
+	case 876:
+		return "Zipcar";
+	case 877:
+		return "AirBolt Pty Ltd";
+	case 878:
+		return "KeepTruckin Inc";
+	case 879:
+		return "Motiv, Inc.";
+	case 880:
+		return "Wazombi Labs OÜ";
 	case 65535:
 		return "internal use";
 	default:
