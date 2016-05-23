@@ -1,6 +1,121 @@
 BTSnoop/Monitor protocol formats
 ********************************
 
+Opcode definitions
+==================
+
+New Index
+---------
+
+	Code:        0x0000
+	Parameters:  Type (1 Octet
+		     Bus (1 Octet)
+		     BD_Addr (6 Octets)
+		     Name (8 Octets)
+
+	This opcode indicates that a new controller instance with a
+	given index was added. With some protocols, like the TTY-based
+	one there is only a single supported controller, meaning the
+	index is implicitly 0.
+
+Deleted Index
+-------------
+
+	Code:        0x0001
+
+	This opcode indicates that the controller with a specific index
+	was removed.
+
+Command Packet
+--------------
+
+	Code:        0x0002
+
+	HCI command packet.
+
+Event Packet
+------------
+
+	Code:        0x0003
+
+	HCI event packet.
+
+ACL TX Packet
+-------------
+
+	Code:        0x0004
+
+	Outgoing ACL packet.
+
+ACL RX Packet
+-------------
+
+	Code:        0x0005
+
+	Incoming ACL packet.
+
+SCO TX Packet
+--------------
+
+	Code:        0x0006
+
+	Outgoing SCO packet.
+
+SCO RX Packet
+-------------
+
+	Code:        0x0007
+
+	Incomnig SCO packet.
+
+Open Index
+----------
+
+	Code:        0x0008
+
+	The HCI transport for the specified controller has been opened.
+
+Close Index
+-----------
+
+	Code:        0x0009
+
+	The HCI transport for the specified controller has been closed.
+
+Index Information
+-----------------
+
+	Code:        0x000a
+	Parameters:  BD_Addr (6 Octets)
+		     Manufacturer (2 Octets)
+
+	Information about a specific controller.
+
+Vendor Diagnostics
+------------------
+
+	Code:        0x000b
+
+	Vendor diagnostic information.
+
+System Note
+-----------
+
+	Code:        0x000c
+
+	System note.
+
+User Logging
+------------
+
+	Code:        0x000d
+	Parameters:  Priority (1 Octet)
+		     Ident_Length (1 Octet)
+		     Ident (Ident_Length Octets)
+
+	User logging information.
+
+
 TTY-based protocol
 ==================
 
