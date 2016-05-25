@@ -54,6 +54,10 @@ ext_hdr:
 	7  Other drops       1 byte    Dropped other packets
 	8  32-bit timestamp  4 bytes   Timestamp in 1/10th ms
 
+	The drops fields indicate the number of packets that the
+	implementation had to drop (e.g. due to lack of buffers) since
+	the last reported drop count.
+
 	The fields of the extended header must be sorted by increasing
 	type. This is essential so that unknown types can be ignored and
 	the parser can jump to processing the payload.
