@@ -1870,7 +1870,9 @@ static void print_randomizer_p256(const uint8_t *randomizer)
 
 static void print_pk256(const char *label, const uint8_t *key)
 {
-	print_hex_field(label, key, 64);
+	print_field("%s:", label);
+	print_hex_field("  X", &key[0], 32);
+	print_hex_field("  Y", &key[32], 32);
 }
 
 static void print_dhkey(const uint8_t *dhkey)
