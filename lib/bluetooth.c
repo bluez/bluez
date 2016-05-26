@@ -2023,6 +2023,42 @@ const char *bt_compidtostr(int compid)
 		return "Motiv, Inc.";
 	case 880:
 		return "Wazombi Labs OÜ";
+	case 881:
+		return "ORBCOMM";
+	case 882:
+		return "Nixie Labs, Inc.";
+	case 883:
+		return "AppNearMe Ltd";
+	case 884:
+		return "Holman Industries";
+	case 885:
+		return "Expain AS";
+	case 886:
+		return "Electronic Temperature Instruments Ltd";
+	case 887:
+		return "Plejd AB";
+	case 888:
+		return "Propeller Health";
+	case 889:
+		return "Shenzhen iMCO Electronic Technology Co.,Ltd";
+	case 890:
+		return "Algoria";
+	case 891:
+		return "Apption Labs Inc.";
+	case 892:
+		return "Cronologics Corporation";
+	case 893:
+		return "MICRODIA Ltd.";
+	case 894:
+		return "lulabytes S.L.";
+	case 895:
+		return "Nestec S.A.";
+	case 896:
+		return "LLC \"MEGA-F service\"";
+	case 897:
+		return "Sharp Corporation";
+	case 898:
+		return "Precision Outcomes Ltd";
 	case 65535:
 		return "internal use";
 	default:
