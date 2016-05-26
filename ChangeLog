@@ -1,3 +1,13 @@
+ver 5.40:
+	Fix issue with not storing GATT attributes.
+	Fix issue with optional GATT notifications.
+	Fix issue with reading GATT extended properties.
+	Fix issue with GATT device name properties.
+	Fix issue with previously paired devices.
+	Fix issue with handling device removal.
+	Fix issue with profile connection handling.
+	Add support for TTY monitor protocol.
+
 ver 5.39:
 	Fix issue with missing uHID kernel support.
 	Fix issue with GATT reliable write handling.
