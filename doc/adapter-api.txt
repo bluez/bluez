@@ -80,7 +80,11 @@ Methods		void StartDiscovery()
 
 			When discovery filter is set, Device objects will be
 			created as new devices with matching criteria are
-			discovered. PropertiesChanged signals will be emitted
+			discovered regardless of they are connectable or
+			discoverable which enables listening to
+			non-connectable and non-discoverable devices.
+
+			PropertiesChanged signals will be emitted
 			for already existing Device objects, with updated RSSI
 			value. If one or more discovery filters have been set,
 			the RSSI delta-threshold, that is imposed by

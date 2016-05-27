@@ -5451,7 +5451,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	memset(&eir_data, 0, sizeof(eir_data));
 	eir_parse(&eir_data, data, data_len);
 
-	if (bdaddr_type == BDADDR_BREDR)
+	if (bdaddr_type == BDADDR_BREDR || adapter->filtered_discovery)
 		discoverable = true;
 	else
 		discoverable = eir_data.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
