@@ -66,9 +66,9 @@ class Endpoint(dbus.service.Object):
 			mainloop.quit()
 
 	@dbus.service.method("org.bluez.MediaEndpoint1",
-					in_signature="", out_signature="")
-	def ClearConfiguration(self):
-		print("ClearConfiguration")
+					in_signature="o", out_signature="")
+	def ClearConfiguration(self, transport):
+		print("ClearConfiguration (%s)" % (transport))
 
 	@dbus.service.method("org.bluez.MediaEndpoint1",
 					in_signature="oay", out_signature="")
