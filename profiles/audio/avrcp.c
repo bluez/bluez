@@ -3200,7 +3200,8 @@ static void set_ct_player(struct avrcp *session, struct avrcp_player *player)
 
 	session->controller->player = player;
 	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
-	control_set_player(service, media_player_get_path(player->user_data));
+	control_set_player(service, player ?
+			media_player_get_path(player->user_data) : NULL);
 }
 
 static struct avrcp_player *create_ct_player(struct avrcp *session,
@@ -3330,6 +3331,10 @@ static void player_remove(gpointer data)
 	struct avrcp_player *player = data;
 	GSList *l;
 
+	/* Don't remove reserved player */
+	if (!player->id)
+		return;
+
 	for (l = player->sessions; l; l = l->next) {
 		struct avrcp *session = l->data;
 		struct avrcp_data *controller = session->controller;
@@ -3392,6 +3397,10 @@ static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
 	}
 
 	g_slist_free_full(removed, player_remove);
+
+	/* There should always be an active player */
+	if (!session->controller->player)
+		create_ct_player(session, 0);
 
 	return FALSE;
 }
