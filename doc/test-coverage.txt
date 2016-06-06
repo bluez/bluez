@@ -13,7 +13,7 @@ test-lib		  14	SDP library functions
 test-sdp		 133	SDP qualification test cases
 test-uuid		  30	UUID conversion handling
 test-mgmt		   9	Management interface handling
-test-crypto		   4	Cryptographic toolbox helpers
+test-crypto		   5	Cryptographic toolbox helpers
 test-textfile		   4	Old textfile storage format
 test-ringbuf		   3	Ring buffer functionality
 test-queue		   6	Queue handling functionality

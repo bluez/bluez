@@ -34,6 +34,48 @@
 
 static struct bt_crypto *crypto;
 
+static void print_debug(const char *str, void *user_data)
+{
+	tester_debug("%s", str);
+}
+
+static void test_h6(gconstpointer data)
+{
+	const uint8_t w[16] = {
+			0x9b, 0x7d, 0x39, 0x0a, 0xa6, 0x10, 0x10, 0x34,
+			0x05, 0xad, 0xc8, 0x57, 0xa3, 0x34, 0x02, 0xec };
+	const uint8_t m[4] = { 0x72, 0x62, 0x65, 0x6c };
+	const uint8_t exp[16] = {
+			0x99, 0x63, 0xb1, 0x80, 0xe2, 0xa9, 0xd3, 0xe8,
+			0x1c, 0xc9, 0x6d, 0xe7, 0x02, 0xe1, 0x9a, 0x2d };
+	uint8_t res[16];
+
+	tester_debug("W:");
+	util_hexdump(' ', w, 16, print_debug, NULL);
+
+	tester_debug("M:");
+	util_hexdump(' ', m, 4, print_debug, NULL);
+
+	if (!bt_crypto_h6(crypto, w, m, res)) {
+		tester_test_failed();
+		return;
+	}
+
+	tester_debug("Expected:");
+	util_hexdump(' ', exp, 16, print_debug, NULL);
+
+	tester_debug("Result:");
+	util_hexdump(' ', res, 16, print_debug, NULL);
+
+
+	if (memcmp(res, exp, 16)) {
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
+}
+
 struct test_data {
 	const uint8_t *msg;
 	uint16_t msg_len;
@@ -137,11 +179,6 @@ static const struct test_data test_data_5 = {
 	.key = key_5,
 };
 
-static void print_debug(const char *str, void *user_data)
-{
-	tester_debug("%s", str);
-}
-
 static bool result_compare(const uint8_t exp[12], uint8_t res[12])
 {
 	int i;
@@ -180,6 +217,8 @@ int main(int argc, char *argv[])
 		return 0;
 
 	tester_init(&argc, &argv);
+
+	tester_add("/crypto/h6", NULL, NULL, test_h6, NULL);
 
 	tester_add("/crypto/sign_att_1", &test_data_1, NULL, test_sign, NULL);
 	tester_add("/crypto/sign_att_2", &test_data_2, NULL, test_sign, NULL);
