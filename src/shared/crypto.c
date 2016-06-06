@@ -568,8 +568,8 @@ bool bt_crypto_s1(struct bt_crypto *crypto, const uint8_t k[16],
 	return bt_crypto_e(crypto, k, res, res);
 }
 
-static bool aes_cmac(struct bt_crypto *crypto, uint8_t key[16], uint8_t *msg,
-					size_t msg_len, uint8_t res[16])
+static bool aes_cmac(struct bt_crypto *crypto, const uint8_t key[16],
+			const uint8_t *msg, size_t msg_len, uint8_t res[16])
 {
 	uint8_t key_msb[16], out[16], msg_msb[CMAC_MSG_MAX];
 	ssize_t len;
@@ -676,6 +676,15 @@ bool bt_crypto_g2(struct bt_crypto *crypto, uint8_t u[32], uint8_t v[32],
 
 	*val = get_le32(tmp);
 	*val %= 1000000;
+
+	return true;
+}
+
+bool bt_crypto_h6(struct bt_crypto *crypto, const uint8_t w[16],
+				const uint8_t keyid[4], uint8_t res[16])
+{
+	if (!aes_cmac(crypto, w, keyid, 4, res))
+		return false;
 
 	return true;
 }
