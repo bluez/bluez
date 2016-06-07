@@ -108,6 +108,8 @@ uint8_t bthost_get_auth_req(struct bthost *bthost);
 void bthost_set_reject_user_confirm(struct bthost *bthost, bool reject);
 bool bthost_get_reject_user_confirm(struct bthost *bthost);
 
+bool bthost_bredr_capable(struct bthost *bthost);
+
 uint64_t bthost_conn_get_fixed_chan(struct bthost *bthost, uint16_t handle);
 
 typedef void (*bthost_rfcomm_connect_cb) (uint16_t handle, uint16_t cid,

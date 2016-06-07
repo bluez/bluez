@@ -68,8 +68,6 @@
 #define DIST_SIGN	0x04
 #define DIST_LINK_KEY	0x08
 
-#define KEY_DIST	(DIST_ENC_KEY | DIST_ID_KEY | DIST_SIGN)
-
 #define SC_NO_DIST	(DIST_ENC_KEY | DIST_LINK_KEY)
 
 #define MAX_IO_CAP	0x04
@@ -191,6 +189,14 @@ static uint8_t sc_select_method(struct smp_conn *conn)
 		method = JUST_WORKS;
 
 	return method;
+}
+
+static uint8_t key_dist(struct bthost *host)
+{
+	if (!bthost_bredr_capable(host))
+		return (DIST_ENC_KEY | DIST_ID_KEY | DIST_SIGN);
+
+	return (DIST_ENC_KEY | DIST_ID_KEY | DIST_SIGN | DIST_LINK_KEY);
 }
 
 static void smp_send(struct smp_conn *conn, uint8_t smp_cmd, const void *data,
@@ -433,8 +439,8 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 	}
 
 	rsp.max_key_size	= 0x10;
-	rsp.init_key_dist	= conn->preq[5] & KEY_DIST;
-	rsp.resp_key_dist	= conn->preq[6] & KEY_DIST;
+	rsp.init_key_dist	= conn->preq[5] & key_dist(bthost);
+	rsp.resp_key_dist	= conn->preq[6] & key_dist(bthost);
 
 	conn->prsp[0] = BT_L2CAP_SMP_PAIRING_RESPONSE;
 	memcpy(&conn->prsp[1], &rsp, sizeof(rsp));
@@ -691,8 +697,8 @@ void smp_pair(void *conn_data, uint8_t io_cap, uint8_t auth_req)
 	req.oob_data		= 0x00;
 	req.auth_req		= auth_req;
 	req.max_key_size	= 0x10;
-	req.init_key_dist	= KEY_DIST;
-	req.resp_key_dist	= KEY_DIST;
+	req.init_key_dist	= key_dist(conn->smp->bthost);
+	req.resp_key_dist	= key_dist(conn->smp->bthost);
 
 	conn->preq[0] = BT_L2CAP_SMP_PAIRING_REQUEST;
 	memcpy(&conn->preq[1], &req, sizeof(req));
@@ -818,8 +824,8 @@ static void smp_conn_bredr(struct smp_conn *conn, uint8_t encrypt)
 
 	memset(&req, 0, sizeof(req));
 	req.max_key_size = 0x10;
-	req.init_key_dist = KEY_DIST;
-	req.resp_key_dist = KEY_DIST;
+	req.init_key_dist = key_dist(smp->bthost);
+	req.resp_key_dist = key_dist(smp->bthost);
 
 	smp_send(conn, BT_L2CAP_SMP_PAIRING_REQUEST, &req, sizeof(req));
 }

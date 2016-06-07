@@ -2329,6 +2329,11 @@ void bthost_write_le_host_supported(struct bthost *bthost, uint8_t mode)
 							&cmd, sizeof(cmd));
 }
 
+bool bthost_bredr_capable(struct bthost *bthost)
+{
+	return lmp_bredr_capable(bthost);
+}
+
 void bthost_request_auth(struct bthost *bthost, uint16_t handle)
 {
 	struct btconn *conn;
