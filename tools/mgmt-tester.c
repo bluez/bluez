@@ -428,6 +428,7 @@ struct generic_data {
 	bool just_works;
 	bool client_enable_le;
 	bool client_enable_sc;
+	bool client_enable_adv;
 	bool expect_sc_key;
 	bool force_power_off;
 	bool addr_type_avail;
@@ -3090,6 +3091,96 @@ static const struct generic_data pair_device_le_sc_success_test_2 = {
 	.verify_alt_ev_func = verify_ltk,
 };
 
+static bool lk_is_authenticated(const struct mgmt_link_key_info *lk)
+{
+	switch (lk->type) {
+	case 0x00: /* Combination Key */
+	case 0x01: /* Local Unit Key */
+	case 0x02: /* Remote Unit Key */
+	case 0x03: /* Debug Combination Key */
+		if (lk->pin_len == 16)
+			return true;
+		return false;
+	case 0x05: /* Authenticated Combination Key generated from P-192 */
+	case 0x08: /* Authenticated Combination Key generated from P-256 */
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool lk_is_sc(const struct mgmt_link_key_info *lk)
+{
+	switch (lk->type) {
+	case 0x07: /* Unauthenticated Combination Key generated from P-256 */
+	case 0x08: /* Authenticated Combination Key generated from P-256 */
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool verify_link_key(const void *param, uint16_t length)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const struct mgmt_ev_new_link_key *ev = param;
+
+	if (length != sizeof(struct mgmt_ev_new_link_key)) {
+		tester_warn("Invalid new Link Key length %u != %zu", length,
+				sizeof(struct mgmt_ev_new_link_key));
+		return false;
+	}
+
+	if (test->just_works && lk_is_authenticated(&ev->key)) {
+		tester_warn("Authenticated key for just-works");
+		return false;
+	}
+
+	if (!test->just_works && !lk_is_authenticated(&ev->key)) {
+		tester_warn("Unauthenticated key for MITM");
+		return false;
+	}
+
+	if (test->expect_sc_key && !lk_is_sc(&ev->key)) {
+		tester_warn("Non-LE SC key for SC pairing");
+		return false;
+	}
+
+	if (!test->expect_sc_key && lk_is_sc(&ev->key)) {
+		tester_warn("SC key for Non-SC pairing");
+		return false;
+	}
+
+	return true;
+}
+
+static uint16_t settings_powered_le_sc_bondable[] = {
+						MGMT_OP_SET_LE,
+						MGMT_OP_SET_SSP,
+						MGMT_OP_SET_BONDABLE,
+						MGMT_OP_SET_SECURE_CONN,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data pair_device_le_sc_success_test_3 = {
+	.setup_settings = settings_powered_le_sc_bondable,
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_func = pair_device_send_param_func,
+	.addr_type_avail = true,
+	.addr_type = 0x01,
+	.client_enable_sc = true,
+	.client_enable_ssp = true,
+	.client_enable_adv = true,
+	.expect_sc_key = true,
+	.io_cap = 0x02, /* KeyboardOnly */
+	.client_io_cap = 0x02, /* KeyboardOnly */
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = pair_device_expect_param_func,
+	.expect_alt_ev = MGMT_EV_NEW_LINK_KEY,
+	.expect_alt_ev_len = 26,
+	.verify_alt_ev_func = verify_link_key,
+};
+
 static uint16_t settings_powered_connectable_bondable[] = {
 						MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_CONNECTABLE,
@@ -4808,11 +4899,12 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 static void setup_bthost(void)
 {
 	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
 	struct bthost *bthost;
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, data);
-	if (data->hciemu_type == HCIEMU_TYPE_LE)
+	if (data->hciemu_type == HCIEMU_TYPE_LE || test->client_enable_adv)
 		bthost_set_adv_enable(bthost, 0x01);
 	else
 		bthost_write_scan_enable(bthost, 0x03);
@@ -6652,6 +6744,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_le("Pair Device - LE SC Success 2",
 				&pair_device_le_sc_success_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Pair Device - LE SC Success 3",
+				&pair_device_le_sc_success_test_3,
 				NULL, test_command_generic);
 
 	test_bredrle("Pairing Acceptor - Legacy 1",
