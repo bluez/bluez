@@ -353,7 +353,8 @@ bool btd_service_remove_state_cb(unsigned int id)
 
 void btd_service_connecting_complete(struct btd_service *service, int err)
 {
-	if (service->state != BTD_SERVICE_STATE_CONNECTING)
+	if (service->state != BTD_SERVICE_STATE_DISCONNECTED &&
+			service->state != BTD_SERVICE_STATE_CONNECTING)
 		return;
 
 	if (err == 0)
