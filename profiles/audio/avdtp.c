@@ -1397,6 +1397,7 @@ static void setconf_cb(struct avdtp *session, struct avdtp_stream *stream,
 		avdtp_send(session, session->in.transaction,
 				AVDTP_MSG_TYPE_REJECT, AVDTP_SET_CONFIGURATION,
 				&rej, sizeof(rej));
+		stream_free(stream);
 		return;
 	}
 
