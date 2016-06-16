@@ -515,10 +515,6 @@ static DBusMessage *desc_read_value(DBusConnection *conn, DBusMessage *msg,
 
 	dbus_message_iter_init_append(reply, &iter);
 
-	if (parse_options(&iter, &device))
-		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
-							"Invalid arguments");
-
 	desc_read(desc, &iter);
 
 	return reply;
