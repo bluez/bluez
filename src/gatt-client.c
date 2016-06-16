@@ -401,6 +401,8 @@ static int parse_options(DBusMessageIter *iter, uint16_t *offset)
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value, offset);
 		}
+
+		dbus_message_iter_next(&dict);
 	}
 
 	return 0;
