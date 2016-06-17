@@ -100,10 +100,6 @@ static struct hci_dev *dev_alloc(uint16_t index)
 	struct hci_dev *dev;
 
 	dev = new0(struct hci_dev, 1);
-	if (!dev) {
-		fprintf(stderr, "Failed to allocate new device entry\n");
-		return NULL;
-	}
 
 	dev->index = index;
 	dev->manufacturer = 0xffff;
@@ -128,8 +124,6 @@ static struct hci_dev *dev_lookup(uint16_t index)
 		fprintf(stderr, "Creating new device for unknown index\n");
 
 		dev = dev_alloc(index);
-		if (!dev)
-			return NULL;
 
 		queue_push_tail(dev_list, dev);
 	}
@@ -144,8 +138,6 @@ static void new_index(struct timeval *tv, uint16_t index,
 	struct hci_dev *dev;
 
 	dev = dev_alloc(index);
-	if (!dev)
-		return;
 
 	dev->type = ni->type;
 	memcpy(dev->bdaddr, ni->bdaddr, 6);
@@ -355,10 +347,6 @@ void analyze_trace(const char *path)
 	}
 
 	dev_list = queue_new();
-	if (!dev_list) {
-		fprintf(stderr, "Failed to allocate device list\n");
-		goto done;
-	}
 
 	while (1) {
 		unsigned char buf[BTSNOOP_MAX_PACKET_SIZE];
