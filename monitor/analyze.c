@@ -50,6 +50,7 @@ struct hci_dev {
 	unsigned long vendor_diag;
 	unsigned long system_note;
 	unsigned long user_log;
+	unsigned long unknown;
 	uint16_t manufacturer;
 };
 
@@ -88,6 +89,7 @@ static void dev_destroy(void *data)
 	printf("  %lu vendor diagnostics\n", dev->vendor_diag);
 	printf("  %lu system notes\n", dev->system_note);
 	printf("  %lu user logs\n", dev->user_log);
+	printf("  %lu unknown opcodes\n", dev->unknown);
 	printf("\n");
 
 	free(dev);
@@ -318,6 +320,18 @@ static void user_log(struct timeval *tv, uint16_t index,
 	dev->user_log++;
 }
 
+static void unknown_opcode(struct timeval *tv, uint16_t index,
+					const void *data, uint16_t size)
+{
+	struct hci_dev *dev;
+
+	dev = dev_lookup(index);
+	if (!dev)
+		return;
+
+	dev->unknown++;
+}
+
 void analyze_trace(const char *path)
 {
 	struct btsnoop *btsnoop_file;
@@ -392,8 +406,9 @@ void analyze_trace(const char *path)
 			user_log(&tv, index, buf, pktlen);
 			break;
 		default:
-			fprintf(stderr, "Wrong opcode %u\n", opcode);
-			goto done;
+			fprintf(stderr, "Unknown opcode %u\n", opcode);
+			unknown_opcode(&tv, index, buf, pktlen);
+			break;
 		}
 
 		num_packets++;
