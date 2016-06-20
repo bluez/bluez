@@ -184,7 +184,7 @@ struct att_send_op {
 	unsigned int id;
 	unsigned int timeout_id;
 	enum att_op_type type;
-	uint16_t opcode;
+	uint8_t opcode;
 	void *pdu;
 	uint16_t len;
 	bt_att_response_func_t callback;
