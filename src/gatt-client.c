@@ -342,7 +342,6 @@ static void desc_read_cb(bool success, uint8_t att_ecode,
 {
 	struct async_dbus_op *op = user_data;
 	struct descriptor *desc = op->data;
-	struct service *service = desc->chrc->service;
 
 	if (!success)
 		goto fail;
@@ -355,23 +354,6 @@ static void desc_read_cb(bool success, uint8_t att_ecode,
 		error("Failed to store attribute");
 		att_ecode = BT_ATT_ERROR_UNLIKELY;
 		goto fail;
-	}
-
-	/*
-	 * If the value length is exactly MTU-1, then we may not have read the
-	 * entire value. Perform a long read to obtain the rest, otherwise,
-	 * we're done.
-	 */
-	if (length == bt_gatt_client_get_mtu(service->client->gatt) - 1) {
-		op->offset += length;
-		op->id = bt_gatt_client_read_long_value(service->client->gatt,
-							desc->handle,
-							op->offset,
-							desc_read_cb,
-							async_dbus_op_ref(op),
-							async_dbus_op_unref);
-		if (op->id)
-			return;
 	}
 
 	/* Read the stored data from db */
@@ -446,16 +428,9 @@ static struct async_dbus_op *read_value(struct bt_gatt_client *gatt,
 	op = async_dbus_op_new(msg, data);
 	op->offset = offset;
 
-	if (op->offset)
-		op->id = bt_gatt_client_read_long_value(gatt, handle, offset,
-							callback,
-							async_dbus_op_ref(op),
-							async_dbus_op_unref);
-	else
-		op->id = bt_gatt_client_read_value(gatt, handle, callback,
-							async_dbus_op_ref(op),
-							async_dbus_op_unref);
-
+	op->id = bt_gatt_client_read_long_value(gatt, handle, offset, callback,
+						async_dbus_op_ref(op),
+						async_dbus_op_unref);
 	if (op->id)
 		return op;
 
@@ -859,7 +834,6 @@ static void chrc_read_cb(bool success, uint8_t att_ecode, const uint8_t *value,
 {
 	struct async_dbus_op *op = user_data;
 	struct characteristic *chrc = op->data;
-	struct service *service = chrc->service;
 
 	if (!success)
 		goto fail;
@@ -872,23 +846,6 @@ static void chrc_read_cb(bool success, uint8_t att_ecode, const uint8_t *value,
 		error("Failed to store attribute");
 		att_ecode = BT_ATT_ERROR_UNLIKELY;
 		goto fail;
-	}
-
-	/*
-	 * If the value length is exactly MTU-1, then we may not have read the
-	 * entire value. Perform a long read to obtain the rest, otherwise,
-	 * we're done.
-	 */
-	if (length == bt_gatt_client_get_mtu(service->client->gatt) - 1) {
-		op->offset += length;
-		op->id = bt_gatt_client_read_long_value(service->client->gatt,
-							chrc->value_handle,
-							op->offset,
-							chrc_read_cb,
-							async_dbus_op_ref(op),
-							async_dbus_op_unref);
-		if (op->id)
-			return;
 	}
 
 	/* Read the stored data from db */
