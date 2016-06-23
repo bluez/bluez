@@ -2655,6 +2655,9 @@ static char *load_cached_name(struct btd_device *device, const char *local,
 	char *str = NULL;
 	int len;
 
+	if (device_address_is_private(device))
+		return NULL;
+
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local, peer);
 
 	key_file = g_key_file_new();
