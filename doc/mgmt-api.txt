@@ -3061,6 +3061,7 @@ Device Disconnected Event
 		1	Connection timeout
 		2	Connection terminated by local host
 		3	Connection terminated by remote host
+		4	Connection terminated due to authentication failure
 
 	Note that the local/remote distinction just determines which side
 	terminated the low-level connection, regardless of the
