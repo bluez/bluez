@@ -14,7 +14,7 @@ SDP			4.2		Server, Client
 GATT			4.2		Server, Client
 SDAP			1.1		Server, Client
 RFCOMM			1.1		Server, Client
-SPP			1.1		Server, Client
+SPP			1.2		Server, Client
 
 PXP			1.0		Reporter, Monitor
 HOGP			1.0		Host
