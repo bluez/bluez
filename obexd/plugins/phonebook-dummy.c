@@ -520,7 +520,6 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	struct dummy_data *dummy;
 	char *filename;
 	int fd;
-	guint ret;
 
 	filename = g_build_filename(root_folder, folder, id, NULL);
 
@@ -538,13 +537,13 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	dummy->apparams = params;
 	dummy->fd = fd;
 
-	ret = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_entry, dummy,
+	dummy->id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_entry, dummy,
 								dummy_free);
 
 	if (err)
 		*err = 0;
 
-	return GINT_TO_POINTER(ret);
+	return dummy;
 }
 
 void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
@@ -553,7 +552,7 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	struct cache_query *query;
 	char *foldername;
 	DIR *dp;
-	guint ret;
+	struct dummy_data *dummy;
 
 	foldername = g_build_filename(root_folder, name, NULL);
 	dp = opendir(foldername);
@@ -572,11 +571,13 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	query->user_data = user_data;
 	query->dp = dp;
 
-	ret = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, create_cache, query,
-								query_free);
+	dummy = g_new0(struct dummy_data, 1);
+
+	dummy->id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, create_cache,
+							query, query_free);
 
 	if (err)
 		*err = 0;
 
-	return GINT_TO_POINTER(ret);
+	return dummy;
 }
