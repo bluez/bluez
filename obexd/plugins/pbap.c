@@ -543,13 +543,18 @@ static int pbap_get(struct obex_session *os, void *user_data)
 
 	} else if (g_ascii_strcasecmp(type, VCARDLISTING_TYPE) == 0) {
 		/* Always relative */
-		if (!name || strlen(name) == 0)
+		if (!name || strlen(name) == 0) {
 			/* Current folder */
 			path = g_strdup(pbap->folder);
-		else
+		} else {
 			/* Current folder + relative path */
 			path = g_build_filename(pbap->folder, name, NULL);
 
+			/* clear cache */
+			pbap->cache.valid = FALSE;
+			pbap->cache.index = 0;
+			cache_clear(&pbap->cache);
+		}
 	} else if (g_ascii_strcasecmp(type, VCARDENTRY_TYPE) == 0) {
 		/* File name only */
 		path = g_strdup(name);
