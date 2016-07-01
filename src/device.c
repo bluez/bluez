@@ -5141,6 +5141,9 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 	if (device->temporary == temporary)
 		return;
 
+	if (device_address_is_private(device))
+		return;
+
 	DBG("temporary %d", temporary);
 
 	device->temporary = temporary;
