@@ -3098,6 +3098,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		}
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS,
 						BT_HCI_CMD_LE_GENERATE_DHKEY);
+		dh_evt.status = BT_HCI_ERR_SUCCESS;
 		le_meta_event(btdev, BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE,
 						&dh_evt, sizeof(dh_evt));
 		break;
