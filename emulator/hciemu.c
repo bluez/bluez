@@ -243,7 +243,8 @@ static bool create_vhci(struct hciemu *hciemu)
 	}
 
 	create_req[0] = HCI_VENDOR_PKT;
-	create_req[1] = HCI_BREDR;
+	create_req[1] = HCI_PRIMARY;
+
 	written = write(fd, create_req, sizeof(create_req));
 	if (written < 0) {
 		close(fd);

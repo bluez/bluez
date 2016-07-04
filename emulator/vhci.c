@@ -105,15 +105,15 @@ struct vhci *vhci_open(enum vhci_type type)
 	switch (type) {
 	case VHCI_TYPE_BREDRLE:
 		btdev_type = BTDEV_TYPE_BREDRLE;
-		ctrl_type = HCI_BREDR;
+		ctrl_type = HCI_PRIMARY;
 		break;
 	case VHCI_TYPE_BREDR:
 		btdev_type = BTDEV_TYPE_BREDR;
-		ctrl_type = HCI_BREDR;
+		ctrl_type = HCI_PRIMARY;
 		break;
 	case VHCI_TYPE_LE:
 		btdev_type = BTDEV_TYPE_LE;
-		ctrl_type = HCI_BREDR;
+		ctrl_type = HCI_PRIMARY;
 		break;
 	case VHCI_TYPE_AMP:
 		btdev_type = BTDEV_TYPE_AMP;

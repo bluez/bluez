@@ -228,7 +228,7 @@ static bool find_controllers(void)
 		if (ioctl(fd, HCIGETDEVINFO, (void *) &di) < 0)
 			continue;
 
-		if (((di.type & 0x30) >> 4) != HCI_BREDR)
+		if (((di.type & 0x30) >> 4) != HCI_PRIMARY)
 			continue;
 
 		if (!bacmp(&bdaddr_src, BDADDR_ANY)) {

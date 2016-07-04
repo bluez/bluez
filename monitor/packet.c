@@ -5542,7 +5542,7 @@ static void read_local_version_rsp(const void *data, uint8_t size)
 
 	if (index_current < MAX_INDEX) {
 		switch (index_list[index_current].type) {
-		case HCI_BREDR:
+		case HCI_PRIMARY:
 			print_lmp_version(rsp->lmp_ver, rsp->lmp_subver);
 			break;
 		case HCI_AMP:

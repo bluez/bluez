@@ -1151,7 +1151,7 @@ static void cmd_version(int ctl, int hdev, char *opt)
 	}
 
 	hciver = hci_vertostr(ver.hci_ver);
-	if (((di.type & 0x30) >> 4) == HCI_BREDR)
+	if (((di.type & 0x30) >> 4) == HCI_PRIMARY)
 		lmpver = lmp_vertostr(ver.lmp_ver);
 	else
 		lmpver = pal_vertostr(ver.lmp_ver);
@@ -1161,7 +1161,7 @@ static void cmd_version(int ctl, int hdev, char *opt)
 		"\t%s Version: %s (0x%x)  Subversion: 0x%x\n"
 		"\tManufacturer: %s (%d)\n",
 		hciver ? hciver : "n/a", ver.hci_ver, ver.hci_rev,
-		(((di.type & 0x30) >> 4) == HCI_BREDR) ? "LMP" : "PAL",
+		(((di.type & 0x30) >> 4) == HCI_PRIMARY) ? "LMP" : "PAL",
 		lmpver ? lmpver : "n/a", ver.lmp_ver, ver.lmp_subver,
 		bt_compidtostr(ver.manufacturer), ver.manufacturer);
 
@@ -1902,7 +1902,7 @@ static void print_dev_info(int ctl, struct hci_dev_info *di)
 	if (all && !hci_test_bit(HCI_RAW, &di->flags)) {
 		print_dev_features(di, 0);
 
-		if (((di->type & 0x30) >> 4) == HCI_BREDR) {
+		if (((di->type & 0x30) >> 4) == HCI_PRIMARY) {
 			print_pkt_type(di);
 			print_link_policy(di);
 			print_link_mode(di);

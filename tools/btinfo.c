@@ -79,7 +79,7 @@ struct hci_dev_info {
 
 #define HCI_UP		(1 << 0)
 
-#define HCI_BREDR	0x00
+#define HCI_PRIMARY	0x00
 #define HCI_AMP		0x01
 
 static struct hci_dev_info hci_info;
@@ -128,7 +128,7 @@ static void local_version_callback(const void *data, uint8_t size,
 	printf("HCI revision: %u\n", le16_to_cpu(rsp->hci_rev));
 
 	switch (hci_type) {
-	case HCI_BREDR:
+	case HCI_PRIMARY:
 		printf("LMP version: %u\n", rsp->lmp_ver);
 		printf("LMP subversion: %u\n", le16_to_cpu(rsp->lmp_subver));
 		break;

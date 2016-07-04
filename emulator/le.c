@@ -1881,7 +1881,7 @@ struct bt_le *bt_le_new(void)
 	}
 
 	setup_cmd[0] = HCI_VENDOR_PKT;
-	setup_cmd[1] = HCI_BREDR;
+	setup_cmd[1] = HCI_PRIMARY;
 
 	if (write(hci->vhci_fd, setup_cmd, sizeof(setup_cmd)) < 0) {
 		close(hci->vhci_fd);

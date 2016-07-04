@@ -49,7 +49,7 @@
 #include "src/shared/ecc.h"
 #include "monitor/bt.h"
 
-#define HCI_BREDR	0x00
+#define HCI_PRIMARY	0x00
 #define HCI_AMP		0x01
 
 #define BTPROTO_HCI	1
@@ -758,7 +758,7 @@ int main(int argc, char *argv[])
 	const char *unix_path = NULL;
 	unsigned short tcp_port = 0xb1ee;	/* 45550 */
 	bool use_redirect = false;
-	uint8_t type = HCI_BREDR;
+	uint8_t type = HCI_PRIMARY;
 	const char *str;
 	sigset_t mask;
 
