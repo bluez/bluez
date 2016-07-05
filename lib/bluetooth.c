@@ -360,7 +360,7 @@ const char *bt_compidtostr(int compid)
 	case 48:
 		return "ST Microelectronics";
 	case 49:
-		return "Synopsis";
+		return "Synopsys, Inc.";
 	case 50:
 		return "Red-M (Communications) Ltd";
 	case 51:
@@ -836,7 +836,7 @@ const char *bt_compidtostr(int compid)
 	case 286:
 		return "Skoda Auto a.s.";
 	case 287:
-		return "Volkswagon AG";
+		return "Volkswagen AG";
 	case 288:
 		return "Porsche AG";
 	case 289:
@@ -2059,6 +2059,78 @@ const char *bt_compidtostr(int compid)
 		return "Sharp Corporation";
 	case 898:
 		return "Precision Outcomes Ltd";
+	case 899:
+		return "Kronos Incorporated";
+	case 900:
+		return "OCOSMOS Co., Ltd.";
+	case 901:
+		return "Embedded Electronic Solutions Ltd. dba e2Solutions";
+	case 902:
+		return "Aterica Inc.";
+	case 903:
+		return "BluStor PMC, Inc.";
+	case 904:
+		return "Kapsch TrafficCom AB";
+	case 905:
+		return "ActiveBlu Corporation";
+	case 906:
+		return "Kohler Mira Limited";
+	case 907:
+		return "Noke";
+	case 908:
+		return "Appion Inc.";
+	case 909:
+		return "Resmed Ltd";
+	case 910:
+		return "Crownstone B.V.";
+	case 911:
+		return "Xiaomi Inc.";
+	case 912:
+		return "INFOTECH s.r.o.";
+	case 913:
+		return "Thingsquare AB";
+	case 914:
+		return "T&D";
+	case 915:
+		return "LAVAZZA S.p.A.";
+	case 916:
+		return "Netclearance Systems, Inc.";
+	case 917:
+		return "SDATAWAY";
+	case 918:
+		return "BLOKS GmbH";
+	case 919:
+		return "LEGO System A/S";
+	case 920:
+		return "Thetatronics Ltd";
+	case 921:
+		return "Nikon Corporation";
+	case 922:
+		return "NeST";
+	case 923:
+		return "South Silicon Valley Microelectronics";
+	case 924:
+		return "ALE International";
+	case 925:
+		return "CareView Communications, Inc.";
+	case 926:
+		return "SchoolBoard Limited";
+	case 927:
+		return "Molex Corporation";
+	case 928:
+		return "IVT International Validation & Testing Corporation";
+	case 929:
+		return "Alpine Labs LLC";
+	case 930:
+		return "Candura Instruments";
+	case 931:
+		return "SmartMovt Technology Co., Ltd";
+	case 932:
+		return "Token Zero Ltd";
+	case 933:
+		return "ACE CAD Enterprise Co., Ltd. (ACECAD)";
+	case 934:
+		return "Medela, Inc";
 	case 65535:
 		return "internal use";
 	default:
