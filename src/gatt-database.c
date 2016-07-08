@@ -468,8 +468,6 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	uint8_t dst_type;
 	bdaddr_t src, dst;
 
-	DBG("New incoming LE ATT connection");
-
 	if (gerr) {
 		error("%s", gerr->message);
 		return;
@@ -484,6 +482,9 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		g_error_free(gerr);
 		return;
 	}
+
+	DBG("New incoming %s ATT connection", dst_type == BDADDR_BREDR ?
+							"BR/EDR" : "LE");
 
 	adapter = adapter_find(&src);
 	if (!adapter)
