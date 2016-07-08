@@ -1622,14 +1622,25 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 	if (!op)
 		return false;
 
+	/*
+	 * BLUETOOTH SPECIFICATION Version 4.2 [Vol 3, Part G] page 546:
+	 *
+	 * 4.3.1 Exchange MTU
+	 *
+	 * This sub-procedure shall not be used on a BR/EDR physical link since
+	 * the MTU size is negotiated using L2CAP channel configuration
+	 * procedures.
+	 */
+	if (bt_att_get_link_type(client->att) == BT_ATT_LINK_BREDR)
+		goto discover;
+
 	/* Check if MTU needs to be send */
 	mtu = MAX(BT_ATT_DEFAULT_LE_MTU, mtu);
 	if (mtu == BT_ATT_DEFAULT_LE_MTU)
 		goto discover;
 
 	/* Configure the MTU */
-	client->mtu_req_id = bt_gatt_exchange_mtu(client->att,
-						MAX(BT_ATT_DEFAULT_LE_MTU, mtu),
+	client->mtu_req_id = bt_gatt_exchange_mtu(client->att, mtu,
 						exchange_mtu_cb,
 						discovery_op_ref(op),
 						discovery_op_unref);
