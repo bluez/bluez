@@ -53,6 +53,7 @@ bool bt_att_set_debug(struct bt_att *att, bt_att_debug_func_t callback,
 
 uint16_t bt_att_get_mtu(struct bt_att *att);
 bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu);
+uint8_t bt_att_get_link_type(struct bt_att *att);
 
 bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 						void *user_data,

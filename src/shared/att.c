@@ -34,6 +34,7 @@
 #include "src/shared/util.h"
 #include "src/shared/timeout.h"
 #include "lib/bluetooth.h"
+#include "lib/l2cap.h"
 #include "lib/uuid.h"
 #include "src/shared/att.h"
 #include "src/shared/crypto.h"
@@ -967,6 +968,18 @@ static void bt_att_free(struct bt_att *att)
 	free(att);
 }
 
+static uint16_t get_l2cap_mtu(int fd)
+{
+	socklen_t len;
+	struct l2cap_options l2o;
+
+	len = sizeof(l2o);
+	if (getsockopt(fd, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0)
+		return 0;
+
+	return l2o.omtu;
+}
+
 struct bt_att *bt_att_new(int fd, bool ext_signed)
 {
 	struct bt_att *att;
@@ -976,10 +989,6 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 
 	att = new0(struct bt_att, 1);
 	att->fd = fd;
-	att->mtu = BT_ATT_DEFAULT_LE_MTU;
-	att->buf = malloc(att->mtu);
-	if (!att->buf)
-		goto fail;
 
 	att->io = io_new(fd);
 	if (!att->io)
@@ -1004,6 +1013,18 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 	att->io_on_l2cap = is_io_l2cap_based(att->fd);
 	if (!att->io_on_l2cap)
 		att->io_sec_level = BT_ATT_SECURITY_LOW;
+
+	if (bt_att_get_link_type(att) == BT_ATT_LINK_BREDR)
+		att->mtu = get_l2cap_mtu(att->fd);
+	else
+		att->mtu = BT_ATT_DEFAULT_LE_MTU;
+
+	if (att->mtu < BT_ATT_DEFAULT_LE_MTU)
+		goto fail;
+
+	att->buf = malloc(att->mtu);
+	if (!att->buf)
+		goto fail;
 
 	return bt_att_ref(att);
 
@@ -1097,6 +1118,28 @@ bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu)
 	att->buf = buf;
 
 	return true;
+}
+
+uint8_t bt_att_get_link_type(struct bt_att *att)
+{
+	struct sockaddr_l2 src;
+	socklen_t len;
+
+	if (!att)
+		return -EINVAL;
+
+	if (!att->io_on_l2cap)
+		return BT_ATT_LINK_LOCAL;
+
+	len = sizeof(src);
+	memset(&src, 0, len);
+	if (getsockname(att->fd, (void *)&src, &len) < 0)
+		return -errno;
+
+	if (src.l2_bdaddr_type == BDADDR_BREDR)
+		return BT_ATT_LINK_BREDR;
+
+	return BT_ATT_LINK_LE;
 }
 
 bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,

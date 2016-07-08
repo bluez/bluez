@@ -37,6 +37,10 @@
 #define BT_ATT_MAX_LE_MTU	517
 #define BT_ATT_MAX_VALUE_LEN	512
 
+#define BT_ATT_LINK_BREDR	0x00
+#define BT_ATT_LINK_LE		0x01
+#define BT_ATT_LINK_LOCAL	0xff
+
 /* ATT protocol opcodes */
 #define BT_ATT_OP_ERROR_RSP			0x01
 #define BT_ATT_OP_MTU_REQ			0x02
