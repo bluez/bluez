@@ -82,16 +82,56 @@ static void proxy_leak(gpointer data)
 	printf("Leaking proxy %p\n", data);
 }
 
+static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
+							gpointer user_data)
+{
+	if (condition & G_IO_IN) {
+		rl_callback_read_char();
+		return TRUE;
+	}
+
+	if (condition & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		g_main_loop_quit(main_loop);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static guint setup_standard_input(void)
+{
+	GIOChannel *channel;
+	guint source;
+
+	channel = g_io_channel_unix_new(fileno(stdin));
+
+	source = g_io_add_watch(channel,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				input_handler, NULL);
+
+	g_io_channel_unref(channel);
+
+	return source;
+}
+
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	rl_set_prompt(PROMPT_ON);
 	printf("\r");
 	rl_on_new_line();
 	rl_redisplay();
+
+	if (!input)
+		input = setup_standard_input();
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
+	if (input > 0) {
+		g_source_remove(input);
+		input = 0;
+	}
+
 	rl_set_prompt(PROMPT_OFF);
 	printf("\r");
 	rl_on_new_line();
@@ -1940,38 +1980,6 @@ done:
 	free(input);
 }
 
-static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
-{
-	if (condition & G_IO_IN) {
-		rl_callback_read_char();
-		return TRUE;
-	}
-
-	if (condition & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
-		g_main_loop_quit(main_loop);
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-static guint setup_standard_input(void)
-{
-	GIOChannel *channel;
-	guint source;
-
-	channel = g_io_channel_unix_new(fileno(stdin));
-
-	source = g_io_add_watch(channel,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				input_handler, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
-}
-
 static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
@@ -2082,9 +2090,8 @@ static GOptionEntry options[] = {
 
 static void client_ready(GDBusClient *client, void *user_data)
 {
-	guint *input = user_data;
-
-	*input = setup_standard_input();
+	if (!input)
+		input = setup_standard_input();
 }
 
 int main(int argc, char *argv[])
@@ -2135,8 +2142,7 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 							property_changed, NULL);
 
-	input = 0;
-	g_dbus_client_set_ready_watch(client, client_ready, &input);
+	g_dbus_client_set_ready_watch(client, client_ready, NULL);
 
 	g_main_loop_run(main_loop);
 
