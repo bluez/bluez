@@ -50,7 +50,7 @@
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
 #define PROMPT_ON	COLOR_BLUE "[bluetooth]" COLOR_OFF "# "
-#define PROMPT_OFF	"[bluetooth]# "
+#define PROMPT_OFF	"Waiting to connect to bluetoothd..."
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
