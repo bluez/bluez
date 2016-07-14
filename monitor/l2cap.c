@@ -1999,6 +1999,7 @@ static void print_hex_field(const char *label, const uint8_t *data,
 static void print_uuid(const char *label, const void *data, uint16_t size)
 {
 	const char *str;
+	char uuidstr[36];
 
 	switch (size) {
 	case 2:
@@ -2010,12 +2011,12 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 		print_field("%s: %s (0x%8.8x)", label, str, get_le32(data));
 		break;
 	case 16:
-		str = uuid128_to_str(data);
-		print_field("%s: %s (%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x)",
-				label, str,
+		sprintf(uuidstr, "%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
 				get_le32(data + 12), get_le16(data + 10),
 				get_le16(data + 8), get_le16(data + 6),
 				get_le32(data + 2), get_le16(data + 0));
+		str = uuidstr_to_str(uuidstr);
+		print_field("%s: %s (%s)", label, str, uuidstr);
 		break;
 	default:
 		packet_hexdump(data, size);
