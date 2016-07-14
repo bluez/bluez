@@ -117,7 +117,7 @@ class Service(dbus.service.Object):
         if interface != GATT_SERVICE_IFACE:
             raise InvalidArgsException()
 
-        return self.get_properties[GATT_SERVICE_IFACE]
+        return self.get_properties()[GATT_SERVICE_IFACE]
 
 
 class Characteristic(dbus.service.Object):
@@ -164,7 +164,7 @@ class Characteristic(dbus.service.Object):
         if interface != GATT_CHRC_IFACE:
             raise InvalidArgsException()
 
-        return self.get_properties[GATT_CHRC_IFACE]
+        return self.get_properties()[GATT_CHRC_IFACE]
 
     @dbus.service.method(GATT_CHRC_IFACE,
                         in_signature='a{sv}',
@@ -222,7 +222,7 @@ class Descriptor(dbus.service.Object):
         if interface != GATT_DESC_IFACE:
             raise InvalidArgsException()
 
-        return self.get_properties[GATT_CHRC_IFACE]
+        return self.get_properties()[GATT_CHRC_IFACE]
 
     @dbus.service.method(GATT_DESC_IFACE,
                         in_signature='a{sv}',
