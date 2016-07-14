@@ -585,11 +585,6 @@ const char *uuid32_to_str(uint32_t uuid)
 	return "Unknown";
 }
 
-const char *uuid128_to_str(const unsigned char *uuid)
-{
-	return "Unknown";
-}
-
 const char *uuidstr_to_str(const char *uuid)
 {
 	uint32_t val;
