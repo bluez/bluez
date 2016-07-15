@@ -76,6 +76,9 @@ Version 1.11 introduces Get Advertising Size Information command.
 Version 1.12 introduces a new limited privacy mode (value 0x02 passed to
 the Set Privacy command).
 
+Version 1.13 introduces a new authentication failure reason code for the
+Device Disconnected event.
+
 Example
 =======
 
