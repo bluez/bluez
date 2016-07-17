@@ -1,3 +1,11 @@
+ver 5.41:
+	Fix issue with service state changes handling.
+	Fix issue with AVRCP and no available player.
+	Fix issue with handling discovery filters.
+	Fix issue with handling temporary addresses.
+	Fix issue with GATT MTU size and BR/EDR links.
+	Fix issue with OBEX and creating directories.
+
 ver 5.40:
 	Fix issue with not storing GATT attributes.
 	Fix issue with optional GATT notifications.
