@@ -2118,7 +2118,7 @@ const char *bt_compidtostr(int compid)
 	case 927:
 		return "Molex Corporation";
 	case 928:
-		return "IVT International Validation & Testing Corporation";
+		return "IVT Wireless Limited";
 	case 929:
 		return "Alpine Labs LLC";
 	case 930:
@@ -2131,6 +2131,18 @@ const char *bt_compidtostr(int compid)
 		return "ACE CAD Enterprise Co., Ltd. (ACECAD)";
 	case 934:
 		return "Medela, Inc";
+	case 935:
+		return "AeroScout";
+	case 936:
+		return "Esrille Inc.";
+	case 937:
+		return "THINKERLY SRL";
+	case 938:
+		return "Exon Sp. z o.o.";
+	case 939:
+		return "Meizu Technology Co., Ltd.";
+	case 940:
+		return "Smablo LTD";
 	case 65535:
 		return "internal use";
 	default:
