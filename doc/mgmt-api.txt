@@ -79,6 +79,7 @@ the Set Privacy command).
 Version 1.13 introduces a new authentication failure reason code for the
 Device Disconnected event.
 
+
 Example
 =======
 
@@ -553,6 +554,7 @@ Set Secure Simple Pairing Command
 				Not Supported
 				Invalid Parameters
 				Invalid Index
+
 
 Set High Speed Command
 ======================
@@ -2458,6 +2460,8 @@ Read Extended Controller Index List Command
 		0x04	RS232
 		0x05	PCI
 		0x06	SDIO
+		0x07	SPI
+		0x08	I2C
 
 	Controllers marked as RAW only operation are currently not listed
 	by this command.
