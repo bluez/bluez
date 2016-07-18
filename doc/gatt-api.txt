@@ -27,7 +27,7 @@ using GattManager1 registration method and must implement the methods and
 properties defined in GattService1 interface.
 
 Service		org.bluez
-Interface	org.bluez.GattService1 [Experimental]
+Interface	org.bluez.GattService1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX
 
 Properties	string UUID [read-only]
@@ -58,7 +58,7 @@ For local GATT defined services, the object paths need to follow the service
 path hierarchy and are freely definable.
 
 Service		org.bluez
-Interface	org.bluez.GattCharacteristic1 [Experimental]
+Interface	org.bluez.GattCharacteristic1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY
 
 Methods		array{byte} ReadValue(dict options)
@@ -159,7 +159,7 @@ Characteristic Descriptors hierarchy
 Local or remote GATT characteristic descriptors hierarchy.
 
 Service		org.bluez
-Interface	org.bluez.GattDescriptor1 [Experimental]
+Interface	org.bluez.GattDescriptor1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY/descriptorZZZ
 
 Methods		array{byte} ReadValue(dict flags)
@@ -231,7 +231,7 @@ and requests automatic connections to be established to devices
 supporting it.
 
 Service		<application dependent>
-Interface	org.bluez.GattProfile1 [Experimental]
+Interface	org.bluez.GattProfile1
 Object path	<application dependent>
 
 Methods		void Release()
@@ -308,7 +308,7 @@ all of its registered services will be automatically unregistered.
 InterfacesAdded signals will be ignored.
 
 Service		org.bluez
-Interface	org.bluez.GattManager1 [Experimental]
+Interface	org.bluez.GattManager1
 Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		void RegisterApplication(object application, dict options)

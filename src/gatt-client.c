@@ -623,12 +623,10 @@ static const GDBusPropertyTable descriptor_properties[] = {
 };
 
 static const GDBusMethodTable descriptor_methods[] = {
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("ReadValue",
-					GDBUS_ARGS({ "options", "a{sv}" }),
+	{ GDBUS_ASYNC_METHOD("ReadValue", GDBUS_ARGS({ "options", "a{sv}" }),
 					GDBUS_ARGS({ "value", "ay" }),
 					descriptor_read_value) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("WriteValue",
-					GDBUS_ARGS({ "value", "ay" },
+	{ GDBUS_ASYNC_METHOD("WriteValue", GDBUS_ARGS({ "value", "ay" },
 						{ "options", "a{sv}" }),
 					NULL,
 					descriptor_write_value) },
@@ -1251,34 +1249,27 @@ static DBusMessage *characteristic_stop_notify(DBusConnection *conn,
 }
 
 static const GDBusPropertyTable characteristic_properties[] = {
-	{ "UUID", "s", characteristic_get_uuid, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Service", "o", characteristic_get_service, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "UUID", "s", characteristic_get_uuid, NULL, NULL },
+	{ "Service", "o", characteristic_get_service, NULL, NULL },
 	{ "Value", "ay", characteristic_get_value, NULL,
-					characteristic_value_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+					characteristic_value_exists },
 	{ "Notifying", "b", characteristic_get_notifying, NULL,
-					characteristic_notifying_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Flags", "as", characteristic_get_flags, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+					characteristic_notifying_exists },
+	{ "Flags", "as", characteristic_get_flags, NULL, NULL },
 	{ }
 };
 
 static const GDBusMethodTable characteristic_methods[] = {
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("ReadValue",
-					GDBUS_ARGS({ "options", "a{sv}" }),
+	{ GDBUS_ASYNC_METHOD("ReadValue", GDBUS_ARGS({ "options", "a{sv}" }),
 					GDBUS_ARGS({ "value", "ay" }),
 					characteristic_read_value) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("WriteValue",
-					GDBUS_ARGS({ "value", "ay" },
+	{ GDBUS_ASYNC_METHOD("WriteValue", GDBUS_ARGS({ "value", "ay" },
 						{ "options", "a{sv}" }),
 					NULL,
 					characteristic_write_value) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("StartNotify", NULL, NULL,
+	{ GDBUS_ASYNC_METHOD("StartNotify", NULL, NULL,
 					characteristic_start_notify) },
-	{ GDBUS_EXPERIMENTAL_METHOD("StopNotify", NULL, NULL,
+	{ GDBUS_METHOD("StopNotify", NULL, NULL,
 					characteristic_stop_notify) },
 	{ }
 };
@@ -1584,12 +1575,6 @@ static void export_service(struct gatt_db_attribute *attr, void *user_data)
 
 static void create_services(struct btd_gatt_client *client)
 {
-	/* Don't attempt to create any objects if experimental is disabled */
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		info("GATT service objects disabled");
-		return;
-	}
-
 	DBG("Exporting objects for GATT services: %s", client->devaddr);
 
 	gatt_db_foreach_service(client->db, NULL, export_service, client);

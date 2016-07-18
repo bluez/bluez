@@ -2579,11 +2579,11 @@ static DBusMessage *manager_unregister_app(DBusConnection *conn,
 }
 
 static const GDBusMethodTable manager_methods[] = {
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("RegisterApplication",
-			GDBUS_ARGS({ "application", "o" },
-			{ "options", "a{sv}" }), NULL,
-			manager_register_app) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("UnregisterApplication",
+	{ GDBUS_ASYNC_METHOD("RegisterApplication",
+					GDBUS_ARGS({ "application", "o" },
+						{ "options", "a{sv}" }),
+					NULL, manager_register_app) },
+	{ GDBUS_ASYNC_METHOD("UnregisterApplication",
 					GDBUS_ARGS({ "application", "o" }),
 					NULL, manager_unregister_app) },
 	{ }
