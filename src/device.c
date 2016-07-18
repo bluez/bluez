@@ -2523,16 +2523,12 @@ static const GDBusPropertyTable device_properties[] = {
 						dev_property_exists_modalias },
 	{ "Adapter", "o", dev_property_get_adapter },
 	{ "ManufacturerData", "a{qv}", dev_property_get_manufacturer_data,
-				NULL, dev_property_manufacturer_data_exist,
-				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+				NULL, dev_property_manufacturer_data_exist },
 	{ "ServiceData", "a{sv}", dev_property_get_service_data,
-				NULL, dev_property_service_data_exist,
-				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+				NULL, dev_property_service_data_exist },
 	{ "TxPower", "n", dev_property_get_tx_power, NULL,
-					dev_property_exists_tx_power,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "ServicesResolved", "b", dev_property_get_svc_resolved, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+					dev_property_exists_tx_power },
+	{ "ServicesResolved", "b", dev_property_get_svc_resolved, NULL, NULL },
 
 	{ }
 };
