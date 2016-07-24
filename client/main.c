@@ -120,9 +120,6 @@ static void connect_handler(DBusConnection *connection, void *user_data)
 	printf("\r");
 	rl_on_new_line();
 	rl_redisplay();
-
-	if (!input)
-		input = setup_standard_input();
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
