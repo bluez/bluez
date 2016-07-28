@@ -280,8 +280,11 @@ int bt_uuid_strcmp(const void *a, const void *b)
 {
 	bt_uuid_t u1, u2;
 
-	bt_string_to_uuid(&u1, a);
-	bt_string_to_uuid(&u2, b);
+	if (bt_string_to_uuid(&u1, a) < 0)
+		return -EINVAL;
+
+	if (bt_string_to_uuid(&u2, b) < 0)
+		return -EINVAL;
 
 	return bt_uuid_cmp(&u1, &u2);
 }
