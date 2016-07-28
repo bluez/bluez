@@ -235,11 +235,11 @@ static int error_to_errno(struct avdtp_error *err)
 	if (avdtp_error_category(err) != AVDTP_ERRNO)
 		return -EIO;
 
-	perr = -avdtp_error_posix_errno(err);
-	switch (-perr) {
-	case -EHOSTDOWN:
-	case -ECONNABORTED:
-		return perr;
+	perr = avdtp_error_posix_errno(err);
+	switch (perr) {
+	case EHOSTDOWN:
+	case ECONNABORTED:
+		return -perr;
 	default:
 		/*
 		 * An unexpect error has occurred setup may be attempted again.
