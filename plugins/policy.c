@@ -775,6 +775,8 @@ static int policy_init(void)
 		goto done;
 	}
 
+	g_key_file_set_list_separator(conf, ',');
+
 	reconnect_uuids = g_key_file_get_string_list(conf, "Policy",
 							"ReconnectUUIDs",
 							NULL, &gerr);
