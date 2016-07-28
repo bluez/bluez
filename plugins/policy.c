@@ -95,10 +95,29 @@ struct policy_data {
 	uint8_t tg_retries;
 };
 
+static struct reconnect_data *reconnect_find(struct btd_device *dev)
+{
+	GSList *l;
+
+	for (l = reconnects; l; l = g_slist_next(l)) {
+		struct reconnect_data *reconnect = l->data;
+
+		if (reconnect->dev == dev)
+			return reconnect;
+	}
+
+	return NULL;
+}
+
 static void policy_connect(struct policy_data *data,
 						struct btd_service *service)
 {
 	struct btd_profile *profile = btd_service_get_profile(service);
+	struct reconnect_data *reconnect;
+
+	reconnect = reconnect_find(btd_service_get_device(service));
+	if (reconnect && reconnect->active)
+		return;
 
 	DBG("%s profile %s", device_get_path(data->dev), profile->name);
 
@@ -496,6 +515,7 @@ static void target_cb(struct btd_service *service,
 static void reconnect_reset(struct reconnect_data *reconnect)
 {
 	reconnect->attempt = 0;
+	reconnect->active = false;
 
 	if (reconnect->timer > 0) {
 		g_source_remove(reconnect->timer);
@@ -516,20 +536,6 @@ static bool reconnect_match(const char *uuid)
 	}
 
 	return false;
-}
-
-static struct reconnect_data *reconnect_find(struct btd_device *dev)
-{
-	GSList *l;
-
-	for (l = reconnects; l; l = g_slist_next(l)) {
-		struct reconnect_data *reconnect = l->data;
-
-		if (reconnect->dev == dev)
-			return reconnect;
-	}
-
-	return NULL;
 }
 
 static struct reconnect_data *reconnect_add(struct btd_service *service)
@@ -643,7 +649,6 @@ static void service_cb(struct btd_service *service,
 	 */
 	reconnect = reconnect_add(service);
 
-	reconnect->active = false;
 	reconnect_reset(reconnect);
 
 	/*
@@ -675,7 +680,6 @@ static gboolean reconnect_timeout(gpointer data)
 		return FALSE;
 	}
 
-	reconnect->active = true;
 	reconnect->attempt++;
 
 	return FALSE;
@@ -685,10 +689,13 @@ static void reconnect_set_timer(struct reconnect_data *reconnect)
 {
 	static int timeout = 0;
 
+	reconnect->active = true;
+
 	if (reconnect->attempt < reconnect_intervals_len)
 		timeout = reconnect_intervals[reconnect->attempt];
 
-	DBG("%d seconds", timeout);
+	DBG("attempt %u/%zu %d seconds", reconnect->attempt + 1,
+						reconnect_attempts, timeout);
 
 	reconnect->timer = g_timeout_add_seconds(timeout, reconnect_timeout,
 								reconnect);
@@ -725,8 +732,6 @@ static void conn_fail_cb(struct btd_device *dev, uint8_t status)
 
 	if (!reconnect->active)
 		return;
-
-	reconnect->active = false;
 
 	/* Give up if we were powered off */
 	if (status == MGMT_STATUS_NOT_POWERED) {
