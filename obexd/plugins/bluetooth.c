@@ -75,8 +75,8 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	struct bluetooth_profile *profile = user_data;
 	struct obex_server *server = profile->server;
 	int type;
-	int omtu = BT_TX_MTU;
-	int imtu = BT_RX_MTU;
+	uint16_t omtu = BT_TX_MTU;
+	uint16_t imtu = BT_RX_MTU;
 	gboolean stream = TRUE;
 	socklen_t len = sizeof(int);
 

@@ -443,8 +443,8 @@ static int bluetooth_getpacketopt(GIOChannel *io, int *tx_mtu, int *rx_mtu)
 {
 	int sk = g_io_channel_unix_get_fd(io);
 	int type;
-	int omtu = -1;
-	int imtu = -1;
+	uint16_t omtu = BT_TX_MTU;
+	uint16_t imtu = BT_RX_MTU;
 	socklen_t len = sizeof(int);
 
 	DBG("");
