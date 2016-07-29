@@ -1999,7 +1999,7 @@ static void print_hex_field(const char *label, const uint8_t *data,
 static void print_uuid(const char *label, const void *data, uint16_t size)
 {
 	const char *str;
-	char uuidstr[36];
+	char uuidstr[MAX_LEN_UUID_STR];
 
 	switch (size) {
 	case 2:
