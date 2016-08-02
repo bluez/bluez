@@ -42,6 +42,9 @@ class FailedException(dbus.exceptions.DBusException):
 
 
 class Application(dbus.service.Object):
+    """
+    org.bluez.GattApplication1 interface implementation
+    """
     def __init__(self, bus):
         self.path = '/'
         self.services = []
@@ -74,6 +77,9 @@ class Application(dbus.service.Object):
 
 
 class Service(dbus.service.Object):
+    """
+    org.bluez.GattService1 interface implementation
+    """
     PATH_BASE = '/org/bluez/example/service'
 
     def __init__(self, bus, index, uuid, primary):
@@ -121,6 +127,9 @@ class Service(dbus.service.Object):
 
 
 class Characteristic(dbus.service.Object):
+    """
+    org.bluez.GattCharacteristic1 interface implementation
+    """
     def __init__(self, bus, index, uuid, flags, service):
         self.path = service.path + '/char' + str(index)
         self.bus = bus
@@ -195,6 +204,9 @@ class Characteristic(dbus.service.Object):
 
 
 class Descriptor(dbus.service.Object):
+    """
+    org.bluez.GattDescriptor1 interface implementation
+    """
     def __init__(self, bus, index, uuid, flags, characteristic):
         self.path = characteristic.path + '/desc' + str(index)
         self.bus = bus
@@ -635,6 +647,8 @@ def main():
     app = Application(bus)
 
     mainloop = GObject.MainLoop()
+
+    print('Registering GATT application...')
 
     service_manager.RegisterApplication(app.get_path(), {},
                                     reply_handler=register_app_cb,
