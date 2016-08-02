@@ -193,14 +193,17 @@ def main():
     om = dbus.Interface(bus.get_object(BLUEZ_SERVICE_NAME, '/'), DBUS_OM_IFACE)
     om.connect_to_signal('InterfacesRemoved', interfaces_removed_cb)
 
+    print('Getting objects...')
     objects = om.GetManagedObjects()
     chrcs = []
 
+    # List characteristics found
     for path, interfaces in objects.items():
         if GATT_CHRC_IFACE not in interfaces.keys():
             continue
         chrcs.append(path)
 
+    # List sevices found
     for path, interfaces in objects.items():
         if GATT_SERVICE_IFACE not in interfaces.keys():
             continue
