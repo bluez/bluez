@@ -613,12 +613,9 @@ static DBusMessage *descriptor_write_value(DBusConnection *conn,
 }
 
 static const GDBusPropertyTable descriptor_properties[] = {
-	{ "UUID", "s", descriptor_get_uuid, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Characteristic", "o", descriptor_get_characteristic, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Value", "ay", descriptor_get_value, NULL, descriptor_value_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "UUID", "s", descriptor_get_uuid },
+	{ "Characteristic", "o", descriptor_get_characteristic, },
+	{ "Value", "ay", descriptor_get_value, NULL, descriptor_value_exists },
 	{ }
 };
 
@@ -1402,12 +1399,9 @@ static gboolean service_get_primary(const GDBusPropertyTable *property,
 }
 
 static const GDBusPropertyTable service_properties[] = {
-	{ "UUID", "s", service_get_uuid, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Device", "o", service_get_device, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Primary", "b", service_get_primary, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "UUID", "s", service_get_uuid },
+	{ "Device", "o", service_get_device },
+	{ "Primary", "b", service_get_primary },
 	{ }
 };
 
