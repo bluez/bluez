@@ -1102,10 +1102,8 @@ static const GDBusMethodTable media_folder_methods[] = {
 };
 
 static const GDBusPropertyTable media_folder_properties[] = {
-	{ "Name", "s", get_folder_name, NULL, folder_name_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "NumberOfItems", "u", get_items, NULL, items_exists,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Name", "s", get_folder_name, NULL, folder_name_exists },
+	{ "NumberOfItems", "u", get_items, NULL, items_exists },
 	{ }
 };
 
