@@ -302,7 +302,7 @@ static bool parse_advertising_manufacturer_data(GDBusProxy *proxy,
 
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_UINT16)
+		if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_BYTE)
 			goto fail;
 
 		dbus_message_iter_get_fixed_array(&value, &manuf_data, &len);
