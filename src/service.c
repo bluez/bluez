@@ -197,7 +197,7 @@ int service_accept(struct btd_service *service)
 	}
 
 	if (!service->profile->accept)
-		goto done;
+		return -ENOSYS;
 
 	err = service->profile->accept(service);
 	if (!err)
