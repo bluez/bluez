@@ -1873,6 +1873,11 @@ static char *ad_generator(const char *text, int state)
 	return NULL;
 }
 
+static void cmd_set_advertise_uuids(const char *arg)
+{
+	ad_advertise_uuids(arg);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -1904,6 +1909,8 @@ static const struct {
 	{ "advertise",    "<on/off/type>", cmd_advertise,
 				"Enable/disable advertising with given type",
 							ad_generator},
+	{ "set-advertise-uuids", "[uuid1 uuid2 ...]",
+			cmd_set_advertise_uuids, "Set advertise uuids" },
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,

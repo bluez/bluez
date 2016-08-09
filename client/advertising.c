@@ -40,6 +40,8 @@
 
 static gboolean registered = FALSE;
 static char *ad_type = NULL;
+static char **ad_uuids = NULL;
+static size_t ad_uuids_len = 0;
 
 static void ad_release(DBusConnection *conn)
 {
@@ -110,8 +112,31 @@ static gboolean get_type(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean uuids_exists(const GDBusPropertyTable *property, void *data)
+{
+	return ad_uuids_len != 0;
+}
+
+static gboolean get_uuids(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter array;
+	size_t i;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "as", &array);
+
+	for (i = 0; i < ad_uuids_len; i++)
+		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
+							&ad_uuids[i]);
+
+	dbus_message_iter_close_container(iter, &array);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
+	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
 	{ }
 };
 
@@ -176,4 +201,22 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 		rl_printf("Failed to unregister advertisement method\n");
 		return;
 	}
+}
+
+void ad_advertise_uuids(const char *arg)
+{
+	g_strfreev(ad_uuids);
+	ad_uuids = NULL;
+	ad_uuids_len = 0;
+
+	if (!arg || !strlen(arg))
+		return;
+
+	ad_uuids = g_strsplit(arg, " ", -1);
+	if (!ad_uuids) {
+		rl_printf("Failed to parse input\n");
+		return;
+	}
+
+	ad_uuids_len = g_strv_length(ad_uuids);
 }
