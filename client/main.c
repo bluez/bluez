@@ -43,6 +43,7 @@
 #include "agent.h"
 #include "display.h"
 #include "gatt.h"
+#include "advertising.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -57,6 +58,8 @@ static DBusConnection *dbus_conn;
 
 static GDBusProxy *agent_manager;
 static char *auto_register_agent = NULL;
+
+static GDBusProxy *ad_manager;
 
 static GDBusProxy *default_ctrl;
 static GDBusProxy *default_dev;
@@ -74,6 +77,14 @@ static const char * const agent_arguments[] = {
 	"KeyboardDisplay",
 	"KeyboardOnly",
 	"NoInputNoOutput",
+	NULL
+};
+
+static const char * const ad_arguments[] = {
+	"on",
+	"off",
+	"peripheral",
+	"broadcast",
 	NULL
 };
 
@@ -445,6 +456,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		gatt_add_descriptor(proxy);
 	} else if (!strcmp(interface, "org.bluez.GattManager1")) {
 		gatt_add_manager(proxy);
+	} else if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
+		ad_manager = proxy;
 	}
 }
 
@@ -509,6 +522,11 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 			set_default_attribute(NULL);
 	} else if (!strcmp(interface, "org.bluez.GattManager1")) {
 		gatt_remove_manager(proxy);
+	} else if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
+		if (ad_manager == proxy) {
+			agent_manager = NULL;
+			ad_unregister(dbus_conn, NULL);
+		}
 	}
 }
 
@@ -1783,6 +1801,78 @@ static char *capability_generator(const char *text, int state)
 	return NULL;
 }
 
+static gboolean parse_argument_advertise(const char *arg, dbus_bool_t *value,
+							const char **type)
+{
+	const char * const *opt;
+
+	if (arg == NULL || strlen(arg) == 0) {
+		rl_printf("Missing on/off/type argument\n");
+		return FALSE;
+	}
+
+	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
+		*value = TRUE;
+		*type = "";
+		return TRUE;
+	}
+
+	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
+		*value = FALSE;
+		return TRUE;
+	}
+
+	for (opt = ad_arguments; *opt; opt++) {
+		if (strcmp(arg, *opt) == 0) {
+			*value = TRUE;
+			*type = *opt;
+			return TRUE;
+		}
+	}
+
+	rl_printf("Invalid argument %s\n", arg);
+	return FALSE;
+}
+
+static void cmd_advertise(const char *arg)
+{
+	dbus_bool_t enable;
+	const char *type;
+
+	if (parse_argument_advertise(arg, &enable, &type) == FALSE)
+		return;
+
+	if (!ad_manager) {
+		rl_printf("LEAdvertisingManager not found\n");
+		return;
+	}
+
+	if (enable == TRUE)
+		ad_register(dbus_conn, ad_manager, type);
+	else
+		ad_unregister(dbus_conn, ad_manager);
+}
+
+static char *ad_generator(const char *text, int state)
+{
+	static int index, len;
+	const char *arg;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	while ((arg = ad_arguments[index])) {
+		index++;
+
+		if (!strncmp(arg, text, len))
+			return strdup(arg);
+	}
+
+	return NULL;
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -1811,6 +1901,9 @@ static const struct {
 							capability_generator},
 	{ "default-agent",NULL,       cmd_default_agent,
 				"Set agent as the default one" },
+	{ "advertise",    "<on/off/type>", cmd_advertise,
+				"Enable/disable advertising with given type",
+							ad_generator},
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,
