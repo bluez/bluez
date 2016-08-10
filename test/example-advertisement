@@ -65,10 +65,10 @@ class Advertisement(dbus.service.Object):
                                                     signature='s')
         if self.manufacturer_data is not None:
             properties['ManufacturerData'] = dbus.Dictionary(
-                self.manufacturer_data, signature='qay')
+                self.manufacturer_data, signature='qv')
         if self.service_data is not None:
             properties['ServiceData'] = dbus.Dictionary(self.service_data,
-                                                        signature='say')
+                                                        signature='sv')
         if self.include_tx_power is not None:
             properties['IncludeTxPower'] = dbus.Boolean(self.include_tx_power)
         return {LE_ADVERTISEMENT_IFACE: properties}
@@ -88,13 +88,13 @@ class Advertisement(dbus.service.Object):
 
     def add_manufacturer_data(self, manuf_code, data):
         if not self.manufacturer_data:
-            self.manufacturer_data = dict()
-        self.manufacturer_data[manuf_code] = data
+            self.manufacturer_data = dbus.Dictionary({}, signature='qv')
+        self.manufacturer_data[manuf_code] = dbus.Array(data, signature='y')
 
     def add_service_data(self, uuid, data):
         if not self.service_data:
-            self.service_data = dict()
-        self.service_data[uuid] = data
+            self.service_data = dbus.Dictionary({}, signature='sv')
+        self.service_data[uuid] = dbus.Array(data, signature='y')
 
     @dbus.service.method(DBUS_PROP_IFACE,
                          in_signature='s',
