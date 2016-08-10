@@ -1883,6 +1883,11 @@ static void cmd_set_advertise_service(const char *arg)
 	ad_advertise_service(arg);
 }
 
+static void cmd_set_advertise_manufacturer(const char *arg)
+{
+	ad_advertise_service(arg);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -1919,6 +1924,9 @@ static const struct {
 	{ "set-advertise-service", "[uuid][data=[xx xx ...]",
 			cmd_set_advertise_service,
 			"Set advertise service data" },
+	{ "set-advertise-manufacturer", "[id][data=[xx xx ...]",
+			cmd_set_advertise_manufacturer,
+			"Set advertise manufacturer data" },
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,

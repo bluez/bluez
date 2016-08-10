@@ -45,6 +45,9 @@ static size_t ad_uuids_len = 0;
 static char *ad_service_uuid = NULL;
 static uint8_t ad_service_data[25];
 static uint8_t ad_service_data_len = 0;
+static uint16_t ad_manufacturer_id;
+static uint8_t ad_manufacturer_data[25];
+static uint8_t ad_manufacturer_data_len = 0;
 
 static void ad_release(DBusConnection *conn)
 {
@@ -212,10 +215,35 @@ static gboolean get_service_data(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean manufacturer_data_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	return ad_manufacturer_id != 0;
+}
+
+static gboolean get_manufacturer_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+	const uint8_t *data = ad_manufacturer_data;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{qv}", &dict);
+
+	dict_append_basic_array(&dict, DBUS_TYPE_UINT16, &ad_manufacturer_id,
+					DBUS_TYPE_BYTE, &data,
+					ad_manufacturer_data_len);
+
+	dbus_message_iter_close_container(iter, &dict);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
 	{ "ServiceData", "a{sv}", get_service_data, NULL, service_data_exists },
+	{ "ManufacturerData", "a{qv}", get_manufacturer_data, NULL,
+						manufacturer_data_exists },
 	{ }
 };
 
@@ -343,6 +371,59 @@ void ad_advertise_service(const char *arg)
 
 		ad_service_data[ad_service_data_len] = val;
 		ad_service_data_len++;
+	}
+
+done:
+	wordfree(&w);
+}
+
+static void ad_clear_manufacturer(void)
+{
+	ad_manufacturer_id = 0;
+	memset(ad_manufacturer_data, 0, sizeof(ad_manufacturer_data));
+	ad_manufacturer_data_len = 0;
+}
+
+void ad_advertise_manufacturer(const char *arg)
+{
+	wordexp_t w;
+	unsigned int i;
+	char *endptr = NULL;
+	long int val;
+
+	if (wordexp(arg, &w, WRDE_NOCMD)) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	ad_clear_manufacturer();
+
+	if (w.we_wordc == 0)
+		goto done;
+
+	val = strtol(w.we_wordv[0], &endptr, 0);
+	if (!endptr || *endptr != '\0' || val > UINT16_MAX) {
+		rl_printf("Invalid manufacture id\n");
+		goto done;
+	}
+
+	ad_manufacturer_id = val;
+
+	for (i = 1; i < w.we_wordc; i++) {
+		if (i >= G_N_ELEMENTS(ad_service_data)) {
+			rl_printf("Too much data\n");
+			goto done;
+		}
+
+		val = strtol(w.we_wordv[i], &endptr, 0);
+		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
+			rl_printf("Invalid value at index %d\n", i);
+			ad_clear_service();
+			goto done;
+		}
+
+		ad_manufacturer_data[ad_manufacturer_data_len] = val;
+		ad_manufacturer_data_len++;
 	}
 
 done:
