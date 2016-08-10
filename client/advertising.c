@@ -42,6 +42,9 @@ static gboolean registered = FALSE;
 static char *ad_type = NULL;
 static char **ad_uuids = NULL;
 static size_t ad_uuids_len = 0;
+static char *ad_service_uuid = NULL;
+static uint8_t ad_service_data[25];
+static uint8_t ad_service_data_len = 0;
 
 static void ad_release(DBusConnection *conn)
 {
@@ -134,9 +137,85 @@ static gboolean get_uuids(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static void append_array_variant(DBusMessageIter *iter, int type, void *val,
+							int n_elements)
+{
+	DBusMessageIter variant, array;
+	char type_sig[2] = { type, '\0' };
+	char array_sig[3] = { DBUS_TYPE_ARRAY, type, '\0' };
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+						array_sig, &variant);
+
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						type_sig, &array);
+
+	if (dbus_type_is_fixed(type) == TRUE) {
+		dbus_message_iter_append_fixed_array(&array, type, val,
+							n_elements);
+	} else if (type == DBUS_TYPE_STRING || type == DBUS_TYPE_OBJECT_PATH) {
+		const char ***str_array = val;
+		int i;
+
+		for (i = 0; i < n_elements; i++)
+			dbus_message_iter_append_basic(&array, type,
+							&((*str_array)[i]));
+	}
+
+	dbus_message_iter_close_container(&variant, &array);
+
+	dbus_message_iter_close_container(iter, &variant);
+}
+
+static void dict_append_basic_array(DBusMessageIter *dict, int key_type,
+					const void *key, int type, void *val,
+					int n_elements)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, key_type, key);
+
+	append_array_variant(&entry, type, val, n_elements);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void dict_append_array(DBusMessageIter *dict, const char *key, int type,
+				void *val, int n_elements)
+{
+	dict_append_basic_array(dict, DBUS_TYPE_STRING, &key, type, val,
+								n_elements);
+}
+
+static gboolean service_data_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	return ad_service_uuid != NULL;
+}
+
+static gboolean get_service_data(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+	const uint8_t *data = ad_service_data;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+	dict_append_array(&dict, ad_service_uuid, DBUS_TYPE_BYTE, &data,
+							ad_service_data_len);
+
+	dbus_message_iter_close_container(iter, &dict);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
+	{ "ServiceData", "a{sv}", get_service_data, NULL, service_data_exists },
 	{ }
 };
 
@@ -219,4 +298,53 @@ void ad_advertise_uuids(const char *arg)
 	}
 
 	ad_uuids_len = g_strv_length(ad_uuids);
+}
+
+static void ad_clear_service(void)
+{
+	g_free(ad_service_uuid);
+	ad_service_uuid = NULL;
+	memset(ad_service_data, 0, sizeof(ad_service_data));
+	ad_service_data_len = 0;
+}
+
+void ad_advertise_service(const char *arg)
+{
+	wordexp_t w;
+	unsigned int i;
+
+	if (wordexp(arg, &w, WRDE_NOCMD)) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	ad_clear_service();
+
+	if (w.we_wordc == 0)
+		goto done;
+
+	ad_service_uuid = g_strdup(w.we_wordv[0]);
+
+	for (i = 1; i < w.we_wordc; i++) {
+		long int val;
+		char *endptr = NULL;
+
+		if (i >= G_N_ELEMENTS(ad_service_data)) {
+			rl_printf("Too much data\n");
+			goto done;
+		}
+
+		val = strtol(w.we_wordv[i], &endptr, 0);
+		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
+			rl_printf("Invalid value at index %d\n", i);
+			ad_clear_service();
+			goto done;
+		}
+
+		ad_service_data[ad_service_data_len] = val;
+		ad_service_data_len++;
+	}
+
+done:
+	wordfree(&w);
 }

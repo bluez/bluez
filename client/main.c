@@ -1878,6 +1878,11 @@ static void cmd_set_advertise_uuids(const char *arg)
 	ad_advertise_uuids(arg);
 }
 
+static void cmd_set_advertise_service(const char *arg)
+{
+	ad_advertise_service(arg);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -1911,6 +1916,9 @@ static const struct {
 							ad_generator},
 	{ "set-advertise-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_advertise_uuids, "Set advertise uuids" },
+	{ "set-advertise-service", "[uuid][data=[xx xx ...]",
+			cmd_set_advertise_service,
+			"Set advertise service data" },
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,
