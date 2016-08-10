@@ -5488,8 +5488,11 @@ static void update_found_devices(struct btd_adapter *adapter,
 	 * supports this we can make the non-zero check conditional.
 	 */
 	if (bdaddr_type != BDADDR_BREDR && eir_data.flags &&
-					!(eir_data.flags & EIR_BREDR_UNSUP))
+					!(eir_data.flags & EIR_BREDR_UNSUP)) {
 		device_set_bredr_support(dev);
+		/* Update last seen for BR/EDR in case its flag is set */
+		device_update_last_seen(dev, BDADDR_BREDR);
+	}
 
 	if (eir_data.name != NULL && eir_data.name_complete)
 		device_store_cached_name(dev, eir_data.name);
