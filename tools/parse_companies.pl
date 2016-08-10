@@ -51,6 +51,7 @@ while (<>) {
         my $name = uri_decode($1);
         $name =~ s/^\s+//g; # kill leading
         $name =~ s/\s+$//g; # and trailing space
+        $name =~ s/"/\\"/g; # escape double quotes
         my $id = hex($identifier);
         if ($id != 65535) {
             print "\tcase $id:\n";
