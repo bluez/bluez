@@ -1885,7 +1885,27 @@ static void cmd_set_advertise_service(const char *arg)
 
 static void cmd_set_advertise_manufacturer(const char *arg)
 {
-	ad_advertise_service(arg);
+	ad_advertise_manufacturer(arg);
+}
+
+static void cmd_set_advertise_tx_power(const char *arg)
+{
+	if (arg == NULL || strlen(arg) == 0) {
+		rl_printf("Missing on/off argument\n");
+		return;
+	}
+
+	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
+		ad_advertise_tx_power(TRUE);
+		return;
+	}
+
+	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
+		ad_advertise_tx_power(FALSE);
+		return;
+	}
+
+	rl_printf("Invalid argument\n");
 }
 
 static const struct {
@@ -1927,6 +1947,9 @@ static const struct {
 	{ "set-advertise-manufacturer", "[id][data=[xx xx ...]",
 			cmd_set_advertise_manufacturer,
 			"Set advertise manufacturer data" },
+	{ "set-advertise-tx-power", "<on/off>",
+			cmd_set_advertise_tx_power,
+			"Enable/disable TX power to be advertised" },
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,

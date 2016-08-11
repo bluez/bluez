@@ -48,6 +48,7 @@ static uint8_t ad_service_data_len = 0;
 static uint16_t ad_manufacturer_id;
 static uint8_t ad_manufacturer_data[25];
 static uint8_t ad_manufacturer_data_len = 0;
+static gboolean ad_tx_power = FALSE;
 
 static void ad_release(DBusConnection *conn)
 {
@@ -238,12 +239,26 @@ static gboolean get_manufacturer_data(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean tx_power_exists(const GDBusPropertyTable *property, void *data)
+{
+	return ad_tx_power;
+}
+
+static gboolean get_tx_power(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &ad_tx_power);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
 	{ "ServiceData", "a{sv}", get_service_data, NULL, service_data_exists },
 	{ "ManufacturerData", "a{qv}", get_manufacturer_data, NULL,
 						manufacturer_data_exists },
+	{ "IncludeTxPower", "b", get_tx_power, NULL, tx_power_exists },
 	{ }
 };
 
@@ -428,4 +443,10 @@ void ad_advertise_manufacturer(const char *arg)
 
 done:
 	wordfree(&w);
+}
+
+
+void ad_advertise_tx_power(gboolean value)
+{
+	ad_tx_power = value;
 }
