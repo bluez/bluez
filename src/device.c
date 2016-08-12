@@ -1779,9 +1779,18 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	struct btd_device *dev = user_data;
 	uint8_t bdaddr_type;
 
-	if (dev->bredr_state.connected)
-		bdaddr_type = dev->bdaddr_type;
-	else if (dev->le_state.connected && dev->bredr)
+	if (dev->bredr_state.connected) {
+		/*
+		 * Check if services have been resolved and there is at list
+		 * one connected before switching to connect LE.
+		 */
+		if (dev->bredr_state.svc_resolved &&
+			find_service_with_state(dev->services,
+						BTD_SERVICE_STATE_CONNECTED))
+			bdaddr_type = dev->bdaddr_type;
+		else
+			bdaddr_type = BDADDR_BREDR;
+	} else if (dev->le_state.connected && dev->bredr)
 		bdaddr_type = BDADDR_BREDR;
 	else
 		bdaddr_type = select_conn_bearer(dev);
