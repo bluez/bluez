@@ -2462,6 +2462,7 @@ Read Extended Controller Index List Command
 		0x06	SDIO
 		0x07	SPI
 		0x08	I2C
+		0x09	SMD
 
 	Controllers marked as RAW only operation are currently not listed
 	by this command.
