@@ -160,6 +160,8 @@ char *hci_bustostr(int bus)
 		return "SPI";
 	case HCI_I2C:
 		return "I2C";
+	case HCI_SMD:
+		return "SMD";
 	default:
 		return "Unknown";
 	}
