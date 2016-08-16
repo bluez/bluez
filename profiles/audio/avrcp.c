@@ -3212,6 +3212,7 @@ static struct avrcp_player *create_ct_player(struct avrcp *session,
 	const char *path;
 
 	player = g_new0(struct avrcp_player, 1);
+	player->id = id;
 	player->sessions = g_slist_prepend(player->sessions, session);
 
 	path = device_get_path(session->dev);
