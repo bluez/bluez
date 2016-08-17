@@ -1404,6 +1404,11 @@ void media_player_set_browsable(struct media_player *mp, bool enabled)
 					"Browsable");
 }
 
+bool media_player_get_browsable(struct media_player *mp)
+{
+	return mp->browsable;
+}
+
 void media_player_set_searchable(struct media_player *mp, bool enabled)
 {
 	if (mp->searchable == enabled)

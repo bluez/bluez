@@ -3194,14 +3194,30 @@ static const struct media_player_callback ct_cbs = {
 	.total_items = ct_get_total_numberofitems,
 };
 
+static void set_browsed_player(struct avrcp *session,
+					struct avrcp_player *player)
+{
+	if (!player || !player->id || player->browsed)
+		return;
+
+	if (media_player_get_browsable(player->user_data))
+		avrcp_set_browsed_player(session, player);
+}
+
 static void set_ct_player(struct avrcp *session, struct avrcp_player *player)
 {
 	struct btd_service *service;
+
+	if (session->controller->player == player)
+		goto done;
 
 	session->controller->player = player;
 	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
 	control_set_player(service, player ?
 			media_player_get_path(player->user_data) : NULL);
+
+done:
+	set_browsed_player(session, player);
 }
 
 static struct avrcp_player *create_ct_player(struct avrcp *session,
@@ -3304,8 +3320,8 @@ avrcp_parse_media_player_item(struct avrcp *session, uint8_t *operands,
 		media_player_set_name(mp, name);
 	}
 
-	if (session->controller->player == player && !player->browsed)
-		avrcp_set_browsed_player(session, player);
+	if (player->addressed)
+		set_browsed_player(session, player);
 
 	return player;
 }
