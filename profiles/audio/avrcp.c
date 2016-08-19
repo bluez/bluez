@@ -3137,6 +3137,8 @@ static int ct_play_item(struct media_player *mp, const char *name,
 
 	if (g_strrstr(name, "/NowPlaying"))
 		player->scope = 0x03;
+	else if (g_strrstr(name, "/Search"))
+		player->scope = 0x02;
 	else
 		player->scope = 0x01;
 

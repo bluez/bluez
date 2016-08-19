@@ -1483,12 +1483,15 @@ static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
 	struct media_item *item = data;
 	struct media_player *mp = item->player;
 	struct player_callback *cb = mp->cb;
+	const char *path;
 	int err;
 
 	if (!item->playable || !cb->cbs->play_item)
 		return btd_error_not_supported(msg);
 
-	err = cb->cbs->play_item(mp, item->path, item->uid, cb->user_data);
+	path = mp->search && mp->scope == mp->search ? "/Search" : item->path;
+
+	err = cb->cbs->play_item(mp, path, item->uid, cb->user_data);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
