@@ -4080,7 +4080,10 @@ static struct btd_service *probe_service(struct btd_device *device,
 		return NULL;
 	}
 
-	if (profile->auto_connect)
+	/* Only set auto connect if profile has set the flag and can really
+	 * accept connections.
+	 */
+	if (profile->auto_connect && profile->accept)
 		device_set_auto_connect(device, TRUE);
 
 	return service;
