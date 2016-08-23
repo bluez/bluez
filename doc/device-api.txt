@@ -21,6 +21,20 @@ Methods		void Connect()
 			If at least one profile was connected successfully this
 			method will indicate success.
 
+			For dual-mode devices only one bearer is connected at
+			time, the conditions are in the following order:
+
+				1. Connect the disconnected bearer if already
+				connected.
+
+				2. Connect first the bonded bearer. If no
+				bearers are bonded or both are skip and check
+				latest seen bearer.
+
+				3. Connect last seen bearer, in case the
+				timestamps are the same BR/EDR takes
+				precedence.
+
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
