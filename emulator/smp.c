@@ -370,7 +370,7 @@ static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
 				conn->ra_type, conn->ra, confirm))
 		return false;
 
-	if (memcmp(conn->pcnf, confirm, sizeof(conn->pcnf) != 0)) {
+	if (memcmp(conn->pcnf, confirm, sizeof(conn->pcnf)) != 0) {
 		printf("Confirmation values don't match\n");
 		return false;
 	}

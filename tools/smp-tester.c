@@ -593,7 +593,7 @@ static bool verify_random(const uint8_t rnd[16])
 					data->ra_type, data->ra, confirm))
 		return false;
 
-	if (memcmp(data->pcnf, confirm, sizeof(data->pcnf) != 0)) {
+	if (memcmp(data->pcnf, confirm, sizeof(data->pcnf)) != 0) {
 		tester_warn("Confirmation values don't match");
 		return false;
 	}
