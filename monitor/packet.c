@@ -92,6 +92,7 @@
 #define COLOR_CTRL_EVENT_UNKNOWN	COLOR_WHITE_BG
 
 #define COLOR_UNKNOWN_SETTINGS_BIT	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_ADDRESS_TYPE	COLOR_WHITE_BG
 
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
@@ -9326,6 +9327,35 @@ static void mgmt_print_address(const uint8_t *address, uint8_t type)
 	}
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} mgmt_address_type_table[] = {
+	{  0, "BR/EDR"		},
+	{  1, "LE Public"	},
+	{  2, "LE Random"	},
+	{ }
+};
+
+static void mgmt_print_address_type(uint8_t type)
+{
+	uint8_t mask = type;
+	int i;
+
+	print_field("Address type: 0x%2.2x", type);
+
+	for (i = 0; mgmt_address_type_table[i].str; i++) {
+		if (type & (1 << mgmt_address_type_table[i].bit)) {
+			print_field("  %s", mgmt_address_type_table[i].str);
+			mask &= ~(1 << mgmt_address_type_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADDRESS_TYPE, "  Unknown address type"
+							" (0x%2.2x)", mask);
+}
+
 static void mgmt_print_version(uint8_t version)
 {
 	packet_print_version("Version", version, NULL, 0x0000);
@@ -9585,6 +9615,34 @@ static void mgmt_set_local_name_rsp(const void *data, uint16_t size)
 	mgmt_print_name(data);
 }
 
+static void mgmt_start_discovery_cmd(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
+}
+
+static void mgmt_start_discovery_rsp(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
+}
+
+static void mgmt_stop_discovery_cmd(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
+}
+
+static void mgmt_stop_discovery_rsp(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
+}
+
 static void mgmt_set_advertising_cmd(const void *data, uint16_t size)
 {
 	uint8_t enable = get_u8(data);
@@ -9729,6 +9787,27 @@ static void mgmt_read_ext_index_list_rsp(const void *data, uint16_t size)
 	}
 }
 
+static void mgmt_read_local_oob_ext_data_cmd(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
+}
+
+static void mgmt_start_limited_discovery_cmd(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
+}
+
+static void mgmt_start_limited_discovery_rsp(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
+}
+
 struct mgmt_data {
 	uint16_t opcode;
 	const char *str;
@@ -9807,8 +9886,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 				mgmt_null_cmd, 0, true },
 	{ 0x0021, "Add Remote Out Of Band Data" },
 	{ 0x0022, "Remove Remote Out Of Band Data" },
-	{ 0x0023, "Start Discovery" },
-	{ 0x0024, "Stop Discovery" },
+	{ 0x0023, "Start Discovery",
+				mgmt_start_discovery_cmd, 1, true,
+				mgmt_start_discovery_rsp, 1, true },
+	{ 0x0024, "Stop Discovery",
+				mgmt_stop_discovery_cmd, 1, true,
+				mgmt_stop_discovery_rsp, 1, true },
 	{ 0x0025, "Confirm Name" },
 	{ 0x0026, "Block Device" },
 	{ 0x0027, "Unblock Device" },
@@ -9844,7 +9927,8 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0038, "Set External Configuration" },
 	{ 0x0039, "Set Public Address" },
 	{ 0x003a, "Start Service Discovery" },
-	{ 0x003b, "Read Local Out Of Band Extended Data" },
+	{ 0x003b, "Read Local Out Of Band Extended Data",
+				mgmt_read_local_oob_ext_data_cmd, 1, true },
 	{ 0x003c, "Read Extended Controller Index List",
 				mgmt_null_cmd, 0, true,
 				mgmt_read_ext_index_list_rsp, 2, false },
@@ -9853,7 +9937,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x003e, "Add Advertising " },
 	{ 0x003f, "Remove Advertising" },
 	{ 0x0040, "Get Advertising Size Information" },
-	{ 0x0041, "Start Limited Discovery" },
+	{ 0x0041, "Start Limited Discovery",
+				mgmt_start_limited_discovery_cmd, 1, true,
+				mgmt_start_limited_discovery_rsp, 1, true },
 	{ }
 };
 
@@ -9883,7 +9969,10 @@ static void mgmt_command_complete_evt(const void *data, uint16_t size)
 	}
 
 	if (mgmt_data) {
-		mgmt_color = COLOR_CTRL_COMMAND;
+		if (mgmt_data->rsp_func)
+			mgmt_color = COLOR_CTRL_COMMAND;
+		else
+			mgmt_color = COLOR_CTRL_COMMAND_UNKNOWN;
 		mgmt_str = mgmt_data->str;
 	} else {
 		mgmt_color = COLOR_CTRL_COMMAND_UNKNOWN;
@@ -9973,6 +10062,15 @@ static void mgmt_local_name_changed_evt(const void *data, uint16_t size)
 	mgmt_print_name(data);
 }
 
+static void mgmt_discovering_evt(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+	uint8_t enable = get_u8(data + 1);
+
+	mgmt_print_address_type(type);
+	mgmt_print_enable("Discovery", enable);
+}
+
 static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0001, "Command Complete",
 			mgmt_command_complete_evt, 3, false },
@@ -10000,7 +10098,8 @@ static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0010, "User Passkey Request" },
 	{ 0x0011, "Authentication Failed" },
 	{ 0x0012, "Device Found" },
-	{ 0x0013, "Discovering" },
+	{ 0x0013, "Discovering",
+			mgmt_discovering_evt, 2, true },
 	{ 0x0014, "Device Blocked" },
 	{ 0x0015, "Device Unblocked" },
 	{ 0x0016, "Device Unpaired" },
