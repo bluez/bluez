@@ -38,6 +38,11 @@ bool use_color(void);
 #define COLOR_WHITE_BG	"\x1B[0;47;30m"
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
+#define COLOR_RED_BOLD		"\x1B[1;31m"
+#define COLOR_GREEN_BOLD	"\x1B[1;32m"
+#define COLOR_BLUE_BOLD		"\x1B[1;34m"
+#define COLOR_MAGENTA_BOLD	"\x1B[1;35m"
+
 #define COLOR_ERROR	"\x1B[1;31m"
 #define COLOR_WARN	"\x1B[1m"
 #define COLOR_INFO	COLOR_OFF

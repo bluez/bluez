@@ -89,4 +89,13 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 				bool in, const void *data, uint16_t size);
 
+void packet_ctrl_open(struct timeval *tv, struct ucred *cred, uint16_t index,
+					const void *data, uint16_t size);
+void packet_ctrl_close(struct timeval *tv, struct ucred *cred, uint16_t index,
+					const void *data, uint16_t size);
+void packet_ctrl_command(struct timeval *tv, struct ucred *cred, uint16_t index,
+					const void *data, uint16_t size);
+void packet_ctrl_event(struct timeval *tv, struct ucred *cred, uint16_t index,
+					const void *data, uint16_t size);
+
 void packet_todo(void);
