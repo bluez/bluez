@@ -95,6 +95,7 @@
 #define COLOR_UNKNOWN_SETTINGS_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_ADDRESS_TYPE	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_DEVICE_FLAG	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_ADV_FLAG		COLOR_WHITE_BG
 
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
@@ -9553,6 +9554,38 @@ static void mgmt_print_device_action(uint8_t action)
 	print_field("Action: %s (0x%2.2x)", str, action);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} mgmt_adv_flags_table[] = {
+	{  0, "Switch into Connectable mode"		},
+	{  1, "Advertise as Discoverable"		},
+	{  2, "Advertise as Limited Discoverable"	},
+	{  3, "Add Flags field to Advertising Data"	},
+	{  4, "Add TX Power field to Advertising Data"	},
+	{  5, "Add Appearance field to Scan Response"	},
+	{  6, "Add Local Name in Scan Response"		},
+	{ }
+};
+
+static void mgmt_print_adv_flags(uint32_t flags)
+{
+	uint32_t mask = flags;
+	int i;
+
+	print_field("Flags: 0x%8.8x", flags);
+
+	for (i = 0; mgmt_adv_flags_table[i].str; i++) {
+		if (flags & (1 << mgmt_adv_flags_table[i].bit)) {
+			print_field("  %s", mgmt_adv_flags_table[i].str);
+			mask &= ~(1 << mgmt_adv_flags_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADV_FLAG, "  Unknown advertising flag"
+							" (0x%8.8x)", mask);
+}
 static void mgmt_null_cmd(const void *data, uint16_t size)
 {
 }
@@ -10124,6 +10157,95 @@ static void mgmt_read_local_oob_ext_data_cmd(const void *data, uint16_t size)
 	mgmt_print_address_type(type);
 }
 
+static void mgmt_read_advertising_features_rsp(const void *data, uint16_t size)
+{
+	uint32_t flags = get_le32(data);
+	uint8_t adv_data_len = get_u8(data + 4);
+	uint8_t scan_rsp_len = get_u8(data + 5);
+	uint8_t max_instances = get_u8(data + 6);
+	uint8_t num_instances = get_u8(data + 7);
+	int i;
+
+	mgmt_print_adv_flags(flags);
+	print_field("Advertising data length: %u", adv_data_len);
+	print_field("Scan response length: %u", scan_rsp_len);
+	print_field("Max instances: %u", max_instances);
+	print_field("Instances: %u", num_instances);
+
+	if (size - 8 != num_instances) {
+		packet_hexdump(data + 8, size - 8);
+		return;
+	}
+
+	for (i = 0; i < num_instances; i++) {
+		uint8_t instance = get_u8(data + 8 + i);
+
+		print_field("  %u", instance);
+	}
+}
+
+static void mgmt_add_advertising_cmd(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+	uint32_t flags = get_le32(data + 1);
+	uint16_t duration = get_le16(data + 5);
+	uint16_t timeout = get_le16(data + 7);
+	uint8_t adv_data_len = get_u8(data + 9);
+	uint8_t scan_rsp_len = get_u8(data + 10);
+
+	print_field("Instance: %u", instance);
+	mgmt_print_adv_flags(flags);
+	print_field("Duration: %u", duration);
+	print_field("Timeout: %u", timeout);
+	print_field("Advertising data length: %u", adv_data_len);
+	print_eir(data + 11, adv_data_len, false);
+	print_field("Scan response length: %u", scan_rsp_len);
+	print_eir(data + 11 + adv_data_len, scan_rsp_len, false);
+}
+
+static void mgmt_add_advertising_rsp(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+
+	print_field("Instance: %u", instance);
+}
+
+static void mgmt_remove_advertising_cmd(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+
+	print_field("Instance: %u", instance);
+}
+
+static void mgmt_remove_advertising_rsp(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+
+	print_field("Instance: %u", instance);
+}
+
+static void mgmt_get_advertising_size_info_cmd(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+	uint32_t flags = get_le32(data + 1);
+
+	print_field("Instance: %u", instance);
+	mgmt_print_adv_flags(flags);
+}
+
+static void mgmt_get_advertising_size_info_rsp(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+	uint32_t flags = get_le32(data + 1);
+	uint8_t adv_data_len = get_u8(data + 5);
+	uint8_t scan_rsp_len = get_u8(data + 6);
+
+	print_field("Instance: %u", instance);
+	mgmt_print_adv_flags(flags);
+	print_field("Advertising data length: %u", adv_data_len);
+	print_field("Scan response length: %u", scan_rsp_len);
+}
+
 static void mgmt_start_limited_discovery_cmd(const void *data, uint16_t size)
 {
 	uint8_t type = get_u8(data);
@@ -10291,10 +10413,17 @@ static const struct mgmt_data mgmt_command_table[] = {
 				mgmt_null_cmd, 0, true,
 				mgmt_read_ext_index_list_rsp, 2, false },
 	{ 0x003d, "Read Advertising Features",
-				mgmt_null_cmd, 0, true },
-	{ 0x003e, "Add Advertising " },
-	{ 0x003f, "Remove Advertising" },
-	{ 0x0040, "Get Advertising Size Information" },
+				mgmt_null_cmd, 0, true,
+				mgmt_read_advertising_features_rsp, 8, false },
+	{ 0x003e, "Add Advertising",
+				mgmt_add_advertising_cmd, 11, false,
+				mgmt_add_advertising_rsp, 1, true },
+	{ 0x003f, "Remove Advertising",
+				mgmt_remove_advertising_cmd, 1, true,
+				mgmt_remove_advertising_rsp, 1, true },
+	{ 0x0040, "Get Advertising Size Information",
+				mgmt_get_advertising_size_info_cmd, 5, true,
+				mgmt_get_advertising_size_info_rsp, 7, true },
 	{ 0x0041, "Start Limited Discovery",
 				mgmt_start_limited_discovery_cmd, 1, true,
 				mgmt_start_limited_discovery_rsp, 1, true },
@@ -10565,6 +10694,30 @@ static void mgmt_ext_index_removed_evt(const void *data, uint16_t size)
 	print_field("type 0x%2.2x - bus 0x%2.2x", type, bus);
 }
 
+static void mgmt_local_oob_ext_data_updated_evt(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+	uint16_t data_len = get_le16(data + 1);
+
+	mgmt_print_address_type(type);
+	print_field("Data length: %u", data_len);
+	print_eir(data + 3, size - 3, true);
+}
+
+static void mgmt_advertising_added_evt(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+
+	print_field("Instance: %u", instance);
+}
+
+static void mgmt_advertising_removed_evt(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+
+	print_field("Instance: %u", instance);
+}
+
 static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0001, "Command Complete",
 			mgmt_command_complete_evt, 3, false },
@@ -10623,9 +10776,12 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_ext_index_added_evt, 2, true },
 	{ 0x0021, "Extended Index Removed",
 			mgmt_ext_index_removed_evt, 2, true },
-	{ 0x0022, "Local Out Of Band Extended Data Updated" },
-	{ 0x0023, "Advertising Added" },
-	{ 0x0024, "Advertising Removed" },
+	{ 0x0022, "Local Out Of Band Extended Data Updated",
+			mgmt_local_oob_ext_data_updated_evt, 3, false },
+	{ 0x0023, "Advertising Added",
+			mgmt_advertising_added_evt, 1, true },
+	{ 0x0024, "Advertising Removed",
+			mgmt_advertising_removed_evt, 1, true },
 	{ }
 };
 
