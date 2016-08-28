@@ -9445,6 +9445,16 @@ static void mgmt_print_name(const void *data)
 	print_field("Short name: %s", (char *) (data + 249));
 }
 
+static void mgmt_print_uuid(const void *data)
+{
+	const uint8_t *uuid = data;
+
+	print_field("UUID: %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
+				get_le32(&uuid[12]), get_le16(&uuid[10]),
+				get_le16(&uuid[8]), get_le16(&uuid[6]),
+				get_le32(&uuid[2]), get_le16(&uuid[0]));
+}
+
 static void mgmt_print_enable(const char *label, uint8_t enable)
 {
 	const char *str;
@@ -9519,6 +9529,28 @@ static void mgmt_print_device_flags(uint32_t flags)
 	if (mask)
 		print_text(COLOR_UNKNOWN_DEVICE_FLAG, "  Unknown device flag"
 							" (0x%8.8x)", mask);
+}
+
+static void mgmt_print_device_action(uint8_t action)
+{
+	const char *str;
+
+	switch (action) {
+	case 0x00:
+		str = "Background scan for device";
+		break;
+	case 0x01:
+		str = "Allow incoming connection";
+		break;
+	case 0x02:
+		str = "Auto-connect remote device";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Action: %s (0x%2.2x)", str, action);
 }
 
 static void mgmt_null_cmd(const void *data, uint16_t size)
@@ -9677,7 +9709,7 @@ static void mgmt_new_settings_rsp(const void *data, uint16_t size)
 {
 	uint32_t settings = get_le32(data);
 
-	mgmt_print_settings("Settings", settings);
+	mgmt_print_settings("Current settings", settings);
 }
 
 static void mgmt_set_device_class_cmd(const void *data, uint16_t size)
@@ -9702,6 +9734,29 @@ static void mgmt_set_local_name_cmd(const void *data, uint16_t size)
 static void mgmt_set_local_name_rsp(const void *data, uint16_t size)
 {
 	mgmt_print_name(data);
+}
+
+static void mgmt_add_uuid_cmd(const void *data, uint16_t size)
+{
+	uint8_t service_class = get_u8(data + 16);
+
+	mgmt_print_uuid(data);
+	print_field("Service class: 0x%2.2x", service_class);
+}
+
+static void mgmt_add_uuid_rsp(const void *data, uint16_t size)
+{
+	print_dev_class(data);
+}
+
+static void mgmt_remove_uuid_cmd(const void *data, uint16_t size)
+{
+	mgmt_print_uuid(data);
+}
+
+static void mgmt_remove_uuid_rsp(const void *data, uint16_t size)
+{
+	print_dev_class(data);
 }
 
 static void mgmt_disconnect_cmd(const void *data, uint16_t size)
@@ -9848,6 +9903,39 @@ static void mgmt_confirm_name_rsp(const void *data, uint16_t size)
 	mgmt_print_address(data, address_type);
 }
 
+static void mgmt_block_device_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_block_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_unblock_device_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_unblock_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_set_device_id_cmd(const void *data, uint16_t size)
+{
+	print_device_id(data, size);
+}
+
 static void mgmt_set_advertising_cmd(const void *data, uint16_t size)
 {
 	uint8_t enable = get_u8(data);
@@ -9947,6 +10035,36 @@ static void mgmt_set_privacy_cmd(const void *data, uint16_t size)
 	print_field("Privacy: %s (0x%2.2x)", str, enable);
 }
 
+static void mgmt_add_device_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t action = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_device_action(action);
+}
+
+static void mgmt_add_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_remove_device_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_remove_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
 static void mgmt_read_unconf_index_list_rsp(const void *data, uint16_t size)
 {
 	uint16_t num_controllers = get_le16(data);
@@ -9991,8 +10109,8 @@ static void mgmt_read_ext_index_list_rsp(const void *data, uint16_t size)
 
 	for (i = 0; i < num_controllers; i++) {
 		uint16_t index = get_le16(data + 2 + (i * 4));
-		uint16_t type = get_u8(data + 4 + (i * 4));
-		uint16_t bus = get_u8(data + 5 + (i * 4));
+		uint8_t type = get_u8(data + 4 + (i * 4));
+		uint8_t bus = get_u8(data + 5 + (i * 4));
 
 		print_field("  hci%u - type 0x%2.2x - bus 0x%2.2x",
 							index, type, bus);
@@ -10077,8 +10195,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x000f, "Set Local Name",
 				mgmt_set_local_name_cmd, 260, true,
 				mgmt_set_local_name_rsp, 260, true },
-	{ 0x0010, "Add UUID" },
-	{ 0x0011, "Remove UUID" },
+	{ 0x0010, "Add UUID",
+				mgmt_add_uuid_cmd, 17, true,
+				mgmt_add_uuid_rsp, 3, true },
+	{ 0x0011, "Remove UUID",
+				mgmt_remove_uuid_cmd, 16, true,
+				mgmt_remove_uuid_rsp, 3, true },
 	{ 0x0012, "Load Link Keys" },
 	{ 0x0013, "Load Long Term Keys" },
 	{ 0x0014, "Disconnect",
@@ -10118,9 +10240,15 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0025, "Confirm Name",
 				mgmt_confirm_name_cmd, 8, true,
 				mgmt_confirm_name_rsp, 7, true },
-	{ 0x0026, "Block Device" },
-	{ 0x0027, "Unblock Device" },
-	{ 0x0028, "Set Device ID" },
+	{ 0x0026, "Block Device",
+				mgmt_block_device_cmd, 7, true,
+				mgmt_block_device_rsp, 7, true },
+	{ 0x0027, "Unblock Device",
+				mgmt_unblock_device_cmd, 7, true,
+				mgmt_unblock_device_rsp, 7, true },
+	{ 0x0028, "Set Device ID",
+				mgmt_set_device_id_cmd, 8, true,
+				mgmt_null_rsp, 0, true },
 	{ 0x0029, "Set Advertising",
 				mgmt_set_advertising_cmd, 1, true,
 				mgmt_new_settings_rsp, 4, true },
@@ -10141,8 +10269,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0030, "Load Identity Resolving Keys" },
 	{ 0x0031, "Get Connection Information" },
 	{ 0x0032, "Get Clock Information" },
-	{ 0x0033, "Add Device" },
-	{ 0x0034, "Remove Device" },
+	{ 0x0033, "Add Device",
+				mgmt_add_device_cmd, 8, true,
+				mgmt_add_device_rsp, 7, true },
+	{ 0x0034, "Remove Device",
+				mgmt_remove_device_cmd, 7, true,
+				mgmt_remove_device_rsp, 7, true },
 	{ 0x0035, "Load Connection Parameters" },
 	{ 0x0036, "Read Unconfigured Controller Index List",
 				mgmt_null_cmd, 0, true,
@@ -10275,7 +10407,7 @@ static void mgmt_new_settings_evt(const void *data, uint16_t size)
 {
 	uint32_t settings = get_le32(data);
 
-	mgmt_print_settings("Settings", settings);
+	mgmt_print_settings("Current settings", settings);
 }
 
 static void mgmt_class_of_dev_changed_evt(const void *data, uint16_t size)
@@ -10341,6 +10473,15 @@ static void mgmt_connect_failed_evt(const void *data, uint16_t size)
 	mgmt_print_status(status);
 }
 
+static void mgmt_authentication_failed_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t status = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_status(status);
+}
+
 static void mgmt_device_found_evt(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
@@ -10362,6 +10503,66 @@ static void mgmt_discovering_evt(const void *data, uint16_t size)
 
 	mgmt_print_address_type(type);
 	mgmt_print_enable("Discovery", enable);
+}
+
+static void mgmt_device_blocked_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_device_unblocked_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_device_unpaired_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_device_added_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t action = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_device_action(action);
+}
+
+static void mgmt_device_removed_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_new_conf_options_evt(const void *data, uint16_t size)
+{
+	uint32_t missing_options = get_le32(data);
+
+	mgmt_print_options("Missing options", missing_options);
+}
+
+static void mgmt_ext_index_added_evt(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+	uint8_t bus = get_u8(data + 1);
+
+	print_field("type 0x%2.2x - bus 0x%2.2x", type, bus);
+}
+
+static void mgmt_ext_index_removed_evt(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+	uint8_t bus = get_u8(data + 1);
+
+	print_field("type 0x%2.2x - bus 0x%2.2x", type, bus);
 }
 
 static const struct mgmt_data mgmt_event_table[] = {
@@ -10392,27 +10593,36 @@ static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x000e, "PIN Code Request" },
 	{ 0x000f, "User Confirmation Request" },
 	{ 0x0010, "User Passkey Request" },
-	{ 0x0011, "Authentication Failed" },
+	{ 0x0011, "Authentication Failed",
+			mgmt_authentication_failed_evt, 8, true },
 	{ 0x0012, "Device Found",
 			mgmt_device_found_evt, 14, false },
 	{ 0x0013, "Discovering",
 			mgmt_discovering_evt, 2, true },
-	{ 0x0014, "Device Blocked" },
-	{ 0x0015, "Device Unblocked" },
-	{ 0x0016, "Device Unpaired" },
+	{ 0x0014, "Device Blocked",
+			mgmt_device_blocked_evt, 7, true },
+	{ 0x0015, "Device Unblocked",
+			mgmt_device_unblocked_evt, 7, true },
+	{ 0x0016, "Device Unpaired",
+			mgmt_device_unpaired_evt, 7, true },
 	{ 0x0017, "Passkey Notify" },
 	{ 0x0018, "New Identity Resolving Key" },
 	{ 0x0019, "New Signature Resolving Key" },
-	{ 0x001a, "Device Added" },
-	{ 0x001b, "Device Removed" },
+	{ 0x001a, "Device Added",
+			mgmt_device_added_evt, 8, true },
+	{ 0x001b, "Device Removed",
+			mgmt_device_removed_evt, 7, true },
 	{ 0x001c, "New Connection Parameter" },
 	{ 0x001d, "Unconfigured Index Added",
 			mgmt_null_evt, 0, true },
 	{ 0x001e, "Unconfigured Index Removed",
 			mgmt_null_evt, 0, true },
-	{ 0x001f, "New Configuration Options" },
-	{ 0x0020, "Extended Index Added" },
-	{ 0x0021, "Extended Index Removed" },
+	{ 0x001f, "New Configuration Options",
+			mgmt_new_conf_options_evt, 4, true },
+	{ 0x0020, "Extended Index Added",
+			mgmt_ext_index_added_evt, 2, true },
+	{ 0x0021, "Extended Index Removed",
+			mgmt_ext_index_removed_evt, 2, true },
 	{ 0x0022, "Local Out Of Band Extended Data Updated" },
 	{ 0x0023, "Advertising Added" },
 	{ 0x0024, "Advertising Removed" },
