@@ -57,6 +57,7 @@
 
 static struct btsnoop *btsnoop_file = NULL;
 static bool hcidump_fallback = false;
+static int mgmt_control_fd = -1;
 
 struct control_data {
 	uint16_t channel;
@@ -1043,7 +1044,7 @@ static int open_channel(uint16_t channel)
 
 	mainloop_add_fd(data->fd, EPOLLIN, data_callback, data, free_data);
 
-	return 0;
+	return data->fd;
 }
 
 static void client_callback(int fd, uint32_t events, void *user_data)
@@ -1446,7 +1447,16 @@ int control_tracing(void)
 		return 0;
 	}
 
-	open_channel(HCI_CHANNEL_CONTROL);
+	mgmt_control_fd = open_channel(HCI_CHANNEL_CONTROL);
 
 	return 0;
+}
+
+void control_disable_legacy(void)
+{
+	if (mgmt_control_fd < 0)
+		return;
+
+	close(mgmt_control_fd);
+	mgmt_control_fd = -1;
 }
