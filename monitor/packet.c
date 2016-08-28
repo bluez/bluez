@@ -9586,6 +9586,115 @@ static void mgmt_print_adv_flags(uint32_t flags)
 		print_text(COLOR_UNKNOWN_ADV_FLAG, "  Unknown advertising flag"
 							" (0x%8.8x)", mask);
 }
+
+static void mgmt_print_store_hint(uint8_t hint)
+{
+	const char *str;
+
+	switch (hint) {
+	case 0x00:
+		str = "No";
+		break;
+	case 0x01:
+		str = "Yes";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Store hint: %s (0x%2.2x)", str, hint);
+}
+
+static void mgmt_print_link_key(const void *data)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t key_type = get_u8(data + 7);
+	uint8_t pin_len = get_u8(data + 24);
+
+	mgmt_print_address(data, address_type);
+	print_key_type(key_type);
+	print_link_key(data + 8);
+	print_field("PIN length: %d", pin_len);
+}
+
+static void mgmt_print_long_term_key(const void *data)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t key_type = get_u8(data + 7);
+	uint8_t master = get_u8(data + 8);
+	uint8_t enc_size = get_u8(data + 9);
+	const char *str;
+
+	mgmt_print_address(data, address_type);
+
+	switch (key_type) {
+	case 0x00:
+		str = "Unauthenticated legacy key";
+		break;
+	case 0x01:
+		str = "Authenticated legacy key";
+		break;
+	case 0x02:
+		str = "Unauthenticated key from P-256";
+		break;
+	case 0x03:
+		str = "Authenticated key from P-256";
+		break;
+	case 0x04:
+		str = "Debug key from P-256";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Key type: %s (0x%2.2x)", str, key_type);
+	print_field("Master: 0x%2.2x", master);
+	print_field("Encryption size: %u", enc_size);
+	print_hex_field("Diversifier", data + 10, 2);
+	print_hex_field("Randomizer", data + 12, 8);
+	print_hex_field("Key", data + 20, 16);
+}
+
+static void mgmt_print_identity_resolving_key(const void *data)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+	print_hex_field("Key", data + 7, 16);
+}
+
+static void mgmt_print_signature_resolving_key(const void *data)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t key_type = get_u8(data + 7);
+	const char *str;
+
+	mgmt_print_address(data, address_type);
+
+	switch (key_type) {
+	case 0x00:
+		str = "Unauthenticated local CSRK";
+		break;
+	case 0x01:
+		str = "Unauthenticated remote CSRK";
+		break;
+	case 0x02:
+		str = "Authenticated local CSRK";
+		break;
+	case 0x03:
+		str = "Authenticated remote CSRK";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Key type: %s (0x%2.2x)", str, key_type);
+	print_hex_field("Key", data + 8, 16);
+}
+
 static void mgmt_null_cmd(const void *data, uint16_t size)
 {
 }
@@ -9792,6 +9901,40 @@ static void mgmt_remove_uuid_rsp(const void *data, uint16_t size)
 	print_dev_class(data);
 }
 
+static void mgmt_load_link_keys_cmd(const void *data, uint16_t size)
+{
+	uint8_t debug_keys = get_u8(data);
+	uint16_t num_keys = get_le16(data + 1);
+	int i;
+
+	mgmt_print_enable("Debug keys", debug_keys);
+	print_field("Keys: %u", num_keys);
+
+	if (size - 3 != num_keys * 25) {
+		packet_hexdump(data + 3, size - 3);
+		return;
+	}
+
+	for (i = 0; i < num_keys; i++)
+		mgmt_print_link_key(data + 3 + (i * 25));
+}
+
+static void mgmt_load_long_term_keys_cmd(const void *data, uint16_t size)
+{
+	uint16_t num_keys = get_le16(data + 1);
+	int i;
+
+	print_field("Keys: %u", num_keys);
+
+	if (size - 2 != num_keys * 36) {
+		packet_hexdump(data + 2, size - 2);
+		return;
+	}
+
+	for (i = 0; i < num_keys; i++)
+		mgmt_print_long_term_key(data + 2 + (i * 36));
+}
+
 static void mgmt_disconnect_cmd(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
@@ -9819,7 +9962,7 @@ static void mgmt_get_connections_rsp(const void *data, uint16_t size)
 	}
 
 	for (i = 0; i < num_connections; i++) {
-		uint16_t address_type = get_le16(data + 2 + (i * 7) + 6);
+		uint8_t address_type = get_u8(data + 2 + (i * 7) + 6);
 
 		mgmt_print_address(data + 2 + (i * 7), address_type);
 	}
@@ -10066,6 +10209,22 @@ static void mgmt_set_privacy_cmd(const void *data, uint16_t size)
 	}
 
 	print_field("Privacy: %s (0x%2.2x)", str, enable);
+}
+
+static void mgmt_load_identity_resolving_keys_cmd(const void *data, uint16_t size)
+{
+	uint16_t num_keys = get_le16(data + 1);
+	int i;
+
+	print_field("Keys: %u", num_keys);
+
+	if (size - 2 != num_keys * 23) {
+		packet_hexdump(data + 2, size - 2);
+		return;
+	}
+
+	for (i = 0; i < num_keys; i++)
+		mgmt_print_identity_resolving_key(data + 2 + (i * 23));
 }
 
 static void mgmt_add_device_cmd(const void *data, uint16_t size)
@@ -10323,8 +10482,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0011, "Remove UUID",
 				mgmt_remove_uuid_cmd, 16, true,
 				mgmt_remove_uuid_rsp, 3, true },
-	{ 0x0012, "Load Link Keys" },
-	{ 0x0013, "Load Long Term Keys" },
+	{ 0x0012, "Load Link Keys",
+				mgmt_load_link_keys_cmd, 3, false,
+				mgmt_null_rsp, 0, true },
+	{ 0x0013, "Load Long Term Keys",
+				mgmt_load_long_term_keys_cmd, 2, false,
+				mgmt_null_rsp, 0, true },
 	{ 0x0014, "Disconnect",
 				mgmt_disconnect_cmd, 7, true,
 				mgmt_disconnect_rsp, 7, true },
@@ -10388,7 +10551,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x002f, "Set Privacy",
 				mgmt_set_privacy_cmd, 1, true,
 				mgmt_new_settings_rsp, 4, true },
-	{ 0x0030, "Load Identity Resolving Keys" },
+	{ 0x0030, "Load Identity Resolving Keys",
+				mgmt_load_identity_resolving_keys_cmd, 2, false,
+				mgmt_null_rsp, 0, true },
 	{ 0x0031, "Get Connection Information" },
 	{ 0x0032, "Get Clock Information" },
 	{ 0x0033, "Add Device",
@@ -10549,6 +10714,22 @@ static void mgmt_local_name_changed_evt(const void *data, uint16_t size)
 	mgmt_print_name(data);
 }
 
+static void mgmt_new_link_key_evt(const void *data, uint16_t size)
+{
+	uint8_t store_hint = get_u8(data);
+
+	mgmt_print_store_hint(store_hint);
+	mgmt_print_link_key(data + 1);
+}
+
+static void mgmt_new_long_term_key_evt(const void *data, uint16_t size)
+{
+	uint8_t store_hint = get_u8(data);
+
+	mgmt_print_store_hint(store_hint);
+	mgmt_print_long_term_key(data + 1);
+}
+
 static void mgmt_device_connected_evt(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
@@ -10655,6 +10836,23 @@ static void mgmt_device_unpaired_evt(const void *data, uint16_t size)
 	mgmt_print_address(data, address_type);
 }
 
+static void mgmt_new_identity_resolving_key_evt(const void *data, uint16_t size)
+{
+	uint8_t store_hint = get_u8(data);
+
+	mgmt_print_store_hint(store_hint);
+	print_addr_resolve("Random address", data + 1, 0x01, false);
+	mgmt_print_identity_resolving_key(data + 7);
+}
+
+static void mgmt_new_signature_resolving_key_evt(const void *data, uint16_t size)
+{
+	uint8_t store_hint = get_u8(data);
+
+	mgmt_print_store_hint(store_hint);
+	mgmt_print_signature_resolving_key(data + 1);
+}
+
 static void mgmt_device_added_evt(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
@@ -10735,8 +10933,10 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_class_of_dev_changed_evt, 3, true },
 	{ 0x0008, "Local Name Changed",
 			mgmt_local_name_changed_evt, 260, true },
-	{ 0x0009, "New Link Key" },
-	{ 0x000a, "New Long Term Key" },
+	{ 0x0009, "New Link Key",
+			mgmt_new_link_key_evt, 26, true },
+	{ 0x000a, "New Long Term Key",
+			mgmt_new_long_term_key_evt, 37, true },
 	{ 0x000b, "Device Connected",
 			mgmt_device_connected_evt, 13, false },
 	{ 0x000c, "Device Disconnected",
@@ -10759,8 +10959,10 @@ static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0016, "Device Unpaired",
 			mgmt_device_unpaired_evt, 7, true },
 	{ 0x0017, "Passkey Notify" },
-	{ 0x0018, "New Identity Resolving Key" },
-	{ 0x0019, "New Signature Resolving Key" },
+	{ 0x0018, "New Identity Resolving Key",
+			mgmt_new_identity_resolving_key_evt, 30, true },
+	{ 0x0019, "New Signature Resolving Key",
+			mgmt_new_signature_resolving_key_evt, 25, true },
 	{ 0x001a, "Device Added",
 			mgmt_device_added_evt, 8, true },
 	{ 0x001b, "Device Removed",
