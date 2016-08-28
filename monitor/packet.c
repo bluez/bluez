@@ -91,8 +91,10 @@
 #define COLOR_CTRL_EVENT		COLOR_MAGENTA_BOLD
 #define COLOR_CTRL_EVENT_UNKNOWN	COLOR_WHITE_BG
 
+#define COLOR_UNKNOWN_OPTIONS_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_SETTINGS_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_ADDRESS_TYPE	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_DEVICE_FLAG	COLOR_WHITE_BG
 
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
@@ -9370,6 +9372,34 @@ static void mgmt_print_manufacturer(uint16_t manufacturer)
 static const struct {
 	uint8_t bit;
 	const char *str;
+} mgmt_options_table[] = {
+	{  0, "External configuration"			},
+	{  1, "Bluetooth public address configuration"	},
+	{ }
+};
+
+static void mgmt_print_options(const char *label, uint32_t options)
+{
+	uint32_t mask = options;
+	int i;
+
+	print_field("%s: 0x%8.8x", label, options);
+
+	for (i = 0; mgmt_options_table[i].str; i++) {
+		if (options & (1 << mgmt_options_table[i].bit)) {
+			print_field("  %s", mgmt_options_table[i].str);
+			mask &= ~(1 << mgmt_options_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Unknown options"
+							" (0x%8.8x)", mask);
+}
+
+static const struct {
+	uint8_t bit;
+	const char *str;
 } mgmt_settings_table[] = {
 	{  0, "Powered"			},
 	{  1, "Connectable"		},
@@ -9405,8 +9435,8 @@ static void mgmt_print_settings(const char *label, uint32_t settings)
 	}
 
 	if (mask)
-		print_text(COLOR_UNKNOWN_SETTINGS_BIT, "  Unknown settings "
-							"(0x%8.8x)", mask);
+		print_text(COLOR_UNKNOWN_SETTINGS_BIT, "  Unknown settings"
+							" (0x%8.8x)", mask);
 }
 
 static void mgmt_print_name(const void *data)
@@ -9434,7 +9464,68 @@ static void mgmt_print_enable(const char *label, uint8_t enable)
 	print_field("%s: %s (0x%2.2x)", label, str, enable);
 }
 
+static void mgmt_print_io_capability(uint8_t capability)
+{
+	const char *str;
+
+	switch (capability) {
+	case 0x00:
+		str = "DisplayOnly";
+		break;
+	case 0x01:
+		str = "DisplayYesNo";
+		break;
+	case 0x02:
+		str = "KeyboardOnly";
+		break;
+	case 0x03:
+		str = "NoInputNoOutput";
+		break;
+	case 0x04:
+		str = "KeyboardDisplay";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Capability: %s (0x%2.2x)", str, capability);
+}
+
+static const struct {
+	uint8_t bit;
+	const char *str;
+} mgmt_device_flags_table[] = {
+	{  0, "Confirm Name"	},
+	{  1, "Legacy Pairing"	},
+	{  2, "Not Connectable"	},
+	{ }
+};
+
+static void mgmt_print_device_flags(uint32_t flags)
+{
+	uint32_t mask = flags;
+	int i;
+
+	print_field("Flags: 0x%8.8x", flags);
+
+	for (i = 0; mgmt_device_flags_table[i].str; i++) {
+		if (flags & (1 << mgmt_device_flags_table[i].bit)) {
+			print_field("  %s", mgmt_device_flags_table[i].str);
+			mask &= ~(1 << mgmt_device_flags_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_DEVICE_FLAG, "  Unknown device flag"
+							" (0x%8.8x)", mask);
+}
+
 static void mgmt_null_cmd(const void *data, uint16_t size)
+{
+}
+
+static void mgmt_null_rsp(const void *data, uint16_t size)
 {
 }
 
@@ -9449,26 +9540,27 @@ static void mgmt_read_version_info_rsp(const void *data, uint16_t size)
 	print_field("Version: %u.%u", version, revision);
 }
 
+static void mgmt_print_commands(const void *data, uint16_t num);
+static void mgmt_print_events(const void *data, uint16_t num);
+
 static void mgmt_read_supported_commands_rsp(const void *data, uint16_t size)
 {
-	uint16_t num_commands;
-	uint16_t num_events;
+	uint16_t num_commands = get_le16(data);
+	uint16_t num_events = get_le16(data + 2);
 
-	num_commands = get_le16(data);
-	num_events = get_le16(data + 2);
+	if (size - 4 != (num_commands * 2) + (num_events *2)) {
+		packet_hexdump(data, size);
+		return;
+	}
 
-	print_field("Commands: %u", num_commands);
-	print_field("Events: %u", num_events);
-
-	packet_hexdump(data + 4, size - 4);
+	mgmt_print_commands(data + 4, num_commands);
+	mgmt_print_events(data + 4 + num_commands * 2, num_events);
 }
 
 static void mgmt_read_index_list_rsp(const void *data, uint16_t size)
 {
-	uint16_t num_controllers;
+	uint16_t num_controllers = get_le16(data);
 	int i;
-
-	num_controllers = get_le16(data);
 
 	print_field("Controllers: %u", num_controllers);
 
@@ -9486,14 +9578,10 @@ static void mgmt_read_index_list_rsp(const void *data, uint16_t size)
 
 static void mgmt_read_controller_info_rsp(const void *data, uint16_t size)
 {
-	uint8_t version;
-	uint16_t manufacturer;
-	uint32_t supported_settings, current_settings;
-
-	version = get_u8(data + 6);
-	manufacturer = get_le16(data + 7);
-	supported_settings = get_le32(data + 9);
-	current_settings = get_le32(data + 13);
+	uint8_t version = get_u8(data + 6);
+	uint16_t manufacturer = get_le16(data + 7);
+	uint32_t supported_settings = get_le32(data + 9);
+	uint32_t current_settings = get_le32(data + 13);
 
 	mgmt_print_address(data, 0x00);
 	mgmt_print_version(version);
@@ -9616,6 +9704,92 @@ static void mgmt_set_local_name_rsp(const void *data, uint16_t size)
 	mgmt_print_name(data);
 }
 
+static void mgmt_disconnect_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_disconnect_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_get_connections_rsp(const void *data, uint16_t size)
+{
+	uint16_t num_connections = get_le16(data);
+	int i;
+
+	print_field("Connections: %u", num_connections);
+
+	if (size - 2 != num_connections * 7) {
+		packet_hexdump(data + 2, size - 2);
+		return;
+	}
+
+	for (i = 0; i < num_connections; i++) {
+		uint16_t address_type = get_le16(data + 2 + (i * 7) + 6);
+
+		mgmt_print_address(data + 2 + (i * 7), address_type);
+	}
+}
+
+static void mgmt_set_io_capability_cmd(const void *data, uint16_t size)
+{
+	uint8_t capability = get_u8(data);
+
+	mgmt_print_io_capability(capability);
+}
+
+static void mgmt_pair_device_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t capability = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_io_capability(capability);
+}
+
+static void mgmt_pair_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_cancel_pair_device_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_cancel_pair_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_unpair_device_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t disconnect = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_enable("Disconnect", disconnect);
+}
+
+static void mgmt_unpair_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
 static void mgmt_start_discovery_cmd(const void *data, uint16_t size)
 {
 	uint8_t type = get_u8(data);
@@ -9642,6 +9816,36 @@ static void mgmt_stop_discovery_rsp(const void *data, uint16_t size)
 	uint8_t type = get_u8(data);
 
 	mgmt_print_address_type(type);
+}
+
+static void mgmt_confirm_name_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t name_known = get_u8(data + 7);
+	const char *str;
+
+	mgmt_print_address(data, address_type);
+
+	switch (name_known) {
+	case 0x00:
+		str = "No";
+		break;
+	case 0x01:
+		str = "Yes";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Name known: %s (0x%2.2x)", str, name_known);
+}
+
+static void mgmt_confirm_name_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
 }
 
 static void mgmt_set_advertising_cmd(const void *data, uint16_t size)
@@ -9745,10 +9949,8 @@ static void mgmt_set_privacy_cmd(const void *data, uint16_t size)
 
 static void mgmt_read_unconf_index_list_rsp(const void *data, uint16_t size)
 {
-	uint16_t num_controllers;
+	uint16_t num_controllers = get_le16(data);
 	int i;
-
-	num_controllers = get_le16(data);
 
 	print_field("Controllers: %u", num_controllers);
 
@@ -9764,12 +9966,21 @@ static void mgmt_read_unconf_index_list_rsp(const void *data, uint16_t size)
 	}
 }
 
+static void mgmt_read_controller_conf_info_rsp(const void *data, uint16_t size)
+{
+	uint16_t manufacturer = get_le16(data);
+	uint32_t supported_options = get_le32(data + 2);
+	uint32_t missing_options = get_le32(data + 6);
+
+	mgmt_print_manufacturer(manufacturer);
+	mgmt_print_options("Supported options", supported_options);
+	mgmt_print_options("Missing options", missing_options);
+}
+
 static void mgmt_read_ext_index_list_rsp(const void *data, uint16_t size)
 {
-	uint16_t num_controllers;
+	uint16_t num_controllers = get_le16(data);
 	int i;
-
-	num_controllers = get_le16(data);
 
 	print_field("Controllers: %u", num_controllers);
 
@@ -9870,15 +10081,26 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0011, "Remove UUID" },
 	{ 0x0012, "Load Link Keys" },
 	{ 0x0013, "Load Long Term Keys" },
-	{ 0x0014, "Disconnect" },
+	{ 0x0014, "Disconnect",
+				mgmt_disconnect_cmd, 7, true,
+				mgmt_disconnect_rsp, 7, true },
 	{ 0x0015, "Get Connections",
-				mgmt_null_cmd, 0, true },
+				mgmt_null_cmd, 0, true,
+				mgmt_get_connections_rsp, 2, false },
 	{ 0x0016, "PIN Code Reply" },
 	{ 0x0017, "PIN Code Negative Reply" },
-	{ 0x0018, "Set IO Capability" },
-	{ 0x0019, "Pair Device" },
-	{ 0x001a, "Cancel Pair Device" },
-	{ 0x001b, "Unpair Device" },
+	{ 0x0018, "Set IO Capability",
+				mgmt_set_io_capability_cmd, 1, true,
+				mgmt_null_rsp, 0, true },
+	{ 0x0019, "Pair Device",
+				mgmt_pair_device_cmd, 8, true,
+				mgmt_pair_device_rsp, 7, true },
+	{ 0x001a, "Cancel Pair Device",
+				mgmt_cancel_pair_device_cmd, 7, true,
+				mgmt_cancel_pair_device_rsp, 7, true },
+	{ 0x001b, "Unpair Device",
+				mgmt_unpair_device_cmd, 8, true,
+				mgmt_unpair_device_rsp, 7, true },
 	{ 0x001c, "User Confirmation Reply" },
 	{ 0x001d, "User Confirmation Negative Reply" },
 	{ 0x001e, "User Passkey Reply" },
@@ -9893,7 +10115,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0024, "Stop Discovery",
 				mgmt_stop_discovery_cmd, 1, true,
 				mgmt_stop_discovery_rsp, 1, true },
-	{ 0x0025, "Confirm Name" },
+	{ 0x0025, "Confirm Name",
+				mgmt_confirm_name_cmd, 8, true,
+				mgmt_confirm_name_rsp, 7, true },
 	{ 0x0026, "Block Device" },
 	{ 0x0027, "Unblock Device" },
 	{ 0x0028, "Set Device ID" },
@@ -9924,7 +10148,8 @@ static const struct mgmt_data mgmt_command_table[] = {
 				mgmt_null_cmd, 0, true,
 				mgmt_read_unconf_index_list_rsp, 2, false },
 	{ 0x0037, "Read Controller Configuration Information",
-				mgmt_null_cmd, 0, true },
+				mgmt_null_cmd, 0, true,
+				mgmt_read_controller_conf_info_rsp, 10, true },
 	{ 0x0038, "Set External Configuration" },
 	{ 0x0039, "Set Public Address" },
 	{ 0x003a, "Start Service Discovery" },
@@ -9985,7 +10210,7 @@ static void mgmt_command_complete_evt(const void *data, uint16_t size)
 
 	mgmt_print_status(status);
 
-	if (status || !mgmt_data || !mgmt_data->rsp_func) {
+	if (!mgmt_data || !mgmt_data->rsp_func) {
 		packet_hexdump(data, size);
 		return;
 	}
@@ -10063,6 +10288,73 @@ static void mgmt_local_name_changed_evt(const void *data, uint16_t size)
 	mgmt_print_name(data);
 }
 
+static void mgmt_device_connected_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint32_t flags = get_le32(data + 7);
+	uint16_t data_len = get_le16(data + 11);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_device_flags(flags);
+	print_field("Data length: %u", data_len);
+	print_eir(data + 13, size - 13, false);
+}
+
+static void mgmt_device_disconnected_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t reason = get_u8(data + 7);
+	const char *str;
+
+	mgmt_print_address(data, address_type);
+
+	switch (reason) {
+	case 0x00:
+		str = "Unspecified";
+		break;
+	case 0x01:
+		str = "Connection timeout";
+		break;
+	case 0x02:
+		str = "Connection terminated by local host";
+		break;
+	case 0x03:
+		str = "Connection terminated by remote host";
+		break;
+	case 0x04:
+		str = "Connection terminated due to authentication failure";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Reason: %s (0x%2.2x)", str, reason);
+}
+
+static void mgmt_connect_failed_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t status = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_status(status);
+}
+
+static void mgmt_device_found_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	int8_t rssi = get_s8(data + 7);
+	uint32_t flags = get_le32(data + 8);
+	uint16_t data_len = get_le16(data + 12);
+
+	mgmt_print_address(data, address_type);
+	print_rssi(rssi);
+	mgmt_print_device_flags(flags);
+	print_field("Data length: %u", data_len);
+	print_eir(data + 14, size - 14, false);
+}
+
 static void mgmt_discovering_evt(const void *data, uint16_t size)
 {
 	uint8_t type = get_u8(data);
@@ -10091,14 +10383,18 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_local_name_changed_evt, 260, true },
 	{ 0x0009, "New Link Key" },
 	{ 0x000a, "New Long Term Key" },
-	{ 0x000b, "Device Connected" },
-	{ 0x000c, "Device Disconnected" },
-	{ 0x000d, "Connect Failed" },
+	{ 0x000b, "Device Connected",
+			mgmt_device_connected_evt, 13, false },
+	{ 0x000c, "Device Disconnected",
+			mgmt_device_disconnected_evt, 8, true },
+	{ 0x000d, "Connect Failed",
+			mgmt_connect_failed_evt, 8, true },
 	{ 0x000e, "PIN Code Request" },
 	{ 0x000f, "User Confirmation Request" },
 	{ 0x0010, "User Passkey Request" },
 	{ 0x0011, "Authentication Failed" },
-	{ 0x0012, "Device Found" },
+	{ 0x0012, "Device Found",
+			mgmt_device_found_evt, 14, false },
 	{ 0x0013, "Discovering",
 			mgmt_discovering_evt, 2, true },
 	{ 0x0014, "Device Blocked" },
@@ -10122,6 +10418,50 @@ static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0024, "Advertising Removed" },
 	{ }
 };
+
+static void mgmt_print_commands(const void *data, uint16_t num)
+{
+	int i;
+
+	print_field("Commands: %u", num);
+
+	for (i = 0; i < num; i++) {
+		uint16_t opcode = get_le16(data + (i * 2));
+		const char *str = NULL;
+		int n;
+
+		for (n = 0; mgmt_command_table[n].str; n++) {
+			if (mgmt_command_table[n].opcode == opcode) {
+				str = mgmt_command_table[n].str;
+				break;
+			}
+		}
+
+		print_field("  %s (0x%4.4x)", str ?: "Reserved", opcode);
+	}
+}
+
+static void mgmt_print_events(const void *data, uint16_t num)
+{
+	int i;
+
+	print_field("Events: %u", num);
+
+	for (i = 0; i < num; i++) {
+		uint16_t opcode = get_le16(data + (i * 2));
+		const char *str = NULL;
+		int n;
+
+		for (n = 0; mgmt_event_table[n].str; n++) {
+			if (mgmt_event_table[n].opcode == opcode) {
+				str = mgmt_event_table[n].str;
+				break;
+			}
+		}
+
+		print_field("  %s (0x%4.4x)", str ?: "Reserved", opcode);
+	}
+}
 
 void packet_ctrl_command(struct timeval *tv, struct ucred *cred, uint16_t index,
 					const void *data, uint16_t size)
