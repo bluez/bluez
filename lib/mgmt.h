@@ -530,6 +530,17 @@ struct mgmt_rp_get_adv_size_info {
 
 #define MGMT_OP_START_LIMITED_DISCOVERY	0x0041
 
+#define MGMT_OP_READ_EXT_INFO		0x0042
+struct mgmt_rp_read_ext_info {
+	bdaddr_t bdaddr;
+	uint8_t version;
+	uint16_t manufacturer;
+	uint32_t supported_settings;
+	uint32_t current_settings;
+	uint16_t eir_len;
+	uint8_t  eir[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -742,6 +753,12 @@ struct mgmt_ev_advertising_removed {
 	uint8_t instance;
 } __packed;
 
+#define MGMT_EV_EXT_INFO_CHANGED	0x0025
+struct mgmt_ev_ext_info_changed {
+	uint16_t eir_len;
+	uint8_t  eir[0];
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -809,6 +826,7 @@ static const char *mgmt_op[] = {
 	"Remove Advertising",
 	"Get Advertising Size Information",		/* 0x0040 */
 	"Start Limited Discovery",
+	"Read Extended Controller Information",
 };
 
 static const char *mgmt_ev[] = {
@@ -849,6 +867,7 @@ static const char *mgmt_ev[] = {
 	"Local Out Of Band Extended Data Updated",
 	"Advertising Added",
 	"Advertising Removed",
+	"Extended Controller Information Changed",
 };
 
 static const char *mgmt_status[] = {
