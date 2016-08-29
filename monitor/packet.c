@@ -10572,6 +10572,23 @@ static void mgmt_start_limited_discovery_rsp(const void *data, uint16_t size)
 	mgmt_print_address_type(type);
 }
 
+static void mgmt_read_ext_controller_info_rsp(const void *data, uint16_t size)
+{
+	uint8_t version = get_u8(data + 6);
+	uint16_t manufacturer = get_le16(data + 7);
+	uint32_t supported_settings = get_le32(data + 9);
+	uint32_t current_settings = get_le32(data + 13);
+	uint16_t data_len = get_le16(data + 17);
+
+	print_addr_resolve("Address", data, 0x00, false);
+	mgmt_print_version(version);
+	mgmt_print_manufacturer(manufacturer);
+	mgmt_print_settings("Supported settings", supported_settings);
+	mgmt_print_settings("Current settings", current_settings);
+	print_field("Data length: %u", data_len);
+	print_eir(data + 19, size - 19, false);
+}
+
 struct mgmt_data {
 	uint16_t opcode;
 	const char *str;
@@ -10765,6 +10782,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0041, "Start Limited Discovery",
 				mgmt_start_limited_discovery_cmd, 1, true,
 				mgmt_start_limited_discovery_rsp, 1, true },
+	{ 0x0042, "Read Extended Controller Information",
+				mgmt_null_cmd, 0, true,
+				mgmt_read_ext_controller_info_rsp, 19, false },
 	{ }
 };
 
@@ -11089,6 +11109,14 @@ static void mgmt_advertising_removed_evt(const void *data, uint16_t size)
 	print_field("Instance: %u", instance);
 }
 
+static void mgmt_ext_controller_info_changed_evt(const void *data, uint16_t size)
+{
+	uint16_t data_len = get_le16(data);
+
+	print_field("Data length: %u", data_len);
+	print_eir(data + 2, size - 2, false);
+}
+
 static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0001, "Command Complete",
 			mgmt_command_complete_evt, 3, false },
@@ -11157,6 +11185,8 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_advertising_added_evt, 1, true },
 	{ 0x0024, "Advertising Removed",
 			mgmt_advertising_removed_evt, 1, true },
+	{ 0x0025, "Extended Controller Information Changed",
+			mgmt_ext_controller_info_changed_evt, 2, false },
 	{ }
 };
 
