@@ -9991,6 +9991,37 @@ static void mgmt_get_connections_rsp(const void *data, uint16_t size)
 	}
 }
 
+static void mgmt_pin_code_reply_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t pin_len = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	print_field("PIN length: %u", pin_len);
+	print_hex_field("PIN code", data + 8, 16);
+}
+
+static void mgmt_pin_code_reply_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_pin_code_neg_reply_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_pin_code_neg_reply_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
 static void mgmt_set_io_capability_cmd(const void *data, uint16_t size)
 {
 	uint8_t capability = get_u8(data);
@@ -10038,6 +10069,64 @@ static void mgmt_unpair_device_cmd(const void *data, uint16_t size)
 }
 
 static void mgmt_unpair_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_user_confirmation_reply_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_user_confirmation_reply_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_user_confirmation_neg_reply_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_user_confirmation_neg_reply_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_user_passkey_reply_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint32_t passkey = get_le32(data + 7);
+
+	mgmt_print_address(data, address_type);
+	print_field("Passkey: 0x%4.4x", passkey);
+}
+
+static void mgmt_user_passkey_reply_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_user_passkey_neg_reply_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_user_passkey_neg_reply_rsp(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
 
@@ -10695,8 +10784,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0015, "Get Connections",
 				mgmt_null_cmd, 0, true,
 				mgmt_get_connections_rsp, 2, false },
-	{ 0x0016, "PIN Code Reply" },
-	{ 0x0017, "PIN Code Negative Reply" },
+	{ 0x0016, "PIN Code Reply",
+				mgmt_pin_code_reply_cmd, 24, true,
+				mgmt_pin_code_reply_rsp, 7, true },
+	{ 0x0017, "PIN Code Negative Reply",
+				mgmt_pin_code_neg_reply_cmd, 7, true,
+				mgmt_pin_code_neg_reply_rsp, 7, true },
 	{ 0x0018, "Set IO Capability",
 				mgmt_set_io_capability_cmd, 1, true,
 				mgmt_null_rsp, 0, true },
@@ -10709,10 +10802,18 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x001b, "Unpair Device",
 				mgmt_unpair_device_cmd, 8, true,
 				mgmt_unpair_device_rsp, 7, true },
-	{ 0x001c, "User Confirmation Reply" },
-	{ 0x001d, "User Confirmation Negative Reply" },
-	{ 0x001e, "User Passkey Reply" },
-	{ 0x001f, "User Passkey Negative Reply" },
+	{ 0x001c, "User Confirmation Reply",
+				mgmt_user_confirmation_reply_cmd, 7, true,
+				mgmt_user_confirmation_reply_rsp, 7, true },
+	{ 0x001d, "User Confirmation Negative Reply",
+				mgmt_user_confirmation_neg_reply_cmd, 7, true,
+				mgmt_user_confirmation_neg_reply_rsp, 7, true },
+	{ 0x001e, "User Passkey Reply",
+				mgmt_user_passkey_reply_cmd, 11, true,
+				mgmt_user_passkey_reply_rsp, 7, true },
+	{ 0x001f, "User Passkey Negative Reply",
+				mgmt_user_passkey_neg_reply_cmd, 7, true,
+				mgmt_user_passkey_neg_reply_rsp, 7, true },
 	{ 0x0020, "Read Local Out Of Band Data",
 				mgmt_null_cmd, 0, true,
 				mgmt_read_local_oob_data_rsp, 64, true },
@@ -11009,6 +11110,33 @@ static void mgmt_connect_failed_evt(const void *data, uint16_t size)
 	mgmt_print_status(status);
 }
 
+static void mgmt_pin_code_request_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t secure_pin = get_u8(data + 7);
+
+	mgmt_print_address(data, address_type);
+	print_field("Secure PIN: 0x%2.2x", secure_pin);
+}
+
+static void mgmt_user_confirmation_request_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t confirm_hint = get_u8(data + 7);
+	uint32_t value = get_le32(data + 8);
+
+	mgmt_print_address(data, address_type);
+	print_field("Confirm hint: 0x%2.2x", confirm_hint);
+	print_field("Value: 0x%8.8x", value);
+}
+
+static void mgmt_user_passkey_request_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
 static void mgmt_authentication_failed_evt(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
@@ -11060,6 +11188,17 @@ static void mgmt_device_unpaired_evt(const void *data, uint16_t size)
 	uint8_t address_type = get_u8(data + 6);
 
 	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_passkey_notify_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint32_t passkey = get_le32(data + 7);
+	uint8_t entered = get_u8(data + 11);
+
+	mgmt_print_address(data, address_type);
+	print_field("Passkey: 0x%8.8x", passkey);
+	print_field("Entered: %u", entered);
 }
 
 static void mgmt_new_identity_resolving_key_evt(const void *data, uint16_t size)
@@ -11185,9 +11324,12 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_device_disconnected_evt, 8, true },
 	{ 0x000d, "Connect Failed",
 			mgmt_connect_failed_evt, 8, true },
-	{ 0x000e, "PIN Code Request" },
-	{ 0x000f, "User Confirmation Request" },
-	{ 0x0010, "User Passkey Request" },
+	{ 0x000e, "PIN Code Request",
+			mgmt_pin_code_request_evt, 8, true },
+	{ 0x000f, "User Confirmation Request",
+			mgmt_user_confirmation_request_evt, 12, true },
+	{ 0x0010, "User Passkey Request",
+			mgmt_user_passkey_request_evt, 7, true },
 	{ 0x0011, "Authentication Failed",
 			mgmt_authentication_failed_evt, 8, true },
 	{ 0x0012, "Device Found",
@@ -11200,7 +11342,8 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_device_unblocked_evt, 7, true },
 	{ 0x0016, "Device Unpaired",
 			mgmt_device_unpaired_evt, 7, true },
-	{ 0x0017, "Passkey Notify" },
+	{ 0x0017, "Passkey Notify",
+			mgmt_passkey_notify_evt, 12, true },
 	{ 0x0018, "New Identity Resolving Key",
 			mgmt_new_identity_resolving_key_evt, 30, true },
 	{ 0x0019, "New Signature Resolving Key",
