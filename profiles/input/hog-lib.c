@@ -315,8 +315,6 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 		error("bt_uhid_send: %s (%d)", strerror(-err), -err);
 		return;
 	}
-
-	DBG("HoG report (%u bytes)", ev.u.input.size);
 }
 
 static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
