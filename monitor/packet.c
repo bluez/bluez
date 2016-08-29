@@ -9606,6 +9606,21 @@ static void mgmt_print_store_hint(uint8_t hint)
 	print_field("Store hint: %s (0x%2.2x)", str, hint);
 }
 
+static void mgmt_print_connection_parameter(const void *data)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint16_t min_conn_interval = get_le16(data + 7);
+	uint16_t max_conn_interval = get_le16(data + 9);
+	uint16_t conn_latency = get_le16(data + 11);
+	uint16_t supv_timeout = get_le16(data + 13);
+
+	mgmt_print_address(data, address_type);
+	print_field("Min connection interval: %u", min_conn_interval);
+	print_field("Max connection interval: %u", max_conn_interval);
+	print_field("Connection latency: %u", conn_latency);
+	print_field("Supervision timeout: %u", supv_timeout);
+}
+
 static void mgmt_print_link_key(const void *data)
 {
 	uint8_t address_type = get_u8(data + 6);
@@ -10354,6 +10369,22 @@ static void mgmt_remove_device_rsp(const void *data, uint16_t size)
 	mgmt_print_address(data, address_type);
 }
 
+static void mgmt_load_connection_parameters_cmd(const void *data, uint16_t size)
+{
+	uint16_t num_parameters = get_le16(data);
+	int i;
+
+	print_field("Parameters: %u", num_parameters);
+
+	if (size - 2 != num_parameters * 15) {
+		packet_hexdump(data + 2, size - 2);
+		return;
+	}
+
+	for (i = 0; i < num_parameters; i++)
+		mgmt_print_connection_parameter(data + 2 + (i * 15));
+}
+
 static void mgmt_read_unconf_index_list_rsp(const void *data, uint16_t size)
 {
 	uint16_t num_controllers = get_le16(data);
@@ -10745,7 +10776,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0034, "Remove Device",
 				mgmt_remove_device_cmd, 7, true,
 				mgmt_remove_device_rsp, 7, true },
-	{ 0x0035, "Load Connection Parameters" },
+	{ 0x0035, "Load Connection Parameters",
+				mgmt_load_connection_parameters_cmd, 2, false,
+				mgmt_null_rsp, 0, true },
 	{ 0x0036, "Read Unconfigured Controller Index List",
 				mgmt_null_cmd, 0, true,
 				mgmt_read_unconf_index_list_rsp, 2, false },
@@ -11062,6 +11095,14 @@ static void mgmt_device_removed_evt(const void *data, uint16_t size)
 	mgmt_print_address(data, address_type);
 }
 
+static void mgmt_new_connection_parameter_evt(const void *data, uint16_t size)
+{
+	uint8_t store_hint = get_u8(data);
+
+	mgmt_print_store_hint(store_hint);
+	mgmt_print_connection_parameter(data + 1);
+}
+
 static void mgmt_new_conf_options_evt(const void *data, uint16_t size)
 {
 	uint32_t missing_options = get_le32(data);
@@ -11168,7 +11209,8 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_device_added_evt, 8, true },
 	{ 0x001b, "Device Removed",
 			mgmt_device_removed_evt, 7, true },
-	{ 0x001c, "New Connection Parameter" },
+	{ 0x001c, "New Connection Parameter",
+			mgmt_new_connection_parameter_evt, 16, true },
 	{ 0x001d, "Unconfigured Index Added",
 			mgmt_null_evt, 0, true },
 	{ 0x001e, "Unconfigured Index Removed",
