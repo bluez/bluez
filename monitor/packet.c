@@ -9757,7 +9757,7 @@ static void mgmt_read_controller_info_rsp(const void *data, uint16_t size)
 	uint32_t supported_settings = get_le32(data + 9);
 	uint32_t current_settings = get_le32(data + 13);
 
-	mgmt_print_address(data, 0x00);
+	print_addr_resolve("Address", data, 0x00, false);
 	mgmt_print_version(version);
 	mgmt_print_manufacturer(manufacturer);
 	mgmt_print_settings("Supported settings", supported_settings);
@@ -9849,9 +9849,9 @@ static void mgmt_set_low_energy_cmd(const void *data, uint16_t size)
 
 static void mgmt_new_settings_rsp(const void *data, uint16_t size)
 {
-	uint32_t settings = get_le32(data);
+	uint32_t current_settings = get_le32(data);
 
-	mgmt_print_settings("Current settings", settings);
+	mgmt_print_settings("Current settings", current_settings);
 }
 
 static void mgmt_set_device_class_cmd(const void *data, uint16_t size)
@@ -10142,6 +10142,20 @@ static void mgmt_set_bredr_cmd(const void *data, uint16_t size)
 	mgmt_print_enable("BR/EDR", enable);
 }
 
+static void mgmt_set_static_address_cmd(const void *data, uint16_t size)
+{
+	print_addr_resolve("Address", data, 0x01, false);
+}
+
+static void mgmt_set_scan_parameters_cmd(const void *data, uint16_t size)
+{
+	uint16_t interval = get_le16(data);
+	uint16_t window = get_le16(data + 2);
+
+	print_field("Interval: %u (0x%2.2x)", interval, interval);
+	print_field("Window: %u (0x%2.2x)", window, window);
+}
+
 static void mgmt_set_secure_connections_cmd(const void *data, uint16_t size)
 {
 	uint8_t enable = get_u8(data);
@@ -10227,6 +10241,46 @@ static void mgmt_load_identity_resolving_keys_cmd(const void *data, uint16_t siz
 		mgmt_print_identity_resolving_key(data + 2 + (i * 23));
 }
 
+static void mgmt_get_connection_information_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_get_connection_information_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	int8_t rssi = get_s8(data + 7);
+	int8_t tx_power = get_s8(data + 8);
+	int8_t max_tx_power = get_s8(data + 9);
+
+	mgmt_print_address(data, address_type);
+	print_rssi(rssi);
+	print_power_level(tx_power, NULL);
+	print_power_level(max_tx_power, "max");
+}
+
+static void mgmt_get_clock_information_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_get_clock_information_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint32_t local_clock = get_le32(data + 7);
+	uint32_t piconet_clock = get_le32(data + 11);
+	uint16_t accuracy = get_le16(data + 15);
+
+	mgmt_print_address(data, address_type);
+	print_field("Local clock: 0x%8.8x", local_clock);
+	print_field("Piconet clock: 0x%8.8x", piconet_clock);
+	print_field("Accuracy: 0x%4.4x", accuracy);
+}
+
 static void mgmt_add_device_cmd(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
@@ -10285,6 +10339,52 @@ static void mgmt_read_controller_conf_info_rsp(const void *data, uint16_t size)
 	mgmt_print_manufacturer(manufacturer);
 	mgmt_print_options("Supported options", supported_options);
 	mgmt_print_options("Missing options", missing_options);
+}
+
+static void mgmt_set_external_configuration_cmd(const void *data, uint16_t size)
+{
+	uint8_t enable = get_u8(data);
+
+	mgmt_print_enable("Configuration", enable);
+}
+
+static void mgmt_set_public_address_cmd(const void *data, uint16_t size)
+{
+	print_addr_resolve("Address", data, 0x00, false);
+}
+
+static void mgmt_new_options_rsp(const void *data, uint16_t size)
+{
+	uint32_t missing_options = get_le32(data);
+
+	mgmt_print_options("Missing options", missing_options);
+}
+
+static void mgmt_start_service_discovery_cmd(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+	int8_t rssi = get_s8(data + 1);
+	uint16_t num_uuids = get_le16(data + 2);
+	int i;
+
+	mgmt_print_address_type(type);
+	print_rssi(rssi);
+	print_field("UUIDs: %u", num_uuids);
+
+	if (size - 4 != num_uuids * 16) {
+		packet_hexdump(data + 4, size - 4);
+		return;
+	}
+
+	for (i = 0; i < num_uuids; i++)
+		mgmt_print_uuid(data + 4 + (i * 16));
+}
+
+static void mgmt_start_service_discovery_rsp(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+
+	mgmt_print_address_type(type);
 }
 
 static void mgmt_read_ext_index_list_rsp(const void *data, uint16_t size)
@@ -10540,8 +10640,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x002a, "Set BR/EDR",
 				mgmt_set_bredr_cmd, 1, true,
 				mgmt_new_settings_rsp, 4, true },
-	{ 0x002b, "Set Static Address" },
-	{ 0x002c, "Set Scan Parameters" },
+	{ 0x002b, "Set Static Address",
+				mgmt_set_static_address_cmd, 6, true,
+				mgmt_new_settings_rsp, 4, true },
+	{ 0x002c, "Set Scan Parameters",
+				mgmt_set_scan_parameters_cmd, 4, true,
+				mgmt_null_rsp, 0, true },
 	{ 0x002d, "Set Secure Connections",
 				mgmt_set_secure_connections_cmd, 1, true,
 				mgmt_new_settings_rsp, 4, true },
@@ -10554,8 +10658,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0030, "Load Identity Resolving Keys",
 				mgmt_load_identity_resolving_keys_cmd, 2, false,
 				mgmt_null_rsp, 0, true },
-	{ 0x0031, "Get Connection Information" },
-	{ 0x0032, "Get Clock Information" },
+	{ 0x0031, "Get Connection Information",
+				mgmt_get_connection_information_cmd, 7, true,
+				mgmt_get_connection_information_rsp, 10, true },
+	{ 0x0032, "Get Clock Information",
+				mgmt_get_clock_information_cmd, 7, true,
+				mgmt_get_clock_information_rsp, 17, true },
 	{ 0x0033, "Add Device",
 				mgmt_add_device_cmd, 8, true,
 				mgmt_add_device_rsp, 7, true },
@@ -10569,9 +10677,15 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0037, "Read Controller Configuration Information",
 				mgmt_null_cmd, 0, true,
 				mgmt_read_controller_conf_info_rsp, 10, true },
-	{ 0x0038, "Set External Configuration" },
-	{ 0x0039, "Set Public Address" },
-	{ 0x003a, "Start Service Discovery" },
+	{ 0x0038, "Set External Configuration",
+				mgmt_set_external_configuration_cmd, 1, true,
+				mgmt_new_options_rsp, 4, true },
+	{ 0x0039, "Set Public Address",
+				mgmt_set_public_address_cmd, 6, true,
+				mgmt_new_options_rsp, 4, true },
+	{ 0x003a, "Start Service Discovery",
+				mgmt_start_service_discovery_cmd, 3, false,
+				mgmt_start_service_discovery_rsp, 1, true },
 	{ 0x003b, "Read Local Out Of Band Extended Data",
 				mgmt_read_local_oob_ext_data_cmd, 1, true },
 	{ 0x003c, "Read Extended Controller Index List",
