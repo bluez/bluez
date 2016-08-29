@@ -9695,6 +9695,14 @@ static void mgmt_print_signature_resolving_key(const void *data)
 	print_hex_field("Key", data + 8, 16);
 }
 
+static void mgmt_print_oob_data(const void *data)
+{
+	print_hash_p192(data);
+	print_randomizer_p192(data + 16);
+	print_hash_p256(data + 32);
+	print_randomizer_p256(data + 48);
+}
+
 static void mgmt_null_cmd(const void *data, uint16_t size)
 {
 }
@@ -10015,6 +10023,40 @@ static void mgmt_unpair_device_cmd(const void *data, uint16_t size)
 }
 
 static void mgmt_unpair_device_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_read_local_oob_data_rsp(const void *data, uint16_t size)
+{
+	mgmt_print_oob_data(data);
+}
+
+static void mgmt_add_remote_oob_data_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_oob_data(data + 7);
+}
+
+static void mgmt_add_remote_oob_data_rsp(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_remove_remote_oob_data_cmd(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+
+	mgmt_print_address(data, address_type);
+}
+
+static void mgmt_remove_remote_oob_data_rsp(const void *data, uint16_t size)
 {
 	uint8_t address_type = get_u8(data + 6);
 
@@ -10416,6 +10458,16 @@ static void mgmt_read_local_oob_ext_data_cmd(const void *data, uint16_t size)
 	mgmt_print_address_type(type);
 }
 
+static void mgmt_read_local_oob_ext_data_rsp(const void *data, uint16_t size)
+{
+	uint8_t type = get_u8(data);
+	uint16_t data_len = get_le16(data + 1);
+
+	mgmt_print_address_type(type);
+	print_field("Data length: %u", data_len);
+	print_eir(data + 3, size - 3, true);
+}
+
 static void mgmt_read_advertising_features_rsp(const void *data, uint16_t size)
 {
 	uint32_t flags = get_le32(data);
@@ -10613,9 +10665,14 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x001e, "User Passkey Reply" },
 	{ 0x001f, "User Passkey Negative Reply" },
 	{ 0x0020, "Read Local Out Of Band Data",
-				mgmt_null_cmd, 0, true },
-	{ 0x0021, "Add Remote Out Of Band Data" },
-	{ 0x0022, "Remove Remote Out Of Band Data" },
+				mgmt_null_cmd, 0, true,
+				mgmt_read_local_oob_data_rsp, 64, true },
+	{ 0x0021, "Add Remote Out Of Band Data",
+				mgmt_add_remote_oob_data_cmd, 71, true,
+				mgmt_add_remote_oob_data_rsp, 7, true },
+	{ 0x0022, "Remove Remote Out Of Band Data",
+				mgmt_remove_remote_oob_data_cmd, 7, true,
+				mgmt_remove_remote_oob_data_rsp, 7, true },
 	{ 0x0023, "Start Discovery",
 				mgmt_start_discovery_cmd, 1, true,
 				mgmt_start_discovery_rsp, 1, true },
@@ -10687,7 +10744,8 @@ static const struct mgmt_data mgmt_command_table[] = {
 				mgmt_start_service_discovery_cmd, 3, false,
 				mgmt_start_service_discovery_rsp, 1, true },
 	{ 0x003b, "Read Local Out Of Band Extended Data",
-				mgmt_read_local_oob_ext_data_cmd, 1, true },
+				mgmt_read_local_oob_ext_data_cmd, 1, true,
+				mgmt_read_local_oob_ext_data_rsp, 3, false },
 	{ 0x003c, "Read Extended Controller Index List",
 				mgmt_null_cmd, 0, true,
 				mgmt_read_ext_index_list_rsp, 2, false },
