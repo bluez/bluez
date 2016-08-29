@@ -631,9 +631,11 @@ static bool read_ext_prop_desc(struct discovery_op *op)
 		return false;
 
 	handle = gatt_db_attribute_get_handle(attr);
-	bt_gatt_client_read_value(client, handle, ext_prop_read_cb,
+
+	if (!bt_gatt_client_read_value(client, handle, ext_prop_read_cb,
 							discovery_op_ref(op),
-							discovery_op_unref);
+							discovery_op_unref))
+		return false;
 
 	return true;
 }
