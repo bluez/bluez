@@ -1394,6 +1394,56 @@ done:
 	noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void ext_info_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_read_ext_info *rp = param;
+	uint16_t index = PTR_TO_UINT(user_data);
+	uint32_t supported_settings, current_settings;
+	char addr[18];
+
+	if (status != 0) {
+		error("Reading hci%u info failed with status 0x%02x (%s)",
+					index, status, mgmt_errstr(status));
+		goto done;
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small info reply (%u bytes)", len);
+		goto done;
+	}
+
+	print("hci%u:\tPrimary controller", index);
+
+	ba2str(&rp->bdaddr, addr);
+	print("\taddr %s version %u manufacturer %u",
+			addr, rp->version, le16_to_cpu(rp->manufacturer));
+
+	supported_settings = le32_to_cpu(rp->supported_settings);
+	print("\tsupported settings: %s", settings2str(supported_settings));
+
+	current_settings = le32_to_cpu(rp->current_settings);
+	print("\tcurrent settings: %s", settings2str(current_settings));
+
+	if (supported_settings & MGMT_SETTING_CONFIGURATION) {
+		if (!mgmt_send(mgmt, MGMT_OP_READ_CONFIG_INFO,
+					index, 0, NULL, config_options_rsp,
+					UINT_TO_PTR(index), NULL)) {
+			error("Unable to send read_config cmd");
+			goto done;
+		}
+		return;
+	}
+
+done:
+	pending_index--;
+
+	if (pending_index > 0)
+		return;
+
+	noninteractive_quit(EXIT_SUCCESS);
+}
+
 static void index_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -1498,10 +1548,10 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 		switch (rp->entry[i].type) {
 		case 0x00:
 			print("Primary controller (hci%u,%s)", index, busstr);
-			if (!mgmt_send(mgmt, MGMT_OP_READ_INFO,
-						index, 0, NULL, info_rsp,
+			if (!mgmt_send(mgmt, MGMT_OP_READ_EXT_INFO,
+						index, 0, NULL, ext_info_rsp,
 						UINT_TO_PTR(index), NULL)) {
-				error("Unable to send read_info cmd");
+				error("Unable to send read_ext_info cmd");
 				return noninteractive_quit(EXIT_FAILURE);
 			}
 			pending_index++;
