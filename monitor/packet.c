@@ -10265,6 +10265,7 @@ static void mgmt_set_privacy_cmd(const void *data, uint16_t size)
 	}
 
 	print_field("Privacy: %s (0x%2.2x)", str, enable);
+	print_hex_field("Key", data + 1, 16);
 }
 
 static void mgmt_load_identity_resolving_keys_cmd(const void *data, uint16_t size)
@@ -10710,7 +10711,7 @@ static const struct mgmt_data mgmt_command_table[] = {
 				mgmt_set_debug_keys_cmd, 1, true,
 				mgmt_new_settings_rsp, 4, true },
 	{ 0x002f, "Set Privacy",
-				mgmt_set_privacy_cmd, 1, true,
+				mgmt_set_privacy_cmd, 17, true,
 				mgmt_new_settings_rsp, 4, true },
 	{ 0x0030, "Load Identity Resolving Keys",
 				mgmt_load_identity_resolving_keys_cmd, 2, false,
