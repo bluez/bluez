@@ -1018,7 +1018,7 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		return;
 	}
 
-	strcpy((char *) ev.u.create.name, hog->name);
+	strncpy((char *) ev.u.create.name, hog->name, sizeof(ev.u.create.name));
 	ev.u.create.vendor = hog->vendor;
 	ev.u.create.product = hog->product;
 	ev.u.create.version = hog->version;
