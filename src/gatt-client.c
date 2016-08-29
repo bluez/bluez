@@ -309,7 +309,7 @@ static void async_dbus_op_reply(struct async_dbus_op *op, int err,
 
 		if (err) {
 			reply = err > 0 ? create_gatt_dbus_error(msg, err) :
-				btd_error_failed(msg, strerror(err));
+				btd_error_failed(msg, strerror(-err));
 			goto send_reply;
 		}
 
