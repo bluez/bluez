@@ -2264,7 +2264,7 @@ Start Service Discovery Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address_Type (1 Octet)
 				RSSI_Threshold (1 Octet)
-				UUID_Count (1 Octet)
+				UUID_Count (2 Octets)
 				UUID[i] (16 Octets)
 	Return Parameters:	Address_Type (1 Octet)
 
