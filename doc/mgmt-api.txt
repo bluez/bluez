@@ -28,6 +28,7 @@ Linux kernel v4.2	Version 1.10
 Linux kernel v4.5	Version 1.11
 Linux kernel v4.6	Version 1.12
 Linux kernel v4.8	Version 1.13 (not yet released)
+			Version 1.14 (not yet released)
 
 Version 1.1 introduces Set Device ID command.
 
@@ -78,6 +79,9 @@ the Set Privacy command).
 
 Version 1.13 introduces a new authentication failure reason code for the
 Device Disconnected event.
+
+Version 1.14 introduces Read Extended Controller Information command and
+Extended Controller Information Changed event.
 
 
 Example
@@ -2811,6 +2815,76 @@ Start Limited Discovery Command
 				Invalid Index
 
 
+Read Extended Controller Information Command
+============================================
+
+	Command Code:		0x0042
+	Controller Index:	<controller id>
+	Command Parameters:
+	Return Parameters:	Address (6 Octets)
+				Bluetooth_Version (1 Octet)
+				Manufacturer (2 Octets)
+				Supported_Settings (4 Octets)
+				Current_Settings (4 Octets)
+				EIR_Data_Length (2 Octets)
+				EIR_Data (0-65535 Octets)
+
+	This command is used to retrieve the current state and basic
+	information of a controller. It is typically used right after
+	getting the response to the Read Controller Index List command
+	or an Index Added event (or its extended counterparts).
+
+	The Address parameter describes the controllers public address
+	and it can be expected that it is set. However in case of single
+	mode Low Energy only controllers it can be 00:00:00:00:00:00. To
+	power on the controller in this case, it is required to configure
+	a static address using Set Static Address command first.
+
+	If the public address is set, then it will be used as identity
+	address for the controller. If no public address is available,
+	then the configured static address will be used as identity
+	address.
+
+	In the case of a dual-mode controller with public address that
+	is configured as Low Energy only device (BR/EDR switched off),
+	the static address is used when set and public address otherwise.
+
+	Current_Settings and Supported_Settings is a bitmask with
+	currently the following available bits:
+
+		0	Powered
+		1	Connectable
+		2	Fast Connectable
+		3	Discoverable
+		4	Bondable
+		5	Link Level Security (Sec. mode 3)
+		6	Secure Simple Pairing
+		7	Basic Rate/Enhanced Data Rate
+		8	High Speed
+		9	Low Energy
+		10	Advertising
+		11	Secure Connections
+		12	Debug Keys
+		13	Privacy
+		14	Controller Configuration
+		15	Static Address
+
+	The EIR_Data field contains information about class of device,
+	local name and other values. Not all of them might be present. For
+	example a Low Energy only device does not contain class of device
+	information.
+
+	When any of the values in the EIR_Data field changes, the event
+	Extended Controller Information Changed will be used to inform
+	clients about the updated information.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
@@ -3656,3 +3730,23 @@ Advertising Removed Event
 
 	The event will only be sent to management sockets other than the
 	one through which the command was sent.
+
+
+Extended Controller Information Changed Event
+=============================================
+
+	Event Code:		0x0025
+	Controller Index:	<controller id>
+	Event Parameters:	EIR_Data_Length (2 Octets)
+				EIR_Data (0-65535 Octets)
+
+	This event indicates that controller information has been updated
+	and new values are used. This includes the local name, class of
+	device, device id and LE address information.
+
+	This event will only be used after Read Extended Controller
+	Information command has been used at least once. If it has not
+	been used the legacy events are used.
+
+	The event will only be sent to management sockets other than the
+	one through which the change was triggered.
