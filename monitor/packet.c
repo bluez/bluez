@@ -3898,7 +3898,7 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 					data + sizeof(*ul) + ul->ident_len);
 		break;
 	case BTSNOOP_OPCODE_CTRL_OPEN:
-		control_disable_legacy();
+		control_disable_decoding();
 		packet_ctrl_open(tv, cred, index, data, size);
 		break;
 	case BTSNOOP_OPCODE_CTRL_CLOSE:

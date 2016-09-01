@@ -57,7 +57,7 @@
 
 static struct btsnoop *btsnoop_file = NULL;
 static bool hcidump_fallback = false;
-static int mgmt_control_fd = -1;
+static bool decode_control = true;
 
 struct control_data {
 	uint16_t channel;
@@ -798,6 +798,9 @@ static void mgmt_advertising_removed(uint16_t len, const void *buf)
 
 void control_message(uint16_t opcode, const void *data, uint16_t size)
 {
+	if (!decode_control)
+		return;
+
 	switch (opcode) {
 	case MGMT_EV_INDEX_ADDED:
 		mgmt_index_added(size, data);
@@ -1044,7 +1047,7 @@ static int open_channel(uint16_t channel)
 
 	mainloop_add_fd(data->fd, EPOLLIN, data_callback, data, free_data);
 
-	return data->fd;
+	return 0;
 }
 
 static void client_callback(int fd, uint32_t events, void *user_data)
@@ -1447,16 +1450,12 @@ int control_tracing(void)
 		return 0;
 	}
 
-	mgmt_control_fd = open_channel(HCI_CHANNEL_CONTROL);
+	open_channel(HCI_CHANNEL_CONTROL);
 
 	return 0;
 }
 
-void control_disable_legacy(void)
+void control_disable_decoding(void)
 {
-	if (mgmt_control_fd < 0)
-		return;
-
-	close(mgmt_control_fd);
-	mgmt_control_fd = -1;
+	decode_control = false;
 }
