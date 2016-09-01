@@ -10580,9 +10580,24 @@ static void mgmt_read_ext_index_list_rsp(const void *data, uint16_t size)
 		uint16_t index = get_le16(data + 2 + (i * 4));
 		uint8_t type = get_u8(data + 4 + (i * 4));
 		uint8_t bus = get_u8(data + 5 + (i * 4));
+		const char *str;
 
-		print_field("  hci%u - type 0x%2.2x - bus 0x%2.2x",
-							index, type, bus);
+		switch (type) {
+		case 0x00:
+			str = "Primary";
+			break;
+		case 0x01:
+			str = "Unconfigured";
+			break;
+		case 0x02:
+			str = "AMP";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  hci%u (%s,%s)", index, str, hci_bustostr(bus));
 	}
 }
 
