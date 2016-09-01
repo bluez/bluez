@@ -109,7 +109,8 @@ static uint16_t index_current = 0;
 #define UNKNOWN_MANUFACTURER 0xffff
 
 #define CTRL_RAW  0x0000
-#define CTRL_MGMT 0x0001
+#define CTRL_USER 0x0001
+#define CTRL_MGMT 0x0002
 
 #define MAX_CTRL 64
 
@@ -9174,7 +9175,8 @@ void packet_ctrl_open(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	sprintf(channel, "0x%4.4x", cookie);
 
-	if ((format == CTRL_RAW || format == CTRL_MGMT) && size >= 8) {
+	if ((format == CTRL_RAW || format == CTRL_USER || format == CTRL_MGMT)
+								&& size >= 8) {
 		uint8_t version;
 		uint16_t revision;
 		uint32_t flags;
@@ -9202,10 +9204,20 @@ void packet_ctrl_open(struct timeval *tv, struct ucred *cred, uint16_t index,
 				flags & 0x0001 ? "(privileged) " : "",
 				version, revision);
 
-		if (format == CTRL_RAW)
+		switch (format) {
+		case CTRL_RAW:
 			title = "RAW Open";
-		else
+			break;
+		case CTRL_USER:
+			title = "USER Open";
+			break;
+		case CTRL_MGMT:
 			title = "MGMT Open";
+			break;
+		default:
+			title = "Control Open";
+			break;
+		}
 
 		print_packet(tv, cred, '@', index, channel, COLOR_CTRL_OPEN,
 						title, comm, details);
@@ -9250,6 +9262,9 @@ void packet_ctrl_close(struct timeval *tv, struct ucred *cred, uint16_t index,
 	switch (format) {
 	case CTRL_RAW:
 		title = "RAW Close";
+		break;
+	case CTRL_USER:
+		title = "USER Close";
 		break;
 	case CTRL_MGMT:
 		title = "MGMT Close";
