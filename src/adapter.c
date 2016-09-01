@@ -8065,7 +8065,7 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 
 	adapter = btd_adapter_new(index);
 	if (!adapter) {
-		btd_error(adapter->dev_id,
+		btd_error(index,
 			"Unable to create new adapter for index %u", index);
 		return;
 	}
