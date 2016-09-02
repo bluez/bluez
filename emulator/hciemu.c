@@ -467,6 +467,16 @@ bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 	return true;
 }
 
+bool hciemu_clear_master_post_command_hooks(struct hciemu *hciemu)
+{
+	if (!hciemu)
+		return false;
+
+	queue_remove_all(hciemu->post_command_hooks,
+					NULL, NULL, destroy_command_hook);
+	return true;
+}
+
 int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 				uint16_t opcode, hciemu_hook_func_t function,
 				void *user_data)

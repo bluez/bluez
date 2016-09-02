@@ -66,6 +66,8 @@ typedef bool (*hciemu_hook_func_t)(const void *data, uint16_t len,
 bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 			hciemu_command_func_t function, void *user_data);
 
+bool hciemu_clear_master_post_command_hooks(struct hciemu *hciemu);
+
 int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 				uint16_t opcode, hciemu_hook_func_t function,
 				void *user_data);

@@ -384,6 +384,12 @@ static void controller_setup(const void *test_data)
 	tester_test_passed();
 }
 
+struct setup_mgmt_cmd {
+	uint8_t send_opcode;
+	const void *send_param;
+	uint16_t send_len;
+};
+
 struct generic_data {
 	const uint16_t *setup_settings;
 	bool setup_nobredr;
@@ -394,6 +400,7 @@ struct generic_data {
 	uint16_t setup_send_opcode;
 	const void *setup_send_param;
 	uint16_t setup_send_len;
+	const struct setup_mgmt_cmd *setup_mgmt_cmd_arr;
 	bool send_index_none;
 	uint16_t send_opcode;
 	const void *send_param;
@@ -4862,6 +4869,199 @@ static const struct generic_data read_local_oob_success_sc_test = {
 	.expect_hci_command = BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA,
 };
 
+static const char ext_ctrl_info1[] = {
+	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
+	0x08, /* version */
+	0x3f, 0x00, /* manufacturer */
+	0xff, 0xbf, 0x00, 0x00, /* supported settings */
+	0x80, 0x00, 0x00, 0x00, /* current settings */
+	0x09, 0x00, /* eir length */
+	0x04, /* dev class length */
+	0x0d, /* dev class info */
+	0x00, /* minor */
+	0x00, /* major */
+	0x00, /* service classes */
+	0x01, /* complete name data length */
+	0x09, /* complete name flag */
+	0x01, /* short name data length */
+	0x08, /* short name flag */
+};
+
+static const struct generic_data read_ext_ctrl_info1 = {
+	.send_opcode = MGMT_OP_READ_EXT_INFO,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_ctrl_info1,
+	.expect_len = sizeof(ext_ctrl_info1),
+};
+
+static const char set_dev_class1[] = { 0x03, 0xe0 };
+
+static const struct setup_mgmt_cmd set_dev_class_cmd_arr1[] = {
+	{
+		.send_opcode = MGMT_OP_SET_DEV_CLASS,
+		.send_param = set_dev_class1,
+		.send_len = sizeof(set_dev_class1),
+	},
+	{
+		.send_opcode = MGMT_OP_ADD_UUID,
+		.send_param = add_spp_uuid_param,
+		.send_len = sizeof(add_spp_uuid_param),
+	},
+	{ /* last element should always have opcode 0x00 */
+		.send_opcode = 0x00,
+		.send_param = NULL,
+		.send_len = 0,
+	}
+};
+
+static const char ext_ctrl_info2[] = {
+	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
+	0x08, /* version */
+	0x3f, 0x00, /* manufacturer */
+	0xff, 0xbf, 0x00, 0x00, /* supported settings */
+	0x81, 0x02, 0x00, 0x00, /* current settings */
+	0x09, 0x00, /* eir length */
+	0x04, /* dev class length */
+	0x0d, /* dev class info */
+	0xe0, /* minor */
+	0x03, /* major */
+	0x00, /* service classes */
+	0x01, /* complete name data length */
+	0x09, /* complete name flag */
+	0x01, /* short name data length */
+	0x08, /* short name flag */
+};
+
+static const struct generic_data read_ext_ctrl_info2 = {
+	.setup_settings = settings_powered_le,
+	.setup_mgmt_cmd_arr = set_dev_class_cmd_arr1,
+	.send_opcode = MGMT_OP_READ_EXT_INFO,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_ctrl_info2,
+	.expect_len = sizeof(ext_ctrl_info2),
+};
+
+static const char ext_ctrl_info3[] = {
+	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
+	0x08, /* version */
+	0x3f, 0x00, /* manufacturer */
+	0xff, 0xbf, 0x00, 0x00, /* supported settings */
+	0x80, 0x02, 0x00, 0x00, /* current settings */
+	0x12, 0x00, /* eir length */
+	0x04, /* dev class length */
+	0x0d, /* dev class info */
+	0x00, /* minor */
+	0x00, /* major */
+	0x00, /* service classes */
+	0x0A, /* Local name length */
+	0x09, /* Complete name */
+	0x54, 0x65, 0x73, 0x74,
+	0x20, 0x6E, 0x61, 0x6D, 0x65, /* "Test name" */
+	0x01, /* short name data length */
+	0x08, /* short name flag */
+};
+
+static const struct generic_data read_ext_ctrl_info3 = {
+	.setup_settings = settings_le,
+	.setup_send_opcode = MGMT_OP_SET_LOCAL_NAME,
+	.setup_send_param = set_local_name_param,
+	.setup_send_len = sizeof(set_local_name_param),
+	.send_opcode = MGMT_OP_READ_EXT_INFO,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_ctrl_info3,
+	.expect_len = sizeof(ext_ctrl_info3),
+};
+
+static const struct mgmt_cp_set_local_name set_local_name_cp = {
+	.name = {'T', 'e', 's', 't', ' ', 'n', 'a', 'm', 'e'},
+	.short_name = {'T', 'e', 's', 't'},
+};
+
+static const char ext_ctrl_info4[] = {
+	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
+	0x08, /* version */
+	0x3f, 0x00, /* manufacturer */
+	0xff, 0xbf, 0x00, 0x00, /* supported settings */
+	0x80, 0x02, 0x00, 0x00, /* current settings */
+	0x16, 0x00, /* eir length */
+	0x04, /* dev class length */
+	0x0d, /* dev class info */
+	0x00, /* minor */
+	0x00, /* major */
+	0x00, /* service classes */
+	0x0A, /* Complete Local name len */
+	0x09, /* Complete name */
+	0x54, 0x65, 0x73, 0x74,
+	0x20, 0x6E, 0x61, 0x6D, 0x65, /* "Test name" */
+	0x05, /* Short Local name len */
+	0x08, /* Short name */
+	0x54, 0x65, 0x73, 0x74, /* "Test" */
+};
+
+static const struct generic_data read_ext_ctrl_info4 = {
+	.setup_settings = settings_le,
+	.setup_send_opcode = MGMT_OP_SET_LOCAL_NAME,
+	.setup_send_param = &set_local_name_cp,
+	.setup_send_len = sizeof(set_local_name_cp),
+	.send_opcode = MGMT_OP_READ_EXT_INFO,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_ctrl_info4,
+	.expect_len = sizeof(ext_ctrl_info4),
+};
+
+static const struct setup_mgmt_cmd set_dev_class_cmd_arr2[] = {
+	{
+		.send_opcode = MGMT_OP_SET_DEV_CLASS,
+		.send_param = set_dev_class1,
+		.send_len = sizeof(set_dev_class1),
+	},
+	{
+		.send_opcode = MGMT_OP_ADD_UUID,
+		.send_param = add_spp_uuid_param,
+		.send_len = sizeof(add_spp_uuid_param),
+	},
+	{
+		.send_opcode = MGMT_OP_SET_LOCAL_NAME,
+		.send_param = &set_local_name_cp,
+		.send_len = sizeof(set_local_name_cp),
+	},
+	{ /* last element should always have opcode 0x00 */
+		.send_opcode = 0x00,
+		.send_param = NULL,
+		.send_len = 0,
+	}
+};
+
+static const char ext_ctrl_info5[] = {
+	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
+	0x08, /* version */
+	0x3f, 0x00, /* manufacturer */
+	0xff, 0xbf, 0x00, 0x00, /* supported settings */
+	0x81, 0x02, 0x00, 0x00, /* current settings */
+	0x16, 0x00, /* eir len */
+	0x04, /* dev class len */
+	0x0d, /* dev class info */
+	0xe0, /* minor */
+	0x03, /* major */
+	0x00, /* service classes */
+	0x0A, /* Complete Local name len */
+	0x09, /* Complete name */
+	0x54, 0x65, 0x73, 0x74,
+	0x20, 0x6E, 0x61, 0x6D, 0x65, /* "Test name" */
+	0x05, /* Short Local name len */
+	0x08, /* Short name */
+	0x54, 0x65, 0x73, 0x74, /* "Test" */
+};
+
+static const struct generic_data read_ext_ctrl_info5 = {
+	.setup_settings = settings_powered_le,
+	.setup_mgmt_cmd_arr = set_dev_class_cmd_arr2,
+	.send_opcode = MGMT_OP_READ_EXT_INFO,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_ctrl_info5,
+	.expect_len = sizeof(ext_ctrl_info5),
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -5844,6 +6044,35 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 	test_condition_complete(data);
 }
 
+static void command_setup_hci_callback(uint16_t opcode, const void *param,
+					uint8_t length, void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct generic_data *test = data->test_data;
+	const void *setup_expect_hci_param = test->setup_expect_hci_param;
+	uint8_t setup_expect_hci_len = test->setup_expect_hci_len;
+
+	tester_print("HCI Command 0x%04x length %u", opcode, length);
+
+	if (opcode != test->setup_expect_hci_command)
+		return;
+
+	if (length != setup_expect_hci_len) {
+		tester_warn("Invalid parameter size for HCI command");
+		tester_test_failed();
+		return;
+	}
+
+	if (memcmp(param, setup_expect_hci_param, length) != 0) {
+		tester_warn("Unexpected HCI command parameter value");
+		tester_test_failed();
+		return;
+	}
+
+	hciemu_clear_master_post_command_hooks(data->hciemu);
+	test_condition_complete(data);
+}
+
 static void command_hci_callback(uint16_t opcode, const void *param,
 					uint8_t length, void *user_data)
 {
@@ -5873,6 +6102,65 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 	}
 
 	test_condition_complete(data);
+}
+
+static void setup_mgmt_cmd_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_setup_complete();
+}
+
+static void setup_set_local_name(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const void *send_param = test->setup_send_param;
+	uint16_t send_len = test->setup_send_len;
+	size_t i = 0;
+
+	if (test->setup_expect_hci_command) {
+		tester_print("Registering setup expected HCI command callback");
+		tester_print("Setup expected HCI command 0x%04x",
+					 test->setup_expect_hci_command);
+		hciemu_add_master_post_command_hook(data->hciemu,
+					command_setup_hci_callback, data);
+		test_add_condition(data);
+	}
+
+	if (test->setup_send_opcode) {
+		tester_print("Setup sending %s (0x%04x)",
+				mgmt_opstr(test->setup_send_opcode),
+				test->setup_send_opcode);
+		mgmt_send(data->mgmt, test->setup_send_opcode, data->mgmt_index,
+					send_len, send_param,
+					setup_mgmt_cmd_callback,
+					NULL, NULL);
+		return;
+	}
+
+	tester_print("Sending setup opcode array");
+	for (; test->setup_mgmt_cmd_arr + i; ++i) {
+		const struct setup_mgmt_cmd *cmd = test->setup_mgmt_cmd_arr + i;
+
+		if (cmd->send_opcode == 0x00)
+			break;
+
+		tester_print("Setup sending %s (0x%04x)",
+				mgmt_opstr(cmd->send_opcode),
+				cmd->send_opcode);
+
+		mgmt_send(data->mgmt, cmd->send_opcode, data->mgmt_index,
+				cmd->send_len, cmd->send_param,
+				setup_mgmt_cmd_callback,
+				NULL, NULL);
+	}
+
+	tester_setup_complete();
 }
 
 static bool power_off(uint16_t index)
@@ -7099,6 +7387,26 @@ int main(int argc, char *argv[])
 					&multi_advertising_add_second,
 					setup_add_advertising_duration,
 					test_command_generic, 3);
+
+	test_bredrle("Read Ext Controller Info 1",
+				&read_ext_ctrl_info1,
+				setup_set_local_name, test_command_generic);
+
+	test_bredrle("Read Ext Controller Info 2",
+				&read_ext_ctrl_info2,
+				setup_set_local_name, test_command_generic);
+
+	test_bredrle("Read Ext Controller Info 3",
+				&read_ext_ctrl_info3,
+				setup_set_local_name, test_command_generic);
+
+	test_bredrle("Read Ext Controller Info 4",
+				&read_ext_ctrl_info4,
+				setup_set_local_name, test_command_generic);
+
+	test_bredrle("Read Ext Controller Info 5",
+				&read_ext_ctrl_info5,
+				setup_set_local_name, test_command_generic);
 
 	test_bredrle("Read Local OOB Data - Not powered",
 				&read_local_oob_not_powered_test,
