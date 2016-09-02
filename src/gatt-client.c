@@ -297,7 +297,7 @@ static void write_descriptor_cb(struct gatt_db_attribute *attr, int err,
 }
 
 static void async_dbus_op_reply(struct async_dbus_op *op, int err,
-				const uint8_t *value, size_t length)
+				const uint8_t *value, ssize_t length)
 {
 	const struct queue_entry *entry;
 	DBusMessage *reply;
@@ -319,7 +319,7 @@ static void async_dbus_op_reply(struct async_dbus_op *op, int err,
 			return;
 		}
 
-		if (value)
+		if (length >= 0)
 			message_append_byte_array(reply, value, length);
 
 send_reply:
@@ -489,7 +489,7 @@ static void write_result_cb(bool success, bool reliable_error,
 	}
 
 done:
-	async_dbus_op_reply(op, err, NULL, 0);
+	async_dbus_op_reply(op, err, NULL, -1);
 }
 
 static void write_cb(bool success, uint8_t att_ecode, void *user_data)
@@ -1126,7 +1126,7 @@ static void create_notify_reply(struct async_dbus_op *op, bool success,
 	else
 		err = att_ecode ? att_ecode : -ENOENT;
 
-	async_dbus_op_reply(op, err, NULL, 0);
+	async_dbus_op_reply(op, err, NULL, -1);
 }
 
 static void register_notify_cb(uint16_t att_ecode, void *user_data)
