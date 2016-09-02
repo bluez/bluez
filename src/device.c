@@ -1748,6 +1748,10 @@ static uint8_t select_conn_bearer(struct btd_device *dev)
 	else if (!dev->bredr_state.bonded && dev->le_state.bonded)
 		return dev->bdaddr_type;
 
+	/* If the address is private it can only be connected over LE */
+	if (device_address_is_private(dev))
+		return dev->bdaddr_type;
+
 	if (dev->bredr_seen) {
 		bredr_last = current - dev->bredr_seen;
 		if (bredr_last > SEEN_TRESHHOLD)
