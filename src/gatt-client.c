@@ -184,7 +184,7 @@ static void read_check_cb(struct gatt_db_attribute *attrib, int err,
 {
 	gboolean *ret = user_data;
 
-	if (err || length == 0) {
+	if (err) {
 		*ret = FALSE;
 		return;
 	}
