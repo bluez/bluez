@@ -2756,7 +2756,7 @@ static int parse_line(char *str)
 
 	off++;
 
-	while (1) {
+	while (length <= sizeof(array) - 2) {
 		value = strtol(off, &end, 16);
 		if (value == 0 && off == end)
 			break;
