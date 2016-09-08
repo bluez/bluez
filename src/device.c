@@ -2058,6 +2058,7 @@ static void store_incl(struct gatt_db_attribute *attr, void *user_data)
 
 	sprintf(handle, "%04hx", handle_num);
 
+	gatt_db_attribute_get_service_uuid(service, &uuid);
 	bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
 	sprintf(value, GATT_INCLUDE_UUID_STR ":%04hx:%04hx:%s", start,
 								end, uuid_str);
