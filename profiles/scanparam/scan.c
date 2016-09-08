@@ -201,13 +201,23 @@ static int scan_param_accept(struct btd_service *service)
 	gatt_db_unref(scan->db);
 	bt_gatt_client_unref(scan->client);
 
-
 	scan->db = gatt_db_ref(db);
 	scan->client = bt_gatt_client_ref(client);
 
 	bt_string_to_uuid(&scan_parameters_uuid, SCAN_PARAMETERS_UUID);
 	gatt_db_foreach_service(db, &scan_parameters_uuid,
 					foreach_scan_param_service, scan);
+
+	if (!scan->attr) {
+		error("Scan Parameters attribute not found");
+		gatt_db_unref(scan->db);
+		scan->db = NULL;
+		bt_gatt_client_unref(scan->client);
+		scan->client = NULL;
+		return -1;
+	}
+
+	btd_service_connecting_complete(service, 0);
 
 	return 0;
 }
