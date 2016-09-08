@@ -209,7 +209,8 @@ int service_accept(struct btd_service *service)
 	return err;
 
 done:
-	change_state(service, BTD_SERVICE_STATE_CONNECTING, 0);
+	if (service->state == BTD_SERVICE_STATE_DISCONNECTED)
+		change_state(service, BTD_SERVICE_STATE_CONNECTING, 0);
 	return 0;
 }
 
