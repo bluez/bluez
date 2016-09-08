@@ -4563,6 +4563,18 @@ static void attio_disconnected(gpointer data, gpointer user_data)
 		attio->dcfunc(attio->user_data);
 }
 
+static void disconnect_gatt_service(gpointer data, gpointer user_data)
+{
+	struct btd_service *service = data;
+	struct btd_profile *profile = btd_service_get_profile(service);
+
+	/* Ignore if profile cannot accept connections */
+	if (!profile->accept)
+		return;
+
+	btd_service_disconnect(service);
+}
+
 static void att_disconnected_cb(int err, void *user_data)
 {
 	struct btd_device *device = user_data;
@@ -4575,6 +4587,7 @@ static void att_disconnected_cb(int err, void *user_data)
 	DBG("%s (%d)", strerror(err), err);
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
+	g_slist_foreach(device->services, disconnect_gatt_service, NULL);
 
 	btd_gatt_client_disconnected(device->client_dbus);
 
