@@ -165,6 +165,15 @@ static void foreach_scan_param_service(struct gatt_db_attribute *attr,
 	gatt_db_service_foreach_char(scan->attr, handle_characteristic, scan);
 }
 
+static void scan_reset(struct scan *scan)
+{
+	scan->attr = NULL;
+	gatt_db_unref(scan->db);
+	scan->db = NULL;
+	bt_gatt_client_unref(scan->client);
+	scan->client = NULL;
+}
+
 static int scan_param_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -182,11 +191,6 @@ static int scan_param_accept(struct btd_service *service)
 		return -1;
 	}
 
-	/* Clean-up any old client/db and acquire the new ones */
-	scan->attr = NULL;
-	gatt_db_unref(scan->db);
-	bt_gatt_client_unref(scan->client);
-
 	scan->db = gatt_db_ref(db);
 	scan->client = bt_gatt_client_ref(client);
 
@@ -196,14 +200,22 @@ static int scan_param_accept(struct btd_service *service)
 
 	if (!scan->attr) {
 		error("Scan Parameters attribute not found");
-		gatt_db_unref(scan->db);
-		scan->db = NULL;
-		bt_gatt_client_unref(scan->client);
-		scan->client = NULL;
+		scan_reset(scan);
 		return -1;
 	}
 
 	btd_service_connecting_complete(service, 0);
+
+	return 0;
+}
+
+static int scan_param_disconnect(struct btd_service *service)
+{
+	struct scan *scan = btd_service_get_user_data(service);
+
+	scan_reset(scan);
+
+	btd_service_disconnecting_complete(service, 0);
 
 	return 0;
 }
@@ -257,6 +269,7 @@ static struct btd_profile scan_profile = {
 	.device_probe = scan_param_probe,
 	.device_remove = scan_param_remove,
 	.accept = scan_param_accept,
+	.disconnect = scan_param_disconnect,
 };
 
 static int scan_param_init(void)
