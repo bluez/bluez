@@ -136,6 +136,8 @@ static int deviceinfo_driver_accept(struct btd_service *service)
 	gatt_db_foreach_service(db, &deviceinfo_uuid,
 					foreach_deviceinfo_service, device);
 
+	btd_service_connecting_complete(service, 0);
+
 	return 0;
 }
 
