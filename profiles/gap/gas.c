@@ -251,6 +251,15 @@ static void foreach_gap_service(struct gatt_db_attribute *attr, void *user_data)
 	handle_gap_service(gas);
 }
 
+static void gas_reset(struct gas *gas)
+{
+	gas->attr = NULL;
+	gatt_db_unref(gas->db);
+	gas->db = NULL;
+	bt_gatt_client_unref(gas->client);
+	gas->client = NULL;
+}
+
 static int gap_driver_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -268,11 +277,6 @@ static int gap_driver_accept(struct btd_service *service)
 		return -1;
 	}
 
-	/* Clean-up any old client/db and acquire the new ones */
-	gas->attr = NULL;
-	gatt_db_unref(gas->db);
-	bt_gatt_client_unref(gas->client);
-
 	gas->db = gatt_db_ref(db);
 	gas->client = bt_gatt_client_ref(client);
 
@@ -282,10 +286,22 @@ static int gap_driver_accept(struct btd_service *service)
 
 	if (!gas->attr) {
 		error("GAP attribute not found");
+		gas_reset(gas);
 		return -1;
 	}
 
 	btd_service_connecting_complete(service, 0);
+
+	return 0;
+}
+
+static int gap_disconnect(struct btd_service *service)
+{
+	struct gas *gas = btd_service_get_user_data(service);
+
+	gas_reset(gas);
+
+	btd_service_disconnecting_complete(service, 0);
 
 	return 0;
 }
@@ -295,7 +311,8 @@ static struct btd_profile gap_profile = {
 	.remote_uuid	= GAP_UUID,
 	.device_probe	= gap_driver_probe,
 	.device_remove	= gap_driver_remove,
-	.accept		= gap_driver_accept
+	.accept		= gap_driver_accept,
+	.disconnect	= gap_disconnect,
 };
 
 static int gap_init(void)
