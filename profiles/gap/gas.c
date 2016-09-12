@@ -300,6 +300,13 @@ static int gap_driver_accept(struct btd_service *service)
 	bt_uuid16_create(&gap_uuid, GAP_UUID16);
 	gatt_db_foreach_service(db, &gap_uuid, foreach_gap_service, gas);
 
+	if (!gas->attr) {
+		error("GAP attribute not found");
+		return -1;
+	}
+
+	btd_service_connecting_complete(service, 0);
+
 	return 0;
 }
 
