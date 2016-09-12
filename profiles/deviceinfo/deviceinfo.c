@@ -141,6 +141,13 @@ static int deviceinfo_driver_accept(struct btd_service *service)
 	return 0;
 }
 
+static int deviceinfo_disconnect(struct btd_service *service)
+{
+	btd_service_disconnecting_complete(service, 0);
+
+	return 0;
+}
+
 static struct btd_profile deviceinfo_profile = {
 	.name		= "deviceinfo",
 	.remote_uuid	= DEVICE_INFORMATION_UUID,
@@ -148,6 +155,7 @@ static struct btd_profile deviceinfo_profile = {
 	.device_probe	= deviceinfo_driver_probe,
 	.device_remove	= deviceinfo_driver_remove,
 	.accept		= deviceinfo_driver_accept,
+	.disconnect	= deviceinfo_disconnect,
 };
 
 static int deviceinfo_init(void)
