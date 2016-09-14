@@ -23,14 +23,3 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter);
 void btd_gatt_database_destroy(struct btd_gatt_database *database);
 
 struct gatt_db *btd_gatt_database_get_db(struct btd_gatt_database *database);
-
-typedef uint8_t (*btd_gatt_database_ccc_write_t) (uint16_t value,
-							void *user_data);
-typedef void (*btd_gatt_database_destroy_t) (void *data);
-
-struct gatt_db_attribute *
-btd_gatt_database_add_ccc(struct btd_gatt_database *database,
-				uint16_t service_handle,
-				btd_gatt_database_ccc_write_t write_callback,
-				void *user_data,
-				btd_gatt_database_destroy_t destroy);

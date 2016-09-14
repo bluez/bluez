@@ -149,6 +149,10 @@ struct device_state {
 	struct queue *ccc_states;
 };
 
+typedef uint8_t (*btd_gatt_database_ccc_write_t) (uint16_t value,
+							void *user_data);
+typedef void (*btd_gatt_database_destroy_t) (void *data);
+
 struct ccc_state {
 	uint16_t handle;
 	uint8_t value[2];
@@ -825,28 +829,6 @@ service_add_ccc(struct gatt_db_attribute *service,
 	queue_push_tail(database->ccc_callbacks, ccc_cb);
 
 	return ccc;
-}
-
-struct gatt_db_attribute *
-btd_gatt_database_add_ccc(struct btd_gatt_database *database,
-				uint16_t service_handle,
-				btd_gatt_database_ccc_write_t write_callback,
-				void *user_data,
-				btd_gatt_database_destroy_t destroy)
-{
-	struct gatt_db_attribute *service;
-
-	if (!database || !service_handle)
-		return NULL;
-
-	service = gatt_db_get_attribute(database->db, service_handle);
-	if (!service) {
-		error("No service exists with handle: 0x%04x", service_handle);
-		return NULL;
-	}
-
-	return service_add_ccc(service, database, write_callback, user_data,
-								destroy);
 }
 
 static void populate_gatt_service(struct btd_gatt_database *database)
