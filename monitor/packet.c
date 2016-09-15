@@ -3393,16 +3393,18 @@ static void print_uuid128_list(const char *label, const void *data,
 {
 	uint8_t count = data_len / 16;
 	unsigned int i;
+	char uuidstr[MAX_LEN_UUID_STR];
 
 	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	for (i = 0; i < count; i++) {
 		const uint8_t *uuid = data + (i * 16);
 
-		print_field("  %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
+		sprintf(uuidstr, "%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
 				get_le32(&uuid[12]), get_le16(&uuid[10]),
 				get_le16(&uuid[8]), get_le16(&uuid[6]),
 				get_le32(&uuid[2]), get_le16(&uuid[0]));
+		print_field("  %s (%s)", uuidstr_to_str(uuidstr), uuidstr);
 	}
 }
 
