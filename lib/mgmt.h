@@ -541,6 +541,11 @@ struct mgmt_rp_read_ext_info {
 	uint8_t  eir[0];
 } __packed;
 
+#define MGMT_OP_SET_APPEARANCE		0x0043
+struct mgmt_cp_set_appearance {
+	uint16_t appearance;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -827,6 +832,7 @@ static const char *mgmt_op[] = {
 	"Get Advertising Size Information",		/* 0x0040 */
 	"Start Limited Discovery",
 	"Read Extended Controller Information",
+	"Set Appearance",
 };
 
 static const char *mgmt_ev[] = {
