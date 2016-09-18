@@ -81,7 +81,8 @@ Version 1.13 introduces a new authentication failure reason code for the
 Device Disconnected event.
 
 Version 1.14 introduces Read Extended Controller Information command and
-Extended Controller Information Changed event.
+Extended Controller Information Changed event. It also adds Set Appearance
+command.
 
 
 Example
