@@ -4071,6 +4071,8 @@ static void add_adv_usage(void)
 		"\t -c, --connectable         \"connectable\" flag\n"
 		"\t -g, --general-discov      \"general-discoverable\" flag\n"
 		"\t -l, --limited-discov      \"limited-discoverable\" flag\n"
+		"\t -n, --scan-rsp-local-name \"local-name\" flag\n"
+		"\t -a, --scan-rsp-appearance \"appearance\" flag\n"
 		"\t -m, --managed-flags       \"managed-flags\" flag\n"
 		"\t -p, --tx-power            \"tx-power\" flag\n"
 		"e.g.:\n"
@@ -4152,7 +4154,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 	bool quit = true;
 	uint32_t flags = 0;
 
-	while ((opt = getopt_long(argc, argv, "+u:d:s:t:D:cglmph",
+	while ((opt = getopt_long(argc, argv, "+u:d:s:t:D:cglmphna",
 						add_adv_options, NULL)) != -1) {
 		switch (opt) {
 		case 'u':
@@ -4230,6 +4232,12 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'p':
 			flags |= MGMT_ADV_FLAG_TX_POWER;
+			break;
+		case 'n':
+			flags |= MGMT_ADV_FLAG_LOCAL_NAME;
+			break;
+		case 'a':
+			flags |= MGMT_ADV_FLAG_APPEARANCE;
 			break;
 		case 'h':
 			success = true;
