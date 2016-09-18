@@ -4362,6 +4362,40 @@ static void cmd_clr_adv(struct mgmt *mgmt, uint16_t index, int argc, char **argv
 	cmd_rm_adv(mgmt, index, 2, rm_argv);
 }
 
+static void appearance_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		error("Could not set Appearance with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+	else
+		print("Appearance successfully set");
+
+	noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_appearance(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
+{
+	struct mgmt_cp_set_appearance cp;
+
+	if (argc < 2) {
+		print("Usage: appearance <appearance>");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	cp.appearance = cpu_to_le16(strtol(argv[1], NULL, 0));
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_APPEARANCE, index, sizeof(cp), &cp,
+					appearance_rsp, NULL, NULL) == 0) {
+		error("Unable to send appearance cmd");
+		return noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 struct cmd_info {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
@@ -4430,6 +4464,7 @@ static struct cmd_info all_cmd[] = {
 	{ "add-adv",	cmd_add_adv,	"Add advertising instance"	},
 	{ "rm-adv",	cmd_rm_adv,	"Remove advertising instance"	},
 	{ "clr-adv",	cmd_clr_adv,	"Clear advertising instances"	},
+	{ "appearance",	cmd_appearance,	"Set appearance"		},
 };
 
 static void cmd_quit(struct mgmt *mgmt, uint16_t index,
