@@ -10755,6 +10755,13 @@ static void mgmt_read_ext_controller_info_rsp(const void *data, uint16_t size)
 	print_eir(data + 19, size - 19, false);
 }
 
+static void mgmt_set_apperance_cmd(const void *data, uint16_t size)
+{
+	uint16_t appearance = get_le16(data);
+
+	print_appearance(appearance);
+}
+
 struct mgmt_data {
 	uint16_t opcode;
 	const char *str;
@@ -10965,6 +10972,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0042, "Read Extended Controller Information",
 				mgmt_null_cmd, 0, true,
 				mgmt_read_ext_controller_info_rsp, 19, false },
+	{ 0x0043, "Set Appearance",
+				mgmt_set_apperance_cmd, 2, true,
+				mgmt_null_rsp, 0, true },
 	{ }
 };
 
