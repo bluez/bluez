@@ -2908,7 +2908,11 @@ Set Appearance Command
 	This command generates a Command Complete event on success
 	or a Command Status event on failure.
 
-	Possible errors:	Invalid Parameters
+	This command is only available for LE capable controllers.
+	It will return Not Supported otherwise.
+
+	Possible errors:	Not Supported
+				Invalid Parameters
 				Invalid Index
 
 
