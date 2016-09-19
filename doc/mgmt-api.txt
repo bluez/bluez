@@ -82,7 +82,8 @@ Device Disconnected event.
 
 Version 1.14 introduces Read Extended Controller Information command and
 Extended Controller Information Changed event. It also adds Set Appearance
-command.
+command. The advertising flags Appearance and Local Name for adding scan
+response information are now supported.
 
 
 Example
