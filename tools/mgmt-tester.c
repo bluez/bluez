@@ -7862,6 +7862,21 @@ int main(int argc, char *argv[])
 					setup_add_advertising_duration,
 					test_command_generic, 3);
 
+	test_bredr("Set appearance - BR/EDR only",
+					&set_appearance_not_supported,
+					NULL,
+					test_command_generic);
+
+	test_bredrle("Set appearance - BR/EDR LE",
+					&set_appearance_success,
+					NULL,
+					test_command_generic);
+
+	test_le("Set appearance - LE only",
+					&set_appearance_success,
+					NULL,
+					test_command_generic);
+
 	test_bredrle("Read Ext Controller Info 1",
 				&read_ext_ctrl_info1,
 				setup_command_generic, test_command_generic);
