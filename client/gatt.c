@@ -73,15 +73,21 @@ static void print_service(GDBusProxy *proxy, const char *description)
 
 	text = uuidstr_to_str(uuid);
 	if (!text)
-		text = uuid;
-
-	rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n",
-				description ? "[" : "",
-				description ? : "",
-				description ? "] " : "",
-				primary ? "Primary" : "Secondary",
-				g_dbus_proxy_get_path(proxy),
-				text);
+		rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					primary ? "Primary" : "Secondary",
+					g_dbus_proxy_get_path(proxy),
+					uuid);
+	else
+		rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					primary ? "Primary" : "Secondary",
+					g_dbus_proxy_get_path(proxy),
+					uuid, text);
 }
 
 void gatt_add_service(GDBusProxy *proxy)
@@ -116,14 +122,19 @@ static void print_characteristic(GDBusProxy *proxy, const char *description)
 
 	text = uuidstr_to_str(uuid);
 	if (!text)
-		text = uuid;
-
-	rl_printf("%s%s%sCharacteristic\n\t%s\n\t%s\n",
-				description ? "[" : "",
-				description ? : "",
-				description ? "] " : "",
-				g_dbus_proxy_get_path(proxy),
-				text);
+		rl_printf("%s%s%sCharacteristic\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					g_dbus_proxy_get_path(proxy),
+					uuid);
+	else
+		rl_printf("%s%s%sCharacteristic\n\t%s\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					g_dbus_proxy_get_path(proxy),
+					uuid, text);
 }
 
 static gboolean characteristic_is_child(GDBusProxy *characteristic)
@@ -184,14 +195,19 @@ static void print_descriptor(GDBusProxy *proxy, const char *description)
 
 	text = uuidstr_to_str(uuid);
 	if (!text)
-		text = uuid;
-
-	rl_printf("%s%s%sDescriptor\n\t%s\n\t%s\n",
-				description ? "[" : "",
-				description ? : "",
-				description ? "] " : "",
-				g_dbus_proxy_get_path(proxy),
-				text);
+		rl_printf("%s%s%sDescriptor\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					g_dbus_proxy_get_path(proxy),
+					uuid);
+	else
+		rl_printf("%s%s%sDescriptor\n\t%s\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					g_dbus_proxy_get_path(proxy),
+					uuid, text);
 }
 
 static gboolean descriptor_is_child(GDBusProxy *characteristic)
