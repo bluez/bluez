@@ -234,7 +234,7 @@ class Descriptor(dbus.service.Object):
         if interface != GATT_DESC_IFACE:
             raise InvalidArgsException()
 
-        return self.get_properties()[GATT_CHRC_IFACE]
+        return self.get_properties()[GATT_DESC_IFACE]
 
     @dbus.service.method(GATT_DESC_IFACE,
                         in_signature='a{sv}',
