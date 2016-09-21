@@ -535,11 +535,11 @@ class TestEncryptCharacteristic(Characteristic):
                 CharacteristicUserDescriptionDescriptor(bus, 3, self))
 
     def ReadValue(self, options):
-        print('TestCharacteristic Read: ' + repr(self.value))
+        print('TestEncryptCharacteristic Read: ' + repr(self.value))
         return self.value
 
     def WriteValue(self, value, options):
-        print('TestCharacteristic Write: ' + repr(value))
+        print('TestEncryptCharacteristic Write: ' + repr(value))
         self.value = value
 
 class TestEncryptDescriptor(Descriptor):
@@ -576,16 +576,16 @@ class TestSecureCharacteristic(Characteristic):
                 ['secure-read', 'secure-write'],
                 service)
         self.value = []
-        self.add_descriptor(TestEncryptDescriptor(bus, 2, self))
+        self.add_descriptor(TestSecureDescriptor(bus, 2, self))
         self.add_descriptor(
                 CharacteristicUserDescriptionDescriptor(bus, 3, self))
 
     def ReadValue(self, options):
-        print('TestCharacteristic Read: ' + repr(self.value))
+        print('TestSecureCharacteristic Read: ' + repr(self.value))
         return self.value
 
     def WriteValue(self, value, options):
-        print('TestCharacteristic Write: ' + repr(value))
+        print('TestSecureCharacteristic Write: ' + repr(value))
         self.value = value
 
 
