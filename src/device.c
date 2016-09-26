@@ -5935,6 +5935,14 @@ struct bt_gatt_client *btd_device_get_gatt_client(struct btd_device *device)
 	return device->client;
 }
 
+void *btd_device_get_attrib(struct btd_device *device)
+{
+	if (!device)
+		return NULL;
+
+	return device->attrib;
+}
+
 struct bt_gatt_server *btd_device_get_gatt_server(struct btd_device *device)
 {
 	if (!device)

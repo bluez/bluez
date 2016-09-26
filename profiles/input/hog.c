@@ -69,24 +69,6 @@ struct hog_device {
 static gboolean suspend_supported = FALSE;
 static struct queue *devices = NULL;
 
-static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
-{
-	struct hog_device *dev = user_data;
-
-	DBG("HoG connected");
-
-	bt_hog_attach(dev->hog, attrib);
-}
-
-static void attio_disconnected_cb(gpointer user_data)
-{
-	struct hog_device *dev = user_data;
-
-	DBG("HoG disconnected");
-
-	bt_hog_detach(dev->hog);
-}
-
 static struct hog_device *hog_device_new(struct btd_device *device,
 						struct gatt_primary *prim)
 {
@@ -115,15 +97,6 @@ static struct hog_device *hog_device_new(struct btd_device *device,
 
 	dev->device = btd_device_ref(device);
 
-	/*
-	 * TODO: Remove attio callback and use .accept once using
-	 * bt_gatt_client.
-	 */
-	dev->attioid = btd_device_add_attio_callback(device,
-							attio_connected_cb,
-							attio_disconnected_cb,
-							dev);
-
 	if (!devices)
 		devices = queue_new();
 
@@ -142,7 +115,6 @@ static void hog_device_free(void *data)
 		devices = NULL;
 	}
 
-	btd_device_remove_attio_callback(dev->device, dev->attioid);
 	btd_device_unref(dev->device);
 	bt_hog_unref(dev->hog);
 	free(dev);
@@ -215,11 +187,39 @@ static void hog_remove(struct btd_service *service)
 	hog_device_free(dev);
 }
 
+static int hog_accept(struct btd_service *service)
+{
+	struct hog_device *dev = btd_service_get_user_data(service);
+	struct btd_device *device = btd_service_get_device(service);
+	GAttrib *attrib = btd_device_get_attrib(device);
+
+	/* TODO: Replace GAttrib with bt_gatt_client */
+	bt_hog_attach(dev->hog, attrib);
+
+	btd_service_connecting_complete(service, 0);
+
+	return 0;
+}
+
+static int hog_disconnect(struct btd_service *service)
+{
+	struct hog_device *dev = btd_service_get_user_data(service);
+
+	bt_hog_detach(dev->hog);
+
+	btd_service_disconnecting_complete(service, 0);
+
+	return 0;
+}
+
 static struct btd_profile hog_profile = {
 	.name		= "input-hog",
 	.remote_uuid	= HOG_UUID,
 	.device_probe	= hog_probe,
 	.device_remove	= hog_remove,
+	.accept		= hog_accept,
+	.disconnect	= hog_disconnect,
+	.auto_connect	= true,
 };
 
 static int hog_init(void)
