@@ -54,7 +54,6 @@
 #include "suspend.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
-#include "src/attio.h"
 #include "attrib/gatt.h"
 #include "hog-lib.h"
 

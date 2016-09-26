@@ -185,7 +185,7 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/profile.h src/profile.c \
 			src/service.h src/service.c \
 			src/gatt-client.h src/gatt-client.c \
-			src/device.h src/device.c src/attio.h \
+			src/device.h src/device.c \
 			src/dbus-common.c src/dbus-common.h \
 			src/eir.h src/eir.c
 src_bluetoothd_LDADD = lib/libbluetooth-internal.la \
