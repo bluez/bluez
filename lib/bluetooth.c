@@ -2275,6 +2275,24 @@ const char *bt_compidtostr(int compid)
 		return "BASIC MICRO.COM,INC.";
 	case 1006:
 		return "CUBE TECHNOLOGIES";
+	case 1007:
+		return "foolography GmbH";
+	case 1008:
+		return "CLINK";
+	case 1009:
+		return "Hestan Smart Cooking Inc.";
+	case 1010:
+		return "WindowMaster A/S";
+	case 1011:
+		return "Flowscape AB";
+	case 1012:
+		return "PAL Technologies Ltd";
+	case 1013:
+		return "WHERE, Inc.";
+	case 1014:
+		return "Iton Technology Corp.";
+	case 1015:
+		return "Owl Labs Inc.";
 	case 65535:
 		return "internal use";
 	default:
