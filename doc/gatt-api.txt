@@ -115,7 +115,7 @@ Properties	string UUID [read-only]
 
 		object Service [read-only]
 
-			Object path of the GATT service the characteristc
+			Object path of the GATT service the characteristic
 			belongs to.
 
 		array{byte} Value [read-only, optional]
@@ -198,7 +198,7 @@ Properties	string UUID [read-only]
 
 		object Characteristic [read-only]
 
-			Object path of the GATT characteristc the descriptor
+			Object path of the GATT characteristic the descriptor
 			belongs to.
 
 		array{byte} Value [read-only, optional]
@@ -222,7 +222,7 @@ Properties	string UUID [read-only]
 				"secure-read" (Server Only)
 				"secure-write" (Server Only)
 
-GATT Profile hierarcy
+GATT Profile hierarchy
 =====================
 
 Local profile (GATT client) instance. By registering this type of object
