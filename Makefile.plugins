@@ -87,35 +87,6 @@ builtin_sources += profiles/scanparam/scan.c
 builtin_modules += deviceinfo
 builtin_sources += profiles/deviceinfo/deviceinfo.c
 
-if DEPRECATED
-builtin_modules += alert
-builtin_sources += profiles/alert/server.c
-
-builtin_modules += time
-builtin_sources += profiles/time/server.c
-
-builtin_modules += proximity
-builtin_sources += profiles/proximity/main.c profiles/proximity/manager.h \
-			profiles/proximity/manager.c \
-			profiles/proximity/monitor.h \
-			profiles/proximity/monitor.c \
-			profiles/proximity/reporter.h \
-			profiles/proximity/reporter.c \
-			profiles/proximity/linkloss.h \
-			profiles/proximity/linkloss.c \
-			profiles/proximity/immalert.h \
-			profiles/proximity/immalert.c
-
-builtin_modules += thermometer
-builtin_sources += profiles/thermometer/thermometer.c
-
-builtin_modules += heartrate
-builtin_sources += profiles/heartrate/heartrate.c
-
-builtin_modules += cyclingspeed
-builtin_sources += profiles/cyclingspeed/cyclingspeed.c
-endif
-
 if SIXAXIS
 plugin_LTLIBRARIES += plugins/sixaxis.la
 plugins_sixaxis_la_SOURCES = plugins/sixaxis.c
