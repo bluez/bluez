@@ -830,7 +830,7 @@ static void dump_mode(int sk)
 			return;
 		}
 
-		syslog(LOG_INFO, "Recevied %d bytes", len);
+		syslog(LOG_INFO, "Received %d bytes", len);
 		hexdump(buf, len);
 	}
 }

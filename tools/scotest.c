@@ -265,7 +265,7 @@ static void dump_mode(int sk)
 
 	syslog(LOG_INFO,"Receiving ...");
 	while ((len = read(sk, buf, data_size)) > 0)
-		syslog(LOG_INFO, "Recevied %d bytes", len);
+		syslog(LOG_INFO, "Received %d bytes", len);
 }
 
 static void recv_mode(int sk)
