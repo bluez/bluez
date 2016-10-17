@@ -2414,6 +2414,14 @@ int main(int argc, char *argv[])
 					0x18),
 			raw_pdu(0x01, 0x06, 0x08, 0x00, 0x0a));
 
+	define_test_att("/TP/GAD/CL/BV-02-C-1-alternative",
+			test_search_primary, &uuid_16,
+			NULL,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x06, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28, 0x00,
+					0x18),
+			raw_pdu(0x07, 0x01, 0x00, 0xFF, 0xFF));
+
 	define_test_att("/TP/GAD/CL/BV-02-C-2", test_search_primary, &uuid_128,
 			NULL,
 			MTU_EXCHANGE_CLIENT_PDUS,
