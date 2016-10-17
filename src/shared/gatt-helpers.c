@@ -797,7 +797,7 @@ static void find_by_type_val_cb(uint8_t opcode, const void *pdu,
 		goto done;
 	}
 
-	success = false;
+	success = true;
 
 done:
 	discovery_op_complete(op, success, att_ecode);
