@@ -72,7 +72,8 @@ Connectable when controller is powered off.
 Version 1.10 does not introduce any new command or event. It extends the
 advertising feature to support 5 parallel advertising instances.
 
-Version 1.11 introduces Get Advertising Size Information command.
+Version 1.11 introduces Get Advertising Size Information and Start Limited
+Discovery commands.
 
 Version 1.12 introduces a new limited privacy mode (value 0x02 passed to
 the Set Privacy command).
