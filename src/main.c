@@ -89,6 +89,7 @@ static const char * const supported_options[] = {
 	"DebugKeys",
 	"ControllerMode",
 	"MultiProfile",
+	"Privacy",
 };
 
 GKeyFile *btd_get_main_conf(void)
@@ -253,6 +254,26 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("auto_to=%d", val);
 		main_opts.autoto = val;
+	}
+
+	str = g_key_file_get_string(config, "General", "Privacy", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+		main_opts.privacy = 0x00;
+	} else {
+		DBG("privacy=%s", str);
+
+		if (!strcmp(str, "device"))
+			main_opts.privacy = 0x01;
+		else if (!strcmp(str, "off"))
+			main_opts.privacy = 0x00;
+		else {
+			DBG("Invalid privacy option: %s", str);
+			main_opts.privacy = 0x00;
+		}
+
+		g_free(str);
 	}
 
 	str = g_key_file_get_string(config, "General", "Name", &err);

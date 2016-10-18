@@ -89,6 +89,18 @@ Sample:
   DiscoverableTimeout=0
 
 
+Identity file format
+====================
+Identity file contains one [General] group that holds identity information
+such as keys and adresses:
+
+	IdentityResolvingKey	String	128-bit value of the IRK
+
+Sample:
+  [General]
+  IdentityResolvingKey=00112233445566778899aabbccddeeff
+
+
 Attributes file format
 ======================
 

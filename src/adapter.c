@@ -3141,6 +3141,125 @@ static struct conn_param *get_conn_param(GKeyFile *key_file, const char *peer,
 	return param;
 }
 
+static int generate_and_write_irk(uint8_t *irk, GKeyFile *key_file,
+							const char *filename)
+{
+	struct bt_crypto *crypto;
+	char str_irk_out[33];
+	gsize length = 0;
+	char *str;
+	int i;
+
+	crypto = bt_crypto_new();
+	if (!crypto) {
+		error("Failed to open crypto");
+		return -1;
+	}
+
+	if (!bt_crypto_random_bytes(crypto, irk, 16)) {
+		error("Failed to generate IRK");
+		bt_crypto_unref(crypto);
+		return -1;
+	}
+
+	bt_crypto_unref(crypto);
+
+	for (i = 0; i < 16; i++)
+		sprintf(str_irk_out + (i * 2), "%02x", irk[i]);
+
+	str_irk_out[32] = '\0';
+	info("Generated IRK successfully");
+
+	g_key_file_set_string(key_file, "General", "IdentityResolvingKey",
+								str_irk_out);
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+	DBG("Generated IRK written to file");
+	return 0;
+}
+
+static int load_irk(struct btd_adapter *adapter, uint8_t *irk)
+{
+	char filename[PATH_MAX];
+	GKeyFile *key_file;
+	char address[18];
+	char *str_irk;
+	int ret;
+
+	ba2str(&adapter->bdaddr, address);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/identity", address);
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	str_irk = g_key_file_get_string(key_file, "General",
+						"IdentityResolvingKey", NULL);
+	if (!str_irk) {
+		info("No IRK for %s, creating new IRK", address);
+		ret = generate_and_write_irk(irk, key_file, filename);
+		g_key_file_free(key_file);
+		return ret;
+	}
+
+	g_key_file_free(key_file);
+
+	if (strlen(str_irk) != 32 || str2buf(str_irk, irk, 16)) {
+		/* TODO re-create new IRK here? */
+		error("Invalid IRK format, disabling privacy");
+		g_free(str_irk);
+		return -1;
+	}
+
+	g_free(str_irk);
+	DBG("Successfully read IRK from file");
+	return 0;
+}
+
+static void set_privacy_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		btd_error(adapter->dev_id, "Failed to set privacy: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("Successfuly set privacy for index %u", adapter->dev_id);
+}
+
+static int set_privacy(struct btd_adapter *adapter, uint8_t privacy)
+{
+	struct mgmt_cp_set_privacy cp;
+
+	memset(&cp, 0, sizeof(cp));
+
+	if (privacy) {
+		uint8_t irk[16];
+
+		if (load_irk(adapter, irk) == 0) {
+			cp.privacy = privacy;
+			memcpy(cp.irk, irk, 16);
+		}
+	}
+
+	DBG("sending set privacy command for index %u", adapter->dev_id);
+	DBG("setting privacy mode 0x%02x for index %u", cp.privacy,
+							adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_PRIVACY,
+				adapter->dev_id, sizeof(cp), &cp,
+				set_privacy_complete, adapter, NULL) > 0)
+		return 0;
+
+	btd_error(adapter->dev_id, "Failed to set privacy for index %u",
+							adapter->dev_id);
+
+	return -1;
+}
+
 static void load_link_keys_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -7898,6 +8017,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	if (missing_settings & MGMT_SETTING_SECURE_CONN)
 		set_mode(adapter, MGMT_OP_SET_SECURE_CONN, 0x01);
+
+	if (adapter->supported_settings & MGMT_SETTING_PRIVACY)
+		set_privacy(adapter, main_opts.privacy);
 
 	if (main_opts.fast_conn &&
 			(missing_settings & MGMT_SETTING_FAST_CONNECTABLE))
