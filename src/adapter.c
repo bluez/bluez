@@ -5552,6 +5552,8 @@ static void update_found_devices(struct btd_adapter *adapter,
 	if (eir_data.sd_list)
 		device_set_service_data(dev, eir_data.sd_list);
 
+	device_set_flags(dev, eir_data.flags);
+
 	eir_data_free(&eir_data);
 
 	/*

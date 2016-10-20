@@ -247,6 +247,8 @@ struct btd_device {
 
 	GIOChannel	*att_io;
 	guint		store_id;
+
+	uint8_t         flags;
 };
 
 static const uint16_t uuid_list[] = {
@@ -935,6 +937,23 @@ dev_property_get_svc_resolved(const GDBusPropertyTable *property,
 	gboolean val = device->svc_refreshed;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
+
+	return TRUE;
+}
+
+static gboolean
+dev_property_get_flags(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+	uint8_t flags[] = { device->flags };
+	DBusMessageIter array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&flags, sizeof(flags));
+	dbus_message_iter_close_container(iter, &array);
 
 	return TRUE;
 }
@@ -2534,6 +2553,8 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "TxPower", "n", dev_property_get_tx_power, NULL,
 					dev_property_exists_tx_power },
 	{ "ServicesResolved", "b", dev_property_get_svc_resolved, NULL, NULL },
+	{ "AdvertisingFlags", "ay", dev_property_get_flags, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL},
 
 	{ }
 };
@@ -5219,6 +5240,22 @@ void device_set_tx_power(struct btd_device *device, int8_t tx_power)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "TxPower");
+}
+
+void device_set_flags(struct btd_device *device, uint8_t flags)
+{
+	if (!device)
+		return;
+
+	DBG("flags %d", flags);
+
+	if (device->flags == flags)
+		return;
+
+	device->flags = flags;
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "AdvertisingFlags");
 }
 
 static gboolean start_discovery(gpointer user_data)
