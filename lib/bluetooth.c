@@ -2293,6 +2293,50 @@ const char *bt_compidtostr(int compid)
 		return "Iton Technology Corp.";
 	case 1015:
 		return "Owl Labs Inc.";
+	case 1016:
+		return "Rockford Corp.";
+	case 1017:
+		return "Becon Technologies Co.,Ltd.";
+	case 1018:
+		return "Vyassoft Technologies Inc";
+	case 1019:
+		return "Nox Medical";
+	case 1020:
+		return "Kimberly-Clark";
+	case 1021:
+		return "Trimble Navigation Ltd.";
+	case 1022:
+		return "Littelfuse";
+	case 1023:
+		return "Withings";
+	case 1024:
+		return "i-developer IT Beratung UG";
+	case 1025:
+		return "リレーションズ株式会社";
+	case 1026:
+		return "Sears Holdings Corporation";
+	case 1027:
+		return "Gantner Electronic GmbH";
+	case 1028:
+		return "Authomate Inc";
+	case 1029:
+		return "Vertex International, Inc.";
+	case 1030:
+		return "Airtago";
+	case 1031:
+		return "Swiss Audio SA";
+	case 1032:
+		return "ToGetHome Inc.";
+	case 1033:
+		return "AXIS";
+	case 1034:
+		return "Openmatics";
+	case 1035:
+		return "Jana Care Inc.";
+	case 1036:
+		return "Senix Corporation";
+	case 1037:
+		return "NorthStar Battery Company, LLC";
 	case 65535:
 		return "internal use";
 	default:
