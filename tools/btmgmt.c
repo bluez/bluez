@@ -3968,7 +3968,9 @@ static void advsize_usage(void)
 		"\t -g, --general-discov      \"general-discoverable\" flag\n"
 		"\t -l, --limited-discov      \"limited-discoverable\" flag\n"
 		"\t -m, --managed-flags       \"managed-flags\" flag\n"
-		"\t -p, --tx-power            \"tx-power\" flag");
+		"\t -p, --tx-power            \"tx-power\" flag\n"\
+		"\t -a, --appearance          \"appearance\" flag\n"\
+		"\t -n, --local-name          \"local-name\" flag");
 }
 
 static struct option advsize_options[] = {
@@ -3978,6 +3980,8 @@ static struct option advsize_options[] = {
 	{ "limited-discov",	0, 0, 'l' },
 	{ "managed-flags",	0, 0, 'm' },
 	{ "tx-power",		0, 0, 'p' },
+	{ "appearance",		0, 0, 'a' },
+	{ "local-name",		0, 0, 'n' },
 	{ 0, 0, 0, 0}
 };
 
@@ -3989,7 +3993,7 @@ static void cmd_advsize(struct mgmt *mgmt, uint16_t index,
 	uint32_t flags = 0;
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "+cglmph",
+	while ((opt = getopt_long(argc, argv, "+cglmphna",
 						advsize_options, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -4006,6 +4010,12 @@ static void cmd_advsize(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'p':
 			flags |= MGMT_ADV_FLAG_TX_POWER;
+			break;
+		case 'a':
+			flags |= MGMT_ADV_FLAG_APPEARANCE;
+			break;
+		case 'n':
+			flags |= MGMT_ADV_FLAG_LOCAL_NAME;
 			break;
 		default:
 			advsize_usage();
