@@ -603,13 +603,20 @@ static bool change_security(struct bt_att *att, uint8_t ecode)
 	security = bt_att_get_security(att);
 
 	if (ecode == BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION &&
-					security < BT_ATT_SECURITY_MEDIUM)
+					security < BT_ATT_SECURITY_MEDIUM) {
 		security = BT_ATT_SECURITY_MEDIUM;
-	else if (ecode == BT_ATT_ERROR_AUTHENTICATION &&
-					security < BT_ATT_SECURITY_HIGH)
-		security = BT_ATT_SECURITY_HIGH;
-	else
+	} else if (ecode == BT_ATT_ERROR_AUTHENTICATION) {
+		if (security < BT_ATT_SECURITY_MEDIUM)
+			security = BT_ATT_SECURITY_MEDIUM;
+		else if (security < BT_ATT_SECURITY_HIGH)
+			security = BT_ATT_SECURITY_HIGH;
+		else if (security < BT_ATT_SECURITY_FIPS)
+			security = BT_ATT_SECURITY_FIPS;
+		else
+			return false;
+	} else {
 		return false;
+	}
 
 	return bt_att_set_security(att, security);
 }
