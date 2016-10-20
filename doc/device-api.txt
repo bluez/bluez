@@ -230,3 +230,7 @@ Properties	string Address [readonly]
 
 			Indicate whether or not service discovery has been
 			resolved.
+
+		array{byte} AdvertisingFlags [readonly, experimental]
+
+			The Advertising Data Flags of the remote device.
