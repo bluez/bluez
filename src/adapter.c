@@ -6302,7 +6302,7 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	err = device_confirm_passkey(device, btohl(ev->value),
+	err = device_confirm_passkey(device, ev->addr.type, btohl(ev->value),
 							ev->confirm_hint);
 	if (err < 0) {
 		btd_error(adapter->dev_id,
@@ -6376,7 +6376,7 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	err = device_request_passkey(device);
+	err = device_request_passkey(device, ev->addr.type);
 	if (err < 0) {
 		btd_error(adapter->dev_id,
 				"device_request_passkey: %s", strerror(-err));
@@ -6415,7 +6415,8 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 
 	DBG("passkey %06u entered %u", passkey, ev->entered);
 
-	err = device_notify_passkey(device, passkey, ev->entered);
+	err = device_notify_passkey(device, ev->addr.type, passkey,
+								ev->entered);
 	if (err < 0)
 		btd_error(adapter->dev_id,
 				"device_notify_passkey: %s", strerror(-err));

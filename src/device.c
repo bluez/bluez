@@ -127,6 +127,7 @@ struct authentication_req {
 	auth_type_t type;
 	struct agent *agent;
 	struct btd_device *device;
+	uint8_t addr_type;
 	uint32_t passkey;
 	char *pincode;
 	gboolean secure;
@@ -5624,7 +5625,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 		return;
 
 	btd_adapter_confirm_reply(device->adapter, &device->bdaddr,
-							device->bdaddr_type,
+							auth->addr_type,
 							err ? FALSE : TRUE);
 
 	agent_unref(device->authr->agent);
@@ -5645,7 +5646,7 @@ static void passkey_cb(struct agent *agent, DBusError *err,
 		passkey = INVALID_PASSKEY;
 
 	btd_adapter_passkey_reply(device->adapter, &device->bdaddr,
-						device->bdaddr_type, passkey);
+						auth->addr_type, passkey);
 
 	agent_unref(device->authr->agent);
 	device->authr->agent = NULL;
@@ -5663,7 +5664,9 @@ static void display_pincode_cb(struct agent *agent, DBusError *err, void *data)
 }
 
 static struct authentication_req *new_auth(struct btd_device *device,
-					auth_type_t type, gboolean secure)
+						uint8_t addr_type,
+						auth_type_t type,
+						gboolean secure)
 {
 	struct authentication_req *auth;
 	struct agent *agent;
@@ -5691,6 +5694,7 @@ static struct authentication_req *new_auth(struct btd_device *device,
 	auth->agent = agent;
 	auth->device = device;
 	auth->type = type;
+	auth->addr_type = addr_type;
 	auth->secure = secure;
 	device->authr = auth;
 
@@ -5702,7 +5706,7 @@ int device_request_pincode(struct btd_device *device, gboolean secure)
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_PINCODE, secure);
+	auth = new_auth(device, BDADDR_BREDR, AUTH_TYPE_PINCODE, secure);
 	if (!auth)
 		return -EPERM;
 
@@ -5716,12 +5720,12 @@ int device_request_pincode(struct btd_device *device, gboolean secure)
 	return err;
 }
 
-int device_request_passkey(struct btd_device *device)
+int device_request_passkey(struct btd_device *device, uint8_t type)
 {
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_PASSKEY, FALSE);
+	auth = new_auth(device, type, AUTH_TYPE_PASSKEY, FALSE);
 	if (!auth)
 		return -EPERM;
 
@@ -5735,14 +5739,13 @@ int device_request_passkey(struct btd_device *device)
 	return err;
 }
 
-int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
-							uint8_t confirm_hint)
-
+int device_confirm_passkey(struct btd_device *device, uint8_t type,
+					int32_t passkey, uint8_t confirm_hint)
 {
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_CONFIRM, FALSE);
+	auth = new_auth(device, type, AUTH_TYPE_CONFIRM, FALSE);
 	if (!auth)
 		return -EPERM;
 
@@ -5763,8 +5766,8 @@ int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
 	return err;
 }
 
-int device_notify_passkey(struct btd_device *device, uint32_t passkey,
-							uint8_t entered)
+int device_notify_passkey(struct btd_device *device, uint8_t type,
+					uint32_t passkey, uint8_t entered)
 {
 	struct authentication_req *auth;
 	int err;
@@ -5774,7 +5777,7 @@ int device_notify_passkey(struct btd_device *device, uint32_t passkey,
 		if (auth->type != AUTH_TYPE_NOTIFY_PASSKEY)
 			return -EPERM;
 	} else {
-		auth = new_auth(device, AUTH_TYPE_NOTIFY_PASSKEY, FALSE);
+		auth = new_auth(device, type, AUTH_TYPE_NOTIFY_PASSKEY, FALSE);
 		if (!auth)
 			return -EPERM;
 	}
@@ -5794,7 +5797,7 @@ int device_notify_pincode(struct btd_device *device, gboolean secure,
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_NOTIFY_PINCODE, secure);
+	auth = new_auth(device, BDADDR_BREDR, AUTH_TYPE_NOTIFY_PINCODE, secure);
 	if (!auth)
 		return -EPERM;
 

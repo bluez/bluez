@@ -111,11 +111,11 @@ int device_bonding_attempt_retry(struct btd_device *device);
 long device_bonding_last_duration(struct btd_device *device);
 void device_bonding_restart_timer(struct btd_device *device);
 int device_request_pincode(struct btd_device *device, gboolean secure);
-int device_request_passkey(struct btd_device *device);
-int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
-							uint8_t confirm_hint);
-int device_notify_passkey(struct btd_device *device, uint32_t passkey,
-							uint8_t entered);
+int device_request_passkey(struct btd_device *device, uint8_t type);
+int device_confirm_passkey(struct btd_device *device, uint8_t type,
+					int32_t passkey, uint8_t confirm_hint);
+int device_notify_passkey(struct btd_device *device, uint8_t type,
+					uint32_t passkey, uint8_t entered);
 int device_notify_pincode(struct btd_device *device, gboolean secure,
 							const char *pincode);
 void device_cancel_authentication(struct btd_device *device, gboolean aborted);
