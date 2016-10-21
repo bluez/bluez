@@ -79,6 +79,7 @@
 
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		1
+#define INVALID_FLAGS		0xff
 
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -183,6 +184,7 @@ struct btd_device {
 	GSList		*svc_callbacks;
 	GSList		*eir_uuids;
 	struct bt_ad	*ad;
+	uint8_t         ad_flags[1];
 	char		name[MAX_NAME_LENGTH + 1];
 	char		*alias;
 	uint32_t	class;
@@ -247,8 +249,6 @@ struct btd_device {
 
 	GIOChannel	*att_io;
 	guint		store_id;
-
-	uint8_t         flags;
 };
 
 static const uint16_t uuid_list[] = {
@@ -941,18 +941,26 @@ dev_property_get_svc_resolved(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean dev_property_flags_exist(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_device *device = data;
+
+	return device->ad_flags[0] != INVALID_FLAGS;
+}
+
 static gboolean
 dev_property_get_flags(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
-	uint8_t *flags = &device->flags;
+	uint8_t *flags = device->ad_flags;
 	DBusMessageIter array;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_TYPE_BYTE_AS_STRING, &array);
 	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
-						&flags, 1);
+					&flags,	sizeof(device->ad_flags));
 	dbus_message_iter_close_container(iter, &array);
 
 	return TRUE;
@@ -2553,7 +2561,8 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "TxPower", "n", dev_property_get_tx_power, NULL,
 					dev_property_exists_tx_power },
 	{ "ServicesResolved", "b", dev_property_get_svc_resolved, NULL, NULL },
-	{ "AdvertisingFlags", "ay", dev_property_get_flags, NULL, NULL,
+	{ "AdvertisingFlags", "ay", dev_property_get_flags, NULL,
+					dev_property_flags_exist,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL},
 
 	{ }
@@ -3571,6 +3580,8 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 		g_free(device);
 		return NULL;
 	}
+
+	memset(device->ad_flags, INVALID_FLAGS, sizeof(device->ad_flags));
 
 	device->ad = bt_ad_new();
 	if (!device->ad) {
@@ -5249,10 +5260,10 @@ void device_set_flags(struct btd_device *device, uint8_t flags)
 
 	DBG("flags %d", flags);
 
-	if (device->flags == flags)
+	if (device->ad_flags[0] == flags)
 		return;
 
-	device->flags = flags;
+	device->ad_flags[0] = flags;
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "AdvertisingFlags");
