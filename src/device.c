@@ -946,13 +946,13 @@ dev_property_get_flags(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
-	uint8_t flags[] = { device->flags };
+	uint8_t *flags = &device->flags;
 	DBusMessageIter array;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_TYPE_BYTE_AS_STRING, &array);
 	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
-						&flags, sizeof(flags));
+						&flags, 1);
 	dbus_message_iter_close_container(iter, &array);
 
 	return TRUE;
