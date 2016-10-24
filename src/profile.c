@@ -1047,7 +1047,7 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 									conn);
 	}
 
-	if (conn->service && service_accept(conn->service) < 0)
+	if (conn->service && service_set_connecting(conn->service) < 0)
 		goto drop;
 
 	if (send_new_connection(ext, conn))

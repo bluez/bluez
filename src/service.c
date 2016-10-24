@@ -214,6 +214,25 @@ done:
 	return 0;
 }
 
+int service_set_connecting(struct btd_service *service)
+{
+	switch (service->state) {
+	case BTD_SERVICE_STATE_UNAVAILABLE:
+		return -EINVAL;
+	case BTD_SERVICE_STATE_DISCONNECTED:
+		break;
+	case BTD_SERVICE_STATE_CONNECTING:
+	case BTD_SERVICE_STATE_CONNECTED:
+		return 0;
+	case BTD_SERVICE_STATE_DISCONNECTING:
+		return -EBUSY;
+	}
+
+	change_state(service, BTD_SERVICE_STATE_CONNECTING, 0);
+
+	return 0;
+}
+
 int btd_service_connect(struct btd_service *service)
 {
 	struct btd_profile *profile = service->profile;
