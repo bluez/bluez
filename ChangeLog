@@ -1,3 +1,14 @@
+ver 5.43:
+	Fix issue with HID over GATT support.
+	Fix issue with ATT Find By Type response handling.
+	Fix issue with handling insufficient authentication.
+	Fix issue with bonding while pairing is in progress.
+	Fix issue with BR/EDR pairing for dual-mode devices.
+	Fix issue with handling profile policy resets.
+	Fix issue with connecting state of services.
+	Fix issue with handling PAN GN Master role.
+	Add support for enabling LE Privacy feature.
+
 ver 5.42:
 	Fix issue with PBAP call logs from different folders.
 	Fix issue with OBEX over L2CAP and PowerPC architecture.
