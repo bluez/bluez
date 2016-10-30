@@ -188,6 +188,7 @@ struct btd_adapter {
 	struct mgmt *mgmt;
 
 	bdaddr_t bdaddr;		/* controller Bluetooth address */
+	uint8_t bdaddr_type;		/* address type */
 	uint32_t dev_class;		/* controller class of device */
 	char *name;			/* controller device name */
 	char *short_name;		/* controller short name */
@@ -195,6 +196,7 @@ struct btd_adapter {
 	uint32_t current_settings;	/* current controller settings */
 
 	char *path;			/* adapter object path */
+	uint16_t manufacturer;		/* adapter manufacturer */
 	uint8_t major_class;		/* configured major class */
 	uint8_t minor_class;		/* configured minor class */
 	char *system_name;		/* configured system name */
@@ -422,11 +424,24 @@ static uint8_t get_mode(const char *mode)
 		return MODE_UNKNOWN;
 }
 
+static const char *adapter_dir(struct btd_adapter *adapter)
+{
+	static char dir[25];
+
+	if (adapter->bdaddr_type == BDADDR_LE_RANDOM) {
+		strcpy(dir, "static-");
+		ba2str(&adapter->bdaddr, dir + 7);
+	} else {
+		ba2str(&adapter->bdaddr, dir);
+	}
+
+	return dir;
+}
+
 static void store_adapter_info(struct btd_adapter *adapter)
 {
 	GKeyFile *key_file;
 	char filename[PATH_MAX];
-	char address[18];
 	char *str;
 	gsize length = 0;
 	gboolean discoverable;
@@ -455,8 +470,8 @@ static void store_adapter_info(struct btd_adapter *adapter)
 		g_key_file_set_string(key_file, "General", "Alias",
 							adapter->stored_alias);
 
-	ba2str(&adapter->bdaddr, address);
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings", address);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings",
+						adapter_dir(adapter));
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
@@ -3183,12 +3198,11 @@ static int load_irk(struct btd_adapter *adapter, uint8_t *irk)
 {
 	char filename[PATH_MAX];
 	GKeyFile *key_file;
-	char address[18];
 	char *str_irk;
 	int ret;
 
-	ba2str(&adapter->bdaddr, address);
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/identity", address);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/identity",
+						adapter_dir(adapter));
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -3196,7 +3210,7 @@ static int load_irk(struct btd_adapter *adapter, uint8_t *irk)
 	str_irk = g_key_file_get_string(key_file, "General",
 						"IdentityResolvingKey", NULL);
 	if (!str_irk) {
-		info("No IRK for %s, creating new IRK", address);
+		info("No IRK stored");
 		ret = generate_and_write_irk(irk, key_file, filename);
 		g_key_file_free(key_file);
 		return ret;
@@ -3621,7 +3635,6 @@ static void probe_devices(void *user_data)
 static void load_devices(struct btd_adapter *adapter)
 {
 	char dirname[PATH_MAX];
-	char srcaddr[18];
 	GSList *keys = NULL;
 	GSList *ltks = NULL;
 	GSList *irks = NULL;
@@ -3630,9 +3643,7 @@ static void load_devices(struct btd_adapter *adapter)
 	DIR *dir;
 	struct dirent *entry;
 
-	ba2str(&adapter->bdaddr, srcaddr);
-
-	snprintf(dirname, PATH_MAX, STORAGEDIR "/%s", srcaddr);
+	snprintf(dirname, PATH_MAX, STORAGEDIR "/%s", adapter_dir(adapter));
 
 	dir = opendir(dirname);
 	if (!dir) {
@@ -3658,8 +3669,8 @@ static void load_devices(struct btd_adapter *adapter)
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
 			continue;
 
-		snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", srcaddr,
-				entry->d_name);
+		snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+					adapter_dir(adapter), entry->d_name);
 
 		key_file = g_key_file_new();
 		g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -5231,15 +5242,13 @@ static void load_config(struct btd_adapter *adapter)
 {
 	GKeyFile *key_file;
 	char filename[PATH_MAX];
-	char address[18];
 	struct stat st;
 	GError *gerr = NULL;
 
-	ba2str(&adapter->bdaddr, address);
-
 	key_file = g_key_file_new();
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings", address);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings",
+						adapter_dir(adapter));
 
 	if (stat(filename, &st) < 0) {
 		convert_config(adapter, filename, key_file);
@@ -6863,7 +6872,6 @@ static void store_link_key(struct btd_adapter *adapter,
 				struct btd_device *device, const uint8_t *key,
 				uint8_t type, uint8_t pin_length)
 {
-	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX];
 	GKeyFile *key_file;
@@ -6872,11 +6880,10 @@ static void store_link_key(struct btd_adapter *adapter,
 	char *str;
 	int i;
 
-	ba2str(btd_adapter_get_address(adapter), adapter_addr);
 	ba2str(device_get_address(device), device_addr);
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-								device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+					adapter_dir(adapter), device_addr);
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
@@ -6943,14 +6950,13 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
 }
 
-static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
+static void store_longtermkey(struct btd_adapter *adapter, const bdaddr_t *peer,
 				uint8_t bdaddr_type, const unsigned char *key,
 				uint8_t master, uint8_t authenticated,
 				uint8_t enc_size, uint16_t ediv,
 				uint64_t rand)
 {
 	const char *group = master ? "LongTermKey" : "SlaveLongTermKey";
-	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX];
 	GKeyFile *key_file;
@@ -6964,11 +6970,10 @@ static void store_longtermkey(const bdaddr_t *local, const bdaddr_t *peer,
 		return;
 	}
 
-	ba2str(local, adapter_addr);
 	ba2str(peer, device_addr);
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-								device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+					adapter_dir(adapter), device_addr);
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
@@ -7042,14 +7047,13 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 	if (persistent) {
 		const struct mgmt_ltk_info *key = &ev->key;
-		const bdaddr_t *bdaddr = btd_adapter_get_address(adapter);
 		uint16_t ediv;
 		uint64_t rand;
 
 		ediv = le16_to_cpu(key->ediv);
 		rand = le64_to_cpu(key->rand);
 
-		store_longtermkey(bdaddr, &key->addr.bdaddr,
+		store_longtermkey(adapter, &key->addr.bdaddr,
 					key->addr.type, key->val, key->master,
 					key->type, key->enc_size, ediv, rand);
 
@@ -7059,12 +7063,11 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
 }
 
-static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
+static void store_csrk(struct btd_adapter *adapter, const bdaddr_t *peer,
 				uint8_t bdaddr_type, const unsigned char *key,
 				uint32_t counter, uint8_t type)
 {
 	const char *group;
-	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX];
 	GKeyFile *key_file;
@@ -7096,11 +7099,10 @@ static void store_csrk(const bdaddr_t *local, const bdaddr_t *peer,
 		return;
 	}
 
-	ba2str(local, adapter_addr);
 	ba2str(peer, device_addr);
 
 	snprintf(filename, sizeof(filename), STORAGEDIR "/%s/%s/info",
-						adapter_addr, device_addr);
+					adapter_dir(adapter), device_addr);
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -7128,7 +7130,6 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 	const struct mgmt_addr_info *addr = &ev->key.addr;
 	const struct mgmt_csrk_info *key = &ev->key;
 	struct btd_adapter *adapter = user_data;
-	const bdaddr_t *bdaddr = btd_adapter_get_address(adapter);
 	struct btd_device *device;
 	char dst[18];
 
@@ -7152,7 +7153,7 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 	if (!ev->store_hint)
 		return;
 
-	store_csrk(bdaddr, &key->addr.bdaddr, key->addr.type, key->val, 0,
+	store_csrk(adapter, &key->addr.bdaddr, key->addr.type, key->val, 0,
 								key->type);
 
 	btd_device_set_temporary(device, false);
@@ -7161,7 +7162,6 @@ static void new_csrk_callback(uint16_t index, uint16_t length,
 static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
 				uint8_t bdaddr_type, const unsigned char *key)
 {
-	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX];
 	GKeyFile *key_file;
@@ -7170,11 +7170,10 @@ static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
 	size_t length = 0;
 	int i;
 
-	ba2str(&adapter->bdaddr, adapter_addr);
 	ba2str(peer, device_addr);
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-								device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+					adapter_dir(adapter), device_addr);
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
@@ -7251,20 +7250,18 @@ static void store_conn_param(struct btd_adapter *adapter, const bdaddr_t *peer,
 				uint16_t max_interval, uint16_t latency,
 				uint16_t timeout)
 {
-	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX];
 	GKeyFile *key_file;
 	char *store_data;
 	size_t length = 0;
 
-	ba2str(&adapter->bdaddr, adapter_addr);
 	ba2str(peer, device_addr);
 
 	DBG("");
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-								device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+					adapter_dir(adapter), device_addr);
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
@@ -7835,18 +7832,16 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 static void remove_keys(struct btd_adapter *adapter,
 					struct btd_device *device, uint8_t type)
 {
-	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX];
 	GKeyFile *key_file;
 	gsize length = 0;
 	char *str;
 
-	ba2str(btd_adapter_get_address(adapter), adapter_addr);
 	ba2str(device_get_address(device), device_addr);
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-								device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+					adapter_dir(adapter), device_addr);
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
@@ -7927,6 +7922,111 @@ static int clear_devices(struct btd_adapter *adapter)
 	return -EIO;
 }
 
+static bool get_static_addr(struct btd_adapter *adapter)
+{
+	struct bt_crypto *crypto;
+	GKeyFile *file;
+	char **addrs;
+	char mfg[7];
+	char *str;
+	bool ret;
+	gsize len, i;
+
+	snprintf(mfg, sizeof(mfg), "0x%04x", adapter->manufacturer);
+
+	file = g_key_file_new();
+	g_key_file_load_from_file(file, STORAGEDIR "/addresses", 0, NULL);
+	addrs = g_key_file_get_string_list(file, "Static", mfg, &len, NULL);
+	if (addrs) {
+		for (i = 0; i < len; i++) {
+			bdaddr_t addr;
+
+			str2ba(addrs[i], &addr);
+			if (adapter_find(&addr))
+				continue;
+
+			/* Usable address found in list */
+			bacpy(&adapter->bdaddr, &addr);
+			adapter->bdaddr_type = BDADDR_LE_RANDOM;
+			ret = true;
+			goto done;
+		}
+
+		len++;
+		addrs = g_renew(char *, addrs, len + 1);
+	} else {
+		len = 1;
+		addrs = g_new(char *, len + 1);
+	}
+
+	/* Initialize slot for new address */
+	addrs[len - 1] = g_malloc(18);
+	addrs[len] = NULL;
+
+	crypto = bt_crypto_new();
+	if (!crypto) {
+		error("Failed to open crypto");
+		ret = false;
+		goto done;
+	}
+
+	ret = bt_crypto_random_bytes(crypto, &adapter->bdaddr,
+						sizeof(adapter->bdaddr));
+	if (!ret) {
+		error("Failed to generate static address");
+		bt_crypto_unref(crypto);
+		goto done;
+	}
+
+	bt_crypto_unref(crypto);
+
+	adapter->bdaddr.b[5] |= 0xc0;
+	adapter->bdaddr_type = BDADDR_LE_RANDOM;
+
+	ba2str(&adapter->bdaddr, addrs[len - 1]);
+
+	g_key_file_set_string_list(file, "Static", mfg,
+						(const char **)addrs, len);
+
+	str = g_key_file_to_data(file, &len, NULL);
+	g_file_set_contents(STORAGEDIR "/addresses", str, len, NULL);
+	g_free(str);
+
+	ret = true;
+
+done:
+	g_key_file_free(file);
+	g_strfreev(addrs);
+
+	return ret;
+}
+
+static bool set_static_addr(struct btd_adapter *adapter)
+{
+	struct mgmt_cp_set_static_address cp;
+
+	/* dual-mode adapters must have a public address */
+	if (adapter->supported_settings & MGMT_SETTING_BREDR)
+		return false;
+
+	if (!(adapter->supported_settings & MGMT_SETTING_LE))
+		return false;
+
+	DBG("Setting static address");
+
+	if (!get_static_addr(adapter))
+		return false;
+
+	bacpy(&cp.bdaddr, &adapter->bdaddr);
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_STATIC_ADDRESS,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0) {
+		return true;
+	}
+
+	return false;
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -7950,31 +8050,41 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		goto failed;
 	}
 
-	if (bacmp(&rp->bdaddr, BDADDR_ANY) == 0) {
-		btd_error(adapter->dev_id, "No Bluetooth address for index %u",
-							adapter->dev_id);
-		goto failed;
-	}
-
 	/*
-	 * Store controller information for device address, class of device,
-	 * device name, short name and settings.
+	 * Store controller information for class of device, device
+	 * name, short name and settings.
 	 *
 	 * During the lifetime of the controller these will be updated by
 	 * events and the information is required to keep the current
 	 * state of the controller.
 	 */
-	bacpy(&adapter->bdaddr, &rp->bdaddr);
 	adapter->dev_class = rp->dev_class[0] | (rp->dev_class[1] << 8) |
 						(rp->dev_class[2] << 16);
 	adapter->name = g_strdup((const char *) rp->name);
 	adapter->short_name = g_strdup((const char *) rp->short_name);
+
+	adapter->manufacturer = btohs(rp->manufacturer);
 
 	adapter->supported_settings = btohl(rp->supported_settings);
 	adapter->current_settings = btohl(rp->current_settings);
 
 	clear_uuids(adapter);
 	clear_devices(adapter);
+
+	if (bacmp(&rp->bdaddr, BDADDR_ANY) == 0) {
+		if (!set_static_addr(adapter)) {
+			btd_error(adapter->dev_id,
+					"No Bluetooth address for index %u",
+					adapter->dev_id);
+			goto failed;
+		}
+	} else {
+		bacpy(&adapter->bdaddr, &rp->bdaddr);
+		if (adapter->supported_settings & MGMT_SETTING_BREDR)
+			adapter->bdaddr_type = BDADDR_BREDR;
+		else
+			adapter->bdaddr_type = BDADDR_LE_PUBLIC;
+	}
 
 	missing_settings = adapter->current_settings ^
 						adapter->supported_settings;
