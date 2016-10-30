@@ -24,8 +24,16 @@ All files are in ini-file format.
 Storage directory structure
 ===========================
 
-There is one directory per adapter, named by its Bluetooth address, which
-contains:
+The storage root directory contains an optional addresses file that's
+used for managing adapters that come without a pre-allocated address.
+The format of the addresses file is:
+
+	[Static]
+	<manufacturer id> = <array of addresses>
+
+Each adapter with an assigned address has its own subdirectory under the
+root, named based on the address, which contains:
+
  - a settings file for the local adapter
  - an attributes file containing attributes of supported LE services
  - a cache directory containing:
