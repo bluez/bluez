@@ -193,7 +193,7 @@ void bt_crypto_unref(struct bt_crypto *crypto)
 }
 
 bool bt_crypto_random_bytes(struct bt_crypto *crypto,
-					uint8_t *buf, uint8_t num_bytes)
+					void *buf, uint8_t num_bytes)
 {
 	ssize_t len;
 

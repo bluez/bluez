@@ -32,7 +32,7 @@ struct bt_crypto *bt_crypto_ref(struct bt_crypto *crypto);
 void bt_crypto_unref(struct bt_crypto *crypto);
 
 bool bt_crypto_random_bytes(struct bt_crypto *crypto,
-					uint8_t *buf, uint8_t num_bytes);
+					void *buf, uint8_t num_bytes);
 
 bool bt_crypto_e(struct bt_crypto *crypto, const uint8_t key[16],
 			const uint8_t plaintext[16], uint8_t encrypted[16]);
