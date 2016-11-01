@@ -6834,7 +6834,7 @@ static void test_remove_device(const void *test_data)
 	test_add_condition(data);
 }
 
-static void test_device_found(const void *test_data)
+static void trigger_device_found(void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
@@ -6854,7 +6854,18 @@ static void test_device_found(const void *test_data)
 	if (data->hciemu_type != HCIEMU_TYPE_LE)
 		bthost_write_scan_enable(bthost, 0x03);
 
+	test_condition_complete(data);
+}
+
+static void test_device_found(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
 	test_command_generic(test_data);
+
+	/* Make sure discovery is enabled before enabling advertising. */
+	tester_wait(1, trigger_device_found, NULL);
+	test_add_condition(data);
 }
 
 static void pairing_new_conn(uint16_t handle, void *user_data)
