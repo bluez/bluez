@@ -60,7 +60,6 @@
 #define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
 
 struct hog_device {
-	guint			attioid;
 	struct btd_device	*device;
 	struct bt_hog		*hog;
 };
