@@ -75,6 +75,8 @@
 #define AVRCP_STATUS_PARAM_NOT_FOUND		0x02
 #define AVRCP_STATUS_INTERNAL_ERROR		0x03
 #define AVRCP_STATUS_SUCCESS			0x04
+#define AVRCP_STATUS_UID_CHANGED		0x05
+#define AVRCP_STATUS_DOES_NOT_EXIST		0x09
 #define AVRCP_STATUS_OUT_OF_BOUNDS		0x0b
 #define AVRCP_STATUS_INVALID_PLAYER_ID		0x11
 #define AVRCP_STATUS_PLAYER_NOT_BROWSABLE	0x12
@@ -3098,6 +3100,39 @@ static int ct_search(struct media_player *mp, const char *string,
 	return 0;
 }
 
+static gboolean avrcp_play_item_rsp(struct avctp *conn, uint8_t code,
+					uint8_t subunit, uint8_t transaction,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp_browsing_header *pdu = (void *) operands;
+	struct avrcp *session = (void *) user_data;
+	struct avrcp_player *player = session->controller->player;
+	struct media_player *mp = player->user_data;
+	int ret = 0;
+
+	if (pdu == NULL) {
+		ret = -ETIMEDOUT;
+		goto done;
+	}
+
+	if (pdu->params[0] != AVRCP_STATUS_SUCCESS) {
+		switch (pdu->params[0]) {
+		case AVRCP_STATUS_UID_CHANGED:
+		case AVRCP_STATUS_DOES_NOT_EXIST:
+			ret = -ENOENT;
+		default:
+			ret = -EINVAL;
+		}
+		goto done;
+	}
+
+done:
+	media_player_play_item_complete(mp, ret);
+
+	return FALSE;
+}
+
 static void avrcp_play_item(struct avrcp *session, uint64_t uid)
 {
 	uint8_t buf[AVRCP_HEADER_LENGTH + 11];
@@ -3120,7 +3155,7 @@ static void avrcp_play_item(struct avrcp *session, uint64_t uid)
 
 	avctp_send_vendordep_req(session->conn, AVC_CTYPE_CONTROL,
 					AVC_SUBUNIT_PANEL, buf, length,
-					NULL, session);
+					avrcp_play_item_rsp, session);
 }
 
 static int ct_play_item(struct media_player *mp, const char *name,

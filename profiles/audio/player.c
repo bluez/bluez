@@ -1482,6 +1482,7 @@ static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
 {
 	struct media_item *item = data;
 	struct media_player *mp = item->player;
+	struct media_folder *folder = mp->scope;
 	struct player_callback *cb = mp->cb;
 	const char *path;
 	int err;
@@ -1489,13 +1490,18 @@ static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
 	if (!item->playable || !cb->cbs->play_item)
 		return btd_error_not_supported(msg);
 
-	path = mp->search && mp->scope == mp->search ? "/Search" : item->path;
+	if (folder->msg)
+		return btd_error_failed(msg, strerror(EBUSY));
+
+	path = mp->search && folder == mp->search ? "/Search" : item->path;
 
 	err = cb->cbs->play_item(mp, path, item->uid, cb->user_data);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	folder->msg = dbus_message_ref(msg);
+
+	return NULL;
 }
 
 static DBusMessage *media_item_add_to_nowplaying(DBusConnection *conn,
@@ -1699,6 +1705,27 @@ static const GDBusPropertyTable media_item_properties[] = {
 	{ "Metadata", "a{sv}", get_metadata, NULL, metadata_exists },
 	{ }
 };
+
+void media_player_play_item_complete(struct media_player *mp, int err)
+{
+	struct media_folder *folder = mp->scope;
+	DBusMessage *reply;
+
+	if (folder == NULL || folder->msg == NULL)
+		return;
+
+	if (err < 0) {
+		reply = btd_error_failed(folder->msg, strerror(-err));
+		goto done;
+	}
+
+	reply = g_dbus_create_reply(folder->msg, DBUS_TYPE_INVALID);
+
+done:
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(folder->msg);
+	folder->msg = NULL;
+}
 
 void media_item_set_playable(struct media_item *item, bool value)
 {
