@@ -11,11 +11,6 @@ builtin_sources += plugins/autopair.c
 builtin_modules += policy
 builtin_sources += plugins/policy.c
 
-if MAINTAINER_MODE
-builtin_modules += gatt_example
-builtin_sources += plugins/gatt-example.c
-endif
-
 if EXPERIMENTAL
 builtin_modules += neard
 builtin_sources += plugins/neard.c
