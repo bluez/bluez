@@ -16,7 +16,7 @@ builtin_modules += neard
 builtin_sources += plugins/neard.c
 endif
 
-if EXPERIMENTAL
+if SAP
 builtin_modules += sap
 builtin_sources += profiles/sap/main.c profiles/sap/manager.h \
 			profiles/sap/manager.c profiles/sap/server.h \
