@@ -38,11 +38,14 @@ builtin_sources += profiles/audio/source.h profiles/audio/source.c \
 			profiles/audio/a2dp-codecs.h
 endif
 
+
+if AVRCP
 builtin_modules += avrcp
 builtin_sources += profiles/audio/control.h profiles/audio/control.c \
 			profiles/audio/avctp.h profiles/audio/avctp.c \
 			profiles/audio/avrcp.h profiles/audio/avrcp.c \
 			profiles/audio/player.h profiles/audio/player.c
+endif
 
 builtin_modules += network
 builtin_sources += profiles/network/manager.c \

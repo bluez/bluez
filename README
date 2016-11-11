@@ -115,6 +115,16 @@ For a working system, certain configuration options need to be enabled:
 		This option is provided for distributions that do not have any
 		audio capabilities.
 
+	--disable-avrcp
+
+		Disable AVRCP profile
+
+		By default bluetoothd supports AVRCP profile using a built-in
+		plugin, this option disables it.
+
+		This option is provided for distributions that do not have any
+		audio capabilities.
+
 	--enable-experimental
 
 		Enable experimental plugins
