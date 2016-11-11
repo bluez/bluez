@@ -157,14 +157,14 @@ For a working system, certain configuration options need to be enabled:
 
 	--enable-experimental
 
-		Enable experimental plugins
+		Enable experimental tools
 
-		By default all plugins that are still in development
+		By default all tools that are still in development
 		are disabled. This option can be used to enable them.
 
 		It is not recommended to enable this option for production
-		systems. The APIs or behavior of the experimental plugins
-		is unstable and might still change.
+		systems. The behavior of the experimental tools is unstable
+		and might still change.
 
 	--enable-nfc
 
