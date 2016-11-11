@@ -116,6 +116,15 @@ For a working system, certain configuration options need to be enabled:
 		systems. The APIs or behavior of the experimental plugins
 		is unstable and might still change.
 
+	--enable-nfc
+
+		This option enable NFC pairing support.
+
+		By default the integration with neard is disabled, this gives
+		the option to enable it in system where neard is supported.
+
+		The plugin is built into bluetoothd therefore it does not need
+		to be package separately.
 
 Information
 ===========

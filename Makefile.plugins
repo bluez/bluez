@@ -11,10 +11,12 @@ builtin_sources += plugins/autopair.c
 builtin_modules += policy
 builtin_sources += plugins/policy.c
 
-if EXPERIMENTAL
+if NFC
 builtin_modules += neard
 builtin_sources += plugins/neard.c
+endif
 
+if EXPERIMENTAL
 builtin_modules += sap
 builtin_sources += profiles/sap/main.c profiles/sap/manager.h \
 			profiles/sap/manager.c profiles/sap/server.h \

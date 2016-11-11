@@ -140,6 +140,10 @@ AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
 
+AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-nfc],
+		[enable NFC paring]), [enable_nfc=${enableval}])
+AM_CONDITIONAL(NFC, test "${enable_nfc}" = "yes")
+
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
