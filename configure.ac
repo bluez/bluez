@@ -160,6 +160,10 @@ AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-network],
 		[disable network profiles]), [enable_network=${enableval}])
 AM_CONDITIONAL(NETWORK, test "${enable_network}" != "no")
 
+AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-hid],
+		[disable HID profile]), [enable_hid=${enableval}])
+AM_CONDITIONAL(HID, test "${enable_hid}" != "no")
+
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")

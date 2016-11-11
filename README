@@ -135,6 +135,16 @@ For a working system, certain configuration options need to be enabled:
 		This option is provided for distributions that do not have any
 		network capabilities.
 
+	--disable-hid
+
+		Disable HID profile
+
+		By default bluetoothd supports HID profile using a built-in
+		plugin, this option disables it.
+
+		This option is provided for distributions that do not have any
+		input capabilities.
+
 	--enable-experimental
 
 		Enable experimental plugins
