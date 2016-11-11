@@ -27,6 +27,7 @@ noinst_LIBRARIES += profiles/sap/libsap.a
 profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-u8500.c
 endif
 
+if A2DP
 builtin_modules += a2dp
 builtin_sources += profiles/audio/source.h profiles/audio/source.c \
 			profiles/audio/sink.h profiles/audio/sink.c \
@@ -35,6 +36,7 @@ builtin_sources += profiles/audio/source.h profiles/audio/source.c \
 			profiles/audio/media.h profiles/audio/media.c \
 			profiles/audio/transport.h profiles/audio/transport.c \
 			profiles/audio/a2dp-codecs.h
+endif
 
 builtin_modules += avrcp
 builtin_sources += profiles/audio/control.h profiles/audio/control.c \

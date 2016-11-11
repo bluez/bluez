@@ -105,6 +105,16 @@ For a working system, certain configuration options need to be enabled:
 		support systemd. In that case all integration with the
 		init system is up to the package.
 
+	--disable-a2dp
+
+		Disable A2DP profile
+
+		By default bluetoothd supports A2DP profile using a built-in
+		plugin, this option disables it.
+
+		This option is provided for distributions that do not have any
+		audio capabilities.
+
 	--enable-experimental
 
 		Enable experimental plugins
