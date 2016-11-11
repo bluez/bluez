@@ -14,6 +14,9 @@ fi
 		--enable-manpages \
 		--enable-backtrace \
 		--enable-experimental \
+		--enable-nfc \
+		--enable-sap \
+		--enable-health \
 		--enable-android \
 		--enable-sixaxis \
 		--disable-datafiles $*
