@@ -64,6 +64,7 @@ builtin_sources += profiles/input/manager.c \
 			profiles/input/hidp_defs.h
 endif
 
+if HOG
 builtin_modules += hog
 builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
 			profiles/input/hog-lib.c profiles/input/hog-lib.h \
@@ -73,6 +74,7 @@ builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
 			profiles/input/suspend.h profiles/input/suspend-none.c
 
 EXTRA_DIST += profiles/input/suspend-dummy.c
+endif
 
 if EXPERIMENTAL
 builtin_modules += health
