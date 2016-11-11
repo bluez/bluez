@@ -438,6 +438,11 @@ static const char *adapter_dir(struct btd_adapter *adapter)
 	return dir;
 }
 
+uint8_t btd_adapter_get_address_type(struct btd_adapter *adapter)
+{
+	return adapter->bdaddr_type;
+}
+
 static void store_adapter_info(struct btd_adapter *adapter)
 {
 	GKeyFile *key_file;
