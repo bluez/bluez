@@ -168,6 +168,10 @@ AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-hog],
 		[disable HoG profile]), [enable_hog=${enableval}])
 AM_CONDITIONAL(HOG, test "${enable_hog}" != "no")
 
+AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-health],
+		[enable health profiles]), [enable_health=${enableval}])
+AM_CONDITIONAL(HEALTH, test "${enable_health}" = "yes")
+
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")

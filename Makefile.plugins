@@ -76,7 +76,7 @@ builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
 EXTRA_DIST += profiles/input/suspend-dummy.c
 endif
 
-if EXPERIMENTAL
+if HEALTH
 builtin_modules += health
 builtin_sources += profiles/health/mcap.h profiles/health/mcap.c \
 			profiles/health/hdp_main.c profiles/health/hdp_types.h \
