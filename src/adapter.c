@@ -8085,7 +8085,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		}
 	} else {
 		bacpy(&adapter->bdaddr, &rp->bdaddr);
-		if (adapter->supported_settings & MGMT_SETTING_BREDR)
+		if (!(adapter->supported_settings & MGMT_SETTING_LE))
 			adapter->bdaddr_type = BDADDR_BREDR;
 		else
 			adapter->bdaddr_type = BDADDR_LE_PUBLIC;
