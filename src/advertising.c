@@ -298,6 +298,10 @@ static bool parse_advertising_manufacturer_data(GDBusProxy *proxy,
 		dbus_message_iter_get_basic(&entry, &manuf_id);
 
 		dbus_message_iter_next(&entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
+			goto fail;
+
 		dbus_message_iter_recurse(&entry, &value);
 
 		if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_ARRAY)
@@ -356,6 +360,10 @@ static bool parse_advertising_service_data(GDBusProxy *proxy,
 			goto fail;
 
 		dbus_message_iter_next(&entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
+			goto fail;
+
 		dbus_message_iter_recurse(&entry, &value);
 
 		if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_ARRAY)
