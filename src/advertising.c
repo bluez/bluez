@@ -41,9 +41,9 @@
 #define LE_ADVERTISING_MGR_IFACE "org.bluez.LEAdvertisingManager1"
 #define LE_ADVERTISEMENT_IFACE "org.bluez.LEAdvertisement1"
 
-struct btd_advertising {
+struct btd_adv_manager {
 	struct btd_adapter *adapter;
-	struct queue *ads;
+	struct queue *clients;
 	struct mgmt *mgmt;
 	uint16_t mgmt_index;
 	uint8_t max_adv_len;
@@ -54,8 +54,8 @@ struct btd_advertising {
 #define AD_TYPE_BROADCAST 0
 #define AD_TYPE_PERIPHERAL 1
 
-struct advertisement {
-	struct btd_advertising *manager;
+struct btd_adv_client {
+	struct btd_adv_manager *manager;
 	char *owner;
 	char *path;
 	GDBusClient *client;
@@ -72,60 +72,61 @@ struct dbus_obj_match {
 	const char *path;
 };
 
-static bool match_advertisement(const void *a, const void *b)
+static bool match_client(const void *a, const void *b)
 {
-	const struct advertisement *ad = a;
+	const struct btd_adv_client *client = a;
 	const struct dbus_obj_match *match = b;
 
-	if (match->owner && g_strcmp0(ad->owner, match->owner))
+	if (match->owner && g_strcmp0(client->owner, match->owner))
 		return false;
 
-	if (match->path && g_strcmp0(ad->path, match->path))
+	if (match->path && g_strcmp0(client->path, match->path))
 		return false;
 
 	return true;
 }
 
-static void advertisement_free(void *data)
+static void client_free(void *data)
 {
-	struct advertisement *ad = data;
+	struct btd_adv_client *client = data;
 
-	if (ad->client) {
-		g_dbus_client_set_disconnect_watch(ad->client, NULL, NULL);
-		g_dbus_client_unref(ad->client);
+	if (client->client) {
+		g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
+		g_dbus_client_unref(client->client);
 	}
 
-	if (ad->instance)
-		util_clear_uid(&ad->manager->instance_bitmap, ad->instance);
+	if (client->instance)
+		util_clear_uid(&client->manager->instance_bitmap,
+						client->instance);
 
-	bt_ad_unref(ad->data);
+	bt_ad_unref(client->data);
 
-	g_dbus_proxy_unref(ad->proxy);
+	g_dbus_proxy_unref(client->proxy);
 
-	if (ad->owner)
-		g_free(ad->owner);
+	if (client->owner)
+		g_free(client->owner);
 
-	if (ad->path)
-		g_free(ad->path);
+	if (client->path)
+		g_free(client->path);
 
-	free(ad);
+	free(client);
 }
 
-static gboolean advertisement_free_idle_cb(void *data)
+static gboolean client_free_idle_cb(void *data)
 {
-	advertisement_free(data);
+	client_free(data);
 
 	return FALSE;
 }
 
-static void advertisement_release(void *data)
+static void client_release(void *data)
 {
-	struct advertisement *ad = data;
+	struct btd_adv_client *client = data;
 	DBusMessage *message;
 
-	DBG("Releasing advertisement %s, %s", ad->owner, ad->path);
+	DBG("Releasing advertisement %s, %s", client->owner, client->path);
 
-	message = dbus_message_new_method_call(ad->owner, ad->path,
+	message = dbus_message_new_method_call(client->owner, client->path,
 							LE_ADVERTISEMENT_IFACE,
 							"Release");
 
@@ -137,38 +138,38 @@ static void advertisement_release(void *data)
 	g_dbus_send_message(btd_get_dbus_connection(), message);
 }
 
-static void advertisement_destroy(void *data)
+static void client_destroy(void *data)
 {
-	advertisement_release(data);
-	advertisement_free(data);
+	client_release(data);
+	client_free(data);
 }
 
-static void advertisement_remove(void *data)
+static void client_remove(void *data)
 {
-	struct advertisement *ad = data;
+	struct btd_adv_client *client = data;
 	struct mgmt_cp_remove_advertising cp;
 
-	g_dbus_client_set_disconnect_watch(ad->client, NULL, NULL);
+	g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
 
-	cp.instance = ad->instance;
+	cp.instance = client->instance;
 
-	mgmt_send(ad->manager->mgmt, MGMT_OP_REMOVE_ADVERTISING,
-			ad->manager->mgmt_index, sizeof(cp), &cp, NULL, NULL,
-			NULL);
+	mgmt_send(client->manager->mgmt, MGMT_OP_REMOVE_ADVERTISING,
+			client->manager->mgmt_index, sizeof(cp), &cp,
+			NULL, NULL, NULL);
 
-	queue_remove(ad->manager->ads, ad);
+	queue_remove(client->manager->clients, client);
 
-	g_idle_add(advertisement_free_idle_cb, ad);
+	g_idle_add(client_free_idle_cb, client);
 }
 
 static void client_disconnect_cb(DBusConnection *conn, void *user_data)
 {
 	DBG("Client disconnected");
 
-	advertisement_remove(user_data);
+	client_remove(user_data);
 }
 
-static bool parse_advertising_type(GDBusProxy *proxy, uint8_t *type)
+static bool parse_type(GDBusProxy *proxy, uint8_t *type)
 {
 	DBusMessageIter iter;
 	const char *msg_type;
@@ -194,8 +195,7 @@ static bool parse_advertising_type(GDBusProxy *proxy, uint8_t *type)
 	return false;
 }
 
-static bool parse_advertising_service_uuids(GDBusProxy *proxy,
-					struct bt_ad *data)
+static bool parse_service_uuids(GDBusProxy *proxy, struct bt_ad *data)
 {
 	DBusMessageIter iter, ariter;
 
@@ -233,8 +233,7 @@ fail:
 	return false;
 }
 
-static bool parse_advertising_solicit_uuids(GDBusProxy *proxy,
-							struct bt_ad *data)
+static bool parse_solicit_uuids(GDBusProxy *proxy, struct bt_ad *data)
 {
 	DBusMessageIter iter, ariter;
 
@@ -272,8 +271,7 @@ fail:
 	return false;
 }
 
-static bool parse_advertising_manufacturer_data(GDBusProxy *proxy,
-							struct bt_ad *data)
+static bool parse_manufacturer_data(GDBusProxy *proxy, struct bt_ad *data)
 {
 	DBusMessageIter iter, entries;
 
@@ -330,8 +328,7 @@ fail:
 	return false;
 }
 
-static bool parse_advertising_service_data(GDBusProxy *proxy,
-							struct bt_ad *data)
+static bool parse_service_data(GDBusProxy *proxy, struct bt_ad *data)
 {
 	DBusMessageIter iter, entries;
 
@@ -391,8 +388,7 @@ fail:
 	return false;
 }
 
-static bool parse_advertising_include_tx_power(GDBusProxy *proxy,
-							bool *included)
+static bool parse_include_tx_power(GDBusProxy *proxy, bool *included)
 {
 	DBusMessageIter iter;
 	dbus_bool_t b;
@@ -410,30 +406,30 @@ static bool parse_advertising_include_tx_power(GDBusProxy *proxy,
 	return true;
 }
 
-static void add_adverting_complete(struct advertisement *ad, uint8_t status)
+static void add_client_complete(struct btd_adv_client *client, uint8_t status)
 {
 	DBusMessage *reply;
 
 	if (status) {
 		error("Failed to add advertisement: %s (0x%02x)",
 						mgmt_errstr(status), status);
-		reply = btd_error_failed(ad->reg,
+		reply = btd_error_failed(client->reg,
 					"Failed to register advertisement");
-		queue_remove(ad->manager->ads, ad);
-		g_idle_add(advertisement_free_idle_cb, ad);
+		queue_remove(client->manager->clients, client);
+		g_idle_add(client_free_idle_cb, client);
 
 	} else
-		reply = dbus_message_new_method_return(ad->reg);
+		reply = dbus_message_new_method_return(client->reg);
 
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
-	dbus_message_unref(ad->reg);
-	ad->reg = NULL;
+	dbus_message_unref(client->reg);
+	client->reg = NULL;
 }
 
-static void add_advertising_callback(uint8_t status, uint16_t length,
+static void add_adv_callback(uint8_t status, uint16_t length,
 					  const void *param, void *user_data)
 {
-	struct advertisement *ad = user_data;
+	struct btd_adv_client *client = user_data;
 	const struct mgmt_rp_add_advertising *rp = param;
 
 	if (status)
@@ -444,19 +440,19 @@ static void add_advertising_callback(uint8_t status, uint16_t length,
 		goto done;
 	}
 
-	ad->instance = rp->instance;
+	client->instance = rp->instance;
 
-	g_dbus_client_set_disconnect_watch(ad->client, client_disconnect_cb,
-									ad);
-	DBG("Advertisement registered: %s", ad->path);
+	g_dbus_client_set_disconnect_watch(client->client, client_disconnect_cb,
+									client);
+	DBG("Advertisement registered: %s", client->path);
 
 done:
-	add_adverting_complete(ad, status);
+	add_client_complete(client, status);
 }
 
-static size_t calc_max_adv_len(struct advertisement *ad, uint32_t flags)
+static size_t calc_max_adv_len(struct btd_adv_client *client, uint32_t flags)
 {
-	size_t max = ad->manager->max_adv_len;
+	size_t max = client->manager->max_adv_len;
 
 	/*
 	 * Flags which reduce the amount of space available for advertising.
@@ -475,7 +471,7 @@ static size_t calc_max_adv_len(struct advertisement *ad, uint32_t flags)
 	return max;
 }
 
-static DBusMessage *refresh_advertisement(struct advertisement *ad)
+static DBusMessage *refresh_advertisement(struct btd_adv_client *client)
 {
 	struct mgmt_cp_add_advertising *cp;
 	uint8_t param_len;
@@ -483,20 +479,20 @@ static DBusMessage *refresh_advertisement(struct advertisement *ad)
 	size_t adv_data_len;
 	uint32_t flags = 0;
 
-	DBG("Refreshing advertisement: %s", ad->path);
+	DBG("Refreshing advertisement: %s", client->path);
 
-	if (ad->type == AD_TYPE_PERIPHERAL)
+	if (client->type == AD_TYPE_PERIPHERAL)
 		flags = MGMT_ADV_FLAG_CONNECTABLE | MGMT_ADV_FLAG_DISCOV;
 
-	if (ad->include_tx_power)
+	if (client->include_tx_power)
 		flags |= MGMT_ADV_FLAG_TX_POWER;
 
-	adv_data = bt_ad_generate(ad->data, &adv_data_len);
+	adv_data = bt_ad_generate(client->data, &adv_data_len);
 
-	if (!adv_data || (adv_data_len > calc_max_adv_len(ad, flags))) {
+	if (!adv_data || (adv_data_len > calc_max_adv_len(client, flags))) {
 		error("Advertising data too long or couldn't be generated.");
 
-		return g_dbus_create_error(ad->reg, ERROR_INTERFACE
+		return g_dbus_create_error(client->reg, ERROR_INTERFACE
 						".InvalidLength",
 						"Advertising data too long.");
 	}
@@ -510,24 +506,24 @@ static DBusMessage *refresh_advertisement(struct advertisement *ad)
 
 		free(adv_data);
 
-		return btd_error_failed(ad->reg, "Failed");
+		return btd_error_failed(client->reg, "Failed");
 	}
 
 	cp->flags = htobl(flags);
-	cp->instance = ad->instance;
+	cp->instance = client->instance;
 	cp->adv_data_len = adv_data_len;
 	memcpy(cp->data, adv_data, adv_data_len);
 
 	free(adv_data);
 
-	if (!mgmt_send(ad->manager->mgmt, MGMT_OP_ADD_ADVERTISING,
-					ad->manager->mgmt_index, param_len, cp,
-					add_advertising_callback, ad, NULL)) {
+	if (!mgmt_send(client->manager->mgmt, MGMT_OP_ADD_ADVERTISING,
+				client->manager->mgmt_index, param_len, cp,
+				add_adv_callback, client, NULL)) {
 		error("Failed to add Advertising Data");
 
 		free(cp);
 
-		return btd_error_failed(ad->reg, "Failed");
+		return btd_error_failed(client->reg, "Failed");
 	}
 
 	free(cp);
@@ -535,113 +531,113 @@ static DBusMessage *refresh_advertisement(struct advertisement *ad)
 	return NULL;
 }
 
-static DBusMessage *parse_advertisement(struct advertisement *ad)
+static DBusMessage *parse_advertisement(struct btd_adv_client *client)
 {
-	if (!parse_advertising_type(ad->proxy, &ad->type)) {
+	if (!parse_type(client->proxy, &client->type)) {
 		error("Failed to read \"Type\" property of advertisement");
 		goto fail;
 	}
 
-	if (!parse_advertising_service_uuids(ad->proxy, ad->data)) {
+	if (!parse_service_uuids(client->proxy, client->data)) {
 		error("Property \"ServiceUUIDs\" failed to parse");
 		goto fail;
 	}
 
-	if (!parse_advertising_solicit_uuids(ad->proxy, ad->data)) {
+	if (!parse_solicit_uuids(client->proxy, client->data)) {
 		error("Property \"SolicitUUIDs\" failed to parse");
 		goto fail;
 	}
 
-	if (!parse_advertising_manufacturer_data(ad->proxy, ad->data)) {
+	if (!parse_manufacturer_data(client->proxy, client->data)) {
 		error("Property \"ManufacturerData\" failed to parse");
 		goto fail;
 	}
 
-	if (!parse_advertising_service_data(ad->proxy, ad->data)) {
+	if (!parse_service_data(client->proxy, client->data)) {
 		error("Property \"ServiceData\" failed to parse");
 		goto fail;
 	}
 
-	if (!parse_advertising_include_tx_power(ad->proxy,
-						&ad->include_tx_power)) {
+	if (!parse_include_tx_power(client->proxy, &client->include_tx_power)) {
 		error("Property \"IncludeTxPower\" failed to parse");
 		goto fail;
 	}
 
-	return refresh_advertisement(ad);
+	return refresh_advertisement(client);
 
 fail:
-	return btd_error_failed(ad->reg, "Failed to parse advertisement.");
+	return btd_error_failed(client->reg, "Failed to parse advertisement.");
 }
 
-static void advertisement_proxy_added(GDBusProxy *proxy, void *data)
+static void client_proxy_added(GDBusProxy *proxy, void *data)
 {
-	struct advertisement *ad = data;
+	struct btd_adv_client *client = data;
 	DBusMessage *reply;
 
-	reply = parse_advertisement(ad);
+	reply = parse_advertisement(client);
 	if (!reply)
 		return;
 
 	/* Failed to publish for some reason, remove. */
-	queue_remove(ad->manager->ads, ad);
+	queue_remove(client->manager->clients, client);
 
-	g_idle_add(advertisement_free_idle_cb, ad);
+	g_idle_add(client_free_idle_cb, client);
 
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
 
-	dbus_message_unref(ad->reg);
-	ad->reg = NULL;
+	dbus_message_unref(client->reg);
+	client->reg = NULL;
 }
 
-static struct advertisement *
-advertisement_create(struct btd_advertising *manager, DBusConnection *conn,
+static struct btd_adv_client *client_create(struct btd_adv_manager *manager,
+					DBusConnection *conn,
 					DBusMessage *msg, const char *path)
 {
-	struct advertisement *ad;
+	struct btd_adv_client *client;
 	const char *sender = dbus_message_get_sender(msg);
 
 	if (!path || !g_str_has_prefix(path, "/"))
 		return NULL;
 
-	ad = new0(struct advertisement, 1);
-	ad->client = g_dbus_client_new_full(conn, sender, path, path);
-	if (!ad->client)
+	client = new0(struct btd_adv_client, 1);
+	client->client = g_dbus_client_new_full(conn, sender, path, path);
+	if (!client->client)
 		goto fail;
 
-	ad->owner = g_strdup(sender);
-	if (!ad->owner)
+	client->owner = g_strdup(sender);
+	if (!client->owner)
 		goto fail;
 
-	ad->path = g_strdup(path);
-	if (!ad->path)
+	client->path = g_strdup(path);
+	if (!client->path)
 		goto fail;
 
 	DBG("Adding proxy for %s", path);
-	ad->proxy = g_dbus_proxy_new(ad->client, path, LE_ADVERTISEMENT_IFACE);
-	if (!ad->proxy)
+	client->proxy = g_dbus_proxy_new(client->client, path,
+						LE_ADVERTISEMENT_IFACE);
+	if (!client->proxy)
 		goto fail;
 
-	g_dbus_client_set_proxy_handlers(ad->client, advertisement_proxy_added,
-								NULL, NULL, ad);
+	g_dbus_client_set_proxy_handlers(client->client, client_proxy_added,
+							NULL, NULL, client);
 
-	ad->reg = dbus_message_ref(msg);
+	client->reg = dbus_message_ref(msg);
 
-	ad->data = bt_ad_new();
-	if (!ad->data)
+	client->data = bt_ad_new();
+	if (!client->data)
 		goto fail;
 
-	ad->instance = util_get_uid(&manager->instance_bitmap,
+	client->instance = util_get_uid(&manager->instance_bitmap,
 							manager->max_ads);
-	if (!ad->instance)
+	if (!client->instance)
 		goto fail;
 
-	ad->manager = manager;
+	client->manager = manager;
 
-	return ad;
+	return client;
 
 fail:
-	advertisement_free(ad);
+	client_free(client);
 	return NULL;
 }
 
@@ -649,9 +645,9 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 						DBusMessage *msg,
 						void *user_data)
 {
-	struct btd_advertising *manager = user_data;
+	struct btd_adv_manager *manager = user_data;
 	DBusMessageIter args;
-	struct advertisement *ad;
+	struct btd_adv_client *client;
 	struct dbus_obj_match match;
 
 	DBG("RegisterAdvertisement");
@@ -666,7 +662,7 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 
 	match.owner = dbus_message_get_sender(msg);
 
-	if (queue_find(manager->ads, match_advertisement, &match))
+	if (queue_find(manager->clients, match_client, &match))
 		return btd_error_already_exists(msg);
 
 	dbus_message_iter_next(&args);
@@ -674,14 +670,14 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
 		return btd_error_invalid_args(msg);
 
-	ad = advertisement_create(manager, conn, msg, match.path);
-	if (!ad)
+	client = client_create(manager, conn, msg, match.path);
+	if (!client)
 		return btd_error_failed(msg,
 					"Failed to register advertisement");
 
 	DBG("Registered advertisement at path %s", match.path);
 
-	queue_push_tail(manager->ads, ad);
+	queue_push_tail(manager->clients, client);
 
 	return NULL;
 }
@@ -690,9 +686,9 @@ static DBusMessage *unregister_advertisement(DBusConnection *conn,
 						DBusMessage *msg,
 						void *user_data)
 {
-	struct btd_advertising *manager = user_data;
+	struct btd_adv_manager *manager = user_data;
 	DBusMessageIter args;
-	struct advertisement *ad;
+	struct btd_adv_client *client;
 	struct dbus_obj_match match;
 
 	DBG("UnregisterAdvertisement");
@@ -707,11 +703,11 @@ static DBusMessage *unregister_advertisement(DBusConnection *conn,
 
 	match.owner = dbus_message_get_sender(msg);
 
-	ad = queue_find(manager->ads, match_advertisement, &match);
-	if (!ad)
+	client = queue_find(manager->clients, match_client, &match);
+	if (!client)
 		return btd_error_does_not_exist(msg);
 
-	advertisement_remove(ad);
+	client_remove(client);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -728,11 +724,11 @@ static const GDBusMethodTable methods[] = {
 	{ }
 };
 
-static void advertising_manager_destroy(void *user_data)
+static void manager_destroy(void *user_data)
 {
-	struct btd_advertising *manager = user_data;
+	struct btd_adv_manager *manager = user_data;
 
-	queue_destroy(manager->ads, advertisement_destroy);
+	queue_destroy(manager->clients, client_destroy);
 
 	mgmt_unref(manager->mgmt);
 
@@ -742,7 +738,7 @@ static void advertising_manager_destroy(void *user_data)
 static void read_adv_features_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
-	struct btd_advertising *manager = user_data;
+	struct btd_adv_manager *manager = user_data;
 	const struct mgmt_rp_read_adv_features *feat = param;
 
 	if (status || !param) {
@@ -769,12 +765,11 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
 }
 
-static struct btd_advertising *
-advertising_manager_create(struct btd_adapter *adapter)
+static struct btd_adv_manager *manager_create(struct btd_adapter *adapter)
 {
-	struct btd_advertising *manager;
+	struct btd_adv_manager *manager;
 
-	manager = new0(struct btd_advertising, 1);
+	manager = new0(struct btd_adv_manager, 1);
 	manager->adapter = adapter;
 
 	manager->mgmt = mgmt_new_default();
@@ -791,24 +786,23 @@ advertising_manager_create(struct btd_adapter *adapter)
 				manager->mgmt_index, 0, NULL,
 				read_adv_features_callback, manager, NULL)) {
 		error("Failed to read advertising features");
-		advertising_manager_destroy(manager);
+		manager_destroy(manager);
 		return NULL;
 	}
 
-	manager->ads = queue_new();
+	manager->clients = queue_new();
 
 	return manager;
 }
 
-struct btd_advertising *
-btd_advertising_manager_new(struct btd_adapter *adapter)
+struct btd_adv_manager *btd_adv_manager_new(struct btd_adapter *adapter)
 {
-	struct btd_advertising *manager;
+	struct btd_adv_manager *manager;
 
 	if (!adapter)
 		return NULL;
 
-	manager = advertising_manager_create(adapter);
+	manager = manager_create(adapter);
 	if (!manager)
 		return NULL;
 
@@ -818,7 +812,7 @@ btd_advertising_manager_new(struct btd_adapter *adapter)
 	return manager;
 }
 
-void btd_advertising_manager_destroy(struct btd_advertising *manager)
+void btd_adv_manager_destroy(struct btd_adv_manager *manager)
 {
 	if (!manager)
 		return;
@@ -827,5 +821,5 @@ void btd_advertising_manager_destroy(struct btd_advertising *manager)
 					adapter_get_path(manager->adapter),
 					LE_ADVERTISING_MGR_IFACE);
 
-	advertising_manager_destroy(manager);
+	manager_destroy(manager);
 }

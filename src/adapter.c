@@ -238,7 +238,7 @@ struct btd_adapter {
 	sdp_list_t *services;		/* Services associated to adapter */
 
 	struct btd_gatt_database *database;
-	struct btd_advertising *adv_manager;
+	struct btd_adv_manager *adv_manager;
 
 	gboolean initialized;
 
@@ -5380,7 +5380,7 @@ static void adapter_remove(struct btd_adapter *adapter)
 	btd_gatt_database_destroy(adapter->database);
 	adapter->database = NULL;
 
-	btd_advertising_manager_destroy(adapter->adv_manager);
+	btd_adv_manager_destroy(adapter->adv_manager);
 	adapter->adv_manager = NULL;
 
 	g_slist_free(adapter->pin_callbacks);
@@ -7580,8 +7580,7 @@ static int adapter_register(struct btd_adapter *adapter)
 	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) {
 		/* Don't start advertising managers on non-LE controllers. */
 		if (adapter->supported_settings & MGMT_SETTING_LE) {
-			adapter->adv_manager =
-					btd_advertising_manager_new(adapter);
+			adapter->adv_manager = btd_adv_manager_new(adapter);
 		} else {
 			btd_info(adapter->dev_id,
 				"LEAdvertisingManager skipped, LE unavailable");

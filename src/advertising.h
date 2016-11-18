@@ -18,8 +18,7 @@
  */
 
 struct btd_adapter;
-struct btd_advertising;
+struct btd_adv_manager;
 
-struct btd_advertising *btd_advertising_manager_new(
-						struct btd_adapter *adapter);
-void btd_advertising_manager_destroy(struct btd_advertising *manager);
+struct btd_adv_manager *btd_adv_manager_new(struct btd_adapter *adapter);
+void btd_adv_manager_destroy(struct btd_adv_manager *manager);
