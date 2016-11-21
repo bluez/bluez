@@ -140,35 +140,35 @@ AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-nfc],
+AC_ARG_ENABLE(nfc, AC_HELP_STRING([--enable-nfc],
 		[enable NFC paring]), [enable_nfc=${enableval}])
 AM_CONDITIONAL(NFC, test "${enable_nfc}" = "yes")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-sap],
+AC_ARG_ENABLE(sap, AC_HELP_STRING([--enable-sap],
 		[enable SAP profile]), [enable_sap=${enableval}])
 AM_CONDITIONAL(SAP, test "${enable_sap}" = "yes")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-a2dp],
+AC_ARG_ENABLE(a2dp, AC_HELP_STRING([--disable-a2dp],
 		[disable A2DP profile]), [enable_a2dp=${enableval}])
 AM_CONDITIONAL(A2DP, test "${enable_a2dp}" != "no")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-avrcp],
+AC_ARG_ENABLE(avrcp, AC_HELP_STRING([--disable-avrcp],
 		[disable AVRCP profile]), [enable_avrcp=${enableval}])
 AM_CONDITIONAL(AVRCP, test "${enable_avrcp}" != "no")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-network],
+AC_ARG_ENABLE(network, AC_HELP_STRING([--disable-network],
 		[disable network profiles]), [enable_network=${enableval}])
 AM_CONDITIONAL(NETWORK, test "${enable_network}" != "no")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-hid],
+AC_ARG_ENABLE(hid, AC_HELP_STRING([--disable-hid],
 		[disable HID profile]), [enable_hid=${enableval}])
 AM_CONDITIONAL(HID, test "${enable_hid}" != "no")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--disable-hog],
+AC_ARG_ENABLE(hog, AC_HELP_STRING([--disable-hog],
 		[disable HoG profile]), [enable_hog=${enableval}])
 AM_CONDITIONAL(HOG, test "${enable_hog}" != "no")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-health],
+AC_ARG_ENABLE(health, AC_HELP_STRING([--enable-health],
 		[enable health profiles]), [enable_health=${enableval}])
 AM_CONDITIONAL(HEALTH, test "${enable_health}" = "yes")
 
