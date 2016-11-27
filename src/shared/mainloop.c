@@ -311,7 +311,7 @@ static inline int timeout_set(int fd, unsigned int msec)
 	itimer.it_interval.tv_sec = 0;
 	itimer.it_interval.tv_nsec = 0;
 	itimer.it_value.tv_sec = sec;
-	itimer.it_value.tv_nsec = (msec - (sec * 1000)) * 1000;
+	itimer.it_value.tv_nsec = (msec - (sec * 1000)) * 1000 * 1000;
 
 	return timerfd_settime(fd, 0, &itimer, NULL);
 }
