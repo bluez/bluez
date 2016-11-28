@@ -192,7 +192,7 @@ static int scan_param_accept(struct btd_service *service)
 	}
 
 	scan->db = gatt_db_ref(db);
-	scan->client = bt_gatt_client_ref(client);
+	scan->client = bt_gatt_client_clone(client);
 
 	bt_string_to_uuid(&scan_parameters_uuid, SCAN_PARAMETERS_UUID);
 	gatt_db_foreach_service(db, &scan_parameters_uuid,
