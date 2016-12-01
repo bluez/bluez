@@ -1052,11 +1052,14 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 					"Primary service discovery failed."
 					" ATT ECODE: 0x%02x", att_ecode);
 		/* Reset error in case of not found */
-		if (BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND) {
+		switch (att_ecode) {
+		case BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND:
 			success = true;
 			att_ecode = 0;
+			goto secondary;
+		default:
+			goto done;
 		}
-		goto secondary;
 	}
 
 	if (!result || !bt_gatt_iter_init(&iter, result)) {
