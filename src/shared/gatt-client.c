@@ -1027,6 +1027,7 @@ next:
 	util_debug(client->debug_callback, client->debug_data,
 				"Failed to start included services discovery");
 	discovery_op_unref(op);
+	success = false;
 
 done:
 	discovery_op_complete(op, success, att_ecode);
