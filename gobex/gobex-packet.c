@@ -228,7 +228,7 @@ gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 }
 
 GObexPacket *g_obex_packet_new_valist(guint8 opcode, gboolean final,
-					guint8 first_hdr_id, va_list args)
+					guint first_hdr_id, va_list args)
 {
 	GObexPacket *pkt;
 
@@ -246,7 +246,7 @@ GObexPacket *g_obex_packet_new_valist(guint8 opcode, gboolean final,
 }
 
 GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final,
-						guint8 first_hdr_id, ...)
+						guint first_hdr_id, ...)
 {
 	GObexPacket *pkt;
 	va_list args;

@@ -853,7 +853,7 @@ immediate_completion:
 }
 
 gboolean g_obex_send_rsp(GObex *obex, guint8 rspcode, GError **err,
-						guint8 first_hdr_type, ...)
+						guint first_hdr_type, ...)
 {
 	GObexPacket *rsp;
 	va_list args;
@@ -1549,7 +1549,7 @@ void g_obex_unref(GObex *obex)
 /* Higher level functions */
 
 guint g_obex_connect(GObex *obex, GObexResponseFunc func, gpointer user_data,
-					GError **err, guint8 first_hdr_id, ...)
+					GError **err, guint first_hdr_id, ...)
 {
 	GObexPacket *req;
 	struct connect_data data;

@@ -98,9 +98,9 @@ gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 						GObexDataPolicy data_policy);
 const void *g_obex_packet_get_data(GObexPacket *pkt, gsize *len);
 GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final,
-						guint8 first_hdr_id, ...);
+						guint first_hdr_id, ...);
 GObexPacket *g_obex_packet_new_valist(guint8 opcode, gboolean final,
-					guint8 first_hdr_id, va_list args);
+					guint first_hdr_id, va_list args);
 void g_obex_packet_free(GObexPacket *pkt);
 
 GObexPacket *g_obex_packet_decode(const void *data, gsize len,
