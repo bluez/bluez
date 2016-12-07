@@ -1690,7 +1690,7 @@ static gboolean get_metadata(const GDBusPropertyTable *property,
 }
 
 static const GDBusMethodTable media_item_methods[] = {
-	{ GDBUS_METHOD("Play", NULL, NULL, media_item_play) },
+	{ GDBUS_ASYNC_METHOD("Play", NULL, NULL, media_item_play) },
 	{ GDBUS_METHOD("AddtoNowPlaying", NULL, NULL,
 					media_item_add_to_nowplaying) },
 	{ }
