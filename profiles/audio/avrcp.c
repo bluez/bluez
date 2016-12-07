@@ -3105,7 +3105,7 @@ static gboolean avrcp_play_item_rsp(struct avctp *conn, uint8_t code,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
-	struct avrcp_browsing_header *pdu = (void *) operands;
+	struct avrcp_header *pdu = (void *) operands;
 	struct avrcp *session = (void *) user_data;
 	struct avrcp_player *player = session->controller->player;
 	struct media_player *mp = player->user_data;
