@@ -283,6 +283,8 @@ static void timeout_destroy(void *user_data)
 
 	if (data->destroy)
 		data->destroy(data->user_data);
+
+	free(data);
 }
 
 static void timeout_callback(int fd, uint32_t events, void *user_data)
