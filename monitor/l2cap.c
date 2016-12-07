@@ -2671,7 +2671,7 @@ static void print_smp_oob_data(uint8_t oob_data)
 
 static void print_smp_auth_req(uint8_t auth_req)
 {
-	const char *bond, *mitm, *sc, *kp;
+	const char *bond, *mitm, *sc, *kp, *ct2;
 
 	switch (auth_req & 0x03) {
 	case 0x00:
@@ -2700,8 +2700,13 @@ static void print_smp_auth_req(uint8_t auth_req)
 	else
 		kp = "No Keypresses";
 
-	print_field("Authentication requirement: %s, %s, %s, %s (0x%2.2x)",
-						bond, mitm, sc, kp, auth_req);
+	if ((auth_req & 0x20))
+		ct2 = ", CT2";
+	else
+		ct2 = "";
+
+	print_field("Authentication requirement: %s, %s, %s, %s%s (0x%2.2x)",
+					bond, mitm, sc, kp, ct2, auth_req);
 }
 
 static void print_smp_key_dist(const char *label, uint8_t dist)
