@@ -90,13 +90,13 @@ struct rfcomm_lhdr {
 	uint16_t length;
 	uint8_t fcs;
 	uint8_t credits; /* only for UIH frame */
-} __attribute__((packed));
+};
 
 struct rfcomm_lmsc {
 	uint8_t dlci;
 	uint8_t v24_sig;
 	uint8_t break_sig;
-} __attribute__((packed));
+};
 
 struct rfcomm_rpn {
 	uint8_t dlci;
@@ -111,16 +111,16 @@ struct rfcomm_rpn {
 struct rfcomm_rls {
 	uint8_t dlci;
 	uint8_t error;
-} __attribute__((packed));
+};
 
 struct rfcomm_nsc {
 	uint8_t cmd_type;
-} __attribute__((packed));
+};
 
 struct rfcomm_lmcc {
 	uint8_t type;
 	uint16_t length;
-} __attribute__((packed));
+};
 
 struct rfcomm_frame {
 	struct rfcomm_lhdr hdr;
