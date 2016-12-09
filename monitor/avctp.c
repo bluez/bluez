@@ -1965,7 +1965,7 @@ static bool avrcp_folder_item(struct avctp_frame *avctp_frame,
 	print_field("%*cNameLength: 0x%04x (%u)", indent, ' ',
 					namelen, namelen);
 
-	print_field("%*cName: ", indent, ' ');
+	printf("%*cName: ", indent+8, ' ');
 	for (; namelen > 0; namelen--) {
 		uint8_t c;
 		if (!l2cap_frame_get_u8(frame, &c))
@@ -1973,6 +1973,7 @@ static bool avrcp_folder_item(struct avctp_frame *avctp_frame,
 
 		printf("%1c", isprint(c) ? c : '.');
 	}
+	printf("\n");
 
 	return true;
 }
@@ -2005,7 +2006,7 @@ static bool avrcp_attribute_entry_list(struct avctp_frame *avctp_frame,
 		print_field("%*cAttributeLength: 0x%02x (%u)", indent, ' ',
 						len, len);
 
-		print_field("%*cAttributeValue: ", indent, ' ');
+		printf("%*cAttributeValue: ", indent+8, ' ');
 		for (; len > 0; len--) {
 			uint8_t c;
 
@@ -2014,6 +2015,7 @@ static bool avrcp_attribute_entry_list(struct avctp_frame *avctp_frame,
 
 			printf("%1c", isprint(c) ? c : '.');
 		}
+		printf("\n");
 	}
 
 	return true;
@@ -2051,7 +2053,7 @@ static bool avrcp_media_element_item(struct avctp_frame *avctp_frame,
 	print_field("%*cNameLength: 0x%04x (%u)", indent, ' ',
 					namelen, namelen);
 
-	print_field("%*cName: ", indent, ' ');
+	printf("%*cName: ", indent+8, ' ');
 	for (; namelen > 0; namelen--) {
 		uint8_t c;
 		if (!l2cap_frame_get_u8(frame, &c))
@@ -2059,6 +2061,7 @@ static bool avrcp_media_element_item(struct avctp_frame *avctp_frame,
 
 		printf("%1c", isprint(c) ? c : '.');
 	}
+	printf("\n");
 
 	if (!l2cap_frame_get_u8(frame, &count))
 		return false;
