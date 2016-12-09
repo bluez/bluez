@@ -1985,8 +1985,7 @@ static bool avrcp_attribute_entry_list(struct avctp_frame *avctp_frame,
 
 	for (; count > 0; count--) {
 		uint32_t attr;
-		uint16_t charset;
-		uint8_t len;
+		uint16_t charset, len;
 
 		if (!l2cap_frame_get_be32(frame, &attr))
 			return false;
@@ -2000,10 +1999,10 @@ static bool avrcp_attribute_entry_list(struct avctp_frame *avctp_frame,
 		print_field("%*cCharsetID: 0x%04x (%s)", indent, ' ',
 						charset, charset2str(charset));
 
-		if (!l2cap_frame_get_u8(frame, &len))
+		if (!l2cap_frame_get_be16(frame, &len))
 			return false;
 
-		print_field("%*cAttributeLength: 0x%02x (%u)", indent, ' ',
+		print_field("%*cAttributeLength: 0x%04x (%u)", indent, ' ',
 						len, len);
 
 		printf("%*cAttributeValue: ", indent+8, ' ');
