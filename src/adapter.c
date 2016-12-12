@@ -5631,10 +5631,11 @@ static void update_found_devices(struct btd_adapter *adapter,
 		device_store_cached_name(dev, eir_data.name);
 
 	/*
-	 * If no client has requested discovery, then only update
-	 * already paired devices (skip temporary ones).
+	 * Only skip devices that are not connected, are temporary and there
+	 * is no active discovery session ongoing.
 	 */
-	if (device_is_temporary(dev) && !adapter->discovery_list) {
+	if (!btd_device_is_connected(dev) && (device_is_temporary(dev) &&
+						 !adapter->discovery_list)) {
 		eir_data_free(&eir_data);
 		return;
 	}
