@@ -138,6 +138,7 @@ struct external_desc {
 struct pending_op {
 	struct btd_device *device;
 	unsigned int id;
+	uint16_t offset;
 	struct gatt_db_attribute *attrib;
 	struct queue *owner_queue;
 	struct iovec data;
@@ -1605,7 +1606,7 @@ static void pending_op_free(void *data)
 static struct pending_op *pending_read_new(struct btd_device *device,
 					struct queue *owner_queue,
 					struct gatt_db_attribute *attrib,
-					unsigned int id)
+					unsigned int id, uint16_t offset)
 {
 	struct pending_op *op;
 
@@ -1615,6 +1616,7 @@ static struct pending_op *pending_read_new(struct btd_device *device,
 	op->device = device;
 	op->attrib = attrib;
 	op->id = id;
+	op->offset = offset;
 	queue_push_tail(owner_queue, op);
 
 	return op;
@@ -1626,6 +1628,9 @@ static void append_options(DBusMessageIter *iter, void *user_data)
 	const char *path = device_get_path(op->device);
 
 	dict_append_entry(iter, "device", DBUS_TYPE_OBJECT_PATH, &path);
+	if (op->offset)
+		dict_append_entry(iter, "offset", DBUS_TYPE_UINT16,
+							&op->offset);
 }
 
 static void read_setup_cb(DBusMessageIter *iter, void *user_data)
@@ -1649,11 +1654,12 @@ static struct pending_op *send_read(struct btd_device *device,
 					struct gatt_db_attribute *attrib,
 					GDBusProxy *proxy,
 					struct queue *owner_queue,
-					unsigned int id)
+					unsigned int id,
+					uint16_t offset)
 {
 	struct pending_op *op;
 
-	op = pending_read_new(device, owner_queue, attrib, id);
+	op = pending_read_new(device, owner_queue, attrib, id, offset);
 
 	if (g_dbus_proxy_method_call(proxy, "ReadValue", read_setup_cb,
 				read_reply_cb, op, pending_op_free) == TRUE)
@@ -1974,7 +1980,8 @@ static void desc_read_cb(struct gatt_db_attribute *attrib,
 		goto fail;
 	}
 
-	if (send_read(device, attrib, desc->proxy, desc->pending_reads, id))
+	if (send_read(device, attrib, desc->proxy, desc->pending_reads, id,
+								offset))
 		return;
 
 fail:
@@ -2054,7 +2061,8 @@ static void chrc_read_cb(struct gatt_db_attribute *attrib,
 		goto fail;
 	}
 
-	if (send_read(device, attrib, chrc->proxy, chrc->pending_reads, id))
+	if (send_read(device, attrib, chrc->proxy, chrc->pending_reads, id,
+								offset))
 		return;
 
 fail:
