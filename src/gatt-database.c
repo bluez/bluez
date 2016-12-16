@@ -1738,7 +1738,8 @@ static struct pending_op *pending_write_new(struct btd_device *device,
 					struct gatt_db_attribute *attrib,
 					unsigned int id,
 					const uint8_t *value,
-					size_t len)
+					size_t len,
+					uint16_t offset)
 {
 	struct pending_op *op;
 
@@ -1751,6 +1752,7 @@ static struct pending_op *pending_write_new(struct btd_device *device,
 	op->owner_queue = owner_queue;
 	op->attrib = attrib;
 	op->id = id;
+	op->offset = offset;
 	queue_push_tail(owner_queue, op);
 
 	return op;
@@ -1761,11 +1763,13 @@ static struct pending_op *send_write(struct btd_device *device,
 					GDBusProxy *proxy,
 					struct queue *owner_queue,
 					unsigned int id,
-					const uint8_t *value, size_t len)
+					const uint8_t *value, size_t len,
+					uint16_t offset)
 {
 	struct pending_op *op;
 
-	op = pending_write_new(device, owner_queue, attrib, id, value, len);
+	op = pending_write_new(device, owner_queue, attrib, id, value, len,
+								offset);
 
 	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup_cb,
 					owner_queue ? write_reply_cb : NULL,
@@ -2010,7 +2014,7 @@ static void desc_write_cb(struct gatt_db_attribute *attrib,
 	}
 
 	if (send_write(device, attrib, desc->proxy, desc->pending_writes, id,
-							value, len))
+							value, len, offset))
 		return;
 
 fail:
@@ -2096,7 +2100,8 @@ static void chrc_write_cb(struct gatt_db_attribute *attrib,
 	else
 		queue = NULL;
 
-	if (send_write(device, attrib, chrc->proxy, queue, id, value, len))
+	if (send_write(device, attrib, chrc->proxy, queue, id, value, len,
+								offset))
 		return;
 
 fail:
