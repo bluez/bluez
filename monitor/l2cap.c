@@ -2685,22 +2685,22 @@ static void print_smp_auth_req(uint8_t auth_req)
 		break;
 	}
 
-	if ((auth_req & 0x04))
+	if (auth_req & 0x04)
 		mitm = "MITM";
 	else
 		mitm = "No MITM";
 
-	if ((auth_req & 0x08))
+	if (auth_req & 0x08)
 		sc = "SC";
 	else
 		sc = "Legacy";
 
-	if ((auth_req & 0x10))
+	if (auth_req & 0x10)
 		kp = "Keypresses";
 	else
 		kp = "No Keypresses";
 
-	if ((auth_req & 0x20))
+	if (auth_req & 0x20)
 		ct2 = ", CT2";
 	else
 		ct2 = "";
