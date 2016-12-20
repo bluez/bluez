@@ -106,7 +106,7 @@ struct rfcomm_rpn {
 	uint8_t xon;
 	uint8_t xoff;
 	uint16_t pm;
-} __attribute__ ((packed));
+};
 
 struct rfcomm_rls {
 	uint8_t dlci;
