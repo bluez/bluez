@@ -1198,8 +1198,7 @@ static void set_security_usage(void)
 
 static void cmd_set_security(struct client *cli, char *cmd_str)
 {
-	char *argvbuf[1];
-	char **argv = argvbuf;
+	char *argv[2];
 	int argc = 0;
 	char *endptr = NULL;
 	int level;
