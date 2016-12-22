@@ -704,38 +704,6 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 						data, size, NULL, NULL);
 }
 
-static void get_feature(struct uhid_event *ev, void *user_data)
-{
-	struct bt_hog *hog = user_data;
-	struct report *report;
-	struct uhid_event rsp;
-	int err;
-
-	memset(&rsp, 0, sizeof(rsp));
-	rsp.type = UHID_FEATURE_ANSWER;
-	rsp.u.feature_answer.id = ev->u.feature.id;
-
-	report = find_report_by_rtype(hog, ev->u.feature.rtype,
-							ev->u.feature.rnum);
-	if (!report) {
-		rsp.u.feature_answer.err = ENOTSUP;
-		goto done;
-	}
-
-	if (!report->value) {
-		rsp.u.feature_answer.err = EIO;
-		goto done;
-	}
-
-	rsp.u.feature_answer.size = report->len;
-	memcpy(rsp.u.feature_answer.data, report->value, report->len);
-
-done:
-	err = bt_uhid_send(hog->uhid, &rsp);
-	if (err < 0)
-		error("bt_uhid_send: %s", strerror(-err));
-}
-
 static void set_report_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
@@ -1034,7 +1002,6 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	bt_uhid_register(hog->uhid, UHID_OUTPUT, forward_report, hog);
-	bt_uhid_register(hog->uhid, UHID_FEATURE, get_feature, hog);
 	bt_uhid_register(hog->uhid, UHID_GET_REPORT, get_report, hog);
 	bt_uhid_register(hog->uhid, UHID_SET_REPORT, set_report, hog);
 
