@@ -1190,10 +1190,10 @@ static void cmd_unregister_notify(struct client *cli, char *cmd_str)
 
 static void set_security_usage(void)
 {
-	printf("Usage: set_security <level>\n"
+	printf("Usage: set-security <level>\n"
 		"level: 1-3\n"
 		"e.g.:\n"
-		"\tset-sec-level 2\n");
+		"\tset-security 2\n");
 }
 
 static void cmd_set_security(struct client *cli, char *cmd_str)
