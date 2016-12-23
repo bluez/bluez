@@ -45,6 +45,8 @@
 #include "src/shared/util.h"
 #include "src/shared/uhid.h"
 #include "src/shared/queue.h"
+#include "src/shared/att.h"
+#include "src/shared/gatt-db.h"
 #include "src/log.h"
 
 #include "attrib/att.h"
@@ -59,6 +61,7 @@
 #include "profiles/input/hog-lib.h"
 
 #define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
+#define HOG_UUID16		0x1812
 
 #define HOG_INFO_UUID		0x2A4A
 #define HOG_REPORT_MAP_UUID	0x2A4B
@@ -83,6 +86,7 @@ struct bt_hog {
 	uint16_t		vendor;
 	uint16_t		product;
 	uint16_t		version;
+	struct gatt_db_attribute *attr;
 	struct gatt_primary	*primary;
 	GAttrib			*attrib;
 	GSList			*reports;
@@ -110,9 +114,11 @@ struct report {
 	struct bt_hog		*hog;
 	uint8_t			id;
 	uint8_t			type;
+	uint16_t		handle;
+	uint16_t		value_handle;
+	uint8_t			properties;
 	uint16_t		ccc_handle;
 	guint			notifyid;
-	struct gatt_char	*decl;
 	uint16_t		len;
 	uint8_t			*value;
 };
@@ -180,6 +186,10 @@ static void read_char(struct bt_hog *hog, GAttrib *attrib, uint16_t handle,
 {
 	struct gatt_request *req;
 	unsigned int id;
+
+	/* Ignore if not connected */
+	if (!attrib)
+		return;
 
 	req = create_request(hog, user_data);
 	if (!req)
@@ -334,7 +344,7 @@ static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 
 	report->notifyid = g_attrib_register(hog->attrib,
 					ATT_OP_HANDLE_NOTIFY,
-					report->decl->value_handle,
+					report->value_handle,
 					report_value_cb, report, NULL);
 
 	DBG("Report characteristic descriptor written: notifications enabled");
@@ -403,7 +413,7 @@ static void report_reference_cb(guint8 status, const guint8 *pdu,
 	report->id = pdu[1];
 	report->type = pdu[2];
 
-	DBG("Report 0x%04x: id 0x%02x type %s", report->decl->value_handle,
+	DBG("Report 0x%04x: id 0x%02x type %s", report->value_handle,
 				report->id, type_to_string(report->type));
 
 	/* Enable notifications only for Input Reports */
@@ -516,7 +526,7 @@ static int report_chrc_cmp(const void *data, const void *user_data)
 	const struct report *report = data;
 	const struct gatt_char *decl = user_data;
 
-	return report->decl->handle - decl->handle;
+	return report->handle - decl->handle;
 }
 
 static struct report *report_new(struct bt_hog *hog, struct gatt_char *chr)
@@ -531,7 +541,9 @@ static struct report *report_new(struct bt_hog *hog, struct gatt_char *chr)
 
 	report = g_new0(struct report, 1);
 	report->hog = hog;
-	report->decl = g_memdup(chr, sizeof(*chr));
+	report->handle = chr->handle;
+	report->value_handle = chr->value_handle;
+	report->properties = chr->properties;
 	hog->reports = g_slist_append(hog->reports, report);
 
 	read_char(hog, hog->attrib, chr->value_handle, report_read_cb, report);
@@ -691,16 +703,16 @@ static void forward_report(struct uhid_event *ev, void *user_data)
 	}
 
 	DBG("Sending report type %d ID %d to handle 0x%X", report->type,
-				report->id, report->decl->value_handle);
+				report->id, report->value_handle);
 
 	if (hog->attrib == NULL)
 		return;
 
-	if (report->decl->properties & GATT_CHR_PROP_WRITE)
-		write_char(hog, hog->attrib, report->decl->value_handle,
+	if (report->properties & GATT_CHR_PROP_WRITE)
+		write_char(hog, hog->attrib, report->value_handle,
 				data, size, output_written_cb, hog);
-	else if (report->decl->properties & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
-		gatt_write_cmd(hog->attrib, report->decl->value_handle,
+	else if (report->properties & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
+		gatt_write_cmd(hog->attrib, report->value_handle,
 						data, size, NULL, NULL);
 }
 
@@ -757,13 +769,13 @@ static void set_report(struct uhid_event *ev, void *user_data)
 	}
 
 	DBG("Sending report type %d ID %d to handle 0x%X", report->type,
-				report->id, report->decl->value_handle);
+				report->id, report->value_handle);
 
 	if (hog->attrib == NULL)
 		return;
 
 	hog->setrep_att = gatt_write_char(hog->attrib,
-						report->decl->value_handle,
+						report->value_handle,
 						data, size, set_report_cb,
 						hog);
 	if (!hog->setrep_att) {
@@ -846,7 +858,7 @@ static void get_report(struct uhid_event *ev, void *user_data)
 	}
 
 	hog->getrep_att = gatt_read_char(hog->attrib,
-						report->decl->value_handle,
+						report->value_handle,
 						get_report_cb, hog);
 	if (!hog->getrep_att) {
 		err = ENOMEM;
@@ -1147,7 +1159,6 @@ static void report_free(void *data)
 	struct report *report = data;
 
 	g_free(report->value);
-	g_free(report->decl);
 	g_free(report);
 }
 
@@ -1178,14 +1189,132 @@ static void hog_free(void *data)
 
 struct bt_hog *bt_hog_new_default(const char *name, uint16_t vendor,
 					uint16_t product, uint16_t version,
-					void *primary)
+					struct gatt_db *db)
 {
-	return bt_hog_new(-1, name, vendor, product, version, primary);
+	return bt_hog_new(-1, name, vendor, product, version, db);
 }
 
-struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
+static void foreach_hog_report(struct gatt_db_attribute *attr, void *user_data)
+{
+	struct report *report = user_data;
+	struct bt_hog *hog = report->hog;
+	const bt_uuid_t *uuid;
+	bt_uuid_t ref_uuid, ccc_uuid;
+	uint16_t handle;
+
+	handle = gatt_db_attribute_get_handle(attr);
+	uuid = gatt_db_attribute_get_type(attr);
+
+	bt_uuid16_create(&ref_uuid, GATT_REPORT_REFERENCE);
+	if (!bt_uuid_cmp(&ref_uuid, uuid)) {
+		read_char(hog, hog->attrib, handle, report_reference_cb,
+								report);
+		return;
+	}
+
+	bt_uuid16_create(&ccc_uuid, GATT_CLIENT_CHARAC_CFG_UUID);
+	if (!bt_uuid_cmp(&ccc_uuid, uuid))
+		report->ccc_handle = handle;
+}
+
+static int report_attr_cmp(const void *data, const void *user_data)
+{
+	const struct report *report = data;
+	const struct gatt_db_attribute *attr = user_data;
+
+	return report->handle - gatt_db_attribute_get_handle(attr);
+}
+
+static struct report *report_add(struct bt_hog *hog,
+					struct gatt_db_attribute *attr)
+{
+	struct report *report;
+	GSList *l;
+
+	/* Skip if report already exists */
+	l = g_slist_find_custom(hog->reports, attr, report_attr_cmp);
+	if (l)
+		return l->data;
+
+	report = g_new0(struct report, 1);
+	report->hog = hog;
+
+	gatt_db_attribute_get_char_data(attr, &report->handle,
+					&report->value_handle,
+					&report->properties,
+					NULL, NULL);
+
+	hog->reports = g_slist_append(hog->reports, report);
+
+	read_char(hog, hog->attrib, report->value_handle, report_read_cb,
+								report);
+
+	return report;
+}
+
+static void foreach_hog_external(struct gatt_db_attribute *attr,
+							void *user_data)
+{
+	struct bt_hog *hog = user_data;
+	const bt_uuid_t *uuid;
+	bt_uuid_t ext_uuid;
+	uint16_t handle;
+
+	handle = gatt_db_attribute_get_handle(attr);
+	uuid = gatt_db_attribute_get_type(attr);
+
+	bt_uuid16_create(&ext_uuid, GATT_EXTERNAL_REPORT_REFERENCE);
+	if (!bt_uuid_cmp(&ext_uuid, uuid))
+		read_char(hog, hog->attrib, handle,
+					external_report_reference_cb, hog);
+}
+
+static void foreach_hog_chrc(struct gatt_db_attribute *attr, void *user_data)
+{
+	struct bt_hog *hog = user_data;
+	bt_uuid_t uuid, report_uuid, report_map_uuid, info_uuid;
+	bt_uuid_t proto_mode_uuid, ctrlpt_uuid;
+	uint16_t handle, value_handle;
+
+	gatt_db_attribute_get_char_data(attr, &handle, &value_handle, NULL,
+					NULL, &uuid);
+
+	bt_uuid16_create(&report_uuid, HOG_REPORT_UUID);
+	if (!bt_uuid_cmp(&report_uuid, &uuid)) {
+		struct report *report = report_add(hog, attr);
+		gatt_db_service_foreach_desc(attr, foreach_hog_report, report);
+		return;
+	}
+
+	bt_uuid16_create(&report_map_uuid, HOG_REPORT_MAP_UUID);
+	if (!bt_uuid_cmp(&report_map_uuid, &uuid)) {
+		read_char(hog, hog->attrib, value_handle, report_map_read_cb,
+									hog);
+		gatt_db_service_foreach_desc(attr, foreach_hog_external, hog);
+		return;
+	}
+
+	bt_uuid16_create(&info_uuid, HOG_INFO_UUID);
+	if (!bt_uuid_cmp(&info_uuid, &uuid)) {
+		read_char(hog, hog->attrib, value_handle, info_read_cb, hog);
+		return;
+	}
+
+	bt_uuid16_create(&proto_mode_uuid, HOG_PROTO_MODE_UUID);
+	if (!bt_uuid_cmp(&proto_mode_uuid, &uuid)) {
+		hog->proto_mode_handle = value_handle;
+		read_char(hog, hog->attrib, value_handle, proto_mode_read_cb,
+									hog);
+	}
+
+	bt_uuid16_create(&ctrlpt_uuid, HOG_CONTROL_POINT_UUID);
+	if (!bt_uuid_cmp(&ctrlpt_uuid, &uuid))
+		hog->ctrlpt_handle = value_handle;
+}
+
+static struct bt_hog *hog_new(int fd, const char *name, uint16_t vendor,
 					uint16_t product, uint16_t version,
-					void *primary)
+					struct gatt_db_attribute *attr)
 {
 	struct bt_hog *hog;
 
@@ -1212,9 +1341,58 @@ struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
 	hog->vendor = vendor;
 	hog->product = product;
 	hog->version = version;
+	hog->attr = attr;
 
-	if (primary)
-		hog->primary = g_memdup(primary, sizeof(*hog->primary));
+	return hog;
+}
+
+static void hog_attach_instace(struct bt_hog *hog,
+				struct gatt_db_attribute *attr)
+{
+	struct bt_hog *instance;
+
+	if (!hog->attr) {
+		hog->attr = attr;
+		gatt_db_service_foreach_char(hog->attr, foreach_hog_chrc, hog);
+		return;
+	}
+
+	instance = hog_new(hog->uhid_fd, hog->name, hog->vendor,
+					hog->product, hog->version, attr);
+	if (!instance)
+		return;
+
+	hog->instances = g_slist_append(hog->instances, instance);
+}
+
+static void foreach_hog_service(struct gatt_db_attribute *attr, void *user_data)
+{
+	struct bt_hog *hog = user_data;
+
+	hog_attach_instace(hog, attr);
+}
+
+struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
+					uint16_t product, uint16_t version,
+					struct gatt_db *db)
+{
+	struct bt_hog *hog;
+
+	hog = hog_new(fd, name, vendor, product, version, NULL);
+	if (!hog)
+		return NULL;
+
+	if (db) {
+		bt_uuid_t uuid;
+
+		/* Handle the HID services */
+		bt_uuid16_create(&uuid, HOG_UUID16);
+		gatt_db_foreach_service(db, &uuid, foreach_hog_service, hog);
+		if (!hog->attr) {
+			hog_free(hog);
+			return NULL;
+		}
+	}
 
 	return bt_hog_ref(hog);
 }
@@ -1324,10 +1502,11 @@ static void hog_attach_hog(struct bt_hog *hog, struct gatt_primary *primary)
 	}
 
 	instance = bt_hog_new(hog->uhid_fd, hog->name, hog->vendor,
-					hog->product, hog->version, primary);
+					hog->product, hog->version, NULL);
 	if (!instance)
 		return;
 
+	instance->primary = g_memdup(primary, sizeof(*primary));
 	find_included(instance, hog->attrib, primary->range.start,
 			primary->range.end, find_included_cb, instance);
 
@@ -1382,7 +1561,6 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 
 bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 {
-	struct gatt_primary *primary = hog->primary;
 	GSList *l;
 
 	if (hog->attrib)
@@ -1390,7 +1568,7 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 
 	hog->attrib = g_attrib_ref(gatt);
 
-	if (!primary) {
+	if (!hog->attr && !hog->primary) {
 		discover_primary(hog, hog->attrib, NULL, primary_cb, hog);
 		return true;
 	}
@@ -1411,9 +1589,14 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 
 	if (!hog->uhid_created) {
 		DBG("HoG discovering characteristics");
-		discover_char(hog, hog->attrib, primary->range.start,
-						primary->range.end, NULL,
-						char_discovered_cb, hog);
+		if (hog->attr)
+			gatt_db_service_foreach_char(hog->attr,
+							foreach_hog_chrc, hog);
+		else
+			discover_char(hog, hog->attrib,
+					hog->primary->range.start,
+					hog->primary->range.end, NULL,
+					char_discovered_cb, hog);
 		return true;
 	}
 
@@ -1422,7 +1605,7 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 
 		r->notifyid = g_attrib_register(hog->attrib,
 					ATT_OP_HANDLE_NOTIFY,
-					r->decl->value_handle,
+					r->value_handle,
 					report_value_cb, r, NULL);
 	}
 
@@ -1495,14 +1678,14 @@ int bt_hog_send_report(struct bt_hog *hog, void *data, size_t size, int type)
 	if (!report)
 		return -ENOTSUP;
 
-	DBG("hog: Write report, handle 0x%X", report->decl->value_handle);
+	DBG("hog: Write report, handle 0x%X", report->value_handle);
 
-	if (report->decl->properties & GATT_CHR_PROP_WRITE)
-		write_char(hog, hog->attrib, report->decl->value_handle,
+	if (report->properties & GATT_CHR_PROP_WRITE)
+		write_char(hog, hog->attrib, report->value_handle,
 				data, size, output_written_cb, hog);
 
-	if (report->decl->properties & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
-		gatt_write_cmd(hog->attrib, report->decl->value_handle,
+	if (report->properties & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
+		gatt_write_cmd(hog->attrib, report->value_handle,
 						data, size, NULL, NULL);
 
 	for (l = hog->instances; l; l = l->next) {
