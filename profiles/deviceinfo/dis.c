@@ -37,6 +37,8 @@
 
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
+#include "src/shared/att.h"
+#include "src/shared/gatt-db.h"
 
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
@@ -44,6 +46,7 @@
 
 #include "profiles/deviceinfo/dis.h"
 
+#define DIS_UUID16	0x180a
 #define PNP_ID_SIZE	7
 
 struct bt_dis {
@@ -87,7 +90,43 @@ static void dis_free(struct bt_dis *dis)
 	g_free(dis);
 }
 
-struct bt_dis *bt_dis_new(void *primary)
+static void foreach_dis_service(struct gatt_db_attribute *attr, void *user_data)
+{
+	struct bt_dis *dis = user_data;
+
+	/* Ignore if there are multiple instances */
+	if (dis->handle)
+		return;
+
+	dis->handle = gatt_db_attribute_get_handle(attr);
+}
+
+struct bt_dis *bt_dis_new(struct gatt_db *db)
+{
+	struct bt_dis *dis;
+
+	dis = g_try_new0(struct bt_dis, 1);
+	if (!dis)
+		return NULL;
+
+	dis->gatt_op = queue_new();
+
+	if (db) {
+		bt_uuid_t uuid;
+
+		/* Handle the DIS service */
+		bt_uuid16_create(&uuid, DIS_UUID16);
+		gatt_db_foreach_service(db, &uuid, foreach_dis_service, dis);
+		if (!dis->handle) {
+			dis_free(dis);
+			return NULL;
+		}
+	}
+
+	return bt_dis_ref(dis);
+}
+
+struct bt_dis *bt_dis_new_primary(void *primary)
 {
 	struct bt_dis *dis;
 
@@ -251,7 +290,7 @@ bool bt_dis_attach(struct bt_dis *dis, void *attrib)
 {
 	struct gatt_primary *primary = dis->primary;
 
-	if (dis->attrib || !primary)
+	if (dis->attrib)
 		return false;
 
 	dis->attrib = g_attrib_ref(attrib);
@@ -260,6 +299,8 @@ bool bt_dis_attach(struct bt_dis *dis, void *attrib)
 		discover_char(dis, dis->attrib, primary->range.start,
 						primary->range.end, NULL,
 						configure_deviceinfo_cb, dis);
+	else
+		read_char(dis, attrib, dis->handle, read_pnpid_cb, dis);
 
 	return true;
 }

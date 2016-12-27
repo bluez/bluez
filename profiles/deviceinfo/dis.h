@@ -23,7 +23,8 @@
 
 struct bt_dis;
 
-struct bt_dis *bt_dis_new(void *primary);
+struct bt_dis *bt_dis_new(struct gatt_db *db);
+struct bt_dis *bt_dis_new_primary(void *primary);
 
 struct bt_dis *bt_dis_ref(struct bt_dis *dis);
 void bt_dis_unref(struct bt_dis *dis);

@@ -1470,7 +1470,7 @@ static void hog_attach_dis(struct bt_hog *hog, struct gatt_primary *primary)
 		return;
 	}
 
-	hog->dis = bt_dis_new(primary);
+	hog->dis = bt_dis_new_primary(primary);
 	if (hog->dis) {
 		bt_dis_set_notification(hog->dis, dis_notify, hog);
 		bt_dis_attach(hog->dis, hog->attrib);
