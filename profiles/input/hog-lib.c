@@ -1392,6 +1392,11 @@ struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
 			hog_free(hog);
 			return NULL;
 		}
+
+		/* Try creating a DIS instance in case pid/vid are not set */
+		if (!vendor && !product) {
+			hog->dis = bt_dis_new(db);
+		}
 	}
 
 	return bt_hog_ref(hog);
