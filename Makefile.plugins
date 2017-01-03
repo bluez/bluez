@@ -95,6 +95,14 @@ builtin_sources += profiles/scanparam/scan.c
 builtin_modules += deviceinfo
 builtin_sources += profiles/deviceinfo/deviceinfo.c
 
+if MIDI
+builtin_modules += midi
+builtin_sources += profiles/midi/midi.c \
+			profiles/midi/libmidi.h \
+			profiles/midi/libmidi.c
+builtin_ldadd += @ALSA_LIBS@
+endif
+
 if SIXAXIS
 plugin_LTLIBRARIES += plugins/sixaxis.la
 plugins_sixaxis_la_SOURCES = plugins/sixaxis.c

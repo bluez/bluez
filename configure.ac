@@ -212,6 +212,17 @@ AC_ARG_ENABLE(cups, AC_HELP_STRING([--disable-cups],
                 [disable CUPS printer support]), [enable_cups=${enableval}])
 AM_CONDITIONAL(CUPS, test "${enable_cups}" != "no")
 
+AC_ARG_ENABLE(midi, AC_HELP_STRING([--enable-midi],
+                [enable MIDI support]), [enable_midi=${enableval}])
+AM_CONDITIONAL(MIDI, test "${enable_midi}" = "yes")
+
+if (test "${enable_midi}" = "yes"); then
+	PKG_CHECK_MODULES(ALSA, alsa, dummy=yes,
+				AC_MSG_ERROR(ALSA lib is required for MIDI support))
+	AC_SUBST(ALSA_CFLAGS)
+	AC_SUBST(ALSA_LIBS)
+fi
+
 AC_ARG_ENABLE(obex, AC_HELP_STRING([--disable-obex],
 		[disable OBEX profile support]), [enable_obex=${enableval}])
 if (test "${enable_obex}" != "no"); then
