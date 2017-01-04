@@ -291,7 +291,7 @@ AC_ARG_ENABLE(experimental, AC_HELP_STRING([--enable-experimental],
 AM_CONDITIONAL(EXPERIMENTAL, test "${enable_experimental}" = "yes")
 
 AC_ARG_ENABLE(deprecated, AC_HELP_STRING([--enable-deprecated],
-			[enable deprecated plugins (BLE services, ...)]),
+			[enable deprecated tools]),
 					[enable_deprecated=${enableval}])
 AM_CONDITIONAL(DEPRECATED, test "${enable_deprecated}" = "yes")
 
