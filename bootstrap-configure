@@ -13,6 +13,7 @@ fi
 		--localstatedir=/var \
 		--enable-manpages \
 		--enable-backtrace \
+		--enable-testing \
 		--enable-experimental \
 		--enable-nfc \
 		--enable-sap \

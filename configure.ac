@@ -285,6 +285,11 @@ AC_ARG_ENABLE(manpages, AC_HELP_STRING([--enable-manpages],
 					[enable_manpages=${enableval}])
 AM_CONDITIONAL(MANPAGES, test "${enable_manpages}" = "yes")
 
+AC_ARG_ENABLE(testing, AC_HELP_STRING([--enable-testing],
+			[enable testing tools]),
+					[enable_testing=${enableval}])
+AM_CONDITIONAL(TESTING, test "${enable_testing}" = "yes")
+
 AC_ARG_ENABLE(experimental, AC_HELP_STRING([--enable-experimental],
 			[enable experimental tools]),
 					[enable_experimental=${enableval}])

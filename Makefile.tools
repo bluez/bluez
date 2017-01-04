@@ -44,7 +44,7 @@ monitor_btmon_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-mainloop.la @UDEV_LIBS@
 endif
 
-if EXPERIMENTAL
+if TESTING
 noinst_PROGRAMS += emulator/btvirt emulator/b1ee emulator/hfp \
 					peripheral/btsensor tools/3dsp \
 					tools/mgmt-tester tools/gap-tester \

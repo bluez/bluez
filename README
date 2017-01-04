@@ -155,6 +155,17 @@ For a working system, certain configuration options need to be enabled:
 		This option is provided for distributions that do not have any
 		input capabilities.
 
+	--enable-testing
+
+		Enable testing tools
+
+		By default tools used only for testing emulation are disabled.
+		This option can be used to enable them.
+
+		It is not recommended to enable this option for production
+		systems. These tools may contain tests that depend on specific
+		environment or kernel features in development.
+
 	--enable-experimental
 
 		Enable experimental tools
