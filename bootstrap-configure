@@ -19,4 +19,5 @@ fi
 		--enable-health \
 		--enable-android \
 		--enable-sixaxis \
+		--enable-midi \
 		--disable-datafiles $*
