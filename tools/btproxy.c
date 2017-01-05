@@ -64,6 +64,7 @@ static uint16_t hci_index = 0;
 static bool client_active = false;
 static bool debug_enabled = false;
 static bool emulate_ecc = false;
+static bool skip_first_zero = false;
 
 static void hexdump_print(const char *str, void *user_data)
 {
@@ -76,6 +77,7 @@ struct proxy {
 	uint8_t host_buf[4096];
 	uint16_t host_len;
 	bool host_shutdown;
+	bool host_skip_first_zero;
 
 	/* Receive events, ACL and SCO data */
 	int dev_fd;
@@ -323,6 +325,16 @@ static void host_read_callback(int fd, uint32_t events, void *user_data)
 		util_hexdump('>', proxy->host_buf + proxy->host_len, len,
 						hexdump_print, "H: ");
 
+	if (proxy->host_skip_first_zero && len > 0) {
+		proxy->host_skip_first_zero = false;
+		if (proxy->host_buf[proxy->host_len] == '\0') {
+			printf("Skipping initial zero byte\n");
+			len--;
+			memmove(proxy->host_buf + proxy->host_len,
+				proxy->host_buf + proxy->host_len + 1, len);
+		}
+	}
+
 	proxy->host_len += len;
 
 process_packet:
@@ -502,6 +514,7 @@ static bool setup_proxy(int host_fd, bool host_shutdown,
 
 	proxy->host_fd = host_fd;
 	proxy->host_shutdown = host_shutdown;
+	proxy->host_skip_first_zero = skip_first_zero;
 
 	proxy->dev_fd = dev_fd;
 	proxy->dev_shutdown = dev_shutdown;
@@ -765,7 +778,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "rc:l::u::p:i:aedvh",
+		opt = getopt_long(argc, argv, "rc:l::u::p:i:aezdvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -808,6 +821,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'e':
 			emulate_ecc = true;
+			break;
+		case 'z':
+			skip_first_zero = true;
 			break;
 		case 'd':
 			debug_enabled = true;
