@@ -28,7 +28,7 @@ Linux kernel v4.2	Version 1.10
 Linux kernel v4.5	Version 1.11
 Linux kernel v4.6	Version 1.12
 Linux kernel v4.8	Version 1.13
-Linux kernel v4.9	Version 1.14 (not yet released)
+Linux kernel v4.9	Version 1.14
 
 Version 1.1 introduces Set Device ID command.
 
