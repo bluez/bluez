@@ -196,6 +196,18 @@ For a working system, certain configuration options need to be enabled:
 		The plugin is built into bluetoothd therefore it does not need
 		to be package separately.
 
+	--enable-midi
+
+		This option enable MIDI support via ALSA Sequencer.
+
+		By default midi plugin is disabled since it still considered
+		experimental. When bluetoothd will create a new ALSA Sequencer
+		client and port for each device connected that supports the
+		MIDI GATT primary service.
+
+		The plugin is built into bluetoothd therefore it does not need
+		to be package separately.
+
 Information
 ===========
 
