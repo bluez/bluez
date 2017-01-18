@@ -808,6 +808,10 @@ static void control_response(struct avctp_channel *control,
 	GSList *l;
 
 	if (p && p->transaction == avctp->transaction) {
+		req = p->data;
+		if (req->op != avc->opcode)
+			goto done;
+
 		control->processed = g_slist_prepend(control->processed, p);
 
 		if (p->timeout > 0) {
@@ -822,11 +826,15 @@ static void control_response(struct avctp_channel *control,
 								control);
 	}
 
+done:
 	for (l = control->processed; l; l = l->next) {
 		p = l->data;
 		req = p->data;
 
 		if (p->transaction != avctp->transaction)
+			continue;
+
+		if (req->op != avc->opcode)
 			continue;
 
 		if (req->func && req->func(control->session, avc->code,
