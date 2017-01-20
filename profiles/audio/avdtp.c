@@ -2489,7 +2489,7 @@ static int cancel_request(struct avdtp *session, int err)
 		if (lsep && lsep->cfm && lsep->cfm->set_configuration)
 			lsep->cfm->set_configuration(session, lsep, stream,
 							&averr, lsep->user_data);
-		goto failed;
+		break;
 	case AVDTP_DISCOVER:
 		error("Discover: %s (%d)", strerror(err), err);
 		goto failed;
