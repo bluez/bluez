@@ -2442,10 +2442,9 @@ static int cancel_request(struct avdtp *session, int err)
 	else
 		stream = NULL;
 
-	if (stream) {
-		stream->abort_int = TRUE;
+	if (stream)
 		lsep = stream->lsep;
-	} else
+	else
 		lsep = NULL;
 
 	switch (req->signal_id) {
@@ -2514,6 +2513,8 @@ static int cancel_request(struct avdtp *session, int err)
 		error("Unable to send abort request");
 		goto failed;
 	}
+
+	stream->abort_int = TRUE;
 
 	goto done;
 
