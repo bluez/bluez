@@ -282,8 +282,12 @@ static void compare_events(const snd_seq_event_t *ev1,
 		                ev2->data.control.value);
 		break;
 	case SND_SEQ_EVENT_SYSEX:
-		g_assert_cmpmem(ev1->data.ext.ptr, ev1->data.ext.len,
-		                ev2->data.ext.ptr, ev2->data.ext.len);
+		g_assert_cmpint(ev1->data.ext.len,
+		                ==,
+		                ev2->data.ext.len);
+		g_assert(memcmp(ev1->data.ext.ptr,
+		                ev2->data.ext.ptr,
+		                ev2->data.ext.len) == 0);
 		break;
 	default:
 		g_assert_not_reached();
