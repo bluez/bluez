@@ -138,6 +138,7 @@ unit/test-avdtp
 unit/test-avctp
 unit/test-avrcp
 unit/test-gatt
+unit/test-midi
 unit/test-gattrib
 unit/test-*.log
 unit/test-*.trs
