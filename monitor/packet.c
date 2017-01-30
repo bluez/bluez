@@ -3091,6 +3091,7 @@ static const struct {
 	{ 21, "Connectionless Slave Broadcast Channel Map Change"	},
 	{ 22, "Inquiry Response Notification"				},
 	{ 23, "Authenticated Payload Timeout Expired"			},
+	{ 24, "SAM Status Change"					},
 	{ }
 };
 
@@ -3133,6 +3134,15 @@ static const struct {
 	{  8, "LE Generate DHKey Complete"		},
 	{  9, "LE Enhanced Connection Complete"		},
 	{ 10, "LE Direct Advertising Report"		},
+	{ 11, "LE PHY Update Complete"			},
+	{ 12, "LE Extended Advertising Report"		},
+	{ 13, "LE Periodic Advertising Sync Established"},
+	{ 14, "LE Periodic Advertising Report"		},
+	{ 15, "LE Periodic Advertising Sync Lost"	},
+	{ 16, "LE Extended Scan Timeout"		},
+	{ 17, "LE Extended Advertising Set Terminated"	},
+	{ 18, "LE Scan Request Received"		},
+	{ 19, "LE Channel Selection Algorithm"		},
 	{ }
 };
 
@@ -7397,6 +7407,37 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x202f, 283, "LE Read Maximum Data Length",
 				null_cmd, 0, true,
 				le_read_max_data_length_rsp, 9, true },
+	{ 0x2030, 284, "LE Read PHY" },
+	{ 0x2031, 285, "LE Set Default PHY" },
+	{ 0x2032, 286, "LE Set PHY" },
+	{ 0x2033, 287, "LE Enhanced Receiver Test" },
+	{ 0x2034, 288, "LE Enhanced Transmitter Test" },
+	{ 0x2035, 289, "LE Set Advertising Set Random Address" },
+	{ 0x2036, 290, "LE Set Extended Advertising Parameters" },
+	{ 0x2037, 291, "LE Set Extended Advertising Data" },
+	{ 0x2038, 292, "LE Set Extended Scan Response Data" },
+	{ 0x2039, 293, "LE Set Extended Advertising Enable" },
+	{ 0x203a, 294, "LE Read Maximum Advertising Data Length" },
+	{ 0x203b, 295, "LE Read Number of Supported Advertising Sets" },
+	{ 0x203c, 296, "LE Remove Advertising Set" },
+	{ 0x203d, 297, "LE Clear Advertising Sets" },
+	{ 0x203e, 298, "LE Set Periodic Advertising Parameters" },
+	{ 0x203f, 299, "LE Set Periodic Advertising Data" },
+	{ 0x2040, 300, "LE Set Periodic Advertising Enable" },
+	{ 0x2041, 301, "LE Set Extended Scan Parameters" },
+	{ 0x2042, 302, "LE Set Extended Scan Enable" },
+	{ 0x2043, 303, "LE Extended Create Connection" },
+	{ 0x2044, 304, "LE Periodic Advertising Create Sync" },
+	{ 0x2045, 305, "LE Periodic Advertising Create Sync Cancel" },
+	{ 0x2046, 306, "LE Periodic Advertising Terminate Sync" },
+	{ 0x2047, 307, "LE Add Device To Periodic Advertiser List" },
+	{ 0x2048, 308, "LE Remove Device From Periodic Advertiser List" },
+	{ 0x2049, 309, "LE Clear Periodic Advertiser List" },
+	{ 0x204a, 310, "LE Read Periodic Advertiser List Size" },
+	{ 0x204b, 311, "LE Read Transmit Power" },
+	{ 0x204c, 312, "LE Read RF Path Compensation" },
+	{ 0x204d, 313, "LE Write RF Path Compensation" },
+	{ 0x204e, 314, "LE Set Privacy Mode" },
 	{ }
 };
 
@@ -8556,6 +8597,15 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_enhanced_conn_complete_evt, 30, true },
 	{ 0x0b, "LE Direct Advertising Report",
 				le_direct_adv_report_evt, 1, false },
+	{ 0x0c, "LE PHY Update Complete" },
+	{ 0x0d, "LE Extended Advertising Report" },
+	{ 0x0e, "LE Periodic Advertising Sync Established" },
+	{ 0x0f, "LE Periodic Advertising Report" },
+	{ 0x10, "LE Periodic Advertising Sync Lost" },
+	{ 0x11, "LE Scan Timeout" },
+	{ 0x12, "LE Advertising Set Terminated" },
+	{ 0x13, "LE Scan Request Received" },
+	{ 0x14, "LE Channel Selection Algorithm" },
 	{ }
 };
 
@@ -8774,6 +8824,7 @@ static const struct event_data event_table[] = {
 				inquiry_response_notify_evt, 4, true },
 	{ 0x57, "Authenticated Payload Timeout Expired",
 				auth_payload_timeout_expired_evt, 2, true },
+	{ 0x58, "SAM Status Change" },
 	{ 0xfe, "Testing" },
 	{ 0xff, "Vendor", vendor_evt, 0, false },
 	{ }
