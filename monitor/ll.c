@@ -506,6 +506,10 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x13, "LL_PING_RSP",              null_pdu,           0, true },
 	{ 0x14, "LL_LENGTH_REQ",            NULL,               8, true },
 	{ 0x15, "LL_LENGTH_RSP",            NULL,               8, true },
+	{ 0x16, "LL_PHY_REQ",               NULL,               2, true },
+	{ 0x17, "LL_PHY_RSP",               NULL,               2, true },
+	{ 0x18, "LL_PHY_UPDATE_IND",        NULL,               4, true },
+	{ 0x19, "LL_MIN_USED_CHANNELS_IND", NULL,               2, true },
 	{ }
 };
 
