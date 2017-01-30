@@ -2467,6 +2467,9 @@ void packet_print_version(const char *label, uint8_t version,
 	case 0x08:
 		str = "Bluetooth 4.2";
 		break;
+	case 0x09:
+		str = "Bluetooth 5.0";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -2706,6 +2709,7 @@ static const struct features_data features_page2[] = {
 	{  6, "Coarse Clock Adjustment"			},
 	{  8, "Secure Connections (Controller Support)"	},
 	{  9, "Ping"					},
+	{ 10, "Slot Availability Mask"			},
 	{ 11, "Train nudging"				},
 	{ }
 };
@@ -2719,6 +2723,15 @@ static const struct features_data features_le[] = {
 	{  5, "LE Data Packet Length Extension"		},
 	{  6, "LL Privacy"				},
 	{  7, "Extended Scanner Filter Policies"	},
+	{  8, "LE 2M PHY"				},
+	{  9, "Stable Modulation Index - Transmitter"	},
+	{ 10, "Stable Modulation Index - Receiver"	},
+	{ 11, "LE Coded PHY"				},
+	{ 12, "LE Extended Advertising"			},
+	{ 13, "LE Periodic Advertising"			},
+	{ 14, "Channel Selection Algorithm #2"		},
+	{ 15, "LE Power Class 1"			},
+	{ 16, "Minimum Number of Used Channels Procedure"},
 	{ }
 };
 
