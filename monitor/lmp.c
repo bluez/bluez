@@ -821,6 +821,9 @@ static const struct lmp_data lmp_table[] = {
 	{ LMP_ESC4(32), "LMP_power_control_res", power_control_res, 1, true },
 	{ LMP_ESC4(33), "LMP_ping_req", ping_req, 0, true },
 	{ LMP_ESC4(34), "LMP_ping_res", ping_res, 0, true },
+	{ LMP_ESC4(35), "LMP_SAM_set_type0" },
+	{ LMP_ESC4(36), "LMP_SAM_define_map" },
+	{ LMP_ESC4(37), "LMP_SAM_switch" },
 	{ }
 };
 
