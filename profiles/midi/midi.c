@@ -53,9 +53,6 @@
 
 #include "libmidi.h"
 
-#define MIDI_UUID "03B80E5A-EDE8-4B33-A751-6CE34EC4C700"
-#define MIDI_IO_UUID "7772E5DB-3868-4112-A1A9-F2669D106BF3"
-
 struct midi {
 	struct btd_device *dev;
 	struct gatt_db *db;

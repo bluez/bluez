@@ -29,6 +29,9 @@
 #include <stdbool.h>
 #include <alsa/asoundlib.h>
 
+#define MIDI_UUID "03B80E5A-EDE8-4B33-A751-6CE34EC4C700"
+#define MIDI_IO_UUID "7772E5DB-3868-4112-A1A9-F2669D106BF3"
+
 #define MIDI_MAX_TIMESTAMP 8191
 #define MIDI_MSG_MAX_SIZE 12
 #define MIDI_SYSEX_MAX_SIZE (4 * 1024)
