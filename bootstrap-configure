@@ -11,6 +11,7 @@ fi
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
+		--enable-tools \
 		--enable-manpages \
 		--enable-backtrace \
 		--enable-testing \
