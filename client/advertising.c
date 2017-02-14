@@ -317,6 +317,9 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 	if (!manager)
 		ad_release(conn);
 
+	if (!registered)
+		return;
+
 	if (g_dbus_proxy_method_call(manager, "UnregisterAdvertisement",
 					unregister_setup, unregister_reply,
 					conn, NULL) == FALSE) {
