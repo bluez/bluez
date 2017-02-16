@@ -50,10 +50,18 @@ struct gas {
 	struct gatt_db_attribute *attr;
 };
 
+static void gas_reset(struct gas *gas)
+{
+	gas->attr = NULL;
+	gatt_db_unref(gas->db);
+	gas->db = NULL;
+	bt_gatt_client_unref(gas->client);
+	gas->client = NULL;
+}
+
 static void gas_free(struct gas *gas)
 {
-	gatt_db_unref(gas->db);
-	bt_gatt_client_unref(gas->client);
+	gas_reset(gas);
 	btd_device_unref(gas->device);
 	g_free(gas);
 }
@@ -152,7 +160,7 @@ static void handle_appearance(struct gas *gas, uint16_t value_handle)
 		DBG("Failed to send request to read appearance");
 }
 
-static bool uuid_cmp(uint16_t u16, const bt_uuid_t *uuid)
+static inline bool uuid_cmp(uint16_t u16, const bt_uuid_t *uuid)
 {
 	bt_uuid_t lhs;
 
@@ -186,11 +194,6 @@ static void handle_characteristic(struct gatt_db_attribute *attr,
 		bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
 		DBG("Unsupported characteristic: %s", uuid_str);
 	}
-}
-
-static void handle_gap_service(struct gas *gas)
-{
-	gatt_db_service_foreach_char(gas->attr, handle_characteristic, gas);
 }
 
 static int gap_probe(struct btd_service *service)
@@ -246,16 +249,7 @@ static void foreach_gap_service(struct gatt_db_attribute *attr, void *user_data)
 	}
 
 	gas->attr = attr;
-	handle_gap_service(gas);
-}
-
-static void gas_reset(struct gas *gas)
-{
-	gas->attr = NULL;
-	gatt_db_unref(gas->db);
-	gas->db = NULL;
-	bt_gatt_client_unref(gas->client);
-	gas->client = NULL;
+	gatt_db_service_foreach_char(gas->attr, handle_characteristic, gas);
 }
 
 static int gap_accept(struct btd_service *service)
@@ -266,13 +260,15 @@ static int gap_accept(struct btd_service *service)
 	struct gas *gas = btd_service_get_user_data(service);
 	char addr[18];
 	bt_uuid_t gap_uuid;
+	int err = 0;
 
 	ba2str(device_get_address(device), addr);
 	DBG("GAP profile accept (%s)", addr);
 
 	if (!gas) {
 		error("GAP service not handled by profile");
-		return -1;
+		err = -1;
+		goto _finish;
 	}
 
 	gas->db = gatt_db_ref(db);
@@ -285,12 +281,14 @@ static int gap_accept(struct btd_service *service)
 	if (!gas->attr) {
 		error("GAP attribute not found");
 		gas_reset(gas);
-		return -1;
+		err = -1;
 	}
 
-	btd_service_connecting_complete(service, 0);
+_finish:
 
-	return 0;
+	btd_service_connecting_complete(service, err);
+
+	return err;
 }
 
 static int gap_disconnect(struct btd_service *service)
