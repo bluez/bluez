@@ -7322,3 +7322,17 @@ void btd_device_foreach_ad(struct btd_device *dev, bt_ad_func_t func,
 {
 	bt_ad_foreach_data(dev->ad, func, data);
 }
+
+void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
+					uint16_t max_interval, uint16_t latency,
+					uint16_t timeout)
+{
+	btd_adapter_store_conn_param(device->adapter, &device->bdaddr,
+					device->bdaddr_type, min_interval,
+					max_interval, latency,
+					timeout);
+	btd_adapter_load_conn_param(device->adapter, &device->bdaddr,
+					device->bdaddr_type, min_interval,
+					max_interval, latency,
+					timeout);
+}
