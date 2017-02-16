@@ -4635,6 +4635,30 @@ static void load_conn_params(struct btd_adapter *adapter, GSList *params)
 		btd_error(adapter->dev_id, "Load connection parameters failed");
 }
 
+void btd_adapter_load_conn_param(struct btd_adapter *adapter,
+				const bdaddr_t *peer, uint8_t bdaddr_type,
+				uint16_t min_interval, uint16_t max_interval,
+				uint16_t latency, uint16_t timeout)
+{
+	GSList *params = NULL;
+	struct conn_param param;
+
+	/* Only versions >= 1.23 support updating connection parameters */
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 23))
+		return;
+
+	bacpy(&param.bdaddr, peer);
+	param.bdaddr_type = bdaddr_type;
+	param.max_interval = max_interval;
+	param.min_interval = min_interval;
+	param.latency = latency;
+	param.timeout = timeout;
+
+	params = g_slist_append(params, &param);
+	load_conn_params(adapter, params);
+	g_slist_free(params);
+}
+
 static uint8_t get_addr_type(GKeyFile *keyfile)
 {
 	uint8_t addr_type;
@@ -8919,10 +8943,10 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 	btd_device_set_temporary(device, false);
 }
 
-static void store_conn_param(struct btd_adapter *adapter, const bdaddr_t *peer,
-				uint8_t bdaddr_type, uint16_t min_interval,
-				uint16_t max_interval, uint16_t latency,
-				uint16_t timeout)
+void btd_adapter_store_conn_param(struct btd_adapter *adapter,
+				const bdaddr_t *peer, uint8_t bdaddr_type,
+				uint16_t min_interval, uint16_t max_interval,
+				uint16_t latency, uint16_t timeout)
 {
 	char device_addr[18];
 	char filename[PATH_MAX];
@@ -9002,7 +9026,7 @@ static void new_conn_param(uint16_t index, uint16_t length,
 	if (!ev->store_hint)
 		return;
 
-	store_conn_param(adapter, &ev->addr.bdaddr, ev->addr.type,
+	btd_adapter_store_conn_param(adapter, &ev->addr.bdaddr, ev->addr.type,
 					ev->min_interval, ev->max_interval,
 					ev->latency, ev->timeout);
 }
