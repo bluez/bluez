@@ -573,7 +573,7 @@ static void print_le_conn_result(uint16_t result)
 	case 0x0009:
 		str = "Connection refused - Invalid Source CID";
 		break;
-	case 0x0010:
+	case 0x000a:
 		str = "Connection refused - Source CID already allocated";
 		break;
 	default:
