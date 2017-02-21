@@ -576,6 +576,9 @@ static void print_le_conn_result(uint16_t result)
 	case 0x000a:
 		str = "Connection refused - Source CID already allocated";
 		break;
+	case 0x000b:
+		str = "Connection refused - unacceptable parameters";
+		break;
 	default:
 		str = "Reserved";
 		break;
