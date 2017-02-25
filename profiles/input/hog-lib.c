@@ -1406,6 +1406,7 @@ struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
 		/* Try creating a DIS instance in case pid/vid are not set */
 		if (!vendor && !product) {
 			hog->dis = bt_dis_new(db);
+			bt_dis_set_notification(hog->dis, dis_notify, hog);
 		}
 	}
 
