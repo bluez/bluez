@@ -90,6 +90,25 @@ static void dis_free(struct bt_dis *dis)
 	g_free(dis);
 }
 
+static void foreach_dis_char(struct gatt_db_attribute *attr, void *user_data)
+{
+	struct bt_dis *dis = user_data;
+	bt_uuid_t pnpid_uuid, uuid;
+	uint16_t value_handle;
+
+	/* Ignore if there are multiple instances */
+	if (dis->handle)
+		return;
+
+	if (!gatt_db_attribute_get_char_data(attr, NULL, &value_handle, NULL, NULL, &uuid))
+		return;
+
+	/* Find PNPID characteristic's value handle */
+	bt_string_to_uuid(&pnpid_uuid, PNPID_UUID);
+	if (bt_uuid_cmp(&pnpid_uuid, &uuid) == 0)
+		dis->handle = value_handle;
+}
+
 static void foreach_dis_service(struct gatt_db_attribute *attr, void *user_data)
 {
 	struct bt_dis *dis = user_data;
@@ -98,7 +117,7 @@ static void foreach_dis_service(struct gatt_db_attribute *attr, void *user_data)
 	if (dis->handle)
 		return;
 
-	dis->handle = gatt_db_attribute_get_handle(attr);
+	gatt_db_service_foreach_char(attr, foreach_dis_char, dis);
 }
 
 struct bt_dis *bt_dis_new(struct gatt_db *db)
