@@ -1372,6 +1372,16 @@ static void foreach_hog_service(struct gatt_db_attribute *attr, void *user_data)
 	hog_attach_instace(hog, attr);
 }
 
+static void dis_notify(uint8_t source, uint16_t vendor, uint16_t product,
+					uint16_t version, void *user_data)
+{
+	struct bt_hog *hog = user_data;
+
+	hog->vendor = vendor;
+	hog->product = product;
+	hog->version = version;
+}
+
 struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
 					uint16_t product, uint16_t version,
 					struct gatt_db *db)
@@ -1456,16 +1466,6 @@ static void hog_attach_scpp(struct bt_hog *hog, struct gatt_primary *primary)
 	hog->scpp = bt_scpp_new(primary);
 	if (hog->scpp)
 		bt_scpp_attach(hog->scpp, hog->attrib);
-}
-
-static void dis_notify(uint8_t source, uint16_t vendor, uint16_t product,
-					uint16_t version, void *user_data)
-{
-	struct bt_hog *hog = user_data;
-
-	hog->vendor = vendor;
-	hog->product = product;
-	hog->version = version;
 }
 
 static void hog_attach_dis(struct bt_hog *hog, struct gatt_primary *primary)
