@@ -16,6 +16,7 @@ fi
 		--enable-backtrace \
 		--enable-testing \
 		--enable-experimental \
+		--enable-deprecated \
 		--enable-nfc \
 		--enable-sap \
 		--enable-health \
