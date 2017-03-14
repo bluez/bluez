@@ -314,7 +314,8 @@ static GDBusProxy *select_attribute(const char *path)
 	return select_proxy(path, descriptors);
 }
 
-static GDBusProxy *select_proxy_by_uuid(const char *uuid, GList *source)
+static GDBusProxy *select_proxy_by_uuid(GDBusProxy *parent, const char *uuid,
+					GList *source)
 {
 	GList *l;
 	const char *value;
@@ -322,6 +323,10 @@ static GDBusProxy *select_proxy_by_uuid(const char *uuid, GList *source)
 
 	for (l = source; l; l = g_list_next(l)) {
 		GDBusProxy *proxy = l->data;
+
+		if (parent && !g_str_has_prefix(g_dbus_proxy_get_path(proxy),
+						g_dbus_proxy_get_path(parent)))
+			continue;
 
 		if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
 			continue;
@@ -335,27 +340,34 @@ static GDBusProxy *select_proxy_by_uuid(const char *uuid, GList *source)
 	return NULL;
 }
 
-static GDBusProxy *select_attribute_by_uuid(const char *uuid)
+static GDBusProxy *select_attribute_by_uuid(GDBusProxy *parent,
+							const char *uuid)
 {
 	GDBusProxy *proxy;
 
-	proxy = select_proxy_by_uuid(uuid, services);
+	proxy = select_proxy_by_uuid(parent, uuid, services);
 	if (proxy)
 		return proxy;
 
-	proxy = select_proxy_by_uuid(uuid, characteristics);
+	proxy = select_proxy_by_uuid(parent, uuid, characteristics);
 	if (proxy)
 		return proxy;
 
-	return select_proxy_by_uuid(uuid, descriptors);
+	return select_proxy_by_uuid(parent, uuid, descriptors);
 }
 
-GDBusProxy *gatt_select_attribute(const char *arg)
+GDBusProxy *gatt_select_attribute(GDBusProxy *parent, const char *arg)
 {
 	if (arg[0] == '/')
 		return select_attribute(arg);
 
-	return select_attribute_by_uuid(arg);
+	if (parent) {
+		GDBusProxy *proxy = select_attribute_by_uuid(parent, arg);
+		if (proxy)
+			return proxy;
+	}
+
+	return select_attribute_by_uuid(parent, arg);
 }
 
 static char *attribute_generator(const char *text, int state, GList *source)
