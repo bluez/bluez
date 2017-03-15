@@ -1878,7 +1878,7 @@ static char *generic_generator(const char *text, int state,
 
 		dbus_message_iter_get_basic(&iter, &str);
 
-		if (!strncmp(str, text, len))
+		if (!strncasecmp(str, text, len))
 			return strdup(str);
         }
 
@@ -1910,7 +1910,7 @@ static char *ctrl_generator(const char *text, int state)
 
 		dbus_message_iter_get_basic(&iter, &str);
 
-		if (!strncmp(str, text, len))
+		if (!strncasecmp(str, text, len))
 			return strdup(str);
 	}
 
