@@ -670,7 +670,7 @@ static struct adapter *find_ctrl_by_address(GList *source, const char *address)
 
 		dbus_message_iter_get_basic(&iter, &str);
 
-		if (!strcmp(str, address))
+		if (!strcasecmp(str, address))
 			return adapter;
 	}
 
@@ -691,7 +691,7 @@ static GDBusProxy *find_proxy_by_address(GList *source, const char *address)
 
 		dbus_message_iter_get_basic(&iter, &str);
 
-		if (!strcmp(str, address))
+		if (!strcasecmp(str, address))
 			return proxy;
 	}
 
