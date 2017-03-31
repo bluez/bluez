@@ -117,7 +117,7 @@ unsigned char util_get_dt(const char *parent, const char *name)
 	char filename[PATH_MAX];
 	struct stat st;
 
-	snprintf(filename, sizeof(filename), "%s/%s", parent, name);
+	snprintf(filename, PATH_MAX, "%s/%s", parent, name);
 	if (lstat(filename, &st) == 0 && S_ISDIR(st.st_mode))
 		return DT_DIR;
 

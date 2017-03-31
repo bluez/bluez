@@ -7107,7 +7107,7 @@ static void store_csrk(struct btd_adapter *adapter, const bdaddr_t *peer,
 
 	ba2str(peer, device_addr);
 
-	snprintf(filename, sizeof(filename), STORAGEDIR "/%s/%s/info",
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
 					adapter_dir(adapter), device_addr);
 
 	key_file = g_key_file_new();
