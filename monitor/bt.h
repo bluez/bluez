@@ -2736,6 +2736,12 @@ struct bt_hci_evt_le_direct_adv_report {
 	int8_t   rssi;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_CHAN_SELECT_ALG		0x14
+struct bt_hci_evt_le_chan_select_alg {
+	uint16_t handle;
+	uint8_t  algorithm;
+} __attribute__ ((packed));
+
 #define BT_HCI_ERR_SUCCESS			0x00
 #define BT_HCI_ERR_UNKNOWN_COMMAND		0x01
 #define BT_HCI_ERR_UNKNOWN_CONN_ID		0x02
