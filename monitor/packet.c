@@ -6309,6 +6309,12 @@ static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 	case 0x01:
 		str = "Ignore not in white list";
 		break;
+	case 0x02:
+		str = "Accept all advertisement, inc. directed unresolved RPA";
+		break;
+	case 0x03:
+		str = "Ignore not in white list, exc. directed unresolved RPA";
+		break;
 	default:
 		str = "Reserved";
 		break;
