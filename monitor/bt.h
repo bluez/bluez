@@ -2134,6 +2134,17 @@ struct bt_hci_rsp_le_read_max_data_length {
 	uint16_t max_rx_time;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_READ_PHY			0x2030
+struct bt_hci_cmd_le_read_phy {
+	uint16_t handle;
+} __attribute__((packed));
+struct bt_hci_rsp_le_read_phy {
+	uint8_t status;
+	uint16_t handle;
+	uint8_t tx_phy;
+	uint8_t rx_phy;
+} __attribute__((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
