@@ -6776,6 +6776,73 @@ static void le_read_phy_rsp(const void *data, uint8_t size)
 	print_le_phy("RX PHY", rsp->rx_phy);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} le_phys[] = {
+	{  0, "LE 1M"	},
+	{  1, "LE 2M"	},
+	{  2, "LE Coded"},
+	{ }
+};
+
+static const struct {
+	uint8_t bit;
+	const char *str;
+} le_phy_preference[] = {
+	{  0, "No TX PHY preference"	},
+	{  1, "No RX PHY preference"	},
+	{ }
+};
+
+static void le_set_default_phy_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_default_phy *cmd = data;
+	int i;
+	uint8_t mask = cmd->all_phys;
+
+	print_field("All PHYs preference: 0x%2.2x", cmd->all_phys);
+
+	for (i = 0; le_phy_preference[i].str; i++) {
+		if (cmd->all_phys & (((uint8_t) 1) << le_phy_preference[i].bit)) {
+			print_field("  %s", le_phy_preference[i].str);
+			mask &= ~(((uint64_t) 1) << le_phy_preference[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("TX PHYs preference: 0x%2.2x", cmd->tx_phys);
+	mask = cmd->tx_phys;
+
+	for (i = 0; le_phys[i].str; i++) {
+		if (cmd->tx_phys & (((uint8_t) 1) << le_phys[i].bit)) {
+			print_field("  %s", le_phys[i].str);
+			mask &= ~(((uint64_t) 1) << le_phys[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("RX PHYs preference: 0x%2.2x", cmd->rx_phys);
+	mask = cmd->rx_phys;
+
+	for (i = 0; le_phys[i].str; i++) {
+		if (cmd->rx_phys & (((uint8_t) 1) << le_phys[i].bit)) {
+			print_field("  %s", le_phys[i].str);
+			mask &= ~(((uint64_t) 1) << le_phys[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -7474,7 +7541,8 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2030, 284, "LE Read PHY",
 				le_read_phy_cmd, 2, true,
 				le_read_phy_rsp, 5, true},
-	{ 0x2031, 285, "LE Set Default PHY" },
+	{ 0x2031, 285, "LE Set Default PHY",
+				le_set_default_phy_cmd, 3, true},
 	{ 0x2032, 286, "LE Set PHY" },
 	{ 0x2033, 287, "LE Enhanced Receiver Test" },
 	{ 0x2034, 288, "LE Enhanced Transmitter Test" },
