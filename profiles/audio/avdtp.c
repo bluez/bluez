@@ -86,6 +86,7 @@ static unsigned int seids;
 #define AVDTP_MSG_TYPE_REJECT			0x03
 
 #define REQ_TIMEOUT 6
+#define SUSPEND_TIMEOUT 10
 #define ABORT_TIMEOUT 2
 #define DISCONNECT_TIMEOUT 1
 #define START_TIMEOUT 1
@@ -2538,7 +2539,7 @@ static int send_req(struct avdtp *session, gboolean priority,
 			struct pending_req *req)
 {
 	static int transaction = 0;
-	int err;
+	int err, timeout;
 
 	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
 		session->io = l2cap_connect(session);
@@ -2568,10 +2569,18 @@ static int send_req(struct avdtp *session, gboolean priority,
 
 	session->req = req;
 
-	req->timeout = g_timeout_add_seconds(req->signal_id == AVDTP_ABORT ?
-					ABORT_TIMEOUT : REQ_TIMEOUT,
-					request_timeout,
-					session);
+	switch (req->signal_id) {
+	case AVDTP_ABORT:
+		timeout = ABORT_TIMEOUT;
+		break;
+	case AVDTP_SUSPEND:
+		timeout = SUSPEND_TIMEOUT;
+		break;
+	default:
+		timeout = REQ_TIMEOUT;
+	}
+
+	req->timeout = g_timeout_add_seconds(timeout, request_timeout, session);
 	return 0;
 
 failed:
