@@ -2763,6 +2763,14 @@ struct bt_hci_evt_le_direct_adv_report {
 	int8_t   rssi;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_PHY_UPDATE_COMPLETE	0x0c
+struct bt_hci_evt_le_phy_update_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  tx_phy;
+	uint8_t  rx_phy;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LE_CHAN_SELECT_ALG		0x14
 struct bt_hci_evt_le_chan_select_alg {
 	uint16_t handle;

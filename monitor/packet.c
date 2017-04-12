@@ -8695,6 +8695,16 @@ static void le_direct_adv_report_evt(const void *data, uint8_t size)
 		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
 }
 
+static void le_phy_update_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_phy_update_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_le_phy("TX PHY", evt->tx_phy);
+	print_le_phy("RX PHY", evt->rx_phy);
+}
+
 static void le_chan_select_alg_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_chan_select_alg *evt = data;
@@ -8769,7 +8779,8 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_enhanced_conn_complete_evt, 30, true },
 	{ 0x0b, "LE Direct Advertising Report",
 				le_direct_adv_report_evt, 1, false },
-	{ 0x0c, "LE PHY Update Complete" },
+	{ 0x0c, "LE PHY Update Complete",
+				le_phy_update_complete_evt, 5, true},
 	{ 0x0d, "LE Extended Advertising Report" },
 	{ 0x0e, "LE Periodic Advertising Sync Established" },
 	{ 0x0f, "LE Periodic Advertising Report" },
