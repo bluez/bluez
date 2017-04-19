@@ -1710,7 +1710,7 @@ static void pbap_cp(GDBusProxy *proxy, int argc, char *argv[])
 		return;
 	}
 
-	if (strcmp(argv[1], "*") == 0)
+	if (strcmp(argv[1], "*") == 0 || strcmp(argv[1], "*.vcf") == 0)
 		return pbap_pull_all(proxy, argc, argv);
 
 	return pbap_pull(proxy, argc, argv);
