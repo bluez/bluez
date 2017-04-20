@@ -3866,10 +3866,11 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 	uint16_t manufacturer;
 	const char *ident;
 
-	if (index_filter && index_number != index)
-		return;
-
-	index_current = index;
+	if (index != HCI_DEV_NONE) {
+		if (index_filter && index_number != index)
+			return;
+		index_current = index;
+	}
 
 	if (tv && time_offset == ((time_t) -1))
 		time_offset = tv->tv_sec;
