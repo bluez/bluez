@@ -152,6 +152,9 @@ gssize g_obex_apparam_encode(GObexApparam *apparam, void *buf, gsize len)
 	GHashTableIter iter;
 	gpointer key, value;
 
+	if (!apparam)
+		return 0;
+
 	g_hash_table_iter_init(&iter, apparam->tags);
 	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct apparam_tag *tag = value;
