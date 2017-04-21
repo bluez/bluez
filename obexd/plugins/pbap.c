@@ -369,6 +369,7 @@ static int generate_response(void *user_data)
 		/* Ignore all other parameter and return PhoneBookSize */
 		uint16_t size = g_slist_length(pbap->cache.entries);
 
+		pbap->obj->firstpacket = TRUE;
 		pbap->obj->apparam = g_obex_apparam_set_uint16(
 							pbap->obj->apparam,
 							PHONEBOOKSIZE_TAG,
@@ -892,8 +893,10 @@ static ssize_t vobject_list_get_next_header(void *object, void *buf, size_t mtu,
 
 	*hi = G_OBEX_HDR_APPARAM;
 
-	if (pbap->params->maxlistcount == 0)
+	if (obj->firstpacket) {
+		obj->firstpacket = FALSE;
 		return g_obex_apparam_encode(obj->apparam, buf, mtu);
+	}
 
 	return 0;
 }
