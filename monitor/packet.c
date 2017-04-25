@@ -221,6 +221,11 @@ static uint8_t get_type(uint16_t handle)
 	return 0xff;
 }
 
+bool packet_has_filter(unsigned long filter)
+{
+	return filter_mask & filter;
+}
+
 void packet_set_filter(unsigned long filter)
 {
 	filter_mask = filter;

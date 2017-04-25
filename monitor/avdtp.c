@@ -776,7 +776,8 @@ void avdtp_packet(const struct l2cap_frame *frame)
 		ret = avdtp_signalling_packet(&avdtp_frame);
 		break;
 	default:
-		packet_hexdump(frame->data, frame->size);
+		if (packet_has_filter(PACKET_FILTER_SHOW_A2DP_STREAM))
+			packet_hexdump(frame->data, frame->size);
 		return;
 	}
 
