@@ -148,6 +148,9 @@ static enum att_op_type get_op_type(uint8_t opcode)
 			return att_opcode_type_table[i].type;
 	}
 
+	if (opcode & ATT_OP_CMD_MASK)
+		return ATT_OP_CMD_MASK;
+
 	return ATT_OP_TYPE_UNKNOWN;
 }
 
