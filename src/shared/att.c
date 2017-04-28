@@ -149,7 +149,7 @@ static enum att_op_type get_op_type(uint8_t opcode)
 	}
 
 	if (opcode & ATT_OP_CMD_MASK)
-		return ATT_OP_CMD_MASK;
+		return ATT_OP_TYPE_CMD;
 
 	return ATT_OP_TYPE_UNKNOWN;
 }
@@ -841,10 +841,10 @@ static void handle_notify(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 	}
 
 	/*
-	 * If this was a request and no handler was registered for it, respond
-	 * with "Not Supported"
+	 * If this was not a command and no handler was registered for it,
+	 * respond with "Not Supported"
 	 */
-	if (!found && get_op_type(opcode) == ATT_OP_TYPE_REQ)
+	if (!found && get_op_type(opcode) != ATT_OP_TYPE_CMD)
 		respond_not_supported(att, opcode);
 
 	bt_att_unref(att);
