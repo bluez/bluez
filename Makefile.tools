@@ -348,9 +348,7 @@ EXTRA_DIST += tools/hid2hci.1
 endif
 
 if READLINE
-bin_PROGRAMS += tools/btmgmt
-
-noinst_PROGRAMS += tools/obex-client-tool tools/obex-server-tool \
+noinst_PROGRAMS += tools/btmgmt tools/obex-client-tool tools/obex-server-tool \
 			tools/bluetooth-player tools/obexctl
 
 tools_obex_client_tool_SOURCES = $(gobex_sources) $(btio_sources) \
