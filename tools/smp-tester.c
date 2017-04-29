@@ -416,7 +416,7 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 static const uint8_t smp_sc_req_1[] = {	0x01,	/* Pairing Request */
 					0x03,	/* NoInputNoOutput */
 					0x00,	/* OOB Flag */
-					0x09,	/* Bonding - no MITM, SC */
+					0x29,	/* Bonding - no MITM, SC, CT2 */
 					0x10,	/* Max key size */
 					0x0d,	/* Init. key dist. */
 					0x0d,	/* Rsp. key dist. */
