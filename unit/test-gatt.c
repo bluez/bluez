@@ -4461,5 +4461,11 @@ int main(int argc, char *argv[])
 			raw_pdu(0x18, 0x01),
 			raw_pdu(0x01, 0x18, 0x25, 0x00, 0x06));
 
+	define_test_server("/robustness/unkown-request",
+			test_server, service_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0xbf, 0x00),
+			raw_pdu(0x01, 0xbf, 0x00, 0x00, 0x06));
+
 	return tester_run();
 }
