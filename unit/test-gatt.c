@@ -90,6 +90,11 @@ struct context {
 		.size = sizeof(data(args)),			\
 	}
 
+#define false_pdu()						\
+	{							\
+		.valid = false,					\
+	}
+
 #define define_test(name, function, type, bt_uuid, db,			\
 		test_step, args...)					\
 	do {								\
@@ -403,6 +408,13 @@ static gboolean send_pdu(gpointer user_data)
 	if (pdu->valid && (pdu->size == 0)) {
 		test_debug("(no action expected)", "GATT: ");
 		context->pdu_offset++;
+
+		/* Quit the context if we processed the last PDU */
+		if (!context->data->pdu_list[context->pdu_offset].valid) {
+			context_quit(context);
+			return FALSE;
+		}
+
 		return send_pdu(context);
 	}
 
@@ -4466,6 +4478,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0x03, 0x00, 0x02),
 			raw_pdu(0xbf, 0x00),
 			raw_pdu(0x01, 0xbf, 0x00, 0x00, 0x06));
+
+	define_test_server("/robustness/unkown-command",
+			test_server, service_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0xff, 0x00),
+			raw_pdu());
 
 	return tester_run();
 }
