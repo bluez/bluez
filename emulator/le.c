@@ -281,6 +281,37 @@ static void reset_defaults(struct bt_le *hci)
 	hci->commands[35] |= 0x02;	/* LE Set Address Resolution Enable */
 	hci->commands[35] |= 0x04;	/* LE Set Resolvable Private Address Timeout */
 	hci->commands[35] |= 0x08;	/* LE Read Maximum Data Length */
+	//hci->commands[35] |= 0x10;	/* LE Read PHY */
+	//hci->commands[35] |= 0x20;	/* LE Set Default PHY */
+	//hci->commands[35] |= 0x40;	/* LE Set PHY */
+	//hci->commands[35] |= 0x80;	/* LE Enhanced Receiver Test */
+	//hci->commands[36] |= 0x01;	/* LE Enhanced Transmitter Test */
+	//hci->commands[36] |= 0x02;	/* LE Set Advertising Set Random Address */
+	//hci->commands[36] |= 0x04;	/* LE Set Extended Advertising Parameters */
+	//hci->commands[36] |= 0x08;	/* LE Set Extended Advertising Data */
+	//hci->commands[36] |= 0x10;	/* LE Set Extended Scan Response Data */
+	//hci->commands[36] |= 0x20;	/* LE Set Extended Advertising Enable */
+	//hci->commands[36] |= 0x40;	/* LE Read Maximum Advertising Data Length */
+	//hci->commands[36] |= 0x80;	/* LE Read Number of Supported Advertising Sets */
+	//hci->commands[37] |= 0x01;	/* LE Remove Advertising Set */
+	//hci->commands[37] |= 0x02;	/* LE Clear Advertising Sets */
+	//hci->commands[37] |= 0x04;	/* LE Set Periodic Advertising Parameters */
+	//hci->commands[37] |= 0x08;	/* LE Set Periodic Advertising Data */
+	//hci->commands[37] |= 0x10;	/* LE Set Periodic Advertising Enable */
+	//hci->commands[37] |= 0x20;	/* LE Set Extended Scan Parameters */
+	//hci->commands[37] |= 0x40;	/* LE Set Extended Scan Enable */
+	//hci->commands[37] |= 0x80;	/* LE Extended Create Connection */
+	//hci->commands[38] |= 0x01;	/* LE Periodic Advertising Create Sync */
+	//hci->commands[38] |= 0x02;	/* LE Periodic Advertising Create Sync Cancel */
+	//hci->commands[38] |= 0x04;	/* LE Periodic Advertising Terminate Sync */
+	//hci->commands[38] |= 0x08;	/* LE Add Device To Periodic Advertiser List */
+	//hci->commands[38] |= 0x10;	/* LE Remove Device From Periodic Advertiser List */
+	//hci->commands[38] |= 0x20;	/* LE Clear Periodic Advertiser List */
+	//hci->commands[38] |= 0x40;	/* LE Read Periodic Advertiser List Size */
+	//hci->commands[38] |= 0x80;	/* LE Read Transmit Power */
+	//hci->commands[39] |= 0x01;	/* LE Read RF Path Compensation */
+	//hci->commands[39] |= 0x02;	/* LE Write RF Path Compensation */
+	//hci->commands[39] |= 0x04;	/* LE Set Privacy Mode */
 
 	memset(hci->features, 0, sizeof(hci->features));
 	hci->features[4] |= 0x20;	/* BR/EDR Not Supported */
@@ -300,6 +331,15 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->le_event_mask[1] |= 0x01;	/* LE Generate DHKey Complete */
 	//hci->le_event_mask[1] |= 0x02;	/* LE Enhanced Connection Complete */
 	//hci->le_event_mask[1] |= 0x04;	/* LE Direct Advertising Report */
+	//hci->le_event_mask[1] |= 0x08;	/* LE PHY Update Complete Event */
+	//hci->le_event_mask[1] |= 0x10;	/* LE Extended Advertising Report Event */
+	//hci->le_event_mask[1] |= 0x20;	/* LE Periodic Advertising Sync Established Event */
+	//hci->le_event_mask[1] |= 0x40;	/* LE Periodic Advertising Report Event */
+	//hci->le_event_mask[1] |= 0x80;	/* LE Periodic Advertising Sync Lost Event */
+	//hci->le_event_mask[2] |= 0x01;	/* LE Extended Scan Timeout Event */
+	//hci->le_event_mask[2] |= 0x02;	/* LE Extended Advertising Set Terminated Event */
+	//hci->le_event_mask[2] |= 0x04;	/* LE Scan Request Received Event */
+	//hci->le_event_mask[2] |= 0x08;	/* LE Channel Selection Algorithm Event */
 
 	hci->le_mtu = 64;
 	hci->le_max_pkt = 1;
@@ -313,6 +353,15 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_features[0] |= 0x20;	/* LE Data Packet Length Extension */
 	hci->le_features[0] |= 0x40;	/* LL Privacy */
 	hci->le_features[0] |= 0x80;	/* Extended Scanner Filter Policies */
+	//hci->le_features[1] |= 0x01;	/* LE 2M PHY */
+	//hci->le_features[1] |= 0x02;	/* Stable Modulation Index - Transmitter */
+	//hci->le_features[1] |= 0x04;	/* Stable Modulation Index - Receiver */
+	//hci->le_features[1] |= 0x08;	/* LE Coded PHY */
+	//hci->le_features[1] |= 0x10;	/* LE Extended Advertising */
+	//hci->le_features[1] |= 0x20;	/* LE Periodic Advertising */
+	//hci->le_features[1] |= 0x40;	/* Channel Selection Algorithm #2 */
+	//hci->le_features[1] |= 0x80;	/* LE Power Class 1 */
+	//hci->le_features[2] |= 0x01;	/* Minimum Number of Used Channels Procedure */
 
 	memset(hci->le_random_addr, 0, sizeof(hci->le_random_addr));
 
@@ -671,9 +720,9 @@ static void cmd_read_local_version(struct bt_le *hci,
 	struct bt_hci_rsp_read_local_version rsp;
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
-	rsp.hci_ver = 0x08;
+	rsp.hci_ver = 0x09;
 	rsp.hci_rev = cpu_to_le16(0x0000);
-	rsp.lmp_ver = 0x08;
+	rsp.lmp_ver = 0x09;
 	rsp.manufacturer = cpu_to_le16(hci->manufacturer);
 	rsp.lmp_subver = cpu_to_le16(0x0000);
 
