@@ -3786,25 +3786,6 @@ static void print_3d_broadcast(const void *data, uint8_t size)
 						period, period_frac);
 }
 
-static void print_le_channel_select_alg(uint8_t alg)
-{
-	const char *str;
-
-	switch (alg) {
-	case 0x00:
-		str = "LE Channel Selection Algorithm #1";
-		break;
-	case 0x01:
-		str = "LE Channel Selection Algorithm #2";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("%s (0x%2.2x)", str, alg);
-}
-
 void packet_hexdump(const unsigned char *buf, uint16_t len)
 {
 	static const char hexdigits[] = "0123456789abcdef";
@@ -8732,9 +8713,23 @@ static void le_phy_update_complete_evt(const void *data, uint8_t size)
 static void le_chan_select_alg_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_chan_select_alg *evt = data;
+	const char *str;
 
 	print_handle(evt->handle);
-	print_le_channel_select_alg(evt->algorithm);
+
+	switch (evt->algorithm) {
+	case 0x00:
+		str = "#1";
+		break;
+	case 0x01:
+		str = "#2";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Algorithm: %s (0x%2.2x)", str, evt->algorithm);
 }
 
 struct subevent_data {
