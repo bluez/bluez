@@ -360,8 +360,8 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->le_features[1] |= 0x10;	/* LE Extended Advertising */
 	//hci->le_features[1] |= 0x20;	/* LE Periodic Advertising */
 	hci->le_features[1] |= 0x40;	/* Channel Selection Algorithm #2 */
-	//hci->le_features[1] |= 0x80;	/* LE Power Class 1 */
-	//hci->le_features[2] |= 0x01;	/* Minimum Number of Used Channels Procedure */
+	hci->le_features[1] |= 0x80;	/* LE Power Class 1 */
+	hci->le_features[2] |= 0x01;	/* Minimum Number of Used Channels Procedure */
 
 	memset(hci->le_random_addr, 0, sizeof(hci->le_random_addr));
 
