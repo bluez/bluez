@@ -58,6 +58,10 @@
 #define MAX_RX_LEN		0x00fb
 #define MAX_RX_TIME		0x0848
 
+#define DEFAULT_ALL_PHYS	0x03
+#define DEFAULT_TX_PHYS		0x00
+#define DEFAULT_RX_PHYS		0x00
+
 struct bt_peer {
 	uint8_t  addr_type;
 	uint8_t  addr[6];
@@ -122,6 +126,10 @@ struct bt_le {
 	uint8_t  le_resolv_list_size;
 	uint8_t  le_resolv_enable;
 	uint16_t le_resolv_timeout;
+
+	uint8_t  le_default_all_phys;
+	uint8_t  le_default_tx_phys;
+	uint8_t  le_default_rx_phys;
 
 	struct bt_peer scan_cache[SCAN_CACHE_SIZE];
 	uint8_t scan_cache_count;
@@ -354,9 +362,9 @@ static void reset_defaults(struct bt_le *hci)
 	hci->le_features[0] |= 0x40;	/* LL Privacy */
 	hci->le_features[0] |= 0x80;	/* Extended Scanner Filter Policies */
 	hci->le_features[1] |= 0x01;	/* LE 2M PHY */
-	//hci->le_features[1] |= 0x02;	/* Stable Modulation Index - Transmitter */
-	//hci->le_features[1] |= 0x04;	/* Stable Modulation Index - Receiver */
-	//hci->le_features[1] |= 0x08;	/* LE Coded PHY */
+	hci->le_features[1] |= 0x02;	/* Stable Modulation Index - Transmitter */
+	hci->le_features[1] |= 0x04;	/* Stable Modulation Index - Receiver */
+	hci->le_features[1] |= 0x08;	/* LE Coded PHY */
 	//hci->le_features[1] |= 0x10;	/* LE Extended Advertising */
 	//hci->le_features[1] |= 0x20;	/* LE Periodic Advertising */
 	hci->le_features[1] |= 0x40;	/* Channel Selection Algorithm #2 */
@@ -418,6 +426,10 @@ static void reset_defaults(struct bt_le *hci)
 	clear_resolv_list(hci);
 	hci->le_resolv_enable = 0x00;
 	hci->le_resolv_timeout = 0x0384;	/* 900 secs or 15 minutes */
+
+	hci->le_default_all_phys = DEFAULT_ALL_PHYS;
+	hci->le_default_tx_phys = DEFAULT_TX_PHYS;
+	hci->le_default_rx_phys = DEFAULT_RX_PHYS;
 }
 
 static void clear_scan_cache(struct bt_le *hci)
@@ -1710,8 +1722,60 @@ static void cmd_le_read_phy(struct bt_le *hci, const void *data, uint8_t size)
 static void cmd_le_set_default_phy(struct bt_le *hci,
 						const void *data, uint8_t size)
 {
-	//const struct bt_hci_cmd_le_set_default_phy *cmd = data;
-	uint8_t status;
+	const struct bt_hci_cmd_le_set_default_phy *cmd = data;
+	uint8_t status, tx_phys, rx_phys;
+	uint8_t phys_mask;
+
+	phys_mask = (true << 0) | ((!!(hci->le_features[1] & 0x01)) << 1)
+				| ((!!(hci->le_features[1] & 0x08)) << 2);
+
+	if (cmd->all_phys > 0x03) {
+		cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DEFAULT_PHY);
+		return;
+	}
+
+	/* Transmitter PHYs preferences */
+	if (!(cmd->all_phys & 0x01)) {
+		/* At least one preference bit shall be set to 1 */
+		if (!cmd->tx_phys) {
+			cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DEFAULT_PHY);
+			return;
+		}
+
+		if (cmd->tx_phys & ~phys_mask) {
+			cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DEFAULT_PHY);
+			return;
+		}
+
+		tx_phys = cmd->tx_phys;
+	} else
+		tx_phys = 0x00;
+
+	/* Transmitter PHYs preferences */
+	if (!(cmd->all_phys & 0x02)) {
+		/* At least one preference bit shall be set to 1 */
+		if (!cmd->rx_phys) {
+			cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DEFAULT_PHY);
+			return;
+		}
+
+		if (cmd->rx_phys & ~phys_mask) {
+			cmd_status(hci, BT_HCI_ERR_INVALID_PARAMETERS,
+					BT_HCI_CMD_LE_SET_DEFAULT_PHY);
+			return;
+		}
+
+		rx_phys = cmd->rx_phys;
+	} else
+		rx_phys = 0x00;
+
+	hci->le_default_all_phys = cmd->all_phys;
+	hci->le_default_tx_phys = tx_phys;
+	hci->le_default_rx_phys = rx_phys;
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(hci, BT_HCI_CMD_LE_SET_DEFAULT_PHY,
