@@ -331,15 +331,15 @@ static void reset_defaults(struct bt_le *hci)
 	//hci->le_event_mask[1] |= 0x01;	/* LE Generate DHKey Complete */
 	//hci->le_event_mask[1] |= 0x02;	/* LE Enhanced Connection Complete */
 	//hci->le_event_mask[1] |= 0x04;	/* LE Direct Advertising Report */
-	//hci->le_event_mask[1] |= 0x08;	/* LE PHY Update Complete Event */
-	//hci->le_event_mask[1] |= 0x10;	/* LE Extended Advertising Report Event */
-	//hci->le_event_mask[1] |= 0x20;	/* LE Periodic Advertising Sync Established Event */
-	//hci->le_event_mask[1] |= 0x40;	/* LE Periodic Advertising Report Event */
-	//hci->le_event_mask[1] |= 0x80;	/* LE Periodic Advertising Sync Lost Event */
-	//hci->le_event_mask[2] |= 0x01;	/* LE Extended Scan Timeout Event */
-	//hci->le_event_mask[2] |= 0x02;	/* LE Extended Advertising Set Terminated Event */
-	//hci->le_event_mask[2] |= 0x04;	/* LE Scan Request Received Event */
-	//hci->le_event_mask[2] |= 0x08;	/* LE Channel Selection Algorithm Event */
+	//hci->le_event_mask[1] |= 0x08;	/* LE PHY Update Complete */
+	//hci->le_event_mask[1] |= 0x10;	/* LE Extended Advertising Report */
+	//hci->le_event_mask[1] |= 0x20;	/* LE Periodic Advertising Sync Established */
+	//hci->le_event_mask[1] |= 0x40;	/* LE Periodic Advertising Report */
+	//hci->le_event_mask[1] |= 0x80;	/* LE Periodic Advertising Sync Lost */
+	//hci->le_event_mask[2] |= 0x01;	/* LE Extended Scan Timeout */
+	//hci->le_event_mask[2] |= 0x02;	/* LE Extended Advertising Set Terminated */
+	//hci->le_event_mask[2] |= 0x04;	/* LE Scan Request Received */
+	//hci->le_event_mask[2] |= 0x08;	/* LE Channel Selection Algorithm */
 
 	hci->le_mtu = 64;
 	hci->le_max_pkt = 1;
