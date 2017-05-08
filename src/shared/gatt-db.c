@@ -913,6 +913,19 @@ gatt_db_service_insert_included(struct gatt_db_attribute *attrib,
 	return service_insert_included(attrib->service, handle, include);
 }
 
+struct gatt_db_attribute *
+gatt_db_insert_included(struct gatt_db *db, uint16_t handle,
+			struct gatt_db_attribute *include)
+{
+	struct gatt_db_attribute *attrib;
+
+	attrib = gatt_db_get_service(db, handle);
+	if (!attrib)
+		return NULL;
+
+	return service_insert_included(attrib->service, handle, include);
+}
+
 bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active)
 {
 	struct gatt_db_service *service;

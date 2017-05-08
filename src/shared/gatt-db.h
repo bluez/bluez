@@ -94,6 +94,10 @@ gatt_db_service_insert_descriptor(struct gatt_db_attribute *attrib,
 					void *user_data);
 
 struct gatt_db_attribute *
+gatt_db_insert_included(struct gatt_db *db, uint16_t handle,
+			struct gatt_db_attribute *include);
+
+struct gatt_db_attribute *
 gatt_db_service_add_included(struct gatt_db_attribute *attrib,
 					struct gatt_db_attribute *include);
 struct gatt_db_attribute *
