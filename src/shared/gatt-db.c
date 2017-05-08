@@ -1316,19 +1316,34 @@ static bool find_service_for_handle(const void *data, const void *user_data)
 	return (start <= handle) && (handle <= end);
 }
 
-struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
+struct gatt_db_attribute *gatt_db_get_service(struct gatt_db *db,
 							uint16_t handle)
 {
 	struct gatt_db_service *service;
-	int i;
 
 	if (!db || !handle)
 		return NULL;
 
 	service = queue_find(db->services, find_service_for_handle,
-							UINT_TO_PTR(handle));
+						UINT_TO_PTR(handle));
 	if (!service)
 		return NULL;
+
+	return service->attributes[0];
+}
+
+struct gatt_db_attribute *gatt_db_get_attribute(struct gatt_db *db,
+							uint16_t handle)
+{
+	struct gatt_db_attribute *attrib;
+	struct gatt_db_service *service;
+	int i;
+
+	attrib = gatt_db_get_service(db, handle);
+	if (!attrib)
+		return NULL;
+
+	service = attrib->service;
 
 	for (i = 0; i < service->num_handles; i++) {
 		if (!service->attributes[i])
