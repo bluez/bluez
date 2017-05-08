@@ -457,7 +457,7 @@ static void discover_incl_cb(bool success, uint8_t att_ecode,
 		if (!tmp)
 			goto failed;
 
-		tmp = gatt_db_service_add_included(attr, tmp);
+		tmp = gatt_db_service_insert_included(attr, handle, tmp);
 		if (!tmp)
 			goto failed;
 
