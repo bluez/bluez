@@ -96,6 +96,10 @@ gatt_db_service_insert_descriptor(struct gatt_db_attribute *attrib,
 struct gatt_db_attribute *
 gatt_db_service_add_included(struct gatt_db_attribute *attrib,
 					struct gatt_db_attribute *include);
+struct gatt_db_attribute *
+gatt_db_service_insert_included(struct gatt_db_attribute *attrib,
+				uint16_t handle,
+				struct gatt_db_attribute *include);
 
 bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active);
 bool gatt_db_service_get_active(struct gatt_db_attribute *attrib);

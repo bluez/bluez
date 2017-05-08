@@ -834,19 +834,15 @@ gatt_db_service_add_descriptor(struct gatt_db_attribute *attrib,
 					user_data);
 }
 
-struct gatt_db_attribute *
-gatt_db_service_add_included(struct gatt_db_attribute *attrib,
+static struct gatt_db_attribute *
+service_insert_included(struct gatt_db_service *service, uint16_t handle,
 					struct gatt_db_attribute *include)
 {
-	struct gatt_db_service *service, *included;
+	struct gatt_db_service *included;
 	uint8_t value[MAX_INCLUDED_VALUE_LEN];
 	uint16_t included_handle, len = 0;
 	int index;
 
-	if (!attrib || !include)
-		return NULL;
-
-	service = attrib->service;
 	included = include->service;
 
 	/* Adjust include to point to the first attribute */
@@ -873,7 +869,14 @@ gatt_db_service_add_included(struct gatt_db_attribute *attrib,
 	if (!index)
 		return NULL;
 
-	service->attributes[index] = new_attribute(service, 0,
+	/* Check if handle is in within service range */
+	if (handle && handle <= service->attributes[0]->handle)
+		return NULL;
+
+	if (!handle)
+		handle = get_handle_at_index(service, index - 1) + 1;
+
+	service->attributes[index] = new_attribute(service, handle,
 							&included_service_uuid,
 							value, len);
 	if (!service->attributes[index])
@@ -887,6 +890,27 @@ gatt_db_service_add_included(struct gatt_db_attribute *attrib,
 	set_attribute_data(service->attributes[index], NULL, NULL, 0, NULL);
 
 	return attribute_update(service, index);
+}
+
+struct gatt_db_attribute *
+gatt_db_service_add_included(struct gatt_db_attribute *attrib,
+					struct gatt_db_attribute *include)
+{
+	if (!attrib || !include)
+		return NULL;
+
+	return service_insert_included(attrib->service, 0, include);
+}
+
+struct gatt_db_attribute *
+gatt_db_service_insert_included(struct gatt_db_attribute *attrib,
+				uint16_t handle,
+				struct gatt_db_attribute *include)
+{
+	if (!attrib || !handle || !include)
+		return NULL;
+
+	return service_insert_included(attrib->service, handle, include);
 }
 
 bool gatt_db_service_set_active(struct gatt_db_attribute *attrib, bool active)
