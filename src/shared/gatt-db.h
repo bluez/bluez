@@ -78,6 +78,16 @@ gatt_db_service_insert_characteristic(struct gatt_db_attribute *attrib,
 					void *user_data);
 
 struct gatt_db_attribute *
+gatt_db_insert_characteristic(struct gatt_db *db,
+					uint16_t handle,
+					const bt_uuid_t *uuid,
+					uint32_t permissions,
+					uint8_t properties,
+					gatt_db_read_t read_func,
+					gatt_db_write_t write_func,
+					void *user_data);
+
+struct gatt_db_attribute *
 gatt_db_service_add_descriptor(struct gatt_db_attribute *attrib,
 					const bt_uuid_t *uuid,
 					uint32_t permissions,
