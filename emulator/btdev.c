@@ -600,7 +600,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	switch (btdev->type) {
 	case BTDEV_TYPE_BREDRLE:
-		btdev->version = 0x08;
+		btdev->version = 0x09;
 		set_bredrle_features(btdev);
 		set_bredrle_commands(btdev);
 		break;
@@ -610,7 +610,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 		set_bredr_commands(btdev);
 		break;
 	case BTDEV_TYPE_LE:
-		btdev->version = 0x08;
+		btdev->version = 0x09;
 		set_le_features(btdev);
 		set_le_commands(btdev);
 		break;
