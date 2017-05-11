@@ -3259,6 +3259,9 @@ static void print_fec(uint8_t fec)
 #define BT_EIR_TRANSPORT_DISCOVERY	0x26
 #define BT_EIR_LE_SUPPORTED_FEATURES	0x27
 #define BT_EIR_CHANNEL_MAP_UPDATE_IND	0x28
+#define BT_EIR_MESH_DATA		0x29
+#define BT_EIR_MESH_PROV		0x2a
+#define BT_EIR_MESH_BEACON		0x2b
 #define BT_EIR_3D_INFO_DATA		0x3d
 #define BT_EIR_MANUFACTURER_DATA	0xff
 
@@ -3718,6 +3721,18 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 					"      Unknown features (0x%2.2x)", mask);
 
 			print_field("  Path Loss Threshold: %d", data[1]);
+			break;
+
+		case BT_EIR_MESH_DATA:
+			print_hex_field("Mesh Data", data, data_len);
+			break;
+
+		case BT_EIR_MESH_PROV:
+			print_hex_field("Mesh Provisioning", data, data_len);
+			break;
+
+		case BT_EIR_MESH_BEACON:
+			print_hex_field("Mesh Beacon", data, data_len);
 			break;
 
 		case BT_EIR_MANUFACTURER_DATA:
