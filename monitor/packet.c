@@ -3499,6 +3499,88 @@ static const struct {
 	{ }
 };
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} mesh_oob_table[] = {
+	{ 0, "Other"							},
+	{ 1, "Electronic / URI"						},
+	{ 2, "2D machine-readable code"					},
+	{ 3, "Bar code"							},
+	{ 4, "Near Field Communication (NFC)"				},
+	{ 5, "Number"							},
+	{ 6, "String"							},
+	{ 11, "On box"							},
+	{ 12, "Inside box"						},
+	{ 13, "On piece of paper"					},
+	{ 14, "Inside manual"						},
+	{ 14, "On device"						},
+	{ }
+};
+
+static void print_mesh_beacon(const uint8_t *data, uint8_t len)
+{
+	uint16_t oob;
+	int i;
+
+	print_hex_field("Mesh Beacon", data, len);
+
+	if (len < 1)
+		return;
+
+	switch (data[0]) {
+	case 0x00:
+		print_field("  Unprovisioned Device Beacon (0x00)");
+		if (len < 18) {
+			packet_hexdump(data + 1, len - 1);
+			break;
+		}
+
+		print_hex_field("  Device UUID", data + 1, 16);
+
+		oob = get_be16(data + 17);
+		print_field("  OOB Information: 0x%4.4x", oob);
+
+		for (i = 0; mesh_oob_table[i].str; i++) {
+			if (oob & (1 << mesh_oob_table[i].bit))
+				print_field("    %s", mesh_oob_table[i].str);
+		}
+
+		if (len < 23) {
+			packet_hexdump(data + 18, len - 18);
+			break;
+		}
+
+		print_field("  URI Hash: 0x%4.4x", get_be32(data + 19));
+		packet_hexdump(data + 23, len - 23);
+		break;
+	case 0x01:
+		print_field("  Secure Network Beacon (0x01)");
+		if (len < 22) {
+			packet_hexdump(data + 1, len - 1);
+			break;
+		}
+
+		print_field("  Flags: 0x%2.2x", data[0]);
+
+		if (data[1] & 0x01)
+			print_field("    Key Refresh");
+
+		if (data[1] & 0x02)
+			print_field("    IV Update");
+
+		print_hex_field("  Network Id", data + 2, 8);
+		print_field("  IV Index: 0x%08x", get_be32(data + 10));
+		print_hex_field("  Authentication Value", data + 14, 8);
+		packet_hexdump(data + 22, len - 22);
+		break;
+	default:
+		print_field("  Invalid Beacon (0x%02x)", data[0]);
+		packet_hexdump(data, len);
+		break;
+	}
+}
+
 static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
 	uint16_t len = 0;
@@ -3732,7 +3814,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_MESH_BEACON:
-			print_hex_field("Mesh Beacon", data, data_len);
+			print_mesh_beacon(data, data_len);
 			break;
 
 		case BT_EIR_MANUFACTURER_DATA:
