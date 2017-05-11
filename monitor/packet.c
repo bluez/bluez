@@ -3581,6 +3581,97 @@ static void print_mesh_beacon(const uint8_t *data, uint8_t len)
 	}
 }
 
+static void print_mesh_prov(const uint8_t *data, uint8_t len)
+{
+	print_hex_field("Mesh Provisioning", data, len);
+
+	if (len < 6) {
+		packet_hexdump(data, len);
+		return;
+	}
+
+	print_field("  Link ID: 0x%08x", get_be32(data));
+	print_field("  Transaction Number: %u", data[4]);
+
+	data += 5;
+	len -= 5;
+
+	switch (data[0] & 0x03) {
+	case 0x00:
+		print_field("  Transaction Start (0x00)");
+		if (len < 5) {
+			packet_hexdump(data + 1, len - 1);
+			return;
+		}
+		print_field("  SeqN: %u", data[0] & 0xfc >> 2);
+		print_field("  TotalLength: %u", get_be16(data + 1));
+		print_field("  FCS: 0x%2.2x", data[3]);
+		print_hex_field("  Data", data + 4, len - 4);
+		packet_hexdump(data + 5, len - 5);
+		break;
+	case 0x01:
+		print_field("  Transaction Acknowledgment (0x01)");
+		packet_hexdump(data + 1, len - 1);
+		break;
+	case 0x02:
+		print_field("  Transaction Continuation (0x02)");
+		print_field("  SegmentIndex: %u", data[0] >> 2);
+		if (len < 2) {
+			packet_hexdump(data + 1, len - 1);
+			return;
+		}
+		print_hex_field("  Data", data + 1, len - 1);
+		packet_hexdump(data + 2, len - 2);
+		break;
+	case 0x03:
+		print_field("  Provisioning Bearer Control (0x03)");
+		switch (data[0] >> 2) {
+		case 0x00:
+			print_field("  Link Open (0x00)");
+			if (len < 17) {
+				packet_hexdump(data + 1, len - 1);
+				break;
+			}
+			print_hex_field("  Device UUID", data, 16);
+			break;
+		case 0x01:
+			print_field("  Link Ack (0x01)");
+			break;
+		case 0x02:
+			print_field("  Link Close (0x02)");
+			if (len < 2) {
+				packet_hexdump(data + 1, len - 1);
+				break;
+			}
+
+			switch (data[1]) {
+			case 0x00:
+				print_field("  Reason: Success (0x00)");
+				break;
+			case 0x01:
+				print_field("  Reason: Timeout (0x01)");
+				break;
+			case 0x02:
+				print_field("  Reason: Fail (0x02)");
+				break;
+			default:
+				print_field("  Reason: Unrecognized (0x%2.2x)",
+								data[1]);
+			}
+			packet_hexdump(data + 2, len - 2);
+			break;
+		default:
+			packet_hexdump(data + 1, len - 1);
+			break;
+		}
+		break;
+	default:
+		print_field("  Invalid Command (0x%02x)", data[0]);
+		packet_hexdump(data, len);
+		break;
+	}
+}
+
 static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
 	uint16_t len = 0;
@@ -3810,7 +3901,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_MESH_PROV:
-			print_hex_field("Mesh Provisioning", data, data_len);
+			print_mesh_prov(data, data_len);
 			break;
 
 		case BT_EIR_MESH_BEACON:
