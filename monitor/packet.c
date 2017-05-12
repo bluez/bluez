@@ -3672,6 +3672,18 @@ static void print_mesh_prov(const uint8_t *data, uint8_t len)
 	}
 }
 
+static void print_mesh_data(const uint8_t *data, uint8_t len)
+{
+	print_hex_field("Mesh Data", data, len);
+
+	if (len < 1)
+		return;
+
+	print_field("  IV: %u", data[0] & 0x01);
+	print_field("  NID: 0x%2.2x", data[0] & 0xfe);
+	packet_hexdump(data + 1, len - 1);
+}
+
 static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
 	uint16_t len = 0;
@@ -3897,7 +3909,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_MESH_DATA:
-			print_hex_field("Mesh Data", data, data_len);
+			print_mesh_data(data, data_len);
 			break;
 
 		case BT_EIR_MESH_PROV:
