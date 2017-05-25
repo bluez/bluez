@@ -41,6 +41,5 @@ void gatt_notify_attribute(GDBusProxy *proxy, bool enable);
 void gatt_add_manager(GDBusProxy *proxy);
 void gatt_remove_manager(GDBusProxy *proxy);
 
-void gatt_register_profile(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w);
-void gatt_unregister_profile(DBusConnection *conn, GDBusProxy *proxy);
+void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w);
+void gatt_unregister_app(DBusConnection *conn, GDBusProxy *proxy);

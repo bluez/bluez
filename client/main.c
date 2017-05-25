@@ -1814,7 +1814,7 @@ static void cmd_notify(const char *arg)
 	gatt_notify_attribute(default_attr, enable ? true : false);
 }
 
-static void cmd_register_profile(const char *arg)
+static void cmd_register_app(const char *arg)
 {
 	wordexp_t w;
 
@@ -1831,17 +1831,17 @@ static void cmd_register_profile(const char *arg)
 		return;
 	}
 
-	gatt_register_profile(dbus_conn, default_ctrl->proxy, &w);
+	gatt_register_app(dbus_conn, default_ctrl->proxy, &w);
 
 	wordfree(&w);
 }
 
-static void cmd_unregister_profile(const char *arg)
+static void cmd_unregister_app(const char *arg)
 {
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	gatt_unregister_profile(dbus_conn, default_ctrl->proxy);
+	gatt_unregister_app(dbus_conn, default_ctrl->proxy);
 }
 
 static void cmd_version(const char *arg)
@@ -2138,9 +2138,9 @@ static const struct {
 	{ "write",        "<data=[xx xx ...]>", cmd_write,
 						"Write attribute value" },
 	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value" },
-	{ "register-profile", "<UUID ...>", cmd_register_profile,
+	{ "register-application", "<UUID ...>", cmd_register_app,
 						"Register profile to connect" },
-	{ "unregister-profile", NULL, cmd_unregister_profile,
+	{ "unregister-application", NULL, cmd_unregister_app,
 						"Unregister profile" },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
@@ -2407,6 +2407,7 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+	g_dbus_attach_object_manager(dbus_conn);
 
 	setlinebuf(stdout);
 	rl_attempted_completion_function = cmd_completion;

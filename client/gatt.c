@@ -37,12 +37,13 @@
 #include <readline/history.h>
 #include <glib.h>
 
+#include "src/shared/queue.h"
 #include "gdbus/gdbus.h"
 #include "monitor/uuid.h"
 #include "display.h"
 #include "gatt.h"
 
-#define PROFILE_PATH "/org/bluez/profile"
+#define APP_PATH "/org/bluez/app"
 #define PROFILE_INTERFACE "org.bluez.GattProfile1"
 
 /* String display constants */
@@ -54,6 +55,7 @@ static GList *services;
 static GList *characteristics;
 static GList *descriptors;
 static GList *managers;
+static GList *uuids;
 
 static void print_service(GDBusProxy *proxy, const char *description)
 {
@@ -626,20 +628,12 @@ void gatt_notify_attribute(GDBusProxy *proxy, bool enable)
 						g_dbus_proxy_get_path(proxy));
 }
 
-static void register_profile_setup(DBusMessageIter *iter, void *user_data)
+static void register_app_setup(DBusMessageIter *iter, void *user_data)
 {
-	wordexp_t *w = user_data;
-	DBusMessageIter uuids, opt;
-	const char *path = PROFILE_PATH;
-	size_t i;
+	DBusMessageIter opt;
+	const char *path = "/";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "s", &uuids);
-	for (i = 0; i < w->we_wordc; i++)
-		dbus_message_iter_append_basic(&uuids, DBUS_TYPE_STRING,
-							&w->we_wordv[i]);
-	dbus_message_iter_close_container(iter, &uuids);
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -651,19 +645,19 @@ static void register_profile_setup(DBusMessageIter *iter, void *user_data)
 
 }
 
-static void register_profile_reply(DBusMessage *message, void *user_data)
+static void register_app_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
 
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to register profile: %s\n", error.name);
+		rl_printf("Failed to register application: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
-	rl_printf("Profile registered\n");
+	rl_printf("Application registered\n");
 }
 
 void gatt_add_manager(GDBusProxy *proxy)
@@ -688,7 +682,7 @@ static int match_proxy(const void *a, const void *b)
 static DBusMessage *release_profile(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	g_dbus_unregister_interface(conn, PROFILE_PATH, PROFILE_INTERFACE);
+	g_dbus_unregister_interface(conn, APP_PATH, PROFILE_INTERFACE);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -698,10 +692,33 @@ static const GDBusMethodTable methods[] = {
 	{ }
 };
 
-void gatt_register_profile(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w)
+static gboolean get_uuids(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	DBusMessageIter entry;
+	GList *uuid;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &entry);
+
+	for (uuid = uuids; uuid; uuid = g_list_next(uuid->next))
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+							&uuid->data);
+
+	dbus_message_iter_close_container(iter, &entry);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable properties[] = {
+	{ "UUIDs", "as", get_uuids },
+	{ }
+};
+
+void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
 {
 	GList *l;
+	unsigned int i;
 
 	l = g_list_find_custom(managers, proxy, match_proxy);
 	if (!l) {
@@ -709,23 +726,27 @@ void gatt_register_profile(DBusConnection *conn, GDBusProxy *proxy,
 		return;
 	}
 
-	if (g_dbus_register_interface(conn, PROFILE_PATH,
+	if (g_dbus_register_interface(conn, APP_PATH,
 					PROFILE_INTERFACE, methods,
-					NULL, NULL, NULL, NULL) == FALSE) {
-		rl_printf("Failed to register profile object\n");
+					NULL, properties, NULL, NULL) == FALSE) {
+		rl_printf("Failed to register application object\n");
 		return;
 	}
 
-	if (g_dbus_proxy_method_call(l->data, "RegisterProfile",
-						register_profile_setup,
-						register_profile_reply, w,
+	for (i = 0; i < w->we_wordc; i++)
+		uuids = g_list_append(uuids, g_strdup(w->we_wordv[i]));
+
+	if (g_dbus_proxy_method_call(l->data, "RegisterApplication",
+						register_app_setup,
+						register_app_reply, w,
 						NULL) == FALSE) {
-		rl_printf("Failed register profile\n");
+		rl_printf("Failed register application\n");
+		g_dbus_unregister_interface(conn, APP_PATH, PROFILE_INTERFACE);
 		return;
 	}
 }
 
-static void unregister_profile_reply(DBusMessage *message, void *user_data)
+static void unregister_app_reply(DBusMessage *message, void *user_data)
 {
 	DBusConnection *conn = user_data;
 	DBusError error;
@@ -733,24 +754,27 @@ static void unregister_profile_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to unregister profile: %s\n", error.name);
+		rl_printf("Failed to unregister application: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
-	rl_printf("Profile unregistered\n");
+	g_list_free_full(uuids, g_free);
+	uuids = NULL;
 
-	g_dbus_unregister_interface(conn, PROFILE_PATH, PROFILE_INTERFACE);
+	rl_printf("Application unregistered\n");
+
+	g_dbus_unregister_interface(conn, APP_PATH, PROFILE_INTERFACE);
 }
 
-static void unregister_profile_setup(DBusMessageIter *iter, void *user_data)
+static void unregister_app_setup(DBusMessageIter *iter, void *user_data)
 {
-	const char *path = PROFILE_PATH;
+	const char *path = "/";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
 
-void gatt_unregister_profile(DBusConnection *conn, GDBusProxy *proxy)
+void gatt_unregister_app(DBusConnection *conn, GDBusProxy *proxy)
 {
 	GList *l;
 
@@ -760,9 +784,9 @@ void gatt_unregister_profile(DBusConnection *conn, GDBusProxy *proxy)
 		return;
 	}
 
-	if (g_dbus_proxy_method_call(l->data, "UnregisterProfile",
-						unregister_profile_setup,
-						unregister_profile_reply, conn,
+	if (g_dbus_proxy_method_call(l->data, "UnregisterApplication",
+						unregister_app_setup,
+						unregister_app_reply, conn,
 						NULL) == FALSE) {
 		rl_printf("Failed unregister profile\n");
 		return;
