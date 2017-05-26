@@ -1173,7 +1173,7 @@ static DBusMessage *characteristic_start_notify(DBusConnection *conn,
 	client = queue_find(chrc->notify_clients, match_notify_sender, sender);
 	if (client)
 		return client->notify_id ?
-				btd_error_failed(msg, "Already notifying") :
+				g_dbus_create_reply(msg, DBUS_TYPE_INVALID) :
 				btd_error_in_progress(msg);
 
 	client = notify_client_create(chrc, sender);
