@@ -329,7 +329,7 @@ static void test_condition_complete(struct test_data *data)
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->test_setup = setup; \
 		user->test_data = data; \
-		user->expected_version = 0x08; \
+		user->expected_version = 0x09; \
 		user->expected_manufacturer = 0x003f; \
 		user->expected_supported_settings = 0x0000bfff; \
 		user->initial_settings = 0x00000080; \
@@ -380,7 +380,7 @@ static void test_condition_complete(struct test_data *data)
 		user->hciemu_type = HCIEMU_TYPE_LE; \
 		user->test_setup = setup; \
 		user->test_data = data; \
-		user->expected_version = 0x08; \
+		user->expected_version = 0x09; \
 		user->expected_manufacturer = 0x003f; \
 		user->expected_supported_settings = 0x0000be1b; \
 		user->initial_settings = 0x00000200; \
@@ -5001,7 +5001,7 @@ static const struct generic_data read_local_oob_success_sc_test = {
 
 static const char ext_ctrl_info1[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
-	0x08, /* version */
+	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
 	0xff, 0xbf, 0x00, 0x00, /* supported settings */
 	0x80, 0x00, 0x00, 0x00, /* current settings */
@@ -5046,7 +5046,7 @@ static const struct setup_mgmt_cmd set_dev_class_cmd_arr1[] = {
 
 static const char ext_ctrl_info2[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
-	0x08, /* version */
+	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
 	0xff, 0xbf, 0x00, 0x00, /* supported settings */
 	0x81, 0x02, 0x00, 0x00, /* current settings */
@@ -5077,7 +5077,7 @@ static const struct generic_data read_ext_ctrl_info2 = {
 
 static const char ext_ctrl_info3[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
-	0x08, /* version */
+	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
 	0xff, 0xbf, 0x00, 0x00, /* supported settings */
 	0x80, 0x02, 0x00, 0x00, /* current settings */
@@ -5112,7 +5112,7 @@ static const struct generic_data read_ext_ctrl_info3 = {
 
 static const char ext_ctrl_info4[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
-	0x08, /* version */
+	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
 	0xff, 0xbf, 0x00, 0x00, /* supported settings */
 	0x80, 0x02, 0x00, 0x00, /* current settings */
@@ -5171,7 +5171,7 @@ static const struct setup_mgmt_cmd set_dev_class_cmd_arr2[] = {
 
 static const char ext_ctrl_info5[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
-	0x08, /* version */
+	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
 	0xff, 0xbf, 0x00, 0x00, /* supported settings */
 	0x81, 0x02, 0x00, 0x00, /* current settings */
