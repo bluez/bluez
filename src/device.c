@@ -175,6 +175,8 @@ struct csrk_info {
 struct btd_device {
 	int ref_count;
 
+	bdaddr_t	conn_bdaddr;
+	uint8_t		conn_bdaddr_type;
 	bdaddr_t	bdaddr;
 	uint8_t		bdaddr_type;
 	char		*path;
@@ -2592,6 +2594,9 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type)
 		return;
 	}
 
+	bacpy(&dev->conn_bdaddr, &dev->bdaddr);
+	dev->conn_bdaddr_type = dev->bdaddr_type;
+
 	/* If this is the first connection over this bearer */
 	if (bdaddr_type == BDADDR_BREDR)
 		device_set_bredr_support(dev);
@@ -4046,8 +4051,11 @@ int device_addr_type_cmp(gconstpointer a, gconstpointer b)
 	if (!dev->le)
 		return -1;
 
-	if (addr->bdaddr_type != dev->bdaddr_type)
+	if (addr->bdaddr_type != dev->bdaddr_type) {
+		if (addr->bdaddr_type == dev->conn_bdaddr_type)
+			return bacmp(&dev->conn_bdaddr, &addr->bdaddr);
 		return -1;
+	}
 
 	return cmp;
 }
