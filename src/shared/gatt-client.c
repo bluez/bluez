@@ -890,7 +890,11 @@ static void discovery_found_service(struct discovery_op *op,
 {
 	/* Skip if service already active */
 	if (!gatt_db_service_get_active(attr)) {
-		queue_push_tail(op->pending_svcs, attr);
+		/* Skip if there are no attributes */
+		if (end == start)
+			gatt_db_service_set_active(attr, true);
+		else
+			queue_push_tail(op->pending_svcs, attr);
 
 		/* Update discovery range */
 		if (!op->svc_first || op->svc_first > start)
