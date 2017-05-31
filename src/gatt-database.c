@@ -2248,6 +2248,15 @@ static void profile_device_remove(struct btd_service *service)
 	DBG("%s removed", p->name);
 }
 
+static int profile_device_accept(struct btd_service *service)
+{
+	struct btd_profile *p = btd_service_get_profile(service);
+
+	DBG("%s accept", p->name);
+
+	return 0;
+}
+
 static int profile_add(struct external_profile *profile, const char *uuid)
 {
 	struct btd_profile *p;
@@ -2271,6 +2280,7 @@ static int profile_add(struct external_profile *profile, const char *uuid)
 
 	p->device_probe = profile_device_probe;
 	p->device_remove = profile_device_remove;
+	p->accept = profile_device_accept;
 	p->auto_connect = true;
 	p->external = true;
 
