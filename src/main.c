@@ -149,9 +149,23 @@ done:
 	main_opts.did_version = version;
 }
 
+static bt_gatt_cache_t parse_gatt_cache(const char *cache)
+{
+	if (!strcmp(cache, "always")) {
+		return BT_GATT_CACHE_ALWAYS;
+	} else if (!strcmp(cache, "yes")) {
+		return BT_GATT_CACHE_YES;
+	} else if (!strcmp(cache, "no")) {
+		return BT_GATT_CACHE_NO;
+	} else {
+		DBG("Invalid value for KeepCache=%s", cache);
+		return BT_GATT_CACHE_ALWAYS;
+	}
+}
+
 static void check_config(GKeyFile *config)
 {
-	const char *valid_groups[] = { "General", "Policy", NULL };
+	const char *valid_groups[] = { "General", "Policy", "GATT", NULL };
 	char **keys;
 	int i;
 
@@ -357,6 +371,17 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	else
 		main_opts.fast_conn = boolean;
+
+	str = g_key_file_get_string(config, "GATT", "Cache", &err);
+	if (err) {
+		g_clear_error(&err);
+		main_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
+		return;
+	}
+
+	main_opts.gatt_cache = parse_gatt_cache(str);
+
+	g_free(str);
 }
 
 static void init_defaults(void)
