@@ -368,7 +368,7 @@ static bool avdtp_discover(struct avdtp_frame *avdtp_frame)
 			print_field("%*cMedia Type: %s (0x%02x)", 2, ' ',
 					mediatype2str(info >> 4), info >> 4);
 			print_field("%*cSEP Type: %s (0x%02x)", 2, ' ',
-						info & 0x04 ? "SNK" : "SRC",
+						info & 0x08 ? "SNK" : "SRC",
 						(info >> 3) & 0x01);
 			print_field("%*cIn use: %s", 2, ' ',
 						seid & 0x02 ? "Yes" : "No");
