@@ -27,6 +27,7 @@
 #endif
 
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "src/shared/util.h"
 #include "display.h"
@@ -35,6 +36,8 @@
 #include "ll.h"
 #include "vendor.h"
 #include "broadcom.h"
+
+#define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
 
 static void print_status(uint8_t status)
 {
@@ -103,6 +106,52 @@ static void read_vid_pid_rsp(const void *data, uint8_t size)
 	print_field("Product: %4.4x:%4.4x", vid, pid);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} features_table[] = {
+	{  0, "Multi-AV transport bandwidth reducer"	},
+	{  1, "WBS SBC"					},
+	{  2, "FW LC-PLC"				},
+	{  3, "FM SBC internal stack"			},
+	{ }
+};
+
+static void print_features(const uint8_t *features_array)
+{
+	uint64_t mask, features = 0;
+	char str[41];
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		sprintf(str + (i * 5), " 0x%2.2x", features_array[i]);
+		features |= ((uint64_t) features_array[i]) << (i * 8);
+	}
+
+	print_field("Features:%s", str);
+
+	mask = features;
+
+	for (i = 0; features_table[i].str; i++) {
+		if (features & (((uint64_t) 1) << features_table[i].bit)) {
+			print_field("  %s", features_table[i].str);
+			mask &= ~(((uint64_t) 1) << features_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_FEATURE_BIT, "  Unknown features "
+						"(0x%16.16" PRIx64 ")", mask);
+}
+
+static void read_controller_features_rsp(const void *data, uint8_t size)
+{
+	uint8_t status = get_u8(data);
+
+	print_status(status);
+	print_features(data + 1);
+}
+
 static void read_verbose_version_info_rsp(const void *data, uint8_t size)
 {
 	uint8_t status = get_u8(data);
@@ -154,6 +203,9 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x05a, "Read VID PID",
 			null_cmd, 0, true,
 			read_vid_pid_rsp, 5, true },
+	{ 0x06e, "Read Controller Features",
+			null_cmd, 0, true,
+			read_controller_features_rsp, 9, true },
 	{ 0x079, "Read Verbose Config Version Info",
 			null_cmd, 0, true,
 			read_verbose_version_info_rsp, 7, true },
