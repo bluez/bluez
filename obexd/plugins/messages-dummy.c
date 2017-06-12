@@ -155,16 +155,6 @@ static void return_folder_listing(struct folder_listing_data *fld, GSList *list)
 	uint16_t num = 0;
 	uint16_t offs = 0;
 
-	/* XXX: This isn't really documented for MAP. I need to take a look how
-	 * other implementations choose to deal with parent folder.
-	 */
-	if (session->cwd[0] != 0 && fld->offset == 0) {
-		num++;
-		fld->callback(session, -EAGAIN, 0, "..", fld->user_data);
-	} else {
-		offs++;
-	}
-
 	for (cur = list; offs < fld->offset; offs++) {
 		cur = cur->next;
 		if (cur == NULL)
