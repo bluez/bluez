@@ -1239,7 +1239,7 @@ static void enable_ccc_callback(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
 	struct notify_data *notify_data = user_data;
-	uint16_t att_ecode;
+	uint8_t att_ecode;
 
 	assert(notify_data->chrc->ccc_write_id);
 
