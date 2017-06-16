@@ -451,7 +451,7 @@ static void test_le_read_local_pk_status(const void *data, uint8_t size,
 	uint8_t status = *((uint8_t *) data);
 
 	if (status) {
-		tester_warn("Failed to send DHKey gen cmd (0x%02x)", status);
+		tester_warn("Failed to send Read Local PK256 cmd (0x%02x)", status);
 		tester_test_failed();
 		return;
 	}
