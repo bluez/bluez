@@ -1854,6 +1854,8 @@ static void cmd_quit(const char *arg)
 	g_main_loop_quit(main_loop);
 }
 
+static void cmd_help(const char *arg);
+
 static char *generic_generator(const char *text, int state,
 					GList *source, const char *property)
 {
@@ -2145,7 +2147,7 @@ static const struct {
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
-	{ "help" },
+	{ "help",         NULL,       cmd_help },
 	{ }
 };
 
@@ -2245,10 +2247,14 @@ static void rl_handler(char *input)
 		}
 	}
 
-	if (strcmp(cmd, "help")) {
-		printf("Invalid command\n");
-		goto done;
-	}
+	printf("Invalid command\n");
+done:
+	free(input);
+}
+
+static void cmd_help(const char *arg)
+{
+	int i;
 
 	printf("Available commands:\n");
 
@@ -2259,9 +2265,6 @@ static void rl_handler(char *input)
 					cmd_table[i].arg ? : "",
 					cmd_table[i].desc ? : "");
 	}
-
-done:
-	free(input);
 }
 
 static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
