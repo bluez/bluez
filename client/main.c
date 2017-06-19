@@ -2073,8 +2073,10 @@ static const struct {
 	{ "devices",      NULL,       cmd_devices, "List available devices" },
 	{ "paired-devices", NULL,     cmd_paired_devices,
 					"List paired devices"},
-	{ "system-alias", "<name>",   cmd_system_alias },
-	{ "reset-alias",  NULL,       cmd_reset_alias },
+	{ "system-alias", "<name>",   cmd_system_alias,
+					"Set controller alias" },
+	{ "reset-alias",  NULL,       cmd_reset_alias,
+					"Reset controller alias" },
 	{ "power",        "<on/off>", cmd_power, "Set controller power" },
 	{ "pairable",     "<on/off>", cmd_pairable,
 					"Set controller pairable mode" },
@@ -2146,8 +2148,9 @@ static const struct {
 						"Unregister profile" },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
-	{ "exit",         NULL,       cmd_quit },
-	{ "help",         NULL,       cmd_help },
+	{ "exit",         NULL,       cmd_quit, "Quit program" },
+	{ "help",         NULL,       cmd_help,
+					"Display help about this program" },
 	{ }
 };
 
@@ -2259,8 +2262,7 @@ static void cmd_help(const char *arg)
 	printf("Available commands:\n");
 
 	for (i = 0; cmd_table[i].cmd; i++) {
-		if (cmd_table[i].desc)
-			printf("  %s %-*s %s\n", cmd_table[i].cmd,
+		printf("  %s %-*s %s\n", cmd_table[i].cmd,
 					(int)(25 - strlen(cmd_table[i].cmd)),
 					cmd_table[i].arg ? : "",
 					cmd_table[i].desc ? : "");
