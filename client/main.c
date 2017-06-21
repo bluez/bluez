@@ -2571,6 +2571,7 @@ static gboolean parse_agent(const char *key, const char *value,
 	if (!value)
 		return FALSE;
 
+	g_free(auto_register_agent);
 	auto_register_agent = g_strdup(value);
 
 	return TRUE;
