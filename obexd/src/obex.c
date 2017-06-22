@@ -864,6 +864,17 @@ static void cmd_put(GObex *obex, GObexPacket *req, gpointer user_data)
 		return;
 	}
 
+	/* OPP session don't require CONNECT, in which case just call connect
+	 * callback to register the transfer.
+	 */
+	if (!os->service_data && os->service->service == OBEX_OPP) {
+		os->service_data = os->service->connect(os, &err);
+		if (err < 0) {
+			os_set_response(os, err);
+			return;
+		}
+	}
+
 	parse_type(os, req);
 
 	if (os->driver == NULL) {
