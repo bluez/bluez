@@ -896,10 +896,48 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 		return;
 	}
 
-	rl_printf("Service registered at %s\n", service->path);
+	print_service(service, COLORED_NEW);
 
 	local_services = g_list_append(local_services, service);
 
 	rl_prompt_input(service->path, "Primary (yes/no):", service_set_primary,
 			service);
+}
+
+static struct service *service_find(const char *pattern)
+{
+	GList *l;
+
+	for (l = local_services; l; l = g_list_next(l)) {
+		struct service *service = l->data;
+
+		/* match object path */
+		if (!strcmp(service->path, pattern))
+			return service;
+
+		/* match UUID */
+		if (!strcmp(service->uuid, pattern))
+			return service;
+	}
+
+	return NULL;
+}
+
+void gatt_unregister_service(DBusConnection *conn, GDBusProxy *proxy,
+								wordexp_t *w)
+{
+	struct service *service;
+
+	service = service_find(w->we_wordv[0]);
+	if (!service) {
+		rl_printf("Failed to unregister service object\n");
+		return;
+	}
+
+	local_services = g_list_remove(local_services, service);
+
+	print_service(service, COLORED_DEL);
+
+	g_dbus_unregister_interface(service->conn, service->path,
+						SERVICE_INTERFACE);
 }
