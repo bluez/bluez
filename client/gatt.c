@@ -45,22 +45,55 @@
 
 #define APP_PATH "/org/bluez/app"
 #define PROFILE_INTERFACE "org.bluez.GattProfile1"
+#define SERVICE_INTERFACE "org.bluez.GattService1"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
+struct service {
+	DBusConnection *conn;
+	char *path;
+	char *uuid;
+	bool primary;
+};
+
+static GList *local_services;
 static GList *services;
 static GList *characteristics;
 static GList *descriptors;
 static GList *managers;
 static GList *uuids;
 
-static void print_service(GDBusProxy *proxy, const char *description)
+static void print_service(struct service *service, const char *description)
 {
+	const char *text;
+
+	text = uuidstr_to_str(service->uuid);
+	if (!text)
+		rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					service->primary ? "Primary" :
+					"Secondary",
+					service->path, service->uuid);
+	else
+		rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n\t%s\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					service->primary ? "Primary" :
+					"Secondary",
+					service->path, service->uuid, text);
+}
+
+static void print_service_proxy(GDBusProxy *proxy, const char *description)
+{
+	struct service service;
 	DBusMessageIter iter;
-	const char *uuid, *text;
+	const char *uuid;
 	dbus_bool_t primary;
 
 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
@@ -73,30 +106,18 @@ static void print_service(GDBusProxy *proxy, const char *description)
 
 	dbus_message_iter_get_basic(&iter, &primary);
 
-	text = uuidstr_to_str(uuid);
-	if (!text)
-		rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n",
-					description ? "[" : "",
-					description ? : "",
-					description ? "] " : "",
-					primary ? "Primary" : "Secondary",
-					g_dbus_proxy_get_path(proxy),
-					uuid);
-	else
-		rl_printf("%s%s%s%s Service\n\t%s\n\t%s\n\t%s\n",
-					description ? "[" : "",
-					description ? : "",
-					description ? "] " : "",
-					primary ? "Primary" : "Secondary",
-					g_dbus_proxy_get_path(proxy),
-					uuid, text);
+	service.path = (char *) g_dbus_proxy_get_path(proxy);
+	service.uuid = (char *) uuid;
+	service.primary = primary;
+
+	print_service(&service, description);
 }
 
 void gatt_add_service(GDBusProxy *proxy)
 {
 	services = g_list_append(services, proxy);
 
-	print_service(proxy, COLORED_NEW);
+	print_service_proxy(proxy, COLORED_NEW);
 }
 
 void gatt_remove_service(GDBusProxy *proxy)
@@ -109,7 +130,7 @@ void gatt_remove_service(GDBusProxy *proxy)
 
 	services = g_list_delete_link(services, l);
 
-	print_service(proxy, COLORED_DEL);
+	print_service_proxy(proxy, COLORED_DEL);
 }
 
 static void print_characteristic(GDBusProxy *proxy, const char *description)
@@ -272,7 +293,7 @@ static void list_attributes(const char *path, GList *source)
 			continue;
 
 		if (source == services) {
-			print_service(proxy, NULL);
+			print_service_proxy(proxy, NULL);
 			list_attributes(proxy_path, characteristics);
 		} else if (source == characteristics) {
 			print_characteristic(proxy, NULL);
@@ -797,4 +818,88 @@ void gatt_unregister_app(DBusConnection *conn, GDBusProxy *proxy)
 		rl_printf("Failed unregister profile\n");
 		return;
 	}
+}
+
+static void service_free(void *data)
+{
+	struct service *service = data;
+
+	g_free(service->path);
+	g_free(service->uuid);
+	g_free(service);
+}
+
+static gboolean service_get_uuid(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct service *service = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &service->uuid);
+
+	return TRUE;
+}
+
+static gboolean service_get_primary(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct service *service = data;
+	dbus_bool_t primary;
+
+	primary = service->primary ? TRUE : FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &primary);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable service_properties[] = {
+	{ "UUID", "s", service_get_uuid },
+	{ "Primary", "b", service_get_primary },
+	{ }
+};
+
+static void service_set_primary(const char *input, void *user_data)
+{
+	struct service *service = user_data;
+
+	if (!strcmp(input, "yes"))
+		service->primary = true;
+	else if (!strcmp(input, "no")) {
+		service->primary = false;
+	} else {
+		rl_printf("Invalid option: %s\n", input);
+		local_services = g_list_remove(local_services, service);
+		print_service(service, COLORED_DEL);
+		g_dbus_unregister_interface(service->conn, service->path,
+						SERVICE_INTERFACE);
+	}
+}
+
+void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
+								wordexp_t *w)
+{
+	struct service *service;
+	bool primary = true;
+
+	service = g_new0(struct service, 1);
+	service->conn = conn;
+	service->uuid = g_strdup(w->we_wordv[0]);
+	service->path = g_strdup_printf("%s/service%p", APP_PATH, service);
+	service->primary = primary;
+
+	if (g_dbus_register_interface(conn, service->path,
+					SERVICE_INTERFACE, NULL, NULL,
+					service_properties, service,
+					service_free) == FALSE) {
+		rl_printf("Failed to register service object\n");
+		service_free(service);
+		return;
+	}
+
+	rl_printf("Service registered at %s\n", service->path);
+
+	local_services = g_list_append(local_services, service);
+
+	rl_prompt_input(service->path, "Primary (yes/no):", service_set_primary,
+			service);
 }

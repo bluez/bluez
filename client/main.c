@@ -1839,6 +1839,29 @@ static void cmd_unregister_app(const char *arg)
 	gatt_unregister_app(dbus_conn, default_ctrl->proxy);
 }
 
+static void cmd_register_service(const char *arg)
+{
+	wordexp_t w;
+
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	if (wordexp(arg, &w, WRDE_NOCMD)) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	if (w.we_wordc == 0) {
+		rl_printf("Missing argument\n");
+		goto done;
+	}
+
+	gatt_register_service(dbus_conn, default_ctrl->proxy, &w);
+
+done:
+	wordfree(&w);
+}
+
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -2141,6 +2164,8 @@ static const struct {
 						"Register profile to connect" },
 	{ "unregister-application", NULL, cmd_unregister_app,
 						"Unregister profile" },
+	{ "register-service", "<UUID>", cmd_register_service,
+					"Register application service."  },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit, "Quit program" },
