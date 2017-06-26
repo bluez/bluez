@@ -1826,11 +1826,6 @@ static void cmd_register_app(const char *arg)
 		return;
 	}
 
-	if (w.we_wordc == 0) {
-		rl_printf("Missing argument\n");
-		return;
-	}
-
 	gatt_register_app(dbus_conn, default_ctrl->proxy, &w);
 
 	wordfree(&w);
@@ -2142,7 +2137,7 @@ static const struct {
 	{ "write",        "<data=[xx xx ...]>", cmd_write,
 						"Write attribute value" },
 	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value" },
-	{ "register-application", "<UUID ...>", cmd_register_app,
+	{ "register-application", "[UUID ...]", cmd_register_app,
 						"Register profile to connect" },
 	{ "unregister-application", NULL, cmd_unregister_app,
 						"Unregister profile" },

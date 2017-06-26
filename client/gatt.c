@@ -726,15 +726,18 @@ void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
 		return;
 	}
 
-	if (g_dbus_register_interface(conn, APP_PATH,
-					PROFILE_INTERFACE, methods,
-					NULL, properties, NULL, NULL) == FALSE) {
-		rl_printf("Failed to register application object\n");
-		return;
-	}
-
 	for (i = 0; i < w->we_wordc; i++)
 		uuids = g_list_append(uuids, g_strdup(w->we_wordv[i]));
+
+	if (uuids) {
+		if (g_dbus_register_interface(conn, APP_PATH,
+						PROFILE_INTERFACE, methods,
+						NULL, properties, NULL,
+						NULL) == FALSE) {
+			rl_printf("Failed to register application object\n");
+			return;
+		}
+	}
 
 	if (g_dbus_proxy_method_call(l->data, "RegisterApplication",
 						register_app_setup,
@@ -759,10 +762,13 @@ static void unregister_app_reply(DBusMessage *message, void *user_data)
 		return;
 	}
 
+	rl_printf("Application unregistered\n");
+
+	if (!uuids)
+		return;
+
 	g_list_free_full(uuids, g_free);
 	uuids = NULL;
-
-	rl_printf("Application unregistered\n");
 
 	g_dbus_unregister_interface(conn, APP_PATH, PROFILE_INTERFACE);
 }
