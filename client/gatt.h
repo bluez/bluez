@@ -50,3 +50,5 @@ void gatt_unregister_service(DBusConnection *conn, GDBusProxy *proxy,
 								wordexp_t *w);
 
 void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w);
+void gatt_unregister_chrc(DBusConnection *conn, GDBusProxy *proxy,
+								wordexp_t *w);

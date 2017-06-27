@@ -1233,3 +1233,44 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
 
 	rl_prompt_input(chrc->path, "Enter value:", chrc_set_value, chrc);
 }
+
+static struct chrc *chrc_find(const char *pattern)
+{
+	GList *l, *lc;
+	struct service *service;
+	struct chrc *chrc;
+
+	for (l = local_services; l; l = g_list_next(l)) {
+		service = l->data;
+
+		for (lc = service->chrcs; lc; lc =  g_list_next(lc)) {
+			chrc = lc->data;
+
+			/* match object path */
+			if (!strcmp(chrc->path, pattern))
+				return chrc;
+
+			/* match UUID */
+			if (!strcmp(chrc->uuid, pattern))
+				return chrc;
+		}
+	}
+
+	return NULL;
+}
+
+void gatt_unregister_chrc(DBusConnection *conn, GDBusProxy *proxy,
+								wordexp_t *w)
+{
+	struct chrc *chrc;
+
+	chrc = chrc_find(w->we_wordv[0]);
+	if (!chrc) {
+		rl_printf("Failed to unregister characteristic object\n");
+		return;
+	}
+
+	chrc->service->chrcs = g_list_remove(chrc->service->chrcs, chrc);
+
+	chrc_unregister(chrc);
+}
