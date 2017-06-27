@@ -31,3 +31,8 @@
 
 void rl_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void rl_hexdump(const unsigned char *buf, size_t len);
+
+typedef void (*rl_prompt_input_func) (const char *input, void *user_data);
+void rl_prompt_input(const char *label, const char *msg,
+				rl_prompt_input_func func, void *user_data);
+int rl_release_prompt(const char *input);

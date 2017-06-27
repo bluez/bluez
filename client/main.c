@@ -2223,6 +2223,9 @@ static void rl_handler(char *input)
 	if (agent_input(dbus_conn, input) == TRUE)
 		goto done;
 
+	if (!rl_release_prompt(input))
+		goto done;
+
 	add_history(input);
 
 	cmd = strtok_r(input, " ", &arg);
