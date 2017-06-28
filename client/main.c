@@ -1931,6 +1931,29 @@ done:
 	wordfree(&w);
 }
 
+static void cmd_register_descriptor(const char *arg)
+{
+	wordexp_t w;
+
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	if (wordexp(arg, &w, WRDE_NOCMD)) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	if (w.we_wordc < 2) {
+		rl_printf("Missing arguments\n");
+		goto done;
+	}
+
+	gatt_register_desc(dbus_conn, default_ctrl->proxy, &w);
+
+done:
+	wordfree(&w);
+}
+
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -2243,6 +2266,9 @@ static const struct {
 	{ "unregister-characteristic", "<UUID/object>",
 				cmd_unregister_characteristic,
 				"Unregister application characteristic" },
+	{ "register-descriptor", "<UUID> <Flags=read,write...>",
+					cmd_register_descriptor,
+					"Register application descriptor" },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit, "Quit program" },
