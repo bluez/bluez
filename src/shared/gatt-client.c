@@ -51,6 +51,12 @@
 #define GATT_SVC_UUID	0x1801
 #define SVC_CHNGD_UUID	0x2a05
 
+struct ready_cb {
+	bt_gatt_client_callback_t callback;
+	bt_gatt_client_destroy_func_t destroy;
+	void *data;
+};
+
 struct bt_gatt_client {
 	struct bt_att *att;
 	int ref_count;
@@ -58,9 +64,7 @@ struct bt_gatt_client {
 	struct bt_gatt_client *parent;
 	struct queue *clones;
 
-	bt_gatt_client_callback_t ready_callback;
-	bt_gatt_client_destroy_func_t ready_destroy;
-	void *ready_data;
+	struct queue *ready_cbs;
 
 	bt_gatt_client_service_changed_callback_t svc_chngd_callback;
 	bt_gatt_client_destroy_func_t svc_chngd_destroy;
@@ -1097,17 +1101,35 @@ done:
 	discovery_op_complete(op, success, att_ecode);
 }
 
+static void ready_destroy(void *data)
+{
+	struct ready_cb *ready = data;
+
+	if (ready->destroy)
+		ready->destroy(ready->data);
+
+	free(ready);
+}
+
 static void notify_client_ready(struct bt_gatt_client *client, bool success,
 							uint8_t att_ecode)
 {
 	const struct queue_entry *entry;
 
-	if (!client->ready_callback || client->ready)
+	if (client->ready)
 		return;
 
 	bt_gatt_client_ref(client);
 	client->ready = success;
-	client->ready_callback(success, att_ecode, client->ready_data);
+
+	for (entry = queue_get_entries(client->ready_cbs); entry;
+							entry = entry->next) {
+		struct ready_cb *ready = entry->data;
+
+		ready->callback(success, att_ecode, ready->data);
+	}
+
+	queue_remove_all(client->ready_cbs, NULL, NULL, ready_destroy);
 
 	/* Notify clones */
 	for (entry = queue_get_entries(client->clones); entry;
@@ -1731,8 +1753,7 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 
 	queue_destroy(client->notify_list, notify_data_cleanup);
 
-	if (client->ready_destroy)
-		client->ready_destroy(client->ready_data);
+	queue_destroy(client->ready_cbs, ready_destroy);
 
 	if (client->debug_destroy)
 		client->debug_destroy(client->debug_data);
@@ -1789,6 +1810,7 @@ static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
 		goto fail;
 
 	client->clones = queue_new();
+	client->ready_cbs = queue_new();
 	client->long_write_queue = queue_new();
 	client->svc_chngd_queue = queue_new();
 	client->notify_list = queue_new();
@@ -1886,22 +1908,30 @@ bool bt_gatt_client_is_ready(struct bt_gatt_client *client)
 	return (client && client->ready);
 }
 
-bool bt_gatt_client_set_ready_handler(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_ready_register(struct bt_gatt_client *client,
 					bt_gatt_client_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy)
 {
+	struct ready_cb *ready;
+
 	if (!client)
-		return false;
+		return 0;
 
-	if (client->ready_destroy)
-		client->ready_destroy(client->ready_data);
+	ready = new0(struct ready_cb, 1);
+	ready->callback = callback;
+	ready->destroy = destroy;
+	ready->data = user_data;
 
-	client->ready_callback = callback;
-	client->ready_destroy = destroy;
-	client->ready_data = user_data;
+	queue_push_tail(client->ready_cbs, ready);
 
-	return true;
+	return PTR_TO_UINT(ready);
+}
+
+bool bt_gatt_client_ready_unregister(struct bt_gatt_client *client,
+						unsigned int id)
+{
+	return queue_remove(client->ready_cbs, UINT_TO_PTR(id));
 }
 
 bool bt_gatt_client_set_service_changed(struct bt_gatt_client *client,

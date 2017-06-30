@@ -57,10 +57,12 @@ typedef void (*bt_gatt_client_service_changed_callback_t)(uint16_t start_handle,
 							void *user_data);
 
 bool bt_gatt_client_is_ready(struct bt_gatt_client *client);
-bool bt_gatt_client_set_ready_handler(struct bt_gatt_client *client,
+unsigned int bt_gatt_client_ready_register(struct bt_gatt_client *client,
 					bt_gatt_client_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy);
+bool bt_gatt_client_ready_unregister(struct bt_gatt_client *client,
+						unsigned int id);
 bool bt_gatt_client_set_service_changed(struct bt_gatt_client *client,
 			bt_gatt_client_service_changed_callback_t callback,
 			void *user_data,

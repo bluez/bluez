@@ -145,8 +145,8 @@ static struct gatt_conn *gatt_conn_new(int fd)
 		return NULL;
 	}
 
-	bt_gatt_client_set_ready_handler(conn->client,
-				client_ready_callback, conn, NULL);
+	bt_gatt_client_ready_register(conn->client, client_ready_callback,
+								conn, NULL);
 	bt_gatt_client_set_service_changed(conn->client,
 				client_service_changed_callback, conn, NULL);
 

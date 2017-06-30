@@ -235,7 +235,7 @@ static struct client *client_create(int fd, uint16_t mtu)
 									NULL);
 	}
 
-	bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, cli, NULL);
+	bt_gatt_client_ready_register(cli->gatt, ready_cb, cli, NULL);
 	bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, cli,
 									NULL);
 

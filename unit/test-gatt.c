@@ -684,8 +684,8 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 		bt_gatt_client_set_debug(context->client, print_debug,
 						"bt_gatt_client:", NULL);
 
-		bt_gatt_client_set_ready_handler(context->client,
-						client_ready_cb, context, NULL);
+		bt_gatt_client_ready_register(context->client, client_ready_cb,
+								context, NULL);
 		break;
 	default:
 		break;

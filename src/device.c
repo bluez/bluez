@@ -226,6 +226,7 @@ struct btd_device {
 	struct gatt_db *db;			/* GATT db cache */
 	struct bt_gatt_client *client;		/* GATT client instance */
 	struct bt_gatt_server *server;		/* GATT server instance */
+	unsigned int gatt_ready_id;
 
 	struct btd_gatt_client *client_dbus;
 
@@ -550,7 +551,7 @@ static void gatt_client_cleanup(struct btd_device *device)
 
 	gatt_cache_cleanup(device);
 	bt_gatt_client_set_service_changed(device->client, NULL, NULL, NULL);
-	bt_gatt_client_set_ready_handler(device->client, NULL, NULL, NULL);
+	bt_gatt_client_ready_unregister(device->client, device->gatt_ready_id);
 	bt_gatt_client_unref(device->client);
 	device->client = NULL;
 }
@@ -4718,10 +4719,11 @@ static void gatt_client_init(struct btd_device *device)
 	 */
 	device_accept_gatt_profiles(device);
 
-	if (!bt_gatt_client_set_ready_handler(device->client,
+	device->gatt_ready_id = bt_gatt_client_ready_register(device->client,
 							gatt_client_ready_cb,
-							device, NULL)) {
-		DBG("Failed to set ready handler");
+							device, NULL);
+	if (!device->gatt_ready_id) {
+		DBG("Failed to register GATT ready callback");
 		gatt_client_cleanup(device);
 		return;
 	}
