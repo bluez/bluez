@@ -551,7 +551,13 @@ static void gatt_client_cleanup(struct btd_device *device)
 
 	gatt_cache_cleanup(device);
 	bt_gatt_client_set_service_changed(device->client, NULL, NULL, NULL);
-	bt_gatt_client_ready_unregister(device->client, device->gatt_ready_id);
+
+	if (device->gatt_ready_id > 0) {
+		bt_gatt_client_ready_unregister(device->client,
+						device->gatt_ready_id);
+		device->gatt_ready_id = 0;
+	}
+
 	bt_gatt_client_unref(device->client);
 	device->client = NULL;
 }
