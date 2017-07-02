@@ -716,6 +716,19 @@ void gatt_acquire_write(GDBusProxy *proxy, const char *arg)
 	write_proxy = proxy;
 }
 
+void gatt_release_write(GDBusProxy *proxy, const char *arg)
+{
+	if (proxy != write_proxy || write_fd < 0) {
+		rl_printf("Write not acquired\n");
+		return;
+	}
+
+	write_proxy = NULL;
+	close(write_fd);
+	write_fd = -1;
+	write_mtu = 0;
+}
+
 static void notify_reply(DBusMessage *message, void *user_data)
 {
 	bool enable = GPOINTER_TO_UINT(user_data);
