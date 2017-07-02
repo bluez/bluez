@@ -1799,6 +1799,16 @@ static void cmd_write(const char *arg)
 	gatt_write_attribute(default_attr, arg);
 }
 
+static void cmd_acquire_write(const char *arg)
+{
+	if (!default_attr) {
+		rl_printf("No attribute selected\n");
+		return;
+	}
+
+	gatt_acquire_write(default_attr, arg);
+}
+
 static void cmd_notify(const char *arg)
 {
 	dbus_bool_t enable;
@@ -2274,6 +2284,8 @@ static const struct {
 	{ "read",         NULL,       cmd_read, "Read attribute value" },
 	{ "write",        "<data=[xx xx ...]>", cmd_write,
 						"Write attribute value" },
+	{ "acquire-write", NULL, cmd_acquire_write,
+					"Acquire Write file descriptor" },
 	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value" },
 	{ "register-application", "[UUID ...]", cmd_register_app,
 						"Register profile to connect" },

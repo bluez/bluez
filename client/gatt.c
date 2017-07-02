@@ -89,6 +89,10 @@ static GList *descriptors;
 static GList *managers;
 static GList *uuids;
 
+static GDBusProxy *write_proxy;
+static int write_fd = -1;
+static uint16_t write_mtu;
+
 static void print_service(struct service *service, const char *description)
 {
 	const char *text;
@@ -236,6 +240,15 @@ void gatt_remove_characteristic(GDBusProxy *proxy)
 	characteristics = g_list_delete_link(characteristics, l);
 
 	print_characteristic(proxy, COLORED_DEL);
+
+	if (write_proxy == proxy) {
+		write_proxy = NULL;
+		write_mtu = 0;
+		if (write_fd > 0) {
+			close(write_fd);
+			write_fd = -1;
+		}
+	}
 }
 
 static void print_desc(struct desc *desc, const char *description)
@@ -619,6 +632,16 @@ static void write_attribute(GDBusProxy *proxy, char *arg)
 	iov.iov_base = value;
 	iov.iov_len = i;
 
+	/* Write using the fd if it has been acquired and fit the MTU */
+	if (proxy == write_proxy && (write_fd > 0 && write_mtu >= i)) {
+		rl_printf("Attempting to write fd %d\n", write_fd);
+		if (writev(write_fd, &iov, 1) < 0) {
+			rl_printf("Failed to write: %s", strerror(errno));
+			return;
+		}
+		return;
+	}
+
 	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup,
 					write_reply, &iov, NULL) == FALSE) {
 		rl_printf("Failed to write\n");
@@ -641,6 +664,56 @@ void gatt_write_attribute(GDBusProxy *proxy, const char *arg)
 
 	rl_printf("Unable to write attribute %s\n",
 						g_dbus_proxy_get_path(proxy));
+}
+
+static void acquire_write_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to acquire write: %s\n", error.name);
+		dbus_error_free(&error);
+		write_proxy = NULL;
+		return;
+	}
+
+	if (write_fd > 0) {
+		close(write_fd);
+		write_fd = -1;
+	}
+
+	write_mtu = 0;
+
+	if ((dbus_message_get_args(message, NULL, DBUS_TYPE_UNIX_FD, &write_fd,
+					DBUS_TYPE_UINT16, &write_mtu,
+					DBUS_TYPE_INVALID) == false)) {
+		rl_printf("Invalid AcquireWrite response\n");
+		return;
+	}
+
+	rl_printf("AcquireWrite success: fd %d MTU %u\n", write_fd, write_mtu);
+}
+
+void gatt_acquire_write(GDBusProxy *proxy, const char *arg)
+{
+	const char *iface;
+
+	iface = g_dbus_proxy_get_interface(proxy);
+	if (strcmp(iface, "org.bluez.GattCharacteristic1")) {
+		rl_printf("Unable to acquire write: %s not a characteristic\n",
+						g_dbus_proxy_get_path(proxy));
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "AcquireWrite", NULL,
+				acquire_write_reply, NULL, NULL) == FALSE) {
+		rl_printf("Failed to AcquireWrite\n");
+		return;
+	}
+
+	write_proxy = proxy;
 }
 
 static void notify_reply(DBusMessage *message, void *user_data)
