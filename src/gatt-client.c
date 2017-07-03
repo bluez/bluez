@@ -846,6 +846,27 @@ characteristic_write_acquired_exists(const GDBusPropertyTable *property,
 	return (chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP);
 }
 
+static gboolean
+characteristic_get_notify_acquired(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct characteristic *chrc = data;
+	dbus_bool_t locked = chrc->notify_io ? TRUE : FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &locked);
+
+	return TRUE;
+}
+
+static gboolean
+characteristic_notify_acquired_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct characteristic *chrc = data;
+
+	return (chrc->props & BT_GATT_CHRC_PROP_NOTIFY);
+}
+
 static void write_characteristic_cb(struct gatt_db_attribute *attr, int err,
 								void *user_data)
 {
@@ -1075,6 +1096,10 @@ static void characteristic_destroy_pipe(struct characteristic *chrc,
 	} else if (chrc->notify_io) {
 		pipe_io_destroy(chrc->notify_io);
 		chrc->notify_io = NULL;
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						chrc->path,
+						GATT_CHARACTERISTIC_IFACE,
+						"NotifyAcquired");
 	}
 }
 
@@ -1136,8 +1161,13 @@ static DBusMessage *characteristic_create_pipe(struct characteristic *chrc,
 						chrc->path,
 						GATT_CHARACTERISTIC_IFACE,
 						"WriteAcquired");
-	} else
+	} else {
 		chrc->notify_io->io = io;
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						chrc->path,
+						GATT_CHARACTERISTIC_IFACE,
+						"NotifyAcquired");
+	}
 
 	DBG("%s: sender %s io %p", dbus_message_get_member(msg),
 					dbus_message_get_sender(msg), io);
@@ -1575,6 +1605,9 @@ static const GDBusPropertyTable characteristic_properties[] = {
 	{ "Flags", "as", characteristic_get_flags, NULL, NULL },
 	{ "WriteAcquired", "b", characteristic_get_write_acquired, NULL,
 				characteristic_write_acquired_exists,
+				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "NotifyAcquired", "b", characteristic_get_notify_acquired, NULL,
+				characteristic_notify_acquired_exists,
 				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
