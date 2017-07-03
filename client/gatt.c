@@ -842,6 +842,16 @@ void gatt_acquire_notify(GDBusProxy *proxy, const char *arg)
 	notify_proxy = proxy;
 }
 
+void gatt_release_notify(GDBusProxy *proxy, const char *arg)
+{
+	if (proxy != notify_proxy || !notify_io) {
+		rl_printf("Write not acquired\n");
+		return;
+	}
+
+	notify_io_destroy();
+}
+
 static void notify_reply(DBusMessage *message, void *user_data)
 {
 	bool enable = GPOINTER_TO_UINT(user_data);
