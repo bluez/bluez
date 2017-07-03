@@ -1819,6 +1819,16 @@ static void cmd_release_write(const char *arg)
 	gatt_release_write(default_attr, arg);
 }
 
+static void cmd_acquire_notify(const char *arg)
+{
+	if (!default_attr) {
+		rl_printf("No attribute selected\n");
+		return;
+	}
+
+	gatt_acquire_notify(default_attr, arg);
+}
+
 static void cmd_notify(const char *arg)
 {
 	dbus_bool_t enable;
@@ -2298,6 +2308,8 @@ static const struct {
 					"Acquire Write file descriptor" },
 	{ "release-write", NULL, cmd_release_write,
 					"Release Write file descriptor" },
+	{ "acquire-notify", NULL, cmd_acquire_notify,
+					"Acquire Notify file descriptor" },
 	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value" },
 	{ "register-application", "[UUID ...]", cmd_register_app,
 						"Register profile to connect" },
