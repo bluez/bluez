@@ -803,8 +803,7 @@ static void write_cb(uint8_t opcode, const void *pdu,
 							write_complete_cb, op))
 		return;
 
-	if (op)
-		async_write_op_destroy(op);
+	async_write_op_destroy(op);
 
 	ecode = BT_ATT_ERROR_UNLIKELY;
 
