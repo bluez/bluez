@@ -225,6 +225,7 @@ struct btd_device {
 	 * attribute cache support can be built.
 	 */
 	struct gatt_db *db;			/* GATT db cache */
+	unsigned int db_id;
 	struct bt_gatt_client *client;		/* GATT client instance */
 	struct bt_gatt_server *server;		/* GATT server instance */
 	unsigned int gatt_ready_id;
@@ -644,7 +645,7 @@ static void device_free(gpointer user_data)
 	g_slist_free_full(device->svc_callbacks, svc_dev_remove);
 
 	/* Reset callbacks since the device is going to be freed */
-	gatt_db_register(device->db, NULL, NULL, NULL, NULL);
+	gatt_db_unregister(device->db, device->db_id);
 
 	attio_cleanup(device);
 
@@ -3666,8 +3667,8 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	device->adapter = adapter;
 	device->temporary = true;
 
-	gatt_db_register(device->db, gatt_service_added, gatt_service_removed,
-								device, NULL);
+	device->db_id = gatt_db_register(device->db, gatt_service_added,
+					gatt_service_removed, device, NULL);
 
 	return btd_device_ref(device);
 }
