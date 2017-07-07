@@ -136,6 +136,7 @@ struct authentication_req {
 struct browse_req {
 	DBusMessage *msg;
 	struct btd_device *device;
+	uint8_t bdaddr_type;
 	GSList *match_uuids;
 	GSList *profiles_added;
 	sdp_list_t *records;
@@ -2191,6 +2192,9 @@ static void browse_request_complete(struct browse_req *req, uint8_t bdaddr_type,
 {
 	struct btd_device *dev = req->device;
 	DBusMessage *reply = NULL;
+
+	if (req->bdaddr_type != bdaddr_type)
+		return;
 
 	if (!req->msg)
 		goto done;
@@ -5000,6 +5004,7 @@ int device_connect_le(struct btd_device *dev)
 }
 
 static struct browse_req *browse_request_new(struct btd_device *device,
+							uint8_t bdaddr_type,
 							DBusMessage *msg)
 {
 	struct browse_req *req;
@@ -5009,6 +5014,7 @@ static struct browse_req *browse_request_new(struct btd_device *device,
 
 	req = g_new0(struct browse_req, 1);
 	req->device = device;
+	req->bdaddr_type = bdaddr_type;
 
 	device->browse = req;
 
@@ -5034,7 +5040,7 @@ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
 
-	req = browse_request_new(device, msg);
+	req = browse_request_new(device, device->bdaddr_type, msg);
 	if (!req)
 		return -EBUSY;
 
@@ -5106,7 +5112,7 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	uuid_t uuid;
 	int err;
 
-	req = browse_request_new(device, msg);
+	req = browse_request_new(device, BDADDR_BREDR, msg);
 	if (!req)
 		return -EBUSY;
 
