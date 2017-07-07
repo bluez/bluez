@@ -5118,6 +5118,7 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 				&device->bdaddr, &uuid, browse_cb, req, NULL,
 				req->sdp_flags);
 	if (err < 0) {
+		device->browse = NULL;
 		browse_request_free(req);
 		return err;
 	}
