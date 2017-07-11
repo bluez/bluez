@@ -4251,6 +4251,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'h':
 			success = true;
+			/* fall through */
 		default:
 			add_adv_usage();
 			goto done;
