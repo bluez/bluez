@@ -485,8 +485,7 @@ static bool can_write_data(struct io *io, void *user_data)
 	case ATT_OP_TYPE_RSP:
 		/* Set in_req to false to indicate that no request is pending */
 		att->in_req = false;
-
-		/* Fall through to the next case */
+		/* fall through */
 	case ATT_OP_TYPE_CMD:
 	case ATT_OP_TYPE_NOT:
 	case ATT_OP_TYPE_CONF:
@@ -901,12 +900,12 @@ static bool can_read_data(struct io *io, void *user_data)
 		}
 
 		att->in_req = true;
-
-		/* Fall through to the next case */
+		/* fall through */
 	case ATT_OP_TYPE_CMD:
 	case ATT_OP_TYPE_NOT:
 	case ATT_OP_TYPE_UNKNOWN:
 	case ATT_OP_TYPE_IND:
+		/* fall through */
 	default:
 		/* For all other opcodes notify the upper layer of the PDU and
 		 * let them act on it.
