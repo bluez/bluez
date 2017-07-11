@@ -120,7 +120,7 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 {
 	DIR *dir;
 	struct dirent *d;
-	char pathname[PATH_MAX], filename[NAME_MAX], prefix[20];
+	char pathname[PATH_MAX], filename[NAME_MAX + 2], prefix[20];
 	unsigned char cmd[256];
 	unsigned char buf[256];
 	uint8_t seqnum = 0;
