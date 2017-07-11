@@ -149,7 +149,7 @@ static void adv_tx_power_callback(const void *data, uint8_t size,
 
 	cmd.data[0] = 0x02;		/* Field length */
 	cmd.data[1] = 0x01;		/* Flags */
-	cmd.data[2] |= 0x04;		/* BR/EDR Not Supported */
+	cmd.data[2] = 0x04;		/* BR/EDR Not Supported */
 
 	cmd.data[3] = 0x1a;		/* Field length */
 	cmd.data[4] = 0xff;		/* Vendor field */

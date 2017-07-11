@@ -149,7 +149,7 @@ static void adv_tx_power_callback(const void *data, uint8_t size,
 
 	cmd.data[0] = 0x02;		/* Field length */
 	cmd.data[1] = 0x01;		/* Flags */
-	cmd.data[2] |= 0x04;		/* BR/EDR Not Supported */
+	cmd.data[2] = 0x04;		/* BR/EDR Not Supported */
 
 	cmd.data[3] = 0x03;		/* Field length */
 	cmd.data[4] = 0x03;		/* 16-bit Service UUID list */
