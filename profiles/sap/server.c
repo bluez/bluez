@@ -674,8 +674,7 @@ int sap_connect_rsp(void *sap_device, uint8_t status)
 		param->len = htons(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
 		put_be16(SAP_BUF_SIZE, &param->val);
 		size += PARAMETER_SIZE(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
-
-		/* fall */
+		/* fall through */
 	default:
 		conn->state = SAP_STATE_DISCONNECTED;
 
@@ -992,7 +991,7 @@ int sap_status_ind(void *sap_device, uint8_t status_change)
 
 		/* Change state to connected after ongoing call ended */
 		sap_set_connected(server);
-		/* fall */
+		/* fall through */
 	case SAP_STATE_CONNECTED:
 	case SAP_STATE_GRACEFUL_DISCONNECT:
 		memset(buf, 0, sizeof(buf));
