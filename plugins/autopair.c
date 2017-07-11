@@ -59,7 +59,7 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 						unsigned int attempt)
 {
 	char addr[18];
-	char pinstr[7];
+	char pinstr[8];
 	uint32_t class;
 
 	ba2str(device_get_address(device), addr);
