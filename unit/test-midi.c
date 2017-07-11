@@ -271,6 +271,7 @@ static void compare_events(const snd_seq_event_t *ev1,
 		g_assert_cmpint(ev1->data.control.param,
 		                ==,
 		                ev2->data.control.param);
+		break;
 	case SND_SEQ_EVENT_PITCHBEND:
 	case SND_SEQ_EVENT_CHANPRESS:
 	case SND_SEQ_EVENT_PGMCHANGE:
