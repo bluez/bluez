@@ -504,6 +504,7 @@ static inline void get_configuration(int level, uint8_t hdr, struct frame *frm)
 	switch (hdr & 0x03) {
 	case 0x00:
 		acp_seid(level, frm);
+		break;
 	case 0x02:
 		capabilities(level, frm);
 		break;
@@ -571,6 +572,7 @@ static inline void security(int level, uint8_t hdr, struct frame *frm)
 	switch (hdr & 0x03) {
 	case 0x00:
 		acp_seid(level, frm);
+		break;
 	case 0x02:
 		hex_dump(level + 1, frm, frm->len);
 		frm->ptr += frm->len;
