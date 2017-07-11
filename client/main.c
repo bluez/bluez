@@ -2512,6 +2512,8 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
 		 * to terminate client by CTRL-D or typing exit treat this as
 		 * exit and fall through.
 		 */
+
+		/* fall through */
 	case SIGTERM:
 		if (!terminated) {
 			rl_replace_line("", 0);
