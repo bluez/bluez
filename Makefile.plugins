@@ -22,9 +22,6 @@ builtin_sources += profiles/sap/main.c profiles/sap/manager.h \
 			profiles/sap/manager.c profiles/sap/server.h \
 			profiles/sap/server.c profiles/sap/sap.h \
 			profiles/sap/sap-dummy.c
-
-noinst_LIBRARIES += profiles/sap/libsap.a
-profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-u8500.c
 endif
 
 if A2DP
