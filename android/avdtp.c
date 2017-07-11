@@ -2647,6 +2647,7 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 		return avdtp_discover_resp(session, buf, size);
 	case AVDTP_GET_ALL_CAPABILITIES:
 		get_all = "ALL_";
+		/* fall through */
 	case AVDTP_GET_CAPABILITIES:
 		DBG("GET_%sCAPABILITIES request succeeded", get_all);
 		if (!avdtp_get_capabilities_resp(session, buf, size))
