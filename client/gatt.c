@@ -813,7 +813,7 @@ static void acquire_notify_reply(DBusMessage *message, void *user_data)
 	if ((dbus_message_get_args(message, NULL, DBUS_TYPE_UNIX_FD, &fd,
 					DBUS_TYPE_UINT16, &notify_mtu,
 					DBUS_TYPE_INVALID) == false)) {
-		rl_printf("Invalid AcquireWrite response\n");
+		rl_printf("Invalid AcquireNotify response\n");
 		return;
 	}
 
