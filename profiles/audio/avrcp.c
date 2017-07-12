@@ -3801,6 +3801,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn, uint8_t code,
 			if (!session->controller ||
 						!session->controller->player)
 				break;
+			/* fall through */
 		case AVRCP_EVENT_VOLUME_CHANGED:
 			avrcp_register_notification(session, event);
 			break;
