@@ -627,11 +627,6 @@ static struct btd_adv_client *client_create(struct btd_adv_manager *manager,
 	if (!client->data)
 		goto fail;
 
-	client->instance = util_get_uid(&manager->instance_bitmap,
-							manager->max_ads);
-	if (!client->instance)
-		goto fail;
-
 	client->manager = manager;
 
 	return client;
@@ -674,6 +669,14 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 	if (!client)
 		return btd_error_failed(msg,
 					"Failed to register advertisement");
+
+	client->instance = util_get_uid(&manager->instance_bitmap,
+							manager->max_ads);
+	if (!client->instance) {
+		client_free(client);
+		return btd_error_not_permitted(msg,
+					"Maximum advertisements reached");
+	}
 
 	DBG("Registered advertisement at path %s", match.path);
 

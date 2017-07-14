@@ -82,19 +82,27 @@ Methods		RegisterAdvertisement(object advertisement, dict options)
 
 			Registers an advertisement object to be sent over the LE
 			Advertising channel.  The service must be exported
-			under interface LEAdvertisement1. InvalidArguments
-			indicates that the object has invalid or conflicting
-			properties.  InvalidLength indicates that the data
+			under interface LEAdvertisement1.
+
+			InvalidArguments error indicates that the object has
+			invalid or conflicting properties.
+
+			InvalidLength error indicates that the data
 			provided generates a data packet which is too long.
+
 			The properties of this object are parser when it is
 			registered, and any changes are ignored.
-			Currently only one advertisement at a time is supported,
-			attempting to register two advertisements will result in
+
+			If the same object is registered twice it will result in
 			an AlreadyExists error.
+
+			If the maximum number of advertisement instances is
+			reached it will result in NotPermitted error.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.AlreadyExists
 					 org.bluez.Error.InvalidLength
+					 org.bluez.Error.NotPermitted
 
 		UnregisterAdvertisement(object advertisement)
 
