@@ -59,7 +59,7 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 						unsigned int attempt)
 {
 	char addr[18];
-	char pinstr[8];
+	char pinstr[7];
 	uint32_t class;
 
 	ba2str(device_get_address(device), addr);
@@ -110,7 +110,7 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 			if (attempt >= 4)
 				return 0;
 
-			snprintf(pinstr, sizeof(pinstr), "%06d",
+			snprintf(pinstr, sizeof(pinstr), "%06u",
 						rand() % 1000000);
 			*display = true;
 			memcpy(pinbuf, pinstr, 6);
