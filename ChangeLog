@@ -1,3 +1,14 @@
+ver 5.46:
+	Fix issue with handling ATT over BR/EDR connections.
+	Fix issue with SDP browsing cleanup after connection.
+	Fix issue with pointer dereference and OPP Put request.
+	Fix issue with identity address updates during pairing.
+	Fix issue with not removing services that had disappeared.
+	Add support for improved discovery of included services.
+	Add support for simplified characteristics discovery.
+	Add support for GATT caching configuration option.
+	Add experimental support for AcquireWrite and AcquireNotify.
+
 ver 5.45:
 	Fix issue with agent support in Bluetooth client tool.
 	Fix issue with handling re-connection policy.
