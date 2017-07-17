@@ -170,7 +170,9 @@ static const struct {
 	{ 0x1824, "Transport Discovery"				},
 	{ 0x1825, "Object Transfer"				},
 	{ 0x1826, "Fitness Machine"				},
-	/* 0x1827 to 0x27ff undefined */
+	{ 0x1827, "Mesh Provisioning"				},
+	{ 0x1828, "Mesh Proxy"					},
+	/* 0x1829 to 0x27ff undefined */
 	{ 0x2800, "Primary Service"				},
 	{ 0x2801, "Secondary Service"				},
 	{ 0x2802, "Include"					},
@@ -397,6 +399,10 @@ static const struct {
 	{ 0x2ad8, "Supported Power Range"			},
 	{ 0x2ad9, "Fitness Machine Control Point"		},
 	{ 0x2ada, "Fitness Machine Status"			},
+	{ 0x2adb, "Mesh Provisioning Data In"			},
+	{ 0x2adc, "Mesh Provisioning Data Out"			},
+	{ 0x2add, "Mesh Proxy Data In"				},
+	{ 0x2ade, "Mesh Proxy Data Out"				},
 	/* vendor defined */
 	{ 0xfeff, "GN Netcom"					},
 	{ 0xfefe, "GN ReSound A/S"				},
