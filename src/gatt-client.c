@@ -1187,7 +1187,7 @@ static void characteristic_ready(bool success, uint8_t ecode, void *user_data)
 
 	chrc->ready_id = 0;
 
-	if (chrc->write_io->msg) {
+	if (chrc->write_io && chrc->write_io->msg) {
 		reply = characteristic_create_pipe(chrc, chrc->write_io->msg);
 
 		g_dbus_send_message(btd_get_dbus_connection(), reply);
@@ -1196,7 +1196,7 @@ static void characteristic_ready(bool success, uint8_t ecode, void *user_data)
 		chrc->write_io->msg = NULL;
 	}
 
-	if (chrc->notify_io->msg) {
+	if (chrc->notify_io && chrc->notify_io->msg) {
 		reply = characteristic_create_pipe(chrc, chrc->notify_io->msg);
 
 		g_dbus_send_message(btd_get_dbus_connection(), reply);
@@ -1426,15 +1426,23 @@ static void register_notify_io_cb(uint16_t att_ecode, void *user_data)
 {
 	struct notify_client *client = user_data;
 	struct characteristic *chrc = client->chrc;
+	struct bt_gatt_client *gatt = chrc->service->client->gatt;
 
-	if (!att_ecode)
+	if (att_ecode) {
+		queue_remove(chrc->notify_clients, client);
+		notify_client_free(client);
 		return;
+	}
 
-	queue_remove(chrc->notify_clients, client);
-	notify_client_free(client);
+	if (!bt_gatt_client_is_ready(gatt)) {
+		if (!chrc->ready_id)
+			chrc->ready_id = bt_gatt_client_ready_register(gatt,
+							characteristic_ready,
+							chrc, NULL);
+		return;
+	}
 
-	pipe_io_destroy(chrc->notify_io);
-	chrc->notify_io = NULL;
+	characteristic_ready(true, 0, chrc);
 }
 
 static void notify_io_destroy(void *data)
@@ -1482,18 +1490,10 @@ static DBusMessage *characteristic_acquire_notify(DBusConnection *conn,
 
 	chrc->notify_io = new0(struct pipe_io, 1);
 	chrc->notify_io->data = client;
+	chrc->notify_io->msg = dbus_message_ref(msg);
 	chrc->notify_io->destroy = notify_io_destroy;
 
-	if (!bt_gatt_client_is_ready(gatt)) {
-		if (!chrc->ready_id)
-			chrc->ready_id = bt_gatt_client_ready_register(gatt,
-							characteristic_ready,
-							chrc, NULL);
-		chrc->notify_io->msg = dbus_message_ref(msg);
-		return NULL;
-	}
-
-	return characteristic_create_pipe(chrc, msg);
+	return NULL;
 }
 
 static DBusMessage *characteristic_start_notify(DBusConnection *conn,
