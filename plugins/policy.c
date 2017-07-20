@@ -778,7 +778,7 @@ static int policy_init(void)
 		reconnect_intervals_len = sizeof(default_intervals) /
 						sizeof(*reconnect_intervals);
 		reconnect_intervals = g_memdup(default_intervals,
-						reconnect_intervals_len);
+						sizeof(default_intervals));
 		goto done;
 	}
 
@@ -806,9 +806,10 @@ static int policy_init(void)
 					&gerr);
 	if (gerr) {
 		g_clear_error(&gerr);
-		reconnect_intervals_len = sizeof(default_intervals);
+		reconnect_intervals_len = sizeof(default_intervals) /
+						sizeof(*reconnect_intervals);
 		reconnect_intervals = g_memdup(default_intervals,
-						reconnect_intervals_len);
+						sizeof(default_intervals));
 	}
 
 	auto_enable = g_key_file_get_boolean(conf, "Policy", "AutoEnable",
