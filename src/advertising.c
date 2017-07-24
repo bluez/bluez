@@ -160,11 +160,16 @@ static void client_remove(void *data)
 	queue_remove(client->manager->clients, client);
 
 	g_idle_add(client_free_idle_cb, client);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				adapter_get_path(client->manager->adapter),
+				LE_ADVERTISING_MGR_IFACE,
+				"AdvertisementInstances");
 }
 
 static void client_disconnect_cb(DBusConnection *conn, void *user_data)
 {
-	DBG("Client disconnected");
+	DBG("Client dis:b connected");
 
 	client_remove(user_data);
 }
@@ -446,6 +451,11 @@ static void add_adv_callback(uint8_t status, uint16_t length,
 									client);
 	DBG("Advertisement registered: %s", client->path);
 
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				adapter_get_path(client->manager->adapter),
+				LE_ADVERTISING_MGR_IFACE,
+				"AdvertisementInstances");
+
 done:
 	add_client_complete(client, status);
 }
@@ -715,6 +725,23 @@ static DBusMessage *unregister_advertisement(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static gboolean get_instances(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_adv_manager *manager = data;
+	uint8_t instances;
+
+	instances = manager->max_ads - queue_length(manager->clients);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &instances);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable properties[] = {
+	{ "AdvertisementInstances", "y", get_instances },
+};
+
 static const GDBusMethodTable methods[] = {
 	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("RegisterAdvertisement",
 					GDBUS_ARGS({ "advertisement", "o" },
@@ -763,8 +790,8 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					adapter_get_path(manager->adapter),
-					LE_ADVERTISING_MGR_IFACE,
-					methods, NULL, NULL, manager, NULL))
+					LE_ADVERTISING_MGR_IFACE, methods,
+					NULL, properties, manager, NULL))
 		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
 }
 
