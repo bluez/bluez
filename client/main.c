@@ -583,10 +583,25 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	}
 }
 
+static struct adapter *find_ctrl(GList *source, const char *path)
+{
+	GList *list;
+
+	for (list = g_list_first(source); list; list = g_list_next(list)) {
+		struct adapter *adapter = list->data;
+
+		if (!strcasecmp(g_dbus_proxy_get_path(adapter->proxy), path))
+			return adapter;
+	}
+
+	return NULL;
+}
+
 static void property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
 	const char *interface;
+	struct adapter *ctrl;
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
@@ -632,6 +647,27 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 			dbus_message_iter_get_basic(&addr_iter, &address);
 			str = g_strdup_printf("[" COLORED_CHG
 						"] Controller %s ", address);
+		} else
+			str = g_strdup("");
+
+		print_iter(str, name, iter);
+		g_free(str);
+	} else if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
+		DBusMessageIter addr_iter;
+		char *str;
+
+		ctrl = find_ctrl(ctrl_list, g_dbus_proxy_get_path(proxy));
+		if (!ctrl)
+			return;
+
+		if (g_dbus_proxy_get_property(ctrl->proxy, "Address",
+						&addr_iter) == TRUE) {
+			const char *address;
+
+			dbus_message_iter_get_basic(&addr_iter, &address);
+			str = g_strdup_printf("[" COLORED_CHG
+						"] Controller %s ",
+						address);
 		} else
 			str = g_strdup("");
 
