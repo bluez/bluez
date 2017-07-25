@@ -1449,8 +1449,8 @@ static void notify_io_destroy(void *data)
 {
 	struct notify_client *client = data;
 
-	queue_remove(client->chrc->notify_clients, client);
-	notify_client_unref(client);
+	if (queue_remove(client->chrc->notify_clients, client))
+		notify_client_unref(client);
 }
 
 static DBusMessage *characteristic_acquire_notify(DBusConnection *conn,
