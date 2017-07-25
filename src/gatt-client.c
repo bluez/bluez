@@ -65,6 +65,7 @@ struct btd_gatt_client {
 
 	struct queue *services;
 	struct queue *all_notify_clients;
+	struct queue *ios;
 };
 
 struct service {
@@ -1169,6 +1170,8 @@ static DBusMessage *characteristic_create_pipe(struct characteristic *chrc,
 						"NotifyAcquired");
 	}
 
+	queue_push_tail(chrc->service->client->ios, io);
+
 	DBG("%s: sender %s io %p", dbus_message_get_member(msg),
 					dbus_message_get_sender(msg), io);
 
@@ -2063,6 +2066,7 @@ struct btd_gatt_client *btd_gatt_client_new(struct btd_device *device)
 	client = new0(struct btd_gatt_client, 1);
 	client->services = queue_new();
 	client->all_notify_clients = queue_new();
+	client->ios = queue_new();
 	client->device = device;
 	ba2str(device_get_address(device), client->devaddr);
 
@@ -2078,6 +2082,7 @@ void btd_gatt_client_destroy(struct btd_gatt_client *client)
 
 	queue_destroy(client->services, unregister_service);
 	queue_destroy(client->all_notify_clients, NULL);
+	queue_destroy(client->ios, NULL);
 	bt_gatt_client_unref(client->gatt);
 	gatt_db_unref(client->db);
 	free(client);
@@ -2198,6 +2203,9 @@ void btd_gatt_client_disconnected(struct btd_gatt_client *client)
 		return;
 
 	DBG("Device disconnected. Cleaning up.");
+
+	queue_remove_all(client->ios, NULL, NULL,
+				(queue_destroy_func_t) io_shutdown);
 
 	/*
 	 * TODO: Once GATT over BR/EDR is properly supported, we should pass the
