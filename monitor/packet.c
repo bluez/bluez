@@ -3551,7 +3551,7 @@ static void print_mesh_beacon(const uint8_t *data, uint8_t len)
 			break;
 		}
 
-		print_field("  URI Hash: 0x%4.4x", get_be32(data + 19));
+		print_field("  URI Hash: 0x%8.8x", get_be32(data + 19));
 		packet_hexdump(data + 23, len - 23);
 		break;
 	case 0x01:
