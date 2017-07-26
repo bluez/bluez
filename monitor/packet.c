@@ -3514,7 +3514,7 @@ static const struct {
 	{ 12, "Inside box"						},
 	{ 13, "On piece of paper"					},
 	{ 14, "Inside manual"						},
-	{ 14, "On device"						},
+	{ 15, "On device"						},
 	{ }
 };
 
