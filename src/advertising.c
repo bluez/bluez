@@ -169,7 +169,7 @@ static void client_remove(void *data)
 
 static void client_disconnect_cb(DBusConnection *conn, void *user_data)
 {
-	DBG("Client dis:b connected");
+	DBG("Client disconnected");
 
 	client_remove(user_data);
 }
