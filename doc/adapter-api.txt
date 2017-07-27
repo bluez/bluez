@@ -58,6 +58,7 @@ Methods		void StartDiscovery()
 			int16	      RSSI	: RSSI threshold value
 			uint16        Pathloss	: Pathloss threshold value
 			string        Transport	: type of scan to run
+			bool          ResetData : Reset advertisement data
 
 			When a remote device is found that advertises any UUID
 			from UUIDs, it will be reported if:
@@ -89,6 +90,10 @@ Methods		void StartDiscovery()
 			value. If one or more discovery filters have been set,
 			the RSSI delta-threshold, that is imposed by
 			StartDiscovery by default, will not be applied.
+
+			If ResetData is enabled PropertiesChanged signals will
+			be generated for either ManufacturerData and ServiceData
+			everytime they are discovered.
 
 			When multiple clients call SetDiscoveryFilter, their
 			filters are internally merged, and notifications about

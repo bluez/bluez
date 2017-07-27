@@ -1611,8 +1611,12 @@ static void add_manufacturer_data(void *data, void *user_data)
 					DEVICE_INTERFACE, "ManufacturerData");
 }
 
-void device_set_manufacturer_data(struct btd_device *dev, GSList *list)
+void device_set_manufacturer_data(struct btd_device *dev, GSList *list,
+								bool reset)
 {
+	if (reset)
+		bt_ad_clear_manufacturer_data(dev->ad);
+
 	g_slist_foreach(list, add_manufacturer_data, dev);
 }
 
@@ -1632,8 +1636,12 @@ static void add_service_data(void *data, void *user_data)
 					DEVICE_INTERFACE, "ServiceData");
 }
 
-void device_set_service_data(struct btd_device *dev, GSList *list)
+void device_set_service_data(struct btd_device *dev, GSList *list,
+							bool reset)
 {
+	if (reset)
+		bt_ad_clear_service_data(dev->ad);
+
 	g_slist_foreach(list, add_service_data, dev);
 }
 

@@ -155,6 +155,7 @@ struct discovery_filter {
 	uint16_t pathloss;
 	int16_t rssi;
 	GSList *uuids;
+	bool reset;
 };
 
 struct watch_client {
@@ -2213,6 +2214,16 @@ static bool parse_transport(DBusMessageIter *value, uint8_t *transport)
 	return true;
 }
 
+static bool parse_reset_data(DBusMessageIter *value, bool *duplicates)
+{
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
+		return false;
+
+	dbus_message_iter_get_basic(value, duplicates);
+
+	return true;
+}
+
 static bool parse_discovery_filter_entry(char *key, DBusMessageIter *value,
 						struct discovery_filter *filter)
 {
@@ -2227,6 +2238,9 @@ static bool parse_discovery_filter_entry(char *key, DBusMessageIter *value,
 
 	if (!strcmp("Transport", key))
 		return parse_transport(value, &filter->type);
+
+	if (!strcmp("ResetData", key))
+		return parse_reset_data(value, &filter->reset);
 
 	DBG("Unknown key parameter: %s!\n", key);
 	return false;
@@ -2253,6 +2267,7 @@ static bool parse_discovery_filter_dict(struct btd_adapter *adapter,
 	(*filter)->pathloss = DISTANCE_VAL_INVALID;
 	(*filter)->rssi = DISTANCE_VAL_INVALID;
 	(*filter)->type = get_scan_type(adapter);
+	(*filter)->reset = false;
 
 	dbus_message_iter_init(msg, &iter);
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY ||
@@ -2297,8 +2312,9 @@ static bool parse_discovery_filter_dict(struct btd_adapter *adapter,
 	    (*filter)->rssi != DISTANCE_VAL_INVALID)
 		goto invalid_args;
 
-	DBG("filtered discovery params: transport: %d rssi: %d pathloss: %d",
-	    (*filter)->type, (*filter)->rssi, (*filter)->pathloss);
+	DBG("filtered discovery params: transport: %d rssi: %d pathloss: %d "
+		" reset data: %s ", (*filter)->type, (*filter)->rssi,
+		(*filter)->pathloss, (*filter)->reset ? "true" : "false");
 
 	return true;
 
@@ -5568,6 +5584,17 @@ static bool is_filter_match(GSList *discovery_filter, struct eir_data *eir_data,
 	return got_match;
 }
 
+static void filter_reset_data(void *data, void *user_data)
+{
+	struct watch_client *client = data;
+	bool *reset = user_data;
+
+	if (*reset || !client->discovery_filter)
+		return;
+
+	*reset = client->discovery_filter->reset;
+}
+
 static void update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
@@ -5579,6 +5606,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	struct eir_data eir_data;
 	bool name_known, discoverable;
 	char addr[18];
+	bool reset = false;
 
 	memset(&eir_data, 0, sizeof(eir_data));
 	eir_parse(&eir_data, data, data_len);
@@ -5678,13 +5706,17 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	device_add_eir_uuids(dev, eir_data.services);
 
+	if (adapter->discovery_list)
+		g_slist_foreach(adapter->discovery_list, filter_reset_data,
+								&reset);
+
 	if (eir_data.msd_list) {
-		device_set_manufacturer_data(dev, eir_data.msd_list);
+		device_set_manufacturer_data(dev, eir_data.msd_list, reset);
 		adapter_msd_notify(adapter, dev, eir_data.msd_list);
 	}
 
 	if (eir_data.sd_list)
-		device_set_service_data(dev, eir_data.sd_list);
+		device_set_service_data(dev, eir_data.sd_list, reset);
 
 	if (bdaddr_type != BDADDR_BREDR)
 		device_set_flags(dev, eir_data.flags);
