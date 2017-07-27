@@ -106,6 +106,17 @@ static const char * const gatt_options[] = {
 	NULL
 };
 
+static const struct group_table {
+	const char *name;
+	const char * const *options;
+} valid_groups[] = {
+	{ "General",	supported_options },
+	{ "Policy",	policy_options },
+	{ "GATT",	gatt_options },
+	{ }
+};
+
+
 GKeyFile *btd_get_main_conf(void)
 {
 	return main_conf;
@@ -207,9 +218,9 @@ static void check_options(GKeyFile *config, const char *group,
 
 static void check_config(GKeyFile *config)
 {
-	const char *valid_groups[] = { "General", "Policy", "GATT", NULL };
 	char **keys;
 	int i;
+	const struct group_table *group;
 
 	if (!config)
 		return;
@@ -217,11 +228,10 @@ static void check_config(GKeyFile *config)
 	keys = g_key_file_get_groups(config, NULL);
 
 	for (i = 0; keys != NULL && keys[i] != NULL; i++) {
-		const char **group;
 		bool match = false;
 
-		for (group = valid_groups; *group; group++) {
-			if (g_str_equal(keys[i], *group)) {
+		for (group = valid_groups; group && group->name ; group++) {
+			if (g_str_equal(keys[i], group->name)) {
 				match = true;
 				break;
 			}
@@ -233,9 +243,8 @@ static void check_config(GKeyFile *config)
 
 	g_strfreev(keys);
 
-	check_options(config, "General", supported_options);
-	check_options(config, "Policy", policy_options);
-	check_options(config, "GATT", gatt_options);
+	for (group = valid_groups; group && group->name; group++)
+		check_options(config, group->name, group->options);
 }
 
 static int get_mode(const char *str)
