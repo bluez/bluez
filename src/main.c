@@ -90,6 +90,7 @@ static const char * const supported_options[] = {
 	"ControllerMode",
 	"MultiProfile",
 	"Privacy",
+	NULL
 };
 
 GKeyFile *btd_get_main_conf(void)
@@ -163,6 +164,34 @@ static bt_gatt_cache_t parse_gatt_cache(const char *cache)
 	}
 }
 
+static void check_options(GKeyFile *config, const char *group,
+						const char * const *options)
+{
+	char **keys;
+	int i;
+
+	keys = g_key_file_get_keys(config, group, NULL, NULL);
+
+	for (i = 0; keys != NULL && keys[i] != NULL; i++) {
+		bool found;
+		unsigned int j;
+
+		found = false;
+		for (j = 0; options != NULL && options[j] != NULL; j++) {
+			if (g_str_equal(keys[i], options[j])) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+			warn("Unknown key %s for group %s in main.conf",
+							keys[i], group);
+	}
+
+	g_strfreev(keys);
+}
+
 static void check_config(GKeyFile *config)
 {
 	const char *valid_groups[] = { "General", "Policy", "GATT", NULL };
@@ -191,26 +220,7 @@ static void check_config(GKeyFile *config)
 
 	g_strfreev(keys);
 
-	keys = g_key_file_get_keys(config, "General", NULL, NULL);
-
-	for (i = 0; keys != NULL && keys[i] != NULL; i++) {
-		bool found;
-		unsigned int j;
-
-		found = false;
-		for (j = 0; j < G_N_ELEMENTS(supported_options); j++) {
-			if (g_str_equal(keys[i], supported_options[j])) {
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-			warn("Unknown key %s for group %s in main.conf",
-							keys[i], "General");
-	}
-
-	g_strfreev(keys);
+	check_options(config, "General", supported_options);
 }
 
 static int get_mode(const char *str)
