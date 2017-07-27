@@ -206,7 +206,8 @@ static void check_config(GKeyFile *config)
 		}
 
 		if (!found)
-			warn("Unknown key %s in main.conf", keys[i]);
+			warn("Unknown key %s for group %s in main.conf",
+							keys[i], "General");
 	}
 
 	g_strfreev(keys);
