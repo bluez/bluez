@@ -80,7 +80,6 @@ static const char * const supported_options[] = {
 	"Name",
 	"Class",
 	"DiscoverableTimeout",
-	"AlwaysPairable",
 	"PairableTimeout",
 	"AutoConnectTimeout",
 	"DeviceID",
@@ -89,6 +88,7 @@ static const char * const supported_options[] = {
 	"DebugKeys",
 	"ControllerMode",
 	"MultiProfile",
+	"FastConnectable",
 	"Privacy",
 	NULL
 };
