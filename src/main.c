@@ -93,6 +93,14 @@ static const char * const supported_options[] = {
 	NULL
 };
 
+static const char * const policy_options[] = {
+	"ReconnectUUIDs",
+	"ReconnectAttempts",
+	"ReconnectIntervals",
+	"AutoEnable",
+	NULL
+};
+
 GKeyFile *btd_get_main_conf(void)
 {
 	return main_conf;
@@ -221,6 +229,7 @@ static void check_config(GKeyFile *config)
 	g_strfreev(keys);
 
 	check_options(config, "General", supported_options);
+	check_options(config, "Policy", policy_options);
 }
 
 static int get_mode(const char *str)
