@@ -1189,6 +1189,7 @@ struct set_discovery_filter_args {
 	dbus_int16_t pathloss;
 	char **uuids;
 	size_t uuids_len;
+	dbus_bool_t reset;
 };
 
 static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
@@ -1216,6 +1217,10 @@ static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 		dict_append_entry(&dict, "Transport", DBUS_TYPE_STRING,
 						&args->transport);
 
+	if (args->reset)
+		dict_append_entry(&dict, "ResetData", DBUS_TYPE_BOOLEAN,
+						&args->reset);
+
 	dbus_message_iter_close_container(iter, &dict);
 }
 
@@ -1239,6 +1244,7 @@ static gint filtered_scan_pathloss = DISTANCE_VAL_INVALID;
 static char **filtered_scan_uuids;
 static size_t filtered_scan_uuids_len;
 static char *filtered_scan_transport;
+static bool filtered_scan_reset_data;
 
 static void cmd_set_scan_filter_commit(void)
 {
@@ -1250,6 +1256,7 @@ static void cmd_set_scan_filter_commit(void)
 	args.transport = filtered_scan_transport;
 	args.uuids = filtered_scan_uuids;
 	args.uuids_len = filtered_scan_uuids_len;
+	args.reset = filtered_scan_reset_data;
 
 	if (check_default_ctrl() == FALSE)
 		return;
@@ -1315,6 +1322,22 @@ static void cmd_set_scan_filter_transport(const char *arg)
 		filtered_scan_transport = NULL;
 	else
 		filtered_scan_transport = g_strdup(arg);
+
+	cmd_set_scan_filter_commit();
+}
+
+static void cmd_set_scan_filter_reset_data(const char *arg)
+{
+	if (!arg || !strlen(arg))
+		filtered_scan_reset_data = false;
+	else if (!strcmp(arg, "on"))
+		filtered_scan_reset_data = true;
+	else if (!strcmp(arg, "off"))
+		filtered_scan_reset_data = false;
+	else {
+		rl_printf("Invalid option: %s\n", arg);
+		return;
+	}
 
 	cmd_set_scan_filter_commit();
 }
@@ -2319,6 +2342,8 @@ static const struct {
 				"Set scan filter pathloss, and clears rssi" },
 	{ "set-scan-filter-transport", "[transport]",
 		cmd_set_scan_filter_transport, "Set scan filter transport" },
+	{ "set-scan-filter-reset-data", "[on/off]",
+		cmd_set_scan_filter_reset_data, "Set scan filter reset data" },
 	{ "set-scan-filter-clear", "", cmd_set_scan_filter_clear,
 						"Clears discovery filter." },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices" },
