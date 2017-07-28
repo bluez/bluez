@@ -114,6 +114,13 @@ Methods		void StartDiscovery()
 					 org.bluez.Error.NotSupported
 					 org.bluez.Error.Failed
 
+		array{string} GetDiscoveryFilters()
+
+			Return available filters that can be given to
+			SetDiscoveryFilter.
+
+			Possible errors: None
+
 Properties	string Address [readonly]
 
 			The Bluetooth device address.
