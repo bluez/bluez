@@ -1563,10 +1563,17 @@ done:
 
 	l = find_service_with_state(dev->services, BTD_SERVICE_STATE_CONNECTED);
 
-	if (err && l == NULL)
+	if (err && l == NULL) {
+		/* Fallback to LE bearer if supported */
+		if (err == -EHOSTDOWN && dev->le && !dev->le_state.connected) {
+			err = device_connect_le(dev);
+			if (err == 0)
+				return;
+		}
+
 		g_dbus_send_message(dbus_conn,
 				btd_error_failed(dev->connect, strerror(-err)));
-	else {
+	} else {
 		/* Start passive SDP discovery to update known services */
 		if (dev->bredr && !dev->svc_refreshed)
 			device_browse_sdp(dev, NULL);
@@ -2226,6 +2233,13 @@ static void browse_request_complete(struct browse_req *req, uint8_t bdaddr_type,
 	}
 
 	if (err) {
+		/* Fallback to LE bearer if supported */
+		if (err == -EHOSTDOWN && bdaddr_type == BDADDR_BREDR &&
+				dev->le && !dev->le_state.connected) {
+			err = device_connect_le(dev);
+			if (err == 0)
+				goto done;
+		}
 		reply = btd_error_failed(req->msg, strerror(-err));
 		goto done;
 	}
