@@ -1092,10 +1092,15 @@ static void find_by_type(void *data, void *user_data)
 			continue;
 
 		/* TODO: fix for read-callback based attributes */
-		if (search_data->value && memcmp(attribute->value,
-							search_data->value,
-							search_data->value_len))
-			continue;
+		if (search_data->value) {
+			if (search_data->value_len != attribute->value_len)
+				continue;
+
+			if (memcmp(attribute->value, search_data->value,
+					search_data->value_len)) {
+				continue;
+			}
+		}
 
 		search_data->num_of_res++;
 		search_data->func(attribute, search_data->user_data);
