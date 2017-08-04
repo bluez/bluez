@@ -179,8 +179,7 @@ static void client_remove(void *data)
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter_get_path(client->manager->adapter),
-				LE_ADVERTISING_MGR_IFACE,
-				"AdvertisementInstances");
+				LE_ADVERTISING_MGR_IFACE, "SupportedInstances");
 }
 
 static void client_disconnect_cb(DBusConnection *conn, void *user_data)
@@ -469,8 +468,7 @@ static void add_adv_callback(uint8_t status, uint16_t length,
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter_get_path(client->manager->adapter),
-				LE_ADVERTISING_MGR_IFACE,
-				"AdvertisementInstances");
+				LE_ADVERTISING_MGR_IFACE, "SupportedInstances");
 
 done:
 	add_client_complete(client, status);
@@ -755,7 +753,8 @@ static gboolean get_instances(const GDBusPropertyTable *property,
 }
 
 static const GDBusPropertyTable properties[] = {
-	{ "AdvertisementInstances", "y", get_instances },
+	{ "SupportedInstances", "y", get_instances, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 };
 
 static const GDBusMethodTable methods[] = {
