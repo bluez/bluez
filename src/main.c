@@ -69,6 +69,7 @@
 
 struct main_opts main_opts;
 static GKeyFile *main_conf;
+static char *main_conf_file_path;
 
 static enum {
 	MPS_OFF,
@@ -209,8 +210,8 @@ static void check_options(GKeyFile *config, const char *group,
 		}
 
 		if (!found)
-			warn("Unknown key %s for group %s in main.conf",
-							keys[i], group);
+			warn("Unknown key %s for group %s in %s",
+					keys[i], group, main_conf_file_path);
 	}
 
 	g_strfreev(keys);
@@ -238,7 +239,8 @@ static void check_config(GKeyFile *config)
 		}
 
 		if (!match)
-			warn("Unknown group %s in main.conf", keys[i]);
+			warn("Unknown group %s in %s", keys[i],
+						main_conf_file_path);
 	}
 
 	g_strfreev(keys);
@@ -273,7 +275,7 @@ static void parse_config(GKeyFile *config)
 
 	check_config(config);
 
-	DBG("parsing main.conf");
+	DBG("parsing %s", main_conf_file_path);
 
 	val = g_key_file_get_integer(config, "General",
 						"DiscoverableTimeout", &err);
@@ -550,6 +552,7 @@ static guint setup_signalfd(void)
 static char *option_debug = NULL;
 static char *option_plugin = NULL;
 static char *option_noplugin = NULL;
+static char *option_configfile = NULL;
 static gboolean option_compat = FALSE;
 static gboolean option_detach = TRUE;
 static gboolean option_version = FALSE;
@@ -565,6 +568,9 @@ static void free_options(void)
 
 	g_free(option_noplugin);
 	option_noplugin = NULL;
+
+	g_free(option_configfile);
+	option_configfile = NULL;
 }
 
 static void disconnect_dbus(void)
@@ -637,6 +643,8 @@ static GOptionEntry options[] = {
 				"Specify plugins to load", "NAME,..," },
 	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
 				"Specify plugins not to load", "NAME,..." },
+	{ "configfile", 'f', 0, G_OPTION_ARG_STRING, &option_configfile,
+			"Specify an explicit path to the config file", "FILE"},
 	{ "compat", 'C', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Provide deprecated command line interfaces" },
 	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &option_experimental,
@@ -696,7 +704,12 @@ int main(int argc, char *argv[])
 
 	sd_notify(0, "STATUS=Starting up");
 
-	main_conf = load_config(CONFIGDIR "/main.conf");
+	if (option_configfile)
+		main_conf_file_path = option_configfile;
+	else
+		main_conf_file_path = CONFIGDIR "/main.conf";
+
+	main_conf = load_config(main_conf_file_path);
 
 	parse_config(main_conf);
 

@@ -27,6 +27,10 @@ Print bluetoothd options and exit.
 Enable logging in foreground. Directs log output to the controlling terminal \
 in addition to syslog.
 .TP
+.B -f, --configfile
+Specifies an explicit config file path instead of relying on the default path \
+(@CONFIGDIR@/main.conf) for the config file.
+.TP
 .B -d, --debug=<file1>:<file2>:...
 Sets how much information bluetoothd sends to the log destination (usually \
 syslog's "daemon" facility). If the file options are omitted, then debugging \
