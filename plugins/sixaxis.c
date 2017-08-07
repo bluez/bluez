@@ -56,7 +56,7 @@ static const struct {
 	uint16_t version;
 } devices[] = {
 	{
-		.name = "PLAYSTATION(R)3 Controller",
+		.name = "Sony PLAYSTATION(R)3 Controller",
 		.source = 0x0002,
 		.vid = 0x054c,
 		.pid = 0x0268,
