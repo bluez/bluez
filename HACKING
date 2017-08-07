@@ -86,12 +86,12 @@ automatically includes this option.
     # sudo cp ./src/bluetooth.conf /etc/dbus-1/system.d/
 
   Run daemon in foreground with debugging
-    # sudo ./src/bluetoothd -n -d
+    # sudo ./src/bluetoothd -n -d -f ./src/main.conf
 
   Run daemon with valgrind
    # sudo valgrind --trace-children=yes --track-origins=yes --track-fds=yes \
    --show-possibly-lost=no --leak-check=full --suppressions=./tools/valgrind.supp \
-   ./src/bluetoothd -n -d
+   ./src/bluetoothd -n -d -f ./src/main.conf
 
 For production installations or distribution packaging it is important that
 the "--enable-maintainer-mode" option is NOT used.
