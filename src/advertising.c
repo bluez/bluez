@@ -144,6 +144,22 @@ static void client_destroy(void *data)
 	client_free(data);
 }
 
+static void remove_advertising(struct btd_adv_manager *manager,
+						uint8_t instance)
+{
+	struct mgmt_cp_remove_advertising cp;
+
+	if (instance)
+		DBG("instance %u", instance);
+	else
+		DBG("all instances");
+
+	cp.instance = instance;
+
+	mgmt_send(manager->mgmt, MGMT_OP_REMOVE_ADVERTISING,
+			manager->mgmt_index, sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
 static void client_remove(void *data)
 {
 	struct btd_adv_client *client = data;
@@ -791,8 +807,14 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					adapter_get_path(manager->adapter),
 					LE_ADVERTISING_MGR_IFACE, methods,
-					NULL, properties, manager, NULL))
+					NULL, properties, manager, NULL)) {
 		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
+		return;
+	}
+
+	/* Reset existing instances */
+	if (feat->num_instances)
+		remove_advertising(manager, 0);
 }
 
 static struct btd_adv_manager *manager_create(struct btd_adapter *adapter)
