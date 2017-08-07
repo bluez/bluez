@@ -61,6 +61,8 @@
  */
 #define AVC_PRESS_TIMEOUT	2
 
+#define CONTROL_TIMEOUT		AVC_PRESS_TIMEOUT
+
 #define QUIRK_NO_RELEASE 1 << 0
 
 /* Message types */
@@ -754,10 +756,18 @@ static int process_control(void *data)
 {
 	struct avctp_control_req *req = data;
 	struct avctp_pending_req *p = req->p;
+	int ret;
 
-	return avctp_send(p->chan, p->transaction, AVCTP_COMMAND, req->code,
-					req->subunit, req->op,
-					req->operands, req->operand_count);
+	ret = avctp_send(p->chan, p->transaction, AVCTP_COMMAND, req->code,
+			req->subunit, req->op, req->operands,
+			req->operand_count);
+	if (ret < 0)
+		return ret;
+
+	p->timeout = g_timeout_add_seconds(CONTROL_TIMEOUT, req_timeout,
+								p->chan);
+
+	return 0;
 }
 
 static int process_browsing(void *data)
@@ -791,7 +801,6 @@ static gboolean process_queue(void *user_data)
 		return FALSE;
 
 	chan->p = p;
-	p->timeout = g_timeout_add_seconds(2, req_timeout, chan);
 
 	return FALSE;
 
