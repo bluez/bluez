@@ -7831,6 +7831,30 @@ static void le_write_rf_path_comp_cmd(const void *data, uint8_t size)
 							cmd->rf_rx_path_comp);
 }
 
+static void le_set_priv_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_priv_mode *cmd = data;
+	const char *str;
+
+	print_addr_type("Peer Identity address type", cmd->peer_id_addr_type);
+	print_addr("Peer Identity address", cmd->peer_id_addr,
+							cmd->peer_id_addr_type);
+
+	switch (cmd->priv_mode) {
+	case 0x00:
+		str = "Use Network Privacy";
+		break;
+	case 0x01:
+		str = "Use Device Privacy";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Privacy Mode: %s (0x%2.2x)", str, cmd->priv_mode);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8615,7 +8639,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x204d, 313, "LE Write RF Path Compensation",
 				le_write_rf_path_comp_cmd, 4, true,
 				status_rsp, 1, true },
-	{ 0x204e, 314, "LE Set Privacy Mode" },
+	{ 0x204e, 314, "LE Set Privacy Mode",
+				le_set_priv_mode_cmd, 8, true,
+				status_rsp, 1, true },
 	{ }
 };
 

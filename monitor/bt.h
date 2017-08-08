@@ -2376,6 +2376,13 @@ struct bt_hci_cmd_le_write_rf_path_comp {
 	uint16_t rf_rx_path_comp;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_SET_PRIV_MODE		0x204e
+struct bt_hci_cmd_le_set_priv_mode {
+	uint8_t  peer_id_addr_type;
+	uint8_t  peer_id_addr[6];
+	uint8_t  priv_mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
