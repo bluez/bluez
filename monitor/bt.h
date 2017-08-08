@@ -2161,6 +2161,21 @@ struct bt_hci_cmd_le_set_phy {
 	uint16_t phy_opts;
 } __attribute__((packed));
 
+#define BT_HCI_CMD_LE_ENHANCED_RECEIVER_TEST			0x2033
+struct bt_hci_cmd_le_enhanced_receiver_test {
+	uint8_t rx_channel;
+	uint8_t phy;
+	uint8_t modulation_index;
+} __attribute__((packed));
+
+#define BT_HCI_CMD_LE_ENHANCED_TRANSMITTER_TEST			0x2034
+struct bt_hci_cmd_le_enhanced_transmitter_test {
+	uint8_t tx_channel;
+	uint8_t data_len;
+	uint8_t payload;
+	uint8_t phy;
+} __attribute__((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;

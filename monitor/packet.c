@@ -7086,6 +7086,62 @@ static void le_set_phy_cmd(const void *data, uint8_t size)
 	print_field("PHY options preference: %s (0x%4.4x)", str, cmd->phy_opts);
 }
 
+static void le_enhanced_receiver_test_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_enhanced_receiver_test *cmd = data;
+	const char *str;
+
+	print_field("RX channel frequency: %d MHz (0x%2.2x)",
+				(cmd->rx_channel * 2) + 2402, cmd->rx_channel);
+	print_le_phy("PHY", cmd->phy);
+
+	switch (cmd->modulation_index) {
+	case 0x00:
+		str = "Standard";
+		break;
+	case 0x01:
+		str = "Stable";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Modulation index: %s (0x%2.2x)", str,
+							cmd->modulation_index);
+}
+
+static void le_enhanced_transmitter_test_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_enhanced_transmitter_test *cmd = data;
+	const char *str;
+
+	print_field("TX channel frequency: %d MHz (0x%2.2x)",
+				(cmd->tx_channel * 2) + 2402, cmd->tx_channel);
+	print_field("Test data length: %d bytes", cmd->data_len);
+	print_field("Packet payload: 0x%2.2x", cmd->payload);
+
+	switch (cmd->phy) {
+	case 0x01:
+		str = "LE 1M";
+		break;
+	case 0x02:
+		str = "LE 2M";
+		break;
+	case 0x03:
+		str = "LE Coded with S=8";
+		break;
+	case 0x04:
+		str = "LE Coded with S=2";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("PHY: %s (0x%2.2x)", str, cmd->phy);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -7789,8 +7845,12 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x2032, 286, "LE Set PHY",
 				le_set_phy_cmd, 7, true},
-	{ 0x2033, 287, "LE Enhanced Receiver Test" },
-	{ 0x2034, 288, "LE Enhanced Transmitter Test" },
+	{ 0x2033, 287, "LE Enhanced Receiver Test",
+				le_enhanced_receiver_test_cmd, 3, true,
+				status_rsp, 1, true },
+	{ 0x2034, 288, "LE Enhanced Transmitter Test",
+				le_enhanced_transmitter_test_cmd, 4, true,
+				status_rsp, 1, true },
 	{ 0x2035, 289, "LE Set Advertising Set Random Address" },
 	{ 0x2036, 290, "LE Set Extended Advertising Parameters" },
 	{ 0x2037, 291, "LE Set Extended Advertising Data" },
