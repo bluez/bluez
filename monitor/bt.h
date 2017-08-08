@@ -2356,6 +2356,26 @@ struct bt_hci_rsp_le_read_dev_periodic_adv_list_size {
 	uint8_t  list_size;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_READ_TX_POWER		0x204b
+struct bt_hci_rsp_le_read_tx_power {
+	uint8_t  status;
+	uint8_t  min_tx_power;
+	uint8_t  max_tx_power;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_RF_PATH_COMPENSATION		0x204c
+struct bt_hci_rsp_le_read_rf_path_comp {
+	uint8_t  status;
+	uint16_t rf_tx_path_comp;
+	uint16_t rf_rx_path_comp;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_WRITE_RF_PATH_COMPENSATION		0x204d
+struct bt_hci_cmd_le_write_rf_path_comp {
+	uint16_t rf_tx_path_comp;
+	uint16_t rf_rx_path_comp;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;

@@ -7801,6 +7801,36 @@ static void le_read_periodic_adv_list_size_rsp(const void *data, uint8_t size)
 	print_field("List size: 0x%2.2x", rsp->list_size);
 }
 
+static void le_read_tx_power_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_tx_power *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Min Tx power: %d dBm", rsp->min_tx_power);
+	print_field("Max Tx power: %d dBm", rsp->max_tx_power);
+}
+
+static void le_read_rf_path_comp_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_rf_path_comp *rsp = data;
+
+	print_status(rsp->status);
+	print_field("RF Tx Path Compensation Value: 0x%4.4x",
+							rsp->rf_tx_path_comp);
+	print_field("RF Rx Path Compensation Value: 0x%4.4x",
+							rsp->rf_rx_path_comp);
+}
+
+static void le_write_rf_path_comp_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_write_rf_path_comp *cmd = data;
+
+	print_field("RF Tx Path Compensation Value: 0x%4.4x",
+							cmd->rf_tx_path_comp);
+	print_field("RF Rx Path Compensation Value: 0x%4.4x",
+							cmd->rf_rx_path_comp);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8576,9 +8606,15 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x204a, 310, "LE Read Periodic Advertiser List Size",
 				null_cmd, 0, true,
 				le_read_periodic_adv_list_size_rsp, 2, true },
-	{ 0x204b, 311, "LE Read Transmit Power" },
-	{ 0x204c, 312, "LE Read RF Path Compensation" },
-	{ 0x204d, 313, "LE Write RF Path Compensation" },
+	{ 0x204b, 311, "LE Read Transmit Power",
+				null_cmd, 0, true,
+				le_read_tx_power_rsp, 3, true },
+	{ 0x204c, 312, "LE Read RF Path Compensation",
+				null_cmd, 0, true,
+				le_read_rf_path_comp_rsp, 5, true },
+	{ 0x204d, 313, "LE Write RF Path Compensation",
+				le_write_rf_path_comp_cmd, 4, true,
+				status_rsp, 1, true },
 	{ 0x204e, 314, "LE Set Privacy Mode" },
 	{ }
 };
