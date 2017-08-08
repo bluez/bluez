@@ -496,7 +496,7 @@ static const struct {
 	{ 0x39, "Connection Rejected due to No Suitable Channel Found"	},
 	{ 0x3a, "Controller Busy"					},
 	{ 0x3b, "Unacceptable Connection Parameters"			},
-	{ 0x3c, "Directed Advertising Timeout"				},
+	{ 0x3c, "Advertising Timeout"					},
 	{ 0x3d, "Connection Terminated due to MIC Failure"		},
 	{ 0x3e, "Connection Failed to be Established"			},
 	{ 0x3f, "MAC Connection Failed"					},
