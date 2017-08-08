@@ -2316,6 +2316,46 @@ struct bt_hci_le_ext_create_conn {
 	uint16_t max_length;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC		0x2044
+struct bt_hci_cmd_le_periodic_adv_create_sync {
+	uint8_t  filter_policy;
+	uint8_t  sid;
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+	uint16_t skip;
+	uint16_t sync_timeout;
+	uint8_t  unused;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL		0x2045
+
+#define BT_HCI_CMD_LE_PERIODIC_ADV_TERM_SYNC		0x2046
+struct bt_hci_cmd_le_periodic_adv_term_sync {
+	uint16_t sync_handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_ADD_DEV_PERIODIC_ADV_LIST		0x2047
+struct bt_hci_cmd_le_add_dev_periodic_adv_list {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+	uint8_t  sid;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_REMOVE_DEV_PERIODIC_ADV_LIST		0x2048
+struct bt_hci_cmd_le_remove_dev_periodic_adv_list {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+	uint8_t  sid;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_CLEAR_PERIODIC_ADV_LIST		0x2049
+
+#define BT_HCI_CMD_LE_READ_PERIODIC_ADV_LIST_SIZE		0x204a
+struct bt_hci_rsp_le_read_dev_periodic_adv_list_size {
+	uint8_t  status;
+	uint8_t  list_size;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;

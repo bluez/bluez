@@ -7740,6 +7740,67 @@ static void le_ext_create_conn_cmd(const void *data, uint8_t size)
 	print_ext_conn_phys(cmd->data, cmd->phys);
 }
 
+static void le_periodic_adv_create_sync_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_periodic_adv_create_sync *cmd = data;
+	const char *str;
+
+	switch (cmd->filter_policy) {
+	case 0x00:
+		str = "Use specified advertising parameters";
+		break;
+	case 0x01:
+		str = "Use Periodic Advertiser List";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+	print_field("SID: 0x%2.2x", cmd->sid);
+	print_addr_type("Adv address type", cmd->addr_type);
+	print_addr("Adv address", cmd->addr, cmd->addr_type);
+	print_field("Skip: 0x%4.4x", cmd->skip);
+	print_field("Sync timeout: %d msec (0x%4.4x)",
+					le16_to_cpu(cmd->sync_timeout) * 10,
+					le16_to_cpu(cmd->sync_timeout));
+	print_field("Unused: 0x%2.2x", cmd->unused);
+}
+
+static void le_periodic_adv_term_sync_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_periodic_adv_term_sync *cmd = data;
+
+	print_field("Sync handle: 0x%4.4x", cmd->sync_handle);
+}
+
+static void le_add_dev_periodic_adv_list_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_add_dev_periodic_adv_list *cmd = data;
+
+	print_addr_type("Adv address type", cmd->addr_type);
+	print_addr("Adv address", cmd->addr, cmd->addr_type);
+	print_field("SID: 0x%2.2x", cmd->sid);
+}
+
+static void le_remove_dev_periodic_adv_list_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_remove_dev_periodic_adv_list *cmd = data;
+
+	print_addr_type("Adv address type", cmd->addr_type);
+	print_addr("Adv address", cmd->addr, cmd->addr_type);
+	print_field("SID: 0x%2.2x", cmd->sid);
+}
+
+static void le_read_periodic_adv_list_size_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_dev_periodic_adv_list_size *rsp = data;
+
+	print_status(rsp->status);
+	print_field("List size: 0x%2.2x", rsp->list_size);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8494,13 +8555,27 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2043, 303, "LE Extended Create Connection",
 				le_ext_create_conn_cmd, 10, false,
 				status_rsp, 1, true },
-	{ 0x2044, 304, "LE Periodic Advertising Create Sync" },
-	{ 0x2045, 305, "LE Periodic Advertising Create Sync Cancel" },
-	{ 0x2046, 306, "LE Periodic Advertising Terminate Sync" },
-	{ 0x2047, 307, "LE Add Device To Periodic Advertiser List" },
-	{ 0x2048, 308, "LE Remove Device From Periodic Advertiser List" },
-	{ 0x2049, 309, "LE Clear Periodic Advertiser List" },
-	{ 0x204a, 310, "LE Read Periodic Advertiser List Size" },
+	{ 0x2044, 304, "LE Periodic Advertising Create Sync",
+				le_periodic_adv_create_sync_cmd, 14, true,
+				status_rsp, 1, true },
+	{ 0x2045, 305, "LE Periodic Advertising Create Sync Cancel",
+				null_cmd, 0, true,
+				status_rsp, 1, true },
+	{ 0x2046, 306, "LE Periodic Advertising Terminate Sync",
+				le_periodic_adv_term_sync_cmd, 2, true,
+				status_rsp, 1, true },
+	{ 0x2047, 307, "LE Add Device To Periodic Advertiser List",
+				le_add_dev_periodic_adv_list_cmd, 8, true,
+				status_rsp, 1, true },
+	{ 0x2048, 308, "LE Remove Device From Periodic Advertiser List",
+				le_remove_dev_periodic_adv_list_cmd, 8, true,
+				status_rsp, 1, true },
+	{ 0x2049, 309, "LE Clear Periodic Advertiser List",
+				null_cmd, 0, true,
+				status_rsp, 1, true },
+	{ 0x204a, 310, "LE Read Periodic Advertiser List Size",
+				null_cmd, 0, true,
+				le_read_periodic_adv_list_size_rsp, 2, true },
 	{ 0x204b, 311, "LE Read Transmit Power" },
 	{ 0x204c, 312, "LE Read RF Path Compensation" },
 	{ 0x204d, 313, "LE Write RF Path Compensation" },
