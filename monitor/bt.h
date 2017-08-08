@@ -2275,6 +2275,47 @@ struct bt_hci_cmd_le_set_periodic_adv_enable {
 	uint8_t  handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_SET_EXT_SCAN_PARAMS		0x2041
+struct bt_hci_cmd_le_set_ext_scan_params {
+	uint8_t  own_addr_type;
+	uint8_t  filter_policy;
+	uint8_t  num_phys;
+	uint8_t  data[0];
+} __attribute__ ((packed));
+struct bt_hci_le_scan_phy {
+	uint8_t  type;
+	uint16_t interval;
+	uint16_t window;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_SET_EXT_SCAN_ENABLE		0x2042
+struct bt_hci_cmd_le_set_ext_scan_enable {
+	uint8_t  enable;
+	uint8_t  filter_dup;
+	uint16_t duration;
+	uint16_t period;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_EXT_CREATE_CONN		0x2043
+struct bt_hci_cmd_le_ext_create_conn {
+	uint8_t  filter_policy;
+	uint8_t  own_addr_type;
+	uint8_t  peer_addr_type;
+	uint8_t  peer_addr[6];
+	uint8_t  phys;
+	uint8_t  data[0];
+} __attribute__ ((packed));
+struct bt_hci_le_ext_create_conn {
+	uint16_t scan_interval;
+	uint16_t scan_window;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+	uint16_t min_length;
+	uint16_t max_length;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
@@ -2883,6 +2924,25 @@ struct bt_hci_evt_le_phy_update_complete {
 	uint16_t handle;
 	uint8_t  tx_phy;
 	uint8_t  rx_phy;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_EXT_ADV_REPORT	0x0d
+struct bt_hci_evt_le_ext_adv_report {
+	uint8_t  num_reports;
+} __attribute__ ((packed));
+struct bt_hci_le_ext_adv_report {
+	uint16_t event_type;
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+	uint8_t  primary_phy;
+	uint8_t  secondary_phy;
+	uint8_t  sid;
+	uint8_t  tx_power;
+	int8_t   rssi;
+	uint16_t interval;
+	uint8_t  direct_addr_type;
+	uint8_t  direct_addr[6];
+	uint8_t  data_len;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_ADV_SET_TERM		0x12

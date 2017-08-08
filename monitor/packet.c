@@ -2305,7 +2305,7 @@ static void print_num_reports(uint8_t num_reports)
 	print_field("Num reports: %d", num_reports);
 }
 
-static void print_adv_event_type(uint8_t type)
+static void print_adv_event_type(const char *label, uint8_t type)
 {
 	const char *str;
 
@@ -2330,7 +2330,7 @@ static void print_adv_event_type(uint8_t type)
 		break;
 	}
 
-	print_field("Event type: %s (0x%2.2x)", str, type);
+	print_field("%s: %s (0x%2.2x)", label, str, type);
 }
 
 static void print_adv_channel_map(const char *label, uint8_t value)
@@ -6506,12 +6506,11 @@ static void le_set_adv_enable_cmd(const void *data, uint8_t size)
 	print_field("Advertising: %s (0x%2.2x)", str, cmd->enable);
 }
 
-static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
+static void print_scan_type(const char *label, uint8_t type)
 {
-	const struct bt_hci_cmd_le_set_scan_parameters *cmd = data;
 	const char *str;
 
-	switch (cmd->type) {
+	switch (type) {
 	case 0x00:
 		str = "Passive";
 		break;
@@ -6523,13 +6522,14 @@ static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 		break;
 	}
 
-	print_field("Type: %s (0x%2.2x)", str, cmd->type);
+	print_field("%s: %s (0x%2.2x)", label, str, type);
+}
 
-	print_interval(cmd->interval);
-	print_window(cmd->window);
-	print_own_addr_type(cmd->own_addr_type);
+static void print_scan_filter_policy(uint8_t policy)
+{
+	const char *str;
 
-	switch (cmd->filter_policy) {
+	switch (policy) {
 	case 0x00:
 		str = "Accept all advertisement";
 		break;
@@ -6547,7 +6547,18 @@ static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 		break;
 	}
 
-	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+	print_field("Filter policy: %s (0x%2.2x)", str, policy);
+}
+
+static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_scan_parameters *cmd = data;
+
+	print_scan_type("Type", cmd->type);
+	print_interval(cmd->interval);
+	print_window(cmd->window);
+	print_own_addr_type(cmd->own_addr_type);
+	print_scan_filter_policy(cmd->filter_policy);
 }
 
 static void le_set_scan_enable_cmd(const void *data, uint8_t size)
@@ -7552,6 +7563,183 @@ static void le_set_periodic_adv_enable_cmd(const void *data, uint8_t size)
 	print_handle(cmd->handle);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} ext_scan_phys_table[] = {
+	{  0, "LE 1M"		},
+	{  2, "LE Coded"		},
+	{ }
+};
+
+static void print_ext_scan_phys(const void *data, uint8_t flags)
+{
+	const struct bt_hci_le_scan_phy *scan_phy;
+	uint8_t mask = flags;
+	int bits_set = 0;
+	int i;
+
+	print_field("PHYs: 0x%2.2x", flags);
+
+	for (i = 0; ext_scan_phys_table[i].str; i++) {
+		if (flags & (1 << ext_scan_phys_table[i].bit)) {
+			scan_phy = data + bits_set * sizeof(*scan_phy);
+			mask &= ~(1 << ext_scan_phys_table[i].bit);
+
+			print_field("Entry %d: %s", bits_set,
+						ext_scan_phys_table[i].str);
+			print_scan_type("  Type", scan_phy->type);
+			print_slot_625("  Interval", scan_phy->interval);
+			print_slot_625("  Window", scan_phy->window);
+
+			++bits_set;
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADV_FLAG, "  Unknown scanning PHYs"
+							" (0x%2.2x)", mask);
+}
+
+static void le_set_ext_scan_params_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_ext_scan_params *cmd = data;
+
+	print_own_addr_type(cmd->own_addr_type);
+	print_scan_filter_policy(cmd->filter_policy);
+	print_ext_scan_phys(cmd->data, cmd->num_phys);
+}
+
+static void print_enable(const char *label, uint8_t enable)
+{
+	const char *str;
+
+	switch (enable) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s: %s (0x%2.2x)", label, str, enable);
+}
+
+static void print_filter_dup(uint8_t filter_dup)
+{
+	const char *str;
+
+	switch (filter_dup) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter duplicates: %s (0x%2.2x)", str, filter_dup);
+}
+
+static void le_set_ext_scan_enable_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_ext_scan_enable *cmd = data;
+
+	print_enable("Extended scan", cmd->enable);
+	print_filter_dup(cmd->filter_dup);
+
+	print_field("Duration: %d msec (0x%4.4x)",
+						le16_to_cpu(cmd->duration) * 10,
+						le16_to_cpu(cmd->duration));
+	print_field("Period: %.2f sec (0x%4.4x)",
+						le16_to_cpu(cmd->period) * 1.28,
+						le16_to_cpu(cmd->period));
+}
+
+static const struct {
+	uint8_t bit;
+	const char *str;
+} ext_conn_phys_table[] = {
+	{  0, "LE 1M"		},
+	{  1, "LE 2M"		},
+	{  2, "LE Coded"		},
+	{ }
+};
+
+static void print_ext_conn_phys(const void *data, uint8_t flags)
+{
+	const struct bt_hci_le_ext_create_conn *entry;
+	uint8_t mask = flags;
+	int bits_set = 0;
+	int i;
+
+	print_field("Initiating PHYs: 0x%2.2x", flags);
+
+	for (i = 0; ext_conn_phys_table[i].str; i++) {
+		if (flags & (1 << ext_conn_phys_table[i].bit)) {
+			entry = data + bits_set * sizeof(*entry);
+			mask &= ~(1 << ext_conn_phys_table[i].bit);
+
+			print_field("Entry %d: %s", bits_set,
+						ext_conn_phys_table[i].str);
+			print_slot_625("  Scan interval", entry->scan_interval);
+			print_slot_625("  Scan window", entry->scan_window);
+			print_slot_125("  Min connection interval",
+							entry->min_interval);
+			print_slot_125("  Max connection interval",
+							entry->max_interval);
+			print_field("  Connection latency: %u (0x%4.4x)",
+						le16_to_cpu(entry->latency),
+						le16_to_cpu(entry->latency));
+			print_field("  Supervision timeout: %d msec (0x%4.4x)",
+					le16_to_cpu(entry->supv_timeout) * 10,
+					le16_to_cpu(entry->supv_timeout));
+			print_slot_625("  Min connection length",
+							entry->min_length);
+			print_slot_625("  Max connection length",
+							entry->max_length);
+
+			++bits_set;
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADV_FLAG, "  Unknown scanning PHYs"
+							" (0x%2.2x)", mask);
+}
+
+static void le_ext_create_conn_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_ext_create_conn *cmd = data;
+	const char *str;
+
+	switch (cmd->filter_policy) {
+	case 0x00:
+		str = "White list is not used";
+		break;
+	case 0x01:
+		str = "White list is used";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+
+	print_own_addr_type(cmd->own_addr_type);
+	print_peer_addr_type("Peer address type", cmd->peer_addr_type);
+	print_addr("Peer address", cmd->peer_addr, cmd->peer_addr_type);
+	print_ext_conn_phys(cmd->data, cmd->phys);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8297,9 +8485,15 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2040, 300, "LE Set Periodic Advertising Enable",
 				le_set_periodic_adv_enable_cmd, 2, true,
 				status_rsp, 1, true },
-	{ 0x2041, 301, "LE Set Extended Scan Parameters" },
-	{ 0x2042, 302, "LE Set Extended Scan Enable" },
-	{ 0x2043, 303, "LE Extended Create Connection" },
+	{ 0x2041, 301, "LE Set Extended Scan Parameters",
+				le_set_ext_scan_params_cmd, 3, false,
+				status_rsp, 1, true },
+	{ 0x2042, 302, "LE Set Extended Scan Enable",
+				le_set_ext_scan_enable_cmd, 6, true,
+				status_rsp, 1, true },
+	{ 0x2043, 303, "LE Extended Create Connection",
+				le_ext_create_conn_cmd, 10, false,
+				status_rsp, 1, true },
 	{ 0x2044, 304, "LE Periodic Advertising Create Sync" },
 	{ 0x2045, 305, "LE Periodic Advertising Create Sync Cancel" },
 	{ 0x2046, 306, "LE Periodic Advertising Terminate Sync" },
@@ -9275,7 +9469,7 @@ static void le_adv_report_evt(const void *data, uint8_t size)
 	print_num_reports(evt->num_reports);
 
 report:
-	print_adv_event_type(evt->event_type);
+	print_adv_event_type("Event type", evt->event_type);
 	print_peer_addr_type("Address type", evt->addr_type);
 	print_addr("Address", evt->addr, evt->addr_type);
 	print_field("Data length: %d", evt->data_len);
@@ -9393,7 +9587,7 @@ static void le_direct_adv_report_evt(const void *data, uint8_t size)
 
 	print_num_reports(evt->num_reports);
 
-	print_adv_event_type(evt->event_type);
+	print_adv_event_type("Event type", evt->event_type);
 	print_peer_addr_type("Address type", evt->addr_type);
 	print_addr("Address", evt->addr, evt->addr_type);
 	print_addr_type("Direct address type", evt->direct_addr_type);
@@ -9412,6 +9606,183 @@ static void le_phy_update_complete_evt(const void *data, uint8_t size)
 	print_handle(evt->handle);
 	print_le_phy("TX PHY", evt->tx_phy);
 	print_le_phy("RX PHY", evt->rx_phy);
+}
+
+static const struct {
+	uint8_t bit;
+	const char *str;
+} ext_adv_report_evt_type[] = {
+	{  0, "Connectable"		},
+	{  1, "Scannable"		},
+	{  2, "Directed"	},
+	{  3, "Scan response"	},
+	{  4, "Use legacy advertising PDUs"	},
+	{ }
+};
+
+static void print_ext_adv_report_evt_type(const char *indent, uint16_t flags)
+{
+	uint16_t mask = flags;
+	uint16_t props = flags;
+	uint8_t data_status;
+	const char *str;
+	int i;
+
+	print_field("%sEvent type: 0x%4.4x", indent, flags);
+
+	props &= 0x1f;
+	print_field("%s  Props: 0x%4.4x", indent, props);
+	for (i = 0; ext_adv_report_evt_type[i].str; i++) {
+		if (flags & (1 << ext_adv_report_evt_type[i].bit)) {
+			print_field("%s    %s", indent,
+						ext_adv_report_evt_type[i].str);
+			mask &= ~(1 << ext_adv_report_evt_type[i].bit);
+		}
+	}
+
+	data_status = (flags >> 5) & 3;
+	mask &= ~(data_status << 5);
+
+	switch (data_status) {
+	case 0x00:
+		str = "Complete";
+		break;
+	case 0x01:
+		str = "Incomplete, more data to come";
+		break;
+	case 0x02:
+		str = "Incomplete, data truncated, no more to come";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s  Data status: %s", indent, str);
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADV_FLAG,
+				"%s  Reserved (0x%4.4x)", indent, mask);
+}
+
+static void print_legacy_adv_report_pdu(uint16_t flags)
+{
+	const char *str;
+
+	if (!(flags & (1 << 4)))
+		return;
+
+	switch (flags) {
+	case 0x10:
+		str = "ADV_NONCONN_IND";
+		break;
+	case 0x12:
+		str = "ADV_SCAN_IND";
+		break;
+	case 0x13:
+		str = "ADV_IND";
+		break;
+	case 0x15:
+		str = "ADV_DIRECT_IND";
+		break;
+	case 0x1a:
+		str = "SCAN_RSP to an ADV_IND";
+		break;
+	case 0x1b:
+		str = "SCAN_RSP to an ADV_SCAN_IND";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  Legacy PDU Type: %s (0x%4.4x)", str, flags);
+}
+
+static void le_ext_adv_report_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_ext_adv_report *evt = data;
+	const struct bt_hci_le_ext_adv_report *report;
+	const char *str;
+	int i;
+
+	print_num_reports(evt->num_reports);
+
+	data += sizeof(evt->num_reports);
+
+	for (i = 0; i < evt->num_reports; ++i) {
+		report = data;
+		print_field("Entry %d", i);
+		print_ext_adv_report_evt_type("  ", report->event_type);
+		print_legacy_adv_report_pdu(report->event_type);
+		print_peer_addr_type("  Address type", report->addr_type);
+		print_addr("  Address", report->addr, report->addr_type);
+
+		switch (report->primary_phy) {
+		case 0x01:
+			str = "LE 1M";
+			break;
+		case 0x03:
+			str = "LE Coded";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  Primary PHY: %s", str);
+
+		switch (report->secondary_phy) {
+		case 0x00:
+			str = "No packets";
+			break;
+		case 0x01:
+			str = "LE 1M";
+			break;
+		case 0x02:
+			str = "LE 2M";
+			break;
+		case 0x03:
+			str = "LE Coded";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  Secondary PHY: %s", str);
+
+		if (report->sid == 0xff)
+			print_field("  SID: no ADI field (0x%2.2x)",
+								report->sid);
+		else if (report->sid > 0x0f)
+			print_field("  SID: Reserved (0x%2.2x)", report->sid);
+		else
+			print_field("  SID: 0x%2.2x", report->sid);
+
+		print_field("  TX power: %d dBm", report->tx_power);
+
+		if (report->rssi == 127)
+			print_field("  RSSI: not available (0x%2.2x)",
+							(uint8_t) report->rssi);
+		else if (report->rssi >= -127 && report->rssi <= 20)
+			print_field("  RSSI: %d dBm (0x%2.2x)",
+					report->rssi, (uint8_t) report->rssi);
+		else
+			print_field("  RSSI: reserved (0x%2.2x)",
+							(uint8_t) report->rssi);
+
+		print_slot_125("  Periodic advertising invteral",
+							report->interval);
+		print_peer_addr_type("  Direct address type",
+						report->direct_addr_type);
+		print_addr("  Direct address", report->direct_addr,
+						report->direct_addr_type);
+		print_field("  Data length: 0x%2.2x", report->data_len);
+		data += sizeof(struct bt_hci_le_ext_adv_report);
+		packet_hexdump(data, report->data_len);
+		data += report->data_len;
+	}
 }
 
 static void le_adv_set_term_evt(const void *data, uint8_t size)
@@ -9525,7 +9896,8 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_direct_adv_report_evt, 1, false },
 	{ 0x0c, "LE PHY Update Complete",
 				le_phy_update_complete_evt, 5, true},
-	{ 0x0d, "LE Extended Advertising Report" },
+	{ 0x0d, "LE Extended Advertising Report",
+				le_ext_adv_report_evt, 1, false},
 	{ 0x0e, "LE Periodic Advertising Sync Established" },
 	{ 0x0f, "LE Periodic Advertising Report" },
 	{ 0x10, "LE Periodic Advertising Sync Lost" },
