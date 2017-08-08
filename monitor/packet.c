@@ -502,6 +502,10 @@ static const struct {
 	{ 0x3f, "MAC Connection Failed"					},
 	{ 0x40, "Coarse Clock Adjustment Rejected "
 		"but Will Try to Adjust Using Clock Dragging"		},
+	{ 0x41, "Type0 Submap Not Defined"				},
+	{ 0x42, "Unknown Advertising Identifier"			},
+	{ 0x43, "Limit Reached"						},
+	{ 0x44, "Operation Cancelled by Host"				},
 	{ }
 };
 
