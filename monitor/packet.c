@@ -7462,6 +7462,96 @@ static void le_remove_adv_set_cmd(const void *data, uint8_t size)
 	print_handle(cmd->handle);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} periodic_adv_properties_table[] = {
+	{  6, "Include TxPower"		},
+	{ }
+};
+
+static void print_periodic_adv_properties(uint16_t flags)
+{
+	uint16_t mask = flags;
+	int i;
+
+	print_field("Properties: 0x%4.4x", flags);
+
+	for (i = 0; periodic_adv_properties_table[i].str; i++) {
+		if (flags & (1 << periodic_adv_properties_table[i].bit)) {
+			print_field("  %s",
+					periodic_adv_properties_table[i].str);
+			mask &= ~(1 << periodic_adv_properties_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADV_FLAG,
+				"  Unknown advertising properties (0x%4.4x)",
+									mask);
+}
+
+static void le_set_periodic_adv_params_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_periodic_adv_params *cmd = data;
+
+	print_handle(cmd->handle);
+	print_slot_125("Min interval", cmd->min_interval);
+	print_slot_125("Max interval", cmd->max_interval);
+	print_periodic_adv_properties(cmd->properties);
+}
+
+static void le_set_periodic_adv_data_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_periodic_adv_data *cmd = data;
+	const char *str;
+
+	print_handle(cmd->handle);
+
+	switch (cmd->operation) {
+	case 0x00:
+		str = "Immediate fragment";
+		break;
+	case 0x01:
+		str = "First fragment";
+		break;
+	case 0x02:
+		str = "Last fragment";
+		break;
+	case 0x03:
+		str = "Complete ext advertising data";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Operation: %s (0x%2.2x)", str, cmd->operation);
+	print_field("Data length: 0x%2.2x", cmd->data_len);
+	print_eir(cmd->data, cmd->data_len, true);
+}
+
+static void le_set_periodic_adv_enable_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_periodic_adv_enable *cmd = data;
+	const char *str;
+
+	switch (cmd->enable) {
+	case 0x00:
+		str = "Disable";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Periodic advertising: %s (0x%2.2x)", str, cmd->enable);
+	print_handle(cmd->handle);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8198,9 +8288,15 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x203d, 297, "LE Clear Advertising Sets",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
-	{ 0x203e, 298, "LE Set Periodic Advertising Parameters" },
-	{ 0x203f, 299, "LE Set Periodic Advertising Data" },
-	{ 0x2040, 300, "LE Set Periodic Advertising Enable" },
+	{ 0x203e, 298, "LE Set Periodic Advertising Parameters",
+				le_set_periodic_adv_params_cmd, 7, true,
+				status_rsp, 1, true },
+	{ 0x203f, 299, "LE Set Periodic Advertising Data",
+				le_set_periodic_adv_data_cmd, 3, false,
+				status_rsp, 1, true },
+	{ 0x2040, 300, "LE Set Periodic Advertising Enable",
+				le_set_periodic_adv_enable_cmd, 2, true,
+				status_rsp, 1, true },
 	{ 0x2041, 301, "LE Set Extended Scan Parameters" },
 	{ 0x2042, 302, "LE Set Extended Scan Enable" },
 	{ 0x2043, 303, "LE Extended Create Connection" },

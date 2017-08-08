@@ -2253,6 +2253,28 @@ struct bt_hci_cmd_le_remove_adv_set {
 
 #define BT_HCI_CMD_LE_CLEAR_ADV_SETS			0x203d
 
+#define BT_HCI_CMD_LE_SET_PERIODIC_ADV_PARAMS			0x203e
+struct bt_hci_cmd_le_set_periodic_adv_params {
+	uint8_t  handle;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t properties;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_SET_PERIODIC_ADV_DATA			0x203f
+struct bt_hci_cmd_le_set_periodic_adv_data {
+	uint8_t  handle;
+	uint8_t  operation;
+	uint8_t  data_len;
+	uint8_t  data[0];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_SET_PERIODIC_ADV_ENABLE			0x2040
+struct bt_hci_cmd_le_set_periodic_adv_enable {
+	uint8_t  enable;
+	uint8_t  handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
