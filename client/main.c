@@ -2350,12 +2350,52 @@ static void cmd_set_advertise_tx_power(const char *arg)
 	}
 
 	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
-		ad_advertise_tx_power(TRUE);
+		ad_advertise_tx_power(true);
 		return;
 	}
 
 	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
-		ad_advertise_tx_power(FALSE);
+		ad_advertise_tx_power(false);
+		return;
+	}
+
+	rl_printf("Invalid argument\n");
+}
+
+static void cmd_set_advertise_name(const char *arg)
+{
+	if (arg == NULL || strlen(arg) == 0) {
+		rl_printf("Missing on/off argument\n");
+		return;
+	}
+
+	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
+		ad_advertise_name(true);
+		return;
+	}
+
+	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
+		ad_advertise_name(false);
+		return;
+	}
+
+	rl_printf("Invalid argument\n");
+}
+
+static void cmd_set_advertise_appearance(const char *arg)
+{
+	if (arg == NULL || strlen(arg) == 0) {
+		rl_printf("Missing value argument\n");
+		return;
+	}
+
+	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
+		ad_advertise_appearance(true);
+		return;
+	}
+
+	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
+		ad_advertise_appearance(false);
 		return;
 	}
 
@@ -2406,6 +2446,10 @@ static const struct {
 	{ "set-advertise-tx-power", "<on/off>",
 			cmd_set_advertise_tx_power,
 			"Enable/disable TX power to be advertised" },
+	{ "set-advertise-name", "<on/off>", cmd_set_advertise_name,
+			"Enable/disable local name to be advertised" },
+	{ "set-advertise-appearance", "<value>", cmd_set_advertise_appearance,
+			"Set custom appearance to be advertised" },
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,

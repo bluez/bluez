@@ -27,4 +27,6 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager);
 void ad_advertise_uuids(const char *arg);
 void ad_advertise_service(const char *arg);
 void ad_advertise_manufacturer(const char *arg);
-void ad_advertise_tx_power(gboolean value);
+void ad_advertise_tx_power(bool value);
+void ad_advertise_name(bool value);
+void ad_advertise_appearance(bool value);
