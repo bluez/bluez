@@ -31,6 +31,7 @@
 
 struct bt_ad {
 	int ref_count;
+	char *name;
 	struct queue *service_uuids;
 	struct queue *manufacturer_data;
 	struct queue *solicit_uuids;
@@ -106,6 +107,8 @@ void bt_ad_unref(struct bt_ad *ad)
 	queue_destroy(ad->solicit_uuids, free);
 
 	queue_destroy(ad->service_data, uuid_destroy);
+
+	free(ad->name);
 
 	free(ad);
 }
@@ -183,6 +186,21 @@ static size_t uuid_data_length(struct queue *uuid_data)
 	return length;
 }
 
+static size_t name_length(const char *name, size_t *pos)
+{
+	size_t len;
+	
+	if (!name)
+		return 0;
+
+	len = 2 + strlen(name);
+
+	if (len > MAX_ADV_DATA_LEN - *pos)
+		len = MAX_ADV_DATA_LEN - *pos;
+
+	return len;
+}
+
 static size_t calculate_length(struct bt_ad *ad)
 {
 	size_t length = 0;
@@ -194,6 +212,8 @@ static size_t calculate_length(struct bt_ad *ad)
 	length += mfg_data_length(ad->manufacturer_data);
 
 	length += uuid_data_length(ad->service_data);
+
+	length += name_length(ad->name, &length);
 
 	return length;
 }
@@ -313,6 +333,27 @@ static void serialize_service_data(struct queue *service_data, uint8_t *buf,
 	}
 }
 
+static void serialize_name(const char *name, uint8_t *buf, uint8_t *pos)
+{
+	int len;
+	uint8_t type = EIR_NAME_COMPLETE;
+
+	if (!name)
+		return;
+
+	len = strlen(name);
+	if (len > MAX_ADV_DATA_LEN - (*pos + 2)) {
+		type = EIR_NAME_SHORT;
+		len = MAX_ADV_DATA_LEN - (*pos + 2);
+	}
+
+	buf[(*pos)++] = len + 1;
+	buf[(*pos)++] = type;
+
+	memcpy(buf + *pos, name, len);
+	*pos += len;
+}
+
 uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 {
 	uint8_t *adv_data;
@@ -337,6 +378,8 @@ uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 	serialize_manuf_data(ad->manufacturer_data, adv_data, &pos);
 
 	serialize_service_data(ad->service_data, adv_data, &pos);
+
+	serialize_name(ad->name, adv_data, &pos);
 
 	return adv_data;
 }
@@ -655,4 +698,25 @@ void bt_ad_clear_service_data(struct bt_ad *ad)
 		return;
 
 	queue_remove_all(ad->service_data, NULL, NULL, uuid_destroy);
+}
+
+bool bt_ad_add_name(struct bt_ad *ad, const char *name)
+{
+	if (!ad)
+		return false;
+
+	free(ad->name);
+
+	ad->name = strdup(name);
+
+	return true;
+}
+
+void bt_ad_clear_name(struct bt_ad *ad)
+{
+	if (!ad)
+		return;
+
+	free(ad->name);
+	ad->name = NULL;
 }
