@@ -113,6 +113,10 @@ Methods		RegisterAdvertisement(object advertisement, dict options)
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist
 
-Properties	byte SupportedInstances
+Properties	byte ActiveInstances
+
+			Number of active advertising instances.
+
+		byte SupportedInstances
 
 			Number of available advertising instances.
