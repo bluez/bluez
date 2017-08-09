@@ -536,6 +536,18 @@ static size_t calc_max_adv_len(struct btd_adv_client *client, uint32_t flags)
 	return max;
 }
 
+static uint8_t *generate_adv_data(struct btd_adv_client *client,
+						uint32_t *flags, size_t *len)
+{
+	if ((*flags & MGMT_ADV_FLAG_APPEARANCE)) {
+		*flags &= ~MGMT_ADV_FLAG_APPEARANCE;
+		/* TODO: Get the appearance from the adaptor once supported. */
+		bt_ad_add_appearance(client->data, 0x0000);
+	}
+
+	return bt_ad_generate(client->data, len);
+}
+
 static uint8_t *generate_scan_rsp(struct btd_adv_client *client,
 						uint32_t *flags, size_t *len)
 {
@@ -573,8 +585,7 @@ static DBusMessage *refresh_advertisement(struct btd_adv_client *client)
 
 	flags |= client->flags;
 
-	adv_data = bt_ad_generate(client->data, &adv_data_len);
-
+	adv_data = generate_adv_data(client, &flags, &adv_data_len);
 	if (!adv_data || (adv_data_len > calc_max_adv_len(client, flags))) {
 		error("Advertising data too long or couldn't be generated.");
 
