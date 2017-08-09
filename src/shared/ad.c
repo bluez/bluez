@@ -32,6 +32,7 @@
 struct bt_ad {
 	int ref_count;
 	char *name;
+	uint16_t appearance;
 	struct queue *service_uuids;
 	struct queue *manufacturer_data;
 	struct queue *solicit_uuids;
@@ -47,6 +48,7 @@ struct bt_ad *bt_ad_new(void)
 	ad->manufacturer_data = queue_new();
 	ad->solicit_uuids = queue_new();
 	ad->service_data = queue_new();
+	ad->appearance = UINT16_MAX;
 
 	return bt_ad_ref(ad);
 }
@@ -215,6 +217,8 @@ static size_t calculate_length(struct bt_ad *ad)
 
 	length += name_length(ad->name, &length);
 
+	length += ad->appearance != UINT16_MAX ? 4 : 0;
+
 	return length;
 }
 
@@ -354,6 +358,18 @@ static void serialize_name(const char *name, uint8_t *buf, uint8_t *pos)
 	*pos += len;
 }
 
+static void serialize_appearance(uint16_t value, uint8_t *buf, uint8_t *pos)
+{
+	if (value == UINT16_MAX)
+		return;
+
+	buf[(*pos)++] = sizeof(value) + 1;
+	buf[(*pos)++] = EIR_GAP_APPEARANCE;
+
+	bt_put_le16(value, buf + (*pos));
+	*pos += 2;
+}
+
 uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 {
 	uint8_t *adv_data;
@@ -380,6 +396,8 @@ uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 	serialize_service_data(ad->service_data, adv_data, &pos);
 
 	serialize_name(ad->name, adv_data, &pos);
+
+	serialize_appearance(ad->appearance, adv_data, &pos);
 
 	return adv_data;
 }
@@ -719,4 +737,22 @@ void bt_ad_clear_name(struct bt_ad *ad)
 
 	free(ad->name);
 	ad->name = NULL;
+}
+
+bool bt_ad_add_appearance(struct bt_ad *ad, uint16_t appearance)
+{
+	if (!ad)
+		return false;
+
+	ad->appearance = appearance;
+
+	return true;
+}
+
+void bt_ad_clear_appearance(struct bt_ad *ad)
+{
+	if (!ad)
+		return;
+
+	ad->appearance = UINT16_MAX;
 }
