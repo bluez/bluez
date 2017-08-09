@@ -48,6 +48,7 @@ struct btd_adv_manager {
 	uint16_t mgmt_index;
 	uint8_t max_adv_len;
 	uint8_t max_ads;
+	uint32_t supported_flags;
 	unsigned int instance_bitmap;
 };
 
@@ -773,10 +774,50 @@ static gboolean get_active_instances(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static struct adv_include {
+	uint8_t flag;
+	const char *name;
+} includes[] = {
+	{ MGMT_ADV_FLAG_TX_POWER, "tx-power" },
+	{ MGMT_ADV_FLAG_APPEARANCE, "appearance" },
+	{ MGMT_ADV_FLAG_LOCAL_NAME, "local-name" },
+	{ },
+};
+
+static void append_include(struct btd_adv_manager *manager,
+						DBusMessageIter *iter)
+{
+	struct adv_include *inc;
+
+	for (inc = includes; inc && inc->name; inc++) {
+		if (manager->supported_flags & inc->flag)
+			dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+								&inc->name);
+	}
+}
+
+static gboolean get_supported_includes(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_adv_manager *manager = data;
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &entry);
+
+	append_include(manager, &entry);
+
+	dbus_message_iter_close_container(iter, &entry);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable properties[] = {
 	{ "ActiveInstances", "y", get_active_instances, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "SupportedInstances", "y", get_instances, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "SupportedIncludes", "as", get_supported_includes, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
@@ -823,6 +864,7 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 
 	manager->max_adv_len = feat->max_adv_data_len;
 	manager->max_ads = feat->max_instances;
+	manager->supported_flags = feat->supported_flags;
 
 	if (manager->max_ads == 0)
 		return;

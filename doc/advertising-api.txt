@@ -120,3 +120,11 @@ Properties	byte ActiveInstances
 		byte SupportedInstances
 
 			Number of available advertising instances.
+
+		array{string} SupportedIncludes
+
+			List of supported system includes.
+
+			Possible values: "tx-power"
+					 "appearance"
+					 "local-name"
