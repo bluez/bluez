@@ -69,6 +69,15 @@ Properties	string Type
 			Possible values: as found on
 					LEAdvertisingManager.SupportedIncludes
 
+		string LocalName
+
+			Local name to be used in the advertising report. If the
+			string is too big to fit into the packet it will be
+			truncated.
+
+			If this property is available 'local-name' cannot be
+			present in the Includes.
+
 LE Advertising Manager hierarchy
 ================================
 

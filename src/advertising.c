@@ -61,6 +61,7 @@ struct btd_adv_client {
 	struct btd_adv_manager *manager;
 	char *owner;
 	char *path;
+	char *name;
 	GDBusClient *client;
 	GDBusProxy *proxy;
 	DBusMessage *reg;
@@ -114,6 +115,7 @@ static void client_free(void *data)
 	if (client->path)
 		g_free(client->path);
 
+	free(client->name);
 	free(client);
 }
 
@@ -450,6 +452,26 @@ static bool parse_includes(DBusMessageIter *iter,
 	return true;
 }
 
+static bool parse_local_name(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	const char *name;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
+		return false;
+
+	if (client->flags & MGMT_ADV_FLAG_LOCAL_NAME) {
+		error("Local name already included");
+		return false;
+	}
+
+	dbus_message_iter_get_basic(iter, &name);
+
+	client->name = strdup(name);
+
+	return true;
+}
+
 static struct adv_parser {
 	const char *name;
 	bool (*func)(DBusMessageIter *iter, struct btd_adv_client *client);
@@ -460,6 +482,7 @@ static struct adv_parser {
 	{ "ManufacturerData", parse_manufacturer_data },
 	{ "ServiceData", parse_service_data },
 	{ "Includes", parse_includes },
+	{ "LocalName", parse_local_name },
 	{ },
 };
 
@@ -554,14 +577,16 @@ static uint8_t *generate_scan_rsp(struct btd_adv_client *client,
 	struct btd_adv_manager *manager = client->manager;
 	const char *name;
 
-	if (!(*flags & MGMT_ADV_FLAG_LOCAL_NAME)) {
+	if (!(*flags & MGMT_ADV_FLAG_LOCAL_NAME) && !client->name) {
 		*len = 0;
 		return NULL;
 	}
 
 	*flags &= ~MGMT_ADV_FLAG_LOCAL_NAME;
 
-	name = btd_adapter_get_name(manager->adapter);
+	name = client->name;
+	if (!name)
+		name = btd_adapter_get_name(manager->adapter);
 
 	bt_ad_add_name(client->scan, name);
 
