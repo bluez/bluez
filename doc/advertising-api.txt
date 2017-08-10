@@ -78,6 +78,12 @@ Properties	string Type
 			If this property is available 'local-name' cannot be
 			present in the Includes.
 
+		uint16 Appearance
+
+			Appearance to be used in the advertising report.
+
+			Possible values: as found on GAP Service.
+
 LE Advertising Manager hierarchy
 ================================
 
