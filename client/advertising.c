@@ -57,6 +57,7 @@ struct manufacturer_data {
 static struct ad {
 	bool registered;
 	char *type;
+	char *local_name;
 	char **uuids;
 	size_t uuids_len;
 	struct service_data service;
@@ -290,6 +291,19 @@ static gboolean get_includes(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean local_name_exits(const GDBusPropertyTable *property, void *data)
+{
+	return ad.local_name ? TRUE : FALSE;
+}
+
+static gboolean get_local_name(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ad.local_name);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
@@ -297,6 +311,7 @@ static const GDBusPropertyTable ad_props[] = {
 	{ "ManufacturerData", "a{qv}", get_manufacturer_data, NULL,
 						manufacturer_data_exists },
 	{ "Includes", "as", get_includes, NULL, includes_exists },
+	{ "LocalName", "s", get_local_name, NULL, local_name_exits },
 	{ }
 };
 
@@ -495,6 +510,15 @@ void ad_advertise_tx_power(bool value)
 void ad_advertise_name(bool value)
 {
 	ad.name = value;
+
+	if (!value)
+		free(ad.local_name);
+}
+
+void ad_advertise_local_name(const char *name)
+{
+	free(ad.local_name);
+	ad.local_name = strdup(name);
 }
 
 void ad_advertise_appearance(bool value)

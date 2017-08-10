@@ -2379,7 +2379,7 @@ static void cmd_set_advertise_name(const char *arg)
 		return;
 	}
 
-	rl_printf("Invalid argument\n");
+	ad_advertise_local_name(arg);
 }
 
 static void cmd_set_advertise_appearance(const char *arg)
@@ -2446,7 +2446,7 @@ static const struct {
 	{ "set-advertise-tx-power", "<on/off>",
 			cmd_set_advertise_tx_power,
 			"Enable/disable TX power to be advertised" },
-	{ "set-advertise-name", "<on/off>", cmd_set_advertise_name,
+	{ "set-advertise-name", "<on/off/name>", cmd_set_advertise_name,
 			"Enable/disable local name to be advertised" },
 	{ "set-advertise-appearance", "<value>", cmd_set_advertise_appearance,
 			"Set custom appearance to be advertised" },
