@@ -58,6 +58,7 @@ static struct ad {
 	bool registered;
 	char *type;
 	char *local_name;
+	uint16_t local_appearance;
 	char **uuids;
 	size_t uuids_len;
 	struct service_data service;
@@ -65,7 +66,9 @@ static struct ad {
 	bool tx_power;
 	bool name;
 	bool appearance;
-} ad;
+} ad = {
+	.local_appearance = UINT16_MAX,
+};
 
 static void ad_release(DBusConnection *conn)
 {
@@ -304,6 +307,20 @@ static gboolean get_local_name(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean appearance_exits(const GDBusPropertyTable *property, void *data)
+{
+	return ad.local_appearance != UINT16_MAX ? TRUE : FALSE;
+}
+
+static gboolean get_appearance(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+							&ad.local_appearance);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
@@ -312,6 +329,7 @@ static const GDBusPropertyTable ad_props[] = {
 						manufacturer_data_exists },
 	{ "Includes", "as", get_includes, NULL, includes_exists },
 	{ "LocalName", "s", get_local_name, NULL, local_name_exits },
+	{ "Appearance", "q", get_appearance, NULL, appearance_exits },
 	{ }
 };
 
@@ -524,4 +542,12 @@ void ad_advertise_local_name(const char *name)
 void ad_advertise_appearance(bool value)
 {
 	ad.appearance = value;
+
+	if (!value)
+		ad.local_appearance = UINT16_MAX;
+}
+
+void ad_advertise_local_appearance(uint16_t value)
+{
+	ad.local_appearance = value;
 }

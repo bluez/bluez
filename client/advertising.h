@@ -31,3 +31,4 @@ void ad_advertise_tx_power(bool value);
 void ad_advertise_name(bool value);
 void ad_advertise_appearance(bool value);
 void ad_advertise_local_name(const char *name);
+void ad_advertise_local_appearance(uint16_t value);

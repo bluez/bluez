@@ -2384,6 +2384,9 @@ static void cmd_set_advertise_name(const char *arg)
 
 static void cmd_set_advertise_appearance(const char *arg)
 {
+	long int value;
+	char *endptr = NULL;
+
 	if (arg == NULL || strlen(arg) == 0) {
 		rl_printf("Missing value argument\n");
 		return;
@@ -2399,7 +2402,13 @@ static void cmd_set_advertise_appearance(const char *arg)
 		return;
 	}
 
-	rl_printf("Invalid argument\n");
+	value = strtol(arg, &endptr, 0);
+	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	ad_advertise_local_appearance(value);
 }
 
 static const struct {
