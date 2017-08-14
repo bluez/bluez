@@ -24,11 +24,11 @@
 void ad_register(DBusConnection *conn, GDBusProxy *manager, const char *type);
 void ad_unregister(DBusConnection *conn, GDBusProxy *manager);
 
-void ad_advertise_uuids(const char *arg);
-void ad_advertise_service(const char *arg);
-void ad_advertise_manufacturer(const char *arg);
-void ad_advertise_tx_power(bool value);
-void ad_advertise_name(bool value);
-void ad_advertise_appearance(bool value);
-void ad_advertise_local_name(const char *name);
-void ad_advertise_local_appearance(uint16_t value);
+void ad_advertise_uuids(DBusConnection *conn, const char *arg);
+void ad_advertise_service(DBusConnection *conn, const char *arg);
+void ad_advertise_manufacturer(DBusConnection *conn, const char *arg);
+void ad_advertise_tx_power(DBusConnection *conn, bool value);
+void ad_advertise_name(DBusConnection *conn, bool value);
+void ad_advertise_appearance(DBusConnection *conn, bool value);
+void ad_advertise_local_name(DBusConnection *conn, const char *name);
+void ad_advertise_local_appearance(DBusConnection *conn, uint16_t value);

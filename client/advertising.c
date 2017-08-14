@@ -399,7 +399,7 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 	}
 }
 
-void ad_advertise_uuids(const char *arg)
+void ad_advertise_uuids(DBusConnection *conn, const char *arg)
 {
 	g_strfreev(ad.uuids);
 	ad.uuids = NULL;
@@ -415,6 +415,8 @@ void ad_advertise_uuids(const char *arg)
 	}
 
 	ad.uuids_len = g_strv_length(ad.uuids);
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceUUIDs");
 }
 
 static void ad_clear_service(void)
@@ -423,7 +425,7 @@ static void ad_clear_service(void)
 	memset(&ad.service, 0, sizeof(ad.service));
 }
 
-void ad_advertise_service(const char *arg)
+void ad_advertise_service(DBusConnection *conn, const char *arg)
 {
 	wordexp_t w;
 	unsigned int i;
@@ -462,6 +464,8 @@ void ad_advertise_service(const char *arg)
 		data->len++;
 	}
 
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
+
 done:
 	wordfree(&w);
 }
@@ -471,7 +475,7 @@ static void ad_clear_manufacturer(void)
 	memset(&ad.manufacturer, 0, sizeof(ad.manufacturer));
 }
 
-void ad_advertise_manufacturer(const char *arg)
+void ad_advertise_manufacturer(DBusConnection *conn, const char *arg)
 {
 	wordexp_t w;
 	unsigned int i;
@@ -515,39 +519,66 @@ void ad_advertise_manufacturer(const char *arg)
 		data->len++;
 	}
 
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							"ManufacturerData");
+
 done:
 	wordfree(&w);
 }
 
-
-void ad_advertise_tx_power(bool value)
+void ad_advertise_tx_power(DBusConnection *conn, bool value)
 {
+	if (ad.tx_power == value)
+		return;
+
 	ad.tx_power = value;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
 }
 
-void ad_advertise_name(bool value)
+void ad_advertise_name(DBusConnection *conn, bool value)
 {
+	if (ad.name == value)
+		return;
+
 	ad.name = value;
 
 	if (!value)
 		free(ad.local_name);
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
 }
 
-void ad_advertise_local_name(const char *name)
+void ad_advertise_local_name(DBusConnection *conn, const char *name)
 {
+	if (ad.local_name && !strcmp(name, ad.local_name))
+		return;
+
 	free(ad.local_name);
 	ad.local_name = strdup(name);
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "LocalName");
 }
 
-void ad_advertise_appearance(bool value)
+void ad_advertise_appearance(DBusConnection *conn, bool value)
 {
+	if (ad.appearance == value)
+		return;
+
 	ad.appearance = value;
 
 	if (!value)
 		ad.local_appearance = UINT16_MAX;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
 }
 
-void ad_advertise_local_appearance(uint16_t value)
+void ad_advertise_local_appearance(DBusConnection *conn, uint16_t value)
 {
+	if (ad.local_appearance == value)
+		return;
+
 	ad.local_appearance = value;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Appearance");
 }

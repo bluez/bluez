@@ -2329,17 +2329,17 @@ static char *ad_generator(const char *text, int state)
 
 static void cmd_set_advertise_uuids(const char *arg)
 {
-	ad_advertise_uuids(arg);
+	ad_advertise_uuids(dbus_conn, arg);
 }
 
 static void cmd_set_advertise_service(const char *arg)
 {
-	ad_advertise_service(arg);
+	ad_advertise_service(dbus_conn, arg);
 }
 
 static void cmd_set_advertise_manufacturer(const char *arg)
 {
-	ad_advertise_manufacturer(arg);
+	ad_advertise_manufacturer(dbus_conn, arg);
 }
 
 static void cmd_set_advertise_tx_power(const char *arg)
@@ -2350,12 +2350,12 @@ static void cmd_set_advertise_tx_power(const char *arg)
 	}
 
 	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
-		ad_advertise_tx_power(true);
+		ad_advertise_tx_power(dbus_conn, true);
 		return;
 	}
 
 	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
-		ad_advertise_tx_power(false);
+		ad_advertise_tx_power(dbus_conn, false);
 		return;
 	}
 
@@ -2370,16 +2370,16 @@ static void cmd_set_advertise_name(const char *arg)
 	}
 
 	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
-		ad_advertise_name(true);
+		ad_advertise_name(dbus_conn, true);
 		return;
 	}
 
 	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
-		ad_advertise_name(false);
+		ad_advertise_name(dbus_conn, false);
 		return;
 	}
 
-	ad_advertise_local_name(arg);
+	ad_advertise_local_name(dbus_conn, arg);
 }
 
 static void cmd_set_advertise_appearance(const char *arg)
@@ -2393,12 +2393,12 @@ static void cmd_set_advertise_appearance(const char *arg)
 	}
 
 	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
-		ad_advertise_appearance(true);
+		ad_advertise_appearance(dbus_conn, true);
 		return;
 	}
 
 	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
-		ad_advertise_appearance(false);
+		ad_advertise_appearance(dbus_conn, false);
 		return;
 	}
 
@@ -2408,7 +2408,7 @@ static void cmd_set_advertise_appearance(const char *arg)
 		return;
 	}
 
-	ad_advertise_local_appearance(value);
+	ad_advertise_local_appearance(dbus_conn, value);
 }
 
 static const struct {
