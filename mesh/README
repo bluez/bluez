@@ -1,0 +1,26 @@
+MeshCtl - BlueZ GATT based Bluetooth Mesh Provisioner
+******************************************
+
+Copyright (C) 2017  Intel Corporation. All rights reserved.
+
+Compilation and installation
+============================
+
+In addition to main BlueZ requirements, MeshCtl needs the following:
+	- JSON library
+
+Configuration and options
+=========================
+
+	--enable-mesh
+
+		Build meshctl and other Bluetooth Mesh based tools and utils
+
+Information
+===========
+
+Mailing lists:
+	linux-bluetooth@vger.kernel.org
+
+For additional information about the project visit BlueZ web site:
+	http://www.bluez.org
