@@ -23,4 +23,5 @@ fi
 		--enable-android \
 		--enable-sixaxis \
 		--enable-midi \
+		--enable-mesh \
 		--disable-datafiles $*

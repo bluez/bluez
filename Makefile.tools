@@ -13,6 +13,29 @@ client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 endif
 
+if MESH
+bin_PROGRAMS += mesh/meshctl
+
+mesh_meshctl_SOURCES = mesh/main.c \
+				mesh/node.h mesh/node.c \
+				mesh/gatt.h mesh/gatt.c \
+				mesh/crypto.h mesh/crypto.c \
+				mesh/keys.h \
+				mesh/net.h mesh/net.c \
+				mesh/prov.h mesh/prov.c \
+				mesh/util.h mesh/util.c \
+				mesh/agent.h mesh/agent.c \
+				mesh/prov-db.h mesh/prov-db.c \
+				mesh/config-model.h mesh/config-client.c \
+				mesh/config-server.c \
+				mesh/onoff-model.h mesh/onoff-model.c \
+				client/display.h client/display.c \
+				monitor/uuid.h monitor/uuid.c
+mesh_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
+				lib/libbluetooth-internal.la \
+				@GLIB_LIBS@ @DBUS_LIBS@ -ljson-c -lreadline
+endif
+
 if MONITOR
 bin_PROGRAMS += monitor/btmon
 

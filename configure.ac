@@ -212,6 +212,17 @@ AC_ARG_ENABLE(cups, AC_HELP_STRING([--disable-cups],
                 [disable CUPS printer support]), [enable_cups=${enableval}])
 AM_CONDITIONAL(CUPS, test "${enable_cups}" != "no")
 
+AC_ARG_ENABLE(mesh, AC_HELP_STRING([--enable-mesh],
+		[enable Mesh profile support]), [enable_mesh=${enableval}])
+AM_CONDITIONAL(MESH, test "${enable_mesh}" = "yes")
+
+if (test "${enable_mesh}" == "yes"); then
+	PKG_CHECK_MODULES(JSONC, json-c, dummy=yes,
+				AC_MSG_ERROR(json-c is required))
+	AC_SUBST(JSON_CFLAGS)
+	AC_SUBST(JSON_LIBS)
+fi
+
 AC_ARG_ENABLE(midi, AC_HELP_STRING([--enable-midi],
                 [enable MIDI support]), [enable_midi=${enableval}])
 AM_CONDITIONAL(MIDI, test "${enable_midi}" = "yes")
@@ -237,7 +248,7 @@ AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
 		[disable command line client]), [enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
 
-if (test "${enable_client}" != "no"); then
+if (test "${enable_client}" != "no" || test "${enable_mesh}" == "yes"); then
         AC_CHECK_HEADERS(readline/readline.h, enable_readline=yes,
                 AC_MSG_ERROR(readline header files are required))
 fi
