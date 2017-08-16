@@ -60,6 +60,19 @@ static void write_bd_addr_cmd(const void *data, uint8_t size)
 	packet_print_addr("Address", data, false);
 }
 
+static void update_uart_baud_rate_cmd(const void *data, uint8_t size)
+{
+	uint16_t enc_rate = get_le16(data);
+	uint32_t exp_rate = get_le32(data + 2);
+
+	if (enc_rate == 0x0000)
+		print_field("Encoded baud rate: Not used (0x0000)");
+	else
+		print_field("Encoded baud rate: 0x%4.4x", enc_rate);
+
+	print_field("Explicit baud rate: %u Mbps", exp_rate);
+}
+
 static void enable_usb_hid_emulation_cmd(const void *data, uint8_t size)
 {
 	uint8_t enable = get_u8(data);
@@ -78,6 +91,27 @@ static void enable_usb_hid_emulation_cmd(const void *data, uint8_t size)
 	}
 
 	print_field("Enable: %s (0x%2.2x)", str, enable);
+}
+
+static void write_uart_clock_setting_cmd(const void *data, uint8_t size)
+{
+	uint8_t clock = get_u8(data);
+
+	const char *str;
+
+	switch (clock) {
+	case 0x01:
+		str = "48 Mhz";
+		break;
+	case 0x02:
+		str = "24 Mhz";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("UART clock: %s (0x%2.2x)", str, clock);
 }
 
 static void write_ram_cmd(const void *data, uint8_t size)
@@ -185,24 +219,36 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x001, "Write BD ADDR",
 			write_bd_addr_cmd, 6, true,
 			status_rsp, 1, true },
-	{ 0x018, "Update UART Baud Rate" },
+	{ 0x018, "Update UART Baud Rate",
+			update_uart_baud_rate_cmd, 6, true,
+			status_rsp, 1, true },
+	{ 0x01c, "Write SCO PCM Int Param" },
+	{ 0x01d, "Read SCO PCM Int Param" },
 	{ 0x027, "Set Sleepmode Param" },
+	{ 0x028, "Read Sleepmode Param" },
 	{ 0x02e, "Download Minidriver",
 			null_cmd, 0, true,
 			status_rsp, 1, true },
+	{ 0x034, "Enable Radio" },
 	{ 0x03b, "Enable USB HID Emulation",
 			enable_usb_hid_emulation_cmd, 1, true,
 			status_rsp, 1, true },
-	{ 0x045, "Write UART Clock Setting" },
+	{ 0x044, "Read UART Clock Setting" },
+	{ 0x045, "Write UART Clock Setting",
+			write_uart_clock_setting_cmd, 1, true,
+			status_rsp, 1, true },
 	{ 0x04c, "Write RAM",
 			write_ram_cmd, 4, false,
 			status_rsp, 1, true },
+	{ 0x04d, "Read RAM" },
 	{ 0x04e, "Launch RAM",
 			launch_ram_cmd, 4, true,
 			status_rsp, 1, true },
 	{ 0x05a, "Read VID PID",
 			null_cmd, 0, true,
 			read_vid_pid_rsp, 5, true },
+	{ 0x057, "Write High Priority Connection" },
+	{ 0x06d, "Write I2SPCM Interface Param" },
 	{ 0x06e, "Read Controller Features",
 			null_cmd, 0, true,
 			read_controller_features_rsp, 9, true },
