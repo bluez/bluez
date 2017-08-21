@@ -21,17 +21,6 @@
  *
  */
 
-#ifndef __MESH_CONFIG_MODEL_H
-#define __MESH_CONFIG_MODEL_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #define CONFIG_SERVER_MODEL_ID	0x0000
 #define CONFIG_CLIENT_MODEL_ID	0x0001
 
@@ -111,9 +100,3 @@ bool config_server_init(void);
 bool config_client_init(void);
 void config_client_get_composition(uint32_t dst);
 void config_set_node(const char *args);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_CONFIG_MODEL_H */

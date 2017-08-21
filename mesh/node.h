@@ -21,13 +21,6 @@
  *
  */
 
-#ifndef __MESH_NODE_H
-#define __MESH_NODE_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* Largest Possible GATT Packet: Provisioning Public Key + type + sar */
 #define MAX_GATT_SIZE	(64 + 1 + 1)
 
@@ -139,8 +132,3 @@ bool node_model_pub_set(struct mesh_node *node, uint8_t ele, uint32_t model_id,
 						struct mesh_publication *pub);
 struct mesh_publication *node_model_pub_get(struct mesh_node *node, uint8_t ele,
 							uint32_t model_id);
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_NODE_H */

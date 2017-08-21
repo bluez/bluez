@@ -21,13 +21,6 @@
  *
  */
 
-#ifndef __MESH_PROV_DB_H
-#define __MESH_PROV_DB_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 bool prov_db_show(const char *filename);
 bool prov_db_read(const char *filename);
 bool prov_db_read_local_node(const char *filename, bool provisioner);
@@ -45,8 +38,3 @@ bool prov_db_node_set_model_pub(struct mesh_node *node, uint8_t ele_idx,
 							uint32_t model_id,
 						struct mesh_publication *pub);
 void prov_db_print_node_composition(struct mesh_node *node);
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_PROV_DB_H */

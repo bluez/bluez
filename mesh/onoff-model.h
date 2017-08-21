@@ -21,17 +21,6 @@
  *
  */
 
-#ifndef __MESH_GENERIC_ONOFF_MODEL_H
-#define __MESH_GENERIC_ONOFF_MODEL_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #define GENERIC_ONOFF_SERVER_MODEL_ID	0x1000
 #define GENERIC_ONOFF_CLIENT_MODEL_ID	0x1001
 
@@ -42,9 +31,3 @@ extern "C" {
 
 void onoff_set_node(const char *args);
 bool onoff_client_init(uint8_t ele);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_GENERIC_ONOFF_MODEL_H */

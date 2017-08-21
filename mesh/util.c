@@ -34,6 +34,7 @@
 #include "client/display.h"
 #include "src/shared/util.h"
 #include "mesh/mesh-net.h"
+#include "mesh/node.h"
 #include "mesh/util.h"
 
 struct cmd_menu {

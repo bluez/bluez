@@ -21,10 +21,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #define KR_PHASE_NONE		0x00
 #define KR_PHASE_ONE		0x01
 #define KR_PHASE_TWO		0x02

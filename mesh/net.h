@@ -21,15 +21,7 @@
  *
  */
 
-#ifndef __MESH_NET_H
-#define __MESH_NET_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "gdbus/gdbus.h"
-#include "mesh/node.h"
 
 typedef void (*net_mesh_session_open_callback)(int status);
 
@@ -64,9 +56,3 @@ bool net_register_group(uint16_t group_addr);
 uint32_t net_register_virtual(uint8_t buf[16]);
 bool mesh_model_recv(uint16_t app_idx, uint16_t src, uint32_t dst,
 						uint8_t *payload, uint16_t len);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_NET_H */

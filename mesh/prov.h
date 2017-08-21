@@ -21,13 +21,6 @@
  *
  */
 
-#ifndef __MESH_PROV_H
-#define __MESH_PROV_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct prov;
 
 typedef void (*provision_done_cb)(void *user_data, int status);
@@ -36,8 +29,3 @@ bool prov_open(struct mesh_node *node, GDBusProxy *prov_in, uint16_t net_idx,
 		provision_done_cb cb, void *user_data);
 bool prov_data_ready(struct mesh_node *node, uint8_t *buf, uint8_t len);
 bool prov_complete(struct mesh_node *node, uint8_t status);
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_PROV_H */

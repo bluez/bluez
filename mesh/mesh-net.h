@@ -21,13 +21,6 @@
  *
  */
 
-#ifndef __MESH_NETORK_H
-#define __MESH_NETORK_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* Proxy PDU Types */
 #define PROXY_NETWORK_PDU	0x00
 #define PROXY_MESH_BEACON	0x01
@@ -35,7 +28,7 @@ extern "C" {
 #define PROXY_PROVISIONING_PDU	0x03
 
 #define CTL		0x80
-#define TTL_MASK 	0x7f
+#define TTL_MASK	0x7f
 #define SEQ_MASK	0xffffff
 
 #define CREDFLAG_MASK	0x1000
@@ -165,10 +158,3 @@ extern "C" {
 #define MESH_STATUS_CANNOT_SET		0x0f
 #define MESH_STATUS_UNSPECIFIED_ERROR	0x10
 #define MESH_STATUS_INVALID_BINDING	0x11
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_NETORK_H */

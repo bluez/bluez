@@ -21,13 +21,6 @@
  *
  */
 
-#ifndef __MESH_CRYPTO_H
-#define __MESH_CRYPTO_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -125,9 +118,3 @@ bool mesh_crypto_aes_cmac(const uint8_t key[16], const uint8_t *msg,
 					size_t msg_len, uint8_t res[16]);
 
 bool mesh_get_random_bytes(void *buf, size_t num_bytes);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif

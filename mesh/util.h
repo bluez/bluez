@@ -21,20 +21,9 @@
  *
  */
 
-#ifndef __MESH_UTIL_H
-#define __MESH_UTIL_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <stdbool.h>
 
-#include "mesh/node.h"
+struct mesh_publication;
 
 #define OP_UNRELIABLE			0x0100
 
@@ -64,8 +53,3 @@ const char *mesh_status_str(uint8_t status);
 void print_model_pub(uint16_t ele_addr, uint32_t mod_id,
 						struct mesh_publication *pub);
 void swap_u256_bytes(uint8_t *u256);
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_UTIL_H */

@@ -21,13 +21,6 @@
  *
  */
 
-#ifndef __MESH_AGENT_H
-#define __MESH_AGENT_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define MAX_HEXADECIMAL_OOB_LEN	128
 #define DECIMAL_OOB_LEN		4
 #define MAX_ASCII_OOB_LEN		16
@@ -50,9 +43,3 @@ void agent_output_request_cancel(void);
 bool agent_completion(void);
 bool agent_input(const char *input);
 void agent_release(void);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MESH_AGENT_H */
