@@ -156,7 +156,7 @@ endif
 if TOOLS
 bin_PROGRAMS += tools/rctest tools/l2test tools/l2ping tools/bccmd \
 			tools/bluemoon tools/hex2hcd tools/mpris-proxy \
-			tools/btattach
+			tools/btattach tools/btconfig
 
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/scotest tools/amptest tools/hwdb \
@@ -191,6 +191,9 @@ tools_btinfo_LDADD = src/libshared-mainloop.la
 
 tools_btattach_SOURCES = tools/btattach.c monitor/bt.h
 tools_btattach_LDADD = src/libshared-mainloop.la
+
+tools_btconfig_SOURCES = tools/btconfig.c
+tools_btconfig_LDADD = src/libshared-mainloop.la
 
 tools_btsnoop_SOURCES = tools/btsnoop.c
 tools_btsnoop_LDADD = src/libshared-mainloop.la

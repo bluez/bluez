@@ -113,6 +113,7 @@ tools/rfcomm-tester
 tools/bnep-tester
 tools/userchan-tester
 tools/btattach
+tools/btconfig
 tools/btmgmt
 tools/btsnoop
 peripheral/btsensor
