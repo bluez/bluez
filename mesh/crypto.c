@@ -43,8 +43,8 @@
 #endif
 
 #include "src/shared/util.h"
-#include "mesh-net.h"
-#include "crypto.h"
+#include "mesh/mesh-net.h"
+#include "mesh/crypto.h"
 
 static int alg_new(int fd, const void *keyval, socklen_t keylen,
 		size_t mic_size)

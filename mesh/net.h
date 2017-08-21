@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #include "gdbus/gdbus.h"
-#include "node.h"
+#include "mesh/node.h"
 
 typedef void (*net_mesh_session_open_callback)(int status);
 

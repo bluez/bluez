@@ -33,8 +33,8 @@
 
 #include "client/display.h"
 #include "src/shared/util.h"
-#include "mesh-net.h"
-#include "util.h"
+#include "mesh/mesh-net.h"
+#include "mesh/util.h"
 
 struct cmd_menu {
 	const char *name;

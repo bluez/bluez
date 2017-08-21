@@ -35,8 +35,8 @@
 
 #include <lib/bluetooth.h>
 #include "client/display.h"
-#include "util.h"
-#include "agent.h"
+#include "mesh/util.h"
+#include "mesh/agent.h"
 
 #define AGENT_PROMPT	COLOR_RED "[agent]" COLOR_OFF " "
 

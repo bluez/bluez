@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #include "gdbus/gdbus.h"
-#include "node.h"
+#include "mesh/node.h"
 
 uint16_t mesh_gatt_sar(uint8_t **pkt, uint16_t size);
 bool mesh_gatt_is_child(GDBusProxy *proxy, GDBusProxy *parent,

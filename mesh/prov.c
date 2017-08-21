@@ -42,14 +42,14 @@
 #include "gdbus/gdbus.h"
 #include "monitor/uuid.h"
 #include "client/display.h"
-#include "node.h"
-#include "gatt.h"
-#include "crypto.h"
-#include "mesh-net.h"
-#include "util.h"
-#include "agent.h"
-#include "prov.h"
-#include "net.h"
+#include "mesh/node.h"
+#include "mesh/gatt.h"
+#include "mesh/crypto.h"
+#include "mesh/mesh-net.h"
+#include "mesh/util.h"
+#include "mesh/agent.h"
+#include "mesh/prov.h"
+#include "mesh/net.h"
 
 /* Provisioning Security Levels */
 #define MESH_PROV_SEC_HIGH	2

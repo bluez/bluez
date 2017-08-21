@@ -40,13 +40,13 @@
 
 #include "src/shared/util.h"
 #include "client/display.h"
-#include "mesh-net.h"
-#include "keys.h"
-#include "net.h"
-#include "node.h"
-#include "prov-db.h"
-#include "util.h"
-#include "config-model.h"
+#include "mesh/mesh-net.h"
+#include "mesh/keys.h"
+#include "mesh/net.h"
+#include "mesh/node.h"
+#include "mesh/prov-db.h"
+#include "mesh/util.h"
+#include "mesh/config-model.h"
 
 #define MIN_COMPOSITION_LEN 16
 

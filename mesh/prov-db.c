@@ -43,13 +43,13 @@
 #include "src/shared/util.h"
 #include "client/display.h"
 
-#include "mesh-net.h"
-#include "crypto.h"
-#include "keys.h"
-#include "net.h"
-#include "node.h"
-#include "util.h"
-#include "prov-db.h"
+#include "mesh/mesh-net.h"
+#include "mesh/crypto.h"
+#include "mesh/keys.h"
+#include "mesh/net.h"
+#include "mesh/node.h"
+#include "mesh/util.h"
+#include "mesh/prov-db.h"
 
 #define CHECK_KEY_IDX_RANGE(x) (((x) >= 0) && ((x) <= 4095))
 

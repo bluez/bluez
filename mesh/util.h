@@ -34,7 +34,7 @@ extern "C" {
 
 #include <stdbool.h>
 
-#include "node.h"
+#include "mesh/node.h"
 
 #define OP_UNRELIABLE			0x0100
 

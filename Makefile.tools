@@ -17,6 +17,7 @@ if MESH
 bin_PROGRAMS += mesh/meshctl
 
 mesh_meshctl_SOURCES = mesh/main.c \
+				mesh/mesh-net.h \
 				mesh/node.h mesh/node.c \
 				mesh/gatt.h mesh/gatt.c \
 				mesh/crypto.h mesh/crypto.c \
