@@ -465,8 +465,13 @@ endif
 EXTRA_DIST += $(manual_pages:.1=.txt)
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
-					--enable-manpages --enable-android \
-					--disable-systemd --disable-udev
+						--enable-health \
+						--enable-mesh \
+						--enable-midi \
+						--enable-manpages \
+						--enable-android \
+						--disable-systemd \
+						--disable-udev
 
 DISTCLEANFILES = $(pkgconfig_DATA) $(unit_tests) $(manual_pages)
 
