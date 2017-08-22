@@ -288,7 +288,7 @@ static void proxy_added(GDBusClient *client, GDBusProxy *proxy)
 	if (client->proxy_added)
 		client->proxy_added(proxy, client->user_data);
 
-;	proxy->pending = FALSE;
+	proxy->pending = FALSE;
 }
 
 static void get_all_properties_reply(DBusPendingCall *call, void *user_data)
@@ -437,6 +437,8 @@ static GDBusProxy *proxy_new(GDBusClient *client, const char *path,
 							proxy, NULL);
 	proxy->pending = TRUE;
 
+	client->proxy_list = g_list_append(client->proxy_list, proxy);
+
 	return g_dbus_proxy_ref(proxy);
 }
 
@@ -497,8 +499,6 @@ GDBusProxy *g_dbus_proxy_new(GDBusClient *client, const char *path,
 	proxy = proxy_new(client, path, interface);
 	if (proxy == NULL)
 		return NULL;
-
-	client->proxy_list = g_list_append(client->proxy_list, proxy);
 
 	if (client->connected && !client->get_objects_call)
 		get_all_properties(proxy);
