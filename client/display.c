@@ -125,6 +125,9 @@ void rl_prompt_input(const char *label, const char *msg,
 	saved_func = func;
 	saved_user_data = user_data;
 
+	rl_set_prompt("");
+	rl_redisplay();
+
 	memset(prompt, 0, sizeof(prompt));
 	snprintf(prompt, sizeof(prompt), COLOR_RED "[%s]" COLOR_OFF " %s ",
 								label, msg);
