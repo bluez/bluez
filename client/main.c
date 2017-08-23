@@ -2608,9 +2608,6 @@ static void rl_handler(char *input)
 	if (!strlen(input))
 		goto done;
 
-	if (agent_input(dbus_conn, input) == TRUE)
-		goto done;
-
 	if (!rl_release_prompt(input))
 		goto done;
 

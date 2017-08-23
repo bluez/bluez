@@ -27,4 +27,3 @@ void agent_unregister(DBusConnection *conn, GDBusProxy *manager);
 void agent_default(DBusConnection *conn, GDBusProxy *manager);
 
 dbus_bool_t agent_completion(void);
-dbus_bool_t agent_input(DBusConnection *conn, const char *input);

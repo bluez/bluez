@@ -41,46 +41,13 @@
 static gboolean agent_registered = FALSE;
 static const char *agent_capability = NULL;
 static DBusMessage *pending_message = NULL;
-static char *agent_saved_prompt = NULL;
-static int agent_saved_point = 0;
-
-static void agent_prompt(const char *msg)
-{
-	char *prompt;
-
-	/* Normal use should not prompt for user input to the agent a second
-	 * time before it releases the prompt, but we take a safe action. */
-	if (agent_saved_prompt)
-		return;
-
-	agent_saved_point = rl_point;
-	agent_saved_prompt = g_strdup(rl_prompt);
-
-	rl_set_prompt("");
-	rl_redisplay();
-
-	prompt = g_strdup_printf(AGENT_PROMPT "%s", msg);
-	rl_set_prompt(prompt);
-	g_free(prompt);
-
-	rl_replace_line("", 0);
-	rl_redisplay();
-}
 
 static void agent_release_prompt(void)
 {
-	if (!agent_saved_prompt)
+	if (!pending_message)
 		return;
 
-	/* This will cause rl_expand_prompt to re-run over the last prompt, but
-	 * our prompt doesn't expand anyway. */
-	rl_set_prompt(agent_saved_prompt);
-	rl_replace_line("", 0);
-	rl_point = agent_saved_point;
-	rl_redisplay();
-
-	g_free(agent_saved_prompt);
-	agent_saved_prompt = NULL;
+	rl_release_prompt("");
 }
 
 dbus_bool_t agent_completion(void)
@@ -91,15 +58,19 @@ dbus_bool_t agent_completion(void)
 	return TRUE;
 }
 
-static void pincode_response(DBusConnection *conn, const char *input)
+static void pincode_response(const char *input, void *user_data)
 {
+	DBusConnection *conn = user_data;
+
 	g_dbus_send_reply(conn, pending_message, DBUS_TYPE_STRING, &input,
 							DBUS_TYPE_INVALID);
 }
 
-static void passkey_response(DBusConnection *conn, const char *input)
+static void passkey_response(const char *input, void *user_data)
 {
+	DBusConnection *conn = user_data;
 	dbus_uint32_t passkey;
+
 	if (sscanf(input, "%u", &passkey) == 1)
 		g_dbus_send_reply(conn, pending_message, DBUS_TYPE_UINT32,
 						&passkey, DBUS_TYPE_INVALID);
@@ -111,8 +82,10 @@ static void passkey_response(DBusConnection *conn, const char *input)
 					"org.bluez.Error.Canceled", NULL);
 }
 
-static void confirm_response(DBusConnection *conn, const char *input)
+static void confirm_response(const char *input, void *user_data)
 {
+	DBusConnection *conn = user_data;
+
 	if (!strcmp(input, "yes"))
 		g_dbus_send_reply(conn, pending_message, DBUS_TYPE_INVALID);
 	else if (!strcmp(input, "no"))
@@ -121,37 +94,6 @@ static void confirm_response(DBusConnection *conn, const char *input)
 	else
 		g_dbus_send_error(conn, pending_message,
 					"org.bluez.Error.Canceled", NULL);
-}
-
-dbus_bool_t agent_input(DBusConnection *conn, const char *input)
-{
-	const char *member;
-
-	if (!pending_message)
-		return FALSE;
-
-	agent_release_prompt();
-
-	member = dbus_message_get_member(pending_message);
-
-	if (!strcmp(member, "RequestPinCode"))
-		pincode_response(conn, input);
-	else if (!strcmp(member, "RequestPasskey"))
-		passkey_response(conn, input);
-	else if (!strcmp(member, "RequestConfirmation"))
-		confirm_response(conn, input);
-	else if (!strcmp(member, "RequestAuthorization"))
-		confirm_response(conn, input);
-	else if (!strcmp(member, "AuthorizeService"))
-		confirm_response(conn, input);
-	else
-		g_dbus_send_error(conn, pending_message,
-					"org.bluez.Error.Canceled", NULL);
-
-	dbus_message_unref(pending_message);
-	pending_message = NULL;
-
-	return TRUE;
 }
 
 static void agent_release(DBusConnection *conn)
@@ -189,7 +131,7 @@ static DBusMessage *request_pincode(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
 							DBUS_TYPE_INVALID);
 
-	agent_prompt("Enter PIN code: ");
+	rl_prompt_input("agent", "Enter PIN code:", pincode_response, conn);
 
 	pending_message = dbus_message_ref(msg);
 
@@ -220,7 +162,8 @@ static DBusMessage *request_passkey(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
 							DBUS_TYPE_INVALID);
 
-	agent_prompt("Enter passkey (number in 0-999999): ");
+	rl_prompt_input("agent", "Enter passkey (number in 0-999999):",
+			passkey_response, conn);
 
 	pending_message = dbus_message_ref(msg);
 
@@ -264,8 +207,8 @@ static DBusMessage *request_confirmation(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
 				DBUS_TYPE_UINT32, &passkey, DBUS_TYPE_INVALID);
 
-	str = g_strdup_printf("Confirm passkey %06u (yes/no): ", passkey);
-	agent_prompt(str);
+	str = g_strdup_printf("Confirm passkey %06u (yes/no):", passkey);
+	rl_prompt_input("agent", str, confirm_response, conn);
 	g_free(str);
 
 	pending_message = dbus_message_ref(msg);
@@ -283,7 +226,8 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
 							DBUS_TYPE_INVALID);
 
-	agent_prompt("Accept pairing (yes/no): ");
+	rl_prompt_input("agent", "Accept pairing (yes/no):", confirm_response,
+								conn);
 
 	pending_message = dbus_message_ref(msg);
 
@@ -301,8 +245,8 @@ static DBusMessage *authorize_service(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
 				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
 
-	str = g_strdup_printf("Authorize service %s (yes/no): ", uuid);
-	agent_prompt(str);
+	str = g_strdup_printf("Authorize service %s (yes/no):", uuid);
+	rl_prompt_input("agent", str, confirm_response, conn);
 	g_free(str);
 
 	pending_message = dbus_message_ref(msg);
