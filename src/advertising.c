@@ -496,7 +496,7 @@ static struct adv_parser {
 	bool (*func)(DBusMessageIter *iter, struct btd_adv_client *client);
 } parsers[] = {
 	{ "Type", parse_type },
-	{ "UUIDs", parse_service_uuids },
+	{ "ServiceUUIDs", parse_service_uuids },
 	{ "SolicitUUIDs", parse_solicit_uuids },
 	{ "ManufacturerData", parse_manufacturer_data },
 	{ "ServiceData", parse_service_data },
