@@ -2005,7 +2005,7 @@ static void rl_handler(char *input)
 		goto done;
 	}
 
-	if (agent_input(input) == TRUE)
+	if (!rl_release_prompt(input))
 		goto done;
 
 	add_history(input);
@@ -2263,7 +2263,7 @@ int main(int argc, char *argv[])
 	g_list_free(service_list);
 	g_list_free_full(ctrl_list, proxy_leak);
 
-	agent_release();
+	rl_release_prompt("");
 
 	return 0;
 }
