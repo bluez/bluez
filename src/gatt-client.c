@@ -1087,6 +1087,8 @@ static void pipe_io_destroy(struct pipe_io *io)
 static void characteristic_destroy_pipe(struct characteristic *chrc,
 							struct io *io)
 {
+	queue_remove(chrc->service->client->ios, io);
+
 	if (chrc->write_io && io == chrc->write_io->io) {
 		pipe_io_destroy(chrc->write_io);
 		chrc->write_io = NULL;
@@ -1584,8 +1586,7 @@ static DBusMessage *characteristic_stop_notify(DBusConnection *conn,
 		return btd_error_failed(msg, "No notify session started");
 
 	if (chrc->notify_io) {
-		pipe_io_destroy(chrc->notify_io);
-		chrc->notify_io = NULL;
+		characteristic_destroy_pipe(chrc, chrc->notify_io->io);
 		return dbus_message_new_method_return(msg);
 	}
 
@@ -1646,11 +1647,15 @@ static void characteristic_free(void *data)
 	queue_destroy(chrc->descs, NULL);
 	queue_destroy(chrc->notify_clients, NULL);
 
-	if (chrc->write_io)
+	if (chrc->write_io) {
+		queue_remove(chrc->service->client->ios, chrc->write_io->io);
 		pipe_io_destroy(chrc->write_io);
+	}
 
-	if (chrc->notify_io)
+	if (chrc->notify_io) {
+		queue_remove(chrc->service->client->ios, chrc->notify_io->io);
 		pipe_io_destroy(chrc->notify_io);
+	}
 
 	g_free(chrc->path);
 	free(chrc);
