@@ -77,12 +77,10 @@ struct mesh_node {
 	uint16_t primary;
 	uint16_t oob;
 	uint16_t features;
-	uint8_t gatt_pkt[MAX_GATT_SIZE];
 	uint8_t dev_uuid[16];
 	uint8_t dev_key[16];
 	uint8_t num_ele;
 	uint8_t ttl;
-	uint8_t gatt_size;
 	bool provisioner;
 	struct mesh_node_composition *comp;
 };
