@@ -2234,7 +2234,8 @@ static char *attribute_generator(const char *text, int state)
 	return gatt_attribute_generator(text, state);
 }
 
-static char *capability_generator(const char *text, int state)
+static char *argument_generator(const char *text, int state,
+					const char * const *args_list)
 {
 	static int index, len;
 	const char *arg;
@@ -2244,7 +2245,7 @@ static char *capability_generator(const char *text, int state)
 		len = strlen(text);
 	}
 
-	while ((arg = agent_arguments[index])) {
+	while ((arg = args_list[index])) {
 		index++;
 
 		if (!strncmp(arg, text, len))
@@ -2252,6 +2253,11 @@ static char *capability_generator(const char *text, int state)
 	}
 
 	return NULL;
+}
+
+static char *capability_generator(const char *text, int state)
+{
+	return argument_generator(text, state, agent_arguments);
 }
 
 static gboolean parse_argument_advertise(const char *arg, dbus_bool_t *value,
@@ -2308,22 +2314,7 @@ static void cmd_advertise(const char *arg)
 
 static char *ad_generator(const char *text, int state)
 {
-	static int index, len;
-	const char *arg;
-
-	if (!state) {
-		index = 0;
-		len = strlen(text);
-	}
-
-	while ((arg = ad_arguments[index])) {
-		index++;
-
-		if (!strncmp(arg, text, len))
-			return strdup(arg);
-	}
-
-	return NULL;
+	return argument_generator(text, state, ad_arguments);
 }
 
 static void cmd_set_advertise_uuids(const char *arg)
