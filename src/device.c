@@ -1624,9 +1624,9 @@ static void add_manufacturer_data(void *data, void *user_data)
 }
 
 void device_set_manufacturer_data(struct btd_device *dev, GSList *list,
-								bool reset)
+								bool duplicate)
 {
-	if (reset)
+	if (duplicate)
 		bt_ad_clear_manufacturer_data(dev->ad);
 
 	g_slist_foreach(list, add_manufacturer_data, dev);
@@ -1649,9 +1649,9 @@ static void add_service_data(void *data, void *user_data)
 }
 
 void device_set_service_data(struct btd_device *dev, GSList *list,
-							bool reset)
+							bool duplicate)
 {
-	if (reset)
+	if (duplicate)
 		bt_ad_clear_service_data(dev->ad);
 
 	g_slist_foreach(list, add_service_data, dev);

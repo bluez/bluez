@@ -54,46 +54,70 @@ Methods		void StartDiscovery()
 			Parameters that may be set in the filter dictionary
 			include the following:
 
-			array{string} UUIDs	: filtered service UUIDs
-			int16	      RSSI	: RSSI threshold value
-			uint16        Pathloss	: Pathloss threshold value
-			string        Transport	: type of scan to run
-			bool          ResetData : Reset advertisement data
+			array{string} UUIDs
 
-			When a remote device is found that advertises any UUID
-			from UUIDs, it will be reported if:
-			- Pathloss and RSSI are both empty,
-			- only Pathloss param is set, device advertise TX pwer,
-			  and computed pathloss is less than Pathloss param,
-			- only RSSI param is set, and received RSSI is higher
-			  than RSSI param,
+				Filter by service UUIDs, empty means match
+				_any_ UUID.
 
-			Transport parameter determines the type of scan:
-				"auto"	- interleaved scan, default value
-				"bredr"	- BR/EDR inquiry
-				"le"	- LE scan only
+				When a remote device is found that advertises
+				any UUID from UUIDs, it will be reported if:
+				- Pathloss and RSSI are both empty.
+				- only Pathloss param is set, device advertise
+				  TX pwer, and computed pathloss is less than
+				  Pathloss param.
+				- only RSSI param is set, and received RSSI is
+				  higher than RSSI param.
 
-			If "le" or "bredr" Transport is requested, and the
-			controller doesn't support it, org.bluez.Error.Failed
-			error will be returned. If "auto" transport is
-			requested, scan will use LE, BREDR, or both, depending
-			on what's currently enabled on the controller.
+			int16 RSSI
+
+				RSSI threshold value.
+
+				PropertiesChanged signals will be emitted
+				for already existing Device objects, with
+				updated RSSI value. If one or more discovery
+				filters have been set, the RSSI delta-threshold,
+				that is imposed by StartDiscovery by default,
+				will not be applied.
+
+			uint16 Pathloss
+
+				Pathloss threshold value.
+
+				PropertiesChanged signals will be emitted
+				for already existing Device objects, with
+				updated Pathloss value.
+
+			string Transport (Default "auto")
+
+				Transport parameter determines the type of
+				scan.
+
+				Possible values:
+					"auto"	- interleaved scan
+					"bredr"	- BR/EDR inquiry
+					"le"	- LE scan only
+
+				If "le" or "bredr" Transport is requested,
+				and the controller doesn't support it,
+				org.bluez.Error.Failed error will be returned.
+				If "auto" transport is requested, scan will use
+				LE, BREDR, or both, depending on what's
+				currently enabled on the controller.
+
+			bool DuplicateData (Default: true)
+
+				Disables duplicate detection of advertisement
+				data.
+
+				When enabled PropertiesChanged signals will be
+				generated for either ManufacturerData and
+				ServiceData everytime they are discovered.
 
 			When discovery filter is set, Device objects will be
 			created as new devices with matching criteria are
 			discovered regardless of they are connectable or
 			discoverable which enables listening to
 			non-connectable and non-discoverable devices.
-
-			PropertiesChanged signals will be emitted
-			for already existing Device objects, with updated RSSI
-			value. If one or more discovery filters have been set,
-			the RSSI delta-threshold, that is imposed by
-			StartDiscovery by default, will not be applied.
-
-			If ResetData is enabled PropertiesChanged signals will
-			be generated for either ManufacturerData and ServiceData
-			everytime they are discovered.
 
 			When multiple clients call SetDiscoveryFilter, their
 			filters are internally merged, and notifications about
