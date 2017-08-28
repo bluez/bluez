@@ -1575,7 +1575,7 @@ struct set_discovery_filter_args {
 	dbus_int16_t pathloss;
 	char **uuids;
 	size_t uuids_len;
-	dbus_bool_t reset;
+	dbus_bool_t duplicate;
 };
 
 static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
@@ -1602,9 +1602,9 @@ static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 	if (args->transport != NULL)
 		dict_append_entry(&dict, "Transport", DBUS_TYPE_STRING,
 						&args->transport);
-	if (args->reset)
-		dict_append_entry(&dict, "ResetData", DBUS_TYPE_BOOLEAN,
-						&args->reset);
+	if (args->duplicate)
+		dict_append_entry(&dict, "DuplicateData", DBUS_TYPE_BOOLEAN,
+						&args->duplicate);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -1639,7 +1639,7 @@ static void set_scan_filter_commit(void)
 	args.transport = filtered_scan_transport;
 	args.uuids = filtered_scan_uuids;
 	args.uuids_len = filtered_scan_uuids_len;
-	args.reset = TRUE;
+	args.duplicate = TRUE;
 
 	if (check_default_ctrl() == FALSE)
 		return;
