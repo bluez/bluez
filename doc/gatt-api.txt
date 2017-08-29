@@ -162,6 +162,13 @@ Methods		array{byte} ReadValue(dict options)
 
 			Possible Errors: org.bluez.Error.Failed
 
+		void Confirm() [optional] (Server only)
+
+			This method doesn't expect a reply so it is just a
+			confirmation that value was received.
+
+			Possible Errors: org.bluez.Error.Failed
+
 Properties	string UUID [read-only]
 
 			128-bit characteristic UUID.
