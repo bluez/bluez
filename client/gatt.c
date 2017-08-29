@@ -1405,6 +1405,16 @@ static DBusMessage *chrc_stop_notify(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *chrc_confirm(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct chrc *chrc = user_data;
+
+	rl_printf("Attribute %s indication confirm received", chrc->path);
+
+	return dbus_message_new_method_return(msg);
+}
+
 static const GDBusMethodTable chrc_methods[] = {
 	{ GDBUS_ASYNC_METHOD("ReadValue", GDBUS_ARGS({ "options", "a{sv}" }),
 					GDBUS_ARGS({ "value", "ay" }),
@@ -1414,6 +1424,7 @@ static const GDBusMethodTable chrc_methods[] = {
 					NULL, chrc_write_value) },
 	{ GDBUS_ASYNC_METHOD("StartNotify", NULL, NULL, chrc_start_notify) },
 	{ GDBUS_METHOD("StopNotify", NULL, NULL, chrc_stop_notify) },
+	{ GDBUS_METHOD("Confirm", NULL, NULL, chrc_confirm) },
 	{ }
 };
 
