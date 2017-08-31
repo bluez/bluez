@@ -503,7 +503,7 @@ static bool parse_service_data(GDBusProxy *proxy, const char *target_uuid,
 	}
 
 	if (!g_dbus_proxy_get_property(proxy, "ServiceData", &iter))
-		return true;
+		return false;
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
 		return false;
