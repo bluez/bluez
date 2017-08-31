@@ -216,7 +216,7 @@ man_MANS = src/bluetoothd.8
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
-			profiles/input/input.conf profiles/proximity/proximity.conf
+			profiles/input/input.conf
 
 test_scripts =
 unit_tests =
@@ -254,10 +254,7 @@ EXTRA_DIST += doc/mgmt-api.txt \
 		doc/health-api.txt doc/sap-api.txt \
 		doc/input-api.txt
 
-EXTRA_DIST += doc/alert-api.txt \
-		doc/proximity-api.txt doc/heartrate-api.txt \
-		doc/thermometer-api.txt doc/cyclingspeed-api.txt \
-		doc/gatt-api.txt doc/advertising-api.txt
+EXTRA_DIST += doc/gatt-api.txt doc/advertising-api.txt
 
 EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
 
