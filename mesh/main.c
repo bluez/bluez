@@ -718,7 +718,7 @@ static void update_device_info(GDBusProxy *proxy)
 		dev = find_device_by_uuid(adapter->mesh_devices,
 							prov_data.dev_uuid);
 
-		/* Display provisioning service once per sicovery session */
+		/* Display provisioning service once per discovery session */
 		if (discovering && (!dev || !dev->hide))
 						print_prov_service(&prov_data);
 
