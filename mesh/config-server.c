@@ -59,8 +59,7 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 	uint16_t ele_addr;
 	uint8_t ele_idx;
 	struct mesh_publication pub;
-
-	int n;
+	int m, n;
 
 	if (mesh_opcode_get(data, len, &opcode, &n)) {
 		len -= n;
@@ -72,6 +71,8 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 
 	if (!node)
 		return true;
+
+	n = 0;
 
 	switch (opcode & ~OP_UNRELIABLE) {
 	default:
@@ -94,6 +95,7 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 		break;
 
 	case OP_CONFIG_MODEL_PUB_SET:
+
 		if (len != 11 && len != 13)
 			return true;
 
@@ -110,19 +112,19 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 		pub.app_idx = get_le16(data + 4);
 		pub.ttl = data[6];
 		pub.period = data[7];
-		n = (data[7] & 0x3f);
+		m = (data[7] & 0x3f);
 		switch (data[7] >> 6) {
 		case 0:
-			rl_printf("Period: %d ms\n", n * 100);
+			rl_printf("Period: %d ms\n", m * 100);
 			break;
 		case 2:
-			n *= 10;
+			m *= 10;
 			/* fall through */
 		case 1:
-			rl_printf("Period: %d sec\n", n);
+			rl_printf("Period: %d sec\n", m);
 			break;
 		case 3:
-			rl_printf("Period: %d min\n", n * 10);
+			rl_printf("Period: %d min\n", m * 10);
 			break;
 		}
 
@@ -140,9 +142,9 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 	}
 
 	primary = node_get_primary(node);
-	if (src != primary)
+	if (n && src != primary)
 		net_access_layer_send(node_get_default_ttl(node), primary,
-					src, APP_IDX_DEV, msg, len);
+					src, APP_IDX_DEV, msg, n);
 	return true;
 }
 
