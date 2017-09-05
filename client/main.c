@@ -2215,7 +2215,7 @@ static char *generic_generator(const char *text, int state,
 
 		if (!strncasecmp(str, text, len))
 			return strdup(str);
-        }
+	}
 
 	return NULL;
 }
