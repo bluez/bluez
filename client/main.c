@@ -2601,10 +2601,11 @@ static char **cmd_completion(const char *text, int start, int end)
 
 	if (start > 0) {
 		int i;
+		char *input_cmd;
 
+		input_cmd = g_strndup(rl_line_buffer, start -1);
 		for (i = 0; cmd_table[i].cmd; i++) {
-			if (strncmp(cmd_table[i].cmd,
-					rl_line_buffer, start - 1))
+			if (strcmp(cmd_table[i].cmd, input_cmd))
 				continue;
 
 			if (!cmd_table[i].gen)
@@ -2614,6 +2615,7 @@ static char **cmd_completion(const char *text, int start, int end)
 			matches = rl_completion_matches(text, cmd_table[i].gen);
 			break;
 		}
+		g_free(input_cmd);
 	} else {
 		rl_completion_display_matches_hook = NULL;
 		matches = rl_completion_matches(text, cmd_generator);
