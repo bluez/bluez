@@ -2026,8 +2026,7 @@ static void desc_write_cb(struct gatt_db_attribute *attrib,
 		return;
 
 fail:
-	gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
-								NULL, 0);
+	gatt_db_attribute_write_result(attrib, id, BT_ATT_ERROR_UNLIKELY);
 }
 
 static bool database_add_desc(struct external_service *service,
@@ -2113,8 +2112,7 @@ static void chrc_write_cb(struct gatt_db_attribute *attrib,
 		return;
 
 fail:
-	gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
-								NULL, 0);
+	gatt_db_attribute_write_result(attrib, id, BT_ATT_ERROR_UNLIKELY);
 }
 
 static bool database_add_chrc(struct external_service *service,
