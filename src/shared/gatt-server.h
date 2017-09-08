@@ -27,6 +27,7 @@ struct bt_gatt_server;
 
 struct bt_gatt_server *bt_gatt_server_new(struct gatt_db *db,
 					struct bt_att *att, uint16_t mtu);
+uint16_t bt_gatt_server_get_mtu(struct bt_gatt_server *server);
 
 struct bt_gatt_server *bt_gatt_server_ref(struct bt_gatt_server *server);
 void bt_gatt_server_unref(struct bt_gatt_server *server);
