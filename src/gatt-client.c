@@ -1229,7 +1229,7 @@ static DBusMessage *characteristic_acquire_write(DBusConnection *conn,
 	chrc->write_io = new0(struct pipe_io, 1);
 
 	if (!bt_gatt_client_is_ready(gatt)) {
-		DBG("GATT not ready, wait until it becomes read");
+		/* GATT not ready, wait until it becomes ready */
 		if (!chrc->ready_id)
 			chrc->ready_id = bt_gatt_client_ready_register(gatt,
 							characteristic_ready,
