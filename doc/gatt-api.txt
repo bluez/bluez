@@ -91,13 +91,16 @@ Methods		array{byte} ReadValue(dict options)
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NotSupported
 
-		fd, uint16 AcquireWrite() [experimental] (Client only)
+		fd, uint16 AcquireWrite(dict options) [experimental, optional]
 
 			Acquire file descriptor and MTU for writing. Usage of
 			WriteValue will be locked causing it to return
 			NotPermitted error.
 
-			Only works with characteristic that has
+			For server the MTU returned shall be equal or smaller
+			than the negotiated MTU.
+
+			For client it only works with characteristic that has
 			WriteAcquired property which relies on
 			write-without-response Flag.
 
@@ -111,14 +114,20 @@ Methods		array{byte} ReadValue(dict options)
 			that the file descriptor is closed during
 			reconnections as the MTU has to be renegotiated.
 
+			Possible options: "device": Object Device (Server only)
+					  "MTU": Exchanged MTU (Server only)
+
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.NotSupported
 
-		fd, uint16 AcquireNotify() [experimental] (Client only)
+		fd, uint16 AcquireNotify(dict options) [experimental, optional]
 
 			Acquire file descriptor and MTU for notify. Usage of
 			StartNotify will be locked causing it to return
 			NotPermitted error.
+
+			For server the MTU returned shall be equal or smaller
+			than the negotiated MTU.
 
 			Only works with characteristic that has NotifyAcquired
 			which relies on notify Flag and no other client have
@@ -139,6 +148,9 @@ Methods		array{byte} ReadValue(dict options)
 			order to have the exchange MTU completed, because of
 			that the file descriptor is closed during
 			reconnections as the MTU has to be renegotiated.
+
+			Possible options: "device": Object Device (Server only)
+					  "MTU": Exchanged MTU (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.NotSupported
@@ -188,14 +200,24 @@ Properties	string UUID [read-only]
 		boolean WriteAcquired [read-only, optional]
 
 			True, if this characteristic has been acquired by any
-			client using AcquireWrite. This properties is ommited
-			in case 'write-without-response' flag is not set.
+			client using AcquireWrite.
+
+			For client properties is ommited in case
+			'write-without-response' flag is not set.
+
+			For server the presence of this property indicates
+			that AcquireWrite is supported.
 
 		boolean NotifyAcquired [read-only, optional]
 
 			True, if this characteristic has been acquired by any
-			client using AcquireNotify. This properties is ommited
-			in case 'notify' flag is not set.
+			client using AcquireNotify.
+
+			For client this properties is ommited in case 'notify'
+			flag is not set.
+
+			For server the presence of this property indicates
+			that AcquireNotify is supported.
 
 		boolean Notifying [read-only, optional]
 
