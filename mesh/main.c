@@ -1295,8 +1295,9 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 		rl_printf("Characteristic property changed %s\n",
 						g_dbus_proxy_get_path(proxy));
 
-		if ((connection.type == CONN_TYPE_PROVISION) ||
-							connection.session_open)
+		if ((strcmp(name, "Value") == 0) &&
+				((connection.type == CONN_TYPE_PROVISION) ||
+						connection.session_open))
 			process_mesh_characteristic(proxy);
 	}
 }
