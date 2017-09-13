@@ -56,8 +56,6 @@
 #define MESH_PROV_SEC_MED	1
 #define MESH_PROV_SEC_LOW	0
 
-/* For Deployment, Security levels below HIGH are *not* recomended */
-#define mesh_gatt_prov_security()	MESH_PROV_SEC_MED
 
 #define PROV_INVITE	0x00
 #define PROV_CAPS	0x01
@@ -83,6 +81,9 @@
 #define PROV_ERR_DECRYPT_FAILED		0x06
 #define PROV_ERR_UNEXPECTED_ERR		0x07
 #define PROV_ERR_CANT_ASSIGN_ADDR	0x08
+
+/* For Deployment, Security levels below HIGH are *not* recomended */
+static uint8_t prov_sec_level = MESH_PROV_SEC_MED;
 
 /* Expected Provisioning PDU sizes */
 static const uint16_t expected_pdu_size[] = {
@@ -463,7 +464,7 @@ bool prov_data_ready(struct mesh_node *node, uint8_t *buf, uint8_t len)
 			/* Save Capability values */
 			memcpy(&prov->conf_in.caps, buf, len);
 
-			sec_level = mesh_gatt_prov_security();
+			sec_level = prov_get_sec_level();
 
 			if (sec_level == MESH_PROV_SEC_HIGH) {
 
@@ -661,4 +662,19 @@ bool prov_complete(struct mesh_node *node, uint8_t status)
 	if (cb) cb(user_data, status);
 
 	return true;
+}
+
+bool prov_set_sec_level(uint8_t level)
+{
+	if (level > MESH_PROV_SEC_HIGH)
+		return false;
+
+	prov_sec_level = level;
+
+	return true;
+}
+
+uint8_t prov_get_sec_level(void)
+{
+	return prov_sec_level;
 }

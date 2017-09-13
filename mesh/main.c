@@ -1721,6 +1721,41 @@ static void cmd_info(const char *arg)
 	print_property(proxy, "TxPower");
 }
 
+static const char *security2str(uint8_t level)
+{
+	switch (level) {
+	case 0:
+		return "low";
+	case 1:
+		return "medium";
+	case 2:
+		return "high";
+	default:
+		return "invalid";
+	}
+}
+
+static void cmd_security(const char *arg)
+{
+	uint8_t level;
+	char *end;
+
+	if (!arg || arg[0] == '\0') {
+		level = prov_get_sec_level();
+		goto done;
+	}
+
+	level = strtol(arg, &end, 10);
+	if (end == arg || !prov_set_sec_level(level)) {
+		rl_printf("Invalid security level %s\n", arg);
+		return;
+	}
+
+done:
+	rl_printf("Provision Security Level set to %u (%s)\n", level,
+						security2str(level));
+}
+
 static void cmd_connect(const char *arg)
 {
 	if (check_default_ctrl() == FALSE)
@@ -1967,6 +2002,8 @@ static const struct menu_entry meshctl_cmd_table[] = {
 	{ "list",         NULL,       cmd_list, "List available controllers"},
 	{ "show",         "[ctrl]",   cmd_show, "Controller information"},
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller"},
+	{ "security",     "[0(low)/1(medium)/2(high)]", cmd_security,
+				"Display or change provision security level"},
 	{ "info",         "[dev]",    cmd_info, "Device information"},
 	{ "connect",      "[net_idx]",cmd_connect, "Connect to mesh network"},
 	{ "discover-unprovisioned", "<on/off>", cmd_scan_unprovisioned_devices,
