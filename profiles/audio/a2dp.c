@@ -104,6 +104,7 @@ struct a2dp_setup {
 	gboolean reconfigure;
 	gboolean start;
 	GSList *cb;
+	GIOChannel *io;
 	int ref;
 };
 
@@ -157,6 +158,11 @@ static struct a2dp_setup *setup_new(struct avdtp *session)
 static void setup_free(struct a2dp_setup *s)
 {
 	DBG("%p", s);
+
+	if (s->io) {
+		g_io_channel_shutdown(s->io, TRUE, NULL);
+		g_io_channel_unref(s->io);
+	}
 
 	setups = g_slist_remove(setups, s);
 	if (s->session)
@@ -1475,6 +1481,7 @@ static void transport_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	if (err) {
 		error("%s", err->message);
+		if (err)
 		goto drop;
 	}
 
@@ -1492,6 +1499,9 @@ static void transport_cb(GIOChannel *io, GError *err, gpointer user_data)
 		goto drop;
 
 	g_io_channel_set_close_on_unref(io, FALSE);
+
+	g_io_channel_unref(setup->io);
+	setup->io = NULL;
 
 	setup_unref(setup);
 
@@ -1537,11 +1547,23 @@ static void confirm_cb(GIOChannel *io, gpointer data)
 		if (!setup || !setup->stream)
 			goto drop;
 
+		if (setup->io) {
+			error("transport channel already exists");
+			goto drop;
+		}
+
 		if (!bt_io_accept(io, transport_cb, setup, NULL, &err)) {
 			error("bt_io_accept: %s", err->message);
 			g_error_free(err);
 			goto drop;
 		}
+
+		/*
+		 * Reference the channel so it can be shutdown properly
+		 * stopping bt_io_accept from calling the callback with invalid
+		 * setup pointer.
+		 */
+		setup->io = g_io_channel_ref(io);
 
 		return;
 	}
