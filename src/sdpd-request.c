@@ -917,7 +917,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	} else {
 		/* continuation State exists -> get from cache */
 		sdp_buf_t *pCache = sdp_get_cached_rsp(cstate);
-		if (pCache) {
+		if (pCache && cstate->cStateValue.maxBytesSent < pCache->data_size) {
 			uint16_t sent = MIN(max, pCache->data_size - cstate->cStateValue.maxBytesSent);
 			pResponse = pCache->data;
 			memcpy(buf->data, pResponse + cstate->cStateValue.maxBytesSent, sent);
