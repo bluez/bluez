@@ -1,6 +1,6 @@
 {
-  "$schema":"file:\/\/\/Bluetooth SIG\/Mesh\/schema\/mesh.jsonschema",
-  "meshName":"Intel BT Mesh",
+  "$schema":"file:\/\/\/BlueZ\/Mesh\/local_schema\/mesh.jsonschema",
+  "meshName":"BT Mesh",
   "netKeys":[
     {
       "index": 0,
