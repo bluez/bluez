@@ -1481,7 +1481,6 @@ static void transport_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	if (err) {
 		error("%s", err->message);
-		if (err)
 		goto drop;
 	}
 
