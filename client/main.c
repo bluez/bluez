@@ -525,17 +525,40 @@ static void device_added(GDBusProxy *proxy)
 	}
 }
 
+static struct adapter *find_ctrl(GList *source, const char *path);
+
+static struct adapter *adapter_new(GDBusProxy *proxy)
+{
+	struct adapter *adapter = g_malloc0(sizeof(struct adapter));
+
+	ctrl_list = g_list_append(ctrl_list, adapter);
+
+	if (!default_ctrl)
+		default_ctrl = adapter;
+
+	return adapter;
+}
+
 static void adapter_added(GDBusProxy *proxy)
 {
-	default_ctrl = g_malloc0(sizeof(struct adapter));
-	default_ctrl->proxy = proxy;
-	ctrl_list = g_list_append(ctrl_list, default_ctrl);
+	struct adapter *adapter;
+	adapter = find_ctrl(ctrl_list, g_dbus_proxy_get_path(proxy));
+	if (!adapter)
+		adapter = adapter_new(proxy);
+
+	adapter->proxy = proxy;
+
 	print_adapter(proxy, COLORED_NEW);
 }
 
 static void ad_manager_added(GDBusProxy *proxy)
 {
-	default_ctrl->ad_proxy = proxy;
+	struct adapter *adapter;
+	adapter = find_ctrl(ctrl_list, g_dbus_proxy_get_path(proxy));
+	if (!adapter)
+		adapter = adapter_new(proxy);
+
+	adapter->ad_proxy = proxy;
 }
 
 static void proxy_added(GDBusProxy *proxy, void *user_data)
