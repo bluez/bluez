@@ -1,3 +1,14 @@
+ver 5.47:
+	Fix issue with handling AcquireNotify registration.
+	Fix issue with handling support for reconnection interval.
+	Fix issue with handling A2DP transport and accepting streams.
+	Fix issue with fallback from BR/EDR to LE bearer handling.
+	Add support for appearance and local name advertising data.
+	Add support for retrieving the supported discovery filters.
+	Add support for decoding Bluetooth 5.0 commands and events.
+	Add support for decoding Bluetooth Mesh advertising bearer.
+	Add support for Bluetooth Mesh control application.
+
 ver 5.46:
 	Fix issue with handling ATT over BR/EDR connections.
 	Fix issue with SDP browsing cleanup after connection.
