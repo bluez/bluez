@@ -4415,6 +4415,11 @@ static void adapter_free(gpointer user_data)
 		adapter->pairable_timeout_id = 0;
 	}
 
+	if (adapter->passive_scan_timeout > 0) {
+		g_source_remove(adapter->passive_scan_timeout);
+		adapter->passive_scan_timeout = 0;
+	}
+
 	if (adapter->load_ltks_timeout > 0)
 		g_source_remove(adapter->load_ltks_timeout);
 
