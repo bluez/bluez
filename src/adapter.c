@@ -662,7 +662,8 @@ static void trigger_pairable_timeout(struct btd_adapter *adapter)
 		return;
 
 	if (adapter->pairable_timeout > 0)
-		g_timeout_add_seconds(adapter->pairable_timeout,
+		adapter->pairable_timeout_id =
+			g_timeout_add_seconds(adapter->pairable_timeout,
 					pairable_timeout_handler, adapter);
 }
 
@@ -4408,6 +4409,11 @@ static void adapter_free(gpointer user_data)
 	struct btd_adapter *adapter = user_data;
 
 	DBG("%p", adapter);
+
+	if (adapter->pairable_timeout_id > 0) {
+		g_source_remove(adapter->pairable_timeout_id);
+		adapter->pairable_timeout_id = 0;
+	}
 
 	if (adapter->load_ltks_timeout > 0)
 		g_source_remove(adapter->load_ltks_timeout);
