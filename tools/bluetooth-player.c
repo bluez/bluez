@@ -1086,7 +1086,9 @@ static void rl_handler(char *input)
 		goto done;
 
 	g_strstrip(input);
-	add_history(input);
+
+	if (history_search(input, -1))
+		add_history(input);
 
 	argv = g_strsplit(input, " ", -1);
 	if (argv == NULL)

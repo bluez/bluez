@@ -2646,7 +2646,8 @@ static void rl_handler(char *input)
 	if (!rl_release_prompt(input))
 		goto done;
 
-	add_history(input);
+	if (history_search(input, -1))
+		add_history(input);
 
 	cmd = strtok_r(input, " ", &arg);
 	if (!cmd)

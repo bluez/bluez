@@ -242,7 +242,8 @@ static void parse_line(char *line_read)
 		return;
 	}
 
-	add_history(line_read);
+	if (history_search(line_read, -1))
+		add_history(line_read);
 
 	g_shell_parse_argv(line_read, &argcp, &argvp, NULL);
 

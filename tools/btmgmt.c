@@ -4664,7 +4664,8 @@ static void rl_handler(char *input)
 	if (prompt_input(input))
 		goto done;
 
-	add_history(input);
+	if (history_search(input, -1))
+		add_history(input);
 
 	if (wordexp(input, &w, WRDE_NOCMD))
 		goto done;
