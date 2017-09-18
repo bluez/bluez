@@ -386,6 +386,20 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 	pipe_write(write_io, data);
 }
 
+static void acquire_setup(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
 bool mesh_gatt_write(GDBusProxy *proxy, uint8_t *buf, uint16_t len,
 			GDBusReturnFunction cb, void *user_data)
 {
@@ -424,8 +438,9 @@ bool mesh_gatt_write(GDBusProxy *proxy, uint8_t *buf, uint16_t len,
 		return pipe_write(write_io, data);
 
 	if (g_dbus_proxy_get_property(proxy, "WriteAcquired", &iter)) {
-		if (g_dbus_proxy_method_call(proxy, "AcquireWrite", NULL,
-				acquire_write_reply, data, NULL) == FALSE) {
+		if (g_dbus_proxy_method_call(proxy, "AcquireWrite",
+					acquire_setup, acquire_write_reply,
+					data, NULL) == FALSE) {
 			rl_printf("Failed to AcquireWrite\n");
 			write_data_free(data);
 			return false;
@@ -573,6 +588,7 @@ bool mesh_gatt_notify(GDBusProxy *proxy, bool enable, GDBusReturnFunction cb,
 	struct notify_data *data;
 	DBusMessageIter iter;
 	const char *method;
+	GDBusSetupFunction setup = NULL;
 
 	data = g_new0(struct notify_data, 1);
 	data->proxy = proxy;
@@ -584,6 +600,7 @@ bool mesh_gatt_notify(GDBusProxy *proxy, bool enable, GDBusReturnFunction cb,
 		if (g_dbus_proxy_get_property(proxy, "NotifyAcquired", &iter)) {
 			method = "AcquireNotify";
 			cb = acquire_notify_reply;
+			setup = acquire_setup;
 		} else {
 			method = "StartNotify";
 			cb = notify_reply;
@@ -600,7 +617,7 @@ bool mesh_gatt_notify(GDBusProxy *proxy, bool enable, GDBusReturnFunction cb,
 		}
 	}
 
-	if (g_dbus_proxy_method_call(proxy, method, NULL, cb,
+	if (g_dbus_proxy_method_call(proxy, method, setup, cb,
 					data, NULL) == FALSE) {
 		rl_printf("Failed to %s\n", method);
 		return false;

@@ -778,6 +778,20 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 	write_io.io = pipe_io_new(fd, NULL);
 }
 
+static void acquire_setup(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
 void gatt_acquire_write(GDBusProxy *proxy, const char *arg)
 {
 	const char *iface;
@@ -789,7 +803,7 @@ void gatt_acquire_write(GDBusProxy *proxy, const char *arg)
 		return;
 	}
 
-	if (g_dbus_proxy_method_call(proxy, "AcquireWrite", NULL,
+	if (g_dbus_proxy_method_call(proxy, "AcquireWrite", acquire_setup,
 				acquire_write_reply, NULL, NULL) == FALSE) {
 		rl_printf("Failed to AcquireWrite\n");
 		return;
@@ -852,7 +866,7 @@ void gatt_acquire_notify(GDBusProxy *proxy, const char *arg)
 		return;
 	}
 
-	if (g_dbus_proxy_method_call(proxy, "AcquireNotify", NULL,
+	if (g_dbus_proxy_method_call(proxy, "AcquireNotify", acquire_setup,
 				acquire_notify_reply, NULL, NULL) == FALSE) {
 		rl_printf("Failed to AcquireNotify\n");
 		return;
