@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include <sys/uio.h>
 #include <wordexp.h>
+#include <inttypes.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -538,7 +539,7 @@ void node_local_data_handler(uint16_t src, uint32_t dst,
 
 		if (iv_seq_remote >= iv_seq) {
 			rl_printf("Replayed message detected "
-							"(%14lx >= %14lx)\n",
+					"(%016" PRIx64 " >= %016" PRIx64 ")\n",
 							iv_seq_remote, iv_seq);
 			return;
 		}
