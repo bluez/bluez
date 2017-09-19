@@ -202,6 +202,65 @@ static void read_version_rsp(const void *data, uint8_t size)
 	print_field("Firmware patch: %u", fw_patch);
 }
 
+static void set_uart_baudrate_cmd(const void *data, uint8_t size)
+{
+	uint8_t baudrate = get_u8(data);
+	const char *str;
+
+	switch (baudrate) {
+	case 0x00:
+		str = "9600 Baud";
+		break;
+	case 0x01:
+		str = "19200 Baud";
+		break;
+	case 0x02:
+		str = "38400 Baud";
+		break;
+	case 0x03:
+		str = "57600 Baud";
+		break;
+	case 0x04:
+		str = "115200 Baud";
+		break;
+	case 0x05:
+		str = "230400 Baud";
+		break;
+	case 0x06:
+		str = "460800 Baud";
+		break;
+	case 0x07:
+		str = "921600 Baud";
+		break;
+	case 0x08:
+		str = "1843200 Baud";
+		break;
+	case 0x09:
+		str = "3250000 baud";
+		break;
+	case 0x0a:
+		str = "2000000 baud";
+		break;
+	case 0x0b:
+		str = "3000000 baud";
+		break;
+	case 0x0c:
+		str = "3714286 baud";
+		break;
+	case 0x0d:
+		str = "4333333 baud";
+		break;
+	case 0x0e:
+		str = "6500000 baud";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Baudrate: %s (0x%2.2x)", str, baudrate);
+}
+
 static void secure_send_cmd(const void *data, uint8_t size)
 {
 	uint8_t type = get_u8(data);
@@ -432,7 +491,9 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x005, "Read Version",
 			null_cmd, 0, true,
 			read_version_rsp, 10, true },
-	{ 0x006, "Set UART Baudrate" },
+	{ 0x006, "Set UART Baudrate",
+			set_uart_baudrate_cmd, 1, true,
+			status_rsp, 1, true },
 	{ 0x007, "Enable LPM" },
 	{ 0x008, "PCM Write Configuration" },
 	{ 0x009, "Secure Send",
