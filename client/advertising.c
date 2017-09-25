@@ -131,7 +131,7 @@ static gboolean get_type(const GDBusPropertyTable *property,
 {
 	const char *type = "peripheral";
 
-	if (!ad.type || strlen(ad.type) > 0)
+	if (ad.type && strlen(ad.type) > 0)
 		type = ad.type;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &type);
