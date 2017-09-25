@@ -73,13 +73,13 @@ static GList *ctrl_list;
 
 static guint input = 0;
 
-static const char * const mode_arguments[] = {
+static const char *mode_arguments[] = {
 	"on",
 	"off",
 	NULL
 };
 
-static const char * const agent_arguments[] = {
+static const char *agent_arguments[] = {
 	"on",
 	"off",
 	"DisplayOnly",
@@ -90,7 +90,7 @@ static const char * const agent_arguments[] = {
 	NULL
 };
 
-static const char * const ad_arguments[] = {
+static const char *ad_arguments[] = {
 	"on",
 	"off",
 	"peripheral",
