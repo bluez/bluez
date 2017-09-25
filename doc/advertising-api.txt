@@ -107,7 +107,7 @@ Methods		RegisterAdvertisement(object advertisement, dict options)
 			InvalidLength error indicates that the data
 			provided generates a data packet which is too long.
 
-			The properties of this object are parser when it is
+			The properties of this object are parsed when it is
 			registered, and any changes are ignored.
 
 			If the same object is registered twice it will result in
@@ -124,7 +124,7 @@ Methods		RegisterAdvertisement(object advertisement, dict options)
 		UnregisterAdvertisement(object advertisement)
 
 			This unregisters an advertisement that has been
-			prevously registered.  The object path parameter must
+			previously registered.  The object path parameter must
 			match the same value that has been used on registration.
 
 			Possible errors: org.bluez.Error.InvalidArguments
