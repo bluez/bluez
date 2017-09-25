@@ -547,8 +547,10 @@ void ad_advertise_name(DBusConnection *conn, bool value)
 
 	ad.name = value;
 
-	if (!value)
-		free(ad.local_name);
+	if (!value) {
+		g_free(ad.local_name);
+		ad.local_name = NULL;
+	}
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
 }
@@ -558,7 +560,7 @@ void ad_advertise_local_name(DBusConnection *conn, const char *name)
 	if (ad.local_name && !strcmp(name, ad.local_name))
 		return;
 
-	free(ad.local_name);
+	g_free(ad.local_name);
 	ad.local_name = strdup(name);
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "LocalName");
