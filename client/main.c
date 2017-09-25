@@ -2368,22 +2368,12 @@ static void cmd_set_advertise_manufacturer(const char *arg)
 
 static void cmd_set_advertise_tx_power(const char *arg)
 {
-	if (arg == NULL || strlen(arg) == 0) {
-		rl_printf("Missing on/off argument\n");
-		return;
-	}
+	dbus_bool_t powered;
 
-	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
-		ad_advertise_tx_power(dbus_conn, true);
+	if (parse_argument_on_off(arg, &powered) == FALSE)
 		return;
-	}
 
-	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
-		ad_advertise_tx_power(dbus_conn, false);
-		return;
-	}
-
-	rl_printf("Invalid argument\n");
+	ad_advertise_tx_power(dbus_conn, powered);
 }
 
 static void cmd_set_advertise_name(const char *arg)
