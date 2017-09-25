@@ -340,6 +340,7 @@ void ad_register(DBusConnection *conn, GDBusProxy *manager, const char *type)
 		return;
 	}
 
+	g_free(ad.type);
 	ad.type = g_strdup(type);
 
 	if (g_dbus_register_interface(conn, AD_PATH, AD_IFACE, ad_methods,
@@ -390,6 +391,9 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 
 	if (!ad.registered)
 		return;
+
+	g_free(ad.type);
+	ad.type = NULL;
 
 	if (g_dbus_proxy_method_call(manager, "UnregisterAdvertisement",
 					unregister_setup, unregister_reply,
