@@ -1892,6 +1892,8 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 				op->data.iov_len) < 0)
 		goto retry;
 
+	gatt_db_attribute_write_result(op->attrib, op->id, 0);
+
 	return;
 
 retry:
