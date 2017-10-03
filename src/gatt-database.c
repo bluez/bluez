@@ -1830,7 +1830,8 @@ static bool pipe_io_read(struct io *io, void *user_data)
 				gatt_db_attribute_get_handle(chrc->attrib),
 				buf, bytes_read,
 				gatt_db_attribute_get_handle(chrc->ccc),
-				false, NULL);
+				chrc->props & BT_GATT_CHRC_PROP_INDICATE,
+				NULL);
 
 	return true;
 }
