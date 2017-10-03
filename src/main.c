@@ -77,7 +77,7 @@ static enum {
 	MPS_MULTIPLE,
 } mps = MPS_OFF;
 
-static const char * const supported_options[] = {
+static const char *supported_options[] = {
 	"Name",
 	"Class",
 	"DiscoverableTimeout",
@@ -94,7 +94,7 @@ static const char * const supported_options[] = {
 	NULL
 };
 
-static const char * const policy_options[] = {
+static const char *policy_options[] = {
 	"ReconnectUUIDs",
 	"ReconnectAttempts",
 	"ReconnectIntervals",
@@ -102,14 +102,14 @@ static const char * const policy_options[] = {
 	NULL
 };
 
-static const char * const gatt_options[] = {
+static const char *gatt_options[] = {
 	"Cache",
 	NULL
 };
 
 static const struct group_table {
 	const char *name;
-	const char * const *options;
+	const char **options;
 } valid_groups[] = {
 	{ "General",	supported_options },
 	{ "Policy",	policy_options },
@@ -190,7 +190,7 @@ static bt_gatt_cache_t parse_gatt_cache(const char *cache)
 }
 
 static void check_options(GKeyFile *config, const char *group,
-						const char * const *options)
+						const char **options)
 {
 	char **keys;
 	int i;
