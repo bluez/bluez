@@ -610,7 +610,14 @@ static void server_callback(int fd, uint32_t events, void *user_data)
 static int open_unix(const char *path)
 {
 	struct sockaddr_un addr;
+	size_t len;
 	int fd;
+
+	len = strlen(path);
+	if (len > sizeof(addr.sun_path) - 1) {
+		fprintf(stderr, "Path too long\n");
+		return -1;
+	}
 
 	unlink(path);
 
@@ -622,7 +629,7 @@ static int open_unix(const char *path)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	strcpy(addr.sun_path, path);
+	strncpy(addr.sun_path, path, len);
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("Failed to bind Unix server socket");
@@ -797,9 +804,16 @@ int main(int argc, char *argv[])
 				server_address = "0.0.0.0";
 			break;
 		case 'u':
-			if (optarg)
+			if (optarg) {
+				struct sockaddr_un addr;
+
 				unix_path = optarg;
-			else
+				if (strlen(unix_path) >
+						sizeof(addr.sun_path) - 1) {
+					fprintf(stderr, "Path too long\n");
+					return EXIT_FAILURE;
+				}
+			} else
 				unix_path = "/tmp/bt-server-bredr";
 			break;
 		case 'p':
