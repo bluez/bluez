@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <sys/un.h>
 
 #include "src/shared/mainloop.h"
 #include "src/shared/tty.h"
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
 
 	for (;;) {
 		int opt;
+		struct sockaddr_un addr;
 
 		opt = getopt_long(argc, argv, "d:r:w:a:s:p:i:tTSAE:vh",
 						main_options, NULL);
@@ -141,6 +143,10 @@ int main(int argc, char *argv[])
 			analyze_path = optarg;
 			break;
 		case 's':
+			if (strlen(optarg) > sizeof(addr.sun_path) - 1) {
+				fprintf(stderr, "Socket name too long\n");
+				return EXIT_FAILURE;
+			}
 			control_server(optarg);
 			break;
 		case 'p':
