@@ -306,6 +306,8 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	if (bt_string2uuid(&uuid, session->service) < 0)
 		goto failed;
 
+	sdp_uuid128_to_uuid(&uuid);
+
 	search = sdp_list_append(NULL, &uuid);
 	attrid = sdp_list_append(NULL, &range);
 
