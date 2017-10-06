@@ -2370,7 +2370,7 @@ static void stop_find_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void stop_find_usage(void)
 {
-	print("Usage: btmgmt stop-find [-l|-b]");
+	print("Usage: stop-find [-l|-b]");
 }
 
 static struct option stop_find_options[] = {
