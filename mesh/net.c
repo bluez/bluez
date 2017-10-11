@@ -2098,7 +2098,7 @@ bool net_access_layer_send(uint8_t ttl, uint16_t src, uint32_t dst,
 	if (!result)
 		return false;
 
-	segN = SEG_MAX(len);
+	segN = SEG_MAX(len + sizeof(uint32_t));
 
 	/* Only one ACK required SAR message per destination at a time */
 	if (segN && IS_UNICAST(dst)) {
