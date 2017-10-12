@@ -38,7 +38,6 @@ typedef enum {
 struct main_opts {
 	char		*name;
 	uint32_t	class;
-	uint16_t	autoto;
 	uint32_t	pairto;
 	uint32_t	discovto;
 	uint8_t		privacy;

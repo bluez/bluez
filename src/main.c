@@ -82,7 +82,6 @@ static const char *supported_options[] = {
 	"Class",
 	"DiscoverableTimeout",
 	"PairableTimeout",
-	"AutoConnectTimeout",
 	"DeviceID",
 	"ReverseServiceDiscovery",
 	"NameResolving",
@@ -295,16 +294,6 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("pairto=%d", val);
 		main_opts.pairto = val;
-	}
-
-	val = g_key_file_get_integer(config, "General", "AutoConnectTimeout",
-									&err);
-	if (err) {
-		DBG("%s", err->message);
-		g_clear_error(&err);
-	} else {
-		DBG("auto_to=%d", val);
-		main_opts.autoto = val;
 	}
 
 	str = g_key_file_get_string(config, "General", "Privacy", &err);
