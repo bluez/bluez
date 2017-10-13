@@ -3336,6 +3336,37 @@ static void clear_auto_connect_list(void)
 	error("Could not clear auto connect list");
 }
 
+static void read_adv_features_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_adv_features *rp = param;
+	bt_bluetooth_ready cb = user_data;
+	int err;
+
+	if (status) {
+		error("Failed to read advertising features for index %u: %s (0x%02x)",
+				adapter.index, mgmt_errstr(status), status);
+		err = -EIO;
+		goto failed;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Too small read advertising features response");
+		err = -EIO;
+		goto failed;
+	}
+
+	adapter.max_advert_instance = rp->max_instances;
+	info("Max LE advertising instances: %d", adapter.max_advert_instance);
+
+	load_devices_info(cb);
+
+	return;
+
+failed:
+	cb(err, NULL);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -3407,7 +3438,18 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (missing_settings & MGMT_SETTING_BONDABLE)
 		set_mode(MGMT_OP_SET_BONDABLE, 0x01);
 
-	load_devices_info(cb);
+	if (adapter.supported_settings & MGMT_SETTING_LE) {
+		if (mgmt_send(mgmt_if, MGMT_OP_READ_ADV_FEATURES, adapter.index,
+			      0, NULL,
+			      read_adv_features_complete, cb, NULL) == 0) {
+			error("Cannot get LE adv features");
+			err = -EIO;
+			goto failed;
+		}
+	} else {
+		load_devices_info(cb);
+	}
+
 	load_devices_cache();
 
 	return;
