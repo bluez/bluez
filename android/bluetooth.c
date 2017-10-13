@@ -3265,7 +3265,11 @@ static void load_devices_info(bt_bluetooth_ready cb)
 	load_irks(irks);
 	g_slist_free_full(irks, g_free);
 
-	load_link_keys(keys, cb);
+	if (adapter.supported_settings & MGMT_SETTING_BREDR)
+		load_link_keys(keys, cb);
+	else
+		cb(0, &adapter.bdaddr);
+
 	g_slist_free_full(keys, g_free);
 
 	g_strfreev(devs);
