@@ -72,6 +72,7 @@ LOCAL_SRC_FILES := \
 	bluez/src/shared/crypto.c \
 	bluez/src/shared/uhid.c \
 	bluez/src/shared/att.c \
+	bluez/src/shared/ad.c \
 	bluez/src/sdpd-database.c \
 	bluez/src/sdpd-service.c \
 	bluez/src/sdpd-request.c \

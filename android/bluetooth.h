@@ -88,3 +88,28 @@ typedef void (*bt_paired_device_cb)(const bdaddr_t *addr);
 bool bt_paired_register(bt_paired_device_cb cb);
 void bt_paired_unregister(bt_paired_device_cb cb);
 bool bt_is_pairing(const bdaddr_t *addr);
+
+struct bt_ad;
+struct adv_instance {
+	uint8_t	instance;
+	int32_t timeout;
+	int32_t type;
+	struct bt_ad *ad;
+	struct bt_ad *sr;
+	unsigned include_tx_power:1;
+};
+
+/* Values below have no C API definition - only in Java (AdvertiseManager.java)
+ * and bluedroid
+ */
+enum android_adv_type {
+	ANDROID_ADVERTISING_EVENT_TYPE_CONNECTABLE = 0,
+	ANDROID_ADVERTISING_EVENT_TYPE_SCANNABLE = 2,
+	ANDROID_ADVERTISING_EVENT_TYPE_NON_CONNECTABLE = 3,
+};
+
+typedef void (*bt_le_addrm_advertising_done)(uint8_t status, void *user_data);
+bool bt_le_add_advertising(struct adv_instance *adv,
+		bt_le_addrm_advertising_done cb, void *user_data);
+bool bt_le_remove_advertising(struct adv_instance *adv,
+		bt_le_addrm_advertising_done cb, void *user_data);
