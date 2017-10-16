@@ -596,6 +596,8 @@ static DBusMessage *descriptor_write_value(DBusConnection *conn,
 	if (parse_value_arg(&iter, &value, &value_len))
 		return btd_error_invalid_args(msg);
 
+	dbus_message_iter_next(&iter);
+
 	if (parse_options(&iter, &offset))
 		return btd_error_invalid_args(msg);
 
@@ -985,6 +987,8 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 
 	if (parse_value_arg(&iter, &value, &value_len))
 		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_next(&iter);
 
 	if (parse_options(&iter, &offset))
 		return btd_error_invalid_args(msg);
