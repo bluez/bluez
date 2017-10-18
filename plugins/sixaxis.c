@@ -48,29 +48,7 @@
 #include "src/plugin.h"
 #include "src/log.h"
 #include "src/shared/util.h"
-
-static const struct {
-	const char *name;
-	uint16_t source;
-	uint16_t vid;
-	uint16_t pid;
-	uint16_t version;
-} devices[] = {
-	{
-		.name = "Sony PLAYSTATION(R)3 Controller",
-		.source = 0x0002,
-		.vid = 0x054c,
-		.pid = 0x0268,
-		.version = 0x0000,
-	},
-	{
-		.name = "Navigation Controller",
-		.source = 0x0002,
-		.vid = 0x054c,
-		.pid = 0x042f,
-		.version = 0x0000,
-	},
-};
+#include "profiles/input/sixaxis.h"
 
 struct authentication_closure {
 	struct btd_adapter *adapter;
@@ -180,7 +158,13 @@ error:
 	g_free(closure);
 }
 
-static bool setup_device(int fd, int index, struct btd_adapter *adapter)
+static bool setup_device(int fd,
+				const char *name,
+				uint16_t source,
+				uint16_t vid,
+				uint16_t pid,
+				uint16_t version,
+				struct btd_adapter *adapter)
 {
 	bdaddr_t device_bdaddr;
 	const bdaddr_t *adapter_bdaddr;
@@ -209,9 +193,8 @@ static bool setup_device(int fd, int index, struct btd_adapter *adapter)
 
 	info("sixaxis: setting up new device");
 
-	btd_device_device_set_name(device, devices[index].name);
-	btd_device_set_pnpid(device, devices[index].source, devices[index].vid,
-				devices[index].pid, devices[index].version);
+	btd_device_device_set_name(device, name);
+	btd_device_set_pnpid(device, source, vid, pid, version);
 	btd_device_set_temporary(device, true);
 
 	closure = g_new0(struct authentication_closure, 1);
@@ -230,12 +213,16 @@ static bool setup_device(int fd, int index, struct btd_adapter *adapter)
 	return true;
 }
 
-static int get_supported_device(struct udev_device *udevice, uint16_t *bus)
+static CablePairingType get_pairing_type_for_device(struct udev_device *udevice,
+								uint16_t  *bus,
+								uint16_t  *vid,
+								uint16_t  *pid,
+								char     **name,
+								uint16_t  *source,
+								uint16_t  *version)
 {
 	struct udev_device *hid_parent;
-	uint16_t vid, pid;
 	const char *hid_id;
-	guint i;
 
 	hid_parent = udev_device_get_parent_with_subsystem_devtype(udevice,
 								"hid", NULL);
@@ -244,45 +231,50 @@ static int get_supported_device(struct udev_device *udevice, uint16_t *bus)
 
 	hid_id = udev_device_get_property_value(hid_parent, "HID_ID");
 
-	if (sscanf(hid_id, "%hx:%hx:%hx", bus, &vid, &pid) != 3)
+	if (sscanf(hid_id, "%hx:%hx:%hx", bus, vid, pid) != 3)
 		return -1;
 
-	for (i = 0; i < G_N_ELEMENTS(devices); i++) {
-		if (devices[i].vid == vid && devices[i].pid == pid)
-			return i;
-	}
-
-	return -1;
+	return get_pairing_type(*vid, *pid, name, source, version);
 }
 
 static void device_added(struct udev_device *udevice)
 {
 	struct btd_adapter *adapter;
-	uint16_t bus;
-	int index;
+	uint16_t bus, vid, pid, source, version;
+	char *name = NULL;
+	CablePairingType type;
 	int fd;
 
 	adapter = btd_adapter_get_default();
 	if (!adapter)
 		return;
 
-	index = get_supported_device(udevice, &bus);
-	if (index < 0)
+	type = get_pairing_type_for_device(udevice,
+						&bus,
+						&vid,
+						&pid,
+						&name,
+						&source,
+						&version);
+	if (type != CABLE_PAIRING_SIXAXIS)
 		return;
 	if (bus != BUS_USB)
 		return;
 
 	info("sixaxis: compatible device connected: %s (%04X:%04X)",
-				devices[index].name, devices[index].vid,
-				devices[index].pid);
+				name, vid, pid);
 
 	fd = open(udev_device_get_devnode(udevice), O_RDWR);
-	if (fd < 0)
+	if (fd < 0) {
+		g_free(name);
 		return;
+	}
 
 	/* Only close the fd if an authentication is not pending */
-	if (!setup_device(fd, index, adapter))
+	if (!setup_device(fd, name, source, vid, pid, version, adapter))
 		close(fd);
+
+	g_free(name);
 }
 
 static gboolean monitor_watch(GIOChannel *source, GIOCondition condition,
