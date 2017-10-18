@@ -29,6 +29,7 @@
 typedef enum {
 	CABLE_PAIRING_UNSUPPORTED = 0,
 	CABLE_PAIRING_SIXAXIS,
+	CABLE_PAIRING_DS4,
 } CablePairingType;
 
 static inline CablePairingType get_pairing_type(uint16_t   vid,
@@ -60,6 +61,22 @@ static inline CablePairingType get_pairing_type(uint16_t   vid,
 			.pid = 0x042f,
 			.version = 0x0000,
 			.type = CABLE_PAIRING_SIXAXIS,
+		},
+		{
+			.name = "Wireless Controller",
+			.source = 0x0002,
+			.vid = 0x054c,
+			.pid = 0x05c4,
+			.version = 0x0001,
+			.type = CABLE_PAIRING_DS4,
+		},
+		{
+			.name = "Wireless Controller",
+			.source = 0x0002,
+			.vid = 0x054c,
+			.pid = 0x09cc,
+			.version = 0x0001,
+			.type = CABLE_PAIRING_DS4,
 		},
 	};
 	guint i;

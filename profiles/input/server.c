@@ -134,11 +134,8 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 	pid = btd_device_get_product(device);
 
 	type = get_pairing_type(vid, pid, NULL, NULL, NULL);
-	if (type == CABLE_PAIRING_SIXAXIS)
-		return true;
-
-	/* DualShock 4 */
-	if (vid == 0x054c && pid == 0x05c4)
+	if (type == CABLE_PAIRING_SIXAXIS ||
+	    type == CABLE_PAIRING_DS4)
 		return true;
 
 	return false;
