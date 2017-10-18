@@ -83,10 +83,34 @@ static int sixaxis_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int ds4_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
+{
+	uint8_t buf[7];
+	int ret;
+
+	memset(buf, 0, sizeof(buf));
+
+	buf[0] = 0x81;
+
+	ret = ioctl(fd, HIDIOCGFEATURE(sizeof(buf)), buf);
+	if (ret < 0) {
+		error("sixaxis: failed to read DS4 device address (%s)",
+		      strerror(errno));
+		return ret;
+	}
+
+	/* address is little-endian on DS4 */
+	bacpy(bdaddr, (bdaddr_t*) (buf + 1));
+
+	return 0;
+}
+
 static int get_device_bdaddr(int fd, bdaddr_t *bdaddr, CablePairingType type)
 {
 	if (type == CABLE_PAIRING_SIXAXIS)
 		return sixaxis_get_device_bdaddr(fd, bdaddr);
+	else if (type == CABLE_PAIRING_DS4)
+		return ds4_get_device_bdaddr(fd, bdaddr);
 	return -1;
 }
 
@@ -111,10 +135,34 @@ static int sixaxis_get_master_bdaddr(int fd, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int ds4_get_master_bdaddr(int fd, bdaddr_t *bdaddr)
+{
+	uint8_t buf[16];
+	int ret;
+
+	memset(buf, 0, sizeof(buf));
+
+	buf[0] = 0x12;
+
+	ret = ioctl(fd, HIDIOCGFEATURE(sizeof(buf)), buf);
+	if (ret < 0) {
+		error("sixaxis: failed to read DS4 master address (%s)",
+		      strerror(errno));
+		return ret;
+	}
+
+	/* address is little-endian on DS4 */
+	bacpy(bdaddr, (bdaddr_t*) (buf + 10));
+
+	return 0;
+}
+
 static int get_master_bdaddr(int fd, bdaddr_t *bdaddr, CablePairingType type)
 {
 	if (type == CABLE_PAIRING_SIXAXIS)
 		return sixaxis_get_master_bdaddr(fd, bdaddr);
+	else if (type == CABLE_PAIRING_DS4)
+		return ds4_get_master_bdaddr(fd, bdaddr);
 	return -1;
 }
 
@@ -136,11 +184,33 @@ static int sixaxis_set_master_bdaddr(int fd, const bdaddr_t *bdaddr)
 	return ret;
 }
 
+static int ds4_set_master_bdaddr(int fd, const bdaddr_t *bdaddr)
+{
+	uint8_t buf[23];
+	int ret;
+
+	buf[0] = 0x13;
+	bacpy((bdaddr_t*) (buf + 1), bdaddr);
+	/* TODO: we could put the key here but
+	   there is no way to force a re-loading
+	   of link keys to the kernel from here. */
+	memset(buf + 7, 0, 16);
+
+	ret = ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
+	if (ret < 0)
+		error("sixaxis: failed to write DS4 master address (%s)",
+		      strerror(errno));
+
+	return ret;
+}
+
 static int set_master_bdaddr(int fd, const bdaddr_t *bdaddr,
 					CablePairingType type)
 {
 	if (type == CABLE_PAIRING_SIXAXIS)
 		return sixaxis_set_master_bdaddr(fd, bdaddr);
+	else if (type == CABLE_PAIRING_DS4)
+		return ds4_set_master_bdaddr(fd, bdaddr);
 	return -1;
 }
 
@@ -281,7 +351,8 @@ static void device_added(struct udev_device *udevice)
 						&name,
 						&source,
 						&version);
-	if (type != CABLE_PAIRING_SIXAXIS)
+	if (type != CABLE_PAIRING_SIXAXIS &&
+	    type != CABLE_PAIRING_DS4)
 		return;
 	if (bus != BUS_USB)
 		return;
