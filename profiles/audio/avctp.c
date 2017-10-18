@@ -617,6 +617,39 @@ static void avctp_set_state(struct avctp *session, avctp_state_t new_state,
 	}
 }
 
+static uint8_t chan_get_transaction(struct avctp_channel *chan)
+{
+	GSList *l, *tmp;
+	uint8_t transaction;
+
+	if (!chan->processed)
+		goto done;
+
+	tmp = g_slist_copy(chan->processed);
+
+	/* Find first unused transaction id */
+	for (l = tmp; l; l = g_slist_next(l)) {
+		struct avctp_pending_req *req = l->data;
+
+		if (req->transaction == chan->transaction) {
+			chan->transaction++;
+			chan->transaction %= 16;
+			tmp = g_slist_delete_link(tmp, l);
+			l = tmp;
+		}
+	}
+
+	g_slist_free(tmp);
+
+done:
+	transaction = chan->transaction;
+
+	chan->transaction++;
+	chan->transaction %= 16;
+
+	return transaction;
+}
+
 static int avctp_send(struct avctp_channel *control, uint8_t transaction,
 				uint8_t cr, uint8_t code,
 				uint8_t subunit, uint8_t opcode,
@@ -642,6 +675,9 @@ static int avctp_send(struct avctp_channel *control, uint8_t transaction,
 
 	avctp = (void *) control->buffer;
 	avc = (void *) avctp + sizeof(*avctp);
+
+	if (transaction > 16)
+		transaction = chan_get_transaction(control);
 
 	avctp->transaction = transaction;
 	avctp->packet_type = AVCTP_PACKET_SINGLE;
@@ -1556,37 +1592,13 @@ static struct avctp_pending_req *pending_create(struct avctp_channel *chan,
 						GDestroyNotify destroy)
 {
 	struct avctp_pending_req *p;
-	GSList *l, *tmp;
 
-	if (!chan->processed)
-		goto done;
-
-	tmp = g_slist_copy(chan->processed);
-
-	/* Find first unused transaction id */
-	for (l = tmp; l; l = g_slist_next(l)) {
-		struct avctp_pending_req *req = l->data;
-
-		if (req->transaction == chan->transaction) {
-			chan->transaction++;
-			chan->transaction %= 16;
-			tmp = g_slist_delete_link(tmp, l);
-			l = tmp;
-		}
-	}
-
-	g_slist_free(tmp);
-
-done:
 	p = g_new0(struct avctp_pending_req, 1);
 	p->chan = chan;
-	p->transaction = chan->transaction;
+	p->transaction = chan_get_transaction(chan);
 	p->process = process;
 	p->data = data;
 	p->destroy = destroy;
-
-	chan->transaction++;
-	chan->transaction %= 16;
 
 	return p;
 }
@@ -1602,6 +1614,11 @@ static int avctp_send_req(struct avctp *session, uint8_t code,
 
 	if (control == NULL)
 		return -ENOTCONN;
+
+	/* If the request set a callback send it directly */
+	if (!func)
+		return avctp_send(session->control, -1, AVCTP_COMMAND,
+				code, subunit, opcode, operands, operand_count);
 
 	req = g_new0(struct avctp_control_req, 1);
 	req->code = code;
