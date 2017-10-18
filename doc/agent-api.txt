@@ -163,7 +163,10 @@ Methods		void Release()
 			This method gets called to request the user to
 			authorize an incoming pairing attempt which
 			would in other circumstances trigger the just-works
-			model.
+			model, or when the user plugged in a device that
+			implements cable pairing. In the latter case, the
+			device would not be connected to the adapter via
+			Bluetooth yet.
 
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled

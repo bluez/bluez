@@ -120,6 +120,8 @@ int btd_register_adapter_driver(struct btd_adapter_driver *driver);
 void btd_unregister_adapter_driver(struct btd_adapter_driver *driver);
 guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data);
+guint btd_request_authorization_cable_configured(const bdaddr_t *src, const bdaddr_t *dst,
+		const char *uuid, service_auth_cb cb, void *user_data);
 int btd_cancel_authorization(guint id);
 
 int btd_adapter_restore_powered(struct btd_adapter *adapter);

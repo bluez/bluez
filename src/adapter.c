@@ -266,6 +266,11 @@ struct btd_adapter {
 	bool is_default;		/* true if adapter is default one */
 };
 
+typedef enum {
+	ADAPTER_AUTHORIZE_DISCONNECTED = 0,
+	ADAPTER_AUTHORIZE_CHECK_CONNECTED
+} adapter_authorize_type;
+
 static struct btd_adapter *btd_adapter_lookup(uint16_t index)
 {
 	GList *list;
@@ -6136,8 +6141,9 @@ static void svc_complete(struct btd_device *dev, int err, void *user_data)
 }
 
 static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
-					const char *uuid, service_auth_cb cb,
-					void *user_data)
+					const char *uuid,
+					adapter_authorize_type check_for_connection,
+					service_auth_cb cb, void *user_data)
 {
 	struct service_auth *auth;
 	struct btd_device *device;
@@ -6153,7 +6159,7 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 	}
 
 	/* Device connected? */
-	if (!g_slist_find(adapter->connections, device))
+	if (check_for_connection && !g_slist_find(adapter->connections, device))
 		btd_error(adapter->dev_id,
 			"Authorization request for non-connected device!?");
 
@@ -6167,7 +6173,12 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 	auth->device = device;
 	auth->adapter = adapter;
 	auth->id = ++id;
-	auth->svc_id = device_wait_for_svc_complete(device, svc_complete, auth);
+	if (check_for_connection)
+		auth->svc_id = device_wait_for_svc_complete(device, svc_complete, auth);
+	else {
+		if (adapter->auth_idle_id == 0)
+			adapter->auth_idle_id = g_idle_add(process_auth_queue, adapter);
+	}
 
 	g_queue_push_tail(adapter->auths, auth);
 
@@ -6186,7 +6197,8 @@ guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		if (!adapter)
 			return 0;
 
-		return adapter_authorize(adapter, dst, uuid, cb, user_data);
+		return adapter_authorize(adapter, dst, uuid,
+				ADAPTER_AUTHORIZE_CHECK_CONNECTED, cb, user_data);
 	}
 
 	for (l = adapters; l != NULL; l = g_slist_next(l)) {
@@ -6194,12 +6206,30 @@ guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 
 		adapter = l->data;
 
-		id = adapter_authorize(adapter, dst, uuid, cb, user_data);
+		id = adapter_authorize(adapter, dst, uuid,
+				ADAPTER_AUTHORIZE_CHECK_CONNECTED, cb, user_data);
 		if (id != 0)
 			return id;
 	}
 
 	return 0;
+}
+
+guint btd_request_authorization_cable_configured(const bdaddr_t *src, const bdaddr_t *dst,
+						const char *uuid, service_auth_cb cb,
+						void *user_data)
+{
+	struct btd_adapter *adapter;
+
+	if (bacmp(src, BDADDR_ANY) == 0)
+		return 0;
+
+	adapter = adapter_find(src);
+	if (!adapter)
+		return 0;
+
+	return adapter_authorize(adapter, dst, uuid,
+			ADAPTER_AUTHORIZE_DISCONNECTED, cb, user_data);
 }
 
 static struct service_auth *find_authorization(guint id)
