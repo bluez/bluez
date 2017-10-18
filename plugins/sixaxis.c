@@ -44,6 +44,7 @@
 
 #include "src/adapter.h"
 #include "src/device.h"
+#include "src/agent.h"
 #include "src/plugin.h"
 #include "src/log.h"
 #include "src/shared/util.h"
@@ -69,6 +70,13 @@ static const struct {
 		.pid = 0x042f,
 		.version = 0x0000,
 	},
+};
+
+struct authentication_closure {
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	int fd;
+	bdaddr_t bdaddr; /* device bdaddr */
 };
 
 static struct udev *ctx = NULL;
@@ -135,17 +143,51 @@ static int set_master_bdaddr(int fd, const bdaddr_t *bdaddr)
 	return ret;
 }
 
+static void agent_auth_cb(DBusError *derr,
+				void *user_data)
+{
+	struct authentication_closure *closure = user_data;
+	char master_addr[18], adapter_addr[18], device_addr[18];
+	bdaddr_t master_bdaddr;
+	const bdaddr_t *adapter_bdaddr;
+
+	if (derr != NULL) {
+		DBG("Agent replied negatively, removing temporary device");
+		goto error;
+	}
+
+	btd_device_set_temporary(closure->device, false);
+
+	if (get_master_bdaddr(closure->fd, &master_bdaddr) < 0)
+		goto error;
+
+	adapter_bdaddr = btd_adapter_get_address(closure->adapter);
+	if (bacmp(adapter_bdaddr, &master_bdaddr)) {
+		if (set_master_bdaddr(closure->fd, adapter_bdaddr) < 0)
+			goto error;
+	}
+
+	btd_device_set_trusted(closure->device, true);
+
+	ba2str(&closure->bdaddr, device_addr);
+	ba2str(&master_bdaddr, master_addr);
+	ba2str(adapter_bdaddr, adapter_addr);
+	DBG("remote %s old_master %s new_master %s",
+				device_addr, master_addr, adapter_addr);
+
+error:
+	close(closure->fd);
+	g_free(closure);
+}
+
 static bool setup_device(int fd, int index, struct btd_adapter *adapter)
 {
-	char device_addr[18], master_addr[18], adapter_addr[18];
-	bdaddr_t device_bdaddr, master_bdaddr;
+	bdaddr_t device_bdaddr;
 	const bdaddr_t *adapter_bdaddr;
 	struct btd_device *device;
+	struct authentication_closure *closure;
 
 	if (get_device_bdaddr(fd, &device_bdaddr) < 0)
-		return false;
-
-	if (get_master_bdaddr(fd, &master_bdaddr) < 0)
 		return false;
 
 	/* This can happen if controller was plugged while already connected
@@ -155,25 +197,14 @@ static bool setup_device(int fd, int index, struct btd_adapter *adapter)
 	if (device && btd_device_is_connected(device))
 		return false;
 
-	adapter_bdaddr = btd_adapter_get_address(adapter);
-
-	if (bacmp(adapter_bdaddr, &master_bdaddr)) {
-		if (set_master_bdaddr(fd, adapter_bdaddr) < 0)
-			return false;
-	}
-
-	ba2str(&device_bdaddr, device_addr);
-	ba2str(&master_bdaddr, master_addr);
-	ba2str(adapter_bdaddr, adapter_addr);
-	DBG("remote %s old_master %s new_master %s",
-				device_addr, master_addr, adapter_addr);
-
 	device = btd_adapter_get_device(adapter, &device_bdaddr, BDADDR_BREDR);
 
 	if (g_slist_find_custom(btd_device_get_uuids(device), HID_UUID,
 						(GCompareFunc)strcasecmp)) {
+		char device_addr[18];
+		ba2str(&device_bdaddr, device_addr);
 		DBG("device %s already known, skipping", device_addr);
-		return true;
+		return false;
 	}
 
 	info("sixaxis: setting up new device");
@@ -181,7 +212,20 @@ static bool setup_device(int fd, int index, struct btd_adapter *adapter)
 	btd_device_device_set_name(device, devices[index].name);
 	btd_device_set_pnpid(device, devices[index].source, devices[index].vid,
 				devices[index].pid, devices[index].version);
-	btd_device_set_temporary(device, false);
+	btd_device_set_temporary(device, true);
+
+	closure = g_new0(struct authentication_closure, 1);
+	if (!closure) {
+		btd_adapter_remove_device(adapter, device);
+		return false;
+	}
+	closure->adapter = adapter;
+	closure->device = device;
+	closure->fd = fd;
+	bacpy(&closure->bdaddr, &device_bdaddr);
+	adapter_bdaddr = btd_adapter_get_address(adapter);
+	btd_request_authorization_cable_configured(adapter_bdaddr, &device_bdaddr,
+				HID_UUID, agent_auth_cb, closure);
 
 	return true;
 }
@@ -236,8 +280,9 @@ static void device_added(struct udev_device *udevice)
 	if (fd < 0)
 		return;
 
-	setup_device(fd, index, adapter);
-	close(fd);
+	/* Only close the fd if an authentication is not pending */
+	if (!setup_device(fd, index, adapter))
+		close(fd);
 }
 
 static gboolean monitor_watch(GIOChannel *source, GIOCondition condition,
