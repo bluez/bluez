@@ -43,6 +43,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 
+#include "sixaxis.h"
 #include "device.h"
 #include "server.h"
 
@@ -123,6 +124,7 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct btd_device *device;
 	uint16_t vid, pid;
+	CablePairingType type;
 
 	device = btd_adapter_find_device(adapter_find(src), dst, BDADDR_BREDR);
 	if (!device)
@@ -131,16 +133,12 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 	vid = btd_device_get_vendor(device);
 	pid = btd_device_get_product(device);
 
-	/* DualShock 3 */
-	if (vid == 0x054c && pid == 0x0268)
+	type = get_pairing_type(vid, pid, NULL, NULL, NULL);
+	if (type == CABLE_PAIRING_SIXAXIS)
 		return true;
 
 	/* DualShock 4 */
 	if (vid == 0x054c && pid == 0x05c4)
-		return true;
-
-	/* Navigation Controller */
-	if (vid == 0x054c && pid == 0x042f)
 		return true;
 
 	return false;
