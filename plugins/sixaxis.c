@@ -51,6 +51,8 @@
 #include "profiles/input/sixaxis.h"
 
 struct authentication_closure {
+	guint auth_id;
+	char *sysfs_path;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	int fd;
@@ -58,9 +60,29 @@ struct authentication_closure {
 	CablePairingType type;
 };
 
+struct authentication_destroy_closure {
+	struct authentication_closure *closure;
+	bool remove_device;
+};
+
 static struct udev *ctx = NULL;
 static struct udev_monitor *monitor = NULL;
 static guint watch_id = 0;
+static GHashTable *pending_auths = NULL; /* key = sysfs_path (const str), value = auth_closure */
+
+/* Make sure to unset auth_id if already handled */
+static void auth_closure_destroy(struct authentication_closure *closure,
+				bool remove_device)
+{
+	if (closure->auth_id)
+		btd_cancel_authorization(closure->auth_id);
+
+	if (remove_device)
+		btd_adapter_remove_device(closure->adapter, closure->device);
+	close(closure->fd);
+	g_free(closure->sysfs_path);
+	g_free(closure);
+}
 
 static int sixaxis_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
 {
@@ -214,31 +236,63 @@ static int set_master_bdaddr(int fd, const bdaddr_t *bdaddr,
 	return -1;
 }
 
+static bool is_auth_pending(struct authentication_closure *closure)
+{
+	GHashTableIter iter;
+	gpointer value;
+
+	g_hash_table_iter_init(&iter, pending_auths);
+	while (g_hash_table_iter_next(&iter, NULL, &value)) {
+		struct authentication_closure *c = value;
+		if (c == closure)
+			return true;
+	}
+	return false;
+}
+
+static gboolean auth_closure_destroy_idle(gpointer user_data)
+{
+	struct authentication_destroy_closure *destroy = user_data;
+
+	auth_closure_destroy(destroy->closure, destroy->remove_device);
+	g_free(destroy);
+
+	return false;
+}
+
 static void agent_auth_cb(DBusError *derr,
 				void *user_data)
 {
 	struct authentication_closure *closure = user_data;
+	struct authentication_destroy_closure *destroy;
 	char master_addr[18], adapter_addr[18], device_addr[18];
 	bdaddr_t master_bdaddr;
 	const bdaddr_t *adapter_bdaddr;
+	bool remove_device = true;
+
+	if (!is_auth_pending(closure))
+		return;
+
+	/* Don't try to remove this auth, we're handling it already */
+	closure->auth_id = 0;
 
 	if (derr != NULL) {
 		DBG("Agent replied negatively, removing temporary device");
-		goto error;
+		goto out;
 	}
 
-	btd_device_set_temporary(closure->device, false);
-
 	if (get_master_bdaddr(closure->fd, &master_bdaddr, closure->type) < 0)
-		goto error;
+		goto out;
 
 	adapter_bdaddr = btd_adapter_get_address(closure->adapter);
 	if (bacmp(adapter_bdaddr, &master_bdaddr)) {
 		if (set_master_bdaddr(closure->fd, adapter_bdaddr, closure->type) < 0)
-			goto error;
+			goto out;
 	}
 
+	remove_device = false;
 	btd_device_set_trusted(closure->device, true);
+	btd_device_set_temporary(closure->device, false);
 
 	ba2str(&closure->bdaddr, device_addr);
 	ba2str(&master_bdaddr, master_addr);
@@ -246,12 +300,21 @@ static void agent_auth_cb(DBusError *derr,
 	DBG("remote %s old_master %s new_master %s",
 				device_addr, master_addr, adapter_addr);
 
-error:
-	close(closure->fd);
-	g_free(closure);
+out:
+	g_hash_table_steal(pending_auths, closure->sysfs_path);
+
+	/* btd_adapter_remove_device() cannot be called in this
+	 * callback or it would lead to a double-free in while
+	 * trying to cancel the authentication that's being processed,
+	 * so clean up in an idle */
+	destroy = g_new0(struct authentication_destroy_closure, 1);
+	destroy->closure = closure;
+	destroy->remove_device = remove_device;
+	g_idle_add(auth_closure_destroy_idle, destroy);
 }
 
 static bool setup_device(int fd,
+				const char *sysfs_path,
 				const char *name,
 				uint16_t source,
 				uint16_t vid,
@@ -298,12 +361,15 @@ static bool setup_device(int fd,
 	}
 	closure->adapter = adapter;
 	closure->device = device;
+	closure->sysfs_path = g_strdup(sysfs_path);
 	closure->fd = fd;
 	bacpy(&closure->bdaddr, &device_bdaddr);
 	closure->type = type;
 	adapter_bdaddr = btd_adapter_get_address(adapter);
-	btd_request_authorization_cable_configured(adapter_bdaddr, &device_bdaddr,
-				HID_UUID, agent_auth_cb, closure);
+	closure->auth_id = btd_request_authorization_cable_configured(adapter_bdaddr, &device_bdaddr,
+								HID_UUID, agent_auth_cb, closure);
+
+	g_hash_table_insert(pending_auths, closure->sysfs_path, closure);
 
 	return true;
 }
@@ -312,12 +378,14 @@ static CablePairingType get_pairing_type_for_device(struct udev_device *udevice,
 								uint16_t  *bus,
 								uint16_t  *vid,
 								uint16_t  *pid,
+								char     **sysfs_path,
 								char     **name,
 								uint16_t  *source,
 								uint16_t  *version)
 {
 	struct udev_device *hid_parent;
 	const char *hid_id;
+	CablePairingType ret;
 
 	hid_parent = udev_device_get_parent_with_subsystem_devtype(udevice,
 								"hid", NULL);
@@ -329,14 +397,17 @@ static CablePairingType get_pairing_type_for_device(struct udev_device *udevice,
 	if (sscanf(hid_id, "%hx:%hx:%hx", bus, vid, pid) != 3)
 		return -1;
 
-	return get_pairing_type(*vid, *pid, name, source, version);
+	ret = get_pairing_type(*vid, *pid, name, source, version);
+	*sysfs_path = g_strdup(udev_device_get_syspath(udevice));
+
+	return ret;
 }
 
 static void device_added(struct udev_device *udevice)
 {
 	struct btd_adapter *adapter;
 	uint16_t bus, vid, pid, source, version;
-	char *name = NULL;
+	char *name = NULL, *sysfs_path = NULL;
 	CablePairingType type;
 	int fd;
 
@@ -348,6 +419,7 @@ static void device_added(struct udev_device *udevice)
 						&bus,
 						&vid,
 						&pid,
+						&sysfs_path,
 						&name,
 						&source,
 						&version);
@@ -357,20 +429,39 @@ static void device_added(struct udev_device *udevice)
 	if (bus != BUS_USB)
 		return;
 
-	info("sixaxis: compatible device connected: %s (%04X:%04X)",
-				name, vid, pid);
+	info("sixaxis: compatible device connected: %s (%04X:%04X %s)",
+				name, vid, pid, sysfs_path);
 
 	fd = open(udev_device_get_devnode(udevice), O_RDWR);
 	if (fd < 0) {
 		g_free(name);
+		g_free(sysfs_path);
 		return;
 	}
 
 	/* Only close the fd if an authentication is not pending */
-	if (!setup_device(fd, name, source, vid, pid, version, type, adapter))
+	if (!setup_device(fd, sysfs_path, name, source, vid, pid, version, type, adapter))
 		close(fd);
 
 	g_free(name);
+	g_free(sysfs_path);
+}
+
+static void device_removed(struct udev_device *udevice)
+{
+	struct authentication_closure *closure;
+	const char *sysfs_path;
+
+	sysfs_path = udev_device_get_syspath(udevice);
+	if (!sysfs_path)
+		return;
+
+	closure = g_hash_table_lookup(pending_auths, sysfs_path);
+	if (!closure)
+		return;
+
+	g_hash_table_steal(pending_auths, sysfs_path);
+	auth_closure_destroy(closure, true);
 }
 
 static gboolean monitor_watch(GIOChannel *source, GIOCondition condition,
@@ -384,6 +475,8 @@ static gboolean monitor_watch(GIOChannel *source, GIOCondition condition,
 
 	if (!g_strcmp0(udev_device_get_action(udevice), "add"))
 		device_added(udevice);
+	else if (!g_strcmp0(udev_device_get_action(udevice), "remove"))
+		device_removed(udevice);
 
 	udev_device_unref(udevice);
 
@@ -417,12 +510,26 @@ static int sixaxis_init(void)
 	watch_id = g_io_add_watch(channel, G_IO_IN, monitor_watch, NULL);
 	g_io_channel_unref(channel);
 
+	pending_auths = g_hash_table_new(g_str_hash,
+					g_str_equal);
+
 	return 0;
 }
 
 static void sixaxis_exit(void)
 {
+	GHashTableIter iter;
+	gpointer value;
+
 	DBG("");
+
+	g_hash_table_iter_init(&iter, pending_auths);
+	while (g_hash_table_iter_next(&iter, NULL, &value)) {
+		struct authentication_closure *closure = value;
+		auth_closure_destroy(closure, true);
+	}
+	g_hash_table_destroy(pending_auths);
+	pending_auths = NULL;
 
 	g_source_remove(watch_id);
 	watch_id = 0;
