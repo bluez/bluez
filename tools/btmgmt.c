@@ -1790,7 +1790,7 @@ done:
 static bool parse_setting(int argc, char **argv, uint8_t *val)
 {
 	if (argc < 2) {
-		print("Specify \"on\" or \"off\"");
+		cmd_usage(argv[0]);
 		return false;
 	}
 
@@ -1893,7 +1893,7 @@ static void cmd_sc(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	uint8_t val;
 
 	if (argc < 2) {
-		print("Specify \"on\" or \"off\" or \"only\"");
+		cmd_usage(argv[0]);
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
