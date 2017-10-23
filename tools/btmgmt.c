@@ -1787,22 +1787,29 @@ done:
 	noninteractive_quit(EXIT_SUCCESS);
 }
 
+static bool parse_setting(int argc, char **argv, uint8_t *val)
+{
+	if (argc < 2) {
+		print("Specify \"on\" or \"off\"");
+		return false;
+	}
+
+	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
+		*val = 1;
+	else if (strcasecmp(argv[1], "off") == 0)
+		*val = 0;
+	else
+		*val = atoi(argv[1]);
+	return true;
+}
+
 static void cmd_setting(struct mgmt *mgmt, uint16_t index, uint16_t op,
 							int argc, char **argv)
 {
 	uint8_t val;
 
-	if (argc < 2) {
-		print("Specify \"on\" or \"off\"");
+	if (parse_setting(argc, argv, &val) == false)
 		return noninteractive_quit(EXIT_FAILURE);
-	}
-
-	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
-		val = 1;
-	else if (strcasecmp(argv[1], "off") == 0)
-		val = 0;
-	else
-		val = atoi(argv[1]);
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
@@ -1935,17 +1942,8 @@ static void cmd_privacy(struct mgmt *mgmt, uint16_t index, int argc,
 {
 	struct mgmt_cp_set_privacy cp;
 
-	if (argc < 2) {
-		print("Specify \"on\" or \"off\"");
+	if (parse_setting(argc, argv, &cp.privacy) == false)
 		return noninteractive_quit(EXIT_FAILURE);
-	}
-
-	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
-		cp.privacy = 0x01;
-	else if (strcasecmp(argv[1], "off") == 0)
-		cp.privacy = 0x00;
-	else
-		cp.privacy = atoi(argv[1]);
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
@@ -3351,17 +3349,8 @@ static void cmd_ext_config(struct mgmt *mgmt, uint16_t index,
 {
 	struct mgmt_cp_set_external_config cp;
 
-	if (argc < 2) {
-		print("Specify \"on\" or \"off\"");
+	if (parse_setting(argc, argv, &cp.config) == false)
 		return noninteractive_quit(EXIT_FAILURE);
-	}
-
-	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
-		cp.config = 0x01;
-	else if (strcasecmp(argv[1], "off") == 0)
-		cp.config = 0x00;
-	else
-		cp.config = atoi(argv[1]);
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
