@@ -3220,6 +3220,7 @@ static void cmd_remote_oob(struct mgmt *mgmt, uint16_t index,
 			break;
 		default:
 			remote_oob_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -3485,9 +3486,11 @@ static void cmd_conn_info(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'h':
 			conn_info_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			conn_info_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -3681,9 +3684,11 @@ static void cmd_add_device(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'h':
 			add_device_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			add_device_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -3751,9 +3756,11 @@ static void cmd_del_device(struct mgmt *mgmt, uint16_t index,
 			break;
 		case 'h':
 			del_device_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_SUCCESS);
 		default:
 			del_device_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -4018,6 +4025,7 @@ static void cmd_advsize(struct mgmt *mgmt, uint16_t index,
 			break;
 		default:
 			advsize_usage();
+			optind = 0;
 			return noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -4253,6 +4261,7 @@ static void cmd_add_adv(struct mgmt *mgmt, uint16_t index,
 			/* fall through */
 		default:
 			add_adv_usage();
+			optind = 0;
 			goto done;
 		}
 	}
