@@ -3186,7 +3186,7 @@ static void remote_oob_usage(void)
 }
 
 static struct option remote_oob_opt[] = {
-	{ "help",	0, 0, 'h' },
+	{ "help",	0, 0, '?' },
 	{ "type",	1, 0, 't' },
 	{ 0, 0, 0, 0 }
 };
