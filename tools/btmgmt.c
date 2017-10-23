@@ -4528,7 +4528,7 @@ static void cmd_select(struct mgmt *mgmt, uint16_t index,
 						int argc, char **argv)
 {
 	if (argc != 2) {
-		error("Usage: select <index>");
+		cmd_usage(argv[0]);
 		return;
 	}
 
@@ -4641,6 +4641,14 @@ static void cmd_usage(char *cmd)
 		return;
 
 	c = find_cmd(cmd, all_cmd, NELEM(all_cmd));
+	if (!c && interactive) {
+		c = find_cmd(cmd, interactive_cmd, NELEM(interactive_cmd));
+		if (!c)
+			return;
+		error("Usage: %s %s", cmd, c->arg ? : "");
+		return;
+	}
+
 	if (!c)
 		return;
 
