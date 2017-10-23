@@ -2213,7 +2213,7 @@ static void cmd_find_service(struct mgmt *mgmt, uint16_t index, int argc,
 		return noninteractive_quit(EXIT_FAILURE);
 	}
 
-	while ((opt = getopt_long(argc, argv, "+lbu:r:p:h",
+	while ((opt = getopt_long(argc, argv, "+lbu:r:h",
 					find_service_options, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
@@ -2293,7 +2293,7 @@ static void find_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void find_usage(void)
 {
-	print("Usage: find [-l|-b]>");
+	print("Usage: find [-l|-b] [-L]");
 }
 
 static struct option find_options[] = {
@@ -2801,7 +2801,7 @@ static void irks_rsp(uint8_t status, uint16_t len, const void *param,
 
 static void irks_usage(void)
 {
-	print("Usage: irks [--local]");
+	print("Usage: irks [--local <index>] [--file <file path>]");
 }
 
 static struct option irks_options[] = {
