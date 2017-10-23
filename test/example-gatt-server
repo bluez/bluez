@@ -401,6 +401,8 @@ class BatteryLevelCharacteristic(Characteristic):
                 { 'Value': [dbus.Byte(self.battery_lvl)] }, [])
 
     def drain_battery(self):
+        if not self.notifying:
+            return True
         if self.battery_lvl > 0:
             self.battery_lvl -= 2
             if self.battery_lvl < 0:
