@@ -157,6 +157,7 @@ struct avctp_pending_req {
 	struct avctp_channel *chan;
 	uint8_t transaction;
 	guint timeout;
+	bool retry;
 	int err;
 	avctp_process_cb process;
 	void *data;
@@ -775,9 +776,16 @@ static gboolean req_timeout(gpointer user_data)
 	struct avctp_channel *chan = user_data;
 	struct avctp_pending_req *p = chan->p;
 
-	DBG("transaction %u", p->transaction);
+	DBG("transaction %u retry %s", p->transaction, p->retry ? "true" :
+								"false");
 
 	p->timeout = 0;
+
+	if (p->retry) {
+		p->process(p->data);
+		return FALSE;
+	}
+
 	p->err = -ETIMEDOUT;
 
 	pending_destroy(p, NULL);
@@ -800,6 +808,9 @@ static int process_control(void *data)
 			req->operand_count);
 	if (ret < 0)
 		return ret;
+
+	if (req->op != AVC_OP_PASSTHROUGH)
+		p->retry = !p->retry;
 
 	p->timeout = g_timeout_add_seconds(CONTROL_TIMEOUT, req_timeout,
 								p->chan);
