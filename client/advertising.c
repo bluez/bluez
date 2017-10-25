@@ -225,10 +225,11 @@ static gboolean get_service_data(const GDBusPropertyTable *property,
 {
 	DBusMessageIter dict;
 	struct ad_data *data = &ad.service.data;
+	uint8_t *val = data->data;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
 
-	dict_append_array(&dict, ad.service.uuid, DBUS_TYPE_BYTE, &data->data,
+	dict_append_array(&dict, ad.service.uuid, DBUS_TYPE_BYTE, &val,
 								data->len);
 
 	dbus_message_iter_close_container(iter, &dict);
@@ -247,11 +248,12 @@ static gboolean get_manufacturer_data(const GDBusPropertyTable *property,
 {
 	DBusMessageIter dict;
 	struct ad_data *data = &ad.manufacturer.data;
+	uint8_t *val = data->data;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{qv}", &dict);
 
 	dict_append_basic_array(&dict, DBUS_TYPE_UINT16, &ad.manufacturer.id,
-					DBUS_TYPE_BYTE, &data->data, data->len);
+					DBUS_TYPE_BYTE, &val, data->len);
 
 	dbus_message_iter_close_container(iter, &dict);
 
