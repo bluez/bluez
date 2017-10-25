@@ -284,7 +284,8 @@ static void clear_ccc_state(void *data, void *user_data)
 	if (!ccc_cb)
 		return;
 
-	ccc_cb->callback(NULL, 0, ccc_cb->user_data);
+	if (ccc_cb->callback)
+		ccc_cb->callback(NULL, 0, ccc_cb->user_data);
 }
 
 static void att_disconnected(int err, void *user_data)
