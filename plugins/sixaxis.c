@@ -68,7 +68,8 @@ struct authentication_destroy_closure {
 static struct udev *ctx = NULL;
 static struct udev_monitor *monitor = NULL;
 static guint watch_id = 0;
-static GHashTable *pending_auths = NULL; /* key = sysfs_path (const str), value = auth_closure */
+/* key = sysfs_path (const str), value = auth_closure */
+static GHashTable *pending_auths = NULL;
 
 /* Make sure to unset auth_id if already handled */
 static void auth_closure_destroy(struct authentication_closure *closure,
@@ -260,8 +261,7 @@ static gboolean auth_closure_destroy_idle(gpointer user_data)
 	return false;
 }
 
-static void agent_auth_cb(DBusError *derr,
-				void *user_data)
+static void agent_auth_cb(DBusError *derr, void *user_data)
 {
 	struct authentication_closure *closure = user_data;
 	struct authentication_destroy_closure *destroy;
@@ -286,7 +286,8 @@ static void agent_auth_cb(DBusError *derr,
 
 	adapter_bdaddr = btd_adapter_get_address(closure->adapter);
 	if (bacmp(adapter_bdaddr, &master_bdaddr)) {
-		if (set_master_bdaddr(closure->fd, adapter_bdaddr, closure->type) < 0)
+		if (set_master_bdaddr(closure->fd, adapter_bdaddr,
+							closure->type) < 0)
 			goto out;
 	}
 
@@ -313,22 +314,16 @@ out:
 	g_idle_add(auth_closure_destroy_idle, destroy);
 }
 
-static bool setup_device(int fd,
-				const char *sysfs_path,
-				const char *name,
-				uint16_t source,
-				uint16_t vid,
-				uint16_t pid,
-				uint16_t version,
-				CablePairingType type,
-				struct btd_adapter *adapter)
+static bool setup_device(int fd, const char *sysfs_path,
+			const struct cable_pairing *cp,
+			struct btd_adapter *adapter)
 {
 	bdaddr_t device_bdaddr;
 	const bdaddr_t *adapter_bdaddr;
 	struct btd_device *device;
 	struct authentication_closure *closure;
 
-	if (get_device_bdaddr(fd, &device_bdaddr, type) < 0)
+	if (get_device_bdaddr(fd, &device_bdaddr, cp->type) < 0)
 		return false;
 
 	/* This can happen if controller was plugged while already connected
@@ -350,8 +345,8 @@ static bool setup_device(int fd,
 
 	info("sixaxis: setting up new device");
 
-	btd_device_device_set_name(device, name);
-	btd_device_set_pnpid(device, source, vid, pid, version);
+	btd_device_device_set_name(device, cp->name);
+	btd_device_set_pnpid(device, cp->source, cp->vid, cp->pid, cp->version);
 	btd_device_set_temporary(device, true);
 
 	closure = g_new0(struct authentication_closure, 1);
@@ -364,86 +359,74 @@ static bool setup_device(int fd,
 	closure->sysfs_path = g_strdup(sysfs_path);
 	closure->fd = fd;
 	bacpy(&closure->bdaddr, &device_bdaddr);
-	closure->type = type;
+	closure->type = cp->type;
 	adapter_bdaddr = btd_adapter_get_address(adapter);
-	closure->auth_id = btd_request_authorization_cable_configured(adapter_bdaddr, &device_bdaddr,
-								HID_UUID, agent_auth_cb, closure);
+	closure->auth_id = btd_request_authorization_cable_configured(
+					adapter_bdaddr, &device_bdaddr,
+					HID_UUID, agent_auth_cb, closure);
 
 	g_hash_table_insert(pending_auths, closure->sysfs_path, closure);
 
 	return true;
 }
 
-static CablePairingType get_pairing_type_for_device(struct udev_device *udevice,
-								uint16_t  *bus,
-								uint16_t  *vid,
-								uint16_t  *pid,
-								char     **sysfs_path,
-								char     **name,
-								uint16_t  *source,
-								uint16_t  *version)
+static const struct cable_pairing *
+get_pairing_type_for_device(struct udev_device *udevice, uint16_t *bus,
+						char **sysfs_path)
 {
 	struct udev_device *hid_parent;
 	const char *hid_id;
-	CablePairingType ret;
+	const struct cable_pairing *cp;
+	uint16_t vid, pid;
 
 	hid_parent = udev_device_get_parent_with_subsystem_devtype(udevice,
 								"hid", NULL);
 	if (!hid_parent)
-		return -1;
+		return NULL;
 
 	hid_id = udev_device_get_property_value(hid_parent, "HID_ID");
 
-	if (sscanf(hid_id, "%hx:%hx:%hx", bus, vid, pid) != 3)
-		return -1;
+	if (sscanf(hid_id, "%hx:%hx:%hx", bus, &vid, &pid) != 3)
+		return NULL;
 
-	ret = get_pairing_type(*vid, *pid, name, source, version);
+	cp = get_pairing(vid, pid);
 	*sysfs_path = g_strdup(udev_device_get_syspath(udevice));
 
-	return ret;
+	return cp;
 }
 
 static void device_added(struct udev_device *udevice)
 {
 	struct btd_adapter *adapter;
-	uint16_t bus, vid, pid, source, version;
-	char *name = NULL, *sysfs_path = NULL;
-	CablePairingType type;
+	uint16_t bus;
+	char *sysfs_path = NULL;
+	const struct cable_pairing *cp;
 	int fd;
 
 	adapter = btd_adapter_get_default();
 	if (!adapter)
 		return;
 
-	type = get_pairing_type_for_device(udevice,
-						&bus,
-						&vid,
-						&pid,
-						&sysfs_path,
-						&name,
-						&source,
-						&version);
-	if (type != CABLE_PAIRING_SIXAXIS &&
-	    type != CABLE_PAIRING_DS4)
+	cp = get_pairing_type_for_device(udevice, &bus, &sysfs_path);
+	if (!cp || (cp->type != CABLE_PAIRING_SIXAXIS &&
+				cp->type != CABLE_PAIRING_DS4))
 		return;
 	if (bus != BUS_USB)
 		return;
 
 	info("sixaxis: compatible device connected: %s (%04X:%04X %s)",
-				name, vid, pid, sysfs_path);
+				cp->name, cp->vid, cp->pid, sysfs_path);
 
 	fd = open(udev_device_get_devnode(udevice), O_RDWR);
 	if (fd < 0) {
-		g_free(name);
 		g_free(sysfs_path);
 		return;
 	}
 
 	/* Only close the fd if an authentication is not pending */
-	if (!setup_device(fd, sysfs_path, name, source, vid, pid, version, type, adapter))
+	if (!setup_device(fd, sysfs_path, cp, adapter))
 		close(fd);
 
-	g_free(name);
 	g_free(sysfs_path);
 }
 

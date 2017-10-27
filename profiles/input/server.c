@@ -124,7 +124,7 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct btd_device *device;
 	uint16_t vid, pid;
-	CablePairingType type;
+	const struct cable_pairing *cp;
 
 	device = btd_adapter_find_device(adapter_find(src), dst, BDADDR_BREDR);
 	if (!device)
@@ -133,9 +133,9 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 	vid = btd_device_get_vendor(device);
 	pid = btd_device_get_product(device);
 
-	type = get_pairing_type(vid, pid, NULL, NULL, NULL);
-	if (type == CABLE_PAIRING_SIXAXIS ||
-	    type == CABLE_PAIRING_DS4)
+	cp = get_pairing(vid, pid);
+	if (cp && (cp->type == CABLE_PAIRING_SIXAXIS ||
+					cp->type == CABLE_PAIRING_DS4))
 		return true;
 
 	return false;

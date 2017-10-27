@@ -32,20 +32,19 @@ typedef enum {
 	CABLE_PAIRING_DS4,
 } CablePairingType;
 
-static inline CablePairingType get_pairing_type(uint16_t   vid,
-						 uint16_t   pid,
-						 char     **name,
-						 uint16_t  *source,
-						 uint16_t  *version)
+struct cable_pairing {
+	const char *name;
+	uint16_t source;
+	uint16_t vid;
+	uint16_t pid;
+	uint16_t version;
+	CablePairingType type;
+};
+
+static inline const struct cable_pairing *
+get_pairing(uint16_t vid, uint16_t pid)
 {
-	static const struct {
-		const char *name;
-		uint16_t source;
-		uint16_t vid;
-		uint16_t pid;
-		uint16_t version;
-		CablePairingType type;
-	} devices[] = {
+	static const struct cable_pairing devices[] = {
 		{
 			.name = "Sony PLAYSTATION(R)3 Controller",
 			.source = 0x0002,
@@ -87,16 +86,10 @@ static inline CablePairingType get_pairing_type(uint16_t   vid,
 		if (devices[i].pid != pid)
 			continue;
 
-		if (name)
-			*name = g_strdup(devices[i].name);
-		if (source)
-			*source = devices[i].source;
-		if (version)
-			*version = devices[i].version;
-		return devices[i].type;
+		return &devices[i];
 	}
 
-	return CABLE_PAIRING_UNSUPPORTED;
+	return NULL;
 }
 
 #endif /* _SIXAXIS_H_ */
