@@ -141,10 +141,17 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 		break;
 	}
 
+	if (!n)
+		return true;
+
 	primary = node_get_primary(node);
-	if (n && src != primary)
+	if (src != primary)
 		net_access_layer_send(node_get_default_ttl(node), primary,
 					src, APP_IDX_DEV, msg, n);
+	else
+		node_local_data_handler(primary, src, node_get_iv_index(node),
+					node_get_sequence_number(node),
+					APP_IDX_DEV, msg, n);
 	return true;
 }
 
