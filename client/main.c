@@ -678,9 +678,7 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	} else if (!strcmp(interface, "org.bluez.GattManager1")) {
 		gatt_remove_manager(proxy);
 	} else if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
-		if(!dbus_conn){
-			ad_unregister(dbus_conn, NULL);
-		}
+		ad_unregister(dbus_conn, NULL);
 	}
 }
 
