@@ -360,7 +360,9 @@ static struct device_state *get_device_state(struct btd_gatt_database *database,
 	queue_push_tail(database->device_states, dev_state);
 
 done:
-	dev_state->disc_id = bt_att_register_disconnect(att, att_disconnected,
+	if (!dev_state->disc_id)
+		dev_state->disc_id = bt_att_register_disconnect(att,
+							att_disconnected,
 							dev_state, NULL);
 
 	return dev_state;
