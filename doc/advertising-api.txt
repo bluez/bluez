@@ -92,7 +92,7 @@ Data which should be broadcast to devices.  Advertisement Data elements must
 follow the API for LE Advertisement Data described above.
 
 Service		org.bluez
-Interface	org.bluez.LEAdvertisingManager1 [Experimental]
+Interface	org.bluez.LEAdvertisingManager1
 Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		RegisterAdvertisement(object advertisement, dict options)

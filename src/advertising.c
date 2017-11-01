@@ -936,21 +936,18 @@ static gboolean get_supported_includes(const GDBusPropertyTable *property,
 }
 
 static const GDBusPropertyTable properties[] = {
-	{ "ActiveInstances", "y", get_active_instances, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "SupportedInstances", "y", get_instances, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "SupportedIncludes", "as", get_supported_includes, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "ActiveInstances", "y", get_active_instances, NULL, NULL },
+	{ "SupportedInstances", "y", get_instances, NULL, NULL },
+	{ "SupportedIncludes", "as", get_supported_includes, NULL, NULL },
 	{ }
 };
 
 static const GDBusMethodTable methods[] = {
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("RegisterAdvertisement",
+	{ GDBUS_ASYNC_METHOD("RegisterAdvertisement",
 					GDBUS_ARGS({ "advertisement", "o" },
 							{ "options", "a{sv}" }),
 					NULL, register_advertisement) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("UnregisterAdvertisement",
+	{ GDBUS_ASYNC_METHOD("UnregisterAdvertisement",
 						GDBUS_ARGS({ "service", "o" }),
 						NULL,
 						unregister_advertisement) },
