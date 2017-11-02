@@ -2376,6 +2376,44 @@ static void cmd_set_advertise_appearance(const char *arg)
 	ad_advertise_local_appearance(dbus_conn, value);
 }
 
+static void cmd_set_advertise_duration(const char *arg)
+{
+	long int value;
+	char *endptr = NULL;
+
+	if (arg == NULL || strlen(arg) == 0) {
+		rl_printf("Missing value argument\n");
+		return;
+	}
+
+	value = strtol(arg, &endptr, 0);
+	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	ad_advertise_duration(dbus_conn, value);
+}
+
+static void cmd_set_advertise_timeout(const char *arg)
+{
+	long int value;
+	char *endptr = NULL;
+
+	if (arg == NULL || strlen(arg) == 0) {
+		rl_printf("Missing value argument\n");
+		return;
+	}
+
+	value = strtol(arg, &endptr, 0);
+	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
+		rl_printf("Invalid argument\n");
+		return;
+	}
+
+	ad_advertise_timeout(dbus_conn, value);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -2428,6 +2466,10 @@ static const struct {
 			"Enable/disable local name to be advertised" },
 	{ "set-advertise-appearance", "<value>", cmd_set_advertise_appearance,
 			"Set custom appearance to be advertised" },
+	{ "set-advertise-duration", "<seconds>", cmd_set_advertise_duration,
+			"Set advertise duration" },
+	{ "set-advertise-timeout", "<seconds>", cmd_set_advertise_timeout,
+			"Set advertise timeout" },
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,

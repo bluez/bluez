@@ -59,6 +59,8 @@ static struct ad {
 	char *type;
 	char *local_name;
 	uint16_t local_appearance;
+	uint16_t duration;
+	uint16_t timeout;
 	char **uuids;
 	size_t uuids_len;
 	struct service_data service;
@@ -323,6 +325,32 @@ static gboolean get_appearance(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean duration_exits(const GDBusPropertyTable *property, void *data)
+{
+	return ad.duration;
+}
+
+static gboolean get_duration(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &ad.duration);
+
+	return TRUE;
+}
+
+static gboolean timeout_exits(const GDBusPropertyTable *property, void *data)
+{
+	return ad.timeout;
+}
+
+static gboolean get_timeout(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &ad.timeout);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
@@ -332,6 +360,8 @@ static const GDBusPropertyTable ad_props[] = {
 	{ "Includes", "as", get_includes, NULL, includes_exists },
 	{ "LocalName", "s", get_local_name, NULL, local_name_exits },
 	{ "Appearance", "q", get_appearance, NULL, appearance_exits },
+	{ "Duration", "q", get_duration, NULL, duration_exits },
+	{ "Timeout", "q", get_timeout, NULL, timeout_exits },
 	{ }
 };
 
@@ -591,4 +621,24 @@ void ad_advertise_local_appearance(DBusConnection *conn, uint16_t value)
 	ad.local_appearance = value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Appearance");
+}
+
+void ad_advertise_duration(DBusConnection *conn, uint16_t value)
+{
+	if (ad.duration == value)
+		return;
+
+	ad.duration = value;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Duration");
+}
+
+void ad_advertise_timeout(DBusConnection *conn, uint16_t value)
+{
+	if (ad.timeout == value)
+		return;
+
+	ad.timeout = value;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Timeout");
 }
