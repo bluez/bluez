@@ -456,6 +456,7 @@ void ad_advertise_service(DBusConnection *conn, const char *arg)
 
 		if (i >= G_N_ELEMENTS(data->data)) {
 			rl_printf("Too much data\n");
+			ad_clear_service();
 			goto done;
 		}
 
@@ -511,6 +512,7 @@ void ad_advertise_manufacturer(DBusConnection *conn, const char *arg)
 	for (i = 1; i < w.we_wordc; i++) {
 		if (i >= G_N_ELEMENTS(data->data)) {
 			rl_printf("Too much data\n");
+			ad_clear_manufacturer();
 			goto done;
 		}
 
