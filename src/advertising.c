@@ -137,20 +137,11 @@ static gboolean client_free_idle_cb(void *data)
 static void client_release(void *data)
 {
 	struct btd_adv_client *client = data;
-	DBusMessage *message;
 
 	DBG("Releasing advertisement %s, %s", client->owner, client->path);
 
-	message = dbus_message_new_method_call(client->owner, client->path,
-							LE_ADVERTISEMENT_IFACE,
-							"Release");
-
-	if (!message) {
-		error("Couldn't allocate D-Bus message");
-		return;
-	}
-
-	g_dbus_send_message(btd_get_dbus_connection(), message);
+	g_dbus_proxy_method_call(client->proxy, "Release", NULL, NULL, NULL,
+									NULL);
 }
 
 static void client_destroy(void *data)
