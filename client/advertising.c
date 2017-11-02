@@ -517,7 +517,7 @@ void ad_advertise_manufacturer(DBusConnection *conn, const char *arg)
 		val = strtol(w.we_wordv[i], &endptr, 0);
 		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
 			rl_printf("Invalid value at index %d\n", i);
-			ad_clear_service();
+			ad_clear_manufacturer();
 			goto done;
 		}
 
