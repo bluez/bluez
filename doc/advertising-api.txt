@@ -84,6 +84,17 @@ Properties	string Type
 
 			Possible values: as found on GAP Service.
 
+		uint16_t Duration
+
+			Duration of the advertisement in seconds. If there are
+			other applications advertising no duration is set the
+			default is 2 seconds.
+
+		uint16_t Timeout
+
+			Timeout of the advertisement in seconds. This defines
+			the lifetime of the advertisement.
+
 LE Advertising Manager hierarchy
 ================================
 
