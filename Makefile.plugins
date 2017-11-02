@@ -100,6 +100,9 @@ builtin_sources += profiles/midi/midi.c \
 builtin_ldadd += @ALSA_LIBS@
 endif
 
+builtin_modules += battery
+builtin_sources += profiles/battery/battery.c
+
 if SIXAXIS
 plugin_LTLIBRARIES += plugins/sixaxis.la
 plugins_sixaxis_la_SOURCES = plugins/sixaxis.c
