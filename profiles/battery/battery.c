@@ -95,7 +95,6 @@ static void batt_reset(struct batt *batt)
 		g_free(batt->path);
 		batt->path = NULL;
 	}
-	btd_device_unref(batt->device);
 }
 
 static void parse_battery_level(struct batt *batt,
