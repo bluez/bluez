@@ -1399,11 +1399,26 @@ struct avdtp *a2dp_avdtp_get(struct btd_device *device)
 {
 	struct a2dp_server *server;
 	struct a2dp_channel *chan;
+	const struct queue_entry *entry;
 
 	server = find_server(servers, device_get_adapter(device));
 	if (server == NULL)
 		return NULL;
 
+	/* Check if there is any SEP available */
+	for (entry = queue_get_entries(server->seps); entry;
+					entry = entry->next) {
+		struct a2dp_sep *sep = entry->data;
+
+		if (avdtp_sep_get_state(sep->lsep) == AVDTP_STATE_IDLE)
+			goto found;
+	}
+
+	DBG("Unable to find any available SEP");
+
+	return NULL;
+
+found:
 	chan = queue_find(server->channels, match_by_device, device);
 	if (!chan) {
 		chan = channel_new(server, device, NULL);
