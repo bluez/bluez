@@ -4050,7 +4050,8 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	device->pending = NULL;
 
 	if (btd_device_is_connected(device)) {
-		g_source_remove(device->disconn_timer);
+		if (device->disconn_timer > 0)
+			g_source_remove(device->disconn_timer);
 		disconnect_all(device);
 	}
 
