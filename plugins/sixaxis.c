@@ -344,22 +344,21 @@ static bool setup_device(int fd, const char *sysfs_path,
 	if (get_device_bdaddr(fd, &device_bdaddr, cp->type) < 0)
 		return false;
 
-	/* This can happen if controller was plugged while already connected
-	 * eg. to charge up battery. */
+	/* This can happen if controller was plugged while already setup and
+	 * connected eg. to charge up battery. */
 	device = btd_adapter_find_device(adapter, &device_bdaddr,
 							BDADDR_BREDR);
-	if (device && btd_device_is_connected(device))
-		return false;
-
-	device = btd_adapter_get_device(adapter, &device_bdaddr, BDADDR_BREDR);
-
-	if (g_slist_find_custom(btd_device_get_uuids(device), HID_UUID,
+	if (device != NULL &&
+		btd_device_is_connected(device) &&
+		g_slist_find_custom(btd_device_get_uuids(device), HID_UUID,
 						(GCompareFunc)strcasecmp)) {
 		char device_addr[18];
 		ba2str(&device_bdaddr, device_addr);
 		DBG("device %s already known, skipping", device_addr);
 		return false;
 	}
+
+	device = btd_adapter_get_device(adapter, &device_bdaddr, BDADDR_BREDR);
 
 	info("sixaxis: setting up new device");
 
