@@ -6072,6 +6072,39 @@ static sdp_list_t *read_device_records(struct btd_device *device)
 	return recs;
 }
 
+void btd_device_set_record(struct btd_device *device, const char *uuid,
+							const char *record)
+{
+	/* This API is only used for BR/EDR */
+	struct bearer_state *state = &device->bredr_state;
+	struct browse_req *req;
+	sdp_list_t *recs = NULL;
+	sdp_record_t *rec;
+
+	if (!record)
+		return;
+
+	req = browse_request_new(device, BROWSE_SDP, NULL);
+	if (!req)
+		return;
+
+	rec = record_from_string(record);
+	recs = sdp_list_append(recs, rec);
+	update_bredr_services(req, recs);
+	sdp_list_free(recs, NULL);
+
+	device->svc_refreshed = true;
+	state->svc_resolved = true;
+
+	device_probe_profiles(device, req->profiles_added);
+
+	/* Propagate services changes */
+	g_dbus_emit_property_changed(dbus_conn, req->device->path,
+						DEVICE_INTERFACE, "UUIDs");
+
+	device_svc_resolved(device, BROWSE_SDP, device->bdaddr_type, 0);
+}
+
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 							const char *uuid)
 {
