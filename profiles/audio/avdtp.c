@@ -1154,9 +1154,12 @@ static void set_disconnect_timer(struct avdtp *session)
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
 
-	session->dc_timer = g_timeout_add_seconds(DISCONNECT_TIMEOUT,
-						disconnect_timeout,
-						session);
+	if (!session->stream_setup)
+		session->dc_timer = g_idle_add(disconnect_timeout, session);
+	else
+		session->dc_timer = g_timeout_add_seconds(DISCONNECT_TIMEOUT,
+							disconnect_timeout,
+							session);
 }
 
 void avdtp_unref(struct avdtp *session)
