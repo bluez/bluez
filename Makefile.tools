@@ -8,7 +8,8 @@ client_bluetoothctl_SOURCES = client/main.c \
 					client/advertising.h \
 					client/advertising.c \
 					client/gatt.h client/gatt.c \
-					monitor/uuid.h monitor/uuid.c
+					monitor/uuid.h monitor/uuid.c \
+					src/shared/shell.h src/shared/shell.c
 client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 endif
