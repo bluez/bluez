@@ -3200,8 +3200,8 @@ static void print_fec(uint8_t fec)
 #define BT_EIR_TRANSPORT_DISCOVERY	0x26
 #define BT_EIR_LE_SUPPORTED_FEATURES	0x27
 #define BT_EIR_CHANNEL_MAP_UPDATE_IND	0x28
-#define BT_EIR_MESH_DATA		0x29
-#define BT_EIR_MESH_PROV		0x2a
+#define BT_EIR_MESH_PROV		0x29
+#define BT_EIR_MESH_DATA		0x2a
 #define BT_EIR_MESH_BEACON		0x2b
 #define BT_EIR_3D_INFO_DATA		0x3d
 #define BT_EIR_MANUFACTURER_DATA	0xff
