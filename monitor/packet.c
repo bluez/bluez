@@ -3620,8 +3620,8 @@ static void print_mesh_data(const uint8_t *data, uint8_t len)
 	if (len < 1)
 		return;
 
-	print_field("  IV: %u", data[0] & 0x01);
-	print_field("  NID: 0x%2.2x", data[0] & 0xfe);
+	print_field("  IVI: %u", data[0] >> 7);
+	print_field("  NID: 0x%2.2x", data[0] & 0x7f);
 	packet_hexdump(data + 1, len - 1);
 }
 
