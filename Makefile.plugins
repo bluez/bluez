@@ -58,7 +58,7 @@ builtin_modules += input
 builtin_sources += profiles/input/manager.c \
 			profiles/input/server.h profiles/input/server.c \
 			profiles/input/device.h profiles/input/device.c \
-			profiles/input/hidp_defs.h
+			profiles/input/hidp_defs.h profiles/input/sixaxis.h
 endif
 
 if HOG
