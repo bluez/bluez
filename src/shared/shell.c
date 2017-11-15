@@ -48,6 +48,9 @@
 #define print_menu(cmd, args, desc) \
 		printf(COLOR_HIGHLIGHT "%s %-*s " COLOR_OFF "%s\n", \
 			cmd, (int)(CMD_LENGTH - strlen(cmd)), args, desc)
+#define print_submenu(cmd, desc) \
+		printf(COLOR_BLUE "%s %-*s " COLOR_OFF "%s\n", \
+			cmd, (int)(CMD_LENGTH - strlen(cmd)), "", desc)
 
 static GMainLoop *main_loop;
 static gboolean option_version = FALSE;
@@ -59,8 +62,9 @@ static struct {
 	bt_shell_prompt_input_func saved_func;
 	void *saved_user_data;
 
-	const struct bt_shell_menu_entry *menu;
-	/* TODO: Add submenus support */
+	const struct bt_shell_menu *menu;
+	const struct bt_shell_menu *main;
+	struct queue *submenus;
 } data;
 
 static void shell_print_menu(void);
@@ -80,7 +84,82 @@ static void cmd_help(const char *arg)
 	shell_print_menu();
 }
 
+static const struct bt_shell_menu *find_menu(const char *name)
+{
+	const struct queue_entry *entry;
+
+	for (entry = queue_get_entries(data.submenus); entry;
+						entry = entry->next) {
+		struct bt_shell_menu *menu = entry->data;
+
+		if (!strcmp(menu->name, name))
+			return menu;
+	}
+
+	return NULL;
+}
+
+static char *menu_generator(const char *text, int state)
+{
+	static unsigned int index, len;
+	static struct queue_entry *entry;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+		entry = (void *) queue_get_entries(data.submenus);
+	}
+
+	for (; entry; entry = entry->next) {
+		struct bt_shell_menu *menu = entry->data;
+
+		index++;
+
+		if (!strncmp(menu->name, text, len)) {
+			entry = entry->next;
+			return strdup(menu->name);
+		}
+	}
+
+	return NULL;
+}
+
+static void cmd_menu(const char *arg)
+{
+	const struct bt_shell_menu *menu;
+
+	if (!arg || !strlen(arg)) {
+		bt_shell_printf("Missing name argument\n");
+		return;
+	}
+
+	menu = find_menu(arg);
+	if (!menu) {
+		bt_shell_printf("Unable find menu with name: %s\n", arg);
+		return;
+	}
+
+	bt_shell_set_menu(menu);
+
+	shell_print_menu();
+}
+
+static void cmd_back(const char *arg)
+{
+	if (data.menu == data.main) {
+		bt_shell_printf("Already on main menu\n");
+		return;
+	}
+
+	bt_shell_set_menu(data.main);
+
+	shell_print_menu();
+}
+
 static const struct bt_shell_menu_entry default_menu[] = {
+	{ "back",         NULL,       cmd_back, "Return to main menu" },
+	{ "menu",         "<name>",   cmd_menu, "Select submenu",
+							menu_generator },
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit, "Quit program" },
@@ -92,49 +171,74 @@ static const struct bt_shell_menu_entry default_menu[] = {
 static void shell_print_menu(void)
 {
 	const struct bt_shell_menu_entry *entry;
+	const struct queue_entry *submenu;
 
 	if (!data.menu)
 		return;
 
+	print_text(COLOR_HIGHLIGHT, "Menu %s:", data.menu->name);
 	print_text(COLOR_HIGHLIGHT, "Available commands:");
 	print_text(COLOR_HIGHLIGHT, "-------------------");
-	for (entry = data.menu; entry->cmd; entry++) {
+
+	if (data.menu == data.main) {
+		for (submenu = queue_get_entries(data.submenus); submenu;
+						submenu = submenu->next) {
+			struct bt_shell_menu *menu = submenu->data;
+
+			print_submenu(menu->name, "Submenu");
+		}
+	}
+
+	for (entry = data.menu->entries; entry->cmd; entry++) {
 		print_menu(entry->cmd, entry->arg ? : "", entry->desc ? : "");
 	}
 
 	for (entry = default_menu; entry->cmd; entry++) {
+		/* Skip menu command if not on main menu */
+		if (data.menu != data.main && !strcmp(entry->cmd, "menu"))
+			continue;
+
+		/* Skip back command if on main menu */
+		if (data.menu == data.main && !strcmp(entry->cmd, "back"))
+			continue;
+
 		print_menu(entry->cmd, entry->arg ? : "", entry->desc ? : "");
 	}
 }
 
+static int menu_exec(const struct bt_shell_menu_entry *entry,
+			const char *cmd, const char *arg)
+{
+	for (; entry->cmd; entry++) {
+		if (strcmp(cmd, entry->cmd))
+			continue;
+
+		/* Skip menu command if not on main menu */
+		if (data.menu != data.main && !strcmp(entry->cmd, "menu"))
+			continue;
+
+		/* Skip back command if on main menu */
+		if (data.menu == data.main && !strcmp(entry->cmd, "back"))
+			continue;
+
+		if (entry->func) {
+			entry->func(arg);
+			return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
 static void shell_exec(const char *cmd, const char *arg)
 {
-	const struct bt_shell_menu_entry *entry;
-
 	if (!data.menu || !cmd)
 		return;
 
-	for (entry = data.menu; entry->cmd; entry++) {
-		if (strcmp(cmd, entry->cmd))
-			continue;
-
-		if (entry->func) {
-			entry->func(arg);
-			return;
-		}
+	if (menu_exec(default_menu, cmd, arg) < 0) {
+		if (menu_exec(data.menu->entries, cmd, arg) < 0)
+			print_text(COLOR_HIGHLIGHT, "Invalid command");
 	}
-
-	for (entry = default_menu; entry->cmd; entry++) {
-		if (strcmp(cmd, entry->cmd))
-			continue;
-
-		if (entry->func) {
-			entry->func(arg);
-			return;
-		}
-	}
-
-	print_text(COLOR_HIGHLIGHT, "Invalid command");
 }
 
 void bt_shell_printf(const char *fmt, ...)
@@ -308,7 +412,7 @@ static char *cmd_generator(const char *text, int state)
 	if (state)
 		return NULL;
 
-	entry = data.menu;
+	entry = data.menu->entries;
 	index = 0;
 
 	return cmd_generator(text, 1);
@@ -319,7 +423,7 @@ static char **menu_completion(const struct bt_shell_menu_entry *entry,
 {
 	char **matches = NULL;
 
-	for (entry = data.menu; entry->cmd; entry++) {
+	for (; entry->cmd; entry++) {
 		if (strcmp(entry->cmd, input_cmd))
 			continue;
 
@@ -347,7 +451,7 @@ static char **shell_completion(const char *text, int start, int end)
 		input_cmd = strndup(rl_line_buffer, start - 1);
 		matches = menu_completion(default_menu, text, input_cmd);
 		if (!matches)
-			matches = menu_completion(data.menu, text,
+			matches = menu_completion(data.menu->entries, text,
 							input_cmd);
 
 		free(input_cmd);
@@ -513,12 +617,28 @@ void bt_shell_run(void)
 	rl_cleanup();
 }
 
-bool bt_shell_set_menu(const struct bt_shell_menu_entry *menu)
+bool bt_shell_set_menu(const struct bt_shell_menu *menu)
 {
-	if (data.menu || !menu)
+	if (!menu)
 		return false;
 
 	data.menu = menu;
+
+	if (!data.main)
+		data.main = menu;
+
+	return true;
+}
+
+bool bt_shell_add_submenu(const struct bt_shell_menu *menu)
+{
+	if (!menu)
+		return false;
+
+	if (!data.submenus)
+		data.submenus = queue_new();
+
+	queue_push_tail(data.submenus, (void *) menu);
 
 	return true;
 }

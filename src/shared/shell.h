@@ -45,11 +45,20 @@ struct bt_shell_menu_entry {
 	bt_shell_menu_disp_t disp;
 };
 
+struct bt_shell_menu {
+	const char *name;
+	const struct bt_shell_menu_entry entries[];
+};
+
 void bt_shell_init(int *argc, char ***argv);
 
 void bt_shell_run(void);
 
-bool bt_shell_set_menu(const struct bt_shell_menu_entry *menu);
+bool bt_shell_set_menu(const struct bt_shell_menu *menu);
+
+bool bt_shell_add_submenu(const struct bt_shell_menu *menu);
+
+bool bt_shell_remove_submenu(const struct bt_shell_menu *menu);
 
 void bt_shell_set_prompt(const char *string);
 

@@ -2357,7 +2357,9 @@ static void cmd_set_advertise_timeout(const char *arg)
 	ad_advertise_timeout(dbus_conn, value);
 }
 
-static const struct bt_shell_menu_entry cmd_table[] = {
+static const struct bt_shell_menu main_menu = {
+	.name = "main",
+	.entries = {
 	{ "list",         NULL,       cmd_list, "List available controllers" },
 	{ "show",         "[ctrl]",   cmd_show, "Controller information",
 							ctrl_generator },
@@ -2481,7 +2483,7 @@ static const struct bt_shell_menu_entry cmd_table[] = {
 	{ "unregister-descriptor", "<UUID/object>",
 					cmd_unregister_descriptor,
 					"Unregister application descriptor" },
-	{ }
+	{ } },
 };
 
 static gboolean parse_agent(const char *key, const char *value,
@@ -2530,7 +2532,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	bt_shell_init(&argc, &argv);
-	bt_shell_set_menu(cmd_table);
+	bt_shell_set_menu(&main_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
