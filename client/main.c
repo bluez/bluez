@@ -2357,6 +2357,30 @@ static void cmd_set_advertise_timeout(const char *arg)
 	ad_advertise_timeout(dbus_conn, value);
 }
 
+static const struct bt_shell_menu advertise_menu = {
+	.name = "advertise",
+	.entries = {
+	{ "set-uuids", "[uuid1 uuid2 ...]",
+			cmd_set_advertise_uuids, "Set advertise uuids" },
+	{ "set-service", "[uuid][data=[xx xx ...]", cmd_set_advertise_service,
+			"Set advertise service data" },
+	{ "set-manufacturer", "[id][data=[xx xx ...]",
+			cmd_set_advertise_manufacturer,
+			"Set advertise manufacturer data" },
+	{ "set-tx-power", "<on/off>", cmd_set_advertise_tx_power,
+			"Enable/disable TX power to be advertised",
+							mode_generator },
+	{ "set-name", "<on/off/name>", cmd_set_advertise_name,
+			"Enable/disable local name to be advertised" },
+	{ "set-appearance", "<value>", cmd_set_advertise_appearance,
+			"Set custom appearance to be advertised" },
+	{ "set-duration", "<seconds>", cmd_set_advertise_duration,
+			"Set advertise duration" },
+	{ "set-timeout", "<seconds>", cmd_set_advertise_timeout,
+			"Set advertise timeout" },
+	{ } },
+};
+
 static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
@@ -2388,26 +2412,6 @@ static const struct bt_shell_menu main_menu = {
 	{ "advertise",    "<on/off/type>", cmd_advertise,
 				"Enable/disable advertising with given type",
 							ad_generator},
-	{ "set-advertise-uuids", "[uuid1 uuid2 ...]",
-			cmd_set_advertise_uuids, "Set advertise uuids" },
-	{ "set-advertise-service", "[uuid][data=[xx xx ...]",
-			cmd_set_advertise_service,
-			"Set advertise service data" },
-	{ "set-advertise-manufacturer", "[id][data=[xx xx ...]",
-			cmd_set_advertise_manufacturer,
-			"Set advertise manufacturer data" },
-	{ "set-advertise-tx-power", "<on/off>",
-			cmd_set_advertise_tx_power,
-			"Enable/disable TX power to be advertised",
-							mode_generator },
-	{ "set-advertise-name", "<on/off/name>", cmd_set_advertise_name,
-			"Enable/disable local name to be advertised" },
-	{ "set-advertise-appearance", "<value>", cmd_set_advertise_appearance,
-			"Set custom appearance to be advertised" },
-	{ "set-advertise-duration", "<seconds>", cmd_set_advertise_duration,
-			"Set advertise duration" },
-	{ "set-advertise-timeout", "<seconds>", cmd_set_advertise_timeout,
-			"Set advertise timeout" },
 	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
 	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,
@@ -2533,6 +2537,7 @@ int main(int argc, char *argv[])
 
 	bt_shell_init(&argc, &argv);
 	bt_shell_set_menu(&main_menu);
+	bt_shell_add_submenu(&advertise_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
