@@ -2381,6 +2381,26 @@ static const struct bt_shell_menu advertise_menu = {
 	{ } },
 };
 
+static const struct bt_shell_menu scan_menu = {
+	.name = "scan",
+	.entries = {
+	{ "set-filter-uuids", "[uuid1 uuid2 ...]", cmd_set_scan_filter_uuids,
+				"Set scan filter uuids" },
+	{ "set-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,
+				"Set scan filter rssi, and clears pathloss" },
+	{ "set-filter-pathloss", "[pathloss]", cmd_set_scan_filter_pathloss,
+				"Set scan filter pathloss, and clears rssi" },
+	{ "set-filter-transport", "[transport]", cmd_set_scan_filter_transport,
+				"Set scan filter transport" },
+	{ "set-filter-duplicate-data", "[on/off]",
+				cmd_set_scan_filter_duplicate_data,
+				"Set scan filter duplicate data",
+				mode_generator },
+	{ "set-filter-clear", "", cmd_set_scan_filter_clear,
+				"Clears discovery filter." },
+	{ } },
+};
+
 static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
@@ -2412,21 +2432,6 @@ static const struct bt_shell_menu main_menu = {
 	{ "advertise",    "<on/off/type>", cmd_advertise,
 				"Enable/disable advertising with given type",
 							ad_generator},
-	{ "set-scan-filter-uuids", "[uuid1 uuid2 ...]",
-			cmd_set_scan_filter_uuids, "Set scan filter uuids" },
-	{ "set-scan-filter-rssi", "[rssi]", cmd_set_scan_filter_rssi,
-				"Set scan filter rssi, and clears pathloss" },
-	{ "set-scan-filter-pathloss", "[pathloss]",
-						cmd_set_scan_filter_pathloss,
-				"Set scan filter pathloss, and clears rssi" },
-	{ "set-scan-filter-transport", "[transport]",
-		cmd_set_scan_filter_transport, "Set scan filter transport" },
-	{ "set-scan-filter-duplicate-data", "[on/off]",
-			cmd_set_scan_filter_duplicate_data,
-				"Set scan filter duplicate data",
-				mode_generator },
-	{ "set-scan-filter-clear", "", cmd_set_scan_filter_clear,
-						"Clears discovery filter." },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices",
 							mode_generator },
 	{ "info",         "[dev]",    cmd_info, "Device information",
@@ -2538,6 +2543,7 @@ int main(int argc, char *argv[])
 	bt_shell_init(&argc, &argv);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_add_submenu(&advertise_menu);
+	bt_shell_add_submenu(&scan_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
