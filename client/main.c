@@ -798,13 +798,13 @@ static gboolean check_default_ctrl(void)
 	return TRUE;
 }
 
-static gboolean parse_argument(const char *arg, const char **arg_table,
+static gboolean parse_argument(int argc, char *argv[], const char **arg_table,
 					const char *msg, dbus_bool_t *value,
 					const char **option)
 {
 	const char **opt;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		if (msg)
 			bt_shell_printf("Missing on/off/%s argument\n", msg);
 		else
@@ -812,31 +812,31 @@ static gboolean parse_argument(const char *arg, const char **arg_table,
 		return FALSE;
 	}
 
-	if (!strcmp(arg, "on") || !strcmp(arg, "yes")) {
+	if (!strcmp(argv[0], "on") || !strcmp(argv[0], "yes")) {
 		*value = TRUE;
 		if (option)
 			*option = "";
 		return TRUE;
 	}
 
-	if (!strcmp(arg, "off") || !strcmp(arg, "no")) {
+	if (!strcmp(argv[0], "off") || !strcmp(argv[0], "no")) {
 		*value = FALSE;
 		return TRUE;
 	}
 
 	for (opt = arg_table; opt && *opt; opt++) {
-		if (strcmp(arg, *opt) == 0) {
+		if (strcmp(argv[0], *opt) == 0) {
 			*value = TRUE;
 			*option = *opt;
 			return TRUE;
 		}
 	}
 
-	bt_shell_printf("Invalid argument %s\n", arg);
+	bt_shell_printf("Invalid argument %s\n", argv[0]);
 	return FALSE;
 }
 
-static void cmd_list(const char *arg)
+static void cmd_list(int argc, char *argv[])
 {
 	GList *list;
 
@@ -846,22 +846,23 @@ static void cmd_list(const char *arg)
 	}
 }
 
-static void cmd_show(const char *arg)
+static void cmd_show(int argc, char *argv[])
 {
 	struct adapter *adapter;
 	GDBusProxy *proxy;
 	DBusMessageIter iter;
 	const char *address;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		if (check_default_ctrl() == FALSE)
 			return;
 
 		proxy = default_ctrl->proxy;
 	} else {
-		adapter = find_ctrl_by_address(ctrl_list, arg);
+		adapter = find_ctrl_by_address(ctrl_list, argv[0]);
 		if (!adapter) {
-			bt_shell_printf("Controller %s not available\n", arg);
+			bt_shell_printf("Controller %s not available\n",
+								argv[0]);
 			return;
 		}
 		proxy = adapter->proxy;
@@ -884,18 +885,18 @@ static void cmd_show(const char *arg)
 	print_property(proxy, "Discovering");
 }
 
-static void cmd_select(const char *arg)
+static void cmd_select(int argc, char *argv[])
 {
 	struct adapter *adapter;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing controller address argument\n");
 		return;
 	}
 
-	adapter = find_ctrl_by_address(ctrl_list, arg);
+	adapter = find_ctrl_by_address(ctrl_list, argv[0]);
 	if (!adapter) {
-		bt_shell_printf("Controller %s not available\n", arg);
+		bt_shell_printf("Controller %s not available\n", argv[0]);
 		return;
 	}
 
@@ -906,7 +907,7 @@ static void cmd_select(const char *arg)
 	print_adapter(adapter->proxy, NULL);
 }
 
-static void cmd_devices(const char *arg)
+static void cmd_devices(int argc, char *argv[])
 {
 	GList *ll;
 
@@ -920,7 +921,7 @@ static void cmd_devices(const char *arg)
 	}
 }
 
-static void cmd_paired_devices(const char *arg)
+static void cmd_paired_devices(int argc, char *argv[])
 {
 	GList *ll;
 
@@ -954,11 +955,11 @@ static void generic_callback(const DBusError *error, void *user_data)
 		bt_shell_printf("Changing %s succeeded\n", str);
 }
 
-static void cmd_system_alias(const char *arg)
+static void cmd_system_alias(int argc, char *argv[])
 {
 	char *name;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing name argument\n");
 		return;
 	}
@@ -966,7 +967,7 @@ static void cmd_system_alias(const char *arg)
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	name = g_strdup(arg);
+	name = g_strdup(argv[0]);
 
 	if (g_dbus_proxy_set_property_basic(default_ctrl->proxy, "Alias",
 					DBUS_TYPE_STRING, &name,
@@ -976,7 +977,7 @@ static void cmd_system_alias(const char *arg)
 	g_free(name);
 }
 
-static void cmd_reset_alias(const char *arg)
+static void cmd_reset_alias(int argc, char *argv[])
 {
 	char *name;
 
@@ -993,12 +994,12 @@ static void cmd_reset_alias(const char *arg)
 	g_free(name);
 }
 
-static void cmd_power(const char *arg)
+static void cmd_power(int argc, char *argv[])
 {
 	dbus_bool_t powered;
 	char *str;
 
-	if (parse_argument(arg, NULL, NULL, &powered, NULL) == FALSE)
+	if (!parse_argument(argc, argv, NULL, NULL, &powered, NULL))
 		return;
 
 	if (check_default_ctrl() == FALSE)
@@ -1014,12 +1015,12 @@ static void cmd_power(const char *arg)
 	g_free(str);
 }
 
-static void cmd_pairable(const char *arg)
+static void cmd_pairable(int argc, char *argv[])
 {
 	dbus_bool_t pairable;
 	char *str;
 
-	if (parse_argument(arg, NULL, NULL, &pairable, NULL) == FALSE)
+	if (!parse_argument(argc, argv, NULL, NULL, &pairable, NULL))
 		return;
 
 	if (check_default_ctrl() == FALSE)
@@ -1035,12 +1036,12 @@ static void cmd_pairable(const char *arg)
 	g_free(str);
 }
 
-static void cmd_discoverable(const char *arg)
+static void cmd_discoverable(int argc, char *argv[])
 {
 	dbus_bool_t discoverable;
 	char *str;
 
-	if (parse_argument(arg, NULL, NULL, &discoverable, NULL) == FALSE)
+	if (!parse_argument(argc, argv, NULL, NULL, &discoverable, NULL))
 		return;
 
 	if (check_default_ctrl() == FALSE)
@@ -1057,13 +1058,13 @@ static void cmd_discoverable(const char *arg)
 	g_free(str);
 }
 
-static void cmd_agent(const char *arg)
+static void cmd_agent(int argc, char *argv[])
 {
 	dbus_bool_t enable;
 	const char *capability;
 
-	if (parse_argument(arg, agent_arguments, "capability",
-					&enable, &capability) == FALSE)
+	if (!parse_argument(argc, argv, agent_arguments, "capability",
+						&enable, &capability))
 		return;
 
 	if (enable == TRUE) {
@@ -1086,7 +1087,7 @@ static void cmd_agent(const char *arg)
 	}
 }
 
-static void cmd_default_agent(const char *arg)
+static void cmd_default_agent(int argc, char *argv[])
 {
 	agent_default(dbus_conn, agent_manager);
 }
@@ -1108,12 +1109,12 @@ static void start_discovery_reply(DBusMessage *message, void *user_data)
 	bt_shell_printf("Discovery %s\n", enable == TRUE ? "started" : "stopped");
 }
 
-static void cmd_scan(const char *arg)
+static void cmd_scan(int argc, char *argv[])
 {
 	dbus_bool_t enable;
 	const char *method;
 
-	if (parse_argument(arg, NULL, NULL, &enable, NULL) == FALSE)
+	if (!parse_argument(argc, argv, NULL, NULL, &enable, NULL))
 		return;
 
 	if (check_default_ctrl() == FALSE)
@@ -1308,16 +1309,16 @@ static void cmd_set_scan_filter_commit(void)
 	}
 }
 
-static void cmd_set_scan_filter_uuids(const char *arg)
+static void cmd_set_scan_filter_uuids(int argc, char *argv[])
 {
 	g_strfreev(filtered_scan_uuids);
 	filtered_scan_uuids = NULL;
 	filtered_scan_uuids_len = 0;
 
-	if (!arg || !strlen(arg))
+	if (!argc || !strlen(argv[0]))
 		goto commit;
 
-	filtered_scan_uuids = g_strsplit(arg, " ", -1);
+	filtered_scan_uuids = g_strdupv(argv);
 	if (!filtered_scan_uuids) {
 		bt_shell_printf("Failed to parse input\n");
 		return;
@@ -1329,52 +1330,52 @@ commit:
 	cmd_set_scan_filter_commit();
 }
 
-static void cmd_set_scan_filter_rssi(const char *arg)
+static void cmd_set_scan_filter_rssi(int argc, char *argv[])
 {
 	filtered_scan_pathloss = DISTANCE_VAL_INVALID;
 
-	if (!arg || !strlen(arg))
+	if (!argc || !strlen(argv[0]))
 		filtered_scan_rssi = DISTANCE_VAL_INVALID;
 	else
-		filtered_scan_rssi = atoi(arg);
+		filtered_scan_rssi = atoi(argv[0]);
 
 	cmd_set_scan_filter_commit();
 }
 
-static void cmd_set_scan_filter_pathloss(const char *arg)
+static void cmd_set_scan_filter_pathloss(int argc, char *argv[])
 {
 	filtered_scan_rssi = DISTANCE_VAL_INVALID;
 
-	if (!arg || !strlen(arg))
+	if (!argc || !strlen(argv[0]))
 		filtered_scan_pathloss = DISTANCE_VAL_INVALID;
 	else
-		filtered_scan_pathloss = atoi(arg);
+		filtered_scan_pathloss = atoi(argv[0]);
 
 	cmd_set_scan_filter_commit();
 }
 
-static void cmd_set_scan_filter_transport(const char *arg)
+static void cmd_set_scan_filter_transport(int argc, char *argv[])
 {
 	g_free(filtered_scan_transport);
 
-	if (!arg || !strlen(arg))
+	if (!argc || !strlen(argv[0]))
 		filtered_scan_transport = NULL;
 	else
-		filtered_scan_transport = g_strdup(arg);
+		filtered_scan_transport = g_strdup(argv[0]);
 
 	cmd_set_scan_filter_commit();
 }
 
-static void cmd_set_scan_filter_duplicate_data(const char *arg)
+static void cmd_set_scan_filter_duplicate_data(int argc, char *argv[])
 {
-	if (!arg || !strlen(arg))
+	if (!argc || !strlen(argv[0]))
 		filtered_scan_duplicate_data = false;
-	else if (!strcmp(arg, "on"))
+	else if (!strcmp(argv[0], "on"))
 		filtered_scan_duplicate_data = true;
-	else if (!strcmp(arg, "off"))
+	else if (!strcmp(argv[0], "off"))
 		filtered_scan_duplicate_data = false;
 	else {
-		bt_shell_printf("Invalid option: %s\n", arg);
+		bt_shell_printf("Invalid option: %s\n", argv[0]);
 		return;
 	}
 
@@ -1394,7 +1395,7 @@ static void clear_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static void cmd_set_scan_filter_clear(const char *arg)
+static void cmd_set_scan_filter_clear(int argc, char *argv[])
 {
 	/* set default values for all options */
 	filtered_scan_rssi = DISTANCE_VAL_INVALID;
@@ -1415,11 +1416,11 @@ static void cmd_set_scan_filter_clear(const char *arg)
 	}
 }
 
-static struct GDBusProxy *find_device(const char *arg)
+static struct GDBusProxy *find_device(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		if (default_dev)
 			return default_dev;
 		bt_shell_printf("Missing device address argument\n");
@@ -1429,22 +1430,22 @@ static struct GDBusProxy *find_device(const char *arg)
 	if (check_default_ctrl() == FALSE)
 		return NULL;
 
-	proxy = find_proxy_by_address(default_ctrl->devices, arg);
+	proxy = find_proxy_by_address(default_ctrl->devices, argv[0]);
 	if (!proxy) {
-		bt_shell_printf("Device %s not available\n", arg);
+		bt_shell_printf("Device %s not available\n", argv[0]);
 		return NULL;
 	}
 
 	return proxy;
 }
 
-static void cmd_info(const char *arg)
+static void cmd_info(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	DBusMessageIter iter;
 	const char *address;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
@@ -1487,11 +1488,11 @@ static void pair_reply(DBusMessage *message, void *user_data)
 	bt_shell_printf("Pairing successful\n");
 }
 
-static void cmd_pair(const char *arg)
+static void cmd_pair(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
@@ -1501,22 +1502,22 @@ static void cmd_pair(const char *arg)
 		return;
 	}
 
-	bt_shell_printf("Attempting to pair with %s\n", arg);
+	bt_shell_printf("Attempting to pair with %s\n", argv[0]);
 }
 
-static void cmd_trust(const char *arg)
+static void cmd_trust(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	dbus_bool_t trusted;
 	char *str;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
 	trusted = TRUE;
 
-	str = g_strdup_printf("%s trust", arg);
+	str = g_strdup_printf("%s trust", argv[0]);
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Trusted",
 					DBUS_TYPE_BOOLEAN, &trusted,
@@ -1526,19 +1527,19 @@ static void cmd_trust(const char *arg)
 	g_free(str);
 }
 
-static void cmd_untrust(const char *arg)
+static void cmd_untrust(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	dbus_bool_t trusted;
 	char *str;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
 	trusted = FALSE;
 
-	str = g_strdup_printf("%s untrust", arg);
+	str = g_strdup_printf("%s untrust", argv[0]);
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Trusted",
 					DBUS_TYPE_BOOLEAN, &trusted,
@@ -1548,19 +1549,19 @@ static void cmd_untrust(const char *arg)
 	g_free(str);
 }
 
-static void cmd_block(const char *arg)
+static void cmd_block(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	dbus_bool_t blocked;
 	char *str;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
 	blocked = TRUE;
 
-	str = g_strdup_printf("%s block", arg);
+	str = g_strdup_printf("%s block", argv[0]);
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Blocked",
 					DBUS_TYPE_BOOLEAN, &blocked,
@@ -1570,19 +1571,19 @@ static void cmd_block(const char *arg)
 	g_free(str);
 }
 
-static void cmd_unblock(const char *arg)
+static void cmd_unblock(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	dbus_bool_t blocked;
 	char *str;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
 	blocked = FALSE;
 
-	str = g_strdup_printf("%s unblock", arg);
+	str = g_strdup_printf("%s unblock", argv[0]);
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Blocked",
 					DBUS_TYPE_BOOLEAN, &blocked,
@@ -1632,11 +1633,11 @@ static void remove_device(GDBusProxy *proxy)
 	}
 }
 
-static void cmd_remove(const char *arg)
+static void cmd_remove(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing device address argument\n");
 		return;
 	}
@@ -1644,7 +1645,7 @@ static void cmd_remove(const char *arg)
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (strcmp(arg, "*") == 0) {
+	if (strcmp(argv[0], "*") == 0) {
 		GList *list;
 
 		for (list = default_ctrl->devices; list;
@@ -1656,9 +1657,9 @@ static void cmd_remove(const char *arg)
 		return;
 	}
 
-	proxy = find_proxy_by_address(default_ctrl->devices, arg);
+	proxy = find_proxy_by_address(default_ctrl->devices, argv[0]);
 	if (!proxy) {
-		bt_shell_printf("Device %s not available\n", arg);
+		bt_shell_printf("Device %s not available\n", argv[0]);
 		return;
 	}
 
@@ -1683,11 +1684,11 @@ static void connect_reply(DBusMessage *message, void *user_data)
 	set_default_device(proxy, NULL);
 }
 
-static void cmd_connect(const char *arg)
+static void cmd_connect(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing device address argument\n");
 		return;
 	}
@@ -1695,9 +1696,9 @@ static void cmd_connect(const char *arg)
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	proxy = find_proxy_by_address(default_ctrl->devices, arg);
+	proxy = find_proxy_by_address(default_ctrl->devices, argv[0]);
 	if (!proxy) {
-		bt_shell_printf("Device %s not available\n", arg);
+		bt_shell_printf("Device %s not available\n", argv[0]);
 		return;
 	}
 
@@ -1707,7 +1708,7 @@ static void cmd_connect(const char *arg)
 		return;
 	}
 
-	bt_shell_printf("Attempting to connect to %s\n", arg);
+	bt_shell_printf("Attempting to connect to %s\n", argv[0]);
 }
 
 static void disconn_reply(DBusMessage *message, void *user_data)
@@ -1731,11 +1732,11 @@ static void disconn_reply(DBusMessage *message, void *user_data)
 	set_default_device(NULL, NULL);
 }
 
-static void cmd_disconn(const char *arg)
+static void cmd_disconn(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
@@ -1744,31 +1745,31 @@ static void cmd_disconn(const char *arg)
 		bt_shell_printf("Failed to disconnect\n");
 		return;
 	}
-	if (strlen(arg) == 0) {
+	if (!argc || strlen(argv[0]) == 0) {
 		DBusMessageIter iter;
 
 		if (g_dbus_proxy_get_property(proxy, "Address", &iter) == TRUE)
-			dbus_message_iter_get_basic(&iter, &arg);
+			dbus_message_iter_get_basic(&iter, &argv[0]);
 	}
-	bt_shell_printf("Attempting to disconnect from %s\n", arg);
+	bt_shell_printf("Attempting to disconnect from %s\n", argv[0]);
 }
 
-static void cmd_list_attributes(const char *arg)
+static void cmd_list_attributes(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	proxy = find_device(arg);
+	proxy = find_device(argc, argv);
 	if (!proxy)
 		return;
 
 	gatt_list_attributes(g_dbus_proxy_get_path(proxy));
 }
 
-static void cmd_set_alias(const char *arg)
+static void cmd_set_alias(int argc, char *argv[])
 {
 	char *name;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing name argument\n");
 		return;
 	}
@@ -1778,7 +1779,7 @@ static void cmd_set_alias(const char *arg)
 		return;
 	}
 
-	name = g_strdup(arg);
+	name = g_strdup(argv[0]);
 
 	if (g_dbus_proxy_set_property_basic(default_dev, "Alias",
 					DBUS_TYPE_STRING, &name,
@@ -1788,11 +1789,11 @@ static void cmd_set_alias(const char *arg)
 	g_free(name);
 }
 
-static void cmd_select_attribute(const char *arg)
+static void cmd_select_attribute(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing attribute argument\n");
 		return;
 	}
@@ -1802,38 +1803,38 @@ static void cmd_select_attribute(const char *arg)
 		return;
 	}
 
-	proxy = gatt_select_attribute(default_attr, arg);
+	proxy = gatt_select_attribute(default_attr, argv[0]);
 	if (proxy)
 		set_default_attribute(proxy);
 }
 
-static struct GDBusProxy *find_attribute(const char *arg)
+static struct GDBusProxy *find_attribute(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		if (default_attr)
 			return default_attr;
 		bt_shell_printf("Missing attribute argument\n");
 		return NULL;
 	}
 
-	proxy = gatt_select_attribute(default_attr, arg);
+	proxy = gatt_select_attribute(default_attr, argv[0]);
 	if (!proxy) {
-		bt_shell_printf("Attribute %s not available\n", arg);
+		bt_shell_printf("Attribute %s not available\n", argv[0]);
 		return NULL;
 	}
 
 	return proxy;
 }
 
-static void cmd_attribute_info(const char *arg)
+static void cmd_attribute_info(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	DBusMessageIter iter;
 	const char *iface, *uuid, *text;
 
-	proxy = find_attribute(arg);
+	proxy = find_attribute(argc, argv);
 	if (!proxy)
 		return;
 
@@ -1872,7 +1873,7 @@ static void cmd_attribute_info(const char *arg)
 	}
 }
 
-static void cmd_read(const char *arg)
+static void cmd_read(int argc, char *argv[])
 {
 	if (!default_attr) {
 		bt_shell_printf("No attribute selected\n");
@@ -1882,9 +1883,9 @@ static void cmd_read(const char *arg)
 	gatt_read_attribute(default_attr);
 }
 
-static void cmd_write(const char *arg)
+static void cmd_write(int argc, char *argv[])
 {
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing data argument\n");
 		return;
 	}
@@ -1894,54 +1895,54 @@ static void cmd_write(const char *arg)
 		return;
 	}
 
-	gatt_write_attribute(default_attr, arg);
+	gatt_write_attribute(default_attr, argv[0]);
 }
 
-static void cmd_acquire_write(const char *arg)
+static void cmd_acquire_write(int argc, char *argv[])
 {
 	if (!default_attr) {
 		bt_shell_printf("No attribute selected\n");
 		return;
 	}
 
-	gatt_acquire_write(default_attr, arg);
+	gatt_acquire_write(default_attr, argv[0]);
 }
 
-static void cmd_release_write(const char *arg)
+static void cmd_release_write(int argc, char *argv[])
 {
 	if (!default_attr) {
 		bt_shell_printf("No attribute selected\n");
 		return;
 	}
 
-	gatt_release_write(default_attr, arg);
+	gatt_release_write(default_attr, argv[0]);
 }
 
-static void cmd_acquire_notify(const char *arg)
+static void cmd_acquire_notify(int argc, char *argv[])
 {
 	if (!default_attr) {
 		bt_shell_printf("No attribute selected\n");
 		return;
 	}
 
-	gatt_acquire_notify(default_attr, arg);
+	gatt_acquire_notify(default_attr, argv[0]);
 }
 
-static void cmd_release_notify(const char *arg)
+static void cmd_release_notify(int argc, char *argv[])
 {
 	if (!default_attr) {
 		bt_shell_printf("No attribute selected\n");
 		return;
 	}
 
-	gatt_release_notify(default_attr, arg);
+	gatt_release_notify(default_attr, argv[0]);
 }
 
-static void cmd_notify(const char *arg)
+static void cmd_notify(int argc, char *argv[])
 {
 	dbus_bool_t enable;
 
-	if (parse_argument(arg, NULL, NULL, &enable, NULL) == FALSE)
+	if (!parse_argument(argc, argv, NULL, NULL, &enable, NULL))
 		return;
 
 	if (!default_attr) {
@@ -1952,24 +1953,15 @@ static void cmd_notify(const char *arg)
 	gatt_notify_attribute(default_attr, enable ? true : false);
 }
 
-static void cmd_register_app(const char *arg)
+static void cmd_register_app(int argc, char *argv[])
 {
-	wordexp_t w;
-
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
-		return;
-	}
-
-	gatt_register_app(dbus_conn, default_ctrl->proxy, &w);
-
-	wordfree(&w);
+	gatt_register_app(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
-static void cmd_unregister_app(const char *arg)
+static void cmd_unregister_app(int argc, char *argv[])
 {
 	if (check_default_ctrl() == FALSE)
 		return;
@@ -1977,142 +1969,82 @@ static void cmd_unregister_app(const char *arg)
 	gatt_unregister_app(dbus_conn, default_ctrl->proxy);
 }
 
-static void cmd_register_service(const char *arg)
+static void cmd_register_service(int argc, char *argv[])
 {
-	wordexp_t w;
-
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
-		return;
-	}
-
-	if (w.we_wordc == 0) {
+	if (!argc) {
 		bt_shell_printf("Missing argument\n");
-		goto done;
+		return;
 	}
 
-	gatt_register_service(dbus_conn, default_ctrl->proxy, &w);
-
-done:
-	wordfree(&w);
+	gatt_register_service(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
-static void cmd_unregister_service(const char *arg)
+static void cmd_unregister_service(int argc, char *argv[])
 {
-	wordexp_t w;
-
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
-		return;
-	}
-
-	if (w.we_wordc == 0) {
+	if (!argc) {
 		bt_shell_printf("Missing argument\n");
-		goto done;
+		return;
 	}
 
-	gatt_unregister_service(dbus_conn, default_ctrl->proxy, &w);
-
-done:
-	wordfree(&w);
+	gatt_unregister_service(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
-static void cmd_register_characteristic(const char *arg)
+static void cmd_register_characteristic(int argc, char *argv[])
 {
-	wordexp_t w;
-
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
+	if (argc < 2) {
+		bt_shell_printf("Missing arguments\n");
 		return;
 	}
 
-	if (w.we_wordc < 2) {
-		bt_shell_printf("Missing arguments\n");
-		goto done;
-	}
-
-	gatt_register_chrc(dbus_conn, default_ctrl->proxy, &w);
-
-done:
-	wordfree(&w);
+	gatt_register_chrc(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
-static void cmd_unregister_characteristic(const char *arg)
+static void cmd_unregister_characteristic(int argc, char *argv[])
 {
-	wordexp_t w;
-
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
+	if (argc < 1) {
+		bt_shell_printf("Missing arguments\n");
 		return;
 	}
 
-	if (w.we_wordc < 1) {
-		bt_shell_printf("Missing arguments\n");
-		goto done;
-	}
-
-	gatt_unregister_chrc(dbus_conn, default_ctrl->proxy, &w);
-
-done:
-	wordfree(&w);
+	gatt_unregister_chrc(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
-static void cmd_register_descriptor(const char *arg)
+static void cmd_register_descriptor(int argc, char *argv[])
 {
-	wordexp_t w;
-
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
+	if (argc < 2) {
+		bt_shell_printf("Missing arguments\n");
 		return;
 	}
 
-	if (w.we_wordc < 2) {
-		bt_shell_printf("Missing arguments\n");
-		goto done;
-	}
-
-	gatt_register_desc(dbus_conn, default_ctrl->proxy, &w);
-
-done:
-	wordfree(&w);
+	gatt_register_desc(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
-static void cmd_unregister_descriptor(const char *arg)
+static void cmd_unregister_descriptor(int argc, char *argv[])
 {
-	wordexp_t w;
-
 	if (check_default_ctrl() == FALSE)
 		return;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
+	if (argc < 1) {
+		bt_shell_printf("Missing arguments\n");
 		return;
 	}
 
-	if (w.we_wordc < 1) {
-		bt_shell_printf("Missing arguments\n");
-		goto done;
-	}
-
-	gatt_unregister_desc(dbus_conn, default_ctrl->proxy, &w);
-
-done:
-	wordfree(&w);
+	gatt_unregister_desc(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
 static char *generic_generator(const char *text, int state,
@@ -2220,13 +2152,13 @@ static char *capability_generator(const char *text, int state)
 	return argument_generator(text, state, agent_arguments);
 }
 
-static void cmd_advertise(const char *arg)
+static void cmd_advertise(int argc, char *argv[])
 {
 	dbus_bool_t enable;
 	const char *type;
 
-	if (parse_argument(arg, ad_arguments, "type",
-					&enable, &type) == FALSE)
+	if (!parse_argument(argc, argv, ad_arguments, "type",
+					&enable, &type))
 		return;
 
 	if (!default_ctrl || !default_ctrl->ad_proxy) {
@@ -2245,72 +2177,72 @@ static char *ad_generator(const char *text, int state)
 	return argument_generator(text, state, ad_arguments);
 }
 
-static void cmd_set_advertise_uuids(const char *arg)
+static void cmd_set_advertise_uuids(int argc, char *argv[])
 {
-	ad_advertise_uuids(dbus_conn, arg);
+	ad_advertise_uuids(dbus_conn, argc, argv);
 }
 
-static void cmd_set_advertise_service(const char *arg)
+static void cmd_set_advertise_service(int argc, char *argv[])
 {
-	ad_advertise_service(dbus_conn, arg);
+	ad_advertise_service(dbus_conn, argc, argv);
 }
 
-static void cmd_set_advertise_manufacturer(const char *arg)
+static void cmd_set_advertise_manufacturer(int argc, char *argv[])
 {
-	ad_advertise_manufacturer(dbus_conn, arg);
+	ad_advertise_manufacturer(dbus_conn, argc, argv);
 }
 
-static void cmd_set_advertise_tx_power(const char *arg)
+static void cmd_set_advertise_tx_power(int argc, char *argv[])
 {
 	dbus_bool_t powered;
 
-	if (parse_argument(arg, NULL, NULL, &powered, NULL) == FALSE)
+	if (!parse_argument(argc, argv, NULL, NULL, &powered, NULL))
 		return;
 
 	ad_advertise_tx_power(dbus_conn, powered);
 }
 
-static void cmd_set_advertise_name(const char *arg)
+static void cmd_set_advertise_name(int argc, char *argv[])
 {
-	if (arg == NULL || strlen(arg) == 0) {
+	if (!argc || strlen(argv[0]) == 0) {
 		bt_shell_printf("Missing on/off argument\n");
 		return;
 	}
 
-	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
+	if (strcmp(argv[0], "on") == 0 || strcmp(argv[0], "yes") == 0) {
 		ad_advertise_name(dbus_conn, true);
 		return;
 	}
 
-	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
+	if (strcmp(argv[0], "off") == 0 || strcmp(argv[0], "no") == 0) {
 		ad_advertise_name(dbus_conn, false);
 		return;
 	}
 
-	ad_advertise_local_name(dbus_conn, arg);
+	ad_advertise_local_name(dbus_conn, argv[0]);
 }
 
-static void cmd_set_advertise_appearance(const char *arg)
+static void cmd_set_advertise_appearance(int argc, char *argv[])
 {
 	long int value;
 	char *endptr = NULL;
 
-	if (arg == NULL || strlen(arg) == 0) {
+	if (!argc || strlen(argv[0]) == 0) {
 		bt_shell_printf("Missing value argument\n");
 		return;
 	}
 
-	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
+	if (strcmp(argv[0], "on") == 0 || strcmp(argv[0], "yes") == 0) {
 		ad_advertise_appearance(dbus_conn, true);
 		return;
 	}
 
-	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
+	if (strcmp(argv[0], "off") == 0 || strcmp(argv[0], "no") == 0) {
 		ad_advertise_appearance(dbus_conn, false);
 		return;
 	}
 
-	value = strtol(arg, &endptr, 0);
+	value = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
 		bt_shell_printf("Invalid argument\n");
 		return;
@@ -2319,17 +2251,17 @@ static void cmd_set_advertise_appearance(const char *arg)
 	ad_advertise_local_appearance(dbus_conn, value);
 }
 
-static void cmd_set_advertise_duration(const char *arg)
+static void cmd_set_advertise_duration(int argc, char *argv[])
 {
 	long int value;
 	char *endptr = NULL;
 
-	if (arg == NULL || strlen(arg) == 0) {
+	if (!argc || strlen(argv[0]) == 0) {
 		bt_shell_printf("Missing value argument\n");
 		return;
 	}
 
-	value = strtol(arg, &endptr, 0);
+	value = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
 		bt_shell_printf("Invalid argument\n");
 		return;
@@ -2338,17 +2270,17 @@ static void cmd_set_advertise_duration(const char *arg)
 	ad_advertise_duration(dbus_conn, value);
 }
 
-static void cmd_set_advertise_timeout(const char *arg)
+static void cmd_set_advertise_timeout(int argc, char *argv[])
 {
 	long int value;
 	char *endptr = NULL;
 
-	if (arg == NULL || strlen(arg) == 0) {
+	if (!argc || strlen(argv[0]) == 0) {
 		bt_shell_printf("Missing value argument\n");
 		return;
 	}
 
-	value = strtol(arg, &endptr, 0);
+	value = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
 		bt_shell_printf("Invalid argument\n");
 		return;

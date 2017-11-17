@@ -30,7 +30,7 @@
 #define COLOR_BOLDWHITE	"\x1B[1;37m"
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
-typedef void (*bt_shell_menu_cb_t)(const char *arg);
+typedef void (*bt_shell_menu_cb_t)(int argc, char *argv[]);
 typedef char * (*bt_shell_menu_gen_t)(const char *text, int state);
 typedef void (*bt_shell_menu_disp_t) (char **matches, int num_matches,
 							int max_length);

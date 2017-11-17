@@ -47,18 +47,21 @@ void gatt_release_notify(GDBusProxy *proxy, const char *arg);
 void gatt_add_manager(GDBusProxy *proxy);
 void gatt_remove_manager(GDBusProxy *proxy);
 
-void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w);
+void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy,
+						int argc, char *argv[]);
 void gatt_unregister_app(DBusConnection *conn, GDBusProxy *proxy);
 
 void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w);
+						int argc, char *argv[]);
 void gatt_unregister_service(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w);
+						int argc, char *argv[]);
 
-void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w);
+void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
+						int argc, char *argv[]);
 void gatt_unregister_chrc(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w);
+						int argc, char *argv[]);
 
-void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w);
+void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
+						int argc, char *argv[]);
 void gatt_unregister_desc(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w);
+						int argc, char *argv[]);

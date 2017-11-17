@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <sys/signalfd.h>
+#include <wordexp.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -69,17 +70,17 @@ static struct {
 
 static void shell_print_menu(void);
 
-static void cmd_version(const char *arg)
+static void cmd_version(int argc, char *argv[])
 {
 	bt_shell_printf("Version %s\n", VERSION);
 }
 
-static void cmd_quit(const char *arg)
+static void cmd_quit(int argc, char *argv[])
 {
 	g_main_loop_quit(main_loop);
 }
 
-static void cmd_help(const char *arg)
+static void cmd_help(int argc, char *argv[])
 {
 	shell_print_menu();
 }
@@ -124,18 +125,18 @@ static char *menu_generator(const char *text, int state)
 	return NULL;
 }
 
-static void cmd_menu(const char *arg)
+static void cmd_menu(int argc, char *argv[])
 {
 	const struct bt_shell_menu *menu;
 
-	if (!arg || !strlen(arg)) {
+	if (!argc || !strlen(argv[0])) {
 		bt_shell_printf("Missing name argument\n");
 		return;
 	}
 
-	menu = find_menu(arg);
+	menu = find_menu(argv[0]);
 	if (!menu) {
-		bt_shell_printf("Unable find menu with name: %s\n", arg);
+		bt_shell_printf("Unable find menu with name: %s\n", argv[0]);
 		return;
 	}
 
@@ -144,7 +145,7 @@ static void cmd_menu(const char *arg)
 	shell_print_menu();
 }
 
-static void cmd_back(const char *arg)
+static void cmd_back(int argc, char *argv[])
 {
 	if (data.menu == data.main) {
 		bt_shell_printf("Already on main menu\n");
@@ -207,10 +208,10 @@ static void shell_print_menu(void)
 }
 
 static int menu_exec(const struct bt_shell_menu_entry *entry,
-			const char *cmd, const char *arg)
+					int argc, char *argv[])
 {
 	for (; entry->cmd; entry++) {
-		if (strcmp(cmd, entry->cmd))
+		if (strcmp(argv[0], entry->cmd))
 			continue;
 
 		/* Skip menu command if not on main menu */
@@ -222,7 +223,7 @@ static int menu_exec(const struct bt_shell_menu_entry *entry,
 			continue;
 
 		if (entry->func) {
-			entry->func(arg);
+			entry->func(argc - 1, ++argv);
 			return 0;
 		}
 	}
@@ -230,13 +231,13 @@ static int menu_exec(const struct bt_shell_menu_entry *entry,
 	return -ENOENT;
 }
 
-static void shell_exec(const char *cmd, const char *arg)
+static void shell_exec(int argc, char *argv[])
 {
-	if (!data.menu || !cmd)
+	if (!data.menu || !argv[0])
 		return;
 
-	if (menu_exec(default_menu, cmd, arg) < 0) {
-		if (menu_exec(data.menu->entries, cmd, arg) < 0)
+	if (menu_exec(default_menu, argc, argv) < 0) {
+		if (menu_exec(data.menu->entries, argc, argv) < 0)
 			print_text(COLOR_HIGHLIGHT, "Invalid command");
 	}
 }
@@ -356,7 +357,7 @@ int bt_shell_release_prompt(const char *input)
 
 static void rl_handler(char *input)
 {
-	char *cmd, *arg;
+	wordexp_t w;
 
 	if (!input) {
 		rl_insert_text("quit");
@@ -375,17 +376,16 @@ static void rl_handler(char *input)
 	if (history_search(input, -1))
 		add_history(input);
 
-	cmd = strtok_r(input, " ", &arg);
-	if (!cmd)
+	if (wordexp(input, &w, WRDE_NOCMD))
 		goto done;
 
-	if (arg) {
-		int len = strlen(arg);
-		if (len > 0 && arg[len - 1] == ' ')
-			arg[len - 1] = '\0';
+	if (w.we_wordc == 0) {
+		wordfree(&w);
+		goto done;
 	}
 
-	shell_exec(cmd, arg);
+	shell_exec(w.we_wordc, w.we_wordv);
+	wordfree(&w);
 done:
 	free(input);
 }
@@ -446,15 +446,17 @@ static char **shell_completion(const char *text, int start, int end)
 		return NULL;
 
 	if (start > 0) {
-		char *input_cmd;
+		wordexp_t w;
 
-		input_cmd = strndup(rl_line_buffer, start - 1);
-		matches = menu_completion(default_menu, text, input_cmd);
+		if (wordexp(rl_line_buffer, &w, WRDE_NOCMD))
+			return NULL;
+
+		matches = menu_completion(default_menu, text, w.we_wordv[0]);
 		if (!matches)
 			matches = menu_completion(data.menu->entries, text,
-							input_cmd);
+							w.we_wordv[0]);
 
-		free(input_cmd);
+		wordfree(&w);
 	} else {
 		rl_completion_display_matches_hook = NULL;
 		matches = rl_completion_matches(text, cmd_generator);

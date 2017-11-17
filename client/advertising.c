@@ -30,7 +30,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include <wordexp.h>
 
 #include "gdbus/gdbus.h"
 #include "src/shared/shell.h"
@@ -435,16 +434,16 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 	}
 }
 
-void ad_advertise_uuids(DBusConnection *conn, const char *arg)
+void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 {
 	g_strfreev(ad.uuids);
 	ad.uuids = NULL;
 	ad.uuids_len = 0;
 
-	if (!arg || !strlen(arg))
+	if (!argc || !strlen(argv[0]))
 		return;
 
-	ad.uuids = g_strsplit(arg, " ", -1);
+	ad.uuids = g_strdupv(argv);
 	if (!ad.uuids) {
 		bt_shell_printf("Failed to parse input\n");
 		return;
@@ -461,40 +460,34 @@ static void ad_clear_service(void)
 	memset(&ad.service, 0, sizeof(ad.service));
 }
 
-void ad_advertise_service(DBusConnection *conn, const char *arg)
+void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 {
-	wordexp_t w;
 	unsigned int i;
 	struct ad_data *data;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
-		return;
-	}
-
 	ad_clear_service();
 
-	if (w.we_wordc == 0)
-		goto done;
+	if (!argc)
+		return;
 
-	ad.service.uuid = g_strdup(w.we_wordv[0]);
+	ad.service.uuid = g_strdup(argv[0]);
 	data = &ad.service.data;
 
-	for (i = 1; i < w.we_wordc; i++) {
+	for (i = 1; i < (unsigned int) argc; i++) {
 		long int val;
 		char *endptr = NULL;
 
 		if (i >= G_N_ELEMENTS(data->data)) {
 			bt_shell_printf("Too much data\n");
 			ad_clear_service();
-			goto done;
+			return;
 		}
 
-		val = strtol(w.we_wordv[i], &endptr, 0);
+		val = strtol(argv[i], &endptr, 0);
 		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
 			bt_shell_printf("Invalid value at index %d\n", i);
 			ad_clear_service();
-			goto done;
+			return;
 		}
 
 		data->data[data->len] = val;
@@ -502,9 +495,6 @@ void ad_advertise_service(DBusConnection *conn, const char *arg)
 	}
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
-
-done:
-	wordfree(&w);
 }
 
 static void ad_clear_manufacturer(void)
@@ -512,45 +502,39 @@ static void ad_clear_manufacturer(void)
 	memset(&ad.manufacturer, 0, sizeof(ad.manufacturer));
 }
 
-void ad_advertise_manufacturer(DBusConnection *conn, const char *arg)
+void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 {
-	wordexp_t w;
 	unsigned int i;
 	char *endptr = NULL;
 	long int val;
 	struct ad_data *data;
 
-	if (wordexp(arg, &w, WRDE_NOCMD)) {
-		bt_shell_printf("Invalid argument\n");
-		return;
-	}
-
 	ad_clear_manufacturer();
 
-	if (w.we_wordc == 0)
-		goto done;
+	if (argc == 0)
+		return;
 
-	val = strtol(w.we_wordv[0], &endptr, 0);
+	val = strtol(argv[0], &endptr, 0);
 	if (!endptr || *endptr != '\0' || val > UINT16_MAX) {
 		bt_shell_printf("Invalid manufacture id\n");
-		goto done;
+		return;
 	}
 
 	ad.manufacturer.id = val;
 	data = &ad.manufacturer.data;
 
-	for (i = 1; i < w.we_wordc; i++) {
+	for (i = 1; i < (unsigned int) argc; i++) {
 		if (i >= G_N_ELEMENTS(data->data)) {
 			bt_shell_printf("Too much data\n");
 			ad_clear_manufacturer();
-			goto done;
+			return;
 		}
 
-		val = strtol(w.we_wordv[i], &endptr, 0);
+		val = strtol(argv[i], &endptr, 0);
 		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
 			bt_shell_printf("Invalid value at index %d\n", i);
 			ad_clear_manufacturer();
-			goto done;
+			return;
 		}
 
 		data->data[data->len] = val;
@@ -559,9 +543,6 @@ void ad_advertise_manufacturer(DBusConnection *conn, const char *arg)
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"ManufacturerData");
-
-done:
-	wordfree(&w);
 }
 
 void ad_advertise_tx_power(DBusConnection *conn, bool value)

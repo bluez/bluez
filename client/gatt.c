@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/uio.h>
-#include <wordexp.h>
 #include <fcntl.h>
 #include <string.h>
 
@@ -1018,10 +1017,11 @@ static const GDBusPropertyTable properties[] = {
 	{ }
 };
 
-void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
+void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy,
+					int argc, char *argv[])
 {
 	GList *l;
-	unsigned int i;
+	int i;
 
 	l = g_list_find_custom(managers, proxy, match_proxy);
 	if (!l) {
@@ -1029,8 +1029,8 @@ void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
 		return;
 	}
 
-	for (i = 0; i < w->we_wordc; i++)
-		uuids = g_list_append(uuids, g_strdup(w->we_wordv[i]));
+	for (i = 0; i < argc; i++)
+		uuids = g_list_append(uuids, g_strdup(argv[i]));
 
 	if (uuids) {
 		if (g_dbus_register_interface(conn, APP_PATH,
@@ -1044,7 +1044,7 @@ void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
 
 	if (g_dbus_proxy_method_call(l->data, "RegisterApplication",
 						register_app_setup,
-						register_app_reply, w,
+						register_app_reply, NULL,
 						NULL) == FALSE) {
 		bt_shell_printf("Failed register application\n");
 		g_dbus_unregister_interface(conn, APP_PATH, PROFILE_INTERFACE);
@@ -1202,14 +1202,14 @@ static void service_set_primary(const char *input, void *user_data)
 }
 
 void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w)
+						int argc, char *argv[])
 {
 	struct service *service;
 	bool primary = true;
 
 	service = g_new0(struct service, 1);
 	service->conn = conn;
-	service->uuid = g_strdup(w->we_wordv[0]);
+	service->uuid = g_strdup(argv[0]);
 	service->path = g_strdup_printf("%s/service%p", APP_PATH, service);
 	service->primary = primary;
 
@@ -1250,11 +1250,11 @@ static struct service *service_find(const char *pattern)
 }
 
 void gatt_unregister_service(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w)
+						int argc, char *argv[])
 {
 	struct service *service;
 
-	service = service_find(w->we_wordv[0]);
+	service = service_find(argv[0]);
 	if (!service) {
 		bt_shell_printf("Failed to unregister service object\n");
 		return;
@@ -1693,7 +1693,8 @@ static void chrc_set_value(const char *input, void *user_data)
 	chrc->value = str2bytearray((char *) input, &chrc->value_len);
 }
 
-void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
+void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
+					int argc, char *argv[])
 {
 	struct service *service;
 	struct chrc *chrc;
@@ -1707,9 +1708,9 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
 
 	chrc = g_new0(struct chrc, 1);
 	chrc->service = service;
-	chrc->uuid = g_strdup(w->we_wordv[0]);
+	chrc->uuid = g_strdup(argv[0]);
 	chrc->path = g_strdup_printf("%s/chrc%p", service->path, chrc);
-	chrc->flags = g_strsplit(w->we_wordv[1], ",", -1);
+	chrc->flags = g_strsplit(argv[1], ",", -1);
 
 	if (g_dbus_register_interface(conn, chrc->path, CHRC_INTERFACE,
 					chrc_methods, NULL, chrc_properties,
@@ -1752,11 +1753,11 @@ static struct chrc *chrc_find(const char *pattern)
 }
 
 void gatt_unregister_chrc(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w)
+						int argc, char *argv[])
 {
 	struct chrc *chrc;
 
-	chrc = chrc_find(w->we_wordv[0]);
+	chrc = chrc_find(argv[0]);
 	if (!chrc) {
 		bt_shell_printf("Failed to unregister characteristic object\n");
 		return;
@@ -1879,7 +1880,8 @@ static void desc_set_value(const char *input, void *user_data)
 	desc->value = str2bytearray((char *) input, &desc->value_len);
 }
 
-void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
+void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
+						int argc, char *argv[])
 {
 	struct service *service;
 	struct desc *desc;
@@ -1898,9 +1900,9 @@ void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy, wordexp_t *w)
 
 	desc = g_new0(struct desc, 1);
 	desc->chrc = g_list_last(service->chrcs)->data;
-	desc->uuid = g_strdup(w->we_wordv[0]);
+	desc->uuid = g_strdup(argv[0]);
 	desc->path = g_strdup_printf("%s/desc%p", desc->chrc->path, desc);
-	desc->flags = g_strsplit(w->we_wordv[1], ",", -1);
+	desc->flags = g_strsplit(argv[1], ",", -1);
 
 	if (g_dbus_register_interface(conn, desc->path, DESC_INTERFACE,
 					desc_methods, NULL, desc_properties,
@@ -1948,11 +1950,11 @@ static struct desc *desc_find(const char *pattern)
 }
 
 void gatt_unregister_desc(DBusConnection *conn, GDBusProxy *proxy,
-								wordexp_t *w)
+						int argc, char *argv[])
 {
 	struct desc *desc;
 
-	desc = desc_find(w->we_wordv[0]);
+	desc = desc_find(argv[0]);
 	if (!desc) {
 		bt_shell_printf("Failed to unregister descriptor object\n");
 		return;
