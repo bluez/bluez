@@ -2458,8 +2458,7 @@ static DBusMessage *set_discovery_filter(DBusConnection *conn,
 		adapter->set_filter_list = g_slist_remove(
 					      adapter->set_filter_list,
 					      client);
-		g_free(client->owner);
-		g_free(client);
+		discovery_free(client);
 		DBG("successfully cleared pre-set filter");
 	} else if (discovery_filter) {
 		/* Client pre-setting his filter for first time */
