@@ -88,6 +88,17 @@ static int pending_index = 0;
 
 #define PROMPT_ON	COLOR_BLUE "[mgmt]" COLOR_OFF "# "
 
+static void set_index(char *arg)
+{
+	if (!arg || !strcmp(arg, "none") || !strcmp(arg, "any") ||
+						!strcmp(arg, "all"))
+		mgmt_index = MGMT_INDEX_NONE;
+	else if (!strncmp(arg, "hci", 3))
+		mgmt_index = atoi(&arg[3]);
+	else
+		mgmt_index = atoi(arg);
+}
+
 static void update_prompt(uint16_t index)
 {
 	char str[32];
@@ -4535,13 +4546,7 @@ static void cmd_select(struct mgmt *mgmt, uint16_t index,
 	mgmt_cancel_all(mgmt);
 	mgmt_unregister_all(mgmt);
 
-	if (!strcmp(argv[1], "none") || !strcmp(argv[1], "any") ||
-						!strcmp(argv[1], "all"))
-		mgmt_index = MGMT_INDEX_NONE;
-	else if (!strncmp(argv[1], "hci", 3))
-		mgmt_index = atoi(&argv[1][3]);
-	else
-		mgmt_index = atoi(argv[1]);
+	set_index(argv[1]);
 
 	register_mgmt_callbacks(mgmt, mgmt_index);
 
