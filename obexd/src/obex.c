@@ -235,8 +235,10 @@ static void obex_session_free(struct obex_session *os)
 {
 	sessions = g_slist_remove(sessions, os);
 
-	if (os->io)
+	if (os->io) {
+		g_io_channel_shutdown(os->io, TRUE, NULL);
 		g_io_channel_unref(os->io);
+	}
 
 	if (os->obex)
 		g_obex_unref(os->obex);
