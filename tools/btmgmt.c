@@ -93,7 +93,7 @@ static void set_index(char *arg)
 	if (!arg || !strcmp(arg, "none") || !strcmp(arg, "any") ||
 						!strcmp(arg, "all"))
 		mgmt_index = MGMT_INDEX_NONE;
-	else if (!strncmp(arg, "hci", 3))
+	else if(strlen(arg) > 3 && !strncasecmp(arg, "hci", 3))
 		mgmt_index = atoi(&arg[3]);
 	else
 		mgmt_index = atoi(arg);
@@ -4810,18 +4810,13 @@ static void mgmt_debug(const char *str, void *user_data)
 int main(int argc, char *argv[])
 {
 	struct io *input;
-	uint16_t index = MGMT_INDEX_NONE;
 	int status, opt;
 
 	while ((opt = getopt_long(argc, argv, "+hi:",
 						main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
-			if (strlen(optarg) > 3 &&
-					strncasecmp(optarg, "hci", 3) == 0)
-				index = atoi(optarg + 3);
-			else
-				index = atoi(optarg);
+			set_index(optarg);
 			break;
 		case 'h':
 		default:
@@ -4855,10 +4850,10 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		c->func(mgmt, index, argc, argv);
+		c->func(mgmt, mgmt_index, argc, argv);
 	}
 
-	register_mgmt_callbacks(mgmt, index);
+	register_mgmt_callbacks(mgmt, mgmt_index);
 
 	/* Interactive mode */
 	if (!argc)
@@ -4874,11 +4869,9 @@ int main(int argc, char *argv[])
 		rl_erase_empty_line = 1;
 		rl_callback_handler_install(NULL, rl_handler);
 
-		update_prompt(index);
+		update_prompt(mgmt_index);
 		rl_redisplay();
 	}
-
-	mgmt_index = index;
 
 	status = mainloop_run();
 
