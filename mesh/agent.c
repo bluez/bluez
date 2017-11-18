@@ -137,7 +137,7 @@ static bool request_decimal(uint16_t len)
 
 static bool request_ascii(uint16_t len)
 {
-	if (len != MAX_ASCII_OOB_LEN)
+	if (len > MAX_ASCII_OOB_LEN)
 		return false;
 
 	rl_printf("Request ASCII key (max characters %d)\n", len);
