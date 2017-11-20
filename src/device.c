@@ -5377,7 +5377,7 @@ void device_set_paired(struct btd_device *dev, uint8_t bdaddr_type)
 
 	state->paired = true;
 
-	/* If the other bearer state was alraedy true we don't need to
+	/* If the other bearer state was already true we don't need to
 	 * send any property signals.
 	 */
 	if (dev->bredr_state.paired == dev->le_state.paired)
