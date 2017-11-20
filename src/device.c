@@ -1483,10 +1483,10 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 	struct btd_device *device = user_data;
 
 	/*
-	 * Disable connections through passive scanning until
-	 * Device1.Connect is called
+	 * If device is not trusted disable connections through passive
+	 * scanning until Device1.Connect is called
 	 */
-	if (device->auto_connect) {
+	if (device->auto_connect && !device->trusted) {
 		device->disable_auto_connect = TRUE;
 		device_set_auto_connect(device, FALSE);
 	}
