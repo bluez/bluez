@@ -1745,13 +1745,17 @@ static void cmd_disconn(int argc, char *argv[])
 		bt_shell_printf("Failed to disconnect\n");
 		return;
 	}
+
 	if (!argc || strlen(argv[0]) == 0) {
 		DBusMessageIter iter;
+		const char *addr;
 
 		if (g_dbus_proxy_get_property(proxy, "Address", &iter) == TRUE)
-			dbus_message_iter_get_basic(&iter, &argv[0]);
-	}
-	bt_shell_printf("Attempting to disconnect from %s\n", argv[0]);
+			dbus_message_iter_get_basic(&iter, &addr);
+
+		bt_shell_printf("Attempting to disconnect from %s\n", addr);
+	} else
+		bt_shell_printf("Attempting to disconnect from %s\n", argv[0]);
 }
 
 static void cmd_list_attributes(int argc, char *argv[])
