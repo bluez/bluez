@@ -52,6 +52,10 @@ Methods		void Connect()
 			This method can be also used to cancel a preceding
 			Connect call before a reply to it has been received.
 
+			When connected over LE bearer calling this method will
+			prevent incoming connections until Connect method is
+			called again.
+
 			Possible errors: org.bluez.Error.NotConnected
 
 		void ConnectProfile(string uuid)
