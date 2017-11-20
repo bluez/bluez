@@ -141,6 +141,9 @@ static struct request *request_create(struct bt_gatt_client *client)
 {
 	struct request *req;
 
+	if (!client->att)
+		return NULL;
+
 	req = new0(struct request, 1);
 
 	if (client->next_request_id < 1)
