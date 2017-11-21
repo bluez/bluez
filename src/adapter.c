@@ -2507,6 +2507,7 @@ static DBusMessage *stop_discovery(DBusConnection *conn,
 	case 0:
 		return dbus_message_new_method_return(msg);
 	case -EINPROGRESS:
+		client->msg = dbus_message_ref(msg);
 		return NULL;
 	default:
 		return btd_error_failed(msg, strerror(-err));
