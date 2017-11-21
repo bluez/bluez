@@ -461,16 +461,37 @@ static void cmd_del_app_key(const char *args)
 	cmd_app_key(args, OP_APPKEY_DELETE);
 }
 
+static bool verify_config_target(uint32_t dst)
+{
+	struct mesh_node *node;
+
+	if (IS_UNASSIGNED(dst)) {
+		rl_printf("Destination not set\n");
+		return false;
+	}
+
+	node = node_find_by_addr(dst);
+	if (!node) {
+		rl_printf("Node with unicast address %4.4x unknown\n", dst);
+		return false;
+	}
+
+	if (!node_get_composition(node)) {
+		rl_printf("Node composition for %4.4x unknown\n", dst);
+		return false;
+	}
+
+	return true;
+}
+
 static void cmd_bind(const char *args)
 {
 	uint16_t n;
 	uint8_t msg[32];
 	int parm_cnt;
 
-	if (IS_UNASSIGNED(target)) {
-		rl_printf("Destination not set\n");
+	if (!verify_config_target(target))
 		return;
-	}
 
 	parm_cnt = read_input_parameters(args);
 	if (parm_cnt != 3 && parm_cnt != 4) {
@@ -529,10 +550,8 @@ static void cmd_set_pub(const char *args)
 	uint8_t msg[32];
 	int parm_cnt;
 
-	if (IS_UNASSIGNED(target)) {
-		rl_printf("Destination not set\n");
+	if (!verify_config_target(target))
 		return;
-	}
 
 	n = mesh_opcode_set(OP_CONFIG_MODEL_PUB_SET, msg);
 
