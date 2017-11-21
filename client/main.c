@@ -2342,7 +2342,6 @@ static const struct bt_shell_menu gatt_menu = {
 	.entries = {
 	{ "list-attributes", "[dev]", cmd_list_attributes, "List attributes",
 							dev_generator },
-	{ "set-alias",    "<alias>",  cmd_set_alias, "Set device alias" },
 	{ "select-attribute", "<attribute/UUID>",  cmd_select_attribute,
 				"Select attribute", attribute_generator },
 	{ "attribute-info", "[attribute/UUID]",  cmd_attribute_info,
@@ -2414,6 +2413,7 @@ static const struct bt_shell_menu main_menu = {
 	{ "advertise",    "<on/off/type>", cmd_advertise,
 				"Enable/disable advertising with given type",
 							ad_generator},
+	{ "set-alias",    "<alias>",  cmd_set_alias, "Set device alias" },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices",
 							mode_generator },
 	{ "info",         "[dev]",    cmd_info, "Device information",
