@@ -390,32 +390,46 @@ done:
 	free(input);
 }
 
-static char *cmd_generator(const char *text, int state)
+static char *find_cmd(const char *text,
+			const struct bt_shell_menu_entry *entry, int *index)
 {
-	static const struct bt_shell_menu_entry *entry;
-	static int index, len;
 	const char *cmd;
+	int len;
 
-	if (!state) {
-		entry = default_menu;
-		index = 0;
-		len = strlen(text);
-	}
+	len = strlen(text);
 
-	while ((cmd = entry[index].cmd)) {
-		index++;
+	while ((cmd = entry[*index].cmd)) {
+		(*index)++;
 
 		if (!strncmp(cmd, text, len))
 			return strdup(cmd);
 	}
 
-	if (state)
-		return NULL;
+	return NULL;
+}
 
-	entry = data.menu->entries;
-	index = 0;
+static char *cmd_generator(const char *text, int state)
+{
+	static int index;
+	static bool default_menu_enabled;
+	char *cmd;
 
-	return cmd_generator(text, 1);
+	if (!state) {
+		index = 0;
+		default_menu_enabled = true;
+	}
+
+	if (default_menu_enabled) {
+		cmd = find_cmd(text, default_menu, &index);
+		if (cmd) {
+			return cmd;
+		} else {
+			index = 0;
+			default_menu_enabled = false;
+		}
+	}
+
+	return find_cmd(text, data.menu->entries, &index);
 }
 
 static char **menu_completion(const struct bt_shell_menu_entry *entry,
