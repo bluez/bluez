@@ -1659,8 +1659,6 @@ static void process_properties_from_interface(struct generic_data *data,
 	DBusMessageIter iter, dict, array;
 	GSList *invalidated;
 
-	data->pending_prop = FALSE;
-
 	if (iface->pending_prop == NULL)
 		return;
 
@@ -1721,6 +1719,8 @@ static void process_properties_from_interface(struct generic_data *data,
 static void process_property_changes(struct generic_data *data)
 {
 	GSList *l;
+
+	data->pending_prop = FALSE;
 
 	for (l = data->interfaces; l != NULL; l = l->next) {
 		struct interface_data *iface = l->data;
