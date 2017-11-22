@@ -127,7 +127,7 @@ int control_disconnect(struct btd_service *service)
 {
 	struct control *control = btd_service_get_user_data(service);
 
-	if (!control->session)
+	if (!control || !control->session)
 		return -ENOTCONN;
 
 	avctp_disconnect(control->session);
