@@ -210,6 +210,7 @@ struct btd_device {
 	GSList		*pending;		/* Pending services */
 	GSList		*watches;		/* List of disconnect_data */
 	bool		temporary;
+	bool		connectable;
 	guint		disconn_timer;
 	guint		discov_timer;
 	struct browse_req *browse;		/* service discover request */
@@ -5352,6 +5353,18 @@ void device_set_flags(struct btd_device *device, uint8_t flags)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "AdvertisingFlags");
+}
+
+bool device_is_connectable(struct btd_device *device)
+{
+	if (!device)
+		return false;
+
+	if (device->bredr)
+		return true;
+
+	/* Check if either Limited or General discoverable are set */
+	return (device->ad_flags[0] & 0x03);
 }
 
 static gboolean start_discovery(gpointer user_data)

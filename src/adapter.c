@@ -1766,6 +1766,8 @@ static gboolean remove_temp_devices(gpointer user_data)
 
 static void discovery_cleanup(struct btd_adapter *adapter)
 {
+	GSList *l, *next;
+
 	adapter->discovery_type = 0x00;
 
 	if (adapter->discovery_idle_timeout > 0) {
@@ -1784,6 +1786,15 @@ static void discovery_cleanup(struct btd_adapter *adapter)
 
 	if (!adapter->devices)
 		return;
+
+	for (l = adapter->devices; l != NULL; l = next) {
+		struct btd_device *dev = l->data;
+
+		next = g_slist_next(l);
+
+		if (device_is_temporary(dev) && !device_is_connectable(dev))
+			btd_adapter_remove_device(adapter, dev);
+	}
 
 	adapter->temp_devices_timeout = g_timeout_add_seconds(TEMP_DEV_TIMEOUT,
 						remove_temp_devices, adapter);
