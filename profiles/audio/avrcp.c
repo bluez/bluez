@@ -2526,11 +2526,8 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 		else
 			item = parse_media_folder(session, &operands[i], len);
 
-		if (item) {
-			if (g_slist_find(p->items, item))
-				goto done;
+		if (item)
 			p->items = g_slist_append(p->items, item);
-		}
 
 		i += len;
 	}
