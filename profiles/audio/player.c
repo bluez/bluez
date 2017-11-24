@@ -587,30 +587,6 @@ static void parse_folder_list(gpointer data, gpointer user_data)
 	dbus_message_iter_close_container(array, &entry);
 }
 
-void media_player_change_folder_complete(struct media_player *mp,
-						const char *path, int ret)
-{
-	struct media_folder *folder = mp->scope;
-	DBusMessage *reply;
-
-	if (folder == NULL || folder->msg == NULL)
-		return;
-
-	if (ret < 0) {
-		reply = btd_error_failed(folder->msg, strerror(-ret));
-		goto done;
-	}
-
-	media_player_set_folder(mp, path, ret);
-
-	reply = g_dbus_create_reply(folder->msg, DBUS_TYPE_INVALID);
-
-done:
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
-	dbus_message_unref(folder->msg);
-	folder->msg = NULL;
-}
-
 void media_player_list_complete(struct media_player *mp, GSList *items,
 								int err)
 {
@@ -1125,6 +1101,69 @@ static void media_player_set_scope(struct media_player *mp,
 	}
 
 	return media_player_change_scope(mp, folder);
+}
+
+static struct media_folder *
+media_player_find_folder_by_uid(struct media_player *mp, uint64_t uid)
+{
+	struct media_folder *folder = mp->scope;
+	struct media_folder *parent = folder->parent;
+	GSList *l;
+
+	if (parent && parent->item->uid == uid)
+		return parent;
+
+	for (l = folder->subfolders; l; l = l->next) {
+		struct media_folder *folder = l->data;
+
+		if (folder->item->uid == uid)
+			return folder;
+	}
+
+	return NULL;
+}
+
+static void media_player_set_folder_by_uid(struct media_player *mp,
+					uint64_t uid, uint32_t number_of_items)
+{
+	struct media_folder *folder;
+
+	DBG("uid %" PRIu64 " number of items %u", uid, number_of_items);
+
+	folder = media_player_find_folder_by_uid(mp, uid);
+	if (folder == NULL) {
+		error("Unknown folder: %" PRIu64, uid);
+		return;
+	}
+
+	folder->number_of_items = number_of_items;
+
+	media_player_set_scope(mp, folder);
+}
+
+void media_player_change_folder_complete(struct media_player *mp,
+						const char *path, uint64_t uid,
+						int ret)
+{
+	struct media_folder *folder = mp->scope;
+	DBusMessage *reply;
+
+	if (folder == NULL || folder->msg == NULL)
+		return;
+
+	if (ret < 0) {
+		reply = btd_error_failed(folder->msg, strerror(-ret));
+		goto done;
+	}
+
+	media_player_set_folder_by_uid(mp, uid, ret);
+
+	reply = g_dbus_create_reply(folder->msg, DBUS_TYPE_INVALID);
+
+done:
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(folder->msg);
+	folder->msg = NULL;
 }
 
 void media_player_destroy(struct media_player *mp)
@@ -1799,22 +1838,6 @@ struct media_item *media_player_create_item(struct media_player *mp,
 						uint64_t uid)
 {
 	return media_folder_create_item(mp, mp->scope, name, type, uid);
-}
-
-static struct media_folder *
-media_player_find_folder_by_uid(struct media_player *mp, uint64_t uid)
-{
-	struct media_folder *folder = mp->scope;
-	GSList *l;
-
-	for (l = folder->subfolders; l; l = l->next) {
-		struct media_folder *folder = l->data;
-
-		if (folder->item->uid == uid)
-			return folder;
-	}
-
-	return NULL;
 }
 
 struct media_item *media_player_create_folder(struct media_player *mp,

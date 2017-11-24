@@ -245,6 +245,7 @@ struct avrcp_player {
 
 	struct pending_list_items *p;
 	char *change_path;
+	uint64_t change_uid;
 
 	struct avrcp_player_cb *cb;
 	void *user_data;
@@ -2617,7 +2618,10 @@ done:
 		player->change_path = NULL;
 	}
 
-	media_player_change_folder_complete(mp, player->path, ret);
+	media_player_change_folder_complete(mp, player->path,
+						player->change_uid, ret);
+
+	player->change_uid = 0;
 
 	return FALSE;
 }
@@ -3026,6 +3030,7 @@ static int ct_change_folder(struct media_player *mp, const char *path,
 	session = player->sessions->data;
 	set_ct_player(session, player);
 	player->change_path = g_strdup(path);
+	player->change_uid = uid;
 
 	direction = g_str_has_prefix(path, player->path) ? 0x01 : 0x00;
 
