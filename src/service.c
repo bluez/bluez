@@ -320,7 +320,6 @@ struct btd_profile *btd_service_get_profile(const struct btd_service *service)
 
 void btd_service_set_user_data(struct btd_service *service, void *user_data)
 {
-	btd_assert(service->state == BTD_SERVICE_STATE_UNAVAILABLE);
 	service->user_data = user_data;
 }
 
