@@ -77,8 +77,8 @@ static void print_remaining_time(uint8_t remaining_time)
 	switch (step) {
 	case 0:
 		msecs = 100 * count;
-		secs = msecs / 60;
-		msecs -= (secs * 60);
+		secs = msecs / 1000;
+		msecs -= (secs * 1000);
 		break;
 	case 1:
 		secs = 1 * count;
