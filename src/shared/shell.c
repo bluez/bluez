@@ -527,8 +527,12 @@ static char **menu_completion(const struct bt_shell_menu_entry *entry,
 		if (strcmp(entry->cmd, input_cmd))
 			continue;
 
-		if (!entry->gen)
-			continue;
+		if (!entry->gen) {
+			if (text[0] == '\0')
+				bt_shell_printf("Usage: %s %s\n", entry->cmd,
+						entry->arg ? entry->arg : "");
+			break;
+		}
 
 		rl_completion_display_matches_hook = entry->disp;
 		matches = rl_completion_matches(text, entry->gen);
