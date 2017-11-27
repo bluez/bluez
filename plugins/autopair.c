@@ -111,6 +111,18 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 
 	case 0x05:		/* Peripheral */
 		switch ((class & 0xc0) >> 6) {
+		case 0x00:
+			switch ((class & 0x1e) >> 2) {
+			case 0x01:	/* Joystick */
+			case 0x02:	/* Gamepad */
+			case 0x03:	/* Remote Control */
+				if (attempt > 1)
+					return 0;
+				memcpy(pinbuf, "0000", 4);
+				return 4;
+			}
+
+			break;
 		case 0x01:		/* Keyboard */
 		case 0x03:		/* Combo keyboard/pointing device */
 			/* For keyboards rejecting the first random code
