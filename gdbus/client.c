@@ -484,6 +484,27 @@ static void proxy_remove(GDBusClient *client, const char *path,
 	}
 }
 
+static void start_service(GDBusProxy *proxy)
+{
+	GDBusClient *client = proxy->client;
+	const char *service_name = client->service_name;
+	dbus_uint32_t flags = 0;
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
+						DBUS_INTERFACE_DBUS,
+						"StartServiceByName");
+	if (msg == NULL)
+		return;
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &service_name,
+					DBUS_TYPE_UINT32, &flags,
+					DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(client->dbus_conn, msg);
+	return;
+}
+
 GDBusProxy *g_dbus_proxy_new(GDBusClient *client, const char *path,
 							const char *interface)
 {
@@ -500,7 +521,13 @@ GDBusProxy *g_dbus_proxy_new(GDBusClient *client, const char *path,
 	if (proxy == NULL)
 		return NULL;
 
-	if (client->connected && !client->get_objects_call)
+	if (!client->connected) {
+		/* Force service to start */
+		start_service(proxy);
+		return g_dbus_proxy_ref(proxy);
+	}
+
+	if (!client->get_objects_call)
 		get_all_properties(proxy);
 
 	return g_dbus_proxy_ref(proxy);
