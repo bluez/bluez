@@ -265,6 +265,9 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 	struct obex_session *os = transfer->session;
 	const char *sender;
 
+	if (!agent)
+		return agent_does_not_exist(msg);
+
 	if (!os)
 		return invalid_args(msg);
 
