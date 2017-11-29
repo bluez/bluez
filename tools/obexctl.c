@@ -2319,7 +2319,7 @@ static void transfer_added(GDBusProxy *proxy)
 
 	data = g_new0(struct transfer_data, 1);
 
-	if (g_dbus_proxy_get_property(proxy, "Transfered", &iter))
+	if (g_dbus_proxy_get_property(proxy, "Transferred", &iter))
 		dbus_message_iter_get_basic(&iter, &data->transferred);
 
 	if (g_dbus_proxy_get_property(proxy, "Size", &iter))
