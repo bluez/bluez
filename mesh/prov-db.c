@@ -676,7 +676,7 @@ bool prov_db_add_node_composition(struct mesh_node *node, uint8_t *data,
 		}
 
 		while (len >= 4 && v--) {
-			mod_id = get_le16(data);
+			mod_id = get_le16(data + 2);
 			vendor_id = get_le16(data);
 			mod_id |= (vendor_id << 16);
 			data += 4;
