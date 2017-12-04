@@ -1773,6 +1773,8 @@ static void cmd_connect(const char *arg)
 			rl_printf("Invalid network index %s\n", arg);
 			return;
 		}
+
+		connection.unicast = strtol(end, NULL, 16);
 	}
 
 	if (discovering)
@@ -1782,11 +1784,17 @@ static void cmd_connect(const char *arg)
 	set_scan_filter_uuids(MESH_PROXY_SVC_UUID);
 	discover_mesh = true;
 
-	connection.type = CONN_TYPE_NETWORK;
+	if (connection.unicast == UNASSIGNED_ADDRESS) {
+		connection.type = CONN_TYPE_NETWORK;
+		rl_printf("Looking for mesh network with net index %4.4x\n",
+				connection.net_idx);
+	} else {
+		connection.type = CONN_TYPE_IDENTITY;
+		rl_printf("Looking for node id %4.4x"
+				" on network with net index %4.4x\n",
+				connection.unicast, connection.net_idx);
+	}
 
-
-	rl_printf("Looking for mesh network with net index %4.4x\n",
-							connection.net_idx);
 
 	if (g_dbus_proxy_method_call(default_ctrl->proxy,
 			"StartDiscovery", NULL, start_discovery_reply,
@@ -2005,7 +2013,8 @@ static const struct menu_entry meshctl_cmd_table[] = {
 	{ "security",     "[0(low)/1(medium)/2(high)]", cmd_security,
 				"Display or change provision security level"},
 	{ "info",         "[dev]",    cmd_info, "Device information"},
-	{ "connect",      "[net_idx]",cmd_connect, "Connect to mesh network"},
+	{ "connect",      "[net_idx] [dst]", cmd_connect,
+				"Connect to mesh network or node on network"},
 	{ "discover-unprovisioned", "<on/off>", cmd_scan_unprovisioned_devices,
 					"Look for devices to provision" },
 	{ "provision",    "<uuid>",   cmd_start_prov, "Initiate provisioning"},
