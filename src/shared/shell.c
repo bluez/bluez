@@ -654,7 +654,7 @@ static struct io *setup_signalfd(void)
 	return io;
 }
 
-static GOptionEntry options[] = {
+static GOptionEntry main_options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ NULL },
@@ -669,13 +669,15 @@ static void rl_init(void)
 	rl_callback_handler_install(NULL, rl_handler);
 }
 
-void bt_shell_init(int *argc, char ***argv)
+void bt_shell_init(int *argc, char ***argv, GOptionEntry *options)
 {
 	GOptionContext *context;
 	GError *error = NULL;
 
 	context = g_option_context_new(NULL);
-	g_option_context_add_main_entries(context, options, NULL);
+	g_option_context_add_main_entries(context, main_options, NULL);
+	if (options)
+		g_option_context_add_main_entries(context, options, NULL);
 
 	if (g_option_context_parse(context, argc, argv, &error) == FALSE) {
 		if (error != NULL) {

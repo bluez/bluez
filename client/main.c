@@ -2369,27 +2369,11 @@ static void client_ready(GDBusClient *client, void *user_data)
 
 int main(int argc, char *argv[])
 {
-	GOptionContext *context;
-	GError *error = NULL;
 	GDBusClient *client;
 
 	auto_register_agent = g_strdup("");
 
-	context = g_option_context_new(NULL);
-	g_option_context_add_main_entries(context, options, NULL);
-
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
-		if (error != NULL) {
-			g_printerr("%s\n", error->message);
-			g_error_free(error);
-		} else
-			g_printerr("An unknown error occurred\n");
-		exit(1);
-	}
-
-	g_option_context_free(context);
-
-	bt_shell_init(&argc, &argv);
+	bt_shell_init(&argc, &argv, options);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_add_submenu(&advertise_menu);
 	bt_shell_add_submenu(&scan_menu);

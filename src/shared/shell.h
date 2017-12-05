@@ -50,7 +50,7 @@ struct bt_shell_menu {
 	const struct bt_shell_menu_entry entries[];
 };
 
-void bt_shell_init(int *argc, char ***argv);
+void bt_shell_init(int *argc, char ***argv, GOptionEntry *options);
 
 void bt_shell_run(void);
 

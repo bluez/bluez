@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <glib.h>
+
 #include "src/shared/shell.h"
 #include "gdbus/gdbus.h"
 #include "agent.h"
