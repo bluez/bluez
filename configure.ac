@@ -244,6 +244,17 @@ if (test "${enable_obex}" != "no"); then
 fi
 AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
 
+AC_ARG_ENABLE(btpclient, AC_HELP_STRING([--enable-btpclient],
+		[enable BTP client]), [enable_btpclient=${enableval}])
+AM_CONDITIONAL(BTPCLIENT, test "${enable_btpclient}" = "yes")
+
+if (test "${enable_btpclient}" = "yes"); then
+	PKG_CHECK_MODULES(ELL, ell >= 0.2, dummy=yes,
+			  AC_MSG_ERROR(ell library >= 0.2 is required))
+	AC_SUBST(ELL_CFLAGS)
+	AC_SUBST(ELL_LIBS)
+fi
+
 AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
 		[disable command line client]), [enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
