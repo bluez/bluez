@@ -195,8 +195,11 @@ static void shell_print_menu(void)
 	}
 
 	for (entry = default_menu; entry->cmd; entry++) {
-		/* Skip menu command if not on main menu */
-		if (data.menu != data.main && !strcmp(entry->cmd, "menu"))
+		/* Skip menu command if not on main menu or if there are no
+		 * submenus.
+		 */
+		if ((data.menu != data.main && !strcmp(entry->cmd, "menu")) ||
+					queue_isempty(data.submenus))
 			continue;
 
 		/* Skip back command if on main menu */
