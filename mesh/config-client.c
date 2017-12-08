@@ -229,10 +229,13 @@ static uint32_t read_input_parameters(int argc, char *argv[])
 {
 	uint32_t i;
 
+	if (!argc)
+		return 0;
+
 	--argc;
 	++argv;
 
-	if (!argc || argv[1][0] == '\0')
+	if (!argc || argv[0][0] == '\0')
 		return 0;
 
 	memset(parms, 0xff, sizeof(parms));
