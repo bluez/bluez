@@ -20,6 +20,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#include <getopt.h>
 
 #define COLOR_OFF	"\x1B[0m"
 #define COLOR_RED	"\x1B[0;91m"
@@ -50,7 +51,15 @@ struct bt_shell_menu {
 	const struct bt_shell_menu_entry entries[];
 };
 
-void bt_shell_init(int *argc, char ***argv, GOptionEntry *options);
+struct bt_shell_opt {
+	const struct option *options;
+	size_t optno;
+	const char *optstr;
+	const char ***optarg;
+	const char **help;
+};
+
+void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt);
 
 void bt_shell_run(void);
 

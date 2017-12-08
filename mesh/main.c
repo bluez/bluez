@@ -1925,10 +1925,25 @@ static const struct bt_shell_menu main_menu = {
 
 static const char *mesh_config_dir;
 
-static GOptionEntry options[] = {
-	{ "config", 'c', 0, G_OPTION_ARG_STRING, &mesh_config_dir,
-			"Read local mesh config JSON files from <directory>" },
-	{ NULL },
+static const struct option options[] = {
+	{ "config",	required_argument, 0, 'c' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char **optargs[] = {
+	&mesh_config_dir
+};
+
+static const char *help[] = {
+	"Read local mesh config JSON files from <directory>"
+};
+
+static const struct bt_shell_opt opt = {
+	.options = options,
+	.optno = sizeof(options) / sizeof(struct option),
+	.optstr = "c:",
+	.optarg = optargs,
+	.help = help,
 };
 
 static void client_ready(GDBusClient *client, void *user_data)
@@ -1942,7 +1957,7 @@ int main(int argc, char *argv[])
 	int len;
 	int extra;
 
-	bt_shell_init(&argc, &argv, options);
+	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
 

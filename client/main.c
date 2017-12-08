@@ -2344,22 +2344,27 @@ static const struct bt_shell_menu main_menu = {
 	{ } },
 };
 
-static gboolean parse_agent(const char *key, const char *value,
-					gpointer user_data, GError **error)
-{
-	if (!value)
-		return FALSE;
+static const struct option options[] = {
+	{ "agent",	required_argument, 0, 'a' },
+	{ 0, 0, 0, 0 }
+};
 
-	g_free(auto_register_agent);
-	auto_register_agent = g_strdup(value);
+static const char *agent_option;
 
-	return TRUE;
-}
+static const char **optargs[] = {
+	&agent_option
+};
 
-static GOptionEntry options[] = {
-	{ "agent", 'a', 0, G_OPTION_ARG_CALLBACK, parse_agent,
-				"Register agent handler", "CAPABILITY" },
-	{ NULL },
+static const char *help[] = {
+	"Register agent handler: <capability>"
+};
+
+static const struct bt_shell_opt opt = {
+	.options = options,
+	.optno = sizeof(options) / sizeof(struct option),
+	.optstr = "a:",
+	.optarg = optargs,
+	.help = help,
 };
 
 static void client_ready(GDBusClient *client, void *user_data)
@@ -2371,14 +2376,17 @@ int main(int argc, char *argv[])
 {
 	GDBusClient *client;
 
-	auto_register_agent = g_strdup("");
-
-	bt_shell_init(&argc, &argv, options);
+	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_add_submenu(&advertise_menu);
 	bt_shell_add_submenu(&scan_menu);
 	bt_shell_add_submenu(&gatt_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
+
+	if (agent_option)
+		auto_register_agent = g_strdup(agent_option);
+	else
+		auto_register_agent = g_strdup("");
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 	g_dbus_attach_object_manager(dbus_conn);

@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <wordexp.h>
+#include <getopt.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -54,7 +55,6 @@
 			cmd, (int)(CMD_LENGTH - strlen(cmd)), "", desc)
 
 static GMainLoop *main_loop;
-static gboolean option_version = FALSE;
 
 static struct {
 	struct io *input;
@@ -657,12 +657,6 @@ static struct io *setup_signalfd(void)
 	return io;
 }
 
-static GOptionEntry main_options[] = {
-	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
-				"Show version information and exit" },
-	{ NULL },
-};
-
 static void rl_init(void)
 {
 	setlinebuf(stdout);
@@ -672,30 +666,65 @@ static void rl_init(void)
 	rl_callback_handler_install(NULL, rl_handler);
 }
 
-void bt_shell_init(int *argc, char ***argv, GOptionEntry *options)
+static const struct option main_options[] = {
+	{ "version",	no_argument, 0, 'v' },
+	{ "help",	no_argument, 0, 'h' },
+};
+
+static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
 {
-	GOptionContext *context;
-	GError *error = NULL;
+	unsigned int i;
 
-	context = g_option_context_new(NULL);
-	g_option_context_add_main_entries(context, main_options, NULL);
-	if (options)
-		g_option_context_add_main_entries(context, options, NULL);
+	printf("%s ver %s\n", argv[0], VERSION);
+	printf("Usage:\n"
+		"\t%s [options]\n", argv[0]);
 
-	if (g_option_context_parse(context, argc, argv, &error) == FALSE) {
-		if (error != NULL) {
-			g_printerr("%s\n", error->message);
-			g_error_free(error);
-		} else
-			g_printerr("An unknown error occurred\n");
-		exit(1);
-	}
+	printf("Options:\n");
 
-	g_option_context_free(context);
+	for (i = 0; opt && opt->options[i].name; i++)
+		printf("\t--%s \t%s\n", opt->options[i].name, opt->help[i]);
 
-	if (option_version == TRUE) {
-		g_print("%s\n", VERSION);
-		exit(EXIT_SUCCESS);
+	printf("\t--version \tDisplay version\n"
+		"\t--help \t\tDisplay help\n");
+}
+
+void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
+{
+	int c, index = 0;
+	struct option options[256];
+	char optstr[256];
+	size_t offset;
+
+	offset = sizeof(main_options) / sizeof(struct option);
+
+	memcpy(options, main_options, sizeof(struct option) * offset);
+
+	if (opt) {
+		memcpy(options + offset, opt->options,
+				sizeof(struct option) * opt->optno);
+		snprintf(optstr, sizeof(optstr), "+hv%s", opt->optstr);
+	} else
+		snprintf(optstr, sizeof(optstr), "+hv");
+
+	while ((c = getopt_long(argc, argv, optstr, options, &index)) != -1) {
+		switch (c) {
+		case 'v':
+			printf("%s: %s\n", argv[0], VERSION);
+			exit(EXIT_SUCCESS);
+			return;
+		case 'h':
+			usage(argc, argv, opt);
+			exit(EXIT_SUCCESS);
+			return;
+		default:
+			if (c != opt->options[index - offset].val) {
+				usage(argc, argv, opt);
+				exit(EXIT_SUCCESS);
+				return;
+			}
+
+			*opt->optarg[index - offset] = optarg;
+		}
 	}
 
 	main_loop = g_main_loop_new(NULL, FALSE);

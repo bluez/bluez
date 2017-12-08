@@ -2153,7 +2153,7 @@ int main(int argc, char *argv[])
 {
 	GDBusClient *client;
 
-	bt_shell_init(&argc, &argv, NULL);
+	bt_shell_init(argc, argv, NULL);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
 	bt_shell_attach(fileno(stdin));
