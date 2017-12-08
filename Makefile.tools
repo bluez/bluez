@@ -389,9 +389,9 @@ tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 						tools/obex-server-tool.c
 tools_obex_server_tool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-tools_bluetooth_player_SOURCES = tools/bluetooth-player.c \
-				client/display.h client/display.c
+tools_bluetooth_player_SOURCES = tools/bluetooth-player.c
 tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
+				src/libshared-glib.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 
 tools_obexctl_SOURCES = tools/obexctl.c
