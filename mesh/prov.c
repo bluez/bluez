@@ -38,10 +38,10 @@
 
 #include "src/shared/util.h"
 #include "src/shared/ecc.h"
+#include "src/shared/shell.h"
 
 #include "gdbus/gdbus.h"
 #include "monitor/uuid.h"
-#include "client/display.h"
 #include "mesh/node.h"
 #include "mesh/gatt.h"
 #include "mesh/crypto.h"
@@ -178,9 +178,9 @@ bool prov_open(struct mesh_node *node, GDBusProxy *prov_in, uint16_t net_idx,
 	prov->conf_in.invite.attention = invite[2];
 	prov->state = PROV_INVITE;
 
-	rl_printf("Open-Node: %p\n", node);
-	rl_printf("Open-Prov: %p\n", prov);
-	rl_printf("Open-Prov: proxy %p\n", prov_in);
+	bt_shell_printf("Open-Node: %p\n", node);
+	bt_shell_printf("Open-Prov: %p\n", prov);
+	bt_shell_printf("Open-Prov: proxy %p\n", prov_in);
 
 	return mesh_gatt_write(prov_in, invite, sizeof(invite), NULL, node);
 }
@@ -380,7 +380,7 @@ static void prov_calc_ecdh(DBusMessage *message, void *node)
 						"Enter %s on device\n",
 						in_ascii);
 			}
-			rl_printf("Agent String: %s\n", in_oob_display);
+			bt_shell_printf("Agent String: %s\n", in_oob_display);
 			agent_output_request(in_oob_display);
 			break;
 	}
@@ -436,7 +436,7 @@ bool prov_data_ready(struct mesh_node *node, uint8_t *buf, uint8_t len)
 	buf++;
 	len--;
 
-	rl_printf("Got provisioning data (%d bytes)\n", len);
+	bt_shell_printf("Got provisioning data (%d bytes)\n", len);
 
 	if (buf[0] > PROV_FAILED || expected_pdu_size[buf[0]] != len)
 		return prov_complete(node, PROV_ERR_INVALID_PDU);
@@ -611,7 +611,7 @@ bool prov_data_ready(struct mesh_node *node, uint8_t *buf, uint8_t len)
 				return prov_complete(node,
 						PROV_ERR_INVALID_PDU);
 
-			rl_printf("Confirmation Validated\n");
+			bt_shell_printf("Confirmation Validated\n");
 
 			prov_send_prov_data(node);
 
@@ -630,7 +630,7 @@ bool prov_data_ready(struct mesh_node *node, uint8_t *buf, uint8_t len)
 	/* Compose appropriate reply for the prov state message */
 	/* Send reply via mesh_gatt_write() */
 	/* If done, call prov_done calllback and free prov housekeeping data */
-	rl_printf("Got provisioning data (%d bytes)\n", len);
+	bt_shell_printf("Got provisioning data (%d bytes)\n", len);
 	print_byte_array("\t", buf, len);
 
 	return true;

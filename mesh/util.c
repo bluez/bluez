@@ -28,94 +28,14 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <inttypes.h>
-#include <readline/readline.h>
+
 #include <glib.h>
 
-#include "client/display.h"
+#include "src/shared/shell.h"
 #include "src/shared/util.h"
 #include "mesh/mesh-net.h"
 #include "mesh/node.h"
 #include "mesh/util.h"
-
-struct cmd_menu {
-	const char *name;
-	const struct menu_entry *table;
-};
-
-static struct menu_entry *main_cmd_table;
-static struct menu_entry *current_cmd_table;
-static GList *menu_list;
-
-static char *main_menu_prompt;
-static int main_menu_point;
-
-static int match_menu_name(const void *a, const void *b)
-{
-	const struct cmd_menu *menu = a;
-	const char *name = b;
-
-	return strcasecmp(menu->name, name);
-}
-
-bool cmd_menu_init(const struct menu_entry *cmd_table)
-{
-	struct cmd_menu *menu;
-
-	if (main_cmd_table) {
-		rl_printf("Main menu already registered\n");
-		return false;
-	}
-
-	menu = g_malloc(sizeof(struct cmd_menu));
-	if (!menu)
-		return false;
-
-	menu->name = "meshctl";
-	menu->table = cmd_table;
-	menu_list = g_list_append(menu_list, menu);
-	main_cmd_table = (struct menu_entry *) cmd_table;
-	current_cmd_table = (struct menu_entry *) main_cmd_table;
-
-	return true;
-}
-
-void cmd_menu_main(bool forced)
-{
-	current_cmd_table = main_cmd_table;
-
-	if (!forced) {
-		rl_set_prompt(main_menu_prompt);
-		rl_replace_line("", 0);
-		rl_point = main_menu_point;
-		rl_redisplay();
-	}
-
-	g_free(main_menu_prompt);
-	main_menu_prompt = NULL;
-}
-
-bool add_cmd_menu(const char *name, const struct menu_entry *cmd_table)
-{
-	struct cmd_menu *menu;
-	GList *l;
-
-	l = g_list_find_custom(menu_list, name, match_menu_name);
-	if (l) {
-		menu = l->data;
-		rl_printf("menu \"%s\" already registered\n", menu->name);
-		return false;
-	}
-
-	menu = g_malloc(sizeof(struct cmd_menu));
-	if (!menu)
-		return false;
-
-	menu->name = name;
-	menu->table = cmd_table;
-	menu_list = g_list_append(menu_list, menu);
-
-	return true;
-}
 
 void set_menu_prompt(const char *name, const char *id)
 {
@@ -123,80 +43,8 @@ void set_menu_prompt(const char *name, const char *id)
 
 	prompt = g_strdup_printf(COLOR_BLUE "[%s%s%s]" COLOR_OFF "# ", name,
 					id ? ": Target = " : "", id ? id : "");
-	rl_set_prompt(prompt);
+	bt_shell_set_prompt(prompt);
 	g_free(prompt);
-	rl_on_new_line();
-}
-
-bool switch_cmd_menu(const char *name)
-{
-	GList *l;
-	struct cmd_menu *menu;
-
-	l = g_list_find_custom(menu_list, name, match_menu_name);
-	if(!l)
-		return false;
-
-	menu = l->data;
-	current_cmd_table = (struct menu_entry *) menu->table;
-
-	main_menu_point = rl_point;
-	main_menu_prompt = g_strdup(rl_prompt);
-
-	return true;
-}
-
-void process_menu_cmd(const char *cmd, const char *arg)
-{
-	int i;
-	int len;
-	struct menu_entry *cmd_table = current_cmd_table;
-
-	if (!current_cmd_table)
-		return;
-
-	len = strlen(cmd);
-
-	for (i = 0; cmd_table[i].cmd; i++) {
-		if (strncmp(cmd, cmd_table[i].cmd, len))
-			continue;
-
-		if (cmd_table[i].func) {
-			cmd_table[i].func(arg);
-			return;
-		}
-	}
-
-	if (strncmp(cmd, "help", len)) {
-		rl_printf("Invalid command\n");
-		return;
-	}
-
-	print_cmd_menu(cmd_table);
-}
-
-void print_cmd_menu(const struct menu_entry *cmd_table)
-{
-	int i;
-
-	rl_printf("Available commands:\n");
-
-	for (i = 0; cmd_table[i].cmd; i++) {
-		if (cmd_table[i].desc)
-			rl_printf("  %s %-*s %s\n", cmd_table[i].cmd,
-					(int)(40 - strlen(cmd_table[i].cmd)),
-					cmd_table[i].arg ? : "",
-					cmd_table[i].desc ? : "");
-	}
-
-}
-
-void cmd_menu_cleanup(void)
-{
-	main_cmd_table = NULL;
-	current_cmd_table = NULL;
-
-	g_list_free_full(menu_list, g_free);
 }
 
 void print_byte_array(const char *prefix, const void *ptr, int len)
@@ -214,13 +62,13 @@ void print_byte_array(const char *prefix, const void *ptr, int len)
 		if ((i + 1) % 16) {
 			bytes += 3;
 		} else {
-			rl_printf("\r%s\n", line);
+			bt_shell_printf("\r%s\n", line);
 			bytes = line + strlen(prefix) + 1;
 		}
 	}
 
 	if (i % 16)
-		rl_printf("\r%s\n", line);
+		bt_shell_printf("\r%s\n", line);
 
 	g_free(line);
 }
@@ -272,7 +120,7 @@ uint16_t mesh_opcode_set(uint32_t opcode, uint8_t *buf)
 		put_be16(opcode, buf + 1);
 		return 3;
 	} else {
-		rl_printf("Illegal Opcode %x", opcode);
+		bt_shell_printf("Illegal Opcode %x", opcode);
 		return 0;
 	}
 }
@@ -310,7 +158,7 @@ bool mesh_opcode_get(const uint8_t *buf, uint16_t sz, uint32_t *opcode, int *n)
 		break;
 
 	default:
-		rl_printf("Bad Packet:\n");
+		bt_shell_printf("Bad Packet:\n");
 		print_byte_array("\t", (void *) buf, sz);
 		return false;
 	}
@@ -347,14 +195,15 @@ const char *mesh_status_str(uint8_t status)
 void print_model_pub(uint16_t ele_addr, uint32_t mod_id,
 						struct mesh_publication *pub)
 {
-	rl_printf("\tElement: %4.4x\n", ele_addr);
-	rl_printf("\tPub Addr: %4.4x", pub->u.addr16);
+	bt_shell_printf("\tElement: %4.4x\n", ele_addr);
+	bt_shell_printf("\tPub Addr: %4.4x", pub->u.addr16);
 	if (mod_id > 0xffff0000)
-		rl_printf("\tModel: %8.8x \n", mod_id);
+		bt_shell_printf("\tModel: %8.8x \n", mod_id);
 	else
-		rl_printf("\tModel: %4.4x \n", (uint16_t) (mod_id & 0xffff));
-	rl_printf("\tApp Key Idx: %4.4x", pub->app_idx);
-	rl_printf("\tTTL: %2.2x", pub->ttl);
+		bt_shell_printf("\tModel: %4.4x \n",
+				(uint16_t) (mod_id & 0xffff));
+	bt_shell_printf("\tApp Key Idx: %4.4x", pub->app_idx);
+	bt_shell_printf("\tTTL: %2.2x", pub->ttl);
 }
 
 void swap_u256_bytes(uint8_t *u256)

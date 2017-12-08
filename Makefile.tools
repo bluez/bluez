@@ -30,7 +30,6 @@ mesh_meshctl_SOURCES = mesh/main.c \
 				mesh/config-model.h mesh/config-client.c \
 				mesh/config-server.c \
 				mesh/onoff-model.h mesh/onoff-model.c \
-				client/display.h client/display.c \
 				monitor/uuid.h monitor/uuid.c
 mesh_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la \

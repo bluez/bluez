@@ -34,12 +34,11 @@
 #include <stdbool.h>
 #include <sys/uio.h>
 #include <wordexp.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+
 #include <glib.h>
 
 #include "src/shared/util.h"
-#include "client/display.h"
+#include "src/shared/shell.h"
 #include "mesh/mesh-net.h"
 #include "mesh/keys.h"
 #include "mesh/net.h"
@@ -99,7 +98,7 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 		if (len != 11 && len != 13)
 			return true;
 
-		rl_printf("Set publication\n");
+		bt_shell_printf("Set publication\n");
 
 		ele_addr = get_le16(data);
 		mod_id = get_le16(data + 9);
@@ -115,22 +114,22 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 		m = (data[7] & 0x3f);
 		switch (data[7] >> 6) {
 		case 0:
-			rl_printf("Period: %d ms\n", m * 100);
+			bt_shell_printf("Period: %d ms\n", m * 100);
 			break;
 		case 2:
 			m *= 10;
 			/* fall through */
 		case 1:
-			rl_printf("Period: %d sec\n", m);
+			bt_shell_printf("Period: %d sec\n", m);
 			break;
 		case 3:
-			rl_printf("Period: %d min\n", m * 10);
+			bt_shell_printf("Period: %d min\n", m * 10);
 			break;
 		}
 
 		pub.retransmit = data[8];
-		rl_printf("Retransmit count: %d\n", data[8] >> 5);
-		rl_printf("Retransmit Interval Steps: %d\n", data[8] & 0x1f);
+		bt_shell_printf("Retransmit count: %d\n", data[8] >> 5);
+		bt_shell_printf("Retransmit Interval Steps: %d\n", data[8] & 0x1f);
 
 		ele_idx = ele_addr - node_get_primary(node);
 

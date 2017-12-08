@@ -29,12 +29,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <inttypes.h>
-#include <readline/readline.h>
 
 #include <glib.h>
 
 #include <lib/bluetooth.h>
-#include "client/display.h"
+
+#include "src/shared/shell.h"
 #include "mesh/util.h"
 #include "mesh/agent.h"
 
@@ -68,7 +68,7 @@ static void response_hexadecimal(const char *input, void *user_data)
 	uint8_t buf[MAX_HEXADECIMAL_OOB_LEN];
 
 	if (!str2hex(input, strlen(input), buf, pending_request.len) ) {
-		rl_printf("Incorrect input: expecting %d hex octets\n",
+		bt_shell_printf("Incorrect input: expecting %d hex octets\n",
 			  pending_request.len);
 		return;
 	}
@@ -110,8 +110,8 @@ static bool request_hexadecimal(uint16_t len)
 	if (len > MAX_HEXADECIMAL_OOB_LEN)
 		return false;
 
-	rl_printf("Request hexadecimal key (hex %d octets)\n", len);
-	rl_prompt_input("mesh", "Enter key (hex number):", response_hexadecimal,
+	bt_shell_printf("Request hexadecimal key (hex %d octets)\n", len);
+	bt_shell_prompt_input("mesh", "Enter key (hex number):", response_hexadecimal,
 								NULL);
 
 	return true;
@@ -129,8 +129,8 @@ static uint32_t power_ten(uint8_t power)
 
 static bool request_decimal(uint16_t len)
 {
-	rl_printf("Request decimal key (0 - %d)\n", power_ten(len) - 1);
-	rl_prompt_input("mesh", "Enter Numeric key:", response_decimal, NULL);
+	bt_shell_printf("Request decimal key (0 - %d)\n", power_ten(len) - 1);
+	bt_shell_prompt_input("mesh", "Enter Numeric key:", response_decimal, NULL);
 
 	return true;
 }
@@ -140,8 +140,8 @@ static bool request_ascii(uint16_t len)
 	if (len > MAX_ASCII_OOB_LEN)
 		return false;
 
-	rl_printf("Request ASCII key (max characters %d)\n", len);
-	rl_prompt_input("mesh", "Enter key (ascii string):", response_ascii,
+	bt_shell_printf("Request ASCII key (max characters %d)\n", len);
+	bt_shell_prompt_input("mesh", "Enter key (ascii string):", response_ascii,
 									NULL);
 
 	return true;
@@ -194,7 +194,7 @@ bool agent_output_request(const char* str)
 		return false;
 
 	pending_request.type = OUTPUT;
-	rl_prompt_input("mesh", str, response_output, NULL);
+	bt_shell_prompt_input("mesh", str, response_output, NULL);
 	return true;
 }
 
@@ -203,5 +203,5 @@ void agent_output_request_cancel(void)
 	if (pending_request.type != OUTPUT)
 		return;
 	pending_request.type = NONE;
-	rl_release_prompt("");
+	bt_shell_release_prompt("");
 }

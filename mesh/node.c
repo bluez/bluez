@@ -34,12 +34,10 @@
 #include <wordexp.h>
 #include <inttypes.h>
 
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <glib.h>
 
-#include "client/display.h"
 #include "src/shared/util.h"
+#include "src/shared/shell.h"
 #include "gdbus/gdbus.h"
 #include "monitor/uuid.h"
 #include "mesh/mesh-net.h"
@@ -450,7 +448,7 @@ bool node_parse_composition(struct mesh_node *node, uint8_t *data, uint16_t len)
 bool node_set_local_node(struct mesh_node *node)
 {
 	if (local_node) {
-		rl_printf("Local node already registered\n");
+		bt_shell_printf("Local node already registered\n");
 		return false;
 	}
 	net_register_unicast(node->primary, node->num_ele);
@@ -516,7 +514,7 @@ void node_local_data_handler(uint16_t src, uint32_t dst,
 
 	if (!remote) {
 		if (local_node->provisioner) {
-			rl_printf("Remote node unknown (%4.4x)\n", src);
+			bt_shell_printf("Remote node unknown (%4.4x)\n", src);
 			return;
 		}
 
@@ -538,7 +536,7 @@ void node_local_data_handler(uint16_t src, uint32_t dst,
 		iv_seq |= remote->seq_number;
 
 		if (iv_seq_remote >= iv_seq) {
-			rl_printf("Replayed message detected "
+			bt_shell_printf("Replayed message detected "
 					"(%016" PRIx64 " >= %016" PRIx64 ")\n",
 							iv_seq_remote, iv_seq);
 			return;

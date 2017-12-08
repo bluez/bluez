@@ -38,7 +38,7 @@
 #include <readline/history.h>
 #include <glib.h>
 
-#include "client/display.h"
+#include "src/shared/shell.h"
 #include "src/shared/util.h"
 #include "mesh/mesh-net.h"
 #include "mesh/keys.h"
@@ -58,7 +58,7 @@ static int client_bind(uint16_t app_idx, int action)
 			return MESH_STATUS_INSUFF_RESOURCES;
 		} else {
 			onoff_app_idx = app_idx;
-			rl_printf("On/Off client model: new binding %4.4x\n",
+			bt_shell_printf("On/Off client model: new binding %4.4x\n",
 								app_idx);
 		}
 	} else {
@@ -101,7 +101,7 @@ static void print_remaining_time(uint8_t remaining_time)
 		break;
 	}
 
-	rl_printf("\n\t\tRemaining time: %d hrs %d mins %d secs %d msecs\n",
+	bt_shell_printf("\n\t\tRemaining time: %d hrs %d mins %d secs %d msecs\n",
 						hours, minutes, secs, msecs);
 
 }
@@ -118,7 +118,7 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 	} else
 		return false;
 
-	rl_printf("On Off Model Message received (%d) opcode %x\n",
+	bt_shell_printf("On Off Model Message received (%d) opcode %x\n",
 								len, opcode);
 	print_byte_array("\t",data, len);
 
@@ -130,14 +130,14 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 		if (len != 1 && len != 3)
 			break;
 
-		rl_printf("Node %4.4x: Off Status present = %s",
+		bt_shell_printf("Node %4.4x: Off Status present = %s",
 						src, data[0] ? "ON" : "OFF");
 
 		if (len == 3) {
-			rl_printf(", target = %s", data[1] ? "ON" : "OFF");
+			bt_shell_printf(", target = %s", data[1] ? "ON" : "OFF");
 			print_remaining_time(data[2]);
 		} else
-			rl_printf("\n");
+			bt_shell_printf("\n");
 		break;
 	}
 
@@ -148,44 +148,42 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 static uint32_t target;
 static uint32_t parms[8];
 
-static uint32_t read_input_parameters(const char *args)
+static uint32_t read_input_parameters(int argc, char *argv[])
 {
 	uint32_t i;
 
-	if (!args)
+	--argc;
+	++argv;
+
+	if (!argc || argv[1][0] == '\0')
 		return 0;
 
 	memset(parms, 0xff, sizeof(parms));
 
-	for (i = 0; i < sizeof(parms)/sizeof(parms[0]); i++) {
-		int n;
-
-		sscanf(args, "%x", &parms[i]);
+	for (i = 0; i < sizeof(parms)/sizeof(parms[0]) && i < (unsigned) argc;
+									i++) {
+		sscanf(argv[i], "%x", &parms[i]);
 		if (parms[i] == 0xffffffff)
 			break;
-
-		n = strcspn(args, " \t");
-		args = args + n + strspn(args + n, " \t");
 	}
 
 	return i;
 }
 
-static void cmd_set_node(const char *args)
+static void cmd_set_node(int argc, char *argv[])
 {
 	uint32_t dst;
 	char *end;
 
-	dst = strtol(args, &end, 16);
-	if (end != (args + 4)) {
-		rl_printf("Bad unicast address %s: "
-						"expected format 4 digit hex\n",
-			args);
+	dst = strtol(argv[1], &end, 16);
+	if (end != (argv[1] + 4)) {
+		bt_shell_printf("Bad unicast address %s: "
+				"expected format 4 digit hex\n", argv[1]);
 		target = UNASSIGNED_ADDRESS;
 	} else {
-		rl_printf("Controlling ON/OFF for node %4.4x\n", dst);
+		bt_shell_printf("Controlling ON/OFF for node %4.4x\n", dst);
 		target = dst;
-		set_menu_prompt("on/off", args);
+		set_menu_prompt("on/off", argv[1]);
 	}
 }
 
@@ -203,14 +201,14 @@ static bool send_cmd(uint8_t *buf, uint16_t len)
 					target, onoff_app_idx, buf, len);
 }
 
-static void cmd_get_status(const char *args)
+static void cmd_get_status(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
 	struct mesh_node *node;
 
 	if (IS_UNASSIGNED(target)) {
-		rl_printf("Destination not set\n");
+		bt_shell_printf("Destination not set\n");
 		return;
 	}
 
@@ -222,17 +220,17 @@ static void cmd_get_status(const char *args)
 	n = mesh_opcode_set(OP_GENERIC_ONOFF_GET, msg);
 
 	if (!send_cmd(msg, n))
-		rl_printf("Failed to send \"GENERIC ON/OFF GET\"\n");
+		bt_shell_printf("Failed to send \"GENERIC ON/OFF GET\"\n");
 }
 
-static void cmd_set(const char *args)
+static void cmd_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
 	struct mesh_node *node;
 
 	if (IS_UNASSIGNED(target)) {
-		rl_printf("Destination not set\n");
+		bt_shell_printf("Destination not set\n");
 		return;
 	}
 
@@ -241,9 +239,9 @@ static void cmd_set(const char *args)
 	if (!node)
 		return;
 
-	if ((read_input_parameters(args) != 1) &&
+	if ((read_input_parameters(argc, argv) != 1) &&
 					parms[0] != 0 && parms[0] != 1) {
-		rl_printf("Bad arguments %s. Expecting \"0\" or \"1\"\n", args);
+		bt_shell_printf("Bad arguments: Expecting \"0\" or \"1\"\n");
 		return;
 	}
 
@@ -252,40 +250,21 @@ static void cmd_set(const char *args)
 	msg[n++] = trans_id++;
 
 	if (!send_cmd(msg, n))
-		rl_printf("Failed to send \"GENERIC ON/OFF SET\"\n");
+		bt_shell_printf("Failed to send \"GENERIC ON/OFF SET\"\n");
 
 }
 
-static void cmd_back(const char *args)
-{
-	cmd_menu_main(false);
-}
-
-static void cmd_help(const char *args);
-
-static const struct menu_entry cfg_menu[] = {
+static const struct bt_shell_menu onoff_menu = {
+	.name = "onoff",
+	.entries = {
 	{"target",		"<unicast>",			cmd_set_node,
 						"Set node to configure"},
 	{"get",			NULL,				cmd_get_status,
 						"Get ON/OFF status"},
 	{"onoff",		"<0/1>",			cmd_set,
 						"Send \"SET ON/OFF\" command"},
-	{"back",		NULL,				cmd_back,
-						"Back to main menu"},
-	{"help",		NULL,				cmd_help,
-						"Config Commands"},
-	{}
+	{} },
 };
-
-static void cmd_help(const char *args)
-{
-	rl_printf("Client Configuration Menu\n");
-	print_cmd_menu(cfg_menu);
-}
-
-void onoff_set_node(const char *args) {
-	cmd_set_node(args);
-}
 
 static struct mesh_model_ops client_cbs = {
 	client_msg_recvd,
@@ -300,7 +279,7 @@ bool onoff_client_init(uint8_t ele)
 					&client_cbs, NULL))
 		return false;
 
-	add_cmd_menu("onoff", cfg_menu);
+	bt_shell_add_submenu(&onoff_menu);
 
 	return true;
 }

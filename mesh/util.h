@@ -27,21 +27,7 @@ struct mesh_publication;
 
 #define OP_UNRELIABLE			0x0100
 
-struct menu_entry {
-	const char *cmd;
-	const char *arg;
-	void (*func) (const char *arg);
-	const char *desc;
-};
-
-bool cmd_menu_init(const struct menu_entry *cmd_table);
-void cmd_menu_main(bool forced);
-bool add_cmd_menu(const char *name, const struct menu_entry *cmd_table);
-bool switch_cmd_menu(const char *name);
-void set_menu_prompt(const char *prefix, const char * node);
-void process_menu_cmd(const char *cmd, const char *arg);
-void print_cmd_menu(const struct menu_entry *cmd_table);
-void cmd_menu_cleanup(void);
+void set_menu_prompt(const char *name, const char *id);
 void print_byte_array(const char *prefix, const void *ptr, int len);
 bool str2hex(const char *str, uint16_t in_len, uint8_t *out_buf,
 		uint16_t out_len);

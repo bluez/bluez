@@ -37,11 +37,10 @@
 #include <json-c/json.h>
 #include <sys/stat.h>
 
-#include <readline/readline.h>
 #include <glib.h>
 
 #include "src/shared/util.h"
-#include "client/display.h"
+#include "src/shared/shell.h"
 
 #include "mesh/mesh-net.h"
 #include "mesh/crypto.h"
@@ -83,7 +82,7 @@ static char* prov_file_read(const char *filename)
 
 	sz = read(fd, str, st.st_size);
 	if (sz != st.st_size)
-		rl_printf("Incomplete read: %d vs %d\n", (int)sz,
+		bt_shell_printf("Incomplete read: %d vs %d\n", (int)sz,
 							(int)(st.st_size));
 
 	close(fd);
@@ -104,7 +103,7 @@ static void prov_file_write(json_object *jmain, bool local)
 
 	outfile = fopen(out_filename, "wr");
 	if (!outfile) {
-		rl_printf("Failed to open file %s for writing\n", out_filename);
+		bt_shell_printf("Failed to open file %s for writing\n", out_filename);
 		return;
 	}
 
@@ -577,10 +576,10 @@ void prov_db_print_node_composition(struct mesh_node *node)
 
 done:
 	if (res)
-		rl_printf("\tComposition data for node %4.4x %s\n",
+		bt_shell_printf("\tComposition data for node %4.4x %s\n",
 							primary, comp_str);
 	else
-		rl_printf("\tComposition data for node %4.4x not present\n",
+		bt_shell_printf("\tComposition data for node %4.4x not present\n",
 								primary);
 	g_free(in_str);
 
@@ -1380,7 +1379,7 @@ bool prov_db_show(const char *filename)
 	if (!str)
 		return false;
 
-	rl_printf("%s\n", str);
+	bt_shell_printf("%s\n", str);
 	g_free(str);
 	return true;
 }
@@ -1415,7 +1414,7 @@ static bool read_json_db(const char *filename, bool provisioner, bool local)
 
 		json_object_object_get_ex(jmain, "node", &jnode);
 		if (!jnode) {
-			rl_printf("Cannot find \"node\" object");
+			bt_shell_printf("Cannot find \"node\" object");
 			goto done;
 		} else
 			result = parse_node(jnode, true);
@@ -1451,7 +1450,7 @@ static bool read_json_db(const char *filename, bool provisioner, bool local)
 		goto done;
 
 	len = json_object_array_length(jarray);
-	rl_printf("# netkeys = %d\n", len);
+	bt_shell_printf("# netkeys = %d\n", len);
 
 	for (i = 0; i < len; ++i) {
 		uint32_t idx;
@@ -1489,7 +1488,7 @@ static bool read_json_db(const char *filename, bool provisioner, bool local)
 	json_object_object_get_ex(jmain, "appKeys", &jarray);
 	if (jarray) {
 		len = json_object_array_length(jarray);
-		rl_printf("# appkeys = %d\n", len);
+		bt_shell_printf("# appkeys = %d\n", len);
 
 		for (i = 0; i < len; ++i) {
 			int app_idx;
@@ -1536,7 +1535,7 @@ static bool read_json_db(const char *filename, bool provisioner, bool local)
 		goto done;
 
 	len = json_object_array_length(jarray);
-	rl_printf("# provisioners = %d\n", len);
+	bt_shell_printf("# provisioners = %d\n", len);
 
 	for (i = 0; i < len; ++i) {
 
@@ -1550,7 +1549,7 @@ static bool read_json_db(const char *filename, bool provisioner, bool local)
 		}
 
 		if (!parse_unicast_range(jtemp)) {
-			rl_printf("Doneed to parse unicast range\n");
+			bt_shell_printf("Doneed to parse unicast range\n");
 			goto done;
 		}
 	}
@@ -1563,7 +1562,7 @@ static bool read_json_db(const char *filename, bool provisioner, bool local)
 
 	len = json_object_array_length(jarray);
 
-	rl_printf("# provisioned nodes = %d\n", len);
+	bt_shell_printf("# provisioned nodes = %d\n", len);
 	for (i = 0; i < len; ++i) {
 		json_object *jnode;
 		jnode = json_object_array_get_idx(jarray, i);

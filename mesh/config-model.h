@@ -99,4 +99,3 @@
 bool config_server_init(void);
 bool config_client_init(void);
 void config_client_get_composition(uint32_t dst);
-void config_set_node(const char *args);

@@ -30,8 +30,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <signal.h>
-#include <sys/signalfd.h>
 #include <wordexp.h>
 
 #include <inttypes.h>
@@ -41,16 +39,14 @@
 #include <sys/stat.h>
 #include "bluetooth/bluetooth.h"
 
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <glib.h>
 
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
+#include "src/shared/shell.h"
 #include "src/shared/util.h"
 #include "gdbus/gdbus.h"
 #include "monitor/uuid.h"
-#include "client/display.h"
 #include "mesh/mesh-net.h"
 #include "mesh/gatt.h"
 #include "mesh/crypto.h"
@@ -77,7 +73,6 @@
 #define MESH_PROXY_DATA_IN_UUID_STR	"00002add-0000-1000-8000-00805f9b34fb"
 #define MESH_PROXY_DATA_OUT_UUID_STR	"00002ade-0000-1000-8000-00805f9b34fb"
 
-static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
 struct adapter {
@@ -103,8 +98,7 @@ static char *mesh_local_config_filename;
 static bool discovering = false;
 static bool discover_mesh;
 static uint16_t prov_net_key_index = NET_IDX_PRIMARY;
-
-static guint input = 0;
+static const struct bt_shell_menu main_menu;
 
 #define CONN_TYPE_NETWORK	0x00
 #define CONN_TYPE_IDENTITY	0x01
@@ -175,7 +169,7 @@ static bool char_is_mesh(GDBusProxy *proxy, const char *target_uuid)
 static gboolean check_default_ctrl(void)
 {
 	if (!default_ctrl) {
-		rl_printf("No default controller available\n");
+		bt_shell_printf("No default controller available\n");
 		return FALSE;
 	}
 
@@ -184,60 +178,19 @@ static gboolean check_default_ctrl(void)
 
 static void proxy_leak(gpointer data)
 {
-	rl_printf("Leaking proxy %p\n", data);
-}
-
-static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
-{
-	if (condition & G_IO_IN) {
-		rl_callback_read_char();
-		return TRUE;
-	}
-
-	if (condition & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
-		g_main_loop_quit(main_loop);
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-static guint setup_standard_input(void)
-{
-	GIOChannel *channel;
-	guint source;
-
-	channel = g_io_channel_unix_new(fileno(stdin));
-
-	source = g_io_add_watch(channel,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				input_handler, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
+	bt_shell_printf("Leaking proxy %p\n", data);
 }
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
-	rl_set_prompt(PROMPT_ON);
-	rl_printf("\r");
-	rl_on_new_line();
-	rl_redisplay();
+	bt_shell_set_prompt(PROMPT_ON);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
-	if (input > 0) {
-		g_source_remove(input);
-		input = 0;
-	}
+	bt_shell_detach();
 
-	rl_set_prompt(PROMPT_OFF);
-	rl_printf("\r");
-	rl_on_new_line();
-	rl_redisplay();
+	bt_shell_set_prompt(PROMPT_OFF);
 
 	g_list_free_full(ctrl_list, proxy_leak);
 	ctrl_list = NULL;
@@ -260,7 +213,7 @@ static void print_adapter(GDBusProxy *proxy, const char *description)
 	else
 		name = "<unknown>";
 
-	rl_printf("%s%s%sController %s %s %s\n",
+	bt_shell_printf("%s%s%sController %s %s %s\n",
 				description ? "[" : "",
 				description ? : "",
 				description ? "] " : "",
@@ -286,7 +239,7 @@ static void print_device(GDBusProxy *proxy, const char *description)
 	else
 		name = "<unknown>";
 
-	rl_printf("%s%s%sDevice %s %s\n",
+	bt_shell_printf("%s%s%sDevice %s %s\n",
 				description ? "[" : "",
 				description ? : "",
 				description ? "] " : "",
@@ -306,39 +259,39 @@ static void print_iter(const char *label, const char *name,
 	char *entry;
 
 	if (iter == NULL) {
-		rl_printf("%s%s is nil\n", label, name);
+		bt_shell_printf("%s%s is nil\n", label, name);
 		return;
 	}
 
 	switch (dbus_message_iter_get_arg_type(iter)) {
 	case DBUS_TYPE_INVALID:
-		rl_printf("%s%s is invalid\n", label, name);
+		bt_shell_printf("%s%s is invalid\n", label, name);
 		break;
 	case DBUS_TYPE_STRING:
 	case DBUS_TYPE_OBJECT_PATH:
 		dbus_message_iter_get_basic(iter, &valstr);
-		rl_printf("%s%s: %s\n", label, name, valstr);
+		bt_shell_printf("%s%s: %s\n", label, name, valstr);
 		break;
 	case DBUS_TYPE_BOOLEAN:
 		dbus_message_iter_get_basic(iter, &valbool);
-		rl_printf("%s%s: %s\n", label, name,
+		bt_shell_printf("%s%s: %s\n", label, name,
 					valbool == TRUE ? "yes" : "no");
 		break;
 	case DBUS_TYPE_UINT32:
 		dbus_message_iter_get_basic(iter, &valu32);
-		rl_printf("%s%s: 0x%06x\n", label, name, valu32);
+		bt_shell_printf("%s%s: 0x%06x\n", label, name, valu32);
 		break;
 	case DBUS_TYPE_UINT16:
 		dbus_message_iter_get_basic(iter, &valu16);
-		rl_printf("%s%s: 0x%04x\n", label, name, valu16);
+		bt_shell_printf("%s%s: 0x%04x\n", label, name, valu16);
 		break;
 	case DBUS_TYPE_INT16:
 		dbus_message_iter_get_basic(iter, &vals16);
-		rl_printf("%s%s: %d\n", label, name, vals16);
+		bt_shell_printf("%s%s: %d\n", label, name, vals16);
 		break;
 	case DBUS_TYPE_BYTE:
 		dbus_message_iter_get_basic(iter, &byte);
-		rl_printf("%s%s: 0x%02x\n", label, name, byte);
+		bt_shell_printf("%s%s: 0x%02x\n", label, name, byte);
 		break;
 	case DBUS_TYPE_VARIANT:
 		dbus_message_iter_recurse(iter, &subiter);
@@ -364,7 +317,7 @@ static void print_iter(const char *label, const char *name,
 		g_free(entry);
 		break;
 	default:
-		rl_printf("%s%s has unsupported type\n", label, name);
+		bt_shell_printf("%s%s has unsupported type\n", label, name);
 		break;
 	}
 }
@@ -405,14 +358,14 @@ static void print_prov_service(struct prov_svc_data *prov_data)
 	char txt_uuid[16 * 2 + 1];
 	int i;
 
-	rl_printf("%sMesh Provisioning Service (%s)\n", prefix,
+	bt_shell_printf("%sMesh Provisioning Service (%s)\n", prefix,
 							MESH_PROV_SVC_UUID);
 	for (i = 0; i < 16; ++i) {
 		sprintf(txt_uuid + (i * 2), "%2.2x", prov_data->dev_uuid[i]);
 	}
 
-	rl_printf("%s\tDevice UUID: %s\n", prefix, txt_uuid);
-	rl_printf("%s\tOOB: %4.4x\n", prefix, prov_data->oob);
+	bt_shell_printf("%s\tDevice UUID: %s\n", prefix, txt_uuid);
+	bt_shell_printf("%s\tOOB: %4.4x\n", prefix, prov_data->oob);
 
 }
 
@@ -440,7 +393,7 @@ static bool parse_mesh_service_data(const char *uuid, uint8_t *data, int len,
 	const char *prefix = "\t\t";
 
 	if (!(len == 9 && data[0] == 0x00) && !(len == 17 && data[0] == 0x01)) {
-		rl_printf("Unexpected mesh proxy service data length %d\n",
+		bt_shell_printf("Unexpected mesh proxy service data length %d\n",
 									len);
 		return false;
 	}
@@ -453,7 +406,7 @@ static bool parse_mesh_service_data(const char *uuid, uint8_t *data, int len,
 
 		if (IS_UNASSIGNED(connection.unicast)) {
 			/* This would be a bug */
-			rl_printf("Error: Searching identity with "
+			bt_shell_printf("Error: Searching identity with "
 							"unicast 0000\n");
 			return false;
 		}
@@ -467,9 +420,9 @@ static bool parse_mesh_service_data(const char *uuid, uint8_t *data, int len,
 			return false;
 
 		if (discovering) {
-			rl_printf("\n%sMesh Proxy Service (%s)\n", prefix,
+			bt_shell_printf("\n%sMesh Proxy Service (%s)\n", prefix,
 									uuid);
-			rl_printf("%sIdentity for node %4.4x\n", prefix,
+			bt_shell_printf("%sIdentity for node %4.4x\n", prefix,
 							connection.unicast);
 		}
 
@@ -480,9 +433,9 @@ static bool parse_mesh_service_data(const char *uuid, uint8_t *data, int len,
 			return false;
 
 		if (discovering) {
-			rl_printf("\n%sMesh Proxy Service (%s)\n", prefix,
+			bt_shell_printf("\n%sMesh Proxy Service (%s)\n", prefix,
 									uuid);
-			rl_printf("%sNetwork Beacon for net index %4.4x\n",
+			bt_shell_printf("%sNetwork Beacon for net index %4.4x\n",
 							prefix, net_idx);
 		}
 	}
@@ -590,10 +543,10 @@ static void print_uuids(GDBusProxy *proxy)
 				n = sizeof(str) - 1;
 			}
 
-			rl_printf("\tUUID: %s%*c(%s)\n",
+			bt_shell_printf("\tUUID: %s%*c(%s)\n",
 						str, 26 - n, ' ', uuid);
 		} else
-			rl_printf("\tUUID: %*c(%s)\n", 26, ' ', uuid);
+			bt_shell_printf("\tUUID: %*c(%s)\n", 26, ' ', uuid);
 
 		dbus_message_iter_next(&value);
 	}
@@ -666,14 +619,12 @@ static void set_connected_device(GDBusProxy *proxy)
 				mesh ? buf : "");
 
 done:
-	rl_set_prompt(desc ? desc : PROMPT_ON);
-	rl_printf("\r");
-	rl_on_new_line();
+	bt_shell_set_prompt(desc ? desc : PROMPT_ON);
 	g_free(desc);
 
 	/* If disconnected, return to main menu */
 	if (proxy == NULL)
-		cmd_menu_main(true);
+		bt_shell_set_menu(&main_menu);
 }
 
 static void connect_reply(DBusMessage *message, void *user_data)
@@ -684,13 +635,13 @@ static void connect_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to connect: %s\n", error.name);
+		bt_shell_printf("Failed to connect: %s\n", error.name);
 		dbus_error_free(&error);
 		set_connected_device(NULL);
 		return;
 	}
 
-	rl_printf("Connection successful\n");
+	bt_shell_printf("Connection successful\n");
 
 	set_connected_device(proxy);
 }
@@ -757,10 +708,10 @@ static void update_device_info(GDBusProxy *proxy)
 						connect_reply, proxy, NULL);
 
 		if (!res)
-			rl_printf("Failed to connect to mesh\n");
+			bt_shell_printf("Failed to connect to mesh\n");
 
 		else
-			rl_printf("Trying to connect to mesh\n");
+			bt_shell_printf("Trying to connect to mesh\n");
 
 	}
 }
@@ -786,10 +737,10 @@ static void data_out_notify(GDBusProxy *proxy, bool enable,
 	node = node_find_by_uuid(connection.dev_uuid);
 
 	if (!mesh_gatt_notify(proxy, enable, cb, node))
-		rl_printf("Failed to %s notification on %s\n", enable ?
+		bt_shell_printf("Failed to %s notification on %s\n", enable ?
 				"start" : "stop", g_dbus_proxy_get_path(proxy));
 	else
-		rl_printf("%s notification on %s\n", enable ?
+		bt_shell_printf("%s notification on %s\n", enable ?
 			  "Start" : "Stop", g_dbus_proxy_get_path(proxy));
 }
 
@@ -810,14 +761,14 @@ static void disconnect(GDBusReturnFunction cb, void *user_data)
 
 	if (g_dbus_proxy_method_call(proxy, "Disconnect", NULL, cb, user_data,
 							NULL) == FALSE) {
-		rl_printf("Failed to disconnect\n");
+		bt_shell_printf("Failed to disconnect\n");
 		return;
 	}
 
 	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == TRUE)
 			dbus_message_iter_get_basic(&iter, &addr);
 
-	rl_printf("Attempting to disconnect from %s\n", addr);
+	bt_shell_printf("Attempting to disconnect from %s\n", addr);
 }
 
 static void disc_notify_cb(DBusMessage *message, void *user_data)
@@ -863,49 +814,49 @@ static void notify_prov_out_cb(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to start notify: %s\n", error.name);
+		bt_shell_printf("Failed to start notify: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
-	rl_printf("Notify for Mesh Provisioning Out Data started\n");
+	bt_shell_printf("Notify for Mesh Provisioning Out Data started\n");
 
 	if (connection.type != CONN_TYPE_PROVISION) {
-		rl_printf("Error: wrong connection type %d (expected %d)\n",
+		bt_shell_printf("Error: wrong connection type %d (expected %d)\n",
 			connection.type, CONN_TYPE_PROVISION);
 		return;
 	}
 
 	if (!connection.data_in) {
-		rl_printf("Error: don't have mesh provisioning data in\n");
+		bt_shell_printf("Error: don't have mesh provisioning data in\n");
 		return;
 	}
 
 	if (!node) {
-		rl_printf("Error: provisioning node not present\n");
+		bt_shell_printf("Error: provisioning node not present\n");
 		return;
 	}
 
 	if(!prov_open(node, connection.data_in, prov_net_key_index,
 			mesh_prov_done, node))
 	{
-		rl_printf("Failed to start provisioning\n");
+		bt_shell_printf("Failed to start provisioning\n");
 		node_free(node);
 		disconnect_device(NULL, NULL);
 	} else
-		rl_printf("Initiated provisioning\n");
+		bt_shell_printf("Initiated provisioning\n");
 
 }
 
 static void session_open_cb (int status)
 {
 	if (status) {
-		rl_printf("Failed to open Mesh session\n");
+		bt_shell_printf("Failed to open Mesh session\n");
 		disconnect_device(NULL, NULL);
 		return;
 	}
 
-	rl_printf("Mesh session is open\n");
+	bt_shell_printf("Mesh session is open\n");
 
 	/* Get composition data for a newly provisioned node */
 	if (connection.type == CONN_TYPE_IDENTITY)
@@ -919,27 +870,27 @@ static void notify_proxy_out_cb(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to start notify: %s\n", error.name);
+		bt_shell_printf("Failed to start notify: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
-	rl_printf("Notify for Mesh Proxy Out Data started\n");
+	bt_shell_printf("Notify for Mesh Proxy Out Data started\n");
 
 	if (connection.type != CONN_TYPE_IDENTITY &&
 			connection.type != CONN_TYPE_NETWORK) {
-		rl_printf("Error: wrong connection type %d "
+		bt_shell_printf("Error: wrong connection type %d "
 				"(expected %d or %d)\n", connection.type,
 				CONN_TYPE_IDENTITY, CONN_TYPE_NETWORK);
 		return;
 	}
 
 	if (!connection.data_in) {
-		rl_printf("Error: don't have mesh proxy data in\n");
+		bt_shell_printf("Error: don't have mesh proxy data in\n");
 		return;
 	}
 
-	rl_printf("Trying to open mesh session\n");
+	bt_shell_printf("Trying to open mesh session\n");
 	net_session_open(connection.data_in, true, session_open_cb);
 	connection.session_open = true;
 }
@@ -964,14 +915,14 @@ static GDBusProxy *get_characteristic(GDBusProxy *device, const char *char_uuid)
 	if (l)
 		service = l->data;
 	else {
-		rl_printf("Mesh service not found\n");
+		bt_shell_printf("Mesh service not found\n");
 		return	NULL;
 	}
 
 	for (l = char_list; l; l = l->next) {
 		if (mesh_gatt_is_child(l->data, service, "Service") &&
 					char_is_mesh(l->data, char_uuid)) {
-			rl_printf("Found matching char: path %s, uuid %s\n",
+			bt_shell_printf("Found matching char: path %s, uuid %s\n",
 				g_dbus_proxy_get_path(l->data), char_uuid);
 			return l->data;
 		}
@@ -1013,7 +964,7 @@ static void mesh_session_setup(GDBusProxy *proxy)
 
 fail:
 
-	rl_printf("Services resolved, mesh characteristics not found\n");
+	bt_shell_printf("Services resolved, mesh characteristics not found\n");
 }
 
 static void proxy_added(GDBusProxy *proxy, void *user_data)
@@ -1032,13 +983,13 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	} else if (!strcmp(interface, "org.bluez.GattService1") &&
 						service_is_mesh(proxy, NULL)) {
 
-		rl_printf("Service added %s\n", g_dbus_proxy_get_path(proxy));
+		bt_shell_printf("Service added %s\n", g_dbus_proxy_get_path(proxy));
 		service_list = g_list_append(service_list, proxy);
 
 	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1") &&
 						char_is_mesh(proxy, NULL)) {
 
-		rl_printf("Char added %s:\n", g_dbus_proxy_get_path(proxy));
+		bt_shell_printf("Char added %s:\n", g_dbus_proxy_get_path(proxy));
 
 		char_list = g_list_append(char_list, proxy);
 	}
@@ -1052,13 +1003,13 @@ static void start_discovery_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to %s discovery: %s\n",
+		bt_shell_printf("Failed to %s discovery: %s\n",
 				enable == TRUE ? "start" : "stop", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
-	rl_printf("Discovery %s\n", enable == TRUE ? "started" : "stopped");
+	bt_shell_printf("Discovery %s\n", enable == TRUE ? "started" : "stopped");
 }
 
 static struct mesh_device *find_device_by_proxy(GList *source,
@@ -1210,7 +1161,7 @@ static bool process_mesh_characteristic(GDBusProxy *proxy)
 			node = node_find_by_uuid(connection.dev_uuid);
 
 			if (!node) {
-				rl_printf("Node not found?\n");
+				bt_shell_printf("Node not found?\n");
 				return false;
 			}
 
@@ -1256,7 +1207,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 				dbus_message_iter_get_basic(iter, &resolved);
 
-				rl_printf("Services resolved %s\n", resolved ?
+				bt_shell_printf("Services resolved %s\n", resolved ?
 								"yes" : "no");
 
 				if (resolved)
@@ -1268,7 +1219,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 		DBusMessageIter addr_iter;
 		char *str;
 
-		rl_printf("Adapter property changed \n");
+		bt_shell_printf("Adapter property changed \n");
 		if (g_dbus_proxy_get_property(proxy, "Address",
 						&addr_iter) == TRUE) {
 			const char *address;
@@ -1289,10 +1240,10 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 		print_iter(str, name, iter);
 		g_free(str);
 	} else if (!strcmp(interface, "org.bluez.GattService1")) {
-		rl_printf("Service property changed %s\n",
+		bt_shell_printf("Service property changed %s\n",
 						g_dbus_proxy_get_path(proxy));
 	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
-		rl_printf("Characteristic property changed %s\n",
+		bt_shell_printf("Characteristic property changed %s\n",
 						g_dbus_proxy_get_path(proxy));
 
 		if ((strcmp(name, "Value") == 0) &&
@@ -1305,7 +1256,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	rl_printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
+	bt_shell_printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
 					dbus_message_get_member(message));
 }
 
@@ -1331,28 +1282,24 @@ static struct adapter *find_ctrl_by_address(GList *source, const char *address)
 	return NULL;
 }
 
-static gboolean parse_argument_on_off(const char *arg, dbus_bool_t *value)
+static gboolean parse_argument_on_off(int argc, char *argv[],
+					dbus_bool_t *value)
 {
-	if (!arg || !strlen(arg)) {
-		rl_printf("Missing on/off argument\n");
-		return FALSE;
-	}
-
-	if (!strcmp(arg, "on") || !strcmp(arg, "yes")) {
+	if (!strcmp(argv[1], "on") || !strcmp(argv[1], "yes")) {
 		*value = TRUE;
 		return TRUE;
 	}
 
-	if (!strcmp(arg, "off") || !strcmp(arg, "no")) {
+	if (!strcmp(argv[1], "off") || !strcmp(argv[1], "no")) {
 		*value = FALSE;
 		return TRUE;
 	}
 
-	rl_printf("Invalid argument %s\n", arg);
+	bt_shell_printf("Invalid argument %s\n", argv[1]);
 	return FALSE;
 }
 
-static void cmd_list(const char *arg)
+static void cmd_list(int argc, char *argv[])
 {
 	GList *list;
 
@@ -1362,7 +1309,7 @@ static void cmd_list(const char *arg)
 	}
 }
 
-static void cmd_show(const char *arg)
+static void cmd_show(int argc, char *argv[])
 {
 	struct adapter *adapter;
 	GDBusProxy *proxy;
@@ -1370,15 +1317,16 @@ static void cmd_show(const char *arg)
 	const char *address;
 
 
-	if (!arg || !strlen(arg)) {
+	if (argc < 2 || !strlen(argv[1])) {
 		if (check_default_ctrl() == FALSE)
 			return;
 
 		proxy = default_ctrl->proxy;
 	} else {
-		adapter = find_ctrl_by_address(ctrl_list, arg);
+		adapter = find_ctrl_by_address(ctrl_list, argv[1]);
 		if (!adapter) {
-			rl_printf("Controller %s not available\n", arg);
+			bt_shell_printf("Controller %s not available\n",
+								argv[1]);
 			return;
 		}
 		proxy = adapter->proxy;
@@ -1388,7 +1336,7 @@ static void cmd_show(const char *arg)
 		return;
 
 	dbus_message_iter_get_basic(&iter, &address);
-	rl_printf("Controller %s\n", address);
+	bt_shell_printf("Controller %s\n", address);
 
 	print_property(proxy, "Name");
 	print_property(proxy, "Alias");
@@ -1400,18 +1348,13 @@ static void cmd_show(const char *arg)
 	print_property(proxy, "Discovering");
 }
 
-static void cmd_select(const char *arg)
+static void cmd_select(int argc, char *argv[])
 {
 	struct adapter *adapter;
 
-	if (!arg || !strlen(arg)) {
-		rl_printf("Missing controller address argument\n");
-		return;
-	}
-
-	adapter = find_ctrl_by_address(ctrl_list, arg);
+	adapter = find_ctrl_by_address(ctrl_list, argv[1]);
 	if (!adapter) {
-		rl_printf("Controller %s not available\n", arg);
+		bt_shell_printf("Controller %s not available\n", argv[1]);
 		return;
 	}
 
@@ -1429,17 +1372,17 @@ static void generic_callback(const DBusError *error, void *user_data)
 	char *str = user_data;
 
 	if (dbus_error_is_set(error))
-		rl_printf("Failed to set %s: %s\n", str, error->name);
+		bt_shell_printf("Failed to set %s: %s\n", str, error->name);
 	else
-		rl_printf("Changing %s succeeded\n", str);
+		bt_shell_printf("Changing %s succeeded\n", str);
 }
 
-static void cmd_power(const char *arg)
+static void cmd_power(int argc, char *argv[])
 {
 	dbus_bool_t powered;
 	char *str;
 
-	if (parse_argument_on_off(arg, &powered) == FALSE)
+	if (parse_argument_on_off(argc, argv, &powered) == FALSE)
 		return;
 
 	if (check_default_ctrl() == FALSE)
@@ -1455,12 +1398,12 @@ static void cmd_power(const char *arg)
 	g_free(str);
 }
 
-static void cmd_scan(const char *arg)
+static void cmd_scan(int argc, char *argv[])
 {
 	dbus_bool_t enable;
 	const char *method;
 
-	if (parse_argument_on_off(arg, &enable) == FALSE)
+	if (parse_argument_on_off(argc, argv, &enable) == FALSE)
 		return;
 
 	if (check_default_ctrl() == FALSE)
@@ -1475,7 +1418,7 @@ static void cmd_scan(const char *arg)
 	if (g_dbus_proxy_method_call(default_ctrl->proxy, method,
 				NULL, start_discovery_reply,
 				GUINT_TO_POINTER(enable), NULL) == FALSE) {
-		rl_printf("Failed to %s discovery\n",
+		bt_shell_printf("Failed to %s discovery\n",
 					enable == TRUE ? "start" : "stop");
 		return;
 	}
@@ -1617,12 +1560,12 @@ static void set_discovery_filter_reply(DBusMessage *message, void *user_data)
 
 	dbus_error_init(&error);
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("SetDiscoveryFilter failed: %s\n", error.name);
+		bt_shell_printf("SetDiscoveryFilter failed: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
-	rl_printf("SetDiscoveryFilter success\n");
+	bt_shell_printf("SetDiscoveryFilter success\n");
 }
 
 static gint filtered_scan_rssi = DISTANCE_VAL_INVALID;
@@ -1648,24 +1591,23 @@ static void set_scan_filter_commit(void)
 	if (g_dbus_proxy_method_call(default_ctrl->proxy, "SetDiscoveryFilter",
 		set_discovery_filter_setup, set_discovery_filter_reply,
 		&args, NULL) == FALSE) {
-		rl_printf("Failed to set discovery filter\n");
+		bt_shell_printf("Failed to set discovery filter\n");
 		return;
 	}
 }
 
-static void set_scan_filter_uuids(const char *arg)
+static void set_scan_filter_uuids(int argc, char *argv[])
 {
 	g_strfreev(filtered_scan_uuids);
 	filtered_scan_uuids = NULL;
 	filtered_scan_uuids_len = 0;
 
-	if (!arg || !strlen(arg))
+	if (!argc || !strlen(argv[0]))
 		goto commit;
 
-	rl_printf("set_scan_filter_uuids %s\n", arg);
-	filtered_scan_uuids = g_strsplit(arg, " ", -1);
+	filtered_scan_uuids = g_strdupv(argv);
 	if (!filtered_scan_uuids) {
-		rl_printf("Failed to parse input\n");
+		bt_shell_printf("Failed to parse input\n");
 		return;
 	}
 
@@ -1675,21 +1617,22 @@ commit:
 	set_scan_filter_commit();
 }
 
-static void cmd_scan_unprovisioned_devices(const char *arg)
+static void cmd_scan_unprovisioned_devices(int argc, char *argv[])
 {
 	dbus_bool_t enable;
+	char *filters[] = { MESH_PROV_SVC_UUID, NULL };
 
-	if (parse_argument_on_off(arg, &enable) == FALSE)
+	if (parse_argument_on_off(argc, argv, &enable) == FALSE)
 		return;
 
 	if (enable == TRUE) {
 		discover_mesh = false;
-		set_scan_filter_uuids(MESH_PROV_SVC_UUID);
+		set_scan_filter_uuids(1, filters);
 	}
-	cmd_scan(arg);
+	cmd_scan(argc, argv);
 }
 
-static void cmd_info(const char *arg)
+static void cmd_info(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	DBusMessageIter iter;
@@ -1703,7 +1646,7 @@ static void cmd_info(const char *arg)
 		return;
 
 	dbus_message_iter_get_basic(&iter, &address);
-	rl_printf("Device %s\n", address);
+	bt_shell_printf("Device %s\n", address);
 
 	print_property(proxy, "Name");
 	print_property(proxy, "Alias");
@@ -1735,71 +1678,67 @@ static const char *security2str(uint8_t level)
 	}
 }
 
-static void cmd_security(const char *arg)
+static void cmd_security(int argc, char *argv[])
 {
 	uint8_t level;
 	char *end;
 
-	if (!arg || arg[0] == '\0') {
-		level = prov_get_sec_level();
-		goto done;
-	}
-
-	level = strtol(arg, &end, 10);
-	if (end == arg || !prov_set_sec_level(level)) {
-		rl_printf("Invalid security level %s\n", arg);
+	level = strtol(argv[1], &end, 10);
+	if (end == argv[1] || !prov_set_sec_level(level)) {
+		bt_shell_printf("Invalid security level %s\n", argv[1]);
 		return;
 	}
 
-done:
-	rl_printf("Provision Security Level set to %u (%s)\n", level,
+	bt_shell_printf("Provision Security Level set to %u (%s)\n", level,
 						security2str(level));
 }
 
-static void cmd_connect(const char *arg)
+static void cmd_connect(int argc, char *argv[])
 {
+	char *filters[] = { MESH_PROXY_SVC_UUID, NULL };
+
 	if (check_default_ctrl() == FALSE)
 		return;
 
 	memset(&connection, 0, sizeof(connection));
 
-	if (!arg || !strlen(arg)) {
+	if (argc < 2 || !strlen(argv[1])) {
 		connection.net_idx = NET_IDX_PRIMARY;
 	} else {
 		char *end;
-		connection.net_idx = strtol(arg, &end, 16);
-		if (end == arg) {
+		connection.net_idx = strtol(argv[1], &end, 16);
+		if (end == argv[1]) {
 			connection.net_idx = NET_IDX_INVALID;
-			rl_printf("Invalid network index %s\n", arg);
+			bt_shell_printf("Invalid network index %s\n", argv[1]);
 			return;
 		}
 
-		connection.unicast = strtol(end, NULL, 16);
+		if (argc > 2)
+			connection.unicast = strtol(argv[2], NULL, 16);
 	}
 
 	if (discovering)
 		g_dbus_proxy_method_call(default_ctrl->proxy, "StopDiscovery",
 						NULL, NULL, NULL, NULL);
 
-	set_scan_filter_uuids(MESH_PROXY_SVC_UUID);
+	set_scan_filter_uuids(1, filters);
 	discover_mesh = true;
 
 	if (connection.unicast == UNASSIGNED_ADDRESS) {
 		connection.type = CONN_TYPE_NETWORK;
-		rl_printf("Looking for mesh network with net index %4.4x\n",
-				connection.net_idx);
+		bt_shell_printf("Looking for mesh network with net index "
+				"%4.4x\n", connection.net_idx);
 	} else {
 		connection.type = CONN_TYPE_IDENTITY;
-		rl_printf("Looking for node id %4.4x"
+		bt_shell_printf("Looking for node id %4.4x"
 				" on network with net index %4.4x\n",
 				connection.unicast, connection.net_idx);
 	}
 
-
 	if (g_dbus_proxy_method_call(default_ctrl->proxy,
 			"StartDiscovery", NULL, start_discovery_reply,
 				GUINT_TO_POINTER(TRUE), NULL) == FALSE)
-		rl_printf("Failed to start mesh proxy discovery\n");
+		bt_shell_printf("Failed to start mesh proxy discovery\n");
 
 	g_dbus_proxy_method_call(default_ctrl->proxy, "StartDiscovery",
 						NULL, NULL, NULL, NULL);
@@ -1809,19 +1748,20 @@ static void cmd_connect(const char *arg)
 static void prov_disconn_reply(DBusMessage *message, void *user_data)
 {
 	struct mesh_node *node = user_data;
+	char *filters[] = { MESH_PROXY_SVC_UUID, NULL };
 	DBusError error;
 
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to disconnect: %s\n", error.name);
+		bt_shell_printf("Failed to disconnect: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
 	set_connected_device(NULL);
 
-	set_scan_filter_uuids(MESH_PROXY_SVC_UUID);
+	set_scan_filter_uuids(1, filters);
 	discover_mesh = true;
 
 	connection.type = CONN_TYPE_IDENTITY;
@@ -1832,7 +1772,7 @@ static void prov_disconn_reply(DBusMessage *message, void *user_data)
 	if (g_dbus_proxy_method_call(default_ctrl->proxy,
 			"StartDiscovery", NULL, start_discovery_reply,
 				GUINT_TO_POINTER(TRUE), NULL) == FALSE)
-		rl_printf("Failed to start mesh proxy discovery\n");
+		bt_shell_printf("Failed to start mesh proxy discovery\n");
 
 }
 
@@ -1844,12 +1784,12 @@ static void disconn_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		rl_printf("Failed to disconnect: %s\n", error.name);
+		bt_shell_printf("Failed to disconnect: %s\n", error.name);
 		dbus_error_free(&error);
 		return;
 	}
 
-	rl_printf("Successfully disconnected\n");
+	bt_shell_printf("Successfully disconnected\n");
 
 	if (proxy != connection.device)
 		return;
@@ -1857,7 +1797,7 @@ static void disconn_reply(DBusMessage *message, void *user_data)
 	set_connected_device(NULL);
 }
 
-static void cmd_disconn(const char *arg)
+static void cmd_disconn(int argc, char *argv[])
 {
 	if (connection.type == CONN_TYPE_PROVISION) {
 		struct mesh_node *node = node_find_by_uuid(connection.dev_uuid);
@@ -1873,53 +1813,49 @@ static void mesh_prov_done(void *user_data, int status)
 	struct mesh_node *node = user_data;
 
 	if (status){
-		rl_printf("Provisioning failed\n");
+		bt_shell_printf("Provisioning failed\n");
 		node_free(node);
 		disconnect_device(NULL, NULL);
 		return;
 	}
 
-	rl_printf("Provision success. Assigned Primary Unicast %4.4x\n",
+	bt_shell_printf("Provision success. Assigned Primary Unicast %4.4x\n",
 						node_get_primary(node));
 
 	if (!prov_db_add_new_node(node))
-		rl_printf("Failed to add node to provisioning DB\n");
+		bt_shell_printf("Failed to add node to provisioning DB\n");
 
 	disconnect_device(prov_disconn_reply, node);
 }
 
-static void cmd_start_prov(const char *arg)
+static void cmd_start_prov(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	struct mesh_device *dev;
 	struct mesh_node *node;
 	int len;
 
-	if (!arg) {
-		rl_printf("Mesh Device UUID is required\n");
-		return;
-	}
-
-	len = strlen(arg);
+	len = strlen(argv[1]);
 	if ( len > 32 || len % 2) {
-		rl_printf("Incorrect UUID size %d\n", len);
+		bt_shell_printf("Incorrect UUID size %d\n", len);
 	}
 
 	disconnect_device(NULL, NULL);
 
 	memset(connection.dev_uuid, 0, 16);
-	str2hex(arg, len, connection.dev_uuid, len/2);
+	str2hex(argv[1], len, connection.dev_uuid, len/2);
 
 	node = node_find_by_uuid(connection.dev_uuid);
 	if (!node) {
-		rl_printf("Device with UUID %s not found.\n", arg);
-		rl_printf("Stale services? Remove device and re-discover\n");
+		bt_shell_printf("Device with UUID %s not found.\n", argv[1]);
+		bt_shell_printf("Stale services? Remove device and "
+						"re-discover\n");
 		return;
 	}
 
 	/* TODO: add command to remove a node from mesh, i.e., "unprovision" */
 	if (node_is_provisioned(node)) {
-		rl_printf("Already provisioned with unicast %4.4x\n",
+		bt_shell_printf("Already provisioned with unicast %4.4x\n",
 				node_get_primary(node));
 		return;
 	}
@@ -1927,7 +1863,7 @@ static void cmd_start_prov(const char *arg)
 	dev = find_device_by_uuid(default_ctrl->mesh_devices,
 				  connection.dev_uuid);
 	if (!dev || !dev->proxy) {
-		rl_printf("Could not find device proxy\n");
+		bt_shell_printf("Could not find device proxy\n");
 		memset(connection.dev_uuid, 0, 16);
 		return;
 	}
@@ -1942,71 +1878,32 @@ static void cmd_start_prov(const char *arg)
 
 	if (g_dbus_proxy_method_call(proxy, "Connect", NULL, connect_reply,
 							proxy, NULL) == FALSE) {
-		rl_printf("Failed to connect ");
+		bt_shell_printf("Failed to connect ");
 		print_device(proxy, NULL);
 		return;
 	} else {
-		rl_printf("Trying to connect ");
+		bt_shell_printf("Trying to connect ");
 		print_device(proxy, NULL);
 	}
 
 }
 
-static void cmd_config(const char *arg)
-{
-	rl_printf("Switching to Mesh Client configuration menu\n");
-
-	if (!switch_cmd_menu("configure"))
-		return;
-
-	set_menu_prompt("config", NULL);
-
-	if (arg && strlen(arg))
-		config_set_node(arg);
-}
-
-static void cmd_onoff_cli(const char *arg)
-{
-	rl_printf("Switching to Mesh Generic ON OFF Client menu\n");
-
-	if (!switch_cmd_menu("onoff"))
-		return;
-
-	set_menu_prompt("on/off", NULL);
-
-	if (arg && strlen(arg))
-		onoff_set_node(arg);
-}
-
-static void cmd_print_mesh(const char *arg)
+static void cmd_print_mesh(int argc, char *argv[])
 {
 	if (!prov_db_show(mesh_prov_db_filename))
-		rl_printf("Unavailable\n");
+		bt_shell_printf("Unavailable\n");
 
 }
 
- static void cmd_print_local(const char *arg)
+ static void cmd_print_local(int argc, char *argv[])
 {
 	if (!prov_db_show(mesh_local_config_filename))
-		rl_printf("Unavailable\n");
+		bt_shell_printf("Unavailable\n");
 }
 
-static void disc_quit_cb(DBusMessage *message, void *user_data)
-{
-	g_main_loop_quit(main_loop);
-}
-
-static void cmd_quit(const char *arg)
-{
-	if (connection.device) {
-		disconnect_device(disc_quit_cb, NULL);
-		return;
-	}
-
-	g_main_loop_quit(main_loop);
-}
-
-static const struct menu_entry meshctl_cmd_table[] = {
+static const struct bt_shell_menu main_menu = {
+	.name = "main",
+	.entries = {
 	{ "list",         NULL,       cmd_list, "List available controllers"},
 	{ "show",         "[ctrl]",   cmd_show, "Controller information"},
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller"},
@@ -2023,195 +1920,44 @@ static const struct menu_entry meshctl_cmd_table[] = {
 	{ "mesh-info",    NULL,       cmd_print_mesh,
 					"Mesh networkinfo (provisioner)" },
 	{ "local-info",    NULL,      cmd_print_local, "Local mesh node info" },
-	{ "configure",    "[dst]",    cmd_config, "Config client model menu"},
-	{ "onoff",        "[dst]",    cmd_onoff_cli,
-						"Generic On/Off model menu"},
-	{ "quit",         NULL,       cmd_quit, "Quit program" },
-	{ "exit",         NULL,       cmd_quit },
-	{ "help" },
-	{ }
+	{ } },
 };
 
-static void rl_handler(char *input)
-{
-	char *cmd, *arg;
-
-	if (!input) {
-		rl_insert_text("quit");
-		rl_redisplay();
-		rl_crlf();
-		g_main_loop_quit(main_loop);
-		return;
-	}
-
-	if (!strlen(input))
-		goto done;
-	else if (!strcmp(input, "q") || !strcmp(input, "quit")
-						|| !strcmp(input, "exit")) {
-		cmd_quit(NULL);
-		goto done;
-	}
-
-	if (!rl_release_prompt(input))
-		goto done;
-
-	add_history(input);
-
-	cmd = strtok_r(input, " \t\r\n", &arg);
-	if (!cmd)
-		goto done;
-
-	process_menu_cmd(cmd, arg);
-
-done:
-	free(input);
-}
-
-static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
-{
-	static bool terminated = false;
-	struct signalfd_siginfo si;
-	ssize_t result;
-	int fd;
-
-	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		g_main_loop_quit(main_loop);
-		return FALSE;
-	}
-
-	fd = g_io_channel_unix_get_fd(channel);
-
-	result = read(fd, &si, sizeof(si));
-	if (result != sizeof(si))
-		return FALSE;
-
-	switch (si.ssi_signo) {
-	case SIGINT:
-		if (input) {
-			rl_replace_line("", 0);
-			rl_crlf();
-			rl_on_new_line();
-			rl_redisplay();
-			break;
-		}
-
-		/*
-		 * If input was not yet setup up that means signal was received
-		 * while daemon was not yet running. Since user is not able
-		 * to terminate client by CTRL-D or typing exit treat this as
-		 * exit and fall through.
-		 */
-
-		/* fall through */
-	case SIGTERM:
-		if (!terminated) {
-			rl_replace_line("", 0);
-			rl_crlf();
-			g_main_loop_quit(main_loop);
-		}
-
-		terminated = true;
-		break;
-	}
-
-	return TRUE;
-}
-
-static guint setup_signalfd(void)
-{
-	GIOChannel *channel;
-	guint source;
-	sigset_t mask;
-	int fd;
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
-		perror("Failed to set signal mask");
-		return 0;
-	}
-
-	fd = signalfd(-1, &mask, 0);
-	if (fd < 0) {
-		perror("Failed to create signal descriptor");
-		return 0;
-	}
-
-	channel = g_io_channel_unix_new(fd);
-
-	g_io_channel_set_close_on_unref(channel, TRUE);
-	g_io_channel_set_encoding(channel, NULL, NULL);
-	g_io_channel_set_buffered(channel, FALSE);
-
-	source = g_io_add_watch(channel,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				signal_handler, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
-}
-
-static gboolean option_version = FALSE;
 static const char *mesh_config_dir;
 
 static GOptionEntry options[] = {
 	{ "config", 'c', 0, G_OPTION_ARG_STRING, &mesh_config_dir,
 			"Read local mesh config JSON files from <directory>" },
-	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
-				"Show version information and exit" },
 	{ NULL },
 };
 
 static void client_ready(GDBusClient *client, void *user_data)
 {
-	if (!input)
-		input = setup_standard_input();
+	bt_shell_attach(fileno(stdin));
 }
 
 int main(int argc, char *argv[])
 {
-	GOptionContext *context;
-	GError *error = NULL;
 	GDBusClient *client;
-	guint signal;
 	int len;
 	int extra;
 
-	context = g_option_context_new(NULL);
-	g_option_context_add_main_entries(context, options, NULL);
-
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
-		if (error != NULL) {
-			g_printerr("%s\n", error->message);
-			g_error_free(error);
-		} else
-			g_printerr("An unknown error occurred\n");
-		exit(1);
-	}
-
-	g_option_context_free(context);
-
-	if (option_version == TRUE) {
-		rl_printf("%s\n", VERSION);
-		exit(0);
-	}
+	bt_shell_init(&argc, &argv, options);
+	bt_shell_set_menu(&main_menu);
+	bt_shell_set_prompt(PROMPT_OFF);
 
 	if (!mesh_config_dir) {
-		rl_printf("Local config directory not provided.\n");
+		bt_shell_printf("Local config directory not provided.\n");
 		mesh_config_dir = "";
 	} else {
-		rl_printf("Reading prov_db.json and local_node.json from %s\n",
+		bt_shell_printf("Reading prov_db.json and local_node.json from %s\n",
 							mesh_config_dir);
 	}
 
 	len = strlen(mesh_config_dir);
 	if (len && mesh_config_dir[len - 1] != '/') {
 		extra = 1;
-		rl_printf("mesh_config_dir[%d] %s\n", len,
+		bt_shell_printf("mesh_config_dir[%d] %s\n", len,
 						&mesh_config_dir[len - 1]);
 	} else {
 		extra = 0;
@@ -2257,18 +2003,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
-
-	setlinebuf(stdout);
-
-	rl_erase_empty_line = 1;
-	rl_callback_handler_install(NULL, rl_handler);
-
-	rl_set_prompt(PROMPT_OFF);
-	rl_redisplay();
-
-	signal = setup_signalfd();
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
 
 	g_dbus_client_set_connect_watch(client, connect_handler, NULL);
@@ -2280,8 +2015,6 @@ int main(int argc, char *argv[])
 
 	g_dbus_client_set_ready_watch(client, client_ready, NULL);
 
-	cmd_menu_init(meshctl_cmd_table);
-
 	if (!config_client_init())
 		g_printerr("Failed to initialize mesh configuration client\n");
 
@@ -2291,26 +2024,17 @@ int main(int argc, char *argv[])
 	if (!onoff_client_init(PRIMARY_ELEMENT_IDX))
 		g_printerr("Failed to initialize mesh generic On/Off client\n");
 
-	g_main_loop_run(main_loop);
+	bt_shell_run();
 
 	g_dbus_client_unref(client);
-	g_source_remove(signal);
-	if (input > 0)
-		g_source_remove(input);
-
-	rl_message("");
-	rl_callback_handler_remove();
 
 	dbus_connection_unref(dbus_conn);
-	g_main_loop_unref(main_loop);
 
 	node_cleanup();
 
 	g_list_free(char_list);
 	g_list_free(service_list);
 	g_list_free_full(ctrl_list, proxy_leak);
-
-	rl_release_prompt("");
 
 	return 0;
 }
