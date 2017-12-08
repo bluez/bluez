@@ -440,10 +440,10 @@ void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 	ad.uuids = NULL;
 	ad.uuids_len = 0;
 
-	if (!argc || !strlen(argv[0]))
+	if (argc < 2 || !strlen(argv[1]))
 		return;
 
-	ad.uuids = g_strdupv(argv);
+	ad.uuids = g_strdupv(&argv[1]);
 	if (!ad.uuids) {
 		bt_shell_printf("Failed to parse input\n");
 		return;
@@ -467,10 +467,10 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 
 	ad_clear_service();
 
-	if (!argc)
+	if (argc < 2)
 		return;
 
-	ad.service.uuid = g_strdup(argv[0]);
+	ad.service.uuid = g_strdup(argv[1]);
 	data = &ad.service.data;
 
 	for (i = 1; i < (unsigned int) argc; i++) {
@@ -511,10 +511,10 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 
 	ad_clear_manufacturer();
 
-	if (argc == 0)
+	if (argc < 2)
 		return;
 
-	val = strtol(argv[0], &endptr, 0);
+	val = strtol(argv[1], &endptr, 0);
 	if (!endptr || *endptr != '\0' || val > UINT16_MAX) {
 		bt_shell_printf("Invalid manufacture id\n");
 		return;
@@ -523,7 +523,7 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 	ad.manufacturer.id = val;
 	data = &ad.manufacturer.data;
 
-	for (i = 1; i < (unsigned int) argc; i++) {
+	for (i = 2; i < (unsigned int) argc; i++) {
 		if (i >= G_N_ELEMENTS(data->data)) {
 			bt_shell_printf("Too much data\n");
 			ad_clear_manufacturer();

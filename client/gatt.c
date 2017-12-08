@@ -1209,7 +1209,7 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 
 	service = g_new0(struct service, 1);
 	service->conn = conn;
-	service->uuid = g_strdup(argv[0]);
+	service->uuid = g_strdup(argv[1]);
 	service->path = g_strdup_printf("%s/service%p", APP_PATH, service);
 	service->primary = primary;
 
@@ -1254,7 +1254,7 @@ void gatt_unregister_service(DBusConnection *conn, GDBusProxy *proxy,
 {
 	struct service *service;
 
-	service = service_find(argv[0]);
+	service = service_find(argv[1]);
 	if (!service) {
 		bt_shell_printf("Failed to unregister service object\n");
 		return;
@@ -1708,7 +1708,7 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 
 	chrc = g_new0(struct chrc, 1);
 	chrc->service = service;
-	chrc->uuid = g_strdup(argv[0]);
+	chrc->uuid = g_strdup(argv[1]);
 	chrc->path = g_strdup_printf("%s/chrc%p", service->path, chrc);
 	chrc->flags = g_strsplit(argv[1], ",", -1);
 
@@ -1757,7 +1757,7 @@ void gatt_unregister_chrc(DBusConnection *conn, GDBusProxy *proxy,
 {
 	struct chrc *chrc;
 
-	chrc = chrc_find(argv[0]);
+	chrc = chrc_find(argv[1]);
 	if (!chrc) {
 		bt_shell_printf("Failed to unregister characteristic object\n");
 		return;
@@ -1900,7 +1900,7 @@ void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
 
 	desc = g_new0(struct desc, 1);
 	desc->chrc = g_list_last(service->chrcs)->data;
-	desc->uuid = g_strdup(argv[0]);
+	desc->uuid = g_strdup(argv[1]);
 	desc->path = g_strdup_printf("%s/desc%p", desc->chrc->path, desc);
 	desc->flags = g_strsplit(argv[1], ",", -1);
 
@@ -1954,7 +1954,7 @@ void gatt_unregister_desc(DBusConnection *conn, GDBusProxy *proxy,
 {
 	struct desc *desc;
 
-	desc = desc_find(argv[0]);
+	desc = desc_find(argv[1]);
 	if (!desc) {
 		bt_shell_printf("Failed to unregister descriptor object\n");
 		return;

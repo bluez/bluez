@@ -129,14 +129,14 @@ static void cmd_menu(int argc, char *argv[])
 {
 	const struct bt_shell_menu *menu;
 
-	if (!argc || !strlen(argv[0])) {
+	if (argc < 2 || !strlen(argv[1])) {
 		bt_shell_printf("Missing name argument\n");
 		return;
 	}
 
-	menu = find_menu(argv[0]);
+	menu = find_menu(argv[1]);
 	if (!menu) {
-		bt_shell_printf("Unable find menu with name: %s\n", argv[0]);
+		bt_shell_printf("Unable find menu with name: %s\n", argv[1]);
 		return;
 	}
 
@@ -239,7 +239,7 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	int flags = WRDE_NOCMD;
 
 	if (!entry->arg || entry->arg[0] == '\0') {
-		if (argc) {
+		if (argc > 1) {
 			print_text(COLOR_HIGHLIGHT, "Too many arguments");
 			return -EINVAL;
 		}
@@ -263,9 +263,9 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	}
 
 	/* Check if there are enough arguments */
-	if ((unsigned) argc < w.we_wordc && !w.we_offs) {
+	if ((unsigned) argc - 1 < w.we_wordc && !w.we_offs) {
 		print_text(COLOR_HIGHLIGHT, "Missing %s argument",
-						w.we_wordv[argc]);
+						w.we_wordv[argc - 1]);
 		goto fail;
 	}
 
@@ -280,9 +280,9 @@ optional:
 	}
 
 	/* Check if there are too many arguments */
-	if ((unsigned) argc > w.we_wordc && !w.we_offs) {
+	if ((unsigned) argc - 1 > w.we_wordc && !w.we_offs) {
 		print_text(COLOR_HIGHLIGHT, "Too many arguments: %d > %zu",
-					argc, w.we_wordc);
+					argc - 1, w.we_wordc);
 		goto fail;
 	}
 
@@ -314,7 +314,7 @@ static int menu_exec(const struct bt_shell_menu_entry *entry,
 		if (data.menu == data.main && !strcmp(entry->cmd, "back"))
 			continue;
 
-		return cmd_exec(entry, --argc, ++argv);
+		return cmd_exec(entry, argc, argv);
 	}
 
 	return -ENOENT;
