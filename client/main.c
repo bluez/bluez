@@ -2239,7 +2239,7 @@ static const struct bt_shell_menu scan_menu = {
 				cmd_set_scan_filter_duplicate_data,
 				"Set scan filter duplicate data",
 				mode_generator },
-	{ "set-filter-clear", "", cmd_set_scan_filter_clear,
+	{ "set-filter-clear", NULL, cmd_set_scan_filter_clear,
 				"Clears discovery filter." },
 	{ } },
 };
