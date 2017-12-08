@@ -967,7 +967,7 @@ static const struct bt_shell_menu main_menu = {
 						"Change current folder" },
 	{ "list-items", "[start] [end]",  cmd_list_items,
 					"List items of current folder" },
-	{ "search",     "string",     cmd_search,
+	{ "search",     "<string>",   cmd_search,
 					"Search items containing string" },
 	{ "queue",       "<item>",    cmd_queue, "Add item to playlist queue" },
 	{ "show-item",   "<item>",    cmd_show_item, "Show item information" },
