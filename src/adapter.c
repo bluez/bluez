@@ -2539,6 +2539,23 @@ static gboolean property_get_address(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean property_get_address_type(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const char *str;
+
+	if ((adapter->current_settings & MGMT_SETTING_LE) &&
+				(adapter->bdaddr_type == BDADDR_LE_RANDOM))
+		str = "random";
+	else
+		str = "public";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
+
+	return TRUE;
+}
+
 static gboolean property_get_name(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -3079,6 +3096,7 @@ static const GDBusMethodTable adapter_methods[] = {
 
 static const GDBusPropertyTable adapter_properties[] = {
 	{ "Address", "s", property_get_address },
+	{ "AddressType", "s", property_get_address_type },
 	{ "Name", "s", property_get_name },
 	{ "Alias", "s", property_get_alias, property_set_alias },
 	{ "Class", "u", property_get_class },
