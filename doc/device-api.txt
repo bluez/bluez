@@ -124,6 +124,19 @@ Properties	string Address [readonly]
 
 			The Bluetooth device address of the remote device.
 
+		string AddressType [readonly]
+
+			The Bluetooth device Address Type. For dual-mode and
+			BR/EDR only devices this defaults to "public". Single
+			mode LE devices may have either value. If remote device
+			uses privacy than before pairing this represents address
+			type used for connection and Identity Address after
+			pairing.
+
+			Possible values:
+				"public" - Public address
+				"random" - Random address
+
 		string Name [readonly, optional]
 
 			The Bluetooth remote name. This value can not be

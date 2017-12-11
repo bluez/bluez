@@ -149,6 +149,18 @@ Properties	string Address [readonly]
 
 			The Bluetooth device address.
 
+		string AddressType [readonly]
+
+			The Bluetooth  Address Type. For dual-mode and BR/EDR
+			only adapter this defaults to "public". Single mode LE
+			adapters may have either value. With privacy enabled
+			this contains type of Identity Address and not type of
+			address used for connection.
+
+			Possible values:
+				"public" - Public address
+				"random" - Random address
+
 		string Name [readonly]
 
 			The Bluetooth system name (pretty hostname).
