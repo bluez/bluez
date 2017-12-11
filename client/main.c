@@ -870,7 +870,16 @@ static void cmd_show(int argc, char *argv[])
 		return;
 
 	dbus_message_iter_get_basic(&iter, &address);
-	bt_shell_printf("Controller %s\n", address);
+
+	if (g_dbus_proxy_get_property(proxy, "AddressType", &iter) == TRUE) {
+		const char *type;
+
+		dbus_message_iter_get_basic(&iter, &type);
+
+		bt_shell_printf("Controller %s (%s)\n", address, type);
+	} else {
+		bt_shell_printf("Controller %s\n", address);
+	}
 
 	print_property(proxy, "Name");
 	print_property(proxy, "Alias");
@@ -1510,7 +1519,16 @@ static void cmd_info(int argc, char *argv[])
 		return;
 
 	dbus_message_iter_get_basic(&iter, &address);
-	bt_shell_printf("Device %s\n", address);
+
+	if (g_dbus_proxy_get_property(proxy, "AddressType", &iter) == TRUE) {
+		const char *type;
+
+		dbus_message_iter_get_basic(&iter, &type);
+
+		bt_shell_printf("Device %s (%s)\n", address, type);
+	} else {
+		bt_shell_printf("Device %s\n", address);
+	}
 
 	print_property(proxy, "Name");
 	print_property(proxy, "Alias");
