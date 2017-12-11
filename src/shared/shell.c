@@ -169,6 +169,22 @@ static const struct bt_shell_menu_entry default_menu[] = {
 	{ }
 };
 
+static bool command_isskipped(const char *cmd)
+{
+	/* Skip menu command if not on main menu or if there are no
+	 * submenus.
+	 */
+	if (!strcmp(cmd, "menu") &&
+		(data.menu != data.main || queue_isempty(data.submenus)))
+		return true;
+
+	/* Skip back command if on main menu */
+	if (data.menu == data.main && !strcmp(cmd, "back"))
+		return true;
+
+	return false;
+}
+
 static void shell_print_menu(void)
 {
 	const struct bt_shell_menu_entry *entry;
@@ -195,16 +211,7 @@ static void shell_print_menu(void)
 	}
 
 	for (entry = default_menu; entry->cmd; entry++) {
-		/* Skip menu command if not on main menu or if there are no
-		 * submenus.
-		 */
-		if (!strcmp(entry->cmd, "menu") &&
-			(data.menu != data.main ||
-				queue_isempty(data.submenus)))
-			continue;
-
-		/* Skip back command if on main menu */
-		if (data.menu == data.main && !strcmp(entry->cmd, "back"))
+		if (command_isskipped(entry->cmd))
 			continue;
 
 		print_menu(entry->cmd, entry->arg ? : "", entry->desc ? : "");
