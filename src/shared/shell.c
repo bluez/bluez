@@ -498,7 +498,7 @@ static char *find_cmd(const char *text,
 	while ((cmd = entry[*index].cmd)) {
 		(*index)++;
 
-		if (!strncmp(cmd, text, len))
+		if (!strncmp(cmd, text, len) && !command_isskipped(cmd))
 			return strdup(cmd);
 	}
 
