@@ -145,6 +145,17 @@ static void cmd_menu(int argc, char *argv[])
 	shell_print_menu();
 }
 
+static bool cmd_menu_exists(const struct bt_shell_menu *menu)
+{
+	/* Skip menu command if not on main menu or if there are no
+	 * submenus.
+	 */
+	if (menu != data.main || queue_isempty(data.submenus))
+		return false;
+
+	return true;
+}
+
 static void cmd_back(int argc, char *argv[])
 {
 	if (data.menu == data.main) {
@@ -157,10 +168,21 @@ static void cmd_back(int argc, char *argv[])
 	shell_print_menu();
 }
 
+static bool cmd_back_exists(const struct bt_shell_menu *menu)
+{
+	/* Skip back command if on main menu */
+	if (menu == data.main)
+		return false;
+
+	return true;
+}
+
 static const struct bt_shell_menu_entry default_menu[] = {
-	{ "back",         NULL,       cmd_back, "Return to main menu" },
+	{ "back",         NULL,       cmd_back, "Return to main menu", NULL,
+							NULL, cmd_back_exists },
 	{ "menu",         "<name>",   cmd_menu, "Select submenu",
-							menu_generator },
+							menu_generator, NULL,
+							cmd_menu_exists},
 	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit, "Quit program" },
@@ -168,22 +190,6 @@ static const struct bt_shell_menu_entry default_menu[] = {
 					"Display help about this program" },
 	{ }
 };
-
-static bool command_isskipped(const char *cmd)
-{
-	/* Skip menu command if not on main menu or if there are no
-	 * submenus.
-	 */
-	if (!strcmp(cmd, "menu") &&
-		(data.menu != data.main || queue_isempty(data.submenus)))
-		return true;
-
-	/* Skip back command if on main menu */
-	if (data.menu == data.main && !strcmp(cmd, "back"))
-		return true;
-
-	return false;
-}
 
 static void shell_print_menu(void)
 {
@@ -211,7 +217,7 @@ static void shell_print_menu(void)
 	}
 
 	for (entry = default_menu; entry->cmd; entry++) {
-		if (command_isskipped(entry->cmd))
+		if (entry->exists && !entry->exists(data.menu))
 			continue;
 
 		print_menu(entry->cmd, entry->arg ? : "", entry->desc ? : "");
@@ -490,16 +496,22 @@ done:
 static char *find_cmd(const char *text,
 			const struct bt_shell_menu_entry *entry, int *index)
 {
-	const char *cmd;
+	const struct bt_shell_menu_entry *tmp;
 	int len;
 
 	len = strlen(text);
 
-	while ((cmd = entry[*index].cmd)) {
+	while ((tmp = &entry[*index])) {
 		(*index)++;
 
-		if (!strncmp(cmd, text, len) && !command_isskipped(cmd))
-			return strdup(cmd);
+		if (!tmp->cmd)
+			break;
+
+		if (tmp->exists && !tmp->exists(data.menu))
+			continue;
+
+		if (!strncmp(tmp->cmd, text, len))
+			return strdup(tmp->cmd);
 	}
 
 	return NULL;

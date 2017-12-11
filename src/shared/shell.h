@@ -31,11 +31,14 @@
 #define COLOR_BOLDWHITE	"\x1B[1;37m"
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
+struct bt_shell_menu;
+
 typedef void (*bt_shell_menu_cb_t)(int argc, char *argv[]);
 typedef char * (*bt_shell_menu_gen_t)(const char *text, int state);
 typedef void (*bt_shell_menu_disp_t) (char **matches, int num_matches,
 							int max_length);
 typedef void (*bt_shell_prompt_input_func) (const char *input, void *user_data);
+typedef bool (*bt_shell_menu_exists_t) (const struct bt_shell_menu *menu);
 
 struct bt_shell_menu_entry {
 	const char *cmd;
@@ -44,6 +47,7 @@ struct bt_shell_menu_entry {
 	const char *desc;
 	bt_shell_menu_gen_t gen;
 	bt_shell_menu_disp_t disp;
+	bt_shell_menu_exists_t exists;
 };
 
 struct bt_shell_menu {
