@@ -49,7 +49,6 @@
 #define BLUEZ_MEDIA_FOLDER_INTERFACE "org.bluez.MediaFolder1"
 #define BLUEZ_MEDIA_ITEM_INTERFACE "org.bluez.MediaItem1"
 
-static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 static GDBusProxy *default_player;
 static GSList *players = NULL;
@@ -64,11 +63,6 @@ static void connect_handler(DBusConnection *connection, void *user_data)
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
 	bt_shell_set_prompt(PROMPT_OFF);
-}
-
-static void cmd_quit(int argc, char *argv[])
-{
-	g_main_loop_quit(main_loop);
 }
 
 static bool check_default_player(void)
@@ -971,9 +965,6 @@ static const struct bt_shell_menu main_menu = {
 					"Search items containing string" },
 	{ "queue",       "<item>",    cmd_queue, "Add item to playlist queue" },
 	{ "show-item",   "<item>",    cmd_show_item, "Show item information" },
-	{ "quit",         NULL,       cmd_quit, "Quit program" },
-	{ "exit",         NULL,       cmd_quit },
-	{ "help" },
 	{} },
 };
 
