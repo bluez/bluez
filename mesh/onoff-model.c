@@ -259,6 +259,7 @@ static void cmd_set(int argc, char *argv[])
 
 static const struct bt_shell_menu onoff_menu = {
 	.name = "onoff",
+	.desc = "On/Off Model Submenu",
 	.entries = {
 	{"target",		"<unicast>",			cmd_set_node,
 						"Set node to configure"},

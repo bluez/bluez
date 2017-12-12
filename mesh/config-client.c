@@ -613,6 +613,7 @@ static void cmd_get_ttl(int argc, char *argv[])
 
 static const struct bt_shell_menu cfg_menu = {
 	.name = "config",
+	.desc = "Configuration Model Submenu",
 	.entries = {
 	{"target",		"<unicast>",			cmd_set_node,
 						"Set target node to configure"},
