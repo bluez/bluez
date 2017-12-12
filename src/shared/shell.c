@@ -288,9 +288,9 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	opt = strdup(entry->arg + len + 1);
 
 optional:
-	if (parse_args(opt, &w, "<>", flags) < 0) {
+	if (parse_args(opt, &w, "[]", flags) < 0) {
 		print_text(COLOR_HIGHLIGHT,
-				"Unable to parse mandatory command arguments");
+				"Unable to parse optional command arguments");
 		return -EINVAL;
 	}
 
