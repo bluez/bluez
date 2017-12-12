@@ -2202,6 +2202,7 @@ static void cmd_set_advertise_timeout(int argc, char *argv[])
 
 static const struct bt_shell_menu advertise_menu = {
 	.name = "advertise",
+	.desc = "Advertise Options Submenu",
 	.entries = {
 	{ "set-uuids", "[uuid1 uuid2 ...]",
 			cmd_set_advertise_uuids, "Set advertise uuids" },
@@ -2226,6 +2227,7 @@ static const struct bt_shell_menu advertise_menu = {
 
 static const struct bt_shell_menu scan_menu = {
 	.name = "scan",
+	.desc = "Scan Options Submenu",
 	.entries = {
 	{ "set-filter-uuids", "[uuid1 uuid2 ...]", cmd_set_scan_filter_uuids,
 				"Set scan filter uuids" },
@@ -2246,6 +2248,7 @@ static const struct bt_shell_menu scan_menu = {
 
 static const struct bt_shell_menu gatt_menu = {
 	.name = "gatt",
+	.desc = "Generic Attribute Submenu",
 	.entries = {
 	{ "list-attributes", "[dev]", cmd_list_attributes, "List attributes",
 							dev_generator },
