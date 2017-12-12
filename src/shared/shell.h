@@ -52,6 +52,7 @@ struct bt_shell_menu_entry {
 
 struct bt_shell_menu {
 	const char *name;
+	const char *desc;
 	const struct bt_shell_menu_entry entries[];
 };
 

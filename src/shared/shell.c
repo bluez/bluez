@@ -208,7 +208,8 @@ static void shell_print_menu(void)
 						submenu = submenu->next) {
 			struct bt_shell_menu *menu = submenu->data;
 
-			print_submenu(menu->name, "Submenu");
+			print_submenu(menu->name, menu->desc ? menu->desc :
+								"Submenu");
 		}
 	}
 
