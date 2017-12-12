@@ -27,6 +27,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "uuid.h"
@@ -735,12 +736,28 @@ const char *uuid32_to_str(uint32_t uuid)
 const char *uuidstr_to_str(const char *uuid)
 {
 	uint32_t val;
+	size_t len;
 	int i;
 
 	if (!uuid)
 		return NULL;
 
-	if (strlen(uuid) != 36)
+	len = strlen(uuid);
+
+	if (len < 36) {
+		char *endptr = NULL;
+
+		val = strtol(uuid, &endptr, 0);
+		if (!endptr || *endptr != '\0')
+			return NULL;
+
+		if (val > UINT16_MAX)
+			return uuid32_to_str(val);
+
+		return uuid16_to_str(val);
+	}
+
+	if (len != 36)
 		return NULL;
 
 	for (i = 0; uuid128_table[i].str; i++) {
