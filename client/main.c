@@ -1404,7 +1404,7 @@ static void clear_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static void cmd_set_scan_filter_clear(int argc, char *argv[])
+static void cmd_scan_filter_clear(int argc, char *argv[])
 {
 	/* set default values for all options */
 	filtered_scan_rssi = DISTANCE_VAL_INVALID;
@@ -2267,7 +2267,7 @@ static const struct bt_shell_menu scan_menu = {
 	{ "duplicate-data", "[on/off]", cmd_scan_filter_duplicate_data,
 				"Set/Get duplicate data filter",
 				mode_generator },
-	{ "set-filter-clear", NULL, cmd_set_scan_filter_clear,
+	{ "clear", NULL, cmd_scan_filter_clear,
 				"Clears discovery filter." },
 	{ } },
 };
