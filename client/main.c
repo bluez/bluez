@@ -1371,11 +1371,15 @@ static void cmd_scan_filter_transport(int argc, char *argv[])
 	cmd_set_scan_filter_commit();
 }
 
-static void cmd_set_scan_filter_duplicate_data(int argc, char *argv[])
+static void cmd_scan_filter_duplicate_data(int argc, char *argv[])
 {
-	if (argc < 2 || !strlen(argv[1]))
-		filtered_scan_duplicate_data = false;
-	else if (!strcmp(argv[1], "on"))
+	if (argc < 2 || !strlen(argv[1])) {
+		bt_shell_printf("DuplicateData: %s\n",
+				filtered_scan_duplicate_data ? "on" : "off");
+		return;
+	}
+
+	if (!strcmp(argv[1], "on"))
 		filtered_scan_duplicate_data = true;
 	else if (!strcmp(argv[1], "off"))
 		filtered_scan_duplicate_data = false;
@@ -2260,9 +2264,8 @@ static const struct bt_shell_menu scan_menu = {
 				"Set/Get Pathloss filter, and clears RSSI" },
 	{ "transport", "[transport]", cmd_scan_filter_transport,
 				"Set/Get transport filter" },
-	{ "set-filter-duplicate-data", "[on/off]",
-				cmd_set_scan_filter_duplicate_data,
-				"Set scan filter duplicate data",
+	{ "duplicate-data", "[on/off]", cmd_scan_filter_duplicate_data,
+				"Set/Get duplicate data filter",
 				mode_generator },
 	{ "set-filter-clear", NULL, cmd_set_scan_filter_clear,
 				"Clears discovery filter." },
