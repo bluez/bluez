@@ -1356,14 +1356,17 @@ static void cmd_scan_filter_pathloss(int argc, char *argv[])
 	cmd_set_scan_filter_commit();
 }
 
-static void cmd_set_scan_filter_transport(int argc, char *argv[])
+static void cmd_scan_filter_transport(int argc, char *argv[])
 {
-	g_free(filtered_scan_transport);
+	if (argc < 2 || !strlen(argv[1])) {
+		if (filtered_scan_transport)
+			bt_shell_printf("Transport: %s\n",
+					filtered_scan_transport);
+		return;
+	}
 
-	if (argc < 2 || !strlen(argv[1]))
-		filtered_scan_transport = NULL;
-	else
-		filtered_scan_transport = g_strdup(argv[1]);
+	g_free(filtered_scan_transport);
+	filtered_scan_transport = g_strdup(argv[1]);
 
 	cmd_set_scan_filter_commit();
 }
@@ -2255,8 +2258,8 @@ static const struct bt_shell_menu scan_menu = {
 				"Set/Get RSSI filter, and clears pathloss" },
 	{ "pathloss", "[pathloss]", cmd_scan_filter_pathloss,
 				"Set/Get Pathloss filter, and clears RSSI" },
-	{ "set-filter-transport", "[transport]", cmd_set_scan_filter_transport,
-				"Set scan filter transport" },
+	{ "transport", "[transport]", cmd_scan_filter_transport,
+				"Set/Get transport filter" },
 	{ "set-filter-duplicate-data", "[on/off]",
 				cmd_set_scan_filter_duplicate_data,
 				"Set scan filter duplicate data",
