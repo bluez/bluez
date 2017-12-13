@@ -1414,6 +1414,7 @@ static void cmd_scan_filter_clear(int argc, char *argv[])
 	filtered_scan_uuids_len = 0;
 	g_free(filtered_scan_transport);
 	filtered_scan_transport = NULL;
+	filtered_scan_duplicate_data = false;
 
 	if (check_default_ctrl() == FALSE)
 		return;
