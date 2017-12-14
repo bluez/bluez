@@ -111,6 +111,10 @@ static void btp_gap_read_commands(uint8_t index, const void *param,
 	commands |= (1 << BTP_OP_GAP_READ_SUPPORTED_COMMANDS);
 	commands |= (1 << BTP_OP_GAP_READ_CONTROLLER_INDEX_LIST);
 	commands |= (1 << BTP_OP_GAP_READ_COTROLLER_INFO);
+	commands |= (1 << BTP_OP_GAP_RESET);
+	commands |= (1 << BTP_OP_GAP_SET_POWERED);
+	commands |= (1 << BTP_OP_GAP_SET_DISCOVERABLE);
+	commands |= (1 << BTP_OP_GAP_SET_BONDABLE);
 
 	commands = L_CPU_TO_LE16(commands);
 
