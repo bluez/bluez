@@ -498,15 +498,16 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 	unsigned int i;
 	struct ad_data *data;
 
-	ad_clear_service();
-
-	if (argc < 2)
+	if (argc < 2 || !strlen(argv[1])) {
+		print_uuid(ad.service.uuid);
+		bt_shell_hexdump(ad.service.data.data, ad.service.data.len);
 		return;
+	}
 
 	ad.service.uuid = g_strdup(argv[1]);
 	data = &ad.service.data;
 
-	for (i = 1; i < (unsigned int) argc; i++) {
+	for (i = 2; i < (unsigned int) argc; i++) {
 		long int val;
 		char *endptr = NULL;
 

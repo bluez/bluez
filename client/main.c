@@ -2196,7 +2196,7 @@ static void cmd_advertise_uuids(int argc, char *argv[])
 	ad_advertise_uuids(dbus_conn, argc, argv);
 }
 
-static void cmd_set_advertise_service(int argc, char *argv[])
+static void cmd_advertise_service(int argc, char *argv[])
 {
 	ad_advertise_service(dbus_conn, argc, argv);
 }
@@ -2289,7 +2289,7 @@ static const struct bt_shell_menu advertise_menu = {
 	.entries = {
 	{ "uuids", "[uuid1 uuid2 ...]", cmd_advertise_uuids,
 			"Set advertise uuids" },
-	{ "set-service", "[uuid] [data=xx xx ...]", cmd_set_advertise_service,
+	{ "service", "[uuid] [data=xx xx ...]", cmd_advertise_service,
 			"Set advertise service data" },
 	{ "set-manufacturer", "[id] [data=xx xx ...]",
 			cmd_set_advertise_manufacturer,
