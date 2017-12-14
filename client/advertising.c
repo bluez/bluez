@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "gdbus/gdbus.h"
+#include "src/shared/util.h"
 #include "src/shared/shell.h"
 #include "advertising.h"
 
@@ -434,14 +435,46 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 	}
 }
 
+static void print_uuid(const char *uuid)
+{
+	const char *text;
+
+	text = bt_uuidstr_to_str(uuid);
+	if (text) {
+		char str[26];
+		unsigned int n;
+
+		str[sizeof(str) - 1] = '\0';
+
+		n = snprintf(str, sizeof(str), "%s", text);
+		if (n > sizeof(str) - 1) {
+			str[sizeof(str) - 2] = '.';
+			str[sizeof(str) - 3] = '.';
+			if (str[sizeof(str) - 4] == ' ')
+				str[sizeof(str) - 4] = '.';
+
+			n = sizeof(str) - 1;
+		}
+
+		bt_shell_printf("\tUUID: %s(%s)\n", str, uuid);
+	} else
+		bt_shell_printf("\tUUID: (%s)\n", uuid);
+}
+
 void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 {
+	if (argc < 2 || !strlen(argv[1])) {
+		char **uuid;
+
+		for (uuid = ad.uuids; uuid && *uuid; uuid++)
+			print_uuid(*uuid);
+
+		return;
+	}
+
 	g_strfreev(ad.uuids);
 	ad.uuids = NULL;
 	ad.uuids_len = 0;
-
-	if (argc < 2 || !strlen(argv[1]))
-		return;
 
 	ad.uuids = g_strdupv(&argv[1]);
 	if (!ad.uuids) {

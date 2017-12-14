@@ -2191,7 +2191,7 @@ static char *ad_generator(const char *text, int state)
 	return argument_generator(text, state, ad_arguments);
 }
 
-static void cmd_set_advertise_uuids(int argc, char *argv[])
+static void cmd_advertise_uuids(int argc, char *argv[])
 {
 	ad_advertise_uuids(dbus_conn, argc, argv);
 }
@@ -2287,8 +2287,8 @@ static const struct bt_shell_menu advertise_menu = {
 	.name = "advertise",
 	.desc = "Advertise Options Submenu",
 	.entries = {
-	{ "set-uuids", "[uuid1 uuid2 ...]",
-			cmd_set_advertise_uuids, "Set advertise uuids" },
+	{ "uuids", "[uuid1 uuid2 ...]", cmd_advertise_uuids,
+			"Set advertise uuids" },
 	{ "set-service", "[uuid] [data=xx xx ...]", cmd_set_advertise_service,
 			"Set advertise service data" },
 	{ "set-manufacturer", "[id] [data=xx xx ...]",
