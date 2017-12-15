@@ -1432,6 +1432,26 @@ static const struct filter_clear {
 	{}
 };
 
+static char *filter_clear_generator(const char *text, int state)
+{
+	static int index, len;
+	const char *arg;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	while ((arg = filter_clear[index].name)) {
+		index++;
+
+		if (!strncmp(arg, text, len))
+			return strdup(arg);
+	}
+
+	return NULL;
+}
+
 static void cmd_scan_filter_clear(int argc, char *argv[])
 {
 	const struct filter_clear *fc;
@@ -2308,7 +2328,8 @@ static const struct bt_shell_menu scan_menu = {
 				mode_generator },
 	{ "clear", "[uuids/rssi/pathloss/transport/duplicate-data]",
 				cmd_scan_filter_clear,
-				"Clears discovery filter." },
+				"Clears discovery filter.",
+				filter_clear_generator },
 	{ } },
 };
 
