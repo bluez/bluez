@@ -1392,18 +1392,68 @@ static void clear_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static void cmd_scan_filter_clear(int argc, char *argv[])
+static void filter_clear_uuids(void)
 {
-	/* set default values for all options */
-	filter.rssi = DISTANCE_VAL_INVALID;
-	filter.pathloss = DISTANCE_VAL_INVALID;
 	g_strfreev(filter.uuids);
 	filter.uuids = NULL;
 	filter.uuids_len = 0;
+}
+
+static void filter_clear_rssi(void)
+{
+	filter.rssi = DISTANCE_VAL_INVALID;
+}
+
+static void filter_clear_pathloss(void)
+{
+	filter.pathloss = DISTANCE_VAL_INVALID;
+}
+
+static void filter_clear_transport(void)
+{
 	g_free(filter.transport);
 	filter.transport = NULL;
-	filter.duplicate = false;
+}
 
+static void filter_clear_duplicate(void)
+{
+	filter.duplicate = false;
+}
+
+static const struct filter_clear {
+	const char *name;
+	void (*clear) (void);
+} filter_clear[] = {
+	{ "uuids", filter_clear_uuids },
+	{ "rssi", filter_clear_rssi },
+	{ "pathloss", filter_clear_pathloss },
+	{ "transport", filter_clear_transport },
+	{ "duplicate-data", filter_clear_duplicate },
+	{}
+};
+
+static void cmd_scan_filter_clear(int argc, char *argv[])
+{
+	const struct filter_clear *fc;
+	bool all = false;
+
+	if (argc < 2 || !strlen(argv[1]))
+		all = true;
+
+	for (fc = filter_clear; fc && fc->name; fc++) {
+		if (all || !strcmp(fc->name, argv[1])) {
+			fc->clear();
+			if (!all)
+				goto done;
+		}
+	}
+
+	if (!all) {
+		bt_shell_printf("Invalid argument %s\n", argv[1]);
+		return;
+	}
+
+done:
 	if (check_default_ctrl() == FALSE)
 		return;
 
@@ -2256,7 +2306,8 @@ static const struct bt_shell_menu scan_menu = {
 	{ "duplicate-data", "[on/off]", cmd_scan_filter_duplicate_data,
 				"Set/Get duplicate data filter",
 				mode_generator },
-	{ "clear", NULL, cmd_scan_filter_clear,
+	{ "clear", "[uuids/rssi/pathloss/transport/duplicate-data]",
+				cmd_scan_filter_clear,
 				"Clears discovery filter." },
 	{ } },
 };
