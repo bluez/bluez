@@ -781,7 +781,7 @@ static void cmd_set_pub(int argc, char *argv[])
 	n = mesh_opcode_set(OP_CONFIG_MODEL_PUB_SET, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
-	if (parm_cnt != 6) {
+	if (parm_cnt != 6 && parm_cnt != 7) {
 		bt_shell_printf("Bad arguments\n");
 		return;
 	}
@@ -801,8 +801,8 @@ static void cmd_set_pub(int argc, char *argv[])
 	/* Publish retransmit count & interval steps */
 	msg[n++] = parms[4];
 	/* Model Id */
-	if (parms[5] > 0xffff) {
-		put_le16(parms[5] >> 16, msg + n);
+	if (parm_cnt == 7) {
+		put_le16(parms[6], msg + n);
 		put_le16(parms[5], msg + n + 2);
 		n += 4;
 	} else {
@@ -828,7 +828,7 @@ static void cmd_get_pub(int argc, char *argv[])
 	n = mesh_opcode_set(OP_CONFIG_MODEL_PUB_GET, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
-	if (parm_cnt != 2) {
+	if (parm_cnt != 2 && parm_cnt != 3) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
 		return;
 	}
@@ -837,8 +837,8 @@ static void cmd_get_pub(int argc, char *argv[])
 	put_le16(parms[0], msg + n);
 	n += 2;
 	/* Model Id */
-	if (parms[1] > 0xffff) {
-		put_le16(parms[1] >> 16, msg + n);
+	if (parm_cnt == 3) {
+		put_le16(parms[2], msg + n);
 		put_le16(parms[1], msg + n + 2);
 		n += 4;
 	} else {
@@ -1014,8 +1014,9 @@ static const struct bt_shell_menu cfg_menu = {
 	{"ttl-get",		NULL,			cmd_get_ttl,
 						"Get default TTL"},
 	{"pub-set", "<ele_addr> <pub_addr> <app_idx> "
-			"<period (step|res)> <re-xmt (count|per)> <model>",
-				cmd_set_pub,	"Set publication"},
+			"<per (step|res)> <re-xmt (cnt|per)> <mod id> "
+			"[cid]",
+			cmd_set_pub,	"\n\t\t\t\t\t\t  Set publication"},
 	{"pub-get", "<ele_addr> <model>",               cmd_get_pub,
 						"Get publication"},
 	{"proxy-set",           "<proxy>",              cmd_set_proxy,
