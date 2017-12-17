@@ -1399,6 +1399,24 @@ static bool ctl_rxed(uint16_t net_idx, uint32_t iv_index,
 		uint8_t *trans, uint16_t len)
 {
 	/* TODO: Handle control messages */
+
+	/* Per Mesh Profile 3.6.5.10 */
+	if (trans[0] == NET_OP_HEARTBEAT) {
+		uint16_t feat = get_be16(trans + 2);
+
+		bt_shell_printf("HEARTBEAT src: %4.4x dst: %4.4x \
+				TTL: %2.2x feat: %s%s%s%s\n",
+				src, dst, trans[1],
+				(feat & MESH_FEATURE_RELAY) ? "relay " : "",
+				(feat & MESH_FEATURE_PROXY) ? "proxy " : "",
+				(feat & MESH_FEATURE_FRIEND) ? "friend " : "",
+				(feat & MESH_FEATURE_LPN) ? "lpn" : "");
+		return true;
+	}
+
+	bt_shell_printf("unrecognized control message src:%4.4x dst:%4.4x len:%d\n",
+			src, dst, len);
+	print_byte_array("msg: ", trans, len);
 	return false;
 }
 
@@ -2098,7 +2116,7 @@ bool net_access_layer_send(uint8_t ttl, uint16_t src, uint32_t dst,
 	if (!result)
 		return false;
 
-	segN = SEG_MAX(len + sizeof(uint32_t));
+	segN = SEG_MAX(len + sizeof(mic32));
 
 	/* Only one ACK required SAR message per destination at a time */
 	if (segN && IS_UNICAST(dst)) {
