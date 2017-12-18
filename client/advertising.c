@@ -587,12 +587,17 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 							"ManufacturerData");
 }
 
-void ad_advertise_tx_power(DBusConnection *conn, bool value)
+void ad_advertise_tx_power(DBusConnection *conn, dbus_bool_t *value)
 {
-	if (ad.tx_power == value)
+	if (!value) {
+		bt_shell_printf("Tx Power: %s\n", ad.tx_power ? "on" : "off");
+		return;
+	}
+
+	if (ad.tx_power == *value)
 		return;
 
-	ad.tx_power = value;
+	ad.tx_power = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
 }

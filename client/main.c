@@ -2206,14 +2206,19 @@ static void cmd_advertise_manufacturer(int argc, char *argv[])
 	ad_advertise_manufacturer(dbus_conn, argc, argv);
 }
 
-static void cmd_set_advertise_tx_power(int argc, char *argv[])
+static void cmd_advertise_tx_power(int argc, char *argv[])
 {
 	dbus_bool_t powered;
+
+	if (argc < 2) {
+		ad_advertise_tx_power(dbus_conn, NULL);
+		return;
+	}
 
 	if (!parse_argument(argc, argv, NULL, NULL, &powered, NULL))
 		return;
 
-	ad_advertise_tx_power(dbus_conn, powered);
+	ad_advertise_tx_power(dbus_conn, &powered);
 }
 
 static void cmd_set_advertise_name(int argc, char *argv[])
@@ -2294,7 +2299,7 @@ static const struct bt_shell_menu advertise_menu = {
 	{ "manufacturer", "[id] [data=xx xx ...]",
 			cmd_advertise_manufacturer,
 			"Set advertise manufacturer data" },
-	{ "set-tx-power", "<on/off>", cmd_set_advertise_tx_power,
+	{ "tx-power", "[on/off]", cmd_advertise_tx_power,
 			"Enable/disable TX power to be advertised",
 							mode_generator },
 	{ "set-name", "<on/off/name>", cmd_set_advertise_name,
