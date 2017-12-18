@@ -543,10 +543,18 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 	long int val;
 	struct ad_data *data;
 
-	ad_clear_manufacturer();
+	if (argc < 2 || !strlen(argv[1])) {
+		if (ad.manufacturer.data.len) {
+			bt_shell_printf("Manufacturer: %u\n",
+						ad.manufacturer.id);
+			bt_shell_hexdump(ad.manufacturer.data.data,
+						ad.manufacturer.data.len);
+		}
 
-	if (argc < 2)
 		return;
+	}
+
+	ad_clear_manufacturer();
 
 	val = strtol(argv[1], &endptr, 0);
 	if (!endptr || *endptr != '\0' || val > UINT16_MAX) {

@@ -2201,7 +2201,7 @@ static void cmd_advertise_service(int argc, char *argv[])
 	ad_advertise_service(dbus_conn, argc, argv);
 }
 
-static void cmd_set_advertise_manufacturer(int argc, char *argv[])
+static void cmd_advertise_manufacturer(int argc, char *argv[])
 {
 	ad_advertise_manufacturer(dbus_conn, argc, argv);
 }
@@ -2291,8 +2291,8 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set advertise uuids" },
 	{ "service", "[uuid] [data=xx xx ...]", cmd_advertise_service,
 			"Set advertise service data" },
-	{ "set-manufacturer", "[id] [data=xx xx ...]",
-			cmd_set_advertise_manufacturer,
+	{ "manufacturer", "[id] [data=xx xx ...]",
+			cmd_advertise_manufacturer,
 			"Set advertise manufacturer data" },
 	{ "set-tx-power", "<on/off>", cmd_set_advertise_tx_power,
 			"Enable/disable TX power to be advertised",
