@@ -56,6 +56,11 @@
 
 static GMainLoop *main_loop;
 
+struct bt_shell_env {
+	char *name;
+	void *value;
+};
+
 static struct {
 	struct io *input;
 
@@ -66,6 +71,8 @@ static struct {
 	const struct bt_shell_menu *menu;
 	const struct bt_shell_menu *main;
 	struct queue *submenus;
+
+	struct queue *envs;
 } data;
 
 static void shell_print_menu(void);
@@ -759,6 +766,14 @@ static void rl_cleanup(void)
 	rl_callback_handler_remove();
 }
 
+static void env_destroy(void *data)
+{
+	struct bt_shell_env *env = data;
+
+	free(env->name);
+	free(env);
+}
+
 void bt_shell_run(void)
 {
 	struct io *signal;
@@ -774,6 +789,11 @@ void bt_shell_run(void)
 
 	g_main_loop_unref(main_loop);
 	main_loop = NULL;
+
+	if (data.envs) {
+		queue_destroy(data.envs, env_destroy);
+		data.envs = NULL;
+	}
 
 	rl_cleanup();
 }
@@ -848,4 +868,47 @@ bool bt_shell_detach(void)
 	data.input = NULL;
 
 	return true;
+}
+
+static bool match_env(const void *data, const void *user_data)
+{
+	const struct bt_shell_env *env = data;
+	const char *name = user_data;
+
+	return !strcmp(env->name, name);
+}
+
+void bt_shell_set_env(const char *name, void *value)
+{
+	struct bt_shell_env *env;
+
+	if (!data.envs) {
+		data.envs = queue_new();
+		goto done;
+	}
+
+	env = queue_remove_if(data.envs, match_env, (void *) name);
+	if (env)
+		env_destroy(env);
+
+done:
+	env = new0(struct bt_shell_env, 1);
+	env->name = strdup(name);
+	env->value = value;
+
+	queue_push_tail(data.envs, env);
+}
+
+void *bt_shell_get_env(const char *name)
+{
+	const struct bt_shell_env *env;
+
+	if (!data.envs)
+		return NULL;
+
+	env = queue_find(data.envs, match_env, name);
+	if (!env)
+		return NULL;
+
+	return env->value;
 }

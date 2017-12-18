@@ -87,4 +87,7 @@ int bt_shell_release_prompt(const char *input);
 bool bt_shell_attach(int fd);
 bool bt_shell_detach(void);
 
+void bt_shell_set_env(const char *name, void *value);
+void *bt_shell_get_env(const char *name);
+
 void bt_shell_cleanup(void);
