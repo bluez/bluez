@@ -371,14 +371,49 @@ static bool parse_bindings(struct mesh_node *node, int ele_idx,
 	return true;
 }
 
-static bool parse_configuration_models(struct mesh_node *node, int ele_idx,
-		json_object *jmodels, uint32_t target_id, json_object **jtarget)
+static json_object* find_configured_model(struct mesh_node *node, int ele_idx,
+				       json_object *jmodels, uint32_t target_id)
 {
 	int model_cnt;
 	int i;
 
-	if (jtarget)
-		*jtarget = NULL;
+	model_cnt = json_object_array_length(jmodels);
+
+	for (i = 0; i < model_cnt; ++i) {
+		json_object *jmodel;
+		json_object *jvalue;
+		char *str;
+		int len;
+		uint32_t model_id;
+
+		jmodel = json_object_array_get_idx(jmodels, i);
+
+		json_object_object_get_ex(jmodel, "modelId", &jvalue);
+		str = (char *)json_object_get_string(jvalue);
+
+		len = strlen(str);
+
+		if (len != 4 && len != 8)
+			return NULL;
+
+		if (sscanf(str, "%08x", &model_id) != 1)
+			return NULL;
+
+		if (len == 4)
+			model_id += 0xffff0000;
+
+		if (model_id == target_id)
+			return jmodel;
+	}
+
+	return NULL;
+}
+
+static bool parse_configuration_models(struct mesh_node *node, int ele_idx,
+							json_object *jmodels)
+{
+	int model_cnt;
+	int i;
 
 	model_cnt = json_object_array_length(jmodels);
 
@@ -404,11 +439,6 @@ static bool parse_configuration_models(struct mesh_node *node, int ele_idx,
 			return false;
 		if (len == 4)
 			model_id += 0xffff0000;
-
-		if (jtarget && model_id == target_id) {
-			*jtarget = jmodel;
-			return true;
-		}
 
 		json_object_object_get_ex(jmodel, "bind", &jarray);
 		if (jarray && !parse_bindings(node, ele_idx, model_id, jarray))
@@ -468,7 +498,7 @@ static bool parse_configuration_elements(struct mesh_node *node,
 		if (!jmodels)
 			continue;
 
-		if(!parse_configuration_models(node, index, jmodels, 0, NULL))
+		if(!parse_configuration_models(node, index, jmodels))
 			return false;
 	}
 	return true;
@@ -1011,8 +1041,8 @@ static json_object *get_jmodel_obj(struct mesh_node *node, uint8_t ele_idx,
 		jmodels = json_object_new_array();
 		json_object_object_add(jelement, "models", jmodels);
 	} else {
-		parse_configuration_models(node, ele_idx, jmodels,
-							model_id, &jmodel);
+		jmodel = find_configured_model(node, ele_idx, jmodels,
+								model_id);
 	}
 
 	if (!jmodel) {
