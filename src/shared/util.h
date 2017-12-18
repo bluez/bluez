@@ -108,6 +108,10 @@ unsigned char util_get_dt(const char *parent, const char *name);
 uint8_t util_get_uid(unsigned int *bitmap, uint8_t max);
 void util_clear_uid(unsigned int *bitmap, uint8_t id);
 
+const char *bt_uuid16_to_str(uint16_t uuid);
+const char *bt_uuid32_to_str(uint32_t uuid);
+const char *bt_uuidstr_to_str(const char *uuid);
+
 static inline int8_t get_s8(const void *ptr)
 {
 	return *((int8_t *) ptr);
