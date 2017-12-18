@@ -619,6 +619,15 @@ void ad_advertise_name(DBusConnection *conn, bool value)
 
 void ad_advertise_local_name(DBusConnection *conn, const char *name)
 {
+	if (!name) {
+		if (ad.local_name)
+			bt_shell_printf("LocalName: %s\n", ad.local_name);
+		else
+			bt_shell_printf("Name: %s\n", ad.name ? "on" : "off");
+
+		return;
+	}
+
 	if (ad.local_name && !strcmp(name, ad.local_name))
 		return;
 

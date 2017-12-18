@@ -2221,8 +2221,13 @@ static void cmd_advertise_tx_power(int argc, char *argv[])
 	ad_advertise_tx_power(dbus_conn, &powered);
 }
 
-static void cmd_set_advertise_name(int argc, char *argv[])
+static void cmd_advertise_name(int argc, char *argv[])
 {
+	if (argc < 2) {
+		ad_advertise_local_name(dbus_conn, NULL);
+		return;
+	}
+
 	if (strcmp(argv[1], "on") == 0 || strcmp(argv[1], "yes") == 0) {
 		ad_advertise_name(dbus_conn, true);
 		return;
@@ -2302,7 +2307,7 @@ static const struct bt_shell_menu advertise_menu = {
 	{ "tx-power", "[on/off]", cmd_advertise_tx_power,
 			"Enable/disable TX power to be advertised",
 							mode_generator },
-	{ "set-name", "<on/off/name>", cmd_set_advertise_name,
+	{ "name", "[on/off/name]", cmd_advertise_name,
 			"Enable/disable local name to be advertised" },
 	{ "set-appearance", "<value>", cmd_set_advertise_appearance,
 			"Set custom appearance to be advertised" },
