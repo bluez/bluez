@@ -650,12 +650,24 @@ void ad_advertise_appearance(DBusConnection *conn, bool value)
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
 }
 
-void ad_advertise_local_appearance(DBusConnection *conn, uint16_t value)
+void ad_advertise_local_appearance(DBusConnection *conn, long int *value)
 {
-	if (ad.local_appearance == value)
+	if (!value) {
+		if (ad.local_appearance != UINT16_MAX)
+			bt_shell_printf("Appearance: %s (0x%04x)\n",
+					bt_appear_to_str(ad.local_appearance),
+					ad.local_appearance);
+		else
+			bt_shell_printf("Apperance: %s\n",
+					ad.appearance ? "on" : "off");
+
+		return;
+	}
+
+	if (ad.local_appearance == *value)
 		return;
 
-	ad.local_appearance = value;
+	ad.local_appearance = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Appearance");
 }

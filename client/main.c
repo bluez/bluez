@@ -2241,10 +2241,15 @@ static void cmd_advertise_name(int argc, char *argv[])
 	ad_advertise_local_name(dbus_conn, argv[1]);
 }
 
-static void cmd_set_advertise_appearance(int argc, char *argv[])
+static void cmd_advertise_appearance(int argc, char *argv[])
 {
 	long int value;
 	char *endptr = NULL;
+
+	if (argc < 2) {
+		ad_advertise_local_appearance(dbus_conn, NULL);
+		return;
+	}
 
 	if (strcmp(argv[1], "on") == 0 || strcmp(argv[1], "yes") == 0) {
 		ad_advertise_appearance(dbus_conn, true);
@@ -2262,7 +2267,7 @@ static void cmd_set_advertise_appearance(int argc, char *argv[])
 		return;
 	}
 
-	ad_advertise_local_appearance(dbus_conn, value);
+	ad_advertise_local_appearance(dbus_conn, &value);
 }
 
 static void cmd_set_advertise_duration(int argc, char *argv[])
@@ -2309,7 +2314,7 @@ static const struct bt_shell_menu advertise_menu = {
 							mode_generator },
 	{ "name", "[on/off/name]", cmd_advertise_name,
 			"Enable/disable local name to be advertised" },
-	{ "set-appearance", "<value>", cmd_set_advertise_appearance,
+	{ "appearance", "[value]", cmd_advertise_appearance,
 			"Set custom appearance to be advertised" },
 	{ "set-duration", "<seconds>", cmd_set_advertise_duration,
 			"Set advertise duration" },

@@ -31,6 +31,6 @@ void ad_advertise_tx_power(DBusConnection *conn, dbus_bool_t *value);
 void ad_advertise_name(DBusConnection *conn, bool value);
 void ad_advertise_appearance(DBusConnection *conn, bool value);
 void ad_advertise_local_name(DBusConnection *conn, const char *name);
-void ad_advertise_local_appearance(DBusConnection *conn, uint16_t value);
+void ad_advertise_local_appearance(DBusConnection *conn, long int *value);
 void ad_advertise_duration(DBusConnection *conn, uint16_t value);
 void ad_advertise_timeout(DBusConnection *conn, uint16_t value);
