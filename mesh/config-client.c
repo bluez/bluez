@@ -997,7 +997,7 @@ static const struct bt_shell_menu cfg_menu = {
 	.entries = {
 	{"target",		"<unicast>",		cmd_set_node,
 						"Set target node to configure"},
-	{"composition-get",	"[<page_num>]",		cmd_get_composition,
+	{"composition-get",	"[page_num]",		cmd_get_composition,
 						"Get Composition Data"},
 	{"netkey-add",		"<net_idx>",		cmd_add_net_key,
 						"Add network key"},
