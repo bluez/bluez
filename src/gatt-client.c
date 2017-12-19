@@ -1612,11 +1612,9 @@ static const GDBusPropertyTable characteristic_properties[] = {
 					characteristic_notifying_exists },
 	{ "Flags", "as", characteristic_get_flags, NULL, NULL },
 	{ "WriteAcquired", "b", characteristic_get_write_acquired, NULL,
-				characteristic_write_acquired_exists,
-				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+				characteristic_write_acquired_exists },
 	{ "NotifyAcquired", "b", characteristic_get_notify_acquired, NULL,
-				characteristic_notify_acquired_exists,
-				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+				characteristic_notify_acquired_exists },
 	{ }
 };
 
@@ -1628,12 +1626,12 @@ static const GDBusMethodTable characteristic_methods[] = {
 						{ "options", "a{sv}" }),
 					NULL,
 					characteristic_write_value) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("AcquireWrite",
+	{ GDBUS_ASYNC_METHOD("AcquireWrite",
 					GDBUS_ARGS({ "options", "a{sv}" }),
 					GDBUS_ARGS({ "fd", "h" },
 						{ "mtu", "q" }),
 					characteristic_acquire_write) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("AcquireNotify",
+	{ GDBUS_ASYNC_METHOD("AcquireNotify",
 					GDBUS_ARGS({ "options", "a{sv}" }),
 					GDBUS_ARGS({ "fd", "h" },
 						{ "mtu", "q" }),

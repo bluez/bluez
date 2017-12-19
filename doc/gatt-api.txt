@@ -91,7 +91,7 @@ Methods		array{byte} ReadValue(dict options)
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.NotSupported
 
-		fd, uint16 AcquireWrite(dict options) [experimental, optional]
+		fd, uint16 AcquireWrite(dict options) [optional]
 
 			Acquire file descriptor and MTU for writing. Usage of
 			WriteValue will be locked causing it to return
@@ -120,7 +120,7 @@ Methods		array{byte} ReadValue(dict options)
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.NotSupported
 
-		fd, uint16 AcquireNotify(dict options) [experimental, optional]
+		fd, uint16 AcquireNotify(dict options) [optional]
 
 			Acquire file descriptor and MTU for notify. Usage of
 			StartNotify will be locked causing it to return
