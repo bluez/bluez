@@ -37,7 +37,6 @@
 #include "src/shared/shell.h"
 #include "src/shared/util.h"
 #include "gdbus/gdbus.h"
-#include "monitor/uuid.h"
 #include "agent.h"
 #include "gatt.h"
 #include "advertising.h"
@@ -329,7 +328,7 @@ static void print_uuid(const char *uuid)
 {
 	const char *text;
 
-	text = uuidstr_to_str(uuid);
+	text = bt_uuidstr_to_str(uuid);
 	if (text) {
 		char str[26];
 		unsigned int n;
@@ -1902,7 +1901,7 @@ static void cmd_attribute_info(int argc, char *argv[])
 
 	dbus_message_iter_get_basic(&iter, &uuid);
 
-	text = uuidstr_to_str(uuid);
+	text = bt_uuidstr_to_str(uuid);
 	if (!text)
 		text = g_dbus_proxy_get_path(proxy);
 

@@ -3379,7 +3379,7 @@ static void print_uuid16_list(const char *label, const void *data,
 
 	for (i = 0; i < count; i++) {
 		uint16_t uuid = get_le16(data + (i * 2));
-		print_field("  %s (0x%4.4x)", uuid16_to_str(uuid), uuid);
+		print_field("  %s (0x%4.4x)", bt_uuid16_to_str(uuid), uuid);
 	}
 }
 
@@ -3393,7 +3393,7 @@ static void print_uuid32_list(const char *label, const void *data,
 
 	for (i = 0; i < count; i++) {
 		uint32_t uuid = get_le32(data + (i * 4));
-		print_field("  %s (0x%8.8x)", uuid32_to_str(uuid), uuid);
+		print_field("  %s (0x%8.8x)", bt_uuid32_to_str(uuid), uuid);
 	}
 }
 
@@ -3413,7 +3413,7 @@ static void print_uuid128_list(const char *label, const void *data,
 				get_le32(&uuid[12]), get_le16(&uuid[10]),
 				get_le16(&uuid[8]), get_le16(&uuid[6]),
 				get_le32(&uuid[2]), get_le16(&uuid[0]));
-		print_field("  %s (%s)", uuidstr_to_str(uuidstr), uuidstr);
+		print_field("  %s (%s)", bt_uuidstr_to_str(uuidstr), uuidstr);
 	}
 }
 

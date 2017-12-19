@@ -7,8 +7,7 @@ client_bluetoothctl_SOURCES = client/main.c \
 					client/agent.h client/agent.c \
 					client/advertising.h \
 					client/advertising.c \
-					client/gatt.h client/gatt.c \
-					monitor/uuid.h monitor/uuid.c
+					client/gatt.h client/gatt.c
 client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 endif
@@ -29,8 +28,7 @@ mesh_meshctl_SOURCES = mesh/main.c \
 				mesh/prov-db.h mesh/prov-db.c \
 				mesh/config-model.h mesh/config-client.c \
 				mesh/config-server.c \
-				mesh/onoff-model.h mesh/onoff-model.c \
-				monitor/uuid.h monitor/uuid.c
+				mesh/onoff-model.h mesh/onoff-model.c
 mesh_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -ljson-c -lreadline
@@ -56,7 +54,6 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				monitor/a2dp.h monitor/a2dp.c \
 				monitor/rfcomm.h monitor/rfcomm.c \
 				monitor/bnep.h monitor/bnep.c \
-				monitor/uuid.h monitor/uuid.c \
 				monitor/hwdb.h monitor/hwdb.c \
 				monitor/keys.h monitor/keys.c \
 				monitor/analyze.h monitor/analyze.c \

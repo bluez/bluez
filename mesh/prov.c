@@ -41,7 +41,6 @@
 #include "src/shared/shell.h"
 
 #include "gdbus/gdbus.h"
-#include "monitor/uuid.h"
 #include "mesh/node.h"
 #include "mesh/gatt.h"
 #include "mesh/crypto.h"

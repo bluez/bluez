@@ -115,11 +115,11 @@ static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
 	switch (size) {
 	case 2:
 		print_field("%*c%s (0x%4.4x)", indent, ' ',
-			uuid16_to_str(get_be16(data)), get_be16(data));
+			bt_uuid16_to_str(get_be16(data)), get_be16(data));
 		break;
 	case 4:
 		print_field("%*c%s (0x%8.8x)", indent, ' ',
-			uuid32_to_str(get_be32(data)), get_be32(data));
+			bt_uuid32_to_str(get_be32(data)), get_be32(data));
 		break;
 	case 16:
 		/* BASE_UUID = 00000000-0000-1000-8000-00805F9B34FB */
@@ -134,7 +134,7 @@ static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
 				get_be16(data + 10) == 0x0080 &&
 				get_be32(data + 12) == 0x5F9B34FB)
 			print_field("%*c%s", indent, ' ',
-				uuid32_to_str(get_be32(data)));
+				bt_uuid32_to_str(get_be32(data)));
 		break;
 	default:
 		packet_hexdump(data, size);

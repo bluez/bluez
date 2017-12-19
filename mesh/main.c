@@ -46,7 +46,6 @@
 #include "src/shared/shell.h"
 #include "src/shared/util.h"
 #include "gdbus/gdbus.h"
-#include "monitor/uuid.h"
 #include "mesh/mesh-net.h"
 #include "mesh/gatt.h"
 #include "mesh/crypto.h"
@@ -526,7 +525,7 @@ static void print_uuids(GDBusProxy *proxy)
 
 		dbus_message_iter_get_basic(&value, &uuid);
 
-		text = uuidstr_to_str(uuid);
+		text = bt_uuidstr_to_str(uuid);
 		if (text) {
 			char str[26];
 			unsigned int n;

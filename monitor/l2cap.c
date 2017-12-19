@@ -2006,11 +2006,11 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 
 	switch (size) {
 	case 2:
-		str = uuid16_to_str(get_le16(data));
+		str = bt_uuid16_to_str(get_le16(data));
 		print_field("%s: %s (0x%4.4x)", label, str, get_le16(data));
 		break;
 	case 4:
-		str = uuid32_to_str(get_le32(data));
+		str = bt_uuid32_to_str(get_le32(data));
 		print_field("%s: %s (0x%8.8x)", label, str, get_le32(data));
 		break;
 	case 16:
@@ -2018,7 +2018,7 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 				get_le32(data + 12), get_le16(data + 10),
 				get_le16(data + 8), get_le16(data + 6),
 				get_le32(data + 2), get_le16(data + 0));
-		str = uuidstr_to_str(uuidstr);
+		str = bt_uuidstr_to_str(uuidstr);
 		print_field("%s: %s (%s)", label, str, uuidstr);
 		break;
 	default:
@@ -2058,7 +2058,7 @@ static void print_data_list(const char *label, uint8_t length,
 
 static void print_attribute_info(uint16_t type, const void *data, uint16_t len)
 {
-	const char *str = uuid16_to_str(type);
+	const char *str = bt_uuid16_to_str(type);
 
 	print_field("%s: %s (0x%4.4x)", "Attribute type", str, type);
 

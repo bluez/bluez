@@ -36,11 +36,11 @@
 
 #include <glib.h>
 
+#include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/io.h"
 #include "src/shared/shell.h"
 #include "gdbus/gdbus.h"
-#include "monitor/uuid.h"
 #include "gatt.h"
 
 #define APP_PATH "/org/bluez/app"
@@ -105,7 +105,7 @@ static void print_service(struct service *service, const char *description)
 {
 	const char *text;
 
-	text = uuidstr_to_str(service->uuid);
+	text = bt_uuidstr_to_str(service->uuid);
 	if (!text)
 		bt_shell_printf("%s%s%s%s Service\n\t%s\n\t%s\n",
 					description ? "[" : "",
@@ -172,7 +172,7 @@ static void print_chrc(struct chrc *chrc, const char *description)
 {
 	const char *text;
 
-	text = uuidstr_to_str(chrc->uuid);
+	text = bt_uuidstr_to_str(chrc->uuid);
 	if (!text)
 		bt_shell_printf("%s%s%sCharacteristic\n\t%s\n\t%s\n",
 					description ? "[" : "",
@@ -271,7 +271,7 @@ static void print_desc(struct desc *desc, const char *description)
 {
 	const char *text;
 
-	text = uuidstr_to_str(desc->uuid);
+	text = bt_uuidstr_to_str(desc->uuid);
 	if (!text)
 		bt_shell_printf("%s%s%sDescriptor\n\t%s\n\t%s\n",
 					description ? "[" : "",

@@ -30,7 +30,6 @@
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
 #include "lib/uuid.h"
-#include "monitor/uuid.h"
 #include "btio/btio.h"
 #include "gdbus/gdbus.h"
 #include "src/shared/util.h"
@@ -729,16 +728,16 @@ static void database_add_record(struct btd_gatt_database *database,
 
 	switch (uuid.type) {
 	case BT_UUID16:
-		name = uuid16_to_str(uuid.value.u16);
+		name = bt_uuid16_to_str(uuid.value.u16);
 		sdp_uuid16_create(&svc, uuid.value.u16);
 		break;
 	case BT_UUID32:
-		name = uuid32_to_str(uuid.value.u32);
+		name = bt_uuid32_to_str(uuid.value.u32);
 		sdp_uuid32_create(&svc, uuid.value.u32);
 		break;
 	case BT_UUID128:
 		bt_uuid_to_string(&uuid, uuidstr, sizeof(uuidstr));
-		name = uuidstr_to_str(uuidstr);
+		name = bt_uuidstr_to_str(uuidstr);
 		sdp_uuid128_create(&svc, (void *) &uuid.value.u128);
 		break;
 	case BT_UUID_UNSPEC:

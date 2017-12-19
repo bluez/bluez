@@ -39,7 +39,6 @@
 #include "src/shared/util.h"
 #include "src/shared/shell.h"
 #include "gdbus/gdbus.h"
-#include "monitor/uuid.h"
 #include "mesh/mesh-net.h"
 #include "mesh/config-model.h"
 #include "mesh/node.h"
