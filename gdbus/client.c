@@ -449,6 +449,12 @@ static void proxy_free(gpointer data)
 	if (proxy->client) {
 		GDBusClient *client = proxy->client;
 
+		if (proxy->get_all_call != NULL) {
+			dbus_pending_call_cancel(proxy->get_all_call);
+			dbus_pending_call_unref(proxy->get_all_call);
+			proxy->get_all_call = NULL;
+		}
+
 		if (client->proxy_removed)
 			client->proxy_removed(proxy, client->user_data);
 
