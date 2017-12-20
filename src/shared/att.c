@@ -642,6 +642,12 @@ static bool handle_error_rsp(struct bt_att *att, uint8_t *pdu,
 	if (!change_security(att, rsp->ecode))
 		return false;
 
+	/* Remove timeout_id if outstanding */
+	if (op->timeout_id) {
+		timeout_remove(op->timeout_id);
+		op->timeout_id = 0;
+	}
+
 	util_debug(att->debug_callback, att->debug_data,
 						"Retrying operation %p", op);
 
