@@ -1934,7 +1934,14 @@ unsigned int bt_gatt_client_ready_register(struct bt_gatt_client *client,
 bool bt_gatt_client_ready_unregister(struct bt_gatt_client *client,
 						unsigned int id)
 {
-	return queue_remove(client->ready_cbs, UINT_TO_PTR(id));
+	struct ready_cb *ready = UINT_TO_PTR(id);
+
+	if (queue_remove(client->ready_cbs, ready)) {
+		ready_destroy(ready);
+		return true;
+	}
+
+	return false;
 }
 
 bool bt_gatt_client_set_service_changed(struct bt_gatt_client *client,
