@@ -39,6 +39,7 @@
 #include <sys/socket.h>
 
 #include "lib/bluetooth.h"
+#include "lib/uuid.h"
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
 
@@ -49,7 +50,6 @@
 #include "ll.h"
 #include "hwdb.h"
 #include "keys.h"
-#include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
 #include "vendor.h"
