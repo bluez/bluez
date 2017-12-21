@@ -241,9 +241,9 @@ struct btp_new_settings_ev {
 	uint32_t current_settings;
 } __packed;
 
-#define BTP_EV_GAP_DEVICE_FOUND_FLAG_RSSI	0x00
-#define BTP_EV_GAP_DEVICE_FOUND_FLAG_AD		0x01
-#define BTP_EV_GAP_DEVICE_FOUND_FLAG_SR		0x02
+#define BTP_EV_GAP_DEVICE_FOUND_FLAG_RSSI	0x01
+#define BTP_EV_GAP_DEVICE_FOUND_FLAG_AD		0x02
+#define BTP_EV_GAP_DEVICE_FOUND_FLAG_SR		0x04
 
 #define BTP_EV_GAP_DEVICE_FOUND			0x81
 struct btp_device_found_ev {
