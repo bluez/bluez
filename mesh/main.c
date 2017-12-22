@@ -1669,14 +1669,19 @@ static void cmd_security(int argc, char *argv[])
 	uint8_t level;
 	char *end;
 
+	if (argc == 1)
+		goto done;
+
 	level = strtol(argv[1], &end, 10);
 	if (end == argv[1] || !prov_set_sec_level(level)) {
 		bt_shell_printf("Invalid security level %s\n", argv[1]);
 		return;
 	}
 
-	bt_shell_printf("Provision Security Level set to %u (%s)\n", level,
-						security2str(level));
+done:
+	bt_shell_printf("Provision Security Level set to %u (%s)\n",
+			prov_get_sec_level(),
+			security2str(prov_get_sec_level()));
 }
 
 static void cmd_connect(int argc, char *argv[])
