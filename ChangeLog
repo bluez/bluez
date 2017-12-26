@@ -1,3 +1,21 @@
+ver 5.48:
+	Fix issue with subscriptions for unpaired devices.
+	Fix issue with handling A2DP and no available SEP.
+	Fix issue with handling AVCTP change path support.
+	Fix issue with handling AVCTP browsing channel.
+	Fix issue with handling AVCTP passthrough PDUs.
+	Fix issue with handling detaching of controller.
+	Fix issue with handling start discovery results.
+	Fix issue with handling non-connectable devices.
+	Fix issue with handling unused parameter in WriteValue.
+	Add support for service side AcquireWrite and AcquireNotify.
+	Add support for providing address type information.
+	Add support for cable based authentication and pairing.
+	Add support for Bluetooth Low-Energy battery service.
+	Add support for BTP client for qualification testing.
+	Add support for additional Mesh control functionality.
+	Mark advertising manager APIs as stable interfaces.
+
 ver 5.47:
 	Fix issue with handling AcquireNotify registration.
 	Fix issue with handling support for reconnection interval.
