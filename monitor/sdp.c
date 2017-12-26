@@ -32,6 +32,7 @@
 #include <inttypes.h>
 
 #include "lib/bluetooth.h"
+#include "lib/uuid.h"
 
 #include "src/shared/util.h"
 
@@ -39,7 +40,6 @@
 #include "packet.h"
 #include "display.h"
 #include "l2cap.h"
-#include "uuid.h"
 #include "sdp.h"
 
 #define MAX_TID 16

@@ -33,13 +33,13 @@
 #include <inttypes.h>
 
 #include "lib/bluetooth.h"
+#include "lib/uuid.h"
 
 #include "src/shared/util.h"
 #include "bt.h"
 #include "packet.h"
 #include "display.h"
 #include "l2cap.h"
-#include "uuid.h"
 #include "keys.h"
 #include "sdp.h"
 #include "avctp.h"
