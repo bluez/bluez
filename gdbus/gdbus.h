@@ -341,6 +341,7 @@ gboolean g_dbus_proxy_get_property(GDBusProxy *proxy, const char *name,
 
 GDBusProxy *g_dbus_proxy_lookup(GList *list, int *index, const char *path,
 						const char *interface);
+char *g_dbus_proxy_path_lookup(GList *list, int *index, const char *path);
 
 gboolean g_dbus_proxy_refresh_property(GDBusProxy *proxy, const char *name);
 

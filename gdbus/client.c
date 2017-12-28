@@ -26,6 +26,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 #include <glib.h>
 #include <dbus/dbus.h>
 
@@ -372,6 +373,26 @@ GDBusProxy *g_dbus_proxy_lookup(GList *list, int *index, const char *path,
 			g_str_equal(proxy_path, path) == TRUE)
 			return proxy;
         }
+
+	return NULL;
+}
+
+char *g_dbus_proxy_path_lookup(GList *list, int *index, const char *path)
+{
+	int len = strlen(path);
+	GList *l;
+
+	for (l = g_list_nth(list, index ? *index : 0); l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		const char *proxy_path = g_dbus_proxy_get_path(proxy);
+
+		if (index)
+			(*index)++;
+
+		if (!strncasecmp(proxy_path, path, len))
+			return strdup(proxy_path);
+	}
 
 	return NULL;
 }
