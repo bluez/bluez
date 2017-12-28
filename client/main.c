@@ -392,9 +392,8 @@ static gboolean device_is_child(GDBusProxy *device, GDBusProxy *master)
 
 static gboolean service_is_child(GDBusProxy *service)
 {
-	GList *l;
 	DBusMessageIter iter;
-	const char *device, *path;
+	const char *device;
 
 	if (g_dbus_proxy_get_property(service, "Device", &iter) == FALSE)
 		return FALSE;
@@ -404,16 +403,8 @@ static gboolean service_is_child(GDBusProxy *service)
 	if (!default_ctrl)
 		return FALSE;
 
-	for (l = default_ctrl->devices; l; l = g_list_next(l)) {
-		struct GDBusProxy *proxy = l->data;
-
-		path = g_dbus_proxy_get_path(proxy);
-
-		if (!strcmp(path, device))
-			return TRUE;
-	}
-
-	return FALSE;
+	return g_dbus_proxy_lookup(default_ctrl->devices, NULL, device,
+					"org.bluez.Device1") != NULL;
 }
 
 static struct adapter *find_parent(GDBusProxy *device)

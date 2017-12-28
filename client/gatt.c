@@ -206,25 +206,16 @@ static void print_characteristic(GDBusProxy *proxy, const char *description)
 
 static gboolean chrc_is_child(GDBusProxy *characteristic)
 {
-	GList *l;
 	DBusMessageIter iter;
-	const char *service, *path;
+	const char *service;
 
 	if (!g_dbus_proxy_get_property(characteristic, "Service", &iter))
 		return FALSE;
 
 	dbus_message_iter_get_basic(&iter, &service);
 
-	for (l = services; l; l = g_list_next(l)) {
-		GDBusProxy *proxy = l->data;
-
-		path = g_dbus_proxy_get_path(proxy);
-
-		if (!strcmp(path, service))
-			return TRUE;
-	}
-
-	return FALSE;
+	return g_dbus_proxy_lookup(services, NULL, service,
+					"org.bluez.GattService1") != NULL;
 }
 
 void gatt_add_characteristic(GDBusProxy *proxy)
@@ -378,33 +369,22 @@ void gatt_list_attributes(const char *path)
 	list_attributes(path, services);
 }
 
-static GDBusProxy *select_proxy(const char *path, GList *source)
-{
-	GList *l;
-
-	for (l = source; l; l = g_list_next(l)) {
-		GDBusProxy *proxy = l->data;
-
-		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
-			return proxy;
-	}
-
-	return NULL;
-}
-
 static GDBusProxy *select_attribute(const char *path)
 {
 	GDBusProxy *proxy;
 
-	proxy = select_proxy(path, services);
+	proxy = g_dbus_proxy_lookup(services, NULL, path,
+					"org.bluez.GattService1");
 	if (proxy)
 		return proxy;
 
-	proxy = select_proxy(path, characteristics);
+	proxy = g_dbus_proxy_lookup(characteristics, NULL, path,
+					"org.bluez.GattCharacteristic1");
 	if (proxy)
 		return proxy;
 
-	return select_proxy(path, descriptors);
+	return g_dbus_proxy_lookup(descriptors, NULL, path,
+					"org.bluez.GattDescriptor1");
 }
 
 static GDBusProxy *select_proxy_by_uuid(GDBusProxy *parent, const char *uuid,
