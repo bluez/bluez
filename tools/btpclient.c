@@ -52,6 +52,12 @@ static struct btp *btp;
 
 static bool gap_service_registered;
 
+static bool str2addr(const char *str, uint8_t *addr)
+{
+	return sscanf(str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &addr[5], &addr[4],
+				&addr[3], &addr[2], &addr[1], &addr[0]) == 6;
+}
+
 static struct btp_adapter *find_adapter_by_proxy(struct l_dbus_proxy *proxy)
 {
 	const struct l_queue_entry *entry;
@@ -171,9 +177,7 @@ static void btp_gap_read_info(uint8_t index, const void *param, uint16_t length,
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Address", "s", &str))
 		goto failed;
 
-	if (sscanf(str,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-			&rp.address[5], &rp.address[4], &rp.address[3],
-			&rp.address[2], &rp.address[1], &rp.address[0]) != 6)
+	if (!str2addr(str, rp.address))
 		goto failed;
 
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Name", "s", &str)) {
