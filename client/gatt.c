@@ -445,28 +445,13 @@ GDBusProxy *gatt_select_attribute(GDBusProxy *parent, const char *arg)
 
 static char *attribute_generator(const char *text, int state, GList *source)
 {
-	static int index, len;
-	GList *list;
+	static int index;
 
 	if (!state) {
 		index = 0;
-		len = strlen(text);
 	}
 
-	for (list = g_list_nth(source, index); list;
-						list = g_list_next(list)) {
-		GDBusProxy *proxy = list->data;
-		const char *path;
-
-		index++;
-
-		path = g_dbus_proxy_get_path(proxy);
-
-		if (!strncmp(path, text, len))
-			return strdup(path);
-        }
-
-	return NULL;
+	return g_dbus_proxy_path_lookup(source, &index, text);
 }
 
 char *gatt_attribute_generator(const char *text, int state)
