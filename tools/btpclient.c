@@ -36,6 +36,7 @@
 
 struct btp_adapter {
 	struct l_dbus_proxy *proxy;
+	struct l_dbus_proxy *ad_proxy;
 	uint8_t index;
 	uint32_t supported_settings;
 	uint32_t current_settings;
@@ -659,6 +660,19 @@ static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 		device->proxy = proxy;
 
 		l_queue_push_tail(adapter->devices, device);
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
+		struct btp_adapter *adapter;
+
+		adapter = find_adapter_by_path(path);
+		if (!adapter)
+			return;
+
+		adapter->ad_proxy = proxy;
+
 		return;
 	}
 }
