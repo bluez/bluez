@@ -75,6 +75,27 @@ static bool check_default_player(void)
 	return TRUE;
 }
 
+static char *generic_generator(const char *text, int state, GList *source)
+{
+	static int index = 0;
+
+	if (!state) {
+		index = 0;
+	}
+
+	return g_dbus_proxy_path_lookup(source, &index, text);
+}
+
+static char *player_generator(const char *text, int state)
+{
+	return generic_generator(text, state, players);
+}
+
+static char *item_generator(const char *text, int state)
+{
+	return generic_generator(text, state, items);
+}
+
 static void play_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
@@ -911,9 +932,12 @@ static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
 	{ "list",         NULL,       cmd_list, "List available players" },
-	{ "show",         "[player]", cmd_show, "Player information" },
-	{ "select",       "<player>", cmd_select, "Select default player" },
-	{ "play",         "[item]",   cmd_play, "Start playback" },
+	{ "show",         "[player]", cmd_show, "Player information",
+							player_generator},
+	{ "select",       "<player>", cmd_select, "Select default player",
+							player_generator},
+	{ "play",         "[item]",   cmd_play, "Start playback",
+							item_generator},
 	{ "pause",        NULL,       cmd_pause, "Pause playback" },
 	{ "stop",         NULL,       cmd_stop, "Stop playback" },
 	{ "next",         NULL,       cmd_next, "Jump to next item" },
@@ -935,8 +959,10 @@ static const struct bt_shell_menu main_menu = {
 					"List items of current folder" },
 	{ "search",     "<string>",   cmd_search,
 					"Search items containing string" },
-	{ "queue",       "<item>",    cmd_queue, "Add item to playlist queue" },
-	{ "show-item",   "<item>",    cmd_show_item, "Show item information" },
+	{ "queue",       "<item>",    cmd_queue, "Add item to playlist queue",
+							item_generator},
+	{ "show-item",   "<item>",    cmd_show_item, "Show item information",
+							item_generator},
 	{} },
 };
 
