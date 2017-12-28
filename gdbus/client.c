@@ -352,16 +352,24 @@ static void get_all_properties(GDBusProxy *proxy)
 	dbus_message_unref(msg);
 }
 
-static GDBusProxy *proxy_lookup(GList *list, const char *path,
+GDBusProxy *g_dbus_proxy_lookup(GList *list, int *index, const char *path,
 						const char *interface)
 {
 	GList *l;
 
-	for (l = g_list_first(list); l; l = g_list_next(l)) {
-		GDBusProxy *proxy = l->data;
+	if (!interface)
+		return NULL;
 
-		if (g_str_equal(proxy->interface, interface) == TRUE &&
-				g_str_equal(proxy->obj_path, path) == TRUE)
+	for (l = g_list_nth(list, index ? *index : 0); l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+		const char *proxy_iface = g_dbus_proxy_get_interface(proxy);
+		const char *proxy_path = g_dbus_proxy_get_path(proxy);
+
+		if (index)
+			(*index)++;
+
+		if (g_str_equal(proxy_iface, interface) == TRUE &&
+			g_str_equal(proxy_path, path) == TRUE)
 			return proxy;
         }
 
@@ -519,7 +527,8 @@ GDBusProxy *g_dbus_proxy_new(GDBusClient *client, const char *path,
 	if (client == NULL)
 		return NULL;
 
-	proxy = proxy_lookup(client->proxy_list, path, interface);
+	proxy = g_dbus_proxy_lookup(client->proxy_list, NULL,
+						path, interface);
 	if (proxy)
 		return g_dbus_proxy_ref(proxy);
 
@@ -992,7 +1001,8 @@ static void parse_properties(GDBusClient *client, const char *path,
 	if (g_str_equal(interface, DBUS_INTERFACE_PROPERTIES) == TRUE)
 		return;
 
-	proxy = proxy_lookup(client->proxy_list, path, interface);
+	proxy = g_dbus_proxy_lookup(client->proxy_list, NULL,
+						path, interface);
 	if (proxy && !proxy->pending) {
 		update_properties(proxy, iter, FALSE);
 		return;
