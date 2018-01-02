@@ -2136,7 +2136,7 @@ static char *attribute_generator(const char *text, int state)
 }
 
 static char *argument_generator(const char *text, int state,
-					const char * const *args_list)
+					const char *args_list[])
 {
 	static int index, len;
 	const char *arg;
