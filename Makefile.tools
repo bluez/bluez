@@ -185,7 +185,8 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btsnoop tools/btproxy \
 			tools/btiotest tools/bneptest tools/mcaptest \
 			tools/cltest tools/oobtest tools/advtest \
-			tools/seq2bseq tools/nokfw tools/create-image \
+			tools/seq2bseq tools/nokfw tools/rtlfw \
+			tools/create-image \
 			tools/eddystone tools/ibeacon \
 			tools/btgatt-client tools/btgatt-server \
 			tools/test-runner tools/check-selftest \
@@ -248,6 +249,8 @@ tools_advtest_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la
 tools_seq2bseq_SOURCES = tools/seq2bseq.c
 
 tools_nokfw_SOURCES = tools/nokfw.c
+
+tools_rtlfw_SOURCES = tools/rtlfw.c
 
 tools_create_image_SOURCES = tools/create-image.c
 

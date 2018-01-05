@@ -69,6 +69,7 @@ tools/bluemoon
 tools/seq2bseq
 tools/hex2hcd
 tools/nokfw
+tools/rtlfw
 tools/btiotest
 tools/mpris-proxy
 tools/bluetooth-player
