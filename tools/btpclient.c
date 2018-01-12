@@ -368,9 +368,9 @@ static void btp_gap_set_connectable(uint8_t index, const void *param,
 	new_settings = adapter->current_settings;
 
 	if (cp->connectable)
-		new_settings |= 1 << BTP_GAP_SETTING_CONNECTABLE;
+		new_settings |= BTP_GAP_SETTING_CONNECTABLE;
 	else
-		new_settings &= ~(1 << BTP_GAP_SETTING_CONNECTABLE);
+		new_settings &= ~BTP_GAP_SETTING_CONNECTABLE;
 
 	update_current_settings(adapter, new_settings);
 
