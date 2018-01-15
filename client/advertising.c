@@ -672,12 +672,18 @@ void ad_advertise_local_appearance(DBusConnection *conn, long int *value)
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Appearance");
 }
 
-void ad_advertise_duration(DBusConnection *conn, uint16_t value)
+void ad_advertise_duration(DBusConnection *conn, long int *value)
 {
-	if (ad.duration == value)
+	if (!value) {
+		if (ad.duration)
+			bt_shell_printf("Duration: %u sec\n", ad.duration);
+		return;
+	}
+
+	if (ad.duration == *value)
 		return;
 
-	ad.duration = value;
+	ad.duration = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Duration");
 }
