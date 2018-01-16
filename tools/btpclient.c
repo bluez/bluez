@@ -32,6 +32,7 @@
 
 #include <ell/ell.h>
 
+#include "lib/bluetooth.h"
 #include "src/shared/btp.h"
 
 struct btp_adapter {
@@ -52,12 +53,6 @@ static char *socket_path;
 static struct btp *btp;
 
 static bool gap_service_registered;
-
-static bool str2addr(const char *str, uint8_t *addr)
-{
-	return sscanf(str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &addr[5], &addr[4],
-				&addr[3], &addr[2], &addr[1], &addr[0]) == 6;
-}
 
 static struct btp_adapter *find_adapter_by_proxy(struct l_dbus_proxy *proxy)
 {
@@ -181,7 +176,7 @@ static void btp_gap_read_info(uint8_t index, const void *param, uint16_t length,
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Address", "s", &str))
 		goto failed;
 
-	if (!str2addr(str, rp.address))
+	if (str2ba(str, (bdaddr_t *)rp.address) < 0)
 		goto failed;
 
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Name", "s", &str)) {
@@ -674,7 +669,7 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 	int16_t rssi;
 
 	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &str) ||
-						!str2addr(str, ev.address))
+						str2ba(str, (bdaddr_t *)ev.address) < 0)
 		return;
 
 	if (!l_dbus_proxy_get_property(proxy, "AddressType", "s", &str))

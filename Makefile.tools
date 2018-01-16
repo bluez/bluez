@@ -450,5 +450,5 @@ noinst_PROGRAMS += tools/btpclient
 
 tools_btpclient_SOURCES = tools/btpclient.c src/shared/btp.c src/shared/btp.h
 tools_btpclient_CFLAGS = $(AM_CFLAGS) @ELL_CFLAGS@
-tools_btpclient_LDADD = @ELL_LIBS@
+tools_btpclient_LDADD = @ELL_LIBS@ lib/libbluetooth-internal.la
 endif
