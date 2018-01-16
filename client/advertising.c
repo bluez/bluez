@@ -688,12 +688,18 @@ void ad_advertise_duration(DBusConnection *conn, long int *value)
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Duration");
 }
 
-void ad_advertise_timeout(DBusConnection *conn, uint16_t value)
+void ad_advertise_timeout(DBusConnection *conn, long int *value)
 {
-	if (ad.timeout == value)
+	if (!value) {
+		if (ad.timeout)
+			bt_shell_printf("Timeout: %u sec\n", ad.timeout);
+		return;
+	}
+
+	if (ad.timeout == *value)
 		return;
 
-	ad.timeout = value;
+	ad.timeout = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Timeout");
 }
