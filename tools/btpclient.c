@@ -176,7 +176,7 @@ static void btp_gap_read_info(uint8_t index, const void *param, uint16_t length,
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Address", "s", &str))
 		goto failed;
 
-	if (str2ba(str, (bdaddr_t *)rp.address) < 0)
+	if (str2ba(str, &rp.address) < 0)
 		goto failed;
 
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Name", "s", &str)) {
@@ -669,7 +669,7 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 	int16_t rssi;
 
 	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &str) ||
-						str2ba(str, (bdaddr_t *)ev.address) < 0)
+						str2ba(str, &ev.address) < 0)
 		return;
 
 	if (!l_dbus_proxy_get_property(proxy, "AddressType", "s", &str))
