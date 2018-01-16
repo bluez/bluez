@@ -1675,7 +1675,7 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 	chrc->service = service;
 	chrc->uuid = g_strdup(argv[1]);
 	chrc->path = g_strdup_printf("%s/chrc%p", service->path, chrc);
-	chrc->flags = g_strsplit(argv[1], ",", -1);
+	chrc->flags = g_strsplit(argv[2], ",", -1);
 
 	if (g_dbus_register_interface(conn, chrc->path, CHRC_INTERFACE,
 					chrc_methods, NULL, chrc_properties,
@@ -1867,7 +1867,7 @@ void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
 	desc->chrc = g_list_last(service->chrcs)->data;
 	desc->uuid = g_strdup(argv[1]);
 	desc->path = g_strdup_printf("%s/desc%p", desc->chrc->path, desc);
-	desc->flags = g_strsplit(argv[1], ",", -1);
+	desc->flags = g_strsplit(argv[2], ",", -1);
 
 	if (g_dbus_register_interface(conn, desc->path, DESC_INTERFACE,
 					desc_methods, NULL, desc_properties,
