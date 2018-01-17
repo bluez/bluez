@@ -303,7 +303,8 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.63 */
 	case OP_CONFIG_HEARTBEAT_PUB_STATUS:
-		bt_shell_printf("\nSet heartbeat for node %4.4x status: %s\n",
+		bt_shell_printf("\nHeartbeat publication status for "
+				"node %4.4x status: %s\n",
 				src,
 				data[0] == MESH_STATUS_SUCCESS ? "Success" :
 						mesh_status_str(data[0]));
@@ -317,6 +318,25 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 		bt_shell_printf("TTL:\t\t%2.2x\n", data[5]);
 		bt_shell_printf("Features:\t%4.4x\n", get_le16(data + 6));
 		bt_shell_printf("Net_Idx:\t%4.4x\n", get_le16(data + 8));
+		break;
+
+	/* Per Mesh Profile 4.3.2.66 */
+	case OP_CONFIG_HEARTBEAT_SUB_STATUS:
+		bt_shell_printf("\nHeartbeat subscription status for "
+				"node %4.4x status: %s\n",
+				src,
+				data[0] == MESH_STATUS_SUCCESS ? "Success" :
+						mesh_status_str(data[0]));
+
+		if (data[0] != MESH_STATUS_SUCCESS)
+			return true;
+
+		bt_shell_printf("Source:\t\t%4.4x\n", get_le16(data + 1));
+		bt_shell_printf("Destination:\t%4.4x\n", get_le16(data + 3));
+		bt_shell_printf("Period:\t\t%2.2x\n", data[5]);
+		bt_shell_printf("Count:\t\t%2.2x\n", data[6]);
+		bt_shell_printf("Min Hops:\t%2.2x\n", data[7]);
+		bt_shell_printf("Max Hops:\t%2.2x\n", data[8]);
 		break;
 	}
 
@@ -946,7 +966,7 @@ static void cmd_get_app(int argc, char *argv[])
 		bt_shell_printf("Failed to send \"GET APP GET\"\n");
 }
 
-static void cmd_set_hb(int argc, char *argv[])
+static void cmd_hb_pub_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
@@ -983,7 +1003,40 @@ static void cmd_set_hb(int argc, char *argv[])
 	n += 2;
 
 	if (!config_send(msg, n))
-		bt_shell_printf("Failed to send \"SET HEARTBEAT PUBLICATION\"\n");
+		bt_shell_printf("Failed to send \"SET HEARTBEAT PUBLISH\"\n");
+}
+
+static void cmd_hb_sub_set(int argc, char *argv[])
+{
+	uint16_t n;
+	uint8_t msg[32];
+	int parm_cnt;
+
+	if (IS_UNASSIGNED(target)) {
+		bt_shell_printf("Destination not set\n");
+		return;
+	}
+
+	n = mesh_opcode_set(OP_CONFIG_HEARTBEAT_SUB_SET, msg);
+
+	parm_cnt = read_input_parameters(argc, argv);
+	if (parm_cnt != 3) {
+		bt_shell_printf("Bad arguments: %s\n", argv[1]);
+		return;
+	}
+
+	/* Per Mesh Profile 4.3.2.65 */
+	/* Source address */
+	put_le16(parms[0], msg + n);
+	n += 2;
+	/* Destination address */
+	put_le16(parms[1], msg + n);
+	n += 2;
+	/* Period log */
+	msg[n++] = parms[2];
+
+	if (!config_send(msg, n))
+		bt_shell_printf("Failed to send \"SET HEARTBEAT SUBSCRIBE\"\n");
 }
 
 static void cmd_get_ttl(int argc, char *argv[])
@@ -1033,7 +1086,9 @@ static const struct bt_shell_menu cfg_menu = {
 	{"relay-get",           NULL,                   cmd_get_relay,
 						"Get relay"},
 	{"hb-pub-set", "<pub_addr> <count> <period> <features> <net_idx>",
-				cmd_set_hb,     "Set heartbeati publish"},
+				cmd_hb_pub_set,     "Set heartbeat publish"},
+	{"hb-sub-set", "<src_addr> <dst_addr> <period>",
+				cmd_hb_sub_set,     "Set heartbeat subscribe"},
 	{"sub-add", "<ele_addr> <sub_addr> <model id>",
 				cmd_sub_add,    "Subscription add"},
 	{"sub-get", "<ele_addr> <model id>",
