@@ -2230,6 +2230,7 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
 {
 	struct btd_device *dev = req->device;
 	DBusMessage *reply = NULL;
+	DBusMessage *msg;
 
 	if (req->type != type)
 		return;
@@ -2266,19 +2267,31 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
 		goto done;
 	}
 
-	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE, "Connect"))
-		reply = dev_connect(dbus_conn, req->msg, dev);
-	else if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
+	/* if successfully resolved services we need to free browsing request
+	 * before passing message back to connect functions, otherwise
+	 * device->browse is set and "InProgress" error is returned instead
+	 * of actually connecting services
+	 */
+	msg = dbus_message_ref(req->msg);
+	browse_request_free(req);
+	req = NULL;
+
+	if (dbus_message_is_method_call(msg, DEVICE_INTERFACE, "Connect"))
+		reply = dev_connect(dbus_conn, msg, dev);
+	else if (dbus_message_is_method_call(msg, DEVICE_INTERFACE,
 							"ConnectProfile"))
-		reply = connect_profile(dbus_conn, req->msg, dev);
+		reply = connect_profile(dbus_conn, msg, dev);
 	else
-		reply = g_dbus_create_reply(req->msg, DBUS_TYPE_INVALID);
+		reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	dbus_message_unref(msg);
 
 done:
 	if (reply)
 		g_dbus_send_message(dbus_conn, reply);
 
-	browse_request_free(req);
+	if (req)
+		browse_request_free(req);
 }
 
 static void device_set_svc_refreshed(struct btd_device *device, bool value)
