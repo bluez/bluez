@@ -202,6 +202,9 @@ static bool parse_type(DBusMessageIter *iter, struct btd_adv_client *client)
 {
 	const char *msg_type;
 
+	if (!iter)
+		return true;
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
 		return false;
 
@@ -224,6 +227,11 @@ static bool parse_service_uuids(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
 	DBusMessageIter ariter;
+
+	if (!iter) {
+		bt_ad_clear_service_uuid(client->data);
+		return true;
+	}
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
 		return false;
@@ -261,6 +269,11 @@ static bool parse_solicit_uuids(DBusMessageIter *iter,
 {
 	DBusMessageIter ariter;
 
+	if (!iter) {
+		bt_ad_clear_solicit_uuid(client->data);
+		return true;
+	}
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
 		return false;
 
@@ -296,6 +309,11 @@ static bool parse_manufacturer_data(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
 	DBusMessageIter entries;
+
+	if (!iter) {
+		bt_ad_clear_manufacturer_data(client->data);
+		return true;
+	}
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
 		return false;
@@ -351,6 +369,11 @@ static bool parse_service_data(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
 	DBusMessageIter entries;
+
+	if (!iter) {
+		bt_ad_clear_service_data(client->data);
+		return true;
+	}
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
 		return false;
@@ -421,10 +444,18 @@ static bool parse_includes(DBusMessageIter *iter,
 {
 	DBusMessageIter entries;
 
+	if (!iter) {
+		client->flags = 0;
+		return true;
+	}
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
 		return false;
 
 	dbus_message_iter_recurse(iter, &entries);
+
+	/* Reset flags before parsing */
+	client->flags = 0;
 
 	while (dbus_message_iter_get_arg_type(&entries) == DBUS_TYPE_STRING) {
 		const char *str;
@@ -455,6 +486,12 @@ static bool parse_local_name(DBusMessageIter *iter,
 {
 	const char *name;
 
+	if (!iter) {
+		free(client->name);
+		client->name = NULL;
+		return true;
+	}
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
 		return false;
 
@@ -474,6 +511,11 @@ static bool parse_local_name(DBusMessageIter *iter,
 static bool parse_appearance(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
+	if (!iter) {
+		client->appearance = 0;
+		return true;
+	}
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16)
 		return false;
 
@@ -490,6 +532,11 @@ static bool parse_appearance(DBusMessageIter *iter,
 static bool parse_duration(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
+	if (!iter) {
+		client->duration = 0;
+		return true;
+	}
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16)
 		return false;
 
@@ -515,6 +562,13 @@ static gboolean client_timeout(void *user_data)
 static bool parse_timeout(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
+	if (!iter) {
+		client->timeout = 0;
+		g_source_remove(client->to_id);
+		client->to_id = 0;
+		return true;
+	}
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16)
 		return false;
 
