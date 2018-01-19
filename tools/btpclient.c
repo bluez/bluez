@@ -1038,7 +1038,7 @@ static void btp_gap_start_advertising(uint8_t index, const void *param,
 		goto failed;
 	}
 
-	/* Adapter needs to be powered to be able to remove devices */
+	/* Adapter needs to be powered to be able to advertise */
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Powered", "b", &prop) ||
 							!prop || ad.registered)
 		goto failed;
