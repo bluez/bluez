@@ -118,6 +118,8 @@ tools/btconfig
 tools/btmgmt
 tools/btsnoop
 tools/btpclient
+tools/btmon-logger
+tools/bluetooth-logger.service
 peripheral/btsensor
 monitor/btmon
 emulator/btvirt

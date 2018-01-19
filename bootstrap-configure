@@ -24,4 +24,5 @@ fi
 		--enable-sixaxis \
 		--enable-midi \
 		--enable-mesh \
+		--enable-logger \
 		--disable-datafiles $*

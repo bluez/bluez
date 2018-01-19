@@ -30,6 +30,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <limits.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
 
@@ -73,6 +75,11 @@ struct btsnoop {
 	bool aborted;
 	bool pklg_format;
 	bool pklg_v2;
+	const char *path;
+	size_t max_size;
+	size_t cur_size;
+	unsigned int max_count;
+	unsigned int cur_count;
 };
 
 struct btsnoop *btsnoop_open(const char *path, unsigned long flags)
@@ -131,17 +138,31 @@ failed:
 	return NULL;
 }
 
-struct btsnoop *btsnoop_create(const char *path, uint32_t format)
+struct btsnoop *btsnoop_create(const char *path, size_t max_size,
+					unsigned int max_count, uint32_t format)
 {
 	struct btsnoop *btsnoop;
 	struct btsnoop_hdr hdr;
+	const char *real_path;
+	char tmp[PATH_MAX];
 	ssize_t written;
+
+	if (!max_size && max_count)
+		return NULL;
 
 	btsnoop = calloc(1, sizeof(*btsnoop));
 	if (!btsnoop)
 		return NULL;
 
-	btsnoop->fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+	/* If max file size is specified, always add counter to file path */
+	if (max_size) {
+		snprintf(tmp, PATH_MAX, "%s.0", path);
+		real_path = tmp;
+	} else {
+		real_path = path;
+	}
+
+	btsnoop->fd = open(real_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
 					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (btsnoop->fd < 0) {
 		free(btsnoop);
@@ -150,6 +171,9 @@ struct btsnoop *btsnoop_create(const char *path, uint32_t format)
 
 	btsnoop->format = format;
 	btsnoop->index = 0xffff;
+	btsnoop->path = path;
+	btsnoop->max_count = max_count;
+	btsnoop->max_size = max_size;
 
 	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
 	hdr.version = htobe32(btsnoop_version);
@@ -161,6 +185,8 @@ struct btsnoop *btsnoop_create(const char *path, uint32_t format)
 		free(btsnoop);
 		return NULL;
 	}
+
+	btsnoop->cur_size = BTSNOOP_HDR_SIZE;
 
 	return btsnoop_ref(btsnoop);
 }
@@ -197,6 +223,42 @@ uint32_t btsnoop_get_format(struct btsnoop *btsnoop)
 	return btsnoop->format;
 }
 
+static bool btsnoop_rotate(struct btsnoop *btsnoop)
+{
+	struct btsnoop_hdr hdr;
+	char path[PATH_MAX];
+	ssize_t written;
+
+	close(btsnoop->fd);
+
+	/* Check if max number of log files has been reached */
+	if (btsnoop->max_count && btsnoop->cur_count >= btsnoop->max_count) {
+		snprintf(path, PATH_MAX, "%s.%u", btsnoop->path,
+				btsnoop->cur_count - btsnoop->max_count);
+		unlink(path);
+	}
+
+	snprintf(path, PATH_MAX,"%s.%u", btsnoop->path, btsnoop->cur_count);
+	btsnoop->cur_count++;
+
+	btsnoop->fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (btsnoop->fd < 0)
+		return false;
+
+	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
+	hdr.version = htobe32(btsnoop_version);
+	hdr.type = htobe32(btsnoop->format);
+
+	written = write(btsnoop->fd, &hdr, BTSNOOP_HDR_SIZE);
+	if (written < 0)
+		return false;
+
+	btsnoop->cur_size = BTSNOOP_HDR_SIZE;
+
+	return true;
+}
+
 bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 			uint32_t flags, uint32_t drops, const void *data,
 			uint16_t size)
@@ -207,6 +269,11 @@ bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 
 	if (!btsnoop || !tv)
 		return false;
+
+	if (btsnoop->max_size && btsnoop->max_size <=
+			btsnoop->cur_size + size + BTSNOOP_PKT_SIZE)
+		if (!btsnoop_rotate(btsnoop))
+			return false;
 
 	ts = (tv->tv_sec - 946684800ll) * 1000000ll + tv->tv_usec;
 
@@ -220,11 +287,15 @@ bool btsnoop_write(struct btsnoop *btsnoop, struct timeval *tv,
 	if (written < 0)
 		return false;
 
+	btsnoop->cur_size += BTSNOOP_PKT_SIZE;
+
 	if (data && size > 0) {
 		written = write(btsnoop->fd, data, size);
 		if (written < 0)
 			return false;
 	}
+
+	btsnoop->cur_size += size;
 
 	return true;
 }

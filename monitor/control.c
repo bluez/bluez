@@ -1373,7 +1373,7 @@ int control_tty(const char *path, unsigned int speed)
 
 bool control_writer(const char *path)
 {
-	btsnoop_file = btsnoop_create(path, BTSNOOP_FORMAT_MONITOR);
+	btsnoop_file = btsnoop_create(path, 0, 0, BTSNOOP_FORMAT_MONITOR);
 
 	return !!btsnoop_file;
 }

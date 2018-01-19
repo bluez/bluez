@@ -148,7 +148,7 @@ static int open_monitor(const char *path)
 	struct sockaddr_hci addr;
 	int opt = 1;
 
-	snoop = btsnoop_create(path, BTSNOOP_FORMAT_HCI);
+	snoop = btsnoop_create(path, 0, 0, BTSNOOP_FORMAT_HCI);
 	if (!snoop)
 		return -1;
 

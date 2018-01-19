@@ -99,7 +99,8 @@ struct btsnoop_opcode_user_logging {
 struct btsnoop;
 
 struct btsnoop *btsnoop_open(const char *path, unsigned long flags);
-struct btsnoop *btsnoop_create(const char *path, uint32_t format);
+struct btsnoop *btsnoop_create(const char *path, size_t max_size,
+				unsigned int max_count, uint32_t format);
 
 struct btsnoop *btsnoop_ref(struct btsnoop *btsnoop);
 void btsnoop_unref(struct btsnoop *btsnoop);
