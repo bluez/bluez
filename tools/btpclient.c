@@ -1156,19 +1156,15 @@ static void btp_gap_stop_advertising(uint8_t index, const void *param,
 	}
 
 	if (!l_dbus_proxy_get_property(adapter->proxy, "Powered", "b", &prop) ||
-							!prop || !ad.registered)
+				!prop || !adapter->ad_proxy || !ad.registered)
 		goto failed;
 
-	if (adapter->ad_proxy) {
-		if (!l_dbus_proxy_method_call(adapter->ad_proxy,
+	if (!l_dbus_proxy_method_call(adapter->ad_proxy,
 						"UnregisterAdvertisement",
 						unreg_advertising_setup,
 						stop_advertising_reply,
-						NULL, NULL)) {
-			status = BTP_ERROR_FAIL;
-			goto failed;
-		}
-	}
+						NULL, NULL))
+		goto failed;
 
 	return;
 
