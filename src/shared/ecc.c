@@ -66,9 +66,13 @@ typedef struct {
 #define CURVE_N_32 {	0xF3B9CAC2FC632551ull, 0xBCE6FAADA7179E84ull,	\
 			0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFF00000000ull }
 
+#define CURVE_B_32 {	0x3BCE3C3E27D2604Bull, 0x651D06B0CC53B0F6ull,	\
+			0xB3EBBD55769886BCull, 0x5AC635D8AA3A93E7ull }
+
 static uint64_t curve_p[NUM_ECC_DIGITS] = CURVE_P_32;
 static struct ecc_point curve_g = CURVE_G_32;
 static uint64_t curve_n[NUM_ECC_DIGITS] = CURVE_N_32;
+static uint64_t curve_b[NUM_ECC_DIGITS] = CURVE_B_32;
 
 static bool get_random_number(uint64_t *vli)
 {
@@ -181,6 +185,19 @@ static int vli_cmp(const uint64_t *left, const uint64_t *right)
     }
 
     return 0;
+}
+
+/* Constant-time comparison function - secure way to compare long integers */
+/* Returns one if left == right, zero otherwise. */
+static bool vli_equal(const uint64_t *left, const uint64_t *right)
+{
+	uint64_t diff = 0;
+	int i;
+
+	for (i = NUM_ECC_DIGITS - 1; i >= 0; --i)
+		diff |= (left[i] ^ right[i]);
+
+	return (diff == 0);
 }
 
 /* Computes result = in << c, returning carry. Can modify in place
@@ -770,6 +787,34 @@ static void ecc_point_mult(struct ecc_point *result,
 	vli_set(result->y, ry[0]);
 }
 
+static bool ecc_valid_point(const struct ecc_point *point)
+{
+	uint64_t tmp1[NUM_ECC_DIGITS];
+	uint64_t tmp2[NUM_ECC_DIGITS];
+	uint64_t _3[NUM_ECC_DIGITS] = { 3 };	/* -a = 3 */
+
+	/* The point at infinity is invalid. */
+	if (ecc_point_is_zero(point))
+		return false;
+
+	/* x and y must be smaller than p. */
+	if (vli_cmp(curve_p, point->x) != 1 ||
+			vli_cmp(curve_p, point->y) != 1)
+		return false;
+
+	/* Computes result = y^2. */
+	vli_mod_square_fast(tmp1, point->y);
+
+	/* Computes result = x^3 + ax + b. result must not overlap x. */
+	vli_mod_square_fast(tmp2, point->x);		/* r = x^2 */
+	vli_mod_sub(tmp2, tmp2, _3, curve_p);		/* r = x^2 - 3 */
+	vli_mod_mult_fast(tmp2, tmp2, point->x);	/* r = x^3 - 3x */
+	vli_mod_add(tmp2, tmp2, curve_b, curve_p);	/* r = x^3 - 3x + b */
+
+	/* Make sure that y^2 == x^3 + ax + b */
+	return vli_equal(tmp1, tmp2);
+}
+
 /* Little endian byte-array to native conversion */
 static void ecc_bytes2native(const uint8_t bytes[ECC_BYTES],
 						uint64_t native[NUM_ECC_DIGITS])
@@ -838,6 +883,16 @@ bool ecc_make_key(uint8_t public_key[64], uint8_t private_key[32])
 	return true;
 }
 
+bool ecc_valid_public_key(const uint8_t public_key[64])
+{
+	struct ecc_point pk;
+
+	ecc_bytes2native(public_key, pk.x);
+	ecc_bytes2native(&public_key[32], pk.y);
+
+	return ecc_valid_point(&pk);
+}
+
 bool ecdh_shared_secret(const uint8_t public_key[64],
 				const uint8_t private_key[32],
 				uint8_t secret[32])
@@ -851,6 +906,10 @@ bool ecdh_shared_secret(const uint8_t public_key[64],
 
 	ecc_bytes2native(public_key, pk.x);
 	ecc_bytes2native(&public_key[32], pk.y);
+
+	if (!ecc_valid_point(&pk))
+		return false;
+
 	ecc_bytes2native(private_key, priv);
 
 	ecc_point_mult(&product, &pk, priv, rand, vli_num_bits(priv));

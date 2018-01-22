@@ -28,6 +28,7 @@
 #include <stdint.h>
 
 /* Create a public/private key pair.
+ *
  * Outputs:
  *	public_key  - Will be filled in with the public key.
  *	private_Key - Will be filled in with the private key.
@@ -36,6 +37,15 @@
  * if an error occurred. They keys are with the LSB first.
  */
 bool ecc_make_key(uint8_t public_key[64], uint8_t private_key[32]);
+
+/* Check to see if a public key is valid.
+ *
+ * Inputs:
+ *	public_key - The public key to check.
+ *
+ * Returns true if the public key is valid, false if it is invalid.
+*/
+bool ecc_valid_public_key(const uint8_t public_key[64]);
 
 /* Compute a shared secret given your secret key and someone else's
  * public key.
