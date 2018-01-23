@@ -54,8 +54,6 @@
 #include "service.h"
 #include "transport.h"
 
-static GSList *sessions = NULL;
-
 typedef struct {
 	uint8_t  version;
 	uint8_t  flags;
@@ -233,8 +231,6 @@ static void os_reset_session(struct obex_session *os)
 
 static void obex_session_free(struct obex_session *os)
 {
-	sessions = g_slist_remove(sessions, os);
-
 	if (os->io) {
 		g_io_channel_shutdown(os->io, TRUE, NULL);
 		g_io_channel_unref(os->io);
@@ -1066,8 +1062,6 @@ int obex_session_start(GIOChannel *io, uint16_t tx_mtu, uint16_t rx_mtu,
 
 	obex_getsockname(os, &os->src);
 	obex_getpeername(os, &os->dst);
-
-	sessions = g_slist_prepend(sessions, os);
 
 	return 0;
 }
