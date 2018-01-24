@@ -377,7 +377,8 @@ static gboolean transfer_size_exists(const GDBusPropertyTable *property,
 	struct obex_transfer *transfer = data;
 	struct obex_session *session = transfer->session;
 
-	return session->size != OBJECT_SIZE_UNKNOWN;
+	return (session->size != OBJECT_SIZE_UNKNOWN &&
+				session->size != OBJECT_SIZE_DELETE);
 }
 
 static gboolean transfer_get_size(const GDBusPropertyTable *property,
@@ -386,7 +387,8 @@ static gboolean transfer_get_size(const GDBusPropertyTable *property,
 	struct obex_transfer *transfer = data;
 	struct obex_session *session = transfer->session;
 
-	if (session->size == OBJECT_SIZE_UNKNOWN)
+	if (session->size == OBJECT_SIZE_UNKNOWN ||
+				session->size == OBJECT_SIZE_DELETE)
 		return FALSE;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT64, &session->size);
