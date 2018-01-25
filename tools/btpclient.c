@@ -390,6 +390,24 @@ static void unreg_advertising_setup(struct l_dbus_message *message,
 	l_dbus_message_builder_destroy(builder);
 }
 
+static void ad_cleanup_service(void *service)
+{
+	struct service_data *s = service;
+
+	l_free(s->uuid);
+	l_free(s);
+}
+
+static void ad_cleanup(void)
+{
+	l_free(ad.local_name);
+	l_queue_destroy(ad.uuids, l_free);
+	l_queue_destroy(ad.services, ad_cleanup_service);
+	l_queue_destroy(ad.manufacturers, l_free);
+
+	memset(&ad, 0, sizeof(ad));
+}
+
 static void unreg_advertising_reply(struct l_dbus_proxy *proxy,
 						struct l_dbus_message *result,
 						void *user_data)
@@ -417,6 +435,8 @@ static void unreg_advertising_reply(struct l_dbus_proxy *proxy,
 		l_info("Unable to remove propety instance");
 	if (!l_dbus_unregister_interface(dbus, AD_IFACE))
 		l_info("Unable to unregister ad interface");
+
+	ad_cleanup();
 }
 
 static void btp_gap_reset(uint8_t index, const void *param, uint16_t length,
@@ -449,7 +469,7 @@ static void btp_gap_reset(uint8_t index, const void *param, uint16_t length,
 						NULL);
 	}
 
-	if (adapter->ad_proxy)
+	if (adapter->ad_proxy && ad.registered)
 		if (!l_dbus_proxy_method_call(adapter->ad_proxy,
 						"UnregisterAdvertisement",
 						unreg_advertising_setup,
@@ -644,24 +664,6 @@ static void btp_gap_set_bondable(uint8_t index, const void *param,
 
 failed:
 	btp_send_error(btp, BTP_GAP_SERVICE, index, status);
-}
-
-static void ad_cleanup_service(void *service)
-{
-	struct service_data *s = service;
-
-	l_free(s->uuid);
-	l_free(s);
-}
-
-static void ad_cleanup(void)
-{
-	l_free(ad.local_name);
-	l_queue_destroy(ad.uuids, l_free);
-	l_queue_destroy(ad.services, ad_cleanup_service);
-	l_queue_destroy(ad.manufacturers, l_free);
-
-	memset(&ad, 0, sizeof(ad));
 }
 
 static void ad_init(void)
