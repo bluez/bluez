@@ -623,7 +623,7 @@ static bool signal_read(struct io *io, void *user_data)
 			rl_crlf();
 			rl_on_new_line();
 			rl_redisplay();
-			break;
+			return true;
 		}
 
 		/*
