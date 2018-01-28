@@ -1421,6 +1421,10 @@ DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
 {
 	char str[1024];
 
+	/* Check if the message can be replied */
+	if (dbus_message_get_no_reply(message))
+		return NULL;
+
 	if (format)
 		vsnprintf(str, sizeof(str), format, args);
 	else
@@ -1448,6 +1452,10 @@ DBusMessage *g_dbus_create_reply_valist(DBusMessage *message,
 						int type, va_list args)
 {
 	DBusMessage *reply;
+
+	/* Check if the message can be replied */
+	if (dbus_message_get_no_reply(message))
+		return NULL;
 
 	reply = dbus_message_new_method_return(message);
 	if (reply == NULL)
@@ -1571,14 +1579,9 @@ gboolean g_dbus_send_reply_valist(DBusConnection *connection,
 {
 	DBusMessage *reply;
 
-	reply = dbus_message_new_method_return(message);
-	if (reply == NULL)
+	reply = g_dbus_create_reply_valist(message, type, args);
+	if (!reply)
 		return FALSE;
-
-	if (dbus_message_append_args_valist(reply, type, args) == FALSE) {
-		dbus_message_unref(reply);
-		return FALSE;
-	}
 
 	return g_dbus_send_message(connection, reply);
 }
