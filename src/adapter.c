@@ -1469,9 +1469,8 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 			adapter->filtered_discovery = false;
 
 		if (client->msg) {
-			reply = g_dbus_create_reply(client->msg,
-							DBUS_TYPE_INVALID);
-			g_dbus_send_message(dbus_conn, reply);
+			g_dbus_send_reply(dbus_conn, client->msg,
+						DBUS_TYPE_INVALID);
 			dbus_message_unref(client->msg);
 			client->msg = NULL;
 		}
@@ -1860,10 +1859,8 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 		goto done;
 	}
 
-	if (client->msg) {
-		reply = g_dbus_create_reply(client->msg, DBUS_TYPE_INVALID);
-		g_dbus_send_message(dbus_conn, reply);
-	}
+	if (client->msg)
+		g_dbus_send_reply(dbus_conn, client->msg, DBUS_TYPE_INVALID);
 
 	adapter->discovery_type = 0x00;
 	adapter->discovery_enable = 0x00;
