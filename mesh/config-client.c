@@ -1006,6 +1006,11 @@ static void cmd_hb_pub_set(int argc, char *argv[])
 		bt_shell_printf("Failed to send \"SET HEARTBEAT PUBLISH\"\n");
 }
 
+static void cmd_hb_pub_get(int argc, char *argv[])
+{
+	cmd_default(OP_CONFIG_HEARTBEAT_PUB_GET);
+}
+
 static void cmd_hb_sub_set(int argc, char *argv[])
 {
 	uint16_t n;
@@ -1037,6 +1042,11 @@ static void cmd_hb_sub_set(int argc, char *argv[])
 
 	if (!config_send(msg, n))
 		bt_shell_printf("Failed to send \"SET HEARTBEAT SUBSCRIBE\"\n");
+}
+
+static void cmd_hb_sub_get(int argc, char *argv[])
+{
+	cmd_default(OP_CONFIG_HEARTBEAT_SUB_GET);
 }
 
 static void cmd_get_ttl(int argc, char *argv[])
@@ -1087,8 +1097,12 @@ static const struct bt_shell_menu cfg_menu = {
 						"Get relay"},
 	{"hb-pub-set", "<pub_addr> <count> <period> <features> <net_idx>",
 				cmd_hb_pub_set,     "Set heartbeat publish"},
+	{"hb-pub-get",           NULL,                   cmd_hb_pub_get,
+						"Get heartbeat publish"},
 	{"hb-sub-set", "<src_addr> <dst_addr> <period>",
 				cmd_hb_sub_set,     "Set heartbeat subscribe"},
+	{"hb-sub-get",           NULL,                   cmd_hb_sub_get,
+						"Get heartbeat subscribe"},
 	{"sub-add", "<ele_addr> <sub_addr> <model id>",
 				cmd_sub_add,    "Subscription add"},
 	{"sub-get", "<ele_addr> <model id>",
