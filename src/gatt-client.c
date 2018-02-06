@@ -1492,8 +1492,10 @@ static DBusMessage *characteristic_acquire_notify(DBusConnection *conn,
 						register_notify_io_cb,
 						notify_io_cb,
 						client, NULL);
-	if (!client->notify_id)
+	if (!client->notify_id) {
+		notify_client_unref(client);
 		return btd_error_failed(msg, "Failed to subscribe");
+	}
 
 	queue_push_tail(chrc->notify_clients, client);
 
