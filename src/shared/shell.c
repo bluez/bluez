@@ -285,7 +285,7 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	}
 
 	/* Check if there are enough arguments */
-	if ((unsigned) argc - 1 < w.we_wordc && !w.we_offs) {
+	if ((unsigned) argc - 1 < w.we_wordc) {
 		print_text(COLOR_HIGHLIGHT, "Missing %s argument",
 						w.we_wordv[argc - 1]);
 		goto fail;
