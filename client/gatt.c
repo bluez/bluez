@@ -679,11 +679,17 @@ static bool pipe_hup(struct io *io, void *user_data)
 	struct chrc *chrc = user_data;
 
 	if (chrc) {
-		bt_shell_printf("Attribute %s Write pipe closed\n", chrc->path);
-		if (chrc->write_io) {
+		bt_shell_printf("Attribute %s %s pipe closed\n", chrc->path,
+				io == chrc->write_io ? "Write" : "Notify");
+
+		if (io == chrc->write_io) {
 			io_destroy(chrc->write_io);
 			chrc->write_io = NULL;
+		} else {
+			io_destroy(chrc->notify_io);
+			chrc->notify_io = NULL;
 		}
+
 		return false;
 	}
 
