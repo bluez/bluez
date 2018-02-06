@@ -550,6 +550,7 @@ static void setup_le_generate_dhkey(const void *test_data)
 
 	memset(lsem.mask, 0, 8);
 	lsem.mask[0] |= 0x80;	/* LE Read Local P-256 Public Key Complete */
+	lsem.mask[1] |= 0x01;	/* LE Generate DHKey Complete */
 
 	bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_SET_EVENT_MASK,
 					&lsem, sizeof(lsem), NULL, NULL, NULL);
