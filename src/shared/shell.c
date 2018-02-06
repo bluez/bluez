@@ -198,6 +198,15 @@ static const struct bt_shell_menu_entry default_menu[] = {
 	{ }
 };
 
+static void shell_print_help(void)
+{
+	print_text(COLOR_HIGHLIGHT,
+		"\n"
+		"Use \"help\" for a list of available commands in a menu.\n"
+		"Use \"menu <submenu>\" if you want to enter any submenu.\n"
+		"Use \"back\" if you want to return to menu main.");
+}
+
 static void shell_print_menu(void)
 {
 	const struct bt_shell_menu_entry *entry;
@@ -348,8 +357,12 @@ static void shell_exec(int argc, char *argv[])
 		return;
 
 	if (menu_exec(default_menu, argc, argv) == -ENOENT) {
-		if (menu_exec(data.menu->entries, argc, argv) == -ENOENT)
-			print_text(COLOR_HIGHLIGHT, "Invalid command");
+		if (menu_exec(data.menu->entries, argc, argv) == -ENOENT) {
+			print_text(COLOR_HIGHLIGHT,
+					"Invalid command in menu %s: %s",
+					data.menu->name , argv[0]);
+			shell_print_help();
+		}
 	}
 }
 
