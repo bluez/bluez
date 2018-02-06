@@ -460,10 +460,26 @@ static void test_le_read_local_pk_status(const void *data, uint8_t size,
 static void test_le_read_local_pk(const void *test_data)
 {
 	struct user_data *user = tester_get_data();
+	struct bt_hci_cmd_set_event_mask sem;
+	struct bt_hci_cmd_le_set_event_mask lsem;
 
 	bt_hci_register(user->hci_ut, BT_HCI_EVT_LE_META_EVENT,
 				test_le_read_local_pk_complete,
 				(void *)test_data, NULL);
+
+	memset(sem.mask, 0, 8);
+	sem.mask[1] |= 0x20;	/* Command Complete */
+	sem.mask[1] |= 0x40;	/* Command Status */
+	sem.mask[7] |= 0x20;	/* LE Meta */
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_SET_EVENT_MASK,
+					&sem, sizeof(sem), NULL, NULL, NULL);
+
+	memset(lsem.mask, 0, 8);
+	lsem.mask[0] |= 0x80;	/* LE Read Local P-256 Public Key Complete */
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_SET_EVENT_MASK,
+					&lsem, sizeof(lsem), NULL, NULL, NULL);
 
 	if (!bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_READ_LOCAL_PK256, NULL,
 				0, test_le_read_local_pk_status,
@@ -517,10 +533,26 @@ static void setup_le_read_local_pk_status(const void *data, uint8_t size,
 static void setup_le_generate_dhkey(const void *test_data)
 {
 	struct user_data *user = tester_get_data();
+	struct bt_hci_cmd_set_event_mask sem;
+	struct bt_hci_cmd_le_set_event_mask lsem;
 
 	bt_hci_register(user->hci_ut, BT_HCI_EVT_LE_META_EVENT,
 				setup_le_read_local_pk_complete,
 				(void *)test_data, NULL);
+
+	memset(sem.mask, 0, 8);
+	sem.mask[1] |= 0x20;	/* Command Complete */
+	sem.mask[1] |= 0x40;	/* Command Status */
+	sem.mask[7] |= 0x20;	/* LE Meta */
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_SET_EVENT_MASK,
+					&sem, sizeof(sem), NULL, NULL, NULL);
+
+	memset(lsem.mask, 0, 8);
+	lsem.mask[0] |= 0x80;	/* LE Read Local P-256 Public Key Complete */
+
+	bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_SET_EVENT_MASK,
+					&lsem, sizeof(lsem), NULL, NULL, NULL);
 
 	if (!bt_hci_send(user->hci_ut, BT_HCI_CMD_LE_READ_LOCAL_PK256, NULL,
 				0, setup_le_read_local_pk_status,
