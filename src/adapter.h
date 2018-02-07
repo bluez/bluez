@@ -74,6 +74,7 @@ void adapter_foreach(adapter_cb func, gpointer user_data);
 bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 bool btd_adapter_get_powered(struct btd_adapter *adapter);
 bool btd_adapter_get_connectable(struct btd_adapter *adapter);
+bool btd_adapter_get_discoverable(struct btd_adapter *adapter);
 
 struct btd_gatt_database *btd_adapter_get_database(struct btd_adapter *adapter);
 

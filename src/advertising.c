@@ -622,8 +622,12 @@ static int refresh_adv(struct btd_adv_client *client, mgmt_request_func_t func)
 
 	DBG("Refreshing advertisement: %s", client->path);
 
-	if (client->type == AD_TYPE_PERIPHERAL)
-		flags = MGMT_ADV_FLAG_CONNECTABLE | MGMT_ADV_FLAG_DISCOV;
+	if (client->type == AD_TYPE_PERIPHERAL) {
+		flags = MGMT_ADV_FLAG_CONNECTABLE;
+
+		if (btd_adapter_get_discoverable(client->manager->adapter))
+			flags |= MGMT_ADV_FLAG_DISCOV;
+	}
 
 	flags |= client->flags;
 
@@ -1105,4 +1109,10 @@ void btd_adv_manager_destroy(struct btd_adv_manager *manager)
 					LE_ADVERTISING_MGR_IFACE);
 
 	manager_destroy(manager);
+}
+
+void btd_adv_manager_refresh(struct btd_adv_manager *manager)
+{
+	queue_foreach(manager->clients, (queue_foreach_func_t)refresh_adv,
+									NULL);
 }
