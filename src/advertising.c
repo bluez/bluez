@@ -780,6 +780,11 @@ static void client_proxy_added(GDBusProxy *proxy, void *data)
 {
 	struct btd_adv_client *client = data;
 	DBusMessage *reply;
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+	if (g_str_equal(interface, LE_ADVERTISEMENT_IFACE) == FALSE)
+		return;
 
 	reply = parse_advertisement(client);
 	if (!reply)
