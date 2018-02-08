@@ -535,10 +535,6 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 			trigger_passive_scanning(adapter);
 	}
 
-	if (changed_mask & MGMT_SETTING_CONNECTABLE)
-		g_dbus_emit_property_changed(dbus_conn, adapter->path,
-					ADAPTER_INTERFACE, "Connectable");
-
 	if (changed_mask & MGMT_SETTING_DISCOVERABLE) {
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable");
