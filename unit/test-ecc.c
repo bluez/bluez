@@ -94,7 +94,10 @@ static int test_sample(uint8_t priv_a[32], uint8_t priv_b[32],
 	uint8_t dhkey_a[32], dhkey_b[32];
 	int fails = 0;
 
+	memset(dhkey_a, 0, sizeof(dhkey_a));
 	ecdh_shared_secret(pub_b, priv_a, dhkey_a);
+
+	memset(dhkey_b, 0, sizeof(dhkey_b));
 	ecdh_shared_secret(pub_a, priv_b, dhkey_b);
 
 	if (g_test_verbose()) {
@@ -109,6 +112,7 @@ static int test_sample(uint8_t priv_a[32], uint8_t priv_b[32],
 	} else {
 		tester_debug("DHKey A matches :)");
 	}
+
 
 	if (memcmp(dhkey_b, dhkey, 32)) {
 		tester_debug("DHKey B doesn't match!");
