@@ -1212,7 +1212,9 @@ static void complete_notify_request(void *data)
 	struct notify_data *notify_data = data;
 
 	notify_data->att_id = 0;
-	notify_data->callback(0, notify_data->user_data);
+
+	if (notify_data->callback)
+		notify_data->callback(0, notify_data->user_data);
 }
 
 static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
@@ -3156,6 +3158,10 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 
 	/* Remove data if it has been queued */
 	queue_remove(notify_data->chrc->reg_notify_queue, notify_data);
+
+	/* Reset callbacks */
+	notify_data->callback = NULL;
+	notify_data->notify = NULL;
 
 	complete_unregister_notify(notify_data);
 	return true;
