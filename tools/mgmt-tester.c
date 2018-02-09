@@ -373,7 +373,7 @@ static void test_condition_complete(struct test_data *data)
 				test_post_teardown, 2, user, free); \
 	} while (0)
 
-#define test_le(name, data, setup, func) \
+#define test_le_full(name, data, setup, func, timeout) \
 	do { \
 		struct test_data *user; \
 		user = new0(struct test_data, 1); \
@@ -386,8 +386,11 @@ static void test_condition_complete(struct test_data *data)
 		user->initial_settings = 0x00000200; \
 		tester_add_full(name, data, \
 				test_pre_setup, test_setup, func, NULL, \
-				test_post_teardown, 2, user, free); \
+				test_post_teardown, timeout, user, free); \
 	} while (0)
+
+#define test_le(name, data, setup, func) \
+	test_le_full(name, data, setup, func, 2)
 
 static void controller_setup(const void *test_data)
 {
