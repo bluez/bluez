@@ -57,6 +57,9 @@ uint8_t hciemu_get_master_scan_enable(struct hciemu *hciemu);
 
 uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu);
 
+void hciemu_set_master_le_states(struct hciemu *hciemu,
+						const uint8_t *le_states);
+
 typedef void (*hciemu_command_func_t)(uint16_t opcode, const void *data,
 						uint8_t len, void *user_data);
 

@@ -444,6 +444,14 @@ uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu)
 	return btdev_get_le_scan_enable(hciemu->master_dev);
 }
 
+void hciemu_set_master_le_states(struct hciemu *hciemu, const uint8_t *le_states)
+{
+	if (!hciemu || !hciemu->master_dev)
+		return;
+
+	btdev_set_le_states(hciemu->master_dev, le_states);
+}
+
 bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 			hciemu_command_func_t function, void *user_data)
 {

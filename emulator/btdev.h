@@ -84,12 +84,13 @@ uint8_t btdev_get_scan_enable(struct btdev *btdev);
 
 uint8_t btdev_get_le_scan_enable(struct btdev *btdev);
 
+void btdev_set_le_states(struct btdev *btdev, const uint8_t *le_states);
+
 void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
 							void *user_data);
 
 void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
 							void *user_data);
-
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len);
 
 int btdev_add_hook(struct btdev *btdev, enum btdev_hook_type type,
