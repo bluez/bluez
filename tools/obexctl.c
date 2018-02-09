@@ -1885,6 +1885,9 @@ static void transfer_property_changed(GDBusProxy *proxy, const char *name,
 	struct transfer_data *data = user_data;
 	char *str;
 
+	if (iter == NULL)
+		return;
+
 	str = proxy_description(proxy, "Transfer", COLORED_CHG);
 
 	if (strcmp(name, "Transferred") == 0) {
