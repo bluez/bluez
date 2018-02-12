@@ -247,8 +247,8 @@ struct btp_new_settings_ev {
 
 #define BTP_EV_GAP_DEVICE_FOUND			0x81
 struct btp_device_found_ev {
-	bdaddr_t address;
 	uint8_t address_type;
+	bdaddr_t address;
 	int8_t rssi;
 	uint8_t flags;
 	uint16_t eir_len;
