@@ -115,6 +115,18 @@ struct gatt_db_service {
 	struct gatt_db_attribute **attributes;
 };
 
+static void set_attribute_data(struct gatt_db_attribute *attribute,
+						gatt_db_read_t read_func,
+						gatt_db_write_t write_func,
+						uint32_t permissions,
+						void *user_data)
+{
+	attribute->permissions = permissions;
+	attribute->read_func = read_func;
+	attribute->write_func = write_func;
+	attribute->user_data = user_data;
+}
+
 static void pending_read_result(struct pending_read *p, int err,
 					const uint8_t *data, size_t length)
 {
@@ -387,6 +399,8 @@ static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
 		return NULL;
 	}
 
+	set_attribute_data(service->attributes[0], NULL, NULL, BT_ATT_PERM_READ, NULL);
+
 	return service;
 }
 
@@ -655,18 +669,6 @@ attribute_update(struct gatt_db_service *service, int index)
 	return service->attributes[index];
 }
 
-static void set_attribute_data(struct gatt_db_attribute *attribute,
-						gatt_db_read_t read_func,
-						gatt_db_write_t write_func,
-						uint32_t permissions,
-						void *user_data)
-{
-	attribute->permissions = permissions;
-	attribute->read_func = read_func;
-	attribute->write_func = write_func;
-	attribute->user_data = user_data;
-}
-
 static struct gatt_db_attribute *
 service_insert_characteristic(struct gatt_db_service *service,
 					uint16_t handle,
@@ -717,6 +719,8 @@ service_insert_characteristic(struct gatt_db_service *service,
 							value, len);
 	if (!service->attributes[i])
 		return NULL;
+
+	set_attribute_data(service->attributes[i], NULL, NULL, BT_ATT_PERM_READ, NULL);
 
 	i++;
 
@@ -929,7 +933,7 @@ service_insert_included(struct gatt_db_service *service, uint16_t handle,
 	 *
 	 * TODO handle permissions
 	 */
-	set_attribute_data(service->attributes[index], NULL, NULL, 0, NULL);
+	set_attribute_data(service->attributes[index], NULL, NULL, BT_ATT_PERM_READ, NULL);
 
 	return attribute_update(service, index);
 }
