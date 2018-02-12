@@ -971,7 +971,7 @@ static void setup_ad_interface(struct l_dbus_interface *interface)
 						ad_serviceuuids_getter, NULL);
 	l_dbus_interface_property(interface, "ServiceData", 0, "a{sv}",
 						ad_servicedata_getter, NULL);
-	l_dbus_interface_property(interface, "ManufacturerServiceData", 0,
+	l_dbus_interface_property(interface, "ManufacturerData", 0,
 					"a{qv}", ad_manufacturerdata_getter,
 					NULL);
 	l_dbus_interface_property(interface, "Includes", 0, "as",
