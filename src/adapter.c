@@ -7745,6 +7745,13 @@ static int adapter_register(struct btd_adapter *adapter)
 		agent_unref(agent);
 	}
 
+	/* Don't start GATT database and advertising managers on
+	 * non-LE controllers.
+	 */
+	if (!(adapter->supported_settings & MGMT_SETTING_LE) ||
+					main_opts.mode == BT_MODE_BREDR)
+		goto load;
+
 	adapter->database = btd_gatt_database_new(adapter);
 	if (!adapter->database) {
 		btd_error(adapter->dev_id,
@@ -7753,18 +7760,14 @@ static int adapter_register(struct btd_adapter *adapter)
 		return -EINVAL;
 	}
 
-	/* Don't start advertising managers on non-LE controllers. */
-	if (adapter->supported_settings & MGMT_SETTING_LE)
-		adapter->adv_manager = btd_adv_manager_new(adapter);
-	else
-		btd_info(adapter->dev_id,
-			"LEAdvertisingManager skipped, LE unavailable");
+	adapter->adv_manager = btd_adv_manager_new(adapter);
 
 	db = btd_gatt_database_get_db(adapter->database);
 	adapter->db_id = gatt_db_register(db, services_modified,
 							services_modified,
 							adapter, NULL);
 
+load:
 	load_config(adapter);
 	fix_storage(adapter);
 	load_drivers(adapter);
