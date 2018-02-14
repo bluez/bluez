@@ -30,6 +30,8 @@ bool prov_db_add_node_composition(struct mesh_node *node, uint8_t *data,
 bool prov_db_node_keys(struct mesh_node *node, GList *idxs, const char *desc);
 bool prov_db_add_binding(struct mesh_node *node, uint8_t ele_idx,
 			uint32_t model_id, uint16_t app_idx);
+bool prov_db_add_subscription(struct mesh_node *node, uint8_t ele_idx,
+			      uint32_t model_id, uint16_t addr);
 bool prov_db_node_set_ttl(struct mesh_node *node, uint8_t ttl);
 bool prov_db_node_set_iv_seq(struct mesh_node *node, uint32_t iv, uint32_t seq);
 bool prov_db_local_set_iv_index(uint32_t iv_index, bool update, bool prov);

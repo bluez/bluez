@@ -262,15 +262,20 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 		if (data[0] != MESH_STATUS_SUCCESS)
 			return true;
 
-		bt_shell_printf("Element Addr\t%4.4x\n", get_le16(data + 1));
+		ele_addr = get_le16(data + 1);
+		addr = get_le16(data + 3);
+		ele_idx = ele_addr - node_get_primary(node);
+
+		bt_shell_printf("Element Addr\t%4.4x\n", ele_addr);
 
 		mod_id = print_mod_id(data + 5, (len == 9) ? true : false);
 
-		bt_shell_printf("Subscr Addr\t%4.4x\n", get_le16(data + 3));
-		break;
+		bt_shell_printf("Subscr Addr\t%4.4x\n", addr);
 
-		/* TODO */
-		/* Save subscription info in database */
+		/* Save subscriptions in node and database */
+		if (node_add_subscription(node, ele_idx, mod_id, addr))
+			prov_db_add_subscription(node, ele_idx, mod_id, addr);
+		break;
 
 	/* Per Mesh Profile 4.3.2.27 */
 	case OP_CONFIG_MODEL_SUB_LIST:

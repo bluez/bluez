@@ -111,6 +111,8 @@ bool node_set_composition(struct mesh_node *node,
 				struct mesh_node_composition *comp);
 bool node_add_binding(struct mesh_node *node, uint8_t ele_idx,
 			uint32_t model_id, uint16_t app_idx);
+bool node_add_subscription(struct mesh_node *node, uint8_t ele_idx,
+			   uint32_t model_id, uint16_t addr);
 uint8_t node_get_default_ttl(struct mesh_node *node);
 bool node_set_default_ttl(struct mesh_node *node, uint8_t ttl);
 bool node_set_sequence_number(struct mesh_node *node, uint32_t seq);

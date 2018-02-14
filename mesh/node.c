@@ -757,7 +757,7 @@ bool node_add_binding(struct mesh_node *node, uint8_t ele_idx,
 	GList *l;
 
 	model = get_model(node, ele_idx, model_id);
-	if(!model)
+	if (!model)
 		return false;
 
 	l = g_list_find(model->bindings, GUINT_TO_POINTER(app_idx));
@@ -771,7 +771,25 @@ bool node_add_binding(struct mesh_node *node, uint8_t ele_idx,
 
 	model->bindings = g_list_append(model->bindings,
 					GUINT_TO_POINTER(app_idx));
+	return true;
+}
 
+bool node_add_subscription(struct mesh_node *node, uint8_t ele_idx,
+			   uint32_t model_id, uint16_t addr)
+{
+	struct mesh_model *model;
+	GList *l;
+
+	model = get_model(node, ele_idx, model_id);
+	if (!model)
+		return false;
+
+	l = g_list_find(model->subscriptions, GUINT_TO_POINTER(addr));
+	if (l)
+		return false;
+
+	model->subscriptions = g_list_append(model->subscriptions,
+					     GUINT_TO_POINTER(addr));
 	return true;
 }
 
