@@ -549,6 +549,8 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 		return;
 	}
 
+	ad_clear_service();
+
 	ad.service.uuid = g_strdup(argv[1]);
 	data = &ad.service.data;
 
