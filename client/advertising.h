@@ -25,8 +25,11 @@ void ad_register(DBusConnection *conn, GDBusProxy *manager, const char *type);
 void ad_unregister(DBusConnection *conn, GDBusProxy *manager);
 
 void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[]);
+void ad_disable_uuids(DBusConnection *conn);
 void ad_advertise_service(DBusConnection *conn, int argc, char *argv[]);
+void ad_disable_service(DBusConnection *conn);
 void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[]);
+void ad_disable_manufacturer(DBusConnection *conn);
 void ad_advertise_tx_power(DBusConnection *conn, dbus_bool_t *value);
 void ad_advertise_name(DBusConnection *conn, bool value);
 void ad_advertise_appearance(DBusConnection *conn, bool value);

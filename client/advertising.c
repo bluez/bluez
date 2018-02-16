@@ -507,6 +507,13 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 	}
 }
 
+static void ad_clear_uuids(void)
+{
+	g_strfreev(ad.uuids);
+	ad.uuids = NULL;
+	ad.uuids_len = 0;
+}
+
 void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 {
 	if (argc < 2 || !strlen(argv[1])) {
@@ -514,9 +521,7 @@ void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 		return;
 	}
 
-	g_strfreev(ad.uuids);
-	ad.uuids = NULL;
-	ad.uuids_len = 0;
+	ad_clear_uuids();
 
 	ad.uuids = g_strdupv(&argv[1]);
 	if (!ad.uuids) {
@@ -526,6 +531,15 @@ void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 
 	ad.uuids_len = g_strv_length(ad.uuids);
 
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceUUIDs");
+}
+
+void ad_disable_uuids(DBusConnection *conn)
+{
+	if (!ad.uuids)
+		return;
+
+	ad_clear_uuids();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceUUIDs");
 }
 
@@ -575,6 +589,15 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 		data->len++;
 	}
 
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
+}
+
+void ad_disable_service(DBusConnection *conn)
+{
+	if (!ad.service.uuid)
+		return;
+
+	ad_clear_service();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
 }
 
@@ -630,6 +653,16 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 		data->len++;
 	}
 
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							"ManufacturerData");
+}
+
+void ad_disable_manufacturer(DBusConnection *conn)
+{
+	if (!ad.manufacturer.id && !ad.manufacturer.data.len)
+		return;
+
+	ad_clear_manufacturer();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"ManufacturerData");
 }
