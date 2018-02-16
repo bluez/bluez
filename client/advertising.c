@@ -131,7 +131,7 @@ static void print_uuid(const char *uuid)
 
 		bt_shell_printf("UUID: %s(%s)\n", str, uuid);
 	} else
-		bt_shell_printf("UUID: (%s)\n", uuid);
+		bt_shell_printf("UUID: (%s)\n", uuid ? uuid : "");
 }
 
 static void print_ad_uuids(void)
