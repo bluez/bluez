@@ -541,8 +541,11 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 	struct ad_data *data;
 
 	if (argc < 2 || !strlen(argv[1])) {
-		print_uuid(ad.service.uuid);
-		bt_shell_hexdump(ad.service.data.data, ad.service.data.len);
+		if (ad.service.uuid) {
+			print_uuid(ad.service.uuid);
+			bt_shell_hexdump(ad.service.data.data,
+						ad.service.data.len);
+		}
 		return;
 	}
 
