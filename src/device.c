@@ -1749,10 +1749,14 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services)
 	if (!dev->bredr_state.svc_resolved)
 		return -ENOENT;
 
-	for (l = services; l; l = g_slist_next(l)) {
-		struct btd_service *service = l->data;
+	if (services) {
+		for (l = services; l; l = g_slist_next(l)) {
+			struct btd_service *service = l->data;
 
-		dev->pending = g_slist_append(dev->pending, service);
+			dev->pending = g_slist_append(dev->pending, service);
+		}
+	} else {
+		dev->pending = create_pending_list(dev, NULL);
 	}
 
 	return connect_next(dev);
@@ -2331,6 +2335,15 @@ static void device_svc_resolved(struct btd_device *dev, uint8_t browse_type,
 		dev->pending_paired = false;
 	}
 
+	if (!dev->temporary)
+		store_device_info(dev);
+
+	if (bdaddr_type != BDADDR_BREDR && err == 0)
+		store_services(dev);
+
+	if (req)
+		browse_request_complete(req, browse_type, bdaddr_type, err);
+
 	while (dev->svc_callbacks) {
 		struct svc_callback *cb = dev->svc_callbacks->data;
 
@@ -2343,17 +2356,6 @@ static void device_svc_resolved(struct btd_device *dev, uint8_t browse_type,
 							dev->svc_callbacks);
 		g_free(cb);
 	}
-
-	if (!dev->temporary)
-		store_device_info(dev);
-
-	if (bdaddr_type != BDADDR_BREDR && err == 0)
-		store_services(dev);
-
-	if (!req)
-		return;
-
-	browse_request_complete(req, browse_type, bdaddr_type, err);
 }
 
 static struct bonding_req *bonding_request_new(DBusMessage *msg,
