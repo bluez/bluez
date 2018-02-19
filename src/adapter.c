@@ -2694,6 +2694,30 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 	new_settings_callback(adapter->dev_id, length, param, adapter);
 }
 
+static void clear_discoverable(struct btd_adapter *adapter)
+{
+	if (!kernel_conn_control)
+		return;
+
+	if (!(adapter->current_settings & MGMT_SETTING_DISCOVERABLE))
+		return;
+
+	/* If no timeout is set do nothing as both connectable and discoverable
+	 * flags are persistent on power toggle.
+	 */
+	if (!adapter->discoverable_timeout)
+		return;
+
+	/* If timeout was set kernel clears discoverable on its own when
+	 * powering off controller. This would leave connectable flag set
+	 * after power on.
+	 *
+	 * With kernel control clearing connectable clear also discoverable
+	 * flag so we need to clear connectable.
+	 */
+	set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x00);
+}
+
 static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 						DBusMessageIter *value,
 						GDBusPendingPropertySet id)
@@ -2724,6 +2748,10 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 		opcode = MGMT_OP_SET_POWERED;
 		param = &mode;
 		len = sizeof(mode);
+
+		if (!mode)
+			clear_discoverable(adapter);
+
 		break;
 	case MGMT_SETTING_DISCOVERABLE:
 		if (kernel_conn_control) {
@@ -8756,6 +8784,7 @@ void adapter_shutdown(void)
 		if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 			continue;
 
+		clear_discoverable(adapter);
 		set_mode(adapter, MGMT_OP_SET_POWERED, 0x00);
 
 		adapter_remaining++;
