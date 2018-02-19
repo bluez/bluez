@@ -4202,6 +4202,7 @@ static struct btd_service *probe_service(struct btd_device *device,
 						struct btd_profile *profile,
 						GSList *uuids)
 {
+	GSList *l;
 	struct btd_service *service;
 
 	if (profile->device_probe == NULL)
@@ -4209,6 +4210,10 @@ static struct btd_service *probe_service(struct btd_device *device,
 
 	if (!device_match_profile(device, profile, uuids))
 		return NULL;
+
+	l = find_service_with_profile(device->services, profile);
+	if (l)
+		return l->data;
 
 	service = service_create(device, profile);
 
