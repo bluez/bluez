@@ -62,6 +62,10 @@ struct bt_shell_env {
 };
 
 static struct {
+	int argc;
+	char **argv;
+	bool mode;
+	int timeout;
 	struct io *input;
 
 	bool saved_prompt;
@@ -372,6 +376,9 @@ void bt_shell_printf(const char *fmt, ...)
 	bool save_input;
 	char *saved_line;
 	int saved_point;
+
+	if (!data.input)
+		return;
 
 	save_input = !RL_ISSTATE(RL_STATE_DONE);
 
@@ -744,6 +751,7 @@ static void rl_init(void)
 static const struct option main_options[] = {
 	{ "version",	no_argument, 0, 'v' },
 	{ "help",	no_argument, 0, 'h' },
+	{ "timeout",	required_argument, 0, 't' },
 };
 
 static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
@@ -759,7 +767,8 @@ static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
 	for (i = 0; opt && opt->options[i].name; i++)
 		printf("\t--%s \t%s\n", opt->options[i].name, opt->help[i]);
 
-	printf("\t--version \tDisplay version\n"
+	printf("\t--timeout \t\tTimeout in seconds for non-interactive mode\n"
+		"\t--version \tDisplay version\n"
 		"\t--help \t\tDisplay help\n");
 }
 
@@ -791,6 +800,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			usage(argc, argv, opt);
 			exit(EXIT_SUCCESS);
 			return;
+		case 't':
+			data.timeout = atoi(optarg);
+			break;
 		default:
 			if (c != opt->options[index - offset].val) {
 				usage(argc, argv, opt);
@@ -801,6 +813,10 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			*opt->optarg[index - offset] = optarg;
 		}
 	}
+
+	data.argc = argc - optind;
+	data.argv = argv + optind;
+	data.mode = (data.argc > 0);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
@@ -873,7 +889,7 @@ bool bt_shell_add_submenu(const struct bt_shell_menu *menu)
 
 void bt_shell_set_prompt(const char *string)
 {
-	if (!main_loop)
+	if (!main_loop || data.mode)
 		return;
 
 	rl_set_prompt(string);
@@ -886,6 +902,13 @@ static bool input_read(struct io *io, void *user_data)
 {
 	rl_callback_read_char();
 	return true;
+}
+
+static gboolean shell_quit(void *data)
+{
+	g_main_loop_quit(main_loop);
+
+	return FALSE;
 }
 
 bool bt_shell_attach(int fd)
@@ -902,6 +925,16 @@ bool bt_shell_attach(int fd)
 	io_set_disconnect_handler(io, io_hup, NULL, NULL);
 
 	data.input = io;
+
+	if (data.mode) {
+		shell_exec(data.argc, data.argv);
+
+		if (!data.timeout) {
+			bt_shell_detach();
+			g_main_loop_quit(main_loop);
+		} else
+			g_timeout_add_seconds(data.timeout, shell_quit, NULL);
+	}
 
 	return true;
 }
