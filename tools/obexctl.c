@@ -75,11 +75,13 @@ struct transfer_data {
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
+	bt_shell_attach(fileno(stdin));
 	bt_shell_set_prompt(PROMPT_ON);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
+	bt_shell_detach();
 	bt_shell_set_prompt(PROMPT_OFF);
 }
 
@@ -2111,7 +2113,6 @@ int main(int argc, char *argv[])
 	bt_shell_init(argc, argv, NULL);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
-	bt_shell_attach(fileno(stdin));
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SESSION, NULL, NULL);
 
