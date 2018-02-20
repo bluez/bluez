@@ -75,6 +75,10 @@ static void usage(void)
 		"\t-A, --a2dp             Dump A2DP stream traffic\n"
 		"\t-E, --ellisys [ip]     Send Ellisys HCI Injection\n"
 		"\t-P, --no-pager         Disable pager usage\n"
+		"\t-J  --jlink <device>,[<serialno>],[<interface>],[<speed>]\n"
+		"\t                       Read data from RTT\n"
+		"\t-R  --rtt [<address>],[<area>],[<name>]\n"
+		"\t                       RTT control block parameters\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -94,6 +98,8 @@ static const struct option main_options[] = {
 	{ "a2dp",      no_argument,       NULL, 'A' },
 	{ "ellisys",   required_argument, NULL, 'E' },
 	{ "no-pager",  no_argument,       NULL, 'P' },
+	{ "jlink",     required_argument, NULL, 'J' },
+	{ "rtt",       required_argument, NULL, 'R' },
 	{ "todo",      no_argument,       NULL, '#' },
 	{ "version",   no_argument,       NULL, 'v' },
 	{ "help",      no_argument,       NULL, 'h' },
@@ -112,6 +118,8 @@ int main(int argc, char *argv[])
 	unsigned int tty_speed = B115200;
 	unsigned short ellisys_port = 0;
 	const char *str;
+	char *jlink = NULL;
+	char *rtt = NULL;
 	int exit_status;
 
 	mainloop_init();
@@ -122,7 +130,7 @@ int main(int argc, char *argv[])
 		int opt;
 		struct sockaddr_un addr;
 
-		opt = getopt_long(argc, argv, "r:w:a:s:p:i:d:B:V:tTSAEPvh",
+		opt = getopt_long(argc, argv, "r:w:a:s:p:i:d:B:V:tTSAE:PJ:R:vh",
 							main_options, NULL);
 		if (opt < 0)
 			break;
@@ -194,6 +202,12 @@ int main(int argc, char *argv[])
 		case 'P':
 			use_pager = false;
 			break;
+		case 'J':
+			jlink = optarg;
+			break;
+		case 'R':
+			rtt = optarg;
+			break;
 		case '#':
 			packet_todo();
 			lmp_todo();
@@ -246,10 +260,13 @@ int main(int argc, char *argv[])
 	if (ellisys_server)
 		ellisys_enable(ellisys_server, ellisys_port);
 
-	if (!tty && control_tracing() < 0)
+	if (!tty && !jlink && control_tracing() < 0)
 		return EXIT_FAILURE;
 
 	if (tty && control_tty(tty, tty_speed) < 0)
+		return EXIT_FAILURE;
+
+	if (jlink && control_rtt(jlink, rtt) < 0)
 		return EXIT_FAILURE;
 
 	exit_status = mainloop_run_with_signal(signal_callback, NULL);

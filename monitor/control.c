@@ -57,6 +57,7 @@
 #include "ellisys.h"
 #include "tty.h"
 #include "control.h"
+#include "jlink.h"
 
 static struct btsnoop *btsnoop_file = NULL;
 static bool hcidump_fallback = false;
@@ -1412,6 +1413,55 @@ int control_tty(const char *path, unsigned int speed)
 	data->fd = fd;
 
 	mainloop_add_fd(data->fd, EPOLLIN, tty_callback, data, free_data);
+
+	return 0;
+}
+
+static void rtt_callback(int id, void *user_data)
+{
+	struct control_data *data = user_data;
+	ssize_t len;
+
+	do {
+		len = jlink_rtt_read(data->buf + data->offset,
+					sizeof(data->buf) - data->offset);
+		data->offset += len;
+		process_data(data);
+	} while (len > 0);
+
+	if (mainloop_modify_timeout(id, 1) < 0)
+		mainloop_exit_failure();
+}
+
+int control_rtt(char *jlink, char *rtt)
+{
+	struct control_data *data;
+
+	if (jlink_init() < 0) {
+		fprintf(stderr, "Failed to initialize J-Link library\n");
+		return -EIO;
+	}
+
+	if (jlink_connect(jlink) < 0) {
+		fprintf(stderr, "Failed to connect to target device\n");
+		return -ENODEV;
+	}
+
+	if (jlink_start_rtt(rtt) < 0) {
+		fprintf(stderr, "Failed to initialize RTT\n");
+		return -ENODEV;
+	}
+
+	printf("--- RTT opened ---\n");
+
+	data = new0(struct control_data, 1);
+	data->channel = HCI_CHANNEL_MONITOR;
+	data->fd = -1;
+
+	if (mainloop_add_timeout(1, rtt_callback, data, free_data) < 0) {
+		free(data);
+		return -EIO;
+	}
 
 	return 0;
 }
