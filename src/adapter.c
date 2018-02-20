@@ -1425,7 +1425,7 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	struct watch_client *client = adapter->discovery_list->data;
+	struct watch_client *client;
 	const struct mgmt_cp_start_discovery *rp = param;
 	DBusMessage *reply;
 
@@ -1434,7 +1434,7 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 	/* Is there are no clients the discovery must have been stopped while
 	 * discovery command was pending.
 	 */
-	if (!client) {
+	if (!adapter->discovery_list) {
 		struct mgmt_cp_stop_discovery cp;
 
 		if (status != MGMT_STATUS_SUCCESS)
@@ -1447,6 +1447,8 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 					NULL, NULL, NULL);
 		return;
 	}
+
+	client = adapter->discovery_list->data;
 
 	if (length < sizeof(*rp)) {
 		btd_error(adapter->dev_id,
