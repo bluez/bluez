@@ -378,11 +378,9 @@ void bt_shell_printf(const char *fmt, ...)
 	if (save_input) {
 		saved_point = rl_point;
 		saved_line = rl_copy_text(0, rl_end);
-		if (!data.saved_prompt) {
-			rl_save_prompt();
-			rl_replace_line("", 0);
-			rl_redisplay();
-		}
+		rl_save_prompt();
+		rl_replace_line("", 0);
+		rl_redisplay();
 	}
 
 	va_start(args, fmt);
@@ -390,8 +388,7 @@ void bt_shell_printf(const char *fmt, ...)
 	va_end(args);
 
 	if (save_input) {
-		if (!data.saved_prompt)
-			rl_restore_prompt();
+		rl_restore_prompt();
 		rl_replace_line(saved_line, 0);
 		rl_point = saved_point;
 		rl_forced_update_display();
