@@ -1300,23 +1300,8 @@ static bool tty_parse_header(uint8_t *hdr, uint8_t len, struct timeval **tv,
 	return true;
 }
 
-static void tty_callback(int fd, uint32_t events, void *user_data)
+static void process_data(struct control_data *data)
 {
-	struct control_data *data = user_data;
-	ssize_t len;
-
-	if (events & (EPOLLERR | EPOLLHUP)) {
-		mainloop_remove_fd(data->fd);
-		return;
-	}
-
-	len = read(data->fd, data->buf + data->offset,
-					sizeof(data->buf) - data->offset);
-	if (len < 0)
-		return;
-
-	data->offset += len;
-
 	while (data->offset >= sizeof(struct tty_hdr)) {
 		struct tty_hdr *hdr = (struct tty_hdr *) data->buf;
 		uint16_t pktlen, opcode, data_len;
@@ -1356,6 +1341,26 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 			memmove(data->buf, data->buf + 2 + data_len,
 								data->offset);
 	}
+}
+
+static void tty_callback(int fd, uint32_t events, void *user_data)
+{
+	struct control_data *data = user_data;
+	ssize_t len;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(data->fd);
+		return;
+	}
+
+	len = read(data->fd, data->buf + data->offset,
+					sizeof(data->buf) - data->offset);
+	if (len < 0)
+		return;
+
+	data->offset += len;
+
+	process_data(data);
 }
 
 int control_tty(const char *path, unsigned int speed)
