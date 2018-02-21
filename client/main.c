@@ -520,7 +520,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		if (!agent_manager) {
 			agent_manager = proxy;
 
-			if (auto_register_agent)
+			if (auto_register_agent &&
+					!bt_shell_get_env("NON_INTERACTIVE"))
 				agent_register(dbus_conn, agent_manager,
 							auto_register_agent);
 		}
