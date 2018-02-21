@@ -818,6 +818,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 	data.argv = argv + optind;
 	data.mode = (data.argc > 0);
 
+	if (data.mode)
+		bt_shell_set_env("NON_INTERACTIVE", &data.mode);
+
 	main_loop = g_main_loop_new(NULL, FALSE);
 
 	rl_init();
