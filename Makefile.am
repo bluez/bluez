@@ -123,7 +123,8 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 
 src_libshared_glib_la_SOURCES = $(shared_sources) \
 				src/shared/io-glib.c \
-				src/shared/timeout-glib.c
+				src/shared/timeout-glib.c \
+				src/shared/mainloop-glib.c
 
 src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 				src/shared/io-mainloop.c \
