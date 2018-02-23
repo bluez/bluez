@@ -787,7 +787,7 @@ static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
 
 void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 {
-	int c, index = 0;
+	int c, index = -1;
 	struct option options[256];
 	char optstr[256];
 	size_t offset;
@@ -817,6 +817,13 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			data.timeout = atoi(optarg);
 			break;
 		default:
+			if (index < 0) {
+				for (index = 0; options[index].val; index++) {
+					if (c == options[index].val)
+						break;
+				}
+			}
+
 			if (c != opt->options[index - offset].val) {
 				usage(argc, argv, opt);
 				exit(EXIT_SUCCESS);
