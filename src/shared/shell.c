@@ -780,7 +780,7 @@ static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
 	for (i = 0; opt && opt->options[i].name; i++)
 		printf("\t--%s \t%s\n", opt->options[i].name, opt->help[i]);
 
-	printf("\t--timeout \t\tTimeout in seconds for non-interactive mode\n"
+	printf("\t--timeout \tTimeout in seconds for non-interactive mode\n"
 		"\t--version \tDisplay version\n"
 		"\t--help \t\tDisplay help\n");
 }
@@ -799,9 +799,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 	if (opt) {
 		memcpy(options + offset, opt->options,
 				sizeof(struct option) * opt->optno);
-		snprintf(optstr, sizeof(optstr), "+hv%s", opt->optstr);
+		snprintf(optstr, sizeof(optstr), "+hvt:%s", opt->optstr);
 	} else
-		snprintf(optstr, sizeof(optstr), "+hv");
+		snprintf(optstr, sizeof(optstr), "+hvt:");
 
 	while ((c = getopt_long(argc, argv, optstr, options, &index)) != -1) {
 		switch (c) {
