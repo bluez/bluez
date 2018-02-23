@@ -53,11 +53,13 @@ void mainloop_quit(void)
 void mainloop_exit_success(void)
 {
 	exit_status = EXIT_SUCCESS;
+	mainloop_quit();
 }
 
 void mainloop_exit_failure(void)
 {
 	exit_status = EXIT_FAILURE;
+	mainloop_quit();
 }
 
 int mainloop_run(void)
