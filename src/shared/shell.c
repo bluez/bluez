@@ -85,6 +85,8 @@ static void shell_print_menu(void);
 static void cmd_version(int argc, char *argv[])
 {
 	bt_shell_printf("Version %s\n", VERSION);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_quit(int argc, char *argv[])
@@ -95,6 +97,8 @@ static void cmd_quit(int argc, char *argv[])
 static void cmd_help(int argc, char *argv[])
 {
 	shell_print_menu();
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static const struct bt_shell_menu *find_menu(const char *name)
@@ -143,18 +147,20 @@ static void cmd_menu(int argc, char *argv[])
 
 	if (argc < 2 || !strlen(argv[1])) {
 		bt_shell_printf("Missing name argument\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	menu = find_menu(argv[1]);
 	if (!menu) {
 		bt_shell_printf("Unable find menu with name: %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_set_menu(menu);
 
 	shell_print_menu();
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static bool cmd_menu_exists(const struct bt_shell_menu *menu)
@@ -356,19 +362,25 @@ static int menu_exec(const struct bt_shell_menu_entry *entry,
 	return -ENOENT;
 }
 
-static void shell_exec(int argc, char *argv[])
+static int shell_exec(int argc, char *argv[])
 {
-	if (!data.menu || !argv[0])
-		return;
+	int err;
 
-	if (menu_exec(default_menu, argc, argv) == -ENOENT) {
-		if (menu_exec(data.menu->entries, argc, argv) == -ENOENT) {
+	if (!data.menu || !argv[0])
+		return -EINVAL;
+
+	err  = menu_exec(default_menu, argc, argv);
+	if (err == -ENOENT) {
+		err  = menu_exec(data.menu->entries, argc, argv);
+		if (err == -ENOENT) {
 			print_text(COLOR_HIGHLIGHT,
 					"Invalid command in menu %s: %s",
 					data.menu->name , argv[0]);
 			shell_print_help();
 		}
 	}
+
+	return err;
 }
 
 void bt_shell_printf(const char *fmt, ...)
@@ -866,6 +878,22 @@ void bt_shell_run(void)
 	data.init = false;
 }
 
+void bt_shell_quit(int status)
+{
+	if (status == EXIT_SUCCESS)
+		mainloop_exit_success();
+	else
+		mainloop_exit_failure();
+}
+
+void bt_shell_noninteractive_quit(int status)
+{
+	if (!data.mode || data.timeout)
+		return;
+
+	bt_shell_quit(status);
+}
+
 bool bt_shell_set_menu(const struct bt_shell_menu *menu)
 {
 	if (!menu)
@@ -932,7 +960,10 @@ bool bt_shell_attach(int fd)
 	data.input = io;
 
 	if (data.mode) {
-		shell_exec(data.argc, data.argv);
+		if (shell_exec(data.argc, data.argv) < 0) {
+			bt_shell_noninteractive_quit(EXIT_FAILURE);
+			return true;
+		}
 
 		if (!data.timeout) {
 			bt_shell_detach();
