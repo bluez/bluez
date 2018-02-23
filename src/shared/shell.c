@@ -393,6 +393,13 @@ void bt_shell_printf(const char *fmt, ...)
 	if (!data.input)
 		return;
 
+	if (data.mode) {
+		va_start(args, fmt);
+		vprintf(fmt, args);
+		va_end(args);
+		return;
+	}
+
 	save_input = !RL_ISSTATE(RL_STATE_DONE);
 
 	if (save_input) {
@@ -695,7 +702,7 @@ static bool signal_read(struct io *io, void *user_data)
 
 	switch (si.ssi_signo) {
 	case SIGINT:
-		if (data.input) {
+		if (data.input && !data.mode) {
 			rl_replace_line("", 0);
 			rl_crlf();
 			rl_on_new_line();
@@ -713,8 +720,10 @@ static bool signal_read(struct io *io, void *user_data)
 		/* fall through */
 	case SIGTERM:
 		if (!terminated) {
-			rl_replace_line("", 0);
-			rl_crlf();
+			if (!data.mode) {
+				rl_replace_line("", 0);
+				rl_crlf();
+			}
 			mainloop_quit();
 		}
 
@@ -757,6 +766,9 @@ static struct io *setup_signalfd(void)
 
 static void rl_init(void)
 {
+	if (data.mode)
+		return;
+
 	setlinebuf(stdout);
 	rl_attempted_completion_function = shell_completion;
 
@@ -854,6 +866,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 
 static void rl_cleanup(void)
 {
+	if (data.mode)
+		return;
+
 	rl_message("");
 	rl_callback_handler_remove();
 }
@@ -965,7 +980,9 @@ bool bt_shell_attach(int fd)
 
 	io = io_new(fd);
 
-	io_set_read_handler(io, input_read, NULL, NULL);
+	if (!data.mode)
+		io_set_read_handler(io, input_read, NULL, NULL);
+
 	io_set_disconnect_handler(io, io_hup, NULL, NULL);
 
 	data.input = io;
