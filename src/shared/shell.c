@@ -829,6 +829,7 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 
 	data.argc = argc - optind;
 	data.argv = argv + optind;
+	optind = 0;
 	data.mode = (data.argc > 0);
 
 	if (data.mode)
