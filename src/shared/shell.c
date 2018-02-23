@@ -362,6 +362,34 @@ static int menu_exec(const struct bt_shell_menu_entry *entry,
 	return -ENOENT;
 }
 
+static int submenu_exec(int argc, char *argv[])
+{
+	char *name;
+	int len, tlen;
+	const struct bt_shell_menu *submenu;
+
+	if (data.menu != data.main)
+		return -ENOENT;
+
+	name = strchr(argv[0], '.');
+	if (!name)
+		return -ENOENT;
+
+	tlen = strlen(argv[0]);
+	len = name - argv[0];
+	name[0] = '\0';
+
+	submenu = find_menu(argv[0]);
+	if (!submenu)
+		return -ENOENT;
+
+	/* Replace submenu.command with command */
+	memmove(argv[0], argv[0] + len + 1, tlen - len - 1);
+	memset(argv[0] + tlen - len - 1, 0, len + 1);
+
+	return menu_exec(submenu->entries, argc, argv);
+}
+
 static int shell_exec(int argc, char *argv[])
 {
 	int err;
@@ -373,10 +401,13 @@ static int shell_exec(int argc, char *argv[])
 	if (err == -ENOENT) {
 		err  = menu_exec(data.menu->entries, argc, argv);
 		if (err == -ENOENT) {
-			print_text(COLOR_HIGHLIGHT,
+			err = submenu_exec(argc, argv);
+			if (err == -ENOENT) {
+				print_text(COLOR_HIGHLIGHT,
 					"Invalid command in menu %s: %s",
 					data.menu->name , argv[0]);
-			shell_print_help();
+				shell_print_help();
+			}
 		}
 	}
 
