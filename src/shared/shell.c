@@ -429,6 +429,9 @@ void bt_shell_hexdump(const unsigned char *buf, size_t len)
 void bt_shell_prompt_input(const char *label, const char *msg,
 			bt_shell_prompt_input_func func, void *user_data)
 {
+	if (!data.init || data.mode)
+		return;
+
 	/* Normal use should not prompt for user input to the value a second
 	 * time before it releases the prompt, but we take a safe action. */
 	if (data.saved_prompt)
