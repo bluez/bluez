@@ -190,6 +190,7 @@ static void register_reply(DBusMessage *message, void *user_data)
 		ad.registered = true;
 		bt_shell_printf("Advertising object registered\n");
 		print_ad();
+		/* Leave advertise running even on noninteractive mode */
 	} else {
 		bt_shell_printf("Failed to register advertisement: %s\n", error.name);
 		dbus_error_free(&error);
@@ -197,6 +198,7 @@ static void register_reply(DBusMessage *message, void *user_data)
 		if (g_dbus_unregister_interface(conn, AD_PATH,
 						AD_IFACE) == FALSE)
 			bt_shell_printf("Failed to unregister advertising object\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
 
@@ -441,7 +443,7 @@ void ad_register(DBusConnection *conn, GDBusProxy *manager, const char *type)
 {
 	if (ad.registered) {
 		bt_shell_printf("Advertisement is already registered\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	g_free(ad.type);
@@ -450,14 +452,14 @@ void ad_register(DBusConnection *conn, GDBusProxy *manager, const char *type)
 	if (g_dbus_register_interface(conn, AD_PATH, AD_IFACE, ad_methods,
 					NULL, ad_props, NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to register advertising object\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (g_dbus_proxy_method_call(manager, "RegisterAdvertisement",
 					register_setup, register_reply,
 					conn, NULL) == FALSE) {
 		bt_shell_printf("Failed to register advertising\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
 
@@ -481,10 +483,12 @@ static void unregister_reply(DBusMessage *message, void *user_data)
 		if (g_dbus_unregister_interface(conn, AD_PATH,
 							AD_IFACE) == FALSE)
 			bt_shell_printf("Failed to unregister advertising object\n");
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	} else {
 		bt_shell_printf("Failed to unregister advertisement: %s\n",
 								error.name);
 		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
 
@@ -494,7 +498,7 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 		ad_release(conn);
 
 	if (!ad.registered)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	g_free(ad.type);
 	ad.type = NULL;
@@ -503,7 +507,7 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 					unregister_setup, unregister_reply,
 					conn, NULL) == FALSE) {
 		bt_shell_printf("Failed to unregister advertisement method\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
 
@@ -518,7 +522,7 @@ void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 {
 	if (argc < 2 || !strlen(argv[1])) {
 		print_ad_uuids();
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	ad_clear_uuids();
@@ -526,27 +530,33 @@ void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
 	ad.uuids = g_strdupv(&argv[1]);
 	if (!ad.uuids) {
 		bt_shell_printf("Failed to parse input\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	ad.uuids_len = g_strv_length(ad.uuids);
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceUUIDs");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_disable_uuids(DBusConnection *conn)
 {
 	if (!ad.uuids)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad_clear_uuids();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceUUIDs");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void ad_clear_service(void)
 {
 	g_free(ad.service.uuid);
 	memset(&ad.service, 0, sizeof(ad.service));
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
@@ -560,7 +570,7 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 			bt_shell_hexdump(ad.service.data.data,
 						ad.service.data.len);
 		}
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	ad_clear_service();
@@ -590,20 +600,26 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 	}
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_disable_service(DBusConnection *conn)
 {
 	if (!ad.service.uuid)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad_clear_service();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void ad_clear_manufacturer(void)
 {
 	memset(&ad.manufacturer, 0, sizeof(ad.manufacturer));
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
@@ -621,7 +637,7 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 						ad.manufacturer.data.len);
 		}
 
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	ad_clear_manufacturer();
@@ -629,7 +645,7 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 	val = strtol(argv[1], &endptr, 0);
 	if (!endptr || *endptr != '\0' || val > UINT16_MAX) {
 		bt_shell_printf("Invalid manufacture id\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	ad.manufacturer.id = val;
@@ -639,14 +655,14 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 		if (i >= G_N_ELEMENTS(data->data)) {
 			bt_shell_printf("Too much data\n");
 			ad_clear_manufacturer();
-			return;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 
 		val = strtol(argv[i], &endptr, 0);
 		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
 			bt_shell_printf("Invalid value at index %d\n", i);
 			ad_clear_manufacturer();
-			return;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 
 		data->data[data->len] = val;
@@ -655,23 +671,27 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"ManufacturerData");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_disable_manufacturer(DBusConnection *conn)
 {
 	if (!ad.manufacturer.id && !ad.manufacturer.data.len)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad_clear_manufacturer();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"ManufacturerData");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_tx_power(DBusConnection *conn, dbus_bool_t *value)
 {
 	if (!value) {
 		bt_shell_printf("Tx Power: %s\n", ad.tx_power ? "on" : "off");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	if (ad.tx_power == *value)
@@ -680,12 +700,14 @@ void ad_advertise_tx_power(DBusConnection *conn, dbus_bool_t *value)
 	ad.tx_power = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_name(DBusConnection *conn, bool value)
 {
 	if (ad.name == value)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad.name = value;
 
@@ -695,6 +717,8 @@ void ad_advertise_name(DBusConnection *conn, bool value)
 	}
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_local_name(DBusConnection *conn, const char *name)
@@ -705,7 +729,7 @@ void ad_advertise_local_name(DBusConnection *conn, const char *name)
 		else
 			bt_shell_printf("Name: %s\n", ad.name ? "on" : "off");
 
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	if (ad.local_name && !strcmp(name, ad.local_name))
@@ -715,12 +739,14 @@ void ad_advertise_local_name(DBusConnection *conn, const char *name)
 	ad.local_name = strdup(name);
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "LocalName");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_appearance(DBusConnection *conn, bool value)
 {
 	if (ad.appearance == value)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad.appearance = value;
 
@@ -728,6 +754,8 @@ void ad_advertise_appearance(DBusConnection *conn, bool value)
 		ad.local_appearance = UINT16_MAX;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_local_appearance(DBusConnection *conn, long int *value)
@@ -741,15 +769,17 @@ void ad_advertise_local_appearance(DBusConnection *conn, long int *value)
 			bt_shell_printf("Apperance: %s\n",
 					ad.appearance ? "on" : "off");
 
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	if (ad.local_appearance == *value)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad.local_appearance = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Appearance");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_duration(DBusConnection *conn, long int *value)
@@ -757,15 +787,17 @@ void ad_advertise_duration(DBusConnection *conn, long int *value)
 	if (!value) {
 		if (ad.duration)
 			bt_shell_printf("Duration: %u sec\n", ad.duration);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	if (ad.duration == *value)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad.duration = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Duration");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_timeout(DBusConnection *conn, long int *value)
@@ -773,13 +805,15 @@ void ad_advertise_timeout(DBusConnection *conn, long int *value)
 	if (!value) {
 		if (ad.timeout)
 			bt_shell_printf("Timeout: %u sec\n", ad.timeout);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	if (ad.timeout == *value)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad.timeout = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Timeout");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }

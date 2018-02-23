@@ -419,17 +419,19 @@ static void request_default_reply(DBusMessage *message, void *user_data)
 		bt_shell_printf("Failed to request default agent: %s\n",
 							error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Default agent request successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void agent_default(DBusConnection *conn, GDBusProxy *manager)
 {
 	if (agent_registered == FALSE) {
 		bt_shell_printf("No agent is registered\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (g_dbus_proxy_method_call(manager, "RequestDefaultAgent",
@@ -437,6 +439,6 @@ void agent_default(DBusConnection *conn, GDBusProxy *manager)
 						request_default_reply,
 						NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to call RequestDefaultAgent method\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
