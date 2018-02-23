@@ -300,7 +300,7 @@ bool btp_send(struct btp *btp, uint8_t service, uint8_t opcode, uint8_t index,
 	len = sizeof(*hdr) + length;
 	hdr = l_malloc(len);
 	if (!hdr)
-		return NULL;
+		return false;
 
 	hdr->service = service;
 	hdr->opcode = opcode;
