@@ -966,10 +966,7 @@ bool bt_shell_attach(int fd)
 			return true;
 		}
 
-		if (!data.timeout) {
-			bt_shell_detach();
-			mainloop_quit();
-		} else
+		if (data.timeout)
 			timeout_add(data.timeout * 1000, shell_quit, NULL,
 								NULL);
 	}
