@@ -82,6 +82,7 @@ void bt_shell_set_prompt(const char *string);
 void bt_shell_printf(const char *fmt,
 				...) __attribute__((format(printf, 1, 2)));
 void bt_shell_hexdump(const unsigned char *buf, size_t len);
+void bt_shell_usage(void);
 
 void bt_shell_prompt_input(const char *label, const char *msg,
 			bt_shell_prompt_input_func func, void *user_data);

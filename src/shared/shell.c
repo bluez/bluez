@@ -76,6 +76,7 @@ static struct {
 	const struct bt_shell_menu *menu;
 	const struct bt_shell_menu *main;
 	struct queue *submenus;
+	const struct bt_shell_menu_entry *exec;
 
 	struct queue *envs;
 } data;
@@ -331,8 +332,12 @@ optional:
 	wordfree(&w);
 
 exec:
+	data.exec = entry;
+
 	if (entry->func)
 		entry->func(argc, argv);
+
+	data.exec = NULL;
 
 	return 0;
 
@@ -462,6 +467,15 @@ static void print_string(const char *str, void *user_data)
 void bt_shell_hexdump(const unsigned char *buf, size_t len)
 {
 	util_hexdump(' ', buf, len, print_string, NULL);
+}
+
+void bt_shell_usage()
+{
+	if (!data.exec)
+		return;
+
+	bt_shell_printf("Usage: %s %s\n", data.exec->cmd,
+					data.exec->arg ? data.exec->arg : "");
 }
 
 void bt_shell_prompt_input(const char *label, const char *msg,
