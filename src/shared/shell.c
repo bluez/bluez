@@ -297,11 +297,22 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	}
 
 	len = man - entry->arg;
-	man = strndup(entry->arg, len + 1);
+	if (entry->arg[0] == '<')
+		man = strndup(entry->arg, len + 1);
+	else {
+		/* Find where mandatory arguments start */
+		opt = strrchr(entry->arg, '<');
+		/* Skip if mandatory arguments are not in the right format */
+		if (!opt || opt > man) {
+			opt = strdup(entry->arg);
+			goto optional;
+		}
+		man = strndup(opt, man - opt + 1);
+	}
 
 	if (parse_args(man, &w, "<>", flags) < 0) {
 		print_text(COLOR_HIGHLIGHT,
-				"Unable to parse mandatory command arguments");
+			"Unable to parse mandatory command arguments: %s", man );
 		return -EINVAL;
 	}
 
@@ -318,7 +329,7 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 optional:
 	if (parse_args(opt, &w, "[]", flags) < 0) {
 		print_text(COLOR_HIGHLIGHT,
-				"Unable to parse optional command arguments");
+			"Unable to parse optional command arguments: %s", opt);
 		return -EINVAL;
 	}
 
