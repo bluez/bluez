@@ -47,6 +47,9 @@ void mainloop_init(void)
 
 void mainloop_quit(void)
 {
+	if (!main_loop)
+		return;
+
 	g_main_loop_quit(main_loop);
 }
 
