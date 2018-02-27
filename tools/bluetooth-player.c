@@ -107,10 +107,12 @@ static void play_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to play: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Play successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
 static void cmd_play_item(int argc, char *argv[])
@@ -121,13 +123,13 @@ static void cmd_play_item(int argc, char *argv[])
 						BLUEZ_MEDIA_ITEM_INTERFACE);
 	if (proxy == NULL) {
 		bt_shell_printf("Item %s not available\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (g_dbus_proxy_method_call(proxy, "Play", NULL, play_reply,
 							NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to play\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to play %s\n", argv[1]);
@@ -139,12 +141,12 @@ static void cmd_play(int argc, char *argv[])
 		return cmd_play_item(argc, argv);
 
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (g_dbus_proxy_method_call(default_player, "Play", NULL, play_reply,
 							NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to play\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to play\n");
@@ -159,21 +161,23 @@ static void pause_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to pause: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Pause successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_pause(int argc, char *argv[])
 {
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (g_dbus_proxy_method_call(default_player, "Pause", NULL,
 					pause_reply, NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to play\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to pause\n");
@@ -188,21 +192,23 @@ static void stop_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to stop: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Stop successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_stop(int argc, char *argv[])
 {
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (g_dbus_proxy_method_call(default_player, "Stop", NULL, stop_reply,
 							NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to stop\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to stop\n");
@@ -217,21 +223,23 @@ static void next_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to jump to next: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Next successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_next(int argc, char *argv[])
 {
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (g_dbus_proxy_method_call(default_player, "Next", NULL, next_reply,
 							NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to jump to next\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to jump to next\n");
@@ -246,24 +254,28 @@ static void previous_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to jump to previous: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Previous successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_previous(int argc, char *argv[])
 {
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (g_dbus_proxy_method_call(default_player, "Previous", NULL,
 					previous_reply, NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to jump to previous\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to jump to previous\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void fast_forward_reply(DBusMessage *message, void *user_data)
@@ -275,24 +287,28 @@ static void fast_forward_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to fast forward: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("FastForward successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_fast_forward(int argc, char *argv[])
 {
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (g_dbus_proxy_method_call(default_player, "FastForward", NULL,
 				fast_forward_reply, NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to jump to previous\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Fast forward playback\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void rewind_reply(DBusMessage *message, void *user_data)
@@ -304,21 +320,23 @@ static void rewind_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to rewind: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Rewind successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_rewind(int argc, char *argv[])
 {
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (g_dbus_proxy_method_call(default_player, "Rewind", NULL,
 					rewind_reply, NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to rewind\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Rewind playback\n");
@@ -328,10 +346,13 @@ static void generic_callback(const DBusError *error, void *user_data)
 {
 	char *str = user_data;
 
-	if (dbus_error_is_set(error))
+	if (dbus_error_is_set(error)) {
 		bt_shell_printf("Failed to set %s: %s\n", str, error->name);
-	else
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	} else {
 		bt_shell_printf("Changing %s succeeded\n", str);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
 }
 
 static void cmd_equalizer(int argc, char *argv[])
@@ -340,11 +361,11 @@ static void cmd_equalizer(int argc, char *argv[])
 	DBusMessageIter iter;
 
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (!g_dbus_proxy_get_property(default_player, "Equalizer", &iter)) {
 		bt_shell_printf("Operation not supported\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	value = g_strdup(argv[1]);
@@ -355,10 +376,12 @@ static void cmd_equalizer(int argc, char *argv[])
 						g_free) == FALSE) {
 		bt_shell_printf("Failed to setting equalizer\n");
 		g_free(value);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to set equalizer\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_repeat(int argc, char *argv[])
@@ -367,12 +390,11 @@ static void cmd_repeat(int argc, char *argv[])
 	DBusMessageIter iter;
 
 	if (!check_default_player())
-		return;
-
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (!g_dbus_proxy_get_property(default_player, "Repeat", &iter)) {
 		bt_shell_printf("Operation not supported\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	value = g_strdup(argv[1]);
@@ -383,7 +405,7 @@ static void cmd_repeat(int argc, char *argv[])
 						g_free) == FALSE) {
 		bt_shell_printf("Failed to set repeat\n");
 		g_free(value);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to set repeat\n");
@@ -395,11 +417,11 @@ static void cmd_shuffle(int argc, char *argv[])
 	DBusMessageIter iter;
 
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (!g_dbus_proxy_get_property(default_player, "Shuffle", &iter)) {
 		bt_shell_printf("Operation not supported\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	value = g_strdup(argv[1]);
@@ -410,7 +432,7 @@ static void cmd_shuffle(int argc, char *argv[])
 						g_free) == FALSE) {
 		bt_shell_printf("Failed to set shuffle\n");
 		g_free(value);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to set shuffle\n");
@@ -422,11 +444,11 @@ static void cmd_scan(int argc, char *argv[])
 	DBusMessageIter iter;
 
 	if (!check_default_player())
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (!g_dbus_proxy_get_property(default_player, "Shuffle", &iter)) {
 		bt_shell_printf("Operation not supported\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	value = g_strdup(argv[1]);
@@ -437,7 +459,7 @@ static void cmd_scan(int argc, char *argv[])
 						g_free) == FALSE) {
 		bt_shell_printf("Failed to set scan\n");
 		g_free(value);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to set scan\n");
@@ -476,6 +498,8 @@ static void cmd_list(int argc, char *arg[])
 		GDBusProxy *proxy = l->data;
 		print_player(proxy, NULL);
 	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void print_iter(const char *label, const char *name,
@@ -561,7 +585,7 @@ static void cmd_show_item(int argc, char *argv[])
 						BLUEZ_MEDIA_ITEM_INTERFACE);
 	if (!proxy) {
 		bt_shell_printf("Item %s not available\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
 	bt_shell_printf("Item %s\n", g_dbus_proxy_get_path(proxy));
@@ -572,6 +596,8 @@ static void cmd_show_item(int argc, char *argv[])
 	print_property(proxy, "FolderType");
 	print_property(proxy, "Playable");
 	print_property(proxy, "Metadata");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_show(int argc, char *argv[])
@@ -584,7 +610,7 @@ static void cmd_show(int argc, char *argv[])
 
 	if (argc < 2) {
 		if (check_default_player() == FALSE)
-			return;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 		proxy = default_player;
 	} else {
@@ -592,7 +618,7 @@ static void cmd_show(int argc, char *argv[])
 						BLUEZ_MEDIA_PLAYER_INTERFACE);
 		if (!proxy) {
 			bt_shell_printf("Player %s not available\n", argv[1]);
-			return;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 	}
 
@@ -611,7 +637,7 @@ static void cmd_show(int argc, char *argv[])
 					g_dbus_proxy_get_path(proxy),
 					BLUEZ_MEDIA_FOLDER_INTERFACE);
 	if (folder == NULL)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	bt_shell_printf("Folder %s\n", g_dbus_proxy_get_path(proxy));
 
@@ -619,18 +645,20 @@ static void cmd_show(int argc, char *argv[])
 	print_property(folder, "NumberOfItems");
 
 	if (!g_dbus_proxy_get_property(proxy, "Playlist", &iter))
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	dbus_message_iter_get_basic(&iter, &path);
 
 	item = g_dbus_proxy_lookup(items, NULL, path,
 					BLUEZ_MEDIA_ITEM_INTERFACE);
 	if (item == NULL)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	bt_shell_printf("Playlist %s\n", path);
 
 	print_property(item, "Name");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_select(int argc, char *argv[])
@@ -641,14 +669,16 @@ static void cmd_select(int argc, char *argv[])
 						BLUEZ_MEDIA_PLAYER_INTERFACE);
 	if (proxy == NULL) {
 		bt_shell_printf("Player %s not available\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (default_player == proxy)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	default_player = proxy,
 	print_player(proxy, NULL);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void change_folder_reply(DBusMessage *message, void *user_data)
@@ -660,10 +690,12 @@ static void change_folder_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to change folder: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("ChangeFolder successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void change_folder_setup(DBusMessageIter *iter, void *user_data)
@@ -679,24 +711,24 @@ static void cmd_change_folder(int argc, char *argv[])
 
 	if (dbus_validate_path(argv[1], NULL) == FALSE) {
 		bt_shell_printf("Not a valid path\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (check_default_player() == FALSE)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	proxy = g_dbus_proxy_lookup(folders, NULL,
 					g_dbus_proxy_get_path(default_player),
 					BLUEZ_MEDIA_FOLDER_INTERFACE);
 	if (proxy == NULL) {
 		bt_shell_printf("Operation not supported\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (g_dbus_proxy_method_call(proxy, "ChangeFolder", change_folder_setup,
 				change_folder_reply, argv[1], NULL) == FALSE) {
 		bt_shell_printf("Failed to change current folder\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to change folder\n");
@@ -775,10 +807,12 @@ static void list_items_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to list items: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("ListItems successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_list_items(int argc, char *argv[])
@@ -787,14 +821,14 @@ static void cmd_list_items(int argc, char *argv[])
 	struct list_items_args *args;
 
 	if (check_default_player() == FALSE)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	proxy = g_dbus_proxy_lookup(folders, NULL,
 					g_dbus_proxy_get_path(default_player),
 					BLUEZ_MEDIA_FOLDER_INTERFACE);
 	if (proxy == NULL) {
 		bt_shell_printf("Operation not supported\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	args = g_new0(struct list_items_args, 1);
@@ -809,7 +843,7 @@ static void cmd_list_items(int argc, char *argv[])
 	if (errno != 0) {
 		bt_shell_printf("%s(%d)\n", strerror(errno), errno);
 		g_free(args);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (argc < 3)
@@ -820,7 +854,7 @@ static void cmd_list_items(int argc, char *argv[])
 	if (errno != 0) {
 		bt_shell_printf("%s(%d)\n", strerror(errno), errno);
 		g_free(args);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 done:
@@ -828,7 +862,7 @@ done:
 				list_items_reply, args, g_free) == FALSE) {
 		bt_shell_printf("Failed to change current folder\n");
 		g_free(args);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to list items\n");
@@ -860,10 +894,12 @@ static void search_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to search: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Search successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_search(int argc, char *argv[])
@@ -872,14 +908,14 @@ static void cmd_search(int argc, char *argv[])
 	char *string;
 
 	if (check_default_player() == FALSE)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	proxy = g_dbus_proxy_lookup(folders, NULL,
 					g_dbus_proxy_get_path(default_player),
 					BLUEZ_MEDIA_FOLDER_INTERFACE);
 	if (proxy == NULL) {
 		bt_shell_printf("Operation not supported\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	string = g_strdup(argv[1]);
@@ -888,7 +924,7 @@ static void cmd_search(int argc, char *argv[])
 				search_reply, string, g_free) == FALSE) {
 		bt_shell_printf("Failed to search\n");
 		g_free(string);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to search\n");
@@ -903,10 +939,12 @@ static void add_to_nowplaying_reply(DBusMessage *message, void *user_data)
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to queue: %s\n", error.name);
 		dbus_error_free(&error);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("AddToNowPlaying successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_queue(int argc, char *argv[])
@@ -917,14 +955,14 @@ static void cmd_queue(int argc, char *argv[])
 						BLUEZ_MEDIA_ITEM_INTERFACE);
 	if (proxy == NULL) {
 		bt_shell_printf("Item %s not available\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (g_dbus_proxy_method_call(proxy, "AddtoNowPlaying", NULL,
 					add_to_nowplaying_reply, NULL,
 					NULL) == FALSE) {
 		bt_shell_printf("Failed to play\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	bt_shell_printf("Attempting to queue %s\n", argv[1]);
