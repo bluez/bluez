@@ -888,19 +888,19 @@ static bool ad_includes_getter(struct l_dbus *dbus,
 	if (ad.tx_power) {
 		const char *str = "tx-power";
 
-		l_dbus_message_builder_append_basic(builder, 's', &str);
+		l_dbus_message_builder_append_basic(builder, 's', str);
 	}
 
 	if (ad.name) {
 		const char *str = "local-name";
 
-		l_dbus_message_builder_append_basic(builder, 's', &str);
+		l_dbus_message_builder_append_basic(builder, 's', str);
 	}
 
 	if (ad.appearance) {
 		const char *str = "appearance";
 
-		l_dbus_message_builder_append_basic(builder, 's', &str);
+		l_dbus_message_builder_append_basic(builder, 's', str);
 	}
 
 	l_dbus_message_builder_leave_array(builder);
