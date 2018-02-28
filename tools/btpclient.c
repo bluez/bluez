@@ -2892,6 +2892,12 @@ static void client_disconnected(struct l_dbus *dbus, void *user_data)
 	l_main_quit();
 }
 
+static void btp_disconnect_handler(struct btp *btp, void *user_data)
+{
+	l_info("btp disconnected");
+	l_main_quit();
+}
+
 static void client_ready(struct l_dbus_client *client, void *user_data)
 {
 	l_info("D-Bus client ready, connecting BTP");
@@ -2902,6 +2908,8 @@ static void client_ready(struct l_dbus_client *client, void *user_data)
 		l_main_quit();
 		return;
 	}
+
+	btp_set_disconnect_handler(btp, btp_disconnect_handler, NULL, NULL);
 
 	register_core_service();
 
