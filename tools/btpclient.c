@@ -2396,24 +2396,30 @@ failed:
 
 static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 {
+	struct btp_device *device = find_device_by_proxy(proxy);
+	struct btp_adapter *adapter = find_adapter_by_device(device);
 	struct btp_device_found_ev ev;
-	const char *str;
+	struct btp_gap_device_connected_ev ev_conn;
+	const char *str, *addr_str;
 	int16_t rssi;
+	uint8_t address_type;
+	bool connected;
 
-	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &str) ||
-						str2ba(str, &ev.address) < 0)
+	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &addr_str) ||
+					str2ba(addr_str, &ev.address) < 0)
 		return;
 
 	if (!l_dbus_proxy_get_property(proxy, "AddressType", "s", &str))
 		return;
 
-	ev.address_type = strcmp(str, "public") ? BTP_GAP_ADDR_RANDOM :
+	address_type = strcmp(str, "public") ? BTP_GAP_ADDR_RANDOM :
 							BTP_GAP_ADDR_PUBLIC;
+	ev.address_type = address_type;
 
 	if (!l_dbus_proxy_get_property(proxy, "RSSI", "n", &rssi))
-		return;
-
-	ev.rssi = rssi;
+		ev.rssi = 0x81;
+	else
+		ev.rssi = rssi;
 
 	/* TODO Temporary set all flags */
 	ev.flags = (BTP_EV_GAP_DEVICE_FOUND_FLAG_RSSI |
@@ -2423,9 +2429,17 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 	/* TODO Add eir to device found event */
 	ev.eir_len = 0;
 
-	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND,
-						BTP_INDEX_NON_CONTROLLER,
+	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND, adapter->index,
 						sizeof(ev) + ev.eir_len, &ev);
+
+	if (l_dbus_proxy_get_property(proxy, "Connected", "b", &connected) &&
+								connected) {
+		ev_conn.address_type = address_type;
+		str2ba(addr_str, &ev_conn.address);
+
+		btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_CONNECTED,
+				adapter->index, sizeof(ev_conn), &ev_conn);
+	}
 }
 
 static void btp_gap_device_connection_ev(struct l_dbus_proxy *proxy,
