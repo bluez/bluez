@@ -17,8 +17,6 @@
  *
  */
 
-#include "advertising.h"
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <errno.h>
@@ -39,6 +37,7 @@
 #include "src/shared/mgmt.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
+#include "advertising.h"
 
 #define LE_ADVERTISING_MGR_IFACE "org.bluez.LEAdvertisingManager1"
 #define LE_ADVERTISEMENT_IFACE "org.bluez.LEAdvertisement1"
@@ -1046,14 +1045,15 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 		remove_advertising(manager, 0);
 }
 
-static struct btd_adv_manager *manager_create(struct btd_adapter *adapter)
+static struct btd_adv_manager *manager_create(struct btd_adapter *adapter,
+						struct mgmt *mgmt)
 {
 	struct btd_adv_manager *manager;
 
 	manager = new0(struct btd_adv_manager, 1);
 	manager->adapter = adapter;
 
-	manager->mgmt = mgmt_new_default();
+	manager->mgmt = mgmt_ref(mgmt);
 
 	if (!manager->mgmt) {
 		error("Failed to access management interface");
@@ -1087,14 +1087,15 @@ fail:
 	return NULL;
 }
 
-struct btd_adv_manager *btd_adv_manager_new(struct btd_adapter *adapter)
+struct btd_adv_manager *btd_adv_manager_new(struct btd_adapter *adapter,
+							struct mgmt *mgmt)
 {
 	struct btd_adv_manager *manager;
 
-	if (!adapter)
+	if (!adapter || !mgmt)
 		return NULL;
 
-	manager = manager_create(adapter);
+	manager = manager_create(adapter, mgmt);
 	if (!manager)
 		return NULL;
 

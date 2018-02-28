@@ -7981,7 +7981,7 @@ static int adapter_register(struct btd_adapter *adapter)
 		return -EINVAL;
 	}
 
-	adapter->adv_manager = btd_adv_manager_new(adapter);
+	adapter->adv_manager = btd_adv_manager_new(adapter, adapter->mgmt);
 
 	db = btd_gatt_database_get_db(adapter->database);
 	adapter->db_id = gatt_db_register(db, services_modified,
