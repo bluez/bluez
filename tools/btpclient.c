@@ -1719,42 +1719,12 @@ static struct l_dbus_message *ag_request_authorization_call(struct l_dbus *dbus,
 						struct l_dbus_message *message,
 						void *user_data)
 {
-	struct btp_gap_passkey_confirm_ev ev;
-	struct btp_device *device;
-	struct btp_adapter *adapter;
-	const char *path, *str_addr, *str_addr_type;
-	uint32_t passkey;
+	struct l_dbus_message *reply;
 
-	l_dbus_message_get_arguments(message, "ou", &path, &passkey);
+	reply = l_dbus_message_new_method_return(message);
+	l_dbus_message_set_arguments(reply, "");
 
-	device = find_device_by_path(path);
-
-	if (!l_dbus_proxy_get_property(device->proxy, "Address", "s", &str_addr)
-		|| !l_dbus_proxy_get_property(device->proxy, "AddressType", "s",
-		&str_addr_type)) {
-		l_info("Cannot get device properties");
-
-		return NULL;
-	}
-
-	ev.passkey = L_CPU_TO_LE32(passkey);
-	ev.address_type = strcmp(str_addr_type, "public") ?
-							BTP_GAP_ADDR_RANDOM :
-							BTP_GAP_ADDR_PUBLIC;
-	if (str2ba(str_addr, &ev.address) < 0) {
-		l_info("Incorrect device address");
-
-		return NULL;
-	}
-
-	adapter = find_adapter_by_device(device);
-
-	ag.pending_req = l_dbus_message_ref(message);
-
-	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_PASSKEY_CONFIRM,
-					adapter->index, sizeof(ev), &ev);
-
-	return NULL;
+	return reply;
 }
 
 static struct l_dbus_message *ag_authorize_service_call(struct l_dbus *dbus,
