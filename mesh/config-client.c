@@ -385,10 +385,12 @@ static void cmd_node_set(int argc, char *argv[])
 		bt_shell_printf("Bad unicast address %s: "
 				"expected format 4 digit hex\n", argv[1]);
 		target = UNASSIGNED_ADDRESS;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	} else {
 		bt_shell_printf("Configuring node %4.4x\n", dst);
 		target = dst;
 		set_menu_prompt("config", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 }
 
@@ -419,14 +421,18 @@ static void cmd_default(uint32_t opcode)
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(opcode, msg);
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send command (opcode 0x%x)\n",
 								opcode);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_composition_get(int argc, char *argv[])
@@ -437,21 +443,25 @@ static void cmd_composition_get(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	node = node_find_by_addr(target);
 
 	if (!node)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	n = mesh_opcode_set(OP_DEV_COMP_GET, msg);
 
 	/* By default, use page 0 */
 	msg[n++] = (read_input_parameters(argc, argv) == 1) ? parms[0] : 0;
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"GET NODE COMPOSITION\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_net_key(int argc, char *argv[], uint32_t opcode)
@@ -464,20 +474,20 @@ static void cmd_net_key(int argc, char *argv[], uint32_t opcode)
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(opcode, msg);
 
 	if (read_input_parameters(argc, argv) != 1) {
 		bt_shell_printf("Bad arguments %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	node = node_find_by_addr(target);
 	if (!node) {
 		bt_shell_printf("Node %4.4x\n not found", target);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	net_idx = parms[0];
@@ -488,7 +498,7 @@ static void cmd_net_key(int argc, char *argv[], uint32_t opcode)
 		if (!key) {
 			bt_shell_printf("NetKey with index %4.4x not found\n",
 								net_idx);
-			return;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 
 		put_le16(net_idx, &msg[n]);
@@ -501,7 +511,7 @@ static void cmd_net_key(int argc, char *argv[], uint32_t opcode)
 	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"%s NET KEY\"\n",
 				opcode == OP_NETKEY_ADD ? "ADD" : "DEL");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (opcode != OP_NETKEY_DELETE) {
@@ -514,6 +524,7 @@ static void cmd_net_key(int argc, char *argv[], uint32_t opcode)
 								"netKeys");
 	}
 
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_netkey_add(int argc, char *argv[])
@@ -537,18 +548,18 @@ static void cmd_app_key(int argc, char *argv[], uint32_t opcode)
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (read_input_parameters(argc, argv) != 1) {
 		bt_shell_printf("Bad arguments %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	node = node_find_by_addr(target);
 	if (!node) {
 		bt_shell_printf("Node %4.4x\n not found", target);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(opcode, msg);
@@ -557,7 +568,7 @@ static void cmd_app_key(int argc, char *argv[], uint32_t opcode)
 	net_idx = keys_app_key_get_bound(app_idx);
 	if (net_idx == NET_IDX_INVALID) {
 		bt_shell_printf("AppKey with index %4.4x not found\n", app_idx);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	msg[n++] = net_idx & 0xf;
@@ -579,7 +590,7 @@ static void cmd_app_key(int argc, char *argv[], uint32_t opcode)
 	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"ADD %s KEY\"\n",
 				opcode == OP_APPKEY_ADD ? "ADD" : "DEL");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	if (opcode != OP_APPKEY_DELETE) {
@@ -591,6 +602,8 @@ static void cmd_app_key(int argc, char *argv[], uint32_t opcode)
 			prov_db_node_keys(node, node_get_app_keys(node),
 								"appKeys");
 	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_appkey_add(int argc, char *argv[])
@@ -633,12 +646,12 @@ static void cmd_bind(int argc, char *argv[])
 	int parm_cnt;
 
 	if (!verify_config_target(target))
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 3 && parm_cnt != 4) {
 		bt_shell_printf("Bad arguments\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_MODEL_APP_BIND, msg);
@@ -656,8 +669,12 @@ static void cmd_bind(int argc, char *argv[])
 		n += 2;
 	}
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"MODEL APP BIND\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_ident_set(int argc, char *argv[])
@@ -667,22 +684,26 @@ static void cmd_ident_set(int argc, char *argv[])
 	int parm_cnt;
 
 	if (!verify_config_target(target))
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	n = mesh_opcode_set(OP_NODE_IDENTITY_SET, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 2) {
 		bt_shell_printf("bad arguments\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	put_le16(parms[0], msg + n);
 	n += 2;
 	msg[n++] = parms[1];
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"SET IDENTITY\"\n");
+		return;
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_ident_get(int argc, char *argv[])
@@ -692,21 +713,25 @@ static void cmd_ident_get(int argc, char *argv[])
 	int parm_cnt;
 
 	if (!verify_config_target(target))
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	n = mesh_opcode_set(OP_NODE_IDENTITY_GET, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 1) {
 		bt_shell_printf("bad arguments\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	put_le16(parms[0], msg + n);
 	n += 2;
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"GET IDENTITY\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_proxy_set(int argc, char *argv[])
@@ -716,21 +741,25 @@ static void cmd_proxy_set(int argc, char *argv[])
 	int parm_cnt;
 
 	if (!verify_config_target(target))
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	n = mesh_opcode_set(OP_CONFIG_PROXY_SET, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 1) {
 		bt_shell_printf("bad arguments");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	msg[n++] = parms[0];
 	msg[n++] = parms[1];
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"SET PROXY\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_proxy_get(int argc, char *argv[])
@@ -745,21 +774,25 @@ static void cmd_relay_set(int argc, char *argv[])
 	int parm_cnt;
 
 	if (!verify_config_target(target))
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	n = mesh_opcode_set(OP_CONFIG_RELAY_SET, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 3) {
 		bt_shell_printf("bad arguments\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	msg[n++] = parms[0];
 	msg[n++] = (parms[1] << 5) | parms[2];
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"SET RELAY\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_relay_get(int argc, char *argv[])
@@ -776,7 +809,7 @@ static void cmd_ttl_set(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_CONFIG_DEFAULT_TTL_SET, msg);
@@ -789,8 +822,12 @@ static void cmd_ttl_set(int argc, char *argv[])
 
 	msg[n++] = ttl;
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"SET_DEFAULT TTL\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_pub_set(int argc, char *argv[])
@@ -800,14 +837,14 @@ static void cmd_pub_set(int argc, char *argv[])
 	int parm_cnt;
 
 	if (!verify_config_target(target))
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	n = mesh_opcode_set(OP_CONFIG_MODEL_PUB_SET, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 6 && parm_cnt != 7) {
 		bt_shell_printf("Bad arguments\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	put_le16(parms[0], msg + n);
@@ -834,8 +871,12 @@ static void cmd_pub_set(int argc, char *argv[])
 		n += 2;
 	}
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"SET MODEL PUBLICATION\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_pub_get(int argc, char *argv[])
@@ -846,7 +887,7 @@ static void cmd_pub_get(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_CONFIG_MODEL_PUB_GET, msg);
@@ -854,7 +895,7 @@ static void cmd_pub_get(int argc, char *argv[])
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 2 && parm_cnt != 3) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	/* Element Address */
@@ -870,8 +911,12 @@ static void cmd_pub_get(int argc, char *argv[])
 		n += 2;
 	}
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"GET MODEL PUBLICATION\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_sub_add(int argc, char *argv[])
@@ -882,7 +927,7 @@ static void cmd_sub_add(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_CONFIG_MODEL_SUB_ADD, msg);
@@ -890,7 +935,7 @@ static void cmd_sub_add(int argc, char *argv[])
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 3) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	/* Per Mesh Profile 4.3.2.19 */
@@ -904,8 +949,12 @@ static void cmd_sub_add(int argc, char *argv[])
 	put_le16(parms[2], msg + n);
 	n += 2;
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"ADD SUBSCRIPTION\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_sub_get(int argc, char *argv[])
@@ -916,7 +965,7 @@ static void cmd_sub_get(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_CONFIG_MODEL_SUB_GET, msg);
@@ -924,7 +973,7 @@ static void cmd_sub_get(int argc, char *argv[])
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 2) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	/* Per Mesh Profile 4.3.2.27 */
@@ -935,8 +984,12 @@ static void cmd_sub_get(int argc, char *argv[])
 	put_le16(parms[1], msg + n);
 	n += 2;
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"GET SUB GET\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_mod_appidx_get(int argc, char *argv[])
@@ -947,7 +1000,7 @@ static void cmd_mod_appidx_get(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_MODEL_APP_GET, msg);
@@ -955,7 +1008,7 @@ static void cmd_mod_appidx_get(int argc, char *argv[])
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 2) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	/* Per Mesh Profile 4.3.2.49 */
@@ -966,8 +1019,12 @@ static void cmd_mod_appidx_get(int argc, char *argv[])
 	put_le16(parms[1], msg + n);
 	n += 2;
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"GET APP GET\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_hb_pub_set(int argc, char *argv[])
@@ -978,7 +1035,7 @@ static void cmd_hb_pub_set(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_CONFIG_HEARTBEAT_PUB_SET, msg);
@@ -986,7 +1043,7 @@ static void cmd_hb_pub_set(int argc, char *argv[])
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 5) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	/* Per Mesh Profile 4.3.2.62 */
@@ -1006,8 +1063,12 @@ static void cmd_hb_pub_set(int argc, char *argv[])
 	put_le16(parms[4], msg + n);
 	n += 2;
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"SET HEARTBEAT PUBLISH\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_hb_pub_get(int argc, char *argv[])
@@ -1023,7 +1084,7 @@ static void cmd_hb_sub_set(int argc, char *argv[])
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	n = mesh_opcode_set(OP_CONFIG_HEARTBEAT_SUB_SET, msg);
@@ -1031,7 +1092,7 @@ static void cmd_hb_sub_set(int argc, char *argv[])
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 3) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	/* Per Mesh Profile 4.3.2.65 */
@@ -1044,8 +1105,12 @@ static void cmd_hb_sub_set(int argc, char *argv[])
 	/* Period log */
 	msg[n++] = parms[2];
 
-	if (!config_send(msg, n))
+	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"SET HEARTBEAT SUBSCRIBE\"\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_hb_sub_get(int argc, char *argv[])
