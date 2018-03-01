@@ -231,40 +231,6 @@ static void profile_free(void *data)
 	g_free(profile);
 }
 
-static void append_variant(DBusMessageIter *iter, int type, void *val)
-{
-	DBusMessageIter value;
-	char sig[2] = { type, '\0' };
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
-
-	dbus_message_iter_append_basic(&value, type, val);
-
-	dbus_message_iter_close_container(iter, &value);
-}
-
-
-static void dict_append_entry(DBusMessageIter *dict,
-			const char *key, int type, void *val)
-{
-	DBusMessageIter entry;
-
-	if (type == DBUS_TYPE_STRING) {
-		const char *str = *((const char **) val);
-		if (str == NULL)
-			return;
-	}
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-							NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	append_variant(&entry, type, val);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static int register_profile(struct bluetooth_profile *profile)
 {
 	DBusMessage *msg;
@@ -303,7 +269,7 @@ static int register_profile(struct bluetooth_profile *profile)
 					DBUS_TYPE_VARIANT_AS_STRING
 					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					&opt);
-	dict_append_entry(&opt, "AutoConnect", DBUS_TYPE_BOOLEAN,
+	g_dbus_dict_append_entry(&opt, "AutoConnect", DBUS_TYPE_BOOLEAN,
 								&auto_connect);
 	if (profile->driver->record) {
 		if (profile->driver->port != 0)
@@ -315,8 +281,8 @@ static int register_profile(struct bluetooth_profile *profile)
 			xml = g_markup_printf_escaped(profile->driver->record,
 						profile->driver->channel,
 						profile->driver->name);
-		dict_append_entry(&opt, "ServiceRecord", DBUS_TYPE_STRING,
-								&xml);
+		g_dbus_dict_append_entry(&opt, "ServiceRecord",
+						DBUS_TYPE_STRING, &xml);
 		g_free(xml);
 	}
 	dbus_message_iter_close_container(&iter, &opt);

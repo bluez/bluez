@@ -231,8 +231,9 @@ static void folder_element(GMarkupParseContext *ctxt, const char *element,
 
 	for (i = 0, key = names[i]; key; key = names[++i]) {
 		if (strcasecmp("name", key) == 0)
-			obex_dbus_dict_append(&dict, "Name", DBUS_TYPE_STRING,
-								&values[i]);
+			g_dbus_dict_append_entry(&dict, "Name",
+							DBUS_TYPE_STRING,
+							&values[i]);
 	}
 
 	dbus_message_iter_close_container(iter, &dict);
