@@ -43,6 +43,7 @@
 #define MAX_CHAR_DECL_VALUE_LEN 19
 #define MAX_INCLUDED_VALUE_LEN 6
 #define ATTRIBUTE_TIMEOUT 5000
+#define HASH_UPDATE_TIMEOUT 100
 
 static const bt_uuid_t primary_service_uuid = { .type = BT_UUID16,
 					.value.u16 = GATT_PRIM_SVC_UUID };
@@ -57,6 +58,8 @@ static const bt_uuid_t ext_desc_uuid = { .type = BT_UUID16,
 
 struct gatt_db {
 	int ref_count;
+	uint8_t hash[16];
+	unsigned int hash_id;
 	uint16_t next_handle;
 	struct queue *services;
 
@@ -263,6 +266,15 @@ static void handle_notify(void *data, void *user_data)
 		notify->service_removed(notify_data->attr, notify->user_data);
 }
 
+static bool db_hash_update(void *user_data)
+{
+	struct gatt_db *db = user_data;
+
+	db->hash_id = 0;
+
+	return false;
+}
+
 static void notify_service_changed(struct gatt_db *db,
 						struct gatt_db_service *service,
 						bool added)
@@ -278,6 +290,11 @@ static void notify_service_changed(struct gatt_db *db,
 	gatt_db_ref(db);
 
 	queue_foreach(db->notify_list, handle_notify, &data);
+
+	/* Tigger hash update */
+	if (!db->hash_id)
+		db->hash_id = timeout_add(HASH_UPDATE_TIMEOUT, db_hash_update,
+								db, NULL);
 
 	gatt_db_unref(db);
 }
@@ -308,6 +325,9 @@ static void gatt_db_destroy(struct gatt_db *db)
 	 */
 	queue_destroy(db->notify_list, notify_destroy);
 	db->notify_list = NULL;
+
+	if (db->hash_id)
+		timeout_remove(db->hash_id);
 
 	queue_destroy(db->services, gatt_db_service_destroy);
 	free(db);
@@ -480,6 +500,22 @@ done:
 		db->next_handle = 0;
 
 	return true;
+}
+
+uint8_t *gatt_db_get_hash(struct gatt_db *db)
+{
+	uint8_t hash[16] = {};
+
+	if (!db)
+		return NULL;
+
+	/* Generate hash if if has not been generated yet */
+	if (db->hash_id || !memcmp(db->hash, hash, 16)) {
+		timeout_remove(db->hash_id);
+		db_hash_update(db);
+	}
+
+	return db->hash;
 }
 
 static struct gatt_db_service *find_insert_loc(struct gatt_db *db,
