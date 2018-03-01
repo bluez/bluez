@@ -734,39 +734,6 @@ static void cmd_change_folder(int argc, char *argv[])
 	bt_shell_printf("Attempting to change folder\n");
 }
 
-static void append_variant(DBusMessageIter *iter, int type, void *val)
-{
-	DBusMessageIter value;
-	char sig[2] = { type, '\0' };
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
-
-	dbus_message_iter_append_basic(&value, type, val);
-
-	dbus_message_iter_close_container(iter, &value);
-}
-
-static void dict_append_entry(DBusMessageIter *dict,
-			const char *key, int type, void *val)
-{
-	DBusMessageIter entry;
-
-	if (type == DBUS_TYPE_STRING) {
-		const char *str = *((const char **) val);
-		if (str == NULL)
-			return;
-	}
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-							NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	append_variant(&entry, type, val);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 struct list_items_args {
 	int start;
 	int end;
@@ -787,12 +754,13 @@ static void list_items_setup(DBusMessageIter *iter, void *user_data)
 	if (args->start < 0)
 		goto done;
 
-	dict_append_entry(&dict, "Start", DBUS_TYPE_UINT32, &args->start);
+	g_dbus_dict_append_entry(&dict, "Start",
+					DBUS_TYPE_UINT32, &args->start);
 
 	if (args->end < 0)
 		goto done;
 
-	dict_append_entry(&dict, "End", DBUS_TYPE_UINT32, &args->end);
+	g_dbus_dict_append_entry(&dict, "End", DBUS_TYPE_UINT32, &args->end);
 
 done:
 	dbus_message_iter_close_container(iter, &dict);
