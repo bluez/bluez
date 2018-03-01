@@ -100,6 +100,8 @@ struct bt_att_pdu_error_rsp {
 #define BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION		0x0F
 #define BT_ATT_ERROR_UNSUPPORTED_GROUP_TYPE		0x10
 #define BT_ATT_ERROR_INSUFFICIENT_RESOURCES		0x11
+#define BT_ATT_ERROR_DB_OUT_OF_SYNC			0x12
+#define BT_ATT_ERROR_VALUE_NOT_ALLOWED			0x13
 
 /*
  * Common Profile and Service Error Code descriptions (see Supplement to the
@@ -154,3 +156,6 @@ struct bt_att_pdu_error_rsp {
 #define BT_GATT_CHRC_EXT_PROP_AUTH_WRITE		0x20
 #define BT_GATT_CHRC_EXT_PROP_AUTH	(BT_GATT_CHRC_EXT_PROP_AUTH_READ | \
 					BT_GATT_CHRC_EXT_PROP_AUTH_WRITE)
+
+/* GATT Characteristic Client Features Bitfield values */
+#define BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING		0x01
