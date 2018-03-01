@@ -58,8 +58,8 @@ static int client_bind(uint16_t app_idx, int action)
 			return MESH_STATUS_INSUFF_RESOURCES;
 		} else {
 			onoff_app_idx = app_idx;
-			bt_shell_printf("On/Off client model: new binding %4.4x\n",
-								app_idx);
+			bt_shell_printf("On/Off client model: new binding"
+					" %4.4x\n", app_idx);
 		}
 	} else {
 		if (onoff_app_idx == app_idx)
@@ -101,8 +101,8 @@ static void print_remaining_time(uint8_t remaining_time)
 		break;
 	}
 
-	bt_shell_printf("\n\t\tRemaining time: %d hrs %d mins %d secs %d msecs\n",
-						hours, minutes, secs, msecs);
+	bt_shell_printf("\n\t\tRemaining time: %d hrs %d mins %d secs %d"
+			" msecs\n", hours, minutes, secs, msecs);
 
 }
 
@@ -134,7 +134,8 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 						src, data[0] ? "ON" : "OFF");
 
 		if (len == 3) {
-			bt_shell_printf(", target = %s", data[1] ? "ON" : "OFF");
+			bt_shell_printf(", target = %s",
+					data[1] ? "ON" : "OFF");
 			print_remaining_time(data[2]);
 		} else
 			bt_shell_printf("\n");

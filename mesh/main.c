@@ -923,8 +923,10 @@ static GDBusProxy *get_characteristic(GDBusProxy *device, const char *char_uuid)
 	for (l = char_list; l; l = l->next) {
 		if (mesh_gatt_is_child(l->data, service, "Service") &&
 					char_is_mesh(l->data, char_uuid)) {
-			bt_shell_printf("Found matching char: path %s, uuid %s\n",
-				g_dbus_proxy_get_path(l->data), char_uuid);
+			bt_shell_printf("Found matching char: path %s,"
+					" uuid %s\n",
+					g_dbus_proxy_get_path(l->data),
+					char_uuid);
 			return l->data;
 		}
 	}
@@ -984,13 +986,15 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	} else if (!strcmp(interface, "org.bluez.GattService1") &&
 						service_is_mesh(proxy, NULL)) {
 
-		bt_shell_printf("Service added %s\n", g_dbus_proxy_get_path(proxy));
+		bt_shell_printf("Service added %s\n",
+				g_dbus_proxy_get_path(proxy));
 		service_list = g_list_append(service_list, proxy);
 
 	} else if (!strcmp(interface, "org.bluez.GattCharacteristic1") &&
 						char_is_mesh(proxy, NULL)) {
 
-		bt_shell_printf("Char added %s:\n", g_dbus_proxy_get_path(proxy));
+		bt_shell_printf("Char added %s:\n",
+				g_dbus_proxy_get_path(proxy));
 
 		char_list = g_list_append(char_list, proxy);
 	}
@@ -1010,7 +1014,8 @@ static void start_discovery_reply(DBusMessage *message, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Discovery %s\n", enable == TRUE ? "started" : "stopped");
+	bt_shell_printf("Discovery %s\n",
+			enable == TRUE ? "started" : "stopped");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -1210,8 +1215,8 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 				dbus_message_iter_get_basic(iter, &resolved);
 
-				bt_shell_printf("Services resolved %s\n", resolved ?
-								"yes" : "no");
+				bt_shell_printf("Services resolved %s\n",
+						resolved ? "yes" : "no");
 
 				if (resolved)
 					mesh_session_setup(connection.device);
@@ -1909,8 +1914,8 @@ int main(int argc, char *argv[])
 		bt_shell_printf("Local config directory not provided.\n");
 		mesh_config_dir = "";
 	} else {
-		bt_shell_printf("Reading prov_db.json and local_node.json from %s\n",
-							mesh_config_dir);
+		bt_shell_printf("Reading prov_db.json and local_node.json from"
+				" %s\n", mesh_config_dir);
 	}
 
 	len = strlen(mesh_config_dir);

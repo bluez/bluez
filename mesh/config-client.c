@@ -627,7 +627,8 @@ static bool verify_config_target(uint32_t dst)
 
 	node = node_find_by_addr(dst);
 	if (!node) {
-		bt_shell_printf("Node with unicast address %4.4x unknown\n", dst);
+		bt_shell_printf("Node with unicast address %4.4x unknown\n",
+				dst);
 		return false;
 	}
 

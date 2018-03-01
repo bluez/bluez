@@ -129,7 +129,8 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 
 		pub.retransmit = data[8];
 		bt_shell_printf("Retransmit count: %d\n", data[8] >> 5);
-		bt_shell_printf("Retransmit Interval Steps: %d\n", data[8] & 0x1f);
+		bt_shell_printf("Retransmit Interval Steps: %d\n",
+				data[8] & 0x1f);
 
 		ele_idx = ele_addr - node_get_primary(node);
 
