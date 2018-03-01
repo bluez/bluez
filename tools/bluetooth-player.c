@@ -485,7 +485,8 @@ static void print_player(GDBusProxy *proxy, const char *description)
 
 	str = proxy_description(proxy, "Player", description);
 
-	bt_shell_printf("%s%s\n", str, default_player == proxy ? "[default]" : "");
+	bt_shell_printf("%s%s\n", str,
+			default_player == proxy ? "[default]" : "");
 
 	g_free(str);
 }
