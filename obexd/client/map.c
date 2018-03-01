@@ -40,7 +40,6 @@
 
 #include "obexd/src/log.h"
 #include "obexd/src/map_ap.h"
-#include "dbus.h"
 #include "map-event.h"
 
 #include "map.h"

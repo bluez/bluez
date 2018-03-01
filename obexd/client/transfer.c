@@ -41,7 +41,6 @@
 #include "gobex/gobex.h"
 
 #include "obexd/src/log.h"
-#include "dbus.h"
 #include "transfer.h"
 
 #define TRANSFER_INTERFACE "org.bluez.obex.Transfer1"
