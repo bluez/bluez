@@ -86,6 +86,8 @@ struct btd_gatt_database {
 	struct queue *ccc_callbacks;
 	struct gatt_db_attribute *svc_chngd;
 	struct gatt_db_attribute *svc_chngd_ccc;
+	struct gatt_db_attribute *cli_feat;
+	struct gatt_db_attribute *db_hash;
 	struct queue *apps;
 	struct queue *profiles;
 };
@@ -177,6 +179,7 @@ struct device_state {
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
 	unsigned int disc_id;
+	uint8_t cli_feat[1];
 	struct queue *ccc_states;
 	struct notify *pending;
 };
@@ -1055,6 +1058,90 @@ service_add_ccc(struct gatt_db_attribute *service,
 	return ccc;
 }
 
+static void cli_feat_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct btd_gatt_database *database = user_data;
+	struct device_state *state;
+	uint8_t ecode = 0;
+	const uint8_t *value = NULL;
+	size_t len = 0;
+
+	DBG("Client Features read");
+
+	state = get_device_state(database, att);
+	if (!state) {
+		ecode = BT_ATT_ERROR_UNLIKELY;
+		goto done;
+	}
+
+	len = sizeof(state->cli_feat) - offset;
+	value = len ? &state->cli_feat[offset] : NULL;
+
+done:
+	gatt_db_attribute_read_result(attrib, id, ecode, value, len);
+}
+
+static void cli_feat_write_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct btd_gatt_database *database = user_data;
+	struct device_state *state;
+	uint8_t ecode = 0;
+
+	DBG("Client Features write");
+
+	state = get_device_state(database, att);
+	if (!state) {
+		ecode = BT_ATT_ERROR_UNLIKELY;
+		goto done;
+	}
+
+	if (!value || !len) {
+		ecode = BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+		goto done;
+	}
+
+	/* A client shall never clear a bit it has set.
+	 * TODO: make it generic to any bits.
+	 */
+	if (state->cli_feat[0] & BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING &&
+			!(value[0] & BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING)) {
+		ecode = BT_ATT_ERROR_VALUE_NOT_ALLOWED;
+		goto done;
+	}
+
+	/* Shall we reallocate the feat array if bigger? */
+	len = MIN(sizeof(state->cli_feat), len);
+	while (len) {
+		state->cli_feat[len - 1] |= value[len -1];
+		len--;
+	}
+
+done:
+	gatt_db_attribute_write_result(attrib, id, ecode);
+}
+
+static void db_hash_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct btd_gatt_database *database = user_data;
+	const uint8_t *hash;
+
+	DBG("Database Hash read");
+
+	hash = gatt_db_get_hash(database->db);
+
+	gatt_db_attribute_read_result(attrib, id, 0, hash, 16);
+}
+
 static void populate_gatt_service(struct btd_gatt_database *database)
 {
 	bt_uuid_t uuid;
@@ -1062,7 +1149,7 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 
 	/* Add the GATT service */
 	bt_uuid16_create(&uuid, UUID_GATT);
-	service = gatt_db_add_service(database->db, &uuid, true, 4);
+	service = gatt_db_add_service(database->db, &uuid, true, 8);
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
 	database->svc_chngd = gatt_db_service_add_characteristic(service, &uuid,
@@ -1072,10 +1159,24 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 	database->svc_chngd_ccc = service_add_ccc(service, database, NULL, NULL,
 									NULL);
 
+	bt_uuid16_create(&uuid, GATT_CHARAC_CLI_FEAT);
+	database->cli_feat = gatt_db_service_add_characteristic(service,
+				&uuid, BT_ATT_PERM_READ | BT_ATT_PERM_WRITE,
+				BT_GATT_CHRC_PROP_READ |
+				BT_GATT_CHRC_PROP_WRITE,
+				cli_feat_read_cb, cli_feat_write_cb,
+				database);
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_DB_HASH);
+	database->db_hash = gatt_db_service_add_characteristic(service,
+				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
+				db_hash_read_cb, NULL, database);
+
 	gatt_db_service_set_active(service, true);
 
 	database_add_record(database, service);
 }
+
 
 static void register_core_services(struct btd_gatt_database *database)
 {
