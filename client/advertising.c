@@ -430,7 +430,8 @@ static void unregister_reply(DBusMessage *message, void *user_data)
 		bt_shell_printf("Advertising object unregistered\n");
 		if (g_dbus_unregister_interface(conn, AD_PATH,
 							AD_IFACE) == FALSE)
-			bt_shell_printf("Failed to unregister advertising object\n");
+			bt_shell_printf("Failed to unregister advertising"
+					" object\n");
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	} else {
 		bt_shell_printf("Failed to unregister advertisement: %s\n",
