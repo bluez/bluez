@@ -1199,7 +1199,8 @@ static void append_manufacturer_data(void *data, void *user_data)
 	struct bt_ad_manufacturer_data *md = data;
 	DBusMessageIter *dict = user_data;
 
-	dict_append_basic_array(dict, DBUS_TYPE_UINT16, &md->manufacturer_id,
+	g_dbus_dict_append_basic_array(dict,
+				DBUS_TYPE_UINT16, &md->manufacturer_id,
 				DBUS_TYPE_BYTE, &md->data, md->len);
 }
 
