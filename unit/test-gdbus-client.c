@@ -178,39 +178,6 @@ static void client_connect_disconnect(const void *data)
 								context);
 }
 
-static void append_variant(DBusMessageIter *iter, int type, void *val)
-{
-	DBusMessageIter value;
-	char sig[2] = { type, '\0' };
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
-
-	dbus_message_iter_append_basic(&value, type, val);
-
-	dbus_message_iter_close_container(iter, &value);
-}
-
-static void dict_append_entry(DBusMessageIter *dict, const char *key, int type,
-								void *val)
-{
-	DBusMessageIter entry;
-
-	if (type == DBUS_TYPE_STRING) {
-		const char *str = *((const char **) val);
-		if (str == NULL)
-			return;
-	}
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-							NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	append_variant(&entry, type, val);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static gboolean get_dict(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -223,8 +190,9 @@ static gboolean get_dict(const GDBusPropertyTable *property,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	dict_append_entry(&dict, "String", DBUS_TYPE_STRING, &string);
-	dict_append_entry(&dict, "Boolean", DBUS_TYPE_BOOLEAN, &boolean);
+	g_dbus_dict_append_entry(&dict, "String", DBUS_TYPE_STRING, &string);
+	g_dbus_dict_append_entry(&dict, "Boolean",
+					DBUS_TYPE_BOOLEAN, &boolean);
 
 	dbus_message_iter_close_container(iter, &dict);
 
