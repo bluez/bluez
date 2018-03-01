@@ -260,7 +260,8 @@ static void print_proxy(GDBusProxy *proxy, const char *title,
 
 	str = proxy_description(proxy, title, description);
 
-	bt_shell_printf("%s%s\n", str, default_session == proxy ? "[default]" : "");
+	bt_shell_printf("%s%s\n", str,
+			default_session == proxy ? "[default]" : "");
 
 	g_free(str);
 }
