@@ -357,6 +357,15 @@ gboolean g_dbus_proxy_set_property_array(GDBusProxy *proxy,
 				size_t size, GDBusResultFunction function,
 				void *user_data, GDBusDestroyFunction destroy);
 
+void g_dbus_dict_append_entry(DBusMessageIter *dict,
+					const char *key, int type, void *val);
+void g_dbus_dict_append_basic_array(DBusMessageIter *dict, int key_type,
+					const void *key, int type, void *val,
+					int n_elements);
+void g_dbus_dict_append_array(DBusMessageIter *dict,
+					const char *key, int type, void *val,
+					int n_elements);
+
 typedef void (* GDBusSetupFunction) (DBusMessageIter *iter, void *user_data);
 typedef void (* GDBusReturnFunction) (DBusMessage *message, void *user_data);
 
