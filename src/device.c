@@ -4922,7 +4922,7 @@ static void gatt_server_init(struct btd_device *device,
 	bt_att_set_enc_key_size(device->att, device->ltk_enc_size);
 	bt_gatt_server_set_debug(device->server, gatt_debug, NULL, NULL);
 
-	btd_gatt_database_att_connected(database, device->att);
+	btd_gatt_database_server_connected(database, device->server);
 }
 
 static bool local_counter(uint32_t *sign_cnt, void *user_data)
