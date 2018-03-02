@@ -67,12 +67,16 @@ struct gatt_db {
 
 	struct queue *notify_list;
 	unsigned int next_notify_id;
+
+	gatt_db_authorize_cb_t authorize;
+	void *authorize_data;
 };
 
 struct notify {
 	unsigned int id;
 	gatt_db_attribute_cb_t service_added;
 	gatt_db_attribute_cb_t service_removed;
+	gatt_db_authorize_cb_t authorize_cb;
 	gatt_db_destroy_func_t destroy;
 	void *user_data;
 };
@@ -734,6 +738,18 @@ bool gatt_db_unregister(struct gatt_db *db, unsigned int id)
 
 	queue_remove(db->notify_list, notify);
 	notify_destroy(notify);
+
+	return true;
+}
+
+bool gatt_db_set_authorize(struct gatt_db *db, gatt_db_authorize_cb_t cb,
+							void *user_data)
+{
+	if (!db)
+		return false;
+
+	db->authorize = cb;
+	db->authorize_data = user_data;
 
 	return true;
 }
@@ -1823,6 +1839,17 @@ static bool read_timeout(void *user_data)
 	return false;
 }
 
+static uint8_t attribute_authorize(struct gatt_db_attribute *attrib,
+					uint8_t opcode, struct bt_att *att)
+{
+	struct gatt_db *db = attrib->service->db;
+
+	if (!db->authorize)
+		return 0;
+
+	return db->authorize(attrib, opcode, att, db->authorize_data);
+}
+
 bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
 				uint8_t opcode, struct bt_att *att,
 				gatt_db_attribute_read_t func, void *user_data)
@@ -1834,6 +1861,13 @@ bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
 
 	if (attrib->read_func) {
 		struct pending_read *p;
+		uint8_t err;
+
+		err = attribute_authorize(attrib, opcode, att);
+		if (err) {
+			func(attrib, err, NULL, 0, user_data);
+			return true;
+		}
 
 		p = new0(struct pending_read, 1);
 		p->attrib = attrib;
@@ -1915,6 +1949,13 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 
 	if (attrib->write_func) {
 		struct pending_write *p;
+		uint8_t err;
+
+		err = attribute_authorize(attrib, opcode, att);
+		if (err) {
+			func(attrib, err, user_data);
+			return true;
+		}
 
 		p = new0(struct pending_write, 1);
 		p->attrib = attrib;

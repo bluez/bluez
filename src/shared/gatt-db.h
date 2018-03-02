@@ -198,6 +198,12 @@ unsigned int gatt_db_register(struct gatt_db *db,
 					gatt_db_destroy_func_t destroy);
 bool gatt_db_unregister(struct gatt_db *db, unsigned int id);
 
+typedef uint8_t (*gatt_db_authorize_cb_t)(struct gatt_db_attribute *attrib,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data);
+bool gatt_db_set_authorize(struct gatt_db *db, gatt_db_authorize_cb_t cb,
+					void *user_data);
+
 struct gatt_db_attribute *gatt_db_get_service(struct gatt_db *db,
 							uint16_t handle);
 
