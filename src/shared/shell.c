@@ -313,8 +313,11 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	if (parse_args(man, &w, "<>", flags) < 0) {
 		print_text(COLOR_HIGHLIGHT,
 			"Unable to parse mandatory command arguments: %s", man );
+		free(man);
 		return -EINVAL;
 	}
+
+	free(man);
 
 	/* Check if there are enough arguments */
 	if ((unsigned) argc - 1 < w.we_wordc) {
@@ -330,8 +333,11 @@ optional:
 	if (parse_args(opt, &w, "[]", flags) < 0) {
 		print_text(COLOR_HIGHLIGHT,
 			"Unable to parse optional command arguments: %s", opt);
+		free(opt);
 		return -EINVAL;
 	}
+
+	free(opt);
 
 	/* Check if there are too many arguments */
 	if ((unsigned) argc - 1 > w.we_wordc && !w.we_offs) {
@@ -649,7 +655,7 @@ static char **args_completion(const struct bt_shell_menu_entry *entry, int argc,
 		return NULL;
 
 	if (!entry->arg)
-		goto done;
+		goto end;
 
 	str = strdup(entry->arg);
 
@@ -664,6 +670,8 @@ static char **args_completion(const struct bt_shell_menu_entry *entry, int argc,
 	if (!strrchr(entry->arg, '/'))
 		goto done;
 
+	free(str);
+
 	/* Split values separated by / */
 	str = strdelimit(args.we_wordv[index], "/", ' ');
 
@@ -674,6 +682,8 @@ static char **args_completion(const struct bt_shell_menu_entry *entry, int argc,
 	matches = rl_completion_matches(text, arg_generator);
 
 done:
+	free(str);
+end:
 	if (!matches && text[0] == '\0')
 		bt_shell_printf("Usage: %s %s\n", entry->cmd,
 					entry->arg ? entry->arg : "");
