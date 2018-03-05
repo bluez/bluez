@@ -5,16 +5,7 @@ Build tools requirements
 ========================
 
 When building and testing directly from the repository it is important to
-have at least automake version 1.10 or later installed. All modern
-distributions should default to the latest version, but it seems that
-Debian's default is still an earlier version:
-
-  Check version
-    # dpkg -l '*automake*'
-
-  Install new version
-    # apt-get install automake1.10
-    # update-alternatives --config automake
+have at least automake version 1.10 or later installed.
 
 
 Working with the source code repository
