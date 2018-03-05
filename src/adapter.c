@@ -4326,6 +4326,14 @@ bool btd_adapter_get_discoverable(struct btd_adapter *adapter)
 	return false;
 }
 
+bool btd_adapter_get_bredr(struct btd_adapter *adapter)
+{
+	if (adapter->current_settings & MGMT_SETTING_BREDR)
+		return true;
+
+	return false;
+}
+
 struct btd_gatt_database *btd_adapter_get_database(struct btd_adapter *adapter)
 {
 	if (!adapter)

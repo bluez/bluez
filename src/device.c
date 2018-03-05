@@ -1863,7 +1863,7 @@ static uint8_t select_conn_bearer(struct btd_device *dev)
 	 * Prefer BR/EDR if time is the same since it might be from an
 	 * advertisement with BR/EDR flag set.
 	 */
-	if (bredr_last <= le_last)
+	if (bredr_last <= le_last && btd_adapter_get_bredr(dev->adapter))
 		return BDADDR_BREDR;
 
 	return dev->bdaddr_type;
