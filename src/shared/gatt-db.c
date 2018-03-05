@@ -35,6 +35,7 @@
 #include "src/shared/timeout.h"
 #include "src/shared/att.h"
 #include "src/shared/gatt-db.h"
+#include "src/shared/crypto.h"
 
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -58,6 +59,7 @@ static const bt_uuid_t ext_desc_uuid = { .type = BT_UUID16,
 
 struct gatt_db {
 	int ref_count;
+	struct bt_crypto *crypto;
 	uint8_t hash[16];
 	unsigned int hash_id;
 	uint16_t next_handle;
@@ -225,6 +227,7 @@ struct gatt_db *gatt_db_new(void)
 	struct gatt_db *db;
 
 	db = new0(struct gatt_db, 1);
+	db->crypto = bt_crypto_new();
 	db->services = queue_new();
 	db->notify_list = queue_new();
 	db->next_handle = 0x0001;
@@ -266,11 +269,70 @@ static void handle_notify(void *data, void *user_data)
 		notify->service_removed(notify_data->attr, notify->user_data);
 }
 
+static void gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
+{
+	struct iovec *iov = user_data;
+	uint8_t *data;
+	size_t len;
+
+	if (bt_uuid_len(&attr->uuid) != 2)
+		return;
+
+	switch (attr->uuid.value.u16) {
+	case GATT_PRIM_SVC_UUID:
+	case GATT_SND_SVC_UUID:
+	case GATT_INCLUDE_UUID:
+	case GATT_CHARAC_UUID:
+		/* Allocate space for handle + type + value */
+		len = 2 + 2 + attr->value_len;
+		data = malloc(2 + 2 + attr->value_len);
+		put_le16(attr->handle, data);
+		bt_uuid_to_le(&attr->uuid, data + 2);
+		memcpy(data + 4, attr->value, attr->value_len);
+		break;
+	case GATT_CHARAC_USER_DESC_UUID:
+	case GATT_CLIENT_CHARAC_CFG_UUID:
+	case GATT_SERVER_CHARAC_CFG_UUID:
+	case GATT_CHARAC_FMT_UUID:
+	case GATT_CHARAC_AGREG_FMT_UUID:
+		/* Allocate space for handle + type  */
+		len = 2 + 2;
+		data = malloc(2 + 2 + attr->value_len);
+		put_le16(attr->handle, data);
+		bt_uuid_to_le(&attr->uuid, data + 2);
+		break;
+	default:
+		return;
+	}
+
+	iov[attr->handle].iov_base = data;
+	iov[attr->handle].iov_len = len;
+
+	return;
+}
+
+static void service_gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
+{
+	gatt_db_service_foreach(attr, NULL, gen_hash_m, user_data);
+}
+
 static bool db_hash_update(void *user_data)
 {
 	struct gatt_db *db = user_data;
+	struct iovec *iov;
+	uint16_t i;
 
 	db->hash_id = 0;
+
+	iov = new0(struct iovec, db->next_handle);
+
+	gatt_db_foreach_service(db, NULL, service_gen_hash_m, iov);
+	bt_crypto_gatt_hash(db->crypto, iov, db->next_handle, db->hash);
+
+	for (i = 0; i < db->next_handle; i++)
+		free(iov[i].iov_base);
+
+	free(iov);
 
 	return false;
 }
@@ -292,7 +354,7 @@ static void notify_service_changed(struct gatt_db *db,
 	queue_foreach(db->notify_list, handle_notify, &data);
 
 	/* Tigger hash update */
-	if (!db->hash_id)
+	if (!db->hash_id && db->crypto)
 		db->hash_id = timeout_add(HASH_UPDATE_TIMEOUT, db_hash_update,
 								db, NULL);
 
@@ -318,6 +380,8 @@ static void gatt_db_destroy(struct gatt_db *db)
 {
 	if (!db)
 		return;
+
+	bt_crypto_unref(db->crypto);
 
 	/*
 	 * Clear the notify list before clearing the services to prevent the
@@ -506,7 +570,7 @@ uint8_t *gatt_db_get_hash(struct gatt_db *db)
 {
 	uint8_t hash[16] = {};
 
-	if (!db)
+	if (!db || !db->crypto)
 		return NULL;
 
 	/* Generate hash if if has not been generated yet */
