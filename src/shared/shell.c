@@ -346,6 +346,7 @@ optional:
 		goto fail;
 	}
 
+	w.we_offs = 0;
 	wordfree(&w);
 
 exec:
@@ -359,6 +360,7 @@ exec:
 	return 0;
 
 fail:
+	w.we_offs = 0;
 	wordfree(&w);
 	return -EINVAL;
 }
@@ -675,6 +677,9 @@ static char **args_completion(const struct bt_shell_menu_entry *entry, int argc,
 	/* Split values separated by / */
 	str = strdelimit(args.we_wordv[index], "/", ' ');
 
+	args.we_offs = 0;
+	wordfree(&args);
+
 	if (wordexp(str, &args, WRDE_NOCMD))
 		goto done;
 
@@ -688,6 +693,7 @@ end:
 		bt_shell_printf("Usage: %s %s\n", entry->cmd,
 					entry->arg ? entry->arg : "");
 
+	args.we_offs = 0;
 	wordfree(&args);
 	return matches;
 }
