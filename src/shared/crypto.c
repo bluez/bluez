@@ -688,3 +688,34 @@ bool bt_crypto_h6(struct bt_crypto *crypto, const uint8_t w[16],
 
 	return true;
 }
+
+bool bt_crypto_gatt_hash(struct bt_crypto *crypto, struct iovec *iov,
+				size_t iov_len, uint8_t res[16])
+{
+	const uint8_t key[16] = {};
+	ssize_t len;
+	int fd;
+
+	if (!crypto)
+		return false;
+
+	fd = alg_new(crypto->cmac_aes, key, 16);
+	if (fd < 0)
+		return false;
+
+	len = writev(fd, iov, iov_len);
+	if (len < 0) {
+		close(fd);
+		return false;
+	}
+
+	len = read(fd, res, 16);
+	if (len < 0) {
+		close(fd);
+		return false;
+	}
+
+	close(fd);
+
+	return true;
+}
