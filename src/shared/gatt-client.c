@@ -1798,6 +1798,27 @@ static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
 	queue_push_tail(client->svc_chngd_queue, op);
 }
 
+static void write_client_features(struct bt_gatt_client *client)
+{
+	bt_uuid_t uuid;
+	struct gatt_db_attribute *attr = NULL;
+	uint16_t handle;
+	uint8_t value;
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_CLI_FEAT);
+
+	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid,
+						get_first_attribute, &attr);
+	if (!attr)
+		return;
+
+	handle = gatt_db_attribute_get_handle(attr);
+	value = BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
+
+	bt_gatt_client_write_value(client, handle, &value, sizeof(value), NULL,
+								NULL, NULL);
+}
+
 static void init_complete(struct discovery_op *op, bool success,
 							uint8_t att_ecode)
 {
@@ -1807,6 +1828,8 @@ static void init_complete(struct discovery_op *op, bool success,
 
 	if (!success)
 		goto fail;
+
+	write_client_features(client);
 
 	if (register_service_changed(client))
 		goto done;
