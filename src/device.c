@@ -2735,9 +2735,18 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 		dbus_message_unref(msg);
 	}
 
-	if (state->paired && !state->bonded)
+	if (state->paired && !state->bonded) {
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
 								bdaddr_type);
+
+		state->paired = false;
+
+		/* report change only if both bearers are unpaired */
+		if (!device->bredr_state.paired && !device->le_state.paired)
+			g_dbus_emit_property_changed(dbus_conn, device->path,
+							DEVICE_INTERFACE,
+							"Paired");
+	}
 
 	if (device->bredr_state.connected || device->le_state.connected)
 		return;
