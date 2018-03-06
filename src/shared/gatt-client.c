@@ -325,6 +325,7 @@ struct discovery_op {
 	struct queue *pending_chrcs;
 	struct queue *ext_prop_desc;
 	struct gatt_db_attribute *cur_svc;
+	struct gatt_db_attribute *hash;
 	bool success;
 	uint16_t start;
 	uint16_t end;
@@ -349,10 +350,18 @@ static void discovery_op_free(struct discovery_op *op)
 	free(op);
 }
 
+static bool read_db_hash(struct discovery_op *op);
+
 static void discovery_op_complete(struct discovery_op *op, bool success,
 								uint8_t err)
 {
 	const struct queue_entry *svc;
+
+	op->success = success;
+
+	/* Read database hash if discovery has been successful */
+	if (success && read_db_hash(op))
+		return;
 
 	/*
 	 * Unregister remove callback so it is not called when clearing unused
@@ -380,7 +389,6 @@ static void discovery_op_complete(struct discovery_op *op, bool success,
 	if (op->last != UINT16_MAX)
 		gatt_db_clear_range(op->client->db, op->last + 1, UINT16_MAX);
 
-	op->success = success;
 	op->complete_func(op, success, err);
 }
 
@@ -1249,6 +1257,139 @@ static void notify_client_ready(struct bt_gatt_client *client, bool success,
 	bt_gatt_client_unref(client);
 }
 
+static void discover_all(struct discovery_op *op)
+{
+	struct bt_gatt_client *client = op->client;
+
+	client->discovery_req = bt_gatt_discover_all_primary_services(
+							client->att, NULL,
+							discover_primary_cb,
+							discovery_op_ref(op),
+							discovery_op_unref);
+	if (client->discovery_req)
+		return;
+
+	util_debug(client->debug_callback, client->debug_data,
+			"Failed to initiate primary service discovery");
+
+	client->in_init = false;
+	notify_client_ready(client, false, BT_ATT_ERROR_UNLIKELY);
+
+	discovery_op_unref(op);
+}
+
+static void db_hash_write_value_cb(struct gatt_db_attribute *attrib,
+						int err, void *user_data)
+{
+	struct bt_gatt_client *client = user_data;
+
+	util_debug(client->debug_callback, client->debug_data,
+						"Value set status: %d", err);
+}
+
+static void db_hash_read_value_cb(struct gatt_db_attribute *attrib,
+						int err, const uint8_t *value,
+						size_t length, void *user_data)
+{
+	const uint8_t **hash = user_data;
+
+	if (err || (length != 16))
+		return;
+
+	*hash = value;
+}
+
+static void db_hash_read_cb(bool success, uint8_t att_ecode,
+						struct bt_gatt_result *result,
+						void *user_data)
+{
+	struct discovery_op *op = user_data;
+	struct bt_gatt_client *client = op->client;
+	const uint8_t *hash = NULL, *value;
+	uint16_t len, handle;
+	struct bt_gatt_iter iter;
+
+	if (!success)
+		goto discover;
+
+	bt_gatt_iter_init(&iter, result);
+	bt_gatt_iter_next_read_by_type(&iter, &handle, &len, &value);
+
+	util_debug(client->debug_callback, client->debug_data,
+				"DB Hash found: handle 0x%04x length 0x%04x",
+				handle, len);
+
+	if (len != 16)
+		goto discover;
+
+	/* Read stored value in the db */
+	gatt_db_attribute_read(op->hash, 0, BT_ATT_OP_READ_REQ, NULL,
+					db_hash_read_value_cb, &hash);
+
+	/* Check if the has has changed since last time */
+	if (hash && !memcmp(hash, value, len)) {
+		util_debug(client->debug_callback, client->debug_data,
+				"DB Hash match: skipping discovery");
+		queue_remove_all(op->pending_svcs, NULL, NULL, NULL);
+		discovery_op_complete(op, true, 0);
+		return;
+	}
+
+	util_debug(client->debug_callback, client->debug_data,
+						"DB Hash value:");
+	util_hexdump(' ', value, len, client->debug_callback,
+						client->debug_data);
+
+	/* Store the new hash in the db */
+	gatt_db_attribute_write(op->hash, 0, value, len, 0, NULL,
+					db_hash_write_value_cb, client);
+
+discover:
+	if (!op->success) {
+		discover_all(op);
+		return;
+	}
+
+	discovery_op_complete(op, true, 0);
+}
+
+static void get_first_attribute(struct gatt_db_attribute *attrib,
+								void *user_data)
+{
+	struct gatt_db_attribute **stored = user_data;
+
+	if (*stored)
+		return;
+
+	*stored = attrib;
+}
+
+static bool read_db_hash(struct discovery_op *op)
+{
+	struct bt_gatt_client *client = op->client;
+	bt_uuid_t uuid;
+
+	/* Check if hash was already read */
+	if (op->hash)
+		return false;
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_DB_HASH);
+	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid,
+						get_first_attribute, &op->hash);
+	if (!op->hash)
+		return false;
+
+	if (!bt_gatt_read_by_type(client->att, 0x0001, 0xffff, &uuid,
+							db_hash_read_cb,
+							discovery_op_ref(op),
+							discovery_op_unref)) {
+		discovery_op_unref(op);
+		return false;
+	}
+
+	return true;
+}
+
 static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)
 {
 	struct discovery_op *op = user_data;
@@ -1282,21 +1423,12 @@ static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)
 					bt_att_get_mtu(client->att));
 
 discover:
-	client->discovery_req = bt_gatt_discover_all_primary_services(
-							client->att, NULL,
-							discover_primary_cb,
-							discovery_op_ref(op),
-							discovery_op_unref);
-	if (client->discovery_req)
+	if (read_db_hash(op)) {
+		op->success = false;
 		return;
+	}
 
-	util_debug(client->debug_callback, client->debug_data,
-			"Failed to initiate primary service discovery");
-
-	client->in_init = false;
-	notify_client_ready(client, false, att_ecode);
-
-	discovery_op_unref(op);
+	discover_all(op);
 }
 
 struct service_changed_op {
@@ -1489,17 +1621,6 @@ static unsigned int register_notify(struct bt_gatt_client *client,
 	}
 
 	return notify_data->id;
-}
-
-static void get_first_attribute(struct gatt_db_attribute *attrib,
-								void *user_data)
-{
-	struct gatt_db_attribute **stored = user_data;
-
-	if (*stored)
-		return;
-
-	*stored = attrib;
 }
 
 static void service_changed_register_cb(uint16_t att_ecode, void *user_data)
@@ -1747,6 +1868,11 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 	return true;
 
 discover:
+	if (read_db_hash(op)) {
+		op->success = false;
+		goto done;
+	}
+
 	client->discovery_req = bt_gatt_discover_all_primary_services(
 							client->att, NULL,
 							discover_primary_cb,
@@ -1757,6 +1883,7 @@ discover:
 		return false;
 	}
 
+done:
 	client->in_init = true;
 	return true;
 }
