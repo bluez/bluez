@@ -526,6 +526,8 @@ static const struct {
 	{ 0x2adc, "Mesh Provisioning Data Out"			},
 	{ 0x2add, "Mesh Proxy Data In"				},
 	{ 0x2ade, "Mesh Proxy Data Out"				},
+	{ 0x2b29, "Client Supported Features"			},
+	{ 0x2b2A, "Database Hash"				},
 	/* vendor defined */
 	{ 0xfeff, "GN Netcom"					},
 	{ 0xfefe, "GN ReSound A/S"				},
