@@ -2132,6 +2132,12 @@ static void att_error_response(const struct l2cap_frame *frame)
 	case 0x11:
 		str = "Insufficient Resources";
 		break;
+	case 0x12:
+		str = "Database Out of Sync";
+		break;
+	case 0x13:
+		str = "Value Not Allowed";
+		break;
 	case 0xfd:
 		str = "CCC Improperly Configured";
 		break;
