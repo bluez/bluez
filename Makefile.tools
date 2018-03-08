@@ -32,9 +32,9 @@ mesh_meshctl_SOURCES = mesh/main.c \
 mesh_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -ljson-c -lreadline
+endif
 
 EXTRA_DIST += mesh/local_node.json mesh/prov_db.json
-endif
 
 if MONITOR
 bin_PROGRAMS += monitor/btmon
