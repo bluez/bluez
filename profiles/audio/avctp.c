@@ -549,9 +549,9 @@ static void avctp_channel_destroy(struct avctp_channel *chan)
 		chan->destroy(chan);
 
 	g_free(chan->buffer);
-	g_slist_free_full(chan->queues, avctp_queue_destroy);
 	g_slist_foreach(chan->processed, pending_destroy, NULL);
 	g_slist_free(chan->processed);
+	g_slist_free_full(chan->queues, avctp_queue_destroy);
 	g_slist_free_full(chan->handlers, g_free);
 	g_free(chan);
 }
