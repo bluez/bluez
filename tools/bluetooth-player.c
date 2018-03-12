@@ -115,15 +115,21 @@ static void play_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
-static void cmd_play_item(int argc, char *argv[])
+static void cmd_play(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 
-	proxy = g_dbus_proxy_lookup(items, NULL, argv[1],
+	if (argc > 1) {
+		proxy = g_dbus_proxy_lookup(items, NULL, argv[1],
 						BLUEZ_MEDIA_ITEM_INTERFACE);
-	if (proxy == NULL) {
-		bt_shell_printf("Item %s not available\n", argv[1]);
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		if (proxy == NULL) {
+			bt_shell_printf("Item %s not available\n", argv[1]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	} else {
+		if (!check_default_player())
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		proxy = default_player;
 	}
 
 	if (g_dbus_proxy_method_call(proxy, "Play", NULL, play_reply,
@@ -132,24 +138,7 @@ static void cmd_play_item(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Attempting to play %s\n", argv[1]);
-}
-
-static void cmd_play(int argc, char *argv[])
-{
-	if (argc > 1)
-		return cmd_play_item(argc, argv);
-
-	if (!check_default_player())
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-
-	if (g_dbus_proxy_method_call(default_player, "Play", NULL, play_reply,
-							NULL, NULL) == FALSE) {
-		bt_shell_printf("Failed to play\n");
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
-
-	bt_shell_printf("Attempting to play\n");
+	bt_shell_printf("Attempting to play %s\n", argv[1] ? : "");
 }
 
 static void pause_reply(DBusMessage *message, void *user_data)
