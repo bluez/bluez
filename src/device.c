@@ -2143,6 +2143,18 @@ struct gatt_saver {
 	GKeyFile *key_file;
 };
 
+static void db_hash_read_value_cb(struct gatt_db_attribute *attrib,
+						int err, const uint8_t *value,
+						size_t length, void *user_data)
+{
+	const uint8_t **hash = user_data;
+
+	if (err || (length != 16))
+		return;
+
+	*hash = value;
+}
+
 static void store_desc(struct gatt_db_attribute *attr, void *user_data)
 {
 	struct gatt_saver *saver = user_data;
@@ -2174,7 +2186,7 @@ static void store_chrc(struct gatt_db_attribute *attr, void *user_data)
 	char handle[6], value[100], uuid_str[MAX_LEN_UUID_STR];
 	uint16_t handle_num, value_handle;
 	uint8_t properties;
-	bt_uuid_t uuid;
+	bt_uuid_t uuid, hash_uuid;
 
 	if (!gatt_db_attribute_get_char_data(attr, &handle_num, &value_handle,
 						&properties, &saver->ext_props,
@@ -2185,8 +2197,34 @@ static void store_chrc(struct gatt_db_attribute *attr, void *user_data)
 
 	sprintf(handle, "%04hx", handle_num);
 	bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
-	sprintf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hhx:%s", value_handle,
-							properties, uuid_str);
+
+	/* Store Database Hash  value if available */
+	bt_uuid16_create(&hash_uuid, GATT_CHARAC_DB_HASH);
+	if (!bt_uuid_cmp(&uuid, &hash_uuid)) {
+		const uint8_t *hash = NULL;
+
+		attr = gatt_db_get_attribute(saver->device->db, value_handle);
+
+		gatt_db_attribute_read(attr, 0, BT_ATT_OP_READ_REQ, NULL,
+					db_hash_read_value_cb, &hash);
+		if (hash)
+			sprintf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hhx:"
+				"%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+				"%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+				"%02hhx%02hhx:%s", value_handle, properties,
+				hash[0], hash[1], hash[2], hash[3],
+				hash[4], hash[5], hash[6], hash[7],
+				hash[8], hash[9], hash[10], hash[11],
+				hash[12], hash[13], hash[14], hash[15],
+				uuid_str);
+		else
+			sprintf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hhx:%s",
+				value_handle, properties, uuid_str);
+
+	} else
+		sprintf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hhx:%s",
+				value_handle, properties, uuid_str);
+
 	g_key_file_set_string(key_file, "Attributes", handle, value);
 
 	gatt_db_service_foreach_desc(attr, store_desc, saver);
@@ -3228,6 +3266,20 @@ static void load_desc_value(struct gatt_db_attribute *attrib,
 		warn("loading descriptor value to db failed");
 }
 
+static ssize_t str2val(const char *str, uint8_t *val, size_t len)
+{
+	const char *pos = str;
+	size_t i;
+
+	for (i = 0; i < len; i++) {
+		if (sscanf(pos, "%2hhx", &val[i]) != 1)
+			break;
+		pos += 2;
+	}
+
+	return i;
+}
+
 static int load_desc(char *handle, char *value,
 					struct gatt_db_attribute *service)
 {
@@ -3247,7 +3299,7 @@ static int load_desc(char *handle, char *value,
 		val = 0;
 	}
 
-	DBG("loading descriptor handle: 0x%04x, value: 0x%04x, uuid: %s",
+	DBG("loading descriptor handle: 0x%04x, value: 0x%04x, value uuid: %s",
 				handle_int, val, uuid_str);
 
 	bt_string_to_uuid(&uuid, uuid_str);
@@ -3282,21 +3334,31 @@ static int load_chrc(char *handle, char *value,
 	uint16_t properties, value_handle, handle_int;
 	char uuid_str[MAX_LEN_UUID_STR];
 	struct gatt_db_attribute *att;
+	char val_str[32];
+	uint8_t val[16];
+	size_t val_len;
 	bt_uuid_t uuid;
 
 	if (sscanf(handle, "%04hx", &handle_int) != 1)
 		return -EIO;
 
-	if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%s", &value_handle,
-						&properties, uuid_str) != 3)
-		return -EIO;
+	/* Check if there is any value stored */
+	if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%32s:%s",
+			&value_handle, &properties, val_str, uuid_str) != 4) {
+		if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%s",
+				&value_handle, &properties, uuid_str) != 3)
+			return -EIO;
+		val_len = 0;
+	} else
+		val_len = str2val(val_str, val, sizeof(val));
 
 	bt_string_to_uuid(&uuid, uuid_str);
 
 	/* Log debug message. */
 	DBG("loading characteristic handle: 0x%04x, value handle: 0x%04x,"
-				" properties 0x%04x uuid: %s", handle_int,
-				value_handle, properties, uuid_str);
+				" properties 0x%04x value: %s uuid: %s",
+				handle_int, value_handle, properties,
+				val_len ? val_str : "", uuid_str);
 
 	att = gatt_db_service_insert_characteristic(service, value_handle,
 							&uuid, 0, properties,
@@ -3304,6 +3366,12 @@ static int load_chrc(char *handle, char *value,
 	if (!att || gatt_db_attribute_get_handle(att) != value_handle) {
 		warn("loading characteristic to db failed");
 		return -EIO;
+	}
+
+	if (val_len) {
+		if (!gatt_db_attribute_write(att, 0, val, val_len, 0, NULL,
+						load_desc_value, NULL))
+			return -EIO;
 	}
 
 	return 0;
