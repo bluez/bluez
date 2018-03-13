@@ -965,10 +965,8 @@ struct read_multiple_resp_data {
 static void read_multiple_resp_data_free(struct read_multiple_resp_data *data)
 {
 	free(data->handles);
-	data->handles = NULL;
-
 	free(data->rsp_data);
-	data->rsp_data = NULL;
+	free(data);
 }
 
 static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
@@ -1045,38 +1043,38 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu,
 {
 	struct bt_gatt_server *server = user_data;
 	struct gatt_db_attribute *attr;
-	struct read_multiple_resp_data data;
+	struct read_multiple_resp_data *data = NULL;
 	uint8_t ecode = BT_ATT_ERROR_UNLIKELY;
 	size_t i = 0;
-
-	data.handles = NULL;
-	data.rsp_data = NULL;
 
 	if (length < 4) {
 		ecode = BT_ATT_ERROR_INVALID_PDU;
 		goto error;
 	}
 
-	data.server = server;
-	data.num_handles = length / 2;
-	data.cur_handle = 0;
-	data.mtu = bt_att_get_mtu(server->att);
-	data.length = 0;
-	data.rsp_data = malloc(data.mtu - 1);
+	data = new0(struct read_multiple_resp_data, 1);
+	data->handles = NULL;
+	data->rsp_data = NULL;
+	data->server = server;
+	data->num_handles = length / 2;
+	data->cur_handle = 0;
+	data->mtu = bt_att_get_mtu(server->att);
+	data->length = 0;
+	data->rsp_data = malloc(data->mtu - 1);
 
-	if (!data.rsp_data)
+	if (!data->rsp_data)
 		goto error;
 
-	data.handles = new0(uint16_t, data.num_handles);
+	data->handles = new0(uint16_t, data->num_handles);
 
-	for (i = 0; i < data.num_handles; i++)
-		data.handles[i] = get_le16(pdu + i * 2);
+	for (i = 0; i < data->num_handles; i++)
+		data->handles[i] = get_le16(pdu + i * 2);
 
 	util_debug(server->debug_callback, server->debug_data,
 			"Read Multiple Req - %zu handles, 1st: 0x%04x",
-			data.num_handles, data.handles[0]);
+			data->num_handles, data->handles[0]);
 
-	attr = gatt_db_get_attribute(server->db, data.handles[0]);
+	attr = gatt_db_get_attribute(server->db, data->handles[0]);
 
 	if (!attr) {
 		ecode = BT_ATT_ERROR_INVALID_HANDLE;
@@ -1084,11 +1082,13 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu,
 	}
 
 	if (gatt_db_attribute_read(attr, 0, opcode, server->att,
-					read_multiple_complete_cb, &data))
+					read_multiple_complete_cb, data))
 		return;
 
 error:
-	read_multiple_resp_data_free(&data);
+	if (data)
+		read_multiple_resp_data_free(data);
+
 	bt_att_send_error_rsp(server->att, opcode, 0, ecode);
 }
 
