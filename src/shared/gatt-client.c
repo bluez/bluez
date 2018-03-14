@@ -988,7 +988,7 @@ static void discover_secondary_cb(bool success, uint8_t att_ecode,
 	}
 
 next:
-	if (queue_isempty(op->pending_svcs))
+	if (queue_isempty(op->pending_svcs) || !op->svc_first)
 		goto done;
 
 	client->discovery_req = bt_gatt_discover_included_services(client->att,
