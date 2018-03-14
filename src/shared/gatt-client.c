@@ -1023,9 +1023,6 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 	discovery_req_clear(client);
 
 	if (!success) {
-		util_debug(client->debug_callback, client->debug_data,
-					"Primary service discovery failed."
-					" ATT ECODE: 0x%02x", att_ecode);
 		/* Reset error in case of not found */
 		switch (att_ecode) {
 		case BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND:
@@ -1033,6 +1030,9 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 			att_ecode = 0;
 			goto secondary;
 		default:
+			util_debug(client->debug_callback, client->debug_data,
+					"Primary service discovery failed."
+					" ATT ECODE: 0x%02x", att_ecode);
 			goto done;
 		}
 	}
