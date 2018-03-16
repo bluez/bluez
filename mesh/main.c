@@ -949,7 +949,6 @@ static void mesh_session_setup(GDBusProxy *proxy)
 		data_out_notify(connection.data_out, true, notify_prov_out_cb);
 
 	} else if (connection.type != CONN_TYPE_INVALID){
-
 		connection.data_in = get_characteristic(proxy,
 						MESH_PROXY_DATA_IN_UUID_STR);
 		if (!connection.data_in)
@@ -1202,8 +1201,10 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 				if (connected && connection.device == NULL)
 					set_connected_device(proxy);
 				else if (!connected &&
-						connection.device == proxy)
+						connection.device == proxy) {
+					net_session_close(connection.data_in);
 					set_connected_device(NULL);
+				}
 			} else if ((strcmp(name, "Alias") == 0) &&
 						connection.device == proxy) {
 				/* Re-generate prompt */
