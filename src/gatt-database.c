@@ -965,8 +965,8 @@ struct notify {
 	uint16_t handle, ccc_handle;
 	const uint8_t *value;
 	uint16_t len;
-	bool indicate;
-	GDBusProxy *proxy;
+	bt_gatt_server_conf_func_t conf;
+	void *user_data;
 };
 
 static void conf_cb(void *user_data)
@@ -992,7 +992,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	if (!ccc)
 		return;
 
-	if (!ccc->value[0] || (notify->indicate && !(ccc->value[0] & 0x02)))
+	if (!ccc->value[0] || (notify->conf && !(ccc->value[0] & 0x02)))
 		return;
 
 	device = btd_adapter_get_device(notify->database->adapter,
@@ -1012,7 +1012,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	 * TODO: If the device is not connected but bonded, send the
 	 * notification/indication when it becomes connected.
 	 */
-	if (!notify->indicate) {
+	if (!notify->conf) {
 		DBG("GATT server sending notification");
 		bt_gatt_server_send_notification(server,
 					notify->handle, notify->value,
@@ -1022,8 +1022,8 @@ static void send_notification_to_device(void *data, void *user_data)
 
 	DBG("GATT server sending indication");
 	bt_gatt_server_send_indication(server, notify->handle, notify->value,
-							notify->len, conf_cb,
-							notify->proxy, NULL);
+						notify->len, notify->conf,
+						notify->user_data, NULL);
 
 	return;
 
@@ -1036,10 +1036,16 @@ remove:
 	}
 }
 
+static void service_changed_conf(void *user_data)
+{
+	DBG("");
+}
+
 static void send_notification_to_devices(struct btd_gatt_database *database,
 					uint16_t handle, const uint8_t *value,
 					uint16_t len, uint16_t ccc_handle,
-					bool indicate, GDBusProxy *proxy)
+					bt_gatt_server_conf_func_t conf,
+					void *user_data)
 {
 	struct notify notify;
 
@@ -1050,8 +1056,8 @@ static void send_notification_to_devices(struct btd_gatt_database *database,
 	notify.ccc_handle = ccc_handle;
 	notify.value = value;
 	notify.len = len;
-	notify.indicate = indicate;
-	notify.proxy = proxy;
+	notify.conf = conf;
+	notify.user_data = user_data;
 
 	queue_foreach(database->device_states, send_notification_to_device,
 								&notify);
@@ -1082,7 +1088,7 @@ static void send_service_changed(struct btd_gatt_database *database,
 	put_le16(end, value + 2);
 
 	send_notification_to_devices(database, handle, value, sizeof(value),
-							ccc_handle, true, NULL);
+					ccc_handle, service_changed_conf, NULL);
 }
 
 static void gatt_db_service_added(struct gatt_db_attribute *attrib,
@@ -1994,8 +2000,8 @@ static bool pipe_io_read(struct io *io, void *user_data)
 				gatt_db_attribute_get_handle(chrc->attrib),
 				buf, bytes_read,
 				gatt_db_attribute_get_handle(chrc->ccc),
-				chrc->props & BT_GATT_CHRC_PROP_INDICATE,
-				chrc->proxy);
+				chrc->props & BT_GATT_CHRC_PROP_INDICATE ?
+				conf_cb : NULL, chrc->proxy);
 
 	return true;
 }
@@ -2271,7 +2277,8 @@ static void property_changed_cb(GDBusProxy *proxy, const char *name,
 				gatt_db_attribute_get_handle(chrc->attrib),
 				value, len,
 				gatt_db_attribute_get_handle(chrc->ccc),
-				chrc->props & BT_GATT_CHRC_PROP_INDICATE, proxy);
+				chrc->props & BT_GATT_CHRC_PROP_INDICATE ?
+				conf_cb : NULL, proxy);
 }
 
 static bool database_add_ccc(struct external_service *service,
