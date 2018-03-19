@@ -156,12 +156,22 @@ struct pending_op {
 	struct iovec data;
 };
 
+struct notify {
+	struct btd_gatt_database *database;
+	uint16_t handle, ccc_handle;
+	uint8_t *value;
+	uint16_t len;
+	bt_gatt_server_conf_func_t conf;
+	void *user_data;
+};
+
 struct device_state {
 	struct btd_gatt_database *db;
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
 	unsigned int disc_id;
 	struct queue *ccc_states;
+	struct notify *pending;
 };
 
 typedef uint8_t (*btd_gatt_database_ccc_write_t) (struct bt_att *att,
@@ -274,6 +284,12 @@ static void device_state_free(void *data)
 	struct device_state *state = data;
 
 	queue_destroy(state->ccc_states, free);
+
+	if (state->pending) {
+		free(state->pending->value);
+		free(state->pending);
+	}
+
 	free(state);
 }
 
@@ -960,15 +976,6 @@ static void register_core_services(struct btd_gatt_database *database)
 	populate_gatt_service(database);
 }
 
-struct notify {
-	struct btd_gatt_database *database;
-	uint16_t handle, ccc_handle;
-	const uint8_t *value;
-	uint16_t len;
-	bt_gatt_server_conf_func_t conf;
-	void *user_data;
-};
-
 static void conf_cb(void *user_data)
 {
 	GDBusProxy *proxy = user_data;
@@ -978,6 +985,41 @@ static void conf_cb(void *user_data)
 	{
 		g_dbus_proxy_method_call(proxy, "Confirm", NULL, NULL, NULL, NULL);
 	}
+}
+
+static void service_changed_conf(void *user_data)
+{
+	DBG("");
+}
+
+static void state_set_pending(struct device_state *state, struct notify *notify)
+{
+	uint16_t start, end, old_start, old_end;
+
+	if (notify->conf != service_changed_conf)
+		return;
+
+	if (state->pending) {
+		old_start = get_le16(state->pending->value);
+		old_end = get_le16(state->pending->value + 2);
+
+		start = get_le16(notify->value);
+		end = get_le16(notify->value + 2);
+
+		if (start < old_start)
+			put_le16(start, state->pending->value);
+
+		if (end > old_end)
+			put_le16(end, state->pending->value + 2);
+
+		return;
+	}
+
+	/* Copy notify contents to pending */
+	state->pending = new0(struct notify, 1);
+	memcpy(state->pending, notify, sizeof(*notify));
+	state->pending->value = malloc(notify->len);
+	memcpy(state->pending->value, notify->value, notify->len);
 }
 
 static void send_notification_to_device(void *data, void *user_data)
@@ -1005,6 +1047,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	if (!server) {
 		if (!device_is_paired(device, device_state->bdaddr_type))
 			goto remove;
+		state_set_pending(device_state, notify);
 		return;
 	}
 
@@ -1036,13 +1079,8 @@ remove:
 	}
 }
 
-static void service_changed_conf(void *user_data)
-{
-	DBG("");
-}
-
 static void send_notification_to_devices(struct btd_gatt_database *database,
-					uint16_t handle, const uint8_t *value,
+					uint16_t handle, uint8_t *value,
 					uint16_t len, uint16_t ccc_handle,
 					bt_gatt_server_conf_func_t conf,
 					void *user_data)
@@ -3161,4 +3199,25 @@ struct gatt_db *btd_gatt_database_get_db(struct btd_gatt_database *database)
 		return NULL;
 
 	return database->db;
+}
+
+void btd_gatt_database_att_connected(struct btd_gatt_database *database,
+						struct bt_att *att)
+{
+	struct device_state *state;
+	bdaddr_t bdaddr;
+	uint8_t bdaddr_type;
+
+	if (!get_dst_info(att, &bdaddr, &bdaddr_type))
+		return;
+
+	state = find_device_state(database, &bdaddr, bdaddr_type);
+	if (!state || !state->pending)
+		return;
+
+	send_notification_to_device(state, state->pending);
+
+	free(state->pending->value);
+	free(state->pending);
+	state->pending = NULL;
 }

@@ -4825,8 +4825,11 @@ static void gatt_client_init(struct btd_device *device)
 	btd_gatt_client_connected(device->client_dbus);
 }
 
-static void gatt_server_init(struct btd_device *device, struct gatt_db *db)
+static void gatt_server_init(struct btd_device *device,
+				struct btd_gatt_database *database)
 {
+	struct gatt_db *db = btd_gatt_database_get_db(database);
+
 	if (!db) {
 		error("No local GATT database exists for this adapter");
 		return;
@@ -4839,6 +4842,8 @@ static void gatt_server_init(struct btd_device *device, struct gatt_db *db)
 		error("Failed to initialize bt_gatt_server");
 
 	bt_gatt_server_set_debug(device->server, gatt_debug, NULL, NULL);
+
+	btd_gatt_database_att_connected(database, device->att);
 }
 
 static bool local_counter(uint32_t *sign_cnt, void *user_data)
@@ -4938,7 +4943,7 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 								dstaddr);
 
 	gatt_client_init(dev);
-	gatt_server_init(dev, btd_gatt_database_get_db(database));
+	gatt_server_init(dev, database);
 
 	/*
 	 * Remove the device from the connect_list and give the passive
