@@ -644,7 +644,7 @@ void ad_advertise_tx_power(DBusConnection *conn, dbus_bool_t *value)
 	}
 
 	if (ad.tx_power == *value)
-		return;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	ad.tx_power = *value;
 
