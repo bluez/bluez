@@ -383,7 +383,7 @@ static bool pipe_read(struct io *io, bool prov, void *user_data)
 	uint8_t buf[512];
 	uint8_t *res;
 	int fd = io_get_fd(io);
-	ssize_t len;
+	ssize_t len, len_sar;
 
 	if (io != notify_io)
 		return true;
@@ -393,14 +393,14 @@ static bool pipe_read(struct io *io, bool prov, void *user_data)
 			break;
 
 		res = buf;
-		mesh_gatt_sar(&res, len);
-
-		if (prov)
-			prov_data_ready(node, res, len);
-		else
-			net_data_ready(res, len);
+		len_sar = mesh_gatt_sar(&res, len);
+		if (len_sar) {
+			if (prov)
+				prov_data_ready(node, res, len_sar);
+			else
+				net_data_ready(res, len_sar);
+		}
 	}
-
 	return true;
 }
 
