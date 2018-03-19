@@ -109,6 +109,7 @@ struct external_service {
 	uint16_t attr_cnt;
 	struct queue *chrcs;
 	struct queue *descs;
+	struct queue *includes;
 };
 
 struct external_profile {
@@ -444,12 +445,20 @@ static void desc_free(void *data)
 	free(desc);
 }
 
+static void inc_free(void *data)
+{
+	struct external_desc *inc = data;
+
+	free(inc);
+}
+
 static void service_free(void *data)
 {
 	struct external_service *service = data;
 
 	queue_destroy(service->chrcs, chrc_free);
 	queue_destroy(service->descs, desc_free);
+	queue_destroy(service->includes, inc_free);
 
 	if (service->attrib)
 		gatt_db_remove_service(service->app->database->db,
@@ -1533,6 +1542,7 @@ static struct external_service *create_service(struct gatt_app *app,
 	service->proxy = g_dbus_proxy_ref(proxy);
 	service->chrcs = queue_new();
 	service->descs = queue_new();
+	service->includes = queue_new();
 
 	/* Add 1 for the service declaration */
 	if (!incr_attr_count(service, 1)) {
@@ -1612,6 +1622,39 @@ static bool parse_uuid(GDBusProxy *proxy, bt_uuid_t *uuid)
 		error("GATT service must be handled by BlueZ");
 		return false;
 	}
+
+	return true;
+}
+
+static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
+{
+	DBusMessageIter iter;
+	DBusMessageIter array;
+	char *obj;
+
+	if (!g_dbus_proxy_get_property(proxy, "Includes", &iter))
+		return false;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return false;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	do {
+		if (dbus_message_iter_get_arg_type(&array) !=
+						DBUS_TYPE_OBJECT_PATH)
+			return false;
+
+		dbus_message_iter_get_basic(&array, &obj);
+
+		if (!queue_push_tail(service->includes, obj)) {
+			error("Failed to add Includes path in queue\n");
+			return false;
+
+		}
+
+		incr_attr_count(service, 1);
+	} while (dbus_message_iter_next(&array));
 
 	return true;
 }
@@ -2488,6 +2531,37 @@ fail:
 	gatt_db_attribute_write_result(attrib, id, BT_ATT_ERROR_UNLIKELY);
 }
 
+static void include_services(void *data ,void *userdata)
+{
+	char *obj = data;
+	struct external_service *service = userdata;
+	struct gatt_db_attribute *attrib;
+	struct external_service *service_inc;
+
+	DBG("path %s", obj);
+
+	service_inc = queue_find(service->app->services, match_service_by_path,
+									obj);
+	if (!service_inc) {
+		error("include service not found\n");
+		return;
+	}
+
+	attrib = gatt_db_service_add_included(service->attrib,
+							service_inc->attrib);
+	if (!attrib) {
+		error("include service attributes failed\n");
+		return;
+	}
+
+	service->attrib = attrib;
+}
+
+static void database_add_includes(struct external_service *service)
+{
+	queue_foreach(service->includes, include_services, service);
+}
+
 static bool database_add_chrc(struct external_service *service,
 						struct external_chrc *chrc)
 {
@@ -2560,10 +2634,15 @@ static bool database_add_service(struct external_service *service)
 		return false;
 	}
 
+	if (!parse_includes(service->proxy, service))
+		error("Failed to read \"Includes\" property of service");
+
 	service->attrib = gatt_db_add_service(service->app->database->db, &uuid,
 						primary, service->attr_cnt);
 	if (!service->attrib)
 		return false;
+
+	database_add_includes(service);
 
 	entry = queue_get_entries(service->chrcs);
 	while (entry) {
