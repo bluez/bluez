@@ -2011,6 +2011,11 @@ static void cmd_register_characteristic(int argc, char *argv[])
 	if (check_default_ctrl() == FALSE)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
+	if (argc > 3 && strcmp(argv[3], "authorize")) {
+		bt_shell_printf("Invalid authorize argument\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
 	gatt_register_chrc(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
@@ -2428,9 +2433,9 @@ static const struct bt_shell_menu gatt_menu = {
 					"Register application service."  },
 	{ "unregister-service", "<UUID/object>", cmd_unregister_service,
 					"Unregister application service" },
-	{ "register-characteristic", "<UUID> <Flags=read,write,notify...>",
-					cmd_register_characteristic,
-					"Register application characteristic" },
+	{ "register-characteristic", "<UUID> <Flags=read,write,notify...> "
+				"[authorize]", cmd_register_characteristic,
+				"Register application characteristic" },
 	{ "unregister-characteristic", "<UUID/object>",
 				cmd_unregister_characteristic,
 				"Unregister application characteristic" },
