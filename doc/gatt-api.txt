@@ -74,6 +74,7 @@ Methods		array{byte} ReadValue(dict options)
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.NotPermitted
 					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.InvalidOffset
 					 org.bluez.Error.NotSupported
 
 		void WriteValue(array{byte} value, dict options)

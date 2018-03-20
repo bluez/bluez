@@ -1692,6 +1692,9 @@ static uint8_t dbus_error_to_att_ecode(const char *error_name)
 	if (strcmp(error_name, "org.bluez.Error.InvalidValueLength") == 0)
 		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
 
+	if (strcmp(error_name, "org.bluez.Error.InvalidOffset") == 0)
+		return BT_ATT_ERROR_INVALID_OFFSET;
+
 	if (strcmp(error_name, "org.bluez.Error.InProgress") == 0)
 		return BT_ERROR_ALREADY_IN_PROGRESS;
 
