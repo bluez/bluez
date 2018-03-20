@@ -45,7 +45,7 @@ Properties	string UUID [read-only]
 			belongs to. Only present on services from remote
 			devices.
 
-		array{object} Includes [read-only]: Not implemented
+		array{object} Includes [read-only]
 
 			Array of object paths representing the included
 			services of this service.
