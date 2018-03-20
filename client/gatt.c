@@ -1473,6 +1473,10 @@ static DBusMessage *chrc_read_value(DBusConnection *conn, DBusMessage *msg,
 
 	parse_offset(&iter, &offset);
 
+	if (offset > chrc->value_len)
+		return g_dbus_create_error(msg, "org.bluez.Error.InvalidOffset",
+									NULL);
+
 	return read_value(msg, &chrc->value[offset], chrc->value_len - offset);
 }
 
@@ -1830,6 +1834,10 @@ static DBusMessage *desc_read_value(DBusConnection *conn, DBusMessage *msg,
 	dbus_message_iter_init(msg, &iter);
 
 	parse_offset(&iter, &offset);
+
+	if (offset > desc->value_len)
+		return g_dbus_create_error(msg, "org.bluez.Error.InvalidOffset",
+									NULL);
 
 	return read_value(msg, &desc->value[offset], desc->value_len - offset);
 }
