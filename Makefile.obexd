@@ -1,3 +1,4 @@
+if OBEX
 
 if SYSTEMD
 systemduserunitdir = @SYSTEMD_USERUNITDIR@
@@ -32,7 +33,6 @@ obexd_builtin_sources += obexd/plugins/opp.c
 obexd_builtin_modules += ftp
 obexd_builtin_sources += obexd/plugins/ftp.c obexd/plugins/ftp.h
 
-if OBEX
 obexd_builtin_modules += irmc
 obexd_builtin_sources += obexd/plugins/irmc.c
 
@@ -41,7 +41,6 @@ obexd_builtin_sources += obexd/plugins/pbap.c \
 				obexd/plugins/vcard.h obexd/plugins/vcard.c \
 				obexd/plugins/phonebook.h \
 				obexd/plugins/phonebook-dummy.c
-endif
 
 obexd_builtin_modules += mas
 obexd_builtin_sources += obexd/plugins/mas.c obexd/src/map_ap.h \
@@ -107,3 +106,5 @@ obexd/src/builtin.h: obexd/src/genbuiltin $(obexd_builtin_sources)
 CLEANFILES += obexd/src/builtin.h $(builtin_files) obexd/src/obex.service
 
 EXTRA_DIST += obexd/src/genbuiltin
+
+endif
