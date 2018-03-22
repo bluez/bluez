@@ -957,6 +957,8 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 
 			*opt->optarg[index - offset] = optarg;
 		}
+
+		index = -1;
 	}
 
 	data.argc = argc - optind;
