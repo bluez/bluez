@@ -588,6 +588,19 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 		struct gatt_db_attribute *svc;
 		uint16_t start, end;
 
+		/* Adjust current service */
+		svc = gatt_db_get_service(client->db, chrc_data->value_handle);
+		if (op->cur_svc != svc) {
+			if (op->cur_svc) {
+				queue_remove(op->pending_svcs, op->cur_svc);
+
+				/* Done with the current service */
+				gatt_db_service_set_active(op->cur_svc, true);
+			}
+
+			op->cur_svc = svc;
+		}
+
 		attr = gatt_db_insert_characteristic(client->db,
 							chrc_data->value_handle,
 							&chrc_data->uuid, 0,
@@ -604,19 +617,6 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 		if (gatt_db_attribute_get_handle(attr) !=
 							chrc_data->value_handle)
 			goto failed;
-
-		/* Adjust current service */
-		svc = gatt_db_get_service(client->db, chrc_data->value_handle);
-		if (op->cur_svc != svc) {
-			if (op->cur_svc) {
-				queue_remove(op->pending_svcs, op->cur_svc);
-
-				/* Done with the current service */
-				gatt_db_service_set_active(op->cur_svc, true);
-			}
-
-			op->cur_svc = svc;
-		}
 
 		gatt_db_attribute_get_service_handles(svc, &start, &end);
 
