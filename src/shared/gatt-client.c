@@ -591,10 +591,13 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 		/* Adjust current service */
 		svc = gatt_db_get_service(client->db, chrc_data->value_handle);
 		if (op->cur_svc != svc) {
-			queue_remove(op->pending_svcs, svc);
+			if (op->cur_svc) {
+				queue_remove(op->pending_svcs, op->cur_svc);
 
-			/* Done with the current service */
-			gatt_db_service_set_active(op->cur_svc, true);
+				/* Done with the current service */
+				gatt_db_service_set_active(op->cur_svc, true);
+			}
+
 			op->cur_svc = svc;
 		}
 
