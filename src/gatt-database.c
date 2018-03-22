@@ -1676,6 +1676,7 @@ static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
 	DBusMessageIter array;
 	char *obj;
 
+	/* Includes property is optional */
 	if (!g_dbus_proxy_get_property(proxy, "Includes", &iter))
 		return true;
 
@@ -2682,8 +2683,10 @@ static bool database_add_service(struct external_service *service)
 		return false;
 	}
 
-	if (!parse_includes(service->proxy, service))
+	if (!parse_includes(service->proxy, service)) {
 		error("Failed to read \"Includes\" property of service");
+		return false;
+	}
 
 	service->attrib = gatt_db_add_service(service->app->database->db, &uuid,
 						primary, service->attr_cnt);
