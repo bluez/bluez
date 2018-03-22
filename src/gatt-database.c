@@ -1633,7 +1633,7 @@ static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
 	char *obj;
 
 	if (!g_dbus_proxy_get_property(proxy, "Includes", &iter))
-		return false;
+		return true;
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
 		return false;
