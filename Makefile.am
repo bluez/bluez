@@ -223,11 +223,7 @@ test_scripts =
 unit_tests =
 
 include Makefile.tools
-
-if OBEX
 include Makefile.obexd
-endif
-
 include android/Makefile.am
 
 if HID2HCI

@@ -1,5 +1,3 @@
-if OBEX
-
 if SYSTEMD
 systemduserunitdir = @SYSTEMD_USERUNITDIR@
 systemduserunit_DATA = obexd/src/obex.service
@@ -9,6 +7,8 @@ dbussessionbus_DATA = obexd/src/org.bluez.obex.service
 endif
 
 EXTRA_DIST += obexd/src/obex.service.in obexd/src/org.bluez.obex.service
+
+if OBEX
 
 obex_plugindir = $(libdir)/obex/plugins
 
@@ -90,6 +90,8 @@ obexd_src_obexd_CFLAGS = $(AM_CFLAGS) @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
 
 obexd_src_obexd_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/obexd/src
 
+endif
+
 obexd_src_obexd_SHORTNAME = obexd
 
 obexd_builtin_files = obexd/src/builtin.h $(obexd_builtin_nodist)
@@ -106,5 +108,3 @@ obexd/src/builtin.h: obexd/src/genbuiltin $(obexd_builtin_sources)
 CLEANFILES += obexd/src/builtin.h $(builtin_files) obexd/src/obex.service
 
 EXTRA_DIST += obexd/src/genbuiltin
-
-endif
