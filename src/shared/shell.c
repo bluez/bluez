@@ -1001,10 +1001,15 @@ void bt_shell_run(void)
 
 	mainloop_run();
 
+	io_destroy(signal);
+
+	bt_shell_cleanup();
+}
+
+void bt_shell_cleanup(void)
+{
 	bt_shell_release_prompt("");
 	bt_shell_detach();
-
-	io_destroy(signal);
 
 	if (data.envs) {
 		queue_destroy(data.envs, env_destroy);
