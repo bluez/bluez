@@ -84,6 +84,7 @@ Methods		array{byte} ReadValue(dict options)
 
 			Possible options: "offset": Start offset
 					  "device": Device path (Server only)
+					  "link": Link type (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
@@ -117,6 +118,7 @@ Methods		array{byte} ReadValue(dict options)
 
 			Possible options: "device": Object Device (Server only)
 					  "MTU": Exchanged MTU (Server only)
+					  "link": Link type (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.NotSupported
@@ -152,6 +154,7 @@ Methods		array{byte} ReadValue(dict options)
 
 			Possible options: "device": Object Device (Server only)
 					  "MTU": Exchanged MTU (Server only)
+					  "link": Link type (Server only)
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.NotSupported
