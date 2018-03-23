@@ -667,7 +667,7 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 		g_assert(context->server_db);
 
 		context->server = bt_gatt_server_new(context->server_db,
-							context->att, mtu);
+							context->att, mtu, 0);
 		g_assert(context->server);
 
 		bt_gatt_server_set_debug(context->server, print_debug,

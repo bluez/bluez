@@ -103,6 +103,7 @@ static const char *policy_options[] = {
 
 static const char *gatt_options[] = {
 	"Cache",
+	"MinEncKeySize",
 	NULL
 };
 
@@ -402,12 +403,22 @@ static void parse_config(GKeyFile *config)
 	if (err) {
 		g_clear_error(&err);
 		main_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
-		return;
+	} else {
+		main_opts.gatt_cache = parse_gatt_cache(str);
+		g_free(str);
 	}
 
-	main_opts.gatt_cache = parse_gatt_cache(str);
+	val = g_key_file_get_integer(config, "GATT",
+						"MinEncKeySize", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("MinEncKeySize=%d", val);
 
-	g_free(str);
+		if (val >=7 && val <= 16)
+			main_opts.min_enc_key_size = val;
+	}
 }
 
 static void init_defaults(void)

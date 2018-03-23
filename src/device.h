@@ -130,6 +130,7 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type);
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type);
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
 bool device_is_disconnecting(struct btd_device *device);
+void device_set_ltk_enc_size(struct btd_device *device, uint8_t enc_size);
 
 typedef void (*disconnect_watch) (struct btd_device *device, gboolean removal,
 					void *user_data);

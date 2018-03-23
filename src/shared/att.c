@@ -55,6 +55,7 @@ struct bt_att {
 	struct io *io;
 	bool io_on_l2cap;
 	int io_sec_level;		/* Only used for non-L2CAP */
+	uint8_t enc_size;
 
 	struct queue *req_queue;	/* Queued ATT protocol requests */
 	struct att_send_op *pending_req;
@@ -602,7 +603,7 @@ static bool change_security(struct bt_att *att, uint8_t ecode)
 	if (att->io_sec_level != BT_ATT_SECURITY_AUTO)
 		return false;
 
-	security = bt_att_get_security(att);
+	security = bt_att_get_security(att, NULL);
 
 	if (ecode == BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION &&
 					security < BT_ATT_SECURITY_MEDIUM) {
@@ -1454,7 +1455,7 @@ bool bt_att_unregister_all(struct bt_att *att)
 	return true;
 }
 
-int bt_att_get_security(struct bt_att *att)
+int bt_att_get_security(struct bt_att *att, uint8_t *enc_size)
 {
 	struct bt_security sec;
 	socklen_t len;
@@ -1462,13 +1463,20 @@ int bt_att_get_security(struct bt_att *att)
 	if (!att)
 		return -EINVAL;
 
-	if (!att->io_on_l2cap)
+	if (!att->io_on_l2cap) {
+		if (enc_size)
+			*enc_size = att->enc_size;
+
 		return att->io_sec_level;
+	}
 
 	memset(&sec, 0, sizeof(sec));
 	len = sizeof(sec);
 	if (getsockopt(att->fd, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) < 0)
 		return -EIO;
+
+	if (enc_size)
+		*enc_size = att->enc_size;
 
 	return sec.level;
 }
@@ -1494,6 +1502,14 @@ bool bt_att_set_security(struct bt_att *att, int level)
 		return false;
 
 	return true;
+}
+
+void bt_att_set_enc_key_size(struct bt_att *att, uint8_t enc_size)
+{
+	if (!att)
+		return;
+
+	att->enc_size = enc_size;
 }
 
 static bool sign_set_key(struct sign_info **sign, uint8_t key[16],

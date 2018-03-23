@@ -128,7 +128,7 @@ static struct gatt_conn *gatt_conn_new(int fd)
 
 	bt_att_set_security(conn->att, BT_SECURITY_MEDIUM);
 
-	conn->gatt = bt_gatt_server_new(gatt_db, conn->att, mtu);
+	conn->gatt = bt_gatt_server_new(gatt_db, conn->att, mtu, 0);
 	if (!conn->gatt) {
 		fprintf(stderr, "Failed to create GATT server\n");
 		bt_att_unref(conn->att);

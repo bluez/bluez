@@ -243,6 +243,7 @@ struct btd_device {
 
 	struct csrk_info *local_csrk;
 	struct csrk_info *remote_csrk;
+	uint8_t ltk_enc_size;
 
 	sdp_list_t	*tmp_records;
 
@@ -1458,6 +1459,12 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 bool device_is_disconnecting(struct btd_device *device)
 {
 	return device->disconn_timer > 0;
+}
+
+void device_set_ltk_enc_size(struct btd_device *device, uint8_t enc_size)
+{
+	device->ltk_enc_size = enc_size;
+	bt_att_set_enc_key_size(device->att, device->ltk_enc_size);
 }
 
 static void device_set_auto_connect(struct btd_device *device, gboolean enable)
@@ -4837,10 +4844,14 @@ static void gatt_server_init(struct btd_device *device,
 
 	gatt_server_cleanup(device);
 
-	device->server = bt_gatt_server_new(db, device->att, device->att_mtu);
-	if (!device->server)
+	device->server = bt_gatt_server_new(db, device->att, device->att_mtu,
+						main_opts.min_enc_key_size);
+	if (!device->server) {
 		error("Failed to initialize bt_gatt_server");
+		return;
+	}
 
+	bt_att_set_enc_key_size(device->att, device->ltk_enc_size);
 	bt_gatt_server_set_debug(device->server, gatt_debug, NULL, NULL);
 
 	btd_gatt_database_att_connected(database, device->att);

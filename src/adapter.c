@@ -3441,25 +3441,27 @@ failed:
 	return ltk;
 }
 
-static GSList *get_ltk_info(GKeyFile *key_file, const char *peer,
+static struct smp_ltk_info *get_ltk_info(GKeyFile *key_file, const char *peer,
+							uint8_t bdaddr_type)
+{
+	DBG("%s", peer);
+
+	return get_ltk(key_file, peer, bdaddr_type, "LongTermKey");
+}
+
+static struct smp_ltk_info *get_slave_ltk_info(GKeyFile *key_file,
+							const char *peer,
 							uint8_t bdaddr_type)
 {
 	struct smp_ltk_info *ltk;
-	GSList *l = NULL;
 
 	DBG("%s", peer);
 
-	ltk = get_ltk(key_file, peer, bdaddr_type, "LongTermKey");
-	if (ltk)
-		l = g_slist_append(l, ltk);
-
 	ltk = get_ltk(key_file, peer, bdaddr_type, "SlaveLongTermKey");
-	if (ltk) {
+	if (ltk)
 		ltk->master = false;
-		l = g_slist_append(l, ltk);
-	}
 
-	return l;
+	return ltk;
 }
 
 static struct irk_info *get_irk_info(GKeyFile *key_file, const char *peer,
@@ -4019,7 +4021,9 @@ static void load_devices(struct btd_adapter *adapter)
 		char filename[PATH_MAX];
 		GKeyFile *key_file;
 		struct link_key_info *key_info;
-		GSList *list, *ltk_info;
+		struct smp_ltk_info *ltk_info;
+		struct smp_ltk_info *slave_ltk_info;
+		GSList *list;
 		struct irk_info *irk_info;
 		struct conn_param *param;
 		uint8_t bdaddr_type;
@@ -4044,7 +4048,13 @@ static void load_devices(struct btd_adapter *adapter)
 		bdaddr_type = get_le_addr_type(key_file);
 
 		ltk_info = get_ltk_info(key_file, entry->d_name, bdaddr_type);
-		ltks = g_slist_concat(ltks, ltk_info);
+		if (ltk_info)
+			ltks = g_slist_append(ltks, ltk_info);
+
+		slave_ltk_info = get_slave_ltk_info(key_file, entry->d_name,
+								bdaddr_type);
+		if (slave_ltk_info)
+			ltks = g_slist_append(ltks, slave_ltk_info);
 
 		irk_info = get_irk_info(key_file, entry->d_name, bdaddr_type);
 		if (irk_info)
@@ -4079,9 +4089,16 @@ device_exist:
 			device_set_bonded(device, BDADDR_BREDR);
 		}
 
-		if (ltk_info) {
+		if (ltk_info || slave_ltk_info) {
 			device_set_paired(device, bdaddr_type);
 			device_set_bonded(device, bdaddr_type);
+
+			if (ltk_info)
+				device_set_ltk_enc_size(device,
+							ltk_info->enc_size);
+			else if (slave_ltk_info)
+				device_set_ltk_enc_size(device,
+						slave_ltk_info->enc_size);
 		}
 
 free:
@@ -7463,6 +7480,8 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 		device_set_bonded(device, addr->type);
 	}
+
+	device_set_ltk_enc_size(device, ev->key.enc_size);
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
 }

@@ -2565,7 +2565,7 @@ unsigned int bt_gatt_client_write_without_response(
 
 	/* Only use signed write if unencrypted */
 	if (signed_write) {
-		security = bt_att_get_security(client->att);
+		security = bt_att_get_security(client->att, NULL);
 		op = security > BT_SECURITY_LOW ?  BT_ATT_OP_WRITE_CMD :
 						BT_ATT_OP_SIGNED_WRITE_CMD;
 	} else
@@ -3281,5 +3281,5 @@ int bt_gatt_client_get_security(struct bt_gatt_client *client)
 	if (!client)
 		return -1;
 
-	return bt_att_get_security(client->att);
+	return bt_att_get_security(client->att, NULL);
 }

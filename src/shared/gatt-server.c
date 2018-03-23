@@ -103,6 +103,8 @@ struct bt_gatt_server {
 	unsigned int prep_write_id;
 	unsigned int exec_write_id;
 
+	uint8_t min_enc_size;
+
 	struct queue *prep_queue;
 	unsigned int max_prep_queue_len;
 
@@ -379,9 +381,18 @@ done:
 	process_read_by_type(op);
 }
 
+static bool check_min_key_size(uint8_t min_size, uint8_t size)
+{
+	if (!min_size || !size)
+		return true;
+
+	return min_size <= size;
+}
+
 static uint8_t check_permissions(struct bt_gatt_server *server,
 				struct gatt_db_attribute *attr, uint32_t mask)
 {
+	uint8_t enc_size;
 	uint32_t perm;
 	int security;
 
@@ -397,15 +408,33 @@ static uint8_t check_permissions(struct bt_gatt_server *server,
 	if (!perm)
 		return 0;
 
-	security = bt_att_get_security(server->att);
-	if (perm & BT_ATT_PERM_SECURE && security < BT_ATT_SECURITY_FIPS)
-		return BT_ATT_ERROR_AUTHENTICATION;
+	security = bt_att_get_security(server->att, &enc_size);
+	if (security < 0)
+		return BT_ATT_ERROR_UNLIKELY;
 
-	if (perm & BT_ATT_PERM_AUTHEN && security < BT_ATT_SECURITY_HIGH)
-		return BT_ATT_ERROR_AUTHENTICATION;
+	if (perm & BT_ATT_PERM_SECURE) {
+		if (security < BT_ATT_SECURITY_FIPS)
+			return BT_ATT_ERROR_AUTHENTICATION;
 
-	if (perm & BT_ATT_PERM_ENCRYPT && security < BT_ATT_SECURITY_MEDIUM)
-		return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION;
+		if (!check_min_key_size(server->min_enc_size, enc_size))
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE;
+	}
+
+	if (perm & BT_ATT_PERM_AUTHEN) {
+		if (security < BT_ATT_SECURITY_HIGH)
+			return BT_ATT_ERROR_AUTHENTICATION;
+
+		if (!check_min_key_size(server->min_enc_size, enc_size))
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE;
+	}
+
+	if (perm & BT_ATT_PERM_ENCRYPT) {
+		if (security < BT_ATT_SECURITY_MEDIUM)
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION;
+
+		if (!check_min_key_size(server->min_enc_size, enc_size))
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE;
+	}
 
 	return 0;
 }
@@ -1481,7 +1510,8 @@ static bool gatt_server_register_att_handlers(struct bt_gatt_server *server)
 }
 
 struct bt_gatt_server *bt_gatt_server_new(struct gatt_db *db,
-					struct bt_att *att, uint16_t mtu)
+					struct bt_att *att, uint16_t mtu,
+					uint8_t min_enc_size)
 {
 	struct bt_gatt_server *server;
 
@@ -1494,6 +1524,7 @@ struct bt_gatt_server *bt_gatt_server_new(struct gatt_db *db,
 	server->mtu = MAX(mtu, BT_ATT_DEFAULT_LE_MTU);
 	server->max_prep_queue_len = DEFAULT_MAX_PREP_QUEUE_LEN;
 	server->prep_queue = queue_new();
+	server->min_enc_size = min_enc_size;
 
 	if (!gatt_server_register_att_handlers(server)) {
 		bt_gatt_server_free(server);
