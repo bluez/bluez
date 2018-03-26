@@ -66,7 +66,7 @@ struct bt_shell_opt {
 
 void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt);
 
-void bt_shell_run(void);
+int bt_shell_run(void);
 
 void bt_shell_quit(int status);
 void bt_shell_noninteractive_quit(int status);

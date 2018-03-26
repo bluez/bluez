@@ -993,17 +993,20 @@ static void env_destroy(void *data)
 	free(env);
 }
 
-void bt_shell_run(void)
+int bt_shell_run(void)
 {
 	struct io *signal;
+	int status;
 
 	signal = setup_signalfd();
 
-	mainloop_run();
+	status = mainloop_run();
 
 	io_destroy(signal);
 
 	bt_shell_cleanup();
+
+	return status;
 }
 
 void bt_shell_cleanup(void)
