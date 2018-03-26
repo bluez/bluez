@@ -2340,11 +2340,12 @@ static void device_svc_resolved(struct btd_device *dev, uint8_t browse_type,
 		dev->pending_paired = false;
 	}
 
-	if (!dev->temporary)
+	if (!dev->temporary) {
 		store_device_info(dev);
 
-	if (bdaddr_type != BDADDR_BREDR && err == 0)
-		store_services(dev);
+		if (bdaddr_type != BDADDR_BREDR && err == 0)
+			store_services(dev);
+	}
 
 	if (req)
 		browse_request_complete(req, browse_type, bdaddr_type, err);
@@ -5289,6 +5290,12 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 		adapter_whitelist_add(device->adapter, device);
 
 	store_device_info(device);
+
+	/* attributes were not stored when resolved if device was temporary */
+	if (device->bdaddr_type != BDADDR_BREDR &&
+			device->le_state.svc_resolved &&
+			g_slist_length(device->primaries) != 0)
+		store_services(device);
 }
 
 void btd_device_set_trusted(struct btd_device *device, gboolean trusted)
