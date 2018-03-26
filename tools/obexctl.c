@@ -2145,6 +2145,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 int main(int argc, char *argv[])
 {
 	GDBusClient *client;
+	int status;
 
 	bt_shell_init(argc, argv, NULL);
 	bt_shell_set_menu(&main_menu);
@@ -2161,11 +2162,11 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 							property_changed, NULL);
 
-	bt_shell_run();
+	status = bt_shell_run();
 
 	g_dbus_client_unref(client);
 
 	dbus_connection_unref(dbus_conn);
 
-	return 0;
+	return status;
 }
