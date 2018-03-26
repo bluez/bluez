@@ -456,6 +456,7 @@ static void device_added(GDBusProxy *proxy)
 
 	adapter->devices = g_list_append(adapter->devices, proxy);
 	print_device(proxy, COLORED_NEW);
+	bt_shell_set_env(g_dbus_proxy_get_path(proxy), proxy);
 
 	if (default_dev)
 		return;
@@ -494,6 +495,7 @@ static void adapter_added(GDBusProxy *proxy)
 	adapter->proxy = proxy;
 
 	print_adapter(proxy, COLORED_NEW);
+	bt_shell_set_env(g_dbus_proxy_get_path(proxy), proxy);
 }
 
 static void ad_manager_added(GDBusProxy *proxy)
@@ -561,6 +563,7 @@ static void device_removed(GDBusProxy *proxy)
 	adapter->devices = g_list_remove(adapter->devices, proxy);
 
 	print_device(proxy, COLORED_DEL);
+	bt_shell_set_env(g_dbus_proxy_get_path(proxy), NULL);
 
 	if (default_dev == proxy)
 		set_default_device(NULL, NULL);
@@ -575,6 +578,7 @@ static void adapter_removed(GDBusProxy *proxy)
 
 		if (adapter->proxy == proxy) {
 			print_adapter(proxy, COLORED_DEL);
+			bt_shell_set_env(g_dbus_proxy_get_path(proxy), NULL);
 
 			if (default_ctrl && default_ctrl->proxy == proxy) {
 				default_ctrl = NULL;
