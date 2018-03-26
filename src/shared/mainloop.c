@@ -42,7 +42,7 @@
 
 static int epoll_fd;
 static int epoll_terminate;
-static int exit_status;
+static int exit_status = EXIT_SUCCESS;
 
 struct mainloop_data {
 	int fd;
@@ -140,8 +140,6 @@ int mainloop_run(void)
 			return EXIT_FAILURE;
 		}
 	}
-
-	exit_status = EXIT_SUCCESS;
 
 	while (!epoll_terminate) {
 		struct epoll_event events[MAX_EPOLL_EVENTS];
