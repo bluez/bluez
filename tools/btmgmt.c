@@ -4416,7 +4416,7 @@ int main(int argc, char *argv[])
 
 	bt_shell_attach(fileno(stdin));
 	update_prompt(mgmt_index);
-	bt_shell_run();
+	status = bt_shell_run();
 
 	mgmt_cancel_all(mgmt);
 	mgmt_unregister_all(mgmt);
