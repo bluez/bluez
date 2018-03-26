@@ -1145,6 +1145,8 @@ void bt_shell_set_env(const char *name, void *value)
 	struct bt_shell_env *env;
 
 	if (!data.envs) {
+		if (!value)
+			return;
 		data.envs = queue_new();
 		goto done;
 	}
@@ -1152,6 +1154,10 @@ void bt_shell_set_env(const char *name, void *value)
 	env = queue_remove_if(data.envs, match_env, (void *) name);
 	if (env)
 		env_destroy(env);
+
+	/* Don't create an env if value is not set */
+	if (!value)
+		return;
 
 done:
 	env = new0(struct bt_shell_env, 1);
