@@ -480,7 +480,7 @@ static void store_device_info(struct btd_device *device)
 		return;
 
 	if (device_address_is_private(device)) {
-		warn("Can't store info for private addressed device %s",
+		DBG("Can't store info for private addressed device %s",
 								device->path);
 		return;
 	}
@@ -497,7 +497,7 @@ void device_store_cached_name(struct btd_device *dev, const char *name)
 	gsize length = 0;
 
 	if (device_address_is_private(dev)) {
-		warn("Can't store name for private addressed device %s",
+		DBG("Can't store name for private addressed device %s",
 								dev->path);
 		return;
 	}
@@ -2012,7 +2012,7 @@ static void store_services(struct btd_device *device)
 	gsize length = 0;
 
 	if (device_address_is_private(device)) {
-		warn("Can't store services for private addressed device %s",
+		DBG("Can't store services for private addressed device %s",
 								device->path);
 		return;
 	}
@@ -2200,7 +2200,7 @@ static void store_gatt_db(struct btd_device *device)
 	struct gatt_saver saver;
 
 	if (device_address_is_private(device)) {
-		warn("Can't store GATT db for private addressed device %s",
+		DBG("Can't store GATT db for private addressed device %s",
 								device->path);
 		return;
 	}
