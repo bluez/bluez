@@ -324,7 +324,7 @@ static void att_disconnected(int err, void *user_data)
 	if (!device)
 		goto remove;
 
-	if (device_is_paired(device, state->bdaddr_type))
+	if (device_is_bonded(device, state->bdaddr_type))
 		return;
 
 remove:
@@ -1125,7 +1125,7 @@ static void send_notification_to_device(void *data, void *user_data)
 
 	server = btd_device_get_gatt_server(device);
 	if (!server) {
-		if (!device_is_paired(device, device_state->bdaddr_type))
+		if (!device_is_bonded(device, device_state->bdaddr_type))
 			goto remove;
 		state_set_pending(device_state, notify);
 		return;
