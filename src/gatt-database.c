@@ -264,7 +264,7 @@ static struct ccc_state *find_ccc_state(struct device_state *dev_state,
 }
 
 static struct device_state *device_state_create(struct btd_gatt_database *db,
-							bdaddr_t *bdaddr,
+							const bdaddr_t *bdaddr,
 							uint8_t bdaddr_type)
 {
 	struct device_state *dev_state;
@@ -324,8 +324,19 @@ static void att_disconnected(int err, void *user_data)
 	if (!device)
 		goto remove;
 
-	if (device_is_bonded(device, state->bdaddr_type))
+	if (device_is_bonded(device, state->bdaddr_type)) {
+		struct ccc_state *ccc;
+		uint16_t handle;
+
+		handle = gatt_db_attribute_get_handle(state->db->svc_chngd_ccc);
+
+		ccc = find_ccc_state(state, handle);
+		if (ccc)
+			device_store_svc_chng_ccc(device, state->bdaddr_type,
+								ccc->value[0]);
+
 		return;
+	}
 
 remove:
 	/* Remove device state if device no longer exists or is not paired */
@@ -1076,6 +1087,7 @@ static void state_set_pending(struct device_state *state, struct notify *notify)
 {
 	uint16_t start, end, old_start, old_end;
 
+	/* Cache this only for Service Changed */
 	if (notify->conf != service_changed_conf)
 		return;
 
@@ -3274,4 +3286,73 @@ void btd_gatt_database_att_connected(struct btd_gatt_database *database,
 	free(state->pending->value);
 	free(state->pending);
 	state->pending = NULL;
+}
+
+static void restore_ccc(struct btd_gatt_database *database,
+			const bdaddr_t *addr, uint8_t addr_type, uint16_t value)
+{
+	struct device_state *dev_state;
+	struct ccc_state *ccc;
+
+	dev_state = device_state_create(database, addr, addr_type);
+	queue_push_tail(database->device_states, dev_state);
+
+	ccc = new0(struct ccc_state, 1);
+	ccc->handle = gatt_db_attribute_get_handle(database->svc_chngd_ccc);
+	memcpy(ccc->value, &value, sizeof(ccc->value));
+	queue_push_tail(dev_state->ccc_states, ccc);
+}
+
+static void restore_state(struct btd_device *device, void *data)
+{
+	struct btd_gatt_database *database = data;
+	uint16_t ccc_le, ccc_bredr;
+
+	device_load_svc_chng_ccc(device, &ccc_le, &ccc_bredr);
+
+	if (ccc_le) {
+		restore_ccc(database, device_get_address(device),
+				device_get_le_address_type(device), ccc_le);
+
+		DBG("%s LE", device_get_path(device));
+	}
+
+	if (ccc_bredr) {
+		restore_ccc(database, device_get_address(device),
+						BDADDR_BREDR, ccc_bredr);
+
+		DBG("%s BR/EDR", device_get_path(device));
+	}
+}
+
+void btd_gatt_database_restore_svc_chng_ccc(struct btd_gatt_database *database)
+{
+	uint8_t value[4];
+	uint16_t handle, ccc_handle;
+
+	handle = gatt_db_attribute_get_handle(database->svc_chngd);
+	ccc_handle = gatt_db_attribute_get_handle(database->svc_chngd_ccc);
+
+	if (!handle || !ccc_handle) {
+		error("Failed to obtain handles for \"Service Changed\""
+							" characteristic");
+		return;
+	}
+
+	/* restore states for bonded device that registered for Service Changed
+	 * indication
+	 */
+	btd_adapter_for_each_device(database->adapter, restore_state, database);
+
+	/* This needs to be updated (probably to 0x0001) if we ever change
+	 * core services
+	 *
+	 * TODO we could also store this info (along with CCC value) and be able
+	 * to send 0x0001-0xffff only once per device.
+	 */
+	put_le16(0x000a, value);
+	put_le16(0xffff, value + 2);
+
+	send_notification_to_devices(database, handle, value, sizeof(value),
+					ccc_handle, service_changed_conf, NULL);
 }

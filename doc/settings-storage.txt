@@ -302,3 +302,11 @@ Long term key) related to a remote device.
   Counter		Integer		Signing counter
 
   Authenticated		Boolean		True if the key is authenticated
+
+[ServiceChanged]
+
+  This section holds information related to Service Changed characteristic
+  of GATT core service.
+
+  CCC_LE		Integer		CCC value for LE transport
+  CCC_BR/EDR		Integer		CCC value for BR/EDR transport

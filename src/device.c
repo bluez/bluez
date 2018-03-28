@@ -5250,6 +5250,10 @@ const bdaddr_t *device_get_address(struct btd_device *device)
 {
 	return &device->bdaddr;
 }
+uint8_t device_get_le_address_type(struct btd_device *device)
+{
+	return device->bdaddr_type;
+}
 
 const char *device_get_path(const struct btd_device *device)
 {
@@ -5345,6 +5349,80 @@ void device_set_legacy(struct btd_device *device, bool legacy)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "LegacyPairing");
+}
+
+void device_store_svc_chng_ccc(struct btd_device *device, uint8_t bdaddr_type,
+								uint16_t value)
+{
+	char filename[PATH_MAX];
+	char device_addr[18];
+	GKeyFile *key_file;
+	uint16_t old_value;
+	gsize length = 0;
+	char *str;
+
+	ba2str(&device->bdaddr, device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+				btd_adapter_get_storage_dir(device->adapter),
+				device_addr);
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	/* for bonded devices this is done on every connection so limit writes
+	 * to storage if no change needed
+	 */
+	if (bdaddr_type == BDADDR_BREDR) {
+		old_value = g_key_file_get_integer(key_file, "ServiceChanged",
+							"CCC_BR/EDR", NULL);
+		if (old_value == value)
+			goto done;
+
+		g_key_file_set_integer(key_file, "ServiceChanged", "CCC_BR/EDR",
+									value);
+	} else {
+		old_value = g_key_file_get_integer(key_file, "ServiceChanged",
+							"CCC_LE", NULL);
+		if (old_value == value)
+			goto done;
+
+		g_key_file_set_integer(key_file, "ServiceChanged", "CCC_LE",
+									value);
+	}
+
+	create_file(filename, S_IRUSR | S_IWUSR);
+
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+
+done:
+	g_key_file_free(key_file);
+}
+void device_load_svc_chng_ccc(struct btd_device *device, uint16_t *ccc_le,
+							uint16_t *ccc_bredr)
+{
+	char filename[PATH_MAX];
+	char device_addr[18];
+	GKeyFile *key_file;
+
+	ba2str(&device->bdaddr, device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
+				btd_adapter_get_storage_dir(device->adapter),
+				device_addr);
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	if (ccc_le)
+		*ccc_le = g_key_file_get_integer(key_file, "ServiceChanged",
+							"CCC_LE", NULL);
+
+	if (ccc_bredr)
+		*ccc_bredr = g_key_file_get_integer(key_file, "ServiceChanged",
+							"CCC_BR/EDR", NULL);
+
+	g_key_file_free(key_file);
 }
 
 void device_set_rssi_with_delta(struct btd_device *device, int8_t rssi,

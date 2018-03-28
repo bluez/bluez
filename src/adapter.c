@@ -8018,6 +8018,9 @@ load:
 	clear_blocked(adapter);
 	load_devices(adapter);
 
+	/* restore Service Changed CCC value for bonded devices */
+	btd_gatt_database_restore_svc_chng_ccc(adapter->database);
+
 	/* retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started */
 	if (adapter->current_settings & MGMT_SETTING_POWERED)
