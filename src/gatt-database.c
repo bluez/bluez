@@ -3330,6 +3330,9 @@ void btd_gatt_database_restore_svc_chng_ccc(struct btd_gatt_database *database)
 	uint8_t value[4];
 	uint16_t handle, ccc_handle;
 
+	if (!database)
+		return;
+
 	handle = gatt_db_attribute_get_handle(database->svc_chngd);
 	ccc_handle = gatt_db_attribute_get_handle(database->svc_chngd_ccc);
 
