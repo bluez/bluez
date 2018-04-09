@@ -280,8 +280,11 @@ void *queue_remove_if(struct queue *queue, queue_match_func_t function,
 {
 	struct queue_entry *entry, *prev = NULL;
 
-	if (!queue || !function)
+	if (!queue)
 		return NULL;
+
+	if (!function)
+		function = direct_match;
 
 	entry = queue->head;
 
