@@ -27,6 +27,50 @@
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
 
+#define BT_AD_FLAGS			0x01
+#define BT_AD_UUID16_SOME		0x02
+#define BT_AD_UUID16_ALL		0x03
+#define BT_AD_UUID32_SOME		0x04
+#define BT_AD_UUID32_ALL		0x05
+#define BT_AD_UUID128_SOME		0x06
+#define BT_AD_UUID128_ALL		0x07
+#define BT_AD_NAME_SHORT		0x08
+#define BT_AD_NAME_COMPLETE		0x09
+#define BT_AD_TX_POWER			0x0a
+#define BT_AD_CLASS_OF_DEV		0x0d
+#define BT_AD_SSP_HASH			0x0e
+#define BT_AD_SSP_RANDOMIZER		0x0f
+#define BT_AD_DEVICE_ID			0x10
+#define BT_AD_SMP_TK			0x10
+#define BT_AD_SMP_OOB_FLAGS		0x11
+#define BT_AD_SLAVE_CONN_INTERVAL	0x12
+#define BT_AD_SOLICIT16			0x14
+#define BT_AD_SOLICIT128		0x15
+#define BT_AD_SERVICE_DATA16		0x16
+#define BT_AD_PUBLIC_ADDRESS		0x17
+#define BT_AD_RANDOM_ADDRESS		0x18
+#define BT_AD_GAP_APPEARANCE		0x19
+#define BT_AD_ADVERTISING_INTERVAL	0x1a
+#define BT_AD_LE_DEVICE_ADDRESS		0x1b
+#define BT_AD_LE_ROLE			0x1c
+#define BT_AD_SSP_HASH_P256		0x1d
+#define BT_AD_SSP_RANDOMIZER_P256	0x1e
+#define BT_AD_SOLICIT32			0x1f
+#define BT_AD_SERVICE_DATA32		0x20
+#define BT_AD_SERVICE_DATA128		0x21
+#define BT_AD_LE_SC_CONFIRM_VALUE	0x22
+#define BT_AD_LE_SC_RANDOM_VALUE	0x23
+#define BT_AD_URI			0x24
+#define BT_AD_INDOOR_POSITIONING	0x25
+#define BT_AD_TRANSPORT_DISCOVERY	0x26
+#define BT_AD_LE_SUPPORTED_FEATURES	0x27
+#define BT_AD_CHANNEL_MAP_UPDATE_IND	0x28
+#define BT_AD_MESH_PROV			0x29
+#define BT_AD_MESH_DATA			0x2a
+#define BT_AD_MESH_BEACON		0x2b
+#define BT_AD_3D_INFO_DATA		0x3d
+#define BT_AD_MANUFACTURER_DATA		0xff
+
 typedef void (*bt_ad_func_t)(void *data, void *user_data);
 
 struct bt_ad;
@@ -39,6 +83,12 @@ struct bt_ad_manufacturer_data {
 
 struct bt_ad_service_data {
 	bt_uuid_t uuid;
+	size_t len;
+	void *data;
+};
+
+struct bt_ad_data {
+	uint8_t type;
 	uint8_t *data;
 	size_t len;
 };
@@ -96,3 +146,13 @@ void bt_ad_clear_name(struct bt_ad *ad);
 bool bt_ad_add_appearance(struct bt_ad *ad, uint16_t appearance);
 
 void bt_ad_clear_appearance(struct bt_ad *ad);
+
+bool bt_ad_add_data(struct bt_ad *ad, uint8_t type, void *data, size_t len);
+
+bool bt_ad_has_data(struct bt_ad *ad, const struct bt_ad_data *data);
+
+void bt_ad_foreach_data(struct bt_ad *ad, bt_ad_func_t func, void *user_data);
+
+bool bt_ad_remove_data(struct bt_ad *ad, uint8_t type);
+
+void bt_ad_clear_data(struct bt_ad *ad);
