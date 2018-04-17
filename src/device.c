@@ -1276,6 +1276,46 @@ dev_property_service_data_exist(const GDBusPropertyTable *property,
 	return bt_ad_has_service_data(device->ad, NULL);
 }
 
+static void append_advertising_data(void *data, void *user_data)
+{
+	struct bt_ad_data *ad = data;
+	DBusMessageIter *dict = user_data;
+
+	g_dbus_dict_append_basic_array(dict,
+				DBUS_TYPE_BYTE, &ad->type,
+				DBUS_TYPE_BYTE, &ad->data, ad->len);
+}
+
+static gboolean
+dev_property_get_advertising_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_BYTE_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	bt_ad_foreach_data(device->ad, append_advertising_data, &dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+
+	return TRUE;
+}
+
+static gboolean
+dev_property_advertising_data_exist(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_device *device = data;
+
+	return bt_ad_has_data(device->ad, NULL);
+}
+
 static gboolean disconnect_all(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -1679,6 +1719,29 @@ void device_set_service_data(struct btd_device *dev, GSList *list,
 		bt_ad_clear_service_data(dev->ad);
 
 	g_slist_foreach(list, add_service_data, dev);
+}
+
+static void add_data(void *data, void *user_data)
+{
+	struct eir_ad *ad = data;
+	struct btd_device *dev = user_data;
+
+	if (!bt_ad_add_data(dev->ad, ad->type, ad->data, ad->len))
+		return;
+
+	if (ad->type == EIR_TRANSPORT_DISCOVERY)
+		g_dbus_emit_property_changed(dbus_conn, dev->path,
+						DEVICE_INTERFACE,
+						"AdvertisingData");
+}
+
+void device_set_data(struct btd_device *dev, GSList *list,
+							bool duplicate)
+{
+	if (duplicate)
+		bt_ad_clear_data(dev->ad);
+
+	g_slist_foreach(list, add_data, dev);
 }
 
 static struct btd_service *find_connectable_service(struct btd_device *dev,
@@ -2673,7 +2736,9 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "AdvertisingFlags", "ay", dev_property_get_flags, NULL,
 					dev_property_flags_exist,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL},
-
+	{ "AdvertisingData", "a{yv}", dev_property_get_advertising_data,
+				NULL, dev_property_advertising_data_exist,
+				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
 

@@ -49,6 +49,7 @@
 #define EIR_SOLICIT32               0x1F  /* LE: Solicit UUIDs, 32-bit */
 #define EIR_SVC_DATA32              0x20  /* LE: Service data, 32-bit UUID */
 #define EIR_SVC_DATA128             0x21  /* LE: Service data, 128-bit UUID */
+#define EIR_TRANSPORT_DISCOVERY     0x26  /* Transport Discovery Service */
 #define EIR_MANUFACTURER_DATA       0xFF  /* Manufacturer Specific Data */
 
 /* Flags Descriptions */
@@ -75,6 +76,12 @@ struct eir_sd {
 	uint8_t data_len;
 };
 
+struct eir_ad {
+	uint8_t type;
+	uint8_t len;
+	void *data;
+};
+
 struct eir_data {
 	GSList *services;
 	unsigned int flags;
@@ -92,6 +99,7 @@ struct eir_data {
 	uint16_t did_source;
 	GSList *msd_list;
 	GSList *sd_list;
+	GSList *data_list;
 };
 
 void eir_data_free(struct eir_data *eir);

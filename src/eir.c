@@ -51,6 +51,14 @@ static void sd_free(void *data)
 	g_free(sd);
 }
 
+static void data_free(void *data)
+{
+	struct eir_ad *ad = data;
+
+	g_free(ad->data);
+	g_free(ad);
+}
+
 void eir_data_free(struct eir_data *eir)
 {
 	g_slist_free_full(eir->services, free);
@@ -65,6 +73,8 @@ void eir_data_free(struct eir_data *eir)
 	eir->msd_list = NULL;
 	g_slist_free_full(eir->sd_list, sd_free);
 	eir->sd_list = NULL;
+	g_slist_free_full(eir->data_list, data_free);
+	eir->data_list = NULL;
 }
 
 static void eir_parse_uuid16(struct eir_data *eir, const void *data,
@@ -226,6 +236,20 @@ static void eir_parse_uuid128_data(struct eir_data *eir, const uint8_t *data,
 	eir_parse_sd(eir, &service, data + 16, len - 16);
 }
 
+static void eir_parse_data(struct eir_data *eir, uint8_t type,
+					const uint8_t *data, uint8_t len)
+{
+	struct eir_ad *ad;
+
+	ad = g_malloc(sizeof(*ad));
+	ad->type = type;
+	ad->len = len;
+	ad->data = g_malloc(len);
+	memcpy(ad->data, data, len);
+
+	eir->data_list = g_slist_append(eir->data_list, ad);
+}
+
 void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 {
 	uint16_t len = 0;
@@ -346,6 +370,9 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 			eir_parse_msd(eir, data, data_len);
 			break;
 
+		default:
+			eir_parse_data(eir, eir_data[1], data, data_len);
+			break;
 		}
 
 		eir_data += field_len + 1;
