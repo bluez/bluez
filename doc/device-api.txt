@@ -251,3 +251,19 @@ Properties	string Address [readonly]
 		array{byte} AdvertisingFlags [readonly, experimental]
 
 			The Advertising Data Flags of the remote device.
+
+		dict AdvertisingData [readonly, experimental]
+
+			The Advertising Data of the remote device. Keys are
+			are 8 bits AD Type followed by data as byte array.
+
+			Note: Only types considered safe to be handled by
+			application are exposed.
+
+			Possible values:
+				<type> <byte array>
+				...
+
+			Example:
+				<Transport Discovery> <Organization Flags...>
+				0x26                   0x01         0x01...
