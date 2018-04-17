@@ -3545,6 +3545,57 @@ static void print_mesh_data(const uint8_t *data, uint8_t len)
 	packet_hexdump(data + 1, len - 1);
 }
 
+static void print_transport_data(const uint8_t *data, uint8_t len)
+{
+	print_field("Transport Discovery Data");
+
+	if (len < 3)
+		return;
+
+	print_field("  Organization: %s (0x%02x)",
+			data[0] == 0x01 ? "Bluetooth SIG" : "RFU", data[0]);
+	print_field("  Flags: 0x%2.2x", data[1]);
+	print_field("    Role: 0x%2.2x", data[1] & 0x03);
+
+	switch (data[1] & 0x03) {
+	case 0x00:
+		print_field("      Not Specified");
+		break;
+	case 0x01:
+		print_field("      Seeker Only");
+		break;
+	case 0x02:
+		print_field("      Provider Only");
+		break;
+	case 0x03:
+		print_field("      Both Seeker an Provider");
+		break;
+	}
+
+	print_field("    Transport Data Incomplete: %s (0x%2.2x)",
+			data[1] & 0x04 ? "True" : "False", data[1] & 0x04);
+
+	print_field("    Transport State: 0x%2.2x", data[1] & 0x18);
+
+	switch (data[1] & 0x18) {
+	case 0x00:
+		print_field("      Off");
+		break;
+	case 0x08:
+		print_field("      On");
+		break;
+	case 0x10:
+		print_field("      Temporary Unavailable");
+		break;
+	case 0x18:
+		print_field("      RFU");
+		break;
+	}
+
+	print_field("  Length: %u", data[2]);
+	print_hex_field("  Data", data + 3, len - 3);
+}
+
 static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
 	uint16_t len = 0;
@@ -3742,6 +3793,10 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			if (data_len < 16)
 				break;
 			print_randomizer_p256(data);
+			break;
+
+		case BT_EIR_TRANSPORT_DISCOVERY:
+			print_transport_data(data, data_len);
 			break;
 
 		case BT_EIR_3D_INFO_DATA:
