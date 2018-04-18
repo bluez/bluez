@@ -1010,18 +1010,18 @@ int strsuffix(const char *str, const char *suffix)
 	int suffix_len;
 
 	if (!str || !suffix)
-		return false;
+		return -1;
 
 	if (str[0] == '\0' && suffix[0] != '\0')
-		return false;
+		return -1;
 
 	if (suffix[0] == '\0' && str[0] != '\0')
-		return false;
+		return -1;
 
 	len = strlen(str);
 	suffix_len = strlen(suffix);
 	if (len < suffix_len)
-		return false;
+		return -1;
 
 	return strncmp(str + len - suffix_len, suffix, suffix_len);
 }
