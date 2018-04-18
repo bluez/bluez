@@ -54,6 +54,11 @@ struct manufacturer_data {
 	struct ad_data data;
 };
 
+struct data {
+	uint8_t type;
+	struct ad_data data;
+};
+
 static struct ad {
 	bool registered;
 	char *type;
@@ -65,6 +70,7 @@ static struct ad {
 	size_t uuids_len;
 	struct service_data service;
 	struct manufacturer_data manufacturer;
+	struct data data;
 	bool tx_power;
 	bool name;
 	bool appearance;
@@ -373,12 +379,35 @@ static gboolean get_timeout(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean data_exists(const GDBusPropertyTable *property, void *data)
+{
+	return ad.data.type != 0;
+}
+
+static gboolean get_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+	struct ad_data *data = &ad.data.data;
+	uint8_t *val = data->data;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{yv}", &dict);
+
+	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_BYTE, &ad.data.type,
+					DBUS_TYPE_BYTE, &val, data->len);
+
+	dbus_message_iter_close_container(iter, &dict);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
 	{ "ServiceData", "a{sv}", get_service_data, NULL, service_data_exists },
 	{ "ManufacturerData", "a{qv}", get_manufacturer_data, NULL,
 						manufacturer_data_exists },
+	{ "Data", "a{yv}", get_data, NULL, data_exists },
 	{ "Includes", "as", get_includes, NULL, includes_exists },
 	{ "LocalName", "s", get_local_name, NULL, local_name_exits },
 	{ "Appearance", "q", get_appearance, NULL, appearance_exits },
@@ -508,10 +537,37 @@ static void ad_clear_service(void)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
+static bool ad_add_data(struct ad_data *data, int argc, char *argv[])
 {
 	unsigned int i;
-	struct ad_data *data;
+
+	memset(data, 0, sizeof(*data));
+
+	for (i = 0; i < (unsigned int) argc; i++) {
+		long int val;
+		char *endptr = NULL;
+
+		if (i >= G_N_ELEMENTS(data->data)) {
+			bt_shell_printf("Too much data\n");
+			return false;
+		}
+
+		val = strtol(argv[i], &endptr, 0);
+		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
+			bt_shell_printf("Invalid value at index %d\n", i);
+			return false;
+		}
+
+		data->data[data->len] = val;
+		data->len++;
+	}
+
+	return true;
+}
+
+void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
+{
+	struct ad_data data;
 
 	if (argc < 2 || !strlen(argv[1])) {
 		if (ad.service.uuid) {
@@ -522,31 +578,13 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
+	if (!ad_add_data(&data, argc - 2, argv + 2))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
 	ad_clear_service();
 
 	ad.service.uuid = g_strdup(argv[1]);
-	data = &ad.service.data;
-
-	for (i = 2; i < (unsigned int) argc; i++) {
-		long int val;
-		char *endptr = NULL;
-
-		if (i >= G_N_ELEMENTS(data->data)) {
-			bt_shell_printf("Too much data\n");
-			ad_clear_service();
-			return;
-		}
-
-		val = strtol(argv[i], &endptr, 0);
-		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
-			bt_shell_printf("Invalid value at index %d\n", i);
-			ad_clear_service();
-			return;
-		}
-
-		data->data[data->len] = val;
-		data->len++;
-	}
+	ad.service.data = data;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
 
@@ -573,10 +611,9 @@ static void ad_clear_manufacturer(void)
 
 void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 {
-	unsigned int i;
 	char *endptr = NULL;
 	long int val;
-	struct ad_data *data;
+	struct ad_data data;
 
 	if (argc < 2 || !strlen(argv[1])) {
 		if (ad.manufacturer.data.len) {
@@ -589,34 +626,18 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
-	ad_clear_manufacturer();
-
 	val = strtol(argv[1], &endptr, 0);
 	if (!endptr || *endptr != '\0' || val > UINT16_MAX) {
 		bt_shell_printf("Invalid manufacture id\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	if (!ad_add_data(&data, argc - 2, argv + 2))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	ad_clear_manufacturer();
 	ad.manufacturer.id = val;
-	data = &ad.manufacturer.data;
-
-	for (i = 2; i < (unsigned int) argc; i++) {
-		if (i >= G_N_ELEMENTS(data->data)) {
-			bt_shell_printf("Too much data\n");
-			ad_clear_manufacturer();
-			return bt_shell_noninteractive_quit(EXIT_FAILURE);
-		}
-
-		val = strtol(argv[i], &endptr, 0);
-		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
-			bt_shell_printf("Invalid value at index %d\n", i);
-			ad_clear_manufacturer();
-			return bt_shell_noninteractive_quit(EXIT_FAILURE);
-		}
-
-		data->data[data->len] = val;
-		data->len++;
-	}
+	ad.manufacturer.data = data;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"ManufacturerData");
@@ -632,6 +653,57 @@ void ad_disable_manufacturer(DBusConnection *conn)
 	ad_clear_manufacturer();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"ManufacturerData");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void ad_clear_data(void)
+{
+	memset(&ad.manufacturer, 0, sizeof(ad.manufacturer));
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_advertise_data(DBusConnection *conn, int argc, char *argv[])
+{
+	char *endptr = NULL;
+	long int val;
+	struct ad_data data;
+
+	if (argc < 2 || !strlen(argv[1])) {
+		if (ad.manufacturer.data.len) {
+			bt_shell_printf("Type: 0x%02x\n", ad.data.type);
+			bt_shell_hexdump(ad.data.data.data, ad.data.data.len);
+		}
+
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	val = strtol(argv[1], &endptr, 0);
+	if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
+		bt_shell_printf("Invalid type\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!ad_add_data(&data, argc - 2, argv + 2))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	ad_clear_data();
+	ad.data.type = val;
+	ad.data.data = data;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Data");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_disable_data(DBusConnection *conn)
+{
+	if (!ad.data.type && !ad.data.data.len)
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+
+	ad_clear_data();
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Data");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }

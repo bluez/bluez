@@ -2185,6 +2185,11 @@ static void cmd_advertise_manufacturer(int argc, char *argv[])
 	ad_advertise_manufacturer(dbus_conn, argc, argv);
 }
 
+static void cmd_advertise_data(int argc, char *argv[])
+{
+	ad_advertise_data(dbus_conn, argc, argv);
+}
+
 static void cmd_advertise_tx_power(int argc, char *argv[])
 {
 	dbus_bool_t powered;
@@ -2302,6 +2307,11 @@ static void ad_clear_manufacturer(void)
 	ad_disable_manufacturer(dbus_conn);
 }
 
+static void ad_clear_data(void)
+{
+	ad_disable_data(dbus_conn);
+}
+
 static void ad_clear_tx_power(void)
 {
 	dbus_bool_t powered = false;
@@ -2337,6 +2347,7 @@ static const struct clear_entry ad_clear[] = {
 	{ "uuids",		ad_clear_uuids },
 	{ "service",		ad_clear_service },
 	{ "manufacturer",	ad_clear_manufacturer },
+	{ "data",		ad_clear_data },
 	{ "tx-power",		ad_clear_tx_power },
 	{ "name",		ad_clear_name },
 	{ "appearance",		ad_clear_appearance },
@@ -2367,6 +2378,8 @@ static const struct bt_shell_menu advertise_menu = {
 	{ "manufacturer", "[id] [data=xx xx ...]",
 			cmd_advertise_manufacturer,
 			"Set/Get advertise manufacturer data" },
+	{ "data", "[type] [data=xx xx ...]", cmd_advertise_data,
+			"Set/Get advertise data" },
 	{ "tx-power", "[on/off]", cmd_advertise_tx_power,
 			"Show/Enable/Disable TX power to be advertised",
 							NULL },
