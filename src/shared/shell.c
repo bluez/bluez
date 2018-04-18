@@ -279,8 +279,8 @@ static int parse_args(char *arg, wordexp_t *w, char *del, int flags)
 		return -EINVAL;
 	}
 
-	/* If argument ends with ,,, set we_offs bypass strict checks */
-	if (w->we_wordc && strsuffix(w->we_wordv[w->we_wordc -1], "..."))
+	/* If argument ends with ... set we_offs bypass strict checks */
+	if (w->we_wordc && !strsuffix(w->we_wordv[w->we_wordc -1], "..."))
 		w->we_offs = 1;
 
 	free(str);
