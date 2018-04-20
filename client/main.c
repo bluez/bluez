@@ -1490,6 +1490,8 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "ServiceData");
 	print_property(proxy, "RSSI");
 	print_property(proxy, "TxPower");
+	print_property(proxy, "AdvertisingFlags");
+	print_property(proxy, "AdvertisingData");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
