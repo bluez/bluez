@@ -1173,6 +1173,9 @@ void btd_adv_manager_destroy(struct btd_adv_manager *manager)
 
 void btd_adv_manager_refresh(struct btd_adv_manager *manager)
 {
+	if (!manager)
+		return;
+
 	queue_foreach(manager->clients, (queue_foreach_func_t)refresh_adv,
 									NULL);
 }

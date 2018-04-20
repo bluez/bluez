@@ -540,8 +540,7 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable");
 		store_adapter_info(adapter);
-		if (adapter->supported_settings & MGMT_SETTING_LE)
-			btd_adv_manager_refresh(adapter->adv_manager);
+		btd_adv_manager_refresh(adapter->adv_manager);
 	}
 
 	if (changed_mask & MGMT_SETTING_BONDABLE) {
