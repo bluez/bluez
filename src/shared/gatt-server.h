@@ -43,6 +43,13 @@ bool bt_gatt_server_set_debug(struct bt_gatt_server *server,
 					void *user_data,
 					bt_gatt_server_destroy_func_t destroy);
 
+typedef uint8_t (*bt_gatt_server_authorize_cb_t)(struct bt_att *att,
+					uint8_t opcode, uint16_t handle,
+					void *user_data);
+bool bt_gatt_server_set_authorize(struct bt_gatt_server *server,
+					bt_gatt_server_authorize_cb_t cb,
+					void *user_data);
+
 bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 					uint16_t handle, const uint8_t *value,
 					uint16_t length);

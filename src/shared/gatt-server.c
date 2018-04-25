@@ -114,6 +114,9 @@ struct bt_gatt_server {
 	bt_gatt_server_debug_func_t debug_callback;
 	bt_gatt_server_destroy_func_t debug_destroy;
 	void *debug_data;
+
+	bt_gatt_server_authorize_cb_t authorize;
+	void *authorize_data;
 };
 
 static void bt_gatt_server_free(struct bt_gatt_server *server)
@@ -785,6 +788,16 @@ static void write_complete_cb(struct gatt_db_attribute *attr, int err,
 	async_write_op_destroy(op);
 }
 
+static uint8_t authorize_req(struct bt_gatt_server *server,
+					uint8_t opcode, uint16_t handle)
+{
+	if (!server->authorize)
+		return 0;
+
+	return server->authorize(server->att, opcode, handle,
+						server->authorize_data);
+}
+
 static void write_cb(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
@@ -798,6 +811,10 @@ static void write_cb(uint8_t opcode, const void *pdu,
 		ecode = BT_ATT_ERROR_INVALID_PDU;
 		goto error;
 	}
+
+	ecode = authorize_req(server, opcode, handle);
+	if (ecode)
+		goto error;
 
 	handle = get_le16(pdu);
 	attr = gatt_db_get_attribute(server->db, handle);
@@ -905,6 +922,10 @@ static void handle_read_req(struct bt_gatt_server *server, uint8_t opcode,
 	struct gatt_db_attribute *attr;
 	uint8_t ecode;
 	struct async_read_op *op = NULL;
+
+	ecode = authorize_req(server, opcode, handle);
+	if (ecode)
+		goto error;
 
 	attr = gatt_db_get_attribute(server->db, handle);
 	if (!attr) {
@@ -1724,4 +1745,17 @@ bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
 	free(pdu);
 
 	return result;
+}
+
+bool bt_gatt_server_set_authorize(struct bt_gatt_server *server,
+					bt_gatt_server_authorize_cb_t cb,
+					void *user_data)
+{
+	if (!server)
+		return false;
+
+	server->authorize = cb;
+	server->authorize_data = user_data;
+
+	return true;
 }
