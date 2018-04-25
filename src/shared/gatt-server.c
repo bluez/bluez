@@ -1588,6 +1588,14 @@ uint16_t bt_gatt_server_get_mtu(struct bt_gatt_server *server)
 	return bt_att_get_mtu(server->att);
 }
 
+struct bt_att *bt_gatt_server_get_att(struct bt_gatt_server *server)
+{
+	if (!server)
+		return NULL;
+
+	return server->att;
+}
+
 struct bt_gatt_server *bt_gatt_server_ref(struct bt_gatt_server *server)
 {
 	if (!server)
