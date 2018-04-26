@@ -1588,12 +1588,26 @@ static DBusMessage *chrc_read_value(DBusConnection *conn, DBusMessage *msg,
 static int parse_value_arg(DBusMessageIter *iter, uint8_t **value, int *len)
 {
 	DBusMessageIter array;
+	uint16_t offset = 0;
+	uint8_t *read_value;
+	int read_len;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
 		return -EINVAL;
 
 	dbus_message_iter_recurse(iter, &array);
-	dbus_message_iter_get_fixed_array(&array, value, len);
+	dbus_message_iter_get_fixed_array(&array, &read_value, &read_len);
+
+	dbus_message_iter_next(iter);
+	if (parse_options(iter, &offset, NULL, NULL, NULL))
+		return -EINVAL;
+
+	if ((offset + read_len) > *len) {
+		*len = offset + read_len;
+		*value = g_realloc(*value, *len);
+	}
+
+	memcpy(*value + offset, read_value, read_len);
 
 	return 0;
 }
