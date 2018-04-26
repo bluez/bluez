@@ -35,7 +35,7 @@ GDBusProxy *gatt_select_attribute(GDBusProxy *parent, const char *path);
 char *gatt_attribute_generator(const char *text, int state);
 
 void gatt_read_attribute(GDBusProxy *proxy, int argc, char *argv[]);
-void gatt_write_attribute(GDBusProxy *proxy, const char *arg);
+void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[]);
 void gatt_notify_attribute(GDBusProxy *proxy, bool enable);
 
 void gatt_acquire_write(GDBusProxy *proxy, const char *arg);

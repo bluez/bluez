@@ -579,14 +579,20 @@ static void write_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+struct write_attribute_data {
+	struct iovec *iov;
+	uint16_t offset;
+};
+
 static void write_setup(DBusMessageIter *iter, void *user_data)
 {
-	struct iovec *iov = user_data;
+	struct write_attribute_data *wd = user_data;
 	DBusMessageIter array, dict;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
 	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
-						&iov->iov_base, iov->iov_len);
+						&wd->iov->iov_base,
+						wd->iov->iov_len);
 	dbus_message_iter_close_container(iter, &array);
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
@@ -595,18 +601,22 @@ static void write_setup(DBusMessageIter *iter, void *user_data)
 					DBUS_TYPE_VARIANT_AS_STRING
 					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					&dict);
-	/* TODO: Add offset support */
+
+	g_dbus_dict_append_entry(&dict, "offset", DBUS_TYPE_UINT16,
+								&wd->offset);
+
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static void write_attribute(GDBusProxy *proxy, char *arg)
+static void write_attribute(GDBusProxy *proxy, char *val_str, uint16_t offset)
 {
 	struct iovec iov;
+	struct write_attribute_data wd;
 	uint8_t value[512];
 	char *entry;
 	unsigned int i;
 
-	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
+	for (i = 0; (entry = strsep(&val_str, " \t")) != NULL; i++) {
 		long int val;
 		char *endptr = NULL;
 
@@ -641,8 +651,11 @@ static void write_attribute(GDBusProxy *proxy, char *arg)
 		return;
 	}
 
+	wd.iov = &iov;
+	wd.offset = offset;
+
 	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup,
-					write_reply, &iov, NULL) == FALSE) {
+					write_reply, &wd, NULL) == FALSE) {
 		bt_shell_printf("Failed to write\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -651,14 +664,19 @@ static void write_attribute(GDBusProxy *proxy, char *arg)
 					g_dbus_proxy_get_path(proxy));
 }
 
-void gatt_write_attribute(GDBusProxy *proxy, const char *arg)
+void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[])
 {
 	const char *iface;
+	uint16_t offset = 0;
 
 	iface = g_dbus_proxy_get_interface(proxy);
 	if (!strcmp(iface, "org.bluez.GattCharacteristic1") ||
 				!strcmp(iface, "org.bluez.GattDescriptor1")) {
-		write_attribute(proxy, (char *) arg);
+
+		if (argc > 2)
+			offset = atoi(argv[2]);
+
+		write_attribute(proxy, argv[1], offset);
 		return;
 	}
 
