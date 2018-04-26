@@ -518,6 +518,7 @@ static void read_reply(DBusMessage *message, void *user_data)
 static void read_setup(DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
+	uint16_t *offset = user_data;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -525,14 +526,16 @@ static void read_setup(DBusMessageIter *iter, void *user_data)
 					DBUS_TYPE_VARIANT_AS_STRING
 					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					&dict);
-	/* TODO: Add offset support */
+
+	g_dbus_dict_append_entry(&dict, "offset", DBUS_TYPE_UINT16, offset);
+
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static void read_attribute(GDBusProxy *proxy)
+static void read_attribute(GDBusProxy *proxy, uint16_t offset)
 {
 	if (g_dbus_proxy_method_call(proxy, "ReadValue", read_setup, read_reply,
-							NULL, NULL) == FALSE) {
+						&offset, NULL) == FALSE) {
 		bt_shell_printf("Failed to read\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -540,14 +543,19 @@ static void read_attribute(GDBusProxy *proxy)
 	bt_shell_printf("Attempting to read %s\n", g_dbus_proxy_get_path(proxy));
 }
 
-void gatt_read_attribute(GDBusProxy *proxy)
+void gatt_read_attribute(GDBusProxy *proxy, int argc, char *argv[])
 {
 	const char *iface;
+	uint16_t offset = 0;
 
 	iface = g_dbus_proxy_get_interface(proxy);
 	if (!strcmp(iface, "org.bluez.GattCharacteristic1") ||
 				!strcmp(iface, "org.bluez.GattDescriptor1")) {
-		read_attribute(proxy);
+
+		if (argc == 2)
+			offset = atoi(argv[1]);
+
+		read_attribute(proxy, offset);
 		return;
 	}
 
