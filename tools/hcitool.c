@@ -3351,7 +3351,7 @@ static void cmd_lecup(int dev_id, int argc, char **argv)
 		timeout = strtoul(argv[4], NULL, 0);
 	}
 
-	if (handle == 0) {
+	if (handle > 0x0EFF) {
 		printf("%s", lecup_help);
 		return;
 	}
