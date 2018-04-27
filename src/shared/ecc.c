@@ -856,31 +856,47 @@ static void ecc_native2bytes(const uint64_t native[NUM_ECC_DIGITS],
 	}
 }
 
-bool ecc_make_key(uint8_t public_key[64], uint8_t private_key[32])
+bool ecc_make_public_key(const uint8_t private_key[32], uint8_t public_key[64])
 {
 	struct ecc_point pk;
 	uint64_t priv[NUM_ECC_DIGITS];
-	unsigned tries = 0;
 
-	do {
-		if (!get_random_number(priv) || (tries++ >= MAX_TRIES))
-			return false;
+	ecc_bytes2native(private_key, priv);
 
-		if (vli_is_zero(priv))
-			continue;
+	if (vli_is_zero(priv))
+		return false;
 
-		/* Make sure the private key is in the range [1, n-1]. */
-		if (vli_cmp(curve_n, priv) != 1)
-			continue;
+	/* Make sure the private key is in the range [1, n-1]. */
+	if (vli_cmp(curve_n, priv) != 1)
+		return false;
 
-		ecc_point_mult(&pk, &curve_g, priv, NULL, vli_num_bits(priv));
-	} while (ecc_point_is_zero(&pk));
+	ecc_point_mult(&pk, &curve_g, priv, NULL, vli_num_bits(priv));
 
-	ecc_native2bytes(priv, private_key);
+	if (ecc_point_is_zero(&pk))
+		return false;
+
 	ecc_native2bytes(pk.x, public_key);
 	ecc_native2bytes(pk.y, &public_key[32]);
 
 	return true;
+}
+
+bool ecc_make_key(uint8_t public_key[64], uint8_t private_key[32])
+{
+	uint64_t priv[NUM_ECC_DIGITS];
+	unsigned int tries = 0;
+	bool result = false;
+
+	for (tries = 0; !result && tries < MAX_TRIES; tries++) {
+		if (!get_random_number(priv))
+			continue;
+
+		ecc_native2bytes(priv, private_key);
+
+		result = ecc_make_public_key(private_key, public_key);
+	}
+
+	return result;
 }
 
 bool ecc_valid_public_key(const uint8_t public_key[64])
