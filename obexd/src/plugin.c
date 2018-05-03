@@ -138,8 +138,11 @@ gboolean plugin_init(const char *pattern, const char *exclude)
 	DBG("Loading plugins %s", PLUGINDIR);
 
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
-	if (!dir)
+	if (!dir) {
+		g_strfreev(patterns);
+		g_strfreev(excludes);
 		return FALSE;
+	}
 
 	while ((file = g_dir_read_name(dir)) != NULL) {
 		struct obex_plugin_desc *desc;
