@@ -147,6 +147,12 @@ bool bt_ad_add_appearance(struct bt_ad *ad, uint16_t appearance);
 
 void bt_ad_clear_appearance(struct bt_ad *ad);
 
+bool bt_ad_add_flags(struct bt_ad *ad, uint8_t *flags, size_t len);
+
+bool bt_ad_has_flags(struct bt_ad *ad);
+
+void bt_ad_clear_flags(struct bt_ad *ad);
+
 bool bt_ad_add_data(struct bt_ad *ad, uint8_t type, void *data, size_t len);
 
 bool bt_ad_has_data(struct bt_ad *ad, const struct bt_ad_data *data);
