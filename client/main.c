@@ -2213,6 +2213,21 @@ static void cmd_advertise_data(int argc, char *argv[])
 	ad_advertise_data(dbus_conn, argc, argv);
 }
 
+static void cmd_advertise_discoverable(int argc, char *argv[])
+{
+	dbus_bool_t discoverable;
+
+	if (argc < 2) {
+		ad_advertise_discoverable(dbus_conn, NULL);
+		return;
+	}
+
+	if (!parse_argument(argc, argv, NULL, NULL, &discoverable, NULL))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	ad_advertise_discoverable(dbus_conn, &discoverable);
+}
+
 static void cmd_advertise_tx_power(int argc, char *argv[])
 {
 	dbus_bool_t powered;
@@ -2403,6 +2418,8 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set/Get advertise manufacturer data" },
 	{ "data", "[type] [data=xx xx ...]", cmd_advertise_data,
 			"Set/Get advertise data" },
+	{ "discoverable", "[on/off]", cmd_advertise_discoverable,
+			"Set/Get advertise discoverable" },
 	{ "tx-power", "[on/off]", cmd_advertise_tx_power,
 			"Show/Enable/Disable TX power to be advertised",
 							NULL },

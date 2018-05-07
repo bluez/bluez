@@ -71,6 +71,7 @@ static struct ad {
 	struct service_data service;
 	struct manufacturer_data manufacturer;
 	struct data data;
+	bool discoverable;
 	bool tx_power;
 	bool name;
 	bool appearance;
@@ -401,6 +402,21 @@ static gboolean get_data(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean discoverable_exists(const GDBusPropertyTable *property,
+							void *data)
+{
+	return ad.discoverable;
+}
+
+static gboolean get_discoverable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN,
+							&ad.discoverable);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
@@ -408,6 +424,7 @@ static const GDBusPropertyTable ad_props[] = {
 	{ "ManufacturerData", "a{qv}", get_manufacturer_data, NULL,
 						manufacturer_data_exists },
 	{ "Data", "a{yv}", get_data, NULL, data_exists },
+	{ "Discoverable", "b", get_discoverable, NULL, discoverable_exists },
 	{ "Includes", "as", get_includes, NULL, includes_exists },
 	{ "LocalName", "s", get_local_name, NULL, local_name_exits },
 	{ "Appearance", "q", get_appearance, NULL, appearance_exits },
@@ -704,6 +721,24 @@ void ad_disable_data(DBusConnection *conn)
 
 	ad_clear_data();
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Data");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_advertise_discoverable(DBusConnection *conn, dbus_bool_t *value)
+{
+	if (!value) {
+		bt_shell_printf("Discoverable: %s\n",
+				ad.discoverable ? "on" : "off");
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	if (ad.discoverable == *value)
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+
+	ad.discoverable = *value;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Discoverable");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
