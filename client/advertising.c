@@ -164,6 +164,11 @@ static void print_ad(void)
 						ad.manufacturer.data.len);
 	}
 
+	if (ad.data.data.len) {
+		bt_shell_printf("Data Type: 0x%02x\n", ad.data.type);
+		bt_shell_hexdump(ad.data.data.data, ad.data.data.len);
+	}
+
 	bt_shell_printf("Tx Power: %s\n", ad.tx_power ? "on" : "off");
 
 	if (ad.local_name)
@@ -178,6 +183,8 @@ static void print_ad(void)
 	else
 		bt_shell_printf("Apperance: %s\n",
 					ad.appearance ? "on" : "off");
+
+	bt_shell_printf("Discoverable: %s\n", ad.discoverable ? "on": "off");
 
 	if (ad.duration)
 		bt_shell_printf("Duration: %u sec\n", ad.duration);
