@@ -78,6 +78,14 @@ Properties	string Type
 				<Transport Discovery> <Organization Flags...>
 				0x26                   0x01         0x01...
 
+		bool Discoverable [Experimental]
+
+			Advertise as general discoverable. When present this
+			will override adapter Discoverable property.
+
+			Note: This property shall not be set when Type is set
+			to broadcast.
+
 		array{string} Includes
 
 			List of features to be included in the advertising
