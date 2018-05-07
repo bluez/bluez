@@ -883,20 +883,29 @@ bool ecc_make_public_key(const uint8_t private_key[32], uint8_t public_key[64])
 
 bool ecc_make_key(uint8_t public_key[64], uint8_t private_key[32])
 {
+	struct ecc_point pk;
 	uint64_t priv[NUM_ECC_DIGITS];
 	unsigned int tries = 0;
-	bool result = false;
 
-	for (tries = 0; !result && tries < MAX_TRIES; tries++) {
-		if (!get_random_number(priv))
+	do {
+		if (!get_random_number(priv) || (tries++ >= MAX_TRIES))
+			return false;
+
+		if (vli_is_zero(priv))
 			continue;
 
-		ecc_native2bytes(priv, private_key);
+		/* Make sure the private key is in the range [1, n-1]. */
+		if (vli_cmp(curve_n, priv) != 1)
+			continue;
 
-		result = ecc_make_public_key(private_key, public_key);
-	}
+		ecc_point_mult(&pk, &curve_g, priv, NULL, vli_num_bits(priv));
+	} while (ecc_point_is_zero(&pk));
 
-	return result;
+	ecc_native2bytes(priv, private_key);
+	ecc_native2bytes(pk.x, public_key);
+	ecc_native2bytes(pk.y, &public_key[32]);
+
+	return true;
 }
 
 bool ecc_valid_public_key(const uint8_t public_key[64])

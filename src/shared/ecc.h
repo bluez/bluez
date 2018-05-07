@@ -29,8 +29,10 @@
 
 /* Create a public key from a private key.
  *
+ * Inputs:
+ *	private_key - Your private key.
+ *
  * Outputs:
- *	private_key - Const private key
  *	public_key  - Will be filled in with the public key.
  *
  * Returns true if the public key was generated successfully, false
