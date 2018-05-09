@@ -1825,8 +1825,9 @@ static void set_adv_data_c(int argc, const char **argv,
 static void set_adv_data_p(int argc, const char **argv)
 {
 	int client_if;
-	bool set_scan_rsp;
-	bool include_name, include_txpower;
+	bool set_scan_rsp = false;
+	bool include_name = false;
+	bool include_txpower = false;
 	int min_interval, max_interval;
 	int appearance;
 	uint16_t manufacturer_len;
@@ -2003,8 +2004,9 @@ static void multi_adv_set_inst_data_c(int argc, const char **argv,
 static void multi_adv_set_inst_data_p(int argc, const char **argv)
 {
 	int client_if;
-	bool set_scan_rsp;
-	bool include_name, include_txpower;
+	bool set_scan_rsp = false;
+	bool include_name = false;
+	bool include_txpower = false;
 	int appearance;
 	uint16_t manufacturer_len;
 	uint8_t manufacturer_data[100];
