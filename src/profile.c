@@ -1971,7 +1971,7 @@ static struct default_settings {
 		.authorize	= true,
 		.auto_connect	= true,
 		.get_record	= get_hfp_hf_record,
-		.version	= 0x0105,
+		.version	= 0x0107,
 	}, {
 		.uuid		= HFP_AG_UUID,
 		.name		= "Hands-Free Voice gateway",
@@ -1981,7 +1981,7 @@ static struct default_settings {
 		.authorize	= true,
 		.auto_connect	= true,
 		.get_record	= get_hfp_ag_record,
-		.version	= 0x0105,
+		.version	= 0x0107,
 	}, {
 		.uuid		= HSP_AG_UUID,
 		.name		= "Headset Voice gateway",
