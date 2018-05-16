@@ -95,7 +95,8 @@ gdbus_libgdbus_internal_la_SOURCES = gdbus/gdbus.h \
 				gdbus/mainloop.c gdbus/watch.c \
 				gdbus/object.c gdbus/client.c gdbus/polkit.c
 
-noinst_LTLIBRARIES += src/libshared-glib.la src/libshared-mainloop.la
+noinst_LTLIBRARIES += src/libshared-glib.la src/libshared-mainloop.la \
+				src/libshared-ell.la
 
 shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/queue.h src/shared/queue.c \
@@ -134,6 +135,9 @@ src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 				src/shared/io-mainloop.c \
 				src/shared/timeout-mainloop.c \
 				src/shared/mainloop.h src/shared/mainloop.c
+
+src_libshared_ell_la_SOURCES = $(shared_sources) \
+				src/shared/io-ell.c
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
