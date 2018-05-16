@@ -1598,6 +1598,7 @@ static DBusMessage *chrc_read_value(DBusConnection *conn, DBusMessage *msg,
 
 		bt_shell_prompt_input("gatt", str, authorize_read_response,
 									aad);
+		g_free(str);
 
 		pending_message = dbus_message_ref(msg);
 
@@ -1700,6 +1701,7 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 
 		bt_shell_prompt_input("gatt", str, authorize_write_response,
 									aad);
+		g_free(str);
 
 		pending_message = dbus_message_ref(msg);
 
