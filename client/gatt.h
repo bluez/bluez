@@ -65,3 +65,8 @@ void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
 						int argc, char *argv[]);
 void gatt_unregister_desc(DBusConnection *conn, GDBusProxy *proxy,
 						int argc, char *argv[]);
+
+void gatt_register_include(DBusConnection *conn, GDBusProxy *proxy,
+					int argc, char *argv[]);
+void gatt_unregister_include(DBusConnection *conn, GDBusProxy *proxy,
+						int argc, char *argv[]);

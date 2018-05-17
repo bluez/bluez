@@ -2007,6 +2007,22 @@ static void cmd_register_service(int argc, char *argv[])
 	gatt_register_service(dbus_conn, default_ctrl->proxy, argc, argv);
 }
 
+static void cmd_register_includes(int argc, char *argv[])
+{
+	if (check_default_ctrl() == FALSE)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	gatt_register_include(dbus_conn, default_ctrl->proxy, argc, argv);
+}
+
+static void cmd_unregister_includes(int argc, char *argv[])
+{
+	if (check_default_ctrl() == FALSE)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	gatt_unregister_include(dbus_conn, default_ctrl->proxy, argc, argv);
+}
+
 static void cmd_unregister_service(int argc, char *argv[])
 {
 	if (check_default_ctrl() == FALSE)
@@ -2456,6 +2472,11 @@ static const struct bt_shell_menu gatt_menu = {
 					"Register application service."  },
 	{ "unregister-service", "<UUID/object>", cmd_unregister_service,
 					"Unregister application service" },
+	{ "register-includes", "<UUID>", cmd_register_includes,
+					"Register as Included service in." },
+	{ "unregister-includes", "<Service-UUID><Inc-UUID>",
+			cmd_unregister_includes,
+				 "Unregister Included service." },
 	{ "register-characteristic", "<UUID> <Flags=read,write,notify...> "
 				"[authorize]", cmd_register_characteristic,
 				"Register application characteristic" },
