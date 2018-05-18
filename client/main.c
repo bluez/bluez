@@ -1513,6 +1513,19 @@ static void pair_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static const char *proxy_address(GDBusProxy *proxy)
+{
+	DBusMessageIter iter;
+	const char *addr;
+
+	if (!g_dbus_proxy_get_property(proxy, "Address", &iter))
+		return NULL;
+
+	dbus_message_iter_get_basic(&iter, &addr);
+
+	return addr;
+}
+
 static void cmd_pair(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -1527,7 +1540,7 @@ static void cmd_pair(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Attempting to pair with %s\n", argv[1]);
+	bt_shell_printf("Attempting to pair with %s\n", proxy_address(proxy));
 }
 
 static void cmd_trust(int argc, char *argv[])
@@ -1542,7 +1555,7 @@ static void cmd_trust(int argc, char *argv[])
 
 	trusted = TRUE;
 
-	str = g_strdup_printf("%s trust", argv[1]);
+	str = g_strdup_printf("%s trust", proxy_address(proxy));
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Trusted",
 					DBUS_TYPE_BOOLEAN, &trusted,
@@ -1566,7 +1579,7 @@ static void cmd_untrust(int argc, char *argv[])
 
 	trusted = FALSE;
 
-	str = g_strdup_printf("%s untrust", argv[1]);
+	str = g_strdup_printf("%s untrust", proxy_address(proxy));
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Trusted",
 					DBUS_TYPE_BOOLEAN, &trusted,
@@ -1590,7 +1603,7 @@ static void cmd_block(int argc, char *argv[])
 
 	blocked = TRUE;
 
-	str = g_strdup_printf("%s block", argv[1]);
+	str = g_strdup_printf("%s block", proxy_address(proxy));
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Blocked",
 					DBUS_TYPE_BOOLEAN, &blocked,
@@ -1614,7 +1627,7 @@ static void cmd_unblock(int argc, char *argv[])
 
 	blocked = FALSE;
 
-	str = g_strdup_printf("%s unblock", argv[1]);
+	str = g_strdup_printf("%s unblock", proxy_address(proxy));
 
 	if (g_dbus_proxy_set_property_basic(proxy, "Blocked",
 					DBUS_TYPE_BOOLEAN, &blocked,
@@ -1772,16 +1785,8 @@ static void cmd_disconn(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	if (argc < 2 || strlen(argv[1]) == 0) {
-		DBusMessageIter iter;
-		const char *addr;
-
-		if (g_dbus_proxy_get_property(proxy, "Address", &iter) == TRUE)
-			dbus_message_iter_get_basic(&iter, &addr);
-
-		bt_shell_printf("Attempting to disconnect from %s\n", addr);
-	} else
-		bt_shell_printf("Attempting to disconnect from %s\n", argv[1]);
+	bt_shell_printf("Attempting to disconnect from %s\n",
+						proxy_address(proxy));
 }
 
 static void cmd_list_attributes(int argc, char *argv[])
