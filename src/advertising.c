@@ -752,6 +752,7 @@ static int refresh_adv(struct btd_adv_client *client, mgmt_request_func_t func)
 	scan_rsp = generate_scan_rsp(client, &flags, &scan_rsp_len);
 	if (!scan_rsp && scan_rsp_len) {
 		error("Scan data couldn't be generated.");
+		free(adv_data);
 		return -EINVAL;
 	}
 
