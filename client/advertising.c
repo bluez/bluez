@@ -66,6 +66,7 @@ static struct ad {
 	uint16_t local_appearance;
 	uint16_t duration;
 	uint16_t timeout;
+	uint16_t discoverable_to;
 	char **uuids;
 	size_t uuids_len;
 	struct service_data service;
@@ -424,6 +425,21 @@ static gboolean get_discoverable(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean discoverable_timeout_exits(const GDBusPropertyTable *property,
+							void *data)
+{
+	return ad.discoverable_to;
+}
+
+static gboolean get_discoverable_timeout(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+							&ad.discoverable_to);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
 	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
@@ -432,6 +448,8 @@ static const GDBusPropertyTable ad_props[] = {
 						manufacturer_data_exists },
 	{ "Data", "a{yv}", get_data, NULL, data_exists },
 	{ "Discoverable", "b", get_discoverable, NULL, discoverable_exists },
+	{ "DiscoverableTimeout", "q", get_discoverable_timeout, NULL,
+						discoverable_timeout_exits },
 	{ "Includes", "as", get_includes, NULL, includes_exists },
 	{ "LocalName", "s", get_local_name, NULL, local_name_exits },
 	{ "Appearance", "q", get_appearance, NULL, appearance_exits },
@@ -746,6 +764,26 @@ void ad_advertise_discoverable(DBusConnection *conn, dbus_bool_t *value)
 	ad.discoverable = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Discoverable");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_advertise_discoverable_timeout(DBusConnection *conn, long int *value)
+{
+	if (!value) {
+		if (ad.discoverable_to)
+			bt_shell_printf("Timeout: %u sec\n",
+					ad.discoverable_to);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	if (ad.discoverable_to == *value)
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+
+	ad.discoverable_to = *value;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+					"DiscoverableTimeout");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }

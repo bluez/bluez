@@ -40,3 +40,4 @@ void ad_advertise_timeout(DBusConnection *conn, long int *value);
 void ad_advertise_data(DBusConnection *conn, int argc, char *argv[]);
 void ad_disable_data(DBusConnection *conn);
 void ad_advertise_discoverable(DBusConnection *conn, dbus_bool_t *value);
+void ad_advertise_discoverable_timeout(DBusConnection *conn, long int *value);
