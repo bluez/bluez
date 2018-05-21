@@ -733,7 +733,7 @@ void ad_advertise_name(DBusConnection *conn, bool value)
 	ad.name = value;
 
 	if (!value) {
-		g_free(ad.local_name);
+		free(ad.local_name);
 		ad.local_name = NULL;
 	}
 
