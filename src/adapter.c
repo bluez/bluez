@@ -1416,7 +1416,7 @@ static void free_discovery_filter(struct discovery_filter *discovery_filter)
 	if (!discovery_filter)
 		return;
 
-	g_slist_free_full(discovery_filter->uuids, g_free);
+	g_slist_free_full(discovery_filter->uuids, free);
 	g_free(discovery_filter);
 }
 
