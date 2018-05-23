@@ -1508,6 +1508,11 @@ GObex *g_obex_ref(GObex *obex)
 	return obex;
 }
 
+static void tx_queue_free(void *data, void *user_data)
+{
+	pending_pkt_free(data);
+}
+
 void g_obex_unref(GObex *obex)
 {
 	int refs;
@@ -1521,7 +1526,7 @@ void g_obex_unref(GObex *obex)
 
 	g_slist_free_full(obex->req_handlers, g_free);
 
-	g_queue_foreach(obex->tx_queue, (GFunc) pending_pkt_free, NULL);
+	g_queue_foreach(obex->tx_queue, tx_queue_free, NULL);
 	g_queue_free(obex->tx_queue);
 
 	if (obex->io != NULL)

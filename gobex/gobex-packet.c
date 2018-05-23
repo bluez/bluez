@@ -260,6 +260,11 @@ GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final,
 	return pkt;
 }
 
+static void header_free(void *data, void *user_data)
+{
+	g_obex_header_free(data);
+}
+
 void g_obex_packet_free(GObexPacket *pkt)
 {
 	g_obex_debug(G_OBEX_DEBUG_PACKET, "opcode 0x%02x", pkt->opcode);
@@ -273,7 +278,7 @@ void g_obex_packet_free(GObexPacket *pkt)
 		break;
 	}
 
-	g_slist_foreach(pkt->headers, (GFunc) g_obex_header_free, NULL);
+	g_slist_foreach(pkt->headers, header_free, NULL);
 	g_slist_free(pkt->headers);
 	g_free(pkt);
 }
