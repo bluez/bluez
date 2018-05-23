@@ -2293,7 +2293,7 @@ static void cmd_name(int argc, char **argv)
 	strncpy((char *) cp.name, argv[1], HCI_MAX_NAME_LENGTH);
 	if (argc > 2)
 		strncpy((char *) cp.short_name, argv[2],
-					MGMT_MAX_SHORT_NAME_LENGTH);
+					MGMT_MAX_SHORT_NAME_LENGTH - 1);
 
 	if (mgmt_send(mgmt, MGMT_OP_SET_LOCAL_NAME, index, sizeof(cp), &cp,
 						name_rsp, NULL, NULL) == 0) {

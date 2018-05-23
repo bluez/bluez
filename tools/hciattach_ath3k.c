@@ -499,7 +499,7 @@ static int set_patch_ram(int dev, char *patch_loc, int len)
 }
 
 #define PATCH_LOC_KEY    "DA:"
-#define PATCH_LOC_STRING_LEN    8
+#define PATCH_LOC_STRING_LEN    (8 + 237)
 static int ps_patch_download(int fd, FILE *stream)
 {
 	char byte[3];

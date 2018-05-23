@@ -51,7 +51,7 @@
 #define WAIT_ANY (-1)
 #endif
 
-#define CMDLINE_MAX 2048
+#define CMDLINE_MAX (2048 * 10)
 
 static const char *own_binary;
 static char **test_argv;
@@ -243,9 +243,9 @@ static void start_qemu(void)
 		strcat(cwd, "/");
 
 	if (own_binary[0] == '/')
-		snprintf(initcmd, sizeof(initcmd), "%s", own_binary);
+		snprintf(initcmd, sizeof(initcmd) + 1, "%s", own_binary);
 	else
-		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
+		snprintf(initcmd, sizeof(initcmd) + 1, "%s/%s", cwd, own_binary);
 
 	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
 

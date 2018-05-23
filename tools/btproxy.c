@@ -629,7 +629,7 @@ static int open_unix(const char *path)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	strncpy(addr.sun_path, path, len);
+	strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("Failed to bind Unix server socket");
