@@ -764,6 +764,16 @@ uint16_t mcap_mdl_get_mdlid(struct mcap_mdl *mdl)
 	return mdl->mdlid;
 }
 
+static void shutdown_mdl_cb(void *data, void *user_data)
+{
+	shutdown_mdl(data);
+}
+
+static void mdl_unref_cb(void *data, void *user_data)
+{
+	mcap_mdl_unref(data);
+}
+
 static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 {
 	gboolean save = ((!(mcl->ctrl & MCAP_CTRL_FREE)) && cache_requested);
@@ -789,7 +799,7 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 	if (mcl->priv_data)
 		free_mcl_priv_data(mcl);
 
-	g_slist_foreach(mcl->mdls, (GFunc) shutdown_mdl, NULL);
+	g_slist_foreach(mcl->mdls, shutdown_mdl_cb, NULL);
 
 	mcap_sync_stop(mcl);
 
@@ -798,7 +808,7 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 	if (save)
 		return;
 
-	g_slist_foreach(mcl->mdls, (GFunc) mcap_mdl_unref, NULL);
+	g_slist_foreach(mcl->mdls, mdl_unref_cb, NULL);
 	g_slist_free(mcl->mdls);
 	mcl->mdls = NULL;
 }
