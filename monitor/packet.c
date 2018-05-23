@@ -10048,7 +10048,7 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint8_t priority,
 					const char *ident, const char *message)
 {
-	char pid_str[128];
+	char pid_str[140];
 	const char *label;
 	const char *color;
 
