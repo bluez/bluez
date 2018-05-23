@@ -1231,11 +1231,15 @@ void btd_adv_manager_destroy(struct btd_adv_manager *manager)
 	manager_destroy(manager);
 }
 
+static void manager_refresh(void *data, void *user_data)
+{
+	refresh_adv(data, user_data);
+}
+
 void btd_adv_manager_refresh(struct btd_adv_manager *manager)
 {
 	if (!manager)
 		return;
 
-	queue_foreach(manager->clients, (queue_foreach_func_t)refresh_adv,
-									NULL);
+	queue_foreach(manager->clients, manager_refresh, NULL);
 }

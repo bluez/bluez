@@ -2208,6 +2208,11 @@ static void clear_notify_id(void *data, void *user_data)
 	client->notify_id = 0;
 }
 
+static void client_shutdown(void *data)
+{
+	io_shutdown(data);
+}
+
 void btd_gatt_client_disconnected(struct btd_gatt_client *client)
 {
 	if (!client || !client->gatt)
@@ -2215,8 +2220,7 @@ void btd_gatt_client_disconnected(struct btd_gatt_client *client)
 
 	DBG("Device disconnected. Cleaning up.");
 
-	queue_remove_all(client->ios, NULL, NULL,
-				(queue_destroy_func_t) io_shutdown);
+	queue_remove_all(client->ios, NULL, NULL, client_shutdown);
 
 	/*
 	 * TODO: Once GATT over BR/EDR is properly supported, we should pass the

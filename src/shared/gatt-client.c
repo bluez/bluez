@@ -2183,13 +2183,17 @@ bool bt_gatt_client_cancel(struct bt_gatt_client *client, unsigned int id)
 	return cancel_request(req);
 }
 
+static void cancel_pending(void *data)
+{
+	cancel_request(data);
+}
+
 bool bt_gatt_client_cancel_all(struct bt_gatt_client *client)
 {
 	if (!client || !client->att)
 		return false;
 
-	queue_remove_all(client->pending_requests, NULL, NULL,
-					(queue_destroy_func_t) cancel_request);
+	queue_remove_all(client->pending_requests, NULL, NULL, cancel_pending);
 
 	if (client->discovery_req) {
 		bt_gatt_request_cancel(client->discovery_req);
