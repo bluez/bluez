@@ -1605,7 +1605,7 @@ int hci_write_local_name(int dd, const char *name, int to)
 	struct hci_request rq;
 
 	memset(&cp, 0, sizeof(cp));
-	strncpy((char *) cp.name, name, sizeof(cp.name));
+	strncpy((char *) cp.name, name, sizeof(cp.name) - 1);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
