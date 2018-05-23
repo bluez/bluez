@@ -72,7 +72,7 @@ int sd_notify(int unset_environment, const char *state)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	strncpy(addr.sun_path, sock, sizeof(addr.sun_path));
+	strncpy(addr.sun_path, sock, sizeof(addr.sun_path) - 1);
 
 	if (addr.sun_path[0] == '@')
 		addr.sun_path[0] = '\0';

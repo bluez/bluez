@@ -750,10 +750,10 @@ static void set_local_name_complete(uint8_t status, uint16_t length,
 static int set_name(struct btd_adapter *adapter, const char *name)
 {
 	struct mgmt_cp_set_local_name cp;
-	char maxname[MAX_NAME_LENGTH + 1];
+	char maxname[MAX_NAME_LENGTH];
 
 	memset(maxname, 0, sizeof(maxname));
-	strncpy(maxname, name, MAX_NAME_LENGTH);
+	strncpy(maxname, name, MAX_NAME_LENGTH - 1);
 
 	if (!g_utf8_validate(maxname, -1, NULL)) {
 		btd_error(adapter->dev_id,
