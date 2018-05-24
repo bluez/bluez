@@ -59,7 +59,6 @@ static uint8_t next_app_id = HDP_MDEP_INITIAL;
 
 static GSList *adapters;
 
-static gboolean update_adapter(struct hdp_adapter *adapter);
 static struct hdp_device *create_health_device(struct btd_device *device);
 static void free_echo_data(struct hdp_echo_data *edata);
 
@@ -313,12 +312,14 @@ static void free_health_device(struct hdp_device *device)
 	g_free(device);
 }
 
+static void update_adapter_cb(void *data, void *user_data);
+
 static void remove_application(struct hdp_application *app)
 {
 	DBG("Application %s deleted", app->path);
 	hdp_application_unref(app);
 
-	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
+	g_slist_foreach(adapters, update_adapter_cb, NULL);
 }
 
 static void client_disconnected(DBusConnection *conn, void *user_data)
@@ -369,7 +370,7 @@ static DBusMessage *manager_create_application(DBusConnection *conn,
 	app->dbus_watcher =
 			g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
 					name, client_disconnected, app, NULL);
-	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
+	g_slist_foreach(adapters, update_adapter_cb, NULL);
 
 	DBG("Health application created with id %s", app->path);
 
@@ -404,14 +405,19 @@ static DBusMessage *manager_destroy_application(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static void application_unref(void *data, void *user_data)
+{
+	hdp_application_unref(data);
+}
+
 static void manager_path_unregister(gpointer data)
 {
-	g_slist_foreach(applications, (GFunc) hdp_application_unref, NULL);
+	g_slist_foreach(applications, application_unref, NULL);
 
 	g_slist_free(applications);
 	applications = NULL;
 
-	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
+	g_slist_foreach(adapters, update_adapter_cb, NULL);
 }
 
 static const GDBusMethodTable health_manager_methods[] = {
@@ -1382,6 +1388,11 @@ fail:
 		g_error_free(err);
 
 	return FALSE;
+}
+
+static void update_adapter_cb(void *data, void *user_data)
+{
+	update_adapter(data);
 }
 
 int hdp_adapter_register(struct btd_adapter *adapter)
