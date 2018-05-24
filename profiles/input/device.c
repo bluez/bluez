@@ -674,8 +674,8 @@ static int create_hid_dev_name(sdp_record_t *rec, struct hidp_connadd_req *req)
 
 		if (sdp_get_provider_name(rec, pname, sizeof(pname)) == 0 &&
 						strncmp(sdesc, pname, 5) != 0)
-			snprintf(req->name, sizeof(req->name), "%s %s", pname,
-									sdesc);
+			snprintf(req->name, sizeof(req->name), "%s %s",
+								pname, sdesc);
 		else
 			snprintf(req->name, sizeof(req->name), "%s", sdesc);
 	} else {
@@ -853,8 +853,7 @@ static int uhid_connadd(struct input_device *idev, struct hidp_connadd_req *req)
 	/* create uHID device */
 	memset(&ev, 0, sizeof(ev));
 	ev.type = UHID_CREATE;
-	strncpy((char *) ev.u.create.name, req->name,
-						sizeof(ev.u.create.name) - 1);
+	strncpy((char *) ev.u.create.name, req->name, sizeof(ev.u.create.name));
 	ba2str(&idev->src, (char *) ev.u.create.phys);
 	ba2str(&idev->dst, (char *) ev.u.create.uniq);
 	ev.u.create.vendor = req->vendor;
