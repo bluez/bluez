@@ -706,7 +706,7 @@ int main(int argc, char *argv[])
 	bdaddr_t bdaddr;
 	unsigned short ctrl_psm, data_psm;
 	uint8_t channel, b[6];
-	char *ptr, str[3], device[18], service[12];
+	char *ptr, str[3], device[18], service[13];
 	const char *uri, *cups_class;
 	int i, err, fd, copies, proto;
 
