@@ -304,7 +304,7 @@ static int midi_accept(struct btd_service *service)
 	if (device_name_known(device))
 		device_get_name(device, device_name, sizeof(device_name));
 	else
-		strncpy(device_name, addr, sizeof(addr));
+		strncpy(device_name, addr, sizeof(device_name));
 
 	/* ALSA Sequencer Client and Port Setup */
 	err = snd_seq_open(&midi->seq_handle, "default", SND_SEQ_OPEN_DUPLEX, 0);
