@@ -86,7 +86,7 @@ static void run_bluetoothd(char *prg_name)
 
 static void ctl_start(void)
 {
-	char prg_name[PATH_MAX];
+	char prg_name[PATH_MAX + 11];
 	pid_t pid;
 
 	snprintf(prg_name, sizeof(prg_name), "%s/%s", exec_dir, "bluetoothd");
@@ -114,7 +114,7 @@ static void ctl_start(void)
 
 static void snoop_start(void)
 {
-	char prg_name[PATH_MAX];
+	char prg_name[PATH_MAX + 17];
 	char *prg_argv[3];
 	char *prg_envp[1];
 	pid_t pid;

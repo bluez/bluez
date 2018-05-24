@@ -515,12 +515,17 @@ static sdp_record_t *avrcp_ct_record(void)
 	return record;
 }
 
+static void queue_free(void *data, void *user_data)
+{
+	g_free(data);
+}
+
 static void avrcp_device_free(void *data)
 {
 	struct avrcp_device *dev = data;
 
 	if (dev->queue) {
-		g_queue_foreach(dev->queue, (GFunc) g_free, NULL);
+		g_queue_foreach(dev->queue, queue_free, NULL);
 		g_queue_free(dev->queue);
 	}
 
