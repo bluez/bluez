@@ -218,7 +218,7 @@ static void test_post_teardown(const void *data)
 
 static void bluetoothd_start(int hci_index)
 {
-	char prg_name[PATH_MAX];
+	char prg_name[PATH_MAX + 11];
 	char index[8];
 	char *prg_argv[4];
 
