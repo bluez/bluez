@@ -113,8 +113,7 @@ bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
 	if (!io || !io->l_io)
 		return false;
 
-	return l_io_set_disconnect_handler(io->l_io,
-						(l_io_disconnect_cb_t) callback,
+	return l_io_set_disconnect_handler(io->l_io, (void *) callback,
 							user_data, destroy);
 }
 
