@@ -85,6 +85,9 @@ Methods		array{byte} ReadValue(dict options)
 			Possible options: "offset": Start offset
 					  "device": Device path (Server only)
 					  "link": Link type (Server only)
+					  "prepare-authorize": boolean Is prepare
+							       authorization
+							       request
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
@@ -250,6 +253,7 @@ Properties	string UUID [read-only]
 				"encrypt-authenticated-write"
 				"secure-read" (Server only)
 				"secure-write" (Server only)
+				"authorize"
 
 Characteristic Descriptors hierarchy
 ====================================
@@ -284,6 +288,9 @@ Methods		array{byte} ReadValue(dict flags)
 			Possible options: "offset": Start offset
 					  "device": Device path (Server only)
 					  "link": Link type (Server only)
+					  "prepare-authorize": boolean Is prepare
+							       authorization
+							       request
 
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
@@ -321,6 +328,7 @@ Properties	string UUID [read-only]
 				"encrypt-authenticated-write"
 				"secure-read" (Server Only)
 				"secure-write" (Server Only)
+				"authorize"
 
 GATT Profile hierarchy
 =====================
