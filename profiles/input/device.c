@@ -667,10 +667,10 @@ static void epox_endian_quirk(unsigned char *data, int size)
 
 static int create_hid_dev_name(sdp_record_t *rec, struct hidp_connadd_req *req)
 {
-	char sdesc[sizeof(req->name)];
+	char sdesc[sizeof(req->name) / 2];
 
 	if (sdp_get_service_desc(rec, sdesc, sizeof(sdesc)) == 0) {
-		char pname[sizeof(req->name)];
+		char pname[sizeof(req->name) / 2];
 
 		if (sdp_get_provider_name(rec, pname, sizeof(pname)) == 0 &&
 						strncmp(sdesc, pname, 5) != 0)
