@@ -1208,6 +1208,45 @@ static bool store_prep_data(struct bt_gatt_server *server,
 	return prep_data_new(server, handle, offset, length, value);
 }
 
+struct prep_write_complete_data {
+	void *pdu;
+	uint16_t length;
+	struct bt_gatt_server *server;
+};
+
+static void prep_write_complete_cb(struct gatt_db_attribute *attr, int err,
+								void *user_data)
+{
+	struct prep_write_complete_data *pwcd = user_data;
+	uint16_t handle = 0;
+	uint16_t offset;
+
+	handle = get_le16(pwcd->pdu);
+
+	if (err) {
+		bt_att_send_error_rsp(pwcd->server->att,
+					BT_ATT_OP_PREP_WRITE_REQ, handle, err);
+		free(pwcd->pdu);
+		free(pwcd);
+
+		return;
+	}
+
+	offset = get_le16(pwcd->pdu + 2);
+
+	if (!store_prep_data(pwcd->server, handle, offset, pwcd->length - 4,
+						&((uint8_t *) pwcd->pdu)[4]))
+		bt_att_send_error_rsp(pwcd->server->att,
+					BT_ATT_OP_PREP_WRITE_RSP, handle,
+					BT_ATT_ERROR_INSUFFICIENT_RESOURCES);
+
+	bt_att_send(pwcd->server->att, BT_ATT_OP_PREP_WRITE_RSP, pwcd->pdu,
+						pwcd->length, NULL, NULL, NULL);
+
+	free(pwcd->pdu);
+	free(pwcd);
+}
+
 static void prep_write_cb(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
@@ -1215,7 +1254,8 @@ static void prep_write_cb(uint8_t opcode, const void *pdu,
 	uint16_t handle = 0;
 	uint16_t offset;
 	struct gatt_db_attribute *attr;
-	uint8_t ecode;
+	struct prep_write_complete_data *pwcd;
+	uint8_t ecode, status;
 
 	if (length < 4) {
 		ecode = BT_ATT_ERROR_INVALID_PDU;
@@ -1245,15 +1285,21 @@ static void prep_write_cb(uint8_t opcode, const void *pdu,
 	if (ecode)
 		goto error;
 
-	if (!store_prep_data(server, handle, offset, length - 4,
-						&((uint8_t *) pdu)[4])) {
-		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
-		goto error;
-	}
+	pwcd = new0(struct prep_write_complete_data, 1);
+	pwcd->pdu = malloc(length);
+	memcpy(pwcd->pdu, pdu, length);
+	pwcd->length = length;
+	pwcd->server = server;
 
-	bt_att_send(server->att, BT_ATT_OP_PREP_WRITE_RSP, pdu, length, NULL,
-								NULL, NULL);
-	return;
+	status = gatt_db_attribute_write(attr, offset, NULL, 0,
+						BT_ATT_OP_PREP_WRITE_REQ,
+						server->att,
+						prep_write_complete_cb, pwcd);
+
+	if (status)
+		return;
+
+	ecode = BT_ATT_ERROR_UNLIKELY;
 
 error:
 	bt_att_send_error_rsp(server->att, opcode, handle, ecode);
