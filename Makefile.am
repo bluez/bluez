@@ -426,7 +426,8 @@ unit_test_hog_LDADD = src/libshared-glib.la \
 
 unit_tests += unit/test-gattrib
 
-unit_test_gattrib_SOURCES = unit/test-gattrib.c attrib/gattrib.c $(btio_sources) src/log.h src/log.c
+unit_test_gattrib_SOURCES = unit/test-gattrib.c attrib/gattrib.c \
+					$(btio_sources) src/log.h src/log.c
 unit_test_gattrib_LDADD = lib/libbluetooth-internal.la \
 			src/libshared-glib.la \
 			@GLIB_LIBS@ @DBUS_LIBS@ -ldl -lrt
@@ -474,7 +475,6 @@ EXTRA_DIST += $(manual_pages:.1=.txt)
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-health \
-						--enable-mesh \
 						--enable-midi \
 						--enable-manpages \
 						--enable-android \

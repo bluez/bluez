@@ -69,8 +69,7 @@ endif
 if LOGGER
 libexec_PROGRAMS += tools/btmon-logger
 
-tools_btmon_logger_SOURCES = tools/btmon-logger.c src/systemd.c src/systemd.h \
-				lib/monitor.h
+tools_btmon_logger_SOURCES = tools/btmon-logger.c src/systemd.c src/systemd.h
 tools_btmon_logger_LDADD = src/libshared-mainloop.la
 tools_btmon_logger_DEPENDENCIES = src/libshared-mainloop.la \
 					tools/bluetooth-logger.service
