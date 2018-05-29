@@ -295,6 +295,7 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	size_t len;
 	char *man, *opt;
 	int flags = WRDE_NOCMD;
+	bool optargs = false;
 
 	if (!entry->arg || entry->arg[0] == '\0') {
 		if (argc > 1) {
@@ -323,6 +324,7 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 			goto optional;
 		}
 		man = strndup(opt, man - opt + 1);
+		optargs = true;
 	}
 
 	if (parse_args(man, &w, "<>", flags) < 0) {
@@ -355,7 +357,7 @@ optional:
 	free(opt);
 
 	/* Check if there are too many arguments */
-	if ((unsigned) argc - 1 > w.we_wordc && !w.we_offs) {
+	if (!optargs && ((unsigned int) argc - 1 > w.we_wordc && !w.we_offs)) {
 		print_text(COLOR_HIGHLIGHT, "Too many arguments: %d > %zu",
 					argc - 1, w.we_wordc);
 		goto fail;
