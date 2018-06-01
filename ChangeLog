@@ -1,3 +1,21 @@
+ver 5.50:
+	Fix issue with GATT and reading long values.
+	Fix issue with GATT and reading multiple includes.
+	Fix issue with GATT and service changes when offline.
+	Fix issue with handling secondary service discovery.
+	Fix issue with handling persistency of CCC values.
+	Fix issue with handling Mesh session on disconnection.
+	Fix issue with handling Mesh proxy PDU SAR message length.
+	Fix issue with handling Mesh default heartbeat TTL value.
+	Add support for Mesh node-reset operation handling.
+	Add support for GATT authorization request handling.
+	Add support for GATT minimum key size requirements.
+	Add support for GATT server and included services.
+	Add support for handling additional advertising data.
+	Add support for handling separate discoverable state.
+	Add support for enabling HFP version 1.7 features.
+	Add support for dedicated Bluetooth logging daemon.
+
 ver 5.49:
 	Fix issue with configuring discoverable advertising flag.
 	Fix issue with bearer selection and single mode controllers.
