@@ -68,6 +68,7 @@ tools/bdaddr
 tools/bluemoon
 tools/seq2bseq
 tools/hex2hcd
+tools/bcmfw
 tools/nokfw
 tools/rtlfw
 tools/btiotest

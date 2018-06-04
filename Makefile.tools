@@ -204,7 +204,7 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/btiotest tools/bneptest tools/mcaptest \
 			tools/cltest tools/oobtest tools/advtest \
 			tools/seq2bseq tools/nokfw tools/rtlfw \
-			tools/create-image \
+			tools/bcmfw tools/create-image \
 			tools/eddystone tools/ibeacon \
 			tools/btgatt-client tools/btgatt-server \
 			tools/test-runner tools/check-selftest \
