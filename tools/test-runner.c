@@ -232,7 +232,7 @@ static void check_virtualization(void)
 
 static void start_qemu(void)
 {
-	char cwd[PATH_MAX], initcmd[PATH_MAX], testargs[PATH_MAX];
+	char cwd[PATH_MAX/2], initcmd[PATH_MAX], testargs[PATH_MAX];
 	char cmdline[CMDLINE_MAX];
 	char **argv;
 	int i, pos;
@@ -243,9 +243,9 @@ static void start_qemu(void)
 		strcat(cwd, "/");
 
 	if (own_binary[0] == '/')
-		snprintf(initcmd, sizeof(initcmd) + 1, "%s", own_binary);
+		snprintf(initcmd, sizeof(initcmd), "%s", own_binary);
 	else
-		snprintf(initcmd, sizeof(initcmd) + 1, "%s/%s", cwd, own_binary);
+		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
 
 	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
 
