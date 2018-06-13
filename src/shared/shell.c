@@ -63,6 +63,7 @@ struct bt_shell_env {
 
 static struct {
 	bool init;
+	char *name;
 	int argc;
 	char **argv;
 	bool mode;
@@ -978,6 +979,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 		index = -1;
 	}
 
+	data.name = strdup(argv[0]);
+	bt_shell_set_env("SHELL", data.name);
+
 	data.argc = argc - optind;
 	data.argv = argv + optind;
 	optind = 0;
@@ -1039,6 +1043,7 @@ void bt_shell_cleanup(void)
 	rl_cleanup();
 
 	data.init = false;
+	free(data.name);
 }
 
 void bt_shell_quit(int status)
