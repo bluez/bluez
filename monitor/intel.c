@@ -437,7 +437,7 @@ static void ddc_config_write_cmd(const void *data, uint8_t size)
 		uint16_t param_id = get_le16(data + 1);
 
 		print_field("Identifier: 0x%4.4x", param_id);
-		packet_hexdump(data + 2, param_len - 2);
+		packet_hexdump(data + 3, param_len - 2);
 
 		data += param_len + 1;
 		size -= param_len + 1;
