@@ -64,6 +64,7 @@ struct bt_shell_env {
 static struct {
 	bool init;
 	char *name;
+	char history[256];
 	int argc;
 	char **argv;
 	bool mode;
@@ -892,6 +893,48 @@ static struct io *setup_signalfd(void)
 	return io;
 }
 
+static void rl_init_history(void)
+{
+	const char *name;
+	char *dir;
+
+	memset(data.history, 0, sizeof(data.history));
+
+	name = strrchr(data.name, '/');
+	if (!name)
+		name = data.name;
+	else
+		name++;
+
+	dir = getenv("XDG_CACHE_HOME");
+	if (dir) {
+		snprintf(data.history, sizeof(data.history), "%s/.%s_history",
+							dir, name);
+		goto done;
+	}
+
+	dir = getenv("HOME");
+	if (dir) {
+		snprintf(data.history, sizeof(data.history),
+				"%s/.cache/.%s_history", dir, name);
+		goto done;
+	}
+
+	dir = getenv("PWD");
+	if (dir) {
+		snprintf(data.history, sizeof(data.history), "%s/.%s_history",
+							dir, name);
+		goto done;
+	}
+
+	return;
+
+done:
+	read_history(data.history);
+	using_history();
+	bt_shell_set_env("HISTORY", data.history);
+}
+
 static void rl_init(void)
 {
 	if (data.mode)
@@ -902,6 +945,8 @@ static void rl_init(void)
 
 	rl_erase_empty_line = 1;
 	rl_callback_handler_install(NULL, rl_handler);
+
+	rl_init_history();
 }
 
 static const struct option main_options[] = {
@@ -1001,6 +1046,9 @@ static void rl_cleanup(void)
 {
 	if (data.mode)
 		return;
+
+	if (data.history[0] != '\0')
+		write_history(data.history);
 
 	rl_message("");
 	rl_callback_handler_remove();
