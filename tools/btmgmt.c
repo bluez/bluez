@@ -4165,6 +4165,132 @@ static void cmd_appearance(int argc, char **argv)
 	}
 }
 
+static const char *phys_str[] = {
+	"1MTX",
+	"1MRX",
+	"2MTX",
+	"2MRX",
+	"CODEDTX",
+	"CODEDRX",
+};
+
+static const char *phys2str(uint16_t phys)
+{
+	static char str[256];
+	unsigned int i;
+	int off;
+
+	off = 0;
+	str[0] = '\0';
+
+	for (i = 0; i < NELEM(phys_str); i++) {
+		if ((phys & (1 << i)) != 0)
+			off += snprintf(str + off, sizeof(str) - off, "%s ",
+							phys_str[i]);
+	}
+
+	return str;
+}
+
+static void get_phy_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_get_phy_confguration *rp = param;
+	uint16_t supported_flags, selected_phys;
+
+	if (status != 0) {
+		error("Get PHY Configuration failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small get-phy reply (%u bytes)", len);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	supported_flags = get_le16(&rp->supported_phys);
+	selected_phys = get_le16(&rp->selected_phys);
+
+	print("Supported phys: %s", phys2str(supported_flags));
+	print("Selected phys: %s", phys2str(selected_phys));
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void get_phy(void)
+{
+	uint16_t index;
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send(mgmt, MGMT_OP_GET_PHY_CONFIGURATION, index, 0, NULL,
+					get_phy_rsp, NULL, NULL) == 0) {
+		error("Unable to send Get PHY cmd");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void set_phy_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0) {
+		error("Could not set PHY Configuration with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print("PHY Configuration successfully set");
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_phy(int argc, char **argv)
+{
+	struct mgmt_cp_set_phy_confguration cp;
+	int i;
+	uint16_t phys = 0;
+	uint16_t index;
+
+	if (argc < 2)
+		return get_phy();
+
+	for (i = 1; i < argc; i++) {
+		if (strcasecmp(argv[i], "1MTX") == 0)
+			phys |= MGMT_PHY_LE_1M_TX;
+
+		if (strcasecmp(argv[i], "1MRX") == 0)
+			phys |= MGMT_PHY_LE_1M_RX;
+
+		if (strcasecmp(argv[i], "2MTX") == 0)
+			phys |= MGMT_PHY_LE_2M_TX;
+
+		if (strcasecmp(argv[i], "2MRX") == 0)
+			phys |= MGMT_PHY_LE_2M_RX;
+
+		if (strcasecmp(argv[i], "CODEDTX") == 0)
+			phys |= MGMT_PHY_LE_CODED_TX;
+
+		if (strcasecmp(argv[i], "CODEDRX") == 0)
+			phys |= MGMT_PHY_LE_CODED_RX;
+	}
+
+	cp.default_phys = cpu_to_le16(phys);
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_PHY_CONFIGURATION, index, sizeof(cp),
+					&cp, set_phy_rsp, NULL, NULL) == 0) {
+		error("Unable to send %s cmd",
+				mgmt_opstr(MGMT_OP_GET_PHY_CONFIGURATION));
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 {
 	mgmt_register(mgmt, MGMT_EV_CONTROLLER_ERROR, index, controller_error,
@@ -4360,6 +4486,8 @@ static const struct bt_shell_menu main_menu = {
 		cmd_clr_adv,		"Clear advertising instances"	},
 	{ "appearance",		"<appearance>",
 		cmd_appearance,		"Set appearance"		},
+	{ "phy",		"[phys]",
+		cmd_phy,		"Get/Set PHY Configuration"	},
 	{} },
 };
 
