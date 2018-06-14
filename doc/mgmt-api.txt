@@ -2917,6 +2917,72 @@ Set Appearance Command
 				Invalid Index
 
 
+Get PHY Configuration Command
+==========================
+
+	Command Code:		0x0043
+	Controller Index:	<controller id>
+	Command Parameters:
+	Return Parameters:	Supported_phys (2 Octet)
+				Selected_phys (2 Octet)
+
+	This command is used to retrieve the supported PHYs and currently
+	selected PHYs.
+
+	Supported_phys and Selected_phys is a bitmask with the following bits.
+		0	LE 1M TX
+		1	LE 1M RX
+		2	LE 2M TX
+		3	LE 2M RX
+		4	LE CODED TX
+		5	LE CODED RX
+
+	LE 1M TX and LE 1M RX would be supported by default.
+
+	This command is only available for LE capable controllers.
+        It will return Not Supported otherwise.
+
+        Possible errors:	Not Supported
+				Invalid Index
+
+Set PHY Configuration Command
+=============================
+
+	Command Code:		0x0044
+	Controller Index:	<controller id>
+	Command Parameters: 	Default_phys (2 Octet)
+	Return Parameters:
+
+	This command is used to set the default phy to the controller.
+
+	This will be stored and used for all the subsequent scanning
+	and connection initiation.
+
+	The list of supported PHYs can be retrieved via the
+	Get PHY Configuration command. Selecting unsupported PHYs will
+	result in an Invalid Parameters	error.
+
+	This can be called at any point to change the preferred PHYs.
+
+	Default_phys is a bitmask with the following bits.
+		0	LE 1M TX
+		1	LE 1M RX
+		2	LE 2M TX
+		3	LE 2M RX
+		4	LE CODED TX
+		5	LE CODED RX
+
+	This command generates a Command Complete event on success
+	or a Command Status event on failure.
+
+	This command is only available for LE capable controllers.
+	It will return Not Supported otherwise.
+
+	Possible errors:	Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
@@ -3779,6 +3845,21 @@ Extended Controller Information Changed Event
 	This event will only be used after Read Extended Controller
 	Information command has been used at least once. If it has not
 	been used the legacy events are used.
+
+	The event will only be sent to management sockets other than the
+	one through which the change was triggered.
+
+PHY Configuration Changed Event
+===============================
+
+	Event Code:		0x0026
+	Controller Index:	<controller id>
+	Event Parameters:	Selected_phys (2 Octets)
+
+	This event indicates that default PHYs have been updated.
+
+	This event will only be used after Set PHY Configuration
+	command has been used at least once.
 
 	The event will only be sent to management sockets other than the
 	one through which the change was triggered.
