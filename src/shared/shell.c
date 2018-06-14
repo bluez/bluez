@@ -114,8 +114,6 @@ static const struct bt_shell_menu *find_menu(const char *name, size_t len)
 
 		if (!strncmp(menu->name, name, len))
 			return menu;
-
-
 	}
 
 	return NULL;
