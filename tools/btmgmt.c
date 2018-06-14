@@ -3629,6 +3629,9 @@ static const char *adv_flags_str[] = {
 				"tx-power",
 				"scan-rsp-appearance",
 				"scan-rsp-local-name",
+				"Secondary-channel-1M",
+				"Secondary-channel-2M",
+				"Secondary-channel-CODED",
 };
 
 static const char *adv_flags2str(uint32_t flags)
@@ -3846,6 +3849,7 @@ static void add_adv_usage(void)
 		"\t -s, --scan-rsp <data>     Scan Response Data bytes\n"
 		"\t -t, --timeout <timeout>   Timeout in seconds\n"
 		"\t -D, --duration <duration> Duration in seconds\n"
+		"\t -P, --phy <phy>           Phy type, Specify 1M/2M/CODED\n"
 		"\t -c, --connectable         \"connectable\" flag\n"
 		"\t -g, --general-discov      \"general-discoverable\" flag\n"
 		"\t -l, --limited-discov      \"limited-discoverable\" flag\n"
@@ -3864,6 +3868,7 @@ static struct option add_adv_options[] = {
 	{ "scan-rsp",		1, 0, 's' },
 	{ "timeout",		1, 0, 't' },
 	{ "duration",		1, 0, 'D' },
+	{ "phy",		1, 0, 'P' },
 	{ "connectable",	0, 0, 'c' },
 	{ "general-discov",	0, 0, 'g' },
 	{ "limited-discov",	0, 0, 'l' },
@@ -3932,7 +3937,7 @@ static void cmd_add_adv(int argc, char **argv)
 	uint32_t flags = 0;
 	uint16_t index;
 
-	while ((opt = getopt_long(argc, argv, "+u:d:s:t:D:cglmphna",
+	while ((opt = getopt_long(argc, argv, "+u:d:s:t:D:P:cglmphna",
 						add_adv_options, NULL)) != -1) {
 		switch (opt) {
 		case 'u':
@@ -4016,6 +4021,16 @@ static void cmd_add_adv(int argc, char **argv)
 			break;
 		case 'a':
 			flags |= MGMT_ADV_FLAG_APPEARANCE;
+			break;
+		case 'P':
+			if (strcasecmp(optarg, "1M") == 0)
+				flags |= MGMT_ADV_FLAG_SEC_1M;
+			else if (strcasecmp(optarg, "2M") == 0)
+				flags |= MGMT_ADV_FLAG_SEC_2M;
+			else if (strcasecmp(optarg, "CODED") == 0)
+				flags |= MGMT_ADV_FLAG_SEC_CODED;
+			else
+				goto done;
 			break;
 		case 'h':
 			success = true;
