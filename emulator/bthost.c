@@ -839,6 +839,12 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_LE_SET_ADV_DATA:
 		break;
+	case BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS:
+		break;
+	case BT_HCI_CMD_LE_SET_EXT_ADV_DATA:
+		break;
+	case BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE:
+		break;
 	default:
 		printf("Unhandled cmd_complete opcode 0x%04x\n", opcode);
 		break;
@@ -1161,6 +1167,26 @@ static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 	init_conn(bthost, le16_to_cpu(ev->handle), ev->peer_addr, addr_type);
 }
 
+static void evt_le_ext_conn_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_le_enhanced_conn_complete *ev = data;
+	uint8_t addr_type;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (ev->status)
+		return;
+
+	if (ev->peer_addr_type == 0x00)
+		addr_type = BDADDR_LE_PUBLIC;
+	else
+		addr_type = BDADDR_LE_RANDOM;
+
+	init_conn(bthost, le16_to_cpu(ev->handle), ev->peer_addr, addr_type);
+}
+
 static void evt_le_conn_update_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -1239,6 +1265,9 @@ static void evt_le_meta_event(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST:
 		evt_le_ltk_request(bthost, evt_data, len - 1);
+		break;
+	case BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE:
+		evt_le_ext_conn_complete(bthost, evt_data, len - 1);
 		break;
 	default:
 		printf("Unsupported LE Meta event 0x%2.2x\n", *event);
@@ -2269,6 +2298,38 @@ void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr,
 	}
 }
 
+void bthost_hci_ext_connect(struct bthost *bthost, const uint8_t *bdaddr,
+							uint8_t addr_type)
+{
+	struct bt_hci_cmd_le_ext_create_conn *cc;
+	struct bt_hci_le_ext_create_conn *cp;
+	uint8_t buf[sizeof(*cc) + sizeof(*cp)];
+
+	cc = (void *)buf;
+	cp = (void *)cc->data;
+
+	bthost->conn_init = true;
+
+	memset(cc, 0, sizeof(*cc));
+	memset(cp, 0, sizeof(*cp));
+
+	memcpy(cc->peer_addr, bdaddr, sizeof(cc->peer_addr));
+
+	if (addr_type == BDADDR_LE_RANDOM)
+		cc->peer_addr_type = 0x01;
+
+	cc->phys = 0x01;
+
+	cp->scan_interval = cpu_to_le16(0x0060);
+	cp->scan_window = cpu_to_le16(0x0030);
+	cp->min_interval = cpu_to_le16(0x0028);
+	cp->max_interval = cpu_to_le16(0x0038);
+	cp->supv_timeout = cpu_to_le16(0x002a);
+
+	send_command(bthost, BT_HCI_CMD_LE_EXT_CREATE_CONN,
+						buf, sizeof(buf));
+}
+
 void bthost_hci_disconnect(struct bthost *bthost, uint16_t handle,
 								uint8_t reason)
 {
@@ -2301,6 +2362,29 @@ void bthost_set_adv_data(struct bthost *bthost, const uint8_t *data,
 							sizeof(adv_cp));
 }
 
+void bthost_set_ext_adv_data(struct bthost *bthost, const uint8_t *data,
+								uint8_t len)
+{
+	struct bt_hci_cmd_le_set_ext_adv_data *adv_cp;
+	uint8_t buf[sizeof(*adv_cp) + 31];
+
+	adv_cp = (void *)buf;
+
+	memset(adv_cp, 0, sizeof(*adv_cp));
+	memset(adv_cp->data, 0, 31);
+
+	adv_cp->operation = 0x03;
+	adv_cp->fragment_preference = 0x01;
+
+	if (len) {
+		adv_cp->data_len = len;
+		memcpy(adv_cp->data, data, len);
+	}
+
+	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_DATA, buf,
+							sizeof(buf));
+}
+
 void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable)
 {
 	struct bt_hci_cmd_le_set_adv_parameters cp;
@@ -2310,6 +2394,21 @@ void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable)
 							&cp, sizeof(cp));
 
 	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_ENABLE, &enable, 1);
+}
+
+void bthost_set_ext_adv_enable(struct bthost *bthost, uint8_t enable)
+{
+	struct bt_hci_cmd_le_set_ext_adv_params cp;
+	struct bt_hci_cmd_le_set_ext_adv_enable cp_enable;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.evt_properties = cpu_to_le16(0x0013);
+	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
+							&cp, sizeof(cp));
+
+	cp_enable.enable = enable;
+	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE, &cp_enable,
+					sizeof(cp_enable));
 }
 
 void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)

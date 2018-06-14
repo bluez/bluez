@@ -331,6 +331,9 @@ struct hciemu *hciemu_new(enum hciemu_type type)
 	case HCIEMU_TYPE_LEGACY:
 		hciemu->btdev_type = BTDEV_TYPE_BREDR20;
 		break;
+	case HCIEMU_TYPE_BREDRLE50:
+		hciemu->btdev_type = BTDEV_TYPE_BREDRLE50;
+		break;
 	default:
 		return NULL;
 	}

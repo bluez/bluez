@@ -3010,6 +3010,7 @@ struct bt_hci_le_ext_adv_report {
 	uint8_t  direct_addr_type;
 	uint8_t  direct_addr[6];
 	uint8_t  data_len;
+	uint8_t  data[0];
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_ADV_SET_TERM		0x12
