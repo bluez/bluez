@@ -49,6 +49,11 @@ static void print_handle(uint16_t handle)
 	packet_print_handle(handle);
 }
 
+static void print_rssi(int8_t rssi)
+{
+	packet_print_rssi(rssi);
+}
+
 static void print_sco_routing(uint8_t routing)
 {
 	const char *str;
@@ -364,6 +369,24 @@ static void write_uart_clock_setting_cmd(const void *data, uint8_t size)
 	print_clock_setting(clock);
 }
 
+static void read_raw_rssi_cmd(const void *data, uint8_t size)
+{
+	uint16_t handle = get_le16(data);
+
+	print_handle(handle);
+}
+
+static void read_raw_rssi_rsp(const void *data, uint8_t size)
+{
+	uint8_t status = get_u8(data);
+	uint16_t handle = get_le16(data + 1);
+	int8_t rssi = get_s8(data + 3);
+
+	print_status(status);
+	print_handle(handle);
+	print_rssi(rssi);
+}
+
 static void write_ram_cmd(const void *data, uint8_t size)
 {
 	uint32_t addr = get_le32(data);
@@ -540,6 +563,9 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x045, "Write UART Clock Setting",
 			write_uart_clock_setting_cmd, 1, true,
 			status_rsp, 1, true },
+	{ 0x048, "Read Raw RSSI",
+			read_raw_rssi_cmd, 2, true,
+			read_raw_rssi_rsp, 4, true },
 	{ 0x04c, "Write RAM",
 			write_ram_cmd, 4, false,
 			status_rsp, 1, true },

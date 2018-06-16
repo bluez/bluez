@@ -3881,6 +3881,11 @@ void packet_print_handle(uint16_t handle)
 	print_handle_native(handle);
 }
 
+void packet_print_rssi(int8_t rssi)
+{
+	print_rssi(rssi);
+}
+
 void packet_print_ad(const void *data, uint8_t size)
 {
 	print_eir(data, size, true);
