@@ -427,6 +427,14 @@ static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
 		*index = 0x0000;
 		*opcode = BTSNOOP_OPCODE_ACL_RX_PKT;
 		break;
+	case 0x08:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_SCO_TX_PKT;
+		break;
+	case 0x09:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_SCO_RX_PKT;
+		break;
 	case 0x0b:
 		*index = 0x0000;
 		*opcode = BTSNOOP_OPCODE_VENDOR_DIAG;
