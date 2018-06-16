@@ -44,6 +44,11 @@ static void print_status(uint8_t status)
 	packet_print_error("Status", status);
 }
 
+static void print_handle(uint16_t handle)
+{
+	packet_print_handle(handle);
+}
+
 static void print_sco_routing(uint8_t routing)
 {
 	const char *str;
@@ -403,6 +408,29 @@ static void read_vid_pid_rsp(const void *data, uint8_t size)
 	print_field("Product: %4.4x:%4.4x", vid, pid);
 }
 
+static void write_high_priority_connection_cmd(const void *data, uint8_t size)
+{
+	uint16_t handle = get_le16(data);
+	uint8_t priority = get_u8(data + 2);
+	const char *str;
+
+	print_handle(handle);
+
+	switch (priority) {
+	case 0x00:
+		str = "Low";
+		break;
+	case 0x01:
+		str = "High";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Priority: %s (0x%2.2x)", str, priority);
+}
+
 static const struct {
 	uint8_t bit;
 	const char *str;
@@ -524,7 +552,9 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x05a, "Read VID PID",
 			null_cmd, 0, true,
 			read_vid_pid_rsp, 5, true },
-	{ 0x057, "Write High Priority Connection" },
+	{ 0x057, "Write High Priority Connection",
+			write_high_priority_connection_cmd, 3, true,
+			status_rsp, 1, true },
 	{ 0x06d, "Write I2SPCM Interface Param" },
 	{ 0x06e, "Read Controller Features",
 			null_cmd, 0, true,

@@ -50,6 +50,7 @@ void packet_print_version(const char *label, uint8_t version,
 				const char *sublabel, uint16_t subversion);
 void packet_print_company(const char *label, uint16_t company);
 void packet_print_addr(const char *label, const void *data, bool random);
+void packet_print_handle(uint16_t handle);
 void packet_print_ad(const void *data, uint8_t size);
 void packet_print_features_lmp(const uint8_t *features, uint8_t page);
 void packet_print_features_ll(const uint8_t *features);

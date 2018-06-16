@@ -734,9 +734,14 @@ static void print_lt_addr(uint8_t lt_addr)
 	print_field("LT address: %d", lt_addr);
 }
 
+static void print_handle_native(uint16_t handle)
+{
+	print_field("Handle: %d", handle);
+}
+
 static void print_handle(uint16_t handle)
 {
-	print_field("Handle: %d", le16_to_cpu(handle));
+	print_handle_native(le16_to_cpu(handle));
 }
 
 static void print_phy_handle(uint8_t phy_handle)
@@ -3869,6 +3874,11 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 void packet_print_addr(const char *label, const void *data, bool random)
 {
 	print_addr(label ? : "Address", data, random ? 0x01 : 0x00);
+}
+
+void packet_print_handle(uint16_t handle)
+{
+	print_handle_native(handle);
 }
 
 void packet_print_ad(const void *data, uint8_t size)
