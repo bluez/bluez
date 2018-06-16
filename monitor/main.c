@@ -77,14 +77,14 @@ static void usage(void)
 }
 
 static const struct option main_options[] = {
-	{ "tty",       required_argument, NULL, 'd' },
-	{ "tty-speed", required_argument, NULL, 'B' },
 	{ "read",      required_argument, NULL, 'r' },
 	{ "write",     required_argument, NULL, 'w' },
 	{ "analyze",   required_argument, NULL, 'a' },
 	{ "server",    required_argument, NULL, 's' },
 	{ "priority",  required_argument, NULL, 'p' },
 	{ "index",     required_argument, NULL, 'i' },
+	{ "tty",       required_argument, NULL, 'd' },
+	{ "tty-speed", required_argument, NULL, 'B' },
 	{ "time",      no_argument,       NULL, 't' },
 	{ "date",      no_argument,       NULL, 'T' },
 	{ "sco",       no_argument,       NULL, 'S' },
@@ -120,22 +120,12 @@ int main(int argc, char *argv[])
 		int opt;
 		struct sockaddr_un addr;
 
-		opt = getopt_long(argc, argv, "d:r:w:a:s:p:i:tTSAEP:vh",
+		opt = getopt_long(argc, argv, "r:w:a:s:p:i:d:B:tTSAEPvh",
 							main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
-		case 'd':
-			tty= optarg;
-			break;
-		case 'B':
-			tty_speed = tty_get_speed(atoi(optarg));
-			if (!tty_speed) {
-				fprintf(stderr, "Unknown speed: %s\n", optarg);
-				return EXIT_FAILURE;
-			}
-			break;
 		case 'r':
 			reader_path = optarg;
 			break;
@@ -165,6 +155,16 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 			packet_select_index(atoi(str));
+			break;
+		case 'd':
+			tty = optarg;
+			break;
+		case 'B':
+			tty_speed = tty_get_speed(atoi(optarg));
+			if (!tty_speed) {
+				fprintf(stderr, "Unknown speed: %s\n", optarg);
+				return EXIT_FAILURE;
+			}
 			break;
 		case 't':
 			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
