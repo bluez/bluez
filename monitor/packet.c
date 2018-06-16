@@ -100,14 +100,15 @@
 
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
+#define UNKNOWN_MANUFACTURER 0xffff
+
 static time_t time_offset = ((time_t) -1);
 static int priority_level = BTSNOOP_PRIORITY_INFO;
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
 static uint16_t index_number = 0;
 static uint16_t index_current = 0;
-
-#define UNKNOWN_MANUFACTURER 0xffff
+static uint16_t fallback_manufacturer = UNKNOWN_MANUFACTURER;
 
 #define CTRL_RAW  0x0000
 #define CTRL_USER 0x0001
@@ -275,6 +276,16 @@ struct index_data {
 };
 
 static struct index_data index_list[MAX_INDEX];
+
+void packet_set_fallback_manufacturer(uint16_t manufacturer)
+{
+	int i;
+
+	for (i = 0; i < MAX_INDEX; i++)
+		index_list[i].manufacturer = manufacturer;
+
+	fallback_manufacturer = manufacturer;
+}
 
 static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 					uint16_t index, const char *channel,
@@ -3994,7 +4005,7 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		if (index < MAX_INDEX) {
 			index_list[index].type = ni->type;
 			memcpy(index_list[index].bdaddr, ni->bdaddr, 6);
-			index_list[index].manufacturer = UNKNOWN_MANUFACTURER;
+			index_list[index].manufacturer = fallback_manufacturer;
 		}
 
 		addr2str(ni->bdaddr, str);
@@ -4058,7 +4069,7 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		if (index < MAX_INDEX)
 			manufacturer = index_list[index].manufacturer;
 		else
-			manufacturer = UNKNOWN_MANUFACTURER;
+			manufacturer = fallback_manufacturer;
 
 		packet_vendor_diag(tv, index, manufacturer, data, size);
 		break;
@@ -8370,7 +8381,7 @@ static const char *current_vendor_str(void)
 	if (index_current < MAX_INDEX)
 		manufacturer = index_list[index_current].manufacturer;
 	else
-		manufacturer = UNKNOWN_MANUFACTURER;
+		manufacturer = fallback_manufacturer;
 
 	switch (manufacturer) {
 	case 2:
@@ -8389,7 +8400,7 @@ static const struct vendor_ocf *current_vendor_ocf(uint16_t ocf)
 	if (index_current < MAX_INDEX)
 		manufacturer = index_list[index_current].manufacturer;
 	else
-		manufacturer = UNKNOWN_MANUFACTURER;
+		manufacturer = fallback_manufacturer;
 
 	switch (manufacturer) {
 	case 2:
@@ -8408,7 +8419,7 @@ static const struct vendor_evt *current_vendor_evt(uint8_t evt)
 	if (index_current < MAX_INDEX)
 		manufacturer = index_list[index_current].manufacturer;
 	else
-		manufacturer = UNKNOWN_MANUFACTURER;
+		manufacturer = fallback_manufacturer;
 
 	switch (manufacturer) {
 	case 2:
@@ -9805,7 +9816,7 @@ static void vendor_evt(const void *data, uint8_t size)
 		if (index_current < MAX_INDEX)
 			manufacturer = index_list[index_current].manufacturer;
 		else
-			manufacturer = UNKNOWN_MANUFACTURER;
+			manufacturer = fallback_manufacturer;
 
 		vendor_event(manufacturer, data, size);
 	}

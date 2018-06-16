@@ -67,6 +67,7 @@ static void usage(void)
 		"\t-i, --index <num>      Show only specified controller\n"
 		"\t-d, --tty <tty>        Read data from TTY\n"
 		"\t-B, --tty-speed <rate> Set TTY speed (default 115200)\n"
+		"\t-V, --vendor <compid>  Set default company identifier\n"
 		"\t-t, --time             Show time instead of time offset\n"
 		"\t-T, --date             Show time and date information\n"
 		"\t-S, --sco              Dump SCO traffic\n"
@@ -85,6 +86,7 @@ static const struct option main_options[] = {
 	{ "index",     required_argument, NULL, 'i' },
 	{ "tty",       required_argument, NULL, 'd' },
 	{ "tty-speed", required_argument, NULL, 'B' },
+	{ "vendor",    required_argument, NULL, 'V' },
 	{ "time",      no_argument,       NULL, 't' },
 	{ "date",      no_argument,       NULL, 'T' },
 	{ "sco",       no_argument,       NULL, 'S' },
@@ -120,7 +122,7 @@ int main(int argc, char *argv[])
 		int opt;
 		struct sockaddr_un addr;
 
-		opt = getopt_long(argc, argv, "r:w:a:s:p:i:d:B:tTSAEPvh",
+		opt = getopt_long(argc, argv, "r:w:a:s:p:i:d:B:V:tTSAEPvh",
 							main_options, NULL);
 		if (opt < 0)
 			break;
@@ -165,6 +167,10 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Unknown speed: %s\n", optarg);
 				return EXIT_FAILURE;
 			}
+			break;
+		case 'V':
+			str = optarg;
+			packet_set_fallback_manufacturer(atoi(str));
 			break;
 		case 't':
 			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
