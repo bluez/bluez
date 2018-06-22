@@ -35,14 +35,14 @@
 #include "src/shared/util.h"
 #include "src/shared/shell.h"
 
-#include "mesh/crypto.h"
-#include "mesh/gatt.h"
-#include "mesh/mesh-net.h"
-#include "mesh/util.h"
-#include "mesh/keys.h"
-#include "mesh/node.h"
-#include "mesh/prov-db.h"
-#include "mesh/net.h"
+#include "tools/mesh/crypto.h"
+#include "tools/mesh/gatt.h"
+#include "tools/mesh/mesh-net.h"
+#include "tools/mesh/util.h"
+#include "tools/mesh/keys.h"
+#include "tools/mesh/node.h"
+#include "tools/mesh/prov-db.h"
+#include "tools/mesh/net.h"
 
 struct address_range
 {

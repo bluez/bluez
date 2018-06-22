@@ -33,9 +33,9 @@
 
 #include "src/shared/shell.h"
 #include "src/shared/util.h"
-#include "mesh/mesh-net.h"
-#include "mesh/node.h"
-#include "mesh/util.h"
+#include "tools/mesh/mesh-net.h"
+#include "tools/mesh/node.h"
+#include "tools/mesh/util.h"
 
 void set_menu_prompt(const char *name, const char *id)
 {

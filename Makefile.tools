@@ -296,25 +296,25 @@ if MESH
 bin_PROGRAMS += tools/meshctl
 
 tools_meshctl_SOURCES = tools/meshctl.c \
-				mesh/mesh-net.h \
-				mesh/node.h mesh/node.c \
-				mesh/gatt.h mesh/gatt.c \
-				mesh/crypto.h mesh/crypto.c \
-				mesh/keys.h \
-				mesh/net.h mesh/net.c \
-				mesh/prov.h mesh/prov.c \
-				mesh/util.h mesh/util.c \
-				mesh/agent.h mesh/agent.c \
-				mesh/prov-db.h mesh/prov-db.c \
-				mesh/config-model.h mesh/config-client.c \
-				mesh/config-server.c \
-				mesh/onoff-model.h mesh/onoff-model.c
+				tools/mesh/mesh-net.h \
+				tools/mesh/node.h tools/mesh/node.c \
+				tools/mesh/gatt.h tools/mesh/gatt.c \
+				tools/mesh/crypto.h tools/mesh/crypto.c \
+				tools/mesh/keys.h \
+				tools/mesh/net.h tools/mesh/net.c \
+				tools/mesh/prov.h tools/mesh/prov.c \
+				tools/mesh/util.h tools/mesh/util.c \
+				tools/mesh/agent.h tools/mesh/agent.c \
+				tools/mesh/prov-db.h tools/mesh/prov-db.c \
+				tools/mesh/config-model.h tools/mesh/config-client.c \
+				tools/mesh/config-server.c \
+				tools/mesh/onoff-model.h tools/mesh/onoff-model.c
 tools_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -ljson-c -lreadline
 endif
 
-EXTRA_DIST += mesh/local_node.json mesh/prov_db.json
+EXTRA_DIST += tools/mesh/local_node.json tools/mesh/prov_db.json
 
 if DEPRECATED
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \

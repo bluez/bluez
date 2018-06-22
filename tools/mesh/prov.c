@@ -41,14 +41,14 @@
 #include "src/shared/shell.h"
 
 #include "gdbus/gdbus.h"
-#include "mesh/node.h"
-#include "mesh/gatt.h"
-#include "mesh/crypto.h"
-#include "mesh/mesh-net.h"
-#include "mesh/util.h"
-#include "mesh/agent.h"
-#include "mesh/prov.h"
-#include "mesh/net.h"
+#include "tools/mesh/node.h"
+#include "tools/mesh/gatt.h"
+#include "tools/mesh/crypto.h"
+#include "tools/mesh/mesh-net.h"
+#include "tools/mesh/util.h"
+#include "tools/mesh/agent.h"
+#include "tools/mesh/prov.h"
+#include "tools/mesh/net.h"
 
 /* Provisioning Security Levels */
 #define MESH_PROV_SEC_HIGH	2

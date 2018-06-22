@@ -39,13 +39,13 @@
 
 #include "src/shared/util.h"
 #include "src/shared/shell.h"
-#include "mesh/mesh-net.h"
-#include "mesh/keys.h"
-#include "mesh/net.h"
-#include "mesh/node.h"
-#include "mesh/prov-db.h"
-#include "mesh/util.h"
-#include "mesh/config-model.h"
+#include "tools/mesh/mesh-net.h"
+#include "tools/mesh/keys.h"
+#include "tools/mesh/net.h"
+#include "tools/mesh/node.h"
+#include "tools/mesh/prov-db.h"
+#include "tools/mesh/util.h"
+#include "tools/mesh/config-model.h"
 
 static bool server_msg_recvd(uint16_t src, uint8_t *data,
 				uint16_t len, void *user_data)

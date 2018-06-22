@@ -35,8 +35,8 @@
 #include <lib/bluetooth.h>
 
 #include "src/shared/shell.h"
-#include "mesh/util.h"
-#include "mesh/agent.h"
+#include "tools/mesh/util.h"
+#include "tools/mesh/agent.h"
 
 struct input_request {
 	oob_type_t type;
