@@ -12,30 +12,6 @@ client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 endif
 
-if MESH
-bin_PROGRAMS += mesh/meshctl
-
-mesh_meshctl_SOURCES = mesh/main.c \
-				mesh/mesh-net.h \
-				mesh/node.h mesh/node.c \
-				mesh/gatt.h mesh/gatt.c \
-				mesh/crypto.h mesh/crypto.c \
-				mesh/keys.h \
-				mesh/net.h mesh/net.c \
-				mesh/prov.h mesh/prov.c \
-				mesh/util.h mesh/util.c \
-				mesh/agent.h mesh/agent.c \
-				mesh/prov-db.h mesh/prov-db.c \
-				mesh/config-model.h mesh/config-client.c \
-				mesh/config-server.c \
-				mesh/onoff-model.h mesh/onoff-model.c
-mesh_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
-				lib/libbluetooth-internal.la \
-				@GLIB_LIBS@ @DBUS_LIBS@ -ljson-c -lreadline
-endif
-
-EXTRA_DIST += mesh/local_node.json mesh/prov_db.json
-
 if MONITOR
 bin_PROGRAMS += monitor/btmon
 
@@ -315,6 +291,30 @@ profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 dist_man_MANS += tools/rctest.1 tools/l2ping.1 tools/bccmd.1 tools/btattach.1
 
 EXTRA_DIST += tools/bdaddr.1
+
+if MESH
+bin_PROGRAMS += tools/meshctl
+
+tools_meshctl_SOURCES = tools/meshctl.c \
+				mesh/mesh-net.h \
+				mesh/node.h mesh/node.c \
+				mesh/gatt.h mesh/gatt.c \
+				mesh/crypto.h mesh/crypto.c \
+				mesh/keys.h \
+				mesh/net.h mesh/net.c \
+				mesh/prov.h mesh/prov.c \
+				mesh/util.h mesh/util.c \
+				mesh/agent.h mesh/agent.c \
+				mesh/prov-db.h mesh/prov-db.c \
+				mesh/config-model.h mesh/config-client.c \
+				mesh/config-server.c \
+				mesh/onoff-model.h mesh/onoff-model.c
+tools_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
+				lib/libbluetooth-internal.la \
+				@GLIB_LIBS@ @DBUS_LIBS@ -ljson-c -lreadline
+endif
+
+EXTRA_DIST += mesh/local_node.json mesh/prov_db.json
 
 if DEPRECATED
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
