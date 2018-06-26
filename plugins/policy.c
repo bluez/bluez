@@ -297,6 +297,42 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 	}
 }
 
+static void hs_cb(struct btd_service *service, btd_service_state_t old_state,
+						btd_service_state_t new_state)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	struct policy_data *data;
+	struct btd_service *sink;
+
+	/* If the device supports Sink set a timer to connect it as well */
+	sink = btd_device_get_service(dev, A2DP_SINK_UUID);
+	if (sink == NULL)
+		return;
+
+	data = policy_get_data(dev);
+
+	switch (new_state) {
+	case BTD_SERVICE_STATE_UNAVAILABLE:
+		break;
+	case BTD_SERVICE_STATE_DISCONNECTED:
+		break;
+	case BTD_SERVICE_STATE_CONNECTING:
+		break;
+	case BTD_SERVICE_STATE_CONNECTED:
+		/* Check if service initiate the connection then proceed
+		 * immediately otherwise set timer
+		 */
+		if (old_state == BTD_SERVICE_STATE_CONNECTING)
+			policy_connect(data, sink);
+		else if (btd_service_get_state(sink) !=
+						BTD_SERVICE_STATE_CONNECTED)
+			policy_set_sink_timer(data);
+		break;
+	case BTD_SERVICE_STATE_DISCONNECTING:
+		break;
+	}
+}
+
 static gboolean policy_connect_tg(gpointer user_data)
 {
 	struct policy_data *data = user_data;
@@ -615,6 +651,9 @@ static void service_cb(struct btd_service *service,
 		controller_cb(service, old_state, new_state);
 	else if (g_str_equal(profile->remote_uuid, AVRCP_TARGET_UUID))
 		target_cb(service, old_state, new_state);
+	else if (g_str_equal(profile->remote_uuid, HFP_HS_UUID) ||
+			g_str_equal(profile->remote_uuid, HSP_HS_UUID))
+		hs_cb(service, old_state, new_state);
 
 	/*
 	 * Return if the reconnection feature is not enabled (all
