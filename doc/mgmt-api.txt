@@ -2943,68 +2943,74 @@ Set Appearance Command
 
 
 Get PHY Configuration Command
-==========================
+=============================
 
 	Command Code:		0x0043
 	Controller Index:	<controller id>
 	Command Parameters:
-	Return Parameters:	Supported_phys (2 Octet)
-				Selected_phys (2 Octet)
+	Return Parameters:	Supported_PHYs (4 Octet)
+				Configurable_PHYs (4 Octets)
+				Selected_PHYs (4 Octet)
 
-	This command is used to retrieve the supported PHYs and currently
-	selected PHYs.
+	The PHYs parameters are a bitmask with currently the
+	following available bits:
 
-	Supported_phys and Selected_phys is a bitmask with the following bits.
-		0	LE 1M TX
-		1	LE 1M RX
-		2	LE 2M TX
-		3	LE 2M RX
-		4	LE CODED TX
-		5	LE CODED RX
+		0	BR 1M 1-Slot
+		1	BR 1M 3-Slot
+		2	BR 1M 5-Slot
+		3	EDR 2M 1-Slot
+		4	EDR 2M 3-Slot
+		5	EDR 2M 5-Slot
+		6	EDR 3M 1-Slot
+		7	EDR 3M 3-Slot
+		8	EDR 3M 5-Slot
+		9	LE 1M TX
+		10	LE 1M RX
+		11	LE 2M TX
+		12	LE 2M RX
+		13	LE Coded TX
+		14	LE Coded RX
 
-	LE 1M TX and LE 1M RX would be supported by default.
+	If BR/EDR is supported, then BR 1M 1-Slot is supported by
+	default and can also not be deselected. If LE is supported,
+	then LE 1M TX and LE 1M RX are supported by default.
 
-	This command is only available for LE capable controllers.
-        It will return Not Supported otherwise.
+	Disabling BR/EDR completely or respectively LE has no impact
+	on the PHY configuration. It is remembered over power cycles.
 
-        Possible errors:	Not Supported
+	This command generates a Command Complete event on success
+	or a Command Status event on failure.
+
+        Possible errors:	Invalid Parameters
 				Invalid Index
+
 
 Set PHY Configuration Command
 =============================
 
 	Command Code:		0x0044
 	Controller Index:	<controller id>
-	Command Parameters: 	Default_phys (2 Octet)
+	Command Parameters: 	Selected_PHYs (4 Octet)
 	Return Parameters:
 
-	This command is used to set the default phy to the controller.
+	This command is used to set the default PHY to the controller.
 
 	This will be stored and used for all the subsequent scanning
 	and connection initiation.
 
 	The list of supported PHYs can be retrieved via the
-	Get PHY Configuration command. Selecting unsupported PHYs will
-	result in an Invalid Parameters	error.
+	Get PHY Configuration command. Selecting unsupported or
+	deselecting default PHYs will result in an Invalid Parameter
+	error.
 
-	This can be called at any point to change the preferred PHYs.
+	This can be called at any point to change the Selected PHYs.
 
-	Default_phys is a bitmask with the following bits.
-		0	LE 1M TX
-		1	LE 1M RX
-		2	LE 2M TX
-		3	LE 2M RX
-		4	LE CODED TX
-		5	LE CODED RX
+	Refer Get PHY Configuration command for PHYs parameter.
 
 	This command generates a Command Complete event on success
 	or a Command Status event on failure.
 
-	This command is only available for LE capable controllers.
-	It will return Not Supported otherwise.
-
-	Possible errors:	Not Supported
-				Invalid Parameters
+	Possible errors:	Invalid Parameters
 				Invalid Index
 
 
@@ -3879,7 +3885,7 @@ PHY Configuration Changed Event
 
 	Event Code:		0x0026
 	Controller Index:	<controller id>
-	Event Parameters:	Selected_phys (2 Octets)
+	Event Parameters:	Selected_PHYs (4 Octets)
 
 	This event indicates that default PHYs have been updated.
 
@@ -3888,3 +3894,5 @@ PHY Configuration Changed Event
 
 	The event will only be sent to management sockets other than the
 	one through which the change was triggered.
+
+	Refer Get PHY Configuration command for PHYs parameter.
