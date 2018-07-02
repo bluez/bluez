@@ -23,6 +23,7 @@
  */
 
 #include <stdbool.h>
+#include <inttypes.h>
 
 bool use_color(void);
 
@@ -63,6 +64,27 @@ do { \
 
 #define print_field(fmt, args...) \
 		print_indent(8, COLOR_OFF, "", "", COLOR_OFF, fmt, ## args)
+
+struct bitfield_data {
+	uint64_t bit;
+	const char *str;
+};
+
+inline uint64_t print_bitfield(int indent, uint64_t val,
+				const struct bitfield_data *table)
+{
+	uint64_t mask = val;
+	int i;
+
+	for (i = 0; table[i].str; i++) {
+		if (val & (((uint64_t) 1) << table[i].bit)) {
+			print_field("%*c%s", indent, ' ', table[i].str);
+			mask &= ~(((uint64_t) 1) << table[i].bit);
+		}
+	}
+
+	return mask;
+}
 
 int num_columns(void);
 

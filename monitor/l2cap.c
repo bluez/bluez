@@ -916,10 +916,7 @@ static void print_info_result(uint16_t result)
 	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
-static struct {
-	uint8_t bit;
-	const char *str;
-} features_table[] = {
+static const struct bitfield_data features_table[] = {
 	{  0, "Flow control mode"			},
 	{  1, "Retransmission mode"			},
 	{  2, "Bi-directional QoS"			},
@@ -936,26 +933,16 @@ static struct {
 
 static void print_features(uint32_t features)
 {
-	uint32_t mask = features;
-	int i;
+	uint32_t mask;
 
 	print_field("Features: 0x%8.8x", features);
 
-	for (i = 0; features_table[i].str; i++) {
-		if (features & (1 << features_table[i].bit)) {
-			print_field("  %s", features_table[i].str);
-			mask &= ~(1 << features_table[i].bit);
-		}
-	}
-
+	mask = print_bitfield(2, features, features_table);
 	if (mask)
 		print_field("  Unknown features (0x%8.8x)", mask);
 }
 
-static struct {
-	uint16_t cid;
-	const char *str;
-} channels_table[] = {
+static const struct bitfield_data channels_table[] = {
 	{ 0x0000, "Null identifier"		},
 	{ 0x0001, "L2CAP Signaling (BR/EDR)"	},
 	{ 0x0002, "Connectionless reception"	},
@@ -970,18 +957,11 @@ static struct {
 
 static void print_channels(uint64_t channels)
 {
-	uint64_t mask = channels;
-	int i;
+	uint64_t mask;
 
 	print_field("Channels: 0x%16.16" PRIx64, channels);
 
-	for (i = 0; channels_table[i].str; i++) {
-		if (channels & (1 << channels_table[i].cid)) {
-			print_field("  %s", channels_table[i].str);
-			mask &= ~(1 << channels_table[i].cid);
-		}
-	}
-
+	mask = print_bitfield(2, channels, channels_table);
 	if (mask)
 		print_field("  Unknown channels (0x%8.8" PRIx64 ")", mask);
 }
