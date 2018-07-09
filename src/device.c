@@ -4986,7 +4986,7 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 		}
 	}
 
-	dev->att_mtu = MIN(mtu, BT_ATT_MAX_LE_MTU);
+	dev->att_mtu = MIN(mtu, main_opts.gatt_mtu);
 	attrib = g_attrib_new(io,
 			cid == ATT_CID ? BT_ATT_DEFAULT_LE_MTU : dev->att_mtu,
 			false);

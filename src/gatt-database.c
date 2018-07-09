@@ -40,6 +40,7 @@
 #include "src/shared/gatt-server.h"
 #include "log.h"
 #include "error.h"
+#include "hcid.h"
 #include "adapter.h"
 #include "device.h"
 #include "gatt-database.h"
@@ -3274,6 +3275,7 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_PSM, ATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_MTU, main_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
 	if (database->l2cap_io == NULL) {
 		error("Failed to start listening: %s", gerr->message);
