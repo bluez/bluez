@@ -1932,7 +1932,9 @@ static void append_options(DBusMessageIter *iter, void *user_data)
 {
 	struct pending_op *op = user_data;
 	const char *path = device_get_path(op->device);
+	struct bt_gatt_server *server;
 	const char *link;
+	uint16_t mtu;
 
 	switch (op->link_type) {
 	case BT_ATT_LINK_BREDR:
@@ -1955,6 +1957,11 @@ static void append_options(DBusMessageIter *iter, void *user_data)
 	if (op->prep_authorize)
 		dict_append_entry(iter, "prepare-authorize", DBUS_TYPE_BOOLEAN,
 							&op->prep_authorize);
+
+	server = btd_device_get_gatt_server(op->device);
+	mtu = bt_gatt_server_get_mtu(server);
+
+	dict_append_entry(iter, "mtu", DBUS_TYPE_UINT16, &mtu);
 }
 
 static void read_setup_cb(DBusMessageIter *iter, void *user_data)
@@ -2234,8 +2241,6 @@ static void acquire_write_setup(DBusMessageIter *iter, void *user_data)
 {
 	struct pending_op *op = user_data;
 	DBusMessageIter dict;
-	struct bt_gatt_server *server;
-	uint16_t mtu;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -2245,12 +2250,6 @@ static void acquire_write_setup(DBusMessageIter *iter, void *user_data)
 					&dict);
 
 	append_options(&dict, op);
-
-	server = btd_device_get_gatt_server(op->device);
-
-	mtu = bt_gatt_server_get_mtu(server);
-
-	dict_append_entry(&dict, "MTU", DBUS_TYPE_UINT16, &mtu);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -2320,8 +2319,6 @@ static void acquire_notify_setup(DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
 	struct pending_op *op = user_data;
-	struct bt_gatt_server *server;
-	uint16_t mtu;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -2331,12 +2328,6 @@ static void acquire_notify_setup(DBusMessageIter *iter, void *user_data)
 					&dict);
 
 	append_options(&dict, op);
-
-	server = btd_device_get_gatt_server(op->device);
-
-	mtu = bt_gatt_server_get_mtu(server);
-
-	dict_append_entry(&dict, "MTU", DBUS_TYPE_UINT16, &mtu);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
