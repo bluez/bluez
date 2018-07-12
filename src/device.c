@@ -4911,7 +4911,7 @@ static void gatt_server_init(struct btd_device *device,
 	gatt_server_cleanup(device);
 
 	device->server = bt_gatt_server_new(db, device->att, device->att_mtu,
-						main_opts.min_enc_key_size);
+						main_opts.key_size);
 	if (!device->server) {
 		error("Failed to initialize bt_gatt_server");
 		return;
