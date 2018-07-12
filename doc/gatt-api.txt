@@ -87,7 +87,7 @@ Methods		array{byte} ReadValue(dict options)
 					  "mtu": Exchanged MTU (Server only)
 					  "device": Device path (Server only)
 					  "link": Link type (Server only)
-					  "prepare-authorize": boolean Is prepare
+					  "prepare-authorize": True if prepare
 							       authorization
 							       request
 
