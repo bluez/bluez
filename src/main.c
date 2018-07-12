@@ -403,8 +403,8 @@ static void parse_config(GKeyFile *config)
 
 	str = g_key_file_get_string(config, "GATT", "Cache", &err);
 	if (err) {
+		DBG("%s", err->message);
 		g_clear_error(&err);
-		main_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
 	} else {
 		main_opts.gatt_cache = parse_gatt_cache(str);
 		g_free(str);
@@ -456,6 +456,7 @@ static void init_defaults(void)
 	main_opts.did_product = 0x0246;		/* BlueZ */
 	main_opts.did_version = (major << 8 | minor);
 
+	main_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
 	main_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
 }
 
