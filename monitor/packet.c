@@ -107,7 +107,6 @@ static time_t time_offset = ((time_t) -1);
 static int priority_level = BTSNOOP_PRIORITY_INFO;
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
-static uint16_t index_number = 0;
 static uint16_t index_current = 0;
 static uint16_t fallback_manufacturer = UNKNOWN_MANUFACTURER;
 
@@ -261,8 +260,9 @@ void packet_select_index(uint16_t index)
 {
 	filter_mask &= ~PACKET_FILTER_SHOW_INDEX;
 
+	control_filter_index(index);
+
 	index_filter = true;
-	index_number = index;
 }
 
 #define print_space(x) printf("%*c", (x), ' ');
@@ -3837,9 +3837,6 @@ void packet_control(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
-	if (index_filter && index_number != index)
-		return;
-
 	control_message(opcode, data, size);
 }
 
@@ -3861,8 +3858,6 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 	const char *ident;
 
 	if (index != HCI_DEV_NONE) {
-		if (index_filter && index_number != index)
-			return;
 		index_current = index;
 	}
 

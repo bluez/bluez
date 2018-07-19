@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -39,6 +40,7 @@
 #include <sys/stat.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <linux/filter.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -58,6 +60,7 @@
 static struct btsnoop *btsnoop_file = NULL;
 static bool hcidump_fallback = false;
 static bool decode_control = true;
+static uint16_t filter_index = HCI_DEV_NONE;
 
 struct control_data {
 	uint16_t channel;
@@ -1028,6 +1031,37 @@ static int open_socket(uint16_t channel)
 	return fd;
 }
 
+static void attach_index_filter(int fd, uint16_t index)
+{
+	struct sock_filter filters[] = {
+		/* Load MGMT index:
+		 * A <- MGMT index
+		 */
+		BPF_STMT(BPF_LD + BPF_B + BPF_ABS,
+					offsetof(struct mgmt_hdr, index)),
+		/* Accept if index is HCI_DEV_NONE:
+		 * A == HCI_DEV_NONE
+		 */
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, HCI_DEV_NONE, 0, 1),
+		/* return */
+		BPF_STMT(BPF_RET|BPF_K, 0x0fffffff), /* pass */
+		/* Accept if index match:
+		 * A == index
+		 */
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, index, 0, 1),
+		/* returns */
+		BPF_STMT(BPF_RET|BPF_K, 0x0fffffff), /* pass */
+		BPF_STMT(BPF_RET|BPF_K, 0), /* reject */
+	};
+	struct sock_fprog fprog = {
+		.len = sizeof(filters) / sizeof(filters[0]),
+		/* casting const away: */
+		.filter = filters,
+	};
+
+	setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog));
+}
+
 static int open_channel(uint16_t channel)
 {
 	struct control_data *data;
@@ -1044,6 +1078,9 @@ static int open_channel(uint16_t channel)
 		free(data);
 		return -1;
 	}
+
+	if (filter_index != HCI_DEV_NONE)
+		attach_index_filter(data->fd, filter_index);
 
 	mainloop_add_fd(data->fd, EPOLLIN, data_callback, data, free_data);
 
@@ -1467,4 +1504,9 @@ int control_tracing(void)
 void control_disable_decoding(void)
 {
 	decode_control = false;
+}
+
+void control_filter_index(uint16_t index)
+{
+	filter_index = index;
 }
