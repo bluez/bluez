@@ -1344,6 +1344,8 @@ static void tty_callback(int fd, uint32_t events, void *user_data)
 
 		btsnoop_write_hci(btsnoop_file, tv, 0, opcode, drops,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
+		ellisys_inject_hci(tv, 0, opcode, hdr->ext_hdr + hdr->hdr_len,
+					pktlen);
 		packet_monitor(tv, NULL, 0, opcode,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
 
