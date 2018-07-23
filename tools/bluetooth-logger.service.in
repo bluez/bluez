@@ -12,7 +12,6 @@ ProtectHome=true
 ProtectSystem=full
 PrivateTmp=true
 PrivateDevices=true
-PrivateNetwork=true
 
 [Install]
 WantedBy=bluetooth.target
