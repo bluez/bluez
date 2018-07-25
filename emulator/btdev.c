@@ -535,6 +535,16 @@ static void set_bredrle_features(struct btdev *btdev)
 	btdev->features[7] |= 0x80;	/* Extended features */
 
 	if (btdev->type >= BTDEV_TYPE_BREDRLE50) {
+		/* These BREDR features are added to test new configuration
+		 * command. If this is added above it will break existing tests
+		 */
+		btdev->features[0] |= 0x01;	/* 3 slot Packets */
+		btdev->features[0] |= 0x02;	/* 5 slot Packets */
+		btdev->features[3] |= 0x02;	/* EDR ACL 2M mode */
+		btdev->features[3] |= 0x04;	/* EDR ACL 3M mode */
+		btdev->features[4] |= 0x80;	/* 3 slot EDR ACL packets */
+		btdev->features[5] |= 0x01;	/* 5 slot EDR ACL packets */
+
 		btdev->le_features[1] |= 0x01;	/* LE 2M PHY */
 		btdev->le_features[1] |= 0x08;	/* LE Coded PHY */
 		btdev->le_features[1] |= 0x10;  /* LE EXT ADV */
