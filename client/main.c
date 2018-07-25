@@ -877,6 +877,7 @@ static void cmd_show(int argc, char *argv[])
 	print_property(proxy, "Class");
 	print_property(proxy, "Powered");
 	print_property(proxy, "Discoverable");
+	print_property(proxy, "DiscoverableTimeout");
 	print_property(proxy, "Pairable");
 	print_uuids(proxy);
 	print_property(proxy, "Modalias");
