@@ -2901,6 +2901,7 @@ static void property_set_discoverable_timeout(
 				GDBusPendingPropertySet id, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
+	bool enabled;
 	dbus_uint32_t value;
 
 	dbus_message_iter_get_basic(iter, &value);
@@ -2914,8 +2915,19 @@ static void property_set_discoverable_timeout(
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 				ADAPTER_INTERFACE, "DiscoverableTimeout");
 
+	if (adapter->pending_settings & MGMT_SETTING_DISCOVERABLE) {
+		if (adapter->current_settings & MGMT_SETTING_DISCOVERABLE)
+			enabled = false;
+		else
+			enabled = true;
+	} else {
+		if (adapter->current_settings & MGMT_SETTING_DISCOVERABLE)
+			enabled = true;
+		else
+			enabled = false;
+	}
 
-	if (adapter->current_settings & MGMT_SETTING_DISCOVERABLE)
+	if (enabled)
 		set_discoverable(adapter, 0x01, adapter->discoverable_timeout);
 }
 
