@@ -759,7 +759,7 @@ static const struct bitfield_data pkt_type_table[] = {
 	{  9, "3-DH3 may not be used"	},
 	{ 10, "DM3 may be used"		},
 	{ 11, "DH3 may be used"		},
-	{ 12, "3-DH5 may not be used"	},
+	{ 12, "2-DH5 may not be used"	},
 	{ 13, "3-DH5 may not be used"	},
 	{ 14, "DM5 may be used"		},
 	{ 15, "DH5 may be used"		},
