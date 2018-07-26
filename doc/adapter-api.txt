@@ -113,6 +113,12 @@ Methods		void StartDiscovery()
 				generated for either ManufacturerData and
 				ServiceData everytime they are discovered.
 
+			bool Discoverable (Default: false)
+
+				Make adapter discoverable while discovering,
+				if the adapter is already discoverable this
+				setting this filter won't do anything.
+
 			When discovery filter is set, Device objects will be
 			created as new devices with matching criteria are
 			discovered regardless of they are connectable or
