@@ -1166,6 +1166,7 @@ static struct set_discovery_filter_args {
 	char **uuids;
 	size_t uuids_len;
 	dbus_bool_t duplicate;
+	dbus_bool_t discoverable;
 	bool set;
 } filter = {
 	.rssi = DISTANCE_VAL_INVALID,
@@ -1204,6 +1205,11 @@ static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 		g_dbus_dict_append_entry(&dict, "DuplicateData",
 						DBUS_TYPE_BOOLEAN,
 						&args->duplicate);
+
+	if (args->discoverable)
+		g_dbus_dict_append_entry(&dict, "Discoverable",
+						DBUS_TYPE_BOOLEAN,
+						&args->discoverable);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -1354,6 +1360,26 @@ static void cmd_scan_filter_duplicate_data(int argc, char *argv[])
 		filter.duplicate = true;
 	else if (!strcmp(argv[1], "off"))
 		filter.duplicate = false;
+	else {
+		bt_shell_printf("Invalid option: %s\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	filter.set = false;
+}
+
+static void cmd_scan_filter_discoverable(int argc, char *argv[])
+{
+	if (argc < 2 || !strlen(argv[1])) {
+		bt_shell_printf("Discoverable: %s\n",
+				filter.discoverable ? "on" : "off");
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	if (!strcmp(argv[1], "on"))
+		filter.discoverable = true;
+	else if (!strcmp(argv[1], "off"))
+		filter.discoverable = false;
 	else {
 		bt_shell_printf("Invalid option: %s\n", argv[1]);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -2509,6 +2535,9 @@ static const struct bt_shell_menu scan_menu = {
 				"Set/Get transport filter" },
 	{ "duplicate-data", "[on/off]", cmd_scan_filter_duplicate_data,
 				"Set/Get duplicate data filter",
+				NULL },
+	{ "discoverable", "[on/off]", cmd_scan_filter_discoverable,
+				"Set/Get discoverable filter",
 				NULL },
 	{ "clear", "[uuids/rssi/pathloss/transport/duplicate-data]",
 				cmd_scan_filter_clear,
