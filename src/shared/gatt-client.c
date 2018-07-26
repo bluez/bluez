@@ -708,6 +708,9 @@ static void ext_prop_read_cb(bool success, uint8_t att_ecode,
 	bool discovering;
 	struct gatt_db_attribute *desc_attr = NULL;
 
+	if (!success)
+		goto done;
+
 	util_debug(client->debug_callback, client->debug_data,
 				"Ext. prop value: 0x%04x", (uint16_t)value[0]);
 
