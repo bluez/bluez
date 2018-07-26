@@ -1416,6 +1416,11 @@ static void filter_clear_duplicate(void)
 	filter.duplicate = false;
 }
 
+static void filter_clear_discoverable(void)
+{
+	filter.discoverable = false;
+}
+
 struct clear_entry {
 	const char *name;
 	void (*clear) (void);
@@ -1427,6 +1432,7 @@ static const struct clear_entry filter_clear[] = {
 	{ "pathloss", filter_clear_pathloss },
 	{ "transport", filter_clear_transport },
 	{ "duplicate-data", filter_clear_duplicate },
+	{ "discoverable", filter_clear_discoverable },
 	{}
 };
 
@@ -2539,7 +2545,8 @@ static const struct bt_shell_menu scan_menu = {
 	{ "discoverable", "[on/off]", cmd_scan_filter_discoverable,
 				"Set/Get discoverable filter",
 				NULL },
-	{ "clear", "[uuids/rssi/pathloss/transport/duplicate-data]",
+	{ "clear",
+		"[uuids/rssi/pathloss/transport/duplicate-data/discoverable]",
 				cmd_scan_filter_clear,
 				"Clears discovery filter.",
 				filter_clear_generator },
