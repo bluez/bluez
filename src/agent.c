@@ -50,13 +50,6 @@
 #include "agent.h"
 #include "shared/queue.h"
 
-#define IO_CAPABILITY_DISPLAYONLY	0x00
-#define IO_CAPABILITY_DISPLAYYESNO	0x01
-#define IO_CAPABILITY_KEYBOARDONLY	0x02
-#define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
-#define IO_CAPABILITY_KEYBOARDDISPLAY	0x04
-#define IO_CAPABILITY_INVALID		0xFF
-
 #define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
 #define AGENT_INTERFACE "org.bluez.Agent1"
 
@@ -150,7 +143,7 @@ static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
 	if (agent)
 		io_cap = agent->capability;
 	else
-		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+		io_cap = IO_CAPABILITY_INVALID;
 
 	adapter_set_io_capability(adapter, io_cap);
 }
@@ -293,6 +286,11 @@ static struct agent *agent_create( const char *name, const char *path,
 	agent->watch = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
 							name, agent_disconnect,
 							agent, NULL);
+
+	if (queue_isempty(default_agents))
+		add_default_agent(agent);
+	else
+		queue_push_tail(default_agents, agent);
 
 	return agent_ref(agent);
 }
