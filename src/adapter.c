@@ -7792,6 +7792,19 @@ int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 {
 	struct mgmt_cp_set_io_capability cp;
 
+	if (!main_opts.pairable) {
+		if (io_cap == IO_CAPABILITY_INVALID) {
+			if (adapter->current_settings & MGMT_SETTING_BONDABLE)
+				set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x00);
+
+			return 0;
+		}
+
+		if (!(adapter->current_settings & MGMT_SETTING_BONDABLE))
+			set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);
+	} else if (io_cap == IO_CAPABILITY_INVALID)
+		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+
 	memset(&cp, 0, sizeof(cp));
 	cp.io_capability = io_cap;
 
@@ -8720,7 +8733,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	set_name(adapter, btd_adapter_get_name(adapter));
 
-	if (!(adapter->current_settings & MGMT_SETTING_BONDABLE))
+	if (main_opts.pairable &&
+			!(adapter->current_settings & MGMT_SETTING_BONDABLE))
 		set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);
 
 	if (!kernel_conn_control)

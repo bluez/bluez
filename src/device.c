@@ -75,8 +75,6 @@
 #include "attrib-server.h"
 #include "eir.h"
 
-#define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
-
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		1
 #define INVALID_FLAGS		0xff
