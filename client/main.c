@@ -1139,6 +1139,24 @@ static void cmd_default_agent(int argc, char *argv[])
 	agent_default(dbus_conn, agent_manager);
 }
 
+#define	DISTANCE_VAL_INVALID	0x7FFF
+
+static struct set_discovery_filter_args {
+	char *transport;
+	dbus_uint16_t rssi;
+	dbus_int16_t pathloss;
+	char **uuids;
+	size_t uuids_len;
+	dbus_bool_t duplicate;
+	dbus_bool_t discoverable;
+	bool set;
+	bool active;
+} filter = {
+	.rssi = DISTANCE_VAL_INVALID,
+	.pathloss = DISTANCE_VAL_INVALID,
+	.set = true,
+};
+
 static void start_discovery_reply(DBusMessage *message, void *user_data)
 {
 	dbus_bool_t enable = GPOINTER_TO_UINT(user_data);
@@ -1154,25 +1172,10 @@ static void start_discovery_reply(DBusMessage *message, void *user_data)
 	}
 
 	bt_shell_printf("Discovery %s\n", enable ? "started" : "stopped");
+
+	filter.active = enable;
 	/* Leave the discovery running even on noninteractive mode */
 }
-
-#define	DISTANCE_VAL_INVALID	0x7FFF
-
-static struct set_discovery_filter_args {
-	char *transport;
-	dbus_uint16_t rssi;
-	dbus_int16_t pathloss;
-	char **uuids;
-	size_t uuids_len;
-	dbus_bool_t duplicate;
-	dbus_bool_t discoverable;
-	bool set;
-} filter = {
-	.rssi = DISTANCE_VAL_INVALID,
-	.pathloss = DISTANCE_VAL_INVALID,
-	.set = true,
-};
 
 static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 {
@@ -1302,6 +1305,9 @@ static void cmd_scan_filter_uuids(int argc, char *argv[])
 
 commit:
 	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter();
 }
 
 static void cmd_scan_filter_rssi(int argc, char *argv[])
@@ -1316,6 +1322,9 @@ static void cmd_scan_filter_rssi(int argc, char *argv[])
 	filter.rssi = atoi(argv[1]);
 
 	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter();
 }
 
 static void cmd_scan_filter_pathloss(int argc, char *argv[])
@@ -1331,6 +1340,9 @@ static void cmd_scan_filter_pathloss(int argc, char *argv[])
 	filter.pathloss = atoi(argv[1]);
 
 	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter();
 }
 
 static void cmd_scan_filter_transport(int argc, char *argv[])
@@ -1346,6 +1358,9 @@ static void cmd_scan_filter_transport(int argc, char *argv[])
 	filter.transport = g_strdup(argv[1]);
 
 	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter();
 }
 
 static void cmd_scan_filter_duplicate_data(int argc, char *argv[])
@@ -1366,6 +1381,9 @@ static void cmd_scan_filter_duplicate_data(int argc, char *argv[])
 	}
 
 	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter();
 }
 
 static void cmd_scan_filter_discoverable(int argc, char *argv[])
@@ -1386,6 +1404,9 @@ static void cmd_scan_filter_discoverable(int argc, char *argv[])
 	}
 
 	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter();
 }
 
 static void filter_clear_uuids(void)
