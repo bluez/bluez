@@ -1177,6 +1177,19 @@ static void start_discovery_reply(DBusMessage *message, void *user_data)
 	/* Leave the discovery running even on noninteractive mode */
 }
 
+static void clear_discovery_filter(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+				DBUS_TYPE_STRING_AS_STRING
+				DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
 static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 {
 	struct set_discovery_filter_args *args = user_data;
@@ -1236,14 +1249,18 @@ static void set_discovery_filter_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static void set_discovery_filter(void)
+static void set_discovery_filter(bool cleared)
 {
+	GDBusSetupFunction func;
+
 	if (check_default_ctrl() == FALSE || filter.set)
 		return;
 
+	func = cleared ? clear_discovery_filter : set_discovery_filter_setup;
+
 	if (g_dbus_proxy_method_call(default_ctrl->proxy, "SetDiscoveryFilter",
-		set_discovery_filter_setup, set_discovery_filter_reply,
-		&filter, NULL) == FALSE) {
+					func, set_discovery_filter_reply,
+					&filter, NULL) == FALSE) {
 		bt_shell_printf("Failed to set discovery filter\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -1263,7 +1280,7 @@ static void cmd_scan(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (enable == TRUE) {
-		set_discovery_filter();
+		set_discovery_filter(false);
 		method = "StartDiscovery";
 	} else
 		method = "StopDiscovery";
@@ -1307,7 +1324,7 @@ commit:
 	filter.set = false;
 
 	if (filter.active)
-		set_discovery_filter();
+		set_discovery_filter(false);
 }
 
 static void cmd_scan_filter_rssi(int argc, char *argv[])
@@ -1324,7 +1341,7 @@ static void cmd_scan_filter_rssi(int argc, char *argv[])
 	filter.set = false;
 
 	if (filter.active)
-		set_discovery_filter();
+		set_discovery_filter(false);
 }
 
 static void cmd_scan_filter_pathloss(int argc, char *argv[])
@@ -1342,7 +1359,7 @@ static void cmd_scan_filter_pathloss(int argc, char *argv[])
 	filter.set = false;
 
 	if (filter.active)
-		set_discovery_filter();
+		set_discovery_filter(false);
 }
 
 static void cmd_scan_filter_transport(int argc, char *argv[])
@@ -1360,7 +1377,7 @@ static void cmd_scan_filter_transport(int argc, char *argv[])
 	filter.set = false;
 
 	if (filter.active)
-		set_discovery_filter();
+		set_discovery_filter(false);
 }
 
 static void cmd_scan_filter_duplicate_data(int argc, char *argv[])
@@ -1383,7 +1400,7 @@ static void cmd_scan_filter_duplicate_data(int argc, char *argv[])
 	filter.set = false;
 
 	if (filter.active)
-		set_discovery_filter();
+		set_discovery_filter(false);
 }
 
 static void cmd_scan_filter_discoverable(int argc, char *argv[])
@@ -1406,7 +1423,7 @@ static void cmd_scan_filter_discoverable(int argc, char *argv[])
 	filter.set = false;
 
 	if (filter.active)
-		set_discovery_filter();
+		set_discovery_filter(false);
 }
 
 static void filter_clear_uuids(void)
@@ -1518,7 +1535,7 @@ static void cmd_scan_filter_clear(int argc, char *argv[])
 	if (check_default_ctrl() == FALSE)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	set_discovery_filter();
+	set_discovery_filter(all);
 }
 
 static struct GDBusProxy *find_device(int argc, char *argv[])
