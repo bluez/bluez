@@ -4501,7 +4501,10 @@ static const struct bt_shell_menu main_menu = {
 		cmd_clr_adv,		"Clear advertising instances"	},
 	{ "appearance",		"<appearance>",
 		cmd_appearance,		"Set appearance"		},
-	{ "phy",		"[phys]",
+	{ "phy",		"[1MTX] [1MRX] [2MTX] [2MRX] [CODEDTX] "
+				"[CODEDRX] [BR1M1SLOT] [BR1M3SLOT] [BR1M5SLOT]"
+				"[EDR2M1SLOT] [EDR2M3SLOT] [EDR2M5SLOT]"
+				"[EDR3M1SLOT] [EDR3M3SLOT] [EDR3M5SLOT]",
 		cmd_phy,		"Get/Set PHY Configuration"	},
 	{} },
 };
