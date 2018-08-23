@@ -298,13 +298,11 @@ bool storage_parse_config(struct mesh_net *net, const char *config_name)
 	result = parse_config(net, config_name, false);
 
 	if (!result) {
-		char *bak = (char *) l_malloc(strlen(config_name) + 5);
-
-		if (!bak)
-			goto done;
+		size_t len = strlen(config_name) + 5;
+		char *bak = l_malloc(len);
 
 		/* Fall-back to Backup version */
-		strncpy(bak, config_name, strlen(config_name) + 1);
+		strncpy(bak, config_name, len);
 		bak = strncat(bak, ".bak", 5);
 
 		remove(config_name);
@@ -592,15 +590,13 @@ struct write_info {
 static void idle_save_config(void *user_data)
 {
 	struct write_info *info = user_data;
-	char *tmp = (char *) l_malloc(strlen(info->config_name) + 5);
-	char *bak = (char *) l_malloc(strlen(info->config_name) + 5);
+	size_t len = strlen(info->config_name) + 5;
+	char *tmp = l_malloc(len);
+	char *bak = l_malloc(len);
 	bool result = false;
 
-	if (!tmp || !bak)
-		goto done;
-
-	strncpy(tmp, info->config_name, strlen(info->config_name)  + 1);
-	strncpy(bak, info->config_name, strlen(info->config_name)  + 1);
+	strncpy(tmp, info->config_name, len);
+	strncpy(bak, info->config_name, len);
 	tmp = strncat(tmp, ".tmp", 5);
 	bak = strncat(bak, ".bak", 5);
 	remove(tmp);
@@ -615,7 +611,6 @@ static void idle_save_config(void *user_data)
 	}
 
 	remove(tmp);
-done:
 	l_free(tmp);
 	l_free(bak);
 
