@@ -81,7 +81,7 @@ static bool config_pub_get(struct mesh_net *net, uint16_t src, uint16_t dst,
 	uint32_t mod_id;
 	uint16_t ele_addr;
 	int ele_idx;
-	struct mesh_model_pub *pub;
+	struct mesh_model_pub *pub = NULL;
 	int status;
 
 	if (size == 4)
