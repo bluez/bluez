@@ -19,6 +19,8 @@
  *
  */
 
+#define TEST_BUF_MAX 5
+
 enum {
 	TEST_ERROR_TIMEOUT,
 	TEST_ERROR_UNEXPECTED,
@@ -32,8 +34,8 @@ struct test_buf {
 struct test_data {
 	guint count;
 	GError *err;
-	struct test_buf recv[4];
-	struct test_buf send[4];
+	struct test_buf recv[TEST_BUF_MAX];
+	struct test_buf send[TEST_BUF_MAX];
 	guint provide_delay;
 	GObex *obex;
 	guint id;
