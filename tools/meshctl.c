@@ -1873,7 +1873,7 @@ static const struct bt_shell_menu main_menu = {
 	{ } },
 };
 
-static const char *mesh_config_dir;
+static const char *config_dir;
 
 static const struct option options[] = {
 	{ "config",	required_argument, 0, 'c' },
@@ -1881,7 +1881,7 @@ static const struct option options[] = {
 };
 
 static const char **optargs[] = {
-	&mesh_config_dir
+	&config_dir
 };
 
 static const char *help[] = {
@@ -1907,38 +1907,57 @@ int main(int argc, char *argv[])
 	int status;
 	int len;
 	int extra;
+	char *mesh_dir = NULL;
 
 	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
 
-	if (!mesh_config_dir) {
-		bt_shell_printf("Local config directory not provided.\n");
-		mesh_config_dir = "";
+	if (!config_dir) {
+		char *home;
+
+		home = getenv("XDG_CONFIG_HOME");
+		if (home) {
+			mesh_dir = g_strdup_printf("%s/meshctl", home);
+		}
+
+		if (!mesh_dir) {
+			home = getenv("HOME");
+			if (home)
+				mesh_dir = g_strdup_printf("%s/.config/meshctl",
+									home);
+		}
+
+		if (!mesh_dir) {
+			g_printerr("Configuration directory not found\n");
+			goto fail;
+		}
+
 	} else {
-		bt_shell_printf("Reading prov_db.json and local_node.json from"
-				" %s\n", mesh_config_dir);
+		mesh_dir = g_strdup_printf("%s", config_dir);
 	}
 
-	len = strlen(mesh_config_dir);
-	if (len && mesh_config_dir[len - 1] != '/') {
+
+	g_print("Reading prov_db.json and local_node.json from %s directory\n",
+								mesh_dir);
+
+	len = strlen(mesh_dir);
+
+	if (len && mesh_dir[len - 1] != '/')
 		extra = 1;
-		bt_shell_printf("mesh_config_dir[%d] %s\n", len,
-						&mesh_config_dir[len - 1]);
-	} else {
+	else
 		extra = 0;
-	}
+
 	mesh_local_config_filename = g_malloc(len + strlen("local_node.json")
 									+ 2);
 	if (!mesh_local_config_filename)
 		goto fail;
 
 	mesh_prov_db_filename = g_malloc(len + strlen("prov_db.json") + 2);
-	if (!mesh_prov_db_filename) {
+	if (!mesh_prov_db_filename)
 		goto fail;
-	}
 
-	sprintf(mesh_local_config_filename, "%s", mesh_config_dir);
+	sprintf(mesh_local_config_filename, "%s", mesh_dir);
 
 	if (extra)
 		sprintf(mesh_local_config_filename + len , "%c", '/');
@@ -1946,7 +1965,6 @@ int main(int argc, char *argv[])
 	sprintf(mesh_local_config_filename + len + extra, "%s",
 							"local_node.json");
 	len = len + extra + strlen("local_node.json");
-	sprintf(mesh_local_config_filename + len, "%c", '\0');
 
 	if (!prov_db_read_local_node(mesh_local_config_filename, true)) {
 		g_printerr("Failed to parse local node configuration file %s\n",
@@ -1954,14 +1972,15 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	sprintf(mesh_prov_db_filename, "%s", mesh_config_dir);
-	len = strlen(mesh_config_dir);
+	sprintf(mesh_prov_db_filename, "%s", mesh_dir);
+	len = strlen(mesh_dir);
+
+	g_free(mesh_dir);
+
 	if (extra)
 		sprintf(mesh_prov_db_filename + len , "%c", '/');
 
 	sprintf(mesh_prov_db_filename + len + extra, "%s", "prov_db.json");
-	sprintf(mesh_prov_db_filename + len + extra + strlen("prov_db.json"),
-								"%c", '\0');
 
 	if (!prov_db_read(mesh_prov_db_filename)) {
 		g_printerr("Failed to parse provisioning database file %s\n",
@@ -2006,5 +2025,7 @@ int main(int argc, char *argv[])
 
 fail:
 	bt_shell_cleanup();
+	g_free(mesh_dir);
+
 	return EXIT_FAILURE;
 }

@@ -1,5 +1,5 @@
 MeshCtl - BlueZ GATT based Bluetooth Mesh Provisioner
-******************************************
+*****************************************************
 
 Copyright (C) 2017  Intel Corporation. All rights reserved.
 
@@ -15,6 +15,23 @@ Configuration and options
 	--enable-mesh
 
 		Build meshctl and other Bluetooth Mesh based tools and utils
+
+Example configuration files
+===========================
+
+The MeshCtl tool requires two input configuration files in JSON format:
+	- local_node.json
+		Local mesh node configuration
+	- prov_db.json
+		Provisoner's database for all the configured nodes in the mesh
+
+The default directory for MeshCtl configuration files is
+/home/<username>/.config/meshctl
+
+To use .json configuration files either copy them to the default directory
+or, to specify a custom storage directory, run meshctl tool as:
+
+	meshctl -c <config_dir_name>
 
 Information
 ===========
