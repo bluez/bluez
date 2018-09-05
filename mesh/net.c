@@ -1133,7 +1133,8 @@ int mesh_net_add_key(struct mesh_net *net, bool update, uint16_t idx,
 		return MESH_STATUS_STORAGE_FAIL;
 	}
 
-	start_network_beacon(subnet, net);
+	if (net->io)
+		start_network_beacon(subnet, net);
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -3099,13 +3100,34 @@ bool mesh_net_set_beacon_mode(struct mesh_net *net, bool enable)
 	return true;
 }
 
-
 bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 {
 	if (!net)
 		return false;
 
 	net->io = io;
+	if (net->provisioned) {
+
+		mesh_io_register_recv_cb(io, MESH_IO_FILTER_BEACON,
+							beacon_recv, net);
+		mesh_io_register_recv_cb(io, MESH_IO_FILTER_NET,
+							net_msg_recv, net);
+		l_queue_foreach(net->subnets, start_network_beacon, net);
+
+	} else {
+		uint8_t *uuid = node_uuid_get(net->local_node);
+
+		if (!uuid)
+			return false;
+
+		mesh_io_deregister_recv_cb(io, MESH_IO_FILTER_BEACON);
+		mesh_io_deregister_recv_cb(io, MESH_IO_FILTER_NET);
+
+		mesh_prov_listen(net, uuid, (uint8_t *) &net->prov_caps,
+					acceptor_prov_open,
+					acceptor_prov_close,
+					acceptor_prov_receive, net);
+	}
 
 	return true;
 }
@@ -4150,33 +4172,10 @@ bool mesh_net_provisioned_new(struct mesh_net *net, uint8_t device_key[16],
 
 void mesh_net_provisioned_set(struct mesh_net *net, bool provisioned)
 {
-	struct mesh_io *io;
-
 	if (!net)
 		return;
 
 	net->provisioned = provisioned;
-	io = net->io;
-
-	if (provisioned) {
-		mesh_io_register_recv_cb(io, MESH_IO_FILTER_BEACON,
-							beacon_recv, net);
-		mesh_io_register_recv_cb(io, MESH_IO_FILTER_NET,
-							net_msg_recv, net);
-	} else {
-		uint8_t *uuid = node_uuid_get(net->local_node);
-
-		if (!uuid)
-			return;
-
-		mesh_io_deregister_recv_cb(io, MESH_IO_FILTER_BEACON);
-		mesh_io_deregister_recv_cb(io, MESH_IO_FILTER_NET);
-
-		mesh_prov_listen(net, uuid, (uint8_t *) &net->prov_caps,
-					acceptor_prov_open,
-					acceptor_prov_close,
-					acceptor_prov_receive, net);
-	}
 }
 
 bool mesh_net_provisioned_get(struct mesh_net *net)

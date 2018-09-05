@@ -30,6 +30,9 @@
 #include <sys/stat.h>
 #include <ell/ell.h>
 
+#include "lib/bluetooth.h"
+#include "lib/mgmt.h"
+
 #include "mesh/mesh.h"
 #include "mesh/net.h"
 #include "mesh/storage.h"
@@ -81,6 +84,7 @@ int main(int argc, char *argv[])
 	sigset_t mask;
 	struct bt_mesh *mesh = NULL;
 	const char *config_file = NULL;
+	int index = MGMT_INDEX_NONE;
 
 	if (!l_main_init())
 		return -1;
@@ -107,12 +111,7 @@ int main(int argc, char *argv[])
 				goto done;
 			}
 
-			mesh = mesh_create(atoi(str));
-			if (!mesh) {
-				l_error("Failed to initialize mesh");
-				status = EXIT_FAILURE;
-				goto done;
-			}
+			index = atoi(str);
 
 			break;
 		case 'n':
@@ -135,14 +134,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!mesh) {
-		usage();
-		status = EXIT_FAILURE;
-		goto done;
-	}
-
-	if (!mesh_load_config(mesh, config_file)) {
-		l_error("Failed to load mesh configuration: %s", config_file);
+	if (!mesh_new(index, config_file)) {
+		l_error("Failed to initialize mesh");
 		status = EXIT_FAILURE;
 		goto done;
 	}
@@ -168,6 +161,7 @@ int main(int argc, char *argv[])
 
 done:
 	mesh_unref(mesh);
+	mesh_cleanup();
 	l_main_exit();
 
 	return status;

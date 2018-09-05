@@ -153,8 +153,8 @@ int main(int argc, char *argv[])
 
 	l_info("Starting mesh on hci%d\n", index);
 
-	mesh = mesh_create(index);
-	if (!mesh || !mesh_load_config(mesh, config_option)) {
+	mesh = mesh_new(index, config_option);
+	if (!mesh) {
 		l_info("Failed to create mesh\n");
 		bt_shell_cleanup();
 		return EXIT_FAILURE;
@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
 	bt_shell_run();
 
 	mesh_unref(mesh);
+	mesh_cleanup();
 	l_main_exit();
 
 	return status;

@@ -21,11 +21,11 @@
 struct bt_mesh;
 struct mesh_net;
 
-struct bt_mesh *mesh_create(uint16_t index);
+struct bt_mesh *mesh_new(uint16_t index, const char *in_config_name);
 struct bt_mesh *mesh_ref(struct bt_mesh *mesh);
 void mesh_unref(struct bt_mesh *mesh);
-bool mesh_load_config(struct bt_mesh *mesh, const char *in_config_name);
 bool mesh_set_output(struct bt_mesh *mesh, const char *out_config_name);
+void mesh_cleanup(void);
 const char *mesh_status_str(uint8_t err);
 
 /* Command line testing */

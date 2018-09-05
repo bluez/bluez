@@ -23,7 +23,7 @@ libexec_PROGRAMS += mesh/meshd
 mesh_meshd_SOURCES = $(mesh_sources) mesh/main.c
 
 mesh_meshd_LDADD = src/shared/ecc.lo src/shared/queue.lo src/shared/io-ell.lo \
-				src/shared/util.lo src/shared/hci.lo \
+				src/shared/util.lo src/shared/hci.lo src/shared/mgmt.lo \
 				@DBUS_LIBS@ @ELL_LIBS@ -ljson-c
 
 noinst_PROGRAMS += mesh/btmesh
@@ -34,7 +34,7 @@ mesh_btmesh_SOURCES = $(mesh_sources) \
 						mesh/btmesh.c
 
 mesh_btmesh_LDADD = src/shared/ecc.lo src/shared/queue.lo src/shared/io-ell.lo \
-				src/shared/util.lo src/shared/hci.lo \
+				src/shared/util.lo src/shared/hci.lo src/shared/mgmt.lo \
 				src/libshared-mainloop.la \
 				-lreadline @ELL_LIBS@ -ljson-c
 
