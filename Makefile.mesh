@@ -1,5 +1,6 @@
 if MESH
 mesh_sources = mesh/mesh.h mesh/mesh.c \
+				mesh/net_keys.h mesh/net_keys.c \
 				mesh/mesh-io.h mesh/mesh-io.c \
 				mesh/mesh-io-api.h \
 				mesh/mesh-io-generic.h \
