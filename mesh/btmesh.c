@@ -137,8 +137,8 @@ int main(int argc, char *argv[])
 	bt_shell_set_menu(&main_menu);
 
 	if (!index_option) {
-		bt_shell_usage();
-		return 0;
+		l_info("Controller index is required");
+		goto fail;
 	}
 
 	if (config_option)
@@ -156,8 +156,7 @@ int main(int argc, char *argv[])
 	mesh = mesh_new(index, config_option);
 	if (!mesh) {
 		l_info("Failed to create mesh\n");
-		bt_shell_cleanup();
-		return EXIT_FAILURE;
+		goto fail;
 	}
 
 	if (save_option)
@@ -172,6 +171,9 @@ int main(int argc, char *argv[])
 	mesh_unref(mesh);
 	mesh_cleanup();
 	l_main_exit();
-
 	return status;
+
+fail:
+	bt_shell_cleanup();
+	return EXIT_FAILURE;
 }
