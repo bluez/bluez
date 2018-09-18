@@ -54,4 +54,4 @@ void frnd_offer(struct mesh_net *net, uint16_t src, uint8_t window,
 			uint8_t cache, uint8_t sub_list_size,
 			int8_t r_rssi, int8_t l_rssi, uint16_t fn_cnt);
 void frnd_key_refresh(struct mesh_net *net, uint8_t phase);
-struct mesh_key_set *frnd_get_key(struct mesh_net *net);
+uint32_t frnd_get_key(struct mesh_net *net);

@@ -29,6 +29,7 @@
 #include "mesh/mesh-defs.h"
 
 #include "mesh/mesh.h"
+#include "mesh/net_keys.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
 #include "mesh/crypto.h"
@@ -56,7 +57,7 @@ static uint8_t frnd_sublist_size = FRND_SUB_LIST_SIZE;
 struct frnd_negotiation {
 	struct l_timeout	*timeout;
 	struct mesh_net		*net;
-	struct mesh_key_set	key_set;
+	uint32_t		key_id;
 	uint32_t		poll_timeout;
 	uint16_t		low_power_node;
 	uint16_t		old_relay;
@@ -79,7 +80,7 @@ static void response_timeout(struct l_timeout *timeout, void *user_data)
 	/* LPN did not choose us */
 	l_info("Did not win negotiation for %4.4x", neg->low_power_node);
 
-	mesh_net_remove_keyset(neg->net, &neg->key_set);
+	net_key_unref(neg->key_id);
 	l_queue_remove(frnd_negotiations, neg);
 	l_timeout_remove(timeout);
 	l_free(neg);
@@ -89,8 +90,7 @@ static void response_delay(struct l_timeout *timeout, void *user_data)
 {
 	struct frnd_negotiation *neg = user_data;
 	uint16_t net_idx = mesh_net_get_primary_idx(neg->net);
-	uint8_t key[16];
-	uint8_t p[9] = { 1 };
+	uint32_t key_id;
 	uint8_t msg[8];
 	uint16_t n = 0;
 	bool res;
@@ -98,27 +98,17 @@ static void response_delay(struct l_timeout *timeout, void *user_data)
 	l_timeout_remove(timeout);
 
 	/* Create key Set for this offer */
-	l_put_be16(neg->low_power_node, p + 1);
-	l_put_be16(mesh_net_get_address(neg->net), p + 3);
-	l_put_be16(neg->lp_cnt, p + 5);
-	l_put_be16(counter, p + 7);
-	res = mesh_net_get_key(neg->net, false, net_idx, key);
+	res = mesh_net_get_key(neg->net, false, net_idx, &key_id);
 	if (!res)
 		goto cleanup;
 
-	print_packet("Friend Key P =", p, 9);
-	res = mesh_crypto_k2(key, p, sizeof(p), &neg->key_set.nid,
-			neg->key_set.enc_key, neg->key_set.privacy_key);
-	if (!res)
+	neg->key_id = net_key_frnd_add(key_id, neg->low_power_node,
+						mesh_net_get_address(neg->net),
+						neg->lp_cnt, counter);
+	if (!neg->key_id)
 		goto cleanup;
-
-	print_packet("NID =", &neg->key_set.nid, 1);
-	print_packet("ENC_KEY =", neg->key_set.enc_key, 16);
-	print_packet("PRIV_KEY =", neg->key_set.privacy_key, 16);
 
 	neg->fn_cnt = counter++;
-	neg->key_set.frnd = true;
-	mesh_net_add_keyset(neg->net, &neg->key_set);
 
 	msg[n++] = NET_OP_FRND_OFFER;
 	msg[n++] = frnd_relay_window;
@@ -128,7 +118,7 @@ static void response_delay(struct l_timeout *timeout, void *user_data)
 	l_put_be16(neg->fn_cnt, msg + n);
 	n += 2;
 	print_packet("Tx-NET_OP_FRND_OFFER", msg, n);
-	mesh_net_transport_send(neg->net, NULL, true,
+	mesh_net_transport_send(neg->net, 0, true,
 			mesh_net_get_iv_index(neg->net), 0,
 			0, 0, neg->low_power_node,
 			msg, n);
@@ -142,7 +132,7 @@ static void response_delay(struct l_timeout *timeout, void *user_data)
 	return;
 
 cleanup:
-	mesh_net_remove_keyset(neg->net, &neg->key_set);
+	net_key_unref(neg->key_id);
 	l_queue_remove(frnd_negotiations, neg);
 	l_free(neg);
 }
@@ -357,7 +347,7 @@ void friend_clear(struct mesh_net *net, uint16_t src, uint16_t lpn,
 
 	l_put_be16(lpn, msg + 1);
 	l_put_be16(lpnCounter, msg + 3);
-	mesh_net_transport_send(net, NULL, false,
+	mesh_net_transport_send(net, 0, false,
 			mesh_net_get_iv_index(net), DEFAULT_TTL,
 			0, 0, src,
 			msg, sizeof(msg));
@@ -372,7 +362,7 @@ static void clear_retry(struct l_timeout *timeout, void *user_data)
 
 	l_put_be16(neg->low_power_node, msg + 1);
 	l_put_be16(neg->lp_cnt, msg + 3);
-	mesh_net_transport_send(neg->net, NULL, false,
+	mesh_net_transport_send(neg->net, 0, false,
 			mesh_net_get_iv_index(neg->net), DEFAULT_TTL,
 			0, 0, neg->old_relay,
 			msg, sizeof(msg));
@@ -422,7 +412,7 @@ static void friend_delay_rsp(struct l_timeout *timeout, void *user_data)
 					pkt->iv_index);
 
 			pkt->u.one[0].sent = true;
-			mesh_net_ack_send(net, &frnd->key_set,
+			mesh_net_ack_send(net, frnd->net_key_cur,
 					pkt->iv_index, pkt->ttl,
 					pkt->u.one[0].seq, pkt->src, pkt->dst,
 					rly, seqZero,
@@ -438,7 +428,7 @@ static void friend_delay_rsp(struct l_timeout *timeout, void *user_data)
 					pkt->u.one[0].data, pkt->last_len);
 
 			pkt->u.one[0].sent = true;
-			mesh_net_transport_send(net, &frnd->key_set, false,
+			mesh_net_transport_send(net, frnd->net_key_cur, false,
 					pkt->iv_index, pkt->ttl,
 					pkt->u.one[0].seq, pkt->src, pkt->dst,
 					pkt->u.one[0].data, pkt->last_len);
@@ -458,7 +448,7 @@ static void friend_delay_rsp(struct l_timeout *timeout, void *user_data)
 		print_packet("Frnd-Msg", pkt->u.s12[pkt->cnt_out].data, len);
 
 		pkt->u.s12[pkt->cnt_out].sent = true;
-		mesh_net_send_seg(net, &frnd->key_set,
+		mesh_net_send_seg(net, frnd->net_key_cur,
 				pkt->iv_index,
 				pkt->ttl,
 				pkt->u.s12[pkt->cnt_out].seq,
@@ -470,16 +460,16 @@ static void friend_delay_rsp(struct l_timeout *timeout, void *user_data)
 	return;
 
 update:
-	// No More Data -- send Update message with md = false
+	/* No More Data -- send Update message with md = false */
 	net_seq = mesh_net_get_seq_num(net);
 	l_info("Fwd FRND UPDATE %6.6x with MD == 0", net_seq);
 
 	frnd->last = frnd->seq;
 	mesh_net_get_snb_state(net, upd + 1, &iv_index);
 	l_put_be32(iv_index, upd + 2);
-	upd[6] = false; // Queue is Empty
+	upd[6] = false; /* Queue is Empty */
 	print_packet("Update", upd, sizeof(upd));
-	mesh_net_transport_send(net, &frnd->key_set, false,
+	mesh_net_transport_send(net, frnd->net_key_cur, false,
 			mesh_net_get_iv_index(net), 0,
 			net_seq, 0, frnd->dst,
 			upd, sizeof(upd));
@@ -512,7 +502,8 @@ void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 					friend_poll_timeout, frnd, NULL);
 
 		l_timeout_remove(neg->timeout);
-		mesh_net_remove_keyset(neg->net, &neg->key_set);
+		net_key_unref(neg->key_id);
+		neg->key_id = 0;
 
 		if (neg->old_relay == 0 ||
 				neg->old_relay == mesh_net_get_address(net)) {
@@ -522,7 +513,7 @@ void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 			neg->clearing = true;
 			l_put_be16(neg->low_power_node, msg + 1);
 			l_put_be16(neg->lp_cnt, msg + 3);
-			mesh_net_transport_send(net, NULL, false,
+			mesh_net_transport_send(net, 0, false,
 					mesh_net_get_iv_index(net), DEFAULT_TTL,
 					0, 0, neg->old_relay,
 					msg, sizeof(msg));
@@ -630,7 +621,7 @@ void friend_sub_add(struct mesh_net *net, struct mesh_friend *frnd,
 
 	print_packet("Tx-NET_OP_PROXY_SUB_CONFIRM", msg, sizeof(msg));
 	net_seq = mesh_net_get_seq_num(net);
-	mesh_net_transport_send(net, &frnd->key_set, false,
+	mesh_net_transport_send(net, frnd->net_key_cur, false,
 			mesh_net_get_iv_index(net), 0,
 			net_seq, 0, frnd->dst,
 			msg, sizeof(msg));
@@ -668,7 +659,7 @@ void friend_sub_del(struct mesh_net *net, struct mesh_friend *frnd,
 
 	print_packet("Tx-NET_OP_PROXY_SUB_CONFIRM", msg, sizeof(msg));
 	net_seq = mesh_net_get_seq_num(net);
-	mesh_net_transport_send(net, &frnd->key_set, false,
+	mesh_net_transport_send(net, frnd->net_key_cur, false,
 			mesh_net_get_iv_index(net), 0,
 			net_seq, 0, frnd->dst,
 			msg, sizeof(msg));
@@ -695,8 +686,8 @@ static uint16_t fn_cnt, cnt = 0xffff;
 static uint32_t poll_period_ms;
 static struct l_timeout *poll_retry_to;
 static struct l_timeout *poll_period_to;
-static struct mesh_key_set lpn_set;
-static struct mesh_key_set new_lpn_set;
+static uint32_t lpn_key_id;
+static uint32_t new_lpn_id;
 
 void frnd_offer(struct mesh_net *net, uint16_t src, uint8_t window,
 			uint8_t cache, uint8_t sub_list_size,
@@ -763,13 +754,13 @@ void frnd_poll_cancel(struct mesh_net *net)
 
 void frnd_poll(struct mesh_net *net, bool retry)
 {
-	struct mesh_key_set *key_set = &lpn_set;
+	uint32_t key_id = lpn_key_id;
 	uint32_t net_seq;
 	uint8_t msg[2] = { NET_OP_FRND_POLL };
 	bool seq = mesh_net_get_frnd_seq(net);
 
 	/* Check if we are in Phase 2 of Key Refresh */
-	if (new_lpn_set.nid != 0xff) {
+	if (new_lpn_id) {
 		uint8_t phase;
 		uint16_t net_idx = mesh_net_get_primary_idx(net);
 		uint8_t status =
@@ -777,7 +768,7 @@ void frnd_poll(struct mesh_net *net, bool retry)
 
 		if (status == MESH_STATUS_SUCCESS &&
 				phase == KEY_REFRESH_PHASE_TWO)
-			key_set = &new_lpn_set;
+			key_id = new_lpn_id;
 	}
 
 	if (!retry) {
@@ -789,8 +780,9 @@ void frnd_poll(struct mesh_net *net, bool retry)
 		l_timeout_remove(poll_period_to);
 		poll_period_to = NULL;
 		frnd_poll_cancel(net);
-		mesh_net_remove_keyset(net, &lpn_set);
-		mesh_net_remove_keyset(net, &new_lpn_set);
+		net_key_unref(lpn_key_id);
+		net_key_unref(new_lpn_id);
+		new_lpn_id = lpn_key_id = 0;
 		mesh_net_set_friend(net, 0);
 		return;
 	}
@@ -801,7 +793,7 @@ void frnd_poll(struct mesh_net *net, bool retry)
 	l_info("TX-FRIEND POLL %d", seq);
 	msg[1] = seq;
 	net_seq = mesh_net_get_seq_num(net);
-	mesh_net_transport_send(net, key_set, true,
+	mesh_net_transport_send(net, key_id, true,
 			mesh_net_get_iv_index(net), 0,
 			net_seq, 0, mesh_net_get_friend(net),
 			msg, sizeof(msg));
@@ -828,8 +820,7 @@ static void req_timeout(struct l_timeout *timeout, void *user_data)
 	struct mesh_net *net = user_data;
 	struct frnd_offers *best;
 	struct frnd_offers *offer = l_queue_pop_head(offers);
-	uint8_t p[9] = { 1 };
-	uint8_t key[16];
+	uint32_t key_id = 0;
 	bool res;
 
 	l_timeout_remove(timeout);
@@ -860,8 +851,9 @@ static void req_timeout(struct l_timeout *timeout, void *user_data)
 		offer = l_queue_pop_head(offers);
 	}
 
-	mesh_net_remove_keyset(net, &lpn_set);
-	mesh_net_remove_keyset(net, &new_lpn_set);
+	net_key_unref(lpn_key_id);
+	net_key_unref(new_lpn_id);
+	new_lpn_id = lpn_key_id = 0;
 	if (mesh_net_get_friend(net)) {
 		l_free(best);
 		return;
@@ -871,41 +863,24 @@ static void req_timeout(struct l_timeout *timeout, void *user_data)
 	}
 
 	fn_cnt = best->fn_cnt;
-	l_put_be16(mesh_net_get_address(net), p + 1);
-	l_put_be16(best->src, p + 3);
-	l_put_be16(cnt, p + 5);
-	l_put_be16(best->fn_cnt, p + 7);
-	print_packet("Friend Key P =", p, 9);
-	res = mesh_net_get_key(net, false, mesh_net_get_primary_idx(net), key);
+	res = mesh_net_get_key(net, false, mesh_net_get_primary_idx(net),
+								&key_id);
 	if (!res)
 		return;
 
-	res = mesh_crypto_k2(key, p, sizeof(p), &lpn_set.nid,
-			lpn_set.enc_key, lpn_set.privacy_key);
-	if (!res)
+	lpn_key_id = net_key_frnd_add(key_id, mesh_net_get_address(net),
+						best->src, cnt, best->fn_cnt);
+	if (!lpn_key_id)
 		return;
 
-	print_packet("Cur-NID", &lpn_set.nid, 1);
-	print_packet("Cur-ENC_KEY", lpn_set.enc_key, 16);
-	print_packet("Cur-PRIV_KEY", lpn_set.privacy_key, 16);
+	res = mesh_net_get_key(net, true, mesh_net_get_primary_idx(net),
+								&key_id);
 
-	mesh_net_add_keyset(net, &lpn_set);
-
-	res = mesh_net_get_key(net, true, mesh_net_get_primary_idx(net), key);
-
-	if (res)
-		res = mesh_crypto_k2(key, p, sizeof(p), &new_lpn_set.nid,
-			new_lpn_set.enc_key, new_lpn_set.privacy_key);
-	if (!res) {
-		new_lpn_set.nid = 0xff;
+	if (!res)
 		goto old_keys_only;
-	}
 
-	print_packet("New-NID", &new_lpn_set.nid, 1);
-	print_packet("New-ENC_KEY", new_lpn_set.enc_key, 16);
-	print_packet("New-PRIV_KEY", new_lpn_set.privacy_key, 16);
-
-	mesh_net_add_keyset(net, &new_lpn_set);
+	new_lpn_id = net_key_frnd_add(key_id, mesh_net_get_address(net),
+						best->src, cnt, best->fn_cnt);
 
 old_keys_only:
 
@@ -935,11 +910,11 @@ void frnd_clear(struct mesh_net *net)
 	l_put_be16(cnt, msg + n);
 	n += 2;
 
-	mesh_net_remove_keyset(net, &lpn_set);
-	mesh_net_remove_keyset(net, &new_lpn_set);
+	net_key_unref(lpn_key_id);
+	net_key_unref(new_lpn_id);
 	mesh_net_set_friend(net, 0);
 
-	mesh_net_transport_send(net, NULL, false,
+	mesh_net_transport_send(net, 0, false,
 			mesh_net_get_iv_index(net), 0,
 			0, 0, frnd_addr,
 			msg, n);
@@ -967,7 +942,7 @@ void frnd_request_friend(struct mesh_net *net, uint8_t cache,
 	l_put_be16(cnt + 1, msg + n);	// Next counter
 	n += 2;
 	print_packet("Tx-NET_OP_FRND_REQUEST", msg, n);
-	mesh_net_transport_send(net, NULL, false,
+	mesh_net_transport_send(net, 0, false,
 			mesh_net_get_iv_index(net), 0,
 			0, 0, FRIENDS_ADDRESS,
 			msg, n);
@@ -979,13 +954,13 @@ void frnd_request_friend(struct mesh_net *net, uint8_t cache,
 static uint8_t trans_id;
 void frnd_sub_add(struct mesh_net *net, uint32_t parms[7])
 {
-	struct mesh_key_set *key_set = &lpn_set;
+	uint32_t key_id = lpn_key_id;
 	uint32_t net_seq;
 	uint8_t msg[15] = { NET_OP_PROXY_SUB_ADD };
 	uint8_t i, n = 1;
 
 	/* Check if we are in Phase 2 of Key Refresh */
-	if (new_lpn_set.nid != 0xff) {
+	if (new_lpn_id) {
 		uint8_t phase;
 		uint16_t net_idx = mesh_net_get_primary_idx(net);
 		uint8_t status = mesh_net_key_refresh_phase_get(net,
@@ -993,7 +968,7 @@ void frnd_sub_add(struct mesh_net *net, uint32_t parms[7])
 
 		if (status == MESH_STATUS_SUCCESS &&
 				phase == KEY_REFRESH_PHASE_TWO)
-			key_set = &new_lpn_set;
+			key_id = new_lpn_id;
 	}
 
 	msg[n++] = ++trans_id;
@@ -1007,7 +982,7 @@ void frnd_sub_add(struct mesh_net *net, uint32_t parms[7])
 
 	net_seq = mesh_net_get_seq_num(net);
 	print_packet("Friend Sub Add", msg, n);
-	mesh_net_transport_send(net, key_set, false,
+	mesh_net_transport_send(net, key_id, false,
 			mesh_net_get_iv_index(net), 0,
 			net_seq, 0, mesh_net_get_friend(net),
 			msg, n);
@@ -1016,13 +991,13 @@ void frnd_sub_add(struct mesh_net *net, uint32_t parms[7])
 
 void frnd_sub_del(struct mesh_net *net, uint32_t parms[7])
 {
-	struct mesh_key_set *key_set = &lpn_set;
+	uint32_t key_id = lpn_key_id;
 	uint32_t net_seq;
 	uint8_t msg[15] = { NET_OP_PROXY_SUB_REMOVE };
 	uint8_t i, n = 1;
 
 	/* Check if we are in Phase 2 of Key Refresh */
-	if (new_lpn_set.nid != 0xff) {
+	if (new_lpn_id) {
 		uint8_t phase;
 		uint16_t net_idx = mesh_net_get_primary_idx(net);
 		uint8_t status = mesh_net_key_refresh_phase_get(net,
@@ -1030,7 +1005,7 @@ void frnd_sub_del(struct mesh_net *net, uint32_t parms[7])
 
 		if (status == MESH_STATUS_SUCCESS &&
 				phase == KEY_REFRESH_PHASE_TWO)
-			key_set = &new_lpn_set;
+			key_id = new_lpn_id;
 	}
 
 	msg[n++] = ++trans_id;
@@ -1044,7 +1019,7 @@ void frnd_sub_del(struct mesh_net *net, uint32_t parms[7])
 
 	net_seq = mesh_net_get_seq_num(net);
 	print_packet("Friend Sub Del", msg, n);
-	mesh_net_transport_send(net, key_set, false,
+	mesh_net_transport_send(net, key_id, false,
 			mesh_net_get_iv_index(net), 0,
 			net_seq, 0, mesh_net_get_friend(net),
 			msg, n);
@@ -1054,46 +1029,29 @@ void frnd_sub_del(struct mesh_net *net, uint32_t parms[7])
 void frnd_key_refresh(struct mesh_net *net, uint8_t phase)
 {
 	uint16_t net_idx = mesh_net_get_primary_idx(net);
-	uint8_t p[9] = { 1 };
-	uint8_t key[16];
+	uint32_t key_id;
 
 	switch (phase) {
 	default:
 	case 0:
 	case 3:
-		if (new_lpn_set.nid != 0xff) {
-			l_info("LPN Retiring KeySet %2.2x", lpn_set.nid);
-			lpn_set = new_lpn_set;
-			new_lpn_set.nid = 0xff;
-			mesh_net_remove_keyset(net, &new_lpn_set);
+		if (new_lpn_id) {
+			l_info("LPN Retiring KeySet %d", lpn_key_id);
+			net_key_unref(lpn_key_id);
+			lpn_key_id = new_lpn_id;
 		}
 		return;
 
 	case 1:
-		mesh_net_remove_keyset(net, &new_lpn_set);
-		if (!mesh_net_get_key(net, true, net_idx, key)) {
-			new_lpn_set.nid = 0xff;
+		net_key_unref(new_lpn_id);
+		if (!mesh_net_get_key(net, true, net_idx, &key_id)) {
+			new_lpn_id = 0;
 			return;
 		}
 
-		l_put_be16(mesh_net_get_address(net), p + 1);
-		l_put_be16(mesh_net_get_friend(net), p + 3);
-		l_put_be16(cnt, p + 5);
-		l_put_be16(fn_cnt, p + 7);
-		print_packet("Friend Key P =", p, 9);
-
-		if (!mesh_crypto_k2(key, p, sizeof(p), &new_lpn_set.nid,
-					new_lpn_set.enc_key,
-					new_lpn_set.privacy_key)) {
-			new_lpn_set.nid = 0xff;
-			return;
-		}
-
-		print_packet("New-NID", &new_lpn_set.nid, 1);
-		print_packet("New-ENC_KEY", new_lpn_set.enc_key, 16);
-		print_packet("New-PRIV_KEY", new_lpn_set.privacy_key, 16);
-
-		mesh_net_add_keyset(net, &new_lpn_set);
+		new_lpn_id = net_key_frnd_add(key_id, mesh_net_get_address(net),
+						mesh_net_get_friend(net),
+						cnt, fn_cnt);
 		return;
 
 	case 2:
@@ -1102,7 +1060,7 @@ void frnd_key_refresh(struct mesh_net *net, uint8_t phase)
 	}
 }
 
-struct mesh_key_set *frnd_get_key(struct mesh_net *net)
+uint32_t frnd_get_key(struct mesh_net *net)
 {
 	uint8_t idx = mesh_net_get_primary_idx(net);
 	uint8_t phase = 0;
@@ -1110,7 +1068,7 @@ struct mesh_key_set *frnd_get_key(struct mesh_net *net)
 	mesh_net_key_refresh_phase_get(net, idx, &phase);
 
 	if (phase == 2)
-		return &new_lpn_set;
+		return new_lpn_id;
 	else
-		return &lpn_set;
+		return lpn_key_id;
 }

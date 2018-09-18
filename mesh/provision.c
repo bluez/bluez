@@ -39,6 +39,7 @@
 #include "src/shared/ecc.h"
 
 #include "mesh/display.h"
+#include "mesh/net_keys.h"
 #include "mesh/crypto.h"
 #include "mesh/net.h"
 #include "mesh/prov.h"
@@ -286,6 +287,7 @@ static void send_prov_data(struct mesh_prov *prov)
 	struct mesh_net_prov_caps *caps = mesh_net_prov_caps_get(net);
 	uint64_t mic;
 	uint32_t iv_index;
+	uint32_t net_key_id;
 	uint8_t snb_flags;
 	uint16_t net_idx = mesh_prov_get_idx(prov);
 	uint8_t prov_data[1 + 16 + 2 + 1 + 4 + 2 + sizeof(mic)] = { PROV_DATA };
@@ -296,7 +298,8 @@ static void send_prov_data(struct mesh_prov *prov)
 	prov_expected = PROV_COMPLETE;
 	mesh_net_get_snb_state(net, &snb_flags, &iv_index);
 
-	mesh_net_get_key(net, !!(snb_flags & 0x01), net_idx, prov_data + 1);
+	mesh_net_get_key(net, !!(snb_flags & 0x01), net_idx, &net_key_id);
+	net_key_retrieve(net_key_id, prov_data + 1);
 	l_put_be16(net_idx, prov_data + 1 + 16);
 	l_put_u8(snb_flags, prov_data + 1 + 16 + 2);
 	l_put_be32(iv_index, prov_data + 1 + 16 + 2 + 1);

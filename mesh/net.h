@@ -183,12 +183,12 @@ struct mesh_friend {
 	uint16_t *grp_list;
 	uint32_t poll_timeout;
 	uint32_t last_hdr;
+	uint32_t net_key_cur;
+	uint32_t net_key_upd;
 	uint16_t dst; /* Primary Element unicast addr */
 	uint16_t fn_cnt;
 	uint16_t lp_cnt;
 	int16_t grp_cnt;
-	struct mesh_key_set key_set;
-	struct mesh_key_set new_key_set;
 	uint8_t ele_cnt;
 	uint8_t frd;
 	uint8_t frw;
@@ -283,8 +283,6 @@ bool mesh_net_set_proxy_mode(struct mesh_net *net, bool enable);
 bool mesh_net_set_relay_mode(struct mesh_net *net, bool enable, uint8_t cnt,
 							uint8_t interval);
 bool mesh_net_set_friend_mode(struct mesh_net *net, bool enable);
-bool mesh_net_add_keyset(struct mesh_net *net, struct mesh_key_set *key_set);
-bool mesh_net_remove_keyset(struct mesh_net *net, struct mesh_key_set *key_set);
 int mesh_net_del_key(struct mesh_net *net, uint16_t net_idx);
 int mesh_net_add_key(struct mesh_net *net, bool update,
 					uint16_t net_idx, const void *key);
@@ -292,13 +290,13 @@ uint32_t mesh_net_get_iv_index(struct mesh_net *net);
 void mesh_net_get_snb_state(struct mesh_net *net,
 					uint8_t *flags, uint32_t *iv_index);
 bool mesh_net_get_key(struct mesh_net *net, bool new_key, uint16_t idx,
-							uint8_t key[16]);
+							uint32_t *key_id);
 bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io);
 struct mesh_io *mesh_net_detach(struct mesh_net *net);
 struct l_queue *mesh_net_get_app_keys(struct mesh_net *net);
 
 bool mesh_net_flush(struct mesh_net *net);
-void mesh_net_transport_send(struct mesh_net *net, struct mesh_key_set *key_set,
+void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 				bool fast, uint32_t iv_index, uint8_t ttl,
 				uint32_t seq, uint16_t src, uint16_t dst,
 				const uint8_t *msg, uint16_t msg_len);
@@ -310,7 +308,7 @@ unsigned int mesh_net_app_send(struct mesh_net *net, bool frnd_cred,
 				mesh_net_status_func_t status_func,
 				void *user_data);
 void mesh_net_app_send_cancel(struct mesh_net *net, unsigned int id);
-void mesh_net_ack_send(struct mesh_net *net, struct mesh_key_set *key_set,
+void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id,
 				uint32_t iv_index, uint8_t ttl, uint32_t seq,
 				uint16_t src, uint16_t dst, bool rly,
 				uint16_t seqZero, uint32_t ack_flags);
@@ -346,7 +344,7 @@ int mesh_net_kr_phase_one(struct mesh_net *net, uint16_t net_idx,
 							const uint8_t *key);
 int mesh_net_key_refresh_phase_two(struct mesh_net *net, uint16_t net_idx);
 int mesh_net_key_refresh_finish(struct mesh_net *net, uint16_t net_idx);
-void mesh_net_send_seg(struct mesh_net *net, struct mesh_key_set *key_set,
+void mesh_net_send_seg(struct mesh_net *net, uint32_t key_id,
 				uint32_t iv_index, uint8_t ttl, uint32_t seq,
 				uint16_t src, uint16_t dst, uint32_t hdr,
 				const void *seg, uint16_t seg_len);
