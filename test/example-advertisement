@@ -2,19 +2,18 @@
 
 from __future__ import print_function
 
+import argparse
 import dbus
 import dbus.exceptions
 import dbus.mainloop.glib
 import dbus.service
-
-import array
+import time
+import threading
 
 try:
-  from gi.repository import GObject  # python3
+    from gi.repository import GObject  # python3
 except ImportError:
-  import gobject as GObject  # python2
-
-from random import randint
+    import gobject as GObject  # python2
 
 mainloop = None
 
@@ -136,6 +135,7 @@ class Advertisement(dbus.service.Object):
     def Release(self):
         print('%s: Released!' % self.path)
 
+
 class TestAdvertisement(Advertisement):
 
     def __init__(self, bus, index):
@@ -170,7 +170,13 @@ def find_adapter(bus):
     return None
 
 
-def main():
+def shutdown(timeout):
+    print('Advertising for {} seconds...'.format(timeout))
+    time.sleep(timeout)
+    mainloop.quit()
+
+
+def main(timeout=0):
     global mainloop
 
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -183,7 +189,7 @@ def main():
         return
 
     adapter_props = dbus.Interface(bus.get_object(BLUEZ_SERVICE_NAME, adapter),
-                                   "org.freedesktop.DBus.Properties");
+                                   "org.freedesktop.DBus.Properties")
 
     adapter_props.Set("org.bluez.Adapter1", "Powered", dbus.Boolean(1))
 
@@ -198,7 +204,23 @@ def main():
                                      reply_handler=register_ad_cb,
                                      error_handler=register_ad_error_cb)
 
-    mainloop.run()
+    if timeout > 0:
+        threading.Thread(target=shutdown, args=(timeout,)).start()
+    else:
+        print('Advertising forever...')
+
+    mainloop.run()  # blocks until mainloop.quit() is called
+
+    ad_manager.UnregisterAdvertisement(test_advertisement)
+    print('Advertisement unregistered')
+    dbus.service.Object.remove_from_connection(test_advertisement)
+
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--timeout', default=0, type=int, help="advertise " +
+                        "for this many seconds then stop, 0=run forever " +
+                        "(default: 0)")
+    args = parser.parse_args()
+
+    main(args.timeout)
