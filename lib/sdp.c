@@ -2834,6 +2834,12 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 	SDPDBG("Append src size: %d", len);
 	SDPDBG("Append dst size: %d", dst->data_size);
 	SDPDBG("Dst buffer size: %d", dst->buf_size);
+
+	if (dst->data_size + len > dst->buf_size) {
+		SDPERR("Cannot append");
+		return;
+	}
+
 	if (dst->data_size == 0 && dtd == 0) {
 		/* create initial sequence */
 		*p = SDP_SEQ8;
