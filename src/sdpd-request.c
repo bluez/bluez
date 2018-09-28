@@ -70,9 +70,16 @@ static sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
 {
 	sdp_cstate_list_t *p;
 
-	for (p = cstates; p; p = p->next)
-		if (p->timestamp == cstate->timestamp)
+	for (p = cstates; p; p = p->next) {
+		/* Check timestamp */
+		if (p->timestamp != cstate->timestamp)
+			continue;
+
+		/* Check if requesting more than available */
+		if (cstate->cStateValue.maxBytesSent < p->buf.data_size)
 			return &p->buf;
+	}
+
 	return 0;
 }
 
@@ -624,6 +631,31 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, sdp_buf_t *buf)
 	return 0;
 }
 
+/* Build cstate response */
+static int sdp_cstate_rsp(sdp_cont_state_t *cstate, sdp_buf_t *buf,
+							uint16_t max)
+{
+	/* continuation State exists -> get from cache */
+	sdp_buf_t *cache = sdp_get_cached_rsp(cstate);
+	uint16_t sent;
+
+	if (!cache)
+		return 0;
+
+	sent = MIN(max, cache->data_size - cstate->cStateValue.maxBytesSent);
+	memcpy(buf->data, cache->data + cstate->cStateValue.maxBytesSent, sent);
+	buf->data_size += sent;
+	cstate->cStateValue.maxBytesSent += sent;
+
+	SDPDBG("Response size : %d sending now : %d bytes sent so far : %d",
+		cache->data_size, sent, cstate->cStateValue.maxBytesSent);
+
+	if (cstate->cStateValue.maxBytesSent == cache->data_size)
+		return sdp_set_cstate_pdu(buf, NULL);
+
+	return sdp_set_cstate_pdu(buf, cstate);
+}
+
 /*
  * A request for the attributes of a service record.
  * First check if the service record (specified by
@@ -633,7 +665,6 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, sdp_buf_t *buf)
 static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	sdp_cont_state_t *cstate = NULL;
-	uint8_t *pResponse = NULL;
 	short cstate_size = 0;
 	sdp_list_t *seq = NULL;
 	uint8_t dtd = 0;
@@ -719,24 +750,8 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	buf->buf_size -= sizeof(uint16_t);
 
 	if (cstate) {
-		sdp_buf_t *pCache = sdp_get_cached_rsp(cstate);
-
-		SDPDBG("Obtained cached rsp : %p", pCache);
-
-		if (pCache) {
-			short sent = MIN(max_rsp_size, pCache->data_size - cstate->cStateValue.maxBytesSent);
-			pResponse = pCache->data;
-			memcpy(buf->data, pResponse + cstate->cStateValue.maxBytesSent, sent);
-			buf->data_size += sent;
-			cstate->cStateValue.maxBytesSent += sent;
-
-			SDPDBG("Response size : %d sending now : %d bytes sent so far : %d",
-				pCache->data_size, sent, cstate->cStateValue.maxBytesSent);
-			if (cstate->cStateValue.maxBytesSent == pCache->data_size)
-				cstate_size = sdp_set_cstate_pdu(buf, NULL);
-			else
-				cstate_size = sdp_set_cstate_pdu(buf, cstate);
-		} else {
+		cstate_size = sdp_cstate_rsp(cstate, buf, max_rsp_size);
+		if (!cstate_size) {
 			status = SDP_INVALID_CSTATE;
 			error("NULL cache buffer and non-NULL continuation state");
 		}
@@ -786,7 +801,7 @@ done:
 static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	int status = 0, plen, totscanned;
-	uint8_t *pdata, *pResponse = NULL;
+	uint8_t *pdata;
 	unsigned int max;
 	int scanned, rsp_count = 0;
 	sdp_list_t *pattern = NULL, *seq = NULL, *svcList;
@@ -915,19 +930,8 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		} else
 			cstate_size = sdp_set_cstate_pdu(buf, NULL);
 	} else {
-		/* continuation State exists -> get from cache */
-		sdp_buf_t *pCache = sdp_get_cached_rsp(cstate);
-		if (pCache && cstate->cStateValue.maxBytesSent < pCache->data_size) {
-			uint16_t sent = MIN(max, pCache->data_size - cstate->cStateValue.maxBytesSent);
-			pResponse = pCache->data;
-			memcpy(buf->data, pResponse + cstate->cStateValue.maxBytesSent, sent);
-			buf->data_size += sent;
-			cstate->cStateValue.maxBytesSent += sent;
-			if (cstate->cStateValue.maxBytesSent == pCache->data_size)
-				cstate_size = sdp_set_cstate_pdu(buf, NULL);
-			else
-				cstate_size = sdp_set_cstate_pdu(buf, cstate);
-		} else {
+		cstate_size = sdp_cstate_rsp(cstate, buf, max);
+		if (!cstate_size) {
 			status = SDP_INVALID_CSTATE;
 			SDPDBG("Non-null continuation state, but null cache buffer");
 		}
