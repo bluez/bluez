@@ -570,6 +570,7 @@ static bool disconnect_cb(struct io *io, void *user_data)
 
 	io_destroy(att->io);
 	att->io = NULL;
+	att->fd = -1;
 
 	/* Notify request callbacks */
 	queue_remove_all(att->req_queue, NULL, NULL, disc_att_send_op);
