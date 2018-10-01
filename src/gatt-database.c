@@ -242,7 +242,7 @@ static bool dev_state_match(const void *a, const void *b)
 }
 
 static struct device_state *
-find_device_state(struct btd_gatt_database *database, bdaddr_t *bdaddr,
+find_device_state(struct btd_gatt_database *database, const bdaddr_t *bdaddr,
 							uint8_t bdaddr_type)
 {
 	struct device_info dev_info;
@@ -357,8 +357,13 @@ static bool get_dst_info(struct bt_att *att, bdaddr_t *dst, uint8_t *dst_type)
 {
 	GIOChannel *io = NULL;
 	GError *gerr = NULL;
+	int fd;
 
-	io = g_io_channel_unix_new(bt_att_get_fd(att));
+	fd = bt_att_get_fd(att);
+	if (fd < 0)
+		return false;
+
+	io = g_io_channel_unix_new(fd);
 	if (!io)
 		return false;
 
@@ -3347,6 +3352,25 @@ void btd_gatt_database_att_connected(struct btd_gatt_database *database,
 	free(state->pending->value);
 	free(state->pending);
 	state->pending = NULL;
+}
+
+void btd_gatt_database_att_disconnected(struct btd_gatt_database *database,
+						struct btd_device *device)
+{
+	struct device_state *state;
+	const bdaddr_t *addr;
+	uint8_t type;
+
+	DBG("");
+
+	addr = device_get_address(device);
+	type = btd_device_get_bdaddr_type(device);
+
+	state = find_device_state(database, addr, type);
+	if (!state)
+		return;
+
+	att_disconnected(0, state);
 }
 
 static void restore_ccc(struct btd_gatt_database *database,

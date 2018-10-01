@@ -25,5 +25,7 @@ void btd_gatt_database_destroy(struct btd_gatt_database *database);
 struct gatt_db *btd_gatt_database_get_db(struct btd_gatt_database *database);
 void btd_gatt_database_att_connected(struct btd_gatt_database *database,
 						struct bt_att *att);
+void btd_gatt_database_att_disconnected(struct btd_gatt_database *database,
+						struct btd_device *device);
 
 void btd_gatt_database_restore_svc_chng_ccc(struct btd_gatt_database *database);
