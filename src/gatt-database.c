@@ -326,8 +326,8 @@ static void att_disconnected(int err, void *user_data)
 
 	state->disc_id = 0;
 
-	device = btd_adapter_get_device(state->db->adapter, &state->bdaddr,
-					state->bdaddr_type);
+	device = btd_adapter_find_device(state->db->adapter, &state->bdaddr,
+							state->bdaddr_type);
 	if (!device)
 		goto remove;
 
