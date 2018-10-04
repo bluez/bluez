@@ -22,6 +22,8 @@
  */
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 void tester_init(int *argc, char ***argv);
 int tester_run(void);
@@ -35,6 +37,8 @@ void tester_warn(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 void tester_debug(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
+void tester_monitor(char dir, uint16_t cid, uint16_t psm, const void *data,
+								size_t len);
 
 typedef void (*tester_destroy_func_t)(void *user_data);
 typedef void (*tester_data_func_t)(const void *test_data);

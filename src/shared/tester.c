@@ -27,13 +27,18 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <syslog.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
 
 #include <glib.h>
+
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
 
 #ifdef HAVE_VALGRIND_MEMCHECK_H
 #include <valgrind/memcheck.h>
@@ -54,15 +59,15 @@
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
 #define print_text(color, fmt, args...) \
-		printf(color fmt COLOR_OFF "\n", ## args)
+		tester_log(color fmt COLOR_OFF, ## args)
 
 #define print_summary(label, color, value, fmt, args...) \
-			printf("%-52s " color "%-10s" COLOR_OFF fmt "\n", \
+		tester_log("%-52s " color "%-10s" COLOR_OFF fmt, \
 							label, value, ## args)
 
 #define print_progress(name, color, fmt, args...) \
-		printf(COLOR_HIGHLIGHT "%s" COLOR_OFF " - " \
-				color fmt COLOR_OFF "\n", name, ## args)
+		tester_log(COLOR_HIGHLIGHT "%s" COLOR_OFF " - " \
+				color fmt COLOR_OFF, name, ## args)
 
 enum test_result {
 	TEST_RESULT_NOT_RUN,
@@ -100,6 +105,7 @@ struct test_case {
 };
 
 static GMainLoop *main_loop;
+static char *tester_name;
 
 static GList *test_list;
 static GList *test_current;
@@ -108,8 +114,24 @@ static GTimer *test_timer;
 static gboolean option_version = FALSE;
 static gboolean option_quiet = FALSE;
 static gboolean option_debug = FALSE;
+static gboolean option_monitor = FALSE;
 static gboolean option_list = FALSE;
 static const char *option_prefix = NULL;
+
+struct monitor_hdr {
+	uint16_t opcode;
+	uint16_t index;
+	uint16_t len;
+	uint8_t  priority;
+	uint8_t  ident_len;
+} __attribute__((packed));
+
+struct monitor_l2cap_hdr {
+	uint16_t cid;
+	uint16_t psm;
+} __attribute__((packed));
+
+static int monitor_fd = -1;
 
 static void test_destroy(gpointer data)
 {
@@ -128,43 +150,208 @@ static void test_destroy(gpointer data)
 	free(test);
 }
 
-void tester_print(const char *format, ...)
+static int monitor_open(void)
 {
-	va_list ap;
+	struct sockaddr_hci addr;
+	int fd;
 
+	if (!option_monitor)
+		return -1;
+
+	if (monitor_fd >= 0)
+		return monitor_fd;
+
+	fd = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (fd < 0)
+		return fd;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.hci_family = AF_BLUETOOTH;
+	addr.hci_dev = HCI_DEV_NONE;
+	addr.hci_channel = HCI_CHANNEL_LOGGING;
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		option_monitor = FALSE;
+		tester_debug("Failed to open monitor socket: %s",
+			     strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	monitor_fd = fd;
+
+	return fd;
+}
+
+static void monitor_sendmsg(const char *label, int level, struct iovec *io,
+							size_t io_len)
+{
+	struct monitor_hdr hdr;
+	struct msghdr msg;
+	struct iovec iov[5];
+	size_t i;
+
+	monitor_fd = monitor_open();
+	if (monitor_fd < 0 || io_len > 3)
+		return;
+
+	hdr.opcode = cpu_to_le16(0x0000);
+	hdr.index = cpu_to_le16(0xffff);
+	hdr.ident_len = strlen(label) + 1;
+	hdr.len = cpu_to_le16(2 + hdr.ident_len);
+	hdr.priority = level;
+
+	iov[0].iov_base = &hdr;
+	iov[0].iov_len = sizeof(hdr);
+
+	iov[1].iov_base = (void *) label;
+	iov[1].iov_len = hdr.ident_len;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 2;
+
+	for (i = 0; i < io_len; i++) {
+		iov[i + 2] = io[i];
+		hdr.len += io[i].iov_len;
+		msg.msg_iovlen++;
+	}
+
+	if (sendmsg(monitor_fd, &msg, 0) < 0) {
+		/* Disable monitor */
+		option_monitor = FALSE;
+		tester_debug("Failed to send to monitor: %s", strerror(errno));
+		close(monitor_fd);
+		monitor_fd = -1;
+	}
+}
+
+static void monitor_vprintf(const char *id, int level, const char *format,
+								va_list ap)
+{
+	struct iovec iov;
+	char *str;
+
+	if (!option_monitor)
+		return;
+
+	if (vasprintf(&str, format, ap) < 0)
+		return;
+
+	iov.iov_base = str;
+	iov.iov_len = strlen(str) + 1;
+
+	monitor_sendmsg(id, level, &iov, 1);
+
+	free(str);
+}
+
+static void tester_vprintf(const char *format, va_list ap)
+{
 	if (tester_use_quiet())
 		return;
 
 	printf("  %s", COLOR_WHITE);
+	vprintf(format, ap);
+	printf("%s\n", COLOR_OFF);
+}
+
+static void tester_log(const char *format, ...)
+{
+	va_list ap;
+
 	va_start(ap, format);
 	vprintf(format, ap);
+	printf("\n");
 	va_end(ap);
-	printf("%s\n", COLOR_OFF);
+
+	va_start(ap, format);
+	monitor_vprintf(tester_name, LOG_INFO, format, ap);
+	va_end(ap);
+}
+
+void tester_print(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	tester_vprintf(format, ap);
+	va_end(ap);
+
+	va_start(ap, format);
+	monitor_vprintf(tester_name, LOG_INFO, format, ap);
+	va_end(ap);
 }
 
 void tester_debug(const char *format, ...)
 {
 	va_list ap;
 
-	if (!tester_use_debug())
-		return;
-
-	printf("  %s", COLOR_WHITE);
 	va_start(ap, format);
-	vprintf(format, ap);
+	tester_vprintf(format, ap);
 	va_end(ap);
-	printf("%s\n", COLOR_OFF);
+
+	va_start(ap, format);
+	monitor_vprintf(tester_name, LOG_DEBUG, format, ap);
+	va_end(ap);
 }
 
 void tester_warn(const char *format, ...)
 {
 	va_list ap;
 
-	printf("  %s", COLOR_WHITE);
 	va_start(ap, format);
-	vprintf(format, ap);
+	tester_vprintf(format, ap);
 	va_end(ap);
-	printf("%s\n", COLOR_OFF);
+
+	va_start(ap, format);
+	monitor_vprintf(tester_name, LOG_WARNING, format, ap);
+	va_end(ap);
+}
+
+static void monitor_debug(const char *str, void *user_data)
+{
+	const char *label = user_data;
+
+	tester_debug("%s: %s", label, str);
+}
+
+static void monitor_log(char dir, uint16_t cid, uint16_t psm, const void *data,
+								size_t len)
+{
+	struct iovec iov[3];
+	struct monitor_l2cap_hdr hdr;
+	uint8_t term = 0x00;
+	char label[16];
+
+	if (snprintf(label, sizeof(label), "%c %s", dir, tester_name) < 0)
+		return;
+
+	hdr.cid = cpu_to_le16(cid);
+	hdr.psm = cpu_to_le16(psm);
+
+	iov[0].iov_base = &hdr;
+	iov[0].iov_len = sizeof(hdr);
+
+	iov[1].iov_base = (void *) data;
+	iov[1].iov_len = len;
+
+	/* Kernel won't forward if data is no NULL terminated */
+	iov[2].iov_base = &term;
+	iov[2].iov_len = sizeof(term);
+
+	monitor_sendmsg(label, LOG_INFO, iov, 3);
+}
+
+void tester_monitor(char dir, uint16_t cid, uint16_t psm, const void *data,
+								size_t len)
+{
+	monitor_log(dir, cid, psm, data, len);
+
+	if (!tester_use_debug())
+		return;
+
+	util_hexdump(dir, data, len, monitor_debug, (void *) tester_name);
 }
 
 static void default_pre_setup(const void *test_data)
@@ -208,7 +395,7 @@ void tester_add_full(const char *name, const void *test_data,
 	}
 
 	if (option_list) {
-		printf("%s\n", name);
+		tester_log("%s", name);
 		if (destroy)
 			destroy(user_data);
 		return;
@@ -278,7 +465,7 @@ static int tester_summarize(void)
 	gdouble execution_time;
 	GList *list;
 
-	printf("\n");
+	tester_log("");
 	print_text(COLOR_HIGHLIGHT, "");
 	print_text(COLOR_HIGHLIGHT, "Test Summary");
 	print_text(COLOR_HIGHLIGHT, "------------");
@@ -312,17 +499,17 @@ static int tester_summarize(void)
 		}
         }
 
-	printf("\nTotal: %d, "
+	tester_log("Total: %d, "
 		COLOR_GREEN "Passed: %d (%.1f%%)" COLOR_OFF ", "
 		COLOR_RED "Failed: %d" COLOR_OFF ", "
-		COLOR_YELLOW "Not Run: %d" COLOR_OFF "\n",
+		COLOR_YELLOW "Not Run: %d" COLOR_OFF,
 			not_run + passed + failed, passed,
 			(not_run + passed + failed) ?
 			(float) passed * 100 / (not_run + passed + failed) : 0,
 			failed, not_run);
 
 	execution_time = g_timer_elapsed(test_timer, NULL);
-	printf("Overall execution time: %.3g seconds\n", execution_time);
+	tester_log("Overall execution time: %.3g seconds", execution_time);
 
 	return failed;
 }
@@ -379,7 +566,7 @@ static void next_test_case(void)
 
 	test = test_current->data;
 
-	printf("\n");
+	tester_log("");
 	print_progress(test->name, COLOR_BLACK, "init");
 
 	test->start_time = g_timer_elapsed(test_timer, NULL);
@@ -774,6 +961,8 @@ static GOptionEntry options[] = {
 				"Run tests without logging" },
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 				"Run tests with debug output" },
+	{ "monitor", 'm', 0, G_OPTION_ARG_NONE, &option_monitor,
+				"Enable monitor output" },
 	{ "list", 'l', 0, G_OPTION_ARG_NONE, &option_list,
 				"Only list the tests to be run" },
 	{ "prefix", 'p', 0, G_OPTION_ARG_STRING, &option_prefix,
@@ -806,6 +995,12 @@ void tester_init(int *argc, char ***argv)
 	}
 
 	main_loop = g_main_loop_new(NULL, FALSE);
+
+	tester_name = strrchr(*argv[0], '/');
+	if (!tester_name)
+		tester_name = strdup(*argv[0]);
+	else
+		tester_name = strdup(++tester_name);
 
 	test_list = NULL;
 	test_current = NULL;
