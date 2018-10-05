@@ -382,7 +382,7 @@ static gboolean send_pdu(gpointer user_data)
 
 	len = write(context->fd, pdu->data, pdu->size);
 
-	util_hexdump('<', pdu->data, len, test_debug, "GATT: ");
+	tester_monitor('<', 0x0004, 0x0000, pdu->data, len);
 
 	g_assert_cmpint(len, ==, pdu->size);
 
@@ -440,7 +440,7 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 
 	g_assert(len > 0);
 
-	util_hexdump('>', buf, len, test_debug, "GATT: ");
+	tester_monitor('>', 0x0004, 0x0000, buf, len);
 
 	util_hexdump('=', pdu->data, pdu->size, test_debug, "PDU: ");
 
@@ -1910,7 +1910,7 @@ static void test_server(gconstpointer data)
 
 	g_assert_cmpint(len, ==, pdu.size);
 
-	util_hexdump('<', pdu.data, len, test_debug, "GATT: ");
+	tester_monitor('<', 0x0004, 0x0000, pdu.data, len);
 }
 
 static void test_search_primary(gconstpointer data)

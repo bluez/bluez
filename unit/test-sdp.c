@@ -120,13 +120,6 @@ struct context {
 	const struct test_data *data;
 };
 
-static void sdp_debug(const char *str, void *user_data)
-{
-	const char *prefix = user_data;
-
-	tester_debug("%s%s\n", prefix, str);
-}
-
 static void destroy_context(struct context *context)
 {
 	sdp_svcdb_collect_all(context->fd);
@@ -186,7 +179,7 @@ static gboolean server_handler(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
-	util_hexdump('<', buf, len, sdp_debug, "SDP: ");
+	tester_monitor('<', 0x0000, 0x0001, buf, len);
 
 	handle_internal_request(fd, context->data->mtu, buf, len);
 
@@ -254,7 +247,7 @@ static gboolean client_handler(GIOChannel *channel, GIOCondition cond,
 	if (len < 0)
 		return FALSE;
 
-	util_hexdump('>', buf, len, sdp_debug, "SDP: ");
+	tester_monitor('>', 0x0000, 0x0001, buf, len);
 
 	g_assert(len > 0);
 	g_assert((size_t) len == rsp_pdu->raw_size + rsp_pdu->cont_len);

@@ -81,13 +81,6 @@ struct context {
 		tester_add(name, &data, NULL, function, NULL);		\
 	} while (0)
 
-static void test_debug(const char *str, void *user_data)
-{
-	const char *prefix = user_data;
-
-	tester_debug("%s%s", prefix, str);
-}
-
 static void test_free(gconstpointer user_data)
 {
 	const struct test_data *data = user_data;
@@ -131,7 +124,7 @@ static gboolean send_pdu(gpointer user_data)
 
 	len = write(context->fd, pdu->data, pdu->size);
 
-	util_hexdump('<', pdu->data, len, test_debug, "AVCTP: ");
+	tester_monitor('<', 0x0000, 0x0017, pdu->data, len);
 
 	g_assert_cmpint(len, ==, pdu->size);
 
@@ -172,7 +165,7 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 
 	g_assert(len > 0);
 
-	util_hexdump('>', buf, len, test_debug, "AVCTP: ");
+	tester_monitor('>', 0x0000, 0x0017, buf, len);
 
 	g_assert_cmpint(len, ==, pdu->size);
 
