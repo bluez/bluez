@@ -1384,7 +1384,8 @@ static const struct sig_opcode_data le_sig_opcode_table[] = {
 
 static void l2cap_frame_init(struct l2cap_frame *frame, uint16_t index, bool in,
 				uint16_t handle, uint8_t ident,
-				uint16_t cid, const void *data, uint16_t size)
+				uint16_t cid, uint16_t psm,
+				const void *data, uint16_t size)
 {
 	frame->index   = index;
 	frame->in      = in;
@@ -1393,10 +1394,10 @@ static void l2cap_frame_init(struct l2cap_frame *frame, uint16_t index, bool in,
 	frame->cid     = cid;
 	frame->data    = data;
 	frame->size    = size;
-	frame->psm     = get_psm(frame);
+	frame->psm     = psm ? psm : get_psm(frame);
 	frame->mode    = get_mode(frame);
 	frame->chan    = get_chan(frame);
-	frame->seq_num = get_seq_num(frame);
+	frame->seq_num = psm ? 1 : get_seq_num(frame);
 }
 
 static void bredr_sig_packet(uint16_t index, bool in, uint16_t handle,
@@ -1479,7 +1480,7 @@ static void bredr_sig_packet(uint16_t index, bool in, uint16_t handle,
 			}
 		}
 
-		l2cap_frame_init(&frame, index, in, handle, hdr->ident, cid,
+		l2cap_frame_init(&frame, index, in, handle, hdr->ident, cid, 0,
 								data, len);
 		opcode_data->func(&frame);
 
@@ -1561,7 +1562,8 @@ static void le_sig_packet(uint16_t index, bool in, uint16_t handle,
 		}
 	}
 
-	l2cap_frame_init(&frame, index, in, handle, hdr->ident, cid, data, len);
+	l2cap_frame_init(&frame, index, in, handle, hdr->ident, cid, 0,
+							data, len);
 	opcode_data->func(&frame);
 }
 
@@ -1592,7 +1594,7 @@ static void connless_packet(uint16_t index, bool in, uint16_t handle,
 		break;
 	}
 
-	l2cap_frame_init(&frame, index, in, handle, 0, cid, data, size);
+	l2cap_frame_init(&frame, index, in, handle, 0, cid, 0, data, size);
 }
 
 static void print_controller_list(const uint8_t *data, uint16_t size)
@@ -1961,7 +1963,7 @@ static void amp_packet(uint16_t index, bool in, uint16_t handle,
 		}
 	}
 
-	l2cap_frame_init(&frame, index, in, handle, 0, cid, data + 6, len);
+	l2cap_frame_init(&frame, index, in, handle, 0, cid, 0, data + 6, len);
 	opcode_data->func(&frame);
 }
 
@@ -2544,7 +2546,8 @@ static void att_packet(uint16_t index, bool in, uint16_t handle,
 		}
 	}
 
-	l2cap_frame_init(&frame, index, in, handle, 0, cid, data + 1, size - 1);
+	l2cap_frame_init(&frame, index, in, handle, 0, cid, 0,
+						data + 1, size - 1);
 	opcode_data->func(&frame);
 }
 
@@ -3000,12 +3003,13 @@ static void smp_packet(uint16_t index, bool in, uint16_t handle,
 		}
 	}
 
-	l2cap_frame_init(&frame, index, in, handle, 0, cid, data + 1, size - 1);
+	l2cap_frame_init(&frame, index, in, handle, 0, cid, 0,
+						data + 1, size - 1);
 	opcode_data->func(&frame);
 }
 
-static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
-			uint16_t cid, const void *data, uint16_t size)
+void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
+			uint16_t psm, const void *data, uint16_t size)
 {
 	struct l2cap_frame frame;
 	uint32_t ctrl32 = 0;
@@ -3033,7 +3037,8 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		smp_packet(index, in, handle, cid, data, size);
 		break;
 	default:
-		l2cap_frame_init(&frame, index, in, handle, 0, cid, data, size);
+		l2cap_frame_init(&frame, index, in, handle, 0, cid, psm,
+							data, size);
 
 		if (frame.mode > 0) {
 			ext_ctrl = get_ext_ctrl(&frame);
@@ -3136,7 +3141,7 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 
 		if (len == size) {
 			/* complete frame */
-			l2cap_frame(index, in, handle, cid, data, len);
+			l2cap_frame(index, in, handle, cid, 0, data, len);
 			return;
 		}
 
@@ -3181,7 +3186,7 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 		if (!index_list[index][in].frag_len) {
 			/* complete frame */
 			l2cap_frame(index, in, handle,
-					index_list[index][in].frag_cid,
+					index_list[index][in].frag_cid, 0,
 					index_list[index][in].frag_buf,
 					index_list[index][in].frag_pos);
 			clear_fragment_buffer(index, in);
@@ -3216,7 +3221,7 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 		}
 
 		/* complete frame */
-		l2cap_frame(index, in, handle, cid, data, len);
+		l2cap_frame(index, in, handle, cid, 0, data, len);
 		break;
 
 	default:

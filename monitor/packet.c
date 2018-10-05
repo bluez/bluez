@@ -3947,7 +3947,8 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		ident = ul->ident_len ? data + sizeof(*ul) : NULL;
 
 		packet_user_logging(tv, cred, index, ul->priority, ident,
-					data + sizeof(*ul) + ul->ident_len);
+					data + sizeof(*ul) + ul->ident_len,
+					size - (sizeof(*ul) + ul->ident_len));
 		break;
 	case BTSNOOP_OPCODE_CTRL_OPEN:
 		control_disable_decoding();
@@ -9873,9 +9874,36 @@ void packet_system_note(struct timeval *tv, struct ucred *cred,
 					"Note", message, NULL);
 }
 
+struct monitor_l2cap_hdr {
+	uint16_t cid;
+	uint16_t psm;
+};
+
+static void packet_decode(struct timeval *tv, struct ucred *cred, char dir,
+				uint16_t index, const char *color,
+				const char *label, const void *data,
+				uint16_t size)
+{
+	const struct monitor_l2cap_hdr *hdr = data;
+
+	if (size < sizeof(*hdr)) {
+		print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
+			"Malformed User Data packet", NULL, NULL);
+	}
+
+	print_packet(tv, cred, dir, index, NULL, COLOR_HCI_ACLDATA, label,
+				dir == '>' ? "User Data RX" : "User Data TX",
+				NULL);
+
+	/* Discard last byte since it just a filler */
+	l2cap_frame(index, dir == '>', 0, hdr->cid, hdr->psm,
+			data + sizeof(*hdr), size - (sizeof(*hdr) + 1));
+}
+
 void packet_user_logging(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint8_t priority,
-					const char *ident, const char *message)
+					const char *ident, const void *data,
+					uint16_t size)
 {
 	char pid_str[140];
 	const char *label;
@@ -9930,7 +9958,14 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 			label = "Message";
 	}
 
-	print_packet(tv, cred, '=', index, NULL, color, label, message, NULL);
+	if (ident[0] == '<' || ident[0] == '>') {
+		packet_decode(tv, cred, ident[0], index, color,
+				label == ident ? &ident[2] : label,
+				data, size);
+		return;
+	}
+
+	print_packet(tv, cred, '=', index, NULL, color, label, data, NULL);
 }
 
 void packet_hci_command(struct timeval *tv, struct ucred *cred, uint16_t index,
