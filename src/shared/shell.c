@@ -1030,7 +1030,7 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 	if (!data.name)
 		data.name = strdup(argv[0]);
 	else
-		data.name = strdup(data.name++);
+		data.name = strdup(++data.name);
 
 	while ((c = getopt_long(argc, argv, optstr, options, &index)) != -1) {
 		switch (c) {
