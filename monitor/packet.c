@@ -310,7 +310,7 @@ static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 			ts_pos += n;
 			ts_len += n;
 		}
-	} else if (index != HCI_DEV_NONE &&
+	} else if (index != HCI_DEV_NONE && index < MAX_INDEX &&
 				index_list[index].frame != last_frame) {
 		if (use_color()) {
 			n = sprintf(ts_str + ts_pos, "%s", COLOR_FRAME_LABEL);
