@@ -5830,6 +5830,11 @@ static void read_local_codecs_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_local_codecs *rsp = data;
 	uint8_t i, num_vnd_codecs;
 
+	if (rsp->num_codecs + 3 > size) {
+		print_field("Invalid number of codecs.");
+		return;
+	}
+
 	print_status(rsp->status);
 	print_field("Number of supported codecs: %d", rsp->num_codecs);
 
