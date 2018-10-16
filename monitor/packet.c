@@ -3861,6 +3861,11 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		index_current = index;
 	}
 
+	if (index != HCI_DEV_NONE && index > MAX_INDEX) {
+		print_field("Invalid index (%d)", index);
+		return;
+	}
+
 	if (tv && time_offset == ((time_t) -1))
 		time_offset = tv->tv_sec;
 
