@@ -585,6 +585,10 @@ static void service_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 	}
 
 	count = get_be16(frame->data + 2);
+	if (count * 4 > frame->size) {
+		print_text(COLOR_ERROR, "invalid record count");
+                return;
+	}
 
 	print_field("Total record count: %d", get_be16(frame->data));
 	print_field("Current record count: %d", count);
