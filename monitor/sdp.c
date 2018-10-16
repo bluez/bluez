@@ -309,6 +309,11 @@ static void decode_data_elements(uint32_t position, uint8_t indent,
 		break;
 	}
 
+	if (elemlen > size) {
+		print_text(COLOR_ERROR, "invalid data element size");
+		return;
+	}
+
 	data += elemlen;
 	size -= elemlen;
 
@@ -654,6 +659,11 @@ static void search_attr_req(const struct l2cap_frame *frame,
 	attr_bytes = get_bytes(frame->data + search_bytes + 2,
 				frame->size - search_bytes - 2);
 	print_field("Attribute list: [len %d]", attr_bytes);
+
+	if (search_bytes + attr_bytes > frame->size) {
+		print_text(COLOR_ERROR, "invalid attribute list length");
+		return;
+	}
 
 	decode_data_elements(0, 2, frame->data + search_bytes + 2,
 						attr_bytes, NULL);
