@@ -9981,13 +9981,17 @@ void packet_hci_command(struct timeval *tv, struct ucred *cred, uint16_t index,
 	char extra_str[25], vendor_str[150];
 	int i;
 
+	if (index > MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
+
 	index_list[index].frame++;
 
-	if (size < HCI_COMMAND_HDR_SIZE) {
+	if (size < HCI_COMMAND_HDR_SIZE || size > BTSNOOP_MAX_PACKET_SIZE) {
 		sprintf(extra_str, "(len %d)", size);
 		print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
 			"Malformed HCI Command packet", NULL, extra_str);
-		packet_hexdump(data, size);
 		return;
 	}
 
@@ -10084,6 +10088,12 @@ void packet_hci_event(struct timeval *tv, struct ucred *cred, uint16_t index,
 	char extra_str[25];
 	int i;
 
+	if (index > MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
+
+
 	index_list[index].frame++;
 
 	if (size < HCI_EVENT_HDR_SIZE) {
@@ -10157,6 +10167,11 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint16_t dlen = le16_to_cpu(hdr->dlen);
 	uint8_t flags = acl_flags(handle);
 	char handle_str[16], extra_str[32];
+
+	if (index > MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
 
 	index_list[index].frame++;
 
