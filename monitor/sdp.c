@@ -43,12 +43,13 @@
 #include "sdp.h"
 
 #define MAX_TID 16
+#define MAX_CONT_SIZE 17
 
 struct tid_data {
 	bool inuse;
 	uint16_t tid;
 	uint16_t channel;
-	uint8_t cont[17];
+	uint8_t cont[MAX_CONT_SIZE];
 };
 
 static struct tid_data tid_list[MAX_TID];
@@ -410,6 +411,10 @@ static void print_continuation(const uint8_t *data, uint16_t size)
 static void store_continuation(struct tid_data *tid,
 					const uint8_t *data, uint16_t size)
 {
+	if (size > MAX_CONT_SIZE) {
+		print_text(COLOR_ERROR, "invalid continuation size");
+		return;
+	}
 	memcpy(tid->cont, data, size);
 	print_continuation(data, size);
 }
