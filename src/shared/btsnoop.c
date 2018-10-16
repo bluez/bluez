@@ -410,6 +410,11 @@ static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
 		tv->tv_usec = ts & 0xffffffff;
 	}
 
+	if (toread > BTSNOOP_MAX_PACKET_SIZE) {
+                btsnoop->aborted = true;
+                return false;
+        }
+
 	switch (pkt.type) {
 	case 0x00:
 		*index = 0x0000;
