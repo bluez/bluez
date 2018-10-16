@@ -10202,6 +10202,11 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint8_t flags = acl_flags(handle);
 	char handle_str[16], extra_str[32];
 
+	if (index > MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
+
 	index_list[index].frame++;
 
 	if (size < HCI_SCO_HDR_SIZE) {
