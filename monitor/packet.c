@@ -4724,6 +4724,10 @@ static void set_event_filter_cmd(const void *data, uint8_t size)
 		break;
 
 	case 0x01:
+		if (size < 2) {
+			print_text(COLOR_ERROR, "  invalid parameter size");
+			break;
+		}
 		filter = *((const uint8_t *) (data + 1));
 
 		switch (filter) {
@@ -4763,11 +4767,21 @@ static void set_event_filter_cmd(const void *data, uint8_t size)
 			break;
 		}
 
+		if (size < 2) {
+                        print_text(COLOR_ERROR, "  invalid parameter size");
+                        break;
+                }
+
 		print_field("Filter: %s (0x%2.2x)", str, filter);
 		packet_hexdump(data + 2, size - 2);
 		break;
 
 	default:
+		if (size < 2) {
+                        print_text(COLOR_ERROR, "  invalid parameter size");
+                        break;
+                }
+
 		filter = *((const uint8_t *) (data + 1));
 
 		print_field("Filter: Reserved (0x%2.2x)", filter);
