@@ -10278,7 +10278,7 @@ void packet_ctrl_open(struct timeval *tv, struct ucred *cred, uint16_t index,
 		flags = get_le32(data + 3);
 		ident_len = get_u8(data + 7);
 
-		if (ident_len > size) {
+		if ((8 + ident_len) > size) {
 			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
                                 "Malformed Control Open packet", NULL, NULL);
 			return;
