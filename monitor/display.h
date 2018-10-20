@@ -70,8 +70,8 @@ struct bitfield_data {
 	const char *str;
 };
 
-inline uint64_t print_bitfield(int indent, uint64_t val,
-				const struct bitfield_data *table)
+static inline uint64_t print_bitfield(int indent, uint64_t val,
+					const struct bitfield_data *table)
 {
 	uint64_t mask = val;
 	int i;
