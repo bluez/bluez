@@ -9323,6 +9323,7 @@ static void print_ext_adv_report_evt_type(const char *indent, uint16_t flags)
 	uint16_t props = flags;
 	uint8_t data_status;
 	const char *str;
+	const char *color_on;
 	int i;
 
 	print_field("%sEvent type: 0x%4.4x", indent, flags);
@@ -9343,19 +9344,23 @@ static void print_ext_adv_report_evt_type(const char *indent, uint16_t flags)
 	switch (data_status) {
 	case 0x00:
 		str = "Complete";
+		color_on = COLOR_GREEN;
 		break;
 	case 0x01:
 		str = "Incomplete, more data to come";
+		color_on = COLOR_YELLOW;
 		break;
 	case 0x02:
 		str = "Incomplete, data truncated, no more to come";
+		color_on = COLOR_RED;
 		break;
 	default:
 		str = "Reserved";
+		color_on = COLOR_RED;
 		break;
 	}
 
-	print_field("%s  Data status: %s", indent, str);
+	print_field("%s  Data status: %s%s%s", indent, color_on, str, COLOR_OFF);
 
 	if (mask)
 		print_text(COLOR_UNKNOWN_ADV_FLAG,
