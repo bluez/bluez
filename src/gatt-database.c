@@ -3357,6 +3357,8 @@ void btd_gatt_database_att_connected(struct btd_gatt_database *database,
 void btd_gatt_database_att_disconnected(struct btd_gatt_database *database,
 						struct btd_device *device)
 {
+	struct bt_gatt_server *server = btd_device_get_gatt_server(device);
+	struct bt_att *att = bt_gatt_server_get_att(server);
 	struct device_state *state;
 	const bdaddr_t *addr;
 	uint8_t type;
@@ -3369,6 +3371,9 @@ void btd_gatt_database_att_disconnected(struct btd_gatt_database *database,
 	state = find_device_state(database, addr, type);
 	if (!state)
 		return;
+
+	if (state->disc_id)
+		bt_att_unregister_disconnect(att, state->disc_id);
 
 	att_disconnected(0, state);
 }
