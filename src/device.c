@@ -578,11 +578,11 @@ static void gatt_server_cleanup(struct btd_device *device)
 	if (!device->server)
 		return;
 
-	bt_gatt_server_unref(device->server);
-	device->server = NULL;
-
 	btd_gatt_database_att_disconnected(
 			btd_adapter_get_database(device->adapter), device);
+
+	bt_gatt_server_unref(device->server);
+	device->server = NULL;
 }
 
 static void attio_cleanup(struct btd_device *device)
