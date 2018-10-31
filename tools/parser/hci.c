@@ -4107,6 +4107,9 @@ void hci_dump(int level, struct frame *frm)
 
 	frm->ptr++; frm->len--;
 
+	if (frm->len == 0)
+		return;
+
 	switch (type) {
 	case HCI_COMMAND_PKT:
 		command_dump(level, frm);
