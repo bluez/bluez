@@ -532,6 +532,24 @@ static uint16_t common_rsp(const struct l2cap_frame *frame,
 	return bytes;
 }
 
+static const char *error_str(uint16_t code)
+{
+	switch (code) {
+	case 0x0001:
+		return "Invalid Version";
+	case 0x0002:
+		return "Invalid Record Handle";
+	case 0x0003:
+		return "Invalid Syntax";
+	case 0x0004:
+		return "Invalid PDU Size";
+	case 0x0005:
+		return "Invalid Continuation State";
+	default:
+		return "Unknown";
+	}
+}
+
 static void error_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 {
 	uint16_t error;
@@ -546,7 +564,7 @@ static void error_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 
 	error = get_be16(frame->data);
 
-	print_field("Error code: 0x%2.2x", error);
+	print_field("Error code: %s (0x%4.4x)", error_str(error), error);
 }
 
 static void service_req(const struct l2cap_frame *frame, struct tid_data *tid)
