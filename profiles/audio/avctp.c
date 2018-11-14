@@ -1534,6 +1534,8 @@ static void avctp_browsing_confirm(struct avctp *session, GIOChannel *chan,
 	if (bt_io_accept(chan, avctp_connect_browsing_cb, session, NULL,
 								&err)) {
 		avctp_set_state(session, AVCTP_STATE_BROWSING_CONNECTING, 0);
+		session->browsing = avctp_channel_create(session, chan, 1,
+							avctp_destroy_browsing);
 		return;
 	}
 
