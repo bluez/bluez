@@ -223,13 +223,15 @@ tools_mcaptest_SOURCES = tools/mcaptest.c \
 				btio/btio.h btio/btio.c \
 				src/log.c src/log.h \
 				profiles/health/mcap.h profiles/health/mcap.c
-tools_mcaptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ -lrt
+tools_mcaptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ \
+				src/libshared-mainloop.la -lrt
 
 tools_bneptest_SOURCES = tools/bneptest.c \
 				btio/btio.h btio/btio.c \
 				src/log.h src/log.c \
 				profiles/network/bnep.h profiles/network/bnep.c
-tools_bneptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+tools_bneptest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ \
+				src/libshared-mainloop.la
 
 tools_cltest_SOURCES = tools/cltest.c
 tools_cltest_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la

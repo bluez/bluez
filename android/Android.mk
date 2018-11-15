@@ -228,6 +228,7 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
+	bluez/src/shared/log.c \
 	bluez/src/log.c \
 	bluez/btio/btio.c \
 	bluez/lib/bluetooth.c \
