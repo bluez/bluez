@@ -46,6 +46,7 @@
 
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
+#include "src/shared/log.h"
 
 #define COLOR_OFF	"\x1B[0m"
 #define COLOR_BLACK	"\x1B[0;30m"
@@ -131,8 +132,6 @@ struct monitor_l2cap_hdr {
 	uint16_t psm;
 } __attribute__((packed));
 
-static int monitor_fd = -1;
-
 static void test_destroy(gpointer data)
 {
 	struct test_case *test = data;
@@ -148,102 +147,6 @@ static void test_destroy(gpointer data)
 
 	free(test->name);
 	free(test);
-}
-
-static int monitor_open(void)
-{
-	struct sockaddr_hci addr;
-	int fd;
-
-	if (!option_monitor)
-		return -1;
-
-	if (monitor_fd >= 0)
-		return monitor_fd;
-
-	fd = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (fd < 0)
-		return fd;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.hci_family = AF_BLUETOOTH;
-	addr.hci_dev = HCI_DEV_NONE;
-	addr.hci_channel = HCI_CHANNEL_LOGGING;
-
-	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		option_monitor = FALSE;
-		tester_debug("Failed to open monitor socket: %s",
-			     strerror(errno));
-		close(fd);
-		return -1;
-	}
-
-	monitor_fd = fd;
-
-	return fd;
-}
-
-static void monitor_sendmsg(const char *label, int level, struct iovec *io,
-							size_t io_len)
-{
-	struct monitor_hdr hdr;
-	struct msghdr msg;
-	struct iovec iov[5];
-	size_t i;
-
-	monitor_fd = monitor_open();
-	if (monitor_fd < 0 || io_len > 3)
-		return;
-
-	hdr.opcode = cpu_to_le16(0x0000);
-	hdr.index = cpu_to_le16(0xffff);
-	hdr.ident_len = strlen(label) + 1;
-	hdr.len = cpu_to_le16(2 + hdr.ident_len);
-	hdr.priority = level;
-
-	iov[0].iov_base = &hdr;
-	iov[0].iov_len = sizeof(hdr);
-
-	iov[1].iov_base = (void *) label;
-	iov[1].iov_len = hdr.ident_len;
-
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 2;
-
-	for (i = 0; i < io_len; i++) {
-		iov[i + 2] = io[i];
-		hdr.len += io[i].iov_len;
-		msg.msg_iovlen++;
-	}
-
-	if (sendmsg(monitor_fd, &msg, 0) < 0) {
-		/* Disable monitor */
-		option_monitor = FALSE;
-		tester_debug("Failed to send to monitor: %s", strerror(errno));
-		close(monitor_fd);
-		monitor_fd = -1;
-	}
-}
-
-static void monitor_vprintf(const char *id, int level, const char *format,
-								va_list ap)
-{
-	struct iovec iov;
-	char *str;
-
-	if (!option_monitor)
-		return;
-
-	if (vasprintf(&str, format, ap) < 0)
-		return;
-
-	iov.iov_base = str;
-	iov.iov_len = strlen(str) + 1;
-
-	monitor_sendmsg(id, level, &iov, 1);
-
-	free(str);
 }
 
 static void tester_vprintf(const char *format, va_list ap)
@@ -266,7 +169,7 @@ static void tester_log(const char *format, ...)
 	va_end(ap);
 
 	va_start(ap, format);
-	monitor_vprintf(tester_name, LOG_INFO, format, ap);
+	bt_log_vprintf(HCI_DEV_NONE, tester_name, LOG_INFO, format, ap);
 	va_end(ap);
 }
 
@@ -279,7 +182,7 @@ void tester_print(const char *format, ...)
 	va_end(ap);
 
 	va_start(ap, format);
-	monitor_vprintf(tester_name, LOG_INFO, format, ap);
+	bt_log_vprintf(HCI_DEV_NONE, tester_name, LOG_INFO, format, ap);
 	va_end(ap);
 }
 
@@ -292,7 +195,7 @@ void tester_debug(const char *format, ...)
 	va_end(ap);
 
 	va_start(ap, format);
-	monitor_vprintf(tester_name, LOG_DEBUG, format, ap);
+	bt_log_vprintf(HCI_DEV_NONE, tester_name, LOG_DEBUG, format, ap);
 	va_end(ap);
 }
 
@@ -305,7 +208,7 @@ void tester_warn(const char *format, ...)
 	va_end(ap);
 
 	va_start(ap, format);
-	monitor_vprintf(tester_name, LOG_WARNING, format, ap);
+	bt_log_vprintf(HCI_DEV_NONE, tester_name, LOG_WARNING, format, ap);
 	va_end(ap);
 }
 
@@ -340,7 +243,7 @@ static void monitor_log(char dir, uint16_t cid, uint16_t psm, const void *data,
 	iov[2].iov_base = &term;
 	iov[2].iov_len = sizeof(term);
 
-	monitor_sendmsg(label, LOG_INFO, iov, 3);
+	bt_log_sendmsg(HCI_DEV_NONE, label, LOG_INFO, iov, 3);
 }
 
 void tester_monitor(char dir, uint16_t cid, uint16_t psm, const void *data,
@@ -1031,6 +934,9 @@ int tester_run(void)
 	ret = tester_summarize();
 
 	g_list_free_full(test_list, test_destroy);
+
+	if (option_monitor)
+		bt_log_close();
 
 	return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
