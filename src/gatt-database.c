@@ -2139,7 +2139,7 @@ static struct pending_op *send_write(struct btd_device *device,
 	return NULL;
 }
 
-static bool pipe_hup(struct io *io, void *user_data)
+static bool sock_hup(struct io *io, void *user_data)
 {
 	struct external_chrc *chrc = user_data;
 
@@ -2155,7 +2155,7 @@ static bool pipe_hup(struct io *io, void *user_data)
 	return false;
 }
 
-static bool pipe_io_read(struct io *io, void *user_data)
+static bool sock_io_read(struct io *io, void *user_data)
 {
 	struct external_chrc *chrc = user_data;
 	uint8_t buf[512];
@@ -2176,7 +2176,7 @@ static bool pipe_io_read(struct io *io, void *user_data)
 	return true;
 }
 
-static struct io *pipe_io_new(int fd, void *user_data)
+static struct io *sock_io_new(int fd, void *user_data)
 {
 	struct io *io;
 
@@ -2184,21 +2184,25 @@ static struct io *pipe_io_new(int fd, void *user_data)
 
 	io_set_close_on_destroy(io, true);
 
-	io_set_read_handler(io, pipe_io_read, user_data, NULL);
+	io_set_read_handler(io, sock_io_read, user_data, NULL);
 
-	io_set_disconnect_handler(io, pipe_hup, user_data, NULL);
+	io_set_disconnect_handler(io, sock_hup, user_data, NULL);
 
 	return io;
 }
 
-static int pipe_io_send(struct io *io, const void *data, size_t len)
+static int sock_io_send(struct io *io, const void *data, size_t len)
 {
+	struct msghdr msg;
 	struct iovec iov;
 
 	iov.iov_base = (void *) data;
 	iov.iov_len = len;
 
-	return io_send(io, &iov, 1);
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = &iov;
+
+	return sendmsg(io_get_fd(io), &msg, MSG_NOSIGNAL);
 }
 
 static void acquire_write_reply(DBusMessage *message, void *user_data)
@@ -2227,9 +2231,9 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 
 	DBG("AcquireWrite success: fd %d MTU %u\n", fd, mtu);
 
-	chrc->write_io = pipe_io_new(fd, chrc);
+	chrc->write_io = sock_io_new(fd, chrc);
 
-	if (pipe_io_send(chrc->write_io, op->data.iov_base,
+	if (sock_io_send(chrc->write_io, op->data.iov_base,
 				op->data.iov_len) < 0)
 		goto retry;
 
@@ -2308,7 +2312,7 @@ static void acquire_notify_reply(DBusMessage *message, void *user_data)
 
 	DBG("AcquireNotify success: fd %d MTU %u\n", fd, mtu);
 
-	chrc->notify_io = pipe_io_new(fd, chrc);
+	chrc->notify_io = sock_io_new(fd, chrc);
 
 	__sync_fetch_and_add(&chrc->ntfy_cnt, 1);
 
@@ -2685,7 +2689,7 @@ static void chrc_write_cb(struct gatt_db_attribute *attrib,
 		chrc->prep_authorized = false;
 
 	if (chrc->write_io) {
-		if (pipe_io_send(chrc->write_io, value, len) < 0) {
+		if (sock_io_send(chrc->write_io, value, len) < 0) {
 			error("Unable to write: %s", strerror(errno));
 			goto fail;
 		}
