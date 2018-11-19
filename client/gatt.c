@@ -33,6 +33,8 @@
 #include <sys/uio.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <glib.h>
 
@@ -99,14 +101,14 @@ static GList *managers;
 static GList *uuids;
 static DBusMessage *pending_message = NULL;
 
-struct pipe_io {
+struct sock_io {
 	GDBusProxy *proxy;
 	struct io *io;
 	uint16_t mtu;
 };
 
-static struct pipe_io write_io;
-static struct pipe_io notify_io;
+static struct sock_io write_io;
+static struct sock_io notify_io;
 
 static void print_service(struct service *service, const char *description)
 {
@@ -635,6 +637,24 @@ static void write_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_close_container(iter, &dict);
 }
 
+static int sock_send(struct io *io, struct iovec *iov, size_t iovlen)
+{
+	struct msghdr msg;
+	int ret;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = iovlen;
+
+	ret = sendmsg(io_get_fd(io), &msg, MSG_NOSIGNAL);
+	if (ret < 0) {
+		ret = -errno;
+		bt_shell_printf("sendmsg: %s", strerror(-ret));
+	}
+
+	return ret;
+}
+
 static void write_attribute(GDBusProxy *proxy, char *val_str, uint16_t offset)
 {
 	struct iovec iov;
@@ -671,7 +691,7 @@ static void write_attribute(GDBusProxy *proxy, char *val_str, uint16_t offset)
 	if (proxy == write_io.proxy && (write_io.io && write_io.mtu >= i)) {
 		bt_shell_printf("Attempting to write fd %d\n",
 						io_get_fd(write_io.io));
-		if (io_send(write_io.io, &iov, 1) < 0) {
+		if (sock_send(write_io.io, &iov, 1) < 0) {
 			bt_shell_printf("Failed to write: %s", strerror(errno));
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
@@ -713,9 +733,11 @@ void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
-static bool pipe_read(struct io *io, void *user_data)
+static bool sock_read(struct io *io, void *user_data)
 {
 	struct chrc *chrc = user_data;
+	struct msghdr msg;
+	struct iovec iov;
 	uint8_t buf[MAX_ATTR_VAL_LEN];
 	int fd = io_get_fd(io);
 	ssize_t bytes_read;
@@ -723,8 +745,20 @@ static bool pipe_read(struct io *io, void *user_data)
 	if (io != notify_io.io && !chrc)
 		return true;
 
-	bytes_read = read(fd, buf, sizeof(buf));
-	if (bytes_read < 0)
+	iov.iov_base = buf;
+	iov.iov_len = sizeof(buf);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	bytes_read = recvmsg(fd, &msg, MSG_DONTWAIT);
+	if (bytes_read < 0) {
+		bt_shell_printf("recvmsg: %s", strerror(errno));
+		return false;
+	}
+
+	if (!bytes_read)
 		return false;
 
 	if (chrc)
@@ -739,12 +773,12 @@ static bool pipe_read(struct io *io, void *user_data)
 	return true;
 }
 
-static bool pipe_hup(struct io *io, void *user_data)
+static bool sock_hup(struct io *io, void *user_data)
 {
 	struct chrc *chrc = user_data;
 
 	if (chrc) {
-		bt_shell_printf("Attribute %s %s pipe closed\n", chrc->path,
+		bt_shell_printf("Attribute %s %s sock closed\n", chrc->path,
 				io == chrc->write_io ? "Write" : "Notify");
 
 		if (io == chrc->write_io) {
@@ -768,7 +802,7 @@ static bool pipe_hup(struct io *io, void *user_data)
 	return false;
 }
 
-static struct io *pipe_io_new(int fd, void *user_data)
+static struct io *sock_io_new(int fd, void *user_data)
 {
 	struct io *io;
 
@@ -776,9 +810,9 @@ static struct io *pipe_io_new(int fd, void *user_data)
 
 	io_set_close_on_destroy(io, true);
 
-	io_set_read_handler(io, pipe_read, user_data, NULL);
+	io_set_read_handler(io, sock_read, user_data, NULL);
 
-	io_set_disconnect_handler(io, pipe_hup, user_data, NULL);
+	io_set_disconnect_handler(io, sock_hup, user_data, NULL);
 
 	return io;
 }
@@ -810,7 +844,7 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 	bt_shell_printf("AcquireWrite success: fd %d MTU %u\n", fd,
 								write_io.mtu);
 
-	write_io.io = pipe_io_new(fd, NULL);
+	write_io.io = sock_io_new(fd, NULL);
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
@@ -892,7 +926,7 @@ static void acquire_notify_reply(DBusMessage *message, void *user_data)
 	bt_shell_printf("AcquireNotify success: fd %d MTU %u\n", fd,
 								notify_io.mtu);
 
-	notify_io.io = pipe_io_new(fd, NULL);
+	notify_io.io = sock_io_new(fd, NULL);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -1932,39 +1966,40 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *chrc_create_pipe(struct chrc *chrc, DBusMessage *msg)
+static DBusMessage *create_sock(struct chrc *chrc, DBusMessage *msg)
 {
-	int pipefd[2];
+	int fds[2];
 	struct io *io;
 	bool dir;
 	DBusMessage *reply;
 
-	if (pipe2(pipefd, O_DIRECT | O_NONBLOCK | O_CLOEXEC) < 0)
+	if (socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC,
+								0, fds) < 0)
 		return g_dbus_create_error(msg, "org.bluez.Error.Failed", "%s",
 							strerror(errno));
 
 	dir = dbus_message_has_member(msg, "AcquireWrite");
 
-	io = pipe_io_new(pipefd[!dir], chrc);
+	io = sock_io_new(fds[!dir], chrc);
 	if (!io) {
-		close(pipefd[0]);
-		close(pipefd[1]);
+		close(fds[0]);
+		close(fds[1]);
 		return g_dbus_create_error(msg, "org.bluez.Error.Failed", "%s",
 							strerror(errno));
 	}
 
-	reply = g_dbus_create_reply(msg, DBUS_TYPE_UNIX_FD, &pipefd[dir],
+	reply = g_dbus_create_reply(msg, DBUS_TYPE_UNIX_FD, &fds[dir],
 					DBUS_TYPE_UINT16, &chrc->mtu,
 					DBUS_TYPE_INVALID);
 
-	close(pipefd[dir]);
+	close(fds[dir]);
 
 	if (dir)
 		chrc->write_io = io;
 	else
 		chrc->notify_io = io;
 
-	bt_shell_printf("[" COLORED_CHG "] Attribute %s %s pipe acquired\n",
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s %s sock acquired\n",
 					chrc->path, dir ? "Write" : "Notify");
 
 	return reply;
@@ -1993,7 +2028,7 @@ static DBusMessage *chrc_acquire_write(DBusConnection *conn, DBusMessage *msg,
 	bt_shell_printf("AcquireWrite: %s link %s\n", path_to_address(device),
 									link);
 
-	reply = chrc_create_pipe(chrc, msg);
+	reply = create_sock(chrc, msg);
 
 	if (chrc->write_io)
 		g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE,
@@ -2025,7 +2060,7 @@ static DBusMessage *chrc_acquire_notify(DBusConnection *conn, DBusMessage *msg,
 	bt_shell_printf("AcquireNotify: %s link %s\n", path_to_address(device),
 									link);
 
-	reply = chrc_create_pipe(chrc, msg);
+	reply = create_sock(chrc, msg);
 
 	if (chrc->notify_io)
 		g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE,
