@@ -100,9 +100,9 @@ Methods		array{byte} ReadValue(dict options)
 
 		fd, uint16 AcquireWrite(dict options) [optional]
 
-			Acquire file descriptor and MTU for writing. Usage of
-			WriteValue will be locked causing it to return
-			NotPermitted error.
+			Acquire file descriptor and MTU for writing. Only
+			sockets are supported. Usage of WriteValue will be
+			locked causing it to return NotPermitted error.
 
 			For server the MTU returned shall be equal or smaller
 			than the negotiated MTU.
@@ -130,9 +130,9 @@ Methods		array{byte} ReadValue(dict options)
 
 		fd, uint16 AcquireNotify(dict options) [optional]
 
-			Acquire file descriptor and MTU for notify. Usage of
-			StartNotify will be locked causing it to return
-			NotPermitted error.
+			Acquire file descriptor and MTU for notify. Only
+			sockets are support. Usage of StartNotify will be locked
+			causing it to return NotPermitted error.
 
 			For server the MTU returned shall be equal or smaller
 			than the negotiated MTU.
