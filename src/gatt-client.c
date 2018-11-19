@@ -1645,13 +1645,22 @@ static const GDBusMethodTable characteristic_methods[] = {
 	{ }
 };
 
+static void remove_client(void *data)
+{
+	struct notify_client *ntfy_client = data;
+	struct btd_gatt_client *client = ntfy_client->chrc->service->client;
+
+	queue_remove(client->all_notify_clients, ntfy_client);
+
+	notify_client_unref(ntfy_client);
+}
+
 static void characteristic_free(void *data)
 {
 	struct characteristic *chrc = data;
 
 	/* List should be empty here */
 	queue_destroy(chrc->descs, NULL);
-	queue_destroy(chrc->notify_clients, NULL);
 
 	if (chrc->write_io) {
 		queue_remove(chrc->service->client->ios, chrc->write_io->io);
@@ -1662,6 +1671,8 @@ static void characteristic_free(void *data)
 		queue_remove(chrc->service->client->ios, chrc->notify_io->io);
 		pipe_io_destroy(chrc->notify_io);
 	}
+
+	queue_destroy(chrc->notify_clients, remove_client);
 
 	g_free(chrc->path);
 	free(chrc);
@@ -1715,16 +1726,6 @@ static struct characteristic *characteristic_create(
 	return chrc;
 }
 
-static void remove_client(void *data)
-{
-	struct notify_client *ntfy_client = data;
-	struct btd_gatt_client *client = ntfy_client->chrc->service->client;
-
-	queue_remove(client->all_notify_clients, ntfy_client);
-
-	notify_client_unref(ntfy_client);
-}
-
 static void unregister_characteristic(void *data)
 {
 	struct characteristic *chrc = data;
@@ -1738,7 +1739,6 @@ static void unregister_characteristic(void *data)
 	if (chrc->write_op)
 		bt_gatt_client_cancel(gatt, chrc->write_op->id);
 
-	queue_remove_all(chrc->notify_clients, NULL, NULL, remove_client);
 	queue_remove_all(chrc->descs, NULL, NULL, unregister_descriptor);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(), chrc->path,
