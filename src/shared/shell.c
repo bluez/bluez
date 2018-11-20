@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <syslog.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -45,6 +46,7 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/shell.h"
+#include "src/shared/log.h"
 
 #define CMD_LENGTH	48
 #define print_text(color, fmt, args...) \
@@ -70,6 +72,7 @@ static struct {
 	int argc;
 	char **argv;
 	bool mode;
+	bool monitor;
 	int timeout;
 	struct io *input;
 
@@ -521,6 +524,12 @@ void bt_shell_printf(const char *fmt, ...)
 	vprintf(fmt, args);
 	va_end(args);
 
+	if (data.monitor) {
+		va_start(args, fmt);
+		bt_log_vprintf(0xffff, data.name, LOG_INFO, fmt, args);
+		va_end(args);
+	}
+
 	if (save_input) {
 		if (!data.saved_prompt)
 			rl_restore_prompt();
@@ -612,6 +621,9 @@ static void rl_handler(char *input)
 
 	if (history_search(input, -1))
 		add_history(input);
+
+	if (data.monitor)
+		bt_log_printf(0xffff, data.name, LOG_INFO, "%s", input);
 
 	if (wordexp(input, &w, WRDE_NOCMD))
 		goto done;
@@ -988,6 +1000,7 @@ static const struct option main_options[] = {
 	{ "version",	no_argument, 0, 'v' },
 	{ "help",	no_argument, 0, 'h' },
 	{ "timeout",	required_argument, 0, 't' },
+	{ "monitor",	no_argument, 0, 'm' },
 };
 
 static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
@@ -1003,7 +1016,8 @@ static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
 	for (i = 0; opt && opt->options[i].name; i++)
 		printf("\t--%s \t%s\n", opt->options[i].name, opt->help[i]);
 
-	printf("\t--timeout \tTimeout in seconds for non-interactive mode\n"
+	printf("\t--monitor \tEnable monitor output\n"
+		"\t--timeout \tTimeout in seconds for non-interactive mode\n"
 		"\t--version \tDisplay version\n"
 		"\t--help \t\tDisplay help\n");
 }
@@ -1022,9 +1036,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 	if (opt) {
 		memcpy(options + offset, opt->options,
 				sizeof(struct option) * opt->optno);
-		snprintf(optstr, sizeof(optstr), "+hvt:%s", opt->optstr);
+		snprintf(optstr, sizeof(optstr), "+mhvt:%s", opt->optstr);
 	} else
-		snprintf(optstr, sizeof(optstr), "+hvt:");
+		snprintf(optstr, sizeof(optstr), "+mhvt:");
 
 	data.name = strrchr(argv[0], '/');
 	if (!data.name)
@@ -1046,6 +1060,13 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			goto done;
 		case 't':
 			data.timeout = atoi(optarg);
+			break;
+		case 'm':
+			data.monitor = true;
+			if (bt_log_open() < 0) {
+				data.monitor = false;
+				printf("Unable to open logging channel\n");
+			}
 			break;
 		default:
 			if (index < 0) {
@@ -1130,6 +1151,9 @@ void bt_shell_cleanup(void)
 		queue_destroy(data.envs, env_destroy);
 		data.envs = NULL;
 	}
+
+	if (data.monitor)
+		bt_log_close();
 
 	rl_cleanup();
 
