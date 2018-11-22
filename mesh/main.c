@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <signal.h>
 
 #include <sys/stat.h>
 #include <ell/ell.h>
@@ -59,29 +60,22 @@ static void usage(void)
 	       "\t--help            Show %s information\n", __func__);
 }
 
-static void signal_handler(struct l_signal *signal, uint32_t signo,
-							void *user_data)
+static void signal_handler(uint32_t signo, void *user_data)
 {
 	static bool terminated;
 
-	switch (signo) {
-	case SIGINT:
-	case SIGTERM:
-		if (terminated)
-			return;
-		l_info("Terminating");
-		l_main_quit();
-		terminated = true;
-		break;
-	}
+	if (terminated)
+		return;
+
+	l_info("Terminating");
+	l_main_quit();
+	terminated = true;
 }
 
 int main(int argc, char *argv[])
 {
 	int status;
 	bool detached = true;
-	struct l_signal *signal;
-	sigset_t mask;
 	struct bt_mesh *mesh = NULL;
 	const char *config_file = NULL;
 	int index = MGMT_INDEX_NONE;
@@ -140,11 +134,6 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-	signal = l_signal_create(&mask, signal_handler, NULL, NULL);
-
 	umask(0077);
 
 	if (detached) {
@@ -155,9 +144,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	status = l_main_run();
-
-	l_signal_remove(signal);
+	status = l_main_run_with_signal(signal_handler, NULL);
 
 done:
 	mesh_unref(mesh);

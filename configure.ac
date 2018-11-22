@@ -249,8 +249,8 @@ AC_ARG_ENABLE(btpclient, AC_HELP_STRING([--enable-btpclient],
 AM_CONDITIONAL(BTPCLIENT, test "${enable_btpclient}" = "yes")
 
 if (test "${enable_btpclient}" = "yes" || test "${enable_mesh}" = "yes"); then
-	PKG_CHECK_MODULES(ELL, ell >= 0.3, enable_ell=yes,
-			  AC_MSG_ERROR(ell library >= 0.3 is required))
+	PKG_CHECK_MODULES(ELL, ell >= 0.14, enable_ell=yes,
+			  AC_MSG_ERROR(ell library >= 0.14 is required))
 	AC_SUBST(ELL_CFLAGS)
 	AC_SUBST(ELL_LIBS)
 fi
