@@ -562,6 +562,8 @@ void bt_shell_usage()
 void bt_shell_prompt_input(const char *label, const char *msg,
 			bt_shell_prompt_input_func func, void *user_data)
 {
+	char *str;
+
 	if (!data.init || data.mode)
 		return;
 
@@ -573,9 +575,11 @@ void bt_shell_prompt_input(const char *label, const char *msg,
 	data.saved_prompt = true;
 	data.saved_func = func;
 	data.saved_user_data = user_data;
+	asprintf(&str, "[%s] %s ", label, msg);
 
 	rl_save_prompt();
-	bt_shell_printf(COLOR_RED "[%s]" COLOR_OFF " %s ", label, msg);
+	bt_shell_set_prompt(str);
+	free(str);
 }
 
 int bt_shell_release_prompt(const char *input)
@@ -1209,7 +1213,7 @@ void bt_shell_set_prompt(const char *string)
 		return;
 
 	rl_set_prompt(string);
-	bt_shell_printf("\r");
+	rl_redisplay();
 }
 
 static bool input_read(struct io *io, void *user_data)
