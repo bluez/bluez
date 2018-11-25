@@ -140,6 +140,7 @@ src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 if ELL
 src_libshared_ell_la_SOURCES = $(shared_sources) \
 				src/shared/io-ell.c
+src_libshared_ell_la_CPPFLAGS = $(AM_CPPFLAGS) $(ELL_CFLAGS)
 noinst_LTLIBRARIES += src/libshared-ell.la
 endif
 
