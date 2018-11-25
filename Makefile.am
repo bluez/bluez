@@ -1,5 +1,6 @@
 
 AM_MAKEFLAGS = --no-print-directory
+AM_CPPFLAGS =
 
 lib_LTLIBRARIES =
 
@@ -214,7 +215,7 @@ src_bluetoothd_DEPENDENCIES = lib/libbluetooth-internal.la \
 				src/libshared-glib.la \
 				src/bluetooth.service
 
-src_bluetoothd_CFLAGS = $(AM_CFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
+src_bluetoothd_CPPFLAGS = $(AM_CPPFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
 					-DPLUGINDIR=\""$(build_plugindir)"\"
 src_bluetoothd_SHORTNAME = bluetoothd
 
@@ -278,9 +279,7 @@ EXTRA_DIST += doc/btsnoop.txt
 
 EXTRA_DIST += tools/magic.btsnoop
 
-AM_CFLAGS += $(DBUS_CFLAGS) $(GLIB_CFLAGS)
-
-AM_CPPFLAGS = -I$(builddir)/lib
+AM_CPPFLAGS += $(DBUS_CFLAGS) $(GLIB_CFLAGS) -I$(builddir)/lib
 
 
 unit_tests += unit/test-eir
@@ -436,7 +435,7 @@ unit_test_gattrib_LDADD = lib/libbluetooth-internal.la \
 
 if MIDI
 unit_tests += unit/test-midi
-unit_test_midi_CFLAGS = $(AM_CFLAGS) $(ALSA_CFLAGS) -DMIDI_TEST
+unit_test_midi_CPPFLAGS = $(AM_CPPFLAGS) $(ALSA_CFLAGS) -DMIDI_TEST
 unit_test_midi_SOURCES = unit/test-midi.c \
 			profiles/midi/libmidi.h \
 			profiles/midi/libmidi.c
