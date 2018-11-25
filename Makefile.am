@@ -160,6 +160,7 @@ gobex_sources = gobex/gobex.h gobex/gobex.c \
 
 builtin_modules =
 builtin_sources =
+builtin_cppflags =
 builtin_nodist =
 builtin_ldadd =
 
@@ -217,7 +218,8 @@ src_bluetoothd_DEPENDENCIES = lib/libbluetooth-internal.la \
 				src/bluetooth.service
 
 src_bluetoothd_CPPFLAGS = $(AM_CPPFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
-					-DPLUGINDIR=\""$(build_plugindir)"\"
+					-DPLUGINDIR=\""$(build_plugindir)"\" \
+					$(builtin_cppflags)
 src_bluetoothd_SHORTNAME = bluetoothd
 
 builtin_files = src/builtin.h $(builtin_nodist)

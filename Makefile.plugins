@@ -97,6 +97,7 @@ builtin_modules += midi
 builtin_sources += profiles/midi/midi.c \
 			profiles/midi/libmidi.h \
 			profiles/midi/libmidi.c
+builtin_cppflags += $(ALSA_CFLAGS)
 builtin_ldadd += $(ALSA_LIBS)
 endif
 
