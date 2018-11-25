@@ -1,8 +1,8 @@
 if SYSTEMD
-systemduserunitdir = @SYSTEMD_USERUNITDIR@
+systemduserunitdir = $(SYSTEMD_USERUNITDIR)
 systemduserunit_DATA = obexd/src/obex.service
 
-dbussessionbusdir = @DBUS_SESSIONBUSDIR@
+dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
 dbussessionbus_DATA = obexd/src/org.bluez.obex.service
 endif
 
@@ -79,12 +79,12 @@ obexd_src_obexd_SOURCES = $(btio_sources) $(gobex_sources) \
 			obexd/src/map_ap.h
 obexd_src_obexd_LDADD = lib/libbluetooth-internal.la \
 			gdbus/libgdbus-internal.la \
-			@ICAL_LIBS@ @DBUS_LIBS@ @GLIB_LIBS@ -ldl
+			$(ICAL_LIBS) $(DBUS_LIBS) $(GLIB_LIBS) -ldl
 
 obexd_src_obexd_LDFLAGS = -Wl,--export-dynamic
 
-obexd_src_obexd_CFLAGS = $(AM_CFLAGS) @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
-				@ICAL_CFLAGS@ -DOBEX_PLUGIN_BUILTIN \
+obexd_src_obexd_CFLAGS = $(AM_CFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) \
+				$(ICAL_CFLAGS) -DOBEX_PLUGIN_BUILTIN \
 				-DPLUGINDIR=\""$(obex_plugindir)"\" \
 				-fPIC -D_FILE_OFFSET_BITS=64
 
