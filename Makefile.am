@@ -23,9 +23,9 @@ pkglibexecdir = @libexecdir@/bluetooth
 
 libexec_PROGRAMS =
 
-includedir = @includedir@/bluetooth
+pkgincludedir = @includedir@/bluetooth
 
-include_HEADERS =
+pkginclude_HEADERS =
 
 AM_CFLAGS = $(WARNING_CFLAGS) $(MISC_CFLAGS)
 AM_LDFLAGS = $(MISC_LDFLAGS)
@@ -75,7 +75,7 @@ local_headers = $(foreach file,$(lib_headers), lib/bluetooth/$(notdir $(file)))
 BUILT_SOURCES = $(local_headers) src/builtin.h
 
 if LIBRARY
-include_HEADERS += $(lib_headers)
+pkginclude_HEADERS += $(lib_headers)
 
 lib_LTLIBRARIES += lib/libbluetooth.la
 
