@@ -37,13 +37,27 @@
 
 #include "mainloop.h"
 #include "mainloop-notify.h"
+#include "timeout.h"
+
+#define WATCHDOG_TRIGGER_FREQ 2
 
 static int notify_fd = -1;
+
+static unsigned int watchdog;
+
+static bool watchdog_callback(void *user_data)
+{
+	mainloop_sd_notify("WATCHDOG=1");
+
+	return true;
+}
 
 void mainloop_notify_init(void)
 {
 	const char *sock;
 	struct sockaddr_un addr;
+	const char *watchdog_usec;
+	int msec;
 
 	sock = getenv("NOTIFY_SOCKET");
 	if (!sock)
@@ -67,7 +81,19 @@ void mainloop_notify_init(void)
 	if (bind(notify_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(notify_fd);
 		notify_fd = -1;
+		return;
 	}
+
+	watchdog_usec = getenv("WATCHDOG_USEC");
+	if (!watchdog_usec)
+		return;
+
+	msec = atoi(watchdog_usec) / 1000;
+	if (msec < 0)
+		return;
+
+	watchdog = timeout_add(msec / WATCHDOG_TRIGGER_FREQ,
+				watchdog_callback, NULL, NULL);
 }
 
 void mainloop_notify_exit(void)
@@ -76,6 +102,8 @@ void mainloop_notify_exit(void)
 		close(notify_fd);
 		notify_fd = -1;
 	}
+
+	timeout_remove(watchdog);
 }
 
 int mainloop_sd_notify(const char *state)
