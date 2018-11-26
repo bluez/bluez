@@ -71,8 +71,12 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 
 void timeout_remove(unsigned int id)
 {
-	GSource *source = g_main_context_find_source_by_id(NULL, id);
+	GSource *source;
 
+	if (!id)
+		return;
+
+	source = g_main_context_find_source_by_id(NULL, id);
 	if (source)
 		g_source_destroy(source);
 }
