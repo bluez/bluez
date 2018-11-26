@@ -48,8 +48,6 @@
 #include "src/shared/mainloop.h"
 #include "src/shared/btsnoop.h"
 
-#include "src/systemd.h"
-
 #define MONITOR_INDEX_NONE 0xffff
 
 struct monitor_hdr {
@@ -283,7 +281,7 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	sd_notify(0, "STATUS=Starting up");
+	mainloop_sd_notify("STATUS=Starting up");
 
 	while (true) {
 		int opt;
@@ -375,12 +373,12 @@ int main(int argc, char *argv[])
 
 	printf("Bluetooth monitor logger ver %s\n", VERSION);
 
-	sd_notify(0, "STATUS=Running");
-	sd_notify(0, "READY=1");
+	mainloop_sd_notify("STATUS=Running");
+	mainloop_sd_notify("READY=1");
 
 	exit_status = mainloop_run();
 
-	sd_notify(0, "STATUS=Quitting");
+	mainloop_sd_notify("STATUS=Quitting");
 
 	btsnoop_unref(btsnoop_file);
 
