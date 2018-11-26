@@ -30,13 +30,17 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/timerfd.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include "mainloop.h"
+#include "mainloop-notify.h"
 
 #define MAX_EPOLL_EVENTS 10
 
@@ -83,11 +87,15 @@ void mainloop_init(void)
 		mainloop_list[i] = NULL;
 
 	epoll_terminate = 0;
+
+	mainloop_notify_init();
 }
 
 void mainloop_quit(void)
 {
 	epoll_terminate = 1;
+
+	mainloop_sd_notify("STOPPING=1");
 }
 
 void mainloop_exit_success(void)
@@ -182,6 +190,8 @@ int mainloop_run(void)
 
 	close(epoll_fd);
 	epoll_fd = 0;
+
+	mainloop_notify_exit();
 
 	return exit_status;
 }

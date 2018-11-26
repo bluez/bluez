@@ -190,12 +190,16 @@ endif
 src_libshared_glib_la_SOURCES = $(shared_sources) \
 				src/shared/io-glib.c \
 				src/shared/timeout-glib.c \
-				src/shared/mainloop-glib.c
+				src/shared/mainloop-glib.c \
+				src/shared/mainloop-notify.h \
+				src/shared/mainloop-notify.c
 
 src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 				src/shared/io-mainloop.c \
 				src/shared/timeout-mainloop.c \
-				src/shared/mainloop.h src/shared/mainloop.c
+				src/shared/mainloop.h src/shared/mainloop.c \
+				src/shared/mainloop-notify.h \
+				src/shared/mainloop-notify.c
 
 if LIBSHARED_ELL
 noinst_LTLIBRARIES += src/libshared-ell.la

@@ -49,3 +49,4 @@ int mainloop_remove_timeout(int id);
 
 int mainloop_set_signal(sigset_t *mask, mainloop_signal_func callback,
 				void *user_data, mainloop_destroy_func destroy);
+int mainloop_sd_notify(const char *state);

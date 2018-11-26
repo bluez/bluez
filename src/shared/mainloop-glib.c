@@ -36,6 +36,7 @@
 #include <glib.h>
 
 #include "mainloop.h"
+#include "mainloop-notify.h"
 
 static GMainLoop *main_loop;
 static int exit_status;
@@ -43,6 +44,7 @@ static int exit_status;
 void mainloop_init(void)
 {
 	main_loop = g_main_loop_new(NULL, FALSE);
+	mainloop_notify_init();
 }
 
 void mainloop_quit(void)
@@ -51,6 +53,8 @@ void mainloop_quit(void)
 		return;
 
 	g_main_loop_quit(main_loop);
+
+	mainloop_sd_notify("STOPPING=1");
 }
 
 void mainloop_exit_success(void)
@@ -74,6 +78,8 @@ int mainloop_run(void)
 
 	g_main_loop_unref(main_loop);
 	main_loop = NULL;
+
+	mainloop_notify_exit();
 
 	return exit_status;
 }
