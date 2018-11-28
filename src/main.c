@@ -497,24 +497,11 @@ static gboolean quit_eventloop(gpointer user_data)
 	return FALSE;
 }
 
-static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
-							gpointer user_data)
+static void signal_callback(int signum, void *user_data)
 {
 	static bool terminated = false;
-	struct signalfd_siginfo si;
-	ssize_t result;
-	int fd;
 
-	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
-		return FALSE;
-
-	fd = g_io_channel_unix_get_fd(channel);
-
-	result = read(fd, &si, sizeof(si));
-	if (result != sizeof(si))
-		return FALSE;
-
-	switch (si.ssi_signo) {
+	switch (signum) {
 	case SIGINT:
 	case SIGTERM:
 		if (!terminated) {
@@ -532,46 +519,6 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 		__btd_toggle_debug();
 		break;
 	}
-
-	return TRUE;
-}
-
-static guint setup_signalfd(void)
-{
-	GIOChannel *channel;
-	guint source;
-	sigset_t mask;
-	int fd;
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-	sigaddset(&mask, SIGUSR2);
-
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
-		perror("Failed to set signal mask");
-		return 0;
-	}
-
-	fd = signalfd(-1, &mask, 0);
-	if (fd < 0) {
-		perror("Failed to create signal descriptor");
-		return 0;
-	}
-
-	channel = g_io_channel_unix_new(fd);
-
-	g_io_channel_set_close_on_unref(channel, TRUE);
-	g_io_channel_set_encoding(channel, NULL, NULL);
-	g_io_channel_set_buffered(channel, FALSE);
-
-	source = g_io_add_watch(channel,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				signal_handler, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
 }
 
 static char *option_debug = NULL;
@@ -682,7 +629,6 @@ int main(int argc, char *argv[])
 	uint16_t sdp_mtu = 0;
 	uint32_t sdp_flags = 0;
 	int gdbus_flags = 0;
-	guint signal;
 
 	init_defaults();
 
@@ -710,8 +656,6 @@ int main(int argc, char *argv[])
 	btd_backtrace_init();
 
 	mainloop_init();
-
-	signal = setup_signalfd();
 
 	__btd_log_init(option_debug, option_detach);
 
@@ -781,11 +725,9 @@ int main(int argc, char *argv[])
 	mainloop_sd_notify("STATUS=Running");
 	mainloop_sd_notify("READY=1");
 
-	mainloop_run();
+	mainloop_run_with_signal(signal_callback, NULL);
 
 	mainloop_sd_notify("STATUS=Quitting");
-
-	g_source_remove(signal);
 
 	plugin_cleanup();
 
