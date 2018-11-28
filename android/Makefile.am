@@ -142,7 +142,7 @@ android_haltest_SOURCES = android/client/haltest.c \
 				android/hal-utils.h android/hal-utils.c
 android_haltest_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android \
 				-DPLUGINDIR=\""$(android_plugindir)"\"
-android_haltest_LDFLAGS = -pthread
+android_haltest_LDFLAGS = $(AM_LDFLAGS) -pthread
 android_haltest_LDADD = -ldl -lm
 
 noinst_PROGRAMS += android/android-tester
@@ -167,7 +167,7 @@ android_android_tester_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android \
 				-DPLUGINDIR=\""$(android_plugindir)"\"
 android_android_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS) -ldl
-android_android_tester_LDFLAGS = -pthread
+android_android_tester_LDFLAGS = $(AM_LDFLAGS) -pthread
 
 noinst_PROGRAMS += android/ipc-tester
 
