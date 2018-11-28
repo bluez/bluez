@@ -184,20 +184,12 @@ static void signal_callback(int signum, void *user_data)
 
 int main(int argc, char *argv[])
 {
-	sigset_t mask;
 	int exit_status;
 
 	if (getpid() == 1 && getppid() == 0)
 		is_init = true;
 
 	mainloop_init();
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-	sigaddset(&mask, SIGCHLD);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	printf("Bluetooth periperhal ver %s\n", VERSION);
 
@@ -235,7 +227,7 @@ int main(int argc, char *argv[])
 	if (is_init)
 		attach_start();
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	if (is_init)
 		attach_stop();

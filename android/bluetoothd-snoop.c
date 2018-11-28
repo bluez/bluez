@@ -219,7 +219,6 @@ static void set_capabilities(void)
 int main(int argc, char *argv[])
 {
 	const char *path;
-	sigset_t mask;
 
 	__btd_log_init(NULL, 0);
 
@@ -234,12 +233,6 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	if (!strcmp(DEFAULT_SNOOP_FILE, path))
 		rename(DEFAULT_SNOOP_FILE, DEFAULT_SNOOP_FILE ".old");
 
@@ -250,7 +243,7 @@ int main(int argc, char *argv[])
 
 	info("bluetoothd_snoop: started");
 
-	mainloop_run();
+	mainloop_run_with_signal(signal_callback, NULL);
 
 	close_monitor();
 

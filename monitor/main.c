@@ -112,7 +112,6 @@ int main(int argc, char *argv[])
 	unsigned short ellisys_port = 0;
 	const char *str;
 	int exit_status;
-	sigset_t mask;
 
 	mainloop_init();
 
@@ -219,12 +218,6 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	printf("Bluetooth monitor ver %s\n", VERSION);
 
 	keys_setup();
@@ -258,7 +251,7 @@ int main(int argc, char *argv[])
 	if (tty && control_tty(tty, tty_speed) < 0)
 		return EXIT_FAILURE;
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	keys_cleanup();
 

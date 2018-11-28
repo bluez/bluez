@@ -864,27 +864,18 @@ static bool io_hup(struct io *io, void *user_data)
 	return false;
 }
 
-static bool signal_read(struct io *io, void *user_data)
+static void signal_callback(int signum, void *user_data)
 {
 	static bool terminated = false;
-	struct signalfd_siginfo si;
-	ssize_t result;
-	int fd;
 
-	fd = io_get_fd(io);
-
-	result = read(fd, &si, sizeof(si));
-	if (result != sizeof(si))
-		return false;
-
-	switch (si.ssi_signo) {
+	switch (signum) {
 	case SIGINT:
 		if (data.input && !data.mode) {
 			rl_replace_line("", 0);
 			rl_crlf();
 			rl_on_new_line();
 			rl_redisplay();
-			return true;
+			return;
 		}
 
 		/*
@@ -907,38 +898,6 @@ static bool signal_read(struct io *io, void *user_data)
 		terminated = true;
 		break;
 	}
-
-	return false;
-}
-
-static struct io *setup_signalfd(void)
-{
-	struct io *io;
-	sigset_t mask;
-	int fd;
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
-		perror("Failed to set signal mask");
-		return 0;
-	}
-
-	fd = signalfd(-1, &mask, 0);
-	if (fd < 0) {
-		perror("Failed to create signal descriptor");
-		return 0;
-	}
-
-	io = io_new(fd);
-
-	io_set_close_on_destroy(io, true);
-	io_set_read_handler(io, signal_read, NULL, NULL);
-	io_set_disconnect_handler(io, io_hup, NULL, NULL);
-
-	return io;
 }
 
 static void rl_init_history(void)
@@ -1132,14 +1091,9 @@ static void env_destroy(void *data)
 
 int bt_shell_run(void)
 {
-	struct io *signal;
 	int status;
 
-	signal = setup_signalfd();
-
-	status = mainloop_run();
-
-	io_destroy(signal);
+	status = mainloop_run_with_signal(signal_callback, NULL);
 
 	bt_shell_cleanup();
 

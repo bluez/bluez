@@ -1139,7 +1139,6 @@ int main(int argc, char *argv[])
 	int sec = BT_SECURITY_LOW;
 	uint8_t src_type = BDADDR_LE_PUBLIC;
 	uint16_t mtu = 0;
-	sigset_t mask;
 	bool hr_visible = false;
 	struct server *server;
 
@@ -1250,15 +1249,9 @@ int main(int argc, char *argv[])
 
 	printf("Running GATT server\n");
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_cb, NULL, NULL);
-
 	print_prompt();
 
-	mainloop_run();
+	mainloop_run_with_signal(signal_cb, NULL);
 
 	printf("\n\nShutting down...\n");
 

@@ -103,18 +103,10 @@ static void signal_callback(int signum, void *user_data)
 
 int main(int argc, char *argv[])
 {
-	sigset_t mask;
-
 	mainloop_init();
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	if (!open_connection())
 		return EXIT_FAILURE;
 
-	return mainloop_run();
+	return mainloop_run_with_signal(signal_callback, NULL);
 }

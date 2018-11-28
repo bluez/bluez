@@ -231,7 +231,6 @@ int main(int argc, char *argv[])
 {
 	const char *bredr_path = NULL, *amp_path = NULL, *proto = NULL;
 	bool flowctl = true, raw_device = false;
-	sigset_t mask;
 	int exit_status, count = 0, proto_id = HCI_UART_H4;
 	unsigned int speed = B115200;
 
@@ -283,12 +282,6 @@ int main(int argc, char *argv[])
 	}
 
 	mainloop_init();
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	if (proto) {
 		unsigned int i;
@@ -348,7 +341,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	return exit_status;
 }

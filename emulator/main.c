@@ -90,7 +90,6 @@ int main(int argc, char *argv[])
 	int amptest_count = 0;
 	int vhci_count = 0;
 	enum vhci_type vhci_type = VHCI_TYPE_BREDRLE;
-	sigset_t mask;
 	int i;
 
 	mainloop_init();
@@ -153,12 +152,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "No emulator specified\n");
 		return EXIT_FAILURE;
 	}
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	printf("Bluetooth emulator ver %s\n", VERSION);
 
@@ -227,5 +220,5 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed to open monitor server\n");
 	}
 
-	return mainloop_run();
+	return mainloop_run_with_signal(signal_callback, NULL);
 }

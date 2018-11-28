@@ -1518,7 +1518,6 @@ int main(int argc, char *argv[])
 	bdaddr_t src_addr, dst_addr;
 	int dev_id = -1;
 	int fd;
-	sigset_t mask;
 	struct client *cli;
 
 	while ((opt = getopt_long(argc, argv, "+hvs:m:t:d:i:",
@@ -1639,15 +1638,9 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_cb, NULL, NULL);
-
 	print_prompt();
 
-	mainloop_run();
+	mainloop_run_with_signal(signal_cb, NULL);
 
 	printf("\n\nShutting down...\n");
 

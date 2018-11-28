@@ -570,7 +570,6 @@ int main(int argc, char *argv[])
 	uint16_t index = 0;
 	const char *str;
 	bool use_raw = false;
-	sigset_t mask;
 	int exit_status;
 
 	for (;;) {
@@ -624,12 +623,6 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	printf("3D Synchronization Profile testing ver %s\n", VERSION);
 
 	if (use_raw) {
@@ -654,7 +647,7 @@ int main(int argc, char *argv[])
 	else if (glasses_role)
 		start_glasses();
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	bt_hci_unref(hci_dev);
 

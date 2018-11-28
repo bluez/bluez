@@ -265,7 +265,6 @@ int main(int argc, char *argv[])
 	char *server_port = NULL, *sniffer_port = NULL;
 	int ret = EXIT_FAILURE;
 	ssize_t written;
-	sigset_t mask;
 
 	for (;;) {
 		int opt;
@@ -323,17 +322,11 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	mainloop_add_fd(sniffer_fd, EPOLLIN, sniffer_read_callback, NULL, NULL);
 	mainloop_add_fd(server_fd, EPOLLIN, server_read_callback, NULL, NULL);
 	mainloop_add_fd(vhci_fd, EPOLLIN, vhci_read_callback, NULL, NULL);
 
-	ret = mainloop_run();
+	ret = mainloop_run_with_signal(signal_callback, NULL);
 
 	goto done;
 

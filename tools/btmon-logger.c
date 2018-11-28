@@ -276,7 +276,6 @@ int main(int argc, char *argv[])
 	size_t size_limit = 0;
 	bool parents = false;
 	int exit_status;
-	sigset_t mask;
 	char *endptr;
 
 	mainloop_init();
@@ -365,18 +364,12 @@ int main(int argc, char *argv[])
 
 	drop_capabilities();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	printf("Bluetooth monitor logger ver %s\n", VERSION);
 
 	mainloop_sd_notify("STATUS=Running");
 	mainloop_sd_notify("READY=1");
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	mainloop_sd_notify("STATUS=Quitting");
 

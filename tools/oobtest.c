@@ -1026,7 +1026,6 @@ static const struct option main_options[] = {
 
 int main(int argc ,char *argv[])
 {
-	sigset_t mask;
 	int exit_status;
 
 	for (;;) {
@@ -1128,12 +1127,6 @@ int main(int argc ,char *argv[])
 
 	mainloop_init();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	mgmt = mgmt_new_default();
 	if (!mgmt) {
 		fprintf(stderr, "Failed to open management socket\n");
@@ -1148,7 +1141,7 @@ int main(int argc ,char *argv[])
 		goto done;
 	}
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 done:
 	mgmt_unref(mgmt);

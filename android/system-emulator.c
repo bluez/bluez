@@ -216,18 +216,10 @@ static void signal_callback(int signum, void *user_data)
 int main(int argc, char *argv[])
 {
 	const char SYSTEM_SOCKET_PATH[] = "\0android_system";
-	sigset_t mask;
 	struct sockaddr_un addr;
 	int fd;
 
 	mainloop_init();
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-	sigaddset(&mask, SIGCHLD);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	printf("Android system emulator ver %s\n", VERSION);
 
@@ -254,5 +246,5 @@ int main(int argc, char *argv[])
 	/* Make sure bluetoothd creates files with proper permissions */
 	umask(0177);
 
-	return mainloop_run();
+	return mainloop_run_with_signal(signal_callback, NULL);
 }

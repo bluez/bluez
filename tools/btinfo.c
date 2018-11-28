@@ -226,7 +226,6 @@ int main(int argc, char *argv[])
 	const char *str;
 	bool use_raw = false;
 	bool power_down = false;
-	sigset_t mask;
 	int fd, i, exit_status;
 
 	for (;;) {
@@ -284,12 +283,6 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	printf("Bluetooth information utility ver %s\n", VERSION);
 
 	fd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
@@ -345,7 +338,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	bt_hci_unref(hci_dev);
 

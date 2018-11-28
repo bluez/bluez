@@ -67,16 +67,6 @@ struct timeout_data {
 	void *user_data;
 };
 
-struct signal_data {
-	int fd;
-	sigset_t mask;
-	mainloop_signal_func callback;
-	mainloop_destroy_func destroy;
-	void *user_data;
-};
-
-static struct signal_data *signal_data;
-
 void mainloop_init(void)
 {
 	unsigned int i;
@@ -110,44 +100,9 @@ void mainloop_exit_failure(void)
 	epoll_terminate = 1;
 }
 
-static void signal_callback(int fd, uint32_t events, void *user_data)
-{
-	struct signal_data *data = user_data;
-	struct signalfd_siginfo si;
-	ssize_t result;
-
-	if (events & (EPOLLERR | EPOLLHUP)) {
-		mainloop_quit();
-		return;
-	}
-
-	result = read(fd, &si, sizeof(si));
-	if (result != sizeof(si))
-		return;
-
-	if (data->callback)
-		data->callback(si.ssi_signo, data->user_data);
-}
-
 int mainloop_run(void)
 {
 	unsigned int i;
-
-	if (signal_data) {
-		if (sigprocmask(SIG_BLOCK, &signal_data->mask, NULL) < 0)
-			return EXIT_FAILURE;
-
-		signal_data->fd = signalfd(-1, &signal_data->mask,
-						SFD_NONBLOCK | SFD_CLOEXEC);
-		if (signal_data->fd < 0)
-			return EXIT_FAILURE;
-
-		if (mainloop_add_fd(signal_data->fd, EPOLLIN,
-				signal_callback, signal_data, NULL) < 0) {
-			close(signal_data->fd);
-			return EXIT_FAILURE;
-		}
-	}
 
 	while (!epoll_terminate) {
 		struct epoll_event events[MAX_EPOLL_EVENTS];
@@ -163,14 +118,6 @@ int mainloop_run(void)
 			data->callback(data->fd, events[n].events,
 							data->user_data);
 		}
-	}
-
-	if (signal_data) {
-		mainloop_remove_fd(signal_data->fd);
-		close(signal_data->fd);
-
-		if (signal_data->destroy)
-			signal_data->destroy(signal_data->user_data);
 	}
 
 	for (i = 0; i < MAX_MAINLOOP_ENTRIES; i++) {
@@ -383,30 +330,4 @@ int mainloop_modify_timeout(int id, unsigned int msec)
 int mainloop_remove_timeout(int id)
 {
 	return mainloop_remove_fd(id);
-}
-
-int mainloop_set_signal(sigset_t *mask, mainloop_signal_func callback,
-				void *user_data, mainloop_destroy_func destroy)
-{
-	struct signal_data *data;
-
-	if (!mask || !callback)
-		return -EINVAL;
-
-	data = malloc(sizeof(*data));
-	if (!data)
-		return -ENOMEM;
-
-	memset(data, 0, sizeof(*data));
-	data->callback = callback;
-	data->destroy = destroy;
-	data->user_data = user_data;
-
-	data->fd = -1;
-	memcpy(&data->mask, mask, sizeof(sigset_t));
-
-	free(signal_data);
-	signal_data = data;
-
-	return 0;
 }

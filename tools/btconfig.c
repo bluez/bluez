@@ -75,7 +75,6 @@ static const struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	sigset_t mask;
 	int exit_status;
 
 	for (;;) {
@@ -105,12 +104,6 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	mgmt = mgmt_new_default();
 	if (!mgmt) {
 		fprintf(stderr, "Unable to open mgmt_socket\n");
@@ -120,7 +113,7 @@ int main(int argc, char *argv[])
 	if (getenv("MGMT_DEBUG"))
 		mgmt_set_debug(mgmt, mgmt_debug, "mgmt: ", NULL);
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	mgmt_cancel_all(mgmt);
 	mgmt_unregister_all(mgmt);

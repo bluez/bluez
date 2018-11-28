@@ -237,7 +237,6 @@ int main(int argc, char *argv[])
 {
 	uint16_t index = 0;
 	const char *str;
-	sigset_t mask;
 	int exit_status;
 
 	for (;;) {
@@ -283,12 +282,6 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
-
 	printf("Low Energy iBeacon utility ver %s\n", VERSION);
 
 	hci_dev = bt_hci_new_user_channel(index);
@@ -300,7 +293,7 @@ int main(int argc, char *argv[])
 
 	start_ibeacon();
 
-	exit_status = mainloop_run();
+	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
 	bt_hci_unref(hci_dev);
 
