@@ -37,6 +37,7 @@
 
 #include "mainloop.h"
 #include "mainloop-notify.h"
+#include "io.h"
 
 static GMainLoop *main_loop;
 static int exit_status;
