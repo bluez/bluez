@@ -44,6 +44,7 @@
 #include <valgrind/memcheck.h>
 #endif
 
+#include "src/shared/mainloop.h"
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
 #include "src/shared/log.h"
@@ -105,7 +106,6 @@ struct test_case {
 	void *user_data;
 };
 
-static GMainLoop *main_loop;
 static char *tester_name;
 
 static GList *test_list;
@@ -463,7 +463,7 @@ static void next_test_case(void)
 	if (!test_current) {
 		g_timer_stop(test_timer);
 
-		g_main_loop_quit(main_loop);
+		mainloop_quit();
 		return;
 	}
 
@@ -778,73 +778,19 @@ void tester_wait(unsigned int seconds, tester_wait_func_t func,
 	print_progress(test->name, COLOR_BLACK, "waiting %u seconds", seconds);
 }
 
-static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
+static void signal_callback(int signum, void *user_data)
 {
 	static bool terminated = false;
-	struct signalfd_siginfo si;
-	ssize_t result;
-	int fd;
 
-	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		g_main_loop_quit(main_loop);
-		return FALSE;
-	}
-
-	fd = g_io_channel_unix_get_fd(channel);
-
-	result = read(fd, &si, sizeof(si));
-	if (result != sizeof(si))
-		return FALSE;
-
-	switch (si.ssi_signo) {
+	switch (signum) {
 	case SIGINT:
 	case SIGTERM:
 		if (!terminated)
-			g_main_loop_quit(main_loop);
+			mainloop_quit();
 
 		terminated = true;
 		break;
 	}
-
-	return TRUE;
-}
-
-static guint setup_signalfd(void)
-{
-	GIOChannel *channel;
-	guint source;
-	sigset_t mask;
-	int fd;
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
-		perror("Failed to set signal mask");
-		return 0;
-	}
-
-	fd = signalfd(-1, &mask, 0);
-	if (fd < 0) {
-		perror("Failed to create signal descriptor");
-		return 0;
-	}
-
-	channel = g_io_channel_unix_new(fd);
-
-	g_io_channel_set_close_on_unref(channel, TRUE);
-	g_io_channel_set_encoding(channel, NULL, NULL);
-	g_io_channel_set_buffered(channel, FALSE);
-
-	source = g_io_add_watch(channel,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				signal_handler, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
 }
 
 bool tester_use_quiet(void)
@@ -897,7 +843,7 @@ void tester_init(int *argc, char ***argv)
 		exit(EXIT_SUCCESS);
 	}
 
-	main_loop = g_main_loop_new(NULL, FALSE);
+	mainloop_init();
 
 	tester_name = strrchr(*argv[0], '/');
 	if (!tester_name)
@@ -911,25 +857,16 @@ void tester_init(int *argc, char ***argv)
 
 int tester_run(void)
 {
-	guint signal;
 	int ret;
 
-	if (!main_loop)
-		return EXIT_FAILURE;
-
 	if (option_list) {
-		g_main_loop_unref(main_loop);
+		mainloop_quit();
 		return EXIT_SUCCESS;
 	}
 
-	signal = setup_signalfd();
-
 	g_idle_add(start_tester, NULL);
-	g_main_loop_run(main_loop);
 
-	g_source_remove(signal);
-
-	g_main_loop_unref(main_loop);
+	mainloop_run_with_signal(signal_callback, NULL);
 
 	ret = tester_summarize();
 
