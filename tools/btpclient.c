@@ -377,8 +377,8 @@ static void btp_gap_read_info(uint8_t index, const void *param, uint16_t length,
 		goto failed;
 	}
 
-	strncpy((char *) rp.name, str, sizeof(rp.name));
-	strncpy((char *) rp.short_name, str, sizeof(rp.short_name));
+	snprintf((char *)rp.name, sizeof(rp.name), "%s", str);
+	snprintf((char *)rp.short_name, sizeof(rp.short_name), "%s", str);
 	rp.supported_settings = L_CPU_TO_LE32(adapter->supported_settings);
 	rp.current_settings = L_CPU_TO_LE32(adapter->current_settings);
 
