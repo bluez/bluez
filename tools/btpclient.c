@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <getopt.h>
+#include <signal.h>
 
 #include <ell/ell.h>
 
@@ -2827,8 +2828,7 @@ static void register_core_service(void)
 					btp_core_unregister, NULL, NULL);
 }
 
-static void signal_handler(struct l_signal *signal, uint32_t signo,
-							void *user_data)
+static void signal_handler(uint32_t signo, void *user_data)
 {
 	switch (signo) {
 	case SIGINT:
@@ -3156,8 +3156,6 @@ static const struct option options[] = {
 int main(int argc, char *argv[])
 {
 	struct l_dbus_client *client;
-	struct l_signal *signal;
-	sigset_t mask;
 	int opt;
 
 	l_log_set_stderr();
@@ -3194,11 +3192,6 @@ int main(int argc, char *argv[])
 
 	adapters = l_queue_new();
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
-	signal = l_signal_create(&mask, signal_handler, NULL, NULL);
-
 	dbus = l_dbus_new_default(L_DBUS_SYSTEM_BUS);
 	l_dbus_set_ready_handler(dbus, ready_callback, NULL, NULL);
 	client = l_dbus_client_new(dbus, "org.bluez", "/org/bluez");
@@ -3212,11 +3205,10 @@ int main(int argc, char *argv[])
 
 	l_dbus_client_set_ready_handler(client, client_ready, NULL, NULL);
 
-	l_main_run();
+	l_main_run_with_signal(signal_handler, NULL);
 
 	l_dbus_client_destroy(client);
 	l_dbus_destroy(dbus);
-	l_signal_remove(signal);
 	btp_cleanup(btp);
 
 	l_queue_destroy(adapters, (l_queue_destroy_func_t)btp_adapter_free);
