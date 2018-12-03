@@ -2041,8 +2041,9 @@ static bool seg_rxed(struct mesh_net *net, bool frnd,
 		l_timeout_remove(sar_in->seg_timeout);
 		sar_in->seg_timeout = NULL;
 		return true;
+	}
 
-	} else if (reset_seg_to) {
+	if (reset_seg_to) {
 		/* Restart Inter-Seg Timeout */
 		l_timeout_remove(sar_in->seg_timeout);
 
@@ -2054,8 +2055,10 @@ static bool seg_rxed(struct mesh_net *net, bool frnd,
 
 			sar_in->seg_timeout = l_timeout_create(SEG_TO,
 				inseg_to, net, NULL);
-		}
-	}
+		} else
+			largest = 0;
+	} else
+		largest = 0;
 
 	l_debug("NAK: %d expected:%08x largest:%08x flags:%08x",
 			reset_seg_to, expected, largest, sar_in->flags);
@@ -2819,9 +2822,6 @@ static void lpn_process_beacon(void *user_data, const void *data,
 	rxed_key_refresh = (buf[0] & 0x01) == 0x01;
 	iv_index = l_get_be32(buf + 1);
 
-	l_debug("KR: %d -- IVU: %d -- IV: %8.8x",
-				rxed_key_refresh, iv_index);
-
 	/* Inhibit recognizing iv_update true-->false if we have outbound
 	 * SAR messages in flight
 	 */
@@ -2829,6 +2829,9 @@ static void lpn_process_beacon(void *user_data, const void *data,
 		if (!iv_update && iv_update != iv_is_updating(net))
 			iv_update = true;
 	}
+
+	l_debug("KR: %d -- IVU: %d -- IV: %8.8x",
+				rxed_key_refresh, iv_update, iv_index);
 
 	/* TODO: figure out actual network index (i.e., friendship subnet) */
 	subnet = get_primary_subnet(net);
