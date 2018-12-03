@@ -10,7 +10,7 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/display.h mesh/display.c \
 				mesh/crypto.h mesh/crypto.c \
 				mesh/friend.h mesh/friend.c \
-				mesh/appkey.c \
+				mesh/appkey.h mesh/appkey.c \
 				mesh/node.h mesh/node.c \
 				mesh/prov.h mesh/prov.c \
 				mesh/provision.h mesh/provision.c \
