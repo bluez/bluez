@@ -110,6 +110,5 @@ plugins_sixaxis_la_SOURCES = plugins/sixaxis.c
 plugins_sixaxis_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 						-no-undefined
 plugins_sixaxis_la_LIBADD = $(UDEV_LIBS)
-plugins_sixaxis_la_CPPFLAGS = $(AM_CPPFLAGS) $(UDEV_CFLAGS)
 plugins_sixaxis_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
 endif

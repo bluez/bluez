@@ -38,7 +38,6 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				monitor/intel.h monitor/intel.c \
 				monitor/broadcom.h monitor/broadcom.c \
 				monitor/tty.h
-monitor_btmon_CPPFLAGS = $(AM_CPPFLAGS) $(UDEV_CFLAGS)
 monitor_btmon_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-mainloop.la $(UDEV_LIBS)
 endif
@@ -188,7 +187,6 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/gatt-service profiles/iap/iapd
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
-tools_bdaddr_CPPFLAGS = $(AM_CPPFLAGS) $(UDEV_CFLAGS)
 tools_bdaddr_LDADD = lib/libbluetooth-internal.la $(UDEV_LIBS)
 
 tools_avinfo_LDADD = lib/libbluetooth-internal.la
@@ -338,7 +336,6 @@ tools_hciconfig_SOURCES = tools/hciconfig.c tools/csr.h tools/csr.c
 tools_hciconfig_LDADD = lib/libbluetooth-internal.la
 
 tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c
-tools_hcitool_CPPFLAGS = $(AM_CPPFLAGS) $(UDEV_CFLAGS)
 tools_hcitool_LDADD = lib/libbluetooth-internal.la $(UDEV_LIBS)
 
 tools_hcidump_SOURCES = tools/hcidump.c \
@@ -392,7 +389,6 @@ udevdir = $(UDEV_DIR)
 
 udev_PROGRAMS = tools/hid2hci
 
-tools_hid2hci_CPPFLAGS = $(AM_CPPFLAGS) $(UDEV_CFLAGS)
 tools_hid2hci_LDADD = $(UDEV_LIBS)
 
 dist_man_MANS += tools/hid2hci.1

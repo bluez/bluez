@@ -28,7 +28,7 @@ pkgincludedir = $(includedir)/bluetooth
 
 pkginclude_HEADERS =
 
-AM_CFLAGS = $(WARNING_CFLAGS) $(MISC_CFLAGS)
+AM_CFLAGS = $(WARNING_CFLAGS) $(MISC_CFLAGS) $(UDEV_CFLAGS)
 AM_LDFLAGS = $(MISC_LDFLAGS)
 
 if DATAFILES
