@@ -127,7 +127,9 @@ emulator/btvirt
 emulator/b1ee
 emulator/hfp
 client/bluetoothctl
-mesh/meshctl
+tools/meshctl
+mesh/meshd
+mesh/btmesh
 
 src/bluetoothd.8
 src/bluetooth.service
