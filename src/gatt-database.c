@@ -847,6 +847,8 @@ static void populate_gap_service(struct btd_gatt_database *database)
 							NULL, database);
 
 	gatt_db_service_set_active(service, true);
+
+	database_add_record(database, service);
 }
 
 static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
@@ -1071,6 +1073,8 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 									NULL);
 
 	gatt_db_service_set_active(service, true);
+
+	database_add_record(database, service);
 }
 
 static void register_core_services(struct btd_gatt_database *database)
