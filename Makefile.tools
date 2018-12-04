@@ -469,6 +469,7 @@ if BTPCLIENT
 noinst_PROGRAMS += tools/btpclient
 
 tools_btpclient_SOURCES = tools/btpclient.c src/shared/btp.c src/shared/btp.h
-tools_btpclient_CPPFLAGS = $(AM_CPPFLAGS) $(ELL_CFLAGS)
-tools_btpclient_LDADD = $(ELL_LIBS) lib/libbluetooth-internal.la
+tools_btpclient_LDADD = lib/libbluetooth-internal.la \
+				src/libshared-ell.la $(ell_ldadd)
+tools_btpclient_DEPENDENCIES = $(ell_dependencies)
 endif

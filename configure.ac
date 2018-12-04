@@ -248,13 +248,20 @@ AC_ARG_ENABLE(btpclient, AC_HELP_STRING([--enable-btpclient],
 		[enable BTP client]), [enable_btpclient=${enableval}])
 AM_CONDITIONAL(BTPCLIENT, test "${enable_btpclient}" = "yes")
 
-if (test "${enable_btpclient}" = "yes" || test "${enable_mesh}" = "yes"); then
-	PKG_CHECK_MODULES(ELL, ell >= 0.14, enable_ell=yes,
-			  AC_MSG_ERROR(ell library >= 0.14 is required))
+AC_ARG_ENABLE([external_ell], AC_HELP_STRING([--enable-external-ell],
+				[enable external Embedded Linux library]),
+					[enable_external_ell=${enableval}])
+if (test "${enable_external_ell}" = "yes"); then
+	PKG_CHECK_MODULES(ELL, ell >= 0.14, dummy=yes,
+		AC_MSG_ERROR(Embedded Linux library >= 0.14 is required))
 	AC_SUBST(ELL_CFLAGS)
 	AC_SUBST(ELL_LIBS)
 fi
-AM_CONDITIONAL(ELL, test "${enable_ell}" = "yes")
+AM_CONDITIONAL(EXTERNAL_ELL, test "${enable_external_ell}" = "yes" ||
+				(test "${enable_btpclient}" != "yes" &&
+						test "${enable_mesh}" != "yes"))
+AM_CONDITIONAL(LIBSHARED_ELL, test "${enable_btpclient}" = "yes" ||
+						test "${enable_mesh}" = "yes")
 
 AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
 		[disable command line client]), [enable_client=${enableval}])

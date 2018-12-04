@@ -1,4 +1,5 @@
 if MESH
+
 mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/net_keys.h mesh/net_keys.c \
 				mesh/mesh-io.h mesh/mesh-io.c \
@@ -21,26 +22,16 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/mesh-defs.h
 libexec_PROGRAMS += mesh/meshd
 
-mesh_meshd_CPPFLAGS = $(AM_CPPFLAGS) $(ELL_CFLAGS)
-
 mesh_meshd_SOURCES = $(mesh_sources) mesh/main.c
-
-mesh_meshd_LDADD = src/shared/ecc.lo src/shared/queue.lo src/shared/io-ell.lo \
-				src/shared/util.lo src/shared/hci.lo src/shared/mgmt.lo \
-				$(DBUS_LIBS) $(ELL_LIBS) -ljson-c
+mesh_meshd_LDADD = src/libshared-ell.la $(ell_ldadd) -ljson-c
+mesh_meshd_DEPENDENCIES = $(ell_dependencies)
 
 noinst_PROGRAMS += mesh/btmesh
 
-mesh_btmesh_SOURCES = $(mesh_sources) \
-						mesh/agent.h \
+mesh_btmesh_SOURCES = $(mesh_sources) mesh/agent.h \
 						mesh/agent.c \
 						mesh/btmesh.c
-
-mesh_btmesh_CPPFLAGS = $(AM_CPPFLAGS) $(ELL_CFLAGS)
-
-mesh_btmesh_LDADD = src/shared/ecc.lo src/shared/queue.lo src/shared/io-ell.lo \
-				src/shared/util.lo src/shared/hci.lo src/shared/mgmt.lo \
-				src/libshared-mainloop.la \
-				-lreadline $(ELL_LIBS) -ljson-c
+mesh_btmesh_LDADD = src/libshared-mainloop.la $(ell_ldadd) -lreadline -ljson-c
+mesh_btmesh_DEPENDENCIES = $(ell_dependencies)
 
 endif

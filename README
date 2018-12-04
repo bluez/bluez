@@ -26,6 +26,37 @@ To compile and install run:
 	make && make install
 
 
+Embedded Linux library
+======================
+
+In order to compile mesh support and test client utility the development
+version of Embedded Linux library is required to be present. The development
+repositories can be found here:
+
+	git://git.kernel.org/pub/scm/libs/ell/ell.git
+	https://kernel.googlesource.com/pub/scm/libs/ell/ell.git
+
+The build systems requires that the Embedded Linux library source code
+is available on the same top level directory as the source code:
+
+	.
+	|--- ell
+	|    |--- ell
+	|    `--- unit
+	`--- bluez
+	     |--- src
+	     `--- tools
+
+It is not required to build or install Embedded Linux library. The build
+will happen when building the binaries and it will then be linked internally.
+
+When using --enable-external-ell build option, it is not required that the
+Embedded Linux library source code is available in the top level directory.
+
+When neither --enable-mesh nor --enable-btpclient is specified, then this
+part is irrelevant and Embedded Linux library is not required.
+
+
 Configuration and options
 =========================
 

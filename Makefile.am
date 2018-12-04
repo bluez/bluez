@@ -28,7 +28,7 @@ pkgincludedir = $(includedir)/bluetooth
 
 pkginclude_HEADERS =
 
-AM_CFLAGS = $(WARNING_CFLAGS) $(MISC_CFLAGS) $(UDEV_CFLAGS)
+AM_CFLAGS = $(WARNING_CFLAGS) $(MISC_CFLAGS) $(UDEV_CFLAGS) $(ell_cflags)
 AM_LDFLAGS = $(MISC_LDFLAGS)
 
 if DATAFILES
@@ -73,7 +73,7 @@ extra_sources = lib/uuid.c
 
 local_headers = $(foreach file,$(lib_headers), lib/bluetooth/$(notdir $(file)))
 
-BUILT_SOURCES = $(local_headers) src/builtin.h
+BUILT_SOURCES = $(local_headers) $(ell_built_sources) src/builtin.h
 
 if LIBRARY
 pkginclude_HEADERS += $(lib_headers)
@@ -95,6 +95,66 @@ noinst_LTLIBRARIES += gdbus/libgdbus-internal.la
 gdbus_libgdbus_internal_la_SOURCES = gdbus/gdbus.h \
 				gdbus/mainloop.c gdbus/watch.c \
 				gdbus/object.c gdbus/client.c gdbus/polkit.c
+
+if EXTERNAL_ELL
+ell_cflags = @ELL_CFLAGS@
+ell_ldadd = @ELL_LIBS@
+ell_dependencies =
+ell_built_sources =
+else
+ell_cflags =
+ell_ldadd = ell/libell-internal.la
+ell_dependencies = $(ell_ldadd)
+ell_built_sources = ell/internal ell/ell.h
+
+noinst_LTLIBRARIES += ell/libell-internal.la
+
+ell_headers = ell/util.h \
+			ell/log.h \
+			ell/queue.h \
+			ell/hashmap.h \
+			ell/random.h \
+			ell/signal.h \
+			ell/timeout.h \
+			ell/io.h \
+			ell/idle.h \
+			ell/main.h \
+			ell/strv.h \
+			ell/string.h \
+			ell/dbus.h \
+			ell/dbus-service.h \
+			ell/dbus-client.h
+
+ell_sources = ell/private.h ell/missing.h \
+			ell/util.c \
+			ell/log.c \
+			ell/queue.c \
+			ell/hashmap.c \
+			ell/random.c \
+			ell/signal.c \
+			ell/timeout.c \
+			ell/io.c \
+			ell/idle.c \
+			ell/main.c \
+			ell/strv.c \
+			ell/string.c \
+			ell/dbus-private.h \
+			ell/dbus.c \
+			ell/dbus-message.c \
+			ell/dbus-util.c \
+			ell/dbus-service.c \
+			ell/dbus-client.c \
+			ell/dbus-name-cache.c \
+			ell/dbus-filter.c \
+			ell/gvariant-private.h \
+			ell/gvariant-util.c \
+			ell/siphash-private.h \
+			ell/siphash.c
+
+ell_libell_internal_la_SOURCES = $(ell_headers) $(ell_sources)
+endif
+
+CLEANFILES += $(ell_built_sources)
 
 noinst_LTLIBRARIES += src/libshared-glib.la src/libshared-mainloop.la
 
@@ -137,11 +197,11 @@ src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 				src/shared/timeout-mainloop.c \
 				src/shared/mainloop.h src/shared/mainloop.c
 
-if ELL
+if LIBSHARED_ELL
+noinst_LTLIBRARIES += src/libshared-ell.la
+
 src_libshared_ell_la_SOURCES = $(shared_sources) \
 				src/shared/io-ell.c
-src_libshared_ell_la_CPPFLAGS = $(AM_CPPFLAGS) $(ELL_CFLAGS)
-noinst_LTLIBRARIES += src/libshared-ell.la
 endif
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
@@ -482,6 +542,8 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-midi \
 						--enable-manpages \
 						--enable-android \
+						--enable-mesh \
+						--enable-btpclient \
 						--disable-systemd \
 						--disable-udev
 
@@ -512,6 +574,23 @@ $(lib_libbluetooth_la_OBJECTS): $(local_headers)
 lib/bluetooth/%.h: lib/%.h
 	$(AM_V_at)$(MKDIR_P) lib/bluetooth
 	$(AM_V_GEN)$(LN_S) -f $(abspath $<) $@
+
+ell/internal: Makefile
+	$(AM_V_at)$(MKDIR_P) ell
+	$(AM_V_GEN)for f in $(ell_headers) $(ell_sources) ; do \
+		if [ ! -f $$f ] ; then \
+			$(LN_S) -t ell -f $(abs_srcdir)/../ell/$$f ; \
+		fi \
+	done > $@
+
+ell/ell.h: Makefile
+	$(AM_V_at)echo -n > $@
+	$(AM_V_GEN)for f in $(ell_headers) ; do \
+		echo "#include <$$f>" >> $@ ; \
+	done
+
+maintainer-clean-local:
+	-rm -rf ell
 
 if COVERAGE
 clean-coverage:

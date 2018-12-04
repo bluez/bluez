@@ -30,8 +30,9 @@ autom4te.cache
 test-driver
 test-suite.log
 coverage.info
-
 coverage
+ell
+
 lib/bluez.pc
 lib/bluetooth
 src/builtin.h

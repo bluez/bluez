@@ -24,5 +24,6 @@ fi
 		--enable-sixaxis \
 		--enable-midi \
 		--enable-mesh \
+		--enable-btpclient \
 		--enable-logger \
 		--disable-datafiles $*
