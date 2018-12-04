@@ -3316,7 +3316,9 @@ unsigned int mesh_net_app_send(struct mesh_net *net, bool frnd_cred,
 
 	result = true;
 	if (!IS_UNICAST(dst) && seg_max) {
-		for (int i = 0; i < 4; i++) {
+		int i;
+
+		for (i = 0; i < 4; i++) {
 			for (seg = 0; seg <= seg_max && result; seg++)
 				result = send_seg(net, payload, seg);
 		}
