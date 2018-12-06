@@ -14,6 +14,8 @@
  * limitations under the License.
  *
  */
+
+#define _GNU_SOURCE
 #include <stdbool.h>
 
 #include "emulator/bthost.h"

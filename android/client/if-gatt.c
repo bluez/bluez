@@ -15,8 +15,8 @@
  *
  */
 
+#define _GNU_SOURCE
 #include <stdbool.h>
-
 #include <string.h>
 
 #include <hardware/bluetooth.h>

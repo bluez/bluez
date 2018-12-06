@@ -20,6 +20,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>

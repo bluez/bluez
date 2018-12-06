@@ -15,6 +15,7 @@
  *
  */
 
+#define _GNU_SOURCE
 #include "if-main.h"
 #include "../hal-utils.h"
 

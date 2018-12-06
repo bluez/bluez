@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <endian.h>
 #include <fcntl.h>
 #include <unistd.h>

@@ -24,6 +24,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include "parser.h"
 #include "lib/amp.h"
 

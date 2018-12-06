@@ -22,6 +22,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"

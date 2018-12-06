@@ -27,6 +27,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>

@@ -4093,7 +4093,7 @@ bool bt_le_add_advertising(struct adv_instance *adv,
 	DBG("lens: adv=%u sr=%u total=%zu",
 		cp->adv_data_len, cp->scan_rsp_len, len);
 
-	cb_data = new0(typeof(*cb_data), 1);
+	cb_data = new0(__typeof__(*cb_data), 1);
 	cb_data->cb = cb;
 	cb_data->user_data = user_data;
 
@@ -4134,7 +4134,7 @@ bool bt_le_remove_advertising(struct adv_instance *adv,
 	struct addrm_adv_user_data *cb_data;
 	bool ok;
 
-	cb_data = new0(typeof(*cb_data), 1);
+	cb_data = new0(__typeof__(*cb_data), 1);
 	cb_data->cb = cb;
 	cb_data->user_data = user_data;
 

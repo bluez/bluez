@@ -5636,7 +5636,7 @@ static struct adv_instance *find_adv_instance(uint32_t client_if)
 	if (!inst)
 		return NULL;
 
-	adv = new0(typeof(*adv), 1);
+	adv = new0(__typeof__(*adv), 1);
 	adv->instance = inst;
 	app->adv = adv;
 
@@ -5834,7 +5834,7 @@ static void handle_client_setup_multi_adv_inst(const void *buf, uint16_t len)
 		adv->ad = adv_data;
 	}
 
-	cb_data = new0(typeof(*cb_data), 1);
+	cb_data = new0(__typeof__(*cb_data), 1);
 	cb_data->client_if = cmd->client_if;
 	cb_data->adv = adv;
 
@@ -5894,7 +5894,7 @@ static void handle_client_disable_multi_adv_inst(const void *buf, uint16_t len)
 	if (!adv)
 		goto out;
 
-	cb_data = new0(typeof(*cb_data), 1);
+	cb_data = new0(__typeof__(*cb_data), 1);
 	cb_data->client_if = cmd->client_if;
 	cb_data->adv = adv;
 

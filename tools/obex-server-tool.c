@@ -20,9 +20,10 @@
  */
 
 #ifdef HAVE_CONFIG_H
-# include "config.h"
+#include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <fcntl.h>

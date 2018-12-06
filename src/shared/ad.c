@@ -21,6 +21,12 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#define _GNU_SOURCE
+
 #include "src/shared/ad.h"
 
 #include "src/eir.h"
@@ -245,7 +251,7 @@ static size_t uuid_data_length(struct queue *uuid_data)
 static size_t name_length(const char *name, size_t *pos)
 {
 	size_t len;
-	
+
 	if (!name)
 		return 0;
 

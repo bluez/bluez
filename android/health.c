@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdint.h>
 #include <stdbool.h>
 #include <errno.h>

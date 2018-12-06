@@ -23,13 +23,15 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <glib.h>
 

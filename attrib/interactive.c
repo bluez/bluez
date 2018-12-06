@@ -22,9 +22,10 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>

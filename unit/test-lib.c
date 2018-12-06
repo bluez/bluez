@@ -23,12 +23,13 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include <config.h>
 #endif
 
-#include <glib.h>
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <errno.h>
+#include <glib.h>
 
 #include "src/shared/util.h"
 #include "src/shared/tester.h"

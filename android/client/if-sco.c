@@ -15,6 +15,7 @@
  *
  */
 
+#define _GNU_SOURCE
 #include <pthread.h>
 #include <unistd.h>
 #include <math.h>
