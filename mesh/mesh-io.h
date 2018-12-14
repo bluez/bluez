@@ -96,4 +96,5 @@ bool mesh_set_filter(struct mesh_io *io, uint8_t filter_id,
 
 bool mesh_io_send(struct mesh_io *io, struct mesh_io_send_info *info,
 					const uint8_t *data, uint16_t len);
-bool mesh_io_send_cancel(struct mesh_io *io, uint8_t *pattern, uint8_t len);
+bool mesh_io_send_cancel(struct mesh_io *io, const uint8_t *pattern,
+								uint8_t len);

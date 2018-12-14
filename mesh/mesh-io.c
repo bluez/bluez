@@ -177,7 +177,8 @@ bool mesh_io_send(struct mesh_io *io, struct mesh_io_send_info *info,
 	return false;
 }
 
-bool mesh_io_send_cancel(struct mesh_io *io, uint8_t *pattern, uint8_t len)
+bool mesh_io_send_cancel(struct mesh_io *io, const uint8_t *pattern,
+								uint8_t len)
 {
 	io = l_queue_find(io_list, match_by_io, io);
 
