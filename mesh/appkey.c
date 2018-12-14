@@ -15,7 +15,6 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  *
- *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -24,6 +23,7 @@
 
 #define _GNU_SOURCE
 #include <ell/ell.h>
+#include <json-c/json.h>
 
 #include "mesh/mesh-defs.h"
 
@@ -31,7 +31,7 @@
 #include "mesh/node.h"
 #include "mesh/net.h"
 #include "mesh/crypto.h"
-#include "mesh/display.h"
+#include "mesh/util.h"
 #include "mesh/model.h"
 #include "mesh/storage.h"
 #include "mesh/appkey.h"
@@ -206,12 +206,12 @@ bool appkey_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
 		}
 
 		if (seq < msg->seq) {
-			l_info("Ignoring packet with lower sequence number");
+			l_debug("Ignoring packet with lower sequence number");
 			return true;
 		}
 
 		if (seq == msg->seq) {
-			l_info("Message already processed (duplicate)");
+			l_debug("Message already processed (duplicate)");
 			return true;
 		}
 
@@ -302,6 +302,7 @@ bool appkey_key_init(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 		return false;
 
 	key->net_idx = net_idx;
+	key->app_idx = app_idx;
 
 	if (key_value && !set_key(key, app_idx, key_value, false))
 		return false;
@@ -392,14 +393,14 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 			return MESH_STATUS_SUCCESS;
 
 		if (!update) {
-			l_info("Failed to add key: index already stored %x",
+			l_debug("Failed to add key: index already stored %x",
 				(net_idx << 16) | app_idx);
 			return MESH_STATUS_IDX_ALREADY_STORED;
 		}
 	}
 
 	if (!key) {
-		if (l_queue_length(app_keys) <= MAX_APP_KEYS)
+		if (!(l_queue_length(app_keys) < MAX_APP_KEYS))
 			return MESH_STATUS_INSUFF_RESOURCES;
 
 		key = app_key_new();
@@ -411,7 +412,7 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 			return MESH_STATUS_INSUFF_RESOURCES;
 		}
 
-		if (!storage_local_app_key_add(net, net_idx, app_idx, new_key,
+		if (!storage_app_key_add(net, net_idx, app_idx, new_key,
 								false)) {
 			appkey_key_free(key);
 			return MESH_STATUS_STORAGE_FAIL;
@@ -424,7 +425,7 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 		if (!set_key(key, app_idx, new_key, true))
 			return MESH_STATUS_INSUFF_RESOURCES;
 
-		if (!storage_local_app_key_add(net, net_idx, app_idx, new_key,
+		if (!storage_app_key_add(net, net_idx, app_idx, new_key,
 								true))
 			return MESH_STATUS_STORAGE_FAIL;
 	}
@@ -457,7 +458,7 @@ int appkey_key_delete(struct mesh_net *net, uint16_t net_idx,
 	l_queue_remove(app_keys, key);
 	appkey_key_free(key);
 
-	if (!storage_local_app_key_del(net, net_idx, app_idx))
+	if (!storage_app_key_del(net, net_idx, app_idx))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	return MESH_STATUS_SUCCESS;
