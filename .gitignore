@@ -130,7 +130,6 @@ emulator/hfp
 client/bluetoothctl
 tools/meshctl
 mesh/meshd
-mesh/btmesh
 
 src/bluetoothd.8
 src/bluetooth.service
