@@ -15,7 +15,6 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  *
- *
  */
 
 #define CONFIG_SRV_MODEL	(VENDOR_ID_MASK | 0x0000)
@@ -95,4 +94,4 @@
 #define OP_VEND_MODEL_APP_GET			0x804C
 #define OP_VEND_MODEL_APP_LIST			0x804E
 
-void mesh_config_srv_init(struct mesh_net *net, uint8_t ele_idx);
+void mesh_config_srv_init(struct mesh_node *node, uint8_t ele_idx);
