@@ -15,18 +15,26 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  *
- *
  */
 
-struct bt_mesh;
-struct mesh_net;
+#define BLUEZ_MESH_NAME "org.bluez.mesh"
 
-struct bt_mesh *mesh_new(uint16_t index, const char *in_config_name);
-struct bt_mesh *mesh_ref(struct bt_mesh *mesh);
-void mesh_unref(struct bt_mesh *mesh);
-bool mesh_set_output(struct bt_mesh *mesh, const char *out_config_name);
+#define MESH_NETWORK_INTERFACE "org.bluez.mesh.Network1"
+#define MESH_NODE_INTERFACE "org.bluez.mesh.Node1"
+#define MESH_ELEMENT_INTERFACE "org.bluez.mesh.Element1"
+#define MESH_APPLICATION_INTERFACE "org.bluez.mesh.Application1"
+#define MESH_PROVISION_AGENT_INTERFACE "org.bluez.mesh.ProvisionAgent1"
+#define ERROR_INTERFACE "org.bluez.mesh.Error"
+
+typedef void (*prov_rx_cb_t)(void *user_data, const uint8_t *data,
+								uint16_t len);
+bool mesh_init(uint16_t index, const char *in_config_name);
 void mesh_cleanup(void);
-const char *mesh_status_str(uint8_t err);
+bool mesh_dbus_init(struct l_dbus *dbus);
 
-/* Command line testing */
-struct mesh_net *mesh_get_net(struct bt_mesh *mesh);
+const char *mesh_status_str(uint8_t err);
+bool mesh_send_pkt(uint8_t count, uint16_t interval, uint8_t *data,
+								uint16_t len);
+bool mesh_send_cancel(const uint8_t *filter, uint8_t len);
+bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data);
+void mesh_unreg_prov_rx(prov_rx_cb_t cb);
