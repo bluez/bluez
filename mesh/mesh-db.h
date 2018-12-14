@@ -15,10 +15,7 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  *
- *
  */
-
-#include <json-c/json.h>
 
 struct mesh_db_sub {
 	bool virt;
@@ -103,9 +100,7 @@ typedef bool (*mesh_db_app_key_cb)(uint16_t idx, uint16_t net_idx,
 typedef bool (*mesh_db_node_cb)(struct mesh_db_node *node, void *user_data);
 
 bool mesh_db_read_node(json_object *jobj, mesh_db_node_cb cb, void *user_data);
-bool mesh_db_read_unprovisioned_device(json_object *jnode, mesh_db_node_cb cb,
-							void *user_data);
-bool mesh_db_read_prov_info(json_object *jnode, struct mesh_db_prov *prov);
+bool mesh_db_add_node(json_object *jnode, struct mesh_db_node *node);
 bool mesh_db_read_iv_index(json_object *jobj, uint32_t *idx, bool *update);
 bool mesh_db_read_device_key(json_object *jobj, uint8_t key_buf[16]);
 bool mesh_db_read_net_transmit(json_object *jobj, uint8_t *cnt,
@@ -124,6 +119,8 @@ bool mesh_db_write_app_key(json_object *jobj, uint16_t net_idx,
 bool mesh_db_write_int(json_object *jobj, const char *keyword, int value);
 bool mesh_db_write_uint16_hex(json_object *jobj, const char *desc,
 								uint16_t value);
+bool mesh_db_write_uint32_hex(json_object *jobj, const char *desc,
+								uint32_t value);
 bool mesh_db_write_bool(json_object *jobj, const char *keyword, bool value);
 bool mesh_db_write_relay_mode(json_object *jnode, uint8_t mode, uint8_t count,
 							uint16_t interval);
