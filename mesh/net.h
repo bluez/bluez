@@ -17,9 +17,6 @@
  *
  */
 
-#include <stdbool.h>
-#include <stdint.h>
-
 #ifndef __packed
 #define __packed __attribute__((packed))
 #endif
@@ -259,9 +256,8 @@ typedef void (*mesh_net_status_func_t)(uint16_t remote, uint8_t status,
 					void *data, uint16_t size,
 					void *user_data);
 
-struct mesh_net *mesh_net_new(uint16_t index);
-struct mesh_net *mesh_net_ref(struct mesh_net *net);
-void mesh_net_unref(struct mesh_net *net);
+struct mesh_net *mesh_net_new(struct mesh_node *node);
+void mesh_net_free(struct mesh_net *net);
 void mesh_net_flush_msg_queues(struct mesh_net *net);
 void mesh_net_set_iv_index(struct mesh_net *net, uint32_t index, bool update);
 bool mesh_net_iv_index_update(struct mesh_net *net);
@@ -301,13 +297,12 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 				uint32_t seq, uint16_t src, uint16_t dst,
 				const uint8_t *msg, uint16_t msg_len);
 
-unsigned int mesh_net_app_send(struct mesh_net *net, bool frnd_cred,
-				uint16_t src, uint16_t dst, uint8_t key_id,
-				uint8_t ttl, uint32_t seq, uint32_t iv_index,
-				bool szmic, const void *msg, uint16_t msg_len,
+bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
+				uint16_t dst, uint8_t key_id, uint8_t ttl,
+				uint32_t seq, uint32_t iv_index, bool szmic,
+				const void *msg, uint16_t msg_len,
 				mesh_net_status_func_t status_func,
 				void *user_data);
-void mesh_net_app_send_cancel(struct mesh_net *net, unsigned int id);
 void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id,
 				uint32_t iv_index, uint8_t ttl, uint32_t seq,
 				uint16_t src, uint16_t dst, bool rly,
@@ -363,16 +358,8 @@ void mesh_net_sub_list_add(struct mesh_net *net, uint16_t addr);
 void mesh_net_sub_list_del(struct mesh_net *net, uint16_t addr);
 uint32_t mesh_net_friend_timeout(struct mesh_net *net, uint16_t addr);
 struct mesh_io *mesh_net_get_io(struct mesh_net *net);
-bool mesh_net_local_node_set(struct mesh_net *net, struct mesh_node *node,
-							bool provisioner);
-struct mesh_node *mesh_net_local_node_get(struct mesh_net *net);
-bool mesh_net_set_crpl(struct mesh_net *net, uint16_t crpl);
-uint16_t mesh_net_get_crpl(struct mesh_net *net);
+struct mesh_node *mesh_net_node_get(struct mesh_net *net);
 bool mesh_net_have_key(struct mesh_net *net, uint16_t net_idx);
-bool mesh_net_jconfig_set(struct mesh_net *net, void *jconfig);
-void *mesh_net_jconfig_get(struct mesh_net *net);
-bool mesh_net_cfg_file_set(struct mesh_net *net, const char *cfg);
-bool mesh_net_cfg_file_get(struct mesh_net *net, const char **cfg);
 bool mesh_net_is_local_address(struct mesh_net *net, uint16_t addr);
 void mesh_net_set_window_accuracy(struct mesh_net *net, uint8_t accuracy);
 void mesh_net_transmit_params_set(struct mesh_net *net, uint8_t count,
@@ -381,10 +368,3 @@ void mesh_net_transmit_params_get(struct mesh_net *net, uint8_t *count,
 							uint16_t *interval);
 struct mesh_prov *mesh_net_get_prov(struct mesh_net *net);
 void mesh_net_set_prov(struct mesh_net *net, struct mesh_prov *prov);
-void mesh_net_provisioned_set(struct mesh_net *net, bool provisioned);
-bool mesh_net_provisioned_get(struct mesh_net *net);
-bool mesh_net_provisioned_new(struct mesh_net *net, uint8_t device_key[16],
-				uint16_t net_idx,  uint8_t net_key[16],
-				uint16_t unicast, uint16_t snb_flags,
-				uint32_t iv_index, mesh_status_func_t cb,
-				void *user_data);
