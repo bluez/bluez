@@ -31,7 +31,7 @@ typedef bool (*mesh_io_deregister_t)(struct mesh_io *io, uint8_t filter_id);
 typedef bool (*mesh_io_filter_set_t)(struct mesh_io *io,
 			uint8_t filter_id, const uint8_t *data, uint8_t len,
 			mesh_io_status_func_t callback, void *user_data);
-typedef bool (*mesh_io_tx_cancel_t)(struct mesh_io *io, uint8_t *pattern,
+typedef bool (*mesh_io_tx_cancel_t)(struct mesh_io *io, const uint8_t *pattern,
 								uint8_t len);
 
 struct mesh_io_api {
