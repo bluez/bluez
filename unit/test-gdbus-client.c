@@ -31,8 +31,8 @@
 
 #include "src/shared/tester.h"
 
-#define SERVICE_NAME "org.bluez.unit.test-gdbus-client"
-#define SERVICE_NAME1 "org.bluez.unit.test-gdbus-client1"
+#define SERVICE_NAME "org.bluez.unit.test_gdbus_client"
+#define SERVICE_NAME1 "org.bluez.unit.test_gdbus_client1"
 #define SERVICE_PATH "/org/bluez/unit/test_gdbus_client"
 
 struct context {
