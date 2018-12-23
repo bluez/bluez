@@ -167,9 +167,14 @@ struct avdtp_content_protection_capability {
 	uint8_t data[0];
 } __attribute__ ((packed));
 
-static void print_aptx(a2dp_aptx_t *aptx)
+static void print_aptx(a2dp_aptx_t *aptx, uint8_t size)
 {
 	printf("\t\tVendor Specific Value (aptX)");
+
+	if (size < sizeof(*aptx)) {
+		printf(" (broken)\n");
+		return;
+	}
 
 	printf("\n\t\t\tFrequencies: ");
 	if (aptx->frequency & APTX_SAMPLING_FREQ_16000)
@@ -190,9 +195,14 @@ static void print_aptx(a2dp_aptx_t *aptx)
 	printf("\n");
 }
 
-static void print_ldac(a2dp_ldac_t *ldac)
+static void print_ldac(a2dp_ldac_t *ldac, uint8_t size)
 {
 	printf("\t\tVendor Specific Value (LDAC)");
+
+	if (size < sizeof(*ldac)) {
+		printf(" (broken)\n");
+		return;
+	}
 
 	printf("\n\t\t\tUnknown: %02x %02x", ldac->unknown[0],
 							ldac->unknown[1]);
@@ -200,10 +210,18 @@ static void print_ldac(a2dp_ldac_t *ldac)
 	printf("\n");
 }
 
-static void print_vendor(a2dp_vendor_codec_t *vendor)
+static void print_vendor(a2dp_vendor_codec_t *vendor, uint8_t size)
 {
-	uint32_t vendor_id = btohl(vendor->vendor_id);
-	uint16_t codec_id = btohs(vendor->codec_id);
+	uint32_t vendor_id;
+	uint16_t codec_id;
+
+	if (size < sizeof(*vendor)) {
+		printf("\tMedia Codec: Vendor Specific A2DP Codec (broken)");
+		return;
+	}
+
+	vendor_id = btohl(vendor->vendor_id);
+	codec_id = btohs(vendor->codec_id);
 
 	printf("\tMedia Codec: Vendor Specific A2DP Codec");
 
@@ -212,15 +230,22 @@ static void print_vendor(a2dp_vendor_codec_t *vendor)
 	printf("\n\t\tVendor Specific Codec ID 0x%04x\n", codec_id);
 
 	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
-		print_aptx((void *) vendor);
+		print_aptx((void *) vendor, size);
 	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
-		print_ldac((void *) vendor);
+		print_ldac((void *) vendor, size);
 }
 
-static void print_mpeg24(a2dp_aac_t *aac)
+static void print_mpeg24(a2dp_aac_t *aac, uint8_t size)
 {
-	unsigned freq = AAC_GET_FREQUENCY(*aac);
-	unsigned bitrate = AAC_GET_BITRATE(*aac);
+	unsigned int freq, bitrate;
+
+	if (size < sizeof(*aac)) {
+		printf("\tMedia Codec: MPEG24 (broken)\n");
+		return;
+	}
+
+	freq = AAC_GET_FREQUENCY(*aac);
+	bitrate = AAC_GET_BITRATE(*aac);
 
 	printf("\tMedia Codec: MPEG24\n\t\tObject Types: ");
 
@@ -270,8 +295,13 @@ static void print_mpeg24(a2dp_aac_t *aac)
 	printf("\n\t\tVBR: %s", aac->vbr ? "Yes\n" : "No\n");
 }
 
-static void print_mpeg12(a2dp_mpeg_t *mpeg)
+static void print_mpeg12(a2dp_mpeg_t *mpeg, uint8_t size)
 {
+	if (size < sizeof(*mpeg)) {
+		printf("\tMedia Codec: MPEG12 (broken)\n");
+		return;
+	}
+
 	printf("\tMedia Codec: MPEG12\n\t\tChannel Modes: ");
 
 	if (mpeg->channel_mode & MPEG_CHANNEL_MODE_MONO)
@@ -351,8 +381,13 @@ static void print_mpeg12(a2dp_mpeg_t *mpeg)
 		printf("RFC-2250\n");
 }
 
-static void print_sbc(a2dp_sbc_t *sbc)
+static void print_sbc(a2dp_sbc_t *sbc, uint8_t size)
 {
+	if (size < sizeof(*sbc)) {
+		printf("\tMedia Codec: SBC (broken)\n");
+		return;
+	}
+
 	printf("\tMedia Codec: SBC\n\t\tChannel Modes: ");
 
 	if (sbc->channel_mode & SBC_CHANNEL_MODE_MONO)
@@ -394,20 +429,27 @@ static void print_sbc(a2dp_sbc_t *sbc)
 				sbc->min_bitpool, sbc->max_bitpool);
 }
 
-static void print_media_codec(struct avdtp_media_codec_capability *cap)
+static void print_media_codec(
+			struct avdtp_media_codec_capability *cap,
+			uint8_t size)
 {
+	if (size < sizeof(*cap)) {
+		printf("\tMedia Codec: Unknown (broken)\n");
+		return;
+	}
+
 	switch (cap->media_codec_type) {
 	case A2DP_CODEC_SBC:
-		print_sbc((void *) cap->data);
+		print_sbc((void *) cap->data, size - 2);
 		break;
 	case A2DP_CODEC_MPEG12:
-		print_mpeg12((void *) cap->data);
+		print_mpeg12((void *) cap->data, size - 2);
 		break;
 	case A2DP_CODEC_MPEG24:
-		print_mpeg24((void *) cap->data);
+		print_mpeg24((void *) cap->data, size - 2);
 		break;
 	case A2DP_CODEC_VENDOR:
-		print_vendor((void *) cap->data);
+		print_vendor((void *) cap->data, size - 2);
 		break;
 	default:
 		printf("\tMedia Codec: Unknown\n");
@@ -415,9 +457,15 @@ static void print_media_codec(struct avdtp_media_codec_capability *cap)
 }
 
 static void print_content_protection(
-				struct avdtp_content_protection_capability *cap)
+				struct avdtp_content_protection_capability *cap,
+				uint8_t size)
 {
 	printf("\tContent Protection: ");
+
+	if (size < sizeof(*cap)) {
+		printf("Unknown (broken)\n");
+		return;
+	}
 
 	switch (btohs(cap->content_protection_type)) {
 	case AVDTP_CONTENT_PROTECTION_TYPE_DTCP:
@@ -452,13 +500,16 @@ static void print_caps(void *data, int size)
 		case AVDTP_REPORTING:
 		case AVDTP_RECOVERY:
 		case AVDTP_MULTIPLEXING:
+		default:
 			/* FIXME: Add proper functions */
+			printf("\tUnknown category: %d\n", cap->category);
 			break;
 		case AVDTP_MEDIA_CODEC:
-			print_media_codec((void *) cap->data);
+			print_media_codec((void *) cap->data, cap->length);
 			break;
 		case AVDTP_CONTENT_PROTECTION:
-			print_content_protection((void *) cap->data);
+			print_content_protection((void *) cap->data,
+						cap->length);
 			break;
 		}
 
