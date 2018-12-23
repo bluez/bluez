@@ -214,6 +214,7 @@ static void print_vendor(a2dp_vendor_codec_t *vendor, uint8_t size)
 {
 	uint32_t vendor_id;
 	uint16_t codec_id;
+	int i;
 
 	if (size < sizeof(*vendor)) {
 		printf("\tMedia Codec: Vendor Specific A2DP Codec (broken)");
@@ -227,7 +228,12 @@ static void print_vendor(a2dp_vendor_codec_t *vendor, uint8_t size)
 
 	printf("\n\t\tVendor ID 0x%08x", vendor_id);
 
-	printf("\n\t\tVendor Specific Codec ID 0x%04x\n", codec_id);
+	printf("\n\t\tVendor Specific Codec ID 0x%04x", codec_id);
+
+	printf("\n\t\tVendor Specific Data:");
+	for (i = 6; i < size; ++i)
+		printf(" 0x%.02x", ((unsigned char *)vendor)[i]);
+	printf("\n");
 
 	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
 		print_aptx((void *) vendor, size);
