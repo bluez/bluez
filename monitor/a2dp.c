@@ -3,6 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2015  Andrzej Kaczmarek <andrzej.kaczmarek@codecoup.pl>
+ *  Copyright (C) 2018  Pali Rohár <pali.rohar@gmail.com>
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -51,6 +52,12 @@
 /* Vendor Specific A2DP Codecs */
 #define APTX_VENDOR_ID		0x0000004f
 #define APTX_CODEC_ID		0x0001
+#define FASTSTREAM_VENDOR_ID	0x0000000a
+#define FASTSTREAM_CODEC_ID	0x0001
+#define APTX_LL_VENDOR_ID	0x0000000a
+#define APTX_LL_CODEC_ID	0x0002
+#define APTX_HD_VENDOR_ID	0x000000D7
+#define APTX_HD_CODEC_ID	0x0024
 #define LDAC_VENDOR_ID		0x0000012d
 #define LDAC_CODEC_ID		0x00aa
 
@@ -187,6 +194,23 @@ static const struct bit_desc aptx_channel_mode_table[] = {
 	{ }
 };
 
+static const struct bit_desc faststream_direction_table[] = {
+	{  0, "Sink" },
+	{  1, "Source" },
+	{ }
+};
+
+static const struct bit_desc faststream_sink_frequency_table[] = {
+	{  1, "44100" },
+	{  0, "48000" },
+	{ }
+};
+
+static const struct bit_desc faststream_source_frequency_table[] = {
+	{  5, "16000" },
+	{ }
+};
+
 static void print_value_bits(uint8_t indent, uint32_t value,
 						const struct bit_desc *table)
 {
@@ -211,12 +235,49 @@ static const char *find_value_bit(uint32_t value,
 	return "Unknown";
 }
 
+struct vndcodec {
+	uint32_t vendor_id;
+	uint16_t codec_id;
+	char *codec_name;
+	bool (*codec_vendor_cap)(uint8_t losc, struct l2cap_frame *frame);
+	bool (*codec_vendor_cfg)(uint8_t losc, struct l2cap_frame *frame);
+};
+
+static bool codec_vendor_aptx_cap(uint8_t losc, struct l2cap_frame *frame);
+static bool codec_vendor_aptx_cfg(uint8_t losc, struct l2cap_frame *frame);
+static bool codec_vendor_faststream_cap(uint8_t losc,
+					struct l2cap_frame *frame);
+static bool codec_vendor_faststream_cfg(uint8_t losc,
+					struct l2cap_frame *frame);
+static bool codec_vendor_aptx_ll_cap(uint8_t losc, struct l2cap_frame *frame);
+static bool codec_vendor_aptx_ll_cfg(uint8_t losc, struct l2cap_frame *frame);
+static bool codec_vendor_aptx_hd_cap(uint8_t losc, struct l2cap_frame *frame);
+static bool codec_vendor_aptx_hd_cfg(uint8_t losc, struct l2cap_frame *frame);
+static bool codec_vendor_ldac(uint8_t losc, struct l2cap_frame *frame);
+
+static const struct vndcodec vndcodecs[] = {
+	{ APTX_VENDOR_ID, APTX_CODEC_ID, "aptX",
+	  codec_vendor_aptx_cap, codec_vendor_aptx_cfg },
+	{ FASTSTREAM_VENDOR_ID, FASTSTREAM_CODEC_ID, "FastStream",
+	  codec_vendor_faststream_cap, codec_vendor_faststream_cfg },
+	{ APTX_LL_VENDOR_ID, APTX_LL_CODEC_ID, "aptX Low Latency",
+	  codec_vendor_aptx_ll_cap, codec_vendor_aptx_ll_cfg },
+	{ APTX_HD_VENDOR_ID, APTX_HD_CODEC_ID, "aptX HD",
+	  codec_vendor_aptx_hd_cap, codec_vendor_aptx_hd_cfg },
+	{ LDAC_VENDOR_ID, LDAC_CODEC_ID, "LDAC",
+	  codec_vendor_ldac, codec_vendor_ldac },
+	{ }
+};
+
 static const char *vndcodec2str(uint32_t vendor_id, uint16_t codec_id)
 {
-	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
-		return "aptX";
-	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
-		return "LDAC";
+	size_t i;
+
+	for (i = 0; i < sizeof(vndcodecs)/sizeof(*vndcodecs); i++) {
+		if (vndcodecs[i].vendor_id == vendor_id &&
+		    vndcodecs[i].codec_id == codec_id)
+			return vndcodecs[i].codec_name;
+	}
 
 	return "Unknown";
 }
@@ -508,6 +569,108 @@ static bool codec_vendor_aptx_cap(uint8_t losc, struct l2cap_frame *frame)
 	return true;
 }
 
+static bool codec_vendor_faststream_cap(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint8_t cap = 0;
+
+	if (losc != 2)
+		return false;
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cDirection: 0x%02x", BASE_INDENT + 2, ' ', cap);
+	print_value_bits(BASE_INDENT + 2, cap, faststream_direction_table);
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cSink Frequency: 0x%02x", BASE_INDENT + 2, ' ',
+			cap & 0x0f);
+	print_value_bits(BASE_INDENT + 2, cap & 0x0f,
+			faststream_sink_frequency_table);
+
+	print_field("%*cSource Frequency: 0x%02x", BASE_INDENT + 2, ' ',
+			cap & 0xf0);
+	print_value_bits(BASE_INDENT + 2, cap & 0xf0,
+			faststream_source_frequency_table);
+
+	return true;
+}
+
+static bool codec_vendor_aptx_ll_cap(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint8_t cap = 0;
+	uint16_t level = 0;
+
+	if (losc != 2 && losc != 11)
+		return false;
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cFrequency: 0x%02x", BASE_INDENT + 2, ' ', cap & 0xf0);
+	print_value_bits(BASE_INDENT + 2, cap & 0xf0, aptx_frequency_table);
+
+	print_field("%*cChannel Mode: 0x%02x", BASE_INDENT + 2, ' ',
+								cap & 0x0f);
+	print_value_bits(BASE_INDENT + 2, cap & 0x0f, aptx_channel_mode_table);
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cBidirectional link: %s", BASE_INDENT, ' ',
+			(cap & 1) ? "Yes" : "No");
+
+	if ((cap & 2) && losc == 11) {
+		/* reserved */
+		l2cap_frame_get_u8(frame, &cap);
+
+		l2cap_frame_get_le16(frame, &level);
+		print_field("%*cTarget codec buffer level: %u (0x%02x)",
+				BASE_INDENT + 2, ' ', level, level);
+
+		l2cap_frame_get_le16(frame, &level);
+		print_field("%*cInitial codec buffer level: %u (0x%02x)",
+				BASE_INDENT + 2, ' ', level, level);
+
+		l2cap_frame_get_u8(frame, &cap);
+		print_field("%*cSRA max rate: %g (0x%02x)",
+				BASE_INDENT + 2, ' ', cap / 10000.0, cap);
+
+		l2cap_frame_get_u8(frame, &cap);
+		print_field("%*cSRA averaging time: %us (0x%02x)",
+				BASE_INDENT + 2, ' ', cap, cap);
+
+		l2cap_frame_get_le16(frame, &level);
+		print_field("%*cGood working codec buffer level: %u (0x%02x)",
+				BASE_INDENT + 2, ' ', level, level);
+	}
+
+	return true;
+}
+
+static bool codec_vendor_aptx_hd_cap(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint8_t cap = 0;
+
+	if (losc != 5)
+		return false;
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cFrequency: 0x%02x", BASE_INDENT + 2, ' ', cap & 0xf0);
+	print_value_bits(BASE_INDENT + 2, cap & 0xf0, aptx_frequency_table);
+
+	print_field("%*cChannel Mode: 0x%02x", BASE_INDENT + 2, ' ',
+								cap & 0x0f);
+	print_value_bits(BASE_INDENT + 2, cap & 0x0f, aptx_channel_mode_table);
+
+	/* reserved */
+	l2cap_frame_get_u8(frame, &cap);
+	l2cap_frame_get_u8(frame, &cap);
+	l2cap_frame_get_u8(frame, &cap);
+	l2cap_frame_get_u8(frame, &cap);
+
+	return true;
+}
+
 static bool codec_vendor_ldac(uint8_t losc, struct l2cap_frame *frame)
 {
 	uint16_t cap = 0;
@@ -526,6 +689,7 @@ static bool codec_vendor_cap(uint8_t losc, struct l2cap_frame *frame)
 {
 	uint32_t vendor_id = 0;
 	uint16_t codec_id = 0;
+	size_t i;
 
 	if (losc < 6)
 		return false;
@@ -541,10 +705,11 @@ static bool codec_vendor_cap(uint8_t losc, struct l2cap_frame *frame)
 	print_field("%*cVendor Specific Codec ID: %s (0x%04x)", BASE_INDENT,
 			' ', vndcodec2str(vendor_id, codec_id), codec_id);
 
-	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
-		return codec_vendor_aptx_cap(losc, frame);
-	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
-		return codec_vendor_ldac(losc, frame);
+	for (i = 0; i < sizeof(vndcodecs)/sizeof(*vndcodecs); i++) {
+		if (vndcodecs[i].vendor_id == vendor_id &&
+		    vndcodecs[i].codec_id == codec_id)
+			return vndcodecs[i].codec_vendor_cap(losc, frame);
+	}
 
 	packet_hexdump(frame->data, losc);
 	l2cap_frame_pull(frame, frame, losc);
@@ -572,10 +737,116 @@ static bool codec_vendor_aptx_cfg(uint8_t losc, struct l2cap_frame *frame)
 	return true;
 }
 
+static bool codec_vendor_faststream_cfg(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint8_t cap = 0;
+
+	if (losc != 2)
+		return false;
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cDirection: %s (0x%02x)", BASE_INDENT + 2, ' ',
+			find_value_bit(cap, faststream_direction_table),
+			cap);
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cSink Frequency: %s (0x%02x)", BASE_INDENT + 2, ' ',
+			find_value_bit(cap & 0x0f,
+				faststream_sink_frequency_table),
+			cap & 0x0f);
+
+	print_field("%*cSource Frequency: %s (0x%02x)", BASE_INDENT + 2, ' ',
+			find_value_bit(cap & 0xf0,
+				faststream_source_frequency_table),
+			cap & 0xf0);
+
+	return true;
+}
+
+static bool codec_vendor_aptx_ll_cfg(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint8_t cap = 0;
+	uint16_t level = 0;
+
+	if (losc != 2 && losc != 11)
+		return false;
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cFrequency: %s (0x%02x)", BASE_INDENT + 2, ' ',
+			find_value_bit(cap & 0xf0, aptx_frequency_table),
+			cap & 0xf0);
+
+	print_field("%*cChannel Mode: %s (0x%02x)", BASE_INDENT + 2, ' ',
+			find_value_bit(cap & 0x0f, aptx_channel_mode_table),
+			cap & 0x0f);
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cBidirectional link: %s", BASE_INDENT, ' ',
+			(cap & 1) ? "Yes" : "No");
+
+	if ((cap & 2) && losc == 11) {
+		/* reserved */
+		l2cap_frame_get_u8(frame, &cap);
+
+		l2cap_frame_get_le16(frame, &level);
+		print_field("%*cTarget codec buffer level: %u (0x%02x)",
+				BASE_INDENT + 2, ' ', level, level);
+
+		l2cap_frame_get_le16(frame, &level);
+		print_field("%*cInitial codec buffer level: %u (0x%02x)",
+				BASE_INDENT + 2, ' ', level, level);
+
+		l2cap_frame_get_u8(frame, &cap);
+		print_field("%*cSRA max rate: %g (0x%02x)",
+				BASE_INDENT + 2, ' ', cap / 10000.0, cap);
+
+		l2cap_frame_get_u8(frame, &cap);
+		print_field("%*cSRA averaging time: %us (0x%02x)",
+				BASE_INDENT + 2, ' ', cap, cap);
+
+		l2cap_frame_get_le16(frame, &level);
+		print_field("%*cGood working codec buffer level: %u (0x%02x)",
+				BASE_INDENT + 2, ' ', level, level);
+	}
+
+	return true;
+}
+
+static bool codec_vendor_aptx_hd_cfg(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint8_t cap = 0;
+
+	if (losc != 5)
+		return false;
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cFrequency: %s (0x%02x)", BASE_INDENT + 2, ' ',
+			find_value_bit(cap & 0xf0, aptx_frequency_table),
+			cap & 0xf0);
+
+	print_field("%*cChannel Mode: %s (0x%02x)", BASE_INDENT + 2, ' ',
+			find_value_bit(cap & 0x0f, aptx_channel_mode_table),
+			cap & 0x0f);
+
+	/* reserved */
+	l2cap_frame_get_u8(frame, &cap);
+	l2cap_frame_get_u8(frame, &cap);
+	l2cap_frame_get_u8(frame, &cap);
+	l2cap_frame_get_u8(frame, &cap);
+
+	return true;
+}
+
 static bool codec_vendor_cfg(uint8_t losc, struct l2cap_frame *frame)
 {
 	uint32_t vendor_id = 0;
 	uint16_t codec_id = 0;
+	size_t i;
 
 	if (losc < 6)
 		return false;
@@ -591,10 +862,11 @@ static bool codec_vendor_cfg(uint8_t losc, struct l2cap_frame *frame)
 	print_field("%*cVendor Specific Codec ID: %s (0x%04x)", BASE_INDENT,
 			' ', vndcodec2str(vendor_id, codec_id), codec_id);
 
-	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
-		return codec_vendor_aptx_cfg(losc, frame);
-	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
-		return codec_vendor_ldac(losc, frame);
+	for (i = 0; i < sizeof(vndcodecs)/sizeof(*vndcodecs); i++) {
+		if (vndcodecs[i].vendor_id == vendor_id &&
+		    vndcodecs[i].codec_id == codec_id)
+			return vndcodecs[i].codec_vendor_cfg(losc, frame);
+	}
 
 	packet_hexdump(frame->data, losc);
 	l2cap_frame_pull(frame, frame, losc);
