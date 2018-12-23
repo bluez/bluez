@@ -4,6 +4,7 @@
  *
  *  Copyright (C) 2006-2010  Nokia Corporation
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2018       Pali Rohár <pali.rohar@gmail.com>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -195,6 +196,121 @@ static void print_aptx(a2dp_aptx_t *aptx, uint8_t size)
 	printf("\n");
 }
 
+static void print_faststream(a2dp_faststream_t *faststream, uint8_t size)
+{
+	printf("\t\tVendor Specific Value (FastStream)");
+
+	if (size < sizeof(*faststream)) {
+		printf(" (broken)\n");
+		return;
+	}
+
+	printf("\n\t\t\tDirections: ");
+	if (faststream->direction & FASTSTREAM_DIRECTION_SINK)
+		printf("sink ");
+	if (faststream->direction & FASTSTREAM_DIRECTION_SOURCE)
+		printf("source ");
+
+	if (faststream->direction & FASTSTREAM_DIRECTION_SINK) {
+		printf("\n\t\t\tSink Frequencies: ");
+		if (faststream->sink_frequency &
+				FASTSTREAM_SINK_SAMPLING_FREQ_44100)
+			printf("44.1kHz ");
+		if (faststream->sink_frequency &
+				FASTSTREAM_SINK_SAMPLING_FREQ_48000)
+			printf("48kHz ");
+	}
+
+	if (faststream->direction & FASTSTREAM_DIRECTION_SOURCE) {
+		printf("\n\t\t\tSource Frequencies: ");
+		if (faststream->source_frequency &
+				FASTSTREAM_SOURCE_SAMPLING_FREQ_16000)
+			printf("16kHz ");
+	}
+
+	printf("\n");
+}
+
+static void print_aptx_ll(a2dp_aptx_ll_t *aptx_ll, uint8_t size)
+{
+	a2dp_aptx_ll_new_caps_t *aptx_ll_new;
+
+	printf("\t\tVendor Specific Value (aptX Low Latency)");
+
+	if (size < sizeof(*aptx_ll)) {
+		printf(" (broken)\n");
+		return;
+	}
+
+	printf("\n\t\t\tFrequencies: ");
+	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_16000)
+		printf("16kHz ");
+	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_32000)
+		printf("32kHz ");
+	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_44100)
+		printf("44.1kHz ");
+	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_48000)
+		printf("48kHz ");
+
+	printf("\n\t\t\tChannel modes: ");
+	if (aptx_ll->channel_mode & APTX_LL_CHANNEL_MODE_MONO)
+		printf("Mono ");
+	if (aptx_ll->channel_mode & APTX_LL_CHANNEL_MODE_STEREO)
+		printf("Stereo ");
+
+	printf("\n\t\tBidirectional link: %s",
+			aptx_ll->bidirect_link ? "Yes" : "No");
+
+	aptx_ll_new = &aptx_ll->new_caps[0];
+	if (aptx_ll->has_new_caps &&
+	    size >= sizeof(*aptx_ll) + sizeof(*aptx_ll_new)) {
+		printf("\n\t\tTarget codec buffer level: %u",
+			(unsigned int)aptx_ll_new->target_level2 |
+			((unsigned int)(aptx_ll_new->target_level1) << 8));
+		printf("\n\t\tInitial codec buffer level: %u",
+			(unsigned int)aptx_ll_new->initial_level2 |
+			((unsigned int)(aptx_ll_new->initial_level1) << 8));
+		printf("\n\t\tSRA max rate: %g",
+			aptx_ll_new->sra_max_rate / 10000.0);
+		printf("\n\t\tSRA averaging time: %us",
+			(unsigned int)aptx_ll_new->sra_avg_time);
+		printf("\n\t\tGood working codec buffer level: %u",
+			(unsigned int)aptx_ll_new->good_working_level2 |
+			((unsigned int)(aptx_ll_new->good_working_level1) << 8)
+			);
+	}
+
+	printf("\n");
+}
+
+static void print_aptx_hd(a2dp_aptx_hd_t *aptx_hd, uint8_t size)
+{
+	printf("\t\tVendor Specific Value (aptX HD)");
+
+	if (size < sizeof(*aptx_hd)) {
+		printf(" (broken)\n");
+		return;
+	}
+
+	printf("\n\t\t\tFrequencies: ");
+	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_16000)
+		printf("16kHz ");
+	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_32000)
+		printf("32kHz ");
+	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_44100)
+		printf("44.1kHz ");
+	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_48000)
+		printf("48kHz ");
+
+	printf("\n\t\t\tChannel modes: ");
+	if (aptx_hd->channel_mode & APTX_HD_CHANNEL_MODE_MONO)
+		printf("Mono ");
+	if (aptx_hd->channel_mode & APTX_HD_CHANNEL_MODE_STEREO)
+		printf("Stereo ");
+
+	printf("\n");
+}
+
 static void print_ldac(a2dp_ldac_t *ldac, uint8_t size)
 {
 	printf("\t\tVendor Specific Value (LDAC)");
@@ -204,8 +320,27 @@ static void print_ldac(a2dp_ldac_t *ldac, uint8_t size)
 		return;
 	}
 
-	printf("\n\t\t\tUnknown: %02x %02x", ldac->frequency,
-							ldac->channel_mode);
+	printf("\n\t\t\tFrequencies: ");
+	if (ldac->frequency & LDAC_SAMPLING_FREQ_44100)
+		printf("44.1kHz ");
+	if (ldac->frequency & LDAC_SAMPLING_FREQ_48000)
+		printf("48kHz ");
+	if (ldac->frequency & LDAC_SAMPLING_FREQ_88200)
+		printf("88.2kHz ");
+	if (ldac->frequency & LDAC_SAMPLING_FREQ_96000)
+		printf("96kHz ");
+	if (ldac->frequency & LDAC_SAMPLING_FREQ_176400)
+		printf("176.4kHz ");
+	if (ldac->frequency & LDAC_SAMPLING_FREQ_192000)
+		printf("192kHz ");
+
+	printf("\n\t\t\tChannel modes: ");
+	if (ldac->channel_mode & LDAC_CHANNEL_MODE_MONO)
+		printf("Mono ");
+	if (ldac->channel_mode & LDAC_CHANNEL_MODE_DUAL)
+		printf("Dual ");
+	if (ldac->channel_mode & LDAC_CHANNEL_MODE_STEREO)
+		printf("Stereo ");
 
 	printf("\n");
 }
@@ -237,6 +372,13 @@ static void print_vendor(a2dp_vendor_codec_t *vendor, uint8_t size)
 
 	if (vendor_id == APTX_VENDOR_ID && codec_id == APTX_CODEC_ID)
 		print_aptx((void *) vendor, size);
+	else if (vendor_id == FASTSTREAM_VENDOR_ID &&
+			codec_id == FASTSTREAM_CODEC_ID)
+		print_faststream((void *) vendor, size);
+	else if (vendor_id == APTX_LL_VENDOR_ID && codec_id == APTX_LL_CODEC_ID)
+		print_aptx_ll((void *) vendor, size);
+	else if (vendor_id == APTX_HD_VENDOR_ID && codec_id == APTX_HD_CODEC_ID)
+		print_aptx_hd((void *) vendor, size);
 	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
 		print_ldac((void *) vendor, size);
 }
