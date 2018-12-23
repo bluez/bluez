@@ -303,10 +303,14 @@ static void print_mpeg24(a2dp_aac_t *aac, uint8_t size)
 
 static void print_mpeg12(a2dp_mpeg_t *mpeg, uint8_t size)
 {
+	uint16_t bitrate;
+
 	if (size < sizeof(*mpeg)) {
 		printf("\tMedia Codec: MPEG12 (broken)\n");
 		return;
 	}
+
+	bitrate = MPEG_GET_BITRATE(*mpeg);
 
 	printf("\tMedia Codec: MPEG12\n\t\tChannel Modes: ");
 
@@ -343,42 +347,105 @@ static void print_mpeg12(a2dp_mpeg_t *mpeg, uint8_t size)
 	if (mpeg->layer & MPEG_LAYER_MP3)
 		printf("3 ");
 
-	printf("\n\t\tBit Rate: ");
-	if (mpeg->bitrate & MPEG_BIT_RATE_FREE)
-		printf("Free format");
-	else {
-		if (mpeg->bitrate & MPEG_BIT_RATE_32000)
-			printf("32kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_40000)
-			printf("40kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_48000)
-			printf("48kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_56000)
-			printf("56kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_64000)
-			printf("64kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_80000)
-			printf("80kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_96000)
-			printf("96kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_112000)
-			printf("112kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_128000)
-			printf("128kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_160000)
-			printf("160kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_192000)
-			printf("192kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_224000)
-			printf("224kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_256000)
-			printf("256kbps ");
-		if (mpeg->bitrate & MPEG_BIT_RATE_320000)
-			printf("320kbps ");
+	if (bitrate & MPEG_BIT_RATE_FREE) {
+		printf("\n\t\tBit Rate: Free format");
+	} else {
+		if (mpeg->layer & MPEG_LAYER_MP1) {
+			printf("\n\t\tLayer 1 Bit Rate: ");
+			if (bitrate & MPEG_MP1_BIT_RATE_32000)
+				printf("32kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_64000)
+				printf("64kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_96000)
+				printf("96kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_128000)
+				printf("128kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_160000)
+				printf("160kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_192000)
+				printf("192kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_224000)
+				printf("224kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_256000)
+				printf("256kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_320000)
+				printf("320kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_352000)
+				printf("352kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_384000)
+				printf("384kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_416000)
+				printf("416kbps ");
+			if (bitrate & MPEG_MP1_BIT_RATE_448000)
+				printf("448kbps ");
+		}
+
+		if (mpeg->layer & MPEG_LAYER_MP2) {
+			printf("\n\t\tLayer 2 Bit Rate: ");
+			if (bitrate & MPEG_MP2_BIT_RATE_32000)
+				printf("32kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_48000)
+				printf("48kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_56000)
+				printf("56kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_64000)
+				printf("64kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_80000)
+				printf("80kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_96000)
+				printf("96kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_112000)
+				printf("112kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_128000)
+				printf("128kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_160000)
+				printf("160kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_192000)
+				printf("192kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_224000)
+				printf("224kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_256000)
+				printf("256kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_320000)
+				printf("320kbps ");
+			if (bitrate & MPEG_MP2_BIT_RATE_384000)
+				printf("384kbps ");
+		}
+
+		if (mpeg->layer & MPEG_LAYER_MP3) {
+			printf("\n\t\tLayer 3 Bit Rate: ");
+			if (bitrate & MPEG_MP3_BIT_RATE_32000)
+				printf("32kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_40000)
+				printf("40kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_48000)
+				printf("48kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_56000)
+				printf("56kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_64000)
+				printf("64kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_80000)
+				printf("80kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_96000)
+				printf("96kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_112000)
+				printf("112kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_128000)
+				printf("128kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_160000)
+				printf("160kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_192000)
+				printf("192kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_224000)
+				printf("224kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_256000)
+				printf("256kbps ");
+			if (bitrate & MPEG_MP3_BIT_RATE_320000)
+				printf("320kbps ");
+		}
 	}
 
-	printf("\n\t\tVBR: %s", mpeg->bitrate & MPEG_BIT_RATE_VBR ? "Yes" :
-		"No");
+	printf("\n\t\tVBR: %s", mpeg->vbr ? "Yes" : "No");
 
 	printf("\n\t\tPayload Format: ");
 	if (mpeg->mpf)
