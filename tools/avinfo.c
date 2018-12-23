@@ -204,8 +204,8 @@ static void print_ldac(a2dp_ldac_t *ldac, uint8_t size)
 		return;
 	}
 
-	printf("\n\t\t\tUnknown: %02x %02x", ldac->unknown[0],
-							ldac->unknown[1]);
+	printf("\n\t\t\tUnknown: %02x %02x", ldac->frequency,
+							ldac->channel_mode);
 
 	printf("\n");
 }
