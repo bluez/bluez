@@ -221,8 +221,8 @@ static void print_vendor(a2dp_vendor_codec_t *vendor, uint8_t size)
 		return;
 	}
 
-	vendor_id = btohl(vendor->vendor_id);
-	codec_id = btohs(vendor->codec_id);
+	vendor_id = A2DP_GET_VENDOR_ID(*vendor);
+	codec_id = A2DP_GET_CODEC_ID(*vendor);
 
 	printf("\tMedia Codec: Vendor Specific A2DP Codec");
 

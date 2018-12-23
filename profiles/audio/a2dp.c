@@ -523,14 +523,15 @@ static gboolean endpoint_match_codec_ind(struct avdtp *session,
 	local_codec = (a2dp_vendor_codec_t *) capabilities;
 	remote_codec = (a2dp_vendor_codec_t *) codec->data;
 
-	if (remote_codec->vendor_id != local_codec->vendor_id)
+	if (A2DP_GET_VENDOR_ID(*remote_codec) !=
+			A2DP_GET_VENDOR_ID(*local_codec))
 		return FALSE;
 
-	if (remote_codec->codec_id != local_codec->codec_id)
+	if (A2DP_GET_CODEC_ID(*remote_codec) != A2DP_GET_CODEC_ID(*local_codec))
 		return FALSE;
 
-	DBG("vendor 0x%08x codec 0x%04x", btohl(remote_codec->vendor_id),
-						btohs(remote_codec->codec_id));
+	DBG("vendor 0x%08x codec 0x%04x", A2DP_GET_VENDOR_ID(*remote_codec),
+					A2DP_GET_CODEC_ID(*remote_codec));
 	return TRUE;
 }
 

@@ -1103,10 +1103,12 @@ struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
 			a2dp_vendor_codec_t *vndcodec =
 						(void *) codec_data->data;
 
-			if (btohl(vndcodec->vendor_id) != lsep->vndcodec_vendor)
+			if (A2DP_GET_VENDOR_ID(*vndcodec) !=
+					lsep->vndcodec_vendor)
 				continue;
 
-			if (btohs(vndcodec->codec_id) != lsep->vndcodec_codec)
+			if (A2DP_GET_CODEC_ID(*vndcodec) !=
+					lsep->vndcodec_codec)
 				continue;
 		}
 

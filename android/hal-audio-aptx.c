@@ -37,27 +37,21 @@ struct aptx_data {
 
 static const a2dp_aptx_t aptx_presets[] = {
 	{
-		.info = {
-			.vendor_id = APTX_VENDOR_ID,
-			.codec_id = APTX_CODEC_ID,
-		},
+		.info =
+		    A2DP_SET_VENDOR_ID_CODEC_ID(APTX_VENDOR_ID, APTX_CODEC_ID),
 		.frequency = APTX_SAMPLING_FREQ_44100 |
 						APTX_SAMPLING_FREQ_48000,
 		.channel_mode = APTX_CHANNEL_MODE_STEREO,
 	},
 	{
-		.info = {
-			.vendor_id = APTX_VENDOR_ID,
-			.codec_id = APTX_CODEC_ID,
-		},
+		.info =
+		    A2DP_SET_VENDOR_ID_CODEC_ID(APTX_VENDOR_ID, APTX_CODEC_ID),
 		.frequency = APTX_SAMPLING_FREQ_48000,
 		.channel_mode = APTX_CHANNEL_MODE_STEREO,
 	},
 	{
-		.info = {
-			.vendor_id = APTX_VENDOR_ID,
-			.codec_id = APTX_CODEC_ID,
-		},
+		.info =
+		    A2DP_SET_VENDOR_ID_CODEC_ID(APTX_VENDOR_ID, APTX_CODEC_ID),
 		.frequency = APTX_SAMPLING_FREQ_44100,
 		.channel_mode = APTX_CHANNEL_MODE_STEREO,
 	},

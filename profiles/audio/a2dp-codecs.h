@@ -198,9 +198,29 @@
 #define LDAC_CODEC_ID			0x00aa
 
 typedef struct {
-	uint32_t vendor_id;
-	uint16_t codec_id;
+	uint8_t vendor_id4;
+	uint8_t vendor_id3;
+	uint8_t vendor_id2;
+	uint8_t vendor_id1;
+	uint8_t codec_id2;
+	uint8_t codec_id1;
 } __attribute__ ((packed)) a2dp_vendor_codec_t;
+
+#define A2DP_GET_VENDOR_ID(a) ( \
+		(((uint32_t)(a).vendor_id4) <<  0) | \
+		(((uint32_t)(a).vendor_id3) <<  8) | \
+		(((uint32_t)(a).vendor_id2) << 16) | \
+		(((uint32_t)(a).vendor_id1) << 24) \
+	)
+#define A2DP_GET_CODEC_ID(a) ((a).codec_id2 | (((uint16_t)(a).codec_id1) << 8))
+#define A2DP_SET_VENDOR_ID_CODEC_ID(v, c) ((a2dp_vendor_codec_t){ \
+		.vendor_id4 = (((v) >>  0) & 0xff), \
+		.vendor_id3 = (((v) >>  8) & 0xff), \
+		.vendor_id2 = (((v) >> 16) & 0xff), \
+		.vendor_id1 = (((v) >> 24) & 0xff), \
+		.codec_id2 = (((c) >> 0) & 0xff), \
+		.codec_id1 = (((c) >> 8) & 0xff), \
+	})
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 

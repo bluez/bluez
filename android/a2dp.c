@@ -417,8 +417,8 @@ static int check_capabilities(struct a2dp_preset *preset,
 								preset->len);
 	case A2DP_CODEC_VENDOR:
 		vndcodec = (void *) codec->data;
-		if (btohl(vndcodec->vendor_id) == APTX_VENDOR_ID &&
-				btohs(vndcodec->codec_id) == APTX_CODEC_ID)
+		if (A2DP_GET_VENDOR_ID(*vndcodec) == APTX_VENDOR_ID &&
+				A2DP_GET_CODEC_ID(*vndcodec) == APTX_CODEC_ID)
 			return aptx_check_config(codec->data, codec_len,
 						preset->data, preset->len);
 		return -EINVAL;
@@ -1344,8 +1344,8 @@ static uint8_t register_endpoint(const uint8_t *uuid, uint8_t codec,
 		a2dp_vendor_codec_t *vndcodec = (void *) endpoint->caps->data;
 
 		avdtp_sep_set_vendor_codec(endpoint->sep,
-						btohl(vndcodec->vendor_id),
-						btohs(vndcodec->codec_id));
+						A2DP_GET_VENDOR_ID(*vndcodec),
+						A2DP_GET_CODEC_ID(*vndcodec));
 	}
 
 	endpoints = g_slist_append(endpoints, endpoint);
