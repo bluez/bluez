@@ -22,6 +22,9 @@
  *
  */
 
+#include <endian.h>
+#include <stdint.h>
+
 #define A2DP_CODEC_SBC			0x00
 #define A2DP_CODEC_MPEG12		0x01
 #define A2DP_CODEC_MPEG24		0x02
@@ -222,7 +225,8 @@ typedef struct {
 		.codec_id1 = (((c) >> 8) & 0xff), \
 	})
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && \
+	__BYTE_ORDER == __LITTLE_ENDIAN
 
 typedef struct {
 	uint8_t channel_mode:4;
@@ -269,7 +273,8 @@ typedef struct {
 	uint8_t unknown[2];
 } __attribute__ ((packed)) a2dp_ldac_t;
 
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && \
+	__BYTE_ORDER == __BIG_ENDIAN
 
 typedef struct {
 	uint8_t frequency:4;
