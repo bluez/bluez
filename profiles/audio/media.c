@@ -489,6 +489,13 @@ static const char *get_name(struct a2dp_sep *sep, void *user_data)
 	return endpoint->sender;
 }
 
+static const char *get_path(struct a2dp_sep *sep, void *user_data)
+{
+	struct media_endpoint *endpoint = user_data;
+
+	return endpoint->path;
+}
+
 static size_t get_capabilities(struct a2dp_sep *sep, uint8_t **capabilities,
 							void *user_data)
 {
@@ -579,6 +586,7 @@ static void set_delay(struct a2dp_sep *sep, uint16_t delay, void *user_data)
 
 static struct a2dp_endpoint a2dp_endpoint = {
 	.get_name = get_name,
+	.get_path = get_path,
 	.get_capabilities = get_capabilities,
 	.select_configuration = select_config,
 	.set_configuration = set_config,

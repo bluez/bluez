@@ -32,6 +32,7 @@ typedef void (*a2dp_endpoint_config_t) (struct a2dp_setup *setup, gboolean ret);
 
 struct a2dp_endpoint {
 	const char *(*get_name) (struct a2dp_sep *sep, void *user_data);
+	const char *(*get_path) (struct a2dp_sep *sep, void *user_data);
 	size_t (*get_capabilities) (struct a2dp_sep *sep,
 						uint8_t **capabilities,
 						void *user_data);

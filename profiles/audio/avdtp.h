@@ -223,6 +223,10 @@ struct avdtp *avdtp_ref(struct avdtp *session);
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int size);
 
+uint8_t avdtp_get_seid(struct avdtp_remote_sep *sep);
+
+uint8_t avdtp_get_type(struct avdtp_remote_sep *sep);
+
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep);
 
 int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,

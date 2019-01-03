@@ -3170,6 +3170,16 @@ static int process_queue(struct avdtp *session)
 	return send_req(session, FALSE, req);
 }
 
+uint8_t avdtp_get_seid(struct avdtp_remote_sep *sep)
+{
+	return sep->seid;
+}
+
+uint8_t avdtp_get_type(struct avdtp_remote_sep *sep)
+{
+	return sep->type;
+}
+
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep)
 {
 	return sep->codec;
