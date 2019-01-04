@@ -430,8 +430,9 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	if (transport != NULL)
 		return FALSE;
 
-	transport = media_transport_create(device, configuration, size,
-								endpoint);
+	transport = media_transport_create(device,
+					a2dp_setup_remote_path(data->setup),
+					configuration, size, endpoint);
 	if (transport == NULL)
 		return FALSE;
 

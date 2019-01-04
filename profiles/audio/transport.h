@@ -25,6 +25,7 @@
 struct media_transport;
 
 struct media_transport *media_transport_create(struct btd_device *device,
+						const char *remote_endpoint,
 						uint8_t *configuration,
 						size_t size, void *data);
 
