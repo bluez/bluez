@@ -627,3 +627,8 @@ Properties	object Device [readonly]
 			acquired by the sender.
 
 			Possible Values: 0-127
+
+		object Endpoint [readonly, optional, experimental]
+
+			Endpoint object which the transport is associated
+			with.
