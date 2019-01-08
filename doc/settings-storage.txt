@@ -159,7 +159,7 @@ Cache directory file format
 ============================
 
 Each file, named by remote device address, may includes multiple groups
-(General, ServiceRecords, Attributes).
+(General, ServiceRecords, Attributes, Endpoints).
 
 In ServiceRecords, SDP records are stored using their handle as key
 (hexadecimal format).
@@ -167,6 +167,9 @@ In ServiceRecords, SDP records are stored using their handle as key
 In "Attributes" group GATT database is stored using attribute handle as key
 (hexadecimal format). Value associated with this handle is serialized form of
 all data required to re-create given attribute. ":" is used to separate fields.
+
+In "Endpoints" group A2DP remote endpoints are stored using the seid as key
+(hexadecimal format) and ":" is used to separate fields.
 
 [General] group contains:
 
@@ -211,6 +214,12 @@ Sample Attributes section:
   002b=2803:002c:02:00002a38-0000-1000-8000-00805f9b34fb
   002d=2803:002e:08:00002a39-0000-1000-8000-00805f9b34fb
 
+[Endpoints] group contains:
+
+	<xx>:<xx>:<xxxxxxxx...>	String	First field is the endpoint type,
+					followed by codec type and its
+					capabilies as hexadecimal encoded
+					string.
 
 Info file format
 ================
