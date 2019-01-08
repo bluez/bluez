@@ -2647,12 +2647,15 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 		stream = find_stream_by_rseid(session, resp->seps[i].seid);
 
 		sep = find_remote_sep(session->seps, resp->seps[i].seid);
-		if (!sep) {
-			if (resp->seps[i].inuse && !stream)
-				continue;
-			sep = g_new0(struct avdtp_remote_sep, 1);
-			session->seps = g_slist_append(session->seps, sep);
-		}
+		if (sep && sep->type == resp->seps[i].type &&
+				sep->media_type == resp->seps[i].media_type)
+			continue;
+
+		if (resp->seps[i].inuse && !stream)
+			continue;
+
+		sep = g_new0(struct avdtp_remote_sep, 1);
+		session->seps = g_slist_append(session->seps, sep);
 
 		sep->stream = stream;
 		sep->seid = resp->seps[i].seid;
@@ -3199,6 +3202,37 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 	memcpy(cap->data, data, length);
 
 	return cap;
+}
+
+struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
+							uint8_t seid,
+							uint8_t type,
+							GSList *caps)
+{
+	struct avdtp_remote_sep *sep;
+	GSList *l;
+
+	sep = find_remote_sep(session->seps, seid);
+	if (sep)
+		return sep;
+
+	sep = g_new0(struct avdtp_remote_sep, 1);
+	session->seps = g_slist_append(session->seps, sep);
+	sep->seid = seid;
+	sep->type = type;
+	sep->media_type = AVDTP_MEDIA_TYPE_AUDIO;
+	sep->caps = caps;
+
+	for (l = caps; l; l = g_slist_next(l)) {
+		struct avdtp_service_capability *cap = l->data;
+
+		if (cap->category == AVDTP_MEDIA_CODEC)
+			sep->codec = cap;
+	}
+
+	DBG("seid %d type %d media %d", sep->seid, sep->type, sep->media_type);
+
+	return sep;
 }
 
 static gboolean process_discover(gpointer data)
