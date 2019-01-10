@@ -130,10 +130,6 @@ static void event_adv_report(struct mesh_io *io, const void *buf, uint8_t size)
 	if (evt->event_type != 0x03)
 		return;
 
-	if (evt->addr_type != BDADDR_LE_PUBLIC &&
-			evt->addr_type != BDADDR_LE_RANDOM)
-		return;
-
 	instant = get_instant();
 	adv = evt->data;
 	adv_len = evt->data_len;
