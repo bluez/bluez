@@ -43,7 +43,7 @@
 
 struct test_pdu {
 	bool valid;
-	const uint8_t *data;
+	uint8_t *data;
 	size_t size;
 };
 
@@ -66,7 +66,7 @@ struct context {
 #define raw_pdu(args...)					\
 	{							\
 		.valid = true,					\
-		.data = data(args),				\
+		.data = g_memdup(data(args), sizeof(data(args))), \
 		.size = sizeof(data(args)),			\
 	}
 
@@ -84,6 +84,11 @@ struct context {
 static void test_free(gconstpointer user_data)
 {
 	const struct test_data *data = user_data;
+	struct test_pdu *pdu;
+	int i;
+
+	for (i = 0; (pdu = &data->pdu_list[i]) && pdu->valid; i++)
+		g_free(pdu->data);
 
 	g_free(data->test_name);
 	g_free(data->pdu_list);

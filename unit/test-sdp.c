@@ -60,14 +60,14 @@ struct test_data {
 #define raw_pdu(args...) \
 	{							\
 		.valid = true,					\
-		.raw_data = raw_data(args),			\
+		.raw_data = g_memdup(raw_data(args), sizeof(raw_data(args))), \
 		.raw_size = sizeof(raw_data(args)),		\
 	}
 
 #define raw_pdu_cont(cont, args...) \
 	{							\
 		.valid = true,					\
-		.raw_data = raw_data(args),			\
+		.raw_data = g_memdup(raw_data(args), sizeof(raw_data(args))), \
 		.raw_size = sizeof(raw_data(args)),		\
 		.cont_len = cont,				\
 	}
@@ -105,7 +105,7 @@ struct test_data_de {
 #define define_test_de_attr(name, input, exp) \
 	do {								\
 		static struct test_data_de data;			\
-		data.input_data = input;				\
+		data.input_data = g_memdup(input, sizeof(input));	\
 		data.input_size = sizeof(input);			\
 		data.expected = exp;					\
 		tester_add("/sdp/DE/ATTR/" name, &data,	NULL,		\

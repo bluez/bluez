@@ -47,7 +47,7 @@
 struct test_pdu {
 	bool valid;
 	bool fragmented;
-	const uint8_t *data;
+	uint8_t *data;
 	size_t size;
 };
 
@@ -61,7 +61,7 @@ struct test_data {
 #define raw_pdu(args...) \
 	{							\
 		.valid = true,					\
-		.data = data(args),				\
+		.data = g_memdup(data(args), sizeof(data(args))), \
 		.size = sizeof(data(args)),			\
 	}
 
@@ -69,7 +69,7 @@ struct test_data {
 	{							\
 		.valid = true,					\
 		.fragmented = true,				\
-		.data = data(args),				\
+		.data = g_memdup(data(args), sizeof(data(args))), \
 		.size = sizeof(data(args)),			\
 	}
 
@@ -81,7 +81,7 @@ struct test_data {
 		static struct test_data data;				\
 		data.test_name = g_strdup(name);			\
 		data.pdu_list = g_memdup(pdus, sizeof(pdus));		\
-		tester_add(name, &data, NULL, function, NULL);		\
+		tester_add(name, &data, NULL, function, NULL);	\
 	} while (0)
 
 struct context {
@@ -102,6 +102,11 @@ struct context {
 static void test_free(gconstpointer user_data)
 {
 	const struct test_data *data = user_data;
+	struct test_pdu *pdu;
+	int i;
+
+	for (i = 0; (pdu = &data->pdu_list[i]) && pdu->valid; i++)
+		g_free(pdu->data);
 
 	g_free(data->test_name);
 	g_free(data->pdu_list);
