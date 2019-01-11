@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 
 #include <glib.h>
 
@@ -191,31 +192,23 @@ static gboolean send_pdu(gpointer user_data)
 {
 	struct context *context = user_data;
 	const struct sdp_pdu *req_pdu;
-	uint16_t pdu_len;
-	unsigned char *buf;
+	struct iovec iov[2];
 	ssize_t len;
 
 	req_pdu = &context->data->pdu_list[context->pdu_offset];
 
-	pdu_len = req_pdu->raw_size + context->cont_size;
+	iov[0].iov_base = (void *) req_pdu->raw_data;
+	iov[0].iov_len = req_pdu->raw_size;
 
-	buf = g_malloc0(pdu_len);
+	iov[1].iov_base = context->cont_data;
+	iov[1].iov_len = context->cont_size;
 
-	memcpy(buf, req_pdu->raw_data, req_pdu->raw_size);
+	if (context->cont_size && context->cont_size != req_pdu->cont_len)
+		put_be16(req_pdu->cont_len, iov[1].iov_base + 4);
 
-	if (context->cont_size > 0) {
-		memcpy(buf + req_pdu->raw_size, context->cont_data,
-						context->cont_size);
-		if (context->cont_size != req_pdu->cont_len)
-			put_be16(req_pdu->cont_len,
-					buf + req_pdu->raw_size + 4);
-	}
+	len = writev(context->fd, iov, 2);
 
-	len = write(context->fd, buf, pdu_len);
-
-	g_free(buf);
-
-	g_assert(len == pdu_len);
+	g_assert(len == (ssize_t) (iov[0].iov_len + iov[1].iov_len));
 
 	return FALSE;
 }
