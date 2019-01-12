@@ -118,9 +118,10 @@ static struct mesh_prov_acceptor *prov = NULL;
 
 static void acceptor_free(void)
 {
+	if (!prov)
+		return;
 
-	if (prov)
-		l_timeout_remove(prov->timeout);
+	l_timeout_remove(prov->timeout);
 
 	mesh_send_cancel(bec_filter, sizeof(bec_filter));
 	mesh_send_cancel(&pkt_filter, sizeof(pkt_filter));

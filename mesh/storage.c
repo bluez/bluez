@@ -573,6 +573,9 @@ void storage_remove_node_config(struct mesh_node *node)
 	struct json_object *jnode;
 	const char *dir_name;
 
+	if (!node)
+		return;
+
 	jnode = node_jconfig_get(node);
 	if (jnode)
 		json_object_put(jnode);

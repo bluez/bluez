@@ -210,7 +210,7 @@ static void agent_free(void *agent_data)
 
 void mesh_agent_remove(struct mesh_agent *agent)
 {
-	if (!l_queue_find(agents, simple_match, agent))
+	if (!agent || !l_queue_find(agents, simple_match, agent))
 		return;
 
 	agent_free(agent);

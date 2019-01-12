@@ -345,6 +345,28 @@ static void attach_exit(void *data)
 	l_free(pending);
 }
 
+static void free_pending_join_call(bool failed)
+{
+	if (!join_pending)
+		return;
+
+	if (join_pending->disc_watch)
+		l_dbus_remove_watch(dbus_get_bus(),
+						join_pending->disc_watch);
+
+	acceptor_cancel(&mesh);
+
+	mesh_agent_remove(join_pending->agent);
+
+	if (failed) {
+		storage_remove_node_config(join_pending->node);
+		node_free(join_pending->node);
+	}
+
+	l_free(join_pending);
+	join_pending = NULL;
+}
+
 void mesh_cleanup(void)
 {
 	struct l_dbus_message *reply;
@@ -353,19 +375,12 @@ void mesh_cleanup(void)
 	mgmt_unref(mgmt_mesh);
 
 	if (join_pending) {
+		/* The Join() call failed since it has not been completed */
 		reply = dbus_error(join_pending->msg, MESH_ERROR_FAILED,
 							"Failed. Exiting");
 		l_dbus_send(dbus_get_bus(), reply);
 
-		if (join_pending->disc_watch)
-			l_dbus_remove_watch(dbus_get_bus(),
-						join_pending->disc_watch);
-
-		if (join_pending->node)
-			node_free(join_pending->node);
-
-		l_free(join_pending);
-		join_pending = NULL;
+		free_pending_join_call(true);
 	}
 
 	l_queue_destroy(attach_queue, attach_exit);
@@ -404,26 +419,6 @@ const char *mesh_status_str(uint8_t err)
 	}
 }
 
-static void free_pending_join_call(bool failed)
-{
-	if (!join_pending)
-		return;
-
-	if (join_pending->disc_watch)
-		l_dbus_remove_watch(dbus_get_bus(),
-						join_pending->disc_watch);
-
-	mesh_agent_remove(join_pending->agent);
-
-	if (failed) {
-		storage_remove_node_config(join_pending->node);
-		mesh_agent_remove(join_pending->agent);
-	}
-
-	l_free(join_pending);
-	join_pending = NULL;
-}
-
 /* This is being called if the app exits unexpectedly */
 static void prov_disc_cb(struct l_dbus *bus, void *user_data)
 {
@@ -432,8 +427,6 @@ static void prov_disc_cb(struct l_dbus *bus, void *user_data)
 
 	if (join_pending->msg)
 		l_dbus_message_unref(join_pending->msg);
-
-	acceptor_cancel(&mesh);
 
 	join_pending->disc_watch = 0;
 
@@ -553,9 +546,7 @@ static void node_init_cb(struct mesh_node *node, struct mesh_agent *agent)
 
 fail:
 	l_dbus_send(dbus_get_bus(), reply);
-	mesh_agent_remove(join_pending->agent);
-	l_free(join_pending);
-	join_pending = NULL;
+	free_pending_join_call(true);
 }
 
 static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
