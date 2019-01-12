@@ -564,6 +564,7 @@ static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
 {
 	const char *app_path, *sender;
 	struct l_dbus_message_iter iter_uuid;
+	uint8_t *uuid;
 	uint32_t n;
 
 	l_debug("Join network request");
@@ -578,7 +579,7 @@ static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
 
 	join_pending = l_new(struct join_data, 1);
 
-	l_dbus_message_iter_get_fixed_array(&iter_uuid, join_pending->uuid, &n);
+	l_dbus_message_iter_get_fixed_array(&iter_uuid, &uuid, &n);
 
 	if (n != 16) {
 		l_free(join_pending);
@@ -586,6 +587,8 @@ static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Bad device UUID");
 	}
+
+	memcpy(join_pending->uuid, uuid, 16);
 
 	sender = l_dbus_message_get_sender(msg);
 
