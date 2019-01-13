@@ -201,8 +201,11 @@ static const struct bit_desc faststream_direction_table[] = {
 };
 
 static const struct bit_desc faststream_sink_frequency_table[] = {
-	{  1, "44100" },
+	/* in config buffer, there may be more frequency bits
+	 * and 48kHz takes precedence over 41kHz
+	 */
 	{  0, "48000" },
+	{  1, "44100" },
 	{ }
 };
 
@@ -746,9 +749,9 @@ static bool codec_vendor_faststream_cfg(uint8_t losc, struct l2cap_frame *frame)
 
 	l2cap_frame_get_u8(frame, &cap);
 
-	print_field("%*cDirection: %s (0x%02x)", BASE_INDENT + 2, ' ',
-			find_value_bit(cap, faststream_direction_table),
-			cap);
+	/* FastStream codec is bi-directional */
+	print_field("%*cDirection: 0x%02x", BASE_INDENT + 2, ' ', cap);
+	print_value_bits(BASE_INDENT + 2, cap, faststream_direction_table);
 
 	l2cap_frame_get_u8(frame, &cap);
 
