@@ -122,6 +122,8 @@ static void initiator_free(void)
 
 	mesh_send_cancel(&pkt_filter, sizeof(pkt_filter));
 
+	pb_adv_unreg(prov);
+
 	l_free(prov);
 	prov = NULL;
 }

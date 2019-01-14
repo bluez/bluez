@@ -126,10 +126,7 @@ static void acceptor_free(void)
 	mesh_send_cancel(bec_filter, sizeof(bec_filter));
 	mesh_send_cancel(&pkt_filter, sizeof(pkt_filter));
 
-	if (prov->trans_tx) {
-		if (prov->transport == PB_ADV)
-			pb_adv_unreg(prov->trans_data);
-	}
+	pb_adv_unreg(prov);
 
 	l_free(prov);
 	prov = NULL;
