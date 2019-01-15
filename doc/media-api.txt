@@ -556,6 +556,10 @@ Properties	string UUID [readonly, optional]:
 			Capabilities blob, it is used as it is so the size and
 			byte order must match.
 
+		object Device [readonly, optional]:
+
+			Device object which the endpoint is belongs to.
+
 MediaTransport1 hierarchy
 =========================
 
