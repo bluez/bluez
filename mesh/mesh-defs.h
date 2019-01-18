@@ -62,7 +62,9 @@
 #define VIRTUAL_ADDRESS_LOW	0x8000
 #define VIRTUAL_ADDRESS_HIGH	0xbfff
 #define GROUP_ADDRESS_LOW	0xc000
-#define GROUP_ADDRESS_HIGH	0xff00
+#define GROUP_ADDRESS_HIGH	0xfeff
+#define FIXED_GROUP_LOW		0xff00
+#define FIXED_GROUP_HIGH	0xffff
 
 #define NODE_IDENTITY_STOPPED		0x00
 #define NODE_IDENTITY_RUNNING		0x01
@@ -79,6 +81,7 @@
 					((x) < VIRTUAL_ADDRESS_LOW))
 #define IS_VIRTUAL(x)		(((x) >= VIRTUAL_ADDRESS_LOW) && \
 					((x) <= VIRTUAL_ADDRESS_HIGH))
-#define IS_GROUP(x)		(((x) >= GROUP_ADDRESS_LOW) && \
-					((x) <= GROUP_ADDRESS_HIGH))
+#define IS_GROUP(x)		((((x) >= GROUP_ADDRESS_LOW) && \
+					((x) < FIXED_GROUP_HIGH)) || \
+					((x) == ALL_NODES_ADDRESS))
 #define IS_ALL_NODES(x)	((x) == ALL_NODES_ADDRESS)

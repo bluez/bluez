@@ -1169,13 +1169,13 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 				*payload = packet + 9;
 
 			if (payload_len)
-				*payload_len = packet_len - 9 - 8;
+				*payload_len = packet_len - 9;
 		} else {
 			if (payload)
 				*payload = packet + 10;
 
 			if (payload_len)
-				*payload_len = packet_len - 10 - 8;
+				*payload_len = packet_len - 10;
 		}
 	} else {
 		if (cookie)
@@ -1202,13 +1202,13 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 				*payload = packet + 13;
 
 			if (payload_len)
-				*payload_len = packet_len - 13 - 4;
+				*payload_len = packet_len - 13;
 		} else {
 			if (payload)
 				*payload = packet + 10;
 
 			if (payload_len)
-				*payload_len = packet_len - 10 - 4;
+				*payload_len = packet_len - 10;
 		}
 	}
 
