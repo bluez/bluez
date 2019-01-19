@@ -1,5 +1,9 @@
 if MESH
 
+if DATAFILES
+dbus_DATA += mesh/bluetooth-mesh.conf
+endif
+
 mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/net_keys.h mesh/net_keys.c \
 				mesh/mesh-io.h mesh/mesh-io.c \
@@ -27,4 +31,6 @@ libexec_PROGRAMS += mesh/bluetooth-meshd
 mesh_bluetooth_meshd_SOURCES = $(mesh_sources) mesh/main.c
 mesh_bluetooth_meshd_LDADD = src/libshared-ell.la $(ell_ldadd) -ljson-c
 mesh_bluetooth_meshd_DEPENDENCIES = $(ell_dependencies) src/libshared-ell.la
+
+EXTRA_DIST += mesh/bluetooth-mesh.conf
 endif
