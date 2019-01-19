@@ -354,8 +354,6 @@ static void free_pending_join_call(bool failed)
 		l_dbus_remove_watch(dbus_get_bus(),
 						join_pending->disc_watch);
 
-	acceptor_cancel(&mesh);
-
 	mesh_agent_remove(join_pending->agent);
 
 	if (failed) {
@@ -375,11 +373,14 @@ void mesh_cleanup(void)
 	mgmt_unref(mgmt_mesh);
 
 	if (join_pending) {
-		/* The Join() call failed since it has not been completed */
-		reply = dbus_error(join_pending->msg, MESH_ERROR_FAILED,
-							"Failed. Exiting");
-		l_dbus_send(dbus_get_bus(), reply);
 
+		if (join_pending->msg) {
+			reply = dbus_error(join_pending->msg, MESH_ERROR_FAILED,
+							"Failed. Exiting");
+			l_dbus_send(dbus_get_bus(), reply);
+		}
+
+		acceptor_cancel(&mesh);
 		free_pending_join_call(true);
 	}
 
@@ -428,6 +429,7 @@ static void prov_disc_cb(struct l_dbus *bus, void *user_data)
 	if (join_pending->msg)
 		l_dbus_message_unref(join_pending->msg);
 
+	acceptor_cancel(&mesh);
 	join_pending->disc_watch = 0;
 
 	free_pending_join_call(true);
