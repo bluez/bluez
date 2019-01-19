@@ -22,9 +22,9 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/prov-acceptor.c mesh/prov-initiator.c \
 				mesh/pb-adv.h mesh/pb-adv.c \
 				mesh/mesh-defs.h
-libexec_PROGRAMS += mesh/meshd
+libexec_PROGRAMS += mesh/bluetooth-meshd
 
-mesh_meshd_SOURCES = $(mesh_sources) mesh/main.c
-mesh_meshd_LDADD = src/libshared-ell.la $(ell_ldadd) -ljson-c
-mesh_meshd_DEPENDENCIES = $(ell_dependencies) src/libshared-ell.la
+mesh_bluetooth_meshd_SOURCES = $(mesh_sources) mesh/main.c
+mesh_bluetooth_meshd_LDADD = src/libshared-ell.la $(ell_ldadd) -ljson-c
+mesh_bluetooth_meshd_DEPENDENCIES = $(ell_dependencies) src/libshared-ell.la
 endif
