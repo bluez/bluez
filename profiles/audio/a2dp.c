@@ -583,6 +583,12 @@ static gboolean endpoint_match_codec_ind(struct avdtp *session,
 	return TRUE;
 }
 
+static void reverse_discover(struct avdtp *session, GSList *seps, int err,
+							void *user_data)
+{
+	DBG("err %d", err);
+}
+
 static gboolean endpoint_setconf_ind(struct avdtp *session,
 						struct avdtp_local_sep *sep,
 						struct avdtp_stream *stream,
@@ -638,8 +644,14 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 						setup_ref(setup),
 						endpoint_setconf_cb,
 						a2dp_sep->user_data);
-		if (ret == 0)
+		if (ret == 0) {
+			/* Attempt to reverve discover if there are no remote
+			 * SEPs.
+			 */
+			if (queue_isempty(setup->chan->seps))
+				a2dp_discover(session, reverse_discover, NULL);
 			return TRUE;
+		}
 
 		setup_unref(setup);
 		setup->err = g_new(struct avdtp_error, 1);
