@@ -50,6 +50,14 @@ Properties	string UUID [read-only]
 			Array of object paths representing the included
 			services of this service.
 
+		uint16 Handle [read-write, optional] (Server Only)
+
+			Service handle. When available in the server it
+			would attempt to use to allocate into the database
+			which may fail, to auto allocate the value 0x0000
+			shall be used which will cause the allocated handle to
+			be set once registered.
+
 
 Characteristic hierarchy
 ========================
@@ -257,6 +265,14 @@ Properties	string UUID [read-only]
 				"secure-write" (Server only)
 				"authorize"
 
+		uint16 Handle [read-write, optional] (Server Only)
+
+			Characteristic handle. When available in the server it
+			would attempt to use to allocate into the database
+			which may fail, to auto allocate the value 0x0000
+			shall be used which will cause the allocated handle to
+			be set once registered.
+
 Characteristic Descriptors hierarchy
 ====================================
 
@@ -331,6 +347,14 @@ Properties	string UUID [read-only]
 				"secure-read" (Server Only)
 				"secure-write" (Server Only)
 				"authorize"
+
+		uint16 Handle [read-write, optional] (Server Only)
+
+			Characteristic handle. When available in the server it
+			would attempt to use to allocate into the database
+			which may fail, to auto allocate the value 0x0000
+			shall be used which will cause the allocated handle to
+			be set once registered.
 
 GATT Profile hierarchy
 =====================
