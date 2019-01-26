@@ -168,15 +168,8 @@ struct avdtp_content_protection_capability {
 	uint8_t data[0];
 } __attribute__ ((packed));
 
-static void print_aptx(a2dp_aptx_t *aptx, uint8_t size)
+static void print_aptx_common(a2dp_aptx_t *aptx)
 {
-	printf("\t\tVendor Specific Value (aptX)");
-
-	if (size < sizeof(*aptx)) {
-		printf(" (broken)\n");
-		return;
-	}
-
 	printf("\n\t\t\tFrequencies: ");
 	if (aptx->frequency & APTX_SAMPLING_FREQ_16000)
 		printf("16kHz ");
@@ -192,6 +185,18 @@ static void print_aptx(a2dp_aptx_t *aptx, uint8_t size)
 		printf("Mono ");
 	if (aptx->channel_mode & APTX_CHANNEL_MODE_STEREO)
 		printf("Stereo ");
+}
+
+static void print_aptx(a2dp_aptx_t *aptx, uint8_t size)
+{
+	printf("\t\tVendor Specific Value (aptX)");
+
+	if (size < sizeof(*aptx)) {
+		printf(" (broken)\n");
+		return;
+	}
+
+	print_aptx_common(aptx);
 
 	printf("\n");
 }
@@ -242,21 +247,7 @@ static void print_aptx_ll(a2dp_aptx_ll_t *aptx_ll, uint8_t size)
 		return;
 	}
 
-	printf("\n\t\t\tFrequencies: ");
-	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_16000)
-		printf("16kHz ");
-	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_32000)
-		printf("32kHz ");
-	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_44100)
-		printf("44.1kHz ");
-	if (aptx_ll->frequency & APTX_LL_SAMPLING_FREQ_48000)
-		printf("48kHz ");
-
-	printf("\n\t\t\tChannel modes: ");
-	if (aptx_ll->channel_mode & APTX_LL_CHANNEL_MODE_MONO)
-		printf("Mono ");
-	if (aptx_ll->channel_mode & APTX_LL_CHANNEL_MODE_STEREO)
-		printf("Stereo ");
+	print_aptx_common(&aptx_ll->aptx);
 
 	printf("\n\t\tBidirectional link: %s",
 			aptx_ll->bidirect_link ? "Yes" : "No");
@@ -292,21 +283,7 @@ static void print_aptx_hd(a2dp_aptx_hd_t *aptx_hd, uint8_t size)
 		return;
 	}
 
-	printf("\n\t\t\tFrequencies: ");
-	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_16000)
-		printf("16kHz ");
-	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_32000)
-		printf("32kHz ");
-	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_44100)
-		printf("44.1kHz ");
-	if (aptx_hd->frequency & APTX_HD_SAMPLING_FREQ_48000)
-		printf("48kHz ");
-
-	printf("\n\t\t\tChannel modes: ");
-	if (aptx_hd->channel_mode & APTX_HD_CHANNEL_MODE_MONO)
-		printf("Mono ");
-	if (aptx_hd->channel_mode & APTX_HD_CHANNEL_MODE_STEREO)
-		printf("Stereo ");
+	print_aptx_common(&aptx_hd->aptx);
 
 	printf("\n");
 }
