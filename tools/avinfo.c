@@ -625,6 +625,8 @@ static void print_media_codec(
 			struct avdtp_media_codec_capability *cap,
 			uint8_t size)
 {
+	int i;
+
 	if (size < sizeof(*cap)) {
 		printf("\tMedia Codec: Unknown (broken)\n");
 		return;
@@ -645,6 +647,10 @@ static void print_media_codec(
 		break;
 	default:
 		printf("\tMedia Codec: Unknown\n");
+		printf("\t\tCodec Data:");
+		for (i = 0; i < size - 2; ++i)
+			printf(" 0x%.02x", ((unsigned char *)cap->data)[i]);
+		printf("\n");
 	}
 }
 
@@ -676,6 +682,7 @@ static void print_content_protection(
 static void print_caps(void *data, int size)
 {
 	int processed;
+	int i;
 
 	for (processed = 0; processed + 2 < size;) {
 		struct avdtp_service_capability *cap;
@@ -692,9 +699,15 @@ static void print_caps(void *data, int size)
 		case AVDTP_REPORTING:
 		case AVDTP_RECOVERY:
 		case AVDTP_MULTIPLEXING:
-		default:
 			/* FIXME: Add proper functions */
+			break;
+		default:
 			printf("\tUnknown category: %d\n", cap->category);
+			printf("\t\tData:");
+			for (i = 0; i < cap->length; ++i)
+				printf(" 0x%.02x",
+					((unsigned char *)cap->data)[i]);
+			printf("\n");
 			break;
 		case AVDTP_MEDIA_CODEC:
 			print_media_codec((void *) cap->data, cap->length);
