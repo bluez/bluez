@@ -799,7 +799,7 @@ static ssize_t avdtp_get_caps(int sk, int seid)
 		return -1;
 	}
 
-	print_caps(caps, ret);
+	print_caps(caps->caps, ret - sizeof(struct getcap_resp));
 
 	return 0;
 }
