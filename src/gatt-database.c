@@ -2617,6 +2617,18 @@ fail:
 	gatt_db_attribute_write_result(attrib, id, BT_ATT_ERROR_UNLIKELY);
 }
 
+static void write_handle(struct GDBusProxy *proxy, uint16_t handle)
+{
+	DBusMessageIter iter;
+
+	/* Check if the attribute has the Handle property */
+	if (!g_dbus_proxy_get_property(proxy, "Handle", &iter))
+		return;
+
+	g_dbus_proxy_set_property_basic(proxy, "Handle", DBUS_TYPE_UINT16,
+					&handle, NULL, NULL, NULL);
+}
+
 static bool database_add_desc(struct external_service *service,
 						struct external_desc *desc)
 {
@@ -2644,6 +2656,11 @@ static bool database_add_desc(struct external_service *service,
 	}
 
 	desc->handled = true;
+
+	if (!handle) {
+		handle = gatt_db_attribute_get_handle(desc->attrib);
+		write_handle(desc->proxy, handle);
+	}
 
 	return true;
 }
@@ -2810,6 +2827,11 @@ static bool database_add_chrc(struct external_service *service,
 	if (!database_add_cep(service, chrc))
 		return false;
 
+	if (!handle) {
+		handle = gatt_db_attribute_get_handle(chrc->attrib);
+		write_handle(chrc->proxy, handle);
+	}
+
 	/* Handle the descriptors that belong to this characteristic. */
 	for (entry = queue_get_entries(service->descs); entry;
 							entry = entry->next) {
@@ -2867,6 +2889,11 @@ static bool database_add_service(struct external_service *service)
 						primary, service->attr_cnt);
 	if (!service->attrib)
 		return false;
+
+	if (!handle) {
+		handle = gatt_db_attribute_get_handle(service->attrib);
+		write_handle(service->proxy, handle);
+	}
 
 	database_add_includes(service);
 
