@@ -1410,6 +1410,9 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 	service->path = g_strdup_printf("%s/service%p", APP_PATH, service);
 	service->primary = primary;
 
+	if (argc > 2)
+		service->handle = atoi(argv[2]);
+
 	if (g_dbus_register_interface(conn, service->path,
 					SERVICE_INTERFACE, NULL, NULL,
 					service_properties, service,
@@ -1693,7 +1696,7 @@ static gboolean chrc_notify_acquired_exists(const GDBusPropertyTable *property,
 }
 
 static const GDBusPropertyTable chrc_properties[] = {
-	{ "Handle", "s", chrc_get_handle, chrc_set_handle, NULL },
+	{ "Handle", "q", chrc_get_handle, chrc_set_handle, NULL },
 	{ "UUID", "s", chrc_get_uuid, NULL, NULL },
 	{ "Service", "o", chrc_get_service, NULL, NULL },
 	{ "Value", "ay", chrc_get_value, NULL, NULL },
@@ -2289,6 +2292,9 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 	chrc->flags = g_strsplit(argv[2], ",", -1);
 	chrc->authorization_req = attr_authorization_flag_exists(chrc->flags);
 
+	if (argc > 3)
+		chrc->handle = atoi(argv[3]);
+
 	if (g_dbus_register_interface(conn, chrc->path, CHRC_INTERFACE,
 					chrc_methods, NULL, chrc_properties,
 					chrc, chrc_free) == FALSE) {
@@ -2554,6 +2560,9 @@ void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
 	desc->uuid = g_strdup(argv[1]);
 	desc->path = g_strdup_printf("%s/desc%p", desc->chrc->path, desc);
 	desc->flags = g_strsplit(argv[2], ",", -1);
+
+	if (argc > 3)
+		desc->handle = atoi(argv[3]);
 
 	if (g_dbus_register_interface(conn, desc->path, DESC_INTERFACE,
 					desc_methods, NULL, desc_properties,

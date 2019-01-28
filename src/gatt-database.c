@@ -1843,17 +1843,16 @@ static bool parse_handle(GDBusProxy *proxy, uint16_t *handle)
 {
 	DBusMessageIter iter;
 
-	/* Handle property is optional */
-	if (!g_dbus_proxy_get_property(proxy, "Handle", &iter)) {
-		*handle = 0;
-		return true;
-	}
+	*handle = 0;
 
+	/* Handle property is optional */
+	if (!g_dbus_proxy_get_property(proxy, "Handle", &iter))
+		return true;
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT16)
 		return false;
 
-	dbus_message_iter_get_basic(&iter, &handle);
+	dbus_message_iter_get_basic(&iter, handle);
 
 	return true;
 }
@@ -2634,6 +2633,7 @@ static bool database_add_desc(struct external_service *service,
 {
 	uint16_t handle;
 	bt_uuid_t uuid;
+	char str[MAX_LEN_UUID_STR];
 
 	if (!parse_handle(desc->proxy, &handle)) {
 		error("Failed to read \"Handle\" property of descriptor");
@@ -2661,6 +2661,10 @@ static bool database_add_desc(struct external_service *service,
 		handle = gatt_db_attribute_get_handle(desc->attrib);
 		write_handle(desc->proxy, handle);
 	}
+
+	bt_uuid_to_string(&uuid, str, sizeof(str));
+
+	DBG("handle 0x%04x UUID %s", handle, str);
 
 	return true;
 }
@@ -2795,6 +2799,7 @@ static bool database_add_chrc(struct external_service *service,
 {
 	uint16_t handle;
 	bt_uuid_t uuid;
+	char str[MAX_LEN_UUID_STR];
 	const struct queue_entry *entry;
 
 	if (!parse_handle(chrc->proxy, &handle)) {
@@ -2832,6 +2837,10 @@ static bool database_add_chrc(struct external_service *service,
 		write_handle(chrc->proxy, handle);
 	}
 
+	bt_uuid_to_string(&uuid, str, sizeof(str));
+
+	DBG("handle 0x%04x UUID %s", handle, str);
+
 	/* Handle the descriptors that belong to this characteristic. */
 	for (entry = queue_get_entries(service->descs); entry;
 							entry = entry->next) {
@@ -2863,6 +2872,7 @@ static bool database_add_service(struct external_service *service)
 	bool primary;
 	uint16_t handle;
 	const struct queue_entry *entry;
+	char str[MAX_LEN_UUID_STR];
 
 	if (!parse_uuid(service->proxy, &uuid)) {
 		error("Failed to read \"UUID\" property of service");
@@ -2894,6 +2904,10 @@ static bool database_add_service(struct external_service *service)
 		handle = gatt_db_attribute_get_handle(service->attrib);
 		write_handle(service->proxy, handle);
 	}
+
+	bt_uuid_to_string(&uuid, str, sizeof(str));
+
+	DBG("handle 0x%04x UUID %s", handle, str);
 
 	database_add_includes(service);
 
