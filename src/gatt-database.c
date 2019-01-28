@@ -1839,6 +1839,25 @@ static bool parse_primary(GDBusProxy *proxy, bool *primary)
 	return true;
 }
 
+static bool parse_handle(GDBusProxy *proxy, uint16_t *handle)
+{
+	DBusMessageIter iter;
+
+	/* Handle property is optional */
+	if (!g_dbus_proxy_get_property(proxy, "Handle", &iter)) {
+		*handle = 0;
+		return true;
+	}
+
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT16)
+		return false;
+
+	dbus_message_iter_get_basic(&iter, &handle);
+
+	return true;
+}
+
 static uint8_t dbus_error_to_att_ecode(const char *error_name)
 {
 
@@ -2601,14 +2620,21 @@ fail:
 static bool database_add_desc(struct external_service *service,
 						struct external_desc *desc)
 {
+	uint16_t handle;
 	bt_uuid_t uuid;
+
+	if (!parse_handle(desc->proxy, &handle)) {
+		error("Failed to read \"Handle\" property of descriptor");
+		return false;
+	}
 
 	if (!parse_uuid(desc->proxy, &uuid)) {
 		error("Failed to read \"UUID\" property of descriptor");
 		return false;
 	}
 
-	desc->attrib = gatt_db_service_add_descriptor(service->attrib, &uuid,
+	desc->attrib = gatt_db_service_insert_descriptor(service->attrib,
+							handle, &uuid,
 							desc->perm,
 							desc_read_cb,
 							desc_write_cb, desc);
@@ -2750,8 +2776,14 @@ static void database_add_includes(struct external_service *service)
 static bool database_add_chrc(struct external_service *service,
 						struct external_chrc *chrc)
 {
+	uint16_t handle;
 	bt_uuid_t uuid;
 	const struct queue_entry *entry;
+
+	if (!parse_handle(chrc->proxy, &handle)) {
+		error("Failed to read \"Handle\" property of characteristic");
+		return false;
+	}
 
 	if (!parse_uuid(chrc->proxy, &uuid)) {
 		error("Failed to read \"UUID\" property of characteristic");
@@ -2763,8 +2795,8 @@ static bool database_add_chrc(struct external_service *service,
 		return false;
 	}
 
-	chrc->attrib = gatt_db_service_add_characteristic(service->attrib,
-						&uuid, chrc->perm,
+	chrc->attrib = gatt_db_service_insert_characteristic(service->attrib,
+						handle, &uuid, chrc->perm,
 						chrc->props, chrc_read_cb,
 						chrc_write_cb, chrc);
 	if (!chrc->attrib) {
@@ -2807,6 +2839,7 @@ static bool database_add_service(struct external_service *service)
 {
 	bt_uuid_t uuid;
 	bool primary;
+	uint16_t handle;
 	const struct queue_entry *entry;
 
 	if (!parse_uuid(service->proxy, &uuid)) {
@@ -2824,7 +2857,13 @@ static bool database_add_service(struct external_service *service)
 		return false;
 	}
 
-	service->attrib = gatt_db_add_service(service->app->database->db, &uuid,
+	if (!parse_handle(service->proxy, &handle)) {
+		error("Failed to read \"Handle\" property of service");
+		return false;
+	}
+
+	service->attrib = gatt_db_insert_service(service->app->database->db,
+						handle, &uuid,
 						primary, service->attr_cnt);
 	if (!service->attrib)
 		return false;
