@@ -525,8 +525,11 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 
 	after = NULL;
 
-	if (!db || handle < 1)
+	if (!db)
 		return NULL;
+
+	if (!handle)
+		handle = db->next_handle;
 
 	if (num_handles < 1 || (handle + num_handles - 1) > UINT16_MAX)
 		return NULL;
@@ -585,8 +588,7 @@ struct gatt_db_attribute *gatt_db_add_service(struct gatt_db *db,
 						bool primary,
 						uint16_t num_handles)
 {
-	return gatt_db_insert_service(db, db->next_handle, uuid, primary,
-								num_handles);
+	return gatt_db_insert_service(db, 0, uuid, primary, num_handles);
 }
 
 unsigned int gatt_db_register(struct gatt_db *db,
@@ -768,7 +770,7 @@ gatt_db_service_insert_characteristic(struct gatt_db_attribute *attrib,
 					gatt_db_write_t write_func,
 					void *user_data)
 {
-	if (!attrib || !handle)
+	if (!attrib)
 		return NULL;
 
 	return service_insert_characteristic(attrib->service, handle, uuid,
@@ -856,7 +858,7 @@ gatt_db_service_insert_descriptor(struct gatt_db_attribute *attrib,
 					gatt_db_write_t write_func,
 					void *user_data)
 {
-	if (!attrib || !handle)
+	if (!attrib)
 		return NULL;
 
 	return service_insert_descriptor(attrib->service, handle, uuid,
