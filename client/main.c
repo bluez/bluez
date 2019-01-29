@@ -1905,12 +1905,21 @@ static void cmd_disconn(int argc, char *argv[])
 static void cmd_list_attributes(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
+	const char *path;
+
+	if (argc > 1 && !strcmp(argv[1], "local")) {
+		path = argv[1];
+		goto done;
+	}
 
 	proxy = find_device(argc, argv);
 	if (!proxy)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	gatt_list_attributes(g_dbus_proxy_get_path(proxy));
+	path = g_dbus_proxy_get_path(proxy);
+
+done:
+	gatt_list_attributes(path);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -2596,8 +2605,8 @@ static const struct bt_shell_menu gatt_menu = {
 	.name = "gatt",
 	.desc = "Generic Attribute Submenu",
 	.entries = {
-	{ "list-attributes", "[dev]", cmd_list_attributes, "List attributes",
-							dev_generator },
+	{ "list-attributes", "[dev/local]", cmd_list_attributes,
+				"List attributes", dev_generator },
 	{ "select-attribute", "<attribute/UUID>",  cmd_select_attribute,
 				"Select attribute", attribute_generator },
 	{ "attribute-info", "[attribute/UUID]",  cmd_attribute_info,

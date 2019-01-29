@@ -414,8 +414,50 @@ static void list_attributes(const char *path, GList *source)
 	}
 }
 
+static void list_descs(GList *descs)
+{
+	GList *l;
+
+	for (l = descs; l; l = g_list_next(l)) {
+		struct desc *desc = l->data;
+
+		print_desc(desc, NULL);
+	}
+}
+
+static void list_chrcs(GList *chrcs)
+{
+	GList *l;
+
+	for (l = chrcs; l; l = g_list_next(l)) {
+		struct chrc *chrc = l->data;
+
+		print_chrc(chrc, NULL);
+
+		list_descs(chrc->descs);
+	}
+}
+
+static void list_services(void)
+{
+	GList *l;
+
+	for (l = local_services; l; l = g_list_next(l)) {
+		struct service *service = l->data;
+
+		print_service(service, NULL);
+
+		list_chrcs(service->chrcs);
+	}
+}
+
 void gatt_list_attributes(const char *path)
 {
+	if (path && !strcmp(path, "local")) {
+		list_services();
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
 	list_attributes(path, services);
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
