@@ -1449,7 +1449,8 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 	service = g_new0(struct service, 1);
 	service->conn = conn;
 	service->uuid = g_strdup(argv[1]);
-	service->path = g_strdup_printf("%s/service%p", APP_PATH, service);
+	service->path = g_strdup_printf("%s/service%u", APP_PATH,
+					g_list_length(local_services));
 	service->primary = primary;
 
 	if (argc > 2)
@@ -2330,7 +2331,8 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 	chrc = g_new0(struct chrc, 1);
 	chrc->service = service;
 	chrc->uuid = g_strdup(argv[1]);
-	chrc->path = g_strdup_printf("%s/chrc%p", service->path, chrc);
+	chrc->path = g_strdup_printf("%s/chrc%u", service->path,
+					g_list_length(service->chrcs));
 	chrc->flags = g_strsplit(argv[2], ",", -1);
 	chrc->authorization_req = attr_authorization_flag_exists(chrc->flags);
 
@@ -2600,7 +2602,8 @@ void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
 	desc = g_new0(struct desc, 1);
 	desc->chrc = g_list_last(service->chrcs)->data;
 	desc->uuid = g_strdup(argv[1]);
-	desc->path = g_strdup_printf("%s/desc%p", desc->chrc->path, desc);
+	desc->path = g_strdup_printf("%s/desc%u", desc->chrc->path,
+					g_list_length(desc->chrc->descs));
 	desc->flags = g_strsplit(argv[2], ",", -1);
 
 	if (argc > 3)
