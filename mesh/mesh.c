@@ -671,7 +671,7 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
-	uint64_t token = 1;
+	uint64_t token;
 	const char *app_path, *sender;
 	struct attach_data *pending;
 
