@@ -215,12 +215,12 @@ Mesh
 - Design and implement Mesh Provisioner/ Configuration Client Model.
 
   Priority: Medium
-  Complexity: C3
+  Complexity: C4
 
 - Add support for GATT proxy server
 
   Priority: Low
-  Complexity: C3
+  Complexity: C4
 
 - Merge common functionality from tools/mesh. Ideally, source code from the
   tools/mesh directory should completely dissapear.
@@ -233,7 +233,7 @@ Mesh
   Priority: Low
   Complexity: C4
 
-- Support for all the Provisionings OOB styles
+- Support for all the provisioning OOB types
 
   Priority: Medium
   Complexity: C2
