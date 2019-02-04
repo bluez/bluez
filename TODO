@@ -186,3 +186,54 @@ ATT/GATT (new shared stack)
 
 Management Interface
 ====================
+
+Mesh
+====
+- Read default configuration settings (e.g., provisioning timeout, supported
+  features, etc.)from  mesh.conf file.
+
+  Priority: Medium
+  Complexity: C1
+
+- Add examples and unit tests
+
+  Priority: High
+  Complexity: C1
+
+- Implement unified feature management mechanism for mesh nodes that are hosted
+  on the same device
+
+  Priority: Medium
+  Complexity: C2
+
+- Implement mandatory Health Server model. Most likely, this will involve
+  additions to mesh D-Bus API
+
+  Priority: Medium
+  Complexity: C2
+
+- Design and implement Mesh Provisioner/ Configuration Client Model.
+
+  Priority: Medium
+  Complexity: C3
+
+- Add support for GATT proxy server
+
+  Priority: Low
+  Complexity: C3
+
+- Merge common functionality from tools/mesh. Ideally, source code from the
+  tools/mesh directory should completely dissapear.
+
+  Priority: Low
+  Complexity: C2
+
+- Support for Low Power Node (LPN)
+
+  Priority: Low
+  Complexity: C4
+
+- Support for all the Provisionings OOB styles
+
+  Priority: Medium
+  Complexity: C2
