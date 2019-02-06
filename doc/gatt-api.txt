@@ -92,6 +92,12 @@ Methods		array{byte} ReadValue(dict options)
 			characteristic.
 
 			Possible options: "offset": Start offset
+					  "type": string
+						Possible values:
+						"command": Write without
+						response
+						"request": Write with response
+						"reliable": Reliable Write
 					  "mtu": Exchanged MTU (Server only)
 					  "device": Device path (Server only)
 					  "link": Link type (Server only)
