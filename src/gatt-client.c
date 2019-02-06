@@ -389,7 +389,8 @@ fail:
 	desc->read_op = NULL;
 }
 
-static int parse_options(DBusMessageIter *iter, uint16_t *offset)
+static int parse_options(DBusMessageIter *iter, uint16_t *offset,
+						const char **type)
 {
 	DBusMessageIter dict;
 
@@ -414,6 +415,12 @@ static int parse_options(DBusMessageIter *iter, uint16_t *offset)
 			if (var != DBUS_TYPE_UINT16)
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value, offset);
+		}
+
+		if (type && strcasecmp(key, "type") == 0) {
+			if (var != DBUS_TYPE_STRING)
+				return -EINVAL;
+			dbus_message_iter_get_basic(&value, type);
 		}
 
 		dbus_message_iter_next(&dict);
@@ -469,7 +476,7 @@ static DBusMessage *descriptor_read_value(DBusConnection *conn,
 
 	dbus_message_iter_init(msg, &iter);
 
-	if (parse_options(&iter, &offset))
+	if (parse_options(&iter, &offset, NULL))
 		return btd_error_invalid_args(msg);
 
 	if (desc->read_op) {
@@ -599,7 +606,7 @@ static DBusMessage *descriptor_write_value(DBusConnection *conn,
 
 	dbus_message_iter_next(&iter);
 
-	if (parse_options(&iter, &offset))
+	if (parse_options(&iter, &offset, NULL))
 		return btd_error_invalid_args(msg);
 
 	/*
@@ -933,7 +940,7 @@ static DBusMessage *characteristic_read_value(DBusConnection *conn,
 
 	dbus_message_iter_init(msg, &iter);
 
-	if (parse_options(&iter, &offset))
+	if (parse_options(&iter, &offset, NULL))
 		return btd_error_invalid_args(msg);
 
 	if (chrc->read_op) {
@@ -974,6 +981,7 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 	int value_len = 0;
 	bool supported = false;
 	uint16_t offset = 0;
+	const char *type = NULL;
 
 	if (!gatt)
 		return btd_error_failed(msg, "Not connected");
@@ -991,7 +999,7 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 
 	dbus_message_iter_next(&iter);
 
-	if (parse_options(&iter, &offset))
+	if (parse_options(&iter, &offset, &type))
 		return btd_error_invalid_args(msg);
 
 	/*
@@ -1005,7 +1013,8 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 	 *     - If value is larger than MTU - 3: long-write
 	 *   * "write-without-response" property set -> write command.
 	 */
-	if ((chrc->ext_props & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE)) {
+	if ((!type && (chrc->ext_props & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE))
+			|| (type && !strcasecmp(type, "reliable"))) {
 		supported = true;
 		chrc->write_op = start_long_write(msg, chrc->value_handle, gatt,
 						true, value, value_len, offset,
@@ -1014,7 +1023,8 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 			return NULL;
 	}
 
-	if (chrc->props & BT_GATT_CHRC_PROP_WRITE) {
+	if ((!type && chrc->props & BT_GATT_CHRC_PROP_WRITE) ||
+			(type && !strcasecmp(type, "request"))) {
 		uint16_t mtu;
 
 		supported = true;
@@ -1037,7 +1047,8 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 			return NULL;
 	}
 
-	if (!(chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP))
+	if ((type && strcasecmp(type, "command")) || offset ||
+			!(chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP))
 		goto fail;
 
 	supported = true;
