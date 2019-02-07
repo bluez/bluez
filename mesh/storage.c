@@ -321,6 +321,15 @@ bool storage_set_iv_index(struct mesh_net *net, uint32_t iv_index,
 	return mesh_db_write_iv_index(jnode, iv_index, update);
 }
 
+bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
+								uint8_t phase)
+{
+	struct mesh_node *node = mesh_net_node_get(net);
+	json_object *jnode = node_jconfig_get(node);
+
+	return mesh_db_net_key_set_phase(jnode, net_idx, phase);
+}
+
 bool storage_write_sequence_number(struct mesh_net *net, uint32_t seq)
 {
 	struct mesh_node *node = mesh_net_node_get(net);

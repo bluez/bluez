@@ -1491,3 +1491,59 @@ bool mesh_db_add_node(json_object *jnode, struct mesh_db_node *node) {
 
 	return true;
 }
+
+static void finish_key_refresh(json_object *jobj, uint16_t net_idx)
+{
+	json_object *jarray;
+	int i, len;
+
+	/* Clean up all the bound appkeys */
+	json_object_object_get_ex(jobj, "appKeys", &jarray);
+	if (!jarray)
+		return;
+
+	len = json_object_array_length(jarray);
+
+	for (i = 0; i < len; ++i) {
+		json_object *jentry;
+		uint16_t idx;
+
+		jentry = json_object_array_get_idx(jarray, i);
+
+		if (!get_key_index(jentry, "boundNetKey", &idx))
+			continue;
+
+		if (idx != net_idx)
+			continue;
+
+		json_object_object_del(jentry, "oldKey");
+
+		if (!get_key_index(jentry, "index", &idx))
+			continue;
+	}
+
+}
+
+bool mesh_db_net_key_set_phase(json_object *jobj, uint16_t idx, uint8_t phase)
+{
+	json_object *jarray, *jentry = NULL;
+
+	json_object_object_get_ex(jobj, "netKeys", &jarray);
+
+	if (jarray)
+		jentry = get_key_object(jarray, idx);
+
+	if (!jentry)
+		return false;
+
+	json_object_object_del(jentry, "keyRefresh");
+	json_object_object_add(jentry, "keyRefresh",
+					json_object_new_int(phase));
+
+	if (phase == KEY_REFRESH_PHASE_NONE) {
+		json_object_object_del(jentry, "oldKey");
+		finish_key_refresh(jobj, idx);
+	}
+
+	return true;
+}

@@ -47,3 +47,5 @@ bool storage_set_iv_index(struct mesh_net *net, uint32_t iv_index,
 								bool update);
 bool storage_set_device_key(struct mesh_node *node, uint8_t dev_key[16]);
 bool storage_set_unicast(struct mesh_node *node, uint16_t unicast);
+bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
+								uint8_t phase);

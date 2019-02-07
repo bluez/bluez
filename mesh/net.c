@@ -2656,6 +2656,8 @@ static int key_refresh_phase_two(struct mesh_net *net, uint16_t idx)
 	else
 		l_queue_foreach(net->friends, frnd_kr_phase2, net);
 
+	storage_set_key_refresh_phase(net, idx, KEY_REFRESH_PHASE_TWO);
+
 	return MESH_STATUS_SUCCESS;
 }
 
@@ -2688,6 +2690,8 @@ static int key_refresh_finish(struct mesh_net *net, uint16_t idx)
 		frnd_key_refresh(net, 3);
 	else
 		l_queue_foreach(net->friends, frnd_kr_phase3, net);
+
+	storage_set_key_refresh_phase(net, idx, KEY_REFRESH_PHASE_NONE);
 
 	return MESH_STATUS_SUCCESS;
 }

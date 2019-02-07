@@ -135,7 +135,7 @@ bool mesh_db_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx);
 bool mesh_db_net_key_add(json_object *jobj, uint16_t net_idx,
 					const uint8_t key[16], int phase);
 bool mesh_db_net_key_del(json_object *jobj, uint16_t net_idx);
-bool mesh_db_write_kr_phase(json_object *jobj, uint16_t net_idx, int phase);
+bool mesh_db_net_key_set_phase(json_object *jobj, uint16_t idx, uint8_t phase);
 bool mesh_db_write_address(json_object *jobj, uint16_t address);
 bool mesh_db_write_iv_index(json_object *jobj, uint32_t idx, bool update);
 void mesh_db_remove_property(json_object *jobj, const char *desc);
