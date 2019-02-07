@@ -339,8 +339,6 @@ uint8_t mesh_net_key_refresh_phase_set(struct mesh_net *net, uint16_t net_idx,
 							uint8_t transition);
 uint8_t mesh_net_key_refresh_phase_get(struct mesh_net *net, uint16_t net_idx,
 							uint8_t *phase);
-int mesh_net_key_refresh_phase_two(struct mesh_net *net, uint16_t net_idx);
-int mesh_net_key_refresh_finish(struct mesh_net *net, uint16_t net_idx);
 void mesh_net_send_seg(struct mesh_net *net, uint32_t key_id,
 				uint32_t iv_index, uint8_t ttl, uint32_t seq,
 				uint16_t src, uint16_t dst, uint32_t hdr,
