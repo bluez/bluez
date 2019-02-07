@@ -296,12 +296,15 @@ bool storage_app_key_del(struct mesh_net *net, uint16_t net_idx,
 }
 
 bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
-					const uint8_t key[16], int phase)
+					const uint8_t key[16], bool update)
 {
 	struct mesh_node *node = mesh_net_node_get(net);
 	json_object *jnode = node_jconfig_get(node);
 
-	return mesh_db_net_key_add(jnode, net_idx, key, phase);
+	if (!update)
+		return mesh_db_net_key_add(jnode, net_idx, key);
+	else
+		return mesh_db_net_key_update(jnode, net_idx, key);
 }
 
 bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx)

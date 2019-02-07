@@ -1016,7 +1016,7 @@ int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 	if (status != MESH_STATUS_SUCCESS)
 		return status;
 
-	if (!storage_net_key_add(net, idx, value, KEY_REFRESH_PHASE_NONE)) {
+	if (!storage_net_key_add(net, idx, value, false)) {
 		l_queue_remove(net->subnets, subnet);
 		subnet_free(subnet);
 		return MESH_STATUS_STORAGE_FAIL;
@@ -3704,12 +3704,15 @@ int mesh_net_update_key(struct mesh_net *net, uint16_t idx,
 							L_UINT_TO_PTR(idx));
 
 	if (!subnet)
-		return MESH_STATUS_CANNOT_UPDATE;
+		return MESH_STATUS_INVALID_NETKEY;
 
 	/* Check if the key has been already successfully updated */
 	if (subnet->kr_phase == KEY_REFRESH_PHASE_ONE &&
 				net_key_confirm(subnet->net_key_upd, value))
 		return MESH_STATUS_SUCCESS;
+
+	if (subnet->kr_phase != KEY_REFRESH_PHASE_NONE)
+		return MESH_STATUS_CANNOT_UPDATE;
 
 	if (subnet->net_key_upd) {
 		net_key_unref(subnet->net_key_upd);
@@ -3734,7 +3737,7 @@ int mesh_net_update_key(struct mesh_net *net, uint16_t idx,
 
 	l_info("key refresh phase 1: Key ID %d", subnet->net_key_upd);
 
-	if (!storage_net_key_add(net, idx, value, KEY_REFRESH_PHASE_ONE))
+	if (!storage_net_key_add(net, idx, value, true))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	subnet->kr_phase = KEY_REFRESH_PHASE_ONE;

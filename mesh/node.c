@@ -1730,9 +1730,16 @@ bool node_add_pending_local(struct mesh_node *node, void *prov_node_info,
 							MESH_STATUS_SUCCESS)
 		return false;
 
-	if (!storage_net_key_add(node->net, info->net_index, info->net_key,
-			kr ? KEY_REFRESH_PHASE_TWO : KEY_REFRESH_PHASE_NONE))
-		return false;
+	if (kr) {
+		/* Duplicate net key, if the key refresh is on */
+		if (mesh_net_update_key(node->net, info->net_index,
+				info->net_key) != MESH_STATUS_SUCCESS)
+			return false;
+
+		if (!mesh_db_net_key_set_phase(node->jconfig, info->net_index,
+							KEY_REFRESH_PHASE_TWO))
+			return false;
+	}
 
 	if (!storage_save_config(node, true, NULL, NULL))
 		return false;
@@ -1752,7 +1759,7 @@ void node_jconfig_set(struct mesh_node *node, void *jconfig)
 
 void *node_jconfig_get(struct mesh_node *node)
 {
-	return  node->jconfig;
+	return node->jconfig;
 }
 
 void node_cfg_file_set(struct mesh_node *node, char *cfg)

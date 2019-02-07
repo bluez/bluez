@@ -33,10 +33,9 @@ bool storage_set_relay(json_object *jnode, bool enable, uint8_t count,
 							uint8_t interval);
 bool storage_set_transmit_params(json_object *jnode, uint8_t count,
 							uint8_t interval);
-bool storage_set_mode(json_object *jnode, uint8_t mode,
-							const char *mode_name);
+bool storage_set_mode(json_object *jnode, uint8_t mode, const char *mode_name);
 bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
-					const uint8_t key[16], int phase);
+					const uint8_t key[16], bool update);
 bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx);
 bool storage_app_key_add(struct mesh_net *net, uint16_t net_idx,
 			uint16_t app_idx, const uint8_t key[16], bool update);

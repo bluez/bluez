@@ -133,7 +133,9 @@ bool mesh_db_app_key_add(json_object *jnode, uint16_t net_idx, uint16_t app_idx,
 					const uint8_t key[16], bool update);
 bool mesh_db_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx);
 bool mesh_db_net_key_add(json_object *jobj, uint16_t net_idx,
-					const uint8_t key[16], int phase);
+							const uint8_t key[16]);
+bool mesh_db_net_key_update(json_object *jobj, uint16_t idx,
+							const uint8_t key[16]);
 bool mesh_db_net_key_del(json_object *jobj, uint16_t net_idx);
 bool mesh_db_net_key_set_phase(json_object *jobj, uint16_t idx, uint8_t phase);
 bool mesh_db_write_address(json_object *jobj, uint16_t address);
