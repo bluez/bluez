@@ -120,11 +120,7 @@ static bool read_net_keys_cb(uint16_t idx, uint8_t *key, uint8_t *new_key,
 	if (!net)
 		return false;
 
-	if (mesh_net_add_key(net, idx, key) != MESH_STATUS_SUCCESS)
-		return false;
-	/* TODO: handle restoring key refresh phase and new keys */
-
-	return true;
+	return mesh_net_set_key(net, idx, key, new_key, phase);
 }
 
 static bool read_app_keys_cb(uint16_t net_idx, uint16_t app_idx, uint8_t *key,

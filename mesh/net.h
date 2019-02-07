@@ -284,6 +284,8 @@ int mesh_net_add_key(struct mesh_net *net, uint16_t net_idx,
 							const uint8_t *key);
 int mesh_net_update_key(struct mesh_net *net, uint16_t net_idx,
 							const uint8_t *key);
+bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
+					const uint8_t *new_key, uint8_t phase);
 uint32_t mesh_net_get_iv_index(struct mesh_net *net);
 void mesh_net_get_snb_state(struct mesh_net *net,
 					uint8_t *flags, uint32_t *iv_index);

@@ -970,19 +970,9 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	return MESH_STATUS_SUCCESS;
 }
 
-int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
+static int add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 {
 	struct mesh_subnet *subnet;
-
-	subnet = l_queue_find(net->subnets, match_key_index,
-							L_UINT_TO_PTR(idx));
-
-	if (subnet) {
-		if (net_key_confirm(subnet->net_key_cur, value))
-			return MESH_STATUS_SUCCESS;
-		else
-			return MESH_STATUS_IDX_ALREADY_STORED;
-	}
 
 	subnet = subnet_new(net, idx);
 	if (!subnet)
@@ -999,6 +989,32 @@ int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 		subnet_free(subnet);
 		return MESH_STATUS_INSUFF_RESOURCES;
 	}
+
+	return MESH_STATUS_SUCCESS;
+}
+
+/*
+ * This function is called when Configuration Server Model receives
+ * a NETKEY_ADD command
+ */
+int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
+{
+	struct mesh_subnet *subnet;
+	int status;
+
+	subnet = l_queue_find(net->subnets, match_key_index,
+							L_UINT_TO_PTR(idx));
+
+	if (subnet) {
+		if (net_key_confirm(subnet->net_key_cur, value))
+			return MESH_STATUS_SUCCESS;
+		else
+			return MESH_STATUS_IDX_ALREADY_STORED;
+	}
+
+	status = add_key(net, idx, value);
+	if (status != MESH_STATUS_SUCCESS)
+		return status;
 
 	if (!storage_net_key_add(net, idx, value,
 					KEY_REFRESH_PHASE_NONE)) {
@@ -2923,6 +2939,54 @@ bool mesh_net_set_beacon_mode(struct mesh_net *net, bool enable)
 	return true;
 }
 
+/* This function is called when network keys are restored from storage. */
+bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
+					const uint8_t *new_key, uint8_t phase)
+{
+	struct mesh_subnet *subnet;
+	int status;
+
+	subnet = l_queue_find(net->subnets, match_key_index,
+							L_UINT_TO_PTR(idx));
+	if (subnet)
+		return false;
+
+	/* Current key must be always present */
+	if (!key)
+		return false;
+
+	/* If key refresh is in progress, a new key must be present */
+	if (phase != KEY_REFRESH_PHASE_NONE && !new_key)
+		return false;
+
+	status = add_key(net, idx, key);
+	if (status != MESH_STATUS_SUCCESS)
+		return false;
+
+	subnet = l_queue_find(net->subnets, match_key_index,
+							L_UINT_TO_PTR(idx));
+	if (!subnet)
+		return false;
+
+	if (new_key)
+		subnet->net_key_upd = net_key_add(new_key);
+
+	/* Preserve key refresh state to generate secure beacon flags*/
+	if (phase == KEY_REFRESH_PHASE_TWO) {
+		subnet->key_refresh = 1;
+		subnet->net_key_tx = subnet->net_key_upd;
+	}
+
+	subnet->kr_phase = phase;
+
+	set_network_beacon(subnet, net);
+
+	if (net->io)
+		start_network_beacon(subnet, net);
+
+	return true;
+}
+
 static bool is_this_net(const void *a, const void *b)
 {
 	return a == b;
@@ -3556,6 +3620,10 @@ uint8_t mesh_net_key_refresh_phase_get(struct mesh_net *net, uint16_t idx,
 	return MESH_STATUS_SUCCESS;
 }
 
+/*
+ * This function is called when Configuration Server Model receives
+ * a NETKEY_UPDATE command
+ */
 int mesh_net_update_key(struct mesh_net *net, uint16_t idx,
 							const uint8_t *value)
 {
