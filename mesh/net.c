@@ -970,26 +970,12 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	return MESH_STATUS_SUCCESS;
 }
 
-int mesh_net_add_key(struct mesh_net *net, bool update, uint16_t idx,
-							const void *value)
+int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 {
-	int status;
 	struct mesh_subnet *subnet;
 
 	subnet = l_queue_find(net->subnets, match_key_index,
 							L_UINT_TO_PTR(idx));
-
-	if (update) {
-		if (subnet && subnet->kr_phase == KEY_REFRESH_PHASE_NONE) {
-			l_info("Start key refresh");
-			status = mesh_net_kr_phase_one(net, idx, value);
-			if (status == MESH_STATUS_SUCCESS &&
-				!storage_net_key_add(net, idx,
-						value, KEY_REFRESH_PHASE_ONE))
-				return MESH_STATUS_STORAGE_FAIL;
-		} else
-			return MESH_STATUS_CANNOT_UPDATE;
-	}
 
 	if (subnet) {
 		if (net_key_confirm(subnet->net_key_cur, value))
@@ -3570,7 +3556,7 @@ uint8_t mesh_net_key_refresh_phase_get(struct mesh_net *net, uint16_t idx,
 	return MESH_STATUS_SUCCESS;
 }
 
-int mesh_net_kr_phase_one(struct mesh_net *net, uint16_t idx,
+int mesh_net_update_key(struct mesh_net *net, uint16_t idx,
 							const uint8_t *value)
 {
 	struct mesh_subnet *subnet;
@@ -3580,8 +3566,14 @@ int mesh_net_kr_phase_one(struct mesh_net *net, uint16_t idx,
 
 	subnet = l_queue_find(net->subnets, match_key_index,
 							L_UINT_TO_PTR(idx));
+
 	if (!subnet)
 		return MESH_STATUS_CANNOT_UPDATE;
+
+	/* Check if the key has been already successfully updated */
+	if (subnet->kr_phase == KEY_REFRESH_PHASE_ONE &&
+				net_key_confirm(subnet->net_key_upd, value))
+		return MESH_STATUS_SUCCESS;
 
 	if (subnet->net_key_upd) {
 		net_key_unref(subnet->net_key_upd);
@@ -3605,6 +3597,9 @@ int mesh_net_kr_phase_one(struct mesh_net *net, uint16_t idx,
 					L_UINT_TO_PTR(subnet->net_key_upd));
 
 	l_info("key refresh phase 1: Key ID %d", subnet->net_key_upd);
+
+	if (!storage_net_key_add(net, idx, value, KEY_REFRESH_PHASE_ONE))
+		return MESH_STATUS_STORAGE_FAIL;
 
 	subnet->kr_phase = KEY_REFRESH_PHASE_ONE;
 

@@ -1726,8 +1726,8 @@ bool node_add_pending_local(struct mesh_node *node, void *prov_node_info,
 	if (!mesh_db_write_device_key(node->jconfig, info->device_key))
 		return false;
 
-	if (mesh_net_add_key(node->net, kr, info->net_index,
-			info->net_key) != MESH_STATUS_SUCCESS)
+	if (mesh_net_add_key(node->net, info->net_index, info->net_key) !=
+							MESH_STATUS_SUCCESS)
 		return false;
 
 	if (!storage_net_key_add(node->net, info->net_index, info->net_key,

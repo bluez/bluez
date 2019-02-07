@@ -981,8 +981,12 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size != 18)
 			return true;
 
-		b_res = mesh_net_add_key(net, opcode == OP_NETKEY_UPDATE,
-						l_get_le16(pkt), pkt + 2);
+		net_idx = l_get_le16(pkt);
+
+		if (opcode == OP_NETKEY_ADD)
+			b_res = mesh_net_add_key(net, net_idx, pkt + 2);
+		else
+			b_res = mesh_net_update_key(net, net_idx, pkt + 2);
 
 		l_debug("NetKey Add/Update %s",
 			(b_res == MESH_STATUS_SUCCESS) ? "success" : "fail");
