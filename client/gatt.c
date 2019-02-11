@@ -65,7 +65,7 @@ struct desc {
 	uint16_t handle;
 	char *uuid;
 	char **flags;
-	int value_len;
+	size_t value_len;
 	unsigned int max_val_len;
 	uint8_t *value;
 };
@@ -78,7 +78,7 @@ struct chrc {
 	char **flags;
 	bool notifying;
 	GList *descs;
-	int value_len;
+	size_t value_len;
 	unsigned int max_val_len;
 	uint8_t *value;
 	uint16_t mtu;
@@ -669,7 +669,8 @@ static void write_reply(DBusMessage *message, void *user_data)
 }
 
 struct write_attribute_data {
-	struct iovec *iov;
+	struct iovec iov;
+	char *type;
 	uint16_t offset;
 };
 
@@ -680,8 +681,8 @@ static void write_setup(DBusMessageIter *iter, void *user_data)
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
 	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
-						&wd->iov->iov_base,
-						wd->iov->iov_len);
+						&wd->iov.iov_base,
+						wd->iov.iov_len);
 	dbus_message_iter_close_container(iter, &array);
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
@@ -690,6 +691,10 @@ static void write_setup(DBusMessageIter *iter, void *user_data)
 					DBUS_TYPE_VARIANT_AS_STRING
 					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					&dict);
+
+	if (wd->type)
+		g_dbus_dict_append_entry(&dict, "type", DBUS_TYPE_STRING,
+								&wd->type);
 
 	g_dbus_dict_append_entry(&dict, "offset", DBUS_TYPE_UINT16,
 								&wd->offset);
@@ -715,54 +720,23 @@ static int sock_send(struct io *io, struct iovec *iov, size_t iovlen)
 	return ret;
 }
 
-static void write_attribute(GDBusProxy *proxy, char *val_str, uint16_t offset)
+static void write_attribute(GDBusProxy *proxy,
+				struct write_attribute_data *data)
 {
-	struct iovec iov;
-	struct write_attribute_data wd;
-	uint8_t value[MAX_ATTR_VAL_LEN];
-	char *entry;
-	unsigned int i;
-
-	for (i = 0; (entry = strsep(&val_str, " \t")) != NULL; i++) {
-		long int val;
-		char *endptr = NULL;
-
-		if (*entry == '\0')
-			continue;
-
-		if (i >= G_N_ELEMENTS(value)) {
-			bt_shell_printf("Too much data\n");
-			return bt_shell_noninteractive_quit(EXIT_FAILURE);
-		}
-
-		val = strtol(entry, &endptr, 0);
-		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
-			bt_shell_printf("Invalid value at index %d\n", i);
-			return bt_shell_noninteractive_quit(EXIT_FAILURE);
-		}
-
-		value[i] = val;
-	}
-
-	iov.iov_base = value;
-	iov.iov_len = i;
-
 	/* Write using the fd if it has been acquired and fit the MTU */
-	if (proxy == write_io.proxy && (write_io.io && write_io.mtu >= i)) {
+	if (proxy == write_io.proxy &&
+			(write_io.io && write_io.mtu >= data->iov.iov_len)) {
 		bt_shell_printf("Attempting to write fd %d\n",
 						io_get_fd(write_io.io));
-		if (sock_send(write_io.io, &iov, 1) < 0) {
+		if (sock_send(write_io.io, &data->iov, 1) < 0) {
 			bt_shell_printf("Failed to write: %s", strerror(errno));
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 		return;
 	}
 
-	wd.iov = &iov;
-	wd.offset = offset;
-
 	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup,
-					write_reply, &wd, NULL) == FALSE) {
+					write_reply, data, NULL) == FALSE) {
 		bt_shell_printf("Failed to write\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -771,19 +745,57 @@ static void write_attribute(GDBusProxy *proxy, char *val_str, uint16_t offset)
 					g_dbus_proxy_get_path(proxy));
 }
 
+static uint8_t *str2bytearray(char *arg, size_t *val_len)
+{
+	uint8_t value[MAX_ATTR_VAL_LEN];
+	char *entry;
+	unsigned int i;
+
+	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
+		long int val;
+		char *endptr = NULL;
+
+		if (*entry == '\0')
+			continue;
+
+		if (i >= G_N_ELEMENTS(value)) {
+			bt_shell_printf("Too much data\n");
+			return NULL;
+		}
+
+		val = strtol(entry, &endptr, 0);
+		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
+			bt_shell_printf("Invalid value at index %d\n", i);
+			return NULL;
+		}
+
+		value[i] = val;
+	}
+
+	*val_len = i;
+
+	return g_memdup(value, i);
+}
+
 void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[])
 {
 	const char *iface;
-	uint16_t offset = 0;
+	struct write_attribute_data data;
+
+	memset(&data, 0, sizeof(data));
 
 	iface = g_dbus_proxy_get_interface(proxy);
 	if (!strcmp(iface, "org.bluez.GattCharacteristic1") ||
 				!strcmp(iface, "org.bluez.GattDescriptor1")) {
+		data.iov.iov_base = str2bytearray(argv[1], &data.iov.iov_len);
 
 		if (argc > 2)
-			offset = atoi(argv[2]);
+			data.offset = atoi(argv[2]);
 
-		write_attribute(proxy, argv[1], offset);
+		if (argc > 3)
+			data.type = argv[3];
+
+		write_attribute(proxy, &data);
 		return;
 	}
 
@@ -1952,8 +1964,8 @@ static int parse_value_arg(DBusMessageIter *iter, uint8_t **value, int *len)
 	return 0;
 }
 
-static int write_value(int *dst_len, uint8_t **dst_value, uint8_t *src_val,
-				int src_len, uint16_t offset, uint16_t max_len)
+static int write_value(size_t *dst_len, uint8_t **dst_value, uint8_t *src_val,
+			size_t src_len, uint16_t offset, uint16_t max_len)
 {
 	if ((offset + src_len) > max_len)
 		return -EOVERFLOW;
@@ -2254,38 +2266,6 @@ static const GDBusMethodTable chrc_methods[] = {
 	{ GDBUS_METHOD("Confirm", NULL, NULL, chrc_confirm) },
 	{ }
 };
-
-static uint8_t *str2bytearray(char *arg, int *val_len)
-{
-	uint8_t value[MAX_ATTR_VAL_LEN];
-	char *entry;
-	unsigned int i;
-
-	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
-		long int val;
-		char *endptr = NULL;
-
-		if (*entry == '\0')
-			continue;
-
-		if (i >= G_N_ELEMENTS(value)) {
-			bt_shell_printf("Too much data\n");
-			return NULL;
-		}
-
-		val = strtol(entry, &endptr, 0);
-		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
-			bt_shell_printf("Invalid value at index %d\n", i);
-			return NULL;
-		}
-
-		value[i] = val;
-	}
-
-	*val_len = i;
-
-	return g_memdup(value, i);
-}
 
 static void chrc_set_value(const char *input, void *user_data)
 {

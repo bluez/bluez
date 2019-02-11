@@ -2612,7 +2612,7 @@ static const struct bt_shell_menu gatt_menu = {
 	{ "attribute-info", "[attribute/UUID]",  cmd_attribute_info,
 				"Select attribute", attribute_generator },
 	{ "read", "[offset]", cmd_read, "Read attribute value" },
-	{ "write", "<data=xx xx ...> [offset]", cmd_write,
+	{ "write", "<data=xx xx ...> [offset] [type]", cmd_write,
 						"Write attribute value" },
 	{ "acquire-write", NULL, cmd_acquire_write,
 					"Acquire Write file descriptor" },
