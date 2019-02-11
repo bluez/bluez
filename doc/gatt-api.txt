@@ -261,6 +261,7 @@ Properties	string UUID [read-only]
 				"notify"
 				"indicate"
 				"authenticated-signed-writes"
+				"extended-properties"
 				"reliable-write"
 				"writable-auxiliaries"
 				"encrypt-read"

@@ -1550,6 +1550,8 @@ static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
 		} else if (!strcmp("authenticated-signed-writes", flag)) {
 			*props |= BT_GATT_CHRC_PROP_AUTH;
 			*perm |= BT_ATT_PERM_WRITE;
+		} else if (!strcmp("extended-properties", flag)) {
+			*props |= BT_GATT_CHRC_PROP_EXT_PROP;
 		} else if (!strcmp("reliable-write", flag)) {
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE;
 			*perm |= BT_ATT_PERM_WRITE;
