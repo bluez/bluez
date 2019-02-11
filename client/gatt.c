@@ -47,6 +47,7 @@
 #include "gatt.h"
 
 #define APP_PATH "/org/bluez/app"
+#define DEVICE_INTERFACE "org.bluez.Device1"
 #define PROFILE_INTERFACE "org.bluez.GattProfile1"
 #define SERVICE_INTERFACE "org.bluez.GattService1"
 #define CHRC_INTERFACE "org.bluez.GattCharacteristic1"
@@ -72,6 +73,7 @@ struct desc {
 
 struct chrc {
 	struct service *service;
+	GDBusProxy *proxy;
 	char *path;
 	uint16_t handle;
 	char *uuid;
@@ -89,6 +91,7 @@ struct chrc {
 
 struct service {
 	DBusConnection *conn;
+	GDBusProxy *proxy;
 	char *path;
 	uint16_t handle;
 	char *uuid;
@@ -2652,4 +2655,236 @@ void gatt_unregister_desc(DBusConnection *conn, GDBusProxy *proxy,
 	desc_unregister(desc);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static GDBusProxy *select_service(GDBusProxy *proxy)
+{
+	GList *l;
+
+	for (l = services; l; l = g_list_next(l)) {
+		GDBusProxy *p = l->data;
+
+		if (proxy == p || g_str_has_prefix(g_dbus_proxy_get_path(proxy),
+						g_dbus_proxy_get_path(p)))
+			return p;
+	}
+
+	return NULL;
+}
+
+static void clone_chrc(struct GDBusProxy *proxy)
+{
+	struct service *service;
+	struct chrc *chrc;
+	DBusMessageIter iter;
+	DBusMessageIter array;
+	const char *uuid;
+	char **flags;
+	int i;
+
+	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &uuid);
+
+	if (g_dbus_proxy_get_property(proxy, "Flags", &iter) == FALSE)
+		return;
+
+	flags = g_new0(char *, dbus_message_iter_get_element_count(&iter) + 1);
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	for (i = 0; dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING;
+									i++) {
+		const char *flag;
+
+		dbus_message_iter_get_basic(&array, &flag);
+
+		flags[i] = g_strdup(flag);
+
+		dbus_message_iter_next(&array);
+	}
+
+	service = g_list_last(local_services)->data;
+
+	chrc = g_new0(struct chrc, 1);
+	chrc->service = service;
+	chrc->proxy = proxy;
+	chrc->uuid = g_strdup(uuid);
+	chrc->path = g_strdup_printf("%s/chrc%u", service->path,
+					g_list_length(service->chrcs));
+	chrc->flags = flags;
+
+	if (g_dbus_register_interface(service->conn, chrc->path, CHRC_INTERFACE,
+					chrc_methods, NULL, chrc_properties,
+					chrc, chrc_free) == FALSE) {
+		bt_shell_printf("Failed to register characteristic object\n");
+		chrc_free(chrc);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	service->chrcs = g_list_append(service->chrcs, chrc);
+
+	print_chrc(chrc, COLORED_NEW);
+}
+
+static void clone_chrcs(struct GDBusProxy *proxy)
+{
+	GList *l;
+
+	for (l = characteristics; l; l = g_list_next(l)) {
+		GDBusProxy *p = l->data;
+
+		if (g_str_has_prefix(g_dbus_proxy_get_path(p),
+						g_dbus_proxy_get_path(proxy)))
+			clone_chrc(p);
+	}
+}
+
+static void clone_service(struct GDBusProxy *proxy)
+{
+	struct service *service;
+	DBusMessageIter iter;
+	const char *uuid;
+	dbus_bool_t primary;
+
+	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &uuid);
+
+	if (g_dbus_proxy_get_property(proxy, "Primary", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &primary);
+
+	if (!strcmp(uuid, "00001800-0000-1000-8000-00805f9b34fb") ||
+			!strcmp(uuid, "00001801-0000-1000-8000-00805f9b34fb"))
+		return;
+
+	service = g_new0(struct service, 1);
+	service->conn = bt_shell_get_env("DBUS_CONNECTION");
+	service->proxy = proxy;
+	service->path = g_strdup_printf("%s/service%u", APP_PATH,
+					g_list_length(local_services));
+	service->uuid = g_strdup(uuid);
+	service->primary = primary;
+
+	if (g_dbus_register_interface(service->conn, service->path,
+					SERVICE_INTERFACE, NULL, NULL,
+					service_properties, service,
+					service_free) == FALSE) {
+		bt_shell_printf("Failed to register service object\n");
+		service_free(service);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print_service(service, COLORED_NEW);
+
+	local_services = g_list_append(local_services, service);
+
+	clone_chrcs(proxy);
+}
+
+static void clone_device(struct GDBusProxy *proxy)
+{
+	GList *l;
+
+	for (l = services; l; l = g_list_next(l)) {
+		struct GDBusProxy *p = l->data;
+
+		if (g_str_has_prefix(g_dbus_proxy_get_path(p),
+						g_dbus_proxy_get_path(proxy)))
+			clone_service(p);
+	}
+}
+
+static void service_clone(const char *input, void *user_data)
+{
+	struct GDBusProxy *proxy = user_data;
+
+	if (!strcmp(input, "yes"))
+		return clone_service(proxy);
+	else if (!strcmp(input, "no"))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	else if (!strcmp(input, "all"))
+		return clone_device(proxy);
+
+	bt_shell_printf("Invalid option: %s\n", input);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void device_clone(const char *input, void *user_data)
+{
+	struct GDBusProxy *proxy = user_data;
+
+	if (!strcmp(input, "yes"))
+		return clone_device(proxy);
+	else if (!strcmp(input, "no"))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	bt_shell_printf("Invalid option: %s\n", input);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static const char *proxy_get_name(struct GDBusProxy *proxy)
+{
+	DBusMessageIter iter;
+	const char *uuid;
+	const char *str;
+
+	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
+		return NULL;
+
+	dbus_message_iter_get_basic(&iter, &uuid);
+
+	str = bt_uuidstr_to_str(uuid);
+
+	return str ? str : uuid;
+}
+
+static const char *proxy_get_alias(struct GDBusProxy *proxy)
+{
+	DBusMessageIter iter;
+	const char *alias;
+
+	if (g_dbus_proxy_get_property(proxy, "Alias", &iter) == FALSE)
+		return NULL;
+
+	dbus_message_iter_get_basic(&iter, &alias);
+
+	return alias;
+}
+
+void gatt_clone_attribute(GDBusProxy *proxy, int argc, char *argv[])
+{
+	GDBusProxy *service = NULL;
+
+	if (argc > 1) {
+		proxy = gatt_select_attribute(proxy, argv[1]);
+		if (!proxy) {
+			bt_shell_printf("Unable to find attribute %s\n",
+								argv[1]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	if (!strcmp(g_dbus_proxy_get_interface(proxy), DEVICE_INTERFACE)) {
+		bt_shell_prompt_input(proxy_get_alias(proxy),
+					"Clone (yes/no):",
+					device_clone, proxy);
+	}
+
+	/* Only clone services */
+	service = select_service(proxy);
+	if (service) {
+		bt_shell_prompt_input(proxy_get_name(proxy),
+					"Clone (yes/no/all):",
+					service_clone, service);
+		return;
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }

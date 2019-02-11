@@ -2105,6 +2105,19 @@ static void cmd_notify(int argc, char *argv[])
 	gatt_notify_attribute(default_attr, enable ? true : false);
 }
 
+static void cmd_clone(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	proxy = default_attr ? default_attr : default_dev;
+	if (!proxy) {
+		bt_shell_printf("Not connected\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	gatt_clone_attribute(proxy, argc, argv);
+}
+
 static void cmd_register_app(int argc, char *argv[])
 {
 	if (check_default_ctrl() == FALSE)
@@ -2624,6 +2637,8 @@ static const struct bt_shell_menu gatt_menu = {
 					"Release Notify file descriptor" },
 	{ "notify",       "<on/off>", cmd_notify, "Notify attribute value",
 							NULL },
+	{ "clone",	  "[dev/attribute/UUID]", cmd_clone,
+						"Clone a device or attribute" },
 	{ "register-application", "[UUID ...]", cmd_register_app,
 						"Register profile to connect" },
 	{ "unregister-application", NULL, cmd_unregister_app,
@@ -2756,6 +2771,8 @@ int main(int argc, char *argv[])
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 	g_dbus_attach_object_manager(dbus_conn);
+
+	bt_shell_set_env("DBUS_CONNECTION", dbus_conn);
 
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
 

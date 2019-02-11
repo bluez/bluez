@@ -37,6 +37,7 @@ char *gatt_attribute_generator(const char *text, int state);
 void gatt_read_attribute(GDBusProxy *proxy, int argc, char *argv[]);
 void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[]);
 void gatt_notify_attribute(GDBusProxy *proxy, bool enable);
+void gatt_clone_attribute(GDBusProxy *proxy, int argc, char *argv[]);
 
 void gatt_acquire_write(GDBusProxy *proxy, const char *arg);
 void gatt_release_write(GDBusProxy *proxy, const char *arg);
