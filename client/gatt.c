@@ -1719,6 +1719,9 @@ static gboolean chrc_write_acquired_exists(const GDBusPropertyTable *property,
 	struct chrc *chrc = data;
 	int i;
 
+	if (chrc->proxy)
+		return FALSE;
+
 	for (i = 0; chrc->flags[i]; i++) {
 		if (!strcmp("write-without-response", chrc->flags[i]))
 			return TRUE;
@@ -1745,6 +1748,9 @@ static gboolean chrc_notify_acquired_exists(const GDBusPropertyTable *property,
 {
 	struct chrc *chrc = data;
 	int i;
+
+	if (chrc->proxy)
+		return FALSE;
 
 	for (i = 0; chrc->flags[i]; i++) {
 		if (!strcmp("notify", chrc->flags[i]))
@@ -2350,13 +2356,78 @@ static DBusMessage *chrc_acquire_notify(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
+struct notify_attribute_data {
+	struct chrc *chrc;
+	DBusMessage *msg;
+	bool enable;
+};
+
+static void proxy_notify_reply(DBusMessage *message, void *user_data)
+{
+	struct notify_attribute_data *data = user_data;
+	DBusConnection *conn = bt_shell_get_env("DBUS_CONNECTION");
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to %s: %s\n",
+				data->enable ? "StartNotify" : "StopNotify",
+				error.name);
+		dbus_error_free(&error);
+		g_dbus_send_error(conn, data->msg, error.name, "%s",
+							error.message);
+		goto done;
+	}
+
+	g_dbus_send_reply(conn, data->msg, DBUS_TYPE_INVALID);
+
+	data->chrc->notifying = data->enable;
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s notifications %s\n",
+				data->chrc->path,
+				data->enable ? "enabled" : "disabled");
+	g_dbus_emit_property_changed(conn, data->chrc->path, CHRC_INTERFACE,
+							"Notifying");
+
+done:
+	dbus_message_unref(data->msg);
+	free(data);
+}
+
+static DBusMessage *proxy_notify(struct chrc *chrc, DBusMessage *msg,
+							bool enable)
+{
+	struct notify_attribute_data *data;
+	const char *method;
+
+	if (enable == TRUE)
+		method = "StartNotify";
+	else
+		method = "StopNotify";
+
+	data = new0(struct notify_attribute_data, 1);
+	data->chrc = chrc;
+	data->msg = dbus_message_ref(msg);
+	data->enable = enable;
+
+	if (g_dbus_proxy_method_call(chrc->proxy, method, NULL,
+					proxy_notify_reply, data, NULL))
+		return NULL;
+
+	return g_dbus_create_error(msg, "org.bluez.Error.InvalidArguments",
+								NULL);
+}
+
 static DBusMessage *chrc_start_notify(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
 	struct chrc *chrc = user_data;
 
-	if (!chrc->notifying)
+	if (chrc->notifying)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (chrc->proxy)
+		return proxy_notify(chrc, msg, true);
 
 	chrc->notifying = true;
 	bt_shell_printf("[" COLORED_CHG "] Attribute %s notifications enabled",
@@ -2372,8 +2443,11 @@ static DBusMessage *chrc_stop_notify(DBusConnection *conn, DBusMessage *msg,
 {
 	struct chrc *chrc = user_data;
 
-	if (chrc->notifying)
+	if (!chrc->notifying)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (chrc->proxy)
+		return proxy_notify(chrc, msg, false);
 
 	chrc->notifying = false;
 	bt_shell_printf("[" COLORED_CHG "] Attribute %s notifications disabled",
@@ -2813,6 +2887,15 @@ static GDBusProxy *select_service(GDBusProxy *proxy)
 	return NULL;
 }
 
+static void proxy_property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	DBusConnection *conn = bt_shell_get_env("DBUS_CONNECTION");
+	struct chrc *chrc = user_data;
+
+	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE, name);
+}
+
 static void clone_chrc(struct GDBusProxy *proxy)
 {
 	struct service *service;
@@ -2863,6 +2946,8 @@ static void clone_chrc(struct GDBusProxy *proxy)
 		chrc_free(chrc);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
+
+	g_dbus_proxy_set_property_watch(proxy, proxy_property_changed, chrc);
 
 	service->chrcs = g_list_append(service->chrcs, chrc);
 
