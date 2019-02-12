@@ -471,5 +471,5 @@ noinst_PROGRAMS += tools/btpclient
 tools_btpclient_SOURCES = tools/btpclient.c src/shared/btp.c src/shared/btp.h
 tools_btpclient_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-ell.la $(ell_ldadd)
-tools_btpclient_DEPENDENCIES = $(ell_dependencies)
+tools_btpclient_DEPENDENCIES = lib/libbluetooth-internal.la $(ell_dependencies)
 endif
