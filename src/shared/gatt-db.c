@@ -328,6 +328,9 @@ static bool db_hash_update(void *user_data)
 
 	db->hash_id = 0;
 
+	if (!db->next_handle)
+		return false;
+
 	iov = new0(struct iovec, db->next_handle);
 
 	gatt_db_foreach_service(db, NULL, service_gen_hash_m, iov);
