@@ -202,8 +202,25 @@ void gatt_add_service(GDBusProxy *proxy)
 	print_service_proxy(proxy, COLORED_NEW);
 }
 
+static struct service *remove_service_by_proxy(struct GDBusProxy *proxy)
+{
+	GList *l;
+
+	for (l = local_services; l; l = g_list_next(l)) {
+		struct service *service = l->data;
+
+		if (service->proxy == proxy) {
+			local_services = g_list_delete_link(local_services, l);
+			return service;
+		}
+	}
+
+	return NULL;
+}
+
 void gatt_remove_service(GDBusProxy *proxy)
 {
+	struct service *service;
 	GList *l;
 
 	l = g_list_find(services, proxy);
@@ -213,6 +230,11 @@ void gatt_remove_service(GDBusProxy *proxy)
 	services = g_list_delete_link(services, l);
 
 	print_service_proxy(proxy, COLORED_DEL);
+
+	service = remove_service_by_proxy(proxy);
+	if (service)
+		g_dbus_unregister_interface(service->conn, service->path,
+						SERVICE_INTERFACE);
 }
 
 static void print_chrc(struct chrc *chrc, const char *description)
