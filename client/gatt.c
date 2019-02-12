@@ -672,6 +672,7 @@ static void write_reply(DBusMessage *message, void *user_data)
 }
 
 struct write_attribute_data {
+	DBusMessage *msg;
 	struct iovec iov;
 	char *type;
 	uint16_t offset;
@@ -1908,6 +1909,95 @@ static bool is_device_trusted(const char *path)
 	return trusted;
 }
 
+struct read_attribute_data {
+	DBusMessage *msg;
+	uint16_t offset;
+};
+
+static void proxy_read_reply(DBusMessage *message, void *user_data)
+{
+	struct read_attribute_data *data = user_data;
+	DBusConnection *conn = bt_shell_get_env("DBUS_CONNECTION");
+	DBusError error;
+	DBusMessageIter iter, array;
+	DBusMessage *reply;
+	uint8_t *value;
+	int len;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to read: %s\n", error.name);
+		dbus_error_free(&error);
+		g_dbus_send_error(conn, data->msg, error.name, "%s",
+							error.message);
+		goto done;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		bt_shell_printf("Invalid response to read\n");
+		g_dbus_send_error(conn, data->msg,
+				"org.bluez.Error.InvalidArguments", NULL);
+		goto done;
+	}
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &value, &len);
+
+	if (len < 0) {
+		bt_shell_printf("Unable to parse value\n");
+		g_dbus_send_error(conn, data->msg,
+				"org.bluez.Error.InvalidArguments", NULL);
+	}
+
+	reply = read_value(data->msg, value, len);
+
+	g_dbus_send_message(conn, reply);
+
+done:
+	dbus_message_unref(data->msg);
+	free(data);
+}
+
+static void proxy_read_setup(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+	struct read_attribute_data *data = user_data;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	g_dbus_dict_append_entry(&dict, "offset", DBUS_TYPE_UINT16,
+						&data->offset);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static DBusMessage *proxy_read_value(struct GDBusProxy *proxy, DBusMessage *msg,
+							uint16_t offset)
+{
+	struct read_attribute_data *data;
+
+	data = new0(struct read_attribute_data, 1);
+	data->msg = dbus_message_ref(msg);
+	data->offset = offset;
+
+	if (g_dbus_proxy_method_call(proxy, "ReadValue", proxy_read_setup,
+					proxy_read_reply, data, NULL))
+		return NULL;
+
+	bt_shell_printf("Failed to read\n");
+
+	return g_dbus_create_error(msg, "org.bluez.Error.InvalidArguments",
+								NULL);
+}
+
 static DBusMessage *chrc_read_value(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
@@ -1926,6 +2016,10 @@ static DBusMessage *chrc_read_value(DBusConnection *conn, DBusMessage *msg,
 
 	bt_shell_printf("ReadValue: %s offset %u link %s\n",
 					path_to_address(device), offset, link);
+
+	if (chrc->proxy) {
+		return proxy_read_value(chrc->proxy, msg, offset);
+	}
 
 	if (!is_device_trusted(device) && chrc->authorization_req) {
 		struct authorize_attribute_data *aad;
@@ -2047,6 +2141,49 @@ error:
 	g_free(aad);
 }
 
+static void proxy_write_reply(DBusMessage *message, void *user_data)
+{
+	struct write_attribute_data *data = user_data;
+	DBusConnection *conn = bt_shell_get_env("DBUS_CONNECTION");
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message)) {
+		bt_shell_printf("Failed to write: %s\n", error.name);
+		g_dbus_send_error(conn, data->msg, error.name, "%s",
+							error.message);
+	} else
+		g_dbus_send_reply(conn, data->msg, DBUS_TYPE_INVALID);
+
+	dbus_message_unref(data->msg);
+	free(data);
+}
+
+static DBusMessage *proxy_write_value(struct GDBusProxy *proxy,
+					DBusMessage *msg, uint8_t *value,
+					int value_len, uint16_t offset)
+{
+	struct write_attribute_data *data;
+
+
+	data = new0(struct write_attribute_data, 1);
+	data->msg = dbus_message_ref(msg);
+	data->iov.iov_base = (void *) value;
+	data->iov.iov_len = value_len;
+	data->offset = offset;
+
+	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup,
+					proxy_write_reply, data, NULL))
+		return NULL;
+
+
+	bt_shell_printf("Failed to write\n");
+
+	return g_dbus_create_error(msg, "org.bluez.Error.InvalidArguments",
+								NULL);
+}
+
 static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
@@ -2069,6 +2206,10 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 	if (parse_options(&iter, &offset, NULL, &device, NULL, &prep_authorize))
 		return g_dbus_create_error(msg,
 				"org.bluez.Error.InvalidArguments", NULL);
+
+	if (chrc->proxy)
+		return proxy_write_value(chrc->proxy, msg, value, value_len,
+								offset);
 
 	if (!is_device_trusted(device) && chrc->authorization_req) {
 		struct authorize_attribute_data *aad;
