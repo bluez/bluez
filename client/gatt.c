@@ -2915,6 +2915,23 @@ static void proxy_property_changed(GDBusProxy *proxy, const char *name,
 	DBusConnection *conn = bt_shell_get_env("DBUS_CONNECTION");
 	struct chrc *chrc = user_data;
 
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) %s:\n",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid), name);
+
+	if (!strcmp(name, "Value")) {
+		DBusMessageIter array;
+		uint8_t *value;
+		int len;
+
+		if (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_ARRAY) {
+			dbus_message_iter_recurse(iter, &array);
+			dbus_message_iter_get_fixed_array(&array, &value, &len);
+			write_value(&chrc->value_len, &chrc->value, value, len,
+					0, chrc->max_val_len);
+			bt_shell_hexdump(value, len);
+		}
+	}
+
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE, name);
 }
 
