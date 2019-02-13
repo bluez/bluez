@@ -860,8 +860,9 @@ static bool sock_read(struct io *io, void *user_data)
 		return false;
 
 	if (chrc)
-		bt_shell_printf("[" COLORED_CHG "] Attribute %s written:\n",
-							chrc->path);
+		bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) "
+				"written:\n", chrc->path,
+				bt_uuidstr_to_str(chrc->uuid));
 	else
 		bt_shell_printf("[" COLORED_CHG "] %s Notification:\n",
 				g_dbus_proxy_get_path(notify_io.proxy));
@@ -2042,8 +2043,9 @@ static DBusMessage *chrc_read_value(DBusConnection *conn, DBusMessage *msg,
 					"org.bluez.Error.InvalidArguments",
 					NULL);
 
-	bt_shell_printf("ReadValue: %s offset %u link %s\n",
-					path_to_address(device), offset, link);
+	bt_shell_printf("[%s (%s)] ReadValue: %s offset %u link %s\n",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid),
+			path_to_address(device), offset, link);
 
 	if (chrc->proxy) {
 		return proxy_read_value(chrc->proxy, msg, offset);
@@ -2152,7 +2154,8 @@ static void authorize_write_response(const char *input, void *user_data)
 		goto error;
 	}
 
-	bt_shell_printf("[" COLORED_CHG "] Attribute %s written" , chrc->path);
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) written",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid));
 
 	g_dbus_emit_property_changed(aad->conn, chrc->path, CHRC_INTERFACE,
 								"Value");
@@ -2218,7 +2221,7 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 	struct chrc *chrc = user_data;
 	uint16_t offset = 0;
 	bool prep_authorize = false;
-	char *device = NULL;
+	char *device = NULL, *link = NULL;
 	DBusMessageIter iter;
 	int value_len;
 	uint8_t *value;
@@ -2231,9 +2234,16 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 				"org.bluez.Error.InvalidArguments", NULL);
 
 	dbus_message_iter_next(&iter);
-	if (parse_options(&iter, &offset, NULL, &device, NULL, &prep_authorize))
+	if (parse_options(&iter, &offset, NULL, &device, &link,
+						&prep_authorize))
 		return g_dbus_create_error(msg,
 				"org.bluez.Error.InvalidArguments", NULL);
+
+	bt_shell_printf("[%s (%s)] WriteValue: %s offset %u link %s\n",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid),
+			path_to_address(device), offset, link);
+
+	bt_shell_hexdump(value, value_len);
 
 	if (chrc->proxy)
 		return proxy_write_value(chrc->proxy, msg, value, value_len,
@@ -2268,7 +2278,8 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg,
 				"org.bluez.Error.InvalidValueLength", NULL);
 
-	bt_shell_printf("[" COLORED_CHG "] Attribute %s written" , chrc->path);
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) written",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid));
 
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE, "Value");
 
@@ -2405,8 +2416,10 @@ static void proxy_notify_reply(DBusMessage *message, void *user_data)
 	g_dbus_send_reply(conn, data->msg, DBUS_TYPE_INVALID);
 
 	data->chrc->notifying = data->enable;
-	bt_shell_printf("[" COLORED_CHG "] Attribute %s notifications %s\n",
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) "
+				"notifications %s\n",
 				data->chrc->path,
+				bt_uuidstr_to_str(data->chrc->uuid),
 				data->enable ? "enabled" : "disabled");
 	g_dbus_emit_property_changed(conn, data->chrc->path, CHRC_INTERFACE,
 							"Notifying");
@@ -2452,8 +2465,8 @@ static DBusMessage *chrc_start_notify(DBusConnection *conn, DBusMessage *msg,
 		return proxy_notify(chrc, msg, true);
 
 	chrc->notifying = true;
-	bt_shell_printf("[" COLORED_CHG "] Attribute %s notifications enabled",
-							chrc->path);
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) notifications "
+			"enabled", chrc->path, bt_uuidstr_to_str(chrc->uuid));
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE,
 							"Notifying");
 
@@ -2472,8 +2485,8 @@ static DBusMessage *chrc_stop_notify(DBusConnection *conn, DBusMessage *msg,
 		return proxy_notify(chrc, msg, false);
 
 	chrc->notifying = false;
-	bt_shell_printf("[" COLORED_CHG "] Attribute %s notifications disabled",
-							chrc->path);
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) notifications "
+			"disabled", chrc->path, bt_uuidstr_to_str(chrc->uuid));
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE,
 							"Notifying");
 
@@ -2485,7 +2498,8 @@ static DBusMessage *chrc_confirm(DBusConnection *conn, DBusMessage *msg,
 {
 	struct chrc *chrc = user_data;
 
-	bt_shell_printf("Attribute %s indication confirm received", chrc->path);
+	bt_shell_printf("Attribute %s (%s) indication confirm received",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid));
 
 	return dbus_message_new_method_return(msg);
 }
@@ -2634,7 +2648,8 @@ static DBusMessage *desc_read_value(DBusConnection *conn, DBusMessage *msg,
 					"org.bluez.Error.InvalidArguments",
 					NULL);
 
-	bt_shell_printf("ReadValue: %s offset %u link %s\n",
+	bt_shell_printf("[%s (%s)] ReadValue: %s offset %u link %s\n",
+			desc->path, bt_uuidstr_to_str(desc->uuid),
 			path_to_address(device), offset, link);
 
 	if (offset > desc->value_len)
@@ -2670,10 +2685,12 @@ static DBusMessage *desc_write_value(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg,
 				"org.bluez.Error.InvalidValueLength", NULL);
 
-	bt_shell_printf("WriteValue: %s offset %u link %s\n",
+	bt_shell_printf("[%s (%s)] WriteValue: %s offset %u link %s\n",
+			desc->path, bt_uuidstr_to_str(desc->uuid),
 			path_to_address(device), offset, link);
 
-	bt_shell_printf("[" COLORED_CHG "] Attribute %s written" , desc->path);
+	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) written",
+			desc->path, bt_uuidstr_to_str(desc->uuid));
 
 	g_dbus_emit_property_changed(conn, desc->path, CHRC_INTERFACE, "Value");
 
