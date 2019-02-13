@@ -1928,7 +1928,7 @@ static bool is_device_trusted(const char *path)
 {
 	GDBusProxy *proxy;
 	DBusMessageIter iter;
-	bool trusted;
+	bool trusted = false;
 
 	proxy = bt_shell_get_env(path);
 
