@@ -501,84 +501,51 @@ bool mesh_db_write_device_key(json_object *jnode, uint8_t *key)
 }
 
 bool mesh_db_app_key_add(json_object *jobj, uint16_t net_idx, uint16_t app_idx,
-			 const uint8_t key[16], bool update)
+							const uint8_t key[16])
 {
 	json_object *jarray, *jentry = NULL, *jstring = NULL;
 	char buf[5];
 
 	json_object_object_get_ex(jobj, "appKeys", &jarray);
-	if (!jarray && update)
+	if (jarray)
 		return false;
 
 	if (jarray)
 		jentry = get_key_object(jarray, app_idx);
 
-	/* The key entry should exist if the key is updated */
-	if (!jentry  && update)
+	/* Do not allow direct overrwrite */
+	if (jentry)
 		return false;
 
-	if (jentry) {
-		uint8_t buf[16];
-		json_object *jvalue;
-		char *str;
-
-		json_object_object_get_ex(jentry, "key", &jvalue);
-		if (!jvalue)
-			return false;
-
-		str = (char *)json_object_get_string(jvalue);
-		if (!str2hex(str, strlen(str), buf, sizeof(buf)))
-			return false;
-
-		/* If the same key, return success */
-		if (memcmp(key, buf, 16) == 0)
-			return true;
-
+	jentry = json_object_new_object();
+	if (!jentry)
 		return false;
+
+	snprintf(buf, 5, "%4.4x", app_idx);
+	jstring = json_object_new_string(buf);
+	if (!jstring)
+		goto fail;
+
+	json_object_object_add(jentry, "index", jstring);
+
+	snprintf(buf, 5, "%4.4x", net_idx);
+	jstring = json_object_new_string(buf);
+	if (!jstring)
+		goto fail;
+
+	json_object_object_add(jentry, "boundNetKey", jstring);
+
+	if (!add_key_value(jentry, "key", key))
+		goto fail;
+
+	if (!jarray) {
+		jarray = json_object_new_array();
+		if (!jarray)
+			goto fail;
+		json_object_object_add(jobj, "appKeys", jarray);
 	}
 
-	if (!update) {
-		jentry = json_object_new_object();
-		if (!jentry)
-			goto fail;
-
-		snprintf(buf, 5, "%4.4x", app_idx);
-		jstring = json_object_new_string(buf);
-		if (!jstring)
-			goto fail;
-
-		json_object_object_add(jentry, "index", jstring);
-
-		snprintf(buf, 5, "%4.4x", net_idx);
-		jstring = json_object_new_string(buf);
-		if (!jstring)
-			goto fail;
-
-		json_object_object_add(jentry, "boundNetKey", jstring);
-
-		if (!add_key_value(jentry, "key", key))
-			goto fail;
-
-		if (!jarray) {
-			jarray = json_object_new_array();
-			if (!jarray)
-				goto fail;
-			json_object_object_add(jobj, "appKeys", jarray);
-		}
-
-		json_object_array_add(jarray, jentry);
-
-	} else {
-
-		if (!json_object_object_get_ex(jentry, "key", &jstring))
-			return false;
-
-		json_object_object_add(jentry, "oldKey", jstring);
-		json_object_object_del(jentry, "key");
-
-		if (!add_key_value(jentry, "key", key))
-			return false;
-	}
+	json_object_array_add(jarray, jentry);
 
 	return true;
 fail:
@@ -587,6 +554,32 @@ fail:
 		json_object_put(jentry);
 
 	return false;
+}
+
+bool mesh_db_app_key_update(json_object *jobj, uint16_t app_idx,
+							const uint8_t key[16])
+{
+	json_object *jarray, *jentry = NULL, *jstring = NULL;
+	const char *str;
+
+	json_object_object_get_ex(jobj, "appKeys", &jarray);
+	if (!jarray)
+		return false;
+
+	/* The key entry should exist if the key is updated */
+	jentry = get_key_object(jarray, app_idx);
+	if (!jentry)
+		return false;
+
+	if (!json_object_object_get_ex(jentry, "key", &jstring))
+		return false;
+
+	str = json_object_get_string(jstring);
+	jstring = json_object_new_string(str);
+	json_object_object_add(jentry, "oldKey", jstring);
+	json_object_object_del(jentry, "key");
+
+	return add_key_value(jentry, "key", key);
 }
 
 bool mesh_db_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx)
