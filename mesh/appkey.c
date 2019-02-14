@@ -506,6 +506,9 @@ uint8_t appkey_list(struct mesh_net *net, uint16_t net_idx, uint8_t *buf,
 
 	*size = 0;
 
+	if (!mesh_net_have_key(net, net_idx))
+		return MESH_STATUS_INVALID_NETKEY;
+
 	app_keys = mesh_net_get_app_keys(net);
 	if (!app_keys || l_queue_isempty(app_keys))
 		return MESH_STATUS_SUCCESS;
