@@ -364,8 +364,8 @@ bool appkey_have_key(struct mesh_net *net, uint16_t app_idx)
 		return true;
 }
 
-int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
-					const uint8_t *new_key, bool update)
+int appkey_key_update(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
+							const uint8_t *new_key)
 {
 	struct mesh_app_key *key;
 	struct l_queue *app_keys;
@@ -375,60 +375,73 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 	if (!app_keys)
 		return MESH_STATUS_INSUFF_RESOURCES;
 
-	key = l_queue_find(app_keys, match_key_index, L_UINT_TO_PTR(app_idx));
-
-	if (!mesh_net_have_key(net, net_idx) ||
-					(update && key->net_idx != net_idx))
+	if (!mesh_net_have_key(net, net_idx))
 		return MESH_STATUS_INVALID_NETKEY;
 
-	if (update && !key)
+	key = l_queue_find(app_keys, match_key_index, L_UINT_TO_PTR(app_idx));
+
+	if (!key)
 		return MESH_STATUS_INVALID_APPKEY;
 
+	if (key->net_idx != net_idx)
+		return MESH_STATUS_INVALID_BINDING;
+
 	mesh_net_key_refresh_phase_get(net, net_idx, &phase);
-	if (update && phase != KEY_REFRESH_PHASE_ONE)
+	if (phase != KEY_REFRESH_PHASE_ONE)
 		return MESH_STATUS_CANNOT_UPDATE;
 
+	/* Check if the key has been already successfully updated */
+	if (memcmp(new_key, key->new_key, 16) == 0)
+		return MESH_STATUS_SUCCESS;
+
+	if (!set_key(key, app_idx, new_key, true))
+		return MESH_STATUS_INSUFF_RESOURCES;
+
+	if (!storage_app_key_add(net, net_idx, app_idx, new_key, true))
+		return MESH_STATUS_STORAGE_FAIL;
+
+	return MESH_STATUS_SUCCESS;
+}
+
+int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
+							const uint8_t *new_key)
+{
+	struct mesh_app_key *key;
+	struct l_queue *app_keys;
+
+	app_keys = mesh_net_get_app_keys(net);
+	if (!app_keys)
+		return MESH_STATUS_INSUFF_RESOURCES;
+
+	key = l_queue_find(app_keys, match_key_index, L_UINT_TO_PTR(app_idx));
 	if (key) {
 		if (memcmp(new_key, key->key, 16) == 0)
 			return MESH_STATUS_SUCCESS;
-
-		if (!update) {
-			l_debug("Failed to add key: index already stored %x",
-				(net_idx << 16) | app_idx);
+		else
 			return MESH_STATUS_IDX_ALREADY_STORED;
-		}
 	}
 
-	if (!key) {
-		if (!(l_queue_length(app_keys) < MAX_APP_KEYS))
-			return MESH_STATUS_INSUFF_RESOURCES;
+	if (!mesh_net_have_key(net, net_idx))
+		return MESH_STATUS_INVALID_NETKEY;
 
-		key = app_key_new();
-		if (!key)
-			return MESH_STATUS_INSUFF_RESOURCES;
+	if (l_queue_length(app_keys) >= MAX_APP_KEYS)
+		return MESH_STATUS_INSUFF_RESOURCES;
 
-		if (!set_key(key, app_idx, new_key, false)) {
-			appkey_key_free(key);
-			return MESH_STATUS_INSUFF_RESOURCES;
-		}
+	key = app_key_new();
 
-		if (!storage_app_key_add(net, net_idx, app_idx, new_key,
-								false)) {
-			appkey_key_free(key);
-			return MESH_STATUS_STORAGE_FAIL;
-		}
-
-		key->net_idx = net_idx;
-		key->app_idx = app_idx;
-		l_queue_push_tail(app_keys, key);
-	} else {
-		if (!set_key(key, app_idx, new_key, true))
-			return MESH_STATUS_INSUFF_RESOURCES;
-
-		if (!storage_app_key_add(net, net_idx, app_idx, new_key,
-								true))
-			return MESH_STATUS_STORAGE_FAIL;
+	if (!set_key(key, app_idx, new_key, false)) {
+		appkey_key_free(key);
+		return MESH_STATUS_INSUFF_RESOURCES;
 	}
+
+	if (!storage_app_key_add(net, net_idx, app_idx, new_key, false)) {
+		appkey_key_free(key);
+		return MESH_STATUS_STORAGE_FAIL;
+	}
+
+	key->net_idx = net_idx;
+	key->app_idx = app_idx;
+	l_queue_push_tail(app_keys, key);
 
 	l_queue_clear(key->replay_cache, l_free);
 

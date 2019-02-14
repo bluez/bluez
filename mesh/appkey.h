@@ -35,7 +35,9 @@ const uint8_t *appkey_get_key(struct mesh_net *net, uint16_t app_idx,
 							uint8_t *key_id);
 bool appkey_have_key(struct mesh_net *net, uint16_t app_idx);
 int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
-					const uint8_t *new_key, bool update);
+							const uint8_t *new_key);
+int appkey_key_update(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
+							const uint8_t *new_key);
 int appkey_key_delete(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx);
 void appkey_delete_bound_keys(struct mesh_net *net, uint16_t net_idx);
 uint8_t appkey_list(struct mesh_net *net, uint16_t net_idx, uint8_t *buf,

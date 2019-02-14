@@ -925,8 +925,12 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 
 		net_idx = l_get_le16(pkt) & 0xfff;
 		app_idx = l_get_le16(pkt + 1) >> 4;
-		b_res = appkey_key_add(net, net_idx, app_idx, pkt + 3,
-						opcode == OP_APPKEY_UPDATE);
+
+		if (opcode == OP_APPKEY_ADD)
+			b_res = appkey_key_add(net, net_idx, app_idx, pkt + 3);
+		else
+			b_res = appkey_key_update(net, net_idx, app_idx,
+								pkt + 3);
 
 		l_debug("Add/Update AppKey %s: Net_Idx %3.3x, App_Idx %3.3x",
 			(b_res == MESH_STATUS_SUCCESS) ? "success" : "fail",
