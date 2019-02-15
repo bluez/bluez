@@ -129,6 +129,15 @@ Properties	string Type
 			Timeout of the advertisement in seconds. This defines
 			the lifetime of the advertisement.
 
+		string SecondaryChannel [Experimental]
+
+			Secondary channel to be used. Primary channel is
+			always set to "1M" except when "Coded" is set.
+
+			Possible value: "1M" (default)
+					"2M"
+					"Coded"
+
 LE Advertising Manager hierarchy
 ================================
 
@@ -190,3 +199,13 @@ Properties	byte ActiveInstances
 			Possible values: "tx-power"
 					 "appearance"
 					 "local-name"
+
+		array{string} SupportedSecondaryChannels [Experimental]
+
+			List of supported Secondary channels. Secondary
+			channels can be used to advertise with the
+			corresponding PHY.
+
+			Possible values: "1M"
+					 "2M"
+					 "Coded"
