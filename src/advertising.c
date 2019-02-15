@@ -1234,10 +1234,58 @@ static gboolean get_supported_includes(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static struct adv_secondary {
+	int flag;
+	const char *name;
+} secondary[] = {
+	{ MGMT_ADV_FLAG_SEC_1M, "1M" },
+	{ MGMT_ADV_FLAG_SEC_2M, "2M" },
+	{ MGMT_ADV_FLAG_SEC_CODED, "Codec" },
+	{ },
+};
+
+static void append_secondary(struct btd_adv_manager *manager,
+						DBusMessageIter *iter)
+{
+	struct adv_secondary *sec;
+
+	for (sec = secondary; sec && sec->name; sec++) {
+		if (manager->supported_flags & sec->flag)
+			dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+								&sec->name);
+	}
+}
+
+static gboolean secondary_exits(const GDBusPropertyTable *property, void *data)
+{
+	struct btd_adv_manager *manager = data;
+
+	/* 1M PHY shall always be supported if ext_adv is supported */
+	return manager->supported_flags & MGMT_ADV_FLAG_SEC_1M;
+}
+
+static gboolean get_supported_secondary(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_adv_manager *manager = data;
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &entry);
+
+	append_secondary(manager, &entry);
+
+	dbus_message_iter_close_container(iter, &entry);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable properties[] = {
 	{ "ActiveInstances", "y", get_active_instances, NULL, NULL },
 	{ "SupportedInstances", "y", get_instances, NULL, NULL },
 	{ "SupportedIncludes", "as", get_supported_includes, NULL, NULL },
+	{ "SupportedSecondaryChannels", "as", get_supported_secondary, NULL,
+							secondary_exits },
 	{ }
 };
 
