@@ -2479,6 +2479,16 @@ static void cmd_advertise_timeout(int argc, char *argv[])
 	ad_advertise_timeout(dbus_conn, &value);
 }
 
+static void cmd_advertise_secondary(int argc, char *argv[])
+{
+	if (argc < 2) {
+		ad_advertise_secondary(dbus_conn, NULL);
+		return;
+	}
+
+	ad_advertise_secondary(dbus_conn, argv[1]);
+}
+
 static void ad_clear_uuids(void)
 {
 	ad_disable_uuids(dbus_conn);
@@ -2530,6 +2540,13 @@ static void ad_clear_timeout(void)
 	ad_advertise_timeout(dbus_conn, &value);
 }
 
+static void ad_clear_secondary(void)
+{
+	const char *value = "";
+
+	ad_advertise_secondary(dbus_conn, value);
+}
+
 static const struct clear_entry ad_clear[] = {
 	{ "uuids",		ad_clear_uuids },
 	{ "service",		ad_clear_service },
@@ -2540,6 +2557,7 @@ static const struct clear_entry ad_clear[] = {
 	{ "appearance",		ad_clear_appearance },
 	{ "duration",		ad_clear_duration },
 	{ "timeout",		ad_clear_timeout },
+	{ "secondary",		ad_clear_secondary },
 	{}
 };
 
@@ -2583,6 +2601,8 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set/Get advertise duration" },
 	{ "timeout", "[seconds]", cmd_advertise_timeout,
 			"Set/Get advertise timeout" },
+	{ "secondary", "[1M/2M/Coded]", cmd_advertise_secondary,
+			"Set/Get advertise secondary channel" },
 	{ "clear", "[uuids/service/manufacturer/config-name...]", cmd_ad_clear,
 			"Clear advertise config" },
 	{ } },
