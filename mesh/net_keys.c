@@ -285,7 +285,7 @@ bool net_key_snb_check(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 	}
 
 	if (cmac != cmac_check) {
-		l_error("cmac compare failed %16.16lx != %16.16lx",
+		l_error("cmac compare failed 0x%16" PRIx64 " != 0x%16" PRIx64,
 						cmac, cmac_check);
 		return false;
 	}
