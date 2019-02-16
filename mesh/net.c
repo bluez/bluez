@@ -1288,7 +1288,7 @@ static struct mesh_friend_msg *mesh_friend_msg_new(uint8_t seg_max)
 					sizeof(struct mesh_friend_seg_one);
 
 		size += (seg_max + 1) * sizeof(struct mesh_friend_seg_12);
-		frnd_msg =  (struct mesh_friend_msg *) l_new(uint8_t, size);
+		frnd_msg = l_malloc(size);
 	} else
 		frnd_msg = l_new(struct mesh_friend_msg, 1);
 
