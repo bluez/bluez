@@ -29,7 +29,7 @@
 #include "mesh/mesh-defs.h"
 
 #include "mesh/mesh.h"
-#include "mesh/net_keys.h"
+#include "mesh/net-keys.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
 #include "mesh/crypto.h"

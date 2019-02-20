@@ -25,7 +25,7 @@
 #include <ell/ell.h>
 
 #include "mesh/crypto.h"
-#include "mesh/net_keys.h"
+#include "mesh/net-keys.h"
 
 #define BEACON_TYPE_SNB		0x01
 #define KEY_REFRESH		0x01

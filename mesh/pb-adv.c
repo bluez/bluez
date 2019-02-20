@@ -39,7 +39,7 @@
 #include "src/shared/ecc.h"
 
 #include "mesh/util.h"
-#include "mesh/net_keys.h"
+#include "mesh/net-keys.h"
 #include "mesh/crypto.h"
 #include "mesh/net.h"
 #include "mesh/mesh-io.h"

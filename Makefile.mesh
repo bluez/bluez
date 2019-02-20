@@ -5,7 +5,7 @@ dbus_DATA += mesh/bluetooth-mesh.conf
 endif
 
 mesh_sources = mesh/mesh.h mesh/mesh.c \
-				mesh/net_keys.h mesh/net_keys.c \
+				mesh/net-keys.h mesh/net-keys.c \
 				mesh/mesh-io.h mesh/mesh-io.c \
 				mesh/error.h mesh/mesh-io-api.h \
 				mesh/mesh-io-generic.h \

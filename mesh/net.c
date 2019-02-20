@@ -32,7 +32,7 @@
 #include "mesh/util.h"
 
 #include "mesh/crypto.h"
-#include "mesh/net_keys.h"
+#include "mesh/net-keys.h"
 #include "mesh/mesh.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
