@@ -839,7 +839,6 @@ static void cmd_list(int argc, char *argv[])
 static void cmd_show(int argc, char *argv[])
 {
 	struct adapter *adapter;
-	GDBusProxy *proxy;
 	DBusMessageIter iter;
 	const char *address;
 
@@ -847,7 +846,7 @@ static void cmd_show(int argc, char *argv[])
 		if (check_default_ctrl() == FALSE)
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-		proxy = default_ctrl->proxy;
+		adapter = default_ctrl;
 	} else {
 		adapter = find_ctrl_by_address(ctrl_list, argv[1]);
 		if (!adapter) {
@@ -855,15 +854,14 @@ static void cmd_show(int argc, char *argv[])
 								argv[1]);
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
-		proxy = adapter->proxy;
 	}
 
-	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
+	if (!g_dbus_proxy_get_property(adapter->proxy, "Address", &iter))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	dbus_message_iter_get_basic(&iter, &address);
 
-	if (g_dbus_proxy_get_property(proxy, "AddressType", &iter) == TRUE) {
+	if (g_dbus_proxy_get_property(adapter->proxy, "AddressType", &iter)) {
 		const char *type;
 
 		dbus_message_iter_get_basic(&iter, &type);
@@ -873,16 +871,24 @@ static void cmd_show(int argc, char *argv[])
 		bt_shell_printf("Controller %s\n", address);
 	}
 
-	print_property(proxy, "Name");
-	print_property(proxy, "Alias");
-	print_property(proxy, "Class");
-	print_property(proxy, "Powered");
-	print_property(proxy, "Discoverable");
-	print_property(proxy, "DiscoverableTimeout");
-	print_property(proxy, "Pairable");
-	print_uuids(proxy);
-	print_property(proxy, "Modalias");
-	print_property(proxy, "Discovering");
+	print_property(adapter->proxy, "Name");
+	print_property(adapter->proxy, "Alias");
+	print_property(adapter->proxy, "Class");
+	print_property(adapter->proxy, "Powered");
+	print_property(adapter->proxy, "Discoverable");
+	print_property(adapter->proxy, "DiscoverableTimeout");
+	print_property(adapter->proxy, "Pairable");
+	print_uuids(adapter->proxy);
+	print_property(adapter->proxy, "Modalias");
+	print_property(adapter->proxy, "Discovering");
+
+	if (adapter->ad_proxy) {
+		bt_shell_printf("Advertising Features:\n");
+		print_property(adapter->ad_proxy, "ActiveInstances");
+		print_property(adapter->ad_proxy, "SupportedInstances");
+		print_property(adapter->ad_proxy, "SupportedIncludes");
+		print_property(adapter->ad_proxy, "SupportedSecondaryChannels");
+	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
