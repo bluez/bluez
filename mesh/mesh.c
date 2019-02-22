@@ -362,10 +362,8 @@ static void free_pending_join_call(bool failed)
 
 	mesh_agent_remove(join_pending->agent);
 
-	if (failed) {
-		storage_remove_node_config(join_pending->node);
-		node_free(join_pending->node);
-	}
+	if (failed)
+		node_remove(join_pending->node);
 
 	l_free(join_pending);
 	join_pending = NULL;
@@ -703,13 +701,13 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 static void setup_network_interface(struct l_dbus_interface *iface)
 {
 	l_dbus_interface_method(iface, "Join", 0, join_network_call, "",
-				"oay", "app", "uuid");
+							"oay", "app", "uuid");
 
 	l_dbus_interface_method(iface, "Cancel", 0, cancel_join_call, "", "");
 
 	l_dbus_interface_method(iface, "Attach", 0, attach_call,
-				"oa(ya(qa{sv}))", "ot", "node", "configuration",
-				"app", "token");
+					"oa(ya(qa{sv}))", "ot", "node",
+					"configuration", "app", "token");
 
 	/* TODO: Implement Leave method */
 }
@@ -720,7 +718,7 @@ bool mesh_dbus_init(struct l_dbus *dbus)
 						setup_network_interface,
 						NULL, false)) {
 		l_info("Unable to register %s interface",
-			       MESH_NETWORK_INTERFACE);
+							MESH_NETWORK_INTERFACE);
 		return false;
 	}
 

@@ -71,7 +71,7 @@ static bool read_node_cb(struct mesh_db_node *db_node, void *user_data)
 	uint8_t *uuid;
 
 	if (!node_init_from_storage(node, db_node)) {
-		node_free(node);
+		node_remove(node);
 		return false;
 	}
 
@@ -205,16 +205,16 @@ static bool parse_config(char *in_file, char *out_file, uint16_t node_id)
 
 	node = node_new();
 
-	node_jconfig_set(node, jnode);
-	node_cfg_file_set(node, out_file);
-	node_id_set(node, node_id);
-
 	result = parse_node(node, jnode);
 
 	if (!result) {
 		json_object_put(jnode);
-		node_free(node);
+		node_remove(node);
 	}
+
+	node_jconfig_set(node, jnode);
+	node_cfg_file_set(node, out_file);
+	node_id_set(node, node_id);
 
 done:
 	close(fd);

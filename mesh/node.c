@@ -133,6 +133,7 @@ static bool match_token(const void *a, const void *b)
 	const struct mesh_node *node = a;
 	const uint64_t *token = b;
 	const uint64_t tmp = l_get_u64(node->dev_key);
+
 	return *token == tmp;
 }
 
@@ -166,6 +167,11 @@ struct mesh_node *node_find_by_addr(uint16_t addr)
 struct mesh_node *node_find_by_uuid(uint8_t uuid[16])
 {
 	return l_queue_find(nodes, match_device_uuid, uuid);
+}
+
+struct mesh_node *node_find_by_token(uint64_t token)
+{
+	return l_queue_find(nodes, match_token, (void *) &token);
 }
 
 uint8_t *node_uuid_get(struct mesh_node *node)
@@ -212,7 +218,7 @@ static void free_node_resources(void *data)
 	struct mesh_node *node = data;
 
 	/* Unregister io callbacks */
-	if(node->net)
+	if (node->net)
 		mesh_net_detach(node->net);
 	mesh_net_free(node->net);
 
@@ -220,6 +226,9 @@ static void free_node_resources(void *data)
 	l_free(node->comp);
 	l_free(node->app_path);
 	l_free(node->owner);
+
+	if (node->disc_watch)
+		l_dbus_remove_watch(dbus_get_bus(), node->disc_watch);
 
 	if (node->path)
 		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
@@ -229,12 +238,20 @@ static void free_node_resources(void *data)
 	l_free(node);
 }
 
-void node_free(struct mesh_node *node)
+/*
+ * This function is called to free resources and remove the
+ * configuration files for the specified node.
+ */
+void node_remove(struct mesh_node *node)
 {
 	if (!node)
 		return;
 
 	l_queue_remove(nodes, node);
+
+	if (node->cfg_file)
+		storage_remove_node_config(node);
+
 	free_node_resources(node);
 }
 
@@ -364,7 +381,7 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 	return true;
 }
 
-void node_cleanup(void *data)
+static void cleanup_node(void *data)
 {
 	struct mesh_node *node = data;
 	struct mesh_net *net = node->net;
@@ -379,15 +396,16 @@ void node_cleanup(void *data)
 			l_info("Saved final config to %s", node->cfg_file);
 	}
 
-	if (node->disc_watch)
-		l_dbus_remove_watch(dbus_get_bus(), node->disc_watch);
-
 	free_node_resources(node);
 }
 
+/*
+ * This function is called to free resources and write the current
+ * sequence numbers to the configuration file for each known node.
+ */
 void node_cleanup_all(void)
 {
-	l_queue_destroy(nodes, node_cleanup);
+	l_queue_destroy(nodes, cleanup_node);
 	l_dbus_unregister_interface(dbus_get_bus(), MESH_NODE_INTERFACE);
 }
 
@@ -1103,9 +1121,7 @@ int node_attach(const char *app_path, const char *sender, uint64_t token,
 	struct attach_obj_request *req;
 	struct mesh_node *node;
 
-	l_debug("");
-
-	node = l_queue_find(nodes, match_token, &token);
+	node = l_queue_find(nodes, match_token, (void *) &token);
 	if (!node)
 		return MESH_ERROR_NOT_FOUND;
 

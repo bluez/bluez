@@ -34,13 +34,14 @@ typedef void (*node_join_ready_func_t) (struct mesh_node *node,
 						struct mesh_agent *agent);
 
 struct mesh_node *node_new(void);
-void node_free(struct mesh_node *node);
+void node_remove(struct mesh_node *node);
 void node_join(const char *app_path, const char *sender, const uint8_t *uuid,
 						node_join_ready_func_t cb);
 uint8_t *node_uuid_get(struct mesh_node *node);
 struct mesh_net *node_get_net(struct mesh_node *node);
 struct mesh_node *node_find_by_addr(uint16_t addr);
 struct mesh_node *node_find_by_uuid(uint8_t uuid[16]);
+struct mesh_node *node_find_by_token(uint64_t token);
 bool node_is_provisioned(struct mesh_node *node);
 bool node_app_key_delete(struct mesh_net *net, uint16_t addr,
 				uint16_t net_idx, uint16_t idx);
@@ -87,7 +88,6 @@ int node_attach(const char *app_path, const char *sender, uint64_t token,
 void node_build_attach_reply(struct l_dbus_message *reply, uint64_t token);
 void node_id_set(struct mesh_node *node, uint16_t node_id);
 bool node_dbus_init(struct l_dbus *bus);
-void node_cleanup(void *node);
 void node_cleanup_all(void);
 void node_jconfig_set(struct mesh_node *node, void *jconfig);
 void *node_jconfig_get(struct mesh_node *node);
