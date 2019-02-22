@@ -23,7 +23,7 @@ struct mesh_node;
 bool storage_load_nodes(const char *dir);
 bool storage_create_node_config(struct mesh_node *node, void *db_node);
 void storage_remove_node_config(struct mesh_node *node);
-bool storage_save_config(struct mesh_node *node, bool no_wait,
+void storage_save_config(struct mesh_node *node, bool no_wait,
 					mesh_status_func_t cb, void *user_data);
 bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t id,
 						uint16_t app_idx, bool unbind);

@@ -341,14 +341,14 @@ bool storage_write_sequence_number(struct mesh_net *net, uint32_t seq)
 	struct mesh_node *node = mesh_net_node_get(net);
 	json_object *jnode = node_jconfig_get(node);
 	bool result;
-	l_debug("");
+
 	result = mesh_db_write_int(jnode, "sequenceNumber", seq);
 	if (!result)
 		return false;
 
-	result = storage_save_config(node, false, NULL, NULL);
+	storage_save_config(node, false, NULL, NULL);
 
-	return result;
+	return true;
 }
 
 static bool save_config(json_object *jnode, const char *config_name)
@@ -408,15 +408,12 @@ static void idle_save_config(void *user_data)
 	l_free(info);
 }
 
-bool storage_save_config(struct mesh_node *node, bool no_wait,
+void storage_save_config(struct mesh_node *node, bool no_wait,
 					mesh_status_func_t cb, void *user_data)
 {
 	struct write_info *info;
 
 	info = l_new(struct write_info, 1);
-	if (!info)
-		return false;
-	l_debug("");
 	info->jnode = node_jconfig_get(node);
 	info->config_name = node_cfg_file_get(node);
 	info->cb = cb;
@@ -426,8 +423,6 @@ bool storage_save_config(struct mesh_node *node, bool no_wait,
 		idle_save_config(info);
 	else
 		l_idle_oneshot(idle_save_config, info, NULL);
-
-	return true;
 }
 
 static int create_dir(const char *dirname)
@@ -543,7 +538,7 @@ bool storage_create_node_config(struct mesh_node *node, void *data)
 
 	do {
 		l_getrandom(&node_id, 2);
-		if (!l_queue_find(node_ids, simple_match,
+		if (node_id && !l_queue_find(node_ids, simple_match,
 						L_UINT_TO_PTR(node_id)))
 			break;
 	} while (++num_tries < 10);
@@ -571,6 +566,8 @@ bool storage_create_node_config(struct mesh_node *node, void *data)
 	node_jconfig_set(node, jnode);
 	node_cfg_file_set(node, filename);
 
+	l_queue_push_tail(node_ids, L_UINT_TO_PTR(node_id));
+
 	return true;
 fail:
 	json_object_put(jnode);
@@ -583,15 +580,20 @@ void storage_remove_node_config(struct mesh_node *node)
 	char *cfgname;
 	struct json_object *jnode;
 	const char *dir_name;
+	uint16_t node_id;
+	size_t len;
+	char *bak;
 
 	if (!node)
 		return;
 
+	/* Free the node config json object */
 	jnode = node_jconfig_get(node);
 	if (jnode)
 		json_object_put(jnode);
 	node_jconfig_set(node, NULL);
 
+	/* Delete node configuration file */
 	cfgname = (char *) node_cfg_file_get(node);
 	if (!cfgname)
 		return;
@@ -599,6 +601,15 @@ void storage_remove_node_config(struct mesh_node *node)
 	l_debug("Delete node config file %s", cfgname);
 	remove(cfgname);
 
+	/* Delete the backup file */
+	len = strlen(cfgname) + 5;
+	bak = l_malloc(len);
+	strncpy(bak, cfgname, len);
+	bak = strncat(bak, ".bak", 5);
+	remove(bak);
+	l_free(bak);
+
+	/* Delete the node directory */
 	dir_name = dirname(cfgname);
 
 	l_debug("Delete directory %s", dir_name);
@@ -606,4 +617,7 @@ void storage_remove_node_config(struct mesh_node *node)
 
 	l_free(cfgname);
 	node_cfg_file_set(node, NULL);
+
+	node_id = node_id_get(node);
+	l_queue_remove(node_ids, L_UINT_TO_PTR(node_id));
 }

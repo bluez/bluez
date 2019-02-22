@@ -392,8 +392,7 @@ static void cleanup_node(void *data)
 		/* Preserve the last sequence number */
 		storage_write_sequence_number(net, mesh_net_get_seq_num(net));
 
-		if (storage_save_config(node, true, NULL, NULL))
-			l_info("Saved final config to %s", node->cfg_file);
+		storage_save_config(node, true, NULL, NULL);
 	}
 
 	free_node_resources(node);
@@ -956,6 +955,14 @@ void node_id_set(struct mesh_node *node, uint16_t id)
 {
 	if (node)
 		node->id = id;
+}
+
+uint16_t node_id_get(struct mesh_node *node)
+{
+	if (!node)
+		return 0;
+
+	return node->id;
 }
 
 static void attach_io(void *a, void *b)
@@ -1757,8 +1764,7 @@ bool node_add_pending_local(struct mesh_node *node, void *prov_node_info,
 			return false;
 	}
 
-	if (!storage_save_config(node, true, NULL, NULL))
-		return false;
+	storage_save_config(node, true, NULL, NULL);
 
 	/* Initialize configuration server model */
 	mesh_config_srv_init(node, PRIMARY_ELE_IDX);

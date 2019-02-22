@@ -87,6 +87,7 @@ int node_attach(const char *app_path, const char *sender, uint64_t token,
 						node_attach_ready_func_t cb);
 void node_build_attach_reply(struct l_dbus_message *reply, uint64_t token);
 void node_id_set(struct mesh_node *node, uint16_t node_id);
+uint16_t node_id_get(struct mesh_node *node);
 bool node_dbus_init(struct l_dbus *bus);
 void node_cleanup_all(void);
 void node_jconfig_set(struct mesh_node *node, void *jconfig);
