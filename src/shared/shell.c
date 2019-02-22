@@ -66,6 +66,12 @@ struct bt_shell_env {
 
 static char *cmplt = "help";
 
+struct bt_shell_prompt_input {
+	char *str;
+	bt_shell_prompt_input_func func;
+	void *user_data;
+};
+
 static struct {
 	bool init;
 	char *name;
@@ -80,6 +86,8 @@ static struct {
 	bool saved_prompt;
 	bt_shell_prompt_input_func saved_func;
 	void *saved_user_data;
+
+	struct queue *prompts;
 
 	const struct bt_shell_menu *menu;
 	const struct bt_shell_menu *main;
@@ -560,6 +568,17 @@ void bt_shell_usage()
 					data.exec->arg ? data.exec->arg : "");
 }
 
+static void prompt_input(const char *str, bt_shell_prompt_input_func func,
+							void *user_data)
+{
+	data.saved_prompt = true;
+	data.saved_func = func;
+	data.saved_user_data = user_data;
+
+	rl_save_prompt();
+	bt_shell_set_prompt(str);
+}
+
 void bt_shell_prompt_input(const char *label, const char *msg,
 			bt_shell_prompt_input_func func, void *user_data)
 {
@@ -568,25 +587,43 @@ void bt_shell_prompt_input(const char *label, const char *msg,
 	if (!data.init || data.mode)
 		return;
 
-	/* Normal use should not prompt for user input to the value a second
-	 * time before it releases the prompt, but we take a safe action. */
-	if (data.saved_prompt)
+	if (data.saved_prompt) {
+		struct bt_shell_prompt_input *prompt;
+
+		prompt = new0(struct bt_shell_prompt_input, 1);
+
+		if (asprintf(&prompt->str, "[%s] %s ", label, msg) < 0) {
+			free(prompt);
+			return;
+		}
+
+		prompt->func = func;
+		prompt->user_data = user_data;
+
+		queue_push_tail(data.prompts, prompt);
+
 		return;
+	}
 
 	if (asprintf(&str, "[%s] %s ", label, msg) < 0)
 		return;
 
-	data.saved_prompt = true;
-	data.saved_func = func;
-	data.saved_user_data = user_data;
+	prompt_input(str, func, user_data);
 
-	rl_save_prompt();
-	bt_shell_set_prompt(str);
 	free(str);
+}
+
+static void prompt_free(void *data)
+{
+	struct bt_shell_prompt_input *prompt = data;
+
+	free(prompt->str);
+	free(prompt);
 }
 
 int bt_shell_release_prompt(const char *input)
 {
+	struct bt_shell_prompt_input *prompt;
 	bt_shell_prompt_input_func func;
 	void *user_data;
 
@@ -600,10 +637,19 @@ int bt_shell_release_prompt(const char *input)
 	func = data.saved_func;
 	user_data = data.saved_user_data;
 
+	prompt = queue_pop_head(data.prompts);
+	if (prompt)
+		data.saved_prompt = true;
+
 	data.saved_func = NULL;
 	data.saved_user_data = NULL;
 
 	func(input, user_data);
+
+	if (prompt) {
+		prompt_input(prompt->str, prompt->func, prompt->user_data);
+		prompt_free(prompt);
+	}
 
 	return 0;
 }
@@ -1070,6 +1116,7 @@ done:
 	rl_init();
 
 	data.init = true;
+	data.prompts = queue_new();
 }
 
 static void rl_cleanup(void)
@@ -1117,6 +1164,9 @@ void bt_shell_cleanup(void)
 		bt_log_close();
 
 	rl_cleanup();
+
+	queue_destroy(data.prompts, prompt_free);
+	data.prompts = NULL;
 
 	data.init = false;
 	free(data.name);
