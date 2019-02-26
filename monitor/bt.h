@@ -143,6 +143,12 @@ struct bt_ll_phy_update_ind {
 	uint16_t instant;
 } __attribute__ ((packed));
 
+#define BT_LL_MIN_USED_CHANNELS	0x19
+struct bt_ll_min_used_channels {
+	uint8_t  phys;
+	uint8_t  min_channels;
+} __attribute__ ((packed));
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1

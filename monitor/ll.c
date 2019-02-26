@@ -535,6 +535,21 @@ static void phy_update_ind(const void *data, uint8_t size)
 	print_field("Instant: 0x%4.4x", pdu->instant);
 }
 
+static void min_used_channels(const void *data, uint8_t size)
+{
+	const struct bt_ll_min_used_channels *pdu = data;
+	uint8_t mask;
+
+	print_field("PHYS: 0x%2.2x", pdu->phys);
+
+	mask = print_bitfield(2, pdu->phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("MinUsedChannels: 0x%2.2x", pdu->min_channels);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -569,7 +584,7 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x16, "LL_PHY_REQ",               phy_req_rsp,        2, true },
 	{ 0x17, "LL_PHY_RSP",               phy_req_rsp,        2, true },
 	{ 0x18, "LL_PHY_UPDATE_IND",        phy_update_ind,     4, true },
-	{ 0x19, "LL_MIN_USED_CHANNELS_IND", NULL,               2, true },
+	{ 0x19, "LL_MIN_USED_CHANNELS_IND", min_used_channels,  2, true },
 	{ }
 };
 
