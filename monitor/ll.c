@@ -476,6 +476,16 @@ static void reject_ind_ext(const void *data, uint8_t size)
 	packet_print_error("Error code", pdu->error);
 }
 
+static void length_req_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_length *pdu = data;
+
+	print_field("MaxRxOctets: %u", pdu->rx_len);
+	print_field("MaxRxTime: %u", pdu->rx_time);
+	print_field("MaxTxOctets: %u", pdu->tx_len);
+	print_field("MaxtxTime: %u", pdu->tx_time);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -505,8 +515,8 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x11, "LL_REJECT_IND_EXT",        reject_ind_ext,     2, true },
 	{ 0x12, "LL_PING_REQ",              null_pdu,           0, true },
 	{ 0x13, "LL_PING_RSP",              null_pdu,           0, true },
-	{ 0x14, "LL_LENGTH_REQ",            NULL,               8, true },
-	{ 0x15, "LL_LENGTH_RSP",            NULL,               8, true },
+	{ 0x14, "LL_LENGTH_REQ",            length_req_rsp,     8, true },
+	{ 0x15, "LL_LENGTH_RSP",            length_req_rsp,     8, true },
 	{ 0x16, "LL_PHY_REQ",               NULL,               2, true },
 	{ 0x17, "LL_PHY_RSP",               NULL,               2, true },
 	{ 0x18, "LL_PHY_UPDATE_IND",        NULL,               4, true },

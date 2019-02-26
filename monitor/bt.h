@@ -119,6 +119,12 @@ struct bt_ll_reject_ind_ext {
 #define BT_LL_PING_RSP		0x13
 
 #define BT_LL_LENGTH_REQ	0x14
+struct bt_ll_length {
+	uint16_t rx_len;
+	uint16_t rx_time;
+	uint16_t tx_len;
+	uint16_t tx_time;
+} __attribute__ ((packed));
 
 #define BT_LL_LENGTH_RSP	0x15
 
