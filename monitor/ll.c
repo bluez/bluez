@@ -39,6 +39,7 @@
 
 #define COLOR_OPCODE		COLOR_MAGENTA
 #define COLOR_OPCODE_UNKNOWN	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_OPTIONS_BIT COLOR_WHITE_BG
 
 #define MAX_CHANNEL 16
 
@@ -486,6 +487,32 @@ static void length_req_rsp(const void *data, uint8_t size)
 	print_field("MaxtxTime: %u", pdu->tx_time);
 }
 
+static const struct bitfield_data le_phys[] = {
+	{  0, "LE 1M"	},
+	{  1, "LE 2M"	},
+	{  2, "LE Coded"},
+	{ }
+};
+
+static void phy_req_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_phy *pdu = data;
+	uint8_t mask;
+
+	print_field("RX PHYs: 0x%2.2x", pdu->rx_phys);
+
+	mask = print_bitfield(2, pdu->rx_phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+	print_field("TX PHYs: 0x%2.2x", pdu->tx_phys);
+
+	mask = print_bitfield(2, pdu->tx_phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -517,8 +544,8 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x13, "LL_PING_RSP",              null_pdu,           0, true },
 	{ 0x14, "LL_LENGTH_REQ",            length_req_rsp,     8, true },
 	{ 0x15, "LL_LENGTH_RSP",            length_req_rsp,     8, true },
-	{ 0x16, "LL_PHY_REQ",               NULL,               2, true },
-	{ 0x17, "LL_PHY_RSP",               NULL,               2, true },
+	{ 0x16, "LL_PHY_REQ",               phy_req_rsp,        2, true },
+	{ 0x17, "LL_PHY_RSP",               phy_req_rsp,        2, true },
 	{ 0x18, "LL_PHY_UPDATE_IND",        NULL,               4, true },
 	{ 0x19, "LL_MIN_USED_CHANNELS_IND", NULL,               2, true },
 	{ }

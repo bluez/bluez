@@ -128,6 +128,14 @@ struct bt_ll_length {
 
 #define BT_LL_LENGTH_RSP	0x15
 
+#define BT_LL_PHY_REQ		0x16
+struct bt_ll_phy {
+	uint8_t  tx_phys;
+	uint8_t  rx_phys;
+} __attribute__ ((packed));
+
+#define BT_LL_PHY_RSP		0x17
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1
