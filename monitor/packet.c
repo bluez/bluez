@@ -1115,7 +1115,7 @@ static void print_power_level(int8_t level, const char *type)
 {
 	print_field("TX power%s%s%s: %d dbm (0x%2.2x)",
 		type ? " (" : "", type ? type : "", type ? ")" : "",
-								level, level);
+							level, (uint8_t) level);
 }
 
 static void print_host_flow_control(uint8_t enable)
@@ -6944,7 +6944,10 @@ static void le_set_ext_adv_params_cmd(const void *data, uint8_t size)
 	print_peer_addr_type("Peer address type", cmd->peer_addr_type);
 	print_addr("Peer address", cmd->peer_addr, cmd->peer_addr_type);
 	print_adv_filter_policy("Filter policy", cmd->filter_policy);
-	print_power_level(cmd->tx_power, NULL);
+	if (cmd->tx_power == 0xff)
+		print_field("TX power: Host has no preference (0xff)");
+	else
+		print_power_level(cmd->tx_power, NULL);
 
 	switch (cmd->primary_phy) {
 	case 0x01:
