@@ -149,6 +149,13 @@ struct bt_ll_min_used_channels {
 	uint8_t  min_channels;
 } __attribute__ ((packed));
 
+#define BT_LL_CTE_REQ		0x1a
+struct bt_ll_cte_req {
+	uint8_t  cte;
+} __attribute__ ((packed));
+
+#define BT_LL_CTE_RSP		0x1b
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1

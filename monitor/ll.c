@@ -550,6 +550,26 @@ static void min_used_channels(const void *data, uint8_t size)
 	print_field("MinUsedChannels: 0x%2.2x", pdu->min_channels);
 }
 
+static void cte_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_cte_req *pdu = data;
+
+	print_field("MinCTELenReq: 0x%2.2x", pdu->cte & 0xf8);
+	print_field("CTETypeReq: 0x%2.2x", pdu->cte & 0x03);
+
+	switch (pdu->cte & 0x03) {
+	case 0x00:
+		print_field("  AoA Constant Tone Extension");
+		break;
+	case 0x01:
+		print_field("  AoD Constant Tone Extension with 1 μs slots");
+		break;
+	case 0x02:
+		print_field("  AoD Constant Tone Extension with 2 μs slots");
+		break;
+	}
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -585,6 +605,8 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x17, "LL_PHY_RSP",               phy_req_rsp,        2, true },
 	{ 0x18, "LL_PHY_UPDATE_IND",        phy_update_ind,     4, true },
 	{ 0x19, "LL_MIN_USED_CHANNELS_IND", min_used_channels,  2, true },
+	{ 0x1a, "LL_CTE_REQ",               cte_req,            1, true },
+	{ 0x1b, "LL_CTE_RSP",               null_pdu,           0, true },
 	{ }
 };
 
