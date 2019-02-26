@@ -2959,7 +2959,7 @@ static void clone_chrc(struct GDBusProxy *proxy)
 	DBusMessageIter iter;
 	DBusMessageIter array;
 	const char *uuid;
-	char **flags;
+	char *flags[17];
 	int i;
 
 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
@@ -2970,20 +2970,15 @@ static void clone_chrc(struct GDBusProxy *proxy)
 	if (g_dbus_proxy_get_property(proxy, "Flags", &iter) == FALSE)
 		return;
 
-	flags = g_new0(char *, dbus_message_iter_get_element_count(&iter) + 1);
-
 	dbus_message_iter_recurse(&iter, &array);
 
 	for (i = 0; dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING;
 									i++) {
-		const char *flag;
-
-		dbus_message_iter_get_basic(&array, &flag);
-
-		flags[i] = g_strdup(flag);
-
+		dbus_message_iter_get_basic(&array, &flags[i]);
 		dbus_message_iter_next(&array);
 	}
+
+	flags[i] = NULL;
 
 	service = g_list_last(local_services)->data;
 
@@ -2993,7 +2988,7 @@ static void clone_chrc(struct GDBusProxy *proxy)
 	chrc->uuid = g_strdup(uuid);
 	chrc->path = g_strdup_printf("%s/chrc%u", service->path,
 					g_list_length(service->chrcs));
-	chrc->flags = flags;
+	chrc->flags = g_strdupv(flags);
 
 	if (g_dbus_register_interface(service->conn, chrc->path, CHRC_INTERFACE,
 					chrc_methods, NULL, chrc_properties,
