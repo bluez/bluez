@@ -136,6 +136,13 @@ struct bt_ll_phy {
 
 #define BT_LL_PHY_RSP		0x17
 
+#define BT_LL_PHY_UPDATE_IND	0x18
+struct bt_ll_phy_update_ind {
+	uint8_t  m_phy;
+	uint8_t  s_phy;
+	uint16_t instant;
+} __attribute__ ((packed));
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1

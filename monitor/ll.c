@@ -513,6 +513,28 @@ static void phy_req_rsp(const void *data, uint8_t size)
 							" (0x%2.2x)", mask);
 }
 
+static void phy_update_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_phy_update_ind *pdu = data;
+	uint8_t mask;
+
+	print_field("M_TO_S_PHY: 0x%2.2x", pdu->m_phy);
+
+	mask = print_bitfield(2, pdu->m_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("S_TO_M_PHY: 0x%2.2x", pdu->s_phy);
+
+	mask = print_bitfield(2, pdu->s_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("Instant: 0x%4.4x", pdu->instant);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -546,7 +568,7 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x15, "LL_LENGTH_RSP",            length_req_rsp,     8, true },
 	{ 0x16, "LL_PHY_REQ",               phy_req_rsp,        2, true },
 	{ 0x17, "LL_PHY_RSP",               phy_req_rsp,        2, true },
-	{ 0x18, "LL_PHY_UPDATE_IND",        NULL,               4, true },
+	{ 0x18, "LL_PHY_UPDATE_IND",        phy_update_ind,     4, true },
 	{ 0x19, "LL_MIN_USED_CHANNELS_IND", NULL,               2, true },
 	{ }
 };
