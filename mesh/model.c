@@ -414,15 +414,15 @@ static void cmplt(uint16_t remote, uint8_t status,
 
 	gettimeofday(&tx_end, NULL);
 	if (tx_end.tv_sec == tx_start.tv_sec) {
-		l_debug("Duration 0.%zu seconds",
+		l_debug("Duration 0.%6.6lu seconds",
 				tx_end.tv_usec - tx_start.tv_usec);
 	} else {
 		if (tx_start.tv_usec > tx_end.tv_usec)
-			l_debug("Duration %zu.%zu seconds",
+			l_debug("Duration %lu.%6.6lu seconds",
 				tx_end.tv_sec - tx_start.tv_sec - 1,
 				tx_end.tv_usec + 1000000 - tx_start.tv_usec);
 		else
-			l_debug("Duration %zu.%zu seconds",
+			l_debug("Duration %lu.%6.6lu seconds",
 					tx_end.tv_sec - tx_start.tv_sec,
 					tx_end.tv_usec - tx_start.tv_usec);
 	}
