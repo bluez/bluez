@@ -2436,6 +2436,18 @@ struct bt_hci_cmd_le_set_priv_mode {
 	uint8_t  priv_mode;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_RECEIVER_TEST_V3		0x204f
+struct bt_hci_cmd_le_receiver_test_v3 {
+	uint8_t  rx_chan;
+	uint8_t  phy;
+	uint8_t  mod_index;
+	uint8_t  cte_len;
+	uint8_t  cte_type;
+	uint8_t  duration;
+	uint8_t  num_antenna_id;
+	uint8_t  antenna_ids[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
