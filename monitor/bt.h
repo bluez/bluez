@@ -168,6 +168,13 @@ struct bt_ll_periodic_sync_ind {
 	uint16_t sync_counter;
 } __attribute__ ((packed));
 
+#define BT_LL_CLOCK_ACCURACY_REQ 0x1d
+struct bt_ll_clock_acc {
+	uint8_t  sca;
+} __attribute__ ((packed));
+
+#define BT_LL_CLOCK_ACCURACY_RSP 0x1e
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1

@@ -594,6 +594,13 @@ static void periodic_sync_ind(const void *data, uint8_t size)
 	print_field("syncConnEventCount: 0x%4.4x", pdu->sync_counter);
 }
 
+static void clock_acc_req_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_clock_acc *pdu = data;
+
+	print_field("SCA: 0x%2.2x", pdu->sca);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -632,6 +639,8 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x1a, "LL_CTE_REQ",               cte_req,            1, true },
 	{ 0x1b, "LL_CTE_RSP",               null_pdu,           0, true },
 	{ 0x1c, "LL_PERIODIC_SYNC_IND",     periodic_sync_ind, 34, true },
+	{ 0x1d, "LL_CLOCK_ACCURACY_REQ",    clock_acc_req_rsp,  1, true },
+	{ 0x1e, "LL_CLOCK_ACCURACY_RSP",    clock_acc_req_rsp,  1, true },
 	{ }
 };
 
