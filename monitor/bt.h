@@ -156,6 +156,18 @@ struct bt_ll_cte_req {
 
 #define BT_LL_CTE_RSP		0x1b
 
+#define BT_LL_PERIODIC_SYNC_IND	0x1c
+struct bt_ll_periodic_sync_ind {
+	uint16_t id;
+	uint8_t  info[18];
+	uint16_t event_count;
+	uint16_t last_counter;
+	uint8_t  adv_info;
+	uint8_t  phy;
+	uint8_t  adv_addr[6];
+	uint16_t sync_counter;
+} __attribute__ ((packed));
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1

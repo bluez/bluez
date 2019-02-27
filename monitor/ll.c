@@ -570,6 +570,30 @@ static void cte_req(const void *data, uint8_t size)
 	}
 }
 
+static void periodic_sync_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_periodic_sync_ind *pdu = data;
+	uint8_t mask;
+
+	print_field("ID: 0x%4.4x", pdu->id);
+	print_field("SyncInfo:");
+	packet_hexdump(pdu->info, sizeof(pdu->info));
+	print_field("connEventCount: 0x%4.4x", pdu->event_count);
+	print_field("lastPaEventCounter: 0x%4.4x", pdu->last_counter);
+	print_field("SID: 0x%2.2x", pdu->adv_info & 0xf0);
+	print_field("AType: %s", pdu->adv_info & 0x08 ? "random" : "public");
+	print_field("SCA: 0x%2.2x", pdu->adv_info & 0x07);
+	print_field("PHY: 0x%2.2x", pdu->phy);
+
+	mask = print_bitfield(2, pdu->phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	packet_print_addr("AdvA", pdu->adv_addr, pdu->adv_info & 0x08);
+	print_field("syncConnEventCount: 0x%4.4x", pdu->sync_counter);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -607,6 +631,7 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x19, "LL_MIN_USED_CHANNELS_IND", min_used_channels,  2, true },
 	{ 0x1a, "LL_CTE_REQ",               cte_req,            1, true },
 	{ 0x1b, "LL_CTE_RSP",               null_pdu,           0, true },
+	{ 0x1c, "LL_PERIODIC_SYNC_IND",     periodic_sync_ind, 34, true },
 	{ }
 };
 
