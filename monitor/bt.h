@@ -2448,6 +2448,19 @@ struct bt_hci_cmd_le_receiver_test_v3 {
 	uint8_t  antenna_ids[0];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_TX_TEST_V3		0x2050
+struct bt_hci_cmd_le_tx_test_v3 {
+	uint8_t  chan;
+	uint8_t  data_len;
+	uint8_t  payload;
+	uint8_t  phy;
+	uint8_t  cte_len;
+	uint8_t  cte_type;
+	uint8_t  duration;
+	uint8_t  num_antenna_id;
+	uint8_t  antenna_ids[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
