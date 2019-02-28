@@ -1,4 +1,3 @@
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 BlueZ D-Bus Mesh API description
 ********************************
 
@@ -12,16 +11,16 @@ Methods:
 	void Join(object app_defined_root, array{byte}[16] uuid)
 
 		This is the first method that an application has to call to
-		become a provisioned node on a mesh network.  The call will
+		become a provisioned node on a mesh network. The call will
 		initiate broadcasting of Unprovisioned Device Beacon.
 
 		The app_defined_root parameter is a D-Bus object root path of
 		the application that implements org.bluez.mesh.Application1
 		interface. The application represents a node where child mesh
 		elements have their own objects that implement
-		org.bluez.mesh.Element1 interface.  The application hierarchy
+		org.bluez.mesh.Element1 interface. The application hierarchy
 		also contains a provision agent object that implements
-		org.bluez.mesh.ProvisionAgent1 interface.  The standard
+		org.bluez.mesh.ProvisionAgent1 interface. The standard
 		DBus.ObjectManager interface must be available on the
 		app_defined_root path.
 
@@ -34,8 +33,8 @@ Methods:
 		Cancels an outstanding provisioning request initiated by Join()
 		method.
 
-	(object node, array{byte, array{(uint16, dict}} configuration)
-				Attach(object app_defined_root, uint64 token)
+	object node, array{byte, array{(uint16, dict)}} configuration
+			Attach(object app_defined_root, uint64 token)
 
 		This is the first method that an application must call to get
 		access to mesh node functionalities.
@@ -58,13 +57,13 @@ Methods:
 		(see Mesh Node Hierarchy section) and current configuration
 		settings. The return value of configuration parameter is an
 		array, where each entry is a structure that contains element
-		configuration.  The element configuration structure is organized
+		configuration. The element configuration structure is organized
 		as follows:
 
 		byte
 
 			Element index, identifies the element to which this
-			configuration entry pertians.
+			configuration entry pertains.
 
 		array{struct}
 
@@ -140,7 +139,7 @@ Methods:
 		be returned.
 
 		The data parameter is an outgoing message to be encypted by the
-		meshd daemon and sent on.
+		bluetooth-meshd daemon and sent on.
 
 		Possible errors:
 			org.bluez.mesh.Error.NotAuthorized
@@ -308,8 +307,8 @@ Methods:
 	void MessageReceived(uint16 source, uint16 key_index,
 					boolean subscription, array{byte} data)
 
-		This method is called by meshd daemon when a message arrives
-		addressed to the application.
+		This method is called by bluetooth-meshd daemon when a message
+		arrives addressed to the application.
 
 		The source parameter is unicast address of the remote
 		node-element that sent the message.
@@ -328,7 +327,7 @@ Methods:
 
 	void UpdateModelConfiguration(uint16 model_id, dict config)
 
-		This method is called by meshd daemon when a model's
+		This method is called by bluetooth-meshd daemon when a model's
 		configuration is updated.
 
 		The model_id parameter contains BT SIG Model Identifier or, if
