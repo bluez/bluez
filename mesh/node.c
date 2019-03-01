@@ -1537,7 +1537,7 @@ static struct l_dbus_message *send_call(struct l_dbus *dbus,
 	struct l_dbus_message_iter iter_data;
 	struct node_element *ele;
 	uint16_t dst, app_idx, src;
-	uint8_t data[MESH_MAX_ACCESS_PAYLOAD];
+	uint8_t *data;
 	uint32_t len;
 	struct l_dbus_message *reply;
 
@@ -1559,10 +1559,10 @@ static struct l_dbus_message *send_call(struct l_dbus *dbus,
 
 	src = node_get_primary(node) + ele->idx;
 
-	l_dbus_message_iter_get_fixed_array(&iter_data, data, &len);
-	if (!len)
+	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
+					!len || len > MESH_MAX_ACCESS_PAYLOAD)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
-						"Mesh message is empty");
+							"Incorrect data");
 
 	if (!mesh_model_send(node, src, dst, app_idx,
 				mesh_net_get_default_ttl(node->net), data, len))
@@ -1583,7 +1583,7 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 	struct l_dbus_message_iter iter_data;
 	uint16_t mod_id, src;
 	struct node_element *ele;
-	uint8_t data[MESH_MAX_ACCESS_PAYLOAD];
+	uint8_t *data;
 	uint32_t len;
 	struct l_dbus_message *reply;
 	int result;
@@ -1606,10 +1606,10 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 
 	src = node_get_primary(node) + ele->idx;
 
-	l_dbus_message_iter_get_fixed_array(&iter_data, data, &len);
-	if (!len)
+	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
+					!len || len > MESH_MAX_ACCESS_PAYLOAD)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
-						"Mesh message is empty");
+							"Incorrect data");
 
 	result = mesh_model_publish(node, VENDOR_ID_MASK | mod_id, src,
 				mesh_net_get_default_ttl(node->net), data, len);
@@ -1634,7 +1634,7 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	uint16_t model_id, vendor;
 	uint32_t vendor_mod_id;
 	struct node_element *ele;
-	uint8_t data[MESH_MAX_ACCESS_PAYLOAD];
+	uint8_t *data = NULL;
 	uint32_t len;
 	struct l_dbus_message *reply;
 	int result;
@@ -1657,10 +1657,10 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 
 	src = node_get_primary(node) + ele->idx;
 
-	l_dbus_message_iter_get_fixed_array(&iter_data, data, &len);
-	if (!len)
+	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
+					!len || len > MESH_MAX_ACCESS_PAYLOAD)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
-						"Mesh message is empty");
+							"Incorrect data");
 
 	vendor_mod_id = (vendor << 16) | model_id;
 	result = mesh_model_publish(node, vendor_mod_id, src,
@@ -1686,7 +1686,7 @@ static void setup_node_interface(struct l_dbus_interface *iface)
 						"", "oqqay", "element_path",
 						"vendor", "model_id", "data");
 
-	/*TODO: Properties */
+	/* TODO: Properties */
 }
 
 bool node_dbus_init(struct l_dbus *bus)
