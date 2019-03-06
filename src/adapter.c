@@ -1602,10 +1602,12 @@ static gboolean start_discovery_timeout(gpointer user_data)
 	sd_cp = adapter->current_discovery_filter;
 
 	DBG("sending MGMT_OP_START_SERVICE_DISCOVERY %d, %d, %d",
-				sd_cp->rssi, sd_cp->type, sd_cp->uuid_count);
+				sd_cp->rssi, sd_cp->type,
+				btohs(sd_cp->uuid_count));
 
 	mgmt_send(adapter->mgmt, MGMT_OP_START_SERVICE_DISCOVERY,
-		  adapter->dev_id, sizeof(*sd_cp) + sd_cp->uuid_count * 16,
+		  adapter->dev_id, sizeof(*sd_cp) +
+		  btohs(sd_cp->uuid_count) * 16,
 		  sd_cp, start_discovery_complete, adapter, NULL);
 
 	return FALSE;
@@ -2076,7 +2078,7 @@ static int discovery_filter_to_mgmt_cp(struct btd_adapter *adapter,
 
 	cp->type = discovery_type;
 	cp->rssi = rssi;
-	cp->uuid_count = uuid_count;
+	cp->uuid_count = htobs(uuid_count);
 	populate_mgmt_filter_uuids(cp->uuids, uuids);
 
 	g_slist_free(uuids);
