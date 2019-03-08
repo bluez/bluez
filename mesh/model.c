@@ -178,13 +178,13 @@ static struct mesh_model *find_model(struct mesh_node *node, uint16_t addr,
 	return get_model(node, (uint8_t) ele_idx, mod_id, fail);
 }
 
-static uint32_t convert_pub_period_to_ms(uint8_t pub_period)
+static uint32_t pub_period_to_ms(uint8_t pub_period)
 {
 	int n;
 
-	n = (pub_period & 0x3f);
+	n = pub_period >> 2;
 
-	switch (pub_period >> 6) {
+	switch (pub_period & 0x3) {
 	default:
 		return n * 100;
 	case 2:
@@ -488,8 +488,10 @@ static void remove_pub(struct mesh_node *node, struct mesh_model *mod)
 	l_free(mod->pub);
 	mod->pub = NULL;
 
-	/* TODO: remove from storage */
-
+	/*
+	 * TODO: Instead of reporting  period of 0, report publication
+	 * address as unassigned
+	 */
 	if (!mod->cbs)
 		/* External models */
 		config_update_model_pub_period(node, mod->ele_idx, mod->id, 0);
@@ -1017,8 +1019,6 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (result != MESH_STATUS_SUCCESS)
 		return result;
 
-	/* TODO: save to storage */
-
 	/*
 	 * If the publication address is set to unassigned address value,
 	 * remove publication
@@ -1034,7 +1034,7 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 
 	/* External model */
 	config_update_model_pub_period(node, ele_idx, id,
-					convert_pub_period_to_ms(period));
+						pub_period_to_ms(period));
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -1601,7 +1601,7 @@ void model_build_config(void *model, void *msg_builder)
 
 	/* Model periodic publication interval, if present */
 	if (mod->pub) {
-		uint32_t period = convert_pub_period_to_ms(mod->pub->period);
+		uint32_t period = pub_period_to_ms(mod->pub->period);
 		dbus_append_dict_entry_basic(builder, "PublicationPeriod", "u",
 								&period);
 	}

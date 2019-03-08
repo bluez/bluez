@@ -125,6 +125,9 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 	uint8_t retransmit;
 	int status;
 	bool cred_flag, b_virt = false;
+	bool vendor = false;
+	struct mesh_model_pub *pub;
+	uint8_t ele_idx;
 
 	switch (size) {
 	default:
@@ -146,6 +149,7 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 		retransmit = pkt[8];
 		mod_id = l_get_le16(pkt + 9) << 16;
 		mod_id |= l_get_le16(pkt + 11);
+		vendor = true;
 		break;
 
 	case 25:
@@ -166,6 +170,7 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 		retransmit = pkt[22];
 		mod_id = l_get_le16(pkt + 23) << 16;
 		mod_id |= l_get_le16(pkt + 25);
+		vendor = true;
 		break;
 	}
 	ele_addr = l_get_le16(pkt);
@@ -193,9 +198,46 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 	l_debug("pub_set: status %d, ea %4.4x, ota: %4.4x, mod: %x, idx: %3.3x",
 					status, ele_addr, ota, mod_id, idx);
 
-	if (IS_UNASSIGNED(ota) && !b_virt)
+	if (IS_UNASSIGNED(ota) && !b_virt) {
 		ttl = period = idx = 0;
 
+		/* Remove model publication from config file */
+		if (status == MESH_STATUS_SUCCESS)
+			mesh_db_model_pub_del(node_jconfig_get(node), ele_addr,
+					vendor ? mod_id : mod_id & 0x0000ffff,
+					vendor);
+		goto done;
+	}
+
+	if (status != MESH_STATUS_SUCCESS)
+		goto done;
+
+	ele_idx = node_get_element_idx(node, ele_addr);
+	pub = mesh_model_pub_get(node, ele_idx, mod_id, &status);
+
+	if (pub) {
+		struct mesh_db_pub db_pub = {
+			.virt = b_virt,
+			.addr = ota,
+			.idx = idx,
+			.ttl = ttl,
+			.credential = pub->credential,
+			.period = period,
+			.count = pub->retransmit >> 5,
+			.interval = ((0x1f & pub->retransmit) + 1) * 50
+		};
+
+		if (b_virt)
+			memcpy(db_pub.virt_addr, pub_addr, 16);
+
+		/* Save model publication to config file */
+		if (!mesh_db_model_pub_add(node_jconfig_get(node), ele_addr,
+					vendor ? mod_id : mod_id & 0x0000ffff,
+					vendor, &db_pub))
+			status = MESH_STATUS_STORAGE_FAIL;
+	}
+
+done:
 	if (!unreliable)
 		send_pub_status(node, src, dst, status, ele_addr, ota,
 				mod_id, idx, cred_flag, ttl, period,

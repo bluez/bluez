@@ -820,7 +820,7 @@ static struct mesh_db_pub *parse_model_publication(json_object *jpub)
 
 	if (!get_int(jpub, "period", &value))
 		goto fail;
-	pub->period = (uint8_t) value;
+	pub->period = value;
 
 	if (!get_int(jpub, "credentials", &value))
 		goto fail;

@@ -27,11 +27,11 @@ struct mesh_db_sub {
 
 struct mesh_db_pub {
 	bool virt;
+	uint32_t period;
 	uint16_t addr;
 	uint16_t idx;
 	uint8_t ttl;
 	uint8_t credential;
-	uint8_t period;
 	uint8_t count;
 	uint8_t interval;
 	uint8_t virt_addr[16];
