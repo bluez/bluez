@@ -546,6 +546,8 @@ bool storage_create_node_config(struct mesh_node *node, void *data)
 	if (num_tries == 10)
 		l_error("Failed to generate unique node ID");
 
+	node_id_set(node, node_id);
+
 	snprintf(name_buf, PATH_MAX, "%s/%04x", storage_dir, node_id);
 
 	/* Create a new directory and node.json file */
