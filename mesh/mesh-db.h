@@ -32,7 +32,8 @@ struct mesh_db_pub {
 	uint8_t ttl;
 	uint8_t credential;
 	uint8_t period;
-	uint8_t retransmit;
+	uint8_t count;
+	uint8_t interval;
 	uint8_t virt_addr[16];
 };
 
@@ -129,6 +130,16 @@ bool mesh_db_model_binding_add(json_object *jnode, uint8_t ele_idx, bool vendor,
 					uint32_t mod_id, uint16_t app_idx);
 bool mesh_db_model_binding_del(json_object *jnode, uint8_t ele_idx, bool vendor,
 					uint32_t mod_id, uint16_t app_idx);
+bool mesh_db_model_pub_add(json_object *jnode, uint16_t ele_addr,
+			uint32_t mod_id, bool vendor, struct mesh_db_pub *pub);
+bool mesh_db_model_pub_del(json_object *jnode, uint16_t ele_addr,
+						uint32_t mod_id, bool vendor);
+bool mesh_db_model_sub_add(json_object *jnode, uint16_t addr, uint32_t mod_id,
+					bool vendor, struct mesh_db_sub *sub);
+bool mesh_db_model_sub_del(json_object *jnode, uint16_t addr, uint32_t mod_id,
+					bool vendor, struct mesh_db_sub *sub);
+bool mesh_db_model_sub_del_all(json_object *jnode, uint16_t addr,
+						uint32_t mod_id, bool vendor);
 bool mesh_db_app_key_add(json_object *jnode, uint16_t net_idx, uint16_t app_idx,
 							const uint8_t key[16]);
 bool mesh_db_app_key_update(json_object *jobj, uint16_t app_idx,

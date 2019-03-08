@@ -1428,13 +1428,15 @@ struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 		struct mesh_db_pub *pub = db_mod->pub;
 		uint8_t mod_addr[2];
 		uint8_t *pub_addr;
+		uint8_t retransmit = (pub->count << 5) +
+						(pub->interval / 50 - 1);
 
 		/* Add publication */
 		l_put_le16(pub->addr, &mod_addr);
 		pub_addr = pub->virt ? pub->virt_addr : (uint8_t *) &mod_addr;
 
 		if (set_pub(mod, pub_addr, pub->idx, pub->credential, pub->ttl,
-			pub->period, pub->retransmit, pub->virt, NULL) !=
+			pub->period, retransmit, pub->virt, NULL) !=
 							MESH_STATUS_SUCCESS) {
 			mesh_model_free(mod);
 			return NULL;

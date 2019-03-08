@@ -66,6 +66,32 @@ static bool add_key_value(json_object *jobject, const char *desc,
 	return true;
 }
 
+static int get_element_index(json_object *jnode, uint16_t ele_addr)
+{
+	json_object *jvalue, *jelements;
+	uint16_t addr, num_ele;
+	char *str;
+
+	json_object_object_get_ex(jnode, "unicastAddress", &jvalue);
+	if (!jvalue)
+		return -1;
+
+	str = (char *)json_object_get_string(jvalue);
+	if (sscanf(str, "%04hx", &addr) != 1)
+		return -1;
+
+	json_object_object_get_ex(jnode, "elements", &jelements);
+	if (!jelements)
+		return -1;
+
+	num_ele = json_object_array_length(jelements);
+
+	if (ele_addr >= addr + num_ele || ele_addr < addr)
+		return -1;
+
+	return ele_addr - addr;
+}
+
 static json_object *get_element_model(json_object *jnode, int ele_idx,
 						uint32_t mod_id, bool vendor)
 {
@@ -800,10 +826,18 @@ static struct mesh_db_pub *parse_model_publication(json_object *jpub)
 		goto fail;
 	pub->credential = (uint8_t) value;
 
-	if (!get_int(jpub, "retransmit", &value))
+	json_object_object_get_ex(jpub, "retransmit", &jvalue);
+	if (!jvalue)
 		goto fail;
 
-	pub->retransmit = (uint8_t) value;
+	if (!get_int(jvalue, "count", &value))
+		goto fail;
+	pub->count = (uint8_t) value;
+
+	if (!get_int(jvalue, "interval", &value))
+		goto fail;
+	pub->interval = (uint8_t) value;
+
 	return pub;
 
 fail:
@@ -1133,6 +1167,9 @@ bool mesh_db_read_node(json_object *jnode, mesh_db_node_cb cb, void *user_data)
 	json_object *jvalue;
 	char *str;
 
+	if (!jnode)
+		return false;
+
 	if (!cb) {
 		l_info("Node read callback is required");
 		return false;
@@ -1185,6 +1222,9 @@ bool mesh_db_write_uint16_hex(json_object *jobj, const char *desc,
 	json_object *jstring;
 	char buf[5];
 
+	if (!jobj)
+		return false;
+
 	snprintf(buf, 5, "%4.4x", value);
 	jstring = json_object_new_string(buf);
 	if (!jstring)
@@ -1200,6 +1240,9 @@ bool mesh_db_write_uint32_hex(json_object *jobj, const char *desc,
 	json_object *jstring;
 	char buf[9];
 
+	if (!jobj)
+		return false;
+
 	snprintf(buf, 9, "%8.8x", value);
 	jstring = json_object_new_string(buf);
 	if (!jstring)
@@ -1212,6 +1255,9 @@ bool mesh_db_write_uint32_hex(json_object *jobj, const char *desc,
 bool mesh_db_write_int(json_object *jobj, const char *keyword, int value)
 {
 	json_object *jvalue;
+
+	if (!jobj)
+		return false;
 
 	json_object_object_del(jobj, keyword);
 
@@ -1226,6 +1272,9 @@ bool mesh_db_write_int(json_object *jobj, const char *keyword, int value)
 bool mesh_db_write_bool(json_object *jobj, const char *keyword, bool value)
 {
 	json_object *jvalue;
+
+	if (!jobj)
+		return false;
 
 	json_object_object_del(jobj, keyword);
 
@@ -1253,6 +1302,9 @@ bool mesh_db_write_mode(json_object *jobj, const char *keyword, int value)
 {
 	json_object *jstring;
 
+	if (!jobj)
+		return false;
+
 	jstring = json_object_new_string(mode_to_string(value));
 
 	if (!jstring)
@@ -1267,6 +1319,9 @@ bool mesh_db_write_relay_mode(json_object *jnode, uint8_t mode, uint8_t count,
 							uint16_t interval)
 {
 	json_object *jrelay;
+
+	if (!jnode)
+		return false;
 
 	json_object_object_del(jnode, "relay");
 
@@ -1296,6 +1351,9 @@ bool mesh_db_read_net_transmit(json_object *jobj, uint8_t *cnt,
 {
 	json_object *jretransmit, *jvalue;
 
+	if (!jobj)
+		return false;
+
 	json_object_object_get_ex(jobj, "retransmit", &jretransmit);
 	if (!jretransmit)
 		return false;
@@ -1319,6 +1377,9 @@ bool mesh_db_write_net_transmit(json_object *jobj, uint8_t cnt,
 							uint16_t interval)
 {
 	json_object *jretransmit;
+
+	if (!jobj)
+		return false;
 
 	json_object_object_del(jobj, "retransmit");
 
@@ -1345,6 +1406,9 @@ bool mesh_db_write_iv_index(json_object *jobj, uint32_t idx, bool update)
 {
 	int tmp = update ? 1 : 0;
 
+	if (!jobj)
+		return false;
+
 	if (!mesh_db_write_int(jobj, "IVindex", idx))
 		return false;
 
@@ -1356,7 +1420,8 @@ bool mesh_db_write_iv_index(json_object *jobj, uint32_t idx, bool update)
 
 void mesh_db_remove_property(json_object *jobj, const char *desc)
 {
-	json_object_object_del(jobj, desc);
+	if (jobj)
+		json_object_object_del(jobj, desc);
 }
 
 static void add_model(void *a, void *b)
@@ -1383,6 +1448,9 @@ bool mesh_db_add_node(json_object *jnode, struct mesh_db_node *node) {
 	struct mesh_db_modes *modes = &node->modes;
 	const struct l_queue_entry *entry;
 	json_object *jelements;
+
+	if (!jnode)
+		return false;
 
 	/* CID, PID, VID, crpl */
 	if (!mesh_db_write_uint16_hex(jnode, "cid", node->cid))
@@ -1505,6 +1573,9 @@ bool mesh_db_net_key_set_phase(json_object *jobj, uint16_t idx, uint8_t phase)
 {
 	json_object *jarray, *jentry = NULL;
 
+	if (!jobj)
+		return false;
+
 	json_object_object_get_ex(jobj, "netKeys", &jarray);
 
 	if (jarray)
@@ -1523,4 +1594,206 @@ bool mesh_db_net_key_set_phase(json_object *jobj, uint16_t idx, uint8_t phase)
 	}
 
 	return true;
+}
+
+bool mesh_db_model_pub_add(json_object *jnode, uint16_t addr, uint32_t mod_id,
+					bool vendor, struct mesh_db_pub *pub)
+{
+	json_object *jmodel, *jpub, *jretransmit;
+	bool res;
+	int ele_idx;
+
+	if (!jnode)
+		return false;
+
+	ele_idx = get_element_index(jnode, addr);
+	if (ele_idx < 0)
+		return false;
+
+	jmodel = get_element_model(jnode, ele_idx, mod_id, vendor);
+	if (!jmodel)
+		return false;
+
+	json_object_object_del(jmodel, "publish");
+
+	jpub = json_object_new_object();
+	if (!jpub)
+		return false;
+
+	if (pub->virt)
+		res = add_key_value(jpub, "address", pub->virt_addr);
+	else
+		res = mesh_db_write_uint16_hex(jpub, "address", pub->addr);
+
+	if (!res)
+		goto fail;
+
+	if (!mesh_db_write_uint16_hex(jpub, "index", pub->idx))
+		goto fail;
+
+	if (!mesh_db_write_int(jpub, "ttl", pub->ttl))
+		goto fail;
+
+	if (!mesh_db_write_int(jpub, "period", pub->period))
+		goto fail;
+
+	if (!mesh_db_write_int(jpub, "credentials", pub->credential ? 1 : 0))
+		goto fail;
+
+	jretransmit = json_object_new_object();
+	if (!jretransmit)
+		goto fail;
+
+	if (!mesh_db_write_int(jretransmit, "count", pub->count))
+		goto fail;
+
+	if (!mesh_db_write_int(jretransmit, "interval", pub->interval))
+		goto fail;
+
+	json_object_object_add(jpub, "retransmit", jretransmit);
+	json_object_object_add(jmodel, "publish", jpub);
+
+	return true;
+fail:
+	json_object_put(jpub);
+	return false;
+}
+
+static bool delete_model_property(json_object *jnode, uint16_t addr,
+			uint32_t mod_id, bool vendor, const char *keyword)
+{
+	json_object *jmodel;
+	int ele_idx;
+
+	ele_idx = get_element_index(jnode, addr);
+	if (ele_idx < 0)
+		return false;
+
+	jmodel = get_element_model(jnode, ele_idx, mod_id, vendor);
+	if (!jmodel)
+		return false;
+
+	json_object_object_del(jmodel, keyword);
+
+	return true;
+}
+
+bool mesh_db_model_pub_del(json_object *jnode, uint16_t addr, uint32_t mod_id,
+								bool vendor)
+{
+	if (!jnode)
+		return false;
+
+	return delete_model_property(jnode, addr, mod_id, vendor, "publish");
+}
+
+bool mesh_db_model_sub_add(json_object *jnode, uint16_t addr, uint32_t mod_id,
+					bool vendor, struct mesh_db_sub *sub)
+{
+	json_object *jmodel, *jstring, *jarray;
+	int ele_idx, len;
+	char buf[33];
+
+	if (!jnode)
+		return false;
+
+	ele_idx = get_element_index(jnode, addr);
+	if (ele_idx < 0)
+		return false;
+
+	jmodel = get_element_model(jnode, ele_idx, mod_id, vendor);
+	if (!jmodel)
+		return false;
+
+	json_object_object_get_ex(jmodel, "subscribe", &jarray);
+
+	if (!sub->virt) {
+		snprintf(buf, 5, "%4.4x", sub->src.addr);
+		len = 4;
+	} else {
+		hex2str(sub->src.virt_addr, 16, buf, 33);
+		len = 32;
+	}
+
+	if (jarray && jarray_has_string(jarray, buf, len))
+		return true;
+
+	jstring = json_object_new_string(buf);
+	if (!jstring)
+		return false;
+
+	if (!jarray) {
+		jarray = json_object_new_array();
+		if (!jarray) {
+			json_object_put(jstring);
+			return false;
+		}
+		json_object_object_add(jmodel, "subscribe", jarray);
+	}
+
+	json_object_array_add(jarray, jstring);
+
+	return true;
+}
+
+bool mesh_db_model_sub_del(json_object *jnode, uint16_t addr,
+			uint32_t mod_id, bool vendor, struct mesh_db_sub *sub)
+{
+	json_object *jmodel, *jarray, *jarray_new;
+	char buf[33];
+	int len, ele_idx;
+
+	if (!jnode)
+		return false;
+
+	ele_idx = get_element_index(jnode, addr);
+	if (ele_idx < 0)
+		return false;
+
+	jmodel = get_element_model(jnode, ele_idx, mod_id, vendor);
+	if (!jmodel)
+		return false;
+
+	json_object_object_get_ex(jmodel, "subscribe", &jarray);
+	if (!jarray)
+		return true;
+
+	if (!sub->virt) {
+		snprintf(buf, 5, "%4.4x", sub->src.addr);
+		len = 4;
+	} else {
+		hex2str(sub->src.virt_addr, 16, buf, 33);
+		len = 32;
+	}
+
+	if (!jarray_has_string(jarray, buf, len))
+		return true;
+
+	if (json_object_array_length(jarray) == 1) {
+		json_object_object_del(jmodel, "subscribe");
+		return true;
+	}
+
+	/*
+	 * There is no easy way to delete a value from a json array.
+	 * Create a new copy without specified element and
+	 * then remove old array.
+	 */
+	jarray_new = jarray_string_del(jarray, buf, len);
+	if (!jarray_new)
+		return false;
+
+	json_object_object_del(jmodel, "subscribe");
+	json_object_object_add(jmodel, "subscribe", jarray_new);
+
+	return true;
+}
+
+bool mesh_db_model_sub_del_all(json_object *jnode, uint16_t addr,
+						uint32_t mod_id, bool vendor)
+{
+	if (!jnode)
+		return false;
+
+	return delete_model_property(jnode, addr, mod_id, vendor, "subscribe");
 }
