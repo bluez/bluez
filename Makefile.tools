@@ -463,7 +463,7 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/test-hfp test/opp-client test/ftp-client \
 		test/pbap-client test/map-client test/example-advertisement \
 		test/example-gatt-server test/example-gatt-client \
-		test/test-gatt-profile
+		test/test-gatt-profile test/test-mesh test/agent.py
 
 if BTPCLIENT
 noinst_PROGRAMS += tools/btpclient

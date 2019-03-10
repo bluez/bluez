@@ -1,9 +1,16 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys
 import dbus
 import dbus.service
-import dbus.mainloop.glib
+
+try:
+  from termcolor import colored, cprint
+  set_green = lambda x: colored(x, 'green', attrs=['bold'])
+  set_cyan = lambda x: colored(x, 'cyan', attrs=['bold'])
+except ImportError:
+  set_green = lambda x: x
+  set_cyan = lambda x: x
 
 AGENT_IFACE = 'org.bluez.mesh.ProvisionAgent1'
 AGENT_PATH = "/mesh/test/agent"
@@ -37,4 +44,5 @@ class Agent(dbus.service.Object):
 
 	@dbus.service.method(AGENT_IFACE, in_signature="su", out_signature="")
 	def DisplayNumeric(self, type, value):
-		print("DisplayNumeric type=", type, " number=", value)
+		print(set_cyan('DisplayNumeric ('), type,
+				set_cyan(') number ='), set_green(value))
