@@ -533,8 +533,6 @@ bool mesh_db_app_key_add(json_object *jobj, uint16_t net_idx, uint16_t app_idx,
 	char buf[5];
 
 	json_object_object_get_ex(jobj, "appKeys", &jarray);
-	if (jarray)
-		return false;
 
 	if (jarray)
 		jentry = get_key_object(jarray, app_idx);
