@@ -592,7 +592,8 @@ void bt_shell_prompt_input(const char *label, const char *msg,
 
 		prompt = new0(struct bt_shell_prompt_input, 1);
 
-		if (asprintf(&prompt->str, "[%s] %s ", label, msg) < 0) {
+		if (asprintf(&str, COLOR_HIGHLIGHT "[%s] %s " COLOR_OFF, label,
+								msg) < 0) {
 			free(prompt);
 			return;
 		}
@@ -605,7 +606,8 @@ void bt_shell_prompt_input(const char *label, const char *msg,
 		return;
 	}
 
-	if (asprintf(&str, "[%s] %s ", label, msg) < 0)
+	if (asprintf(&str, COLOR_HIGHLIGHT "[%s] %s " COLOR_OFF, label,
+								msg) < 0)
 		return;
 
 	prompt_input(str, func, user_data);
