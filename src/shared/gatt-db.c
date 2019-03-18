@@ -777,20 +777,6 @@ static uint16_t get_handle_at_index(struct gatt_db_service *service,
 }
 
 static struct gatt_db_attribute *
-attribute_update(struct gatt_db_service *service, int index)
-{
-	uint16_t previous_handle;
-
-	/* We call this function with index > 0, because index 0 is reserved
-	 * for service declaration, and is set in add_service()
-	 */
-	previous_handle = service->attributes[index - 1]->handle;
-	service->attributes[index]->handle = previous_handle + 1;
-
-	return service->attributes[index];
-}
-
-static struct gatt_db_attribute *
 service_insert_characteristic(struct gatt_db_service *service,
 					uint16_t handle,
 					const bt_uuid_t *uuid,
@@ -1054,9 +1040,10 @@ service_insert_included(struct gatt_db_service *service, uint16_t handle,
 	 *
 	 * TODO handle permissions
 	 */
-	set_attribute_data(service->attributes[index], NULL, NULL, BT_ATT_PERM_READ, NULL);
+	set_attribute_data(service->attributes[index], NULL, NULL,
+					BT_ATT_PERM_READ, NULL);
 
-	return attribute_update(service, index);
+	return service->attributes[index];
 }
 
 struct gatt_db_attribute *
