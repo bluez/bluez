@@ -815,6 +815,11 @@ static void discover_descs_cb(bool success, uint8_t att_ecode,
 							&uuid, 0, NULL, NULL,
 							NULL);
 		if (!attr) {
+			attr = gatt_db_get_attribute(client->db, handle);
+			if (attr && !bt_uuid_cmp(&uuid,
+					gatt_db_attribute_get_type(attr)))
+				continue;
+
 			util_debug(client->debug_callback, client->debug_data,
 				"Failed to insert descriptor at 0x%04x",
 				handle);
