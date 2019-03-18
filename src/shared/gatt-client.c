@@ -532,12 +532,19 @@ static void discover_incl_cb(bool success, uint8_t att_ecode,
 				"uuid: %s", handle, start, end, uuid_str);
 
 		attr = gatt_db_get_attribute(client->db, start);
-		if (!attr)
+		if (!attr) {
+			util_debug(client->debug_callback, client->debug_data,
+				"Unable to find attribute at 0x%04x", start);
 			goto failed;
+		}
 
 		attr = gatt_db_insert_included(client->db, handle, attr);
-		if (!attr)
+		if (!attr) {
+			util_debug(client->debug_callback, client->debug_data,
+				"Unable to add include attribute at 0x%04x",
+				handle);
 			goto failed;
+		}
 
 		/*
 		 * GATT requires that all include definitions precede
@@ -545,8 +552,12 @@ static void discover_incl_cb(bool success, uint8_t att_ecode,
 		 * these entries, the correct handle must be assigned to the new
 		 * attribute.
 		 */
-		if (gatt_db_attribute_get_handle(attr) != handle)
+		if (gatt_db_attribute_get_handle(attr) != handle) {
+			util_debug(client->debug_callback, client->debug_data,
+				"Invalid attribute 0x%04x expect it at 0x%04x",
+				gatt_db_attribute_get_handle(attr), handle);
 			goto failed;
+		}
 	}
 
 next:
