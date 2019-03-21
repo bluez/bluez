@@ -224,27 +224,51 @@ done:
 	return result;
 }
 
-bool storage_set_ttl(json_object *jnode, uint8_t ttl)
+bool storage_set_ttl(struct mesh_node *node, uint8_t ttl)
 {
-	return mesh_db_write_int(jnode, "defaultTTL", ttl);
+	json_object *jnode = node_jconfig_get(node);
+
+	if (!mesh_db_write_int(jnode, "defaultTTL", ttl))
+		return false;
+
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
-bool storage_set_relay(json_object *jnode, bool enable,
+bool storage_set_relay(struct mesh_node *node, bool enable,
 				uint8_t count, uint8_t interval)
 {
-	return mesh_db_write_relay_mode(jnode, enable, count, interval);
+	json_object *jnode = node_jconfig_get(node);
+
+	if (!mesh_db_write_relay_mode(jnode, enable, count, interval))
+		return false;
+
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
-bool storage_set_transmit_params(json_object *jnode, uint8_t count,
+bool storage_set_transmit_params(struct mesh_node *node, uint8_t count,
 							uint8_t interval)
 {
-	return mesh_db_write_net_transmit(jnode, count, interval);
+	json_object *jnode = node_jconfig_get(node);
+
+	if (!mesh_db_write_net_transmit(jnode, count, interval))
+		return false;
+
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
-bool storage_set_mode(json_object *jnode, uint8_t mode,
+bool storage_set_mode(struct mesh_node *node, uint8_t mode,
 						const char *mode_name)
 {
-	return mesh_db_write_mode(jnode, mode_name, mode);
+	json_object *jnode = node_jconfig_get(node);
+
+	if (!mesh_db_write_mode(jnode, mode_name, mode))
+		return false;
+
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
 bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t mod_id,
@@ -252,7 +276,7 @@ bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t mod_id,
 {
 	json_object *jnode;
 	int ele_idx;
-	bool is_vendor = (mod_id > 0xffff);
+	bool stored, is_vendor = (mod_id > 0xffff);
 
 	ele_idx = node_get_element_idx(node, addr);
 	if (ele_idx < 0)
@@ -261,11 +285,16 @@ bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t mod_id,
 	jnode = node_jconfig_get(node);
 
 	if (unbind)
-		return mesh_db_model_binding_del(jnode, ele_idx, is_vendor,
+		stored = mesh_db_model_binding_del(jnode, ele_idx, is_vendor,
 							mod_id, app_idx);
 	else
-		return mesh_db_model_binding_add(jnode, ele_idx, is_vendor,
+		stored = mesh_db_model_binding_add(jnode, ele_idx, is_vendor,
 							mod_id, app_idx);
+
+	if (stored)
+		storage_save_config(node, true, NULL, NULL);
+
+	return stored;
 }
 
 bool storage_app_key_add(struct mesh_net *net, uint16_t net_idx,
@@ -273,15 +302,21 @@ bool storage_app_key_add(struct mesh_net *net, uint16_t net_idx,
 {
 	json_object *jnode;
 	struct mesh_node *node = mesh_net_node_get(net);
+	bool stored;
 
 	jnode = node_jconfig_get(node);
 	if (!jnode)
 		return false;
 
 	if (update)
-		return mesh_db_app_key_update(jnode, app_idx, key);
+		stored = mesh_db_app_key_update(jnode, app_idx, key);
+	else
+		stored = mesh_db_app_key_add(jnode, net_idx, app_idx, key);
 
-	return mesh_db_app_key_add(jnode, net_idx, app_idx, key);
+	if (stored)
+		storage_save_config(node, true, NULL, NULL);
+
+	return stored;
 }
 
 bool storage_app_key_del(struct mesh_net *net, uint16_t net_idx,
@@ -294,8 +329,11 @@ bool storage_app_key_del(struct mesh_net *net, uint16_t net_idx,
 	if (!jnode)
 		return false;
 
-	return mesh_db_app_key_del(jnode, net_idx, app_idx);
+	if (!mesh_db_app_key_del(jnode, net_idx, app_idx))
+		return false;
 
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
 bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
@@ -303,11 +341,17 @@ bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
 {
 	struct mesh_node *node = mesh_net_node_get(net);
 	json_object *jnode = node_jconfig_get(node);
+	bool stored;
 
 	if (!update)
-		return mesh_db_net_key_add(jnode, net_idx, key);
+		stored = mesh_db_net_key_add(jnode, net_idx, key);
 	else
-		return mesh_db_net_key_update(jnode, net_idx, key);
+		stored = mesh_db_net_key_update(jnode, net_idx, key);
+
+	if (stored)
+		storage_save_config(node, true, NULL, NULL);
+
+	return stored;
 }
 
 bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx)
@@ -315,7 +359,11 @@ bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx)
 	struct mesh_node *node = mesh_net_node_get(net);
 	json_object *jnode = node_jconfig_get(node);
 
-	return mesh_db_net_key_del(jnode, net_idx);
+	if (!mesh_db_net_key_del(jnode, net_idx))
+		return false;
+
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
 bool storage_set_iv_index(struct mesh_net *net, uint32_t iv_index,
@@ -324,7 +372,11 @@ bool storage_set_iv_index(struct mesh_net *net, uint32_t iv_index,
 	struct mesh_node *node = mesh_net_node_get(net);
 	json_object *jnode = node_jconfig_get(node);
 
-	return mesh_db_write_iv_index(jnode, iv_index, update);
+	if (!mesh_db_write_iv_index(jnode, iv_index, update))
+		return false;
+
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
 bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
@@ -333,21 +385,22 @@ bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
 	struct mesh_node *node = mesh_net_node_get(net);
 	json_object *jnode = node_jconfig_get(node);
 
-	return mesh_db_net_key_set_phase(jnode, net_idx, phase);
+	if (!mesh_db_net_key_set_phase(jnode, net_idx, phase))
+		return false;
+
+	storage_save_config(node, true, NULL, NULL);
+	return true;
 }
 
 bool storage_write_sequence_number(struct mesh_net *net, uint32_t seq)
 {
 	struct mesh_node *node = mesh_net_node_get(net);
 	json_object *jnode = node_jconfig_get(node);
-	bool result;
 
-	result = mesh_db_write_int(jnode, "sequenceNumber", seq);
-	if (!result)
+	if (!mesh_db_write_int(jnode, "sequenceNumber", seq))
 		return false;
 
 	storage_save_config(node, false, NULL, NULL);
-
 	return true;
 }
 

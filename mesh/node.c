@@ -497,7 +497,7 @@ bool node_default_ttl_set(struct mesh_node *node, uint8_t ttl)
 	if (!node)
 		return false;
 
-	res = storage_set_ttl(node->jconfig, ttl);
+	res = storage_set_ttl(node, ttl);
 
 	if (res) {
 		node->ttl = ttl;
@@ -621,7 +621,7 @@ bool node_relay_mode_set(struct mesh_node *node, bool enable, uint8_t cnt,
 	if (!node || node->relay.mode == MESH_MODE_UNSUPPORTED)
 		return false;
 
-	res = storage_set_relay(node->jconfig, enable, cnt, interval);
+	res = storage_set_relay(node, enable, cnt, interval);
 
 	if (res) {
 		node->relay.mode = enable ? MESH_MODE_ENABLED :

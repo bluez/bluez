@@ -28,12 +28,13 @@ void storage_save_config(struct mesh_node *node, bool no_wait,
 bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t id,
 						uint16_t app_idx, bool unbind);
 
-bool storage_set_ttl(json_object *jnode, uint8_t ttl);
-bool storage_set_relay(json_object *jnode, bool enable, uint8_t count,
+bool storage_set_ttl(struct mesh_node *node, uint8_t ttl);
+bool storage_set_relay(struct mesh_node *node, bool enable, uint8_t count,
 							uint8_t interval);
-bool storage_set_transmit_params(json_object *jnode, uint8_t count,
+bool storage_set_transmit_params(struct mesh_node *node, uint8_t count,
 							uint8_t interval);
-bool storage_set_mode(json_object *jnode, uint8_t mode, const char *mode_name);
+bool storage_set_mode(struct mesh_node *node, uint8_t mode,
+						const char *mode_name);
 bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
 					const uint8_t key[16], bool update);
 bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx);
