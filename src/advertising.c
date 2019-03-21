@@ -880,7 +880,7 @@ static struct adv_secondary {
 } secondary[] = {
 	{ MGMT_ADV_FLAG_SEC_1M, "1M" },
 	{ MGMT_ADV_FLAG_SEC_2M, "2M" },
-	{ MGMT_ADV_FLAG_SEC_CODED, "Codec" },
+	{ MGMT_ADV_FLAG_SEC_CODED, "Coded" },
 	{ },
 };
 
