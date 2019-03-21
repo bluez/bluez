@@ -1177,17 +1177,20 @@ static void add_model_from_properties(struct node_element *ele,
 static void add_vendor_model_from_properties(struct node_element *ele,
 					struct l_dbus_message_iter *property)
 {
-	struct {
-		uint16_t v;
-		uint16_t m;
-	} id_pair;
+	struct l_dbus_message_iter ids;
+	uint16_t v;
+	uint16_t m;
 
 	if (!ele->models)
 		ele->models = l_queue_new();
 
-	while (l_dbus_message_iter_next_entry(property, &id_pair)) {
+	if (!l_dbus_message_iter_get_variant(property, "a(qq)", &ids))
+		return;
+
+	while (l_dbus_message_iter_next_entry(&ids, &v, &m)) {
 		struct mesh_model *mod;
-		mod = mesh_model_vendor_new(ele->idx, id_pair.v, id_pair.m);
+
+		mod = mesh_model_vendor_new(ele->idx, v, m);
 		l_queue_push_tail(ele->models, mod);
 	}
 }
