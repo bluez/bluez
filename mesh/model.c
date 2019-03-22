@@ -522,6 +522,9 @@ static void model_unbind_idx(struct mesh_node *node, struct mesh_model *mod,
 static void model_bind_idx(struct mesh_node *node, struct mesh_model *mod,
 								uint16_t idx)
 {
+	if (!mod->bindings)
+		mod->bindings = l_queue_new();
+
 	l_queue_push_tail(mod->bindings, L_UINT_TO_PTR(idx));
 
 	l_debug("Add %4.4x to model %8.8x", idx, mod->id);
@@ -689,8 +692,6 @@ static int add_sub(struct mesh_net *net, struct mesh_model *mod,
 
 	if (!mod->subs)
 		mod->subs = l_queue_new();
-	if (!mod->subs)
-		return MESH_STATUS_STORAGE_FAIL;
 
 	if (l_queue_find(mod->subs, simple_match, L_UINT_TO_PTR(grp)))
 		/* Group already exists */
