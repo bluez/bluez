@@ -3206,8 +3206,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_SET_EVENT_MASK_PAGE2:
-		if (btdev->type != BTDEV_TYPE_BREDRLE &&
-				btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type == BTDEV_TYPE_BREDR20 ||
+				btdev->type == BTDEV_TYPE_AMP)
 			goto unsupported;
 		semp2 = data;
 		memcpy(btdev->event_mask_page2, semp2->mask, 8);
