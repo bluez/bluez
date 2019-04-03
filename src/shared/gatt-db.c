@@ -1180,11 +1180,10 @@ struct find_by_type_value_data {
 	unsigned int num_of_res;
 };
 
-static void find_by_type(void *data, void *user_data)
+static void find_by_type(struct gatt_db_attribute *attribute, void *user_data)
 {
 	struct find_by_type_value_data *search_data = user_data;
-	struct gatt_db_service *service = data;
-	struct gatt_db_attribute *attribute;
+	struct gatt_db_service *service = attribute->service;
 	int i;
 
 	if (!service->active)
@@ -1235,7 +1234,8 @@ unsigned int gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 	data.func = func;
 	data.user_data = user_data;
 
-	queue_foreach(db->services, find_by_type, &data);
+	gatt_db_foreach_service_in_range(db, NULL, find_by_type, &data,
+						start_handle, end_handle);
 
 	return data.num_of_res;
 }
@@ -1259,7 +1259,8 @@ unsigned int gatt_db_find_by_type_value(struct gatt_db *db,
 	data.value = value;
 	data.value_len = value_len;
 
-	queue_foreach(db->services, find_by_type, &data);
+	gatt_db_foreach_service_in_range(db, NULL, find_by_type, &data,
+						start_handle, end_handle);
 
 	return data.num_of_res;
 }
@@ -1271,11 +1272,10 @@ struct read_by_type_data {
 	uint16_t end_handle;
 };
 
-static void read_by_type(void *data, void *user_data)
+static void read_by_type(struct gatt_db_attribute *attribute, void *user_data)
 {
 	struct read_by_type_data *search_data = user_data;
-	struct gatt_db_service *service = data;
-	struct gatt_db_attribute *attribute;
+	struct gatt_db_service *service = attribute->service;
 	int i;
 
 	if (!service->active)
@@ -1310,7 +1310,8 @@ void gatt_db_read_by_type(struct gatt_db *db, uint16_t start_handle,
 	data.end_handle = end_handle;
 	data.queue = queue;
 
-	queue_foreach(db->services, read_by_type, &data);
+	gatt_db_foreach_service_in_range(db, NULL, read_by_type, &data,
+						start_handle, end_handle);
 }
 
 
@@ -1320,19 +1321,14 @@ struct find_information_data {
 	uint16_t end_handle;
 };
 
-static void find_information(void *data, void *user_data)
+static void find_information(struct gatt_db_attribute *attribute,
+						void *user_data)
 {
 	struct find_information_data *search_data = user_data;
-	struct gatt_db_service *service = data;
-	struct gatt_db_attribute *attribute;
+	struct gatt_db_service *service = attribute->service;
 	int i;
 
 	if (!service->active)
-		return;
-
-	/* Check if service is in range */
-	if ((service->attributes[0]->handle + service->num_handles - 1) <
-						search_data->start_handle)
 		return;
 
 	for (i = 0; i < service->num_handles; i++) {
@@ -1360,7 +1356,8 @@ void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 	data.end_handle = end_handle;
 	data.queue = queue;
 
-	queue_foreach(db->services, find_information, &data);
+	gatt_db_foreach_service_in_range(db, NULL, find_information, &data,
+						start_handle, end_handle);
 }
 
 void gatt_db_foreach_service(struct gatt_db *db, const bt_uuid_t *uuid,
@@ -1382,12 +1379,13 @@ static void foreach_service_in_range(void *data, void *user_data)
 {
 	struct gatt_db_service *service = data;
 	struct foreach_data *foreach_data = user_data;
-	uint16_t svc_start;
+	uint16_t svc_start, svc_end;
 	bt_uuid_t uuid;
 
-	svc_start = get_handle_at_index(service, 0);
+	gatt_db_service_get_handles(service, &svc_start, &svc_end);
 
-	if (svc_start > foreach_data->end || svc_start < foreach_data->start)
+	/* Check if service is within requested range */
+	if (svc_start > foreach_data->end || svc_end < foreach_data->start)
 		return;
 
 	if (foreach_data->uuid) {
