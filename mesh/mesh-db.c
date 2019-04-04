@@ -51,6 +51,21 @@ static bool get_int(json_object *jobj, const char *keyword, int *value)
 	return true;
 }
 
+static bool add_u64_value(json_object *jobject, const char *desc,
+					const uint8_t u64[8])
+{
+	json_object *jstring;
+	char hexstr[17];
+
+	hex2str((uint8_t *) u64, 8, hexstr, 17);
+	jstring = json_object_new_string(hexstr);
+	if (!jstring)
+		return false;
+
+	json_object_object_add(jobject, desc, jstring);
+	return true;
+}
+
 static bool add_key_value(json_object *jobject, const char *desc,
 					const uint8_t key[16])
 {
@@ -253,6 +268,24 @@ bool mesh_db_read_iv_index(json_object *jobj, uint32_t *idx, bool *update)
 		return false;
 
 	*update = tmp ? true : false;
+
+	return true;
+}
+
+bool mesh_db_read_token(json_object *jobj, uint8_t token[8])
+{
+	json_object *jvalue;
+	char *str;
+
+	if (!token)
+		return false;
+
+	if (!json_object_object_get_ex(jobj, "token", &jvalue))
+		return false;
+
+	str = (char *)json_object_get_string(jvalue);
+	if (!str2hex(str, strlen(str), token, 8))
+		return false;
 
 	return true;
 }
@@ -513,6 +546,11 @@ bool mesh_db_net_key_del(json_object *jobj, uint16_t idx)
 bool mesh_db_write_device_key(json_object *jnode, uint8_t *key)
 {
 	return add_key_value(jnode, "deviceKey", key);
+}
+
+bool mesh_db_write_token(json_object *jnode, uint8_t *token)
+{
+	return add_u64_value(jnode, "token", token);
 }
 
 bool mesh_db_app_key_add(json_object *jobj, uint16_t net_idx, uint16_t app_idx,

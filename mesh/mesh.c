@@ -487,7 +487,7 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 	struct l_dbus_message *msg;
 	const char *owner;
 	const char *path;
-	const uint8_t *dev_key;
+	const uint8_t *token;
 
 	l_debug("Provisioning complete %s", prov_status_str(status));
 
@@ -506,13 +506,13 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 		return false;
 	}
 
-	dev_key = node_get_device_key(join_pending->node);
+	token = node_get_token(join_pending->node);
 
 	msg = l_dbus_message_new_method_call(dbus, owner, path,
 						MESH_APPLICATION_INTERFACE,
 						"JoinComplete");
 
-	l_dbus_message_set_arguments(msg, "t", l_get_u64(dev_key));
+	l_dbus_message_set_arguments(msg, "t", l_get_be64(token));
 
 	l_dbus_send(dbus_get_bus(), msg);
 

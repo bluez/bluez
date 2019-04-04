@@ -104,6 +104,7 @@ bool mesh_db_read_node(json_object *jobj, mesh_db_node_cb cb, void *user_data);
 bool mesh_db_add_node(json_object *jnode, struct mesh_db_node *node);
 bool mesh_db_read_iv_index(json_object *jobj, uint32_t *idx, bool *update);
 bool mesh_db_read_device_key(json_object *jobj, uint8_t key_buf[16]);
+bool mesh_db_read_token(json_object *jobj, uint8_t token[8]);
 bool mesh_db_read_net_transmit(json_object *jobj, uint8_t *cnt,
 							uint16_t *interval);
 bool mesh_db_write_net_transmit(json_object *jobj, uint8_t cnt,
@@ -113,6 +114,7 @@ bool mesh_db_read_net_keys(json_object *jobj, mesh_db_net_key_cb cb,
 bool mesh_db_read_app_keys(json_object *jobj, mesh_db_app_key_cb cb,
 							void *user_data);
 bool mesh_db_write_device_key(json_object *jobj, uint8_t *key);
+bool mesh_db_write_token(json_object *jobj, uint8_t *token);
 bool mesh_db_write_network_key(json_object *jobj, uint16_t idx, uint8_t *key,
 						uint8_t *new_key, int phase);
 bool mesh_db_write_app_key(json_object *jobj, uint16_t net_idx,

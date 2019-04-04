@@ -156,6 +156,11 @@ static bool parse_node(struct mesh_node *node, json_object *jnode)
 	if (!mesh_db_read_net_keys(jnode, read_net_keys_cb, net))
 		return false;
 
+	if (!mesh_db_read_token(jnode, key_buf))
+		return false;
+
+	node_set_token(node, key_buf);
+
 	if (!mesh_db_read_device_key(jnode, key_buf))
 		return false;
 

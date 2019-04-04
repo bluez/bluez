@@ -91,6 +91,7 @@ struct mesh_node {
 	} relay;
 	uint8_t dev_uuid[16];
 	uint8_t dev_key[16];
+	uint8_t token[8];
 	uint8_t num_ele;
 	uint8_t ttl;
 	uint8_t lpn;
@@ -132,7 +133,7 @@ static bool match_token(const void *a, const void *b)
 {
 	const struct mesh_node *node = a;
 	const uint64_t *token = b;
-	const uint64_t tmp = l_get_u64(node->dev_key);
+	const uint64_t tmp = l_get_be64(node->token);
 
 	return *token == tmp;
 }
@@ -451,6 +452,19 @@ const uint8_t *node_get_device_key(struct mesh_node *node)
 		return NULL;
 	else
 		return node->dev_key;
+}
+
+void node_set_token(struct mesh_node *node, uint8_t token[8])
+{
+	memcpy(node->token, token, 8);
+}
+
+const uint8_t *node_get_token(struct mesh_node *node)
+{
+	if (!node)
+		return NULL;
+	else
+		return node->token;
 }
 
 uint8_t node_get_num_elements(struct mesh_node *node)
@@ -1059,7 +1073,7 @@ static void get_managed_objects_attach_cb(struct l_dbus_message *msg,
 	struct attach_obj_request *req = user_data;
 	struct mesh_node *node = req->node;
 	const char *path;
-	uint64_t token = l_get_u64(node->dev_key);
+	uint64_t token = l_get_be64(node->token);
 	uint8_t num_ele;
 
 	if (l_dbus_message_is_error(msg)) {
@@ -1747,6 +1761,10 @@ bool node_add_pending_local(struct mesh_node *node, void *prov_node_info,
 
 	node->primary = info->unicast;
 	mesh_net_register_unicast(node->net, info->unicast, node->num_ele);
+
+	l_getrandom(node->token, sizeof(node->token));
+	if (!mesh_db_write_token(node->jconfig, node->token))
+		return false;
 
 	memcpy(node->dev_key, info->device_key, 16);
 	if (!mesh_db_write_device_key(node->jconfig, info->device_key))
