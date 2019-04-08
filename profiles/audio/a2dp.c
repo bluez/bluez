@@ -1686,7 +1686,7 @@ static gboolean get_uuid(const GDBusPropertyTable *property,
 		uuid = A2DP_SOURCE_UUID;
 		break;
 	case AVDTP_SEP_TYPE_SINK:
-		uuid = A2DP_SOURCE_UUID;
+		uuid = A2DP_SINK_UUID;
 		break;
 	default:
 		uuid = "";
