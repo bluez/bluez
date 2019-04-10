@@ -168,6 +168,12 @@ void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 void gatt_db_foreach_service(struct gatt_db *db, const bt_uuid_t *uuid,
 						gatt_db_attribute_cb_t func,
 						void *user_data);
+void gatt_db_foreach_in_range(struct gatt_db *db, const bt_uuid_t *uuid,
+						gatt_db_attribute_cb_t func,
+						void *user_data,
+						uint16_t start_handle,
+						uint16_t end_handle);
+
 void gatt_db_foreach_service_in_range(struct gatt_db *db,
 						const bt_uuid_t *uuid,
 						gatt_db_attribute_cb_t func,

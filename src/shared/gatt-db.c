@@ -1126,53 +1126,24 @@ bool gatt_db_service_get_claimed(struct gatt_db_attribute *attrib)
 	return attrib->service->claimed;
 }
 
+static void read_by_group_type(struct gatt_db_attribute *attribute,
+						void *user_data)
+{
+	struct queue *queue = user_data;
+
+	queue_push_tail(queue, attribute);
+}
+
 void gatt_db_read_by_group_type(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							const bt_uuid_t type,
 							struct queue *queue)
 {
-	const struct queue_entry *services_entry;
-	struct gatt_db_service *service;
-	uint16_t grp_start, grp_end, uuid_size;
-
-	uuid_size = 0;
-
-	services_entry = queue_get_entries(db->services);
-
-	while (services_entry) {
-		service = services_entry->data;
-
-		if (!service->active)
-			goto next_service;
-
-		if (bt_uuid_cmp(&type, &service->attributes[0]->uuid))
-			goto next_service;
-
-		grp_start = service->attributes[0]->handle;
-		grp_end = grp_start + service->num_handles - 1;
-
-		if (grp_end < start_handle || grp_start > end_handle)
-			goto next_service;
-
-		if (grp_start < start_handle || grp_start > end_handle)
-			goto next_service;
-
-		if (!uuid_size)
-			uuid_size = service->attributes[0]->value_len;
-		else if (uuid_size != service->attributes[0]->value_len)
-			return;
-
-		queue_push_tail(queue, service->attributes[0]);
-
-next_service:
-		services_entry = services_entry->next;
-	}
+	gatt_db_foreach_service_in_range(db, &type, read_by_group_type, queue,
+						start_handle, end_handle);
 }
 
 struct find_by_type_value_data {
-	bt_uuid_t uuid;
-	uint16_t start_handle;
-	uint16_t end_handle;
 	gatt_db_attribute_cb_t func;
 	void *user_data;
 	const void *value;
@@ -1183,39 +1154,19 @@ struct find_by_type_value_data {
 static void find_by_type(struct gatt_db_attribute *attribute, void *user_data)
 {
 	struct find_by_type_value_data *search_data = user_data;
-	struct gatt_db_service *service = attribute->service;
-	int i;
 
-	if (!service->active)
-		return;
+	/* TODO: fix for read-callback based attributes */
+	if (search_data->value) {
+		if (search_data->value_len != attribute->value_len)
+			return;
 
-	for (i = 0; i < service->num_handles; i++) {
-		attribute = service->attributes[i];
-
-		if (!attribute)
-			continue;
-
-		if ((attribute->handle < search_data->start_handle) ||
-				(attribute->handle > search_data->end_handle))
-			continue;
-
-		if (bt_uuid_cmp(&search_data->uuid, &attribute->uuid))
-			continue;
-
-		/* TODO: fix for read-callback based attributes */
-		if (search_data->value) {
-			if (search_data->value_len != attribute->value_len)
-				continue;
-
-			if (memcmp(attribute->value, search_data->value,
-					search_data->value_len)) {
-				continue;
-			}
-		}
-
-		search_data->num_of_res++;
-		search_data->func(attribute, search_data->user_data);
+		if (memcmp(attribute->value, search_data->value,
+					search_data->value_len))
+			return;
 	}
+
+	search_data->num_of_res++;
+	search_data->func(attribute, search_data->user_data);
 }
 
 unsigned int gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
@@ -1228,13 +1179,10 @@ unsigned int gatt_db_find_by_type(struct gatt_db *db, uint16_t start_handle,
 
 	memset(&data, 0, sizeof(data));
 
-	data.uuid = *type;
-	data.start_handle = start_handle;
-	data.end_handle = end_handle;
 	data.func = func;
 	data.user_data = user_data;
 
-	gatt_db_foreach_service_in_range(db, NULL, find_by_type, &data,
+	gatt_db_foreach_in_range(db, type, find_by_type, &data,
 						start_handle, end_handle);
 
 	return data.num_of_res;
@@ -1251,52 +1199,22 @@ unsigned int gatt_db_find_by_type_value(struct gatt_db *db,
 {
 	struct find_by_type_value_data data;
 
-	data.uuid = *type;
-	data.start_handle = start_handle;
-	data.end_handle = end_handle;
 	data.func = func;
 	data.user_data = user_data;
 	data.value = value;
 	data.value_len = value_len;
 
-	gatt_db_foreach_service_in_range(db, NULL, find_by_type, &data,
+	gatt_db_foreach_in_range(db, type, find_by_type, &data,
 						start_handle, end_handle);
 
 	return data.num_of_res;
 }
 
-struct read_by_type_data {
-	struct queue *queue;
-	bt_uuid_t uuid;
-	uint16_t start_handle;
-	uint16_t end_handle;
-};
-
 static void read_by_type(struct gatt_db_attribute *attribute, void *user_data)
 {
-	struct read_by_type_data *search_data = user_data;
-	struct gatt_db_service *service = attribute->service;
-	int i;
+	struct queue *queue = user_data;
 
-	if (!service->active)
-		return;
-
-	for (i = 0; i < service->num_handles; i++) {
-		attribute = service->attributes[i];
-		if (!attribute)
-			continue;
-
-		if (attribute->handle < search_data->start_handle)
-			continue;
-
-		if (attribute->handle > search_data->end_handle)
-			return;
-
-		if (bt_uuid_cmp(&search_data->uuid, &attribute->uuid))
-			continue;
-
-		queue_push_tail(search_data->queue, attribute);
-	}
+	queue_push_tail(queue, attribute);
 }
 
 void gatt_db_read_by_type(struct gatt_db *db, uint16_t start_handle,
@@ -1304,59 +1222,24 @@ void gatt_db_read_by_type(struct gatt_db *db, uint16_t start_handle,
 						const bt_uuid_t type,
 						struct queue *queue)
 {
-	struct read_by_type_data data;
-	data.uuid = type;
-	data.start_handle = start_handle;
-	data.end_handle = end_handle;
-	data.queue = queue;
-
-	gatt_db_foreach_service_in_range(db, NULL, read_by_type, &data,
+	gatt_db_foreach_in_range(db, &type, read_by_type, queue,
 						start_handle, end_handle);
 }
 
 
-struct find_information_data {
-	struct queue *queue;
-	uint16_t start_handle;
-	uint16_t end_handle;
-};
-
 static void find_information(struct gatt_db_attribute *attribute,
 						void *user_data)
 {
-	struct find_information_data *search_data = user_data;
-	struct gatt_db_service *service = attribute->service;
-	int i;
+	struct queue *queue = user_data;
 
-	if (!service->active)
-		return;
-
-	for (i = 0; i < service->num_handles; i++) {
-		attribute = service->attributes[i];
-		if (!attribute)
-			continue;
-
-		if (attribute->handle < search_data->start_handle)
-			continue;
-
-		if (attribute->handle > search_data->end_handle)
-			return;
-
-		queue_push_tail(search_data->queue, attribute);
-	}
+	queue_push_tail(queue, attribute);
 }
 
 void gatt_db_find_information(struct gatt_db *db, uint16_t start_handle,
 							uint16_t end_handle,
 							struct queue *queue)
 {
-	struct find_information_data data;
-
-	data.start_handle = start_handle;
-	data.end_handle = end_handle;
-	data.queue = queue;
-
-	gatt_db_foreach_service_in_range(db, NULL, find_information, &data,
+	gatt_db_foreach_in_range(db, NULL, find_information, queue,
 						start_handle, end_handle);
 }
 
@@ -1373,14 +1256,39 @@ struct foreach_data {
 	const bt_uuid_t *uuid;
 	void *user_data;
 	uint16_t start, end;
+	bool attr;
 };
 
 static void foreach_service_in_range(void *data, void *user_data)
 {
 	struct gatt_db_service *service = data;
+	struct gatt_db_attribute *attribute = service->attributes[0];
+	struct foreach_data *foreach_data = user_data;
+	bt_uuid_t uuid;
+
+	if (foreach_data->uuid) {
+		gatt_db_attribute_get_service_uuid(attribute, &uuid);
+		if (bt_uuid_cmp(&uuid, foreach_data->uuid)) {
+			/* Compare with attribute UUID in case it is a lookup
+			 * by group type.
+			 */
+			if (bt_uuid_cmp(&attribute->uuid, foreach_data->uuid))
+				return;
+		}
+	}
+
+	foreach_data->func(service->attributes[0], foreach_data->user_data);
+}
+
+static void foreach_in_range(void *data, void *user_data)
+{
+	struct gatt_db_service *service = data;
 	struct foreach_data *foreach_data = user_data;
 	uint16_t svc_start, svc_end;
-	bt_uuid_t uuid;
+	int i;
+
+	if (!service->active)
+		return;
 
 	gatt_db_service_get_handles(service, &svc_start, &svc_end);
 
@@ -1388,14 +1296,31 @@ static void foreach_service_in_range(void *data, void *user_data)
 	if (svc_start > foreach_data->end || svc_end < foreach_data->start)
 		return;
 
-	if (foreach_data->uuid) {
-		gatt_db_attribute_get_service_uuid(service->attributes[0],
-									&uuid);
-		if (bt_uuid_cmp(&uuid, foreach_data->uuid))
+	if (!foreach_data->attr) {
+		if (svc_start < foreach_data->start ||
+					svc_start > foreach_data->end)
 			return;
+		return foreach_service_in_range(data, user_data);
 	}
 
-	foreach_data->func(service->attributes[0], foreach_data->user_data);
+	for (i = 0; i < service->num_handles; i++) {
+		struct gatt_db_attribute *attribute = service->attributes[i];
+
+		if (!attribute)
+			continue;
+
+		if (attribute->handle < foreach_data->start)
+			continue;
+
+		if (attribute->handle > foreach_data->end)
+			return;
+
+		if (foreach_data->uuid && bt_uuid_cmp(foreach_data->uuid,
+							&attribute->uuid))
+			continue;
+
+		foreach_data->func(attribute, foreach_data->user_data);
+	}
 }
 
 void gatt_db_foreach_service_in_range(struct gatt_db *db,
@@ -1415,8 +1340,30 @@ void gatt_db_foreach_service_in_range(struct gatt_db *db,
 	data.user_data = user_data;
 	data.start = start_handle;
 	data.end = end_handle;
+	data.attr = false;
 
-	queue_foreach(db->services, foreach_service_in_range, &data);
+	queue_foreach(db->services, foreach_in_range, &data);
+}
+
+void gatt_db_foreach_in_range(struct gatt_db *db, const bt_uuid_t *uuid,
+						gatt_db_attribute_cb_t func,
+						void *user_data,
+						uint16_t start_handle,
+						uint16_t end_handle)
+{
+	struct foreach_data data;
+
+	if (!db || !func || start_handle > end_handle)
+		return;
+
+	data.func = func;
+	data.uuid = uuid;
+	data.user_data = user_data;
+	data.start = start_handle;
+	data.end = end_handle;
+	data.attr = true;
+
+	queue_foreach(db->services, foreach_in_range, &data);
 }
 
 void gatt_db_service_foreach(struct gatt_db_attribute *attrib,
