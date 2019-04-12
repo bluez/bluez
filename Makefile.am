@@ -22,7 +22,7 @@ EXTRA_DIST =
 
 pkglibexecdir = $(libexecdir)/bluetooth
 
-libexec_PROGRAMS =
+pkglibexec_PROGRAMS =
 
 pkgincludedir = $(includedir)/bluetooth
 
@@ -242,7 +242,7 @@ plugins_external_dummy_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 plugins_external_dummy_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
 endif
 
-libexec_PROGRAMS += src/bluetoothd
+pkglibexec_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(builtin_sources) \
 			$(attrib_sources) $(btio_sources) \
