@@ -28,6 +28,8 @@
 #define BT_HCI_BIT_5_2		(8 * 41) + 5
 #define BT_HCI_SUBEVT_5_2	0x19
 
+#define BT_LL_CMD_5_2		0x1f
+
 struct bt_ll_hdr {
 	uint8_t  preamble;
 	uint32_t access_addr;
@@ -178,6 +180,52 @@ struct bt_ll_clock_acc {
 } __attribute__ ((packed));
 
 #define BT_LL_CLOCK_ACCURACY_RSP 0x1e
+
+#define BT_LL_CIS_REQ		BT_LL_CMD_5_2
+struct bt_ll_cis_req {
+	uint8_t  cig;
+	uint8_t  cis;
+	uint8_t  m_phy;
+	uint8_t  s_phy;
+	uint16_t m_sdu;
+	uint16_t s_sdu;
+	uint8_t  m_interval[3];
+	uint8_t  s_interval[3];
+	uint8_t  m_pdu;
+	uint8_t  s_pdu;
+	uint8_t  nse;
+	uint8_t  sub_interval[3];
+	uint8_t  bn;
+	uint8_t  m_ft;
+	uint8_t  s_ft;
+	uint16_t iso_interval;
+	uint8_t  offset_min[3];
+	uint8_t  offset_max[3];
+	uint16_t conn_event_count;
+} __attribute__ ((packed));
+
+#define BT_LL_CIS_RSP		BT_LL_CMD_5_2 + 1
+struct bt_ll_cis_rsp {
+	uint8_t  offset_min[3];
+	uint8_t  offset_max[3];
+	uint16_t conn_event_count;
+} __attribute__ ((packed));
+
+#define BT_LL_CIS_IND		BT_LL_CMD_5_2 + 2
+struct bt_ll_cis_ind {
+	uint32_t addr;
+	uint8_t  cis_offset[3];
+	uint8_t  cig_sync_delay[3];
+	uint8_t  cis_sync_delay[3];
+	uint16_t conn_event_count;
+} __attribute__ ((packed));
+
+#define BT_LL_CIS_TERMINATE_IND	BT_LL_CMD_5_2 + 3
+struct bt_ll_cis_term_ind {
+	uint8_t  cig;
+	uint8_t  cis;
+	uint8_t  reason;
+} __attribute__ ((packed));
 
 #define LMP_ESC4(x) ((127 << 8) | (x))
 

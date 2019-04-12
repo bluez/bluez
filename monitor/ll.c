@@ -601,6 +601,97 @@ static void clock_acc_req_rsp(const void *data, uint8_t size)
 	print_field("SCA: 0x%2.2x", pdu->sca);
 }
 
+static void cis_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_req *cmd = data;
+	uint32_t interval;
+	uint8_t mask;
+
+	print_field("CIG ID: 0x%2.2x", cmd->cig);
+	print_field("CIS ID: 0x%2.2x", cmd->cis);
+	print_field("Master to Slave PHY: 0x%2.2x", cmd->m_phy);
+
+	mask = print_bitfield(2, cmd->m_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("Slave To Master PHY: 0x%2.2x", cmd->s_phy);
+
+	mask = print_bitfield(2, cmd->s_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("Master to Slave Maximum SDU: %u", cmd->m_sdu);
+	print_field("Slave to Master Maximum SDU: %u", cmd->s_sdu);
+
+	memcpy(&interval, cmd->m_interval, sizeof(cmd->m_interval));
+	print_field("Master to Slave Interval: 0x%6.6x", le32_to_cpu(interval));
+	memcpy(&interval, cmd->s_interval, sizeof(cmd->s_interval));
+	print_field("Slave to Master Interval: 0x%6.6x", le32_to_cpu(interval));
+
+	print_field("Master to Slave Maximum PDU: %u", cmd->m_pdu);
+	print_field("Slave to Master Maximum PDU: %u", cmd->s_pdu);
+
+	print_field("Burst Number: %u us", cmd->bn);
+
+	memcpy(&interval, cmd->sub_interval, sizeof(cmd->sub_interval));
+	print_field("Sub-Interval: 0x%6.6x", le32_to_cpu(interval));
+
+	print_field("Master to Slave Flush Timeout: %u", cmd->m_ft);
+	print_field("Slave to Master Flush Timeout: %u", cmd->s_ft);
+
+	print_field("ISO Interval: 0x%4.4x", le16_to_cpu(cmd->iso_interval));
+
+	memcpy(&interval, cmd->offset_min, sizeof(cmd->offset_min));
+	print_field("CIS Offset Minimum: 0x%6.6x", le32_to_cpu(interval));
+	memcpy(&interval, cmd->offset_max, sizeof(cmd->offset_max));
+	print_field("CIS Offset Maximum: 0x%6.6x", le32_to_cpu(interval));
+
+	print_field("Connection Event Count: %u", cmd->conn_event_count);
+}
+
+static void cis_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_rsp *rsp = data;
+	uint32_t interval;
+
+	memcpy(&interval, rsp->offset_min, sizeof(rsp->offset_min));
+	print_field("CIS Offset Minimum: 0x%6.6x", le32_to_cpu(interval));
+	memcpy(&interval, rsp->offset_max, sizeof(rsp->offset_max));
+	print_field("CIS Offset Maximum: 0x%6.6x", le32_to_cpu(interval));
+
+	print_field("Connection Event Count: %u", rsp->conn_event_count);
+}
+
+static void cis_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_ind *ind = data;
+	uint32_t interval;
+
+	print_field("CIS Access Address: 0x%4.4x", le32_to_cpu(ind->addr));
+	memcpy(&interval, ind->cis_offset, sizeof(ind->cis_offset));
+	print_field("CIS Offset: 0x%6.6x", le32_to_cpu(interval));
+
+	memcpy(&interval, ind->cig_sync_delay, sizeof(ind->cig_sync_delay));
+	print_field("CIG Synchronization Delay: 0x%6.6x",
+					le32_to_cpu(interval));
+	memcpy(&interval, ind->cis_sync_delay, sizeof(ind->cis_sync_delay));
+	print_field("CIS Synchronization Delay: %u us",
+					le32_to_cpu(interval));
+	print_field("Connection Event Count: %u", ind->conn_event_count);
+}
+
+static void cis_term_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_term_ind *ind = data;
+
+	print_field("CIG ID: 0x%2.2x", ind->cig);
+	print_field("CIS ID: 0x%2.2x", ind->cis);
+	packet_print_error("Reason", ind->reason);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -641,6 +732,15 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x1c, "LL_PERIODIC_SYNC_IND",     periodic_sync_ind, 34, true },
 	{ 0x1d, "LL_CLOCK_ACCURACY_REQ",    clock_acc_req_rsp,  1, true },
 	{ 0x1e, "LL_CLOCK_ACCURACY_RSP",    clock_acc_req_rsp,  1, true },
+	{ BT_LL_CIS_REQ, "LL_CIS_REQ",      cis_req,
+					sizeof(struct bt_ll_cis_req), true },
+	{ BT_LL_CIS_RSP, "LL_CIS_RSP",      cis_rsp,
+					sizeof(struct bt_ll_cis_rsp), true },
+	{ BT_LL_CIS_IND, "LL_CIS_IND",      cis_ind,
+					sizeof(struct bt_ll_cis_ind), true },
+	{ BT_LL_CIS_TERMINATE_IND, "LL_CIS_TERMINATE_IND", cis_term_ind,
+					sizeof(struct bt_ll_cis_term_ind),
+					true },
 	{ }
 };
 
