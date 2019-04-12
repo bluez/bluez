@@ -2618,6 +2618,11 @@ static const struct bitfield_data features_le[] = {
 	{ 25, "Periodic Advertising Sync Transfer - Recipient"	},
 	{ 26, "Sleep Clock Accuracy Updates"			},
 	{ 27, "Remote Public Key Validation"			},
+	{ 28, "Connected Isochronous Stream - Master"		},
+	{ 29, "Connected Isochronous Stream - Slave"		},
+	{ 30, "Isochronous Broadcaster"				},
+	{ 31, "Synchronized Receiver"				},
+	{ 32, "Isochronous Channels (Host Support)"		},
 	{ }
 };
 
@@ -2978,6 +2983,12 @@ static const struct bitfield_data events_le_table[] = {
 	{ 17, "LE Extended Advertising Set Terminated"	},
 	{ 18, "LE Scan Request Received"		},
 	{ 19, "LE Channel Selection Algorithm"		},
+	{ 24, "LE CIS Established"			},
+	{ 25, "LE CIS Request"				},
+	{ 26, "LE Create BIG Complete"			},
+	{ 27, "LE Terminate BIG Complete"		},
+	{ 28, "LE BIG Sync Estabilished Complete"	},
+	{ 29, "LE BIG Sync Lost"			},
 	{ }
 };
 
@@ -7667,6 +7678,437 @@ static void le_set_default_periodic_adv_sync_trans_params(const void *data,
 	print_create_sync_cte_type(cmd->cte_type);
 }
 
+static void print_sca(uint8_t sca)
+{
+	switch (sca) {
+	case 0x00:
+		print_field("SCA: 201 - 500 ppm (0x%2.2x)", sca);
+		return;
+	case 0x01:
+		print_field("SCA: 151 - 200 ppm (0x%2.2x)", sca);
+		return;
+	case 0x02:
+		print_field("SCA: 101 - 150 ppm (0x%2.2x)", sca);
+		return;
+	case 0x03:
+		print_field("SCA: 76 - 100 ppm (0x%2.2x)", sca);
+		return;
+	case 0x04:
+		print_field("SCA: 51 - 75 ppm (0x%2.2x)", sca);
+		return;
+	case 0x05:
+		print_field("SCA: 31 - 50 ppm (0x%2.2x)", sca);
+		return;
+	case 0x06:
+		print_field("SCA: 21 - 30 ppm (0x%2.2x)", sca);
+		return;
+	case 0x07:
+		print_field("SCA: 0 - 20 ppm (0x%2.2x)", sca);
+		return;
+	default:
+		print_field("SCA: Reserved (0x%2.2x)", sca);
+	}
+}
+
+static void print_packing(uint8_t value)
+{
+	switch (value) {
+	case 0x00:
+		print_field("Packing: Sequential (0x%2.2x)", value);
+		return;
+	case 0x01:
+		print_field("Packing: Interleaved (0x%2.2x)", value);
+		return;
+	default:
+		print_field("Packing: Reserved (0x%2.2x)", value);
+	}
+}
+
+static void print_framing(uint8_t value)
+{
+	switch (value) {
+	case 0x00:
+		print_field("Framing: Unframed (0x%2.2x)", value);
+		return;
+	case 0x01:
+		print_field("Framing: Framed (0x%2.2x)", value);
+		return;
+	default:
+		print_field("Packing: Reserved (0x%2.2x)", value);
+	}
+}
+
+static void le_read_buffer_size_v2_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_buffer_size_v2 *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("ACL MTU: %d", le16_to_cpu(rsp->acl_mtu));
+	print_field("ACL max packet: %d", rsp->acl_max_pkt);
+	print_field("ISO MTU: %d", le16_to_cpu(rsp->iso_mtu));
+	print_field("ISO max packet: %d", rsp->iso_max_pkt);
+}
+
+static void le_read_iso_tx_sync_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_iso_tx_sync *cmd = data;
+
+	print_field("Handle: %d", le16_to_cpu(cmd->handle));
+}
+
+static void le_read_iso_tx_sync_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_iso_tx_sync *rsp = data;
+	uint32_t offset = 0;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("Handle: %d", le16_to_cpu(rsp->handle));
+	print_field("Sequence Number: %d", le16_to_cpu(rsp->seq));
+	print_field("Timestamp: %d", le32_to_cpu(rsp->timestamp));
+
+	memcpy(&offset, rsp->offset, sizeof(rsp->offset));
+
+	print_field("Offset: %d", le32_to_cpu(offset));
+}
+
+static void print_cis_params(const void *data)
+{
+	const struct bt_hci_cis_params *cis = data;
+
+	print_field("CIS ID: 0x%2.2x", cis->cis_id);
+	print_field("Master to Slave Maximum SDU Size: %u",
+						le16_to_cpu(cis->m_sdu));
+	print_field("Slave to Master Maximum SDU Size: %u",
+						le16_to_cpu(cis->s_sdu));
+	print_le_phy("Master to Slave PHY", cis->m_phy);
+	print_le_phy("Slave to Master PHY", cis->s_phy);
+	print_field("Master to Slave Retransmission attempts: 0x%2.2x",
+							cis->m_rtn);
+	print_field("Slave to Master Retransmission attempts: 0x%2.2x",
+							cis->s_rtn);
+}
+
+static void print_list(const void *data, uint8_t size, int num_items,
+			size_t item_size, void (*callback)(const void *data))
+{
+	while (size >= item_size && num_items) {
+		callback(data);
+		data += item_size;
+		size -= item_size;
+		num_items--;
+	}
+
+	if (num_items)
+		print_hex_field("", data, size);
+}
+
+static void print_usec_interval(const char *prefix, const uint8_t interval[3])
+{
+	uint32_t u24 = 0;
+
+	memcpy(&u24, interval, 3);
+	print_field("%s: %u us (0x%6.6x)", prefix, le32_to_cpu(u24),
+						le32_to_cpu(u24));
+}
+
+static void le_set_cig_params_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_cig_params *cmd = data;
+
+	print_field("CIG ID: 0x%2.2x", cmd->cig_id);
+	print_usec_interval("Master to Slave SDU Interval", cmd->m_interval);
+	print_usec_interval("Slave to Master SDU Interval", cmd->s_interval);
+	print_sca(cmd->sca);
+	print_packing(cmd->packing);
+	print_framing(cmd->framing);
+	print_field("Master to Slave Maximum Latency: %d ms (0x%4.4x)",
+		le16_to_cpu(cmd->m_latency), le16_to_cpu(cmd->m_latency));
+	print_field("Slave to Master Maximum Latency: %d ms (0x%4.4x)",
+		le16_to_cpu(cmd->s_latency), le16_to_cpu(cmd->s_latency));
+	print_field("Number of CIS: %u", cmd->num_cis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->cis, size, cmd->num_cis, sizeof(*cmd->cis),
+						print_cis_params);
+}
+
+static void print_cis_params_test(const void *data)
+{
+	const struct bt_hci_cis_params_test *cis = data;
+
+	print_field("CIS ID: 0x%2.2x", cis->cis_id);
+	print_field("NSE: 0x%2.2x", cis->nse);
+	print_field("Master to Slave Maximum SDU: 0x%4.4x", cis->m_sdu);
+	print_field("Slave to Master Maximum SDU: 0x%4.4x",
+						le16_to_cpu(cis->s_sdu));
+	print_field("Master to Slave Maximum PDU: 0x%2.2x",
+						le16_to_cpu(cis->m_pdu));
+	print_field("Slave to Master Maximum PDU: 0x%2.2x", cis->s_pdu);
+	print_le_phy("Master to Slave PHY", cis->m_phy);
+	print_le_phy("Slave to Master PHY", cis->s_phy);
+	print_field("Master to Slave Burst Number: 0x%2.2x", cis->m_bn);
+	print_field("Slave to Master Burst Number: 0x%2.2x", cis->s_bn);
+}
+
+static void le_set_cig_params_test_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_cig_params_test *cmd = data;
+
+	print_field("CIG ID: 0x%2.2x", cmd->cig_id);
+	print_usec_interval("Master to Slave SDU Interval", cmd->m_interval);
+	print_usec_interval("Master to Slave SDU Interval", cmd->s_interval);
+	print_field("Master to Slave Flush Timeout: 0x%2.2x", cmd->m_ft);
+	print_field("Slave to Master Flush Timeout: 0x%2.2x", cmd->s_ft);
+	print_field("ISO Interval: %.2f ms (0x%4.4x)",
+				le16_to_cpu(cmd->iso_interval) * 1.25,
+				le16_to_cpu(cmd->iso_interval));
+	print_sca(cmd->sca);
+	print_packing(cmd->packing);
+	print_framing(cmd->framing);
+	print_field("Number of CIS: %u", cmd->num_cis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->cis, size, cmd->num_cis, sizeof(*cmd->cis),
+						print_cis_params_test);
+}
+
+static void print_cig_handle(const void *data)
+{
+	const uint16_t *handle = data;
+
+	print_field("Connection Handle: %d", le16_to_cpu(*handle));
+}
+
+static void le_set_cig_params_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_set_cig_params *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("CIG ID: 0x%2.2x", rsp->cig_id);
+	print_field("Number of Handles: %u", rsp->num_handles);
+
+	size -= sizeof(*rsp);
+
+	print_list(rsp->handle, size, rsp->num_handles, sizeof(*rsp->handle),
+						print_cig_handle);
+}
+
+static void print_cis(const void *data)
+{
+	const struct bt_hci_cis *cis = data;
+
+	print_field("CIS Handle: %d", cis->cis_handle);
+	print_field("ACL Handle: %d", cis->acl_handle);
+}
+
+static void le_create_cis_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_create_cis *cmd = data;
+
+	print_field("Number of CIS: %u", cmd->num_cis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->cis, size, cmd->num_cis, sizeof(*cmd->cis), print_cis);
+}
+
+static void le_remove_cig_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_remove_cig *cmd = data;
+
+	print_field("CIG ID: 0x%02x", cmd->cig_id);
+}
+
+static void le_accept_cis_req_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_accept_cis *cmd = data;
+
+	print_field("CIS Handle: %d", le16_to_cpu(cmd->handle));
+}
+
+static void le_reject_cis_req_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_reject_cis *cmd = data;
+
+	print_field("CIS Handle: %d", le16_to_cpu(cmd->handle));
+	print_reason(cmd->reason);
+}
+
+static void print_bis(const void *data)
+{
+	const struct bt_hci_bis *bis = data;
+
+	print_usec_interval("SDU Interval", bis->sdu_interval);
+	print_field("Maximum SDU size: %u", le16_to_cpu(bis->sdu));
+	print_field("Maximum Latency: %u ms (0x%4.4x)",
+			le16_to_cpu(bis->latency), le16_to_cpu(bis->latency));
+	print_field("RTN: 0x%2.2x", bis->rtn);
+	print_le_phy("PHY", bis->phy);
+	print_packing(bis->packing);
+	print_framing(bis->framing);
+	print_field("Encryption: 0x%2.2x", bis->encryption);
+	print_hex_field("Broadcast Code", bis->bcode, 16);
+}
+
+static void le_create_big_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_create_big *cmd = data;
+
+	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_field("Advertising Handle: 0x%2.2x", cmd->adv_handle);
+	print_field("Number of BIS: %u", cmd->num_bis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->bis, size, cmd->num_bis, sizeof(*cmd->bis), print_bis);
+}
+
+static void print_bis_test(const void *data)
+{
+	const struct bt_hci_bis_test *bis = data;
+
+	print_usec_interval("SDU Interval", bis->sdu_interval);
+	print_field("ISO Interval: %.2f ms (0x%4.4x)",
+				le16_to_cpu(bis->iso_interval) * 1.25,
+				le16_to_cpu(bis->iso_interval));
+	print_field("Number of Subevents: %u", bis->nse);
+	print_field("Maximum SDU: %u", bis->sdu);
+	print_field("Maximum PDU: %u", bis->pdu);
+	print_packing(bis->packing);
+	print_framing(bis->framing);
+	print_le_phy("PHY", bis->phy);
+	print_field("Burst Number: %u", bis->bn);
+	print_field("Immediate Repetition Count: %u", bis->irc);
+	print_field("Pre Transmission Offset: 0x%2.2x", bis->pto);
+	print_field("Encryption: 0x%2.2x", bis->encryption);
+	print_hex_field("Broadcast Code", bis->bcode, 16);
+}
+
+static void le_create_big_cmd_test_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_create_big_test *cmd = data;
+
+	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_field("Advertising Handle: 0x%2.2x", cmd->adv_handle);
+	print_field("Number of BIS: %u", cmd->num_bis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->bis, size, cmd->num_bis, sizeof(*cmd->bis),
+						print_bis_test);
+}
+
+static void le_terminate_big_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_term_big *cmd = data;
+
+	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_reason(cmd->reason);
+}
+
+static void print_bis_sync(const void *data)
+{
+	const uint8_t *bis_id = data;
+
+	print_field("BIS ID: 0x%2.2x", *bis_id);
+}
+
+static void le_big_create_sync_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_big_create_sync *cmd = data;
+
+	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_field("Number of BIS: %u", cmd->num_bis);
+	print_field("Encryption: 0x%2.2x", cmd->encryption);
+	print_hex_field("Broadcast Code", cmd->bcode, 16);
+	print_field("Number Subevents: 0x%2.2x", cmd->mse);
+	print_field("Timeout: %d ms (0x%4.4x)", le16_to_cpu(cmd->timeout) * 10,
+						le16_to_cpu(cmd->timeout));
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->bis, size, cmd->num_bis, sizeof(*cmd->bis),
+						print_bis_sync);
+}
+
+static void le_big_term_sync_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_big_term_sync *cmd = data;
+
+	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+}
+
+static void print_iso_path(const char *prefix, uint8_t path)
+{
+	switch (path) {
+	case 0x00:
+		print_field("%s Data Path: Disabled (0x%2.2x)", prefix, path);
+		return;
+	case 0x01:
+		print_field("%s Data Path: HCI (0x%2.2x)", prefix, path);
+		return;
+	case 0xff:
+		print_field("%s Data Path: Test Mode (0x%2.2x)", prefix, path);
+		return;
+	default:
+		print_field("%s Data Path: Logical Channel Number (0x%2.2x)",
+							prefix, path);
+	}
+}
+
+static void le_setup_iso_path_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_setup_iso_path *cmd = data;
+
+	print_field("Handle: %d", le16_to_cpu(cmd->handle));
+	print_iso_path("Input", cmd->input_path);
+	print_iso_path("Output", cmd->output_path);
+}
+
+static void print_iso_dir(uint8_t path_dir)
+{
+	switch (path_dir) {
+	case 0x00:
+		print_field("Data Path Direction: Input (0x%2.2x)", path_dir);
+		return;
+	case 0x01:
+		print_field("Data Path Direction: Output (0x%2.2x)", path_dir);
+		return;
+	default:
+		print_field("Data Path Direction: Reserved (0x%2.2x)",
+							path_dir);
+	}
+}
+
+static void le_remove_iso_path_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_remove_iso_path *cmd = data;
+
+	print_field("Connection Handle: %d", le16_to_cpu(cmd->handle));
+	print_iso_dir(cmd->path_dir);
+}
+
+static void le_req_peer_sca_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_req_peer_sca *cmd = data;
+
+	print_field("Connection Handle: %d", le16_to_cpu(cmd->handle));
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8476,6 +8918,107 @@ static const struct opcode_data opcode_table[] = {
 				"Parameters",
 				le_set_default_periodic_adv_sync_trans_params,
 				6, true, status_rsp, 1, true},
+	{ BT_HCI_CMD_LE_READ_BUFFER_SIZE_V2,
+				BT_HCI_BIT_LE_READ_BUFFER_SIZE_V2,
+				"LE Read Buffer v2",
+				null_cmd, 0, true,
+				le_read_buffer_size_v2_rsp,
+				sizeof(
+				struct bt_hci_rsp_le_read_buffer_size_v2),
+				true },
+	{ BT_HCI_CMD_LE_READ_ISO_TX_SYNC,
+				BT_HCI_BIT_LE_READ_ISO_TX_SYNC,
+				"LE Read ISO TX Sync",
+				le_read_iso_tx_sync_cmd,
+				sizeof(struct bt_hci_cmd_le_read_iso_tx_sync),
+				true,
+				le_read_iso_tx_sync_rsp,
+				sizeof(struct bt_hci_rsp_le_read_iso_tx_sync),
+				true },
+	{ BT_HCI_CMD_LE_SET_CIG_PARAMS, BT_HCI_BIT_LE_SET_CIG_PARAMS,
+				"LE Set Connected Isochronous Group Parameters",
+				le_set_cig_params_cmd,
+				sizeof(struct bt_hci_cmd_le_set_cig_params),
+				false,
+				le_set_cig_params_rsp,
+				sizeof(struct bt_hci_rsp_le_set_cig_params),
+				false },
+	{ BT_HCI_CMD_LE_SET_CIG_PARAMS_TEST, BT_HCI_BIT_LE_SET_CIG_PARAMS_TEST,
+				"LE Set Connected Isochronous Group Parameters"
+				" Test", le_set_cig_params_test_cmd,
+				sizeof(
+				struct bt_hci_cmd_le_set_cig_params_test),
+				false,
+				le_set_cig_params_rsp,
+				sizeof(struct bt_hci_rsp_le_set_cig_params),
+				false },
+	{ BT_HCI_CMD_LE_CREATE_CIS, BT_HCI_BIT_LE_CREATE_CIS,
+				"LE Create Connected Isochronous Stream",
+				le_create_cis_cmd,
+				sizeof(struct bt_hci_cmd_le_create_cis),
+				false },
+	{ BT_HCI_CMD_LE_REMOVE_CIG, BT_HCI_BIT_LE_REMOVE_CIG,
+				"LE Remove Connected Isochronous Group",
+				le_remove_cig_cmd,
+				sizeof(struct bt_hci_cmd_le_remove_cig), false,
+				status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_ACCEPT_CIS, BT_HCI_BIT_LE_ACCEPT_CIS,
+				"LE Accept Connected Isochronous Stream Request",
+				le_accept_cis_req_cmd,
+				sizeof(struct bt_hci_cmd_le_accept_cis), true },
+	{ BT_HCI_CMD_LE_REJECT_CIS, BT_HCI_BIT_LE_REJECT_CIS,
+				"LE Reject Connected Isochronous Stream Request",
+				le_reject_cis_req_cmd,
+				sizeof(struct bt_hci_cmd_le_reject_cis), true,
+				status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_CREATE_BIG, BT_HCI_BIT_LE_CREATE_BIG,
+				"LE Create Broadcast Isochronous Group",
+				le_create_big_cmd },
+	{ BT_HCI_CMD_LE_CREATE_BIG_TEST, BT_HCI_BIT_LE_CREATE_BIG_TEST,
+				"LE Create Broadcast Isochronous Group Test",
+				le_create_big_cmd_test_cmd },
+	{ BT_HCI_CMD_LE_TERM_BIG, BT_HCI_BIT_LE_TERM_BIG,
+				"LE Terminate Broadcast Isochronous Group",
+				le_terminate_big_cmd,
+				sizeof(struct bt_hci_cmd_le_term_big), true,
+				status_rsp, 1, true},
+	{ BT_HCI_CMD_LE_BIG_CREATE_SYNC, BT_HCI_BIT_LE_BIG_CREATE_SYNC,
+				"LE Broadcast Isochronous Group Create Sync",
+				le_big_create_sync_cmd,
+				sizeof(struct bt_hci_cmd_le_big_create_sync),
+				true },
+	{ BT_HCI_CMD_LE_BIG_TERM_SYNC, BT_HCI_BIT_LE_BIG_TERM_SYNC,
+				"LE Broadcast Isochronous Group Terminate Sync",
+				le_big_term_sync_cmd,
+				sizeof(struct bt_hci_cmd_le_big_term_sync),
+				true },
+	{ BT_HCI_CMD_LE_REQ_PEER_SCA, BT_HCI_BIT_LE_REQ_PEER_SCA,
+				"LE Request Peer SCA", le_req_peer_sca_cmd,
+				sizeof(struct bt_hci_cmd_le_req_peer_sca),
+				true },
+	{ BT_HCI_CMD_LE_SETUP_ISO_PATH, BT_HCI_BIT_LE_SETUP_ISO_PATH,
+				"LE Setup Isochronous Data Path",
+				le_setup_iso_path_cmd,
+				sizeof(struct bt_hci_cmd_le_setup_iso_path),
+				true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_REMOVE_ISO_PATH, BT_HCI_BIT_LE_REMOVE_ISO_PATH,
+				"LE Remove Isochronous Data Path",
+				le_remove_iso_path_cmd,
+				sizeof(struct bt_hci_cmd_le_remove_iso_path),
+				true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_ISO_TX_TEST, BT_HCI_BIT_LE_ISO_TX_TEST,
+				"LE Isochronous Transmit Test", NULL, 0,
+				false },
+	{ BT_HCI_CMD_LE_ISO_RX_TEST, BT_HCI_BIT_LE_ISO_RX_TEST,
+				"LE Isochronous Receive Test", NULL, 0,
+				false },
+	{ BT_HCI_CMD_LE_ISO_READ_TEST_COUNTER,
+				BT_HCI_BIT_LE_ISO_READ_TEST_COUNTER,
+				"LE Isochronous Read Test Counters", NULL, 0,
+				false },
+	{ BT_HCI_CMD_LE_ISO_TEST_END, BT_HCI_BIT_LE_ISO_TEST_END,
+				"LE Isochronous Read Test Counters", NULL, 0,
+				false },
 	{ }
 };
 
@@ -9913,6 +10456,94 @@ static void le_per_adv_sync_trans_rec_evt(const void *data, uint8_t size)
 	print_clock_accuracy(evt->clock_accuracy);
 }
 
+static void le_cis_established_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_cis_established *evt = data;
+
+	print_status(evt->status);
+	print_field("Connection Handle: %d", le16_to_cpu(evt->conn_handle));
+	print_usec_interval("CIG Synchronization Delay", evt->cig_sync_delay);
+	print_usec_interval("CIS Synchronization Delay", evt->cis_sync_delay);
+	print_usec_interval("Master to Slave Latency", evt->m_latency);
+	print_usec_interval("Slave to Master Latency", evt->s_latency);
+	print_le_phy("Master to Slave PHY", evt->m_phy);
+	print_le_phy("Slave to Master PHY", evt->s_phy);
+	print_field("Number of Subevents: %u", evt->nse);
+	print_field("Master to Slave Burst Number: %u", evt->m_bn);
+	print_field("Slave to Master Burst Number: %u", evt->s_bn);
+	print_field("Master to Slave Flush Timeout: %u", evt->m_ft);
+	print_field("Slave to Master Flush Timeout: %u", evt->s_ft);
+	print_field("Master to Slave MTU: %u", le16_to_cpu(evt->m_mtu));
+	print_field("Slave to Master MTU: %u", le16_to_cpu(evt->s_mtu));
+	print_field("ISO Interval: %u", le16_to_cpu(evt->interval));
+}
+
+static void le_req_cis_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_cis_req *evt = data;
+
+	print_field("ACL Handle: %d", le16_to_cpu(evt->acl_handle));
+	print_field("CIS Handle: %d", le16_to_cpu(evt->cis_handle));
+	print_field("CIG ID: 0x%2.2x", evt->cig_id);
+	print_field("CIS ID: 0x%2.2x", evt->cis_id);
+}
+
+static void print_bis_handle(const void *data)
+{
+	const uint16_t *handle = data;
+
+	print_field("Connection Handle: %d", le16_to_cpu(*handle));
+}
+
+static void le_big_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_big_complete *evt = data;
+
+	print_status(evt->status);
+	print_field("BIG ID: 0x%2.2x", evt->big_id);
+	print_usec_interval("BIG Synchronization Delay", evt->sync_delay);
+	print_usec_interval("Transport Latency", evt->latency);
+	print_le_phy("PHY", evt->phy);
+	print_list(evt->handle, size, evt->num_bis, sizeof(*evt->handle),
+						print_bis_handle);
+}
+
+static void le_big_terminate_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_big_terminate *evt = data;
+
+	print_reason(evt->reason);
+	print_field("BIG ID: 0x%2.2x", evt->big_id);
+}
+
+static void le_big_sync_estabilished_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_big_sync_estabilished *evt = data;
+
+	print_status(evt->status);
+	print_field("BIG ID: 0x%2.2x", evt->big_id);
+	print_usec_interval("Transport Latency", evt->latency);
+	print_list(evt->handle, size, evt->num_bis, sizeof(*evt->handle),
+						print_bis_handle);
+}
+
+static void le_big_sync_lost_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_big_sync_lost *evt = data;
+
+	print_field("BIG ID: 0x%2.2x", evt->big_id);
+	print_reason(evt->reason);
+}
+
+static void le_req_sca_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_req_peer_sca_complete *evt = data;
+
+	print_status(evt->status);
+	print_field("Connection Handle: %d", le16_to_cpu(evt->handle));
+	print_sca(evt->sca);
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -10001,6 +10632,36 @@ static const struct subevent_data le_meta_event_table[] = {
 	{ 0x18, "LE Periodic Advertising Sync Transfer Received",
 					le_per_adv_sync_trans_rec_evt, 19,
 					true},
+	{ BT_HCI_EVT_LE_CIS_ESTABLISHED,
+				"LE Connected Isochronous Stream Established",
+				le_cis_established_evt,
+				sizeof(struct bt_hci_evt_le_cis_established),
+				true },
+	{ BT_HCI_EVT_LE_CIS_REQ, "LE Connected Isochronous Stream Request",
+				le_req_cis_evt,
+				sizeof(struct bt_hci_evt_le_cis_req),
+				true },
+	{ BT_HCI_EVT_LE_BIG_COMPLETE,
+				"LE Broadcast Isochronous Group Complete",
+				le_big_complete_evt,
+				sizeof(struct bt_hci_evt_le_big_complete) },
+	{ BT_HCI_EVT_LE_BIG_TERMINATE,
+				"LE Broadcast Isochronous Group Terminate",
+				le_big_terminate_evt,
+				sizeof(struct bt_hci_evt_le_big_terminate) },
+	{ BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED,
+				"LE Broadcast Isochronous Group Sync "
+				"Estabilished", le_big_sync_estabilished_evt,
+				sizeof(struct bt_hci_evt_le_big_sync_lost) },
+	{ BT_HCI_EVT_LE_BIG_SYNC_LOST,
+				"LE Broadcast Isochronous Group Sync Lost",
+				le_big_sync_lost_evt,
+				sizeof(struct bt_hci_evt_le_big_sync_lost) },
+	{ BT_HCI_EVT_LE_REQ_PEER_SCA_COMPLETE,
+				"LE Request Peer SCA Complete",
+				le_req_sca_complete_evt,
+				sizeof(
+				struct bt_hci_evt_le_req_peer_sca_complete)},
 	{ }
 };
 
