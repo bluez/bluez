@@ -1478,10 +1478,10 @@ static void get_managed_objects_join_cb(struct l_dbus_message *msg,
 	return;
 fail:
 	if (agent)
-		free_node_resources(node);
+		mesh_agent_remove(agent);
 
 	if (node)
-		mesh_agent_remove(agent);
+		free_node_resources(node);
 
 	req->cb(NULL, NULL);
 }
