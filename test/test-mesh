@@ -73,6 +73,16 @@
 #           Set AppKey index to indicate which application key to use
 #           to encode outgoing messages: up to 3 hex digits
 #
+#     vendor-send
+#           Allows to send an arbitrary endor message.
+#           The destination is set based on previously executed "dest"
+#           command (if not set, the outbound message will fail).
+#           User is prompted to enter hex bytearray payload.
+#           The message is originated from the vendor model registered
+#           on element 0. For the command to succeed, the AppKey index
+#           that is set by executing "app-key" must correspond to the
+#           application key to which the Sample Vendor model is bound.
+#
 #     client-menu
 #           Enter On/Off client submenu.
 #
@@ -155,6 +165,7 @@ INPUT_NONE = 0
 INPUT_TOKEN = 1
 INPUT_DEST_ADDRESS = 2
 INPUT_APP_KEY_INDEX = 3
+INPUT_MESSAGE_PAYLOAD = 4
 
 menus = []
 current_menu = None
@@ -542,7 +553,6 @@ class OnOffServer(Model):
 
 	def process_message(self, source, key, data):
 		datalen = len(data)
-		print('OnOff Server process message len: ', datalen)
 
 		if datalen != 2 and datalen != 3:
 			# The opcode is not recognized by this model
@@ -737,6 +747,8 @@ class MainMenu(Menu):
 						self.__cmd_set_dest),
 			'app-index': MenuItem(' - set AppKey index',
 						self.__cmd_set_app_idx),
+			'vendor-send': MenuItem(' - send raw vendor message',
+						self.__cmd_vendor_msg),
 			'client-menu': MenuItem(' - On/Off client menu',
 						self.__cmd_client_menu),
 			'quit': MenuItem(' - exit the test', app_exit)
@@ -772,6 +784,12 @@ class MainMenu(Menu):
 		user_input = INPUT_APP_KEY_INDEX;
 		print(set_cyan('Enter app key index (up to 3 digit hex):'))
 
+	def __cmd_vendor_msg(self):
+		global user_input
+
+		user_input = INPUT_MESSAGE_PAYLOAD;
+		print(set_cyan('Enter message payload (hex):'))
+
 	def __cmd_join(self):
 		if agent == None:
 			print(set_error('Provisioning agent not found'))
@@ -806,6 +824,17 @@ class MainMenu(Menu):
 		mesh_net.Leave(token, reply_handler=remove_node_cb,
 					error_handler=generic_error_cb)
 
+	def __send_vendor_msg(self, str_value):
+		try:
+			msg_data = bytearray.fromhex(str_value)
+		except ValueError:
+			raise_error('Not a valid hexadecimal input')
+			return
+
+		print(set_yellow('Send data: ' + set_green(str_value)))
+		app.elements[0].models[1].send_message(dst_addr, app_idx,
+							msg_data)
+
 	def process_cmd(self, str_value):
 		global user_input
 		global dst_addr
@@ -825,6 +854,8 @@ class MainMenu(Menu):
 				app_idx = res
 				print(set_yellow("Application index: ") +
 					set_green(format(app_idx, '03x')))
+		elif  user_input == INPUT_MESSAGE_PAYLOAD:
+			self.__send_vendor_msg(str_value)
 
 		if user_input != INPUT_NONE:
 			user_input = INPUT_NONE
