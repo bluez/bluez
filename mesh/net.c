@@ -3120,6 +3120,7 @@ struct mesh_io *mesh_net_detach(struct mesh_net *net)
 	mesh_io_deregister_recv_cb(io, MESH_IO_FILTER_NET);
 
 	net->io = NULL;
+	l_queue_remove(nets, net);
 
 	return io;
 }
