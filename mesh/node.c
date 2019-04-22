@@ -1146,9 +1146,13 @@ int node_attach(const char *app_path, const char *sender, uint64_t token,
 	if (!node)
 		return MESH_ERROR_NOT_FOUND;
 
-	/* TODO: decide what to do if previous node->app_path is not NULL */
-	node->app_path = l_strdup(app_path);
+	/* Check if the node is already in use */
+	if (node->owner) {
+		l_warn("The node is already in use");
+		return MESH_ERROR_ALREADY_EXISTS;
+	}
 
+	node->app_path = l_strdup(app_path);
 	node->owner = l_strdup(sender);
 
 	req = l_new(struct attach_obj_request, 1);

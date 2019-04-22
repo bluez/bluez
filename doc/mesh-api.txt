@@ -98,6 +98,7 @@ Methods:
 		PossibleErrors:
 			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.NotFound,
+			org.bluez.mesh.Error.AlreadyExists,
 			org.bluez.mesh.Error.Failed
 
 	void Leave(uint64 token)
