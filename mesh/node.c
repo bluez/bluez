@@ -1297,7 +1297,7 @@ static void convert_node_to_storage(struct mesh_node *node,
 
 	memcpy(db_node->uuid, node->dev_uuid, 16);
 
-	node->friend = db_node->modes.friend;
+	db_node->modes.friend = node->friend;
 	db_node->modes.relay.state = node->relay.mode;
 	db_node->modes.relay.cnt = node->relay.cnt;
 	db_node->modes.relay.interval = node->relay.interval;
