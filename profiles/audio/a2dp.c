@@ -147,6 +147,7 @@ struct a2dp_channel {
 	unsigned int auth_id;
 	struct avdtp *session;
 	struct queue *seps;
+	struct a2dp_remote_sep *last_used;
 };
 
 static GSList *servers = NULL;
@@ -860,6 +861,60 @@ static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
+static bool match_remote_sep(const void *data, const void *user_data)
+{
+	const struct a2dp_remote_sep *sep = data;
+	const struct avdtp_remote_sep *rsep = user_data;
+
+	return sep->sep == rsep;
+}
+
+static void store_last_used(struct a2dp_channel *chan,
+					struct avdtp_remote_sep *rsep)
+{
+	GKeyFile *key_file;
+	char filename[PATH_MAX];
+	char dst_addr[18];
+	char value[4];
+	char *data;
+	size_t len = 0;
+
+	ba2str(device_get_address(chan->device), dst_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s",
+		btd_adapter_get_storage_dir(device_get_adapter(chan->device)),
+		dst_addr);
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	sprintf(value, "%02hhx", avdtp_get_seid(rsep));
+
+	g_key_file_set_string(key_file, "Endpoints", "LastUsed", value);
+
+	data = g_key_file_to_data(key_file, &len, NULL);
+	g_file_set_contents(filename, data, len, NULL);
+
+	g_free(data);
+	g_key_file_free(key_file);
+}
+
+static void update_last_used(struct a2dp_channel *chan,
+						struct avdtp_stream *stream)
+{
+	struct avdtp_remote_sep *rsep;
+	struct a2dp_remote_sep *sep;
+
+	rsep = avdtp_stream_get_remote_sep(stream);
+
+	/* Update last used */
+	sep = queue_find(chan->seps, match_remote_sep, rsep);
+	if (chan->last_used == sep)
+		return;
+
+	chan->last_used = sep;
+	store_last_used(chan, rsep);
+}
+
 static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream, struct avdtp_error *err,
 			void *user_data)
@@ -884,7 +939,8 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		setup->err = err;
 		if (setup->start)
 			finalize_resume(setup);
-	}
+	} else if (setup->chan)
+		update_last_used(setup->chan, stream);
 
 	finalize_config(setup);
 
@@ -1075,14 +1131,6 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 							finalize_resume, NULL);
 
 	return TRUE;
-}
-
-static bool match_remote_sep(const void *data, const void *user_data)
-{
-	const struct a2dp_remote_sep *sep = data;
-	const struct avdtp_remote_sep *rsep = user_data;
-
-	return sep->sep == rsep;
 }
 
 static struct a2dp_remote_sep *find_remote_sep(struct a2dp_channel *chan,
@@ -1791,19 +1839,28 @@ done:
 	queue_push_tail(chan->seps, sep);
 }
 
+static bool match_seid(const void *data, const void *user_data)
+{
+	const struct a2dp_remote_sep *sep = data;
+	const uint8_t *seid = user_data;
+
+	return avdtp_get_seid(sep->sep) == *seid;
+}
+
 static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 								char **seids)
 {
 	struct avdtp_remote_sep *sep;
+	uint8_t seid;
+	char *value;
 
 	if (!seids)
 		return;
 
 	for (; *seids; seids++) {
-		uint8_t seid;
 		uint8_t type;
 		uint8_t codec;
-		char *value, caps[256];
+		char caps[256];
 		uint8_t data[128];
 		int i, size;
 		GSList *l = NULL;
@@ -1847,6 +1904,15 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 
 		register_remote_sep(sep, chan);
 	}
+
+	value = g_key_file_get_string(key_file, "Endpoints", "LastUsed", NULL);
+	if (!value)
+		return;
+
+	if (sscanf(value, "%02hhx", &seid) != 1)
+		return;
+
+	chan->last_used = queue_find(chan->seps, match_seid, &seid);
 }
 
 static void load_remote_seps(struct a2dp_channel *chan)
@@ -2355,8 +2421,12 @@ done:
 static struct a2dp_sep *a2dp_find_sep(struct avdtp *session, GSList *list,
 					const char *sender)
 {
+	struct a2dp_sep *first = NULL;
+	struct a2dp_channel *chan = find_channel(session);
+
 	for (; list; list = list->next) {
 		struct a2dp_sep *sep = list->data;
+		struct avdtp_remote_sep *rsep;
 
 		/* Use sender's endpoint if available */
 		if (sender) {
@@ -2370,14 +2440,23 @@ static struct a2dp_sep *a2dp_find_sep(struct avdtp *session, GSList *list,
 				continue;
 		}
 
-		if (avdtp_find_remote_sep(session, sep->lsep) == NULL)
+		rsep = avdtp_find_remote_sep(session, sep->lsep);
+		if (!rsep)
 			continue;
+
+		/* Locate last used if set */
+		if (chan->last_used) {
+			if (chan->last_used->sep == rsep)
+				return sep;
+			first = sep;
+			continue;
+		}
 
 		return sep;
 
 	}
 
-	return NULL;
+	return first;
 }
 
 static struct a2dp_sep *a2dp_select_sep(struct avdtp *session, uint8_t type,
