@@ -169,7 +169,9 @@ In "Attributes" group GATT database is stored using attribute handle as key
 all data required to re-create given attribute. ":" is used to separate fields.
 
 In "Endpoints" group A2DP remote endpoints are stored using the seid as key
-(hexadecimal format) and ":" is used to separate fields.
+(hexadecimal format) and ":" is used to separate fields. It may also contain
+an entry which key is set to "LastUsed" which represented the last endpoint
+used.
 
 [General] group contains:
 
@@ -219,6 +221,9 @@ Sample Attributes section:
 	<xx>:<xx>:<xxxxxxxx...>	String	First field is the endpoint type,
 					followed by codec type and its
 					capabilies as hexadecimal encoded
+					string.
+	LastUsed:<xx>		String	LastUsed has one field which is the
+					endpoint ID as hexadecimal encoded
 					string.
 
 Info file format
