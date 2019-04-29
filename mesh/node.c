@@ -233,7 +233,7 @@ static void free_node_resources(void *data)
 
 	if (node->path)
 		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
-					MESH_NODE_INTERFACE);
+							MESH_NODE_INTERFACE);
 	l_free(node->path);
 
 	l_free(node);
@@ -1020,8 +1020,12 @@ static void app_disc_cb(struct l_dbus *bus, void *user_data)
 	l_free(node->owner);
 	node->owner = NULL;
 
-	l_free(node->app_path);
-	node->app_path = NULL;
+	if (node->path) {
+		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
+							MESH_NODE_INTERFACE);
+		l_free(node->app_path);
+		node->app_path = NULL;
+	}
 }
 
 static bool validate_element_properties(struct mesh_node *node,
