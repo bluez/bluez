@@ -76,12 +76,6 @@ struct join_data{
 	uint8_t *uuid;
 };
 
-struct attach_data {
-	uint64_t token;
-	struct l_dbus_message *msg;
-	const char *app;
-};
-
 static struct bt_mesh mesh;
 static struct l_queue *controllers;
 static struct mgmt *mgmt_mesh;
@@ -90,8 +84,8 @@ static bool initialized;
 /* We allow only one outstanding Join request */
 static struct join_data *join_pending;
 
-/* Pending Attach requests */
-static struct l_queue *attach_queue;
+/* Pending method requests */
+static struct l_queue *pending_queue;
 
 static bool simple_match(const void *a, const void *b)
 {
@@ -341,14 +335,13 @@ bool mesh_init(uint16_t index, const char *config_dir)
 	return true;
 }
 
-static void attach_exit(void *data)
+static void pending_request_exit(void *data)
 {
 	struct l_dbus_message *reply;
-	struct attach_data *pending = data;
+	struct l_dbus_message *msg = data;
 
-	reply = dbus_error(pending->msg, MESH_ERROR_FAILED, "Failed. Exiting");
+	reply = dbus_error(msg, MESH_ERROR_FAILED, "Failed. Exiting");
 	l_dbus_send(dbus_get_bus(), reply);
-	l_free(pending);
 }
 
 static void free_pending_join_call(bool failed)
@@ -388,7 +381,7 @@ void mesh_cleanup(void)
 		free_pending_join_call(true);
 	}
 
-	l_queue_destroy(attach_queue, attach_exit);
+	l_queue_destroy(pending_queue, pending_request_exit);
 	node_cleanup_all();
 	mesh_model_cleanup();
 
@@ -628,38 +621,29 @@ done:
 	return reply;
 }
 
-static bool match_attach_request(const void *a, const void *b)
-{
-	const struct attach_data *pending = a;
-	const uint64_t *token = b;
-
-	return *token == pending->token;
-}
-
-static void attach_ready_cb(int status, char *node_path, uint64_t token)
+static void attach_ready_cb(void *user_data, int status, struct mesh_node *node)
 {
 	struct l_dbus_message *reply;
-	struct attach_data *pending;
+	struct l_dbus_message *pending_msg;
 
-	pending = l_queue_find(attach_queue, match_attach_request, &token);
-	if (!pending)
+	pending_msg = l_queue_find(pending_queue, simple_match, user_data);
+	if (!pending_msg)
 		return;
 
 	if (status != MESH_ERROR_NONE) {
 		const char *desc = (status == MESH_ERROR_NOT_FOUND) ?
 				"Node match not found" : "Attach failed";
-		reply = dbus_error(pending->msg, status, desc);
+		reply = dbus_error(pending_msg, status, desc);
 		goto done;
 	}
 
-	reply = l_dbus_message_new_method_return(pending->msg);
+	reply = l_dbus_message_new_method_return(pending_msg);
 
-	node_build_attach_reply(reply, token);
+	node_build_attach_reply(node, reply);
 
 done:
 	l_dbus_send(dbus_get_bus(), reply);
-	l_queue_remove(attach_queue, pending);
-	l_free(pending);
+	l_queue_remove(pending_queue, pending_msg);
 }
 
 static struct l_dbus_message *attach_call(struct l_dbus *dbus,
@@ -668,7 +652,8 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 {
 	uint64_t token;
 	const char *app_path, *sender;
-	struct attach_data *pending;
+	struct l_dbus_message *pending_msg;
+	int status;
 
 	l_debug("Attach");
 
@@ -677,22 +662,20 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 
 	sender = l_dbus_message_get_sender(msg);
 
-	if (node_attach(app_path, sender, token, attach_ready_cb) !=
-								MESH_ERROR_NONE)
-		return dbus_error(msg, MESH_ERROR_NOT_FOUND,
-						"Matching node not found");
+	pending_msg = l_dbus_message_ref(msg);
+	if (!pending_queue)
+		pending_queue = l_queue_new();
 
-	pending = l_new(struct attach_data, 1);
+	l_queue_push_tail(pending_queue, pending_msg);
 
-	pending->token = token;
-	pending->msg = l_dbus_message_ref(msg);
+	status = node_attach(app_path, sender, token, attach_ready_cb,
+								pending_msg);
+	if (status == MESH_ERROR_NONE)
+		return NULL;
 
-	if (!attach_queue)
-		attach_queue = l_queue_new();
+	l_queue_remove(pending_queue, pending_msg);
 
-	l_queue_push_tail(attach_queue, pending);
-
-	return NULL;
+	return dbus_error(msg, status, NULL);
 }
 
 static struct l_dbus_message *leave_call(struct l_dbus *dbus,

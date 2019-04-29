@@ -27,8 +27,8 @@ struct mesh_agent;
 #define MIN_SEQ_CACHE		(2*MIN_SEQ_TRIGGER)
 #define MIN_SEQ_CACHE_TIME	(5*60)
 
-typedef void (*node_attach_ready_func_t) (int status, char *node_path,
-								uint64_t token);
+typedef void (*node_ready_func_t) (void *user_data, int status,
+							struct mesh_node *node);
 
 typedef void (*node_join_ready_func_t) (struct mesh_node *node,
 						struct mesh_agent *agent);
@@ -86,8 +86,9 @@ bool node_add_pending_local(struct mesh_node *node, void *info,
 							struct mesh_io *io);
 void node_attach_io(struct mesh_io *io);
 int node_attach(const char *app_path, const char *sender, uint64_t token,
-						node_attach_ready_func_t cb);
-void node_build_attach_reply(struct l_dbus_message *reply, uint64_t token);
+					node_ready_func_t cb, void *user_data);
+void node_build_attach_reply(struct mesh_node *node,
+						struct l_dbus_message *reply);
 void node_id_set(struct mesh_node *node, uint16_t node_id);
 uint16_t node_id_get(struct mesh_node *node);
 bool node_dbus_init(struct l_dbus *bus);

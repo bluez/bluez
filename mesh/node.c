@@ -101,8 +101,9 @@ struct mesh_node {
 };
 
 struct attach_obj_request {
-	node_attach_ready_func_t cb;
+	node_ready_func_t cb;
 	struct mesh_node *node;
+	void *user_data;
 };
 
 struct join_obj_request {
@@ -1077,7 +1078,6 @@ static void get_managed_objects_attach_cb(struct l_dbus_message *msg,
 	struct attach_obj_request *req = user_data;
 	struct mesh_node *node = req->node;
 	const char *path;
-	uint64_t token = l_get_be64(node->token);
 	uint8_t num_ele;
 
 	if (l_dbus_message_is_error(msg)) {
@@ -1124,12 +1124,12 @@ static void get_managed_objects_attach_cb(struct l_dbus_message *msg,
 
 		node->disc_watch = l_dbus_add_disconnect_watch(bus, node->owner,
 						app_disc_cb, node, NULL);
-		req->cb(MESH_ERROR_NONE, node->path, token);
+		req->cb(req->user_data, MESH_ERROR_NONE, node);
 
 		return;
 	}
 fail:
-	req->cb(MESH_ERROR_FAILED, NULL, token);
+	req->cb(req->user_data, MESH_ERROR_FAILED, NULL);
 
 	l_queue_foreach(node->elements, free_element_path, NULL);
 	l_free(node->app_path);
@@ -1141,7 +1141,7 @@ fail:
 
 /* Establish relationship between application and mesh node */
 int node_attach(const char *app_path, const char *sender, uint64_t token,
-						node_attach_ready_func_t cb)
+				node_ready_func_t cb, void *user_data)
 {
 	struct attach_obj_request *req;
 	struct mesh_node *node;
@@ -1162,6 +1162,7 @@ int node_attach(const char *app_path, const char *sender, uint64_t token,
 	req = l_new(struct attach_obj_request, 1);
 	req->node = node;
 	req->cb = cb;
+	req->user_data = user_data;
 
 	l_dbus_method_call(dbus_get_bus(), sender, app_path,
 					L_DBUS_INTERFACE_OBJECT_MANAGER,
@@ -1531,14 +1532,10 @@ static void build_element_config(void *a, void *b)
 	l_dbus_message_builder_leave_struct(builder);
 }
 
-void node_build_attach_reply(struct l_dbus_message *reply, uint64_t token)
+void node_build_attach_reply(struct mesh_node *node,
+						struct l_dbus_message *reply)
 {
-	struct mesh_node *node;
 	struct l_dbus_message_builder *builder;
-
-	node = l_queue_find(nodes, match_token, &token);
-	if (!node)
-		return;
 
 	builder = l_dbus_message_builder_new(reply);
 
