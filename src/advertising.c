@@ -587,8 +587,9 @@ static bool parse_timeout(DBusMessageIter *iter,
 	if (client->to_id)
 		g_source_remove(client->to_id);
 
-	client->to_id = g_timeout_add_seconds(client->timeout, client_timeout,
-								client);
+	if (client->timeout > 0)
+		client->to_id = g_timeout_add_seconds(client->timeout,
+							client_timeout, client);
 
 	return true;
 }
