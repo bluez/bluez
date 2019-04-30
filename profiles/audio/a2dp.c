@@ -1821,8 +1821,15 @@ static void register_remote_sep(void *data, void *user_data)
 	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
 		goto done;
 
-	asprintf(&sep->path, "%s/sep%d", device_get_path(chan->device),
-							avdtp_get_seid(rsep));
+	if (asprintf(&sep->path, "%s/sep%d",
+				device_get_path(chan->device),
+				avdtp_get_seid(rsep)) < 0) {
+		error("Could not allocate path for remote sep %s/sep%d",
+				device_get_path(chan->device),
+				avdtp_get_seid(rsep));
+		sep->path = NULL;
+		goto done;
+	}
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),
 				sep->path, MEDIA_ENDPOINT_INTERFACE,
