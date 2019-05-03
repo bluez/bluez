@@ -1257,6 +1257,11 @@ static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
+	if (setup->reconfigure) {
+		g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
+		return;
+	}
+
 	setup_unref(setup);
 }
 
@@ -1642,8 +1647,12 @@ static int a2dp_reconfig(struct a2dp_channel *chan, const char *sender,
 
 			err = avdtp_close(chan->session, tmp->stream, FALSE);
 			if (err < 0) {
-				error("avdtp_close: %s", strerror(-err));
-				goto fail;
+				err = avdtp_abort(chan->session, tmp->stream);
+				if (err < 0) {
+					error("avdtp_abort: %s",
+							strerror(-err));
+					goto fail;
+				}
 			}
 
 			setup->reconfigure = TRUE;
