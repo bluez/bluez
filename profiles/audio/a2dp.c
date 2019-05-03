@@ -836,32 +836,6 @@ static void getconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		DBG("Source %p: Set_Configuration_Cfm", sep);
 }
 
-static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
-				struct avdtp_stream *stream, uint8_t *err,
-				void *user_data)
-{
-	struct a2dp_sep *a2dp_sep = user_data;
-	struct a2dp_setup *setup;
-
-	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		DBG("Sink %p: Open_Ind", sep);
-	else
-		DBG("Source %p: Open_Ind", sep);
-
-	setup = a2dp_setup_get(session);
-	if (!setup)
-		return FALSE;
-
-	setup->stream = stream;
-
-	if (setup->reconfigure)
-		setup->reconfigure = FALSE;
-
-	finalize_config(setup);
-
-	return TRUE;
-}
-
 static bool match_remote_sep(const void *data, const void *user_data)
 {
 	const struct a2dp_remote_sep *sep = data;
@@ -914,6 +888,35 @@ static void update_last_used(struct a2dp_channel *chan,
 
 	chan->last_used = sep;
 	store_last_used(chan, rsep);
+}
+
+static gboolean open_ind(struct avdtp *session, struct avdtp_local_sep *sep,
+				struct avdtp_stream *stream, uint8_t *err,
+				void *user_data)
+{
+	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_setup *setup;
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
+		DBG("Sink %p: Open_Ind", sep);
+	else
+		DBG("Source %p: Open_Ind", sep);
+
+	setup = a2dp_setup_get(session);
+	if (!setup)
+		return FALSE;
+
+	setup->stream = stream;
+
+	if (!err && setup->chan)
+		update_last_used(setup->chan, stream);
+
+	if (setup->reconfigure)
+		setup->reconfigure = FALSE;
+
+	finalize_config(setup);
+
+	return TRUE;
 }
 
 static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
