@@ -2998,8 +2998,7 @@ struct btd_device *a2dp_setup_get_device(struct a2dp_setup *setup)
 const char *a2dp_setup_remote_path(struct a2dp_setup *setup)
 {
 	if (setup->rsep) {
-		if (setup->rsep->path)
-			return setup->rsep->path;
+		return setup->rsep->path;
 	}
 
 	return NULL;
