@@ -1648,6 +1648,10 @@ static int a2dp_reconfig(struct a2dp_channel *chan, const char *sender,
 							tmp->user_data)))
 				return -EPERM;
 
+			/* Check if stream is for the channel */
+			if (!avdtp_has_stream(chan->session, tmp->stream))
+				continue;
+
 			err = avdtp_close(chan->session, tmp->stream, FALSE);
 			if (err < 0) {
 				err = avdtp_abort(chan->session, tmp->stream);
