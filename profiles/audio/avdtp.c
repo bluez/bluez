@@ -3710,6 +3710,11 @@ avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep)
 	return sep->state;
 }
 
+uint8_t avdtp_sep_get_seid(struct avdtp_local_sep *sep)
+{
+	return sep->info.seid;
+}
+
 struct btd_adapter *avdtp_get_adapter(struct avdtp *session)
 {
 	return device_get_adapter(session->device);
