@@ -85,7 +85,6 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 	struct bt_gap *gap = user_data;
 	const struct mgmt_rp_read_commands *rp = param;
 	uint16_t num_commands, num_events;
-	const uint16_t *opcode;
 	size_t expected_len;
 	int i;
 
@@ -110,10 +109,8 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	opcode = rp->opcodes;
-
 	for (i = 0; i < num_commands; i++) {
-		uint16_t op = get_le16(opcode++);
+		uint16_t op = get_le16(rp->opcodes + i);
 
 		if (op == MGMT_OP_ADD_DEVICE)
 			gap->flags |= FLAG_MGMT_CONN_CONTROL;
