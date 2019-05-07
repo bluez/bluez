@@ -471,7 +471,6 @@ static void read_commands_complete(uint8_t status, uint16_t len,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_commands *rp = param;
-	const uint16_t *opcode;
 	uint16_t num_commands;
 	bool ext_index_list = false;
 	int i;
@@ -483,10 +482,9 @@ static void read_commands_complete(uint8_t status, uint16_t len,
 	}
 
 	num_commands = le16_to_cpu(rp->num_commands);
-	opcode = rp->opcodes;
 
 	for (i = 0; i < num_commands; i++) {
-		uint16_t op = get_le16(opcode++);
+		uint16_t op = get_le16(rp->opcodes + 1);
 
 		if (op == MGMT_OP_READ_EXT_INDEX_LIST)
 			ext_index_list = true;
