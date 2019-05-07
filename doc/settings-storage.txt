@@ -222,9 +222,9 @@ Sample Attributes section:
 					followed by codec type and its
 					capabilies as hexadecimal encoded
 					string.
-	LastUsed:<xx>		String	LastUsed has one field which is the
-					endpoint ID as hexadecimal encoded
-					string.
+	LastUsed:<xx>:<xx>	String	LastUsed has two fields which are the
+					local and remote seids as hexadecimal
+					encoded string.
 
 Info file format
 ================
