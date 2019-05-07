@@ -1037,7 +1037,6 @@ static void commands_rsp(uint8_t status, uint16_t len, const void *param,
 {
 	const struct mgmt_rp_read_commands *rp = param;
 	uint16_t num_commands, num_events;
-	const uint16_t *opcode;
 	size_t expected_len;
 	int i;
 
@@ -1064,17 +1063,15 @@ static void commands_rsp(uint8_t status, uint16_t len, const void *param,
 		goto done;
 	}
 
-	opcode = rp->opcodes;
-
 	print("%u commands:", num_commands);
 	for (i = 0; i < num_commands; i++) {
-		uint16_t op = get_le16(opcode++);
+		uint16_t op = get_le16(rp->opcodes + i);
 		print("\t%s (0x%04x)", mgmt_opstr(op), op);
 	}
 
 	print("%u events:", num_events);
 	for (i = 0; i < num_events; i++) {
-		uint16_t ev = get_le16(opcode++);
+		uint16_t ev = get_le16(rp->opcodes + num_commands + i);
 		print("\t%s (0x%04x)", mgmt_evstr(ev), ev);
 	}
 
