@@ -49,6 +49,11 @@
 #define MESH_NODE_PATH_PREFIX "/node"
 #define MESH_ELEMENT_PATH_PREFIX "/ele"
 
+/* Default values for a new locally created node */
+#define DEFAULT_NEW_UNICAST 0x0001
+#define DEFAULT_IV_INDEX 0x0000
+#define DEFAULT_PRIMARY_NET_INDEX 0x0000
+
 /* Default element location: unknown */
 #define DEFAULT_LOCATION 0x0000
 
@@ -57,6 +62,7 @@
 
 #define REQUEST_TYPE_JOIN 0
 #define REQUEST_TYPE_ATTACH 1
+#define REQUEST_TYPE_CREATE 2
 
 struct node_element {
 	char *path;
@@ -378,6 +384,7 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 		return false;
 
 	node->num_ele = num_ele;
+
 	if (num_ele != 0 && !add_elements(node, db_node))
 		return false;
 
@@ -981,8 +988,14 @@ static void attach_io(void *a, void *b)
 		mesh_net_attach(node->net, io);
 }
 
-/* Register callbacks for io */
-void node_attach_io(struct mesh_io *io)
+/* Register callback for the node's io */
+void node_attach_io(struct mesh_node *node, struct mesh_io *io)
+{
+	attach_io(node, io);
+}
+
+/* Register callbacks for all nodes io */
+void node_attach_io_all(struct mesh_io *io)
 {
 	l_queue_foreach(nodes, attach_io, io);
 }
@@ -1354,6 +1367,60 @@ static bool get_app_properties(struct mesh_node *node, const char *path,
 	return true;
 }
 
+static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
+				bool ivu, uint32_t iv_idx, uint8_t dev_key[16],
+				uint16_t net_key_idx, uint8_t net_key[16])
+{
+	node->net = mesh_net_new(node);
+
+	if (!nodes)
+		nodes = l_queue_new();
+
+	l_queue_push_tail(nodes, node);
+
+	if (!storage_set_iv_index(node->net, iv_idx, ivu))
+		return false;
+
+	mesh_net_set_iv_index(node->net, iv_idx, ivu);
+
+	if (!mesh_db_write_uint16_hex(node->jconfig, "unicastAddress",
+								unicast))
+		return false;
+
+	l_getrandom(node->token, sizeof(node->token));
+	if (!mesh_db_write_token(node->jconfig, node->token))
+		return false;
+
+	memcpy(node->dev_key, dev_key, 16);
+	if (!mesh_db_write_device_key(node->jconfig, dev_key))
+		return false;
+
+	node->primary = unicast;
+	mesh_net_register_unicast(node->net, unicast, node->num_ele);
+
+	if (mesh_net_add_key(node->net, net_key_idx, net_key) !=
+							MESH_STATUS_SUCCESS)
+		return false;
+
+	if (kr) {
+		/* Duplicate net key, if the key refresh is on */
+		if (mesh_net_update_key(node->net, net_key_idx, net_key) !=
+							MESH_STATUS_SUCCESS)
+			return false;
+
+		if (!mesh_db_net_key_set_phase(node->jconfig, net_key_idx,
+							KEY_REFRESH_PHASE_TWO))
+			return false;
+	}
+
+	storage_save_config(node, true, NULL, NULL);
+
+	/* Initialize configuration server model */
+	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
+
+	return true;
+}
+
 static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 {
 	struct l_dbus_message_iter objects, interfaces;
@@ -1365,6 +1432,8 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 	bool is_new;
 	uint8_t num_ele;
 
+	is_new = (req->type != REQUEST_TYPE_ATTACH);
+
 	if (l_dbus_message_is_error(msg)) {
 		l_error("Failed to get app's dbus objects");
 		goto fail;
@@ -1374,8 +1443,6 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		l_error("Failed to parse app's dbus objects");
 		goto fail;
 	}
-
-	is_new = (req->type != REQUEST_TYPE_ATTACH);
 
 	if (is_new) {
 		node = l_new(struct mesh_node, 1);
@@ -1445,23 +1512,7 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		goto fail;
 	}
 
-	if (req->type == REQUEST_TYPE_JOIN) {
-		node_join_ready_func_t cb = req->cb;
-
-		if (!agent) {
-			l_error("Interface %s not found",
-						MESH_PROVISION_AGENT_INTERFACE);
-			goto fail;
-		}
-		node->num_ele = num_ele;
-		set_defaults(node);
-		memcpy(node->uuid, req->data, 16);
-
-		if (!create_node_config(node))
-			goto fail;
-
-		cb(node, agent);
-	} else {
+	if (req->type == REQUEST_TYPE_ATTACH) {
 		node_ready_func_t cb = req->cb;
 
 		if (num_ele != node->num_ele)
@@ -1475,6 +1526,48 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 			cb(req->user_data, MESH_ERROR_NONE, node);
 		} else
 			goto fail;
+
+	} else if (req->type == REQUEST_TYPE_JOIN) {
+		node_join_ready_func_t cb = req->cb;
+
+		if (!agent) {
+			l_error("Interface %s not found",
+						MESH_PROVISION_AGENT_INTERFACE);
+			goto fail;
+		}
+
+		node->num_ele = num_ele;
+		set_defaults(node);
+		memcpy(node->uuid, req->data, 16);
+
+		if (!create_node_config(node))
+			goto fail;
+
+		cb(node, agent);
+
+	} else {
+		/* Callback for create node request */
+		node_ready_func_t cb = req->cb;
+		uint8_t dev_key[16];
+		uint8_t net_key[16];
+
+		node->num_ele = num_ele;
+		set_defaults(node);
+		memcpy(node->uuid, req->data, 16);
+
+		if (!create_node_config(node))
+			goto fail;
+
+		/* Generate device and primary network keys */
+		l_getrandom(dev_key, sizeof(dev_key));
+		l_getrandom(net_key, sizeof(net_key));
+
+		if (!add_local_node(node, DEFAULT_NEW_UNICAST, false, false,
+					DEFAULT_IV_INDEX, dev_key,
+					DEFAULT_PRIMARY_NET_INDEX, net_key))
+			goto fail;
+
+		cb(req->user_data, MESH_ERROR_NONE, node);
 	}
 
 	return;
@@ -1482,15 +1575,8 @@ fail:
 	if (agent)
 		mesh_agent_remove(agent);
 
-	if (is_new && node)
-		free_node_resources(node);
-
-	if (req->type == REQUEST_TYPE_JOIN) {
-		node_join_ready_func_t cb = req->cb;
-
-		cb(NULL, NULL);
-
-	} else {
+	if (!is_new) {
+		/* Handle failed Attach request */
 		node_ready_func_t cb = req->cb;
 
 		l_queue_foreach(node->elements, free_element_path, NULL);
@@ -1500,6 +1586,21 @@ fail:
 		l_free(node->owner);
 		node->owner = NULL;
 		cb(req->user_data, MESH_ERROR_FAILED, node);
+
+	} else {
+		/* Handle failed Join and Create requests */
+		if (node)
+			free_node_resources(node);
+
+		if (req->type == REQUEST_TYPE_JOIN) {
+			node_join_ready_func_t cb = req->cb;
+
+			cb(NULL, NULL);
+		} else {
+			node_ready_func_t cb = req->cb;
+
+			cb(req->user_data, MESH_ERROR_FAILED, NULL);
+		}
 	}
 }
 
@@ -1551,6 +1652,26 @@ void node_join(const char *app_path, const char *sender, const uint8_t *uuid,
 	req->data = (void *) uuid;
 	req->cb = cb;
 	req->type = REQUEST_TYPE_JOIN;
+
+	l_dbus_method_call(dbus_get_bus(), sender, app_path,
+					L_DBUS_INTERFACE_OBJECT_MANAGER,
+					"GetManagedObjects", NULL,
+					get_managed_objects_cb,
+					req, l_free);
+}
+
+void node_create(const char *app_path, const char *sender, const uint8_t *uuid,
+					node_ready_func_t cb, void *user_data)
+{
+	struct managed_obj_request *req;
+
+	l_debug("");
+
+	req = l_new(struct managed_obj_request, 1);
+	req->data = (void *) uuid;
+	req->cb = cb;
+	req->user_data = user_data;
+	req->type = REQUEST_TYPE_CREATE;
 
 	l_dbus_method_call(dbus_get_bus(), sender, app_path,
 					L_DBUS_INTERFACE_OBJECT_MANAGER,
@@ -1790,63 +1911,14 @@ const char *node_get_element_path(struct mesh_node *node, uint8_t ele_idx)
 	return ele->path;
 }
 
-bool node_add_pending_local(struct mesh_node *node, void *prov_node_info,
-							struct mesh_io *io)
+bool node_add_pending_local(struct mesh_node *node, void *prov_node_info)
 {
 	struct mesh_prov_node_info *info = prov_node_info;
 	bool kr = !!(info->flags & PROV_FLAG_KR);
 	bool ivu = !!(info->flags & PROV_FLAG_IVU);
 
-	node->net = mesh_net_new(node);
-
-	if (!nodes)
-		nodes = l_queue_new();
-
-	l_queue_push_tail(nodes, node);
-
-	if (!storage_set_iv_index(node->net, info->iv_index, ivu))
-		return false;
-
-	mesh_net_set_iv_index(node->net, info->iv_index, ivu);
-
-	if (!mesh_db_write_uint16_hex(node->jconfig, "unicastAddress",
-								info->unicast))
-		return false;
-
-	node->primary = info->unicast;
-	mesh_net_register_unicast(node->net, info->unicast, node->num_ele);
-
-	l_getrandom(node->token, sizeof(node->token));
-	if (!mesh_db_write_token(node->jconfig, node->token))
-		return false;
-
-	memcpy(node->dev_key, info->device_key, 16);
-	if (!mesh_db_write_device_key(node->jconfig, info->device_key))
-		return false;
-
-	if (mesh_net_add_key(node->net, info->net_index, info->net_key) !=
-							MESH_STATUS_SUCCESS)
-		return false;
-
-	if (kr) {
-		/* Duplicate net key, if the key refresh is on */
-		if (mesh_net_update_key(node->net, info->net_index,
-				info->net_key) != MESH_STATUS_SUCCESS)
-			return false;
-
-		if (!mesh_db_net_key_set_phase(node->jconfig, info->net_index,
-							KEY_REFRESH_PHASE_TWO))
-			return false;
-	}
-
-	storage_save_config(node, true, NULL, NULL);
-
-	/* Initialize configuration server model */
-	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
-
-	mesh_net_attach(node->net, io);
-
-	return true;
+	return add_local_node(node, info->unicast, kr, ivu, info->iv_index,
+			info->device_key, info->net_index, info->net_key);
 }
 
 void node_jconfig_set(struct mesh_node *node, void *jconfig)

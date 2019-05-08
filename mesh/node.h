@@ -82,13 +82,15 @@ uint8_t node_friend_mode_get(struct mesh_node *node);
 uint32_t node_seq_cache(struct mesh_node *node);
 const char *node_get_element_path(struct mesh_node *node, uint8_t ele_idx);
 const char *node_get_owner(struct mesh_node *node);
-bool node_add_pending_local(struct mesh_node *node, void *info,
-							struct mesh_io *io);
-void node_attach_io(struct mesh_io *io);
+bool node_add_pending_local(struct mesh_node *node, void *info);
+void node_attach_io_all(struct mesh_io *io);
+void node_attach_io(struct mesh_node *node, struct mesh_io *io);
 int node_attach(const char *app_path, const char *sender, uint64_t token,
 					node_ready_func_t cb, void *user_data);
 void node_build_attach_reply(struct mesh_node *node,
 						struct l_dbus_message *reply);
+void node_create(const char *app_path, const char *sender, const uint8_t *uuid,
+					node_ready_func_t cb, void *user_data);
 void node_id_set(struct mesh_node *node, uint16_t node_id);
 uint16_t node_id_get(struct mesh_node *node);
 bool node_dbus_init(struct l_dbus *bus);
