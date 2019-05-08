@@ -577,6 +577,13 @@ static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
 							"Bad device UUID");
 	}
 
+	if (node_find_by_uuid(join_pending->uuid)) {
+		l_free(join_pending);
+		join_pending = NULL;
+		return dbus_error(msg, MESH_ERROR_ALREADY_EXISTS,
+							"Node already exists");
+	}
+
 	sender = l_dbus_message_get_sender(msg);
 
 	join_pending->sender = l_strdup(sender);

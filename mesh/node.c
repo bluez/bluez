@@ -21,6 +21,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <sys/time.h>
 #include <ell/ell.h>
@@ -83,7 +84,6 @@ struct mesh_node {
 	time_t upd_sec;
 	uint32_t seq_number;
 	uint32_t seq_min_cache;
-	uint16_t id;
 	bool provisioner;
 	uint16_t primary;
 	struct node_composition *comp;
@@ -92,7 +92,7 @@ struct mesh_node {
 		uint8_t cnt;
 		uint8_t mode;
 	} relay;
-	uint8_t dev_uuid[16];
+	uint8_t uuid[16];
 	uint8_t dev_key[16];
 	uint8_t token[8];
 	uint8_t num_ele;
@@ -126,7 +126,7 @@ static bool match_device_uuid(const void *a, const void *b)
 	const struct mesh_node *node = a;
 	const uint8_t *uuid = b;
 
-	return (memcmp(node->dev_uuid, uuid, 16) == 0);
+	return (memcmp(node->uuid, uuid, 16) == 0);
 }
 
 static bool match_token(const void *a, const void *b)
@@ -187,15 +187,16 @@ uint8_t *node_uuid_get(struct mesh_node *node)
 {
 	if (!node)
 		return NULL;
-	return node->dev_uuid;
+	return node->uuid;
 }
 
-struct mesh_node *node_new(void)
+struct mesh_node *node_new(const uint8_t uuid[16])
 {
 	struct mesh_node *node;
 
 	node = l_new(struct mesh_node, 1);
 	node->net = mesh_net_new(node);
+	memcpy(node->uuid, uuid, sizeof(node->uuid));
 
 	if (!nodes)
 		nodes = l_queue_new();
@@ -381,8 +382,6 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 		return false;
 
 	node->primary = db_node->unicast;
-
-	memcpy(node->dev_uuid, db_node->uuid, 16);
 
 	/* Initialize configuration server model */
 	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
@@ -973,20 +972,6 @@ fail:
 	return false;
 }
 
-void node_id_set(struct mesh_node *node, uint16_t id)
-{
-	if (node)
-		node->id = id;
-}
-
-uint16_t node_id_get(struct mesh_node *node)
-{
-	if (!node)
-		return 0;
-
-	return node->id;
-}
-
 static void attach_io(void *a, void *b)
 {
 	struct mesh_node *node = a;
@@ -1005,9 +990,12 @@ void node_attach_io(struct mesh_io *io)
 /* Register node object with D-Bus */
 static bool register_node_object(struct mesh_node *node)
 {
-	node->path = l_malloc(strlen(MESH_NODE_PATH_PREFIX) + 5);
+	char uuid[33];
 
-	snprintf(node->path, 10, MESH_NODE_PATH_PREFIX "%4.4x", node->id);
+	if (!hex2str(node->uuid, sizeof(node->uuid), uuid, sizeof(uuid)))
+		return false;
+
+	node->path = l_strdup_printf(MESH_NODE_PATH_PREFIX "%s", uuid);
 
 	if (!l_dbus_object_add_interface(dbus_get_bus(), node->path,
 					MESH_NODE_INTERFACE, node))
@@ -1231,8 +1219,6 @@ static void convert_node_to_storage(struct mesh_node *node,
 	db_node->crpl = node->comp->crpl;
 	db_node->modes.lpn = node->lpn;
 	db_node->modes.proxy = node->proxy;
-
-	memcpy(db_node->uuid, node->dev_uuid, 16);
 
 	db_node->modes.friend = node->friend;
 	db_node->modes.relay.state = node->relay.mode;
@@ -1469,7 +1455,7 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		}
 		node->num_ele = num_ele;
 		set_defaults(node);
-		memcpy(node->dev_uuid, req->data, 16);
+		memcpy(node->uuid, req->data, 16);
 
 		if (!create_node_config(node))
 			goto fail;

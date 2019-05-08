@@ -76,7 +76,6 @@ struct mesh_db_node {
 	uint16_t unicast;
 	uint8_t ttl;
 	struct l_queue *elements;
-	uint8_t uuid[16];
 };
 
 struct mesh_db_prov {

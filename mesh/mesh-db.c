@@ -1466,10 +1466,6 @@ bool mesh_db_add_node(json_object *jnode, struct mesh_db_node *node) {
 	if (!mesh_db_write_uint16_hex(jnode, "crpl", node->crpl))
 		return false;
 
-	/* Device UUID */
-	if (!add_key_value(jnode, "UUID", node->uuid))
-		return false;
-
 	/* Features: relay, LPN, friend, proxy*/
 	if (!mesh_db_write_relay_mode(jnode, modes->relay.state,
 						modes->relay.cnt,
