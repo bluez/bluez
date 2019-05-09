@@ -649,6 +649,7 @@ static int set_adapter_property(const bt_property_t *property)
 {
 	char buf[IPC_MTU];
 	struct hal_cmd_set_adapter_prop *cmd = (void *) buf;
+	uint16_t len_ret;
 	size_t len;
 
 	DBG("prop: %s", btproperty2str(property));
@@ -656,8 +657,9 @@ static int set_adapter_property(const bt_property_t *property)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	adapter_prop_from_hal(property, &cmd->type, &cmd->len, cmd->val);
+	adapter_prop_from_hal(property, &cmd->type, &len_ret, cmd->val);
 
+	cmd->len = len_ret;
 	len = sizeof(*cmd) + cmd->len;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_ADAPTER_PROP,
