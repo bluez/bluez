@@ -25,6 +25,7 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/agent.h mesh/agent.c \
 				mesh/prov-acceptor.c mesh/prov-initiator.c \
 				mesh/pb-adv.h mesh/pb-adv.c \
+				mesh/keyring.h mesh/keyring.c \
 				mesh/mesh-defs.h
 libexec_PROGRAMS += mesh/bluetooth-meshd
 
