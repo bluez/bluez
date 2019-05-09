@@ -1909,7 +1909,7 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 	 * the MTU size is negotiated using L2CAP channel configuration
 	 * procedures.
 	 */
-	if (bt_att_get_link_type(client->att) == BT_ATT_LINK_BREDR)
+	if (bt_att_get_link_type(client->att) == BT_ATT_BREDR)
 		goto discover;
 
 	/* Check if MTU needs to be send */

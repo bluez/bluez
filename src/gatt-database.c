@@ -2102,10 +2102,10 @@ static void append_options(DBusMessageIter *iter, void *user_data)
 	uint16_t mtu;
 
 	switch (op->link_type) {
-	case BT_ATT_LINK_BREDR:
+	case BT_ATT_BREDR:
 		link = "BR/EDR";
 		break;
-	case BT_ATT_LINK_LE:
+	case BT_ATT_LE:
 		link = "LE";
 		break;
 	default:

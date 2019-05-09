@@ -27,6 +27,10 @@
 #define __packed __attribute__((packed))
 #endif
 
+#define BT_ATT_CID		4
+#define BT_ATT_PSM		31
+#define BT_ATT_EATT_PSM		0x27
+
 #define BT_ATT_SECURITY_AUTO	0
 #define BT_ATT_SECURITY_LOW	1
 #define BT_ATT_SECURITY_MEDIUM	2
@@ -37,9 +41,10 @@
 #define BT_ATT_MAX_LE_MTU	517
 #define BT_ATT_MAX_VALUE_LEN	512
 
-#define BT_ATT_LINK_BREDR	0x00
-#define BT_ATT_LINK_LE		0x01
-#define BT_ATT_LINK_LOCAL	0xff
+#define BT_ATT_BREDR		0x00
+#define BT_ATT_LE		0x01
+#define BT_ATT_EATT		0x02
+#define BT_ATT_LOCAL		0xff
 
 /* ATT protocol opcodes */
 #define BT_ATT_OP_ERROR_RSP			0x01
@@ -159,3 +164,8 @@ struct bt_att_pdu_error_rsp {
 
 /* GATT Characteristic Client Features Bitfield values */
 #define BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING		0x01
+#define BT_GATT_CHRC_CLI_FEAT_EATT			0x02
+#define BT_GATT_CHRC_CLI_FEAT_NFY_MULTI			0x04
+
+/* GATT Characteristic Server Features Bitfield values */
+#define BT_GATT_CHRC_SERVER_FEAT_EATT			0x01
