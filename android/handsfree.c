@@ -2903,6 +2903,7 @@ static void bt_sco_get_fd(const void *buf, uint16_t len)
 	struct sco_rsp_get_fd rsp;
 	struct hf_device *dev;
 	bdaddr_t bdaddr;
+	uint16_t mtu;
 	int fd;
 
 	DBG("");
@@ -2910,9 +2911,10 @@ static void bt_sco_get_fd(const void *buf, uint16_t len)
 	android2bdaddr(cmd->bdaddr, &bdaddr);
 
 	dev = find_device(&bdaddr);
-	if (!dev || !bt_sco_get_fd_and_mtu(sco, &fd, &rsp.mtu))
+	if (!dev || !bt_sco_get_fd_and_mtu(sco, &fd, &mtu))
 		goto failed;
 
+	rsp.mtu = mtu;
 	DBG("fd %d mtu %u", fd, rsp.mtu);
 
 	ipc_send_rsp_full(sco_ipc, SCO_SERVICE_ID, SCO_OP_GET_FD,
