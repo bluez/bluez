@@ -50,7 +50,7 @@ AC_DEFUN([MISC_FLAGS], [
 		if (test "${enableval}" = "yes" &&
 				test "${ac_cv_prog_cc_pie}" = "yes"); then
 			misc_cflags="$misc_cflags -fPIC"
-			misc_ldflags="$misc_ldflags -pie"
+			misc_ldflags="$misc_ldflags -pie -Wl,-z,now"
 		fi
 	])
 	if (test "$enable_coverage" = "yes"); then
