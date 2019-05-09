@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <dirent.h>
 #include <limits.h>
@@ -68,7 +69,7 @@ struct usbfs_bulktransfer {
 #define USBFS_IOCTL_CLAIMINTF	_IOR('U', 15, unsigned int)
 #define USBFS_IOCTL_RELEASEINTF	_IOR('U', 16, unsigned int)
 
-static int read_value(const char *name, const char *attr, const char *format)
+static int read_value(const char *name, const char *attr, bool hex_number)
 {
 	char path[PATH_MAX];
 	FILE *file;
@@ -80,7 +81,7 @@ static int read_value(const char *name, const char *attr, const char *format)
 	if (!file)
 		return -1;
 
-	n = fscanf(file, format, &value);
+	n = fscanf(file, hex_number ? "%d" : "%04x", &value);
 	if (n != 1) {
 		fclose(file);
 		return -1;
@@ -90,26 +91,29 @@ static int read_value(const char *name, const char *attr, const char *format)
 	return value;
 }
 
+#define read_hex_value(name, file) read_value((name), (file), true)
+#define read_num_value(name, file) read_value((name), (file), false)
+
 static char *check_device(const char *name)
 {
 	char path[PATH_MAX];
 	int busnum, devnum, vendor, product;
 
-	busnum = read_value(name, "busnum", "%d");
+	busnum = read_num_value(name, "busnum");
 	if (busnum < 0)
 		return NULL;
 
-	devnum = read_value(name, "devnum", "%d");
+	devnum = read_num_value(name, "devnum");
 	if (devnum < 0)
 		return NULL;
 
 	snprintf(path, sizeof(path), "/dev/bus/usb/%03u/%03u", busnum, devnum);
 
-	vendor = read_value(name, "idVendor", "%04x");
+	vendor = read_hex_value(name, "idVendor");
 	if (vendor < 0)
 		return NULL;
 
-	product = read_value(name, "idProduct", "%04x");
+	product = read_hex_value(name, "idProduct");
 	if (product < 0)
 		return NULL;
 
