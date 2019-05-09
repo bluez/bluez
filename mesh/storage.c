@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <libgen.h>
+#include <ftw.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,12 +50,29 @@
 
 struct write_info {
 	json_object *jnode;
-	const char *config_name;
+	const char *node_path;
 	void *user_data;
 	mesh_status_func_t cb;
 };
 
+static const char *cfg_name = "/node.json";
+static const char *bak_ext = ".bak";
+static const char *tmp_ext = ".tmp";
 static const char *storage_dir;
+
+/* This is a thread-safe always malloced version of dirname which will work
+ * regardless of which underlying dirname() implementation is used.
+ */
+static char *alloc_dirname(const char *path)
+{
+	char *tmp = l_strdup(path);
+	char *dir;
+
+	dir = dirname(tmp);
+	strncpy(tmp, dir, strlen(path) + 1);
+
+	return tmp;
+}
 
 static bool read_node_cb(struct mesh_db_node *db_node, void *user_data)
 {
@@ -166,7 +184,7 @@ static bool parse_node(struct mesh_node *node, json_object *jnode)
 	return true;
 }
 
-static bool parse_config(char *in_file, char *out_file, const uint8_t uuid[16])
+static bool parse_config(char *in_file, char *out_dir, const uint8_t uuid[16])
 {
 	int fd;
 	char *str;
@@ -213,7 +231,7 @@ static bool parse_config(char *in_file, char *out_file, const uint8_t uuid[16])
 	}
 
 	node_jconfig_set(node, jnode);
-	node_cfg_file_set(node, out_file);
+	node_path_set(node, out_dir);
 
 done:
 	close(fd);
@@ -430,15 +448,12 @@ static bool save_config(json_object *jnode, const char *config_name)
 static void idle_save_config(void *user_data)
 {
 	struct write_info *info = user_data;
-	size_t len = strlen(info->config_name) + 5;
-	char *tmp = l_malloc(len);
-	char *bak = l_malloc(len);
+	char *tmp, *bak, *cfg;
 	bool result = false;
 
-	strncpy(tmp, info->config_name, len);
-	strncpy(bak, info->config_name, len);
-	tmp = strncat(tmp, ".tmp", 5);
-	bak = strncat(bak, ".bak", 5);
+	cfg = l_strdup_printf("%s%s", info->node_path, cfg_name);
+	tmp = l_strdup_printf("%s%s", cfg, tmp_ext);
+	bak = l_strdup_printf("%s%s", cfg, bak_ext);
 	remove(tmp);
 
 	l_debug("Storage-Wrote");
@@ -446,13 +461,14 @@ static void idle_save_config(void *user_data)
 
 	if (result) {
 		remove(bak);
-		rename(info->config_name, bak);
-		rename(tmp, info->config_name);
+		rename(cfg, bak);
+		rename(tmp, cfg);
 	}
 
 	remove(tmp);
 	l_free(tmp);
 	l_free(bak);
+	l_free(cfg);
 
 	if (info->cb)
 		info->cb(info->user_data, result);
@@ -467,7 +483,7 @@ void storage_save_config(struct mesh_node *node, bool no_wait,
 
 	info = l_new(struct write_info, 1);
 	info->jnode = node_jconfig_get(node);
-	info->config_name = node_cfg_file_get(node);
+	info->node_path = node_path_get(node);
 	info->cb = cb;
 	info->user_data = user_data;
 
@@ -517,6 +533,7 @@ bool storage_load_nodes(const char *dir_name)
 {
 	DIR *dir;
 	struct dirent *entry;
+	size_t path_len = strlen(dir_name) + strlen(cfg_name) + strlen(bak_ext);
 
 	create_dir(dir_name);
 	dir = opendir(dir_name);
@@ -529,33 +546,37 @@ bool storage_load_nodes(const char *dir_name)
 	storage_dir = dir_name;
 
 	while ((entry = readdir(dir)) != NULL) {
-		char *cfg;
-		char *bak;
+		char *dir, *cfg, *bak;
 		uint8_t uuid[16];
+		size_t node_len;
 
 		if (entry->d_type != DT_DIR)
 			continue;
 
-		if (!str2hex(entry->d_name, strlen(entry->d_name), uuid, sizeof(uuid)))
+		/* Check path length */
+		node_len = strlen(entry->d_name);
+		if (path_len + node_len + 1 >= PATH_MAX)
 			continue;
 
-		cfg = l_strdup_printf("%s/%s/node.json", dir_name, entry->d_name);
-
-		if (parse_config(cfg, cfg, uuid))
+		if (!str2hex(entry->d_name, node_len, uuid, sizeof(uuid)))
 			continue;
 
-		/* Fall-back to Backup version */
-		bak = l_strdup_printf("%s/%s/node.json.bak", dir_name, entry->d_name);
+		dir = l_strdup_printf("%s/%s", dir_name, entry->d_name);
+		cfg = l_strdup_printf("%s%s", dir, cfg_name);
 
-		if (parse_config(bak, cfg, uuid)) {
-			remove(cfg);
-			rename(bak, cfg);
-			l_free(cfg);
-			continue;
+		if (!parse_config(cfg, dir, uuid)) {
+
+			/* Fall-back to Backup version */
+			bak = l_strdup_printf("%s%s", cfg, bak_ext);
+
+			if (parse_config(bak, dir, uuid)) {
+				remove(cfg);
+				rename(bak, cfg);
+			}
+			l_free(bak);
 		}
-
 		l_free(cfg);
-		l_free(bak);
+		l_free(dir);
 	}
 
 	return true;
@@ -566,8 +587,8 @@ bool storage_create_node_config(struct mesh_node *node, void *data)
 	struct mesh_db_node *db_node = data;
 	char uuid[33];
 	char name_buf[PATH_MAX];
-	char *filename;
 	json_object *jnode;
+	size_t max_len = strlen(cfg_name) + strlen(bak_ext);
 
 	if (!storage_dir)
 		return false;
@@ -578,25 +599,26 @@ bool storage_create_node_config(struct mesh_node *node, void *data)
 		return false;
 
 	if (!hex2str(node_uuid_get(node), 16, uuid, sizeof(uuid)))
-		return false;
+		goto fail;
 
 	snprintf(name_buf, PATH_MAX, "%s/%s", storage_dir, uuid);
+
+	if (strlen(name_buf) + max_len >= PATH_MAX)
+		goto fail;
 
 	/* Create a new directory and node.json file */
 	if (mkdir(name_buf, 0755) != 0)
 		goto fail;
 
-	filename = l_strdup_printf("%s/node.json", name_buf);
+	node_path_set(node, name_buf);
 
-	l_debug("New node config %s", filename);
+	snprintf(name_buf, PATH_MAX, "%s/%s%s", storage_dir, uuid, cfg_name);
+	l_debug("New node config %s", name_buf);
 
-	if (!save_config(jnode, filename)) {
-		l_free(filename);
+	if (!save_config(jnode, name_buf))
 		goto fail;
-	}
 
 	node_jconfig_set(node, jnode);
-	node_cfg_file_set(node, filename);
 
 	return true;
 fail:
@@ -604,13 +626,29 @@ fail:
 	return false;
 }
 
+static int del_fobject(const char *fpath, const struct stat *sb, int typeflag,
+						struct FTW *ftwbuf)
+{
+	switch (typeflag) {
+	case FTW_DP:
+		rmdir(fpath);
+		l_debug("RMDIR %s", fpath);
+		break;
+
+	case FTW_SL:
+	default:
+		remove(fpath);
+		l_debug("RM %s", fpath);
+		break;
+	}
+	return 0;
+}
+
 /* Permanently remove node configuration */
 void storage_remove_node_config(struct mesh_node *node)
 {
-	char *cfg;
+	char *node_path, *mesh_path, *mesh_name;
 	struct json_object *jnode;
-	const char *dir_name;
-	char *bak;
 
 	if (!node)
 		return;
@@ -621,25 +659,17 @@ void storage_remove_node_config(struct mesh_node *node)
 		json_object_put(jnode);
 	node_jconfig_set(node, NULL);
 
-	/* Delete node configuration file */
-	cfg = node_cfg_file_get(node);
-	if (!cfg)
-		return;
+	node_path = node_path_get(node);
+	l_debug("Delete node config %s", node_path);
 
-	l_debug("Delete node config file %s", cfg);
-	remove(cfg);
+	/* Make sure path name of node follows expected guidelines */
+	mesh_path = alloc_dirname(node_path);
+	mesh_name = basename(mesh_path);
+	if (strcmp(mesh_name, "mesh"))
+		goto done;
 
-	/* Delete the backup file */
-	bak = l_strdup_printf("%s.bak", cfg);
-	remove(bak);
-	l_free(bak);
+	nftw(node_path, del_fobject, 5, FTW_DEPTH | FTW_PHYS);
 
-	/* Delete the node directory */
-	dir_name = dirname(cfg);
-
-	l_debug("Delete directory %s", dir_name);
-	rmdir(dir_name);
-
-	l_free(cfg);
-	node_cfg_file_set(node, NULL);
+done:
+	l_free(mesh_path);
 }

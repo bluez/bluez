@@ -36,8 +36,40 @@ Each subdirectory contains the following files:
 		provisioner/configuration client
 	- node.json.bak:
 		a backup that the last known good node configuration.
+	- seq_num:
+		File containing next sequence number to use
+	- seq_num.bak:
+		Backup of the sequence number. This may be larger than the
+		actual sequence number being used at runtime, to prevent re-use
+		of sequence numbers in the event of an unexpected restart.
+	- ./rpl/:
+		Directory to store the sequence numbers of remote nodes, as
+		required by Replay Protection List (RPL) parameters.
+		- xxxx:
+			Files named for remote Unicast addresses, and contain
+			last received iv_index + seq_num from each SRC address.
+	- ./dev_keys/:
+		Directory to store remote Device keys. This is only created/used
+		by Configuration Client (Network administration) nodes.
+		- xxxx:
+			Files named for remote Unicast addresses, and contains
+			16 octet key.
+	- ./net_keys/:
+		Directory to store network subnet keys. This is only
+		created/used by Configuration Client (Network administration)
+		nodes.
+		- xxx:
+			Files named for subnet index, and contains key refresh
+			phase, and old/new versions of the key.
+	- ./app_keys/:
+		Directory to store application keys. This is only created/used
+		by Configuration Client (Network administration) nodes.
+		- xxx:
+			Files named for application index, and contains bound
+			subnet index, and old/new versions of the key.
 
-The files are in JSON format.
+The node.json and node.json.bak are in JSON format. All other files are stored
+in little endian binary format.
 
 Information
 ===========

@@ -97,5 +97,5 @@ bool node_dbus_init(struct l_dbus *bus);
 void node_cleanup_all(void);
 void node_jconfig_set(struct mesh_node *node, void *jconfig);
 void *node_jconfig_get(struct mesh_node *node);
-void node_cfg_file_set(struct mesh_node *node, char *cfg);
-char *node_cfg_file_get(struct mesh_node *node);
+void node_path_set(struct mesh_node *node, char *path);
+char *node_path_get(struct mesh_node *node);

@@ -85,7 +85,7 @@ struct mesh_node {
 	char *owner;
 	char *path;
 	void *jconfig;
-	char *cfg_file;
+	char *node_path;
 	uint32_t disc_watch;
 	time_t upd_sec;
 	uint32_t seq_number;
@@ -242,6 +242,7 @@ static void free_node_resources(void *data)
 	l_free(node->comp);
 	l_free(node->app_path);
 	l_free(node->owner);
+	l_free(node->node_path);
 
 	if (node->disc_watch)
 		l_dbus_remove_watch(dbus_get_bus(), node->disc_watch);
@@ -265,7 +266,7 @@ void node_remove(struct mesh_node *node)
 
 	l_queue_remove(nodes, node);
 
-	if (node->cfg_file)
+	if (node->node_path)
 		storage_remove_node_config(node);
 
 	free_node_resources(node);
@@ -402,7 +403,7 @@ static void cleanup_node(void *data)
 	struct mesh_net *net = node->net;
 
 	/* Save local node configuration */
-	if (node->cfg_file) {
+	if (node->node_path) {
 
 		/* Preserve the last sequence number */
 		storage_write_sequence_number(net, mesh_net_get_seq_num(net));
@@ -1931,14 +1932,15 @@ void *node_jconfig_get(struct mesh_node *node)
 	return node->jconfig;
 }
 
-void node_cfg_file_set(struct mesh_node *node, char *cfg)
+void node_path_set(struct mesh_node *node, char *path)
 {
-	node->cfg_file = cfg;
+	l_free(node->node_path);
+	node->node_path = l_strdup(path);
 }
 
-char *node_cfg_file_get(struct mesh_node *node)
+char *node_path_get(struct mesh_node *node)
 {
-	return node->cfg_file;
+	return node->node_path;
 }
 
 struct mesh_net *node_get_net(struct mesh_node *node)
