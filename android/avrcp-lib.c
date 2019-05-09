@@ -927,14 +927,15 @@ static ssize_t get_play_status(struct avrcp *session, uint8_t transaction,
 							player->user_data);
 }
 
-static bool parse_attributes(uint32_t *params, uint16_t params_len,
-					uint8_t number, uint32_t *attrs)
+static bool parse_attributes(struct get_element_attributes_req *req,
+					uint16_t params_len, uint8_t number,
+					uint32_t *attrs)
 {
 	int i;
 
 	for (i = 0; i < number && params_len >= sizeof(*attrs); i++,
 					params_len -= sizeof(*attrs)) {
-		attrs[i] = be32_to_cpu(params[i]);
+		attrs[i] = be32_to_cpu(req->attrs[i]);
 
 		if (attrs[i] == AVRCP_MEDIA_ATTRIBUTE_ILLEGAL ||
 				attrs[i] > AVRCP_MEDIA_ATTRIBUTE_LAST)
@@ -964,7 +965,7 @@ static ssize_t get_element_attributes(struct avrcp *session,
 	if (!params || params_len < sizeof(*req))
 		return -EINVAL;
 
-	if (!parse_attributes(req->attrs, params_len - sizeof(*req),
+	if (!parse_attributes(req, params_len - sizeof(*req),
 							req->number, attrs))
 		return -EINVAL;
 
