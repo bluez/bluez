@@ -1990,6 +1990,7 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 
 	if (sscanf(value, "%02hhx:%02hhx", &lseid, &rseid) != 2) {
 		warn("Unable to load LastUsed");
+		g_free(value);
 		return;
 	}
 
