@@ -60,6 +60,7 @@ struct ready_cb {
 struct bt_gatt_client {
 	struct bt_att *att;
 	int ref_count;
+	uint8_t features;
 
 	struct bt_gatt_client *parent;
 	struct queue *clones;
@@ -326,6 +327,7 @@ struct discovery_op {
 	struct queue *ext_prop_desc;
 	struct gatt_db_attribute *cur_svc;
 	struct gatt_db_attribute *hash;
+	uint8_t server_feat;
 	bool success;
 	uint16_t start;
 	uint16_t end;
@@ -1278,6 +1280,9 @@ static void notify_client_ready(struct bt_gatt_client *client, bool success,
 	bt_gatt_client_ref(client);
 	client->ready = success;
 
+	if (client->parent)
+		client->features = client->parent->features;
+
 	for (entry = queue_get_entries(client->ready_cbs); entry;
 							entry = entry->next) {
 		struct ready_cb *ready = entry->data;
@@ -1381,7 +1386,7 @@ static void db_hash_read_cb(bool success, uint8_t att_ecode,
 	util_hexdump(' ', value, len, client->debug_callback,
 						client->debug_data);
 
-	/* Store the new hash in the db */
+	/* Store ithe new hash in the db */
 	gatt_db_attribute_write(op->hash, 0, value, len, 0, NULL,
 					db_hash_write_value_cb, client);
 
@@ -1431,6 +1436,67 @@ static bool read_db_hash(struct discovery_op *op)
 	return true;
 }
 
+static void db_server_feat_read(bool success, uint8_t att_ecode,
+				struct bt_gatt_result *result, void *user_data)
+{
+	struct discovery_op *op = user_data;
+	struct bt_gatt_client *client = op->client;
+	const uint8_t *value;
+	uint16_t len, handle;
+	struct bt_gatt_iter iter;
+
+	if (!result)
+		return;
+
+	bt_gatt_iter_init(&iter, result);
+	bt_gatt_iter_next_read_by_type(&iter, &handle, &len, &value);
+
+	util_debug(client->debug_callback, client->debug_data,
+				"Server Features found: handle 0x%04x "
+				"length 0x%04x value 0x%02x", handle, len,
+				value[0]);
+
+	op->server_feat = value[0];
+}
+
+static void server_feat_read_value(struct gatt_db_attribute *attrib,
+						int err, const uint8_t *value,
+						size_t length, void *user_data)
+{
+	const uint8_t **feat = user_data;
+
+	if (err)
+		return;
+
+	*feat = value;
+}
+
+static void read_server_feat(struct discovery_op *op)
+{
+	struct bt_gatt_client *client = op->client;
+	struct gatt_db_attribute *attr = NULL;
+	const uint8_t *feat = NULL;
+	bt_uuid_t uuid;
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
+
+	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid,
+						get_first_attribute, &attr);
+	if (attr) {
+		/* Read stored value in the db */
+		gatt_db_attribute_read(attr, 0, BT_ATT_OP_READ_REQ, NULL,
+					server_feat_read_value, &feat);
+		if (feat)
+			return;
+	}
+
+	if (!bt_gatt_read_by_type(client->att, 0x0001, 0xffff, &uuid,
+							db_server_feat_read,
+							discovery_op_ref(op),
+							discovery_op_unref))
+		discovery_op_unref(op);
+}
+
 static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)
 {
 	struct discovery_op *op = user_data;
@@ -1464,6 +1530,8 @@ static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)
 					bt_att_get_mtu(client->att));
 
 discover:
+	read_server_feat(op);
+
 	if (read_db_hash(op)) {
 		op->success = false;
 		return;
@@ -1839,12 +1907,41 @@ static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
 	queue_push_tail(client->svc_chngd_queue, op);
 }
 
+static void server_feat_write_value(struct gatt_db_attribute *attrib,
+						int err, void *user_data)
+{
+	struct bt_gatt_client *client = user_data;
+
+	util_debug(client->debug_callback, client->debug_data,
+			"Server Features Value set status: %d", err);
+}
+
+static void write_server_features(struct bt_gatt_client *client, uint8_t feat)
+{
+	bt_uuid_t uuid;
+	struct gatt_db_attribute *attr = NULL;
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
+
+	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid,
+						get_first_attribute, &attr);
+	if (!attr)
+		return;
+
+	/* Store value in the DB */
+	if (!gatt_db_attribute_write(attr, 0, &feat, sizeof(feat),
+					0, NULL, server_feat_write_value,
+					client))
+		util_debug(client->debug_callback, client->debug_data,
+					"Unable to store Server Features");
+}
+
 static void write_client_features(struct bt_gatt_client *client)
 {
 	bt_uuid_t uuid;
 	struct gatt_db_attribute *attr = NULL;
 	uint16_t handle;
-	uint8_t value;
+	const uint8_t *feat = NULL;
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_CLI_FEAT);
 
@@ -1854,10 +1951,28 @@ static void write_client_features(struct bt_gatt_client *client)
 		return;
 
 	handle = gatt_db_attribute_get_handle(attr);
-	value = BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
 
-	bt_gatt_client_write_value(client, handle, &value, sizeof(value), NULL,
-								NULL, NULL);
+	client->features = BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
+
+	attr = NULL;
+	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid,
+						get_first_attribute, &attr);
+	if (attr) {
+		/* Read stored value in the db */
+		gatt_db_attribute_read(attr, 0, BT_ATT_OP_READ_REQ,
+						NULL, server_feat_read_value,
+						&feat);
+		if (feat && feat[0] & BT_GATT_CHRC_SERVER_FEAT_EATT)
+			client->features |= BT_GATT_CHRC_CLI_FEAT_EATT;
+	}
+
+	util_debug(client->debug_callback, client->debug_data,
+			"Writing Client Features 0x%02x", client->features);
+
+	bt_gatt_client_write_value(client, handle, &client->features,
+				sizeof(client->features), NULL, NULL, NULL);
 }
 
 static void init_complete(struct discovery_op *op, bool success,
@@ -1869,6 +1984,9 @@ static void init_complete(struct discovery_op *op, bool success,
 
 	if (!success)
 		goto fail;
+
+	if (op->server_feat)
+		write_server_features(client, op->server_feat);
 
 	write_client_features(client);
 
@@ -1932,6 +2050,8 @@ static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 	return true;
 
 discover:
+	read_server_feat(op);
+
 	if (read_db_hash(op)) {
 		op->success = false;
 		goto done;
@@ -2026,8 +2146,9 @@ static void notify_handler(void *data, void *user_data)
 							notify_data->user_data);
 }
 
-static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
-								void *user_data)
+static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
+					const void *pdu, uint16_t length,
+					void *user_data)
 {
 	struct bt_gatt_client *client = user_data;
 	struct pdu_data pdu_data;
@@ -2041,7 +2162,7 @@ static void notify_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	queue_foreach(client->notify_list, notify_handler, &pdu_data);
 
 	if (opcode == BT_ATT_OP_HANDLE_VAL_IND && !client->parent)
-		bt_att_send(client->att, BT_ATT_OP_HANDLE_VAL_CONF, NULL, 0,
+		bt_att_chan_send(chan, BT_ATT_OP_HANDLE_VAL_CONF, NULL, 0,
 							NULL, NULL, NULL);
 
 	bt_gatt_client_unref(client);
@@ -2099,7 +2220,8 @@ static void att_disconnect_cb(int err, void *user_data)
 }
 
 static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
-							struct bt_att *att)
+							struct bt_att *att,
+							uint8_t features)
 {
 	struct bt_gatt_client *client;
 
@@ -2129,6 +2251,7 @@ static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
 
 	client->att = bt_att_ref(att);
 	client->db = gatt_db_ref(db);
+	client->features = features;
 
 	return client;
 
@@ -2140,14 +2263,15 @@ fail:
 
 struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 							struct bt_att *att,
-							uint16_t mtu)
+							uint16_t mtu,
+							uint8_t features)
 {
 	struct bt_gatt_client *client;
 
 	if (!att || !db)
 		return NULL;
 
-	client = gatt_client_new(db, att);
+	client = gatt_client_new(db, att, features);
 	if (!client)
 		return NULL;
 
@@ -2166,7 +2290,7 @@ struct bt_gatt_client *bt_gatt_client_clone(struct bt_gatt_client *client)
 	if (!client)
 		return NULL;
 
-	clone = gatt_client_new(client->db, client->att);
+	clone = gatt_client_new(client->db, client->att, client->features);
 	if (!clone)
 		return NULL;
 
@@ -2284,12 +2408,31 @@ uint16_t bt_gatt_client_get_mtu(struct bt_gatt_client *client)
 	return bt_att_get_mtu(client->att);
 }
 
+struct bt_att *bt_gatt_client_get_att(struct bt_gatt_client *client)
+{
+	if (!client)
+		return NULL;
+
+	return client->att;
+}
+
 struct gatt_db *bt_gatt_client_get_db(struct bt_gatt_client *client)
 {
 	if (!client || !client->db)
 		return NULL;
 
 	return client->db;
+}
+
+uint8_t bt_gatt_client_get_features(struct bt_gatt_client *client)
+{
+	if (!client)
+		return 0;
+
+	if (client->parent)
+		return client->parent->features;
+
+	return client->features;
 }
 
 static bool match_req_id(const void *a, const void *b)

@@ -4929,7 +4929,7 @@ static void gatt_client_init(struct btd_device *device)
 	}
 
 	device->client = bt_gatt_client_new(device->db, device->att,
-							device->att_mtu);
+							device->att_mtu, 0);
 	if (!device->client) {
 		DBG("Failed to initialize");
 		return;

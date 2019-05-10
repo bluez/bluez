@@ -275,8 +275,9 @@ static void attrib_callback_result(uint8_t opcode, const void *pdu,
 	free(buf);
 }
 
-static void attrib_callback_notify(uint8_t opcode, const void *pdu,
-					uint16_t length, void *user_data)
+static void attrib_callback_notify(struct bt_att_chan *chan, uint8_t opcode,
+					const void *pdu, uint16_t length,
+					void *user_data)
 {
 	uint8_t *buf;
 	struct attrib_callbacks *cb = user_data;

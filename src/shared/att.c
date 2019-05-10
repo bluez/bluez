@@ -56,6 +56,8 @@ struct bt_att_chan {
 	uint8_t type;
 	int sec_level;			/* Only used for non-L2CAP */
 
+	struct queue *queue;		/* Channel dedicated queue */
+
 	struct att_send_op *pending_req;
 	struct att_send_op *pending_ind;
 	bool writer_active;
@@ -375,30 +377,45 @@ static struct att_send_op *pick_next_send_op(struct bt_att_chan *chan)
 	struct bt_att *att = chan->att;
 	struct att_send_op *op;
 
-	/* See if any operations are already in the write queue */
-	op = queue_pop_head(att->write_queue);
+	/* Check if there is anything queued on the channel */
+	op = queue_pop_head(chan->queue);
 	if (op)
 		return op;
+
+	/* See if any operations are already in the write queue */
+	op = queue_peek_head(att->write_queue);
+	if (op && op->len <= chan->mtu)
+		return queue_pop_head(att->write_queue);
 
 	/* If there is no pending request, pick an operation from the
 	 * request queue.
 	 */
 	if (!chan->pending_req) {
-		op = queue_pop_head(att->req_queue);
-		if (op)
-			return op;
+		op = queue_peek_head(att->req_queue);
+		if (op && op->len <= chan->mtu)
+			return queue_pop_head(att->req_queue);
 	}
 
 	/* There is either a request pending or no requests queued. If there is
 	 * no pending indication, pick an operation from the indication queue.
 	 */
 	if (!chan->pending_ind) {
-		op = queue_pop_head(att->ind_queue);
-		if (op)
-			return op;
+		op = queue_peek_head(att->ind_queue);
+		if (op && op->len <= chan->mtu)
+			return queue_pop_head(att->ind_queue);
 	}
 
 	return NULL;
+}
+
+static void disc_att_send_op(void *data)
+{
+	struct att_send_op *op = data;
+
+	if (op->callback)
+		op->callback(BT_ATT_OP_ERROR_RSP, NULL, 0, op->user_data);
+
+	destroy_att_send_op(op);
 }
 
 struct timeout_data {
@@ -425,13 +442,14 @@ static bool timeout_cb(void *user_data)
 		return false;
 
 	util_debug(att->debug_callback, att->debug_data,
-				"Operation timed out: 0x%02x", op->opcode);
+				"(chan %p) Operation timed out: 0x%02x",
+				chan, op->opcode);
 
 	if (att->timeout_callback)
 		att->timeout_callback(op->id, op->opcode, att->timeout_data);
 
 	op->timeout_id = 0;
-	destroy_att_send_op(op);
+	disc_att_send_op(op);
 
 	/*
 	 * Directly terminate the connection as required by the ATT protocol.
@@ -450,38 +468,51 @@ static void write_watch_destroy(void *user_data)
 	chan->writer_active = false;
 }
 
+static ssize_t bt_att_chan_write(struct bt_att_chan *chan, uint8_t opcode,
+					const void *pdu, uint16_t len)
+{
+	struct bt_att *att = chan->att;
+	ssize_t ret;
+	struct iovec iov;
+
+	iov.iov_base = (void *) pdu;
+	iov.iov_len = len;
+
+	util_debug(att->debug_callback, att->debug_data,
+					"(chan %p) ATT op 0x%02x",
+					chan, opcode);
+
+	ret = io_send(chan->io, &iov, 1);
+	if (ret < 0) {
+		util_debug(att->debug_callback, att->debug_data,
+					"(chan %p) write failed: %s",
+					chan, strerror(-ret));
+
+		return ret;
+	}
+
+	util_hexdump('<', pdu, ret, att->debug_callback, att->debug_data);
+
+	return ret;
+}
+
 static bool can_write_data(struct io *io, void *user_data)
 {
 	struct bt_att_chan *chan = user_data;
-	struct bt_att *att = chan->att;
 	struct att_send_op *op;
 	struct timeout_data *timeout;
-	ssize_t ret;
-	struct iovec iov;
 
 	op = pick_next_send_op(chan);
 	if (!op)
 		return false;
 
-	iov.iov_base = op->pdu;
-	iov.iov_len = op->len;
-
-	ret = io_send(io, &iov, 1);
-	if (ret < 0) {
-		util_debug(att->debug_callback, att->debug_data,
-					"write failed: %s", strerror(-ret));
+	if (!bt_att_chan_write(chan, op->opcode, op->pdu, op->len)) {
 		if (op->callback)
 			op->callback(BT_ATT_OP_ERROR_RSP, NULL, 0,
 							op->user_data);
-
 		destroy_att_send_op(op);
 		return true;
 	}
-
-	util_debug(att->debug_callback, att->debug_data,
-					"ATT op 0x%02x", op->opcode);
-
-	util_hexdump('<', op->pdu, ret, att->debug_callback, att->debug_data);
 
 	/* Based on the operation type, set either the pending request or the
 	 * pending indication. If it came from the write queue, then there is
@@ -528,7 +559,7 @@ static void wakeup_chan_writer(void *data, void *user_data)
 	/* Set the write handler only if there is anything that can be sent
 	 * at all.
 	 */
-	if (queue_isempty(att->write_queue)) {
+	if (queue_isempty(chan->queue) && queue_isempty(att->write_queue)) {
 		if ((chan->pending_req || queue_isempty(att->req_queue)) &&
 			(chan->pending_ind || queue_isempty(att->ind_queue)))
 			return;
@@ -558,16 +589,6 @@ static void disconn_handler(void *data, void *user_data)
 		disconn->callback(err, disconn->user_data);
 }
 
-static void disc_att_send_op(void *data)
-{
-	struct att_send_op *op = data;
-
-	if (op->callback)
-		op->callback(BT_ATT_OP_ERROR_RSP, NULL, 0, op->user_data);
-
-	destroy_att_send_op(op);
-}
-
 static void bt_att_chan_free(void *data)
 {
 	struct bt_att_chan *chan = data;
@@ -577,6 +598,8 @@ static void bt_att_chan_free(void *data)
 
 	if (chan->pending_ind)
 		destroy_att_send_op(chan->pending_ind);
+
+	queue_destroy(chan->queue, destroy_att_send_op);
 
 	io_destroy(chan->io);
 
@@ -595,8 +618,8 @@ static bool disconnect_cb(struct io *io, void *user_data)
 
 	if (getsockopt(chan->fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
 		util_debug(chan->att->debug_callback, chan->att->debug_data,
-					"Failed to obtain disconnect error: %s",
-					strerror(errno));
+					"(chan %p) Failed to obtain disconnect"
+					" error: %s", chan, strerror(errno));
 		err = 0;
 	}
 
@@ -728,7 +751,8 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 	}
 
 	util_debug(att->debug_callback, att->debug_data,
-						"Retrying operation %p", op);
+						"(chan %p) Retrying operation "
+						"%p", chan, op);
 
 	chan->pending_req = NULL;
 
@@ -752,7 +776,8 @@ static void handle_rsp(struct bt_att_chan *chan, uint8_t opcode, uint8_t *pdu,
 	 */
 	if (!op) {
 		util_debug(att->debug_callback, att->debug_data,
-					"Received unexpected ATT response");
+					"(chan %p) Received unexpected ATT "
+					"response", chan);
 		io_shutdown(chan->io);
 		return;
 	}
@@ -784,7 +809,8 @@ static void handle_rsp(struct bt_att_chan *chan, uint8_t opcode, uint8_t *pdu,
 
 fail:
 	util_debug(att->debug_callback, att->debug_data,
-			"Failed to handle response PDU; opcode: 0x%02x", opcode);
+			"(chan %p) Failed to handle response PDU; opcode: "
+			"0x%02x", chan, opcode);
 
 	rsp_opcode = BT_ATT_OP_ERROR_RSP;
 
@@ -809,7 +835,8 @@ static void handle_conf(struct bt_att_chan *chan, uint8_t *pdu, ssize_t pdu_len)
 	 */
 	if (!op || pdu_len) {
 		util_debug(att->debug_callback, att->debug_data,
-				"Received unexpected/invalid ATT confirmation");
+				"(chan %p) Received unexpected/invalid ATT "
+				"confirmation", chan);
 		io_shutdown(chan->io);
 		return;
 	}
@@ -935,7 +962,7 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t opcode,
 		found = true;
 
 		if (notify->callback)
-			notify->callback(opcode, pdu, pdu_len,
+			notify->callback(chan, opcode, pdu, pdu_len,
 							notify->user_data);
 
 		/* callback could remove all entries from notify list */
@@ -966,6 +993,10 @@ static bool can_read_data(struct io *io, void *user_data)
 	if (bytes_read < 0)
 		return false;
 
+	util_debug(att->debug_callback, att->debug_data,
+				"(chan %p) ATT received: %zd",
+				chan, bytes_read);
+
 	util_hexdump('>', chan->buf, bytes_read,
 				att->debug_callback, att->debug_data);
 
@@ -981,12 +1012,14 @@ static bool can_read_data(struct io *io, void *user_data)
 	switch (get_op_type(opcode)) {
 	case ATT_OP_TYPE_RSP:
 		util_debug(att->debug_callback, att->debug_data,
-				"ATT response received: 0x%02x", opcode);
+				"(chan %p) ATT response received: 0x%02x",
+				chan, opcode);
 		handle_rsp(chan, opcode, pdu + 1, bytes_read - 1);
 		break;
 	case ATT_OP_TYPE_CONF:
 		util_debug(att->debug_callback, att->debug_data,
-				"ATT confirmation received: 0x%02x", opcode);
+				"(chan %p) ATT confirmation received: 0x%02x",
+				chan, opcode);
 		handle_conf(chan, pdu + 1, bytes_read - 1);
 		break;
 	case ATT_OP_TYPE_REQ:
@@ -997,8 +1030,9 @@ static bool can_read_data(struct io *io, void *user_data)
 		 */
 		if (chan->in_req) {
 			util_debug(att->debug_callback, att->debug_data,
-					"Received request while another is "
-					"pending: 0x%02x", opcode);
+					"(chan %p) Received request while "
+					"another is pending: 0x%02x",
+					chan, opcode);
 			io_shutdown(chan->io);
 			bt_att_unref(chan->att);
 
@@ -1017,7 +1051,8 @@ static bool can_read_data(struct io *io, void *user_data)
 		 * let them act on it.
 		 */
 		util_debug(att->debug_callback, att->debug_data,
-					"ATT PDU received: 0x%02x", opcode);
+					"(chan %p) ATT PDU received: 0x%02x",
+					chan, opcode);
 		handle_notify(chan, opcode, pdu + 1, bytes_read - 1);
 		break;
 	}
@@ -1075,16 +1110,19 @@ static void bt_att_free(struct bt_att *att)
 	free(att);
 }
 
-static uint16_t get_l2cap_mtu(int fd)
+static uint16_t io_get_mtu(int fd)
 {
 	socklen_t len;
 	struct l2cap_options l2o;
 
 	len = sizeof(l2o);
-	if (getsockopt(fd, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0)
-		return 0;
+	if (!getsockopt(fd, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len))
+		return l2o.omtu;
 
-	return l2o.omtu;
+	if (!getsockopt(fd, SOL_BLUETOOTH, BT_SNDMTU, &l2o.omtu, &len))
+		return l2o.omtu;
+
+	return 0;
 }
 
 static uint8_t io_get_type(int fd)
@@ -1135,7 +1173,7 @@ static struct bt_att_chan *bt_att_chan_new(int fd, uint8_t type)
 		chan->mtu = BT_ATT_DEFAULT_LE_MTU;
 		break;
 	default:
-		chan->mtu = get_l2cap_mtu(chan->fd);
+		chan->mtu = io_get_mtu(chan->fd);
 	}
 
 	if (chan->mtu < BT_ATT_DEFAULT_LE_MTU)
@@ -1145,12 +1183,31 @@ static struct bt_att_chan *bt_att_chan_new(int fd, uint8_t type)
 	if (!chan->buf)
 		goto fail;
 
+	chan->queue = queue_new();
+
 	return chan;
 
 fail:
 	bt_att_chan_free(chan);
 
 	return NULL;
+}
+
+static void bt_att_attach_chan(struct bt_att *att, struct bt_att_chan *chan)
+{
+	/* Push to head as EATT channels have higher priority */
+	queue_push_head(att->chans, chan);
+	chan->att = att;
+
+	if (chan->mtu > att->mtu)
+		att->mtu = chan->mtu;
+
+	io_set_close_on_destroy(chan->io, att->close_on_unref);
+
+	util_debug(att->debug_callback, att->debug_data, "Channel %p attached",
+									chan);
+
+	wakeup_chan_writer(chan, NULL);
 }
 
 struct bt_att *bt_att_new(int fd, bool ext_signed)
@@ -1166,9 +1223,6 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 	att->chans = queue_new();
 	att->mtu = chan->mtu;
 
-	queue_push_head(att->chans, chan);
-	chan->att = att;
-
 	/* crypto is optional, if not available leave it NULL */
 	if (!ext_signed)
 		att->crypto = bt_crypto_new();
@@ -1178,6 +1232,8 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 	att->write_queue = queue_new();
 	att->notify_list = queue_new();
 	att->disconn_list = queue_new();
+
+	bt_att_attach_chan(att, chan);
 
 	return bt_att_ref(att);
 }
@@ -1237,13 +1293,7 @@ int bt_att_attach_fd(struct bt_att *att, int fd)
 	if (!chan)
 		return -EINVAL;
 
-	queue_push_tail(att->chans, chan);
-	chan->att = att;
-
-	if (chan->mtu > att->mtu)
-		att->mtu = chan->mtu;
-
-	io_set_close_on_destroy(chan->io, att->close_on_unref);
+	bt_att_attach_chan(att, chan);
 
 	return 0;
 }
@@ -1258,7 +1308,7 @@ int bt_att_get_fd(struct bt_att *att)
 	if (queue_isempty(att->chans))
 		return -ENOTCONN;
 
-	chan = queue_peek_head(att->chans);
+	chan = queue_peek_tail(att->chans);
 
 	return chan->fd;
 }
@@ -1306,7 +1356,8 @@ bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu)
 	if (mtu < BT_ATT_DEFAULT_LE_MTU)
 		return false;
 
-	chan = queue_peek_head(att->chans);
+	/* Original channel is always the last */
+	chan = queue_peek_tail(att->chans);
 	if (!chan)
 		return -ENOTCONN;
 
@@ -1332,7 +1383,7 @@ uint8_t bt_att_get_link_type(struct bt_att *att)
 	if (!att)
 		return -EINVAL;
 
-	chan = queue_peek_head(att->chans);
+	chan = queue_peek_tail(att->chans);
 	if (!chan)
 		return -ENOTCONN;
 
@@ -1392,7 +1443,7 @@ bool bt_att_unregister_disconnect(struct bt_att *att, unsigned int id)
 		return false;
 
 	/* Check if disconnect is running */
-	if (!queue_isempty(att->chans)) {
+	if (queue_isempty(att->chans)) {
 		disconn = queue_find(att->disconn_list, match_disconn_id,
 							UINT_TO_PTR(id));
 		if (!disconn)
@@ -1461,12 +1512,66 @@ unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 	return op->id;
 }
 
+unsigned int bt_att_chan_send(struct bt_att_chan *chan, uint8_t opcode,
+				const void *pdu, uint16_t len,
+				bt_att_response_func_t callback,
+				void *user_data,
+				bt_att_destroy_func_t destroy)
+{
+	struct att_send_op *op;
+
+	if (!chan || !chan->att)
+		return -EINVAL;
+
+	op = create_att_send_op(chan->att, opcode, pdu, len, callback,
+						user_data, destroy);
+	if (!op)
+		return -EINVAL;
+
+	if (!queue_push_tail(chan->queue, op)) {
+		free(op->pdu);
+		free(op);
+		return 0;
+	}
+
+	wakeup_chan_writer(chan, NULL);
+
+	return op->id;
+}
+
 static bool match_op_id(const void *a, const void *b)
 {
 	const struct att_send_op *op = a;
 	unsigned int id = PTR_TO_UINT(b);
 
 	return op->id == id;
+}
+
+bool bt_att_chan_cancel(struct bt_att_chan *chan, unsigned int id)
+{
+	struct att_send_op *op;
+
+	if (chan->pending_req && chan->pending_req->id == id) {
+		/* Don't cancel the pending request; remove it's handlers */
+		cancel_att_send_op(chan->pending_req);
+		return true;
+	}
+
+	if (chan->pending_ind && chan->pending_ind->id == id) {
+		/* Don't cancel the pending indication; remove it's handlers. */
+		cancel_att_send_op(chan->pending_ind);
+		return true;
+	}
+
+	op = queue_remove_if(chan->queue, match_op_id, UINT_TO_PTR(id));
+	if (!op)
+		return false;
+
+	destroy_att_send_op(op);
+
+	wakeup_chan_writer(chan, NULL);
+
+	return true;
 }
 
 bool bt_att_cancel(struct bt_att *att, unsigned int id)
@@ -1477,25 +1582,13 @@ bool bt_att_cancel(struct bt_att *att, unsigned int id)
 	if (!att || !id)
 		return false;
 
+	/* Lookuo request on each channel first */
 	for (entry = queue_get_entries(att->chans); entry;
 						entry = entry->next) {
 		struct bt_att_chan *chan = entry->data;
 
-		if (chan->pending_req && chan->pending_req->id == id) {
-			/* Don't cancel the pending request; remove it's
-			 * handlers
-			 */
-			cancel_att_send_op(chan->pending_req);
+		if (bt_att_chan_cancel(chan, id))
 			return true;
-		}
-
-		if (chan->pending_ind && chan->pending_ind->id == id) {
-			/* Don't cancel the pending indication; remove it's
-			 * handlers.
-			 */
-			cancel_att_send_op(chan->pending_ind);
-			return true;
-		}
 	}
 
 	op = queue_remove_if(att->req_queue, match_op_id, UINT_TO_PTR(id));
@@ -1580,14 +1673,14 @@ static uint8_t att_ecode_from_error(int err)
 	return BT_ATT_ERROR_UNLIKELY;
 }
 
-unsigned int bt_att_send_error_rsp(struct bt_att *att, uint8_t opcode,
+int bt_att_chan_send_error_rsp(struct bt_att_chan *chan, uint8_t opcode,
 						uint16_t handle, int error)
 {
 	struct bt_att_pdu_error_rsp pdu;
 	uint8_t ecode;
 
-	if (!att || !opcode)
-		return 0;
+	if (!chan || !chan->att || !opcode)
+		return -EINVAL;
 
 	ecode = att_ecode_from_error(error);
 
@@ -1597,8 +1690,8 @@ unsigned int bt_att_send_error_rsp(struct bt_att *att, uint8_t opcode,
 	put_le16(handle, &pdu.handle);
 	pdu.ecode = ecode;
 
-	return bt_att_send(att, BT_ATT_OP_ERROR_RSP, &pdu, sizeof(pdu),
-							NULL, NULL, NULL);
+	return bt_att_chan_send_rsp(chan, BT_ATT_OP_ERROR_RSP, &pdu,
+							sizeof(pdu));
 }
 
 unsigned int bt_att_register(struct bt_att *att, uint8_t opcode,
@@ -1665,7 +1758,7 @@ int bt_att_get_security(struct bt_att *att, uint8_t *enc_size)
 	if (!att)
 		return -EINVAL;
 
-	chan = queue_peek_head(att->chans);
+	chan = queue_peek_tail(att->chans);
 	if (!chan)
 		return -ENOTCONN;
 
@@ -1687,7 +1780,7 @@ bool bt_att_set_security(struct bt_att *att, int level)
 						level > BT_ATT_SECURITY_HIGH)
 		return false;
 
-	chan = queue_peek_head(att->chans);
+	chan = queue_peek_tail(att->chans);
 	if (!chan)
 		return -ENOTCONN;
 
