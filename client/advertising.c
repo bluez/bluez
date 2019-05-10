@@ -421,8 +421,9 @@ static gboolean discoverable_exists(const GDBusPropertyTable *property,
 static gboolean get_discoverable(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN,
-							&ad.discoverable);
+	dbus_bool_t value = ad.discoverable;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
 
 	return TRUE;
 }
