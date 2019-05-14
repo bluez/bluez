@@ -24,6 +24,7 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/dbus.h mesh/dbus.c \
 				mesh/agent.h mesh/agent.c \
 				mesh/prov-acceptor.c mesh/prov-initiator.c \
+				mesh/manager.h mesh/manager.c \
 				mesh/pb-adv.h mesh/pb-adv.c \
 				mesh/keyring.h mesh/keyring.c \
 				mesh/mesh-defs.h
