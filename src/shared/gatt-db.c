@@ -273,9 +273,14 @@ static void handle_notify(void *data, void *user_data)
 		notify->service_removed(notify_data->attr, notify->user_data);
 }
 
+struct hash_data {
+	struct iovec *iov;
+	uint16_t i;
+};
+
 static void gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
 {
-	struct iovec *iov = user_data;
+	struct hash_data *hash = user_data;
 	uint8_t *data;
 	size_t len;
 
@@ -309,8 +314,10 @@ static void gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
 		return;
 	}
 
-	iov[attr->handle].iov_base = data;
-	iov[attr->handle].iov_len = len;
+	hash->iov[hash->i].iov_base = data;
+	hash->iov[hash->i].iov_len = len;
+
+	hash->i++;
 
 	return;
 }
@@ -323,7 +330,7 @@ static void service_gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
 static bool db_hash_update(void *user_data)
 {
 	struct gatt_db *db = user_data;
-	struct iovec *iov;
+	struct hash_data hash;
 	uint16_t i;
 
 	db->hash_id = 0;
@@ -331,15 +338,16 @@ static bool db_hash_update(void *user_data)
 	if (!db->next_handle)
 		return false;
 
-	iov = new0(struct iovec, db->next_handle);
+	hash.iov = new0(struct iovec, db->next_handle);
+	hash.i = 0;
 
-	gatt_db_foreach_service(db, NULL, service_gen_hash_m, iov);
-	bt_crypto_gatt_hash(db->crypto, iov, db->next_handle, db->hash);
+	gatt_db_foreach_service(db, NULL, service_gen_hash_m, &hash);
+	bt_crypto_gatt_hash(db->crypto, hash.iov, db->next_handle, db->hash);
 
-	for (i = 0; i < db->next_handle; i++)
-		free(iov[i].iov_base);
+	for (i = 0; i < hash.i; i++)
+		free(hash.iov[i].iov_base);
 
-	free(iov);
+	free(hash.iov);
 
 	return false;
 }
