@@ -35,6 +35,7 @@
 #include "mesh/mesh-db.h"
 #include "mesh/provision.h"
 #include "mesh/storage.h"
+#include "mesh/keyring.h"
 #include "mesh/appkey.h"
 #include "mesh/model.h"
 #include "mesh/cfgmod.h"
@@ -1552,8 +1553,8 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 	} else {
 		/* Callback for create node request */
 		node_ready_func_t cb = req->cb;
+		struct keyring_net_key net_key;
 		uint8_t dev_key[16];
-		uint8_t net_key[16];
 
 		node->num_ele = num_ele;
 		set_defaults(node);
@@ -1564,11 +1565,22 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 
 		/* Generate device and primary network keys */
 		l_getrandom(dev_key, sizeof(dev_key));
-		l_getrandom(net_key, sizeof(net_key));
+		l_getrandom(net_key.old_key, sizeof(net_key.old_key));
+		net_key.net_idx = DEFAULT_PRIMARY_NET_INDEX;
+		net_key.phase = 0;
 
 		if (!add_local_node(node, DEFAULT_NEW_UNICAST, false, false,
-					DEFAULT_IV_INDEX, dev_key,
-					DEFAULT_PRIMARY_NET_INDEX, net_key))
+						DEFAULT_IV_INDEX, dev_key,
+						DEFAULT_PRIMARY_NET_INDEX,
+							net_key.old_key))
+			goto fail;
+
+		if (!keyring_put_remote_dev_key(node, DEFAULT_NEW_UNICAST,
+							num_ele, dev_key))
+			goto fail;
+
+		if (!keyring_put_net_key(node, DEFAULT_PRIMARY_NET_INDEX,
+								&net_key))
 			goto fail;
 
 		cb(req->user_data, MESH_ERROR_NONE, node);
