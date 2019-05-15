@@ -24,15 +24,11 @@
 #include <sys/time.h>
 #include <ell/ell.h>
 
-#include "lib/bluetooth.h"
-#include "lib/hci.h"
-
 #include "monitor/bt.h"
 #include "src/shared/hci.h"
 
 #include "mesh/mesh-io.h"
 #include "mesh/mesh-io-api.h"
-
 #include "mesh/mesh-io-generic.h"
 
 struct mesh_io_private {

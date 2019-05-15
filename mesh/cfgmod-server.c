@@ -21,17 +21,12 @@
 #include <config.h>
 #endif
 
-#include <unistd.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <sys/time.h>
-#include <ell/ell.h>
 #include <ell/ell.h>
 
 #include "json-c/json.h"
 
 #include "mesh/mesh-defs.h"
-#include "mesh/mesh.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
 #include "mesh/appkey.h"

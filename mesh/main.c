@@ -23,25 +23,18 @@
 
 #define _GNU_SOURCE
 #include <getopt.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <signal.h>
 
 #include <sys/stat.h>
 #include <ell/ell.h>
-
-#include <dbus/dbus.h>
-#include <json-c/json.h>
 
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 
 #include "mesh/mesh.h"
-#include "mesh/net.h"
 #include "mesh/dbus.h"
-#include "mesh/storage.h"
 
 static const struct option main_options[] = {
 	{ "index",	required_argument,	NULL, 'i' },

@@ -22,18 +22,13 @@
 #endif
 
 #define _GNU_SOURCE
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/time.h>
+
 #include <ell/ell.h>
-#include <json-c/json.h>
 
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
-
 #include "mesh/crypto.h"
 #include "mesh/net-keys.h"
-#include "mesh/mesh.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
 #include "mesh/mesh-io.h"
@@ -41,8 +36,6 @@
 #include "mesh/storage.h"
 #include "mesh/model.h"
 #include "mesh/appkey.h"
-#include "mesh/prov.h"
-#include "mesh/provision.h"
 
 #define abs_diff(a, b) ((a) > (b) ? (a) - (b) : (b) - (a))
 

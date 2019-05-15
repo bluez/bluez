@@ -21,7 +21,6 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
 #include <ell/ell.h>
 
 #include "mesh/crypto.h"

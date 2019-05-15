@@ -22,24 +22,19 @@
 #endif
 
 #define _GNU_SOURCE
-#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <libgen.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
 
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"
 
-#include "mesh/net.h"
-#include "mesh/keyring.h"
-#include "mesh/mesh.h"
 #include "mesh/node.h"
+#include "mesh/keyring.h"
 
 const char *dev_key_dir = "/dev_keys";
 const char *app_key_dir = "/app_keys";

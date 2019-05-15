@@ -24,10 +24,8 @@
 #include <ell/ell.h>
 
 #include "lib/bluetooth.h"
-#include "lib/hci.h"
 
 #include "mesh/mesh-defs.h"
-
 #include "mesh/mesh-io.h"
 #include "mesh/mesh-io-api.h"
 

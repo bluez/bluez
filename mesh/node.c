@@ -22,21 +22,19 @@
 #endif
 
 #define _GNU_SOURCE
-#include <stdio.h>
+
 #include <sys/time.h>
+
 #include <ell/ell.h>
 #include <json-c/json.h>
 
 #include "mesh/mesh-defs.h"
-
 #include "mesh/mesh.h"
-#include "mesh/mesh-io.h"
 #include "mesh/net.h"
 #include "mesh/mesh-db.h"
 #include "mesh/provision.h"
 #include "mesh/storage.h"
 #include "mesh/keyring.h"
-#include "mesh/appkey.h"
 #include "mesh/model.h"
 #include "mesh/cfgmod.h"
 #include "mesh/util.h"

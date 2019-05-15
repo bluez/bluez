@@ -22,9 +22,7 @@
 #endif
 
 #define _GNU_SOURCE
-#include <fcntl.h>
 #include <unistd.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <ell/ell.h>
 

@@ -21,21 +21,11 @@
 #include <config.h>
 #endif
 
-#include <time.h>
 #include <ell/ell.h>
-#include <json-c/json.h>
-
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
-
-#include "src/shared/mgmt.h"
 
 #include "mesh/mesh-defs.h"
-#include "mesh/mesh-io.h"
 #include "mesh/node.h"
 #include "mesh/manager.h"
-#include "mesh/net.h"
-#include "mesh/cfgmod.h"
 #include "mesh/mesh.h"
 #include "mesh/error.h"
 #include "mesh/dbus.h"

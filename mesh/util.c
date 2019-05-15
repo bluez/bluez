@@ -22,13 +22,9 @@
 #endif
 
 #define _GNU_SOURCE
-#include <stdbool.h>
-#include <stdint.h>
+
 #include <stdio.h>
-#include <unistd.h>
-#include <termios.h>
 #include <time.h>
-#include <sys/ioctl.h>
 #include <sys/time.h>
 
 #include <ell/ell.h>

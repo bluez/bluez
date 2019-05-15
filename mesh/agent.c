@@ -24,7 +24,6 @@
 #include <ell/ell.h>
 
 #include "mesh/mesh.h"
-#include "mesh/provision.h"
 #include "mesh/error.h"
 #include "mesh/dbus.h"
 #include "mesh/agent.h"

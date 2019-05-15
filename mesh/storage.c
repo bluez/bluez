@@ -22,7 +22,7 @@
 #endif
 
 #define _GNU_SOURCE
-#include <errno.h>
+//#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -30,23 +30,16 @@
 #include <libgen.h>
 #include <ftw.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include <json-c/json.h>
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"
-
-#include "mesh/mesh.h"
 #include "mesh/node.h"
-
 #include "mesh/net.h"
 #include "mesh/appkey.h"
-#include "mesh/model.h"
 #include "mesh/mesh-db.h"
-#include "mesh/storage.h"
 #include "mesh/util.h"
+#include "mesh/storage.h"
 
 struct write_info {
 	json_object *jnode;

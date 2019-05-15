@@ -21,18 +21,12 @@
 #include <config.h>
 #endif
 
-#include <unistd.h>
-#include <stdio.h>
-#include <sys/time.h>
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"
 
-#include "mesh/mesh.h"
 #include "mesh/net-keys.h"
-#include "mesh/node.h"
 #include "mesh/net.h"
-#include "mesh/crypto.h"
 #include "mesh/model.h"
 #include "mesh/util.h"
 
