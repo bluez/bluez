@@ -23,6 +23,7 @@
 #
 # The main menu:
 #       token
+#       create
 #       join
 #       attach
 #       remove
@@ -36,6 +37,18 @@
 #            Set the unique node token.
 #            The token can be set from command line arguments as
 #            well.
+#
+#     create
+#            Creates a new mesh network, with its first local
+#            node. The test generates device UUID to store for
+#            the initial node, and the daemon will create all
+#            the other parameters including Unicast address 0x0001
+#            for the new nodes primary element.
+#            In case of successful creation, the application
+#            automatically attaches as a node to the daemon. A node
+#            'token' is returned to the application and is used
+#            for the runtime of the test, and may be used in future
+#            attach requests.
 #
 #     join
 #            Request provisioning of a device to become a node
@@ -57,8 +70,8 @@
 #            For the call to be successful, the valid node token must
 #            be already set, either from command arguments or by
 #            executing "set token" operation or automatically after
-#            successfully executing "join" operation in the same test
-#            run.
+#            successfully executing "join" or "create" operation in
+#            the same test run.
 #
 #     remove
 #           Permanently removes any node configuration from daemon
@@ -240,6 +253,22 @@ def join_cb():
 
 def join_error_cb(reason):
 	print('Join procedure failed: ', reason)
+
+def create_cb(value):
+	global token
+	global have_token
+	global attach
+
+	print(set_yellow('Created mesh network with token ') +
+			set_green(format(value, '16x')))
+
+	token = value
+	have_token = True
+	if attached == False:
+		attach(token)
+
+def create_error_cb(reason):
+	print('Create procedure failed: ', reason)
 
 def remove_node_cb():
 	global attached
@@ -737,6 +766,8 @@ class MainMenu(Menu):
 		menu_items = {
 			'token': MenuItem(' - set node ID (token)',
 						self.__cmd_set_token),
+			'create': MenuItem(' - create mesh network',
+						self.__cmd_create),
 			'join': MenuItem(' - join mesh network',
 						self.__cmd_join),
 			'attach': MenuItem(' - attach mesh node',
@@ -789,6 +820,20 @@ class MainMenu(Menu):
 
 		user_input = INPUT_MESSAGE_PAYLOAD;
 		print(set_cyan('Enter message payload (hex):'))
+
+	def __cmd_create(self):
+		if agent == None:
+			print(set_error('Provisioning agent not found'))
+			return
+
+		uuid = bytearray.fromhex("0a0102030405060708090A0B0C0D0E0F")
+		random.shuffle(uuid)
+		uuid_str = array_to_string(uuid)
+
+		print(set_yellow('Creating with UUID ') + set_green(uuid_str))
+		mesh_net.CreateNetwork(app.get_path(), uuid,
+			reply_handler=create_cb,
+			error_handler=create_error_cb)
 
 	def __cmd_join(self):
 		if agent == None:
