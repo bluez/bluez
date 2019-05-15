@@ -67,7 +67,7 @@ bool keyring_put_net_key(struct mesh_node *node, uint16_t net_idx,
 								net_idx);
 	l_debug("Put Net Key %s", key_file);
 
-	fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC);
+	fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 	if (fd >= 0) {
 		if (write(fd, key, sizeof(*key)) == sizeof(*key))
 			result = true;
@@ -112,7 +112,8 @@ bool keyring_put_app_key(struct mesh_node *node, uint16_t app_idx,
 		}
 		lseek(fd, 0, SEEK_SET);
 	} else
-		fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC);
+		fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC,
+							S_IRUSR | S_IWUSR);
 
 	if (fd >= 0) {
 		if (write(fd, key, sizeof(*key)) == sizeof(*key))
@@ -148,7 +149,8 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 						dev_key_dir, unicast + i);
 		l_debug("Put Dev Key %s", key_file);
 
-		fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC);
+		fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC,
+							S_IRUSR | S_IWUSR);
 		if (fd >= 0) {
 			if (write(fd, dev_key, 16) != 16)
 				result = false;

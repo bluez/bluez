@@ -197,7 +197,7 @@ static bool parse_config(char *in_file, char *out_dir, const uint8_t uuid[16])
 	l_info("Loading configuration from %s", in_file);
 
 	fd = open(in_file, O_RDONLY);
-	if (!fd)
+	if (fd < 0)
 		return false;
 
 	if (fstat(fd, &st) == -1) {
