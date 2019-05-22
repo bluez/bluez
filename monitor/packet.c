@@ -9613,6 +9613,24 @@ static void le_ext_adv_report_evt(const void *data, uint8_t size)
 	}
 }
 
+static void le_per_adv_sync(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_per_sync_established *evt = data;
+
+	print_status(evt->status);
+	print_field("Sync handle: %d", evt->handle);
+	if (evt->sid > 0x0f)
+		print_field("Advertising SID: Reserved (0x%2.2x)", evt->sid);
+	else
+		print_field("Advertising SID: 0x%2.2x", evt->sid);
+
+	print_peer_addr_type("Advertiser address type", evt->addr_type);
+	print_addr("Advertiser address", evt->addr, evt->addr_type);
+	print_le_phy("Advertiser PHY", evt->phy);
+	print_slot_125("Periodic advertising invteral", evt->interval);
+	print_field("Advertiser clock accuracy: 0x%2.2x", evt->clock_accuracy);
+}
+
 static void le_adv_set_term_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_adv_set_term *evt = data;
@@ -9726,7 +9744,8 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_phy_update_complete_evt, 5, true},
 	{ 0x0d, "LE Extended Advertising Report",
 				le_ext_adv_report_evt, 1, false},
-	{ 0x0e, "LE Periodic Advertising Sync Established" },
+	{ 0x0e, "LE Periodic Advertising Sync Established",
+				le_per_adv_sync, 15, true },
 	{ 0x0f, "LE Periodic Advertising Report" },
 	{ 0x10, "LE Periodic Advertising Sync Lost" },
 	{ 0x11, "LE Scan Timeout" },
