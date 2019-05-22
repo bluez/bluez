@@ -3103,6 +3103,17 @@ struct bt_hci_evt_le_per_sync_established {
 	uint8_t  clock_accuracy;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_PER_ADV_REPORT	0x0f
+struct bt_hci_le_per_adv_report {
+	uint16_t handle;
+	uint8_t  tx_power;
+	int8_t   rssi;
+	uint8_t  unused;
+	uint8_t  data_status;
+	uint8_t  data_len;
+	uint8_t  data[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LE_ADV_SET_TERM		0x12
 struct bt_hci_evt_le_adv_set_term {
 	uint8_t  status;

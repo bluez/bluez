@@ -9631,6 +9631,49 @@ static void le_per_adv_sync(const void *data, uint8_t size)
 	print_field("Advertiser clock accuracy: 0x%2.2x", evt->clock_accuracy);
 }
 
+static void le_per_adv_report_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_le_per_adv_report *evt = data;
+	const char *color_on;
+	const char *str;
+
+	print_field("Sync handle: %d", evt->handle);
+	print_power_level(evt->tx_power, NULL);
+	if (evt->rssi == 127)
+		print_field("RSSI: not available (0x%2.2x)",
+						(uint8_t) evt->rssi);
+	else if (evt->rssi >= -127 && evt->rssi <= 20)
+		print_field("RSSI: %d dBm (0x%2.2x)",
+				evt->rssi, (uint8_t) evt->rssi);
+	else
+		print_field("RSSI: reserved (0x%2.2x)",
+						(uint8_t) evt->rssi);
+	print_field("Unused: (0x%2.2x)", evt->unused);
+
+	switch (evt->data_status) {
+	case 0x00:
+		str = "Complete";
+		color_on = COLOR_GREEN;
+		break;
+	case 0x01:
+		str = "Incomplete, more data to come";
+		color_on = COLOR_YELLOW;
+		break;
+	case 0x02:
+		str = "Incomplete, data truncated, no more to come";
+		color_on = COLOR_RED;
+		break;
+	default:
+		str = "Reserved";
+		color_on = COLOR_RED;
+		break;
+	}
+
+	print_field("Data status: %s%s%s", color_on, str, COLOR_OFF);
+	print_field("Data length: 0x%2.2x", evt->data_len);
+	packet_hexdump(evt->data, evt->data_len);
+}
+
 static void le_adv_set_term_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_adv_set_term *evt = data;
@@ -9746,7 +9789,8 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_ext_adv_report_evt, 1, false},
 	{ 0x0e, "LE Periodic Advertising Sync Established",
 				le_per_adv_sync, 15, true },
-	{ 0x0f, "LE Periodic Advertising Report" },
+	{ 0x0f, "LE Periodic Advertising Report",
+				le_per_adv_report_evt, 7, false},
 	{ 0x10, "LE Periodic Advertising Sync Lost" },
 	{ 0x11, "LE Scan Timeout" },
 	{ 0x12, "LE Advertising Set Terminated",
