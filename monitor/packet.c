@@ -9674,6 +9674,13 @@ static void le_per_adv_report_evt(const void *data, uint8_t size)
 	packet_hexdump(evt->data, evt->data_len);
 }
 
+static void le_per_adv_sync_lost(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_per_sync_lost *evt = data;
+
+	print_field("Sync handle: %d", evt->handle);
+}
+
 static void le_adv_set_term_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_adv_set_term *evt = data;
@@ -9791,7 +9798,8 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_per_adv_sync, 15, true },
 	{ 0x0f, "LE Periodic Advertising Report",
 				le_per_adv_report_evt, 7, false},
-	{ 0x10, "LE Periodic Advertising Sync Lost" },
+	{ 0x10, "LE Periodic Advertising Sync Lost",
+				le_per_adv_sync_lost, 2, true},
 	{ 0x11, "LE Scan Timeout" },
 	{ 0x12, "LE Advertising Set Terminated",
 				le_adv_set_term_evt, 5, true},

@@ -3114,6 +3114,11 @@ struct bt_hci_le_per_adv_report {
 	uint8_t  data[0];
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_PER_SYNC_LOST	0x10
+struct bt_hci_evt_le_per_sync_lost {
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LE_ADV_SET_TERM		0x12
 struct bt_hci_evt_le_adv_set_term {
 	uint8_t  status;
