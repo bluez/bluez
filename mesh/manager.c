@@ -289,6 +289,34 @@ static struct l_dbus_message *update_appkey_call(struct l_dbus *dbus,
 	return l_dbus_message_new_method_return(msg);
 }
 
+static struct l_dbus_message *complete_update_appkey_call(struct l_dbus *dbus,
+						struct l_dbus_message *msg,
+						void *user_data)
+{
+	struct mesh_node *node = user_data;
+	struct keyring_net_key net_key;
+	struct keyring_app_key app_key;
+	uint16_t app_idx;
+
+	if (!l_dbus_message_get_arguments(msg, "q", &app_idx) ||
+			app_idx > MAX_KEY_IDX)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
+
+	if (!keyring_get_app_key(node, app_idx, &app_key) ||
+			!keyring_get_net_key(node, app_key.net_idx, &net_key))
+		return dbus_error(msg, MESH_ERROR_DOES_NOT_EXIST, NULL);
+
+	if (net_key.phase != KEY_REFRESH_PHASE_TWO)
+		return dbus_error(msg, MESH_ERROR_FAILED, "Invalid phase");
+
+	memcpy(app_key.old_key, app_key.new_key, 16);
+
+	if (!keyring_put_app_key(node, app_idx, app_key.net_idx, &app_key))
+		return dbus_error(msg, MESH_ERROR_FAILED, NULL);
+
+	return l_dbus_message_new_method_return(msg);
+}
+
 static struct l_dbus_message *delete_appkey_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
@@ -330,14 +358,30 @@ static struct l_dbus_message *set_key_phase_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
+	struct mesh_node *node = user_data;
+	struct keyring_net_key key;
 	uint16_t net_idx;
 	uint8_t phase;
 
-	if (!l_dbus_message_get_arguments(msg, "qy", &net_idx, &phase))
+	if (!l_dbus_message_get_arguments(msg, "qy", &net_idx, &phase) ||
+					phase == KEY_REFRESH_PHASE_ONE ||
+					phase > KEY_REFRESH_PHASE_THREE)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
-	/* TODO */
-	return dbus_error(msg, MESH_ERROR_NOT_IMPLEMENTED, NULL);
+	if (!keyring_get_net_key(node, net_idx, &key))
+		return dbus_error(msg, MESH_ERROR_DOES_NOT_EXIST, NULL);
+
+	if (phase == KEY_REFRESH_PHASE_THREE &&
+					key.phase != KEY_REFRESH_PHASE_NONE) {
+		memcpy(key.old_key, key.new_key, 16);
+		key.phase = KEY_REFRESH_PHASE_NONE;
+	} else
+		key.phase = phase;
+
+	if (!keyring_put_net_key(node, net_idx, &key))
+		return dbus_error(msg, MESH_ERROR_FAILED, NULL);
+
+	return l_dbus_message_new_method_return(msg);
 }
 
 static void setup_management_interface(struct l_dbus_interface *iface)
@@ -362,6 +406,9 @@ static void setup_management_interface(struct l_dbus_interface *iface)
 					"", "qq", "", "net_index", "app_index");
 	l_dbus_interface_method(iface, "UpdateAppKey", 0, update_appkey_call,
 						"", "q", "", "app_index");
+	l_dbus_interface_method(iface, "CompleteAppKeyUpdate", 0,
+					complete_update_appkey_call, "", "q",
+							"", "app_index");
 	l_dbus_interface_method(iface, "DeleteAppKey", 0, delete_appkey_call,
 						"", "q", "", "app_index");
 	l_dbus_interface_method(iface, "ImportAppKey", 0, import_appkey_call,
