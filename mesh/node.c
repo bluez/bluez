@@ -51,7 +51,6 @@
 /* Default values for a new locally created node */
 #define DEFAULT_NEW_UNICAST 0x0001
 #define DEFAULT_IV_INDEX 0x0000
-#define DEFAULT_PRIMARY_NET_INDEX 0x0000
 
 /* Default element location: unknown */
 #define DEFAULT_LOCATION 0x0000
@@ -1564,21 +1563,20 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		/* Generate device and primary network keys */
 		l_getrandom(dev_key, sizeof(dev_key));
 		l_getrandom(net_key.old_key, sizeof(net_key.old_key));
-		net_key.net_idx = DEFAULT_PRIMARY_NET_INDEX;
-		net_key.phase = 0;
+		net_key.net_idx = PRIMARY_NET_IDX;
+		net_key.phase = KEY_REFRESH_PHASE_NONE;
 
 		if (!add_local_node(node, DEFAULT_NEW_UNICAST, false, false,
 						DEFAULT_IV_INDEX, dev_key,
-						DEFAULT_PRIMARY_NET_INDEX,
-							net_key.old_key))
+						PRIMARY_NET_IDX,
+						net_key.old_key))
 			goto fail;
 
 		if (!keyring_put_remote_dev_key(node, DEFAULT_NEW_UNICAST,
 							num_ele, dev_key))
 			goto fail;
 
-		if (!keyring_put_net_key(node, DEFAULT_PRIMARY_NET_INDEX,
-								&net_key))
+		if (!keyring_put_net_key(node, PRIMARY_NET_IDX, &net_key))
 			goto fail;
 
 		cb(req->user_data, MESH_ERROR_NONE, node);
