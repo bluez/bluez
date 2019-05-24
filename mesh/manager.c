@@ -24,9 +24,12 @@
 #define _GNU_SOURCE
 #include <ell/ell.h>
 
+#include "mesh/mesh-defs.h"
 #include "mesh/dbus.h"
 #include "mesh/error.h"
 #include "mesh/mesh.h"
+#include "mesh/node.h"
+#include "mesh/keyring.h"
 #include "mesh/manager.h"
 
 static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
@@ -86,51 +89,112 @@ static struct l_dbus_message *cancel_scan_call(struct l_dbus *dbus,
 	return dbus_error(msg, MESH_ERROR_NOT_IMPLEMENTED, NULL);
 }
 
+static struct l_dbus_message *store_new_subnet(struct mesh_node *node,
+					struct l_dbus_message *msg,
+					uint16_t net_idx, uint8_t *new_key)
+{
+	struct keyring_net_key key;
+
+	if (net_idx > MAX_KEY_IDX)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
+
+	if (keyring_get_net_key(node, net_idx, &key)) {
+		/* Allow redundant calls only if key values match */
+		if (!memcmp(key.old_key, new_key, 16))
+			return l_dbus_message_new_method_return(msg);
+
+		return dbus_error(msg, MESH_ERROR_ALREADY_EXISTS, NULL);
+	}
+
+	memcpy(key.old_key, new_key, 16);
+	key.net_idx = net_idx;
+	key.phase = KEY_REFRESH_PHASE_NONE;
+
+	if (!keyring_put_net_key(node, net_idx, &key))
+		return dbus_error(msg, MESH_ERROR_FAILED, NULL);
+
+	return l_dbus_message_new_method_return(msg);
+}
+
 static struct l_dbus_message *create_subnet_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
+	struct mesh_node *node = user_data;
+	uint8_t key[16];
 	uint16_t net_idx;
 
-	if (!l_dbus_message_get_arguments(msg, "q", &net_idx))
+	if (!l_dbus_message_get_arguments(msg, "q", &net_idx) ||
+						net_idx == PRIMARY_NET_IDX)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
-	/* TODO */
-	return dbus_error(msg, MESH_ERROR_NOT_IMPLEMENTED, NULL);
+	/* Generate key and store */
+	l_getrandom(key, sizeof(key));
+
+	return store_new_subnet(node, msg, net_idx, key);
 }
 
 static struct l_dbus_message *update_subnet_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
+	struct mesh_node *node = user_data;
+	struct keyring_net_key key;
 	uint16_t net_idx;
 
-	if (!l_dbus_message_get_arguments(msg, "q", &net_idx))
+	if (!l_dbus_message_get_arguments(msg, "q", &net_idx) ||
+						net_idx > MAX_KEY_IDX)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
-	/* TODO */
-	return dbus_error(msg, MESH_ERROR_NOT_IMPLEMENTED, NULL);
+	if (!keyring_get_net_key(node, net_idx, &key))
+		return dbus_error(msg, MESH_ERROR_DOES_NOT_EXIST, NULL);
+
+	switch (key.phase) {
+	case KEY_REFRESH_PHASE_NONE:
+		/* Generate Key and update phase */
+		l_getrandom(key.new_key, sizeof(key.new_key));
+		key.phase = KEY_REFRESH_PHASE_ONE;
+
+		if (!keyring_put_net_key(node, net_idx, &key))
+			return dbus_error(msg, MESH_ERROR_FAILED, NULL);
+
+		/* Fall Through */
+
+	case KEY_REFRESH_PHASE_ONE:
+		/* Allow redundant calls to start Key Refresh */
+		return l_dbus_message_new_method_return(msg);
+
+	default:
+		break;
+	}
+
+	/* All other phases mean KR already in progress over-the-air */
+	return dbus_error(msg, MESH_ERROR_BUSY, "Key Refresh in progress");
 }
 
 static struct l_dbus_message *delete_subnet_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
+	struct mesh_node *node = user_data;
 	uint16_t net_idx;
 
-	if (!l_dbus_message_get_arguments(msg, "q", &net_idx))
+	if (!l_dbus_message_get_arguments(msg, "q", &net_idx) ||
+						net_idx > MAX_KEY_IDX)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
-	/* TODO */
-	return dbus_error(msg, MESH_ERROR_NOT_IMPLEMENTED, NULL);
+	keyring_del_net_key(node, net_idx);
+
+	return l_dbus_message_new_method_return(msg);
 }
 
 static struct l_dbus_message *import_subnet_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
-	uint16_t net_idx;
+	struct mesh_node *node = user_data;
 	struct l_dbus_message_iter iter_key;
+	uint16_t net_idx;
 	uint8_t *key;
 	uint32_t n;
 
@@ -142,8 +206,7 @@ static struct l_dbus_message *import_subnet_call(struct l_dbus *dbus,
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Bad network key");
 
-	/* TODO */
-	return dbus_error(msg, MESH_ERROR_NOT_IMPLEMENTED, NULL);
+	return store_new_subnet(node, msg, net_idx, key);
 }
 
 static struct l_dbus_message *create_appkey_call(struct l_dbus *dbus,
