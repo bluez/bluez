@@ -43,7 +43,7 @@ struct main_opts {
 	uint32_t	discovto;
 	uint8_t		privacy;
 
-	gboolean	reverse_sdp;
+	gboolean	reverse_discovery;
 	gboolean	name_resolv;
 	gboolean	debug_keys;
 	gboolean	fast_conn;
