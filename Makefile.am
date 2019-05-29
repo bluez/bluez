@@ -116,6 +116,8 @@ ell_headers = ell/util.h \
 			ell/random.h \
 			ell/signal.h \
 			ell/timeout.h \
+			ell/cipher.h \
+			ell/checksum.h \
 			ell/io.h \
 			ell/idle.h \
 			ell/main.h \
@@ -138,6 +140,8 @@ ell_sources = ell/private.h ell/missing.h \
 			ell/main.c \
 			ell/strv.c \
 			ell/string.c \
+			ell/cipher.c \
+			ell/checksum.c \
 			ell/dbus-private.h \
 			ell/dbus.c \
 			ell/dbus-message.c \
