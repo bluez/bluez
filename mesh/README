@@ -71,6 +71,20 @@ Each subdirectory contains the following files:
 The node.json and node.json.bak are in JSON format. All other files are stored
 in little endian binary format.
 
+Known Issues
+============
+
+Bluetooth Mesh makes heavy usage of AEAD-AES_CCM encryption, which is
+implemented in the Linux kernel on most platforms. Some platforms, including
+those with kernel versions including and prior to v4.8, did *not* correctly
+implement the AEAD encryption routines. If Mesh is to be ported to such a
+system, it will be the responsibility of the vendor to provide support for
+AEAD-AES_CCM encryption by some other method.
+
+Support for the required AEAD routines can be determined by running the unit
+tests provided with the ELL libraries used by Mesh. Specifically, the tests
+found in .../ell/unit/test-cipher.c
+
 Information
 ===========
 
