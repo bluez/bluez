@@ -102,6 +102,7 @@ struct bt_gatt_server {
 	unsigned int read_id;
 	unsigned int read_blob_id;
 	unsigned int read_multiple_id;
+	unsigned int read_multiple_vl_id;
 	unsigned int prep_write_id;
 	unsigned int exec_write_id;
 
@@ -136,6 +137,7 @@ static void bt_gatt_server_free(struct bt_gatt_server *server)
 	bt_att_unregister(server->att, server->read_id);
 	bt_att_unregister(server->att, server->read_blob_id);
 	bt_att_unregister(server->att, server->read_multiple_id);
+	bt_att_unregister(server->att, server->read_multiple_vl_id);
 	bt_att_unregister(server->att, server->prep_write_id);
 	bt_att_unregister(server->att, server->exec_write_id);
 
@@ -1013,9 +1015,10 @@ static void read_blob_cb(struct bt_att_chan *chan, uint8_t opcode,
 	handle_read_req(chan, server, opcode, handle, offset);
 }
 
-struct read_multiple_resp_data {
+struct read_mult_data {
 	struct bt_att_chan *chan;
 	struct bt_gatt_server *server;
+	uint8_t opcode;
 	uint16_t *handles;
 	size_t cur_handle;
 	size_t num_handles;
@@ -1024,7 +1027,7 @@ struct read_multiple_resp_data {
 	size_t mtu;
 };
 
-static void read_multiple_resp_data_free(struct read_multiple_resp_data *data)
+static void read_mult_data_free(struct read_mult_data *data)
 {
 	free(data->handles);
 	free(data->rsp_data);
@@ -1035,15 +1038,16 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 					const uint8_t *value, size_t len,
 					void *user_data)
 {
-	struct read_multiple_resp_data *data = user_data;
+	struct read_mult_data *data = user_data;
 	struct gatt_db_attribute *next_attr;
 	uint16_t handle = gatt_db_attribute_get_handle(attr);
 	uint8_t ecode;
+	uint16_t length;
 
 	if (err != 0) {
-		bt_att_chan_send_error_rsp(data->chan,
-					BT_ATT_OP_READ_MULT_REQ, handle, err);
-		read_multiple_resp_data_free(data);
+		bt_att_chan_send_error_rsp(data->chan, data->opcode, handle,
+									err);
+		read_mult_data_free(data);
 		return;
 	}
 
@@ -1051,29 +1055,45 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 						BT_ATT_PERM_READ_AUTHEN |
 						BT_ATT_PERM_READ_ENCRYPT);
 	if (ecode) {
-		bt_att_chan_send_error_rsp(data->chan,
-					BT_ATT_OP_READ_MULT_REQ, handle, ecode);
-		read_multiple_resp_data_free(data);
+		bt_att_chan_send_error_rsp(data->chan, data->opcode, handle,
+									ecode);
+		read_mult_data_free(data);
 		return;
 	}
 
-	len = MIN(len, data->mtu - data->length - 1);
+	length = data->opcode == BT_ATT_OP_READ_MULT_VL_REQ ?
+			MIN(len, data->mtu - data->length - 3) :
+			MIN(len, data->mtu - data->length - 1);
 
-	memcpy(data->rsp_data + data->length, value, len);
-	data->length += len;
+	if (data->opcode == BT_ATT_OP_READ_MULT_VL_REQ) {
+		/* The Length Value Tuple List may be truncated within the first
+		 * two octets of a tuple due to the size limits of the current
+		 * ATT_MTU.
+		 */
+		put_le16(len, data->rsp_data + data->length);
+		data->length += 2;
+	}
+
+	memcpy(data->rsp_data + data->length, value, length);
+	data->length += length;
 
 	data->cur_handle++;
 
-	if ((data->length >= data->mtu - 1) ||
-				(data->cur_handle == data->num_handles)) {
-		bt_att_chan_send_rsp(data->chan, BT_ATT_OP_READ_MULT_RSP,
+	len = data->opcode == BT_ATT_OP_READ_MULT_VL_REQ ?
+		data->mtu - data->length - 3 : data->mtu - data->length - 1;
+
+	if (!len || (data->cur_handle == data->num_handles)) {
+		bt_att_chan_send_rsp(data->chan, data->opcode + 1,
 						data->rsp_data, data->length);
-		read_multiple_resp_data_free(data);
+		read_mult_data_free(data);
 		return;
 	}
 
 	util_debug(data->server->debug_callback, data->server->debug_data,
-				"Read Multiple Req - #%zu of %zu: 0x%04x",
+				"%s Req - #%zu of %zu: 0x%04x",
+				data->opcode == BT_ATT_OP_READ_MULT_REQ ?
+				"Read Multiple" :
+				"Read Multiple Variable Length",
 				data->cur_handle + 1, data->num_handles,
 				data->handles[data->cur_handle]);
 
@@ -1085,7 +1105,7 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 					BT_ATT_OP_READ_MULT_REQ,
 					data->handles[data->cur_handle],
 					BT_ATT_ERROR_INVALID_HANDLE);
-		read_multiple_resp_data_free(data);
+		read_mult_data_free(data);
 		return;
 	}
 
@@ -1096,8 +1116,30 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 						BT_ATT_OP_READ_MULT_REQ,
 						data->handles[data->cur_handle],
 						BT_ATT_ERROR_UNLIKELY);
-		read_multiple_resp_data_free(data);
+		read_mult_data_free(data);
 	}
+}
+
+static struct read_mult_data *read_mult_data_new(struct bt_gatt_server *server,
+						struct bt_att_chan *chan,
+						uint8_t opcode,
+						uint16_t num_handles)
+{
+	struct read_mult_data *data;
+
+	data = new0(struct read_mult_data, 1);
+	data->chan = chan;
+	data->opcode = opcode;
+	data->handles = new0(uint16_t, num_handles);
+	data->rsp_data = NULL;
+	data->server = server;
+	data->num_handles = num_handles;
+	data->cur_handle = 0;
+	data->mtu = bt_att_get_mtu(server->att);
+	data->length = 0;
+	data->rsp_data = new0(uint8_t, data->mtu - 1);
+
+	return data;
 }
 
 static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
@@ -1106,7 +1148,7 @@ static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
 {
 	struct bt_gatt_server *server = user_data;
 	struct gatt_db_attribute *attr;
-	struct read_multiple_resp_data *data = NULL;
+	struct read_mult_data *data = NULL;
 	uint8_t ecode = BT_ATT_ERROR_UNLIKELY;
 	size_t i = 0;
 
@@ -1115,27 +1157,17 @@ static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
 		goto error;
 	}
 
-	data = new0(struct read_multiple_resp_data, 1);
-	data->chan = chan;
-	data->handles = NULL;
-	data->rsp_data = NULL;
-	data->server = server;
-	data->num_handles = length / 2;
-	data->cur_handle = 0;
-	data->mtu = bt_att_get_mtu(server->att);
-	data->length = 0;
-	data->rsp_data = malloc(data->mtu - 1);
-
-	if (!data->rsp_data)
+	data = read_mult_data_new(server, chan, opcode, length / 2);
+	if (!data)
 		goto error;
-
-	data->handles = new0(uint16_t, data->num_handles);
 
 	for (i = 0; i < data->num_handles; i++)
 		data->handles[i] = get_le16(pdu + i * 2);
 
 	util_debug(server->debug_callback, server->debug_data,
-			"Read Multiple Req - %zu handles, 1st: 0x%04x",
+			"%s Req - %zu handles, 1st: 0x%04x",
+			data->opcode == BT_ATT_OP_READ_MULT_REQ ?
+			"Read Multiple" : "Read Multiple Variable Length",
 			data->num_handles, data->handles[0]);
 
 	attr = gatt_db_get_attribute(server->db, data->handles[0]);
@@ -1151,7 +1183,7 @@ static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
 
 error:
 	if (data)
-		read_multiple_resp_data_free(data);
+		read_mult_data_free(data);
 
 	bt_att_chan_send_error_rsp(chan, opcode, 0, ecode);
 }
@@ -1586,6 +1618,15 @@ static bool gatt_server_register_att_handlers(struct bt_gatt_server *server)
 							server, NULL);
 
 	if (!server->read_multiple_id)
+		return false;
+
+	/* Read Multiple Variable Length Request */
+	server->read_multiple_vl_id = bt_att_register(server->att,
+						BT_ATT_OP_READ_MULT_VL_REQ,
+						read_multiple_cb,
+						server, NULL);
+
+	if (!server->read_multiple_vl_id)
 		return false;
 
 	/* Prepare Write Request */
