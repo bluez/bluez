@@ -767,8 +767,6 @@ static bool parse_bindings(json_object *jbindings, struct mesh_db_model *mod)
 		return true;
 
 	mod->bindings = l_new(uint16_t, cnt);
-	if (!mod->bindings)
-		return false;
 
 	for (i = 0; i < cnt; ++i) {
 		int idx;
@@ -879,8 +877,6 @@ static bool parse_model_subscriptions(json_object *jsubs,
 		return true;
 
 	subs = l_new(struct mesh_db_sub, cnt);
-	if (!subs)
-		return false;
 
 	for (i = 0; i < cnt; ++i) {
 		char *str;
@@ -996,14 +992,15 @@ static bool parse_elements(json_object *jelements, struct mesh_db_node *node)
 {
 	int i, num_ele;
 
+	if (json_object_get_type(jelements) != json_type_array)
+		return false;
+
 	num_ele = json_object_array_length(jelements);
 	if (!num_ele)
 		/* Allow "empty" nodes */
 		return true;
 
 	node->elements = l_queue_new();
-	if (!node->elements)
-		return false;
 
 	for (i = 0; i < num_ele; ++i) {
 		json_object *jelement;
@@ -1024,8 +1021,6 @@ static bool parse_elements(json_object *jelements, struct mesh_db_node *node)
 		ele = l_new(struct mesh_db_element, 1);
 		ele->index = index;
 		ele->models = l_queue_new();
-		if (!ele->models)
-			goto fail;
 
 		if (!json_object_object_get_ex(jelement, "location", &jvalue))
 			goto fail;
@@ -1209,12 +1204,12 @@ bool mesh_db_read_node(json_object *jnode, mesh_db_node_cb cb, void *user_data)
 	if (json_object_object_get_ex(jnode, "sequenceNumber", &jvalue))
 		node.seq_number = json_object_get_int(jvalue);
 
-	if (json_object_object_get_ex(jnode, "elements", &jvalue)) {
-		if (json_object_get_type(jvalue) == json_type_array) {
-			if (!parse_elements(jvalue, &node))
-				return false;
-		}
-	}
+	/* Check for required "elements" property */
+	if (!json_object_object_get_ex(jnode, "elements", &jvalue))
+		return false;
+
+	if (!parse_elements(jvalue, &node))
+		return false;
 
 	return cb(&node, user_data);
 }
