@@ -72,11 +72,12 @@
 #define BT_ATT_OP_PREP_WRITE_RSP		0x17
 #define BT_ATT_OP_EXEC_WRITE_REQ		0x18
 #define BT_ATT_OP_EXEC_WRITE_RSP		0x19
-#define BT_ATT_OP_HANDLE_VAL_NOT		0x1B
-#define BT_ATT_OP_HANDLE_VAL_IND		0x1D
-#define BT_ATT_OP_HANDLE_VAL_CONF		0x1E
+#define BT_ATT_OP_HANDLE_NFY			0x1B
+#define BT_ATT_OP_HANDLE_IND			0x1D
+#define BT_ATT_OP_HANDLE_CONF			0x1E
 #define BT_ATT_OP_READ_MULT_VL_REQ		0x20
 #define BT_ATT_OP_READ_MULT_VL_RSP		0x21
+#define BT_ATT_OP_HANDLE_NFY_MULT		0x23
 
 /* Packed struct definitions for ATT protocol PDUs */
 /* TODO: Complete these definitions for all opcodes */

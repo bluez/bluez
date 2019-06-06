@@ -95,7 +95,7 @@ struct bt_gatt_client {
 	struct queue *notify_list;
 	struct queue *notify_chrcs;
 	int next_reg_id;
-	unsigned int disc_id, notify_id, ind_id;
+	unsigned int disc_id, nfy_id, nfy_mult_id, ind_id;
 
 	/*
 	 * Handles of the GATT Service and the Service Changed characteristic
@@ -2072,9 +2072,10 @@ done:
 	return true;
 }
 
-struct pdu_data {
-	const void *pdu;
-	uint16_t length;
+struct value_data {
+	uint16_t handle;
+	uint16_t len;
+	const void *data;
 };
 
 static void disable_ccc_callback(uint8_t opcode, const void *pdu,
@@ -2125,25 +2126,18 @@ done:
 static void notify_handler(void *data, void *user_data)
 {
 	struct notify_data *notify_data = data;
-	struct pdu_data *pdu_data = user_data;
-	uint16_t value_handle;
-	const uint8_t *value = NULL;
+	struct value_data *value_data = user_data;
 
-	value_handle = get_le16(pdu_data->pdu);
-
-	if (notify_data->chrc->value_handle != value_handle)
+	if (notify_data->chrc->value_handle != value_data->handle)
 		return;
-
-	if (pdu_data->length > 2)
-		value = pdu_data->pdu + 2;
 
 	/*
 	 * Even if the notify data has a pending ATT request to write to the
 	 * CCC, there is really no reason not to notify the handlers.
 	 */
 	if (notify_data->notify)
-		notify_data->notify(value_handle, value, pdu_data->length - 2,
-							notify_data->user_data);
+		notify_data->notify(value_data->handle, value_data->data,
+				value_data->len, notify_data->user_data);
 }
 
 static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
@@ -2151,18 +2145,42 @@ static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
 					void *user_data)
 {
 	struct bt_gatt_client *client = user_data;
-	struct pdu_data pdu_data;
+	struct value_data data;
 
 	bt_gatt_client_ref(client);
 
-	memset(&pdu_data, 0, sizeof(pdu_data));
-	pdu_data.pdu = pdu;
-	pdu_data.length = length;
+	memset(&data, 0, sizeof(data));
 
-	queue_foreach(client->notify_list, notify_handler, &pdu_data);
+	if (opcode == BT_ATT_OP_HANDLE_NFY_MULT) {
+		while (length >= 4) {
+			data.handle = get_le16(pdu);
+			length -= 2;
+			pdu += 2;
 
-	if (opcode == BT_ATT_OP_HANDLE_VAL_IND && !client->parent)
-		bt_att_chan_send(chan, BT_ATT_OP_HANDLE_VAL_CONF, NULL, 0,
+			data.len = get_le16(pdu);
+			length -= 2;
+			pdu += 2;
+
+			data.data = pdu;
+
+			queue_foreach(client->notify_list, notify_handler,
+								&data);
+
+			length -= data.len;
+		}
+	} else {
+		data.handle = get_le16(pdu);
+		length -= 2;
+		pdu += 2;
+
+		data.len = length;
+		data.data = pdu;
+
+		queue_foreach(client->notify_list, notify_handler, &data);
+	}
+
+	if (opcode == BT_ATT_OP_HANDLE_IND && !client->parent)
+		bt_att_chan_send(chan, BT_ATT_OP_HANDLE_CONF, NULL, 0,
 							NULL, NULL, NULL);
 
 	bt_gatt_client_unref(client);
@@ -2181,7 +2199,8 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 
 	if (client->att) {
 		bt_att_unregister_disconnect(client->att, client->disc_id);
-		bt_att_unregister(client->att, client->notify_id);
+		bt_att_unregister(client->att, client->nfy_id);
+		bt_att_unregister(client->att, client->nfy_mult_id);
 		bt_att_unregister(client->att, client->ind_id);
 		bt_att_unref(client->att);
 	}
@@ -2239,12 +2258,17 @@ static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
 	client->notify_chrcs = queue_new();
 	client->pending_requests = queue_new();
 
-	client->notify_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_NOT,
+	client->nfy_id = bt_att_register(att, BT_ATT_OP_HANDLE_NFY,
 						notify_cb, client, NULL);
-	if (!client->notify_id)
+	if (!client->nfy_id)
 		goto fail;
 
-	client->ind_id = bt_att_register(att, BT_ATT_OP_HANDLE_VAL_IND,
+	client->nfy_mult_id = bt_att_register(att, BT_ATT_OP_HANDLE_NFY_MULT,
+						notify_cb, client, NULL);
+	if (!client->nfy_mult_id)
+		goto fail;
+
+	client->ind_id = bt_att_register(att, BT_ATT_OP_HANDLE_IND,
 						notify_cb, client, NULL);
 	if (!client->ind_id)
 		goto fail;
