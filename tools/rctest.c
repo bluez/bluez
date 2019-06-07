@@ -50,6 +50,10 @@
 
 #include "src/shared/util.h"
 
+#ifndef SIOCGSTAMP_OLD
+#define SIOCGSTAMP_OLD SIOCGSTAMP
+#endif
+
 /* Test modes */
 enum {
 	SEND,
@@ -505,7 +509,7 @@ static void recv_mode(int sk)
 			if (timestamp) {
 				struct timeval tv;
 
-				if (ioctl(sk, SIOCGSTAMP, &tv) < 0) {
+				if (ioctl(sk, SIOCGSTAMP_OLD, &tv) < 0) {
 					timestamp = 0;
 					memset(ts, 0, sizeof(ts));
 				} else {
