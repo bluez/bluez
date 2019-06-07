@@ -384,6 +384,12 @@ static bool setup_device(int fd, const char *sysfs_path,
 					adapter_bdaddr, &device_bdaddr,
 					HID_UUID, agent_auth_cb, closure);
 
+	if (closure->auth_id == 0) {
+		error("sixaxis: could not request cable authorization");
+		auth_closure_destroy(closure, true);
+		return false;
+	}
+
 	g_hash_table_insert(pending_auths, closure->sysfs_path, closure);
 
 	return true;
