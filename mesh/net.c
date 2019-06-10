@@ -977,27 +977,28 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	return MESH_STATUS_SUCCESS;
 }
 
-static int add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
+static struct mesh_subnet *add_key(struct mesh_net *net, uint16_t idx,
+							const uint8_t *value)
 {
 	struct mesh_subnet *subnet;
 
 	subnet = subnet_new(net, idx);
 	if (!subnet)
-		return MESH_STATUS_INSUFF_RESOURCES;
+		return NULL;
 
 	subnet->net_key_tx = subnet->net_key_cur = net_key_add(value);
 	if (!subnet->net_key_cur) {
 		l_free(subnet);
-		return MESH_STATUS_INSUFF_RESOURCES;
+		return NULL;
 	}
 
 	if (!create_secure_beacon(net, subnet, subnet->snb.beacon + 1) ||
 				!l_queue_push_tail(net->subnets, subnet)) {
 		subnet_free(subnet);
-		return MESH_STATUS_INSUFF_RESOURCES;
+		return NULL;
 	}
 
-	return MESH_STATUS_SUCCESS;
+	return subnet;
 }
 
 /*
@@ -1007,7 +1008,6 @@ static int add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 {
 	struct mesh_subnet *subnet;
-	int status;
 
 	subnet = l_queue_find(net->subnets, match_key_index,
 							L_UINT_TO_PTR(idx));
@@ -1019,9 +1019,9 @@ int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 			return MESH_STATUS_IDX_ALREADY_STORED;
 	}
 
-	status = add_key(net, idx, value);
-	if (status != MESH_STATUS_SUCCESS)
-		return status;
+	subnet = add_key(net, idx, value);
+	if (!subnet)
+		return MESH_STATUS_INSUFF_RESOURCES;
 
 	if (!storage_net_key_add(net, idx, value, false)) {
 		l_queue_remove(net->subnets, subnet);
@@ -2490,7 +2490,7 @@ static void net_rx(void *net_ptr, void *user_data)
 	int8_t rssi = 0;
 
 	key_id = net_key_decrypt(net->iv_index, data->data, data->len,
-								&out, &out_size);
+							&out, &out_size);
 
 	if (!key_id)
 		return;
@@ -3017,7 +3017,6 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 					const uint8_t *new_key, uint8_t phase)
 {
 	struct mesh_subnet *subnet;
-	int status;
 
 	subnet = l_queue_find(net->subnets, match_key_index,
 							L_UINT_TO_PTR(idx));
@@ -3032,8 +3031,8 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 	if (phase != KEY_REFRESH_PHASE_NONE && !new_key)
 		return false;
 
-	status = add_key(net, idx, key);
-	if (status != MESH_STATUS_SUCCESS)
+	subnet = add_key(net, idx, key);
+	if (!subnet)
 		return false;
 
 	subnet = l_queue_find(net->subnets, match_key_index,
