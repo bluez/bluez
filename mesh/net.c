@@ -992,11 +992,12 @@ static struct mesh_subnet *add_key(struct mesh_net *net, uint16_t idx,
 		return NULL;
 	}
 
-	if (!create_secure_beacon(net, subnet, subnet->snb.beacon + 1) ||
-				!l_queue_push_tail(net->subnets, subnet)) {
+	if (!create_secure_beacon(net, subnet, subnet->snb.beacon + 1)) {
 		subnet_free(subnet);
 		return NULL;
 	}
+
+	l_queue_push_tail(net->subnets, subnet);
 
 	return subnet;
 }
@@ -3018,11 +3019,6 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 {
 	struct mesh_subnet *subnet;
 
-	subnet = l_queue_find(net->subnets, match_key_index,
-							L_UINT_TO_PTR(idx));
-	if (subnet)
-		return false;
-
 	/* Current key must be always present */
 	if (!key)
 		return false;
@@ -3031,12 +3027,13 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 	if (phase != KEY_REFRESH_PHASE_NONE && !new_key)
 		return false;
 
-	subnet = add_key(net, idx, key);
-	if (!subnet)
-		return false;
-
+	/* Check if the subnet with the specified index already exists */
 	subnet = l_queue_find(net->subnets, match_key_index,
 							L_UINT_TO_PTR(idx));
+	if (subnet)
+		return false;
+
+	subnet = add_key(net, idx, key);
 	if (!subnet)
 		return false;
 
