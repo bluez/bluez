@@ -113,7 +113,7 @@ Methods:
 		has been obtained as a result of successful Join() method call.
 
 		PossibleErrors:
-			org.bluez.mesh.Error.NotFound
+			org.bluez.mesh.Error.InvalidArguments
 
 	uint64 token CreateNetwork(object app_root, array{byte}[16] uuid)
 
