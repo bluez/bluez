@@ -35,6 +35,7 @@
 
 #include "mesh/mesh.h"
 #include "mesh/dbus.h"
+#include "mesh/mesh-io.h"
 
 static const struct option main_options[] = {
 	{ "index",	required_argument,	NULL, 'i' },
@@ -166,7 +167,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!mesh_init(index, config_dir)) {
+
+	if (!mesh_init(config_dir, MESH_IO_TYPE_GENERIC, &index)) {
 		l_error("Failed to initialize mesh");
 		status = EXIT_FAILURE;
 		goto done;

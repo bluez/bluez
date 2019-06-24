@@ -26,7 +26,10 @@
 
 #include "monitor/bt.h"
 #include "src/shared/hci.h"
+#include "lib/bluetooth.h"
+#include "lib/mgmt.h"
 
+#include "mesh/mesh-mgmt.h"
 #include "mesh/mesh-io.h"
 #include "mesh/mesh-io-api.h"
 #include "mesh/mesh-io-generic.h"
@@ -278,40 +281,52 @@ static void configure_hci(struct mesh_io_private *io)
 				sizeof(cmd), hci_generic_callback, NULL, NULL);
 }
 
-static bool dev_init(uint16_t index, struct mesh_io *io)
+static bool hci_init(struct mesh_io *io)
 {
-	struct mesh_io_private *tmp;
+	io->pvt->hci = bt_hci_new_user_channel(io->pvt->index);
+	if (!io->pvt->hci) {
+		l_error("Failed to start mesh io (hci %u)", io->pvt->index);
+		return false;
+	}
 
+	configure_hci(io->pvt);
+
+	bt_hci_register(io->pvt->hci, BT_HCI_EVT_LE_META_EVENT,
+						event_callback, io, NULL);
+
+	l_debug("Started mesh on hci %u", io->pvt->index);
+	return true;
+}
+
+static void read_info(int index, void *user_data)
+{
+	struct mesh_io *io = user_data;
+
+	if (io->pvt->index != MGMT_INDEX_NONE &&
+					index != io->pvt->index) {
+		l_debug("Ignore index %d", index);
+		return;
+	}
+
+	io->pvt->index = index;
+	hci_init(io);
+}
+
+static bool dev_init(struct mesh_io *io, void *opts)
+{
 	if (!io || io->pvt)
 		return false;
 
-	tmp = l_new(struct mesh_io_private, 1);
+	io->pvt = l_new(struct mesh_io_private, 1);
+	io->pvt->index = *(int *)opts;
 
-	if (tmp == NULL)
-		return false;
+	io->pvt->rx_regs = l_queue_new();
+	io->pvt->tx_pkts = l_queue_new();
 
-	tmp->rx_regs = l_queue_new();
-	tmp->tx_pkts = l_queue_new();
-	if (!tmp->rx_regs || !tmp->tx_pkts)
-		goto fail;
-
-	tmp->hci = bt_hci_new_user_channel(index);
-	if (!tmp->hci)
-		goto fail;
-
-	configure_hci(tmp);
-
-	bt_hci_register(tmp->hci, BT_HCI_EVT_LE_META_EVENT,
-						event_callback, io, NULL);
-
-	io->pvt = tmp;
-	return true;
-
-fail:
-	l_queue_destroy(tmp->rx_regs, l_free);
-	l_queue_destroy(tmp->tx_pkts, l_free);
-	l_free(tmp);
-	return false;
+	if (io->pvt->index == MGMT_INDEX_NONE)
+		return mesh_mgmt_list(read_info, io);
+	else
+		return hci_init(io);
 }
 
 static bool dev_destroy(struct mesh_io *io)

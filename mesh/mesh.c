@@ -24,11 +24,6 @@
 #define _GNU_SOURCE
 #include <ell/ell.h>
 
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
-
-#include "src/shared/mgmt.h"
-
 #include "mesh/mesh-io.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
@@ -76,9 +71,6 @@ struct join_data{
 };
 
 static struct bt_mesh mesh;
-static struct l_queue *controllers;
-static struct mgmt *mgmt_mesh;
-static bool initialized;
 
 /* We allow only one outstanding Join request */
 static struct join_data *join_pending;
@@ -89,29 +81,6 @@ static struct l_queue *pending_queue;
 static bool simple_match(const void *a, const void *b)
 {
 	return a == b;
-}
-
-static void start_io(uint16_t index)
-{
-	struct mesh_io *io;
-	struct mesh_io_caps caps;
-
-	l_debug("Starting mesh on hci %u", index);
-
-	io = mesh_io_new(index, MESH_IO_TYPE_GENERIC);
-	if (!io) {
-		l_error("Failed to start mesh io (hci %u)", index);
-		return;
-	}
-
-	mesh_io_get_caps(io, &caps);
-	mesh.max_filters = caps.max_num_filters;
-
-	mesh.io = io;
-
-	l_debug("Started mesh (io %p) on hci %u", mesh.io, index);
-
-	node_attach_io_all(io);
 }
 
 /* Used for any outbound traffic that doesn't have Friendship Constraints */
@@ -167,142 +136,12 @@ void mesh_unreg_prov_rx(prov_rx_cb_t cb)
 	mesh_io_deregister_recv_cb(mesh.io, MESH_IO_FILTER_PROV);
 }
 
-static void read_info_cb(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
+bool mesh_init(const char *config_dir, enum mesh_io_type type, void *opts)
 {
-	uint16_t index = L_PTR_TO_UINT(user_data);
-	const struct mgmt_rp_read_info *rp = param;
-	uint32_t current_settings, supported_settings;
+	struct mesh_io_caps caps;
 
 	if (mesh.io)
-		/* Already initialized */
-		return;
-
-	l_debug("hci %u status 0x%02x", index, status);
-
-	if (status != MGMT_STATUS_SUCCESS) {
-		l_error("Failed to read info for hci index %u: %s (0x%02x)",
-					index, mgmt_errstr(status), status);
-		return;
-	}
-
-	if (length < sizeof(*rp)) {
-		l_error("Read info response too short");
-		return;
-	}
-
-	current_settings = btohl(rp->current_settings);
-	supported_settings = btohl(rp->supported_settings);
-
-	l_debug("settings: supp %8.8x curr %8.8x",
-					supported_settings, current_settings);
-
-	if (current_settings & MGMT_SETTING_POWERED) {
-		l_info("Controller hci %u is in use", index);
-		return;
-	}
-
-	if (!(supported_settings & MGMT_SETTING_LE)) {
-		l_info("Controller hci %u does not support LE", index);
-		return;
-	}
-
-	start_io(index);
-}
-
-static void index_added(uint16_t index, uint16_t length, const void *param,
-							void *user_data)
-{
-	l_debug("hci device %u", index);
-
-	if (mesh.req_index != MGMT_INDEX_NONE &&
-					index != mesh.req_index) {
-		l_debug("Ignore index %d", index);
-		return;
-	}
-
-	if (l_queue_find(controllers, simple_match, L_UINT_TO_PTR(index)))
-		return;
-
-	l_queue_push_tail(controllers, L_UINT_TO_PTR(index));
-
-	if (mgmt_send(mgmt_mesh, MGMT_OP_READ_INFO, index, 0, NULL,
-			read_info_cb, L_UINT_TO_PTR(index), NULL) > 0)
-		return;
-
-	l_queue_remove(controllers, L_UINT_TO_PTR(index));
-}
-
-static void index_removed(uint16_t index, uint16_t length, const void *param,
-							void *user_data)
-{
-	l_warn("Hci dev %4.4x removed", index);
-	l_queue_remove(controllers, L_UINT_TO_PTR(index));
-}
-
-static void read_index_list_cb(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	const struct mgmt_rp_read_index_list *rp = param;
-	uint16_t num;
-	int i;
-
-	if (status != MGMT_STATUS_SUCCESS) {
-		l_error("Failed to read index list: %s (0x%02x)",
-						mgmt_errstr(status), status);
-		return;
-	}
-
-	if (length < sizeof(*rp)) {
-		l_error("Read index list response sixe too short");
-		return;
-	}
-
-	num = btohs(rp->num_controllers);
-
-	l_debug("Number of controllers: %u", num);
-
-	if (num * sizeof(uint16_t) + sizeof(*rp) != length) {
-		l_error("Incorrect packet size for index list response");
-		return;
-	}
-
-	for (i = 0; i < num; i++) {
-		uint16_t index;
-
-		index = btohs(rp->index[i]);
-		index_added(index, 0, NULL, user_data);
-	}
-}
-
-static bool init_mgmt(void)
-{
-	mgmt_mesh = mgmt_new_default();
-	if (!mgmt_mesh)
-		return false;
-
-	controllers = l_queue_new();
-	if (!controllers)
-		return false;
-
-	mgmt_register(mgmt_mesh, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
-						index_added, NULL, NULL);
-	mgmt_register(mgmt_mesh, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
-						index_removed, NULL, NULL);
-	return true;
-}
-
-bool mesh_init(uint16_t index, const char *config_dir)
-{
-	if (initialized)
 		return true;
-
-	if (index == MGMT_INDEX_NONE && !init_mgmt()) {
-		l_error("Failed to initialize mesh management");
-		return false;
-	}
-
-	mesh.req_index = index;
 
 	mesh_model_init();
 	mesh_agent_init();
@@ -319,18 +158,16 @@ bool mesh_init(uint16_t index, const char *config_dir)
 	if (!storage_load_nodes(config_dir))
 		return false;
 
-	if (index == MGMT_INDEX_NONE) {
-		/* Use MGMT to find a candidate controller */
-		l_debug("send read index_list");
-		if (mgmt_send(mgmt_mesh, MGMT_OP_READ_INDEX_LIST,
-					MGMT_INDEX_NONE, 0, NULL,
-					read_index_list_cb, NULL, NULL) <= 0)
-			return false;
-	} else {
-		/* Open specified controller without searching */
-		start_io(mesh.req_index);
-		return mesh.io != NULL;
-	}
+	mesh.io = mesh_io_new(type, opts);
+	if (!mesh.io)
+		return false;
+
+	l_debug("io %p", mesh.io);
+	mesh_io_get_caps(mesh.io, &caps);
+	mesh.max_filters = caps.max_num_filters;
+
+	node_attach_io_all(mesh.io);
+
 	return true;
 }
 
@@ -366,7 +203,6 @@ void mesh_cleanup(void)
 	struct l_dbus_message *reply;
 
 	mesh_io_destroy(mesh.io);
-	mgmt_unref(mgmt_mesh);
 
 	if (join_pending) {
 
@@ -384,7 +220,6 @@ void mesh_cleanup(void)
 	node_cleanup_all();
 	mesh_model_cleanup();
 
-	l_queue_destroy(controllers, NULL);
 	l_dbus_object_remove_interface(dbus_get_bus(), BLUEZ_MESH_PATH,
 							MESH_NETWORK_INTERFACE);
 	l_dbus_unregister_interface(dbus_get_bus(), MESH_NETWORK_INTERFACE);

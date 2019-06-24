@@ -80,7 +80,7 @@ typedef void (*mesh_io_recv_func_t)(void *user_data,
 typedef void (*mesh_io_status_func_t)(void *user_data, int status,
 							uint8_t filter_id);
 
-struct mesh_io *mesh_io_new(uint16_t index, enum mesh_io_type type);
+struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts);
 void mesh_io_destroy(struct mesh_io *io);
 
 bool mesh_io_get_caps(struct mesh_io *io, struct mesh_io_caps *caps);

@@ -19,7 +19,7 @@
 
 struct mesh_io_private;
 
-typedef bool (*mesh_io_init_t)(uint16_t index, struct mesh_io *io);
+typedef bool (*mesh_io_init_t)(struct mesh_io *io, void *opts);
 typedef bool (*mesh_io_destroy_t)(struct mesh_io *io);
 typedef bool (*mesh_io_caps_t)(struct mesh_io *io, struct mesh_io_caps *caps);
 typedef bool (*mesh_io_send_t)(struct mesh_io *io,
@@ -47,7 +47,6 @@ struct mesh_io_api {
 
 struct mesh_io {
 	enum mesh_io_type		type;
-	uint16_t			index;
 	const struct mesh_io_api	*api;
 	struct mesh_io_private		*pvt;
 };

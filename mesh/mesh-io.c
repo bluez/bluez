@@ -44,20 +44,19 @@ static bool match_by_io(const void *a, const void *b)
 	return a == b;
 }
 
-static bool match_by_index(const void *a, const void *b)
+static bool match_by_type(const void *a, const void *b)
 {
 	const struct mesh_io *io = a;
+	const enum mesh_io_type type = L_PTR_TO_UINT(b);
 
-	return io->index == L_PTR_TO_UINT(b);
+	return io->type == type;
 }
 
-struct mesh_io *mesh_io_new(uint16_t index, enum mesh_io_type type)
+struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts)
 {
 	const struct mesh_io_api *api = NULL;
 	struct mesh_io *io;
 	uint16_t i;
-
-	l_info("%s %d\n", __func__, type);
 
 	for (i = 0; i < L_ARRAY_SIZE(table); i++) {
 		if (table[i].type == type) {
@@ -66,7 +65,7 @@ struct mesh_io *mesh_io_new(uint16_t index, enum mesh_io_type type)
 		}
 	}
 
-	io = l_queue_find(io_list, match_by_index, L_UINT_TO_PTR(index));
+	io = l_queue_find(io_list, match_by_type, L_UINT_TO_PTR(type));
 
 	if (!api || !api->init || io)
 		return NULL;
@@ -77,9 +76,9 @@ struct mesh_io *mesh_io_new(uint16_t index, enum mesh_io_type type)
 		return NULL;
 
 	io->type = type;
-	io->index = index;
+
 	io->api = api;
-	if (!api->init(index, io))
+	if (!api->init(io, opts))
 		goto fail;
 
 	if (!io_list)

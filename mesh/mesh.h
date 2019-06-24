@@ -28,9 +28,11 @@
 #define MESH_PROVISIONER_INTERFACE "org.bluez.mesh.Provisioner1"
 #define ERROR_INTERFACE "org.bluez.mesh.Error"
 
+enum mesh_io_type;
+
 typedef void (*prov_rx_cb_t)(void *user_data, const uint8_t *data,
 								uint16_t len);
-bool mesh_init(uint16_t index, const char *in_config_name);
+bool mesh_init(const char *in_config_name, enum mesh_io_type type, void *opts);
 void mesh_cleanup(void);
 bool mesh_dbus_init(struct l_dbus *dbus);
 
