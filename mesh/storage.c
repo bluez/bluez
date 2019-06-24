@@ -53,20 +53,6 @@ static const char *bak_ext = ".bak";
 static const char *tmp_ext = ".tmp";
 static const char *storage_dir;
 
-/* This is a thread-safe always malloced version of dirname which will work
- * regardless of which underlying dirname() implementation is used.
- */
-static char *alloc_dirname(const char *path)
-{
-	char *tmp = l_strdup(path);
-	char *dir;
-
-	dir = dirname(tmp);
-	strncpy(tmp, dir, strlen(path) + 1);
-
-	return tmp;
-}
-
 static bool read_node_cb(struct mesh_db_node *db_node, void *user_data)
 {
 	struct mesh_node *node = user_data;
@@ -486,20 +472,20 @@ void storage_save_config(struct mesh_node *node, bool no_wait,
 		l_idle_oneshot(idle_save_config, info, NULL);
 }
 
-static int create_dir(const char *dirname)
+static int create_dir(const char *dir_name)
 {
 	struct stat st;
 	char dir[PATH_MAX + 1], *prev, *next;
 	int err;
 
-	err = stat(dirname, &st);
+	err = stat(dir_name, &st);
 	if (!err && S_ISREG(st.st_mode))
 		return 0;
 
 	memset(dir, 0, PATH_MAX + 1);
 	strcat(dir, "/");
 
-	prev = strchr(dirname, '/');
+	prev = strchr(dir_name, '/');
 
 	while (prev) {
 		next = strchr(prev + 1, '/');
@@ -517,7 +503,7 @@ static int create_dir(const char *dirname)
 		prev = next;
 	}
 
-	mkdir(dirname, 0755);
+	mkdir(dir_name, 0755);
 
 	return 0;
 }
@@ -640,7 +626,8 @@ static int del_fobject(const char *fpath, const struct stat *sb, int typeflag,
 /* Permanently remove node configuration */
 void storage_remove_node_config(struct mesh_node *node)
 {
-	char *node_path, *mesh_path, *mesh_name;
+	char *node_path, *node_name;
+	char uuid[33];
 	struct json_object *jnode;
 
 	if (!node)
@@ -650,19 +637,20 @@ void storage_remove_node_config(struct mesh_node *node)
 	jnode = node_jconfig_get(node);
 	if (jnode)
 		json_object_put(jnode);
+
 	node_jconfig_set(node, NULL);
 
 	node_path = node_path_get(node);
 	l_debug("Delete node config %s", node_path);
 
 	/* Make sure path name of node follows expected guidelines */
-	mesh_path = alloc_dirname(node_path);
-	mesh_name = basename(mesh_path);
-	if (strcmp(mesh_name, "mesh"))
-		goto done;
+	if (!hex2str(node_uuid_get(node), 16, uuid, sizeof(uuid)))
+		return;
+
+	node_name = basename(node_path);
+
+	if (strcmp(node_name, uuid))
+		return;
 
 	nftw(node_path, del_fobject, 5, FTW_DEPTH | FTW_PHYS);
-
-done:
-	l_free(mesh_path);
 }
