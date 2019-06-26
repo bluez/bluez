@@ -1061,10 +1061,9 @@ static bool validate_model_property(struct node_element *ele,
 		/* Bluetooth SIG defined models */
 		while (l_dbus_message_iter_next_entry(&ids, &mod_id)) {
 			struct mesh_model *mod;
-			uint32_t m = mod_id;
 
 			/* Skip internally implemented models */
-			if (m == CONFIG_SRV_MODEL)
+			if ((VENDOR_ID_MASK | mod_id) == CONFIG_SRV_MODEL)
 				continue;
 
 			mod = l_queue_find(ele->models, match_model_id,
@@ -1078,6 +1077,7 @@ static bool validate_model_property(struct node_element *ele,
 		while (l_dbus_message_iter_next_entry(&ids, &vendor_id,
 								&mod_id)) {
 			struct mesh_model *mod;
+
 			mod = l_queue_find(ele->models, match_model_id,
 				L_UINT_TO_PTR((vendor_id << 16) | mod_id));
 			if (!mod)
@@ -1108,10 +1108,9 @@ static void get_models_from_properties(struct node_element *ele,
 	if (!vendor) {
 		while (l_dbus_message_iter_next_entry(&ids, &mod_id)) {
 			struct mesh_model *mod;
-			uint32_t m = mod_id;
 
 			/* Skip internally implemented models */
-			if (m == CONFIG_SRV_MODEL)
+			if ((VENDOR_ID_MASK | mod_id) == CONFIG_SRV_MODEL)
 				continue;
 
 			mod = mesh_model_new(ele->idx, mod_id);
