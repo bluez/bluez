@@ -209,12 +209,6 @@ static void decrypt_net_pkt(void *a, void *b)
 uint32_t net_key_decrypt(uint32_t iv_index, const uint8_t *pkt, size_t len,
 					uint8_t **plain, size_t *plain_len)
 {
-	bool iv_flag = !!(iv_index & 1);
-	bool iv_pkt = !!(pkt[0] & 0x80);
-
-	if (iv_pkt != iv_flag)
-		iv_index--;
-
 	/* If we already successfully decrypted this packet, use cached data */
 	if (cache_id && cache_len == len && !memcmp(pkt, cache_pkt, len)) {
 		/* IV Index must match what was used to decrypt */

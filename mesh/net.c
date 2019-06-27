@@ -2489,8 +2489,13 @@ static void net_rx(void *net_ptr, void *user_data)
 	size_t out_size;
 	uint32_t key_id;
 	int8_t rssi = 0;
+	bool ivi_net = !!(net->iv_index & 1);
+	bool ivi_pkt = !!(data->data[0] & 0x80);
 
-	key_id = net_key_decrypt(net->iv_index, data->data, data->len,
+	/* if IVI flag differs, use previous IV Index */
+	uint32_t iv_index = net->iv_index - (ivi_pkt ^ ivi_net);
+
+	key_id = net_key_decrypt(iv_index, data->data, data->len,
 							&out, &out_size);
 
 	if (!key_id)
@@ -2504,16 +2509,10 @@ static void net_rx(void *net_ptr, void *user_data)
 		rssi = data->info->rssi;
 	}
 
-	relay_advice = packet_received(net, key_id, net->iv_index,
+	relay_advice = packet_received(net, key_id, iv_index,
 							out, out_size, rssi);
 	if (relay_advice > data->relay_advice) {
-		bool iv_flag = !!(net->iv_index & 1);
-		bool iv_pkt = !!(data->data[0] & 0x80);
-
-		data->iv_index = net->iv_index;
-		if (iv_pkt != iv_flag)
-			data->iv_index--;
-
+		data->iv_index = iv_index;
 		data->relay_advice = relay_advice;
 		data->key_id = key_id;
 		data->net = net;
