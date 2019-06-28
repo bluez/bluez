@@ -46,7 +46,6 @@
 #define MIN_COMP_SIZE 14
 
 #define MESH_NODE_PATH_PREFIX "/node"
-#define MESH_ELEMENT_PATH_PREFIX "/ele"
 
 /* Default values for a new locally created node */
 #define DEFAULT_NEW_UNICAST 0x0001
@@ -1007,7 +1006,8 @@ static bool register_node_object(struct mesh_node *node)
 	if (!hex2str(node->uuid, sizeof(node->uuid), uuid, sizeof(uuid)))
 		return false;
 
-	node->path = l_strdup_printf(MESH_NODE_PATH_PREFIX "%s", uuid);
+	node->path = l_strdup_printf(BLUEZ_MESH_PATH MESH_NODE_PATH_PREFIX
+								"%s", uuid);
 
 	if (!l_dbus_object_add_interface(dbus_get_bus(), node->path,
 					MESH_NODE_INTERFACE, node))
