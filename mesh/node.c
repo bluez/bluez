@@ -244,9 +244,14 @@ static void free_node_resources(void *data)
 	if (node->disc_watch)
 		l_dbus_remove_watch(dbus_get_bus(), node->disc_watch);
 
-	if (node->path)
+	if (node->path) {
 		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
 							MESH_NODE_INTERFACE);
+
+		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
+					       MESH_MANAGEMENT_INTERFACE);
+	}
+
 	l_free(node->path);
 
 	l_free(node);
@@ -419,6 +424,7 @@ void node_cleanup_all(void)
 {
 	l_queue_destroy(nodes, cleanup_node);
 	l_dbus_unregister_interface(dbus_get_bus(), MESH_NODE_INTERFACE);
+	l_dbus_unregister_interface(dbus_get_bus(), MESH_MANAGEMENT_INTERFACE);
 }
 
 bool node_is_provisioned(struct mesh_node *node)
@@ -1010,7 +1016,11 @@ static bool register_node_object(struct mesh_node *node)
 								"%s", uuid);
 
 	if (!l_dbus_object_add_interface(dbus_get_bus(), node->path,
-					MESH_NODE_INTERFACE, node))
+						MESH_NODE_INTERFACE, node))
+		return false;
+
+	if (!l_dbus_object_add_interface(dbus_get_bus(), node->path,
+					MESH_MANAGEMENT_INTERFACE, node))
 		return false;
 
 	return true;
@@ -1032,6 +1042,9 @@ static void app_disc_cb(struct l_dbus *bus, void *user_data)
 	if (node->path) {
 		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
 							MESH_NODE_INTERFACE);
+
+		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
+						MESH_MANAGEMENT_INTERFACE);
 		l_free(node->app_path);
 		node->app_path = NULL;
 	}
