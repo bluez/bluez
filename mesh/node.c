@@ -1601,7 +1601,7 @@ fail:
 	} else {
 		/* Handle failed Join and Create requests */
 		if (node)
-			free_node_resources(node);
+			node_remove(node);
 
 		if (req->type == REQUEST_TYPE_JOIN) {
 			node_join_ready_func_t cb = req->cb;
