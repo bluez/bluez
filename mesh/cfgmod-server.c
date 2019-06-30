@@ -58,6 +58,7 @@ static void send_pub_status(struct mesh_node *node, uint16_t src, uint16_t dst,
 	msg[n++] = ttl;
 	msg[n++] = period;
 	msg[n++] = retransmit;
+
 	if (mod_id < 0x10000 || mod_id > VENDOR_ID_MASK) {
 		l_put_le16(mod_id, msg + n);
 		n += 2;
@@ -68,8 +69,7 @@ static void send_pub_status(struct mesh_node *node, uint16_t src, uint16_t dst,
 		n += 2;
 	}
 
-	mesh_model_send(node, dst, src,
-			APP_IDX_DEV, DEFAULT_TTL, msg, n);
+	mesh_model_send(node, dst, src, APP_IDX_DEV, DEFAULT_TTL, msg, n);
 }
 
 static bool config_pub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
@@ -121,8 +121,6 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 	int status;
 	bool cred_flag, b_virt = false;
 	bool vendor = false;
-	struct mesh_model_pub *pub;
-	uint8_t ele_idx;
 
 	switch (size) {
 	default:
@@ -168,6 +166,7 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 		vendor = true;
 		break;
 	}
+
 	ele_addr = l_get_le16(pkt);
 	pub_addr = pkt + 2;
 
@@ -204,22 +203,16 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 		goto done;
 	}
 
-	if (status != MESH_STATUS_SUCCESS)
-		goto done;
-
-	ele_idx = node_get_element_idx(node, ele_addr);
-	pub = mesh_model_pub_get(node, ele_idx, mod_id, &status);
-
-	if (pub) {
+	if (status == MESH_STATUS_SUCCESS) {
 		struct mesh_db_pub db_pub = {
 			.virt = b_virt,
 			.addr = ota,
 			.idx = idx,
 			.ttl = ttl,
-			.credential = pub->credential,
+			.credential = cred_flag,
 			.period = period,
-			.count = pub->retransmit >> 5,
-			.interval = ((0x1f & pub->retransmit) + 1) * 50
+			.count = retransmit >> 5,
+			.interval = ((0x1f & retransmit) + 1) * 50
 		};
 
 		if (b_virt)
@@ -270,8 +263,8 @@ static bool config_sub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
 	uint16_t ele_addr;
 	uint32_t mod_id;
 	uint16_t n = 0;
-	int ret = 0;
-	uint8_t *status;
+	int status;
+	uint8_t *msg_status;
 	uint16_t buf_size;
 	uint8_t msg[5 + sizeof(uint16_t) * MAX_GRP_PER_MOD];
 
@@ -286,7 +279,7 @@ static bool config_sub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
 	case 4:
 		mod_id = l_get_le16(pkt + 2);
 		n = mesh_model_opcode_set(OP_CONFIG_MODEL_SUB_LIST, msg);
-		status = msg + n;
+		msg_status = msg + n;
 		msg[n++] = 0;
 		l_put_le16(ele_addr, msg + n);
 		n += 2;
@@ -299,7 +292,7 @@ static bool config_sub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
 		mod_id = l_get_le16(pkt + 2) << 16;
 		mod_id |= l_get_le16(pkt + 4);
 		n = mesh_model_opcode_set(OP_CONFIG_VEND_MODEL_SUB_LIST, msg);
-		status = msg + n;
+		msg_status = msg + n;
 		msg[n++] = 0;
 		l_put_le16(ele_addr, msg + n);
 		n += 2;
@@ -311,13 +304,13 @@ static bool config_sub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
 	}
 
 	buf_size = sizeof(uint16_t) * MAX_GRP_PER_MOD;
-	ret = mesh_model_sub_get(node, ele_addr, mod_id, msg + n, buf_size,
+	status = mesh_model_sub_get(node, ele_addr, mod_id, msg + n, buf_size,
 									&size);
 
-	if (!ret)
+	if (status == MESH_STATUS_SUCCESS)
 		n += size;
-	else if (ret > 0)
-		*status = ret;
+
+	*msg_status = (uint8_t) status;
 
 	mesh_model_send(node, dst, src, APP_IDX_DEV, DEFAULT_TTL, msg, n);
 	return true;
@@ -361,9 +354,9 @@ static void config_sub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 {
 	uint16_t grp, ele_addr;
 	bool unreliable = !!(opcode & OP_UNRELIABLE);
-	uint32_t mod_id, func;
+	uint32_t mod_id;
 	const uint8_t *addr = NULL;
-	int status = 0;
+	int status = MESH_STATUS_SUCCESS;
 	bool vendor = false;
 
 	switch (size) {
@@ -408,6 +401,7 @@ static void config_sub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 		mod_id |= l_get_le16(pkt + 20);
 		break;
 	}
+
 	ele_addr = l_get_le16(pkt);
 
 	if (opcode != OP_CONFIG_MODEL_SUB_DELETE_ALL) {
@@ -416,10 +410,9 @@ static void config_sub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 	} else
 		grp = UNASSIGNED_ADDRESS;
 
-	func = opcode & ~OP_UNRELIABLE;
-	switch (func) {
+	switch (opcode & ~OP_UNRELIABLE) {
 	default:
-		l_debug("Bad opcode: %x", func);
+		l_debug("Bad opcode: %x", opcode);
 		return;
 
 	case OP_CONFIG_MODEL_SUB_DELETE_ALL:

@@ -90,40 +90,36 @@ uint32_t mesh_model_get_model_id(const struct mesh_model *model);
 bool mesh_model_register(struct mesh_node *node, uint8_t ele_idx,
 			uint32_t mod_id, const struct mesh_model_ops *cbs,
 							void *user_data);
+struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
+								void *data);
 struct mesh_model_pub *mesh_model_pub_get(struct mesh_node *node,
-				uint8_t ele_idx, uint32_t mod_id, int *status);
+				uint16_t addr, uint32_t mod_id, int *status);
 int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *mod_addr, uint16_t idx, bool cred_flag,
 			uint8_t ttl, uint8_t period, uint8_t retransmit,
 			bool b_virt, uint16_t *dst);
-struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
-								void *data);
 
 int mesh_model_binding_add(struct mesh_node *node, uint16_t addr, uint32_t id,
-						uint16_t app_idx);
+								uint16_t idx);
 int mesh_model_binding_del(struct mesh_node *node, uint16_t addr, uint32_t id,
-						uint16_t idx);
+								uint16_t idx);
 int mesh_model_get_bindings(struct mesh_node *node, uint16_t addr, uint32_t id,
 				uint8_t *buf, uint16_t buf_len, uint16_t *size);
 int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
-						const uint8_t *grp, bool b_virt,
-						uint16_t *dst);
+				const uint8_t *grp, bool b_virt, uint16_t *dst);
 int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
-						const uint8_t *grp, bool b_virt,
-						uint16_t *dst);
+				const uint8_t *grp, bool b_virt, uint16_t *dst);
 int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id);
 int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
-						const uint8_t *grp, bool b_virt,
-						uint16_t *dst);
+				const uint8_t *grp, bool b_virt, uint16_t *dst);
 int mesh_model_sub_get(struct mesh_node *node, uint16_t addr, uint32_t id,
 			uint8_t *buf, uint16_t buf_size, uint16_t *size);
 uint16_t mesh_model_cfg_blk(uint8_t *pkt);
-bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t target,
+bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 					uint16_t app_idx, uint8_t ttl,
 					const void *msg, uint16_t msg_len);
-int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
-				uint16_t src, uint8_t ttl,
-				const void *msg, uint16_t msg_len);
+int mesh_model_publish(struct mesh_node *node, uint32_t mod_id, uint16_t src,
+				uint8_t ttl, const void *msg, uint16_t msg_len);
 bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 			uint32_t seq, uint32_t iv_index, uint8_t ttl,
 			uint16_t src, uint16_t dst, uint8_t key_id,
@@ -137,8 +133,8 @@ void mesh_model_add_virtual(struct mesh_node *node, const uint8_t *v);
 void mesh_model_del_virtual(struct mesh_node *node, uint32_t va24);
 void mesh_model_list_virtual(struct mesh_node *node);
 uint16_t mesh_model_opcode_set(uint32_t opcode, uint8_t *buf);
-bool mesh_model_opcode_get(const uint8_t *buf, uint16_t size,
-					uint32_t *opcode, uint16_t *n);
+bool mesh_model_opcode_get(const uint8_t *buf, uint16_t size, uint32_t *opcode,
+								uint16_t *n);
 void model_build_config(void *model, void *msg_builder);
 
 void mesh_model_init(void);

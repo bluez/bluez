@@ -152,7 +152,7 @@ static struct mesh_model *get_model(struct mesh_node *node, uint8_t ele_idx,
 
 	models = node_get_element_models(node, ele_idx, status);
 	if (!models) {
-		*status = MESH_STATUS_INVALID_ADDRESS;
+		*status = MESH_STATUS_INVALID_MODEL;
 		return NULL;
 	}
 
@@ -164,19 +164,18 @@ static struct mesh_model *get_model(struct mesh_node *node, uint8_t ele_idx,
 }
 
 static struct mesh_model *find_model(struct mesh_node *node, uint16_t addr,
-						uint32_t mod_id, int *fail)
+						uint32_t mod_id, int *status)
 {
 	int ele_idx;
 
 	ele_idx = node_get_element_idx(node, addr);
 
 	if (ele_idx < 0) {
-		if (fail)
-			*fail = MESH_STATUS_INVALID_ADDRESS;
+		*status = MESH_STATUS_INVALID_ADDRESS;
 		return NULL;
 	}
 
-	return get_model(node, (uint8_t) ele_idx, mod_id, fail);
+	return get_model(node, (uint8_t) ele_idx, mod_id, status);
 }
 
 static uint32_t pub_period_to_ms(uint8_t pub_period)
@@ -429,16 +428,6 @@ static void cmplt(uint16_t remote, uint8_t status,
 	}
 }
 
-static bool pub_frnd_cred(struct mesh_node *node, uint16_t src, uint32_t mod_id)
-{
-	struct mesh_model *mod = find_model(node, src, mod_id, NULL);
-
-	if (!mod || !mod->pub)
-		return false;
-
-	return (mod->pub->credential != 0);
-}
-
 static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
 		uint32_t dst, uint8_t key_id, const uint8_t *key,
 		uint8_t *aad, uint8_t ttl, const void *msg, uint16_t msg_len)
@@ -463,22 +452,17 @@ static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
 	iv_index = mesh_net_get_iv_index(net);
 
 	seq_num = mesh_net_get_seq_num(net);
-	if (!mesh_crypto_payload_encrypt(aad, msg, out, msg_len,
-				src, dst, key_id,
-				seq_num, iv_index,
-				szmic, key)) {
+	if (!mesh_crypto_payload_encrypt(aad, msg, out, msg_len, src, dst,
+				key_id, seq_num, iv_index, szmic, key)) {
 		l_error("Failed to Encrypt Payload");
 		goto done;
 	}
 
 	/* print_packet("Encrypted with", key, 16); */
 
-	ret = mesh_net_app_send(net, credential,
-				src, dst, key_id, ttl,
-				seq_num, iv_index,
-				szmic,
-				out, out_len,
-				cmplt, NULL);
+	ret = mesh_net_app_send(net, credential, src, dst, key_id, ttl,
+					seq_num, iv_index, szmic, out, out_len,
+								cmplt, NULL);
 done:
 	l_free(out);
 	return ret;
@@ -489,10 +473,6 @@ static void remove_pub(struct mesh_node *node, struct mesh_model *mod)
 	l_free(mod->pub);
 	mod->pub = NULL;
 
-	/*
-	 * TODO: Instead of reporting  period of 0, report publication
-	 * address as unassigned
-	 */
 	if (!mod->cbs)
 		/* External models */
 		config_update_model_pub_period(node, mod->ele_idx, mod->id, 0);
@@ -539,16 +519,16 @@ static void model_bind_idx(struct mesh_node *node, struct mesh_model *mod,
 }
 
 static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
-				uint16_t app_idx, bool unbind)
+						uint16_t app_idx, bool unbind)
 {
-	int fail;
+	int status;
 	struct mesh_model *mod;
 	bool is_present;
 
-	mod = find_model(node, addr, id, &fail);
+	mod = find_model(node, addr, id, &status);
 	if (!mod) {
 		l_debug("Model not found");
-		return fail;
+		return status;
 	}
 
 	id = (id >= VENDOR_ID_MASK) ? (id & 0xffff) : id;
@@ -889,6 +869,7 @@ int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
 	uint8_t key_id;
 	const uint8_t *key;
 	bool result;
+	int status;
 
 	/* print_packet("Mod Tx", msg, msg_len); */
 
@@ -899,7 +880,7 @@ int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
 	if (src == 0)
 		src = mesh_net_get_address(net);
 
-	mod = find_model(node, src, mod_id, NULL);
+	mod = find_model(node, src, mod_id, &status);
 	if (!mod) {
 		l_debug("model %x not found", mod_id);
 		return MESH_ERROR_NOT_FOUND;
@@ -942,7 +923,7 @@ int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
 	l_debug("(%x) %p", mod->pub->idx, key);
 	l_debug("key_id %x", key_id);
 
-	result = msg_send(node, pub_frnd_cred(node, src, mod_id), src,
+	result = msg_send(node, mod->pub->credential != 0, src,
 				dst, key_id, key, aad, ttl, msg, msg_len);
 
 	return result ? MESH_ERROR_NONE : MESH_ERROR_FAILED;
@@ -994,21 +975,12 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 			uint8_t ttl, uint8_t period, uint8_t retransmit,
 			bool b_virt, uint16_t *dst)
 {
-	int fail = MESH_STATUS_SUCCESS;
-	int ele_idx;
 	struct mesh_model *mod;
-	int result;
+	int status;
 
-	ele_idx = node_get_element_idx(node, addr);
-
-	if (ele_idx < 0) {
-		fail = MESH_STATUS_INVALID_ADDRESS;
-		return false;
-	}
-
-	mod = get_model(node, (uint8_t) ele_idx, id, &fail);
+	mod = find_model(node, addr, id, &status);
 	if (!mod)
-		return fail;
+		return status;
 
 	if (id == CONFIG_SRV_MODEL || id == CONFIG_CLI_MODEL)
 		return MESH_STATUS_INVALID_PUB_PARAM;
@@ -1016,15 +988,15 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (!appkey_have_key(node_get_net(node), idx))
 		return MESH_STATUS_INVALID_APPKEY;
 
-	result = set_pub(mod, mod_addr, idx, cred_flag, ttl, period, retransmit,
+	status = set_pub(mod, mod_addr, idx, cred_flag, ttl, period, retransmit,
 								b_virt, dst);
 
-	if (result != MESH_STATUS_SUCCESS)
-		return result;
+	if (status != MESH_STATUS_SUCCESS)
+		return status;
 
 	/*
 	 * If the publication address is set to unassigned address value,
-	 * remove publication
+	 * remove the publication
 	 */
 	if (IS_UNASSIGNED(*dst))
 		remove_pub(node, mod);
@@ -1036,18 +1008,18 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 	}
 
 	/* External model */
-	config_update_model_pub_period(node, ele_idx, id,
+	config_update_model_pub_period(node, mod->ele_idx, id,
 						pub_period_to_ms(period));
 
 	return MESH_STATUS_SUCCESS;
 }
 
-struct mesh_model_pub *mesh_model_pub_get(struct mesh_node *node,
-				 uint8_t ele_idx, uint32_t mod_id, int *status)
+struct mesh_model_pub *mesh_model_pub_get(struct mesh_node *node, uint16_t addr,
+						uint32_t mod_id, int *status)
 {
 	struct mesh_model *mod;
 
-	mod = get_model(node, ele_idx, mod_id, status);
+	mod = find_model(node, addr, mod_id, status);
 	if (!mod)
 		return NULL;
 
@@ -1102,7 +1074,7 @@ static void restore_model_state(struct mesh_model *mod)
 	if (l_queue_isempty(mod->bindings) || !mod->cbs->bind) {
 		for (b = l_queue_get_entries(mod->bindings); b; b = b->next) {
 			if (cbs->bind(L_PTR_TO_UINT(b->data), ACTION_ADD) !=
-				MESH_STATUS_SUCCESS)
+							MESH_STATUS_SUCCESS)
 				break;
 		}
 	}
@@ -1170,18 +1142,18 @@ int mesh_model_binding_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 int mesh_model_get_bindings(struct mesh_node *node, uint16_t addr, uint32_t id,
 				uint8_t *buf, uint16_t buf_size, uint16_t *size)
 {
-	int fail;
+	int status;
 	struct mesh_model *mod;
 	const struct l_queue_entry *entry;
 	uint16_t n;
 	uint32_t idx_pair;
 	int i;
 
-	mod = find_model(node, addr, id, &fail);
+	mod = find_model(node, addr, id, &status);
 
 	if (!mod) {
 		*size = 0;
-		return fail;
+		return status;
 	}
 
 	entry = l_queue_get_entries(mod->bindings);
@@ -1197,11 +1169,13 @@ int mesh_model_get_bindings(struct mesh_node *node, uint16_t addr, uint32_t id,
 		} else {
 			idx_pair <<= 12;
 			idx_pair += app_idx;
+
 			/* Unlikely, but check for overflow*/
 			if ((n + 3) > buf_size) {
 				l_warn("Binding list too large");
 				goto done;
 			}
+
 			l_put_le32(idx_pair, buf);
 			buf += 3;
 			n += 3;
@@ -1218,21 +1192,20 @@ int mesh_model_get_bindings(struct mesh_node *node, uint16_t addr, uint32_t id,
 
 done:
 	*size = n;
-
 	return MESH_STATUS_SUCCESS;
 }
 
 int mesh_model_sub_get(struct mesh_node *node, uint16_t addr, uint32_t id,
 			uint8_t *buf, uint16_t buf_size, uint16_t *size)
 {
-	int fail = MESH_STATUS_SUCCESS;
+	int status;
 	int16_t n;
 	struct mesh_model *mod;
 	const struct l_queue_entry *entry;
 
-	mod = find_model(node, addr, id, &fail);
+	mod = find_model(node, addr, id, &status);
 	if (!mod)
-		return fail;
+		return status;
 
 	entry = l_queue_get_entries(mod->subs);
 	*size = 0;
@@ -1254,36 +1227,27 @@ int mesh_model_sub_get(struct mesh_node *node, uint16_t addr, uint32_t id,
 int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *group, bool b_virt, uint16_t *dst)
 {
-	int fail = MESH_STATUS_SUCCESS;
-	int ele_idx = -1;
+	int status;
 	struct mesh_model *mod;
 
-	ele_idx = node_get_element_idx(node, addr);
-
-	if (!node || ele_idx < 0) {
-		fail = MESH_STATUS_INVALID_ADDRESS;
-		return false;
-	}
-
-	mod = get_model(node, (uint8_t) ele_idx, id, &fail);
+	mod = find_model(node, addr, id, &status);
 	if (!mod)
-		return fail;
+		return status;
 
 	return add_sub(node_get_net(node), mod, group, b_virt, dst);
-	/* TODO: communicate to registered models that sub has changed */
 }
 
 int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *group, bool b_virt, uint16_t *dst)
 {
-	int fail = MESH_STATUS_SUCCESS;
+	int status;
 	struct l_queue *virtuals, *subs;
 	struct mesh_virtual *virt;
 	struct mesh_model *mod;
 
-	mod = find_model(node, addr, id, &fail);
+	mod = find_model(node, addr, id, &status);
 	if (!mod)
-		return fail;
+		return status;
 
 	subs = mod->subs;
 	virtuals = mod->virtuals;
@@ -1306,10 +1270,10 @@ int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 		}
 	}
 
-	fail = mesh_model_sub_add(node, addr, id, group, b_virt, dst);
+	status = mesh_model_sub_add(node, addr, id, group, b_virt, dst);
 
-	if (fail) {
-		/* Adding new group failed, so revert to old list */
+	if (status != MESH_STATUS_SUCCESS) {
+		/* Adding new group failed, so revert to old lists */
 		l_queue_destroy(mod->subs, NULL);
 		mod->subs = subs;
 		l_queue_destroy(mod->virtuals, unref_virt);
@@ -1324,23 +1288,24 @@ int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 			mesh_net_dst_unreg(net,
 					(uint16_t) L_PTR_TO_UINT(entry->data));
 
+		/* Destroy old lists */
 		l_queue_destroy(subs, NULL);
 		l_queue_destroy(virtuals, unref_virt);
 	}
 
-	return fail;
+	return status;
 }
 
 int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *group, bool b_virt, uint16_t *dst)
 {
-	int fail = MESH_STATUS_SUCCESS;
+	int status;
 	uint16_t grp;
 	struct mesh_model *mod;
 
-	mod = find_model(node, addr, id, &fail);
+	mod = find_model(node, addr, id, &status);
 	if (!mod)
-		return fail;
+		return status;
 
 	if (b_virt) {
 		struct mesh_virtual *virt;
@@ -1368,14 +1333,14 @@ int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
 
 int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id)
 {
-	int fail = MESH_STATUS_SUCCESS;
+	int status;
 	struct mesh_model *mod;
 	const struct l_queue_entry *entry;
 	struct mesh_net *net = node_get_net(node);
 
-	mod = find_model(node, addr, id, &fail);
+	mod = find_model(node, addr, id, &status);
 	if (!mod)
-		return fail;
+		return status;
 
 	entry = l_queue_get_entries(mod->subs);
 
@@ -1386,7 +1351,7 @@ int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id)
 	l_queue_destroy(mod->virtuals, unref_virt);
 	mod->virtuals = l_queue_new();
 
-	return fail;
+	return MESH_STATUS_SUCCESS;
 }
 
 struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
