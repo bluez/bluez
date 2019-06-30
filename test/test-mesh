@@ -606,13 +606,13 @@ class OnOffServer(Model):
 
 	def set_publication(self, period):
 
-		# We do not handle ms in this example
-		if period < 1000:
-			return
-
 		self.pub_period = period
 		if period == 0:
 			self.timer.cancel()
+			return
+
+		# We do not handle ms in this example
+		if period < 1000:
 			return
 
 		self.timer.start(period/1000, self.publish)
