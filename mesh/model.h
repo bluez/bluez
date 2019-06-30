@@ -24,7 +24,7 @@ struct mesh_model;
 #define MAX_BINDINGS	10
 #define MAX_GRP_PER_MOD	10
 
-#define	VIRTUAL_BASE			0x10000
+#define VIRTUAL_BASE			0x10000
 
 #define MESH_MAX_ACCESS_PAYLOAD		380
 
@@ -124,14 +124,10 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 			uint32_t seq, uint32_t iv_index, uint8_t ttl,
 			uint16_t src, uint16_t dst, uint8_t key_id,
 			const uint8_t *data, uint16_t size);
-
 void mesh_model_app_key_generate_new(struct mesh_node *node, uint16_t net_idx);
 void mesh_model_app_key_delete(struct mesh_node *node, struct l_queue *models,
 								uint16_t idx);
 struct l_queue *mesh_model_get_appkeys(struct mesh_node *node);
-void mesh_model_add_virtual(struct mesh_node *node, const uint8_t *v);
-void mesh_model_del_virtual(struct mesh_node *node, uint32_t va24);
-void mesh_model_list_virtual(struct mesh_node *node);
 uint16_t mesh_model_opcode_set(uint32_t opcode, uint8_t *buf);
 bool mesh_model_opcode_get(const uint8_t *buf, uint16_t size, uint32_t *opcode,
 								uint16_t *n);
