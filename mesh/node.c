@@ -1312,10 +1312,6 @@ static bool create_node_config(struct mesh_node *node)
 static void set_defaults(struct mesh_node *node)
 {
 	/* TODO: these values should come from mesh.conf */
-	if (!node->comp)
-		node->comp = l_new(struct node_composition, 1);
-
-	node->comp->crpl = DEFAULT_CRPL;
 	node->lpn = MESH_MODE_UNSUPPORTED;
 	node->proxy = MESH_MODE_UNSUPPORTED;
 	node->friend = MESH_MODE_UNSUPPORTED;
@@ -1338,8 +1334,10 @@ static bool get_app_properties(struct mesh_node *node, const char *path,
 
 	l_debug("path %s", path);
 
-	if (is_new)
+	if (is_new) {
 		node->comp = l_new(struct node_composition, 1);
+		node->comp->crpl = DEFAULT_CRPL;
+	}
 
 	while (l_dbus_message_iter_next_entry(properties, &key, &variant)) {
 
@@ -1372,6 +1370,16 @@ static bool get_app_properties(struct mesh_node *node, const char *path,
 				return false;
 
 			node->comp->vid = value;
+
+		} else if (!strcmp(key, "CRPL")) {
+			if (!l_dbus_message_iter_get_variant(&variant, "q",
+									&value))
+				return false;
+
+			if (!is_new && node->comp->crpl != value)
+				return false;
+
+			node->comp->crpl = value;
 		}
 	}
 

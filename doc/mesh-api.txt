@@ -724,6 +724,10 @@ Properties:
 
 		A 16-bit vendor-assigned product version identifier
 
+	uint16 CRPL [read-only, optional]
+
+		A 16-bit minimum number of replay protection list entries
+
 
 Mesh Element Hierarchy
 ======================
