@@ -729,10 +729,13 @@ static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx, bool is_sub,
 	if (!l_dbus_message_builder_finalize(builder))
 		goto error;
 
+	l_dbus_message_builder_destroy(builder);
 	l_dbus_send(dbus, msg);
+	return;
 
 error:
 	l_dbus_message_builder_destroy(builder);
+	l_dbus_message_unref(msg);
 }
 
 bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
