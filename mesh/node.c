@@ -1183,7 +1183,7 @@ static bool get_element_properties(struct mesh_node *node, const char *path,
 
 	while (l_dbus_message_iter_next_entry(properties, &key, &var)) {
 		if (!strcmp(key, "Location")) {
-			uint8_t loc;
+			uint16_t loc;
 
 			l_dbus_message_iter_get_variant(&var, "q", &loc);
 
