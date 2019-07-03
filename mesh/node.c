@@ -226,6 +226,33 @@ static void element_free(void *data)
 	l_free(element);
 }
 
+static void free_node_dbus_resources(struct mesh_node *node)
+{
+	if (!node)
+		return;
+
+	if (node->disc_watch) {
+		l_dbus_remove_watch(dbus_get_bus(), node->disc_watch);
+		node->disc_watch = 0;
+	}
+
+	l_queue_foreach(node->elements, free_element_path, NULL);
+	l_free(node->owner);
+	node->owner = NULL;
+	l_free(node->app_path);
+	node->app_path = NULL;
+
+	if (node->path) {
+		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
+							MESH_NODE_INTERFACE);
+
+		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
+						MESH_MANAGEMENT_INTERFACE);
+		l_free(node->path);
+		node->path = NULL;
+	}
+}
+
 static void free_node_resources(void *data)
 {
 	struct mesh_node *node = data;
@@ -237,23 +264,8 @@ static void free_node_resources(void *data)
 
 	l_queue_destroy(node->elements, element_free);
 	l_free(node->comp);
-	l_free(node->app_path);
-	l_free(node->owner);
-	l_free(node->node_path);
 
-	if (node->disc_watch)
-		l_dbus_remove_watch(dbus_get_bus(), node->disc_watch);
-
-	if (node->path) {
-		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
-							MESH_NODE_INTERFACE);
-
-		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
-					       MESH_MANAGEMENT_INTERFACE);
-	}
-
-	l_free(node->path);
-
+	free_node_dbus_resources(node);
 	l_free(node);
 }
 
@@ -1033,23 +1045,8 @@ static void app_disc_cb(struct l_dbus *bus, void *user_data)
 	l_info("App %s disconnected (%u)", node->owner, node->disc_watch);
 
 	node->disc_watch = 0;
-
-	l_queue_foreach(node->elements, free_element_path, NULL);
-
-	l_free(node->owner);
-	node->owner = NULL;
-
-	if (node->path) {
-		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
-							MESH_NODE_INTERFACE);
-
-		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
-						MESH_MANAGEMENT_INTERFACE);
-		l_free(node->app_path);
-		node->app_path = NULL;
-	}
+	free_node_dbus_resources(node);
 }
-
 
 static bool validate_model_property(struct node_element *ele,
 					struct l_dbus_message_iter *property,
@@ -1611,14 +1608,9 @@ fail:
 		/* Handle failed Attach request */
 		node_ready_func_t cb = req->cb;
 
-		l_queue_foreach(node->elements, free_element_path, NULL);
-		l_free(node->app_path);
-		node->app_path = NULL;
+		free_node_dbus_resources(node);
 
-		l_free(node->owner);
-		node->owner = NULL;
 		cb(req->user_data, MESH_ERROR_FAILED, node);
-
 	} else {
 		/* Handle failed Join and Create requests */
 		if (node)
