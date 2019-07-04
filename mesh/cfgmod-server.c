@@ -742,7 +742,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 				uint8_t ttl, const void *user_data)
 {
 	struct mesh_node *node = (struct mesh_node *) user_data;
-	struct mesh_net *net = node_get_net(node);
+	struct mesh_net *net;
 	const uint8_t *pkt = data;
 	struct timeval time_now;
 	uint32_t opcode, tmp32;
