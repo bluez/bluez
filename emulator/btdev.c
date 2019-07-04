@@ -645,7 +645,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	memset(btdev, 0, sizeof(*btdev));
 
 	if (type == BTDEV_TYPE_BREDRLE || type == BTDEV_TYPE_LE
-				|| BTDEV_TYPE_BREDRLE50) {
+				|| type == BTDEV_TYPE_BREDRLE50) {
 		btdev->crypto = bt_crypto_new();
 		if (!btdev->crypto) {
 			free(btdev);
