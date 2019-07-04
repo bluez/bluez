@@ -1755,7 +1755,6 @@ static struct l_dbus_message *send_call(struct l_dbus *dbus,
 	uint16_t dst, app_idx, src;
 	uint8_t *data;
 	uint32_t len;
-	struct l_dbus_message *reply;
 
 	l_debug("Send");
 
@@ -1784,10 +1783,7 @@ static struct l_dbus_message *send_call(struct l_dbus *dbus,
 				mesh_net_get_default_ttl(node->net), data, len))
 		return dbus_error(msg, MESH_ERROR_FAILED, NULL);
 
-	reply = l_dbus_message_new_method_return(msg);
-	l_dbus_message_set_arguments(reply, "");
-
-	return reply;
+	return l_dbus_message_new_method_return(msg);
 }
 
 static struct l_dbus_message *publish_call(struct l_dbus *dbus,
@@ -1801,7 +1797,6 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 	struct node_element *ele;
 	uint8_t *data;
 	uint32_t len;
-	struct l_dbus_message *reply;
 	int result;
 
 	l_debug("Publish");
@@ -1833,10 +1828,7 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 	if (result != MESH_ERROR_NONE)
 		return dbus_error(msg, result, NULL);
 
-	reply = l_dbus_message_new_method_return(msg);
-	l_dbus_message_set_arguments(reply, "");
-
-	return reply;
+	return l_dbus_message_new_method_return(msg);
 }
 
 static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
@@ -1852,7 +1844,6 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	struct node_element *ele;
 	uint8_t *data = NULL;
 	uint32_t len;
-	struct l_dbus_message *reply;
 	int result;
 
 	l_debug("Publish");
@@ -1885,10 +1876,7 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	if (result != MESH_ERROR_NONE)
 		return dbus_error(msg, result, NULL);
 
-	reply = l_dbus_message_new_method_return(msg);
-	l_dbus_message_set_arguments(reply, "");
-
-	return reply;
+	return  l_dbus_message_new_method_return(msg);
 }
 
 static void setup_node_interface(struct l_dbus_interface *iface)
