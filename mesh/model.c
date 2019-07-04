@@ -249,10 +249,9 @@ static void config_update_model_pub_period(struct mesh_node *node,
 								&period);
 
 	l_dbus_message_builder_leave_array(builder);
-	if (l_dbus_message_builder_finalize(builder))
-		l_dbus_send(dbus, msg);
-
+	l_dbus_message_builder_finalize(builder);
 	l_dbus_message_builder_destroy(builder);
+	l_dbus_send(dbus, msg);
 }
 
 static void append_dict_uint16_array(struct l_dbus_message_builder *builder,
@@ -291,10 +290,9 @@ static void config_update_model_bindings(struct mesh_node *node,
 	append_dict_uint16_array(builder, mod->bindings, "Bindings");
 
 	l_dbus_message_builder_leave_array(builder);
-	if (l_dbus_message_builder_finalize(builder))
-		l_dbus_send(dbus, msg);
-
+	l_dbus_message_builder_finalize(builder);
 	l_dbus_message_builder_destroy(builder);
+	l_dbus_send(dbus, msg);
 }
 
 static void forward_model(void *a, void *b)
@@ -714,28 +712,15 @@ static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx, bool is_sub,
 
 	builder = l_dbus_message_builder_new(msg);
 
-	if (!l_dbus_message_builder_append_basic(builder, 'q', &src))
-		goto error;
+	l_dbus_message_builder_append_basic(builder, 'q', &src);
+	l_dbus_message_builder_append_basic(builder, 'q', &key_idx);
+	l_dbus_message_builder_append_basic(builder, 'b', &is_sub);
 
-	if (!l_dbus_message_builder_append_basic(builder, 'q', &key_idx))
-		goto error;
+	dbus_append_byte_array(builder, data, size);
 
-	if (!l_dbus_message_builder_append_basic(builder, 'b', &is_sub))
-		goto error;
-
-	if (!dbus_append_byte_array(builder, data, size))
-		goto error;
-
-	if (!l_dbus_message_builder_finalize(builder))
-		goto error;
-
+	l_dbus_message_builder_finalize(builder);
 	l_dbus_message_builder_destroy(builder);
 	l_dbus_send(dbus, msg);
-	return;
-
-error:
-	l_dbus_message_builder_destroy(builder);
-	l_dbus_message_unref(msg);
 }
 
 bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,

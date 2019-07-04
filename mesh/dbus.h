@@ -22,7 +22,7 @@
 
 bool dbus_init(struct l_dbus *dbus);
 struct l_dbus *dbus_get_bus(void);
-bool dbus_append_byte_array(struct l_dbus_message_builder *builder,
+void dbus_append_byte_array(struct l_dbus_message_builder *builder,
 						const uint8_t *data, int len);
 void dbus_append_dict_entry_basic(struct l_dbus_message_builder *builder,
 					const char *key, const char *signature,

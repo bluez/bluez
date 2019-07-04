@@ -113,29 +113,29 @@ bool dbus_match_interface(struct l_dbus_message_iter *interfaces,
 	return false;
 }
 
-bool dbus_append_byte_array(struct l_dbus_message_builder *builder,
+void dbus_append_byte_array(struct l_dbus_message_builder *builder,
 						const uint8_t *data, int len)
 {
 	int i;
 
-	if (!l_dbus_message_builder_enter_array(builder, "y"))
-		return false;
+	if (!builder)
+		return;
+
+	l_dbus_message_builder_enter_array(builder, "y");
 
 	for (i = 0; i < len; i++)
-		if (!l_dbus_message_builder_append_basic(builder, 'y',
-				data + i))
-			return false;
+		l_dbus_message_builder_append_basic(builder, 'y', data + i);
 
-	if (!l_dbus_message_builder_leave_array(builder))
-		return false;
-
-	return true;
+	l_dbus_message_builder_leave_array(builder);
 }
 
 void dbus_append_dict_entry_basic(struct l_dbus_message_builder *builder,
 					const char *key, const char *signature,
 					const void *data)
 {
+	if (!builder)
+		return;
+
 	l_dbus_message_builder_enter_dict(builder, "sv");
 	l_dbus_message_builder_append_basic(builder, 's', key);
 	l_dbus_message_builder_enter_variant(builder, signature);
