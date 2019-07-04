@@ -260,12 +260,14 @@ static void free_node_resources(void *data)
 	/* Unregister io callbacks */
 	if (node->net)
 		mesh_net_detach(node->net);
-	mesh_net_free(node->net);
 
 	l_queue_destroy(node->elements, element_free);
-	l_free(node->comp);
+	node->elements = NULL;
 
 	free_node_dbus_resources(node);
+
+	mesh_net_free(node->net);
+	l_free(node->comp);
 	l_free(node);
 }
 
