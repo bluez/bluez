@@ -306,7 +306,7 @@ static void forward_model(void *a, void *b)
 
 	l_debug("model %8.8x with idx %3.3x", mod->id, fwd->idx);
 
-	if (fwd->idx != APP_IDX_DEV_LOCAL &&
+	if (fwd->idx != APP_IDX_DEV_LOCAL && fwd->idx != APP_IDX_DEV_REMOTE &&
 					!has_binding(mod->bindings, fwd->idx))
 		return;
 
@@ -357,15 +357,24 @@ static int dev_packet_decrypt(struct mesh_node *node, const uint8_t *data,
 				uint16_t dst, uint8_t key_id, uint32_t seq,
 				uint32_t iv_idx, uint8_t *out)
 {
+	uint8_t dev_key[16];
 	const uint8_t *key;
 
 	key = node_get_device_key(node);
 	if (!key)
-		return false;
+		return -1;
 
 	if (mesh_crypto_payload_decrypt(NULL, 0, data, size, szmict, src,
 					dst, key_id, seq, iv_idx, out, key))
 		return APP_IDX_DEV_LOCAL;
+
+	if (!keyring_get_remote_dev_key(node, src, dev_key))
+		return -1;
+
+	key = dev_key;
+	if (mesh_crypto_payload_decrypt(NULL, 0, data, size, szmict, src,
+					dst, key_id, seq, iv_idx, out, key))
+		return APP_IDX_DEV_REMOTE;
 
 	return -1;
 }
@@ -693,6 +702,39 @@ static int add_sub(struct mesh_net *net, struct mesh_model *mod,
 	return MESH_STATUS_SUCCESS;
 }
 
+static void send_dev_key_msg_rcvd(struct mesh_node *node, uint8_t ele_idx,
+					uint16_t src, uint16_t net_idx,
+					uint16_t size, const uint8_t *data)
+{
+	struct l_dbus *dbus = dbus_get_bus();
+	struct l_dbus_message *msg;
+	struct l_dbus_message_builder *builder;
+	const char *owner;
+	const char *path;
+
+	owner = node_get_owner(node);
+	path = node_get_element_path(node, ele_idx);
+	if (!path || !owner)
+		return;
+
+	l_debug("Send \"DevKeyMessageReceived\"");
+
+	msg = l_dbus_message_new_method_call(dbus, owner, path,
+						MESH_ELEMENT_INTERFACE,
+						"DevKeyMessageReceived");
+
+	builder = l_dbus_message_builder_new(msg);
+
+	l_dbus_message_builder_append_basic(builder, 'q', &src);
+	l_dbus_message_builder_append_basic(builder, 'q', &net_idx);
+	dbus_append_byte_array(builder, data, size);
+
+	l_dbus_message_builder_finalize(builder);
+	l_dbus_message_builder_destroy(builder);
+
+	l_dbus_send(dbus, msg);
+}
+
 static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx, bool is_sub,
 					uint16_t src, uint16_t key_idx,
 					uint16_t size, const uint8_t *data)
@@ -831,10 +873,17 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 		 * Cycle through external models if the message has not been
 		 * handled by internal models
 		 */
-		if (forward.has_dst && !forward.done)
-			send_msg_rcvd(node, i, is_subscription, src,
-					forward.idx, forward.size,
-					forward.data);
+		if (forward.has_dst && !forward.done) {
+			if ((decrypt_idx & APP_IDX_MASK) == decrypt_idx)
+				send_msg_rcvd(node, i, is_subscription, src,
+						forward.idx, forward.size,
+						forward.data);
+			else if (decrypt_idx == APP_IDX_DEV_REMOTE ||
+				(decrypt_idx == APP_IDX_DEV_LOCAL &&
+				 mesh_net_is_local_address(net, src)))
+				send_dev_key_msg_rcvd(node, i, src, 0,
+						forward.size, forward.data);
+		}
 
 		/*
 		 * Either the message has been processed internally or
