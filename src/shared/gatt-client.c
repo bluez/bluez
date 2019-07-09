@@ -1947,7 +1947,7 @@ static void disable_ccc_callback(uint8_t opcode, const void *pdu,
 	 */
 	while (1) {
 		next_data = queue_pop_head(notify_data->chrc->reg_notify_queue);
-		if (!next_data || notify_data_write_ccc(notify_data, true,
+		if (!next_data || notify_data_write_ccc(next_data, true,
 							enable_ccc_callback))
 			return;
 	}
