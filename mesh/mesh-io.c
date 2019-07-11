@@ -86,12 +86,14 @@ struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts)
 
 	if (api->set) {
 		uint8_t pkt = MESH_AD_TYPE_NETWORK;
-		uint8_t bec = MESH_AD_TYPE_BEACON;
 		uint8_t prv = MESH_AD_TYPE_PROVISION;
+		uint8_t snb[2] = {MESH_AD_TYPE_BEACON, 0x01};
+		uint8_t prvb[2] = {MESH_AD_TYPE_BEACON, 0x00};
 
-		api->set(io, 1, &bec, 1, NULL, NULL);
+		api->set(io, 1, snb, sizeof(snb), NULL, NULL);
 		api->set(io, 2, &prv, 1, NULL, NULL);
 		api->set(io, 3, &pkt, 1, NULL, NULL);
+		api->set(io, 4, prvb, sizeof(prvb), NULL, NULL);
 	}
 
 	if (l_queue_push_head(io_list, io))

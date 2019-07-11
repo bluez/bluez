@@ -40,7 +40,7 @@ struct mesh_io_private {
 	struct l_timeout *tx_timeout;
 	struct l_queue *rx_regs;
 	struct l_queue *tx_pkts;
-	uint8_t filters[3]; /* Simple filtering on AD type only */
+	uint8_t filters[4];
 	bool sending;
 	struct tx_pkt *tx;
 	uint16_t interval;
