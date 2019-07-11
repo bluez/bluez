@@ -90,6 +90,7 @@ struct mesh_prov_node_info {
 	uint32_t iv_index;
 	uint16_t unicast;
 	uint16_t net_index;
+	uint8_t num_ele;
 	uint8_t net_key[16];
 	uint8_t device_key[16];
 	uint8_t flags; /* IVU and KR bits */
@@ -98,6 +99,9 @@ struct mesh_prov_node_info {
 typedef bool (*mesh_prov_acceptor_complete_func_t)(void *user_data,
 					uint8_t status,
 					struct mesh_prov_node_info *info);
+
+typedef bool (*mesh_prov_initiator_data_req_func_t)(void *user_data,
+							uint8_t num_elem);
 
 typedef bool (*mesh_prov_initiator_complete_func_t)(void *user_data,
 					uint8_t status,
@@ -117,6 +121,8 @@ bool initiator_start(enum trans_type transport,
 		uint16_t server, /* Only valid for PB-Remote */
 		uint32_t timeout, /* in seconds from mesh.conf */
 		struct mesh_agent *agent,
+		mesh_prov_initiator_data_req_func_t get_prov_data,
 		mesh_prov_initiator_complete_func_t complete_cb,
-		void *caller_data);
-void initiator_cancel(void *user_data);
+		void *node, void *caller_data);
+void initiator_prov_data(uint16_t net_idx, uint16_t primary, void *caller_data);
+void initiator_cancel(void *caller_data);
