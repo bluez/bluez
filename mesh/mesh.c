@@ -266,7 +266,7 @@ static void prov_disc_cb(struct l_dbus *bus, void *user_data)
 	free_pending_join_call(true);
 }
 
-static const char *prov_status_str(uint8_t status)
+const char *mesh_prov_status_str(uint8_t status)
 {
 	switch (status) {
 	case PROV_ERR_SUCCESS:
@@ -301,7 +301,7 @@ static void send_join_failed(const char *owner, const char *path,
 						MESH_APPLICATION_INTERFACE,
 						"JoinFailed");
 
-	l_dbus_message_set_arguments(msg, "s", prov_status_str(status));
+	l_dbus_message_set_arguments(msg, "s", mesh_prov_status_str(status));
 	l_dbus_send(dbus_get_bus(), msg);
 
 	free_pending_join_call(true);
@@ -316,7 +316,7 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 	const char *path;
 	const uint8_t *token;
 
-	l_debug("Provisioning complete %s", prov_status_str(status));
+	l_debug("Provisioning complete %s", mesh_prov_status_str(status));
 
 	if (!join_pending)
 		return false;
@@ -342,7 +342,7 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 
 	l_dbus_message_set_arguments(msg, "t", l_get_be64(token));
 
-	l_dbus_send(dbus_get_bus(), msg);
+	l_dbus_send(dbus, msg);
 
 	free_pending_join_call(false);
 
