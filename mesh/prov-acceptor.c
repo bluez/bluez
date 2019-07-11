@@ -651,7 +651,7 @@ bool acceptor_start(uint8_t num_ele, uint8_t uuid[16],
 		goto error_fail;
 
 	/* Always register for PB-ADV */
-	result = pb_adv_reg(acp_prov_open, acp_prov_close, acp_prov_rx,
+	result = pb_adv_reg(false, acp_prov_open, acp_prov_close, acp_prov_rx,
 						acp_prov_ack, uuid, prov);
 
 	if (result)

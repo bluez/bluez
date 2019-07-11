@@ -613,7 +613,7 @@ bool initiator_start(enum trans_type transport,
 	prov->previous = -1;
 
 	/* Always register for PB-ADV */
-	result = pb_adv_reg(int_prov_open, int_prov_close, int_prov_rx,
+	result = pb_adv_reg(true, int_prov_open, int_prov_close, int_prov_rx,
 						int_prov_ack, uuid, prov);
 
 	if (result)

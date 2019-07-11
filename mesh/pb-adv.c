@@ -39,16 +39,16 @@ struct pb_adv_session {
 	mesh_prov_receive_func_t rx_cb;
 	mesh_prov_ack_func_t ack_cb;
 	struct l_timeout *tx_timeout;
-	uint32_t conn_id;
+	uint32_t link_id;
 	uint16_t exp_len;
 	uint8_t exp_fcs;
 	uint8_t exp_segs;
 	uint8_t got_segs;
-	uint8_t msg_num;
+	uint8_t trans_num;
 	uint8_t local_acked;
-	uint8_t local_msg_num;
-	uint8_t peer_msg_num;
-	uint8_t last_peer_msg_num;
+	uint8_t local_trans_num;
+	uint8_t peer_trans_num;
+	uint8_t last_peer_trans_num;
 	uint8_t sar[80];
 	uint8_t uuid[16];
 	bool initiator;
@@ -65,6 +65,8 @@ struct pb_adv_session {
 
 static struct pb_adv_session *pb_session = NULL;
 
+static const uint8_t filter[1] = { MESH_AD_TYPE_PROVISION };
+
 static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 							uint16_t size)
 {
@@ -77,10 +79,10 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 	if (!size)
 		return;
 
-	mesh_send_cancel(buf, 1);
+	mesh_send_cancel(filter, sizeof(filter));
 
-	l_put_be32(session->conn_id, buf + 1);
-	buf[1 + 4] = ++session->local_msg_num;
+	l_put_be32(session->link_id, buf + 1);
+	buf[1 + 4] = ++session->local_trans_num;
 
 	if (size > PB_ADV_MTU - 4) {
 		max_seg = 1 +
@@ -103,7 +105,7 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 	l_debug("max_seg: %2.2x", max_seg);
 	l_debug("size: %2.2x, CRC: %2.2x", size, buf[9]);
 	/* print_packet("PB-TX", buf + 1, init_size + 9); */
-	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 50, buf, init_size + 10);
+	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 200, buf, init_size + 10);
 
 	consumed = init_size;
 
@@ -120,7 +122,7 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 
 		/* print_packet("PB-TX", buf + 1, seg_size + 6); */
 
-		mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 50,
+		mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 200,
 							buf, seg_size + 7);
 
 		consumed += seg_size;
@@ -130,7 +132,6 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 static void tx_timeout(struct l_timeout *timeout, void *user_data)
 {
 	struct pb_adv_session *session = user_data;
-	uint8_t cancel[] = { MESH_AD_TYPE_PROVISION };
 	mesh_prov_close_func_t cb;
 
 	if (!session || pb_session != session)
@@ -139,7 +140,7 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	l_timeout_remove(session->tx_timeout);
 	session->tx_timeout = NULL;
 
-	mesh_send_cancel(cancel, sizeof(cancel));
+	mesh_send_cancel(filter, sizeof(filter));
 
 	l_info("TX timeout");
 	cb = pb_session->close_cb;
@@ -162,29 +163,40 @@ static void pb_adv_tx(void *user_data, uint8_t *data, uint16_t len)
 	send_adv_segs(session, data, len);
 }
 
+static void send_open_req(struct pb_adv_session *session)
+{
+	uint8_t open_req[23] = { MESH_AD_TYPE_PROVISION };
+
+	l_put_be32(session->link_id, open_req + 1);
+	open_req[1 + 4] = 0;
+	open_req[1 + 4 + 1] = PB_ADV_OPEN_REQ;
+	memcpy(open_req + 7, session->uuid, 16);
+
+	mesh_send_cancel(filter, sizeof(filter));
+	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 500, open_req,
+						sizeof(open_req));
+}
+
 static void send_open_cfm(struct pb_adv_session *session)
 {
 	uint8_t open_cfm[7] = { MESH_AD_TYPE_PROVISION };
 
-	l_put_be32(session->conn_id, open_cfm + 1);
+	l_put_be32(session->link_id, open_cfm + 1);
 	open_cfm[1 + 4] = 0;
-	open_cfm[1 + 4 + 1] = 0x07; /* OPEN_CFM */
+	open_cfm[1 + 4 + 1] = PB_ADV_OPEN_CFM; /* OPEN_CFM */
 
-	/* print_packet("PB-TX", open_cfm + 1, sizeof(open_cfm) - 1); */
-
-	mesh_send_cancel(open_cfm, 1);
+	mesh_send_cancel(filter, sizeof(filter));
 	mesh_send_pkt(5, 100, open_cfm, sizeof(open_cfm));
 }
 
-static void send_ack(struct pb_adv_session *session, uint8_t msg_num)
+static void send_ack(struct pb_adv_session *session, uint8_t trans_num)
 {
 	uint8_t ack[7] = { MESH_AD_TYPE_PROVISION };
 
-	l_put_be32(session->conn_id, ack + 1);
-	ack[1 + 4] = msg_num;
-	ack[1 + 4 + 1] = 0x01; /* ACK */
+	l_put_be32(session->link_id, ack + 1);
+	ack[1 + 4] = trans_num;
+	ack[1 + 4 + 1] = PB_ADV_ACK;
 
-	/* print_packet("ADV-ACK", ack + 1, sizeof(ack) - 1); */
 	mesh_send_pkt(1, 100, ack, sizeof(ack));
 }
 
@@ -192,43 +204,43 @@ static void send_close_ind(struct pb_adv_session *session, uint8_t reason)
 {
 	uint8_t close_ind[8] = { MESH_AD_TYPE_PROVISION };
 
-	if (!pb_session || pb_session->user_data != session)
+	if (!pb_session || pb_session != session)
 		return;
 
-	l_put_be32(session->conn_id, close_ind + 1);
+	l_put_be32(session->link_id, close_ind + 1);
 	close_ind[5] = 0;
-	close_ind[6] = PB_ADV_CLOSE;		/* CLOSE_IND */
+	close_ind[6] = PB_ADV_CLOSE;
 	close_ind[7] = reason;
 
-	mesh_send_cancel(close_ind, 1);
-	mesh_send_pkt(5, 100, close_ind, sizeof(close_ind));
+	mesh_send_cancel(filter, sizeof(filter));
+	mesh_send_pkt(10, 100, close_ind, sizeof(close_ind));
 }
 
 static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 {
 	struct pb_adv_session *session = user_data;
-	uint32_t conn_id;
+	uint32_t link_id;
 	size_t offset;
-	uint8_t msg_num;
+	uint8_t trans_num;
 	uint8_t type;
 	bool first;
 
 	if (!session || pb_session != session)
 		return;
 
-	conn_id = l_get_be32(pkt + 1);
+	link_id = l_get_be32(pkt + 1);
 	type = l_get_u8(pkt + 6);
 
 	/* Validate new or existing Connection ID */
-	if (session->conn_id) {
-		if (session->conn_id != conn_id)
+	if (session->link_id) {
+		if (session->link_id != link_id)
 			return;
 	} else if (type != 0x03)
 		return;
-	else if (!conn_id)
+	else if (!link_id)
 		return;
 
-	msg_num = l_get_u8(pkt + 5);
+	trans_num = l_get_u8(pkt + 5);
 	pkt += 7;
 	len -= 7;
 
@@ -237,7 +249,7 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 		/*
 		 * Ignore if:
 		 * 1. We are acceptor
-		 * 2. We are already provisioning on different conn_id
+		 * 2. We are already provisioning on different link_id
 		 */
 
 		if (!session->initiator)
@@ -259,7 +271,7 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 		 * Ignore if:
 		 * 1. We are initiator
 		 * 2. Open request not addressed to us
-		 * 3. We are already provisioning on different conn_id
+		 * 3. We are already provisioning on different link_id
 		 */
 
 		if (session->initiator)
@@ -268,12 +280,12 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 		if (memcmp(pkt, session->uuid, 16))
 			return;
 
-		first = !session->conn_id;
-		session->conn_id = conn_id;
-		session->last_peer_msg_num = 0xFF;
+		first = !session->link_id;
+		session->link_id = link_id;
+		session->last_peer_trans_num = 0xFF;
 		session->local_acked = 0xFF;
-		session->peer_msg_num = 0x00;
-		session->local_msg_num = 0x7F;
+		session->peer_trans_num = 0x00;
+		session->local_trans_num = 0x7F;
 		session->opened = true;
 
 		/* Only call Open callback once */
@@ -305,29 +317,29 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 		if (!session->opened)
 			return;
 
-		if (msg_num != session->local_msg_num)
+		if (trans_num != session->local_trans_num)
 			return;
 
-		if (session->local_acked > msg_num)
+		if (session->local_acked > trans_num)
 			return;
 
-		l_debug("Got ACK %d", msg_num);
-		session->local_acked = msg_num;
-		session->ack_cb(session->user_data, msg_num);
+		mesh_send_cancel(filter, sizeof(filter));
+		session->local_acked = trans_num;
+		session->ack_cb(session->user_data, trans_num);
 		break;
 
 	default: /* DATA SEGMENT */
 		if (!session->opened)
 			return;
 
-		if (msg_num == session->last_peer_msg_num) {
-			send_ack(session, msg_num);
+		if (trans_num == session->last_peer_trans_num) {
+			send_ack(session, trans_num);
 			return;
 		}
 
 		switch(type & 0x03) {
 		case 0x00:
-			session->peer_msg_num = msg_num;
+			session->peer_trans_num = trans_num;
 			session->exp_len = l_get_be16(pkt);
 
 			l_debug("PB-ADV start with %u fragments, %d octets",
@@ -348,7 +360,7 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 			break;
 
 		case 0x02:
-			session->peer_msg_num = msg_num;
+			session->peer_trans_num = trans_num;
 			offset = 20 + (((type >> 2) - 1) * 23);
 
 			if (offset + len - 3 > sizeof(session->sar)) {
@@ -384,18 +396,19 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 			return;
 		}
 
-		if (session->last_peer_msg_num != session->peer_msg_num) {
+		if (session->last_peer_trans_num != session->peer_trans_num) {
 			session->got_segs = 0;
 			session->rx_cb(session->user_data, session->sar,
 							session->exp_len);
 		}
 
-		session->last_peer_msg_num = session->peer_msg_num;
-		send_ack(session, session->last_peer_msg_num);
+		session->last_peer_trans_num = session->peer_trans_num;
+		send_ack(session, session->last_peer_trans_num);
 	}
 }
 
-bool pb_adv_reg(mesh_prov_open_func_t open_cb, mesh_prov_close_func_t close_cb,
+bool pb_adv_reg(bool initiator, mesh_prov_open_func_t open_cb,
+		mesh_prov_close_func_t close_cb,
 		mesh_prov_receive_func_t rx_cb, mesh_prov_ack_func_t ack_cb,
 		uint8_t uuid[16], void *user_data)
 {
@@ -408,10 +421,15 @@ bool pb_adv_reg(mesh_prov_open_func_t open_cb, mesh_prov_close_func_t close_cb,
 	pb_session->rx_cb = rx_cb;
 	pb_session->ack_cb = ack_cb;
 	pb_session->user_data = user_data;
+	pb_session->initiator = initiator;
 	memcpy(pb_session->uuid, uuid, 16);
 
-	/* TODO: register PB AD type and Start Beaconing ? */
 	mesh_reg_prov_rx(pb_adv_packet, pb_session);
+
+	if (initiator) {
+		l_getrandom(&pb_session->link_id, sizeof(pb_session->link_id));
+		send_open_req(pb_session);
+	}
 
 	return true;
 }
