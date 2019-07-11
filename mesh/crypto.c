@@ -102,8 +102,8 @@ bool mesh_crypto_aes_cmac(const uint8_t key[16], const uint8_t *msg,
 
 bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[13], const uint8_t key[16],
 					const uint8_t *aad, uint16_t aad_len,
-					const uint8_t *msg, uint16_t msg_len,
-					uint8_t *out_msg,
+					const void *msg, uint16_t msg_len,
+					void *out_msg,
 					void *out_mic, size_t mic_size)
 {
 	void *cipher;
@@ -128,8 +128,8 @@ bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[13], const uint8_t key[16],
 
 bool mesh_crypto_aes_ccm_decrypt(const uint8_t nonce[13], const uint8_t key[16],
 				const uint8_t *aad, uint16_t aad_len,
-				const uint8_t *enc_msg, uint16_t enc_msg_len,
-				uint8_t *out_msg,
+				const void *enc_msg, uint16_t enc_msg_len,
+				void *out_msg,
 				void *out_mic, size_t mic_size)
 {
 	void *cipher;

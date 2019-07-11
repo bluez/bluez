@@ -37,8 +37,7 @@ void mesh_cleanup(void);
 bool mesh_dbus_init(struct l_dbus *dbus);
 
 const char *mesh_status_str(uint8_t err);
-bool mesh_send_pkt(uint8_t count, uint16_t interval, uint8_t *data,
-								uint16_t len);
+bool mesh_send_pkt(uint8_t count, uint16_t interval, void *data, uint16_t len);
 bool mesh_send_cancel(const uint8_t *filter, uint8_t len);
 bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data);
 void mesh_unreg_prov_rx(prov_rx_cb_t cb);

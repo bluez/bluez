@@ -155,7 +155,7 @@ static void int_prov_open(void *user_data, prov_trans_tx_t trans_tx,
 				void *trans_data, uint8_t transport)
 {
 	struct mesh_prov_initiator *rx_prov = user_data;
-	uint8_t invite[] = { PROV_INVITE, 30 };
+	struct prov_invite_msg msg = { PROV_INVITE, { 30 }};
 
 	/* Only one provisioning session may be open at a time */
 	if (rx_prov != prov)
@@ -181,8 +181,8 @@ static void int_prov_open(void *user_data, prov_trans_tx_t trans_tx,
 	prov->state = INT_PROV_INVITE_SENT;
 	prov->expected = PROV_CAPS;
 
-	prov->conf_inputs.invite.attention = invite[1];
-	prov->trans_tx(prov->trans_data, invite, sizeof(invite));
+	prov->conf_inputs.invite.attention = msg.invite.attention;
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 	return;
 }
 
@@ -268,15 +268,15 @@ static void calc_local_material(const uint8_t *random)
 static void number_cb(void *user_data, int err, uint32_t number)
 {
 	struct mesh_prov_initiator *rx_prov = user_data;
-	uint8_t out[2];
+	struct prov_fail_msg msg;
 
 	if (prov != rx_prov)
 		return;
 
 	if (err) {
-		out[0] = PROV_FAILED;
-		out[1] = PROV_ERR_UNEXPECTED_ERR;
-		prov->trans_tx(prov->trans_data, out, 2);
+		msg.opcode = PROV_FAILED;
+		msg.reason = PROV_ERR_UNEXPECTED_ERR;
+		prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 		return;
 	}
 
@@ -289,15 +289,15 @@ static void number_cb(void *user_data, int err, uint32_t number)
 static void static_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 {
 	struct mesh_prov_initiator *rx_prov = user_data;
-	uint8_t out[2];
+	struct prov_fail_msg msg;
 
 	if (prov != rx_prov)
 		return;
 
 	if (err || !key || len != 16) {
-		out[0] = PROV_FAILED;
-		out[1] = PROV_ERR_UNEXPECTED_ERR;
-		prov->trans_tx(prov->trans_data, out, 2);
+		msg.opcode = PROV_FAILED;
+		msg.reason = PROV_ERR_UNEXPECTED_ERR;
+		prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 		return;
 	}
 
@@ -309,15 +309,15 @@ static void static_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 static void pub_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 {
 	struct mesh_prov_initiator *rx_prov = user_data;
-	uint8_t out[2];
+	struct prov_fail_msg msg;
 
 	if (prov != rx_prov)
 		return;
 
 	if (err || !key || len != 64) {
-		out[0] = PROV_FAILED;
-		out[1] = PROV_ERR_UNEXPECTED_ERR;
-		prov->trans_tx(prov->trans_data, out, 2);
+		msg.opcode = PROV_FAILED;
+		msg.reason = PROV_ERR_UNEXPECTED_ERR;
+		prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 		return;
 	}
 
@@ -330,45 +330,45 @@ static void pub_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 
 static void send_pub_key(struct mesh_prov_initiator *prov)
 {
-	uint8_t out[65];
+	struct prov_pub_key_msg msg;
 
-	out[0] = PROV_PUB_KEY;
-	memcpy(out + 1, prov->conf_inputs.prv_pub_key, 64);
-	prov->trans_tx(prov->trans_data, out, 65);
+	msg.opcode = PROV_PUB_KEY;
+	memcpy(msg.pub_key, prov->conf_inputs.prv_pub_key, 64);
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 	prov->state = INT_PROV_KEY_SENT;
 }
 
 static void send_confirm(struct mesh_prov_initiator *prov)
 {
-	uint8_t out[17];
+	struct prov_conf_msg msg;
 
-	out[0] = PROV_CONFIRM;
+	msg.opcode = PROV_CONFIRM;
 	mesh_crypto_aes_cmac(prov->calc_key, prov->rand_auth_workspace,
-			32, out + 1);
-	prov->trans_tx(prov->trans_data, out, 17);
+			32, msg.conf);
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 	prov->state = INT_PROV_CONF_SENT;
 	prov->expected = PROV_CONFIRM;
 }
 
 static void send_random(struct mesh_prov_initiator *prov)
 {
-	uint8_t out[17];
+	struct prov_rand_msg msg;
 
-	out[0] = PROV_RANDOM;
-	memcpy(out + 1, prov->rand_auth_workspace, 16);
-	prov->trans_tx(prov->trans_data, out, 17);
+	msg.opcode = PROV_RANDOM;
+	memcpy(msg.rand, prov->rand_auth_workspace, sizeof(msg.rand));
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 	prov->state = INT_PROV_RAND_SENT;
 	prov->expected = PROV_RANDOM;
 }
 
 void initiator_prov_data(uint16_t net_idx, uint16_t primary, void *caller_data)
 {
+	struct prov_data_msg prov_data;
+	struct prov_fail_msg prov_fail;
 	struct keyring_net_key key;
 	struct mesh_net *net;
-	uint64_t mic;
 	uint32_t iv_index;
 	uint8_t snb_flags;
-	uint8_t out[34];
 
 	if (!prov || caller_data != prov->caller_data)
 		return;
@@ -388,7 +388,7 @@ void initiator_prov_data(uint16_t net_idx, uint16_t primary, void *caller_data)
 
 	/* Fill Prov Data Structure */
 	if (!keyring_get_net_key(prov->node, net_idx, &key)) {
-		out[1] = PROV_ERR_UNEXPECTED_ERR;
+		prov_fail.reason = PROV_ERR_UNEXPECTED_ERR;
 		goto failure;
 	}
 
@@ -396,36 +396,36 @@ void initiator_prov_data(uint16_t net_idx, uint16_t primary, void *caller_data)
 	prov->net_idx = net_idx;
 	mesh_net_get_snb_state(net, &snb_flags, &iv_index);
 
-	out[0] = PROV_DATA;
+	prov_data.opcode = PROV_DATA;
 
 	if (key.phase == KEY_REFRESH_PHASE_TWO) {
-		memcpy(out + 1, key.new_key, 16);
+		memcpy(&prov_data.data.net_key, key.new_key, 16);
 		snb_flags |= PROV_FLAG_KR;
 	} else
-		memcpy(out + 1, key.old_key, 16);
+		memcpy(&prov_data.data.net_key, key.old_key, 16);
 
-	l_put_be16(net_idx, out + 1 + 16);
-	l_put_u8(snb_flags, out + 1 + 16 + 2);
-	l_put_be32(iv_index, out + 1 + 16 + 2 + 1);
-	l_put_be16(primary, out + 1 + 16 + 2 + 1 + 4);
+	l_put_be16(net_idx, &prov_data.data.net_idx);
+	l_put_u8(snb_flags, &prov_data.data.flags);
+	l_put_be32(iv_index, &prov_data.data.iv_index);
+	l_put_be16(primary, &prov_data.data.primary);
 
-	print_packet("ProvData", out + 1, 25);
+	print_packet("ProvData", &prov_data.data, sizeof(prov_data.data));
 	/* Encrypt Prov Data */
 	mesh_crypto_aes_ccm_encrypt(prov->s_nonce, prov->s_key,
 			NULL, 0,
-			out + 1,
-			25,
-			out + 1,
-			&mic, sizeof(mic));
-	print_packet("EncData", out + 1, 25 + 8);
-	prov->trans_tx(prov->trans_data, out, 34);
+			&prov_data.data,
+			sizeof(prov_data.data),
+			&prov_data.data,
+			NULL, sizeof(prov_data.mic));
+	print_packet("EncdData", &prov_data.data, sizeof(prov_data) - 1);
+	prov->trans_tx(prov->trans_data, &prov_data, sizeof(prov_data));
 	prov->state = INT_PROV_DATA_SENT;
 	return;
 
 failure:
-	l_debug("Failing... %d", out[1]);
-	out[0] = PROV_FAILED;
-	prov->trans_tx(prov->trans_data, out, 2);
+	l_debug("Failing... %d", prov_fail.reason);
+	prov_fail.opcode = PROV_FAILED;
+	prov->trans_tx(prov->trans_data, &prov_fail, sizeof(prov_fail));
 	/* TODO: Call Complete Callback (Fail)*/
 }
 

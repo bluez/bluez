@@ -63,6 +63,36 @@ struct pb_adv_session {
 
 #define PB_ADV_MTU	24
 
+struct pb_ack {
+	uint8_t ad_type;
+	uint32_t link_id;
+	uint8_t trans_num;
+	uint8_t opcode;
+} __packed;
+
+struct pb_open_req{
+	uint8_t ad_type;
+	uint32_t link_id;
+	uint8_t trans_num;
+	uint8_t opcode;
+	uint8_t uuid[16];
+} __packed;
+
+struct pb_open_cfm{
+	uint8_t ad_type;
+	uint32_t link_id;
+	uint8_t trans_num;
+	uint8_t opcode;
+} __packed;
+
+struct pb_close_ind {
+	uint8_t ad_type;
+	uint32_t link_id;
+	uint8_t trans_num;
+	uint8_t opcode;
+	uint8_t reason;
+} __packed;
+
 static struct pb_adv_session *pb_session = NULL;
 
 static const uint8_t filter[1] = { MESH_AD_TYPE_PROVISION };
@@ -150,7 +180,7 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	cb(user_data, 1);
 }
 
-static void pb_adv_tx(void *user_data, uint8_t *data, uint16_t len)
+static void pb_adv_tx(void *user_data, void *data, uint16_t len)
 {
 	struct pb_adv_session *session = user_data;
 
@@ -165,55 +195,56 @@ static void pb_adv_tx(void *user_data, uint8_t *data, uint16_t len)
 
 static void send_open_req(struct pb_adv_session *session)
 {
-	uint8_t open_req[23] = { MESH_AD_TYPE_PROVISION };
+	struct pb_open_req open_req = { MESH_AD_TYPE_PROVISION };
 
-	l_put_be32(session->link_id, open_req + 1);
-	open_req[1 + 4] = 0;
-	open_req[1 + 4 + 1] = PB_ADV_OPEN_REQ;
-	memcpy(open_req + 7, session->uuid, 16);
+	l_put_be32(session->link_id, &open_req.link_id);
+	open_req.trans_num = 0;
+	open_req.opcode = PB_ADV_OPEN_REQ;
+	memcpy(open_req.uuid, session->uuid, 16);
 
 	mesh_send_cancel(filter, sizeof(filter));
-	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 500, open_req,
-						sizeof(open_req));
+	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 500, &open_req,
+							sizeof(open_req));
 }
 
 static void send_open_cfm(struct pb_adv_session *session)
 {
-	uint8_t open_cfm[7] = { MESH_AD_TYPE_PROVISION };
+	struct pb_open_cfm open_cfm = { MESH_AD_TYPE_PROVISION };
 
-	l_put_be32(session->link_id, open_cfm + 1);
-	open_cfm[1 + 4] = 0;
-	open_cfm[1 + 4 + 1] = PB_ADV_OPEN_CFM; /* OPEN_CFM */
+	l_put_be32(session->link_id, &open_cfm.link_id);
+	open_cfm.trans_num = 0;
+	open_cfm.opcode = PB_ADV_OPEN_CFM;
 
 	mesh_send_cancel(filter, sizeof(filter));
-	mesh_send_pkt(5, 100, open_cfm, sizeof(open_cfm));
+	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 500, &open_cfm,
+							sizeof(open_cfm));
 }
 
 static void send_ack(struct pb_adv_session *session, uint8_t trans_num)
 {
-	uint8_t ack[7] = { MESH_AD_TYPE_PROVISION };
+	struct pb_ack ack = { MESH_AD_TYPE_PROVISION };
 
-	l_put_be32(session->link_id, ack + 1);
-	ack[1 + 4] = trans_num;
-	ack[1 + 4 + 1] = PB_ADV_ACK;
+	l_put_be32(session->link_id, &ack.link_id);
+	ack.trans_num = trans_num;
+	ack.opcode = PB_ADV_ACK;
 
-	mesh_send_pkt(1, 100, ack, sizeof(ack));
+	mesh_send_pkt(1, 100, &ack, sizeof(ack));
 }
 
 static void send_close_ind(struct pb_adv_session *session, uint8_t reason)
 {
-	uint8_t close_ind[8] = { MESH_AD_TYPE_PROVISION };
+	struct pb_close_ind close_ind = { MESH_AD_TYPE_PROVISION };
 
 	if (!pb_session || pb_session != session)
 		return;
 
-	l_put_be32(session->link_id, close_ind + 1);
-	close_ind[5] = 0;
-	close_ind[6] = PB_ADV_CLOSE;
-	close_ind[7] = reason;
+	l_put_be32(session->link_id, &close_ind.link_id);
+	close_ind.trans_num = 0;
+	close_ind.opcode = PB_ADV_CLOSE;
+	close_ind.reason = reason;
 
 	mesh_send_cancel(filter, sizeof(filter));
-	mesh_send_pkt(10, 100, close_ind, sizeof(close_ind));
+	mesh_send_pkt(10, 100, &close_ind, sizeof(close_ind));
 }
 
 static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)

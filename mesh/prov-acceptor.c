@@ -232,15 +232,15 @@ static uint32_t digit_mod(uint8_t power)
 static void number_cb(void *user_data, int err, uint32_t number)
 {
 	struct mesh_prov_acceptor *rx_prov = user_data;
-	uint8_t out[2];
+	struct prov_fail_msg msg;
 
 	if (prov != rx_prov)
 		return;
 
 	if (err) {
-		out[0] = PROV_FAILED;
-		out[1] = PROV_ERR_UNEXPECTED_ERR;
-		prov->trans_tx(prov->trans_data, out, 2);
+		msg.opcode = PROV_FAILED;
+		msg.reason = PROV_ERR_UNEXPECTED_ERR;
+		prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 		return;
 	}
 
@@ -248,22 +248,22 @@ static void number_cb(void *user_data, int err, uint32_t number)
 	l_put_be32(number, prov->rand_auth_workspace + 28);
 	l_put_be32(number, prov->rand_auth_workspace + 44);
 	prov->material |= MAT_RAND_AUTH;
-	out[0] = PROV_INP_CMPLT;
-	prov->trans_tx(prov->trans_data, out, 1);
+	msg.opcode = PROV_INP_CMPLT;
+	prov->trans_tx(prov->trans_data, &msg.opcode, 1);
 }
 
 static void static_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 {
 	struct mesh_prov_acceptor *rx_prov = user_data;
-	uint8_t out[2];
+	struct prov_fail_msg msg;
 
 	if (prov != rx_prov)
 		return;
 
 	if (err || !key || len != 16) {
-		out[0] = PROV_FAILED;
-		out[1] = PROV_ERR_UNEXPECTED_ERR;
-		prov->trans_tx(prov->trans_data, out, 2);
+		msg.opcode = PROV_FAILED;
+		msg.reason = PROV_ERR_UNEXPECTED_ERR;
+		prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 		return;
 	}
 
@@ -276,15 +276,15 @@ static void static_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 static void priv_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 {
 	struct mesh_prov_acceptor *rx_prov = user_data;
-	uint8_t out[2];
+	struct prov_fail_msg msg;
 
 	if (prov != rx_prov)
 		return;
 
 	if (err || !key || len != 32) {
-		out[0] = PROV_FAILED;
-		out[1] = PROV_ERR_UNEXPECTED_ERR;
-		prov->trans_tx(prov->trans_data, out, 2);
+		msg.opcode = PROV_FAILED;
+		msg.reason = PROV_ERR_UNEXPECTED_ERR;
+		prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 		return;
 	}
 
@@ -301,13 +301,53 @@ static void priv_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 		acp_credentials(prov);
 }
 
+static void send_caps(struct mesh_prov_acceptor *prov)
+{
+	struct prov_caps_msg msg;
+
+	msg.opcode = PROV_CAPS;
+	memcpy(&msg.caps, &prov->conf_inputs.caps,
+			sizeof(prov->conf_inputs.caps));
+
+	prov->state = ACP_PROV_CAPS_SENT;
+	prov->expected = PROV_START;
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
+}
+
+static void send_pub_key(struct mesh_prov_acceptor *prov)
+{
+	struct prov_pub_key_msg msg;
+
+	msg.opcode = PROV_PUB_KEY;
+	memcpy(msg.pub_key, prov->conf_inputs.dev_pub_key, sizeof(msg.pub_key));
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
+}
+
+static void send_conf(struct mesh_prov_acceptor *prov)
+{
+	struct prov_conf_msg msg;
+
+	msg.opcode = PROV_CONFIRM;
+	mesh_crypto_aes_cmac(prov->calc_key, prov->rand_auth_workspace, 32,
+								msg.conf);
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
+}
+
+static void send_rand(struct mesh_prov_acceptor *prov)
+{
+	struct prov_rand_msg msg;
+
+	msg.opcode = PROV_RANDOM;
+	memcpy(msg.rand, prov->rand_auth_workspace, sizeof(msg.rand));
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
+}
+
 static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 {
 	struct mesh_prov_acceptor *rx_prov = user_data;
 	struct mesh_prov_node_info *info;
-	uint8_t *out;
+	struct prov_fail_msg fail;
 	uint8_t type = *data++;
-	uint8_t fail_code[2];
 	uint32_t oob_key;
 	uint64_t decode_mic;
 	bool result;
@@ -323,7 +363,7 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		return;
 	} else if (type > prov->expected || type < prov->previous) {
 		l_error("Expected %2.2x, Got:%2.2x", prov->expected, type);
-		fail_code[1] = PROV_ERR_UNEXPECTED_PDU;
+		fail.reason = PROV_ERR_UNEXPECTED_PDU;
 		goto failure;
 	}
 
@@ -331,25 +371,14 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 					len != expected_pdu_size[type]) {
 		l_error("Expected PDU size %d, Got %d (type: %2.2x)",
 			len, expected_pdu_size[type], type);
-		fail_code[1] = PROV_ERR_INVALID_FORMAT;
+		fail.reason = PROV_ERR_INVALID_FORMAT;
 		goto failure;
 	}
 
 	switch (type){
 	case PROV_INVITE: /* Prov Invite */
-		/* Prov Capabilities */
-		out = l_malloc(1 + sizeof(struct mesh_net_prov_caps));
-		out[0] = PROV_CAPS;
-		memcpy(out + 1, &prov->conf_inputs.caps,
-					sizeof(prov->conf_inputs.caps));
-
 		prov->conf_inputs.invite.attention = data[0];
-
-		prov->state = ACP_PROV_CAPS_SENT;
-		prov->expected = PROV_START;
-		prov->trans_tx(prov->trans_data,
-				out, sizeof(prov->conf_inputs.caps) + 1);
-		l_free(out);
+		send_caps(prov);
 		break;
 
 	case PROV_START: /* Prov Start */
@@ -359,7 +388,7 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		if (prov->conf_inputs.start.algorithm ||
 				prov->conf_inputs.start.pub_key > 1 ||
 				prov->conf_inputs.start.auth_method > 3) {
-			fail_code[1] = PROV_ERR_INVALID_FORMAT;
+			fail.reason = PROV_ERR_INVALID_FORMAT;
 			goto failure;
 		}
 
@@ -369,7 +398,7 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 				mesh_agent_request_private_key(prov->agent,
 							priv_key_cb, prov);
 			} else {
-				fail_code[1] = PROV_ERR_INVALID_PDU;
+				fail.reason = PROV_ERR_INVALID_PDU;
 				goto failure;
 			}
 		} else {
@@ -395,13 +424,8 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 
 		acp_credentials(prov);
 
-		if (!prov->conf_inputs.start.pub_key) {
-			out = l_malloc(65);
-			out[0] = PROV_PUB_KEY;
-			memcpy(out + 1, prov->conf_inputs.dev_pub_key, 64);
-			prov->trans_tx(prov->trans_data, out, 65);
-			l_free(out);
-		}
+		if (!prov->conf_inputs.start.pub_key)
+			send_pub_key(prov);
 
 		/* Start Step 3 */
 		switch (prov->conf_inputs.start.auth_method) {
@@ -413,10 +437,10 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		case 1:
 			/* Auth Type 3c - Static OOB */
 			/* Prompt Agent for Static OOB */
-			fail_code[1] = mesh_agent_request_static(prov->agent,
+			fail.reason = mesh_agent_request_static(prov->agent,
 					static_cb, prov);
 
-			if (fail_code[1])
+			if (fail.reason)
 				goto failure;
 
 			break;
@@ -434,17 +458,17 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 			if (prov->conf_inputs.start.auth_action ==
 							PROV_ACTION_OUT_ALPHA) {
 				/* TODO: Construst NUL-term string to pass */
-				fail_code[1] = mesh_agent_display_string(
+				fail.reason = mesh_agent_display_string(
 					prov->agent, NULL, NULL, prov);
 			} else {
 				/* Ask Agent to Display U32 */
-				fail_code[1] = mesh_agent_display_number(
+				fail.reason = mesh_agent_display_number(
 					prov->agent, false,
 					prov->conf_inputs.start.auth_action,
 					oob_key, NULL, prov);
 			}
 
-			if (fail_code[1])
+			if (fail.reason)
 				goto failure;
 
 			break;
@@ -454,17 +478,17 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 			/* Prompt Agent for Input OOB */
 			if (prov->conf_inputs.start.auth_action ==
 							PROV_ACTION_IN_ALPHA) {
-				fail_code[1] = mesh_agent_prompt_alpha(
+				fail.reason = mesh_agent_prompt_alpha(
 					prov->agent,
 					static_cb, prov);
 			} else {
-				fail_code[1] = mesh_agent_prompt_number(
+				fail.reason = mesh_agent_prompt_number(
 					prov->agent, false,
 					prov->conf_inputs.start.auth_action,
 					number_cb, prov);
 			}
 
-			if (fail_code[1])
+			if (fail.reason)
 				goto failure;
 
 			break;
@@ -474,22 +498,14 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		break;
 
 	case PROV_CONFIRM: /* Confirmation */
-		out = l_malloc(17);
-		out[0] = PROV_CONFIRM;
-
-		/* Calculate and Send our Confirmation */
-		mesh_crypto_aes_cmac(prov->calc_key, prov->rand_auth_workspace,
-								32, out + 1);
-		prov->trans_tx(prov->trans_data, out, 17);
-		l_free(out);
-
 		/* Save Provisioners confirmation for later compare */
 		memcpy(prov->confirm, data, 16);
 		prov->expected = PROV_RANDOM;
+
+		send_conf(prov);
 		break;
 
 	case PROV_RANDOM: /* Random Value */
-		out = l_malloc(17);
 		/* Calculate Session key (needed later) while data is fresh */
 		mesh_crypto_prov_prov_salt(prov->salt, data,
 						prov->rand_auth_workspace,
@@ -500,20 +516,17 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		/* Calculate expected Provisioner Confirm */
 		memcpy(prov->rand_auth_workspace + 16, data, 16);
 		mesh_crypto_aes_cmac(prov->calc_key,
-				prov->rand_auth_workspace + 16, 32, out);
+					prov->rand_auth_workspace + 16, 32,
+					prov->calc_key);
 
 		/* Compare our calculation with Provisioners */
-		if (memcmp(out, prov->confirm, 16)) {
-			fail_code[1] = PROV_ERR_CONFIRM_FAILED;
-			l_free(out);
+		if (memcmp(prov->calc_key, prov->confirm, 16)) {
+			fail.reason = PROV_ERR_CONFIRM_FAILED;
 			goto failure;
 		}
 
 		/* Send Random value we used */
-		out[0] = PROV_RANDOM;
-		memcpy(out + 1, prov->rand_auth_workspace, 16);
-		prov->trans_tx(prov->trans_data, out, 17);
-		l_free(out);
+		send_rand(prov);
 		prov->expected = PROV_DATA;
 		break;
 
@@ -533,7 +546,7 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		/* Validate that the data hasn't been messed with in transit */
 		if (l_get_be64(data + 25) != decode_mic) {
 			l_error("Provisioning Failed-MIC compare");
-			fail_code[1] = PROV_ERR_DECRYPT_FAILED;
+			fail.reason = PROV_ERR_DECRYPT_FAILED;
 			goto failure;
 		}
 
@@ -556,7 +569,7 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 					prov->rand_auth_workspace, 1);
 			goto cleanup;
 		} else {
-			fail_code[1] = PROV_ERR_UNEXPECTED_ERR;
+			fail.reason = PROV_ERR_UNEXPECTED_ERR;
 			goto failure;
 		}
 		break;
@@ -570,14 +583,15 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		goto cleanup;
 	}
 
-	prov->previous = type;
+	if (prov)
+		prov->previous = type;
 	return;
 
 failure:
-	fail_code[0] = PROV_FAILED;
-	prov->trans_tx(prov->trans_data, fail_code, 2);
+	fail.opcode = PROV_FAILED;
+	prov->trans_tx(prov->trans_data, &fail, sizeof(fail));
 	if (prov->cmplt)
-		prov->cmplt(prov->caller_data, fail_code[1], NULL);
+		prov->cmplt(prov->caller_data, fail.reason, NULL);
 	prov->cmplt = NULL;
 
 cleanup:

@@ -86,7 +86,7 @@ static bool simple_match(const void *a, const void *b)
 /* Used for any outbound traffic that doesn't have Friendship Constraints */
 /* This includes Beacons, Provisioning and unrestricted Network Traffic */
 bool mesh_send_pkt(uint8_t count, uint16_t interval,
-					uint8_t *data, uint16_t len)
+					void *data, uint16_t len)
 {
 	struct mesh_io_send_info info = {
 		.type = MESH_IO_TIMING_TYPE_GENERAL,
