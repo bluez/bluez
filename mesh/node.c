@@ -80,7 +80,8 @@ struct mesh_node {
 	struct l_queue *elements;
 	char *app_path;
 	char *owner;
-	char *path;
+	char *obj_path;
+	struct mesh_agent *agent;
 	void *jconfig;
 	char *node_path;
 	uint32_t disc_watch;
@@ -242,14 +243,14 @@ static void free_node_dbus_resources(struct mesh_node *node)
 	l_free(node->app_path);
 	node->app_path = NULL;
 
-	if (node->path) {
-		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
+	if (node->obj_path) {
+		l_dbus_object_remove_interface(dbus_get_bus(), node->obj_path,
 							MESH_NODE_INTERFACE);
 
-		l_dbus_object_remove_interface(dbus_get_bus(), node->path,
+		l_dbus_object_remove_interface(dbus_get_bus(), node->obj_path,
 						MESH_MANAGEMENT_INTERFACE);
-		l_free(node->path);
-		node->path = NULL;
+		l_free(node->obj_path);
+		node->obj_path = NULL;
 	}
 }
 
@@ -439,6 +440,11 @@ void node_cleanup_all(void)
 	l_queue_destroy(nodes, cleanup_node);
 	l_dbus_unregister_interface(dbus_get_bus(), MESH_NODE_INTERFACE);
 	l_dbus_unregister_interface(dbus_get_bus(), MESH_MANAGEMENT_INTERFACE);
+}
+
+bool node_is_provisioner(struct mesh_node *node)
+{
+	return node->provisioner;
 }
 
 bool node_is_provisioned(struct mesh_node *node)
@@ -1026,14 +1032,14 @@ static bool register_node_object(struct mesh_node *node)
 	if (!hex2str(node->uuid, sizeof(node->uuid), uuid, sizeof(uuid)))
 		return false;
 
-	node->path = l_strdup_printf(BLUEZ_MESH_PATH MESH_NODE_PATH_PREFIX
+	node->obj_path = l_strdup_printf(BLUEZ_MESH_PATH MESH_NODE_PATH_PREFIX
 								"%s", uuid);
 
-	if (!l_dbus_object_add_interface(dbus_get_bus(), node->path,
+	if (!l_dbus_object_add_interface(dbus_get_bus(), node->obj_path,
 						MESH_NODE_INTERFACE, node))
 		return false;
 
-	if (!l_dbus_object_add_interface(dbus_get_bus(), node->path,
+	if (!l_dbus_object_add_interface(dbus_get_bus(), node->obj_path,
 					MESH_MANAGEMENT_INTERFACE, node))
 		return false;
 
@@ -1509,6 +1515,9 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 								&properties);
 				if (!agent)
 					goto fail;
+
+				node->agent = agent;
+
 			} else if (!strcmp(MESH_PROVISIONER_INTERFACE,
 								interface)) {
 				node->provisioner = true;
@@ -1736,7 +1745,7 @@ void node_build_attach_reply(struct mesh_node *node,
 	builder = l_dbus_message_builder_new(reply);
 
 	/* Node object path */
-	l_dbus_message_builder_append_basic(builder, 'o', node->path);
+	l_dbus_message_builder_append_basic(builder, 'o', node->obj_path);
 
 	/* Array of element configurations "a*/
 	l_dbus_message_builder_enter_array(builder, "(ya(qa{sv}))");
@@ -2007,7 +2016,20 @@ char *node_path_get(struct mesh_node *node)
 	return node->node_path;
 }
 
+const char *node_get_app_path(struct mesh_node *node)
+{
+	if (!node)
+		return NULL;
+
+	return node->app_path;
+}
+
 struct mesh_net *node_get_net(struct mesh_node *node)
 {
 	return node->net;
+}
+
+struct mesh_agent *node_get_agent(struct mesh_node *node)
+{
+	return node->agent;
 }
