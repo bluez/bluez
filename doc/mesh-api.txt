@@ -365,7 +365,9 @@ Methods:
 		ScanResult() method on the app will be called with the result.
 
 		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.NotAuthorized
+			org.bluez.mesh.Error.Busy
 
 	void UnprovisionedScanCancel(void)
 
@@ -374,6 +376,7 @@ Methods:
 		(scanning) for unprovisioned devices in the area.
 
 		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.NotAuthorized
 
 	void AddNode(array{byte}[16] uuid)
@@ -860,7 +863,7 @@ Service		unique name
 Interface	org.bluez.mesh.Provisioner1
 Object path	freely definable
 
-	ScanResult(int8 rssi, array{byte} data)
+	void ScanResult(int16 rssi, array{byte} data)
 
 		The method is called from the bluetooth-meshd daemon when a
 		unique UUID has been seen during UnprovisionedScan() for
@@ -881,17 +884,17 @@ Object path	freely definable
 		was recieved at a higher rssi power level.
 
 
-	uint16 net_index, uint8 flags, uint32 iv_index, uint16 unicast
-							RequestProvData()
+	uint16 net_index, uint16 unicast RequestProvData(uint8 count)
 
 		This method is implemented by a Provisioner capable application
 		and is called when the remote device has been fully
 		authenticated and confirmed.
 
+		The count parameter is the number of consecutive unicast
+		addresses the remote device is requesting.
+
 		Return Parameters are from the Mesh Profile Spec:
 		net_index - Subnet index of the net_key
-		flags - Flags for IV_Update and Key Refresh
-		iv_index - Current IvIndex being used on the network
 		unicast - Primary Unicast address of the new node
 
 		PossibleErrors:
