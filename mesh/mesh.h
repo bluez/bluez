@@ -42,3 +42,4 @@ bool mesh_send_cancel(const uint8_t *filter, uint8_t len);
 bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data);
 void mesh_unreg_prov_rx(prov_rx_cb_t cb);
 const char *mesh_prov_status_str(uint8_t status);
+const char *mesh_get_storage_dir(void);

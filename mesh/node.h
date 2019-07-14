@@ -35,7 +35,6 @@ typedef void (*node_ready_func_t) (void *user_data, int status,
 typedef void (*node_join_ready_func_t) (struct mesh_node *node,
 						struct mesh_agent *agent);
 
-struct mesh_node *node_new(const uint8_t uuid[16]);
 void node_remove(struct mesh_node *node);
 void node_join(const char *app_path, const char *sender, const uint8_t *uuid,
 						node_join_ready_func_t cb);
@@ -100,8 +99,8 @@ void node_id_set(struct mesh_node *node, uint16_t node_id);
 uint16_t node_id_get(struct mesh_node *node);
 bool node_dbus_init(struct l_dbus *bus);
 void node_cleanup_all(void);
-void node_config_set(struct mesh_node *node, struct mesh_config *cfg);
 struct mesh_config *node_config_get(struct mesh_node *node);
 void node_path_set(struct mesh_node *node, char *path);
 char *node_path_get(struct mesh_node *node);
 struct mesh_agent *node_get_agent(struct mesh_node *node);
+bool node_load_from_storage(const char *storage_dir);

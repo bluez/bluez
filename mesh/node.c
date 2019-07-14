@@ -33,7 +33,6 @@
 #include "mesh/appkey.h"
 #include "mesh/mesh-config.h"
 #include "mesh/provision.h"
-#include "mesh/storage.h"
 #include "mesh/keyring.h"
 #include "mesh/model.h"
 #include "mesh/cfgmod.h"
@@ -195,7 +194,7 @@ uint8_t *node_uuid_get(struct mesh_node *node)
 	return node->uuid;
 }
 
-struct mesh_node *node_new(const uint8_t uuid[16])
+static struct mesh_node *node_new(const uint8_t uuid[16])
 {
 	struct mesh_node *node;
 
@@ -284,8 +283,8 @@ void node_remove(struct mesh_node *node)
 
 	l_queue_remove(nodes, node);
 
-	if (node->node_path)
-		storage_remove_node_config(node);
+	if (node->cfg)
+		mesh_config_destroy(node->cfg);
 
 	free_node_resources(node);
 }
@@ -393,11 +392,14 @@ static void set_app_key(void *a, void *b)
 						appkey->key, appkey->new_key);
 }
 
-bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
-					struct mesh_config_node *db_node)
+static bool init_from_storage(struct mesh_config_node *db_node,
+			const uint8_t uuid[16], struct mesh_config *cfg,
+			void *user_data)
 {
 	unsigned int num_ele;
 	uint8_t mode;
+
+	struct mesh_node *node = node_new(uuid);
 
 	node->comp = l_new(struct node_composition, 1);
 	node->comp->cid = db_node->cid;
@@ -424,17 +426,17 @@ bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
 
 	num_ele = l_queue_length(db_node->elements);
 	if (num_ele > 0xff)
-		return false;
+		goto fail;
 
 	node->num_ele = num_ele;
 
 	if (num_ele != 0 && !add_elements(node, db_node))
-		return false;
+		goto fail;
 
 	node->primary = db_node->unicast;
 
 	if (!db_node->netkeys)
-		return false;
+		goto fail;
 
 	mesh_net_set_iv_index(node->net, db_node->iv_index, db_node->iv_update);
 
@@ -470,12 +472,17 @@ bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
 
 	if (!IS_UNASSIGNED(node->primary) &&
 		!mesh_net_register_unicast(node->net, node->primary, num_ele))
-		return false;
+		goto fail;
 
 	/* Initialize configuration server model */
 	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
 
+	node->cfg = cfg;
+
 	return true;
+fail:
+	node_remove(node);
+	return false;
 }
 
 static void cleanup_node(void *data)
@@ -490,7 +497,7 @@ static void cleanup_node(void *data)
 		mesh_config_write_seq_number(node->cfg,
 						mesh_net_get_seq_num(net));
 
-		mesh_config_save_config(node->cfg, true, NULL, NULL);
+		mesh_config_save(node->cfg, true, NULL, NULL);
 	}
 
 	free_node_resources(node);
@@ -1362,10 +1369,11 @@ static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
 {
 	struct mesh_config_node db_node;
 	const struct l_queue_entry *entry;
-	bool res;
+	const char *storage_dir;
 
 	convert_node_to_storage(node, &db_node);
-	res = storage_create_node_config(node, uuid, &db_node);
+	storage_dir = mesh_get_storage_dir();
+	node->cfg = mesh_config_create(storage_dir, uuid, &db_node);
 
 	/* Free temporarily allocated resources */
 	entry = l_queue_get_entries(db_node.elements);
@@ -1377,7 +1385,7 @@ static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
 
 	l_queue_destroy(db_node.elements, l_free);
 
-	return res;
+	return node->cfg != NULL;
 }
 
 static void set_defaults(struct mesh_node *node)
@@ -1502,7 +1510,7 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 			return false;
 	}
 
-	mesh_config_save_config(node->cfg, true, NULL, NULL);
+	mesh_config_save(node->cfg, true, NULL, NULL);
 
 	/* Initialize configuration server model */
 	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
@@ -2060,11 +2068,6 @@ bool node_add_pending_local(struct mesh_node *node, void *prov_node_info)
 			info->device_key, info->net_index, info->net_key);
 }
 
-void node_config_set(struct mesh_node *node, struct mesh_config *cfg)
-{
-	node->cfg = cfg;
-}
-
 struct mesh_config *node_config_get(struct mesh_node *node)
 {
 	return node->cfg;
@@ -2097,4 +2100,9 @@ struct mesh_net *node_get_net(struct mesh_node *node)
 struct mesh_agent *node_get_agent(struct mesh_node *node)
 {
 	return node->agent;
+}
+
+bool node_load_from_storage(const char *storage_dir)
+{
+	return mesh_config_load_nodes(storage_dir, init_from_storage, NULL);
 }

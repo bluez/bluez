@@ -22,7 +22,8 @@
 #endif
 
 #define _GNU_SOURCE
-
+#include <dirent.h>
+#include <ftw.h>
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
@@ -90,4 +91,40 @@ size_t hex2str(uint8_t *in, size_t in_len, char *out, size_t out_len)
 
 	out[in_len * 2] = '\0';
 	return i;
+}
+
+int create_dir(const char *dir_name)
+{
+	struct stat st;
+	char dir[PATH_MAX + 1], *prev, *next;
+	int err;
+
+	err = stat(dir_name, &st);
+	if (!err && S_ISREG(st.st_mode))
+		return 0;
+
+	memset(dir, 0, PATH_MAX + 1);
+	strcat(dir, "/");
+
+	prev = strchr(dir_name, '/');
+
+	while (prev) {
+		next = strchr(prev + 1, '/');
+		if (!next)
+			break;
+
+		if (next - prev == 1) {
+			prev = next;
+			continue;
+		}
+
+		strncat(dir, prev + 1, next - prev);
+		mkdir(dir, 0755);
+
+		prev = next;
+	}
+
+	mkdir(dir_name, 0755);
+
+	return 0;
 }

@@ -29,7 +29,6 @@
 #include "mesh/net.h"
 #include "mesh/appkey.h"
 #include "mesh/model.h"
-#include "mesh/storage.h"
 #include "mesh/mesh-config.h"
 #include "mesh/cfgmod.h"
 

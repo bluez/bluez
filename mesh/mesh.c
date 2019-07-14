@@ -27,7 +27,6 @@
 #include "mesh/mesh-io.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
-#include "mesh/storage.h"
 #include "mesh/provision.h"
 #include "mesh/model.h"
 #include "mesh/dbus.h"
@@ -77,6 +76,8 @@ static struct join_data *join_pending;
 
 /* Pending method requests */
 static struct l_queue *pending_queue;
+
+static const char *storage_dir;
 
 static bool simple_match(const void *a, const void *b)
 {
@@ -150,12 +151,11 @@ bool mesh_init(const char *config_dir, enum mesh_io_type type, void *opts)
 	mesh.prov_timeout = DEFAULT_PROV_TIMEOUT;
 	mesh.algorithms = DEFAULT_ALGORITHMS;
 
-	if (!config_dir)
-		config_dir = MESH_STORAGEDIR;
+	storage_dir = config_dir ? config_dir : MESH_STORAGEDIR;
 
-	l_info("Loading node configuration from %s", config_dir);
+	l_info("Loading node configuration from %s", storage_dir);
 
-	if (!storage_load_nodes(config_dir))
+	if (!node_load_from_storage(storage_dir))
 		return false;
 
 	mesh.io = mesh_io_new(type, opts);
@@ -637,4 +637,9 @@ bool mesh_dbus_init(struct l_dbus *dbus)
 	l_info("Added Network Interface on %s", BLUEZ_MESH_PATH);
 
 	return true;
+}
+
+const char *mesh_get_storage_dir(void)
+{
+	return storage_dir;
 }
