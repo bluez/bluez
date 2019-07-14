@@ -22,7 +22,6 @@
 #endif
 
 #define _GNU_SOURCE
-//#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -37,7 +36,7 @@
 #include "mesh/node.h"
 #include "mesh/net.h"
 #include "mesh/appkey.h"
-#include "mesh/mesh-db.h"
+#include "mesh/mesh-config.h"
 #include "mesh/util.h"
 #include "mesh/storage.h"
 

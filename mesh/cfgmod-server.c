@@ -32,8 +32,7 @@
 #include "mesh/appkey.h"
 #include "mesh/model.h"
 #include "mesh/storage.h"
-#include "mesh/mesh-db.h"
-
+#include "mesh/mesh-config.h"
 #include "mesh/cfgmod.h"
 
 #define CFG_MAX_MSG_LEN 380

@@ -30,7 +30,7 @@
 #include "mesh/mesh.h"
 #include "mesh/crypto.h"
 #include "mesh/node.h"
-#include "mesh/mesh-db.h"
+#include "mesh/mesh-config.h"
 #include "mesh/net.h"
 #include "mesh/appkey.h"
 #include "mesh/cfgmod.h"

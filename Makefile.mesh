@@ -25,7 +25,7 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/provision.h mesh/prov.h \
 				mesh/model.h mesh/model.c \
 				mesh/cfgmod.h mesh/cfgmod-server.c \
-				mesh/mesh-db.h mesh/mesh-db.c \
+				mesh/mesh-config.h mesh/mesh-config-json.c \
 				mesh/util.h mesh/util.c \
 				mesh/dbus.h mesh/dbus.c \
 				mesh/agent.h mesh/agent.c \

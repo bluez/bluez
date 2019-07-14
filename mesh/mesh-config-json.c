@@ -31,8 +31,7 @@
 
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
-
-#include "mesh/mesh-db.h"
+#include "mesh/mesh-config.h"
 
 #define CHECK_KEY_IDX_RANGE(x) (((x) >= 0) && ((x) <= 4095))
 
