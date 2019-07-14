@@ -1284,7 +1284,7 @@ static const struct mesh_model_ops ops = {
 	.pub = NULL
 };
 
-void mesh_config_srv_init(struct mesh_node *node, uint8_t ele_idx)
+void cfgmod_server_init(struct mesh_node *node, uint8_t ele_idx)
 {
 	l_debug("%2.2x", ele_idx);
 	mesh_model_register(node, ele_idx, CONFIG_SRV_MODEL, &ops, node);

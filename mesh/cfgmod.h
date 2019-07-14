@@ -94,4 +94,4 @@
 #define OP_VEND_MODEL_APP_GET			0x804C
 #define OP_VEND_MODEL_APP_LIST			0x804E
 
-void mesh_config_srv_init(struct mesh_node *node, uint8_t ele_idx);
+void cfgmod_server_init(struct mesh_node *node, uint8_t ele_idx);

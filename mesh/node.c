@@ -478,7 +478,7 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 		goto fail;
 
 	/* Initialize configuration server model */
-	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
+	cfgmod_server_init(node, PRIMARY_ELE_IDX);
 
 	node->cfg = cfg;
 
@@ -1516,7 +1516,7 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 	mesh_config_save(node->cfg, true, NULL, NULL);
 
 	/* Initialize configuration server model */
-	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
+	cfgmod_server_init(node, PRIMARY_ELE_IDX);
 
 	return true;
 }
