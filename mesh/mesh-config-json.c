@@ -22,9 +22,14 @@
 #endif
 
 #define _GNU_SOURCE
+#include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <ftw.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <ell/ell.h>
 #include <json-c/json.h>
@@ -34,6 +39,12 @@
 #include "mesh/mesh-config.h"
 
 #define CHECK_KEY_IDX_RANGE(x) (((x) >= 0) && ((x) <= 4095))
+
+struct mesh_config {
+	json_object *jnode;
+	char *node_path;
+	uint8_t uuid[16];
+};
 
 static bool get_int(json_object *jobj, const char *keyword, int *value)
 {
@@ -446,13 +457,18 @@ fail:
 	return false;
 }
 
-bool mesh_config_net_key_add(json_object *jobj, uint16_t idx,
+bool mesh_config_net_key_add(struct mesh_config *cfg, uint16_t idx,
 							const uint8_t key[16])
 {
-	json_object *jarray = NULL, *jentry = NULL, *jstring;
+	json_object *jnode, *jarray = NULL, *jentry = NULL, *jstring;
 	char buf[5];
 
-	json_object_object_get_ex(jobj, "netKeys", &jarray);
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	json_object_object_get_ex(jnode, "netKeys", &jarray);
 	if (jarray)
 		jentry = get_key_object(jarray, idx);
 
@@ -481,7 +497,7 @@ bool mesh_config_net_key_add(json_object *jobj, uint16_t idx,
 		jarray = json_object_new_array();
 		if (!jarray)
 			goto fail;
-		json_object_object_add(jobj, "netKeys", jarray);
+		json_object_object_add(jnode, "netKeys", jarray);
 	}
 
 	json_object_array_add(jarray, jentry);
@@ -494,13 +510,18 @@ fail:
 	return false;
 }
 
-bool mesh_config_net_key_update(json_object *jobj, uint16_t idx,
+bool mesh_config_net_key_update(struct mesh_config *cfg, uint16_t idx,
 							const uint8_t key[16])
 {
-	json_object *jarray, *jentry, *jstring;
+	json_object *jnode, *jarray, *jentry, *jstring;
 	const char *str;
 
-	if (!json_object_object_get_ex(jobj, "netKeys", &jarray))
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	if (!json_object_object_get_ex(jnode, "netKeys", &jarray))
 		return false;
 
 	jentry = get_key_object(jarray, idx);
@@ -525,11 +546,16 @@ bool mesh_config_net_key_update(json_object *jobj, uint16_t idx,
 	return true;
 }
 
-bool mesh_config_net_key_del(json_object *jobj, uint16_t idx)
+bool mesh_config_net_key_del(struct mesh_config *cfg, uint16_t idx)
 {
-	json_object *jarray, *jarray_new;
+	json_object *jnode, *jarray, *jarray_new;
 
-	if (!json_object_object_get_ex(jobj, "netKeys", &jarray))
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	if (!json_object_object_get_ex(jnode, "netKeys", &jarray))
 		return true;
 
 	/* Check if matching entry exists */
@@ -537,7 +563,7 @@ bool mesh_config_net_key_del(json_object *jobj, uint16_t idx)
 		return true;
 
 	if (json_object_array_length(jarray) == 1) {
-		json_object_object_del(jobj, "netKeys");
+		json_object_object_del(jnode, "netKeys");
 		return true;
 	}
 
@@ -550,29 +576,40 @@ bool mesh_config_net_key_del(json_object *jobj, uint16_t idx)
 	if (!jarray_new)
 		return false;
 
-	json_object_object_del(jobj, "netKeys");
-	json_object_object_add(jobj, "netKeys", jarray_new);
+	json_object_object_del(jnode, "netKeys");
+	json_object_object_add(jnode, "netKeys", jarray_new);
 
 	return true;
 }
 
-bool mesh_config_write_device_key(json_object *jnode, uint8_t *key)
+bool mesh_config_write_device_key(struct mesh_config *cfg, uint8_t *key)
 {
-	return add_key_value(jnode, "deviceKey", key);
+	if (!cfg)
+		return false;
+
+	return add_key_value(cfg->jnode, "deviceKey", key);
 }
 
-bool mesh_config_write_token(json_object *jnode, uint8_t *token)
+bool mesh_config_write_token(struct mesh_config *cfg, uint8_t *token)
 {
-	return add_u64_value(jnode, "token", token);
+	if (!cfg)
+		return false;
+
+	return add_u64_value(cfg->jnode, "token", token);
 }
 
-bool mesh_config_app_key_add(json_object *jobj, uint16_t net_idx,
+bool mesh_config_app_key_add(struct mesh_config *cfg, uint16_t net_idx,
 					uint16_t app_idx, const uint8_t key[16])
 {
-	json_object *jarray = NULL, *jentry = NULL, *jstring = NULL;
+	json_object *jnode, *jarray = NULL, *jentry = NULL, *jstring = NULL;
 	char buf[5];
 
-	json_object_object_get_ex(jobj, "appKeys", &jarray);
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	json_object_object_get_ex(jnode, "appKeys", &jarray);
 	if (jarray)
 		jentry = get_key_object(jarray, app_idx);
 
@@ -605,7 +642,7 @@ bool mesh_config_app_key_add(json_object *jobj, uint16_t net_idx,
 		jarray = json_object_new_array();
 		if (!jarray)
 			goto fail;
-		json_object_object_add(jobj, "appKeys", jarray);
+		json_object_object_add(jnode, "appKeys", jarray);
 	}
 
 	json_object_array_add(jarray, jentry);
@@ -619,13 +656,18 @@ fail:
 	return false;
 }
 
-bool mesh_config_app_key_update(json_object *jobj, uint16_t app_idx,
+bool mesh_config_app_key_update(struct mesh_config *cfg, uint16_t app_idx,
 							const uint8_t key[16])
 {
-	json_object *jarray, *jentry = NULL, *jstring = NULL;
+	json_object *jnode, *jarray, *jentry = NULL, *jstring = NULL;
 	const char *str;
 
-	if (!json_object_object_get_ex(jobj, "appKeys", &jarray))
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	if (!json_object_object_get_ex(jnode, "appKeys", &jarray))
 		return false;
 
 	/* The key entry should exist if the key is updated */
@@ -644,11 +686,17 @@ bool mesh_config_app_key_update(json_object *jobj, uint16_t app_idx,
 	return add_key_value(jentry, "key", key);
 }
 
-bool mesh_config_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx)
+bool mesh_config_app_key_del(struct mesh_config *cfg, uint16_t net_idx,
+								uint16_t idx)
 {
-	json_object *jarray, *jarray_new;
+	json_object *jnode, *jarray, *jarray_new;
 
-	if (!json_object_object_get_ex(jobj, "appKeys", &jarray))
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	if (!json_object_object_get_ex(jnode, "appKeys", &jarray))
 		return true;
 
 	/* Check if matching entry exists */
@@ -656,7 +704,7 @@ bool mesh_config_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx)
 		return true;
 
 	if (json_object_array_length(jarray) == 1) {
-		json_object_object_del(jobj, "appKeys");
+		json_object_object_del(jnode, "appKeys");
 		return true;
 	}
 
@@ -669,18 +717,23 @@ bool mesh_config_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx)
 	if (!jarray_new)
 		return false;
 
-	json_object_object_del(jobj, "appKeys");
-	json_object_object_add(jobj, "appKeys", jarray_new);
+	json_object_object_del(jnode, "appKeys");
+	json_object_object_add(jnode, "appKeys", jarray_new);
 
 	return true;
 }
 
-bool mesh_config_model_binding_add(json_object *jnode, uint8_t ele_idx,
+bool mesh_config_model_binding_add(struct mesh_config *cfg, uint8_t ele_idx,
 					bool vendor, uint32_t mod_id,
 							uint16_t app_idx)
 {
-	json_object *jmodel, *jstring, *jarray = NULL;
+	json_object *jnode, *jmodel, *jstring, *jarray = NULL;
 	char buf[5];
+
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
 
 	jmodel = get_element_model(jnode, ele_idx, mod_id, vendor);
 	if (!jmodel)
@@ -710,12 +763,17 @@ bool mesh_config_model_binding_add(json_object *jnode, uint8_t ele_idx,
 	return true;
 }
 
-bool mesh_config_model_binding_del(json_object *jnode, uint8_t ele_idx,
+bool mesh_config_model_binding_del(struct mesh_config *cfg, uint8_t ele_idx,
 					bool vendor, uint32_t mod_id,
 							uint16_t app_idx)
 {
-	json_object *jmodel, *jarray, *jarray_new;
+	json_object *jnode, *jmodel, *jarray, *jarray_new;
 	char buf[5];
+
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
 
 	jmodel = get_element_model(jnode, ele_idx, mod_id, vendor);
 	if (!jmodel)
@@ -1189,45 +1247,32 @@ static bool read_net_transmit(json_object *jobj, struct mesh_config_node *node)
 	return true;
 }
 
-bool mesh_config_read_node(json_object *jnode, mesh_config_node_cb cb,
-							void *user_data)
+static bool read_node(json_object *jnode, struct mesh_config_node *node)
 {
-	struct mesh_config_node node;
 	json_object *jvalue;
 	char *str;
-	bool result = false;
 
-	if (!jnode)
-		return false;
-
-	if (!cb) {
-		l_info("Node read callback is required");
-		return false;
-	}
-
-	memset(&node, 0, sizeof(node));
-
-	if (!read_iv_index(jnode, &node.iv_index, &node.iv_update)) {
+	if (!read_iv_index(jnode, &node->iv_index, &node->iv_update)) {
 		l_info("Failed to read IV index");
 		return false;
 	}
 
-	if (!read_token(jnode, node.token)) {
+	if (!read_token(jnode, node->token)) {
 		l_info("Failed to read node token");
 		return false;
 	}
 
-	if (!read_device_key(jnode, node.dev_key)) {
+	if (!read_device_key(jnode, node->dev_key)) {
 		l_info("Failed to read node device key");
 		return false;
 	}
 
-	if (!parse_composition(jnode, &node)) {
+	if (!parse_composition(jnode, node)) {
 		l_info("Failed to parse local node composition");
 		return false;
 	}
 
-	parse_features(jnode, &node);
+	parse_features(jnode, node);
 
 	if (!json_object_object_get_ex(jnode, "unicastAddress", &jvalue)) {
 		l_info("Bad config: Unicast address must be present");
@@ -1235,7 +1280,7 @@ bool mesh_config_read_node(json_object *jnode, mesh_config_node_cb cb,
 	}
 
 	str = (char *)json_object_get_string(jvalue);
-	if (sscanf(str, "%04hx", &node.unicast) != 1)
+	if (sscanf(str, "%04hx", &node->unicast) != 1)
 		return false;
 
 	if (json_object_object_get_ex(jnode, "defaultTTL", &jvalue)) {
@@ -1243,54 +1288,44 @@ bool mesh_config_read_node(json_object *jnode, mesh_config_node_cb cb,
 
 		if (ttl < 0 || ttl == 1 || ttl > DEFAULT_TTL)
 			return false;
-		node.ttl = (uint8_t) ttl;
+		node->ttl = (uint8_t) ttl;
 	}
 
 	if (json_object_object_get_ex(jnode, "sequenceNumber", &jvalue))
-		node.seq_number = json_object_get_int(jvalue);
+		node->seq_number = json_object_get_int(jvalue);
 
 	/* Check for required "elements" property */
 	if (!json_object_object_get_ex(jnode, "elements", &jvalue))
 		return false;
 
-	if (!read_net_transmit(jnode, &node)) {
+	if (!read_net_transmit(jnode, node)) {
 		l_info("Failed to read node net transmit parameters");
 		return false;
 	}
 
-	if (!read_net_keys(jnode, &node)) {
+	if (!read_net_keys(jnode, node)) {
 		l_info("Failed to read net keys");
-		goto done;
+		return false;
 	}
 
-	if (!read_app_keys(jnode, &node)) {
+	if (!read_app_keys(jnode, node)) {
 		l_info("Failed to read app keys");
-		goto done;
+		return false;
 	}
 
-	if (!parse_elements(jvalue, &node)) {
+	if (!parse_elements(jvalue, node)) {
 		l_info("Failed to parse elements");
-		goto done;
+		return false;
 	}
 
-	result = cb(&node, user_data);
-
-done:
-	l_free(node.net_transmit);
-	l_queue_destroy(node.netkeys, l_free);
-	l_queue_destroy(node.netkeys, l_free);
-
-	return result;
+	return true;
 }
 
-bool mesh_config_write_uint16_hex(json_object *jobj, const char *desc,
+static bool write_uint16_hex(json_object *jobj, const char *desc,
 								uint16_t value)
 {
 	json_object *jstring;
 	char buf[5];
-
-	if (!jobj)
-		return false;
 
 	snprintf(buf, 5, "%4.4x", value);
 	jstring = json_object_new_string(buf);
@@ -1301,14 +1336,20 @@ bool mesh_config_write_uint16_hex(json_object *jobj, const char *desc,
 	return true;
 }
 
-bool mesh_config_write_uint32_hex(json_object *jobj, const char *desc,
+bool mesh_config_write_uint16_hex(struct mesh_config *cfg, const char *desc,
+								uint16_t value)
+{
+	if (!cfg)
+		return false;
+
+	return write_uint16_hex(cfg->jnode, desc, value);
+}
+
+static bool write_uint32_hex(json_object *jobj, const char *desc,
 								uint32_t value)
 {
 	json_object *jstring;
 	char buf[9];
-
-	if (!jobj)
-		return false;
 
 	snprintf(buf, 9, "%8.8x", value);
 	jstring = json_object_new_string(buf);
@@ -1319,12 +1360,18 @@ bool mesh_config_write_uint32_hex(json_object *jobj, const char *desc,
 	return true;
 }
 
-bool mesh_config_write_int(json_object *jobj, const char *keyword, int value)
+bool mesh_config_write_uint32_hex(struct mesh_config *cfg, const char *desc,
+								uint32_t value)
+{
+	if (!cfg)
+		return false;
+
+	return write_uint32_hex(cfg->jnode, desc, value);
+}
+
+static bool write_int(json_object *jobj, const char *keyword, int value)
 {
 	json_object *jvalue;
-
-	if (!jobj)
-		return false;
 
 	json_object_object_del(jobj, keyword);
 
@@ -1336,20 +1383,32 @@ bool mesh_config_write_int(json_object *jobj, const char *keyword, int value)
 	return true;
 }
 
-bool mesh_config_write_bool(json_object *jobj, const char *keyword, bool value)
+bool mesh_config_write_int(struct mesh_config *cfg, const char *keyword,
+								int value)
 {
-	json_object *jvalue;
-
-	if (!jobj)
+	if (!cfg)
 		return false;
 
-	json_object_object_del(jobj, keyword);
+	return write_int(cfg->jnode, keyword, value);
+}
+
+bool mesh_config_write_bool(struct mesh_config *cfg, const char *keyword,
+								bool value)
+{
+	json_object *jnode, *jvalue;
+
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	json_object_object_del(jnode, keyword);
 
 	jvalue = json_object_new_boolean(value);
 	if (!jvalue)
 		return false;
 
-	json_object_object_add(jobj, keyword, jvalue);
+	json_object_object_add(jnode, keyword, jvalue);
 	return true;
 }
 
@@ -1365,12 +1424,9 @@ static const char *mode_to_string(int mode)
 	}
 }
 
-bool mesh_config_write_mode(json_object *jobj, const char *keyword, int value)
+static bool write_mode(json_object *jobj, const char *keyword, int value)
 {
 	json_object *jstring;
-
-	if (!jobj)
-		return false;
 
 	jstring = json_object_new_string(mode_to_string(value));
 
@@ -1382,30 +1438,36 @@ bool mesh_config_write_mode(json_object *jobj, const char *keyword, int value)
 	return true;
 }
 
-bool mesh_config_write_relay_mode(json_object *jnode, uint8_t mode,
+bool mesh_config_write_mode(struct mesh_config *cfg, const char *keyword,
+								int value)
+{
+	if (!cfg)
+		return false;
+
+	return write_mode(cfg->jnode, keyword, value);
+}
+
+static bool write_relay_mode(json_object *jobj, uint8_t mode,
 					uint8_t count, uint16_t interval)
 {
 	json_object *jrelay;
 
-	if (!jnode)
-		return false;
-
-	json_object_object_del(jnode, "relay");
+	json_object_object_del(jobj, "relay");
 
 	jrelay = json_object_new_object();
 	if (!jrelay)
 		return false;
 
-	if (!mesh_config_write_mode(jrelay, "mode", mode))
+	if (!write_mode(jrelay, "mode", mode))
 		goto fail;
 
-	if (!mesh_config_write_int(jrelay, "count", count))
+	if (!write_int(jrelay, "count", count))
 		goto fail;
 
-	if (!mesh_config_write_int(jrelay, "interval", interval))
+	if (!write_int(jrelay, "interval", interval))
 		goto fail;
 
-	json_object_object_add(jnode, "relay", jrelay);
+	json_object_object_add(jobj, "relay", jrelay);
 
 	return true;
 fail:
@@ -1413,27 +1475,38 @@ fail:
 	return false;
 }
 
-bool mesh_config_write_net_transmit(json_object *jobj, uint8_t cnt,
-							uint16_t interval)
+bool mesh_config_write_relay_mode(struct mesh_config *cfg, uint8_t mode,
+					uint8_t count, uint16_t interval)
 {
-	json_object *jretransmit;
 
-	if (!jobj)
+	if (!cfg)
 		return false;
 
-	json_object_object_del(jobj, "retransmit");
+	return write_relay_mode(cfg->jnode, mode, count, interval);
+}
+
+bool mesh_config_write_net_transmit(struct mesh_config *cfg, uint8_t cnt,
+							uint16_t interval)
+{
+	json_object *jnode, *jretransmit;
+
+	if (!cfg)
+		return false;
+	jnode = cfg->jnode;
+
+	json_object_object_del(jnode, "retransmit");
 
 	jretransmit = json_object_new_object();
 	if (jretransmit)
 		return false;
 
-	if (!mesh_config_write_int(jretransmit, "count", cnt))
+	if (!write_int(jretransmit, "count", cnt))
 		goto fail;
 
-	if (!mesh_config_write_int(jretransmit, "interval", interval))
+	if (!write_int(jretransmit, "interval", interval))
 		goto fail;
 
-	json_object_object_add(jobj, "retransmit", jretransmit);
+	json_object_object_add(jnode, "retransmit", jretransmit);
 
 	return true;
 fail:
@@ -1442,26 +1515,24 @@ fail:
 
 }
 
-bool mesh_config_write_iv_index(json_object *jobj, uint32_t idx, bool update)
+bool mesh_config_write_iv_index(struct mesh_config *cfg, uint32_t idx,
+								bool update)
 {
+	json_object *jnode;
 	int tmp = update ? 1 : 0;
 
-	if (!jobj)
+	if (!cfg)
 		return false;
 
-	if (!mesh_config_write_int(jobj, "IVindex", idx))
+	jnode = cfg->jnode;
+
+	if (!write_int(jnode, "IVindex", idx))
 		return false;
 
-	if (!mesh_config_write_int(jobj, "IVupdate", tmp))
+	if (!write_int(jnode, "IVupdate", tmp))
 		return false;
 
 	return true;
-}
-
-void mesh_config_remove_property(json_object *jobj, const char *desc)
-{
-	if (jobj)
-		json_object_object_del(jobj, desc);
 }
 
 static void add_model(void *a, void *b)
@@ -1474,55 +1545,59 @@ static void add_model(void *a, void *b)
 		return;
 
 	if (!mod->vendor)
-		mesh_config_write_uint16_hex(jmodel, "modelId",
+		write_uint16_hex(jmodel, "modelId",
 						(uint16_t) mod->id);
 	else
-		mesh_config_write_uint32_hex(jmodel, "modelId", mod->id);
+		write_uint32_hex(jmodel, "modelId", mod->id);
 
 	json_object_array_add(jmodels, jmodel);
 }
 
 /* Add unprovisioned node (local) */
-bool mesh_config_add_node(json_object *jnode, struct mesh_config_node *node)
+struct mesh_config *mesh_config_create(const char *cfg_path,
+						const uint8_t uuid[16],
+						struct mesh_config_node *node)
 {
 	struct mesh_config_modes *modes = &node->modes;
 	const struct l_queue_entry *entry;
-	json_object *jelems;
+	json_object *jnode, *jelems;
+	struct mesh_config *cfg;
 
-	if (!jnode)
-		return false;
+	if (!cfg_path || !node)
+		return NULL;
+
+	jnode = json_object_new_object();
 
 	/* CID, PID, VID, crpl */
-	if (!mesh_config_write_uint16_hex(jnode, "cid", node->cid))
-		return false;
+	if (!write_uint16_hex(jnode, "cid", node->cid))
+		return NULL;
 
-	if (!mesh_config_write_uint16_hex(jnode, "pid", node->pid))
-		return false;
+	if (!write_uint16_hex(jnode, "pid", node->pid))
+		return NULL;
 
-	if (!mesh_config_write_uint16_hex(jnode, "vid", node->vid))
-		return false;
+	if (!write_uint16_hex(jnode, "vid", node->vid))
+		return NULL;
 
-	if (!mesh_config_write_uint16_hex(jnode, "crpl", node->crpl))
-		return false;
+	if (!write_uint16_hex(jnode, "crpl", node->crpl))
+		return NULL;
 
 	/* Features: relay, LPN, friend, proxy*/
-	if (!mesh_config_write_relay_mode(jnode, modes->relay.state,
-						modes->relay.cnt,
-						modes->relay.interval))
-		return false;
+	if (!write_relay_mode(jnode, modes->relay.state,
+				modes->relay.cnt, modes->relay.interval))
+		return NULL;
 
-	if (!mesh_config_write_mode(jnode, "lowPower", modes->lpn))
-		return false;
+	if (!write_mode(jnode, "lowPower", modes->lpn))
+		return NULL;
 
-	if (!mesh_config_write_mode(jnode, "friend", modes->friend))
-		return false;
+	if (!write_mode(jnode, "friend", modes->friend))
+		return NULL;
 
-	if (!mesh_config_write_mode(jnode, "proxy", modes->proxy))
-		return false;
+	if (!write_mode(jnode, "proxy", modes->proxy))
+		return NULL;
 
 	/* Beaconing state */
-	if (!mesh_config_write_mode(jnode, "beacon", modes->beacon))
-		return false;
+	if (!write_mode(jnode, "beacon", modes->beacon))
+		return NULL;
 
 	/* Sequence number */
 	json_object_object_add(jnode, "sequenceNumber",
@@ -1535,7 +1610,7 @@ bool mesh_config_add_node(json_object *jnode, struct mesh_config_node *node)
 	/* Elements */
 	jelems = json_object_new_array();
 	if (!jelems)
-		return false;
+		return NULL;
 
 	entry = l_queue_get_entries(node->elements);
 
@@ -1547,12 +1622,11 @@ bool mesh_config_add_node(json_object *jnode, struct mesh_config_node *node)
 
 		if (!jelement) {
 			json_object_put(jelems);
-			return false;
+			return NULL;
 		}
 
-		mesh_config_write_int(jelement, "elementIndex", ele->index);
-		mesh_config_write_uint16_hex(jelement, "location",
-								ele->location);
+		write_int(jelement, "elementIndex", ele->index);
+		write_uint16_hex(jelement, "location", ele->location);
 		json_object_array_add(jelems, jelement);
 
 		/* Models */
@@ -1562,7 +1636,7 @@ bool mesh_config_add_node(json_object *jnode, struct mesh_config_node *node)
 		jmodels = json_object_new_array();
 		if (!jmodels) {
 			json_object_put(jelems);
-			return false;
+			return NULL;
 		}
 
 		json_object_object_add(jelement, "models", jmodels);
@@ -1571,7 +1645,13 @@ bool mesh_config_add_node(json_object *jnode, struct mesh_config_node *node)
 
 	json_object_object_add(jnode, "elements", jelems);
 
-	return true;
+	cfg = l_new(struct mesh_config, 1);
+
+	cfg->jnode = jnode;
+	memcpy(cfg->uuid, uuid, 16);
+	cfg->node_path = l_strdup(cfg_path);
+
+	return cfg;
 }
 
 static void finish_key_refresh(json_object *jobj, uint16_t net_idx)
@@ -1605,15 +1685,17 @@ static void finish_key_refresh(json_object *jobj, uint16_t net_idx)
 
 }
 
-bool mesh_config_net_key_set_phase(json_object *jobj, uint16_t idx,
+bool mesh_config_net_key_set_phase(struct mesh_config *cfg, uint16_t idx,
 								uint8_t phase)
 {
-	json_object *jarray, *jentry = NULL;
+	json_object *jnode, *jarray, *jentry = NULL;
 
-	if (!jobj)
+	if (!cfg)
 		return false;
 
-	if (json_object_object_get_ex(jobj, "netKeys", &jarray))
+	jnode = cfg->jnode;
+
+	if (json_object_object_get_ex(jnode, "netKeys", &jarray))
 		jentry = get_key_object(jarray, idx);
 
 	if (!jentry)
@@ -1625,22 +1707,24 @@ bool mesh_config_net_key_set_phase(json_object *jobj, uint16_t idx,
 
 	if (phase == KEY_REFRESH_PHASE_NONE) {
 		json_object_object_del(jentry, "oldKey");
-		finish_key_refresh(jobj, idx);
+		finish_key_refresh(jnode, idx);
 	}
 
 	return true;
 }
 
-bool mesh_config_model_pub_add(json_object *jnode, uint16_t addr,
+bool mesh_config_model_pub_add(struct mesh_config *cfg, uint16_t addr,
 					uint32_t mod_id, bool vendor,
 					struct mesh_config_pub *pub)
 {
-	json_object *jmodel, *jpub, *jretransmit;
+	json_object *jnode, *jmodel, *jpub, *jretransmit;
 	bool res;
 	int ele_idx;
 
-	if (!jnode)
+	if (!cfg)
 		return false;
+
+	jnode = cfg->jnode;
 
 	ele_idx = get_element_index(jnode, addr);
 	if (ele_idx < 0)
@@ -1659,21 +1743,21 @@ bool mesh_config_model_pub_add(json_object *jnode, uint16_t addr,
 	if (pub->virt)
 		res = add_key_value(jpub, "address", pub->virt_addr);
 	else
-		res = mesh_config_write_uint16_hex(jpub, "address", pub->addr);
+		res = write_uint16_hex(jpub, "address", pub->addr);
 
 	if (!res)
 		goto fail;
 
-	if (!mesh_config_write_uint16_hex(jpub, "index", pub->idx))
+	if (!write_uint16_hex(jpub, "index", pub->idx))
 		goto fail;
 
-	if (!mesh_config_write_int(jpub, "ttl", pub->ttl))
+	if (!write_int(jpub, "ttl", pub->ttl))
 		goto fail;
 
-	if (!mesh_config_write_int(jpub, "period", pub->period))
+	if (!write_int(jpub, "period", pub->period))
 		goto fail;
 
-	if (!mesh_config_write_int(jpub, "credentials",
+	if (!write_int(jpub, "credentials",
 						pub->credential ? 1 : 0))
 		goto fail;
 
@@ -1681,10 +1765,10 @@ bool mesh_config_model_pub_add(json_object *jnode, uint16_t addr,
 	if (!jretransmit)
 		goto fail;
 
-	if (!mesh_config_write_int(jretransmit, "count", pub->count))
+	if (!write_int(jretransmit, "count", pub->count))
 		goto fail;
 
-	if (!mesh_config_write_int(jretransmit, "interval", pub->interval))
+	if (!write_int(jretransmit, "interval", pub->interval))
 		goto fail;
 
 	json_object_object_add(jpub, "retransmit", jretransmit);
@@ -1715,25 +1799,28 @@ static bool delete_model_property(json_object *jnode, uint16_t addr,
 	return true;
 }
 
-bool mesh_config_model_pub_del(json_object *jnode, uint16_t addr,
+bool mesh_config_model_pub_del(struct mesh_config *cfg, uint16_t addr,
 						uint32_t mod_id, bool vendor)
 {
-	if (!jnode)
+	if (!cfg)
 		return false;
 
-	return delete_model_property(jnode, addr, mod_id, vendor, "publish");
+	return delete_model_property(cfg->jnode, addr, mod_id, vendor,
+								"publish");
 }
 
-bool mesh_config_model_sub_add(json_object *jnode, uint16_t addr,
+bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t addr,
 						uint32_t mod_id, bool vendor,
 						struct mesh_config_sub *sub)
 {
-	json_object *jmodel, *jstring, *jarray = NULL;
+	json_object *jnode, *jmodel, *jstring, *jarray = NULL;
 	int ele_idx, len;
 	char buf[33];
 
-	if (!jnode)
+	if (!cfg)
 		return false;
+
+	jnode = cfg->jnode;
 
 	ele_idx = get_element_index(jnode, addr);
 	if (ele_idx < 0)
@@ -1773,16 +1860,18 @@ bool mesh_config_model_sub_add(json_object *jnode, uint16_t addr,
 	return true;
 }
 
-bool mesh_config_model_sub_del(json_object *jnode, uint16_t addr,
+bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t addr,
 						uint32_t mod_id, bool vendor,
 						struct mesh_config_sub *sub)
 {
-	json_object *jmodel, *jarray, *jarray_new;
+	json_object *jnode, *jmodel, *jarray, *jarray_new;
 	char buf[33];
 	int len, ele_idx;
 
-	if (!jnode)
+	if (!cfg)
 		return false;
+
+	jnode = cfg->jnode;
 
 	ele_idx = get_element_index(jnode, addr);
 	if (ele_idx < 0)
@@ -1826,11 +1915,126 @@ bool mesh_config_model_sub_del(json_object *jnode, uint16_t addr,
 	return true;
 }
 
-bool mesh_config_model_sub_del_all(json_object *jnode, uint16_t addr,
+bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t addr,
 						uint32_t mod_id, bool vendor)
 {
-	if (!jnode)
+	if (!cfg)
 		return false;
 
-	return delete_model_property(jnode, addr, mod_id, vendor, "subscribe");
+	return delete_model_property(cfg->jnode, addr, mod_id, vendor,
+								"subscribe");
+}
+
+bool mesh_config_load_node(const char *cfg_path, const uint8_t uuid[16],
+					mesh_config_node_cb cb, void *user_data)
+{
+	int fd;
+	char *str;
+	struct stat st;
+	ssize_t sz;
+	bool result = false;
+	json_object *jnode;
+	struct mesh_config_node node;
+
+	if (!cb) {
+		l_info("Node read callback is required");
+		return false;
+	}
+
+	l_info("Loading configuration from %s", cfg_path);
+
+	fd = open(cfg_path, O_RDONLY);
+	if (fd < 0)
+		return false;
+
+	if (fstat(fd, &st) == -1) {
+		close(fd);
+		return false;
+	}
+
+	str = (char *) l_new(char, st.st_size + 1);
+	if (!str) {
+		close(fd);
+		return false;
+	}
+
+	sz = read(fd, str, st.st_size);
+	if (sz != st.st_size) {
+		l_error("Failed to read configuration file %s", cfg_path);
+		goto done;
+	}
+
+	jnode = json_tokener_parse(str);
+	if (!jnode)
+		goto done;
+
+	memset(&node, 0, sizeof(node));
+	result = read_node(jnode, &node);
+
+	if (result) {
+		struct mesh_config *cfg = l_new(struct mesh_config, 1);
+
+		cfg->jnode = jnode;
+		memcpy(cfg->uuid, uuid, 16);
+		cfg->node_path = l_strdup(cfg_path);
+		result = cb(&node, uuid, cfg, user_data);
+
+		if (!result) {
+			l_free(cfg->node_path);
+			l_free(cfg);
+		}
+	}
+
+	/* Done with the node: free resources */
+	l_free(node.net_transmit);
+	l_queue_destroy(node.netkeys, l_free);
+	l_queue_destroy(node.appkeys, l_free);
+
+	if (!result)
+		json_object_put(jnode);
+
+done:
+	close(fd);
+	if (str)
+		l_free(str);
+
+	return result;
+}
+
+void mesh_config_release(struct mesh_config *cfg)
+{
+	if (!cfg)
+		return;
+
+	l_free(cfg->node_path);
+	json_object_put(cfg->jnode);
+	l_free(cfg);
+}
+
+bool mesh_config_save_config(struct mesh_config *cfg, const char *fname)
+{
+	FILE *outfile;
+	const char *str;
+	bool result = false;
+
+	if (!cfg)
+		return false;
+
+	outfile = fopen(fname, "w");
+	if (!outfile) {
+		l_error("Failed to save configuration to %s", fname);
+		return false;
+	}
+
+	str = json_object_to_json_string_ext(cfg->jnode,
+						JSON_C_TO_STRING_PRETTY);
+
+	if (fwrite(str, sizeof(char), strlen(str), outfile) < strlen(str))
+		l_warn("Incomplete write of mesh configuration");
+	else
+		result = true;
+
+	fclose(outfile);
+
+	return result;
 }

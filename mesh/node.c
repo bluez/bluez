@@ -26,7 +26,6 @@
 #include <sys/time.h>
 
 #include <ell/ell.h>
-#include <json-c/json.h>
 
 #include "mesh/mesh-defs.h"
 #include "mesh/mesh.h"
@@ -83,7 +82,8 @@ struct mesh_node {
 	char *owner;
 	char *obj_path;
 	struct mesh_agent *agent;
-	void *jconfig;
+	char *path;
+	struct mesh_config *cfg;
 	char *node_path;
 	uint32_t disc_watch;
 	time_t upd_sec;
@@ -393,9 +393,9 @@ static void set_app_key(void *a, void *b)
 						appkey->key, appkey->new_key);
 }
 
-bool node_init_from_storage(struct mesh_node *node, void *data)
+bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
+					struct mesh_config_node *db_node)
 {
-	struct mesh_config_node *db_node = data;
 	unsigned int num_ele;
 	uint8_t mode;
 
@@ -759,7 +759,7 @@ bool node_proxy_mode_set(struct mesh_node *node, bool enable)
 		return false;
 
 	proxy = enable ? MESH_MODE_ENABLED : MESH_MODE_DISABLED;
-	res = storage_set_mode(node->jconfig, proxy, "proxy");
+	res = storage_set_mode(node, proxy, "proxy");
 
 	if (res) {
 		node->proxy = proxy;
@@ -786,7 +786,7 @@ bool node_beacon_mode_set(struct mesh_node *node, bool enable)
 		return false;
 
 	beacon = enable ? MESH_MODE_ENABLED : MESH_MODE_DISABLED;
-	res = storage_set_mode(node->jconfig, beacon, "beacon");
+	res = storage_set_mode(node, beacon, "beacon");
 
 	if (res) {
 		node->beacon = beacon;
@@ -813,7 +813,7 @@ bool node_friend_mode_set(struct mesh_node *node, bool enable)
 		return false;
 
 	friend = enable ? MESH_MODE_ENABLED : MESH_MODE_DISABLED;
-	res = storage_set_mode(node->jconfig, friend, "friend");
+	res = storage_set_mode(node, friend, "friend");
 
 	if (res) {
 		node->friend = friend;
@@ -1356,14 +1356,14 @@ static void convert_node_to_storage(struct mesh_node *node,
 
 }
 
-static bool create_node_config(struct mesh_node *node)
+static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
 {
 	struct mesh_config_node db_node;
 	const struct l_queue_entry *entry;
 	bool res;
 
 	convert_node_to_storage(node, &db_node);
-	res = storage_create_node_config(node, &db_node);
+	res = storage_create_node_config(node, uuid, &db_node);
 
 	/* Free temporarily allocated resources */
 	entry = l_queue_get_entries(db_node.elements);
@@ -1471,16 +1471,16 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 
 	mesh_net_set_iv_index(node->net, iv_idx, ivu);
 
-	if (!mesh_config_write_uint16_hex(node->jconfig, "unicastAddress",
+	if (!mesh_config_write_uint16_hex(node->cfg, "unicastAddress",
 								unicast))
 		return false;
 
 	l_getrandom(node->token, sizeof(node->token));
-	if (!mesh_config_write_token(node->jconfig, node->token))
+	if (!mesh_config_write_token(node->cfg, node->token))
 		return false;
 
 	memcpy(node->dev_key, dev_key, 16);
-	if (!mesh_config_write_device_key(node->jconfig, dev_key))
+	if (!mesh_config_write_device_key(node->cfg, dev_key))
 		return false;
 
 	node->primary = unicast;
@@ -1496,7 +1496,7 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 							MESH_STATUS_SUCCESS)
 			return false;
 
-		if (!mesh_config_net_key_set_phase(node->jconfig, net_key_idx,
+		if (!mesh_config_net_key_set_phase(node->cfg, net_key_idx,
 							KEY_REFRESH_PHASE_TWO))
 			return false;
 	}
@@ -1634,7 +1634,7 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		set_defaults(node);
 		memcpy(node->uuid, req->data, 16);
 
-		if (!create_node_config(node))
+		if (!create_node_config(node, node->uuid))
 			goto fail;
 
 		cb(node, agent);
@@ -1649,7 +1649,7 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		set_defaults(node);
 		memcpy(node->uuid, req->data, 16);
 
-		if (!create_node_config(node))
+		if (!create_node_config(node, node->uuid))
 			goto fail;
 
 		/* Generate device and primary network keys */
@@ -2059,14 +2059,14 @@ bool node_add_pending_local(struct mesh_node *node, void *prov_node_info)
 			info->device_key, info->net_index, info->net_key);
 }
 
-void node_jconfig_set(struct mesh_node *node, void *jconfig)
+void node_config_set(struct mesh_node *node, struct mesh_config *cfg)
 {
-	node->jconfig = jconfig;
+	node->cfg = cfg;
 }
 
-void *node_jconfig_get(struct mesh_node *node)
+struct mesh_config *node_config_get(struct mesh_node *node)
 {
-	return node->jconfig;
+	return node->cfg;
 }
 
 void node_path_set(struct mesh_node *node, char *path)

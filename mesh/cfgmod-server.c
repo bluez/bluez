@@ -24,8 +24,6 @@
 #include <sys/time.h>
 #include <ell/ell.h>
 
-#include "json-c/json.h"
-
 #include "mesh/mesh-defs.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
@@ -197,7 +195,7 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 
 		/* Remove model publication from config file */
 		if (status == MESH_STATUS_SUCCESS)
-			mesh_config_model_pub_del(node_jconfig_get(node),
+			mesh_config_model_pub_del(node_config_get(node),
 				ele_addr, vendor ? mod_id : mod_id & 0x0000ffff,
 									vendor);
 		goto done;
@@ -219,7 +217,7 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 			memcpy(db_pub.virt_addr, pub_addr, 16);
 
 		/* Save model publication to config file */
-		if (!mesh_config_model_pub_add(node_jconfig_get(node), ele_addr,
+		if (!mesh_config_model_pub_add(node_config_get(node), ele_addr,
 					vendor ? mod_id : mod_id & 0x0000ffff,
 					vendor, &db_pub))
 			status = MESH_STATUS_STORAGE_FAIL;
@@ -331,18 +329,18 @@ static bool save_config_sub(struct mesh_node *node, uint16_t ele_addr,
 
 	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE ||
 					opcode == OP_CONFIG_MODEL_SUB_OVERWRITE)
-		mesh_config_model_sub_del_all(node_jconfig_get(node),
+		mesh_config_model_sub_del_all(node_config_get(node),
 				ele_addr, vendor ? mod_id : mod_id & 0x0000ffff,
 									vendor);
 
 	if (opcode != OP_CONFIG_MODEL_SUB_VIRT_DELETE &&
 			opcode != OP_CONFIG_MODEL_SUB_DELETE)
-		return mesh_config_model_sub_add(node_jconfig_get(node),
+		return mesh_config_model_sub_add(node_config_get(node),
 					ele_addr,
 					vendor ? mod_id : mod_id & 0x0000ffff,
 					vendor, &db_sub);
 	else
-		return mesh_config_model_sub_del(node_jconfig_get(node),
+		return mesh_config_model_sub_del(node_config_get(node),
 					ele_addr,
 					vendor ? mod_id : mod_id & 0x0000ffff,
 					vendor, &db_sub);
@@ -419,7 +417,7 @@ static void config_sub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 		status = mesh_model_sub_del_all(node, ele_addr, mod_id);
 
 		if (status == MESH_STATUS_SUCCESS)
-			mesh_config_model_sub_del_all(node_jconfig_get(node),
+			mesh_config_model_sub_del_all(node_config_get(node),
 				ele_addr, vendor ? mod_id : mod_id & 0x0000ffff,
 									vendor);
 		break;
@@ -878,8 +876,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 
 		count = (pkt[0] >> 5) + 1;
 		interval = ((pkt[0] & 0x1f) + 1) * 10;
-		if (storage_set_transmit_params(node_jconfig_get(node), count,
-								interval))
+		if (storage_set_transmit_params(node, count, interval))
 			mesh_net_transmit_params_set(net, count, interval);
 		/* Fall Through */
 

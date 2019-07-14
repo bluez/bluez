@@ -23,7 +23,6 @@
 
 #include <sys/time.h>
 #include <ell/ell.h>
-#include <json-c/json.h>
 
 #include "mesh/mesh-defs.h"
 

@@ -29,7 +29,6 @@
 #include <libgen.h>
 #include <ftw.h>
 
-#include <json-c/json.h>
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"
@@ -41,7 +40,7 @@
 #include "mesh/storage.h"
 
 struct write_info {
-	json_object *jnode;
+	struct mesh_config *cfg;
 	const char *node_path;
 	void *user_data;
 	mesh_status_func_t cb;
@@ -52,80 +51,41 @@ static const char *bak_ext = ".bak";
 static const char *tmp_ext = ".tmp";
 static const char *storage_dir;
 
-static bool read_node_cb(struct mesh_config_node *db_node, void *user_data)
+static bool read_node_cb(struct mesh_config_node *db_node,
+			const uint8_t uuid[16], struct mesh_config *cfg,
+			void *user_data)
 {
 	struct mesh_node *node = user_data;
 
-	if (!node_init_from_storage(node, db_node)) {
+	if (!node_init_from_storage(node, uuid, db_node)) {
 		node_remove(node);
 		return false;
 	}
 
+	node_config_set(node, cfg);
 	return true;
 }
 
 static bool parse_config(char *in_file, char *out_dir, const uint8_t uuid[16])
 {
-	int fd;
-	char *str;
-	struct stat st;
-	ssize_t sz;
-	json_object *jnode = NULL;
 	bool result = false;
 	struct mesh_node *node;
 
-	l_info("Loading configuration from %s", in_file);
-
-	fd = open(in_file, O_RDONLY);
-	if (fd < 0)
-		return false;
-
-	if (fstat(fd, &st) == -1) {
-		close(fd);
-		return false;
-	}
-
-	str = (char *) l_new(char, st.st_size + 1);
-	if (!str) {
-		close(fd);
-		return false;
-	}
-
-	sz = read(fd, str, st.st_size);
-	if (sz != st.st_size) {
-		l_error("Failed to read configuration file %s", in_file);
-		goto done;
-	}
-
-	jnode = json_tokener_parse(str);
-	if (!jnode)
-		goto done;
-
 	node = node_new(uuid);
 
-	result = mesh_config_read_node(jnode, read_node_cb, node);
+	result = mesh_config_load_node(in_file, uuid, read_node_cb, node);
 
-	if (!result) {
-		json_object_put(jnode);
+	if (!result)
 		node_remove(node);
-	}
-
-	node_jconfig_set(node, jnode);
-	node_path_set(node, out_dir);
-
-done:
-	close(fd);
-	if (str)
-		l_free(str);
+	else
+		node_path_set(node, out_dir);
 
 	return result;
 }
 
 bool storage_set_ttl(struct mesh_node *node, uint8_t ttl)
 {
-	json_object *jnode = node_jconfig_get(node);
-
-	if (!mesh_config_write_int(jnode, "defaultTTL", ttl))
+	if (!mesh_config_write_int(node_config_get(node), "defaultTTL", ttl))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -135,9 +95,8 @@ bool storage_set_ttl(struct mesh_node *node, uint8_t ttl)
 bool storage_set_relay(struct mesh_node *node, bool enable,
 				uint8_t count, uint8_t interval)
 {
-	json_object *jnode = node_jconfig_get(node);
-
-	if (!mesh_config_write_relay_mode(jnode, enable, count, interval))
+	if (!mesh_config_write_relay_mode(node_config_get(node), enable, count,
+								interval))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -147,9 +106,8 @@ bool storage_set_relay(struct mesh_node *node, bool enable,
 bool storage_set_transmit_params(struct mesh_node *node, uint8_t count,
 							uint8_t interval)
 {
-	json_object *jnode = node_jconfig_get(node);
-
-	if (!mesh_config_write_net_transmit(jnode, count, interval))
+	if (!mesh_config_write_net_transmit(node_config_get(node), count,
+								interval))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -159,9 +117,7 @@ bool storage_set_transmit_params(struct mesh_node *node, uint8_t count,
 bool storage_set_mode(struct mesh_node *node, uint8_t mode,
 						const char *mode_name)
 {
-	json_object *jnode = node_jconfig_get(node);
-
-	if (!mesh_config_write_mode(jnode, mode_name, mode))
+	if (!mesh_config_write_mode(node_config_get(node), mode_name, mode))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -171,7 +127,7 @@ bool storage_set_mode(struct mesh_node *node, uint8_t mode,
 bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t mod_id,
 				uint16_t app_idx, bool unbind)
 {
-	json_object *jnode;
+	struct mesh_config *cfg;
 	int ele_idx;
 	bool stored, is_vendor = (mod_id > 0xffff);
 
@@ -179,14 +135,14 @@ bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t mod_id,
 	if (ele_idx < 0)
 		return false;
 
-	jnode = node_jconfig_get(node);
+	cfg = node_config_get(node);
 
 	if (unbind)
-		stored = mesh_config_model_binding_del(jnode, ele_idx,
-						is_vendor, mod_id, app_idx);
+		stored = mesh_config_model_binding_del(cfg, ele_idx, is_vendor,
+							mod_id, app_idx);
 	else
-		stored = mesh_config_model_binding_add(jnode, ele_idx,
-						is_vendor, mod_id, app_idx);
+		stored = mesh_config_model_binding_add(cfg, ele_idx, is_vendor,
+							mod_id, app_idx);
 
 	if (stored)
 		storage_save_config(node, true, NULL, NULL);
@@ -197,18 +153,16 @@ bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t mod_id,
 bool storage_app_key_add(struct mesh_net *net, uint16_t net_idx,
 			uint16_t app_idx, const uint8_t key[16], bool update)
 {
-	json_object *jnode;
+	struct mesh_config *cfg;
 	struct mesh_node *node = mesh_net_node_get(net);
 	bool stored;
 
-	jnode = node_jconfig_get(node);
-	if (!jnode)
-		return false;
+	cfg = node_config_get(node);
 
 	if (update)
-		stored = mesh_config_app_key_update(jnode, app_idx, key);
+		stored = mesh_config_app_key_update(cfg, app_idx, key);
 	else
-		stored = mesh_config_app_key_add(jnode, net_idx, app_idx, key);
+		stored = mesh_config_app_key_add(cfg, net_idx, app_idx, key);
 
 	if (stored)
 		storage_save_config(node, true, NULL, NULL);
@@ -219,14 +173,12 @@ bool storage_app_key_add(struct mesh_net *net, uint16_t net_idx,
 bool storage_app_key_del(struct mesh_net *net, uint16_t net_idx,
 					uint16_t app_idx)
 {
-	json_object *jnode;
+	struct mesh_config *cfg;
 	struct mesh_node *node = mesh_net_node_get(net);
 
-	jnode = node_jconfig_get(node);
-	if (!jnode)
-		return false;
+	cfg = node_config_get(node);
 
-	if (!mesh_config_app_key_del(jnode, net_idx, app_idx))
+	if (!mesh_config_app_key_del(cfg, net_idx, app_idx))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -237,13 +189,13 @@ bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
 					const uint8_t key[16], bool update)
 {
 	struct mesh_node *node = mesh_net_node_get(net);
-	json_object *jnode = node_jconfig_get(node);
+	struct mesh_config *cfg = node_config_get(node);
 	bool stored;
 
 	if (!update)
-		stored = mesh_config_net_key_add(jnode, net_idx, key);
+		stored = mesh_config_net_key_add(cfg, net_idx, key);
 	else
-		stored = mesh_config_net_key_update(jnode, net_idx, key);
+		stored = mesh_config_net_key_update(cfg, net_idx, key);
 
 	if (stored)
 		storage_save_config(node, true, NULL, NULL);
@@ -254,9 +206,9 @@ bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
 bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx)
 {
 	struct mesh_node *node = mesh_net_node_get(net);
-	json_object *jnode = node_jconfig_get(node);
+	struct mesh_config *cfg = node_config_get(node);
 
-	if (!mesh_config_net_key_del(jnode, net_idx))
+	if (!mesh_config_net_key_del(cfg, net_idx))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -267,9 +219,9 @@ bool storage_set_iv_index(struct mesh_net *net, uint32_t iv_index,
 								bool update)
 {
 	struct mesh_node *node = mesh_net_node_get(net);
-	json_object *jnode = node_jconfig_get(node);
+	struct mesh_config *cfg = node_config_get(node);
 
-	if (!mesh_config_write_iv_index(jnode, iv_index, update))
+	if (!mesh_config_write_iv_index(cfg, iv_index, update))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -280,9 +232,9 @@ bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
 								uint8_t phase)
 {
 	struct mesh_node *node = mesh_net_node_get(net);
-	json_object *jnode = node_jconfig_get(node);
+	struct mesh_config *cfg = node_config_get(node);
 
-	if (!mesh_config_net_key_set_phase(jnode, net_idx, phase))
+	if (!mesh_config_net_key_set_phase(cfg, net_idx, phase))
 		return false;
 
 	storage_save_config(node, true, NULL, NULL);
@@ -292,37 +244,13 @@ bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
 bool storage_write_sequence_number(struct mesh_net *net, uint32_t seq)
 {
 	struct mesh_node *node = mesh_net_node_get(net);
-	json_object *jnode = node_jconfig_get(node);
+	struct mesh_config *cfg = node_config_get(node);
 
-	if (!mesh_config_write_int(jnode, "sequenceNumber", seq))
+	if (!mesh_config_write_int(cfg, "sequenceNumber", seq))
 		return false;
 
 	storage_save_config(node, false, NULL, NULL);
 	return true;
-}
-
-static bool save_config(json_object *jnode, const char *config_name)
-{
-	FILE *outfile;
-	const char *str;
-	bool result = false;
-
-	outfile = fopen(config_name, "w");
-	if (!outfile) {
-		l_error("Failed to save configuration to %s", config_name);
-		return false;
-	}
-
-	str = json_object_to_json_string_ext(jnode, JSON_C_TO_STRING_PRETTY);
-
-	if (fwrite(str, sizeof(char), strlen(str), outfile) < strlen(str))
-		l_warn("Incomplete write of mesh configuration");
-	else
-		result = true;
-
-	fclose(outfile);
-
-	return result;
 }
 
 static void idle_save_config(void *user_data)
@@ -337,7 +265,7 @@ static void idle_save_config(void *user_data)
 	remove(tmp);
 
 	l_debug("Storage-Wrote");
-	result = save_config(info->jnode, tmp);
+	result = mesh_config_save_config(info->cfg, tmp);
 
 	if (result) {
 		remove(bak);
@@ -362,7 +290,7 @@ void storage_save_config(struct mesh_node *node, bool no_wait,
 	struct write_info *info;
 
 	info = l_new(struct write_info, 1);
-	info->jnode = node_jconfig_get(node);
+	info->cfg = node_config_get(node);
 	info->node_path = node_path_get(node);
 	info->cb = cb;
 	info->user_data = user_data;
@@ -462,48 +390,47 @@ bool storage_load_nodes(const char *dir_name)
 	return true;
 }
 
-bool storage_create_node_config(struct mesh_node *node, void *data)
+bool storage_create_node_config(struct mesh_node *node, const uint8_t uuid[16],
+					struct mesh_config_node *db_node)
 {
-	struct mesh_config_node *db_node = data;
-	char uuid[33];
+	char uuid_buf[33];
 	char name_buf[PATH_MAX];
-	json_object *jnode;
+	struct mesh_config *cfg;
 	size_t max_len = strlen(cfg_name) + strlen(bak_ext);
 
 	if (!storage_dir)
 		return false;
 
-	jnode = json_object_new_object();
-
-	if (!mesh_config_add_node(jnode, db_node))
+	if (!hex2str((uint8_t *) uuid, 16, uuid_buf, sizeof(uuid_buf)))
 		return false;
 
-	if (!hex2str(node_uuid_get(node), 16, uuid, sizeof(uuid)))
-		goto fail;
-
-	snprintf(name_buf, PATH_MAX, "%s/%s", storage_dir, uuid);
+	snprintf(name_buf, PATH_MAX, "%s/%s", storage_dir, uuid_buf);
 
 	if (strlen(name_buf) + max_len >= PATH_MAX)
-		goto fail;
+		return false;
 
 	/* Create a new directory and node.json file */
 	if (mkdir(name_buf, 0755) != 0)
-		goto fail;
+		return false;
 
 	node_path_set(node, name_buf);
 
-	snprintf(name_buf, PATH_MAX, "%s/%s%s", storage_dir, uuid, cfg_name);
+	snprintf(name_buf, PATH_MAX, "%s/%s%s", storage_dir, uuid_buf,
+								cfg_name);
 	l_debug("New node config %s", name_buf);
 
-	if (!save_config(jnode, name_buf))
-		goto fail;
+	cfg = mesh_config_create(name_buf, uuid, db_node);
+	if (!cfg)
+		return false;
 
-	node_jconfig_set(node, jnode);
+	if (!mesh_config_save_config(cfg, name_buf)) {
+		mesh_config_release(cfg);
+		return false;
+	}
+
+	node_config_set(node, cfg);
 
 	return true;
-fail:
-	json_object_put(jnode);
-	return false;
 }
 
 static int del_fobject(const char *fpath, const struct stat *sb, int typeflag,
@@ -529,17 +456,13 @@ void storage_remove_node_config(struct mesh_node *node)
 {
 	char *node_path, *node_name;
 	char uuid[33];
-	struct json_object *jnode;
 
 	if (!node)
 		return;
 
-	/* Free the node config json object */
-	jnode = node_jconfig_get(node);
-	if (jnode)
-		json_object_put(jnode);
-
-	node_jconfig_set(node, NULL);
+	/* Release node config object */
+	mesh_config_release(node_config_get(node));
+	node_config_set(node, NULL);
 
 	node_path = node_path_get(node);
 	l_debug("Delete node config %s", node_path);

@@ -19,9 +19,11 @@
 
 struct mesh_net;
 struct mesh_node;
+struct mesh_config_node;
 
 bool storage_load_nodes(const char *dir);
-bool storage_create_node_config(struct mesh_node *node, void *db_node);
+bool storage_create_node_config(struct mesh_node *node, const uint8_t uuid[16],
+					struct mesh_config_node *db_node);
 void storage_remove_node_config(struct mesh_node *node);
 void storage_save_config(struct mesh_node *node, bool no_wait,
 					mesh_status_func_t cb, void *user_data);

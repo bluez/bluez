@@ -21,6 +21,8 @@ struct mesh_net;
 struct mesh_node;
 struct mesh_io;
 struct mesh_agent;
+struct mesh_config;
+struct mesh_config_node;
 
 /* To prevent local node JSON cache thrashing, minimum update times */
 #define MIN_SEQ_TRIGGER	32
@@ -67,7 +69,8 @@ int node_get_element_idx(struct mesh_node *node, uint16_t ele_addr);
 struct l_queue *node_get_element_models(struct mesh_node *node, uint8_t ele_idx,
 								int *status);
 uint16_t node_get_crpl(struct mesh_node *node);
-bool node_init_from_storage(struct mesh_node *node, void *data);
+bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
+					struct mesh_config_node *db_node);
 uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf, uint16_t sz);
 uint8_t node_lpn_mode_get(struct mesh_node *node);
 bool node_relay_mode_set(struct mesh_node *node, bool enable, uint8_t cnt,
@@ -97,8 +100,8 @@ void node_id_set(struct mesh_node *node, uint16_t node_id);
 uint16_t node_id_get(struct mesh_node *node);
 bool node_dbus_init(struct l_dbus *bus);
 void node_cleanup_all(void);
-void node_jconfig_set(struct mesh_node *node, void *jconfig);
-void *node_jconfig_get(struct mesh_node *node);
+void node_config_set(struct mesh_node *node, struct mesh_config *cfg);
+struct mesh_config *node_config_get(struct mesh_node *node);
 void node_path_set(struct mesh_node *node, char *path);
 char *node_path_get(struct mesh_node *node);
 struct mesh_agent *node_get_agent(struct mesh_node *node);
