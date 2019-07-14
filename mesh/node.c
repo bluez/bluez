@@ -484,12 +484,12 @@ static void cleanup_node(void *data)
 	struct mesh_net *net = node->net;
 
 	/* Save local node configuration */
-	if (node->node_path) {
+	if (node->cfg) {
 
 		/* Preserve the last sequence number */
 		storage_write_sequence_number(net, mesh_net_get_seq_num(net));
 
-		storage_save_config(node, true, NULL, NULL);
+		mesh_config_save_config(node->cfg, true, NULL, NULL);
 	}
 
 	free_node_resources(node);
@@ -1501,7 +1501,7 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 			return false;
 	}
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(node->cfg, true, NULL, NULL);
 
 	/* Initialize configuration server model */
 	mesh_config_srv_init(node, PRIMARY_ELE_IDX);

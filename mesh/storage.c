@@ -39,16 +39,8 @@
 #include "mesh/util.h"
 #include "mesh/storage.h"
 
-struct write_info {
-	struct mesh_config *cfg;
-	const char *node_path;
-	void *user_data;
-	mesh_status_func_t cb;
-};
-
 static const char *cfg_name = "/node.json";
 static const char *bak_ext = ".bak";
-static const char *tmp_ext = ".tmp";
 static const char *storage_dir;
 
 static bool read_node_cb(struct mesh_config_node *db_node,
@@ -88,7 +80,7 @@ bool storage_set_ttl(struct mesh_node *node, uint8_t ttl)
 	if (!mesh_config_write_int(node_config_get(node), "defaultTTL", ttl))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(node_config_get(node), true, NULL, NULL);
 	return true;
 }
 
@@ -99,7 +91,7 @@ bool storage_set_relay(struct mesh_node *node, bool enable,
 								interval))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(node_config_get(node), true, NULL, NULL);
 	return true;
 }
 
@@ -110,7 +102,7 @@ bool storage_set_transmit_params(struct mesh_node *node, uint8_t count,
 								interval))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(node_config_get(node), true, NULL, NULL);
 	return true;
 }
 
@@ -120,7 +112,7 @@ bool storage_set_mode(struct mesh_node *node, uint8_t mode,
 	if (!mesh_config_write_mode(node_config_get(node), mode_name, mode))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(node_config_get(node), true, NULL, NULL);
 	return true;
 }
 
@@ -145,7 +137,7 @@ bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t mod_id,
 							mod_id, app_idx);
 
 	if (stored)
-		storage_save_config(node, true, NULL, NULL);
+		mesh_config_save_config(cfg, true, NULL, NULL);
 
 	return stored;
 }
@@ -165,7 +157,7 @@ bool storage_app_key_add(struct mesh_net *net, uint16_t net_idx,
 		stored = mesh_config_app_key_add(cfg, net_idx, app_idx, key);
 
 	if (stored)
-		storage_save_config(node, true, NULL, NULL);
+		mesh_config_save_config(cfg, true, NULL, NULL);
 
 	return stored;
 }
@@ -181,7 +173,7 @@ bool storage_app_key_del(struct mesh_net *net, uint16_t net_idx,
 	if (!mesh_config_app_key_del(cfg, net_idx, app_idx))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(cfg, true, NULL, NULL);
 	return true;
 }
 
@@ -198,7 +190,7 @@ bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
 		stored = mesh_config_net_key_update(cfg, net_idx, key);
 
 	if (stored)
-		storage_save_config(node, true, NULL, NULL);
+		mesh_config_save_config(cfg, true, NULL, NULL);
 
 	return stored;
 }
@@ -211,7 +203,7 @@ bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx)
 	if (!mesh_config_net_key_del(cfg, net_idx))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(cfg, true, NULL, NULL);
 	return true;
 }
 
@@ -224,7 +216,7 @@ bool storage_set_iv_index(struct mesh_net *net, uint32_t iv_index,
 	if (!mesh_config_write_iv_index(cfg, iv_index, update))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(cfg, true, NULL, NULL);
 	return true;
 }
 
@@ -237,7 +229,7 @@ bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
 	if (!mesh_config_net_key_set_phase(cfg, net_idx, phase))
 		return false;
 
-	storage_save_config(node, true, NULL, NULL);
+	mesh_config_save_config(cfg, true, NULL, NULL);
 	return true;
 }
 
@@ -249,56 +241,8 @@ bool storage_write_sequence_number(struct mesh_net *net, uint32_t seq)
 	if (!mesh_config_write_int(cfg, "sequenceNumber", seq))
 		return false;
 
-	storage_save_config(node, false, NULL, NULL);
+	mesh_config_save_config(cfg, false, NULL, NULL);
 	return true;
-}
-
-static void idle_save_config(void *user_data)
-{
-	struct write_info *info = user_data;
-	char *tmp, *bak, *cfg;
-	bool result = false;
-
-	cfg = l_strdup_printf("%s%s", info->node_path, cfg_name);
-	tmp = l_strdup_printf("%s%s", cfg, tmp_ext);
-	bak = l_strdup_printf("%s%s", cfg, bak_ext);
-	remove(tmp);
-
-	l_debug("Storage-Wrote");
-	result = mesh_config_save_config(info->cfg, tmp);
-
-	if (result) {
-		remove(bak);
-		rename(cfg, bak);
-		rename(tmp, cfg);
-	}
-
-	remove(tmp);
-	l_free(tmp);
-	l_free(bak);
-	l_free(cfg);
-
-	if (info->cb)
-		info->cb(info->user_data, result);
-
-	l_free(info);
-}
-
-void storage_save_config(struct mesh_node *node, bool no_wait,
-					mesh_status_func_t cb, void *user_data)
-{
-	struct write_info *info;
-
-	info = l_new(struct write_info, 1);
-	info->cfg = node_config_get(node);
-	info->node_path = node_path_get(node);
-	info->cb = cb;
-	info->user_data = user_data;
-
-	if (no_wait)
-		idle_save_config(info);
-	else
-		l_idle_oneshot(idle_save_config, info, NULL);
 }
 
 static int create_dir(const char *dir_name)
@@ -423,7 +367,7 @@ bool storage_create_node_config(struct mesh_node *node, const uint8_t uuid[16],
 	if (!cfg)
 		return false;
 
-	if (!mesh_config_save_config(cfg, name_buf)) {
+	if (!mesh_config_save_config(cfg, true, NULL, NULL)) {
 		mesh_config_release(cfg);
 		return false;
 	}

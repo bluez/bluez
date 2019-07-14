@@ -104,16 +104,17 @@ struct mesh_config_node {
 	uint8_t dev_key[16];
 	uint8_t token[8];
 };
-
-typedef bool (*mesh_config_node_cb)(struct mesh_config_node *node,
+typedef void (*mesh_config_status_func_t)(void *user_data, bool result);
+typedef bool (*mesh_config_node_func_t)(struct mesh_config_node *node,
 							const uint8_t uuid[16],
 							struct mesh_config *cfg,
 							void *user_data);
 
 bool mesh_config_load_node(const char *cfg_path, const uint8_t uuid[16],
-				mesh_config_node_cb cb, void *user_data);
+				mesh_config_node_func_t cb, void *user_data);
 void mesh_config_release(struct mesh_config *cfg);
-bool mesh_config_save_config(struct mesh_config *cfg, const char *fname);
+bool mesh_config_save_config(struct mesh_config *cfg, bool no_wait,
+				mesh_config_status_func_t cb, void *user_data);
 struct mesh_config *mesh_config_create(const char *cfg_path,
 						const uint8_t uuid[16],
 						struct mesh_config_node *node);

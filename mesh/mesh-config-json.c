@@ -46,6 +46,15 @@ struct mesh_config {
 	uint8_t uuid[16];
 };
 
+struct write_info {
+	struct mesh_config *cfg;
+	void *user_data;
+	mesh_config_status_func_t cb;
+};
+
+static const char *bak_ext = ".bak";
+static const char *tmp_ext = ".tmp";
+
 static bool get_int(json_object *jobj, const char *keyword, int *value)
 {
 	json_object *jvalue;
@@ -1926,7 +1935,7 @@ bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t addr,
 }
 
 bool mesh_config_load_node(const char *cfg_path, const uint8_t uuid[16],
-					mesh_config_node_cb cb, void *user_data)
+				mesh_config_node_func_t cb, void *user_data)
 {
 	int fd;
 	char *str;
@@ -2011,14 +2020,11 @@ void mesh_config_release(struct mesh_config *cfg)
 	l_free(cfg);
 }
 
-bool mesh_config_save_config(struct mesh_config *cfg, const char *fname)
+static bool save_config(json_object *jnode, const char *fname)
 {
 	FILE *outfile;
 	const char *str;
 	bool result = false;
-
-	if (!cfg)
-		return false;
 
 	outfile = fopen(fname, "w");
 	if (!outfile) {
@@ -2026,8 +2032,7 @@ bool mesh_config_save_config(struct mesh_config *cfg, const char *fname)
 		return false;
 	}
 
-	str = json_object_to_json_string_ext(cfg->jnode,
-						JSON_C_TO_STRING_PRETTY);
+	str = json_object_to_json_string_ext(jnode, JSON_C_TO_STRING_PRETTY);
 
 	if (fwrite(str, sizeof(char), strlen(str), outfile) < strlen(str))
 		l_warn("Incomplete write of mesh configuration");
@@ -2037,4 +2042,55 @@ bool mesh_config_save_config(struct mesh_config *cfg, const char *fname)
 	fclose(outfile);
 
 	return result;
+}
+
+static void idle_save_config(void *user_data)
+{
+	struct write_info *info = user_data;
+	char *fname_tmp, *fname_bak, *fname_cfg;
+	bool result = false;
+
+	fname_cfg = info->cfg->node_path;
+	fname_tmp = l_strdup_printf("%s%s", fname_cfg, tmp_ext);
+	fname_bak = l_strdup_printf("%s%s", fname_cfg, bak_ext);
+	remove(fname_tmp);
+
+	result = save_config(info->cfg->jnode, fname_tmp);
+
+	if (result) {
+		remove(fname_bak);
+		rename(fname_cfg, fname_bak);
+		rename(fname_tmp, fname_cfg);
+	}
+
+	remove(fname_tmp);
+
+	l_free(fname_tmp);
+	l_free(fname_bak);
+
+	if (info->cb)
+		info->cb(info->user_data, result);
+
+	l_free(info);
+}
+
+bool mesh_config_save_config(struct mesh_config *cfg, bool no_wait,
+				mesh_config_status_func_t cb, void *user_data)
+{
+	struct write_info *info;
+
+	if (!cfg)
+		return false;
+
+	info = l_new(struct write_info, 1);
+	info->cfg = cfg;
+	info->cb = cb;
+	info->user_data = user_data;
+
+	if (no_wait)
+		idle_save_config(info);
+	else
+		l_idle_oneshot(idle_save_config, info, NULL);
+
+	return true;
 }
