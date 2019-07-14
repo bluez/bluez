@@ -197,14 +197,14 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 
 		/* Remove model publication from config file */
 		if (status == MESH_STATUS_SUCCESS)
-			mesh_db_model_pub_del(node_jconfig_get(node), ele_addr,
-					vendor ? mod_id : mod_id & 0x0000ffff,
-					vendor);
+			mesh_config_model_pub_del(node_jconfig_get(node),
+				ele_addr, vendor ? mod_id : mod_id & 0x0000ffff,
+									vendor);
 		goto done;
 	}
 
 	if (status == MESH_STATUS_SUCCESS) {
-		struct mesh_db_pub db_pub = {
+		struct mesh_config_pub db_pub = {
 			.virt = b_virt,
 			.addr = ota,
 			.idx = idx,
@@ -219,7 +219,7 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 			memcpy(db_pub.virt_addr, pub_addr, 16);
 
 		/* Save model publication to config file */
-		if (!mesh_db_model_pub_add(node_jconfig_get(node), ele_addr,
+		if (!mesh_config_model_pub_add(node_jconfig_get(node), ele_addr,
 					vendor ? mod_id : mod_id & 0x0000ffff,
 					vendor, &db_pub))
 			status = MESH_STATUS_STORAGE_FAIL;
@@ -321,7 +321,7 @@ static bool save_config_sub(struct mesh_node *node, uint16_t ele_addr,
 					const uint8_t *addr, bool virt,
 					uint16_t grp, uint32_t opcode)
 {
-	struct mesh_db_sub db_sub = {
+	struct mesh_config_sub db_sub = {
 				.virt = virt,
 				.src.addr = grp
 				};
@@ -331,18 +331,18 @@ static bool save_config_sub(struct mesh_node *node, uint16_t ele_addr,
 
 	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE ||
 					opcode == OP_CONFIG_MODEL_SUB_OVERWRITE)
-		mesh_db_model_sub_del_all(node_jconfig_get(node),
+		mesh_config_model_sub_del_all(node_jconfig_get(node),
 				ele_addr, vendor ? mod_id : mod_id & 0x0000ffff,
 									vendor);
 
 	if (opcode != OP_CONFIG_MODEL_SUB_VIRT_DELETE &&
 			opcode != OP_CONFIG_MODEL_SUB_DELETE)
-		return mesh_db_model_sub_add(node_jconfig_get(node),
+		return mesh_config_model_sub_add(node_jconfig_get(node),
 					ele_addr,
 					vendor ? mod_id : mod_id & 0x0000ffff,
 					vendor, &db_sub);
 	else
-		return mesh_db_model_sub_del(node_jconfig_get(node),
+		return mesh_config_model_sub_del(node_jconfig_get(node),
 					ele_addr,
 					vendor ? mod_id : mod_id & 0x0000ffff,
 					vendor, &db_sub);
@@ -419,7 +419,7 @@ static void config_sub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 		status = mesh_model_sub_del_all(node, ele_addr, mod_id);
 
 		if (status == MESH_STATUS_SUCCESS)
-			mesh_db_model_sub_del_all(node_jconfig_get(node),
+			mesh_config_model_sub_del_all(node_jconfig_get(node),
 				ele_addr, vendor ? mod_id : mod_id & 0x0000ffff,
 									vendor);
 		break;

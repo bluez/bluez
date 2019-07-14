@@ -290,7 +290,7 @@ void node_remove(struct mesh_node *node)
 }
 
 static bool add_models(struct mesh_node *node, struct node_element *ele,
-						struct mesh_db_element *db_ele)
+					struct mesh_config_element *db_ele)
 {
 	const struct l_queue_entry *entry;
 
@@ -300,7 +300,7 @@ static bool add_models(struct mesh_node *node, struct node_element *ele,
 	entry = l_queue_get_entries(db_ele->models);
 	for (; entry; entry = entry->next) {
 		struct mesh_model *mod;
-		struct mesh_db_model *db_mod;
+		struct mesh_config_model *db_mod;
 
 		db_mod = entry->data;
 		mod = mesh_model_setup(node, ele->idx, db_mod);
@@ -318,7 +318,7 @@ static void add_internal_model(struct mesh_node *node, uint32_t mod_id,
 {
 	struct node_element *ele;
 	struct mesh_model *mod;
-	struct mesh_db_model db_mod;
+	struct mesh_config_model db_mod;
 
 	ele = l_queue_find(node->elements, match_element_idx,
 							L_UINT_TO_PTR(ele_idx));
@@ -339,7 +339,8 @@ static void add_internal_model(struct mesh_node *node, uint32_t mod_id,
 	l_queue_push_tail(ele->models, mod);
 }
 
-static bool add_element(struct mesh_node *node, struct mesh_db_element *db_ele)
+static bool add_element(struct mesh_node *node,
+					struct mesh_config_element *db_ele)
 {
 	struct node_element *ele;
 
@@ -357,7 +358,8 @@ static bool add_element(struct mesh_node *node, struct mesh_db_element *db_ele)
 	return true;
 }
 
-static bool add_elements(struct mesh_node *node, struct mesh_db_node *db_node)
+static bool add_elements(struct mesh_node *node,
+					struct mesh_config_node *db_node)
 {
 	const struct l_queue_entry *entry;
 
@@ -374,7 +376,7 @@ static bool add_elements(struct mesh_node *node, struct mesh_db_node *db_node)
 
 bool node_init_from_storage(struct mesh_node *node, void *data)
 {
-	struct mesh_db_node *db_node = data;
+	struct mesh_config_node *db_node = data;
 	unsigned int num_ele;
 	uint8_t mode;
 
@@ -1266,7 +1268,7 @@ static bool get_element_properties(struct mesh_node *node, const char *path,
 }
 
 static void convert_node_to_storage(struct mesh_node *node,
-						struct mesh_db_node *db_node)
+					struct mesh_config_node *db_node)
 {
 	const struct l_queue_entry *entry;
 
@@ -1292,10 +1294,10 @@ static void convert_node_to_storage(struct mesh_node *node,
 
 	for (; entry; entry = entry->next) {
 		struct node_element *ele = entry->data;
-		struct mesh_db_element *db_ele;
+		struct mesh_config_element *db_ele;
 		const struct l_queue_entry *mod_entry;
 
-		db_ele = l_new(struct mesh_db_element, 1);
+		db_ele = l_new(struct mesh_config_element, 1);
 
 		db_ele->index = ele->idx;
 		db_ele->location = ele->location;
@@ -1305,10 +1307,10 @@ static void convert_node_to_storage(struct mesh_node *node,
 
 		for (; mod_entry; mod_entry = mod_entry->next) {
 			struct mesh_model *mod = mod_entry->data;
-			struct mesh_db_model *db_mod;
+			struct mesh_config_model *db_mod;
 			uint32_t mod_id = mesh_model_get_model_id(mod);
 
-			db_mod = l_new(struct mesh_db_model, 1);
+			db_mod = l_new(struct mesh_config_model, 1);
 			db_mod->id = mod_id;
 			db_mod->vendor = ((mod_id & VENDOR_ID_MASK)
 							!= VENDOR_ID_MASK);
@@ -1322,7 +1324,7 @@ static void convert_node_to_storage(struct mesh_node *node,
 
 static bool create_node_config(struct mesh_node *node)
 {
-	struct mesh_db_node db_node;
+	struct mesh_config_node db_node;
 	const struct l_queue_entry *entry;
 	bool res;
 
@@ -1332,7 +1334,7 @@ static bool create_node_config(struct mesh_node *node)
 	/* Free temporarily allocated resources */
 	entry = l_queue_get_entries(db_node.elements);
 	for (; entry; entry = entry->next) {
-		struct mesh_db_element *db_ele = entry->data;
+		struct mesh_config_element *db_ele = entry->data;
 
 		l_queue_destroy(db_ele->models, l_free);
 	}
@@ -1435,16 +1437,16 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 
 	mesh_net_set_iv_index(node->net, iv_idx, ivu);
 
-	if (!mesh_db_write_uint16_hex(node->jconfig, "unicastAddress",
+	if (!mesh_config_write_uint16_hex(node->jconfig, "unicastAddress",
 								unicast))
 		return false;
 
 	l_getrandom(node->token, sizeof(node->token));
-	if (!mesh_db_write_token(node->jconfig, node->token))
+	if (!mesh_config_write_token(node->jconfig, node->token))
 		return false;
 
 	memcpy(node->dev_key, dev_key, 16);
-	if (!mesh_db_write_device_key(node->jconfig, dev_key))
+	if (!mesh_config_write_device_key(node->jconfig, dev_key))
 		return false;
 
 	node->primary = unicast;
@@ -1460,7 +1462,7 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 							MESH_STATUS_SUCCESS)
 			return false;
 
-		if (!mesh_db_net_key_set_phase(node->jconfig, net_key_idx,
+		if (!mesh_config_net_key_set_phase(node->jconfig, net_key_idx,
 							KEY_REFRESH_PHASE_TWO))
 			return false;
 	}

@@ -1406,10 +1406,10 @@ int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id)
 struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 								void *data)
 {
-	struct mesh_db_model *db_mod = data;
+	struct mesh_config_model *db_mod = data;
 	struct mesh_model *mod;
 	struct mesh_net *net;
-	struct mesh_db_pub *pub = db_mod->pub;
+	struct mesh_config_pub *pub = db_mod->pub;
 	uint32_t i;
 
 	if (db_mod->num_bindings > MAX_BINDINGS) {

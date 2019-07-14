@@ -17,7 +17,7 @@
  *
  */
 
-struct mesh_db_sub {
+struct mesh_config_sub {
 	bool virt;
 	union {
 		uint16_t addr;
@@ -25,7 +25,7 @@ struct mesh_db_sub {
 	} src;
 };
 
-struct mesh_db_pub {
+struct mesh_config_pub {
 	bool virt;
 	uint32_t period;
 	uint16_t addr;
@@ -37,9 +37,9 @@ struct mesh_db_pub {
 	uint8_t virt_addr[16];
 };
 
-struct mesh_db_model {
-	struct mesh_db_sub *subs;
-	struct mesh_db_pub *pub;
+struct mesh_config_model {
+	struct mesh_config_sub *subs;
+	struct mesh_config_pub *pub;
 	uint16_t *bindings;
 	uint32_t id;
 	bool vendor;
@@ -47,13 +47,13 @@ struct mesh_db_model {
 	uint32_t num_subs;
 };
 
-struct mesh_db_element {
+struct mesh_config_element {
 	struct l_queue *models;
 	uint16_t location;
 	uint8_t index;
 };
 
-struct mesh_db_modes {
+struct mesh_config_modes {
 	struct {
 		uint16_t interval;
 		uint8_t cnt;
@@ -65,10 +65,10 @@ struct mesh_db_modes {
 	uint8_t beacon;
 };
 
-struct mesh_db_node {
+struct mesh_config_node {
 	bool provisioner;
 	uint32_t seq_number;
-	struct mesh_db_modes modes;
+	struct mesh_config_modes modes;
 	uint16_t cid;
 	uint16_t pid;
 	uint16_t vid;
@@ -78,7 +78,7 @@ struct mesh_db_node {
 	struct l_queue *elements;
 };
 
-struct mesh_db_prov {
+struct mesh_config_prov {
 	uint16_t algorithm;
 	struct {
 		uint16_t actions;
@@ -93,65 +93,73 @@ struct mesh_db_prov {
 	uint8_t priv_key[32];
 };
 
-typedef bool (*mesh_db_net_key_cb)(uint16_t idx, uint8_t key[16],
+typedef bool (*mesh_config_net_key_cb)(uint16_t idx, uint8_t key[16],
 			uint8_t new_key[16], int phase, void *user_data);
-typedef bool (*mesh_db_app_key_cb)(uint16_t idx, uint16_t net_idx,
+typedef bool (*mesh_config_app_key_cb)(uint16_t idx, uint16_t net_idx,
 			uint8_t key[16], uint8_t new_key[16], void *user_data);
-typedef bool (*mesh_db_node_cb)(struct mesh_db_node *node, void *user_data);
+typedef bool (*mesh_config_node_cb)(struct mesh_config_node *node,
+							void *user_data);
 
-bool mesh_db_read_node(json_object *jobj, mesh_db_node_cb cb, void *user_data);
-bool mesh_db_add_node(json_object *jnode, struct mesh_db_node *node);
-bool mesh_db_read_iv_index(json_object *jobj, uint32_t *idx, bool *update);
-bool mesh_db_read_device_key(json_object *jobj, uint8_t key_buf[16]);
-bool mesh_db_read_token(json_object *jobj, uint8_t token[8]);
-bool mesh_db_read_net_transmit(json_object *jobj, uint8_t *cnt,
+bool mesh_config_read_node(json_object *jobj, mesh_config_node_cb cb,
+							void *user_data);
+bool mesh_config_add_node(json_object *jnode, struct mesh_config_node *node);
+bool mesh_config_read_iv_index(json_object *jobj, uint32_t *idx, bool *update);
+bool mesh_config_read_device_key(json_object *jobj, uint8_t key_buf[16]);
+bool mesh_config_read_token(json_object *jobj, uint8_t token[8]);
+bool mesh_config_read_net_transmit(json_object *jobj, uint8_t *cnt,
 							uint16_t *interval);
-bool mesh_db_write_net_transmit(json_object *jobj, uint8_t cnt,
+bool mesh_config_write_net_transmit(json_object *jobj, uint8_t cnt,
 							uint16_t interval);
-bool mesh_db_read_net_keys(json_object *jobj, mesh_db_net_key_cb cb,
+bool mesh_config_read_net_keys(json_object *jobj, mesh_config_net_key_cb cb,
 							void *user_data);
-bool mesh_db_read_app_keys(json_object *jobj, mesh_db_app_key_cb cb,
+bool mesh_config_read_app_keys(json_object *jobj, mesh_config_app_key_cb cb,
 							void *user_data);
-bool mesh_db_write_device_key(json_object *jobj, uint8_t *key);
-bool mesh_db_write_token(json_object *jobj, uint8_t *token);
-bool mesh_db_write_network_key(json_object *jobj, uint16_t idx, uint8_t *key,
-						uint8_t *new_key, int phase);
-bool mesh_db_write_app_key(json_object *jobj, uint16_t net_idx,
+bool mesh_config_write_device_key(json_object *jobj, uint8_t *key);
+bool mesh_config_write_token(json_object *jobj, uint8_t *token);
+bool mesh_config_write_network_key(json_object *jobj, uint16_t idx,
+				uint8_t *key, uint8_t *new_key, int phase);
+bool mesh_config_write_app_key(json_object *jobj, uint16_t net_idx,
 			uint16_t app_idx, uint8_t *key, uint8_t *new_key);
-bool mesh_db_write_int(json_object *jobj, const char *keyword, int value);
-bool mesh_db_write_uint16_hex(json_object *jobj, const char *desc,
+bool mesh_config_write_int(json_object *jobj, const char *keyword, int value);
+bool mesh_config_write_uint16_hex(json_object *jobj, const char *desc,
 								uint16_t value);
-bool mesh_db_write_uint32_hex(json_object *jobj, const char *desc,
+bool mesh_config_write_uint32_hex(json_object *jobj, const char *desc,
 								uint32_t value);
-bool mesh_db_write_bool(json_object *jobj, const char *keyword, bool value);
-bool mesh_db_write_relay_mode(json_object *jnode, uint8_t mode, uint8_t count,
-							uint16_t interval);
-bool mesh_db_write_mode(json_object *jobj, const char *keyword, int value);
-bool mesh_db_model_binding_add(json_object *jnode, uint8_t ele_idx, bool vendor,
-					uint32_t mod_id, uint16_t app_idx);
-bool mesh_db_model_binding_del(json_object *jnode, uint8_t ele_idx, bool vendor,
-					uint32_t mod_id, uint16_t app_idx);
-bool mesh_db_model_pub_add(json_object *jnode, uint16_t ele_addr,
-			uint32_t mod_id, bool vendor, struct mesh_db_pub *pub);
-bool mesh_db_model_pub_del(json_object *jnode, uint16_t ele_addr,
+bool mesh_config_write_bool(json_object *jobj, const char *keyword, bool value);
+bool mesh_config_write_relay_mode(json_object *jnode, uint8_t mode,
+					uint8_t count, uint16_t interval);
+bool mesh_config_write_mode(json_object *jobj, const char *keyword, int value);
+bool mesh_config_model_binding_add(json_object *jnode, uint8_t ele_idx,
+						bool vendor, uint32_t mod_id,
+							uint16_t app_idx);
+bool mesh_config_model_binding_del(json_object *jnode, uint8_t ele_idx,
+						bool vendor, uint32_t mod_id,
+							uint16_t app_idx);
+bool mesh_config_model_pub_add(json_object *jnode, uint16_t ele_addr,
+						uint32_t mod_id, bool vendor,
+						struct mesh_config_pub *pub);
+bool mesh_config_model_pub_del(json_object *jnode, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor);
-bool mesh_db_model_sub_add(json_object *jnode, uint16_t addr, uint32_t mod_id,
-					bool vendor, struct mesh_db_sub *sub);
-bool mesh_db_model_sub_del(json_object *jnode, uint16_t addr, uint32_t mod_id,
-					bool vendor, struct mesh_db_sub *sub);
-bool mesh_db_model_sub_del_all(json_object *jnode, uint16_t addr,
+bool mesh_config_model_sub_add(json_object *jnode, uint16_t addr,
+						uint32_t mod_id, bool vendor,
+						struct mesh_config_sub *sub);
+bool mesh_config_model_sub_del(json_object *jnode, uint16_t addr,
+						uint32_t mod_id, bool vendor,
+						struct mesh_config_sub *sub);
+bool mesh_config_model_sub_del_all(json_object *jnode, uint16_t addr,
 						uint32_t mod_id, bool vendor);
-bool mesh_db_app_key_add(json_object *jnode, uint16_t net_idx, uint16_t app_idx,
+bool mesh_config_app_key_add(json_object *jnode, uint16_t net_idx,
+				uint16_t app_idx, const uint8_t key[16]);
+bool mesh_config_app_key_update(json_object *jobj, uint16_t app_idx,
 							const uint8_t key[16]);
-bool mesh_db_app_key_update(json_object *jobj, uint16_t app_idx,
+bool mesh_config_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx);
+bool mesh_config_net_key_add(json_object *jobj, uint16_t net_idx,
 							const uint8_t key[16]);
-bool mesh_db_app_key_del(json_object *jobj, uint16_t net_idx, uint16_t idx);
-bool mesh_db_net_key_add(json_object *jobj, uint16_t net_idx,
+bool mesh_config_net_key_update(json_object *jobj, uint16_t idx,
 							const uint8_t key[16]);
-bool mesh_db_net_key_update(json_object *jobj, uint16_t idx,
-							const uint8_t key[16]);
-bool mesh_db_net_key_del(json_object *jobj, uint16_t net_idx);
-bool mesh_db_net_key_set_phase(json_object *jobj, uint16_t idx, uint8_t phase);
-bool mesh_db_write_address(json_object *jobj, uint16_t address);
-bool mesh_db_write_iv_index(json_object *jobj, uint32_t idx, bool update);
-void mesh_db_remove_property(json_object *jobj, const char *desc);
+bool mesh_config_net_key_del(json_object *jobj, uint16_t net_idx);
+bool mesh_config_net_key_set_phase(json_object *jobj, uint16_t idx,
+								uint8_t phase);
+bool mesh_config_write_address(json_object *jobj, uint16_t address);
+bool mesh_config_write_iv_index(json_object *jobj, uint32_t idx, bool update);
+void mesh_config_remove_property(json_object *jobj, const char *desc);
