@@ -22,6 +22,8 @@
 #endif
 
 #define _GNU_SOURCE
+#include <dirent.h>
+#include <stdio.h>
 
 #include <sys/time.h>
 
@@ -83,7 +85,7 @@ struct mesh_node {
 	struct mesh_agent *agent;
 	char *path;
 	struct mesh_config *cfg;
-	char *node_path;
+	char *storage_dir;
 	uint32_t disc_watch;
 	time_t upd_sec;
 	uint32_t seq_number;
@@ -269,6 +271,7 @@ static void free_node_resources(void *data)
 
 	mesh_net_free(node->net);
 	l_free(node->comp);
+	l_free(node->storage_dir);
 	l_free(node);
 }
 
@@ -1518,6 +1521,29 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 	return true;
 }
 
+static bool init_storage_dir(struct mesh_node *node)
+{
+	char uuid[33];
+	char dir_name[PATH_MAX];
+
+	if (node->storage_dir)
+		return true;
+
+	if (!hex2str(node->uuid, 16, uuid, sizeof(uuid)))
+		return false;
+
+	snprintf(dir_name, PATH_MAX, "%s/%s", mesh_get_storage_dir(), uuid);
+
+	if (strlen(dir_name) >= PATH_MAX)
+		return false;
+
+	create_dir(dir_name);
+
+	node->storage_dir = l_strdup(dir_name);
+
+	return true;
+}
+
 static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 {
 	struct l_dbus_message_iter objects, interfaces;
@@ -1672,6 +1698,9 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 						PRIMARY_NET_IDX,
 						net_key.old_key))
 			goto fail;
+
+		/* Initialize directory for storing keyring info */
+		init_storage_dir(node);
 
 		if (!keyring_put_remote_dev_key(node, DEFAULT_NEW_UNICAST,
 							num_ele, dev_key))
@@ -2073,15 +2102,9 @@ struct mesh_config *node_config_get(struct mesh_node *node)
 	return node->cfg;
 }
 
-void node_path_set(struct mesh_node *node, char *path)
+const char *node_get_storage_dir(struct mesh_node *node)
 {
-	l_free(node->node_path);
-	node->node_path = l_strdup(path);
-}
-
-char *node_path_get(struct mesh_node *node)
-{
-	return node->node_path;
+	return node->storage_dir;
 }
 
 const char *node_get_app_path(struct mesh_node *node)
