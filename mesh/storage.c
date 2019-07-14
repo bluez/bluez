@@ -56,50 +56,11 @@ static const char *storage_dir;
 static bool read_node_cb(struct mesh_db_node *db_node, void *user_data)
 {
 	struct mesh_node *node = user_data;
-	struct mesh_net *net;
-	uint32_t seq_number;
-	uint8_t ttl, mode, cnt, num_ele;
-	uint16_t unicast, interval;
-	uint8_t *uuid;
 
 	if (!node_init_from_storage(node, db_node)) {
 		node_remove(node);
 		return false;
 	}
-
-	net = node_get_net(node);
-	seq_number = node_get_sequence_number(node);
-	mesh_net_set_seq_num(net, seq_number);
-	ttl = node_default_ttl_get(node);
-	mesh_net_set_default_ttl(net, ttl);
-
-	mode = node_proxy_mode_get(node);
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_proxy_mode(net, mode == MESH_MODE_ENABLED);
-
-	mode = node_friend_mode_get(node);
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_friend_mode(net, mode == MESH_MODE_ENABLED);
-
-	mode = node_relay_mode_get(node, &cnt, &interval);
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_relay_mode(net, mode == MESH_MODE_ENABLED, cnt,
-								interval);
-
-	mode = node_beacon_mode_get(node);
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_beacon_mode(net, mode == MESH_MODE_ENABLED);
-
-	unicast = db_node->unicast;
-	num_ele = node_get_num_elements(node);
-
-	if (!IS_UNASSIGNED(unicast) &&
-		!mesh_net_register_unicast(net, unicast, num_ele))
-		return false;
-
-	uuid = node_uuid_get(node);
-	if (uuid)
-		mesh_net_id_uuid_set(net, uuid);
 
 	return true;
 }

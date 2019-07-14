@@ -376,6 +376,7 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 {
 	struct mesh_db_node *db_node = data;
 	unsigned int num_ele;
+	uint8_t mode;
 
 	node->comp = l_new(struct node_composition, 1);
 	node->comp->cid = db_node->cid;
@@ -407,6 +408,33 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 		return false;
 
 	node->primary = db_node->unicast;
+
+	mesh_net_set_seq_num(node->net, node->seq_number);
+	mesh_net_set_default_ttl(node->net, node->ttl);
+
+	mode = node->proxy;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_proxy_mode(node->net, mode == MESH_MODE_ENABLED);
+
+	mode = node->lpn;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_friend_mode(node->net, mode == MESH_MODE_ENABLED);
+
+	mode = node->relay.mode;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_relay_mode(node->net, mode == MESH_MODE_ENABLED,
+					node->relay.cnt, node->relay.interval);
+
+	mode = node->beacon;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_beacon_mode(node->net, mode == MESH_MODE_ENABLED);
+
+	if (!IS_UNASSIGNED(node->primary) &&
+		!mesh_net_register_unicast(node->net, node->primary, num_ele))
+		return false;
+
+	if (node->uuid)
+		mesh_net_id_uuid_set(node->net, node->uuid);
 
 	/* Initialize configuration server model */
 	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
