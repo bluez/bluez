@@ -64,65 +64,6 @@ static bool read_node_cb(struct mesh_config_node *db_node, void *user_data)
 	return true;
 }
 
-static bool read_net_keys_cb(uint16_t idx, uint8_t *key, uint8_t *new_key,
-						int phase, void *user_data)
-{
-	struct mesh_net *net = user_data;
-
-	if (!net)
-		return false;
-
-	return mesh_net_set_key(net, idx, key, new_key, phase);
-}
-
-static bool read_app_keys_cb(uint16_t net_idx, uint16_t app_idx, uint8_t *key,
-					uint8_t *new_key, void *user_data)
-{
-	struct mesh_net *net = user_data;
-
-	if (!net)
-		return false;
-
-	return appkey_key_init(net, net_idx, app_idx, key, new_key);
-}
-
-static bool parse_node(struct mesh_node *node, json_object *jnode)
-{
-	bool bvalue;
-	uint32_t iv_index;
-	uint8_t key_buf[16];
-	uint8_t cnt;
-	uint16_t interval;
-	struct mesh_net *net = node_get_net(node);
-
-	if (mesh_config_read_iv_index(jnode, &iv_index, &bvalue))
-		mesh_net_set_iv_index(net, iv_index, bvalue);
-
-	if (mesh_config_read_net_transmit(jnode, &cnt, &interval))
-		mesh_net_transmit_params_set(net, cnt, interval);
-
-	/* Node composition/configuration info */
-	if (!mesh_config_read_node(jnode, read_node_cb, node))
-		return false;
-
-	if (!mesh_config_read_net_keys(jnode, read_net_keys_cb, net))
-		return false;
-
-	if (!mesh_config_read_token(jnode, key_buf))
-		return false;
-
-	node_set_token(node, key_buf);
-
-	if (!mesh_config_read_device_key(jnode, key_buf))
-		return false;
-
-	node_set_device_key(node, key_buf);
-
-	mesh_config_read_app_keys(jnode, read_app_keys_cb, net);
-
-	return true;
-}
-
 static bool parse_config(char *in_file, char *out_dir, const uint8_t uuid[16])
 {
 	int fd;
@@ -162,7 +103,7 @@ static bool parse_config(char *in_file, char *out_dir, const uint8_t uuid[16])
 
 	node = node_new(uuid);
 
-	result = parse_node(node, jnode);
+	result = mesh_config_read_node(jnode, read_node_cb, node);
 
 	if (!result) {
 		json_object_put(jnode);

@@ -65,55 +65,52 @@ struct mesh_config_modes {
 	uint8_t beacon;
 };
 
+struct mesh_config_netkey {
+	uint16_t idx;
+	uint8_t key[16];
+	uint8_t new_key[16];
+	uint8_t phase;
+};
+
+struct mesh_config_appkey {
+	uint16_t net_idx;
+	uint16_t app_idx;
+	uint8_t key[16];
+	uint8_t new_key[16];
+};
+
+struct mesh_config_transmit {
+	uint16_t interval;
+	uint8_t count;
+};
+
 struct mesh_config_node {
-	bool provisioner;
+	struct l_queue *elements;
+	struct l_queue *netkeys;
+	struct l_queue *appkeys;
 	uint32_t seq_number;
-	struct mesh_config_modes modes;
+	uint32_t iv_index;
+	bool iv_update;
 	uint16_t cid;
 	uint16_t pid;
 	uint16_t vid;
 	uint16_t crpl;
 	uint16_t unicast;
+	struct mesh_config_transmit *net_transmit;
+	struct mesh_config_modes modes;
 	uint8_t ttl;
-	struct l_queue *elements;
+	uint8_t dev_key[16];
+	uint8_t token[8];
 };
 
-struct mesh_config_prov {
-	uint16_t algorithm;
-	struct {
-		uint16_t actions;
-		uint8_t size;
-	} input_oob;
-	uint8_t pub_type;
-	struct {
-		uint16_t actions;
-		uint8_t size;
-	} output_oob;
-	uint8_t static_type;
-	uint8_t priv_key[32];
-};
-
-typedef bool (*mesh_config_net_key_cb)(uint16_t idx, uint8_t key[16],
-			uint8_t new_key[16], int phase, void *user_data);
-typedef bool (*mesh_config_app_key_cb)(uint16_t idx, uint16_t net_idx,
-			uint8_t key[16], uint8_t new_key[16], void *user_data);
 typedef bool (*mesh_config_node_cb)(struct mesh_config_node *node,
 							void *user_data);
 
 bool mesh_config_read_node(json_object *jobj, mesh_config_node_cb cb,
 							void *user_data);
 bool mesh_config_add_node(json_object *jnode, struct mesh_config_node *node);
-bool mesh_config_read_iv_index(json_object *jobj, uint32_t *idx, bool *update);
-bool mesh_config_read_device_key(json_object *jobj, uint8_t key_buf[16]);
-bool mesh_config_read_token(json_object *jobj, uint8_t token[8]);
-bool mesh_config_read_net_transmit(json_object *jobj, uint8_t *cnt,
-							uint16_t *interval);
 bool mesh_config_write_net_transmit(json_object *jobj, uint8_t cnt,
 							uint16_t interval);
-bool mesh_config_read_net_keys(json_object *jobj, mesh_config_net_key_cb cb,
-							void *user_data);
-bool mesh_config_read_app_keys(json_object *jobj, mesh_config_app_key_cb cb,
-							void *user_data);
 bool mesh_config_write_device_key(json_object *jobj, uint8_t *key);
 bool mesh_config_write_token(json_object *jobj, uint8_t *token);
 bool mesh_config_write_network_key(json_object *jobj, uint16_t idx,

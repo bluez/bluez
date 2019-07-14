@@ -252,7 +252,7 @@ static json_object *jarray_key_del(json_object *jarray, int16_t idx)
 	return jarray_new;
 }
 
-bool mesh_config_read_iv_index(json_object *jobj, uint32_t *idx, bool *update)
+static bool read_iv_index(json_object *jobj, uint32_t *idx, bool *update)
 {
 	int tmp;
 
@@ -270,7 +270,7 @@ bool mesh_config_read_iv_index(json_object *jobj, uint32_t *idx, bool *update)
 	return true;
 }
 
-bool mesh_config_read_token(json_object *jobj, uint8_t token[8])
+static bool read_token(json_object *jobj, uint8_t token[8])
 {
 	json_object *jvalue;
 	char *str;
@@ -288,7 +288,7 @@ bool mesh_config_read_token(json_object *jobj, uint8_t token[8])
 	return true;
 }
 
-bool mesh_config_read_device_key(json_object *jobj, uint8_t key_buf[16])
+static bool read_device_key(json_object *jobj, uint8_t key_buf[16])
 {
 	json_object *jvalue;
 	char *str;
@@ -306,78 +306,86 @@ bool mesh_config_read_device_key(json_object *jobj, uint8_t key_buf[16])
 	return true;
 }
 
-bool mesh_config_read_app_keys(json_object *jobj, mesh_config_app_key_cb cb,
-							void *user_data)
+static bool get_key_index(json_object *jobj, const char *keyword,
+								uint16_t *index)
+{
+	int idx;
+
+	if (!get_int(jobj, keyword, &idx))
+		return false;
+
+	if (!CHECK_KEY_IDX_RANGE(idx))
+		return false;
+
+	*index = (uint16_t) idx;
+	return true;
+}
+
+static bool read_app_keys(json_object *jobj, struct mesh_config_node *node)
 {
 	json_object *jarray;
 	int len;
 	int i;
 
-	if (!cb)
-		return true;
-
 	if (!json_object_object_get_ex(jobj, "appKeys", &jarray))
-		return false;
+		return true;
 
 	if (json_object_get_type(jarray) != json_type_array)
 		return false;
 
+	/* Allow empty AppKey array */
 	len = json_object_array_length(jarray);
+	if (!len)
+		return true;
+
+	node->appkeys = l_queue_new();
 
 	for (i = 0; i < len; ++i) {
 		json_object *jtemp, *jvalue;
-		int app_idx, net_idx;
-		bool key_refresh = false;
 		char *str;
-		uint8_t key[16];
-		uint8_t new_key[16];
+		struct mesh_config_appkey *appkey;
+
+		appkey = l_new(struct mesh_config_appkey, 1);
 
 		jtemp = json_object_array_get_idx(jarray, i);
 
-		if (!get_int(jtemp, "index", &app_idx))
-			return false;
+		if (!get_key_index(jtemp, "index", &appkey->app_idx))
+			goto fail;
 
-		if (!CHECK_KEY_IDX_RANGE(app_idx))
-			return false;
-
-		if (!get_int(jtemp, "boundNetKey", &net_idx))
-			return false;
-
-		if (!CHECK_KEY_IDX_RANGE(net_idx))
-			return false;
-
-		if (json_object_object_get_ex(jtemp, "oldKey", &jvalue)) {
-			str = (char *)json_object_get_string(jvalue);
-			if (!str2hex(str, strlen(str), key, 16))
-				return false;
-			key_refresh = true;
-		}
+		if (!get_key_index(jtemp, "boundNetKey", &appkey->net_idx))
+			goto fail;
 
 		if (!json_object_object_get_ex(jtemp, "key", &jvalue))
-			return false;
+			goto fail;
 
 		str = (char *)json_object_get_string(jvalue);
-		if (!str2hex(str, strlen(str), key_refresh ? new_key : key, 16))
-			return false;
+		if (!str2hex(str, strlen(str), appkey->new_key, 16))
+			goto fail;
 
-		if (!cb((uint16_t)net_idx, (uint16_t) app_idx, key,
-				key_refresh ? new_key : NULL, user_data))
-			return false;
+		if (json_object_object_get_ex(jtemp, "oldKey", &jvalue))
+			str = (char *)json_object_get_string(jvalue);
+
+		if (!str2hex(str, strlen(str), appkey->key, 16))
+			goto fail;
+
+		l_queue_push_tail(node->appkeys, appkey);
 	}
 
 	return true;
+fail:
+	l_queue_destroy(node->appkeys, l_free);
+	node->appkeys = NULL;
+
+	return false;
 }
 
-bool mesh_config_read_net_keys(json_object *jobj, mesh_config_net_key_cb cb,
-								void *user_data)
+static bool read_net_keys(json_object *jobj,  struct mesh_config_node *node)
 {
 	json_object *jarray;
 	int len;
 	int i;
 
-	if (!cb)
-		return true;
-
+	/* At least one NetKey must be present for a provisioned node */
 	if (!json_object_object_get_ex(jobj, "netKeys", &jarray))
 		return false;
 
@@ -385,50 +393,57 @@ bool mesh_config_read_net_keys(json_object *jobj, mesh_config_net_key_cb cb,
 		return false;
 
 	len = json_object_array_length(jarray);
+	if (!len)
+		return false;
+
+	node->netkeys = l_queue_new();
 
 	for (i = 0; i < len; ++i) {
 		json_object *jtemp, *jvalue;
-		int idx;
 		char *str;
-		bool key_refresh = false;
-		int phase;
-		uint8_t key[16];
-		uint8_t new_key[16];
+		struct mesh_config_netkey *netkey;
+
+		netkey = l_new(struct mesh_config_netkey, 1);
 
 		jtemp = json_object_array_get_idx(jarray, i);
 
-		if (!get_int(jtemp, "index", &idx))
-			return false;
-
-		if (!CHECK_KEY_IDX_RANGE(idx))
-			return false;
-
-		if (json_object_object_get_ex(jtemp, "oldKey", &jvalue)) {
-			str = (char *)json_object_get_string(jvalue);
-			if (!str2hex(str, strlen(str), key, 16))
-				return false;
-			key_refresh = true;
-		}
+		if (!get_key_index(jtemp, "index", &netkey->idx))
+			goto fail;
 
 		if (!json_object_object_get_ex(jtemp, "key", &jvalue))
-			return false;
+			goto fail;
 
 		str = (char *)json_object_get_string(jvalue);
-		if (!str2hex(str, strlen(str), key_refresh ? new_key : key, 16))
-			return false;
+		if (!str2hex(str, strlen(str), netkey->new_key, 16))
+			goto fail;
 
 		if (!json_object_object_get_ex(jtemp, "keyRefresh", &jvalue))
-			phase = KEY_REFRESH_PHASE_NONE;
+			netkey->phase = KEY_REFRESH_PHASE_NONE;
 		else
-			phase = json_object_get_int(jvalue);
+			netkey->phase = (uint8_t) json_object_get_int(jvalue);
 
+		if (netkey->phase > KEY_REFRESH_PHASE_TWO)
+			goto fail;
 
-		if (!cb((uint16_t)idx, key, key_refresh ? new_key : NULL, phase,
-								user_data))
-			return false;
+		if (json_object_object_get_ex(jtemp, "oldKey", &jvalue)) {
+			if (netkey->phase == KEY_REFRESH_PHASE_NONE)
+				goto fail;
+
+			str = (char *)json_object_get_string(jvalue);
+		}
+
+		if (!str2hex(str, strlen(str), netkey->key, 16))
+			goto fail;
+
+		l_queue_push_tail(node->netkeys, netkey);
 	}
 
 	return true;
+fail:
+	l_queue_destroy(node->netkeys, l_free);
+	node->netkeys = NULL;
+
+	return false;
 }
 
 bool mesh_config_net_key_add(json_object *jobj, uint16_t idx,
@@ -784,21 +799,6 @@ static bool parse_bindings(json_object *jarray, struct mesh_config_model *mod)
 		mod->bindings[i] = (uint16_t) idx;
 	}
 
-	return true;
-}
-
-static bool get_key_index(json_object *jobj, const char *keyword,
-								uint16_t *index)
-{
-	int idx;
-
-	if (!get_int(jobj, keyword, &idx))
-		return false;
-
-	if (!CHECK_KEY_IDX_RANGE(idx))
-		return false;
-
-	*index = (uint16_t) idx;
 	return true;
 }
 
@@ -1162,12 +1162,40 @@ static bool parse_composition(json_object *jcomp, struct mesh_config_node *node)
 	return true;
 }
 
+static bool read_net_transmit(json_object *jobj, struct mesh_config_node *node)
+{
+	json_object *jretransmit, *jvalue;
+	uint16_t interval;
+	uint8_t cnt;
+
+	if (!json_object_object_get_ex(jobj, "retransmit", &jretransmit))
+		return true;
+
+	if (!json_object_object_get_ex(jretransmit, "count", &jvalue))
+		return false;
+
+	/* TODO: add range checking */
+	cnt = (uint8_t) json_object_get_int(jvalue);
+
+	if (!json_object_object_get_ex(jretransmit, "interval", &jvalue))
+		return false;
+
+	interval = (uint16_t) json_object_get_int(jvalue);
+
+	node->net_transmit = l_new(struct mesh_config_transmit, 1);
+	node->net_transmit->count = cnt;
+	node->net_transmit->interval = interval;
+
+	return true;
+}
+
 bool mesh_config_read_node(json_object *jnode, mesh_config_node_cb cb,
 							void *user_data)
 {
 	struct mesh_config_node node;
 	json_object *jvalue;
 	char *str;
+	bool result = false;
 
 	if (!jnode)
 		return false;
@@ -1178,6 +1206,21 @@ bool mesh_config_read_node(json_object *jnode, mesh_config_node_cb cb,
 	}
 
 	memset(&node, 0, sizeof(node));
+
+	if (!read_iv_index(jnode, &node.iv_index, &node.iv_update)) {
+		l_info("Failed to read IV index");
+		return false;
+	}
+
+	if (!read_token(jnode, node.token)) {
+		l_info("Failed to read node token");
+		return false;
+	}
+
+	if (!read_device_key(jnode, node.dev_key)) {
+		l_info("Failed to read node device key");
+		return false;
+	}
 
 	if (!parse_composition(jnode, &node)) {
 		l_info("Failed to parse local node composition");
@@ -1210,10 +1253,34 @@ bool mesh_config_read_node(json_object *jnode, mesh_config_node_cb cb,
 	if (!json_object_object_get_ex(jnode, "elements", &jvalue))
 		return false;
 
-	if (!parse_elements(jvalue, &node))
+	if (!read_net_transmit(jnode, &node)) {
+		l_info("Failed to read node net transmit parameters");
 		return false;
+	}
 
-	return cb(&node, user_data);
+	if (!read_net_keys(jnode, &node)) {
+		l_info("Failed to read net keys");
+		goto done;
+	}
+
+	if (!read_app_keys(jnode, &node)) {
+		l_info("Failed to read app keys");
+		goto done;
+	}
+
+	if (!parse_elements(jvalue, &node)) {
+		l_info("Failed to parse elements");
+		goto done;
+	}
+
+	result = cb(&node, user_data);
+
+done:
+	l_free(node.net_transmit);
+	l_queue_destroy(node.netkeys, l_free);
+	l_queue_destroy(node.netkeys, l_free);
+
+	return result;
 }
 
 bool mesh_config_write_uint16_hex(json_object *jobj, const char *desc,
@@ -1344,30 +1411,6 @@ bool mesh_config_write_relay_mode(json_object *jnode, uint8_t mode,
 fail:
 	json_object_put(jrelay);
 	return false;
-}
-
-bool mesh_config_read_net_transmit(json_object *jobj, uint8_t *cnt,
-							uint16_t *interval)
-{
-	json_object *jretransmit, *jvalue;
-
-	if (!jobj)
-		return false;
-
-	if (!json_object_object_get_ex(jobj, "retransmit", &jretransmit))
-		return false;
-
-	if (!json_object_object_get_ex(jretransmit, "count", &jvalue))
-		return false;
-
-	*cnt = (uint8_t) json_object_get_int(jvalue);
-
-	if (!json_object_object_get_ex(jretransmit, "interval", &jvalue))
-		return false;
-
-	*interval = (uint16_t) json_object_get_int(jvalue);
-
-	return true;
 }
 
 bool mesh_config_write_net_transmit(json_object *jobj, uint8_t cnt,

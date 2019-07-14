@@ -31,6 +31,7 @@
 #include "mesh/mesh-defs.h"
 #include "mesh/mesh.h"
 #include "mesh/net.h"
+#include "mesh/appkey.h"
 #include "mesh/mesh-config.h"
 #include "mesh/provision.h"
 #include "mesh/storage.h"
@@ -374,6 +375,24 @@ static bool add_elements(struct mesh_node *node,
 	return true;
 }
 
+static void set_net_key(void *a, void *b)
+{
+	struct mesh_config_netkey *netkey = a;
+	struct mesh_node *node = b;
+
+	mesh_net_set_key(node->net, netkey->idx, netkey->key, netkey->new_key,
+								netkey->phase);
+}
+
+static void set_app_key(void *a, void *b)
+{
+	struct mesh_config_appkey *appkey = a;
+	struct mesh_node *node = b;
+
+	appkey_key_init(node->net, appkey->net_idx, appkey->app_idx,
+						appkey->key, appkey->new_key);
+}
+
 bool node_init_from_storage(struct mesh_node *node, void *data)
 {
 	struct mesh_config_node *db_node = data;
@@ -400,6 +419,9 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 	node->ttl = db_node->ttl;
 	node->seq_number = db_node->seq_number;
 
+	memcpy(node->dev_key, db_node->dev_key, 16);
+	memcpy(node->token, db_node->token, 8);
+
 	num_ele = l_queue_length(db_node->elements);
 	if (num_ele > 0xff)
 		return false;
@@ -410,6 +432,21 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 		return false;
 
 	node->primary = db_node->unicast;
+
+	if (!db_node->netkeys)
+		return false;
+
+	mesh_net_set_iv_index(node->net, db_node->iv_index, db_node->iv_update);
+
+	if (db_node->net_transmit)
+		mesh_net_transmit_params_set(node->net,
+					db_node->net_transmit->count,
+					db_node->net_transmit->interval);
+
+	l_queue_foreach(db_node->netkeys, set_net_key, node);
+
+	if (db_node->appkeys)
+		l_queue_foreach(db_node->appkeys, set_app_key, node);
 
 	mesh_net_set_seq_num(node->net, node->seq_number);
 	mesh_net_set_default_ttl(node->net, node->ttl);
@@ -434,9 +471,6 @@ bool node_init_from_storage(struct mesh_node *node, void *data)
 	if (!IS_UNASSIGNED(node->primary) &&
 		!mesh_net_register_unicast(node->net, node->primary, num_ele))
 		return false;
-
-	if (node->uuid)
-		mesh_net_id_uuid_set(node->net, node->uuid);
 
 	/* Initialize configuration server model */
 	mesh_config_srv_init(node, PRIMARY_ELE_IDX);
