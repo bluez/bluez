@@ -532,7 +532,8 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 {
 	int status;
 	struct mesh_model *mod;
-	bool is_present;
+	bool is_present, is_vendor;
+	uint8_t ele_idx;
 
 	mod = find_model(node, addr, id, &status);
 	if (!mod) {
@@ -540,7 +541,8 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 		return status;
 	}
 
-	id = (id >= VENDOR_ID_MASK) ? (id & 0xffff) : id;
+	is_vendor = id < VENDOR_ID_MASK && id > 0xffff;
+	id = !is_vendor ? (id & 0xffff) : id;
 
 	if (id == CONFIG_SRV_MODEL || id == CONFIG_CLI_MODEL)
 		return MESH_STATUS_INVALID_MODEL;
@@ -556,10 +558,12 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (is_present && !unbind)
 		return MESH_STATUS_SUCCESS;
 
+	ele_idx = (uint8_t) node_get_element_idx(node, addr);
+
 	if (unbind) {
 		model_unbind_idx(node, mod, app_idx);
-
-		if (!storage_model_bind(node, addr, id, app_idx, true))
+		if (!mesh_config_model_binding_del(node_config_get(node),
+					ele_idx, is_vendor, id, app_idx))
 			return MESH_STATUS_STORAGE_FAIL;
 
 		return MESH_STATUS_SUCCESS;
@@ -568,7 +572,8 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (l_queue_length(mod->bindings) >= MAX_BINDINGS)
 		return MESH_STATUS_INSUFF_RESOURCES;
 
-	if (!storage_model_bind(node, addr, id, app_idx, false))
+	if (!mesh_config_model_binding_add(node_config_get(node),
+					ele_idx, is_vendor, id, app_idx))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	model_bind_idx(node, mod, app_idx);

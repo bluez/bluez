@@ -487,7 +487,8 @@ static void cleanup_node(void *data)
 	if (node->cfg) {
 
 		/* Preserve the last sequence number */
-		storage_write_sequence_number(net, mesh_net_get_seq_num(net));
+		mesh_config_write_seq_number(node->cfg,
+						mesh_net_get_seq_num(net));
 
 		mesh_config_save_config(node->cfg, true, NULL, NULL);
 	}
@@ -532,7 +533,8 @@ bool node_app_key_delete(struct mesh_net *net, uint16_t addr,
 
 		mesh_model_app_key_delete(node, ele->models, app_idx);
 	}
-	return true;
+
+	return mesh_config_app_key_del(node->cfg, net_idx, app_idx);
 }
 
 uint16_t node_get_primary(struct mesh_node *node)
@@ -613,7 +615,7 @@ bool node_default_ttl_set(struct mesh_node *node, uint8_t ttl)
 	if (!node)
 		return false;
 
-	res = storage_set_ttl(node, ttl);
+	res = mesh_config_write_ttl(node->cfg, ttl);
 
 	if (res) {
 		node->ttl = ttl;
@@ -660,7 +662,7 @@ bool node_set_sequence_number(struct mesh_node *node, uint32_t seq)
 
 	node->upd_sec = write_time.tv_sec;
 
-	return storage_write_sequence_number(node->net, seq);
+	return mesh_config_write_seq_number(node->cfg, seq);
 }
 
 uint32_t node_get_sequence_number(struct mesh_node *node)
@@ -737,7 +739,7 @@ bool node_relay_mode_set(struct mesh_node *node, bool enable, uint8_t cnt,
 	if (!node || node->relay.mode == MESH_MODE_UNSUPPORTED)
 		return false;
 
-	res = storage_set_relay(node, enable, cnt, interval);
+	res = mesh_config_write_relay_mode(node->cfg, enable, cnt, interval);
 
 	if (res) {
 		node->relay.mode = enable ? MESH_MODE_ENABLED :
@@ -759,7 +761,7 @@ bool node_proxy_mode_set(struct mesh_node *node, bool enable)
 		return false;
 
 	proxy = enable ? MESH_MODE_ENABLED : MESH_MODE_DISABLED;
-	res = storage_set_mode(node, proxy, "proxy");
+	res = mesh_config_write_mode(node->cfg, "proxy", proxy);
 
 	if (res) {
 		node->proxy = proxy;
@@ -786,7 +788,7 @@ bool node_beacon_mode_set(struct mesh_node *node, bool enable)
 		return false;
 
 	beacon = enable ? MESH_MODE_ENABLED : MESH_MODE_DISABLED;
-	res = storage_set_mode(node, beacon, "beacon");
+	res = mesh_config_write_mode(node->cfg, "beacon", beacon);
 
 	if (res) {
 		node->beacon = beacon;
@@ -813,7 +815,7 @@ bool node_friend_mode_set(struct mesh_node *node, bool enable)
 		return false;
 
 	friend = enable ? MESH_MODE_ENABLED : MESH_MODE_DISABLED;
-	res = storage_set_mode(node, friend, "friend");
+	res = mesh_config_write_mode(node->cfg, "friend", friend);
 
 	if (res) {
 		node->friend = friend;
@@ -1466,13 +1468,12 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 
 	l_queue_push_tail(nodes, node);
 
-	if (!storage_set_iv_index(node->net, iv_idx, ivu))
+	if (!mesh_config_write_iv_index(node->cfg, iv_idx, ivu))
 		return false;
 
 	mesh_net_set_iv_index(node->net, iv_idx, ivu);
 
-	if (!mesh_config_write_uint16_hex(node->cfg, "unicastAddress",
-								unicast))
+	if (!mesh_config_write_unicast(node->cfg, unicast))
 		return false;
 
 	l_getrandom(node->token, sizeof(node->token));

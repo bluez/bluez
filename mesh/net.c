@@ -33,7 +33,7 @@
 #include "mesh/net.h"
 #include "mesh/mesh-io.h"
 #include "mesh/friend.h"
-#include "mesh/storage.h"
+#include "mesh/mesh-config.h"
 #include "mesh/model.h"
 #include "mesh/appkey.h"
 
@@ -971,7 +971,7 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	l_queue_remove(net->subnets, subnet);
 	subnet_free(subnet);
 
-	if (!storage_net_key_del(net, idx))
+	if (!mesh_config_net_key_del(node_config_get(net->node), idx))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	return MESH_STATUS_SUCCESS;
@@ -1024,7 +1024,7 @@ int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 	if (!subnet)
 		return MESH_STATUS_INSUFF_RESOURCES;
 
-	if (!storage_net_key_add(net, idx, value, false)) {
+	if (!mesh_config_net_key_add(node_config_get(net->node), idx, value)) {
 		l_queue_remove(net->subnets, subnet);
 		subnet_free(subnet);
 		return MESH_STATUS_STORAGE_FAIL;
@@ -2662,7 +2662,8 @@ static int key_refresh_phase_two(struct mesh_net *net, uint16_t idx)
 	else
 		l_queue_foreach(net->friends, frnd_kr_phase2, net);
 
-	storage_set_key_refresh_phase(net, idx, KEY_REFRESH_PHASE_TWO);
+	mesh_config_net_key_set_phase(node_config_get(net->node), idx,
+						KEY_REFRESH_PHASE_TWO);
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -2697,7 +2698,8 @@ static int key_refresh_finish(struct mesh_net *net, uint16_t idx)
 	else
 		l_queue_foreach(net->friends, frnd_kr_phase3, net);
 
-	storage_set_key_refresh_phase(net, idx, KEY_REFRESH_PHASE_NONE);
+	mesh_config_net_key_set_phase(node_config_get(net->node), idx,
+							KEY_REFRESH_PHASE_NONE);
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -2749,7 +2751,8 @@ static void update_iv_kr_state(struct mesh_subnet *subnet, uint32_t iv_index,
 			net->iv_upd_state = IV_UPD_NORMAL;
 		}
 
-		storage_set_iv_index(net, iv_index, net->iv_upd_state);
+		mesh_config_write_iv_index(node_config_get(net->node), iv_index,
+							net->iv_upd_state);
 
 		/* Figure out the key refresh phase */
 		if (kr_transition) {
@@ -2771,7 +2774,8 @@ static void update_iv_kr_state(struct mesh_subnet *subnet, uint32_t iv_index,
 		net->iv_upd_state = IV_UPD_UPDATING;
 		net->iv_update_timeout = l_timeout_create(IV_IDX_UPD_MIN,
 							iv_upd_to, net, NULL);
-		storage_set_iv_index(net, iv_index, net->iv_upd_state);
+		mesh_config_write_iv_index(node_config_get(net->node), iv_index,
+							net->iv_upd_state);
 	} else if (iv_update && iv_index != net->iv_index) {
 		l_error("Update attempted too soon (iv idx already updated)");
 		return;
@@ -2784,7 +2788,8 @@ static void update_iv_kr_state(struct mesh_subnet *subnet, uint32_t iv_index,
 	if (iv_index > net->iv_index) {
 		l_queue_clear(net->msg_cache, mesh_msg_free);
 		net->iv_index = iv_index;
-		storage_set_iv_index(net, iv_index, net->iv_upd_state);
+		mesh_config_write_iv_index(node_config_get(net->node), iv_index,
+							net->iv_upd_state);
 	}
 
 	/* Figure out the key refresh phase */
@@ -3122,7 +3127,8 @@ bool mesh_net_iv_index_update(struct mesh_net *net)
 	mesh_net_flush_msg_queues(net);
 	net->iv_upd_state = IV_UPD_UPDATING;
 	net->iv_index++;
-	if (!storage_set_iv_index(net, net->iv_index, IV_UPD_UPDATING))
+	if (!mesh_config_write_iv_index(node_config_get(net->node),
+					net->iv_index, IV_UPD_UPDATING))
 		return false;
 
 	l_queue_foreach(net->subnets, set_network_beacon, net);
@@ -3739,7 +3745,7 @@ int mesh_net_update_key(struct mesh_net *net, uint16_t idx,
 
 	l_info("key refresh phase 1: Key ID %d", subnet->net_key_upd);
 
-	if (!storage_net_key_add(net, idx, value, true))
+	if (!mesh_config_net_key_update(node_config_get(net->node), idx, value))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	subnet->kr_phase = KEY_REFRESH_PHASE_ONE;

@@ -25,27 +25,3 @@ bool storage_load_nodes(const char *dir);
 bool storage_create_node_config(struct mesh_node *node, const uint8_t uuid[16],
 					struct mesh_config_node *db_node);
 void storage_remove_node_config(struct mesh_node *node);
-bool storage_model_bind(struct mesh_node *node, uint16_t addr, uint32_t id,
-						uint16_t app_idx, bool unbind);
-
-bool storage_set_ttl(struct mesh_node *node, uint8_t ttl);
-bool storage_set_relay(struct mesh_node *node, bool enable, uint8_t count,
-							uint8_t interval);
-bool storage_set_transmit_params(struct mesh_node *node, uint8_t count,
-							uint8_t interval);
-bool storage_set_mode(struct mesh_node *node, uint8_t mode,
-						const char *mode_name);
-bool storage_net_key_add(struct mesh_net *net, uint16_t net_idx,
-					const uint8_t key[16], bool update);
-bool storage_net_key_del(struct mesh_net *net, uint16_t net_idx);
-bool storage_app_key_add(struct mesh_net *net, uint16_t net_idx,
-			uint16_t app_idx, const uint8_t key[16], bool update);
-bool storage_app_key_del(struct mesh_net *net, uint16_t net_idx,
-							uint16_t app_idx);
-bool storage_write_sequence_number(struct mesh_net *net, uint32_t seq);
-bool storage_set_iv_index(struct mesh_net *net, uint32_t iv_index,
-								bool update);
-bool storage_set_device_key(struct mesh_node *node, uint8_t dev_key[16]);
-bool storage_set_unicast(struct mesh_node *node, uint16_t unicast);
-bool storage_set_key_refresh_phase(struct mesh_net *net, uint16_t net_idx,
-								uint8_t phase);

@@ -876,7 +876,9 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 
 		count = (pkt[0] >> 5) + 1;
 		interval = ((pkt[0] & 0x1f) + 1) * 10;
-		if (storage_set_transmit_params(node, count, interval))
+
+		if (mesh_config_write_net_transmit(node_config_get(node), count,
+								interval))
 			mesh_net_transmit_params_set(net, count, interval);
 		/* Fall Through */
 

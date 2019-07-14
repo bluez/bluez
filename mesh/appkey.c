@@ -31,7 +31,7 @@
 #include "mesh/crypto.h"
 #include "mesh/util.h"
 #include "mesh/model.h"
-#include "mesh/storage.h"
+#include "mesh/mesh-config.h"
 #include "mesh/appkey.h"
 
 struct mesh_app_key {
@@ -368,6 +368,7 @@ int appkey_key_update(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 	struct mesh_app_key *key;
 	struct l_queue *app_keys;
 	uint8_t phase = KEY_REFRESH_PHASE_NONE;
+	struct mesh_node *node;
 
 	app_keys = mesh_net_get_app_keys(net);
 	if (!app_keys)
@@ -395,7 +396,10 @@ int appkey_key_update(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 	if (!set_key(key, app_idx, new_key, true))
 		return MESH_STATUS_INSUFF_RESOURCES;
 
-	if (!storage_app_key_add(net, net_idx, app_idx, new_key, true))
+	node = mesh_net_node_get(net);
+
+	if (!mesh_config_app_key_update(node_config_get(node), app_idx,
+								new_key))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	return MESH_STATUS_SUCCESS;
@@ -406,6 +410,7 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 {
 	struct mesh_app_key *key;
 	struct l_queue *app_keys;
+	struct mesh_node *node;
 
 	app_keys = mesh_net_get_app_keys(net);
 	if (!app_keys)
@@ -432,7 +437,10 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 		return MESH_STATUS_INSUFF_RESOURCES;
 	}
 
-	if (!storage_app_key_add(net, net_idx, app_idx, new_key, false)) {
+	node = mesh_net_node_get(net);
+
+	if (!mesh_config_app_key_add(node_config_get(node), net_idx, app_idx,
+								new_key)) {
 		appkey_key_free(key);
 		return MESH_STATUS_STORAGE_FAIL;
 	}
@@ -451,6 +459,7 @@ int appkey_key_delete(struct mesh_net *net, uint16_t net_idx,
 {
 	struct mesh_app_key *key;
 	struct l_queue *app_keys;
+	struct mesh_node *node;
 
 	app_keys = mesh_net_get_app_keys(net);
 	if (!app_keys)
@@ -469,7 +478,9 @@ int appkey_key_delete(struct mesh_net *net, uint16_t net_idx,
 	l_queue_remove(app_keys, key);
 	appkey_key_free(key);
 
-	if (!storage_app_key_del(net, net_idx, app_idx))
+	node = mesh_net_node_get(net);
+
+	if (!mesh_config_app_key_del(node_config_get(node), net_idx, app_idx))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	return MESH_STATUS_SUCCESS;

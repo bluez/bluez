@@ -127,16 +127,11 @@ bool mesh_config_write_network_key(struct mesh_config *cfg, uint16_t idx,
 				uint8_t *key, uint8_t *new_key, int phase);
 bool mesh_config_write_app_key(struct mesh_config *cfg, uint16_t net_idx,
 			uint16_t app_idx, uint8_t *key, uint8_t *new_key);
-bool mesh_config_write_int(struct mesh_config *cfg,
-						const char *keyword, int value);
-bool mesh_config_write_uint16_hex(struct mesh_config *cfg, const char *desc,
-								uint16_t value);
-bool mesh_config_write_uint32_hex(struct mesh_config *cfg, const char *desc,
-								uint32_t value);
-bool mesh_config_write_bool(struct mesh_config *cfg, const char *keyword,
-								bool value);
+bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq);
+bool mesh_config_write_unicast(struct mesh_config *cfg, uint16_t unicast);
 bool mesh_config_write_relay_mode(struct mesh_config *cfg, uint8_t mode,
 					uint8_t count, uint16_t interval);
+bool mesh_config_write_ttl(struct mesh_config *cfg, uint8_t ttl);
 bool mesh_config_write_mode(struct mesh_config *cfg, const char *keyword,
 								int value);
 bool mesh_config_model_binding_add(struct mesh_config *cfg, uint8_t ele_idx,
