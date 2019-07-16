@@ -34,6 +34,7 @@ bool appkey_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
 const uint8_t *appkey_get_key(struct mesh_net *net, uint16_t app_idx,
 							uint8_t *key_id);
 bool appkey_have_key(struct mesh_net *net, uint16_t app_idx);
+uint16_t appkey_net_idx(struct mesh_net *net, uint16_t app_idx);
 int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 							const uint8_t *new_key);
 int appkey_key_update(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
