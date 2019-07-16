@@ -34,7 +34,8 @@
 
 #define CFG_MAX_MSG_LEN 380
 
-static void send_pub_status(struct mesh_node *node, uint16_t src, uint16_t dst,
+static void send_pub_status(struct mesh_node *node, uint16_t net_idx,
+			uint16_t src, uint16_t dst,
 			uint8_t status, uint16_t ele_addr, uint16_t pub_addr,
 			uint32_t mod_id, uint16_t idx, bool cred_flag,
 			uint8_t ttl, uint8_t period, uint8_t retransmit)
@@ -65,11 +66,12 @@ static void send_pub_status(struct mesh_node *node, uint16_t src, uint16_t dst,
 		n += 2;
 	}
 
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, DEFAULT_TTL,
+	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
 								msg, n);
 }
 
-static bool config_pub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
+static bool config_pub_get(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
 					const uint8_t *pkt, uint16_t size)
 {
 	uint32_t mod_id;
@@ -96,16 +98,17 @@ static bool config_pub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
 		status = MESH_STATUS_INVALID_ADDRESS;
 
 	if (pub && status == MESH_STATUS_SUCCESS)
-		send_pub_status(node, src, dst, status, ele_addr, pub->addr,
-				mod_id, pub->idx, pub->credential, pub->ttl,
-						pub->period, pub->retransmit);
+		send_pub_status(node, net_idx, src, dst, status, ele_addr,
+				pub->addr, mod_id, pub->idx, pub->credential,
+				pub->ttl, pub->period, pub->retransmit);
 	else
-		send_pub_status(node, src, dst, status, ele_addr, 0, mod_id,
-								0, 0, 0, 0, 0);
+		send_pub_status(node, net_idx, src, dst, status, ele_addr, 0,
+							mod_id, 0, 0, 0, 0, 0);
 	return true;
 }
 
-static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
+static bool config_pub_set(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
 					const uint8_t *pkt, uint16_t size,
 					bool unreliable)
 {
@@ -224,13 +227,13 @@ static bool config_pub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 
 done:
 	if (!unreliable)
-		send_pub_status(node, src, dst, status, ele_addr, ota,
-				mod_id, idx, cred_flag, ttl, period,
-				retransmit);
+		send_pub_status(node, net_idx, src, dst, status, ele_addr, ota,
+			mod_id, idx, cred_flag, ttl, period, retransmit);
 	return true;
 }
 
-static void send_sub_status(struct mesh_node *node, uint16_t src, uint16_t dst,
+static void send_sub_status(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
 					uint8_t status, uint16_t ele_addr,
 					uint16_t addr, uint32_t mod)
 {
@@ -251,10 +254,12 @@ static void send_sub_status(struct mesh_node *node, uint16_t src, uint16_t dst,
 		n += 2;
 	}
 
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, DEFAULT_TTL, msg, n);
+	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
+							DEFAULT_TTL, msg, n);
 }
 
-static bool config_sub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
+static bool config_sub_get(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
 					const uint8_t *pkt, uint16_t size)
 {
 	uint16_t ele_addr;
@@ -309,7 +314,8 @@ static bool config_sub_get(struct mesh_node *node, uint16_t src, uint16_t dst,
 
 	*msg_status = (uint8_t) status;
 
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, DEFAULT_TTL, msg, n);
+	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
+									msg, n);
 	return true;
 }
 
@@ -345,7 +351,8 @@ static bool save_config_sub(struct mesh_node *node, uint16_t ele_addr,
 					vendor, &db_sub);
 }
 
-static void config_sub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
+static void config_sub_set(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
 					const uint8_t *pkt, uint16_t size,
 					bool virt, uint32_t opcode)
 {
@@ -460,14 +467,15 @@ static void config_sub_set(struct mesh_node *node, uint16_t src, uint16_t dst,
 	}
 
 	if (!unreliable)
-		send_sub_status(node, src, dst, status, ele_addr, grp, mod_id);
+		send_sub_status(node, net_idx, src, dst, status, ele_addr,
+								grp, mod_id);
 
 }
 
-static void send_model_app_status(struct mesh_node *node, uint16_t src,
-					uint16_t dst, uint8_t status,
-					uint16_t addr, uint32_t id,
-					uint16_t idx)
+static void send_model_app_status(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
+					uint8_t status, uint16_t addr,
+					uint32_t id, uint16_t idx)
 {
 	uint8_t msg[12];
 	size_t n = mesh_model_opcode_set(OP_MODEL_APP_STATUS, msg);
@@ -484,10 +492,12 @@ static void send_model_app_status(struct mesh_node *node, uint16_t src,
 	l_put_le16(id, msg + n);
 	n += 2;
 
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, DEFAULT_TTL, msg, n);
+	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
+									msg, n);
 }
 
-static void model_app_list(struct mesh_node *node, uint16_t src, uint16_t dst,
+static void model_app_list(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
 					const uint8_t *pkt, uint16_t size)
 {
 	uint16_t ele_addr;
@@ -537,14 +547,15 @@ static void model_app_list(struct mesh_node *node, uint16_t src, uint16_t dst,
 
 	if (result >= 0) {
 		*status = result;
-		mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, DEFAULT_TTL,
-								msg, n);
+		mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
+							DEFAULT_TTL, msg, n);
 	}
 
 	l_free(msg);
 }
 
-static bool model_app_bind(struct mesh_node *node, uint16_t src, uint16_t dst,
+static bool model_app_bind(struct mesh_node *node, uint16_t net_idx,
+					uint16_t src, uint16_t dst,
 					const uint8_t *pkt, uint16_t size,
 					bool unbind)
 {
@@ -578,7 +589,8 @@ static bool model_app_bind(struct mesh_node *node, uint16_t src, uint16_t dst,
 	else
 		result = mesh_model_binding_add(node, ele_addr, mod_id, idx);
 
-	send_model_app_status(node, src, dst, result, ele_addr, mod_id, idx);
+	send_model_app_status(node, net_idx, src, dst, result, ele_addr,
+								mod_id, idx);
 
 	return true;
 }
@@ -733,8 +745,8 @@ static void node_reset(struct l_timeout *timeout, void *user_data)
 	l_main_quit();
 }
 
-static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
-				uint16_t unicast, uint16_t idx,
+static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
+				uint16_t app_idx, uint16_t net_idx,
 				const uint8_t *data, uint16_t size,
 				uint8_t ttl, const void *user_data)
 {
@@ -747,7 +759,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 	uint8_t msg[11];
 	uint8_t *long_msg = NULL;
 	struct mesh_net_heartbeat *hb;
-	uint16_t net_idx, app_idx;
+	uint16_t n_idx, a_idx;
 	uint8_t state, status;
 	uint8_t phase;
 	bool virt = false;
@@ -755,7 +767,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 	uint16_t interval;
 	uint16_t n;
 
-	if (idx != APP_IDX_DEV_LOCAL)
+	if (app_idx != APP_IDX_DEV_LOCAL)
 		return false;
 
 	if (mesh_model_opcode_get(pkt, size, &opcode, &n)) {
@@ -766,7 +778,8 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 
 	net = node_get_net(node);
 	hb = mesh_net_heartbeat_get(net);
-	l_debug("CONFIG-SRV-opcode 0x%x size %u idx %3.3x", opcode, size, idx);
+	l_debug("CONFIG-SRV-opcode 0x%x size %u idx %3.3x", opcode, size,
+								net_idx);
 
 	n = 0;
 
@@ -810,7 +823,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size != 25 && size != 27)
 			return true;
 
-		config_pub_set(node, src, unicast, pkt, size,
+		config_pub_set(node, net_idx, src, unicast, pkt, size,
 				!!(opcode & OP_UNRELIABLE));
 		break;
 
@@ -818,24 +831,26 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size != 11 && size != 13)
 			return true;
 
-		config_pub_set(node, src, unicast, pkt, size,
+		config_pub_set(node, net_idx, src, unicast, pkt, size,
 				!!(opcode & OP_UNRELIABLE));
 		break;
 
 	case OP_CONFIG_MODEL_PUB_GET:
-		config_pub_get(node, src, unicast, pkt, size);
+		config_pub_get(node, net_idx, src, unicast, pkt, size);
 		break;
 
 	case OP_CONFIG_VEND_MODEL_SUB_GET:
 		if (size != 6)
 			return true;
-		config_sub_get(node, src, unicast, pkt, size);
+
+		config_sub_get(node, net_idx, src, unicast, pkt, size);
 		break;
 
 	case OP_CONFIG_MODEL_SUB_GET:
 		if (size != 4)
 			return true;
-		config_sub_get(node, src, unicast, pkt, size);
+
+		config_sub_get(node, net_idx, src, unicast, pkt, size);
 		break;
 
 	case OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE:
@@ -847,7 +862,8 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 	case OP_CONFIG_MODEL_SUB_DELETE:
 	case OP_CONFIG_MODEL_SUB_ADD:
 	case OP_CONFIG_MODEL_SUB_DELETE_ALL:
-		config_sub_set(node, src, unicast, pkt, size, virt, opcode);
+		config_sub_set(node, net_idx, src, unicast, pkt, size, virt,
+									opcode);
 		break;
 
 	case OP_CONFIG_RELAY_SET:
@@ -908,8 +924,8 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size != 3 || pkt[2] > 0x01)
 			return true;
 
-		net_idx = l_get_le16(pkt);
-		if (net_idx > 0xfff)
+		n_idx = l_get_le16(pkt);
+		if (n_idx > 0xfff)
 			return true;
 
 		/*
@@ -922,17 +938,17 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size < 2)
 			return true;
 
-		net_idx = l_get_le16(pkt);
-		if (net_idx > 0xfff)
+		n_idx = l_get_le16(pkt);
+		if (n_idx > 0xfff)
 			return true;
 
 		n = mesh_model_opcode_set(OP_NODE_IDENTITY_STATUS, msg);
 
-		status = mesh_net_get_identity_mode(net, net_idx, &state);
+		status = mesh_net_get_identity_mode(net, n_idx, &state);
 
 		msg[n++] = status;
 
-		l_put_le16(net_idx, msg + n);
+		l_put_le16(n_idx, msg + n);
 		n += 2;
 
 		msg[n++] = state;
@@ -981,13 +997,13 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size != 2)
 			return true;
 
-		net_idx = l_get_le16(pkt);
+		n_idx = l_get_le16(pkt);
 
 		n = mesh_model_opcode_set(OP_CONFIG_KEY_REFRESH_PHASE_STATUS,
 						msg);
 
 		/* State: 0x00-0x03 phase of key refresh */
-		status = mesh_net_key_refresh_phase_get(net, net_idx,
+		status = mesh_net_key_refresh_phase_get(net, n_idx,
 							&phase);
 		if (status != MESH_STATUS_SUCCESS) {
 			b_res = status;
@@ -995,7 +1011,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		}
 
 		msg[n++] = b_res;
-		l_put_le16(net_idx, msg + n);
+		l_put_le16(n_idx, msg + n);
 		n += 2;
 		msg[n++] = phase;
 
@@ -1007,18 +1023,18 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size != 19)
 			return true;
 
-		net_idx = l_get_le16(pkt) & 0xfff;
-		app_idx = l_get_le16(pkt + 1) >> 4;
+		n_idx = l_get_le16(pkt) & 0xfff;
+		a_idx = l_get_le16(pkt + 1) >> 4;
 
 		if (opcode == OP_APPKEY_ADD)
-			b_res = appkey_key_add(net, net_idx, app_idx, pkt + 3);
+			b_res = appkey_key_add(net, n_idx, a_idx, pkt + 3);
 		else
-			b_res = appkey_key_update(net, net_idx, app_idx,
+			b_res = appkey_key_update(net, n_idx, a_idx,
 								pkt + 3);
 
 		l_debug("Add/Update AppKey %s: Net_Idx %3.3x, App_Idx %3.3x",
 			(b_res == MESH_STATUS_SUCCESS) ? "success" : "fail",
-							net_idx, app_idx);
+							n_idx, a_idx);
 
 
 		n = mesh_model_opcode_set(OP_APPKEY_STATUS, msg);
@@ -1031,15 +1047,14 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 
 	case OP_APPKEY_DELETE:
 		if (size != 3)
-			return
-				true;
+			return true;
 
-		net_idx = l_get_le16(pkt) & 0xfff;
-		app_idx = l_get_le16(pkt + 1) >> 4;
-		b_res = appkey_key_delete(net, net_idx, app_idx);
+		n_idx = l_get_le16(pkt) & 0xfff;
+		a_idx = l_get_le16(pkt + 1) >> 4;
+		b_res = appkey_key_delete(net, n_idx, a_idx);
 		l_debug("Delete AppKey %s Net_Idx %3.3x to App_Idx %3.3x",
 			(b_res == MESH_STATUS_SUCCESS) ? "success" : "fail",
-							net_idx, app_idx);
+							n_idx, a_idx);
 
 		n = mesh_model_opcode_set(OP_APPKEY_STATUS, msg);
 		msg[n++] = b_res;
@@ -1051,16 +1066,17 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 	case OP_APPKEY_GET:
 		if (size != 2)
 			return true;
-		net_idx = l_get_le16(pkt);
+
+		n_idx = l_get_le16(pkt);
 
 		long_msg = l_malloc(CFG_MAX_MSG_LEN);
 		n = mesh_model_opcode_set(OP_APPKEY_LIST, long_msg);
 
-		status = appkey_list(net, net_idx, long_msg + n + 3,
+		status = appkey_list(net, n_idx, long_msg + n + 3,
 						CFG_MAX_MSG_LEN - n - 3, &size);
 
 		long_msg[n] = status;
-		l_put_le16(net_idx, long_msg + n + 1);
+		l_put_le16(n_idx, long_msg + n + 1);
 		n += (size + 3);
 		break;
 
@@ -1069,12 +1085,12 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 		if (size != 18)
 			return true;
 
-		net_idx = l_get_le16(pkt);
+		n_idx = l_get_le16(pkt);
 
 		if (opcode == OP_NETKEY_ADD)
-			b_res = mesh_net_add_key(net, net_idx, pkt + 2);
+			b_res = mesh_net_add_key(net, n_idx, pkt + 2);
 		else
-			b_res = mesh_net_update_key(net, net_idx, pkt + 2);
+			b_res = mesh_net_update_key(net, n_idx, pkt + 2);
 
 		l_debug("NetKey Add/Update %s",
 			(b_res == MESH_STATUS_SUCCESS) ? "success" : "fail");
@@ -1113,20 +1129,20 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 
 	case OP_MODEL_APP_BIND:
 	case OP_MODEL_APP_UNBIND:
-		model_app_bind(node, src, unicast, pkt, size,
+		model_app_bind(node, net_idx, src, unicast, pkt, size,
 				opcode != OP_MODEL_APP_BIND);
 		break;
 
 	case OP_VEND_MODEL_APP_GET:
 		if (size != 6)
 			return true;
-		model_app_list(node, src, unicast, pkt, size);
+		model_app_list(node, net_idx, src, unicast, pkt, size);
 		break;
 
 	case OP_MODEL_APP_GET:
 		if (size != 4)
 			return true;
-		model_app_list(node, src, unicast, pkt, size);
+		model_app_list(node, net_idx, src, unicast, pkt, size);
 		break;
 
 	case OP_CONFIG_HEARTBEAT_PUB_SET:
@@ -1257,7 +1273,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst,
 	if (n) {
 		/* print_packet("App Tx", long_msg ? long_msg : msg, n); */
 		mesh_model_send(node, unicast, src,
-				APP_IDX_DEV_LOCAL, DEFAULT_TTL,
+				APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
 				long_msg ? long_msg : msg, n);
 	}
 	l_free(long_msg);

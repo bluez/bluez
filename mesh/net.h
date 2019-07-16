@@ -300,9 +300,9 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 				const uint8_t *msg, uint16_t msg_len);
 
 bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
-				uint16_t dst, uint8_t key_id, uint8_t ttl,
-				uint32_t seq, uint32_t iv_index, bool szmic,
-				const void *msg, uint16_t msg_len,
+				uint16_t dst, uint8_t key_id, uint16_t net_idx,
+				uint8_t ttl, uint32_t seq, uint32_t iv_index,
+				bool szmic, const void *msg, uint16_t msg_len,
 				mesh_net_status_func_t status_func,
 				void *user_data);
 void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id,

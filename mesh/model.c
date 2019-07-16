@@ -67,7 +67,8 @@ struct mod_forward {
 	uint16_t src;
 	uint16_t dst;
 	uint16_t unicast;
-	uint16_t idx;
+	uint16_t app_idx;
+	uint16_t net_idx;
 	uint16_t size;
 	uint8_t ttl;
 	int8_t rssi;
@@ -302,10 +303,11 @@ static void forward_model(void *a, void *b)
 	uint32_t dst;
 	bool result;
 
-	l_debug("model %8.8x with idx %3.3x", mod->id, fwd->idx);
+	l_debug("model %8.8x with idx %3.3x", mod->id, fwd->app_idx);
 
-	if (fwd->idx != APP_IDX_DEV_LOCAL && fwd->idx != APP_IDX_DEV_REMOTE &&
-					!has_binding(mod->bindings, fwd->idx))
+	if (fwd->app_idx != APP_IDX_DEV_LOCAL &&
+				fwd->app_idx != APP_IDX_DEV_REMOTE &&
+				!has_binding(mod->bindings, fwd->app_idx))
 		return;
 
 	dst = fwd->dst;
@@ -343,7 +345,8 @@ static void forward_model(void *a, void *b)
 	result = false;
 
 	if (mod->cbs->recv)
-		result = mod->cbs->recv(fwd->src, dst, fwd->unicast, fwd->idx,
+		result = mod->cbs->recv(fwd->src, dst, fwd->unicast,
+				fwd->app_idx, fwd->net_idx,
 				fwd->data, fwd->size, fwd->ttl, mod->user_data);
 
 	if (dst == fwd->unicast && result)
@@ -437,13 +440,17 @@ static void cmplt(uint16_t remote, uint8_t status,
 }
 
 static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
-		uint32_t dst, uint8_t key_id, const uint8_t *key,
-		uint8_t *label, uint8_t ttl, const void *msg, uint16_t msg_len)
+		uint32_t dst, uint16_t app_idx, uint16_t net_idx,
+		uint8_t *label, uint8_t ttl,
+		const void *msg, uint16_t msg_len)
 {
-	bool ret = false;
+	uint8_t dev_key[16];
 	uint32_t iv_index, seq_num;
+	const uint8_t *key;
 	uint8_t *out;
+	uint8_t key_aid = APP_AID_DEV;
 	bool szmic = false;
+	bool ret = false;
 	uint16_t out_len = msg_len + sizeof(uint32_t);
 	struct mesh_net *net = node_get_net(node);
 
@@ -455,22 +462,44 @@ static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
 		}
 	}
 
+	if (app_idx == APP_IDX_DEV_LOCAL) {
+		key = node_get_device_key(node);
+		if (!key)
+			return false;
+	} else if (app_idx == APP_IDX_DEV_REMOTE) {
+		if (!keyring_get_remote_dev_key(node, dst, dev_key))
+			return false;
+
+		key = dev_key;
+	} else {
+		key = appkey_get_key(node_get_net(node), app_idx, &key_aid);
+		if (!key) {
+			l_debug("no app key for (%x)", app_idx);
+			return false;
+		}
+
+		net_idx = appkey_net_idx(node_get_net(node), app_idx);
+	}
+
+	l_debug("(%x) %p", app_idx, key);
+	l_debug("net_idx %x", net_idx);
+
 	out = l_malloc(out_len);
 
 	iv_index = mesh_net_get_iv_index(net);
 
 	seq_num = mesh_net_get_seq_num(net);
 	if (!mesh_crypto_payload_encrypt(label, msg, out, msg_len, src, dst,
-				key_id, seq_num, iv_index, szmic, key)) {
+				key_aid, seq_num, iv_index, szmic, key)) {
 		l_error("Failed to Encrypt Payload");
 		goto done;
 	}
 
 	/* print_packet("Encrypted with", key, 16); */
 
-	ret = mesh_net_app_send(net, credential, src, dst, key_id, ttl,
-					seq_num, iv_index, szmic, out, out_len,
-								cmplt, NULL);
+	ret = mesh_net_app_send(net, credential, src, dst, key_aid, net_idx,
+					ttl, seq_num, iv_index, szmic, out,
+					out_len, cmplt, NULL);
 done:
 	l_free(out);
 	return ret;
@@ -773,8 +802,8 @@ static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx, bool is_sub,
 
 bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 			uint32_t seq, uint32_t iv_index, uint8_t ttl,
-			uint16_t src, uint16_t dst, uint8_t key_id,
-			const uint8_t *data, uint16_t size)
+			uint16_t net_idx, uint16_t src, uint16_t dst,
+			uint8_t key_aid, const uint8_t *data, uint16_t size)
 {
 	uint8_t *clear_text;
 	struct mod_forward forward = {
@@ -793,7 +822,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	bool result = false;
 	bool is_subscription;
 
-	l_debug("iv_index %8.8x key_id = %2.2x", iv_index, key_id);
+	l_debug("iv_index %8.8x key_aid = %2.2x", iv_index, key_aid);
 	if (!dst)
 		return false;
 
@@ -811,21 +840,21 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 
 	/*
 	 * The packet needs to be decoded by the correct key which
-	 * is hinted by key_id, but is not necessarily definitive
+	 * is hinted by key_aid, but is not necessarily definitive
 	 */
-	if (key_id == APP_ID_DEV || mesh_net_provisioner_mode_get(net))
+	if (key_aid == APP_AID_DEV || mesh_net_provisioner_mode_get(net))
 		decrypt_idx = dev_packet_decrypt(node, data, size, szmict, src,
-						dst, key_id, seq0, iv_index,
+						dst, key_aid, seq0, iv_index,
 						clear_text);
 	else if ((dst & 0xc000) == 0x8000)
 		decrypt_idx = virt_packet_decrypt(net, data, size, szmict, src,
-							dst, key_id, seq0,
+							dst, key_aid, seq0,
 							iv_index, clear_text,
 							&decrypt_virt);
 	else
 		decrypt_idx = appkey_packet_decrypt(net, szmict, seq0,
 							iv_index, src, dst,
-							NULL, 0, key_id, data,
+							NULL, 0, key_aid, data,
 							size, clear_text);
 
 	if (decrypt_idx < 0) {
@@ -836,7 +865,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 
 	/* print_packet("Clr Rx (pre-cache-check)", clear_text, size - 4); */
 
-	if (key_id != APP_ID_DEV) {
+	if (key_aid != APP_AID_DEV) {
 		uint16_t crpl = node_get_crpl(node);
 
 		if (appkey_msg_in_replay_cache(net, (uint16_t) decrypt_idx, src,
@@ -849,7 +878,8 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	print_packet("Clr Rx", clear_text, size - (szmict ? 8 : 4));
 
 	forward.virt = decrypt_virt;
-	forward.idx = decrypt_idx;
+	forward.app_idx = decrypt_idx;
+	forward.net_idx = net_idx;
 	num_ele = node_get_num_elements(node);
 	addr = node_get_primary(node);
 
@@ -879,7 +909,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 		if (forward.has_dst && !forward.done) {
 			if ((decrypt_idx & APP_IDX_MASK) == decrypt_idx)
 				send_msg_rcvd(node, i, is_subscription, src,
-						forward.idx, forward.size,
+						forward.app_idx, forward.size,
 						forward.data);
 			else if (decrypt_idx == APP_IDX_DEV_REMOTE ||
 				(decrypt_idx == APP_IDX_DEV_LOCAL &&
@@ -913,8 +943,7 @@ int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
 	uint32_t target;
 	uint8_t *label = NULL;
 	uint16_t dst;
-	uint8_t key_id;
-	const uint8_t *key;
+	uint16_t net_idx;
 	bool result;
 	int status;
 
@@ -961,30 +990,21 @@ int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
 
 	l_debug("publish dst=%x", dst);
 
-	key = appkey_get_key(net, mod->pub->idx, &key_id);
-	if (!key) {
-		l_debug("no app key for (%x)", mod->pub->idx);
-		return false;
-	}
-
-	l_debug("(%x) %p", mod->pub->idx, key);
-	l_debug("key_id %x", key_id);
+	net_idx = appkey_net_idx(net, mod->pub->idx);
 
 	result = msg_send(node, mod->pub->credential != 0, src,
-				dst, key_id, key, label, ttl, msg, msg_len);
+				dst, mod->pub->idx, net_idx, label, ttl,
+				msg, msg_len);
 
 	return result ? MESH_ERROR_NONE : MESH_ERROR_FAILED;
 
 }
 
-bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t target,
-					uint16_t app_idx, uint8_t ttl,
+bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
+					uint16_t app_idx, uint16_t net_idx,
+					uint8_t ttl,
 					const void *msg, uint16_t msg_len)
 {
-	uint8_t key_id;
-	uint8_t dev_key[16];
-	const uint8_t *key;
-
 	/* print_packet("Mod Tx", msg, msg_len); */
 
 	/* If SRC is 0, use the Primary Element */
@@ -993,34 +1013,11 @@ bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t target,
 
 	gettimeofday(&tx_start, NULL);
 
-	if (IS_UNASSIGNED(target))
+	if (IS_UNASSIGNED(dst))
 		return false;
 
-	if (app_idx == APP_IDX_DEV_LOCAL) {
-		key = node_get_device_key(node);
-		if (!key)
-			return false;
-
-		key_id = APP_ID_DEV;
-	} else if (app_idx == APP_IDX_DEV_REMOTE) {
-		if (!keyring_get_remote_dev_key(node, target, dev_key))
-			return false;
-
-		key = dev_key;
-		key_id = APP_ID_DEV;
-	} else {
-		key = appkey_get_key(node_get_net(node), app_idx, &key_id);
-		if (!key) {
-			l_debug("no app key for (%x)", app_idx);
-			return false;
-		}
-
-		l_debug("(%x) %p", app_idx, key);
-		l_debug("key_id %x", key_id);
-	}
-
-	return msg_send(node, false, src, target, key_id, key, NULL, ttl,
-			msg, msg_len);
+	return msg_send(node, false, src, dst, app_idx, net_idx,
+						NULL, ttl, msg, msg_len);
 }
 
 int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,

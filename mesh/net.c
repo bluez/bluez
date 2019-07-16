@@ -119,7 +119,6 @@ struct mesh_net {
 	unsigned int pkt_id;
 	unsigned int bea_id;
 	unsigned int beacon_id;
-	unsigned int key_id_next;
 	unsigned int sar_id_next;
 
 	bool friend_enable;
@@ -203,7 +202,7 @@ struct mesh_sar {
 	bool frnd_cred;
 	uint8_t ttl;
 	uint8_t last_seg;
-	uint8_t key_id;
+	uint8_t key_aid;
 	uint8_t buf[4]; /* Large enough for ACK-Flags and MIC */
 };
 
@@ -225,7 +224,7 @@ struct msg_rx {
 	union {
 		struct {
 			uint16_t app_idx;
-			uint8_t key_id;
+			uint8_t key_aid;
 		} m;
 		struct {
 			uint16_t seq0;
@@ -668,7 +667,6 @@ struct mesh_net *mesh_net_new(struct mesh_node *node)
 	net->node = node;
 	net->pkt_id = 0;
 	net->bea_id = 0;
-	net->key_id_next = 0;
 
 	net->beacon_enable = true;
 	net->proxy_enable = false;
@@ -676,7 +674,7 @@ struct mesh_net *mesh_net_new(struct mesh_node *node)
 
 	net->seq_num = 0x000000;
 	net->src_addr = 0x0000;
-	net->default_ttl = 0x00;
+	net->default_ttl = 0x7f;
 
 	net->provisioner = false;
 
@@ -1764,12 +1762,11 @@ static void outseg_to(struct l_timeout *seg_timeout, void *user_data)
 	}
 }
 
-static bool msg_rxed(struct mesh_net *net, bool frnd,
-					uint32_t iv_index,
-					uint8_t ttl,
-					uint32_t seq,
+static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+					uint8_t ttl, uint32_t seq,
+					uint16_t net_idx,
 					uint16_t src, uint16_t dst,
-					uint8_t key_id,
+					uint8_t key_aid,
 					bool szmic, uint16_t seqZero,
 					const uint8_t *data, uint16_t size)
 {
@@ -1781,7 +1778,7 @@ static bool msg_rxed(struct mesh_net *net, bool frnd,
 
 	/* Save un-decrypted messages for our friends */
 	if (!frnd && l_queue_length(net->friends)) {
-		uint32_t hdr = key_id << KEY_HDR_SHIFT;
+		uint32_t hdr = key_aid << KEY_HDR_SHIFT;
 		uint8_t frnd_ttl = ttl;
 
 		/* If not from us, decrement for our hop */
@@ -1806,8 +1803,8 @@ static bool msg_rxed(struct mesh_net *net, bool frnd,
 	}
 
 not_for_friend:
-	return mesh_model_rx(net->node, szmic, seqAuth, seq, iv_index,
-					ttl, src, dst, key_id, data, size);
+	return mesh_model_rx(net->node, szmic, seqAuth, seq, iv_index, ttl,
+					net_idx, src, dst, key_aid, data, size);
 }
 
 static bool match_frnd_sar_dst(const void *a, const void *b)
@@ -1915,12 +1912,11 @@ static void friend_seg_rxed(struct mesh_net *net,
 	frnd_msg->cnt_in++;
 }
 
-static bool seg_rxed(struct mesh_net *net, bool frnd,
-					uint32_t iv_index,
-					uint8_t ttl,
-					uint32_t seq,
+static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+					uint8_t ttl, uint32_t seq,
+					uint16_t net_idx,
 					uint16_t src, uint16_t dst,
-					uint8_t key_id,
+					uint8_t key_aid,
 					bool szmic, uint16_t seqZero,
 					uint8_t segO, uint8_t segN,
 					const uint8_t *data, uint8_t size)
@@ -1967,7 +1963,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd,
 					seqZero, seq, size, segO, segN);
 		/* Sanity Check--> certain things must match */
 		if (SEG_MAX(sar_in->len) != segN ||
-				sar_in->key_id != key_id)
+				sar_in->key_aid != key_aid)
 			return false;
 
 		if (sar_in->flags == expected) {
@@ -1988,7 +1984,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd,
 		sar_in->src = dst;
 		sar_in->remote = src;
 		sar_in->seqZero = seqZero;
-		sar_in->key_id = key_id;
+		sar_in->key_aid = key_aid;
 		sar_in->len = len;
 		sar_in->last_seg = 0xff;
 		if (!net->friend_addr)
@@ -2022,12 +2018,9 @@ static bool seg_rxed(struct mesh_net *net, bool frnd,
 		if (!net->friend_addr)
 			send_net_ack(net, sar_in, expected);
 
-		msg_rxed(net, frnd,
-				iv_index,
-				ttl,
-				seq,
+		msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
 				sar_in->remote, dst,
-				key_id,
+				key_aid,
 				szmic, sar_in->seqZero,
 				sar_in->buf, sar_in->len);
 
@@ -2300,6 +2293,22 @@ static void send_msg_pkt(struct mesh_net *net, uint8_t *packet, uint8_t size)
 	mesh_io_send(io, &info, packet, size);
 }
 
+static uint16_t key_id_to_net_idx(struct mesh_net *net, uint32_t key_id)
+{
+	struct mesh_subnet *subnet;
+
+	if (!net)
+		return NET_IDX_INVALID;
+
+	subnet = l_queue_find(net->subnets, match_key_id,
+						L_UINT_TO_PTR(key_id));
+
+	if (subnet)
+		return subnet->idx;
+	else
+		return NET_IDX_INVALID;
+}
+
 static enum _relay_advice packet_received(void *user_data,
 				uint32_t key_id, uint32_t iv_index,
 				const void *data, uint8_t size, int8_t rssi)
@@ -2310,6 +2319,7 @@ static enum _relay_advice packet_received(void *user_data,
 	uint8_t net_ttl, net_key_id, net_segO, net_segN, net_opcode;
 	uint32_t net_seq, cache_cookie;
 	uint16_t net_src, net_dst, net_seqZero;
+	uint16_t net_idx;
 	uint8_t packet[31];
 	bool net_ctl, net_segmented, net_szmic, net_relay;
 	struct mesh_friend *net_frnd = NULL;
@@ -2324,6 +2334,10 @@ static enum _relay_advice packet_received(void *user_data,
 
 	if (!drop)
 		print_packet("RX: Network [clr] :", packet + 2, size);
+
+	net_idx = key_id_to_net_idx(net, key_id);
+	if (net_idx == NET_IDX_INVALID)
+		return RELAY_NONE;
 
 	if (!mesh_crypto_packet_parse(packet + 2, size,
 					&net_ctl, &net_ttl,
@@ -2433,10 +2447,8 @@ static enum _relay_advice packet_received(void *user_data,
 						msg, app_msg_len);
 				}
 			} else {
-				seg_rxed(net, net_frnd,
-						iv_index,
-						net_ttl,
-						net_seq,
+				seg_rxed(net, net_frnd, iv_index, net_ttl,
+						net_seq, net_idx,
 						net_src, net_dst,
 						net_key_id,
 						net_szmic, net_seqZero,
@@ -2449,6 +2461,7 @@ static enum _relay_advice packet_received(void *user_data,
 						iv_index,
 						net_ttl,
 						net_seq,
+						net_idx,
 						net_src, net_dst,
 						net_key_id,
 						false, net_seq & SEQ_ZERO_MASK,
@@ -3297,7 +3310,7 @@ static bool send_seg(struct mesh_net *net, struct mesh_sar *msg, uint8_t segO)
 					seq_num,
 					msg->src, msg->remote,
 					0,
-					segN ? true : false, msg->key_id,
+					segN ? true : false, msg->key_aid,
 					msg->szmic, false, msg->seqZero,
 					segO, segN,
 					msg->buf + seg_off, seg_len,
@@ -3395,9 +3408,9 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 }
 
 bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
-				uint16_t dst, uint8_t key_id, uint8_t ttl,
-				uint32_t seq, uint32_t iv_index, bool szmic,
-				const void *msg, uint16_t msg_len,
+				uint16_t dst, uint8_t key_aid, uint16_t net_idx,
+				uint8_t ttl, uint32_t seq, uint32_t iv_index,
+				bool szmic, const void *msg, uint16_t msg_len,
 				mesh_net_status_func_t status_func,
 				void *user_data)
 {
@@ -3414,18 +3427,17 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	if (!src || !dst)
 		return false;
 
-	if (ttl == 0xff)
+	if (ttl == DEFAULT_TTL)
 		ttl = net->default_ttl;
 
 	seg_max = SEG_MAX(msg_len);
 
 	/* First enqueue to any Friends and internal models */
-	result = msg_rxed(net, false,
-				iv_index,
-				ttl,
+	result = msg_rxed(net, false, iv_index, ttl,
 				seq + seg_max,
+				net_idx,
 				src, dst,
-				key_id,
+				key_aid,
 				szmic, seq & SEQ_ZERO_MASK,
 				msg, msg_len);
 
@@ -3456,7 +3468,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	payload->ttl = ttl;
 	payload->szmic = szmic;
 	payload->frnd_cred = frnd_cred;
-	payload->key_id = key_id;
+	payload->key_aid = key_aid;
 	if (seg_max) {
 		payload->flags = 0xffffffff >> (31 - seg_max);
 		payload->seqZero = seq & SEQ_ZERO_MASK;
@@ -3567,7 +3579,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 	if (src == dst)
 		return;
 
-	if (ttl == 0xff)
+	if (ttl == DEFAULT_TTL)
 		ttl = net->default_ttl;
 
 	/* Range check the Opcode and msg length*/
