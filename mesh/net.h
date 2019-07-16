@@ -28,9 +28,7 @@ struct mesh_node;
 
 #define UNUSED_KEY_IDX	0xffff
 
-#define APP_ID_DEV	0
-#define APP_ID_ANY	((unsigned int) -1)
-#define NET_ID_ANY	(APP_ID_ANY - 1)
+#define APP_AID_DEV	0x00
 
 #define CTL		0x80
 #define TTL_MASK	0x7f

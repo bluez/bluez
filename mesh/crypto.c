@@ -429,8 +429,9 @@ bool mesh_crypto_device_nonce(uint32_t seq, uint16_t src,
 	return true;
 }
 
-bool mesh_crypto_application_encrypt(uint8_t key_id, uint32_t seq, uint16_t src,
-					uint16_t dst, uint32_t iv_index,
+bool mesh_crypto_application_encrypt(uint8_t key_aid, uint32_t seq,
+					uint16_t src, uint16_t dst,
+					uint32_t iv_index,
 					const uint8_t app_key[16],
 					const uint8_t *aad, uint8_t aad_len,
 					const uint8_t *msg, uint8_t msg_len,
@@ -440,11 +441,11 @@ bool mesh_crypto_application_encrypt(uint8_t key_id, uint32_t seq, uint16_t src,
 	uint8_t nonce[13];
 	bool aszmic = (mic_size == 8) ? true : false;
 
-	if (!key_id && !mesh_crypto_device_nonce(seq, src, dst,
+	if (!key_aid && !mesh_crypto_device_nonce(seq, src, dst,
 						iv_index, aszmic, nonce))
 		return false;
 
-	if (key_id && !mesh_crypto_application_nonce(seq, src, dst,
+	if (key_aid && !mesh_crypto_application_nonce(seq, src, dst,
 						iv_index, aszmic, nonce))
 		return false;
 
@@ -453,8 +454,8 @@ bool mesh_crypto_application_encrypt(uint8_t key_id, uint32_t seq, uint16_t src,
 						out, app_mic, mic_size);
 }
 
-bool mesh_crypto_application_decrypt(uint8_t key_id, uint32_t seq, uint16_t src,
-				uint16_t dst, uint32_t iv_index,
+bool mesh_crypto_application_decrypt(uint8_t key_aid, uint32_t seq,
+				uint16_t src, uint16_t dst, uint32_t iv_index,
 				const uint8_t app_key[16],
 				const uint8_t *aad, uint8_t aad_len,
 				const uint8_t *enc_msg, uint8_t enc_msg_len,
@@ -463,11 +464,11 @@ bool mesh_crypto_application_decrypt(uint8_t key_id, uint32_t seq, uint16_t src,
 	uint8_t nonce[13];
 	bool aszmic = (mic_size == 8) ? true : false;
 
-	if (!key_id && !mesh_crypto_device_nonce(seq, src, dst,
+	if (!key_aid && !mesh_crypto_device_nonce(seq, src, dst,
 						iv_index, aszmic, nonce))
 		return false;
 
-	if (key_id && !mesh_crypto_application_nonce(seq, src, dst,
+	if (key_aid && !mesh_crypto_application_nonce(seq, src, dst,
 						iv_index, aszmic, nonce))
 		return false;
 
@@ -638,7 +639,7 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 				uint32_t seq,
 				uint16_t src, uint16_t dst,
 				uint8_t opcode,
-				bool segmented, uint8_t key_id,
+				bool segmented, uint8_t key_aid,
 				bool szmic, bool relay, uint16_t seqZero,
 				uint8_t segO, uint8_t segN,
 				const uint8_t *payload, uint8_t payload_len,
@@ -656,7 +657,7 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 
 	if (!ctl) {
 		hdr = segmented << SEG_HDR_SHIFT;
-		hdr |= (key_id & KEY_ID_MASK) << KEY_HDR_SHIFT;
+		hdr |= (key_aid & KEY_ID_MASK) << KEY_HDR_SHIFT;
 		if (segmented) {
 			hdr |= szmic << SZMIC_HDR_SHIFT;
 			hdr |= (seqZero & SEQ_ZERO_MASK) << SEQ_ZERO_HDR_SHIFT;
@@ -700,7 +701,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 				bool *ctl, uint8_t *ttl, uint32_t *seq,
 				uint16_t *src, uint16_t *dst,
 				uint32_t *cookie, uint8_t *opcode,
-				bool *segmented, uint8_t *key_id,
+				bool *segmented, uint8_t *key_aid,
 				bool *szmic, bool *relay, uint16_t *seqZero,
 				uint8_t *segO, uint8_t *segN,
 				const uint8_t **payload, uint8_t *payload_len)
@@ -769,8 +770,8 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 		if (cookie)
 			*cookie = l_get_be32(packet + packet_len - 8);
 
-		if (key_id)
-			*key_id = (hdr >> KEY_HDR_SHIFT) & KEY_ID_MASK;
+		if (key_aid)
+			*key_aid = (hdr >> KEY_HDR_SHIFT) & KEY_ID_MASK;
 
 		if (is_segmented) {
 			if (szmic)
@@ -805,7 +806,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 bool mesh_crypto_payload_encrypt(uint8_t *aad, const uint8_t *payload,
 				uint8_t *out, uint16_t payload_len,
-				uint16_t src, uint16_t dst, uint8_t key_id,
+				uint16_t src, uint16_t dst, uint8_t key_aid,
 				uint32_t seq_num, uint32_t iv_index,
 				bool aszmic,
 				const uint8_t application_key[16])
@@ -815,8 +816,7 @@ bool mesh_crypto_payload_encrypt(uint8_t *aad, const uint8_t *payload,
 	if (payload_len < 1)
 		return false;
 
-	/* Key_ID == 0 means the Device Key is being used */
-	if (!key_id)
+	if (key_aid == APP_AID_DEV)
 		application_nonce[0] = 0x02;
 
 	/* Seq Num */
@@ -848,7 +848,7 @@ bool mesh_crypto_payload_decrypt(uint8_t *aad, uint16_t aad_len,
 				const uint8_t *payload, uint16_t payload_len,
 				bool szmict,
 				uint16_t src, uint16_t dst,
-				uint8_t key_id, uint32_t seq_num,
+				uint8_t key_aid, uint32_t seq_num,
 				uint32_t iv_index, uint8_t *out,
 				const uint8_t app_key[16])
 {
@@ -859,8 +859,7 @@ bool mesh_crypto_payload_decrypt(uint8_t *aad, uint16_t aad_len,
 	if (payload_len < 5 || !out)
 		return false;
 
-	/* Key_ID == 0 means the Device Key is being used */
-	if (!key_id)
+	if (key_aid == APP_AID_DEV)
 		app_nonce[0] = 0x02;
 
 	/* Seq Num */
