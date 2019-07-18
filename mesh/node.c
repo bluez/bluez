@@ -1656,6 +1656,14 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		} else
 			goto fail;
 
+		/*
+		 * TODO: For now always initialize directory for storing
+		 * keyring info. Need to figure out what checks need
+		 * to be performed to do this conditionally, i.e., presence of
+		 * Provisioner interface, etc.
+		 */
+		init_storage_dir(node);
+
 	} else if (req->type == REQUEST_TYPE_JOIN) {
 		node_join_ready_func_t cb = req->cb;
 
