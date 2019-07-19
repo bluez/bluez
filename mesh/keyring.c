@@ -128,6 +128,9 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 	bool result = true;
 	int fd, i;
 
+	if (!IS_UNICAST_RANGE(unicast, count))
+		return false;
+
 	if (!node)
 		return false;
 
@@ -218,10 +221,14 @@ bool keyring_get_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 	bool result = false;
 	int fd;
 
+	if (!IS_UNICAST(unicast))
+		return false;
+
 	if (!node)
 		return false;
 
 	node_path = node_get_storage_dir(node);
+
 	snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path, dev_key_dir,
 								unicast);
 
@@ -280,10 +287,14 @@ bool keyring_del_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 	char key_file[PATH_MAX];
 	int i;
 
+	if (!IS_UNICAST_RANGE(unicast, count))
+		return false;
+
 	if (!node)
 		return false;
 
 	node_path = node_get_storage_dir(node);
+
 	for (i = 0; i < count; i++) {
 		snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path,
 						dev_key_dir, unicast + i);

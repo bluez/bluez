@@ -592,6 +592,9 @@ Methods:
 
 		This call affects the local bluetooth-meshd key database only.
 
+		It is an error to call this with address range overlapping
+		with local element addresses.
+
 		PossibleErrors:
 			org.bluez.mesh.Error.Failed
 			org.bluez.mesh.Error.InvalidArguments
@@ -608,6 +611,9 @@ Methods:
 		assigned to the remote node.
 
 		This call affects the local bluetooth-meshd key database only.
+
+		It is an error to call this with address range overlapping
+		with local element addresses.
 
 		PossibleErrors:
 			org.bluez.mesh.Error.InvalidArguments

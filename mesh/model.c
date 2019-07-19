@@ -913,7 +913,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 						forward.data);
 			else if (decrypt_idx == APP_IDX_DEV_REMOTE ||
 				(decrypt_idx == APP_IDX_DEV_LOCAL &&
-				 mesh_net_is_local_address(net, src)))
+				 mesh_net_is_local_address(net, src, 1)))
 				send_dev_key_msg_rcvd(node, i, src, 0,
 						forward.size, forward.data);
 		}

@@ -3892,12 +3892,15 @@ bool mesh_net_have_key(struct mesh_net *net, uint16_t idx)
 						L_UINT_TO_PTR(idx)) != NULL);
 }
 
-bool mesh_net_is_local_address(struct mesh_net *net, uint16_t addr)
+bool mesh_net_is_local_address(struct mesh_net *net, uint16_t src,
+								uint16_t count)
 {
+	const uint16_t last = src + count - 1;
 	if (!net)
 		return false;
 
-	return (addr >= net->src_addr && addr <= net->last_addr);
+	return (src >= net->src_addr && src <= net->last_addr) &&
+			(last >= net->src_addr && last <= net->last_addr);
 }
 
 void mesh_net_set_window_accuracy(struct mesh_net *net, uint8_t accuracy)

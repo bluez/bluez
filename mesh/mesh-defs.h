@@ -82,6 +82,7 @@
 #define IS_UNASSIGNED(x)	((x) == UNASSIGNED_ADDRESS)
 #define IS_UNICAST(x)		(((x) > UNASSIGNED_ADDRESS) && \
 					((x) < VIRTUAL_ADDRESS_LOW))
+#define IS_UNICAST_RANGE(x, c)	(IS_UNICAST(x) && IS_UNICAST(x + c - 1))
 #define IS_VIRTUAL(x)		(((x) >= VIRTUAL_ADDRESS_LOW) && \
 					((x) <= VIRTUAL_ADDRESS_HIGH))
 #define IS_GROUP(x)		((((x) >= GROUP_ADDRESS_LOW) && \
