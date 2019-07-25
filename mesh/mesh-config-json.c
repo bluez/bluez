@@ -1191,7 +1191,7 @@ static void parse_features(json_object *jconfig, struct mesh_config_node *node)
 	if (json_object_object_get_ex(jconfig, "lowPower", &jvalue)) {
 		mode = get_mode(jvalue);
 		if (mode <= MESH_MODE_UNSUPPORTED)
-			node->modes.friend = mode;
+			node->modes.lpn = mode;
 	}
 
 	if (json_object_object_get_ex(jconfig, "beacon", &jvalue)) {
