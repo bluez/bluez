@@ -537,10 +537,8 @@ class Element(dbus.service.Object):
 		sig_models = self._get_sig_models()
 
 		props = {'Index' : dbus.Byte(self.index)}
-		if len(sig_models) != 0:
-			props['Models'] = dbus.Array(sig_models, signature='q')
-		if len(vendor_models) != 0:
-			props['VendorModels'] = dbus.Array(vendor_models,
+		props['Models'] = dbus.Array(sig_models, signature='q')
+		props['VendorModels'] = dbus.Array(vendor_models,
 							signature='(qq)')
 		#print(props)
 		return { MESH_ELEMENT_IFACE: props }
