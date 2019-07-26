@@ -343,6 +343,55 @@ Methods:
 			org.bluez.mesh.Error.DoesNotExist
 			org.bluez.mesh.Error.InvalidArguments
 
+Properties:
+	dict Features [read-only]
+
+		The dictionary that contains information about feature support.
+		The following keys are defined:
+
+		boolean Friend
+
+			Indicates the ability to establish a friendship with a
+			Low Power node
+
+		boolean LowPower
+
+			Indicates support for operating in Low Power node mode
+
+		boolean Proxy
+
+			Indicates support for GATT proxy
+
+		boolean Relay
+			Indicates support for relaying messages
+
+	If a key is absent from the dictionary, the feature is not supported.
+	Otherwise, true means that the feature is enabled and false means that
+	the feature is disabled.
+
+	boolean Beacon [read-only]
+
+		This property indicates whether the periodic beaconing is
+		enabled (true) or disabled (false).
+
+	uint8 BeaconFlags [read-only]
+
+		This property may be read at any time to determine the flag
+		field setting on sent and received beacons of the primary
+		network key.
+
+	uint32 IvIndex [read-only]
+
+		This property may be read at any time to determine the IV_Index
+		that the current network is on. This information is only useful
+		for provisioning.
+
+	uint32 SecondsSinceLastHeard [read-only]
+
+		This property may be read at any time to determine the number of
+		seconds since mesh network layer traffic was last detected on
+		this node's network.
+
 Mesh Provisioning Hierarchy
 ============================
 Service		org.bluez.mesh
@@ -617,55 +666,6 @@ Methods:
 
 		PossibleErrors:
 			org.bluez.mesh.Error.InvalidArguments
-
-Properties:
-	dict Features [read-only]
-
-		The dictionary that contains information about feature support.
-		The following keys are defined:
-
-		boolean Friend
-
-			Indicates the ability to establish a friendship with a
-			Low Power node
-
-		boolean LowPower
-
-			Indicates support for operating in Low Power node mode
-
-		boolean Proxy
-
-			Indicates support for GATT proxy
-
-		boolean Relay
-			Indicates support for relaying messages
-
-	If a key is absent from the dictionary, the feature is not supported.
-	Otherwise, true means that the feature is enabled and false means that
-	the feature is disabled.
-
-	boolean Beacon [read-only]
-
-		This property indicates whether the periodic beaconing is
-		enabled (true) or disabled (false).
-
-	uint8 BeaconFlags [read-only]
-
-		This property may be read at any time to determine the flag
-		field setting on sent and received beacons of the primary
-		network key.
-
-	uint32 IvIndex [read-only]
-
-		This property may be read at any time to determine the IV_Index
-		that the current network is on. This information is only useful
-		for provisioning.
-
-	uint32 SecondsSinceLastHeard [read-only]
-
-		This property may be read at any time to determine the number of
-		seconds since mesh network layer traffic was last detected on
-		this node's network.
 
 Mesh Application Hierarchy
 ==========================
