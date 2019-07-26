@@ -898,6 +898,7 @@ uint8_t node_friend_mode_get(struct mesh_node *node)
 uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf, uint16_t sz)
 {
 	uint16_t n, features;
+	uint16_t num_ele = 0;
 	const struct l_queue_entry *ele_entry;
 
 	if (!node || !node->comp || sz < MIN_COMP_SIZE)
@@ -934,6 +935,11 @@ uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf, uint16_t sz)
 		const struct l_queue_entry *mod_entry;
 		uint8_t num_s = 0, num_v = 0;
 		uint8_t *mod_buf;
+
+		if (ele->idx != num_ele)
+			return 0;
+
+		num_ele++;
 
 		/* At least fit location and zeros for number of models */
 		if ((n + 4) > sz)
@@ -996,6 +1002,9 @@ element_done:
 		mod_buf[1] = num_v;
 
 	}
+
+	if (!num_ele)
+		return 0;
 
 	return n;
 }
