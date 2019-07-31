@@ -3712,6 +3712,36 @@ struct bt_l2cap_pdu_le_flowctl_creds {
 	uint16_t credits;
 } __attribute__ ((packed));
 
+#define BT_L2CAP_PDU_ECRED_CONN_REQ	0x17
+struct bt_l2cap_pdu_ecred_conn_req {
+	uint16_t psm;
+	uint16_t mtu;
+	uint16_t mps;
+	uint16_t credits;
+	uint16_t scid[0];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_ECRED_CONN_RSP	0x18
+struct bt_l2cap_pdu_ecred_conn_rsp {
+	uint16_t mtu;
+	uint16_t mps;
+	uint16_t credits;
+	uint16_t result;
+	uint16_t dcid[0];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_ECRED_RECONF_REQ	0x19
+struct bt_l2cap_pdu_ecred_reconf_req {
+	uint16_t mtu;
+	uint16_t mps;
+	uint16_t scid[0];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_ECRED_RECONF_RSP	0x1a
+struct bt_l2cap_pdu_ecred_reconf_rsp {
+	uint16_t result;
+} __attribute__ ((packed));
+
 struct bt_l2cap_hdr_connless {
 	uint16_t psm;
 } __attribute__ ((packed));

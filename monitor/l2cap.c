@@ -54,6 +54,7 @@
 #define L2CAP_MODE_ERTM			0x03
 #define L2CAP_MODE_STREAMING		0x04
 #define L2CAP_MODE_LE_FLOWCTL		0x80
+#define L2CAP_MODE_ECRED		0x81
 
 /* L2CAP Control Field bit masks */
 #define L2CAP_CTRL_SAR_MASK		0xC000
@@ -120,6 +121,9 @@ static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 {
 	int i, n = -1;
 	uint8_t seq_num = 1;
+
+	if (!scid)
+		return;
 
 	for (i = 0; i < MAX_CHAN; i++) {
 		if (n < 0 && chan_list[i].handle == 0x0000) {
@@ -417,6 +421,8 @@ static char *mode2str(uint8_t mode)
 		return "Streaming";
 	case L2CAP_MODE_LE_FLOWCTL:
 		return "LE Flow Control";
+	case L2CAP_MODE_ECRED:
+		return "Enhanced Credit";
 	default:
 		return "Unknown";
 	}
@@ -1333,6 +1339,132 @@ static void sig_le_flowctl_creds(const struct l2cap_frame *frame)
 	print_field("Credits: %u", le16_to_cpu(pdu->credits));
 }
 
+static void sig_ecred_conn_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_pdu_ecred_conn_req *pdu = frame->data;
+	uint16_t scid;
+
+	l2cap_frame_pull((void *)frame, frame, sizeof(pdu));
+
+	print_psm(pdu->psm);
+	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
+	print_field("MPS: %u", le16_to_cpu(pdu->mps));
+	print_field("Credits: %u", le16_to_cpu(pdu->credits));
+
+	while (l2cap_frame_get_le16((void *)frame, &scid)) {
+		print_cid("Source", scid);
+		assign_scid(frame, scid, le16_to_cpu(pdu->psm),
+						L2CAP_MODE_ECRED, 0);
+	}
+}
+
+static void print_ecred_conn_result(uint16_t result)
+{
+	const char *str;
+
+	switch (le16_to_cpu(result)) {
+	case 0x0000:
+		str = "Connection successful";
+		break;
+	case 0x0002:
+		str = "Connection refused - PSM not supported";
+		break;
+	case 0x0004:
+		str = "Some connections refused – not enough resources "
+			"available";
+		break;
+	case 0x0005:
+		str = "All Connections refused - insufficient authentication";
+		break;
+	case 0x0006:
+		str = "All Connections refused - insufficient authorization";
+		break;
+	case 0x0007:
+		str = "All Connection refused - insufficient encryption key "
+			"size";
+		break;
+	case 0x0008:
+		str = "All Connections refused - insufficient encryption";
+		break;
+	case 0x0009:
+		str = "Some Connections refused - Invalid Source CID";
+		break;
+	case 0x000a:
+		str = "Some Connections refused - Source CID already allocated";
+		break;
+	case 0x000b:
+		str = "All Connections refused - unacceptable parameters";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
+}
+
+static void sig_ecred_conn_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_pdu_ecred_conn_rsp *pdu = frame->data;
+	uint16_t dcid;
+
+	l2cap_frame_pull((void *)frame, frame, sizeof(pdu));
+
+	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
+	print_field("MPS: %u", le16_to_cpu(pdu->mps));
+	print_field("Credits: %u", le16_to_cpu(pdu->credits));
+	print_ecred_conn_result(pdu->result);
+
+	while (l2cap_frame_get_le16((void *)frame, &dcid)) {
+		print_cid("Destination", dcid);
+		assign_dcid(frame, dcid, 0);
+	}
+}
+
+static void sig_ecred_reconf_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_pdu_ecred_reconf_req *pdu = frame->data;
+	uint16_t scid;
+
+	l2cap_frame_pull((void *)frame, frame, sizeof(pdu));
+
+	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
+	print_field("MPS: %u", le16_to_cpu(pdu->mps));
+
+	while (l2cap_frame_get_le16((void *)frame, &scid))
+		print_cid("Source", scid);
+}
+
+static void print_ecred_reconf_result(uint16_t result)
+{
+	const char *str;
+
+	switch (le16_to_cpu(result)) {
+	case 0x0000:
+		str = "Reconfiguration successful";
+		break;
+	case 0x0001:
+		str = "Reconfiguration failed - reduction in size of MTU not "
+			"allowed";
+		break;
+	case 0x0002:
+		str = "Reconfiguration failed - reduction in size of MPS not "
+			"allowed for more than one channel at a time";
+		break;
+	default:
+		str = "Reserved";
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
+}
+
+static void sig_ecred_reconf_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_pdu_ecred_reconf_rsp *pdu = frame->data;
+
+	print_ecred_reconf_result(pdu->result);
+}
+
 struct sig_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -1340,6 +1472,24 @@ struct sig_opcode_data {
 	uint16_t size;
 	bool fixed;
 };
+
+#define SIG_ECRED \
+	{ BT_L2CAP_PDU_ECRED_CONN_REQ,					\
+	"Enhanced Credit Connection Request",				\
+	sig_ecred_conn_req, sizeof(struct bt_l2cap_pdu_ecred_conn_req), \
+	false },							\
+	{ BT_L2CAP_PDU_ECRED_CONN_RSP,					\
+	"Enhanced Credit Connection Response",				\
+	sig_ecred_conn_rsp, sizeof(struct bt_l2cap_pdu_ecred_conn_rsp), \
+	false },							\
+	{ BT_L2CAP_PDU_ECRED_RECONF_REQ,				\
+	"Enhanced Credit Reconfigure Request",				\
+	sig_ecred_reconf_req, sizeof(struct bt_l2cap_pdu_ecred_reconf_req), \
+	false },							\
+	{ BT_L2CAP_PDU_ECRED_RECONF_RSP,				\
+	"Enhanced Credit Reconfigure Respond",				\
+	sig_ecred_reconf_rsp, sizeof(struct bt_l2cap_pdu_ecred_reconf_rsp), \
+	true },
 
 static const struct sig_opcode_data bredr_sig_opcode_table[] = {
 	{ 0x01, "Command Reject",
@@ -1376,6 +1526,7 @@ static const struct sig_opcode_data bredr_sig_opcode_table[] = {
 			sig_move_chan_cfm, 4, true },
 	{ 0x11, "Move Channel Confirmation Response",
 			sig_move_chan_cfm_rsp, 2, true },
+	SIG_ECRED
 	{ },
 };
 
@@ -1396,6 +1547,7 @@ static const struct sig_opcode_data le_sig_opcode_table[] = {
 			sig_le_conn_rsp, 10, true },
 	{ 0x16, "LE Flow Control Credit",
 			sig_le_flowctl_creds, 4, true },
+	SIG_ECRED
 	{ },
 };
 
@@ -3066,6 +3218,7 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 
 		switch (frame.mode) {
 		case L2CAP_MODE_LE_FLOWCTL:
+		case L2CAP_MODE_ECRED:
 			chan = get_chan(&frame);
 			if (!chan->sdu) {
 				if (!l2cap_frame_get_le16(&frame, &chan->sdu))
