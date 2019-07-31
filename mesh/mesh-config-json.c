@@ -297,6 +297,65 @@ static json_object *jarray_key_del(json_object *jarray, int16_t idx)
 	return jarray_new;
 }
 
+static bool read_unicast_address(json_object *jobj, uint16_t *unicast)
+{
+	json_object *jvalue;
+	char *str;
+
+	if (!json_object_object_get_ex(jobj, "unicastAddress", &jvalue))
+		return false;
+
+	str = (char *)json_object_get_string(jvalue);
+	if (sscanf(str, "%04hx", unicast) != 1)
+		return false;
+
+	return true;
+}
+
+static bool read_default_ttl(json_object *jobj, uint8_t *ttl)
+{
+	json_object *jvalue;
+	int val;
+
+	/* defaultTTL is optional */
+	if (!json_object_object_get_ex(jobj, "defaultTTL", &jvalue))
+		return true;
+
+	val = json_object_get_int(jvalue);
+
+	if (!val && errno == EINVAL)
+		return false;
+
+	if (val < 0 || val == 1 || val > DEFAULT_TTL)
+		return false;
+
+	*ttl = (uint8_t) val;
+
+	return true;
+}
+
+static bool read_seq_number(json_object *jobj, uint32_t *seq_number)
+{
+	json_object *jvalue;
+	int val;
+
+	/* sequenceNumber is optional */
+	if (!json_object_object_get_ex(jobj, "sequenceNumber", &jvalue))
+		return true;
+
+	val = json_object_get_int(jvalue);
+
+	if (!val && errno == EINVAL)
+		return false;
+
+	if (val < 0 || val > 0xffffff)
+		return false;
+
+	*seq_number = (uint32_t) val;
+
+	return true;
+}
+
 static bool read_iv_index(json_object *jobj, uint32_t *idx, bool *update)
 {
 	int tmp;
@@ -424,7 +483,7 @@ fail:
 	return false;
 }
 
-static bool read_net_keys(json_object *jobj,  struct mesh_config_node *node)
+static bool read_net_keys(json_object *jobj, struct mesh_config_node *node)
 {
 	json_object *jarray;
 	int len;
@@ -1294,7 +1353,6 @@ static bool read_net_transmit(json_object *jobj, struct mesh_config_node *node)
 static bool read_node(json_object *jnode, struct mesh_config_node *node)
 {
 	json_object *jvalue;
-	char *str;
 
 	if (!read_iv_index(jnode, &node->iv_index, &node->iv_update)) {
 		l_info("Failed to read IV index");
@@ -1318,25 +1376,20 @@ static bool read_node(json_object *jnode, struct mesh_config_node *node)
 
 	parse_features(jnode, node);
 
-	if (!json_object_object_get_ex(jnode, "unicastAddress", &jvalue)) {
-		l_info("Bad config: Unicast address must be present");
+	if (!read_unicast_address(jnode, &node->unicast)) {
+		l_info("Failed to parse unicast address");
 		return false;
 	}
 
-	str = (char *)json_object_get_string(jvalue);
-	if (sscanf(str, "%04hx", &node->unicast) != 1)
+	if (!read_default_ttl(jnode, &node->ttl)) {
+		l_info("Failed to parse default ttl");
 		return false;
-
-	if (json_object_object_get_ex(jnode, "defaultTTL", &jvalue)) {
-		int ttl = json_object_get_int(jvalue);
-
-		if (ttl < 0 || ttl == 1 || ttl > DEFAULT_TTL)
-			return false;
-		node->ttl = (uint8_t) ttl;
 	}
 
-	if (json_object_object_get_ex(jnode, "sequenceNumber", &jvalue))
-		node->seq_number = json_object_get_int(jvalue);
+	if (!read_seq_number(jnode, &node->seq_number)) {
+		l_info("Failed to parse sequence number");
+		return false;
+	}
 
 	/* Check for required "elements" property */
 	if (!json_object_object_get_ex(jnode, "elements", &jvalue))
