@@ -62,6 +62,7 @@ enum request_type {
 	REQUEST_TYPE_JOIN,
 	REQUEST_TYPE_ATTACH,
 	REQUEST_TYPE_CREATE,
+	REQUEST_TYPE_IMPORT,
 };
 
 struct node_element {
@@ -111,6 +112,19 @@ struct mesh_node {
 	uint8_t beacon;
 };
 
+struct node_import {
+	uint8_t dev_key[16];
+
+	uint8_t net_key[16];
+	uint16_t net_idx;
+	struct {
+		bool ivu;
+		bool kr;
+	} flags;
+	uint32_t iv_index;
+	uint16_t unicast;
+};
+
 struct managed_obj_request {
 	struct mesh_node *node;
 	union {
@@ -121,6 +135,7 @@ struct managed_obj_request {
 	enum request_type type;
 	union {
 		struct mesh_node *attach;
+		struct node_import *import;
 	};
 };
 
@@ -1712,6 +1727,36 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		if (!create_node_config(node, node->uuid))
 			goto fail;
 
+	} else if (req->type == REQUEST_TYPE_IMPORT) {
+		struct node_import *import = req->import;
+		struct keyring_net_key net_key;
+
+		if (!create_node_config(node, node->uuid))
+			goto fail;
+
+		if (!add_local_node(node, import->unicast, import->flags.kr,
+					import->flags.ivu,
+					import->iv_index, import->dev_key,
+					import->net_idx, import->net_key))
+			goto fail;
+
+		memcpy(net_key.old_key, import->net_key, 16);
+		net_key.net_idx = import->net_idx;
+		if (import->flags.kr)
+			net_key.phase = KEY_REFRESH_PHASE_TWO;
+		else
+			net_key.phase = KEY_REFRESH_PHASE_NONE;
+
+		/* Initialize directory for storing keyring info */
+		init_storage_dir(node);
+
+		if (!keyring_put_remote_dev_key(node, import->unicast,
+						num_ele, import->dev_key))
+			goto fail;
+
+		if (!keyring_put_net_key(node, import->net_idx, &net_key))
+			goto fail;
+
 	} else {
 		/* Callback for create node request */
 		struct keyring_net_key net_key;
@@ -1749,7 +1794,8 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 	else
 		req->ready_cb(req->pending_msg, MESH_ERROR_NONE, node);
 
-	return;
+	goto done;
+
 fail:
 	if (agent)
 		mesh_agent_remove(agent);
@@ -1762,6 +1808,10 @@ fail:
 		req->join_ready_cb(NULL, NULL);
 	else
 		req->ready_cb(req->pending_msg, MESH_ERROR_FAILED, NULL);
+
+done:
+	if (req->type == REQUEST_TYPE_IMPORT)
+		l_free(req->import);
 }
 
 /* Establish relationship between application and mesh node */
@@ -1823,6 +1873,41 @@ void node_join(const char *app_path, const char *sender, const uint8_t *uuid,
 					"GetManagedObjects", NULL,
 					get_managed_objects_cb,
 					req, l_free);
+}
+
+bool node_import(const char *app_path, const char *sender, const uint8_t *uuid,
+			const uint8_t dev_key[16], const uint8_t net_key[16],
+			uint16_t net_idx, bool kr, bool ivu,
+			uint32_t iv_index, uint16_t unicast,
+			node_ready_func_t cb, void *user_data)
+{
+	struct managed_obj_request *req;
+
+	l_debug("");
+
+	req = l_new(struct managed_obj_request, 1);
+
+	req->node = node_new(uuid);
+	req->ready_cb = cb;
+	req->pending_msg = user_data;
+
+	req->import = l_new(struct node_import, 1);
+	memcpy(req->import->dev_key, dev_key, 16);
+	memcpy(req->import->net_key, net_key, 16);
+	req->import->net_idx = net_idx;
+	req->import->flags.kr = kr;
+	req->import->flags.ivu = ivu;
+	req->import->iv_index = iv_index;
+	req->import->unicast = unicast;
+
+	req->type = REQUEST_TYPE_IMPORT;
+
+	l_dbus_method_call(dbus_get_bus(), sender, app_path,
+						L_DBUS_INTERFACE_OBJECT_MANAGER,
+						"GetManagedObjects", NULL,
+						get_managed_objects_cb,
+						req, l_free);
+	return true;
 }
 
 void node_create(const char *app_path, const char *sender, const uint8_t *uuid,

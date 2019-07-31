@@ -95,6 +95,11 @@ void node_build_attach_reply(struct mesh_node *node,
 						struct l_dbus_message *reply);
 void node_create(const char *app_path, const char *sender, const uint8_t *uuid,
 					node_ready_func_t cb, void *user_data);
+bool node_import(const char *app_path, const char *sender, const uint8_t *uuid,
+			const uint8_t dev_key[16], const uint8_t net_key[16],
+			uint16_t net_idx, bool kr, bool ivu,
+			uint32_t iv_index, uint16_t unicast,
+			node_ready_func_t cb, void *user_data);
 void node_id_set(struct mesh_node *node, uint16_t node_id);
 uint16_t node_id_get(struct mesh_node *node);
 bool node_dbus_init(struct l_dbus *bus);

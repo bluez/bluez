@@ -33,6 +33,7 @@
 #include "mesh/error.h"
 #include "mesh/agent.h"
 #include "mesh/mesh.h"
+#include "mesh/mesh-defs.h"
 
 /*
  * The default values for mesh configuration. Can be
@@ -536,7 +537,7 @@ static struct l_dbus_message *leave_call(struct l_dbus *dbus,
 	return l_dbus_message_new_method_return(msg);
 }
 
-static void create_network_ready_cb(void *user_data, int status,
+static void create_node_ready_cb(void *user_data, int status,
 							struct mesh_node *node)
 {
 	struct l_dbus_message *reply;
@@ -593,10 +594,112 @@ static struct l_dbus_message *create_network_call(struct l_dbus *dbus,
 
 	l_queue_push_tail(pending_queue, pending_msg);
 
-	node_create(app_path, sender, uuid, create_network_ready_cb,
+	node_create(app_path, sender, uuid, create_node_ready_cb,
 								pending_msg);
 
 	return NULL;
+}
+
+static struct l_dbus_message *import_call(struct l_dbus *dbus,
+						struct l_dbus_message *msg,
+						void *user_data)
+{
+	const char *app_path, *sender;
+	struct l_dbus_message *pending_msg = NULL;
+	struct l_dbus_message_iter iter_uuid;
+	struct l_dbus_message_iter iter_dev_key;
+	struct l_dbus_message_iter iter_net_key;
+	struct l_dbus_message_iter iter_flags;
+	const char *key;
+	struct l_dbus_message_iter var;
+
+	uint8_t *uuid;
+	uint8_t *dev_key;
+	uint8_t *net_key;
+	uint16_t net_idx;
+	bool kr = false;
+	bool ivu = false;
+	uint32_t iv_index;
+	uint16_t unicast;
+	uint32_t n;
+
+	l_debug("Import local node request");
+
+	if (!l_dbus_message_get_arguments(msg, "oayayayqa{sv}uq",
+						&app_path, &iter_uuid,
+						&iter_dev_key, &iter_net_key,
+						&net_idx, &iter_flags,
+						&iv_index,
+						&unicast))
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
+
+	if (!l_dbus_message_iter_get_fixed_array(&iter_uuid, &uuid, &n) ||
+									n != 16)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, "Bad dev UUID");
+
+	if (node_find_by_uuid(uuid))
+		return dbus_error(msg, MESH_ERROR_ALREADY_EXISTS,
+							"Node already exists");
+
+	if (!l_dbus_message_iter_get_fixed_array(&iter_dev_key, &dev_key, &n) ||
+									n != 16)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Bad dev key");
+
+	if (!l_dbus_message_iter_get_fixed_array(&iter_net_key, &net_key, &n) ||
+									n != 16)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Bad net key");
+
+	if (net_idx > MAX_KEY_IDX)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Bad net index");
+
+	while (l_dbus_message_iter_next_entry(&iter_flags, &key, &var)) {
+		if (!strcmp(key, "IVUpdate")) {
+			if (!l_dbus_message_iter_get_variant(&var, "b",
+								&ivu))
+				goto fail;
+			continue;
+		}
+
+		if (!strcmp(key, "KeyRefresh")) {
+			if (!l_dbus_message_iter_get_variant(&var, "b",
+								&kr))
+				goto fail;
+			continue;
+		}
+
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Bad flags");
+	}
+
+	if (!IS_UNICAST(unicast))
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Bad address");
+
+	sender = l_dbus_message_get_sender(msg);
+	pending_msg = l_dbus_message_ref(msg);
+
+	if (!pending_queue)
+		pending_queue = l_queue_new();
+
+	l_queue_push_tail(pending_queue, pending_msg);
+
+	if (!node_import(app_path, sender, uuid, dev_key, net_key, net_idx,
+					kr, ivu, iv_index, unicast,
+					create_node_ready_cb, pending_msg))
+		goto fail;
+
+	return NULL;
+
+fail:
+	if (pending_msg) {
+		l_dbus_message_unref(msg);
+		l_queue_remove(pending_queue, pending_msg);
+	}
+
+	return dbus_error(msg, MESH_ERROR_INVALID_ARGS, "Node import failed");
 }
 
 static void setup_network_interface(struct l_dbus_interface *iface)
@@ -612,8 +715,16 @@ static void setup_network_interface(struct l_dbus_interface *iface)
 
 	l_dbus_interface_method(iface, "Leave", 0, leave_call, "", "t",
 								"token");
+
 	l_dbus_interface_method(iface, "CreateNetwork", 0, create_network_call,
 					"t", "oay", "token", "app", "uuid");
+
+	l_dbus_interface_method(iface, "Import", 0,
+					import_call,
+					"t", "oayayayqa{sv}uq", "token",
+					"app", "uuid", "dev_key", "net_key",
+					"net_index", "flags", "iv_index",
+					"unicast");
 }
 
 bool mesh_dbus_init(struct l_dbus *dbus)
