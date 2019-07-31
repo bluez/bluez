@@ -151,16 +151,50 @@ Methods:
 			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.AlreadyExists,
 
-	 uint64 token ImportLocalNode(string json_data)
+	uint64 token Import(object app_root, array{byte}[16] uuid,
+				array{byte}[16] dev_key,
+				array{byte}[16] net_key, uint16 net_index,
+				dict flags, uint32 iv_index, uint16 unicast)
 
 		This method creates a local mesh node based on node
 		configuration that has been generated outside bluetooth-meshd.
 
-		The json_data parameter is a full JSON representation of a node
-		configuration file. The format must conform to the schema
-		defined in "Mesh Node Configuration Schema" section. Any
-		included token will be ignored in favor of a locally generated
-		token value.
+		The app_root parameter is a D-Bus object root path of the
+		application that implements org.bluez.mesh.Application1
+		interface.
+
+		The uuid parameter is a 16-byte array that contains Device UUID.
+		This UUID must be unique (at least from the daemon perspective),
+		therefore attempting to call this function using already
+		registered UUID results in an error.
+
+		The dev_key parameter is the 16-byte value of the dev key of
+		the imported mesh node.
+
+		Remaining parameters correspond to provisioning data:
+
+		The net_key and net_index parameters describe the network (or a
+		subnet, if net_index is not 0) the imported mesh node belongs
+		to.
+
+		The flags parameter is a dictionary containing provisioning
+		flags. Supported values are:
+
+			boolean IVUpdate
+
+				When true, indicates that the network is in the
+				middle of IV Index Update procedure.
+
+			boolean KeyRefresh
+
+				When true, indicates that the specified net key
+				is in the middle of a key refresh procedure.
+
+		The iv_index parameter is the current IV Index value used by
+		the network. This value is known by the provisioner.
+
+		The unicast parameter is the primary unicast address of the
+		imported node.
 
 		The returned token must be preserved by the application in
 		order to authenticate itself to the mesh daemon and attach to
@@ -168,13 +202,10 @@ Methods:
 		permanently remove the identity of the mesh node by calling
 		Leave() method.
 
-		It is an error to attempt importing a node with already
-		registered Device UUID.
-
 		PossibleErrors:
 			org.bluez.mesh.Error.InvalidArguments,
-			org.bluez.mesh.Error.AlreadyExists
-			org.bluez.mesh.Error.NotFound,
+			org.bluez.mesh.Error.AlreadyExists,
+			org.bluez.mesh.Error.NotSupported,
 			org.bluez.mesh.Error.Failed
 
 Mesh Node Hierarchy
@@ -1069,7 +1100,3 @@ Properties:
 
 		Uniform Resource Identifier points to out-of-band (OOB)
 		information (e.g., a public key)
-
-Mesh Node Configuration Schema
-==============================
-<TBD>
