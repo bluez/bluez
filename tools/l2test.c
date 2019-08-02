@@ -143,13 +143,14 @@ struct lookup_table {
 };
 
 static struct lookup_table l2cap_modes[] = {
-	{ "basic",	L2CAP_MODE_BASIC	},
+	{ "basic",	BT_MODE_BASIC		},
 	/* Not implemented
-	{ "flowctl",	L2CAP_MODE_FLOWCTL	},
-	{ "retrans",	L2CAP_MODE_RETRANS	},
+	{ "flowctl",	BT_MODE_FLOWCTL		},
+	{ "retrans",	BT_MODE_RETRANS		},
 	*/
-	{ "ertm",	L2CAP_MODE_ERTM		},
-	{ "streaming",	L2CAP_MODE_STREAMING	},
+	{ "ertm",	BT_MODE_ERTM		},
+	{ "streaming",	BT_MODE_STREAMING	},
+	{ "ext-flowctl",BT_MODE_EXT_FLOWCTL	},
 	{ 0 }
 };
 
@@ -283,7 +284,7 @@ static int getopts(int sk, struct l2cap_options *opts, bool connected)
 
 	memset(opts, 0, sizeof(*opts));
 
-	if (bdaddr_type == BDADDR_BREDR) {
+	if (bdaddr_type == BDADDR_BREDR || rfcmode) {
 		optlen = sizeof(*opts);
 		return getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, opts, &optlen);
 	}
@@ -302,6 +303,13 @@ static int setopts(int sk, struct l2cap_options *opts)
 	if (bdaddr_type == BDADDR_BREDR)
 		return setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, opts,
 								sizeof(*opts));
+
+	if (opts->mode) {
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_MODE, &opts->mode,
+						sizeof(opts->mode)) < 0) {
+			return -errno;
+		}
+	}
 
 	return setsockopt(sk, SOL_BLUETOOTH, BT_RCVMTU, &opts->imtu,
 							sizeof(opts->imtu));
