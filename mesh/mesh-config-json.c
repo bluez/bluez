@@ -1553,7 +1553,7 @@ bool mesh_config_write_net_transmit(struct mesh_config *cfg, uint8_t cnt,
 	jnode = cfg->jnode;
 
 	jretransmit = json_object_new_object();
-	if (jretransmit)
+	if (!jretransmit)
 		return false;
 
 	if (!write_int(jretransmit, "count", cnt))
