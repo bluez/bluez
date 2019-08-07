@@ -654,8 +654,12 @@ static bool tx_cancel(struct mesh_io *io, const uint8_t *data, uint8_t len)
 			tx = l_queue_remove_if(pvt->tx_pkts, find_by_ad_type,
 							L_UINT_TO_PTR(data[0]));
 			l_free(tx);
+
+			if (tx == pvt->tx)
+				pvt->tx = NULL;
+
 		} while (tx);
-	}  else {
+	} else {
 		struct tx_pattern pattern = {
 			.data = data,
 			.len = len
@@ -665,6 +669,10 @@ static bool tx_cancel(struct mesh_io *io, const uint8_t *data, uint8_t len)
 			tx = l_queue_remove_if(pvt->tx_pkts, find_by_pattern,
 								&pattern);
 			l_free(tx);
+
+			if (tx == pvt->tx)
+				pvt->tx = NULL;
+
 		} while (tx);
 	}
 
