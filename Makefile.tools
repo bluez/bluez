@@ -207,7 +207,7 @@ endif
 
 if TOOLS
 bin_PROGRAMS += tools/rctest tools/l2test tools/l2ping tools/bluemoon \
-		tools/hex2hcd tools/mpris-proxy tools/btattach
+		tools/hex2hcd tools/mpris-proxy tools/btattach tools/isotest
 
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/scotest tools/amptest tools/hwdb \
@@ -318,6 +318,8 @@ tools_mpris_proxy_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
 tools_gatt_service_SOURCES = tools/gatt-service.c
 tools_gatt_service_LDADD = gdbus/libgdbus-internal.la \
 			   src/libshared-mainloop.la $(GLIB_LIBS) $(DBUS_LIBS)
+
+tools_isotest_LDADD = lib/libbluetooth-internal.la
 
 profiles_iap_iapd_SOURCES = profiles/iap/main.c
 profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
