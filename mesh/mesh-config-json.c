@@ -31,6 +31,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/time.h>
+
 #include <ell/ell.h>
 #include <json-c/json.h>
 
@@ -38,12 +40,19 @@
 #include "mesh/util.h"
 #include "mesh/mesh-config.h"
 
+/* To prevent local node JSON cache thrashing, minimum update times */
+#define MIN_SEQ_CACHE_TRIGGER	32
+#define MIN_SEQ_CACHE_VALUE	(2 * 32)
+#define MIN_SEQ_CACHE_TIME	(5 * 60)
+
 #define CHECK_KEY_IDX_RANGE(x) (((x) >= 0) && ((x) <= 4095))
 
 struct mesh_config {
 	json_object *jnode;
 	char *node_dir_path;
 	uint8_t uuid[16];
+	uint32_t write_seq;
+	struct timeval write_time;
 };
 
 struct write_info {
@@ -1708,6 +1717,8 @@ static struct mesh_config *create_config(const char *cfg_path,
 	cfg->jnode = jnode;
 	memcpy(cfg->uuid, uuid, 16);
 	cfg->node_dir_path = l_strdup(cfg_path);
+	cfg->write_seq = node->seq_number;
+	gettimeofday(&cfg->write_time, NULL);
 
 	return cfg;
 }
@@ -2020,12 +2031,59 @@ bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t addr,
 	return save_config(cfg->jnode, cfg->node_dir_path);
 }
 
-bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq)
+bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq,
+								bool cache)
 {
-	if (!cfg || !write_int(cfg->jnode, "sequenceNumber", seq))
+	int value;
+	uint32_t cached = 0;
+
+	if (!cfg)
 		return false;
 
-	mesh_config_save(cfg, false, NULL, NULL);
+	if (!cache) {
+		if (!write_int(cfg->jnode, "sequenceNumber", seq))
+		    return false;
+
+		return mesh_config_save(cfg, true, NULL, NULL);
+	}
+
+	if (get_int(cfg->jnode, "sequenceNumber", &value))
+		cached = (uint32_t)value;
+
+	/*
+	 * When sequence number approaches value stored on disk, calculate
+	 * average time between sequence number updates, then overcommit the
+	 * sequence number by MIN_SEQ_CACHE_TIME seconds worth of traffic or
+	 * MIN_SEQ_CACHE_VALUE (whichever is greater) to avoid frequent writes
+	 * to disk and to protect against crashes.
+	 *
+	 * The real value will be saved when daemon shuts down properly.
+	 */
+	if (seq + MIN_SEQ_CACHE_TRIGGER >= cached) {
+		struct timeval now;
+		struct timeval elapsed;
+		uint64_t elapsed_ms;
+
+		gettimeofday(&now, NULL);
+		timersub(&now, &cfg->write_time, &elapsed);
+		elapsed_ms = elapsed.tv_sec * 1000 + elapsed.tv_usec / 1000;
+
+		cached = seq + (seq - cfg->write_seq) *
+					1000 * MIN_SEQ_CACHE_TIME / elapsed_ms;
+
+		if (cached < seq + MIN_SEQ_CACHE_VALUE)
+			cached = seq + MIN_SEQ_CACHE_VALUE;
+
+		l_debug("Seq Cache: %d -> %d", seq, cached);
+
+		cfg->write_seq = seq;
+
+		if (!write_int(cfg->jnode, "sequenceNumber", cached))
+		    return false;
+
+		return mesh_config_save(cfg, false, NULL, NULL);
+	}
+
 	return true;
 }
 
@@ -2089,6 +2147,9 @@ static bool load_node(const char *fname, const uint8_t uuid[16],
 		cfg->jnode = jnode;
 		memcpy(cfg->uuid, uuid, 16);
 		cfg->node_dir_path = l_strdup(fname);
+		cfg->write_seq = node.seq_number;
+		gettimeofday(&cfg->write_time, NULL);
+
 		result = cb(&node, uuid, cfg, user_data);
 
 		if (!result) {
@@ -2147,10 +2208,13 @@ static void idle_save_config(void *user_data)
 	l_free(fname_tmp);
 	l_free(fname_bak);
 
+	gettimeofday(&info->cfg->write_time, NULL);
+
 	if (info->cb)
 		info->cb(info->user_data, result);
 
 	l_free(info);
+
 }
 
 bool mesh_config_save(struct mesh_config *cfg, bool no_wait,

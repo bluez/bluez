@@ -25,8 +25,6 @@
 #include <dirent.h>
 #include <stdio.h>
 
-#include <sys/time.h>
-
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"
@@ -90,9 +88,7 @@ struct mesh_node {
 	struct mesh_config *cfg;
 	char *storage_dir;
 	uint32_t disc_watch;
-	time_t upd_sec;
 	uint32_t seq_number;
-	uint32_t seq_min_cache;
 	bool provisioner;
 	uint16_t primary;
 	struct node_composition *comp;
@@ -560,15 +556,11 @@ static void cleanup_node(void *data)
 	struct mesh_node *node = data;
 	struct mesh_net *net = node->net;
 
-	/* Save local node configuration */
-	if (node->cfg) {
-
-		/* Preserve the last sequence number */
+	/* Preserve the last sequence number */
+	if (node->cfg)
 		mesh_config_write_seq_number(node->cfg,
-						mesh_net_get_seq_num(net));
-
-		mesh_config_save(node->cfg, true, NULL, NULL);
-	}
+						mesh_net_get_seq_num(net),
+						false);
 
 	free_node_resources(node);
 }
@@ -704,42 +696,12 @@ bool node_default_ttl_set(struct mesh_node *node, uint8_t ttl)
 
 bool node_set_sequence_number(struct mesh_node *node, uint32_t seq)
 {
-	struct timeval write_time;
-
 	if (!node)
 		return false;
 
 	node->seq_number = seq;
 
-	/*
-	 * Holistically determine worst case 5 minute sequence consumption
-	 * so that we typically (once we reach a steady state) rewrite the
-	 * local node file with a new seq cache value no more than once every
-	 * five minutes (or more)
-	 */
-	gettimeofday(&write_time, NULL);
-	if (node->upd_sec) {
-		uint32_t elapsed = write_time.tv_sec - node->upd_sec;
-
-		if (elapsed < MIN_SEQ_CACHE_TIME) {
-			uint32_t ideal = node->seq_min_cache;
-
-			l_debug("Old Seq Cache: %d", node->seq_min_cache);
-
-			ideal *= (MIN_SEQ_CACHE_TIME / elapsed);
-
-			if (ideal > node->seq_min_cache + MIN_SEQ_CACHE)
-				node->seq_min_cache = ideal;
-			else
-				node->seq_min_cache += MIN_SEQ_CACHE;
-
-			l_debug("New Seq Cache: %d", node->seq_min_cache);
-		}
-	}
-
-	node->upd_sec = write_time.tv_sec;
-
-	return mesh_config_write_seq_number(node->cfg, seq);
+	return mesh_config_write_seq_number(node->cfg, node->seq_number, true);
 }
 
 uint32_t node_get_sequence_number(struct mesh_node *node)
@@ -748,14 +710,6 @@ uint32_t node_get_sequence_number(struct mesh_node *node)
 		return 0xffffffff;
 
 	return node->seq_number;
-}
-
-uint32_t node_seq_cache(struct mesh_node *node)
-{
-	if (node->seq_min_cache < MIN_SEQ_CACHE)
-		node->seq_min_cache = MIN_SEQ_CACHE;
-
-	return node->seq_min_cache;
 }
 
 int node_get_element_idx(struct mesh_node *node, uint16_t ele_addr)

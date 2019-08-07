@@ -24,11 +24,6 @@ struct mesh_agent;
 struct mesh_config;
 struct mesh_config_node;
 
-/* To prevent local node JSON cache thrashing, minimum update times */
-#define MIN_SEQ_TRIGGER	32
-#define MIN_SEQ_CACHE		(2*MIN_SEQ_TRIGGER)
-#define MIN_SEQ_CACHE_TIME	(5*60)
-
 typedef void (*node_ready_func_t) (void *user_data, int status,
 							struct mesh_node *node);
 
@@ -82,7 +77,6 @@ bool node_beacon_mode_set(struct mesh_node *node, bool enable);
 uint8_t node_beacon_mode_get(struct mesh_node *node);
 bool node_friend_mode_set(struct mesh_node *node, bool enable);
 uint8_t node_friend_mode_get(struct mesh_node *node);
-uint32_t node_seq_cache(struct mesh_node *node);
 const char *node_get_element_path(struct mesh_node *node, uint8_t ele_idx);
 const char *node_get_owner(struct mesh_node *node);
 const char *node_get_app_path(struct mesh_node *node);

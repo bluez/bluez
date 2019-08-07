@@ -133,7 +133,6 @@ struct mesh_net {
 	uint32_t instant; /* Controller Instant of recent Rx */
 	uint32_t iv_index;
 	uint32_t seq_num;
-	uint32_t cached_seq_num;
 	uint16_t src_addr;
 	uint16_t last_addr;
 	uint16_t friend_addr;
@@ -503,17 +502,8 @@ void mesh_friend_sub_del(struct mesh_net *net, uint16_t lpn,
 
 uint32_t mesh_net_next_seq_num(struct mesh_net *net)
 {
-	uint32_t seq = net->seq_num;
-
-	net->seq_num++;
-
-	/* Periodically store advanced sequence number */
-	if (net->seq_num + MIN_SEQ_TRIGGER >= net->cached_seq_num) {
-		net->cached_seq_num = net->seq_num +
-					node_seq_cache(net->node);
-		node_set_sequence_number(net->node, net->cached_seq_num);
-	}
-
+	uint32_t seq = net->seq_num++;
+	node_set_sequence_number(net->node, net->seq_num);
 	return seq;
 }
 
@@ -722,12 +712,12 @@ void mesh_net_free(struct mesh_net *net)
 	l_free(net);
 }
 
-bool mesh_net_set_seq_num(struct mesh_net *net, uint32_t number)
+bool mesh_net_set_seq_num(struct mesh_net *net, uint32_t seq)
 {
 	if (!net)
 		return false;
 
-	net->cached_seq_num = net->seq_num = number;
+	net->seq_num = seq;
 
 	return true;
 }
