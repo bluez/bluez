@@ -162,6 +162,10 @@ CLEANFILES += $(ell_built_sources)
 
 noinst_LTLIBRARIES += src/libshared-glib.la src/libshared-mainloop.la
 
+if LIBSHARED_ELL
+noinst_LTLIBRARIES += src/libshared-ell.la
+endif
+
 shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/queue.h src/shared/queue.c \
 			src/shared/util.h src/shared/util.c \
@@ -206,10 +210,11 @@ src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 				src/shared/mainloop-notify.c
 
 if LIBSHARED_ELL
-noinst_LTLIBRARIES += src/libshared-ell.la
-
 src_libshared_ell_la_SOURCES = $(shared_sources) \
-				src/shared/io-ell.c
+				src/shared/io-ell.c \
+				src/shared/timeout-ell.c \
+				src/shared/mainloop.h \
+				src/shared/mainloop-ell.c
 endif
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
