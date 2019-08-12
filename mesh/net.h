@@ -31,17 +31,9 @@ struct mesh_node;
 #define APP_AID_DEV	0x00
 
 #define CTL		0x80
-#define TTL_MASK	0x7f
 #define SEQ_MASK	0xffffff
 
 #define CREDFLAG_MASK	0x1000
-
-#define APP_IDX_MASK		0x0fff
-#define APP_IDX_DEV_REMOTE	0x6fff
-#define APP_IDX_DEV_LOCAL	0x7fff
-
-#define NET_IDX_INVALID	0xffff
-#define NET_NID_INVALID	0xff
 
 #define KEY_CACHE_SIZE	64
 #define FRND_CACHE_MAX	32

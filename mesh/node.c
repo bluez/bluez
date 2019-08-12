@@ -84,7 +84,6 @@ struct mesh_node {
 	char *owner;
 	char *obj_path;
 	struct mesh_agent *agent;
-	char *path;
 	struct mesh_config *cfg;
 	char *storage_dir;
 	uint32_t disc_watch;
@@ -110,7 +109,6 @@ struct mesh_node {
 
 struct node_import {
 	uint8_t dev_key[16];
-
 	uint8_t net_key[16];
 	uint16_t net_idx;
 	struct {
@@ -1954,7 +1952,7 @@ static struct l_dbus_message *send_call(struct l_dbus *dbus,
 	src = node_get_primary(node) + ele->idx;
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
-					!len || len > MESH_MAX_ACCESS_PAYLOAD)
+					!len || len > MAX_MSG_LEN)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
@@ -2000,7 +1998,7 @@ static struct l_dbus_message *dev_key_send_call(struct l_dbus *dbus,
 	src = node_get_primary(node) + ele->idx;
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
-					!len || len > MESH_MAX_ACCESS_PAYLOAD)
+					!len || len > MAX_MSG_LEN)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
@@ -2044,7 +2042,7 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 	src = node_get_primary(node) + ele->idx;
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
-					!len || len > MESH_MAX_ACCESS_PAYLOAD)
+					!len || len > MAX_MSG_LEN)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
@@ -2091,7 +2089,7 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	src = node_get_primary(node) + ele->idx;
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
-					!len || len > MESH_MAX_ACCESS_PAYLOAD)
+					!len || len > MAX_MSG_LEN)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
