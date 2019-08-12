@@ -93,7 +93,7 @@ static bool config_pub_get(struct mesh_node *node, uint16_t net_idx,
 	ele_idx = node_get_element_idx(node, ele_addr);
 
 	if (ele_idx >= 0)
-		pub = mesh_model_pub_get(node, ele_idx, mod_id, &status);
+		pub = mesh_model_pub_get(node, ele_addr, mod_id, &status);
 	else
 		status = MESH_STATUS_INVALID_ADDRESS;
 
