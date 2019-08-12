@@ -475,7 +475,6 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 	node->lpn = db_node->modes.lpn;
 
 	node->proxy = db_node->modes.proxy;
-	node->lpn = db_node->modes.lpn;
 	node->friend = db_node->modes.friend;
 	node->relay.mode = db_node->modes.relay.state;
 	node->relay.cnt = db_node->modes.relay.cnt;
@@ -483,7 +482,7 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 	node->beacon = db_node->modes.beacon;
 
 	l_debug("relay %2.2x, proxy %2.2x, lpn %2.2x, friend %2.2x",
-			node->relay.mode, node->proxy, node->friend, node->lpn);
+			node->relay.mode, node->proxy, node->lpn, node->friend);
 	node->ttl = db_node->ttl;
 	node->seq_number = db_node->seq_number;
 
