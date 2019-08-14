@@ -269,7 +269,7 @@ static const struct bt_shell_menu_entry default_menu[] = {
 	{ "help",         NULL,       cmd_help,
 					"Display help about this program" },
 	{ "export",       NULL,       cmd_export,
-						"Print evironment variables" },
+						"Print environment variables" },
 	{ }
 };
 
