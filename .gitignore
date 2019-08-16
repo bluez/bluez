@@ -133,6 +133,7 @@ mesh/bluetooth-meshd
 
 src/bluetoothd.8
 src/bluetooth.service
+mesh/bluetooth-mesh.service
 
 obexd/src/builtin.h
 obexd/src/obexd
