@@ -872,8 +872,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
 
 		count = (pkt[1] >> 5) + 1;
 		interval = ((pkt[1] & 0x1f) + 1) * 10;
-		node_relay_mode_set(node, !!pkt[0], pkt[1]>>5,
-					pkt[1] & 0x1f);
+		node_relay_mode_set(node, !!pkt[0], count, interval);
 		/* Fall Through */
 
 	case OP_CONFIG_RELAY_GET:
