@@ -800,6 +800,13 @@ static gboolean parse_argument(int argc, char *argv[], const char **arg_table,
 {
 	const char **opt;
 
+	if (!strcmp(argv[1], "help")) {
+		for (opt = arg_table; opt && *opt; opt++)
+			bt_shell_printf("%s\n", *opt);
+		bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		return FALSE;
+	}
+
 	if (!strcmp(argv[1], "on") || !strcmp(argv[1], "yes")) {
 		*value = TRUE;
 		if (option)
