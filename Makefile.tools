@@ -12,6 +12,11 @@ client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
 endif
 
+if ZSH_COMPLETIONS
+zshcompletiondir=$(ZSH_COMPLETIONDIR)
+dist_zshcompletion_DATA = completion/zsh/_bluetoothctl
+endif
+
 if MONITOR
 bin_PROGRAMS += monitor/btmon
 

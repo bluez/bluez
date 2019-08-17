@@ -119,6 +119,18 @@ if (test -z "${path_dbussessionbusdir}"); then
 fi
 AC_SUBST(DBUS_SESSIONBUSDIR, [${path_dbussessionbusdir}])
 
+AC_ARG_WITH([zsh-completion-dir], AC_HELP_STRING([--with-zsh-completion-dir=DIR],
+				[path to install zsh completions]),
+					[path_zshcompletiondir=${withval}],
+						[path_zshcompletiondir="yes"])
+
+if (test "${path_zshcompletiondir}" = "yes"); then
+	path_zshcompletiondir="$datarootdir/zsh/site-functions"
+	AC_MSG_RESULT([${path_zshcompletiondir}])
+fi
+AC_SUBST(ZSH_COMPLETIONDIR, [${path_zshcompletiondir}])
+AM_CONDITIONAL(ZSH_COMPLETIONS, test "${path_zshcompletiondir}" != "no")
+
 AC_ARG_ENABLE(backtrace, AC_HELP_STRING([--enable-backtrace],
 		[compile backtrace support]), [enable_backtrace=${enableval}])
 
