@@ -79,6 +79,7 @@ static struct {
 	int argc;
 	char **argv;
 	bool mode;
+	bool zsh;
 	bool monitor;
 	int timeout;
 	struct io *input;
@@ -98,6 +99,7 @@ static struct {
 } data;
 
 static void shell_print_menu(void);
+static void shell_print_menu_zsh_complete(void);
 
 static void cmd_version(int argc, char *argv[])
 {
@@ -288,6 +290,11 @@ static void shell_print_menu(void)
 	if (!data.menu)
 		return;
 
+	if (data.zsh) {
+		shell_print_menu_zsh_complete();
+		return;
+	}
+
 	print_text(COLOR_HIGHLIGHT, "Menu %s:", data.menu->name);
 	print_text(COLOR_HIGHLIGHT, "Available commands:");
 	print_text(COLOR_HIGHLIGHT, "-------------------");
@@ -311,6 +318,21 @@ static void shell_print_menu(void)
 			continue;
 
 		print_menu(entry->cmd, entry->arg ? : "", entry->desc ? : "");
+	}
+}
+
+static void shell_print_menu_zsh_complete(void)
+{
+	const struct bt_shell_menu_entry *entry;
+
+	for (entry = data.menu->entries; entry->cmd; entry++)
+		printf("%s:%s\n", entry->cmd, entry->desc ? : "");
+
+	for (entry = default_menu; entry->cmd; entry++) {
+		if (entry->exists && !entry->exists(data.menu))
+			continue;
+
+		printf("%s:%s\n", entry->cmd, entry->desc ? : "");
 	}
 }
 
@@ -1015,6 +1037,7 @@ static const struct option main_options[] = {
 	{ "help",	no_argument, 0, 'h' },
 	{ "timeout",	required_argument, 0, 't' },
 	{ "monitor",	no_argument, 0, 'm' },
+	{ "zsh-complete",	no_argument, 0, 'z' },
 };
 
 static void usage(int argc, char **argv, const struct bt_shell_opt *opt)
@@ -1074,6 +1097,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			goto done;
 		case 't':
 			data.timeout = atoi(optarg);
+			break;
+		case 'z':
+			data.zsh = 1;
 			break;
 		case 'm':
 			data.monitor = true;
