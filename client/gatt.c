@@ -561,7 +561,7 @@ GDBusProxy *gatt_select_attribute(GDBusProxy *parent, const char *arg)
 			return proxy;
 	}
 
-	return select_attribute_by_uuid(parent, arg);
+	return select_attribute_by_uuid(NULL, arg);
 }
 
 static char *attribute_generator(const char *text, int state, GList *source)
