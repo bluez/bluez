@@ -23,7 +23,7 @@ cd $tmpdir
 
 echo -e 'const char *bt_compidtostr(int compid)\n{\n\tswitch (compid) {' > new.c
 
-path=specifications/assigned-numbers/company-identifiers
+path=specifications/assigned-numbers/company-identifiers/
 # Use "iconv -c" to strip unwanted unicode characters
 curl --insecure https://www.bluetooth.com/$path | \
     $scriptdir/tools/parse_companies.pl >> new.c
