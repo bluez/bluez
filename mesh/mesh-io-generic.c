@@ -21,6 +21,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+#include <string.h>
 #include <sys/time.h>
 #include <ell/ell.h>
 
@@ -285,7 +287,8 @@ static bool hci_init(struct mesh_io *io)
 {
 	io->pvt->hci = bt_hci_new_user_channel(io->pvt->index);
 	if (!io->pvt->hci) {
-		l_error("Failed to start mesh io (hci %u)", io->pvt->index);
+		l_error("Failed to start mesh io (hci %u): %s", io->pvt->index,
+							strerror(errno));
 		return false;
 	}
 
