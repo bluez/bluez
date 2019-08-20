@@ -526,6 +526,9 @@ static GDBusProxy *select_proxy_by_uuid(GDBusProxy *parent, const char *uuid,
 
 		if (strcasecmp(uuid, value) == 0)
 			return proxy;
+
+		if (strlen(uuid) == 4 && !strncasecmp(value + 4, uuid, 4))
+			return proxy;
 	}
 
 	return NULL;
