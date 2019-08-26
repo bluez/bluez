@@ -658,6 +658,31 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 
 		desc_start = chrc_data->value_handle + 1;
 
+		if (desc_start == chrc_data->end_handle &&
+			(chrc_data->properties & BT_GATT_CHRC_PROP_NOTIFY ||
+			 chrc_data->properties & BT_GATT_CHRC_PROP_INDICATE)) {
+			bt_uuid_t ccc_uuid;
+
+			/* If there is only one descriptor that must be the CCC
+			 * in case either notify or indicate are supported.
+			 */
+			bt_uuid16_create(&ccc_uuid,
+					GATT_CLIENT_CHARAC_CFG_UUID);
+			attr = gatt_db_insert_descriptor(client->db, desc_start,
+							&ccc_uuid, 0, NULL,
+							NULL, NULL);
+			if (attr) {
+				free(chrc_data);
+				continue;
+			}
+		}
+
+		/* Check if the start range is within characteristic range */
+		if (desc_start > chrc_data->end_handle) {
+			free(chrc_data);
+			continue;
+		}
+
 		client->discovery_req = bt_gatt_discover_descriptors(
 							client->att, desc_start,
 							chrc_data->end_handle,
