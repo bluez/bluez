@@ -3945,3 +3945,7 @@ void mesh_net_set_prov(struct mesh_net *net, struct mesh_prov *prov)
 	net->prov = prov;
 }
 
+uint32_t mesh_net_get_instant(struct mesh_net *net)
+{
+	return net->instant;
+}

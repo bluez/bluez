@@ -24,6 +24,7 @@
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #include <ell/ell.h>
 
@@ -2103,6 +2104,100 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	return  l_dbus_message_new_method_return(msg);
 }
 
+static bool features_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
+					struct l_dbus_message_builder *builder,
+					void *user_data)
+{
+	struct mesh_node *node = user_data;
+	uint8_t friend = node_friend_mode_get(node);
+	uint8_t lpn = node_lpn_mode_get(node);
+	uint8_t proxy = node_proxy_mode_get(node);
+	uint8_t count;
+	uint16_t interval;
+	uint8_t relay = node_relay_mode_get(node, &count, &interval);
+
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+
+	if (friend != MESH_MODE_UNSUPPORTED)
+		dbus_append_dict_entry_basic(builder, "Friend", "b", &friend);
+
+	if (lpn != MESH_MODE_UNSUPPORTED)
+		dbus_append_dict_entry_basic(builder, "LowPower", "b", &lpn);
+
+	if (proxy != MESH_MODE_UNSUPPORTED)
+		dbus_append_dict_entry_basic(builder, "Proxy", "b", &proxy);
+
+	if (relay != MESH_MODE_UNSUPPORTED)
+		dbus_append_dict_entry_basic(builder, "Relay", "b", &relay);
+
+	l_dbus_message_builder_leave_array(builder);
+
+	return true;
+}
+
+static bool beacon_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
+					struct l_dbus_message_builder *builder,
+					void *user_data)
+{
+	struct mesh_node *node = user_data;
+	bool beacon_mode = node_beacon_mode_get(node) == MESH_MODE_ENABLED;
+
+	l_dbus_message_builder_append_basic(builder, 'b', &beacon_mode);
+
+	return true;
+}
+
+static bool beaconflags_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
+					struct l_dbus_message_builder *builder,
+					void *user_data)
+{
+	struct mesh_node *node = user_data;
+	struct mesh_net *net = node_get_net(node);
+	uint8_t flags;
+	uint32_t iv_index;
+
+	mesh_net_get_snb_state(net, &flags, &iv_index);
+
+	l_dbus_message_builder_append_basic(builder, 'y', &flags);
+
+	return true;
+}
+
+static bool ivindex_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
+					struct l_dbus_message_builder *builder,
+					void *user_data)
+{
+	struct mesh_node *node = user_data;
+	struct mesh_net *net = node_get_net(node);
+	uint8_t flags;
+	uint32_t iv_index;
+
+	mesh_net_get_snb_state(net, &flags, &iv_index);
+
+	l_dbus_message_builder_append_basic(builder, 'u', &iv_index);
+
+	return true;
+}
+
+static bool lastheard_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
+					struct l_dbus_message_builder *builder,
+					void *user_data)
+{
+	struct mesh_node *node = user_data;
+	struct mesh_net *net = node_get_net(node);
+	struct timeval now;
+	uint32_t last_heard;
+
+	gettimeofday(&now, NULL);
+
+	last_heard = now.tv_sec - mesh_net_get_instant(net);
+
+	l_dbus_message_builder_append_basic(builder, 'u', &last_heard);
+
+	return true;
+
+}
+
 static void setup_node_interface(struct l_dbus_interface *iface)
 {
 	l_dbus_interface_method(iface, "Send", 0, send_call, "", "oqqay",
@@ -2118,7 +2213,15 @@ static void setup_node_interface(struct l_dbus_interface *iface)
 						"", "oqqay", "element_path",
 						"vendor", "model_id", "data");
 
-	/* TODO: Properties */
+	l_dbus_interface_property(iface, "Features", 0, "a{sv}", features_getter,
+									NULL);
+	l_dbus_interface_property(iface, "Beacon", 0, "b", beacon_getter, NULL);
+	l_dbus_interface_property(iface, "BeaconFlags", 0, "b",
+						beaconflags_getter, NULL);
+	l_dbus_interface_property(iface, "IvIndex", 0, "u", ivindex_getter,
+									NULL);
+	l_dbus_interface_property(iface, "SecondsSinceLastHeard", 0, "u",
+					lastheard_getter, NULL);
 }
 
 bool node_dbus_init(struct l_dbus *bus)

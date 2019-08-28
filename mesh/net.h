@@ -359,3 +359,4 @@ void mesh_net_transmit_params_get(struct mesh_net *net, uint8_t *count,
 							uint16_t *interval);
 struct mesh_prov *mesh_net_get_prov(struct mesh_net *net);
 void mesh_net_set_prov(struct mesh_net *net, struct mesh_prov *prov);
+uint32_t mesh_net_get_instant(struct mesh_net *net);
