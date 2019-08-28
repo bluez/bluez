@@ -423,6 +423,10 @@ Properties:
 		seconds since mesh network layer traffic was last detected on
 		this node's network.
 
+	array{uint16} Addresses [read-only]
+
+		This property contains unicast addresses of node's elements.
+
 Mesh Provisioning Hierarchy
 ============================
 Service		org.bluez.mesh

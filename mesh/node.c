@@ -2198,6 +2198,28 @@ static bool lastheard_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
 
 }
 
+static bool addresses_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
+					struct l_dbus_message_builder *builder,
+					void *user_data)
+{
+	struct mesh_node *node = user_data;
+	const struct l_queue_entry *entry;
+
+	l_dbus_message_builder_enter_array(builder, "q");
+
+	entry = l_queue_get_entries(node->elements);
+	for (; entry; entry = entry->next) {
+		const struct node_element *ele = entry->data;
+		uint16_t address = node->primary + ele->idx;
+
+		l_dbus_message_builder_append_basic(builder, 'q', &address);
+	}
+
+	l_dbus_message_builder_leave_array(builder);
+
+	return true;
+}
+
 static void setup_node_interface(struct l_dbus_interface *iface)
 {
 	l_dbus_interface_method(iface, "Send", 0, send_call, "", "oqqay",
@@ -2222,6 +2244,8 @@ static void setup_node_interface(struct l_dbus_interface *iface)
 									NULL);
 	l_dbus_interface_property(iface, "SecondsSinceLastHeard", 0, "u",
 					lastheard_getter, NULL);
+	l_dbus_interface_property(iface, "Addresses", 0, "aq", addresses_getter,
+									NULL);
 }
 
 bool node_dbus_init(struct l_dbus *bus)
