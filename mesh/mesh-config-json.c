@@ -61,7 +61,7 @@ struct write_info {
 	mesh_config_status_func_t cb;
 };
 
-static const char *cfg_name = "/node.json";
+static const char *cfgnode_name = "/node.json";
 static const char *bak_ext = ".bak";
 static const char *tmp_ext = ".tmp";
 
@@ -1723,18 +1723,18 @@ static struct mesh_config *create_config(const char *cfg_path,
 	return cfg;
 }
 
-struct mesh_config *mesh_config_create(const char *cfg_dir,
+struct mesh_config *mesh_config_create(const char *cfgdir_name,
 		const uint8_t uuid[16], struct mesh_config_node *db_node)
 {
 	char uuid_buf[33];
 	char name_buf[PATH_MAX];
 	struct mesh_config *cfg;
-	size_t max_len = strlen(cfg_name) + strlen(bak_ext);
+	size_t max_len = strlen(cfgnode_name) + strlen(bak_ext);
 
 	if (!hex2str((uint8_t *) uuid, 16, uuid_buf, sizeof(uuid_buf)))
 		return NULL;
 
-	snprintf(name_buf, PATH_MAX, "%s/%s", cfg_dir, uuid_buf);
+	snprintf(name_buf, PATH_MAX, "%s/%s", cfgdir_name, uuid_buf);
 
 	if (strlen(name_buf) + max_len >= PATH_MAX)
 		return NULL;
@@ -1743,8 +1743,8 @@ struct mesh_config *mesh_config_create(const char *cfg_dir,
 	if (mkdir(name_buf, 0755) != 0)
 		return NULL;
 
-	snprintf(name_buf, PATH_MAX, "%s/%s%s", cfg_dir, uuid_buf,
-								cfg_name);
+	snprintf(name_buf, PATH_MAX, "%s/%s%s", cfgdir_name, uuid_buf,
+								cfgnode_name);
 	l_debug("New node config %s", name_buf);
 
 	cfg = create_config(name_buf, uuid, db_node);
@@ -2042,7 +2042,7 @@ bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq,
 
 	if (!cache) {
 		if (!write_int(cfg->jnode, "sequenceNumber", seq))
-		    return false;
+			return false;
 
 		return mesh_config_save(cfg, true, NULL, NULL);
 	}
@@ -2238,23 +2238,24 @@ bool mesh_config_save(struct mesh_config *cfg, bool no_wait,
 	return true;
 }
 
-bool mesh_config_load_nodes(const char *cfg_dir, mesh_config_node_func_t cb,
-							void *user_data)
+bool mesh_config_load_nodes(const char *cfgdir_name, mesh_config_node_func_t cb,
+								void *user_data)
 {
-	DIR *dir;
+	DIR *cfgdir;
 	struct dirent *entry;
-	size_t path_len = strlen(cfg_dir) + strlen(cfg_name) + strlen(bak_ext);
+	size_t path_len = strlen(cfgdir_name) + strlen(cfgnode_name) +
+								strlen(bak_ext);
 
-	create_dir(cfg_dir);
-	dir = opendir(cfg_dir);
-	if (!dir) {
+	create_dir(cfgdir_name);
+	cfgdir = opendir(cfgdir_name);
+	if (!cfgdir) {
 		l_error("Failed to open mesh node storage directory: %s",
-								cfg_dir);
+								cfgdir_name);
 		return false;
 	}
 
-	while ((entry = readdir(dir)) != NULL) {
-		char *dir, *fname, *bak;
+	while ((entry = readdir(cfgdir)) != NULL) {
+		char *dirname, *fname, *bak;
 		uint8_t uuid[16];
 		size_t node_len;
 
@@ -2263,14 +2264,15 @@ bool mesh_config_load_nodes(const char *cfg_dir, mesh_config_node_func_t cb,
 
 		/* Check path length */
 		node_len = strlen(entry->d_name);
+
 		if (path_len + node_len + 1 >= PATH_MAX)
 			continue;
 
 		if (!str2hex(entry->d_name, node_len, uuid, sizeof(uuid)))
 			continue;
 
-		dir = l_strdup_printf("%s/%s", cfg_dir, entry->d_name);
-		fname = l_strdup_printf("%s%s", dir, cfg_name);
+		dirname = l_strdup_printf("%s/%s", cfgdir_name, entry->d_name);
+		fname = l_strdup_printf("%s%s", dirname, cfgnode_name);
 
 		if (!load_node(fname, uuid, cb, user_data)) {
 
@@ -2281,11 +2283,15 @@ bool mesh_config_load_nodes(const char *cfg_dir, mesh_config_node_func_t cb,
 				remove(fname);
 				rename(bak, fname);
 			}
+
 			l_free(bak);
 		}
+
 		l_free(fname);
-		l_free(dir);
+		l_free(dirname);
 	}
+
+	closedir(cfgdir);
 
 	return true;
 }
