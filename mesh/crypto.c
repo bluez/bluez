@@ -1130,3 +1130,57 @@ bool mesh_crypto_check_fcs(const uint8_t *packet, uint8_t packet_len,
 
 	return fcs == 0xcf;
 }
+
+/* This function performs a quick-check of ELL and Kernel AEAD encryption.
+ * Some kernel versions before v4.9 have a known AEAD bug. If the system
+ * running this test is using a v4.8 or earlier kernel, a failure here is
+ * likely unless AEAD encryption has been backported.
+ */
+static const uint8_t crypto_test_result[] = {
+	0x75, 0x03, 0x7e, 0xe2, 0x89, 0x81, 0xbe, 0x59,
+	0xbc, 0xe6, 0xdd, 0x23, 0x63, 0x5b, 0x16, 0x61,
+	0xb7, 0x23, 0x92, 0xd4, 0x86, 0xee, 0x84, 0x29,
+	0x9a, 0x2a, 0xbf, 0x96
+};
+
+bool mesh_crypto_check_avail()
+{
+	void *cipher;
+	bool result;
+	uint8_t i;
+	union {
+		struct {
+			uint8_t key[16];
+			uint8_t aad[16];
+			uint8_t nonce[13];
+			uint8_t data[20];
+			uint8_t mic[8];
+		} crypto;
+		uint8_t bytes[0];
+	} u;
+	uint8_t out_msg[sizeof(u.crypto.data) + sizeof(u.crypto.mic)];
+
+	l_debug("Testing Crypto");
+	for (i = 0; i < sizeof(u); i++) {
+		u.bytes[i] = 0x60 + i;
+	}
+
+	cipher = l_aead_cipher_new(L_AEAD_CIPHER_AES_CCM, u.crypto.key,
+				sizeof(u.crypto.key), sizeof(u.crypto.mic));
+
+	if (!cipher)
+		return false;
+
+	result = l_aead_cipher_encrypt(cipher,
+				u.crypto.data, sizeof(u.crypto.data),
+				u.crypto.aad, sizeof(u.crypto.aad),
+				u.crypto.nonce, sizeof(u.crypto.nonce),
+				out_msg, sizeof(out_msg));
+
+	if (result)
+		result = !memcmp(out_msg, crypto_test_result, sizeof(out_msg));
+
+	l_aead_cipher_free(cipher);
+
+	return result;
+}

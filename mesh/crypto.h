@@ -161,3 +161,4 @@ bool mesh_crypto_check_fcs(const uint8_t *packet, uint8_t packet_len,
 							uint8_t received_fcs);
 bool mesh_crypto_aes_cmac(const uint8_t key[16], const uint8_t *msg,
 					size_t msg_len, uint8_t res[16]);
+bool mesh_crypto_check_avail(void);

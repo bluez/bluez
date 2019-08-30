@@ -34,6 +34,7 @@
 #include "lib/mgmt.h"
 
 #include "mesh/mesh.h"
+#include "mesh/crypto.h"
 #include "mesh/dbus.h"
 #include "mesh/mesh-io.h"
 
@@ -120,6 +121,12 @@ int main(int argc, char *argv[])
 		return -1;
 
 	l_log_set_stderr();
+
+	if (!mesh_crypto_check_avail()) {
+		l_error("Mesh Crypto functions unavailable");
+		status = l_main_run_with_signal(signal_handler, NULL);
+		goto done;
+	}
 
 	for (;;) {
 		int opt;
