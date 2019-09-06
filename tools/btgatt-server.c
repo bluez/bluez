@@ -305,7 +305,7 @@ static bool hr_msrmt_cb(void *user_data)
 
 	bt_gatt_server_send_notification(server->gatt,
 						server->hr_msrmt_handle,
-						pdu, len);
+						pdu, len, false);
 
 
 	cur_ee = server->hr_energy_expended;
@@ -831,7 +831,7 @@ static void cmd_notify(struct server *server, char *cmd_str)
 							conf_cb, NULL, NULL))
 			printf("Failed to initiate indication\n");
 	} else if (!bt_gatt_server_send_notification(server->gatt, handle,
-								value, length))
+							value, length, false))
 		printf("Failed to initiate notification\n");
 
 done:

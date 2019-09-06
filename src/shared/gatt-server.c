@@ -36,6 +36,7 @@
 #include "src/shared/gatt-server.h"
 #include "src/shared/gatt-helpers.h"
 #include "src/shared/util.h"
+#include "src/shared/timeout.h"
 
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -50,6 +51,8 @@
  * perhaps an API to set this value if there is a use case for it.
  */
 #define DEFAULT_MAX_PREP_QUEUE_LEN 30
+
+#define NFY_MULT_TIMEOUT 10
 
 struct async_read_op {
 	struct bt_att_chan *chan;
@@ -86,6 +89,13 @@ static void prep_write_data_destroy(void *user_data)
 	free(data);
 }
 
+struct nfy_mult_data {
+	unsigned int id;
+	uint8_t *pdu;
+	uint16_t offset;
+	uint16_t len;
+};
+
 struct bt_gatt_server {
 	struct gatt_db *db;
 	struct bt_att *att;
@@ -120,6 +130,8 @@ struct bt_gatt_server {
 
 	bt_gatt_server_authorize_cb_t authorize;
 	void *authorize_data;
+
+	struct nfy_mult_data *nfy_mult;
 };
 
 static void bt_gatt_server_free(struct bt_gatt_server *server)
@@ -1726,28 +1738,69 @@ bool bt_gatt_server_set_debug(struct bt_gatt_server *server,
 	return true;
 }
 
+static bool notify_multiple(void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+
+	bt_att_send(server->att, BT_ATT_OP_HANDLE_NFY_MULT,
+			server->nfy_mult->pdu, server->nfy_mult->offset, NULL,
+			NULL, NULL);
+
+	free(server->nfy_mult->pdu);
+	free(server->nfy_mult);
+	server->nfy_mult = NULL;
+
+	return false;
+}
+
 bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 					uint16_t handle, const uint8_t *value,
-					uint16_t length)
+					uint16_t length, bool multiple)
 {
-	uint16_t pdu_len;
-	uint8_t *pdu;
+	struct nfy_mult_data *data = NULL;
 	bool result;
 
 	if (!server || (length && !value))
 		return false;
 
-	pdu_len = MIN(bt_att_get_mtu(server->att) - 1, length + 2);
-	pdu = malloc(pdu_len);
-	if (!pdu)
-		return false;
+	if (multiple)
+		data = server->nfy_mult;
 
-	put_le16(handle, pdu);
-	memcpy(pdu + 2, value, pdu_len - 2);
+	if (!data) {
+		data = new0(struct nfy_mult_data, 1);
+		data->len = bt_att_get_mtu(server->att) - 1;
+		data->pdu = malloc(data->len);
+	}
 
-	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_NFY, pdu,
-						pdu_len, NULL, NULL, NULL);
-	free(pdu);
+	put_le16(handle, data->pdu + data->offset);
+	data->offset += 2;
+
+	length = MIN(data->len - data->offset, length);
+
+	if (multiple) {
+		put_le16(length, data->pdu + data->offset);
+		data->offset += 2;
+	}
+
+	memcpy(data->pdu + data->offset, value, length);
+	data->offset += length;
+
+	if (multiple) {
+		if (!server->nfy_mult)
+			server->nfy_mult = data;
+
+		if (!server->nfy_mult->id)
+			server->nfy_mult->id = timeout_add(NFY_MULT_TIMEOUT,
+						   notify_multiple, server,
+						   NULL);
+
+		return true;
+	}
+
+	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_NFY,
+				data->pdu, data->offset, NULL, NULL, NULL);
+	free(data->pdu);
+	free(data);
 
 	return result;
 }

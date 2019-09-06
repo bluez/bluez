@@ -52,7 +52,7 @@ bool bt_gatt_server_set_authorize(struct bt_gatt_server *server,
 
 bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 					uint16_t handle, const uint8_t *value,
-					uint16_t length);
+					uint16_t length, bool multiple);
 
 bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
 					uint16_t handle, const uint8_t *value,

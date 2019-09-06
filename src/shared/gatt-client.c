@@ -1968,6 +1968,8 @@ static void write_client_features(struct bt_gatt_client *client)
 			client->features |= BT_GATT_CHRC_CLI_FEAT_EATT;
 	}
 
+	client->features |= BT_GATT_CHRC_CLI_FEAT_NFY_MULTI;
+
 	util_debug(client->debug_callback, client->debug_data,
 			"Writing Client Features 0x%02x", client->features);
 

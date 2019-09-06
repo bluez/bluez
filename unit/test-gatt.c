@@ -2271,7 +2271,7 @@ static void test_server_notification(struct context *context)
 	const struct test_step *step = context->data->step;
 
 	bt_gatt_server_send_notification(context->server, step->handle,
-						step->value, step->length);
+					step->value, step->length, false);
 }
 
 static const struct test_step test_notification_server_1 = {

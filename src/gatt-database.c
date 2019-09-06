@@ -1011,7 +1011,7 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 	if (ccc_cb->callback) {
 		struct pending_op *op;
 
-		op = pending_ccc_new(att, attrib, get_le16(value),
+		op = pending_ccc_new(att, attrib, val,
 					bt_att_get_link_type(att));
 		if (!op) {
 			ecode = BT_ATT_ERROR_UNLIKELY;
@@ -1098,7 +1098,8 @@ static void cli_feat_write_cb(struct gatt_db_attribute *attrib,
 	struct btd_gatt_database *database = user_data;
 	struct device_state *state;
 	uint8_t bits[] = { BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING,
-				BT_GATT_CHRC_CLI_FEAT_EATT };
+				BT_GATT_CHRC_CLI_FEAT_EATT,
+				BT_GATT_CHRC_CLI_FEAT_NFY_MULTI };
 	uint8_t ecode = 0;
 	unsigned int i;
 
@@ -1330,7 +1331,8 @@ static void send_notification_to_device(void *data, void *user_data)
 		DBG("GATT server sending notification");
 		bt_gatt_server_send_notification(server,
 					notify->handle, notify->value,
-					notify->len);
+					notify->len, device_state->cli_feat[0] &
+					BT_GATT_CHRC_CLI_FEAT_NFY_MULTI);
 		return;
 	}
 

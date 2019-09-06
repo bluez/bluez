@@ -145,6 +145,7 @@ static const struct {
 	{ BT_ATT_OP_EXEC_WRITE_REQ,		ATT_OP_TYPE_REQ },
 	{ BT_ATT_OP_EXEC_WRITE_RSP,		ATT_OP_TYPE_RSP },
 	{ BT_ATT_OP_HANDLE_NFY,			ATT_OP_TYPE_NFY },
+	{ BT_ATT_OP_HANDLE_NFY_MULT,		ATT_OP_TYPE_NFY },
 	{ BT_ATT_OP_HANDLE_IND,			ATT_OP_TYPE_IND },
 	{ BT_ATT_OP_HANDLE_CONF,		ATT_OP_TYPE_CONF },
 	{ }
@@ -842,7 +843,7 @@ static void handle_conf(struct bt_att_chan *chan, uint8_t *pdu, ssize_t pdu_len)
 	}
 
 	if (op->callback)
-		op->callback(BT_ATT_OP_HANDLE_NFY, NULL, 0, op->user_data);
+		op->callback(BT_ATT_OP_HANDLE_CONF, NULL, 0, op->user_data);
 
 	destroy_att_send_op(op);
 	chan->pending_ind = NULL;
