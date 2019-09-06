@@ -192,7 +192,7 @@ typedef void (*btd_gatt_database_destroy_t) (void *data);
 
 struct ccc_state {
 	uint16_t handle;
-	uint8_t value[2];
+	uint16_t value;
 };
 
 struct ccc_cb_data {
@@ -310,7 +310,7 @@ static void clear_ccc_state(void *data, void *user_data)
 	struct btd_gatt_database *db = user_data;
 	struct ccc_cb_data *ccc_cb;
 
-	if (!ccc->value[0])
+	if (!ccc->value)
 		return;
 
 	ccc_cb = queue_find(db->ccc_callbacks, ccc_cb_match_handle,
@@ -346,7 +346,7 @@ static void att_disconnected(int err, void *user_data)
 		ccc = find_ccc_state(state, handle);
 		if (ccc)
 			device_store_svc_chng_ccc(device, state->bdaddr_type,
-								ccc->value[0]);
+								ccc->value);
 
 		return;
 	}
@@ -873,7 +873,7 @@ static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
 
 	DBG("CCC read called for handle: 0x%04x", handle);
 
-	if (offset > 2) {
+	if (offset) {
 		ecode = BT_ATT_ERROR_INVALID_OFFSET;
 		goto done;
 	}
@@ -884,8 +884,8 @@ static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
-	len = 2 - offset;
-	value = len ? &ccc->value[offset] : NULL;
+	len = sizeof(ccc->value);
+	value = (void *) &ccc->value;
 
 done:
 	gatt_db_attribute_read_result(attrib, id, ecode, value, len);
@@ -970,14 +970,14 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 	struct btd_gatt_database *database = user_data;
 	struct ccc_state *ccc;
 	struct ccc_cb_data *ccc_cb;
-	uint16_t handle;
+	uint16_t handle, val;
 	uint8_t ecode = 0;
 
 	handle = gatt_db_attribute_get_handle(attrib);
 
 	DBG("CCC write called for handle: 0x%04x", handle);
 
-	if (!value || len != 2) {
+	if (!value || len > 2) {
 		ecode = BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
 		goto done;
 	}
@@ -1000,8 +1000,13 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
+	if (len == 1)
+		val = *value;
+	else
+		val = get_le16(value);
+
 	/* If value is identical, then just succeed */
-	if (ccc->value[0] == value[0] && ccc->value[1] == value[1])
+	if (val == ccc->value)
 		goto done;
 
 	if (ccc_cb->callback) {
@@ -1019,10 +1024,8 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 			pending_op_free(op);
 	}
 
-	if (!ecode) {
-		ccc->value[0] = value[0];
-		ccc->value[1] = value[1];
-	}
+	if (!ecode)
+		ccc->value = val;
 
 done:
 	gatt_db_attribute_write_result(attrib, id, ecode);
@@ -1274,7 +1277,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	if (!ccc)
 		return;
 
-	if (!ccc->value[0] || (notify->conf && !(ccc->value[0] & 0x02)))
+	if (!ccc->value || (notify->conf && !(ccc->value & 0x0002)))
 		return;
 
 	device = btd_adapter_get_device(notify->database->adapter,
@@ -3647,7 +3650,7 @@ static void restore_ccc(struct btd_gatt_database *database,
 
 	ccc = new0(struct ccc_state, 1);
 	ccc->handle = gatt_db_attribute_get_handle(database->svc_chngd_ccc);
-	memcpy(ccc->value, &value, sizeof(ccc->value));
+	ccc->value = value;
 	queue_push_tail(dev_state->ccc_states, ccc);
 }
 
