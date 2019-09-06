@@ -38,6 +38,7 @@ bool keyring_get_net_key(struct mesh_node *node, uint16_t net_idx,
 bool keyring_del_net_key(struct mesh_node *node, uint16_t net_idx);
 bool keyring_put_app_key(struct mesh_node *node, uint16_t app_idx,
 				uint16_t net_idx, struct keyring_app_key *key);
+bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_id);
 bool keyring_get_app_key(struct mesh_node *node, uint16_t app_idx,
 						struct keyring_app_key *key);
 bool keyring_del_app_key(struct mesh_node *node, uint16_t app_idx);

@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE
 #include <fcntl.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -105,6 +106,7 @@ bool keyring_put_app_key(struct mesh_node *node, uint16_t app_idx,
 				return false;
 			}
 		}
+
 		lseek(fd, 0, SEEK_SET);
 	} else
 		fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC,
@@ -118,6 +120,62 @@ bool keyring_put_app_key(struct mesh_node *node, uint16_t app_idx,
 	}
 
 	return result;
+}
+
+static void finalize(const char *fpath, uint16_t net_idx)
+{
+	struct keyring_app_key key;
+	int fd;
+
+	fd = open(fpath, O_RDWR);
+
+	if (fd < 0)
+		return;
+
+	if (read(fd, &key, sizeof(key)) != sizeof(key) ||
+						key.net_idx != net_idx)
+		goto done;
+
+	l_debug("Finalize %s", fpath);
+	memcpy(key.old_key, key.new_key, 16);
+	lseek(fd, 0, SEEK_SET);
+	write(fd, &key, sizeof(key));
+
+done:
+	close(fd);
+}
+
+bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_idx)
+{
+	const char *node_path;
+	char key_dir[PATH_MAX];
+	DIR *dir;
+	struct dirent *entry;
+
+	if (!node)
+		return false;
+
+	node_path = node_get_storage_dir(node);
+
+	if (strlen(node_path) + strlen(app_key_dir) + 1 >= PATH_MAX)
+		return false;
+
+	snprintf(key_dir, PATH_MAX, "%s%s", node_path, app_key_dir);
+	dir = opendir(key_dir);
+	if (!dir) {
+		l_error("Failed to App Key storage directory: %s", key_dir);
+		return false;
+	}
+
+	while ((entry = readdir(dir)) != NULL) {
+		/* AppKeys are stored in regular files */
+		if (entry->d_type == DT_REG)
+			finalize(entry->d_name, net_idx);
+	}
+
+	closedir(dir);
+
+	return true;
 }
 
 bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
