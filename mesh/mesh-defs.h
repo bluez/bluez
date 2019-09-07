@@ -118,4 +118,6 @@
 #define IS_GROUP(x)		((((x) >= GROUP_ADDRESS_LOW) && \
 					((x) < FIXED_GROUP_HIGH)) || \
 					((x) == ALL_NODES_ADDRESS))
+
+#define IS_FIXED_GROUP_ADDRESS(x)	((x) >= PROXIES_ADDRESS)
 #define IS_ALL_NODES(x)	((x) == ALL_NODES_ADDRESS)

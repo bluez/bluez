@@ -311,7 +311,7 @@ static void forward_model(void *a, void *b)
 		return;
 
 	dst = fwd->dst;
-	if (dst == fwd->unicast || IS_ALL_NODES(dst))
+	if (dst == fwd->unicast || IS_FIXED_GROUP_ADDRESS(dst))
 		fwd->has_dst = true;
 	else if (fwd->virt) {
 		virt = l_queue_find(mod->virtuals, simple_match, fwd->virt);
@@ -886,7 +886,29 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	if (!num_ele || IS_UNASSIGNED(addr))
 		goto done;
 
+	/*
+	 * In case of fixed group  addresses check if the
+	 * corresponding mode is enabled.
+	 */
+	if (dst == PROXIES_ADDRESS &&
+			(node_proxy_mode_get(node) != MESH_MODE_ENABLED))
+		goto done;
+
+	if (dst == FRIENDS_ADDRESS &&
+			(node_friend_mode_get(node) != MESH_MODE_ENABLED))
+		goto done;
+
+	if (dst == RELAYS_ADDRESS) {
+		uint8_t cnt;
+		uint16_t interval;
+
+		if (node_relay_mode_get(node, &cnt, &interval) !=
+							MESH_MODE_ENABLED)
+			goto done;
+	}
+
 	is_subscription = !(IS_UNICAST(dst));
+
 
 	for (i = 0; i < num_ele; i++) {
 		struct l_queue *models;
@@ -926,6 +948,14 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 
 		/* If the message was to unicast address, we are done */
 		if (!is_subscription && ele_idx == i)
+			break;
+
+		/*
+		 * For the fixed group addresses, i.e., all-proxies,
+		 * all-friends, all-relays, all-nodes, the message is delivered
+		 * to a primary element only.
+		 */
+		if (IS_FIXED_GROUP_ADDRESS(dst))
 			break;
 	}
 
