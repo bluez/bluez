@@ -402,6 +402,26 @@ static char *supervisory2str(uint8_t supervisory)
 	}
 }
 
+static char *mode2str(uint8_t mode)
+{
+	switch (mode) {
+	case L2CAP_MODE_BASIC:
+		return "Basic";
+	case L2CAP_MODE_RETRANS:
+		return "Retransmission";
+	case L2CAP_MODE_FLOWCTL:
+		return "Flow Control";
+	case L2CAP_MODE_ERTM:
+		return "Enhanced Retransmission";
+	case L2CAP_MODE_STREAMING:
+		return "Streaming";
+	case L2CAP_MODE_LE_FLOWCTL:
+		return "LE Flow Control";
+	default:
+		return "Unknown";
+	}
+}
+
 static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
 {
 	printf("      %s:",
@@ -799,7 +819,8 @@ static void print_config_options(const struct l2cap_frame *frame,
 				assign_mode(frame, data[consumed + 2], cid);
 
 			print_field("  Mode: %s (0x%2.2x)",
-						str, data[consumed + 2]);
+					mode2str(data[consumed + 2]),
+					data[consumed + 2]);
 			print_field("  TX window size: %d", data[consumed + 3]);
 			print_field("  Max transmit: %d", data[consumed + 4]);
 			print_field("  Retransmission timeout: %d",
@@ -3052,16 +3073,18 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 			}
 			print_indent(6, COLOR_CYAN, "Channel:", "",
 					COLOR_OFF, " %d len %d sdu %d"
-					" [PSM %d mode %d] {chan %d}",
+					" [PSM %d mode %s (0x%02x)] {chan %d}",
 					cid, size, chan->sdu, frame.psm,
-					frame.mode, frame.chan);
+					mode2str(frame.mode), frame.mode,
+					frame.chan);
 			chan->sdu -= frame.size;
 			break;
 		case L2CAP_MODE_BASIC:
 			print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
-					" %d len %d [PSM %d mode %d] {chan %d}",
-						cid, size, frame.psm,
-						frame.mode, frame.chan);
+					" %d len %d [PSM %d mode %s (0x%02x)] "
+					"{chan %d}", cid, size, frame.psm,
+					mode2str(frame.mode), frame.mode,
+					frame.chan);
 			break;
 		default:
 			ext_ctrl = get_ext_ctrl(&frame);
@@ -3073,8 +3096,9 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 				print_indent(6, COLOR_CYAN, "Channel:", "",
 						COLOR_OFF, " %d len %d"
 						" ext_ctrl 0x%8.8x"
-						" [PSM %d mode %d] {chan %d}",
-						cid, size, ctrl32, frame.psm,
+						" [PSM %d mode %s (0x%02x)] "
+						"{chan %d}", cid, size, ctrl32,
+						frame.psm, mode2str(frame.mode),
 						frame.mode, frame.chan);
 
 				l2cap_ctrl_ext_parse(&frame, ctrl32);
@@ -3085,8 +3109,9 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 				print_indent(6, COLOR_CYAN, "Channel:", "",
 						COLOR_OFF, " %d len %d"
 						" ctrl 0x%4.4x"
-						" [PSM %d mode %d] {chan %d}",
-						cid, size, ctrl16, frame.psm,
+						" [PSM %d mode %s (0x%02x)] "
+						"{chan %d}", cid, size, ctrl16,
+						frame.psm, mode2str(frame.mode),
 						frame.mode, frame.chan);
 
 				l2cap_ctrl_parse(&frame, ctrl16);
