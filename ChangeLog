@@ -1,3 +1,18 @@
+ver 5.51:
+	Fix issue with first agent not being registered as default.
+	Fix issue with loading devices without Service Changed CCC.
+	Fix issue with GATT client and extended property reading.
+	Fix issue with handling GATT client invalid read behavior.
+	Fix issue with handling GATT disconnect handler removal.
+	Fix issue with missing GATT/GAP service records for SDP.
+	Fix issue with checking SDP continuation state length.
+	Fix issue with HID device removal on HoG disconnect.
+	Fix issue with AVDTP and session destroy handling.
+	Fix issue with AVCTP and output MTU accounting.
+	Fix issue with AVRCP and creating media items.
+	Add support for GATT database caching feature.
+	Add experimental support for Bluetooth Mesh Profile.
+
 ver 5.50:
 	Fix issue with GATT and reading long values.
 	Fix issue with GATT and reading multiple includes.
