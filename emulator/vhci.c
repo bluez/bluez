@@ -89,6 +89,7 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 	case BT_H4_CMD_PKT:
 	case BT_H4_ACL_PKT:
 	case BT_H4_SCO_PKT:
+	case BT_H4_ISO_PKT:
 		btdev_receive_h4(vhci->btdev, buf, len);
 		break;
 	}
@@ -104,7 +105,7 @@ struct vhci *vhci_open(enum vhci_type type)
 
 	switch (type) {
 	case VHCI_TYPE_BREDRLE:
-		btdev_type = BTDEV_TYPE_BREDRLE;
+		btdev_type = BTDEV_TYPE_BREDRLE60;
 		ctrl_type = HCI_PRIMARY;
 		break;
 	case VHCI_TYPE_BREDR:

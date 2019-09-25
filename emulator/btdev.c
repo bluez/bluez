@@ -47,6 +47,9 @@
 #define has_bredr(btdev)	(!((btdev)->features[4] & 0x20))
 #define has_le(btdev)		(!!((btdev)->features[4] & 0x40))
 
+#define ACL_HANDLE 42
+#define ISO_HANDLE 44
+
 struct hook {
 	btdev_hook_func handler;
 	void *user_data;
@@ -92,6 +95,8 @@ struct btdev {
 	uint8_t  feat_page_2[8];
 	uint16_t acl_mtu;
 	uint16_t acl_max_pkt;
+	uint16_t iso_mtu;
+	uint16_t iso_max_pkt;
 	uint8_t  country_code;
 	uint8_t  bdaddr[6];
 	uint8_t  random_addr[6];
@@ -139,6 +144,10 @@ struct btdev {
 	uint8_t  le_filter_dup;
 	uint8_t  le_adv_enable;
 	uint8_t  le_ltk[16];
+	struct {
+		struct bt_hci_cmd_le_set_cig_params params;
+		struct bt_hci_cis_params cis;
+	} __attribute__ ((packed)) le_cig;
 
 	uint8_t le_local_sk256[32];
 
@@ -438,6 +447,30 @@ static void set_le_50_commands(struct btdev *btdev)
 	btdev->commands[38] |= 0x40;	/* LE Read Periodic Adv List Size */
 }
 
+static void set_le_60_commands(struct btdev *btdev)
+{
+	btdev->commands[41] |= 0x20;	/* LE Read Buffer Size v2 */
+	btdev->commands[41] |= 0x40;	/* LE Read ISO TX Sync */
+	btdev->commands[41] |= 0x80;	/* LE Set CIG Parameters */
+	btdev->commands[42] |= 0x01;	/* LE Set CIG Parameters Test */
+	btdev->commands[42] |= 0x02;	/* LE Create CIS */
+	btdev->commands[42] |= 0x04;	/* LE Remove CIG */
+	btdev->commands[42] |= 0x08;	/* LE Accept CIS */
+	btdev->commands[42] |= 0x10;	/* LE Reject CIS */
+	btdev->commands[42] |= 0x20;	/* LE Create BIG */
+	btdev->commands[42] |= 0x40;	/* LE Create BIG Test */
+	btdev->commands[42] |= 0x80;	/* LE Terminate BIG */
+	btdev->commands[43] |= 0x01;	/* LE BIG Create Sync */
+	btdev->commands[43] |= 0x02;	/* LE BIG Terminate Sync */
+	btdev->commands[43] |= 0x04;	/* LE Request Peer SCA */
+	btdev->commands[43] |= 0x08;	/* LE Setup ISO Path */
+	btdev->commands[43] |= 0x10;	/* LE Remove ISO Path */
+	btdev->commands[43] |= 0x20;	/* LE ISO TX Test */
+	btdev->commands[43] |= 0x40;	/* LE ISO RX Test */
+	btdev->commands[43] |= 0x80;	/* LE ISO Read Test Counter */
+	btdev->commands[44] |= 0x01;	/* LE ISO Test End */
+}
+
 static void set_le_commands(struct btdev *btdev)
 {
 	set_common_commands_all(btdev);
@@ -482,6 +515,10 @@ static void set_le_commands(struct btdev *btdev)
 	/* Extra LE commands for >= 5.0 adapters */
 	if (btdev->type >= BTDEV_TYPE_BREDRLE50)
 		set_le_50_commands(btdev);
+
+	/* Extra LE commands for >= 6.0 adapters */
+	if (btdev->type >= BTDEV_TYPE_BREDRLE60)
+		set_le_60_commands(btdev);
 }
 
 static void set_bredrle_commands(struct btdev *btdev)
@@ -548,6 +585,14 @@ static void set_bredrle_features(struct btdev *btdev)
 		btdev->le_features[1] |= 0x01;	/* LE 2M PHY */
 		btdev->le_features[1] |= 0x08;	/* LE Coded PHY */
 		btdev->le_features[1] |= 0x10;  /* LE EXT ADV */
+	}
+
+	if (btdev->type >= BTDEV_TYPE_BREDRLE60) {
+		btdev->le_features[3] |= 0x10;  /* LE CIS Master */
+		btdev->le_features[3] |= 0x20;  /* LE CIS Slave */
+		btdev->le_features[3] |= 0x40;  /* LE ISO Broadcaster */
+		btdev->le_features[3] |= 0x80;  /* LE Synchronized Receiver */
+		btdev->le_features[4] |= 0x01;  /* LE ISO channels */
 	}
 
 	btdev->feat_page_2[0] |= 0x01;	/* CSB - Master Operation */
@@ -644,8 +689,9 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	memset(btdev, 0, sizeof(*btdev));
 
-	if (type == BTDEV_TYPE_BREDRLE || type == BTDEV_TYPE_LE
-				|| type == BTDEV_TYPE_BREDRLE50) {
+	if (type == BTDEV_TYPE_BREDRLE || type == BTDEV_TYPE_LE ||
+			type == BTDEV_TYPE_BREDRLE50 ||
+			type == BTDEV_TYPE_BREDRLE60) {
 		btdev->crypto = bt_crypto_new();
 		if (!btdev->crypto) {
 			free(btdev);
@@ -661,6 +707,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	switch (btdev->type) {
 	case BTDEV_TYPE_BREDRLE:
 	case BTDEV_TYPE_BREDRLE50:
+	case BTDEV_TYPE_BREDRLE60:
 		btdev->version = 0x09;
 		set_bredrle_features(btdev);
 		set_bredrle_commands(btdev);
@@ -699,6 +746,9 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	btdev->acl_mtu = 192;
 	btdev->acl_max_pkt = 1;
+
+	btdev->iso_mtu = 251;
+	btdev->iso_max_pkt = 1;
 
 	btdev->country_code = 0x00;
 
@@ -893,13 +943,13 @@ static void le_meta_event(struct btdev *btdev, uint8_t event,
 	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, pkt_data, 1 + len);
 }
 
-static void num_completed_packets(struct btdev *btdev)
+static void num_completed_packets(struct btdev *btdev, uint16_t handle)
 {
 	if (btdev->conn) {
 		struct bt_hci_evt_num_completed_packets ncp;
 
 		ncp.num_handles = 1;
-		ncp.handle = cpu_to_le16(42);
+		ncp.handle = cpu_to_le16(handle);
 		ncp.count = cpu_to_le16(1);
 
 		send_event(btdev, BT_HCI_EVT_NUM_COMPLETED_PACKETS,
@@ -1106,12 +1156,12 @@ static void conn_complete(struct btdev *btdev,
 		memcpy(cc.bdaddr, btdev->bdaddr, 6);
 		cc.encr_mode = 0x00;
 
-		cc.handle = cpu_to_le16(42);
+		cc.handle = cpu_to_le16(ACL_HANDLE);
 		cc.link_type = 0x01;
 
 		send_event(remote, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 
-		cc.handle = cpu_to_le16(42);
+		cc.handle = cpu_to_le16(ACL_HANDLE);
 		cc.link_type = 0x01;
 	} else {
 		cc.handle = cpu_to_le16(0x0000);
@@ -1208,7 +1258,7 @@ static void le_conn_complete(struct btdev *btdev,
 			memcpy(cc->peer_addr, btdev->bdaddr, 6);
 
 		cc->role = 0x01;
-		cc->handle = cpu_to_le16(42);
+		cc->handle = cpu_to_le16(ACL_HANDLE);
 		cc->interval = lecc->max_interval;
 		cc->latency = lecc->latency;
 		cc->supv_timeout = lecc->supv_timeout;
@@ -1255,7 +1305,7 @@ static void le_ext_conn_complete(struct btdev *btdev,
 			memcpy(cc->peer_addr, btdev->bdaddr, 6);
 
 		cc->role = 0x01;
-		cc->handle = cpu_to_le16(42);
+		cc->handle = cpu_to_le16(ACL_HANDLE);
 		cc->interval = lecc->max_interval;
 		cc->latency = lecc->latency;
 		cc->supv_timeout = lecc->supv_timeout;
@@ -1354,6 +1404,63 @@ static void le_ext_conn_request(struct btdev *btdev,
 	else
 		le_ext_conn_complete(btdev, leecc,
 					BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH);
+}
+
+static void le_cis_estabilished(struct btdev *dev, uint8_t status)
+{
+	struct bt_hci_evt_le_cis_established evt;
+
+	memset(&evt, 0, sizeof(evt));
+
+	evt.status = status;
+
+	if (!evt.status) {
+		evt.conn_handle = cpu_to_le16(ISO_HANDLE);
+		/* TODO: Figure out if these values makes sense */
+		memcpy(evt.cig_sync_delay, dev->le_cig.params.m_interval,
+				sizeof(dev->le_cig.params.m_interval));
+		memcpy(evt.cis_sync_delay, dev->le_cig.params.s_interval,
+				sizeof(dev->le_cig.params.s_interval));
+		memcpy(evt.m_latency, &dev->le_cig.params.m_latency,
+				sizeof(dev->le_cig.params.m_latency));
+		memcpy(evt.s_latency, &dev->le_cig.params.s_latency,
+				sizeof(dev->le_cig.params.s_latency));
+		evt.m_phy = dev->le_cig.cis.m_phy;
+		evt.s_phy = dev->le_cig.cis.s_phy;
+		evt.nse = 0x01;
+		evt.m_bn = 0x01;
+		evt.s_bn = 0x01;
+		evt.m_ft = 0x01;
+		evt.s_ft = 0x01;
+		evt.m_mtu = dev->iso_mtu;
+		evt.s_mtu = dev->iso_mtu;
+		evt.interval = dev->le_cig.params.m_latency;
+	}
+
+	le_meta_event(dev, BT_HCI_EVT_LE_CIS_ESTABLISHED, &evt, sizeof(evt));
+
+	if (dev->conn)
+		le_meta_event(dev->conn, BT_HCI_EVT_LE_CIS_ESTABLISHED, &evt,
+							sizeof(evt));
+}
+
+static void le_cis_request(struct btdev *dev,
+				const struct bt_hci_cmd_le_create_cis *leccis)
+{
+	struct btdev *remote = dev->conn;
+
+	if (remote) {
+		struct bt_hci_evt_le_cis_req evt;
+
+		evt.acl_handle = cpu_to_le16(ACL_HANDLE);
+		evt.cis_handle = cpu_to_le16(ISO_HANDLE);
+		evt.cis_id = 0x00;
+		evt.cis_id = 0x00;
+
+		le_meta_event(remote, BT_HCI_EVT_LE_CIS_REQ, &evt, sizeof(evt));
+	} else {
+		le_cis_estabilished(dev, BT_HCI_ERR_UNKNOWN_CONN_ID);
+	}
 }
 
 static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
@@ -1464,8 +1571,10 @@ static void disconnect_complete(struct btdev *btdev, uint16_t handle,
 	dc.handle = cpu_to_le16(handle);
 	dc.reason = reason;
 
-	btdev->conn = NULL;
-	remote->conn = NULL;
+	if (dc.handle == ACL_HANDLE) {
+		btdev->conn = NULL;
+		remote->conn = NULL;
+	}
 
 	send_event(btdev, BT_HCI_EVT_DISCONNECT_COMPLETE, &dc, sizeof(dc));
 	send_event(remote, BT_HCI_EVT_DISCONNECT_COMPLETE, &dc, sizeof(dc));
@@ -1492,7 +1601,7 @@ static void link_key_req_reply_complete(struct btdev *btdev,
 		return;
 	}
 
-	ev.handle = cpu_to_le16(42);
+	ev.handle = cpu_to_le16(ACL_HANDLE);
 
 	if (!memcmp(btdev->link_key, remote->link_key, 16))
 		ev.status = BT_HCI_ERR_SUCCESS;
@@ -1587,7 +1696,7 @@ static void encrypt_change(struct btdev *btdev, uint8_t mode, uint8_t status)
 	struct bt_hci_evt_encrypt_change ev;
 
 	ev.status = status;
-	ev.handle = cpu_to_le16(42);
+	ev.handle = cpu_to_le16(ACL_HANDLE);
 	ev.encr_mode = mode;
 
 	send_event(btdev, BT_HCI_EVT_ENCRYPT_CHANGE, &ev, sizeof(ev));
@@ -1628,7 +1737,7 @@ static void pin_code_req_reply_complete(struct btdev *btdev,
 	}
 
 	if (remote->conn) {
-		ev.handle = cpu_to_le16(42);
+		ev.handle = cpu_to_le16(ACL_HANDLE);
 		send_event(remote, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
 	} else {
 		conn_complete(remote, btdev->bdaddr, ev.status);
@@ -1651,7 +1760,7 @@ static void pin_code_req_neg_reply_complete(struct btdev *btdev,
 	}
 
 	ev.status = BT_HCI_ERR_PIN_OR_KEY_MISSING;
-	ev.handle = cpu_to_le16(42);
+	ev.handle = cpu_to_le16(ACL_HANDLE);
 
 	if (btdev->conn)
 		send_event(btdev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
@@ -1944,7 +2053,7 @@ static void ssp_complete(struct btdev *btdev, const uint8_t *bdaddr,
 	}
 
 	auth.status = status;
-	auth.handle = cpu_to_le16(42);
+	auth.handle = cpu_to_le16(ACL_HANDLE);
 	send_event(init, BT_HCI_EVT_AUTH_COMPLETE, &auth, sizeof(auth));
 }
 
@@ -2207,7 +2316,7 @@ static void le_read_remote_features_complete(struct btdev *btdev)
 	memset(buf, 0, sizeof(buf));
 	buf[0] = BT_HCI_EVT_LE_REMOTE_FEATURES_COMPLETE;
 	ev->status = BT_HCI_ERR_SUCCESS;
-	ev->handle = cpu_to_le16(42);
+	ev->handle = cpu_to_le16(ACL_HANDLE);
 	memcpy(ev->features, remote->le_features, 8);
 
 	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
@@ -2230,7 +2339,7 @@ static void le_start_encrypt_complete(struct btdev *btdev, uint16_t ediv,
 
 	memset(buf, 0, sizeof(buf));
 	buf[0] = BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST;
-	ev->handle = cpu_to_le16(42);
+	ev->handle = cpu_to_le16(ACL_HANDLE);
 	ev->ediv = ediv;
 	ev->rand = rand;
 
@@ -2244,7 +2353,7 @@ static void le_encrypt_complete(struct btdev *btdev)
 	struct btdev *remote = btdev->conn;
 
 	memset(&rp, 0, sizeof(rp));
-	rp.handle = cpu_to_le16(42);
+	rp.handle = cpu_to_le16(ACL_HANDLE);
 
 	if (!remote) {
 		rp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
@@ -2266,7 +2375,7 @@ static void le_encrypt_complete(struct btdev *btdev)
 		ev.encr_mode = 0x01;
 	}
 
-	ev.handle = cpu_to_le16(42);
+	ev.handle = cpu_to_le16(ACL_HANDLE);
 
 	send_event(btdev, BT_HCI_EVT_ENCRYPT_CHANGE, &ev, sizeof(ev));
 	send_event(remote, BT_HCI_EVT_ENCRYPT_CHANGE, &ev, sizeof(ev));
@@ -2279,7 +2388,7 @@ static void ltk_neg_reply_complete(struct btdev *btdev)
 	struct btdev *remote = btdev->conn;
 
 	memset(&rp, 0, sizeof(rp));
-	rp.handle = cpu_to_le16(42);
+	rp.handle = cpu_to_le16(ACL_HANDLE);
 
 	if (!remote) {
 		rp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
@@ -2293,7 +2402,7 @@ static void ltk_neg_reply_complete(struct btdev *btdev)
 
 	memset(&ev, 0, sizeof(ev));
 	ev.status = BT_HCI_ERR_PIN_OR_KEY_MISSING;
-	ev.handle = cpu_to_le16(42);
+	ev.handle = cpu_to_le16(ACL_HANDLE);
 
 	send_event(remote, BT_HCI_EVT_ENCRYPT_CHANGE, &ev, sizeof(ev));
 }
@@ -2364,6 +2473,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_le_set_ext_scan_params *lsesp;
 	const struct bt_hci_le_scan_phy *lsp;
 	const struct bt_hci_cmd_le_set_ext_scan_enable *lsese;
+	const struct bt_hci_cmd_le_reject_cis *lrcis;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
 	struct bt_hci_rsp_read_stored_link_key rslk;
 	struct bt_hci_rsp_write_stored_link_key wslk;
@@ -2425,6 +2535,11 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_evt_le_generate_dhkey_complete dh_evt;
 	struct bt_hci_rsp_le_read_num_supported_adv_sets rlrnsas;
 	struct bt_hci_rsp_le_set_ext_adv_params rlseap;
+	struct bt_hci_rsp_le_read_buffer_size_v2 lrbsv2;
+	struct lescp {
+		struct bt_hci_rsp_le_set_cig_params params;
+		uint16_t handle;
+	} __attribute__ ((packed)) lscp;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -2960,7 +3075,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_READ_LE_HOST_SUPPORTED:
 		if (btdev->type != BTDEV_TYPE_BREDRLE &&
-				btdev->type != BTDEV_TYPE_BREDRLE50)
+				btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 		rlhs.status = BT_HCI_ERR_SUCCESS;
 		rlhs.supported = btdev->le_supported;
@@ -2971,7 +3087,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED:
 		if (btdev->type != BTDEV_TYPE_BREDRLE &&
 				btdev->type != BTDEV_TYPE_LE &&
-				btdev->type != BTDEV_TYPE_BREDRLE50)
+				btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 		wlhs = data;
 		btdev->le_supported = wlhs->supported;
@@ -2982,7 +3099,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_READ_SECURE_CONN_SUPPORT:
 		if (btdev->type != BTDEV_TYPE_BREDRLE &&
-				btdev->type != BTDEV_TYPE_BREDRLE50)
+				btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 		rscs.status = BT_HCI_ERR_SUCCESS;
 		rscs.support = btdev->secure_conn_support;
@@ -2991,7 +3109,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT:
 		if (btdev->type != BTDEV_TYPE_BREDRLE &&
-				btdev->type != BTDEV_TYPE_BREDRLE50)
+				btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 		wscs = data;
 		btdev->secure_conn_support = wscs->support;
@@ -3001,7 +3120,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA:
 		if (btdev->type != BTDEV_TYPE_BREDRLE &&
-				btdev->type != BTDEV_TYPE_BREDRLE50)
+				btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 		rloed.status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &rloed, sizeof(rloed));
@@ -3009,7 +3129,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS:
 		if (btdev->type != BTDEV_TYPE_BREDRLE &&
-				btdev->type != BTDEV_TYPE_BREDRLE50)
+				btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 		rstp.status = BT_HCI_ERR_SUCCESS;
 		rstp.interval = cpu_to_le16(btdev->sync_train_interval);
@@ -3160,7 +3281,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_READ_ENCRYPT_KEY_SIZE:
 		if (btdev->type != BTDEV_TYPE_BREDRLE &&
 					btdev->type != BTDEV_TYPE_BREDR &&
-					btdev->type != BTDEV_TYPE_BREDRLE50)
+					btdev->type != BTDEV_TYPE_BREDRLE50 &&
+					btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 		reks = data;
 		read_enc_key_size_complete(btdev, le16_to_cpu(reks->handle));
@@ -3535,7 +3657,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &lcprnr_rsp, sizeof(lcprnr_rsp));
 		break;
 	case BT_HCI_CMD_LE_READ_NUM_SUPPORTED_ADV_SETS:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		rlrnsas.status = BT_HCI_ERR_SUCCESS;
@@ -3544,7 +3667,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &rlrnsas, sizeof(rlrnsas));
 		break;
 	case BT_HCI_CMD_LE_SET_ADV_SET_RAND_ADDR:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		lsasra = data;
@@ -3553,7 +3677,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 	case BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		if (btdev->le_adv_enable) {
@@ -3573,7 +3698,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &rlseap, sizeof(rlseap));
 		break;
 	case BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		lseae = data;
@@ -3588,7 +3714,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			le_set_ext_adv_enable_complete(btdev);
 		break;
 	case BT_HCI_CMD_LE_SET_EXT_ADV_DATA:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		lsead = data;
@@ -3598,7 +3725,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 	case BT_HCI_CMD_LE_SET_EXT_SCAN_RSP_DATA:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		lsesrd = data;
@@ -3608,14 +3736,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 	case BT_HCI_CMD_LE_REMOVE_ADV_SET:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 	case BT_HCI_CMD_LE_CLEAR_ADV_SETS:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		status = BT_HCI_ERR_SUCCESS;
@@ -3636,7 +3766,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 	case BT_HCI_CMD_LE_SET_EXT_SCAN_PARAMS:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		lsesp = data;
@@ -3658,7 +3789,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 	case BT_HCI_CMD_LE_SET_EXT_SCAN_ENABLE:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		lsese = data;
@@ -3672,11 +3804,63 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 	case BT_HCI_CMD_LE_EXT_CREATE_CONN:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			goto unsupported;
 
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		break;
+
+	case BT_HCI_CMD_LE_READ_BUFFER_SIZE_V2:
+		if (btdev->type != BTDEV_TYPE_BREDRLE60)
+			goto unsupported;
+		lrbsv2.status = BT_HCI_ERR_SUCCESS;
+		lrbsv2.acl_mtu = cpu_to_le16(btdev->acl_mtu);
+		lrbsv2.acl_max_pkt = btdev->acl_max_pkt;
+		lrbsv2.iso_mtu = cpu_to_le16(btdev->iso_mtu);
+		lrbsv2.iso_max_pkt = btdev->iso_max_pkt;
+		cmd_complete(btdev, opcode, &lrbsv2, sizeof(lrbsv2));
+		break;
+
+	case BT_HCI_CMD_LE_SET_CIG_PARAMS:
+		if (btdev->type != BTDEV_TYPE_BREDRLE60)
+			goto unsupported;
+		memcpy(&btdev->le_cig, data, len);
+		lscp.params.status = BT_HCI_ERR_SUCCESS;
+		lscp.params.cig_id = 0x00;
+		lscp.params.num_handles = 1;
+		lscp.handle = cpu_to_le16(ISO_HANDLE);
+		cmd_complete(btdev, opcode, &lscp, sizeof(lscp));
+		break;
+
+	case BT_HCI_CMD_LE_CREATE_CIS:
+		if (btdev->type != BTDEV_TYPE_BREDRLE60)
+			goto unsupported;
+
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+
+		break;
+
+	case BT_HCI_CMD_LE_ACCEPT_CIS:
+		if (btdev->type != BTDEV_TYPE_BREDRLE60)
+			goto unsupported;
+
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+		le_cis_estabilished(btdev, BT_HCI_ERR_SUCCESS);
+
+		break;
+
+	case BT_HCI_CMD_LE_REJECT_CIS:
+		if (btdev->type != BTDEV_TYPE_BREDRLE60)
+			goto unsupported;
+
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+
+		lrcis = data;
+		le_cis_estabilished(btdev, lrcis->reason);
+
+		break;
+
 	default:
 		goto unsupported;
 	}
@@ -3716,6 +3900,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_le_set_scan_enable *lsse;
 	const struct bt_hci_cmd_le_set_ext_scan_enable *lsese;
 	const struct bt_hci_cmd_le_ext_create_conn *leecc;
+	const struct bt_hci_cmd_le_create_cis *leccis;
 
 	switch (opcode) {
 	case BT_HCI_CMD_INQUIRY:
@@ -3912,18 +4097,27 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 			le_set_scan_enable_complete(btdev);
 		break;
 	case BT_HCI_CMD_LE_SET_EXT_SCAN_ENABLE:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			return;
 		lsese = data;
 		if (btdev->le_scan_enable && lsese->enable)
 			le_set_ext_scan_enable_complete(btdev);
 		break;
 	case BT_HCI_CMD_LE_EXT_CREATE_CONN:
-		if (btdev->type != BTDEV_TYPE_BREDRLE50)
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
 			return;
 		leecc = data;
 		btdev->le_scan_own_addr_type = leecc->own_addr_type;
 		le_ext_conn_request(btdev, leecc);
+		break;
+	case BT_HCI_CMD_LE_CREATE_CIS:
+		if (btdev->type != BTDEV_TYPE_BREDRLE50 &&
+				btdev->type != BTDEV_TYPE_BREDRLE60)
+			return;
+		leccis = data;
+		le_cis_request(btdev, leccis);
 		break;
 	}
 }
@@ -4033,6 +4227,16 @@ static void send_acl(struct btdev *conn, const void *data, uint16_t len)
 	send_packet(conn, iov, 3);
 }
 
+static void send_iso(struct btdev *conn, const void *data, uint16_t len)
+{
+	struct iovec iov;
+
+	iov.iov_base = (void *) (data);
+	iov.iov_len = len;
+
+	send_packet(conn, &iov, 1);
+}
+
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 {
 	uint8_t pkt_type;
@@ -4052,7 +4256,12 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 	case BT_H4_ACL_PKT:
 		if (btdev->conn)
 			send_acl(btdev->conn, data, len);
-		num_completed_packets(btdev);
+		num_completed_packets(btdev, ACL_HANDLE);
+		break;
+	case BT_H4_ISO_PKT:
+		num_completed_packets(btdev, ISO_HANDLE);
+		if (btdev->conn)
+			send_iso(btdev->conn, data, len);
 		break;
 	default:
 		printf("Unsupported packet 0x%2.2x\n", pkt_type);

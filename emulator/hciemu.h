@@ -32,6 +32,7 @@ enum hciemu_type {
 	HCIEMU_TYPE_LE,
 	HCIEMU_TYPE_LEGACY,
 	HCIEMU_TYPE_BREDRLE50,
+	HCIEMU_TYPE_BREDRLE60,
 };
 
 enum hciemu_hook_type {
