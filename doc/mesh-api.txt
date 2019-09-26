@@ -245,7 +245,7 @@ Methods:
 			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.NotFound
 
-	void DevKeySend(object element_path, uint16 destination,
+	void DevKeySend(object element_path, uint16 destination, boolean remote,
 					uint16 net_index, array{byte} data)
 
 		This method is used to send a message originated by a local
@@ -258,6 +258,12 @@ Methods:
 		The destination parameter contains the destination address. This
 		destination must be a uint16 to a unicast address, or a well
 		known group address.
+
+		The remote parameter, if true, looks up the device key by the
+		destination address in the key database to encrypt the message.
+		If remote is true, but requested key does not exist, a NotFound
+		error will be returned. If set to false, the local node's
+		device key is used.
 
 		The net_index parameter is the subnet index of the network on
 		which the message is to be sent.
@@ -782,8 +788,8 @@ Methods:
 
 		The data parameter is the incoming message.
 
-	void DevKeyMessageReceived(uint16 source, uint16 net_index,
-							array{byte} data)
+	void DevKeyMessageReceived(uint16 source, boolean remote,
+					uint16 net_index, array{byte} data)
 
 		This method is called by meshd daemon when a message arrives
 		addressed to the application, which was sent with the remote
@@ -791,6 +797,11 @@ Methods:
 
 		The source parameter is unicast address of the remote
 		node-element that sent the message.
+
+		The remote parameter if true indicates that the device key
+		used to decrypt the message was from the sender. False
+		indicates that the local nodes device key was used, and the
+		message has permissions to modify local states.
 
 		The net_index parameter indicates what subnet the message was
 		received on, and if a response is required, the same subnet
