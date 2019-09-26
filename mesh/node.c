@@ -1976,7 +1976,8 @@ static struct l_dbus_message *dev_key_send_call(struct l_dbus *dbus,
 	const char *sender, *ele_path;
 	struct l_dbus_message_iter iter_data;
 	struct node_element *ele;
-	uint16_t dst, net_idx, src;
+	uint16_t dst, app_idx, net_idx, src;
+	bool remote;
 	uint8_t *data;
 	uint32_t len;
 
@@ -1987,8 +1988,12 @@ static struct l_dbus_message *dev_key_send_call(struct l_dbus *dbus,
 	if (strcmp(sender, node->owner))
 		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
-	if (!l_dbus_message_get_arguments(msg, "oqqay", &ele_path, &dst,
-							&net_idx, &iter_data))
+	if (!l_dbus_message_get_arguments(msg, "oqbqay", &ele_path, &dst,
+						&remote, &net_idx, &iter_data))
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
+
+	/* Loopbacks to local servers must use *remote* addressing */
+	if (!remote && mesh_net_is_local_address(node->net, dst, 1))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
 	ele = l_queue_find(node->elements, match_element_path, ele_path);
@@ -1999,13 +2004,13 @@ static struct l_dbus_message *dev_key_send_call(struct l_dbus *dbus,
 	src = node_get_primary(node) + ele->idx;
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter_data, &data, &len) ||
-					!len || len > MAX_MSG_LEN)
+						!len || len > MAX_MSG_LEN)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
-	/* TODO: use net_idx */
-	if (!mesh_model_send(node, src, dst, APP_IDX_DEV_REMOTE, net_idx,
-							DEFAULT_TTL, data, len))
+	app_idx = remote ? APP_IDX_DEV_REMOTE : APP_IDX_DEV_LOCAL;
+	if (!mesh_model_send(node, src, dst, app_idx, net_idx, DEFAULT_TTL,
+								data, len))
 		return dbus_error(msg, MESH_ERROR_NOT_FOUND, NULL);
 
 	return l_dbus_message_new_method_return(msg);
@@ -2226,9 +2231,9 @@ static void setup_node_interface(struct l_dbus_interface *iface)
 						"element_path", "destination",
 						"key_index", "data");
 	l_dbus_interface_method(iface, "DevKeySend", 0, dev_key_send_call,
-						"", "oqqay", "element_path",
-						"destination", "net_index",
-						"data");
+						"", "oqbqay", "element_path",
+						"destination", "remote",
+						"net_index", "data");
 	l_dbus_interface_method(iface, "Publish", 0, publish_call, "", "oqay",
 					"element_path", "model_id", "data");
 	l_dbus_interface_method(iface, "VendorPublish", 0, vendor_publish_call,
