@@ -1681,7 +1681,6 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 
 	} else if (req->type == REQUEST_TYPE_IMPORT) {
 		struct node_import *import = req->import;
-		struct keyring_net_key net_key;
 
 		if (!create_node_config(node, node->uuid))
 			goto fail;
@@ -1692,22 +1691,8 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 					import->net_idx, import->net_key))
 			goto fail;
 
-		memcpy(net_key.old_key, import->net_key, 16);
-		net_key.net_idx = import->net_idx;
-		if (import->flags.kr)
-			net_key.phase = KEY_REFRESH_PHASE_TWO;
-		else
-			net_key.phase = KEY_REFRESH_PHASE_NONE;
-
 		/* Initialize directory for storing keyring info */
 		init_storage_dir(node);
-
-		if (!keyring_put_remote_dev_key(node, import->unicast,
-						num_ele, import->dev_key))
-			goto fail;
-
-		if (!keyring_put_net_key(node, import->net_idx, &net_key))
-			goto fail;
 
 	} else {
 		/* Callback for create node request */
