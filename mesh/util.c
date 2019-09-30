@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <ftw.h>
 #include <stdio.h>
+#include <limits.h>
 #include <time.h>
 #include <sys/time.h>
 

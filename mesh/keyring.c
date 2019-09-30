@@ -24,6 +24,7 @@
 #define _GNU_SOURCE
 #include <fcntl.h>
 #include <dirent.h>
+#include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <dirent.h>

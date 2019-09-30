@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE
 #include <dirent.h>
+#include <limits.h>
 #include <stdio.h>
 #include <sys/time.h>
 
