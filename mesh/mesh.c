@@ -377,6 +377,11 @@ static void node_init_cb(struct mesh_node *node, struct mesh_agent *agent)
 	l_dbus_send(dbus_get_bus(), reply);
 	join_pending->msg = NULL;
 
+	/* Setup disconnect watch */
+	join_pending->disc_watch = l_dbus_add_disconnect_watch(dbus_get_bus(),
+						join_pending->sender,
+						prov_disc_cb, NULL, NULL);
+
 	return;
 
 fail:
@@ -423,8 +428,6 @@ static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
 	sender = l_dbus_message_get_sender(msg);
 
 	join_pending->sender = l_strdup(sender);
-	join_pending->disc_watch = l_dbus_add_disconnect_watch(dbus, sender,
-						prov_disc_cb, NULL, NULL);
 	join_pending->msg = l_dbus_message_ref(msg);
 	join_pending->app_path = app_path;
 
