@@ -104,6 +104,7 @@ struct mesh_config_node {
 	uint8_t dev_key[16];
 	uint8_t token[8];
 };
+
 typedef void (*mesh_config_status_func_t)(void *user_data, bool result);
 typedef bool (*mesh_config_node_func_t)(struct mesh_config_node *node,
 							const uint8_t uuid[16],
@@ -136,10 +137,10 @@ bool mesh_config_write_relay_mode(struct mesh_config *cfg, uint8_t mode,
 bool mesh_config_write_ttl(struct mesh_config *cfg, uint8_t ttl);
 bool mesh_config_write_mode(struct mesh_config *cfg, const char *keyword,
 								int value);
-bool mesh_config_model_binding_add(struct mesh_config *cfg, uint8_t ele_idx,
+bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
 						bool vendor, uint32_t mod_id,
 							uint16_t app_idx);
-bool mesh_config_model_binding_del(struct mesh_config *cfg, uint8_t ele_idx,
+bool mesh_config_model_binding_del(struct mesh_config *cfg, uint16_t ele_addr,
 						bool vendor, uint32_t mod_id,
 							uint16_t app_idx);
 bool mesh_config_model_pub_add(struct mesh_config *cfg, uint16_t ele_addr,
@@ -147,13 +148,13 @@ bool mesh_config_model_pub_add(struct mesh_config *cfg, uint16_t ele_addr,
 						struct mesh_config_pub *pub);
 bool mesh_config_model_pub_del(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor);
-bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t addr,
+bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
 						struct mesh_config_sub *sub);
-bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t addr,
+bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
 						struct mesh_config_sub *sub);
-bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t addr,
+bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor);
 bool mesh_config_app_key_add(struct mesh_config *cfg, uint16_t net_idx,
 				uint16_t app_idx, const uint8_t key[16]);
