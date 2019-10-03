@@ -123,6 +123,7 @@ ell_headers = ell/util.h \
 			ell/main.h \
 			ell/strv.h \
 			ell/string.h \
+			ell/utf8.h \
 			ell/dbus.h \
 			ell/dbus-service.h \
 			ell/dbus-client.h
@@ -142,6 +143,7 @@ ell_sources = ell/private.h ell/missing.h \
 			ell/string.c \
 			ell/cipher.c \
 			ell/checksum.c \
+			ell/utf8.c \
 			ell/dbus-private.h \
 			ell/dbus.c \
 			ell/dbus-message.c \
@@ -517,6 +519,14 @@ unit_test_midi_SOURCES = unit/test-midi.c \
 unit_test_midi_LDADD = src/libshared-glib.la \
 			$(GLIB_LIBS) $(ALSA_LIBS)
 endif
+
+unit_tests += unit/test-mesh-crypto
+unit_test_mesh_crypto_CPPFLAGS = $(ell_cflags)
+unit_test_mesh_crypto_SOURCES = unit/test-mesh-crypto.c \
+				mesh/crypto.h ell/internal ell/ell.h \
+				$(ell_sources)
+unit_test_mesh_crypto_LDADD = src/libshared-ell.la \
+			$(ell_ldadd)
 
 if MAINTAINER_MODE
 noinst_PROGRAMS += $(unit_tests)
