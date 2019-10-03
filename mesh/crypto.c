@@ -26,19 +26,9 @@
 #include <sys/socket.h>
 #include <ell/ell.h>
 
-#include <linux/if_alg.h>
-
 #include "mesh/mesh-defs.h"
 #include "mesh/net.h"
 #include "mesh/crypto.h"
-
-#ifndef SOL_ALG
-#define SOL_ALG		279
-#endif
-
-#ifndef ALG_SET_AEAD_AUTHSIZE
-#define ALG_SET_AEAD_AUTHSIZE	5
-#endif
 
 /* Multiply used Zero array */
 static const uint8_t zero[16] = { 0, };
