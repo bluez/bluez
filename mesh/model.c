@@ -355,7 +355,7 @@ static void forward_model(void *a, void *b)
 
 static int dev_packet_decrypt(struct mesh_node *node, const uint8_t *data,
 				uint16_t size, bool szmict, uint16_t src,
-				uint16_t dst, uint8_t key_id, uint32_t seq,
+				uint16_t dst, uint8_t key_aid, uint32_t seq,
 				uint32_t iv_idx, uint8_t *out)
 {
 	uint8_t dev_key[16];
@@ -366,7 +366,7 @@ static int dev_packet_decrypt(struct mesh_node *node, const uint8_t *data,
 		return -1;
 
 	if (mesh_crypto_payload_decrypt(NULL, 0, data, size, szmict, src,
-					dst, key_id, seq, iv_idx, out, key))
+					dst, key_aid, seq, iv_idx, out, key))
 		return APP_IDX_DEV_LOCAL;
 
 	if (!keyring_get_remote_dev_key(node, src, dev_key))
@@ -374,7 +374,7 @@ static int dev_packet_decrypt(struct mesh_node *node, const uint8_t *data,
 
 	key = dev_key;
 	if (mesh_crypto_payload_decrypt(NULL, 0, data, size, szmict, src,
-					dst, key_id, seq, iv_idx, out, key))
+					dst, key_aid, seq, iv_idx, out, key))
 		return APP_IDX_DEV_REMOTE;
 
 	return -1;
@@ -382,7 +382,7 @@ static int dev_packet_decrypt(struct mesh_node *node, const uint8_t *data,
 
 static int virt_packet_decrypt(struct mesh_net *net, const uint8_t *data,
 				uint16_t size, bool szmict, uint16_t src,
-				uint16_t dst, uint8_t key_id, uint32_t seq,
+				uint16_t dst, uint8_t key_aid, uint32_t seq,
 				uint32_t iv_idx, uint8_t *out,
 				struct mesh_virtual **decrypt_virt)
 {
@@ -397,7 +397,8 @@ static int virt_packet_decrypt(struct mesh_net *net, const uint8_t *data,
 
 		decrypt_idx = appkey_packet_decrypt(net, szmict, seq,
 							iv_idx, src, dst,
-							virt->label, 16, key_id,
+							virt->label, 16,
+							key_aid,
 							data, size, out);
 
 		if (decrypt_idx >= 0) {
@@ -768,7 +769,7 @@ static void send_dev_key_msg_rcvd(struct mesh_node *node, uint8_t ele_idx,
 }
 
 static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx, bool is_sub,
-					uint16_t src, uint16_t key_idx,
+					uint16_t src, uint16_t app_idx,
 					uint16_t size, const uint8_t *data)
 {
 	struct l_dbus *dbus = dbus_get_bus();
@@ -790,7 +791,7 @@ static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx, bool is_sub,
 	builder = l_dbus_message_builder_new(msg);
 
 	l_dbus_message_builder_append_basic(builder, 'q', &src);
-	l_dbus_message_builder_append_basic(builder, 'q', &key_idx);
+	l_dbus_message_builder_append_basic(builder, 'q', &app_idx);
 	l_dbus_message_builder_append_basic(builder, 'b', &is_sub);
 
 	dbus_append_byte_array(builder, data, size);
