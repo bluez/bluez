@@ -514,7 +514,7 @@ struct bt_hci_sco_hdr {
 
 struct bt_hci_iso_hdr {
 	uint16_t handle;
-	uint8_t  dlen;
+	uint16_t dlen;
 } __attribute__ ((packed));
 
 struct bt_hci_iso_data_start {

@@ -3935,6 +3935,12 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 	case BTSNOOP_OPCODE_SCO_RX_PKT:
 		packet_hci_scodata(tv, cred, index, true, data, size);
 		break;
+	case BTSNOOP_OPCODE_ISO_TX_PKT:
+		packet_hci_isodata(tv, cred, index, false, data, size);
+		break;
+	case BTSNOOP_OPCODE_ISO_RX_PKT:
+		packet_hci_isodata(tv, cred, index, true, data, size);
+		break;
 	case BTSNOOP_OPCODE_OPEN_INDEX:
 		if (index < MAX_INDEX)
 			addr2str(index_list[index].bdaddr, str);
@@ -11324,6 +11330,53 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_SCODATA,
 				in ? "SCO Data RX" : "SCO Data TX",
+						handle_str, extra_str);
+
+	if (size != hdr->dlen) {
+		print_text(COLOR_ERROR, "invalid packet size (%d != %d)",
+							size, hdr->dlen);
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (filter_mask & PACKET_FILTER_SHOW_SCO_DATA)
+		packet_hexdump(data, size);
+}
+
+void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size)
+{
+	const struct bt_hci_iso_hdr *hdr = data;
+	uint16_t handle = le16_to_cpu(hdr->handle);
+	uint8_t flags = acl_flags(handle);
+	char handle_str[16], extra_str[32];
+
+	if (index > MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
+
+	index_list[index].frame++;
+
+	if (size < sizeof(*hdr)) {
+		if (in)
+			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
+				"Malformed ISO Data RX packet", NULL, NULL);
+		else
+			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
+				"Malformed ISO Data TX packet", NULL, NULL);
+		packet_hexdump(data, size);
+		return;
+	}
+
+	data += sizeof(*hdr);
+	size -= sizeof(*hdr);
+
+	sprintf(handle_str, "Handle %d", acl_handle(handle));
+	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
+
+	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_SCODATA,
+				in ? "ISO Data RX" : "ISO Data TX",
 						handle_str, extra_str);
 
 	if (size != hdr->dlen) {
