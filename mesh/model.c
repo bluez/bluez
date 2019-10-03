@@ -353,6 +353,62 @@ static void forward_model(void *a, void *b)
 		fwd->done = true;
 }
 
+static int app_packet_decrypt(struct mesh_net *net, const uint8_t *data,
+				uint16_t size, bool szmict, uint16_t src,
+				uint16_t dst, uint8_t *virt, uint16_t virt_size,
+				uint8_t key_aid, uint32_t seq,
+				uint32_t iv_idx, uint8_t *out)
+{
+	struct l_queue *app_keys = mesh_net_get_app_keys(net);
+	const struct l_queue_entry *entry;
+
+	if (!app_keys)
+		return -1;
+
+	for (entry = l_queue_get_entries(app_keys); entry;
+							entry = entry->next) {
+		const uint8_t *old_key = NULL, *new_key = NULL;
+		uint8_t old_key_aid, new_key_aid;
+		int app_idx;
+		bool decrypted;
+
+		app_idx = appkey_get_key_idx(entry->data,
+							&old_key, &old_key_aid,
+							&new_key, &new_key_aid);
+
+		if (app_idx < 0)
+			continue;
+
+		if (old_key && old_key_aid == key_aid) {
+			decrypted = mesh_crypto_payload_decrypt(NULL, 0, data,
+						size, szmict, src, dst, key_aid,
+						seq, iv_idx, out, old_key);
+
+			if (decrypted) {
+				print_packet("Used App Key", old_key, 16);
+				return app_idx;
+			}
+
+			print_packet("Failed App Key", old_key, 16);
+		}
+
+		if (new_key && new_key_aid == key_aid) {
+			decrypted = mesh_crypto_payload_decrypt(NULL, 0, data,
+						size, szmict, src, dst, key_aid,
+						seq, iv_idx, out, new_key);
+
+			if (decrypted) {
+				print_packet("Used App Key", new_key, 16);
+				return app_idx;
+			}
+
+			print_packet("Failed App Key", new_key, 16);
+		}
+	}
+
+	return -1;
+}
+
 static int dev_packet_decrypt(struct mesh_node *node, const uint8_t *data,
 				uint16_t size, bool szmict, uint16_t src,
 				uint16_t dst, uint8_t key_aid, uint32_t seq,
@@ -395,11 +451,10 @@ static int virt_packet_decrypt(struct mesh_net *net, const uint8_t *data,
 		if (virt->addr != dst)
 			continue;
 
-		decrypt_idx = appkey_packet_decrypt(net, szmict, seq,
-							iv_idx, src, dst,
-							virt->label, 16,
-							key_aid,
-							data, size, out);
+		decrypt_idx = app_packet_decrypt(net, data, size, szmict, src,
+							dst, virt->label, 16,
+							key_aid, seq, iv_idx,
+							out);
 
 		if (decrypt_idx >= 0) {
 			*decrypt_virt = virt;
@@ -853,10 +908,10 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 							iv_index, clear_text,
 							&decrypt_virt);
 	else
-		decrypt_idx = appkey_packet_decrypt(net, szmict, seq0,
-							iv_index, src, dst,
-							NULL, 0, key_aid, data,
-							size, clear_text);
+		decrypt_idx = app_packet_decrypt(net, data, size, szmict, src,
+						dst, NULL, 0,
+						key_aid, seq0, iv_index,
+						clear_text);
 
 	if (decrypt_idx < 0) {
 		l_error("model.c - Failed to decrypt application payload");

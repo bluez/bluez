@@ -50,23 +50,6 @@ struct mesh_msg {
 	uint16_t src;
 };
 
-struct mod_decrypt {
-	const uint8_t *data;
-	uint8_t *out;
-	struct mesh_app_key *key;
-	uint8_t *virt;
-	uint32_t seq;
-	uint32_t iv_idx;
-	uint16_t src;
-	uint16_t dst;
-	uint16_t idx;
-	uint16_t size;
-	uint16_t virt_size;
-	uint8_t key_aid;
-	bool szmict;
-	bool decrypted;
-};
-
 static bool match_key_index(const void *a, const void *b)
 {
 	const struct mesh_app_key *key = a;
@@ -97,80 +80,6 @@ static bool clean_old_iv_index(void *a, void *b)
 	}
 
 	return false;
-}
-
-static void packet_decrypt(void *a, void *b)
-{
-	struct mesh_app_key *key = a;
-	struct mod_decrypt *dec = b;
-
-	l_debug("model.c - app_packet_decrypt");
-	if (dec->decrypted)
-		return;
-
-	if (key->key_aid != dec->key_aid &&
-			key->new_key_aid != dec->key_aid)
-		return;
-
-	dec->key = key;
-
-	if (key->key_aid == dec->key_aid) {
-		dec->decrypted = mesh_crypto_payload_decrypt(dec->virt,
-				dec->virt_size, dec->data, dec->size,
-				dec->szmict, dec->src, dec->dst, dec->key_aid,
-				dec->seq, dec->iv_idx, dec->out, key->key);
-		if (dec->decrypted)
-			print_packet("Used App Key", dec->key->key, 16);
-		else
-			print_packet("Failed with App Key", dec->key->key, 16);
-	}
-
-	if (!dec->decrypted && key->new_key_aid == dec->key_aid) {
-		dec->decrypted = mesh_crypto_payload_decrypt(dec->virt,
-				dec->virt_size, dec->data, dec->size,
-				dec->szmict, dec->src, dec->dst, dec->key_aid,
-				dec->seq, dec->iv_idx, dec->out, key->new_key);
-		if (dec->decrypted)
-			print_packet("Used App Key", dec->key->new_key, 16);
-		else
-			print_packet("Failed with App Key",
-							dec->key->new_key, 16);
-	}
-
-	if (dec->decrypted)
-		dec->idx = key->app_idx;
-}
-
-int appkey_packet_decrypt(struct mesh_net *net, bool szmict, uint32_t seq,
-				uint32_t iv_index, uint16_t src,
-				uint16_t dst, uint8_t *virt, uint16_t virt_size,
-				uint8_t key_aid, const uint8_t *data,
-				uint16_t data_size, uint8_t *out)
-{
-	struct l_queue *app_keys;
-
-	struct mod_decrypt decrypt = {
-		.src = src,
-		.dst = dst,
-		.seq = seq,
-		.data = data,
-		.out = out,
-		.size = data_size,
-		.key_aid = key_aid,
-		.iv_idx = iv_index,
-		.virt = virt,
-		.virt_size = virt_size,
-		.szmict = szmict,
-		.decrypted = false,
-	};
-
-	app_keys = mesh_net_get_app_keys(net);
-	if (!app_keys)
-		return -1;
-
-	l_queue_foreach(app_keys, packet_decrypt, &decrypt);
-
-	return decrypt.decrypted ? decrypt.idx : -1;
 }
 
 bool appkey_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
@@ -343,6 +252,26 @@ const uint8_t *appkey_get_key(struct mesh_net *net, uint16_t app_idx,
 
 	*key_aid = app_key->new_key_aid;
 	return app_key->new_key;
+}
+
+int appkey_get_key_idx(struct mesh_app_key *app_key,
+				const uint8_t **key, uint8_t *key_aid,
+				const uint8_t **new_key, uint8_t *new_key_aid)
+{
+	if (!app_key)
+		return -1;
+
+	if (key && key_aid) {
+		*key = app_key->key;
+		*key_aid = app_key->key_aid;
+	}
+
+	if (new_key && new_key_aid) {
+		*new_key = app_key->new_key;
+		*new_key_aid = app_key->new_key_aid;
+	}
+
+	return app_key->app_idx;
 }
 
 bool appkey_have_key(struct mesh_net *net, uint16_t app_idx)
