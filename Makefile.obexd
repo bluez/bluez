@@ -104,6 +104,7 @@ BUILT_SOURCES += obexd/src/builtin.h
 obexd/src/plugin.$(OBJEXT): obexd/src/builtin.h
 
 obexd/src/builtin.h: obexd/src/genbuiltin $(obexd_builtin_sources)
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
 	$(AM_V_GEN)$(srcdir)/obexd/src/genbuiltin $(obexd_builtin_modules) > $@
 
 CLEANFILES += obexd/src/builtin.h $(builtin_files) obexd/src/obex.service
