@@ -2057,7 +2057,8 @@ bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq,
 		return mesh_config_save(cfg, true, NULL, NULL);
 	}
 
-	if (get_int(cfg->jnode, "sequenceNumber", &value))
+	/* If resetting seq to Zero, make sure cached value reset as well */
+	if (seq && get_int(cfg->jnode, "sequenceNumber", &value))
 		cached = (uint32_t)value;
 
 	/*
