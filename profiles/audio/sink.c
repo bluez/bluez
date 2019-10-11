@@ -256,11 +256,18 @@ gboolean sink_setup_stream(struct btd_service *service, struct avdtp *session)
 	if (sink->connect_id > 0 || sink->disconnect_id > 0)
 		return FALSE;
 
-	if (session && !sink->session)
-		sink->session = avdtp_ref(session);
+	if (!sink->session) {
+		if (session)
+			sink->session = avdtp_ref(session);
+		else
+			sink->session = a2dp_avdtp_get(
+					btd_service_get_device(service));
 
-	if (!sink->session)
-		return FALSE;
+		if (!sink->session) {
+			DBG("Unable to get a session");
+			return FALSE;
+		}
+	}
 
 	sink->connect_id = a2dp_discover(sink->session, discovery_complete,
 								sink);
@@ -273,14 +280,6 @@ gboolean sink_setup_stream(struct btd_service *service, struct avdtp *session)
 int sink_connect(struct btd_service *service)
 {
 	struct sink *sink = btd_service_get_user_data(service);
-
-	if (!sink->session)
-		sink->session = a2dp_avdtp_get(btd_service_get_device(service));
-
-	if (!sink->session) {
-		DBG("Unable to get a session");
-		return -EIO;
-	}
 
 	if (sink->connect_id > 0 || sink->disconnect_id > 0)
 		return -EBUSY;

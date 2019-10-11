@@ -257,11 +257,18 @@ gboolean source_setup_stream(struct btd_service *service,
 	if (source->connect_id > 0 || source->disconnect_id > 0)
 		return FALSE;
 
-	if (session && !source->session)
-		source->session = avdtp_ref(session);
+	if (!source->session) {
+		if (session)
+			source->session = avdtp_ref(session);
+		else
+			source->session = a2dp_avdtp_get(
+					btd_service_get_device(service));
 
-	if (!source->session)
-		return FALSE;
+		if (!source->session) {
+			DBG("Unable to get a session");
+			return FALSE;
+		}
+	}
 
 	source->connect_id = a2dp_discover(source->session, discovery_complete,
 								source);
@@ -274,14 +281,6 @@ gboolean source_setup_stream(struct btd_service *service,
 int source_connect(struct btd_service *service)
 {
 	struct source *source = btd_service_get_user_data(service);
-
-	if (!source->session)
-		source->session = a2dp_avdtp_get(btd_service_get_device(service));
-
-	if (!source->session) {
-		DBG("Unable to get a session");
-		return -EIO;
-	}
 
 	if (source->connect_id > 0 || source->disconnect_id > 0)
 		return -EBUSY;
