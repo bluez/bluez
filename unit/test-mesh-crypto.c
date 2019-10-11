@@ -217,7 +217,9 @@ static const struct mesh_crypto_test s8_2_6 = {
 static const struct mesh_crypto_test s8_3_1 = {
 	.name		= "8.3.1 Message #1",
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
 
 	.net_ttl	= 0x00,
@@ -244,8 +246,10 @@ static const struct mesh_crypto_test s8_3_1 = {
 static const struct mesh_crypto_test s8_3_2 = {
 	.name		= "8.3.2 Message #2",
 
-	.iv_index	= 0x12345678,
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
+	.iv_index	= 0x12345678,
 
 	.ctl		= true,
 	.net_ttl	= 0x00,
@@ -271,7 +275,9 @@ static const struct mesh_crypto_test s8_3_2 = {
 static const struct mesh_crypto_test s8_3_3 = {
 	.name		= "8.3.3 Message #3",
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
 
 	.ctl		= true,
@@ -298,7 +304,9 @@ static const struct mesh_crypto_test s8_3_3 = {
 static const struct mesh_crypto_test s8_3_4 = {
 	.name		= "8.3.4 Message #4",
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
 
 	.net_nid	= 0x5e,
@@ -331,7 +339,9 @@ static const struct mesh_crypto_test s8_3_4 = {
 static const struct mesh_crypto_test s8_3_5 = {
 	.name		= "8.3.5 Message #5",
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
 
 	.net_nid	= 0x5e,
@@ -364,6 +374,7 @@ static const struct mesh_crypto_test s8_3_5 = {
 static const struct mesh_crypto_test s8_3_6 = {
 	.name		= "8.3.6 Message #6",
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
 	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
@@ -407,7 +418,9 @@ static const struct mesh_crypto_test s8_3_6 = {
 static const struct mesh_crypto_test s8_3_7 = {
 	.name		= "8.3.7 Message #7",
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
 
 	.net_nid	= 0x68,
@@ -439,7 +452,9 @@ static const struct mesh_crypto_test s8_3_8 = {
 	.seg_max	= 1,
 	.seg_num	= 0,
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
 
 	.net_nid	= 0x68,
@@ -468,7 +483,9 @@ static const struct mesh_crypto_test s8_3_8 = {
 static const struct mesh_crypto_test s8_3_9 = {
 	.name		= "8.3.9 Message #9",
 
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
 	.iv_index	= 0x12345678,
 
 	.net_nid	= 0x68,
@@ -497,8 +514,10 @@ static const struct mesh_crypto_test s8_3_9 = {
 static const struct mesh_crypto_test s8_3_10 = {
 	.name		= "8.3.10 Message #10",
 
-	.iv_index	= 0x12345678,
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
+	.iv_index	= 0x12345678,
 
 	.net_nid	= 0x5e,
 	.net_ttl	= 0x00,
@@ -542,8 +561,10 @@ static const struct mesh_crypto_test s8_3_11 = {
 	.fn_cntr	= "072f",
 	.p		= "01120123450000072f",
 
-	.iv_index	= 0x12345678,
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
 	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
+	.iv_index	= 0x12345678,
 
 	.net_nid	= 0x5e,
 	.net_ttl	= 0x03,
@@ -1333,7 +1354,7 @@ static void check_decrypt(const struct mesh_crypto_test *keys)
 	uint8_t priv_rand[16];
 	uint8_t p[9];
 	size_t p_len;
-	uint8_t *packet;
+	uint8_t *packet = NULL;
 	size_t packet_len;
 	const uint8_t *net_hdr;
 	uint8_t *net_msg;
@@ -1426,6 +1447,7 @@ static void check_decrypt(const struct mesh_crypto_test *keys)
 		mesh_crypto_network_nonce(keys->frnd, keys->net_ttl,
 				keys->net_seq[i], keys->net_src, keys->iv_index,
 				net_nonce);
+		l_free(packet);
 		packet = l_util_from_hexstring(keys->packet[i], &packet_len);
 
 		net_hdr = packet + 1;
@@ -1731,6 +1753,7 @@ static void check_id_beacon(const struct mesh_crypto_test *keys)
 
 	l_info("");
 
+	l_free(rand);
 	l_free(net_key);
 }
 
@@ -1784,6 +1807,7 @@ static void check_k128(const struct mesh_crypto_test *keys)
 
 	verify_data("k1(N, salt, info)", 0, keys->enc_key, enc_key, 16);
 
+	l_free(net_key);
 	l_info("");
 }
 
