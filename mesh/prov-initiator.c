@@ -265,6 +265,18 @@ static void calc_local_material(const uint8_t *random)
 	print_packet("Nonce", prov->s_nonce, sizeof(prov->s_nonce));
 }
 
+static void send_confirm(struct mesh_prov_initiator *prov)
+{
+	struct prov_conf_msg msg;
+
+	msg.opcode = PROV_CONFIRM;
+	mesh_crypto_aes_cmac(prov->calc_key, prov->rand_auth_workspace,
+			32, msg.conf);
+	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
+	prov->state = INT_PROV_CONF_SENT;
+	prov->expected = PROV_CONFIRM;
+}
+
 static void number_cb(void *user_data, int err, uint32_t number)
 {
 	struct mesh_prov_initiator *rx_prov = user_data;
@@ -284,6 +296,7 @@ static void number_cb(void *user_data, int err, uint32_t number)
 	l_put_be32(number, prov->rand_auth_workspace + 28);
 	l_put_be32(number, prov->rand_auth_workspace + 44);
 	prov->material |= MAT_RAND_AUTH;
+	send_confirm(prov);
 }
 
 static void static_cb(void *user_data, int err, uint8_t *key, uint32_t len)
@@ -304,6 +317,7 @@ static void static_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 	memcpy(prov->rand_auth_workspace + 16, key, 16);
 	memcpy(prov->rand_auth_workspace + 32, key, 16);
 	prov->material |= MAT_RAND_AUTH;
+	send_confirm(prov);
 }
 
 static void pub_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
@@ -321,11 +335,13 @@ static void pub_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 		return;
 	}
 
-		memcpy(prov->conf_inputs.dev_pub_key, key, 64);
-		prov->material |= MAT_REMOTE_PUBLIC;
+	memcpy(prov->conf_inputs.dev_pub_key, key, 64);
+	prov->material |= MAT_REMOTE_PUBLIC;
 
-		if ((prov->material & MAT_SECRET) == MAT_SECRET)
-			int_credentials(prov);
+	if ((prov->material & MAT_SECRET) == MAT_SECRET)
+		int_credentials(prov);
+
+	send_confirm(prov);
 }
 
 static void send_pub_key(struct mesh_prov_initiator *prov)
@@ -336,18 +352,6 @@ static void send_pub_key(struct mesh_prov_initiator *prov)
 	memcpy(msg.pub_key, prov->conf_inputs.prv_pub_key, 64);
 	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 	prov->state = INT_PROV_KEY_SENT;
-}
-
-static void send_confirm(struct mesh_prov_initiator *prov)
-{
-	struct prov_conf_msg msg;
-
-	msg.opcode = PROV_CONFIRM;
-	mesh_crypto_aes_cmac(prov->calc_key, prov->rand_auth_workspace,
-			32, msg.conf);
-	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
-	prov->state = INT_PROV_CONF_SENT;
-	prov->expected = PROV_CONFIRM;
 }
 
 static void send_random(struct mesh_prov_initiator *prov)
