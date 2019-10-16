@@ -520,6 +520,7 @@ unit_test_midi_LDADD = src/libshared-glib.la \
 			$(GLIB_LIBS) $(ALSA_LIBS)
 endif
 
+if MESH
 unit_tests += unit/test-mesh-crypto
 unit_test_mesh_crypto_CPPFLAGS = $(ell_cflags)
 unit_test_mesh_crypto_SOURCES = unit/test-mesh-crypto.c \
@@ -527,6 +528,7 @@ unit_test_mesh_crypto_SOURCES = unit/test-mesh-crypto.c \
 				$(ell_sources)
 unit_test_mesh_crypto_LDADD = src/libshared-ell.la \
 			$(ell_ldadd)
+endif
 
 if MAINTAINER_MODE
 noinst_PROGRAMS += $(unit_tests)
