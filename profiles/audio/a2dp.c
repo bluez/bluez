@@ -1761,7 +1761,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable sep_methods[] = {
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("SetConfiguration",
+	{ GDBUS_ASYNC_METHOD("SetConfiguration",
 					GDBUS_ARGS({ "endpoint", "o" },
 						{ "properties", "a{sv}" } ),
 					NULL, set_configuration) },
@@ -1837,14 +1837,10 @@ static gboolean get_device(const GDBusPropertyTable *property,
 }
 
 static const GDBusPropertyTable sep_properties[] = {
-	{ "UUID", "s", get_uuid, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Codec", "y", get_codec, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Capabilities", "ay", get_capabilities, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Device", "o", get_device, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "UUID", "s", get_uuid, NULL, NULL },
+	{ "Codec", "y", get_codec, NULL, NULL },
+	{ "Capabilities", "ay", get_capabilities, NULL, NULL },
+	{ "Device", "o", get_device, NULL, NULL },
 	{ }
 };
 
@@ -1861,9 +1857,6 @@ static void register_remote_sep(void *data, void *user_data)
 	sep = new0(struct a2dp_remote_sep, 1);
 	sep->chan = chan;
 	sep->sep = rsep;
-
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
-		goto done;
 
 	if (asprintf(&sep->path, "%s/sep%d",
 				device_get_path(chan->device),
