@@ -46,7 +46,7 @@
 #define MIN_SEQ_CACHE_VALUE	(2 * 32)
 #define MIN_SEQ_CACHE_TIME	(5 * 60)
 
-#define CHECK_KEY_IDX_RANGE(x) (((x) >= 0) && ((x) <= 4095))
+#define CHECK_KEY_IDX_RANGE(x) ((x) <= 4095)
 
 struct mesh_config {
 	json_object *jnode;
@@ -264,19 +264,44 @@ static json_object *get_key_object(json_object *jarray, uint16_t idx)
 
 	for (i = 0; i < sz; ++i) {
 		json_object *jentry, *jvalue;
-		uint32_t jidx;
+		const char *str;
+		uint16_t jidx;
 
 		jentry = json_object_array_get_idx(jarray, i);
 		if (!json_object_object_get_ex(jentry, "index", &jvalue))
 			return NULL;
 
-		jidx = json_object_get_int(jvalue);
+		str = json_object_get_string(jvalue);
+		if (sscanf(str, "%04hx", &jidx) != 1)
+			return NULL;
 
 		if (jidx == idx)
 			return jentry;
 	}
 
 	return NULL;
+}
+
+static bool get_key_index(json_object *jobj, const char *keyword,
+								uint16_t *index)
+{
+	uint16_t idx;
+	json_object *jvalue;
+	const char *str;
+
+	if (!json_object_object_get_ex(jobj, keyword, &jvalue))
+		return false;
+
+	str = json_object_get_string(jvalue);
+
+	if (sscanf(str, "%04hx", &idx) != 1)
+		return false;
+
+	if (!CHECK_KEY_IDX_RANGE(idx))
+		return false;
+
+	*index = (uint16_t) idx;
+	return true;
 }
 
 static json_object *jarray_key_del(json_object *jarray, int16_t idx)
@@ -289,16 +314,13 @@ static json_object *jarray_key_del(json_object *jarray, int16_t idx)
 		return NULL;
 
 	for (i = 0; i < sz; ++i) {
-		json_object *jentry, *jvalue;
+		json_object *jentry;
+		uint16_t nidx;
 
 		jentry = json_object_array_get_idx(jarray, i);
 
-		if (json_object_object_get_ex(jentry, "index", &jvalue)) {
-			int tmp = json_object_get_int(jvalue);
-
-			if (tmp == idx)
-				continue;
-		}
+		if (get_key_index(jentry, "index", &nidx) && nidx == idx)
+			continue;
 
 		json_object_get(jentry);
 		json_object_array_add(jarray_new, jentry);
@@ -417,21 +439,6 @@ static bool read_device_key(json_object *jobj, uint8_t key_buf[16])
 	if (!str2hex(str, strlen(str), key_buf, 16))
 		return false;
 
-	return true;
-}
-
-static bool get_key_index(json_object *jobj, const char *keyword,
-								uint16_t *index)
-{
-	int idx;
-
-	if (!get_int(jobj, keyword, &idx))
-		return false;
-
-	if (!CHECK_KEY_IDX_RANGE(idx))
-		return false;
-
-	*index = (uint16_t) idx;
 	return true;
 }
 
@@ -571,6 +578,7 @@ bool mesh_config_net_key_add(struct mesh_config *cfg, uint16_t idx,
 
 	jnode = cfg->jnode;
 
+	l_debug("netKey %4.4x", idx);
 	json_object_object_get_ex(jnode, "netKeys", &jarray);
 	if (jarray)
 		jentry = get_key_object(jarray, idx);
@@ -966,14 +974,19 @@ static bool parse_bindings(json_object *jarray, struct mesh_config_model *mod)
 	mod->bindings = l_new(uint16_t, cnt);
 
 	for (i = 0; i < cnt; ++i) {
-		int idx;
+		uint16_t idx;
+		const char *str;
 		json_object *jvalue;
 
 		jvalue = json_object_array_get_idx(jarray, i);
 		if (!jvalue)
 			return false;
 
-		idx = json_object_get_int(jvalue);
+		str = json_object_get_string(jvalue);
+
+		if (sscanf(str, "%04hx", &idx) != 1)
+			return false;
+
 		if (!CHECK_KEY_IDX_RANGE(idx))
 			return false;
 
