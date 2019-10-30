@@ -287,6 +287,10 @@ static struct l_dbus_message *import_node_call(struct l_dbus *dbus,
 	uint8_t num_ele;
 	uint8_t *key;
 	uint32_t n;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "qyay", &primary, &num_ele,
 								&iter_key))
@@ -311,6 +315,10 @@ static struct l_dbus_message *delete_node_call(struct l_dbus *dbus,
 	struct mesh_net *net = node_get_net(node);
 	uint16_t primary;
 	uint8_t num_ele;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "qy", &primary, &num_ele))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
@@ -368,6 +376,10 @@ static struct l_dbus_message *start_scan_call(struct l_dbus *dbus,
 	uint16_t duration;
 	struct mesh_io *io;
 	struct mesh_net *net;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "q", &duration))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
@@ -402,11 +414,17 @@ static struct l_dbus_message *cancel_scan_call(struct l_dbus *dbus,
 						void *user_data)
 {
 	struct mesh_node *node = user_data;
+	const char *sender = l_dbus_message_get_sender(msg);
 
-	if (scan_node != node)
-		return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+	if (strcmp(sender, node_get_owner(node)) || !node_is_provisioner(node))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
-	scan_cancel(NULL, node);
+	if (scan_node) {
+		if (scan_node != node)
+			return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+
+		scan_cancel(NULL, node);
+	}
 
 	return l_dbus_message_new_method_return(msg);
 }
@@ -446,6 +464,10 @@ static struct l_dbus_message *create_subnet_call(struct l_dbus *dbus,
 	struct mesh_node *node = user_data;
 	uint8_t key[16];
 	uint16_t net_idx;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "q", &net_idx) ||
 						net_idx == PRIMARY_NET_IDX)
@@ -464,6 +486,10 @@ static struct l_dbus_message *update_subnet_call(struct l_dbus *dbus,
 	struct mesh_node *node = user_data;
 	struct keyring_net_key key;
 	uint16_t net_idx;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "q", &net_idx) ||
 						net_idx > MAX_KEY_IDX)
@@ -501,6 +527,10 @@ static struct l_dbus_message *delete_subnet_call(struct l_dbus *dbus,
 {
 	struct mesh_node *node = user_data;
 	uint16_t net_idx;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "q", &net_idx) ||
 						net_idx > MAX_KEY_IDX)
@@ -520,6 +550,10 @@ static struct l_dbus_message *import_subnet_call(struct l_dbus *dbus,
 	uint16_t net_idx;
 	uint8_t *key;
 	uint32_t n;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "qay", &net_idx, &iter_key))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
@@ -574,6 +608,10 @@ static struct l_dbus_message *create_appkey_call(struct l_dbus *dbus,
 	struct mesh_node *node = user_data;
 	uint16_t net_idx, app_idx;
 	uint8_t key[16];
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "qq", &net_idx, &app_idx))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
@@ -591,6 +629,10 @@ static struct l_dbus_message *update_appkey_call(struct l_dbus *dbus,
 	struct keyring_net_key net_key;
 	struct keyring_app_key app_key;
 	uint16_t app_idx;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "q", &app_idx) ||
 							app_idx > MAX_KEY_IDX)
@@ -618,6 +660,10 @@ static struct l_dbus_message *delete_appkey_call(struct l_dbus *dbus,
 {
 	struct mesh_node *node = user_data;
 	uint16_t app_idx;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "q", &app_idx))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
@@ -636,6 +682,10 @@ static struct l_dbus_message *import_appkey_call(struct l_dbus *dbus,
 	uint16_t net_idx, app_idx;
 	uint8_t *key;
 	uint32_t n;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "qqay", &net_idx, &app_idx,
 								&iter_key))
@@ -657,6 +707,10 @@ static struct l_dbus_message *set_key_phase_call(struct l_dbus *dbus,
 	struct keyring_net_key key;
 	uint16_t net_idx;
 	uint8_t phase;
+	const char *sender = l_dbus_message_get_sender(msg);
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "qy", &net_idx, &phase) ||
 					phase == KEY_REFRESH_PHASE_ONE ||
