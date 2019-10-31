@@ -151,6 +151,7 @@ unit/test-avrcp
 unit/test-gatt
 unit/test-midi
 unit/test-gattrib
+unit/test-mesh-crypto
 unit/test-*.log
 unit/test-*.trs
 
