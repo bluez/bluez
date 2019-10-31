@@ -1,3 +1,7 @@
+ver 5.52:
+	Fix issue with AVDTP session disconnect timeout handling.
+	Mark media endpoint APIs as stable interfaces.
+
 ver 5.51:
 	Fix issue with first agent not being registered as default.
 	Fix issue with loading devices without Service Changed CCC.
