@@ -3129,7 +3129,7 @@ static void client_ready(struct l_dbus_client *client, void *user_data)
 
 static void ready_callback(void *user_data)
 {
-	if (!l_dbus_object_manager_enable(dbus))
+	if (!l_dbus_object_manager_enable(dbus, "/"))
 		l_info("Unable to register the ObjectManager");
 }
 
