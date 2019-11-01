@@ -129,6 +129,7 @@ emulator/b1ee
 emulator/hfp
 client/bluetoothctl
 tools/meshctl
+tools/mesh-cfgclient
 mesh/bluetooth-meshd
 
 src/bluetoothd.8

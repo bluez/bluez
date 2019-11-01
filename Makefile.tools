@@ -324,6 +324,17 @@ tools_meshctl_SOURCES = tools/meshctl.c \
 tools_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la \
 				$(GLIB_LIBS) $(DBUS_LIBS) -ljson-c -lreadline
+
+bin_PROGRAMS +=  tools/mesh-cfgclient
+
+tools_mesh_cfgclient_SOURCES = tools/mesh-cfgclient.c \
+				tools/mesh/model.h tools/mesh/config-model.h \
+				tools/mesh/cfgcli.h tools/mesh/cfgcli.c \
+				tools/mesh/keys.h tools/mesh/keys.c \
+				tools/mesh/util.h tools/mesh/util.c \
+				tools/mesh/agent.h tools/mesh/agent.c
+tools_mesh_cfgclient_LDADD = lib/libbluetooth-internal.la src/libshared-ell.la \
+						$(ell_ldadd) -lreadline
 endif
 
 EXTRA_DIST += tools/mesh-gatt/local_node.json tools/mesh-gatt/prov_db.json
