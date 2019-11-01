@@ -26,6 +26,8 @@
 
 #include "src/shared/shell.h"
 #include "mesh/mesh-defs.h"
+
+#include "tools/mesh/mesh-db.h"
 #include "tools/mesh/keys.h"
 
 struct net_key {
@@ -46,6 +48,13 @@ static bool net_idx_match(const void *a, const void *b)
 	uint32_t idx = L_PTR_TO_UINT(b);
 
 	return key->idx == idx;
+}
+
+static void delete_bound_appkey(void *a)
+{
+	uint32_t idx = L_PTR_TO_UINT(a);
+
+	mesh_db_app_key_del(idx);
 }
 
 void keys_add_net_key(uint16_t net_idx)
@@ -75,7 +84,7 @@ void keys_del_net_key(uint16_t idx)
 	if (!key)
 		return;
 
-	l_queue_destroy(key->app_keys, NULL);
+	l_queue_destroy(key->app_keys, delete_bound_appkey);
 	l_free(key);
 }
 
@@ -143,7 +152,7 @@ static void print_appkey(void *app_key, void *user_data)
 {
 	uint16_t app_idx = L_PTR_TO_UINT(app_key);
 
-	bt_shell_printf("%3.3x ", app_idx);
+	bt_shell_printf("%3.3x, ", app_idx);
 }
 
 static void print_netkey(void *net_key, void *user_data)

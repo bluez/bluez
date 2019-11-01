@@ -35,6 +35,7 @@
 #include "tools/mesh/util.h"
 #include "tools/mesh/model.h"
 #include "tools/mesh/keys.h"
+#include "tools/mesh/mesh-db.h"
 #include "tools/mesh/remote.h"
 #include "tools/mesh/config-model.h"
 #include "tools/mesh/cfgcli.h"
@@ -340,6 +341,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 							uint16_t len)
 {
 	uint32_t opcode;
+	const struct cfg_cmd *cmd;
 	uint16_t app_idx, net_idx, addr;
 	uint16_t ele_addr;
 	uint32_t mod_id;
@@ -358,9 +360,11 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	req = get_req_by_rsp(src, (opcode & ~OP_UNRELIABLE));
 	if (req) {
+		cmd = req->cmd;
 		free_request(req);
 		l_queue_remove(requests, req);
-	}
+	} else
+		cmd = NULL;
 
 	switch (opcode & ~OP_UNRELIABLE) {
 	default:
@@ -386,6 +390,20 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		bt_shell_printf("NetKey\t%3.3x\n", net_idx);
 		bt_shell_printf("AppKey\t%3.3x\n", app_idx);
 
+		if (data[0] != MESH_STATUS_SUCCESS)
+			break;
+
+		if (!cmd)
+			break;
+
+		if (cmd->opcode == OP_APPKEY_ADD) {
+			if (remote_add_app_key(src, app_idx))
+				mesh_db_node_app_key_add(src, app_idx);
+		} else if (cmd->opcode == OP_APPKEY_DELETE) {
+			if (remote_del_app_key(src, app_idx))
+				mesh_db_node_app_key_del(src, app_idx);
+		}
+
 		break;
 
 	case OP_NETKEY_STATUS:
@@ -397,6 +415,20 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		net_idx = get_le16(data + 1) & 0xfff;
 
 		bt_shell_printf("\tNetKey %3.3x\n", net_idx);
+
+		if (data[0] != MESH_STATUS_SUCCESS)
+			break;
+
+		if (!cmd)
+			break;
+
+		if (cmd->opcode == OP_NETKEY_ADD) {
+			if (remote_add_net_key(src, net_idx))
+				mesh_db_node_net_key_add(src, net_idx);
+		} else if (cmd->opcode == OP_NETKEY_DELETE) {
+			if (remote_del_net_key(src, net_idx))
+				mesh_db_node_net_key_del(src, net_idx);
+		}
 
 		break;
 

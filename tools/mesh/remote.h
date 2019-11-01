@@ -17,15 +17,13 @@
  *
  */
 
-struct remote_node {
-	uint16_t unicast;
-	struct l_queue *net_keys;
-	uint8_t uuid[16];
-	uint8_t num_ele;
-};
-
-void remote_add_node(const uint8_t uuid[16], uint16_t unicast,
+bool remote_add_node(const uint8_t uuid[16], uint16_t unicast,
 					uint8_t ele_cnt, uint16_t net_idx);
+uint16_t remote_get_next_unicast(uint16_t low, uint16_t high, uint8_t ele_cnt);
+bool remote_add_net_key(uint16_t addr, uint16_t net_idx);
+bool remote_del_net_key(uint16_t addr, uint16_t net_idx);
+bool remote_add_app_key(uint16_t addr, uint16_t app_idx);
+bool remote_del_app_key(uint16_t addr, uint16_t app_idx);
 uint16_t remote_get_subnet_idx(uint16_t addr);
 void remote_print_node(uint16_t addr);
 void remote_print_all(void);

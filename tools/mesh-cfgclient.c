@@ -42,6 +42,7 @@
 #include "tools/mesh/agent.h"
 #include "tools/mesh/cfgcli.h"
 #include "tools/mesh/keys.h"
+#include "tools/mesh/mesh-db.h"
 #include "tools/mesh/model.h"
 #include "tools/mesh/remote.h"
 
@@ -54,6 +55,7 @@
 #define UNPROV_SCAN_MAX_SECS	300
 
 #define DEFAULT_START_ADDRESS	0x00aa
+#define DEFAULT_MAX_ADDRESS	(VIRTUAL_ADDRESS_LOW - 1)
 #define DEFAULT_NET_INDEX	0x0000
 
 #define DEFAULT_CFG_FILE	"config_db.json"
@@ -129,23 +131,27 @@ static struct meshcfg_app app = {
 };
 
 static const struct option options[] = {
-	{ "config",	required_argument, 0, 'c' },
-	{ "address",	required_argument, 0, 'a' },
-	{ "net-index",	required_argument, 0, 'n' },
+	{ "config",		required_argument, 0, 'c' },
+	{ "address-start",	required_argument, 0, 'a' },
+	{ "address-range",	required_argument, 0, 'r' },
+	{ "net-index",		required_argument, 0, 'n' },
 	{ 0, 0, 0, 0 }
 };
 
 static const char *address_opt;
+static const char *range_opt;
 static const char *net_idx_opt;
 static const char *config_opt;
 
-static uint16_t prov_address;
+static uint16_t low_addr;
+static uint16_t high_addr;
 static uint16_t prov_net_idx;
 static const char *cfg_fname;
 
 static const char **optargs[] = {
 	&config_opt,
 	&address_opt,
+	&range_opt,
 	&net_idx_opt,
 };
 
@@ -249,6 +255,7 @@ static void send_msg_setup(struct l_dbus_message *msg, void *user_data)
 	l_dbus_message_builder_append_basic(builder, 'q', &req->dst);
 	if (req->is_dev_key)
 		l_dbus_message_builder_append_basic(builder, 'b', &req->rmt);
+
 	l_dbus_message_builder_append_basic(builder, 'q', &req->idx);
 	append_byte_array(builder, req->data, req->len);
 	l_dbus_message_builder_finalize(builder);
@@ -531,8 +538,19 @@ static void create_net_reply(struct l_dbus_proxy *proxy,
 	bt_shell_printf("Created new node with token %s\n", str);
 	l_free(str);
 
-	remote_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
+	if (!mesh_db_create(cfg_fname, local->token.u8,
+						"Mesh Config Client Network")) {
+		l_free(local);
+		local = NULL;
+		return;
+	}
+
+	mesh_db_set_addr_range(low_addr, high_addr);
 	keys_add_net_key(PRIMARY_NET_IDX);
+	mesh_db_net_key_add(PRIMARY_NET_IDX);
+
+	remote_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
+	mesh_db_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
 
 	l_dbus_proxy_method_call(net_proxy, "Attach", attach_node_setup,
 						attach_node_reply, NULL,
@@ -556,6 +574,11 @@ static void create_net_setup(struct l_dbus_message *msg, void *user_data)
 
 static void cmd_create_network(int argc, char *argv[])
 {
+	if (have_config) {
+		l_error("Mesh network configuration exists (%s)", cfg_fname);
+		return;
+	}
+
 	l_dbus_proxy_method_call(net_proxy, "CreateNetwork", create_net_setup,
 						create_net_reply, NULL,
 						NULL);
@@ -624,6 +647,11 @@ static void cmd_list_unprov(int argc, char *argv[])
 static void cmd_list_nodes(int argc, char *argv[])
 {
 	remote_print_all();
+}
+
+static void cmd_keys(int argc, char *argv[])
+{
+	keys_print_keys();
 }
 
 static void free_generic_request(void *data)
@@ -846,12 +874,16 @@ static void mgr_key_reply(struct l_dbus_proxy *proxy,
 		return;
 	}
 
-	if (!strcmp("CreateSubnet", method))
+	if (!strcmp("CreateSubnet", method)) {
 		keys_add_net_key(idx);
-	else if (!strcmp("DeleteSubnet", method))
+		mesh_db_net_key_add(idx);
+	} else if (!strcmp("DeleteSubnet", method)) {
 		keys_del_net_key(idx);
-	else if (!strcmp("DeleteAppKey", method))
+		mesh_db_net_key_del(idx);
+	} else if (!strcmp("DeleteAppKey", method)) {
 		keys_del_app_key(idx);
+		mesh_db_app_key_del(idx);
+	}
 }
 
 static void mgr_key_setup(struct l_dbus_message *msg, void *user_data)
@@ -934,11 +966,13 @@ static void add_key_reply(struct l_dbus_proxy *proxy,
 
 	if (!strcmp(method, "ImportSubnet")) {
 		keys_add_net_key(net_idx);
+		mesh_db_net_key_add(net_idx);
 		return;
 	}
 
 	app_idx = (uint16_t) req->arg2;
 	keys_add_app_key(net_idx, app_idx);
+	mesh_db_app_key_add(net_idx, app_idx);
 }
 
 static void import_appkey_setup(struct l_dbus_message *msg, void *user_data)
@@ -1158,7 +1192,7 @@ static void cmd_start_prov(int argc, char *argv[])
 static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
-	{ "create", NULL, cmd_create_network,
+	{ "create", "[unicast_range_low]", cmd_create_network,
 			"Create new mesh network with one initial node" },
 	{ "discover-unprovisioned", "<on/off> [seconds]", cmd_scan_unprov,
 			"Look for devices to provision" },
@@ -1191,6 +1225,8 @@ static const struct bt_shell_menu main_menu = {
 			"Delete a remote node"},
 	{ "list-nodes", NULL, cmd_list_nodes,
 			"List remote mesh nodes"},
+	{ "keys", NULL, cmd_keys,
+			"List available keys"},
 	{ } },
 };
 
@@ -1203,6 +1239,16 @@ static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 
 	if (!strcmp(interface, MESH_NETWORK_INTERFACE)) {
 		net_proxy = proxy;
+
+		/*
+		 * If mesh network configuration has been read from
+		 * storage, attach the provisioner/config-client node.
+		 */
+		if (local)
+			l_dbus_proxy_method_call(net_proxy, "Attach",
+						attach_node_setup,
+						attach_node_reply, NULL,
+						NULL);
 		return;
 	}
 
@@ -1387,6 +1433,7 @@ static struct l_dbus_message *req_prov_call(struct l_dbus *dbus,
 						void *user_data)
 {
 	uint8_t cnt;
+	uint16_t unicast;
 	struct l_dbus_message *reply;
 
 	if (!l_dbus_message_get_arguments(msg, "y", &cnt)) {
@@ -1395,10 +1442,19 @@ static struct l_dbus_message *req_prov_call(struct l_dbus *dbus,
 
 	}
 
-	bt_shell_printf("Assign addresses for %u elements\n", cnt);
-	reply = l_dbus_message_new_method_return(msg);
+	unicast = remote_get_next_unicast(low_addr, high_addr, cnt);
 
-	l_dbus_message_set_arguments(reply, "qq", prov_net_idx, prov_address);
+	if (unicast == 0) {
+		l_error("Failed to allocate addresses for %u elements\n", cnt);
+		return l_dbus_message_new_error(msg,
+					"org.freedesktop.DBus.Error."
+					"Failed to allocate address", NULL);
+	}
+
+	bt_shell_printf("Assign addresses for %u elements\n", cnt);
+
+	reply = l_dbus_message_new_method_return(msg);
+	l_dbus_message_set_arguments(reply, "qq", prov_net_idx, unicast);
 
 	return reply;
 }
@@ -1445,7 +1501,8 @@ static struct l_dbus_message *add_node_cmplt_call(struct l_dbus *dbus,
 
 	remove_device(uuid);
 
-	prov_address = unicast + cnt;
+	if (!mesh_db_add_node(uuid, cnt, unicast, prov_net_idx))
+		l_error("Failed to store new remote node");
 
 	return l_dbus_message_new_method_return(msg);
 }
@@ -1659,7 +1716,21 @@ static bool setup_cfg_storage(void)
 		if (!mesh_dir)
 			return false;
 
-		cfg_fname = l_strdup_printf("mesh_dir/%s", DEFAULT_CFG_FILE);
+		if (stat(mesh_dir, &st) == 0) {
+			if (!S_ISDIR(st.st_mode)) {
+				l_error("%s not a directory", mesh_dir);
+				return false;
+			}
+		} else if (errno == ENOENT) {
+			if (mkdir(mesh_dir, 0700) != 0)
+				return false;
+		} else {
+			perror("Cannot open config directory");
+			return false;
+		}
+
+		cfg_fname = l_strdup_printf("%s/%s", mesh_dir,
+							DEFAULT_CFG_FILE);
 		l_free(mesh_dir);
 
 	} else {
@@ -1681,6 +1752,35 @@ static bool setup_cfg_storage(void)
 	return true;
 }
 
+static bool read_mesh_config(void)
+{
+	uint16_t range_l, range_h;
+
+	if (!mesh_db_load(cfg_fname)) {
+		l_error("Failed to load config from %s", cfg_fname);
+		return false;
+	}
+
+	local = l_new(struct meshcfg_node, 1);
+
+	if (!mesh_db_get_token(local->token.u8)) {
+		l_error("Failed to read the provisioner's token ID");
+		l_error("Check config file %s", cfg_fname);
+		l_free(local);
+		local = NULL;
+
+		return false;
+	}
+
+	l_info("Mesh configuration loaded from %s", cfg_fname);
+	if (mesh_db_get_addr_range(&range_l, &range_h)) {
+		low_addr = range_l;
+		high_addr = range_h;
+	}
+
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	struct l_dbus_client *client;
@@ -1689,14 +1789,34 @@ int main(int argc, char *argv[])
 
 	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
-	bt_shell_set_prompt(PROMPT_OFF);
 
 	l_log_set_stderr();
 
 	if (address_opt && sscanf(address_opt, "%04x", &val) == 1)
-		prov_address = (uint16_t) val;
-	else
-		prov_address = DEFAULT_START_ADDRESS;
+		low_addr = (uint16_t) val;
+
+	if (low_addr > DEFAULT_MAX_ADDRESS) {
+		l_error("Invalid start address");
+			bt_shell_cleanup();
+			return EXIT_FAILURE;
+	}
+
+	if (!low_addr)
+		low_addr = DEFAULT_START_ADDRESS;
+
+	if (range_opt && sscanf(address_opt, "%04x", &val) == 1) {
+		if (val == 0) {
+			l_error("Invalid address range");
+			bt_shell_cleanup();
+			return EXIT_FAILURE;
+		}
+
+		/* Inclusive */
+		high_addr = low_addr + val - 1;
+	}
+
+	if (!high_addr || high_addr > DEFAULT_MAX_ADDRESS)
+		high_addr = DEFAULT_MAX_ADDRESS;
 
 	if (net_idx_opt && sscanf(net_idx_opt, "%04x", &val) == 1)
 		prov_net_idx = (uint16_t) val;
@@ -1707,6 +1827,13 @@ int main(int argc, char *argv[])
 		bt_shell_cleanup();
 		return EXIT_FAILURE;
 	}
+
+	if (have_config && !read_mesh_config()) {
+		bt_shell_cleanup();
+		return EXIT_FAILURE;
+	}
+
+	bt_shell_set_prompt(PROMPT_OFF);
 
 	dbus = l_dbus_new_default(L_DBUS_SYSTEM_BUS);
 
