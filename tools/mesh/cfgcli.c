@@ -42,11 +42,22 @@
 #define MIN_COMPOSITION_LEN 16
 #define NO_RESPONSE 0xFFFFFFFF
 
+/* Default timeout for getting a response to a sent config command (seconds) */
+#define DEFAULT_TIMEOUT 2
+
 struct cfg_cmd {
 	uint32_t opcode;
-	uint32_t resp;
+	uint32_t rsp;
 	const char *desc;
 };
+
+struct pending_req {
+	struct l_timeout *timer;
+	const struct cfg_cmd *cmd;
+	uint16_t addr;
+};
+
+static struct l_queue *requests;
 
 static void *send_data;
 static model_send_msg_func_t send_msg;
@@ -54,6 +65,7 @@ static model_send_msg_func_t send_msg;
 static void *key_data;
 static key_send_func_t send_key_msg;
 
+static uint32_t rsp_timeout = DEFAULT_TIMEOUT;
 static uint16_t target = UNASSIGNED_ADDRESS;
 static uint32_t parms[8];
 
@@ -152,16 +164,79 @@ static struct cfg_cmd cmds[] = {
 	{ OP_VEND_MODEL_APP_LIST, NO_RESPONSE, "VendorModelAppList" }
 };
 
-static const char *opcode_str(uint32_t opcode)
+static const struct cfg_cmd *get_cmd(uint32_t opcode)
 {
 	uint32_t n;
 
 	for (n = 0; n < L_ARRAY_SIZE(cmds); n++) {
 		if (opcode == cmds[n].opcode)
-			return cmds[n].desc;
+			return &cmds[n];
 	}
 
-	return "Unknown";
+	return NULL;
+}
+
+static const char *opcode_str(uint32_t opcode)
+{
+	const struct cfg_cmd *cmd;
+
+	cmd = get_cmd(opcode);
+	if (!cmd)
+		return "Unknown";
+
+	return cmd->desc;
+}
+
+static void free_request(void *a)
+{
+	struct pending_req *req = a;
+
+	l_timeout_remove(req->timer);
+	l_free(req);
+}
+
+static struct pending_req *get_req_by_rsp(uint16_t addr, uint32_t rsp)
+{
+	const struct l_queue_entry *entry;
+
+	entry = l_queue_get_entries(requests);
+
+	for (; entry; entry = entry->next) {
+		struct pending_req *req = entry->data;
+
+		if (req->addr == addr && req->cmd->rsp == rsp)
+			return req;
+	}
+
+	return NULL;
+}
+
+static void wait_rsp_timeout(struct l_timeout *timeout, void *user_data)
+{
+	struct pending_req *req = user_data;
+
+	bt_shell_printf("No response for \"%s\" from %4.4x\n",
+						req->cmd->desc, req->addr);
+
+	l_queue_remove(requests, req);
+	free_request(req);
+}
+
+static void add_request(uint32_t opcode)
+{
+	struct pending_req *req;
+	const struct cfg_cmd *cmd;
+
+	cmd = get_cmd(opcode);
+	if (!cmd)
+		return;
+
+	req = l_new(struct pending_req, 1);
+	req->cmd = cmd;
+	req->addr = target;
+	req->timer = l_timeout_create(rsp_timeout,
+				wait_rsp_timeout, req, NULL);
+	l_queue_push_tail(requests, req);
 }
 
 static uint32_t print_mod_id(uint8_t *data, bool vid, const char *offset)
@@ -271,6 +346,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 	struct model_pub pub;
 	int n;
 	uint16_t i;
+	struct pending_req *req;
 
 	if (mesh_opcode_get(data, len, &opcode, &n)) {
 		len -= n;
@@ -279,6 +355,12 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		return false;
 
 	bt_shell_printf("Received %s\n", opcode_str(opcode));
+
+	req = get_req_by_rsp(src, (opcode & ~OP_UNRELIABLE));
+	if (req) {
+		free_request(req);
+		l_queue_remove(requests, req);
+	}
 
 	switch (opcode & ~OP_UNRELIABLE) {
 	default:
@@ -533,6 +615,19 @@ static uint32_t read_input_parameters(int argc, char *argv[])
 	return i;
 }
 
+static void cmd_timeout_set(int argc, char *argv[])
+{
+	if (read_input_parameters(argc, argv) != 1)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	rsp_timeout = parms[0];
+
+	bt_shell_printf("Timeout to wait for remote node's response: %d secs\n",
+								rsp_timeout);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
 static void cmd_dst_set(int argc, char *argv[])
 {
 	uint32_t dst;
@@ -557,6 +652,7 @@ static void cmd_dst_set(int argc, char *argv[])
 
 static bool config_send(uint8_t *buf, uint16_t len, uint32_t opcode)
 {
+	const struct cfg_cmd *cmd;
 	bool res;
 
 	if (IS_UNASSIGNED(target)) {
@@ -564,9 +660,21 @@ static bool config_send(uint8_t *buf, uint16_t len, uint32_t opcode)
 		return false;
 	}
 
+	cmd = get_cmd(opcode);
+	if (!cmd)
+		return false;
+
+	if (get_req_by_rsp(target, cmd->rsp)) {
+		bt_shell_printf("Another command is pending\n");
+		return false;
+	}
+
 	res = send_msg(send_data, target, APP_IDX_DEV_REMOTE, buf, len);
 	if (!res)
 		bt_shell_printf("Failed to send \"%s\"\n", opcode_str(opcode));
+
+	if (cmd->rsp != NO_RESPONSE)
+		add_request(opcode);
 
 	return res;
 }
@@ -664,6 +772,7 @@ static void cmd_key_add(uint32_t opcode, int argc, char *argv[])
 {
 	uint16_t key_idx;
 	bool is_appkey, update;
+	const struct cfg_cmd *cmd;
 
 	if (IS_UNASSIGNED(target)) {
 		bt_shell_printf("Destination not set\n");
@@ -680,6 +789,15 @@ static void cmd_key_add(uint32_t opcode, int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	cmd = get_cmd(opcode);
+	if (!cmd)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (get_req_by_rsp(target, cmd->rsp)) {
+		bt_shell_printf("Another key command is pending\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
 	key_idx = (uint16_t) parms[0];
 
 	update = (opcode == OP_NETKEY_UPDATE || opcode == OP_APPKEY_UPDATE);
@@ -687,6 +805,8 @@ static void cmd_key_add(uint32_t opcode, int argc, char *argv[])
 
 	if (!send_key_msg(key_data, target, key_idx, is_appkey, update))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	add_request(opcode);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -1165,6 +1285,8 @@ static const struct bt_shell_menu cfg_menu = {
 	.entries = {
 	{"target", "<unicast>", cmd_dst_set,
 				"Set target node to configure"},
+	{"timeout", "<seconds>", cmd_timeout_set,
+				"Set response timeout (seconds)"},
 	{"composition-get", "[page_num]", cmd_composition_get,
 				"Get composition data"},
 	{"netkey-add", "<net_idx>", cmd_netkey_add,
@@ -1246,8 +1368,14 @@ struct model_info *cfgcli_init(key_send_func_t key_send, void *user_data)
 
 	send_key_msg = key_send;
 	key_data = user_data;
+	requests = l_queue_new();
 
 	bt_shell_add_submenu(&cfg_menu);
 
 	return &cli_info;
+}
+
+void cfgcli_cleanup(void)
+{
+	l_queue_destroy(requests, free_request);
 }

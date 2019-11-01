@@ -22,3 +22,4 @@ typedef bool (*key_send_func_t) (void *user_data, uint16_t dst,
 				 uint16_t idx, bool is_appkey, bool update);
 
 struct model_info *cfgcli_init(key_send_func_t key_func, void *user_data);
+void cfgcli_cleanup(void);

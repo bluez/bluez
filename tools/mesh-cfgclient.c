@@ -1663,5 +1663,7 @@ int main(int argc, char *argv[])
 	l_dbus_client_destroy(client);
 	l_dbus_destroy(dbus);
 
+	cfgcli_cleanup();
+
 	return status;
 }
