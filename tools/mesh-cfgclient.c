@@ -25,8 +25,12 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dbus/dbus.h>
+#include <errno.h>
 #include <stdio.h>
 #include <time.h>
+
+#include <sys/stat.h>
+
 #include <ell/ell.h>
 
 #include "src/shared/shell.h"
@@ -51,6 +55,8 @@
 
 #define DEFAULT_START_ADDRESS	0x00aa
 #define DEFAULT_NET_INDEX	0x0000
+
+#define DEFAULT_CFG_FILE	"config_db.json"
 
 struct meshcfg_el {
 	const char *path;
@@ -106,6 +112,8 @@ static struct l_queue *devices;
 static bool prov_in_progress;
 static const char *caps[2] = {"out-numeric", "in-numeric"};
 
+static bool have_config;
+
 static struct meshcfg_app app = {
 	.path = "/mesh/cfgclient",
 	.agent_path = "/mesh/cfgclient/agent",
@@ -121,23 +129,28 @@ static struct meshcfg_app app = {
 };
 
 static const struct option options[] = {
-	{ "address",	optional_argument, 0, 'a' },
-	{ "net-index",	optional_argument, 0, 'n' },
+	{ "config",	required_argument, 0, 'c' },
+	{ "address",	required_argument, 0, 'a' },
+	{ "net-index",	required_argument, 0, 'n' },
 	{ 0, 0, 0, 0 }
 };
 
 static const char *address_opt;
 static const char *net_idx_opt;
+static const char *config_opt;
 
 static uint16_t prov_address;
 static uint16_t prov_net_idx;
+static const char *cfg_fname;
 
 static const char **optargs[] = {
+	&config_opt,
 	&address_opt,
 	&net_idx_opt,
 };
 
 static const char *help[] = {
+	"Configuration file",
 	"Starting unicast address for remote nodes",
 	"Net index for provisioning subnet"
 };
@@ -145,7 +158,7 @@ static const char *help[] = {
 static const struct bt_shell_opt opt = {
 	.options = options,
 	.optno = sizeof(options) / sizeof(struct option),
-	.optstr = "a:n:",
+	.optstr = "c:a:n:",
 	.optarg = optargs,
 	.help = help,
 };
@@ -1621,17 +1634,64 @@ static void ready_callback(void *user_data)
 		bt_shell_printf("Failed to register the ObjectManager\n");
 }
 
+static bool setup_cfg_storage(void)
+{
+	struct stat st;
+
+	if (!config_opt) {
+		char *home;
+		char *mesh_dir;
+
+		home = getenv("XDG_CONFIG_HOME");
+
+		if (home) {
+			mesh_dir = l_strdup_printf("%s/meshcfg", home);
+		} else {
+			home = getenv("HOME");
+			if (!home) {
+				l_error("\"HOME\" not set\n");
+				return false;
+			}
+
+			mesh_dir = l_strdup_printf("%s/.config/meshcfg", home);
+		}
+
+		if (!mesh_dir)
+			return false;
+
+		cfg_fname = l_strdup_printf("mesh_dir/%s", DEFAULT_CFG_FILE);
+		l_free(mesh_dir);
+
+	} else {
+		cfg_fname = l_strdup_printf("%s", config_opt);
+	}
+
+	if (stat(cfg_fname, &st) == -1) {
+		if (errno == ENOENT) {
+			l_warn("\nWarning: config file \"%s\" not found",
+								cfg_fname);
+			return true;
+		}
+
+		perror("\nFailed to open config file");
+		return false;
+	}
+
+	have_config = true;
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	struct l_dbus_client *client;
 	uint32_t val;
 	int status;
 
-	l_log_set_stderr();
-
 	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
+
+	l_log_set_stderr();
 
 	if (address_opt && sscanf(address_opt, "%04x", &val) == 1)
 		prov_address = (uint16_t) val;
@@ -1642,6 +1702,11 @@ int main(int argc, char *argv[])
 		prov_net_idx = (uint16_t) val;
 	else
 		prov_net_idx = DEFAULT_NET_INDEX;
+
+	if (!setup_cfg_storage()) {
+		bt_shell_cleanup();
+		return EXIT_FAILURE;
+	}
 
 	dbus = l_dbus_new_default(L_DBUS_SYSTEM_BUS);
 
