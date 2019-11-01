@@ -40,13 +40,14 @@
 
 #include "src/shared/shell.h"
 #include "src/shared/util.h"
-#include "tools/mesh/mesh-net.h"
-#include "tools/mesh/keys.h"
-#include "tools/mesh/net.h"
-#include "tools/mesh/node.h"
-#include "tools/mesh/prov-db.h"
-#include "tools/mesh/util.h"
-#include "tools/mesh/onoff-model.h"
+
+#include "tools/mesh-gatt/mesh-net.h"
+#include "tools/mesh-gatt/keys.h"
+#include "tools/mesh-gatt/net.h"
+#include "tools/mesh-gatt/node.h"
+#include "tools/mesh-gatt/prov-db.h"
+#include "tools/mesh-gatt/util.h"
+#include "tools/mesh-gatt/onoff-model.h"
 
 static uint8_t trans_id;
 static uint16_t onoff_app_idx = APP_IDX_INVALID;

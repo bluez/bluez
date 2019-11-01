@@ -304,25 +304,29 @@ if MESH
 bin_PROGRAMS += tools/meshctl
 
 tools_meshctl_SOURCES = tools/meshctl.c \
-				tools/mesh/mesh-net.h \
-				tools/mesh/node.h tools/mesh/node.c \
-				tools/mesh/gatt.h tools/mesh/gatt.c \
-				tools/mesh/crypto.h tools/mesh/crypto.c \
-				tools/mesh/keys.h \
-				tools/mesh/net.h tools/mesh/net.c \
-				tools/mesh/prov.h tools/mesh/prov.c \
-				tools/mesh/util.h tools/mesh/util.c \
 				tools/mesh/agent.h tools/mesh/agent.c \
-				tools/mesh/prov-db.h tools/mesh/prov-db.c \
-				tools/mesh/config-model.h tools/mesh/config-client.c \
-				tools/mesh/config-server.c \
-				tools/mesh/onoff-model.h tools/mesh/onoff-model.c
+				tools/mesh/config-model.h\
+				tools/mesh-gatt/mesh-net.h \
+				tools/mesh-gatt/node.h tools/mesh-gatt/node.c \
+				tools/mesh-gatt/gatt.h tools/mesh-gatt/gatt.c \
+				tools/mesh-gatt/crypto.h\
+				tools/mesh-gatt/crypto.c \
+				tools/mesh-gatt/keys.h \
+				tools/mesh-gatt/net.h tools/mesh-gatt/net.c \
+				tools/mesh-gatt/prov.h tools/mesh-gatt/prov.c \
+				tools/mesh-gatt/util.h tools/mesh-gatt/util.c \
+				tools/mesh-gatt/prov-db.h \
+				tools/mesh-gatt/prov-db.c \
+				tools/mesh-gatt/config-client.c \
+				tools/mesh-gatt/config-server.c \
+				tools/mesh-gatt/onoff-model.h \
+				tools/mesh-gatt/onoff-model.c
 tools_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la \
 				$(GLIB_LIBS) $(DBUS_LIBS) -ljson-c -lreadline
 endif
 
-EXTRA_DIST += tools/mesh/local_node.json tools/mesh/prov_db.json
+EXTRA_DIST += tools/mesh-gatt/local_node.json tools/mesh-gatt/prov_db.json
 
 if DEPRECATED
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \

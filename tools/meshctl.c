@@ -47,18 +47,20 @@
 #include "src/shared/shell.h"
 #include "src/shared/util.h"
 #include "gdbus/gdbus.h"
-#include "mesh/mesh-net.h"
-#include "mesh/gatt.h"
-#include "mesh/crypto.h"
-#include "mesh/node.h"
-#include "mesh/net.h"
-#include "mesh/keys.h"
-#include "mesh/prov.h"
-#include "mesh/util.h"
+
 #include "mesh/agent.h"
-#include "mesh/prov-db.h"
 #include "mesh/config-model.h"
-#include "mesh/onoff-model.h"
+
+#include "mesh-gatt/mesh-net.h"
+#include "mesh-gatt/gatt.h"
+#include "mesh-gatt/crypto.h"
+#include "mesh-gatt/node.h"
+#include "mesh-gatt/net.h"
+#include "mesh-gatt/keys.h"
+#include "mesh-gatt/prov.h"
+#include "mesh-gatt/util.h"
+#include "mesh-gatt/prov-db.h"
+#include "mesh-gatt/onoff-model.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF

@@ -39,14 +39,16 @@
 #include "src/shared/util.h"
 #include "src/shared/shell.h"
 #include "gdbus/gdbus.h"
-#include "tools/mesh/mesh-net.h"
+
 #include "tools/mesh/config-model.h"
-#include "tools/mesh/node.h"
-#include "tools/mesh/keys.h"
-#include "tools/mesh/gatt.h"
-#include "tools/mesh/net.h"
-#include "tools/mesh/prov-db.h"
-#include "tools/mesh/util.h"
+
+#include "tools/mesh-gatt/mesh-net.h"
+#include "tools/mesh-gatt/node.h"
+#include "tools/mesh-gatt/keys.h"
+#include "tools/mesh-gatt/gatt.h"
+#include "tools/mesh-gatt/net.h"
+#include "tools/mesh-gatt/prov-db.h"
+#include "tools/mesh-gatt/util.h"
 
 struct mesh_model {
 	struct mesh_model_ops cbs;
