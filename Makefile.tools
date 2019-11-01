@@ -332,7 +332,9 @@ tools_mesh_cfgclient_SOURCES = tools/mesh-cfgclient.c \
 				tools/mesh/cfgcli.h tools/mesh/cfgcli.c \
 				tools/mesh/keys.h tools/mesh/keys.c \
 				tools/mesh/util.h tools/mesh/util.c \
+				tools/mesh/remote.h tools/mesh/remote.c \
 				tools/mesh/agent.h tools/mesh/agent.c
+
 tools_mesh_cfgclient_LDADD = lib/libbluetooth-internal.la src/libshared-ell.la \
 						$(ell_ldadd) -lreadline
 endif

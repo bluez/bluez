@@ -39,6 +39,7 @@
 #include "tools/mesh/cfgcli.h"
 #include "tools/mesh/keys.h"
 #include "tools/mesh/model.h"
+#include "tools/mesh/remote.h"
 
 #define PROMPT_ON	COLOR_BLUE "[mesh-cfgclient]" COLOR_OFF "# "
 #define PROMPT_OFF	"Waiting to connect to bluetooth-meshd..."
@@ -84,13 +85,6 @@ struct unprov_device {
 	uint8_t uuid[16];
 };
 
-struct remote_node {
-	uint16_t unicast;
-	uint16_t net_idx;
-	uint8_t uuid[16];
-	uint8_t num_ele;
-};
-
 static struct l_dbus *dbus;
 
 static struct l_queue *node_proxies;
@@ -99,7 +93,6 @@ static struct meshcfg_node *local;
 static struct model_info *cfgcli;
 
 static struct l_queue *devices;
-static struct l_queue *nodes;
 
 static bool prov_in_progress;
 static const char *caps[2] = {"out-numeric", "in-numeric"};
@@ -192,37 +185,6 @@ static void print_device(void *a, void *b)
 	l_free(str);
 }
 
-static bool match_node_addr(const void *a, const void *b)
-{
-	const struct remote_node *rmt = a;
-	uint16_t addr = L_PTR_TO_UINT(b);
-
-	if (addr >= rmt->unicast &&
-				addr <= (rmt->unicast + rmt->num_ele - 1))
-		return true;
-
-	return false;
-}
-
-static uint16_t get_primary_subnet_idx(uint16_t addr)
-{
-	struct remote_node *rmt;
-
-	rmt = l_queue_find(nodes, match_node_addr, L_UINT_TO_PTR(addr));
-
-	if (!rmt) {
-		bt_shell_printf("Net key not found: trying %4.4x\n",
-			PRIMARY_NET_IDX);
-		return prov_net_idx;
-		/*
-		 * TODO: When the remote node recovery from storage is
-		 * implemented, return NET_IDX_INVALID" here.
-		 */
-	}
-
-	return rmt->net_idx;
-}
-
 struct send_data {
 	const char *ele_path;
 	bool rmt;
@@ -278,7 +240,7 @@ static bool send_msg(void *user_data, uint16_t dst, uint16_t idx,
 	method_name = is_dev_key ? "DevKeySend" : "Send";
 
 	if (is_dev_key) {
-		net_idx_tx = get_primary_subnet_idx(dst);
+		net_idx_tx = remote_get_subnet_idx(dst);
 		if (net_idx_tx == NET_IDX_INVALID)
 			return false;
 	}
@@ -319,7 +281,7 @@ static bool send_key(void *user_data, uint16_t dst, uint16_t key_idx,
 	uint16_t net_idx;
 	const char *method_name = (!is_appkey) ? "AddNetKey" : "AddAppKey";
 
-	net_idx = get_primary_subnet_idx(dst);
+	net_idx = remote_get_subnet_idx(dst);
 	if (net_idx == NET_IDX_INVALID)
 		return false;
 
@@ -544,6 +506,7 @@ static void create_net_reply(struct l_dbus_proxy *proxy,
 	bt_shell_printf("Created new node with token %s\n", str);
 	l_free(str);
 
+	remote_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
 	keys_add_net_key(PRIMARY_NET_IDX);
 
 	l_dbus_proxy_method_call(net_proxy, "Attach", attach_node_setup,
@@ -641,26 +604,9 @@ static void cmd_list_unprov(int argc, char *argv[])
 	l_queue_foreach(devices, print_device, NULL);
 }
 
-static void print_node(void *a, void *b)
-{
-	struct remote_node *node = a;
-	char *str;
-
-	bt_shell_printf(COLOR_YELLOW "Mesh node:\n" COLOR_OFF);
-	str = l_util_hexstring_upper(node->uuid, 16);
-	bt_shell_printf("\t" COLOR_GREEN "UUID = %s\n" COLOR_OFF, str);
-	l_free(str);
-	bt_shell_printf("\t" COLOR_GREEN "primary = %4.4x\n" COLOR_OFF,
-								node->unicast);
-	bt_shell_printf("\t" COLOR_GREEN "elements = %u\n" COLOR_OFF,
-								node->num_ele);
-	bt_shell_printf("\t" COLOR_GREEN "net_key_idx = %3.3x\n" COLOR_OFF,
-								node->net_idx);
-}
-
 static void cmd_list_nodes(int argc, char *argv[])
 {
-	l_queue_foreach(nodes, print_node, NULL);
+	remote_print_all();
 }
 
 static void add_node_reply(struct l_dbus_proxy *proxy,
@@ -972,7 +918,6 @@ static struct l_dbus_message *add_node_cmplt_call(struct l_dbus *dbus,
 	uint8_t cnt;
 	uint32_t n;
 	uint8_t *uuid;
-	struct remote_node *node;
 
 	if (!prov_in_progress)
 		return l_dbus_message_new_error(msg, dbus_err_fail, NULL);
@@ -991,15 +936,11 @@ static struct l_dbus_message *add_node_cmplt_call(struct l_dbus *dbus,
 		return l_dbus_message_new_error(msg, dbus_err_args, NULL);
 	}
 
-	node = l_new(struct remote_node, 1);
-	memcpy(node->uuid, uuid, 16);
-	node->unicast = unicast;
-	node->num_ele = cnt;
-	node->net_idx = prov_net_idx;
+	remote_add_node(uuid, unicast, cnt, prov_net_idx);
 
 	bt_shell_printf("Provisioning done:\n");
-	print_node(node, NULL);
-	l_queue_push_tail(nodes, node);
+	remote_print_node(unicast);
+
 	remove_device(uuid);
 
 	prov_address = unicast + cnt;
@@ -1227,7 +1168,6 @@ int main(int argc, char *argv[])
 
 	node_proxies = l_queue_new();
 	devices = l_queue_new();
-	nodes = l_queue_new();
 
 	status = bt_shell_run();
 
