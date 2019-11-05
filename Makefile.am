@@ -524,10 +524,8 @@ if MESH
 unit_tests += unit/test-mesh-crypto
 unit_test_mesh_crypto_CPPFLAGS = $(ell_cflags)
 unit_test_mesh_crypto_SOURCES = unit/test-mesh-crypto.c \
-				mesh/crypto.h ell/internal ell/ell.h \
-				$(ell_sources)
-unit_test_mesh_crypto_LDADD = src/libshared-ell.la \
-			$(ell_ldadd)
+				mesh/crypto.h ell/internal ell/ell.h
+unit_test_mesh_crypto_LDADD = $(ell_ldadd)
 endif
 
 if MAINTAINER_MODE
