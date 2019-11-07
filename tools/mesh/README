@@ -25,11 +25,11 @@ that contains information about the current state of the configured mesh
 network.
 
 The default directory for mesh-cfgclient configuration file is
-/home/<username>/.config/mesh-cfgcli
+$HOME/.config/meshcfg
 
-To specify a custom storage directory, run mesh-config tool as:
+To specify a custom file, run mesh-cfgclient tool as:
 
-	meshctl -c <config_dir_name>
+	mesh-cfgclient -c <config_file_name>
 
 If a configuration file is not found, it is assumed that a mesh network
 does not exist. In this case, the tool may be used to generate a new  mesh
