@@ -35,8 +35,8 @@ typedef enum {
 
 typedef void (*agent_input_cb)(oob_type_t type, void *input, uint16_t len,
 					void *user_data);
-bool agent_input_request(oob_type_t type, uint16_t max_len, agent_input_cb cb,
-				void *user_data);
+bool agent_input_request(oob_type_t type, uint16_t max_len, const char *desc,
+					agent_input_cb cb, void *user_data);
 
 bool agent_output_request(const char* str);
 void agent_output_request_cancel(void);

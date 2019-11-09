@@ -353,53 +353,141 @@ static bool caps_getter(struct l_dbus *dbus,
 	return true;
 }
 
+static void agent_input_done(oob_type_t type, void *buf, uint16_t len,
+								void *user_data)
+{
+	struct l_dbus_message *msg = user_data;
+	struct l_dbus_message *reply = NULL;
+	struct l_dbus_message_builder *builder;
+	uint32_t val_u32;
+	uint8_t ascii[16];
+
+	switch (type) {
+	case NONE:
+	case OUTPUT:
+	case HEXADECIMAL:
+	default:
+		break;
+
+	case ASCII:
+		if (len > 8) {
+			bt_shell_printf("Bad input length\n");
+			break;
+		}
+
+		memset(ascii, 0, 16);
+		memcpy(ascii, buf, len);
+		reply = l_dbus_message_new_method_return(msg);
+		builder = l_dbus_message_builder_new(reply);
+		append_byte_array(builder, ascii, 16);
+		l_dbus_message_builder_finalize(builder);
+		l_dbus_message_builder_destroy(builder);
+		break;
+
+	case DECIMAL:
+		if (len > 8) {
+			bt_shell_printf("Bad input length\n");
+			break;
+		}
+
+		val_u32 = l_get_be32(buf);
+		reply = l_dbus_message_new_method_return(msg);
+		l_dbus_message_set_arguments(reply, "u", val_u32);
+		break;
+	}
+
+	if (!reply)
+		reply = l_dbus_message_new_error(msg, dbus_err_fail, NULL);
+
+	l_dbus_send(dbus, reply);
+}
+
+struct requested_action {
+	const char *action;
+	const char *description;
+};
+
+static struct requested_action display_numeric_table[] = {
+	{ "push", "Push remote button %d times"},
+	{ "twist", "Twist remote nob %d times"},
+	{ "in-numeric", "Enter %d on remote device"},
+	{ "out-numeric", "Enter %d on remote device"}
+};
+
+static struct requested_action prompt_numeric_table[] = {
+	{ "blink", "Enter the number of times remote LED blinked"},
+	{ "beep", "Enter the number of times remote device beeped"},
+	{ "vibrate", "Enter the number of times remote device vibrated"},
+	{ "in-numeric", "Enter the number displayed on remote device"},
+	{ "out-numeric", "Enter the number displayed on remote device"}
+};
+
+static int get_action(char *str, bool prompt)
+{
+	struct requested_action *action_table;
+	size_t len;
+	int i, sz;
+
+	if (!str)
+		return -1;
+
+	if (prompt) {
+		len = strlen(str);
+		sz = L_ARRAY_SIZE(prompt_numeric_table);
+		action_table = prompt_numeric_table;
+	} else {
+		len = strlen(str);
+		sz = L_ARRAY_SIZE(display_numeric_table);
+		action_table = display_numeric_table;
+	}
+
+	for (i = 0; i < sz; ++i)
+		if (len == strlen(action_table[i].action) &&
+			!strcmp(str, action_table[i].action))
+			return i;
+
+	return -1;
+}
+
 static struct l_dbus_message *disp_numeric_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
 	char *str;
 	uint32_t n;
+	int action_index;
 
 	if (!l_dbus_message_get_arguments(msg, "su", &str, &n)) {
 		l_error("Cannot parse \"DisplayNumeric\" arguments");
 		return l_dbus_message_new_error(msg, dbus_err_fail, NULL);
 	}
 
-	if (!str || strlen(str) != strlen("in-numeric") ||
-			strncmp(str, "in-numeric", strlen("in-numeric")))
+	action_index = get_action(str, false);
+	if (action_index < 0)
 		return l_dbus_message_new_error(msg, dbus_err_support, NULL);
 
-	bt_shell_printf(COLOR_YELLOW "Enter %u on remote device" COLOR_OFF, n);
+	str = l_strdup_printf(display_numeric_table[action_index].description,
+									n);
+	bt_shell_printf(COLOR_YELLOW "%s\n" COLOR_OFF, str);
+	l_free(str);
 
 	return l_dbus_message_new_method_return(msg);
 }
 
-static void agent_input_done(oob_type_t type, void *buf, uint16_t len,
-								void *user_data)
+static struct l_dbus_message *disp_string_call(struct l_dbus *dbus,
+						struct l_dbus_message *msg,
+						void *user_data)
 {
-	struct l_dbus_message *msg = user_data;
-	struct l_dbus_message *reply;
-	uint32_t val_u32;
+	char *str;
 
-	switch (type) {
-	case NONE:
-	case OUTPUT:
-	case ASCII:
-	case HEXADECIMAL:
-	default:
-		return;
-	case DECIMAL:
-		if (len >= 8) {
-			bt_shell_printf("Bad input length");
-			return;
-		}
-
-		val_u32 = l_get_be32(buf);
-		reply = l_dbus_message_new_method_return(msg);
-		l_dbus_message_set_arguments(reply, "u", val_u32);
-		l_dbus_send(dbus, reply);
-		break;
+	if (!l_dbus_message_get_arguments(msg, "s", &str)) {
+		l_error("Cannot parse \"DisplayString\" arguments");
+		return l_dbus_message_new_error(msg, dbus_err_fail, NULL);
 	}
+
+	bt_shell_printf(COLOR_YELLOW "Enter AlphaNumeric code on remote device: %s\n" COLOR_OFF, str);
+
+	return l_dbus_message_new_method_return(msg);
 }
 
 static struct l_dbus_message *prompt_numeric_call(struct l_dbus *dbus,
@@ -407,18 +495,43 @@ static struct l_dbus_message *prompt_numeric_call(struct l_dbus *dbus,
 						void *user_data)
 {
 	char *str;
+	int action_index;
+	const char *desc;
 
 	if (!l_dbus_message_get_arguments(msg, "s", &str)) {
 		l_error("Cannot parse \"PromptNumeric\" arguments");
 		return l_dbus_message_new_error(msg, dbus_err_fail, NULL);
 	}
 
-	if (!str || strlen(str) != strlen("out-numeric") ||
-			strncmp(str, "out-numeric", strlen("out-numeric")))
+	action_index = get_action(str, true);
+	if (action_index < 0)
+		return l_dbus_message_new_error(msg, dbus_err_support, NULL);
+
+	desc = prompt_numeric_table[action_index].description;
+
+	l_dbus_message_ref(msg);
+	agent_input_request(DECIMAL, 8, desc, agent_input_done, msg);
+
+	return NULL;
+}
+
+static struct l_dbus_message *prompt_static_call(struct l_dbus *dbus,
+						struct l_dbus_message *msg,
+						void *user_data)
+{
+	char *str;
+
+	if (!l_dbus_message_get_arguments(msg, "s", &str) || !str) {
+		l_error("Cannot parse \"PromptStatic\" arguments");
+		return l_dbus_message_new_error(msg, dbus_err_fail, NULL);
+	}
+
+	if (!strcmp(str, "in-alpha") && !strcmp(str, "out-alpha"))
 		return l_dbus_message_new_error(msg, dbus_err_support, NULL);
 
 	l_dbus_message_ref(msg);
-	agent_input_request(DECIMAL, 8, agent_input_done, msg);
+	agent_input_request(ASCII, 8, "Enter displayed Ascii code",
+							agent_input_done, msg);
 
 	return NULL;
 }
@@ -428,11 +541,14 @@ static void setup_agent_iface(struct l_dbus_interface *iface)
 	l_dbus_interface_property(iface, "Capabilities", 0, "as", caps_getter,
 								NULL);
 	/* TODO: Other properties */
+	l_dbus_interface_method(iface, "DisplayString", 0, disp_string_call,
+						"", "s", "value");
 	l_dbus_interface_method(iface, "DisplayNumeric", 0, disp_numeric_call,
 						"", "su", "type", "number");
 	l_dbus_interface_method(iface, "PromptNumeric", 0, prompt_numeric_call,
-						"u", "s", "number", "type");
-
+						"u", "s", "type");
+	l_dbus_interface_method(iface, "PromptStatic", 0, prompt_static_call,
+						"ay", "s", "type");
 }
 
 static bool register_agent(void)
