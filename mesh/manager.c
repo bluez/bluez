@@ -80,8 +80,6 @@ static void free_pending_add_call()
 		l_dbus_remove_watch(dbus_get_bus(),
 						add_pending->disc_watch);
 
-	mesh_agent_remove(add_pending->agent);
-
 	l_free(add_pending);
 	add_pending = NULL;
 }
@@ -246,7 +244,7 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 	add_pending = l_new(struct add_data, 1);
 	memcpy(add_pending->uuid, uuid, 16);
 	add_pending->node = node;
-	add_pending->agent = node_get_agent(node);;
+	add_pending->agent = node_get_agent(node);
 
 	if (!node_is_provisioner(node) || (add_pending->agent == NULL)) {
 		l_info("Provisioner: %d", node_is_provisioner(node));
