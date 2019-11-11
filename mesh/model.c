@@ -1633,8 +1633,8 @@ struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 	if (pub && (pub->virt || !(IS_UNASSIGNED(pub->addr)))) {
 		uint8_t mod_addr[2];
 		uint8_t *pub_addr;
-		uint8_t retransmit = (pub->count << 5) +
-						(pub->interval / 50 - 1);
+		uint8_t retransmit = pub->count +
+					((pub->interval / 50 - 1) << 3);
 
 		/* Add publication */
 		l_put_le16(pub->addr, &mod_addr);

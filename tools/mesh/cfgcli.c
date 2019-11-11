@@ -471,7 +471,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 			return true;
 
 		bt_shell_printf("Node %4.4x: Relay 0x%02x, cnt %d, steps %d\n",
-				src, data[0], data[1]>>5, data[1] & 0x1f);
+				src, data[0], data[1] & 0x7, data[1] >> 3);
 		break;
 
 	case OP_CONFIG_PROXY_STATUS:
@@ -527,8 +527,8 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 			break;
 		}
 
-		bt_shell_printf("Rexmit count\t%d\n", data[9] >> 5);
-		bt_shell_printf("Rexmit steps\t%d\n", data[9] & 0x1f);
+		bt_shell_printf("Rexmit count\t%d\n", data[9] & 0x7);
+		bt_shell_printf("Rexmit steps\t%d\n", data[9] >> 3);
 
 		break;
 
@@ -1023,7 +1023,7 @@ static void cmd_relay_set(int argc, char *argv[])
 	}
 
 	msg[n++] = parms[0];
-	msg[n++] = (parms[1] << 5) | parms[2];
+	msg[n++] = parms[1] | (parms[2] << 3);
 
 	if (!config_send(msg, n, OP_CONFIG_RELAY_SET))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
