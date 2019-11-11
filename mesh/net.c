@@ -3339,10 +3339,10 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 				szmic, seq & SEQ_ZERO_MASK,
 				msg, msg_len);
 
-	/* If successfully enqued or delivered
-	 * to Unicast address, we are done
+	/* If addressed to a unicast address and successfully enqueued,
+	 * or delivered to one of our Unicast addresses we are done
 	 */
-	if (result || src == dst ||
+	if ((result && IS_UNICAST(dst)) || src == dst ||
 			(dst >= net->src_addr && dst <= net->last_addr)) {
 		/* Adjust our seq_num for "virtual" delivery */
 		net->seq_num += seg_max;
