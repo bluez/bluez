@@ -863,7 +863,7 @@ static void cmd_appkey_update(int argc, char *argv[])
 	cmd_key_add(OP_APPKEY_UPDATE, argc, argv);
 }
 
-static void cmd_bind(int argc, char *argv[])
+static void cmd_bind(uint32_t opcode, int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
@@ -875,7 +875,7 @@ static void cmd_bind(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	n = mesh_opcode_set(OP_MODEL_APP_BIND, msg);
+	n = mesh_opcode_set(opcode, msg);
 
 	put_le16(parms[0], msg + n);
 	n += 2;
@@ -891,10 +891,20 @@ static void cmd_bind(int argc, char *argv[])
 		n += 2;
 	}
 
-	if (!config_send(msg, n, OP_MODEL_APP_BIND))
+	if (!config_send(msg, n, opcode))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_add_binding(int argc, char *argv[])
+{
+	cmd_bind(OP_MODEL_APP_BIND, argc, argv);
+}
+
+static void cmd_del_binding(int argc, char *argv[])
+{
+	cmd_bind(OP_MODEL_APP_UNBIND, argc, argv);
 }
 
 static void cmd_beacon_set(int argc, char *argv[])
@@ -1333,8 +1343,10 @@ static const struct bt_shell_menu cfg_menu = {
 				"Add application key"},
 	{"appkey-del", "<app_idx>", cmd_appkey_del,
 				"Delete application key"},
-	{"bind", "<ele_addr> <app_idx> <mod_id> [vendor_id]", cmd_bind,
+	{"bind", "<ele_addr> <app_idx> <mod_id> [vendor_id]", cmd_add_binding,
 				"Bind app key to a model"},
+	{"unbind", "<ele_addr> <app_idx> <mod_id> [vendor_id]", cmd_del_binding,
+				"Remove app key from a model"},
 	{"mod-appidx-get", "<ele_addr> <model id>", cmd_mod_appidx_get,
 				"Get model app_idx"},
 	{"ttl-set", "<ttl>", cmd_ttl_set,
