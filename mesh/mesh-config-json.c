@@ -358,7 +358,7 @@ static bool read_default_ttl(json_object *jobj, uint8_t *ttl)
 	if (!val && errno == EINVAL)
 		return false;
 
-	if (val < 0 || val == 1 || val > DEFAULT_TTL)
+	if (val < 0 || val == 1 || val > TTL_MASK)
 		return false;
 
 	*ttl = (uint8_t) val;

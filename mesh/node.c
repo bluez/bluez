@@ -681,7 +681,7 @@ struct l_queue *node_get_element_models(struct mesh_node *node,
 uint8_t node_default_ttl_get(struct mesh_node *node)
 {
 	if (!node)
-		return DEFAULT_TTL;
+		return TTL_MASK;
 	return node->ttl;
 }
 
@@ -1370,7 +1370,7 @@ static void set_defaults(struct mesh_node *node)
 	node->friend = MESH_MODE_UNSUPPORTED;
 	node->beacon = MESH_MODE_DISABLED;
 	node->relay.mode = MESH_MODE_DISABLED;
-	node->ttl = DEFAULT_TTL;
+	node->ttl = TTL_MASK;
 	node->seq_number = DEFAULT_SEQUENCE_NUMBER;
 
 	/* Add configuration server model on primary element */
