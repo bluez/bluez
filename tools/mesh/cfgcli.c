@@ -615,6 +615,15 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		bt_shell_printf("Max Hops\t%2.2x\n", data[8]);
 		break;
 
+	/* Per Mesh Profile 4.3.2.71 */
+	case OP_CONFIG_NETWORK_TRANSMIT_STATUS:
+		if (len != 1)
+			return true;
+
+		bt_shell_printf("Node %4.4x: Network transmit cnt %d, steps %d\n",
+				src, data[0] & 7, data[0] >> 3);
+		break;
+
 	/* Per Mesh Profile 4.3.2.54 */
 	case OP_NODE_RESET_STATUS:
 		bt_shell_printf("Node %4.4x reset status %s\n",
@@ -1305,6 +1314,33 @@ static void cmd_ttl_get(int argc, char *argv[])
 	cmd_default(OP_CONFIG_DEFAULT_TTL_GET);
 }
 
+static void cmd_network_transmit_get(int argc, char *argv[])
+{
+	cmd_default(OP_CONFIG_NETWORK_TRANSMIT_GET);
+}
+
+static void cmd_network_transmit_set(int argc, char *argv[])
+{
+	uint16_t n;
+	uint8_t msg[2 + 1];
+	int parm_cnt;
+
+	n = mesh_opcode_set(OP_CONFIG_NETWORK_TRANSMIT_SET, msg);
+
+	parm_cnt = read_input_parameters(argc, argv);
+	if (parm_cnt != 2) {
+		bt_shell_printf("bad arguments\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	msg[n++] = parms[0] | (parms[1] << 3);
+
+	if (!config_send(msg, n, OP_CONFIG_NETWORK_TRANSMIT_SET))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
 static void cmd_node_reset(int argc, char *argv[])
 {
 	cmd_default(OP_NODE_RESET);
@@ -1375,6 +1411,10 @@ static const struct bt_shell_menu cfg_menu = {
 				"Set relay"},
 	{"relay-get", NULL, cmd_relay_get,
 				"Get relay"},
+	{"network-transmit-get", NULL, cmd_network_transmit_get,
+				"Get network transmit state"},
+	{"network-transmit-set", "<count> <steps>", cmd_network_transmit_set,
+				"Set network transmit state"},
 	{"hb-pub-set", "<pub_addr> <count> <period> <ttl> <features> <net_idx>",
 				cmd_hb_pub_set,
 				"Set heartbeat publish"},
