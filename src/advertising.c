@@ -73,6 +73,7 @@ struct btd_adv_client {
 	uint16_t discoverable_to;
 	unsigned int to_id;
 	unsigned int disc_to_id;
+	unsigned int add_adv_id;
 	GDBusClient *client;
 	GDBusProxy *proxy;
 	DBusMessage *reg;
@@ -116,6 +117,15 @@ static void client_free(void *data)
 		g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
 		g_dbus_client_unref(client->client);
 	}
+
+	if (client->reg) {
+		g_dbus_send_message(btd_get_dbus_connection(),
+				dbus_message_new_method_return(client->reg));
+		dbus_message_unref(client->reg);
+	}
+
+	if (client->add_adv_id)
+		mgmt_cancel(client->manager->mgmt, client->add_adv_id);
 
 	if (client->instance)
 		util_clear_uid(&client->manager->instance_bitmap,
@@ -765,7 +775,8 @@ static uint8_t *generate_scan_rsp(struct btd_adv_client *client,
 	return bt_ad_generate(client->scan, len);
 }
 
-static int refresh_adv(struct btd_adv_client *client, mgmt_request_func_t func)
+static int refresh_adv(struct btd_adv_client *client, mgmt_request_func_t func,
+						unsigned int *mgmt_id)
 {
 	struct mgmt_cp_add_advertising *cp;
 	uint8_t param_len;
@@ -774,6 +785,7 @@ static int refresh_adv(struct btd_adv_client *client, mgmt_request_func_t func)
 	uint8_t *scan_rsp;
 	size_t scan_rsp_len = -1;
 	uint32_t flags = 0;
+	unsigned int mgmt_ret;
 
 	DBG("Refreshing advertisement: %s", client->path);
 
@@ -822,13 +834,17 @@ static int refresh_adv(struct btd_adv_client *client, mgmt_request_func_t func)
 	free(adv_data);
 	free(scan_rsp);
 
-	if (!mgmt_send(client->manager->mgmt, MGMT_OP_ADD_ADVERTISING,
-				client->manager->mgmt_index, param_len, cp,
-				func, client, NULL)) {
+	mgmt_ret = mgmt_send(client->manager->mgmt, MGMT_OP_ADD_ADVERTISING,
+			client->manager->mgmt_index, param_len, cp,
+			func, client, NULL);
+
+	if (!mgmt_ret) {
 		error("Failed to add Advertising Data");
 		free(cp);
 		return -EINVAL;
 	}
+	if (mgmt_id)
+		*mgmt_id = mgmt_ret;
 
 	free(cp);
 
@@ -845,7 +861,7 @@ static gboolean client_discoverable_timeout(void *user_data)
 
 	bt_ad_clear_flags(client->data);
 
-	refresh_adv(client, NULL);
+	refresh_adv(client, NULL, NULL);
 
 	return FALSE;
 }
@@ -948,7 +964,7 @@ static void properties_changed(GDBusProxy *proxy, const char *name,
 			continue;
 
 		if (parser->func(iter, client)) {
-			refresh_adv(client, NULL);
+			refresh_adv(client, NULL, NULL);
 			break;
 		}
 	}
@@ -979,6 +995,8 @@ static void add_adv_callback(uint8_t status, uint16_t length,
 {
 	struct btd_adv_client *client = user_data;
 	const struct mgmt_rp_add_advertising *rp = param;
+
+	client->add_adv_id = 0;
 
 	if (status)
 		goto done;
@@ -1059,7 +1077,7 @@ static DBusMessage *parse_advertisement(struct btd_adv_client *client)
 		goto fail;
 	}
 
-	err = refresh_adv(client, add_adv_callback);
+	err = refresh_adv(client, add_adv_callback, &client->add_adv_id);
 	if (!err)
 		return NULL;
 
@@ -1449,7 +1467,7 @@ void btd_adv_manager_destroy(struct btd_adv_manager *manager)
 
 static void manager_refresh(void *data, void *user_data)
 {
-	refresh_adv(data, user_data);
+	refresh_adv(data, user_data, NULL);
 }
 
 void btd_adv_manager_refresh(struct btd_adv_manager *manager)
