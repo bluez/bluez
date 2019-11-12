@@ -794,3 +794,11 @@ bool manager_dbus_init(struct l_dbus *bus)
 
 	return true;
 }
+
+void manager_scan_cancel(struct mesh_node *node)
+{
+	if (scan_node != node)
+		return;
+
+	scan_cancel(NULL, node);
+}

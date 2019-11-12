@@ -42,6 +42,7 @@
 #include "mesh/error.h"
 #include "mesh/dbus.h"
 #include "mesh/agent.h"
+#include "mesh/manager.h"
 #include "mesh/node.h"
 
 #define MIN_COMP_SIZE 14
@@ -313,6 +314,10 @@ static void free_node_resources(void *data)
 
 	l_queue_destroy(node->elements, element_free);
 	node->elements = NULL;
+
+	/* In case of a provisioner, stop active scanning */
+	if (node->provisioner)
+		manager_scan_cancel(node);
 
 	free_node_dbus_resources(node);
 
@@ -1174,6 +1179,11 @@ static void app_disc_cb(struct l_dbus *bus, void *user_data)
 	l_info("App %s disconnected (%u)", node->owner, node->disc_watch);
 
 	node->disc_watch = 0;
+
+	/* In case of a provisioner, stop active scanning */
+	if (node->provisioner)
+		manager_scan_cancel(node);
+
 	free_node_dbus_resources(node);
 }
 
