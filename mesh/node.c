@@ -294,6 +294,10 @@ static void free_node_dbus_resources(struct mesh_node *node)
 
 		l_dbus_object_remove_interface(dbus_get_bus(), node->obj_path,
 						MESH_MANAGEMENT_INTERFACE);
+
+		l_dbus_object_remove_interface(dbus_get_bus(), node->obj_path,
+						L_DBUS_INTERFACE_PROPERTIES);
+
 		l_free(node->obj_path);
 		node->obj_path = NULL;
 	}
@@ -1154,6 +1158,10 @@ static bool register_node_object(struct mesh_node *node)
 
 	if (!l_dbus_object_add_interface(dbus_get_bus(), node->obj_path,
 					MESH_MANAGEMENT_INTERFACE, node))
+		return false;
+
+	if (!l_dbus_object_add_interface(dbus_get_bus(), node->obj_path,
+					L_DBUS_INTERFACE_PROPERTIES, NULL))
 		return false;
 
 	return true;
