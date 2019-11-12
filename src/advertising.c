@@ -190,6 +190,8 @@ static void client_remove(void *data)
 	struct btd_adv_client *client = data;
 	struct mgmt_cp_remove_advertising cp;
 
+	g_dbus_client_set_proxy_handlers(client->client, NULL, NULL, NULL,
+									client);
 	g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
 
 	cp.instance = client->instance;
