@@ -140,7 +140,9 @@ static void finalize(const char *fpath, uint16_t net_idx)
 	l_debug("Finalize %s", fpath);
 	memcpy(key.old_key, key.new_key, 16);
 	lseek(fd, 0, SEEK_SET);
-	write(fd, &key, sizeof(key));
+
+	if (write(fd, &key, sizeof(key)) != sizeof(key))
+		goto done;
 
 done:
 	close(fd);
