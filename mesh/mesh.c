@@ -70,6 +70,11 @@ struct join_data{
 	uint8_t *uuid;
 };
 
+struct mesh_init_request {
+	mesh_ready_func_t cb;
+	void *user_data;
+};
+
 static struct bt_mesh mesh;
 
 /* We allow only one outstanding Join request */
@@ -138,9 +143,23 @@ void mesh_unreg_prov_rx(prov_rx_cb_t cb)
 	mesh_io_deregister_recv_cb(mesh.io, MESH_IO_FILTER_PROV);
 }
 
-bool mesh_init(const char *config_dir, enum mesh_io_type type, void *opts)
+static void io_ready_callback(void *user_data, bool result)
+{
+	struct mesh_init_request *req = user_data;
+
+	if (result)
+		node_attach_io_all(mesh.io);
+
+	req->cb(req->user_data, result);
+
+	l_free(req);
+}
+
+bool mesh_init(const char *config_dir, enum mesh_io_type type, void *opts,
+					mesh_ready_func_t cb, void *user_data)
 {
 	struct mesh_io_caps caps;
+	struct mesh_init_request *req;
 
 	if (mesh.io)
 		return true;
@@ -159,15 +178,19 @@ bool mesh_init(const char *config_dir, enum mesh_io_type type, void *opts)
 	if (!node_load_from_storage(storage_dir))
 		return false;
 
-	mesh.io = mesh_io_new(type, opts);
-	if (!mesh.io)
+	req = l_new(struct mesh_init_request, 1);
+	req->cb = cb;
+	req->user_data = user_data;
+
+	mesh.io = mesh_io_new(type, opts, io_ready_callback, req);
+	if (!mesh.io) {
+		l_free(req);
 		return false;
+	}
 
 	l_debug("io %p", mesh.io);
 	mesh_io_get_caps(mesh.io, &caps);
 	mesh.max_filters = caps.max_num_filters;
-
-	node_attach_io_all(mesh.io);
 
 	return true;
 }

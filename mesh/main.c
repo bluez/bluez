@@ -38,6 +38,9 @@
 #include "mesh/dbus.h"
 #include "mesh/mesh-io.h"
 
+static const char *config_dir;
+static int ctlr_index = MGMT_INDEX_NONE;
+
 static const struct option main_options[] = {
 	{ "index",	required_argument,	NULL, 'i' },
 	{ "config",	optional_argument,	NULL, 'c' },
@@ -69,16 +72,38 @@ static void do_debug(const char *str, void *user_data)
 	l_info("%s%s", prefix, str);
 }
 
+static void mesh_ready_callback(void *user_data, bool success)
+{
+	struct l_dbus *dbus = user_data;
+
+	if (!success) {
+		l_error("Failed to start mesh");
+		l_main_quit();
+		return;
+	}
+
+	if (!dbus_init(dbus)) {
+		l_error("Failed to initialize mesh D-Bus resources");
+		l_main_quit();
+	}
+}
+
 static void request_name_callback(struct l_dbus *dbus, bool success,
 					bool queued, void *user_data)
 {
 	l_info("Request name %s",
 		success ? "success": "failed");
 
-	if (success)
-		dbus_init(dbus);
-	else
+	if (!success) {
 		l_main_quit();
+		return;
+	}
+
+	if (!mesh_init(config_dir, MESH_IO_TYPE_GENERIC, &ctlr_index,
+					mesh_ready_callback, dbus)) {
+		l_error("Failed to initialize mesh");
+		l_main_quit();
+	}
 }
 
 static void ready_callback(void *user_data)
@@ -88,7 +113,6 @@ static void ready_callback(void *user_data)
 	l_info("D-Bus ready");
 	l_dbus_name_acquire(dbus, BLUEZ_MESH_NAME, false, false, false,
 						request_name_callback, NULL);
-
 }
 
 static void disconnect_callback(void *user_data)
@@ -114,8 +138,6 @@ int main(int argc, char *argv[])
 	bool detached = true;
 	bool dbus_debug = false;
 	struct l_dbus *dbus = NULL;
-	const char *config_dir = NULL;
-	int index = MGMT_INDEX_NONE;
 
 	if (!l_main_init())
 		return -1;
@@ -148,7 +170,7 @@ int main(int argc, char *argv[])
 				goto done;
 			}
 
-			index = atoi(str);
+			ctlr_index = atoi(str);
 
 			break;
 		case 'n':
@@ -174,12 +196,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
-	if (!mesh_init(config_dir, MESH_IO_TYPE_GENERIC, &index)) {
-		l_error("Failed to initialize mesh");
-		status = EXIT_FAILURE;
-		goto done;
-	}
 
 	if (!detached)
 		umask(0077);

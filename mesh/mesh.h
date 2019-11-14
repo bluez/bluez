@@ -30,9 +30,12 @@
 
 enum mesh_io_type;
 
+typedef void (*mesh_ready_func_t)(void *user_data, bool success);
 typedef void (*prov_rx_cb_t)(void *user_data, const uint8_t *data,
 								uint16_t len);
-bool mesh_init(const char *in_config_name, enum mesh_io_type type, void *opts);
+
+bool mesh_init(const char *in_config_name, enum mesh_io_type type, void *opts,
+					mesh_ready_func_t cb, void *user_data);
 void mesh_cleanup(void);
 bool mesh_dbus_init(struct l_dbus *dbus);
 

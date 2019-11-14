@@ -37,14 +37,16 @@
 #include "mesh/mesh-io-generic.h"
 
 struct mesh_io_private {
-	uint16_t index;
 	struct bt_hci *hci;
+	void *user_data;
+	mesh_io_ready_func_t ready_callback;
 	struct l_timeout *tx_timeout;
 	struct l_queue *rx_regs;
 	struct l_queue *tx_pkts;
+	struct tx_pkt *tx;
 	uint8_t filters[4];
 	bool sending;
-	struct tx_pkt *tx;
+	uint16_t index;
 	uint16_t interval;
 };
 
@@ -283,22 +285,29 @@ static void configure_hci(struct mesh_io_private *io)
 				sizeof(cmd), hci_generic_callback, NULL, NULL);
 }
 
-static bool hci_init(struct mesh_io *io)
+static void hci_init(void *user_data)
 {
+	struct mesh_io *io = user_data;
+	bool result = true;
+
 	io->pvt->hci = bt_hci_new_user_channel(io->pvt->index);
 	if (!io->pvt->hci) {
 		l_error("Failed to start mesh io (hci %u): %s", io->pvt->index,
 							strerror(errno));
-		return false;
+		result = false;
 	}
 
-	configure_hci(io->pvt);
+	if (result) {
+		configure_hci(io->pvt);
 
-	bt_hci_register(io->pvt->hci, BT_HCI_EVT_LE_META_EVENT,
+		bt_hci_register(io->pvt->hci, BT_HCI_EVT_LE_META_EVENT,
 						event_callback, io, NULL);
 
-	l_debug("Started mesh on hci %u", io->pvt->index);
-	return true;
+		l_debug("Started mesh on hci %u", io->pvt->index);
+	}
+
+	if (io->pvt->ready_callback)
+		io->pvt->ready_callback(io->pvt->user_data, result);
 }
 
 static void read_info(int index, void *user_data)
@@ -315,7 +324,8 @@ static void read_info(int index, void *user_data)
 	hci_init(io);
 }
 
-static bool dev_init(struct mesh_io *io, void *opts)
+static bool dev_init(struct mesh_io *io, void *opts,
+				mesh_io_ready_func_t cb, void *user_data)
 {
 	if (!io || io->pvt)
 		return false;
@@ -326,10 +336,15 @@ static bool dev_init(struct mesh_io *io, void *opts)
 	io->pvt->rx_regs = l_queue_new();
 	io->pvt->tx_pkts = l_queue_new();
 
+	io->pvt->ready_callback = cb;
+	io->pvt->user_data = user_data;
+
 	if (io->pvt->index == MGMT_INDEX_NONE)
 		return mesh_mgmt_list(read_info, io);
-	else
-		return hci_init(io);
+
+	l_idle_oneshot(hci_init, io, NULL);
+
+	return true;
 }
 
 static bool dev_destroy(struct mesh_io *io)
@@ -696,6 +711,15 @@ static bool find_by_filter_id(const void *a, const void *b)
 	return rx_reg->filter_id == filter_id;
 }
 
+static void scan_enable_rsp(const void *buf, uint8_t size,
+							void *user_data)
+{
+	uint8_t status = *((uint8_t *) buf);
+
+	if (status)
+		l_error("LE Scan enable failed (0x%02x)", status);
+}
+
 static void set_recv_scan_enable(const void *buf, uint8_t size,
 							void *user_data)
 {
@@ -705,7 +729,7 @@ static void set_recv_scan_enable(const void *buf, uint8_t size,
 	cmd.enable = 0x01;	/* Enable scanning */
 	cmd.filter_dup = 0x00;	/* Report duplicates */
 	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
-			&cmd, sizeof(cmd), NULL, NULL, NULL);
+			&cmd, sizeof(cmd), scan_enable_rsp, pvt, NULL);
 }
 
 static bool recv_register(struct mesh_io *io, uint8_t filter_id,

@@ -19,7 +19,8 @@
 
 struct mesh_io_private;
 
-typedef bool (*mesh_io_init_t)(struct mesh_io *io, void *opts);
+typedef bool (*mesh_io_init_t)(struct mesh_io *io, void *opts,
+				mesh_io_ready_func_t cb, void *user_data);
 typedef bool (*mesh_io_destroy_t)(struct mesh_io *io);
 typedef bool (*mesh_io_caps_t)(struct mesh_io *io, struct mesh_io_caps *caps);
 typedef bool (*mesh_io_send_t)(struct mesh_io *io,
