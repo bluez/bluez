@@ -433,6 +433,54 @@ failure:
 	/* TODO: Call Complete Callback (Fail)*/
 }
 
+static void get_random_key(struct mesh_prov_initiator *prov, uint8_t action,
+								uint8_t size)
+{
+	uint32_t oob_key;
+	int i;
+
+	if (action >= PROV_ACTION_IN_ALPHA) {
+		uint8_t alpha;
+		char tmp[17];
+
+		memset(tmp, 0, sizeof(tmp));
+
+		if (size > 16)
+			size = 16;
+
+		/* Create random alphanumeric string made of 0-9, a-z, A-Z */
+		for (i = 0; i < size; i++) {
+			l_getrandom(&alpha, sizeof(alpha));
+			alpha %= (10 + 26 + 26);
+
+			if (alpha < 10)
+				alpha += '0';
+			else if (alpha < 10 + 26)
+				alpha += 'a' - 10;
+			else
+				alpha += 'A' - 10 - 26;
+
+			tmp[i] = (char) alpha;
+		}
+		memcpy(prov->rand_auth_workspace + 16, tmp, size);
+		memcpy(prov->rand_auth_workspace + 32, tmp, size);
+		return;
+	}
+
+	l_getrandom(&oob_key, sizeof(oob_key));
+
+	if (action <= PROV_ACTION_TWIST)
+		oob_key %= size;
+	else
+		oob_key %= digit_mod(size);
+
+	if (!oob_key)
+		oob_key = size;
+
+	/* Save two copies, for two confirmation values */
+	l_put_be32(oob_key, prov->rand_auth_workspace + 28);
+	l_put_be32(oob_key, prov->rand_auth_workspace + 44);
+}
 
 static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 {
@@ -575,7 +623,7 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 			if (prov->conf_inputs.start.auth_action ==
 							PROV_ACTION_OUT_ALPHA) {
 				fail_code[1] = mesh_agent_prompt_alpha(
-					prov->agent,
+					prov->agent, true,
 					static_cb, prov);
 			} else {
 				fail_code[1] = mesh_agent_prompt_number(
@@ -591,22 +639,22 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 
 		case 3:
 			/* Auth Type 3b - input OOB */
-			l_getrandom(&oob_key, sizeof(oob_key));
-			oob_key %= digit_mod(prov->conf_inputs.start.auth_size);
+			get_random_key(prov,
+					prov->conf_inputs.start.auth_action,
+					prov->conf_inputs.start.auth_size);
+			oob_key = l_get_be32(prov->rand_auth_workspace + 28);
 
-			/* Save two copies, for two confirmation values */
-			l_put_be32(oob_key, prov->rand_auth_workspace + 28);
-			l_put_be32(oob_key, prov->rand_auth_workspace + 44);
-			prov->material |= MAT_RAND_AUTH;
-			/* Ask Agent to Display U32 */
+			/* Ask Agent to Display random key */
 			if (prov->conf_inputs.start.auth_action ==
 							PROV_ACTION_IN_ALPHA) {
-				/* TODO: Construst NUL-term string to pass */
+
 				fail_code[1] = mesh_agent_display_string(
-					prov->agent, NULL, NULL, prov);
+					prov->agent,
+					(char *) prov->rand_auth_workspace + 16,
+					NULL, prov);
 			} else {
 				fail_code[1] = mesh_agent_display_number(
-					prov->agent, false,
+					prov->agent, true,
 					prov->conf_inputs.start.auth_action,
 					oob_key, NULL, prov);
 			}
@@ -625,6 +673,7 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 
 	case PROV_INP_CMPLT: /* Provisioning Input Complete */
 		/* TODO: Cancel Agent prompt */
+		prov->material |= MAT_RAND_AUTH;
 		send_confirm(prov);
 		break;
 

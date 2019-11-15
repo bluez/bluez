@@ -479,7 +479,7 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 			if (prov->conf_inputs.start.auth_action ==
 							PROV_ACTION_IN_ALPHA) {
 				fail.reason = mesh_agent_prompt_alpha(
-					prov->agent,
+					prov->agent, false,
 					static_cb, prov);
 			} else {
 				fail.reason = mesh_agent_prompt_number(

@@ -363,7 +363,7 @@ static void key_reply(struct l_dbus_message *reply, void *user_data)
 	mesh_agent_key_cb_t cb;
 	struct l_dbus_message_iter iter_array;
 	uint32_t n = 0, expected_len = 0;
-	uint8_t buf[64];
+	uint8_t *buf;
 	int err;
 
 	if (!l_queue_find(agents, simple_match, agent) || !agent->req)
@@ -376,13 +376,13 @@ static void key_reply(struct l_dbus_message *reply, void *user_data)
 	if (err != MESH_ERROR_NONE)
 		goto done;
 
-	if (!l_dbus_message_get_arguments(reply, "au", &iter_array)) {
+	if (!l_dbus_message_get_arguments(reply, "ay", &iter_array)) {
 		l_error("Failed to retrieve key input");
 		err = MESH_ERROR_FAILED;
 		goto done;
 	}
 
-	if (!l_dbus_message_iter_get_fixed_array(&iter_array, buf, &n)) {
+	if (!l_dbus_message_iter_get_fixed_array(&iter_array, &buf, &n)) {
 		l_error("Failed to retrieve key input");
 		err = MESH_ERROR_FAILED;
 		goto done;
@@ -390,7 +390,7 @@ static void key_reply(struct l_dbus_message *reply, void *user_data)
 
 	if (req->type == MESH_AGENT_REQUEST_PRIVATE_KEY)
 		expected_len = 32;
-	else if (MESH_AGENT_REQUEST_PUBLIC_KEY)
+	else if (req->type == MESH_AGENT_REQUEST_PUBLIC_KEY)
 		expected_len = 64;
 	else
 		expected_len = 16;
@@ -402,12 +402,12 @@ static void key_reply(struct l_dbus_message *reply, void *user_data)
 	}
 
 done:
-	l_dbus_message_unref(req->msg);
-
 	if (req->cb) {
 		cb = req->cb;
 		cb(req->user_data, err, buf, n);
 	}
+
+	l_dbus_message_unref(req->msg);
 
 	l_free(req);
 	agent->req = NULL;
@@ -601,11 +601,19 @@ int mesh_agent_prompt_number(struct mesh_agent *agent, bool initiator,
 	return prompt_input(agent, str_type, type, true, cb, user_data);
 }
 
-int mesh_agent_prompt_alpha(struct mesh_agent *agent, mesh_agent_key_cb_t cb,
-								void *user_data)
+int mesh_agent_prompt_alpha(struct mesh_agent *agent, bool initiator,
+					mesh_agent_key_cb_t cb, void *user_data)
 {
-	return prompt_input(agent, "in-alpha", MESH_AGENT_REQUEST_IN_ALPHA,
-							false, cb, user_data);
+	if (initiator)
+		return prompt_input(agent,
+				cap_table[MESH_AGENT_REQUEST_OUT_ALPHA].action,
+				MESH_AGENT_REQUEST_OUT_ALPHA, false, cb,
+				user_data);
+	else
+		return prompt_input(agent,
+				cap_table[MESH_AGENT_REQUEST_IN_ALPHA].action,
+				MESH_AGENT_REQUEST_IN_ALPHA, false, cb,
+				user_data);
 }
 
 int mesh_agent_request_static(struct mesh_agent *agent, mesh_agent_key_cb_t cb,
