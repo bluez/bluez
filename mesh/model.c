@@ -1482,9 +1482,8 @@ int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id)
 	for (; entry; entry = entry->next)
 		mesh_net_dst_unreg(net, (uint16_t) L_PTR_TO_UINT(entry->data));
 
-	l_queue_destroy(mod->subs, NULL);
-	l_queue_destroy(mod->virtuals, unref_virt);
-	mod->virtuals = l_queue_new();
+	l_queue_clear(mod->subs, NULL);
+	l_queue_clear(mod->virtuals, unref_virt);
 
 	return MESH_STATUS_SUCCESS;
 }
