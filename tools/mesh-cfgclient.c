@@ -478,6 +478,7 @@ static struct l_dbus_message *disp_string_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
+	const char *prompt = "Enter AlphaNumeric code on remote device:";
 	char *str;
 
 	if (!l_dbus_message_get_arguments(msg, "s", &str)) {
@@ -485,7 +486,7 @@ static struct l_dbus_message *disp_string_call(struct l_dbus *dbus,
 		return l_dbus_message_new_error(msg, dbus_err_fail, NULL);
 	}
 
-	bt_shell_printf(COLOR_YELLOW "Enter AlphaNumeric code on remote device: %s\n" COLOR_OFF, str);
+	bt_shell_printf(COLOR_YELLOW "%s %s\n" COLOR_OFF, prompt, str);
 
 	return l_dbus_message_new_method_return(msg);
 }
@@ -542,13 +543,13 @@ static void setup_agent_iface(struct l_dbus_interface *iface)
 								NULL);
 	/* TODO: Other properties */
 	l_dbus_interface_method(iface, "DisplayString", 0, disp_string_call,
-						"", "s", "value");
+							"", "s", "value");
 	l_dbus_interface_method(iface, "DisplayNumeric", 0, disp_numeric_call,
 						"", "su", "type", "number");
 	l_dbus_interface_method(iface, "PromptNumeric", 0, prompt_numeric_call,
-						"u", "s", "type");
+						"u", "s", "number", "type");
 	l_dbus_interface_method(iface, "PromptStatic", 0, prompt_static_call,
-						"ay", "s", "type");
+						"ay", "s", "data", "type");
 }
 
 static bool register_agent(void)
