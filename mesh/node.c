@@ -1526,6 +1526,10 @@ static bool check_req_node(struct managed_obj_request *req)
 		uint16_t attach_len = node_generate_comp(req->attach,
 					attach_comp, sizeof(attach_comp));
 
+		/* Ignore feature bits in Composition Compare */
+		node_comp[8] = 0;
+		attach_comp[8] = 0;
+
 		if (node_len != attach_len ||
 				memcmp(node_comp, attach_comp, node_len)) {
 			l_debug("Failed to verify app's composition data");
