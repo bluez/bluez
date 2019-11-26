@@ -2916,7 +2916,7 @@ Read Extended Controller Information Command
 Set Appearance Command
 ======================
 
-	Command Code:		0x0042
+	Command Code:		0x0043
 	Controller Index:	<controller id>
 	Command Parameters:	Appearance (2 Octets)
 	Return Parameters:
@@ -2945,7 +2945,7 @@ Set Appearance Command
 Get PHY Configuration Command
 =============================
 
-	Command Code:		0x0043
+	Command Code:		0x0044
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Supported_PHYs (4 Octet)
@@ -2988,7 +2988,7 @@ Get PHY Configuration Command
 Set PHY Configuration Command
 =============================
 
-	Command Code:		0x0044
+	Command Code:		0x0045
 	Controller Index:	<controller id>
 	Command Parameters: 	Selected_PHYs (4 Octet)
 	Return Parameters:
