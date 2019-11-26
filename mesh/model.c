@@ -295,6 +295,70 @@ static void config_update_model_bindings(struct mesh_node *node,
 	l_dbus_send(dbus, msg);
 }
 
+static void append_dict_subs_array(struct l_dbus_message_builder *builder,
+						struct l_queue *subs,
+						struct l_queue *virts,
+						const char *key)
+{
+	const struct l_queue_entry *entry;
+
+	l_dbus_message_builder_enter_dict(builder, "sv");
+	l_dbus_message_builder_append_basic(builder, 's', key);
+	l_dbus_message_builder_enter_variant(builder, "av");
+	l_dbus_message_builder_enter_array(builder, "v");
+
+	if (!subs)
+		goto virts;
+
+	for (entry = l_queue_get_entries(subs); entry; entry = entry->next) {
+		uint16_t grp = L_PTR_TO_UINT(entry->data);
+
+		l_dbus_message_builder_enter_variant(builder, "q");
+		l_dbus_message_builder_append_basic(builder, 'q', &grp);
+		l_dbus_message_builder_leave_variant(builder);
+	}
+
+virts:
+	if (!virts)
+		goto done;
+
+	for (entry = l_queue_get_entries(virts); entry; entry = entry->next) {
+		const struct mesh_virtual *virt = entry->data;
+
+		l_dbus_message_builder_enter_variant(builder, "ay");
+		dbus_append_byte_array(builder, virt->label,
+							sizeof(virt->label));
+		l_dbus_message_builder_leave_variant(builder);
+
+	}
+
+done:
+	l_dbus_message_builder_leave_array(builder);
+	l_dbus_message_builder_leave_variant(builder);
+	l_dbus_message_builder_leave_dict(builder);
+}
+
+static void config_update_model_subscriptions(struct mesh_node *node,
+							struct mesh_model *mod)
+{
+	struct l_dbus *dbus = dbus_get_bus();
+	struct l_dbus_message *msg;
+	struct l_dbus_message_builder *builder;
+
+	msg = create_config_update_msg(node, mod->ele_idx, mod->id,
+								&builder);
+	if (!msg)
+		return;
+
+	append_dict_subs_array(builder, mod->subs, mod->virtuals,
+							"Subscriptions");
+
+	l_dbus_message_builder_leave_array(builder);
+	l_dbus_message_builder_finalize(builder);
+	l_dbus_message_builder_destroy(builder);
+	l_dbus_send(dbus, msg);
+}
+
 static void forward_model(void *a, void *b)
 {
 	struct mesh_model *mod = a;
@@ -1381,7 +1445,16 @@ int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (!mod)
 		return status;
 
-	return add_sub(node_get_net(node), mod, group, b_virt, dst);
+	status = add_sub(node_get_net(node), mod, group, b_virt, dst);
+
+	if (status != MESH_STATUS_SUCCESS)
+		return status;
+
+	if (!mod->cbs)
+		/* External models */
+		config_update_model_subscriptions(node, mod);
+
+	return MESH_STATUS_SUCCESS;
 }
 
 int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
@@ -1417,7 +1490,7 @@ int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 		}
 	}
 
-	status = mesh_model_sub_add(node, addr, id, group, b_virt, dst);
+	status = add_sub(node_get_net(node), mod, group, b_virt, dst);
 
 	if (status != MESH_STATUS_SUCCESS) {
 		/* Adding new group failed, so revert to old lists */
@@ -1439,6 +1512,10 @@ int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 		l_queue_destroy(subs, NULL);
 		l_queue_destroy(virtuals, unref_virt);
 	}
+
+	if (!mod->cbs)
+		/* External models */
+		config_update_model_subscriptions(node, mod);
 
 	return status;
 }
@@ -1475,6 +1552,10 @@ int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (l_queue_remove(mod->subs, L_UINT_TO_PTR(grp)))
 		mesh_net_dst_unreg(node_get_net(node), grp);
 
+	if (!mod->cbs)
+		/* External models */
+		config_update_model_subscriptions(node, mod);
+
 	return MESH_STATUS_SUCCESS;
 }
 
@@ -1496,6 +1577,10 @@ int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id)
 
 	l_queue_clear(mod->subs, NULL);
 	l_queue_clear(mod->virtuals, unref_virt);
+
+	if (!mod->cbs)
+		/* External models */
+		config_update_model_subscriptions(node, mod);
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -1690,6 +1775,10 @@ void model_build_config(void *model, void *msg_builder)
 		dbus_append_dict_entry_basic(builder, "PublicationPeriod", "u",
 								&period);
 	}
+
+	if (l_queue_length(mod->subs) || l_queue_length(mod->virtuals))
+		append_dict_subs_array(builder, mod->subs, mod->virtuals,
+							"Subscriptions");
 
 	l_dbus_message_builder_leave_array(builder);
 	l_dbus_message_builder_leave_struct(builder);

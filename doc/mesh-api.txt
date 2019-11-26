@@ -100,6 +100,14 @@ Methods:
 					A 16-bit Company ID as defined by the
 					Bluetooth SIG
 
+				array{variant} Subscriptions
+
+					Addresses the model is subscribed to.
+
+					Each address is provided either as
+					uint16 for group addresses, or
+					as array{byte} for virtual labels.
+
 		PossibleErrors:
 			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.NotFound,
@@ -840,6 +848,13 @@ Methods:
 
 			A 16-bit Bluetooth-assigned Company Identifier of the
 			vendor as defined by Bluetooth SIG
+
+		array{variant} Subscriptions
+
+			Addresses the model is subscribed to.
+
+			Each address is provided either as uint16 for group
+			addresses, or as array{byte} for virtual labels.
 
 Properties:
 	uint8 Index [read-only]

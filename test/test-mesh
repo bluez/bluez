@@ -128,6 +128,7 @@ import dbus.exceptions
 
 from threading import Timer
 import time
+import uuid
 
 try:
   from gi.repository import GLib
@@ -628,17 +629,19 @@ class Model():
 			print('Model publication period ', end='')
 			print(self.pub_period, end='')
 			print(' ms')
+		if 'Subscriptions' in config:
+			print('Model subscriptions ', end='')
+			self.print_subscriptions(config.get('Subscriptions'))
+			print()
 
-	def print_bindings(self):
-		print(set_cyan('Model'), set_cyan('%03x' % self.model_id),
-						set_cyan('is bound to: '))
+	def print_subscriptions(self, subscriptions):
+		for sub in subscriptions:
+			if isinstance(sub, int):
+				print('%04x' % sub, end=' ')
 
-		if len(self.bindings) == 0:
-			print(set_cyan('** None **'))
-			return
-
-		for b in self.bindings:
-			print(set_green('%03x' % b) + ' ')
+			if isinstance(sub, list):
+				label = uuid.UUID(bytes=b''.join(sub))
+				print(label, end=' ')
 
 ########################
 # On Off Server Model

@@ -327,6 +327,19 @@ class Model():
 			print('Model publication period ', end='')
 			print(self.pub_period, end='')
 			print(' ms')
+		if 'Subscriptions' in config:
+			self.print_subscriptions(config.get('Subscriptions'))
+
+	def print_subscriptions(self, subscriptions):
+		print('Model subscriptions ', end='')
+		for sub in subscriptions:
+			if isinstance(sub, int):
+				print('%04x' % sub, end=' ')
+
+			if isinstance(sub, list):
+				label = uuid.UUID(bytes=b''.join(sub))
+				print(label, end=' ')
+		print()
 
 class OnOffServer(Model):
 	def __init__(self, model_id):
