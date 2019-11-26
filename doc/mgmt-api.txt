@@ -3013,6 +3013,40 @@ Set PHY Configuration Command
 	Possible errors:	Invalid Parameters
 				Invalid Index
 
+Load Blocked Keys Command
+===========================
+
+	Command Code:		0x0046
+	Controller Index:	<controller id>
+	Command Parameters:	Key_Count (2 Octets)
+				Key1 {
+					Key_Type (1 Octet)
+					Value (16 Octets)
+				}
+				Key2 { }
+				...
+	Return Parameters:
+
+	This command is used to feed the kernel a list of keys that
+	are known to be vulnerable.
+
+	If the pairing procedure produces any of these keys, they will be
+	silently dropped and any attempt to enable encryption rejected.
+
+	Currently defined Key_Type values are:
+
+			0x00	Link Key (BR/EDR)
+			0x01	Long Term Key (LE)
+			0x02	Identity Resolving Key (LE)
+
+	This command can be used when the controller is not powered.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
 
 Command Complete Event
 ======================
