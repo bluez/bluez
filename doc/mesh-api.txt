@@ -768,7 +768,7 @@ Object path	<app_defined_element_path>
 
 Methods:
 	void MessageReceived(uint16 source, uint16 key_index,
-					boolean subscription, array{byte} data)
+					variant destination, array{byte} data)
 
 		This method is called by bluetooth-meshd daemon when a message
 		arrives addressed to the application.
@@ -781,10 +781,17 @@ Methods:
 		be used by the application when sending a response to this
 		message (in case a response is expected).
 
-		The subscription parameter is a boolean that is set to true if
-		the message is received as a part of the subscription (i.e., the
-		destination is either a well known group address or a virtual
-		label.
+		The destination parameter contains the destination address of
+		received message. Underlying variant types are:
+
+		uint16
+
+			Destination is an unicast address, or a well known
+			group address
+
+		array{byte}
+
+			Destination is a virtual address label
 
 		The data parameter is the incoming message.
 

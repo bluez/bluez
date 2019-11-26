@@ -556,10 +556,10 @@ class Element(dbus.service.Object):
 			self.UpdateModelConfiguration(mod_id, config[1])
 
 	@dbus.service.method(MESH_ELEMENT_IFACE,
-					in_signature="qqbay", out_signature="")
-	def MessageReceived(self, source, key, is_sub, data):
-		print('Message Received on Element ', end='')
-		print(self.index)
+					in_signature="qqvay", out_signature="")
+	def MessageReceived(self, source, key, destination, data):
+		print('Message Received on Element %d, src=%04x, dst=%s' %
+						self.index, source, destination)
 		for model in self.models:
 			model.process_message(source, key, data)
 
