@@ -255,6 +255,7 @@ struct net_queue_data {
 	uint32_t key_id;
 	uint32_t iv_index;
 	uint16_t len;
+	bool seen;
 };
 
 struct net_beacon_data {
@@ -2321,21 +2322,14 @@ static enum _relay_advice packet_received(void *user_data,
 	uint8_t packet[31];
 	bool net_ctl, net_segmented, net_szmic, net_relay;
 	struct mesh_friend *net_frnd = NULL;
-	bool drop = false;
-
-	/* Tester--Drop 90% of packets */
-	/* l_getrandom(&iv_flag, 1); */
-	/* if (iv_flag%10<9) drop = true; */
-
 
 	memcpy(packet + 2, data, size);
-
-	if (!drop)
-		print_packet("RX: Network [clr] :", packet + 2, size);
 
 	net_idx = key_id_to_net_idx(net, key_id);
 	if (net_idx == NET_IDX_INVALID)
 		return RELAY_NONE;
+
+	print_packet("RX: Network [clr] :", packet + 2, size);
 
 	if (!mesh_crypto_packet_parse(packet + 2, size,
 					&net_ctl, &net_ttl,
@@ -2376,11 +2370,6 @@ static enum _relay_advice packet_received(void *user_data,
 	/* Ignore if we originally sent this */
 	if (is_us(net, net_src, true))
 		return RELAY_NONE;
-
-	if (drop) {
-		l_info("Dropping SEQ 0x%06x", net_seq);
-		return RELAY_NONE;
-	}
 
 	l_debug("check %08x", cache_cookie);
 
@@ -2512,7 +2501,10 @@ static void net_rx(void *net_ptr, void *user_data)
 	if (!key_id)
 		return;
 
-	print_packet("RX: Network [enc] :", data->data, data->len);
+	if (!data->seen) {
+		data->seen = true;
+		print_packet("RX: Network [enc] :", data->data, data->len);
+	}
 
 	if (data->info) {
 		net->instant = data->info->instant;
@@ -2542,6 +2534,7 @@ static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 		.data = data + 1,
 		.len = len - 1,
 		.relay_advice = RELAY_NONE,
+		.seen = false,
 	};
 
 	if (len < 9)
