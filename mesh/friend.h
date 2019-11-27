@@ -28,9 +28,10 @@
 
 void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 						struct mesh_friend *frnd);
-void friend_request(struct mesh_net *net, uint16_t src, uint8_t minReq,
-			uint8_t delay, uint32_t timeout, uint16_t prev,
-			uint8_t num_elements, uint16_t cntr, int8_t rssi);
+void friend_request(struct mesh_net *net, uint16_t net_idx, uint16_t src,
+			uint8_t minReq, uint8_t delay, uint32_t timeout,
+			uint16_t prev, uint8_t num_elements, uint16_t cntr,
+			int8_t rssi);
 void friend_clear_confirm(struct mesh_net *net, uint16_t src, uint16_t lpn,
 							uint16_t lpnCounter);
 void friend_clear(struct mesh_net *net, uint16_t src, uint16_t lpn,

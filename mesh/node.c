@@ -531,7 +531,7 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
 		mesh_net_set_proxy_mode(node->net, mode == MESH_MODE_ENABLED);
 
-	mode = node->lpn;
+	mode = node->friend;
 	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
 		mesh_net_set_friend_mode(node->net, mode == MESH_MODE_ENABLED);
 

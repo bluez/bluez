@@ -699,7 +699,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 	uint16_t this_dst;
 	bool is_segmented;
 
-	if (packet_len < 14)
+	if (packet_len < 10)
 		return false;
 
 	this_dst = l_get_be16(packet + 7);
@@ -730,7 +730,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 		uint8_t this_opcode = packet[9] & OPCODE_MASK;
 
 		if (cookie)
-			*cookie = l_get_be32(packet + 9);
+			*cookie = l_get_be32(packet + 2) ^ packet[6];
 
 		if (opcode)
 			*opcode = this_opcode;

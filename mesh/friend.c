@@ -43,48 +43,32 @@
 
 /* Absolute maximum time to wait for LPN to choose us. */
 #define RESPONSE_POLL_DELAY	1300		/* 1.300  s */
-
 static uint8_t frnd_relay_window = FRND_RELAY_WINDOW;
 static uint8_t frnd_cache_size = FRND_CACHE_SIZE;
 static uint8_t frnd_sublist_size = FRND_SUB_LIST_SIZE;
-
-struct frnd_negotiation {
-	struct l_timeout	*timeout;
-	struct mesh_net		*net;
-	uint32_t		key_id;
-	uint32_t		poll_timeout;
-	uint16_t		low_power_node;
-	uint16_t		old_relay;
-	uint8_t			num_ele;
-	uint8_t			lp_cnt;
-	uint8_t			fn_cnt;
-	uint8_t			wrfrw;
-	uint8_t			receive_delay;
-	int8_t			rssi;
-	bool			clearing;
-};
-
-static struct l_queue *frnd_negotiations;
 static uint16_t counter;
+static struct l_queue *retired_lpns;
 
 static void response_timeout(struct l_timeout *timeout, void *user_data)
 {
-	struct frnd_negotiation *neg = user_data;
+	struct mesh_friend *neg = user_data;
+	struct l_queue *negotiations = mesh_net_get_negotiations(neg->net);
 
 	/* LPN did not choose us */
-	l_debug("Did not win negotiation for %4.4x", neg->low_power_node);
+	l_debug("Did not win negotiation for %4.4x", neg->lp_addr);
 
-	net_key_unref(neg->key_id);
-	l_queue_remove(frnd_negotiations, neg);
+	net_key_unref(neg->net_key_cur);
+	net_key_unref(neg->net_key_upd);
+	l_queue_remove(negotiations, neg);
 	l_timeout_remove(timeout);
 	l_free(neg);
 }
 
 static void response_delay(struct l_timeout *timeout, void *user_data)
 {
-	struct frnd_negotiation *neg = user_data;
-	uint16_t net_idx = mesh_net_get_primary_idx(neg->net);
-	uint32_t key_id;
+	struct mesh_friend *neg = user_data;
+	uint16_t net_idx = neg->net_idx;
+	uint32_t key_id, seq;
 	uint8_t msg[8];
 	uint16_t n = 0;
 	bool res;
@@ -96,10 +80,10 @@ static void response_delay(struct l_timeout *timeout, void *user_data)
 	if (!res)
 		goto cleanup;
 
-	neg->key_id = net_key_frnd_add(key_id, neg->low_power_node,
+	neg->net_key_cur = net_key_frnd_add(key_id, neg->lp_addr,
 						mesh_net_get_address(neg->net),
 						neg->lp_cnt, counter);
-	if (!neg->key_id)
+	if (!neg->net_key_cur)
 		goto cleanup;
 
 	neg->fn_cnt = counter++;
@@ -108,13 +92,14 @@ static void response_delay(struct l_timeout *timeout, void *user_data)
 	msg[n++] = frnd_relay_window;
 	msg[n++] = frnd_cache_size;
 	msg[n++] = frnd_sublist_size;
-	msg[n++] = neg->rssi;
+	msg[n++] = neg->u.negotiate.rssi;
 	l_put_be16(neg->fn_cnt, msg + n);
 	n += 2;
+	seq = mesh_net_next_seq_num(neg->net);
 	print_packet("Tx-NET_OP_FRND_OFFER", msg, n);
-	mesh_net_transport_send(neg->net, 0, true,
+	mesh_net_transport_send(neg->net, key_id, true,
 			mesh_net_get_iv_index(neg->net), 0,
-			0, 0, neg->low_power_node,
+			seq, 0, neg->lp_addr,
 			msg, n);
 
 	/* Offer expires in 1.3 seconds, which is the max time for LPN to
@@ -126,8 +111,9 @@ static void response_delay(struct l_timeout *timeout, void *user_data)
 	return;
 
 cleanup:
-	net_key_unref(neg->key_id);
-	l_queue_remove(frnd_negotiations, neg);
+	net_key_unref(neg->net_key_cur);
+	net_key_unref(neg->net_key_upd);
+	l_queue_remove(mesh_net_get_negotiations(neg->net), neg);
 	l_free(neg);
 }
 
@@ -138,18 +124,10 @@ static uint8_t cache_size(uint8_t power)
 
 static bool match_by_lpn(const void *a, const void *b)
 {
-	const struct frnd_negotiation *neg = a;
+	const struct mesh_friend *neg = a;
 	uint16_t lpn = L_PTR_TO_UINT(b);
 
-	return neg->low_power_node == lpn;
-}
-
-static bool match_by_dst(const void *a, const void *b)
-{
-	const struct mesh_friend *frnd = a;
-	uint16_t dst = L_PTR_TO_UINT(b);
-
-	return frnd->dst == dst;
+	return neg->lp_addr == lpn;
 }
 
 /* Scaling factors in 1/10 ms */
@@ -160,12 +138,13 @@ static const int32_t scaling[] = {
 	15,
 };
 
-void friend_request(struct mesh_net *net, uint16_t src,
+void friend_request(struct mesh_net *net, uint16_t net_idx, uint16_t src,
 		uint8_t minReq, uint8_t delay, uint32_t timeout,
 		uint16_t prev, uint8_t num_ele, uint16_t cntr,
 		int8_t rssi)
 {
-	struct frnd_negotiation *neg;
+	struct l_queue *negotiations = mesh_net_get_negotiations(net);
+	struct mesh_friend *neg;
 	uint8_t rssiScale = (minReq >> 5) & 3;
 	uint8_t winScale = (minReq >> 3) & 3;
 	uint8_t minCache = (minReq >> 0) & 7;
@@ -194,23 +173,21 @@ void friend_request(struct mesh_net *net, uint16_t src,
 	if (cache_size(minCache) > frnd_cache_size)
 		return;
 
-	if (frnd_negotiations == NULL)
-		frnd_negotiations = l_queue_new();
-
 	/* TODO: Check RSSI, and then start Negotiation if appropriate */
 
 	/* We are participating in this Negotiation */
-	neg = l_new(struct frnd_negotiation, 1);
-	l_queue_push_head(frnd_negotiations, neg);
+	neg = l_new(struct mesh_friend, 1);
+	l_queue_push_head(negotiations, neg);
 
 	neg->net = net;
-	neg->low_power_node = src;
+	neg->lp_addr = src;
 	neg->lp_cnt = cntr;
-	neg->rssi = rssi;
+	neg->u.negotiate.rssi = rssi;
 	neg->receive_delay = delay;
 	neg->poll_timeout = timeout;
-	neg->old_relay = prev;
-	neg->num_ele = num_ele;
+	neg->old_friend = prev;
+	neg->ele_cnt = num_ele;
+	neg->net_idx = net_idx;
 
 	/* RSSI (Negative Factor, larger values == less time)
 	 * Scaling factor 0-3 == multiplier of 1.0 - 2.5
@@ -247,12 +224,11 @@ void friend_request(struct mesh_net *net, uint16_t src,
 						response_delay, neg, NULL);
 }
 
-static struct l_queue *retired_lpns;
-
 void friend_clear_confirm(struct mesh_net *net, uint16_t src,
 					uint16_t lpn, uint16_t lpnCounter)
 {
-	struct frnd_negotiation *neg = l_queue_remove_if(frnd_negotiations,
+	struct l_queue *negotiations = mesh_net_get_negotiations(net);
+	struct mesh_friend *neg = l_queue_remove_if(negotiations,
 					match_by_lpn, L_UINT_TO_PTR(lpn));
 
 	l_debug("Friend Clear confirmed %4.4x (cnt %4.4x)", lpn, lpnCounter);
@@ -261,7 +237,7 @@ void friend_clear_confirm(struct mesh_net *net, uint16_t src,
 		return;
 
 	l_timeout_remove(neg->timeout);
-	l_queue_remove(frnd_negotiations, neg);
+	l_queue_remove(negotiations, neg);
 	l_free(neg);
 }
 
@@ -270,7 +246,7 @@ static void friend_poll_timeout(struct l_timeout *timeout, void *user_data)
 	struct mesh_friend *frnd = user_data;
 
 	if (mesh_friend_clear(frnd->net, frnd))
-		l_debug("Friend Poll Timeout %4.4x", frnd->dst);
+		l_debug("Friend Poll Timeout %4.4x", frnd->lp_addr);
 
 	l_timeout_remove(frnd->timeout);
 	frnd->timeout = NULL;
@@ -283,6 +259,7 @@ static void friend_poll_timeout(struct l_timeout *timeout, void *user_data)
 void friend_clear(struct mesh_net *net, uint16_t src, uint16_t lpn,
 				uint16_t lpnCounter, struct mesh_friend *frnd)
 {
+	struct l_queue *negotiations = mesh_net_get_negotiations(net);
 	uint8_t msg[5] = { NET_OP_FRND_CLEAR_CONFIRM };
 	bool removed = false;
 	uint16_t lpnDelta;
@@ -297,11 +274,10 @@ void friend_clear(struct mesh_net *net, uint16_t src, uint16_t lpn,
 		/* Move friend from Network list to Retired list */
 		removed = mesh_friend_clear(net, frnd);
 		if (removed) {
-			struct mesh_friend *old;
-			struct frnd_negotiation *neg = l_queue_remove_if(
-						frnd_negotiations,
-						match_by_lpn,
-						L_UINT_TO_PTR(frnd->dst));
+			struct mesh_friend *neg, *old;
+
+			neg = l_queue_remove_if(negotiations, match_by_lpn,
+							L_UINT_TO_PTR(lpn));
 
 			/* Cancel any negotiations or clears */
 			if (neg) {
@@ -309,24 +285,23 @@ void friend_clear(struct mesh_net *net, uint16_t src, uint16_t lpn,
 				l_free(neg);
 			}
 
-			/* Create Retired LPN list if needed */
-			if (retired_lpns == NULL)
-				retired_lpns = l_queue_new();
-
 			/* Find any duplicates */
-			old = l_queue_find(retired_lpns, match_by_dst,
-						L_UINT_TO_PTR(lpn));
+			old = l_queue_find(retired_lpns, match_by_lpn,
+							L_UINT_TO_PTR(lpn));
 
 			/* Force time-out of old friendship */
 			if (old)
 				friend_poll_timeout(old->timeout, old);
 
+			if (!retired_lpns)
+				retired_lpns = l_queue_new();
+
 			/* Retire this LPN (keeps timeout running) */
 			l_queue_push_tail(retired_lpns, frnd);
 		}
 	} else {
-		frnd = l_queue_find(retired_lpns, match_by_dst,
-						L_UINT_TO_PTR(lpn));
+		frnd = l_queue_find(retired_lpns, match_by_lpn,
+							L_UINT_TO_PTR(lpn));
 		if (!frnd)
 			return;
 
@@ -349,16 +324,17 @@ void friend_clear(struct mesh_net *net, uint16_t src, uint16_t lpn,
 
 static void clear_retry(struct l_timeout *timeout, void *user_data)
 {
-	struct frnd_negotiation *neg = user_data;
+	struct mesh_friend *neg = user_data;
+	struct l_queue *negotiations = mesh_net_get_negotiations(neg->net);
 	uint8_t msg[5] = { NET_OP_FRND_CLEAR };
 	uint32_t secs = 1 << neg->receive_delay;
 
 
-	l_put_be16(neg->low_power_node, msg + 1);
+	l_put_be16(neg->lp_addr, msg + 1);
 	l_put_be16(neg->lp_cnt, msg + 3);
 	mesh_net_transport_send(neg->net, 0, false,
 			mesh_net_get_iv_index(neg->net), DEFAULT_TTL,
-			0, 0, neg->old_relay,
+			0, 0, neg->old_friend,
 			msg, sizeof(msg));
 
 	if (secs && ((secs << 1) < neg->poll_timeout/10)) {
@@ -369,7 +345,7 @@ static void clear_retry(struct l_timeout *timeout, void *user_data)
 	} else {
 		l_debug("FRND_CLR timed out %d", secs);
 		l_timeout_remove(timeout);
-		l_queue_remove(frnd_negotiations, neg);
+		l_queue_remove(negotiations, neg);
 		l_free(neg);
 	}
 }
@@ -458,14 +434,14 @@ update:
 	net_seq = mesh_net_get_seq_num(net);
 	l_debug("Fwd FRND UPDATE %6.6x with MD == 0", net_seq);
 
-	frnd->last = frnd->seq;
+	frnd->u.active.last = frnd->u.active.seq;
 	mesh_net_get_snb_state(net, upd + 1, &iv_index);
 	l_put_be32(iv_index, upd + 2);
 	upd[6] = false; /* Queue is Empty */
 	print_packet("Update", upd, sizeof(upd));
 	mesh_net_transport_send(net, frnd->net_key_cur, false,
 			mesh_net_get_iv_index(net), 0,
-			net_seq, 0, frnd->dst,
+			net_seq, 0, frnd->lp_addr,
 			upd, sizeof(upd));
 	mesh_net_next_seq_num(net);
 }
@@ -474,20 +450,23 @@ update:
 void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 					struct mesh_friend *frnd)
 {
-	struct frnd_negotiation *neg;
+	struct l_queue *negotiations = mesh_net_get_negotiations(net);
+	struct mesh_friend *neg;
 	struct mesh_friend_msg *pkt;
 	bool md;
 
-	neg = l_queue_find(frnd_negotiations, match_by_lpn, L_UINT_TO_PTR(src));
-	if (neg && !neg->clearing) {
+	l_debug("POLL-RXED");
+	neg = l_queue_find(negotiations, match_by_lpn, L_UINT_TO_PTR(src));
+
+	if (neg && !neg->u.negotiate.clearing) {
 		uint8_t msg[5] = { NET_OP_FRND_CLEAR };
 
-		l_debug("Won negotiation for %4.4x", neg->low_power_node);
+		l_debug("Won negotiation for %4.4x", neg->lp_addr);
 
 		/* This call will clean-up and replace if already friends */
-		frnd = mesh_friend_new(net, src, neg->num_ele,
+		frnd = mesh_friend_new(net, src, neg->ele_cnt,
 						neg->receive_delay,
-						neg->wrfrw,
+						neg->frw,
 						neg->poll_timeout,
 						neg->fn_cnt, neg->lp_cnt);
 
@@ -496,20 +475,21 @@ void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 					friend_poll_timeout, frnd, NULL);
 
 		l_timeout_remove(neg->timeout);
-		net_key_unref(neg->key_id);
-		neg->key_id = 0;
+		net_key_unref(neg->net_key_cur);
+		net_key_unref(neg->net_key_upd);
+		neg->net_key_upd = neg->net_key_cur = 0;
 
-		if (neg->old_relay == 0 ||
-				neg->old_relay == mesh_net_get_address(net)) {
-			l_queue_remove(frnd_negotiations, neg);
+		if (neg->old_friend == 0 ||
+				neg->old_friend == mesh_net_get_address(net)) {
+			l_queue_remove(negotiations, neg);
 			l_free(neg);
 		} else {
-			neg->clearing = true;
-			l_put_be16(neg->low_power_node, msg + 1);
+			neg->u.negotiate.clearing = true;
+			l_put_be16(neg->lp_addr, msg + 1);
 			l_put_be16(neg->lp_cnt, msg + 3);
 			mesh_net_transport_send(net, 0, false,
 					mesh_net_get_iv_index(net), DEFAULT_TTL,
-					0, 0, neg->old_relay,
+					0, 0, neg->old_friend,
 					msg, sizeof(msg));
 
 			/* Reuse receive_delay as a shift counter to
@@ -530,7 +510,8 @@ void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 	if (!l_queue_length(frnd->pkt_cache))
 		goto update;
 
-	if (frnd->seq != frnd->last && frnd->seq != seq) {
+	if (frnd->u.active.seq != frnd->u.active.last &&
+						frnd->u.active.seq != seq) {
 		pkt = l_queue_peek_head(frnd->pkt_cache);
 		if (pkt->cnt_out < pkt->cnt_in) {
 			pkt->cnt_out++;
@@ -545,8 +526,8 @@ void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 	if (!pkt)
 		goto update;
 
-	frnd->seq = seq;
-	frnd->last = !seq;
+	frnd->u.active.seq = seq;
+	frnd->u.active.last = !seq;
 	md = !!(l_queue_length(frnd->pkt_cache) > 1);
 
 	if (pkt->ctl) {
@@ -586,7 +567,7 @@ void friend_sub_add(struct mesh_net *net, struct mesh_friend *frnd,
 	uint8_t plen = len;
 	uint8_t msg[] = { NET_OP_PROXY_SUB_CONFIRM, 0 };
 
-	if (!frnd || MAX_FRND_GROUPS < frnd->grp_cnt + (len/2))
+	if (!frnd || MAX_FRND_GROUPS < frnd->u.active.grp_cnt + (len/2))
 		return;
 
 	msg[1] = *pkt++;
@@ -599,25 +580,25 @@ void friend_sub_add(struct mesh_net *net, struct mesh_friend *frnd,
 			return;
 	}
 
-	new_list = l_malloc(frnd->grp_cnt * sizeof(uint16_t) + len);
-	if (frnd->grp_list)
-		memcpy(new_list, frnd->grp_list,
-				frnd->grp_cnt * sizeof(uint16_t));
+	new_list = l_malloc(frnd->u.active.grp_cnt * sizeof(uint16_t) + len);
+	if (frnd->u.active.grp_list)
+		memcpy(new_list, frnd->u.active.grp_list,
+				frnd->u.active.grp_cnt * sizeof(uint16_t));
 
 	while (len >= 2) {
-		new_list[frnd->grp_cnt++] = l_get_be16(pkt);
+		new_list[frnd->u.active.grp_cnt++] = l_get_be16(pkt);
 		pkt += 2;
 		len -= 2;
 	}
 
-	l_free(frnd->grp_list);
-	frnd->grp_list = new_list;
+	l_free(frnd->u.active.grp_list);
+	frnd->u.active.grp_list = new_list;
 
 	print_packet("Tx-NET_OP_PROXY_SUB_CONFIRM", msg, sizeof(msg));
 	net_seq = mesh_net_get_seq_num(net);
 	mesh_net_transport_send(net, frnd->net_key_cur, false,
 			mesh_net_get_iv_index(net), 0,
-			net_seq, 0, frnd->dst,
+			net_seq, 0, frnd->lp_addr,
 			msg, sizeof(msg));
 	mesh_net_next_seq_num(net);
 }
@@ -638,12 +619,12 @@ void friend_sub_del(struct mesh_net *net, struct mesh_friend *frnd,
 	while (len >= 2) {
 		uint16_t grp = l_get_be16(pkt);
 
-		for (i = frnd->grp_cnt - 1; i >= 0; i--) {
-			if (frnd->grp_list[i] == grp) {
-				frnd->grp_cnt--;
-				memcpy(&frnd->grp_list[i],
-						&frnd->grp_list[i + 1],
-						(frnd->grp_cnt - i) * 2);
+		for (i = frnd->u.active.grp_cnt - 1; i >= 0; i--) {
+			if (frnd->u.active.grp_list[i] == grp) {
+				frnd->u.active.grp_cnt--;
+				memcpy(&frnd->u.active.grp_list[i],
+					&frnd->u.active.grp_list[i + 1],
+					(frnd->u.active.grp_cnt - i) * 2);
 				break;
 			}
 		}
@@ -655,414 +636,7 @@ void friend_sub_del(struct mesh_net *net, struct mesh_friend *frnd,
 	net_seq = mesh_net_get_seq_num(net);
 	mesh_net_transport_send(net, frnd->net_key_cur, false,
 			mesh_net_get_iv_index(net), 0,
-			net_seq, 0, frnd->dst,
+			net_seq, 0, frnd->lp_addr,
 			msg, sizeof(msg));
 	mesh_net_next_seq_num(net);
-}
-
-/* Low-Power-Node role */
-struct frnd_offers {
-	uint16_t fn_cnt;
-	uint16_t src;
-	uint8_t window;
-	uint8_t cache;
-	uint8_t sub_list_size;
-	int8_t local_rssi;
-	int8_t remote_rssi;
-};
-
-#define MAX_POLL_RETRIES	5
-static bool quick_pick;
-static uint8_t poll_cnt;
-static struct l_queue *offers;
-static uint16_t old_friend;
-static uint16_t fn_cnt, cnt = 0xffff;
-static uint32_t poll_period_ms;
-static struct l_timeout *poll_retry_to;
-static struct l_timeout *poll_period_to;
-static uint32_t lpn_key_id;
-static uint32_t new_lpn_id;
-
-void frnd_offer(struct mesh_net *net, uint16_t src, uint8_t window,
-			uint8_t cache, uint8_t sub_list_size,
-			int8_t r_rssi, int8_t l_rssi, uint16_t fn_cnt)
-{
-	struct frnd_offers *offer;
-
-	l_debug("RSSI of Offer: %d dbm", l_rssi);
-
-	/* Ignore RFU window value 0 */
-	if (window == 0)
-		return;
-
-	if (mesh_net_get_friend(net))
-		return;
-
-	if (quick_pick) {
-		if (mesh_net_set_friend(net, src)) {
-			old_friend = src;
-			frnd_poll(net, false);
-		}
-		return;
-	}
-
-	offer = l_new(struct frnd_offers, 1);
-	offer->src = src;
-	offer->window = window;
-	offer->cache = cache;
-	offer->sub_list_size = sub_list_size;
-	offer->local_rssi = l_rssi;
-	offer->remote_rssi = r_rssi;
-	offer->fn_cnt = fn_cnt;
-
-	l_queue_push_tail(offers, offer);
-}
-
-static void frnd_poll_timeout(struct l_timeout *timeout, void *user_data)
-{
-	struct mesh_net *net = user_data;
-
-	frnd_poll(net, true);
-}
-
-static void frnd_negotiated_to(struct l_timeout *timeout, void *user_data)
-{
-	struct mesh_net *net = user_data;
-
-	l_debug("frnd_negotiated_to");
-	if (!mesh_net_get_friend(net)) {
-		l_timeout_remove(poll_period_to);
-		poll_period_to = NULL;
-		return;
-	}
-
-	if (!poll_retry_to)
-		frnd_poll(net, false);
-}
-
-void frnd_poll_cancel(struct mesh_net *net)
-{
-	l_timeout_remove(poll_retry_to);
-	poll_retry_to = NULL;
-}
-
-void frnd_poll(struct mesh_net *net, bool retry)
-{
-	uint32_t key_id = lpn_key_id;
-	uint32_t net_seq;
-	uint8_t msg[2] = { NET_OP_FRND_POLL };
-	bool seq = mesh_net_get_frnd_seq(net);
-
-	/* Check if we are in Phase 2 of Key Refresh */
-	if (new_lpn_id) {
-		uint8_t phase;
-		uint16_t net_idx = mesh_net_get_primary_idx(net);
-		uint8_t status =
-			mesh_net_key_refresh_phase_get(net, net_idx, &phase);
-
-		if (status == MESH_STATUS_SUCCESS &&
-				phase == KEY_REFRESH_PHASE_TWO)
-			key_id = new_lpn_id;
-	}
-
-	if (!retry) {
-		poll_cnt = MAX_POLL_RETRIES;
-		seq = !seq;
-		mesh_net_set_frnd_seq(net, seq);
-	} else if (!(poll_cnt--)) {
-		l_debug("Lost Friendship with %4.4x", old_friend);
-		l_timeout_remove(poll_period_to);
-		poll_period_to = NULL;
-		frnd_poll_cancel(net);
-		net_key_unref(lpn_key_id);
-		net_key_unref(new_lpn_id);
-		new_lpn_id = lpn_key_id = 0;
-		mesh_net_set_friend(net, 0);
-		return;
-	}
-
-	if (poll_retry_to)
-		l_timeout_remove(poll_retry_to);
-
-	l_debug("TX-FRIEND POLL %d", seq);
-	msg[1] = seq;
-	net_seq = mesh_net_get_seq_num(net);
-	mesh_net_transport_send(net, key_id, true,
-			mesh_net_get_iv_index(net), 0,
-			net_seq, 0, mesh_net_get_friend(net),
-			msg, sizeof(msg));
-	mesh_net_next_seq_num(net);
-	poll_retry_to = l_timeout_create_ms(1000, frnd_poll_timeout, net, NULL);
-
-	/* Reset Poll Period for next "Wake Up" */
-	if (poll_period_to)
-		l_timeout_modify_ms(poll_period_to, poll_period_ms);
-	else
-		poll_period_to = l_timeout_create_ms(poll_period_ms,
-						frnd_negotiated_to, net, NULL);
-}
-
-void frnd_ack_poll(struct mesh_net *net)
-{
-	/* Start new POLL, but only if not already Polling */
-	if (poll_retry_to == NULL)
-		frnd_poll(net, false);
-}
-
-static void req_timeout(struct l_timeout *timeout, void *user_data)
-{
-	struct mesh_net *net = user_data;
-	struct frnd_offers *best;
-	struct frnd_offers *offer = l_queue_pop_head(offers);
-	uint32_t key_id = 0;
-	bool res;
-
-	l_timeout_remove(timeout);
-
-	best = offer;
-	while (offer) {
-		/* Screen out clearly inferior RSSI friends first */
-		if (offer->local_rssi < -40 && offer->remote_rssi < -40) {
-			if (best->local_rssi + 20 < offer->local_rssi ||
-				best->remote_rssi + 20 < offer->remote_rssi) {
-
-				l_free(best);
-				best = offer;
-				offer = l_queue_pop_head(offers);
-				continue;
-			}
-		}
-
-		/* Otherwise use best Windows, with Cache size as tie breaker */
-		if (best->window > offer->window ||
-				(best->window == offer->window &&
-				 best->cache < offer->cache)) {
-			l_free(best);
-			best = offer;
-		} else if (best != offer)
-			l_free(offer);
-
-		offer = l_queue_pop_head(offers);
-	}
-
-	net_key_unref(lpn_key_id);
-	net_key_unref(new_lpn_id);
-	new_lpn_id = lpn_key_id = 0;
-	if (mesh_net_get_friend(net)) {
-		l_free(best);
-		return;
-	} else if (!best) {
-		l_debug("No Offers Received");
-		return;
-	}
-
-	fn_cnt = best->fn_cnt;
-	res = mesh_net_get_key(net, false, mesh_net_get_primary_idx(net),
-								&key_id);
-	if (!res)
-		return;
-
-	lpn_key_id = net_key_frnd_add(key_id, mesh_net_get_address(net),
-						best->src, cnt, best->fn_cnt);
-	if (!lpn_key_id)
-		return;
-
-	res = mesh_net_get_key(net, true, mesh_net_get_primary_idx(net),
-								&key_id);
-
-	if (!res)
-		goto old_keys_only;
-
-	new_lpn_id = net_key_frnd_add(key_id, mesh_net_get_address(net),
-						best->src, cnt, best->fn_cnt);
-
-old_keys_only:
-
-	l_debug("Winning offer %4.4x RSSI: %ddb Window: %dms Cache sz: %d",
-			best->src, best->local_rssi,
-			best->window, best->cache);
-
-	if (mesh_net_set_friend(net, best->src)) {
-		old_friend = best->src;
-		mesh_net_set_frnd_seq(net, true);
-		frnd_poll(net, false);
-	}
-
-	l_free(best);
-}
-
-void frnd_clear(struct mesh_net *net)
-{
-	uint8_t msg[12];
-	uint8_t n = 0;
-	uint16_t frnd_addr = mesh_net_get_friend(net);
-	uint16_t my_addr = mesh_net_get_address(net);
-
-	msg[n++] = NET_OP_FRND_CLEAR;
-	l_put_be16(my_addr, msg + n);
-	n += 2;
-	l_put_be16(cnt, msg + n);
-	n += 2;
-
-	net_key_unref(lpn_key_id);
-	net_key_unref(new_lpn_id);
-	mesh_net_set_friend(net, 0);
-
-	mesh_net_transport_send(net, 0, false,
-			mesh_net_get_iv_index(net), 0,
-			0, 0, frnd_addr,
-			msg, n);
-}
-
-void frnd_request_friend(struct mesh_net *net, uint8_t cache,
-			uint8_t offer_delay, uint8_t delay, uint32_t timeout)
-{
-	uint8_t msg[12];
-	uint8_t n = 0;
-
-	if (offers == NULL)
-		offers = l_queue_new();
-
-	msg[n++] = NET_OP_FRND_REQUEST;
-	msg[n] = cache & 0x07;		/* MinRequirements - Cache */
-	msg[n++] |= (offer_delay & 0x0f) << 3;	/* Offer Delay */
-	poll_period_ms = (timeout * 300) / 4; /* 3/4 of the time in ms */
-	l_put_be32(timeout, msg + n);	/* PollTimeout */
-	msg[n++] = delay;		/* ReceiveDelay */
-	n += 3;
-	l_put_be16(old_friend, msg + n);	/* PreviousAddress */
-	n += 2;
-	msg[n++] = mesh_net_get_num_ele(net);	/* NumElements */
-	l_put_be16(cnt + 1, msg + n);	/* Next counter */
-	n += 2;
-	print_packet("Tx-NET_OP_FRND_REQUEST", msg, n);
-	mesh_net_transport_send(net, 0, false,
-			mesh_net_get_iv_index(net), 0,
-			0, 0, FRIENDS_ADDRESS,
-			msg, n);
-	l_timeout_create_ms(1000, req_timeout, net, NULL); /* 1000 ms */
-	mesh_net_set_friend(net, 0);
-	cnt++;
-}
-
-static uint8_t trans_id;
-void frnd_sub_add(struct mesh_net *net, uint32_t parms[7])
-{
-	uint32_t key_id = lpn_key_id;
-	uint32_t net_seq;
-	uint8_t msg[15] = { NET_OP_PROXY_SUB_ADD };
-	uint8_t i, n = 1;
-
-	/* Check if we are in Phase 2 of Key Refresh */
-	if (new_lpn_id) {
-		uint8_t phase;
-		uint16_t net_idx = mesh_net_get_primary_idx(net);
-		uint8_t status = mesh_net_key_refresh_phase_get(net,
-							net_idx, &phase);
-
-		if (status == MESH_STATUS_SUCCESS &&
-				phase == KEY_REFRESH_PHASE_TWO)
-			key_id = new_lpn_id;
-	}
-
-	msg[n++] = ++trans_id;
-	for (i = 0; i < 7; i++) {
-		if (parms[i] < 0x8000 || parms[i] > 0xffff)
-			break;
-
-		l_put_be16(parms[i], msg + n);
-		n += 2;
-	}
-
-	net_seq = mesh_net_get_seq_num(net);
-	print_packet("Friend Sub Add", msg, n);
-	mesh_net_transport_send(net, key_id, false,
-			mesh_net_get_iv_index(net), 0,
-			net_seq, 0, mesh_net_get_friend(net),
-			msg, n);
-	mesh_net_next_seq_num(net);
-}
-
-void frnd_sub_del(struct mesh_net *net, uint32_t parms[7])
-{
-	uint32_t key_id = lpn_key_id;
-	uint32_t net_seq;
-	uint8_t msg[15] = { NET_OP_PROXY_SUB_REMOVE };
-	uint8_t i, n = 1;
-
-	/* Check if we are in Phase 2 of Key Refresh */
-	if (new_lpn_id) {
-		uint8_t phase;
-		uint16_t net_idx = mesh_net_get_primary_idx(net);
-		uint8_t status = mesh_net_key_refresh_phase_get(net,
-							net_idx, &phase);
-
-		if (status == MESH_STATUS_SUCCESS &&
-				phase == KEY_REFRESH_PHASE_TWO)
-			key_id = new_lpn_id;
-	}
-
-	msg[n++] = ++trans_id;
-	for (i = 0; i < 7; i++) {
-		if (parms[i] < 0x8000 || parms[i] > 0xffff)
-			break;
-
-		l_put_be16(parms[i], msg + n);
-		n += 2;
-	}
-
-	net_seq = mesh_net_get_seq_num(net);
-	print_packet("Friend Sub Del", msg, n);
-	mesh_net_transport_send(net, key_id, false,
-			mesh_net_get_iv_index(net), 0,
-			net_seq, 0, mesh_net_get_friend(net),
-			msg, n);
-	mesh_net_next_seq_num(net);
-}
-
-void frnd_key_refresh(struct mesh_net *net, uint8_t phase)
-{
-	uint16_t net_idx = mesh_net_get_primary_idx(net);
-	uint32_t key_id;
-
-	switch (phase) {
-	default:
-	case 0:
-	case 3:
-		if (new_lpn_id) {
-			l_debug("LPN Retiring KeySet %d", lpn_key_id);
-			net_key_unref(lpn_key_id);
-			lpn_key_id = new_lpn_id;
-		}
-		return;
-
-	case 1:
-		net_key_unref(new_lpn_id);
-		if (!mesh_net_get_key(net, true, net_idx, &key_id)) {
-			new_lpn_id = 0;
-			return;
-		}
-
-		new_lpn_id = net_key_frnd_add(key_id, mesh_net_get_address(net),
-						mesh_net_get_friend(net),
-						cnt, fn_cnt);
-		return;
-
-	case 2:
-		/* Should we do anything here?  Maybe not */
-		return;
-	}
-}
-
-uint32_t frnd_get_key(struct mesh_net *net)
-{
-	uint8_t idx = mesh_net_get_primary_idx(net);
-	uint8_t phase = 0;
-
-	mesh_net_key_refresh_phase_get(net, idx, &phase);
-
-	if (phase == 2)
-		return new_lpn_id;
-	else
-		return lpn_key_id;
 }

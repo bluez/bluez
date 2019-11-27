@@ -162,25 +162,40 @@ struct mesh_key_set {
 	uint8_t privacy_key[16];
 };
 
+struct friend_neg {
+	int8_t rssi;
+	bool clearing;
+};
+
+struct friend_act {
+	uint16_t *grp_list;
+	uint32_t last_hdr;
+	int16_t grp_cnt;
+	bool seq;
+	bool last;
+};
+
 struct mesh_friend {
 	struct mesh_net *net;
-	struct l_queue *pkt_cache;
 	struct l_timeout *timeout;
+	struct l_queue *pkt_cache;
 	void *pkt;
-	uint16_t *grp_list;
 	uint32_t poll_timeout;
-	uint32_t last_hdr;
 	uint32_t net_key_cur;
 	uint32_t net_key_upd;
-	uint16_t dst; /* Primary Element unicast addr */
+	uint16_t old_friend;
+	uint16_t net_idx;
+	uint16_t lp_addr;/* dst; * Primary Element unicast addr */
 	uint16_t fn_cnt;
 	uint16_t lp_cnt;
-	int16_t grp_cnt;
+	uint8_t	receive_delay;
 	uint8_t ele_cnt;
 	uint8_t frd;
 	uint8_t frw;
-	bool seq;
-	bool last;
+	union {
+		struct friend_neg negotiate;
+		struct friend_act active;
+	} u;
 };
 
 struct mesh_frnd_pkt {
@@ -360,3 +375,5 @@ void mesh_net_transmit_params_get(struct mesh_net *net, uint8_t *count,
 struct mesh_prov *mesh_net_get_prov(struct mesh_net *net);
 void mesh_net_set_prov(struct mesh_net *net, struct mesh_prov *prov);
 uint32_t mesh_net_get_instant(struct mesh_net *net);
+struct l_queue *mesh_net_get_friends(struct mesh_net *net);
+struct l_queue *mesh_net_get_negotiations(struct mesh_net *net);
