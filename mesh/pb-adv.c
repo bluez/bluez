@@ -254,7 +254,7 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 	uint8_t type;
 	bool first;
 
-	if (!session || pb_session != session)
+	if (!pb_session || pb_session != session)
 		return;
 
 	link_id = l_get_be32(pkt + 1);
@@ -426,14 +426,14 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 			return;
 		}
 
+		send_ack(session, session->peer_trans_num);
+
 		if (session->last_peer_trans_num != session->peer_trans_num) {
 			session->got_segs = 0;
+			session->last_peer_trans_num = session->peer_trans_num;
 			session->rx_cb(session->user_data, session->sar,
 							session->exp_len);
 		}
-
-		session->last_peer_trans_num = session->peer_trans_num;
-		send_ack(session, session->last_peer_trans_num);
 	}
 }
 

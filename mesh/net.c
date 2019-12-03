@@ -2380,7 +2380,6 @@ static enum _relay_advice packet_received(void *user_data,
 		l_info("RX: App 0x%04x -> 0x%04x : TTL 0x%02x : SEQ 0x%06x",
 					net_src, net_dst, net_ttl, net_seq);
 
-		l_debug("seq:%x seq0:%x", net_seq, net_seqZero);
 		if (net_ctl) {
 			l_debug("CTL - %4.4x RX", net_seqZero);
 			if (net_opcode == NET_OP_SEG_ACKNOWLEDGE) {
