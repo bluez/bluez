@@ -131,9 +131,9 @@ static void parse_prov_caps(struct mesh_agent_prov_caps *caps,
 			break;
 		}
 
-		if (!strcmp(str, "PublicOOB"))
+		if (!strcmp(str, "public-oob"))
 			caps->pub_type = 1;
-		else if (!strcmp(str, "StaticOOB"))
+		else if (!strcmp(str, "static-oob"))
 			caps->static_type = 1;
 	}
 
