@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -992,6 +993,15 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			BT_IO_OPT_SOURCE, ev.u.create.phys,
 			BT_IO_OPT_DEST, ev.u.create.uniq,
 			BT_IO_OPT_INVALID);
+
+	/* Phys + uniq are the same size (hw address type) */
+	for (i = 0;
+	    i < (int)sizeof(ev.u.create.phys) && ev.u.create.phys[i] != 0;
+	    ++i) {
+		ev.u.create.phys[i] = tolower(ev.u.create.phys[i]);
+		ev.u.create.uniq[i] = tolower(ev.u.create.uniq[i]);
+	}
+
 	if (gerr) {
 		error("Failed to connection details: %s", gerr->message);
 		g_error_free(gerr);

@@ -855,8 +855,8 @@ static int uhid_connadd(struct input_device *idev, struct hidp_connadd_req *req)
 	memset(&ev, 0, sizeof(ev));
 	ev.type = UHID_CREATE;
 	strncpy((char *) ev.u.create.name, req->name, sizeof(ev.u.create.name));
-	ba2str(&idev->src, (char *) ev.u.create.phys);
-	ba2str(&idev->dst, (char *) ev.u.create.uniq);
+	ba2strlc(&idev->src, (char *) ev.u.create.phys);
+	ba2strlc(&idev->dst, (char *) ev.u.create.uniq);
 	ev.u.create.vendor = req->vendor;
 	ev.u.create.product = req->product;
 	ev.u.create.version = req->version;

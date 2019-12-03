@@ -1161,7 +1161,8 @@ failed:
 	return FALSE;
 }
 
-static int uinput_create(char *name)
+static int uinput_create(struct btd_device *device, const char *name,
+			 const char *phys)
 {
 	struct uinput_dev dev;
 	int fd, err, i;
@@ -1185,9 +1186,9 @@ static int uinput_create(char *name)
 		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE - 1);
 
 	dev.id.bustype = BUS_BLUETOOTH;
-	dev.id.vendor  = 0x0000;
-	dev.id.product = 0x0000;
-	dev.id.version = 0x0000;
+	dev.id.vendor  = btd_device_get_vendor(device);
+	dev.id.product = btd_device_get_product(device);
+	dev.id.version = btd_device_get_version(device);
 
 	if (write(fd, &dev, sizeof(dev)) < 0) {
 		err = -errno;
@@ -1201,6 +1202,9 @@ static int uinput_create(char *name)
 	ioctl(fd, UI_SET_EVBIT, EV_REL);
 	ioctl(fd, UI_SET_EVBIT, EV_REP);
 	ioctl(fd, UI_SET_EVBIT, EV_SYN);
+
+	/* Also set the phys */
+	ioctl(fd, UI_SET_PHYS, phys);
 
 	for (i = 0; key_map[i].name != NULL; i++)
 		ioctl(fd, UI_SET_KEYBIT, key_map[i].uinput);
@@ -1220,7 +1224,7 @@ static int uinput_create(char *name)
 
 static void init_uinput(struct avctp *session)
 {
-	char address[18], name[248 + 1];
+	char address[18], phys[18], name[248 + 1];
 
 	device_get_name(session->device, name, sizeof(name));
 	if (g_str_equal(name, "Nokia CK-20W")) {
@@ -1230,8 +1234,11 @@ static void init_uinput(struct avctp *session)
 		session->key_quirks[AVC_PAUSE] |= QUIRK_NO_RELEASE;
 	}
 
-	ba2str(device_get_address(session->device), address);
-	session->uinput = uinput_create(address);
+	ba2strlc(device_get_address(session->device), address);
+	ba2strlc(btd_adapter_get_address(device_get_adapter(session->device)),
+		 phys);
+
+	session->uinput = uinput_create(session->device, address, phys);
 	if (session->uinput < 0)
 		error("AVRCP: failed to init uinput for %s", address);
 	else
