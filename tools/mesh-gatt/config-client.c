@@ -591,7 +591,7 @@ static void cmd_app_key(int argc, char *argv[], uint32_t opcode)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	msg[n++] = net_idx & 0xf;
+	msg[n++] = net_idx & 0xff;
 	msg[n++] = ((net_idx >> 8) & 0xf) |
 		((app_idx << 4) & 0xf0);
 	msg[n++] = app_idx >> 4;
