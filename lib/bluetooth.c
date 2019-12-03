@@ -81,6 +81,13 @@ int ba2str(const bdaddr_t *ba, char *str)
 		ba->b[5], ba->b[4], ba->b[3], ba->b[2], ba->b[1], ba->b[0]);
 }
 
+/* Match kernel's lowercase printing of mac address (%pMR) */
+int ba2strlc(const bdaddr_t *ba, char *str)
+{
+	return sprintf(str, "%2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x",
+		ba->b[5], ba->b[4], ba->b[3], ba->b[2], ba->b[1], ba->b[0]);
+}
+
 int str2ba(const char *str, bdaddr_t *ba)
 {
 	int i;
