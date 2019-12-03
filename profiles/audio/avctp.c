@@ -1166,7 +1166,7 @@ static int uinput_create(struct btd_device *device, const char *name,
 {
 	struct uinput_dev dev;
 	int fd, err, i;
-	char src[18];
+	char dest[18], src[18];
 
 	fd = open("/dev/uinput", O_RDWR);
 	if (fd < 0) {
@@ -1224,7 +1224,9 @@ static int uinput_create(struct btd_device *device, const char *name,
 	ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
 	ba2strlc(btd_adapter_get_address(device_get_adapter(device)), src);
+	ba2strlc(device_get_address(device), dest);
 	ioctl(fd, UI_SET_PHYS, src);
+	ioctl(fd, UI_SET_UNIQ, dest);
 
 	for (i = 0; key_map[i].name != NULL; i++)
 		ioctl(fd, UI_SET_KEYBIT, key_map[i].uinput);
