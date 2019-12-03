@@ -1162,10 +1162,11 @@ failed:
 }
 
 static int uinput_create(struct btd_device *device, const char *name,
-			 const char *phys)
+			 const char *suffix)
 {
 	struct uinput_dev dev;
 	int fd, err, i;
+	char src[18];
 
 	fd = open("/dev/uinput", O_RDWR);
 	if (fd < 0) {
@@ -1181,9 +1182,28 @@ static int uinput_create(struct btd_device *device, const char *name,
 		}
 	}
 
-	memset(&dev, 0, sizeof(dev));
-	if (name)
-		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE - 1);
+	if (name) {
+		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE);
+		dev.name[UINPUT_MAX_NAME_SIZE - 1] = '\0';
+	}
+
+	if (suffix) {
+		int len, slen;
+
+		len = strlen(dev.name);
+		slen = strlen(suffix);
+
+		/* If name + suffix don't fit, truncate the name, then add the
+		 * suffix.
+		 */
+		if (len + slen < UINPUT_MAX_NAME_SIZE - 1) {
+			strcpy(dev.name + len, suffix);
+		} else {
+			len = UINPUT_MAX_NAME_SIZE - slen - 1;
+			strncpy(dev.name + len, suffix, slen);
+			dev.name[UINPUT_MAX_NAME_SIZE - 1] = '\0';
+		}
+	}
 
 	dev.id.bustype = BUS_BLUETOOTH;
 	dev.id.vendor  = btd_device_get_vendor(device);
@@ -1203,8 +1223,8 @@ static int uinput_create(struct btd_device *device, const char *name,
 	ioctl(fd, UI_SET_EVBIT, EV_REP);
 	ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
-	/* Also set the phys */
-	ioctl(fd, UI_SET_PHYS, phys);
+	ba2strlc(btd_adapter_get_address(device_get_adapter(device)), src);
+	ioctl(fd, UI_SET_PHYS, src);
 
 	for (i = 0; key_map[i].name != NULL; i++)
 		ioctl(fd, UI_SET_KEYBIT, key_map[i].uinput);
@@ -1224,7 +1244,7 @@ static int uinput_create(struct btd_device *device, const char *name,
 
 static void init_uinput(struct avctp *session)
 {
-	char address[18], phys[18], name[248 + 1];
+	char name[248 + 1];
 
 	device_get_name(session->device, name, sizeof(name));
 	if (g_str_equal(name, "Nokia CK-20W")) {
@@ -1234,15 +1254,11 @@ static void init_uinput(struct avctp *session)
 		session->key_quirks[AVC_PAUSE] |= QUIRK_NO_RELEASE;
 	}
 
-	ba2strlc(device_get_address(session->device), address);
-	ba2strlc(btd_adapter_get_address(device_get_adapter(session->device)),
-		 phys);
-
-	session->uinput = uinput_create(session->device, address, phys);
+	session->uinput = uinput_create(session->device, name, " (AVRCP)");
 	if (session->uinput < 0)
-		error("AVRCP: failed to init uinput for %s", address);
+		error("AVRCP: failed to init uinput for %s", name);
 	else
-		DBG("AVRCP: uinput initialized for %s", address);
+		DBG("AVRCP: uinput initialized for %s", name);
 }
 
 static struct avctp_queue *avctp_queue_create(struct avctp_channel *chan)
