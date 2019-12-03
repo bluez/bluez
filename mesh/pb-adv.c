@@ -292,6 +292,7 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 		/* Only call Open callback once */
 		if (first) {
 			l_debug("PB-ADV open confirmed");
+			session->local_trans_num = 0xFF;
 			session->open_cb(session->user_data, pb_adv_tx,
 							session, PB_ADV);
 		}
