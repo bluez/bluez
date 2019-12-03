@@ -63,7 +63,7 @@ struct bt_mesh {
 struct join_data{
 	struct l_dbus_message *msg;
 	struct mesh_agent *agent;
-	const char *sender;
+	char *sender;
 	const char *app_path;
 	struct mesh_node *node;
 	uint32_t disc_watch;
@@ -218,6 +218,7 @@ static void free_pending_join_call(bool failed)
 	if (failed)
 		node_remove(join_pending->node);
 
+	l_free(join_pending->sender);
 	l_free(join_pending);
 	join_pending = NULL;
 }
@@ -281,8 +282,10 @@ static void prov_disc_cb(struct l_dbus *bus, void *user_data)
 	if (!join_pending)
 		return;
 
-	if (join_pending->msg)
+	if (join_pending->msg) {
 		l_dbus_message_unref(join_pending->msg);
+		join_pending->msg = NULL;
+	}
 
 	acceptor_cancel(&mesh);
 	join_pending->disc_watch = 0;
