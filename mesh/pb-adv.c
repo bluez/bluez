@@ -175,8 +175,6 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	l_info("TX timeout");
 	cb = pb_session->close_cb;
 	user_data = pb_session->user_data;
-	l_free(pb_session);
-	pb_session = NULL;
 	cb(user_data, 1);
 }
 

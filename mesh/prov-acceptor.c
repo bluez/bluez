@@ -121,6 +121,7 @@ static void acceptor_free(void)
 static void acp_prov_close(void *user_data, uint8_t reason)
 {
 	/* TODO: Handle Close */
+	acceptor_free();
 }
 
 static void prov_to(struct l_timeout *timeout, void *user_data)
