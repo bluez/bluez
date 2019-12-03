@@ -1792,10 +1792,10 @@ static void remove_device(GDBusProxy *proxy)
 {
 	char *path;
 
-	path = g_strdup(g_dbus_proxy_get_path(proxy));
-
 	if (!default_ctrl)
 		return;
+
+	path = g_strdup(g_dbus_proxy_get_path(proxy));
 
 	if (g_dbus_proxy_method_call(default_ctrl->proxy, "RemoveDevice",
 						remove_device_setup,
