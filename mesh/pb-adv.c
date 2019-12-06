@@ -458,6 +458,8 @@ bool pb_adv_reg(bool initiator, mesh_prov_open_func_t open_cb,
 
 	if (initiator) {
 		l_getrandom(&pb_session->link_id, sizeof(pb_session->link_id));
+		pb_session->tx_timeout = l_timeout_create(60, tx_timeout,
+							pb_session, NULL);
 		send_open_req(pb_session);
 	}
 
