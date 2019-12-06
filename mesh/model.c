@@ -1249,7 +1249,7 @@ void mesh_model_free(void *data)
 	l_free(mod);
 }
 
-static struct mesh_model *model_new(uint8_t ele_idx, uint32_t id)
+struct mesh_model *mesh_model_new(uint8_t ele_idx, uint32_t id)
 {
 	struct mesh_model *mod = l_new(struct mesh_model, 1);
 
@@ -1257,19 +1257,6 @@ static struct mesh_model *model_new(uint8_t ele_idx, uint32_t id)
 	mod->ele_idx = ele_idx;
 	mod->virtuals = l_queue_new();
 	return mod;
-}
-
-struct mesh_model *mesh_model_new(uint8_t ele_idx, uint16_t id)
-{
-	return model_new(ele_idx, id | VENDOR_ID_MASK);
-}
-
-struct mesh_model *mesh_model_vendor_new(uint8_t ele_idx, uint16_t vendor_id,
-								uint16_t mod_id)
-{
-	uint32_t id = mod_id | (vendor_id << 16);
-
-	return model_new(ele_idx, id);
 }
 
 /* Internal models only */
@@ -1600,7 +1587,7 @@ struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 		return NULL;
 	}
 
-	mod = model_new(ele_idx, db_mod->vendor ? db_mod->id :
+	mod = mesh_model_new(ele_idx, db_mod->vendor ? db_mod->id :
 						db_mod->id | VENDOR_ID_MASK);
 
 	/* Implicitly bind config server model to device key */

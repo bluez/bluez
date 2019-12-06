@@ -62,9 +62,7 @@ struct mesh_model_ops {
 	mesh_model_sub_cb sub;
 };
 
-struct mesh_model *mesh_model_new(uint8_t ele_idx, uint16_t mod_id);
-struct mesh_model *mesh_model_vendor_new(uint8_t ele_idx, uint16_t vendor_id,
-							uint16_t mod_id);
+struct mesh_model *mesh_model_new(uint8_t ele_idx, uint32_t mod_id);
 void mesh_model_free(void *data);
 uint32_t mesh_model_get_model_id(const struct mesh_model *model);
 bool mesh_model_register(struct mesh_node *node, uint8_t ele_idx,
