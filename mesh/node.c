@@ -57,7 +57,6 @@
 #define DEFAULT_LOCATION 0x0000
 
 #define DEFAULT_CRPL 10
-#define DEFAULT_SEQUENCE_NUMBER 0
 
 enum request_type {
 	REQUEST_TYPE_JOIN,
@@ -218,6 +217,7 @@ static int compare_model_id(const void *a, const void *b, void *user_data)
 
 	return 0;
 }
+
 
 struct mesh_node *node_find_by_addr(uint16_t addr)
 {
@@ -486,12 +486,34 @@ static bool init_storage_dir(struct mesh_node *node)
 	return true;
 }
 
+static void update_net_settings(struct mesh_node *node)
+{
+	uint8_t mode;
+
+	mode = node->proxy;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_proxy_mode(node->net, mode == MESH_MODE_ENABLED);
+
+	mode = node->friend;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_friend_mode(node->net, mode == MESH_MODE_ENABLED);
+
+	mode = node->relay.mode;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_relay_mode(node->net, mode == MESH_MODE_ENABLED,
+					node->relay.cnt, node->relay.interval);
+
+	mode = node->beacon;
+	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
+		mesh_net_set_beacon_mode(node->net, mode == MESH_MODE_ENABLED);
+}
+
 static bool init_from_storage(struct mesh_config_node *db_node,
 			const uint8_t uuid[16], struct mesh_config *cfg,
 			void *user_data)
 {
 	unsigned int num_ele;
-	uint8_t mode;
+
 	struct mesh_node *node = node_new(uuid);
 
 	if (!nodes)
@@ -554,22 +576,7 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 	mesh_net_set_seq_num(node->net, node->seq_number);
 	mesh_net_set_default_ttl(node->net, node->ttl);
 
-	mode = node->proxy;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_proxy_mode(node->net, mode == MESH_MODE_ENABLED);
-
-	mode = node->friend;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_friend_mode(node->net, mode == MESH_MODE_ENABLED);
-
-	mode = node->relay.mode;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_relay_mode(node->net, mode == MESH_MODE_ENABLED,
-					node->relay.cnt, node->relay.interval);
-
-	mode = node->beacon;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_beacon_mode(node->net, mode == MESH_MODE_ENABLED);
+	update_net_settings(node);
 
 	/* Initialize configuration server model */
 	cfgmod_server_init(node, PRIMARY_ELE_IDX);
@@ -1382,6 +1389,8 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 							KEY_REFRESH_PHASE_TWO))
 			return false;
 	}
+
+	update_net_settings(node);
 
 	mesh_config_save(node->cfg, true, NULL, NULL);
 

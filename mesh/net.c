@@ -679,20 +679,9 @@ struct mesh_net *mesh_net_new(struct mesh_node *node)
 	net = l_new(struct mesh_net, 1);
 
 	net->node = node;
-	net->pkt_id = 0;
-	net->bea_id = 0;
+	net->seq_num = DEFAULT_SEQUENCE_NUMBER;
+	net->default_ttl = TTL_MASK;
 
-	net->beacon_enable = true;
-	net->proxy_enable = false;
-	net->relay.enable = false;
-
-	net->seq_num = 0x000000;
-	net->src_addr = 0x0000;
-	net->default_ttl = 0x7f;
-
-	net->provisioner = false;
-
-	net->test_mode = false;
 	memset(&net->prov_caps, 0, sizeof(net->prov_caps));
 	net->prov_caps.algorithms = 1;
 
