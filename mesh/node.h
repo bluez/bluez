@@ -50,7 +50,6 @@ void node_set_device_key(struct mesh_node *node, uint8_t key[16]);
 const uint8_t *node_get_device_key(struct mesh_node *node);
 void node_set_num_elements(struct mesh_node *node, uint8_t num_ele);
 uint8_t node_get_num_elements(struct mesh_node *node);
-bool node_parse_composition(struct mesh_node *node, uint8_t *buf, uint16_t len);
 bool node_add_binding(struct mesh_node *node, uint8_t ele_idx,
 			uint32_t model_id, uint16_t app_idx);
 bool node_del_binding(struct mesh_node *node, uint8_t ele_idx,
