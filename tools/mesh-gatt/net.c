@@ -1197,6 +1197,7 @@ static void flush_pkt_list(GList **list)
 		pkt = l->data;
 		*list = g_list_remove(*list, pkt);
 		g_free(pkt);
+		l = g_list_first(*list);
 	}
 }
 
