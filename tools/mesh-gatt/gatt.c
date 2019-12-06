@@ -416,7 +416,7 @@ static bool sock_read(struct io *io, bool prov, void *user_data)
 	msg.msg_iovlen = 1;
 
 	while ((len = recvmsg(fd, &msg, MSG_DONTWAIT))) {
-		if (len <= 0) {
+		if (len < 0) {
 			if (errno == EAGAIN)
 				break;
 			return false;
@@ -431,6 +431,11 @@ static bool sock_read(struct io *io, bool prov, void *user_data)
 				net_data_ready(res, len_sar);
 		}
 	}
+
+	/* When socket is orderly closed, then recvmsg returns 0 */
+	if (len == 0)
+		return false;
+
 	return true;
 }
 
