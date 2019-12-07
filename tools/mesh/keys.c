@@ -173,3 +173,11 @@ void keys_print_keys(void)
 {
 	l_queue_foreach(net_keys, print_netkey, NULL);
 }
+
+bool keys_subnet_exists(uint16_t idx)
+{
+	if (!l_queue_find(net_keys, net_idx_match, L_UINT_TO_PTR(idx)))
+		return false;
+
+	return true;
+}

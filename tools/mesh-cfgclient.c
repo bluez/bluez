@@ -316,8 +316,20 @@ static bool send_key(void *user_data, uint16_t dst, uint16_t key_idx,
 	const char *method_name = (!is_appkey) ? "AddNetKey" : "AddAppKey";
 
 	net_idx = remote_get_subnet_idx(dst);
-	if (net_idx == NET_IDX_INVALID)
+	if (net_idx == NET_IDX_INVALID) {
+		bt_shell_printf("Node %4.4x not found\n", dst);
 		return false;
+	}
+
+	if (!is_appkey && !keys_subnet_exists(key_idx)) {
+		bt_shell_printf("Local NetKey %u not found\n", key_idx);
+		return false;
+	}
+
+	if (is_appkey && (keys_get_bound_key(key_idx) == NET_IDX_INVALID)) {
+		bt_shell_printf("Local AppKey %u not found\n", key_idx);
+		return false;
+	}
 
 	req = l_new(struct key_data, 1);
 	req->ele_path = user_data;
