@@ -42,13 +42,7 @@ struct read_info_req {
 };
 
 static struct mgmt *mgmt_mesh;
-static struct l_queue *controllers;
 static struct l_queue *read_info_regs;
-
-static bool simple_match(const void *a, const void *b)
-{
-	return a == b;
-}
 
 static void process_read_info_req(void *data, void *user_data)
 {
@@ -101,23 +95,14 @@ static void read_info_cb(uint8_t status, uint16_t length,
 static void index_added(uint16_t index, uint16_t length, const void *param,
 							void *user_data)
 {
-	if (l_queue_find(controllers, simple_match, L_UINT_TO_PTR(index)))
-		return;
-
-	l_queue_push_tail(controllers, L_UINT_TO_PTR(index));
-
-	if (mgmt_send(mgmt_mesh, MGMT_OP_READ_INFO, index, 0, NULL,
-			read_info_cb, L_UINT_TO_PTR(index), NULL) != 0)
-		return;
-
-	l_queue_remove(controllers, L_UINT_TO_PTR(index));
+	mgmt_send(mgmt_mesh, MGMT_OP_READ_INFO, index, 0, NULL,
+				read_info_cb, L_UINT_TO_PTR(index), NULL);
 }
 
 static void index_removed(uint16_t index, uint16_t length, const void *param,
 							void *user_data)
 {
 	l_warn("Hci dev %4.4x removed", index);
-	l_queue_remove(controllers, L_UINT_TO_PTR(index));
 }
 
 static void read_index_list_cb(uint8_t status, uint16_t length,
@@ -157,9 +142,6 @@ static void read_index_list_cb(uint8_t status, uint16_t length,
 
 static bool mesh_mgmt_init(void)
 {
-	if (!controllers)
-		controllers = l_queue_new();
-
 	if (!read_info_regs)
 		read_info_regs = l_queue_new();
 
