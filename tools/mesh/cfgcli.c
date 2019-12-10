@@ -630,6 +630,15 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 				src, mesh_status_str(data[0]));
 
 		break;
+
+	/* Per Mesh Profile 4.3.2.57 */
+	case OP_CONFIG_FRIEND_STATUS:
+		if (len != 1)
+			return true;
+
+		bt_shell_printf("Node %4.4x Friend state 0x%02x\n",
+				src, data[0]);
+		break;
 	}
 
 	return true;
@@ -1341,6 +1350,33 @@ static void cmd_network_transmit_set(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void cmd_friend_set(int argc, char *argv[])
+{
+	uint16_t n;
+	uint8_t msg[2 + 1];
+	int parm_cnt;
+
+	n = mesh_opcode_set(OP_CONFIG_FRIEND_SET, msg);
+
+	parm_cnt = read_input_parameters(argc, argv);
+	if (parm_cnt != 1) {
+		bt_shell_printf("bad arguments");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	msg[n++] = parms[0];
+
+	if (!config_send(msg, n, OP_CONFIG_FRIEND_SET))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_friend_get(int argc, char *argv[])
+{
+	cmd_default(OP_CONFIG_FRIEND_GET);
+}
+
 static void cmd_node_reset(int argc, char *argv[])
 {
 	cmd_default(OP_NODE_RESET);
@@ -1411,6 +1447,10 @@ static const struct bt_shell_menu cfg_menu = {
 				"Set relay"},
 	{"relay-get", NULL, cmd_relay_get,
 				"Get relay"},
+	{"friend-set", "<state>", cmd_friend_set,
+				"Set friend state"},
+	{"friend-get", NULL, cmd_friend_get,
+				"Get friend state"},
 	{"network-transmit-get", NULL, cmd_network_transmit_get,
 				"Get network transmit state"},
 	{"network-transmit-set", "<count> <steps>", cmd_network_transmit_set,
