@@ -41,9 +41,18 @@ struct remote_node {
 
 static struct l_queue *nodes;
 
-static bool simple_match(const void *a, const void *b)
+static bool key_present(struct l_queue *keys, uint16_t app_idx)
 {
-	return a == b;
+	const struct l_queue_entry *l;
+
+	for (l = l_queue_get_entries(keys); l; l = l->next) {
+		uint16_t idx = L_PTR_TO_UINT(l->data);
+
+		if (idx == app_idx)
+			return true;
+	}
+
+	return false;
 }
 
 static int compare_unicast(const void *a, const void *b, void *user_data)
@@ -104,7 +113,7 @@ bool remote_add_net_key(uint16_t addr, uint16_t net_idx)
 	if (!rmt)
 		return false;
 
-	if (l_queue_find(rmt->net_keys, simple_match, L_UINT_TO_PTR(net_idx)))
+	if (key_present(rmt->net_keys, net_idx))
 		return false;
 
 	l_queue_push_tail(rmt->net_keys, L_UINT_TO_PTR(net_idx));
@@ -146,7 +155,7 @@ bool remote_add_app_key(uint16_t addr, uint16_t app_idx)
 	if (!rmt->app_keys)
 		rmt->app_keys = l_queue_new();
 
-	if (l_queue_find(rmt->app_keys, simple_match, L_UINT_TO_PTR(app_idx)))
+	if (key_present(rmt->app_keys, app_idx))
 		return false;
 
 	l_queue_push_tail(rmt->app_keys, L_UINT_TO_PTR(app_idx));

@@ -37,9 +37,18 @@ struct net_key {
 
 static struct l_queue *net_keys;
 
-static bool simple_match(const void *a, const void *b)
+static bool app_key_present(const struct net_key *key, uint16_t app_idx)
 {
-	return a == b;
+	const struct l_queue_entry *l;
+
+	for (l = l_queue_get_entries(key->app_keys); l; l = l->next) {
+		uint16_t idx = L_PTR_TO_UINT(l->data);
+
+		if (idx == app_idx)
+			return true;
+	}
+
+	return false;
 }
 
 static bool net_idx_match(const void *a, const void *b)
@@ -102,7 +111,7 @@ void keys_add_app_key(uint16_t net_idx, uint16_t app_idx)
 	if (!key->app_keys)
 		key->app_keys = l_queue_new();
 
-	if (l_queue_find(key->app_keys, simple_match, L_UINT_TO_PTR(app_idx)))
+	if (app_key_present(key, app_idx))
 		return;
 
 	l_queue_push_tail(key->app_keys, L_UINT_TO_PTR(app_idx));
@@ -121,8 +130,7 @@ void keys_del_app_key(uint16_t app_idx)
 		if (!key->app_keys)
 			continue;
 
-		if (l_queue_remove_if(key->app_keys, simple_match,
-							L_UINT_TO_PTR(app_idx)))
+		if (l_queue_remove(key->app_keys, L_UINT_TO_PTR(app_idx)))
 			return;
 	}
 }
@@ -140,8 +148,7 @@ uint16_t keys_get_bound_key(uint16_t app_idx)
 		if (!key->app_keys)
 			continue;
 
-		if (l_queue_find(key->app_keys, simple_match,
-							L_UINT_TO_PTR(app_idx)))
+		if (app_key_present(key, app_idx))
 			return key->idx;
 	}
 
@@ -152,14 +159,14 @@ static void print_appkey(void *app_key, void *user_data)
 {
 	uint16_t app_idx = L_PTR_TO_UINT(app_key);
 
-	bt_shell_printf("%3.3x, ", app_idx);
+	bt_shell_printf("0x%3.3x, ", app_idx);
 }
 
 static void print_netkey(void *net_key, void *user_data)
 {
 	struct net_key *key = net_key;
 
-	bt_shell_printf(COLOR_YELLOW "NetKey: %3.3x\n" COLOR_OFF, key->idx);
+	bt_shell_printf(COLOR_YELLOW "NetKey: 0x%3.3x\n" COLOR_OFF, key->idx);
 
 	if (!key->app_keys || l_queue_isempty(key->app_keys))
 		return;
