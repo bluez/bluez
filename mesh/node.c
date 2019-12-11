@@ -265,12 +265,14 @@ static void add_internal_model(struct mesh_node *node, uint32_t mod_id,
 
 static void set_defaults(struct mesh_node *node)
 {
-	/* TODO: these values should come from mesh.conf */
 	node->lpn = MESH_MODE_UNSUPPORTED;
 	node->proxy = MESH_MODE_UNSUPPORTED;
-	node->friend = MESH_MODE_UNSUPPORTED;
-	node->beacon = MESH_MODE_DISABLED;
-	node->relay.mode = MESH_MODE_DISABLED;
+	node->friend = (mesh_friendship_supported()) ? MESH_MODE_DISABLED :
+							MESH_MODE_UNSUPPORTED;
+	node->beacon = (mesh_beacon_enabled()) ? MESH_MODE_ENABLED :
+							MESH_MODE_DISABLED;
+	node->relay.mode = (mesh_relay_supported()) ? MESH_MODE_DISABLED :
+							MESH_MODE_UNSUPPORTED;
 	node->ttl = TTL_MASK;
 	node->seq_number = DEFAULT_SEQUENCE_NUMBER;
 }
@@ -1311,7 +1313,7 @@ static bool get_app_properties(struct mesh_node *node, const char *path,
 	l_debug("path %s", path);
 
 	node->comp = l_new(struct node_composition, 1);
-	node->comp->crpl = DEFAULT_CRPL;
+	node->comp->crpl = mesh_get_crpl();
 
 	while (l_dbus_message_iter_next_entry(properties, &key, &variant)) {
 		if (!cid && !strcmp(key, "CompanyID")) {

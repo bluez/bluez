@@ -48,4 +48,4 @@ CLEANFILES += mesh/bluetooth-mesh.service
 endif
 
 EXTRA_DIST += mesh/bluetooth-mesh.conf mesh/bluetooth-mesh.service.in \
-		mesh/org.bluez.mesh.service
+		mesh/org.bluez.mesh.service mesh/mesh-main.conf

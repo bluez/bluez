@@ -34,7 +34,8 @@ typedef void (*mesh_ready_func_t)(void *user_data, bool success);
 typedef void (*prov_rx_cb_t)(void *user_data, const uint8_t *data,
 								uint16_t len);
 
-bool mesh_init(const char *in_config_name, enum mesh_io_type type, void *opts,
+bool mesh_init(const char *config_dir, const char *mesh_conf_fname,
+					enum mesh_io_type type, void *opts,
 					mesh_ready_func_t cb, void *user_data);
 void mesh_cleanup(void);
 bool mesh_dbus_init(struct l_dbus *dbus);
@@ -46,3 +47,8 @@ bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data);
 void mesh_unreg_prov_rx(prov_rx_cb_t cb);
 const char *mesh_prov_status_str(uint8_t status);
 const char *mesh_get_storage_dir(void);
+bool mesh_beacon_enabled(void);
+bool mesh_relay_supported(void);
+bool mesh_friendship_supported(void);
+uint16_t mesh_get_crpl(void);
+uint8_t mesh_get_friend_queue_size(void);

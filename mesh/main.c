@@ -39,6 +39,7 @@
 #include "mesh/mesh-io.h"
 
 static const char *config_dir;
+static const char *mesh_conf_fname;
 static int ctlr_index = MGMT_INDEX_NONE;
 
 static const struct option main_options[] = {
@@ -99,8 +100,8 @@ static void request_name_callback(struct l_dbus *dbus, bool success,
 		return;
 	}
 
-	if (!mesh_init(config_dir, MESH_IO_TYPE_GENERIC, &ctlr_index,
-					mesh_ready_callback, dbus)) {
+	if (!mesh_init(config_dir, mesh_conf_fname, MESH_IO_TYPE_GENERIC,
+				&ctlr_index, mesh_ready_callback, dbus)) {
 		l_error("Failed to initialize mesh");
 		l_main_quit();
 	}
@@ -154,7 +155,7 @@ int main(int argc, char *argv[])
 		int opt;
 		const char *str;
 
-		opt = getopt_long(argc, argv, "i:c:ndbh", main_options, NULL);
+		opt = getopt_long(argc, argv, "i:c:f:ndbh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -181,6 +182,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			config_dir = optarg;
+			break;
+		case 'f':
+			mesh_conf_fname = optarg;
 			break;
 		case 'b':
 			dbus_debug = true;
