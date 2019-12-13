@@ -17,6 +17,10 @@
  *
  */
 
+#define BEACON_TYPE_SNB		0x01
+#define KEY_REFRESH		0x01
+#define IV_INDEX_UPDATE		0x02
+
 bool net_key_confirm(uint32_t id, const uint8_t master[16]);
 bool net_key_retrieve(uint32_t id, uint8_t *master);
 uint32_t net_key_add(const uint8_t master[16]);
@@ -31,3 +35,7 @@ bool net_key_snb_check(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 								uint64_t cmac);
 bool net_key_snb_compose(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 								uint8_t *snb);
+void net_key_beacon_seen(uint32_t id);
+void net_key_beacon_enable(uint32_t id);
+bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu);
+void net_key_beacon_disable(uint32_t id);

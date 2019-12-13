@@ -117,6 +117,9 @@ struct mesh_node;
 #define FRND_OPCODE(x) \
 		((x) >= NET_OP_FRND_POLL && (x) <= NET_OP_FRND_CLEAR_CONFIRM)
 
+#define DEFAULT_MIN_DELAY		0
+#define DEFAULT_MAX_DELAY		25
+
 struct mesh_net_addr_range {
 	uint16_t low;
 	uint16_t high;

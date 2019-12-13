@@ -171,6 +171,9 @@ bool mesh_io_send(struct mesh_io *io, struct mesh_io_send_info *info,
 {
 	io = l_queue_find(io_list, match_by_io, io);
 
+	if (!io)
+		io = l_queue_peek_head(io_list);
+
 	if (io && io->api && io->api->send)
 		return io->api->send(io, info, data, len);
 
