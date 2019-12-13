@@ -118,7 +118,6 @@ struct mesh_net {
 	uint32_t seq_num;
 	uint16_t src_addr;
 	uint16_t last_addr;
-	uint16_t friend_addr;
 	uint16_t tx_interval;
 	uint16_t tx_cnt;
 	uint8_t chan; /* Channel of recent Rx */
@@ -1550,10 +1549,6 @@ static void send_net_ack(struct mesh_net *net, struct mesh_sar *sar,
 	if (src & 0x8000)
 		return;
 
-	/* We don't ACK segments as a Low Power Node */
-	if (net->friend_addr)
-		return;
-
 	hdr = NET_OP_SEG_ACKNOWLEDGE << OPCODE_HDR_SHIFT;
 	hdr |= sar->seqZero << SEQ_ZERO_HDR_SHIFT;
 
@@ -1947,8 +1942,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 
 		if (sar_in->flags == expected) {
 			/* Re-Send ACK for full msg */
-			if (!net->friend_addr)
-				send_net_ack(net, sar_in, expected);
+			send_net_ack(net, sar_in, expected);
 			return true;
 		}
 	} else {
@@ -1966,8 +1960,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 		sar_in->key_aid = key_aid;
 		sar_in->len = len;
 		sar_in->last_seg = 0xff;
-		if (!net->friend_addr)
-			sar_in->msg_timeout = l_timeout_create(MSG_TO,
+		sar_in->msg_timeout = l_timeout_create(MSG_TO,
 					inmsg_to, net, NULL);
 
 		l_debug("First Seg %4.4x", sar_in->flags);
@@ -1994,8 +1987,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 
 	if (sar_in->flags == expected) {
 		/* Got it all */
-		if (!net->friend_addr)
-			send_net_ack(net, sar_in, expected);
+		send_net_ack(net, sar_in, expected);
 
 		msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
 				sar_in->remote, dst,
@@ -2014,15 +2006,12 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 		l_timeout_remove(sar_in->seg_timeout);
 
 		/* if this is the largest outstanding segment, send NAK now */
-		if (!net->friend_addr) {
-			largest = (0xffffffff << segO) & expected;
-			if ((largest & sar_in->flags) == largest)
-				send_net_ack(net, sar_in, sar_in->flags);
+		largest = (0xffffffff << segO) & expected;
+		if ((largest & sar_in->flags) == largest)
+			send_net_ack(net, sar_in, sar_in->flags);
 
-			sar_in->seg_timeout = l_timeout_create(SEG_TO,
+		sar_in->seg_timeout = l_timeout_create(SEG_TO,
 				inseg_to, net, NULL);
-		} else
-			largest = 0;
 	} else
 		largest = 0;
 
@@ -2752,7 +2741,7 @@ static void beacon_recv(void *user_data, struct mesh_io_recv_info *info,
 
 bool mesh_net_set_beacon_mode(struct mesh_net *net, bool enable)
 {
-	if (!net || !IS_UNASSIGNED(net->friend_addr))
+	if (!net)
 		return false;
 
 	if (net->beacon_enable == enable)
@@ -2922,33 +2911,6 @@ void mesh_net_sub_list_del(struct mesh_net *net, uint16_t addr)
 	mesh_net_transport_send(net, 0, false,
 			mesh_net_get_iv_index(net), 0,
 			0, 0, 0, msg, n);
-}
-
-/* TODO: change to use net index */
-bool mesh_net_set_friend(struct mesh_net *net, uint16_t friend_addr)
-{
-	if (!net)
-		return false;
-
-	net->bea_id = 0;
-
-	l_info("Set Frnd addr: %4.4x", friend_addr);
-	if (!friend_addr)
-		trigger_heartbeat(net, FEATURE_LPN, false);
-	else
-		trigger_heartbeat(net, FEATURE_LPN, true);
-
-	net->friend_addr = friend_addr;
-
-	return true;
-}
-
-uint16_t mesh_net_get_friend(struct mesh_net *net)
-{
-	if (!net)
-		return 0;
-
-	return net->friend_addr;
 }
 
 bool mesh_net_dst_reg(struct mesh_net *net, uint16_t dst)
@@ -3493,8 +3455,6 @@ uint16_t mesh_net_get_features(struct mesh_net *net)
 		features |= FEATURE_PROXY;
 	if (net->friend_enable)
 		features |= FEATURE_FRIEND;
-	if (net->friend_addr != UNASSIGNED_ADDRESS)
-		features |= FEATURE_LPN;
 
 	return features;
 }

@@ -279,8 +279,6 @@ void mesh_net_set_frnd_seq(struct mesh_net *net, bool seq);
 uint16_t mesh_net_get_address(struct mesh_net *net);
 bool mesh_net_register_unicast(struct mesh_net *net,
 					uint16_t unicast, uint8_t num_ele);
-bool mesh_net_set_friend(struct mesh_net *net, uint16_t friend_addr);
-uint16_t mesh_net_get_friend(struct mesh_net *net);
 uint8_t mesh_net_get_num_ele(struct mesh_net *net);
 bool mesh_net_set_beacon_mode(struct mesh_net *net, bool enable);
 bool mesh_net_set_proxy_mode(struct mesh_net *net, bool enable);
