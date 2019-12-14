@@ -91,7 +91,7 @@ void mainloop_notify_init(void)
 	if (addr.sun_path[0] == '@')
 		addr.sun_path[0] = '\0';
 
-	if (bind(notify_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (connect(notify_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(notify_fd);
 		notify_fd = -1;
 		return;
