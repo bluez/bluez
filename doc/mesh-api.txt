@@ -8,13 +8,13 @@ Interface	org.bluez.mesh.Network1
 Object path	/org/bluez/mesh
 
 Methods:
-	void Join(object app_defined_root, array{byte}[16] uuid)
+	void Join(object app_root, array{byte}[16] uuid)
 
 		This is the first method that an application has to call to
 		become a provisioned node on a mesh network. The call will
 		initiate broadcasting of Unprovisioned Device Beacon.
 
-		The app_defined_root parameter is a D-Bus object root path of
+		The app_root parameter is a D-Bus object root path of
 		the application that implements org.bluez.mesh.Application1
 		interface. The application represents a node where child mesh
 		elements have their own objects that implement
@@ -22,7 +22,7 @@ Methods:
 		also contains a provision agent object that implements
 		org.bluez.mesh.ProvisionAgent1 interface. The standard
 		DBus.ObjectManager interface must be available on the
-		app_defined_root path.
+		app_root path.
 
 		The uuid parameter is a 16-byte array that contains Device UUID.
 		This UUID must be unique (at least from the daemon perspective),
@@ -39,18 +39,18 @@ Methods:
 		method.
 
 	object node, array{byte, array{(uint16, dict)}} configuration
-			Attach(object app_defined_root, uint64 token)
+			Attach(object app_root, uint64 token)
 
 		This is the first method that an application must call to get
 		access to mesh node functionalities.
 
-		The app_defined_root parameter is a D-Bus object root path of
+		The app_root parameter is a D-Bus object root path of
 		the application that implements org.bluez.mesh.Application1
 		interface. The application represents a node where child mesh
 		elements have their own objects that implement
 		org.bluez.mesh.Element1 interface. The standard
 		DBus.ObjectManager interface must be available on the
-		app_defined_root path.
+		app_root path.
 
 		The token parameter is a 64-bit number that has been assigned to
 		the application when it first got provisioned/joined mesh
@@ -701,30 +701,34 @@ Mesh Application Hierarchy
 ==========================
 Service		unique name
 Interface	org.bluez.mesh.Application1
-Object path	<app_defined_root>
+Object path	<app_root>
 
 An application is a collection of elements that host SIG defined and vendor
 specific models. It is expected that an application implements
-org.freedesktop.DBus.ObjectManager interface.
+org.freedesktop.DBus.ObjectManager interface at app_root path.
 
 An example mesh application hierarchy may look like this:
 
-		-> /com/example
-			|   - org.freedesktop.DBus.ObjectManager
-			|   - org.bluez.mesh.Application1
-			|   - org.bluez.mesh.Attention1 (optional)
-			|   - org.bluez.mesh.Provisioner1 (optional,Provisioner)
-			|
-			-> /com/example/agent
-			| |   - org.bluez.mesh.ProvisionAgent1
-			|
-			-> /com/example/ele00
-			| |   - org.bluez.mesh.Element1
-			-> /com/example/ele01
-			| |   - org.bluez.mesh.Element1
-			...
-			-> /com/example/elexx
-			| |   - org.bluez.mesh.Element1
+-> /com/example
+  |   - org.freedesktop.DBus.ObjectManager
+  |
+  -> /com/example/application
+  |   - org.bluez.mesh.Application1
+  |   - org.bluez.mesh.Attention1 (optional)
+  |   - org.bluez.mesh.Provisioner1 (optional,Provisioner)
+  |
+  -> /com/example/agent
+  |   - org.bluez.mesh.ProvisionAgent1
+  |
+  -> /com/example/ele00
+  |   - org.bluez.mesh.Element1
+  |
+  -> /com/example/ele01
+  |   - org.bluez.mesh.Element1
+  |
+  ...
+  -> /com/example/elexx
+      - org.bluez.mesh.Element1
 
 Methods:
 	void JoinComplete(uint64 token)
