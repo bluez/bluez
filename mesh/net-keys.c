@@ -480,6 +480,9 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu)
 	l_debug("Setting SNB: IVI: %8.8x, IVU: %d, KR: %d", iv_index, ivu, kr);
 	print_packet("Set SNB Beacon to", beacon, sizeof(beacon));
 
+	/* Propagate changes to all local nodes */
+	net_local_beacon(id, beacon);
+
 	/* Send one new SNB soon, after all nodes have seen it */
 	l_getrandom(&rand_ms, sizeof(rand_ms));
 	rand_ms %= 1000;
