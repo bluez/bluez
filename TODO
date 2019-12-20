@@ -189,13 +189,7 @@ Management Interface
 
 Mesh
 ====
-- Read default configuration settings (e.g., provisioning timeout, supported
-  features, etc.)from  mesh.conf file.
-
-  Priority: Medium
-  Complexity: C1
-
-- Add examples and unit tests
+- Add unit tests
 
   Priority: High
   Complexity: C1
@@ -211,11 +205,6 @@ Mesh
 
   Priority: Medium
   Complexity: C2
-
-- Design and implement Mesh Provisioner/ Configuration Client Model.
-
-  Priority: Medium
-  Complexity: C4
 
 - Add support for GATT proxy server
 
@@ -233,7 +222,3 @@ Mesh
   Priority: Low
   Complexity: C4
 
-- Support for all the provisioning OOB types
-
-  Priority: Medium
-  Complexity: C2
