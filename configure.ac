@@ -230,8 +230,8 @@ AC_ARG_ENABLE(mesh, AC_HELP_STRING([--enable-mesh],
 AM_CONDITIONAL(MESH, test "${enable_mesh}" = "yes")
 
 if (test "${enable_mesh}" = "yes"); then
-	PKG_CHECK_MODULES(JSONC, json-c, dummy=yes,
-				AC_MSG_ERROR(json-c is required))
+	PKG_CHECK_MODULES(JSONC, json-c >= 0.13, dummy=yes,
+				AC_MSG_ERROR(json-c >= 0.13 is required))
 	AC_SUBST(JSON_CFLAGS)
 	AC_SUBST(JSON_LIBS)
 fi
