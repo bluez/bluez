@@ -48,14 +48,6 @@
 #include "profile.h"
 #include "service.h"
 
-#ifndef ATT_CID
-#define ATT_CID 4
-#endif
-
-#ifndef ATT_PSM
-#define ATT_PSM 31
-#endif
-
 #define GATT_MANAGER_IFACE	"org.bluez.GattManager1"
 #define GATT_PROFILE_IFACE	"org.bluez.GattProfile1"
 #define GATT_SERVICE_IFACE	"org.bluez.GattService1"
@@ -80,7 +72,8 @@ struct btd_gatt_database {
 	struct gatt_db *db;
 	unsigned int db_id;
 	GIOChannel *le_io;
-	GIOChannel *l2cap_io;
+	GIOChannel *eatt_io;
+	GIOChannel *bredr_io;
 	struct queue *records;
 	struct queue *device_states;
 	struct queue *ccc_callbacks;
@@ -88,6 +81,7 @@ struct btd_gatt_database {
 	struct gatt_db_attribute *svc_chngd_ccc;
 	struct gatt_db_attribute *cli_feat;
 	struct gatt_db_attribute *db_hash;
+	struct gatt_db_attribute *eatt;
 	struct queue *apps;
 	struct queue *profiles;
 };
@@ -594,9 +588,14 @@ static void gatt_database_free(void *data)
 		g_io_channel_unref(database->le_io);
 	}
 
-	if (database->l2cap_io) {
-		g_io_channel_shutdown(database->l2cap_io, FALSE, NULL);
-		g_io_channel_unref(database->l2cap_io);
+	if (database->eatt_io) {
+		g_io_channel_shutdown(database->eatt_io, FALSE, NULL);
+		g_io_channel_unref(database->eatt_io);
+	}
+
+	if (database->bredr_io) {
+		g_io_channel_shutdown(database->bredr_io, FALSE, NULL);
+		g_io_channel_unref(database->bredr_io);
 	}
 
 	/* TODO: Persistently store CCC states before freeing them */
@@ -717,7 +716,7 @@ static sdp_record_t *record_new(uuid_t *uuid, uint16_t start, uint16_t end)
 	uuid_t root_uuid, proto_uuid, l2cap;
 	sdp_record_t *record;
 	sdp_data_t *psm, *sh, *eh;
-	uint16_t lp = ATT_PSM;
+	uint16_t lp = BT_ATT_PSM;
 
 	if (uuid == NULL)
 		return NULL;
@@ -1098,7 +1097,10 @@ static void cli_feat_write_cb(struct gatt_db_attribute *attrib,
 {
 	struct btd_gatt_database *database = user_data;
 	struct device_state *state;
+	uint8_t bits[] = { BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING,
+				BT_GATT_CHRC_CLI_FEAT_EATT };
 	uint8_t ecode = 0;
+	unsigned int i;
 
 	DBG("Client Features write");
 
@@ -1113,13 +1115,12 @@ static void cli_feat_write_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
-	/* A client shall never clear a bit it has set.
-	 * TODO: make it generic to any bits.
-	 */
-	if (state->cli_feat[0] & BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING &&
-			!(value[0] & BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING)) {
-		ecode = BT_ATT_ERROR_VALUE_NOT_ALLOWED;
-		goto done;
+	for (i = 0; i < sizeof(bits); i++) {
+		/* A client shall never clear a bit it has set */
+		if (state->cli_feat[0] & (1 << i) && !(value[0] & (1 << i))) {
+			ecode = BT_ATT_ERROR_VALUE_NOT_ALLOWED;
+			goto done;
+		}
 	}
 
 	/* Shall we reallocate the feat array if bigger? */
@@ -1129,7 +1130,7 @@ static void cli_feat_write_cb(struct gatt_db_attribute *attrib,
 		len--;
 	}
 
-	state->cli_feat[0] &= BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
+	state->cli_feat[0] &= ((1 << sizeof(bits)) - 1);
 	state->change_aware = true;
 
 done:
@@ -1161,6 +1162,28 @@ static void db_hash_read_cb(struct gatt_db_attribute *attrib,
 		state->change_aware = true;
 }
 
+static void server_feat_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct btd_gatt_database *database = user_data;
+	struct device_state *state;
+	uint8_t ecode = 0;
+	uint8_t value = 0;
+
+	state = get_device_state(database, att);
+	if (!state) {
+		ecode = BT_ATT_ERROR_UNLIKELY;
+		goto done;
+	}
+
+	value |= BT_GATT_CHRC_SERVER_FEAT_EATT;
+
+done:
+	gatt_db_attribute_read_result(attrib, id, ecode, &value, sizeof(value));
+}
+
 static void populate_gatt_service(struct btd_gatt_database *database)
 {
 	bt_uuid_t uuid;
@@ -1168,7 +1191,7 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 
 	/* Add the GATT service */
 	bt_uuid16_create(&uuid, UUID_GATT);
-	service = gatt_db_add_service(database->db, &uuid, true, 8);
+	service = gatt_db_add_service(database->db, &uuid, true, 10);
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
 	database->svc_chngd = gatt_db_service_add_characteristic(service, &uuid,
@@ -1190,6 +1213,11 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 	database->db_hash = gatt_db_service_add_characteristic(service,
 				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
 				db_hash_read_cb, NULL, database);
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
+	database->eatt = gatt_db_service_add_characteristic(service,
+				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
+				server_feat_read_cb, NULL, database);
 
 	gatt_db_service_set_active(service, true);
 
@@ -3525,7 +3553,7 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_SOURCE_TYPE,
 					btd_adapter_get_address_type(adapter),
-					BT_IO_OPT_CID, ATT_CID,
+					BT_IO_OPT_CID, BT_ATT_CID,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
 	if (!database->le_io) {
@@ -3534,14 +3562,29 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 		goto fail;
 	}
 
-	/* BR/EDR socket */
-	database->l2cap_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &gerr,
+	/* EATT socket */
+	database->eatt_io = bt_io_listen(connect_cb, NULL, NULL, NULL,
+					&gerr,
 					BT_IO_OPT_SOURCE_BDADDR, addr,
-					BT_IO_OPT_PSM, ATT_PSM,
+					BT_IO_OPT_SOURCE_TYPE,
+					btd_adapter_get_address_type(adapter),
+					BT_IO_OPT_PSM, BT_ATT_EATT_PSM,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_MTU, main_opts.gatt_mtu,
+					BT_IO_OPT_INVALID);
+	if (!database->eatt_io) {
+		g_error_free(gerr);
+		goto fail;
+	}
+
+	/* BR/EDR socket */
+	database->bredr_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, addr,
+					BT_IO_OPT_PSM, BT_ATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_MTU, main_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
-	if (database->l2cap_io == NULL) {
+	if (database->bredr_io == NULL) {
 		error("Failed to start listening: %s", gerr->message);
 		g_error_free(gerr);
 		goto fail;

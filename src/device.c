@@ -5038,6 +5038,17 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 		return false;
 	}
 
+	if (dev->att) {
+		if (!bt_att_attach_fd(dev->att, g_io_channel_unix_get_fd(io))) {
+			DBG("EATT channel connected");
+			g_io_channel_set_close_on_unref(io, FALSE);
+			return true;
+		}
+
+		error("Failed to attach EATT channel");
+		return false;
+	}
+
 	if (sec_level == BT_IO_SEC_LOW && dev->le_state.paired) {
 		DBG("Elevating security level since LTK is available");
 
