@@ -6155,6 +6155,12 @@ int device_confirm_passkey(struct btd_device *device, uint8_t type,
 						confirm_cb, auth, NULL);
 
 	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			/* Already in progress */
+			confirm_cb(auth->agent, NULL, auth);
+			return 0;
+		}
+
 		error("Failed requesting authentication");
 		device_auth_req_free(device);
 	}
@@ -6202,6 +6208,12 @@ int device_notify_pincode(struct btd_device *device, gboolean secure,
 	err = agent_display_pincode(auth->agent, device, pincode,
 					display_pincode_cb, auth, NULL);
 	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			/* Already in progress */
+			display_pincode_cb(auth->agent, NULL, auth);
+			return 0;
+		}
+
 		error("Failed requesting authentication");
 		device_auth_req_free(device);
 	}

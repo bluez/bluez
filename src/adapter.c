@@ -6454,7 +6454,6 @@ static gboolean process_auth_queue(gpointer user_data)
 	while (!g_queue_is_empty(adapter->auths)) {
 		struct service_auth *auth = adapter->auths->head->data;
 		struct btd_device *device = auth->device;
-		const char *dev_path;
 
 		/* Wait services to be resolved before asking authorization */
 		if (auth->svc_id > 0)
@@ -6477,9 +6476,7 @@ static gboolean process_auth_queue(gpointer user_data)
 			goto next;
 		}
 
-		dev_path = device_get_path(device);
-
-		if (agent_authorize_service(auth->agent, dev_path, auth->uuid,
+		if (agent_authorize_service(auth->agent, device, auth->uuid,
 					agent_auth_cb, adapter, NULL) < 0) {
 			auth->cb(&err, auth->user_data);
 			goto next;

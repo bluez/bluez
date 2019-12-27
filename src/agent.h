@@ -45,7 +45,7 @@ void agent_unref(struct agent *agent);
 
 struct agent *agent_get(const char *owner);
 
-int agent_authorize_service(struct agent *agent, const char *path,
+int agent_authorize_service(struct agent *agent, struct btd_device *device,
 				const char *uuid, agent_cb cb,
 				void *user_data, GDestroyNotify destroy);
 

@@ -76,6 +76,7 @@ struct agent {
 
 struct agent_request {
 	agent_request_type_t type;
+	struct btd_device *device; /* Weak reference */
 	struct agent *agent;
 	DBusMessage *msg;
 	DBusPendingCall *call;
@@ -296,6 +297,7 @@ static struct agent *agent_create( const char *name, const char *path,
 }
 
 static struct agent_request *agent_request_new(struct agent *agent,
+						struct btd_device *device,
 						agent_request_type_t type,
 						void *cb,
 						void *user_data,
@@ -306,6 +308,7 @@ static struct agent_request *agent_request_new(struct agent *agent,
 	req = g_new0(struct agent_request, 1);
 
 	req->agent = agent;
+	req->device = device;
 	req->type = type;
 	req->cb = cb;
 	req->user_data = user_data;
@@ -381,10 +384,10 @@ done:
 }
 
 static int agent_call_authorize_service(struct agent_request *req,
-						const char *device_path,
 						const char *uuid)
 {
 	struct agent *agent = req->agent;
+	const char *path;
 
 	req->msg = dbus_message_new_method_call(agent->owner, agent->path,
 					AGENT_INTERFACE, "AuthorizeService");
@@ -393,8 +396,10 @@ static int agent_call_authorize_service(struct agent_request *req,
 		return -ENOMEM;
 	}
 
+	path = device_get_path(req->device);
+
 	dbus_message_append_args(req->msg,
-				DBUS_TYPE_OBJECT_PATH, &device_path,
+				DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_STRING, &uuid,
 				DBUS_TYPE_INVALID);
 
@@ -406,31 +411,56 @@ static int agent_call_authorize_service(struct agent_request *req,
 	}
 
 	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
+
+	DBG("authorize service request was sent for %s", path);
+
 	return 0;
 }
 
-int agent_authorize_service(struct agent *agent, const char *path,
+static int agent_has_request(struct agent *agent, struct btd_device *device,
+						agent_request_type_t type)
+{
+	if (!agent->request)
+		return 0;
+
+	if (agent->request->type != type)
+		return -EBUSY;
+
+	/* Check if request pending is for the same address */
+	if (bacmp(device_get_address(agent->request->device),
+			btd_adapter_get_address(device_get_adapter(device))))
+		return -EBUSY;
+
+	/* It must match in either direction */
+	if (bacmp(device_get_address(device),
+			btd_adapter_get_address(
+			device_get_adapter(agent->request->device))))
+		return -EBUSY;
+
+	return -EINPROGRESS;
+}
+
+int agent_authorize_service(struct agent *agent, struct btd_device *device,
 				const char *uuid, agent_cb cb,
 				void *user_data, GDestroyNotify destroy)
 {
 	struct agent_request *req;
 	int err;
 
-	if (agent->request)
-		return -EBUSY;
+	err = agent_has_request(agent, device, AGENT_REQUEST_AUTHORIZE_SERVICE);
+	if (err)
+		return err;
 
-	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZE_SERVICE, cb,
-							user_data, destroy);
+	req = agent_request_new(agent, device, AGENT_REQUEST_AUTHORIZE_SERVICE,
+						cb, user_data, destroy);
 
-	err = agent_call_authorize_service(req, path, uuid);
+	err = agent_call_authorize_service(req, uuid);
 	if (err < 0) {
 		agent_request_free(req, FALSE);
 		return -ENOMEM;
 	}
 
 	agent->request = req;
-
-	DBG("authorize service request was sent for %s", path);
 
 	return 0;
 }
@@ -494,10 +524,10 @@ done:
 	agent_unref(agent);
 }
 
-static int pincode_request_new(struct agent_request *req, const char *device_path,
-				dbus_bool_t secure)
+static int pincode_request_new(struct agent_request *req, dbus_bool_t secure)
 {
 	struct agent *agent = req->agent;
+	const char *path;
 
 	/* TODO: Add a new method or a new param to Agent interface to request
 		secure pin. */
@@ -509,7 +539,9 @@ static int pincode_request_new(struct agent_request *req, const char *device_pat
 		return -ENOMEM;
 	}
 
-	dbus_message_append_args(req->msg, DBUS_TYPE_OBJECT_PATH, &device_path,
+	path = device_get_path(req->device);
+
+	dbus_message_append_args(req->msg, DBUS_TYPE_OBJECT_PATH, &path,
 					DBUS_TYPE_INVALID);
 
 	if (g_dbus_send_message_with_reply(btd_get_dbus_connection(), req->msg,
@@ -527,16 +559,15 @@ int agent_request_pincode(struct agent *agent, struct btd_device *device,
 				void *user_data, GDestroyNotify destroy)
 {
 	struct agent_request *req;
-	const char *dev_path = device_get_path(device);
 	int err;
 
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, AGENT_REQUEST_PINCODE, cb,
+	req = agent_request_new(agent, device, AGENT_REQUEST_PINCODE, cb,
 							user_data, destroy);
 
-	err = pincode_request_new(req, dev_path, secure);
+	err = pincode_request_new(req, secure);
 	if (err < 0)
 		goto failed;
 
@@ -591,10 +622,10 @@ done:
 	agent_request_free(req, TRUE);
 }
 
-static int passkey_request_new(struct agent_request *req,
-				const char *device_path)
+static int passkey_request_new(struct agent_request *req)
 {
 	struct agent *agent = req->agent;
+	const char *path;
 
 	req->msg = dbus_message_new_method_call(agent->owner, agent->path,
 					AGENT_INTERFACE, "RequestPasskey");
@@ -603,7 +634,9 @@ static int passkey_request_new(struct agent_request *req,
 		return -ENOMEM;
 	}
 
-	dbus_message_append_args(req->msg, DBUS_TYPE_OBJECT_PATH, &device_path,
+	path = device_get_path(req->device);
+
+	dbus_message_append_args(req->msg, DBUS_TYPE_OBJECT_PATH, &path,
 					DBUS_TYPE_INVALID);
 
 	if (g_dbus_send_message_with_reply(btd_get_dbus_connection(), req->msg,
@@ -621,7 +654,6 @@ int agent_request_passkey(struct agent *agent, struct btd_device *device,
 				GDestroyNotify destroy)
 {
 	struct agent_request *req;
-	const char *dev_path = device_get_path(device);
 	int err;
 
 	if (agent->request)
@@ -630,10 +662,10 @@ int agent_request_passkey(struct agent *agent, struct btd_device *device,
 	DBG("Calling Agent.RequestPasskey: name=%s, path=%s",
 			agent->owner, agent->path);
 
-	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb,
+	req = agent_request_new(agent, device, AGENT_REQUEST_PASSKEY, cb,
 							user_data, destroy);
 
-	err = passkey_request_new(req, dev_path);
+	err = passkey_request_new(req);
 	if (err < 0)
 		goto failed;
 
@@ -647,10 +679,10 @@ failed:
 }
 
 static int confirmation_request_new(struct agent_request *req,
-					const char *device_path,
 					uint32_t passkey)
 {
 	struct agent *agent = req->agent;
+	const char *path;
 
 	req->msg = dbus_message_new_method_call(agent->owner, agent->path,
 				AGENT_INTERFACE, "RequestConfirmation");
@@ -659,8 +691,10 @@ static int confirmation_request_new(struct agent_request *req,
 		return -ENOMEM;
 	}
 
+	path = device_get_path(req->device);
+
 	dbus_message_append_args(req->msg,
-				DBUS_TYPE_OBJECT_PATH, &device_path,
+				DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_UINT32, &passkey,
 				DBUS_TYPE_INVALID);
 
@@ -680,19 +714,19 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 				void *user_data, GDestroyNotify destroy)
 {
 	struct agent_request *req;
-	const char *dev_path = device_get_path(device);
 	int err;
 
-	if (agent->request)
-		return -EBUSY;
+	err = agent_has_request(agent, device, AGENT_REQUEST_CONFIRMATION);
+	if (err)
+		return err;
 
 	DBG("Calling Agent.RequestConfirmation: name=%s, path=%s, passkey=%06u",
 			agent->owner, agent->path, passkey);
 
-	req = agent_request_new(agent, AGENT_REQUEST_CONFIRMATION, cb,
+	req = agent_request_new(agent, device, AGENT_REQUEST_CONFIRMATION, cb,
 				user_data, destroy);
 
-	err = confirmation_request_new(req, dev_path, passkey);
+	err = confirmation_request_new(req, passkey);
 	if (err < 0)
 		goto failed;
 
@@ -705,10 +739,10 @@ failed:
 	return err;
 }
 
-static int authorization_request_new(struct agent_request *req,
-						const char *device_path)
+static int authorization_request_new(struct agent_request *req)
 {
 	struct agent *agent = req->agent;
+	const char *path;
 
 	req->msg = dbus_message_new_method_call(agent->owner, agent->path,
 				AGENT_INTERFACE, "RequestAuthorization");
@@ -717,8 +751,10 @@ static int authorization_request_new(struct agent_request *req,
 		return -ENOMEM;
 	}
 
+	path = device_get_path(req->device);
+
 	dbus_message_append_args(req->msg,
-				DBUS_TYPE_OBJECT_PATH, &device_path,
+				DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
 
 	if (g_dbus_send_message_with_reply(btd_get_dbus_connection(), req->msg,
@@ -737,19 +773,19 @@ int agent_request_authorization(struct agent *agent, struct btd_device *device,
 						GDestroyNotify destroy)
 {
 	struct agent_request *req;
-	const char *dev_path = device_get_path(device);
 	int err;
 
-	if (agent->request)
-		return -EBUSY;
+	err = agent_has_request(agent, device, AGENT_REQUEST_AUTHORIZATION);
+	if (err)
+		return err;
 
 	DBG("Calling Agent.RequestAuthorization: name=%s, path=%s",
 						agent->owner, agent->path);
 
-	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZATION, cb,
+	req = agent_request_new(agent, device, AGENT_REQUEST_AUTHORIZATION, cb,
 				user_data, destroy);
 
-	err = authorization_request_new(req, dev_path);
+	err = authorization_request_new(req);
 	if (err < 0)
 		goto failed;
 
@@ -838,10 +874,10 @@ done:
 }
 
 static int display_pincode_request_new(struct agent_request *req,
-					const char *device_path,
 					const char *pincode)
 {
 	struct agent *agent = req->agent;
+	const char *path;
 
 	req->msg = dbus_message_new_method_call(agent->owner, agent->path,
 					AGENT_INTERFACE, "DisplayPinCode");
@@ -850,8 +886,10 @@ static int display_pincode_request_new(struct agent_request *req,
 		return -ENOMEM;
 	}
 
+	path = device_get_path(req->device);
+
 	dbus_message_append_args(req->msg,
-					DBUS_TYPE_OBJECT_PATH, &device_path,
+					DBUS_TYPE_OBJECT_PATH, &path,
 					DBUS_TYPE_STRING, &pincode,
 					DBUS_TYPE_INVALID);
 
@@ -872,19 +910,19 @@ int agent_display_pincode(struct agent *agent, struct btd_device *device,
 				void *user_data, GDestroyNotify destroy)
 {
 	struct agent_request *req;
-	const char *dev_path = device_get_path(device);
 	int err;
 
-	if (agent->request)
-		return -EBUSY;
+	err = agent_has_request(agent, device, AGENT_REQUEST_DISPLAY_PINCODE);
+	if (err)
+		return err;
 
 	DBG("Calling Agent.DisplayPinCode: name=%s, path=%s, pincode=%s",
 					agent->owner, agent->path, pincode);
 
-	req = agent_request_new(agent, AGENT_REQUEST_DISPLAY_PINCODE, cb,
-							user_data, destroy);
+	req = agent_request_new(agent, device, AGENT_REQUEST_DISPLAY_PINCODE,
+				cb, user_data, destroy);
 
-	err = display_pincode_request_new(req, dev_path, pincode);
+	err = display_pincode_request_new(req, pincode);
 	if (err < 0)
 		goto failed;
 
