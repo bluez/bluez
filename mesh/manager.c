@@ -750,35 +750,36 @@ static struct l_dbus_message *set_key_phase_call(struct l_dbus *dbus,
 
 static void setup_management_interface(struct l_dbus_interface *iface)
 {
-    l_dbus_interface_method(iface, "AddNode", 0, add_node_call, "",
-                            "ay", "uuid");
-    l_dbus_interface_method(iface, "ImportRemoteNode", 0, import_node_call, "",
-                            "qyay", "primary", "count", "dev_key");
-    l_dbus_interface_method(iface, "DeleteRemoteNode", 0, delete_node_call, "",
-                            "qy", "primary", "count");
-    l_dbus_interface_method(iface, "UnprovisionedScan", 0, start_scan_call, "",
-                            "q", "seconds");
-    l_dbus_interface_method(iface, "UnprovisionedScanCancel", 0, cancel_scan_call, "",
-                            "");
-    l_dbus_interface_method(iface, "CreateSubnet", 0, create_subnet_call, "",
-                            "q", "net_index");
-    l_dbus_interface_method(iface, "UpdateSubnet", 0, update_subnet_call, "",
-                            "q", "net_index");
-    l_dbus_interface_method(iface, "DeleteSubnet", 0, delete_subnet_call, "",
-                            "q", "net_index");
-    l_dbus_interface_method(iface, "ImportSubnet", 0, import_subnet_call, "",
-                            "qay", "net_index", "net_key");
-    l_dbus_interface_method(iface, "CreateAppKey", 0, create_appkey_call, "",
-                            "qq", "net_index", "app_index");
-    l_dbus_interface_method(iface, "UpdateAppKey", 0, update_appkey_call, "",
-                            "q", "app_index");
-    l_dbus_interface_method(iface, "DeleteAppKey", 0, delete_appkey_call, "",
-                            "q", "app_index");
-    l_dbus_interface_method(iface, "ImportAppKey", 0, import_appkey_call, "",
-                            "qqay", "net_index", "app_index", "app_key");
-    l_dbus_interface_method(iface, "SetKeyPhase", 0, set_key_phase_call, "",
-                            "qy", "net_index", "phase");
- }
+	l_dbus_interface_method(iface, "AddNode", 0, add_node_call, "",
+								"ay", "uuid");
+	l_dbus_interface_method(iface, "ImportRemoteNode", 0, import_node_call,
+				"", "qyay", "primary", "count", "dev_key");
+	l_dbus_interface_method(iface, "DeleteRemoteNode", 0, delete_node_call,
+						"", "qy", "primary", "count");
+	l_dbus_interface_method(iface, "UnprovisionedScan", 0, start_scan_call,
+							"", "q", "seconds");
+	l_dbus_interface_method(iface, "UnprovisionedScanCancel", 0,
+						cancel_scan_call, "", "");
+	l_dbus_interface_method(iface, "CreateSubnet", 0, create_subnet_call,
+							"", "q", "net_index");
+	l_dbus_interface_method(iface, "UpdateSubnet", 0, update_subnet_call,
+							"", "q", "net_index");
+	l_dbus_interface_method(iface, "DeleteSubnet", 0, delete_subnet_call,
+							"", "q", "net_index");
+	l_dbus_interface_method(iface, "ImportSubnet", 0, import_subnet_call,
+					"", "qay", "net_index", "net_key");
+	l_dbus_interface_method(iface, "CreateAppKey", 0, create_appkey_call,
+					"", "qq", "net_index", "app_index");
+	l_dbus_interface_method(iface, "UpdateAppKey", 0, update_appkey_call,
+							"", "q", "app_index");
+	l_dbus_interface_method(iface, "DeleteAppKey", 0, delete_appkey_call,
+							"", "q", "app_index");
+	l_dbus_interface_method(iface, "ImportAppKey", 0, import_appkey_call,
+							"", "qqay", "net_index",
+							"app_index", "app_key");
+	l_dbus_interface_method(iface, "SetKeyPhase", 0, set_key_phase_call, "",
+						"qy", "net_index", "phase");
+}
 
 bool manager_dbus_init(struct l_dbus *bus)
 {
