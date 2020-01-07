@@ -99,9 +99,26 @@
 #define DISTANCE_VAL_INVALID	0x7FFF
 #define PATHLOSS_MAX		137
 
+/*
+ * These are known security keys that have been compromised.
+ * If this grows or there are needs to be platform specific, it is
+ * conceivable that these could be read from a config file.
+ */
+static const struct mgmt_blocked_key_info blocked_keys[] = {
+	/* Google Titan Security Keys */
+	{ HCI_BLOCKED_KEY_TYPE_LTK,
+		{0xbf, 0x01, 0xfb, 0x9d, 0x4e, 0xf3, 0xbc, 0x36,
+		 0xd8, 0x74, 0xf5, 0x39, 0x41, 0x38, 0x68, 0x4c}},
+	{ HCI_BLOCKED_KEY_TYPE_IRK,
+		{0xa5, 0x99, 0xba, 0xe4, 0xe1, 0x7c, 0xa6, 0x18,
+		 0x22, 0x8e, 0x07, 0x56, 0xb4, 0xe8, 0x5f, 0x01}},
+};
+
 static DBusConnection *dbus_conn = NULL;
 
 static bool kernel_conn_control = false;
+
+static bool kernel_blocked_keys_supported = false;
 
 static GList *adapter_list = NULL;
 static unsigned int adapter_remaining = 0;
@@ -124,6 +141,7 @@ struct link_key_info {
 	unsigned char key[16];
 	uint8_t type;
 	uint8_t pin_len;
+	bool is_blocked;
 };
 
 struct smp_ltk_info {
@@ -135,12 +153,14 @@ struct smp_ltk_info {
 	uint16_t ediv;
 	uint64_t rand;
 	uint8_t val[16];
+	bool is_blocked;
 };
 
 struct irk_info {
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
 	uint8_t val[16];
+	bool is_blocked;
 };
 
 struct conn_param {
@@ -3439,6 +3459,20 @@ static int str2buf(const char *str, uint8_t *buf, size_t blen)
 	return 0;
 }
 
+static bool is_blocked_key(uint8_t key_type, uint8_t *key_value)
+{
+	uint32_t i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(blocked_keys); ++i) {
+		if (key_type == blocked_keys[i].type &&
+				!memcmp(blocked_keys[i].val, key_value,
+						sizeof(blocked_keys[i].val)))
+			return true;
+	}
+
+	return false;
+}
+
 static struct link_key_info *get_key_info(GKeyFile *key_file, const char *peer)
 {
 	struct link_key_info *info = NULL;
@@ -3460,6 +3494,9 @@ static struct link_key_info *get_key_info(GKeyFile *key_file, const char *peer)
 	info->type = g_key_file_get_integer(key_file, "LinkKey", "Type", NULL);
 	info->pin_len = g_key_file_get_integer(key_file, "LinkKey", "PINLength",
 						NULL);
+
+	info->is_blocked = is_blocked_key(HCI_BLOCKED_KEY_TYPE_LINKKEY,
+								info->key);
 
 failed:
 	g_free(str);
@@ -3534,6 +3571,9 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 	else
 		ltk->master = master;
 
+	ltk->is_blocked = is_blocked_key(HCI_BLOCKED_KEY_TYPE_LTK,
+								ltk->val);
+
 failed:
 	g_free(key);
 	g_free(rand);
@@ -3583,6 +3623,9 @@ static struct irk_info *get_irk_info(GKeyFile *key_file, const char *peer,
 		str2buf(&str[2], irk->val, sizeof(irk->val));
 	else
 		str2buf(&str[0], irk->val, sizeof(irk->val));
+
+	irk->is_blocked = is_blocked_key(HCI_BLOCKED_KEY_TYPE_LINKKEY,
+								irk->val);
 
 failed:
 	g_free(str);
@@ -4142,21 +4185,55 @@ static void load_devices(struct btd_adapter *adapter)
 		g_key_file_load_from_file(key_file, filename, 0, NULL);
 
 		key_info = get_key_info(key_file, entry->d_name);
-		if (key_info)
-			keys = g_slist_append(keys, key_info);
 
 		bdaddr_type = get_le_addr_type(key_file);
 
 		ltk_info = get_ltk_info(key_file, entry->d_name, bdaddr_type);
-		if (ltk_info)
-			ltks = g_slist_append(ltks, ltk_info);
 
 		slave_ltk_info = get_slave_ltk_info(key_file, entry->d_name,
 								bdaddr_type);
+
+		irk_info = get_irk_info(key_file, entry->d_name, bdaddr_type);
+
+		// If any key for the device is blocked, we discard all.
+		if ((key_info && key_info->is_blocked) ||
+				(ltk_info && ltk_info->is_blocked) ||
+				(slave_ltk_info &&
+					slave_ltk_info->is_blocked) ||
+				(irk_info && irk_info->is_blocked)) {
+
+			if (key_info) {
+				g_free(key_info);
+				key_info = NULL;
+			}
+
+			if (ltk_info) {
+				g_free(ltk_info);
+				ltk_info = NULL;
+			}
+
+			if (slave_ltk_info) {
+				g_free(slave_ltk_info);
+				slave_ltk_info = NULL;
+			}
+
+			if (irk_info) {
+				g_free(irk_info);
+				irk_info = NULL;
+			}
+
+			goto free;
+		}
+
+		if (key_info)
+			keys = g_slist_append(keys, key_info);
+
+		if (ltk_info)
+			ltks = g_slist_append(ltks, ltk_info);
+
 		if (slave_ltk_info)
 			ltks = g_slist_append(ltks, slave_ltk_info);
 
-		irk_info = get_irk_info(key_file, entry->d_name, bdaddr_type);
 		if (irk_info)
 			irks = g_slist_append(irks, irk_info);
 
@@ -8565,6 +8642,42 @@ static bool set_static_addr(struct btd_adapter *adapter)
 	return false;
 }
 
+static void set_blocked_keys_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		btd_error(adapter->dev_id,
+				"Failed to set blocked keys: %s (0x%02x)",
+				mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("Successfully set blocked keys for index %u", adapter->dev_id);
+}
+
+static bool set_blocked_keys(struct btd_adapter *adapter)
+{
+	uint8_t buffer[sizeof(struct mgmt_cp_set_blocked_keys) +
+					sizeof(blocked_keys)] = { 0 };
+	struct mgmt_cp_set_blocked_keys *cp =
+				(struct mgmt_cp_set_blocked_keys *)buffer;
+	int i;
+
+	cp->key_count = ARRAY_SIZE(blocked_keys);
+	for (i = 0; i < cp->key_count; ++i) {
+		cp->keys[i].type = blocked_keys[i].type;
+		memcpy(cp->keys[i].val, blocked_keys[i].val,
+						sizeof(cp->keys[i].val));
+	}
+
+	return mgmt_send(mgmt_master, MGMT_OP_SET_BLOCKED_KEYS, adapter->dev_id,
+						sizeof(buffer),	buffer,
+						set_blocked_keys_complete,
+						adapter, NULL);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -8792,6 +8905,13 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	set_name(adapter, btd_adapter_get_name(adapter));
 
+	if (kernel_blocked_keys_supported && !set_blocked_keys(adapter)) {
+		btd_error(adapter->dev_id,
+				"Failed to set blocked keys for index %u",
+				adapter->dev_id);
+		goto failed;
+	}
+
 	if (main_opts.pairable &&
 			!(adapter->current_settings & MGMT_SETTING_BONDABLE))
 		set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);
@@ -8969,9 +9089,17 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 	for (i = 0; i < num_commands; i++) {
 		uint16_t op = get_le16(rp->opcodes + i);
 
-		if (op == MGMT_OP_ADD_DEVICE) {
+		switch (op) {
+		case MGMT_OP_ADD_DEVICE:
 			DBG("enabling kernel-side connection control");
 			kernel_conn_control = true;
+			break;
+		case MGMT_OP_SET_BLOCKED_KEYS:
+			DBG("kernel supports the set_blocked_keys op");
+			kernel_blocked_keys_supported = true;
+			break;
+		default:
+			break;
 		}
 	}
 }
