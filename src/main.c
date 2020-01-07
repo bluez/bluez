@@ -109,6 +109,7 @@ static const char *gatt_options[] = {
 	"Cache",
 	"KeySize",
 	"ExchangeMTU",
+	"EATTChannels",
 	NULL
 };
 
@@ -471,6 +472,18 @@ static void parse_config(GKeyFile *config)
 		DBG("ExchangeMTU=%d", val);
 		main_opts.gatt_mtu = val;
 	}
+
+	val = g_key_file_get_integer(config, "GATT", "Channels", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("Channels=%d", val);
+		/* Ensure the channels is within a valid range. */
+		val = MIN(val, 5);
+		val = MAX(val, 1);
+		main_opts.gatt_channels = val;
+	}
 }
 
 static void init_defaults(void)
@@ -497,6 +510,7 @@ static void init_defaults(void)
 
 	main_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
 	main_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
+	main_opts.gatt_channels = 3;
 }
 
 static void log_handler(const gchar *log_domain, GLogLevelFlags log_level,

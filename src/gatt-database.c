@@ -1215,10 +1215,13 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
 				db_hash_read_cb, NULL, database);
 
-	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
-	database->eatt = gatt_db_service_add_characteristic(service,
+	/* Only enable EATT if there is a socket listening */
+	if (database->eatt_io) {
+		bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
+		database->eatt = gatt_db_service_add_characteristic(service,
 				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
 				server_feat_read_cb, NULL, database);
+	}
 
 	gatt_db_service_set_active(service, true);
 
@@ -3564,6 +3567,10 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 		goto fail;
 	}
 
+	/* If just just 1 channel is enabled EATT is not required */
+	if (main_opts.gatt_channels == 1)
+		goto bredr;
+
 	/* EATT socket */
 	database->eatt_io = bt_io_listen(connect_cb, NULL, NULL, NULL,
 					&gerr,
@@ -3579,6 +3586,7 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 		goto fail;
 	}
 
+bredr:
 	/* BR/EDR socket */
 	database->bredr_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, addr,

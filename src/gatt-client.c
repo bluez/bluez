@@ -59,8 +59,6 @@
 #define GATT_CHARACTERISTIC_IFACE	"org.bluez.GattCharacteristic1"
 #define GATT_DESCRIPTOR_IFACE		"org.bluez.GattDescriptor1"
 
-#define EATT_MAX_BEARERS 2
-
 struct btd_gatt_client {
 	struct btd_device *device;
 	uint8_t features;
@@ -2171,6 +2169,7 @@ static void eatt_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 
 static void eatt_connect(struct btd_gatt_client *client)
 {
+	struct bt_att *att = bt_gatt_client_get_att(client->gatt);
 	struct btd_device *dev = client->device;
 	struct btd_adapter *adapter = device_get_adapter(dev);
 	GIOChannel *io;
@@ -2178,12 +2177,14 @@ static void eatt_connect(struct btd_gatt_client *client)
 	char addr[18];
 	int i;
 
+	if (bt_att_get_channels(att) == main_opts.gatt_channels)
+		return;
+
 	ba2str(device_get_address(dev), addr);
 
 	DBG("Connection attempt to: %s", addr);
 
-	for (i = 0; i < EATT_MAX_BEARERS; i++) {
-		/* Fallback to regular LE mode */
+	for (i = bt_att_get_channels(att); i < main_opts.gatt_channels; i++) {
 		io = bt_io_connect(eatt_connect_cb, client, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR,
 					btd_adapter_get_address(adapter),
