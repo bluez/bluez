@@ -2371,13 +2371,13 @@ struct bt_hci_le_ext_create_conn {
 
 #define BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC		0x2044
 struct bt_hci_cmd_le_periodic_adv_create_sync {
-	uint8_t  filter_policy;
+	uint8_t  options;
 	uint8_t  sid;
 	uint8_t  addr_type;
 	uint8_t  addr[6];
 	uint16_t skip;
 	uint16_t sync_timeout;
-	uint8_t  unused;
+	uint8_t  sync_cte_type;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL		0x2045
@@ -3108,7 +3108,7 @@ struct bt_hci_le_per_adv_report {
 	uint16_t handle;
 	uint8_t  tx_power;
 	int8_t   rssi;
-	uint8_t  unused;
+	uint8_t  cte_type;
 	uint8_t  data_status;
 	uint8_t  data_len;
 	uint8_t  data[0];

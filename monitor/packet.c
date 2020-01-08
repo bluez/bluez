@@ -7321,24 +7321,70 @@ static void le_ext_create_conn_cmd(const void *data, uint8_t size)
 	print_ext_conn_phys(cmd->data, cmd->phys);
 }
 
+static const struct bitfield_data create_sync_cte_type[] = {
+	{  0, "Do not sync to packets with AoA CTE"	},
+	{  1, "Do not sync to packets with AoD CTE 1us"	},
+	{  2, "Do not sync to packets with AoD CTE 2us"	},
+	{  3, "Do not sync to packets with type 3 AoD"	},
+	{  4, "Do not sync to packets without CTE"	},
+	{ },
+};
+
+static const struct bitfield_data create_sync_options[] = {
+	{  0, "Use Periodic Advertiser List"	},
+	{  1, "Reporting initially disabled"	},
+	{ },
+};
+
+static const struct bitfield_data create_sync_options_alt[] = {
+	{  0, "Use advertising SID, Advertiser Address Type and address"},
+	{  1, "Reporting initially enabled"				},
+	{ },
+};
+
+static void print_create_sync_cte_type(uint8_t flags)
+{
+	uint8_t mask = flags;
+
+	print_field("Sync CTE type: 0x%4.4x", flags);
+
+	mask = print_bitfield(2, flags, create_sync_cte_type);
+
+	if (mask) {
+		print_text(COLOR_UNKNOWN_ADV_FLAG,
+				"Unknown sync CTE type properties (0x%4.4x)",
+									mask);
+	}
+}
+
+static void print_create_sync_options(uint8_t flags)
+{
+	uint8_t mask = flags;
+	int i;
+
+	print_field("Options: 0x%4.4x", flags);
+
+	for (i = 0; create_sync_options[i].str; i++) {
+		if (flags & (1 << create_sync_options[i].bit)) {
+			print_field("%s", create_sync_options[i].str);
+			mask  &= ~(1 << create_sync_options[i].bit);
+		} else {
+			print_field("%s", create_sync_options_alt[i].str);
+			mask  &= ~(1 << create_sync_options_alt[i].bit);
+		}
+	}
+
+	if (mask) {
+		print_text(COLOR_UNKNOWN_ADV_FLAG,
+					"  Unknown options (0x%4.4x)", mask);
+	}
+}
+
 static void le_periodic_adv_create_sync_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_periodic_adv_create_sync *cmd = data;
-	const char *str;
 
-	switch (cmd->filter_policy) {
-	case 0x00:
-		str = "Use specified advertising parameters";
-		break;
-	case 0x01:
-		str = "Use Periodic Advertiser List";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+	print_create_sync_options(cmd->options);
 	print_field("SID: 0x%2.2x", cmd->sid);
 	print_addr_type("Adv address type", cmd->addr_type);
 	print_addr("Adv address", cmd->addr, cmd->addr_type);
@@ -7346,7 +7392,7 @@ static void le_periodic_adv_create_sync_cmd(const void *data, uint8_t size)
 	print_field("Sync timeout: %d msec (0x%4.4x)",
 					le16_to_cpu(cmd->sync_timeout) * 10,
 					le16_to_cpu(cmd->sync_timeout));
-	print_field("Unused: 0x%2.2x", cmd->unused);
+	print_create_sync_cte_type(cmd->sync_cte_type);
 }
 
 static void le_periodic_adv_term_sync_cmd(const void *data, uint8_t size)
@@ -9648,7 +9694,25 @@ static void le_per_adv_report_evt(const void *data, uint8_t size)
 	else
 		print_field("RSSI: reserved (0x%2.2x)",
 						(uint8_t) evt->rssi);
-	print_field("Unused: (0x%2.2x)", evt->unused);
+
+	switch (evt->cte_type) {
+	case 0x00:
+		str = "AoA Constant Tone Extension";
+		break;
+	case 0x01:
+		str = "AoA Constant Tone Extension with 1us slots";
+		break;
+	case 0x02:
+		str = "AoD Constant Tone Extension with 2us slots";
+		break;
+	case 0xff:
+		str = "No Constant Tone Extension";
+		break;
+	default:
+		str = "Reserved";
+		color_on = COLOR_RED;
+		break;
+	}
 
 	switch (evt->data_status) {
 	case 0x00:
