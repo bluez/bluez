@@ -7584,6 +7584,14 @@ static void le_tx_test_cmd_v3(const void *data, uint8_t size)
 		print_field("  Antenna ID: %u", cmd->antenna_ids[i]);
 }
 
+static void le_periodic_adv_rec_enable(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_periodic_adv_enable *cmd = data;
+
+	print_field("Sync handle: %d", cmd->handle);
+	print_enable("Reporting", cmd->enable);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8376,6 +8384,9 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x2050, 316, "LE Transmitter Test command [v3]",
 				le_tx_test_cmd_v3, 9, false,
+				status_rsp, 1, true },
+	{ 0x2059, 325, "LE Periodic Advertising Receive Enable",
+				le_periodic_adv_rec_enable, 3, true,
 				status_rsp, 1, true },
 	{ }
 };
