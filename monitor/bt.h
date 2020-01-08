@@ -3177,6 +3177,12 @@ struct bt_hci_evt_le_chan_select_alg {
 	uint8_t  algorithm;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_LE_CTE_REQUEST_FAILED	0x17
+struct bt_hci_evt_le_cte_request_failed {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LE_PER_ADV_SYNC_TRANS_REC		0x18
 struct bt_hci_evt_le_per_adv_sync_trans_rec {
 	uint8_t  status;

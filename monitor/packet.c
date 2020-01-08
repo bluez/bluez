@@ -9886,6 +9886,14 @@ static void le_chan_select_alg_evt(const void *data, uint8_t size)
 	print_field("Algorithm: %s (0x%2.2x)", str, evt->algorithm);
 }
 
+static void le_cte_request_failed_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_cte_request_failed *evt = data;
+
+	print_status(evt->status);
+	print_field("Connection handle: %d", evt->handle);
+}
+
 static void le_per_adv_sync_trans_rec_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_per_adv_sync_trans_rec *evt = data;
@@ -9987,6 +9995,8 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_scan_req_received_evt, 8, true},
 	{ 0x14, "LE Channel Selection Algorithm",
 				le_chan_select_alg_evt, 3, true},
+	{ 0x17, "LE CTE Request Failed",
+				le_cte_request_failed_evt, 3, true},
 	{ 0x18, "LE Periodic Advertising Sync Transfer Received",
 					le_per_adv_sync_trans_rec_evt, 19,
 					true},
