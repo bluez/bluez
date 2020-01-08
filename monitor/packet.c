@@ -7609,6 +7609,15 @@ static void le_periodic_adv_sync_trans(const void *data, uint8_t size)
 	print_field("Sync handle: %d", cmd->sync_handle);
 }
 
+static void le_periodic_adv_set_info_trans(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_periodic_adv_set_info_trans *cmd = data;
+
+	print_field("Connection handle: %d", cmd->handle);
+	print_field("Service data: 0x%4.4x", cmd->service_data);
+	print_field("Advertising handle: %d", cmd->adv_handle);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8407,6 +8416,9 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x205a, 326, "LE Periodic Advertising Sync Transfer",
 				le_periodic_adv_sync_trans, 6, true,
+				status_handle_rsp, 3, true },
+	{ 0x205b, 327, "LE Periodic Advertising Set Info Transfer",
+				le_periodic_adv_set_info_trans, 5, true,
 				status_handle_rsp, 3, true },
 	{ }
 };

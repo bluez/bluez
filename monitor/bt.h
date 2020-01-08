@@ -2474,6 +2474,13 @@ struct bt_hci_cmd_periodic_sync_trans {
 	uint16_t sync_handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_PERIODIC_ADV_SET_INFO_TRANS	0x205b
+struct bt_hci_cmd_periodic_adv_set_info_trans {
+	uint16_t handle;
+	uint16_t service_data;
+	uint16_t adv_handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
