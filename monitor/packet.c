@@ -4019,6 +4019,14 @@ static void status_rsp(const void *data, uint8_t size)
 	print_status(status);
 }
 
+static void status_handle_rsp(const void *data, uint8_t size)
+{
+	uint8_t status = *((const uint8_t *) data);
+
+	print_status(status);
+	print_field("Connection handle: %d", get_u8(data + 1));
+}
+
 static void status_bdaddr_rsp(const void *data, uint8_t size)
 {
 	uint8_t status = *((const uint8_t *) data);
@@ -7592,6 +7600,15 @@ static void le_periodic_adv_rec_enable(const void *data, uint8_t size)
 	print_enable("Reporting", cmd->enable);
 }
 
+static void le_periodic_adv_sync_trans(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_periodic_sync_trans *cmd = data;
+
+	print_field("Connection handle: %d", cmd->handle);
+	print_field("Service data: 0x%4.4x", cmd->service_data);
+	print_field("Sync handle: %d", cmd->sync_handle);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8388,6 +8405,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2059, 325, "LE Periodic Advertising Receive Enable",
 				le_periodic_adv_rec_enable, 3, true,
 				status_rsp, 1, true },
+	{ 0x205a, 326, "LE Periodic Advertising Sync Transfer",
+				le_periodic_adv_sync_trans, 6, true,
+				status_handle_rsp, 3, true },
 	{ }
 };
 
