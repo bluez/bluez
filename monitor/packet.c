@@ -9788,6 +9788,24 @@ static void le_chan_select_alg_evt(const void *data, uint8_t size)
 	print_field("Algorithm: %s (0x%2.2x)", str, evt->algorithm);
 }
 
+static void le_per_adv_sync_trans_rec_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_per_adv_sync_trans_rec *evt = data;
+
+	print_status(evt->status);
+	print_field("Handle: %d", evt->handle);
+	print_field("Connection handle: %d", evt->handle);
+	print_field("Service data: 0x%4.4x", evt->service_data);
+	print_field("Sync handle: %d", evt->sync_handle);
+	print_field("SID: 0x%2.2x", evt->sid);
+	print_peer_addr_type("Address type:", evt->addr_type);
+	print_addr("Address:", evt->addr, evt->addr_type);
+	print_le_phy("PHY:", evt->phy);
+	print_field("Periodic advertising Interval: %.3f",
+							1.25 * evt->interval);
+	print_clock_accuracy(evt->clock_accuracy);
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -9871,6 +9889,9 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_scan_req_received_evt, 8, true},
 	{ 0x14, "LE Channel Selection Algorithm",
 				le_chan_select_alg_evt, 3, true},
+	{ 0x18, "LE Periodic Advertising Sync Transfer Received",
+					le_per_adv_sync_trans_rec_evt, 19,
+					true},
 	{ }
 };
 
