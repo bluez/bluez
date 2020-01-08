@@ -2607,14 +2607,7 @@ static void update_kr_state(struct mesh_subnet *subnet, bool kr, uint32_t id)
 static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 								bool ivu)
 {
-	uint32_t local_iv_index;
-	bool local_ivu;
-
-	/* Save original settings to differentiate what has changed */
-	local_iv_index = net->iv_index;
-	local_ivu = net->iv_update;
-
-	if ((iv_index - ivu) > (local_iv_index - local_ivu)) {
+	if ((iv_index - ivu) > (net->iv_index - net->iv_update)) {
 		/* Don't accept IV_Index changes when performing SAR Out */
 		if (l_queue_length(net->sar_out))
 			return;
@@ -2638,23 +2631,24 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		}
 	} else if (ivu) {
 		/* Ignore beacons with IVU if they come too soon */
-		if (!local_ivu && net->iv_upd_state == IV_UPD_NORMAL_HOLD) {
+		if (!net->iv_update &&
+				net->iv_upd_state == IV_UPD_NORMAL_HOLD) {
 			l_error("Update attempted too soon");
 			return;
 		}
 
-		if (!local_ivu) {
+		if (!net->iv_update) {
 			l_info("iv_upd_state = IV_UPD_UPDATING");
 			net->iv_upd_state = IV_UPD_UPDATING;
 			net->iv_update_timeout = l_timeout_create(
 					IV_IDX_UPD_MIN, iv_upd_to, net, NULL);
 		}
-	} else if (local_ivu) {
+	} else if (net->iv_update) {
 		l_error("IVU clear attempted too soon");
 		return;
 	}
 
-	if ((iv_index - ivu) > (local_iv_index - local_ivu))
+	if ((iv_index - ivu) > (net->iv_index - net->iv_update))
 		mesh_net_set_seq_num(net, 0);
 
 	if (ivu != net->iv_update || iv_index != net->iv_index) {
