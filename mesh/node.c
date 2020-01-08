@@ -56,8 +56,6 @@
 /* Default element location: unknown */
 #define DEFAULT_LOCATION 0x0000
 
-#define DEFAULT_CRPL 10
-
 enum request_type {
 	REQUEST_TYPE_JOIN,
 	REQUEST_TYPE_ATTACH,
