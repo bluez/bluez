@@ -2490,6 +2490,14 @@ struct bt_hci_cmd_periodic_adv_sync_trans_params {
 	uint8_t   cte_type;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_DEFAULT_PERIODIC_ADV_SYNC_TRANS_PARAMS	0x205d
+struct bt_hci_cmd_default_periodic_adv_sync_trans_params {
+	uint8_t  mode;
+	uint16_t skip;
+	uint16_t sync_timeout;
+	uint8_t  cte_type;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
