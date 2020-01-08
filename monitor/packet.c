@@ -7618,6 +7618,41 @@ static void le_periodic_adv_set_info_trans(const void *data, uint8_t size)
 	print_field("Advertising handle: %d", cmd->adv_handle);
 }
 
+static void print_sync_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled with report events disabled";
+		break;
+	case 0x02:
+		str = "Enabled with report events enabled";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, mode);
+}
+
+static void le_periodic_adv_sync_trans_params(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_periodic_adv_sync_trans_params *cmd = data;
+
+	print_field("Connection handle: %d", cmd->handle);
+	print_sync_mode(cmd->mode);
+	print_field("Skip: 0x%2.2x", cmd->skip);
+	print_field("Sync timeout: %d msec (0x%4.4x)",
+					le16_to_cpu(cmd->sync_timeout) * 10,
+					le16_to_cpu(cmd->sync_timeout));
+	print_create_sync_cte_type(cmd->cte_type);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -8420,6 +8455,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x205b, 327, "LE Periodic Advertising Set Info Transfer",
 				le_periodic_adv_set_info_trans, 5, true,
 				status_handle_rsp, 3, true },
+	{ 0x205c, 328, "LE Periodic Advertising Sync Transfer Parameters",
+				le_periodic_adv_sync_trans_params, 8, true,
+				status_handle_rsp, 3, true},
 	{ }
 };
 
