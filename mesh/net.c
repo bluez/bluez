@@ -2657,7 +2657,7 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 	if ((iv_index - ivu) > (local_iv_index - local_ivu))
 		mesh_net_set_seq_num(net, 0);
 
-	if (ivu != net->iv_update || local_iv_index != net->iv_index) {
+	if (ivu != net->iv_update || iv_index != net->iv_index) {
 		struct mesh_config *cfg = node_config_get(net->node);
 
 		mesh_config_write_iv_index(cfg, iv_index, ivu);
