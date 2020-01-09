@@ -1065,26 +1065,46 @@ bool mesh_net_get_key(struct mesh_net *net, bool new_key, uint16_t idx,
 bool mesh_net_key_list_get(struct mesh_net *net, uint8_t *buf, uint16_t *size)
 {
 	const struct l_queue_entry *entry;
-	uint16_t n, buf_size;
+	uint16_t num_keys, req_size, buf_size;
+	struct mesh_subnet *subnet;
 
 	if (!net || !buf || !size)
 		return false;
 
 	buf_size = *size;
-	if (buf_size < l_queue_length(net->subnets) * 2)
+
+	num_keys = l_queue_length(net->subnets);
+	req_size = (num_keys / 2) * 3 + (num_keys % 2) * 2;
+
+	if (buf_size < req_size)
 		return false;
 
-	n = 0;
-	entry = l_queue_get_entries(net->subnets);
+	*size = req_size;
 
-	for (; entry; entry = entry->next) {
-		struct mesh_subnet *subnet = entry->data;
+	/* Pack NetKey indices in 3 octets */
+	for (entry = l_queue_get_entries(net->subnets); num_keys > 1;) {
+		uint32_t idx_pair;
 
-		l_put_le16(subnet->idx, buf);
-		n += 2;
+		subnet = entry->data;
+		idx_pair = subnet->idx;
+		idx_pair <<= 12;
+
+		subnet = entry->next->data;
+		idx_pair += subnet->idx;
+
+		l_put_le32(idx_pair, buf);
+		buf += 3;
+
+		num_keys -= 2;
+		entry = entry->next->next;
 	}
 
-	*size = n;
+	/* If odd number of NetKeys, fill in the end of the buffer */
+	if (num_keys % 2) {
+		subnet = entry->data;
+		l_put_le16(subnet->idx, buf);
+	}
+
 	return true;
 }
 
