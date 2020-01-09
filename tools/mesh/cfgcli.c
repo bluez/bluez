@@ -247,7 +247,7 @@ static uint32_t print_mod_id(uint8_t *data, bool vid, const char *offset)
 	if (!vid) {
 		mod_id = get_le16(data);
 		bt_shell_printf("%sModel Id\t%4.4x\n", offset, mod_id);
-		mod_id = 0xffff0000 | mod_id;
+		mod_id = VENDOR_ID_MASK | mod_id;
 	} else {
 		mod_id = get_le16(data + 2);
 		bt_shell_printf("%sModel Id\t%4.4x %4.4x\n", offset,
@@ -327,7 +327,7 @@ static void print_pub(uint16_t ele_addr, uint32_t mod_id,
 	bt_shell_printf("\tElement: %4.4x\n", ele_addr);
 	bt_shell_printf("\tPub Addr: %4.4x\n", pub->u.addr16);
 
-	if (mod_id > 0xffff0000)
+	if (mod_id < VENDOR_ID_MASK)
 		bt_shell_printf("\tModel: %8.8x\n", mod_id);
 	else
 		bt_shell_printf("\tModel: %4.4x\n",
