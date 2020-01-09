@@ -2690,11 +2690,17 @@ static void process_beacon(void *net_ptr, void *user_data)
 	/* We have officially *seen* this beacon now */
 	beacon_data->processed = true;
 
-	if (ivi == net->iv_index && ivu == net->iv_update && kr == local_kr)
-		return;
+	/*
+	 * Ignore the beacon if it doesn't change anything, unless we're
+	 * doing IV Recovery
+	 */
+	if (net->iv_upd_state == IV_UPD_INIT ||
+				ivi != net->iv_index || ivu != net->iv_update)
+		update_iv_ivu_state(net, ivi, ivu);
 
-	update_iv_ivu_state(net, ivi, ivu);
-	update_kr_state(subnet, kr, beacon_data->key_id);
+	if (kr != local_kr)
+		update_kr_state(subnet, kr, beacon_data->key_id);
+
 	net_key_beacon_refresh(beacon_data->key_id, net->iv_index,
 		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update);
 }
