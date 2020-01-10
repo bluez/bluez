@@ -308,8 +308,10 @@ static void sink_free(struct btd_service *service)
 		avdtp_stream_remove_cb(sink->session, sink->stream,
 					sink->cb_id);
 
-	if (sink->session)
+	if (sink->session) {
 		avdtp_unref(sink->session);
+		sink->session = NULL;
+	}
 
 	if (sink->connect_id > 0) {
 		btd_service_connecting_complete(sink->service, -ECANCELED);
