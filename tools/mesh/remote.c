@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2019  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2019-2020  Intel Corporation. All rights reserved.
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -81,6 +81,14 @@ static bool match_node_addr(const void *a, const void *b)
 	return false;
 }
 
+static bool match_bound_key(const void *a, const void *b)
+{
+	uint16_t app_idx = L_PTR_TO_UINT(a);
+	uint16_t net_idx = L_PTR_TO_UINT(b);
+
+	return (net_idx == keys_get_bound_key(app_idx));
+}
+
 bool remote_add_node(const uint8_t uuid[16], uint16_t unicast,
 					uint8_t ele_cnt, uint16_t net_idx)
 {
@@ -123,7 +131,7 @@ bool remote_add_net_key(uint16_t addr, uint16_t net_idx)
 bool remote_del_net_key(uint16_t addr, uint16_t net_idx)
 {
 	struct remote_node *rmt;
-	const struct l_queue_entry *l;
+	void *data;
 
 	rmt = l_queue_find(nodes, match_node_addr, L_UINT_TO_PTR(addr));
 	if (!rmt)
@@ -132,13 +140,14 @@ bool remote_del_net_key(uint16_t addr, uint16_t net_idx)
 	if (!l_queue_remove(rmt->net_keys, L_UINT_TO_PTR(net_idx)))
 		return false;
 
-	for (l = l_queue_get_entries(rmt->app_keys); l; l = l->next) {
-		uint16_t app_idx = (uint16_t) L_PTR_TO_UINT(l->data);
+	data = l_queue_remove_if(rmt->app_keys, match_bound_key,
+						L_UINT_TO_PTR(net_idx));
+	while (data) {
+		uint16_t app_idx = (uint16_t) L_PTR_TO_UINT(data);
 
-		if (net_idx == keys_get_bound_key(app_idx)) {
-			l_queue_remove(rmt->app_keys, L_UINT_TO_PTR(app_idx));
-			mesh_db_node_app_key_del(rmt->unicast, app_idx);
-		}
+		mesh_db_node_app_key_del(rmt->unicast, app_idx);
+		data = l_queue_remove_if(rmt->app_keys, match_bound_key,
+						L_UINT_TO_PTR(net_idx));
 	}
 
 	return true;
