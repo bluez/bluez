@@ -58,6 +58,14 @@ static bool match_key_index(const void *a, const void *b)
 	return key->app_idx == idx;
 }
 
+static bool match_bound_key(const void *a, const void *b)
+{
+	const struct mesh_app_key *key = a;
+	uint16_t idx = L_PTR_TO_UINT(b);
+
+	return key->net_idx == idx;
+}
+
 static bool match_replay_cache(const void *a, const void *b)
 {
 	const struct mesh_msg *msg = a;
@@ -434,19 +442,27 @@ int appkey_key_delete(struct mesh_net *net, uint16_t net_idx,
 
 void appkey_delete_bound_keys(struct mesh_net *net, uint16_t net_idx)
 {
-	const struct l_queue_entry *entry;
 	struct l_queue *app_keys;
+	struct mesh_node *node;
+	struct mesh_app_key *key;
 
 	app_keys = mesh_net_get_app_keys(net);
 	if (!app_keys)
 		return;
 
-	entry = l_queue_get_entries(app_keys);
+	node = mesh_net_node_get(net);
 
-	for (; entry; entry = entry->next) {
-		struct mesh_app_key *key = entry->data;
+	key = l_queue_remove_if(app_keys, match_bound_key,
+					L_UINT_TO_PTR(net_idx));
 
-		appkey_key_delete(net, net_idx, key->app_idx);
+	while (key) {
+		node_app_key_delete(node, net_idx, key->app_idx);
+		mesh_config_app_key_del(node_config_get(node), net_idx,
+								key->app_idx);
+		appkey_key_free(key);
+
+		key = l_queue_remove_if(app_keys, match_bound_key,
+					L_UINT_TO_PTR(net_idx));
 	}
 }
 
