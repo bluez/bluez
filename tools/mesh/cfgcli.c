@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2019  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2019-2020  Intel Corporation. All rights reserved.
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -406,6 +406,33 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		break;
 
+	case OP_APPKEY_LIST:
+		if (len < 3)
+			break;
+
+		bt_shell_printf("AppKey List (node %4.4x) Status %s\n",
+						src, mesh_status_str(data[0]));
+		bt_shell_printf("NetKey %3.3x\n", l_get_le16(&data[1]));
+		len -= 3;
+
+		if (data[0] != MESH_STATUS_SUCCESS)
+			break;
+
+		bt_shell_printf("AppKeys:\n");
+		data += 3;
+
+		while (len >= 3) {
+			bt_shell_printf("\t%3.3x\n", l_get_le16(data) & 0xfff);
+			bt_shell_printf("\t%3.3x\n", l_get_le16(data + 1) >> 4);
+			len -= 3;
+			data += 3;
+		}
+
+		if (len == 2)
+			bt_shell_printf("\t%3.3x\n", l_get_le16(data));
+
+		break;
+
 	case OP_NETKEY_STATUS:
 		if (len != 3)
 			break;
@@ -429,6 +456,26 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 			if (remote_del_net_key(src, net_idx))
 				mesh_db_node_net_key_del(src, net_idx);
 		}
+
+		break;
+
+	case OP_NETKEY_LIST:
+		if (len < 2)
+			break;
+
+		bt_shell_printf("NetKey List (node %4.4x):\n", src);
+
+		while (len >= 3) {
+			net_idx = l_get_le16(data) & 0xfff;
+			bt_shell_printf("\t%3.3x\n", net_idx);
+			net_idx = l_get_le16(data + 1) >> 4;
+			bt_shell_printf("\t%3.3x\n", net_idx);
+			data += 3;
+			len -= 3;
+		}
+
+		if (len == 2)
+			bt_shell_printf("\t%3.3x\n", l_get_le16(data) & 0xfff);
 
 		break;
 
@@ -813,6 +860,32 @@ static void cmd_appkey_del(int argc, char *argv[])
 	n += 3;
 
 	if (!config_send(msg, n, OP_APPKEY_DELETE))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_appkey_get(int argc, char *argv[])
+{
+	uint16_t n;
+	uint8_t msg[32];
+
+	if (IS_UNASSIGNED(target)) {
+		bt_shell_printf("Destination not set\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	n = mesh_opcode_set(OP_APPKEY_GET, msg);
+
+	if (read_input_parameters(argc, argv) != 1) {
+		bt_shell_printf("Bad arguments %s\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	put_le16(parms[0], msg + n);
+	n += 2;
+
+	if (!config_send(msg, n, OP_APPKEY_GET))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -1382,6 +1455,11 @@ static void cmd_node_reset(int argc, char *argv[])
 	cmd_default(OP_NODE_RESET);
 }
 
+static void cmd_netkey_get(int argc, char *argv[])
+{
+	cmd_default(OP_NETKEY_GET);
+}
+
 static bool tx_setup(model_send_msg_func_t send_func, void *user_data)
 {
 	if (!send_func)
@@ -1404,21 +1482,25 @@ static const struct bt_shell_menu cfg_menu = {
 	{"composition-get", "[page_num]", cmd_composition_get,
 				"Get composition data"},
 	{"netkey-add", "<net_idx>", cmd_netkey_add,
-				"Add network key"},
+				"Add NetKey"},
 	{"netkey-update", "<net_idx>", cmd_netkey_update,
-				"Update network key"},
+				"Update NetKey"},
 	{"netkey-del", "<net_idx>", cmd_netkey_del,
-				"Delete network key"},
+				"Delete NetKey"},
+	{"netkey-get", NULL, cmd_netkey_get,
+				"List NetKeys known to the node"},
 	{"appkey-add", "<app_idx>", cmd_appkey_add,
-				"Add application key"},
+				"Add AppKey"},
 	{"appkey-update", "<app_idx>", cmd_appkey_update,
-				"Add application key"},
+				"Add AppKey"},
 	{"appkey-del", "<app_idx>", cmd_appkey_del,
-				"Delete application key"},
+				"Delete AppKey"},
+	{"appkey-get", "<net_idx>", cmd_appkey_get,
+				"List AppKeys bound to the NetKey"},
 	{"bind", "<ele_addr> <app_idx> <mod_id> [vendor_id]", cmd_add_binding,
-				"Bind app key to a model"},
+				"Bind AppKey to a model"},
 	{"unbind", "<ele_addr> <app_idx> <mod_id> [vendor_id]", cmd_del_binding,
-				"Remove app key from a model"},
+				"Remove AppKey from a model"},
 	{"mod-appidx-get", "<ele_addr> <model id>", cmd_mod_appidx_get,
 				"Get model app_idx"},
 	{"ttl-set", "<ttl>", cmd_ttl_set,
