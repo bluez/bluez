@@ -419,12 +419,12 @@ int appkey_key_delete(struct mesh_net *net, uint16_t net_idx,
 	if (key->net_idx != net_idx)
 		return MESH_STATUS_INVALID_NETKEY;
 
-	node_app_key_delete(net, mesh_net_get_address(net), net_idx, app_idx);
+	node = mesh_net_node_get(net);
+
+	node_app_key_delete(node, net_idx, app_idx);
 
 	l_queue_remove(app_keys, key);
 	appkey_key_free(key);
-
-	node = mesh_net_node_get(net);
 
 	if (!mesh_config_app_key_del(node_config_get(node), net_idx, app_idx))
 		return MESH_STATUS_STORAGE_FAIL;

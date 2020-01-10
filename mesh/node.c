@@ -135,15 +135,6 @@ struct managed_obj_request {
 
 static struct l_queue *nodes;
 
-static bool match_node_unicast(const void *a, const void *b)
-{
-	const struct mesh_node *node = a;
-	uint16_t dst = L_PTR_TO_UINT(b);
-
-	return (dst >= node->primary &&
-		dst <= (node->primary + node->num_ele - 1));
-}
-
 static bool match_device_uuid(const void *a, const void *b)
 {
 	const struct mesh_node *node = a;
@@ -214,15 +205,6 @@ static int compare_model_id(const void *a, const void *b, void *user_data)
 		return 1;
 
 	return 0;
-}
-
-
-struct mesh_node *node_find_by_addr(uint16_t addr)
-{
-	if (!IS_UNICAST(addr))
-		return NULL;
-
-	return l_queue_find(nodes, match_node_unicast, L_UINT_TO_PTR(addr));
 }
 
 struct mesh_node *node_find_by_uuid(uint8_t uuid[16])
@@ -627,15 +609,10 @@ bool node_is_provisioned(struct mesh_node *node)
 	return (!IS_UNASSIGNED(node->primary));
 }
 
-bool node_app_key_delete(struct mesh_net *net, uint16_t addr,
-				uint16_t net_idx, uint16_t app_idx)
+void node_app_key_delete(struct mesh_node *node, uint16_t net_idx,
+							uint16_t app_idx)
 {
-	struct mesh_node *node;
 	const struct l_queue_entry *entry;
-
-	node = node_find_by_addr(addr);
-	if (!node)
-		return false;
 
 	entry = l_queue_get_entries(node->elements);
 	for (; entry; entry = entry->next) {
@@ -643,8 +620,6 @@ bool node_app_key_delete(struct mesh_net *net, uint16_t addr,
 
 		mesh_model_app_key_delete(node, ele->models, app_idx);
 	}
-
-	return mesh_config_app_key_del(node->cfg, net_idx, app_idx);
 }
 
 uint16_t node_get_primary(struct mesh_node *node)
