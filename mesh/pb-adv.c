@@ -39,6 +39,7 @@ struct pb_adv_session {
 	mesh_prov_receive_func_t rx_cb;
 	mesh_prov_ack_func_t ack_cb;
 	struct l_timeout *tx_timeout;
+	struct pb_adv_session *loop;
 	uint32_t link_id;
 	uint16_t exp_len;
 	uint8_t exp_fcs;
@@ -93,9 +94,42 @@ struct pb_close_ind {
 	uint8_t reason;
 } __packed;
 
-static struct pb_adv_session *pb_session = NULL;
+struct idle_rx {
+	struct pb_adv_session *session;
+	uint16_t len;
+	uint8_t data[PB_ADV_MTU + 6];
+};
+
+static struct l_queue *pb_sessions = NULL;
 
 static const uint8_t filter[1] = { MESH_AD_TYPE_PROVISION };
+
+static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len);
+
+static void idle_rx_adv(void *user_data)
+{
+	struct idle_rx *rx = user_data;
+
+	pb_adv_packet(rx->session, rx->data, rx->len);
+	l_free(rx);
+}
+
+static void pb_adv_send(struct pb_adv_session *session,
+					uint8_t count, uint16_t interval,
+					void *data, uint16_t len)
+{
+	struct idle_rx *rx;
+
+	if (session->loop) {
+		rx = l_new(struct idle_rx, 1);
+		rx->session = session->loop;
+		rx->len = len;
+		memcpy(rx->data, data, len);
+
+		l_idle_oneshot(idle_rx_adv, rx, NULL);
+	} else
+		mesh_send_pkt(count, interval, data, len);
+}
 
 static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 							uint16_t size)
@@ -135,7 +169,9 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 	l_debug("max_seg: %2.2x", max_seg);
 	l_debug("size: %2.2x, CRC: %2.2x", size, buf[9]);
 	/* print_packet("PB-TX", buf + 1, init_size + 9); */
-	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 200, buf, init_size + 10);
+
+	pb_adv_send(session, MESH_IO_TX_COUNT_UNLIMITED, 200,
+							buf, init_size + 10);
 
 	consumed = init_size;
 
@@ -152,11 +188,31 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 
 		/* print_packet("PB-TX", buf + 1, seg_size + 6); */
 
-		mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 200,
+		pb_adv_send(session, MESH_IO_TX_COUNT_UNLIMITED, 200,
 							buf, seg_size + 7);
 
 		consumed += seg_size;
 	}
+}
+
+static bool session_match (const void *a, const void *b)
+{
+	return a == b;
+}
+
+static bool uuid_match (const void *a, const void *b)
+{
+	const struct pb_adv_session *session = a;
+	const uint8_t *uuid = b;
+
+	return !memcmp(session->uuid, uuid, sizeof(session->uuid));
+}
+
+static bool user_match (const void *a, const void *b)
+{
+	const struct pb_adv_session *session = a;
+
+	return session->user_data == b;
 }
 
 static void tx_timeout(struct l_timeout *timeout, void *user_data)
@@ -164,7 +220,7 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	struct pb_adv_session *session = user_data;
 	mesh_prov_close_func_t cb;
 
-	if (!session || pb_session != session)
+	if (!l_queue_find(pb_sessions, session_match, session))
 		return;
 
 	l_timeout_remove(session->tx_timeout);
@@ -173,8 +229,8 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	mesh_send_cancel(filter, sizeof(filter));
 
 	l_info("TX timeout");
-	cb = pb_session->close_cb;
-	user_data = pb_session->user_data;
+	cb = session->close_cb;
+	user_data = session->user_data;
 	cb(user_data, 1);
 }
 
@@ -182,7 +238,7 @@ static void pb_adv_tx(void *user_data, void *data, uint16_t len)
 {
 	struct pb_adv_session *session = user_data;
 
-	if (!session || pb_session != session)
+	if (!l_queue_find(pb_sessions, session_match, session))
 		return;
 
 	l_timeout_remove(session->tx_timeout);
@@ -201,7 +257,8 @@ static void send_open_req(struct pb_adv_session *session)
 	memcpy(open_req.uuid, session->uuid, 16);
 
 	mesh_send_cancel(filter, sizeof(filter));
-	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 500, &open_req,
+
+	pb_adv_send(session, MESH_IO_TX_COUNT_UNLIMITED, 500, &open_req,
 							sizeof(open_req));
 }
 
@@ -214,7 +271,8 @@ static void send_open_cfm(struct pb_adv_session *session)
 	open_cfm.opcode = PB_ADV_OPEN_CFM;
 
 	mesh_send_cancel(filter, sizeof(filter));
-	mesh_send_pkt(MESH_IO_TX_COUNT_UNLIMITED, 500, &open_cfm,
+
+	pb_adv_send(session, MESH_IO_TX_COUNT_UNLIMITED, 500, &open_cfm,
 							sizeof(open_cfm));
 }
 
@@ -222,18 +280,21 @@ static void send_ack(struct pb_adv_session *session, uint8_t trans_num)
 {
 	struct pb_ack ack = { MESH_AD_TYPE_PROVISION };
 
+	if (!l_queue_find(pb_sessions, session_match, session))
+		return;
+
 	l_put_be32(session->link_id, &ack.link_id);
 	ack.trans_num = trans_num;
 	ack.opcode = PB_ADV_ACK;
 
-	mesh_send_pkt(1, 100, &ack, sizeof(ack));
+	pb_adv_send(session, 1, 100, &ack, sizeof(ack));
 }
 
 static void send_close_ind(struct pb_adv_session *session, uint8_t reason)
 {
 	struct pb_close_ind close_ind = { MESH_AD_TYPE_PROVISION };
 
-	if (!pb_session || pb_session != session)
+	if (!l_queue_find(pb_sessions, session_match, session))
 		return;
 
 	l_put_be32(session->link_id, &close_ind.link_id);
@@ -242,7 +303,8 @@ static void send_close_ind(struct pb_adv_session *session, uint8_t reason)
 	close_ind.reason = reason;
 
 	mesh_send_cancel(filter, sizeof(filter));
-	mesh_send_pkt(10, 100, &close_ind, sizeof(close_ind));
+
+	pb_adv_send(session, 10, 100, &close_ind, sizeof(close_ind));
 }
 
 static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
@@ -254,7 +316,7 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 	uint8_t type;
 	bool first;
 
-	if (!pb_session || pb_session != session)
+	if (!l_queue_find(pb_sessions, session_match, session))
 		return;
 
 	link_id = l_get_be32(pkt + 1);
@@ -337,8 +399,8 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 			mesh_prov_close_func_t cb = session->close_cb;
 			void *user_data = session->user_data;
 
+			l_queue_remove(pb_sessions, session);
 			l_free(session);
-			pb_session = NULL;
 			cb(user_data, pkt[0]);
 		}
 		break;
@@ -442,37 +504,72 @@ bool pb_adv_reg(bool initiator, mesh_prov_open_func_t open_cb,
 		mesh_prov_receive_func_t rx_cb, mesh_prov_ack_func_t ack_cb,
 		uint8_t uuid[16], void *user_data)
 {
-	if (pb_session)
+	struct pb_adv_session *session, *old_session;
+
+	if (!pb_sessions)
+		pb_sessions = l_queue_new();
+
+	old_session = l_queue_find(pb_sessions, uuid_match, uuid);
+
+	/* Reject 2nd session if not looping back */
+	if (l_queue_length(pb_sessions) && !old_session)
 		return false;
 
-	pb_session = l_new(struct pb_adv_session, 1);
-	pb_session->open_cb = open_cb;
-	pb_session->close_cb = close_cb;
-	pb_session->rx_cb = rx_cb;
-	pb_session->ack_cb = ack_cb;
-	pb_session->user_data = user_data;
-	pb_session->initiator = initiator;
-	memcpy(pb_session->uuid, uuid, 16);
+	/* Reject looping to more than one session or with same role*/
+	if (old_session && (old_session->loop ||
+					old_session->initiator == initiator))
+		return false;
 
-	mesh_reg_prov_rx(pb_adv_packet, pb_session);
+	session = l_new(struct pb_adv_session, 1);
+	session->open_cb = open_cb;
+	session->close_cb = close_cb;
+	session->rx_cb = rx_cb;
+	session->ack_cb = ack_cb;
+	session->user_data = user_data;
+	session->initiator = initiator;
+	memcpy(session->uuid, uuid, 16);
+
+	l_queue_push_head(pb_sessions, session);
 
 	if (initiator) {
-		l_getrandom(&pb_session->link_id, sizeof(pb_session->link_id));
-		pb_session->tx_timeout = l_timeout_create(60, tx_timeout,
-							pb_session, NULL);
-		send_open_req(pb_session);
+		l_getrandom(&session->link_id, sizeof(session->link_id));
+		session->tx_timeout = l_timeout_create(60, tx_timeout,
+							session, NULL);
 	}
+
+	/* Setup Loop-back if complementary session with same UUID */
+	if (old_session) {
+		session->loop = old_session;
+		old_session->loop = session;
+		mesh_unreg_prov_rx(pb_adv_packet);
+
+		if (initiator)
+			send_open_req(session);
+		else
+			send_open_req(old_session);
+
+		return true;
+	}
+
+	mesh_reg_prov_rx(pb_adv_packet, session);
+
+	if (initiator)
+		send_open_req(session);
 
 	return true;
 }
 
 void pb_adv_unreg(void *user_data)
 {
-	if (!pb_session || pb_session->user_data != user_data)
+	struct pb_adv_session *session = l_queue_find(pb_sessions,
+						user_match, user_data);
+
+	if (!session)
 		return;
 
-	l_timeout_remove(pb_session->tx_timeout);
-	send_close_ind(pb_session, 0);
-	l_free(pb_session);
-	pb_session = NULL;
+	l_timeout_remove(session->tx_timeout);
+	session->tx_timeout = NULL;
+	send_close_ind(session, 0);
+	l_queue_remove(pb_sessions, session);
+	l_free(session);
 }
