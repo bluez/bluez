@@ -441,6 +441,11 @@ Properties:
 
 		This property contains unicast addresses of node's elements.
 
+	uint32 SequenceNumber [read-only]
+
+		This property may be read at any time to determine the
+		sequence number.
+
 Mesh Provisioning Hierarchy
 ============================
 Service		org.bluez.mesh
