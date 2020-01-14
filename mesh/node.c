@@ -2190,6 +2190,19 @@ static bool ivindex_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
 	return true;
 }
 
+static bool seq_num_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
+				struct l_dbus_message_builder *builder,
+				void *user_data)
+{
+	struct mesh_node *node = user_data;
+	struct mesh_net *net = node_get_net(node);
+	uint32_t seq_nr = mesh_net_get_seq_num(net);
+
+	l_dbus_message_builder_append_basic(builder, 'u', &seq_nr);
+
+	return true;
+}
+
 static bool lastheard_getter(struct l_dbus *dbus, struct l_dbus_message *msg,
 					struct l_dbus_message_builder *builder,
 					void *user_data)
@@ -2259,6 +2272,8 @@ static void setup_node_interface(struct l_dbus_interface *iface)
 						beaconflags_getter, NULL);
 	l_dbus_interface_property(iface, "IvIndex", 0, "u", ivindex_getter,
 									NULL);
+	l_dbus_interface_property(iface, "SequenceNumber", 0, "u",
+							seq_num_getter, NULL);
 	l_dbus_interface_property(iface, "SecondsSinceLastHeard", 0, "u",
 					lastheard_getter, NULL);
 	l_dbus_interface_property(iface, "Addresses", 0, "aq", addresses_getter,
