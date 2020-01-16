@@ -511,6 +511,15 @@ uint32_t mesh_net_next_seq_num(struct mesh_net *net)
 {
 	uint32_t seq = net->seq_num++;
 
+	/* Cap out-of-range seq_num max value to +1. Out of range
+	 * seq_nums will not be sent as they would violate spec.
+	 * This condition signals a runaway seq_num condition, and
+	 * the node must wait for a completed IV Index update procedure
+	 * before it can send again.
+	 */
+	if (net->seq_num > SEQ_MASK)
+		net->seq_num = SEQ_MASK + 1;
+
 	node_set_sequence_number(net->node, net->seq_num);
 	return seq;
 }

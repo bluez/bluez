@@ -40,6 +40,7 @@
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
 #include "mesh/mesh-config.h"
+#include "mesh/net.h"
 
 /* To prevent local node JSON cache thrashing, minimum update times */
 #define MIN_SEQ_CACHE_TRIGGER	32
@@ -365,7 +366,7 @@ static bool read_seq_number(json_object *jobj, uint32_t *seq_number)
 	if (!val && errno == EINVAL)
 		return false;
 
-	if (val < 0 || val > 0xffffff)
+	if (val < 0 || val > SEQ_MASK + 1)
 		return false;
 
 	*seq_number = (uint32_t) val;
@@ -2019,9 +2020,20 @@ bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq,
 		if (cached < seq + MIN_SEQ_CACHE_VALUE)
 			cached = seq + MIN_SEQ_CACHE_VALUE;
 
-		l_debug("Seq Cache: %d -> %d", seq, cached);
+		/* Cap the seq cache maximum to fixed out-of-range value.
+		 * If daemon restarts with out-of-range value, no packets
+		 * are to be sent until IV Update procedure completes.
+		 */
+		if (cached > SEQ_MASK)
+			cached = SEQ_MASK + 1;
 
 		cfg->write_seq = seq;
+
+		/* Don't rewrite NVM storage if unchanged */
+		if (value == (int) cached)
+			return true;
+
+		l_debug("Seq Cache: %d -> %d", seq, cached);
 
 		if (!write_int(cfg->jnode, "sequenceNumber", cached))
 		    return false;

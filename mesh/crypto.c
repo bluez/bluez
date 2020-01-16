@@ -637,6 +637,9 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 	uint32_t hdr;
 	size_t n;
 
+	if (seq > SEQ_MASK)
+		return false;
+
 	l_put_be32(seq, packet + 1);
 	packet[1] = (ctl ? CTL : 0) | (ttl & TTL_MASK);
 
