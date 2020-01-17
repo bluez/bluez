@@ -91,7 +91,7 @@
 #define OP_NODE_RESET_STATUS			0x804A
 #define OP_MODEL_APP_GET			0x804B
 #define OP_MODEL_APP_LIST			0x804C
-#define OP_VEND_MODEL_APP_GET			0x804C
+#define OP_VEND_MODEL_APP_GET			0x804D
 #define OP_VEND_MODEL_APP_LIST			0x804E
 
 void cfgmod_server_init(struct mesh_node *node, uint8_t ele_idx);
