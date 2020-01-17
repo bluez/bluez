@@ -893,6 +893,7 @@ static const char *mgmt_op[] = {
 	"Set Appearance",
 	"Get PHY Configuration",
 	"Set PHY Configuration",
+	"Set Blocked Keys",
 };
 
 static const char *mgmt_ev[] = {
