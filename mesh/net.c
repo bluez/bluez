@@ -241,6 +241,12 @@ struct net_queue_data {
 	bool seen;
 };
 
+struct oneshot_tx {
+	struct mesh_net *net;
+	uint8_t size;
+	uint8_t packet[30];
+};
+
 struct net_beacon_data {
 	uint32_t key_id;
 	uint32_t ivi;
@@ -2247,24 +2253,35 @@ static void send_relay_pkt(struct mesh_net *net, uint8_t *data, uint8_t size)
 	mesh_io_send(io, &info, packet, size + 1);
 }
 
-static void send_msg_pkt(struct mesh_net *net, uint8_t *packet, uint8_t size)
+static bool simple_match(const void *a, const void *b)
 {
-	struct mesh_io *io = net->io;
+	return a == b;
+}
+
+static void send_msg_pkt_oneshot(void *user_data)
+{
+	struct oneshot_tx *tx = user_data;
+	struct mesh_net *net;
 	struct mesh_io_send_info info;
 	struct net_queue_data net_data = {
 		.info = NULL,
-		.data = packet + 1,
-		.len = size - 1,
+		.data = tx->packet + 1,
+		.len = tx->size - 1,
 		.relay_advice = RELAY_NONE,
 	};
 
 	/* Send to local nodes first */
 	l_queue_foreach(nets, net_rx, &net_data);
 
-	if (net_data.relay_advice == RELAY_DISALLOWED)
-		return;
+	/* Make sure specific network still valid */
+	net = l_queue_find(nets, simple_match, tx->net);
 
-	packet[0] = MESH_AD_TYPE_NETWORK;
+	if (!net || net_data.relay_advice == RELAY_DISALLOWED) {
+		l_free(tx);
+		return;
+	}
+
+	tx->packet[0] = MESH_AD_TYPE_NETWORK;
 	info.type = MESH_IO_TIMING_TYPE_GENERAL;
 	info.u.gen.interval = net->tx_interval;
 	info.u.gen.cnt = net->tx_cnt;
@@ -2272,7 +2289,19 @@ static void send_msg_pkt(struct mesh_net *net, uint8_t *packet, uint8_t size)
 	/* No extra randomization when sending regular mesh messages */
 	info.u.gen.max_delay = DEFAULT_MIN_DELAY;
 
-	mesh_io_send(io, &info, packet, size);
+	mesh_io_send(net->io, &info, tx->packet, tx->size);
+	l_free(tx);
+}
+
+static void send_msg_pkt(struct mesh_net *net, uint8_t *packet, uint8_t size)
+{
+	struct oneshot_tx *tx = l_new(struct oneshot_tx, 1);
+
+	tx->net = net;
+	tx->size = size;
+	memcpy(tx->packet, packet, size);
+
+	l_idle_oneshot(send_msg_pkt_oneshot, tx, NULL);
 }
 
 static enum _relay_advice packet_received(void *user_data,
@@ -2847,11 +2876,6 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 	return true;
 }
 
-static bool is_this_net(const void *a, const void *b)
-{
-	return a == b;
-}
-
 bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 {
 	bool first;
@@ -2874,7 +2898,7 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 							net_msg_recv, NULL);
 	}
 
-	if (l_queue_find(nets, is_this_net, net))
+	if (l_queue_find(nets, simple_match, net))
 		return false;
 
 	l_queue_push_head(nets, net);
