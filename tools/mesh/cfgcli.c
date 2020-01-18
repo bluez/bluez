@@ -240,11 +240,11 @@ static void add_request(uint32_t opcode)
 	l_queue_push_tail(requests, req);
 }
 
-static uint32_t print_mod_id(uint8_t *data, bool vid, const char *offset)
+static uint32_t print_mod_id(uint8_t *data, bool vendor, const char *offset)
 {
 	uint32_t mod_id;
 
-	if (!vid) {
+	if (!vendor) {
 		mod_id = get_le16(data);
 		bt_shell_printf("%sModel Id\t%4.4x\n", offset, mod_id);
 		mod_id = VENDOR_ID_MASK | mod_id;
@@ -691,6 +691,21 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 	return true;
 }
 
+static uint16_t put_model_id(uint8_t *buf, uint32_t *args, bool vendor)
+{
+	uint16_t n = 2;
+
+	if (vendor) {
+		put_le16(args[1], buf);
+		buf += 2;
+		n = 4;
+	}
+
+	put_le16(args[0], buf);
+
+	return n;
+}
+
 static uint32_t read_input_parameters(int argc, char *argv[])
 {
 	uint32_t i;
@@ -973,14 +988,7 @@ static void cmd_bind(uint32_t opcode, int argc, char *argv[])
 	put_le16(parms[1], msg + n);
 	n += 2;
 
-	if (parm_cnt == 4) {
-		put_le16(parms[3], msg + n);
-		put_le16(parms[2], msg + n + 2);
-		n += 4;
-	} else {
-		put_le16(parms[2], msg + n);
-		n += 2;
-	}
+	n += put_model_id(msg + n, &parms[2], parm_cnt == 4);
 
 	if (!config_send(msg, n, opcode))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -1178,14 +1186,7 @@ static void cmd_pub_set(int argc, char *argv[])
 	msg[n++] = parms[4];
 
 	/* Model Id */
-	if (parm_cnt == 7) {
-		put_le16(parms[6], msg + n);
-		put_le16(parms[5], msg + n + 2);
-		n += 4;
-	} else {
-		put_le16(parms[5], msg + n);
-		n += 2;
-	}
+	n += put_model_id(msg + n, &parms[5], parm_cnt == 7);
 
 	if (!config_send(msg, n, OP_CONFIG_MODEL_PUB_SET))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -1212,14 +1213,7 @@ static void cmd_pub_get(int argc, char *argv[])
 	n += 2;
 
 	/* Model Id */
-	if (parm_cnt == 3) {
-		put_le16(parms[2], msg + n);
-		put_le16(parms[1], msg + n + 2);
-		n += 4;
-	} else {
-		put_le16(parms[1], msg + n);
-		n += 2;
-	}
+	n += put_model_id(msg + n, &parms[1], parm_cnt == 3);
 
 	if (!config_send(msg, n, OP_CONFIG_MODEL_PUB_GET))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -1497,21 +1491,22 @@ static const struct bt_shell_menu cfg_menu = {
 				"Delete AppKey"},
 	{"appkey-get", "<net_idx>", cmd_appkey_get,
 				"List AppKeys bound to the NetKey"},
-	{"bind", "<ele_addr> <app_idx> <mod_id> [vendor_id]", cmd_add_binding,
+	{"bind", "<ele_addr> <app_idx> <model_id> [vendor_id]", cmd_add_binding,
 				"Bind AppKey to a model"},
-	{"unbind", "<ele_addr> <app_idx> <mod_id> [vendor_id]", cmd_del_binding,
+	{"unbind", "<ele_addr> <app_idx> <model_id> [vendor_id]",
+				cmd_del_binding,
 				"Remove AppKey from a model"},
-	{"mod-appidx-get", "<ele_addr> <model id>", cmd_mod_appidx_get,
+	{"mod-appidx-get", "<ele_addr> <model_id>", cmd_mod_appidx_get,
 				"Get model app_idx"},
 	{"ttl-set", "<ttl>", cmd_ttl_set,
 				"Set default TTL"},
 	{"ttl-get", NULL, cmd_ttl_get,
 				"Get default TTL"},
 	{"pub-set", "<ele_addr> <pub_addr> <app_idx> <per (step|res)> "
-			"<re-xmt (cnt|per)> <mod id> [vendor_id]",
+			"<re-xmt (cnt|per)> <model_id> [vendor_id]",
 				cmd_pub_set,
 				"Set publication"},
-	{"pub-get", "<ele_addr> <model>", cmd_pub_get,
+	{"pub-get", "<ele_addr> <model_id> [vendor_id]", cmd_pub_get,
 				"Get publication"},
 	{"proxy-set", "<proxy>", cmd_proxy_set,
 				"Set proxy state"},
@@ -1546,9 +1541,9 @@ static const struct bt_shell_menu cfg_menu = {
 				"Set heartbeat subscribe"},
 	{"hb-sub-get", NULL, cmd_hb_sub_get,
 				"Get heartbeat subscribe"},
-	{"sub-add", "<ele_addr> <sub_addr> <model id>", cmd_sub_add,
+	{"sub-add", "<ele_addr> <sub_addr> <model_id>", cmd_sub_add,
 				"Add subscription"},
-	{"sub-get", "<ele_addr> <model id>", cmd_sub_get,
+	{"sub-get", "<ele_addr> <model_id>", cmd_sub_get,
 				"Get subscription"},
 	{"node-reset", NULL, cmd_node_reset,
 				"Reset a node and remove it from network"},
