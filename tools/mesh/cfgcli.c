@@ -629,6 +629,24 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 							get_le16(data + i));
 		break;
 
+	case OP_VEND_MODEL_APP_LIST:
+		if (len < 7)
+			return true;
+
+		bt_shell_printf("\nNode %4.4x Vendor Model AppIdx status %s\n",
+						src, mesh_status_str(data[0]));
+
+		if (data[0] != MESH_STATUS_SUCCESS)
+			return true;
+
+		bt_shell_printf("Element Addr\t%4.4x\n", get_le16(data + 1));
+		print_mod_id(data + 3, true, "");
+
+		for (i = 7; i < len; i += 2)
+			bt_shell_printf("Model AppIdx\t%4.4x\n",
+							get_le16(data + i));
+		break;
+
 	/* Per Mesh Profile 4.3.2.63 */
 	case OP_CONFIG_HEARTBEAT_PUB_STATUS:
 		if (len != 10)
@@ -1287,24 +1305,26 @@ static void cmd_mod_appidx_get(int argc, char *argv[])
 	uint16_t n;
 	uint8_t msg[32];
 	int parm_cnt;
-
-	n = mesh_opcode_set(OP_MODEL_APP_GET, msg);
+	bool vendor;
+	uint32_t opcode;
 
 	parm_cnt = read_input_parameters(argc, argv);
-	if (parm_cnt != 2) {
+	if (parm_cnt != 2 && parm_cnt != 3) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	/* Per Mesh Profile 4.3.2.49 */
+	vendor = (parm_cnt == 3);
+	opcode = !vendor ? OP_MODEL_APP_GET : OP_VEND_MODEL_APP_GET;
+	n = mesh_opcode_set(opcode, msg);
+
 	/* Element Address */
 	put_le16(parms[0], msg + n);
 	n += 2;
 	/* Model ID */
-	put_le16(parms[1], msg + n);
-	n += 2;
+	n += put_model_id(msg + n, &parms[1], vendor);
 
-	if (!config_send(msg, n, OP_MODEL_APP_GET))
+	if (!config_send(msg, n, opcode))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -1498,7 +1518,8 @@ static const struct bt_shell_menu cfg_menu = {
 	{"unbind", "<ele_addr> <app_idx> <model_id> [vendor_id]",
 				cmd_del_binding,
 				"Remove AppKey from a model"},
-	{"mod-appidx-get", "<ele_addr> <model_id>", cmd_mod_appidx_get,
+	{"mod-appidx-get", "<ele_addr> <model_id> [vendor_id]",
+				cmd_mod_appidx_get,
 				"Get model app_idx"},
 	{"ttl-set", "<ttl>", cmd_ttl_set,
 				"Set default TTL"},
