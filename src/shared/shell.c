@@ -681,6 +681,7 @@ int bt_shell_release_prompt(const char *input)
 static void rl_handler(char *input)
 {
 	wordexp_t w;
+	HIST_ENTRY *last;
 
 	if (!input) {
 		rl_insert_text("quit");
@@ -696,7 +697,9 @@ static void rl_handler(char *input)
 	if (!bt_shell_release_prompt(input))
 		goto done;
 
-	if (history_search(input, -1))
+	last = history_get(history_length + history_base - 1);
+	/* append only if input is different from previous command */
+	if (!last || strcmp(input, last->line))
 		add_history(input);
 
 	if (data.monitor)
