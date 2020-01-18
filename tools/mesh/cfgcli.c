@@ -73,9 +73,9 @@ static uint32_t parms[8];
 static struct cfg_cmd cmds[] = {
 	{ OP_APPKEY_ADD, OP_APPKEY_STATUS, "AppKeyAdd" },
 	{ OP_APPKEY_DELETE, OP_APPKEY_STATUS, "AppKeyDelete" },
-	{ OP_APPKEY_GET, OP_APPKEY_LIST, "AppKeyGet"},
-	{ OP_APPKEY_LIST, NO_RESPONSE, "AppKeyList"},
-	{ OP_APPKEY_STATUS, NO_RESPONSE, "AppKeyStatus"},
+	{ OP_APPKEY_GET, OP_APPKEY_LIST, "AppKeyGet" },
+	{ OP_APPKEY_LIST, NO_RESPONSE, "AppKeyList" },
+	{ OP_APPKEY_STATUS, NO_RESPONSE, "AppKeyStatus" },
 	{ OP_APPKEY_UPDATE, OP_APPKEY_STATUS, "AppKeyUpdate" },
 	{ OP_DEV_COMP_GET, OP_DEV_COMP_STATUS, "DeviceCompositionGet" },
 	{ OP_DEV_COMP_STATUS, NO_RESPONSE, "DeviceCompositionStatus" },
@@ -356,7 +356,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 	} else
 		return false;
 
-	bt_shell_printf("Received %s\n", opcode_str(opcode));
+	bt_shell_printf("Received %s (len %u)\n", opcode_str(opcode), len);
 
 	req = get_req_by_rsp(src, (opcode & ~OP_UNRELIABLE));
 	if (req) {
@@ -581,11 +581,11 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.19 */
 	case OP_CONFIG_MODEL_SUB_STATUS:
+		if (len != 7 && len != 9)
+			return true;
+
 		bt_shell_printf("\nNode %4.4x Subscription status %s\n",
 				src, mesh_status_str(data[0]));
-
-		if (data[0] != MESH_STATUS_SUCCESS)
-			return true;
 
 		ele_addr = get_le16(data + 1);
 		addr = get_le16(data + 3);
@@ -599,12 +599,11 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.27 */
 	case OP_CONFIG_MODEL_SUB_LIST:
+		if (len < 5)
+			return true;
 
 		bt_shell_printf("\nNode %4.4x Subscription List status %s\n",
 				src, mesh_status_str(data[0]));
-
-		if (data[0] != MESH_STATUS_SUCCESS)
-			return true;
 
 		bt_shell_printf("Element Addr\t%4.4x\n", get_le16(data + 1));
 		bt_shell_printf("Model ID\t%4.4x\n", get_le16(data + 3));
@@ -616,11 +615,11 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.50 */
 	case OP_MODEL_APP_LIST:
+		if (len < 5)
+			return true;
+
 		bt_shell_printf("\nNode %4.4x Model AppIdx status %s\n",
 						src, mesh_status_str(data[0]));
-
-		if (data[0] != MESH_STATUS_SUCCESS)
-			return true;
 
 		bt_shell_printf("Element Addr\t%4.4x\n", get_le16(data + 1));
 		bt_shell_printf("Model ID\t%4.4x\n", get_le16(data + 3));
@@ -632,11 +631,11 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.63 */
 	case OP_CONFIG_HEARTBEAT_PUB_STATUS:
+		if (len != 10)
+			return true;
+
 		bt_shell_printf("\nNode %4.4x Heartbeat publish status %s\n",
 				src, mesh_status_str(data[0]));
-
-		if (data[0] != MESH_STATUS_SUCCESS)
-			return true;
 
 		bt_shell_printf("Destination\t%4.4x\n", get_le16(data + 1));
 		bt_shell_printf("Count\t\t%2.2x\n", data[3]);
@@ -648,11 +647,11 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.66 */
 	case OP_CONFIG_HEARTBEAT_SUB_STATUS:
+		if (len != 9)
+			return true;
+
 		bt_shell_printf("\nNode %4.4x Heartbeat subscribe status %s\n",
 				src, mesh_status_str(data[0]));
-
-		if (data[0] != MESH_STATUS_SUCCESS)
-			return true;
 
 		bt_shell_printf("Source\t\t%4.4x\n", get_le16(data + 1));
 		bt_shell_printf("Destination\t%4.4x\n", get_le16(data + 3));
@@ -673,6 +672,9 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.54 */
 	case OP_NODE_RESET_STATUS:
+		if (len != 1)
+			return true;
+
 		bt_shell_printf("Node %4.4x reset status %s\n",
 				src, mesh_status_str(data[0]));
 
