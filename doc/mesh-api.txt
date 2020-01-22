@@ -222,7 +222,7 @@ Service		org.bluez.mesh
 Interface	org.bluez.mesh.Node1
 Object path	/org/bluez/mesh/node<uuid>
 		where <uuid> is the Device UUID passed to Join(),
-		CreateNetwork() or ImportLocalNode()
+		CreateNetwork() or Import()
 
 Methods:
 	void Send(object element_path, uint16 destination, uint16 key_index,
@@ -452,7 +452,7 @@ Service		org.bluez.mesh
 Interface	org.bluez.mesh.Management1
 Object path	/org/bluez/mesh/node<uuid>
 		where <uuid> is the Device UUID passed to Join(),
-		CreateNetwork() or ImportLocalNode()
+		CreateNetwork() or Import()
 
 Methods:
 	void UnprovisionedScan(uint16 seconds)
