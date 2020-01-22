@@ -515,6 +515,8 @@ static int request_key(struct mesh_agent *agent,
 						MESH_PROVISION_AGENT_INTERFACE,
 						method_name);
 
+	l_dbus_message_set_arguments(msg, "");
+
 	l_debug("Send key request to %s %s", agent->owner, agent->path);
 
 	l_dbus_send_with_reply(dbus_get_bus(), msg, key_reply, agent, NULL);
@@ -649,5 +651,8 @@ void mesh_agent_cancel(struct mesh_agent *agent)
 	msg = l_dbus_message_new_method_call(dbus, agent->owner, agent->path,
 						MESH_PROVISION_AGENT_INTERFACE,
 						"Cancel");
+
+	l_dbus_message_set_arguments(msg, "");
+
 	l_dbus_send(dbus, msg);
 }
