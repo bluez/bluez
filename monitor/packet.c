@@ -519,6 +519,7 @@ static const struct {
 	{ 0x42, "Unknown Advertising Identifier"			},
 	{ 0x43, "Limit Reached"						},
 	{ 0x44, "Operation Cancelled by Host"				},
+	{ 0x45, "Packet Too Long"					},
 	{ }
 };
 
