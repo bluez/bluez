@@ -90,7 +90,7 @@ struct mesh_node {
 	uint32_t seq_number;
 	bool provisioner;
 	uint16_t primary;
-	struct node_composition *comp;
+	struct node_composition comp;
 	struct {
 		uint16_t interval;
 		uint8_t cnt;
@@ -336,7 +336,6 @@ static void free_node_resources(void *data)
 	free_node_dbus_resources(node);
 
 	mesh_net_free(node->net);
-	l_free(node->comp);
 	l_free(node->storage_dir);
 	l_free(node);
 }
@@ -503,11 +502,10 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 
 	l_queue_push_tail(nodes, node);
 
-	node->comp = l_new(struct node_composition, 1);
-	node->comp->cid = db_node->cid;
-	node->comp->pid = db_node->pid;
-	node->comp->vid = db_node->vid;
-	node->comp->crpl = db_node->crpl;
+	node->comp.cid = db_node->cid;
+	node->comp.pid = db_node->pid;
+	node->comp.vid = db_node->vid;
+	node->comp.crpl = db_node->crpl;
 	node->lpn = db_node->modes.lpn;
 
 	node->proxy = db_node->modes.proxy;
@@ -753,7 +751,7 @@ uint16_t node_get_crpl(struct mesh_node *node)
 	if (!node)
 		return 0;
 
-	return node->comp->crpl;
+	return node->comp.crpl;
 }
 
 uint8_t node_relay_mode_get(struct mesh_node *node, uint8_t *count,
@@ -886,18 +884,18 @@ uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf, uint16_t sz)
 	uint16_t num_ele = 0;
 	const struct l_queue_entry *ele_entry;
 
-	if (!node || !node->comp || sz < MIN_COMP_SIZE)
+	if (!node || sz < MIN_COMP_SIZE)
 		return 0;
 
 	n = 0;
 
-	l_put_le16(node->comp->cid, buf + n);
+	l_put_le16(node->comp.cid, buf + n);
 	n += 2;
-	l_put_le16(node->comp->pid, buf + n);
+	l_put_le16(node->comp.pid, buf + n);
 	n += 2;
-	l_put_le16(node->comp->vid, buf + n);
+	l_put_le16(node->comp.vid, buf + n);
 	n += 2;
-	l_put_le16(node->comp->crpl, buf + n);
+	l_put_le16(node->comp.crpl, buf + n);
 	n += 2;
 
 	features = 0;
@@ -1198,10 +1196,10 @@ static void convert_node_to_storage(struct mesh_node *node,
 {
 	const struct l_queue_entry *entry;
 
-	db_node->cid = node->comp->cid;
-	db_node->pid = node->comp->pid;
-	db_node->vid = node->comp->vid;
-	db_node->crpl = node->comp->crpl;
+	db_node->cid = node->comp.cid;
+	db_node->pid = node->comp.pid;
+	db_node->vid = node->comp.vid;
+	db_node->crpl = node->comp.crpl;
 	db_node->modes.lpn = node->lpn;
 	db_node->modes.proxy = node->proxy;
 
@@ -1285,29 +1283,28 @@ static bool get_app_properties(struct mesh_node *node, const char *path,
 
 	l_debug("path %s", path);
 
-	node->comp = l_new(struct node_composition, 1);
-	node->comp->crpl = mesh_get_crpl();
+	node->comp.crpl = mesh_get_crpl();
 
 	while (l_dbus_message_iter_next_entry(properties, &key, &variant)) {
 		if (!cid && !strcmp(key, "CompanyID")) {
 			if (!l_dbus_message_iter_get_variant(&variant, "q",
-							&node->comp->cid))
-				goto fail;
+							&node->comp.cid))
+				return false;
 			cid = true;
 			continue;
 		}
 
 		if (!pid && !strcmp(key, "ProductID")) {
 			if (!l_dbus_message_iter_get_variant(&variant, "q",
-							&node->comp->pid))
-				goto fail;
+							&node->comp.pid))
+				return false;
 			pid = true;
 			continue;
 		}
 
 		if (!vid && !strcmp(key, "VersionID")) {
 			if (!l_dbus_message_iter_get_variant(&variant, "q",
-							&node->comp->vid))
+							&node->comp.vid))
 				return false;
 			vid = true;
 			continue;
@@ -1315,21 +1312,16 @@ static bool get_app_properties(struct mesh_node *node, const char *path,
 
 		if (!strcmp(key, "CRPL")) {
 			if (!l_dbus_message_iter_get_variant(&variant, "q",
-							&node->comp->crpl))
-				goto fail;
+							&node->comp.crpl))
+				return false;
 			continue;
 		}
 	}
 
 	if (!cid || !pid || !vid)
-		goto fail;
+		return false;
 
 	return true;
-fail:
-	l_free(node->comp);
-	node->comp = NULL;
-
-	return false;
 }
 
 static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
