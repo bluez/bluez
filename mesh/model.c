@@ -964,10 +964,12 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 		/* Unicast and not addressed to us */
 		return false;
 
-	clear_text = l_malloc(size);
-	if (!clear_text)
+	/* Don't process if already in RPL */
+	crpl = node_get_crpl(node);
+	if (net_msg_check_replay_cache(net, src, crpl, seq, iv_index))
 		return false;
 
+	clear_text = l_malloc(size);
 	forward.data = clear_text;
 
 	/*
@@ -992,16 +994,6 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	if (decrypt_idx < 0) {
 		l_error("model.c - Failed to decrypt application payload");
 		result = false;
-		goto done;
-	}
-
-	/* print_packet("Clr Rx (pre-cache-check)", clear_text, size - 4); */
-
-	crpl = node_get_crpl(node);
-
-	if (net_msg_in_replay_cache(net, (uint16_t) decrypt_idx, src,
-				crpl, seq, iv_index)) {
-		result = true;
 		goto done;
 	}
 
@@ -1073,7 +1065,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 		 * Either the message has been processed internally or
 		 * has been passed on to an external model.
 		 */
-		result = forward.has_dst | forward.done;
+		result |= forward.has_dst | forward.done;
 
 		/* If the message was to unicast address, we are done */
 		if (!is_subscription && ele_idx == i)
@@ -1088,8 +1080,13 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 			break;
 	}
 
+	/* If message has been handled by us, add to RPL */
+	if (result)
+		net_msg_add_replay_cache(net, src, seq, iv_index);
+
 done:
 	l_free(clear_text);
+
 	return result;
 }
 

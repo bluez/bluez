@@ -3759,9 +3759,8 @@ static bool clean_old_iv_index(void *a, void *b)
 	return false;
 }
 
-bool net_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
-				uint16_t src, uint16_t crpl, uint32_t seq,
-				uint32_t iv_index)
+bool net_msg_check_replay_cache(struct mesh_net *net, uint16_t src,
+				uint16_t crpl, uint32_t seq, uint32_t iv_index)
 {
 	struct mesh_rpl *rpe;
 
@@ -3782,49 +3781,50 @@ bool net_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
 						L_UINT_TO_PTR(src));
 
 	if (rpe) {
-		if (iv_index > rpe->iv_index) {
-			rpe->seq = seq;
-			rpe->iv_index = iv_index;
-			rpl_put_entry(net->node, src, iv_index, seq);
+		if (iv_index > rpe->iv_index)
 			return false;
-		}
 
-		if (seq < rpe->seq) {
-			l_debug("Ignoring packet with lower sequence number");
+		/* Return true if (iv_index | seq) too low */
+		if (iv_index < rpe->iv_index || seq <= rpe->seq) {
+			l_debug("Ignoring replayed packet");
 			return true;
 		}
-
-		if (seq == rpe->seq) {
-			l_debug("Message already processed (duplicate)");
-			return true;
-		}
-
-		rpe->seq = seq;
-
-		rpl_put_entry(net->node, src, iv_index, seq);
-
-		return false;
 	}
 
-	l_debug("New Entry for %4.4x", src);
-
-	/* Replay Cache is fixed sized */
-	if (l_queue_length(net->replay_cache) >= crpl) {
+	/* SRC not in Replay Cache... see if there is space for it */
+	else if (l_queue_length(net->replay_cache) >= crpl) {
 		int ret = l_queue_foreach_remove(net->replay_cache,
 				clean_old_iv_index, L_UINT_TO_PTR(iv_index));
 
+		/* Return true if no space could be freed */
 		if (!ret)
 			return true;
 	}
 
-	if (!rpl_put_entry(net->node, src, iv_index, seq))
-		return true;
+	return false;
+}
 
-	rpe = l_new(struct mesh_rpl, 1);
-	rpe->src = src;
+void net_msg_add_replay_cache(struct mesh_net *net, uint16_t src, uint32_t seq,
+							uint32_t iv_index)
+{
+	struct mesh_rpl *rpe;
+
+	if (!net || !net->replay_cache)
+		return;
+
+	rpe = l_queue_remove_if(net->replay_cache, match_replay_cache,
+						L_UINT_TO_PTR(src));
+
+	if (!rpe) {
+		l_debug("New Entry for %4.4x", src);
+		rpe = l_new(struct mesh_rpl, 1);
+		rpe->seq = src;
+	}
+
 	rpe->seq = seq;
 	rpe->iv_index = iv_index;
-	l_queue_push_head(net->replay_cache, rpe);
+	rpl_put_entry(net->node, src, iv_index, seq);
 
-	return false;
+	/* Optimize so that most recent conversations stay earliest in cache */
+	l_queue_push_head(net->replay_cache, rpe);
 }
