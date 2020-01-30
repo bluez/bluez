@@ -3043,14 +3043,19 @@ static bool send_seg(struct mesh_net *net, struct mesh_sar *msg, uint8_t segO)
 	uint8_t segN = SEG_MAX(msg->len);
 	uint16_t seg_off = SEG_OFF(segO);
 	uint32_t key_id = 0;
-	uint32_t seq_num = mesh_net_next_seq_num(net);
+	uint32_t seq_num;
 
 	if (segN) {
+		/* Send each segment on unique seq_num */
+		seq_num = mesh_net_next_seq_num(net);
+
 		if (msg->len - seg_off > SEG_OFF(1))
 			seg_len = SEG_OFF(1);
 		else
 			seg_len = msg->len - seg_off;
 	} else {
+		/* Send on same seq_num used for Access Layer */
+		seq_num = msg->seqAuth;
 		seg_len = msg->len;
 	}
 
@@ -3185,7 +3190,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 
 	/* First enqueue to any Friends and internal models */
 	result = msg_rxed(net, false, iv_index, ttl,
-				seq + seg_max,
+				seq,
 				net_idx,
 				src, dst,
 				key_aid,
@@ -3196,12 +3201,8 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	 * or delivered to one of our Unicast addresses we are done
 	 */
 	if ((result && IS_UNICAST(dst)) || src == dst ||
-			(dst >= net->src_addr && dst <= net->last_addr)) {
-		/* Adjust our seq_num for "virtual" delivery */
-		net->seq_num += seg_max;
-		mesh_net_next_seq_num(net);
+			(dst >= net->src_addr && dst <= net->last_addr))
 		return true;
-	}
 
 	/* If Segmented, Cancel any OB segmented message to same DST */
 	if (seg_max) {
@@ -3226,7 +3227,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	}
 
 	payload->iv_index = mesh_net_get_iv_index(net);
-	payload->seqAuth = net->seq_num;
+	payload->seqAuth = seq;
 
 	result = true;
 	if (!IS_UNICAST(dst) && seg_max) {
