@@ -36,6 +36,7 @@
 #include "mesh/mesh-config.h"
 #include "mesh/model.h"
 #include "mesh/appkey.h"
+#include "mesh/rpl.h"
 
 #define abs_diff(a, b) ((a) > (b) ? (a) - (b) : (b) - (a))
 
@@ -254,12 +255,6 @@ struct net_beacon_data {
 	bool ivu;
 	bool kr;
 	bool processed;
-};
-
-struct mesh_rpl {
-	uint32_t iv_index;
-	uint32_t seq;
-	uint16_t src;
 };
 
 #define FAST_CACHE_SIZE 8
@@ -2714,6 +2709,9 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		struct mesh_config *cfg = node_config_get(net->node);
 
 		mesh_config_write_iv_index(cfg, iv_index, ivu);
+
+		/* Cleanup Replay Protection List NVM */
+		rpl_init(net->node, iv_index);
 	}
 
 	net->iv_index = iv_index;
@@ -3771,8 +3769,11 @@ bool net_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
 	if (!net || !net->node)
 		return true;
 
-	if (!net->replay_cache)
+	if (!net->replay_cache) {
 		net->replay_cache = l_queue_new();
+		rpl_init(net->node, net->iv_index);
+		rpl_get_list(net->node, net->replay_cache);
+	}
 
 	l_debug("Test Replay src: %4.4x seq: %6.6x iv: %8.8x",
 						src, seq, iv_index);
@@ -3784,6 +3785,7 @@ bool net_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
 		if (iv_index > rpe->iv_index) {
 			rpe->seq = seq;
 			rpe->iv_index = iv_index;
+			rpl_put_entry(net->node, src, iv_index, seq);
 			return false;
 		}
 
@@ -3799,6 +3801,8 @@ bool net_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
 
 		rpe->seq = seq;
 
+		rpl_put_entry(net->node, src, iv_index, seq);
+
 		return false;
 	}
 
@@ -3812,6 +3816,9 @@ bool net_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
 		if (!ret)
 			return true;
 	}
+
+	if (!rpl_put_entry(net->node, src, iv_index, seq))
+		return true;
 
 	rpe = l_new(struct mesh_rpl, 1);
 	rpe->src = src;
