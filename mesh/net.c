@@ -135,6 +135,7 @@ struct mesh_net {
 
 	struct l_queue *subnets;
 	struct l_queue *msg_cache;
+	struct l_queue *replay_cache;
 	struct l_queue *sar_in;
 	struct l_queue *sar_out;
 	struct l_queue *frnd_msgs;
@@ -253,6 +254,12 @@ struct net_beacon_data {
 	bool ivu;
 	bool kr;
 	bool processed;
+};
+
+struct mesh_rpl {
+	uint32_t iv_index;
+	uint32_t seq;
+	uint16_t src;
 };
 
 #define FAST_CACHE_SIZE 8
@@ -554,13 +561,6 @@ static void mesh_sar_free(void *data)
 	l_free(sar);
 }
 
-static void mesh_msg_free(void *data)
-{
-	struct mesh_msg *msg = data;
-
-	l_free(msg);
-}
-
 static void subnet_free(void *data)
 {
 	struct mesh_subnet *subnet = data;
@@ -688,7 +688,8 @@ void mesh_net_free(struct mesh_net *net)
 		return;
 
 	l_queue_destroy(net->subnets, subnet_free);
-	l_queue_destroy(net->msg_cache, mesh_msg_free);
+	l_queue_destroy(net->msg_cache, l_free);
+	l_queue_destroy(net->replay_cache, l_free);
 	l_queue_destroy(net->sar_in, mesh_sar_free);
 	l_queue_destroy(net->sar_out, mesh_sar_free);
 	l_queue_destroy(net->frnd_msgs, l_free);
@@ -1024,7 +1025,7 @@ int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 
 void mesh_net_flush_msg_queues(struct mesh_net *net)
 {
-	l_queue_clear(net->msg_cache, mesh_msg_free);
+	l_queue_clear(net->msg_cache, l_free);
 }
 
 uint32_t mesh_net_get_iv_index(struct mesh_net *net)
@@ -3733,4 +3734,89 @@ uint32_t mesh_net_get_instant(struct mesh_net *net)
 	l_queue_foreach(net->subnets, refresh_instant, net);
 
 	return net->instant;
+}
+
+static bool match_replay_cache(const void *a, const void *b)
+{
+	const struct mesh_rpl *rpe = a;
+	uint16_t src = L_PTR_TO_UINT(b);
+
+	return src == rpe->src;
+}
+
+static bool clean_old_iv_index(void *a, void *b)
+{
+	struct mesh_rpl *rpe = a;
+	uint32_t iv_index = L_PTR_TO_UINT(b);
+
+	if (iv_index < 2)
+		return false;
+
+	if (rpe->iv_index < iv_index - 1) {
+		l_free(rpe);
+		return true;
+	}
+
+	return false;
+}
+
+bool net_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
+				uint16_t src, uint16_t crpl, uint32_t seq,
+				uint32_t iv_index)
+{
+	struct mesh_rpl *rpe;
+
+	/* If anything missing reject this message by returning true */
+	if (!net || !net->node)
+		return true;
+
+	if (!net->replay_cache)
+		net->replay_cache = l_queue_new();
+
+	l_debug("Test Replay src: %4.4x seq: %6.6x iv: %8.8x",
+						src, seq, iv_index);
+
+	rpe = l_queue_find(net->replay_cache, match_replay_cache,
+						L_UINT_TO_PTR(src));
+
+	if (rpe) {
+		if (iv_index > rpe->iv_index) {
+			rpe->seq = seq;
+			rpe->iv_index = iv_index;
+			return false;
+		}
+
+		if (seq < rpe->seq) {
+			l_debug("Ignoring packet with lower sequence number");
+			return true;
+		}
+
+		if (seq == rpe->seq) {
+			l_debug("Message already processed (duplicate)");
+			return true;
+		}
+
+		rpe->seq = seq;
+
+		return false;
+	}
+
+	l_debug("New Entry for %4.4x", src);
+
+	/* Replay Cache is fixed sized */
+	if (l_queue_length(net->replay_cache) >= crpl) {
+		int ret = l_queue_foreach_remove(net->replay_cache,
+				clean_old_iv_index, L_UINT_TO_PTR(iv_index));
+
+		if (!ret)
+			return true;
+	}
+
+	rpe = l_new(struct mesh_rpl, 1);
+	rpe->src = src;
+	rpe->seq = seq;
+	rpe->iv_index = iv_index;
+	l_queue_push_head(net->replay_cache, rpe);
+
+	return false;
 }

@@ -35,19 +35,12 @@
 #include "mesh/appkey.h"
 
 struct mesh_app_key {
-	struct l_queue *replay_cache;
 	uint16_t net_idx;
 	uint16_t app_idx;
 	uint8_t key[16];
 	uint8_t key_aid;
 	uint8_t new_key[16];
 	uint8_t new_key_aid;
-};
-
-struct mesh_msg {
-	uint32_t iv_index;
-	uint32_t seq;
-	uint16_t src;
 };
 
 static bool match_key_index(const void *a, const void *b)
@@ -66,103 +59,11 @@ static bool match_bound_key(const void *a, const void *b)
 	return key->net_idx == idx;
 }
 
-static bool match_replay_cache(const void *a, const void *b)
-{
-	const struct mesh_msg *msg = a;
-	uint16_t src = L_PTR_TO_UINT(b);
-
-	return src == msg->src;
-}
-
-static bool clean_old_iv_index(void *a, void *b)
-{
-	struct mesh_msg *msg = a;
-	uint32_t iv_index = L_PTR_TO_UINT(b);
-
-	if (iv_index < 2)
-		return false;
-
-	if (msg->iv_index < iv_index - 1) {
-		l_free(msg);
-		return true;
-	}
-
-	return false;
-}
-
-bool appkey_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
-				uint16_t src, uint16_t crpl, uint32_t seq,
-				uint32_t iv_index)
-{
-	struct mesh_app_key *key;
-	struct mesh_msg *msg;
-	struct l_queue *app_keys;
-
-	app_keys = mesh_net_get_app_keys(net);
-	if (!app_keys)
-		return false;
-
-	l_debug("Test Replay src: %4.4x seq: %6.6x iv: %8.8x",
-						src, seq, iv_index);
-
-	key = l_queue_find(app_keys, match_key_index, L_UINT_TO_PTR(idx));
-
-	if (!key)
-		return false;
-
-	msg = l_queue_find(key->replay_cache, match_replay_cache,
-						L_UINT_TO_PTR(src));
-
-	if (msg) {
-		if (iv_index > msg->iv_index) {
-			msg->seq = seq;
-			msg->iv_index = iv_index;
-			return false;
-		}
-
-		if (seq < msg->seq) {
-			l_debug("Ignoring packet with lower sequence number");
-			return true;
-		}
-
-		if (seq == msg->seq) {
-			l_debug("Message already processed (duplicate)");
-			return true;
-		}
-
-		msg->seq = seq;
-
-		return false;
-	}
-
-	l_debug("New Entry for %4.4x", src);
-	if (key->replay_cache == NULL)
-		key->replay_cache = l_queue_new();
-
-	/* Replay Cache is fixed sized */
-	if (l_queue_length(key->replay_cache) >= crpl) {
-		int ret = l_queue_foreach_remove(key->replay_cache,
-				clean_old_iv_index, L_UINT_TO_PTR(iv_index));
-
-		if (!ret)
-			return true;
-	}
-
-	msg = l_new(struct mesh_msg, 1);
-	msg->src = src;
-	msg->seq = seq;
-	msg->iv_index = iv_index;
-	l_queue_push_head(key->replay_cache, msg);
-
-	return false;
-}
-
 static struct mesh_app_key *app_key_new(void)
 {
 	struct mesh_app_key *key = l_new(struct mesh_app_key, 1);
 
 	key->new_key_aid = 0xFF;
-	key->replay_cache = l_queue_new();
 	return key;
 }
 
@@ -192,7 +93,6 @@ void appkey_key_free(void *data)
 	if (!key)
 		return;
 
-	l_queue_destroy(key->replay_cache, l_free);
 	l_free(key);
 }
 
@@ -402,8 +302,6 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 	key->net_idx = net_idx;
 	key->app_idx = app_idx;
 	l_queue_push_tail(app_keys, key);
-
-	l_queue_clear(key->replay_cache, l_free);
 
 	return MESH_STATUS_SUCCESS;
 }

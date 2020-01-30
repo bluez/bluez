@@ -25,9 +25,6 @@ struct mesh_app_key;
 bool appkey_key_init(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 				uint8_t *key_value, uint8_t *new_key_value);
 void appkey_key_free(void *data);
-bool appkey_msg_in_replay_cache(struct mesh_net *net, uint16_t idx,
-				uint16_t src, uint16_t crpl, uint32_t seq,
-				uint32_t iv_index);
 const uint8_t *appkey_get_key(struct mesh_net *net, uint16_t app_idx,
 							uint8_t *key_id);
 int appkey_get_key_idx(struct mesh_app_key *app_key,

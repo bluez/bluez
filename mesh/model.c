@@ -1000,7 +1000,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	if (key_aid != APP_AID_DEV) {
 		uint16_t crpl = node_get_crpl(node);
 
-		if (appkey_msg_in_replay_cache(net, (uint16_t) decrypt_idx, src,
+		if (net_msg_in_replay_cache(net, (uint16_t) decrypt_idx, src,
 							crpl, seq, iv_index)) {
 			result = true;
 			goto done;
