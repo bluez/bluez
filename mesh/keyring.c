@@ -24,10 +24,10 @@
 #define _GNU_SOURCE
 #include <fcntl.h>
 #include <dirent.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <dirent.h>
 
 #include <sys/stat.h>
 
@@ -166,7 +166,10 @@ bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_idx)
 	snprintf(key_dir, PATH_MAX, "%s%s", node_path, app_key_dir);
 	dir = opendir(key_dir);
 	if (!dir) {
-		l_error("Failed to App Key storage directory: %s", key_dir);
+		if (errno == ENOENT)
+			return true;
+
+		l_error("Failed to open AppKey storage directory: %s", key_dir);
 		return false;
 	}
 
