@@ -123,12 +123,12 @@ bool keyring_put_app_key(struct mesh_node *node, uint16_t app_idx,
 	return result;
 }
 
-static void finalize(const char *fpath, uint16_t net_idx)
+static void finalize(int dir_fd, const char *fname, uint16_t net_idx)
 {
 	struct keyring_app_key key;
 	int fd;
 
-	fd = open(fpath, O_RDWR);
+	fd = openat(dir_fd, fname, O_RDWR);
 
 	if (fd < 0)
 		return;
@@ -137,7 +137,7 @@ static void finalize(const char *fpath, uint16_t net_idx)
 						key.net_idx != net_idx)
 		goto done;
 
-	l_debug("Finalize %s", fpath);
+	l_debug("Finalize %s", fname);
 	memcpy(key.old_key, key.new_key, 16);
 	lseek(fd, 0, SEEK_SET);
 
@@ -153,6 +153,7 @@ bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_idx)
 	const char *node_path;
 	char key_dir[PATH_MAX];
 	DIR *dir;
+	int dir_fd;
 	struct dirent *entry;
 
 	if (!node)
@@ -173,10 +174,12 @@ bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_idx)
 		return false;
 	}
 
+	dir_fd = dirfd(dir);
+
 	while ((entry = readdir(dir)) != NULL) {
 		/* AppKeys are stored in regular files */
 		if (entry->d_type == DT_REG)
-			finalize(entry->d_name, net_idx);
+			finalize(dir_fd, entry->d_name, net_idx);
 	}
 
 	closedir(dir);
