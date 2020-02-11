@@ -2345,6 +2345,8 @@ const char *bt_compidtostr(int compid)
 		return "Senix Corporation";
 	case 1037:
 		return "NorthStar Battery Company, LLC";
+	case 1521:
+		return "The Linux Foundation";
 	case 65535:
 		return "internal use";
 	default:
