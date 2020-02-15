@@ -6141,6 +6141,21 @@ int device_confirm_passkey(struct btd_device *device, uint8_t type,
 	struct authentication_req *auth;
 	int err;
 
+	/* Just-Works repairing policy */
+	if (confirm_hint && device_is_paired(device, type)) {
+		if (main_opts.jw_repairing == JW_REPAIRING_NEVER) {
+			btd_adapter_confirm_reply(device->adapter,
+						  &device->bdaddr,
+						  type, FALSE);
+			return 0;
+		} else if (main_opts.jw_repairing == JW_REPAIRING_ALWAYS) {
+			btd_adapter_confirm_reply(device->adapter,
+						  &device->bdaddr,
+						  type, TRUE);
+			return 0;
+		}
+	}
+
 	auth = new_auth(device, type, AUTH_TYPE_CONFIRM, FALSE);
 	if (!auth)
 		return -EPERM;
