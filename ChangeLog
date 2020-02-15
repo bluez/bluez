@@ -1,3 +1,9 @@
+ver 5.53:
+	Fix issue with handling unregistration for advertisment.
+	Fix issue with A2DP and handling recovering process.
+	Fix issue with udpating input device information.
+	Add support for loading blocked keys.
+
 ver 5.52:
 	Fix issue with AVDTP session disconnect timeout handling.
 	Mark media endpoint APIs as stable interfaces.
