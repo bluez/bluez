@@ -588,6 +588,45 @@ static const struct mesh_crypto_test s8_3_11 = {
 	.packet		= {"5e6ebfc021edf5d5e748a20ecfd98ddfd32de80befb400213d113813b5"},
 };
 
+static const struct mesh_crypto_test s8_3_22 = {
+	.name		= "8.3.22 Message #22",
+
+	.app_key	= "63964771734fbd76e3b40519d1d94a48",
+	.net_key	= "7dd7364cd842ad18c17c2b820c84c3d6",
+	.dev_key	= "9d6dd0e96eb25dc19a40ed9914f8f03f",
+	.iv_index	= 0x12345677,
+
+	.net_nid	= 0x68,
+	.net_ttl	= 0x03,
+	.app_seq	= 0x07080b,
+	.net_seq	= {0x07080b},
+	.net_src	= 0x1234,
+	.net_dst	= 0xb529,
+	.uuid		= "0073e7e4d8b9440faf8415df4c56c0e1",
+	.akf		= true,
+	.key_aid	= 0x26,
+	.app_msg	= "d50a0048656c6c6f",
+	.enc_msg	= "3871b904d4315263",
+	.app_mic32	= 0x16ca48a0,
+
+	.enc_key	= "0953fa93e7caac9638f58820220a398e",
+	.app_nonce	= "010007080b1234b52912345677",
+
+	.priv_key	= "8b84eedec100067d670971dd2aa700cf",
+
+	.net_nonce	= {"000307080b1234000012345677"},
+
+	.priv_rand	= {"000000000012345677ed31f3fdcf88a4"},
+
+	.trans_pkt	= {"663871b904d431526316ca48a0"},
+
+	.net_msg	= {"ed31f3fdcf88a411135fea55df730b"},
+
+	.net_mic32	= {0x6b28e255},
+
+	.packet		= {"e8d85caecef1e3ed31f3fdcf88a411135fea55df730b6b28e255" },
+};
+
 static const struct mesh_crypto_test s8_4_3 = {
 	.name		= "8.4.3 Secure Network Beacon",
 
@@ -2013,6 +2052,8 @@ int main(int argc, char *argv[])
 	check_decrypt(&s8_3_10);
 	check_encrypt(&s8_3_11); /* Single segment tester unavailable */
 	check_decrypt(&s8_3_11); /* Single segment tester unavailable */
+	check_encrypt(&s8_3_22);
+	check_decrypt(&s8_3_22);
 
 	/* Section 8.4 Beacon Sample Data */
 	check_beacon(&s8_4_3);
