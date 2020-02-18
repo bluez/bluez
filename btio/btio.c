@@ -881,6 +881,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 		case BT_IO_OPT_DEST_CHANNEL:
 		case BT_IO_OPT_HANDLE:
 		case BT_IO_OPT_CLASS:
+		case BT_IO_OPT_PHY:
 		default:
 			g_set_error(err, BT_IO_ERROR, EINVAL,
 					"Unknown option %d", opt);
@@ -968,6 +969,17 @@ static int get_priority(int sock, uint32_t *prio)
 	return 0;
 }
 
+static int get_phy(int sock, uint32_t *phy)
+{
+	socklen_t len;
+
+	len = sizeof(*phy);
+	if (getsockopt(sock, SOL_BLUETOOTH, BT_PHY, phy, &len) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 								va_list args)
 {
@@ -979,7 +991,7 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 	uint16_t handle = 0;
 	socklen_t len;
 	gboolean flushable = FALSE, have_dst = FALSE;
-	uint32_t priority;
+	uint32_t priority, phy;
 
 	if (!get_src(sock, &src, sizeof(src), err))
 		return FALSE;
@@ -1147,6 +1159,13 @@ parse_opts:
 			}
 			*(va_arg(args, uint32_t *)) = priority;
 			break;
+		case BT_IO_OPT_PHY:
+			if (get_phy(sock, &phy) < 0) {
+				ERROR_FAILED(err, "get_phy", errno);
+				return FALSE;
+			}
+			*(va_arg(args, uint32_t *)) = phy;
+			break;
 		case BT_IO_OPT_INVALID:
 		case BT_IO_OPT_SOURCE_TYPE:
 		case BT_IO_OPT_CHANNEL:
@@ -1194,6 +1213,7 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 	socklen_t len;
 	uint8_t dev_class[3];
 	uint16_t handle = 0;
+	uint32_t phy;
 
 	if (!get_src(sock, &src, sizeof(src), err))
 		return FALSE;
@@ -1287,6 +1307,13 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 			}
 			memcpy(va_arg(args, uint8_t *), dev_class, 3);
 			break;
+		case BT_IO_OPT_PHY:
+			if (get_phy(sock, &phy) < 0) {
+				ERROR_FAILED(err, "get_phy", errno);
+				return FALSE;
+			}
+			*(va_arg(args, uint32_t *)) = phy;
+			break;
 		case BT_IO_OPT_SOURCE_TYPE:
 		case BT_IO_OPT_DEST_TYPE:
 		case BT_IO_OPT_KEY_SIZE:
@@ -1338,6 +1365,7 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 	socklen_t len;
 	uint8_t dev_class[3];
 	uint16_t handle = 0;
+	uint32_t phy;
 
 	len = sizeof(sco_opt);
 	memset(&sco_opt, 0, len);
@@ -1384,6 +1412,13 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 				return FALSE;
 			}
 			memcpy(va_arg(args, uint8_t *), dev_class, 3);
+			break;
+		case BT_IO_OPT_PHY:
+			if (get_phy(sock, &phy) < 0) {
+				ERROR_FAILED(err, "get_phy", errno);
+				return FALSE;
+			}
+			*(va_arg(args, uint32_t *)) = phy;
 			break;
 		case BT_IO_OPT_SOURCE_TYPE:
 		case BT_IO_OPT_DEST_TYPE:
