@@ -444,8 +444,8 @@ static int app_packet_decrypt(struct mesh_net *net, const uint8_t *data,
 			continue;
 
 		if (old_key && old_key_aid == key_aid) {
-			decrypted = mesh_crypto_payload_decrypt(NULL, 0, data,
-						size, szmict, src, dst, key_aid,
+			decrypted = mesh_crypto_payload_decrypt(virt, virt_size,
+					data, size, szmict, src, dst, key_aid,
 						seq, iv_idx, out, old_key);
 
 			if (decrypted) {
@@ -457,8 +457,8 @@ static int app_packet_decrypt(struct mesh_net *net, const uint8_t *data,
 		}
 
 		if (new_key && new_key_aid == key_aid) {
-			decrypted = mesh_crypto_payload_decrypt(NULL, 0, data,
-						size, szmict, src, dst, key_aid,
+			decrypted = mesh_crypto_payload_decrypt(virt, virt_size,
+					data, size, szmict, src, dst, key_aid,
 						seq, iv_idx, out, new_key);
 
 			if (decrypted) {
