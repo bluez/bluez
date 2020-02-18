@@ -49,6 +49,7 @@
 #include "lib/l2cap.h"
 
 #include "src/shared/util.h"
+#include "monitor/display.h"
 
 #define NIBBLE_TO_ASCII(c)  ((c) < 0x0a ? (c) + 0x30 : (c) + 0x57)
 
@@ -306,14 +307,105 @@ static int setopts(int sk, struct l2cap_options *opts)
 							sizeof(opts->imtu));
 }
 
+bool use_color(void)
+{
+	return false;
+}
+
+static const struct bitfield_data phy_table[] = {
+	{  0, "BR1M1SLOT" },
+	{  1, "BR1M3SLOT" },
+	{  2, "BR1M5SLOT" },
+	{  3, "EDR2M1SLOT" },
+	{  4, "EDR2M3SLOT" },
+	{  5, "EDR2M5SLOT" },
+	{  6, "EDR3M1SLOT" },
+	{  7, "EDR3M3SLOT" },
+	{  8, "EDR3M5SLOT" },
+	{  9, "LE1MTX" },
+	{ 10, "LE1MRX" },
+	{ 11, "LE2MTX" },
+	{ 12, "LE2MRX" },
+	{ 13, "LECODEDTX" },
+	{ 14, "LECODEDRX" },
+	{},
+};
+
+static int print_info(int sk, struct l2cap_options *opts)
+{
+	struct sockaddr_l2 addr;
+	socklen_t optlen;
+	struct l2cap_conninfo conn;
+	int prio, phy;
+	char ba[18];
+
+	/* Get connection information */
+	memset(&conn, 0, sizeof(conn));
+	optlen = sizeof(conn);
+
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &conn, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get L2CAP connection information: "
+				"%s (%d)", strerror(errno), errno);
+		return -errno;
+	}
+
+	if (getsockopt(sk, SOL_SOCKET, SO_PRIORITY, &prio, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get socket priority: %s (%d)",
+							strerror(errno), errno);
+		return -errno;
+	}
+
+	/* Check for remote address */
+	memset(&addr, 0, sizeof(addr));
+	optlen = sizeof(addr);
+
+	if (getpeername(sk, (struct sockaddr *) &addr, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get socket name: %s (%d)",
+							strerror(errno), errno);
+		return -errno;
+	}
+
+	ba2str(&addr.l2_bdaddr, ba);
+	syslog(LOG_INFO, "Connected to %s (%s, psm %d, dcid %d)", ba,
+		get_lookup_str(bdaddr_types, addr.l2_bdaddr_type),
+		addr.l2_psm, addr.l2_cid);
+
+	/* Check for socket address */
+	memset(&addr, 0, sizeof(addr));
+	optlen = sizeof(addr);
+
+	if (getsockname(sk, (struct sockaddr *) &addr, &optlen) < 0) {
+		syslog(LOG_ERR, "Can't get socket name: %s (%d)",
+							strerror(errno), errno);
+		return -errno;
+	}
+
+	ba2str(&addr.l2_bdaddr, ba);
+	syslog(LOG_INFO, "Local device %s (%s, psm %d, scid %d)", ba,
+		get_lookup_str(bdaddr_types, addr.l2_bdaddr_type),
+		addr.l2_psm, addr.l2_cid);
+
+	syslog(LOG_INFO, "Options [imtu %d, omtu %d, flush_to %d, mode %d, "
+		"handle %d, class 0x%02x%02x%02x, priority %d, rcvbuf %d]",
+		opts->imtu, opts->omtu, opts->flush_to, opts->mode,
+		conn.hci_handle, conn.dev_class[2], conn.dev_class[1],
+		conn.dev_class[0], prio, rcvbuf);
+
+
+	if (!getsockopt(sk, SOL_BLUETOOTH, BT_PHY, &phy, &optlen)) {
+		syslog(LOG_INFO, "Supported PHY: 0x%08x", phy);
+		print_bitfield(2, phy, phy_table);
+	}
+
+	return 0;
+}
+
 static int do_connect(char *svr)
 {
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
-	struct l2cap_conninfo conn;
 	socklen_t optlen;
 	int sk, opt;
-	char ba[18];
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
@@ -451,64 +543,8 @@ static int do_connect(char *svr)
 		goto error;
 	}
 
-	/* Get connection information */
-	memset(&conn, 0, sizeof(conn));
-	optlen = sizeof(conn);
-
-	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &conn, &optlen) < 0) {
-		syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)",
-							strerror(errno), errno);
+	if (print_info(sk, &opts) < 0)
 		goto error;
-	}
-
-	if (priority > 0 && setsockopt(sk, SOL_SOCKET, SO_PRIORITY, &priority,
-						sizeof(priority)) < 0) {
-		syslog(LOG_ERR, "Can't set socket priority: %s (%d)",
-							strerror(errno), errno);
-		goto error;
-	}
-
-	if (getsockopt(sk, SOL_SOCKET, SO_PRIORITY, &opt, &optlen) < 0) {
-		syslog(LOG_ERR, "Can't get socket priority: %s (%d)",
-							strerror(errno), errno);
-		goto error;
-	}
-
-	/* Check for remote address */
-	memset(&addr, 0, sizeof(addr));
-	optlen = sizeof(addr);
-
-	if (getpeername(sk, (struct sockaddr *) &addr, &optlen) < 0) {
-		syslog(LOG_ERR, "Can't get socket name: %s (%d)",
-							strerror(errno), errno);
-		goto error;
-	}
-
-	ba2str(&addr.l2_bdaddr, ba);
-	syslog(LOG_INFO, "Connected to %s (%s, psm %d, scid %d)", ba,
-		get_lookup_str(bdaddr_types, addr.l2_bdaddr_type),
-		addr.l2_psm, addr.l2_cid);
-
-	/* Check for socket address */
-	memset(&addr, 0, sizeof(addr));
-	optlen = sizeof(addr);
-
-	if (getsockname(sk, (struct sockaddr *) &addr, &optlen) < 0) {
-		syslog(LOG_ERR, "Can't get socket name: %s (%d)",
-							strerror(errno), errno);
-		goto error;
-	}
-
-	ba2str(&addr.l2_bdaddr, ba);
-	syslog(LOG_INFO, "Local device %s (%s, psm %d, scid %d)", ba,
-		get_lookup_str(bdaddr_types, addr.l2_bdaddr_type),
-		addr.l2_psm, addr.l2_cid);
-
-	syslog(LOG_INFO, "Options [imtu %d, omtu %d, flush_to %d, "
-		"mode %d, handle %d, class 0x%02x%02x%02x, priority %d, rcvbuf %d]",
-		opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
-		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0], opt,
-		rcvbuf);
 
 	omtu = (opts.omtu > buffer_size) ? buffer_size : opts.omtu;
 	imtu = (opts.imtu > buffer_size) ? buffer_size : opts.imtu;
@@ -524,10 +560,8 @@ static void do_listen(void (*handler)(int sk))
 {
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
-	struct l2cap_conninfo conn;
 	socklen_t optlen;
 	int sk, nsk, opt;
-	char ba[18];
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
@@ -677,61 +711,10 @@ static void do_listen(void (*handler)(int sk))
 			}
 		}
 
-		/* Get connection information */
-		memset(&conn, 0, sizeof(conn));
-		optlen = sizeof(conn);
-
-		if (getsockopt(nsk, SOL_L2CAP, L2CAP_CONNINFO, &conn, &optlen) < 0) {
-			syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)",
-							strerror(errno), errno);
-			if (!defer_setup) {
-				close(nsk);
-				goto error;
-			}
-		}
-
-		if (priority > 0 && setsockopt(nsk, SOL_SOCKET, SO_PRIORITY,
-					&priority, sizeof(priority)) < 0) {
-			syslog(LOG_ERR, "Can't set socket priority: %s (%d)",
-						strerror(errno), errno);
+		if (print_info(nsk, &opts) < 0) {
 			close(nsk);
 			goto error;
 		}
-
-		optlen = sizeof(priority);
-		if (getsockopt(nsk, SOL_SOCKET, SO_PRIORITY, &opt, &optlen) < 0) {
-			syslog(LOG_ERR, "Can't get socket priority: %s (%d)",
-							strerror(errno), errno);
-			goto error;
-		}
-
-		ba2str(&addr.l2_bdaddr, ba);
-		syslog(LOG_INFO, "Connect from %s (%s, psm %d, dcid %d)", ba,
-				get_lookup_str(bdaddr_types, addr.l2_bdaddr_type),
-				addr.l2_psm, addr.l2_cid);
-
-		/* Check for socket address */
-		memset(&addr, 0, sizeof(addr));
-		optlen = sizeof(addr);
-
-		if (getsockname(nsk, (struct sockaddr *) &addr, &optlen) < 0) {
-			syslog(LOG_ERR, "Can't get socket name: %s (%d)",
-							strerror(errno), errno);
-			goto error;
-		}
-
-		ba2str(&addr.l2_bdaddr, ba);
-		syslog(LOG_INFO, "Local device %s (%s, psm %d, scid %d)", ba,
-				get_lookup_str(bdaddr_types, addr.l2_bdaddr_type),
-				addr.l2_psm, addr.l2_cid);
-
-		syslog(LOG_INFO, "Options [imtu %d, omtu %d, "
-				"flush_to %d, mode %d, handle %d, "
-				"class 0x%02x%02x%02x, priority %d, rcvbuf %d]",
-				opts.imtu, opts.omtu, opts.flush_to,
-				opts.mode, conn.hci_handle, conn.dev_class[2],
-				conn.dev_class[1], conn.dev_class[0], opt,
-				rcvbuf);
 
 		omtu = (opts.omtu > buffer_size) ? buffer_size : opts.omtu;
 		imtu = (opts.imtu > buffer_size) ? buffer_size : opts.imtu;
