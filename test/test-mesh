@@ -559,8 +559,15 @@ class Element(dbus.service.Object):
 	@dbus.service.method(MESH_ELEMENT_IFACE,
 					in_signature="qqvay", out_signature="")
 	def MessageReceived(self, source, key, destination, data):
-		print('Message Received on Element %d, src=%04x, dst=%s' %
-						self.index, source, destination)
+		print(('Message Received on Element %02x') % self.index, end='')
+		print(', src=', format(source, '04x'), end='')
+
+		if isinstance(destination, int):
+			print(', dst=%04x' % destination)
+		elif isinstance(destination, dbus.Array):
+			dst_str = array_to_string(destination)
+			print(', dst=' + dst_str)
+
 		for model in self.models:
 			model.process_message(source, key, data)
 
