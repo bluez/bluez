@@ -119,6 +119,21 @@ Methods		void StartDiscovery()
 				if the adapter is already discoverable setting
 				this filter won't do anything.
 
+			string Pattern (Default: none)
+
+				Discover devices where the pattern matches
+				either the prefix of the address or
+				device name which is convenient way to limited
+				the number of device objects created during a
+				discovery.
+
+				When set disregards device discoverable flags.
+
+				Note: The pattern matching is ignored if there
+				are other client that don't set any pattern as
+				it work as a logical OR, also setting empty
+				string "" pattern will match any device found.
+
 			When discovery filter is set, Device objects will be
 			created as new devices with matching criteria are
 			discovered regardless of they are connectable or
