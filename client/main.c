@@ -1157,6 +1157,7 @@ static void cmd_default_agent(int argc, char *argv[])
 
 static struct set_discovery_filter_args {
 	char *transport;
+	char *pattern;
 	dbus_uint16_t rssi;
 	dbus_int16_t pathloss;
 	char **uuids;
@@ -1240,6 +1241,10 @@ static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 		g_dbus_dict_append_entry(&dict, "Discoverable",
 						DBUS_TYPE_BOOLEAN,
 						&args->discoverable);
+
+	if (args->pattern != NULL)
+		g_dbus_dict_append_entry(&dict, "Pattern", DBUS_TYPE_STRING,
+						&args->pattern);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -1440,6 +1445,22 @@ static void cmd_scan_filter_discoverable(int argc, char *argv[])
 		set_discovery_filter(false);
 }
 
+static void cmd_scan_filter_pattern(int argc, char *argv[])
+{
+	if (argc < 2 || !strlen(argv[1])) {
+		bt_shell_printf("Pattern: %s\n", filter.pattern);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	free(filter.pattern);
+	filter.pattern = strdup(argv[1]);
+
+	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter(false);
+}
+
 static void filter_clear_uuids(void)
 {
 	g_strfreev(filter.uuids);
@@ -1473,6 +1494,12 @@ static void filter_clear_discoverable(void)
 	filter.discoverable = false;
 }
 
+static void filter_clear_pattern(void)
+{
+	free(filter.pattern);
+	filter.pattern = NULL;
+}
+
 struct clear_entry {
 	const char *name;
 	void (*clear) (void);
@@ -1485,6 +1512,7 @@ static const struct clear_entry filter_clear[] = {
 	{ "transport", filter_clear_transport },
 	{ "duplicate-data", filter_clear_duplicate },
 	{ "discoverable", filter_clear_discoverable },
+	{ "pattern", filter_clear_pattern },
 	{}
 };
 
@@ -2639,8 +2667,11 @@ static const struct bt_shell_menu scan_menu = {
 	{ "discoverable", "[on/off]", cmd_scan_filter_discoverable,
 				"Set/Get discoverable filter",
 				NULL },
+	{ "pattern", "[value]", cmd_scan_filter_pattern,
+				"Set/Get pattern filter",
+				NULL },
 	{ "clear",
-		"[uuids/rssi/pathloss/transport/duplicate-data/discoverable]",
+	"[uuids/rssi/pathloss/transport/duplicate-data/discoverable/pattern]",
 				cmd_scan_filter_clear,
 				"Clears discovery filter.",
 				filter_clear_generator },
