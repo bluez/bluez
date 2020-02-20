@@ -174,6 +174,7 @@ struct conn_param {
 
 struct discovery_filter {
 	uint8_t type;
+	char *pattern;
 	uint16_t pathloss;
 	int16_t rssi;
 	GSList *uuids;
@@ -2423,6 +2424,22 @@ static bool parse_discoverable(DBusMessageIter *value,
 	return true;
 }
 
+static bool parse_pattern(DBusMessageIter *value,
+					struct discovery_filter *filter)
+{
+	const char *pattern;
+
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING)
+		return false;
+
+	dbus_message_iter_get_basic(value, &pattern);
+
+	free(filter->pattern);
+	filter->pattern = strdup(pattern);
+
+	return true;
+}
+
 struct filter_parser {
 	const char *name;
 	bool (*func)(DBusMessageIter *iter, struct discovery_filter *filter);
@@ -2433,6 +2450,7 @@ struct filter_parser {
 	{ "Transport", parse_transport },
 	{ "DuplicateData", parse_duplicate_data },
 	{ "Discoverable", parse_discoverable },
+	{ "Pattern", parse_pattern },
 	{ }
 };
 
@@ -2473,6 +2491,7 @@ static bool parse_discovery_filter_dict(struct btd_adapter *adapter,
 	(*filter)->type = get_scan_type(adapter);
 	(*filter)->duplicate = false;
 	(*filter)->discoverable = false;
+	(*filter)->pattern = NULL;
 
 	dbus_message_iter_init(msg, &iter);
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY ||
@@ -2518,10 +2537,11 @@ static bool parse_discovery_filter_dict(struct btd_adapter *adapter,
 		goto invalid_args;
 
 	DBG("filtered discovery params: transport: %d rssi: %d pathloss: %d "
-		" duplicate data: %s discoverable %s", (*filter)->type,
-		(*filter)->rssi, (*filter)->pathloss,
+		" duplicate data: %s discoverable %s pattern %s",
+		(*filter)->type, (*filter)->rssi, (*filter)->pathloss,
 		(*filter)->duplicate ? "true" : "false",
-		(*filter)->discoverable ? "true" : "false");
+		(*filter)->discoverable ? "true" : "false",
+		(*filter)->pattern);
 
 	return true;
 
@@ -6146,6 +6166,52 @@ static void filter_duplicate_data(void *data, void *user_data)
 	*duplicate = client->discovery_filter->duplicate;
 }
 
+static bool device_is_discoverable(struct btd_adapter *adapter,
+					struct eir_data *eir, const char *addr,
+					uint8_t bdaddr_type)
+{
+	GSList *l;
+	bool discoverable;
+
+	if (bdaddr_type == BDADDR_BREDR || adapter->filtered_discovery)
+		discoverable = true;
+	else
+		discoverable = eir->flags & (EIR_LIM_DISC | EIR_GEN_DISC);
+
+	/*
+	 * Mark as not discoverable if no client has requested discovery and
+	 * report has not set any discoverable flags.
+	 */
+	if (!adapter->discovery_list && !discoverable)
+		return false;
+
+	/* Do a prefix match for both address and name if pattern is set */
+	for (l = adapter->discovery_list; l; l = g_slist_next(l)) {
+		struct watch_client *client = l->data;
+		struct discovery_filter *filter = client->discovery_filter;
+		size_t pattern_len;
+
+		if (!filter || !filter->pattern)
+			continue;
+
+		/* Reset discoverable if a client has a pattern filter */
+		discoverable = false;
+
+		pattern_len = strlen(filter->pattern);
+		if (!pattern_len)
+			return true;
+
+		if (!strncmp(filter->pattern, addr, pattern_len))
+			return true;
+
+		if (eir->name && !strncmp(filter->pattern, eir->name,
+							pattern_len))
+			return true;
+	}
+
+	return discoverable;
+}
+
 static void update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
@@ -6162,21 +6228,14 @@ static void update_found_devices(struct btd_adapter *adapter,
 	memset(&eir_data, 0, sizeof(eir_data));
 	eir_parse(&eir_data, data, data_len);
 
-	if (bdaddr_type == BDADDR_BREDR || adapter->filtered_discovery)
-		discoverable = true;
-	else
-		discoverable = eir_data.flags & (EIR_LIM_DISC | EIR_GEN_DISC);
-
 	ba2str(bdaddr, addr);
+
+	discoverable = device_is_discoverable(adapter, &eir_data, addr,
+							bdaddr_type);
 
 	dev = btd_adapter_find_device(adapter, bdaddr, bdaddr_type);
 	if (!dev) {
-		/*
-		 * If no client has requested discovery or the device is
-		 * not marked as discoverable, then do not create new
-		 * device objects.
-		 */
-		if (!adapter->discovery_list || !discoverable) {
+		if (!discoverable) {
 			eir_data_free(&eir_data);
 			return;
 		}
@@ -6219,8 +6278,9 @@ static void update_found_devices(struct btd_adapter *adapter,
 		return;
 	}
 
-	if (adapter->filtered_discovery &&
-	    !is_filter_match(adapter->discovery_list, &eir_data, rssi)) {
+	/* Don't continue if not discoverable or if filter don't match */
+	if (!discoverable || (adapter->filtered_discovery &&
+	    !is_filter_match(adapter->discovery_list, &eir_data, rssi))) {
 		eir_data_free(&eir_data);
 		return;
 	}
