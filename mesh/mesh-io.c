@@ -85,18 +85,6 @@ struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts,
 	if (!io_list)
 		io_list = l_queue_new();
 
-	if (api->set) {
-		uint8_t pkt = MESH_AD_TYPE_NETWORK;
-		uint8_t prv = MESH_AD_TYPE_PROVISION;
-		uint8_t snb[2] = {MESH_AD_TYPE_BEACON, 0x01};
-		uint8_t prvb[2] = {MESH_AD_TYPE_BEACON, 0x00};
-
-		api->set(io, 1, snb, sizeof(snb), NULL, NULL);
-		api->set(io, 2, &prv, 1, NULL, NULL);
-		api->set(io, 3, &pkt, 1, NULL, NULL);
-		api->set(io, 4, prvb, sizeof(prvb), NULL, NULL);
-	}
-
 	if (l_queue_push_head(io_list, io))
 		return io;
 
@@ -133,35 +121,25 @@ bool mesh_io_get_caps(struct mesh_io *io, struct mesh_io_caps *caps)
 	return false;
 }
 
-bool mesh_io_register_recv_cb(struct mesh_io *io, uint8_t filter_id,
-				mesh_io_recv_func_t cb, void *user_data)
+bool mesh_io_register_recv_cb(struct mesh_io *io, const uint8_t *filter,
+				uint8_t len, mesh_io_recv_func_t cb,
+				void *user_data)
 {
 	io = l_queue_find(io_list, match_by_io, io);
 
 	if (io && io->api && io->api->reg)
-		return io->api->reg(io, filter_id, cb, user_data);
+		return io->api->reg(io, filter, len, cb, user_data);
 
 	return false;
 }
 
-bool mesh_io_deregister_recv_cb(struct mesh_io *io, uint8_t filter_id)
+bool mesh_io_deregister_recv_cb(struct mesh_io *io, const uint8_t *filter,
+								uint8_t len)
 {
 	io = l_queue_find(io_list, match_by_io, io);
 
 	if (io && io->api && io->api->dereg)
-		return io->api->dereg(io, filter_id);
-
-	return false;
-}
-
-bool mesh_set_filter(struct mesh_io *io, uint8_t filter_id,
-				const uint8_t *data, uint8_t len,
-				mesh_io_status_func_t cb, void *user_data)
-{
-	io = l_queue_find(io_list, match_by_io, io);
-
-	if (io && io->api && io->api->set)
-		return io->api->set(io, filter_id, data, len, cb, user_data);
+		return io->api->dereg(io, filter, len);
 
 	return false;
 }

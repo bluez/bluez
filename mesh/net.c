@@ -2884,6 +2884,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 	first = l_queue_isempty(nets);
 	if (first) {
+		uint8_t snb[] = {MESH_AD_TYPE_BEACON, 0x01};
+		uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
+
 		if (!nets)
 			nets = l_queue_new();
 
@@ -2891,9 +2894,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 			fast_cache = l_queue_new();
 
 		l_info("Register io cb");
-		mesh_io_register_recv_cb(io, MESH_IO_FILTER_BEACON,
+		mesh_io_register_recv_cb(io, snb, sizeof(snb),
 							beacon_recv, NULL);
-		mesh_io_register_recv_cb(io, MESH_IO_FILTER_NET,
+		mesh_io_register_recv_cb(io, pkt, sizeof(pkt),
 							net_msg_recv, NULL);
 	}
 
@@ -2909,6 +2912,8 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 struct mesh_io *mesh_net_detach(struct mesh_net *net)
 {
+	uint8_t snb[] = {MESH_AD_TYPE_BEACON, 0x01};
+	uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
 	struct mesh_io *io;
 	uint8_t type = 0;
 
@@ -2918,8 +2923,8 @@ struct mesh_io *mesh_net_detach(struct mesh_net *net)
 	io = net->io;
 
 	mesh_io_send_cancel(net->io, &type, 1);
-	mesh_io_deregister_recv_cb(io, MESH_IO_FILTER_BEACON);
-	mesh_io_deregister_recv_cb(io, MESH_IO_FILTER_NET);
+	mesh_io_deregister_recv_cb(io, snb, sizeof(snb));
+	mesh_io_deregister_recv_cb(io, pkt, sizeof(pkt));
 
 	net->io = NULL;
 	l_queue_remove(nets, net);

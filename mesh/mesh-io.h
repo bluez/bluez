@@ -19,11 +19,6 @@
 
 struct mesh_io;
 
-#define MESH_IO_FILTER_BEACON		1
-#define MESH_IO_FILTER_PROV		2
-#define MESH_IO_FILTER_NET		3
-#define MESH_IO_FILTER_PROV_BEACON	4
-
 #define MESH_IO_TX_COUNT_UNLIMITED	0
 
 enum mesh_io_type {
@@ -38,6 +33,7 @@ enum mesh_io_timing_type {
 };
 
 struct mesh_io_recv_info {
+	const uint8_t *addr;
 	uint32_t instant;
 	uint8_t chan;
 	int8_t rssi;
@@ -78,11 +74,12 @@ typedef void (*mesh_io_recv_func_t)(void *user_data,
 					struct mesh_io_recv_info *info,
 					const uint8_t *data, uint16_t len);
 
-typedef void (*mesh_io_status_func_t)(void *user_data, int status,
-							uint8_t filter_id);
+typedef void (*mesh_io_recv_ext_func_t)(void *user_data,
+					struct mesh_io_recv_info *info,
+					const uint8_t *data, uint16_t len,
+					const uint8_t *addr);
 
 typedef void (*mesh_io_ready_func_t)(void *user_data, bool result);
-
 
 struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts,
 				mesh_io_ready_func_t cb, void *user_data);
@@ -90,14 +87,12 @@ void mesh_io_destroy(struct mesh_io *io);
 
 bool mesh_io_get_caps(struct mesh_io *io, struct mesh_io_caps *caps);
 
-bool mesh_io_register_recv_cb(struct mesh_io *io, uint8_t filter_id,
-				mesh_io_recv_func_t cb, void *user_data);
+bool mesh_io_register_recv_cb(struct mesh_io *io, const uint8_t *filter,
+					uint8_t len, mesh_io_recv_func_t cb,
+					void *user_data);
 
-bool mesh_io_deregister_recv_cb(struct mesh_io *io, uint8_t filter_id);
-
-bool mesh_set_filter(struct mesh_io *io, uint8_t filter_id,
-				const uint8_t *data, uint8_t len,
-				mesh_io_status_func_t cb, void *user_data);
+bool mesh_io_deregister_recv_cb(struct mesh_io *io, const uint8_t *filter,
+								uint8_t len);
 
 bool mesh_io_send(struct mesh_io *io, struct mesh_io_send_info *info,
 					const uint8_t *data, uint16_t len);

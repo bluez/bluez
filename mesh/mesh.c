@@ -141,24 +141,28 @@ static void prov_rx(void *user_data, struct mesh_io_recv_info *info,
 
 bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data)
 {
+	uint8_t prov_filter[] = {MESH_AD_TYPE_PROVISION};
+
 	if (mesh.prov_rx && mesh.prov_rx != cb)
 		return false;
 
 	mesh.prov_rx = cb;
 	mesh.prov_data = user_data;
 
-	return mesh_io_register_recv_cb(mesh.io, MESH_IO_FILTER_PROV,
-							prov_rx, &mesh);
+	return mesh_io_register_recv_cb(mesh.io, prov_filter,
+					sizeof(prov_filter), prov_rx, &mesh);
 }
 
 void mesh_unreg_prov_rx(prov_rx_cb_t cb)
 {
+	uint8_t prov_filter[] = {MESH_AD_TYPE_PROVISION};
+
 	if (mesh.prov_rx != cb)
 		return;
 
 	mesh.prov_rx = NULL;
 	mesh.prov_data = NULL;
-	mesh_io_deregister_recv_cb(mesh.io, MESH_IO_FILTER_PROV);
+	mesh_io_deregister_recv_cb(mesh.io, prov_filter, sizeof(prov_filter));
 }
 
 static void io_ready_callback(void *user_data, bool result)
