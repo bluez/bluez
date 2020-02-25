@@ -346,6 +346,25 @@ static void print_pub(uint16_t ele_addr, uint32_t mod_id,
 	bt_shell_printf("\tTTL: %2.2x\n", pub->ttl);
 }
 
+static void print_sub_list(uint16_t addr, bool is_vendor, uint8_t *data,
+								uint16_t len)
+{
+	uint16_t i;
+
+	bt_shell_printf("\nNode %4.4x Subscription List status %s\n",
+						addr, mesh_status_str(data[0]));
+
+	bt_shell_printf("Element Addr\t%4.4x\n", get_le16(data + 1));
+	print_mod_id(data + 3, is_vendor, "");
+
+	i = (is_vendor ? 7 : 5);
+
+	bt_shell_printf("Subscriptions:\n");
+
+	for (; i < len; i += 2)
+		bt_shell_printf("\t\t%4.4x\n ", get_le16(data + i));
+}
+
 static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 							uint16_t len)
 {
@@ -611,32 +630,15 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		if (len < 5)
 			return true;
 
-		bt_shell_printf("\nNode %4.4x Subscription List status %s\n",
-				src, mesh_status_str(data[0]));
-
-		bt_shell_printf("Element Addr\t%4.4x\n", get_le16(data + 1));
-		print_mod_id(data + 3, false, "");
-
-		for (i = 5; i < len; i += 2)
-			bt_shell_printf("Subscr Addr\t%4.4x\n",
-							get_le16(data + i));
+		print_sub_list(src, false, data, len);
 		break;
 
 	case OP_CONFIG_VEND_MODEL_SUB_LIST:
 		if (len < 7)
 			return true;
 
-		bt_shell_printf("\nNode %4.4x Subscription List status %s\n",
-				src, mesh_status_str(data[0]));
-
-		bt_shell_printf("Element Addr\t%4.4x\n", get_le16(data + 1));
-		print_mod_id(data + 3, true, "");
-
-		for (i = 7; i < len; i += 2)
-			bt_shell_printf("Subscr Addr\t%4.4x\n",
-							get_le16(data + i));
+		print_sub_list(src, true, data, len);
 		break;
-
 
 	/* Per Mesh Profile 4.3.2.50 */
 	case OP_MODEL_APP_LIST:
