@@ -31,6 +31,8 @@
 #include "src/shared/util.h"
 
 #include "mesh/mesh-defs.h"
+#include "mesh/util.h"
+#include "mesh/crypto.h"
 
 #include "tools/mesh/util.h"
 #include "tools/mesh/model.h"
@@ -58,7 +60,13 @@ struct pending_req {
 	uint16_t addr;
 };
 
+struct mesh_group {
+	uint16_t addr;
+	uint8_t label[16];
+};
+
 static struct l_queue *requests;
+static struct l_queue *groups;
 
 static void *send_data;
 static model_send_msg_func_t send_msg;
@@ -764,6 +772,53 @@ static uint32_t read_input_parameters(int argc, char *argv[])
 	return i;
 }
 
+static bool match_group_addr(const void *a, const void *b)
+{
+	const struct mesh_group *grp = a;
+	uint16_t addr = L_PTR_TO_UINT(b);
+
+	return grp->addr == addr;
+}
+
+static int compare_group_addr(const void *a, const void *b, void *user_data)
+{
+	const struct mesh_group *grp0 = a;
+	const struct mesh_group *grp1 = b;
+
+	if (grp0->addr < grp1->addr)
+		return -1;
+
+	if (grp0->addr > grp1->addr)
+		return 1;
+
+	return 0;
+}
+
+static void print_virtual_not_found(uint16_t addr)
+{
+	bt_shell_printf("Virtual group with hash %4.4x not found\n", addr);
+	bt_shell_printf("To see available, use \"group-list\"\n");
+	bt_shell_printf("To create new, use \"virt-add\"\n");
+}
+
+static struct mesh_group *add_group(uint16_t addr)
+{
+	struct mesh_group *grp;
+
+	if (!IS_GROUP(addr))
+		return NULL;
+
+	grp = l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(addr));
+	if (grp)
+		return grp;
+
+	grp = l_new(struct mesh_group, 1);
+	grp->addr = addr;
+	l_queue_insert(groups, grp, compare_group_addr, NULL);
+
+	return grp;
+}
+
 static void cmd_timeout_set(int argc, char *argv[])
 {
 	if (read_input_parameters(argc, argv) != 1)
@@ -1196,22 +1251,47 @@ static void cmd_ttl_set(int argc, char *argv[])
 static void cmd_pub_set(int argc, char *argv[])
 {
 	uint16_t n;
-	uint8_t msg[32];
+	uint8_t msg[48];
 	int parm_cnt;
-
-	n = mesh_opcode_set(OP_CONFIG_MODEL_PUB_SET, msg);
+	struct mesh_group *grp;
+	uint32_t opcode;
+	uint16_t pub_addr;
 
 	parm_cnt = read_input_parameters(argc, argv);
+
 	if (parm_cnt != 6 && parm_cnt != 7) {
 		bt_shell_printf("Bad arguments\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	pub_addr = parms[1];
+
+	grp = l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(pub_addr));
+	if (!grp)
+		grp = add_group(pub_addr);
+
+	if (!grp && IS_VIRTUAL(pub_addr)) {
+		print_virtual_not_found(pub_addr);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	opcode = (!IS_VIRTUAL(pub_addr)) ? OP_CONFIG_MODEL_PUB_SET :
+						OP_CONFIG_MODEL_PUB_VIRT_SET;
+
+	n = mesh_opcode_set(opcode, msg);
+
 	put_le16(parms[0], msg + n);
 	n += 2;
+
 	/* Publish address */
-	put_le16(parms[1], msg + n);
-	n += 2;
+	if (!IS_VIRTUAL(pub_addr)) {
+		put_le16(pub_addr, msg + n);
+		n += 2;
+	} else {
+		memcpy(msg + n, grp->label, 16);
+		n += 16;
+	}
+
 	/* AppKey index + credential (set to 0) */
 	put_le16(parms[2], msg + n);
 	n += 2;
@@ -1225,10 +1305,10 @@ static void cmd_pub_set(int argc, char *argv[])
 	/* Model Id */
 	n += put_model_id(msg + n, &parms[5], parm_cnt == 7);
 
-	if (!config_send(msg, n, OP_CONFIG_MODEL_PUB_SET))
+	if (!config_send(msg, n, opcode))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_pub_get(int argc, char *argv[])
@@ -1263,8 +1343,8 @@ static void subscription_cmd(int argc, char *argv[], uint32_t opcode)
 	uint16_t n;
 	uint8_t msg[32];
 	int parm_cnt;
-
-	n = mesh_opcode_set(opcode, msg);
+	struct mesh_group *grp;
+	uint16_t sub_addr;
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 3 && parm_cnt != 4) {
@@ -1272,12 +1352,42 @@ static void subscription_cmd(int argc, char *argv[], uint32_t opcode)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	sub_addr = parms[1];
+
+	grp = l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(sub_addr));
+
+	if (!grp && opcode != OP_CONFIG_MODEL_SUB_DELETE) {
+		grp = add_group(sub_addr);
+
+		if (!grp && IS_VIRTUAL(sub_addr)) {
+			print_virtual_not_found(sub_addr);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	if (IS_VIRTUAL(sub_addr)) {
+		if (opcode == OP_CONFIG_MODEL_SUB_ADD)
+			opcode = OP_CONFIG_MODEL_SUB_VIRT_ADD;
+		else if (opcode == OP_CONFIG_MODEL_SUB_DELETE)
+			opcode = OP_CONFIG_MODEL_SUB_VIRT_DELETE;
+		else if (opcode == OP_CONFIG_MODEL_SUB_OVERWRITE)
+			opcode = OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE;
+	}
+
+	n = mesh_opcode_set(opcode, msg);
+
 	/* Element Address */
 	put_le16(parms[0], msg + n);
 	n += 2;
+
 	/* Subscription Address */
-	put_le16(parms[1], msg + n);
-	n += 2;
+	if (!IS_VIRTUAL(sub_addr)) {
+		put_le16(sub_addr, msg + n);
+		n += 2;
+	} else {
+		memcpy(msg + n, grp->label, 16);
+		n += 16;
+	}
 
 	/* Model ID */
 	n += put_model_id(msg + n, &parms[2], parm_cnt == 4);
@@ -1399,6 +1509,9 @@ static void cmd_hb_pub_set(int argc, char *argv[])
 
 	n = mesh_opcode_set(OP_CONFIG_HEARTBEAT_PUB_SET, msg);
 
+	if (!l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(parms[1])))
+		add_group(parms[1]);
+
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 6) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
@@ -1446,6 +1559,9 @@ static void cmd_hb_sub_set(int argc, char *argv[])
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
+
+	if (!l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(parms[1])))
+		add_group(parms[1]);
 
 	/* Per Mesh Profile 4.3.2.65 */
 	/* Source address */
@@ -1537,6 +1653,54 @@ static void cmd_netkey_get(int argc, char *argv[])
 	cmd_default(OP_NETKEY_GET);
 }
 
+static void print_group(void *a, void *b)
+{
+	struct mesh_group *grp = a;
+	char buf[33];
+
+	if (!IS_VIRTUAL(grp->addr)) {
+		bt_shell_printf("\tGroup addr: %4.4x\n", grp->addr);
+		return;
+	}
+
+	hex2str(grp->label, 16, buf, sizeof(buf));
+	bt_shell_printf("\tVirtual addr: %4.4x, label: %s\n", grp->addr, buf);
+}
+
+static void cmd_add_virt(int argc, char *argv[])
+{
+	struct mesh_group *grp, *tmp;
+	uint8_t max_tries = 3;
+
+	grp = l_new(struct mesh_group, 1);
+
+retry:
+	l_getrandom(grp->label, 16);
+	mesh_crypto_virtual_addr(grp->label, &grp->addr);
+
+	/* For simplicity sake, avoid labels that map to the same hash */
+	tmp = l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(grp->addr));
+	if (!tmp) {
+		l_queue_insert(groups, grp, compare_group_addr, NULL);
+		print_group(grp, NULL);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	max_tries--;
+	if (max_tries)
+		goto retry;
+
+	l_free(grp);
+	bt_shell_printf("Failed to generate unique label. Try again.");
+	bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void cmd_list_groups(int argc, char *argv[])
+{
+	l_queue_foreach(groups, print_group, NULL);
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
 static bool tx_setup(model_send_msg_func_t send_func, void *user_data)
 {
 	if (!send_func)
@@ -1625,12 +1789,15 @@ static const struct bt_shell_menu cfg_menu = {
 				"Set heartbeat subscribe"},
 	{"hb-sub-get", NULL, cmd_hb_sub_get,
 				"Get heartbeat subscribe"},
-	{"sub-add", "<ele_addr> <sub_addr> <model_id> [vendor]", cmd_sub_add,
-				"Add subscription"},
-	{"sub-del", "<ele_addr> <sub_addr> <model_id> [vendor]", cmd_sub_del,
-				"Delete subscription"},
-	{"sub-wrt", "<ele_addr> <sub_addr> <model_id> [vendor]", cmd_sub_ovwrt,
-				"Overwrite subscription"},
+	{"virt-add", NULL, cmd_add_virt, "Generate and add a virtual label"},
+	{"group-list", NULL, cmd_list_groups,
+			"Display existing group addresses and virtual labels"},
+	{"sub-add", "<ele_addr> <sub_addr> <model_id> [vendor]",
+				cmd_sub_add, "Add subscription"},
+	{"sub-del", "<ele_addr> <sub_addr> <model_id> [vendor]",
+				cmd_sub_del, "Delete subscription"},
+	{"sub-wrt", "<ele_addr> <sub_addr> <model_id> [vendor]",
+				cmd_sub_ovwrt, "Overwrite subscription"},
 	{"sub-del-all", "<ele_addr> <model_id> [vendor]", cmd_sub_del_all,
 				"Delete subscription"},
 	{"sub-get", "<ele_addr> <model_id> [vendor]", cmd_sub_get,
@@ -1660,6 +1827,7 @@ struct model_info *cfgcli_init(key_send_func_t key_send, void *user_data)
 	send_key_msg = key_send;
 	key_data = user_data;
 	requests = l_queue_new();
+	groups = l_queue_new();
 
 	bt_shell_add_submenu(&cfg_menu);
 
@@ -1669,4 +1837,5 @@ struct model_info *cfgcli_init(key_send_func_t key_send, void *user_data)
 void cfgcli_cleanup(void)
 {
 	l_queue_destroy(requests, free_request);
+	l_queue_destroy(groups, l_free);
 }
