@@ -554,7 +554,7 @@ class Element(dbus.service.Object):
 	def set_model_config(self, configs):
 		for config in configs:
 			mod_id = config[0]
-			self.UpdateModelConfiguration(mod_id, config[1])
+			self.update_model_config(mod_id, config[1])
 
 	@dbus.service.method(MESH_ELEMENT_IFACE,
 					in_signature="qqvay", out_signature="")
@@ -575,6 +575,11 @@ class Element(dbus.service.Object):
 					in_signature="qa{sv}", out_signature="")
 
 	def UpdateModelConfiguration(self, model_id, config):
+		cfg = unwrap(config)
+		print(cfg)
+		self.update_model_config(model_id, cfg)
+
+	def update_model_config(self, model_id, config):
 		print(('Update Model Config '), end='')
 		print(format(model_id, '04x'))
 		for model in self.models:
@@ -644,11 +649,11 @@ class Model():
 	def print_subscriptions(self, subscriptions):
 		for sub in subscriptions:
 			if isinstance(sub, int):
-				print('%04x' % sub, end=' ')
+				print('%04x,' % sub, end=' ')
 
 			if isinstance(sub, list):
 				label = uuid.UUID(bytes=b''.join(sub))
-				print(label, end=' ')
+				print(label, ',', end=' ')
 
 ########################
 # On Off Server Model
