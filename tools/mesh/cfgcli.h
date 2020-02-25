@@ -18,6 +18,11 @@
  *
  */
 
+struct mesh_group {
+	uint16_t addr;
+	uint8_t label[16];
+};
+
 typedef bool (*key_send_func_t) (void *user_data, uint16_t dst,
 				 uint16_t idx, bool is_appkey, bool update);
 

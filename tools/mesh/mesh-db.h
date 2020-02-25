@@ -19,6 +19,8 @@
 
 #include "mesh/mesh-config.h"
 
+struct mesh_group;
+
 bool mesh_db_create(const char *fname, const uint8_t token[8],
 							const char *name);
 bool mesh_db_load(const char *fname);
@@ -52,3 +54,5 @@ bool mesh_db_node_model_binding_add(uint16_t unicast, uint8_t ele, bool vendor,
 					uint32_t mod_id, uint16_t app_idx);
 bool mesh_db_node_model_binding_del(uint16_t unicast, uint8_t ele, bool vendor,
 					uint32_t mod_id, uint16_t app_idx);
+struct l_queue *mesh_db_load_groups(void);
+bool mesh_db_add_group(struct mesh_group *grp);

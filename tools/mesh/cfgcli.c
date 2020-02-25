@@ -60,11 +60,6 @@ struct pending_req {
 	uint16_t addr;
 };
 
-struct mesh_group {
-	uint16_t addr;
-	uint8_t label[16];
-};
-
 static struct l_queue *requests;
 static struct l_queue *groups;
 
@@ -817,6 +812,8 @@ static struct mesh_group *add_group(uint16_t addr)
 	grp = l_new(struct mesh_group, 1);
 	grp->addr = addr;
 	l_queue_insert(groups, grp, compare_group_addr, NULL);
+
+	mesh_db_add_group(grp);
 
 	return grp;
 }
@@ -1685,6 +1682,7 @@ retry:
 	if (!tmp) {
 		l_queue_insert(groups, grp, compare_group_addr, NULL);
 		print_group(grp, NULL);
+		mesh_db_add_group(grp);
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
@@ -1829,8 +1827,7 @@ struct model_info *cfgcli_init(key_send_func_t key_send, void *user_data)
 	send_key_msg = key_send;
 	key_data = user_data;
 	requests = l_queue_new();
-	groups = l_queue_new();
-
+	groups = mesh_db_load_groups();
 	bt_shell_add_submenu(&cfg_menu);
 
 	return &cli_info;
