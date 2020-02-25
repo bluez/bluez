@@ -24,8 +24,6 @@ struct mesh_model;
 #define MAX_BINDINGS	10
 #define MAX_GRP_PER_MOD	10
 
-#define VIRTUAL_BASE			0x10000
-
 #define OP_MODEL_TEST			0x8000fffe
 #define OP_MODEL_INVALID		0x8000ffff
 
@@ -35,8 +33,11 @@ struct mesh_model;
 #define ACTION_UPDATE		2
 #define ACTION_DELETE		3
 
+struct mesh_virtual;
+
 struct mesh_model_pub {
-	uint32_t addr;
+	struct mesh_virtual *virt;
+	uint16_t addr;
 	uint16_t idx;
 	uint8_t ttl;
 	uint8_t credential;
@@ -75,7 +76,7 @@ struct mesh_model_pub *mesh_model_pub_get(struct mesh_node *node,
 int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *pub_addr, uint16_t idx, bool cred_flag,
 			uint8_t ttl, uint8_t period, uint8_t retransmit,
-			bool b_virt, uint16_t *dst);
+			bool is_virt, uint16_t *dst);
 
 int mesh_model_binding_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 								uint16_t idx);
