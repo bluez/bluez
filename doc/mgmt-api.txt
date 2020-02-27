@@ -307,6 +307,7 @@ Read Controller Information Command
 		13	Privacy
 		14	Controller Configuration
 		15	Static Address
+		16	PHY Configuration
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
