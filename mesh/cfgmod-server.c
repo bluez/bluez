@@ -704,10 +704,9 @@ static void node_reset(struct l_timeout *timeout, void *user_data)
 	node_remove(node);
 }
 
-static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
-				uint16_t app_idx, uint16_t net_idx,
-				const uint8_t *data, uint16_t size,
-				uint8_t ttl, const void *user_data)
+static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
+				uint16_t net_idx, const uint8_t *data,
+				uint16_t size, const void *user_data)
 {
 	struct mesh_node *node = (struct mesh_node *) user_data;
 	struct mesh_net *net;
@@ -782,7 +781,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
 		if (size != 25 && size != 27)
 			return true;
 
-		config_pub_set(node, net_idx, src, unicast, pkt, 14, size == 27,
+		config_pub_set(node, net_idx, src, dst, pkt, 14, size == 27,
 				!!(opcode & OP_UNRELIABLE));
 		break;
 
@@ -790,26 +789,26 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
 		if (size != 11 && size != 13)
 			return true;
 
-		config_pub_set(node, net_idx, src, unicast, pkt, 0, size == 13,
+		config_pub_set(node, net_idx, src, dst, pkt, 0, size == 13,
 				!!(opcode & OP_UNRELIABLE));
 		break;
 
 	case OP_CONFIG_MODEL_PUB_GET:
-		config_pub_get(node, net_idx, src, unicast, pkt, size);
+		config_pub_get(node, net_idx, src, dst, pkt, size);
 		break;
 
 	case OP_CONFIG_VEND_MODEL_SUB_GET:
 		if (size != 6)
 			return true;
 
-		config_sub_get(node, net_idx, src, unicast, pkt, size);
+		config_sub_get(node, net_idx, src, dst, pkt, size);
 		break;
 
 	case OP_CONFIG_MODEL_SUB_GET:
 		if (size != 4)
 			return true;
 
-		config_sub_get(node, net_idx, src, unicast, pkt, size);
+		config_sub_get(node, net_idx, src, dst, pkt, size);
 		break;
 
 	case OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE:
@@ -821,7 +820,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
 	case OP_CONFIG_MODEL_SUB_DELETE:
 	case OP_CONFIG_MODEL_SUB_ADD:
 	case OP_CONFIG_MODEL_SUB_DELETE_ALL:
-		config_sub_set(node, net_idx, src, unicast, pkt, size, virt,
+		config_sub_set(node, net_idx, src, dst, pkt, size, virt,
 									opcode);
 		break;
 
@@ -1087,20 +1086,20 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
 
 	case OP_MODEL_APP_BIND:
 	case OP_MODEL_APP_UNBIND:
-		model_app_bind(node, net_idx, src, unicast, pkt, size,
+		model_app_bind(node, net_idx, src, dst, pkt, size,
 				opcode != OP_MODEL_APP_BIND);
 		break;
 
 	case OP_VEND_MODEL_APP_GET:
 		if (size != 6)
 			return true;
-		model_app_list(node, net_idx, src, unicast, pkt, size);
+		model_app_list(node, net_idx, src, dst, pkt, size);
 		break;
 
 	case OP_MODEL_APP_GET:
 		if (size != 4)
 			return true;
-		model_app_list(node, net_idx, src, unicast, pkt, size);
+		model_app_list(node, net_idx, src, dst, pkt, size);
 		break;
 
 	case OP_CONFIG_HEARTBEAT_PUB_SET:
@@ -1225,7 +1224,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
 	case OP_NODE_RESET:
 		n = mesh_model_opcode_set(OP_NODE_RESET_STATUS, msg);
 		/*
-		 * delay node removal to give it a chance to send back the
+		 * Delay node removal to give it a chance to send back the
 		 * status
 		 */
 		l_timeout_create(1, node_reset, node, NULL);
@@ -1234,7 +1233,7 @@ static bool cfg_srv_pkt(uint16_t src, uint32_t dst, uint16_t unicast,
 
 	if (n) {
 		/* print_packet("App Tx", long_msg ? long_msg : msg, n); */
-		mesh_model_send(node, unicast, src,
+		mesh_model_send(node, dst, src,
 				APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
 				long_msg ? long_msg : msg, n);
 	}

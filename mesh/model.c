@@ -71,7 +71,6 @@ struct mod_forward {
 	uint16_t app_idx;
 	uint16_t net_idx;
 	uint16_t size;
-	uint8_t ttl;
 	int8_t rssi;
 	bool szmict;
 	bool has_dst;
@@ -359,17 +358,16 @@ static void forward_model(void *a, void *b)
 	uint16_t dst;
 	bool result;
 
-	l_debug("model %8.8x with idx %3.3x", mod->id, fwd->app_idx);
-
 	if (fwd->app_idx != APP_IDX_DEV_LOCAL &&
 				fwd->app_idx != APP_IDX_DEV_REMOTE &&
 				!has_binding(mod->bindings, fwd->app_idx))
 		return;
 
 	dst = fwd->dst;
-	if (dst == fwd->unicast || IS_FIXED_GROUP_ADDRESS(dst))
+
+	if (dst == fwd->unicast || IS_FIXED_GROUP_ADDRESS(dst)) {
 		fwd->has_dst = true;
-	else if (fwd->virt) {
+	} else if (fwd->virt) {
 		virt = l_queue_find(mod->virtuals, simple_match, fwd->virt);
 		if (virt) {
 			fwd->has_dst = true;
@@ -390,9 +388,9 @@ static void forward_model(void *a, void *b)
 	result = false;
 
 	if (mod->cbs->recv)
-		result = mod->cbs->recv(fwd->src, dst, fwd->unicast,
-				fwd->app_idx, fwd->net_idx,
-				fwd->data, fwd->size, fwd->ttl, mod->user_data);
+		result = mod->cbs->recv(fwd->src, dst, fwd->app_idx,
+				fwd->net_idx,
+				fwd->data, fwd->size, mod->user_data);
 
 	if (dst == fwd->unicast && result)
 		fwd->done = true;
@@ -899,7 +897,7 @@ static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx,
 }
 
 bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
-			uint32_t seq, uint32_t iv_index, uint8_t ttl,
+			uint32_t seq, uint32_t iv_index,
 			uint16_t net_idx, uint16_t src, uint16_t dst,
 			uint8_t key_aid, const uint8_t *data, uint16_t size)
 {
@@ -909,7 +907,6 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 		.dst = dst,
 		.data = NULL,
 		.size = size - (szmict ? 8 : 4),
-		.ttl = ttl,
 		.virt = NULL,
 	};
 	struct mesh_net *net = node_get_net(node);

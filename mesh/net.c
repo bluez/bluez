@@ -1778,8 +1778,8 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 	}
 
 not_for_friend:
-	return mesh_model_rx(net->node, szmic, seqAuth, seq, iv_index, ttl,
-					net_idx, src, dst, key_aid, data, size);
+	return mesh_model_rx(net->node, szmic, seqAuth, seq, iv_index, net_idx,
+						src, dst, key_aid, data, size);
 }
 
 static uint16_t key_id_to_net_idx(struct mesh_net *net, uint32_t key_id)
