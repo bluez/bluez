@@ -4584,27 +4584,18 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 
 	for (seq = recs; seq; seq = seq->next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
-		sdp_list_t *svcclass = NULL;
 		char *profile_uuid;
 
 		if (!rec)
 			break;
 
-		if (sdp_get_service_classes(rec, &svcclass) < 0)
-			continue;
+		/* If service class attribute is missing, svclass will be all
+		 * zero and the resulting uuid string will be NULL.
+		 */
+		profile_uuid = bt_uuid2string(&rec->svclass);
 
-		/* Check for empty service classes list */
-		if (svcclass == NULL) {
-			DBG("Skipping record with no service classes");
+		if (!profile_uuid)
 			continue;
-		}
-
-		/* Extract the first element and skip the remainning */
-		profile_uuid = bt_uuid2string(svcclass->data);
-		if (!profile_uuid) {
-			sdp_list_free(svcclass, free);
-			continue;
-		}
 
 		if (bt_uuid_strcmp(profile_uuid, PNP_UUID) == 0) {
 			uint16_t source, vendor, product, version;
@@ -4638,7 +4629,6 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 
 next:
 		free(profile_uuid);
-		sdp_list_free(svcclass, free);
 	}
 
 	if (sdp_key_file) {
@@ -5352,9 +5342,9 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 
 	req->sdp_flags = get_sdp_flags(device);
 
-	err = bt_search_service(btd_adapter_get_address(adapter),
-				&device->bdaddr, &uuid, browse_cb, req, NULL,
-				req->sdp_flags);
+	err = bt_search(btd_adapter_get_address(adapter),
+			&device->bdaddr, &uuid, browse_cb, req, NULL,
+			req->sdp_flags);
 	if (err < 0) {
 		browse_request_free(req);
 		return err;

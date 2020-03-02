@@ -143,6 +143,7 @@ struct search_context {
 	gpointer		user_data;
 	uuid_t			uuid;
 	guint			io_id;
+	gboolean		filter_svc_class;
 };
 
 static GSList *context_list = NULL;
@@ -194,6 +195,16 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 		scanned += recsize;
 		rsp += recsize;
 		bytesleft -= recsize;
+
+		/* Check whether service class ID matches some specified uuid.
+		 * If the record is missing service class ID, svclass will be
+		 * all zero, and thus will be unequal to the requested uuid.
+		 */
+		if (ctxt->filter_svc_class &&
+				sdp_uuid_cmp(&ctxt->uuid, &rec->svclass) != 0) {
+			sdp_record_free(rec);
+			continue;
+		}
 
 		recs = sdp_list_append(recs, rec);
 	} while (scanned < (ssize_t) size && bytesleft > 0);
@@ -338,6 +349,48 @@ static int create_search_context(struct search_context **ctxt,
 	return 0;
 }
 
+static int create_search_context_full(struct search_context **ctxt,
+					const bdaddr_t *src,
+					const bdaddr_t *dst,
+					uuid_t *uuid, uint16_t flags,
+					void *user_data, bt_callback_t cb,
+					bt_destroy_t destroy,
+					gboolean filter_svc_class)
+{
+	int err = create_search_context(ctxt, src, dst, uuid, flags);
+
+	if (err < 0)
+		return err;
+
+	(*ctxt)->cb = cb;
+	(*ctxt)->destroy = destroy;
+	(*ctxt)->user_data = user_data;
+	(*ctxt)->filter_svc_class = filter_svc_class;
+
+	return 0;
+}
+
+int bt_search(const bdaddr_t *src, const bdaddr_t *dst,
+			uuid_t *uuid, bt_callback_t cb, void *user_data,
+			bt_destroy_t destroy, uint16_t flags)
+{
+	struct search_context *ctxt = NULL;
+	int err;
+
+	if (!cb)
+		return -EINVAL;
+
+	/* The resulting service class ID doesn't have to match uuid */
+	err = create_search_context_full(&ctxt, src, dst, uuid, flags,
+					user_data, cb, destroy, FALSE);
+	if (err < 0)
+		return err;
+
+	context_list = g_slist_append(context_list, ctxt);
+
+	return 0;
+}
+
 int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 			uuid_t *uuid, bt_callback_t cb, void *user_data,
 			bt_destroy_t destroy, uint16_t flags)
@@ -348,13 +401,11 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 	if (!cb)
 		return -EINVAL;
 
-	err = create_search_context(&ctxt, src, dst, uuid, flags);
+	/* The resulting service class ID need to match uuid */
+	err = create_search_context_full(&ctxt, src, dst, uuid, flags,
+					user_data, cb, destroy, TRUE);
 	if (err < 0)
 		return err;
-
-	ctxt->cb	= cb;
-	ctxt->destroy	= destroy;
-	ctxt->user_data	= user_data;
 
 	context_list = g_slist_append(context_list, ctxt);
 

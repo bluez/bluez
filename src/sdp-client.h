@@ -24,6 +24,9 @@
 typedef void (*bt_callback_t) (sdp_list_t *recs, int err, gpointer user_data);
 typedef void (*bt_destroy_t) (gpointer user_data);
 
+int bt_search(const bdaddr_t *src, const bdaddr_t *dst,
+			uuid_t *uuid, bt_callback_t cb, void *user_data,
+			bt_destroy_t destroy, uint16_t flags);
 int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 			uuid_t *uuid, bt_callback_t cb, void *user_data,
 			bt_destroy_t destroy, uint16_t flags);
