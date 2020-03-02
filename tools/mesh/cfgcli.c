@@ -802,7 +802,7 @@ static struct mesh_group *add_group(uint16_t addr)
 {
 	struct mesh_group *grp;
 
-	if (!IS_GROUP(addr))
+	if (!IS_GROUP(addr) || addr >= FIXED_GROUP_LOW)
 		return NULL;
 
 	grp = l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(addr));
@@ -1064,7 +1064,7 @@ static void cmd_bind(uint32_t opcode, int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 3 && parm_cnt != 4) {
@@ -1101,7 +1101,7 @@ static void cmd_beacon_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[2 + 1];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_BEACON_SET, msg);
 
@@ -1128,7 +1128,7 @@ static void cmd_ident_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[2 + 3 + 4];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_NODE_IDENTITY_SET, msg);
 
@@ -1152,7 +1152,7 @@ static void cmd_ident_get(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[2 + 2 + 4];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_NODE_IDENTITY_GET, msg);
 
@@ -1175,7 +1175,7 @@ static void cmd_proxy_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[2 + 1];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_PROXY_SET, msg);
 
@@ -1202,7 +1202,7 @@ static void cmd_relay_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[2 + 2 + 4];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_RELAY_SET, msg);
 
@@ -1230,7 +1230,7 @@ static void cmd_ttl_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (!parm_cnt || parms[0] > TTL_MASK) {
@@ -1251,7 +1251,7 @@ static void cmd_pub_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[48];
-	int parm_cnt;
+	uint32_t parm_cnt;
 	struct mesh_group *grp;
 	uint32_t opcode;
 	uint16_t pub_addr;
@@ -1260,6 +1260,11 @@ static void cmd_pub_set(int argc, char *argv[])
 
 	if (parm_cnt != 6 && parm_cnt != 7) {
 		bt_shell_printf("Bad arguments\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (parms[1] > ALL_NODES_ADDRESS) {
+		bt_shell_printf("Bad publication address %x\n", parms[1]);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1314,7 +1319,7 @@ static void cmd_pub_get(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_MODEL_PUB_GET, msg);
 
@@ -1341,13 +1346,19 @@ static void subscription_cmd(int argc, char *argv[], uint32_t opcode)
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 	struct mesh_group *grp;
 	uint16_t sub_addr;
 
 	parm_cnt = read_input_parameters(argc, argv);
 	if (parm_cnt != 3 && parm_cnt != 4) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if ((!IS_GROUP(parms[1]) || IS_ALL_NODES(parms[1])) &&
+							!IS_VIRTUAL(parms[1])) {
+		bt_shell_printf("Bad subscription address %x\n", parms[1]);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1416,7 +1427,7 @@ static void cmd_sub_del_all(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_MODEL_SUB_DELETE_ALL, msg);
 
@@ -1443,7 +1454,7 @@ static void cmd_sub_get(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 	bool vendor;
 	uint32_t opcode;
 
@@ -1474,7 +1485,7 @@ static void cmd_mod_appidx_get(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 	bool vendor;
 	uint32_t opcode;
 
@@ -1504,7 +1515,7 @@ static void cmd_hb_pub_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_HEARTBEAT_PUB_SET, msg);
 
@@ -1549,7 +1560,7 @@ static void cmd_hb_sub_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[32];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_HEARTBEAT_SUB_SET, msg);
 
@@ -1597,7 +1608,7 @@ static void cmd_network_transmit_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[2 + 1];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_NETWORK_TRANSMIT_SET, msg);
 
@@ -1619,7 +1630,7 @@ static void cmd_friend_set(int argc, char *argv[])
 {
 	uint16_t n;
 	uint8_t msg[2 + 1];
-	int parm_cnt;
+	uint32_t parm_cnt;
 
 	n = mesh_opcode_set(OP_CONFIG_FRIEND_SET, msg);
 
