@@ -434,6 +434,24 @@ bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx)
 	return add_node_key(jnode, "netKeys", idx);
 }
 
+bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl)
+{
+	json_object *jnode;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(unicast);
+	if (!jnode)
+		return false;
+
+	if (!write_int(jnode, "defaultTTL", ttl))
+		return false;
+
+	return mesh_config_save((struct mesh_config *) cfg, true,
+								NULL, NULL);
+}
+
 static void jarray_key_del(json_object *jarray, int16_t idx)
 {
 	int i, sz = json_object_array_length(jarray);
@@ -923,13 +941,6 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 		goto fail;
 
 	json_object_object_add(jcfg, "appKeys", jarray);
-#if 0
-	jarray = json_object_new_array();
-	if (!jarray)
-		goto fail;
-
-	json_object_object_add(jcfg, "groups", jarray);
-#endif
 
 	if (!mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL))
 		goto fail;
