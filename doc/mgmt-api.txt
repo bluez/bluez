@@ -2901,6 +2901,7 @@ Read Extended Controller Information Command
 		13	Privacy
 		14	Controller Configuration
 		15	Static Address
+		16	PHY Configuration
 
 	The EIR_Data field contains information about class of device,
 	local name and other values. Not all of them might be present. For
