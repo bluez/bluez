@@ -312,6 +312,7 @@ Read Controller Information Command
 		14	Controller Configuration
 		15	Static Address
 		16	PHY Configuration
+		17	Wideband Speech
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -2902,6 +2903,7 @@ Read Extended Controller Information Command
 		14	Controller Configuration
 		15	Static Address
 		16	PHY Configuration
+		17	Wideband Speech
 
 	The EIR_Data field contains information about class of device,
 	local name and other values. Not all of them might be present. For
@@ -3051,6 +3053,40 @@ Load Blocked Keys Command
 	a Command Status event on failure.
 
 	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
+Set Wideband Speech Command
+===========================
+
+	Command Code:		0x0047
+	Controller Index:	<controller id>
+	Command Parameters:	Wideband_Speech (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is used to enable/disable Wideband Speech
+	support for a controller. The allowed values for the
+	Wideband_Speech command parameter are 0x00 and 0x01.
+	All other values will return Invalid Parameters.
+
+	The value 0x00 disables Wideband Speech, the value 0x01
+	enables Wideband Speech.
+
+	This command is only available for BR/EDR capable controllers and
+	require controller specific support.
+
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	In case the controller does not support Wideband Speech
+	the command will fail regardless with Not Supported error.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
 				Invalid Index
 
 
