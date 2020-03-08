@@ -30,6 +30,7 @@ Linux kernel v4.6	Version 1.12
 Linux kernel v4.8	Version 1.13
 Linux kernel v4.9	Version 1.14
 Linux kernel v5.5	Version 1.15
+Linux kernel v5.6	Version 1.16 (not yet released)
 
 Version 1.1 introduces Set Device ID command.
 
@@ -89,6 +90,9 @@ response information are now supported.
 
 Version 1.15 introduces Get PHY Configuration, Set PHY Configuration and
 Load Blocked Keys commands.
+
+Version 1.16 introduces Wideband Speech setting and its corresponding
+Set Wideband Speech command.
 
 
 Example
