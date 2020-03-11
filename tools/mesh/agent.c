@@ -81,15 +81,16 @@ static bool str2hex(const char *str, uint16_t in_len, uint8_t *out,
 static void response_hexadecimal(const char *input, void *user_data)
 {
 	uint8_t buf[MAX_HEXADECIMAL_OOB_LEN];
+	uint16_t len = pending_request.len;
 
 	if (!str2hex(input, strlen(input), buf, pending_request.len) ) {
 		bt_shell_printf("Incorrect input: expecting %d hex octets\n",
 			  pending_request.len);
-		return;
+		len = 0;
 	}
 
 	if (pending_request.cb)
-		pending_request.cb(HEXADECIMAL, buf, pending_request.len,
+		pending_request.cb(HEXADECIMAL, buf, len,
 					pending_request.user_data);
 
 	reset_input_request();
@@ -98,14 +99,15 @@ static void response_hexadecimal(const char *input, void *user_data)
 static void response_decimal(const char *input, void *user_data)
 {
 	uint8_t buf[DECIMAL_OOB_LEN];
+	uint16_t len = DECIMAL_OOB_LEN;
 
 	if (strlen(input) > pending_request.len)
-		return;
+		len = 0;
 
 	bt_put_be32(atoi(input), buf);
 
 	if (pending_request.cb)
-		pending_request.cb(DECIMAL, buf, DECIMAL_OOB_LEN,
+		pending_request.cb(DECIMAL, buf, len,
 					pending_request.user_data);
 
 	reset_input_request();

@@ -372,12 +372,11 @@ static void agent_input_done(oob_type_t type, void *buf, uint16_t len,
 	struct l_dbus_message *reply = NULL;
 	struct l_dbus_message_builder *builder;
 	uint32_t val_u32;
-	uint8_t ascii[16];
+	uint8_t oob_data[16];
 
 	switch (type) {
 	case NONE:
 	case OUTPUT:
-	case HEXADECIMAL:
 	default:
 		break;
 
@@ -386,12 +385,18 @@ static void agent_input_done(oob_type_t type, void *buf, uint16_t len,
 			bt_shell_printf("Bad input length\n");
 			break;
 		}
+		/* Fall Through */
 
-		memset(ascii, 0, 16);
-		memcpy(ascii, buf, len);
+	case HEXADECIMAL:
+		if (len > 16) {
+			bt_shell_printf("Bad input length\n");
+			break;
+		}
+		memset(oob_data, 0, 16);
+		memcpy(oob_data, buf, len);
 		reply = l_dbus_message_new_method_return(msg);
 		builder = l_dbus_message_builder_new(reply);
-		append_byte_array(builder, ascii, 16);
+		append_byte_array(builder, oob_data, 16);
 		l_dbus_message_builder_finalize(builder);
 		l_dbus_message_builder_destroy(builder);
 		break;
@@ -539,12 +544,16 @@ static struct l_dbus_message *prompt_static_call(struct l_dbus *dbus,
 		return l_dbus_message_new_error(msg, dbus_err_fail, NULL);
 	}
 
-	if (!strcmp(str, "in-alpha") && !strcmp(str, "out-alpha"))
-		return l_dbus_message_new_error(msg, dbus_err_support, NULL);
-
-	l_dbus_message_ref(msg);
-	agent_input_request(ASCII, 8, "Enter displayed Ascii code",
+	if (!strcmp(str, "in-alpha") || !strcmp(str, "out-alpha")) {
+		l_dbus_message_ref(msg);
+		agent_input_request(ASCII, 8, "Enter displayed Ascii code",
 							agent_input_done, msg);
+	} else if (!strcmp(str, "static-oob")) {
+		l_dbus_message_ref(msg);
+		agent_input_request(HEXADECIMAL, 16, "Enter Static Key",
+							agent_input_done, msg);
+	} else
+		return l_dbus_message_new_error(msg, dbus_err_support, NULL);
 
 	return NULL;
 }
