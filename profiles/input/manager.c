@@ -96,7 +96,7 @@ static int input_init(void)
 	config = load_config_file(CONFIGDIR "/input.conf");
 	if (config) {
 		int idle_timeout;
-		gboolean uhid_enabled, classic_bonded_only;
+		gboolean uhid_enabled, classic_bonded_only, auto_sec;
 
 		idle_timeout = g_key_file_get_integer(config, "General",
 							"IdleTimeout", &err);
@@ -122,6 +122,15 @@ static int input_init(void)
 			DBG("input.conf: ClassicBondedOnly=%s",
 					classic_bonded_only ? "true" : "false");
 			input_set_classic_bonded_only(classic_bonded_only);
+		} else
+			g_clear_error(&err);
+
+		auto_sec = g_key_file_get_boolean(config, "General",
+						"LEAutoSecurity", &err);
+		if (!err) {
+			DBG("input.conf: LEAutoSecurity=%s",
+					auto_sec ? "true" : "false");
+			input_set_auto_sec(auto_sec);
 		} else
 			g_clear_error(&err);
 
