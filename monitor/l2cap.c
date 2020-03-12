@@ -1408,7 +1408,7 @@ static void sig_ecred_conn_rsp(const struct l2cap_frame *frame)
 	const struct bt_l2cap_pdu_ecred_conn_rsp *pdu = frame->data;
 	uint16_t dcid;
 
-	l2cap_frame_pull((void *)frame, frame, sizeof(pdu));
+	l2cap_frame_pull((void *)frame, frame, sizeof(*pdu));
 
 	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
 	print_field("MPS: %u", le16_to_cpu(pdu->mps));
@@ -1426,7 +1426,7 @@ static void sig_ecred_reconf_req(const struct l2cap_frame *frame)
 	const struct bt_l2cap_pdu_ecred_reconf_req *pdu = frame->data;
 	uint16_t scid;
 
-	l2cap_frame_pull((void *)frame, frame, sizeof(pdu));
+	l2cap_frame_pull((void *)frame, frame, sizeof(*pdu));
 
 	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
 	print_field("MPS: %u", le16_to_cpu(pdu->mps));
