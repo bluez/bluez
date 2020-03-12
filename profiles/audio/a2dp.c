@@ -2118,7 +2118,7 @@ struct avdtp *a2dp_avdtp_get(struct btd_device *device)
 	return NULL;
 
 found:
-	chan->session = avdtp_new(NULL, device, server->seps);
+	chan->session = avdtp_new(chan->io, device, server->seps);
 	if (!chan->session) {
 		channel_remove(chan);
 		return NULL;
@@ -2136,10 +2136,13 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		goto fail;
 	}
 
-	chan->session = avdtp_new(chan->io, chan->device, chan->server->seps);
 	if (!chan->session) {
-		error("Unable to create AVDTP session");
-		goto fail;
+		chan->session = avdtp_new(chan->io, chan->device,
+							chan->server->seps);
+		if (!chan->session) {
+			error("Unable to create AVDTP session");
+			goto fail;
+		}
 	}
 
 	g_io_channel_unref(chan->io);
