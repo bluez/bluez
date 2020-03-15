@@ -1,3 +1,11 @@
+ver 5.54:
+	Fix issue with HOGP to accept data only from bonded devices.
+	Fix issue with A2DP sessions being connected at the same time.
+	Fix issue with class UUID matches before connecting profile.
+	Add support for handling MTU auto-tuning option for AVDTP.
+	Add support for new policy for Just-Works repairing.
+	Add support for Enhanced ATT bearer (EATT).
+
 ver 5.53:
 	Fix issue with handling unregistration for advertisment.
 	Fix issue with A2DP and handling recovering process.
