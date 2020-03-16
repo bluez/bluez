@@ -2182,10 +2182,33 @@ static void eatt_connect(struct btd_gatt_client *client)
 
 	ba2str(device_get_address(dev), addr);
 
-	DBG("Connection attempt to: %s", addr);
-
 	for (i = bt_att_get_channels(att); i < main_opts.gatt_channels; i++) {
+		int defer_timeout = i + 1 < main_opts.gatt_channels ? 1 : 0;
+
+		DBG("Connection attempt to: %s defer %s", addr,
+					defer_timeout ? "true" : "false");
+
+		/* Attempt to connect using the Ext-Flowctl */
 		io = bt_io_connect(eatt_connect_cb, client, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR,
+					btd_adapter_get_address(adapter),
+					BT_IO_OPT_SOURCE_TYPE,
+					btd_adapter_get_address_type(adapter),
+					BT_IO_OPT_DEST_BDADDR,
+					device_get_address(dev),
+					BT_IO_OPT_DEST_TYPE,
+					device_get_le_address_type(dev),
+					BT_IO_OPT_MODE, BT_IO_MODE_EXT_FLOWCTL,
+					BT_IO_OPT_PSM, BT_ATT_EATT_PSM,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_MTU, main_opts.gatt_mtu,
+					BT_IO_OPT_DEFER_TIMEOUT, defer_timeout,
+					BT_IO_OPT_INVALID);
+		if (!io) {
+			g_error_free(gerr);
+			gerr = NULL;
+			/* Fallback to legacy LE Mode */
+			io = bt_io_connect(eatt_connect_cb, client, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR,
 					btd_adapter_get_address(adapter),
 					BT_IO_OPT_SOURCE_TYPE,
@@ -2198,11 +2221,12 @@ static void eatt_connect(struct btd_gatt_client *client)
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_MTU, main_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
-		if (!io) {
-			error("EATT bt_io_connect(%s): %s", addr,
+			if (!io) {
+				error("EATT bt_io_connect(%s): %s", addr,
 							gerr->message);
-			g_error_free(gerr);
-			return;
+				g_error_free(gerr);
+				return;
+			}
 		}
 
 		g_io_channel_unref(io);
