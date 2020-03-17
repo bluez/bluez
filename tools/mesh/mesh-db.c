@@ -845,6 +845,45 @@ fail:
 	return false;
 }
 
+bool mesh_db_del_node(uint16_t unicast)
+{
+	json_object *jarray;
+	int i, sz;
+
+	if (!json_object_object_get_ex(cfg->jcfg, "nodes", &jarray))
+		return false;
+
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	sz = json_object_array_length(jarray);
+
+	for (i = 0; i < sz; ++i) {
+		json_object *jentry, *jval;
+		uint16_t addr;
+		const char *str;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		if (!json_object_object_get_ex(jentry, "unicastAddress",
+								&jval))
+			continue;
+
+		str = json_object_get_string(jval);
+		if (sscanf(str, "%04hx", &addr) != 1)
+			continue;
+
+		if (addr == unicast)
+			break;
+	}
+
+	if (i == sz)
+		return true;
+
+	json_object_array_del_idx(jarray, i, 1);
+
+	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+}
+
 bool mesh_db_get_token(uint8_t token[8])
 {
 	if (!cfg || !cfg->jcfg)

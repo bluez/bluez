@@ -89,6 +89,26 @@ static bool match_bound_key(const void *a, const void *b)
 	return (net_idx == keys_get_bound_key(app_idx));
 }
 
+uint8_t remote_del_node(uint16_t unicast)
+{
+	struct remote_node *rmt;
+	uint8_t num_ele;
+
+	rmt = l_queue_remove_if(nodes, match_node_addr, L_UINT_TO_PTR(unicast));
+	if (!rmt)
+		return 0;
+
+	num_ele = rmt->num_ele;
+
+	l_queue_destroy(rmt->net_keys, NULL);
+	l_queue_destroy(rmt->app_keys, NULL);
+	l_free(rmt);
+
+	mesh_db_del_node(unicast);
+
+	return num_ele;
+}
+
 bool remote_add_node(const uint8_t uuid[16], uint16_t unicast,
 					uint8_t ele_cnt, uint16_t net_idx)
 {

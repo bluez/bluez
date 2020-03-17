@@ -65,6 +65,7 @@ static struct l_queue *groups;
 
 static void *send_data;
 static model_send_msg_func_t send_msg;
+static delete_remote_func_t mgr_del_remote;
 
 static void *key_data;
 static key_send_func_t send_key_msg;
@@ -191,6 +192,15 @@ static const char *opcode_str(uint32_t opcode)
 	return cmd->desc;
 }
 
+static void reset_remote_node(uint16_t addr)
+{
+	uint8_t ele_cnt = remote_del_node(addr);
+
+	bt_shell_printf("Remote removed (primary %4.4x)\n", addr);
+	if (ele_cnt && mgr_del_remote)
+		mgr_del_remote(addr, ele_cnt);
+}
+
 static void free_request(void *a)
 {
 	struct pending_req *req = a;
@@ -221,6 +231,10 @@ static void wait_rsp_timeout(struct l_timeout *timeout, void *user_data)
 
 	bt_shell_printf("No response for \"%s\" from %4.4x\n",
 						req->cmd->desc, req->addr);
+
+	/* Node reset case: delete the remote even if there is no response */
+	if (req->cmd->opcode == OP_NODE_RESET)
+		reset_remote_node(req->addr);
 
 	l_queue_remove(requests, req);
 	free_request(req);
@@ -713,11 +727,9 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	/* Per Mesh Profile 4.3.2.54 */
 	case OP_NODE_RESET_STATUS:
-		if (len != 1)
-			return true;
 
-		bt_shell_printf("Node %4.4x reset status %s\n",
-				src, mesh_status_str(data[0]));
+		bt_shell_printf("Node %4.4x is reset\n", src);
+		reset_remote_node(src);
 
 		break;
 
@@ -1656,7 +1668,41 @@ static void cmd_friend_get(int argc, char *argv[])
 
 static void cmd_node_reset(int argc, char *argv[])
 {
-	cmd_default(OP_NODE_RESET);
+	uint16_t n, i;
+	uint8_t msg[8];
+	struct pending_req *req;
+
+	if (IS_UNASSIGNED(target)) {
+		bt_shell_printf("Destination not set\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	/* Cannot remet self */
+	if (target == 0x0001) {
+		bt_shell_printf("Resetting self not allowed\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	n = mesh_opcode_set(OP_NODE_RESET, msg);
+
+	req = l_new(struct pending_req, 1);
+	req->addr = target;
+	req->cmd = get_cmd(OP_NODE_RESET);
+
+	/*
+	 * As a courtesy to the remote node, send the reset command
+	 * several times. Treat this as a single request with a longer
+	 * response timeout.
+	 */
+	req->timer = l_timeout_create(rsp_timeout * 2,
+				wait_rsp_timeout, req, NULL);
+
+	l_queue_push_tail(requests, req);
+
+	for (i = 0; i < 5; i++)
+		send_msg(send_data, target, APP_IDX_DEV_REMOTE, msg, n);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_netkey_get(int argc, char *argv[])
@@ -1831,13 +1877,15 @@ static struct model_info cli_info = {
 	.vendor_id = VENDOR_ID_INVALID
 };
 
-struct model_info *cfgcli_init(key_send_func_t key_send, void *user_data)
+struct model_info *cfgcli_init(key_send_func_t key_send,
+				delete_remote_func_t del_node, void *user_data)
 {
 	if (!key_send)
 		return NULL;
 
 	send_key_msg = key_send;
 	key_data = user_data;
+	mgr_del_remote = del_node;
 	requests = l_queue_new();
 	groups = mesh_db_load_groups();
 	bt_shell_add_submenu(&cfg_menu);

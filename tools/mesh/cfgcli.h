@@ -25,6 +25,8 @@ struct mesh_group {
 
 typedef bool (*key_send_func_t) (void *user_data, uint16_t dst,
 				 uint16_t idx, bool is_appkey, bool update);
+typedef void (*delete_remote_func_t) (uint16_t primary, uint8_t ele_cnt);
 
-struct model_info *cfgcli_init(key_send_func_t key_func, void *user_data);
+struct model_info *cfgcli_init(key_send_func_t key_func,
+				delete_remote_func_t del_node, void *user_data);
 void cfgcli_cleanup(void);

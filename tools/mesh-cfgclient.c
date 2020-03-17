@@ -342,9 +342,38 @@ static bool send_key(void *user_data, uint16_t dst, uint16_t key_idx,
 				send_key_setup, NULL, req, l_free) != 0;
 }
 
+static void delete_node_setup(struct l_dbus_message *msg, void *user_data)
+{
+	struct generic_request *req = user_data;
+	uint16_t primary;
+	uint8_t ele_cnt;
+
+	primary = (uint16_t) req->arg1;
+	ele_cnt = (uint8_t) req->arg2;
+
+	l_dbus_message_set_arguments(msg, "qy", primary, ele_cnt);
+}
+
+static void delete_node(uint16_t primary, uint8_t ele_cnt)
+{
+	struct generic_request *req;
+
+	if (!local || !local->proxy || !local->mgmt_proxy) {
+		bt_shell_printf("Node is not attached\n");
+		return;
+	}
+
+	req = l_new(struct generic_request, 1);
+	req->arg1 = primary;
+	req->arg2 = ele_cnt;
+
+	l_dbus_proxy_method_call(local->mgmt_proxy, "DeleteRemoteNode",
+				delete_node_setup, NULL, req, l_free);
+}
+
 static void client_init(void)
 {
-	cfgcli = cfgcli_init(send_key, (void *) app.ele.path);
+	cfgcli = cfgcli_init(send_key, delete_node, (void *) app.ele.path);
 	cfgcli->ops.set_send_func(send_msg, (void *) app.ele.path);
 }
 
@@ -798,50 +827,6 @@ static void free_generic_request(void *data)
 
 	l_free(req->data1);
 	l_free(req->data2);
-	l_free(req);
-}
-
-static void delete_node_setup(struct l_dbus_message *msg, void *user_data)
-{
-	struct generic_request *req = user_data;
-	uint16_t primary;
-	uint8_t ele_cnt;
-
-	primary = (uint16_t) req->arg1;
-	ele_cnt = (uint8_t) req->arg2;
-
-	l_dbus_message_set_arguments(msg, "qy", primary, ele_cnt);
-}
-
-static void cmd_delete_node(int argc, char *argv[])
-{
-	struct generic_request *req;
-
-	if (!local || !local->proxy || !local->mgmt_proxy) {
-		bt_shell_printf("Node is not attached\n");
-		return;
-	}
-
-	if (argc < 3) {
-		bt_shell_printf("Unicast and element count are required\n");
-		return;
-	}
-
-	req = l_new(struct generic_request, 1);
-
-	if (sscanf(argv[1], "%04x", &req->arg1) != 1)
-		goto fail;
-
-	if (sscanf(argv[2], "%u", &req->arg2) != 1)
-		goto fail;
-
-	l_dbus_proxy_method_call(local->mgmt_proxy, "DeleteRemoteNode",
-				delete_node_setup, NULL, req, l_free);
-
-	/* TODO:: Delete node from configuration */
-	return;
-
-fail:
 	l_free(req);
 }
 
@@ -1359,8 +1344,6 @@ static const struct bt_shell_menu main_menu = {
 	{ "node-import", "<uuid> <net_idx> <primary> <ele_count> <dev_key>",
 			cmd_import_node,
 			"Import an externally provisioned remote node"},
-	{ "node-delete", "<primary> <ele_count>", cmd_delete_node,
-			"Delete a remote node"},
 	{ "list-nodes", NULL, cmd_list_nodes,
 			"List remote mesh nodes"},
 	{ "keys", NULL, cmd_keys,
