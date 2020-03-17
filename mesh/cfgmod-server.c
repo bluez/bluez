@@ -695,12 +695,11 @@ static int hb_subscription_set(struct mesh_net *net, uint16_t src,
 	return MESH_STATUS_SUCCESS;
 }
 
-static void node_reset(struct l_timeout *timeout, void *user_data)
+static void node_reset(void *user_data)
 {
 	struct mesh_node *node = user_data;
 
 	l_debug("Node Reset");
-	l_timeout_remove(timeout);
 	node_remove(node);
 }
 
@@ -1223,20 +1222,17 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 
 	case OP_NODE_RESET:
 		n = mesh_model_opcode_set(OP_NODE_RESET_STATUS, msg);
-		/*
-		 * Delay node removal to give it a chance to send back the
-		 * status
-		 */
-		l_timeout_create(1, node_reset, node, NULL);
+
+		/* Delay node removal to give it a chance to send the status */
+		l_idle_oneshot(node_reset, node, NULL);
 		break;
 	}
 
-	if (n) {
-		/* print_packet("App Tx", long_msg ? long_msg : msg, n); */
+	if (n)
 		mesh_model_send(node, dst, src,
 				APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
 				long_msg ? long_msg : msg, n);
-	}
+
 	l_free(long_msg);
 
 	return true;
