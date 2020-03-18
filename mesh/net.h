@@ -40,8 +40,9 @@ struct mesh_node;
 
 #define MAX_UNSEG_LEN	15 /* msg_len == 11 + sizeof(MIC) */
 #define MAX_SEG_LEN	12 /* UnSeg length - 3 octets overhead */
-#define SEG_MAX(len)	(((len) <= MAX_UNSEG_LEN) ? 0 : \
+#define SEG_MAX(seg, len) ((!seg && len <= MAX_UNSEG_LEN) ? 0 : \
 						(((len) - 1) / MAX_SEG_LEN))
+
 #define SEG_OFF(seg)	((seg) * MAX_SEG_LEN)
 #define MAX_SEG_TO_LEN(seg)	((seg) ? SEG_OFF((seg) + 1) : MAX_UNSEG_LEN)
 
@@ -311,7 +312,8 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 				uint16_t dst, uint8_t key_id, uint16_t net_idx,
 				uint8_t ttl, uint32_t seq, uint32_t iv_index,
-				bool szmic, const void *msg, uint16_t msg_len,
+				bool segmented, bool szmic,
+				const void *msg, uint16_t msg_len,
 				mesh_net_status_func_t status_func,
 				void *user_data);
 void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id,

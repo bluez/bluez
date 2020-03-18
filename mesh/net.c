@@ -139,6 +139,7 @@ struct mesh_net {
 	struct l_queue *replay_cache;
 	struct l_queue *sar_in;
 	struct l_queue *sar_out;
+	struct l_queue *sar_queue;
 	struct l_queue *frnd_msgs;
 	struct l_queue *friends;
 	struct l_queue *negotiations;
@@ -182,6 +183,7 @@ struct mesh_sar {
 	uint16_t remote;
 	uint16_t len;
 	bool szmic;
+	bool segmented;
 	bool frnd;
 	bool frnd_cred;
 	uint8_t ttl;
@@ -662,6 +664,7 @@ struct mesh_net *mesh_net_new(struct mesh_node *node)
 	net->msg_cache = l_queue_new();
 	net->sar_in = l_queue_new();
 	net->sar_out = l_queue_new();
+	net->sar_queue = l_queue_new();
 	net->frnd_msgs = l_queue_new();
 	net->destinations = l_queue_new();
 	net->app_keys = l_queue_new();
@@ -687,6 +690,7 @@ void mesh_net_free(struct mesh_net *net)
 	l_queue_destroy(net->replay_cache, l_free);
 	l_queue_destroy(net->sar_in, mesh_sar_free);
 	l_queue_destroy(net->sar_out, mesh_sar_free);
+	l_queue_destroy(net->sar_queue, mesh_sar_free);
 	l_queue_destroy(net->frnd_msgs, l_free);
 	l_queue_destroy(net->friends, mesh_friend_free);
 	l_queue_destroy(net->negotiations, mesh_friend_free);
@@ -1657,6 +1661,22 @@ static void outmsg_to(struct l_timeout *msg_timeout, void *user_data)
 }
 
 static void outseg_to(struct l_timeout *seg_timeout, void *user_data);
+
+static void send_queued_sar(struct mesh_net *net, uint16_t dst)
+{
+	struct mesh_sar *sar = l_queue_remove_if(net->sar_queue,
+			match_sar_remote, L_UINT_TO_PTR(dst));
+
+	if (!sar)
+		return;
+
+	/* Out to current outgoing, and immediate expire Seg TO */
+	l_queue_push_head(net->sar_out, sar);
+	sar->seg_timeout = NULL;
+	sar->msg_timeout = l_timeout_create(MSG_TO, outmsg_to, net, NULL);
+	outseg_to(NULL, net);
+}
+
 static void ack_received(struct mesh_net *net, bool timeout,
 				uint16_t src, uint16_t dst,
 				uint16_t seq0, uint32_t ack_flag)
@@ -1692,6 +1712,7 @@ static void ack_received(struct mesh_net *net, bool timeout,
 					outgoing->len - 4, outgoing->user_data);
 
 		l_queue_remove(net->sar_out, outgoing);
+		send_queued_sar(net, outgoing->remote);
 		mesh_sar_free(outgoing);
 
 		return;
@@ -1701,10 +1722,10 @@ static void ack_received(struct mesh_net *net, bool timeout,
 
 	ack_copy &= outgoing->flags;
 
-	for (i = 0; i <= SEG_MAX(outgoing->len); i++, seg_flag <<= 1) {
+	for (i = 0; i <= SEG_MAX(true, outgoing->len); i++, seg_flag <<= 1) {
 		if (seg_flag & ack_flag) {
 			l_debug("Skipping Seg %d of %d",
-					i, SEG_MAX(outgoing->len));
+					i, SEG_MAX(true, outgoing->len));
 			continue;
 		}
 
@@ -1741,7 +1762,7 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 					uint8_t ttl, uint32_t seq,
 					uint16_t net_idx,
 					uint16_t src, uint16_t dst,
-					uint8_t key_aid,
+					uint8_t key_aid, bool segmented,
 					bool szmic, uint16_t seqZero,
 					const uint8_t *data, uint16_t size)
 {
@@ -1768,7 +1789,7 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 			hdr |= true << SEG_HDR_SHIFT;
 			hdr |= szmic << SZMIC_HDR_SHIFT;
 			hdr |= (seqZero & SEQ_ZERO_MASK) << SEQ_ZERO_HDR_SHIFT;
-			hdr |= SEG_MAX(size) << SEGN_HDR_SHIFT;
+			hdr |= SEG_MAX(true, size) << SEGN_HDR_SHIFT;
 		}
 
 		if (friend_packet_queue(net, iv_index, false, frnd_ttl,
@@ -1967,7 +1988,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 		l_info("RXed (old: %04x %06x size:%d) %d of %d",
 					seqZero, seq, size, segO, segN);
 		/* Sanity Check--> certain things must match */
-		if (SEG_MAX(sar_in->len) != segN ||
+		if (SEG_MAX(true, sar_in->len) != segN ||
 				sar_in->key_aid != key_aid)
 			return false;
 
@@ -2022,8 +2043,8 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 
 		msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
 				sar_in->remote, dst,
-				key_aid,
-				szmic, sar_in->seqZero,
+				key_aid, true, szmic,
+				sar_in->seqZero,
 				sar_in->buf, sar_in->len);
 
 		/* Kill Inter-Seg timeout */
@@ -2426,7 +2447,8 @@ static enum _relay_advice packet_received(void *user_data,
 						net_idx,
 						net_src, net_dst,
 						net_key_id,
-						false, net_seq & SEQ_ZERO_MASK,
+						false, false,
+						net_seq & SEQ_ZERO_MASK,
 						msg, app_msg_len);
 		}
 
@@ -2539,7 +2561,8 @@ static void iv_upd_to(struct l_timeout *upd_timeout, void *user_data)
 
 	switch (net->iv_upd_state) {
 	case IV_UPD_UPDATING:
-		if (l_queue_length(net->sar_out)) {
+		if (l_queue_length(net->sar_out) ||
+					l_queue_length(net->sar_queue)) {
 			l_info("don't leave IV Update until sar_out empty");
 			l_timeout_modify(net->iv_update_timeout, 10);
 			break;
@@ -3043,12 +3066,12 @@ static bool send_seg(struct mesh_net *net, struct mesh_sar *msg, uint8_t segO)
 	uint8_t gatt_data[30];
 	uint8_t *packet = gatt_data;
 	uint8_t packet_len;
-	uint8_t segN = SEG_MAX(msg->len);
+	uint8_t segN = SEG_MAX(msg->segmented, msg->len);
 	uint16_t seg_off = SEG_OFF(segO);
 	uint32_t key_id = 0;
 	uint32_t seq_num;
 
-	if (segN) {
+	if (msg->segmented) {
 		/* Send each segment on unique seq_num */
 		seq_num = mesh_net_next_seq_num(net);
 
@@ -3075,7 +3098,7 @@ static bool send_seg(struct mesh_net *net, struct mesh_sar *msg, uint8_t segO)
 					seq_num,
 					msg->src, msg->remote,
 					0,
-					segN ? true : false, msg->key_aid,
+					msg->segmented, msg->key_aid,
 					msg->szmic, false, msg->seqZero,
 					segO, segN,
 					msg->buf + seg_off, seg_len,
@@ -3169,7 +3192,8 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 				uint16_t dst, uint8_t key_aid, uint16_t net_idx,
 				uint8_t ttl, uint32_t seq, uint32_t iv_index,
-				bool szmic, const void *msg, uint16_t msg_len,
+				bool segmented, bool szmic,
+				const void *msg, uint16_t msg_len,
 				mesh_net_status_func_t status_func,
 				void *user_data)
 {
@@ -3189,14 +3213,17 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	if (ttl == DEFAULT_TTL)
 		ttl = net->default_ttl;
 
-	seg_max = SEG_MAX(msg_len);
+	/* Long and sizmic messages *require* segmenting */
+	segmented |= szmic;
+	seg_max = SEG_MAX(segmented, msg_len);
+	segmented |= !!(seg_max);
 
 	/* First enqueue to any Friends and internal models */
 	result = msg_rxed(net, false, iv_index, ttl,
 				seq,
 				net_idx,
 				src, dst,
-				key_aid,
+				key_aid, segmented,
 				szmic, seq & SEQ_ZERO_MASK,
 				msg, msg_len);
 
@@ -3206,13 +3233,6 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	if ((result && IS_UNICAST(dst)) || src == dst ||
 			(dst >= net->src_addr && dst <= net->last_addr))
 		return true;
-
-	/* If Segmented, Cancel any OB segmented message to same DST */
-	if (seg_max) {
-		payload = l_queue_remove_if(net->sar_out, match_sar_remote,
-							L_UINT_TO_PTR(dst));
-		mesh_sar_free(payload);
-	}
 
 	/* Setup OTA Network send */
 	payload = mesh_sar_new(msg_len);
@@ -3224,16 +3244,30 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	payload->szmic = szmic;
 	payload->frnd_cred = frnd_cred;
 	payload->key_aid = key_aid;
-	if (seg_max) {
-		payload->flags = 0xffffffff >> (31 - seg_max);
-		payload->seqZero = seq & SEQ_ZERO_MASK;
-	}
-
 	payload->iv_index = mesh_net_get_iv_index(net);
 	payload->seqAuth = seq;
+	payload->segmented = segmented;
+	if (segmented) {
+		payload->flags = 0xffffffff >> (31 - seg_max);
+		payload->seqZero = seq & SEQ_ZERO_MASK;
+		payload->status_func = status_func;
+		payload->user_data = user_data;
+		payload->id = ++net->sar_id_next;
+
+		/* Single thread SAR messages to same Unicast DST */
+		if (NULL != l_queue_find(net->sar_out, match_sar_remote,
+							L_UINT_TO_PTR(dst))) {
+			/* Delay sending Outbound SAR unless prior
+			 * SAR to same DST has completed */
+
+			l_info("OB-Queued SeqZero: %4.4x", payload->seqZero);
+			l_queue_push_tail(net->sar_queue, payload);
+			return true;
+		}
+	}
 
 	result = true;
-	if (!IS_UNICAST(dst) && seg_max) {
+	if (!IS_UNICAST(dst) && segmented) {
 		int i;
 
 		for (i = 0; i < 4; i++) {
@@ -3246,7 +3280,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	}
 
 	/* Reliable: Cache; Unreliable: Flush*/
-	if (result && seg_max && IS_UNICAST(dst)) {
+	if (result && segmented && IS_UNICAST(dst)) {
 		l_queue_push_head(net->sar_out, payload);
 		payload->seg_timeout =
 			l_timeout_create(SEG_TO, outseg_to, net, NULL);

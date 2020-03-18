@@ -67,7 +67,7 @@ static void send_pub_status(struct mesh_node *node, uint16_t net_idx,
 	}
 
 	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
-								msg, n);
+								false, msg, n);
 }
 
 static bool config_pub_get(struct mesh_node *node, uint16_t net_idx,
@@ -211,8 +211,8 @@ static void send_sub_status(struct mesh_node *node, uint16_t net_idx,
 		n += 2;
 	}
 
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
-							DEFAULT_TTL, msg, n);
+	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
+								false, msg, n);
 }
 
 static bool config_sub_get(struct mesh_node *node, uint16_t net_idx,
@@ -272,7 +272,7 @@ static bool config_sub_get(struct mesh_node *node, uint16_t net_idx,
 	*msg_status = (uint8_t) status;
 
 	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
-									msg, n);
+								false, msg, n);
 	return true;
 }
 
@@ -450,7 +450,7 @@ static void send_model_app_status(struct mesh_node *node, uint16_t net_idx,
 	n += 2;
 
 	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
-									msg, n);
+								false, msg, n);
 }
 
 static void model_app_list(struct mesh_node *node, uint16_t net_idx,
@@ -505,7 +505,7 @@ static void model_app_list(struct mesh_node *node, uint16_t net_idx,
 	if (result >= 0) {
 		*status = result;
 		mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
-							DEFAULT_TTL, msg, n);
+						DEFAULT_TTL, false, msg, n);
 	}
 
 	l_free(msg);
@@ -1230,7 +1230,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 
 	if (n)
 		mesh_model_send(node, dst, src,
-				APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
+				APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL, false,
 				long_msg ? long_msg : msg, n);
 
 	l_free(long_msg);

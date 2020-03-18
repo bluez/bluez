@@ -540,7 +540,7 @@ static void cmplt(uint16_t remote, uint8_t status,
 
 static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
 		uint32_t dst, uint16_t app_idx, uint16_t net_idx,
-		uint8_t *label, uint8_t ttl,
+		uint8_t *label, uint8_t ttl, bool segmented,
 		const void *msg, uint16_t msg_len)
 {
 	uint8_t dev_key[16];
@@ -597,8 +597,8 @@ static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
 	/* print_packet("Encrypted with", key, 16); */
 
 	ret = mesh_net_app_send(net, credential, src, dst, key_aid, net_idx,
-					ttl, seq_num, iv_index, szmic, out,
-					out_len, cmplt, NULL);
+					ttl, seq_num, iv_index, segmented,
+					szmic, out, out_len, cmplt, NULL);
 done:
 	l_free(out);
 	return ret;
@@ -1098,14 +1098,14 @@ int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
 
 	result = msg_send(node, mod->pub->credential != 0, src,
 				mod->pub->addr, mod->pub->idx, net_idx,
-				label, ttl, msg, msg_len);
+				label, ttl, false, msg, msg_len);
 
 	return result ? MESH_ERROR_NONE : MESH_ERROR_FAILED;
 }
 
 bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 					uint16_t app_idx, uint16_t net_idx,
-					uint8_t ttl,
+					uint8_t ttl, bool segmented,
 					const void *msg, uint16_t msg_len)
 {
 	/* print_packet("Mod Tx", msg, msg_len); */
@@ -1120,7 +1120,7 @@ bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 		return false;
 
 	return msg_send(node, false, src, dst, app_idx, net_idx,
-						NULL, ttl, msg, msg_len);
+					NULL, ttl, segmented, msg, msg_len);
 }
 
 int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,

@@ -1017,7 +1017,7 @@ static void check_encrypt(const struct mesh_crypto_test *keys)
 		app_msg = l_util_from_hexstring(keys->app_msg, &app_msg_len);
 
 		if (keys->szmic) {
-			seg_max = SEG_MAX(app_msg_len + 8);
+			seg_max = SEG_MAX(keys->segmented, app_msg_len + 8);
 			enc_msg = l_malloc(app_msg_len + 8);
 			mesh_crypto_application_encrypt(key_aid, keys->app_seq,
 					keys->net_src, keys->net_dst,
@@ -1028,7 +1028,7 @@ static void check_encrypt(const struct mesh_crypto_test *keys)
 					enc_msg, &app_mic64, sizeof(app_mic64));
 			l_put_be64(app_mic64, enc_msg + app_msg_len);
 		} else {
-			seg_max = SEG_MAX(app_msg_len + 4);
+			seg_max = SEG_MAX(keys->segmented, app_msg_len + 4);
 			enc_msg = l_malloc(app_msg_len + 4);
 			mesh_crypto_application_encrypt(key_aid, keys->app_seq,
 					keys->net_src, keys->net_dst,

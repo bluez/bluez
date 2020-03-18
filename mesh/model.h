@@ -95,7 +95,7 @@ int mesh_model_sub_get(struct mesh_node *node, uint16_t addr, uint32_t id,
 uint16_t mesh_model_cfg_blk(uint8_t *pkt);
 bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 					uint16_t app_idx, uint16_t net_idx,
-					uint8_t ttl,
+					uint8_t ttl, bool segmented,
 					const void *msg, uint16_t msg_len);
 int mesh_model_publish(struct mesh_node *node, uint32_t mod_id, uint16_t src,
 				uint8_t ttl, const void *msg, uint16_t msg_len);
