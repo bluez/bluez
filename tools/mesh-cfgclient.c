@@ -57,6 +57,7 @@
 #define DEFAULT_START_ADDRESS	0x00aa
 #define DEFAULT_MAX_ADDRESS	(VIRTUAL_ADDRESS_LOW - 1)
 #define DEFAULT_NET_INDEX	0x0000
+#define MAX_CRPL_SIZE		0x7fff
 
 #define DEFAULT_CFG_FILE	"config_db.json"
 
@@ -122,7 +123,7 @@ static struct meshcfg_app app = {
 	.cid = 0x05f1,
 	.pid = 0x0002,
 	.vid = 0x0001,
-	.crpl = 10,
+	.crpl = MAX_CRPL_SIZE,
 	.ele = {
 		.path = "/mesh/cfgclient/ele0",
 		.index = 0,
