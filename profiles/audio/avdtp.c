@@ -1936,6 +1936,7 @@ static gboolean avdtp_delayreport_cmd(struct avdtp *session,
 	stream = sep->stream;
 
 	if (sep->state != AVDTP_STATE_CONFIGURED &&
+					sep->state != AVDTP_STATE_OPEN &&
 					sep->state != AVDTP_STATE_STREAMING) {
 		err = AVDTP_BAD_STATE;
 		goto failed;
