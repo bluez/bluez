@@ -3857,7 +3857,7 @@ void net_msg_add_replay_cache(struct mesh_net *net, uint16_t src, uint32_t seq,
 	if (!rpe) {
 		l_debug("New Entry for %4.4x", src);
 		rpe = l_new(struct mesh_rpl, 1);
-		rpe->seq = src;
+		rpe->src = src;
 	}
 
 	rpe->seq = seq;
