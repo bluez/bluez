@@ -278,6 +278,12 @@ static void static_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 	memcpy(prov->rand_auth_workspace + 16, key, 16);
 	memcpy(prov->rand_auth_workspace + 32, key, 16);
 	prov->material |= MAT_RAND_AUTH;
+
+	if (prov->conf_inputs.start.auth_action ==
+							PROV_ACTION_IN_ALPHA) {
+		msg.opcode = PROV_INP_CMPLT;
+		prov->trans_tx(prov->trans_data, &msg.opcode, 1);
+	}
 }
 
 static void priv_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
