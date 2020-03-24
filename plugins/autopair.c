@@ -75,7 +75,7 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 		btd_device_get_product (device));
 
 	/* The iCade shouldn't use random PINs like normal keyboards */
-	if (name != NULL && strstr(name, "iCade") != NULL)
+	if (strstr(name, "iCade") != NULL)
 		return 0;
 
 	/* This is a class-based pincode guesser. Ignore devices with an
