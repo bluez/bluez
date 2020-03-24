@@ -945,7 +945,7 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	subnet = l_queue_find(net->subnets, match_key_index,
 							L_UINT_TO_PTR(idx));
 	if (!subnet)
-		return MESH_STATUS_CANNOT_REMOVE;
+		return MESH_STATUS_SUCCESS;
 
 	/* Delete associated app keys */
 	appkey_delete_bound_keys(net, idx);
