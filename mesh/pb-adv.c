@@ -223,9 +223,6 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	if (!l_queue_find(pb_sessions, session_match, session))
 		return;
 
-	l_timeout_remove(session->tx_timeout);
-	session->tx_timeout = NULL;
-
 	mesh_send_cancel(filter, sizeof(filter));
 
 	l_info("TX timeout");
@@ -392,17 +389,8 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 		break;
 
 	case PB_ADV_CLOSE:
-		l_timeout_remove(session->tx_timeout);
 		l_debug("Link closed notification: %2.2x", pkt[0]);
-		/* Wrap callback for pre-cleaning */
-		if (true) {
-			mesh_prov_close_func_t cb = session->close_cb;
-			void *user_data = session->user_data;
-
-			l_queue_remove(pb_sessions, session);
-			l_free(session);
-			cb(user_data, pkt[0]);
-		}
+		session->close_cb(session->user_data, pkt[0]);
 		break;
 
 	case PB_ADV_ACK:
