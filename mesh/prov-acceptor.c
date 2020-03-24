@@ -180,7 +180,7 @@ static void swap_u256_bytes(uint8_t *u256)
 	}
 }
 
-static void prov_calc_secret(const uint8_t *pub, const uint8_t *priv,
+static bool prov_calc_secret(const uint8_t *pub, const uint8_t *priv,
 							uint8_t *secret)
 {
 	uint8_t tmp[64];
@@ -190,22 +190,27 @@ static void prov_calc_secret(const uint8_t *pub, const uint8_t *priv,
 	swap_u256_bytes(tmp);
 	swap_u256_bytes(tmp + 32);
 
-	ecdh_shared_secret(tmp, priv, secret);
+	if (!ecdh_shared_secret(tmp, priv, secret))
+		return false;
 
 	/* Convert to Mesh byte order */
 	swap_u256_bytes(secret);
+	return true;
 }
 
-static void acp_credentials(struct mesh_prov_acceptor *prov)
+static bool acp_credentials(struct mesh_prov_acceptor *prov)
 {
-	prov_calc_secret(prov->conf_inputs.prv_pub_key,
-			prov->private_key, prov->secret);
+	if (!prov_calc_secret(prov->conf_inputs.prv_pub_key,
+			prov->private_key, prov->secret))
+		return false;
 
-	mesh_crypto_s1(&prov->conf_inputs,
-			sizeof(prov->conf_inputs), prov->salt);
+	if (!mesh_crypto_s1(&prov->conf_inputs,
+			sizeof(prov->conf_inputs), prov->salt))
+		return false;
 
-	mesh_crypto_prov_conf_key(prov->secret, prov->salt,
-			prov->calc_key);
+	if (!mesh_crypto_prov_conf_key(prov->secret, prov->salt,
+			prov->calc_key))
+		return false;
 
 	l_getrandom(prov->rand_auth_workspace, 16);
 
@@ -218,6 +223,7 @@ static void acp_credentials(struct mesh_prov_acceptor *prov)
 	print_packet("LocalRandom", prov->rand_auth_workspace, 16);
 	print_packet("ConfirmationSalt", prov->salt, 16);
 	print_packet("ConfirmationKey", prov->calc_key, 16);
+	return true;
 }
 
 static uint32_t digit_mod(uint8_t power)
@@ -298,8 +304,13 @@ static void priv_key_cb(void *user_data, int err, uint8_t *key, uint32_t len)
 	swap_u256_bytes(prov->conf_inputs.dev_pub_key + 32);
 
 	prov->material |= MAT_LOCAL_PRIVATE;
-	if ((prov->material & MAT_SECRET) == MAT_SECRET)
-		acp_credentials(prov);
+	if ((prov->material & MAT_SECRET) == MAT_SECRET) {
+		if (!acp_credentials(prov)) {
+			msg.opcode = PROV_FAILED;
+			msg.reason = PROV_ERR_UNEXPECTED_ERR;
+			prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
+		}
+	}
 }
 
 static void send_caps(struct mesh_prov_acceptor *prov)
@@ -423,7 +434,10 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		if ((prov->material & MAT_SECRET) != MAT_SECRET)
 			return;
 
-		acp_credentials(prov);
+		if (!acp_credentials(prov)) {
+			fail.reason = PROV_ERR_UNEXPECTED_ERR;
+			goto failure;
+		}
 
 		if (!prov->conf_inputs.start.pub_key)
 			send_pub_key(prov);
