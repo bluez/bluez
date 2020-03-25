@@ -185,8 +185,8 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 	}
 
 	if (!unreliable)
-		send_pub_status(node, net_idx, src, dst, status, ele_addr, ota,
-			mod_id, idx, cred_flag, ttl, period, retransmit);
+		send_pub_status(node, net_idx, src, dst, status, ele_addr,
+			mod_id, ota, idx, cred_flag, ttl, period, retransmit);
 }
 
 static void send_sub_status(struct mesh_node *node, uint16_t net_idx,
