@@ -263,7 +263,7 @@ bool net_key_encrypt(uint32_t id, uint32_t iv_index, uint8_t *pkt, size_t len)
 	if (!key)
 		return false;
 
-	result = mesh_crypto_packet_encode(pkt, len, key->encrypt, iv_index,
+	result = mesh_crypto_packet_encode(pkt, len, iv_index, key->encrypt,
 							key->privacy);
 
 	if (!result)

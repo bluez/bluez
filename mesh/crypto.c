@@ -327,144 +327,59 @@ bool mesh_crypto_beacon_cmac(const uint8_t encryption_key[16],
 	return true;
 }
 
-bool mesh_crypto_network_nonce(bool ctl, uint8_t ttl, uint32_t seq,
-				uint16_t src, uint32_t iv_index,
-				uint8_t nonce[13])
+static void mesh_crypto_network_nonce(bool ctl, uint8_t ttl,
+					uint32_t seq, uint16_t src,
+					uint32_t iv_index, uint8_t nonce[13])
 {
-	nonce[0] = 0;
+	nonce[0] = 0x00;
 	nonce[1] = (ttl & TTL_MASK) | (ctl ? CTL : 0x00);
 	nonce[2] = (seq >> 16) & 0xff;
 	nonce[3] = (seq >> 8) & 0xff;
 	nonce[4] = seq & 0xff;
-
-	/* SRC */
 	l_put_be16(src, nonce + 5);
-
 	l_put_be16(0, nonce + 7);
-
-	/* IV Index */
 	l_put_be32(iv_index, nonce + 9);
-
-	return true;
 }
 
-bool mesh_crypto_network_encrypt(bool ctl, uint8_t ttl,
-				uint32_t seq, uint16_t src,
-				uint32_t iv_index,
-				const uint8_t net_key[16],
-				const uint8_t *enc_msg, uint8_t enc_msg_len,
-				uint8_t *out, void *net_mic)
-{
-	uint8_t nonce[13];
-
-	if (!mesh_crypto_network_nonce(ctl, ttl, seq, src, iv_index, nonce))
-		return false;
-
-	return mesh_crypto_aes_ccm_encrypt(nonce, net_key, NULL, 0, enc_msg,
-				enc_msg_len, out, net_mic,
-				ctl ? 8 : 4);
-}
-
-bool mesh_crypto_network_decrypt(bool ctl, uint8_t ttl,
-				uint32_t seq, uint16_t src,
-				uint32_t iv_index,
-				const uint8_t net_key[16],
-				const uint8_t *enc_msg, uint8_t enc_msg_len,
-				uint8_t *out, void *net_mic, size_t mic_size)
-{
-	uint8_t nonce[13];
-
-	if (!mesh_crypto_network_nonce(ctl, ttl, seq, src, iv_index, nonce))
-		return false;
-
-	return mesh_crypto_aes_ccm_decrypt(nonce, net_key, NULL, 0,
-						enc_msg, enc_msg_len, out,
-						net_mic, mic_size);
-}
-
-bool mesh_crypto_application_nonce(uint32_t seq, uint16_t src,
+static void mesh_crypto_application_nonce(uint32_t seq, uint16_t src,
 					uint16_t dst, uint32_t iv_index,
 					bool aszmic, uint8_t nonce[13])
 {
 	nonce[0] = 0x01;
 	nonce[1] = aszmic ? 0x80 : 0x00;
-	nonce[2] = (seq & 0x00ff0000) >> 16;
-	nonce[3] = (seq & 0x0000ff00) >> 8;
-	nonce[4] = (seq & 0x000000ff);
-	nonce[5] = (src & 0xff00) >> 8;
-	nonce[6] = (src & 0x00ff);
-	nonce[7] = (dst & 0xff00) >> 8;
-	nonce[8] = (dst & 0x00ff);
+	nonce[2] = (seq >> 16) & 0xff;
+	nonce[3] = (seq >> 8) & 0xff;
+	nonce[4] = seq & 0xff;
+	l_put_be16(src, nonce + 5);
+	l_put_be16(dst, nonce + 7);
 	l_put_be32(iv_index, nonce + 9);
-
-	return true;
 }
 
-bool mesh_crypto_device_nonce(uint32_t seq, uint16_t src,
+static void mesh_crypto_device_nonce(uint32_t seq, uint16_t src,
 					uint16_t dst, uint32_t iv_index,
 					bool aszmic, uint8_t nonce[13])
 {
 	nonce[0] = 0x02;
 	nonce[1] = aszmic ? 0x80 : 0x00;
-	nonce[2] = (seq & 0x00ff0000) >> 16;
-	nonce[3] = (seq & 0x0000ff00) >> 8;
-	nonce[4] = (seq & 0x000000ff);
-	nonce[5] = (src & 0xff00) >> 8;
-	nonce[6] = (src & 0x00ff);
-	nonce[7] = (dst & 0xff00) >> 8;
-	nonce[8] = (dst & 0x00ff);
+	nonce[2] = (seq >> 16) & 0xff;
+	nonce[3] = (seq >> 8) & 0xff;
+	nonce[4] = seq & 0xff;
+	l_put_be16(src, nonce + 5);
+	l_put_be16(dst, nonce + 7);
 	l_put_be32(iv_index, nonce + 9);
-
-	return true;
 }
 
-bool mesh_crypto_application_encrypt(uint8_t key_aid, uint32_t seq,
-					uint16_t src, uint16_t dst,
-					uint32_t iv_index,
-					const uint8_t app_key[16],
-					const uint8_t *aad, uint8_t aad_len,
-					const uint8_t *msg, uint8_t msg_len,
-					uint8_t *out,
-					void *app_mic, size_t mic_size)
+static void mesh_crypto_proxy_nonce(uint32_t seq, uint16_t src,
+					uint32_t iv_index, uint8_t nonce[13])
 {
-	uint8_t nonce[13];
-	bool aszmic = (mic_size == 8) ? true : false;
-
-	if (!key_aid && !mesh_crypto_device_nonce(seq, src, dst,
-						iv_index, aszmic, nonce))
-		return false;
-
-	if (key_aid && !mesh_crypto_application_nonce(seq, src, dst,
-						iv_index, aszmic, nonce))
-		return false;
-
-	return mesh_crypto_aes_ccm_encrypt(nonce, app_key, aad, aad_len,
-						msg, msg_len,
-						out, app_mic, mic_size);
-}
-
-bool mesh_crypto_application_decrypt(uint8_t key_aid, uint32_t seq,
-				uint16_t src, uint16_t dst, uint32_t iv_index,
-				const uint8_t app_key[16],
-				const uint8_t *aad, uint8_t aad_len,
-				const uint8_t *enc_msg, uint8_t enc_msg_len,
-				uint8_t *out, void *app_mic, size_t mic_size)
-{
-	uint8_t nonce[13];
-	bool aszmic = (mic_size == 8) ? true : false;
-
-	if (!key_aid && !mesh_crypto_device_nonce(seq, src, dst,
-						iv_index, aszmic, nonce))
-		return false;
-
-	if (key_aid && !mesh_crypto_application_nonce(seq, src, dst,
-						iv_index, aszmic, nonce))
-		return false;
-
-	return mesh_crypto_aes_ccm_decrypt(nonce, app_key,
-						aad, aad_len, enc_msg,
-						enc_msg_len, out,
-						app_mic, mic_size);
+	nonce[0] = 0x03;
+	nonce[1] = 0;
+	nonce[2] = (seq >> 16) & 0xff;
+	nonce[3] = (seq >> 8) & 0xff;
+	nonce[4] = seq & 0xff;
+	l_put_be16(src, nonce + 5);
+	l_put_be16(0, nonce + 7);
+	l_put_be32(iv_index, nonce + 9);
 }
 
 bool mesh_crypto_session_key(const uint8_t secret[32],
@@ -557,69 +472,67 @@ bool mesh_crypto_virtual_addr(const uint8_t virtual_label[16],
 	return true;
 }
 
-bool mesh_crypto_privacy_counter(uint32_t iv_index,
+static void mesh_crypto_privacy_counter(uint32_t iv_index,
 						const uint8_t *payload,
 						uint8_t privacy_counter[16])
 {
 	memset(privacy_counter, 0, 5);
 	l_put_be32(iv_index, privacy_counter + 5);
 	memcpy(privacy_counter + 9, payload, 7);
-
-	return true;
 }
 
-bool mesh_crypto_network_obfuscate(const uint8_t privacy_key[16],
-					const uint8_t privacy_counter[16],
-					bool ctl, uint8_t ttl, uint32_t seq,
-					uint16_t src, uint8_t *out)
+static bool mesh_crypto_pecb(const uint8_t privacy_key[16],
+						uint32_t iv_index,
+						const uint8_t *payload,
+						uint8_t pecb[16])
 {
-	uint8_t ecb[16], tmp[16];
+	mesh_crypto_privacy_counter(iv_index, payload, pecb);
+	return aes_ecb_one(privacy_key, pecb, pecb);
+}
+
+static bool mesh_crypto_network_obfuscate(uint8_t *packet,
+						const uint8_t privacy_key[16],
+						uint32_t iv_index,
+						bool ctl, uint8_t ttl,
+						uint32_t seq, uint16_t src)
+{
+	uint8_t pecb[16];
+	uint8_t *net_hdr = packet + 1;
 	int i;
 
-	if (!aes_ecb_one(privacy_key, privacy_counter, ecb))
+	if (!mesh_crypto_pecb(privacy_key, iv_index, packet + 7, pecb))
 		return false;
 
-	tmp[0] = ((!!ctl) << 7) | (ttl & TTL_MASK);
-	tmp[1] = (seq & 0xff0000) >> 16;
-	tmp[2] = (seq & 0x00ff00) >> 8;
-	tmp[3] = (seq & 0x0000ff);
-	tmp[4] = (src & 0xff00) >> 8;
-	tmp[5] = (src & 0x00ff);
+	l_put_be16(src, net_hdr + 4);
+	l_put_be32(seq & SEQ_MASK, net_hdr);
+	net_hdr[0] = ((!!ctl) << 7) | (ttl & TTL_MASK);
 
-	if (out) {
-		for (i = 0; i < 6; i++)
-			out[i] = ecb[i] ^ tmp[i];
-	}
+	for (i = 0; i < 6; i++)
+		net_hdr[i] = pecb[i] ^ net_hdr[i];
 
 	return true;
 }
 
-bool mesh_crypto_network_clarify(const uint8_t privacy_key[16],
-				const uint8_t privacy_counter[16],
-				const uint8_t net_hdr[6],
-				bool *ctl, uint8_t *ttl,
-				uint32_t *seq, uint16_t *src)
+static bool mesh_crypto_network_clarify(uint8_t *packet,
+						const uint8_t privacy_key[16],
+						uint32_t iv_index,
+						bool *ctl, uint8_t *ttl,
+						uint32_t *seq, uint16_t *src)
 {
-	uint8_t ecb[16], tmp[6];
+	uint8_t pecb[16];
+	uint8_t *net_hdr = packet + 1;
 	int i;
 
-	if (!aes_ecb_one(privacy_key, privacy_counter, ecb))
+	if (!mesh_crypto_pecb(privacy_key, iv_index, packet + 7, pecb))
 		return false;
 
 	for (i = 0; i < 6; i++)
-		tmp[i] = ecb[i] ^ net_hdr[i];
+		net_hdr[i] = pecb[i] ^ net_hdr[i];
 
-	if (ctl)
-		*ctl = !!(tmp[0] & CTL);
-
-	if (ttl)
-		*ttl = tmp[0] & TTL_MASK;
-
-	if (seq)
-		*seq = l_get_be32(tmp) & SEQ_MASK;
-
-	if (src)
-		*src = l_get_be16(tmp + 4);
+	*src = l_get_be16(net_hdr + 4);
+	*seq = l_get_be32(net_hdr) & SEQ_MASK;
+	*ttl = net_hdr[0] & TTL_MASK;
+	*ctl = !!(net_hdr[0] & CTL);
 
 	return true;
 }
@@ -689,23 +602,12 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 	return true;
 }
 
-bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
+static bool network_header_parse(const uint8_t *packet, uint8_t packet_len,
 				bool *ctl, uint8_t *ttl, uint32_t *seq,
-				uint16_t *src, uint16_t *dst,
-				uint32_t *cookie, uint8_t *opcode,
-				bool *segmented, uint8_t *key_aid,
-				bool *szmic, bool *relay, uint16_t *seqZero,
-				uint8_t *segO, uint8_t *segN,
-				const uint8_t **payload, uint8_t *payload_len)
+				uint16_t *src, uint16_t *dst)
 {
-	uint32_t hdr;
-	uint16_t this_dst;
-	bool is_segmented;
-
 	if (packet_len < 10)
 		return false;
-
-	this_dst = l_get_be16(packet + 7);
 
 	/* Try to keep bits in the order they exist within the packet */
 	if (ctl)
@@ -719,6 +621,30 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 	if (src)
 		*src = l_get_be16(packet + 5);
+
+	if (dst)
+		*dst = l_get_be16(packet + 7);
+
+	return true;
+
+}
+
+bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
+				bool *ctl, uint8_t *ttl, uint32_t *seq,
+				uint16_t *src, uint16_t *dst,
+				uint32_t *cookie, uint8_t *opcode,
+				bool *segmented, uint8_t *key_aid,
+				bool *szmic, bool *relay, uint16_t *seqZero,
+				uint8_t *segO, uint8_t *segN,
+				const uint8_t **payload, uint8_t *payload_len)
+{
+	uint32_t hdr;
+	uint16_t this_dst;
+	bool is_segmented;
+
+	if (!network_header_parse(packet, packet_len,
+					ctl, ttl, seq, src, &this_dst))
+		return false;
 
 	if (dst)
 		*dst = this_dst;
@@ -799,38 +725,27 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 bool mesh_crypto_payload_encrypt(uint8_t *aad, const uint8_t *payload,
 				uint8_t *out, uint16_t payload_len,
 				uint16_t src, uint16_t dst, uint8_t key_aid,
-				uint32_t seq_num, uint32_t iv_index,
+				uint32_t seq, uint32_t iv_index,
 				bool aszmic,
-				const uint8_t application_key[16])
+				const uint8_t app_key[16])
 {
-	uint8_t application_nonce[13] = { 0x01, };
+	uint8_t nonce[13];
 
 	if (payload_len < 1)
 		return false;
 
 	if (key_aid == APP_AID_DEV)
-		application_nonce[0] = 0x02;
+		mesh_crypto_device_nonce(seq, src, dst, iv_index, aszmic,
+									nonce);
+	else
+		mesh_crypto_application_nonce(seq, src, dst, iv_index, aszmic,
+									nonce);
 
-	/* Seq Num */
-	l_put_be32(seq_num, application_nonce + 1);
-
-	/* ASZMIC */
-	application_nonce[1] |= aszmic ? 0x80 : 0x00;
-
-	/* SRC */
-	l_put_be16(src, application_nonce + 5);
-
-	/* DST */
-	l_put_be16(dst, application_nonce + 7);
-
-	/* IV Index */
-	l_put_be32(iv_index, application_nonce + 9);
-
-	if (!mesh_crypto_aes_ccm_encrypt(application_nonce, application_key,
-					aad, aad ? 16 : 0,
-					payload, payload_len,
-					out, NULL,
-					aszmic ? 8 : 4))
+	if (!mesh_crypto_aes_ccm_encrypt(nonce, app_key,
+							aad, aad ? 16 : 0,
+							payload, payload_len,
+							out, NULL,
+							aszmic ? 8 : 4))
 		return false;
 
 	return true;
@@ -838,13 +753,13 @@ bool mesh_crypto_payload_encrypt(uint8_t *aad, const uint8_t *payload,
 
 bool mesh_crypto_payload_decrypt(uint8_t *aad, uint16_t aad_len,
 				const uint8_t *payload, uint16_t payload_len,
-				bool szmict,
+				bool aszmic,
 				uint16_t src, uint16_t dst,
-				uint8_t key_aid, uint32_t seq_num,
+				uint8_t key_aid, uint32_t seq,
 				uint32_t iv_index, uint8_t *out,
 				const uint8_t app_key[16])
 {
-	uint8_t app_nonce[13] = { 0x01, };
+	uint8_t nonce[13];
 	uint32_t mic32;
 	uint64_t mic64;
 
@@ -852,27 +767,16 @@ bool mesh_crypto_payload_decrypt(uint8_t *aad, uint16_t aad_len,
 		return false;
 
 	if (key_aid == APP_AID_DEV)
-		app_nonce[0] = 0x02;
-
-	/* Seq Num */
-	l_put_be32(seq_num, app_nonce + 1);
-
-	/* ASZMIC */
-	app_nonce[1] |= szmict ? 0x80 : 0x00;
-
-	/* SRC */
-	l_put_be16(src, app_nonce + 5);
-
-	/* DST */
-	l_put_be16(dst, app_nonce + 7);
-
-	/* IV Index */
-	l_put_be32(iv_index, app_nonce + 9);
+		mesh_crypto_device_nonce(seq, src, dst, iv_index, aszmic,
+									nonce);
+	else
+		mesh_crypto_application_nonce(seq, src, dst, iv_index, aszmic,
+									nonce);
 
 	memcpy(out, payload, payload_len);
 
-	if (szmict) {
-		if (!mesh_crypto_aes_ccm_decrypt(app_nonce, app_key,
+	if (aszmic) {
+		if (!mesh_crypto_aes_ccm_decrypt(nonce, app_key,
 					aad, aad_len,
 					payload, payload_len,
 					out, &mic64, sizeof(mic64)))
@@ -884,7 +788,7 @@ bool mesh_crypto_payload_decrypt(uint8_t *aad, uint16_t aad_len,
 		if (mic64)
 			return false;
 	} else {
-		if (!mesh_crypto_aes_ccm_decrypt(app_nonce, app_key,
+		if (!mesh_crypto_aes_ccm_decrypt(nonce, app_key,
 					aad, aad_len,
 					payload, payload_len,
 					out, &mic32, sizeof(mic32)))
@@ -900,65 +804,111 @@ bool mesh_crypto_payload_decrypt(uint8_t *aad, uint16_t aad_len,
 	return true;
 }
 
-bool mesh_crypto_packet_encode(uint8_t *packet, uint8_t packet_len,
+static bool mesh_crypto_packet_encrypt(uint8_t *packet, uint8_t packet_len,
 				const uint8_t network_key[16],
-				uint32_t iv_index,
-				const uint8_t privacy_key[16])
+				uint32_t iv_index, bool proxy,
+				bool ctl, uint8_t ttl, uint32_t seq,
+				uint16_t src)
 {
-	uint8_t network_nonce[13] = { 0x00, 0x00 };
-	uint8_t privacy_counter[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, };
-	uint8_t tmp[16];
-	int i;
-
-	if (packet_len < 14)
-		return false;
+	uint8_t nonce[13];
 
 	/* Detect Proxy packet by CTL == true && DST == 0x0000 */
-	if ((packet[1] & CTL) && l_get_be16(packet + 7) == 0)
-		network_nonce[0] = 0x03; /* Proxy Nonce */
+	if (ctl && proxy)
+		mesh_crypto_proxy_nonce(seq, src, iv_index, nonce);
 	else
-		/* CTL + TTL */
-		network_nonce[1] = packet[1];
-
-	/* Seq Num */
-	network_nonce[2] = packet[2];
-	network_nonce[3] = packet[3];
-	network_nonce[4] = packet[4];
-
-	/* SRC */
-	network_nonce[5] = packet[5];
-	network_nonce[6] = packet[6];
-
-	/* DST not available */
-	network_nonce[7] = 0;
-	network_nonce[8] = 0;
-
-	/* IV Index */
-	l_put_be32(iv_index, network_nonce + 9);
+		mesh_crypto_network_nonce(ctl, ttl, seq, src, iv_index, nonce);
 
 	/* Check for Long net-MIC */
-	if (packet[1] & CTL) {
-		if (!mesh_crypto_aes_ccm_encrypt(network_nonce, network_key,
+	if (ctl) {
+		if (!mesh_crypto_aes_ccm_encrypt(nonce, network_key,
 					NULL, 0,
 					packet + 7, packet_len - 7 - 8,
 					packet + 7, NULL, 8))
 			return false;
 	} else {
-		if (!mesh_crypto_aes_ccm_encrypt(network_nonce, network_key,
+		if (!mesh_crypto_aes_ccm_encrypt(nonce, network_key,
 					NULL, 0,
 					packet + 7, packet_len - 7 - 4,
 					packet + 7, NULL, 4))
 			return false;
 	}
 
-	l_put_be32(iv_index, privacy_counter + 5);
-	memcpy(privacy_counter + 9, packet + 7, 7);
+	return true;
+}
 
-	if (!aes_ecb_one(privacy_key, privacy_counter, tmp))
+bool mesh_crypto_packet_encode(uint8_t *packet, uint8_t packet_len,
+				uint32_t iv_index,
+				const uint8_t network_key[16],
+				const uint8_t privacy_key[16])
+{
+	bool ctl;
+	uint8_t ttl;
+	uint32_t seq;
+	uint16_t src;
+	uint16_t dst;
+
+	if (!network_header_parse(packet, packet_len,
+						&ctl, &ttl, &seq, &src, &dst))
 		return false;
 
-	for (i = 0; i < 6; i++)
-		packet[1 + i] ^= tmp[i];
+	if (!mesh_crypto_packet_encrypt(packet, packet_len, network_key,
+							iv_index, !dst,
+							ctl, ttl, seq, src))
+
+		return false;
+
+	return mesh_crypto_network_obfuscate(packet, privacy_key, iv_index,
+							ctl, ttl, seq, src);
+}
+
+static bool mesh_crypto_packet_decrypt(uint8_t *packet, uint8_t packet_len,
+				const uint8_t network_key[16],
+				uint32_t iv_index, bool proxy,
+				bool ctl, uint8_t ttl, uint32_t seq,
+				uint16_t src)
+{
+	uint8_t nonce[13];
+
+	/* Pre-check SRC address for illegal values */
+	if (!IS_UNICAST(src))
+		return false;
+
+	/* Detect Proxy packet by CTL == true && proxy == true */
+	if (ctl & proxy)
+		mesh_crypto_proxy_nonce(seq, src, iv_index, nonce);
+	else
+		mesh_crypto_network_nonce(ctl, ttl, seq, src, iv_index, nonce);
+
+	/* Check for Long MIC */
+	if (ctl) {
+		uint64_t mic;
+
+		if (!mesh_crypto_aes_ccm_decrypt(nonce, network_key,
+					NULL, 0,
+					packet + 7, packet_len - 7,
+					packet + 7, &mic, sizeof(mic)))
+			return false;
+
+		mic ^= l_get_be64(packet + packet_len - 8);
+		l_put_be64(mic, packet + packet_len - 8);
+
+		if (mic)
+			return false;
+	} else {
+		uint32_t mic;
+
+		if (!mesh_crypto_aes_ccm_decrypt(nonce, network_key,
+					NULL, 0,
+					packet + 7, packet_len - 7,
+					packet + 7, &mic, sizeof(mic)))
+			return false;
+
+		mic ^= l_get_be32(packet + packet_len - 4);
+		l_put_be32(mic, packet + packet_len - 4);
+
+		if (mic)
+			return false;
+	}
 
 	return true;
 }
@@ -968,84 +918,23 @@ bool mesh_crypto_packet_decode(const uint8_t *packet, uint8_t packet_len,
 				const uint8_t network_key[16],
 				const uint8_t privacy_key[16])
 {
-	uint8_t privacy_counter[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, };
-	uint8_t network_nonce[13] = { 0x00, 0x00, };
-	uint8_t tmp[16];
+	bool ctl;
+	uint8_t ttl;
+	uint32_t seq;
 	uint16_t src;
-	int i;
 
 	if (packet_len < 14)
 		return false;
 
-	l_put_be32(iv_index, privacy_counter + 5);
-	memcpy(privacy_counter + 9, packet + 7, 7);
-
-	if (!aes_ecb_one(privacy_key, privacy_counter, tmp))
-		return false;
-
 	memcpy(out, packet, packet_len);
-	for (i = 0; i < 6; i++)
-		out[1 + i] ^= tmp[i];
 
-	src = l_get_be16(out + 5);
-
-	/* Pre-check SRC address for illegal values */
-	if (!src || src >= 0x8000)
+	if (!mesh_crypto_network_clarify(out, privacy_key, iv_index,
+						&ctl, &ttl, &seq, &src))
 		return false;
 
-	/* Detect Proxy packet by CTL == true && proxy == true */
-	if ((out[1] & CTL) && proxy)
-		network_nonce[0] = 0x03; /* Proxy Nonce */
-	else
-		/* CTL + TTL */
-		network_nonce[1] = out[1];
-
-	/* Seq Num */
-	network_nonce[2] = out[2];
-	network_nonce[3] = out[3];
-	network_nonce[4] = out[4];
-
-	/* SRC */
-	network_nonce[5] = out[5];
-	network_nonce[6] = out[6];
-
-	/* DST not available */
-	network_nonce[7] = 0;
-	network_nonce[8] = 0;
-
-	/* IV Index */
-	l_put_be32(iv_index, network_nonce + 9);
-
-	/* Check for Long MIC */
-	if (out[1] & CTL) {
-		uint64_t mic;
-
-		if (!mesh_crypto_aes_ccm_decrypt(network_nonce, network_key,
-					NULL, 0, packet + 7, packet_len - 7,
-					out + 7, &mic, sizeof(mic)))
-			return false;
-
-		mic ^= l_get_be64(out + packet_len - 8);
-		l_put_be64(mic, out + packet_len - 8);
-
-		if (mic)
-			return false;
-	} else {
-		uint32_t mic;
-
-		if (!mesh_crypto_aes_ccm_decrypt(network_nonce, network_key,
-					NULL, 0, packet + 7, packet_len - 7,
-					out + 7, &mic, sizeof(mic)))
-			return false;
-
-		mic ^= l_get_be32(out + packet_len - 4);
-		l_put_be32(mic, out + packet_len - 4);
-
-		if (mic)
-			return false;
-	}
-
-	return true;
+	return mesh_crypto_packet_decrypt(out, packet_len, network_key,
+							iv_index, proxy,
+							ctl, ttl, seq, src);
 }
 
 bool mesh_crypto_packet_label(uint8_t *packet, uint8_t packet_len,

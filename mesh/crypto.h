@@ -19,6 +19,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[13], const uint8_t key[16],
 					const uint8_t *aad, uint16_t aad_len,
@@ -41,40 +42,6 @@ bool mesh_crypto_beacon_cmac(const uint8_t encryption_key[16],
 				const uint8_t network_id[16],
 				uint32_t iv_index, bool kr,
 				bool iu, uint64_t *cmac);
-bool mesh_crypto_network_nonce(bool frnd, uint8_t ttl, uint32_t seq,
-				uint16_t src, uint32_t iv_index,
-				uint8_t nonce[13]);
-bool mesh_crypto_network_encrypt(bool ctl, uint8_t ttl,
-				uint32_t seq, uint16_t src,
-				uint32_t iv_index,
-				const uint8_t net_key[16],
-				const uint8_t *enc_msg, uint8_t enc_msg_len,
-				uint8_t *out, void *net_mic);
-bool mesh_crypto_network_decrypt(bool frnd, uint8_t ttl,
-				uint32_t seq, uint16_t src,
-				uint32_t iv_index,
-				const uint8_t net_key[16],
-				const uint8_t *enc_msg, uint8_t enc_msg_len,
-				uint8_t *out, void *net_mic, size_t mic_size);
-bool mesh_crypto_application_nonce(uint32_t seq, uint16_t src,
-				uint16_t dst, uint32_t iv_index,
-				bool aszmic, uint8_t nonce[13]);
-bool mesh_crypto_device_nonce(uint32_t seq, uint16_t src,
-				uint16_t dst, uint32_t iv_index,
-				bool aszmic, uint8_t nonce[13]);
-bool mesh_crypto_application_encrypt(uint8_t akf, uint32_t seq, uint16_t src,
-					uint16_t dst, uint32_t iv_index,
-					const uint8_t app_key[16],
-					const uint8_t *aad, uint8_t aad_len,
-					const uint8_t *msg, uint8_t msg_len,
-					uint8_t *out,
-					void *app_mic, size_t mic_size);
-bool mesh_crypto_application_decrypt(uint8_t akf, uint32_t seq, uint16_t src,
-				uint16_t dst, uint32_t iv_index,
-				const uint8_t app_key[16],
-				const uint8_t *aad, uint8_t aad_len,
-				const uint8_t *enc_msg, uint8_t enc_msg_len,
-				uint8_t *out, void *app_mic, size_t mic_size);
 bool mesh_crypto_device_key(const uint8_t secret[32],
 						const uint8_t salt[16],
 						uint8_t device_key[16]);
@@ -102,19 +69,6 @@ bool mesh_crypto_prov_conf_key(const uint8_t secret[32],
 bool mesh_crypto_session_key(const uint8_t secret[32],
 					const uint8_t salt[16],
 					uint8_t session_key[16]);
-bool mesh_crypto_privacy_counter(uint32_t iv_index,
-						const uint8_t *payload,
-						uint8_t privacy_counter[16]);
-bool mesh_crypto_network_obfuscate(const uint8_t privacy_key[16],
-					const uint8_t privacy_counter[16],
-					bool ctl, uint8_t ttl, uint32_t seq,
-					uint16_t src, uint8_t *out);
-bool mesh_crypto_network_clarify(const uint8_t privacy_key[16],
-				const uint8_t privacy_counter[16],
-				const uint8_t net_hdr[6],
-				bool *ctl, uint8_t *ttl,
-				uint32_t *seq, uint16_t *src);
-
 bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 				uint32_t seq,
 				uint16_t src, uint16_t dst,
@@ -146,8 +100,8 @@ bool mesh_crypto_payload_decrypt(uint8_t *aad, uint16_t aad_len,
 				uint8_t *out,
 				const uint8_t application_key[16]);
 bool mesh_crypto_packet_encode(uint8_t *packet, uint8_t packet_len,
-				const uint8_t network_key[16],
 				uint32_t iv_index,
+				const uint8_t network_key[16],
 				const uint8_t privacy_key[16]);
 bool mesh_crypto_packet_decode(const uint8_t *packet, uint8_t packet_len,
 				bool proxy, uint8_t *out, uint32_t iv_index,
