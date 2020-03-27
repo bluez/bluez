@@ -455,14 +455,20 @@ Object path	/org/bluez/mesh/node<uuid>
 		CreateNetwork() or Import()
 
 Methods:
-	void UnprovisionedScan(uint16 seconds)
+	void UnprovisionedScan(dict options)
 
 		This method is used by the application that supports
 		org.bluez.mesh.Provisioner1 interface to start listening
-		(scanning) for unprovisioned devices in the area. Scanning
-		will continue for the specified number of seconds, or, if 0 is
-		specified, then continuously until UnprovisionedScanCancel() is
-		called or if AddNode() method is called.
+		(scanning) for unprovisioned devices in the area.
+
+		The options parameter is a dictionary with the following keys
+		defined:
+
+		uint16 Seconds
+			Specifies number of seconds for scanning to be active.
+			If set to 0 or if this key is not present, then the
+			scanning will continue until UnprovisionedScanCancel()
+			or AddNode() methods are called.
 
 		Each time a unique unprovisioned beacon is heard, the
 		ScanResult() method on the app will be called with the result.
@@ -482,7 +488,7 @@ Methods:
 			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.NotAuthorized
 
-	void AddNode(array{byte}[16] uuid)
+	void AddNode(array{byte}[16] uuid, dict options)
 
 		This method is used by the application that supports
 		org.bluez.mesh.Provisioner1 interface to add the
@@ -490,6 +496,10 @@ Methods:
 
 		The uuid parameter is a 16-byte array that contains Device UUID
 		of the unprovisioned device to be added to the network.
+
+		The options parameter is a dictionary that may contain
+		additional configuration info (currently an empty placeholder
+		for forward compatibility).
 
 		PossibleErrors:
 			org.bluez.mesh.Error.InvalidArguments
@@ -927,7 +937,7 @@ Service		unique name
 Interface	org.bluez.mesh.Provisioner1
 Object path	freely definable
 
-	void ScanResult(int16 rssi, array{byte} data)
+	void ScanResult(int16 rssi, array{byte} data, dict options)
 
 		The method is called from the bluetooth-meshd daemon when a
 		unique UUID has been seen during UnprovisionedScan() for
@@ -942,6 +952,10 @@ Object path	freely definable
 		authentication flags (optional), and a 32 bit URI hash (if URI
 		bit set in OOB mask). Whether these fields exist or not is a
 		decision of the remote device.
+
+		The options parameter is a dictionary that may contain
+		additional scan result info (currently an empty placeholder for
+		forward compatibility).
 
 		If a beacon with a UUID that has already been reported is
 		recieved by the daemon, it will be silently discarded unless it
