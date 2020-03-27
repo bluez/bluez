@@ -474,13 +474,22 @@ class Application(dbus.service.Object):
 	def JoinFailed(self, value):
 		print(set_error('JoinFailed '), value)
 
-	@dbus.service.method(MESH_PROV_IFACE,
-					in_signature="nay", out_signature="")
-	def ScanResult(self, rssi, uuid):
-		uuid_str = array_to_string(uuid)
-		print(set_yellow('ScanResult RSSI ')
-					+ set_green(format(rssi, 'd'))
-					+ ' ' + uuid_str)
+	@dbus.service.method(MESH_PROV_IFACE, in_signature="naya{sv}",
+							out_signature="")
+	def ScanResult(self, rssi, data, options):
+		global remote_uuid
+		remote_uuid = data[:16]
+		uuid_str = array_to_string(remote_uuid)
+		data_str = array_to_string(data[16:])
+		if len(data_str) == 0:
+			data_str = 'Not Present'
+
+		print(set_yellow('ScanResult >> RSSI: ') +
+					set_green(format(rssi, 'd')) +
+					set_yellow(format(' UUID: ')) +
+					set_green(format(uuid_str, 's')) +
+					set_yellow(format(' OOB Data: ')) +
+					set_green(format(data_str, 's')))
 
 	@dbus.service.method(MESH_PROV_IFACE,
 					in_signature="y", out_signature="qq")
@@ -946,8 +955,6 @@ class MainMenu(Menu):
 		uuid = bytearray.fromhex("0a0102030405060708090A0B0C0D0E0F")
 		random.shuffle(uuid)
 		uuid_str = array_to_string(uuid)
-		caps = ["out-numeric"]
-		oob = ["other"]
 
 		print(set_yellow('Joining with UUID ') + set_green(uuid_str))
 		mesh_net.Join(app.get_path(), uuid,
@@ -955,23 +962,27 @@ class MainMenu(Menu):
 			error_handler=join_error_cb)
 
 	def __cmd_scan(self):
+		options = {}
+		options['Seconds'] = dbus.UInt16(0)
 
 		print(set_yellow('Scanning...'))
-		node_mgr.UnprovisionedScan(0, reply_handler=add_cb,
-						error_handler=add_error_cb)
+		node_mgr.UnprovisionedScan(options,
+						reply_handler=scan_cb,
+						error_handler=scan_error_cb)
 
 	def __cmd_add(self):
 		global user_input
+		global remote_uuid
+
 		if agent == None:
 			print(set_error('Provisioning agent not found'))
 			return
 
 		uuid_str = array_to_string(remote_uuid)
-		caps = ["in-numeric"]
-		oob = ["other"]
+		options = {}
 
 		print(set_yellow('Adding dev UUID ') + set_green(uuid_str))
-		node_mgr.AddNode(remote_uuid, reply_handler=add_cb,
+		node_mgr.AddNode(remote_uuid, options, reply_handler=add_cb,
 						error_handler=add_error_cb)
 
 	def __cmd_attach(self):
