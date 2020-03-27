@@ -217,21 +217,22 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 						void *user_data)
 {
 	struct mesh_node *node = user_data;
-	struct l_dbus_message_iter iter_uuid;
+	struct l_dbus_message_iter iter_uuid, options;
 	struct l_dbus_message *reply;
 	uint8_t *uuid;
-	uint32_t n;
+	uint32_t n = 22;
 
 	l_debug("AddNode request");
 
-	if (!l_dbus_message_get_arguments(msg, "ay", &iter_uuid))
+	if (!l_dbus_message_get_arguments(msg, "aya{sv}", &iter_uuid, &options))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter_uuid, &uuid, &n)
-								|| n != 16)
+	    || n != 16) {
+		l_debug("n = %u", n);
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Bad device UUID");
-
+	}
 	/* Allow AddNode to cancel Scanning if from the same node */
 	if (scan_node) {
 		if (scan_node != node)
@@ -361,6 +362,9 @@ static void prov_beacon_recv(void *user_data, struct mesh_io_recv_info *info,
 	builder = l_dbus_message_builder_new(msg);
 	l_dbus_message_builder_append_basic(builder, 'n', &rssi);
 	dbus_append_byte_array(builder, data + 2, len -2);
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+	/* TODO: populate with options when defined */
+	l_dbus_message_builder_leave_array(builder);
 	l_dbus_message_builder_finalize(builder);
 	l_dbus_message_builder_destroy(builder);
 
@@ -372,16 +376,33 @@ static struct l_dbus_message *start_scan_call(struct l_dbus *dbus,
 						void *user_data)
 {
 	struct mesh_node *node = user_data;
-	uint16_t duration;
+	uint16_t duration = 0;
 	struct mesh_io *io;
 	struct mesh_net *net;
+	const char *key;
+	struct l_dbus_message_iter options, var;
 	const char *sender = l_dbus_message_get_sender(msg);
 
 	if (strcmp(sender, node_get_owner(node)))
 		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
-	if (!l_dbus_message_get_arguments(msg, "q", &duration))
+	if (!l_dbus_message_get_arguments(msg, "a{sv}", &options))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
+
+	while (l_dbus_message_iter_next_entry(&options, &key, &var)) {
+		bool failed = true;
+
+		if (!strcmp(key, "Seconds")) {
+			if (l_dbus_message_iter_get_variant(&var, "q",
+							    &duration)) {
+				failed = false;
+			}
+		}
+
+		if (failed)
+			return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Invalid options");
+	}
 
 	if (scan_node && scan_node != node)
 		return dbus_error(msg, MESH_ERROR_BUSY, NULL);
@@ -752,13 +773,13 @@ static struct l_dbus_message *set_key_phase_call(struct l_dbus *dbus,
 static void setup_management_interface(struct l_dbus_interface *iface)
 {
 	l_dbus_interface_method(iface, "AddNode", 0, add_node_call, "",
-								"ay", "uuid");
+						"aya{sv}", "uuid", "options");
 	l_dbus_interface_method(iface, "ImportRemoteNode", 0, import_node_call,
 				"", "qyay", "primary", "count", "dev_key");
 	l_dbus_interface_method(iface, "DeleteRemoteNode", 0, delete_node_call,
 						"", "qy", "primary", "count");
 	l_dbus_interface_method(iface, "UnprovisionedScan", 0, start_scan_call,
-							"", "q", "seconds");
+							"", "a{sv}", "options");
 	l_dbus_interface_method(iface, "UnprovisionedScanCancel", 0,
 						cancel_scan_call, "", "");
 	l_dbus_interface_method(iface, "CreateSubnet", 0, create_subnet_call,
