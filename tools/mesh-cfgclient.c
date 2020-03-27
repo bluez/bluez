@@ -232,6 +232,21 @@ struct key_data {
 	bool update;
 };
 
+static void append_dict_entry_basic(struct l_dbus_message_builder *builder,
+					const char *key, const char *signature,
+					const void *data)
+{
+	if (!builder)
+		return;
+
+	l_dbus_message_builder_enter_dict(builder, "sv");
+	l_dbus_message_builder_append_basic(builder, 's', key);
+	l_dbus_message_builder_enter_variant(builder, signature);
+	l_dbus_message_builder_append_basic(builder, signature[0], data);
+	l_dbus_message_builder_leave_variant(builder);
+	l_dbus_message_builder_leave_dict(builder);
+}
+
 static void append_byte_array(struct l_dbus_message_builder *builder,
 					unsigned char *data, unsigned int len)
 {
@@ -769,9 +784,15 @@ static void scan_reply(struct l_dbus_proxy *proxy, struct l_dbus_message *msg,
 
 static void scan_setup(struct l_dbus_message *msg, void *user_data)
 {
-	int32_t secs = L_PTR_TO_UINT(user_data);
+	uint16_t secs = (uint16_t) L_PTR_TO_UINT(user_data);
+	struct l_dbus_message_builder *builder;
 
-	l_dbus_message_set_arguments(msg, "q", (uint16_t) secs);
+	builder = l_dbus_message_builder_new(msg);
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+	append_dict_entry_basic(builder, "Seconds", "q", &secs);
+	l_dbus_message_builder_leave_array(builder);
+	l_dbus_message_builder_finalize(builder);
+	l_dbus_message_builder_destroy(builder);
 }
 
 static void cmd_scan_unprov(int argc, char *argv[])
@@ -1284,6 +1305,9 @@ static void add_node_setup(struct l_dbus_message *msg, void *user_data)
 
 	builder = l_dbus_message_builder_new(msg);
 	append_byte_array(builder, uuid, 16);
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+	/* TODO: populate with options when defined */
+	l_dbus_message_builder_leave_array(builder);
 	l_dbus_message_builder_finalize(builder);
 	l_dbus_message_builder_destroy(builder);
 
@@ -1508,17 +1532,17 @@ static struct l_dbus_message *scan_result_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
-	struct l_dbus_message_iter iter;
+	struct l_dbus_message_iter iter, opts;
 	int16_t rssi;
 	uint32_t n;
 	uint8_t *prov_data;
 	char *str;
 	struct unprov_device *dev;
+	const char *sig = "naya{sv}";
 
-	if (!l_dbus_message_get_arguments(msg, "nay", &rssi, &iter)) {
+	if (!l_dbus_message_get_arguments(msg, sig, &rssi, &iter, &opts)) {
 		l_error("Cannot parse scan results");
 		return l_dbus_message_new_error(msg, dbus_err_args, NULL);
-
 	}
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter, &prov_data, &n) ||
@@ -1669,7 +1693,7 @@ static struct l_dbus_message *add_node_fail_call(struct l_dbus *dbus,
 static void setup_prov_iface(struct l_dbus_interface *iface)
 {
 	l_dbus_interface_method(iface, "ScanResult", 0, scan_result_call, "",
-							"nay", "rssi", "data");
+						"naya{sv}", "rssi", "data");
 
 	l_dbus_interface_method(iface, "RequestProvData", 0, req_prov_call,
 				"qq", "y", "net_index", "unicast", "count");
