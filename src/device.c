@@ -6168,12 +6168,23 @@ int device_confirm_passkey(struct btd_device *device, uint8_t type,
 
 	auth->passkey = passkey;
 
-	if (confirm_hint)
+	if (confirm_hint) {
+		if (device->bonding != NULL) {
+			/* We know the client has indicated the intent to pair
+			 * with the peer device, so we can auto-accept.
+			 */
+			btd_adapter_confirm_reply(device->adapter,
+						  &device->bdaddr,
+						  type, TRUE);
+			return 0;
+		}
+
 		err = agent_request_authorization(auth->agent, device,
 						confirm_cb, auth, NULL);
-	else
+	} else {
 		err = agent_request_confirmation(auth->agent, device, passkey,
 						confirm_cb, auth, NULL);
+	}
 
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
