@@ -116,6 +116,21 @@ void keys_set_net_key_phase(uint16_t net_idx, uint8_t phase)
 		bt_shell_printf("Failed to save updated KR phase\n");
 }
 
+bool keys_get_net_key_phase(uint16_t net_idx, uint8_t *phase)
+{
+	struct net_key *key;
+
+	if (!phase || !net_keys)
+		return false;
+
+	key = l_queue_find(net_keys, net_idx_match, L_UINT_TO_PTR(net_idx));
+	if (!key)
+		return false;
+
+	*phase = key->phase;
+	return true;
+}
+
 void keys_add_app_key(uint16_t net_idx, uint16_t app_idx)
 {
 	struct net_key *key;

@@ -516,6 +516,18 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		break;
 
+	case OP_CONFIG_KEY_REFRESH_PHASE_STATUS:
+		if (len != 4)
+			break;
+
+		bt_shell_printf("Node %4.4x Key Refresh Phase status %s\n", src,
+						mesh_status_str(data[0]));
+		net_idx = get_le16(data + 1) & 0xfff;
+
+		bt_shell_printf("\tNetKey %3.3x\n", net_idx);
+		bt_shell_printf("\tKR Phase %2.2x\n", data[3]);
+		break;
+
 	case OP_MODEL_APP_STATUS:
 		if (len != 7 && len != 9)
 			break;
@@ -945,6 +957,74 @@ static void cmd_netkey_del(int argc, char *argv[])
 	n += 2;
 
 	if (!config_send(msg, n, OP_NETKEY_DELETE))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_kr_phase_get(int argc, char *argv[])
+{
+	uint16_t n;
+	uint8_t msg[32];
+
+	if (IS_UNASSIGNED(target)) {
+		bt_shell_printf("Destination not set\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	n = mesh_opcode_set(OP_CONFIG_KEY_REFRESH_PHASE_GET, msg);
+
+	if (read_input_parameters(argc, argv) != 1)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	put_le16(parms[0], msg + n);
+	n += 2;
+
+	if (!config_send(msg, n, OP_CONFIG_KEY_REFRESH_PHASE_GET))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_kr_phase_set(int argc, char *argv[])
+{
+	uint16_t n;
+	uint8_t msg[32];
+	uint8_t phase;
+
+	if (IS_UNASSIGNED(target)) {
+		bt_shell_printf("Destination not set\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	n = mesh_opcode_set(OP_CONFIG_KEY_REFRESH_PHASE_SET, msg);
+
+	if (read_input_parameters(argc, argv) != 2)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (parms[1] != KEY_REFRESH_PHASE_TWO &&
+				parms[1] != KEY_REFRESH_PHASE_THREE) {
+		bt_shell_printf("Invalid KR transition value %u\n", parms[1]);
+		bt_shell_printf("Allowed values: 2 or 3\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!keys_get_net_key_phase((uint16_t) parms[0], &phase)) {
+		bt_shell_printf("Subnet KR state not found\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (phase != (parms[1] % KEY_REFRESH_PHASE_THREE)) {
+		bt_shell_printf("Subnet's phase must be updated first!\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	put_le16(parms[0], msg + n);
+	n += 2;
+
+	msg[n++] = parms[1];
+
+	if (!config_send(msg, n, OP_CONFIG_KEY_REFRESH_PHASE_SET))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -1788,6 +1868,10 @@ static const struct bt_shell_menu cfg_menu = {
 				"Delete NetKey"},
 	{"netkey-get", NULL, cmd_netkey_get,
 				"List NetKeys known to the node"},
+	{"kr-phase-get", "<net_idx>", cmd_kr_phase_get,
+				"Get Key Refresh phase of a NetKey"},
+	{"kr-phase-set", "<net_idx> <phase>", cmd_kr_phase_set,
+				"Set Key Refresh phase transition of a NetKey"},
 	{"appkey-add", "<app_idx>", cmd_appkey_add,
 				"Add AppKey"},
 	{"appkey-update", "<app_idx>", cmd_appkey_update,
