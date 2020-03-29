@@ -20,6 +20,7 @@
 
 void keys_add_net_key(uint16_t net_idx);
 void keys_del_net_key(uint16_t net_idx);
+void keys_set_net_key_phase(uint16_t net_idx, uint8_t phase);
 void keys_add_app_key(uint16_t net_idx, uint16_t app_idx);
 void keys_del_app_key(uint16_t app_idx);
 uint16_t keys_get_bound_key(uint16_t app_idx);

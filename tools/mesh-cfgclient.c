@@ -957,14 +957,25 @@ fail:
 static void subnet_set_phase_reply(struct l_dbus_proxy *proxy,
 				struct l_dbus_message *msg, void *user_data)
 {
+	struct generic_request *req = user_data;
+	uint16_t net_idx;
+	uint8_t phase;
+
 	if (l_dbus_message_is_error(msg)) {
 		const char *name;
 
 		l_dbus_message_get_error(msg, &name, NULL);
 		l_error("Failed to set subnet phase: %s", name);
+		return;
 	}
 
-	/* TODO: Set key phase in configuration */
+	net_idx = (uint16_t) req->arg1;
+	phase = (uint8_t) req->arg2;
+
+	if (phase == KEY_REFRESH_PHASE_THREE)
+		phase = KEY_REFRESH_PHASE_NONE;
+
+	keys_set_net_key_phase(net_idx, phase);
 }
 
 static void subnet_set_phase_setup(struct l_dbus_message *msg, void *user_data)
@@ -1023,6 +1034,7 @@ static void mgr_key_reply(struct l_dbus_proxy *proxy,
 
 		l_dbus_message_get_error(msg, &name, NULL);
 		l_error("Method %s returned error: %s", method, name);
+		bt_shell_printf("Method %s returned error: %s\n", method, name);
 		return;
 	}
 
@@ -1032,6 +1044,8 @@ static void mgr_key_reply(struct l_dbus_proxy *proxy,
 	} else if (!strcmp("DeleteSubnet", method)) {
 		keys_del_net_key(idx);
 		mesh_db_net_key_del(idx);
+	} else if (!strcmp("UpdateSubnet", method)) {
+		keys_set_net_key_phase(idx, KEY_REFRESH_PHASE_ONE);
 	} else if (!strcmp("DeleteAppKey", method)) {
 		keys_del_app_key(idx);
 		mesh_db_app_key_del(idx);

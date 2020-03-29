@@ -29,6 +29,7 @@ bool mesh_db_get_token(uint8_t token[8]);
 
 bool mesh_db_net_key_add(uint16_t idx);
 bool mesh_db_net_key_del(uint16_t idx);
+bool mesh_db_net_key_phase_set(uint16_t net_idx, uint8_t phase);
 bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx);
 bool mesh_db_app_key_del(uint16_t app_idx);
 bool mesh_db_set_addr_range(uint16_t low, uint16_t high);

@@ -114,6 +114,20 @@ static json_object *get_key_object(json_object *jarray, uint16_t idx)
 	return NULL;
 }
 
+static bool get_int(json_object *jobj, const char *keyword, int *value)
+{
+	json_object *jvalue;
+
+	if (!json_object_object_get_ex(jobj, keyword, &jvalue))
+		return false;
+
+	*value = json_object_get_int(jvalue);
+	if (errno == EINVAL)
+		return false;
+
+	return true;
+}
+
 static bool write_int(json_object *jobj, const char *keyword, int val)
 {
 	json_object *jval;
@@ -416,8 +430,7 @@ static bool add_node_key(json_object *jobj, const char *desc, uint16_t idx)
 	json_object_object_add(jkey, "index", jval);
 	json_object_array_add(jarray, jkey);
 
-	return mesh_config_save((struct mesh_config *) cfg, true,
-								NULL, NULL);
+	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
 }
 
 bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx)
@@ -448,8 +461,7 @@ bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl)
 	if (!write_int(jnode, "defaultTTL", ttl))
 		return false;
 
-	return mesh_config_save((struct mesh_config *) cfg, true,
-								NULL, NULL);
+	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
 }
 
 static void jarray_key_del(json_object *jarray, int16_t idx)
@@ -488,8 +500,7 @@ static bool delete_key(json_object *jobj, const char *desc, uint16_t idx)
 
 	jarray_key_del(jarray, idx);
 
-	return mesh_config_save((struct mesh_config *) cfg, true,
-								NULL, NULL);
+	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
 }
 
 bool mesh_db_node_net_key_del(uint16_t unicast, uint16_t net_idx)
@@ -550,6 +561,7 @@ static bool load_keys(json_object *jobj)
 
 	for (i = 0; i < key_cnt; ++i) {
 		const char *str;
+		int phase;
 
 		jentry = json_object_array_get_idx(jarray, i);
 
@@ -562,6 +574,11 @@ static bool load_keys(json_object *jobj)
 			return false;
 
 		keys_add_net_key(net_idx);
+
+		if (!get_int(jentry, "phase", &phase))
+			return false;
+
+		keys_set_net_key_phase(net_idx, (uint8_t) phase);
 	}
 
 	json_object_object_get_ex(jobj, "appKeys", &jarray);
@@ -623,15 +640,13 @@ bool mesh_db_net_key_add(uint16_t net_idx)
 
 	json_object_object_add(jkey, "index", jval);
 
-	jval = json_object_new_int(KEY_REFRESH_PHASE_NONE);
-	if (!jval)
+	if (!write_int(jkey, "phase", KEY_REFRESH_PHASE_NONE))
 		goto fail;
 
-	json_object_object_add(jkey, "phase", jval);
 	json_object_array_add(jarray, jkey);
 
-	return mesh_config_save((struct mesh_config *) cfg, true,
-								NULL, NULL);
+	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+
 fail:
 	json_object_put(jkey);
 	return false;
@@ -645,6 +660,30 @@ bool mesh_db_net_key_del(uint16_t net_idx)
 	return delete_key(cfg->jcfg, "netKeys", net_idx);
 }
 
+bool mesh_db_net_key_phase_set(uint16_t net_idx, uint8_t phase)
+{
+	json_object *jval, *jarray, *jkey;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	json_object_object_get_ex(cfg->jcfg, "netKeys", &jarray);
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	jkey = get_key_object(jarray, net_idx);
+	if (!jkey)
+		return false;
+
+	jval = json_object_new_int(phase);
+	if (!jval)
+		return false;
+
+	json_object_object_add(jkey, "phase", jval);
+
+	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+}
+
 bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx)
 {
 	if (!cfg || !cfg->jcfg)
@@ -653,8 +692,7 @@ bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx)
 	if (!add_app_key(cfg->jcfg, net_idx, app_idx))
 		return false;
 
-	return mesh_config_save((struct mesh_config *) cfg, true,
-								NULL, NULL);
+	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
 }
 
 bool mesh_db_app_key_del(uint16_t app_idx)
