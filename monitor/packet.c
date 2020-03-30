@@ -5895,6 +5895,15 @@ static void read_local_codecs_rsp(const void *data, uint8_t size)
 					size - rsp->num_codecs - 3);
 }
 
+static void read_local_pairing_options_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_pairing_options *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Pairing options: 0x%2.2x", rsp->pairing_options);
+	print_field("Max encryption key size: %u octets", rsp->max_key_size);
+}
+
 static void read_failed_contact_counter_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_failed_contact_counter *cmd = data;
@@ -8620,6 +8629,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x100b, 237, "Read Local Supported Codecs",
 				null_cmd, 0, true,
 				read_local_codecs_rsp, 3, false },
+	{ 0x100c, 331, "Read Local Simple Pairing Options",
+				null_cmd, 0, true,
+				read_local_pairing_options_rsp, 3, true },
 
 	/* OGF 5 - Status Parameter */
 	{ 0x1401, 122, "Read Failed Contact Counter",

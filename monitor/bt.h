@@ -1778,6 +1778,13 @@ struct bt_hci_rsp_read_local_codecs {
 	uint8_t  codec[0];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LOCAL_PAIRING_OPTIONS	0x100c
+struct bt_hci_rsp_read_local_pairing_options {
+	uint8_t  status;
+	uint8_t  pairing_options;
+	uint8_t  max_key_size;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_FAILED_CONTACT_COUNTER	0x1401
 struct bt_hci_cmd_read_failed_contact_counter {
 	uint16_t handle;
