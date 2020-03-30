@@ -4455,7 +4455,7 @@ static const struct bt_shell_menu main_menu = {
 		cmd_keys,		"Load Link Keys"		},
 	{ "ltks",		NULL,
 		cmd_ltks,		"Load Long Term Keys"		},
-	{ "irks",		"[--local <index>] [--file <file path>]",
+	{ "irks",		"[--local index] [--file file path]",
 		cmd_irks,		"Load Identity Resolving Keys"	},
 	{ "block",		"[-t type] <remote address>",
 		cmd_block,		"Block Device"			},
