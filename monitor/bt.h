@@ -2770,8 +2770,14 @@ struct bt_hci_cmd_le_req_peer_sca {
 #define BT_HCI_BIT_LE_SETUP_ISO_PATH		BT_HCI_BIT_5_2 + 14
 struct bt_hci_cmd_le_setup_iso_path {
 	uint16_t handle;
-	uint8_t  input_path;
-	uint8_t  output_path;
+	uint8_t  direction;
+	uint8_t  path;
+	uint8_t  codec;
+	uint16_t codec_cid;
+	uint16_t codec_vid;
+	uint8_t  delay[3];
+	uint8_t  codec_cfg_len;
+	uint8_t  codec_cfg[0];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_REMOVE_ISO_PATH		BT_HCI_CMD_5_2 + 15

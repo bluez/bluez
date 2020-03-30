@@ -8067,21 +8067,33 @@ static void le_big_term_sync_cmd(const void *data, uint8_t size)
 	print_field("BIG ID: 0x%2.2x", cmd->big_id);
 }
 
+static void print_iso_dir(const char *prefix, uint8_t dir)
+{
+	switch (dir) {
+	case 0x00:
+		print_field("%s: Input (Host to Controller) (0x%2.2x)",
+							prefix, dir);
+		return;
+	case 0x01:
+		print_field("%s: Output (Controller to Host) (0x%2.2x)",
+							prefix, dir);
+		return;
+	default:
+		print_field("%s: Unknown (0x%2.2x)", prefix, dir);
+	}
+}
+
 static void print_iso_path(const char *prefix, uint8_t path)
 {
 	switch (path) {
 	case 0x00:
-		print_field("%s Data Path: Disabled (0x%2.2x)", prefix, path);
-		return;
-	case 0x01:
-		print_field("%s Data Path: HCI (0x%2.2x)", prefix, path);
+		print_field("%s: HCI (0x%2.2x)", prefix, path);
 		return;
 	case 0xff:
-		print_field("%s Data Path: Test Mode (0x%2.2x)", prefix, path);
+		print_field("%s: Disabled (0x%2.2x)", prefix, path);
 		return;
 	default:
-		print_field("%s Data Path: Logical Channel Number (0x%2.2x)",
-							prefix, path);
+		print_field("%s: Logical Channel Number %u", prefix, path);
 	}
 }
 
@@ -8090,23 +8102,15 @@ static void le_setup_iso_path_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_setup_iso_path *cmd = data;
 
 	print_field("Handle: %d", le16_to_cpu(cmd->handle));
-	print_iso_path("Input", cmd->input_path);
-	print_iso_path("Output", cmd->output_path);
-}
-
-static void print_iso_dir(uint8_t path_dir)
-{
-	switch (path_dir) {
-	case 0x00:
-		print_field("Data Path Direction: Input (0x%2.2x)", path_dir);
-		return;
-	case 0x01:
-		print_field("Data Path Direction: Output (0x%2.2x)", path_dir);
-		return;
-	default:
-		print_field("Data Path Direction: Reserved (0x%2.2x)",
-							path_dir);
-	}
+	print_iso_dir("Data Path Direction", cmd->direction);
+	print_iso_path("Data Path", cmd->path);
+	print_codec("Coding Format", cmd->codec);
+	packet_print_company("Company Codec ID", le16_to_cpu(cmd->codec_cid));
+	print_field("Vendor Codec ID: %d", le16_to_cpu(cmd->codec_vid));
+	print_usec_interval("Controller Delay", cmd->delay);
+	print_field("Codec Configuration Length: %d", cmd->codec_cfg_len);
+	print_hex_field("Codec Configuration", cmd->codec_cfg,
+						cmd->codec_cfg_len);
 }
 
 static void le_remove_iso_path_cmd(const void *data, uint8_t size)
@@ -8114,7 +8118,7 @@ static void le_remove_iso_path_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_remove_iso_path *cmd = data;
 
 	print_field("Connection Handle: %d", le16_to_cpu(cmd->handle));
-	print_iso_dir(cmd->path_dir);
+	print_iso_dir("Data Path Direction", cmd->path_dir);
 }
 
 static void le_req_peer_sca_cmd(const void *data, uint8_t size)
