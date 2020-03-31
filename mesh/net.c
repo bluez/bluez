@@ -1566,7 +1566,7 @@ static void send_frnd_ack(struct mesh_net *net, uint16_t src, uint16_t dst,
 		friend_ack_rxed(net, mesh_net_get_iv_index(net),
 				mesh_net_next_seq_num(net), 0, dst, msg);
 	} else {
-		mesh_net_transport_send(net, 0, false,
+		mesh_net_transport_send(net, 0,
 				mesh_net_get_iv_index(net), DEFAULT_TTL,
 				0, 0, dst, msg, sizeof(msg));
 	}
@@ -1601,7 +1601,7 @@ static void send_net_ack(struct mesh_net *net, struct mesh_sar *sar,
 		return;
 	}
 
-	mesh_net_transport_send(net, 0, false,
+	mesh_net_transport_send(net, 0,
 				mesh_net_get_iv_index(net), DEFAULT_TTL,
 				0, src, dst, msg, sizeof(msg));
 }
@@ -2208,7 +2208,7 @@ static bool ctl_received(struct mesh_net *net, uint16_t key_id,
 	}
 
 	if (n) {
-		mesh_net_transport_send(net, 0, false,
+		mesh_net_transport_send(net, 0,
 				mesh_net_get_iv_index(net), rsp_ttl,
 				0, dst & 0x8000 ? 0 : dst, src,
 				msg, n);
@@ -2988,7 +2988,7 @@ void mesh_net_sub_list_add(struct mesh_net *net, uint16_t addr)
 	l_put_be16(addr, msg + n);
 	n += 2;
 
-	mesh_net_transport_send(net, 0, false,
+	mesh_net_transport_send(net, 0,
 			mesh_net_get_iv_index(net), 0,
 			0, 0, 0, msg, n);
 }
@@ -3001,7 +3001,7 @@ void mesh_net_sub_list_del(struct mesh_net *net, uint16_t addr)
 	l_put_be16(addr, msg + n);
 	n += 2;
 
-	mesh_net_transport_send(net, 0, false,
+	mesh_net_transport_send(net, 0,
 			mesh_net_get_iv_index(net), 0,
 			0, 0, 0, msg, n);
 }
@@ -3350,7 +3350,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id,
 
 /* TODO: add net key index */
 void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
-				bool fast, uint32_t iv_index, uint8_t ttl,
+				uint32_t iv_index, uint8_t ttl,
 				uint32_t seq, uint16_t src, uint16_t dst,
 				const uint8_t *msg, uint16_t msg_len)
 {
@@ -3583,7 +3583,7 @@ void mesh_net_heartbeat_send(struct mesh_net *net)
 	l_put_be16(hb->features, msg + n);
 	n += 2;
 
-	mesh_net_transport_send(net, 0, false, mesh_net_get_iv_index(net),
+	mesh_net_transport_send(net, 0, mesh_net_get_iv_index(net),
 				hb->pub_ttl, 0, 0, hb->pub_dst, msg, n);
 }
 
