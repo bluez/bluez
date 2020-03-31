@@ -2405,6 +2405,11 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 	int fd;
 	uint16_t mtu;
 
+	if (!op->owner_queue) {
+		DBG("Pending write was canceled when object got removed");
+		return;
+	}
+
 	chrc = gatt_db_attribute_get_user_data(op->attrib);
 	dbus_error_init(&err);
 
@@ -2486,6 +2491,11 @@ static void acquire_notify_reply(DBusMessage *message, void *user_data)
 	DBusError err;
 	int fd;
 	uint16_t mtu;
+
+	if (!op->owner_queue) {
+		DBG("Pending notify was canceled when object got removed");
+		return;
+	}
 
 	dbus_error_init(&err);
 
