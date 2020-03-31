@@ -2979,33 +2979,6 @@ bool mesh_net_iv_index_update(struct mesh_net *net)
 }
 
 
-
-void mesh_net_sub_list_add(struct mesh_net *net, uint16_t addr)
-{
-	uint8_t msg[11] = { PROXY_OP_FILTER_ADD };
-	uint8_t n = 1;
-
-	l_put_be16(addr, msg + n);
-	n += 2;
-
-	mesh_net_transport_send(net, 0,
-			mesh_net_get_iv_index(net), 0,
-			0, 0, 0, msg, n);
-}
-
-void mesh_net_sub_list_del(struct mesh_net *net, uint16_t addr)
-{
-	uint8_t msg[11] = { PROXY_OP_FILTER_DEL };
-	uint8_t n = 1;
-
-	l_put_be16(addr, msg + n);
-	n += 2;
-
-	mesh_net_transport_send(net, 0,
-			mesh_net_get_iv_index(net), 0,
-			0, 0, 0, msg, n);
-}
-
 bool mesh_net_dst_reg(struct mesh_net *net, uint16_t dst)
 {
 	struct mesh_destination *dest = l_queue_find(net->destinations,

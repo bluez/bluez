@@ -363,8 +363,6 @@ void mesh_net_provisioner_mode_set(struct mesh_net *net, bool mode);
 bool mesh_net_provisioner_mode_get(struct mesh_net *net);
 bool mesh_net_key_list_get(struct mesh_net *net, uint8_t *buf, uint16_t *count);
 uint16_t mesh_net_get_primary_idx(struct mesh_net *net);
-void mesh_net_sub_list_add(struct mesh_net *net, uint16_t addr);
-void mesh_net_sub_list_del(struct mesh_net *net, uint16_t addr);
 uint32_t mesh_net_friend_timeout(struct mesh_net *net, uint16_t addr);
 struct mesh_io *mesh_net_get_io(struct mesh_net *net);
 struct mesh_node *mesh_net_node_get(struct mesh_net *net);
