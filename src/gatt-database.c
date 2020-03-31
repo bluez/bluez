@@ -53,6 +53,7 @@
 #define GATT_SERVICE_IFACE	"org.bluez.GattService1"
 #define GATT_CHRC_IFACE		"org.bluez.GattCharacteristic1"
 #define GATT_DESC_IFACE		"org.bluez.GattDescriptor1"
+#define ERROR_FAILED		ERROR_INTERFACE ".Failed"
 
 #define UUID_GAP	0x1800
 #define UUID_GATT	0x1801
@@ -2027,28 +2028,30 @@ static bool parse_handle(GDBusProxy *proxy, uint16_t *handle)
 	return true;
 }
 
-static uint8_t dbus_error_to_att_ecode(const char *error_name)
+static uint8_t dbus_error_to_att_ecode(const char *error_name, uint8_t perm_err)
 {
-
-	if (strcmp(error_name, "org.bluez.Error.Failed") == 0)
+	if (strcmp(error_name, ERROR_INTERFACE ".Failed") == 0)
 		return 0x80;  /* For now return this "application error" */
 
-	if (strcmp(error_name, "org.bluez.Error.NotSupported") == 0)
+	if (strcmp(error_name, ERROR_INTERFACE ".NotSupported") == 0)
 		return BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
 
-	if (strcmp(error_name, "org.bluez.Error.NotAuthorized") == 0)
+	if (strcmp(error_name, ERROR_INTERFACE ".NotAuthorized") == 0)
 		return BT_ATT_ERROR_AUTHORIZATION;
 
-	if (strcmp(error_name, "org.bluez.Error.InvalidValueLength") == 0)
+	if (strcmp(error_name, ERROR_INTERFACE ".InvalidValueLength") == 0)
 		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
 
-	if (strcmp(error_name, "org.bluez.Error.InvalidOffset") == 0)
+	if (strcmp(error_name, ERROR_INTERFACE ".InvalidOffset") == 0)
 		return BT_ATT_ERROR_INVALID_OFFSET;
 
-	if (strcmp(error_name, "org.bluez.Error.InProgress") == 0)
+	if (strcmp(error_name, ERROR_INTERFACE ".InProgress") == 0)
 		return BT_ERROR_ALREADY_IN_PROGRESS;
 
-	return 0;
+	if (strcmp(error_name, ERROR_INTERFACE ".NotPermitted") == 0)
+		return perm_err;
+
+	return BT_ATT_ERROR_UNLIKELY;
 }
 
 static void read_reply_cb(DBusMessage *message, void *user_data)
@@ -2069,8 +2072,8 @@ static void read_reply_cb(DBusMessage *message, void *user_data)
 
 	if (dbus_set_error_from_message(&err, message) == TRUE) {
 		DBG("Failed to read value: %s: %s", err.name, err.message);
-		ecode = dbus_error_to_att_ecode(err.name);
-		ecode = ecode ? ecode : BT_ATT_ERROR_READ_NOT_PERMITTED;
+		ecode = dbus_error_to_att_ecode(err.name,
+					BT_ATT_ERROR_READ_NOT_PERMITTED);
 		dbus_error_free(&err);
 		goto done;
 	}
@@ -2246,8 +2249,8 @@ static void write_reply_cb(DBusMessage *message, void *user_data)
 
 	if (dbus_set_error_from_message(&err, message) == TRUE) {
 		DBG("Failed to write value: %s: %s", err.name, err.message);
-		ecode = dbus_error_to_att_ecode(err.name);
-		ecode = ecode ? ecode : BT_ATT_ERROR_WRITE_NOT_PERMITTED;
+		ecode = dbus_error_to_att_ecode(err.name,
+					BT_ATT_ERROR_WRITE_NOT_PERMITTED);
 		dbus_error_free(&err);
 		goto done;
 	}
@@ -2414,8 +2417,20 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&err);
 
 	if (dbus_set_error_from_message(&err, message) == TRUE) {
+		uint8_t ecode;
+
 		error("Failed to acquire write: %s\n", err.name);
+
+		ecode = dbus_error_to_att_ecode(err.name,
+					BT_ATT_ERROR_WRITE_NOT_PERMITTED);
 		dbus_error_free(&err);
+
+		if (ecode != BT_ATT_ERROR_UNLIKELY) {
+			gatt_db_attribute_write_result(op->attrib, op->id,
+								ecode);
+			return;
+		}
+
 		goto retry;
 	}
 
@@ -2501,6 +2516,13 @@ static void acquire_notify_reply(DBusMessage *message, void *user_data)
 
 	if (dbus_set_error_from_message(&err, message) == TRUE) {
 		error("Failed to acquire notify: %s\n", err.name);
+
+		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY) ||
+				dbus_error_has_name(&err, ERROR_FAILED)) {
+			dbus_error_free(&err);
+			return;
+		}
+
 		dbus_error_free(&err);
 		goto retry;
 	}
