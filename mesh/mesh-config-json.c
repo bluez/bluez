@@ -2012,6 +2012,14 @@ bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq,
 		timersub(&now, &cfg->write_time, &elapsed);
 		elapsed_ms = elapsed.tv_sec * 1000 + elapsed.tv_usec / 1000;
 
+		/*
+		 * If time since last write is zero, this means that
+		 * idle_save_config is already pending, so we don't need to do
+		 * anything.
+		 */
+		if (!elapsed_ms)
+			return true;
+
 		cached = seq + (seq - cfg->write_seq) *
 					1000 * MIN_SEQ_CACHE_TIME / elapsed_ms;
 
