@@ -109,7 +109,7 @@ static const char *gatt_options[] = {
 	"Cache",
 	"KeySize",
 	"ExchangeMTU",
-	"EATTChannels",
+	"Channels",
 	NULL
 };
 
