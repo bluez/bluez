@@ -790,13 +790,13 @@ static void write_complete_cb(struct gatt_db_attribute *attr, int err,
 	struct bt_gatt_server *server = op->server;
 	uint16_t handle;
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Write Complete: err %d", err);
-
 	if (!server || op->opcode == BT_ATT_OP_WRITE_CMD) {
 		async_write_op_destroy(op);
 		return;
 	}
+
+	util_debug(server->debug_callback, server->debug_data,
+						"Write Complete: err %d", err);
 
 	handle = gatt_db_attribute_get_handle(attr);
 
@@ -914,13 +914,13 @@ static void read_complete_cb(struct gatt_db_attribute *attr, int err,
 	uint16_t mtu;
 	uint16_t handle;
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Read Complete: err %d", err);
-
 	if (!server) {
 		async_read_op_destroy(op);
 		return;
 	}
+
+	util_debug(server->debug_callback, server->debug_data,
+				"Read Complete: err %d", err);
 
 	mtu = bt_att_get_mtu(server->att);
 	handle = gatt_db_attribute_get_handle(attr);
