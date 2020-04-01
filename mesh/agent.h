@@ -42,6 +42,8 @@ void mesh_agent_init(void);
 void mesh_agent_cleanup(void);
 struct mesh_agent *mesh_agent_create(const char *path, const char *owner,
 					struct l_dbus_message_iter *properties);
+void mesh_agent_refresh(struct mesh_agent *agent, mesh_agent_cb_t cb,
+							void *user_data);
 
 void mesh_agent_remove(struct mesh_agent *agent);
 void mesh_agent_cancel(struct mesh_agent *agent);

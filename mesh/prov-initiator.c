@@ -36,6 +36,7 @@
 #include "mesh/pb-adv.h"
 #include "mesh/mesh.h"
 #include "mesh/agent.h"
+#include "mesh/error.h"
 
 /* Quick size sanity check */
 static const uint16_t expected_pdu_size[] = {
@@ -77,6 +78,7 @@ enum int_state {
 #define MAT_SECRET	(MAT_REMOTE_PUBLIC | MAT_LOCAL_PRIVATE)
 
 struct mesh_prov_initiator {
+	mesh_prov_initiator_start_func_t start_cb;
 	mesh_prov_initiator_complete_func_t complete_cb;
 	mesh_prov_initiator_data_req_func_t data_req_cb;
 	prov_trans_tx_t trans_tx;
@@ -102,6 +104,7 @@ struct mesh_prov_initiator {
 	uint8_t private_key[32];
 	uint8_t secret[32];
 	uint8_t rand_auth_workspace[48];
+	uint8_t uuid[16];
 };
 
 static struct mesh_prov_initiator *prov = NULL;
@@ -814,17 +817,45 @@ static void int_prov_ack(void *user_data, uint8_t msg_num)
 	}
 }
 
+static void initiator_open_cb(void *user_data, int err)
+{
+	bool result;
+
+	if (!prov)
+		return;
+
+	if (err != MESH_ERROR_NONE)
+		goto fail;
+
+	/* Always register for PB-ADV */
+	result = pb_adv_reg(true, int_prov_open, int_prov_close, int_prov_rx,
+						int_prov_ack, prov->uuid, prov);
+
+	if (!result) {
+		err = MESH_ERROR_FAILED;
+		goto fail;
+	}
+
+	if (!prov)
+		return;
+
+	prov->start_cb(prov->caller_data, MESH_ERROR_NONE);
+	return;
+fail:
+	prov->start_cb(prov->caller_data, err);
+	initiator_free();
+}
+
 bool initiator_start(enum trans_type transport,
 		uint8_t uuid[16],
 		uint16_t max_ele,
 		uint32_t timeout, /* in seconds from mesh.conf */
 		struct mesh_agent *agent,
+		mesh_prov_initiator_start_func_t start_cb,
 		mesh_prov_initiator_data_req_func_t data_req_cb,
 		mesh_prov_initiator_complete_func_t complete_cb,
 		void *node, void *caller_data)
 {
-	bool result;
-
 	/* Invoked from Add() method in mesh-api.txt, to add a
 	 * remote unprovisioned device network.
 	 */
@@ -837,19 +868,15 @@ bool initiator_start(enum trans_type transport,
 	prov->node = node;
 	prov->agent = agent;
 	prov->complete_cb = complete_cb;
+	prov->start_cb = start_cb;
 	prov->data_req_cb = data_req_cb;
 	prov->caller_data = caller_data;
 	prov->previous = -1;
+	memcpy(prov->uuid, uuid, 16);
 
-	/* Always register for PB-ADV */
-	result = pb_adv_reg(true, int_prov_open, int_prov_close, int_prov_rx,
-						int_prov_ack, uuid, prov);
+	mesh_agent_refresh(prov->agent, initiator_open_cb, prov);
 
-	if (result)
-		return true;
-
-	initiator_free();
-	return false;
+	return true;
 }
 
 void initiator_cancel(void *user_data)

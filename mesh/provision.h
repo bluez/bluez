@@ -100,6 +100,8 @@ typedef bool (*mesh_prov_acceptor_complete_func_t)(void *user_data,
 					uint8_t status,
 					struct mesh_prov_node_info *info);
 
+typedef void (*mesh_prov_initiator_start_func_t)(void *user_data, int err);
+
 typedef bool (*mesh_prov_initiator_data_req_func_t)(void *user_data,
 							uint8_t num_elem);
 
@@ -120,6 +122,7 @@ bool initiator_start(enum trans_type transport,
 		uint16_t max_ele,
 		uint32_t timeout, /* in seconds from mesh.conf */
 		struct mesh_agent *agent,
+		mesh_prov_initiator_start_func_t start_cb,
 		mesh_prov_initiator_data_req_func_t data_req_cb,
 		mesh_prov_initiator_complete_func_t complete_cb,
 		void *node, void *caller_data);

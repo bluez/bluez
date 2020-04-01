@@ -40,7 +40,8 @@ typedef enum {
 	MESH_AGENT_REQUEST_IN_ALPHA,
 	MESH_AGENT_REQUEST_STATIC_OOB,
 	MESH_AGENT_REQUEST_PRIVATE_KEY,
-	MESH_AGENT_REQUEST_PUBLIC_KEY
+	MESH_AGENT_REQUEST_PUBLIC_KEY,
+	MESH_AGENT_REQUEST_CAPABILITIES,
 } agent_request_type_t;
 
 struct agent_request {
@@ -158,6 +159,25 @@ static void parse_oob_info(struct mesh_agent_prov_caps *caps,
 	}
 }
 
+static void parse_properties(struct mesh_agent *agent,
+					struct l_dbus_message_iter *properties)
+{
+	const char *key, *uri_string;
+	struct l_dbus_message_iter variant;
+
+	while (l_dbus_message_iter_next_entry(properties, &key, &variant)) {
+		if (!strcmp(key, "Capabilities")) {
+			parse_prov_caps(&agent->caps, &variant);
+		} else if (!strcmp(key, "URI")) {
+			l_dbus_message_iter_get_variant(&variant, "s",
+								&uri_string);
+			/* TODO: compute hash */
+		} else if (!strcmp(key, "OutOfBandInfo")) {
+			parse_oob_info(&agent->caps, &variant);
+		}
+	}
+}
+
 static void agent_free(void *agent_data)
 {
 	struct mesh_agent *agent = agent_data;
@@ -193,6 +213,7 @@ static void agent_free(void *agent_data)
 		case MESH_AGENT_REQUEST_VIBRATE:
 		case MESH_AGENT_REQUEST_OUT_NUMERIC:
 		case MESH_AGENT_REQUEST_OUT_ALPHA:
+		case MESH_AGENT_REQUEST_CAPABILITIES:
 			simple_cb = agent->req->cb;
 			simple_cb(req->user_data, err);
 		default:
@@ -235,25 +256,12 @@ struct mesh_agent *mesh_agent_create(const char *path, const char *owner,
 					struct l_dbus_message_iter *properties)
 {
 	struct mesh_agent *agent;
-	const char *key, *uri_string;
-	struct l_dbus_message_iter variant;
 
 	agent = l_new(struct mesh_agent, 1);
-
-	while (l_dbus_message_iter_next_entry(properties, &key, &variant)) {
-		if (!strcmp(key, "Capabilities")) {
-			parse_prov_caps(&agent->caps, &variant);
-		} else if (!strcmp(key, "URI")) {
-			l_dbus_message_iter_get_variant(&variant, "s",
-								&uri_string);
-			/* TODO: compute hash */
-		} else if (!strcmp(key, "OutOfBandInfo")) {
-			parse_oob_info(&agent->caps, &variant);
-		}
-	}
-
 	agent->owner = l_strdup(owner);
 	agent->path = l_strdup(path);
+
+	parse_properties(agent, properties);
 
 	l_queue_push_tail(agents, agent);
 
@@ -289,12 +297,74 @@ static int get_reply_error(struct l_dbus_message *reply)
 	if (l_dbus_message_is_error(reply)) {
 
 		l_dbus_message_get_error(reply, &name, &desc);
-		l_error("Agent failed output action (%s), %s", name, desc);
+		l_error("Agent failed (%s), %s", name, desc);
 		return MESH_ERROR_FAILED;
 	}
 
 	return MESH_ERROR_NONE;
 }
+
+static void properties_reply(struct l_dbus_message *reply, void *user_data)
+{
+	struct mesh_agent *agent = user_data;
+	struct agent_request *req;
+	mesh_agent_cb_t cb;
+	struct l_dbus_message_iter properties;
+	int err;
+
+	if (!l_queue_find(agents, simple_match, agent) || !agent->req)
+		return;
+
+	req = agent->req;
+
+	err = get_reply_error(reply);
+
+	if (err != MESH_ERROR_NONE)
+		goto fail;
+
+	if (!l_dbus_message_get_arguments(reply, "a{sv}", &properties)) {
+		err = MESH_ERROR_FAILED;
+		goto fail;
+	}
+
+	parse_properties(agent, &properties);
+fail:
+	if (req->cb) {
+		cb = req->cb;
+		cb(req->user_data, err);
+	}
+
+	l_dbus_message_unref(req->msg);
+	l_free(req);
+	agent->req = NULL;
+}
+
+void mesh_agent_refresh(struct mesh_agent *agent, mesh_agent_cb_t cb,
+							void *user_data)
+{
+	struct l_dbus *dbus = dbus_get_bus();
+	struct l_dbus_message *msg;
+	struct l_dbus_message_builder *builder;
+
+	agent->req = create_request(MESH_AGENT_REQUEST_CAPABILITIES, (void *)cb,
+								user_data);
+
+	msg = l_dbus_message_new_method_call(dbus, agent->owner, agent->path,
+						L_DBUS_INTERFACE_PROPERTIES,
+						"GetAll");
+
+	builder = l_dbus_message_builder_new(msg);
+	l_dbus_message_builder_append_basic(builder, 's',
+						MESH_PROVISION_AGENT_INTERFACE);
+	l_dbus_message_builder_finalize(builder);
+	l_dbus_message_builder_destroy(builder);
+
+	l_dbus_send_with_reply(dbus_get_bus(), msg, properties_reply, agent,
+									NULL);
+
+	agent->req->msg = l_dbus_message_ref(msg);
+}
+
 
 static void simple_reply(struct l_dbus_message *reply, void *user_data)
 {
