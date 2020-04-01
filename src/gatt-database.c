@@ -2485,8 +2485,8 @@ static struct pending_op *acquire_write(struct external_chrc *chrc,
 {
 	struct pending_op *op;
 
-	op = pending_write_new(device, NULL, attrib, id, value, len, 0,
-						link_type, false, false);
+	op = pending_write_new(device, chrc->pending_writes, attrib, id, value,
+				len, 0, link_type, false, false);
 
 	if (g_dbus_proxy_method_call(chrc->proxy, "AcquireWrite",
 					acquire_write_setup,
@@ -2618,6 +2618,7 @@ static uint8_t ccc_write_cb(struct pending_op *op, void *user_data)
 	if (g_dbus_proxy_get_property(chrc->proxy, "NotifyAcquired", &iter)) {
 		op->data.iov_base = (void *) chrc;
 		op->data.iov_len = sizeof(chrc);
+		op->owner_queue = chrc->pending_writes;
 		if (g_dbus_proxy_method_call(chrc->proxy, "AcquireNotify",
 						acquire_notify_setup,
 						acquire_notify_reply,
