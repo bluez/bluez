@@ -77,10 +77,10 @@ enum int_state {
 #define MAT_SECRET	(MAT_REMOTE_PUBLIC | MAT_LOCAL_PRIVATE)
 
 struct mesh_prov_initiator {
-	mesh_prov_initiator_complete_func_t cmplt;
-	mesh_prov_initiator_data_req_func_t get_prov_data;
+	mesh_prov_initiator_complete_func_t complete_cb;
+	mesh_prov_initiator_data_req_func_t data_req_cb;
 	prov_trans_tx_t trans_tx;
-	void *agent;
+	struct mesh_agent *agent;
 	void *caller_data;
 	void *trans_data;
 	struct mesh_node *node;
@@ -125,7 +125,7 @@ static void int_prov_close(void *user_data, uint8_t reason)
 	struct mesh_prov_node_info info;
 
 	if (reason != PROV_ERR_SUCCESS) {
-		prov->cmplt(prov->caller_data, reason, NULL);
+		prov->complete_cb(prov->caller_data, reason, NULL);
 		initiator_free();
 		return;
 	}
@@ -135,7 +135,7 @@ static void int_prov_close(void *user_data, uint8_t reason)
 	info.unicast = prov->unicast;
 	info.num_ele = prov->conf_inputs.caps.num_ele;
 
-	prov->cmplt(prov->caller_data, PROV_ERR_SUCCESS, &info);
+	prov->complete_cb(prov->caller_data, PROV_ERR_SUCCESS, &info);
 	initiator_free();
 }
 
@@ -738,7 +738,7 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 			goto failure;
 		}
 
-		if (!prov->get_prov_data(prov->caller_data,
+		if (!prov->data_req_cb(prov->caller_data,
 					prov->conf_inputs.caps.num_ele)) {
 			l_error("Provisioning Failed-Data Get");
 			fail_code[1] = PROV_ERR_CANT_ASSIGN_ADDR;
@@ -819,7 +819,7 @@ bool initiator_start(enum trans_type transport,
 		uint16_t max_ele,
 		uint32_t timeout, /* in seconds from mesh.conf */
 		struct mesh_agent *agent,
-		mesh_prov_initiator_data_req_func_t get_prov_data,
+		mesh_prov_initiator_data_req_func_t data_req_cb,
 		mesh_prov_initiator_complete_func_t complete_cb,
 		void *node, void *caller_data)
 {
@@ -836,8 +836,8 @@ bool initiator_start(enum trans_type transport,
 	prov->to_secs = timeout;
 	prov->node = node;
 	prov->agent = agent;
-	prov->cmplt = complete_cb;
-	prov->get_prov_data = get_prov_data;
+	prov->complete_cb = complete_cb;
+	prov->data_req_cb = data_req_cb;
 	prov->caller_data = caller_data;
 	prov->previous = -1;
 
