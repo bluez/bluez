@@ -817,7 +817,6 @@ static void int_prov_ack(void *user_data, uint8_t msg_num)
 bool initiator_start(enum trans_type transport,
 		uint8_t uuid[16],
 		uint16_t max_ele,
-		uint16_t server, /* Only valid for PB-Remote */
 		uint32_t timeout, /* in seconds from mesh.conf */
 		struct mesh_agent *agent,
 		mesh_prov_initiator_data_req_func_t get_prov_data,

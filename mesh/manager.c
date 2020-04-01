@@ -257,7 +257,7 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 	}
 
 
-	if (!initiator_start(PB_ADV, uuid, 99, 0, 60, add_pending->agent,
+	if (!initiator_start(PB_ADV, uuid, 99, 60, add_pending->agent,
 				add_data_get, add_cmplt, node, add_pending)) {
 		reply = dbus_error(msg, MESH_ERROR_FAILED,
 				"Failed to start provisioning initiator");
