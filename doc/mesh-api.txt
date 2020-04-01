@@ -948,7 +948,7 @@ Object path	freely definable
 
 		The data parameter is a variable length byte array, that may
 		have 1, 2 or 3 distinct fields contained in it including the 16
-		byte remote device UUID (always), a 32 bit mask of OOB
+		byte remote device UUID (always), a 16 bit mask of OOB
 		authentication flags (optional), and a 32 bit URI hash (if URI
 		bit set in OOB mask). Whether these fields exist or not is a
 		decision of the remote device.
