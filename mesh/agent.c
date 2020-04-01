@@ -165,6 +165,8 @@ static void parse_properties(struct mesh_agent *agent,
 	const char *key, *uri_string;
 	struct l_dbus_message_iter variant;
 
+	memset(&agent->caps, 0, sizeof(agent->caps));
+
 	while (l_dbus_message_iter_next_entry(properties, &key, &variant)) {
 		if (!strcmp(key, "Capabilities")) {
 			parse_prov_caps(&agent->caps, &variant);
