@@ -1557,6 +1557,19 @@ static struct l_dbus_message *scan_result_call(struct l_dbus *dbus,
 	bt_shell_printf("\t" COLOR_GREEN "UUID = %s\n" COLOR_OFF, str);
 	l_free(str);
 
+	if (n >= 18) {
+		str = l_util_hexstring_upper(prov_data + 16, 2);
+		bt_shell_printf("\t" COLOR_GREEN "OOB = %s\n" COLOR_OFF, str);
+		l_free(str);
+	}
+
+	if (n >= 22) {
+		str = l_util_hexstring_upper(prov_data + 18, 4);
+		bt_shell_printf("\t" COLOR_GREEN "URI Hash = %s\n" COLOR_OFF,
+									str);
+		l_free(str);
+	}
+
 	/* TODO: Handle the rest of provisioning data if present */
 
 	dev = l_queue_find(devices, match_device_uuid, prov_data);
