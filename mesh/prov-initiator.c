@@ -38,6 +38,8 @@
 #include "mesh/agent.h"
 #include "mesh/error.h"
 
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
 /* Quick size sanity check */
 static const uint16_t expected_pdu_size[] = {
 	2,	/* PROV_INVITE */
@@ -587,6 +589,44 @@ failure:
 	int_prov_close(prov, fail_code[1]);
 }
 
+static void int_prov_start_auth(const struct mesh_agent_prov_caps *prov_caps,
+				const struct mesh_net_prov_caps *dev_caps,
+				struct prov_start *start)
+{
+	uint8_t pub_type = prov_caps->pub_type & dev_caps->pub_type;
+	uint8_t static_type = prov_caps->static_type & dev_caps->static_type;
+	uint16_t output_action = prov_caps->output_action &
+					L_BE16_TO_CPU(dev_caps->output_action);
+	uint8_t output_size = MIN(prov_caps->output_size,
+							dev_caps->output_size);
+	uint16_t input_action = prov_caps->input_action &
+					L_BE16_TO_CPU(dev_caps->input_action);
+	uint8_t input_size = MIN(prov_caps->input_size, dev_caps->input_size);
+
+	if (pub_type)
+		start->pub_key = 0x01;
+
+	/* Parse OOB Options, prefer static, then out, then in */
+	if (static_type) {
+		start->auth_method = 0x01;
+		return;
+	}
+
+	if (output_size && output_action) {
+		start->auth_method = 0x02;
+		start->auth_action = u16_high_bit(output_action);
+		start->auth_size = MIN(output_size, 8);
+		return;
+	}
+
+	if (input_size && input_action) {
+		start->auth_method = 0x03;
+		start->auth_action = u16_high_bit(input_action);
+		start->auth_size = MIN(input_size, 8);
+		return;
+	}
+}
+
 static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 {
 	struct mesh_prov_initiator *rx_prov = user_data;
@@ -638,42 +678,22 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 			goto failure;
 		}
 
-		/* If Public Key available Out of Band, use it */
-		if (prov->conf_inputs.caps.pub_type) {
-			prov->conf_inputs.start.pub_key = 0x01;
+		/*
+		 * Select auth mechanism from methods supported by both
+		 * parties.
+		 */
+		int_prov_start_auth(mesh_agent_get_caps(prov->agent),
+						&prov->conf_inputs.caps,
+						&prov->conf_inputs.start);
+
+		if (prov->conf_inputs.start.pub_key == 0x01) {
 			prov->expected = PROV_CONFIRM;
 			/* Prompt Agent for remote Public Key */
 			mesh_agent_request_public_key(prov->agent,
 							pub_key_cb, prov);
-
 			/* Nothing else for us to do now */
 		} else
 			prov->expected = PROV_PUB_KEY;
-
-		/* Parse OOB Options, prefer static, then out, then in */
-		if (prov->conf_inputs.caps.static_type) {
-
-			prov->conf_inputs.start.auth_method = 0x01;
-
-		} else if (prov->conf_inputs.caps.output_size &&
-				prov->conf_inputs.caps.output_action) {
-
-			prov->conf_inputs.start.auth_method = 0x02;
-			prov->conf_inputs.start.auth_action =
-					u16_high_bit(l_get_be16(data + 6));
-			prov->conf_inputs.start.auth_size =
-						(data[5] > 8 ? 8 : data[5]);
-
-		} else if (prov->conf_inputs.caps.input_size &&
-				prov->conf_inputs.caps.input_action) {
-
-			prov->conf_inputs.start.auth_method = 0x03;
-			prov->conf_inputs.start.auth_action =
-					u16_high_bit(l_get_be16(data + 9));
-			prov->conf_inputs.start.auth_size =
-						(data[8] > 8 ? 8 : data[8]);
-
-		}
 
 		out = l_malloc(1 + sizeof(prov->conf_inputs.start));
 		out[0] = PROV_START;
@@ -789,7 +809,7 @@ static void int_prov_ack(void *user_data, uint8_t msg_num)
 	switch (prov->state) {
 	case INT_PROV_START_SENT:
 		prov->state = INT_PROV_START_ACKED;
-		if (prov->conf_inputs.caps.pub_type == 0)
+		if (!prov->conf_inputs.start.pub_key)
 			send_pub_key(prov);
 		break;
 
@@ -798,7 +818,7 @@ static void int_prov_ack(void *user_data, uint8_t msg_num)
 		break;
 
 	case INT_PROV_KEY_SENT:
-		if (prov->conf_inputs.caps.pub_type == 1)
+		if (prov->conf_inputs.start.pub_key)
 			int_prov_auth();
 		break;
 

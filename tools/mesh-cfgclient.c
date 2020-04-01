@@ -632,6 +632,13 @@ static bool register_agent(void)
 		return false;
 	}
 
+	if (!l_dbus_object_add_interface(dbus, app.agent_path,
+					 L_DBUS_INTERFACE_PROPERTIES, NULL)) {
+		l_error("Failed to add interface %s",
+					L_DBUS_INTERFACE_PROPERTIES);
+		return false;
+	}
+
 	return true;
 }
 
