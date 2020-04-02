@@ -54,6 +54,7 @@ struct mesh_config {
 	uint8_t uuid[16];
 	uint32_t write_seq;
 	struct timeval write_time;
+	struct l_queue *idles;
 };
 
 struct write_info {
@@ -1677,6 +1678,7 @@ static struct mesh_config *create_config(const char *cfg_path,
 	memcpy(cfg->uuid, uuid, 16);
 	cfg->node_dir_path = l_strdup(cfg_path);
 	cfg->write_seq = node->seq_number;
+	cfg->idles = l_queue_new();
 	gettimeofday(&cfg->write_time, NULL);
 
 	return cfg;
@@ -2104,6 +2106,7 @@ static bool load_node(const char *fname, const uint8_t uuid[16],
 		memcpy(cfg->uuid, uuid, 16);
 		cfg->node_dir_path = l_strdup(fname);
 		cfg->write_seq = node.seq_number;
+		cfg->idles = l_queue_new();
 		gettimeofday(&cfg->write_time, NULL);
 
 		result = cb(&node, uuid, cfg, user_data);
@@ -2130,17 +2133,26 @@ done:
 	return result;
 }
 
+static void release_idle(void *data)
+{
+	struct l_idle *idle = data;
+
+	l_idle_remove(idle);
+}
+
 void mesh_config_release(struct mesh_config *cfg)
 {
 	if (!cfg)
 		return;
+
+	l_queue_destroy(cfg->idles, release_idle);
 
 	l_free(cfg->node_dir_path);
 	json_object_put(cfg->jnode);
 	l_free(cfg);
 }
 
-static void idle_save_config(void *user_data)
+static void idle_save_config(struct l_idle *idle, void *user_data)
 {
 	struct write_info *info = user_data;
 	char *fname_tmp, *fname_bak, *fname_cfg;
@@ -2169,6 +2181,11 @@ static void idle_save_config(void *user_data)
 	if (info->cb)
 		info->cb(info->user_data, result);
 
+	if (idle) {
+		l_queue_remove(info->cfg->idles, idle);
+		l_idle_remove(idle);
+	}
+
 	l_free(info);
 
 }
@@ -2186,10 +2203,14 @@ bool mesh_config_save(struct mesh_config *cfg, bool no_wait,
 	info->cb = cb;
 	info->user_data = user_data;
 
-	if (no_wait)
-		idle_save_config(info);
-	else
-		l_idle_oneshot(idle_save_config, info, NULL);
+	if (no_wait) {
+		idle_save_config(NULL, info);
+	} else {
+		struct l_idle *idle;
+
+		idle = l_idle_create(idle_save_config, info, NULL);
+		l_queue_push_tail(cfg->idles, idle);
+	}
 
 	return true;
 }
