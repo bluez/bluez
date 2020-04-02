@@ -31,7 +31,6 @@ struct mesh_node;
 #define APP_AID_DEV	0x00
 
 #define CTL		0x80
-#define SEQ_MASK	0xffffff
 
 #define CREDFLAG_MASK	0x1000
 
