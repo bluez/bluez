@@ -3094,6 +3094,49 @@ Set Wideband Speech Command
 				Invalid Index
 
 
+Read Security Information Command
+=================================
+
+	Command Code:		0x0048
+	Controller Index:	<controller id>
+	Command Parameters:
+	Return Parameters:	Security_Data_Length (2 Octets)
+				Security_Data (0-65535 Octets)
+
+	This command is used to retrieve the supported security features
+	by the controller or the host stack.
+
+	The Security_Data_Length and Security_Data parameters provide
+	a list of security settings, features and information. It uses
+	the same format as EIR_Data, but with the namespace defined here.
+
+		Data Type	Name
+		--------------------
+		0x01		Flags
+		0x02		Max Encryption Key Size (BR/EDR)
+		0x03		Max Encryption Key Size (LE)
+
+	Flags (data type 0x01)
+
+		0	Remote public key validation (BR/EDR)
+		1	Remote public key validation (LE)
+		2	Encryption key size enforcement (BR/EDR)
+		3	Encryption key size enforcement (LE)
+
+	Max Encryption Key Size (data types 0x02 and 0x03)
+
+		When the field is present, then it provides 1 Octet value
+		indicating the max encryption key size. If the field is not
+		present, then it is unknown what the max encryption key
+		size of the controller or host is in use.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
