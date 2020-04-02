@@ -4318,6 +4318,11 @@ static void cmd_phy(int argc, char **argv)
 	}
 }
 
+static void cmd_wbs(int argc, char **argv)
+{
+	cmd_setting(MGMT_OP_SET_WIDEBAND_SPEECH, argc, argv);
+}
+
 static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 {
 	mgmt_register(mgmt, MGMT_EV_CONTROLLER_ERROR, index, controller_error,
@@ -4519,6 +4524,8 @@ static const struct bt_shell_menu main_menu = {
 				"[EDR2M1SLOT] [EDR2M3SLOT] [EDR2M5SLOT]"
 				"[EDR3M1SLOT] [EDR3M3SLOT] [EDR3M5SLOT]",
 		cmd_phy,		"Get/Set PHY Configuration"	},
+	{ "wbs",		"<on/off>",
+		cmd_wbs,		"Toggle Wideband-Speech support"},
 	{} },
 };
 
