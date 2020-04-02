@@ -1401,7 +1401,7 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_rp_read_ext_index_list *rp = param;
-	uint16_t count, index_filter = PTR_TO_UINT(user_data);
+	uint16_t count;
 	unsigned int i;
 
 	if (status != 0) {
@@ -1429,9 +1429,6 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 	for (i = 0; i < count; i++) {
 		uint16_t index = le16_to_cpu(rp->entry[i].index);
 		char *busstr = hci_bustostr(rp->entry[i].bus);
-
-		if (index_filter != MGMT_INDEX_NONE && index_filter != index)
-			continue;
 
 		switch (rp->entry[i].type) {
 		case 0x00:
@@ -1471,13 +1468,23 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 		bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static void cmd_extinfo(
-						int argc, char **argv)
+static void cmd_extinfo(int argc, char **argv)
 {
-	if (!mgmt_send(mgmt, MGMT_OP_READ_EXT_INDEX_LIST,
-				MGMT_INDEX_NONE, 0, NULL,
-				ext_index_rsp, UINT_TO_PTR(index), NULL)) {
-		error("Unable to send ext_index_list cmd");
+	if (mgmt_index == MGMT_INDEX_NONE) {
+		if (!mgmt_send(mgmt, MGMT_OP_READ_EXT_INDEX_LIST,
+					MGMT_INDEX_NONE, 0, NULL,
+					ext_index_rsp, mgmt, NULL)) {
+			error("Unable to send ext_index_list cmd");
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		return;
+	}
+
+	if (!mgmt_send(mgmt, MGMT_OP_READ_EXT_INFO, mgmt_index, 0, NULL,
+					ext_info_rsp,
+					UINT_TO_PTR(mgmt_index), NULL)) {
+		error("Unable to send ext_read_info cmd");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
