@@ -897,6 +897,7 @@ static const char *mgmt_op[] = {
 	"Get PHY Configuration",
 	"Set PHY Configuration",
 	"Set Blocked Keys",
+	"Set Wideband Speech",
 };
 
 static const char *mgmt_ev[] = {
