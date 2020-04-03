@@ -336,7 +336,6 @@ tools_mesh_cfgclient_SOURCES = tools/mesh-cfgclient.c \
 				tools/mesh/agent.h tools/mesh/agent.c \
 				tools/mesh/mesh-db.h tools/mesh/mesh-db.c \
 				mesh/util.h mesh/util.c \
-				mesh/mesh-config.h mesh/mesh-config-json.c \
 				mesh/crypto.h mesh/crypto.c
 
 tools_mesh_cfgclient_LDADD = lib/libbluetooth-internal.la src/libshared-ell.la \

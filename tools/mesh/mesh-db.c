@@ -50,11 +50,73 @@ struct mesh_db {
 	json_object *jcfg;
 	char *cfg_fname;
 	uint8_t token[8];
-	uint8_t pad[12];
 	struct timeval write_time;
 };
 
-struct mesh_db *cfg;
+static struct mesh_db *cfg;
+static const char *bak_ext = ".bak";
+static const char *tmp_ext = ".tmp";
+
+static bool save_config_file(const char *fname)
+{
+	FILE *outfile;
+	const char *str;
+	bool result = false;
+
+	outfile = fopen(fname, "w");
+	if (!outfile) {
+		l_error("Failed to save configuration to %s", cfg->cfg_fname);
+		return false;
+	}
+
+	str = json_object_to_json_string_ext(cfg->jcfg,
+						JSON_C_TO_STRING_PRETTY);
+
+	if (fwrite(str, sizeof(char), strlen(str), outfile) < strlen(str))
+		l_warn("Incomplete write of mesh configuration");
+	else
+		result = true;
+
+	fclose(outfile);
+
+	return result;
+}
+
+static bool save_config(void)
+{
+	char *fname_tmp, *fname_bak, *fname_cfg;
+	bool result = false;
+
+	fname_cfg = cfg->cfg_fname;
+	fname_tmp = l_strdup_printf("%s%s", fname_cfg, tmp_ext);
+	fname_bak = l_strdup_printf("%s%s", fname_cfg, bak_ext);
+	remove(fname_tmp);
+
+	result = save_config_file(fname_tmp);
+
+	if (result) {
+		remove(fname_bak);
+		rename(fname_cfg, fname_bak);
+		rename(fname_tmp, fname_cfg);
+	}
+
+	remove(fname_tmp);
+
+	l_free(fname_tmp);
+	l_free(fname_bak);
+
+	gettimeofday(&cfg->write_time, NULL);
+
+	return result;
+}
+
+static void release_config(void)
+{
+	l_free(cfg->cfg_fname);
+	json_object_put(cfg->jcfg);
+	l_free(cfg);
+	cfg = NULL;
+}
 
 static json_object *get_node_by_unicast(uint16_t unicast)
 {
@@ -430,7 +492,7 @@ static bool add_node_key(json_object *jobj, const char *desc, uint16_t idx)
 	json_object_object_add(jkey, "index", jval);
 	json_object_array_add(jarray, jkey);
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 }
 
 bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx)
@@ -461,7 +523,7 @@ bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl)
 	if (!write_int(jnode, "defaultTTL", ttl))
 		return false;
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 }
 
 static void jarray_key_del(json_object *jarray, int16_t idx)
@@ -500,7 +562,7 @@ static bool delete_key(json_object *jobj, const char *desc, uint16_t idx)
 
 	jarray_key_del(jarray, idx);
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 }
 
 bool mesh_db_node_net_key_del(uint16_t unicast, uint16_t net_idx)
@@ -645,7 +707,7 @@ bool mesh_db_net_key_add(uint16_t net_idx)
 
 	json_object_array_add(jarray, jkey);
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 
 fail:
 	json_object_put(jkey);
@@ -681,7 +743,7 @@ bool mesh_db_net_key_phase_set(uint16_t net_idx, uint8_t phase)
 
 	json_object_object_add(jkey, "phase", jval);
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 }
 
 bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx)
@@ -692,7 +754,7 @@ bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx)
 	if (!add_app_key(cfg->jcfg, net_idx, app_idx))
 		return false;
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 }
 
 bool mesh_db_app_key_del(uint16_t app_idx)
@@ -735,7 +797,7 @@ bool mesh_db_add_group(struct mesh_group *grp)
 
 	json_object_array_add(jgroups, jgroup);
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 
 fail:
 	json_object_put(jgroup);
@@ -873,7 +935,7 @@ bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 
 	json_object_array_add(jnodes, jnode);
 
-	if (!mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL))
+	if (!save_config())
 		goto fail;
 
 	return true;
@@ -919,7 +981,7 @@ bool mesh_db_del_node(uint16_t unicast)
 
 	json_object_array_del_idx(jarray, i, 1);
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 }
 
 bool mesh_db_get_token(uint8_t token[8])
@@ -966,7 +1028,7 @@ bool mesh_db_set_addr_range(uint16_t low, uint16_t high)
 	if (!write_uint16_hex(cfg->jcfg, "high", high))
 		return false;
 
-	return mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL);
+	return save_config();
 }
 
 bool mesh_db_create(const char *fname, const uint8_t token[8],
@@ -1019,14 +1081,13 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 
 	json_object_object_add(jcfg, "appKeys", jarray);
 
-	if (!mesh_config_save((struct mesh_config *) cfg, true, NULL, NULL))
+	if (!save_config())
 		goto fail;
 
 	return true;
 
 fail:
-	mesh_config_release((struct mesh_config *)cfg);
-	cfg = NULL;
+	release_config();
 
 	return false;
 }
@@ -1085,7 +1146,7 @@ bool mesh_db_load(const char *fname)
 
 	return true;
 fail:
-	mesh_config_release((struct mesh_config *)cfg);
-	cfg = NULL;
+	release_config();
+
 	return false;
 }
