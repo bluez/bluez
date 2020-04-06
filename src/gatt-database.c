@@ -2394,6 +2394,7 @@ static int sock_io_send(struct io *io, const void *data, size_t len)
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 
 	return sendmsg(io_get_fd(io), &msg, MSG_NOSIGNAL);
 }
