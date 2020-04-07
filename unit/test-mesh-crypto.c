@@ -660,9 +660,24 @@ static const struct mesh_crypto_test s8_6_2 = {
 #define INVAL	COLOR_YELLOW "INVALID" COLOR_OFF
 
 #define EVALCMP(a, b, l)	memcmp((a), (b), (l)) ? FAIL : PASS
-#define EVALSTR(a, b)		(a) && (b) ? (strcmp((a), (b)) ? FAIL : PASS) : INVAL
-#define EVALNUM(a, b)		a == b ? PASS : FAIL
+#define EXITCMP(a, b, l)	do { if (memcmp((a), (b), (l))) \
+					exit(1); \
+				} while (0)
+
+#define EVALSTR(a, b)	(((a) && (b)) ? (strcmp((a), (b)) ? FAIL : PASS) \
+								: INVAL)
+#define EXITSTR(a, b)	do { if ((a) && (b)) { \
+					if (strcmp((a), (b))) \
+						exit(1); \
+				} else \
+					exit(1); \
+			} while (0)
+
+#define EVALNUM(a, b)	(((a) == (b)) ? PASS : FAIL)
+#define EXITNUM(a, b)	do { if (a != b) exit(1); } while (0)
+
 #define EVALBOOLNOTBOTH(a, b)	!(a && b) ? PASS : FAIL
+#define EXITBOOLNOTBOTH(a, b)	do { if (!!(a && b)) exit(1); } while (0)
 
 static void verify_data(const char *label, unsigned int indent,
 			const char *sample, const uint8_t *data, size_t size)
@@ -673,6 +688,7 @@ static void verify_data(const char *label, unsigned int indent,
 	l_info("%-20s =%*c%s", label, 1 + (indent * 2), ' ', sample);
 	l_info("%-20s  %*c%s => %s", "", 1 + (indent * 2), ' ', str,
 							EVALSTR(sample, str));
+	EXITSTR(sample, str);
 	l_free(str);
 }
 
@@ -684,6 +700,7 @@ static void verify_bool_not_both(const char *label, unsigned int indent,
 	l_info("%-20s  %*c%s => %s", "", 1 + (indent * 2), ' ',
 						data ? "true" : "false",
 						EVALBOOLNOTBOTH(sample, data));
+	EXITBOOLNOTBOTH(sample, data);
 }
 
 static void verify_uint8(const char *label, unsigned int indent,
@@ -692,6 +709,7 @@ static void verify_uint8(const char *label, unsigned int indent,
 	l_info("%-20s =%*c%02x", label, 1 + (indent * 2), ' ', sample);
 	l_info("%-20s  %*c%02x => %s", "", 1 + (indent * 2), ' ', data,
 							EVALNUM(sample, data));
+	EXITNUM(sample, data);
 }
 
 static void verify_uint16(const char *label, unsigned int indent,
@@ -700,6 +718,7 @@ static void verify_uint16(const char *label, unsigned int indent,
 	l_info("%-20s =%*c%04x", label, 1 + (indent * 2), ' ', sample);
 	l_info("%-20s  %*c%04x => %s", "", 1 + (indent * 2), ' ', data,
 							EVALNUM(sample, data));
+	EXITNUM(sample, data);
 }
 
 static void verify_uint24(const char *label, unsigned int indent,
@@ -708,6 +727,7 @@ static void verify_uint24(const char *label, unsigned int indent,
 	l_info("%-20s =%*c%06x", label, 1 + (indent * 2), ' ', sample);
 	l_info("%-20s  %*c%06x => %s", "", 1 + (indent * 2), ' ', data,
 							EVALNUM(sample, data));
+	EXITNUM(sample, data);
 }
 
 static void verify_uint32(const char *label, unsigned int indent,
@@ -716,6 +736,7 @@ static void verify_uint32(const char *label, unsigned int indent,
 	l_info("%-20s =%*c%08x", label, 1 + (indent * 2), ' ', sample);
 	l_info("%-20s  %*c%08x => %s", "", 1 + (indent * 2), ' ', data,
 							EVALNUM(sample, data));
+	EXITNUM(sample, data);
 }
 
 static void verify_uint64(const char *label, unsigned int indent,
@@ -726,6 +747,7 @@ static void verify_uint64(const char *label, unsigned int indent,
 	l_info("%-20s  %*c%16llx => %s", "", 1 + (indent * 2), ' ',
 						(long long unsigned int) data,
 						EVALNUM(sample, data));
+	EXITNUM(sample, data);
 }
 
 static void show_str(const char *label, unsigned int indent,
@@ -1694,7 +1716,7 @@ static void check_decrypt(const struct mesh_crypto_test *keys)
 				app_msg,
 				keys->akf ? app_key : dev_key);
 
-		calc_app_mic32 = l_get_be64(app_msg + app_msg_len - 4);
+		calc_app_mic32 = l_get_be32(app_msg + app_msg_len - 4);
 
 		verify_data("Payload", 0, keys->app_msg, app_msg,
 							app_msg_len - 4);
