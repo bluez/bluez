@@ -113,7 +113,7 @@ static struct model_info *cfgcli;
 static struct l_queue *devices;
 
 static bool prov_in_progress;
-static const char *caps[2] = {"out-numeric", "in-numeric"};
+static const char *caps[] = {"static-oob", "out-numeric", "in-numeric"};
 
 static bool have_config;
 
