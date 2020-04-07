@@ -881,15 +881,15 @@ static void respond_not_supported(struct bt_att *att, uint8_t opcode)
 									NULL);
 }
 
-static bool handle_signed(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
-								ssize_t pdu_len)
+static bool handle_signed(struct bt_att *att, uint8_t *pdu, ssize_t pdu_len)
 {
 	uint8_t *signature;
 	uint32_t sign_cnt;
 	struct sign_info *sign;
+	uint8_t opcode = pdu[0];
 
 	/* Check if there is enough data for a signature */
-	if (pdu_len < 2 + BT_ATT_SIGNATURE_LEN)
+	if (pdu_len < 3 + BT_ATT_SIGNATURE_LEN)
 		goto fail;
 
 	sign = att->remote_sign;
@@ -903,10 +903,8 @@ static bool handle_signed(struct bt_att *att, uint8_t opcode, uint8_t *pdu,
 	if (!sign->counter(&sign_cnt, sign->user_data))
 		goto fail;
 
-	/* Generate signature and verify it */
-	if (!bt_crypto_sign_att(att->crypto, sign->key, pdu,
-				pdu_len - BT_ATT_SIGNATURE_LEN, sign_cnt,
-				signature))
+	/* Verify received signature */
+	if (!bt_crypto_verify_att_sign(att->crypto, sign->key, pdu, pdu_len))
 		goto fail;
 
 	return true;
@@ -918,18 +916,13 @@ fail:
 	return false;
 }
 
-static void handle_notify(struct bt_att_chan *chan, uint8_t opcode,
-						uint8_t *pdu, ssize_t pdu_len)
+static void handle_notify(struct bt_att_chan *chan, uint8_t *pdu,
+							ssize_t pdu_len)
 {
 	struct bt_att *att = chan->att;
 	const struct queue_entry *entry;
 	bool found;
-
-	if ((opcode & ATT_OP_SIGNED_MASK) && !att->crypto) {
-		if (!handle_signed(att, opcode, pdu, pdu_len))
-			return;
-		pdu_len -= BT_ATT_SIGNATURE_LEN;
-	}
+	uint8_t opcode = pdu[0];
 
 	bt_att_ref(att);
 
@@ -943,6 +936,12 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t opcode,
 
 		if (!opcode_match(notify->opcode, opcode))
 			continue;
+
+		if ((opcode & ATT_OP_SIGNED_MASK) && att->crypto) {
+			if (!handle_signed(att, pdu, pdu_len))
+				return;
+			pdu_len -= BT_ATT_SIGNATURE_LEN;
+		}
 
 		/* BLUETOOTH CORE SPECIFICATION Version 5.1 | Vol 3, Part G
 		 * page 2370
@@ -963,7 +962,7 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t opcode,
 		found = true;
 
 		if (notify->callback)
-			notify->callback(chan, opcode, pdu, pdu_len,
+			notify->callback(chan, opcode, pdu + 1, pdu_len - 1,
 							notify->user_data);
 
 		/* callback could remove all entries from notify list */
@@ -1054,7 +1053,7 @@ static bool can_read_data(struct io *io, void *user_data)
 		util_debug(att->debug_callback, att->debug_data,
 					"(chan %p) ATT PDU received: 0x%02x",
 					chan, opcode);
-		handle_notify(chan, opcode, pdu + 1, bytes_read - 1);
+		handle_notify(chan, pdu, bytes_read);
 		break;
 	}
 
