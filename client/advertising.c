@@ -80,6 +80,7 @@ static struct ad {
 	bool appearance;
 } ad = {
 	.local_appearance = UINT16_MAX,
+	.discoverable = true,
 };
 
 static void ad_release(DBusConnection *conn)
