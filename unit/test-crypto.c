@@ -272,6 +272,58 @@ static void test_gatt_hash(gconstpointer data)
 	tester_test_passed();
 }
 
+struct verify_sign_test_data {
+	const uint8_t *msg;
+	uint16_t msg_len;
+	const uint8_t *key;
+	bool match;
+};
+
+static const uint8_t msg_to_verify_pass[] = {
+	0xd2, 0x12, 0x00, 0x13, 0x37, 0x01, 0x00, 0x00, 0x00, 0xF1, 0x87, 0x1E,
+	0x93, 0x3C, 0x90, 0x0F, 0xf2
+};
+
+static const struct verify_sign_test_data verify_sign_pass_data = {
+	.msg = msg_to_verify_pass,
+	.msg_len = sizeof(msg_to_verify_pass),
+	.key = key_5,
+	.match = true,
+};
+
+static const uint8_t msg_to_verify_bad_sign[] = {
+	0xd2, 0x12, 0x00, 0x13, 0x37, 0x01, 0x00, 0x00, 0x00, 0xF1, 0x87, 0x1E,
+	0x93, 0x3C, 0x90, 0x0F, 0xf1
+};
+
+static const struct verify_sign_test_data verify_sign_bad_sign_data = {
+	.msg = msg_to_verify_bad_sign,
+	.msg_len = sizeof(msg_to_verify_bad_sign),
+	.key = key_5,
+	.match = false,
+};
+
+static const uint8_t msg_to_verify_too_short[] = {
+	0xd2, 0x12, 0x00, 0x13, 0x37
+};
+
+static const struct verify_sign_test_data verify_sign_too_short_data = {
+	.msg = msg_to_verify_too_short,
+	.msg_len = sizeof(msg_to_verify_too_short),
+	.key = key_5,
+	.match = false,
+};
+
+static void test_verify_sign(gconstpointer data)
+{
+	const struct verify_sign_test_data *d = data;
+	bool result = bt_crypto_verify_att_sign(crypto, d->key, d->msg,
+						d->msg_len);
+	g_assert(result == d->match);
+
+	tester_test_passed();
+}
+
 int main(int argc, char *argv[])
 {
 	int exit_status;
@@ -291,6 +343,13 @@ int main(int argc, char *argv[])
 	tester_add("/crypto/sign_att_5", &test_data_5, NULL, test_sign, NULL);
 
 	tester_add("/crypto/gatt_hash", NULL, NULL, test_gatt_hash, NULL);
+
+	tester_add("/crypto/verify_sign_pass", &verify_sign_pass_data,
+						NULL, test_verify_sign, NULL);
+	tester_add("/crypto/verify_sign_bad_sign", &verify_sign_bad_sign_data,
+						NULL, test_verify_sign, NULL);
+	tester_add("/crypto/verify_sign_too_short", &verify_sign_too_short_data,
+						NULL, test_verify_sign, NULL);
 
 	exit_status = tester_run();
 
