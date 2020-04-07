@@ -2696,6 +2696,10 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 	/* If first beacon seen, accept without judgement */
 	if (net->iv_upd_state == IV_UPD_INIT) {
 		if (ivu) {
+			/* Ignore beacons with IVU if IV already updated */
+			if (iv_index == net->iv_index && !net->iv_update)
+				return;
+
 			/* Other devices will be accepting old or new iv_index,
 			 * but we don't know how far through update they are.
 			 * Starting permissive state will allow us maximum
@@ -2716,6 +2720,10 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 			l_error("Update attempted too soon");
 			return;
 		}
+
+		/* Ignore beacons with IVU if IV already updated */
+		if (iv_index == net->iv_index)
+			return;
 
 		if (!net->iv_update) {
 			l_info("iv_upd_state = IV_UPD_UPDATING");
