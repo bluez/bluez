@@ -1554,7 +1554,8 @@ int control_tracing(void)
 		return 0;
 	}
 
-	open_channel(HCI_CHANNEL_CONTROL);
+	if (packet_has_filter(PACKET_FILTER_SHOW_MGMT_SOCKET))
+		open_channel(HCI_CHANNEL_CONTROL);
 
 	return 0;
 }

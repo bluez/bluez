@@ -34,6 +34,7 @@
 #define PACKET_FILTER_SHOW_ACL_DATA	(1 << 4)
 #define PACKET_FILTER_SHOW_SCO_DATA	(1 << 5)
 #define PACKET_FILTER_SHOW_A2DP_STREAM	(1 << 6)
+#define PACKET_FILTER_SHOW_MGMT_SOCKET	(1 << 7)
 
 bool packet_has_filter(unsigned long filter);
 void packet_set_filter(unsigned long filter);

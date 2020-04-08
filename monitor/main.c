@@ -69,6 +69,7 @@ static void usage(void)
 		"\t-d, --tty <tty>        Read data from TTY\n"
 		"\t-B, --tty-speed <rate> Set TTY speed (default 115200)\n"
 		"\t-V, --vendor <compid>  Set default company identifier\n"
+		"\t-M, --mgmt             Open channel for mgmt events\n"
 		"\t-t, --time             Show time instead of time offset\n"
 		"\t-T, --date             Show time and date information\n"
 		"\t-S, --sco              Dump SCO traffic\n"
@@ -92,6 +93,7 @@ static const struct option main_options[] = {
 	{ "tty",       required_argument, NULL, 'd' },
 	{ "tty-speed", required_argument, NULL, 'B' },
 	{ "vendor",    required_argument, NULL, 'V' },
+	{ "mgmt",      no_argument,       NULL, 'M' },
 	{ "time",      no_argument,       NULL, 't' },
 	{ "date",      no_argument,       NULL, 'T' },
 	{ "sco",       no_argument,       NULL, 'S' },
@@ -130,7 +132,7 @@ int main(int argc, char *argv[])
 		int opt;
 		struct sockaddr_un addr;
 
-		opt = getopt_long(argc, argv, "r:w:a:s:p:i:d:B:V:tTSAE:PJ:R:vh",
+		opt = getopt_long(argc, argv, "r:w:a:s:p:i:d:B:V:MtTSAE:PJ:R:vh",
 							main_options, NULL);
 		if (opt < 0)
 			break;
@@ -179,6 +181,9 @@ int main(int argc, char *argv[])
 		case 'V':
 			str = optarg;
 			packet_set_fallback_manufacturer(atoi(str));
+			break;
+		case 'M':
+			filter_mask |= PACKET_FILTER_SHOW_MGMT_SOCKET;
 			break;
 		case 't':
 			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
