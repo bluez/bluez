@@ -72,7 +72,6 @@ struct join_data{
 	struct l_dbus_message *msg;
 	struct mesh_agent *agent;
 	char *sender;
-	const char *app_path;
 	struct mesh_node *node;
 	uint32_t disc_watch;
 	uint8_t *uuid;
@@ -445,7 +444,7 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 		return false;
 
 	owner = join_pending->sender;
-	path = join_pending->app_path;
+	path = node_get_app_path(join_pending->node);
 
 	if (status == PROV_ERR_SUCCESS &&
 	    !node_add_pending_local(join_pending->node, info))
@@ -551,7 +550,6 @@ static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
 
 	join_pending->sender = l_strdup(sender);
 	join_pending->msg = l_dbus_message_ref(msg);
-	join_pending->app_path = app_path;
 
 	/* Try to create a temporary node */
 	node_join(app_path, sender, join_pending->uuid, node_init_cb);
