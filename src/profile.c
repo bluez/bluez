@@ -1595,9 +1595,6 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		if (conn->psm == 0 && sdp_get_proto_desc(protos, OBEX_UUID))
 			conn->psm = get_goep_l2cap_psm(rec);
 
-		conn->features = get_supported_features(rec);
-		conn->version = get_profile_version(rec);
-
 		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
 									NULL);
 		sdp_list_free(protos, NULL);
