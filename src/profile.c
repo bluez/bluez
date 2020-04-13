@@ -920,9 +920,21 @@ static void append_prop(gpointer a, gpointer b)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static int get_supported_features(const sdp_record_t *rec)
+static int get_supported_features(const sdp_record_t *rec, const char *uuid)
 {
 	sdp_data_t *data;
+
+	if (strcasecmp(uuid, HSP_AG_UUID) == 0) {
+		/* HSP AG role does not provide any features */
+		return 0;
+	} else if (strcasecmp(uuid, HSP_HS_UUID) == 0) {
+		/* HSP HS role provides Remote Audio Volume Control */
+		data = sdp_data_get(rec, SDP_ATTR_REMOTE_AUDIO_VOLUME_CONTROL);
+		if (!data || data->dtd != SDP_BOOL)
+			return -ENOENT;
+		else
+			return data->val.int8 ? 0x1 : 0x0;
+	}
 
 	data = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES);
 	if (!data || data->dtd != SDP_UINT16) {
@@ -974,7 +986,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 	if (remote_uuid) {
 		rec = btd_device_get_record(conn->device, remote_uuid);
 		if (rec) {
-			features = get_supported_features(rec);
+			features = get_supported_features(rec, remote_uuid);
 			if (features >= 0) {
 				conn->features = features;
 				has_features = true;
