@@ -56,6 +56,7 @@
 
 #define DUN_DEFAULT_CHANNEL	1
 #define SPP_DEFAULT_CHANNEL	3
+#define HSP_HS_DEFAULT_CHANNEL	6
 #define HFP_HF_DEFAULT_CHANNEL	7
 #define OPP_DEFAULT_CHANNEL	9
 #define FTP_DEFAULT_CHANNEL	10
@@ -152,6 +153,49 @@
 		</attribute>						\
 		<attribute id=\"0x0301\" >				\
 			<uint8 value=\"0x01\" />			\
+		</attribute>						\
+	</record>"
+
+/* SDP record for Headset role of HSP 1.2 profile with Erratum 3507 */
+#define HSP_HS_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"0x1108\" />		\
+				<uuid value=\"0x1131\" />		\
+				<uuid value=\"0x1203\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0004\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x0100\" />	\
+				</sequence>				\
+				<sequence>				\
+					<uuid value=\"0x0003\" />	\
+					<uint8 value=\"0x%02x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x1108\" />	\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+		<attribute id=\"0x0302\">				\
+			<boolean value=\"%s\" />			\
 		</attribute>						\
 	</record>"
 
@@ -1776,6 +1820,15 @@ static char *get_hfp_ag_record(struct ext_profile *ext, struct ext_io *l2cap,
 						ext->name, ext->features);
 }
 
+static char *get_hsp_hs_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
+{
+	/* HSP 1.2: By default Remote Audio Volume Control is off */
+	return g_strdup_printf(HSP_HS_RECORD, rfcomm->chan, ext->version,
+				ext->name, (ext->features & 0x1) ? "true" :
+				"false");
+}
+
 static char *get_hsp_ag_record(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm)
 {
@@ -1988,6 +2041,16 @@ static struct default_settings {
 		.auto_connect	= true,
 		.get_record	= get_hfp_hf_record,
 		.version	= 0x0107,
+	}, {
+		.uuid		= HSP_HS_UUID,
+		.name		= "Headset unit",
+		.priority	= BTD_PROFILE_PRIORITY_HIGH,
+		.remote_uuid	= HSP_AG_UUID,
+		.channel	= HSP_HS_DEFAULT_CHANNEL,
+		.authorize	= true,
+		.auto_connect	= true,
+		.get_record	= get_hsp_hs_record,
+		.version	= 0x0102,
 	}, {
 		.uuid		= HFP_AG_UUID,
 		.name		= "Hands-Free Voice gateway",
