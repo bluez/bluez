@@ -920,13 +920,14 @@ static void append_prop(gpointer a, gpointer b)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static uint16_t get_supported_features(const sdp_record_t *rec)
+static int get_supported_features(const sdp_record_t *rec)
 {
 	sdp_data_t *data;
 
 	data = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES);
-	if (!data || data->dtd != SDP_UINT16)
-		return 0;
+	if (!data || data->dtd != SDP_UINT16) {
+		return -ENOENT;
+	}
 
 	return data->val.uint16;
 }
@@ -959,7 +960,8 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 	const char *remote_uuid = ext->remote_uuid;
 	const sdp_record_t *rec;
 	const char *path;
-	int fd;
+	int fd, features;
+	bool has_features = false;
 
 	msg = dbus_message_new_method_call(ext->owner, ext->path,
 							"org.bluez.Profile1",
@@ -972,7 +974,11 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 	if (remote_uuid) {
 		rec = btd_device_get_record(conn->device, remote_uuid);
 		if (rec) {
-			conn->features = get_supported_features(rec);
+			features = get_supported_features(rec);
+			if (features >= 0) {
+				conn->features = features;
+				has_features = true;
+			}
 			conn->version = get_profile_version(rec);
 		}
 	}
@@ -991,7 +997,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 		dict_append_entry(&dict, "Version", DBUS_TYPE_UINT16,
 							&conn->version);
 
-	if (conn->features)
+	if (has_features)
 		dict_append_entry(&dict, "Features", DBUS_TYPE_UINT16,
 							&conn->features);
 
@@ -1983,6 +1989,8 @@ static struct default_settings {
 		.auto_connect	= true,
 		.get_record	= get_hfp_ag_record,
 		.version	= 0x0107,
+		/* HFP 1.7.2: By default features bitfield is 0b001001 */
+		.features	= 0x09,
 	}, {
 		.uuid		= HSP_AG_UUID,
 		.name		= "Headset Voice gateway",
