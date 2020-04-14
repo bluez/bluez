@@ -16,10 +16,33 @@ Object path	/org/bluez
 			If an application disconnects from the bus all
 			its registered profiles will be removed.
 
+			Some predefined services:
+
+			HFP AG UUID: 0000111f-0000-1000-8000-00805f9b34fb
+
+				Default profile Version is 1.7, profile Features
+				is 0b001001 and RFCOMM channel is 13.
+				Authentication is required.
+
 			HFP HS UUID: 0000111e-0000-1000-8000-00805f9b34fb
 
-				Default RFCOMM channel is 6. And this requires
-				authentication.
+				Default profile Version is 1.7, profile Features
+				is 0b000000 and RFCOMM channel is 7.
+				Authentication is required.
+
+			HSP AG UUID: 00001112-0000-1000-8000-00805f9b34fb
+
+				Default profile Version is 1.2, RFCOMM channel
+				is 12 and Authentication is required. Does not
+				support any Features, option is ignored.
+
+			HSP HS UUID: 00001108-0000-1000-8000-00805f9b34fb
+
+				Default profile Version is 1.2, profile Features
+				is 0b0 and RFCOMM channel is 6. Authentication
+				is required. Features is one bit value, specify
+				capability of Remote Audio Volume Control
+				(by default turned off).
 
 			Available options:
 
