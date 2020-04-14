@@ -970,7 +970,7 @@ static int get_supported_features(const sdp_record_t *rec, const char *uuid)
 
 	if (strcasecmp(uuid, HSP_AG_UUID) == 0) {
 		/* HSP AG role does not provide any features */
-		return 0;
+		return -ENOENT;
 	} else if (strcasecmp(uuid, HSP_HS_UUID) == 0) {
 		/* HSP HS role provides Remote Audio Volume Control */
 		data = sdp_data_get(rec, SDP_ATTR_REMOTE_AUDIO_VOLUME_CONTROL);
