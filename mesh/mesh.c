@@ -461,7 +461,7 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 	path = node_get_app_path(join_pending->node);
 
 	if (status == PROV_ERR_SUCCESS &&
-	    !node_add_pending_local(join_pending->node, info))
+			!node_add_pending_local(join_pending->node, info))
 		status = PROV_ERR_UNEXPECTED_ERR;
 
 	if (status != PROV_ERR_SUCCESS) {
@@ -477,8 +477,8 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 						"JoinComplete");
 
 	l_dbus_message_set_arguments(msg, "t", l_get_be64(token));
-	l_dbus_send_with_reply(dbus, msg,
-				prov_join_complete_reply_cb, NULL, NULL);
+	dbus_send_with_timeout(dbus, msg, prov_join_complete_reply_cb,
+						NULL, DEFAULT_DBUS_TIMEOUT);
 
 	return true;
 }
@@ -723,8 +723,8 @@ static void create_node_ready_cb(void *user_data, int status,
 						"JoinComplete");
 
 	l_dbus_message_set_arguments(msg, "t", l_get_be64(token));
-	l_dbus_send_with_reply(dbus, msg,
-				create_join_complete_reply_cb, node, NULL);
+	dbus_send_with_timeout(dbus, msg, create_join_complete_reply_cb,
+						node, DEFAULT_DBUS_TIMEOUT);
 }
 
 static struct l_dbus_message *create_network_call(struct l_dbus *dbus,
