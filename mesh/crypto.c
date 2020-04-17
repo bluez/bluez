@@ -1038,7 +1038,7 @@ bool mesh_crypto_check_avail()
 			uint8_t data[20];
 			uint8_t mic[8];
 		} crypto;
-		uint8_t bytes[0];
+		uint8_t bytes[73];
 	} u;
 	uint8_t out_msg[sizeof(u.crypto.data) + sizeof(u.crypto.mic)];
 

@@ -1980,7 +1980,7 @@ bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t addr,
 bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq,
 								bool cache)
 {
-	int value;
+	int value = 0;
 	uint32_t cached = 0;
 
 	if (!cfg)
