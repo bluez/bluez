@@ -76,7 +76,7 @@ struct sap_parameter {
 	uint8_t id;
 	uint8_t reserved;
 	uint16_t len;
-	uint8_t val[0];
+	uint8_t val[];
 	/*
 	 * Padding bytes 0-3 bytes
 	 */
@@ -86,7 +86,7 @@ struct sap_message {
 	uint8_t id;
 	uint8_t nparam;
 	uint16_t reserved;
-	struct sap_parameter param[0];
+	struct sap_parameter param[];
 } __attribute__((packed));
 
 #define SAP_BUF_SIZE		512
