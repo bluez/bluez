@@ -394,7 +394,7 @@ static gboolean store_device_info_cb(gpointer user_data)
 		g_key_file_remove_key(key_file, "General", "Alias", NULL);
 
 	if (device->class) {
-		sprintf(class, "0x%6.6x", device->class);
+		sprintf(class, "0x%6.6x", device->class & 0xffffff);
 		g_key_file_set_string(key_file, "General", "Class", class);
 	} else {
 		g_key_file_remove_key(key_file, "General", "Class", NULL);
