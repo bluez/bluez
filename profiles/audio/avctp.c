@@ -1246,7 +1246,7 @@ static int uinput_create(struct btd_device *device, const char *name,
 
 static void init_uinput(struct avctp *session)
 {
-	char name[248 + 1];
+	char name[UINPUT_MAX_NAME_SIZE];
 
 	device_get_name(session->device, name, sizeof(name));
 	if (g_str_equal(name, "Nokia CK-20W")) {
