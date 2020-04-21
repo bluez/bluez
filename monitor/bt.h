@@ -24,11 +24,7 @@
 
 #include <stdint.h>
 
-#define BT_HCI_CMD_5_2		0x2060
-#define BT_HCI_BIT_5_2		(8 * 41) + 5
-#define BT_HCI_SUBEVT_5_2	0x19
-
-#define BT_LL_CMD_5_2		0x1f
+#define BT_HCI_CMD_BIT(_byte, _bit) ((8 * _byte) + _bit)
 
 struct bt_ll_hdr {
 	uint8_t  preamble;
@@ -181,7 +177,7 @@ struct bt_ll_clock_acc {
 
 #define BT_LL_CLOCK_ACCURACY_RSP 0x1e
 
-#define BT_LL_CIS_REQ		BT_LL_CMD_5_2
+#define BT_LL_CIS_REQ		0x1f
 struct bt_ll_cis_req {
 	uint8_t  cig;
 	uint8_t  cis;
@@ -204,14 +200,14 @@ struct bt_ll_cis_req {
 	uint16_t conn_event_count;
 } __attribute__ ((packed));
 
-#define BT_LL_CIS_RSP		BT_LL_CMD_5_2 + 1
+#define BT_LL_CIS_RSP		0x20
 struct bt_ll_cis_rsp {
 	uint8_t  offset_min[3];
 	uint8_t  offset_max[3];
 	uint16_t conn_event_count;
 } __attribute__ ((packed));
 
-#define BT_LL_CIS_IND		BT_LL_CMD_5_2 + 2
+#define BT_LL_CIS_IND		0x21
 struct bt_ll_cis_ind {
 	uint32_t addr;
 	uint8_t  cis_offset[3];
@@ -220,7 +216,7 @@ struct bt_ll_cis_ind {
 	uint16_t conn_event_count;
 } __attribute__ ((packed));
 
-#define BT_LL_CIS_TERMINATE_IND	BT_LL_CMD_5_2 + 3
+#define BT_LL_CIS_TERMINATE_IND	0x22
 struct bt_ll_cis_term_ind {
 	uint8_t  cig;
 	uint8_t  cis;
@@ -2568,8 +2564,8 @@ struct bt_hci_cmd_default_periodic_adv_sync_trans_params {
 	uint8_t  cte_type;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_READ_BUFFER_SIZE_V2	BT_HCI_CMD_5_2
-#define BT_HCI_BIT_LE_READ_BUFFER_SIZE_V2	BT_HCI_BIT_5_2
+#define BT_HCI_CMD_LE_READ_BUFFER_SIZE_V2	0x2060
+#define BT_HCI_BIT_LE_READ_BUFFER_SIZE_V2	BT_HCI_CMD_BIT(41, 5)
 struct bt_hci_rsp_le_read_buffer_size_v2 {
 	uint8_t  status;
 	uint16_t acl_mtu;
@@ -2578,8 +2574,8 @@ struct bt_hci_rsp_le_read_buffer_size_v2 {
 	uint8_t  iso_max_pkt;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_READ_ISO_TX_SYNC		BT_HCI_CMD_5_2 + 1
-#define BT_HCI_BIT_LE_READ_ISO_TX_SYNC		BT_HCI_BIT_5_2 + 1
+#define BT_HCI_CMD_LE_READ_ISO_TX_SYNC		0x2061
+#define BT_HCI_BIT_LE_READ_ISO_TX_SYNC		BT_HCI_CMD_BIT(41, 6)
 struct bt_hci_cmd_le_read_iso_tx_sync {
 	uint16_t handle;
 } __attribute__ ((packed));
@@ -2592,8 +2588,8 @@ struct bt_hci_rsp_le_read_iso_tx_sync {
 	uint8_t  offset[3];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_SET_CIG_PARAMS		BT_HCI_CMD_5_2 + 2
-#define BT_HCI_BIT_LE_SET_CIG_PARAMS		BT_HCI_BIT_5_2 + 2
+#define BT_HCI_CMD_LE_SET_CIG_PARAMS		0x2062
+#define BT_HCI_BIT_LE_SET_CIG_PARAMS		BT_HCI_CMD_BIT(41, 7)
 struct bt_hci_cis_params {
 	uint8_t  cis_id;
 	uint16_t m_sdu;
@@ -2624,8 +2620,8 @@ struct bt_hci_rsp_le_set_cig_params {
 	uint16_t handle[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_SET_CIG_PARAMS_TEST	BT_HCI_CMD_5_2 + 3
-#define BT_HCI_BIT_LE_SET_CIG_PARAMS_TEST	BT_HCI_BIT_5_2 + 3
+#define BT_HCI_CMD_LE_SET_CIG_PARAMS_TEST	0x2063
+#define BT_HCI_BIT_LE_SET_CIG_PARAMS_TEST	BT_HCI_CMD_BIT(42, 0)
 struct bt_hci_cis_params_test {
 	uint8_t  cis_id;
 	uint8_t  nse;
@@ -2653,8 +2649,8 @@ struct bt_hci_cmd_le_set_cig_params_test {
 	struct bt_hci_cis_params_test cis[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_CREATE_CIS		BT_HCI_CMD_5_2 + 4
-#define BT_HCI_BIT_LE_CREATE_CIS		BT_HCI_BIT_5_2 + 4
+#define BT_HCI_CMD_LE_CREATE_CIS		0x2064
+#define BT_HCI_BIT_LE_CREATE_CIS		BT_HCI_CMD_BIT(42, 1)
 struct bt_hci_cis {
 	uint16_t  cis_handle;
 	uint16_t  acl_handle;
@@ -2665,27 +2661,27 @@ struct bt_hci_cmd_le_create_cis {
 	struct bt_hci_cis cis[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_REMOVE_CIG		BT_HCI_CMD_5_2 + 5
-#define BT_HCI_BIT_LE_REMOVE_CIG		BT_HCI_BIT_5_2 + 5
+#define BT_HCI_CMD_LE_REMOVE_CIG		0x2065
+#define BT_HCI_BIT_LE_REMOVE_CIG		BT_HCI_CMD_BIT(42, 2)
 struct bt_hci_cmd_le_remove_cig {
 	uint8_t  cig_id;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_ACCEPT_CIS		BT_HCI_CMD_5_2 + 6
-#define BT_HCI_BIT_LE_ACCEPT_CIS		BT_HCI_BIT_5_2 + 6
+#define BT_HCI_CMD_LE_ACCEPT_CIS		0x2066
+#define BT_HCI_BIT_LE_ACCEPT_CIS		BT_HCI_CMD_BIT(42, 3)
 struct bt_hci_cmd_le_accept_cis {
 	uint16_t handle;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_REJECT_CIS		BT_HCI_CMD_5_2 + 7
-#define BT_HCI_BIT_LE_REJECT_CIS		BT_HCI_BIT_5_2 + 7
+#define BT_HCI_CMD_LE_REJECT_CIS		0x2067
+#define BT_HCI_BIT_LE_REJECT_CIS		BT_HCI_CMD_BIT(42, 4)
 struct bt_hci_cmd_le_reject_cis {
 	uint16_t handle;
 	uint8_t  reason;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_CREATE_BIG		BT_HCI_CMD_5_2 + 8
-#define BT_HCI_BIT_LE_CREATE_BIG		BT_HCI_BIT_5_2 + 8
+#define BT_HCI_CMD_LE_CREATE_BIG		0x2068
+#define BT_HCI_BIT_LE_CREATE_BIG		BT_HCI_CMD_BIT(42, 5)
 struct bt_hci_bis {
 	uint8_t  sdu_interval[3];
 	uint16_t sdu;
@@ -2705,8 +2701,8 @@ struct bt_hci_cmd_le_create_big {
 	struct bt_hci_bis bis[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_CREATE_BIG_TEST		BT_HCI_CMD_5_2 + 9
-#define BT_HCI_BIT_LE_CREATE_BIG_TEST		BT_HCI_BIT_5_2 + 9
+#define BT_HCI_CMD_LE_CREATE_BIG_TEST		0x2069
+#define BT_HCI_BIT_LE_CREATE_BIG_TEST		BT_HCI_CMD_BIT(42, 6)
 struct bt_hci_bis_test {
 	uint8_t  sdu_interval[3];
 	uint16_t iso_interval;
@@ -2731,15 +2727,15 @@ struct bt_hci_cmd_le_create_big_test {
 	struct bt_hci_bis_test bis[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_TERM_BIG			BT_HCI_CMD_5_2 + 10
-#define BT_HCI_BIT_LE_TERM_BIG			BT_HCI_BIT_5_2 + 10
+#define BT_HCI_CMD_LE_TERM_BIG			0x206a
+#define BT_HCI_BIT_LE_TERM_BIG			BT_HCI_CMD_BIT(42, 7)
 struct bt_hci_cmd_le_term_big {
 	uint8_t  big_id;
 	uint8_t  reason;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_BIG_CREATE_SYNC		BT_HCI_CMD_5_2 + 11
-#define BT_HCI_BIT_LE_BIG_CREATE_SYNC		BT_HCI_BIT_5_2 + 11
+#define BT_HCI_CMD_LE_BIG_CREATE_SYNC		0x206b
+#define BT_HCI_BIT_LE_BIG_CREATE_SYNC		BT_HCI_CMD_BIT(43, 0)
 struct bt_hci_bis_sync {
 } __attribute__ ((packed));
 
@@ -2754,20 +2750,20 @@ struct bt_hci_cmd_le_big_create_sync {
 	struct bt_hci_bis_sync bis[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_BIG_TERM_SYNC		BT_HCI_CMD_5_2 + 12
-#define BT_HCI_BIT_LE_BIG_TERM_SYNC		BT_HCI_BIT_5_2 + 12
+#define BT_HCI_CMD_LE_BIG_TERM_SYNC		0x206c
+#define BT_HCI_BIT_LE_BIG_TERM_SYNC		BT_HCI_CMD_BIT(43, 1)
 struct bt_hci_cmd_le_big_term_sync {
 	uint8_t  big_id;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_REQ_PEER_SCA		BT_HCI_CMD_5_2 + 13
-#define BT_HCI_BIT_LE_REQ_PEER_SCA		BT_HCI_BIT_5_2 + 13
+#define BT_HCI_CMD_LE_REQ_PEER_SCA		0x206d
+#define BT_HCI_BIT_LE_REQ_PEER_SCA		BT_HCI_CMD_BIT(43, 2)
 struct bt_hci_cmd_le_req_peer_sca {
 	uint16_t handle;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_SETUP_ISO_PATH		BT_HCI_CMD_5_2 + 14
-#define BT_HCI_BIT_LE_SETUP_ISO_PATH		BT_HCI_BIT_5_2 + 14
+#define BT_HCI_CMD_LE_SETUP_ISO_PATH		0x206e
+#define BT_HCI_BIT_LE_SETUP_ISO_PATH		BT_HCI_CMD_BIT(43, 3)
 struct bt_hci_cmd_le_setup_iso_path {
 	uint16_t handle;
 	uint8_t  direction;
@@ -2780,24 +2776,31 @@ struct bt_hci_cmd_le_setup_iso_path {
 	uint8_t  codec_cfg[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_REMOVE_ISO_PATH		BT_HCI_CMD_5_2 + 15
-#define BT_HCI_BIT_LE_REMOVE_ISO_PATH		BT_HCI_BIT_5_2 + 15
+#define BT_HCI_CMD_LE_REMOVE_ISO_PATH		0x206f
+#define BT_HCI_BIT_LE_REMOVE_ISO_PATH		BT_HCI_CMD_BIT(43, 4)
 struct bt_hci_cmd_le_remove_iso_path {
 	uint16_t handle;
 	uint8_t  path_dir;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_ISO_TX_TEST		BT_HCI_CMD_5_2 + 16
-#define BT_HCI_BIT_LE_ISO_TX_TEST		BT_HCI_BIT_5_2 + 16
+#define BT_HCI_CMD_LE_ISO_TX_TEST		0x2070
+#define BT_HCI_BIT_LE_ISO_TX_TEST		BT_HCI_CMD_BIT(43, 5)
 
-#define BT_HCI_CMD_LE_ISO_RX_TEST		BT_HCI_CMD_5_2 + 17
-#define BT_HCI_BIT_LE_ISO_RX_TEST		BT_HCI_BIT_5_2 + 17
+#define BT_HCI_CMD_LE_ISO_RX_TEST		0x2071
+#define BT_HCI_BIT_LE_ISO_RX_TEST		BT_HCI_CMD_BIT(43, 6)
 
-#define BT_HCI_CMD_LE_ISO_READ_TEST_COUNTER	BT_HCI_CMD_5_2 + 18
-#define BT_HCI_BIT_LE_ISO_READ_TEST_COUNTER	BT_HCI_BIT_5_2 + 18
+#define BT_HCI_CMD_LE_ISO_READ_TEST_COUNTER	0x2072
+#define BT_HCI_BIT_LE_ISO_READ_TEST_COUNTER	BT_HCI_CMD_BIT(43, 7)
 
-#define BT_HCI_CMD_LE_ISO_TEST_END		BT_HCI_CMD_5_2 + 19
-#define BT_HCI_BIT_LE_ISO_TEST_END		BT_HCI_BIT_5_2 + 19
+#define BT_HCI_CMD_LE_ISO_TEST_END		0x2073
+#define BT_HCI_BIT_LE_ISO_TEST_END		BT_HCI_CMD_BIT(44, 0)
+
+#define BT_HCI_CMD_LE_SET_HOST_FEATURE		0x2074
+#define BT_HCI_BIT_LE_SET_HOST_FEATURE		BT_HCI_CMD_BIT(44, 1)
+struct bt_hci_cmd_le_set_host_feature {
+	uint8_t  bit_number;
+	uint8_t  bit_value;
+} __packed;
 
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
@@ -3155,7 +3158,7 @@ struct bt_hci_evt_keypress_notify {
 
 #define BT_HCI_EVT_REMOTE_HOST_FEATURES_NOTIFY	0x3d
 struct bt_hci_evt_remote_host_features_notify {
-	uint8_t  bdaddr[6];
+uint8_t  bdaddr[6];
 	uint8_t  features[8];
 } __attribute__ ((packed));
 
@@ -3498,7 +3501,7 @@ struct bt_hci_evt_le_per_adv_sync_trans_rec {
 	uint8_t  clock_accuracy;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_CIS_ESTABLISHED		BT_HCI_SUBEVT_5_2
+#define BT_HCI_EVT_LE_CIS_ESTABLISHED			0x19
 struct bt_hci_evt_le_cis_established {
 	uint8_t  status;
 	uint16_t conn_handle;
@@ -3518,7 +3521,7 @@ struct bt_hci_evt_le_cis_established {
 	uint16_t interval;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_CIS_REQ			BT_HCI_SUBEVT_5_2 + 1
+#define BT_HCI_EVT_LE_CIS_REQ				0x1a
 struct bt_hci_evt_le_cis_req {
 	uint16_t acl_handle;
 	uint16_t cis_handle;
@@ -3526,7 +3529,7 @@ struct bt_hci_evt_le_cis_req {
 	uint8_t  cis_id;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_BIG_COMPLETE		BT_HCI_SUBEVT_5_2 + 2
+#define BT_HCI_EVT_LE_BIG_COMPLETE			0x1b
 struct bt_hci_evt_le_big_complete {
 	uint8_t  status;
 	uint8_t  big_id;
@@ -3537,13 +3540,13 @@ struct bt_hci_evt_le_big_complete {
 	uint16_t handle[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_BIG_TERMINATE		BT_HCI_SUBEVT_5_2 + 3
+#define BT_HCI_EVT_LE_BIG_TERMINATE			0x1c
 struct bt_hci_evt_le_big_terminate {
 	uint8_t  reason;
 	uint8_t  big_id;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED	BT_HCI_SUBEVT_5_2 + 4
+#define BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED		0x1d
 struct bt_hci_evt_le_big_sync_estabilished {
 	uint8_t  status;
 	uint8_t  big_id;
@@ -3552,13 +3555,13 @@ struct bt_hci_evt_le_big_sync_estabilished {
 	uint16_t handle[0];
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_BIG_SYNC_LOST		BT_HCI_SUBEVT_5_2 + 5
+#define BT_HCI_EVT_LE_BIG_SYNC_LOST			0x1e
 struct bt_hci_evt_le_big_sync_lost {
 	uint8_t  big_id;
 	uint8_t  reason;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_REQ_PEER_SCA_COMPLETE	BT_HCI_SUBEVT_5_2 + 6
+#define BT_HCI_EVT_LE_REQ_PEER_SCA_COMPLETE		0x1f
 struct bt_hci_evt_le_req_peer_sca_complete {
 	uint8_t  status;
 	uint16_t handle;
