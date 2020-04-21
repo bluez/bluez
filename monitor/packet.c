@@ -8128,6 +8128,21 @@ static void le_req_peer_sca_cmd(const void *data, uint8_t size)
 	print_field("Connection Handle: %d", le16_to_cpu(cmd->handle));
 }
 
+static void le_set_host_feature_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_host_feature *cmd = data;
+	uint64_t mask;
+
+	print_field("Bit Number:");
+
+	mask = print_bitfield(2, cmd->bit_number, features_le);
+	if (mask)
+		print_text(COLOR_UNKNOWN_FEATURE_BIT, "  Unknown features "
+						"(0x%16.16" PRIx64 ")", mask);
+
+	print_field("Bit Value: %u", cmd->bit_value);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -9041,6 +9056,10 @@ static const struct opcode_data opcode_table[] = {
 	{ BT_HCI_CMD_LE_ISO_TEST_END, BT_HCI_BIT_LE_ISO_TEST_END,
 				"LE Isochronous Read Test Counters", NULL, 0,
 				false },
+	{ BT_HCI_CMD_LE_SET_HOST_FEATURE, BT_HCI_BIT_LE_SET_HOST_FEATURE,
+				"LE Set Host Feature", le_set_host_feature_cmd,
+				sizeof(struct bt_hci_cmd_le_set_host_feature),
+				true, status_rsp, 1, true },
 	{ }
 };
 
