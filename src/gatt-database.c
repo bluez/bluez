@@ -1197,7 +1197,7 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
 	database->svc_chngd = gatt_db_service_add_characteristic(service, &uuid,
-				BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_INDICATE,
+				BT_ATT_PERM_NONE, BT_GATT_CHRC_PROP_INDICATE,
 				NULL, NULL, database);
 
 	database->svc_chngd_ccc = service_add_ccc(service, database, NULL, NULL,
