@@ -469,6 +469,7 @@ static void set_le_52_commands(struct btdev *btdev)
 	btdev->commands[43] |= 0x40;	/* LE ISO RX Test */
 	btdev->commands[43] |= 0x80;	/* LE ISO Read Test Counter */
 	btdev->commands[44] |= 0x01;	/* LE ISO Test End */
+	btdev->commands[44] |= 0x02;	/* LE ISO Set Host Feature */
 }
 
 static void set_le_commands(struct btdev *btdev)
@@ -3858,6 +3859,15 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 		lrcis = data;
 		le_cis_estabilished(btdev, lrcis->reason);
+
+		break;
+
+	case BT_HCI_CMD_LE_SET_HOST_FEATURE:
+		if (btdev->type != BTDEV_TYPE_BREDRLE52)
+			goto unsupported;
+
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
 
 		break;
 
