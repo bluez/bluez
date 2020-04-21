@@ -305,7 +305,7 @@ def create_cb(value):
 	global attach
 
 	print(set_yellow('Created mesh network with token ') +
-			set_green(format(value, '16x')))
+			set_green(format(value, '016x')))
 
 	token = value
 	have_token = True
@@ -462,7 +462,7 @@ class Application(dbus.service.Object):
 		global attach
 
 		print(set_yellow('Joined mesh network with token ') +
-				set_green(format(value, '16x')))
+				set_green(format(value, '016x')))
 
 		token = value
 		have_token = True
