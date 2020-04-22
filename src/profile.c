@@ -1085,12 +1085,13 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 	if (!bt_io_get(io, &io_err,
 				BT_IO_OPT_DEST, addr,
 				BT_IO_OPT_INVALID)) {
-		error("Unable to get connect data for %s: %s", ext->name,
-							io_err->message);
 		if (err) {
+			error("%s failed %s", ext->name, err->message);
 			g_error_free(io_err);
 			io_err = NULL;
 		} else {
+			error("Unable to get connect data for %s: %s",
+				ext->name, io_err->message);
 			err = io_err;
 		}
 		goto drop;
