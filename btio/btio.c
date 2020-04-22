@@ -85,6 +85,7 @@ struct connect {
 	BtIOConnect connect;
 	gpointer user_data;
 	GDestroyNotify destroy;
+	bdaddr_t dst;
 };
 
 struct accept {
@@ -214,6 +215,7 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 	GError *gerr = NULL;
 	int err, sk_err, sock;
 	socklen_t len = sizeof(sk_err);
+	char addr[18];
 
 	/* If the user aborted this connect attempt */
 	if ((cond & G_IO_NVAL) || check_nval(io))
@@ -226,8 +228,11 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 	else
 		err = -sk_err;
 
-	if (err < 0)
-		ERROR_FAILED(&gerr, "connect error", -err);
+	if (err < 0) {
+		ba2str(&conn->dst, addr);
+		g_set_error(&gerr, BT_IO_ERROR, err,
+			"connect to %s: %s (%d)", addr, strerror(-err), -err);
+	}
 
 	conn->connect(io, gerr, conn->user_data);
 
@@ -286,7 +291,7 @@ static void server_add(GIOChannel *io, BtIOConnect connect,
 					(GDestroyNotify) server_remove);
 }
 
-static void connect_add(GIOChannel *io, BtIOConnect connect,
+static void connect_add(GIOChannel *io, BtIOConnect connect, bdaddr_t dst,
 				gpointer user_data, GDestroyNotify destroy)
 {
 	struct connect *conn;
@@ -296,6 +301,7 @@ static void connect_add(GIOChannel *io, BtIOConnect connect,
 	conn->connect = connect;
 	conn->user_data = user_data;
 	conn->destroy = destroy;
+	conn->dst = dst;
 
 	cond = G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	g_io_add_watch_full(io, G_PRIORITY_DEFAULT, cond, connect_cb, conn,
@@ -1671,6 +1677,7 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 	struct set_opts opts;
 	int err, sock;
 	gboolean ret;
+	char addr[18];
 
 	va_start(args, opt1);
 	ret = parse_set_opts(&opts, gerr, opt1, args);
@@ -1710,12 +1717,15 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 	}
 
 	if (err < 0) {
-		ERROR_FAILED(gerr, "connect", -err);
+		ba2str(&opts.dst, addr);
+		g_set_error(gerr, BT_IO_ERROR, err,
+				"connect to %s: %s (%d)", addr, strerror(-err),
+				-err);
 		g_io_channel_unref(io);
 		return NULL;
 	}
 
-	connect_add(io, connect, user_data, destroy);
+	connect_add(io, connect, opts.dst, user_data, destroy);
 
 	return io;
 }
