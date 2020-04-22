@@ -148,6 +148,7 @@ struct btdev {
 		struct bt_hci_cmd_le_set_cig_params params;
 		struct bt_hci_cis_params cis;
 	} __attribute__ ((packed)) le_cig;
+	uint8_t  le_iso_path[2];
 
 	uint8_t le_local_sk256[32];
 
@@ -2418,6 +2419,38 @@ static void btdev_reset(struct btdev *btdev)
 	btdev->le_adv_enable		= 0x00;
 }
 
+static void le_setup_iso_path(struct btdev *dev, uint16_t handle,
+					uint8_t dir, uint8_t path)
+{
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	if (!dev->conn || handle != ISO_HANDLE) {
+		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		goto done;
+	}
+
+	/* Only support HCI or disabled paths */
+	if (path && path != 0xff) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	switch (dir) {
+	case 0x00:
+		dev->le_iso_path[0] = path;
+		break;
+	case 0x01:
+		dev->le_iso_path[1] = path;
+		break;
+	default:
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+	}
+
+done:
+	cmd_complete(dev, BT_HCI_CMD_LE_SETUP_ISO_PATH, &status,
+						sizeof(status));
+}
+
 static void default_cmd(struct btdev *btdev, uint16_t opcode,
 						const void *data, uint8_t len)
 {
@@ -2541,6 +2574,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		struct bt_hci_rsp_le_set_cig_params params;
 		uint16_t handle;
 	} __attribute__ ((packed)) lscp;
+	struct bt_hci_cmd_le_setup_iso_path *lesip;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -3859,6 +3893,17 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 		lrcis = data;
 		le_cis_estabilished(btdev, lrcis->reason);
+
+		break;
+
+	case BT_HCI_CMD_LE_SETUP_ISO_PATH:
+		if (btdev->type != BTDEV_TYPE_BREDRLE52)
+			goto unsupported;
+
+		lesip = (void *)data;
+
+		le_setup_iso_path(btdev, le16_to_cpu(lesip->handle),
+					lesip->direction, lesip->path);
 
 		break;
 
