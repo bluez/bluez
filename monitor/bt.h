@@ -2780,7 +2780,7 @@ struct bt_hci_cmd_le_setup_iso_path {
 #define BT_HCI_BIT_LE_REMOVE_ISO_PATH		BT_HCI_CMD_BIT(43, 4)
 struct bt_hci_cmd_le_remove_iso_path {
 	uint16_t handle;
-	uint8_t  path_dir;
+	uint8_t  direction;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_ISO_TX_TEST		0x2070

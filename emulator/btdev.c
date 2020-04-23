@@ -2508,6 +2508,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_le_scan_phy *lsp;
 	const struct bt_hci_cmd_le_set_ext_scan_enable *lsese;
 	const struct bt_hci_cmd_le_reject_cis *lrcis;
+	const struct bt_hci_cmd_le_remove_iso_path *lerip;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
 	struct bt_hci_rsp_read_stored_link_key rslk;
 	struct bt_hci_rsp_write_stored_link_key wslk;
@@ -3905,6 +3906,30 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		le_setup_iso_path(btdev, le16_to_cpu(lesip->handle),
 					lesip->direction, lesip->path);
 
+		break;
+
+	case BT_HCI_CMD_LE_REMOVE_ISO_PATH:
+		if (btdev->type != BTDEV_TYPE_BREDRLE52)
+			goto unsupported;
+
+		lerip = data;
+		status = BT_HCI_ERR_SUCCESS;
+
+		if (!btdev->conn || le16_to_cpu(lerip->handle) != ISO_HANDLE)
+			status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+
+		switch (lerip->direction) {
+		case 0x00:
+			btdev->le_iso_path[0] = 0x00;
+			break;
+		case 0x01:
+			btdev->le_iso_path[1] = 0x00;
+			break;
+		default:
+			status = BT_HCI_ERR_INVALID_PARAMETERS;
+		}
+
+		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_LE_SET_HOST_FEATURE:
