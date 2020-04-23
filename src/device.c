@@ -1626,15 +1626,19 @@ done:
 	if (!dev->connect)
 		return;
 
-	if (!err && dbus_message_is_method_call(dev->connect, DEVICE_INTERFACE,
-								"Connect"))
-		dev->general_connect = TRUE;
+	if (dbus_message_is_method_call(dev->connect, DEVICE_INTERFACE,
+							"Connect")) {
+		if (!err)
+			dev->general_connect = TRUE;
+		else if (!find_service_with_state(dev->services,
+						BTD_SERVICE_STATE_CONNECTED))
+			/* Reset error if there are services connected */
+			err = 0;
+	}
 
 	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
 
-	l = find_service_with_state(dev->services, BTD_SERVICE_STATE_CONNECTED);
-
-	if (err && l == NULL) {
+	if (err) {
 		/* Fallback to LE bearer if supported */
 		if (err == -EHOSTDOWN && dev->le && !dev->le_state.connected) {
 			err = device_connect_le(dev);
