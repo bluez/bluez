@@ -230,7 +230,7 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 
 	if (err < 0) {
 		ba2str(&conn->dst, addr);
-		g_set_error(&gerr, BT_IO_ERROR, err,
+		g_set_error(&gerr, BT_IO_ERROR, -err,
 			"connect to %s: %s (%d)", addr, strerror(-err), -err);
 	}
 
@@ -1718,7 +1718,7 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 
 	if (err < 0) {
 		ba2str(&opts.dst, addr);
-		g_set_error(gerr, BT_IO_ERROR, err,
+		g_set_error(gerr, BT_IO_ERROR, -err,
 				"connect to %s: %s (%d)", addr, strerror(-err),
 				-err);
 		g_io_channel_unref(io);
