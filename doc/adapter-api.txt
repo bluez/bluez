@@ -326,3 +326,11 @@ Properties	string Address [readonly]
 
 			Local Device ID information in modalias format
 			used by the kernel and udev.
+
+		array{string} Roles [readonly]
+
+			List of supported roles. Possible values:
+				"central": Supports the central role.
+				"peripheral": Supports the peripheral role.
+				"central-peripheral": Supports both roles
+						      concurrently.
