@@ -1630,7 +1630,7 @@ done:
 							"Connect")) {
 		if (!err)
 			dev->general_connect = TRUE;
-		else if (!find_service_with_state(dev->services,
+		else if (find_service_with_state(dev->services,
 						BTD_SERVICE_STATE_CONNECTED))
 			/* Reset error if there are services connected */
 			err = 0;
