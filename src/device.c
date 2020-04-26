@@ -2054,6 +2054,9 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 	if (dev->disconnect)
 		return btd_error_in_progress(msg);
 
+	if (btd_service_get_state(service) == BTD_SERVICE_STATE_DISCONNECTED)
+		return dbus_message_new_method_return(msg);
+
 	dev->disconnect = dbus_message_ref(msg);
 
 	err = btd_service_disconnect(service);
@@ -2065,6 +2068,8 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 
 	if (err == -ENOTSUP)
 		return btd_error_not_supported(msg);
+	else if (err == -EALREADY)
+		return dbus_message_new_method_return(msg);
 
 	return btd_error_failed(msg, strerror(-err));
 }

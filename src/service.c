@@ -281,8 +281,9 @@ int btd_service_disconnect(struct btd_service *service)
 	case BTD_SERVICE_STATE_UNAVAILABLE:
 		return -EINVAL;
 	case BTD_SERVICE_STATE_DISCONNECTED:
-	case BTD_SERVICE_STATE_DISCONNECTING:
 		return -EALREADY;
+	case BTD_SERVICE_STATE_DISCONNECTING:
+		return 0;
 	case BTD_SERVICE_STATE_CONNECTING:
 	case BTD_SERVICE_STATE_CONNECTED:
 		break;
