@@ -1,0 +1,137 @@
+BlueZ D-Bus Advertisement Monitor API Description
+*************************************************
+
+This API allows an client to specify a job of monitoring advertisements by
+registering the root of hierarchy and then exposing advertisement monitors
+under the root with filtering conditions, thresholds of RSSI and timers
+of RSSI thresholds.
+
+Once a monitoring job is activated by BlueZ, the client can expect to get
+notified on the targeted advertisements no matter if there is an ongoing
+discovery session (a discovery session is started/stopped with methods in
+org.bluez.Adapter1 interface).
+
+Advertisement Monitor hierarchy
+===============================
+Service		org.bluez
+Interface	org.bluez.AdvertisementMonitor1 [experimental]
+Object path	freely definable
+
+Methods		void Release() [noreply]
+
+			This gets called as a signal for a client to perform
+			clean-up when (1)a monitor cannot be activated after it
+			was exposed or (2)a monitor has been deactivated.
+
+		void Activate() [noreply]
+
+			After a monitor was exposed, this gets called as a
+			signal for client to get acknowledged when a monitor
+			has been activated, so the client can expect to receive
+			calls on DeviceFound() or DeviceLost().
+
+		void DeviceFound(object device) [noreply]
+
+			This gets called to notify the client of finding the
+			targeted device. Once receiving the call, the client
+			should start to monitor the corresponding device to
+			retrieve the changes on RSSI and advertisement content.
+
+		void DeviceLost(object device) [noreply]
+
+			This gets called to notify the client of losing the
+			targeted device. Once receiving this call, the client
+			should stop monitoring the corresponding device.
+
+Properties	string Type [read-only]
+
+			The type of the monitor. See SupportedMonitorTypes in
+			org.bluez.AdvertisementMonitorManager1 for the available
+			options.
+
+		(Int16, Uint16, Int16, Uint16) RSSIThreshholdsAndTimers [read-only, optional]
+
+			This contains HighRSSIThreshold, HighRSSIThresholdTimer,
+			LowRSSIThreshold, LowRSSIThresholdTimer in order. The
+			unit of HighRSSIThreshold and LowRSSIThreshold is dBm.
+			The unit of HighRSSIThresholdTimer and
+			LowRSSIThresholdTimer is second.
+
+			If these are provided, RSSI would be used as a factor to
+			notify the client of whether a device stays in range or
+			move out of range. A device is considered in-range when
+			the RSSIs of the received advertisement(s) during
+			HighRSSIThresholdTimer seconds exceed HighRSSIThreshold.
+			Likewise, a device is considered out-of-range when the
+			RSSIs of the received advertisement(s) during
+			LowRSSIThresholdTimer do not reach LowRSSIThreshold.
+
+		array{(uint8, uint8, string)} Patterns [read-only, optional]
+
+			If Type is set to 0x01, this must exist and has at least
+			one entry in the array.
+
+			The structure of a pattern contains the following.
+			uint8 start_position
+				The index in an AD data field where the search
+				should start. The beginning of an AD data field
+				is index 0.
+			uint8 AD_data_type
+				See https://www.bluetooth.com/specifications/
+				assigned-numbers/generic-access-profile/ for
+				the possible allowed value.
+			string content_of_pattern
+				This is the value of the pattern.
+
+Advertisement Monitor Manager hierarchy
+=======================================
+Service		org.bluez
+Interface	org.bluez.AdvertisementMonitorManager1 [experimental]
+Object path	/org/bluez/{hci0,hci1,...}
+
+Methods		void RegisterApplication(object application)
+
+			This registers a hierarchy of advertisement monitors.
+			The application object path together with the D-Bus
+			system bus connection ID define the identification of
+			the application registering advertisement monitors.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+
+		void UnregisterApplication(object application)
+
+			This unregisters advertisement monitors that have been
+			previously registered. The object path parameter must
+			match the same value that has been used on
+			registration.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist
+
+Properties	array{string} SupportedMonitorTypes [read-only]
+
+			This lists the supported types of advertisement
+			monitors. An application should check this before
+			instantiate and expose an object of
+			org.bluez.AdvertisementMonitor1.
+
+			Possible values for monitor types:
+
+			"patterns_with_logic_or"
+				Patterns with logic OR applied. With this type,
+				property "Patterns" must exist and has at least
+				one pattern.
+
+		array{string} SupportedFeatures [read-only]
+
+			This lists the features of advertisement monitoring
+			supported by BlueZ.
+
+			Possible values for features:
+
+			"controller-based-monitor-by-patterns"
+				If the controller is capable of performing
+				advertisement monitoring by patterns, BlueZ
+				would offload the patterns to the controller to
+				reduce power consumption.
