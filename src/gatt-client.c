@@ -1050,8 +1050,8 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 			return NULL;
 	}
 
-	if ((type && strcasecmp(type, "command")) || offset ||
-			!(chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP))
+	if ((type && strcasecmp(type, "command")) || offset || (!type &&
+			!(chrc->props & BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP)))
 		goto fail;
 
 	supported = true;
