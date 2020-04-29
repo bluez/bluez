@@ -124,7 +124,7 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 	if (!vendor)
 		mod_id |= VENDOR_ID_MASK;
 	else
-		mod_id |= l_get_le16(pkt + 11 + virt_offset);
+		mod_id = (mod_id << 16) | l_get_le16(pkt + 11 + virt_offset);
 
 	ele_addr = l_get_le16(pkt);
 	pub_addr = pkt + 2;
@@ -232,7 +232,7 @@ static bool config_sub_get(struct mesh_node *node, uint16_t net_idx,
 
 	switch (size) {
 	default:
-		l_debug("Bad Len Cfg_Pub_Set: %d", size);
+		l_debug("Bad length %d", size);
 		return false;
 
 	case 4:
@@ -322,7 +322,7 @@ static void config_sub_set(struct mesh_node *node, uint16_t net_idx,
 
 	switch (size) {
 	default:
-		l_error("Bad Len Cfg_Sub_Set: %d", size);
+		l_error("Bad length: %d", size);
 		return;
 	case 4:
 		if (opcode != OP_CONFIG_MODEL_SUB_DELETE_ALL)
@@ -568,7 +568,6 @@ static void hb_pub_timeout_func(struct l_timeout *timeout, void *user_data)
 		l_timeout_remove(hb->pub_timer);
 		hb->pub_timer = NULL;
 	}
-	l_debug("%d left", hb->pub_count);
 }
 
 static void update_hb_pub_timer(struct mesh_net *net,
@@ -652,6 +651,7 @@ static int hb_subscription_set(struct mesh_net *net, uint16_t src,
 		hb->sub_min_hops = 0;
 		hb->sub_max_hops = 0;
 		return MESH_STATUS_SUCCESS;
+
 	} else if (!period_log && src == hb->sub_src && dst == hb->sub_dst) {
 		/* Preserve collected data, but disable */
 		l_timeout_remove(hb->sub_timer);
