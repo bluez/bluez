@@ -358,6 +358,7 @@ static void config_sub_set(struct mesh_node *node, uint16_t net_idx,
 	case 22:
 		if (!virt)
 			return;
+		vendor = true;
 		mod_id = l_get_le16(pkt + 18) << 16;
 		mod_id |= l_get_le16(pkt + 20);
 		break;
