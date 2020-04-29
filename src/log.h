@@ -23,8 +23,6 @@
 
 #include <stdint.h>
 
-void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void warn(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 void btd_log(uint16_t index, int priority, const char *format, ...)
@@ -71,3 +69,7 @@ void __btd_enable_debug(struct btd_debug_desc *start,
 } while (0)
 
 #define DBG(fmt, arg...) DBG_IDX(0xffff, fmt, ## arg)
+#define error(fmt, arg...) \
+	btd_error(0xffff, "%s:%s() " fmt, __FILE__, __func__, ## arg)
+#define warn(fmt, arg...) \
+	btd_warn(0xffff, "%s:%s() " fmt, __FILE__, __func__, ## arg)

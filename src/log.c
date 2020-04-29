@@ -53,32 +53,6 @@ static void monitor_log(uint16_t index, int priority,
 	bt_log_vprintf(index, LOG_IDENT, priority, format, ap);
 }
 
-void error(const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	vsyslog(LOG_ERR, format, ap);
-	va_end(ap);
-
-	va_start(ap, format);
-	monitor_log(HCI_DEV_NONE, LOG_ERR, format, ap);
-	va_end(ap);
-}
-
-void warn(const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	vsyslog(LOG_WARNING, format, ap);
-	va_end(ap);
-
-	va_start(ap, format);
-	monitor_log(HCI_DEV_NONE, LOG_WARNING, format, ap);
-	va_end(ap);
-}
-
 void info(const char *format, ...)
 {
 	va_list ap;
