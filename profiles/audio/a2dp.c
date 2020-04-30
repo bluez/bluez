@@ -735,7 +735,7 @@ static void endpoint_open_cb(struct a2dp_setup *setup, gboolean ret)
 	if (err == 0)
 		goto done;
 
-	error("Error on avdtp_open %s (%d)", strerror(-err), -err);
+	error("avdtp_open %s (%d)", strerror(-err), -err);
 	setup->stream = NULL;
 	finalize_setup_errno(setup, err, finalize_config, NULL);
 done:
@@ -813,7 +813,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	ret = avdtp_open(session, stream);
 	if (ret < 0) {
-		error("Error on avdtp_open %s (%d)", strerror(-ret), -ret);
+		error("avdtp_open %s (%d)", strerror(-ret), -ret);
 		setup->stream = NULL;
 		finalize_setup_errno(setup, ret, finalize_config, NULL);
 	}
@@ -1133,8 +1133,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	start_err = avdtp_start(session, a2dp_sep->stream);
 	if (start_err < 0 && start_err != -EINPROGRESS) {
-		error("avdtp_start: %s (%d)", strerror(-start_err),
-								-start_err);
+		error("avdtp_start: %s (%d)", strerror(-start_err), -start_err);
 		finalize_setup_errno(setup, start_err, finalize_suspend, NULL);
 	}
 }
