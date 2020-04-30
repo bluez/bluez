@@ -8133,9 +8133,10 @@ static void le_set_host_feature_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_set_host_feature *cmd = data;
 	uint64_t mask;
 
-	print_field("Bit Number:");
+	print_field("Bit Number: %u", cmd->bit_number);
 
-	mask = print_bitfield(2, cmd->bit_number, features_le);
+	mask = print_bitfield(2, (((uint64_t) 1) << cmd->bit_number),
+							features_le);
 	if (mask)
 		print_text(COLOR_UNKNOWN_FEATURE_BIT, "  Unknown features "
 						"(0x%16.16" PRIx64 ")", mask);
