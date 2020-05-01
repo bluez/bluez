@@ -4004,6 +4004,7 @@ Extended Controller Information Changed Event
 	The event will only be sent to management sockets other than the
 	one through which the change was triggered.
 
+
 PHY Configuration Changed Event
 ===============================
 
