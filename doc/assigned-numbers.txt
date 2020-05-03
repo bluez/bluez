@@ -8,6 +8,8 @@ avoid conflicts.
 Profile		Channel
 -----------------------
 DUN		1
+SPP		3
+HSP HS		6
 HFP HF		7
 OPP		9
 FTP		10
