@@ -1178,6 +1178,12 @@ static gboolean a2dp_reconfigure(gpointer data)
 	struct avdtp_media_codec_capability *rsep_codec;
 	struct avdtp_service_capability *cap;
 
+	if (!sep->lsep) {
+		error("no valid local SEP");
+		posix_err = -EINVAL;
+		goto failed;
+	}
+
 	if (setup->rsep) {
 		cap = avdtp_get_codec(setup->rsep->sep);
 		rsep_codec = (struct avdtp_media_codec_capability *) cap->data;
@@ -1185,6 +1191,12 @@ static gboolean a2dp_reconfigure(gpointer data)
 
 	if (!setup->rsep || sep->codec != rsep_codec->media_codec_type)
 		setup->rsep = find_remote_sep(setup->chan, sep);
+
+	if (!setup->rsep) {
+		error("unable to find remote SEP");
+		posix_err = -EINVAL;
+		goto failed;
+	}
 
 	posix_err = avdtp_set_configuration(setup->session, setup->rsep->sep,
 						sep->lsep,
