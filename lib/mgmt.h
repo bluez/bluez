@@ -586,15 +586,11 @@ struct mgmt_cp_set_phy_confguration {
 
 #define MGMT_OP_SET_BLOCKED_KEYS	0x0046
 
-#define MGMT_OP_READ_SECURITY_INFO	0x0048
-struct mgmt_rp_read_security_info {
-	uint16_t sec_len;
-	uint8_t  sec[0];
-} __packed;
+#define MGMT_OP_SET_WIDEBAND_SPEECH	0x0047
 
 #define HCI_BLOCKED_KEY_TYPE_LINKKEY	0x00
-#define HCI_BLOCKED_KEY_TYPE_LTK		0x01
-#define HCI_BLOCKED_KEY_TYPE_IRK		0x02
+#define HCI_BLOCKED_KEY_TYPE_LTK	0x01
+#define HCI_BLOCKED_KEY_TYPE_IRK	0x02
 
 struct mgmt_blocked_key_info {
 	uint8_t type;
@@ -606,7 +602,11 @@ struct mgmt_cp_set_blocked_keys {
 	struct mgmt_blocked_key_info keys[0];
 } __packed;
 
-#define MGMT_OP_SET_WIDEBAND_SPEECH	0x0047
+#define MGMT_OP_READ_SECURITY_INFO	0x0048
+struct mgmt_rp_read_security_info {
+	uint16_t sec_len;
+	uint8_t  sec[0];
+} __packed;
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
