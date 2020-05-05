@@ -608,6 +608,26 @@ struct mgmt_rp_read_security_info {
 	uint8_t  sec[0];
 } __packed;
 
+#define MGMT_OP_READ_EXP_FEATURES_INFO	0x0049
+struct mgmt_rp_read_exp_features_info {
+	uint16_t feature_count;
+	struct {
+		uint8_t  uuid[16];
+		uint32_t flags;
+	} features[];
+} __packed;
+
+#define MGMT_OP_SET_EXP_FEATURE		0x004a
+struct mgmt_cp_set_exp_feature {
+	uint8_t  uuid[16];
+	uint8_t  action;
+} __packed;
+#define MGMT_SET_EXP_FEATURE_SIZE	17
+struct mgmt_rp_set_exp_feature {
+	uint8_t  uuid[16];
+	uint32_t flags;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -831,6 +851,12 @@ struct mgmt_ev_phy_configuration_changed {
 	uint16_t	selected_phys;
 } __packed;
 
+#define MGMT_EV_EXP_FEATURE_CHANGE	0x0027
+struct mgmt_ev_exp_feature_changed {
+	uint8_t  uuid[16];
+	uint32_t flags;
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -904,7 +930,9 @@ static const char *mgmt_op[] = {
 	"Set PHY Configuration",
 	"Set Blocked Keys",
 	"Set Wideband Speech",
-	"Read Security Information",
+	"Read Security Information",			/* 0x0048 */
+	"Read Experimental Features Information",
+	"Set Experimental Feature",
 };
 
 static const char *mgmt_ev[] = {
@@ -947,6 +975,7 @@ static const char *mgmt_ev[] = {
 	"Advertising Removed",
 	"Extended Controller Information Changed",
 	"PHY Configuration Changed",
+	"Experimental Feature Changed",
 };
 
 static const char *mgmt_status[] = {
