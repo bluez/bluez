@@ -275,7 +275,8 @@ struct index_data {
 	uint8_t  type;
 	uint8_t  bdaddr[6];
 	uint16_t manufacturer;
-	size_t	frame;
+	uint16_t msft_opcode;
+	size_t   frame;
 };
 
 static struct index_data index_list[MAX_INDEX];
@@ -3905,6 +3906,7 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 			index_list[index].type = ni->type;
 			memcpy(index_list[index].bdaddr, ni->bdaddr, 6);
 			index_list[index].manufacturer = fallback_manufacturer;
+			index_list[index].msft_opcode = BT_HCI_CMD_NOP;
 		}
 
 		addr2str(ni->bdaddr, str);
@@ -3965,6 +3967,15 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		if (index < MAX_INDEX) {
 			memcpy(index_list[index].bdaddr, ii->bdaddr, 6);
 			index_list[index].manufacturer = manufacturer;
+
+			if (manufacturer == 2) {
+				/*
+				 * All Intel controllers that support the
+				 * Microsoft vendor extension are using
+				 * 0xFC1E for VsMsftOpCode.
+				 */
+				index_list[index].msft_opcode = 0xFC1E;
+			}
 		}
 
 		addr2str(ii->bdaddr, str);
