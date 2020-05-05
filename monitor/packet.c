@@ -97,6 +97,7 @@
 #define COLOR_UNKNOWN_SETTINGS_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_ADDRESS_TYPE	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_DEVICE_FLAG	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_EXP_FEATURE_FLAG	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_ADV_FLAG		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_PHY		COLOR_WHITE_BG
 
@@ -11962,6 +11963,26 @@ static void mgmt_print_oob_data(const void *data)
 	print_randomizer_p256(data + 48);
 }
 
+static const struct bitfield_data mgmt_exp_feature_flags_table[] = {
+	{  0, "Active"		},
+	{  1, "Settings change"	},
+	{ }
+};
+
+static void mgmt_print_exp_feature(const void *data)
+{
+	uint32_t flags = get_le32(data + 16);
+	uint32_t mask;
+
+	mgmt_print_uuid(data);
+	print_field("Flags: 0x%8.8x", flags);
+
+	mask = print_bitfield(2, flags, mgmt_exp_feature_flags_table);
+	if (mask)
+		print_text(COLOR_UNKNOWN_EXP_FEATURE_FLAG,
+				"  Unknown feature flag (0x%8.8x)", mask);
+}
+
 static void mgmt_null_cmd(const void *data, uint16_t size)
 {
 }
@@ -13024,6 +13045,35 @@ static void mgmt_set_phy_cmd(const void *data, uint16_t size)
 	mgmt_print_phys("Selected PHYs", selected_phys);
 }
 
+static void mgmt_read_exp_features_info_rsp(const void *data, uint16_t size)
+{
+	uint16_t num_features = get_le16(data);
+	int i;
+
+	print_field("Features: %u", num_features);
+
+	if (size - 2 != num_features * 20) {
+		packet_hexdump(data + 2, size - 2);
+		return;
+	}
+
+	for (i = 0; i < num_features; i++)
+		mgmt_print_exp_feature(data + 2 + (i * 20));
+}
+
+static void mgmt_set_exp_feature_cmd(const void *data, uint16_t size)
+{
+	uint8_t enable = get_u8(data + 16);
+
+	mgmt_print_uuid(data);
+	print_enable("Action", enable);
+}
+
+static void mgmt_set_exp_feature_rsp(const void *data, uint16_t size)
+{
+	mgmt_print_exp_feature(data);
+}
+
 struct mgmt_data {
 	uint16_t opcode;
 	const char *str;
@@ -13243,6 +13293,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0045, "Set PHY Configuration",
 				mgmt_set_phy_cmd, 4, true,
 				mgmt_null_rsp, 0, true },
+	{ 0x0049, "Read Experimental Features Information",
+				mgmt_null_cmd, 0, true,
+				mgmt_read_exp_features_info_rsp, 2, false },
+	{ 0x004a, "Set Experimental Feature",
+				mgmt_set_exp_feature_cmd, 17, true,
+				mgmt_set_exp_feature_rsp, 20, true },
 	{ }
 };
 
@@ -13628,6 +13684,11 @@ static void mgmt_phy_changed_evt(const void *data, uint16_t size)
 	mgmt_print_phys("Selected PHYs", selected_phys);
 }
 
+static void mgmt_exp_feature_changed_evt(const void *data, uint16_t size)
+{
+	mgmt_print_exp_feature(data);
+}
+
 static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0001, "Command Complete",
 			mgmt_command_complete_evt, 3, false },
@@ -13705,6 +13766,8 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_ext_controller_info_changed_evt, 2, false },
 	{ 0x0026, "PHY Configuration Changed",
 			mgmt_phy_changed_evt, 4, true },
+	{ 0x0027, "Experimental Feature Changed",
+			mgmt_exp_feature_changed_evt, 20, true },
 	{ }
 };
 
