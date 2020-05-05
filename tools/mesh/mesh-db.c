@@ -607,7 +607,7 @@ static bool load_keys(json_object *jobj)
 		if (!get_int(jentry, "phase", &phase))
 			return false;
 
-		keys_set_net_key_phase(net_idx, (uint8_t) phase);
+		keys_set_net_key_phase(net_idx, (uint8_t) phase, false);
 	}
 
 	json_object_object_get_ex(jobj, "appKeys", &jarray);

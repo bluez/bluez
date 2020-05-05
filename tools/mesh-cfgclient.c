@@ -944,7 +944,7 @@ static void subnet_set_phase_reply(struct l_dbus_proxy *proxy,
 	if (phase == KEY_REFRESH_PHASE_THREE)
 		phase = KEY_REFRESH_PHASE_NONE;
 
-	keys_set_net_key_phase(net_idx, phase);
+	keys_set_net_key_phase(net_idx, phase, true);
 }
 
 static void subnet_set_phase_setup(struct l_dbus_message *msg, void *user_data)
@@ -1014,7 +1014,7 @@ static void mgr_key_reply(struct l_dbus_proxy *proxy,
 		keys_del_net_key(idx);
 		mesh_db_net_key_del(idx);
 	} else if (!strcmp("UpdateSubnet", method)) {
-		keys_set_net_key_phase(idx, KEY_REFRESH_PHASE_ONE);
+		keys_set_net_key_phase(idx, KEY_REFRESH_PHASE_ONE, true);
 	} else if (!strcmp("DeleteAppKey", method)) {
 		keys_del_app_key(idx);
 		mesh_db_app_key_del(idx);
